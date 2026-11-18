@@ -148,11 +148,11 @@ flows:
       - エラーの本文に `README.md` のパスがある
       - 直下の `README.md` のフォルダと `.mindstella/` の中身が呼ぶ前と同じ
     test: test_error_when_write_fails
-lead: ワークスペースの直下の `README.md` を、このフォルダの起動・接続のコマンド、スキルの呼び方、配っているプレビューの URL の一覧に書き直す。利用者が書いた `README.md` は書き換えない。
+lead: ワークスペースの直下の `README.md` を、このフォルダの起動・接続のコマンド、記録のエージェントフローの案内、配っているプレビューの URL の一覧に書き直す。利用者が書いた `README.md` は書き換えない。
 idempotent: true
 side_effects: ワークスペースの直下の `README.md` だけを書く（無いか、1 行目が自動で書いた印のとき）。`.mindstella/` は書かず、変更履歴と書き換えの知らせの対象にもしない
 callers:
-  - IF-489-66#
+  - IF-565-1#
 request:
   - name: workspace
     type: str
@@ -189,14 +189,15 @@ constraints:
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: README の中身
     constraint: |-
-      1 行目に自動で書いた印 `<!-- mindstella:readme -->` を置き、次の形の Markdown を続ける。`{…}` を埋め、コマンドに埋めるパスは `shlex.quote` で引用する。節はプレビュー → コマンド → ドキュメントの順。プレビューの節は、配っていれば URL の行、配っていなければ「`/mindstella:session` でプレビューを頼むと URL が表示されます。」の行にする。コマンドは 1 つごとに、太字の見出し・短い説明・`bash` のコードブロックの 3 つで書く
+      1 行目に自動で書いた印 `<!-- mindstella:readme -->` を置き、次の形の Markdown を続ける。`{…}` を埋め、コマンドに埋めるパスは `shlex.quote` で引用する。節はプレビュー → コマンド → ドキュメントの順。プレビューの節は、配っていれば URL の行、配っていなければ「MindStella のセッションにプレビューを頼むと URL が表示されます。」の行にする。コマンドは 1 つごとに、太字の見出し・短い説明・`bash` のコードブロックの 3 つで書く
 
       ~~~markdown
       <!-- mindstella:readme -->
       # {フォルダ名}
 
       mindstella の話し合いのワークスペースです。記録は `.mindstella/` にあり、プレビューで読みます。
-      このファイルは `/mindstella:session` を始めるたびに書き直されます。
+      このファイルはワークスペースを開くたびに書き直されます。
+      MindStella のセッションは、起動と再開・コメントの取り込み・記録の使い分けのエージェントフロー（`mindstella/startup`・`mindstella/on-comment`・`mindstella/record`）に従って記録します。
 
       ## プレビュー
 
@@ -226,30 +227,6 @@ constraints:
 
       ```bash
       tmux attach-session -t ={セッションの名前}
-      ```
-
-      **セッション:**
-
-      立ち上げた Claude Code で、話し合いを進めます。
-
-      ```bash
-      /mindstella:session {ワークスペースの絶対パス}
-      ```
-
-      **セットアップ:**
-
-      立ち上げた Claude Code で、状況を確かめて話し合いを始めます。
-
-      ```bash
-      /mindstella:setup {ワークスペースの絶対パス}
-      ```
-
-      **アップグレード:**
-
-      プラグインを上げた後、記録を今の版へ移し替えます。
-
-      ```bash
-      /mindstella:upgrade {ワークスペースの絶対パス}
       ```
 
       ## ドキュメント

@@ -36,9 +36,7 @@ export type DecisionMapProps = {
 };
 
 const NODE_TONE: Record<Exclude<MapNode["kind"], "item">, string> = {
-  target: "bg-primary text-primary-foreground font-semibold",
-  category: "bg-secondary font-medium",
-  phase: "bg-muted text-xs text-muted-foreground",
+  root: "bg-primary text-primary-foreground font-semibold",
 };
 
 export const DecisionMap = ({ items, settings, selectedId, marks, comments = {}, edit = null, onOpen, onClear, keyword = "", onKeyword }: DecisionMapProps) => {
@@ -197,7 +195,6 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
                         {mark === undefined ? null : <DiffMark kind={mark} />}
                         <span className="font-mono">{item.id}</span>
                         <span>{item.status}</span>
-                        {item.weight === undefined ? null : <span>影響度 {item.weight}</span>}
                         {pending === undefined ? null : <PendingMark kind={pending} compact />}
                         {count > 0 ? <CommentMark count={count} /> : null}
                       </span>

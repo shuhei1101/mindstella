@@ -1,0 +1,141 @@
+id: MOD-565-2
+title: サーバー / 再開の状況 / resume.py
+lead: MindStella のセッションの SessionStart のフックが呼ぶ『再開の状況』を組み立てる。取り込み待ちのスレッド・前回参照した後の変更・要見直し・進行中・移し替えの報告を読むだけで、何も書かない。『読み書きと検証』・『変更履歴』・『スレッド』・『前回参照した時点』に依存する。
+constants:
+  - name: SUMMARY_LIMIT
+    title: 状況の件数の上限
+    container: plugins/mindstella/skills/mindmap/scripts/resume.py
+    usecase: 起動と再開
+    summary: '`changed`・`removed`・`needs_review`・`in_progress` のそれぞれの上限（インターフェース定義『再開の状況』の制約「件数の上限」）'
+    value: '20'
+  - name: PROMPT_FILE
+    title: 注入文のプロンプトファイル
+    container: plugins/mindstella/skills/mindmap/scripts/resume.py
+    usecase: 起動と再開
+    summary: SessionStart の注入文のプロンプトファイル（モジュール構成『エージェントフロー』）
+    value: Path(__file__).resolve().parents[3] / "content" / "prompts" / "session-start.yaml"
+functions:
+  - name: summarize_resume
+    title: 再開の状況をまとめる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/resume.py
+    usecase: 起動と再開
+    scope: public
+    summary: 『再開の状況』の応答の辞書を組み立てる（前回参照した時点も移し替えの報告も書き換えない）
+    description: 呼ぶ側がワークスペースごとの鍵（`WorkspaceLocks`）を取る
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: source
+        type: Literal["startup", "resume", "clear", "compact"]
+        required: true
+        passing: positional
+        description: SessionStart の `source`
+      - name: state_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 状態のフォルダ
+    returns:
+      type: dict[str, Any]
+      description: '`{trigger, awaiting_threads, changed, changed_more, removed, removed_more, needs_review, needs_review_more, in_progress, in_progress_more, flow, migration, until_seq, context}`'
+    process: |-
+      1. ワークスペースとまとまりを読む（`load_workspace`、『変更履歴』の `load_changes`。`read_seq` は『前回参照した時点』の値）
+      2. 前回参照した時点より後に足した項目（`added_seq` が大きい）を種類の順に、続けて変えた項目（`seq` が大きい）を種類の順に `{id, kind, title, updated_by}` で並べて `changed` にする（前の値は組み立てない。`seq`・`added_seq` は『変更履歴』の `merge_item_history` で引く）。`removed` はまとまりの消した項目のうち、前回参照した時点にあって後で消したもの（`removed_items`）を `{id, kind, title}` にする。前回参照した時点が無ければどちらも空
+      3. 状態が `要見直し` の検討事項と `進行中` のタスクを `{id, title}` で連番の順に拾う
+      4. 2.・3. の 4 つの並びを `SUMMARY_LIMIT` 件で切り、超えた件数を `{キー}_more` に入れる（超えなければ 0）
+      5. スレッドを読み（`load_threads`）、取り込み待ちの書き込みを持つスレッドを数える（`awaiting_posts`）
+      6. 設定の `flow`（無ければ `None`）、移し替えの報告（`load_migration_report`）、`until_seq`（まとまりの `last_seq`）を入れる
+      7. `source` が `startup` なら `trigger` を `startup`、それ以外は `resume` にする
+      8. ここまでの辞書で注入文を描いて（`render_context`）`context` に入れて返す
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`changes.yaml`・`read_point.json` が壊れている（読む関数から伝わる）'
+    unit_tests:
+      - name: test_summarize_resume
+        case: 正常
+        summary: 変更・要見直し・進行中・取り込み待ちをまとめ、何も書かない
+        condition: '`read_seq` 3、`last_seq` 5。D-1（`seq` 5、状態 `要見直し`）・T-1（`added_seq` 4、状態 `進行中`）・未決定の D-2（`seq` 2）、取り込み待ちのスレッド 1 件で `source` が `compact`'
+        mock: なし（`state_root` は `tmp_path`）
+        expected: '`trigger` が `resume`、`changed` が T-1・D-1 の順、`needs_review` が D-1、`in_progress` が T-1、`awaiting_threads` が 1、`until_seq` が 5、`{キー}_more` が全て 0。`load_read_seq` が 3 のまま'
+      - name: test_summarize_resume_when_no_read_point
+        case: 正常
+        summary: 前回参照した時点が無ければ変更を返さない
+        condition: '`read_point.json` が無く `last_seq` 4 で `source` が `startup`'
+        mock: なし
+        expected: '`trigger` が `startup`、`changed`・`removed` が空、`until_seq` が 4'
+      - name: test_summarize_resume_when_over_limit
+        case: 正常
+        summary: 上限を超えた分は件数だけにする
+        condition: 前回参照した後に足したメモ 25 件
+        mock: なし
+        expected: '`changed` が 20 件で `changed_more` が 5'
+      - name: test_summarize_resume_when_migrated
+        case: 正常
+        summary: 知らせていない移し替えの報告を返し、消さない
+        condition: '`save_migration_report` で `not_carried` 1 件を書いたワークスペースを 2 回まとめる'
+        mock: なし
+        expected: 2 回とも `migration.not_carried` が 1 件
+  - name: render_context
+    title: 注入文を描く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/resume.py
+    usecase: 起動と再開
+    scope: public
+    summary: '`PROMPT_FILE` を読み、`lang` の本文のうち `when` が真の部品を並び順に Jinja2 で描いてつなぐ'
+    args:
+      - name: status
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`summarize_resume` の 7. までの辞書（プロンプトファイルの `vars` に当てる）'
+      - name: prompt_file
+        type: Path
+        required: false
+        default: PROMPT_FILE
+        passing: keyword
+        description: プロンプトファイル
+    returns:
+      type: str
+      description: 注入文
+    process: |-
+      1. プロンプトファイルを YAML で読む（`yaml.safe_load`）
+      2. `jinja2.Environment(undefined=StrictUndefined, autoescape=False, keep_trailing_newline=True)` で、部品ごとに `when` があれば式として評価し（`compile_expression`）、真の部品の `texts[]` のうちトップレベルの `lang` の `text` を `status` で描く
+      3. 描いた部品を並び順に空行でつないで返す
+    exceptions:
+      - name: OSError
+        condition: プロンプトファイルを読めない
+      - name: jinja2.TemplateError
+        condition: 本文が描けない・`vars` に無い変数を使っている（`UndefinedError` を含む）
+    unit_tests:
+      - name: test_render_context
+        case: 正常
+        summary: 状況と案内を描く
+        condition: '同梱のプロンプトファイル。`trigger: resume`、取り込み待ち 1・変わった D-1・要見直し D-1・進行中 T-1、`flow` あり、`{キー}_more` が全て 0'
+        mock: なし
+        expected: '`再開`・`1`・`D-1`・`T-1`・`flow` の文書の場所・`mindstella/startup` を含み、`changes_since_read`・`/mindstella:` を含まない'
+      - name: test_render_context_when_overflow_or_migrated
+        case: 正常
+        summary: 超えた分と移し替えの報告を描く
+        condition: '同梱のプロンプトファイル。`trigger: startup`、`changed_more` 5、`migration` の `not_carried` 1 件、`flow` が `None`'
+        mock: なし
+        expected: '`起動`・`5`・`changes_since_read`・移せなかった値の行を含み、進め方の文書の行を含まない'
+      - name: test_render_context_when_undefined
+        case: 異常
+        summary: 変数が足りなければ描かない
+        condition: '`tmp_path` に置いた、`vars` に無い変数 `missing` を使うプロンプトファイル'
+        mock: なし
+        expected: '`jinja2.UndefinedError`'
+        exception: 描けない
+refs:
+  - IF-489-32#
+  - MOD-565-1#
+  - MOD-489-157#
+  - MOD-489-149#
+  - LIB-565-1#
+test_files:
+  - tests/unit/scripts/test_resume.py

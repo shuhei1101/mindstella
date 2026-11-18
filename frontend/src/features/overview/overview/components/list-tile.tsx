@@ -1,9 +1,19 @@
-// 要見直し・保留・進行中のタスクに共通の、件数と名前と「すべて表示」のタイル
+// 未読の AI の書き込み・未決定・要見直し・確認中の資料に共通の、件数と行と「すべて表示」のタイル
 import { Icon, type IconName, StatusMark } from "@/shared/components/icon";
-import type { Item } from "@/shared/api/generated/model";
 
 /** タイルに出す件数 */
 const LIST_LIMIT = 3;
+
+/** タイルの 1 行（項目かスレッド） */
+export type ListTileRow = {
+  id: string;
+  /** 行の文字（項目はタイトル、スレッドは ID と要約） */
+  label: string;
+  /** 状態の印に出す状態。スレッドの行は持たない */
+  status?: string | undefined;
+  /** 行の右に添える文字（スレッドの最後の未読の書き込みの日時） */
+  note?: string | undefined;
+};
 
 export type ListTileProps = {
   /** タイルの項目 ID（画面設計） */
@@ -12,7 +22,7 @@ export type ListTileProps = {
   headingId: string;
   icon: IconName;
   title: string;
-  items: Item[];
+  rows: ListTileRow[];
   /** 0 件のときに出す文 */
   emptyText: string;
   /** 「すべて表示」を押したとき。渡さないと出さない（その種類の画面を表示しないとき） */
@@ -20,30 +30,31 @@ export type ListTileProps = {
   onOpen: (id: string) => void;
 };
 
-export const ListTile = ({ tileId, headingId, icon, title, items, emptyText, onShowAll, onOpen }: ListTileProps) => (
+export const ListTile = ({ tileId, headingId, icon, title, rows, emptyText, onShowAll, onOpen }: ListTileProps) => (
   <section id={tileId} aria-labelledby={headingId} className="min-w-0 rounded-control bg-card px-6.5 py-6 max-md:p-5 dark:border dark:border-border-soft">
-    <TileHead id={headingId} icon={icon} title={title} count={items.length > 0 ? items.length : null} onShowAll={onShowAll} />
-    <p className="mt-1.5 mb-2.5 mono text-num/tight font-bold tracking-tight">{items.length}</p>
-    {items.length === 0 ? (
+    <TileHead id={headingId} icon={icon} title={title} count={rows.length > 0 ? rows.length : null} onShowAll={onShowAll} />
+    <p className="mt-1.5 mb-2.5 mono text-num/tight font-bold tracking-tight">{rows.length}</p>
+    {rows.length === 0 ? (
       <p className="my-1.5 text-subtle-foreground">{emptyText}</p>
     ) : (
       <ul className="m-0 grid list-none gap-1.5 p-0">
-        {items.slice(0, LIST_LIMIT).map((item) => (
-          <li key={item.id} className="grid gap-0.5">
+        {rows.slice(0, LIST_LIMIT).map((row) => (
+          <li key={row.id} className="grid gap-0.5">
             <button
               type="button"
-              data-id={item.id}
+              data-id={row.id}
               onClick={() => {
-                onOpen(item.id);
+                onOpen(row.id);
               }}
               className="group flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-semibold hover:text-mark"
             >
-              <StatusMark status={item.status} />
-              <span>{item.title}</span>
+              {row.status === undefined ? null : <StatusMark status={row.status} />}
+              <span>{row.label}</span>
               <span aria-hidden="true" className="text-subtle-foreground">
                 <Icon name="chev" />
               </span>
             </button>
+            {row.note === undefined ? null : <span className="text-xs text-subtle-foreground">{row.note}</span>}
           </li>
         ))}
       </ul>

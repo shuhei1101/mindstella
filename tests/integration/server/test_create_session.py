@@ -61,8 +61,10 @@ def test_normal(session_world: SessionWorld) -> None:
     assert body["pane"] == f"{workspace_id}:0.0"
     assert world.balancer_calls()[0][:4] == ["exec", "--client", "mindstella", "--"]
     record = world.claude_records()[0]
-    for option in ("--mcp-config", "--plugin-dir", "--append-system-prompt"):
+    for option in ("--mcp-config", "--plugin-dir"):
         assert option in record["args"]
+    # 起動の指示は SessionStart の注入で渡す
+    assert "--append-system-prompt" not in record["args"]
     assert record["env"]["MINDSTELLA_SESSION"] == body["session"]
     assert record["env"]["MINDSTELLA_WORKSPACE"] == workspace_id
     assert record["env"]["MINDSTELLA_FLOW"] == "aituber#flow-script"

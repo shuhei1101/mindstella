@@ -32,7 +32,7 @@ LAUNCH_OPTIONS = (
 )
 
 # プレビューの節に、URL の代わりに書く行
-PREVIEW_HINT = "`/mindstella:session` でプレビューを頼むと URL が表示されます。"
+PREVIEW_HINT = "MindStella のセッションにプレビューを頼むと URL が表示されます。"
 
 # ドキュメントの節に並べる題名と URL
 DOC_LINKS = (
@@ -41,6 +41,13 @@ DOC_LINKS = (
         "起動スクリプトで立ち上げる",
         "https://shuhei1101.github.io/mindstella/guide/セットアップ手順-起動スクリプトで立ち上げる.html",
     ),
+)
+
+# 冒頭の説明の後ろに書く、書き直しとエージェントフローの案内
+FLOW_NOTE = (
+    "このファイルはワークスペースを開くたびに書き直されます。\n"
+    "MindStella のセッションは、起動と再開・コメントの取り込み・記録の使い分けのエージェントフロー"
+    "（`mindstella/startup`・`mindstella/on-comment`・`mindstella/record`）に従って記録します。"
 )
 
 # 書き込む前に置く一時ファイルの拡張子（README と同じフォルダに作る）
@@ -57,7 +64,7 @@ def render_readme(root: Path, *, plugin_dir: Path, preview_url: str | None) -> s
     folder = shlex.quote(str(resolved))
     launch_script = shlex.quote(str(plugin_dir / LAUNCH_SCRIPT))
     session = shlex.quote(workspace_id_of(resolved))
-    # 見出し・短い説明・コマンドの 3 つ組を、起動・接続・セッション・セットアップ・アップグレードの順に並べる
+    # 見出し・短い説明・コマンドの 3 つ組を、起動・接続の順に並べる
     commands = (
         (
             "起動",
@@ -69,28 +76,13 @@ def render_readme(root: Path, *, plugin_dir: Path, preview_url: str | None) -> s
             "起動中の MindStella のセッションにつなぎ直します。",
             f"tmux attach-session -t ={session}",
         ),
-        (
-            "セッション",
-            "立ち上げた Claude Code で、話し合いを進めます。",
-            f"/mindstella:session {folder}",
-        ),
-        (
-            "セットアップ",
-            "立ち上げた Claude Code で、状況を確かめて話し合いを始めます。",
-            f"/mindstella:setup {folder}",
-        ),
-        (
-            "アップグレード",
-            "プラグインを上げた後、記録を今の版へ移し替えます。",
-            f"/mindstella:upgrade {folder}",
-        ),
     )
     lines = [
         README_MARK,
         f"# {resolved.name}",
         "",
         "mindstella の話し合いのワークスペースです。記録は `.mindstella/` にあり、プレビューで読みます。",
-        "このファイルは `/mindstella:session` を始めるたびに書き直されます。",
+        FLOW_NOTE,
         "",
         "## プレビュー",
         "",

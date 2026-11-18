@@ -5,7 +5,7 @@ import { buildIndex, type MindmapData } from "@/shared/core/records";
 
 /** 種類ごとの項目を持つ記録を作る（持たない種類は空） */
 const indexOf = (items: Partial<Record<string, unknown[]>>) =>
-  buildIndex({ decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { next: [] }, ...items } as unknown as MindmapData);
+  buildIndex({ decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { ready: [] }, ...items } as unknown as MindmapData);
 
 describe("buildGraph", () => {
   // 線の種類を分け、渡していない項目の線を落とす（正常系）

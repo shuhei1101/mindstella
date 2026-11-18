@@ -10,11 +10,11 @@ from preview_spa_helpers import open_spa
 from workspace_fixtures import MakeEdit, MakeItem
 
 
-def test_cards_put_deliverable_first(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
-    """既定はカードで、納品物を先頭に並べる（正常系）。"""
-    url = write_preview(make_item("A-1", title="普通の資料"), make_item("A-2", title="納品物の資料", deliverable=True))
+def test_cards_in_id_order(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """既定はカードで、連番の順に並べる（正常系）。"""
+    url = write_preview(make_item("A-2", title="後の資料"), make_item("A-1", title="先の資料"))
     open_spa(page, url, "?tab=docs")
-    expect(page.get_by_role("heading", level=3).first).to_have_text("納品物の資料")
+    expect(page.get_by_role("heading", level=3)).to_have_text(["先の資料", "後の資料"])
 
 
 def test_board_and_table(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
@@ -213,7 +213,7 @@ def test_added_items_visible(page: Page, write_edit_preview: WriteReviewPreview,
     # 準備・実行
     url, _ = write_edit_preview(
         make_item("A-1"),
-        edits=(make_edit("E-1", target="new-1", op="item-add", key="docs", value={"title": "足す資料", "kind": "文書", "status": "下書き", "deliverable": False}, before=None, base=None),),
+        edits=(make_edit("E-1", target="new-1", op="item-add", key="docs", value={"title": "足す資料", "kind": "文書", "status": "下書き"}, before=None, base=None),),
     )
     open_spa(page, url, "?tab=docs&view=cards")
     # 検証

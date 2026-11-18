@@ -15,6 +15,12 @@ constants:
     usecase: 外部のアプリから起動する
     summary: コマンドの引数から本文の `event` への対応
     value: '{"session-start": "session_start", "session-end": "session_end", "prompt-submit": "prompt_submit", "stop": "stop", "stop-failure": "stop_failure"}'
+  - name: FALLBACK_LINES
+    title: 状況を取れないときの注入文
+    container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
+    usecase: 起動と再開
+    summary: 『再開の状況』を取れないときだけ注入する行。`{trigger}`（`起動` か `再開`）・`{flow}` を `str.format` で埋める（インターフェース定義『MindStella のセッションのフック』の制約「注入に失敗したとき」）
+    value: '("MindStella のセッションを{trigger}しました。再開の状況を取得できなかったため、状況は含みません。", "進め方の文書: {flow}", "エージェントフロー mindstella/startup を参照して先に進めてください。")。`{flow}` の行は `MINDSTELLA_FLOW` があるときだけ入れる'
 functions:
   - name: main
     title: フックの入口
@@ -22,7 +28,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で送る）、SessionStart で `MINDSTELLA_FLOW` があれば `additionalContext` を出す。どの結末も 0 を返す'
+    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で送る）、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。どの結末も 0 を返す'
     description: 依存が揃う前のシステムの `python3` で起動するので、Python 3.8 で読める構文と標準ライブラリだけで書く
     side_effects: 常駐サーバーへ出来事を送る
     args:
@@ -56,33 +62,71 @@ functions:
         default: post_event
         passing: injected
         description: 送る関数
+      - name: resume
+        type: Callable[[int, str, str], dict]
+        required: false
+        default: request_resume
+        passing: injected
+        description: 再開の状況を引く関数
+      - name: advance
+        type: Callable[[int, str, int], None]
+        required: false
+        default: post_read_point
+        passing: injected
+        description: 前回参照した時点を進める関数
     returns:
       type: int
       description: 常に 0
     unit_tests:
       - name: test_main
         case: 正常
-        summary: SessionStart で送り、進め方の文書の場所を注入する
-        condition: '`[session-start]`、`MINDSTELLA_SESSION`・`MINDSTELLA_FLOW`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR`（`~/c`）あり、入力 `{session_id: c1, source: startup}`'
-        mock: '`post`・PID の引き方'
-        expected: '0 を返し、`post` が `event: session_start`・`claude_session_id: c1`・`pane`・`claude_config_dir: {HOME}/c` で呼ばれ、標準出力の `additionalContext` に `MINDSTELLA_FLOW` の値'
+        summary: SessionStart で設定のフォルダとともに送り、状況を注入してから時点を進める
+        condition: '`[session-start]`、`MINDSTELLA_SESSION`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR`（`~/c`）あり、入力 `{session_id: c1, source: compact}`、`resume` が `context`・`until_seq` 7 を返す'
+        mock: '`post`・`resume`・`advance`・PID の引き方'
+        expected: '0 を返し、`post` が `event: session_start`・`claude_config_dir: {HOME}/c` で、`resume` が `compact` で、`advance` が 7 でこの順に呼ばれ、`advance` より前に標準出力の `additionalContext` が `resume` の `context` と同じ'
       - name: test_main_ordinary_session
         case: 正常
         summary: MINDSTELLA_SESSION が無ければ何もしない
         condition: '`MINDSTELLA_SESSION` 無し'
-        mock: '`post`'
-        expected: 0 を返し、`post` が呼ばれず、標準出力が空
+        mock: '`post`・`resume`・`advance`'
+        expected: 0 を返し、どれも呼ばれず、標準出力が空
       - name: test_main_server_down
         case: 異常
         summary: 送れなくても 0
-        condition: '`post` が `OSError`'
+        condition: '`post` が `OSError`、出来事が `stop`'
         mock: '`post`'
         expected: 0 を返し、標準エラーに `[mindstella]` の行
+      - name: test_main_when_resume_unavailable
+        case: 正常
+        summary: 状況を引けなければ状況なしで注入し、時点を進めない
+        condition: '`resume` が `OSError`'
+        mock: '`post`・`resume`・`advance`'
+        expected: 0 を返し、`additionalContext` が `fallback_context` の文で、`advance` が呼ばれない
+      - name: test_main_when_changes_overflow
+        case: 正常
+        summary: 収まらない変更があれば時点を進めない
+        condition: '`resume` が `changed_more` 5 を返す'
+        mock: 同上
+        expected: '`advance` が呼ばれず、`additionalContext` が `resume` の `context` と同じ'
+      - name: test_main_when_fork
+        case: 正常
+        summary: fork では注入しない
+        condition: '入力 `{session_id: c1, source: fork}`'
+        mock: 同上
+        expected: '`post` だけが呼ばれ、標準出力が空'
+    process: |-
+      1. `MINDSTELLA_SESSION` が無ければ標準入力を読み捨てて 0 を返す
+      2. 出来事を送る（`post`）。送れなければ標準エラーに 1 行書き、続ける
+      3. SessionStart で `source` が `fork` でない場合
+         - 再開の状況を引く（`resume`）。つながらない・200 でない・打ち切った場合、状況を `None` にして標準エラーに 1 行書く
+         - 注入文を、状況があればその `context`、無ければ `fallback_context`（`MINDSTELLA_FLOW`）にし、`hookSpecificOutput.additionalContext` に入れた JSON を標準出力に書いて `flush` する
+         - 状況があり `changed_more`・`removed_more` がどちらも 0 の場合だけ、状況の `until_seq` で前回参照した時点を進める（`advance`。失敗したら標準エラーに 1 行書く）
+      4. 0 を返す
       - name: test_main_without_config_dir
         case: 正常
         summary: CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送る
         condition: '`[session-start]`、`MINDSTELLA_SESSION` あり、`CLAUDE_CONFIG_DIR` 無し、`HOME` を一時フォルダにする'
-        mock: '`post`・PID の引き方'
+        mock: '`post`・`resume`・`advance`・PID の引き方'
         expected: '`post` の本文の `claude_config_dir` が `{HOME}/.claude`'
   - name: post_event
     title: 出来事を送る
@@ -120,5 +164,109 @@ functions:
         condition: テストが空きポートで HTTP のサーバーを立てる
         mock: なし
         expected: 経路が `/_admin/sessions/S-1/events`、本文が同じ JSON
+  - name: request_resume
+    title: 再開の状況を引く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
+    usecase: 起動と再開
+    scope: public
+    summary: '`POST /_admin/sessions/{session}/resume` に `source` を送り、応答の JSON を返す（`POST_TIMEOUT_SEC` で打ち切る）'
+    args:
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 常駐サーバーのポート
+      - name: session_id
+        type: str
+        required: true
+        passing: positional
+        description: MindStella のセッションの ID
+      - name: source
+        type: str
+        required: true
+        passing: positional
+        description: SessionStart の `source`
+    returns:
+      type: dict
+      description: 『再開の状況』の応答
+    exceptions:
+      - name: OSError
+        condition: つながらない・打ち切った・200 でない（`urllib.error.HTTPError` を含む）
+    unit_tests:
+      - name: test_request_resume
+        case: 正常
+        summary: 経路と本文
+        condition: 'テストが空きポートで立てた HTTP のサーバーが `{trigger: resume}` を返す'
+        mock: なし
+        expected: '経路が `/_admin/sessions/S-1/resume`、本文が `{source: compact}`、戻り値が `{trigger: resume}`'
+  - name: post_read_point
+    title: 前回参照した時点を進める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
+    usecase: 起動と再開
+    scope: public
+    summary: '`POST /_admin/sessions/{session}/read_point` に `until_seq` を送る（`POST_TIMEOUT_SEC` で打ち切る）'
+    args:
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 常駐サーバーのポート
+      - name: session_id
+        type: str
+        required: true
+        passing: positional
+        description: MindStella のセッションの ID
+      - name: until_seq
+        type: int
+        required: true
+        passing: positional
+        description: 再開の状況の `until_seq`
+    returns:
+      type: None
+      description: なし
+    exceptions:
+      - name: OSError
+        condition: つながらない・打ち切った・200 でない
+    unit_tests:
+      - name: test_post_read_point
+        case: 正常
+        summary: 経路と本文
+        condition: テストが空きポートで立てた HTTP のサーバー
+        mock: なし
+        expected: '経路が `/_admin/sessions/S-1/read_point`、本文が `{until_seq: 7}`'
+  - name: fallback_context
+    title: 状況を取れないときの注入文
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
+    usecase: 起動と再開
+    scope: public
+    summary: '`FALLBACK_LINES` を起動の契機と進め方の文書の場所で埋めて改行でつなぐ'
+    args:
+      - name: source
+        type: str
+        required: true
+        passing: positional
+        description: SessionStart の `source`。`startup` なら `起動`、それ以外は `再開`
+      - name: flow
+        type: str | None
+        required: true
+        passing: positional
+        description: '`MINDSTELLA_FLOW`。`None` なら進め方の文書の行を入れない'
+    returns:
+      type: str
+      description: 注入文
+    process: |-
+      1. `source` が `startup` なら `{trigger}` を `起動`、それ以外は `再開` にする
+      2. `FALLBACK_LINES` の行を並べ、`flow` が `None` なら進め方の文書の行を除く
+      3. `str.format` で `{trigger}`・`{flow}` を埋め、改行でつないで返す（状況・次の候補・スキルの呼び方は持たない）
+    unit_tests:
+      - name: test_fallback_context
+        case: 正常
+        summary: 契機と進め方の文書を埋める
+        condition: '`parametrize`: `source: compact`・`flow: src#doc` / `source: startup`・`flow: None`'
+        mock: なし
+        expected: '`再開`・`src#doc`・`mindstella/startup` を含む / `起動`・`mindstella/startup` を含み、進め方の文書の行を含まない。どちらも `/mindstella:` を含まない'
 notes:
   ログ: '`logging` を使わず、送れなかったときだけ標準エラーに `[mindstella] {理由}` の 1 行を `print` で書く（フックのスクリプトは単一ファイルのスクリプトの規約に従い、Claude Code がフックの標準エラーを記録する）'

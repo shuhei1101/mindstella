@@ -40,7 +40,7 @@ export const DecisionOutline = ({ items, settings, marks, comments, edit, onOpen
       </li>
     );
   };
-  const roots = tree.nodes.filter((node) => node.kind === "target");
+  const roots = tree.nodes.filter((node) => node.kind === "root" && tree.nodes.length > 1);
   return (
     <nav aria-label="検討事項の一覧" className="overflow-auto lg:hidden">
       {roots.length > 0 ? <ul>{roots.map(entry)}</ul> : <p className="text-small text-muted-foreground">表示する検討事項はありません。</p>}

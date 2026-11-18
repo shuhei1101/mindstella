@@ -17,6 +17,58 @@ files:
   - tool:claude-code
   - tool:mcp
   - topic:サーバー
+- path: agent-flows/agent-flow.schema.json
+  name: エージェントフローのスキーマ
+  description: 記録のエージェントフローの YAML の形。エージェントフローのキーを変更するときに読む。
+  tags:
+  - topic:エージェントフロー
+  - topic:スキーマ
+  related:
+  - to: IF-565-1
+    type: implements
+- path: agent-flows/dev-docs.yaml
+  name: エージェントフローの配信元の設定
+  description: 記録のエージェントフローを project-index の配信元 mindstella-agent-flows として配る設定。エージェントフローの配り方を変更するときに読む。
+  tags:
+  - tool:project-index
+  - topic:エージェントフロー
+  - topic:配信元
+  related:
+  - to: MOD-565-4
+    type: implements
+  - to: IF-565-1
+    type: implements
+- path: agent-flows/on-comment.yaml
+  name: コメントの取り込みのエージェントフロー
+  description: 取り込み待ちのスレッドを記録に反映し、返信・クローズ・通知をする手順。コメントの取り込みの手順を変更するときに読む。
+  tags:
+  - topic:エージェントフロー
+  - topic:コメント
+  - topic:スレッド
+  - action:取り込み
+  related:
+  - to: IF-565-1
+    type: implements
+- path: agent-flows/record.yaml
+  name: 記録の使い分けのエージェントフロー
+  description: 発言を記録の種類に振り分け、タグを付けて書き込む手順。記録の書き方を変更するときに読む。
+  tags:
+  - topic:エージェントフロー
+  - topic:記録
+  - topic:タグ
+  related:
+  - to: IF-565-1
+    type: implements
+- path: agent-flows/startup.yaml
+  name: 起動と再開のエージェントフロー
+  description: MindStella のセッションの起動と再開で、状況の確認からまとめ忘れの commit・コメントの取り込みまでを進める手順。起動と再開の手順を変更するときに読む。
+  tags:
+  - topic:エージェントフロー
+  - action:起動
+  - action:再開
+  related:
+  - to: IF-565-1
+    type: implements
 - path: bin/mindstella
   name: 起動スクリプト
   description: mindstella の常駐サーバーが落ちていれば起動してから、Claude Code を tmux のセッションの中で立ち上げてつなぐ。起動の手順・tmux のセッションの立て方・依存の確かめ方を変更するときに読む。
@@ -29,6 +81,18 @@ files:
   - to: IF-489-56
     type: implements
   - to: MOD-489-168
+    type: implements
+- path: content/prompts/session-start.yaml
+  name: 起動と再開の注入文のプロンプト
+  description: MindStella のセッションの SessionStart で注入する、再開の状況とエージェントフローの案内の文。注入文を変更するときに読む。
+  tags:
+  - topic:プロンプト
+  - topic:フック
+  - action:注入
+  related:
+  - to: MOD-565-4
+    type: implements
+  - to: IF-489-32
     type: implements
 - path: hooks/hooks.json
   name: フックの登録
@@ -161,6 +225,25 @@ files:
   related:
   - to: MOD-489-164
     type: implements
+- path: skills/mindmap/migrations/v0.14.0/scripts/remove_discussion_keys.py
+  name: 議論のキーを消す変換
+  description: 設定から削除するキーを消し、項目の対象・カテゴリーをタグへ、属性・観点・確かさを本文へ移す。v0.14.0 の変換を変更するときに読む。
+  tags:
+  - topic:移行
+  - topic:タグ
+  - topic:設定
+  related:
+  - to: MOD-565-3
+    type: implements
+- path: skills/mindmap/migrations/v0.14.0/steps.yaml
+  name: v0.14.0 の移し替えの手順
+  description: v0.13.0 の形式から v0.14.0 へ、議論のキーを消す手順。v0.14.0 の移し替えを変更するときに読む。
+  tags:
+  - topic:移行
+  - topic:手順
+  related:
+  - to: MOD-489-164
+    type: implements
 - path: skills/mindmap/migrations/v0.3.0/steps.yaml
   name: v0.3.0 の移し替えの手順
   description: ワークスペースを v0.3.0 へ移し替える操作を順に並べる。v0.3.0 の移し替えの操作を修正するときに読む。
@@ -238,30 +321,6 @@ files:
   related:
   - to: MOD-489-164
     type: implements
-- path: skills/mindmap/playbooks/システム開発.md
-  name: システム開発の進め方ガイド
-  description: 作るものの目的から、要件・構成・インターフェース・中身までを、前のフェーズで決めたことを土台にして順に決めていく進め方。システム開発のフェーズと観点を変更するときに読む。
-  tags:
-  - topic:フェーズ
-  - topic:進め方ガイド
-- path: skills/mindmap/playbooks/壁打ち.md
-  name: 壁打ちの進め方ガイド
-  description: 考えたいテーマについて、案や見方を出し、整理し、絞り込んで、今の結論を出すまでの進め方。壁打ちのフェーズと観点を変更するときに読む。
-  tags:
-  - topic:フェーズ
-  - topic:進め方ガイド
-- path: skills/mindmap/playbooks/調査.md
-  name: 調査の進め方ガイド
-  description: 調べたい問いを立て、観点を決め、事実を集めて評価し、結論を出すまでの進め方。調査のフェーズと観点を変更するときに読む。
-  tags:
-  - topic:フェーズ
-  - topic:進め方ガイド
-- path: skills/mindmap/playbooks/資料作り.md
-  name: 資料作りの進め方ガイド
-  description: 資料の目的と読み手を決め、構成を組んでから、本文を書いて仕上げるまでの進め方。資料作りのフェーズと観点を変更するときに読む。
-  tags:
-  - topic:フェーズ
-  - topic:進め方ガイド
 - path: skills/mindmap/preview/app.ts
   name: プレビューの起動
   description: 記録を読み（配る書き出しは埋め込みから、サーバーの配信は記録の取得から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・コメントの読み書き・端末の保存領域につなぐ。プレビューの起動・画面の振り分け・端末の保存領域を変更するときに読む。
@@ -1235,39 +1294,6 @@ files:
   related:
   - to: MOD-489-171
     type: implements
-- path: skills/mindmap/references/HTMLの書き方.md
-  name: 資料の HTML の書き方
-  description: 資料の `body_markdown` に、HTML・図・チャート・操作できる部品を埋め込むときの書き方。資料の本文に HTML・図・チャートを埋め込む書き方を変更するときに読む。
-  tags:
-  - tool:html
-  - tool:mdmark
-  - topic:書き方
-  - topic:資料
-- path: skills/mindmap/references/リサーチの調べ方.md
-  name: リサーチの調べ方
-  description: 検討事項を決める材料を、サブエージェントに調べさせるときの調べ方。サブエージェントへの調べ方の指示を変更するときに読む。
-  tags:
-  - topic:サブエージェント
-  - topic:書き方
-- path: skills/mindmap/references/文章の書き方.md
-  name: スキルが記録に書く文章の書き方
-  description: 記録に文章を追加した後の確認表と、用語の選び方（原則・対応表）。記録に記載する文章の決まりを変更するときに読む。
-  tags:
-  - topic:文章
-  - topic:書き方
-- path: skills/mindmap/references/質問の書式.md
-  name: 利用者への質問の書式
-  description: 利用者に問いを出すときの書式。利用者に問いを出す書式を変更するときに読む。
-  tags:
-  - topic:書き方
-  - topic:論点
-- path: skills/mindmap/references/起動時の指示.md
-  name: 起動時の指示
-  description: 起動スクリプトが Claude Code へ --append-system-prompt で渡す、利用者への質問をターミナルに書かずに記録とスレッドで出す決まり。起動時に渡す決まりを変更するときに読む。
-  tags:
-  - topic:起動
-  - topic:スレッド
-  - topic:質問
 - path: skills/mindmap/schemas/changes.schema.json
   name: 変更履歴のスキーマ
   description: ワークスペースの変更履歴の YAML の形を決める JSON Schema。変更履歴の YAML のキーを追加・変更するときに読む。
@@ -1642,14 +1668,33 @@ files:
   related:
   - to: MOD-489-179
     type: implements
+- path: skills/mindmap/scripts/read_point.py
+  name: 前回参照した時点
+  description: AI が前回参照した時点と、まだ知らせていない移し替えの報告を、常駐サーバーの状態のフォルダに読み書きする。前回参照した時点の扱いを変更するときに読む。
+  tags:
+  - topic:変更履歴
+  - topic:状態
+  related:
+  - to: MOD-565-1
+    type: implements
 - path: skills/mindmap/scripts/readme.py
   name: ワークスペースの README の書き出し
-  description: ワークスペースの直下の `README.md`（起動・接続のコマンド、スキルの呼び方、プレビューの URL）の組み立てと書き込み。ワークスペースの直下の README.md の中身を変更するときに読む。
+  description: ワークスペースの直下の `README.md`（起動・接続のコマンド、エージェントフローの案内、プレビューの URL）の組み立てと書き込み。ワークスペースの直下の README.md の中身を変更するときに読む。
   tags:
   - topic:readme
   - topic:ワークスペース
   related:
   - to: MOD-489-153
+    type: implements
+- path: skills/mindmap/scripts/register.py
+  name: 起動スクリプトの登録
+  description: 起動のコマンドの register のサブコマンドが呼び、起動スクリプトを呼ぶ alias と環境変数を、ログインシェルの設定に登録・読み返し・外す。alias と環境変数の登録・読み返し・外し方を変更するときに読む。
+  tags:
+  - topic:シェル
+  - topic:スクリプト
+  - topic:環境変数
+  related:
+  - to: MOD-489-163
     type: implements
 - path: skills/mindmap/scripts/reset_unread.py
   name: スレッドの未読へ戻す
@@ -1661,6 +1706,16 @@ files:
   - to: IF-489-46
     type: implements
   - to: MOD-489-160
+    type: implements
+- path: skills/mindmap/scripts/resume.py
+  name: 再開の状況
+  description: MindStella のセッションの SessionStart のフックが呼ぶ再開の状況と注入文を組み立てる。再開の状況の中身を変更するときに読む。
+  tags:
+  - topic:セッション
+  - topic:フック
+  - action:再開
+  related:
+  - to: MOD-565-2
     type: implements
 - path: skills/mindmap/scripts/serve.py
   name: プレビューの配信
@@ -1726,115 +1781,4 @@ files:
   - topic:バージョン
   related:
   - to: MOD-489-178
-    type: implements
-- path: skills/session/SKILL.md
-  name: スキル session の手順
-  description: セットアップの後に、発言の取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定を場面に応じて回し、話し合いをゴールまで進める。話し合いを進めるスキルのステップの選び方と流れを変更するときに読む。
-  tags:
-  - tool:claude-code
-  - topic:スキル
-  - topic:手順
-  related:
-  - to: IF-489-66
-    type: implements
-- path: skills/session/steps/ゴール判定.md
-  name: ゴール判定のステップ
-  description: ゴールのフェーズまでの検討事項と納品物が揃ったかを確かめ、利用者の確定を取って、`.mindstella/release/` にリリースの資料を書き出す。ゴールに届いたかの確かめ方とリリースの資料の書き出し方を変更するときに読む。
-  tags:
-  - topic:スキル
-  - topic:リリース
-  - topic:手順
-- path: skills/session/steps/ヒアリング.md
-  name: ヒアリングのステップ
-  description: 前提が揃った未決定の検討事項を選び、1 ラウンドにまとめて利用者に聞き、答えを記録する。未決定の検討事項を利用者に聞く手順を変更するときに読む。
-  tags:
-  - topic:スキル
-  - topic:手順
-  - topic:検討事項
-- path: skills/session/steps/プレビュー.md
-  name: プレビューのステップ
-  description: サーバーが配るプレビューの URL を示し、利用者が開けるようにする。プレビューの URL の示し方を変更するときに読む。
-  tags:
-  - topic:スキル
-  - topic:プレビュー
-  - topic:手順
-- path: skills/session/steps/リサーチ.md
-  name: リサーチのステップ
-  description: 調べる必要のある検討事項について、利用者の確認を取ってサブエージェントで調べ、結果を調査に書いて検討事項に繋ぐ。サブエージェントで調べて調査に記録する手順を変更するときに読む。
-  tags:
-  - topic:サブエージェント
-  - topic:スキル
-  - topic:手順
-- path: skills/session/steps/取り込み.md
-  name: 取り込みのステップ
-  description: 利用者の発言を、対象・カテゴリー・フェーズに振り分けて記録し、進め方ガイドの観点と照らして派生の検討事項・未整理・タスクを積む。利用者の発言を記録して派生の項目を積む手順を変更するときに読む。
-  tags:
-  - topic:スキル
-  - topic:会話
-  - topic:手順
-- path: skills/session/steps/方針転換.md
-  name: 方針転換のステップ
-  description: 検討事項の採用する案を切り替え、依存をたどって影響を受ける項目を要見直しにし、見直しのタスクを積む。採用する案を切り替えて影響を要見直しにする手順を変更するときに読む。
-  tags:
-  - topic:スキル
-  - topic:手順
-  - topic:検討事項
-- path: skills/session/steps/範囲の見直し.md
-  name: 範囲の見直しのステップ
-  description: 話し合いの範囲が変わったとき、題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリーを、利用者が確かめてから書き換える。話し合いの設定を書き換える手順を変更するときに読む。
-  tags:
-  - topic:スキル
-  - topic:手順
-  - topic:設定
-- path: skills/setup/SKILL.md
-  name: スキル setup の手順
-  description: 話し合いを始める・再開するときに、新しいワークスペースを作るか既存のワークスペースの状況を示し、スキル session へ渡す。話し合いを始める・再開するときの手順を変更するときに読む。
-  tags:
-  - tool:claude-code
-  - topic:スキル
-  - topic:セットアップ
-  related:
-  - to: IF-489-64
-    type: implements
-- path: skills/setup/scripts/register.py
-  name: 起動スクリプトの登録
-  description: 起動スクリプトを呼ぶ alias と環境変数を、ログインシェルの設定に登録・読み返し・外す。alias と環境変数の登録・読み返し・外し方を変更するときに読む。
-  tags:
-  - topic:シェル
-  - topic:スクリプト
-  - topic:環境変数
-  related:
-  - to: MOD-489-163
-    type: implements
-- path: skills/setup/steps/新しいワークスペース.md
-  name: 新しいワークスペースのステップ
-  description: 進め方ガイドを選び、軸とゴールを決めて、新しいワークスペースを作る。進め方ガイド・軸・ゴールを決めてワークスペースを作る手順を変更するときに読む。
-  tags:
-  - topic:スキル
-  - topic:ワークスペース
-  - topic:手順
-- path: skills/setup/steps/既存のワークスペース.md
-  name: 既存のワークスペースのステップ
-  description: 既存のワークスペースの状況を読み、続きを推奨する。既存のワークスペースの状況の示し方を変更するときに読む。
-  tags:
-  - topic:スキル
-  - topic:ワークスペース
-  - topic:手順
-- path: skills/setup/steps/起動スクリプトの登録.md
-  name: 起動スクリプトの登録のステップ
-  description: 起動スクリプトを呼ぶ alias と、起動スクリプトが読む環境変数を、ログインシェルの設定に登録する。alias と環境変数をシェルの設定へ登録する手順を変更するときに読む。
-  tags:
-  - topic:シェル
-  - topic:スキル
-  - topic:手順
-  - topic:環境変数
-- path: skills/upgrade/SKILL.md
-  name: スキル upgrade の手順
-  description: ワークスペースの版とプラグインの版を比べ、版ごとの手順を当てて今の版へ移し替える。ワークスペースを今の版へ移し替える手順を変更するときに読む。
-  tags:
-  - tool:claude-code
-  - topic:スキル
-  - topic:バージョン
-  related:
-  - to: IF-489-65
     type: implements

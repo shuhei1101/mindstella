@@ -3,6 +3,7 @@
 # 使い方:
 #   {プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ} [--flow {配信元の ID}#{文書の ID}] [--mcp-config {ファイル}] [--plugin-dir {フォルダ}]...
 #   {プラグインのフォルダ}/bin/mindstella server {status|stop|restart}
+#   {プラグインのフォルダ}/bin/mindstella register {show|set|add-account|remove-account|remove} [オプション]
 # 環境変数:
 #   MINDSTELLA_VENV    常駐サーバーを動かす仮想環境のフォルダ（既定は ~/.mindmap/venv）
 #   MINDSTELLA_PORT    常駐サーバーの待ち受けのポート（既定は 8784）
@@ -26,6 +27,7 @@ UNIT_NAME="mindstella.service"
 usage() {
   echo "使い方: $0 {ワークスペースのフォルダ} [--flow {配信元の ID}#{文書の ID}] [--mcp-config {ファイル}] [--plugin-dir {フォルダ}]..." >&2
   echo "        $0 server {status|stop|restart}" >&2
+  echo "        $0 register {show|set|add-account|remove-account|remove} [オプション]" >&2
   exit 2
 }
 
@@ -65,8 +67,14 @@ else:
 ' "$1"
 }
 
-# 1. 引数: ワークスペースのフォルダと付ける引数か、server のサブコマンドを受け取る
+# 1. 引数: ワークスペースのフォルダと付ける引数か、server・register のサブコマンドを受け取る
 [ "$#" -ge 1 ] && [ -n "$1" ] || usage
+# 登録: 続く引数をシステムの python3 で登録のスクリプトへ渡し、終了コードをそのまま返す
+if [ "$1" = "register" ]; then
+  shift
+  command -v python3 >/dev/null 2>&1 || fail "python3 が見つかりません。Python 3.8 以上を入れてください"
+  exec python3 "$SCRIPTS_DIR/register.py" "$@"
+fi
 SERVER_COMMAND=""
 if [ "$1" = "server" ]; then
   [ "$#" -eq 2 ] || usage

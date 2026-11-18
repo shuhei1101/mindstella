@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import stat
 import time
@@ -18,14 +19,28 @@ from .history_helpers import (
     update_item,
     write_settings,
 )
-from workspace_fixtures import RECORD_DIR
+from workspace_fixtures import RECORD_DIR, STATE_SESSION_PATH, McpServer, workspace_id_of
 
 # 3 行の本文（2 行目だけを書き換える）
 BODY = "1 行目\n2 行目\n3 行目\n"
 REWRITTEN_BODY = "1 行目\n書き換えた 2 行目\n3 行目\n"
 
 
-def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree) -> None:
+def _state_dir(server: McpServer, root: Path) -> Path:
+    """状態のフォルダの、ワークスペースのフォルダ。"""
+    assert server.state_home is not None
+    return server.state_home.joinpath(*STATE_SESSION_PATH, workspace_id_of(root))
+
+
+def _read_seq(server: McpServer, root: Path) -> int | None:
+    """状態のフォルダの `read_point.json` の `read_seq`（無ければ None）。"""
+    path = _state_dir(server, root) / "read_point.json"
+    return json.loads(path.read_text(encoding="utf-8"))["read_seq"] if path.is_file() else None
+
+
+def test_normal(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree, mcp_server: McpServer
+) -> None:
     """読んだ時点より後の追加と変更を、読んだ時点の値つきで返し、読んだ時点を進める（正常系）。"""
     # 準備
     root = make_workspace()
@@ -60,9 +75,8 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tre
     assert changed["by"] == ["ai"]
     # 本文は変えた 2 行目だけの差分で、1 行目・3 行目を含まない
     assert changed["body_diff"] == [{"line": 2, "now": ["書き換えた 2 行目"], "before": ["2 行目"]}]
-    # 読んだ後、読んだ時点が last_seq と同じ
-    changes = read_changes(root)
-    assert changes["read_seq"] == changes["last_seq"] == result.data["until_seq"]
+    # 読んだ後、状態のフォルダの読んだ時点が last_seq と同じ
+    assert _read_seq(mcp_server, root) == read_changes(root)["last_seq"] == result.data["until_seq"]
     # 2 回目は空
     assert again.data is not None
     assert again.data["added"] == []
@@ -74,7 +88,9 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tre
     }
 
 
-def test_normal_when_no_read_point(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+def test_normal_when_no_read_point(
+    make_workspace: MakeWorkspace, call_tool: CallTool, mcp_server: McpServer
+) -> None:
     """読んだ時点が無ければ差分を返さず、今の last_seq を記録する（正常系）。"""
     # 準備
     root = make_workspace()
@@ -89,8 +105,7 @@ def test_normal_when_no_read_point(make_workspace: MakeWorkspace, call_tool: Cal
     assert result.data["read_seq"] is None
     assert result.data["added"] == []
     assert result.data["changed"] == []
-    changes = read_changes(root)
-    assert changes["read_seq"] == changes["last_seq"]
+    assert _read_seq(mcp_server, root) == read_changes(root)["last_seq"]
 
 
 def test_normal_when_history_limit_zero(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
@@ -133,15 +148,17 @@ def test_error_when_write_fails(
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
     lock_dirs: LockDirs,
+    mcp_server: McpServer,
 ) -> None:
     """読んだ時点を書けないときは書き換えず、次に呼んだときに同じ変更を返す（異常系）。"""
     # 準備
     root = make_workspace()
     call_tool("changes_since_read", workspace=str(root))
     add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定", "options": OPTIONS})
-    read_before = read_changes(root)["read_seq"]
+    read_before = _read_seq(mcp_server, root)
     before = snapshot_tree(root)
-    lock_dirs(root / RECORD_DIR)
+    state = _state_dir(mcp_server, root)
+    lock_dirs(state)
     # 実行
     failed = call_tool("changes_since_read", workspace=str(root))
     # 検証
@@ -150,15 +167,17 @@ def test_error_when_write_fails(
     assert "Traceback" not in failed.text
     assert snapshot_tree(root) == before
     # 権限を戻して呼び直すと、同じ変更が返る
-    (root / RECORD_DIR).chmod(stat.S_IRWXU)
-    assert read_changes(root)["read_seq"] == read_before
+    state.chmod(stat.S_IRWXU)
+    assert _read_seq(mcp_server, root) == read_before
     retry = call_tool("changes_since_read", workspace=str(root))
     assert retry.is_error is False
     assert retry.data is not None
     assert [entry["id"] for entry in retry.data["added"]] == ["D-1"]
 
 
-def test_normal_when_item_removed(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+def test_normal_when_item_removed(
+    make_workspace: MakeWorkspace, call_tool: CallTool, mcp_server: McpServer
+) -> None:
     """読んだ時点に有って後で消した項目だけを、消した項目として返す（正常系）。"""
     # 準備
     root = make_workspace()
@@ -182,8 +201,7 @@ def test_normal_when_item_removed(make_workspace: MakeWorkspace, call_tool: Call
         for entry in result.data[key]
     ]
     assert "N-3" not in returned
-    changes = read_changes(root)
-    assert changes["read_seq"] == changes["last_seq"]
+    assert _read_seq(mcp_server, root) == read_changes(root)["last_seq"]
 
 
 # 外部の変更を自動で commit するまでの秒数を縮める環境変数と、テストで渡す秒数
@@ -212,7 +230,8 @@ def test_normal_when_external(
     )
     os.replace(temporary, path)
     deadline = time.monotonic() + EXTERNAL_WAIT_SEC
-    while not read_changes(root).get("sets"):
+    changes_file = root / RECORD_DIR / "changes.yaml"
+    while not (changes_file.is_file() and read_changes(root).get("sets")):
         assert time.monotonic() < deadline, "外部の変更のまとまりができません"
         time.sleep(EXTERNAL_POLL_SEC)
     # 実行

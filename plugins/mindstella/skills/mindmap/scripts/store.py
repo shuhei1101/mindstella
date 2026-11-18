@@ -19,7 +19,6 @@ from typing import IO, Any, Literal
 
 import yaml
 from errors import (
-    ArgumentError,
     ConcurrentWriteError,
     ItemNotFoundError,
     SchemaMismatchError,
@@ -34,7 +33,6 @@ from kinds import (
     KINDS,
     LEGACY_SETTINGS_FILE,
     RECORD_DIR,
-    RELEASE_DIR,
     SETTINGS_FILE,
     Kind,
     kind_of_id,
@@ -64,12 +62,15 @@ DEFAULT_FILE_MODE = 0o666
 WHOLE_PATH = "(全体)"
 
 # 前の版の形式でスキーマに合わないときに、エラーの最後に続ける 1 行
-LEGACY_HINT = "ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます"
+LEGACY_HINT = "ヒント: 前の版の形式の記録は、起動スクリプトでワークスペースを開き直すと今の形式に移せます"
 
 # 記録のフォルダが無く直下に前の版の設定ファイルがあるフォルダの WorkspaceNotFoundError・WorkspaceExistsError に続ける 1 行（`{root}` はフォルダの絶対パス）
 UPGRADE_HINT = (
-    "ヒント: 前の版の形の記録があります。/mindstella:upgrade {root} で今の版へ移し替えてください"
+    "ヒント: 前の版の形の記録があります。起動スクリプトで {root} を開き直すと今の版へ移し替えます"
 )
+
+# 前の版の設定だけが持つキー（`field`・タグの語彙と、v0.14.0 で削除したキー）
+LEGACY_SETTING_KEYS = ("field", "tags", "goal", "phases", "playbooks", "targets", "target_label", "categories")
 
 # ワークスペースを最後に整えたときのプラグインの版を持つファイルの名前（`records_root` の下。v0.6.0 より前は直下）
 VERSION_FILE = "mindstella-version.ini"
@@ -141,7 +142,6 @@ class Problem:
         "broken_ref",
         "missing_body",
         "orphan_body",
-        "unknown_phase",
         "stale_history",
         "decision_state",
     ]
@@ -613,13 +613,12 @@ def is_legacy_problem(
     # スキーマ違反以外（参照切れなど）は前の版の形式のせいではない
     if problem.kind != "schema":
         return False
-    # 設定: 題名（summary）が無いか、field を持ち playbooks を持たないか、タグの語彙（tags）を持つ
+    # 設定: 題名（summary）が無いか、field・タグの語彙（tags）・削除したキーを持つ
     if problem.file == SETTINGS_FILE:
         raw_settings = workspace.raw.get(SETTINGS_FILE)
         return isinstance(raw_settings, dict) and (
             "summary" not in raw_settings
-            or ("field" in raw_settings and "playbooks" not in raw_settings)
-            or "tags" in raw_settings
+            or any(key in raw_settings for key in LEGACY_SETTING_KEYS)
         )
     # 項目のタグ: 書き込む項目以外の文字列のタグ
     tag_match = TAG_KEY_PATTERN.fullmatch(problem.key or "")
@@ -958,7 +957,7 @@ def _remember_valid(root: Path, written: list[tuple[Path, str]]) -> None:
 
 
 def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:
-    """設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作り、直下に README を書く。"""
+    """設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/` を作り、直下に README を書く。"""
     root = root.resolve()
     records = records_root(root)
     if (records / SETTINGS_FILE).exists():
@@ -992,9 +991,8 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
         records.mkdir(parents=True, exist_ok=True)
         if top_missing is not None:
             created.append(top_missing)
-        for dir_name in (BODY_DIR, RELEASE_DIR):
-            _make_dir(records / dir_name, created)
-            files.append(f"{RECORD_DIR}/{dir_name}/")
+        _make_dir(records / BODY_DIR, created)
+        files.append(f"{RECORD_DIR}/{BODY_DIR}/")
         for spec in KINDS.values():
             (records / spec.file).write_text(dump_yaml({"items": []}), encoding="utf-8")
             created.append(records / spec.file)
@@ -1041,67 +1039,7 @@ def _workspace_id(root: Path, settings: dict[str, Any]) -> str:
     return str(value) if value else workspace_id_for(root)
 
 
-def clear_release(root: Path) -> list[str]:
-    """`.mindstella/release/` の中のファイルとフォルダを消す（`release/` が無ければ作る）。"""
-    root = root.resolve()
-    # .mindstella/config.yaml が無いフォルダはワークスペースではない（何も消さない）
-    require_workspace(root)
-
-    release_dir = records_root(root) / RELEASE_DIR
-    removed: list[str] = []
-    try:
-        release_dir.mkdir(exist_ok=True)
-    except OSError as error:
-        raise write_failed(release_dir, error) from error
-    # 名前の順に消す。消せないものに当たったら、そこで止める（それまでに消したものは戻さない）
-    for path in sorted(release_dir.iterdir(), key=lambda entry: entry.name):
-        # リンクでないフォルダは中身ごと、リンクとファイルはそのものを消す（リンク先は消さない）
-        is_folder = path.is_dir() and not path.is_symlink()
-        try:
-            if is_folder:
-                shutil.rmtree(path)
-            else:
-                path.unlink()
-        except OSError as error:
-            raise write_failed(path, error) from error
-        removed.append(f"{path.name}/" if is_folder else path.name)
-    return removed
-
-
 RELEASE_SUFFIXES = (".md", ".html")
-
-
-def write_release(root: Path, path: str, content: str) -> tuple[str, int]:
-    """`.mindstella/release/` の下の `.md`・`.html` を 1 つ書き、`release/` からのパスとバイト数を返す。"""
-    root = root.resolve()
-    # .mindstella/config.yaml が無いフォルダはワークスペースではない（何も書かない）
-    require_workspace(root)
-
-    relative = Path(path)
-    if not path or relative.is_absolute() or ".." in relative.parts:
-        raise ArgumentError("path", "release/ からの相対パスを渡してください（空・絶対パス・.. は使えません）")
-    if relative.suffix not in RELEASE_SUFFIXES:
-        raise ArgumentError("path", "拡張子は .md か .html にしてください")
-    release_dir = records_root(root) / RELEASE_DIR
-    target = release_dir / relative
-    # シンボリックリンクを解いた先が release/ の下に無ければ書かない
-    if not target.resolve().is_relative_to(release_dir.resolve()):
-        raise ArgumentError("path", "release/ の下を指してください")
-    try:
-        target.parent.mkdir(parents=True, exist_ok=True)
-    except OSError as error:
-        raise write_failed(target.parent, error) from error
-    try:
-        temp = _write_temp(target, content)
-    except OSError as error:
-        raise write_failed(target, error) from error
-    try:
-        os.replace(temp, target)
-    except OSError as error:
-        # 置き換えられなかった一時ファイルは残さない
-        _remove_files([temp])
-        raise write_failed(target, error) from error
-    return relative.as_posix(), len(content.encode("utf-8"))
 
 
 def read_body(workspace: Workspace, name: str) -> str | None:

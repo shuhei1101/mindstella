@@ -2209,7 +2209,6 @@ async ({data, id, markers}) => {
                 {"heading": "説明"},
                 {"key": "conclusion"},
                 {"heading": "エイリアス"},
-                {"heading": "調査の観点"},
             ],
             True,
             ["特殊効果", "エフェクト"],
@@ -2243,7 +2242,6 @@ def test_detail_panel_when_description_aliases(
                 description="調査の説明",
                 conclusion="調べた結論",
                 aliases=["特殊効果", "エフェクト"],
-                angles=["観点 1"],
             )
         ],
         bodies={"docs/A-1.md": "本文の段落\n", "docs/A-2.md": "本文の段落\n"},

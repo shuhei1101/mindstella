@@ -217,62 +217,6 @@ def test_status_badge(
     assert result == expected
 
 
-@pytest.mark.parametrize(
-    ("weight", "labeled", "expected"),
-    [
-        pytest.param("大", False, {"on": 3, "text": "大"}, id="large"),
-        pytest.param("中", False, {"on": 2, "text": "中"}, id="medium"),
-        pytest.param("小", False, {"on": 1, "text": "小"}, id="small"),
-        pytest.param("知らない", False, EMPTY_FRAGMENT, id="unknown"),
-        pytest.param(None, False, EMPTY_FRAGMENT, id="undefined"),
-        pytest.param("大", True, {"on": 3, "text": "影響度 大"}, id="large_labeled"),
-    ],
-)
-def test_impact_badge(
-    preview_page: Page,
-    load_preview_scripts: LoadPreviewScripts,
-    weight: str | None,
-    labeled: bool,
-    expected: dict[str, Any],
-) -> None:
-    """影響度を目盛りと文字で表す。大・中・小のどれでもない値と未指定は空の断片（正常系）。"""
-    # 準備
-    load_preview_scripts()
-    # 実行
-    result = preview_page.evaluate(
-        """({weight, labeled}) => {
-            const node = MindmapPreview.impactBadge(weight ?? undefined, labeled || undefined);
-            if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
-                return {nodeType: node.nodeType, childCount: node.childNodes.length};
-            }
-            return {on: node.querySelectorAll("i.on").length, text: node.textContent};
-        }""",
-        {"weight": weight, "labeled": labeled},
-    )
-    # 検証
-    assert result == expected
-
-
-def test_deliverable_badge(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
-    """箱のアイコンと「納品物」を持つ印を返す（正常系）。"""
-    # 準備
-    load_preview_scripts()
-    # 実行
-    result = preview_page.evaluate(
-        """() => {
-            const badge = MindmapPreview.deliverableBadge();
-            return {
-                tag: badge.tagName,
-                className: badge.className,
-                icons: badge.querySelectorAll("svg.icon").length,
-                text: badge.textContent,
-            };
-        }"""
-    )
-    # 検証
-    assert result == {"tag": "SPAN", "className": "deliv-badge", "icons": 1, "text": "納品物"}
-
-
 def test_empty_note(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
     """空のときの 1 行を p.empty で返す（正常系）。"""
     # 準備

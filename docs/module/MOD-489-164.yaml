@@ -39,6 +39,10 @@ directory: |-
           steps.yaml                   v0.12.0 の形式 → v0.13.0 の手順（資料を mdmark の今の書き方へ移す）
           scripts/
             mdmark_documents.py        mdmark の CLI の `upgrade` で資料を移し、map の種類を `config.yaml` へ移す変換
+        v0.14.0/
+          steps.yaml                   v0.13.0 の形式 → v0.14.0 の手順（議論のキーを消す）
+          scripts/
+            remove_discussion_keys.py  削除する設定のキーを消し、項目の対象・カテゴリーをタグへ、属性・観点・確かさを本文へ移す変換
       schemas/
         migration-steps.schema.json    steps.yaml の形
       scripts/
@@ -82,3 +86,4 @@ notes:
   送信をスレッドへ移す手順: '`migrations/v0.8.0/steps.yaml` は `call`（`script: submissions_to_threads`）と `delete`（`path: .mindstella/submissions.yaml`）をこの順に並べる（破壊的な操作は `delete` だけ）。`scripts/submissions_to_threads.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_submissions_to_threads.py` に置く。`schemas/submissions.schema.json` を消して `schemas/threads.schema.json` を足し、`comments.schema.json`・`drafts.schema.json` に `thread` を足すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.8.0` にする。変換はプラグインの `threads.py` を読まず、この版の形を自分で組み立てる（後の版で `threads.py` の形が変わっても、この版の手順が変わらないように）'
   タグの語彙を外す手順: '`migrations/v0.11.0/steps.yaml` は `call`（`script: remove_tag_vocabulary`、`destructive: true`）の 1 つだけを並べる。`schemas/migration-steps.schema.json` の `call` に任意の `destructive`（真偽値。省いたら偽）を足し、入口は `op` が `DESTRUCTIVE_OPS` にあるか `args` の `destructive` が真の手順を破壊的として出す（タグの説明が戻せなくなるため）。`scripts/remove_tag_vocabulary.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_remove_tag_vocabulary.py` に置く。`schemas/settings.schema.json` から `tags` を外すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.11.0` にする'
   項目のタグをオブジェクトにする手順: '`migrations/v0.12.0/steps.yaml` は `call`（`script: tags_to_objects`、`destructive: true`）の 1 つだけを並べる（表記をそろえて重なるタグを外すと戻せないため）。`scripts/tags_to_objects.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_tags_to_objects.py` に置く。`schemas/common.schema.json` の `tags` の要素を `{name, main?}` にするため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.12.0` にする'
+  議論のキーを消す手順: '`migrations/v0.14.0/steps.yaml` は `call`（`script: remove_discussion_keys`、`destructive: true`）の 1 つだけを並べる。`scripts/remove_discussion_keys.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_remove_discussion_keys.py` に置く。`schemas/settings.schema.json` から `goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories` を、`schemas/common.schema.json` と種類ごとのスキーマから `phase`・`target`・`category`・`attrs`・`weight`・`deliverable`・`angles`・`confidence` を外すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.14.0` にする。変換はプラグインの `store.py` を読まず、この版の形を自分で組み立てる'

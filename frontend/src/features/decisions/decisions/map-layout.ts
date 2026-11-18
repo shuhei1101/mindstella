@@ -1,8 +1,8 @@
-// 検討事項のマップの木の組み立てと配置。対象 → カテゴリー → フェーズ → 検討事項の順に、項目を持つ節だけを描く
+// 検討事項のマップの木の組み立てと配置。根の下に検討事項を平らに並べる
 import { compareIds, type Item, type Settings } from "@/shared/core/records";
 
 /** 節の種類 */
-export type MapNodeKind = "target" | "category" | "phase" | "item";
+export type MapNodeKind = "root" | "item";
 
 /** マップの節（ELK に渡し、配置された座標が入って戻る） */
 export type MapNode = { id: string; width: number; height: number; kind: MapNodeKind; label: string; item?: Item; x?: number; y?: number };
@@ -21,9 +21,10 @@ export type MapGraph = { id: string; layoutOptions: Record<string, string>; node
 /** ELK の口 */
 export type Elk = { layout: (graph: unknown) => Promise<unknown> };
 
-const NODE_SIZE: Record<MapNodeKind, [number, number]> = { target: [130, 40], category: [150, 34], phase: [118, 26], item: [268, 48] };
+const NODE_SIZE: Record<MapNodeKind, [number, number]> = { root: [160, 40], item: [268, 48] };
 
-const UNSET = "（未設定）";
+/** 根の節の ID（項目の ID と重ならない） */
+const ROOT_ID = "root";
 
 const ELK_OPTIONS: Record<string, string> = {
   "elk.algorithm": "layered",
@@ -37,43 +38,16 @@ const ELK_OPTIONS: Record<string, string> = {
   "elk.padding": "[top=24,left=24,bottom=24,right=24]",
 };
 
-const unique = (values: string[]): string[] => [...new Set(values)];
-
-const rankIn = (list: readonly string[], name: string): number => {
-  const position = list.indexOf(name);
-  return position < 0 ? list.length : position;
-};
-
-/** 渡した検討事項だけで木を組む */
+/** 渡した検討事項を根の直下に並べた木を組む（根のラベルは題名） */
 export const buildMapGraph = (items: readonly Item[], settings: Settings): MapGraph => {
+  const [rootWidth, rootHeight] = NODE_SIZE.root;
+  const [itemWidth, itemHeight] = NODE_SIZE.item;
   const shown = [...items].sort((a, b) => compareIds(a.id, b.id));
-  const targetOf = (item: Item): string => settings.categories.find((category) => category.name === item.category)?.target ?? item.target ?? UNSET;
-  const categoryOf = (item: Item): string => item.category ?? UNSET;
-  const phaseOf = (item: Item): string => item.phase ?? UNSET;
-  const nodes: MapNode[] = [];
-  const edges: MapEdge[] = [];
-  const add = (id: string, kind: MapNodeKind, label: string, parent: string | null, item?: Item): void => {
-    const [width, height] = NODE_SIZE[kind];
-    nodes.push({ id, width, height, kind, label, ...(item === undefined ? {} : { item }) });
-    if (parent !== null) edges.push({ id: `${parent}>${id}`, sources: [parent], targets: [id] });
-  };
-  const targetNames = settings.targets.map((target) => target.name);
-  const categoryNames = settings.categories.map((category) => category.name);
-  for (const target of unique(shown.map(targetOf)).sort((a, b) => rankIn(targetNames, a) - rankIn(targetNames, b))) {
-    const targetId = `target:${target}`;
-    add(targetId, "target", target, null);
-    const ofTarget = shown.filter((item) => targetOf(item) === target);
-    for (const category of unique(ofTarget.map(categoryOf)).sort((a, b) => rankIn(categoryNames, a) - rankIn(categoryNames, b))) {
-      const categoryId = `category:${target}/${category}`;
-      add(categoryId, "category", category, targetId);
-      const ofCategory = ofTarget.filter((item) => categoryOf(item) === category);
-      for (const phase of unique(ofCategory.map(phaseOf)).sort((a, b) => rankIn(settings.phases, a) - rankIn(settings.phases, b))) {
-        const phaseId = `phase:${target}/${category}/${phase}`;
-        add(phaseId, "phase", phase, categoryId);
-        for (const item of ofCategory.filter((candidate) => phaseOf(candidate) === phase)) add(item.id, "item", item.title, phaseId, item);
-      }
-    }
-  }
+  const nodes: MapNode[] = [
+    { id: ROOT_ID, width: rootWidth, height: rootHeight, kind: "root", label: settings.summary },
+    ...shown.map((item): MapNode => ({ id: item.id, width: itemWidth, height: itemHeight, kind: "item", label: item.title, item })),
+  ];
+  const edges = shown.map((item): MapEdge => ({ id: `${ROOT_ID}>${item.id}`, sources: [ROOT_ID], targets: [item.id] }));
   return { id: "graph", layoutOptions: ELK_OPTIONS, nodes, edges };
 };
 

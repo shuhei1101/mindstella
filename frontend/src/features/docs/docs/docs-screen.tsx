@@ -1,11 +1,11 @@
-// 資料の画面（画面設計『資料.tsx』）。カード（既定）・ボード・表で見る。納品物を先頭に並べる
-import { DeliverableBadge, DocCard, orderDocs } from "@/features/docs/docs/components/doc-cards";
+// 資料の画面（画面設計『資料.tsx』）。カード（既定）・ボード・表で見る。連番の順に並べる
+import { DocCard, orderDocs } from "@/features/docs/docs/components/doc-cards";
 import { AddedCard, addedCards, Board, boardColumns } from "@/shared/components/board";
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
 import { commonColumns } from "@/shared/components/list-columns";
 import { ListScreen } from "@/shared/components/list-screen";
 import type { TableColumn } from "@/shared/components/table";
-import { bodyFormatOf, DOC_STATUSES, type RecordIndex } from "@/shared/core/records";
+import { bodyFormatOf, DOC_STATUSES } from "@/shared/core/records";
 
 const VIEWS = [
   { key: "cards", label: "カード" },
@@ -15,13 +15,12 @@ const VIEWS = [
 
 const NO_VALUE_MARK = "—";
 
-const docColumns = (index: RecordIndex): TableColumn[] => {
-  const common = commonColumns(index.data.settings);
+const docColumns = (): TableColumn[] => {
+  const common = commonColumns();
   const formatOf = (body: unknown) => bodyFormatOf(typeof body === "string" ? body : undefined);
   return [
     common.id,
     common.title(),
-    { key: "deliverable", label: "納品物", filterable: true, order: ["納品物", "納品物以外"], get: (row) => (row["deliverable"] === true ? "納品物" : "納品物以外"), cell: (row) => (row["deliverable"] === true ? <DeliverableBadge /> : <span className="text-muted-foreground">{NO_VALUE_MARK}</span>) },
     common.status(DOC_STATUSES),
     common.text("kind", "種類", { filterable: true }),
     {
@@ -38,9 +37,6 @@ const docColumns = (index: RecordIndex): TableColumn[] => {
         return format === null ? <span className="text-muted-foreground">{NO_VALUE_MARK}</span> : <BodyFormatBadge format={format} />;
       },
     },
-    common.target,
-    common.category,
-    common.phase,
     common.tags,
   ];
 };

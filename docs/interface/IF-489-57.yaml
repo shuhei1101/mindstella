@@ -195,7 +195,7 @@ lead: ワークスペースの記録を、画面と描画のライブラリま�
 idempotent: true
 side_effects: '`out` のファイルを、同じフォルダの一時ファイルから `os.replace` で置き換える。ワークスペースは読むだけ。プレビューの配信は立てず、ブラウザも開かない。描画のライブラリの配布ファイルとライセンスの本文を jsDelivr から取る'
 callers:
-  - IF-489-66#
+  - IF-565-1#
 request:
   - name: workspace
     type: str
@@ -264,5 +264,5 @@ refs:
   - SC-489-11#
 notes:
   書き出すときに取る理由: 書き出す側は Claude Code が動く端末でネットにつながっているため、配布ファイルをリポジトリに同梱せず、書き出すときに jsDelivr から取る（ユーザーの決定）。開く側は書き出した HTML だけで足り、通信しない
-  書き出す先を既定にしない理由: ワークスペースの `release/` はゴール判定のたびに `clear_release` が中身を消すため、既定の置き場所にすると配る書き出しが消える。置き場所は利用者が渡したい先で決まるので、`out` を必須にして `session` が利用者に聞く
+  書き出す先を既定にしない理由: 置き場所は利用者が渡したい先で決まるので、`out` を必須にして MindStella のセッションが利用者に聞く
 test_file: tests/integration/server/test_export.py

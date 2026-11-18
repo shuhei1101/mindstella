@@ -11,7 +11,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant P as プレビュー（ブラウザ）
 
@@ -66,7 +66,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as 常駐サーバー
         participant P as プレビュー（ブラウザ）
 
@@ -94,7 +94,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant PI as project-index
         participant WS as ワークスペース
@@ -121,7 +121,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -175,7 +175,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant P as プレビュー（ブラウザ）
 
@@ -204,7 +204,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant P as プレビュー（ブラウザ）
 
@@ -236,7 +236,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant P as プレビュー（ブラウザ）
 
@@ -313,7 +313,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant P as プレビュー（ブラウザ）
 
@@ -328,7 +328,7 @@ scenarios:
       - カーソルが入力欄にある間は、検討事項の表に D-2 が出ず、コメントの入力の文字「途中まで」とカーソルの位置が変わらず、「更新があります」が出る
       - カーソルを入力欄の外へ移すと、再読み込みの操作をせずに検討事項の表に D-2 が出て、「更新があります」が消える
       - 描き直した後も、コメントの入力の文字が「途中まで」のままで、開いていた画面と URL のハッシュが変わらない
-lead: '`session` が、サーバーが配るプレビューの URL を示し、利用者がブラウザで開いて、記録を書き換えるたびに画面が描き直される単一ユースケース。記録を直したときは、そのまとまりの差分を開くリンクを示す。'
+lead: 'MindStella のセッションが、サーバーが配るプレビューの URL を示し、利用者がブラウザで開いて、記録を書き換えるたびに画面が描き直される単一ユースケース。記録を直したときは、そのまとまりの差分を開くリンクを示す。'
 issue: 4
 primary_actor: 利用者
 trigger: 利用者が記録を見たいと言う
@@ -340,6 +340,6 @@ frequency: 話し合いの中で数回
 priority: 中
 notes:
   E2E の範囲: 書き換えから画面への反映までの時間は非機能要件のテストが確かめる。URL の示し方はモデルの応答で、確かめない
-  開き方: スキルはブラウザを起動するコマンドを持たず、URL を示して利用者が開く。OS ごとの起動コマンドを `allowed-tools` に足さずに済み、Claude Code が動く端末とブラウザの端末が違うとき（WSL・リモート）にも崩れない
+  開き方: MindStella のセッションはブラウザを起動するコマンドを持たず、URL を示して利用者が開く。OS ごとの起動コマンドを `allowed-tools` に足さずに済み、Claude Code が動く端末とブラウザの端末が違うとき（WSL・リモート）にも崩れない
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
 test_file: tests/e2e/単一ユースケース/test_preview_open.py

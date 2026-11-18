@@ -102,10 +102,6 @@ components:
         type: object
         required: true
         description: 保存待ちの編集を当てた項目（`applyEdits`）
-      - name: settings
-        type: object
-        required: true
-        description: 編集を当てた設定（フェーズ・対象・カテゴリーの選択肢）
       - name: marks
         type: Record<string, 'pending' | 'remove' | 'blocked'>
         required: true

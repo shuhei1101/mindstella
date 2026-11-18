@@ -15,7 +15,7 @@ components:
         summary: 既定はカード
         condition: '`?tab=docs`'
         mock: MSW
-        expected: 納品物が先頭のカード
+        expected: 連番の順のカード
     container: frontend/src/features/docs/docs/docs-screen.tsx
 notes:
   単体テスト: 同じフォルダの `docs-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）

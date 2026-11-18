@@ -21,7 +21,7 @@ def test_build_index(
     data = make_data(
         decisions=[make_item("D-1"), make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}])],
         tasks=[make_item("T-1", related=[{"to": "D-1", "type": "for"}])],
-        next_ids=["D-1"],
+        ready_ids=["D-1"],
     )
     load_preview_scripts()
     # 実行

@@ -1,34 +1,8 @@
 id: MOD-489-175
-title: サーバー / ゴール判定 / graph.py
+title: サーバー / 依存と影響 / graph.py
 test_files:
   - tests/unit/scripts/test_graph.py
 data_models:
-  - name: GoalReport
-    title: ゴール判定の結果
-    container: plugins/mindstella/skills/mindmap/scripts/graph.py
-    usecase: ゴール判定
-    role: DTO
-    summary: ゴールに届いたかと、残りの検討事項・納品物
-    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。インターフェース定義『ゴール判定』のレスポンスの形。'
-    properties:
-      - name: has_goal
-        type: bool
-        description: 設定がゴールを持つか
-      - name: reached
-        type: bool | None
-        description: 届いたか（残りがどちらも空のときだけ真）。ゴールが無いときは `None`
-      - name: goal_phase
-        type: str | None
-        description: '`goal.phase`。ゴールが無いときは `None`'
-      - name: phases
-        type: list[str]
-        description: 判定に入れたフェーズ（ゴールが無いときは `phases` の全て）
-      - name: remaining_decisions
-        type: list[dict[str, str]]
-        description: 決着していない検討事項（`id`・`title`・`phase`・`status`）
-      - name: remaining_deliverables
-        type: list[dict[str, str | None]]
-        description: 揃っていない納品物（`title`・`doc`）。ゴールが無いときは空
   - name: Affected
     title: 影響を受ける項目
     container: plugins/mindstella/skills/mindmap/scripts/graph.py
@@ -52,91 +26,7 @@ data_models:
       - name: key
         type: Literal["depends_on", "parent", "for"]
         description: 直前の項目とつなぐ `related` の種類
-  - name: Candidate
-    title: 次の候補
-    container: plugins/mindstella/skills/mindmap/scripts/graph.py
-    usecase: 状況の確認
-    role: DTO
-    summary: 次の候補の出力の `candidates[]` の 1 行
-    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。'
-    properties:
-      - name: id
-        type: str
-        description: ID
-      - name: title
-        type: str
-        description: タイトル
-      - name: phase
-        type: str | None
-        description: フェーズ
-      - name: weight
-        type: Literal["大", "中", "小"] | None
-        description: 影響度
-      - name: followers
-        type: int
-        description: 後続の件数
-  - name: Waiting
-    title: 決定待ち
-    container: plugins/mindstella/skills/mindmap/scripts/graph.py
-    usecase: 状況の確認
-    role: DTO
-    summary: 再開時の状況の `waiting[]` の 1 行
-    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。'
-    properties:
-      - name: id
-        type: str
-        description: ID
-      - name: title
-        type: str
-        description: タイトル
-      - name: waiting_for
-        type: list[str]
-        description: 未完了の、種類 `depends_on` の `related` の `to`
-  - name: StatusSummary
-    title: 再開時の状況
-    container: plugins/mindstella/skills/mindmap/scripts/graph.py
-    usecase: 状況の確認
-    role: DTO
-    summary: 再開時の状況の出力全体
-    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`needs_review` などの 1 行は `{"id", "title"}`（`on_hold` は `reason` も）の dict。'
-    properties:
-      - name: needs_review
-        type: list[dict[str, str]]
-        description: 要見直しの検討事項
-      - name: in_progress
-        type: list[dict[str, str]]
-        description: 進行中のタスク
-      - name: resumable
-        type: list[dict[str, str]]
-        description: 再開可能な保留
-      - name: waiting
-        type: list[Waiting]
-        description: 決定待ちの保留
-      - name: on_hold
-        type: list[dict[str, str | None]]
-        description: 種類 `depends_on` の `related` を持たない保留
-      - name: next
-        type: list[Candidate]
-        description: 次の候補の先頭
 constants:
-  - name: STATUS_NEXT_LIMIT
-    title: 再開時の状況の次の候補の件数
-    container: plugins/mindstella/skills/mindmap/scripts/graph.py
-    usecase: 状況の確認
-    summary: 再開時の状況に載せる次の候補の件数
-    value: '3'
-  - name: WEIGHT_ORDER
-    title: 影響度の並び
-    container: plugins/mindstella/skills/mindmap/scripts/graph.py
-    usecase: 状況の確認
-    summary: 影響度 → 並べる順。影響度が無いものは最後
-    entries:
-      - key: 大
-        value: '0'
-      - key: 中
-        value: '1'
-      - key: 小
-        value: '2'
   - name: IMPACT_KEYS
     title: 影響をたどる関連の種類
     container: plugins/mindstella/skills/mindmap/scripts/graph.py
@@ -148,55 +38,6 @@ constants:
       - key: task
         value: for, depends_on
 functions:
-  - name: judge_goal
-    title: ゴールの判定
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/graph.py
-    usecase: ゴール判定
-    scope: public
-    summary: ゴールのフェーズまでの検討事項が決着し、ゴールの納品物が揃ったかを判定する
-    args:
-      - name: workspace
-        type: Workspace
-        required: true
-        passing: positional
-        description: ワークスペース
-    returns:
-      type: GoalReport
-      description: 判定の結果
-    process: |-
-      1. 設定が `goal` を持たない場合、判定に入れるフェーズを `phases` の全てにし、`has_goal` を偽、`reached` と `goal_phase` を `None`、`remaining_deliverables` を空にして、決着していない検討事項だけを 2. と同じ並びで集めて返す
-      2. 設定の `phases` と `goal.phase` から、判定に入れるフェーズを決める
-         - `goal.phase` が `phases` にある場合、先頭から `goal.phase` まで
-         - 無い場合、`phases` の全て（厳しい側に倒す）
-      3. 検討事項のうち `phase` が判定に入るフェーズにあり、決着していないものを、フェーズの順 → 連番の小さい順に集める（`is_settled`）
-      4. `goal.deliverables` を並びのまま見て、`doc` が無いか、`doc` の資料が無いか `status` が `完成` でないものを集める
-      5. `has_goal` を真にし、残りがどちらも空なら `reached` を真にする
-    unit_tests:
-      - name: test_judge_goal
-        case: 正常
-        summary: ゴールより後ろのフェーズを入れずに届いたと判定する
-        condition: '`phases` 目的・要件・構成、`goal.phase` 要件、D-1 `目的`・`決定済み`／D-2 `要件`・`対象外`／D-3 `要件`・`取り下げ`／D-4 `構成`・`未決定`、`deliverables` が A-1（`status: 完成`）'
-        mock: なし
-        expected: '`reached` 真、`phases` が `[目的, 要件]`、残りがどちらも空'
-      - name: test_judge_goal_when_remaining
-        case: 正常
-        summary: 決着していない検討事項と揃っていない納品物を集める
-        condition: 'D-2 `要件`・`要見直し`／D-1 `目的`・`未決定`、`deliverables` が「要件定義書」（`doc: A-1`、`status: 確認中`）・「用語集」（`doc` なし）・「図」（`doc: A-9`、資料が無い）'
-        mock: なし
-        expected: '`reached` 偽、`remaining_decisions` が D-1・D-2 の順（`phase`・`status` つき）、`remaining_deliverables` が 3 件とも並びのまま'
-      - name: test_judge_goal_when_goal_phase_unknown
-        case: 正常
-        summary: ゴールのフェーズが phases に無ければ全てのフェーズを判定に入れる
-        condition: '`phases` 目的・要件、`goal.phase` `実装`、D-1 `要件`・`未決定`'
-        mock: なし
-        expected: '`phases` が `[目的, 要件]`、`remaining_decisions` に D-1'
-      - name: test_judge_goal_when_no_goal
-        case: 正常
-        summary: ゴールが無ければ判定せず、全フェーズの決着していない検討事項を返す
-        condition: '`phases` 目的・要件でゴールを持たず、D-1 `目的`・`決定済み`／D-2 `要件`・`未決定`'
-        mock: なし
-        expected: '`has_goal` 偽、`reached` と `goal_phase` が `None`、`phases` が `[目的, 要件]`、`remaining_decisions` が D-2 だけ、`remaining_deliverables` が空'
   - name: build_reverse_edges
     title: 逆向きの参照
     kind: 関数
@@ -301,109 +142,29 @@ functions:
         condition: '`item` が `None`'
         mock: なし
         expected: 偽
-  - name: count_followers
-    title: 後続の件数
+  - name: list_ready
+    title: 着手できる検討事項
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/graph.py
-    usecase: 状況の確認
+    usecase: 記録の取得
     scope: public
-    summary: 影響の洗い出しと同じたどり方で得た項目のうち、未完了のものを数える
+    summary: 前提が全て決着した未決定の検討事項の ID を、連番の順に返す（『記録の取得』の `derived.ready`）
     args:
       - name: workspace
         type: Workspace
         required: true
         passing: positional
         description: ワークスペース
-      - name: item_id
-        type: str
-        required: true
-        passing: positional
-        description: 起点の ID
     returns:
-      type: int
-      description: 未完了の後続の件数
-    process: |-
-      1. 影響を受ける項目を引く（影響の洗い出し。`trace_impact`）
-      2. そのうち決着していないものを数える（決着の判定。`is_settled`）
-    unit_tests:
-      - name: test_count_followers
-        case: 正常
-        summary: 間接の後続も数え、決着したものは数えない
-        condition: 'D-6 `related: [{to: D-4, type: depends_on}]`（未決定）・D-7 `related: [{to: D-6, type: depends_on}]`（未決定）・D-8 `related: [{to: D-4, type: depends_on}]`（決定済み）で D-4'
-        mock: なし
-        expected: '2'
-  - name: list_next_candidates
-    title: 次の候補
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/graph.py
-    usecase: 状況の確認
-    scope: public
-    summary: 前提が揃った未決定の検討事項を、フェーズ → 影響度 → 後続の件数 → 連番の順に並べる
-    args:
-      - name: workspace
-        type: Workspace
-        required: true
-        passing: positional
-        description: ワークスペース
-      - name: limit
-        type: int | None
-        required: false
-        default: None
-        passing: keyword
-        description: 返す件数の上限。`None` は全件
-    returns:
-      type: list[Candidate]
-      description: 並べた候補
+      type: list[str]
+      description: 検討事項の ID（並べ替えない。連番の小さい順）
     process: |-
       1. 状態が `未決定` の検討事項のうち、種類 `depends_on` の `related` の `to` が全て決着しているものを選ぶ（決着の判定。`is_settled`。無い ID は未完了）
-      2. 候補ごとに後続の件数を数える（`count_followers`）
-      3. フェーズの並び（設定の `phases` の位置。無い・設定に無いフェーズは最後）→ `WEIGHT_ORDER` → 後続の件数の多い順 → 連番の小さい順に並べ、`limit` で切る
+      2. 連番の小さい順に ID を返す
     unit_tests:
-      - name: test_list_next_candidates
+      - name: test_list_ready
         case: 正常
-        summary: 前提が揃った未決定を決めた順に並べる
-        condition: 'フェーズ `目的`→`要件`→`構成`。D-1 `要件`・`小`／D-2 `目的`・`小`／D-3 `要件`・`大`／D-4 `要件`・`大`／D-5 `related: [{to: D-1, type: depends_on}]`／D-6 `related: [{to: D-4, type: depends_on}]`／D-7 `related: [{to: D-6, type: depends_on}]`（どれも未決定）'
+        summary: 前提が決着した未決定だけを連番の順に返す
+        condition: 決定済みの D-1、D-1 に依存する未決定の D-3、未決定の D-4 に依存する未決定の D-2、無い D-9 に依存する未決定の D-5、前提を持たない未決定の D-4
         mock: なし
-        expected: D-2・D-4（followers 2）・D-3（followers 0）・D-1（followers 1）
-      - name: test_list_next_candidates_when_phase_unknown
-        case: 正常
-        summary: フェーズが無い・設定に無い候補は最後
-        condition: 'D-1 `phase` なし・D-2 `phase: その他`・D-3 `phase: 構成`'
-        mock: なし
-        expected: D-3・D-1・D-2
-      - name: test_list_next_candidates_when_limited
-        case: 正常
-        summary: 上限で切る
-        condition: 1 つめのテストと同じワークスペースで `limit=2`
-        mock: なし
-        expected: D-2・D-4
-  - name: summarize_status
-    title: 再開時の状況のまとめ
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/graph.py
-    usecase: 状況の確認
-    scope: public
-    summary: 要見直し・進行中・再開可能・決定待ち・そのほかの保留・次の候補をまとめる
-    args:
-      - name: workspace
-        type: Workspace
-        required: true
-        passing: positional
-        description: ワークスペース
-    returns:
-      type: StatusSummary
-      description: 再開時の状況
-    process: |-
-      1. 状態が `要見直し` の検討事項と `進行中` のタスクを拾う
-      2. 状態が `保留` の検討事項・タスクを、種類 `depends_on` の `related` で分ける（決着の判定。`is_settled`）
-         - 種類 `depends_on` の `related` が無い場合、`on_hold` に入れる
-         - 全て決着している場合、`resumable` に入れる
-         - 未完了が残る場合、未完了の ID を `waiting_for` にして `waiting` に入れる
-      3. 次の候補を `STATUS_NEXT_LIMIT` 件引く（`list_next_candidates`）
-    unit_tests:
-      - name: test_summarize_status
-        case: 正常
-        summary: 状態と依存で分ける
-        condition: 'D-1 `要見直し`／T-1 `進行中`／D-2 `保留`・`related: [{to: D-3, type: depends_on}]`／D-3 `決定済み`／D-4 `保留`・`related: [{to: D-5, type: depends_on}]`／D-5 `未決定`／D-6 `保留`・`reason: 予算が決まったら`／T-2 `保留`・`related: [{to: T-1, type: depends_on}]`'
-        mock: なし
-        expected: '`needs_review` D-1、`in_progress` T-1、`resumable` D-2、`waiting` D-4（`[D-5]`）と T-2（`[T-1]`）、`on_hold` D-6（reason つき）、`next` D-5'
+        expected: '`[D-3, D-4]`'

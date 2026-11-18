@@ -156,7 +156,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant PI as project-index
         participant P as プレビュー（ブラウザ）

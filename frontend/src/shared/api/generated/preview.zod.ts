@@ -13,21 +13,6 @@ export const GetRecordsResponse = zod.looseObject({
   "settings": zod.looseObject({
   "summary": zod.string(),
   "description": zod.string().optional(),
-  "target_label": zod.string(),
-  "phases": zod.array(zod.string()),
-  "targets": zod.array(zod.object({
-  "name": zod.string()
-})),
-  "categories": zod.array(zod.object({
-  "name": zod.string(),
-  "target": zod.string()
-})),
-  "goal": zod.object({
-  "deliverables": zod.array(zod.object({
-  "title": zod.string(),
-  "doc": zod.string().optional()
-}))
-}).optional(),
   "display": zod.object({
   "network_look": zod.enum(['glow', 'starlight', 'constellation', 'deep', 'dust']).optional(),
   "visible_kinds": zod.array(zod.enum(['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs'])).optional()
@@ -40,82 +25,40 @@ export const GetRecordsResponse = zod.looseObject({
   "decisions": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "category": zod.string().optional(),
-  "phase": zod.string().optional()
+  "status": zod.string().optional()
 })),
   "tasks": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "category": zod.string().optional(),
-  "phase": zod.string().optional()
+  "status": zod.string().optional()
 })),
   "research": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "category": zod.string().optional(),
-  "phase": zod.string().optional()
+  "status": zod.string().optional()
 })),
   "docs": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "category": zod.string().optional(),
-  "phase": zod.string().optional()
+  "status": zod.string().optional()
 })),
   "terms": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "category": zod.string().optional(),
-  "phase": zod.string().optional()
+  "status": zod.string().optional()
 })),
   "notes": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "category": zod.string().optional(),
-  "phase": zod.string().optional()
+  "status": zod.string().optional()
 })),
   "logs": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "category": zod.string().optional(),
-  "phase": zod.string().optional()
+  "status": zod.string().optional()
 })),
   "derived": zod.object({
-  "next": zod.array(zod.object({
-  "id": zod.string(),
-  "title": zod.string(),
-  "phase": zod.string().nullable(),
-  "weight": zod.string().nullable(),
-  "followers": zod.int()
-})),
-  "goal": zod.looseObject({
-  "has_goal": zod.boolean(),
-  "remaining_deliverables": zod.array(zod.object({
-  "title": zod.string(),
-  "doc": zod.string().nullish()
-})),
-  "phase_progress": zod.array(zod.object({
-  "phase": zod.string(),
-  "settled": zod.int(),
-  "total": zod.int()
-}))
-}),
-  "progress": zod.array(zod.object({
-  "category": zod.string(),
-  "cells": zod.array(zod.object({
-  "phase": zod.string(),
-  "settled": zod.int(),
-  "total": zod.int()
-})),
-  "settled": zod.int(),
-  "total": zod.int()
-}))
+  "ready": zod.array(zod.string()).describe('前提が全て決着した未決定の検討事項の ID（連番の順）')
 }),
   "built_at": zod.string()
 })

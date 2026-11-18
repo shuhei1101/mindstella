@@ -515,9 +515,6 @@ def test_normal_when_rewritten(
     history_length = page.evaluate("history.length")
     new_decision = {
         "title": "新しい問い",
-        "target": "mindmap",
-        "category": "データ構造",
-        "phase": "要件",
         "status": "未決定",
         "options": [{"key": "A", "content": "案 A"}],
     }
@@ -555,9 +552,6 @@ def test_normal_when_rewritten_while_typing(
     opened_url = page.url
     new_decision = {
         "title": "新しい問い",
-        "target": "mindmap",
-        "category": "データ構造",
-        "phase": "要件",
         "status": "未決定",
         "options": [{"key": "A", "content": "案 A"}],
     }
@@ -1091,7 +1085,6 @@ def test_normal_when_html_body_diff(
         "title": "画面のモック",
         "kind": "モック",
         "status": "下書き",
-        "deliverable": False,
         "body_html": THREE_PARAGRAPH_HTML,
     }
     assert write_tool(call_tool, "add", workspace=workspace, kind="doc", item=item).is_error is False
@@ -1144,7 +1137,6 @@ def test_normal_when_html_body_diff_after_closed_element(
         "title": "画面のモック",
         "kind": "モック",
         "status": "下書き",
-        "deliverable": False,
         "body_html": CLOSED_ELEMENT_HTML,
     }
     assert write_tool(call_tool, "add", workspace=workspace, kind="doc", item=item).is_error is False

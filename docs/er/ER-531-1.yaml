@@ -22,6 +22,20 @@ er:
           name: workspace
           key: FK
           comment: '参照: ワークスペースの ID の一覧.ids'
+    - name: 前回参照した時点
+      columns:
+        - type: string
+          name: workspace
+          key: FK
+          comment: '参照: ワークスペースの ID の一覧.ids'
+        - type: number
+          name: read_seq
+    - name: 移し替えの報告
+      columns:
+        - type: string
+          name: workspace
+          key: FK
+          comment: '参照: ワークスペースの ID の一覧.ids'
   relations:
     - from: ワークスペースの ID の一覧
       to: MindStella のセッション
@@ -37,6 +51,20 @@ er:
       from_cardinality: '1'
       to_cardinality: 0..1
       label: 起動の指定
+    - from: ワークスペースの ID の一覧
+      to: 前回参照した時点
+      from_column: ids
+      to_column: workspace
+      from_cardinality: '1'
+      to_cardinality: 0..1
+      label: AI が前回参照した時点
+    - from: ワークスペースの ID の一覧
+      to: 移し替えの報告
+      from_column: ids
+      to_column: workspace
+      from_cardinality: '1'
+      to_cardinality: 0..1
+      label: まだ知らせていない報告
 tables:
   - name: workspaces.yaml
     title: ワークスペースの ID の一覧
@@ -147,6 +175,36 @@ tables:
         title: 本文の複製
         type: string
         description: '`.mindstella/docs/` の本文の前回の中身'
+  - name: workspaces/{ID}/read_point.json
+    title: 前回参照した時点
+    datastore: JSON
+    summary: AI が前回参照した時点。『前回読んだ時点からの変更』と『前回参照した時点の更新』だけが書き換え、『再開の状況』は読むだけ（D-326）
+    scale: ワークスペースごとに 0〜1 件
+    access: キー（ワークスペースの ID）
+    columns:
+      - name: read_seq
+        title: AI が前回参照した時点
+        type: number
+        not_null: true
+        description: ワークスペースの `changes.yaml` の通し番号。ファイルが無ければ `changes.yaml` に残った前のバージョンの `read_seq` を使う
+        example: '12'
+  - name: workspaces/{ID}/migration.json
+    title: 移し替えの報告
+    datastore: JSON
+    summary: 『ワークスペースの作成』が記録を移し替えた報告のうち、まだ『再開の状況』で知らせていないもの。『前回参照した時点の更新』が消す
+    scale: ワークスペースごとに 0〜1 件
+    access: キー（ワークスペースの ID）
+    columns:
+      - name: provisional
+        title: 仮の値
+        type: array
+        not_null: true
+        description: '`{file, key, value}`。値が要るキーに入れた仮の値'
+      - name: not_carried
+        title: 移せなかった値
+        type: array
+        not_null: true
+        description: '`{item, key, value}`。移せずに記録から消えた値'
 notes:
   削除: ワークスペースの削除（#523）で、そのワークスペースの `workspaces/{ID}/` と `ids` の行を消す。クローズでは残す（D-322）
   書き込み: 一時ファイルから `os.replace` で置き換える。`workspaces.yaml` は全体で 1 つの鍵、`session.json` はファイルごとの鍵を取って書く

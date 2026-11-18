@@ -123,7 +123,7 @@ lead: 最後のまとまりより後に足した項目と、変えた項目・�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - IF-489-66#
+  - IF-565-1#
 request:
   - name: workspace
     type: str

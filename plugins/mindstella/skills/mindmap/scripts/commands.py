@@ -24,7 +24,6 @@ from errors import (
     SchemaMismatchError,
     WriteFailedError,
 )
-from graph import judge_goal, list_next_candidates, summarize_status
 from history import (
     SUMMARY_MAX_LENGTH,
     Changes,
@@ -37,7 +36,6 @@ from history import (
     load_changes,
     load_item_history,
     make_entry,
-    mark_read,
     note_pending,
     pending_view,
     removed_items,
@@ -45,15 +43,7 @@ from history import (
 )
 from ids import reserve_ids
 from kinds import BODY_DIR, EDITOR, KINDS, RECORD_DIR, Kind, records_root
-from migration_ops import DESTRUCTIVE_OPS, describe_step
-from migrator import (
-    MigrationReport,
-    MigrationStep,
-    apply_migration,
-    plan_migration,
-    record_version,
-    set_values,
-)
+from read_point import save_read_seq
 from readme import README_FILE, write_readme
 from settings_update import update_settings
 from store import (
@@ -64,7 +54,6 @@ from store import (
     Change,
     NowFn,
     Workspace,
-    clear_release,
     create_workspace,
     dump_yaml,
     find_item,
@@ -78,7 +67,6 @@ from store import (
     save_batch,
     save_change,
     write_failed,
-    write_release,
     write_temp,
 )
 from tag_text import compact_tags
@@ -91,7 +79,7 @@ from threads import (
     update_thread,
     view_thread,
 )
-from versions import Version, parse_release_version, read_plugin_version
+from versions import read_plugin_version
 
 if TYPE_CHECKING:
     # serve が編集の保存で commands を読むため、循環を避けて型の注釈にだけ使う
@@ -100,7 +88,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # 前の版の形式の問題の詳細に続ける案内
-MIGRATE_HINT = "（/mindstella:upgrade で今の形式に移せます）"
+MIGRATE_HINT = "（起動スクリプトでワークスペースを開き直すと今の形式に移せます）"
 
 # `item` で渡させないキー（`body` 以外は `history.yaml` に持つキー）
 RESERVED_KEYS = (
@@ -434,21 +422,9 @@ def stage_update(
     }
 
 
-def run_update_settings(
-    root: Path,
-    settings: dict[str, Any],
-    phase_map: dict[str, str] | None,
-    target_map: dict[str, str] | None,
-    category_map: dict[str, str] | None,
-) -> dict[str, Any]:
-    """設定のキーを置き換え、フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする。"""
-    return update_settings(
-        root,
-        settings,
-        phase_map,
-        target_map=target_map,
-        category_map=category_map,
-    )
+def run_update_settings(root: Path, settings: dict[str, Any]) -> dict[str, Any]:
+    """設定のキーを置き換えて書く。"""
+    return update_settings(root, settings)
 
 
 def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[str, Any]:
@@ -566,12 +542,12 @@ def run_next_id(root: Path, kind: str, *, count: int = 1) -> dict[str, list[str]
 
 
 def run_changes_since_read(root: Path) -> dict[str, Any]:
-    """読んだ時点からの変更を並べ、読んだ時点を進めて書き込む。"""
+    """読んだ時点からの変更を並べ、前回参照した時点を進めて書き込む。"""
     workspace = load_workspace(root)
     record = load_changes(root)
     result = changes_since(workspace, record)
-    # 読んだ時点を進めた記録だけを `changes.yaml` に書く（項目は書かず、今ある違反では止めない）
-    _write_changes(root, mark_read(record))
+    # 前回参照した時点だけを書く（項目の YAML と changes.yaml は書かず、今ある違反では止めない）
+    save_read_seq(root, record["last_seq"])
     return result
 
 
@@ -622,90 +598,19 @@ def run_pending(root: Path) -> dict[str, Any]:
 
 
 def run_check(root: Path) -> dict[str, Any]:
-    """点検して、問題の有無と問題の並びを返す。前の版の形式の問題には /mindstella:upgrade を案内する。"""
+    """点検して、問題の有無と問題の並びを返す。前の版の形式の問題には開き直しを案内する。"""
     workspace = load_workspace(root)
     problems = check_workspace(workspace)
     rows = []
     for problem in problems:
         row = asdict(problem)
-        # 前の版の形式から来た問題: 詳細に移し替えのスキルでの移し方を続ける
+        # 前の版の形式から来た問題: 詳細に開き直しでの移し方を続ける
         # （問題の file は `.mindstella/` から始まるので、記録のフォルダからのパスに戻して見分ける）
         relative = replace(problem, file=problem.file.removeprefix(f"{RECORD_DIR}/"))
         if is_legacy_problem(relative, workspace):
             row["detail"] += MIGRATE_HINT
         rows.append(row)
     return {"ok": not problems, "problems": rows}
-
-
-def run_next(root: Path, limit: int | None) -> dict[str, Any]:
-    """次の候補を出力の形にする。"""
-    # 件数の上限は 1 以上
-    if limit is not None and limit < 1:
-        raise ArgumentError("limit", "1 以上を渡してください")
-    candidates = list_next_candidates(load_workspace(root), limit=limit)
-    return {"candidates": [asdict(candidate) for candidate in candidates]}
-
-
-def run_status(root: Path) -> dict[str, Any]:
-    """再開時の状況を出力の形にする。"""
-    return asdict(summarize_status(load_workspace(root)))
-
-
-def run_goal(root: Path) -> dict[str, Any]:
-    """ゴールに届いたかの判定を出力の形にする（届いていなくてもツールのエラーにしない）。"""
-    return asdict(judge_goal(load_workspace(root)))
-
-
-def run_migrate(
-    root: Path,
-    *,
-    plan: bool,
-    record: bool,
-    values: list[dict[str, Any]] | None,
-    from_version: str | None,
-    to_version: str | None,
-) -> dict[str, Any]:
-    """`plan`・`values`・`record` で分けて移し替えの処理を呼び、結果を出力の形にする。"""
-    # 一緒に使わない引数は、先に見つけた方の名前を持って弾く
-    given = [
-        name
-        for name, passed in (("plan", plan), ("values", values is not None), ("record", record))
-        if passed
-    ]
-    if len(given) > 1:
-        raise ArgumentError(given[0], f"{'・'.join(given)} は一緒に使えません")
-    assignments = _parse_values(values) if values is not None else None
-    parsed_from = _parse_version("from_version", from_version)
-    parsed_to = _parse_version("to_version", to_version)
-    # 書く先の版が、当てる起点の版より前
-    if parsed_from is not None and parsed_to is not None and parsed_to < parsed_from:
-        raise ArgumentError("to_version", f"from_version より前の版は渡せません: {to_version}")
-
-    versions = {"from_version": parsed_from, "to_version": parsed_to}
-    if plan:
-        report = plan_migration(root, **versions)
-    elif assignments is not None:
-        # 値を入れてから並べ直す（手順は当てないので steps は空）
-        set_values(root, assignments)
-        report = replace(plan_migration(root, **versions), steps=[])
-    elif record:
-        # 版を書いてから並べ直す（手順は当てないので steps は空）
-        recorded = record_version(root, to_version=parsed_to)
-        report = replace(plan_migration(root, **versions), steps=[], recorded=recorded)
-    else:
-        report = apply_migration(root, **versions)
-    return _migration_payload(report)
-
-
-def run_clear_release(root: Path) -> dict[str, Any]:
-    """`release/` の中身を消し、消したものを返す。"""
-    return {"removed": clear_release(root)}
-
-
-def run_write_release(root: Path, path: str, content: str) -> dict[str, Any]:
-    """write-release の処理。`release/` の下に 1 ファイルを書き、書いたパスとバイト数を返す。"""
-    written, size = write_release(root, path, content)
-    return {"path": written, "bytes": size}
 
 
 def run_export(root: Path, out: Path, now: NowFn = now_utc) -> dict[str, Any]:
@@ -927,60 +832,3 @@ def _body_write(item_id: str, item: dict[str, Any]) -> BodyWrite | None:
     # 本文を渡していない
     return None
 
-
-def _parse_version(argument: str, text: str | None) -> Version | None:
-    """`from_version`・`to_version` を版にする（渡していなければ None）。"""
-    if text is None:
-        return None
-    try:
-        return parse_release_version(text)
-    except ValueError as error:
-        raise ArgumentError(argument, str(error)) from error
-
-
-def _parse_values(values: list[dict[str, Any]]) -> list[tuple[str, str, str]]:
-    """`values` の要素を、ファイル・キーのパス・値の組にする。"""
-    assignments: list[tuple[str, str, str]] = []
-    for entry in values:
-        # 要素が `file`・`key`・`value` を文字列で持たない
-        if not isinstance(entry, dict) or not all(
-            isinstance(entry.get(name), str) for name in VALUE_KEYS
-        ):
-            raise ArgumentError("values", "要素は file・key・value を文字列で持ってください")
-        assignments.append((entry["file"], entry["key"], entry["value"]))
-    return assignments
-
-
-def _migration_payload(report: MigrationReport) -> dict[str, Any]:
-    """移し替えの結果を、出力の辞書にする（版は文字列、手順は 1 行の説明つき）。"""
-    return {
-        "workspace_version": _version_text(report.workspace_version),
-        "plugin_version": str(report.plugin_version),
-        "relation": report.relation,
-        "steps": [
-            {
-                "version": str(step.version),
-                "index": step.index,
-                "op": step.op,
-                "destructive": step.op in DESTRUCTIVE_OPS or bool(step.args.get("destructive")),
-                "summary": describe_step(step),
-                **_step_report(report.reports, step),
-            }
-            for step in report.steps
-        ],
-        "needs_values": [asdict(value) for value in report.needs_values],
-        "backup": asdict(report.backup) if report.backup is not None else None,
-        "recorded": _version_text(report.recorded),
-    }
-
-
-def _step_report(reports: list[str], step: MigrationStep) -> dict[str, list[str]]:
-    """手順が報告の行を返していれば `{"report": 行の並び}`、無ければ空の辞書を返す。"""
-    prefix = f"{step.version} #{step.index}: "
-    lines = [line.removeprefix(prefix) for line in reports if line.startswith(prefix)]
-    return {"report": lines} if lines else {}
-
-
-def _version_text(version: Version | None) -> str | None:
-    """版を文字列にする。None（版を記録する前の形式・書いていない）はそのまま None。"""
-    return str(version) if version is not None else None

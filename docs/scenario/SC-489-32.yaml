@@ -13,7 +13,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant MS as MindStella の MCP
         participant WS as ワークスペース
@@ -47,7 +47,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
         participant CD as 変更の検知
@@ -75,7 +75,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
 
@@ -89,7 +89,7 @@ scenarios:
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_referenced
     notes:
-      指す側: ほかの項目の `related`（種類 `depends_on`・`parent`・`for`・`see_also`）が指しているとき。指している側の参照は、スキルが先に付け替えるか外す
+      指す側: ほかの項目の `related`（種類 `depends_on`・`parent`・`for`・`see_also`）が指しているとき。指している側の参照は、MindStella のセッションが先に付け替えるか外す
   - name: 異常シナリオ（存在しない ID を消す）
     setup:
       - name: Mock
@@ -99,7 +99,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: N-9 を削除する
@@ -146,7 +146,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant MS as MindStella の MCP
         participant WS as ワークスペース
@@ -164,9 +164,9 @@ scenarios:
       - 消した項目を指す通知が届かない
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_taken_thread_refers
-lead: スキルが、やめた項目を記録に残したまま取り下げ、誤って足した・重複した項目をワークスペースから消す単一ユースケース。
+lead: MindStella のセッションが、やめた項目を記録に残したまま取り下げ、誤って足した・重複した項目をワークスペースから消す単一ユースケース。
 issue: 96
-primary_actor: スキルの手順を実行する Claude Code
+primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
     interest: やめた検討の経緯は後から読み返せ、誤って足した記録は残らない。消した記録を指したままの項目が残らない

@@ -4,7 +4,7 @@
 
 ## 目次
 
-<!-- table: data -->
+<!-- table: {"kind": "data"} -->
 
 | ページ | 概要 |
 | --- | --- |
@@ -12,20 +12,17 @@
 | [プレビュー / query-client](./MOD-489-3.ts.yaml) | knowledge の規約『QueryClient』の defaultOptions |
 | [プレビュー / router](./MOD-489-4.tsx.yaml) | SPA を配るパスの頭（インターフェース定義『SPAの配信』） |
 | [プレビュー / preview-shell](./MOD-489-2.tsx.yaml) | `tab` の画面と、詳細・変更履歴・保存待ちのパネルを重ねて描く SPA の外枠 |
-| [プレビュー / goal-tile](./MOD-489-39.tsx.yaml) | `derived.goal` の数・棒・納品物。ゴールが無いときはフェーズ別の進捗 |
-| [プレビュー / list-tile](./MOD-489-40.tsx.yaml) | 要見直し・保留・進行中のタスクに共通の、件数と名前と「すべて表示」 |
-| [プレビュー / next-tile](./MOD-489-41.tsx.yaml) | `derived.next` を並べる |
-| [プレビュー / progress-table](./MOD-489-42.tsx.yaml) | `derived.progress` の表 |
+| [プレビュー / list-tile](./MOD-489-40.tsx.yaml) | 未読の AI の書き込み・未決定・要見直し・確認中の資料に共通の、件数と行と「すべて表示」 |
 | [プレビュー / overview-screen](./MOD-489-43.tsx.yaml) | 画面設計『概要.tsx』のトップバーとタイルを描く。記録が読めないときは detail の行を出す |
 | [プレビュー / decisions-screen](./MOD-489-18.tsx.yaml) | 画面設計『検討事項.tsx』の要素と操作を描く |
 | [プレビュー / map-layout](./MOD-489-19.ts.yaml) | マップの木を elkjs へ渡す形に組み、配置の結果を節と枝にする |
-| [プレビュー / decision-map](./MOD-489-16.tsx.yaml) | 対象 → カテゴリー → フェーズ → 検討事項の木を描き、節のロックと拡大・縮小を持つ |
+| [プレビュー / decision-map](./MOD-489-16.tsx.yaml) | 根の下に検討事項を平らに並べた木を描き、節のロックと拡大・縮小を持つ |
 | [プレビュー / decision-outline](./MOD-489-17.tsx.yaml) | 幅 900px 以下のマップ |
 | [プレビュー / decision-board](./MOD-489-15.tsx.yaml) | 状態ごとの列に検討事項のカードを並べる |
 | [プレビュー / tasks-screen](./MOD-489-53.tsx.yaml) | 画面設計『タスク.tsx』の要素と操作を描く |
 | [プレビュー / task-board](./MOD-489-52.tsx.yaml) | 状態ごとの列にタスクのカードを並べる |
 | [プレビュー / docs-screen](./MOD-489-36.tsx.yaml) | 画面設計『資料.tsx』の要素と操作を描く |
-| [プレビュー / doc-cards](./MOD-489-35.tsx.yaml) | 資料を納品物を先頭にカードで並べる |
+| [プレビュー / doc-cards](./MOD-489-35.tsx.yaml) | 資料を連番の順にカードで並べる |
 | [プレビュー / doc-board](./MOD-489-34.tsx.yaml) | 状態ごとの列に資料のカードを並べる |
 | [プレビュー / records-screen](./MOD-489-44.tsx.yaml) | 画面設計『記録の表.tsx』の要素と操作を描く |
 | [プレビュー / detail-panel](./MOD-489-32.tsx.yaml) | 画面設計『詳細パネル.tsx』の要素と操作を描く |
@@ -136,6 +133,7 @@
 | [プレビュー / connection-store](./MOD-489-136.ts.yaml) | 書き換えの知らせがつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」） |
 | [プレビュー / duplicate-ids-store](./MOD-540-9.ts.yaml) | 変更の検知が知らせた重なった ID と、利用者が閉じた集まり。 |
 | [プレビュー / voice-store](./MOD-489-254.ts.yaml) | 画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」） |
+| [プレビュー / refresh-hold-store](./MOD-557-1.ts.yaml) | 入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の読み直しの保留」） |
 | [プレビュー / theme-store](./MOD-489-141.ts.yaml) | 今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す |
 | [プレビュー / prefs-store](./MOD-489-140.ts.yaml) | 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」） |
 | [プレビュー / edit-session-store](./MOD-489-138.ts.yaml) | 開いている追加の入力と、直前の保存で書き込めなかった編集 |
@@ -156,7 +154,10 @@
 | [サーバー / 移行 / tags_to_vocabulary.py](./MOD-489-185.py.yaml) | サーバー / 移行 / tags_to_vocabulary.py |
 | [サーバー / 移行 / remove_tag_vocabulary.py](./MOD-489-186.py.yaml) | サーバー / 移行 / remove_tag_vocabulary.py |
 | [サーバー / 移行 / tags_to_objects.py](./MOD-489-187.py.yaml) | サーバー / 移行 / tags_to_objects.py |
+| [サーバー / 移行 / mdmark_documents.py](./MOD-550-1.py.yaml) | サーバー / 移行 / mdmark_documents.py |
+| [プレビュー / Storybook / main.js](./MOD-550-2.js.yaml) | プレビュー / Storybook / main.js |
 | [サーバー / 移行 / field_to_playbooks.py](./MOD-489-182.py.yaml) | サーバー / 移行 / field_to_playbooks.py |
+| [サーバー / 移行 / remove_discussion_keys.py](./MOD-565-3.py.yaml) | サーバー / 移行 / remove_discussion_keys.py |
 | [サーバー / 移行 / answer_to_adopted_option.py](./MOD-489-183.py.yaml) | サーバー / 移行 / answer_to_adopted_option.py |
 | [サーバー / 移行 / submissions_to_threads.py](./MOD-489-184.py.yaml) | サーバー / 移行 / submissions_to_threads.py |
 | [サーバー / 移行 / refs_to_related.py](./MOD-540-3.py.yaml) | サーバー / 移行 / v0.13.0 の参照のキーを種類つきの関連へ移す移し替え |
@@ -203,6 +204,7 @@
 | [プレビュー / 基盤 / records.ts](./MOD-489-194.ts.yaml) | プレビュー / 基盤 / records.ts |
 | [プレビュー / 基盤 / router.ts](./MOD-489-195.ts.yaml) | プレビュー / 基盤 / router.ts |
 | [プレビュー / 基盤 / voice.ts](./MOD-489-197.ts.yaml) | プレビュー / 基盤 / voice.ts |
+| [プレビュー / 基盤 / refresh-hold.ts](./MOD-557-2.ts.yaml) | プレビュー / 基盤 / refresh-hold.ts |
 | [プレビュー / 画面と部品 / graph.ts](./MOD-489-213.ts.yaml) | プレビュー / 画面と部品 / graph.ts |
 | [プレビュー / 画面と部品 / looks.ts](./MOD-489-216.ts.yaml) | プレビュー / 画面と部品 / looks.ts |
 | [プレビュー / 画面と部品 / comments.ts](./MOD-489-218.ts.yaml) | プレビュー / 画面と部品 / comments.ts |
@@ -219,11 +221,11 @@
 | [プレビュー / 画面と部品 / tasks.ts](./MOD-489-210.ts.yaml) | プレビュー / 画面と部品 / tasks.ts |
 | [プレビュー / 画面と部品 / workspace-settings.ts](./MOD-489-220.ts.yaml) | プレビュー / 画面と部品 / workspace-settings.ts |
 | [サーバー / 移行 / backup.py](./MOD-489-180.py.yaml) | サーバー / 移行 / backup.py |
-| [サーバー / ビルド / builder.py](./MOD-489-152.py.yaml) | ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に CSS と JavaScript を差し込む。配信はその雛形と記録をその場で返し、配る書き出しは同じ雛形に jsDelivr から取った描画のライブラリとライセンスの表示と記録を入れて書き出す。読み書きと検証と、依存と影響・ゴール判定（画面に出す値の計算）に依存する。 |
+| [サーバー / ビルド / builder.py](./MOD-489-152.py.yaml) | ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に CSS と JavaScript を差し込む。配信はその雛形と記録をその場で返し、配る書き出しは同じ雛形に jsDelivr から取った描画のライブラリとライセンスの表示と記録を入れて書き出す。読み書きと検証と、依存と影響（画面に出す値の計算）に依存する。 |
 | [サーバー / 起動 / check_env.py](./MOD-489-191.py.yaml) | サーバー / 起動 / check_env.py |
-| [サーバー / 点検 / checker.py](./MOD-489-162.py.yaml) | ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズを問題として洗い出す。読み書きと検証だけに依存し、ファイルを書かない。 |
+| [サーバー / 点検 / checker.py](./MOD-489-162.py.yaml) | ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれを問題として洗い出す。読み書きと検証だけに依存し、ファイルを書かない。 |
 | [サーバー / ClaudeCodeへの入力 / claude_input.py](./MOD-489-144.py.yaml) | ツールの呼び出しが運んだセッションの値を読み、ワークスペースごとに宛先を持つ。まとめて送った後に、そのワークスペースを指して最後にツールを呼んだセッションが生きているかを確かめてからペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。tmux と ps を子プロセスで呼び、会話の記録（jsonl）を読む。 |
-| [サーバー / ゴール判定 / commands.py](./MOD-489-176.py.yaml) | サーバー / ゴール判定 / commands.py |
+| [サーバー / 入口 / commands.py](./MOD-489-176.py.yaml) | サーバー / 入口 / commands.py |
 | [サーバー / コメント / comments.py](./MOD-489-147.py.yaml) | レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。文字起こしの結果の書き込み 1 件は、レビュー中に溜めずにすぐスレッドへ足す。箇所・スレッド・読み書きと検証に依存し、鍵は呼ぶ側（配信）が取る。 |
 | [サーバー / 保存待ちの編集 / edits.py](./MOD-489-155.py.yaml) | プレビューで利用者が溜めた保存待ちの編集（`edits.yaml`）を読み書きし、まとめて保存するときに項目と設定へ当てる。読み書きと検証・入口（項目の追加と更新）・設定の更新・変更履歴に依存し、鍵は呼ぶ側（配信）が取る。例外はモジュール構成『読み書きと検証』の `EditInvalidError`・`EditNotFoundError`・`EditConflictError`・`EditsBlockedError`。単体テストは `tests/unit/scripts/test_edits.py` に置く。 |
 | [サーバー / 起動 / ensure_server.py](./MOD-489-192.py.yaml) | サーバー / 起動 / ensure_server.py |
@@ -233,9 +235,11 @@
 | [サーバー / セッションの管理 / sessions.py](./MOD-531-4.py.yaml) | サーバー / セッションの管理 / sessions.py |
 | [サーバー / 入口 / api.py](./MOD-531-5.py.yaml) | サーバー / 入口 / api.py |
 | [サーバー / 起動 / session_hook.py](./MOD-531-6.py.yaml) | サーバー / 起動 / session_hook.py |
+| [サーバー / 前回参照した時点 / read_point.py](./MOD-565-1.py.yaml) | サーバー / 前回参照した時点 / read_point.py |
+| [サーバー / 再開の状況 / resume.py](./MOD-565-2.py.yaml) | サーバー / 再開の状況 / resume.py |
 | [サーバー / 読み書きと検証 / errors.py](./MOD-489-190.py.yaml) | サーバー / 読み書きと検証 / errors.py |
-| [サーバー / ゴール判定 / graph.py](./MOD-489-175.py.yaml) | サーバー / ゴール判定 / graph.py |
-| [サーバー / 変更履歴 / history.py](./MOD-489-157.py.yaml) | 項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』にだけ依存し、書き込みは `save_change`・`save_batch` に任せる。 |
+| [サーバー / 依存と影響 / graph.py](./MOD-489-175.py.yaml) | サーバー / 依存と影響 / graph.py |
+| [サーバー / 変更履歴 / history.py](./MOD-489-157.py.yaml) | 項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』と『前回参照した時点』に依存し、書き込みは `save_change`・`save_batch` に任せる。 |
 | [サーバー / HTMLの本文 / html_body.py](./MOD-489-145.py.yaml) | 資料の HTML の本文の開きタグに原文の行の印を足す処理と、原文の行の範囲の描いた文を取り出す処理。どちらも Python の標準ライブラリ `html.parser.HTMLParser` で原文を読む。 |
 | [サーバー / セッションの値の注入 / inject_session.py](./MOD-489-150.py.yaml) | Claude Code の `PreToolUse` のフックが呼ぶスクリプト。mindstella のツールを呼んだセッションの作業フォルダ・tmux のペイン・設定のフォルダ・Claude Code のプロセスを、ツールの入力の `session` に入れて返す。 |
 | [サーバー / 読み書きと検証 / kinds.py](./MOD-489-188.py.yaml) | サーバー / 読み書きと検証 / kinds.py |
@@ -247,7 +251,7 @@
 | [サーバー / 未読へ戻す / reset_unread.py](./MOD-489-160.py.yaml) | Claude Code の `SessionStart` のフックが呼ぶスクリプト。作業フォルダとその直下のワークスペースを探し、ロックを取ってスレッドの書き込みを未読に戻す。スレッドと読み書きと検証に依存する。単体テストは `tests/unit/scripts/test_reset_unread.py` に置く。 |
 | [サーバー / 配信 / serve.py](./MOD-489-169.py.yaml) | ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送るを受け付ける。まとめて送った後とすぐ送った後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。 |
 | [サーバー / 入口 / server.py](./MOD-489-177.py.yaml) | サーバー / 入口 / server.py |
-| [サーバー / 設定の更新 / settings_update.py](./MOD-489-166.py.yaml) | `update_settings` の引数を確かめ、設定のキーを置き換え、フェーズ・対象・カテゴリーの対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` を付け替えて、設定と種類ごとの YAML をまとめて書く。読み書きと検証だけに依存する。 |
+| [サーバー / 設定の更新 / settings_update.py](./MOD-489-166.py.yaml) | `update_settings` の引数を確かめ、設定のキーを置き換えて `config.yaml` を書く。削除したキー（ゴール・フェーズ・プレイブック・対象・カテゴリー）を渡すと、何も書かずに引数の誤りにする。読み書きと検証だけに依存する。 |
 | [サーバー / 読み書きと検証 / store.py](./MOD-489-189.py.yaml) | サーバー / 読み書きと検証 / store.py |
 | [サーバー / タグの表記 / tag_text.py](./MOD-489-151.py.yaml) | タグを NFKC と小文字にそろえた表記にし、使われているタグのうち字面の近いものを並べる。検索から使う。 |
 | [サーバー / スレッド / threads.py](./MOD-489-149.py.yaml) | スレッド（`threads.yaml`）を読み書きする。まとめて送られた利用者の書き込みを足し、AI の一覧・既読・返信・状態と要約の書き換え・取り込み済みを担い、画面へ返す形を作る。読み書きと検証だけに依存し、鍵は呼ぶ側（入口・コメント・配信・未読へ戻す）が取る。単体テストは `tests/unit/scripts/test_threads.py` に置く。 |
@@ -255,13 +259,13 @@
 | [サーバー / 文字起こしの引き当て / transcriber_registry.py](./MOD-489-159.py.yaml) | 環境変数で文字起こしの実装を選び、URL を確かめて作る。常駐サーバーの起動の入口だけが import し、文字起こし（抽象）と実装のモジュールに依存する。実装は抽象だけに依存するので、import は一方向になる（入口 → 引き当て → 実装 → 抽象）。 |
 | [サーバー / 移行 / versions.py](./MOD-489-178.py.yaml) | サーバー / 移行 / versions.py |
 | [サーバー / voice-pasteの文字起こし / voice_paste.py](./MOD-489-146.py.yaml) | 文字起こしのインターフェースの voice-paste の実装。プリセットの一覧を読み、音声を `multipart/form-data` で依頼し、ジョブの状態を取りに行って終わるまで待つ。HTTP は標準ライブラリの `urllib.request` で送り、文字起こしだけに依存する。 |
-| [サーバー / 登録 / register.py](./MOD-489-163.py.yaml) | セットアップのスキルが Bash で呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルの印の範囲へ書く・読み返す・外す。 |
-| [サーバー / ゴール判定](./MOD-489-148.yaml) | ゴールのフェーズまでの検討事項とゴールの納品物から、ゴールに届いたかを判定する `goal` の処理。判定は依存と影響（`graph.py`）、出力の形はツールの処理（`commands.py`）に置く。 |
-| [サーバー / 依存と影響](./MOD-489-154.yaml) | 検討事項とタスクの依存をたどり、影響・次の候補・再開時の状況を出す。読み書きと検証だけに依存し、ファイルを書かない。 |
+| [サーバー / 起動 / register.py](./MOD-489-163.py.yaml) | 起動のコマンドの `register` のサブコマンドが呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルの印の範囲へ書く・読み返す・外す。 |
+| [サーバー / 依存と影響](./MOD-489-154.yaml) | 検討事項とタスクの依存をたどり、影響と着手できる検討事項を出す。読み書きと検証だけに依存し、ファイルを書かない。 |
 | [サーバー / 入口](./MOD-489-156.yaml) | 常駐する MCP サーバー `mindstella` を `127.0.0.1` の HTTP で待ち受け、ツールを登録し、ツールの引数を各機能へ渡して、結果を構造化の結果・エラーをツールのエラーにする。プレビューの配信と、常駐サーバーの状態と停止も同じプロセスに持つ。 |
 | [サーバー / 移行](./MOD-489-164.yaml) | ワークスペースの版とプラグインの版を比べ、版ごとの移し替えの手順（`migrations/{版}/steps.yaml`）を並べる・写しを取って当てる・値を入れる・版を書き換える。読み書きと検証だけに依存する。 |
 | [サーバー / 読み書きと検証](./MOD-489-167.yaml) | ワークスペースの YAML と本文を読み書きし、JSON Schema と突き合わせる。ほかの全てのモジュールがここに依存し、ここはほかに依存しない。 |
 | [サーバー / 起動](./MOD-489-168.yaml) | 起動スクリプト（`bin/mindstella`）と SessionStart のフックが呼ぶ Python の部分。仮想環境の依存を確かめ、インストールしたプラグインのフォルダ・セッションの名前を作り、常駐サーバーが待ち受けているかを確かめて落ちていれば起動する。tmux と Claude Code の起動は起動スクリプト（bash）が持つ。 |
+| [プラグイン / エージェントフロー](./MOD-565-4.yaml) | プラグインに同梱する記録のエージェントフローと、SessionStart の注入文の雛形の置き場所。スキル（setup・session・upgrade）と `references/`・`playbooks/` は置かない。 |
 | [プレビュー / graph-screen](./MOD-489-244.tsx.yaml) | 画面設計『ネットワーク.tsx』の要素と操作を描く |
 | [プレビュー / graph-canvas](./MOD-489-245.tsx.yaml) | 3D のキャンバスと重ねる層を描き、毎コマの描画を GraphRenderer に任せる |
 | [プレビュー / graph-renderer](./MOD-489-246.ts.yaml) | 今の画面の graph.ts の視点・操作・毎コマの描画を、React に依存しない描画として移す |

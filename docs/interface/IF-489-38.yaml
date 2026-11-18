@@ -12,7 +12,7 @@ flows:
       - name: systemctl
         description: '`PATH` の先頭に置いた Mock の `systemctl`。受けた引数を記録し、`--user start mindstella.service` で常駐サーバーのプロセスを起動して終了コード 0 で終わる。`--user show-environment` は終了コード 0'
       - name: 仮想環境
-        description: PyYAML・jsonschema・mcp を見せた仮想環境を `MINDSTELLA_VENV` で渡す
+        description: PyYAML・jsonschema・mcp・Jinja2 を見せた仮想環境を `MINDSTELLA_VENV` で渡す
       - name: 待ち受けのポート
         description: テストごとに選んだ空きポートを `MINDSTELLA_PORT` で渡す（待ち受けているプロセスが無い）
     flow: |-
@@ -167,7 +167,7 @@ flows:
       - name: Mock
         description: 正常系と同じ
       - name: 仮想環境
-        description: PyYAML・jsonschema・mcp を入れていない仮想環境を `MINDSTELLA_VENV` で渡す
+        description: PyYAML・jsonschema・mcp・Jinja2 を入れていない仮想環境を `MINDSTELLA_VENV` で渡す
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -182,7 +182,7 @@ flows:
       ```
     expected:
       - 終了コードが 0
-      - 標準出力に `PyYAML`・`jsonschema`・`mcp` と、`-m pip install` を含むそろえるコマンドがある
+      - 標準出力に `PyYAML`・`jsonschema`・`mcp`・`Jinja2` と、`-m pip install` を含むそろえるコマンドがある
       - '`MINDSTELLA_PORT` のポートで待ち受けているプロセスが無い'
     test: test_error_when_dependency_missing
   - name: 異常系（systemd --user が使えない・SystemdUnavailableError）
@@ -282,6 +282,7 @@ refs:
   - IF-489-27#
   - LIB-489-4#
   - LIB-531-2#
+  - LIB-565-1#
 callers:
   - SC-489-20#
   - IF-489-56#

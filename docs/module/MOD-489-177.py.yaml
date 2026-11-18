@@ -37,7 +37,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）。`init` を外し、`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` を足す
-    value: ("next_id", "update_settings", "adopt", "edit_option", "changes_since_read", "commit", "pending", "status", "next", "check", "goal", "migrate", "clear_release", "write_release", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "server_status", "server_stop")
+    value: ("next_id", "update_settings", "adopt", "edit_option", "changes_since_read", "commit", "pending", "check", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "server_status", "server_stop")
   - name: DEFAULT_PORT
     title: 既定の待ち受けのポート
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -84,7 +84,7 @@ constants:
     title: MCP の案内
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
-    summary: MCP の初期化の応答の `instructions`。記録の検索・書き込み・削除・関連のたどりは project-index の `search_docs`・`write_docs`・`delete_docs`・`trace_related` で行い、項目を足す前に `next_id` で ID を取り、`commit` とスレッドの書き込みは MindStella のセッションだけが呼べることを書く
+    summary: MCP の初期化の応答の `instructions`。記録の検索・書き込み・削除・関連のたどりは project-index の `search_docs`・`write_docs`・`delete_docs`・`trace_related` で行い、項目を足す前に `next_id` で ID を取り、`commit` とスレッドの書き込みは MindStella のセッションだけが呼べること、記録の進め方は配信元 `mindstella-agent-flows` のエージェントフローに従うことを書く
     value: （インターフェース定義『MCP サーバーの起動』の制約「instructions」の文）
 functions:
   - name: main
@@ -384,7 +384,7 @@ functions:
          - `workspace` を受ける関数は、`session` を読み（`parse_session`）、`workspace` を絶対パスにし（`resolve_workspace`）、セッションがあればそのワークスペースの宛先を書き換えてから（`previews.remember_session`）、ツールの処理を呼ぶ。`resolve_workspace` が `ArgumentError` を送った場合、ツールの処理を呼ばずにエラーの結果を返す（`error_result`）。`out` も同じセッションで絶対パスにする（`argument="out"`）
          - `server_status` は `call_tool(status)`、`server_stop` は `call_tool(lambda: run_server_stop(previews, request_stop=request_stop))` にする（`session` は受けても使わない）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`clear_release`・`write_release`・`new_thread`・`reply`・`set_thread_status`・`update_thread` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
+         - ワークスペースを書き換えるツール（`init`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`new_thread`・`reply`・`set_thread_status`・`update_thread`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
          - `thread` は `lock_root` を渡さず、既読を書くときだけ鍵を取れるよう、`run_thread` に `lock=lambda: workspace_lock(root, write_lock)` を渡す（インターフェース定義『スレッドを読む』の同時の呼び出し）
       3. `@server.custom_route(STATUS_PATH, methods=["GET"])` で、`status()` を `JSONResponse` で返す入口を登録する
       4. サーバーを返す
@@ -481,7 +481,7 @@ functions:
         required: false
         default: require_workspace
         passing: keyword
-        description: 鍵を取る前にワークスペースを確かめる関数（`workspace_lock` の `require`。`plan` でない `migrate` だけ `require_migratable`）
+        description: 鍵を取る前にワークスペースを確かめる関数（`workspace_lock` の `require`）
       - name: render
         type: Callable[[dict[str, Any]], str] | None
         required: false
@@ -588,7 +588,7 @@ functions:
         expected: '`is_error` が真で、本文の 1 行目が `エラー: ` で始まり 2 行目がその行'
       - name: test_error_result_when_legacy_format
         case: 正常
-        summary: 前の版の形式には /mindstella:upgrade を案内する
+        summary: 前の版の形式には開き直しを案内する
         condition: '`legacy=True` の `SchemaMismatchError`'
         mock: なし
         expected: 本文の最後の行が `LEGACY_HINT`

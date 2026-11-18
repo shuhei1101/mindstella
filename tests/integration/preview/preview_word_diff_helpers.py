@@ -165,10 +165,6 @@ def build_word_diff_workspace(make_workspace: Any, call_tool: Any) -> Path:
     decision = {
         "status": "未決定",
         "options": [{"key": "A", "content": "案 A"}],
-        "weight": "大",
-        "category": "データ構造",
-        "phase": "要件",
-        "target": "mindmap",
     }
     bodies = [
         ("語を書き換える問い", BEFORE_PARAGRAPHS, AFTER_PARAGRAPHS),
@@ -199,7 +195,7 @@ def build_word_diff_workspace(make_workspace: Any, call_tool: Any) -> Path:
 def build_key_word_diff_workspace(
     make_workspace: Any, call_tool: Any, valid_settings: dict[str, Any]
 ) -> Path:
-    """実際のツールで、背景・案 A の内容の語と、状態・影響度・タグを書き換えたまとまり V-2 を持つ検討事項 D-1（本文は持たない）のワークスペースを作る。"""
+    """実際のツールで、背景・案 A の内容の語と、状態・タグを書き換えたまとまり V-2 を持つ検討事項 D-1（本文は持たない）のワークスペースを作る。"""
     root: Path = make_workspace(settings=valid_settings)
     workspace = str(root)
     decision = {
@@ -207,11 +203,7 @@ def build_key_word_diff_workspace(
         "status": "未決定",
         "lead": "要件は来週までに決める。",
         "options": [{"key": "A", "content": "毎週の会議で決める"}],
-        "weight": "大",
         "tags": [{"name": "要件"}, {"name": "会議"}],
-        "category": "データ構造",
-        "phase": "要件",
-        "target": "mindmap",
     }
     _call(call_tool, "add", workspace=workspace, kind="decision", item=decision)
     _call(call_tool, "commit", workspace=workspace, summary="最初の書き込み")
@@ -224,7 +216,6 @@ def build_key_word_diff_workspace(
             "status": "要見直し",
             "lead": "要件は今週までに決める。",
             "options": [{"key": "A", "content": "毎月の会議で決める"}],
-            "weight": "中",
             "tags": [{"name": "要件"}, {"name": "運用"}],
         },
     )
@@ -253,10 +244,6 @@ def build_key_newline_diff_workspace(make_workspace: Any, call_tool: Any) -> Pat
     decision = {
         "status": "未決定",
         "options": [{"key": "A", "content": "案 A"}],
-        "weight": "大",
-        "category": "データ構造",
-        "phase": "要件",
-        "target": "mindmap",
     }
     leads = [
         ("改行を持つ問い", NEWLINE_LEAD_BEFORE, NEWLINE_LEAD_AFTER),

@@ -9,9 +9,9 @@ const props = (patch: Partial<TableProps> = {}): TableProps => ({
   columns: [
     { key: "id", label: "ID", fixed: true },
     { key: "title", label: "タイトル", fixed: true },
-    { key: "phase", label: "フェーズ" },
+    { key: "status", label: "状態" },
   ],
-  rows: [{ id: "D-1", title: "題", phase: "目的" }],
+  rows: [{ id: "D-1", title: "題", status: "未決定" }],
   onSort: vi.fn(),
   onFilter: vi.fn(),
   onPin: vi.fn(),
@@ -28,17 +28,17 @@ describe("Table", () => {
     const onSort = vi.fn();
     render(<Table {...props({ onSort })} />);
     // 実行
-    await userEvent.click(screen.getByRole("button", { name: /フェーズ.*並べ替え/ }));
+    await userEvent.click(screen.getByRole("button", { name: /状態.*並べ替え/ }));
     // 検証
-    expect(onSort).toHaveBeenCalledWith("phase");
+    expect(onSort).toHaveBeenCalledWith("status");
   });
 
   // 列を隠す（正常系）
   test("table_when_hidden_column", () => {
     // 実行
-    render(<Table {...props({ hiddenColumns: ["phase"] })} />);
+    render(<Table {...props({ hiddenColumns: ["status"] })} />);
     // 検証
-    expect(screen.queryByRole("columnheader", { name: /フェーズ/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /状態/ })).not.toBeInTheDocument();
   });
 
   // 列をピン留めする（正常系）

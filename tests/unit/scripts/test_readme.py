@@ -65,26 +65,16 @@ def test_render_readme(tmp_path: Path) -> None:
     assert lines[0] == "<!-- mindstella:readme -->"
     assert "# 家計簿アプリ" in lines
     assert _headings(text) == ["## プレビュー", "## コマンド", "## ドキュメント"]
-    assert "`/mindstella:session` でプレビューを頼むと URL が表示されます。" in _section(
-        text, "## プレビュー"
-    )
+    assert readme.PREVIEW_HINT in _section(text, "## プレビュー")
     assert "http://127.0.0.1" not in text
     commands = COMMAND_PATTERN.findall(_section(text, "## コマンド"))
-    assert [label for label, _description, _command in commands] == [
-        "起動",
-        "接続",
-        "セッション",
-        "セットアップ",
-        "アップグレード",
-    ]
+    assert [label for label, _description, _command in commands] == ["起動", "接続"]
     absolute = str(root.resolve())
     assert [shlex.split(command) for _label, _description, command in commands] == [
         ["/p/mindstella/0.7.0/bin/mindstella", absolute],
         ["tmux", "attach-session", "-t", f"={workspaces.workspace_id_for(root)}"],
-        ["/mindstella:session", absolute],
-        ["/mindstella:setup", absolute],
-        ["/mindstella:upgrade", absolute],
     ]
+    assert "/mindstella:" not in text
     assert all(
         option in _section(text, "## コマンド")
         for option in ("--flow", "--mcp-config", "--plugin-dir")
@@ -94,6 +84,9 @@ def test_render_readme(tmp_path: Path) -> None:
         "(https://shuhei1101.github.io/mindstella/guide/セットアップ手順-起動スクリプトで立ち上げる.html)"
         in text
     )
+    assert readme.FLOW_NOTE not in _section(text, "## ドキュメント")
+    intro = "mindstella の話し合いのワークスペースです。記録は `.mindstella/` にあり、プレビューで読みます。"
+    assert f"{intro}\n{readme.FLOW_NOTE}\n" in text
 
 
 def test_render_readme_when_serving(tmp_path: Path) -> None:

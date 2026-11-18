@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 import history
+import read_point
 import store
 from errors import SchemaMismatchError
 from fixture_types import MakeItem, MakeWorkspace
@@ -57,6 +60,17 @@ def _removed(item_id: str, seq: int, added_seq: int, title: str = "重複した�
     }
 
 
+def _without_none(data: dict[str, Any]) -> dict[str, Any]:
+    """値が None のキーを除いた辞書を返す。"""
+    return {key: value for key, value in data.items() if value is not None}
+
+
+def _save_read_point(root: Path, read_seq: int | None) -> None:
+    """read_seq があれば、状態のフォルダの read_point.json に書く。"""
+    if read_seq is not None:
+        read_point.save_read_seq(root, read_seq)
+
+
 def _markdown_of(prefix: str) -> str:
     """3 行に 1 行が空行の 5000 行の Markdown を作る（空行でない行は prefix で始まる）。"""
     lines = [
@@ -85,6 +99,33 @@ def test_load_changes_when_schema_mismatch(make_workspace: MakeWorkspace) -> Non
     with pytest.raises(SchemaMismatchError) as exc_info:
         history.load_changes(root)
     assert exc_info.value.lines[0].startswith("changes.yaml: pending")
+
+
+@pytest.mark.parametrize(
+    ("read_point_seq", "changes_read_seq", "expected"),
+    [
+        pytest.param(4, 2, 4, id="read_point"),
+        pytest.param(None, 2, 2, id="previous_version"),
+        pytest.param(None, None, None, id="none"),
+    ],
+)
+def test_load_changes_reads_read_point(
+    make_workspace: MakeWorkspace,
+    read_point_seq: int | None,
+    changes_read_seq: int | None,
+    expected: int | None,
+) -> None:
+    """前回参照した時点を状態のフォルダから読む（正常系）。"""
+    # 準備
+    changes = {"last_seq": 5, "sets": [], "pending": {"added": [], "changed": []}, "read_seq": changes_read_seq}
+    root = make_workspace(
+        raw_files={"changes.yaml": yaml.safe_dump(_without_none(changes), allow_unicode=True)}
+    )
+    _save_read_point(root, read_point_seq)
+    # 実行
+    loaded = history.load_changes(root)
+    # 検証
+    assert loaded.get("read_seq") == expected
 
 
 @pytest.mark.parametrize(
@@ -147,7 +188,7 @@ def test_make_entry() -> None:
         "id": "D-1",
         "title": "問い",
         "status": "未決定",
-        "weight": "大",
+        "lead": "l",
         "updated": "2026-10-01T00:00:00+00:00",
     }
     after_item = {
@@ -165,7 +206,7 @@ def test_make_entry() -> None:
     assert entry is not None
     assert entry["seq"] == 1
     assert entry["at"] == NOW
-    assert entry["before"] == {"answer": None, "status": "未決定", "weight": "大"}
+    assert entry["before"] == {"answer": None, "status": "未決定", "lead": "l"}
     assert "body_diff" not in entry
 
 
@@ -729,17 +770,6 @@ def test_removed_items() -> None:
     items = history.removed_items(changes)
     # 検証
     assert items == [first, second]
-
-
-def test_mark_read() -> None:
-    """読んだ時点を最後の通し番号にする（正常系）。"""
-    # 準備
-    changes = {"last_seq": 7, "sets": [], "pending": {"added": [], "changed": []}}
-    # 実行
-    marked = history.mark_read(changes)
-    # 検証
-    assert marked["read_seq"] == 7
-    assert "read_seq" not in changes
 
 
 def test_load_item_history(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

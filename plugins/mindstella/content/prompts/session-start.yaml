@@ -1,0 +1,195 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/shuhei1101/knowledge/v0.4.0/schemas/prompt.schema.yaml
+id: session-start
+name: MindStella のセッションの起動と再開の注入文
+kind: hook
+lang: ja
+description: MindStella のセッションの SessionStart のフックが注入する、起動と再開の状況とエージェントフローの案内
+vars:
+  trigger:
+    type: string
+    required: true
+    description: 起動の契機
+    enum: [startup, resume]
+    example: resume
+  awaiting_threads:
+    type: integer
+    required: true
+    description: 取り込み待ちのスレッドの件数
+    example: 1
+  changed:
+    type: array
+    required: true
+    description: 前回参照した後に足した・変えた項目
+    example: [{id: D-1, kind: decisions, title: 保存の方式, updated_by: user}]
+    items:
+      type: object
+      description: 項目 1 件
+      properties:
+        id: {type: string, description: 項目の ID}
+        kind: {type: string, description: 種類}
+        title: {type: string, description: タイトル}
+        updated_by: {type: string, description: 書いた人}
+  changed_more:
+    type: integer
+    required: true
+    description: 件数の上限を超えた changed の件数
+    example: 0
+  removed:
+    type: array
+    required: true
+    description: 前回参照した後に消した項目
+    example: []
+    items:
+      type: object
+      description: 項目 1 件
+      properties:
+        id: {type: string, description: 項目の ID}
+        kind: {type: string, description: 種類}
+        title: {type: string, description: タイトル}
+  removed_more:
+    type: integer
+    required: true
+    description: 件数の上限を超えた removed の件数
+    example: 0
+  needs_review:
+    type: array
+    required: true
+    description: 状態が要見直しの検討事項
+    example: [{id: D-1, title: 保存の方式}]
+    items:
+      type: object
+      description: 検討事項 1 件
+      properties:
+        id: {type: string, description: 項目の ID}
+        title: {type: string, description: タイトル}
+  needs_review_more:
+    type: integer
+    required: true
+    description: 件数の上限を超えた needs_review の件数
+    example: 0
+  in_progress:
+    type: array
+    required: true
+    description: 状態が進行中のタスク
+    example: [{id: T-1, title: 画面を作る}]
+    items:
+      type: object
+      description: タスク 1 件
+      properties:
+        id: {type: string, description: 項目の ID}
+        title: {type: string, description: タイトル}
+  in_progress_more:
+    type: integer
+    required: true
+    description: 件数の上限を超えた in_progress の件数
+    example: 0
+  flow:
+    type: object
+    required: true
+    description: ワークスペースの設定の進め方の文書（無ければ None）
+    example: {source: aituber, doc: flow-script}
+    properties:
+      source: {type: string, description: project-index の配信元の ID}
+      doc: {type: string, description: 文書の ID}
+  migration:
+    type: object
+    required: true
+    description: まだ知らせていない移し替えの報告（無ければ None）
+    example: {not_carried: [{item: D-1, key: attrs, value: 社内}], provisional: []}
+    properties:
+      not_carried:
+        type: array
+        description: 移せなかった値
+        items:
+          type: object
+          description: 値 1 件
+          properties:
+            item: {type: string, description: 項目の ID}
+            key: {type: string, description: キー}
+            value: {type: string, description: 値}
+      provisional:
+        type: array
+        description: 仮の値を入れたキー
+        items:
+          type: object
+          description: キー 1 件
+          properties:
+            file: {type: string, description: ファイル}
+            key: {type: string, description: キー}
+            value: {type: string, description: 入れた値}
+  until_seq:
+    type: integer
+    required: true
+    description: 状況をまとめたときの changes.yaml の last_seq
+    example: 7
+parts:
+  - id: guide
+    texts:
+      - lang: ja
+        text: |-
+          これは MindStella のセッションです。利用者はこのセッションのターミナルを見ず、質問・確認・知らせは記録とプレビューのスレッドで受け取ります。
+          記録の進め方は、project-index の配信元 mindstella-agent-flows のエージェントフローにあります。次は mindstella/startup を参照して先に進めます。
+  - id: trigger
+    texts:
+      - lang: ja
+        text: |-
+          {% if trigger == "startup" %}起動しました。{% else %}再開しました。{% endif %}取り込み待ちのコメントのスレッドは {{ awaiting_threads }} 件です。
+  - id: changed
+    when: "{{ changed | length > 0 }}"
+    texts:
+      - lang: ja
+        text: |-
+          前回参照した後に足した・変えた項目:
+          {% for item in changed -%}
+          - {{ item.id }} {{ item.title }}（{{ item.updated_by }}）
+          {% endfor %}
+  - id: removed
+    when: "{{ removed | length > 0 }}"
+    texts:
+      - lang: ja
+        text: |-
+          前回参照した後に消した項目:
+          {% for item in removed -%}
+          - {{ item.id }} {{ item.title }}
+          {% endfor %}
+  - id: overflow
+    when: "{{ changed_more > 0 or removed_more > 0 }}"
+    texts:
+      - lang: ja
+        text: |-
+          ほかに、変えた項目が {{ changed_more }} 件、消した項目が {{ removed_more }} 件あります。残りと前の値は changes_since_read で取得できます。
+  - id: needs-review
+    when: "{{ needs_review | length > 0 }}"
+    texts:
+      - lang: ja
+        text: |-
+          要見直しの検討事項:
+          {% for item in needs_review -%}
+          - {{ item.id }} {{ item.title }}
+          {% endfor %}{% if needs_review_more > 0 %}ほかに {{ needs_review_more }} 件あります。{% endif %}
+  - id: in-progress
+    when: "{{ in_progress | length > 0 }}"
+    texts:
+      - lang: ja
+        text: |-
+          進行中のタスク:
+          {% for item in in_progress -%}
+          - {{ item.id }} {{ item.title }}
+          {% endfor %}{% if in_progress_more > 0 %}ほかに {{ in_progress_more }} 件あります。{% endif %}
+  - id: migration
+    when: "{{ migration is not none }}"
+    texts:
+      - lang: ja
+        text: |-
+          ワークスペースを今の版へ移し替えました。利用者にはまだ知らせていません。
+          {% for entry in migration.not_carried -%}
+          - 移せなかった値: {{ entry.item }} {{ entry.key }}: {{ entry.value }}
+          {% endfor %}{% for entry in migration.provisional -%}
+          - 仮の値を入れたキー: {{ entry.file }} {{ entry.key }}: {{ entry.value }}
+          {% endfor %}
+  - id: flow
+    when: "{{ flow is not none }}"
+    texts:
+      - lang: ja
+        text: |-
+          進め方の文書は、project-index の配信元 {{ flow.source }} の {{ flow.doc }} です。

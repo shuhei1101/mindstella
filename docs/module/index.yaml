@@ -8,14 +8,8 @@ items:
     summary: "SPA を配るパスの頭（インターフェース定義『SPAの配信』）"
   - page: MOD-489-2.tsx.yaml
     summary: "`tab` の画面と、詳細・変更履歴・保存待ちのパネルを重ねて描く SPA の外枠"
-  - page: MOD-489-39.tsx.yaml
-    summary: "`derived.goal` の数・棒・納品物。ゴールが無いときはフェーズ別の進捗"
   - page: MOD-489-40.tsx.yaml
-    summary: "要見直し・保留・進行中のタスクに共通の、件数と名前と「すべて表示」"
-  - page: MOD-489-41.tsx.yaml
-    summary: "`derived.next` を並べる"
-  - page: MOD-489-42.tsx.yaml
-    summary: "`derived.progress` の表"
+    summary: "未読の AI の書き込み・未決定・要見直し・確認中の資料に共通の、件数と行と「すべて表示」"
   - page: MOD-489-43.tsx.yaml
     summary: "画面設計『概要.tsx』のトップバーとタイルを描く。記録が読めないときは detail の行を出す"
   - page: MOD-489-18.tsx.yaml
@@ -23,7 +17,7 @@ items:
   - page: MOD-489-19.ts.yaml
     summary: "マップの木を elkjs へ渡す形に組み、配置の結果を節と枝にする"
   - page: MOD-489-16.tsx.yaml
-    summary: "対象 → カテゴリー → フェーズ → 検討事項の木を描き、節のロックと拡大・縮小を持つ"
+    summary: "根の下に検討事項を平らに並べた木を描き、節のロックと拡大・縮小を持つ"
   - page: MOD-489-17.tsx.yaml
     summary: "幅 900px 以下のマップ"
   - page: MOD-489-15.tsx.yaml
@@ -35,7 +29,7 @@ items:
   - page: MOD-489-36.tsx.yaml
     summary: "画面設計『資料.tsx』の要素と操作を描く"
   - page: MOD-489-35.tsx.yaml
-    summary: "資料を納品物を先頭にカードで並べる"
+    summary: "資料を連番の順にカードで並べる"
   - page: MOD-489-34.tsx.yaml
     summary: "状態ごとの列に資料のカードを並べる"
   - page: MOD-489-44.tsx.yaml
@@ -304,6 +298,8 @@ items:
     summary: "プレビュー / Storybook / main.js"
   - page: MOD-489-182.py.yaml
     summary: "サーバー / 移行 / field_to_playbooks.py"
+  - page: MOD-565-3.py.yaml
+    summary: "サーバー / 移行 / remove_discussion_keys.py"
   - page: MOD-489-183.py.yaml
     summary: "サーバー / 移行 / answer_to_adopted_option.py"
   - page: MOD-489-184.py.yaml
@@ -431,15 +427,15 @@ items:
   - page: MOD-489-180.py.yaml
     summary: "サーバー / 移行 / backup.py"
   - page: MOD-489-152.py.yaml
-    summary: "ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に CSS と JavaScript を差し込む。配信はその雛形と記録をその場で返し、配る書き出しは同じ雛形に jsDelivr から取った描画のライブラリとライセンスの表示と記録を入れて書き出す。読み書きと検証と、依存と影響・ゴール判定（画面に出す値の計算）に依存する。"
+    summary: "ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に CSS と JavaScript を差し込む。配信はその雛形と記録をその場で返し、配る書き出しは同じ雛形に jsDelivr から取った描画のライブラリとライセンスの表示と記録を入れて書き出す。読み書きと検証と、依存と影響（画面に出す値の計算）に依存する。"
   - page: MOD-489-191.py.yaml
     summary: "サーバー / 起動 / check_env.py"
   - page: MOD-489-162.py.yaml
-    summary: "ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズを問題として洗い出す。読み書きと検証だけに依存し、ファイルを書かない。"
+    summary: "ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれを問題として洗い出す。読み書きと検証だけに依存し、ファイルを書かない。"
   - page: MOD-489-144.py.yaml
     summary: "ツールの呼び出しが運んだセッションの値を読み、ワークスペースごとに宛先を持つ。まとめて送った後に、そのワークスペースを指して最後にツールを呼んだセッションが生きているかを確かめてからペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。tmux と ps を子プロセスで呼び、会話の記録（jsonl）を読む。"
   - page: MOD-489-176.py.yaml
-    summary: "サーバー / ゴール判定 / commands.py"
+    summary: "サーバー / 入口 / commands.py"
   - page: MOD-489-147.py.yaml
     summary: "レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。文字起こしの結果の書き込み 1 件は、レビュー中に溜めずにすぐスレッドへ足す。箇所・スレッド・読み書きと検証に依存し、鍵は呼ぶ側（配信）が取る。"
   - page: MOD-489-155.py.yaml
@@ -458,12 +454,16 @@ items:
     summary: "サーバー / 入口 / api.py"
   - page: MOD-531-6.py.yaml
     summary: "サーバー / 起動 / session_hook.py"
+  - page: MOD-565-1.py.yaml
+    summary: "サーバー / 前回参照した時点 / read_point.py"
+  - page: MOD-565-2.py.yaml
+    summary: "サーバー / 再開の状況 / resume.py"
   - page: MOD-489-190.py.yaml
     summary: "サーバー / 読み書きと検証 / errors.py"
   - page: MOD-489-175.py.yaml
-    summary: "サーバー / ゴール判定 / graph.py"
+    summary: "サーバー / 依存と影響 / graph.py"
   - page: MOD-489-157.py.yaml
-    summary: "項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』にだけ依存し、書き込みは `save_change`・`save_batch` に任せる。"
+    summary: "項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』と『前回参照した時点』に依存し、書き込みは `save_change`・`save_batch` に任せる。"
   - page: MOD-489-145.py.yaml
     summary: "資料の HTML の本文の開きタグに原文の行の印を足す処理と、原文の行の範囲の描いた文を取り出す処理。どちらも Python の標準ライブラリ `html.parser.HTMLParser` で原文を読む。"
   - page: MOD-489-150.py.yaml
@@ -487,7 +487,7 @@ items:
   - page: MOD-489-177.py.yaml
     summary: "サーバー / 入口 / server.py"
   - page: MOD-489-166.py.yaml
-    summary: "`update_settings` の引数を確かめ、設定のキーを置き換え、フェーズ・対象・カテゴリーの対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` を付け替えて、設定と種類ごとの YAML をまとめて書く。読み書きと検証だけに依存する。"
+    summary: "`update_settings` の引数を確かめ、設定のキーを置き換えて `config.yaml` を書く。削除したキー（ゴール・フェーズ・プレイブック・対象・カテゴリー）を渡すと、何も書かずに引数の誤りにする。読み書きと検証だけに依存する。"
   - page: MOD-489-189.py.yaml
     summary: "サーバー / 読み書きと検証 / store.py"
   - page: MOD-489-151.py.yaml
@@ -503,11 +503,9 @@ items:
   - page: MOD-489-146.py.yaml
     summary: "文字起こしのインターフェースの voice-paste の実装。プリセットの一覧を読み、音声を `multipart/form-data` で依頼し、ジョブの状態を取りに行って終わるまで待つ。HTTP は標準ライブラリの `urllib.request` で送り、文字起こしだけに依存する。"
   - page: MOD-489-163.py.yaml
-    summary: "セットアップのスキルが Bash で呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルの印の範囲へ書く・読み返す・外す。"
-  - page: MOD-489-148.yaml
-    summary: "ゴールのフェーズまでの検討事項とゴールの納品物から、ゴールに届いたかを判定する `goal` の処理。判定は依存と影響（`graph.py`）、出力の形はツールの処理（`commands.py`）に置く。"
+    summary: "起動のコマンドの `register` のサブコマンドが呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルの印の範囲へ書く・読み返す・外す。"
   - page: MOD-489-154.yaml
-    summary: "検討事項とタスクの依存をたどり、影響・次の候補・再開時の状況を出す。読み書きと検証だけに依存し、ファイルを書かない。"
+    summary: "検討事項とタスクの依存をたどり、影響と着手できる検討事項を出す。読み書きと検証だけに依存し、ファイルを書かない。"
   - page: MOD-489-156.yaml
     summary: "常駐する MCP サーバー `mindstella` を `127.0.0.1` の HTTP で待ち受け、ツールを登録し、ツールの引数を各機能へ渡して、結果を構造化の結果・エラーをツールのエラーにする。プレビューの配信と、常駐サーバーの状態と停止も同じプロセスに持つ。"
   - page: MOD-489-164.yaml
@@ -516,6 +514,8 @@ items:
     summary: "ワークスペースの YAML と本文を読み書きし、JSON Schema と突き合わせる。ほかの全てのモジュールがここに依存し、ここはほかに依存しない。"
   - page: MOD-489-168.yaml
     summary: "起動スクリプト（`bin/mindstella`）と SessionStart のフックが呼ぶ Python の部分。仮想環境の依存を確かめ、インストールしたプラグインのフォルダ・セッションの名前を作り、常駐サーバーが待ち受けているかを確かめて落ちていれば起動する。tmux と Claude Code の起動は起動スクリプト（bash）が持つ。"
+  - page: MOD-565-4.yaml
+    summary: "プラグインに同梱する記録のエージェントフローと、SessionStart の注入文の雛形の置き場所。スキル（setup・session・upgrade）と `references/`・`playbooks/` は置かない。"
   - page: MOD-489-244.tsx.yaml
     summary: "画面設計『ネットワーク.tsx』の要素と操作を描く"
   - page: MOD-489-245.tsx.yaml

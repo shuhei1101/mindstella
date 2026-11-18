@@ -1,6 +1,6 @@
 id: MOD-489-157
 title: サーバー / 変更履歴 / history.py
-lead: 項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』にだけ依存し、書き込みは `save_change`・`save_batch` に任せる。
+lead: 項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』と『前回参照した時点』に依存し、書き込みは `save_change`・`save_batch` に任せる。
 test_files:
   - tests/unit/scripts/test_history.py
 directory: |-
@@ -103,7 +103,7 @@ data_models:
         description: まだまとめていない変更。`added`・`changed`（項目の ID）と、任意の `removed`（`list[RemovedItem]`。無ければ消した項目なし）を持つ `TypedDict`
       - name: read_seq
         type: NotRequired[int]
-        description: AI が最後に読んだ時点。`changes_since_read` を一度も呼んでいなければキーが無い
+        description: AI が最後に読んだ時点。`load_changes` が『前回参照した時点』の `read_point.json` の値で入れる（`changes.yaml` の値は `read_point.json` が無いときだけ使う）。無ければキーが無い
   - name: RemovedItem
     title: 消した項目の記録
     container: plugins/mindstella/skills/mindmap/scripts/history.py
@@ -263,9 +263,13 @@ functions:
       type: Changes
       description: '無ければ `{last_seq: 0, sets: [], pending: {added: [], changed: []}}`'
     process: |-
-      1. `records_root(root) / CHANGES_FILE` が無ければ空の記録を返す
-      2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`CHANGES_SCHEMA` と突き合わせる
+      1. `records_root(root) / CHANGES_FILE` が無ければ空の記録にする
+      2. あれば読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`CHANGES_SCHEMA` と突き合わせる
          - YAML として読めないか合わない場合、`changes.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送る
+      3. `read_seq` を『前回参照した時点』の値にする（`load_read_seq`）
+         - `read_point.json` が無く、`changes.yaml` が前のバージョンの `read_seq` を持つ場合、その値を使う
+         - どちらも無ければ `read_seq` を持たない
+      4. 記録を返す
     exceptions:
       - name: SchemaMismatchError
         condition: '`changes.yaml` が YAML として読めないかスキーマに合わない'
@@ -284,6 +288,12 @@ functions:
         mock: なし
         expected: '`SchemaMismatchError`（`lines` に `changes.yaml: pending` で始まる行）'
         exception: スキーマに合わない
+      - name: test_load_changes_reads_read_point
+        case: 正常
+        summary: 前回参照した時点を状態のフォルダから読む
+        condition: '`parametrize`: `read_point.json` が 4・`changes.yaml` の `read_seq` が 2 / `read_point.json` が無く `changes.yaml` の `read_seq` が 2 / どちらも無い'
+        mock: なし（状態のフォルダは `tmp_path`）
+        expected: '`read_seq` が順に 4 / 2 / キーが無い'
   - name: history_limit
     title: 保持する回数
     kind: 関数
@@ -427,9 +437,9 @@ functions:
       - name: test_make_entry
         case: 正常
         summary: 変わった・消えた・足したキーを前の値で持つ
-        condition: '`answer` を足し、`status` を変え、`weight` を消し、`updated` を変えた項目。本文は同じ'
+        condition: '`answer` を足し、`status` を変え、`lead` を消し、`updated` を変えた項目。本文は同じ'
         mock: なし
-        expected: '`before` が `{answer: None, status: 未決定, weight: 大}` で `updated` を含まず、`body_diff` が無い'
+        expected: '`before` が `{answer: None, status: 未決定, lead: l}` で `updated` を含まず、`body_diff` が無い'
       - name: test_make_entry_when_nothing_changed
         case: 正常
         summary: 変わったものが無ければ作らない
@@ -475,7 +485,7 @@ functions:
         type: int | None
         required: true
         passing: keyword
-        description: '`changes.yaml` の `read_seq`（無ければ `None`）'
+        description: '前回参照した時点（`load_changes` が入れた `read_seq`。『前回参照した時点』の値で、無ければ `changes.yaml` の前のバージョンの値。どちらも無ければ `None`）'
     returns:
       type: dict[str, Any]
       description: 新しい履歴の行。`limit` が 0 なら `history` のキーを持たない
@@ -814,30 +824,6 @@ functions:
         condition: '`read_seq` 3。`pending.removed` に N-2（`added_seq` 2・`seq` 4）・N-3（`added_seq` 5・`seq` 6）、`sets[0].removed` に N-1（`added_seq` 1・`seq` 2）'
         mock: なし
         expected: '`removed` が N-2 の 1 件（N-1 は読む前に消した、N-3 は読んだ後に足して消した）'
-  - name: mark_read
-    title: 読んだ時点を進める
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/history.py
-    usecase: 前回読んだ時点からの変更を読む
-    scope: public
-    summary: '`read_seq` を `last_seq` にした新しい記録を返す'
-    args:
-      - name: changes
-        type: Changes
-        required: true
-        passing: positional
-        description: 今の記録
-    returns:
-      type: Changes
-      description: 新しい記録
-    process: 1. 写しの `read_seq` を `last_seq` にして返す
-    unit_tests:
-      - name: test_mark_read
-        case: 正常
-        summary: 読んだ時点を最後の通し番号にする
-        condition: '`last_seq` 7 で `read_seq` を持たない記録'
-        mock: なし
-        expected: 新しい記録の `read_seq` が 7。渡した記録は `read_seq` を持たないまま
   - name: note_removed
     title: 消した項目を記録する
     kind: 関数

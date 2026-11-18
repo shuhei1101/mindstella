@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 
 import pytest
 import yaml
@@ -100,87 +99,23 @@ def test_check_duplicate_ids(make_workspace: MakeWorkspace, make_item: MakeItem)
     assert _keys(problems) == {("duplicate_id", "decisions.yaml", "D-1", "items[1].id")}
 
 
-def test_check_refs_when_missing(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
+def test_check_refs_when_missing(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """存在しない ID を指す参照を拾う（正常系）。"""
     # 準備
-    valid_settings["goal"]["deliverables"] = [{"title": "納品物", "doc": "A-9"}]
     root = make_workspace(
         make_item("D-1", related=[{"to": "D-9", "type": "depends_on"}]),
         make_item("T-1", related=[{"to": "D-8", "type": "for"}]),
-        settings=valid_settings,
     )
     workspace = store.load_workspace(root)
     # 実行
     problems = checker._check_refs(workspace)
     # 検証
-    assert len(problems) == 3
+    assert len(problems) == 2
     assert {problem.kind for problem in problems} == {"broken_ref"}
     assert {problem.detail for problem in problems} == {
         "存在しない ID: D-9",
         "存在しない ID: D-8",
-        "存在しない ID: A-9",
     }
-
-
-def test_check_refs_when_no_goal(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """ゴールを持たない設定は納品物の参照を見ない（正常系）。"""
-    # 準備
-    settings = {key: value for key, value in valid_settings.items() if key != "goal"}
-    root = make_workspace(make_item("D-1", related=[{"to": "D-9", "type": "depends_on"}]), settings=settings)
-    workspace = store.load_workspace(root)
-    # 実行
-    problems = checker._check_refs(workspace)
-    # 検証
-    assert _keys(problems) == {("broken_ref", "decisions.yaml", "D-1", "related[0].to")}
-    assert "D-9" in problems[0].detail
-
-
-def test_check_phases(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """設定の phases に無い項目の phase と goal.phase を拾う（正常系）。"""
-    # 準備
-    settings = {
-        **valid_settings,
-        "phases": ["目的", "要件"],
-        "goal": {"phase": "結論", "summary": "まとめる", "deliverables": []},
-    }
-    root = make_workspace(
-        make_item("D-1", phase="発散"),
-        make_item("D-2", phase="要件"),
-        make_item("T-1"),
-        settings=settings,
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    problems = checker._check_phases(workspace)
-    # 検証
-    assert _keys(problems) == {
-        ("unknown_phase", "config.yaml", None, "goal.phase"),
-        ("unknown_phase", "decisions.yaml", "D-1", "items[0].phase"),
-    }
-    assert {problem.detail for problem in problems} == {"結論", "発散"}
-
-
-def test_check_phases_when_no_goal(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """ゴールを持たない設定は goal.phase を見ない（正常系）。"""
-    # 準備
-    settings = {
-        **{key: value for key, value in valid_settings.items() if key != "goal"},
-        "phases": ["目的", "要件"],
-    }
-    root = make_workspace(make_item("D-1", phase="目的"), settings=settings)
-    workspace = store.load_workspace(root)
-    # 実行
-    problems = checker._check_phases(workspace)
-    # 検証
-    assert problems == []
 
 
 def test_check_refs_when_wrong_kind(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -466,20 +401,14 @@ def test_find_referrers(
     make_item: MakeItem,
     make_comment: MakeComment,
     write_comments: WriteComments,
-    valid_settings: dict[str, Any],
 ) -> None:
-    """項目・納品物・コメントが指すのを拾う（正常系）。"""
+    """項目・コメントが指すのを拾う（正常系）。"""
     # 準備
-    settings = {
-        **valid_settings,
-        "goal": {**valid_settings["goal"], "deliverables": [{"title": "仕様", "doc": "A-1"}]},
-    }
     root = make_workspace(
         make_item("D-1"),
         make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]),
         make_item("T-1", related=[{"to": "D-1", "type": "for"}]),
         make_item("A-1"),
-        settings=settings,
     )
     write_comments(root, make_comment("C-1", target="A-1"))
     workspace = store.load_workspace(root)
@@ -488,7 +417,7 @@ def test_find_referrers(
     doc_lines = checker.find_referrers(workspace, "A-1")
     # 検証
     assert decision_lines == ["decisions.yaml: D-2: related.depends_on", "tasks.yaml: T-1: related.for"]
-    assert doc_lines == ["config.yaml: goal.deliverables[0].doc: doc", "comments.yaml: C-1: target"]
+    assert doc_lines == ["comments.yaml: C-1: target"]
 
 
 def test_find_referrers_with_threads(

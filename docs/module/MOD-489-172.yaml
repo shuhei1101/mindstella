@@ -8,7 +8,7 @@ directory: |-
     core/
       globals.d.ts   描画のライブラリ（marked・ELK・mermaid）のグローバルに npm の型を、mdmark のグローバルに `mount`・`version`・`collectMatches` の型を割り当てる（出力しない）
       dom.ts         要素の組み立て（`h`）・アイコン・状態の印など、画面が共通で使う DOM の部品
-      records.ts     記録の索引・関係する項目・検索・箇所の名前（次の候補・ゴールまでの進捗・カテゴリー別の進捗はサーバーが計算した `derived` を使う）
+      records.ts     記録の索引・関係する項目・検索・箇所の名前（着手可能な検討事項はサーバーが計算した `derived` を使う）
       libs.ts        描画のライブラリの読み込み（mdmark）・有無と呼び出し（Markdown・図・配置）と、選んだ範囲から箇所を求める処理
       doc-export.ts  資料のエクスポート（1 枚の HTML と、埋め込んだ HTML を除いた Markdown）の組み立てとダウンロード
       router.ts      URL のハッシュの読み書きと履歴

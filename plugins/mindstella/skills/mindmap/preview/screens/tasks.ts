@@ -198,7 +198,7 @@ namespace MindmapPreview {
 
   /** タスクの表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
   export function taskColumns({ index, open }: { index: RecordIndex; open: (id: string) => void }): Column[] {
-    const common = commonColumns(index.data.settings);
+    const common = commonColumns();
     return [
       common.id,
       common.title(),
@@ -211,9 +211,6 @@ namespace MindmapPreview {
         get: (row) => refsOf(row as unknown as Item, "for"),
         cell: (row) => idLinksCell(refsOf(row as unknown as Item, "for"), open),
       },
-      common.target,
-      common.category,
-      common.phase,
       common.tags,
     ];
   }
@@ -244,7 +241,7 @@ namespace MindmapPreview {
               boardCard({
                 index,
                 item,
-                meta: [item.kind, item.category],
+                meta: [item.kind],
                 links: refsOf(item, "for"),
                 open: on.open,
                 mark: marks?.[item.id],

@@ -1,16 +1,14 @@
 "use strict";
-// 検討事項。マップ（既定）・ボード・表で見る。マップは対象 → カテゴリー → フェーズ → 検討事項の木を ELK で配置して描く。
+// 検討事項。マップ（既定）・ボード・表で見る。マップは根の下に検討事項を平らに並べた木を ELK で配置して描く。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 節の種類ごとの大きさ（幅・高さ） */
     const NODE_SIZE = {
-        target: [130, 40],
-        category: [150, 34],
-        phase: [118, 26],
+        root: [160, 40],
         item: [268, 48],
     };
-    /** 設定に無い対象・カテゴリー・フェーズに付ける名前 */
-    const UNSET = "（未設定）";
+    /** 根の節の ID（項目の ID と重ならない） */
+    const ROOT_ID = "root";
     /** 木を左から右へ、直角の枝で並べる ELK の設定 */
     const ELK_OPTIONS = {
         "elk.algorithm": "layered",
@@ -33,50 +31,17 @@ var MindmapPreview;
     const NARROW_QUERY = "(max-width: 900px)";
     /** 絞り込みの条件に合う検討事項が 1 件も無いときに、マップの枠と字下げの一覧に出す文 */
     const NO_SHOWN_DECISIONS_TEXT = "表示する検討事項はありません。";
-    /** 対象 → カテゴリー → フェーズ → 検討事項の木を、渡した検討事項だけで組んで返す（ELK に渡す節と枝の形） */
+    /** 根の下に渡した検討事項だけを平らに並べた木を返す（ELK に渡す節と枝の形） */
     function buildDecisionTree({ index, decisions, }) {
-        const { settings } = index.data;
         const shown = [...decisions].sort((a, b) => MindmapPreview.compareIds(a.id, b.id));
-        /** 設定の並びの順（設定に無いものは最後） */
-        const rankIn = (list, name) => {
-            const position = list.indexOf(name);
-            return position < 0 ? list.length : position;
-        };
-        const targetOf = (item) => settings.categories.find((category) => category.name === item.category)?.target ??
-            item.target ??
-            UNSET;
-        const categoryOf = (item) => item.category ?? UNSET;
-        const phaseOf = (item) => item.phase ?? UNSET;
-        const unique = (values) => [...new Set(values)];
-        const children = [];
+        const children = [
+            { id: ROOT_ID, width: NODE_SIZE.root[0], height: NODE_SIZE.root[1], kind: "root", label: index.data.settings.summary },
+        ];
         const edges = [];
-        const add = (id, kind, label, parent, item) => {
-            const [width, height] = NODE_SIZE[kind];
-            children.push({ id, width, height, kind, label, item });
-            if (parent !== null)
-                edges.push({ id: `${parent}>${id}`, sources: [parent], targets: [id] });
-        };
-        const targets = unique(shown.map(targetOf)).sort((a, b) => rankIn(settings.targets.map((target) => target.name), a) -
-            rankIn(settings.targets.map((target) => target.name), b));
-        for (const target of targets) {
-            const targetId = `target:${target}`;
-            add(targetId, "target", target, null);
-            const ofTarget = shown.filter((item) => targetOf(item) === target);
-            const categories = unique(ofTarget.map(categoryOf)).sort((a, b) => rankIn(settings.categories.map((category) => category.name), a) -
-                rankIn(settings.categories.map((category) => category.name), b));
-            for (const category of categories) {
-                const categoryId = `category:${target}/${category}`;
-                add(categoryId, "category", category, targetId);
-                const ofCategory = ofTarget.filter((item) => categoryOf(item) === category);
-                const phases = unique(ofCategory.map(phaseOf)).sort((a, b) => rankIn(settings.phases, a) - rankIn(settings.phases, b));
-                for (const phase of phases) {
-                    const phaseId = `phase:${target}/${category}/${phase}`;
-                    add(phaseId, "phase", phase, categoryId);
-                    for (const item of ofCategory.filter((candidate) => phaseOf(candidate) === phase)) {
-                        add(item.id, "item", item.title, phaseId, item);
-                    }
-                }
-            }
+        for (const item of shown) {
+            const [width, height] = NODE_SIZE.item;
+            children.push({ id: item.id, width, height, kind: "item", label: item.title, item });
+            edges.push({ id: `${ROOT_ID}>${item.id}`, sources: [ROOT_ID], targets: [item.id] });
         }
         return { id: "graph", layoutOptions: ELK_OPTIONS, children, edges };
     }
@@ -231,7 +196,6 @@ var MindmapPreview;
                             MindmapPreview.markFor({ marks, id: item.id }),
                             MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [item.id] }),
                             MindmapPreview.h({ tag: "span", children: [item.status ?? ""] }),
-                            item.weight === undefined ? null : MindmapPreview.h({ tag: "span", children: [`影響度 ${item.weight}`] }),
                             MindmapPreview.editMarkOf({ edit, id: item.id, compact: true }),
                             comments === undefined ? null : MindmapPreview.commentPlace({ id: item.id, count: comments[item.id] }),
                         ],
@@ -282,12 +246,12 @@ var MindmapPreview;
                 ],
             });
         };
-        const roots = tree.children.filter((node) => node.kind === "target");
+        const roots = tree.children.filter((node) => node.kind === "root");
         return MindmapPreview.h({
             tag: "nav",
             attrs: { class: "map-outline", "aria-label": "検討事項の一覧" },
-            // 絞り込みの条件に合う検討事項が無いときは、対象の見出しを並べず空の旨を出す
-            children: [roots.length > 0 ? MindmapPreview.h({ tag: "ul", children: [...roots.map(entry)] }) : MindmapPreview.emptyNote(NO_SHOWN_DECISIONS_TEXT)],
+            // 絞り込みの条件に合う検討事項が無いときは、根を並べず空の旨を出す
+            children: [roots.length > 0 && tree.children.length > 1 ? MindmapPreview.h({ tag: "ul", children: [...roots.map(entry)] }) : MindmapPreview.emptyNote(NO_SHOWN_DECISIONS_TEXT)],
         });
     }
     /** ホイール 1 回で変えた後のマップの倍率と、マウスの下の点を残す枠のスクロールの位置を返す */
@@ -390,7 +354,7 @@ var MindmapPreview;
                 return;
             const key = shown.map((item) => item.id).join(",");
             const graph = buildDecisionTree({ index, decisions: shown });
-            emptyNotice.hidden = graph.children.length > 0;
+            emptyNotice.hidden = shown.length > 0;
             current = await layoutOf(graph, key);
             drawMap({ laid: current, canvas, selected: route.id, lockedId: lockedNow(), press, marks, comments, edit });
             applyZoom();
@@ -538,24 +502,11 @@ var MindmapPreview;
     }
     /** 検討事項の表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
     function decisionColumns({ index, open }) {
-        const common = MindmapPreview.commonColumns(index.data.settings);
+        const common = MindmapPreview.commonColumns();
         return [
             common.id,
             common.title(),
             common.status(MindmapPreview.DECISION_STATUSES),
-            common.target,
-            common.category,
-            common.phase,
-            {
-                key: "weight",
-                label: "影響度",
-                nowrap: true,
-                filterable: true,
-                order: ["大", "中", "小"],
-                priority: 3,
-                get: (row) => (typeof row["weight"] === "string" ? row["weight"] : undefined),
-                cell: (row) => MindmapPreview.impactBadge(typeof row["weight"] === "string" ? row["weight"] : undefined),
-            },
             {
                 key: "ready",
                 label: "着手可否",
@@ -637,7 +588,7 @@ var MindmapPreview;
                         card: (item) => MindmapPreview.boardCard({
                             index,
                             item,
-                            meta: [item.category, item.phase],
+                            meta: [],
                             links: MindmapPreview.refsOf(item, "depends_on"),
                             open: on.open,
                             mark: marks?.[item.id],

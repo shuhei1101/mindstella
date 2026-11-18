@@ -12,7 +12,7 @@ from workspace_fixtures import REPO_ROOT
 README_MARK = "<!-- mindstella:readme -->"
 
 # 配信していないときにプレビューの節へ書く行
-PREVIEW_HINT = "`/mindstella:session` でプレビューを頼むと URL が表示されます。"
+PREVIEW_HINT = "MindStella のセッションにプレビューを頼むと URL が表示されます。"
 
 # サーバーのプラグインのフォルダ（テストが動かす server.py の 3 つ上）
 PLUGIN_DIR = REPO_ROOT / "plugins" / "mindstella"
@@ -40,7 +40,8 @@ def expected_readme(root: Path, *, preview_url: str | None = None) -> str:
 # {resolved.name}
 
 mindstella の話し合いのワークスペースです。記録は `.mindstella/` にあり、プレビューで読みます。
-このファイルは `/mindstella:session` を始めるたびに書き直されます。
+このファイルはワークスペースを開くたびに書き直されます。
+MindStella のセッションは、起動と再開・コメントの取り込み・記録の使い分けのエージェントフロー（`mindstella/startup`・`mindstella/on-comment`・`mindstella/record`）に従って記録します。
 
 ## プレビュー
 
@@ -70,30 +71,6 @@ URL は起動のたびに変わります。
 
 ```bash
 tmux attach-session -t ={session}
-```
-
-**セッション:**
-
-立ち上げた Claude Code で、話し合いを進めます。
-
-```bash
-/mindstella:session {folder}
-```
-
-**セットアップ:**
-
-立ち上げた Claude Code で、状況を確かめて話し合いを始めます。
-
-```bash
-/mindstella:setup {folder}
-```
-
-**アップグレード:**
-
-プラグインを上げた後、記録を今の版へ移し替えます。
-
-```bash
-/mindstella:upgrade {folder}
 ```
 
 ## ドキュメント

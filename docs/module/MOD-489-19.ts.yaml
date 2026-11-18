@@ -6,7 +6,7 @@ functions:
     title: マップの木の組み立て
     kind: 関数
     usecase: 検討事項をマップで辿る
-    summary: 検討事項から対象・カテゴリー・フェーズの節と枝を作る
+    summary: 検討事項から、根の下に検討事項を平らに並べた節と枝を作る
     args:
       - name: items
         type: Item[]
@@ -22,10 +22,10 @@ functions:
     unit_tests:
       - name: test_build_map_graph
         case: 正常
-        summary: 項目を持たない節を描かない
-        condition: 対象 2 つのうち 1 つだけ項目を持つ
+        summary: 検討事項を根の直下に置く
+        condition: 検討事項 2 件
         mock: なし
-        expected: 項目を持たない対象の節が無い
+        expected: 節が根と検討事項 2 つで、枝が根から各検討事項への 2 本
     container: frontend/src/features/decisions/decisions/map-layout.ts
   - name: useMapLayout
     title: マップの配置

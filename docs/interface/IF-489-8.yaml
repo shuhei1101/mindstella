@@ -142,7 +142,7 @@ lead: スレッドを状態・タグ・未読・取り込み待ちで絞り、�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - IF-489-66#
+  - IF-565-1#
 request:
   - name: workspace
     type: str

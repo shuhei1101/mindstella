@@ -224,28 +224,6 @@ namespace MindmapPreview {
     };
   }
 
-  /** 影響度（大・中・小）の 3 本の目盛りと文字 */
-  export function impactBadge(weight: string | undefined, labeled = false): Node {
-    const levels = ["大", "中", "小"];
-    // 大・中・小のどれでもない値は、影響度を持たないものとして空の断片にする
-    if (weight === undefined || !levels.includes(weight)) return document.createDocumentFragment();
-    const filled = 3 - levels.indexOf(weight);
-    const bars = [0, 1, 2].map((index) => h({ tag: "i", attrs: { class: index < filled ? "on" : "" } }));
-    return h({
-      tag: "span",
-      attrs: { class: "impact", title: `影響度 ${weight}` },
-      children: [
-        h({ tag: "span", attrs: { "aria-hidden": "true" }, children: [...bars] }),
-        labeled ? `影響度 ${weight}` : weight,
-      ],
-    });
-  }
-
-  /** 納品物の印（箱のアイコンと文字） */
-  export function deliverableBadge(): HTMLElement {
-    return h({ tag: "span", attrs: { class: "deliv-badge" }, children: [icon("box"), "納品物"] });
-  }
-
   /** 「該当なし」など、空のときの 1 行 */
   export function emptyNote(text: string): HTMLElement {
     return h({ tag: "p", attrs: { class: "empty" }, children: [text] });

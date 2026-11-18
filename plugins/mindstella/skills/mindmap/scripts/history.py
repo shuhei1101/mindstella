@@ -59,7 +59,6 @@ __all__ = [
     "load_changes",
     "load_item_history",
     "make_entry",
-    "mark_read",
     "merge_item_history",
     "note_pending",
     "note_removed",
@@ -208,16 +207,31 @@ class Changes(TypedDict):
     last_seq: int
     sets: list[ChangeSet]
     pending: Pending
-    # AI が最後に読んだ時点。`changes_since_read` を一度も呼んでいなければキーが無い
+    # AI が最後に読んだ時点。`load_changes` が前回参照した時点（無ければ changes.yaml の前のバージョンの値）で入れ、どちらも無ければキーが無い
     read_seq: NotRequired[int]
 
 
 def load_changes(root: Path) -> Changes:
-    """`changes.yaml` を読んでスキーマと突き合わせる。無ければ空の記録を返す。"""
+    """`changes.yaml` を読んでスキーマと突き合わせ、`read_seq` を前回参照した時点にした記録を返す。"""
+    # 前回参照した時点が履歴を読むため、関数の中で読む
+    from read_point import load_read_seq
+
     path = records_root(root) / CHANGES_FILE
     # ファイルが無い: まとまり 0 件・まだまとめていない変更なしとして扱う
-    if not path.is_file():
-        return {"last_seq": 0, "sets": [], "pending": {"added": [], "changed": []}}
+    record: Changes = (
+        _read_changes_file(path)
+        if path.is_file()
+        else {"last_seq": 0, "sets": [], "pending": {"added": [], "changed": []}}
+    )
+    read_seq = load_read_seq(root)
+    # read_point.json がある: その値を使う（無ければ changes.yaml の前のバージョンの値のまま）
+    if read_seq is not None:
+        record["read_seq"] = read_seq
+    return record
+
+
+def _read_changes_file(path: Path) -> Changes:
+    """`changes.yaml` を読んでスキーマと突き合わせる。"""
     try:
         value = load_yaml_text(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as error:
@@ -596,11 +610,6 @@ def _editors_since(item: dict[str, Any], read_seq: int) -> list[str]:
         if entry["seq"] > read_seq and "by" in entry
     }
     return [editor for editor in ("user", "external", "ai") if editor in editors]
-
-
-def mark_read(changes: Changes) -> Changes:
-    """`read_seq` を `last_seq` にした新しい記録を返す。"""
-    return {**changes, "read_seq": changes["last_seq"]}
 
 
 def head_until_seq(changes: Changes) -> int:

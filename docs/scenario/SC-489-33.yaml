@@ -18,7 +18,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
 
@@ -57,7 +57,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: 存在しない ID を検索する
@@ -78,7 +78,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: 検討事項を検索する
@@ -108,7 +108,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: タグ「Api」を持つ項目を検索する
@@ -137,7 +137,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: 検討事項を一覧で検索する
@@ -171,7 +171,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: 主題のタグが「データ」の項目を検索する
@@ -184,9 +184,9 @@ scenarios:
       - タグで検索した結果が D-1・D-2・T-1 である
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_normal_when_main_tag_first
-lead: スキルが、project-index の検索と関連のたどりで、ワークスペースの項目を条件で探し、1 件の中身とそれを参照している項目、使っているタグを読む単一ユースケース。
+lead: MindStella のセッションが、project-index の検索と関連のたどりで、ワークスペースの項目を条件で探し、1 件の中身とそれを参照している項目、使っているタグを読む単一ユースケース。
 issue: 3
-primary_actor: スキルの手順を実行する Claude Code
+primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
     interest: 前に決めたことを会話の中ですぐ引ける。同じ意味の属性が別の名前で増えない
@@ -197,4 +197,3 @@ success_guarantee: 条件に合う項目のページと全体の件数・1 件�
 test_file: tests/e2e/単一ユースケース/test_record_search.py
 notes:
   project-index に移したもの: 探して空のときの外せる条件の案内・近いタグの案内・主題のタグを上に並べる並べ方は、project-index の `search_docs` が持たないため持ち越さない。主題のタグは `main_tags` の条件で絞る
-  属性名の一覧: '項目の `attrs` は #518 で削除する（D-277）。それまでは `search_docs` の `fields` に `attrs` を指定して読む'

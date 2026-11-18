@@ -2,10 +2,10 @@ id: IF-489-68
 title: "プラグインの読み込み"
 entry:
   kind: operation
-  value: '`plugins/mindstella/` の `.claude-plugin/plugin.json`・`.mcp.json`・`hooks/`・`skills/`・`bin/`・`LICENSE`（Claude Code の `claude plugin install` が取り込むプラグインの中身）'
+  value: '`plugins/mindstella/` の `.claude-plugin/plugin.json`・`.mcp.json`・`hooks/`・`skills/mindmap/`・`agent-flows/`・`bin/`・`LICENSE`（Claude Code の `claude plugin install` が取り込むプラグインの中身）'
 flows:
   - name: 正常系
-    summary: プラグイン mindstella が、スキルのフォルダと常駐サーバーへの接続の設定と 3 つのフックを持って読み込まれる
+    summary: プラグイン mindstella が、スキルを持たず、エージェントフローのフォルダと常駐サーバーへの接続の設定とフックを持って読み込まれる
     setup:
       - name: Mock
         description: なし（実際の Claude Code の CLI で実行する）
@@ -18,14 +18,14 @@ flows:
       ```mermaid
       sequenceDiagram
         participant C as Claude Code
-        participant IF as plugins/mindstella/ の .claude-plugin/plugin.json・.mcp.json・hooks/・skills/・LICENSE
+        participant IF as plugins/mindstella/ の .claude-plugin/plugin.json・.mcp.json・hooks/・skills/mindmap/・agent-flows/・LICENSE
 
         C-->>IF: マニフェストとフォルダを取り込む
         C->>C: プラグイン mindstella を有効にする
       ```
     expected:
       - '`claude plugin list` で `mindstella@mindstella` が有効である'
-      - 取り込まれたプラグインのフォルダに `skills/setup/SKILL.md`・`skills/session/SKILL.md` と、`skills/mindmap/` の `references/`・`playbooks/`・`schemas/`・`scripts/` がある
+      - 取り込まれたプラグインのフォルダに `skills/setup/`・`skills/session/`・`skills/upgrade/` が無く、`skills/mindmap/` が `schemas/`・`scripts/` を持ち `references/`・`playbooks/` を持たず、`agent-flows/` に `mindstella/startup`・`mindstella/on-comment`・`mindstella/record` の 3 件のエージェントフローがある
       - 取り込まれたプラグインのフォルダに、実行の権限を持つ `bin/mindstella` がある
       - 取り込まれたプラグインのフォルダの直下に `LICENSE` があり、本文がリポジトリの直下の `LICENSE` と一致する
       - 取り込まれたプラグインのフォルダに `dev/`・`docs/`・`tests/`・`.storybook/`・`package.json` が無く、`plugin.json` が `mcpServers` を持たない
@@ -70,16 +70,12 @@ request:
   - name: skills/mindmap/
     type: フォルダ
     required: true
-    description: 2 つのスキルが共通で読む置き場所。`references/`・`playbooks/`・`schemas/`・`scripts/`・`preview/`・`README.md` を持ち、SKILL.md は持たない
-    notes: 'SKILL.md を持たないのでスキルとしては読み込まれない（PoC #22 で確かめた）'
-  - name: skills/setup/
+    description: 常駐サーバー・フックが読む置き場所。`schemas/`・`scripts/`・`preview/`・`migrations/`・`README.md` を持ち、SKILL.md と `references/`・`playbooks/` は持たない
+    notes: 'SKILL.md を持たないのでスキルとしては読み込まれない（PoC #22 で確かめた）。フォルダの名前は #518 では変えない'
+  - name: agent-flows/
     type: フォルダ
     required: true
-    description: スキル setup（`/mindstella:setup`）。形はインターフェース定義『セットアップ』
-  - name: skills/session/
-    type: フォルダ
-    required: true
-    description: スキル session（`/mindstella:session`）。形はインターフェース定義『話し合いの進行』
+    description: 記録のエージェントフローと、project-index の配信元の設定・スキーマ。形はインターフェース定義『エージェントフローの参照』
   - name: LICENSE
     type: ファイル
     required: true
@@ -101,7 +97,7 @@ request_example: |-
   ```
 constraints:
   - item: 持つ部品
-    constraint: スキルと、`.mcp.json` の常駐サーバーへの接続 1 つと、`hooks/hooks.json` のフック（`SessionStart` の『未読へ戻す』『常駐サーバーの起動の確認』、`PreToolUse` の『セッションの値の注入』、`SessionStart`・`SessionEnd`・`UserPromptSubmit`・`Stop`・`StopFailure` の『MindStella のセッションのフック』）だけ。コマンド・エージェントは持たない。MCP サーバーの実体（`skills/mindmap/scripts/server.py`）は同梱し、`.mcp.json` は起動せずに `url` でつなぐだけにする（常駐サーバーの起動は『常駐サーバーの起動の確認』と起動のコマンドが担う）
+    constraint: エージェントフローと、`.mcp.json` の常駐サーバーへの接続 1 つと、`hooks/hooks.json` のフック（`SessionStart` の『未読へ戻す』『常駐サーバーの起動の確認』、`PreToolUse` の『セッションの値の注入』、`SessionStart`・`SessionEnd`・`UserPromptSubmit`・`Stop`・`StopFailure` の『MindStella のセッションのフック』）だけ。スキル・コマンド・エージェントは持たない（#518）。MCP サーバーの実体（`skills/mindmap/scripts/server.py`）は同梱し、`.mcp.json` は起動せずに `url` でつなぐだけにする（常駐サーバーの起動は『常駐サーバーの起動の確認』と起動のコマンドが担う）
   - item: 版
     constraint: '`version` は持たない'
     notes: 版の正はタグと `version.ini`（規約『バージョニング』）。マニフェストに写すと揃える作業がリリースごとに増える
@@ -118,3 +114,5 @@ constraints:
     constraint: '`.mcp.json` の `mcpServers.mindstella` に `"type": "http"` と `"url": "http://127.0.0.1:${MINDSTELLA_PORT:-8784}/mcp"` だけを書く。`alwaysLoad` は付けない。`plugin.json` の `mcpServers` には書かない'
     notes: 規約『MCP サーバー作成ルール』の `registration-07`〜`10`。Claude Code の中のツールの名前は `mcp__plugin_mindstella_mindstella__{ツール}` になる
 test_file: tests/integration/plugin/test_plugin_loading.py
+refs:
+  - IF-565-1#

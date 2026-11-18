@@ -8,7 +8,7 @@ test_file: tests/integration/server/test_next_id.py
 idempotent: false
 side_effects: 常駐サーバーのメモリの上の、ワークスペースごとの予約の番号を進める。ワークスペースのファイルは書き換えない
 callers:
-  - IF-489-66#
+  - IF-565-1#
 request:
   - name: workspace
     type: str

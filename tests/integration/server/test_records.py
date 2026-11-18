@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from workspace_fixtures import ADOPTED_OPTIONS, DEFAULT_TIMESTAMP, RECORD_DIR, write_yaml
+from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR, write_yaml
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace
 from .history_helpers import DECISION_ITEM, add_item, commit, read_history, read_items, update_item
@@ -58,14 +58,8 @@ def test_normal(
     assert records["notes"] == [_stamped(make_item("N-1"))]
     assert records["logs"] == [_stamped(make_item("L-1"))]
     assert records["bodies"]["docs/D-1.md"] == DECISION_BODY
-    next_result = call_tool("next", workspace=str(root))
-    assert next_result.data is not None
-    assert records["derived"]["next"] == next_result.data["candidates"]
-    goal_result = call_tool("goal", workspace=str(root))
-    assert goal_result.data is not None
-    goal = records["derived"]["goal"]
-    assert {key: goal[key] for key in goal_result.data} == goal_result.data
-    assert "phase_progress" in goal
+    # 前提を持たない未決定の D-1 は着手できる。次の候補・ゴール・進捗は返さない
+    assert records["derived"] == {"ready": ["D-1"]}
 
 
 def test_normal_when_history(
@@ -94,41 +88,6 @@ def test_normal_when_history(
     assert records["changes"]["pending"]["changed"] == ["D-1"]
 
 
-def test_normal_when_no_goal(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    call_tool: CallTool,
-    serve_preview: Callable[[Path], str],
-    valid_settings: dict[str, Any],
-) -> None:
-    """ゴールが無いときは has_goal が偽で、phase_progress が全フェーズになる（正常系）。"""
-    # 準備
-    settings = {
-        **{key: value for key, value in valid_settings.items() if key != "goal"},
-        "phases": ["目的", "要件"],
-    }
-    root = make_workspace(
-        make_item("D-1", phase="目的", status="決定済み", options=ADOPTED_OPTIONS),
-        make_item("D-2", phase="要件", status="未決定"),
-        settings=settings,
-    )
-    url = serve_preview(root)
-    # 実行
-    result = http_request(url, "/api/records")
-    # 検証
-    assert result.status == 200
-    goal = result.json()["derived"]["goal"]
-    assert goal["has_goal"] is False
-    assert goal["reached"] is None
-    assert goal["phase_progress"] == [
-        {"phase": "目的", "settled": 1, "total": 1},
-        {"phase": "要件", "settled": 0, "total": 1},
-    ]
-    goal_result = call_tool("goal", workspace=str(root))
-    assert goal_result.data is not None
-    assert {key: goal[key] for key in goal_result.data} == goal_result.data
-
-
 def test_normal_when_rewritten(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
@@ -142,9 +101,6 @@ def test_normal_when_rewritten(
     first = http_request(url, "/api/records").json()
     new_decision = {
         "title": "新しい問い",
-        "target": "mindmap",
-        "category": "データ構造",
-        "phase": "要件",
         "status": "未決定",
         "options": [{"key": "A", "content": "案 A"}],
     }

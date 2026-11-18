@@ -19,30 +19,18 @@ classes:
         kind: メソッド
         summary: フォルダの鍵を返す
 constants:
-  - name: DEFAULT_PLAYBOOK
-    title: 既定のプレイブック
-    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
-    usecase: 外部のアプリから起動する
-    summary: 記録の無いフォルダの `config.yaml` の `playbooks`（IF-531-1 の既定の設定）
-    value: '"壁打ち"'
-  - name: DEFAULT_PHASES
-    title: 既定のフェーズ
-    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
-    usecase: 外部のアプリから起動する
-    summary: プレイブック『壁打ち』のフェーズ
-    value: '["問い", "発散", "整理", "絞り込み", "結論"]'
-  - name: DEFAULT_TARGET_LABEL
-    title: 既定の最上位の軸の呼び名
-    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
-    usecase: 外部のアプリから起動する
-    summary: '`target_label` の既定'
-    value: '"対象"'
   - name: RESERVED_MCP_NAMES
     title: 使えない MCP の名前
     container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
     usecase: 外部のアプリから起動する
     summary: ユーザー配下のプラグインの MCP と重なる名前
     value: '{"mindstella", "project-index"}'
+  - name: AGENT_FLOWS_SOURCE
+    title: エージェントフローの配信元
+    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+    usecase: 外部のアプリから起動する
+    summary: project-index に登録するエージェントフローの配信元の ID（インターフェース定義『エージェントフローの参照』）
+    value: '"mindstella-agent-flows"'
 functions:
   - name: workspace_id_for
     title: ワークスペースの ID を作る
@@ -169,7 +157,7 @@ functions:
     usecase: 外部のアプリから起動する
     scope: public
     summary: IF-531-1 の確かめる順で、記録を作るか開き、配信元の行と ID の一覧を揃える
-    description: '記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名・`DEFAULT_*`）を渡して書く。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も消す。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）。配信元の行は、`GET /settings/sources` に行が無いときだけ追加し、行があれば追加の依頼を送らない。行があり、`workspace_folder` が今回のフォルダでないときは、そのフォルダに `.mindstella/config.yaml` があり、その `id` が同じ ID（記録が残っている）なら（記録が無いときにフォルダから振る `workspace_id_of` は使わない） `ApiError`（409、`stage: duplicate`、`detail` にそのフォルダ）、無ければ `project_index.patch_source` で `config`・`scope`（クローズ済みなら `outside_read: true` も）を今回のフォルダの値へ変更する。変更が `ProjectIndexError` のときは 502（`stage: source`）で、記録は削除しない（記録はこの依頼で作っていない）。記録の設定は書き換えない'
+    description: '記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名）を渡して書く。記録があるフォルダは、開く前に『記録の形式の移行』の `migrator.migrate` を `workspace_lock`（`require=require_migratable`）の中で呼ぶ。移し替えたら、報告の `provisional`・`not_carried` を『前回参照した時点』の `save_migration_report` で状態のフォルダに残し、応答の `migration` にも入れる。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も消す。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）。配信元の行は、`GET /settings/sources` に行が無いときだけ追加し、行があれば追加の依頼を送らない。配信元の行を足した後に、配信元 `mindstella-agent-flows` の行が無ければ足す（`ensure_agent_flows_source`）。行があり、`workspace_folder` が今回のフォルダでないときは、そのフォルダに `.mindstella/config.yaml` があり、その `id` が同じ ID（記録が残っている）なら（記録が無いときにフォルダから振る `workspace_id_of` は使わない） `ApiError`（409、`stage: duplicate`、`detail` にそのフォルダ）、無ければ `project_index.patch_source` で `config`・`scope`（クローズ済みなら `outside_read: true` も）を今回のフォルダの値へ変更する。変更が `ProjectIndexError` のときは 502（`stage: source`）で、記録は削除しない（記録はこの依頼で作っていない）。記録の設定は書き換えない'
     side_effects: '`.mindstella/` と `README.md`・`launch.json`・`workspaces.yaml` を書き、project-index へ行を送る'
     args:
       - name: request
@@ -184,10 +172,10 @@ functions:
         description: 状態のフォルダ・project-index のポート・鍵・配信
     returns:
       type: tuple[int, dict]
-      description: ステータス（201 か 200）と応答（`id`・`url`・`result`・`launch_options_recorded`）
+      description: ステータス（201 か 200）と応答（`id`・`url`・`result`・`launch_options_recorded`・`migration`）
     exceptions:
       - name: ApiError
-        condition: 400・403・409・422・502
+        condition: '400・403・409（`stage: version`。`WorkspaceNewerError`）・422（`stage: migration` は `StepFailedError`・`SchemaMismatchError`）・502'
     unit_tests:
       - name: test_create_workspace
         case: 正常
@@ -231,18 +219,32 @@ functions:
         condition: '`allowed_dirs` が別のフォルダ / キーが無い'
         mock: '`project_index.get_settings`'
         expected: '`ApiError`（403、`stage: folder`）、何も書かれていない'
-      - name: test_create_workspace_unmigrated
-        case: 異常
-        summary: 移す前の形は 409
-        condition: 直下に `mindmap.yaml`
-        mock: 同上
-        expected: '`ApiError`（409）'
+      - name: test_create_workspace_migrated
+        case: 正常
+        summary: 前の版の記録は移し替えて開き、報告を残す
+        condition: 版 v0.13.0 で `playbooks` を持つ記録のフォルダ
+        mock: '`project_index.add_source`・`check_flow`・配信の URL'
+        expected: '`(200, {result: opened, migration: {from_version: v0.13.0, ...}})`、`config.yaml` が `playbooks` を持たず、`load_migration_report` が報告を返す'
       - name: test_create_workspace_rollback_failed
         case: 異常
         summary: 巻き戻しの削除に失敗しても 502 を返して記録する
         condition: '`add_source` が `ProjectIndexError`、`shutil.rmtree` が `OSError`'
         mock: 同上・`caplog`
         expected: '`ApiError`（502、`detail` に残ったパス）、`caplog` に `mindstella.workspace.rollback_failed`'
+      - name: test_create_workspace_newer
+        case: 異常
+        summary: 記録の版が新しければ 409
+        condition: プラグインより新しい版の記録のフォルダ
+        mock: 同上
+        expected: '`ApiError`（409、`stage: version`）。記録が呼ぶ前と同じで配信元の行を足さない'
+        exception: 版が新しい
+      - name: test_create_workspace_migration_failed
+        case: 異常
+        summary: 移し替えが失敗したら 422
+        condition: '`migrator.migrate` が `StepFailedError`'
+        mock: 同上・`migrator.migrate`
+        expected: '`ApiError`（422、`stage: migration`）。配信元の行を足さない'
+        exception: 移し替えが失敗
       - name: test_create_workspace_moved
         case: 正常
         summary: 配信元の行が記録の無い前のフォルダを指せば、行を移した先へ変える
@@ -364,6 +366,52 @@ functions:
     returns:
       type: bool
       description: クローズ済みか
+  - name: ensure_agent_flows_source
+    title: エージェントフローの配信元を登録する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: project-index に配信元 `mindstella-agent-flows` の行が無ければ足す（インターフェース定義『エージェントフローの参照』の制約「配信元の登録」）
+    side_effects: project-index へ行を送る
+    args:
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: project-index のポートを持つ
+      - name: allowed_dirs
+        type: list[str]
+        required: true
+        passing: positional
+        description: 許可するフォルダ（端末の設定の `mindstella.allowed_dirs`）
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. `GET /settings/sources` に `AGENT_FLOWS_SOURCE` の行があれば何もしない
+      2. 無ければ `POST /settings/sources` で足す（`config` は `PLUGIN_DIR / "agent-flows" / "dev-docs.yaml"`、`scope.read` は `allowed_dirs` の各フォルダと `{フォルダ}/**`、`outside_read` は真、`scope.write` は持たない）
+         - 409（同じ `id` の行がある）の場合、足さずに終わる
+         - `ProjectIndexError` の場合、`logger.warning` で `mindstella.agent_flows.register_failed` を書いて終わる（ワークスペースの作成は止めない）
+    unit_tests:
+      - name: test_ensure_agent_flows_source
+        case: 正常
+        summary: 行が無ければ足す
+        condition: '`GET /settings/sources` に `mindstella-agent-flows` が無い。`allowed_dirs` が `[/w]`'
+        mock: '`project_index.get_settings`・`project_index.add_source`'
+        expected: '`add_source` が `id: mindstella-agent-flows`・プラグインの `agent-flows/dev-docs.yaml`・`scope.read: [/w, /w/**]`・`scope.write` なしで 1 回呼ばれる'
+      - name: test_ensure_agent_flows_source_when_exists
+        case: 正常
+        summary: 行があれば何も送らない
+        condition: '`GET /settings/sources` に `mindstella-agent-flows` がある'
+        mock: 同上
+        expected: '`add_source` が呼ばれない'
+      - name: test_ensure_agent_flows_source_when_failed
+        case: 正常
+        summary: 足せなくても止めずに記録する
+        condition: '`add_source` が `ProjectIndexError`'
+        mock: 同上・`caplog`
+        expected: 例外にならず、`caplog` に `mindstella.agent_flows.register_failed`
 notes:
   ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`
   ログ: |

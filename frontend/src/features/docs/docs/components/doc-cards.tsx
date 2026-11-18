@@ -1,4 +1,4 @@
-// 資料のカード。納品物の印・種類・形式・状態・カテゴリー・フェーズ・タグを並べる
+// 資料のカード。種類・形式・状態・タグを並べる
 import { CommentMark } from "@/shared/components/comment-mark";
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
@@ -10,11 +10,8 @@ import type { ScreenEdit } from "@/shared/core/edits";
 import { bodyFormatOf, compareIds, type Item } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
 
-/** 納品物を先頭に、それぞれ連番の順に並べる */
-export const orderDocs = (docs: readonly Item[]): Item[] => [...docs].sort((a, b) => Number(b.deliverable === true) - Number(a.deliverable === true) || compareIds(a.id, b.id));
-
-/** 納品物の札 */
-export const DeliverableBadge = () => <span className="rounded-control bg-mark-weak px-1 text-xs text-mark">納品物</span>;
+/** 連番の順に並べる */
+export const orderDocs = (docs: readonly Item[]): Item[] => [...docs].sort((a, b) => compareIds(a.id, b.id));
 
 export type DocCardProps = { doc: Item; inBoard: boolean; selected: boolean; marks: DiffMarks | undefined; comments: Record<string, number>; edit: ScreenEdit | null; onOpen: (id: string) => void };
 
@@ -24,8 +21,7 @@ export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen 
   const pending = edit?.marks[doc.id];
   const count = comments[doc.id] ?? 0;
   return (
-    <button type="button" data-id={doc.id} aria-current={selected ? "true" : undefined} className={cn("flex w-full cursor-pointer flex-col gap-1 rounded-card border border-border-soft bg-card p-3 text-left hover:bg-row-hover", doc.deliverable === true && "border-mark-line", selected && inBoard && "bg-row-selected", pending === "remove" && "opacity-60")} onClick={() => { onOpen(doc.id); }}>
-      {doc.deliverable === true ? <DeliverableBadge /> : null}
+    <button type="button" data-id={doc.id} aria-current={selected ? "true" : undefined} className={cn("flex w-full cursor-pointer flex-col gap-1 rounded-card border border-border-soft bg-card p-3 text-left hover:bg-row-hover", selected && inBoard && "bg-row-selected", pending === "remove" && "opacity-60")} onClick={() => { onOpen(doc.id); }}>
       <span className="flex items-center gap-1 text-xs text-muted-foreground">
         <Icon name={doc.kind === "図" ? "graph" : "cards"} className="size-3" />
         {doc.kind}
@@ -42,7 +38,6 @@ export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen 
             {doc.status}
           </span>
         )}
-        <span>{[doc.category, doc.phase].filter(Boolean).join(" · ")}</span>
         {pending === undefined ? null : <PendingMark kind={pending} />}
         {count > 0 ? <CommentMark count={count} /> : null}
       </span>

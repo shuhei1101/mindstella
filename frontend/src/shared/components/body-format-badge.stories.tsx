@@ -21,7 +21,7 @@ export const Markdown: Story = { args: { format: "md" } };
 /** HTML の資料。地の面を敷いた `HTML` の文字 */
 export const Html: Story = { args: { format: "html" } };
 
-/** 種類・状態の札（完成）・取り下げの札・納品物の印と並べ、等幅の文字と地で見分けられることを見せる */
+/** 種類・状態の札（完成）・取り下げの札と並べ、等幅の文字と地で見分けられることを見せる */
 export const BesideOtherBadges: Story = {
   args: { format: "html" },
   render: (args) => (
@@ -32,8 +32,6 @@ export const BesideOtherBadges: Story = {
         完成
       </span>
       <WithdrawnBadge />
-      {/* 資料のカードの納品物の札と同じ見た目 */}
-      <span className="rounded-control bg-mark-weak px-1 text-xs text-mark">納品物</span>
     </div>
   ),
 };

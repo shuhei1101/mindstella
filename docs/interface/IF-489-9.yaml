@@ -179,7 +179,7 @@ lead: スレッドの要約とタグを書き換え、AI が読んだ利用者�
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `summary`・`tags` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える'
 callers:
-  - IF-489-66#
+  - IF-565-1#
 request:
   - name: workspace
     type: str

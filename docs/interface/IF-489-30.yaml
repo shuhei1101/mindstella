@@ -420,15 +420,6 @@ request:
     description: 編集した後の値。`option-add`・`option-edit` は案の中身、`adopt` は採用する案の記号（採用を外すときは `null`）、`item-add` は足す項目のキーと値のオブジェクト（検討事項は案の並び `options` を含められる）
     constraints: その種類のスキーマのそのキーの型に合う。`title` は前後の空白を除いて 1 文字以上。`item-add` は `title` を持つ
     example: ゴールはフェーズごとに 1 つ持つ
-  - name: map
-    type: dict[str, str]
-    required: false
-    default: なし（対応を持たない）
-    location: body
-    description: '`setting` で `key` が `phases`・`targets`・`categories` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map` と同じ'
-    constraints: '`op` が `setting` で `key` が `phases`・`targets`・`categories` のときだけ渡せる'
-    example: '{"問い": "目的"}'
-    status: planned
 request_example: |-
   ```json
   {
@@ -482,7 +473,7 @@ constraints:
   - item: 書く中身
     constraint: 新しく溜めるときは `id`（`E-{seq + 1}`）・`target`・`op`・`key`・`value`・`before`（溜めたときの元の値）・`base`（項目への編集はその項目の `updated`）・`created` を書き、`seq` を 1 上げる。`item-add` で `target` を省いたときは `new-{new_seq + 1}` を振り、`new_seq` を 1 上げる。ER 図『ワークスペース』の `edits.yaml`
   - item: 同じ編集の書き換え
-    constraint: '`target`・`op`・`key` が同じ編集（`item-add` は `target` が同じ編集）があれば、`value`（`setting` は `map` も）だけを書き換え、`id`・`before`・`base`・`created` は最初に溜めたときのままにする。足す項目のキーを変えるときは、`item-add` の `value` を書き換える（足す項目 1 つで 1 件。単一ユースケース『画面で項目を編集して保存する』の補足「保存待ちの数え方」）'
+    constraint: '`target`・`op`・`key` が同じ編集（`item-add` は `target` が同じ編集）があれば、`value` だけを書き換え、`id`・`before`・`base`・`created` は最初に溜めたときのままにする。足す項目のキーを変えるときは、`item-add` の `value` を書き換える（足す項目 1 つで 1 件。単一ユースケース『画面で項目を編集して保存する』の補足「保存待ちの数え方」）'
   - item: 元の値に戻したとき
     constraint: '`set`・`option-edit`・`adopt`・`setting` で、`value` が今のワークスペースの値と同じになったら、その編集を外し（無ければ何も溜めず）、`id` を `null` で返す'
   - item: 削除とほかの編集
@@ -490,7 +481,7 @@ constraints:
   - item: 編集できるキー
     constraint: '`set` はその種類のスキーマのキーと `body` のうち、`id`・`created`・`updated`・`updated_by`・`history`・`added_seq`・`options`・`body` のファイル名のキーを除くもの（案は `option-*`・`adopt` で編集する）。`setting` は『設定の更新』の引数が受けるキー。`item-add` の `value` は `set` と同じキーに加え、検討事項（`key` が `decisions`）のときだけ `options`（案の並び）を持てる（足す項目の案は `option-*`・`adopt` ではなく `value` の `options` で溜める）'
   - item: 値の確かめ
-    constraint: 溜めるときは、キー 1 つの値をその種類のスキーマのそのキーの型で確かめる。`item-add` の `options` は、スキーマの型に加えて、記号が重ならないかを確かめる。`tags`（`set` の値と `item-add` の `value` の `tags`）は、スキーマの型（`{name, main?}` の並び）に加えて、NFKC と小文字にそろえた名前が重ならないかを確かめる。`map` は渡せる `op`・`key` と値の型だけを確かめる。参照のキーの指す先・項目全体のスキーマ・`map` の対応の過不足は、保存のときに確かめる（『保存待ちの編集をまとめて保存』）
+    constraint: 溜めるときは、キー 1 つの値をその種類のスキーマのそのキーの型で確かめる。`item-add` の `options` は、スキーマの型に加えて、記号が重ならないかを確かめる。`tags`（`set` の値と `item-add` の `value` の `tags`）は、スキーマの型（`{name, main?}` の並び）に加えて、NFKC と小文字にそろえた名前が重ならないかを確かめる。参照のキーの指す先・項目全体のスキーマは、保存のときに確かめる（『保存待ちの編集をまとめて保存』）
   - item: 本文の上限
     constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
     decided_by: NFR-489-1#requirements[送信の本文の長さ]

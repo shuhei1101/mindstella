@@ -1,0 +1,4 @@
+steps:
+  - op: call
+    script: remove_discussion_keys
+    destructive: true

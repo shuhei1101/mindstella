@@ -1,0 +1,454 @@
+# 結合テスト（develop でも fail する 4 件を除いて全件 pass）
+# commit: e3d35524
+# 実行日時: 2026-11-18 17:35:45 JST
+#
+# 実行範囲は計画書（サーバー.md・プラグイン.md・プレビュー.md・スキル.md）の『結合テストの実行範囲』の表の実行する結合テスト（71 ファイル）。
+# fail した 4 件は、develop（273145d4）の作業ツリーで単独で実行しても fail する既存の不具合で、スコープ外に載せた。
+#   - tests/integration/server/test_migrate.py::test_normal_when_mdmark_documents（#578。mdmark の develop がタグを指定しない呼び出しを断る）
+#   - tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_pinned・test_diff_body_layout_switch（#553。test_body_alias_tooltip_pinned は単独では 2 回とも pass）
+#   - tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn（#579）
+# 事前に npx storybook build -o storybook-static と npm run build-storybook-react を済ませた。
+
+$ pytest $(cat 実行する結合テストの一覧) -p no:cacheprovider -rfE --basetemp=/tmp/pr565-fin
+# --basetemp: 共有の /tmp/pytest-of-{ユーザー} を別のユーザーが持っていて使えないため
+# 実行する結合テストの一覧:
+#   tests/integration/plugin/test_agent_flows.py
+#   tests/integration/plugin/test_plugin_loading.py
+#   tests/integration/plugin/test_session_hook.py
+#   tests/integration/preview/test_comments_screen.py
+#   tests/integration/preview/test_decisions_screen.py
+#   tests/integration/preview/test_detail_full_screen.py
+#   tests/integration/preview/test_detail_panel_screen.py
+#   tests/integration/preview/test_diagram_viewer_screen.py
+#   tests/integration/preview/test_docs_screen.py
+#   tests/integration/preview/test_graph_screen.py
+#   tests/integration/preview/test_history_screen.py
+#   tests/integration/preview/test_open_preview.py
+#   tests/integration/preview/test_overview_screen.py
+#   tests/integration/preview/test_records_screen.py
+#   tests/integration/preview/test_search_screen.py
+#   tests/integration/preview/test_settings_screen.py
+#   tests/integration/preview/test_spa_decisions_screen.py
+#   tests/integration/preview/test_spa_detail_fullscreen_screen.py
+#   tests/integration/preview/test_spa_detail_panel_screen.py
+#   tests/integration/preview/test_spa_display_settings_screen.py
+#   tests/integration/preview/test_spa_docs_screen.py
+#   tests/integration/preview/test_spa_graph_screen.py
+#   tests/integration/preview/test_spa_open.py
+#   tests/integration/preview/test_spa_overview_screen.py
+#   tests/integration/preview/test_spa_records_screen.py
+#   tests/integration/preview/test_spa_search_screen.py
+#   tests/integration/preview/test_spa_tasks_screen.py
+#   tests/integration/preview/test_spa_workspace_settings_screen.py
+#   tests/integration/preview/test_tasks_screen.py
+#   tests/integration/preview/test_topbar_screen.py
+#   tests/integration/preview/test_workspace_settings_screen.py
+#   tests/integration/server/test_adopt.py
+#   tests/integration/server/test_changes_since_read.py
+#   tests/integration/server/test_check.py
+#   tests/integration/server/test_check_env.py
+#   tests/integration/server/test_close_workspace.py
+#   tests/integration/server/test_commit.py
+#   tests/integration/server/test_create_session.py
+#   tests/integration/server/test_create_workspace.py
+#   tests/integration/server/test_edit_option.py
+#   tests/integration/server/test_edits_add.py
+#   tests/integration/server/test_edits_save.py
+#   tests/integration/server/test_ensure_server.py
+#   tests/integration/server/test_events.py
+#   tests/integration/server/test_export.py
+#   tests/integration/server/test_launch.py
+#   tests/integration/server/test_list_sessions.py
+#   tests/integration/server/test_mcp_server.py
+#   tests/integration/server/test_migrate.py
+#   tests/integration/server/test_new_thread.py
+#   tests/integration/server/test_next_id.py
+#   tests/integration/server/test_opened.py
+#   tests/integration/server/test_pending.py
+#   tests/integration/server/test_preview_url.py
+#   tests/integration/server/test_read_point.py
+#   tests/integration/server/test_readme.py
+#   tests/integration/server/test_records.py
+#   tests/integration/server/test_register.py
+#   tests/integration/server/test_reply.py
+#   tests/integration/server/test_resume.py
+#   tests/integration/server/test_session_events.py
+#   tests/integration/server/test_set_thread_status.py
+#   tests/integration/server/test_stop_notify.py
+#   tests/integration/server/test_stop_session.py
+#   tests/integration/server/test_thread.py
+#   tests/integration/server/test_threads.py
+#   tests/integration/server/test_update_settings.py
+#   tests/integration/server/test_update_thread.py
+#   tests/integration/server/test_work_done_notify.py
+#   tests/integration/storybook/test_body_format_badge_stories.py
+#   tests/integration/storybook_react/test_body_format_badge_stories.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-skills-agent-flows
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1554 items
+
+tests/integration/plugin/test_agent_flows.py ..                          [  0%]
+tests/integration/plugin/test_plugin_loading.py .                        [  0%]
+tests/integration/plugin/test_session_hook.py ......                     [  0%]
+tests/integration/preview/test_comments_screen.py ...................... [  1%]
+............                                                             [  2%]
+tests/integration/preview/test_decisions_screen.py ..................... [  4%]
+.......................................................................  [  8%]
+tests/integration/preview/test_detail_full_screen.py ................... [  9%]
+.......................................                                  [ 12%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 13%]
+........................................................................ [ 18%]
+.........................................F.............................. [ 22%]
+...F......................F...........................................   [ 27%]
+tests/integration/preview/test_diagram_viewer_screen.py ................ [ 28%]
+                                                                         [ 28%]
+tests/integration/preview/test_docs_screen.py .......................... [ 30%]
+.........................                                                [ 31%]
+tests/integration/preview/test_graph_screen.py ......................... [ 33%]
+..................                                                       [ 34%]
+tests/integration/preview/test_history_screen.py ..........              [ 35%]
+tests/integration/preview/test_open_preview.py ......................... [ 36%]
+................................                                         [ 38%]
+tests/integration/preview/test_overview_screen.py .....................  [ 40%]
+tests/integration/preview/test_records_screen.py ....................... [ 41%]
+......                                                                   [ 41%]
+tests/integration/preview/test_search_screen.py ..............           [ 42%]
+tests/integration/preview/test_settings_screen.py ...................... [ 44%]
+........                                                                 [ 44%]
+tests/integration/preview/test_spa_decisions_screen.py ................. [ 45%]
+.....................                                                    [ 47%]
+tests/integration/preview/test_spa_detail_fullscreen_screen.py ...       [ 47%]
+tests/integration/preview/test_spa_detail_panel_screen.py .............. [ 48%]
+........................................................................ [ 52%]
+.............                                                            [ 53%]
+tests/integration/preview/test_spa_display_settings_screen.py .......... [ 54%]
+                                                                         [ 54%]
+tests/integration/preview/test_spa_docs_screen.py .....................  [ 55%]
+tests/integration/preview/test_spa_graph_screen.py .............         [ 56%]
+tests/integration/preview/test_spa_open.py ............................. [ 58%]
+.                                                                        [ 58%]
+tests/integration/preview/test_spa_overview_screen.py .................. [ 59%]
+.......                                                                  [ 60%]
+tests/integration/preview/test_spa_records_screen.py ...........         [ 60%]
+tests/integration/preview/test_spa_search_screen.py ..........           [ 61%]
+tests/integration/preview/test_spa_tasks_screen.py ..................    [ 62%]
+tests/integration/preview/test_spa_workspace_settings_screen.py ........ [ 63%]
+..                                                                       [ 63%]
+tests/integration/preview/test_tasks_screen.py ......................... [ 64%]
+...............                                                          [ 65%]
+tests/integration/preview/test_topbar_screen.py ..................       [ 67%]
+tests/integration/preview/test_workspace_settings_screen.py ........     [ 67%]
+tests/integration/storybook/test_body_format_badge_stories.py ...        [ 67%]
+tests/integration/storybook_react/test_body_format_badge_stories.py .... [ 68%]
+                                                                         [ 68%]
+tests/integration/preview/test_comments_screen.py ..                     [ 68%]
+tests/integration/preview/test_decisions_screen.py ..........            [ 68%]
+tests/integration/preview/test_detail_full_screen.py ....                [ 69%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 70%]
+...                                                                      [ 70%]
+tests/integration/preview/test_diagram_viewer_screen.py .                [ 70%]
+tests/integration/preview/test_docs_screen.py ............               [ 71%]
+tests/integration/preview/test_graph_screen.py ....                      [ 71%]
+tests/integration/preview/test_records_screen.py .......                 [ 71%]
+tests/integration/preview/test_settings_screen.py .                      [ 72%]
+tests/integration/preview/test_spa_decisions_screen.py .....             [ 72%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 72%]
+tests/integration/preview/test_spa_docs_screen.py .....                  [ 72%]
+tests/integration/preview/test_spa_overview_screen.py ...                [ 72%]
+tests/integration/preview/test_spa_records_screen.py .....               [ 73%]
+tests/integration/preview/test_tasks_screen.py ........                  [ 73%]
+tests/integration/preview/test_topbar_screen.py .....                    [ 74%]
+tests/integration/storybook_react/test_body_format_badge_stories.py .    [ 74%]
+tests/integration/preview/test_decisions_screen.py ........              [ 74%]
+tests/integration/preview/test_detail_full_screen.py .                   [ 74%]
+tests/integration/preview/test_detail_panel_screen.py .........          [ 75%]
+tests/integration/preview/test_diagram_viewer_screen.py .                [ 75%]
+tests/integration/preview/test_docs_screen.py ......                     [ 75%]
+tests/integration/preview/test_graph_screen.py ...                       [ 75%]
+tests/integration/preview/test_records_screen.py ......                  [ 76%]
+tests/integration/preview/test_settings_screen.py .                      [ 76%]
+tests/integration/preview/test_spa_decisions_screen.py ..                [ 76%]
+tests/integration/preview/test_spa_docs_screen.py .                      [ 76%]
+tests/integration/preview/test_spa_records_screen.py .....               [ 76%]
+tests/integration/preview/test_tasks_screen.py ..                        [ 77%]
+tests/integration/preview/test_topbar_screen.py .....                    [ 77%]
+tests/integration/storybook_react/test_body_format_badge_stories.py .    [ 77%]
+tests/integration/preview/test_decisions_screen.py .                     [ 77%]
+tests/integration/preview/test_detail_full_screen.py .                   [ 77%]
+tests/integration/preview/test_detail_panel_screen.py .....              [ 77%]
+tests/integration/preview/test_docs_screen.py .                          [ 77%]
+tests/integration/preview/test_graph_screen.py ...                       [ 78%]
+tests/integration/preview/test_records_screen.py .....                   [ 78%]
+tests/integration/preview/test_settings_screen.py .                      [ 78%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 78%]
+tests/integration/preview/test_spa_records_screen.py .....               [ 78%]
+tests/integration/preview/test_tasks_screen.py .                         [ 78%]
+tests/integration/preview/test_topbar_screen.py ....                     [ 79%]
+tests/integration/preview/test_decisions_screen.py .                     [ 79%]
+tests/integration/preview/test_detail_panel_screen.py ..                 [ 79%]
+tests/integration/preview/test_graph_screen.py ...                       [ 79%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 79%]
+tests/integration/preview/test_topbar_screen.py ....                     [ 79%]
+tests/integration/preview/test_decisions_screen.py .                     [ 79%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 80%]
+tests/integration/preview/test_topbar_screen.py ....                     [ 80%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 80%]
+tests/integration/preview/test_topbar_screen.py .                        [ 80%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 80%]
+tests/integration/preview/test_topbar_screen.py .                        [ 80%]
+tests/integration/preview/test_spa_decisions_screen.py ..                [ 80%]
+tests/integration/server/test_adopt.py .......                           [ 81%]
+tests/integration/server/test_changes_since_read.py .......              [ 81%]
+tests/integration/server/test_check.py .........                         [ 82%]
+tests/integration/server/test_check_env.py ..s.s                         [ 82%]
+tests/integration/server/test_close_workspace.py ...                     [ 82%]
+tests/integration/server/test_commit.py .........                        [ 83%]
+tests/integration/server/test_create_session.py .......                  [ 83%]
+tests/integration/server/test_create_workspace.py ........               [ 84%]
+tests/integration/server/test_edit_option.py .............               [ 85%]
+tests/integration/server/test_edits_add.py ...............               [ 86%]
+tests/integration/server/test_edits_save.py .........                    [ 86%]
+tests/integration/server/test_ensure_server.py ........                  [ 87%]
+tests/integration/server/test_events.py .....                            [ 87%]
+tests/integration/server/test_export.py .......                          [ 87%]
+tests/integration/server/test_launch.py .................                [ 88%]
+tests/integration/server/test_list_sessions.py ...                       [ 89%]
+tests/integration/server/test_mcp_server.py ..........                   [ 89%]
+tests/integration/server/test_migrate.py .................F..            [ 91%]
+tests/integration/server/test_new_thread.py .......                      [ 91%]
+tests/integration/server/test_next_id.py ....                            [ 91%]
+tests/integration/server/test_opened.py ....                             [ 92%]
+tests/integration/server/test_pending.py .....                           [ 92%]
+tests/integration/server/test_preview_url.py .............               [ 93%]
+tests/integration/server/test_read_point.py ....                         [ 93%]
+tests/integration/server/test_readme.py ......                           [ 93%]
+tests/integration/server/test_records.py ......                          [ 94%]
+tests/integration/server/test_register.py ........                       [ 94%]
+tests/integration/server/test_reply.py .........                         [ 95%]
+tests/integration/server/test_resume.py ...                              [ 95%]
+tests/integration/server/test_session_events.py ....                     [ 95%]
+tests/integration/server/test_set_thread_status.py ............          [ 96%]
+tests/integration/server/test_stop_notify.py ..........                  [ 97%]
+tests/integration/server/test_stop_session.py .....                      [ 97%]
+tests/integration/server/test_thread.py ......                           [ 97%]
+tests/integration/server/test_threads.py ......                          [ 98%]
+tests/integration/server/test_update_settings.py ...........             [ 99%]
+tests/integration/server/test_update_thread.py ........                  [ 99%]
+tests/integration/server/test_work_done_notify.py .......                [100%]
+
+=================================== FAILURES ===================================
+___________________ test_body_alias_tooltip_pinned[chromium] ___________________
+
+write_preview = <function write_preview.<locals>._write at 0x711a146cba60>
+open_preview = <function open_preview.<locals>._open at 0x711a1440b100>
+make_item = <function make_item.<locals>._make at 0x711a1431df80>
+
+    def test_body_alias_tooltip_pinned(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+    ) -> None:
+        """資料・調査にも一致した印を押すとツールチップを出したままにし（印から外れても消えない）、外を押すか Esc で閉じる。ほかの印に乗せても替えない（正常系）。"""
+        # 準備
+        page = _open_alias_panel(write_preview, open_preview, make_item)
+        mixed = f"{PANEL_MARKS} >> nth=0"
+        # 実行（押して、印から外し、隠す待ちを過ぎるまで待つ）
+        page.click(mixed)
+        page.wait_for_selector(TIP_OPEN)
+        page.mouse.move(2, 2)
+        left_at = page.evaluate("performance.now()")
+        page.wait_for_function(
+            "([at, ms]) => performance.now() - at >= ms", arg=[left_at, TIP_KEEP_CHECK_MS]
+        )
+        kept = page.evaluate("document.querySelector('#term-tip').matches(':popover-open')")
+        # 実行（押した印と違う項目に一致した印のうち、ツールチップに覆われていない点へ乗せても替わらない）
+        other = page.evaluate(UNCOVERED_POINT_SCRIPT, [PANEL_MARKS, MIXED_IDS])
+        assert other is not None, "ツールチップに覆われていない印がありません"
+        page.mouse.move(other["x"], other["y"])
+        page.wait_for_function(
+            "([selector, index]) => document.querySelectorAll(selector)[index].matches(':hover')",
+            arg=[PANEL_MARKS, other["index"]],
+        )
+        still = page.evaluate(
+            "[...document.querySelectorAll('#term-tip a.tt-link')].map((a) => a.dataset.id).join(' ')"
+        )
+        # 実行（Esc で閉じる）
+        page.keyboard.press("Escape")
+        page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+        # 実行（もう一度押して、詳細パネルの中のツールチップに覆われていない点を押して閉じる）
+        page.click(mixed)
+        page.wait_for_selector(TIP_OPEN)
+        outside = page.evaluate(UNCOVERED_POINT_SCRIPT, ["aside.panel .panel-kind", None])
+        assert outside is not None, "ツールチップに覆われていない外の点がありません"
+        page.mouse.click(outside["x"], outside["y"])
+>       page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+
+tests/integration/preview/test_detail_panel_screen.py:3694: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/sync_api/_generated.py:12809: in wait_for_function
+    self._sync(
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_page.py:1153: in wait_for_function
+    return await self._main_frame.wait_for_function(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:941: in wait_for_function
+    await self._channel.send("waitForFunction", self._timeout, params)
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x711a16bab800>
+cb = <function Channel.send.<locals>.<lambda> at 0x711a145b1580>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 30000ms exceeded.
+
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+____________________ test_diff_body_layout_switch[chromium] ____________________
+
+write_body_layout_preview = <function write_body_layout_preview.<locals>._write at 0x711a146c2b60>
+open_preview = <function open_preview.<locals>._open at 0x711a175cc360>
+page = <Page url='http://127.0.0.1:45559/mindstella.html#tab=docs&id=A-1&diff=V-2'>
+
+    def test_diff_body_layout_switch(
+        write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """差分の表示の間、本文が変わった資料の本文の差分の頭に「インライン」「左右に並べる」の切り替えを出し、押すとその場で描き直し、履歴に積まず URL のハッシュも変えず、押したボタンにフォーカスを保つ（正常系）。"""
+        # 準備
+        url, _ = write_body_layout_preview()
+        _open_side_panel(page, open_preview, url)
+        page.wait_for_selector(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}")
+        history_length = page.evaluate("history.length")
+        hash_before = page.evaluate("location.hash")
+        # 検証（読み上げの名前の付いたボタンの組で、「インライン」を押した状態。本文の差分の印より前にある）
+        assert page.get_attribute(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}", "role") == "group"
+        assert page.get_attribute(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}", "aria-label") == LAYOUT_GROUP_NAME
+        assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]
+        assert page.evaluate(
+            """() => !!(document.querySelector('aside.panel .sbs-switch').compareDocumentPosition(
+                document.querySelector('aside.panel .md:not(.md-value) ins.df-blk')) & Node.DOCUMENT_POSITION_FOLLOWING)"""
+        )
+        # 実行（「左右に並べる」を押す）
+        page.get_by_role("button", name=SIDE_NAME).click()
+        open_side_by_side(page, LAYOUT_PANEL)
+        # 検証（押した状態が移り、押したボタンにフォーカスが残る。履歴もハッシュも変わらない）
+        assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["false", "true"]
+        assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "side"
+        assert page.evaluate("history.length") == history_length
+        assert page.evaluate("location.hash") == hash_before
+        # 実行（「インライン」を押す）
+        page.get_by_role("button", name=INLINE_NAME).click()
+        page.wait_for_selector(f"{LAYOUT_PANEL} .sbs", state="detached")
+        # 検証（インラインに戻り、フォーカスは押したボタンに残る）
+        assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]
+>       assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "inline"
+E       assert None == 'inline'
+E        +  where None = evaluate("document.activeElement?.getAttribute('data-layout')")
+E        +    where evaluate = <Page url='http://127.0.0.1:45559/mindstella.html#tab=docs&id=A-1&diff=V-2'>.evaluate
+
+tests/integration/preview/test_detail_panel_screen.py:4790: AssertionError
+___________________ test_option_draft_when_redrawn[chromium] ___________________
+
+write_edit_preview = <function write_edit_preview.<locals>._write at 0x711a151e7c40>
+make_item = <function make_item.<locals>._make at 0x711a151e71a0>
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'links': []}
+open_preview = <function open_preview.<locals>._open at 0x711a150e1940>
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x711a1764b920>>
+
+    def test_option_draft_when_redrawn(
+        write_edit_preview: WriteReviewPreview,
+        make_item: MakeItem,
+        valid_settings: dict[str, Any],
+        open_preview: OpenPreview,
+        call_tool: CallTool,
+    ) -> None:
+        """「案を追加」で置いた書きかけの案は、入力の途中で書き換えの通知により描き直しても打った中身ごと残り、離れたときに溜める（正常系）。"""
+        # 準備
+        page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+        page.get_by_role("button", name="案を追加").click()
+        page.get_by_label("案 C の中身").fill("書きかけの案 C")
+        # 実行（離れずに描き直させる）
+>       _redraw_by_add(page, root, call_tool)
+
+tests/integration/preview/test_detail_panel_screen.py:5491: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/preview/test_detail_panel_screen.py:5472: in _redraw_by_add
+    page.wait_for_function(
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/sync_api/_generated.py:12809: in wait_for_function
+    self._sync(
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_page.py:1153: in wait_for_function
+    return await self._main_frame.wait_for_function(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:941: in wait_for_function
+    await self._channel.send("waitForFunction", self._timeout, params)
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x711a16bab800>
+cb = <function Channel.send.<locals>.<lambda> at 0x711a146b1bc0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 10000ms exceeded.
+
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+______________________ test_normal_when_mdmark_documents _______________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x711a06b31f80>
+make_item = <function make_item.<locals>._make at 0x711a146c2020>
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x711a142cdee0>>
+
+    def test_normal_when_mdmark_documents(
+        make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+    ) -> None:
+        """資料の flow・sequence の図を map へ、引数のマーカーを JSON の記載へ移し、map の種類を設定へ移す（正常系）。"""
+        # 準備
+        root = _make_mdmark_workspace(make_workspace, make_item)
+        # 実行（実際の mdmark の CLI を呼ぶ。空の指定は既定の差し替えを外す）
+        result = _migrate(root, to_version=MDMARK_STEP_VERSION, env={MDMARK_COMMAND_ENV: ""})
+        # 検証
+>       assert result.error is None, result.text
+E       AssertionError: v0.13.0 の手順 5（call）: mdmark_documents の変換が失敗しました: mdmark の変換が失敗しました: この develop のビルド（v0.14.0+develop.d79beb4）は、出していないバージョンの移行の手順を持ちます。npx github:shuhei1101/mdmark#v0.14.0 upgrade のように、タグを指定した mdmark で呼んでください。
+E         
+E       assert 'StepFailedError' is None
+E        +  where 'StepFailedError' = MigrateResult(error='StepFailedError', text='v0.13.0 の手順 5（call）: mdmark_documents の変換が失敗しました: mdmark の変換が失敗しました: この d...beb4）は、出していないバージョンの移行の手順を持ちます。npx github:shuhei1101/mdmark#v0.14.0 upgrade のように、タグを指定した mdmark で呼んでください。\n', data=None).error
+
+tests/integration/server/test_migrate.py:744: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_pinned[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_body_layout_switch[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn[chromium]
+FAILED tests/integration/server/test_migrate.py::test_normal_when_mdmark_documents
+============ 4 failed, 1548 passed, 2 skipped in 2629.90s (0:43:49) ============

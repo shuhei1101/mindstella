@@ -141,9 +141,6 @@ export type Relation = { to: string; type: RelationType };
 export type Item = {
   id: string;
   title: string;
-  target?: string;
-  category?: string;
-  phase?: string;
   tags?: Tag[];
   related?: Relation[];
   links?: { title: string; url: string }[];
@@ -155,7 +152,6 @@ export type Item = {
   lead?: string;
   answer?: string;
   options?: Option[];
-  weight?: string;
   reason?: string;
   body?: string;
   sources?: string[];
@@ -163,9 +159,6 @@ export type Item = {
   result?: string;
   question?: string;
   conclusion?: string;
-  confidence?: string;
-  angles?: string[];
-  deliverable?: boolean;
   /** 取り下げた調査・資料・用語集・メモ・会話ログは真。取り下げた理由は `reason` */
   withdrawn?: boolean;
   meaning?: string;
@@ -187,13 +180,6 @@ export type Settings = {
   summary: string;
   /** 話し合いの概要（1 文の短い文）。無い設定もある */
   description?: string;
-  playbooks: string[];
-  target_label: string;
-  phases: string[];
-  targets: { name: string; summary: string }[];
-  categories: { name: string; target: string; summary: string }[];
-  /** ゴール。ゴールを決めていない話し合いは持たない */
-  goal?: { phase: string; summary: string; deliverables: { title: string; doc?: string }[] };
   /** 関連する場所（表示名と URL）。無い設定もある */
   links?: { title: string; url: string }[];
   /** 項目ごとに変更履歴を何回分持つか */
@@ -215,23 +201,10 @@ export type DisplayDefaults = {
   visible_kinds?: Kind[];
 };
 
-/** フェーズごと・カテゴリーごとの、決着した数と全体の数 */
-export type ProgressCell = { phase: string; settled: number; total: number };
-
 /** build が計算して埋め込んだ、画面に出す値 */
 export type Derived = {
-  next: { id: string; title: string; phase: string | null; weight: string | null; followers: number }[];
-  goal: {
-    has_goal: boolean;
-    /** ゴールが無いときは判定せず `null` */
-    reached: boolean | null;
-    goal_phase: string | null;
-    phases: string[];
-    remaining_decisions: { id: string; title: string; phase: string; status: string }[];
-    remaining_deliverables: { title: string; doc: string | null }[];
-    phase_progress: ProgressCell[];
-  };
-  progress: { category: string; cells: ProgressCell[]; settled: number; total: number }[];
+  /** 前提が全て決着した未決定の検討事項の ID（連番の順） */
+  ready: string[];
 };
 
 /** 埋め込みのデータ（`mindmap-data` を `JSON.parse` した値） */
@@ -256,7 +229,7 @@ export type RecordIndex = {
   byId: Map<string, { kind: Kind; item: Item }>;
   /** ID → その項目を `related[].to`・`sources` で指す項目の ID（ID の順） */
   referencedBy: Map<string, string[]>;
-  /** 着手可能な検討事項の ID（`derived.next` の ID） */
+  /** 着手可能な検討事項の ID（`derived.ready`） */
   readyIds: Set<string>;
 };
 
@@ -301,7 +274,7 @@ export const buildIndex = (data: MindmapData): RecordIndex => {
     data,
     byId,
     referencedBy,
-    readyIds: new Set(data.derived.next.map((candidate) => candidate.id)),
+    readyIds: new Set(data.derived.ready),
   };
 };
 

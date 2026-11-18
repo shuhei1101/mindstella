@@ -21,6 +21,7 @@ from .fixture_types import (
     StartVoiceServer,
 )
 from .http_helpers import EventStream
+from .register_helpers import BASHRC_USER_LINE, LockFiles, RegisterSandbox
 from .transcriber_helpers import FakeMode, FakeTranscriber, bind_closed_port, override_sitecustomize
 
 # 下限より古い Python を探す候補（下限は 3.12）
@@ -28,6 +29,9 @@ OLD_PYTHON_NAMES = ("python3.8", "python3.9", "python3.10", "python3.11")
 
 # 読み取りだけにするフォルダの権限
 READ_ONLY_MODE = 0o500
+
+# 書き込みの権限を外したファイルの権限
+READ_ONLY_FILE_MODE = 0o400
 
 
 @pytest.fixture
@@ -141,3 +145,37 @@ def unreachable_transcriber_url() -> Iterator[str]:
     held = bind_closed_port()
     yield f"http://127.0.0.1:{held.getsockname()[1]}"
     held.close()
+
+
+@pytest.fixture
+def register_sandbox(tmp_path: Path) -> RegisterSandbox:
+    """空のホームのフォルダ（`~/.bashrc` に利用者の行を 1 行持つ）と、偽の `claude`・起動スクリプトを置く場所を作る。"""
+    home = tmp_path / "home"
+    tools_dir = tmp_path / "tools"
+    records_dir = tmp_path / "records"
+    for folder in (home, tools_dir, records_dir):
+        folder.mkdir()
+    (home / ".bashrc").write_text(f"{BASHRC_USER_LINE}\n", encoding="utf-8")
+    return RegisterSandbox(
+        root=tmp_path, home=home, tools_dir=tools_dir, records_dir=records_dir
+    )
+
+
+@pytest.fixture
+def lock_files() -> Iterator[LockFiles]:
+    """ファイルを読み取りだけにする関数を返し、テストの後で元に戻す。"""
+    # 権限を外しても書けてしまう環境（root・Windows）では、書き込めない場合を作れない
+    if sys.platform == "win32" or os.geteuid() == 0:
+        pytest.skip("書き込みの権限を外せない環境（root か Windows）")
+    locked: list[Path] = []
+
+    def _lock(*paths: Path) -> None:
+        """渡したファイルを読み取りだけにして、後で戻せるよう記録する。"""
+        for path in paths:
+            path.chmod(READ_ONLY_FILE_MODE)
+            locked.append(path)
+
+    yield _lock
+    # 一時フォルダを片付けられるよう、権限を戻す
+    for path in locked:
+        path.chmod(stat.S_IRUSR | stat.S_IWUSR)

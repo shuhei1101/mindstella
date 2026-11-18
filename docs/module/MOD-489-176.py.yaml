@@ -1,5 +1,5 @@
 id: MOD-489-176
-title: サーバー / ゴール判定 / commands.py
+title: サーバー / 入口 / commands.py
 test_files:
   - tests/unit/scripts/test_commands.py
 data_models:
@@ -74,35 +74,6 @@ constants:
     summary: '`next_id` の `count` の上限（『ID の採番』）'
     value: '50'
 functions:
-  - name: run_goal
-    title: goal の処理
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/commands.py
-    usecase: ゴール判定
-    scope: public
-    summary: ゴールの判定を出力の形にする
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: '`workspace`（絶対パス）'
-    returns:
-      type: dict[str, Any]
-      description: '`GoalReport` を `asdict` した辞書（届いたかどうかによらずツールのエラーにしない）'
-    process: |-
-      1. ワークスペースを読み、判定する（`load_workspace`、`judge_goal`）
-      2. `asdict` して返す
-    exceptions:
-      - name: WorkspaceNotFoundError
-        condition: '`config.yaml` が無い（`load_workspace` から伝わる）'
-    unit_tests:
-      - name: test_run_goal
-        case: 正常
-        summary: 判定を出力の形にする
-        condition: 未決定の D-1 だけを持つワークスペース
-        mock: なし
-        expected: '`reached` が偽で、`goal_phase`・`phases`・`remaining_decisions`・`remaining_deliverables` のキーがある'
   - name: validate_input_keys
     title: 渡せないキーの確認
     kind: 関数
@@ -183,9 +154,9 @@ functions:
       - name: test_merge_changes
         case: 正常
         summary: 置き換え・消す・同じ値を見分ける
-        condition: '元 `{"id": "D-1", "status": "未決定", "weight": "大", "lead": "l"}` に `{"status": "決定済み", "weight": null, "lead": "l", "answer": "a"}`'
+        condition: '元 `{"id": "D-1", "status": "未決定", "reason": "r", "lead": "l"}` に `{"status": "決定済み", "reason": null, "lead": "l", "answer": "a"}`'
         mock: なし
-        expected: '`{"id": "D-1", "status": "決定済み", "lead": "l", "answer": "a"}` と `[status, weight, answer]`。元の項目は変わらない'
+        expected: '`{"id": "D-1", "status": "決定済み", "lead": "l", "answer": "a"}` と `[status, reason, answer]`。元の項目は変わらない'
   - name: switch_adopted
     title: 採用する案の切り替え
     kind: 関数
@@ -369,7 +340,7 @@ functions:
       description: '`{ok, problems}`'
     process: |-
       1. ワークスペースを読み、点検する（`load_workspace`、`check_workspace`）
-      2. 前の版の形式の問題（`is_legacy_problem`。`written_ids` は渡さないので、`decision_state` の問題は全て当たる）は、`detail` に続けて `（/mindstella:upgrade で今の形式に移せます）` を足す
+      2. 前の版の形式の問題（`is_legacy_problem`。`written_ids` は渡さないので、`decision_state` の問題は全て当たる）は、`detail` に続けて `（起動スクリプトでワークスペースを開き直すと今の形式に移せます）` を足す
       3. 問題が無ければ `ok: true`、あれば `ok: false` を返す
     unit_tests:
       - name: test_run_check
@@ -386,183 +357,16 @@ functions:
         expected: '`ok: false`・`problems` が 1 件（例外を送らない）'
       - name: test_run_check_when_legacy_format
         case: 正常
-        summary: 前の版の形式の問題に /mindstella:upgrade を案内する
+        summary: 前の版の形式の問題に開き直しを案内する
         condition: 'A-1（`done: true`）を YAML で直接書いたワークスペース'
         mock: なし
-        expected: '`ok: false`。A-1 の問題の `detail` が `（/mindstella:upgrade で今の形式に移せます）` で終わる'
+        expected: '`ok: false`。A-1 の問題の `detail` が `（起動スクリプトでワークスペースを開き直すと今の形式に移せます）` で終わる'
       - name: test_run_check_when_decision_state
         case: 正常
-        summary: 案と状態の合わない検討事項に /mindstella:upgrade を案内する
+        summary: 案と状態の合わない検討事項に開き直しを案内する
         condition: 案を持たない未決定の D-1 を直接書いたワークスペース
         mock: なし
-        expected: '`ok` が偽で、`kind: decision_state`・`file: .mindstella/decisions.yaml`・`key: items[0].options` の問題の `detail` が `/mindstella:upgrade` を含む'
-  - name: run_next
-    title: next の処理
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/commands.py
-    usecase: 状況の確認
-    scope: public
-    summary: 次の候補を出力の形にする
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: '`workspace`（絶対パス）'
-      - name: limit
-        type: int | None
-        required: true
-        passing: positional
-        description: '`limit`'
-    returns:
-      type: dict[str, Any]
-      description: '`{candidates}`'
-    process: |-
-      1. `limit` が 1 未満なら `ArgumentError`（`limit`・`1 以上を渡してください`）を送る
-      2. ワークスペースを読み、候補を並べる（`load_workspace`、`list_next_candidates`）
-      3. `asdict` して返す
-    unit_tests:
-      - name: test_run_next
-        case: 正常
-        summary: 候補を出力の形にする
-        condition: 未決定の D-1 だけで `limit=None`
-        mock: なし
-        expected: '`{candidates: [{id: D-1, title, phase, weight, followers: 0}]}`'
-      - name: test_run_next_when_limit_invalid
-        case: 異常
-        summary: 1 未満の limit は引数の誤り
-        condition: '`limit=0`'
-        mock: なし
-        expected: '`ArgumentError`（メッセージに `limit`）'
-        exception: limit が 1 未満
-  - name: run_status
-    title: status の処理
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/commands.py
-    usecase: 状況の確認
-    scope: public
-    summary: 再開時の状況を出力の形にする
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: '`workspace`（絶対パス）'
-    returns:
-      type: dict[str, Any]
-      description: '`StatusSummary` を `asdict` した辞書'
-    process: |-
-      1. ワークスペースを読み、まとめる（`load_workspace`、`summarize_status`）
-      2. `asdict` して返す
-    unit_tests:
-      - name: test_run_status
-        case: 正常
-        summary: 状況を出力の形にする
-        condition: 要見直しの D-1 だけ
-        mock: なし
-        expected: '`needs_review` が `[{id: D-1, title}]` で、`in_progress`・`resumable`・`waiting`・`on_hold`・`next` のキーがある'
-  - name: run_migrate
-    title: migrate の処理
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/commands.py
-    usecase: 記録の形式の移行
-    scope: public
-    summary: '`plan`・`values`・`record` で分けて移し替えの処理を呼び、結果を出力の形にする'
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: '`workspace`（絶対パス）'
-      - name: plan
-        type: bool
-        required: true
-        passing: keyword
-        description: '`plan`'
-      - name: record
-        type: bool
-        required: true
-        passing: keyword
-        description: '`record`'
-      - name: values
-        type: list[dict[str, Any]] | None
-        required: true
-        passing: keyword
-        description: '`values`（`{file, key, value}` の並び）'
-      - name: from_version
-        type: str | None
-        required: true
-        passing: keyword
-        description: '`from_version`'
-      - name: to_version
-        type: str | None
-        required: true
-        passing: keyword
-        description: '`to_version`'
-    returns:
-      type: dict[str, Any]
-      description: インターフェース定義『記録の形式の移行』のレスポンス
-    process: |-
-      1. 引数を確かめる。合わなければ、その引数の名前を持った `ArgumentError` を送る
-         - `plan`・`record`・`values` の 2 つ以上を渡した場合
-         - `from_version`・`to_version` が版の形でない場合（`parse_release_version` が送る `ValueError`）、または `to_version` が `from_version` より前の場合
-         - `values` の要素が `file`・`key`・`value` を文字列で持たない場合
-      2. `plan` なら手順を並べる（`plan_migration`）、`values` があれば `(file, key, value)` の組にして値を入れてから並べ直し（`set_values`・`plan_migration`。`steps` は空にする）、`record` なら版を書いてから並べ直す（`record_version`・`plan_migration`。`steps` は空にし `recorded` を添える）。どれでもなければ手順を当てる（`apply_migration`）
-      3. `MigrationReport` を出力の辞書にする（版は `str()`、手順は `{version, index, op, destructive: op が DESTRUCTIVE_OPS にあるか args の destructive が真か, summary: describe_step}`、`needs_values`・`backup` は `asdict`）
-    unit_tests:
-      - name: test_run_migrate
-        case: 正常
-        summary: 手順を並べて出力の形にする
-        condition: '版のファイルと `summary` を持たず A-1（`done: true`）を持つワークスペース、`plan=True`'
-        mock: '`read_plugin_version`（`v0.3.0`）'
-        expected: '`workspace_version` が `null`、`plugin_version` が `"v0.3.0"`、`relation` が `older`、`steps` の先頭が `{version: "v0.3.0", index: 1, op: rename_key, destructive: false, summary: ...}`、`needs_values` に `summary`、`backup` が `null`'
-      - name: test_run_migrate_when_values
-        case: 正常
-        summary: values の値を入れて並べ直す
-        condition: '手順を当てた後の `summary` を持たないワークスペース、`values=[{file: .mindstella/config.yaml, key: summary, value: 題名}]`'
-        mock: '`read_plugin_version`（`v0.3.0`）'
-        expected: '`steps` と `needs_values` が空で、`.mindstella/config.yaml` の `summary` が `題名`'
-      - name: test_run_migrate_when_argument_invalid
-        case: 異常
-        summary: 一緒に使わない引数・版の形の誤り・形の違う values
-        condition: '`parametrize`: `plan=True, record=True` / `to_version="0.3"` / `from_version="v0.3.0", to_version="v0.2.0"` / `values=[{file: config.yaml}]`'
-        mock: なし
-        expected: '`ArgumentError`（メッセージに `plan` / `to_version` / `to_version` / `values`）。ワークスペースを書き換えていない'
-        exception: 引数の誤り
-      - name: test_run_migrate_when_call_destructive
-        case: 正常
-        summary: '`call` の手順の `destructive: true` を `steps[].destructive` に反映する'
-        condition: '`v0.3.0` の手順に `{op: call, script: ..., destructive: true}` を持つバージョンの手順のフォルダ、`plan=True`'
-        mock: '`read_plugin_version`（`v0.3.0`）'
-        expected: '`steps` の該当する手順が `{op: call, destructive: true, ...}`'
-    exceptions:
-      - name: ArgumentError
-        condition: 一緒に使わない引数を渡した・版の形が違う・`to_version` が `from_version` より前・`values` の形が違う
-        message: '引数の誤り: {引数の名前}: {理由}'
-  - name: run_clear_release
-    title: clear-release の処理
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/commands.py
-    usecase: リリースの片付け
-    scope: public
-    summary: '`release/` の中身を消し、消したものを返す'
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: '`workspace`（絶対パス）'
-    returns:
-      type: dict[str, Any]
-      description: '`{removed}`'
-    process: 1. `release/` を片付ける（リリースの片付け。`clear_release`）
-    unit_tests:
-      - name: test_run_clear_release
-        case: 正常
-        summary: release/ の中を消し、消したものを返す
-        condition: 作成済みのワークスペースの `release/` に `古い資料.md`
-        mock: なし
-        expected: '`{"removed": ["古い資料.md"]}`'
+        expected: '`ok` が偽で、`kind: decision_state`・`file: .mindstella/decisions.yaml`・`key: items[0].options` の問題の `detail` が開き直しの案内を含む'
   - name: run_export
     title: export の処理
     kind: 関数
@@ -664,7 +468,7 @@ functions:
         summary: ワークスペースでなければ配信を立てない
         condition: '`parametrize`: 空の `tmp_path` / `mindmap.yaml` だけを置いた `tmp_path`'
         mock: '`previews`'
-        expected: '`WorkspaceNotFoundError`（後者は `lines` に `/mindstella:upgrade`）。`start` が呼ばれない'
+        expected: '`WorkspaceNotFoundError`（後者は `lines` に `UPGRADE_HINT`）。`start` が呼ばれない'
         exception: config.yaml が無い
       - name: test_run_preview_url_when_started
         case: 正常
@@ -716,24 +520,9 @@ functions:
         required: true
         passing: positional
         description: '`settings`'
-      - name: phase_map
-        type: dict[str, str] | None
-        required: true
-        passing: positional
-        description: '`phase_map`'
-      - name: target_map
-        type: dict[str, str] | None
-        required: true
-        passing: positional
-        description: '`target_map`'
-      - name: category_map
-        type: dict[str, str] | None
-        required: true
-        passing: positional
-        description: '`category_map`'
     returns:
       type: dict[str, Any]
-      description: '`{changed, remapped, files}`（`remapped` は `{id, key, from, to}`）'
+      description: '`{changed, files}`'
     process: 1. `update_settings` を呼び、その結果を返す（単体テストは `update_settings` が持つ）
   - name: run_commit
     title: commit の処理
@@ -953,7 +742,7 @@ functions:
          - 前の `body` があり新しい `body` と名前が違う（形式を替えた）場合、前の名前を `removed_bodies` に足す（同じ名前が `bodies` にあればそこから外す）。新しい名前が `removed_bodies` にあれば外す
          - `changed` には、`body` の名前が変わったとき `body` を、本文の中身が変わったとき渡したキー（`body_markdown` か `body_html`）を入れる
       3. 書き換える前の本文（`staged.bodies` にあればそれ、無ければ `read_body`）と比べて変更履歴の 1 回分を作る（`make_entry`。`seq` は `last_seq` + 1、`by` は `editor`）
-         - 変わったものがある場合、通し番号を振り（`advance_seq`）、`staged.history` の行の `seq` をその番号にして、行に変更履歴を積む（`history_limit`、`stack_history`。`read_seq` は記録のもの）。保持する回数が 0 より大きければ、まだまとめていない変更の `changed` に ID を足す（`note_pending`）
+         - 変わったものがある場合、通し番号を振り（`advance_seq`）、`staged.history` の行の `seq` をその番号にして、行に変更履歴を積む（`history_limit`、`stack_history`。`read_seq` は `load_changes` が入れた前回参照した時点）。保持する回数が 0 より大きければ、まだまとめていない変更の `changed` に ID を足す（`note_pending`）
       4. その位置を差し替えた並びと、`touched` にその種類を足した `Staged` を返す
     exceptions:
       - name: ItemNotFoundError
@@ -1157,7 +946,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 前回読んだ時点からの変更を読む
     scope: public
-    summary: 読んだ時点からの変更を並べ、読んだ時点を進めて書き込む
+    summary: 読んだ時点からの変更を並べ、前回参照した時点を進めて書き込む
     args:
       - name: root
         type: Path
@@ -1168,23 +957,23 @@ functions:
       type: dict[str, Any]
       description: '`{had_read_point, read_seq, until_seq, added, changed}`'
     process: |-
-      1. ワークスペースとまとまりを読む（`load_workspace`、`load_changes`）
+      1. ワークスペースとまとまりを読む（`load_workspace`、`load_changes`。`read_seq` は『前回参照した時点』の値）
       2. 変更を並べる（`changes_since`）
-      3. 読んだ時点を進めた記録だけを、`changes.yaml` だけを置き換えて書く（`mark_read`、`run_commit` と同じ `_write_changes`）。項目の YAML は書かず、ワークスペースのスキーマの検証もしない（今あるスキーマ違反で止めない）
+      3. 前回参照した時点を `until_seq` に書く（『前回参照した時点』の `save_read_seq`）。項目の YAML と `changes.yaml` は書かず、ワークスペースのスキーマの検証もしない（今あるスキーマ違反で止めない）
       4. 2. の結果を返す（3. で失敗したら返さずにエラーを伝える）
     unit_tests:
       - name: test_run_changes_since_read
         case: 正常
         summary: 変更を返して読んだ時点を進める
-        condition: '`read_seq` 2、`last_seq` 4 で、`added_seq` 3 の T-1 を持つワークスペース'
+        condition: '`read_point.json` の `read_seq` 2、`last_seq` 4 で、`added_seq` 3 の T-1 を持つワークスペース'
         mock: なし
-        expected: '`added` が T-1、`until_seq` が 4。`changes.yaml` の `read_seq` が 4'
+        expected: '`added` が T-1、`until_seq` が 4。`load_read_seq` が 4 で、`changes.yaml` が呼ぶ前と同じ'
       - name: test_run_changes_since_read_when_schema_mismatch
         case: 正常
         summary: ワークスペースにスキーマ違反があっても読んだ時点を進める
-        condition: '`status: 完了`（検討事項に無い状態）の D-1 と、`read_seq` 2・`last_seq` 3 の `changes.yaml` を持つワークスペース'
+        condition: '`status: 完了`（検討事項に無い状態）の D-1 と、`read_point.json` の `read_seq` 2・`last_seq` 3 を持つワークスペース'
         mock: なし
-        expected: 例外にならず、`changes.yaml` の `read_seq` が 3。`decisions.yaml` が呼ぶ前と同じ
+        expected: 例外にならず、`load_read_seq` が 3。`decisions.yaml` が呼ぶ前と同じ
   - name: run_readme
     title: readme の処理
     kind: 関数
@@ -1539,42 +1328,6 @@ functions:
     process: |-
       1. ワークスペースを確かめ（`require_workspace`）、書き換える（`update_thread`）
     unit_tests: []
-  - name: run_write_release
-    title: write-release の処理
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/commands.py
-    usecase: リリースの書き出し
-    scope: public
-    summary: '`release/` の下に 1 ファイルを書き、書いたパスとバイト数を返す'
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: '`workspace`（絶対パス）'
-      - name: path
-        type: str
-        required: true
-        passing: positional
-        description: '`release/` からのパス'
-      - name: content
-        type: str
-        required: true
-        passing: positional
-        description: 書き出す本文
-    returns:
-      type: dict[str, Any]
-      description: '`{path, bytes}`'
-    process: |-
-      1. `release/` の下に書く（リリースの書き出し。`write_release`）
-      2. 戻ったパスとバイト数を `{path, bytes}` にして返す
-    unit_tests:
-      - name: test_run_write_release
-        case: 正常
-        summary: release/ の下に書き、パスとバイト数を返す
-        condition: 作成済みのワークスペースに `path` `要件定義書.md`、`content` `# 要件`
-        mock: なし
-        expected: '`{"path": "要件定義書.md", "bytes": 8}`。`.mindstella/release/要件定義書.md` の中身が `# 要件`'
   - name: run_next_id
     title: next_id の処理
     kind: 関数

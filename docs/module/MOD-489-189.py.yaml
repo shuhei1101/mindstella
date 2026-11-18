@@ -39,7 +39,7 @@ data_models:
     description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。点検の出力の `problems[]` と同じキーを持ち、`dataclasses.asdict` で JSON にする。'
     properties:
       - name: kind
-        type: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "unknown_phase", "stale_history", "decision_state"]
+        type: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "stale_history", "decision_state"]
         description: 問題の種類
       - name: file
         type: str
@@ -179,7 +179,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     summary: 前の版の形式でスキーマに合わないときに続ける 1 行
-    value: '"ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます"'
+    value: '"ヒント: 前の版の形式の記録は、起動スクリプトでワークスペースを開き直すと今の形式に移せます"'
   - name: VERSION_FILE
     title: 版のファイル
     container: plugins/mindstella/skills/mindmap/scripts/store.py
@@ -197,7 +197,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     summary: 記録のフォルダが無く直下に前の版の設定ファイル（`config.yaml` か `mindmap.yaml`）があるフォルダの WorkspaceNotFoundError・WorkspaceExistsError に続ける 1 行（`{root}` はフォルダの絶対パス）
-    value: '"ヒント: 前の版の形の記録があります。/mindstella:upgrade {root} で今の版へ移し替えてください"'
+    value: '"ヒント: 前の版の形の記録があります。起動スクリプトで {root} を開き直すと今の版へ移し替えます"'
   - name: YAML_LOADER
     title: YAML の読み込みに使用するローダー
     container: plugins/mindstella/skills/mindmap/scripts/store.py
@@ -761,7 +761,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: ワークスペースの作成
     scope: public
-    summary: 設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作り、直下に README を書く
+    summary: 設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/` を作り、直下に README を書く
     side_effects: フォルダとファイルを作る
     args:
       - name: root
@@ -786,7 +786,7 @@ functions:
       1. `records_root(root) / SETTINGS_FILE` があれば `WorkspaceExistsError` を送る。直下に `SETTINGS_FILE` か `LEGACY_SETTINGS_FILE` があれば、`lines` に `UPGRADE_HINT` を持つ `WorkspaceExistsError` を送る（前の版のワークスペースの記録を残したまま空の記録を作らない）
       2. 設定と空の 7 種類で `Workspace` を組み、検証する（ワークスペースの検証。`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（フォルダも作らない）
-      3. `records_root(root)` とその中の `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）と、記録の配信の設定（`SOURCE_CONFIG_FILE`。`build_source_config`）とスキーマの複製（`SOURCE_SCHEMA_DIR` へ `SCHEMA_DIR` の種類ごとの 7 つと `COMMON_SCHEMA`）を書き、直下の README を書き（README の書き込み。`write_readme(root)`）、最後に `config.yaml` を書く（`dump_yaml`。README のほかはどれも `records_root(root)` の下）
+      3. `records_root(root)` とその中の `docs/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）と、記録の配信の設定（`SOURCE_CONFIG_FILE`。`build_source_config`）とスキーマの複製（`SOURCE_SCHEMA_DIR` へ `SCHEMA_DIR` の種類ごとの 7 つと `COMMON_SCHEMA`）を書き、直下の README を書き（README の書き込み。`write_readme(root)`）、最後に `config.yaml` を書く（`dump_yaml`。README のほかはどれも `records_root(root)` の下）
          - `OSError` か README の `WriteFailedError` が起きた場合、この関数が作ったファイルとフォルダ（この呼び出しで書いた README を含む。前からあった README は消さない）を消して `WriteFailedError` を送る（`config.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
     exceptions:
       - name: WorkspaceExistsError
@@ -803,7 +803,7 @@ functions:
         summary: まだ無いフォルダにワークスペースを作る
         condition: '`tmp_path / "ws"`（無い）と正しい設定、`version="v0.3.0"`'
         mock: なし
-        expected: 戻り値が 8 つの YAMLと `mindstella-version.ini`・`docs/`・`release/`・`README.md`。`config.yaml` を読むと渡した設定。`mindstella-version.ini` が `v0.3.0\n`。直下の `README.md` の 1 行目が `README_MARK`
+        expected: 戻り値が 8 つの YAMLと `mindstella-version.ini`・`docs/`・`README.md`。`config.yaml` を読むと渡した設定。`mindstella-version.ini` が `v0.3.0\n`。直下の `README.md` の 1 行目が `README_MARK`
       - name: test_create_workspace_when_exists
         case: 異常
         summary: config.yaml か mindmap.yaml があるフォルダには作らない
@@ -814,9 +814,9 @@ functions:
       - name: test_create_workspace_when_settings_invalid
         case: 異常
         summary: 設定がスキーマに合わなければフォルダも作らない
-        condition: '`phases` の無い設定と `tmp_path / "ws"`（無い）'
+        condition: '`summary` の無い設定と `tmp_path / "ws"`（無い）'
         mock: なし
-        expected: '`SchemaMismatchError`（`lines` に `config.yaml` と `phases`）。`tmp_path / "ws"` が無い'
+        expected: '`SchemaMismatchError`（`lines` に `config.yaml` と `summary`）。`tmp_path / "ws"` が無い'
         exception: 設定が設定のスキーマに合わない
       - name: test_create_workspace_when_write_fails
         case: 異常
@@ -1013,7 +1013,7 @@ functions:
     process: |-
       1. `kind` が `decision_state` の場合、`id` が `written_ids` に無ければ真、あれば偽を返す
       2. `kind` が `schema` でない場合、偽を返す
-      3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たないか、`tags` を持てば真
+      3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field`・`tags` か削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）のどれかを持てば真
       4. `key` が `items[{i}].tags[{j}]` の形で、`id` が `written_ids` に無い場合、その要素が文字列なら真、それ以外は偽
       5. `id` があり `written_ids` に無く、その ID の項目が v0.13.0 より前の形（履歴のキー・参照のキー（`LEGACY_ITEM_KEYS`）を持つ、`related` に文字列の要素がある、`body` が `/` を含まない文字列）なら真
       6. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
@@ -1022,7 +1022,7 @@ functions:
       - name: test_is_legacy_problem
         case: 正常
         summary: 前の版の形式の問題を見分ける
-        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした今の形の D-1（v0.13.0 より前の形のキーを持たない）を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `field` を持ち `playbooks` を持たない設定の `config.yaml` の問題 / `tags` を持つ設定の `config.yaml` の問題'
+        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした今の形の D-1（v0.13.0 より前の形のキーを持たない）を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と削除したキー `playbooks` を持つ設定の `config.yaml` の問題 / `tags` を持つ設定の `config.yaml` の問題'
         mock: なし
         expected: 真 / 真 / 偽 / 偽 / 真 / 真
       - name: test_is_legacy_problem_when_decision_state
@@ -1043,62 +1043,6 @@ functions:
         condition: 'D-1 が `created`・`updated` を持つワークスペースを検証した D-1 の `schema` の問題。`parametrize`: `written_ids` なし / `written_ids` が `{D-1}`'
         mock: なし
         expected: 真 / 偽
-  - name: clear_release
-    title: リリースの片付け
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/store.py
-    usecase: リリースの片付け
-    scope: public
-    summary: '`release/` の中身を消し、空の `release/` を残す'
-    side_effects: '`release/` の中のファイルとフォルダを消す（`release/` が無ければ作る）'
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: ワークスペースのフォルダ
-    returns:
-      type: list[str]
-      description: 消したものの `release/` からのパス（フォルダは末尾に `/`。名前の順）
-    process: |-
-      1. ワークスペースを確かめる（`require_workspace`）
-      2. `records_root(root) / RELEASE_DIR` を作る（あればそのまま）
-      3. 中の項目を名前の順に消す（シンボリックリンクとファイルは `Path.unlink`、リンクでないフォルダは `shutil.rmtree`。リンク先は消さない）。消したものを戻り値に足す
-         - `OSError` が起きた場合、そこで止めて `WriteFailedError` を送る（それまでに消したものは戻さない。次の呼び出しで片付く）
-    exceptions:
-      - name: WorkspaceNotFoundError
-        condition: '`root` に `config.yaml` が無い（`require_workspace`）'
-        message: 'ワークスペースがありません: {root}'
-      - name: WriteFailedError
-        condition: '`release/` を作るか中のものを消す途中で `OSError` が起きた'
-        message: '書き込めませんでした: {パス}（{理由}）'
-    unit_tests:
-      - name: test_clear_release
-        case: 正常
-        summary: release/ の中のファイルとフォルダを消す
-        condition: 作成済みのワークスペースの `release/` に `古い資料.md` と、ファイルを 1 つ持つ `図/`
-        mock: なし
-        expected: 戻り値が `["古い資料.md", "図/"]`。`release/` があり、中身が空。`config.yaml` が呼ぶ前と同じ
-      - name: test_clear_release_when_release_dir_missing
-        case: 正常
-        summary: release/ が無ければ空の release/ を作る
-        condition: '`release/` を消し、`handoff/` に `資料.md` を置いたワークスペース'
-        mock: なし
-        expected: 戻り値が空。空の `release/` がある。`handoff/` が呼ぶ前と同じ
-      - name: test_clear_release_when_workspace_missing
-        case: 異常
-        summary: config.yaml が無ければ何も消さない
-        condition: '`config.yaml` が無く、`release/` に `資料.md` がある `tmp_path`'
-        mock: なし
-        expected: '`WorkspaceNotFoundError`。`release/資料.md` が残っている'
-        exception: config.yaml が無い
-      - name: test_clear_release_when_remove_fails
-        case: 異常
-        summary: 消せないものに当たったらそこで止める
-        condition: '`release/` に `一.md`・`二.md`。`Path.unlink` を `二.md` のときだけ `PermissionError` を送るように差し替える（`failing_unlink`）'
-        mock: '`Path.unlink`（monkeypatch）'
-        expected: '`WriteFailedError`（メッセージに `二.md` のパス）。`二.md` が残り、`一.md` は無い'
-        exception: 消す途中で OSError
   - name: workspace_lock
     title: 書き換えの鍵
     kind: 関数
@@ -1130,7 +1074,7 @@ functions:
         required: false
         default: require_workspace
         passing: keyword
-        description: '`create` が偽のときにワークスペースを確かめる関数。`plan` でない `migrate` だけが、前の版の `mindmap.yaml` だけのフォルダも通す `require_migratable`（モジュール構成『移行』）を渡す'
+        description: '`create` が偽のときにワークスペースを確かめる関数。モジュール構成『ワークスペースの管理』の移し替えだけが、前の版の `mindmap.yaml` だけのフォルダも通す `require_migratable`（モジュール構成『移行』）を渡す'
     returns:
       type: Iterator[None]
       description: 鍵とロックを持っている間だけ返す
@@ -1301,7 +1245,7 @@ functions:
       2. `root / SETTINGS_FILE` か `root / LEGACY_SETTINGS_FILE` がファイルなら、`lines` に `UPGRADE_HINT`（`{root}` を埋めたもの）を持つ `WorkspaceNotFoundError` を送る
       3. どれも無ければ `WorkspaceNotFoundError` を送る
 
-      `load_workspace`・`clear_release`・`write_release`・`workspace_lock`（`create` が偽で `require` を渡さないとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは前の版の形も通すため呼ばない
+      `load_workspace`・`workspace_lock`（`create` が偽で `require` を渡さないとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは前の版の形も通すため呼ばない
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`root` に `.mindstella/config.yaml` が無い'
@@ -1318,7 +1262,7 @@ functions:
         summary: 無いフォルダと、前の版の形のフォルダを分けて送る
         condition: '`parametrize`: 空の `tmp_path` / 直下に `mindmap.yaml` だけを置いた `tmp_path` / 直下に `config.yaml` だけを置いた `tmp_path`'
         mock: なし
-        expected: どれも `WorkspaceNotFoundError`（メッセージに `tmp_path`）。空のフォルダは `lines` が空、ほかの 2 つは `lines` が `/mindstella:upgrade {tmp_path}` を含む 1 行
+        expected: どれも `WorkspaceNotFoundError`（メッセージに `tmp_path`）。空のフォルダは `lines` が空、ほかの 2 つは `lines` が `UPGRADE_HINT` に `tmp_path` を埋めた 1 行
         exception: .mindstella/config.yaml が無い
   - name: check_settings
     title: 設定の検査
@@ -1534,88 +1478,6 @@ functions:
         condition: '`parametrize`: `A-1.md` / `A-1.html` / `None` / `A-1.txt`'
         expected: '`markdown` / `html` / `None` / `None`'
         mock: なし
-  - name: write_release
-    title: リリースの書き出し
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/store.py
-    usecase: リリースの書き出し
-    scope: public
-    summary: '`release/` の下の `.md`・`.html` を 1 つ書く（あれば置き換える）'
-    side_effects: '`release/` の下に 1 ファイルを書く（`release/` と途中のフォルダが無ければ作る）'
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: ワークスペースのフォルダ
-      - name: path
-        type: str
-        required: true
-        passing: positional
-        description: '`release/` からのパス'
-      - name: content
-        type: str
-        required: true
-        passing: positional
-        description: 本文
-    returns:
-      type: tuple[str, int]
-      description: 書いたファイルの `release/` からのパス（区切りは `/`）と、本文の UTF-8 のバイト数
-    process: |-
-      1. ワークスペースを確かめる（`require_workspace`）
-      2. `path` を確かめる。次のどれかなら `ArgumentError("path", 理由)` を送る
-         - 空・絶対パス・部分に `..` を持つ
-         - 拡張子が `.md`・`.html` でない
-      3. `records_root(root) / RELEASE_DIR` と `path` をつないだ置き換え先を作り、`resolve()` した先が `resolve()` した `release/` の下に無ければ `ArgumentError("path", 理由)` を送る（シンボリックリンクで外を指す）
-      4. 置き換え先の親フォルダを作る（`mkdir(parents=True, exist_ok=True)`）
-         - `OSError` が起きた場合、`WriteFailedError` を送る（途中に同じ名前のファイルがある など）
-      5. `_write_temp` で一時ファイルに書き、`os.replace` で置き換える
-         - `OSError` が起きた場合、一時ファイルを消してから `WriteFailedError` を送る
-      6. `release/` からのパスと `content.encode("utf-8")` の長さを返す
-    exceptions:
-      - name: WorkspaceNotFoundError
-        condition: '`root` に `config.yaml` が無い（`require_workspace`）'
-        message: 'ワークスペースがありません: {root}'
-      - name: ArgumentError
-        condition: '`path` が空・絶対パス・`..` を含む・`release/` の外を指す・拡張子が `.md`・`.html` でない'
-        message: '引数の誤り: path: {理由}'
-      - name: WriteFailedError
-        condition: フォルダを作るか書き込む途中で `OSError` が起きた
-        message: '書き込めませんでした: {パス}（{理由}）'
-    unit_tests:
-      - name: test_write_release
-        case: 正常
-        summary: release/ の下にフォルダを作って書く
-        condition: '`release/` を持たない作成済みのワークスペースに `path` `図/画面.html`、`content` `<p>あ</p>`'
-        mock: なし
-        expected: 戻り値が `("図/画面.html", 10)`。`.mindstella/release/図/画面.html` の中身が `<p>あ</p>`
-      - name: test_write_release_when_overwrite
-        case: 正常
-        summary: 同じ名前を置き換える
-        condition: '`release/a.md` に `前` がある'
-        mock: なし
-        expected: '`release/a.md` の中身が渡した `後`。`release/` の下のファイルが 1 つ'
-      - name: test_write_release_when_path_invalid
-        case: 異常
-        summary: release/ の外・拡張子違いは書かない
-        condition: '`parametrize`: `../config.yaml` / 絶対パス / `a.txt` / 空 / `release/` の外を指すシンボリックリンク `外/` の下の `b.md`'
-        mock: なし
-        expected: '`ArgumentError`（`argument` が `path`）。ワークスペースのファイルが呼ぶ前と同じ'
-        exception: path が release/ の下の .md・.html でない
-      - name: test_write_release_when_workspace_missing
-        case: 異常
-        summary: config.yaml が無ければ何も書かない
-        condition: '`config.yaml` が無い `tmp_path`'
-        mock: なし
-        expected: '`WorkspaceNotFoundError`。`.mindstella/` が作られていない'
-        exception: config.yaml が無い
-      - name: test_write_release_when_write_fails
-        case: 異常
-        summary: 置き換えに失敗したら一時ファイルを残さない
-        condition: '`parametrize`: `os.replace` を `PermissionError` を送るように差し替える / `release/図` にファイルがあり `path` が `図/a.md`'
-        mock: '`os.replace`（monkeypatch。前者だけ）'
-        expected: '`WriteFailedError`。`release/` に一時ファイルも置き換え先も無い（後者は `release/図` のファイルが呼ぶ前と同じ）'
-        exception: フォルダの作成か置き換えで OSError
   - name: build_source_config
     title: 記録の配信の設定の組み立て
     kind: 関数

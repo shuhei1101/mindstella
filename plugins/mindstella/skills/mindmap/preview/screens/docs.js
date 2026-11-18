@@ -1,14 +1,11 @@
 "use strict";
-// 資料。カード（既定）・ボード・表で見る。納品物を先頭に印付きで並べ、資料の状態を出す。
+// 資料。カード（既定）・ボード・表で見る。連番の順に並べ、資料の状態を出す。
 var MindmapPreview;
 (function (MindmapPreview) {
-    /** 納品物を先頭に、それぞれ連番の順に並べた資料を返す */
-    function orderDocs(docs) {
-        return [...docs].sort((a, b) => Number(b.deliverable === true) - Number(a.deliverable === true) || MindmapPreview.compareIds(a.id, b.id));
+    /** 連番の順に並べた資料を返す */
+    function byNumber(docs) {
+        return [...docs].sort((a, b) => MindmapPreview.compareIds(a.id, b.id));
     }
-    MindmapPreview.orderDocs = orderDocs;
-    /** 納品物の列の値 */
-    const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
     /** 形式の列の値（札の文言と同じ） */
     const BODY_FORMAT_VALUES = ["MD", "HTML"];
     /** 形式の列の値。`body` の拡張子から決め、本文を持たなければ空にする */
@@ -18,20 +15,10 @@ var MindmapPreview;
     }
     /** 資料の表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
     function docColumns(index) {
-        const common = MindmapPreview.commonColumns(index.data.settings);
+        const common = MindmapPreview.commonColumns();
         return [
             common.id,
             common.title(),
-            {
-                key: "deliverable",
-                label: "納品物",
-                nowrap: true,
-                filterable: true,
-                order: DELIVERABLE_VALUES,
-                priority: 2,
-                get: (row) => (row["deliverable"] === true ? "納品物" : "納品物以外"),
-                cell: (row) => row["deliverable"] === true ? MindmapPreview.deliverableBadge() : MindmapPreview.h({ tag: "span", attrs: { class: "muted" }, children: ["—"] }),
-            },
             common.status(MindmapPreview.DOC_STATUSES),
             common.text("kind", "種類", { filterable: true, nowrap: true, priority: 2 }),
             {
@@ -45,9 +32,6 @@ var MindmapPreview;
                 cell: (row) => MindmapPreview.bodyFormatBadgeOf(typeof row["body"] === "string" ? row["body"] : undefined) ??
                     MindmapPreview.h({ tag: "span", attrs: { class: "muted" }, children: ["—"] }),
             },
-            common.target,
-            common.category,
-            common.phase,
             common.tags,
         ];
     }
@@ -103,13 +87,13 @@ var MindmapPreview;
             })
             : null;
         const content = route.view === "board"
-            ? // 列ごとに納品物を先頭に並べ直す
+            ? // 列ごとに連番の順に並べ直す
                 MindmapPreview.board({
                     columns: MindmapPreview.boardColumns({
                         items: shown,
                         statuses: [...MindmapPreview.DOC_STATUSES],
                         statusFilter: filters["status"] ?? [],
-                    }).map((column) => ({ ...column, items: orderDocs(column.items) })),
+                    }).map((column) => ({ ...column, items: byNumber(column.items) })),
                     card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id], comments, edit }),
                     emptyText: "資料はありません。",
                     added: MindmapPreview.addedCards({ edit, statuses: MindmapPreview.DOC_STATUSES, open: on.open, doc: true }),
@@ -120,7 +104,7 @@ var MindmapPreview;
                 children: [
                     ...(edit?.adds ?? []).map((item) => MindmapPreview.addedCard({ item, mark: edit?.marks[item.id] ?? "pending", open: on.open, doc: true })),
                     ...(shown.length > 0
-                        ? orderDocs(shown).map((row) => docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id], comments, edit }))
+                        ? byNumber(shown).map((row) => docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id], comments, edit }))
                         : (edit?.adds ?? []).length > 0
                             ? []
                             : [MindmapPreview.h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })]),
@@ -133,18 +117,17 @@ var MindmapPreview;
         });
     }
     MindmapPreview.docsScreen = docsScreen;
-    /** 資料のカード（納品物の印・種類・状態・カテゴリー・フェーズ・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */
+    /** 資料のカード（種類・状態・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */
     function docCard({ index, doc, open, inBoard, mark, comments, edit, }) {
         return MindmapPreview.h({
             tag: "button",
             attrs: {
-                class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === MindmapPreview.currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}${edit?.marks[doc.id] === "remove" ? " pe-removing" : ""}`,
+                class: `card doc-card${inBoard && doc.id === MindmapPreview.currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}${edit?.marks[doc.id] === "remove" ? " pe-removing" : ""}`,
                 type: "button",
                 "data-id": doc.id,
                 onclick: () => open(doc.id),
             },
             children: [
-                doc.deliverable === true ? MindmapPreview.deliverableBadge() : null,
                 MindmapPreview.h({
                     tag: "span",
                     attrs: { class: "doc-kind" },
@@ -160,7 +143,6 @@ var MindmapPreview;
                         mark === undefined ? null : MindmapPreview.diffMark({ kind: mark }),
                         MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [doc.id] }),
                         inBoard ? null : MindmapPreview.statusBadge(doc.status),
-                        MindmapPreview.h({ tag: "span", children: [[doc.category, doc.phase].filter(Boolean).join(" · ")] }),
                         MindmapPreview.editMarkOf({ edit, id: doc.id }),
                         comments === undefined ? null : MindmapPreview.commentPlace({ id: doc.id, count: comments[doc.id] }),
                     ],

@@ -1,0 +1,80 @@
+id: MOD-565-3
+title: サーバー / 移行 / remove_discussion_keys.py
+lead: v0.14.0 の手順の変換。設定から削除するキーを消し、項目の対象・カテゴリーを `topic:` のタグへ、属性・観点・確かさを本文の末尾の表へ移す。`yaml` と標準ライブラリだけを読み、この版の形を自分で組み立てる。
+constants:
+  - name: REMOVED_SETTING_KEYS
+    title: 消す設定のキー
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_discussion_keys.py
+    usecase: 記録の形式の移行
+    summary: '`.mindstella/config.yaml` から消すキー'
+    value: ("goal", "phases", "playbooks", "targets", "target_label", "categories")
+  - name: DROPPED_ITEM_KEYS
+    title: 移さずに消す項目のキー
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_discussion_keys.py
+    usecase: 記録の形式の移行
+    summary: 値を移さずに消す項目のキー
+    value: ("phase", "weight", "deliverable")
+  - name: KIND_FILES
+    title: 種類のファイル
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_discussion_keys.py
+    usecase: 記録の形式の移行
+    summary: 書き換える種類ごとの YAML（`.mindstella/` からの相対パス）
+    value: ("decisions.yaml", "tasks.yaml", "research.yaml", "docs.yaml", "terms.yaml", "notes.yaml", "logs.yaml")
+functions:
+  - name: remove_discussion_keys.migrate
+    title: 議論のキーを消す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_discussion_keys.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: 設定と項目から削除するキーを消し、残す値をタグと本文へ移す
+    side_effects: '`.mindstella/config.yaml`・種類ごとの YAML・`.mindstella/docs/` の本文を書き換える（`release/` と変更履歴は触らない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの直下
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。何も変えなければ空）
+    process: |-
+      1. `.mindstella/config.yaml` を読み、`REMOVED_SETTING_KEYS` を消す（キーの並びを保つ）
+      2. `KIND_FILES` の各ファイルの `items[]` を項目の並びの順に見る
+         - `target`・`category` の値を `{name: topic:{値}}` のタグにし、同じ名前のタグが無ければ `tags` の末尾に足してキーを消す
+         - `attrs` を本文の末尾の「属性」の表（キーと値）に、調査の `angles`・`confidence` を本文の末尾の「観点と確かさ」の表にしてキーを消す（本文が無ければ `docs/{ID}.md` を作り `body` を足す。このときだけ本文のファイルを書く）。表のセルの値は、Markdown の本文では `|` を `\|`、改行を `<br>` にし、HTML の本文では `html.escape` を通す
+         - `DROPPED_ITEM_KEYS` を移さずに消す
+      3. 書き換えたファイルだけを一時ファイルに書いてから置き換え、変えたファイルを返す。消すキーをどれも持たなければ何も書かない
+    exceptions:
+      - name: RuntimeError
+        condition: YAML を読めない。手順の `StepError` にして写しから戻すのは移行が担う
+    unit_tests:
+      - name: test_migrate
+        case: 正常
+        summary: 削除するキーを消し、残す値をタグと本文へ移す
+        condition: '`config.yaml` が `playbooks`・`goal`・`phases`・`targets`・`target_label`・`categories` を持ち、D-1（`phase`・`target: 認証`・`category: 方式`・`attrs: {優先度: 高}`・`weight`・本文あり）・A-1（`deliverable: true`）・R-1（`angles: [費用, 運用]`・`confidence: 中`・本文なし）'
+        mock: なし（`tmp_path`）
+        expected: '`config.yaml` が 6 つのキーを持たずほかは同じ並び。D-1 がタグ `topic:認証`・`topic:方式` を持ち、本文の末尾の「属性」の表に `優先度`・`高`。R-1 が `docs/R-1.md` を持ち、「観点と確かさ」の表に `費用`・`運用`・`中`。どの項目も消すキーを持たない'
+      - name: test_migrate_when_tag_exists
+        case: 正常
+        summary: 同じ名前のタグは足さない
+        condition: '`tags: [{name: topic:認証}]` と `target: 認証` を持つ D-1'
+        mock: なし
+        expected: D-1 の `topic:認証` が 1 つだけ
+      - name: test_migrate_when_already_current
+        case: 正常
+        summary: もう一度当てても変わらない
+        condition: '`test_migrate` を当てた後のワークスペース'
+        mock: なし
+        expected: 戻り値が空で、全てのファイルが呼ぶ前と同じ
+      - name: test_migrate_when_cell_has_special_chars
+        case: 正常
+        summary: 表のセルの記号を打ち消す
+        condition: '`parametrize`: `attrs: {メモ: "A|B\nC"}` と Markdown の本文を持つ D-1 / `attrs: {式: "a<b&c"}` と HTML の本文（`docs/A-1.html`）を持つ A-1'
+        mock: なし
+        expected: D-1 の本文に `| メモ | A\|B<br>C |`、A-1 の本文に `<td>a&lt;b&amp;c</td>`
+refs:
+  - IF-489-52#
+  - MOD-489-164#
+test_files:
+  - tests/unit/scripts/test_remove_discussion_keys.py

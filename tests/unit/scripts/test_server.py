@@ -45,13 +45,7 @@ EXPECTED_TOOL_NAMES = (
     "changes_since_read",
     "commit",
     "pending",
-    "status",
-    "next",
     "check",
-    "goal",
-    "migrate",
-    "clear_release",
-    "write_release",
     "export",
     "preview_url",
     "readme",
@@ -718,7 +712,7 @@ def test_error_result() -> None:
 
 
 def test_error_result_when_legacy_format() -> None:
-    """前の版の形式には /mindstella:upgrade を案内する（正常系）。"""
+    """前の版の形式には開き直しを案内する（正常系）。"""
     # 準備
     error = SchemaMismatchError(lines=["docs.yaml: items[0]: done は使えません"], legacy=True)
     # 実行

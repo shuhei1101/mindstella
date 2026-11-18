@@ -1,14 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "設定",
-  "description": "`config.yaml` の形。題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定を持つ。",
+  "description": "`config.yaml` の形。ワークスペースの ID・進め方の文書・題名・話し合いの概要・関連する場所・変更履歴を保持する回数・表示の既定・プレビューの配信のポートを持つ。",
   "type": "object",
   "required": [
-    "playbooks",
-    "target_label",
-    "phases",
-    "targets",
-    "categories",
     "summary"
   ],
   "additionalProperties": false,
@@ -34,124 +29,6 @@
         "doc": {
           "type": "string",
           "minLength": 1
-        }
-      }
-    },
-    "playbooks": {
-      "type": "array",
-      "description": "並べて使う進め方ガイドの名前（例 `[壁打ち, システム開発]`）。1 件以上で、重複しない",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "target_label": {
-      "type": "string",
-      "description": "最上位の軸（対象）を画面で何と呼ぶか（例 `システム`）",
-      "minLength": 1
-    },
-    "phases": {
-      "type": "array",
-      "description": "フェーズの名前を浅い順に並べる。プレイブックを複数並べても 1 本の並びで持つ。`next` の並べ替えはこの順を使う",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "targets": {
-      "type": "array",
-      "description": "対象の一覧",
-      "items": {
-        "type": "object",
-        "required": [
-          "name",
-          "summary"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "対象の名前",
-            "minLength": 1
-          },
-          "summary": {
-            "type": "string",
-            "description": "対象の概要"
-          }
-        }
-      }
-    },
-    "categories": {
-      "type": "array",
-      "description": "カテゴリーの一覧",
-      "items": {
-        "type": "object",
-        "required": [
-          "name",
-          "target",
-          "summary"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "カテゴリーの名前",
-            "minLength": 1
-          },
-          "target": {
-            "type": "string",
-            "description": "属する対象。`targets[].name` のどれか"
-          },
-          "summary": {
-            "type": "string",
-            "description": "カテゴリーの概要"
-          }
-        }
-      }
-    },
-    "goal": {
-      "type": "object",
-      "description": "ゴール。無いときは、ゴールを決めていない話し合い",
-      "required": [
-        "phase",
-        "summary",
-        "deliverables"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "phase": {
-          "type": "string",
-          "description": "どのフェーズまでやるか。`phases` のどれか"
-        },
-        "summary": {
-          "type": "string",
-          "description": "ゴールの概要"
-        },
-        "deliverables": {
-          "type": "array",
-          "description": "リリースする納品物",
-          "items": {
-            "type": "object",
-            "required": [
-              "title"
-            ],
-            "additionalProperties": false,
-            "properties": {
-              "title": {
-                "type": "string",
-                "description": "納品物のタイトル"
-              },
-              "doc": {
-                "type": "string",
-                "description": "できた資料の ID（`A-`）",
-                "pattern": "^A-[0-9]+$"
-              }
-            }
-          }
         }
       }
     },
@@ -185,7 +62,7 @@
     },
     "description": {
       "type": "string",
-      "description": "話し合いの概要（何についての話し合いかを 1 文の短い文で）。プレビューの概要の画面の題名の上に出す。題名（`summary`）・ゴールの概要（`goal.summary`）とは別のもの",
+      "description": "話し合いの概要（何についての話し合いかを 1 文の短い文で）。プレビューの概要の画面の題名の上に出す。題名（`summary`）とは別のもの",
       "maxLength": 60,
       "minLength": 1
     },

@@ -241,30 +241,20 @@ var MindmapPreview;
         context.stroke(closed ? LOCK_PATH : UNLOCK_PATH);
         context.restore();
     }
-    /** 状態の印（一覧と同じ SVG）と資料の成果物の箱を、今の配色で絵にして取っておく（テーマごと） */
+    /** 状態の印（一覧と同じ SVG）を、今の配色で絵にして取っておく（テーマごと） */
     const statusImages = new Map();
     /** 項目の状態の印の絵を返す。読み込み中は null */
-    function statusImage({ item, ringColor }) {
+    function statusImage({ item }) {
         const theme = document.documentElement.dataset["theme"] ?? "";
-        const deliverable = item.deliverable === true;
-        const cacheKey = `${deliverable ? "deliverable" : (item.status ?? "")}|${theme}`;
+        const cacheKey = `${item.status ?? ""}|${theme}`;
         if (!statusImages.has(cacheKey)) {
-            const source = deliverable ? MindmapPreview.icon("box") : MindmapPreview.statusMark(item.status);
+            const source = MindmapPreview.statusMark(item.status);
             if (source === null)
                 return null;
             source.setAttribute("xmlns", "http://www.w3.org/2000/svg");
             source.setAttribute("width", "24");
             source.setAttribute("height", "24");
-            if (deliverable) {
-                source.setAttribute("fill", "none");
-                source.setAttribute("stroke", ringColor);
-                source.setAttribute("stroke-width", "2.2");
-                source.setAttribute("stroke-linecap", "round");
-                source.setAttribute("stroke-linejoin", "round");
-            }
-            else {
-                source.setAttribute("viewBox", "-1 -1 12 12");
-            }
+            source.setAttribute("viewBox", "-1 -1 12 12");
             // CSS の色の変数は絵の中では効かないので、今の値に置き換える
             const style = getComputedStyle(document.documentElement);
             const text = source.outerHTML.replace(/var\((--[\w-]+)\)/g, (_, name) => style.getPropertyValue(name).trim());

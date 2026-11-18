@@ -1,0 +1,77 @@
+id: mindstella/record
+title: 記録の使い分け
+summary: 発言を内容ごとに振り分け、話題のタグを付けて記録に書き込む
+condition: 利用者の発言・コメントを記録するとき
+steps:
+  - name: 発言を振り分ける
+    body: |-
+      発言を内容ごとに分け、次の記録にする。経緯や補足があれば本文（`docs/{ID}.md`）に書く。
+
+      | 発言の内容 | 記録 |
+      | --- | --- |
+      | 決めたこと | 検討事項。状態 `決定済み`・`answer`・`reason`・採用した案 |
+      | まだ決めていない問い・利用者の回答が要ること | 検討事項。状態 `未決定`・案・推奨の印 |
+      | 問いの形にならない考えの断片 | 検討事項。状態 `未整理` |
+      | 後でやること・決めるための作業（AI がやる作業も、利用者に頼む作業も、出た時点で積む） | タスク。`kind`（`作業`・`調査`・`検証`）・状態 `未着手` |
+      | 調べた一次情報 | 調査。`question`・`conclusion`。観点と確かさは本文に書く |
+      | 会話で出した図・文書、作業・検証のタスクの成果 | 資料。`kind`・`status`・本文（見た目が主なら `docs/{ID}.html`、文章が主なら `docs/{ID}.md`） |
+      | 一般的でない言葉（システムの名前・固有の言葉・話し合いで決めた呼び名） | 用語集。`meaning`・`aliases`・やめた言い方は `avoid` |
+      | 言葉の意味を尋ねた脱線した質問 | 用語集 |
+      | それ以外の脱線した質問 | メモ。タスクにしない |
+      | 発言ごとの会話の要約 | 会話ログ。`date`・`related` に今回足した・直した項目 |
+
+      文章と HTML の書き方は knowledge の規約（文章の書き方・HTML の書き方）を project-index で参照する。
+  - name: 覚えておく決まりの配置場所を判定する
+    when: 利用者が覚えておいてほしいと言った決まりがある
+    body: |-
+      決まりが話し合いの中身なら検討事項（`決定済み`）に、記録の書き方なら進め方の文書へ足す提案を検討事項に挙げる。
+  - name: 話題のタグを付ける
+    body: |-
+      `search_docs` を `group_by: tags` で呼び、使われているタグを件数つきで全件参照する。
+      記録の `title`・本文の見出し・`description` から語を書き出して単語まで分け、その語で探した人にこの項目が出てほしい語を `tags` に付ける（`topic:`・`action:`・`tool:` で始める）。
+      同じ概念のタグがあればその表記を使う。画面と検索の絞り込みはタグで行う。
+    calls:
+      - {server: project-index, tool: search_docs}
+  - name: 既存の記録にもタグを付ける
+    when: 新しいタグを付けた
+    body: |-
+      その語を `search_docs` の本文の条件に渡し、当たった既存の記録のうち同じ主題を持つものにも、同じ `write_docs` で付ける。
+    calls:
+      - {server: project-index, tool: search_docs}
+  - name: 呼び名と概要を記載する
+    body: |-
+      資料・調査に、タイトル以外の呼び名・略称・英語名を `aliases` に、タイトルだけで中身が分からないときは「何について書いてあるか」と「どんなときに読むか」を 1 文で `description` に書く。
+      複数の項目に当てはまる一般語と 1〜2 文字の語は `aliases` に入れない。
+  - name: 作業から検討事項を指す
+    body: |-
+      タスクから元の検討事項を `related` の種類 `for` で、先に決まっている必要がある検討事項を `depends_on` で、決めたことから生まれた問いは元の検討事項を `parent` で指す。
+      外部ライブラリ・外部 API を決める検討事項には、ベストプラクティスと候補を調べるタスク（`kind`: `調査`）を積む。
+  - name: 検討事項に案を記載する
+    body: |-
+      `未整理` を除く検討事項は、案（`options` の `key`・`content`・`pros`・`cons`）を書いて足し、未決定なら AI が推す案 1 つに `recommended: true` を付ける。決めたこととして足すときは選ばれた案を `adopted: true` にする。
+      既にある検討事項の案と推奨の印は `edit_option` で、採用は `adopt` で変える。
+    calls:
+      - {server: mindstella, tool: edit_option}
+      - {server: mindstella, tool: adopt}
+  - name: 保留・取り下げにする
+    when: 利用者が後回しにする・やめると言った
+    body: |-
+      後回しは状態を `保留` にして `reason` を書く。やめるときは消さずに、検討事項は `対象外` か `取り下げ`、タスクは `中止`、調査・資料・用語集・メモ・会話ログは `withdrawn: true` にし、`reason` を書く。
+  - name: 誤って追加した項目を削除する
+    when: 誤って足した・重複した項目がある
+    body: |-
+      その項目だけを `delete_docs` で消す。ほかの項目が指していると断られるので、`trace_related`（`direction: in`）で指している側を引き、`related` を先に付け替えてから消す。
+    calls:
+      - {server: project-index, tool: trace_related}
+      - {server: project-index, tool: delete_docs}
+  - name: ID を採番する
+    body: |-
+      足す項目の ID を `next_id` で種類ごとに取る（同じ種類を複数足すときは `count`）。
+    calls:
+      - {server: mindstella, tool: next_id}
+  - name: 記録を書き込む
+    body: |-
+      1 つの発言から出た記録（項目の追加・更新と会話ログ）は、`write_docs` の `operations` に並べて 1 回で書く。`source` はワークスペースの ID。
+      `created`・`updated`・`updated_by` は渡さない（変更の検知が付ける）。
+    calls:
+      - {server: project-index, tool: write_docs}

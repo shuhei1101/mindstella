@@ -36,7 +36,6 @@ import workspaces
 from claude_input import InputTargets, Session, parse_session
 from errors import ArgumentError, MindmapError, NotMindStellaSessionError, SchemaMismatchError
 from serve import LISTEN_HOST, PreviewRegistry, load_external_access
-from migrator import require_migratable
 from store import LEGACY_HINT, require_workspace, workspace_lock
 from transcriber_registry import InvalidTranscriberError, load_transcriber
 from versions import PLUGIN_VERSION_FILE, read_plugin_version
@@ -53,13 +52,7 @@ TOOL_NAMES = (
     "changes_since_read",
     "commit",
     "pending",
-    "status",
-    "next",
     "check",
-    "goal",
-    "migrate",
-    "clear_release",
-    "write_release",
     "export",
     "preview_url",
     "readme",
@@ -88,6 +81,7 @@ INSTRUCTIONS = (
     "項目を足す前に next_id でその種類の ID を取る。"
     "commit とスレッドの書き込み（new_thread・reply・set_thread_status・update_thread）は、"
     "そのワークスペースの MindStella のセッションだけが呼べる。"
+    "記録の進め方は、project-index の配信元 mindstella-agent-flows のエージェントフローに従う。"
 )
 
 # `MINDSTELLA_PORT` が無いか空のときに待ち受けるポート（`ensure_server.py` の同じ名前の定数と合わせる）
@@ -405,38 +399,20 @@ def build_server(
 
     @server.tool(
         name="update_settings",
-        description="設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数）を書き換える。フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする",
+        description="設定（題名・話し合いの概要・関連する場所・保持する回数・表示の既定・文字起こし・mdmark の版）を書き換える",
     )
     def update_settings(
         workspace: WorkspaceArg,
         settings: Annotated[
             dict[str, Any],
             Field(
-                description="置き換える設定のキーと値。description・goal・links・history_limit は null で消す"
+                description="置き換える設定のキーと値。description・links・history_limit・display・transcription は null で消す"
             ),
         ],
-        phase_map: Annotated[
-            dict[str, str] | None,
-            Field(description="古いフェーズ → 新しいフェーズの対応。phases を変えるときだけ渡す"),
-        ] = None,
-        target_map: Annotated[
-            dict[str, str] | None,
-            Field(description="古い対象 → 新しい対象の対応。targets を変えるときだけ渡す"),
-        ] = None,
-        category_map: Annotated[
-            dict[str, str] | None,
-            Field(
-                description="古いカテゴリー → 新しいカテゴリーの対応。categories を変えるときだけ渡す"
-            ),
-        ] = None,
         session: SessionArg = None,
     ) -> CallToolResult:
         return write(
-            workspace,
-            session,
-            lambda root: commands.run_update_settings(
-                root, settings, phase_map, target_map, category_map
-            ),
+            workspace, session, lambda root: commands.run_update_settings(root, settings)
         )
 
     @server.tool(
@@ -505,82 +481,9 @@ def build_server(
     def pending(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
         return read(workspace, session, commands.run_pending)
 
-    @server.tool(name="status", description="再開時の状況（要見直し・進行中・再開可能など）を返す")
-    def status(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
-        return read(workspace, session, commands.run_status)
-
-    @server.tool(name="next", description="前提が揃った未決定を決める順に返す")
-    def next_candidates(
-        workspace: WorkspaceArg,
-        limit: Annotated[int | None, Field(description="返す件数の上限（1 以上）")] = None,
-        session: SessionArg = None,
-    ) -> CallToolResult:
-        return read(workspace, session, lambda root: commands.run_next(root, limit))
-
     @server.tool(name="check", description="スキーマ違反・参照切れ・本文のずれを洗い出す")
     def check(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
         return read(workspace, session, commands.run_check)
-
-    @server.tool(name="goal", description="ゴールに届いたかと、残りの項目を返す")
-    def goal(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
-        return read(workspace, session, commands.run_goal)
-
-    @server.tool(
-        name="migrate",
-        description="ワークスペースの版とプラグインの版を比べ、版ごとの手順を並べる・当てる・版を書く",
-    )
-    def migrate(
-        workspace: WorkspaceArg,
-        plan: Annotated[bool, Field(description="当てずに、版を比べた結果を返す")] = False,
-        from_version: Annotated[str | None, Field(description="この版より後の手順を当てる")] = None,
-        to_version: Annotated[str | None, Field(description="この版以下の手順を当てる")] = None,
-        values: Annotated[
-            list[dict[str, Any]] | None,
-            Field(description="値が要るキーに入れる値。要素は file・key・value"),
-        ] = None,
-        record: Annotated[bool, Field(description="点検して、版のファイルを書き換える")] = False,
-        session: SessionArg = None,
-    ) -> CallToolResult:
-        def run(root: Path) -> dict[str, Any]:
-            return commands.run_migrate(
-                root,
-                plan=plan,
-                record=record,
-                values=values,
-                from_version=from_version,
-                to_version=to_version,
-            )
-
-        # 並べるだけの `plan` は何も書かないので、鍵を取らない
-        # 書き換える `migrate` は、前の版の設定ファイルだけのフォルダにも鍵を取る
-        return (
-            read(workspace, session, run)
-            if plan
-            else write(workspace, session, run, require=require_migratable)
-        )
-
-    @server.tool(name="clear_release", description=".mindstella/release/ の中身を消す")
-    def clear_release(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
-        return write(workspace, session, commands.run_clear_release)
-
-    @server.tool(
-        name="write_release",
-        description="ゴール判定で確定したリリースの資料を .mindstella/release/ の下へ 1 ファイルずつ書き出す",
-    )
-    def write_release(
-        workspace: WorkspaceArg,
-        path: Annotated[
-            str,
-            Field(
-                description="release/ からの書き出すファイルのパス（.md か .html。.. は使えない）"
-            ),
-        ],
-        content: Annotated[str, Field(description="書き出す本文（Markdown か HTML）")],
-        session: SessionArg = None,
-    ) -> CallToolResult:
-        return write(
-            workspace, session, lambda root: commands.run_write_release(root, path, content)
-        )
 
     @server.tool(name="export", description="見るだけの 1 枚の HTML（配る書き出し）を書き出す")
     def export(

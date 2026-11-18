@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -70,7 +70,7 @@ describe("ThreadView", () => {
     await new Promise((resolve) => window.setTimeout(resolve, 300));
     const before = calls;
     await userEvent.click(screen.getByRole("button", { name: /一覧へ戻る/ }));
-    await userEvent.click(await screen.findByRole("button", { name: /案の選び方/ }));
+    await userEvent.click(await within(screen.getByRole("dialog", { name: "コメント" })).findByRole("button", { name: /案の選び方/ }));
     // 検証
     expect(before).toBe(1);
     await waitFor(() => expect(calls).toBe(2));

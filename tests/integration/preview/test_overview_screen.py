@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from playwright.sync_api import Page
+from preview_comment_helpers import COMMENTS_PANEL, THREAD_ROWS
 from preview_edit_helpers import (
     PENDING_BUTTON,
     assert_topbar_pending,
@@ -18,17 +19,18 @@ from preview_fixture_types import OpenPreview, WritePreview, WriteReviewPreview,
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_layout_helpers import assert_bands_stay, assert_page_does_not_scroll, region_metrics
 from preview_removed_helpers import REMOVED_IN_V2_BY_TAB
-from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeEdit, MakeItem, MakeWorkspace
+from workspace_fixtures import (
+    ADOPTED_OPTIONS,
+    CallTool,
+    MakeEdit,
+    MakeItem,
+    MakePost,
+    MakeThread,
+    MakeWorkspace,
+)
 
 # 概要のタイルの項目 ID
-TILE_IDS = (
-    "tile-next",
-    "tile-goal",
-    "tile-review",
-    "tile-hold",
-    "tile-running",
-    "tile-progress",
-)
+TILE_IDS = ("tile-unread", "tile-open", "tile-review", "tile-docs")
 
 
 def _chips(page: Page) -> list[str]:
@@ -41,10 +43,52 @@ def _row_ids(page: Page) -> list[str]:
     return page.eval_on_selector_all("table.grid tbody tr", "rows => rows.map(r => r.dataset.id)")
 
 
+def _tile_ids(page: Page, tile_id: str) -> list[str]:
+    """タイルに並んでいる行の ID を上から返す。"""
+    return page.eval_on_selector_all(f"#{tile_id} button[data-id]", "b => b.map(x => x.dataset.id)")
+
+
+@pytest.fixture
+def served_unread_threads(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+) -> tuple[str, Path]:
+    """AI の書き込みが未読のオープンの TH-1（古い）・TH-2（新しい）・既読の TH-3・未読のクローズの TH-4 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", read=True, created="2026-10-12T01:00:00+00:00"),
+                make_post("TH-1-2", author="ai", seen=False, created="2026-10-12T02:00:00+00:00"),
+                summary="古い未読",
+            ),
+            make_thread(
+                "TH-2",
+                make_post("TH-2-1", author="ai", seen=False, created="2026-10-12T05:00:00+00:00"),
+                summary="新しい未読",
+            ),
+            make_thread(
+                "TH-3",
+                make_post("TH-3-1", author="ai", created="2026-10-12T06:00:00+00:00"),
+                summary="既読",
+            ),
+            make_thread(
+                "TH-4",
+                make_post("TH-4-1", author="ai", seen=False, created="2026-10-12T07:00:00+00:00"),
+                status="closed",
+                summary="未読のクローズ",
+            ),
+        ),
+    )
+
+
 def test_tiles_are_laid_out(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """6 つのタイルが項目 ID で引け、概要の題名が h1 になる（正常系）。"""
+    """4 つのタイルが項目 ID で引け、概要の題名が h1 になる（正常系）。"""
     # 準備
     url = write_sample_preview()
     # 実行
@@ -53,102 +97,169 @@ def test_tiles_are_laid_out(
     for tile_id in TILE_IDS:
         assert page.locator(f"#{tile_id}").count() == 1
     assert page.inner_text("main h1") == "要件出しのスキル mindmap を設計する"
+    # 前の版のタイルは無い
+    for tile_id in ("tile-next", "tile-goal", "tile-hold", "tile-running", "tile-progress"):
+        assert page.locator(f"#{tile_id}").count() == 0
 
 
-def test_next_tile(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """次に検討する項目を build が埋め込んだ順に並べ、押すと詳細パネルを開く（正常系）。"""
+def test_unread_tile(served_unread_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """未読の AI の書き込みを持つオープンのスレッドを新しい順に並べ、押すとコメントの一覧でそのスレッドを開く（正常系）。"""
+    # 準備
+    url, _ = served_unread_threads
+    page = open_preview(url)
+    page.wait_for_selector("#tile-unread button[data-id]")
+    # 実行
+    count = page.inner_text("#tile-unread .num")
+    ids = _tile_ids(page, "tile-unread")
+    first = page.inner_text('#tile-unread button[data-id="TH-2"] .mt')
+    page.click('#tile-unread button[data-id="TH-1"]')
+    # 検証
+    assert count == "2"
+    assert ids == ["TH-2", "TH-1"]
+    assert first == "TH-2 新しい未読"
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    assert "古い未読" in page.inner_text(f"{COMMENTS_PANEL} .th-head")
+
+
+def test_unread_tile_show_all(
+    served_unread_threads: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """未読の AI の書き込みのすべて表示で、コメントの一覧を開く（正常系）。"""
+    # 準備
+    url, _ = served_unread_threads
+    page = open_preview(url)
+    # 実行
+    page.click("#tile-unread .t-link")
+    # 検証
+    page.wait_for_selector(THREAD_ROWS)
+    assert page.locator(f"{COMMENTS_PANEL} .th-head").count() == 0
+
+
+def test_unread_tile_when_exported(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    tmp_path: Path,
+) -> None:
+    """配る書き出しでは、未読の AI の書き込みのタイルを 0 件で描き、「すべて表示」を出さない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    out = tmp_path / "配る.html"
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    # 実行
+    page = open_preview(out.as_uri())
+    page.wait_for_selector("#tile-unread")
+    # 検証
+    assert page.inner_text("#tile-unread .num") == "0"
+    assert page.locator("#tile-unread .t-link").count() == 0
+
+
+def test_open_tile(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """未決定の検討事項の件数と名前を ID の順に並べ、押すと詳細パネルを開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url)
     # 実行
-    ids = page.eval_on_selector_all("#tile-next button[data-id]", "b => b.map(x => x.dataset.id)")
-    impact = page.inner_text('#tile-next button[data-id="D-2"] .impact')
-    page.click('#tile-next button[data-id="D-2"]')
+    count = page.inner_text("#tile-open .num")
+    ids = _tile_ids(page, "tile-open")
+    page.click('#tile-open button[data-id="D-5"]')
     # 検証
+    assert count == "2"
     assert ids == ["D-2", "D-5"]
-    # 影響度の目盛りの横には、軸の名前を添える
-    assert impact == "影響度 大"
     page.wait_for_selector("aside.panel.open")
-    assert page.inner_text("aside.panel .d-title") == "D-2の題"
+    assert page.inner_text("aside.panel .d-title") == "D-5の題"
 
 
-def test_next_tile_show_all(
+def test_open_tile_show_all(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """すべて表示で、検討事項の表を 未決定 × 着手可否 = 着手可能 で絞って開く（正常系）。"""
+    """未決定の検討事項のすべて表示で、検討事項の表を 状態 = 未決定 で絞って開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url)
     # 実行
-    page.click("#tile-next .t-link")
+    page.click("#tile-open .t-link")
     page.wait_for_selector("table.grid")
     # 検証
-    assert _chips(page) == ["状態: 未決定", "着手可否: 着手可能"]
+    assert _chips(page) == ["状態: 未決定"]
     assert _row_ids(page) == ["D-2", "D-5"]
 
 
-def test_next_tile_when_nothing_to_discuss(
+def test_review_tile(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """要見直しの検討事項の件数と名前を出し、押すと詳細パネルを開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url)
+    # 実行
+    count = page.inner_text("#tile-review .num")
+    page.click('#tile-review button[data-id="D-3"]')
+    # 検証
+    assert count == "1"
+    page.wait_for_selector("aside.panel.open")
+    assert page.inner_text("aside.panel .d-title") == "D-3の題"
+
+
+def test_review_tile_show_all(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """要見直しのすべて表示で、検討事項の表を 状態 = 要見直し で絞って開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url)
+    # 実行
+    page.click("#tile-review .t-link")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert _chips(page) == ["状態: 要見直し"]
+    assert _row_ids(page) == ["D-3"]
+
+
+def test_docs_tile(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
-    """次に検討する項目が無いときは、その旨を出して「すべて表示」を置かない（正常系）。"""
+    """確認中の資料の件数と名前を出し、押すと詳細パネルを開く。「すべて表示」で資料を 状態 = 確認中 で絞って開く（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", status="確認中"),
+        make_item("A-2", status="下書き"),
+        make_item("A-3", status="確認中"),
+        bodies={"A-1.md": "本文\n", "A-2.md": "本文\n", "A-3.md": "本文\n"},
+    )
+    page = open_preview(url)
+    # 実行
+    count = page.inner_text("#tile-docs .num")
+    ids = _tile_ids(page, "tile-docs")
+    page.click("#tile-docs .t-link")
+    page.wait_for_selector(".doc-card")
+    # 検証
+    assert count == "2"
+    assert ids == ["A-1", "A-3"]
+    assert _chips(page) == ["状態: 確認中"]
+    assert page.eval_on_selector_all(".doc-card", "cards => cards.map(c => c.dataset.id)") == ["A-1", "A-3"]
+
+
+def test_small_tiles_when_empty(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """該当する項目が無いタイルは 0 件と「〇〇はありません。」を出し、「すべて表示」を置かない（正常系）。"""
     # 準備
     url = write_preview(make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS))
     # 実行
     page = open_preview(url)
+    page.wait_for_selector("#tile-unread")
     # 検証
-    assert "次に検討する項目はありません。" in page.inner_text("#tile-next")
-    assert page.locator("#tile-next .t-link").count() == 0
-
-
-def test_goal_tile(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """ゴールのフェーズまでの決定済みの数・フェーズごとの棒・納品物のチェックリストを出す（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    # 実行
-    page = open_preview(url)
-    # 検証
-    assert page.inner_text("#tile-goal .big").replace("\n", "").replace(" ", "") == "1/3"
-    stages = page.eval_on_selector_all(
-        "#tile-goal .stage-rows li", "rows => rows.map(r => r.textContent)"
-    )
-    assert stages == ["目的1/1", "要件0/2"]
-    assert page.locator("#tile-goal .checklist li.done").count() == 1
-    assert "1/1" in page.inner_text("#tile-goal .deliv-head")
-    # 納品物を押すと、その資料の詳細パネルを開く
-    page.click("#tile-goal .checklist button")
-    page.wait_for_selector("aside.panel.open")
-    assert page.inner_text("aside.panel .d-title") == "A-1の題\n納品物"
-
-
-def test_goal_tile_when_no_goal(
-    write_preview: WritePreview,
-    open_preview: OpenPreview,
-    make_item: MakeItem,
-    valid_settings: dict[str, Any],
-) -> None:
-    """ゴールが無いときは、見出しを「フェーズ別の進捗」にし、ゴールが無いことと全フェーズの棒だけを出す（正常系）。"""
-    # 準備
-    settings = {
-        **{key: value for key, value in valid_settings.items() if key != "goal"},
-        "phases": ["目的", "要件"],
+    empty_texts = {
+        "tile-unread": "未読の AI の書き込みはありません。",
+        "tile-open": "未決定の検討事項はありません。",
+        "tile-review": "要見直しの検討事項はありません。",
+        "tile-docs": "確認中の資料はありません。",
     }
-    url = write_preview(
-        make_item("D-1", phase="目的", status="決定済み", options=ADOPTED_OPTIONS),
-        make_item("D-2", phase="要件", status="未決定"),
-        settings=settings,
-    )
-    # 実行
-    page = open_preview(url)
-    # 検証
-    assert page.inner_text("#tile-goal h2") == "フェーズ別の進捗"
-    assert page.inner_text("#tile-goal .goal-none") == "ゴールは決まっていません"
-    assert page.inner_text("#tile-goal .big").replace("\n", "").replace(" ", "") == "1/2"
-    stages = page.eval_on_selector_all(
-        "#tile-goal .stage-rows li", "rows => rows.map(r => r.textContent)"
-    )
-    assert stages == ["目的1/1", "要件0/1"]
-    # 納品物は出さない
-    assert page.locator("#tile-goal .deliv").count() == 0
+    for tile_id, text in empty_texts.items():
+        assert page.inner_text(f"#{tile_id} .num") == "0"
+        assert page.inner_text(f"#{tile_id} .empty") == text
+        assert page.locator(f"#{tile_id} .t-link").count() == 0
 
 
 def test_description(
@@ -157,7 +268,7 @@ def test_description(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """設定の話し合いの概要を題名の上に出し、プレイブックの名前は出さない（正常系）。"""
+    """設定の話し合いの概要を題名の上に出す（正常系）。"""
     # 準備
     description = "スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。"
     url = write_preview(make_item("D-1"), settings={**valid_settings, "description": description})
@@ -167,7 +278,6 @@ def test_description(
     assert page.inner_text("#overview-description") == description
     rows = page.eval_on_selector_all("main .hero > *", "els => els.map(e => e.textContent)")
     assert rows == [description, "要件出しのスキル mindmap を設計する"]
-    assert "システム開発" not in page.inner_text("main .hero")
 
 
 def test_description_when_missing(
@@ -183,91 +293,6 @@ def test_description_when_missing(
     assert page.inner_text("main .hero") == "要件出しのスキル mindmap を設計する"
 
 
-def test_small_tiles(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """要見直し・保留・進行中のタスクの件数と名前を出し、押すと詳細パネルを開く（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url)
-    # 実行
-    counts = {
-        tile_id: page.inner_text(f"#{tile_id} .num")
-        for tile_id in ("tile-review", "tile-hold", "tile-running")
-    }
-    page.click('#tile-hold button[data-id="D-4"]')
-    # 検証
-    assert counts == {"tile-review": "1", "tile-hold": "1", "tile-running": "1"}
-    page.wait_for_selector("aside.panel.open")
-    assert page.inner_text("aside.panel .d-title") == "D-4の題"
-
-
-def test_small_tiles_show_all(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
-) -> None:
-    """要見直しのすべて表示で、検討事項の表を 状態 = 要見直し で絞って開く（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url)
-    # 実行
-    page.click("#tile-review .t-link")
-    page.wait_for_selector("table.grid")
-    # 検証
-    assert _chips(page) == ["状態: 要見直し"]
-    assert _row_ids(page) == ["D-3"]
-
-
-def test_small_tiles_when_empty(
-    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
-) -> None:
-    """該当する項目が無いタイルは 0 件と、種類の名前で「〇〇はありません。」を出す（正常系）。"""
-    # 準備
-    url = write_preview(make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS))
-    # 実行
-    page = open_preview(url)
-    # 検証
-    empty_texts = {
-        "tile-review": "要見直しの検討事項はありません。",
-        "tile-hold": "保留の検討事項はありません。",
-        "tile-running": "進行中のタスクはありません。",
-    }
-    for tile_id, text in empty_texts.items():
-        assert page.inner_text(f"#{tile_id} .num") == "0"
-        assert page.inner_text(f"#{tile_id} .empty") == text
-
-
-def test_progress_tile(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """カテゴリー別の進み具合をカテゴリー × フェーズで出し、セルとカテゴリー名で表を絞る（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url)
-    # 実行・検証
-    totals = page.eval_on_selector_all(
-        "#tile-progress td.tot", "cells => cells.map(c => c.textContent)"
-    )
-    assert totals == ["1/2", "0/3"]
-    # 項目の無いセルは押せない
-    assert page.locator("#tile-progress td >> text=—").count() == 2
-    # セルを押すと、そのカテゴリーとフェーズで絞った表を開く
-    page.click('#tile-progress button.cell[aria-label^="画面 の 構成"]')
-    page.wait_for_selector("table.grid")
-    assert _chips(page) == ["カテゴリー: 画面", "フェーズ: 構成"]
-    assert _row_ids(page) == ["D-4", "D-5"]
-
-
-def test_progress_tile_category_link(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
-) -> None:
-    """行の見出しを押すと、カテゴリーだけで絞った表を開く（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url)
-    # 実行
-    page.click("#tile-progress button.cat-link >> text=データ構造")
-    page.wait_for_selector("table.grid")
-    # 検証
-    assert _chips(page) == ["カテゴリー: データ構造"]
-    assert _row_ids(page) == ["D-1", "D-2"]
-
-
 def test_diff_marks(
     write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
@@ -276,14 +301,12 @@ def test_diff_marks(
     url, _ = write_history_preview()
     preselect_diff(page, "since")
     open_preview(url, "#tab=overview")
-    page.wait_for_selector("#tile-next button[data-id]")
+    page.wait_for_selector("#tile-open button[data-id]")
     # 検証
-    next_mark = page.locator('#tile-next button[data-id="D-2"] .df-mark')
-    assert next_mark.get_attribute("class") == "df-mark df-chg"
-    assert next_mark.inner_text() == "変更"
-    running_mark = page.locator('#tile-running button[data-id="T-1"] .df-mark')
-    assert running_mark.get_attribute("title") == "変更"
-    assert page.locator("#tile-next .df-badge, #tile-running .df-badge").count() == 0
+    mark = page.locator('#tile-open button[data-id="D-2"] .df-mark')
+    assert mark.get_attribute("class") == "df-mark df-chg"
+    assert mark.get_attribute("title") == "変更"
+    assert page.locator("#tile-open .df-badge").count() == 0
     assert_topbar_history(page)
 
 
@@ -295,7 +318,7 @@ def test_diff_marks_when_removed(
     url, _ = write_removed_preview()
     preselect_diff(page, "V-2")
     open_preview(url, "#tab=overview")
-    page.wait_for_selector("#tile-next")
+    page.wait_for_selector("#tile-open")
     # 検証
     dotted = page.eval_on_selector_all(
         "nav.tabbar a.tab:has(.df-dot)", "tabs => tabs.map(t => t.dataset.tab)"
@@ -317,7 +340,7 @@ def test_hidden_kinds_keep_tiles(
     sample_settings: dict[str, Any],
     sample_bodies: dict[str, str],
 ) -> None:
-    """表示しない種類のタイルは残し、その種類の画面へ移る「すべて表示」と進捗のセルのリンクだけを外す（正常系）。"""
+    """表示しない種類のタイルは残し、その種類の画面へ移る「すべて表示」だけを外す（正常系）。"""
     # 準備
     settings = {
         **sample_settings,
@@ -330,17 +353,10 @@ def test_hidden_kinds_keep_tiles(
     # タイルと中の項目は残る
     assert page.inner_text("#tile-review .num") == "1"
     assert page.locator('#tile-review button[data-id="D-3"]').count() == 1
-    assert page.locator('#tile-running button[data-id="T-1"]').count() == 1
-    assert page.locator("#tile-goal .checklist li").count() == 1
+    assert page.locator('#tile-open button[data-id="D-2"]').count() == 1
     # その種類の画面へ移るリンクだけが無い
-    for tile_id in ("tile-next", "tile-review", "tile-hold", "tile-running"):
+    for tile_id in ("tile-open", "tile-review"):
         assert page.locator(f"#{tile_id} .t-link").count() == 0
-    assert page.locator("#tile-progress button").count() == 0
-    # 進捗の数と棒は残る
-    assert page.eval_on_selector_all(
-        "#tile-progress td.tot", "cells => cells.map(c => c.textContent)"
-    ) == ["1/2", "0/3"]
-    assert page.locator("#tile-progress .cell").count() > 0
     # タブの帯にもその種類が無い
     assert page.locator('nav.tabbar a[data-tab="decisions"]').count() == 0
 
@@ -352,7 +368,7 @@ def test_visible_kinds_keep_links(
     sample_settings: dict[str, Any],
     sample_bodies: dict[str, str],
 ) -> None:
-    """表示する種類の既定が全ての種類のときは、「すべて表示」と進捗のセルのリンクを出す（正常系）。"""
+    """表示する種類の既定が全ての種類のときは、「すべて表示」を出す（正常系）。"""
     # 準備
     settings = {**sample_settings, "display": {"network_look": "deep"}}
     url = write_preview(*sample_items, settings=settings, bodies=sample_bodies)
@@ -360,7 +376,7 @@ def test_visible_kinds_keep_links(
     page = open_preview(url)
     # 検証
     assert page.locator("#tile-review .t-link").count() == 1
-    assert page.locator("#tile-progress button.cell").count() > 0
+    assert page.locator("#tile-open .t-link").count() == 1
 
 
 def test_region(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
@@ -369,62 +385,13 @@ def test_region(write_sample_preview: WriteSamplePreview, open_preview: OpenPrev
     url = write_sample_preview()
     page = open_preview(url)
     page.set_viewport_size({"width": 1280, "height": 520})
-    page.wait_for_selector("#tile-next")
+    page.wait_for_selector("#tile-open")
     # 実行
     metrics = region_metrics(page)
     # 検証
     assert_page_does_not_scroll(page)
     assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
     assert_bands_stay(page)
-
-
-# 次に検討する項目のタイルの見出しと「すべて表示」が、それぞれ何行に折り返しているかと、「すべて表示」が見出しの下の行にあるかを読む
-HEAD_ROWS_JS = """() => {
-    // 行の数は、文字の枠の縦の中心が半分の高さより離れるたびに 1 行と数える（印のアイコンと文字は高さが違うので、上端では数えない）
-    const rows = (element) => {
-        const range = document.createRange();
-        range.selectNodeContents(element);
-        const rects = [...range.getClientRects()].sort((a, b) => a.top + a.height / 2 - (b.top + b.height / 2));
-        return rects.reduce((count, rect, index) => {
-            const previous = rects[index - 1];
-            const apart = previous === undefined || rect.top + rect.height / 2 - (previous.top + previous.height / 2) > rect.height / 2;
-            return apart ? count + 1 : count;
-        }, 0);
-    };
-    const heading = document.querySelector('#tile-next .t-head h2');
-    const link = document.querySelector('#tile-next .t-head .t-link');
-    return {
-        headingRows: rows(heading),
-        linkRows: rows(link),
-        linkBelow: link.getBoundingClientRect().top >= heading.getBoundingClientRect().bottom - 1,
-    };
-}"""
-
-
-@pytest.mark.parametrize(
-    ("width", "link_below"),
-    [
-        pytest.param(320, True, id="narrowest"),
-        pytest.param(389, False, id="narrow_edge"),
-        pytest.param(390, False, id="wide_edge"),
-    ],
-)
-def test_next_tile_head_when_narrow(
-    write_sample_preview: WriteSamplePreview,
-    open_preview: OpenPreview,
-    width: int,
-    link_below: bool,
-) -> None:
-    """幅 389px 以下でも見出しと「すべて表示」はそれぞれ 1 行で、収まらない幅 320px では「すべて表示」が見出しの下の行に回る。収まる幅では見出しと同じ行に並ぶ（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url)
-    # 実行
-    page.set_viewport_size({"width": width, "height": 568})
-    page.wait_for_selector("#tile-next .t-link")
-    result = page.evaluate(HEAD_ROWS_JS)
-    # 検証
-    assert result == {"headingRows": 1, "linkRows": 1, "linkBelow": link_below}
 
 
 def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
@@ -435,7 +402,7 @@ def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: Op
     # 実行
     set_smallest(page)
     # 検証
-    assert_fits_smallest(page, ("#tile-next .t-link",))
+    assert_fits_smallest(page, ("#tile-open .t-link",))
 
 
 # ===== 編集（トップバーの保存待ち） =====
@@ -465,7 +432,7 @@ def test_topbar_pending_hidden_when_nothing(
     url, _ = write_edit_preview(make_item("D-1"))
     # 実行
     page = open_preview(url)
-    page.wait_for_selector("#tile-next")
+    page.wait_for_selector("#tile-open")
     # 検証
     assert page.locator(PENDING_BUTTON).count() == 0
 
@@ -485,6 +452,6 @@ def test_topbar_pending_hidden_when_exported(
     assert result.is_error is False, result.text
     # 実行
     page = open_preview(out.as_uri())
-    page.wait_for_selector("#tile-next")
+    page.wait_for_selector("#tile-open")
     # 検証
     assert page.locator(PENDING_BUTTON).count() == 0

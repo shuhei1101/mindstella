@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from "vitest";
 import { SearchDialog } from "@/features/search/search/search-dialog";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
 
-const empty = { decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { next: [] }, bodies: {} };
+const empty = { decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { ready: [] }, bodies: {} };
 const index = buildIndex({
   ...empty,
   decisions: [

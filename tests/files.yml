@@ -30,6 +30,12 @@ files:
   - tool:pytest
   - topic:ヘルパー
   - topic:結合テスト
+- path: integration/plugin/test_agent_flows.py
+  name: エージェントフローの参照の結合テスト
+  description: '実際の project-index でエージェントフローを配信元として参照できることと、工程の calls が今のツールを指すことの結合テスト。テストの期待値や準備を確認・修正するときに読む。'
+  tags:
+  - tool:pytest
+  - topic:結合テスト
 - path: integration/plugin/test_marketplace_registration.py
   name: .claude-plugin/marketplace.jsonの結合テスト
   description: マーケットプレイスの登録（.claude-plugin/marketplace.json）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -577,6 +583,12 @@ files:
   - topic:readme
   - topic:ヘルパー
   - topic:結合テスト
+- path: integration/server/register_helpers.py
+  name: 起動スクリプトの登録の結合テストの共通の関数
+  description: '`bin/mindstella register` の結合テストが共有する、隔離したホームと偽の claude・起動スクリプト。登録のテストの準備を確認・修正するときに読む。'
+  tags:
+  - tool:pytest
+  - topic:結合テスト
 - path: integration/server/test_adopt.py
   name: 採用する案の切り替えの結合テスト
   description: adopt（採用する案の切り替え）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -610,12 +622,6 @@ files:
 - path: integration/server/test_check_env.py
   name: 依存の確認の結合テスト
   description: check_env.py（依存の確認）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/server/test_clear_release.py
-  name: リリースの片付けの結合テスト
-  description: clear-release（リリースの片付け）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:結合テスト
@@ -734,13 +740,6 @@ files:
   tags:
   - tool:pytest
   - topic:結合テスト
-- path: integration/server/test_goal.py
-  name: ゴール判定の結合テスト
-  description: goal（ゴール判定）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:ゴール
-  - topic:結合テスト
 - path: integration/server/test_inject_session.py
   name: PreToolUse のフックの inject_session.pyの結合テスト
   description: セッションの値の注入（PreToolUse のフックの inject_session.py）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -774,12 +773,6 @@ files:
   tags:
   - tool:pytest
   - topic:スレッド
-  - topic:結合テスト
-- path: integration/server/test_next.py
-  name: 次の候補の結合テスト
-  description: next（次の候補）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
   - topic:結合テスト
 - path: integration/server/test_next_id.py
   name: ID の採番の結合テスト
@@ -819,6 +812,12 @@ files:
   - tool:pytest
   - topic:プレビュー
   - topic:結合テスト
+- path: integration/server/test_read_point.py
+  name: 前回参照した時点の更新の結合テスト
+  description: 'POST /_admin/sessions/{session}/read_point（前回参照した時点の更新）の結合テスト。テストの期待値や準備を確認・修正するときに読む。'
+  tags:
+  - tool:pytest
+  - topic:結合テスト
 - path: integration/server/test_readme.py
   name: 直下の README.md の書き出しの結合テスト
   description: readme（直下の README.md の書き出し）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -829,6 +828,12 @@ files:
 - path: integration/server/test_records.py
   name: GET /api/recordsの結合テスト
   description: 記録の取得（GET /api/records）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_register.py
+  name: 起動スクリプトの登録の結合テスト
+  description: '`bin/mindstella register`（起動スクリプトの alias と環境変数の登録）の結合テスト。テストの期待値や準備を確認・修正するときに読む。'
   tags:
   - tool:pytest
   - topic:結合テスト
@@ -846,6 +851,12 @@ files:
   - tool:pytest
   - topic:スレッド
   - topic:フック
+  - topic:結合テスト
+- path: integration/server/test_resume.py
+  name: 再開の状況の結合テスト
+  description: 'POST /_admin/sessions/{session}/resume（再開の状況）の結合テスト。テストの期待値や準備を確認・修正するときに読む。'
+  tags:
+  - tool:pytest
   - topic:結合テスト
 - path: integration/server/test_server_status.py
   name: server_status・GET /_admin/statusの結合テスト
@@ -872,12 +883,6 @@ files:
   tags:
   - tool:pytest
   - topic:プレビュー
-  - topic:結合テスト
-- path: integration/server/test_status.py
-  name: 再開時の状況の結合テスト
-  description: status（再開時の状況）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
   - topic:結合テスト
 - path: integration/server/test_thread.py
   name: スレッドを読むの結合テスト
@@ -935,53 +940,6 @@ files:
   - tool:pytest
   - topic:スレッド
   - topic:ヘルパー
-  - topic:結合テスト
-- path: integration/skill/conftest.py
-  name: スキルの結合テストの共通の fixture
-  description: スキルの結合テストの共通 fixture（登録のスクリプトを動かす隔離した環境）。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:pytest
-  - topic:フィクスチャ
-  - topic:結合テスト
-- path: integration/skill/register_helpers.py
-  name: 起動スクリプトの登録の結合テストの補助
-  description: 起動スクリプトの登録（register.py）の結合テストが共有する、隔離したホームと偽の `claude`・偽の起動スクリプト。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:pytest
-  - topic:ヘルパー
-  - topic:結合テスト
-  - topic:起動
-- path: integration/skill/skill_files.py
-  name: スキルのファイルを読む結合テストの補助
-  description: スキルのファイル（SKILL.md と steps/）を読む、スキルの結合テストの共通の関数。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:pytest
-  - topic:ヘルパー
-  - topic:結合テスト
-- path: integration/skill/test_register.py
-  name: 起動スクリプトの alias と環境変数の登録の結合テスト
-  description: register.py（起動スクリプトの alias と環境変数の登録）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
-  - topic:起動
-- path: integration/skill/test_session.py
-  name: スキル sessionと共通の置き場所のファイルの形の結合テスト
-  description: スキル session（/mindstella:session）と共通の置き場所のファイルの形の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/skill/test_setup.py
-  name: スキル setupのファイルの形の結合テスト
-  description: スキル setup（/mindstella:setup）のファイルの形の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/skill/test_upgrade.py
-  name: スキル upgradeのファイルの形の結合テスト
-  description: スキル upgrade（/mindstella:upgrade）のファイルの形の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
   - topic:結合テスト
 - path: integration/storybook/conftest.py
   name: Storybook のストーリーの結合テストの共通の fixture

@@ -1,4 +1,4 @@
-"""依存をたどって、影響・次の候補・再開時の状況を出す（読むだけで、ファイルを書かない）。"""
+"""依存をたどって、影響と着手できる検討事項を出す（読むだけで、ファイルを書かない）。"""
 
 from __future__ import annotations
 
@@ -7,15 +7,6 @@ from typing import Any, Literal, cast
 
 from kinds import KINDS, Kind, id_number, kind_of_id
 from store import Workspace, find_item, related_ids
-
-# 再開時の状況に載せる次の候補の件数
-STATUS_NEXT_LIMIT = 3
-
-# ゴールの納品物ができたとみなす資料の状態
-DOC_COMPLETE_STATUS = "完成"
-
-# 影響度 → 並べる順。影響度が無いものは最後
-WEIGHT_ORDER = {"大": 0, "中": 1, "小": 2}
 
 # 種類 → 参照先から参照元へ逆向きにたどる関連の種類
 IMPACT_KEYS: dict[Kind, tuple[str, ...]] = {
@@ -41,58 +32,6 @@ class Affected:
     via: list[str]
     # 直前の項目とつなぐキー
     key: ImpactKey
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Candidate:
-    """次の候補の出力の `candidates[]` の 1 行。"""
-
-    id: str
-    title: str
-    phase: str | None
-    weight: Literal["大", "中", "小"] | None
-    # 後続の件数
-    followers: int
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Waiting:
-    """再開時の状況の `waiting[]` の 1 行。"""
-
-    id: str
-    title: str
-    # 未完了の `depends_on` の ID
-    waiting_for: list[str]
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class StatusSummary:
-    """再開時の状況の出力全体。"""
-
-    needs_review: list[dict[str, str]]
-    in_progress: list[dict[str, str]]
-    resumable: list[dict[str, str]]
-    waiting: list[Waiting]
-    on_hold: list[dict[str, str | None]]
-    next: list[Candidate]
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class GoalReport:
-    """ゴール判定の結果。ゴールに届いたかと、残りの検討事項・納品物。"""
-
-    # 設定がゴールを持つか
-    has_goal: bool
-    # 届いたか（残りがどちらも空のときだけ真）。ゴールが無いときは判定せず `None`
-    reached: bool | None
-    # 設定の `goal.phase`。ゴールが無いときは `None`
-    goal_phase: str | None
-    # 判定に入れたフェーズ（ゴールが無いときは `phases` の全て）
-    phases: list[str]
-    # 決着していない検討事項（`id`・`title`・`phase`・`status`）
-    remaining_decisions: list[dict[str, str]]
-    # 揃っていない納品物（`title`・`doc`）
-    remaining_deliverables: list[dict[str, str | None]]
 
 
 def build_reverse_edges(workspace: Workspace) -> dict[str, list[tuple[str, str]]]:
@@ -149,71 +88,6 @@ def trace_impact(workspace: Workspace, start_id: str) -> list[Affected]:
     return affected
 
 
-def judge_goal(workspace: Workspace) -> GoalReport:
-    """ゴールのフェーズまでの検討事項が決着し、ゴールの納品物が揃ったかを判定する。ゴールが無ければ判定せず、全フェーズの決着していない検討事項を返す。"""
-    settings = workspace.settings
-    phases = settings.get("phases")
-    phase_order = [str(phase) for phase in phases] if isinstance(phases, list) else []
-    goal = settings.get("goal")
-    # ゴールが無い: 届いたかを判定せず、全フェーズの決着していない検討事項だけを返す
-    if not isinstance(goal, dict):
-        return GoalReport(
-            has_goal=False,
-            reached=None,
-            goal_phase=None,
-            phases=phase_order,
-            remaining_decisions=_collect_unsettled(workspace, phase_order),
-            remaining_deliverables=[],
-        )
-    goal_phase = str(goal.get("phase", ""))
-    # ゴールのフェーズが phases にあれば先頭からそこまで、無ければ全てのフェーズ（厳しい側に倒す）
-    judged_phases = (
-        phase_order[: phase_order.index(goal_phase) + 1]
-        if goal_phase in phase_order
-        else phase_order
-    )
-    remaining_decisions = _collect_unsettled(workspace, judged_phases)
-    # ゴールの納品物のうち、資料に繋がっていないか、資料が完成していないものを並びのまま集める
-    docs = {item["id"]: item for item in workspace.items["doc"]}
-    deliverables = goal.get("deliverables")
-    remaining_deliverables: list[dict[str, str | None]] = []
-    for deliverable in deliverables if isinstance(deliverables, list) else []:
-        doc_id = deliverable.get("doc")
-        doc = docs.get(doc_id) if doc_id is not None else None
-        # 資料が無いか、状態が完成でない
-        if doc is None or doc.get("status") != DOC_COMPLETE_STATUS:
-            remaining_deliverables.append(
-                {"title": str(deliverable.get("title", "")), "doc": doc_id}
-            )
-    return GoalReport(
-        has_goal=True,
-        reached=not remaining_decisions and not remaining_deliverables,
-        goal_phase=goal_phase,
-        phases=judged_phases,
-        remaining_decisions=remaining_decisions,
-        remaining_deliverables=remaining_deliverables,
-    )
-
-
-def _collect_unsettled(workspace: Workspace, judged_phases: list[str]) -> list[dict[str, str]]:
-    """判定に入るフェーズの検討事項のうち、決着していないものを、フェーズの順 → 連番の順に集める。"""
-    unsettled = [
-        item
-        for item in workspace.items["decision"]
-        if item.get("phase") in judged_phases and not is_settled("decision", item)
-    ]
-    unsettled.sort(key=lambda item: (judged_phases.index(item["phase"]), id_number(item["id"])))
-    return [
-        {
-            "id": item["id"],
-            "title": str(item.get("title", "")),
-            "phase": item["phase"],
-            "status": str(item.get("status", "")),
-        }
-        for item in unsettled
-    ]
-
-
 def is_settled(kind: Kind, item: dict[str, Any] | None) -> bool:
     """項目の状態がその種類の決着に当たるか。無い項目（None）は未完了として偽を返す。"""
     if item is None:
@@ -221,87 +95,17 @@ def is_settled(kind: Kind, item: dict[str, Any] | None) -> bool:
     return item.get("status") in KINDS[kind].settled_statuses
 
 
-def count_followers(workspace: Workspace, item_id: str) -> int:
-    """影響の洗い出しと同じたどり方で得た項目のうち、未完了のものを数える。"""
+def list_ready(workspace: Workspace) -> list[str]:
+    """前提が全て決着した未決定の検討事項の ID を、連番の小さい順に返す。"""
     index = _index_items(workspace)
-    return sum(
-        1 for affected in trace_impact(workspace, item_id) if not _is_id_settled(index, affected.id)
-    )
-
-
-def list_next_candidates(workspace: Workspace, *, limit: int | None = None) -> list[Candidate]:
-    """前提が揃った未決定の検討事項を、フェーズ → 影響度 → 後続の件数 → 連番の順に並べる。"""
-    index = _index_items(workspace)
-    phases = workspace.settings.get("phases")
-    phase_order = phases if isinstance(phases, list) else []
-    candidates: list[Candidate] = []
-    for item in workspace.items["decision"]:
-        if item.get("status") != "未決定":
-            continue
-        # 前提（depends_on）が全て決着していないものは候補にしない（無い ID は未完了）
-        if not all(_is_id_settled(index, dep) for dep in related_ids(item, "depends_on")):
-            continue
-        candidates.append(
-            Candidate(
-                id=item["id"],
-                title=str(item.get("title", "")),
-                phase=item.get("phase"),
-                weight=item.get("weight"),
-                followers=count_followers(workspace, item["id"]),
-            )
-        )
-
-    def _sort_key(candidate: Candidate) -> tuple[int, int, int, int]:
-        """フェーズの並び（無い・設定に無いものは最後）→ 影響度 → 後続の多い順 → 連番。"""
-        phase_rank = (
-            phase_order.index(candidate.phase)
-            if candidate.phase in phase_order
-            else len(phase_order)
-        )
-        weight_rank = WEIGHT_ORDER.get(candidate.weight or "", len(WEIGHT_ORDER))
-        return (phase_rank, weight_rank, -candidate.followers, id_number(candidate.id))
-
-    ordered = sorted(candidates, key=_sort_key)
-    return ordered if limit is None else ordered[:limit]
-
-
-def summarize_status(workspace: Workspace) -> StatusSummary:
-    """要見直し・進行中・再開可能・決定待ち・そのほかの保留・次の候補をまとめる。"""
-    index = _index_items(workspace)
-    needs_review: list[dict[str, str]] = []
-    in_progress: list[dict[str, str]] = []
-    resumable: list[dict[str, str]] = []
-    waiting: list[Waiting] = []
-    on_hold: list[dict[str, str | None]] = []
-    # 種類の順（検討事項 → タスク）・連番の小さい順に見る
-    for kind in ("decision", "task"):
-        for item in sorted(workspace.items[kind], key=lambda item: id_number(item["id"])):
-            row = {"id": item["id"], "title": str(item.get("title", ""))}
-            status = item.get("status")
-            if kind == "decision" and status == "要見直し":
-                needs_review.append(row)
-            elif kind == "task" and status == "進行中":
-                in_progress.append(row)
-            elif status == "保留":
-                depends_on = related_ids(item, "depends_on")
-                unsettled = [dep for dep in depends_on if not _is_id_settled(index, dep)]
-                # depends_on が無い: 再開できるかは reason を読んで判断する保留
-                if not depends_on:
-                    on_hold.append({**row, "reason": item.get("reason")})
-                # 全て決着している: 再開できる
-                elif not unsettled:
-                    resumable.append(row)
-                # 未完了が残る: 決定待ち
-                else:
-                    waiting.append(Waiting(waiting_for=unsettled, **row))
-    return StatusSummary(
-        needs_review=needs_review,
-        in_progress=in_progress,
-        resumable=resumable,
-        waiting=waiting,
-        on_hold=on_hold,
-        next=list_next_candidates(workspace, limit=STATUS_NEXT_LIMIT),
-    )
+    ready = [
+        item["id"]
+        for item in workspace.items["decision"]
+        # 未決定で、前提（depends_on）が全て決着しているもの（無い ID は未完了）
+        if item.get("status") == "未決定"
+        and all(_is_id_settled(index, dep) for dep in related_ids(item, "depends_on"))
+    ]
+    return sorted(ready, key=id_number)
 
 
 def _index_items(workspace: Workspace) -> ItemIndex:

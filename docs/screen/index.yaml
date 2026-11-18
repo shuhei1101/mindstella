@@ -1,7 +1,7 @@
 summary: "1 画面ごとの要素の仕様（結合テストの元）"
 items:
   - page: SCR-489-21.yaml
-    summary: "既定で開く画面。次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスク・カテゴリー別の進捗のタイル"
+    summary: "既定で開く画面。未読の AI の書き込み・未決定の検討事項・要見直しの検討事項・確認中の資料のタイル"
   - page: SCR-489-22.tsx.yaml
     summary: "React のプレビューの概要。今の概要と同じタイルを、React へ移していない画面には今の画面で移る"
   - page: SCR-489-19.yaml
@@ -13,7 +13,7 @@ items:
   - page: SCR-489-6.tsx.yaml
     summary: "React のプレビューのタスク。今のタスクと同じ要素と操作を持つ"
   - page: SCR-489-33.yaml
-    summary: "資料のカード・ボード・表（納品物を先頭に）"
+    summary: "資料のカード・ボード・表"
   - page: SCR-489-34.tsx.yaml
     summary: "React のプレビューの資料。今の資料と同じ要素と操作を持つ"
   - page: SCR-489-25.yaml

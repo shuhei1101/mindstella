@@ -22,7 +22,7 @@ export const Markdown: Story = { args: { format: "md" } };
 /** HTML の資料。地の面を敷いた `HTML` の文字 */
 export const Html: Story = { args: { format: "html" } };
 
-/** 種類・状態の札（完成）・取り下げの札・納品物の印と並べ、等幅の文字と地で見分けられることを見せる */
+/** 種類・状態の札（完成）・取り下げの札と並べ、等幅の文字と地で見分けられることを見せる */
 export const BesideOtherBadges: Story = {
   args: { format: "html" },
   render: (args) => {
@@ -34,7 +34,6 @@ export const BesideOtherBadges: Story = {
       MindmapPreview.bodyFormatBadge(args),
       MindmapPreview.statusBadge("完成"),
       MindmapPreview.withdrawnBadge(),
-      MindmapPreview.deliverableBadge(),
     );
     return stage;
   },

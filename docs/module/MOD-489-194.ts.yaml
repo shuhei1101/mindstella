@@ -11,7 +11,7 @@ data_models:
     properties:
       - name: data
         type: object
-        description: 埋め込みのデータ（`settings`・7 種類・`bodies`・`derived`・`built_at`）そのもの。次の候補・ゴールまでの進捗・カテゴリー別の進捗は `derived` をそのまま使い、画面で計算し直さない
+        description: 埋め込みのデータ（`settings`・7 種類・`bodies`・`derived`・`built_at`）そのもの。着手可能な検討事項は `derived` をそのまま使い、画面で計算し直さない
       - name: byId
         type: Map<string, {kind, item}>
         description: ID → 種類と項目
@@ -20,7 +20,7 @@ data_models:
         description: ID → その項目を `related[].to`（どの種類も）・`sources` で指す項目の ID（ID の順）
       - name: readyIds
         type: Set<string>
-        description: 着手可能な検討事項の ID（`data.derived.next` の ID）。表の「着手可否」の列は、ここにある未決定を「着手可能」、ほかの未決定を「前提待ち」、未決定以外を「なし」にする
+        description: 着手可能な検討事項の ID（`data.derived.ready`）。表の「着手可否」の列は、ここにある未決定を「着手可能」、ほかの未決定を「前提待ち」、未決定以外を「なし」にする
   - name: Tag
     title: タグ
     container: plugins/mindstella/skills/mindmap/preview/core/records.ts
@@ -53,12 +53,12 @@ functions:
     process: |-
       1. 7 種類の項目を ID で `byId` に入れる
       2. 各項目の `related[].to`・`sources` が指す ID ごとに、指した側の ID を `referencedBy` に足す（記録に無い ID もそのまま持つ）
-      3. `derived.next` の ID を `readyIds` に入れる
+      3. `derived.ready` の ID を `readyIds` に入れる
     unit_tests:
       - name: test_build_index
         case: 正常
         summary: ID で引け、参照元を逆に引ける
-        condition: 'D-1・D-2（`related: [{to: D-1, type: depends_on}]`）・T-1（`related: [{to: D-1, type: for}]`）を持ち、`derived.next` が D-1 だけのデータ'
+        condition: 'D-1・D-2（`related: [{to: D-1, type: depends_on}]`）・T-1（`related: [{to: D-1, type: for}]`）を持ち、`derived.ready` が D-1 だけのデータ'
         mock: なし
         expected: '`byId.get("T-1").kind` が `tasks`。`referencedBy.get("D-1")` が `["D-2", "T-1"]`。`readyIds` が D-1 だけ'
   - name: relatedItems

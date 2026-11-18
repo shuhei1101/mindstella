@@ -110,9 +110,9 @@ functions:
       - name: test_filter_counts
         case: 正常
         summary: ほかの列の条件だけを当てて数える
-        condition: 状態とカテゴリーの列。状態 = 未決定、カテゴリー = A で絞っているときの状態の列
+        condition: 状態とタグの列。状態 = 未決定、タグ = A で絞っているときの状態の列
         mock: なし
-        expected: カテゴリー A の行の状態ごとの件数（状態の条件は当てない）
+        expected: タグ A を持つ行の状態ごとの件数（状態の条件は当てない）
   - name: drawerGroups
     title: ドロワーの条件
     kind: 関数
@@ -220,9 +220,9 @@ functions:
       - name: test_initial_filters
         case: 正常
         summary: ハッシュ → 残した条件 → 画面の既定の順に使う
-        condition: '`parametrize`: decisions・`{}`・`null` / decisions・`{phase: [要件]}`・`{status: [保留]}` / tasks・`{}`・`null` / decisions・`{}`・`{}` / tasks・`{}`・`{status: [未着手]}`'
+        condition: '`parametrize`: decisions・`{}`・`null` / decisions・`{tags: [要件]}`・`{status: [保留]}` / tasks・`{}`・`null` / decisions・`{}`・`{}` / tasks・`{}`・`{status: [未着手]}`'
         mock: なし
-        expected: '状態 4 つ / `{phase: [要件]}`（状態の既定も残した条件も含まない） / `{}` / `{}`（全て外して残した条件は既定に戻さない） / `{status: [未着手]}`'
+        expected: '状態 4 つ / `{tags: [要件]}`（状態の既定も残した条件も含まない） / `{}` / `{}`（全て外して残した条件は既定に戻さない） / `{status: [未着手]}`'
   - name: textColumns
     title: 文字で絞れる列
     kind: 関数
@@ -245,7 +245,7 @@ functions:
         summary: 値を選ぶ列と数の列を除く
         condition: '`parametrize`: 用語集の列 / 検討事項の列'
         mock: なし
-        expected: '`id`・`title`・`meaning`・`aliases`・`avoid`（`tags` を除く） / `id`・`title`・前提の列（状態・カテゴリーなど `filterable` の列を除く）'
+        expected: '`id`・`title`・`meaning`・`aliases`・`avoid`（`tags` を除く） / `id`・`title`・前提の列（状態・タグなど `filterable` の列を除く）'
   - name: pruneFilters
     title: 残した条件の刈り込み
     kind: 関数

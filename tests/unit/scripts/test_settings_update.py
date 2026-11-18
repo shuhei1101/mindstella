@@ -1,104 +1,26 @@
-"""settings_update.py（設定の更新の引数の確かめ・設定の置き換え・フェーズの付け替え・まとめた書き込み）の単体テスト。"""
+"""settings_update.py（設定の更新の引数の確かめ・設定の置き換え・書き込み）の単体テスト。"""
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
 import pytest
 import yaml
 
 import errors
-import history
 import settings_update
 import store
-from errors import (
-    ArgumentError,
-    SchemaMismatchError,
-    UnmappedPhaseError,
-    WriteFailedError,
-)
-from fixture_types import (
-    FailingReplace,
-    MakeItem,
-    MakeWorkspace,
-    SnapshotTree,
-)
-from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
-
-# フェーズを付け替えた項目に入る更新日時
-NOW = "2026-10-05T00:00:00+00:00"
-
-# 対象・カテゴリーの付け替えを確かめるときの今の設定（targets・categories の名前だけを引く）
-CURRENT_SETTINGS: dict[str, Any] = {
-    "targets": [
-        {"name": "本体", "summary": "アプリの本体"},
-        {"name": "管理画面", "summary": "運用の画面"},
-    ],
-    "categories": [
-        {"name": "画面", "target": "本体", "summary": "画面の部品"},
-        {"name": "設定", "target": "管理画面", "summary": "設定の画面"},
-    ],
-}
-
-type MakeSettings = Callable[..., dict[str, Any]]
-
-
-def _validate(
-    settings: dict[str, Any],
-    phase_map: dict[str, str] | None = None,
-    *,
-    target_map: dict[str, str] | None = None,
-    category_map: dict[str, str] | None = None,
-    current: dict[str, Any] = CURRENT_SETTINGS,
-) -> None:
-    """今の phases を 問い・発散、今の設定を current（既定は CURRENT_SETTINGS）にして、引数を確かめる。"""
-    settings_update.validate_settings_input(
-        settings,
-        phase_map,
-        ["問い", "発散"],
-        target_map=target_map,
-        category_map=category_map,
-        current=current,
-    )
-
-
-def _fixed_now() -> str:
-    """付け替えた項目の更新日時として、決めた日時を返す。"""
-    return NOW
-
-
-@pytest.fixture
-def make_settings() -> MakeSettings:
-    """プレイブックの配列を持つ設定（ゴールは渡したときだけ持つ）を作る関数を返す。"""
-
-    def _make(phases: list[str], goal: dict[str, Any] | None = None) -> dict[str, Any]:
-        """フェーズだけを決め、他のキーは固定にした設定を返す。"""
-        settings: dict[str, Any] = {
-            "summary": "要件出しのスキル mindmap を設計する",
-            "playbooks": ["壁打ち"],
-            "target_label": "テーマ",
-            "phases": phases,
-            "targets": [{"name": "mindmap", "summary": "話し合いを記録するスキル"}],
-            "categories": [
-                {"name": "データ構造", "target": "mindmap", "summary": "YAML の種類とキー"}
-            ],
-        }
-        # ゴールは渡したときだけ持つ
-        if goal is not None:
-            settings["goal"] = goal
-        return settings
-
-    return _make
+from errors import ArgumentError, SchemaMismatchError, WriteFailedError
+from fixture_types import FailingReplace, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import RECORD_DIR
 
 
 def test_validate_settings_input() -> None:
-    """正しい引数は通す（正常系）。"""
+    """書き換えられるキーだけなら通す（正常系）。"""
     # 準備
-    settings = {"phases": ["目的", "発散"], "goal": None}
-    phase_map = {"問い": "目的"}
+    settings = {"summary": "題", "links": None}
     # 実行・検証
-    _validate(settings, phase_map)
+    settings_update.validate_settings_input(settings)
 
 
 @pytest.mark.parametrize(
@@ -113,136 +35,41 @@ def test_validate_settings_input() -> None:
     ],
 )
 def test_validate_settings_input_when_bad_key(settings: dict[str, Any]) -> None:
-    """書き換えられないキーと必須のキーの null を拒む（異常系）。"""
+    """書き換えられないキー・必須のキーの null を弾く（異常系）。"""
     # 実行・検証
     with pytest.raises(SchemaMismatchError):
-        _validate(settings)
+        settings_update.validate_settings_input(settings)
 
 
 @pytest.mark.parametrize(
-    ("settings", "phase_map", "expected_error", "message"),
+    ("settings", "message"),
     [
-        pytest.param(
-            {"summary": "新しい題名"},
-            {"問い": "目的"},
-            ArgumentError,
-            "phase_map",
-            id="without_phases",
-        ),
-        pytest.param(
-            {"phases": ["目的", "発散"]},
-            {"発散": "目的"},
-            ArgumentError,
-            "発散",
-            id="key_in_new_phases",
-        ),
-        pytest.param(
-            {"phases": ["目的", "発散"]},
-            {"整理": "目的"},
-            ArgumentError,
-            "整理",
-            id="key_not_in_current_phases",
-        ),
-        pytest.param(
-            {"phases": ["目的", "発散"]},
-            {"問い": "要件"},
-            UnmappedPhaseError,
-            "対応の無いフェーズ",
-            id="value_not_in_new_phases",
-        ),
+        pytest.param({"summary": "題", "playbooks": ["壁打ち"]}, "playbooks", id="playbooks"),
+        pytest.param({"goal": None}, "goal", id="goal_null"),
+        pytest.param({"phases": [], "categories": []}, "phases.*categories|categories.*phases", id="phases_categories"),
     ],
 )
-def test_validate_settings_input_when_bad_phase_map(
-    settings: dict[str, Any],
-    phase_map: dict[str, str],
-    expected_error: type[Exception],
-    message: str,
-) -> None:
-    """phase_map の誤った渡し方を拒む（異常系）。"""
+def test_validate_settings_input_when_removed_key(settings: dict[str, Any], message: str) -> None:
+    """削除したキーは引数の誤り（異常系）。"""
     # 実行・検証
-    with pytest.raises(expected_error, match=message):
-        _validate(settings, phase_map)
+    with pytest.raises(ArgumentError, match=message) as raised:
+        settings_update.validate_settings_input(settings)
+    assert raised.value.argument == "settings"
 
 
-@pytest.mark.parametrize(
-    ("settings", "target_map", "expected_error_name", "message"),
-    [
-        pytest.param(
-            {"summary": "新しい題名"},
-            {"本体": "アプリ"},
-            "ArgumentError",
-            "target_map",
-            id="without_targets",
-        ),
-        pytest.param(
-            {
-                "targets": [
-                    {"name": "アプリ", "summary": "アプリの本体"},
-                    {"name": "管理画面", "summary": "運用の画面"},
-                ]
-            },
-            {"管理画面": "アプリ"},
-            "ArgumentError",
-            "管理画面",
-            id="key_in_new_targets",
-        ),
-        pytest.param(
-            {
-                "targets": [
-                    {"name": "アプリ", "summary": "アプリの本体"},
-                    {"name": "管理画面", "summary": "運用の画面"},
-                ]
-            },
-            {"本体": "画面"},
-            "UnmappedTargetError",
-            "対応の無い対象",
-            id="value_not_in_new_targets",
-        ),
-    ],
-)
-def test_validate_settings_input_when_bad_target_map(
-    settings: dict[str, Any],
-    target_map: dict[str, str],
-    expected_error_name: str,
-    message: str,
-) -> None:
-    """target_map・category_map の誤った渡し方を拒む（異常系）。"""
-    # 準備
-    expected_error = getattr(errors, expected_error_name)
-    # 実行・検証
-    with pytest.raises(expected_error, match=message):
-        _validate(settings, target_map=target_map)
-
-
-def test_merge_settings(make_settings: MakeSettings) -> None:
+def test_merge_settings() -> None:
     """渡したキーだけを置き換え、null で消し、並びを保つ（正常系）。"""
     # 準備
-    current = make_settings(
-        ["目的", "要件"], {"phase": "要件", "summary": "要件が決まる", "deliverables": []}
-    )
-    settings = {
-        "summary": "新しい題名",
-        "goal": None,
-        "description": "概要",
-        "phases": ["目的", "要件"],
-    }
+    current = {"summary": "前の題名", "links": [], "history_limit": 3}
+    settings = {"summary": "新しい題名", "links": None, "description": "概要", "history_limit": 3}
     # 実行
     merged, changed = settings_update.merge_settings(current, settings)
     # 検証
-    assert merged["summary"] == "新しい題名"
-    assert "goal" not in merged
-    assert list(merged) == [
-        "summary",
-        "playbooks",
-        "target_label",
-        "phases",
-        "targets",
-        "categories",
-        "description",
-    ]
-    assert changed == ["summary", "goal", "description"]
+    assert merged == {"summary": "新しい題名", "history_limit": 3, "description": "概要"}
+    assert list(merged) == ["summary", "history_limit", "description"]
+    assert changed == ["summary", "links", "description"]
     # 渡した設定そのものは書き換えない
-    assert "goal" in current
+    assert "links" in current
 
 
 def test_merge_settings_when_mdmark() -> None:
@@ -256,232 +83,107 @@ def test_merge_settings_when_mdmark() -> None:
     assert changed == ["mdmark"]
 
 
-def test_remap_phases(
-    make_workspace: MakeWorkspace, make_item: MakeItem, make_settings: MakeSettings
-) -> None:
-    """対応で項目と goal.phase を付け替え、同じ名前のフェーズはそのままにする（正常系）。"""
+def test_save_settings(make_workspace: MakeWorkspace) -> None:
+    """設定を書き、一時ファイルを残さない（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", phase="問い"),
-        make_item("D-2", phase="発散"),
-        make_item("T-1", phase="整理"),
-        settings=make_settings(
-            ["問い", "発散", "整理", "結論"],
-            {"phase": "結論", "summary": "まとめる", "deliverables": []},
-        ),
-    )
+    root = make_workspace()
     workspace = store.load_workspace(root)
-    settings = {**workspace.settings, "phases": ["目的", "発散", "要件"]}
-    phase_map = {"問い": "目的", "整理": "要件", "結論": "要件"}
+    settings = {"summary": "新しい題名", "links": []}
     # 実行
-    changes, remapped, new_settings, rows = settings_update.remap_phases(
-        workspace, settings, phase_map, rows=history.load_item_history(root), now=_fixed_now
-    )
+    files = settings_update.save_settings(workspace, settings)
     # 検証
-    assert [change.kind for change in changes] == ["decision", "task"]
-    decisions = {item["id"]: item for item in changes[0].items}
-    tasks = {item["id"]: item for item in changes[1].items}
-    assert decisions["D-1"]["phase"] == "目的"
-    assert rows["D-1"]["updated"] == NOW
-    assert rows["D-1"]["updated_by"] == "ai"
-    assert decisions["D-2"]["phase"] == "発散"
-    assert rows["D-2"]["updated"] == DEFAULT_TIMESTAMP
-    assert "updated_by" not in rows["D-2"]
-    assert tasks["T-1"]["phase"] == "要件"
-    assert rows["T-1"]["updated"] == NOW
-    assert rows["T-1"]["updated_by"] == "ai"
-    assert remapped == [
-        settings_update.PhaseRemap(id="D-1", key="phase", from_value="問い", to_value="目的"),
-        settings_update.PhaseRemap(id="T-1", key="phase", from_value="整理", to_value="要件"),
-    ]
-    assert new_settings["goal"]["phase"] == "要件"
-
-
-def test_remap_phases_when_unmapped(
-    make_workspace: MakeWorkspace, make_item: MakeItem, make_settings: MakeSettings
-) -> None:
-    """対応の無いフェーズを全て挙げて止める（異常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", phase="問い"),
-        make_item("D-2", phase="発散"),
-        settings=make_settings(
-            ["問い", "発散", "結論"],
-            {"phase": "結論", "summary": "まとめる", "deliverables": []},
-        ),
-    )
-    workspace = store.load_workspace(root)
-    settings = {**workspace.settings, "phases": ["目的", "要件"]}
-    # 実行・検証
-    with pytest.raises(UnmappedPhaseError) as raised:
-        settings_update.remap_phases(workspace, settings, {"問い": "目的"}, rows={})
-    assert set(raised.value.lines) == {"D-2: 発散", "goal: 結論"}
-
-
-def test_save_settings(
-    make_workspace: MakeWorkspace, make_item: MakeItem, make_settings: MakeSettings
-) -> None:
-    """設定と付け替えた種類を書き、一時ファイルを残さない（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", phase="問い"), settings=make_settings(["問い", "発散"])
-    )
-    workspace = store.load_workspace(root)
-    settings = make_settings(["目的", "発散"])
-    change = store.Change(kind="decision", items=[make_item("D-1", phase="目的")])
-    # 実行
-    files = settings_update.save_settings(workspace, settings, [change])
-    # 検証
-    assert files == [".mindstella/config.yaml", ".mindstella/decisions.yaml"]
-    assert (
-        yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8")) == settings
-    )
-    assert yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8")) == {
-        "items": change.items
-    }
+    assert files == [".mindstella/config.yaml"]
+    assert yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8")) == settings
     assert list(root.rglob("*.tmp")) == []
 
 
-def test_save_settings_when_settings_unchanged(
-    make_workspace: MakeWorkspace, make_item: MakeItem, make_settings: MakeSettings
-) -> None:
-    """設定が変わらないときは `config.yaml` を書かない（正常系）。"""
+def test_save_settings_when_settings_unchanged(make_workspace: MakeWorkspace) -> None:
+    """設定が変わらないときは書かない（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", phase="問い"), settings=make_settings(["問い", "発散"])
-    )
+    root = make_workspace()
     workspace = store.load_workspace(root)
     config_path = root / RECORD_DIR / "config.yaml"
     config_before = config_path.read_text(encoding="utf-8")
-    change = store.Change(kind="decision", items=[make_item("D-1", phase="発散")])
     # 実行
-    files = settings_update.save_settings(workspace, workspace.settings, [change])
+    files = settings_update.save_settings(workspace, workspace.settings)
     # 検証
-    assert files == [".mindstella/decisions.yaml"]
+    assert files == []
     assert config_path.read_text(encoding="utf-8") == config_before
 
 
 def test_save_settings_when_schema_mismatch(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_settings: MakeSettings,
-    snapshot_tree: SnapshotTree,
+    make_workspace: MakeWorkspace, snapshot_tree: SnapshotTree
 ) -> None:
     """スキーマに合わない設定は書かない（異常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", phase="問い"), settings=make_settings(["問い", "発散"])
-    )
+    root = make_workspace()
     workspace = store.load_workspace(root)
     before = snapshot_tree(root)
-    settings = {**make_settings(["問い", "発散"]), "playbooks": []}
+    settings = {"summary": "題名", "links": [], "history_limit": -1}
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as raised:
-        settings_update.save_settings(workspace, settings, [])
-    assert any(line.startswith("config.yaml: playbooks") for line in raised.value.lines)
+        settings_update.save_settings(workspace, settings)
+    assert any(line.startswith("config.yaml: history_limit") for line in raised.value.lines)
     assert snapshot_tree(root) == before
 
 
 def test_save_settings_when_replace_fails(
     make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_settings: MakeSettings,
     snapshot_tree: SnapshotTree,
     failing_replace: FailingReplace,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """途中の置き換えに失敗したら、置き換えたファイルを戻す（異常系）。"""
+    """置き換えに失敗したら一時ファイルを残さない（異常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", phase="問い"), settings=make_settings(["問い", "発散"])
-    )
+    root = make_workspace()
     workspace = store.load_workspace(root)
     before = snapshot_tree(root)
-    change = store.Change(kind="decision", items=[make_item("D-1", phase="目的")])
     # settings_update モジュールの参照を、config.yaml への置き換えだけ失敗するものに差し替える
     monkeypatch.setattr(settings_update.os, "replace", failing_replace("config.yaml"))
     # 実行・検証
     with pytest.raises(WriteFailedError, match=r"config\.yaml"):
-        settings_update.save_settings(workspace, make_settings(["目的", "発散"]), [change])
+        settings_update.save_settings(workspace, {"summary": "新しい題名", "links": []})
     assert snapshot_tree(root) == before
     assert list(root.rglob("*.tmp")) == []
 
 
-def test_update_settings(
-    make_workspace: MakeWorkspace, make_item: MakeItem, make_settings: MakeSettings
-) -> None:
-    """フェーズを付け替えて設定と種類の YAML を書き、結果を出力の形にする（正常系）。"""
+def test_update_settings(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """設定を置き換えて書く（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", phase="問い"),
-        settings=make_settings(
-            ["問い", "発散"], {"phase": "問い", "summary": "問いを決める", "deliverables": []}
-        ),
-    )
+    root = make_workspace(make_item("D-1"))
+    decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
+    links = [{"title": "仕様", "url": "https://example.com"}]
     # 実行
-    result = settings_update.update_settings(
-        root, {"phases": ["目的", "発散"]}, {"問い": "目的"}, now=_fixed_now
-    )
+    result = settings_update.update_settings(root, {"summary": "新しい題名", "links": links})
     # 検証
-    assert result == {
-        "changed": ["phases", "goal"],
-        "remapped": [{"id": "D-1", "key": "phase", "from": "問い", "to": "目的"}],
-        "files": [".mindstella/config.yaml", ".mindstella/decisions.yaml"],
-    }
-    saved = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
-    assert saved["goal"]["phase"] == "目的"
-    rows = yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))
-    assert rows["items"]["D-1"]["updated_by"] == "ai"
+    assert result == {"changed": ["summary", "links"], "files": [".mindstella/config.yaml"]}
+    assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
 
 
-def test_stage_settings(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_settings: MakeSettings,
-    snapshot_tree: SnapshotTree,
+def test_update_settings_when_removed_key(
+    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
 ) -> None:
-    """書かずに付け替えを当て、編集した人を渡した人にする（正常系）。"""
+    """削除したキーを渡すと何も書かない（異常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", phase="問い"), settings=make_settings(["問い", "発散"])
-    )
-    workspace = store.load_workspace(root)
+    root = make_workspace(make_item("D-1"))
     before = snapshot_tree(root)
-    # 実行
-    staged = settings_update.stage_settings(
-        workspace,
-        {"phases": ["目的", "発散"]},
-        phase_map={"問い": "目的"},
-        editor="user",
-        now=_fixed_now,
-    )
-    # 検証
-    assert staged.changed == ["phases"]
-    assert staged.remapped == [
-        settings_update.PhaseRemap(id="D-1", key="phase", from_value="問い", to_value="目的")
-    ]
-    assert staged.items["decision"][0]["phase"] == "目的"
-    assert staged.history["D-1"]["updated_by"] == "user"
+    # 実行・検証
+    with pytest.raises(ArgumentError, match="playbooks"):
+        settings_update.update_settings(root, {"summary": "題", "playbooks": ["壁打ち"]})
     assert snapshot_tree(root) == before
 
 
-def test_update_settings_when_goal_phase_unknown(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_settings: MakeSettings,
-    snapshot_tree: SnapshotTree,
-) -> None:
-    """phases に無い goal.phase のゴールだけを渡すと何も書かない（異常系）。"""
+def test_stage_settings(make_workspace: MakeWorkspace, snapshot_tree: SnapshotTree) -> None:
+    """書かずに当てた設定を返す（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", phase="問い"), settings=make_settings(["問い", "発散"])
-    )
+    root = make_workspace()
+    workspace = store.load_workspace(root)
     before = snapshot_tree(root)
-    settings = {"goal": {"phase": "結論", "summary": "まとめる", "deliverables": []}}
-    # 実行・検証
-    with pytest.raises(UnmappedPhaseError) as raised:
-        settings_update.update_settings(root, settings, None)
-    assert raised.value.lines == ["goal: 結論"]
+    # 実行
+    staged = settings_update.stage_settings(workspace, {"summary": "新しい題名"})
+    # 検証
+    assert staged.changed == ["summary"]
+    assert staged.settings["summary"] == "新しい題名"
     assert snapshot_tree(root) == before
 
 
@@ -495,13 +197,13 @@ KINDS_WITHOUT_LOGS = ["decisions", "tasks", "research", "docs", "terms", "notes"
 def test_update_settings_when_display(make_workspace: MakeWorkspace) -> None:
     """表示の既定を丸ごと置き換え、ほかのキーと項目を変えない（正常系）。"""
     # 準備
-    root = make_workspace()
+    root = make_workspace(settings={"summary": "題名", "links": [], "history_limit": 3})
     before = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     display = {"network_look": "starlight", "visible_kinds": KINDS_WITHOUT_LOGS}
     # 実行
-    first = settings_update.update_settings(root, {"display": display}, None)
+    first = settings_update.update_settings(root, {"display": display})
     after_first = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
-    second = settings_update.update_settings(root, {"display": {"network_look": "glow"}}, None)
+    second = settings_update.update_settings(root, {"display": {"network_look": "glow"}})
     after_second = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     # 検証
     assert first["changed"] == ["display"]
@@ -510,81 +212,6 @@ def test_update_settings_when_display(make_workspace: MakeWorkspace) -> None:
     assert {key: value for key, value in after_first.items() if key != "display"} == before
     assert second["changed"] == ["display"]
     assert after_second["display"] == {"network_look": "glow"}
-
-
-def test_remap_names(
-    make_workspace: MakeWorkspace, make_item: MakeItem, make_settings: MakeSettings
-) -> None:
-    """対応で項目とカテゴリーの target・category を付け替え、同じ名前はそのままにする（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", target="本体", category="画面"),
-        make_item("D-2", target="管理画面", category="設定"),
-        settings=make_settings(["問い"]),
-    )
-    workspace = store.load_workspace(root)
-    settings = {
-        **workspace.settings,
-        "targets": [
-            {"name": "アプリ", "summary": "アプリの本体"},
-            {"name": "管理画面", "summary": "運用の画面"},
-        ],
-        "categories": [
-            {"name": "画面", "target": "本体", "summary": "画面の部品"},
-            {"name": "API", "target": "本体", "summary": "呼び出しの口"},
-            {"name": "運用", "target": "管理画面", "summary": "運用の設定"},
-        ],
-    }
-    # 実行
-    items, remapped, new_settings, rows = settings_update.remap_names(
-        workspace.items,
-        settings,
-        {"本体": "アプリ"},
-        {"設定": "運用"},
-        rows=history.load_item_history(root),
-        now=_fixed_now,
-    )
-    # 検証
-    decisions = {item["id"]: item for item in items["decision"]}
-    assert (decisions["D-1"]["target"], decisions["D-1"]["category"]) == ("アプリ", "画面")
-    assert (decisions["D-2"]["target"], decisions["D-2"]["category"]) == ("管理画面", "運用")
-    assert rows["D-1"]["updated"] == NOW
-    assert rows["D-2"]["updated"] == NOW
-    assert rows["D-1"]["updated_by"] == "ai"
-    assert rows["D-2"]["updated_by"] == "ai"
-    assert remapped == [
-        settings_update.PhaseRemap(id="D-1", key="target", from_value="本体", to_value="アプリ"),
-        settings_update.PhaseRemap(id="D-2", key="category", from_value="設定", to_value="運用"),
-    ]
-    assert [category["target"] for category in new_settings["categories"]] == [
-        "アプリ",
-        "アプリ",
-        "管理画面",
-    ]
-    # 付け替えは変更履歴を積まない
-    assert "history" not in rows["D-1"]
-    assert "history" not in rows["D-2"]
-
-
-def test_remap_names_when_unmapped(
-    make_workspace: MakeWorkspace, make_item: MakeItem, make_settings: MakeSettings
-) -> None:
-    """対応の無いカテゴリーを全て挙げて止める（異常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", target="mindmap", category="画面"),
-        make_item("D-2", target="mindmap", category="設定"),
-        settings=make_settings(["問い"]),
-    )
-    workspace = store.load_workspace(root)
-    settings = {
-        **workspace.settings,
-        "categories": [{"name": "画面", "target": "mindmap", "summary": "画面の部品"}],
-    }
-    # 実行・検証
-    with pytest.raises(errors.UnmappedTargetError) as raised:
-        settings_update.remap_names(workspace.items, settings, {}, {}, rows={})
-    assert raised.value.lines == ["D-2: category: 設定"]
 
 
 def test_update_display(make_workspace: MakeWorkspace) -> None:
@@ -649,12 +276,12 @@ def test_update_display_when_settings_broken(
 ) -> None:
     """崩れた config.yaml には書き足さない（異常系）。"""
     # 準備
-    broken = {key: value for key, value in valid_settings.items() if key != "phases"}
+    broken = {key: value for key, value in valid_settings.items() if key != "summary"}
     root = make_workspace(settings=broken)
     before = (root / RECORD_DIR / "config.yaml").read_bytes()
     body = {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS}
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as raised:
         settings_update.update_display(root, body)
-    assert any(line.startswith("config.yaml: ") and "phases" in line for line in raised.value.lines)
+    assert any(line.startswith("config.yaml: ") and "summary" in line for line in raised.value.lines)
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == before

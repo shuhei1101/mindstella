@@ -330,14 +330,15 @@ def test_region_visible(page: Page, spa_preview: str) -> None:
     expect(page.get_by_role("main").get_by_role("heading", level=1)).to_have_text("検討事項")
 
 
-def test_layer_labels_visible(page: Page, write_sample_preview: WriteSamplePreview) -> None:
-    """マップの幅 901px 以上では、対象・カテゴリー・フェーズの中間の層のラベルを節として出す（正常系）。"""
+def test_map_root_and_items(page: Page, write_sample_preview: WriteSamplePreview) -> None:
+    """マップの幅 901px 以上では、根の節の下に検討事項を平らに並べ、中間の層の節を出さない（正常系）。"""
     # 準備・実行
     page.set_viewport_size(WIDE)
     _map(page, write_sample_preview())
     # 検証
-    expect(page.locator("#decision-map div[data-node]").filter(has_text="データ構造")).to_have_count(1)
-    expect(page.locator("#decision-map div[data-node]").filter(has_text="画面")).to_have_count(1)
+    expect(page.locator("#decision-map div[data-node]")).to_have_count(1)
+    expect(page.locator("#decision-map div[data-node]")).to_have_text("要件出しのスキル mindmap を設計する")
+    expect(page.locator("#decision-map button[data-node]")).to_have_count(4)
 
 
 @pytest.mark.parametrize("view", ["map", "board"])

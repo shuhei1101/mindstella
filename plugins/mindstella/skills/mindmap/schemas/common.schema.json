@@ -40,18 +40,6 @@
           "description": "タイトル",
           "minLength": 1
         },
-        "target": {
-          "type": "string",
-          "description": "対象。設定の `targets[].name` のどれか"
-        },
-        "category": {
-          "type": "string",
-          "description": "カテゴリー。設定の `categories[].name` のどれか"
-        },
-        "phase": {
-          "type": "string",
-          "description": "フェーズ。設定の `phases` のどれか"
-        },
         "tags": {
           "type": "array",
           "description": "話題のタグ。要素は `{name, main?}`。`name` はどの文字列でも持て、`tags` のツールが NFKC と小文字にそろえた表記で数える。その項目の主題のタグだけが `main: true` を持つ",
@@ -71,17 +59,6 @@
                 "description": "その項目の主題のタグなら true"
               }
             }
-          }
-        },
-        "attrs": {
-          "type": "object",
-          "description": "自由なキーと値。値は文字列・数値・真偽値。使っているキーの名前は `attrs` のコマンドで引く",
-          "additionalProperties": {
-            "type": [
-              "string",
-              "number",
-              "boolean"
-            ]
           }
         },
         "related": {

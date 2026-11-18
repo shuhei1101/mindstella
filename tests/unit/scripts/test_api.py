@@ -46,6 +46,8 @@ def test_build_routes() -> None:
         ("/workspaces/{id}/sessions/{session}", "DELETE"),
         ("/workspaces/{id}/close", "POST"),
         ("/_admin/sessions/{session}/events", "POST"),
+        ("/_admin/sessions/{session}/resume", "POST"),
+        ("/_admin/sessions/{session}/read_point", "POST"),
     } <= pairs
 
 

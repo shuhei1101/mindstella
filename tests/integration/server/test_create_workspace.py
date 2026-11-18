@@ -8,6 +8,7 @@ import urllib.request
 from pathlib import Path
 
 import yaml
+from launch_fixtures import PLUGIN_DIR
 from session_fixtures import SessionWorld
 
 # 進め方の文書
@@ -87,8 +88,8 @@ def test_normal(session_world: SessionWorld) -> None:
         "plugin_dirs": [str(plugin)],
     }
     assert body["id"] in _ids(world)
-    # 行の追加は、GET /settings/sources が返した version を expectedVersion に添える
-    assert [request[2]["expectedVersion"] for request in world.pi.changes()] == ["1"]
+    # 行の追加は、GET /settings/sources が返した version を expectedVersion に添える（ワークスペースの行・エージェントフローの行の順）
+    assert [request[2]["expectedVersion"] for request in world.pi.changes()] == ["1", "2"]
     posts = [request[2]["source"] for request in world.pi.changes() if request[0] == "POST"]
     resolved = folder.resolve()
     assert posts == [
@@ -100,7 +101,14 @@ def test_normal(session_world: SessionWorld) -> None:
                 "write": [str(resolved), f"{resolved}/**"],
             },
             "outside_read": True,
-        }
+        },
+        # エージェントフローの配信元（行が無いので足す。書き込みの範囲を持たない）
+        {
+            "id": "mindstella-agent-flows",
+            "config": str(PLUGIN_DIR / "agent-flows" / "dev-docs.yaml"),
+            "scope": {"read": [str(world.allowed), f"{world.allowed}/**"]},
+            "outside_read": True,
+        },
     ]
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     with opener.open(body["url"], timeout=10) as response:
@@ -126,7 +134,8 @@ def test_normal_when_records_exist(session_world: SessionWorld) -> None:
     assert (status, body["result"]) == (200, "opened"), body
     assert config_path.read_bytes() == before
     assert _launch_json(world, created["id"]) == {"mcp_config": MCP_CONFIG, "plugin_dirs": []}
-    assert [request[0] for request in world.pi.changes()] == ["POST"]
+    # ワークスペースの行と、エージェントフローの配信元の行
+    assert [request[0] for request in world.pi.changes()] == ["POST", "POST"]
 
 
 def test_normal_when_already_open(session_world: SessionWorld) -> None:

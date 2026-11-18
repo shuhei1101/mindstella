@@ -16,7 +16,7 @@ components:
         summary: 記録でタイルを描く
         condition: MSW で記録・コメント・保存待ち・スレッドを返す
         mock: MSW
-        expected: 6 つのタイルが項目 ID で引け、トップバーの題名が `settings.summary`
+        expected: 4 つのタイルが項目 ID で引け、トップバーの題名が `settings.summary`
       - name: test_overview_screen_when_records_invalid
         case: 異常
         summary: 422 で detail を出す
@@ -35,5 +35,11 @@ components:
         condition: トップバーのネットワークの入口を押す
         mock: MSW・`window.location.assign`
         expected: '`assign` が今の画面の `#tab=graph` で呼ばれる'
+      - name: test_overview_screen_when_unread
+        case: 正常
+        summary: 未読の行はスレッドへ
+        condition: MSW で AI の未読の書き込みを持つスレッドを返し、未読のタイルの行を押す
+        mock: MSW・ルーターのメモリの履歴
+        expected: search が `panel=comments`・`thread={スレッドの ID}` になる
 notes:
   単体テスト: 同じフォルダの `overview-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）

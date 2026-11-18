@@ -55,6 +55,8 @@ constants:
         value: 4.18.0
       - key: mcp
         value: 2.3.0
+      - key: Jinja2
+        value: '3.1'
   - name: PROBE_SCRIPT
     title: 仮想環境への問い合わせ
     container: plugins/mindstella/skills/mindmap/scripts/check_env.py
@@ -157,9 +159,9 @@ functions:
       - name: test_run_check_env
         case: 正常
         summary: そろっていれば結果を返す
-        condition: '`tmp_path` に仮想環境の Python の場所だけファイルを置き、`probe` は `python: 3.12.3`・PyYAML `6.0.3`・jsonschema `4.26.0`・mcp `2.3.0` を返す'
+        condition: '`tmp_path` に仮想環境の Python の場所だけファイルを置き、`probe` は `python: 3.12.3`・PyYAML `6.0.3`・jsonschema `4.26.0`・mcp `2.3.0`・Jinja2 `3.1.6` を返す'
         mock: '`probe`'
-        expected: '`venv_ok: true`・`python_ok: true`、3 つとも `ok: true`、`python_path` がその Python、`install: null`'
+        expected: '`venv_ok: true`・`python_ok: true`、4 つとも `ok: true`、`python_path` がその Python、`install: null`'
       - name: test_run_check_env_when_venv_missing
         case: 異常
         summary: 仮想環境が無ければ VenvNotFoundError
@@ -177,9 +179,9 @@ functions:
       - name: test_run_check_env_when_package_missing
         case: 異常
         summary: 無い・古いライブラリがあれば DependencyMissingError
-        condition: '`probe` は `python: 3.12.3`、PyYAML `null`、jsonschema `4.17.3`、mcp `null` を返す'
+        condition: '`probe` は `python: 3.12.3`、PyYAML `null`、jsonschema `4.17.3`、mcp `null`、Jinja2 `3.1.6` を返す'
         mock: '`probe`'
-        expected: '`DependencyMissingError`（`report` の PyYAML・mcp `installed: null`・`ok: false`、jsonschema `ok: false`、`install` に `PyYAML>=5.1`・`jsonschema>=4.18.0`・`mcp>=2.3.0` があり `-m venv` が無い）'
+        expected: '`DependencyMissingError`（`report` の PyYAML・mcp `installed: null`・`ok: false`、jsonschema `ok: false`、`install` に `PyYAML>=5.1`・`jsonschema>=4.18.0`・`mcp>=2.3.0` があり `Jinja2>=3.1` が無く `-m venv` が無い）'
         exception: ライブラリが無いか古い
       - name: test_run_check_env_when_old_syntax
         case: 正常
@@ -263,9 +265,9 @@ functions:
       - name: test_build_install_command
         case: 正常
         summary: 作る・作り直す・入れるだけを分ける
-        condition: '`parametrize`: `create` と `["PyYAML", "jsonschema", "mcp"]` / `recreate` と同じ / `install` と `["mcp"]`。`venv_dir=/v`・`base_python=/usr/bin/python3`・`os_name="posix"`'
+        condition: '`parametrize`: `create` と `["PyYAML", "jsonschema", "mcp", "Jinja2"]` / `recreate` と同じ / `install` と `["mcp"]`。`venv_dir=/v`・`base_python=/usr/bin/python3`・`os_name="posix"`'
         mock: なし
-        expected: '`"/usr/bin/python3" -m venv "/v" && "/v/bin/python" -m pip install "PyYAML>=5.1" "jsonschema>=4.18.0" "mcp>=2.3.0"` / `-m venv --clear "/v"` で始まる同じ形 / `"/v/bin/python" -m pip install "mcp>=2.3.0"`'
+        expected: '`"/usr/bin/python3" -m venv "/v" && "/v/bin/python" -m pip install "PyYAML>=5.1" "jsonschema>=4.18.0" "mcp>=2.3.0" "Jinja2>=3.1"` / `-m venv --clear "/v"` で始まる同じ形 / `"/v/bin/python" -m pip install "mcp>=2.3.0"`'
       - name: test_build_install_command_when_none_missing
         case: 正常
         summary: 入れるものが無ければ None
@@ -352,7 +354,7 @@ functions:
         summary: テストを動かす Python に尋ねる
         condition: '`sys.executable` を渡す'
         mock: なし
-        expected: '`python` が `platform.python_version()` と同じで、`packages` に PyYAML・jsonschema・mcp のキーがある'
+        expected: '`python` が `platform.python_version()` と同じで、`packages` に PyYAML・jsonschema・mcp・Jinja2 のキーがある'
       - name: test_probe_venv_when_failed
         case: 異常
         summary: 起動できないか出力が読めなければ None

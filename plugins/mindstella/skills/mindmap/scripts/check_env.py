@@ -1,4 +1,4 @@
-"""スキル専用の仮想環境の Python の版と、PyYAML・jsonschema・mcp の版を確かめる。
+"""スキル専用の仮想環境の Python の版と、PyYAML・jsonschema・mcp・Jinja2 の版を確かめる。
 
 依存が揃う前のシステムの `python3` で起動するため、Python 3.8 で読める構文だけで書く。
 使い方（起動スクリプトが呼ぶ）:
@@ -21,7 +21,7 @@ from typing import Any
 MIN_PYTHON = (3, 12)
 
 # 配布名 → 版の下限
-REQUIREMENTS = {"PyYAML": "5.1", "jsonschema": "4.18.0", "mcp": "2.3.0"}
+REQUIREMENTS = {"PyYAML": "5.1", "jsonschema": "4.18.0", "mcp": "2.3.0", "Jinja2": "3.1"}
 
 # 仮想環境の Python に版を尋ねるときに待つ秒数の上限
 PROBE_TIMEOUT_SEC = 30

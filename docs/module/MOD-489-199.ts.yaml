@@ -140,53 +140,6 @@ functions:
         condition: '`parametrize`: `未決定` / `undefined`'
         mock: なし
         expected: '`span.st` で `data-st` が `未決定`、文字が `未決定`、`svg.mark` を持つ / 子の無い断片'
-  - name: impactBadge
-    title: 影響度の表示
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
-    usecase: 共通
-    scope: public
-    summary: 影響度（大・中・小）を 3 本の目盛りと文字で表す
-    args:
-      - name: weight
-        type: string | undefined
-        required: true
-        passing: positional
-        description: 影響度
-      - name: labeled
-        type: boolean
-        required: false
-        default: 'false'
-        passing: positional
-        description: 目盛りの横の文字に軸の名前を添えて「影響度 大」にするか。列名「影響度」の下に出す表は `false`、概要の次に検討する項目は `true`
-    returns:
-      type: Node
-      description: '`span.impact`。大は 3 本・中は 2 本・小は 1 本の目盛りを `on` にする。文字は `labeled` が真なら「影響度 {値}」、偽なら「{値}」。大・中・小のどれでもない値と `undefined` は空の断片'
-    unit_tests:
-      - name: test_impact_badge
-        case: 正常
-        summary: 影響度ごとの目盛りの数
-        condition: '`parametrize`: `大` / `中` / `小` / `知らない` / `undefined`（いずれも `labeled` なし）と、`大` で `labeled = true`'
-        mock: なし
-        expected: '`on` の目盛りが 3 / 2 / 1 本（文字は `大` / `中` / `小`）/ 空の断片 / 空の断片。`labeled = true` は目盛り 3 本で文字が `影響度 大`'
-  - name: deliverableBadge
-    title: 納品物の印
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
-    usecase: 共通
-    scope: public
-    summary: 納品物の資料に付ける印（箱のアイコンと「納品物」）
-    args: []
-    returns:
-      type: HTMLElement
-      description: '`span.deliv-badge`'
-    unit_tests:
-      - name: test_deliverable_badge
-        case: 正常
-        summary: アイコンと文字を持つ
-        condition: 引数なし
-        mock: なし
-        expected: '`span.deliv-badge` が `svg.icon` と文字 `納品物` を持つ'
   - name: emptyNote
     title: 空のときの 1 行
     kind: 関数

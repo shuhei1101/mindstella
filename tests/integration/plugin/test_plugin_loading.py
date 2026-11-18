@@ -1,4 +1,4 @@
-"""プラグインの読み込み（plugins/mindstella/ の .claude-plugin/plugin.json・.mcp.json・hooks/・skills/・LICENSE）の結合テスト。"""
+"""プラグインの読み込み（plugins/mindstella/ の .claude-plugin/plugin.json・.mcp.json・hooks/・skills/mindmap/・agent-flows/・LICENSE）の結合テスト。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import yaml
 from workspace_fixtures import PORT_ENV, free_port
 
 if TYPE_CHECKING:
@@ -54,7 +55,7 @@ def _session_hook_command(event: str) -> str:
 
 
 def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
-    """プラグイン mindstella が、スキルのフォルダと常駐サーバーへの接続の設定とフックを持って読み込まれる（正常系）。"""
+    """プラグイン mindstella が、スキルを持たず、エージェントフローのフォルダと常駐サーバーへの接続の設定とフックを持って読み込まれる（正常系）。"""
     # 準備
     run_claude("plugin", "marketplace", "add", str(repo_root))
 
@@ -68,14 +69,20 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     install_path = Path(str(installed["installPath"]))
     # claude plugin list で mindstella@mindstella が有効である
     assert installed["enabled"] is True
-    # 取り込まれたプラグインのフォルダに 2 つのスキルの SKILL.md と、共通の置き場所の 4 つのフォルダがある
-    assert (install_path / "skills" / "setup" / "SKILL.md").is_file()
-    assert (install_path / "skills" / "session" / "SKILL.md").is_file()
+    # スキルのフォルダを持たず、共通の置き場所は schemas・scripts を持ち references・playbooks を持たない
+    assert [name for name in ("setup", "session", "upgrade") if (install_path / "skills" / name).exists()] == []
     shared = install_path / "skills" / "mindmap"
-    assert (shared / "references").is_dir()
-    assert (shared / "playbooks").is_dir()
     assert (shared / "schemas").is_dir()
     assert (shared / "scripts").is_dir()
+    assert not (shared / "references").exists()
+    assert not (shared / "playbooks").exists()
+    # agent-flows/ に 3 件のエージェントフローがある
+    flows = sorted(
+        yaml.safe_load(path.read_text(encoding="utf-8"))["id"]
+        for path in (install_path / "agent-flows").glob("*.yaml")
+        if path.name != "dev-docs.yaml"
+    )
+    assert flows == ["mindstella/on-comment", "mindstella/record", "mindstella/startup"]
     # 取り込まれたプラグインのフォルダに、実行の権限を持つ bin/mindstella がある
     assert os.access(install_path / "bin" / "mindstella", os.X_OK)
     # 取り込まれたプラグインのフォルダの直下に LICENSE があり、本文がリポジトリの直下の LICENSE と一致する

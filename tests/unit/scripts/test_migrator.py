@@ -343,7 +343,6 @@ def test_apply_migration_when_settings_renamed(
     )
     legacy_settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
     legacy_settings["field"] = "システム開発"
-    del legacy_settings["playbooks"]
     write_yaml(root / "mindmap.yaml", legacy_settings)
     # 前の版の画面と、直下のロックのファイル
     (root / "preview.html").write_text("<html></html>\n", encoding="utf-8")
@@ -398,7 +397,7 @@ def test_set_values(
     settings = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert settings["summary"] == "題名"
     assert _keys_except(settings, "summary") == _keys_except(valid_settings, "summary")
-    assert settings["phases"] == valid_settings["phases"]
+    assert settings["links"] == valid_settings["links"]
     assert not (root / RECORD_DIR / VERSION_FILE).exists()
 
 
@@ -498,3 +497,137 @@ def test_renamed_file(file_name: str, later_steps: list[Any], expected: str) -> 
     result = migrator.renamed_file(file_name, later_steps)
     # 検証
     assert result == expected
+
+
+# migrate を確かめる手順の版
+V0140 = "v0.14.0"
+
+# 題名に仮の値を入れる v0.14.0 の手順
+SUMMARY_STEPS = (
+    "steps:\n"
+    "  - op: set_default\n"
+    "    file: .mindstella/config.yaml\n"
+    "    each_item: false\n"
+    "    key: summary\n"
+    "    ask: 話し合いの題名\n"
+)
+
+# 移せなかった値を報告する変換を呼ぶ v0.14.0 の手順と、その変換
+REPORT_STEPS = "steps:\n  - op: call\n    script: report_lines\n"
+REPORT_SCRIPT = (
+    '"""移せなかった値の報告の行だけを返す変換。"""\n'
+    "from __future__ import annotations\n"
+    "from pathlib import Path\n\n\n"
+    "def migrate(root: Path) -> tuple[list[str], list[str]]:\n"
+    '    """何も書かずに、報告の行を返す。"""\n'
+    '    return [], ["D-1: scope: 社内", "その他の行"]\n'
+)
+
+
+def _migrations_dir(base: Path, steps: str, scripts: dict[str, str] | None = None) -> Path:
+    """v0.14.0 の手順だけを持つ手順の置き場所を base の下に作って返す。"""
+    folder = base / "migrations" / V0140
+    (folder / "scripts").mkdir(parents=True)
+    (folder / STEPS_FILE).write_text(steps, encoding="utf-8")
+    for name, text in (scripts or {}).items():
+        (folder / "scripts" / name).write_text(text, encoding="utf-8")
+    return folder.parent
+
+
+def test_migrate(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    patch_plugin_version: PatchPluginVersion,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """手順を当て、題名に仮の値を入れて版を書く（正常系）。"""
+    # 準備
+    settings = {key: value for key, value in valid_settings.items() if key != "summary"}
+    root = make_workspace(settings=settings, name="家計簿")
+    monkeypatch.setattr(migrator, "MIGRATIONS_DIR", _migrations_dir(tmp_path, SUMMARY_STEPS))
+    patch_plugin_version(V0140)
+    # 実行
+    report = migrator.migrate(root)
+    # 検証
+    assert report.steps != []
+    assert report.provisional == [{"file": ".mindstella/config.yaml", "key": "summary", "value": "家計簿"}]
+    assert str(report.recorded) == V0140
+
+
+def test_migrate_when_to_version_before_plugin(
+    make_workspace: MakeWorkspace,
+    patch_plugin_version: PatchPluginVersion,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """プラグインの版より前までの手順だけを当て、仮の値も版も書かない（正常系）。"""
+    # 準備
+    root = make_workspace(raw_files={VERSION_FILE: "v0.13.0\n"})
+    monkeypatch.setattr(migrator, "MIGRATIONS_DIR", _migrations_dir(tmp_path, SUMMARY_STEPS))
+    patch_plugin_version("v0.15.0")
+    # 実行
+    report = migrator.migrate(root, to_version=Version(0, 14, 0))
+    # 検証
+    assert {str(step.version) for step in report.steps} == {V0140}
+    assert (report.recorded, report.provisional) == (None, [])
+    assert (root / ".mindstella" / VERSION_FILE).read_text(encoding="utf-8") == "v0.13.0\n"
+
+
+def test_migrate_when_same(
+    make_workspace: MakeWorkspace,
+    patch_plugin_version: PatchPluginVersion,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """版が同じなら何も書かない（正常系）。"""
+    # 準備
+    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n"})
+    patch_plugin_version(V0140)
+    before = snapshot_tree(root)
+    # 実行
+    report = migrator.migrate(root)
+    # 検証
+    assert report.steps == []
+    assert report.recorded is None
+    assert snapshot_tree(root) == before
+
+
+def test_migrate_when_schema_mismatch(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    patch_plugin_version: PatchPluginVersion,
+    snapshot_tree: SnapshotTree,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """当てた後にスキーマに合わなければ写しから戻す（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", status="完了"))
+    monkeypatch.setattr(migrator, "MIGRATIONS_DIR", _migrations_dir(tmp_path, SUMMARY_STEPS))
+    patch_plugin_version(V0140)
+    before = snapshot_tree(root)
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError):
+        migrator.migrate(root)
+    assert snapshot_tree(root) == before
+
+
+def test_migrate_when_not_carried(
+    make_workspace: MakeWorkspace,
+    patch_plugin_version: PatchPluginVersion,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """手順の報告の行を移せなかった値にする（正常系）。"""
+    # 準備
+    root = make_workspace()
+    migrations = _migrations_dir(tmp_path, REPORT_STEPS, {"report_lines.py": REPORT_SCRIPT})
+    monkeypatch.setattr(migrator, "MIGRATIONS_DIR", migrations)
+    patch_plugin_version(V0140)
+    # 実行
+    report = migrator.migrate(root)
+    # 検証
+    assert report.not_carried == [
+        {"item": "D-1", "key": "scope", "value": "社内"},
+        {"item": "", "key": "", "value": "その他の行"},
+    ]
