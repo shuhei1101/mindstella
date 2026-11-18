@@ -5,7 +5,7 @@ entry:
   value: POST `/workspaces/{id}/close`
 lead: 'MindStella のセッションが無いワークスペースの配信元の行を `outside_read: false` にしてクローズにする。MindStella の MCP の `close_workspace` も同じ処理を呼ぶ。'
 idempotent: true
-side_effects: project-index の配信元の行の `outside_read` を偽にし、状態の `close_pending` を真にする。記録と、状態のフォルダの追加の MCP・プラグインの記録は残す（D-322）
+side_effects: MindStella のセッションの生死を判定し、状態が `running`・`stopping` でもペインか Claude Code のプロセスが無ければ `crashed` として記録する（`running` からのときは『停止の通知』を止まった理由 `crashed` で呼ぶ）。project-index の配信元の行の `outside_read` を偽にし、状態の `close_pending` を真にする。記録と、状態のフォルダの追加の MCP・プラグインの記録は残す（D-322）
 request:
   - name: id
     type: str
@@ -52,6 +52,8 @@ constraints:
     constraint: ワークスペースごとの鍵を、MindStella のセッションの有無の確かめから行の変更まで持つ
   - item: MCP のツール
     constraint: '`close_workspace` は `workspace_id` を受け、同じ処理を呼ぶ'
+  - item: 停止の通知
+    constraint: MindStella のセッションの有無の判定で `running` から `crashed` に書き換えたときだけ、『停止の通知』を止まった理由 `crashed` で呼ぶ（送信は別のスレッドで行い、応答を待たせない）。`stopping` から `crashed` への書き換えでは呼ばない。通知の成否は応答に含めない
 flows:
   - name: 正常系
     summary: '配信元の行を outside_read: false にする'
@@ -128,6 +130,7 @@ refs:
   - IF-531-2#
   - IF-531-4#
   - API-531-1#
+  - IF-570-1#
 callers:
   - SC-531-2#
 test_file: tests/integration/server/test_close_workspace.py
