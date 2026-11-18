@@ -5,3 +5,9 @@ confirmations:
     approver: shuhei1101
     commit: 670a76e8
     thread: https://github.com/shuhei1101/mindstella/pull/565#discussion_r4605055111
+  - topic: 概要の画面の並び（ゴール・次の候補・カテゴリー別の進捗を削除し、4 つの一覧のタイルだけにする）
+    decision: 'A: モック（overview/565/a-four-tiles）のとおりにする（推奨案）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 22aa2dd5
+    thread: https://github.com/shuhei1101/mindstella/pull/565#discussion_r4607367874
