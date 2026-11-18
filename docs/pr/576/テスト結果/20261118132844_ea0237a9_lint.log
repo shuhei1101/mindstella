@@ -1,0 +1,4 @@
+$ ruff check plugins tests
+All checks passed!
+
+（npm run typecheck・npm run lint は、作業 PR の変更が Python のテスト 1 ファイルと PR ドキュメントだけで .ts・frontend/ を変えないため実行していない）
