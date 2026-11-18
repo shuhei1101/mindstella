@@ -181,6 +181,32 @@ flows:
       - mdmark の CSS の link 要素の `href` が `https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.13.0/dist/index.css`
       - 偽のサーバーが受けた要求が 0 回
     test: test_normal_when_version_tag
+  - name: 正常系（jsDelivr がまだ配らない commit）
+    summary: 問い合わせた develop の先頭の commit を jsDelivr が配らないときは、`develop` で読み込む
+    setup:
+      - name: Mock
+        description: 常駐サーバーの GitHub と jsDelivr の基点の URL を、`sitecustomize` で偽のサーバーに向ける。偽の GitHub は SHA `0123456789abcdef0123456789abcdef01234567` を返し、偽の jsDelivr はその SHA の `dist/index.js` に 403 を返す
+      - name: make_workspace
+        description: 設定の `mdmark` を持たないワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as 配信
+        participant GH as GitHub
+        participant JD as jsDelivr
+
+        ユーザー->>IF: GET /mindstella.html
+        IF->>GH: develop の先頭の commit を問い合わせる
+        GH-->>IF: SHA
+        IF->>JD: その SHA の dist/index.js
+        JD-->>IF: 403
+        IF-->>ユーザー: develop で mdmark を読み込む画面
+      ```
+    expected:
+      - 返した HTML の mdmark の CSS と JavaScript の URL が `mdmark@develop/dist/` を含む
+      - 常駐サーバーの標準エラーに、jsDelivr が配らない旨の 1 行がある
+    test: test_normal_when_dist_not_served
 lead: '`preview_url` が立てた配信が、プレビューの画面（雛形に CSS と JavaScript を差し込んだ HTML）を `/mindstella.html` で返す。`/` は `/mindstella.html` へ送り直す。記録は画面が『記録の取得』で読む。'
 idempotent: true
 side_effects: なし（読むだけ）
@@ -223,12 +249,12 @@ constraints:
   - item: 読み込むファイル
     constraint: 返す HTML は、描画のライブラリを jsDelivr から、文字を Google Fonts から読む（雛形が持つ）。mdmark の CSS の link 要素と JavaScript の URL は、返すたびに制約「mdmark の ref の解決」の ref から `https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist/{ファイル}` で組み立てて雛形へ入れ、`integrity` を付けない。ローカルのファイルは指さない
   - item: 通信
-    constraint: 配信は、制約「mdmark の ref の解決」の GitHub の API への問い合わせのほかは外へ通信しない
+    constraint: 配信は、制約「mdmark の ref の解決」の GitHub の API への問い合わせと jsDelivr への配布物の確認のほかは外へ通信しない
   - item: 送り元の確かめ
     constraint: 書き込むエンドポイントは、`Origin` が付いていれば確かめ、合わなければ 403 を返す（別のサイトのページからの書き込みを防ぐ）。受けるのは `http://127.0.0.1:{ポート}`・`http://localhost:{ポート}` と、スキームが `https` か `http` で、ポートを外したホスト名の部分が許可するホスト名のどれかと同じもの。`Origin` が無い要求（HTTP のクライアントからの要求）は通す
   - item: mdmark の ref の解決
-    constraint: 'ワークスペースの設定の `mdmark.version` がタグのときはタグを、`latest` か無いときは mdmark の develop の先頭の commit の SHA（40 文字の 16 進）を mdmark の ref にする。SHA は外部 API『GitHub』で問い合わせ、常駐サーバーの中で 150 秒保持し、保持している間は問い合わせない。1 回の問い合わせは、接続を 11 秒、読み取りを 2 秒まで待ち、取り直さない。問い合わせられないとき（届かない・200 以外・SHA の形でない）は、前に問い合わせた SHA があればそれを、無ければ `develop` を ref にし、標準エラーに 1 行記録して、問い合わせられなかったことも 150 秒保持する。外部 API『GitHub』が上限を超えた応答を返したときは、その応答が示す時刻まで問い合わせない。問い合わせる基点の URL（既定は `https://api.github.com`）は常駐サーバーの定数に持ち、結合テストは文字起こしのテストと同じく、常駐サーバーを起動するときに `sitecustomize` で定数を差し替えて偽のサーバーへ向ける。『記録の取得』の `mdmark_ref` と『配る書き出し』も、同じ ref を使用する'
-    notes: '150 秒: GitHub の API の認証なしの上限 60 回/時 ÷ 同じ端末で問い合わせる数 2（常駐サーバー・Storybook）× 安全率 0.8 = 24 回/時。接続 11 秒・読み取り 2 秒: 2026-11-19 に認証つきで同じエンドポイントを 1,000 回呼んだ実測（200 が 999 回、30 秒でも接続できなかったのが 1 回）で、接続の p99.9 が 7.10 秒、読み取り（応答の終了まで − 接続）の p99.9 が 1.17 秒。それぞれに余裕 50% を加え、秒に切り上げた。認証のあり・なしで応答の時間は変わらない前提を置く。commit を指す jsDelivr の URL は `cache-control: immutable` で中身が変わらないため、ブラウザ・CDN のキャッシュが更新前の配布物を返さない'
+    constraint: 'ワークスペースの設定の `mdmark.version` がタグのときはタグを、`latest` か無いときは mdmark の develop の先頭の commit の SHA（40 文字の 16 進）を mdmark の ref にする。SHA は外部 API『GitHub』で問い合わせ、常駐サーバーの中で 150 秒保持し、保持している間は問い合わせない。1 回の問い合わせは、接続を 11 秒、読み取りを 2 秒まで待ち、取り直さない。問い合わせた SHA が保持している SHA と違うときは、jsDelivr にその SHA の `dist/index.js` を 1 回要求し（待ちは問い合わせと同じ）、200 のときだけその SHA を ref にする。200 でないとき（新しい commit を jsDelivr がまだ配らず 403 を返す間など）は、問い合わせられないときと同じく扱う。問い合わせられないとき（届かない・200 以外・SHA の形でない・jsDelivr が配らない）は、前に問い合わせた SHA があればそれを、無ければ `develop` を ref にし、標準エラーに 1 行記録して、問い合わせられなかったことも 150 秒保持する。外部 API『GitHub』が上限を超えた応答を返したときは、その応答が示す時刻まで問い合わせない。問い合わせる基点の URL（既定は `https://api.github.com`）と配布物を確かめる jsDelivr の基点の URL（既定は `https://cdn.jsdelivr.net`）は常駐サーバーの定数に持ち、結合テストは文字起こしのテストと同じく、常駐サーバーを起動するときに `sitecustomize` で定数を差し替えて偽のサーバーへ向ける。『記録の取得』の `mdmark_ref` と『配る書き出し』も、同じ ref を使用する'
+    notes: '150 秒: GitHub の API の認証なしの上限 60 回/時 ÷ 同じ端末で問い合わせる数 2（常駐サーバー・Storybook）× 安全率 0.8 = 24 回/時。接続 11 秒・読み取り 2 秒: 2026-11-19 に認証つきで同じエンドポイントを 1,000 回呼んだ実測（200 が 999 回、30 秒でも接続できなかったのが 1 回）で、接続の p99.9 が 7.10 秒、読み取り（応答の終了まで − 接続）の p99.9 が 1.17 秒。それぞれに余裕 50% を加え、秒に切り上げた。認証のあり・なしで応答の時間は変わらない前提を置く。commit を指す jsDelivr の URL は `cache-control: immutable` で中身が変わらないため、ブラウザ・CDN のキャッシュが更新前の配布物を返さない。jsDelivr の確認: 2026-11-19 に mdmark の develop の先頭の commit（`aadba7dd`。push の約 15 分後）の `dist/index.js` が「Package size exceeded the configured limit of 50 MB」の 403 を返し、約 4 分後には同じ URL が 200 を返した。配らない commit を ref にすると画面が mdmark を読めず本文を描けないため、確かめてから切り替える'
 refs:
   - IF-489-17#
   - IF-489-71#

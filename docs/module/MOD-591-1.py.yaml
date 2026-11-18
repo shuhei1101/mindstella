@@ -54,6 +54,11 @@ data_models:
         access: 内部 (_)
         default: '0.0'
         description: 保持の期限（`monotonic` の値）。この時刻より前は問い合わせない
+      - name: check
+        type: Callable[[str], None]
+        access: 内部 (_)
+        default: check_dist_served
+        description: 問い合わせた SHA を jsDelivr が配るかを確認する関数（生成時にキーワードで受ける）
     methods:
       - name: resolve
         title: ref の解決
@@ -75,7 +80,8 @@ data_models:
           1. `version` が `None` でも `MDMARK_LATEST` でもなければ、そのまま返す（問い合わせない）
           2. ロックを取り、今の `monotonic()` が保持の期限より前なら、保持している SHA（無ければ `MDMARK_LATEST_BRANCH`）を返す
           3. `fetch()` を呼ぶ
-             - 返った場合、SHA を保持し、期限を今 + `REF_HOLD_SEC` にして返す
+             - 返った SHA が保持している SHA と違う場合、`check(SHA)` で jsDelivr が配るかを確認する（`RefLookupError` は問い合わせられないときと同じく扱う）
+             - 確認できた（か同じ SHA）の場合、SHA を保持し、期限を今 + `REF_HOLD_SEC` にして返す
              - `RefLookupError` の場合、標準エラーに理由を 1 行（`logger.warning`）記録し、期限を今 + `REF_HOLD_SEC` と、`retry_at` があれば今 + (`retry_at` − `wall()`) の遅い方にする。保持している SHA（無ければ `MDMARK_LATEST_BRANCH`）を返す
         unit_tests:
           - name: test_resolve_tag
@@ -102,6 +108,18 @@ data_models:
             condition: '`retry_at` が今 + 600 秒の `RefLookupError` の後、時計を 300 秒・600 秒進めて呼ぶ'
             mock: '`fetch`、`monotonic`、`wall`'
             expected: 300 秒では `fetch` を呼ばず、600 秒では呼ぶ
+          - name: test_resolve_dist_not_served
+            case: 異常
+            summary: 問い合わせた別の SHA を jsDelivr が配らなければ、前の SHA か develop を返し、失敗も保持する
+            condition: '`parametrize`: 前に問い合わせた SHA が無い / ある（期限切れ後に別の SHA）。直後にもう一度呼ぶ'
+            mock: '`fetch`、`check`（別の SHA に `RefLookupError` を送る）、`monotonic`、`caplog`'
+            expected: '`develop` / 前の SHA が返り、警告の行が 1 行で、直後の呼び出しでは `fetch` を呼ばない'
+          - name: test_resolve_same_sha_not_checked
+            case: 正常
+            summary: 問い合わせた SHA が保持している SHA と同じなら jsDelivr を確認しない
+            condition: 同じ SHA を返す `fetch` で、時計を 150 秒ずつ進めて 2 回呼ぶ
+            mock: '`fetch`、`check`（呼ばれた数を数える）、`monotonic`'
+            expected: '`check` は 1 回だけ呼ばれる'
 constants:
   - name: GITHUB_API_BASE_URL
     title: GitHub の API の基点
@@ -154,6 +172,12 @@ constants:
     usecase: プレビューを開く
     summary: 応答の本文が commit の SHA かを確かめる正規表現（`re.fullmatch`）
     value: re.compile(r"[0-9a-f]{40}")
+  - name: JSDELIVR_BASE_URL
+    title: jsDelivr の基点
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 問い合わせた SHA の配布物を jsDelivr が配るかを確認する基点の URL。結合テストは `sitecustomize` で偽のサーバーに差し替える（確認するたびにこの定数を参照する）
+    value: '"https://cdn.jsdelivr.net"'
 functions:
   - name: fetch_head_sha
     title: develop の先頭の commit の問い合わせ
@@ -227,5 +251,39 @@ functions:
         condition: '`fetch_head_sha` を `monkeypatch` で呼ばれた数を数える関数にし、モジュールの解決器を空にしてから `resolve_ref("latest")` を 2 回呼ぶ'
         mock: '`fetch_head_sha`'
         expected: '`fetch_head_sha` は 1 回だけ呼ばれる'
+  - name: check_dist_served
+    title: jsDelivr が配布物を配るかの確認
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    scope: public
+    summary: jsDelivr の `{JSDELIVR_BASE_URL}/gh/{MDMARK_REPO}@{ref}/dist/index.js` を HEAD で要求し、200 でなければ `RefLookupError` を送る（外との境界のアダプター）
+    args:
+      - name: ref
+        type: str
+        required: true
+        passing: positional
+        description: 問い合わせた commit の SHA
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. `JSDELIVR_BASE_URL` を分け、`fetch_head_sha` と同じ待ち（接続 `CONNECT_TIMEOUT_SEC`・読み取り `READ_TIMEOUT_SEC`）で接続し、`User-Agent: mindstella` で HEAD する
+      2. 200 なら返す
+         - それ以外のステータスの場合、`RefLookupError`（`retry_at` は `None`、理由は `jsDelivr が配らない: HTTP {ステータス}`）を送る
+      3. 接続・読み取りの `OSError` と `http.client.HTTPException` は `RefLookupError`（`retry_at` は `None`）にして送る。接続は必ず閉じる
+    unit_tests:
+      - name: test_check_dist_served
+        case: 正常
+        summary: 200 なら例外を送らず、SHA の `dist/index.js` を HEAD で要求する
+        condition: '`JSDELIVR_BASE_URL` を 200 を返す偽のサーバーに向ける'
+        mock: 偽のサーバー
+        expected: 例外を送らず、偽のサーバーが受けた要求が HEAD で、パスが `/gh/shuhei1101/mdmark@{SHA}/dist/index.js`
+      - name: test_check_dist_served_when_not_served
+        case: 異常
+        summary: 403 は `retry_at` の無い例外にする
+        condition: '`JSDELIVR_BASE_URL` を 403 を返す偽のサーバーに向ける'
+        mock: 偽のサーバー
+        expected: '`RefLookupError` の `retry_at` が `None`'
 test_files:
   - tests/unit/scripts/test_mdmark_ref.py
