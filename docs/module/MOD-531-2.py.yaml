@@ -276,6 +276,53 @@ functions:
         condition: '`mindstella: {allowed_dirs: [/a]}` / キー無し / ファイル無し'
         mock: なし
         expected: '`[/a]` / `[]` / `[]`'
+  - name: reload_sources
+    title: 全ての配信元を読み直させる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: 端末の設定のファイルの `sources` の行をそのまま `PUT /settings/sources` に送り、全ての配信元を再読み込みさせる。409（版が古い）なら 1 回だけ引き直して送り直す
+    description: '`GET /settings/sources` の応答の行は状態を含む camelCase の構造で `PUT` の要求の行と違うので、行は応答ではなく `settingsPath` のファイルから読む'
+    side_effects: project-index の端末の設定のファイルを同じ行で書き換えさせる（中身は変わらない）
+    args:
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: project-index のポート
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. `get_settings` で `version` と `settingsPath` を引く
+      2. `settingsPath` のファイルを YAML として読み、`sources` の並びを取る
+      3. `PUT /settings/sources` に `expectedVersion` と `sources` を送る
+         - 200 の場合、戻る
+         - 1 回目が 409 の場合、1 から引き直して送り直す
+         - それ以外の場合、`ProjectIndexError` を送る
+    exceptions:
+      - name: ProjectIndexError
+        condition: 200 のほか、409 が 2 回、または端末の設定のファイルが読めない・`sources` が並びでない
+    unit_tests:
+      - name: test_reload_sources
+        case: 正常
+        summary: ファイルの行をそのまま送り、409 なら 1 回だけ引き直す
+        condition: '`settingsPath` の一時ファイルに `sources` の 2 行。1 回目の PUT が 409、2 回目が 200'
+        mock: テストの HTTP のサーバー
+        expected: PUT が 2 回で、どちらも `sources` がファイルの 2 行と同じ。2 回目の `expectedVersion` が引き直した版
+      - name: test_reload_sources_when_conflict_twice
+        case: 異常
+        summary: 2 回続けて 409 なら ProjectIndexError
+        condition: PUT が 2 回とも 409
+        mock: テストの HTTP のサーバー
+        expected: '`ProjectIndexError`（`status` が 409）'
+      - name: test_reload_sources_when_settings_unreadable
+        case: 異常
+        summary: 端末の設定のファイルが無ければ送らない
+        condition: '`settingsPath` が無いファイルを指す'
+        mock: テストの HTTP のサーバー
+        expected: '`ProjectIndexError`。PUT を受けていない'
 notes:
   HTTP: 標準ライブラリの `urllib.request` で送る。`Origin` を付けない（project-index はサーバーの側からの呼び出しとして受ける）
   ログ: |

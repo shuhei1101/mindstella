@@ -1509,3 +1509,53 @@ functions:
         condition: '`mindstella-a-123456`・題名「a」'
         mock: なし
         expected: '`documents` が 7 行で、`decisions` の行が `paths: [decisions.yaml]`・`records: items`・`body_file: body`・`schema: schemas/decisions.schema.json`。`related.types` が `[depends_on, parent, for, see_also]`'
+  - name: sync_source_schemas
+    title: スキーマの複製をそろえる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: 配信の設定が指すスキーマの複製をプラグインのスキーマと比べ、無いか中身が違うファイルだけを書き直す
+    side_effects: '`.mindstella/schemas/` のファイルを書く'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 書き直したファイルのワークスペースからのパス（`source_schema_files` の順）。全て同じなら空
+    process: |-
+      1. `.mindstella/schemas/`（`SOURCE_SCHEMA_DIR`）が無ければ作る
+      2. `source_schema_files` の各ファイルについて、`SCHEMA_DIR` のファイルと複製の中身（バイト列）を比べる
+         - 同じ場合、書かない
+         - 複製が無いか違う場合、一時ファイルに書いてから置き換え（`write_temp`・`os.replace`）、パスを結果に足す
+         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る
+      3. 複製の側にだけあるファイルは消さない
+    exceptions:
+      - name: WriteFailedError
+        condition: フォルダの作成・書き込み・置き換えで `OSError` が起きた
+        message: 'スキーマの複製を書けません: {パス}: {理由}'
+    unit_tests:
+      - name: test_sync_source_schemas
+        case: 正常
+        summary: 違うファイルと無いファイルだけを書き直し、複製の側にだけあるファイルを残す
+        condition: '`docs.schema.json` を別の中身に書き換え、`terms.schema.json` を消し、`legacy.schema.json` を置いた複製'
+        mock: なし
+        expected: '`[.mindstella/schemas/docs.schema.json, .mindstella/schemas/terms.schema.json]` を返し、2 つの中身がプラグインのスキーマと同じ。`legacy.schema.json` と、ほかの複製の更新日時が呼ぶ前と同じ'
+      - name: test_sync_source_schemas_when_same
+        case: 正常
+        summary: 全て同じなら何も書かない
+        condition: '`create_workspace` で作ったワークスペース'
+        mock: なし
+        expected: 空の並びを返し、複製の更新日時が呼ぶ前と同じ
+      - name: test_sync_source_schemas_when_write_fails
+        case: 異常
+        summary: 置き換えられなければ送る
+        condition: '`docs.schema.json` を別の中身に書き換えた複製。`os.replace` を `OSError` を送る関数に差し替える'
+        mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`。`docs.schema.json` が呼ぶ前と同じで、一時ファイルが残っていない'
+        exception: 書き込みか置き換えで OSError
+    callers:
+      - MOD-489-179#functions[migrate]
