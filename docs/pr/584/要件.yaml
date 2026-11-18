@@ -1,0 +1,40 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: 移し替えの後と、記録が最新で移し替えないときにも、スキーマの複製をプラグインのスキーマと一致させる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: run_only
+    detail: Git 管理外のワークスペースへ、検討事項・タスク・用語などを追加・更新できるようになる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-33.yaml
+    impact: run_only
+    detail: 本文を持たない項目（用語集・メモなど）も検索・関連のたどりの結果に出る
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-14.yaml
+    impact: run_only
+    detail: 作成したワークスペースの配信の設定とスキーマの複製が、記録の追加・更新・検索を通す
+    depends_on: []
+docs:
+  - page: docs/er/ER-489-1.yaml
+    new: false
+    change: 不具合 1 を A で修正する場合、項目の共通のキーに `created`・`updated` を追加する
+    status: todo
+  - page: plugins/mindstella/agent-flows/record.yaml
+    new: false
+    change: 「`created`・`updated`・`updated_by` は渡さない」の記述が不具合 1 の修正方法と食い違わないかを確認し、食い違うなら修正する
+    status: todo
+scope_out:
+  - item: MindStella を project-index と同じ作りに作り直すこと
+    reason: 関連として挙がっている別の要望
+    plan: '#481'
+  - item: 不具合 1・3 のプレビューの画面への影響の確認
+    reason: プレビューは project-index を通さずに store.py で記録を読み込むため、配信の除外と書き込みの検査の影響を受けない。created・updated を持つ項目の読み込みは単体テストで確認する
+    plan: none
+  - item: ほかのワークスペース（/mnt/c の nandemo-kaiwa）の個別の確認と修復
+    reason: 不具合 2 の修正で、次に開いたときにスキーマの複製が再配置される
+    plan: none
