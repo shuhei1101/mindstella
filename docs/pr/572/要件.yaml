@@ -95,3 +95,6 @@ scope_out:
   - item: 起動時にワークスペースの ID の一覧を配信元の行から作り直す照合
     reason: '前の ID の行の扱いをこの PR で決めた後に進める行。計画で #554 の後ろに置かれている'
     plan: '#525'
+  - item: 結合テスト test_error_when_host_not_local の間欠的な fail（ConnectionResetError）
+    reason: develop（dd5751ae）でも同じく間欠的に fail する既存の不具合で、この PR の要望（#554・#556・#561）に含まれない
+    plan: '#575'
