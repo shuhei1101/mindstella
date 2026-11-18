@@ -555,6 +555,25 @@ def test_migrate(
     assert str(report.recorded) == V0140
 
 
+def test_migrate_when_to_version_before_plugin(
+    make_workspace: MakeWorkspace,
+    patch_plugin_version: PatchPluginVersion,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """プラグインの版より前までの手順だけを当て、仮の値も版も書かない（正常系）。"""
+    # 準備
+    root = make_workspace(raw_files={VERSION_FILE: "v0.13.0\n"})
+    monkeypatch.setattr(migrator, "MIGRATIONS_DIR", _migrations_dir(tmp_path, SUMMARY_STEPS))
+    patch_plugin_version("v0.15.0")
+    # 実行
+    report = migrator.migrate(root, to_version=Version(0, 14, 0))
+    # 検証
+    assert {str(step.version) for step in report.steps} == {V0140}
+    assert (report.recorded, report.provisional) == (None, [])
+    assert (root / ".mindstella" / VERSION_FILE).read_text(encoding="utf-8") == "v0.13.0\n"
+
+
 def test_migrate_when_same(
     make_workspace: MakeWorkspace,
     patch_plugin_version: PatchPluginVersion,
