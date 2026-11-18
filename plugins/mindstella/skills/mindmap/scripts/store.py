@@ -19,7 +19,6 @@ from typing import IO, Any, Literal
 
 import yaml
 from errors import (
-    ArgumentError,
     ConcurrentWriteError,
     ItemNotFoundError,
     SchemaMismatchError,
