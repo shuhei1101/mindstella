@@ -12,20 +12,58 @@ use_cases:
 docs:
   - page: docs/guide/セットアップ手順-Discordに通知する.md
     new: true
-    change: Webhook の設定のファイルを用意して常駐サーバーへ渡し、作業の完了と停止の通知を受け取る手順を新設する
-    status: todo
+    change: Webhook の設定のファイルを用意して登録し、作業の完了の通知を受け取る手順と、届かないときの確認方法を新設する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
   - page: docs/guide/index.yaml
     new: false
     change: セットアップ手順の並びに新しいページの行を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
   - page: docs/guide/files.yml
     new: false
     change: 新しいページの行を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
   - page: docs/guide/コマンド.md
     new: false
-    change: 常駐サーバーが読む環境変数に、Webhook の設定のファイルの場所を追加する
-    status: todo
+    change: 常駐サーバーが読む環境変数と、登録の `--env` のキーに `MINDSTELLA_DISCORD_WEBHOOK_FILE` を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/スキル.md
+    new: false
+    change: 起動スクリプトの登録で尋ねる環境変数に `MINDSTELLA_DISCORD_WEBHOOK_FILE` を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
+    new: false
+    change: 設定したい環境変数の表に `MINDSTELLA_DISCORD_WEBHOOK_FILE` を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    new: false
+    change: 渡せる環境変数に `MINDSTELLA_DISCORD_WEBHOOK_FILE` を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/README.md
+    new: false
+    change: 目次に新規のページの行を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/使い方.md
+    new: false
+    change: セットアップ手順の一覧に新規のページの行を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
 scope_out:
   - item: AI の書き込みを commit までステージングする
     reason: '#157 で見送った範囲。通常のセッションが project-index で書き込む構成と合わない'
