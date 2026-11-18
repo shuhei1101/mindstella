@@ -30,7 +30,7 @@ from export_helpers import (
     mdmark_url,
 )
 from fixture_types import MakeItem, MakeWorkspace, SnapshotTree
-from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
+from workspace_fixtures import ADOPTED_OPTIONS, DEFAULT_TIMESTAMP, RECORD_DIR
 
 # 埋め込み先の要素の開きタグ（DATA_ELEMENT から閉じタグを除いたもの）
 DATA_ELEMENT_OPEN = builder.DATA_ELEMENT.removesuffix("</script>")
@@ -316,108 +316,20 @@ def test_assemble_template_when_slot_count_wrong(
         builder.assemble_template(preview_dir=folder)
 
 
-def test_derive_preview_values(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """コマンドと同じ答えをまとめる（正常系）。"""
+def test_derive_preview_values(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """着手できる検討事項だけを返し、削除した値を持たない（正常系）。"""
     # 準備
-    settings = {
-        **valid_settings,
-        "phases": ["目的", "要件"],
-        "categories": [
-            {"name": "A", "target": "mindmap", "summary": "カテゴリー A"},
-            {"name": "B", "target": "mindmap", "summary": "カテゴリー B"},
-        ],
-        "goal": {"phase": "要件", "summary": "要件が決まる", "deliverables": []},
-    }
     root = make_workspace(
-        make_item("D-1", category="A", phase="目的", status="決定済み"),
-        make_item("D-2", category="A", phase="要件", status="未決定", related=[{"to": "D-1", "type": "depends_on"}]),
-        make_item("D-3", category="B", phase="要件", status="対象外"),
-        settings=settings,
+        make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS),
+        make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]),
+        make_item("D-3", related=[{"to": "D-4", "type": "depends_on"}]),
+        make_item("D-4"),
     )
     workspace = store.load_workspace(root)
     # 実行
     derived = builder.derive_preview_values(workspace)
     # 検証
-    assert [candidate["id"] for candidate in derived["next"]] == ["D-2"]
-    assert derived["goal"]["phase_progress"] == [
-        {"phase": "目的", "settled": 1, "total": 1},
-        {"phase": "要件", "settled": 1, "total": 2},
-    ]
-    assert derived["progress"] == [
-        {
-            "category": "A",
-            "cells": [
-                {"phase": "目的", "settled": 1, "total": 1},
-                {"phase": "要件", "settled": 0, "total": 1},
-            ],
-            "settled": 1,
-            "total": 2,
-        },
-        {
-            "category": "B",
-            "cells": [
-                {"phase": "目的", "settled": 0, "total": 0},
-                {"phase": "要件", "settled": 1, "total": 1},
-            ],
-            "settled": 1,
-            "total": 1,
-        },
-    ]
-
-
-def test_derive_preview_values_when_no_goal(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """ゴールが無ければ全フェーズの進捗を返し、届いたかは判定しない（正常系）。"""
-    # 準備
-    settings = {
-        **{key: value for key, value in valid_settings.items() if key != "goal"},
-        "phases": ["目的", "要件"],
-        "categories": [
-            {"name": "A", "target": "mindmap", "summary": "カテゴリー A"},
-            {"name": "B", "target": "mindmap", "summary": "カテゴリー B"},
-        ],
-    }
-    root = make_workspace(
-        make_item("D-1", category="A", phase="目的", status="決定済み"),
-        make_item("D-2", category="A", phase="要件", status="未決定", related=[{"to": "D-1", "type": "depends_on"}]),
-        make_item("D-3", category="B", phase="要件", status="対象外"),
-        settings=settings,
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    derived = builder.derive_preview_values(workspace)
-    # 検証
-    assert derived["goal"]["has_goal"] is False
-    assert derived["goal"]["reached"] is None
-    assert derived["goal"]["phase_progress"] == [
-        {"phase": "目的", "settled": 1, "total": 1},
-        {"phase": "要件", "settled": 1, "total": 2},
-    ]
-    assert derived["goal"]["remaining_deliverables"] == []
-    assert [candidate["id"] for candidate in derived["next"]] == ["D-2"]
-    assert derived["progress"] == [
-        {
-            "category": "A",
-            "cells": [
-                {"phase": "目的", "settled": 1, "total": 1},
-                {"phase": "要件", "settled": 0, "total": 1},
-            ],
-            "settled": 1,
-            "total": 2,
-        },
-        {
-            "category": "B",
-            "cells": [
-                {"phase": "目的", "settled": 0, "total": 0},
-                {"phase": "要件", "settled": 1, "total": 1},
-            ],
-            "settled": 1,
-            "total": 1,
-        },
-    ]
+    assert derived == {"ready": ["D-2", "D-4"]}
 
 
 # 配る書き出しのテストが雛形に置く外の読み込み（実物の VENDOR_LIBRARIES にあるパッケージ）
