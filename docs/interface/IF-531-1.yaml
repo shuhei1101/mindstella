@@ -76,7 +76,7 @@ status_codes:
     condition: '`mcp_config`・`plugin_dirs` が読めない、または `flow` の文書を参照できない（文書が無い・配信元の `scope.read` にフォルダが含まれない）'
     notes: 何も書かない。`stage` は `mcp_config`・`plugin_dirs`・`flow` のどれか。`detail` に読めない値と理由
   - code: '502'
-    condition: project-index へつながらない、または配信元の行の追加がエラーを返した
+    condition: project-index へつながらない、または配信元の行の追加・変更がエラーを返した
     notes: この依頼で作った記録と状態のフォルダの記録を消す（記録が既にあって開いたときは記録を消さない）。`stage` は `source`
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
 constraints:
@@ -92,7 +92,7 @@ constraints:
     constraint: project-index の `GET /settings/sources` が返す `settingsPath` のファイルを読み、最上位の `mindstella.allowed_dirs`（絶対パスの並び）を使う。キーが無いか空なら、どのフォルダも許可しない（403）
     notes: project-index は知らないキーを警告にして読み込みを続ける（shuhei1101/project-index#11）
   - item: 記録が既にあるフォルダ
-    constraint: '`.mindstella/config.yaml` があれば作り直さずに開く。進め方の文書は設定のまま使い、今回の `flow` は使わない（D-283）。追加の MCP・プラグインは、状態のフォルダに記録が無いときだけ今回の指定を記録する（D-321）。配信元の行が無ければ追加し、`outside_read` が偽（クローズ済み）なら真に戻してクローズ待ちを解く（`reopened`）。`outside_read` を戻すときは、`GET /settings/sources` で `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: true` を送る。409（版が古い）なら 1 回だけ引き直して送り直す。配信元の行の `config` が今回のフォルダの `.mindstella/dev-docs.yaml` でない（フォルダを移したかコピーした）ときは、行の `config` が指すフォルダに同じ `id` の記録（`.mindstella/config.yaml`）があれば 409（`stage: duplicate`）。無ければ `PATCH /settings/sources/{id}` で `source.config`・`source.scope` を今回のフォルダの値（『配信元の行』と同じ形）へ変更し、`result` を `opened` にする。その行がクローズ済みなら、同じ依頼で `source.outside_read: true` も送信して `reopened` にする。記録の設定に `id` が無ければフォルダから振った ID を使用し、記録の設定は書き換えない（`id` の記録は v0.13.0 の移し替えが行う）'
+    constraint: '`.mindstella/config.yaml` があれば作り直さずに開く。進め方の文書は設定のまま使い、今回の `flow` は使わない（D-283）。追加の MCP・プラグインは、状態のフォルダに記録が無いときだけ今回の指定を記録する（D-321）。配信元の行が無ければ追加し、`outside_read` が偽（クローズ済み）なら真に戻してクローズ待ちを解く（`reopened`）。`outside_read` を戻すときは、`GET /settings/sources` で `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: true` を送る。409（版が古い）なら 1 回だけ引き直して送り直す。配信元の行の `config` が今回のフォルダの `.mindstella/dev-docs.yaml` でない（フォルダを移したかコピーした）ときは、行の `config` が指すフォルダに同じ `id` の記録（`.mindstella/config.yaml`）があれば 409（`stage: duplicate`）。無ければ `PATCH /settings/sources/{id}` で `source.config`・`source.scope` を今回のフォルダの値（『配信元の行』と同じ形）へ変更し、`result` を `opened` にする（`expectedVersion` を添え、409 なら 1 回だけ `version` を取得し直して再送信する。それでも通らないときと project-index がそのほかの失敗を返したときは 502（`stage: source`）で、記録と状態のフォルダの記録は削除しない）。その行がクローズ済みなら、同じ依頼で `source.outside_read: true` も送信して `reopened` にする。記録の設定に `id` が無ければフォルダから振った ID を使用し、記録の設定は書き換えない（`id` の記録は v0.13.0 の移し替えが行う）'
   - item: 配信元の行
     constraint: 'project-index の `POST /settings/sources` に `{"source": {"id": {ID}, "config": "{フォルダ}/.mindstella/dev-docs.yaml", "scope": {"read": ["{フォルダ}", "{フォルダ}/**"], "write": ["{フォルダ}", "{フォルダ}/**"]}, "outside_read": true}}` と、`GET /settings/sources` で取得した `version` を `expectedVersion` として送信する。409 のうち `result: exists` でないもの（内容のバージョンの不一致）は、1 回だけ `version` を取得し直して再送信する。`scope` はワークスペースのフォルダと、その下の全てのフォルダを作業場所にしたセッションを対象にする。同じ `id` の行がある（409・`result: exists`）ときは、`same` が真なら追加済みとして続け、偽なら 502'
     notes: '本文の形は project-index の『端末の設定の配信元の 1 行の追加』（IF-32）、`/**` の当たり方はコアコンセプト『scope による権限』'

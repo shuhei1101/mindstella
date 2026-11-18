@@ -34,5 +34,5 @@ limitations:
   - item: クライアント
     content: '`--client` は claude-balancer の設定の `clients` にある名前だけを受ける。MindStella を使う端末では `clients` に `mindstella` を足し、claude-balancer を起動し直す'
   - item: アカウントの指定
-    content: '`exec --account` は shuhei1101/claude-balancer#346（develop の 353d665a）で入った。それより前の claude-balancer は `--account` を知らない引数として断るため、アカウントを指定した起動は 125 以外で終わり 502（`stage: launch`）になる'
+    content: '`exec --account` は shuhei1101/claude-balancer#346（develop の 353d665a）で入った。それより前の claude-balancer は `--account` を知らない引数として使い方の誤りにし、子プロセスを起動せずに 125 で終わる。そのためアカウントを指定した起動は 503（`stage: account`）になり、`detail` に `unrecognized arguments` の行が入る'
 docs_url: https://github.com/shuhei1101/claude-balancer/tree/develop/docs/interface
