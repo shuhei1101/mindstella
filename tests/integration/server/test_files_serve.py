@@ -154,10 +154,13 @@ def test_error_when_not_found_or_outside(
     assert parent.headers["content-type"].startswith("application/problem+json")
     assert b"items:" not in parent.body
     assert encoded.status == 404
+    assert encoded.headers["content-type"].startswith("application/problem+json")
     assert b"items:" not in encoded.body
     assert symlink.status == 404
+    assert symlink.headers["content-type"].startswith("application/problem+json")
     assert OUTSIDE_MARK not in symlink.body
     assert folder.status == 404
+    assert folder.headers["content-type"].startswith("application/problem+json")
     assert b"clip.mp4" not in folder.body
 
 
