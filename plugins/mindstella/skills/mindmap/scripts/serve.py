@@ -64,6 +64,7 @@ from files_serve import (
 from history import head_until_seq, load_changes, touch_opened
 from kinds import BODY_DIR, KINDS, SETTINGS_FILE, records_root
 from locations import location_to_dict
+from mdmark_ref import resolve_ref
 from settings_update import update_display
 from store import (
     CHANGES_FILE,
@@ -837,10 +838,17 @@ def spa_response(spa_dir: Path, sub_path: str) -> Response:
     return Response(status=HTTPStatus.OK, content_type=content_type, body=target.read_bytes())
 
 
-def index_response(preview_dir: Path, *, mdmark_settings: dict[str, Any]) -> Response:
-    """雛形に CSS と JavaScript と設定のバージョンの mdmark の読み込みを差し込んだ画面を返す（記録は埋め込まない）。"""
+def index_response(
+    preview_dir: Path,
+    *,
+    mdmark_settings: dict[str, Any],
+    resolve: Callable[[str | None], str] = resolve_ref,
+) -> Response:
+    """雛形に CSS と JavaScript と、設定の mdmark のバージョンを解決した ref の mdmark の読み込みを差し込んだ画面を返す（記録は埋め込まない）。"""
+    version = mdmark_settings.get("version")
+    ref = resolve(version if isinstance(version, str) else None)
     try:
-        html = assemble_template(mdmark_settings=mdmark_settings, preview_dir=preview_dir)
+        html = assemble_template(mdmark_settings=mdmark_settings, mdmark_ref=ref, preview_dir=preview_dir)
     except (ValueError, OSError) as error:
         # 同梱の雛形の誤り（差し込み口の数・閉じタグ・欠けたファイル）
         logger.error("同梱の雛形の誤り: %s", error)  # noqa: TRY400
