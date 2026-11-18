@@ -34,19 +34,27 @@ docs:
   - page: docs/external-api/API-531-1.yaml
     new: false
     change: POST /settings/sources の本文の expectedVersion を必須にし、送らないと 400 になることを記載する（#554）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:20:30.271451+00:00'
   - page: docs/library/LIB-531-1.yaml
     new: false
     change: claude-balancer exec の --account（アカウントの指定）と、指定したアカウントを借りられないときの終わり方を記載する（#556）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:20:30.271451+00:00'
   - page: docs/architecture/ARCH-489-1.yaml
     new: false
     change: claude-balancer の protocol と事前確認に、アカウントを指定したときの exec の呼び方を追記する（#556）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:20:30.271451+00:00'
   - page: docs/config/CFG-489-1.yaml
     new: false
     change: CLAUDE_CONFIG_DIR を、claude-balancer がある端末でも借りるアカウントの指定に使うことに書き換える（#556）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:20:30.271451+00:00'
   - page: docs/guide/コマンド.md
     new: false
     change: 起動のコマンドの CLAUDE_CONFIG_DIR と、MindStella のセッションの作成の claude_config_dir・エラーの説明を、claude-balancer がある端末でも指定したアカウントで起動することに書き換える（#556）
