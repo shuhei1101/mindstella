@@ -485,3 +485,79 @@ def test_check_comments(
     # 検証
     assert {problem.file for problem in problems} == expected_files
     assert all(problem.kind == "schema" and problem.id is None for problem in problems)
+
+
+def test_check_embedded_files(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """無いファイルだけを拾う（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", body="docs/A-1.md"),
+        bodies={
+            "A-1.md": (
+                "![a](../files/clip.mp4)\n\n"
+                "![b](../files/missing.mp4)\n\n"
+                "![c](../files/sub/x%20y.png#t=1)\n"
+            )
+        },
+    )
+    files = root / RECORD_DIR / "files"
+    (files / "sub").mkdir(parents=True)
+    (files / "clip.mp4").write_bytes(b"mp4")
+    (files / "sub" / "x y.png").write_bytes(b"png")
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_embedded_files(workspace)
+    # 検証
+    assert problems == [
+        store.Problem(
+            kind="missing_file",
+            file="docs/A-1.md",
+            id="A-1",
+            key=None,
+            detail="../files/missing.mp4",
+        )
+    ]
+
+
+def test_check_embedded_files_when_html_or_missing_body(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """HTML の本文と無い本文は確かめない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", body="docs/A-1.html"),
+        make_item("A-2", body="docs/A-2.md"),
+        bodies={"A-1.html": '<img src="../files/missing.png">\n'},
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_embedded_files(workspace)
+    # 検証
+    assert problems == []
+
+
+@pytest.mark.parametrize(
+    ("markdown", "expected"),
+    [
+        pytest.param(
+            '![a](../files/a.mp4) ![b](<../files/b c.png> "t")',
+            ["../files/a.mp4", "../files/b c.png"],
+            id="relative",
+        ),
+        pytest.param("```\n![x](../files/x.png)\n```\n", [], id="fence"),
+        pytest.param("`![y](../files/y.png)`", [], id="inline_code"),
+        pytest.param("前の段落\n\n    ![z](../files/z.png)\n", [], id="indented_code"),
+        pytest.param(
+            "![u](https://example.com/u.png) ![d](data:image/png;base64,AA) ![r](/r.png)",
+            [],
+            id="absolute",
+        ),
+    ],
+)
+def test_embedded_paths(markdown: str, expected: list[str]) -> None:
+    """コードの外の相対パスだけを拾う（正常系）。"""
+    # 準備
+    # 実行
+    paths = checker.embedded_paths(markdown)
+    # 検証
+    assert paths == expected

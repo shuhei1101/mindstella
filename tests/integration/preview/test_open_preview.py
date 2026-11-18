@@ -69,6 +69,14 @@ from preview_drawer_helpers import (
     click_value,
     open_drawer,
 )
+from preview_embedded_files_helpers import (
+    BODY_CODE,
+    BODY_IMAGE,
+    BODY_VIDEO,
+    EMBEDDED_FILES_BODY,
+    MEDIA_READY_JS,
+    put_embedded_files,
+)
 from preview_embed_helpers import (
     CHART,
     CLIPBOARD_PERMISSIONS,
@@ -2653,3 +2661,31 @@ def test_normal_when_duplicate_ids(
     # 検証
     assert "D-1 が重なりました。片方の ID を変更してください。" in text
     expect(notice).to_have_count(0)
+
+
+def test_normal_when_embedded_files(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """本文の ../files/{名前} を配信の /files/{名前} に解決して、動画・画像を描く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1"), bodies={"A-1.md": EMBEDDED_FILES_BODY})
+    put_embedded_files(root)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    before = snapshot_tree(root)
+    # 実行
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(BODY_VIDEO, state="attached", timeout=DIAGRAM_TIMEOUT_MS)
+    page.wait_for_function(MEDIA_READY_JS, arg=[BODY_VIDEO, BODY_IMAGE], timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.get_attribute(BODY_VIDEO, "src") == "/files/clip.mp4"
+    assert page.get_attribute(BODY_IMAGE, "src") == "/files/shot.png"
+    assert page.inner_text(BODY_CODE) == "![x](../files/x.png)"
+    # 開いた日時のファイルは画面を開くと書き換わるため、記録の YAML と本文だけを比べる
+    after = snapshot_tree(root)
+    after.pop(".mindstella/.mindstella-opened")
+    assert after == before

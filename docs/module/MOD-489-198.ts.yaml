@@ -41,6 +41,12 @@ constants:
     status: planned
     introduced:
       pr: 348
+  - name: FILE_BASE_PATH
+    title: 本文のファイルのパスを解決する基準
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    summary: 資料のフォルダを表す配信のパス。`../files/{名前}` はここから解決して `/files/{名前}` になる
+    value: '"/docs/"'
 functions:
   - name: missingLibraries
     title: 読めなかったライブラリ
@@ -705,3 +711,31 @@ functions:
     status: planned
     introduced:
       pr: 348
+  - name: resolveFileSources
+    title: 本文のファイルのパスの解決
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    scope: public
+    summary: mdmark が描いた本文の `img`・`video`・`audio`・`source` の相対パスを、`FILE_BASE_PATH` を基準に解決した配信のパスに置き換える（`mountMarkdown` が mdmark の `mount` の直後に呼ぶ）
+    side_effects: '`root` の中の要素の `src`・`poster` を書き換える'
+    args:
+      - name: root
+        type: HTMLElement
+        required: true
+        passing: positional
+        description: mdmark が描いた本文
+    returns:
+      type: void
+      description: '-'
+    process: |-
+      1. `root` の中の `img[src]`・`video[src]`・`video[poster]`・`audio[src]`・`source[src]` を集める（埋め込んだ HTML の範囲 `.mdmark-html` の中は除く）
+      2. 属性の元の値ごとに、スキームを持つ（`https:`・`data:`・`blob:` 等）値、`/` で始まる値、`#` だけの値を飛ばす
+      3. 残った値を `new URL(値, location.origin + FILE_BASE_PATH)` で解決し、`pathname + search + hash` を属性へ書く（`../files/clip.mp4` は `/files/clip.mp4`）
+    unit_tests:
+      - name: test_resolve_file_sources
+        case: 正常
+        summary: 相対パスだけを配信のパスにする
+        condition: '`img src="../files/a.png"`・`video src="../files/b.mp4#t=2" poster="../files/p.png"`・`audio src="../files/c.mp3"`・`img src="https://example.com/u.png"`・`img src="data:image/png;base64,AA"`・`img src="/r.png"`・`.mdmark-html` の中の `img src="../files/h.png"` を持つ要素'
+        mock: なし（jsdom、`location.origin` は `http://127.0.0.1:8000`）
+        expected: '`/files/a.png`・`/files/b.mp4#t=2`・`/files/p.png`・`/files/c.mp3` になり、ほかの 4 つは元の値のまま'

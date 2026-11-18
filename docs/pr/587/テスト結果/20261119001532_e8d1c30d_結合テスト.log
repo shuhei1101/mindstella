@@ -1,0 +1,241 @@
+# 1 回目（42bf1260）は 2 件 fail: 404 の Content-Type の charset と、画面を開くと書き換わる .mindstella-opened。テストの期待値を直した（e8d1c30d）。1 回目の出力は末尾
+
+# TMPDIR=/tmp/planner-587-tmp（/tmp/pytest-of-shuhei2441 が root の持ち物のため）。回した commit: e8d1c30d。並列数 1（run_one を順に回した）
+$ pytest tests/integration/server/test_files_serve.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 5 items
+
+tests/integration/server/test_files_serve.py .....                       [100%]
+
+============================== 5 passed in 1.41s ===============================
+exit 0
+
+$ pytest tests/integration/server/test_check.py::test_normal_when_embedded_file_missing
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1 item
+
+tests/integration/server/test_check.py .                                 [100%]
+
+============================== 1 passed in 1.14s ===============================
+exit 0
+
+$ pytest tests/integration/server/test_change_detection.py::test_normal_when_files_folder_written
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1 item
+
+tests/integration/server/test_change_detection.py .                      [100%]
+
+============================== 1 passed in 3.97s ===============================
+exit 0
+
+$ pytest tests/integration/plugin/test_agent_flows.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 2 items
+
+tests/integration/plugin/test_agent_flows.py ..                          [100%]
+
+============================== 2 passed in 4.96s ===============================
+exit 0
+
+$ pytest tests/integration/preview/test_open_preview.py::test_normal_when_embedded_files
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1 item
+
+tests/integration/preview/test_open_preview.py .                         [100%]
+
+============================== 1 passed in 2.43s ===============================
+exit 0
+
+$ pytest tests/integration/preview/test_spa_open.py::test_normal_when_embedded_files
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1 item
+
+tests/integration/preview/test_spa_open.py .                             [100%]
+
+============================== 1 passed in 2.04s ===============================
+exit 0
+
+
+# ---- 1 回目（42bf1260）の出力 ----
+# TMPDIR=/tmp/planner-587-tmp（/tmp/pytest-of-shuhei2441 が root の持ち物のため）。回した commit: 42bf1260。並列数 1（run_one を順に回した）
+$ pytest tests/integration/server/test_files_serve.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 5 items
+
+tests/integration/server/test_files_serve.py ...F.                       [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_error_when_not_found_or_outside _____________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x78c12a586de0>
+make_item = <function make_item.<locals>._make at 0x78c12a586e80>
+serve_preview = <function serve_preview.<locals>._serve at 0x78c128a70f40>
+
+    def test_error_when_not_found_or_outside(
+        make_workspace: MakeWorkspace, make_item: MakeItem, serve_preview: Callable[[Path], str]
+    ) -> None:
+        """無いファイルと、ファイルのフォルダの外部を指すパスは 404 を返却する（異常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        _put_file(root, "clip.mp4", CLIP_BYTES)
+        outside = root.parent / "outside-secret.txt"
+        outside.write_bytes(OUTSIDE_MARK)
+        (root / RECORD_DIR / FILES_DIR / "outside").symlink_to(outside)
+        url = serve_preview(root)
+        # 実行（`..` は正規化せずにそのまま送信する）
+        missing = _get(url, "/files/missing.mp4")
+        parent = _get(url, "/files/../decisions.yaml")
+        encoded = _get(url, "/files/%2e%2e/decisions.yaml")
+        symlink = _get(url, "/files/outside")
+        folder = _get(url, "/files/")
+        # 検証
+        assert missing.status == 404
+>       assert missing.headers["content-type"] == "application/problem+json"
+E       AssertionError: assert 'application/...charset=utf-8' == 'application/problem+json'
+E         
+E         - application/problem+json
+E         + application/problem+json; charset=utf-8
+E         ?                         +++++++++++++++
+
+tests/integration/server/test_files_serve.py:152: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/server/test_files_serve.py::test_error_when_not_found_or_outside
+========================= 1 failed, 4 passed in 1.63s ==========================
+exit 1
+
+$ pytest tests/integration/server/test_check.py::test_normal_when_embedded_file_missing
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1 item
+
+tests/integration/server/test_check.py .                                 [100%]
+
+============================== 1 passed in 0.94s ===============================
+exit 0
+
+$ pytest tests/integration/server/test_change_detection.py::test_normal_when_files_folder_written
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1 item
+
+tests/integration/server/test_change_detection.py .                      [100%]
+
+============================== 1 passed in 4.01s ===============================
+exit 0
+
+$ pytest tests/integration/plugin/test_agent_flows.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 2 items
+
+tests/integration/plugin/test_agent_flows.py ..                          [100%]
+
+============================== 2 passed in 4.60s ===============================
+exit 0
+
+$ pytest tests/integration/preview/test_open_preview.py::test_normal_when_embedded_files
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1 item
+
+tests/integration/preview/test_open_preview.py F                         [100%]
+
+=================================== FAILURES ===================================
+__________________ test_normal_when_embedded_files[chromium] ___________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x79135b87b100>
+make_item = <function make_item.<locals>._make at 0x79135b87af20>
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x79135c98ddc0>>
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x79135b87aac0>
+open_preview = <function open_preview.<locals>._open at 0x79135b87ab60>
+page = <Page url='http://127.0.0.1:45649/mindstella.html#tab=docs&id=A-1'>
+
+    def test_normal_when_embedded_files(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        call_tool: CallTool,
+        snapshot_tree: SnapshotTree,
+        open_preview: OpenPreview,
+        page: Page,
+    ) -> None:
+        """本文の ../files/{名前} を配信の /files/{名前} に解決して、動画・画像を描く（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("A-1"), bodies={"A-1.md": EMBEDDED_FILES_BODY})
+        put_embedded_files(root)
+        url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+        before = snapshot_tree(root)
+        # 実行
+        open_preview(url, "#tab=docs&id=A-1")
+        page.wait_for_selector(BODY_VIDEO, state="attached", timeout=DIAGRAM_TIMEOUT_MS)
+        page.wait_for_function(MEDIA_READY_JS, arg=[BODY_VIDEO, BODY_IMAGE], timeout=UPDATE_TIMEOUT_MS)
+        # 検証
+        assert page.get_attribute(BODY_VIDEO, "src") == "/files/clip.mp4"
+        assert page.get_attribute(BODY_IMAGE, "src") == "/files/shot.png"
+        assert page.inner_text(BODY_CODE) == "![x](../files/x.png)"
+>       assert snapshot_tree(root) == before
+E       AssertionError: assert {'.mindstella...-1.md\n', ...} == {'.mindstella....16.100', ...}
+E         
+E         Omitting 7 identical items, use -vv to show
+E         Left contains 1 more item:
+E         {'.mindstella/.mindstella-opened': b'2026-11-18T15:13:39+00:00\n0\n'}
+E         Use -v to get more diff
+
+tests/integration/preview/test_open_preview.py:2688: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_files[chromium]
+============================== 1 failed in 2.43s ===============================
+exit 1
+
+$ pytest tests/integration/preview/test_spa_open.py::test_normal_when_embedded_files
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1 item
+
+tests/integration/preview/test_spa_open.py .                             [100%]
+
+============================== 1 passed in 2.12s ===============================
+exit 0
+

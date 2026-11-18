@@ -1,0 +1,19 @@
+confirmations:
+  - topic: ワークスペースに配置したファイルを Git に commit するか
+    decision: ファイルのフォルダも自動の commit に含める。Git のリポジトリの外のワークスペースでも動くようにし、commit だけをしない（推奨案 A）
+    decided_by: reply
+    approver: shuhei1101
+    commit: 382b9f243ad8674315b3c4c0613c09bcc58fe949
+    thread: https://github.com/shuhei1101/mindstella/pull/587#discussion_r4614591597
+  - topic: 埋め込んだファイルを持つ資料の書き出しの扱い
+    decision: 書き出しをこの PR から除外し、mindstella の書き出しを mdmark の書き出しに合わせる Issue を別に起票する（推奨案 B。#589）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 382b9f243ad8674315b3c4c0613c09bcc58fe949
+    thread: https://github.com/shuhei1101/mindstella/pull/587#discussion_r4614708962
+  - topic: ワークスペースに配置したファイルと Git（前の決定の前提の訂正）
+    decision: mindstella はワークスペースの Git を操作しない。ファイルを Git に残すかは利用者に任せ、Git 管理外でも同じに動く（推奨案 A。前の行の決定を置き換える）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: f568e851
+    thread: https://github.com/shuhei1101/mindstella/pull/587#discussion_r4615027793

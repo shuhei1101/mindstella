@@ -193,6 +193,32 @@ scenarios:
       - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
       - 出力に、ID `D-1` が 2 件ある旨がある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+  - name: 正常シナリオ（埋め込んだファイルが無い）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を Markdown で持つ資料 A-1
+        notes: 本文に `![動画](../files/clip.mp4)`・`![無い動画](../files/missing.mp4)`・`![外の画像](https://example.com/a.png)` を持ち、`.mindstella/files/clip.mp4` だけを配置する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: 全ての YAML と docs/ を読み、本文の画像の記法が指すファイルを確かめる
+        SV-->>CC: 参照切れの一覧
+      ```
+    expected:
+      - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
+      - 出力に、A-1 の本文が指す `../files/missing.mp4` がワークスペースに無い旨が、参照切れとしてある
+      - 出力に、`../files/clip.mp4` と絶対 URL の画像が無い
+      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+    test: test_normal_when_embedded_file_missing
 lead: MindStella のセッションが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: MindStella のセッション

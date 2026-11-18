@@ -63,6 +63,10 @@ constraints:
     constraint: '`[mindstella] 同じ ID の項目が 2 件あります: {ID}（{ファイル名}）。片方の ID を next_id で振り直してください`。ID が複数あれば `、` でつなぐ'
   - item: MindStella のセッションが無いとき
     constraint: 貼り付けずに画面へだけ知らせる
+  - item: ファイルのフォルダ
+    constraint: '`.mindstella/files/` は見ない（「見るファイル」の外）。ファイルの配置・差し替え・削除では、項目の変更も書き換えのまとまりも作らない'
+  - item: ワークスペースの Git
+    constraint: 読むだけで操作しない（commit・add をしない）。Git 管理外のワークスペースでも同じに動く
 exclusivity: ワークスペースごとに 1 つの検知だけが動く（常駐サーバーのプロセスの中のワークスペースごとの鍵を、MindStella の MCP のツール・画面の保存と共有する）
 flows:
   - name: 正常系
@@ -328,6 +332,30 @@ flows:
       - 読めない中身の間、`decisions.yaml` と `changes.yaml` を書き換えない
       - 正しい中身に戻した後、D-1 が変更履歴を 1 回分持つ
     test: test_normal_when_partial_write
+  - name: 正常系（ファイルのフォルダの書き換え）
+    summary: ファイルのフォルダへの配置では何も記録しない
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーの変更の検知を動かす）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち `commit` を済ませたワークスペース
+        notes: Git のリポジトリの中のワークスペースと Git 管理外のワークスペースの 2 つで確かめる
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as 変更の検知
+        participant WS as ワークスペース
+
+        クライアント->>WS: .mindstella/files/clip.mp4 を配置する
+        IF-->>WS: 見るファイルを比べる
+        IF->>IF: 変わった見るファイルが無い
+      ```
+    expected:
+      - D-1 の変更履歴と `updated_at` が変わらない
+      - '`changes.yaml` と `history.yaml` の中身が配置の前と同じ'
+      - Git のリポジトリの中のワークスペースで、HEAD とインデックスが配置の前と同じ
+    test: test_normal_when_files_folder_written
 refs:
   - ER-489-1#
   - ER-531-1#
