@@ -70,10 +70,11 @@ tasks:
     updated_at: '2026-11-18T03:10:19.911164+00:00'
     note: docs/guide/プレビューを見る.md を部品設計の段で修正した
   - process: 単体テスト作成
-    status: todo
+    status: skipped
     updated_by: planner
-    updated_at: '2026-11-18T03:10:30.230465+00:00'
-    note: tests/unit/preview/test_topbar.py（ツールチップの要素と title を使わないこと）
+    updated_at: '2026-11-18T03:16:57.475737+00:00'
+    note:
+    reason: モジュール構成（MOD-489-223）の unit_tests に当たる行が変わらない。ツールチップと文字を出さない見た目は部品設計の状態として Storybook の結合テストで確認する
   - process: 実装
     status: todo
   - process: 結合テスト作成
