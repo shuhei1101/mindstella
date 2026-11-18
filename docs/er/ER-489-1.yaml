@@ -5,14 +5,10 @@ er:
   entities:
     - name: 設定
       columns:
-        - type: array
-          name: targets・categories・phases
         - type: object
           name: settings
     - name: 検討事項
       columns:
-        - type: string
-          name: target・category・phase
         - type: string
           name: id
           key: PK
@@ -105,13 +101,6 @@ er:
           key: FK
           comment: '参照: 検討事項.id'
   relations:
-    - from: 設定
-      to: 検討事項
-      from_column: targets・categories・phases
-      to_column: target・category・phase
-      from_cardinality: '1'
-      to_cardinality: 0..n
-      label: 対象・カテゴリー・フェーズで振り分ける
     - from: 検討事項
       to: 検討事項
       from_column: id
@@ -228,7 +217,7 @@ tables:
   - name: config.yaml
     title: 設定
     datastore: YAML
-    summary: ワークスペースの ID・進め方の文書・題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定・プレビューの配信のポート
+    summary: ワークスペースの ID・進め方の文書・題名・話し合いの概要・関連する場所・変更履歴を保持する回数・表示の既定・プレビューの配信のポート
     scale: 1 件
     access: 全件
     columns:
@@ -242,39 +231,6 @@ tables:
         type: object
         description: 任意。`source`（配信元の ID）と `doc`（文書の ID）。『ワークスペースの作成』が記録の無いフォルダにだけ書き、MindStella のセッションを起動するたびにセッションの管理が読む
         example: '{source: aituber, doc: flow-script}'
-      - name: playbooks
-        title: プレイブック
-        type: array
-        not_null: true
-        description: 並べて使う進め方ガイドの名前。1 件以上・重複なし。AI は並べたガイドをすべて読む
-        example: '[壁打ち, システム開発]'
-      - name: target_label
-        title: 最上位の軸の呼び名
-        type: string
-        not_null: true
-        description: 対象を画面で何と呼ぶか
-        example: システム
-      - name: phases
-        title: フェーズ
-        type: array
-        not_null: true
-        description: フェーズの名前を浅い順に並べる。`next` の並べ替えはこの順を使う。プレイブックを複数並べても 1 本の並びで持つ。項目の `phase` と `goal.phase` はこのどれか（点検が確かめる）
-        example: '[目的, 要件, 構成]'
-      - name: targets
-        title: 対象
-        type: array
-        not_null: true
-        description: 要素は `name`・`summary`
-      - name: categories
-        title: カテゴリー
-        type: array
-        not_null: true
-        description: 要素は `name`・`target`（`targets[].name` のどれか）・`summary`
-      - name: goal
-        title: ゴール
-        type: object
-        not_null: false
-        description: 任意。`phase`（どのフェーズまでやるか）・`summary`・`deliverables[]`（`title` と、できた資料の `doc`（`A-` の ID。任意））。無いときはゴールを決めていない話し合い
       - name: links
         title: 関連する場所
         type: array
@@ -337,27 +293,11 @@ tables:
         type: string
         not_null: true
         description: 題
-      - name: target
-        title: 対象
-        type: string
-        description: 設定の `targets[].name` のどれか
-      - name: category
-        title: カテゴリー
-        type: string
-        description: 設定の `categories[].name` のどれか
-      - name: phase
-        title: フェーズ
-        type: string
-        description: 設定の `phases` のどれか
       - name: tags
         title: タグ
         type: array
         description: '話題のタグ。要素は `{name, main?}`（`name` はどの文字列でも持てる。タグの語彙は持たない）。その項目の主題のタグだけが `main: true` を持ち、主題でないタグは `main` を持たない。比べるときは `name` を NFKC と小文字でそろえ、そろえて同じ名前のタグを 2 件持たない。文字列の要素は v0.12.0 より前の形式（『記録の形式の移行』が移し替える）'
         example: '[{name: topic:タグ, main: true}, {name: topic:検索}]'
-      - name: attrs
-        title: 属性
-        type: object
-        description: 自由なキーと値（値は文字列・数値・真偽値）
       - name: related
         title: 関連
         type: array
@@ -394,11 +334,6 @@ tables:
         title: 案
         type: array
         description: 要素は `key`（記号）・`content`・`pros`・`cons`・`note`・`adopted`（真偽値）・`recommended`（真偽値。AI が推す案の印）・`reason`。`adopted` が真の案と `recommended` が真の案は、それぞれ 0 か 1 つ。状態との決まりはこの表の説明
-      - name: weight
-        title: 影響度
-        type: string
-        enum_values: 大 / 中 / 小
-        description: 派生の多さ
       - name: reason
         title: 理由
         type: string
@@ -473,15 +408,6 @@ tables:
         title: 結論
         type: string
         description: 調べた結論
-      - name: confidence
-        title: 確度
-        type: string
-        enum_values: 高 / 中 / 低
-        description: 結論の確からしさ
-      - name: angles
-        title: 調査の観点
-        type: array
-        description: 調べた観点
       - name: body
         title: 本文
         type: string
@@ -507,7 +433,7 @@ tables:
   - name: docs.yaml
     title: 資料
     datastore: YAML
-    summary: 会話の中で作った図・文書。納品物もこの中で印を付ける
+    summary: 会話の中で作った図・文書
     primary_key: id
     scale: ~100
     access: 全件
@@ -517,18 +443,12 @@ tables:
         type: string
         not_null: true
         description: 図 / 文書 など（自由な文字列）
-      - name: deliverable
-        title: 納品物か
-        type: boolean
-        not_null: true
-        default: 'false'
-        description: ゴールでリリースする納品物か
       - name: status
         title: 状態
         type: string
         not_null: true
         default: 下書き
-        description: 資料の状態。納品物は `完成` でできたとみなす
+        description: 資料の状態
         enum_values: 下書き / 確認中 / 完成
       - name: body
         title: 本文
@@ -758,7 +678,7 @@ tables:
         title: AI が最後に読んだ時点
         type: number
         not_null: false
-        description: 『前回読んだ時点からの変更』を最後に呼んだときの `last_seq`。そのツールだけが書き換える。一度も呼んでいなければキーを持たず、そのうちは保持する回数を超えた古い変更履歴を今までどおり消す
+        description: 前のバージョンで『前回読んだ時点からの変更』を最後に呼んだときの `last_seq`。今は常駐サーバーの状態のフォルダの `read_point.json` に持ち（ER 図『常駐サーバーの状態』）、`read_point.json` が無いときだけこの値を読む
         example: '12'
   - name: dev-docs.yaml
     title: 記録の配信の設定
@@ -1145,11 +1065,6 @@ tables:
         auto: 作成日時
         description: 最初に溜めた日時（UTC のタイムゾーン付き ISO 8601）。同じ編集を書き換えても変えない
         example: '2026-10-21T05:02:00+00:00'
-      - name: map
-        title: 付け替えの対応
-        type: object
-        description: '`setting` で `key` が `phases`・`targets`・`categories` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map` と同じ。対応の要らない編集は持たない'
-        example: '{"問い": "目的"}'
     refs:
       - IF-489-30#
       - IF-489-31#
