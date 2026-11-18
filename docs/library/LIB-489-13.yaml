@@ -109,4 +109,4 @@ limitations:
   - item: コードの色付け
     content: '`syntax` はコードブロックを描くときに highlight.js を jsDelivr から integrity なしで読む。mindstella はどの描画でも `syntax` を止める'
   - item: 表の見出し行の固定
-    content: '2026-11-19 に develop `05a79a26` の `mount`（`features.table` をオン）で描いた 40 行の表を、`overflow: auto` の区画の中とページそのもののそれぞれで、表の上端から 400px 縦にスクロールした。Chromium（`data-mdmark-sticky="timeline"`）と Firefox（`script`）のどちらでも `thead` の上端は表の上端と一緒に動き、区画・画面の上端に留まらなかった。`--mdmark-sticky-top` に区画の上端の位置（48px）を指定しても同じ。留まらない原因は特定していない。mindstella は、本文の表の見出し行が区画の上端に留まることを前提にしない'
+    content: '2026-11-19 に develop `05a79a26` の `mount`（`features.table` をオン）で描いた 40 行の表で、`thead th` の上端を測った（Chromium は `data-mdmark-sticky="timeline"`、Firefox は `script`）。`mount` で描くと属性が `.mdmark-content` に付き、CSS の `.mdmark[data-mdmark-sticky]` の規則が当たらないため、ページでも区画でも表の上端から 400px スクロールすると見出し行が表と一緒に動いた。属性を `.mdmark` に付けると、ページのスクロールでは両方とも画面の上端に留まり、`overflow: auto` の区画（上端 48px）の中では Chromium が区画の上端（48）、Firefox が画面の上端（0）に留まった。`--mdmark-sticky-top: 48px` を指定すると Firefox は 48、Chromium は 96 になり、1 つの値で両方を区画の上端に揃えられない（shuhei1101/mdmark#683）。mindstella は、本文の表の見出し行が区画の上端に留まることを前提にしない'
