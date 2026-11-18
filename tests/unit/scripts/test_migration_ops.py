@@ -65,7 +65,6 @@ def test_apply_step_when_rename_key(make_legacy_workspace: MakeLegacyWorkspace) 
         "id",
         "title",
         "kind",
-        "deliverable",
         "status",
         "body",
         "created",

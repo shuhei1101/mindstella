@@ -339,9 +339,9 @@ def make_data(valid_settings: dict[str, Any]) -> MakeData:
     """埋め込みのデータ（`mindmap-data` の中身）を作る関数を返す。"""
 
     def _make(
-        *, settings: dict[str, Any] | None = None, next_ids: list[str] | None = None, **kinds: Any
+        *, settings: dict[str, Any] | None = None, ready_ids: list[str] | None = None, **kinds: Any
     ) -> dict[str, Any]:
-        """種類ごとの項目（decisions=[...] など）と、次の候補の ID を渡して埋め込みのデータを返す。"""
+        """種類ごとの項目（decisions=[...] など）と、着手できる検討事項の ID を渡して埋め込みのデータを返す。"""
         data: dict[str, Any] = {
             "settings": valid_settings if settings is None else settings,
             "decisions": [],
@@ -352,27 +352,7 @@ def make_data(valid_settings: dict[str, Any]) -> MakeData:
             "notes": [],
             "logs": [],
             "bodies": {},
-            "derived": {
-                "next": [
-                    {
-                        "id": item_id,
-                        "title": f"{item_id}の題",
-                        "phase": None,
-                        "weight": None,
-                        "followers": 0,
-                    }
-                    for item_id in (next_ids or [])
-                ],
-                "goal": {
-                    "reached": False,
-                    "goal_phase": "構成",
-                    "phases": [],
-                    "remaining_decisions": [],
-                    "remaining_deliverables": [],
-                    "phase_progress": [],
-                },
-                "progress": [],
-            },
+            "derived": {"ready": list(ready_ids or [])},
             "built_at": "2026-10-02T08:00:00+00:00",
         }
         data.update(kinds)

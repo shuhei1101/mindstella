@@ -39,7 +39,7 @@ describe("linkBody", () => {
   // ID をリンクにする（正常系）
   test("link_body", () => {
     // 準備
-    const data = { decisions: [{ id: "D-1", title: "題", status: "未決定" }], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { next: [] } } as unknown as MindmapData;
+    const data = { decisions: [{ id: "D-1", title: "題", status: "未決定" }], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { ready: [] } } as unknown as MindmapData;
     const root = document.createElement("div");
     root.innerHTML = "<p>D-1 を見る</p>";
     const onOpen = vi.fn();

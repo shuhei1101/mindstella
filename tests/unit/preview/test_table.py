@@ -148,12 +148,12 @@ def test_filter_counts(preview_page: Page, load_preview_scripts: LoadPreviewScri
     """ほかの列の条件だけを当てて数える（正常系）。"""
     # 準備
     rows = [
-        {"id": "D-1", "status": "未決定", "category": "A"},
-        {"id": "D-2", "status": "決定済み", "category": "A"},
-        {"id": "D-3", "status": "未決定", "category": "B"},
-        {"id": "D-4", "status": "未決定", "category": "A"},
+        {"id": "D-1", "status": "未決定", "tags": ["A"]},
+        {"id": "D-2", "status": "決定済み", "tags": ["A"]},
+        {"id": "D-3", "status": "未決定", "tags": ["B"]},
+        {"id": "D-4", "status": "未決定", "tags": ["A"]},
     ]
-    filters = {"status": ["未決定"], "category": ["A"]}
+    filters = {"status": ["未決定"], "tags": ["A"]}
     load_preview_scripts()
     # 実行
     counts = preview_page.evaluate(
@@ -161,7 +161,7 @@ def test_filter_counts(preview_page: Page, load_preview_scripts: LoadPreviewScri
             {COLUMNS_JS}
             const columns = makeColumns([
                 {{key: "status", order: ["未決定", "決定済み"]}},
-                {{key: "category"}},
+                {{key: "tags"}},
             ]);
             return MindmapPreview.filterCounts({{rows, columns, filters, key: "status"}});
         }}""",
@@ -302,9 +302,9 @@ def test_active_condition_count(
         ),
         pytest.param(
             "decisions",
-            {"phase": ["要件"]},
+            {"tags": ["要件"]},
             {"status": ["保留"]},
-            {"phase": ["要件"]},
+            {"tags": ["要件"]},
             id="decisions_hash_over_saved",
         ),
         pytest.param("tasks", {}, None, {}, id="tasks_default"),
@@ -389,10 +389,6 @@ DECISIONS_COLUMN_SPECS = [
     {"key": "id"},
     {"key": "title"},
     {"key": "status", "filterable": True},
-    {"key": "target", "filterable": True},
-    {"key": "category", "filterable": True},
-    {"key": "phase", "filterable": True},
-    {"key": "weight", "filterable": True},
     {"key": "ready", "filterable": True},
     {"key": "depends_on"},
     {"key": "tags", "filterable": True},
@@ -493,7 +489,7 @@ def test_table_when_main_tag(preview_page: Page, load_preview_scripts: LoadPrevi
     result = preview_page.evaluate(
         """(rows) => {
             const noop = () => {};
-            const common = MindmapPreview.commonColumns({target_label: "対象"});
+            const common = MindmapPreview.commonColumns({summary: "話し合い", links: []});
             const element = MindmapPreview.table({
                 kind: "docs",
                 columns: [common.id, common.title(), common.tags],

@@ -254,3 +254,5 @@ refs:
   - IF-489-32#
   - IF-565-2#
   - MOD-531-1#
+test_files:
+  - tests/unit/scripts/test_read_point.py

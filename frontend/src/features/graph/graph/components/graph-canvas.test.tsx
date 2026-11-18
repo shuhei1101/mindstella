@@ -8,7 +8,7 @@ import { useThemeStore } from "@/shared/stores/theme-store";
 
 vi.mock("@/features/graph/graph/graph-renderer", () => ({ createGraphRenderer: vi.fn() }));
 
-const empty = { decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { next: [] } };
+const empty = { decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { ready: [] } };
 const indexWith = (title: string) => buildIndex({ ...empty, decisions: [{ id: "D-1", title }] } as unknown as MindmapData);
 const graph = { nodes: [{ id: "D-1", kind: "decisions" as const }], links: [] };
 

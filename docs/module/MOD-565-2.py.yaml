@@ -137,3 +137,5 @@ refs:
   - MOD-489-157#
   - MOD-489-149#
   - LIB-565-1#
+test_files:
+  - tests/unit/scripts/test_resume.py

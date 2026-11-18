@@ -6,7 +6,6 @@ import logging
 import os
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
-from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +38,6 @@ from fixture_types import (
     MakePost,
     MakeThread,
     MakeWorkspace,
-    PatchPluginVersion,
     SnapshotTree,
     WriteThreads,
 )

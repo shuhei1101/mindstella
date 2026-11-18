@@ -13,7 +13,7 @@ describe("DecisionMap", () => {
     // 準備
     useLibrary.mockReturnValue({ status: "failed", library: null });
     // 実行
-    render(<DecisionMap items={[]} settings={{ targets: [], categories: [], phases: [] } as unknown as Settings} onOpen={vi.fn()} selectedId={undefined} />);
+    render(<DecisionMap items={[]} settings={{ summary: "話し合い", links: [] } as unknown as Settings} onOpen={vi.fn()} selectedId={undefined} />);
     // 検証
     expect(screen.getByText(/elkjs/)).toBeInTheDocument();
   });

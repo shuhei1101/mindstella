@@ -13,7 +13,7 @@ const data = {
   terms: [],
   notes: [],
   logs: [],
-  derived: { next: [] },
+  derived: { ready: [] },
 } as unknown as MindmapData;
 
 describe("buildIndex", () => {

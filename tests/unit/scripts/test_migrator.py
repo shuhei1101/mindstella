@@ -343,7 +343,6 @@ def test_apply_migration_when_settings_renamed(
     )
     legacy_settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
     legacy_settings["field"] = "システム開発"
-    del legacy_settings["playbooks"]
     write_yaml(root / "mindmap.yaml", legacy_settings)
     # 前の版の画面と、直下のロックのファイル
     (root / "preview.html").write_text("<html></html>\n", encoding="utf-8")
@@ -398,7 +397,7 @@ def test_set_values(
     settings = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert settings["summary"] == "題名"
     assert _keys_except(settings, "summary") == _keys_except(valid_settings, "summary")
-    assert settings["phases"] == valid_settings["phases"]
+    assert settings["links"] == valid_settings["links"]
     assert not (root / RECORD_DIR / VERSION_FILE).exists()
 
 

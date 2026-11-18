@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -15,50 +14,26 @@ def test_build_decision_tree(
     load_preview_scripts: LoadPreviewScripts,
     make_data: MakeData,
     make_item: MakeItem,
-    valid_settings: dict[str, Any],
 ) -> None:
-    """渡した検討事項を持たない枝を落とす（正常系）。"""
+    """渡した検討事項だけを根の直下に置く（正常系）。"""
     # 準備
-    settings = {
-        **valid_settings,
-        "categories": [
-            {"name": "カテゴリー甲", "target": "mindmap", "summary": "甲"},
-            {"name": "カテゴリー乙", "target": "mindmap", "summary": "乙"},
-        ],
-    }
-    data = make_data(
-        settings=settings,
-        decisions=[
-            make_item(
-                "D-1", target="mindmap", category="カテゴリー甲", phase="要件", status="未決定"
-            ),
-            make_item(
-                "D-2", target="mindmap", category="カテゴリー乙", phase="要件", status="決定済み"
-            ),
-        ],
-    )
+    data = make_data(decisions=[make_item("D-1"), make_item("D-2", status="決定済み")])
     load_preview_scripts()
     # 実行
     tree = preview_page.evaluate(
-        """({data, shownIds}) => {
+        """(data) => {
             const index = MindmapPreview.buildIndex(data);
-            // 絞り込みの条件に合った検討事項だけを渡す
-            const decisions = data.decisions.filter((decision) => shownIds.includes(decision.id));
+            const decisions = data.decisions.filter((decision) => decision.id === "D-1");
             const graph = MindmapPreview.buildDecisionTree({index, decisions});
-            // 節は入れ子でも平らでも数えられるよう、再帰で集める
-            const collect = (nodes) => nodes.flatMap((node) => [node.id, ...collect(node.children ?? [])]);
-            return {nodeIds: collect(graph.children), edgeCount: graph.edges.length};
+            return {
+                nodeIds: graph.children.map((node) => node.id),
+                edges: graph.edges.map((edge) => [edge.sources, edge.targets]),
+            };
         }""",
-        {"data": data, "shownIds": ["D-1"]},
+        data,
     )
     # 検証
-    node_ids = tree["nodeIds"]
-    assert "D-1" in node_ids
-    assert "D-2" not in node_ids
-    # 検討事項 D-1 とその対象・カテゴリー・フェーズの 4 つだけが残り、枝は 3 本
-    assert len(node_ids) == 4
-    assert len([node_id for node_id in node_ids if node_id.startswith("target:")]) == 1
-    assert tree["edgeCount"] == 3
+    assert tree == {"nodeIds": ["root", "D-1"], "edges": [[["root"], ["D-1"]]]}
 
 
 @pytest.mark.parametrize(

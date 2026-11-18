@@ -5,7 +5,6 @@ from __future__ import annotations
 import dataclasses
 import os
 import re
-import shutil
 import stat
 import subprocess
 import sys
@@ -22,7 +21,6 @@ from jsonschema import Draft202012Validator
 import migrator
 import store
 from errors import (
-    ArgumentError,
     ConcurrentWriteError,
     ItemNotFoundError,
     SchemaMismatchError,
@@ -32,7 +30,6 @@ from errors import (
 )
 from fixture_types import (
     FailingReplace,
-    FailingUnlink,
     MakeEdit,
     MakeItem,
     MakeThread,

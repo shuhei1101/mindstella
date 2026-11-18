@@ -121,7 +121,7 @@ describe("DetailComments", () => {
     // 準備
     installFakeMedia();
     stubRecords({
-      decisions: [{ id: "D-1", title: "D-1の題", status: "未決定", category: "記録", phase: "目的" }],
+      decisions: [{ id: "D-1", title: "D-1の題", status: "未決定" }],
       settings: { ...RECORDS.settings, transcription: { action: "send" } },
     });
     const sent: unknown[] = [];
@@ -154,8 +154,8 @@ describe("DetailComments", () => {
     installFakeWakeLock();
     stubRecords({
       decisions: [
-        { id: "D-1", title: "D-1の題", status: "未決定", category: "記録", phase: "目的" },
-        { id: "D-2", title: "D-2の題", status: "未決定", category: "記録", phase: "目的" },
+        { id: "D-1", title: "D-1の題", status: "未決定" },
+        { id: "D-2", title: "D-2の題", status: "未決定" },
       ],
     });
     const added: unknown[] = [];

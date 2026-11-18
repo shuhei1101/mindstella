@@ -230,16 +230,16 @@ def test_edit_row_text_when_setting(
         "E-1",
         target="settings",
         op="setting",
-        key="categories",
-        value=["画面", "保存"],
-        before=["画面"],
+        key="description",
+        value="画面の編集を決める",
+        before="画面を決める",
         base=None,
     )
     # 実行
     result = preview_page.evaluate("(edit) => MindmapPreview.editRowText(edit)", edit)
     # 検証
-    assert result["what"] == "カテゴリー"
-    assert "保存" in result["after"]
+    assert result["what"] == "説明"
+    assert "画面の編集を決める" in result["after"]
 
 
 def test_edit_row_text_when_tags(
