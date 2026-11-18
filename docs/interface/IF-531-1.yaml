@@ -100,7 +100,7 @@ constraints:
     constraint: 'project-index の `POST /settings/sources` に `{"source": {"id": {ID}, "config": "{フォルダ}/.mindstella/dev-docs.yaml", "scope": {"read": ["{フォルダ}", "{フォルダ}/**"], "write": ["{フォルダ}", "{フォルダ}/**"]}, "outside_read": true}}` と、`GET /settings/sources` で取得した `version` を `expectedVersion` として送信する。409 のうち `result: exists` でないもの（内容のバージョンの不一致）は、1 回だけ `version` を取得し直して再送信する。`scope` はワークスペースのフォルダと、その下の全てのフォルダを作業場所にしたセッションを対象にする。同じ `id` の行がある（409・`result: exists`）ときは、`same` が真なら追加済みとして続け、偽なら 502'
     notes: '本文の形は project-index の『端末の設定の配信元の 1 行の追加』（IF-32）、`/**` の当たり方はコアコンセプト『scope による権限』'
   - item: 配信の設定
-    constraint: '記録が無いフォルダに、`.mindstella/dev-docs.yaml`（project-index の配信元の設定。書式は project-index のガイド『設定』）と `.mindstella/schemas/`（プラグインの `skills/mindmap/schemas/` の種類ごとの 7 つのスキーマと `common.schema.json` の複製）を書く。設定は `version: "3"`・`name`（ワークスペースの ID）・`description`（設定の `summary`）・`related.types`（`[depends_on, parent, for, see_also]`）と、種類ごとの 7 つの `documents` の行を持つ。行は `id`（種類の名前。`decisions` など）・`title`（種類の日本語の名前）・`paths`（`[{種類}.yaml]`）・`schema`（`schemas/{種類}.schema.json`）・`records: items`・`body_file: body`・`metadata`（`id: id`・`name: title`・`description: lead`（持つ種類だけ）・`tags: tags[].name`・`main_tags: tags[main].name`・`related: related`・`status: status`（持つ種類だけ））'
+    constraint: '記録が無いフォルダに、`.mindstella/dev-docs.yaml`（project-index の配信元の設定。書式は project-index のガイド『設定』）と `.mindstella/schemas/`（プラグインの `skills/mindmap/schemas/` の種類ごとの 7 つのスキーマと `common.schema.json` の複製）を書く。設定は `version: "3"`・`name`（ワークスペースの ID）・`description`（設定の `summary`）・`related.types`（`[depends_on, parent, for, see_also]`）と、種類ごとの 7 つの `documents` の行を持つ。行は `id`（種類の名前。`decisions` など）・`title`（種類の日本語の名前）・`paths`（`[{種類}.yaml]`）・`schema`（`schemas/{種類}.schema.json`）・`records: items`・`body_file: body`・`write_dates: false`（Git 管理外の配信元でも project-index の `write_docs` に `created`・`updated` を付けさせない。日時は `history.yaml` が持つ）・`metadata`（`id: id`・`name: title`・`description: lead`（持つ種類だけ）・`tags: tags[].name`・`main_tags: tags[main].name`・`related: related`・`status: status`（持つ種類だけ））'
     notes: '`body` は `.mindstella/` からの相対で本文のファイルを指す（`docs/{ID}.md`。ER 図『ワークスペース』）。`threads.yaml`・`changes.yaml`・`config.yaml` などは配信しない（MindStella の MCP が読み書きする）'
   - item: ID の一覧
     constraint: 状態のフォルダの `workspaces.yaml` の `ids` に足す。配信元の行の追加が通った後に足す
@@ -114,7 +114,7 @@ constraints:
     constraint: 'project-index の HTTP の読み取り API で 3 段に確かめる。(1) `GET /settings/sources` の `flow.source` の行の `scope.read` に、ワークスペースのフォルダが当たる（当たらなければ 422・理由 `scope`）。(2) `GET /sources/{flow.source}/docs` の一覧から、`id` が `flow.doc` の文書のパスを引く（無ければ 422・理由 `missing`。配信元が無ければ 404 の `missing: source`）。(3) `GET /sources/{flow.source}/docs/{パス}?id={flow.doc}` が 200 を返す（404 なら 422・理由 `missing`）'
     notes: 常駐サーバーは文書の MCP（`search_docs`）を呼ばない
   - item: 記録の形式の移行
-    constraint: '記録があるフォルダは、開く前に『記録の形式の移行』を当てる。利用者に確認せずに移し替え、移せなかった値は応答の `migration.not_carried` に載せる（D-288。PR #565 の確認ログ）。利用者への知らせは、MindStella のセッションが起動と再開のエージェントフローで通知のスレッドにする。移行の結果の `schemas` が 1 件以上で、配信元の行が既にあり、この依頼で行を変更しない（『既に記録があるフォルダ』の `PATCH` を送らない）ときは、`GET /settings/sources` で `version` と `settingsPath` を引き、`settingsPath` の端末の設定の `sources` の行を書き換えずにそのまま、`expectedVersion` とともに `PUT /settings/sources` に送って、全ての配信元を読み直させる（project-index の『端末の設定の保存』は全ての行を再読み込みする。『端末の設定の配信元の 1 行の変更』は値が変わらない行の配信元を使い回すので、読み直されない。`GET` の応答の行は状態を含む camelCase の形で、端末の設定の行と形が違うので送らない）。`schemas` が 1 件以上になるのはプラグインを上げた後にそのワークスペースを初めて開くときだけなので、全ての配信元の再読み込みもそのときだけになる。行を追加する、または行を変更する `PATCH` を送るときは、それで読み直されるので重ねて送らない。409（版が古い）なら 1 回だけ引き直して送り直し、それでも通らないときと project-index がそのほかの失敗を返したときは 502（`stage: source`）'
+    constraint: '記録があるフォルダは、開く前に『記録の形式の移行』を当てる。利用者に確認せずに移し替え、移せなかった値は応答の `migration.not_carried` に載せる（D-288。PR #565 の確認ログ）。利用者への知らせは、MindStella のセッションが起動と再開のエージェントフローで通知のスレッドにする。移行の結果の `source_files` が 1 件以上で、配信元の行が既にあり、この依頼で行を変更しない（『既に記録があるフォルダ』の `PATCH` を送らない）ときは、`GET /settings/sources` で `version` と `settingsPath` を引き、`settingsPath` の端末の設定の `sources` の行を書き換えずにそのまま、`expectedVersion` とともに `PUT /settings/sources` に送って、全ての配信元を読み直させる（project-index の『端末の設定の保存』は全ての行を再読み込みする。『端末の設定の配信元の 1 行の変更』は値が変わらない行の配信元を使い回すので、読み直されない。`GET` の応答の行は状態を含む camelCase の形で、端末の設定の行と形が違うので送らない）。`source_files` が 1 件以上になるのはプラグインを上げた後にそのワークスペースを初めて開くときだけなので、全ての配信元の再読み込みもそのときだけになる。行を追加する、または行を変更する `PATCH` を送るときは、それで読み直されるので重ねて送らない。409（版が古い）なら 1 回だけ引き直して送り直し、それでも通らないときと project-index がそのほかの失敗を返したときは 502（`stage: source`）'
   - item: エージェントフローの配信元
     constraint: 配信元の行を足した後に、project-index に配信元 `mindstella-agent-flows` の行が無ければ、『エージェントフローの参照』の制約「配信元の登録」のとおり足す。同じ `id` の行がある（409）ときは足さずに続ける。失敗してもワークスペースの作成は止めず、常駐サーバーのログに 1 行書く
 flows:
@@ -153,7 +153,7 @@ flows:
       - '`.mindstella/config.yaml` の `id` が応答の `id` で、`flow` が渡した値'
       - 状態のフォルダの `workspaces/{id}/launch.json` に渡した `mcp_config`・`plugin_dirs` があり、`workspaces.yaml` の `ids` に `id` がある
       - 'project-index の Mock が、`config`・`scope`・`outside_read: true` の行の追加を受けている'
-      - '`.mindstella/dev-docs.yaml` が種類ごとの 7 つの `documents` の行（`records: items`・`body_file: body`）と `related.types` を持ち、`.mindstella/schemas/` にその行が指すスキーマがある'
+      - '`.mindstella/dev-docs.yaml` が種類ごとの 7 つの `documents` の行（`records: items`・`body_file: body`・`write_dates: false`）と `related.types` を持ち、`.mindstella/schemas/` にその行が指すスキーマがある'
       - '`url` を開くと、そのワークスペースの画面が返る'
       - project-index に配信元 `mindstella-agent-flows` の行（`config` がプラグインの `agent-flows/dev-docs.yaml`、`scope.read` が許可するフォルダとその下、`scope.write` なし）を、ワークスペースの行の後に追加する
       - project-index の Mock が受けた行の追加の本文の `expectedVersion` が、`GET /settings/sources` が返した `version` である
@@ -405,6 +405,35 @@ flows:
       - '`.mindstella/schemas/docs.schema.json` の中身がプラグインのスキーマと同じ'
       - 'project-index の Mock が、`expectedVersion` と一時ファイルの端末の設定の `sources` と同じ行を持つ `PUT /settings/sources` を 1 回受け、`POST`・`PATCH` を受けていない'
     test: test_normal_when_schema_copy_rewritten
+  - name: 正常系（実際の project-index で記録を書き込み・検索する）
+    summary: 作った Git 管理外のワークスペースを実際の project-index で配信し、記録の作成・更新、本文を持たない項目の検索・更新、スキーマの複製を更新前に戻した後の開き直しを通す
+    setup:
+      - name: Mock
+        description: なし（実際の project-index をテストごとの一時フォルダの端末の設定と空きポートで起動し、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。準備はエージェントフローの参照の結合テストと同じで、project-index のクローンが無ければ skip する）
+      - name: 作ったワークスペース
+        description: 許可するフォルダの下の Git 管理外のフォルダにこの操作で作ったワークスペース。本文を持たない用語 G-1 を記録の YAML に直接書く
+        notes: スキーマの複製を更新前にするときは `docs.schema.json` を `deliverable` を必須に持つスキーマに書き換える
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as ワークスペースの作成
+        participant PI as project-index
+
+        クライアント->>API: フォルダ
+        API->>PI: POST /settings/sources
+        API-->>クライアント: 201（result: created）
+        クライアント->>PI: write_docs（検討事項の作成・更新、G-1 の更新）
+        クライアント->>PI: search_docs（G-1）
+        クライアント->>API: スキーマの複製を更新前に戻したフォルダ
+        API->>PI: PUT /settings/sources
+        クライアント->>PI: search_docs（資料）
+      ```
+    expected:
+      - 検討事項の作成と更新の `write_docs` が検査に通って書き込まれ、記録の YAML の項目が `created`・`updated` を持たない
+      - 本文を持たない G-1 が `search_docs` でヒットし、`write_docs` で更新でき、結果に読み込めない文書の警告が無い
+      - スキーマの複製を更新前に戻して開き直した後、資料を参照した `search_docs` の結果にスキーマに合わない旨の警告が無い
+    test: test_normal_when_real_project_index
 refs:
   - IF-489-1#
   - IF-489-17#
