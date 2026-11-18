@@ -166,6 +166,7 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
     records = records_root(folder)
     options = validate_options(mcp_config, plugin_dirs)
     migration: dict[str, Any] | None = None
+    schemas: list[str] = []
 
     with ctx.locks.for_folder(folder):
         legacy = (folder / SETTINGS_FILE).exists() or (folder / LEGACY_SETTINGS_FILE).exists()
@@ -174,7 +175,7 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
         with ctx.locks.for_workspace(workspace_id):
             # 記録がある: 開く前に今の形式へ移し替える
             if exists:
-                migration = _migrate(ctx, folder)
+                migration, schemas = _migrate(ctx, folder)
             # 記録が無いときだけ、進め方の文書を確かめてから記録を作る
             if not exists:
                 if flow is not None:
@@ -185,9 +186,12 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
             if recorded:
                 state.write_launch(ctx.state_root, workspace_id, options)
             try:
-                result = _register_source(
+                result, row_sent = _register_source(
                     ctx, workspace_id, folder, created=not exists, recorded=recorded
                 )
+                # スキーマの複製を書き直したが行を送っていない: project-index に読み直させる
+                if schemas and not row_sent:
+                    project_index.reload_sources(ctx.pi_port)
             except ProjectIndexError as error:
                 remaining = _rollback(
                     ctx,
@@ -257,8 +261,8 @@ def ensure_agent_flows_source(ctx: Any, allowed_dirs: list[Path]) -> None:
         )
 
 
-def _migrate(ctx: Any, folder: Path) -> dict[str, Any] | None:
-    """記録を今の形式へ移し替え、移し替えたら報告を状態のフォルダに残して応答の形で返す。"""
+def _migrate(ctx: Any, folder: Path) -> tuple[dict[str, Any] | None, list[str]]:
+    """記録を今の形式へ移し替え、移し替えたら報告を状態のフォルダに残し、応答の形と書き直したスキーマの複製を返す。"""
     try:
         with workspace_lock(folder, threading.Lock(), require=migrator.require_migratable):
             report = migrator.migrate(folder)
@@ -269,18 +273,19 @@ def _migrate(ctx: Any, folder: Path) -> dict[str, Any] | None:
         raise ApiError(422, "migration", detail) from error
     # 当てる手順が無かった: 移し替えていない
     if not report.steps:
-        return None
+        return None, report.schemas
     read_point.save_migration_report(
         folder,
         {"not_carried": report.not_carried, "provisional": report.provisional},
         state_root=ctx.state_root,
     )
-    return {
+    response = {
         "from_version": None if report.workspace_version is None else str(report.workspace_version),
         "to_version": str(report.recorded or report.plugin_version),
         "steps": [f"{step.version} #{step.index}: {describe_step(step)}" for step in report.steps],
         "not_carried": report.not_carried,
     }
+    return response, report.schemas
 
 
 def close_workspace(workspace_id: str, ctx: Any) -> dict[str, Any]:
@@ -394,8 +399,8 @@ def _recorded_id(folder: Path) -> str | None:
 
 def _register_source(
     ctx: Any, workspace_id: str, folder: Path, *, created: bool, recorded: bool
-) -> str:
-    """配信元の行を追加するか戻し、作成の結果（created・opened・reopened・already_open）を返す。"""
+) -> tuple[str, bool]:
+    """配信元の行を追加するか戻し、作成の結果（created・opened・reopened・already_open）と、行を書き換えて配信元を読み直させたかを返す。"""
     existing = find_workspace_row(ctx.pi_port, workspace_id)
     # 行が無い: 追加する（同じ内容の行が同時に足されていれば、追加済みとして続ける）
     if existing is None:
@@ -403,7 +408,8 @@ def _register_source(
         # 同じ ID で中身の違う行がある: 別のフォルダの行とみなして止める
         if added == "exists_different":
             raise ProjectIndexError(409, f"配信元 {workspace_id} の行が別の内容で登録されています")
-        return "created" if created else "opened"
+        # 追加したときだけ、project-index がその配信元を読み込む
+        return ("created" if created else "opened"), added == "added"
     changes: dict[str, Any] = {}
     row_folder = workspace_folder(existing).resolve()
     # 行が別のフォルダを指す: 移したなら行を今回のフォルダへ変え、コピーしたなら止める
@@ -422,14 +428,14 @@ def _register_source(
             workspace_id,
             lambda current: None if current is None else current.replace(close_pending=False),
         )
-        return "reopened"
+        return "reopened", True
     if changes:
         project_index.patch_source(ctx.pi_port, workspace_id, changes)
-        return "opened"
+        return "opened", True
     # 行はあるが、今回の指定を記録したか ID の一覧に無い: 開き直した
     if recorded or workspace_id not in state.read_ids(ctx.state_root):
-        return "opened"
-    return "already_open"
+        return "opened", False
+    return "already_open", False
 
 
 def _source_row(workspace_id: str, folder: Path) -> dict[str, Any]:

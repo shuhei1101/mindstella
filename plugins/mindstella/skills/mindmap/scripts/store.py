@@ -950,6 +950,38 @@ def source_schema_files() -> list[str]:
     return [COMMON_SCHEMA, *(spec.schema for spec in KINDS.values())]
 
 
+def sync_source_schemas(root: Path) -> list[str]:
+    """配信の設定が指すスキーマの複製を、プラグインのスキーマと比べて無いか違うファイルだけ書き直す。"""
+    records = records_root(root)
+    copies = records / SOURCE_SCHEMA_DIR
+    written: list[str] = []
+    try:
+        copies.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise WriteFailedError(f"スキーマの複製を書けません: {copies}: {error.strerror or error}") from error
+    for name in source_schema_files():
+        target = copies / name
+        content = (SCHEMA_DIR / name).read_bytes()
+        # 中身が同じ複製: 書かない
+        if target.is_file() and target.read_bytes() == content:
+            continue
+        # 無いか違う複製: 一時ファイルに書いてから置き換える
+        temp: Path | None = None
+        try:
+            temp = _write_temp(target, content.decode("utf-8"))
+            os.replace(temp, target)
+        except OSError as error:
+            # 置き換えられなかった一時ファイルは残さない
+            if temp is not None:
+                _remove_files([temp])
+            raise WriteFailedError(
+                f"スキーマの複製を書けません: {target}: {error.strerror or error}"
+            ) from error
+        written.append(f"{records.name}/{SOURCE_SCHEMA_DIR}/{name}")
+    # 複製の側にだけあるファイルは、配信の設定が指さないので消さない
+    return written
+
+
 def _remember_valid(root: Path, written: list[tuple[Path, str]]) -> None:
     """検証を済ませて書き込んだファイルを、中身の要約と問題 0 件で記録する。"""
     for path, text in written:

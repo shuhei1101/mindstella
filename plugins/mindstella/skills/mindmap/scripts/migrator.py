@@ -29,6 +29,7 @@ from store import (
     build_mismatch_error,
     dump_yaml,
     load_workspace,
+    sync_source_schemas,
     validate_workspace,
     write_failed,
     write_temp,
@@ -102,6 +103,8 @@ class MigrationReport:
     provisional: list[dict[str, str]] = field(default_factory=list)
     # 移せずに記録から消えた値（`{item, key, value}`）
     not_carried: list[dict[str, str]] = field(default_factory=list)
+    # 書き直したスキーマの複製のワークスペースからのパス
+    schemas: list[str] = field(default_factory=list)
 
 
 def list_versions(*, migrations_dir: Path = MIGRATIONS_DIR) -> list[Version]:
@@ -216,11 +219,11 @@ def apply_migration(
 
 
 def migrate(root: Path, *, to_version: Version | None = None) -> MigrationReport:
-    """手順を当て、値が要るキーに仮の値を入れ、版を書く。当てる手順が無く版が同じなら何も書かない。"""
+    """手順を当て、値が要るキーに仮の値を入れ、版を書き、スキーマの複製をそろえる。"""
     report = apply_migration(root, to_version=to_version, migrations_dir=MIGRATIONS_DIR)
-    # 当てる手順が無く、版が同じ: 何も書かない
+    # 当てる手順が無く、版が同じ: スキーマの複製だけをそろえる
     if not report.steps and report.relation == "same":
-        return report
+        return replace(report, schemas=sync_source_schemas(root))
     # プラグインの版より前までを当てた: 仮の値も版も書かない
     if to_version is not None and to_version < report.plugin_version:
         return report
@@ -241,11 +244,14 @@ def migrate(root: Path, *, to_version: Version | None = None) -> MigrationReport
         if report.backup is not None:
             restore_backup(root, report.backup)
         raise
+    # 版を書いた後なので、スキーマの複製が書けなくても写しから戻さない
+    schemas = sync_source_schemas(root)
     return replace(
         report,
         recorded=recorded,
         provisional=provisional,
         not_carried=[_not_carried_of(line) for line in report.reports],
+        schemas=schemas,
     )
 
 
