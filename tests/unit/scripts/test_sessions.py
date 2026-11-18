@@ -140,6 +140,7 @@ def stopped_notices(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str]]:
         notify,
         "notify_stopped",
         lambda workspace_id, reason, _describe, **_kwargs: notices.append((workspace_id, reason)),
+        raising=False,
     )
     return notices
 
@@ -916,6 +917,7 @@ def test_notify_stopped(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -
         lambda workspace_id, reason, describe, **_kwargs: received.append(
             (workspace_id, reason, describe)
         ),
+        raising=False,
     )
     # 実行
     sessions.notify_stopped(ctx, WORKSPACE_ID, "crashed")
