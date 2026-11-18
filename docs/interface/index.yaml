@@ -138,3 +138,5 @@ items:
     summary: MindStella のセッションを、同じ ID のまま止めて起動し直す（API・利用上限・圧縮・落ちた後のコメント）
   - page: IF-582-2.yaml
     summary: 起動中の MindStella のセッションを一定の間隔で見回り、落ちていれば記録して通知する
+  - page: IF-587-1.yaml
+    summary: ワークスペースのファイルのフォルダのファイルを `/files/` の下で配る（範囲の要求に対応）

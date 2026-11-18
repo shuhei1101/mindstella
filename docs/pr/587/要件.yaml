@@ -38,7 +38,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-540-1.yaml
     impact: changed
-    detail: ファイルのフォルダへの配置・差し替え・削除を項目の変更として記録せず、Git のリポジトリのワークスペースでは外部の変更のまとまりの自動の commit にファイルを含める。Git 管理外のワークスペースでは commit だけをしない
+    detail: ファイルのフォルダへの配置・差し替え・削除を、項目の変更として記録せず、書き換えのまとまりも作らない。Git のリポジトリの中でも Git 管理外でも同じに動き、ワークスペースの Git は操作しない
     depends_on:
       - docs/scenario/SC-587-1.yaml
   - kind: single
@@ -63,11 +63,11 @@ docs:
     status: todo
   - page: docs/guide/プレビューを見る.md
     new: false
-    change: 資料に埋め込んだ動画・音声を画面で再生できることと、書き出しの扱いを追加する
+    change: 資料に埋め込んだ動画・音声を画面で再生できることを追加する
     status: todo
   - page: docs/guide/コマンド.md
     new: false
-    change: ファイルの配信のエンドポイントを追加し、書き出しのツールの出力が変われば修正する
+    change: ファイルの配信のエンドポイントを追加する
     status: todo
   - page: plugins/mindstella/agent-flows/record.yaml
     new: false
