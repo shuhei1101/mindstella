@@ -13,26 +13,26 @@ from typing import Any
 import yaml
 
 import commands
+import migrator
 import project_index
+import read_point
 import sessions
 import state
-from errors import ApiError
+from errors import ApiError, SchemaMismatchError, StepFailedError, WorkspaceNewerError
 from kinds import LEGACY_SETTINGS_FILE, SETTINGS_FILE, records_root
-from readme import README_FILE
+from migration_ops import describe_step
 from project_index import ProjectIndexError
+from readme import PLUGIN_DIR, README_FILE
 from state import LaunchOptions
-from store import UPGRADE_HINT
+from store import workspace_lock
 
 logger = logging.getLogger("mindstella.workspaces")
 
-# 記録の無いフォルダの config.yaml の playbooks
-DEFAULT_PLAYBOOK = "壁打ち"
+# project-index に登録するエージェントフローの配信元の ID
+AGENT_FLOWS_SOURCE = "mindstella-agent-flows"
 
-# プレイブック『壁打ち』のフェーズ
-DEFAULT_PHASES = ["問い", "発散", "整理", "絞り込み", "結論"]
-
-# target_label の既定
-DEFAULT_TARGET_LABEL = "対象"
+# エージェントフローの配信元の設定（プラグインのフォルダから）
+AGENT_FLOWS_CONFIG = Path("agent-flows") / "dev-docs.yaml"
 
 # ユーザー配下のプラグインの MCP と重なるため、追加の MCP に使えない名前
 RESERVED_MCP_NAMES = {"mindstella", "project-index"}
@@ -164,17 +164,17 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
             f"許可するフォルダの外です: {folder}（端末の設定の mindstella.allowed_dirs に親のフォルダを書いてください）",
         )
     records = records_root(folder)
-    # 移す前の形のワークスペース: 移し替えを案内する
-    if not records.is_dir() and (
-        (folder / SETTINGS_FILE).exists() or (folder / LEGACY_SETTINGS_FILE).exists()
-    ):
-        raise ApiError(409, "unmigrated", UPGRADE_HINT.replace("{root}", str(folder)))
     options = validate_options(mcp_config, plugin_dirs)
+    migration: dict[str, Any] | None = None
 
     with ctx.locks.for_folder(folder):
-        exists = (records / SETTINGS_FILE).is_file()
+        legacy = (folder / SETTINGS_FILE).exists() or (folder / LEGACY_SETTINGS_FILE).exists()
+        exists = (records / SETTINGS_FILE).is_file() or legacy
         workspace_id = workspace_id_of(folder)
         with ctx.locks.for_workspace(workspace_id):
+            # 記録がある: 開く前に今の形式へ移し替える
+            if exists:
+                migration = _migrate(ctx, folder)
             # 記録が無いときだけ、進め方の文書を確かめてから記録を作る
             if not exists:
                 if flow is not None:
@@ -213,6 +213,7 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
                 )
                 raise ApiError(502, "source", detail) from error
             state.add_id(ctx.state_root, workspace_id)
+            ensure_agent_flows_source(ctx, allowed)
     url = commands.run_preview_url(folder, ctx.previews)["url"]
     if result != "already_open":
         logger.info(
@@ -223,8 +224,63 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
                 "launch_options_recorded": recorded,
             },
         )
-    body = {"id": workspace_id, "url": url, "result": result, "launch_options_recorded": recorded}
+    body = {
+        "id": workspace_id,
+        "url": url,
+        "result": result,
+        "launch_options_recorded": recorded,
+        "migration": migration,
+    }
     return (201 if result == "created" else 200), body
+
+
+def ensure_agent_flows_source(ctx: Any, allowed_dirs: list[Path]) -> None:
+    """project-index に配信元 `mindstella-agent-flows` の行が無ければ足す（失敗してもワークスペースの作成は止めない）。"""
+    try:
+        # 行がある: 何もしない
+        if _find_row(project_index.get_settings(ctx.pi_port), AGENT_FLOWS_SOURCE) is not None:
+            return
+        read = [path for base in allowed_dirs for path in (str(base), f"{base}/**")]
+        project_index.add_source(
+            ctx.pi_port,
+            {
+                "id": AGENT_FLOWS_SOURCE,
+                "config": str(PLUGIN_DIR / AGENT_FLOWS_CONFIG),
+                "scope": {"read": read},
+                "outside_read": True,
+            },
+        )
+    except ProjectIndexError as error:
+        logger.warning(
+            "mindstella.agent_flows.register_failed",
+            extra={"status": error.status, "reason": error.detail},
+        )
+
+
+def _migrate(ctx: Any, folder: Path) -> dict[str, Any] | None:
+    """記録を今の形式へ移し替え、移し替えたら報告を状態のフォルダに残して応答の形で返す。"""
+    try:
+        with workspace_lock(folder, threading.Lock(), require=migrator.require_migratable):
+            report = migrator.migrate(folder)
+    except WorkspaceNewerError as error:
+        raise ApiError(409, "version", str(error)) from error
+    except (StepFailedError, SchemaMismatchError) as error:
+        detail = "\n".join([str(error), *error.lines])
+        raise ApiError(422, "migration", detail) from error
+    # 当てる手順が無かった: 移し替えていない
+    if not report.steps:
+        return None
+    read_point.save_migration_report(
+        folder,
+        {"not_carried": report.not_carried, "provisional": report.provisional},
+        state_root=ctx.state_root,
+    )
+    return {
+        "from_version": None if report.workspace_version is None else str(report.workspace_version),
+        "to_version": str(report.recorded or report.plugin_version),
+        "steps": [f"{step.version} #{step.index}: {describe_step(step)}" for step in report.steps],
+        "not_carried": report.not_carried,
+    }
 
 
 def close_workspace(workspace_id: str, ctx: Any) -> dict[str, Any]:
@@ -316,11 +372,6 @@ def _default_settings(
     settings.update(
         {
             "summary": folder.name,
-            "playbooks": [DEFAULT_PLAYBOOK],
-            "target_label": DEFAULT_TARGET_LABEL,
-            "phases": list(DEFAULT_PHASES),
-            "targets": [],
-            "categories": [],
         }
     )
     return settings

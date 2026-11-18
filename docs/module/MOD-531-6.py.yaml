@@ -252,10 +252,9 @@ functions:
       type: str
       description: 注入文
     process: |-
-      1. `source` が `startup` なら `$trigger` を `起動`、それ以外は `再開` にする
-      2. `status` があれば、取り込み待ちの件数・変わった項目・消した項目・要見直し・進行中を `{ID} {要約}` の箇条書きにし、`{キー}_more` が 1 以上なら「ほか {n} 件」を続ける。`changed_more`・`removed_more` が 1 以上なら `changes_since_read` を呼ぶ案内を続ける。移し替えの報告があれば仮の値と移せなかった値を続ける。無ければ状況の段を空にする
-      3. `flow` があれば進め方の文書の場所を入れる
-      4. `PROMPT_FILE` を `string.Template.safe_substitute` で埋めて返す（次の候補・スキルの呼び方は持たない）
+      1. `source` が `startup` なら `{trigger}` を `起動`、それ以外は `再開` にする
+      2. `FALLBACK_LINES` の行を並べ、`flow` が `None` なら進め方の文書の行を除く
+      3. `str.format` で `{trigger}`・`{flow}` を埋め、改行でつないで返す（状況・次の候補・スキルの呼び方は持たない）
     unit_tests:
       - name: test_fallback_context
         case: 正常

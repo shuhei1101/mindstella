@@ -79,6 +79,22 @@ def build_routes(ctx: Any) -> list[Route]:
         )
         return JSONResponse({"recorded": recorded})
 
+    async def resume_status(request: Request) -> Response:
+        """再開の状況を返す。"""
+        body = await _json_body(request, required=True)
+        result = await run_in_threadpool(
+            sessions.resume_status, request.path_params["session"], body, ctx
+        )
+        return JSONResponse(result)
+
+    async def advance_read_point(request: Request) -> Response:
+        """前回参照した時点を進める。"""
+        body = await _json_body(request, required=True)
+        result = await run_in_threadpool(
+            sessions.advance_read_point, request.path_params["session"], body, ctx
+        )
+        return JSONResponse(result)
+
     def guarded(
         handler: Callable[[Request], Awaitable[Response]],
     ) -> Callable[[Request], Awaitable[Response]]:
@@ -113,6 +129,10 @@ def build_routes(ctx: Any) -> list[Route]:
         Route("/workspaces/{id}/sessions/{session}", guarded(stop_session), methods=["DELETE"]),
         Route("/workspaces/{id}/close", guarded(close_workspace), methods=["POST"]),
         Route("/_admin/sessions/{session}/events", guarded(record_event), methods=["POST"]),
+        Route("/_admin/sessions/{session}/resume", guarded(resume_status), methods=["POST"]),
+        Route(
+            "/_admin/sessions/{session}/read_point", guarded(advance_read_point), methods=["POST"]
+        ),
     ]
 
 

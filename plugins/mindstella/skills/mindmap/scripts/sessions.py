@@ -19,9 +19,11 @@ import yaml
 
 import commands
 import notify
+import read_point
+import resume
 import state
 import workspaces
-from errors import ApiError
+from errors import ApiError, ArgumentError
 from inject_session import process_started_at
 from kinds import SETTINGS_FILE, records_root
 from state import LaunchOptions, SessionState
@@ -67,9 +69,6 @@ EXIT_INPUT = "/exit"
 
 # あるとみなす状態
 ALIVE_STATUSES = ("running", "stopping")
-
-# 起動時の指示のファイル（プラグインのフォルダから）
-STARTUP_PROMPT_FILE = Path("skills") / "mindmap" / "references" / "起動時の指示.md"
 
 # 追加の MCP を書く一時ファイルの名前（状態のフォルダのワークスペースのフォルダの下）
 MCP_CONFIG_FILE = "mcp-config.json"
@@ -136,7 +135,6 @@ def new_session_id() -> str:
 def build_command(
     options: LaunchOptions | None,
     mcp_config_file: Path | None,
-    startup_prompt: str,
     balancer: str | None,
 ) -> list[str]:
     """ペインで動かすコマンドの引数の並びを作る。"""
@@ -145,7 +143,6 @@ def build_command(
         claude += ["--mcp-config", str(mcp_config_file)]
     for folder in options.plugin_dirs if options is not None else []:
         claude += ["--plugin-dir", folder]
-    claude += ["--append-system-prompt", startup_prompt]
     # claude-balancer がある: アカウントを借りて起動する
     if balancer is not None:
         return [balancer, "exec", "--client", BALANCER_CLIENT, "--", *claude]
@@ -256,7 +253,6 @@ def create_session(
         command = build_command(
             options,
             _write_mcp_config(ctx.state_root, workspace_id, options),
-            (Path(ctx.plugin_root) / STARTUP_PROMPT_FILE).read_text(encoding="utf-8"),
             balancer,
         )
         env = build_env(
@@ -434,6 +430,48 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
     ):
         notify_stopped(ctx, workspace_id, "session_ended")
     return True
+
+
+# 再開の状況の本文の `source` に受ける値
+RESUME_SOURCES = ("startup", "resume", "clear", "compact")
+
+
+def resume_status(session_id: str, body: dict[str, Any], ctx: Any) -> dict[str, Any]:
+    """`session` のワークスペースの再開の状況を、ワークスペースごとの鍵の中でまとめる（何も書かない）。"""
+    source = body.get("source")
+    if source not in RESUME_SOURCES:
+        raise ApiError(400, "source", f"source は {', '.join(RESUME_SOURCES)} のどれかにしてください")
+    workspace_id, folder = _session_workspace(ctx, session_id)
+    with ctx.locks.for_workspace(workspace_id):
+        return resume.summarize_resume(folder, source, state_root=ctx.state_root)
+
+
+def advance_read_point(session_id: str, body: dict[str, Any], ctx: Any) -> dict[str, Any]:
+    """`session` のワークスペースの前回参照した時点を、ワークスペースごとの鍵の中で進める。"""
+    until_seq = body.get("until_seq")
+    # 整数でない（真偽値も受けない）
+    if isinstance(until_seq, bool) or not isinstance(until_seq, int):
+        raise ApiError(400, "until_seq", "until_seq は整数にしてください")
+    workspace_id, folder = _session_workspace(ctx, session_id)
+    with ctx.locks.for_workspace(workspace_id):
+        try:
+            read_seq = read_point.advance_read_seq(folder, until_seq, state_root=ctx.state_root)
+        except ArgumentError as error:
+            raise ApiError(400, "until_seq", str(error)) from error
+    return {"read_seq": read_seq}
+
+
+def _session_workspace(ctx: Any, session_id: str) -> tuple[str, Path]:
+    """MindStella のセッションを持つワークスペースの ID とフォルダを返す。無ければ 404。"""
+    workspace_id = _find_workspace_of(ctx.state_root, session_id)
+    row = (
+        workspaces.find_workspace_row(ctx.pi_port, workspace_id)
+        if workspace_id is not None
+        else None
+    )
+    if workspace_id is None or row is None:
+        raise ApiError(404, "session", f"MindStella のセッションがありません: {session_id}")
+    return workspace_id, workspaces.workspace_folder(row)
 
 
 def _describe_workspace(ctx: Any, workspace_id: str) -> tuple[str, str | None] | None:
