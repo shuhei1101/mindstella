@@ -169,12 +169,17 @@ class InputTargets:
         current = None
         if self._state_root is not None and self._workspace_id is not None:
             current = state.read_session(self._state_root, self._workspace_id(root.resolve()))
-        # MindStella のセッションが無い・貼れる状態: 起動し直さずに入力する
-        if current is None or current.status == DELIVERABLE_STATUS:
+        # MindStella のセッションが無い: 起動し直さずに入力する
+        if current is None:
             return self.enter(root, count), False
-        # クローズ待ち・起動し直せない: 入力しない
-        if current.close_pending or self._restarter is None:
+        # 起動し直しの途中・クローズ待ち・起動し直せない: 入力せずスレッドに残す
+        if current.status == "restarting" or current.close_pending or self._restarter is None:
             return False, False
+        # 貼れる状態: 入力できればそのまま（落ちていて貼れなければ起動し直す）
+        if current.status == DELIVERABLE_STATUS:
+            entered = self.enter(root, count)
+            if entered:
+                return True, False
         if not self._restarter(root):
             return False, False
         return self.enter(root, count), True

@@ -261,8 +261,17 @@ def main(
 
 
 def _restart_for_comment(root: Path, context: ServerContext) -> bool:
-    """コメントの契機で MindStella のセッションを起動し直し、準備ができたかを返す。"""
+    """落ちていればコメントの契機で MindStella のセッションを起動し直し、準備ができたかを返す。"""
     workspace_id = workspaces.workspace_id_of(root)
+    # running で生きている（貼れなかったのは別の理由）: 起動し直さない
+    if sessions.is_alive(
+        context.state_root,
+        workspace_id,
+        context.tmux,
+        context.proc,
+        on_crashed=lambda: sessions.notify_stopped(context, workspace_id, "crashed"),
+    ):
+        return False
     if not sessions.request_restart(workspace_id, "comment", context):
         return False
     return sessions.wait_until_running(workspace_id, context)
