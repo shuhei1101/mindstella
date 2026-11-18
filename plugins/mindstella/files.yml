@@ -1577,6 +1577,17 @@ files:
   related:
   - to: MOD-489-190
     type: implements
+- path: skills/mindmap/scripts/files_serve.py
+  name: ワークスペースのファイルの配信
+  description: ワークスペースのファイルのフォルダのパスの解決・Range の解釈・返却する範囲の決定・分けた書き出し。`/files/` で返却するファイルや範囲の扱いを変更するときに読む。
+  tags:
+  - topic:http
+  - topic:プレビュー
+  - topic:配信
+  - topic:ファイル
+  related:
+  - to: MOD-587-1
+    type: implements
 - path: skills/mindmap/scripts/graph.py
   name: 依存と影響
   description: 依存をたどって、影響・次の候補・再開時の状況を出す（読むだけで、ファイルを書かない）。影響・次の候補・再開時の状況の求め方を変更するときに読む。
