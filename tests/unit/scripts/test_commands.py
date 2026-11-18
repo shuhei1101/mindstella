@@ -17,6 +17,7 @@ import commands
 import errors
 import history
 import read_point
+import readme
 import store
 from errors import (
     ArgumentError,
