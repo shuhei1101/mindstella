@@ -11,4 +11,4 @@
   切り戻し: 常駐サーバーの依存の追加/切り戻し.sh
   失敗時: 既定の対処を 1 回、2 回連続で失敗したら依頼元へ返す
   確認方法: 作業 PR の check_env.py（python3 plugins/mindstella/skills/mindmap/scripts/check_env.py）が終了コード 0 で、出力の Jinja2 の ok が true
-  状態: 未
+  状態: 済
