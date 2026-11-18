@@ -523,12 +523,18 @@ functions:
         required: true
         passing: positional
         description: ワークスペースのフォルダ
+      - name: to_version
+        type: Version | None
+        required: false
+        passing: keyword
+        description: この版以下の手順を当てる。省くとプラグインの版。プラグインの版より前の版を渡したときは、仮の値を入れず版を書かない（結合テストが手順を 1 つずつ当てるときに渡す）
     returns:
       type: MigrationReport
       description: 当てた手順・写し・書いた版・仮の値・移せなかった値。当てる手順が無ければ `steps` が空
     process: |-
-      1. 手順を当てる（`apply_migration`。版が新しいときは `WorkspaceNewerError` が伝わる）
+      1. `to_version` までの手順を当てる（`apply_migration`。版が新しいときは `WorkspaceNewerError` が伝わる）
          - 当てる手順が無く、版が同じ場合、何も書かずに返す
+         - `to_version` がプラグインの版より前の場合、当てた結果をそのまま返す
       2. 値が要るキーに仮の値を入れる（`set_values`。`summary` はフォルダの名前、ほかのキーは空文字）。入れた値を `provisional` にする
       3. 版を書く（`record_version`）
          - `SchemaMismatchError`・`WriteFailedError` の場合、写しから戻し（`restore_backup`）てそのまま送る
@@ -569,3 +575,9 @@ functions:
         condition: '`D-1: scope: 社内` と `その他の行` を報告する `call` の手順を持つ版のフォルダ'
         mock: '`read_plugin_version`'
         expected: '`not_carried` が `[{item: D-1, key: scope, value: 社内}, {item: "", key: "", value: その他の行}]`'
+      - name: test_migrate_when_to_version_before_plugin
+        case: 正常
+        summary: プラグインの版より前までの手順だけを当て、版を書かない
+        condition: 版 `v0.13.0` のワークスペースに `to_version=v0.14.0`（手順の置き場所は `v0.14.0` だけを持つ）
+        mock: '`read_plugin_version`（`v0.15.0`）'
+        expected: '`steps` が全て `v0.14.0`、`recorded` が `None`、`provisional` が空で、版のファイルが `v0.13.0` のまま'

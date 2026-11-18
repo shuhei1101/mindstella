@@ -238,7 +238,7 @@ flows:
       ```
     expected:
       - 例外になる
-      - '例外のメッセージが `エラー: v0.3.0 の手順 3（set_default）: ` で始まり、`mindmap.yaml` がある'
+      - '例外のメッセージが `v0.3.0 の手順 3（set_default）: ` で始まり、`mindmap.yaml` がある'
       - 手順 1・2 が書き換えた `docs.yaml` を含め、ワークスペースの全てのファイルの中身が呼ぶ前と同じ
       - 'ワークスペースの全てのファイルの中身が呼ぶ前と同じ（バージョンのファイルを書いていない）'
     test: test_error_when_step_fails

@@ -215,11 +215,14 @@ def apply_migration(
     )
 
 
-def migrate(root: Path) -> MigrationReport:
+def migrate(root: Path, *, to_version: Version | None = None) -> MigrationReport:
     """手順を当て、値が要るキーに仮の値を入れ、版を書く。当てる手順が無く版が同じなら何も書かない。"""
-    report = apply_migration(root, migrations_dir=MIGRATIONS_DIR)
+    report = apply_migration(root, to_version=to_version, migrations_dir=MIGRATIONS_DIR)
     # 当てる手順が無く、版が同じ: 何も書かない
     if not report.steps and report.relation == "same":
+        return report
+    # プラグインの版より前までを当てた: 仮の値も版も書かない
+    if to_version is not None and to_version < report.plugin_version:
         return report
     # 題名はフォルダの名前、ほかのキーは空文字を仮の値にする
     provisional = [
