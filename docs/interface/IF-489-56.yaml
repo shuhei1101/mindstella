@@ -2,7 +2,7 @@ id: IF-489-56
 title: "起動のコマンド"
 entry:
   kind: operation
-  value: '`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ} [--flow {配信元の ID}#{文書の ID}] [--mcp-config {ファイル}] [--plugin-dir {フォルダ}]...`・`mindstella server {status|stop|restart}`（利用者が端末で叩くシェルスクリプト。引数・環境変数・標準出力・標準エラー・終了コード）'
+  value: '`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ} [--flow {配信元の ID}#{文書の ID}] [--mcp-config {ファイル}] [--plugin-dir {フォルダ}]...`・`mindstella server {status|stop|restart}`・`mindstella register {show|set|add-account|remove-account|remove}`（利用者が端末で叩くシェルスクリプト。引数・環境変数・標準出力・標準エラー・終了コード）'
 flows:
   - name: 正常系
     summary: 依存がそろっていれば、常駐サーバーが落ちていれば起動してから、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐコマンドを返す
@@ -533,6 +533,12 @@ request:
     required: false
     default: なし（常駐サーバーへ渡さない）
     description: '環境変数。文字起こしのサービスの待ち受けの URL（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
+  - name: register {show|set|add-account|remove-account|remove}
+    type: サブコマンド
+    required: false
+    default: なし
+    location: argument
+    description: 起動スクリプトを呼ぶ alias と環境変数を、ログインシェルの設定に登録・読み返し・外す。ワークスペースのフォルダの代わりに渡す。引数と結果は『起動スクリプトの登録』
 response:
   - name: 標準出力
     type: str
@@ -593,6 +599,8 @@ constraints:
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
   - item: server のサブコマンド
     constraint: '`status` は `GET /_admin/status` を読んで出す（待ち受けていなければ終了コード 1）。`stop` は `systemctl --user stop mindstella.service`。`restart` は、`installPath` の `ensure_server.py` を `--restart` で呼ぶ（ユニットを `installPath` のフォルダで書き直してから起動し直す。『常駐サーバーの起動の確認』の「起動し直し」）'
+  - item: register のサブコマンド
+    constraint: システムの `python3` でプラグインの登録のスクリプトを呼ぶ。依存の確認・常駐サーバーの起動・MindStella の API は呼ばない（『起動スクリプトの登録』の制約「動く Python」）。スクリプトの置き場所はモジュール構成設計で決める
 refs:
   - IF-489-27#
   - IF-489-1#
@@ -601,6 +609,7 @@ refs:
   - LIB-489-4#
   - IF-531-1#
   - IF-531-2#
+  - IF-489-67#
 notes:
   置き場所: プラグインの `bin/` に置き、インストールした版のフォルダから叩く。利用者は `claude plugin list --json` の `installPath` から場所を引く（手順は公開ドキュメント『起動スクリプトで立ち上げる』）か、インターフェース定義『起動スクリプトの登録』で登録した `mindstella`・`mindstella-{名前}` から叩く
 test_file: tests/integration/server/test_launch.py

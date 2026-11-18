@@ -2,7 +2,7 @@ id: IF-489-67
 title: "起動スクリプトの登録"
 entry:
   kind: operation
-  value: '`python3 {プラグインのフォルダ}/skills/setup/scripts/register.py {show|set|add-account|remove-account|remove} [オプション]`（セットアップのスキルが Bash で呼ぶコマンド。引数・環境変数・標準出力の JSON・終了コード）'
+  value: '`{プラグインのフォルダ}/bin/mindstella register {show|set|add-account|remove-account|remove} [オプション]`（起動のコマンドのサブコマンド。利用者が公開ドキュメントのインストールの手順で叩く。引数・環境変数・標準出力の JSON・終了コード）'
 flows:
   - name: 正常系（登録する）
     summary: 未登録のホームに、起動スクリプトを呼ぶ `mindstella` と環境変数を登録する
@@ -15,7 +15,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as register.py
+        participant IF as mindstella register
         participant FS as ホームのフォルダ
 
         クライアント->>IF: set --env MINDSTELLA_ALLOWED_HOSTS=preview.example.com
@@ -41,7 +41,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as register.py
+        participant IF as mindstella register
 
         クライアント->>IF: show
         IF-->>クライアント: 登録の JSON、終了コード 0
@@ -63,7 +63,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as register.py
+        participant IF as mindstella register
         participant FS as ホームのフォルダ
 
         クライアント->>IF: set --env MINDSTELLA_ALLOWED_HOSTS=b.example.com
@@ -85,7 +85,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as register.py
+        participant IF as mindstella register
         participant FS as ホームのフォルダ
 
         クライアント->>IF: set --env MINDSTELLA_TRANSCRIBER=voice-paste --env MINDSTELLA_TRANSCRIBER_URL=http://127.0.0.1:47900
@@ -108,7 +108,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as register.py
+        participant IF as mindstella register
         participant FS as ホームのフォルダ
 
         クライアント->>IF: add-account --name sub1 --config-dir ~/.claude-sub1
@@ -131,7 +131,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as register.py
+        participant IF as mindstella register
         participant FS as ホームのフォルダ
 
         クライアント->>IF: remove
@@ -154,7 +154,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as register.py
+        participant IF as mindstella register
 
         クライアント->>IF: set --env PATH=/tmp
         IF-->>クライアント: 使い方、終了コード 2
@@ -175,7 +175,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as register.py
+        participant IF as mindstella register
         participant FS as ホームのフォルダ
 
         クライアント->>IF: set
@@ -188,11 +188,11 @@ flows:
       - '`error` に `~/.bashrc` に書き込めない旨があり、`manual_lines` に印の範囲と alias `mindstella` の定義の行がある'
       - '`registration.json`・`shell.sh` が無く、`~/.bashrc` の中身が呼ぶ前と同じ'
     test: test_error_when_not_writable
-lead: 起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{アカウントの名前}`（シェルの関数で定義する）と、起動スクリプトが読む環境変数を、ログインシェルの設定に登録・読み返し・外すスクリプト。MCP のツールも mindstella の仮想環境も使わず、システムの `python3` の標準ライブラリだけで動く。
+lead: 起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{アカウントの名前}`（シェルの関数で定義する）と、起動スクリプトが読む環境変数を、ログインシェルの設定に登録・読み返し・外す、起動のコマンドのサブコマンド。MCP のツールも mindstella の仮想環境も使わず、システムの `python3` の標準ライブラリだけで動く。
 idempotent: true
 side_effects: '`set`・`add-account`・`remove-account` は `{XDG_CONFIG_HOME か ~/.config}/mindstella/` の `registration.json` と `shell.sh` を書き、ログインシェルの設定ファイルに `shell.sh` を読み込む印つきの範囲が無ければ末尾に足す。`remove` はその 2 つのファイルと印つきの範囲を消す。`show` は何も書かない。ワークスペースは書かない'
 callers:
-  - IF-489-64#
+  - IF-489-56#
 request:
   - name: '{サブコマンド}'
     type: Literal['show', 'set', 'add-account', 'remove-account', 'remove']
@@ -319,4 +319,4 @@ refs:
   - SC-489-42#
   - IF-489-56#
   - LIB-489-4#
-test_file: tests/integration/skill/test_register.py
+test_file: tests/integration/server/test_register.py

@@ -1,134 +1,149 @@
 id: IF-489-32
-title: "再開時の状況"
+title: 再開の状況
 entry:
-  kind: mcp_tool
-  value: '`status`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__status`）。結果とエラーの返し方は『MCP サーバーの起動』'
-flows:
-  - name: 正常系
-    summary: 要見直し・進行中・再開可能・決定待ち・そのほかの保留・次の候補を分けて返す
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: make_workspace
-        description: 次の項目を持つワークスペース
-        notes: 'D-1 `要見直し`／T-1 `進行中`／D-2 `保留`・`depends_on: [D-3]`／D-3 `決定済み`／D-4 `保留`・`depends_on: [D-5]`／D-5 `未決定`／D-6 `保留`・`depends_on` なし・`reason: 予算が決まったら`'
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as status（MCP のツール）
-        participant WS as ワークスペース
-
-        クライアント->>IF: status workspace
-        IF-->>WS: 全ての YAML を読む
-        IF->>IF: 状態と依存で分ける
-        IF-->>クライアント: JSON
-      ```
-    expected:
-      - ツールのエラーにならない
-      - '`needs_review` が D-1、`in_progress` が T-1、`resumable` が D-2'
-      - '`waiting` が D-4（`waiting_for: [D-5]`）'
-      - '`on_hold` が D-6（`reason` つき）'
-      - '`next` が D-5'
-    test: test_normal
-  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: .mindstella/config.yaml が無いフォルダを指すとエラーで終わる
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as status（MCP のツール）
-        participant WS as フォルダ
-
-        クライアント->>IF: status workspace
-        IF-->>WS: .mindstella/config.yaml が無い
-        IF-->>クライアント: ツールのエラー
-      ```
-    expected:
-      - ツールのエラーになる
-      - エラーの本文にフォルダのパスがある
-    test: test_error_when_workspace_not_found
-  - name: 異常系（版が古いワークスペース・WorkspaceNotFoundError）
-    summary: '`mindmap.yaml` だけを持つフォルダを指すと、移し替えを案内するエラーで終わる'
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: 版が古いワークスペース
-        description: '`mindmap.yaml` と種類ごとの YAML があり、`config.yaml` が無いフォルダ'
-        notes: YAML を直接書いて作る。`migrate` 以外のツールの代表として `status` で確かめる
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as status（MCP のツール）
-        participant WS as フォルダ
-
-        クライアント->>IF: status workspace
-        IF-->>WS: config.yaml は無いが mindmap.yaml がある
-        IF-->>クライアント: ツールのエラー
-      ```
-    expected:
-      - ツールのエラーになる
-      - エラーの本文に `/mindstella:upgrade` がある
-      - フォルダの全てのファイルの中身が呼ぶ前と同じ
-    test: test_error_when_old_settings_file
-lead: 話し合いを再開するときに読む状況（要見直し・進行中・再開可能・決定待ち・そのほかの保留・次の候補）をまとめて返す。
-idempotent: true
-side_effects: なし（読むだけ）
+  kind: endpoint
+  value: POST `/_admin/sessions/{session}/resume`
+lead: MindStella のセッションの SessionStart のフックが呼び、起動と再開の注入に入れる状況（取り込み待ちのスレッドの件数・前回参照した後に変わった項目・要見直しの検討事項・進行中の作業）を返し、前回参照した時点を今の通し番号に書き換える。
+idempotent: false
+side_effects: 状態のフォルダの `workspaces/{ワークスペースの ID}/read_point.json` の `read_seq` を、呼んだときの `changes.yaml` の `last_seq` に書き換える（D-326）。ワークスペースの記録は書き換えない
 request:
-  - name: workspace
+  - name: session
     type: str
     required: true
-    location: argument
-    description: ワークスペースのフォルダのパス
-    constraints: '`.mindstella/config.yaml` があるフォルダ'
+    location: path
+    description: MindStella のセッションの ID（フックが `MINDSTELLA_SESSION` から入れる）
+  - name: source
+    type: Literal['startup', 'resume', 'clear', 'compact']
+    required: true
+    location: body
+    description: SessionStart の `source`。`startup` を起動、それ以外を再開として返す
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
 response:
+  - name: trigger
+    type: Literal['startup', 'resume']
+    description: 起動の契機。`source` が `startup` なら `startup`、それ以外は `resume`
+  - name: awaiting_threads
+    type: int
+    description: 取り込み待ちのスレッド（AI が取り込んでいない利用者の書き込みを持つスレッド）の件数
+  - name: changed[]
+    type: list[{id, kind, title, updated_by}]
+    description: 前回参照した後（`read_seq` より後）に足した・変えた項目の ID と要約。前の値は返さない（『前回読んだ時点からの変更』で取得する）。前回参照した時点が無いときは空
+  - name: removed[]
+    type: list[{id, kind, title}]
+    description: 前回参照した後に消した項目
   - name: needs_review[]
     type: list[{id, title}]
     description: 状態が `要見直し` の検討事項
   - name: in_progress[]
     type: list[{id, title}]
     description: 状態が `進行中` のタスク
-  - name: resumable[]
-    type: list[{id, title}]
-    description: 状態が `保留` で、`depends_on` が 1 つ以上あり全て決着した検討事項・タスク
-  - name: waiting[].id
-    type: str
-    description: 状態が `保留` で、`depends_on` に未完了が残る検討事項・タスクの ID
-  - name: waiting[].title
-    type: str
-    description: タイトル
-  - name: waiting[].waiting_for
-    type: list[str]
-    description: 未完了の `depends_on` の ID
-  - name: on_hold[]
-    type: list[{id, title, reason}]
-    description: 状態が `保留` で `depends_on` を持たない検討事項・タスク（再開できるかは `reason` を読んでスキルが判断する）
-  - name: next[]
-    type: list[{id, title, phase, weight, followers}]
-    description: 次の候補の先頭 3 件（次の候補と同じ選び方・並べ方）
-exceptions:
-  - name: なし（正常終了）
-    condition: 状況をまとめられた
-    notes: 結果を返す
-  - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
-    notes: ツールのエラー。`mindmap.yaml` だけがあるときは、本文で `/mindstella:upgrade` での移し替えを案内する（『MCP サーバーの起動』の制約「ワークスペース」）
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
+  - name: flow
+    type: '{source, doc} | None'
+    description: ワークスペースの設定の進め方の文書。無ければ `null`
+  - name: migration
+    type: '{not_carried, provisional} | None'
+    description: この MindStella のセッションを作る前に『記録の形式の移行』が移し替え、まだ知らせていない報告。無ければ `null`
+status_codes:
+  - code: '200'
+    condition: 状況をまとめた
+  - code: '403'
+    condition: '`Host` が受ける値でない'
+  - code: '404'
+    condition: '`session` が状態に無い'
+    notes: 前回参照した時点を書き換えない
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
-  - item: 結果の形
-    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
-    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
-  - item: 決着
-    constraint: 検討事項は `決定済み`・`対象外`・`取り下げ`、タスクは `完了`・`中止`。存在しない ID は未完了として扱う
-  - item: 次の候補の件数
-    constraint: 3 件（定数。全件は次の候補のツールで引く）
-  - item: 各一覧の並び
-    constraint: ID の種類（D → T）、連番の小さい順（次の候補を除く）
-test_file: tests/integration/server/test_status.py
+  - item: 受ける Host
+    constraint: 『MindStella のセッションの出来事の受け取り』と同じ（D-304・D-340）
+  - item: 前回参照した時点
+    constraint: 状態のフォルダの `workspaces/{ワークスペースの ID}/read_point.json` の `read_seq` に持ち、『前回読んだ時点からの変更』（`changes_since_read`）と同じ値を使う（D-326・D-342）。状況をまとめるのと書き換えるのをワークスペースごとの鍵の中で行う
+  - item: 次の候補
+    constraint: 返さない（#518）。未決定の検討事項を候補として並べない
+  - item: 件数の上限
+    constraint: '`changed`・`removed`・`needs_review`・`in_progress` はそれぞれ 20 件まで。超えた分は件数だけを `{キー}_more` に入れる。注入に収まらない分は MindStella のセッションが `changes_since_read` で取得する（D-342）'
+  - item: 移し替えの報告
+    constraint: '`migration` は 1 回だけ返す。返した後に状態のフォルダから消す'
+flows:
+  - name: 正常系
+    summary: 再開のとき、前回参照した後の変更と要見直し・進行中・取り込み待ちを返し、前回参照した時点を進める
+    setup:
+      - name: Mock
+        description: なし（HTTP のクライアントで送る）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: make_workspace
+        description: 前回参照した時点を記録した後に D-1 のタイトルを書き換え、要見直しの D-1・進行中の T-1・未決定の D-2・取り込み待ちのスレッド 1 件を持つワークスペースと MindStella のセッション
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /_admin/sessions/{session}/resume
+        participant WS as ワークスペース
+        participant ST as 状態のフォルダ
+
+        クライアント->>API: source: compact
+        API-->>ST: read_point.json を読む
+        API-->>WS: 記録と changes.yaml を読む
+        API->>ST: read_seq を last_seq に書く
+        API-->>クライアント: 200 状況
+      ```
+    expected:
+      - '`trigger` が `resume`、`awaiting_threads` が 1'
+      - '`changed` が D-1 の 1 件で、`needs_review` が D-1、`in_progress` が T-1'
+      - 応答が次の候補を持たず、未決定の D-2 を並べない
+      - '`read_point.json` の `read_seq` が `changes.yaml` の `last_seq` と同じで、続けて呼ぶと `changed` が空'
+    test: test_normal
+  - name: 正常系（起動）
+    summary: 前回参照した時点が無いときは変更を返さず、今の通し番号を記録する
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: make_workspace
+        description: 作成したばかりのワークスペースと MindStella のセッション（`read_point.json` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /_admin/sessions/{session}/resume
+        participant ST as 状態のフォルダ
+
+        クライアント->>API: source: startup
+        API->>ST: read_point.json を作る
+        API-->>クライアント: 200 状況（どれも 0 件）
+      ```
+    expected:
+      - '`trigger` が `startup` で、`changed`・`removed` が空'
+      - '`read_point.json` の `read_seq` が今の `last_seq`'
+    test: test_normal_when_startup
+  - name: 異常系（知らない MindStella のセッション・404）
+    summary: 状態に無い session には 404 を返し、何も書かない
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /_admin/sessions/{session}/resume
+
+        クライアント->>API: 状態に無い session
+        API-->>クライアント: 404
+      ```
+    expected:
+      - 応答が 404 で、状態のフォルダが変わっていない
+    test: test_error_when_unknown_session
+callers:
+  - IF-531-7#
+refs:
+  - IF-489-33#
+  - IF-531-6#
+  - IF-489-52#
+test_file: tests/integration/server/test_resume.py

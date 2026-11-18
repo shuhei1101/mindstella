@@ -21,7 +21,7 @@ flows:
         クライアント->>IF: changes_since_read workspace
         IF-->>WS: changes.yaml と全ての種類の YAML・本文を読む
         IF->>IF: read_seq より後に足した・変えた項目と、読んだ時点の値を組み立てる
-        IF->>WS: changes.yaml の read_seq を last_seq に書く
+        IF->>WS: read_point.json の read_seq を last_seq に書く
         IF-->>クライアント: JSON（had_read_point・read_seq・until_seq・added・changed）
         クライアント->>IF: changes_since_read workspace（2 回目）
         IF-->>クライアント: JSON（added・changed が空）
@@ -31,7 +31,7 @@ flows:
       - 1 回目の `had_read_point` が真で、`added` が T-1 の 1 件
       - '1 回目の `changed` が D-1 の 1 件で、`before` が `{title: 問い A}`'
       - D-1 の `body_diff` を今の本文に当てると読んだ時点の本文になり、1 行目・3 行目を含まない
-      - 1 回目の後、`changes.yaml` の `read_seq` が `last_seq` と同じで `until_seq` とも同じ
+      - 1 回目の後、状態のフォルダの `read_point.json` の `read_seq` が `last_seq` と同じで `until_seq` とも同じ
       - 2 回目の `added`・`changed` が空
       - 項目の YAML と本文の中身が呼ぶ前と同じ
     test: test_normal
@@ -41,7 +41,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `answer` を直したワークスペース（`changes.yaml` が `read_seq` を持たない）
+        description: 検討事項 D-1 を足して `answer` を直したワークスペース（状態のフォルダに `read_point.json` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -50,14 +50,14 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: changes_since_read workspace
-        IF-->>WS: changes.yaml に read_seq が無い
-        IF->>WS: changes.yaml の read_seq を last_seq に書く
+        IF-->>WS: read_point.json が無い
+        IF->>WS: read_point.json の read_seq を last_seq に書く
         IF-->>クライアント: JSON（had_read_point が偽、added・changed が空）
       ```
     expected:
       - ツールのエラーにならない
       - '`had_read_point` が偽、`read_seq` が `null`、`added`・`changed` が空'
-      - '`changes.yaml` の `read_seq` が `last_seq` と同じ'
+      - '状態のフォルダの `read_point.json` の `read_seq` が `last_seq` と同じ'
     test: test_normal_when_no_read_point
   - name: 正常系（保持する回数が 0）
     summary: 変更履歴が無いときは、変えた項目を ID だけで返す
@@ -76,7 +76,7 @@ flows:
         クライアント->>IF: changes_since_read workspace
         IF-->>WS: changes.yaml と全ての種類の YAML を読む
         IF->>IF: seq・added_seq が read_seq より大きい項目を集める（前の値は組み立てない）
-        IF->>WS: changes.yaml の read_seq を書く
+        IF->>WS: read_point.json の read_seq を書く
         IF-->>クライアント: JSON
       ```
     expected:
@@ -113,7 +113,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: このツールを 1 回呼んだ後に検討事項 D-1 を足し、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        description: このツールを 1 回呼んだ後に検討事項 D-1 を足し、状態のフォルダの書き込みの権限を外したワークスペース
         notes: root で動かすときは skip する。権限を戻してから 2 回目を呼ぶ
     flow: |-
       ```mermaid
@@ -131,7 +131,7 @@ flows:
       ```
     expected:
       - '1 回目がツールのエラーになり、本文が `エラー: ` で始まりトレースバックを含まない'
-      - 1 回目の後、`changes.yaml` の `read_seq` が呼ぶ前と同じ
+      - 1 回目の後、状態のフォルダの `read_point.json` の `read_seq` が呼ぶ前と同じ
       - 2 回目の `added` が D-1
     test: test_error_when_write_fails
   - name: 正常系（読んだ後に項目を消した）
@@ -186,9 +186,9 @@ flows:
       - '`changed` が D-1 の 1 件で、変わったキーが `answer`、読んだ時点の答えを持つ'
       - D-1 の `updated_by` が `external`、`by` が `["external"]`
     test: test_normal_when_external
-lead: AI が最後に読んだ時点（`changes.yaml` の `read_seq`）より後に足した・変えた・消した項目を、変わったキーと読んだ時点の値（本文は行の差分）つきで返し、`read_seq` を今の `last_seq` に書き換える。`session` の準備で必ず呼ぶ。
+lead: AI が最後に読んだ時点（状態のフォルダの `read_point.json` の `read_seq`）より後に足した・変えた・消した項目を、変わったキーと読んだ時点の値（本文は行の差分）つきで返し、`read_seq` を今の `last_seq` に書き換える。前回参照した時点は『再開の状況』と共有し、注入に収まらない変更を取得するときに呼ぶ。
 idempotent: false
-side_effects: '`changes.yaml` の `read_seq` を書き換える（`changes.yaml` が無ければ、まとまり 0 件・まだまとめていない変更なし・`last_seq: 0`・`read_seq: 0` で作る）。項目の YAML と本文は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'
+side_effects: '状態のフォルダの `read_point.json` の `read_seq` を書き換える（D-326。`changes.yaml` が無ければ、まとまり 0 件・まだまとめていない変更なし・`last_seq: 0`・`read_seq: 0` で作る）。項目の YAML と本文は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）。読むのと `read_seq` を書くのを同じロックの中で行い、その間の書き換えを読み落とさない
 request:
   - name: workspace
@@ -242,7 +242,7 @@ exceptions:
     condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: WriteFailedError
-    condition: '`changes.yaml` の一時ファイルの書き込みか置き換えに失敗した'
+    condition: '`read_point.json` の一時ファイルの書き込みか置き換えに失敗した'
     notes: ツールのエラー。`read_seq` を書き換えず、次に呼んだときに同じ変更を返す
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:

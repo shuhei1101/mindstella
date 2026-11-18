@@ -3,9 +3,9 @@ title: MindStella のセッションのフック
 entry:
   kind: trigger
   value: '`session_hook.py`（SessionStart・SessionEnd・UserPromptSubmit・Stop・StopFailure）'
-lead: プラグインのフックが全てのセッションで呼び、環境変数 `MINDSTELLA_SESSION` を持つ MindStella のセッションでだけ、出来事を常駐サーバーへ送り、SessionStart では進め方の文書の場所を注入する。
+lead: プラグインのフックが全てのセッションで呼び、環境変数 `MINDSTELLA_SESSION` を持つ MindStella のセッションでだけ、出来事を常駐サーバーへ送り、SessionStart では起動の契機・再開の状況・進め方の文書の場所と、起動と再開のエージェントフローを先に進める案内を注入する。
 idempotent: true
-side_effects: 『MindStella のセッションの出来事の受け取り』へ送る。ほかは書かない
+side_effects: 『MindStella のセッションの出来事の受け取り』へ送る。SessionStart では『再開の状況』を呼び、前回参照した時点が書き換わる。ほかは書かない
 request:
 - name: '{出来事}'
   type: str
@@ -44,7 +44,7 @@ request:
 response:
 - name: 標準出力
   type: JSON | なし
-  description: SessionStart で `MINDSTELLA_FLOW` があるときだけ、`hookSpecificOutput.additionalContext` に進め方の文書の場所と、`search_docs` で参照する旨の 1 行を入れた JSON。ほかは何も書かない
+  description: SessionStart でだけ、`hookSpecificOutput.additionalContext` に注入文を入れた JSON。注入文は、起動の契機（`起動` か `再開`）・『再開の状況』の応答（取り込み待ちのスレッドの件数・前回参照した後に変わった項目の ID と要約・要見直しの検討事項・進行中の作業・移し替えの報告）・進め方の文書の場所・起動と再開のエージェントフロー `mindstella/startup` を参照して先に進める案内を持つ。次の候補・スキルの呼び方を持たない。ほかの出来事では何も書かない
 exceptions:
 - name: なし（正常終了）
   condition: どの結末も
@@ -61,9 +61,15 @@ constraints:
   constraint: 『セッションの値の注入』と同じく、フックのプロセスから親をたどり、最初に名前が `claude` のプロセス
 - item: 通常のセッション
   constraint: '`MINDSTELLA_SESSION` が無ければ標準入力を読み捨てて何もしない'
+- item: 注入文
+  constraint: プラグインのプロンプトファイル（今の `references/起動時の指示.md` を移したもの）を読み、『再開の状況』の応答と `MINDSTELLA_FLOW` を埋めて組み立てる。プロンプトファイルの置き場所と形式はモジュール構成設計で決める
+- item: 契機ごとの注入
+  constraint: '`source` が `startup` のときを起動、`resume`・`clear`・`compact` のときを再開として注入する（A-119 のフックの表）。`fork` では注入しない'
+- item: 注入に失敗したとき
+  constraint: 『再開の状況』につながらない・応答が 200 でないときは、状況を持たずに起動の契機とエージェントフローの案内だけを注入し、標準エラーに 1 行書く。MindStella のセッションの起動は止めない
 flows:
 - name: 正常系
-  summary: SessionStart で出来事を送り、進め方の文書の場所を注入する
+  summary: SessionStart で出来事を送り、起動の契機・進め方の文書の場所・エージェントフローの案内を注入する
   setup:
   - name: Mock
     description: 常駐サーバーの代わりに、受けた要求を記録する HTTP のサーバーを空きポートで立てる
@@ -82,7 +88,7 @@ flows:
     ```
   expected:
   - 'Mock が `event: session_start`・`claude_session_id`・`pane`・`source: startup` を受けている'
-  - 標準出力の `additionalContext` に `MINDSTELLA_FLOW` の値がある
+  - 標準出力の `additionalContext` に、起動の契機 `起動`・`MINDSTELLA_FLOW` の値・`mindstella/startup` を参照する案内がある
   - 終了コードが 0
   test: test_normal
 - name: 正常系（通常のセッション）
@@ -124,10 +130,37 @@ flows:
   expected:
   - 終了コードが 0 で、標準エラーに `[mindstella]` の行がある
   test: test_error_when_server_down
+- name: 正常系（再開）
+  summary: SessionStart の compact で、再開の状況を引いて再開の契機と一緒に注入する
+  setup:
+  - name: Mock
+    description: 常駐サーバーの代わりに、受けた要求を記録し、`/resume` に取り込み待ち 1 件・変わった D-1・要見直し D-1・進行中 T-1 を返す HTTP のサーバーを空きポートで立てる
+  - name: 環境変数
+    description: '`MINDSTELLA_SESSION`・`MINDSTELLA_PORT`・`TMUX_PANE`（`MINDSTELLA_FLOW` は渡さない）'
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant CC as Claude Code
+      participant HK as session_hook.py
+      participant SV as 常駐サーバー（Mock）
+
+      CC->>HK: session-start（標準入力に source: compact）
+      HK->>SV: POST /_admin/sessions/{session}/events
+      HK->>SV: POST /_admin/sessions/{session}/resume
+      SV-->>HK: 状況
+      HK-->>CC: additionalContext
+    ```
+  expected:
+  - 'Mock が `events` と `resume`（`source: compact`）をこの順に受けている'
+  - '`additionalContext` が、起動の契機 `再開`・取り込み待ちの件数 1・D-1 の ID と要約・要見直しの D-1・進行中の T-1・`mindstella/startup` を参照する案内を持ち、次の候補とスキルの呼び方を持たない'
+  - 終了コードが 0
+  test: test_normal_when_resumed
 refs:
 - IF-531-6#
 - IF-489-68#
 - IF-489-15#
+- IF-489-32#
+- IF-565-1#
 callers:
 - IF-531-2#
 test_file: tests/integration/plugin/test_session_hook.py
