@@ -1,7 +1,7 @@
 title: 停止の通知
 entry:
   kind: trigger
-  value: MindStella のセッションの `session.json` の `status` を、『MindStella のセッションの停止』『MindStella のセッションの一覧』『MindStella のセッションの出来事の受け取り』が `stopped` か `crashed` に書き換えた後
+  value: MindStella のセッションの `session.json` の `status` を、『MindStella のセッションの停止』・『MindStella のセッションの出来事の受け取り』と、生死を判定する処理（『MindStella のセッションの一覧』・『MindStella のセッションの作成』・『ワークスペースのクローズ』）が `stopped` か `crashed` に書き換えた後
 lead: MindStella のセッションが止まったことを常駐サーバーが記録したときに、利用者が用意した Webhook の設定のファイルの Discord の Webhook へ、止まったことと止まった理由を 1 件送信する。
 test_file: tests/integration/server/test_stop_notify.py
 idempotent: false
@@ -10,6 +10,8 @@ callers:
   - IF-531-3#
   - IF-531-4#
   - IF-531-6#
+  - IF-531-2#
+  - IF-531-5#
 exclusivity: 送信は常駐サーバーの中の別のスレッド（`daemon` のスレッド）で行い、停止・一覧・出来事の受け取りの応答と常駐サーバーの停止を待たせない。通知するかは、`session.json` を書き換える鍵の中で読んだ書き換える前の `status` で決める
 exceptions:
   - name: なし（正常終了）

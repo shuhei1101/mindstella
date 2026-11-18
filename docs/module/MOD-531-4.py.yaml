@@ -168,8 +168,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`status` が `running`・`stopping` で、ペインと `pid` のプロセスがあり起動時刻が合うかを返す。合わなければ状態を `crashed` にする'
-    side_effects: 落ちていれば `session.json` を `crashed` にする
+    summary: '`status` が `running`・`stopping` で、ペインと `pid` のプロセスがあり起動時刻が合うかを返す。合わなければ状態を `crashed` にし、`running` から書き換えたときだけ `on_crashed` を呼ぶ'
+    side_effects: 落ちていれば `session.json` を `crashed` にする。`running` から書き換えたときだけ `on_crashed` を呼ぶ（`stopping` からは呼ばない）
     args:
       - name: root
         type: Path
@@ -191,6 +191,12 @@ functions:
         required: true
         passing: positional
         description: プロセスの起動時刻を読むもの
+      - name: on_crashed
+        type: Callable[[], None] | None
+        required: false
+        default: None
+        passing: keyword
+        description: '`running` から `crashed` に書き換えたときに呼ぶ関数（呼び出し元は `lambda: notify_stopped(ctx, workspace_id, "crashed")` を渡す）'
     returns:
       type: bool
       description: 生きているか
@@ -201,6 +207,12 @@ functions:
         condition: '`running`・ペインあり・起動時刻が合う / ペインが無い / 起動時刻が違う / `stopped`'
         mock: '`TmuxRunner`・`ProcessInspector`'
         expected: '`True` / `False` で `crashed` / `False` で `crashed` / `False` で変えない'
+      - name: test_is_alive_when_crashed_from_running
+        case: 正常
+        summary: running から落ちたときだけ on_crashed を呼ぶ
+        condition: '`parametrize`: `running` でペインが無い / `stopping` でペインが無い。`on_crashed` に呼ばれた回数を数える関数'
+        mock: '`TmuxRunner`・`ProcessInspector`'
+        expected: どちらも `False` で `crashed`。`on_crashed` の呼ばれた回数が 1 / 0
   - name: create_session
     title: MindStella のセッションを作る
     kind: 関数
@@ -281,7 +293,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: MindStella のセッションを止めてワークスペースをクローズにする
     scope: public
-    summary: 最後の MindStella のセッションの状態と `close_pending` を返す
+    summary: 最後の MindStella のセッションの状態と `close_pending` を返す。生死の判定は `is_alive` に `on_crashed`（`notify_stopped` を `crashed` で呼ぶ）を渡す（`create_session`・`stop_session` の判定も同じ）
     args:
       - name: workspace_id
         type: str
@@ -381,14 +393,32 @@ functions:
         condition: '`/exit` の貼り付けで `TmuxRunner` が例外を送る'
         mock: '`TmuxRunner`・止める処理を同じスレッドで走らせる・`caplog`'
         expected: '`caplog` に `mindstella.session.stop_failed`（ワークスペースの ID・段階 `exit`）、`session.json` の `status` が `running`（生きている）で `last_error` に段階と理由、`close_pending` が真'
-    description: 別のスレッドの本体は例外で包む。例外（tmux のコマンドの失敗・commit の失敗・`session.json` の書き込みの失敗）を捕まえたら `logger.exception` で `mindstella.session.stop_failed` を書き、`is_alive` で判定して `status` を `running`（生きている）か `crashed`（落ちた）に戻し、`last_error` に段階と理由を入れる。`close_pending` は真のまま残す（外部のアプリは停止を依頼し直せる）
+      - name: test_stop_session_when_notifying
+        case: 正常
+        summary: 止め終えたときに停止の依頼か強制停止を 1 回通知する
+        condition: '`parametrize`: `force=False`・止める前に SessionEnd が `stopped` を書く / `force=False`・止める間に一覧が `crashed` を書く / `force=True`'
+        mock: '`TmuxRunner`・止める処理を同じスレッドで走らせる・`notify.notify_stopped`'
+        expected: '`notify_stopped` がワークスペースの ID と `stop_requested` / `stop_requested` / `force_stopped` で 1 回呼ばれる'
+      - name: test_stop_session_when_stop_failed
+        case: 異常
+        summary: 止める間の失敗で crashed に戻したときだけ停止処理の失敗を通知する
+        condition: '`parametrize`: `/exit` の貼り付けで例外、その後ペインが無い / ペインがある'
+        mock: '`TmuxRunner`・止める処理を同じスレッドで走らせる・`notify.notify_stopped`'
+        expected: '`status` が `crashed` で `notify_stopped` が `stop_failed` で 1 回 / `status` が `running` で `notify_stopped` が呼ばれない'
+      - name: test_stop_session_when_crashed_before
+        case: 正常
+        summary: 落ちていた MindStella のセッションへの停止は異常終了だけを通知する
+        condition: '`running` でペインが無い'
+        mock: '`TmuxRunner`・`notify.notify_stopped`'
+        expected: '`(200, {status: stopped})`、`notify_stopped` が `crashed` で 1 回だけ呼ばれる'
+    description: '別のスレッドの本体は例外で包む。例外（tmux のコマンドの失敗・commit の失敗・`session.json` の書き込みの失敗）を捕まえたら `logger.exception` で `mindstella.session.stop_failed` を書き、`is_alive` で判定して `status` を `running`（生きている）か `crashed`（落ちた）に戻し、`last_error` に段階と理由を入れる。`close_pending` は真のまま残す（外部のアプリは停止を依頼し直せる）。停止の通知: 別のスレッドが停止済みを記録したとき、同じ鍵の中で読んだ書き換える前の `status` が `stopping`・`stopped`・`crashed` なら `notify_stopped` を `force` で `stop_requested` か `force_stopped` で呼ぶ。例外の後に `crashed` に戻したときは `stop_failed` で呼び、`running` に戻したときは呼ばない。落ちていて 200 を返す経路は、`is_alive` の `on_crashed` だけが呼ぶ'
   - name: record_event
     title: フックの出来事を記録する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`session` が状態に無ければ偽（`session_start` は `socket` も入れる）。記録した後に、`prompt_submit`・`stop_failure`・`session_end` では書き込みのマーカーを解除し（`notify.clear_written`）、`stop` では作業の完了を通知する（`notify.notify_if_written`。名前と画面の URL は、`workspaces.find_workspace_row` のフォルダの `config.yaml` の `summary`（空ならフォルダの名前）と `ctx.previews.url_of` をスレッドの中で参照する）
+    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`session` が状態に無ければ偽（`session_start` は `socket` も入れる）。記録した後に、`prompt_submit`・`stop_failure`・`session_end` では書き込みのマーカーを解除し（`notify.clear_written`）、`stop` では作業の完了を通知する（`notify.notify_if_written`。名前と画面の URL は、`workspaces.find_workspace_row` のフォルダの `config.yaml` の `summary`（空ならフォルダの名前）と `ctx.previews.url_of` をスレッドの中で参照する）。`session_end` が書き換える前の `running` から `stopped` にしたときだけ `notify_stopped` を `session_ended` で呼ぶ
     side_effects: '`session.json` を書く。書き込みのマーカーを解除する。`stop` では通知のスレッドを起動することがある'
     args:
       - name: session_id
@@ -434,6 +464,47 @@ functions:
         condition: '`parametrize`: `prompt_submit` / `stop_failure` / `session_end`（`reason: logout`）。事前に `notify.MARKERS.mark` でマーカーを付ける'
         mock: '`notify.notify_if_written`'
         expected: '`notify.MARKERS.take` が偽で、`notify_if_written` が呼ばれない'
+      - name: test_record_event_when_session_ended
+        case: 正常
+        summary: running からの session_end だけ Claude Code の終了を通知する
+        condition: '`parametrize`: `running` に `session_end`（`reason: prompt_input_exit`） / `stopping` に同じ / `running` に `session_end`（`reason: clear`）'
+        mock: '`notify.notify_stopped`'
+        expected: '`notify_stopped` が `session_ended` で 1 回 / 呼ばれない / 呼ばれない'
+  - name: notify_stopped
+    title: 停止を通知する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 止まったことを通知する
+    scope: public
+    summary: ワークスペースの名前と画面の URL を参照する関数を添えて `notify.notify_stopped` を呼ぶ（利用上限・無操作の上限など、後から作る停止もこの関数を呼ぶ）
+    side_effects: 通知のスレッドを起動することがある
+    args:
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: project-index の接続先・画面の配信
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: reason
+        type: notify.StopReason
+        required: true
+        passing: positional
+        description: 止まった理由
+    returns:
+      type: threading.Thread | None
+      description: '`notify.notify_stopped` の戻り値'
+    process: '1. `notify.notify_stopped(workspace_id, reason, lambda: _describe_workspace(ctx, workspace_id))` を呼んで返す（停止の通知）'
+    unit_tests:
+      - name: test_notify_stopped
+        case: 正常
+        summary: ワークスペースの名前と画面の URL を添えて通知を呼ぶ
+        condition: 題名を持つワークスペース。`notify.notify_stopped` に渡った `describe` を呼ぶ
+        mock: '`notify.notify_stopped`'
+        expected: '`notify.notify_stopped` がワークスペースの ID と `reason` で 1 回呼ばれ、`describe()` が題名と画面の URL を返す'
 classes:
   - name: TmuxRunner
     title: tmux のコマンドを呼ぶもの
@@ -470,3 +541,5 @@ notes:
     | `mindstella.session.stop_wait_exceeded` | WARN | 待つ上限を過ぎて `pending_write` を真にした | ワークスペースの ID・MindStella のセッションの ID・待った秒数 |
     | `mindstella.session.stop_failed` | ERROR | 停止の別のスレッドで例外を捕まえた（`logger.exception`） | ワークスペースの ID・MindStella のセッションの ID・段階（`wait`・`exit`・`term`・`commit`・`state`） |
     | `mindstella.session.event_unknown` | WARN | `record_event` が状態に無い MindStella のセッションの出来事を受けた | MindStella のセッションの ID・出来事 |
+refs:
+  - IF-570-1#

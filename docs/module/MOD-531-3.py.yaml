@@ -249,7 +249,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
     usecase: MindStella のセッションを止めてワークスペースをクローズにする
     scope: public
-    summary: 'MindStella のセッションがあれば断り、無ければ配信元の行を `outside_read: false` にして `close_pending` を真にする'
+    summary: 'MindStella のセッションがあれば断り（生死の判定は `sessions.is_alive` に `on_crashed=lambda: sessions.notify_stopped(ctx, workspace_id, "crashed")` を渡す）、無ければ配信元の行を `outside_read: false` にして `close_pending` を真にする'
     side_effects: project-index の行を変え、`session.json` の `close_pending` を書く
     args:
       - name: workspace_id
