@@ -1,0 +1,4 @@
+$ ruff check plugins tests
+All checks passed!
+$ ruff format --check {作業 PR の変更した .py}
+8 files already formatted
