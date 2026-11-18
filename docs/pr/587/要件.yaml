@@ -1,51 +1,57 @@
 use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-34.yaml
-    impact: changed
-    detail: MindStella のセッションが、動画・画像などのファイルをワークスペースのファイルのフォルダに配置し、資料の本文に mdmark の `![キャプション](パス)` で埋め込む流れを追加する（配置から画面での再生までの流れは、新規作成する単一ユースケース『動画などのファイルを配置して資料に埋め込む』が持ち、作成したときにこの表へ追加する）
-    depends_on: []
+    impact: none
+    detail: 資料の本文に埋め込みの記法を記載するのは今の本文の書き込みのままで、配置から再生までの流れは単一ユースケース『動画などのファイルを配置して資料に埋め込む』が持つ
+    depends_on:
+      - docs/scenario/SC-587-1.yaml
   - kind: single
     scenario: docs/scenario/SC-489-46.yaml
-    impact: changed
-    detail: 資料の本文に埋め込んだ動画・音声を詳細パネルと詳細の全画面で再生でき、画像が表示される。ファイルが無いときは、どのファイルが無いかが分かる
+    impact: run_only
+    detail: 詳細パネルの本文の描画でファイルのパスを解決するため、今の本文の描画を壊しうる。再生の流れは単一ユースケース『動画などのファイルを配置して資料に埋め込む』が持ち、シナリオの記述は変わらない
     depends_on:
-      - docs/scenario/SC-489-34.yaml
+      - docs/scenario/SC-587-1.yaml
   - kind: single
     scenario: docs/scenario/SC-489-40.yaml
-    impact: following
-    detail: 資料のカードから本文を開いたときに、埋め込んだ動画を再生できる（再生は『項目の詳細を読む』が持つ）
+    impact: none
+    detail: 資料のカードとボードは変わらない（本文の再生は単一ユースケース『動画などのファイルを配置して資料に埋め込む』が持つ）
     depends_on:
-      - docs/scenario/SC-489-46.yaml
+      - docs/scenario/SC-587-1.yaml
   - kind: single
     scenario: docs/scenario/SC-489-39.yaml
     impact: changed
-    detail: 埋め込んだファイルを持つ資料を書き出すと、書き出した資料でもファイルを表示・再生できる（扱いは `未確定`。要件.md の `## 要望`）
+    detail: 埋め込んだ動画・音声を持つ資料を HTML で書き出すと、HTML と `_files/` の動画をまとめた zip がダウンロードされ、書き出した先でも画像の表示と動画の再生ができる（推奨の案で記載。ユーザーの確認を待つ）
     depends_on:
-      - docs/scenario/SC-489-34.yaml
+      - docs/scenario/SC-587-1.yaml
   - kind: single
     scenario: docs/scenario/SC-489-11.yaml
     impact: changed
-    detail: 埋め込んだファイルを持つワークスペースを配る書き出しにしたときの扱い（扱いは `未確定`。要件.md の `## 要望`）
+    detail: 埋め込んだファイルを持つ資料を配る書き出しにすると、画像は HTML に埋まり、動画は HTML の隣の `_files/` にコピーされて再生できる（推奨の案で記載。ユーザーの確認を待つ）
     depends_on:
-      - docs/scenario/SC-489-34.yaml
+      - docs/scenario/SC-587-1.yaml
   - kind: single
     scenario: docs/scenario/SC-489-16.yaml
     impact: changed
     detail: 資料の本文が埋め込んだファイルがワークスペースに無いことを、参照切れとして洗い出す
     depends_on:
-      - docs/scenario/SC-489-34.yaml
+      - docs/scenario/SC-587-1.yaml
   - kind: single
     scenario: docs/scenario/SC-540-1.yaml
     impact: changed
-    detail: ファイルのフォルダへの配置・差し替え・削除を、項目の変更として扱わない。自動の commit にファイルを含めるかは `未確定`（要件.md の `## 要望`）
+    detail: ファイルのフォルダへの配置・差し替え・削除を項目の変更として記録せず、外部の変更のまとまりの自動の commit にファイルを含める（Git に含めるのは推奨の案で記載。ユーザーの確認を待つ）
     depends_on:
-      - docs/scenario/SC-489-34.yaml
+      - docs/scenario/SC-587-1.yaml
   - kind: single
     scenario: docs/scenario/SC-489-10.yaml
     impact: run_only
     detail: 外の入口の内側で開いたプレビューでも、埋め込んだ動画を再生できる。シナリオの記述は変わらないが、ファイルの配信の追加が外から開いたときの許可するホスト名の判定を壊しうる
     depends_on:
-      - docs/scenario/SC-489-46.yaml
+      - docs/scenario/SC-587-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-587-1.yaml
+    impact: new
+    detail: MindStella のセッションか利用者が、動画・音声・画像をワークスペースのファイルのフォルダに配置して資料に埋め込み、利用者が詳細パネルで再生・表示する。ファイルが無いときは警告が出て、フォルダの外のファイルは返却されない
+    depends_on: []
 docs:
   - page: docs/guide/ワークスペースの書式.md
     new: false
