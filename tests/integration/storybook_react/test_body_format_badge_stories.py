@@ -60,13 +60,13 @@ def test_html(open_story: OpenStory) -> None:
 
 
 def test_beside_other_badges(open_story: OpenStory) -> None:
-    """状態（完成）・取り下げの札・納品物の印と並べ、形式の札だけが等幅の書体を持つ（正常系）。"""
+    """状態（完成）・取り下げの札と並べ、形式の札だけが等幅の書体を持つ（正常系）。"""
     # 準備・実行
     page = open_story("shared-bodyformatbadge--beside-other-badges")
     badges = page.locator("#storybook-root > div > span")
     form = badges.nth(0).evaluate(_BADGE_JS)
-    others = [badges.nth(index).evaluate(_BADGE_JS)["font"] for index in (1, 2, 3)]
+    others = [badges.nth(index).evaluate(_BADGE_JS)["font"] for index in (1, 2)]
     # 検証
-    expect(badges).to_have_text(["HTML", "完成", "取り下げ", "納品物"])
+    expect(badges).to_have_text(["HTML", "完成", "取り下げ"])
     assert form["font"] not in others
     assert form["background"] != TRANSPARENT

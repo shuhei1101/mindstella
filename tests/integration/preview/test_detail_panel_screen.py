@@ -4307,7 +4307,6 @@ def test_diff_html_body_when_format_changed(
         "title": "画面のモック",
         "kind": "モック",
         "status": "下書き",
-        "deliverable": False,
         "body_markdown": "# 画面のモック\n一覧の画面\n",
     }
     assert write_tool(call_tool, "add", workspace=workspace, kind="doc", item=item).is_error is False
@@ -4374,7 +4373,6 @@ def test_html_body_diff_when_link_pressed(
         "title": "画面のモック",
         "kind": "モック",
         "status": "下書き",
-        "deliverable": False,
         "body_html": "<p>1 つ目の段落</p>\n" + paragraph.format("リンクの文"),
     }
     assert write_tool(call_tool, "add", workspace=workspace, kind="doc", item=item).is_error is False

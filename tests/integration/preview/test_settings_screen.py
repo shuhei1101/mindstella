@@ -886,7 +886,7 @@ def test_workspace_entry(
     # 検証
     entry = page.locator(WORKSPACE_ENTRY)
     assert entry.locator("h3").inner_text() == "ワークスペースの設定"
-    assert entry.locator(".pe-ws-sum").inner_text() == "題名・フェーズ・ゴール・対象・カテゴリー"
+    assert entry.locator(".pe-ws-sum").inner_text() == "題名・説明・関連する場所"
     button = entry.get_by_role("button", name="設定を編集する")
     assert button.count() == 1
     body = page.locator(f"{SETTINGS_PANEL} .st-wrap").bounding_box()
