@@ -168,13 +168,13 @@ scenarios:
   - name: 正常シナリオ（記録した会話を参照できない）
     setup:
       - name: Mock
-        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（`--resume` を受けたときは会話が見つからないとして起動直後に終わり、受けないときは SessionStart のフックを叩いて待つ）
+        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（引数を記録し、SessionStart のフックを叩いて待つ）
       - name: 常駐サーバー
         description: 正常シナリオ（利用上限）と同じ
       - name: tmux
         description: 正常シナリオ（利用上限）と同じ
       - name: ワークスペース
-        description: MindStella のセッションが落ちていて、状態に Claude Code の `session_id` が残っている
+        description: MindStella のセッションが落ちていて、状態に Claude Code の `session_id` が残っているが、その会話の記録のファイルが設定のフォルダの会話の置き場に無い
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -184,15 +184,13 @@ scenarios:
         participant CC as MindStella のセッション
 
         APP->>MGR: 起動し直しを依頼する
-        MGR->>CB: exec を起動する（claude --resume {前の session_id}）
-        CB->>CC: 起動する
-        CC-->>MGR: 会話が見つからず、SessionStart の前に終わる
-        MGR->>CB: 新規の会話で exec を起動し直す
+        MGR->>MGR: 記録した会話の記録のファイルがあるか確かめる
+        MGR->>CB: 無いので --resume を付けずに、新規の会話で exec を起動する
         CB->>CC: 起動する
         CC->>MGR: SessionStart（startup）で登録する
       ```
     expected:
-      - Mock の claude-balancer が `exec` を 2 回受け、2 回目の引数に `--resume` が無い
+      - Mock の claude-balancer が `exec` を 1 回だけ受け、その引数に `--resume` が無い
       - 『MindStella のセッションの一覧』が、同じ MindStella のセッションの ID を `running` で返し、新しい `session_id` が状態に記録されている
     test: test_normal_when_conversation_missing
   - name: 異常シナリオ（空いたアカウントが無い）
