@@ -76,7 +76,9 @@ tasks:
     note:
     reason: モジュール構成（MOD-489-223）の unit_tests に当たる行が変わらない。ツールチップと文字を出さない見た目は部品設計の状態として Storybook の結合テストで確認する
   - process: 実装
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T03:28:26.405703+00:00'
   - process: 結合テスト作成
     status: todo
     note: tests/integration/storybook/test_topbar_stories.py
