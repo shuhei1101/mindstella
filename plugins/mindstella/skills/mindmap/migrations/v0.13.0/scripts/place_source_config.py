@@ -24,21 +24,22 @@ from workspaces import workspace_id_for
 
 
 def migrate(root: Path) -> list[str]:
-    """設定が無ければ作り、スキーマの複製をプラグインのスキーマで置き換え、書いたファイルを返す。"""
+    """設定に ID が無ければ記録し、配信の設定が無ければ作り、スキーマの複製をプラグインのスキーマで置き換え、書いたファイルを返す。"""
     records = root / RECORD_DIR
     written: list[str] = []
+    settings_path = records / SETTINGS_FILE
+    settings = _read_settings(settings_path)
+    # 読めた設定に ID が無い: フォルダから振った ID を記録する（フォルダを移した後も同じワークスペースとして開く）
+    if settings and not settings.get("id"):
+        settings = {**settings, "id": workspace_id_for(root)}
+        _replace(settings_path, dump_yaml(settings))
+        written.append(f"{RECORD_DIR}/{SETTINGS_FILE}")
     config_path = records / SOURCE_CONFIG_FILE
     # 利用者が書き換えたかもしれない設定は、あれば書き換えない
     if not config_path.exists():
-        settings = _read_settings(records / SETTINGS_FILE)
         workspace_id = str(settings.get("id") or workspace_id_for(root))
         config = build_source_config(workspace_id, str(settings.get("summary", "")))
-        temp = write_temp(config_path, dump_yaml(config))
-        try:
-            os.replace(temp, config_path)
-        except OSError:
-            remove_files([temp])
-            raise
+        _replace(config_path, dump_yaml(config))
         written.append(f"{RECORD_DIR}/{SOURCE_CONFIG_FILE}")
     schema_dir = records / SOURCE_SCHEMA_DIR
     schema_dir.mkdir(exist_ok=True)
@@ -51,6 +52,16 @@ def migrate(root: Path) -> list[str]:
         shutil.copyfile(source, target)
         written.append(f"{RECORD_DIR}/{SOURCE_SCHEMA_DIR}/{name}")
     return written
+
+
+def _replace(path: Path, text: str) -> None:
+    """一時ファイルに書いてから置き換える。"""
+    temp = write_temp(path, text)
+    try:
+        os.replace(temp, path)
+    except OSError:
+        remove_files([temp])
+        raise
 
 
 def _read_settings(path: Path) -> dict[str, Any]:

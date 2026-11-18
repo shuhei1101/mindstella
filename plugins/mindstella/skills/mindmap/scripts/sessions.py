@@ -138,6 +138,7 @@ def build_command(
     mcp_config_file: Path | None,
     startup_prompt: str,
     balancer: str | None,
+    claude_config_dir: str | None,
 ) -> list[str]:
     """ペインで動かすコマンドの引数の並びを作る。"""
     claude = ["claude"]
@@ -148,7 +149,9 @@ def build_command(
     claude += ["--append-system-prompt", startup_prompt]
     # claude-balancer がある: アカウントを借りて起動する
     if balancer is not None:
-        return [balancer, "exec", "--client", BALANCER_CLIENT, "--", *claude]
+        # アカウントの指定がある: そのアカウントを借りる
+        account = ["--account", claude_config_dir] if claude_config_dir else []
+        return [balancer, "exec", "--client", BALANCER_CLIENT, *account, "--", *claude]
     return claude
 
 
@@ -258,6 +261,7 @@ def create_session(
             _write_mcp_config(ctx.state_root, workspace_id, options),
             (Path(ctx.plugin_root) / STARTUP_PROMPT_FILE).read_text(encoding="utf-8"),
             balancer,
+            claude_config_dir,
         )
         env = build_env(
             session_id,
@@ -281,6 +285,7 @@ def create_session(
             _launch(ctx.tmux, workspace_id, folder, env, command)
             _wait_ready(ctx, workspace_id)
             registered = state.read_session(ctx.state_root, workspace_id)
+            account = registered.claude_config_dir if registered else None
             # フックが登録したペイン（`TMUX_PANE`）へ貼る。無ければセッションの今のペイン
             _paste(
                 ctx.tmux,
@@ -305,7 +310,7 @@ def create_session(
             "balancer": balancer is not None,
         },
     )
-    return 201, {"session": session_id, "pane": pane, "url": url}
+    return 201, {"session": session_id, "pane": pane, "url": url, "account": account}
 
 
 def list_sessions(workspace_id: str, ctx: Any) -> dict[str, Any]:
@@ -409,6 +414,7 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
                 pid_started_at=event.get("pid_started_at", current.pid_started_at),
                 pane=event.get("pane") or current.pane,
                 socket=event.get("socket") or current.socket,
+                claude_config_dir=event.get("claude_config_dir") or current.claude_config_dir,
             )
         # 終了: clear・resume のほかは停止済み
         if kind == "session_end":

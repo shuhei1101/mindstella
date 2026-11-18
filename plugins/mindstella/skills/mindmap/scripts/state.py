@@ -60,6 +60,8 @@ class SessionState:
     close_pending: bool = False
     # 最後の停止に失敗した段階と理由
     last_error: str | None = None
+    # Claude Code が使う設定のフォルダの絶対パス（SessionStart のフックが入れる）
+    claude_config_dir: str | None = None
 
     def replace(self, **changes: Any) -> SessionState:
         """渡したキーだけを変えた値を返す。"""

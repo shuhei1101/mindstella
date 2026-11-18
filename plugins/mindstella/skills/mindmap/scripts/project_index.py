@@ -64,8 +64,12 @@ def get_settings(port: int) -> dict[str, Any]:
 def add_source(
     port: int, row: dict[str, Any]
 ) -> Literal["added", "exists_same", "exists_different"]:
-    """配信元の行を 1 行追加する。同じ ID の行があれば、内容が同じかを返す。"""
-    status, body = _request(port, "POST", SOURCES_PATH, {"source": row})
+    """今の版を引いて配信元の行を 1 行追加する。同じ ID の行があれば、内容が同じかを返す。版が古ければ 1 回だけ引き直して送り直す。"""
+    status, body = _post_source(port, row)
+    # 版が古い（同じ ID の行があるのではない 409）: 引き直して送り直す
+    if status == CONFLICT and body.get("result") != EXISTS_RESULT:
+        logger.warning("mindstella.project_index.version_conflict", extra={"source_id": row.get("id")})
+        status, body = _post_source(port, row)
     # 追加した
     if status == HTTPStatus.CREATED:
         return "added"
@@ -73,6 +77,12 @@ def add_source(
     if status == CONFLICT and body.get("result") == EXISTS_RESULT:
         return "exists_same" if body.get("same") else "exists_different"
     raise _failed("POST", SOURCES_PATH, status, body)
+
+
+def _post_source(port: int, row: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    """今の版を引き、`expectedVersion` を添えて行の追加を送る。"""
+    version = get_settings(port).get("version")
+    return _request(port, "POST", SOURCES_PATH, {"source": row, "expectedVersion": version})
 
 
 def patch_source(port: int, source_id: str, changes: dict[str, Any]) -> None:

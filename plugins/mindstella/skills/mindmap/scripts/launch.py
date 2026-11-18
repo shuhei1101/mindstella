@@ -150,6 +150,7 @@ def run_start(
         return 1
     else:
         print(f"{MESSAGE_PREFIX}MindStella のセッション: {session.get('session')}", file=stderr)
+        print(f"{MESSAGE_PREFIX}起動したアカウント: {session.get('account')}", file=stderr)
     print(url, file=stdout)
     print(session.get("pane"), file=stdout)
     return 0
