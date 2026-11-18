@@ -266,6 +266,16 @@ docs:
     status: done
     updated_by: planner
     updated_at: '2026-11-18T05:12:43.441259+00:00'
+  - page: docs/guide/動作環境.md
+    change: 見出し「スキルとサーバー」を「Claude Code とサーバー」にする
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:15:20.832174+00:00'
+  - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
+    change: 「スキル専用の仮想環境」を「MindStella の仮想環境」にする
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:15:20.832174+00:00'
 scope_out:
   - item: 記録の種類ごとの使い方のガイド（検討事項・タスク・調査・資料・用語集・メモ・会話ログ・スレッド。D-502）
     reason: 'ガイドの資料（話し合いの作業 T-67）が未作成で、#518 に含めると資料が揃うまで #565 をマージできないため、task-planner が別の Issue に分けた'
