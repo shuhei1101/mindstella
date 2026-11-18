@@ -1,0 +1,92 @@
+id: API-568-1
+visibility: internal
+title: Discord
+lead: Webhook の URL へ送信したメッセージを、Webhook が紐づいたチャンネルに投稿する Discord の API。
+used_in:
+  - plugins/mindstella/skills/mindmap/scripts/
+verification:
+  state: 済
+  detail: 2026-11-18 に mindstella の端末から、利用者が用意した Webhook の設定のファイルの URL へ `wait=true` で送信して確認した。`User-Agent` を `DiscordBot (https://github.com/shuhei1101/mindstella, 1.0)` にすると `200`（0.39 秒）。標準ライブラリの既定の `User-Agent`（`Python-urllib/3.12`）では `403` が返り、投稿されない
+version:
+  api_version: API v10（URL にバージョンを書かない。サーバー側の既定）
+  checked_on: '2026-11-18'
+base_urls:
+  - env: 本番
+    url: https://discord.com/api
+official_url: https://discord.com/
+docs_url: https://docs.discord.com/developers/resources/webhook
+auth:
+  method: Webhook の URL に含まれるトークン
+  steps: |-
+    1. Discord のチャンネルの設定の「連携サービス」から Webhook を作る
+    2. 「ウェブフック URL をコピー」で URL を控える
+    3. URL を 1 行だけ書いたファイルを作り、環境変数 `MINDSTELLA_DISCORD_WEBHOOK_FILE` でその場所を指定する
+rate_limits:
+  - target: 全体
+    limit: 50 リクエスト / 秒
+    notes: API 全体にかかる上限
+  - target: ルートごと
+    limit: 非公開
+    notes: 応答の `X-RateLimit-Limit`・`X-RateLimit-Remaining`・`X-RateLimit-Reset-After` で分かる
+retry: 超えると `429` が返り、本文の `retry_after`（秒）に次に送信できるまでの待ち時間が入る。mindstella は再送信しない（次の応答の終了で次の通知が届く）。
+timeout: 公式の記載なし。mindstella は非機能要件『Webhook の送信を待つ上限』で打ち切る
+endpoints:
+  - name: POST /webhooks/{webhook.id}/{webhook.token}
+    method: POST
+    path: /webhooks/{webhook.id}/{webhook.token}
+    summary: チャンネルへのメッセージの投稿
+    description: Webhook が紐づいたチャンネルへメッセージを 1 通投稿する。
+    request:
+      - name: wait
+        type: bool
+        required: false
+        default: 'false'
+        location: query
+        description: 投稿の完了を待って作られたメッセージを返すか
+        notes: '`false` のときは保存されなかったメッセージでもエラーが返らないため、mindstella は `true` で送信する'
+      - name: content
+        type: str
+        required: false
+        default: なし（`embeds` などで本文を渡す）
+        location: body
+        description: 本文
+        constraints: 2000 文字以内
+      - name: User-Agent
+        type: str
+        required: true
+        default: なし
+        location: header
+        description: クライアントの名前
+        constraints: '`DiscordBot ({URL}, {バージョン})` の書式'
+        notes: 標準ライブラリの既定の値（`Python-urllib/{バージョン}`）では `403` が返る。mindstella は `DiscordBot (https://github.com/shuhei1101/mindstella, 1.0)` で送信する
+    request_example: |-
+      ```json
+      {"content": "家計簿の話し合い: 作業が完了しました\nhttp://127.0.0.1:47800/mindstella.html"}
+      ```
+    response:
+      - name: メッセージのオブジェクト
+        type: object
+        description: '`wait` が `true` のときに返る、作られたメッセージ'
+    status_codes:
+      - code: '200'
+        condition: 投稿できた（`wait` が `true`）
+      - code: '204'
+        condition: 受け付けた（`wait` が `false`）
+        notes: 投稿されたことは保証しない
+      - code: '400'
+        condition: 本文が制限に反している
+        notes: '`content` が 2000 文字を超える場合を含む'
+      - code: '404'
+        condition: Webhook が見つからない
+        notes: 消された・URL が誤っている
+      - code: '429'
+        condition: レートリミットに当たった
+        notes: 本文の `retry_after` に待ち時間（秒）。再送信しない
+      - code: '403'
+        condition: 要求を拒否した
+        notes: '`User-Agent` が既定の `Python-urllib/{バージョン}` のときを含む'
+notes:
+  認証セットアップの補足: |-
+    ヘッダーでの認証を持たず、URL を知っていれば誰でも投稿できる。
+    mindstella は URL をリポジトリ・ワークスペース・状態のフォルダに置かず、利用者が用意したファイルの 1 行目から読む。URL はログにも応答にも出さない。
+  課金単価: 課金は発生しない。

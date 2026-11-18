@@ -380,7 +380,7 @@ functions:
     process: |-
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数と、全てのツールに共通の `session: dict[str, Any] | None = None` を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）。`MCPServer` の `instructions` に `INSTRUCTIONS` を渡す
-         - `MINDSTELLA_SESSION_TOOLS` のツールは、ツールの処理を呼ぶ前に MindStella のセッションかを確かめ（`require_mindstella_session`）、違えば `error_result` を返す
+         - `MINDSTELLA_SESSION_TOOLS` のツールは、ツールの処理を呼ぶ前に MindStella のセッションかを確かめ（`require_mindstella_session`）、違えば `error_result` を返す。ツールの処理が成功したら、同じ鍵の中でツールの名前・ワークスペースの ID（`workspaces.workspace_id_of`）・結果を渡して書き込みのマーカーを付ける（『作業の完了の通知』の `mark_written`）
          - `workspace` を受ける関数は、`session` を読み（`parse_session`）、`workspace` を絶対パスにし（`resolve_workspace`）、セッションがあればそのワークスペースの宛先を書き換えてから（`previews.remember_session`）、ツールの処理を呼ぶ。`resolve_workspace` が `ArgumentError` を送った場合、ツールの処理を呼ばずにエラーの結果を返す（`error_result`）。`out` も同じセッションで絶対パスにする（`argument="out"`）
          - `server_status` は `call_tool(status)`、`server_stop` は `call_tool(lambda: run_server_stop(previews, request_stop=request_stop))` にする（`session` は受けても使わない）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
@@ -433,6 +433,18 @@ functions:
         condition: '`build_server` の結果のツールの一覧'
         mock: なし
         expected: '`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` があり、`init` が無い'
+      - name: test_build_server_when_marking_tool
+        case: 正常
+        summary: MindStella のセッションの reply が成功したら書き込みのマーカーを付ける
+        condition: '`claude_session_id` `abc` の `session.json` とオープンのスレッドを持つワークスペースで、`session.claude_session_id` を `abc` にして `reply` を呼ぶ'
+        mock: なし
+        expected: '`is_error` が偽で、`notify.MARKERS.take({ワークスペースの ID})` が真'
+      - name: test_build_server_when_marking_tool_failed
+        case: 正常
+        summary: 違うセッションの呼び出しは書き込みのマーカーを付けない
+        condition: '`session.claude_session_id` を `xyz` にして `reply` を呼ぶ'
+        mock: なし
+        expected: '`is_error` が真で、`notify.MARKERS.take({ワークスペースの ID})` が偽'
   - name: call_tool
     title: ツールの呼び出し
     kind: 関数
