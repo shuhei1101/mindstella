@@ -27,7 +27,7 @@ flows:
         IF-->>クライアント: 200、png の中身
       ```
     expected:
-      - mp4 はステータスが 200 で、`Content-Type` が `video/mp4`、`Accept-Ranges` が `bytes`、`Content-Length` がファイルの大きさ、本文がファイルと同じ
+      - mp4 はステータスが 200 で、`Content-Type` が `video/mp4`、`Accept-Ranges` が `bytes`、`Content-Length` がファイルの大きさ、`Content-Security-Policy` が `sandbox`、本文がファイルと同じ
       - png はステータスが 200 で、`Content-Type` が `image/png`、本文がファイルと同じ（ファイルのフォルダの下のフォルダも返す）
     test: test_normal
   - name: 正常系（範囲の要求）
@@ -165,6 +165,9 @@ response:
   - name: X-Content-Type-Options
     type: str
     description: '`nosniff`'
+  - name: Content-Security-Policy
+    type: str
+    description: '`sandbox`（全ての応答に付ける。SVG などを直接開いても、スクリプトを動かさず、プレビューとオリジンを分ける。`img`・`video`・`audio` での読み込みには効かない）'
 status_codes:
   - code: '200'
     condition: ファイルの全体を返せた
@@ -192,6 +195,8 @@ constraints:
     constraint: ワークスペースが Git のリポジトリかどうかによらず同じに返す
   - item: 通信
     constraint: 配信は外へ通信しない
+  - item: 直接開いたファイルのスクリプト
+    constraint: '`/files/` の全ての応答に `Content-Security-Policy: sandbox` を付け、配置した SVG・HTML をブラウザで直接開いても、プレビューのオリジンでスクリプトを動かさない'
 refs:
   - IF-489-18#
   - IF-489-3#

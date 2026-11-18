@@ -249,7 +249,7 @@ flows:
       ```
     expected:
       - ツールのエラーにならず、`ok` が偽
-      - '`missing_file` の問題が 1 件だけで、項目の ID が `A-1`、パスが `../files/missing.mp4`'
+      - '`missing_file` の問題が 1 件だけで、`file` が `.mindstella/docs/A-1.md`、`id` が `A-1`、`key` が `null`、`detail` が `../files/missing.mp4`'
       - '`../files/clip.mp4`・絶対 URL・コードブロックの中のパスの問題が無い'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_embedded_file_missing
@@ -268,8 +268,8 @@ response:
     type: bool
     description: 問題が 1 つも無いか
   - name: problems[].kind
-    type: '"schema" | "duplicate_id" | "broken_ref" | "missing_body" | "orphan_body" | "stale_history" | "decision_state"'
-    description: 問題の種類（スキーマに合わない・ID の重複・参照切れ・指す本文が無い・どの項目からも指されない本文・変更履歴から前の本文を組み立てられない・検討事項の案と状態が合わない）
+    type: '"schema" | "duplicate_id" | "broken_ref" | "missing_body" | "orphan_body" | "stale_history" | "decision_state" | "missing_file"'
+    description: 問題の種類（スキーマに合わない・ID の重複・参照切れ・指す本文が無い・どの項目からも指されない本文・変更履歴から前の本文を組み立てられない・検討事項の案と状態が合わない・埋め込んだファイルが無い）
   - name: problems[].file
     type: str
     description: 問題のあるファイル（ワークスペースからの相対パス。例 `.mindstella/decisions.yaml`）
@@ -311,7 +311,7 @@ constraints:
   - item: 案と状態
     constraint: 検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）に合わない検討事項を `decision_state` にする。合わない決まり 1 つ = 1 件で、`key` は `items[{番号}].options` か `items[{番号}].status`、`detail` は ER 図の理由の行。`未整理`・`対象外`・`取り下げ` の検討事項が案を持たないことは問題にしない
   - item: 埋め込んだファイル
-    constraint: '`docs/*.md` の本文の画像の記法 `![…](パス)` のうち、相対パスだけを `docs/` を基準に解決し、ファイルが無いものを `missing_file` にする。問題には本文を持つ項目の ID・記法に書かれたパスを入れる。絶対 URL・`data:`・`/` で始まるパス・コードブロックとインラインコードの中は確かめない。HTML の本文（`docs/*.html`）は確かめない。URL のフラグメント（`#`）とクエリ（`?`）は外してから確かめる'
+    constraint: '`docs/*.md` の本文の画像の記法 `![…](パス)` のうち、相対パスだけを `docs/` を基準に解決し、ファイルが無いものを `missing_file` にする。問題は `file` が本文のファイル（例 `.mindstella/docs/A-1.md`）、`id` が本文を持つ項目の ID、`key` が `null`、`detail` が記法に書かれたパス（例 `../files/missing.mp4`）。絶対 URL・`data:`・`/` で始まるパス・コードブロックとインラインコードの中は確かめない。HTML の本文（`docs/*.html`）は確かめない。URL のフラグメント（`#`）とクエリ（`?`）は外してから確かめる'
 refs:
   - ER-489-1#
 test_file: tests/integration/server/test_check.py
