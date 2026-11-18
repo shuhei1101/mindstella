@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 
 from session_fixtures import SessionWorld, wait_until
@@ -71,6 +72,11 @@ def test_normal(session_world: SessionWorld) -> None:
     assert session["claude_session_id"]
     assert session["pane"]
     assert session["pid"] == record["pid"]
+    # 起動したアカウントは、Mock の Claude Code が使う設定のフォルダ（CLAUDE_CONFIG_DIR か ~/.claude）の絶対パス
+    expected_account = os.path.abspath(
+        os.path.expanduser(record["env"].get("CLAUDE_CONFIG_DIR", "~/.claude"))
+    )
+    assert body["account"] == session["claude_config_dir"] == expected_account
     wait_until(lambda: FIRST_INPUT in world.inputs())
 
 
@@ -87,6 +93,29 @@ def test_normal_when_no_balancer(session_world: SessionWorld) -> None:
     # 検証
     assert status == 201, body
     assert world.claude_records()[0]["env"]["CLAUDE_CONFIG_DIR"] == config_dir
+    assert body["account"] == config_dir
+
+
+def test_normal_when_account_specified(session_world: SessionWorld) -> None:
+    """claude_config_dir を claude-balancer exec の --account に渡して起動し、そのアカウントを返す（正常系）。"""
+    # 準備
+    world = session_world
+    world.start()
+    workspace_id = _workspace(world)
+    config_dir = str(world.root / "claude-sub2")
+    # 実行
+    status, body = world.create_session(workspace_id, claude_config_dir=config_dir)
+    # 検証
+    assert status == 201, body
+    assert world.balancer_calls()[0][:6] == [
+        "exec",
+        "--client",
+        "mindstella",
+        "--account",
+        config_dir,
+        "--",
+    ]
+    assert body["account"] == config_dir
 
 
 def test_error_when_session_exists(session_world: SessionWorld) -> None:
@@ -132,6 +161,24 @@ def test_error_when_no_account(session_world: SessionWorld) -> None:
     assert (status, body["stage"]) == (503, "account"), body
     assert "借りられるアカウントがありません" in body["detail"]
     assert time.monotonic() - started < 20
+    assert _no_session_left(world, workspace_id)
+
+
+def test_error_when_specified_account_unavailable(session_world: SessionWorld) -> None:
+    """指定したアカウントを claude-balancer が貸せず 125 で終われば、ほかのアカウントで起動し直さず 503（異常系）。"""
+    # 準備
+    world = session_world
+    world.set_balancer_exit(125)
+    world.start({"MINDSTELLA_SESSION_READY_TIMEOUT": "20"})
+    workspace_id = _workspace(world)
+    config_dir = str(world.root / "claude-sub3")
+    # 実行
+    status, body = world.create_session(workspace_id, claude_config_dir=config_dir)
+    # 検証
+    assert (status, body["stage"]) == (503, "account"), body
+    assert "借りられるアカウントがありません" in body["detail"]
+    assert len(world.balancer_calls()) == 1
+    assert world.balancer_calls()[0][3:5] == ["--account", config_dir]
     assert _no_session_left(world, workspace_id)
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import urllib.request
 from pathlib import Path
 
@@ -86,6 +87,8 @@ def test_normal(session_world: SessionWorld) -> None:
         "plugin_dirs": [str(plugin)],
     }
     assert body["id"] in _ids(world)
+    # 行の追加は、GET /settings/sources が返した version を expectedVersion に添える
+    assert [request[2]["expectedVersion"] for request in world.pi.changes()] == ["1"]
     posts = [request[2]["source"] for request in world.pi.changes() if request[0] == "POST"]
     resolved = folder.resolve()
     assert posts == [
@@ -165,6 +168,62 @@ def test_normal_when_closed(session_world: SessionWorld) -> None:
     session = world.read_session(created["id"])
     assert session is not None
     assert session["close_pending"] is False
+
+
+def test_normal_when_folder_moved(session_world: SessionWorld) -> None:
+    """配信元の行が記録の無い前のフォルダを指していれば、行の config・scope を移した先へ変える（正常系）。"""
+    # 準備
+    world = session_world
+    world.start()
+    created = world.create_workspace(mcp_config=MCP_CONFIG)
+    moved = world.folder("家計簿-移動後")
+    world.folder().rename(moved)
+    launch_before = _launch_json(world, created["id"])
+    world.pi.requests.clear()
+    # 実行
+    status, body = world.api("POST", "/workspaces", {"folder": str(moved)})
+    # 検証
+    assert (status, body["id"], body["result"]) == (200, created["id"], "opened"), body
+    resolved = moved.resolve()
+    assert [(request[0], request[2]["source"]) for request in world.pi.changes()] == [
+        (
+            "PATCH",
+            {
+                "config": f"{resolved}/.mindstella/dev-docs.yaml",
+                "scope": {
+                    "read": [str(resolved), f"{resolved}/**"],
+                    "write": [str(resolved), f"{resolved}/**"],
+                },
+            },
+        )
+    ]
+    assert _launch_json(world, created["id"]) == launch_before
+
+
+def test_error_when_duplicate_id(session_world: SessionWorld) -> None:
+    """配信元の行が指す別のフォルダに同じ ID の記録が残っていれば 409 を返し、行を変えない（異常系）。"""
+    # 準備
+    world = session_world
+    world.start()
+    world.create_workspace()
+    original = world.folder()
+    copied = world.folder("家計簿-コピー")
+    shutil.copytree(original, copied)
+    before = {
+        folder: (folder / ".mindstella" / "config.yaml").read_bytes()
+        for folder in (original, copied)
+    }
+    world.pi.requests.clear()
+    # 実行
+    status, body = world.api("POST", "/workspaces", {"folder": str(copied)})
+    # 検証
+    assert (status, body["stage"]) == (409, "duplicate"), body
+    assert str(original.resolve()) in body["detail"]
+    assert world.pi.changes() == []
+    assert {
+        folder: (folder / ".mindstella" / "config.yaml").read_bytes()
+        for folder in (original, copied)
+    } == before
 
 
 def test_error_when_folder_not_allowed(session_world: SessionWorld) -> None:
