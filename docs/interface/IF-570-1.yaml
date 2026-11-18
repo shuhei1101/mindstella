@@ -16,9 +16,9 @@ exceptions:
     condition: 送信した・送信しなかった・送信に失敗した、のどれでも例外を出さない
 constraints:
   - item: 通知するか
-    constraint: 書き換える前の `status` が `running` か `stopping` で、書き換えた後が `stopped` か `crashed` のときだけ送信する。ただし『MindStella のセッションの出来事の受け取り』が `stopping` から `stopped` に書き換えたとき（停止の依頼で `/exit` を貼った後の SessionEnd）は送信せず、停止の依頼の別のスレッドが止め終えたときに送信する。そのスレッドは、書き換える前が `stopping` か `stopped`（SessionEnd が先に書いた）のときに送信し、`crashed` のときは送信しない。止める間に失敗して `running` に戻したときと、`stop_failure` で応答が終わっただけのときは送信しない
+    constraint: 落ちたことの検知は、書き換える前が `running` で後が `crashed` のときだけ送信する。`session_end` は、書き換える前が `running` で後が `stopped` のときだけ送信する。`stopping`（停止の依頼の途中）からの書き換えでは、検知も `session_end` も送信せず、停止の依頼の止めるスレッドが 1 件だけ送信する。止めるスレッドは、止め終えて停止済みを記録したとき、書き換える前が `stopping`・`stopped`（SessionEnd が先に記録した）・`crashed`（検知が先に記録した）のどれでも送信する。落ちていた MindStella のセッションへの停止の依頼（`crashed` から `stopped`）では送信しない。止める間に失敗して `running` に戻したときと、`stop_failure` で応答が終わっただけのときは送信しない
   - item: 止まった理由
-    constraint: '`stop_requested`（停止の依頼）・`force_stopped`（強制停止）・`crashed`（異常終了）・`stop_failed`（停止処理の失敗）・`session_ended`（Claude Code の終了）のどれか。括弧の中が本文に記載する文言。停止の依頼のスレッドが止め終えたときは `force` で `stop_requested` か `force_stopped`、ペインかプロセスが無いことを検知して `crashed` にしたときは `crashed`、止める間に失敗して `crashed` に戻したときは `stop_failed`、`session_end`（`clear`・`resume` 以外）が `running` から `stopped` にしたときは `session_ended`'
+    constraint: '`stop_requested`（停止の依頼）・`force_stopped`（強制停止）・`crashed`（異常終了）・`stop_failed`（停止処理の失敗）・`session_ended`（Claude Code の終了）のどれか。括弧の中が本文に記載する文言。停止の依頼のスレッドが止め終えたときは `force` で `stop_requested` か `force_stopped`、ペインかプロセスが無いことを検知して `running` から `crashed` にしたときは `crashed`、止める間に失敗して `crashed` に戻したときは `stop_failed`、`session_end`（`clear`・`resume` 以外）が `running` から `stopped` にしたときは `session_ended`'
   - item: 本文
     constraint: '`{ワークスペースの名前}: 停止しました（{止まった理由の文言}）` と `{画面の URL}` の 2 行。絵文字を使用しない。ワークスペースの名前・画面の URL・画面の URL が無いとき・2000 文字を超えるときの扱いは『作業の完了の通知』の本文と同じ'
   - item: 送信の方法
@@ -275,6 +275,37 @@ flows:
       - エンドポイントが 1 件だけ要求を受けている（再送信しない）
       - 標準エラーに `500` を含む失敗の行があり、エンドポイントの URL を含まない
     test: test_error_when_send_failed
+  - name: 正常系（停止の途中の一覧）
+    summary: 停止の依頼の途中に一覧がペインの無いことを検知しても送信せず、止め終えたときに停止の依頼を 1 件送信する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（200 を返却する）と、Claude Code（ペインに `/exit` が貼られたら SessionEnd を叩かずに終わる）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}/sessions/{session}
+        participant LS as GET /workspaces/{id}/sessions
+        participant IF as 停止の通知
+        participant DC as Discord
+
+        クライアント->>API: DELETE
+        API-->>クライアント: 202 stopping
+        API->>API: /exit を貼る（SessionEnd は届かない）
+        クライアント->>LS: GET
+        LS->>LS: stopping から crashed（送信しない）
+        API->>API: crashed から stopped
+        API->>IF: 止め終えた・stop_requested
+        IF->>DC: POST ?wait=true content
+      ```
+    expected:
+      - '`session.json` の `status` が `stopped`'
+      - 'エンドポイントが 1 件だけ要求を受け、`content` の 1 行目が `{題名}: 停止しました（停止の依頼）`'
+    test: test_normal_when_listed_while_stopping
 refs:
   - SC-570-1#
   - IF-568-1#

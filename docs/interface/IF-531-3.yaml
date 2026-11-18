@@ -57,7 +57,7 @@ constraints:
   - item: MCP のツール
     constraint: '`sessions` は `workspace_id` を受け、同じ処理を呼ぶ'
   - item: 停止の通知
-    constraint: '`running`・`stopping` から `crashed` に書き換えたときだけ、応答を返却する前に『停止の通知』を止まった理由 `crashed` で呼ぶ（送信は別のスレッドで行い、応答を待たせない）。通知の成否は応答に含めない'
+    constraint: '`running` から `crashed` に書き換えたときだけ、応答を返却する前に『停止の通知』を止まった理由 `crashed` で呼ぶ（送信は別のスレッドで行い、応答を待たせない）。`stopping`（停止の依頼の途中）から `crashed` への書き換えでは呼ばず、『MindStella のセッションの停止』が止め終えたときに呼ぶ。通知の成否は応答に含めない'
 flows:
   - name: 正常系
     summary: 起動中の MindStella のセッションを返す

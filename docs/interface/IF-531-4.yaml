@@ -63,7 +63,7 @@ constraints:
   - item: MCP のツール
     constraint: '`stop_session` は `workspace_id`・`session_id`・`force` を受け、同じ処理を呼ぶ'
   - item: 停止の通知
-    constraint: 止めるスレッドが停止済みを記録したとき、書き換える前が `stopping` か `stopped`（SessionEnd が先に記録した）なら『停止の通知』を `force` が偽なら `stop_requested`、真なら `force_stopped` で呼ぶ。止める間に失敗して `crashed` に戻したときは `stop_failed` で呼び、`running` に戻したときは呼ばない。落ちていて `stopped` を返すときは、落ちたことを検知した時点で `crashed` を呼び、`crashed` から `stopped` への書き換えでは呼ばない
+    constraint: 止めるスレッドが停止済みを記録したとき、書き換える前が `stopping`・`stopped`（SessionEnd が先に記録した）・`crashed`（停止の途中に落ちたことの検知が先に記録した）なら『停止の通知』を `force` が偽なら `stop_requested`、真なら `force_stopped` で呼ぶ。止める間に失敗して `crashed` に戻したときは、戻す前の生死の判定が `stopping` から `crashed` にしていても `stop_failed` で呼び、`running` に戻したときは呼ばない。落ちていて `stopped` を返すときは、受け付ける前の `running` から `crashed` への検知で `crashed` を呼び、`crashed` から `stopped` への書き換えでは呼ばない
 flows:
   - name: 正常系
     summary: すぐに 202 を返し、応答の途中でなければ止めて停止済みにする
