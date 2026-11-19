@@ -21,6 +21,7 @@ import resume
 import sessions
 import state
 from errors import ApiError
+from home_settings import HomeSettings
 from state import LaunchOptions, SessionState
 from workspaces import WorkspaceLocks
 
@@ -193,6 +194,7 @@ def ctx(
         proc=FakeProc(tmux),
         write_lock=threading.Lock(),
         row=row,
+        home=HomeSettings(None, True),
     )
 
 
@@ -1611,3 +1613,251 @@ def test_start_crash_watch(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
     # 検証
     assert len(calls) >= 2
     assert not thread.is_alive()
+
+
+@pytest.mark.parametrize(
+    ("balancer_url", "expected"),
+    [
+        pytest.param("http://127.0.0.1:8780", "http://127.0.0.1:8780", id="url"),
+        pytest.param(None, None, id="none"),
+    ],
+)
+def test_build_env_when_balancer_url(balancer_url: str | None, expected: str | None) -> None:
+    """ホームの設定の待ち受け先を渡す（正常系）。"""
+    # 実行
+    env = sessions.build_env(
+        SESSION_ID, WORKSPACE_ID, 8784, None, None, True, balancer_url=balancer_url
+    )
+    # 検証
+    assert env.get("CLAUDE_BALANCER_URL") == expected
+
+
+@pytest.mark.parametrize(
+    ("config_dir", "expected"),
+    [pytest.param("~/c", "{home}/c", id="specified"), pytest.param(None, None, id="none")],
+)
+def test_create_session_records_specified_account(
+    config_dir: str | None,
+    expected: str | None,
+    ctx: SimpleNamespace,
+    clock: FakeClock,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """依頼の claude_config_dir を specified_account に記録する（正常系）。"""
+    # 準備
+    monkeypatch.setenv("HOME", str(tmp_path))
+    _register_on_sleep(ctx, clock)
+    # 実行
+    sessions.create_session(WORKSPACE_ID, config_dir, ctx)
+    # 検証
+    assert _session(ctx).specified_account == (
+        expected.format(home=tmp_path) if expected else None
+    )
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        pytest.param(
+            {"event": "session_start", "claude_session_id": "c2", "balancer_account": "a"},
+            "a",
+            id="account",
+        ),
+        pytest.param({"event": "session_start", "claude_session_id": "c2"}, None, id="none"),
+    ],
+)
+def test_record_event_balancer_account(
+    event: dict[str, Any], expected: str | None, ctx: SimpleNamespace
+) -> None:
+    """session_start の balancer_account を記録する（正常系）。"""
+    # 準備
+    _write_session(ctx)
+    # 実行
+    sessions.record_event(SESSION_ID, event, ctx)
+    # 検証
+    assert _session(ctx).balancer_account == expected
+
+
+def test_restart_session_when_usage_threshold(
+    restart_ctx: SimpleNamespace,
+    clock: FakeClock,
+    log: list[Any],
+    stopped_notices: list[tuple[str, str]],
+) -> None:
+    """しきい値の契機では応答の終わりを待ち、usage_threshold を通知する（正常系）。"""
+    # 準備
+    ctx = restart_ctx
+    _write_session(ctx, responding=True)
+    ctx.proc.exit_on_paste = False
+
+    def finish_then_register(count: int) -> None:
+        """3 回目の sleep で応答を終え、起動のコマンドの後に登録する。"""
+        if count == 3:
+            state.update_session(
+                ctx.state_root,
+                WORKSPACE_ID,
+                lambda current: None if current is None else current.replace(responding=False),
+            )
+        if any(call[0] == "respawn-pane" for call in ctx.tmux.calls):
+            state.update_session(
+                ctx.state_root,
+                WORKSPACE_ID,
+                lambda current: (
+                    None
+                    if current is None
+                    else current.replace(
+                        claude_session_id="c2", pid=PID + 1, pid_started_at="67890"
+                    )
+                ),
+            )
+
+    clock.on_sleep = finish_then_register
+    # 実行
+    sessions.restart_session(WORKSPACE_ID, SESSION_ID, "usage_threshold", False, ctx)
+    # 検証
+    exit_at = next(
+        index for index, entry in enumerate(log) if entry[0] == "tmux" and entry[2] == b"/exit"
+    )
+    assert ("sleep", 3) in log[:exit_at]
+    assert stopped_notices == [(WORKSPACE_ID, "usage_threshold")]
+    assert _session(ctx).status == "running"
+
+
+@pytest.mark.parametrize(
+    ("reason", "has_account", "expected_specified"),
+    [
+        pytest.param("api", True, "/c", id="api"),
+        pytest.param("rate_limit", False, None, id="rate-limit"),
+        pytest.param("usage_threshold", False, None, id="usage-threshold"),
+        pytest.param("compact", True, "/c", id="compact"),
+    ],
+)
+def test_restart_session_with_specified_account(
+    reason: str,
+    has_account: bool,
+    expected_specified: str | None,
+    restart_ctx: SimpleNamespace,
+    clock: FakeClock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """specified_account と契機と release_on_limit で --account が決まる（正常系）。"""
+    # 準備
+    ctx = restart_ctx
+    monkeypatch.setattr(sessions.shutil, "which", lambda _name: "/usr/bin/claude-balancer")
+    _write_session(ctx, specified_account="/c")
+    ctx.proc.exit_on_paste = False
+    _register_new_on_sleep(ctx, clock, "c2")
+    # 実行
+    sessions.restart_session(WORKSPACE_ID, SESSION_ID, reason, False, ctx)
+    # 検証
+    respawn = next(call for call in ctx.tmux.calls if call[0] == "respawn-pane")
+    assert ("--account" in respawn) is has_account
+    assert _session(ctx).specified_account == expected_specified
+
+
+def test_restart_session_when_release_off(
+    restart_ctx: SimpleNamespace,
+    clock: FakeClock,
+    monkeypatch: pytest.MonkeyPatch,
+    stopped_notices: list[tuple[str, str]],
+) -> None:
+    """release_on_limit が偽で利用上限なら起動し直さない（異常系）。"""
+    # 準備
+    ctx = restart_ctx
+    ctx.home = HomeSettings(None, False)
+    monkeypatch.setattr(sessions.shutil, "which", lambda _name: "/usr/bin/claude-balancer")
+    _write_session(ctx, specified_account="/c")
+    # 実行
+    sessions.restart_session(WORKSPACE_ID, SESSION_ID, "rate_limit", False, ctx)
+    # 検証
+    assert not any(call[0] == "respawn-pane" for call in ctx.tmux.calls)
+    current = _session(ctx)
+    assert current.status == "crashed"
+    assert (current.last_error or "").startswith("account:")
+    assert stopped_notices == [(WORKSPACE_ID, "rate_limited")]
+
+
+class AccountTmux(RestartTmux):
+    """--account を付けた起動は 125 で終わる tmux の偽。"""
+
+    def run(self, args: list[str], stdin: bytes | None = None) -> tuple[int, str]:
+        """respawn-pane の引数でペインの終わり方を決める。"""
+        if args[0] == "respawn-pane":
+            self.pane_dead = "1 125" if "--account" in args else "0 0"
+        return super().run(args, stdin)
+
+
+@pytest.mark.parametrize(
+    ("release_on_limit", "respawns", "last_has_account", "status", "specified"),
+    [
+        pytest.param(True, 2, False, "running", None, id="release-on"),
+        pytest.param(False, 1, True, "crashed", "/c", id="release-off"),
+    ],
+)
+def test_restart_session_when_specified_account_unavailable(
+    release_on_limit: bool,
+    respawns: int,
+    last_has_account: bool,
+    status: str,
+    specified: str | None,
+    restart_ctx: SimpleNamespace,
+    clock: FakeClock,
+    log: list[Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """--account 付きの起動が account の段階で失敗したら、指定を解除して 1 回だけ起動し直す（正常系）。"""
+    # 準備
+    ctx = restart_ctx
+    ctx.tmux = AccountTmux(log)
+    ctx.proc = FakeProc(ctx.tmux)
+    ctx.home = HomeSettings(None, release_on_limit)
+    monkeypatch.setattr(sessions.shutil, "which", lambda _name: "/usr/bin/claude-balancer")
+    _write_session(ctx, status="crashed", specified_account="/c")
+    ctx.tmux.session_exists = False
+
+    def register_without_account(_count: int) -> None:
+        """--account の無い起動の後だけ登録する。"""
+        respawned = [call for call in ctx.tmux.calls if call[0] == "respawn-pane"]
+        if respawned and "--account" not in respawned[-1]:
+            state.update_session(
+                ctx.state_root,
+                WORKSPACE_ID,
+                lambda current: (
+                    None
+                    if current is None
+                    else current.replace(
+                        claude_session_id="c2", pid=PID + 1, pid_started_at="67890"
+                    )
+                ),
+            )
+
+    clock.on_sleep = register_without_account
+    # 実行
+    sessions.restart_session(WORKSPACE_ID, SESSION_ID, "api", False, ctx)
+    # 検証
+    respawned = [call for call in ctx.tmux.calls if call[0] == "respawn-pane"]
+    assert len(respawned) == respawns
+    assert ("--account" in respawned[-1]) is last_has_account
+    current = _session(ctx)
+    assert (current.status, current.specified_account) == (status, specified)
+
+
+def test_request_restart_when_usage_threshold(
+    ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """usage_threshold の契機を受け付ける（正常系）。"""
+    # 準備
+    _write_session(ctx)
+    called: list[str] = []
+    monkeypatch.setattr(
+        sessions,
+        "restart_session",
+        lambda _workspace_id, _session_id, reason, _force, _ctx: called.append(reason)
+        or (202, {}),
+    )
+    # 実行
+    result = sessions.request_restart(WORKSPACE_ID, "usage_threshold", ctx)
+    # 検証
+    assert result is True
+    assert called == ["usage_threshold"]

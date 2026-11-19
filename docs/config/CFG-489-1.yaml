@@ -1,6 +1,6 @@
 id: CFG-489-1
 title: "設定: サーバー"
-lead: 起動スクリプトと常駐の MCP サーバーが読む環境変数。設定のファイルは持たない。
+lead: 起動スクリプトと常駐の MCP サーバーが読む環境変数と、mindstella のホームの設定 `${XDG_CONFIG_HOME:-~/.config}/mindstella/settings.yaml`。
 settings:
   - key: MINDSTELLA_VENV
     title: 仮想環境のフォルダ
@@ -306,3 +306,60 @@ settings:
       - IF-582-2#
     notes:
       補足: 結合テストが短くするために使う
+  - key: claude_balancer.url
+    title: claude-balancer の常駐の待ち受け先
+    file: ~/.config/mindstella/settings.yaml
+    type: str
+    required: false
+    default: http://127.0.0.1:8770
+    description: 常駐サーバーが、使用中のアカウントの利用枠を確かめるのに `GET /accounts` を呼ぶ claude-balancer の常駐の待ち受け先。常駐サーバーが起動時に読み、MindStella のセッションを起動するときに `respawn-pane -e` で環境変数 `CLAUDE_BALANCER_URL` に渡して、ペインの中の `claude-balancer exec` も同じ値を使う。キーが無いときは渡さない
+    missing: '`http://127.0.0.1:8770` へつなぐ。ペインには `CLAUDE_BALANCER_URL` を渡さない'
+    reload: restart
+    status: planned
+    visibility: user
+    refs:
+      - IF-582-1#
+      - IF-531-2#
+      - IF-616-1#
+    allowed: '`http://` か `https://` で始まる URL（違えば常駐サーバーが起動時に InvalidSettingsError で終わる）'
+    reason: '端末ごとに変わる値なので、ホームの設定に置く（PR #616 の確認ログ）'
+    introduced:
+      pr: 616
+  - key: MINDSTELLA_USAGE_WATCH_INTERVAL
+    title: 利用枠を見回る間隔の秒数
+    file: 環境変数
+    type: str
+    required: false
+    default: 非機能要件『利用枠を見回る間隔』の値
+    description: 使用中のアカウントの利用枠を見回る間隔の秒数を上書きする
+    env_var: MINDSTELLA_USAGE_WATCH_INTERVAL
+    reload: restart
+    status: planned
+    visibility: developer
+    refs:
+      - IF-582-1#
+      - IF-616-1#
+    notes:
+      補足: 結合テストが短くするために使う
+  - key: account.release_on_limit
+    title: 指定したアカウントの自動解除
+    file: ~/.config/mindstella/settings.yaml
+    type: bool
+    required: false
+    default: 'true'
+    description: アカウントを指定して起動した MindStella のセッションで、指定したアカウントが利用上限に達した・利用枠がしきい値以上になった・借りられなかったときに、指定を解除して自動で選んだアカウントへ切り替えるか。`false` のときは指定したアカウント以外では起動し直さない
+    missing: 指定を解除して切り替える
+    reload: restart
+    allowed: '`true` か `false`（違えば常駐サーバーが起動時に InvalidSettingsError で終わる）'
+    reason: '指定したアカウント以外を使わせたくない端末のためにオフにできるようにする（PR #616 の確認ログ）'
+    status: planned
+    visibility: user
+    refs:
+      - IF-582-1#
+      - IF-616-1#
+    introduced:
+      pr: 616
+files:
+  - file: ~/.config/mindstella/settings.yaml
+    manages: claude-balancer の常駐の待ち受け先と、指定したアカウントの自動解除
+    notes: '`XDG_CONFIG_HOME` があれば `${XDG_CONFIG_HOME}/mindstella/settings.yaml` を読む。常駐サーバーが起動時に 1 回だけ読む。ファイルが無ければ全てのキーを既定値として扱う。YAML として読めないときと、最上位がマッピングでないときは、常駐サーバーが起動時に InvalidSettingsError で終わる。知らないキーは標準エラーへ記録して読み飛ばし、起動を続ける。Git の外に置き、利用者が作る（常駐サーバーは作らない）'

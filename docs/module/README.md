@@ -281,6 +281,8 @@
 | [プレビュー / 基盤](./MOD-489-172.yaml) | 画面が共通で使う土台。記録の索引と画面に出す値の計算、描画のライブラリの呼び出しと読めないときの知らせ、URL のハッシュと履歴、コメント・返信の入力の録音を持つ。 |
 | [プレビュー / 画面と部品](./MOD-489-174.yaml) | 部品（表・トップバー・表示形式の切り替え）と画面。どれも「引数を受けて要素を返す関数」で、操作は引数のコールバックで入口に知らせる。 |
 | [サーバー / 作業の完了の通知 / notify.py](./MOD-568-1.py.yaml) | サーバー / 作業の完了の通知 / notify.py |
+| [サーバー / ホームの設定 / home_settings.py](./MOD-616-1.py.yaml) | サーバー / ホームの設定 / home_settings.py |
+| [サーバー / 利用枠の見回り / usage_watch.py](./MOD-616-2.py.yaml) | サーバー / 利用枠の見回り / usage_watch.py |
 | [サーバー / 配信 / files_serve.py](./MOD-587-1.py.yaml) | サーバー / 配信 / files_serve.py |
 | [サーバー / 入口 / startup.py](./MOD-605-1.py.yaml) | サーバー / 入口 / startup.py |
 | [サーバー / ビルド / mdmark_ref.py](./MOD-591-1.py.yaml) | サーバー / ビルド / mdmark_ref.py |

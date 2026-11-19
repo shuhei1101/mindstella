@@ -1,0 +1,144 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-582-1.yaml
+    impact: changed
+    detail: 使用中のアカウントの利用枠がしきい値以上になったら、利用上限のエラーを待たずに、応答の終わりを待って止め、別のアカウントで前の会話を引き継いで起動し直す契機を追加する。空いたアカウントが無いときは今のアカウントで続ける
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: following
+    detail: しきい値での切り替えで止めたときの、止まった理由の通知に追随する
+    depends_on:
+      - docs/scenario/SC-582-1.yaml
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: none
+    detail: 止まった後に別のアカウントで話し合いを続ける流れは変わらない
+    depends_on: []
+docs:
+  - page: docs/interface/IF-582-1.yaml
+    new: false
+    change: 契機にしきい値での切り替えを追加し、止め方（応答の終わりを待つ）・アカウント（しきい値以上のアカウントを除いて借りる）・停止の通知を決める
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:42.023711+00:00'
+  - page: docs/interface/IF-570-1.yaml
+    new: false
+    change: 止まった理由にしきい値での切り替えを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:42.023711+00:00'
+  - page: docs/library/LIB-531-1.yaml
+    new: false
+    change: 使用中のアカウントの消費率と貸せない理由を取得する claude-balancer の GET /accounts（IF-275-12）の使い方を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:42.023711+00:00'
+  - page: docs/nonfunctional/NFR-489-1.yaml
+    new: false
+    change: 使用中のアカウントの利用枠を確かめる間隔の決定値を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:42.023711+00:00'
+  - page: docs/er/ER-531-1.yaml
+    new: false
+    change: session.json の restart_reason に usage_threshold を追加し、balancer_account・specified_account の列を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:46:58.601668+00:00'
+  - page: docs/config/CFG-489-1.yaml
+    new: false
+    change: 利用枠を見回る間隔の上書き（MINDSTELLA_USAGE_WATCH_INTERVAL）を追加し、claude-balancer の待ち受け先と指定アカウントの自動解除のオンオフを mindstella のホームの設定 ~/.config/mindstella/settings.yaml に配置する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:16:09.209377+00:00'
+  - page: docs/module/MOD-531-4.py.yaml
+    new: false
+    change: 使用中のアカウントの利用枠を周期で確かめ、しきい値以上なら起動し直しを依頼する処理を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:46:58.601668+00:00'
+  - page: docs/module/MOD-568-1.py.yaml
+    new: false
+    change: 止まった理由の文言に、しきい値での切り替えを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:46:58.601668+00:00'
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: 利用枠がしきい値以上になったときも、別のアカウントで続きから再開することを追記する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:53:44.586709+00:00'
+  - page: docs/guide/セットアップ手順-Discordに通知する.md
+    new: false
+    change: 通知の止まった理由に、しきい値での切り替えを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:53:44.586709+00:00'
+  - page: docs/interface/IF-531-2.yaml
+    change: 渡す環境変数に CLAUDE_BALANCER_URL（ホームの設定の claude_balancer.url）を追加し、session.json に balancer_account・specified_account を記録する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:42.023711+00:00'
+  - page: docs/interface/IF-616-1.yaml
+    new: true
+    change: 使用中のアカウントの利用枠を GET /accounts で見回り、しきい値以上で切り替え先があれば起動し直しを呼ぶインターフェースを作る
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:47.411365+00:00'
+  - page: docs/interface/IF-531-7.yaml
+    new: false
+    change: SessionStart で OTEL_RESOURCE_ATTRIBUTES の claude_balancer.account を balancer_account で送る
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:47.411365+00:00'
+  - page: docs/interface/IF-531-6.yaml
+    new: false
+    change: session_start で balancer_account を記録する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:47.411365+00:00'
+  - page: docs/module/MOD-616-1.py.yaml
+    new: true
+    change: ホームの設定を読む home_settings.py のモジュール構成を作る
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:47:04.622177+00:00'
+  - page: docs/module/MOD-616-2.py.yaml
+    new: true
+    change: 利用枠の見回りの usage_watch.py のモジュール構成を作る
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:47:04.622177+00:00'
+  - page: docs/module/MOD-531-6.py.yaml
+    new: false
+    change: OTEL_RESOURCE_ATTRIBUTES から借りたアカウント名を取り出す関数を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:47:04.622177+00:00'
+  - page: docs/module/MOD-489-177.py.yaml
+    new: false
+    change: 起動時にホームの設定を読み、利用枠の見回りを始める
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:47:04.622177+00:00'
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 起動し直しの契機にしきい値を追加し、指定したアカウントの解除とホームの設定 settings.yaml を書く
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:53:52.035030+00:00'
+scope_out:
+  - item: 画面での切り替えの表示
+    reason: 要望に含まれない。切り替えたことは Discord の停止の通知と『MindStella のセッションの一覧』で分かる
+    plan: none
+  - item: claude-balancer 側の変更（使用中のアカウントの消費率を取得する API の新設）
+    reason: 既存の GET /accounts（IF-275-12）がアカウントごとの消費率と、しきい値以上を表す貸せない理由を返すため。アカウントの設定のフォルダとアカウント名の対応が GET /accounts で取れなければ、インターフェース定義設計で claude-balancer へ起票して依存に加える
+    plan: none
+  - item: '`sessions.py` の `_wait_ready` の重なったコメント（「登録が入った: 準備ができた」が 2 行続く）と、リポジトリ全体の `ruff format --check` の不一致（202 ファイル）'
+    reason: この PR の変更より前からあり、TL-7（lint）の全件実行に `ruff format --check` が入っていないため。この PR で変えた 7 ファイルは整形済み
+    plan: none
+  - item: '`tests/integration/server/test_create_workspace.py` の `test_error_when_folder_not_allowed`（状態のフォルダに `workspaces.yaml` が作られている）と `test_error_when_host_not_local`（`HTTP Error 403` の後に接続が切れる）の fail'
+    reason: この PR の分岐点 71ba7658 のコードでも同じ 2 件が同じ理由で fail するため。この PR の変更と関係しない
+    plan: none

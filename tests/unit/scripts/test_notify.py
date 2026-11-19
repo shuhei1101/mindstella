@@ -369,6 +369,9 @@ def test_notify_if_written_when_not_configured(markers: notify.WriteMarkers) -> 
         pytest.param("crashed", "異常終了", id="crashed"),
         pytest.param("stop_failed", "停止処理の失敗", id="stop-failed"),
         pytest.param("session_ended", "Claude Code の終了", id="session-ended"),
+        pytest.param("rate_limited", "利用上限", id="rate-limited"),
+        pytest.param("usage_threshold", "利用枠の残りが少ないため切り替え", id="usage-threshold"),
+        pytest.param("restart_failed", "起動し直しの失敗", id="restart-failed"),
     ],
 )
 def test_build_stopped_content(reason: notify.StopReason, text: str) -> None:

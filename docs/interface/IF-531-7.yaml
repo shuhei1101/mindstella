@@ -47,6 +47,12 @@ request:
   default: なし（`~/.claude` を絶対パスにした値を送る）
   location: argument
   description: 環境変数。Claude Code の設定のフォルダ。`session-start` で絶対パスにして `claude_config_dir` で送る
+- name: OTEL_RESOURCE_ATTRIBUTES
+  type: str
+  required: false
+  default: なし（`balancer_account` を送らない）
+  location: argument
+  description: 環境変数。claude-balancer の `exec` が子プロセスに渡す。`session-start` で `claude_balancer.account` の項目の値を `balancer_account` で送る
 response:
 - name: 標準出力
   type: JSON | なし
@@ -84,6 +90,9 @@ constraints:
   constraint: '`pre-compact` で、出来事 `pre_compact` を送ってから標準出力に `{"decision": "block", "reason": "[mindstella] 圧縮の代わりに起動し直します"}` を書き、圧縮を止める。常駐サーバーへつながらないときは止めずに圧縮させる。通常のセッションは止めない'
 - item: 圧縮で起動し直したときの注入
   constraint: '環境変数 `MINDSTELLA_LAUNCH_REASON` が `compact` で `source` が `startup` のときは、再開として注入する（『再開の状況』へ `source: compact` で送る）'
+- item: 借りたアカウント
+  constraint: '`session-start` で、`OTEL_RESOURCE_ATTRIBUTES` を `,` で区切った `{キー}={値}` のうち、キーが `claude_balancer.account` の値を `balancer_account` で送る。変数が無い・その項目が無いときは送らない'
+  notes: claude-balancer の `exec` は、借りたアカウント名を `claude_balancer.account` として子プロセスの `OTEL_RESOURCE_ATTRIBUTES` に足す（LIB-531-1）
 flows:
 - name: 正常系
   summary: SessionStart で出来事を送り、『再開の状況』の注入文を注入する

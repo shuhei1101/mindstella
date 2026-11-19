@@ -72,7 +72,7 @@ constraints:
   - item: Claude Code の引数
     constraint: '`launch.json` の `mcp_config` が空でなければ一時ファイルに書いて `--mcp-config {ファイル}`、`plugin_dirs` の各フォルダに `--plugin-dir {フォルダ}`。起動の指示は SessionStart の注入（『MindStella のセッションのフック』）で渡し、`--append-system-prompt` は渡さない。引数ごとに分けて渡し、シェルで解釈させない'
   - item: 渡す環境変数
-    constraint: '`MINDSTELLA_SESSION`（MindStella のセッションの ID）・`MINDSTELLA_WORKSPACE`（ワークスペースの ID）・`MINDSTELLA_PORT`、設定に進め方の文書があれば `MINDSTELLA_FLOW`（`{配信元の ID}#{文書の ID}`）。tmux の `respawn-pane -e` で渡す'
+    constraint: '`MINDSTELLA_SESSION`（MindStella のセッションの ID）・`MINDSTELLA_WORKSPACE`（ワークスペースの ID）・`MINDSTELLA_PORT`、設定に進め方の文書があれば `MINDSTELLA_FLOW`（`{配信元の ID}#{文書の ID}`）、mindstella のホームの設定に `claude_balancer.url` があればその値を `CLAUDE_BALANCER_URL`。tmux の `respawn-pane -e` で渡す'
     decided_by: CFG-489-1#
   - item: 最初の入力
     constraint: SessionStart のフックが登録した後、SessionStart のフックが登録したペイン（`TMUX_PANE`）へ 1 行の文字列（`[mindstella] MindStella のセッションを起動しました`）を『コメントをまとめて送る』と同じ貼り方で入れる
@@ -81,7 +81,7 @@ constraints:
     constraint: "0.5 秒ごとに、状態の `claude_session_id` が入ったかと、`display-message -p -t ={ワークスペースの ID}: '#{pane_dead} #{pane_dead_status}'` でペインのコマンドが終わったかを読み、上限まで待つ。登録が入ったら 201、ペインのコマンドが先に終わったら終了コードで 503（125）と 502（ほか）を分け、`capture-pane -p -S -20` で最後の 20 行を読んでからペインを閉じる。上限を過ぎたら 504"
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
   - item: 状態
-    constraint: '`session.json` に `session`・`status: running`・`claude_session_id`（フックが入れる）・`pane`・`pid`・`claude_config_dir`（フックが入れる）・`responding: false`・`pending_write: false`・`close_pending: false`・`started_at` を書く（ER 図『常駐サーバーの状態』）'
+    constraint: '`session.json` に `session`・`status: running`・`claude_session_id`（フックが入れる）・`pane`・`pid`・`claude_config_dir`（フックが入れる）・`balancer_account`（フックが入れる）・`specified_account`（要求の `claude_config_dir` を `~` を展開した絶対パスにした値。無ければ `null`）・`responding: false`・`pending_write: false`・`close_pending: false`・`started_at` を書く（ER 図『常駐サーバーの状態』）'
   - item: 同時の依頼
     constraint: ワークスペースごとの鍵（ワークスペースの管理と共有する）を、クローズ済みかの確かめから状態を書くまで持つ。準備を待つ間も持つ。`session.json` の読み書きは、`session.json` ごとの書き込みの鍵を取って行う（『MindStella のセッションの出来事の受け取り』と同じ鍵）
   - item: MCP のツール

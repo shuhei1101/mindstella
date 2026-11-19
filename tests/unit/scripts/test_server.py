@@ -286,7 +286,9 @@ def test_main_when_reconciled(monkeypatch: pytest.MonkeyPatch, free_port: int) -
     )
     spy = _MainSpy(_FakeHttpServer(on_run=lambda: order.append(("run", None))))
     # 実行
-    server.main(build=spy.build, make_server=spy.make_server, environ={"MINDSTELLA_PORT": str(free_port)})
+    server.main(
+        build=spy.build, make_server=spy.make_server, environ={"MINDSTELLA_PORT": str(free_port)}
+    )
     # 検証
     assert len(order) == 3
     assert (order[0][0], order[1][0], order[2][0]) == ("reconcile", "agent_flows", "run")
@@ -354,6 +356,27 @@ def test_main_when_transcriber_invalid(caplog: pytest.LogCaptureFixture, free_po
     assert result == 1
     assert "MINDSTELLA_TRANSCRIBER" in caplog.text
     assert "whisper" in caplog.text
+    assert spy.build_calls == 0
+    assert spy.make_server_calls == 0
+
+
+def test_main_when_home_settings_invalid(
+    caplog: pytest.LogCaptureFixture, free_port: int, tmp_path: Path
+) -> None:
+    """ホームの設定が読めなければ待ち受けずに 1（異常系）。"""
+    # 準備
+    spy = _MainSpy(_FakeHttpServer())
+    caplog.set_level(logging.ERROR)
+    folder = tmp_path / "mindstella"
+    folder.mkdir()
+    (folder / "settings.yaml").write_text('account:\n  release_on_limit: "no"\n', encoding="utf-8")
+    environ = {"MINDSTELLA_PORT": str(free_port), "XDG_CONFIG_HOME": str(tmp_path)}
+    # 実行
+    result = server.main(build=spy.build, make_server=spy.make_server, environ=environ)
+    # 検証
+    assert result == 1
+    assert "settings.yaml" in caplog.text
+    assert "release_on_limit" in caplog.text
     assert spy.build_calls == 0
     assert spy.make_server_calls == 0
 

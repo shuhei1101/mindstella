@@ -1,0 +1,139 @@
+id: IF-616-1
+title: 利用枠の見回り
+entry:
+  kind: trigger
+  value: 常駐サーバーの起動から、非機能要件『利用枠を見回る間隔』ごと
+lead: 起動中の MindStella のセッションが使用中のアカウントの利用枠を claude-balancer の `GET /accounts` で一定の間隔で確かめ、しきい値以上で切り替え先のアカウントがあれば、『MindStella のセッションの起動し直し』を契機 `usage_threshold` で呼ぶ。
+idempotent: true
+side_effects: しきい値以上で切り替え先がある MindStella のセッションごとに、『MindStella のセッションの起動し直し』を契機 `usage_threshold` で呼ぶ。ほかは書かない
+exclusivity: 常駐サーバーの中の 1 本の `daemon` のスレッドで、`GET /accounts` を見回り 1 回につき 1 回だけ呼び、ワークスペースを順に見る。起動し直しの受け付けは『MindStella のセッションの起動し直し』の「同時の依頼」に任せ、`restarting` の間は重ねて呼ばない
+exceptions:
+  - name: なし（正常終了）
+    condition: '`GET /accounts` がつながらない・非機能要件『利用枠の問い合わせを待つ上限』を過ぎた・`200` 以外・本文が読めないとき'
+    notes: その回は起動し直さず、標準エラーに 1 行記録して次の間隔を待つ。続けて失敗している間は、失敗し始めた回だけ記録する。見回りのスレッドは止めない
+constraints:
+  - item: 見回る間隔
+    constraint: 非機能要件『利用枠を見回る間隔』の秒数。環境変数 `MINDSTELLA_USAGE_WATCH_INTERVAL` で上書きできる
+    decided_by: NFR-489-1#requirements[利用枠を見回る間隔]
+  - item: 問い合わせ先
+    constraint: mindstella のホームの設定の `claude_balancer.url` の `GET /accounts`（claude-balancer の『アカウント一覧の取得』）。非機能要件『利用枠の問い合わせを待つ上限』まで待つ
+    decided_by: CFG-489-1#
+  - item: 見回る対象
+    constraint: 状態のフォルダのワークスペースの ID の一覧のうち、`session.json` の `status` が `running` で、`close_pending` と `pending_write` が偽で、`balancer_account` を持つもの。対象が 1 件も無い回は `GET /accounts` を呼ばない
+  - item: 使用中のアカウント
+    constraint: '`session.json` の `balancer_account`（『MindStella のセッションのフック』の SessionStart が、claude-balancer の `exec` が子プロセスに渡す `OTEL_RESOURCE_ATTRIBUTES` の `claude_balancer.account` から入れる）を、`accounts[].account` と照らす。一致する行が無ければその MindStella のセッションは飛ばす'
+  - item: しきい値以上の判定
+    constraint: 使用中のアカウントの行の `unavailableReason` が `five_hour_over_threshold` か `seven_day_over_threshold` のとき。しきい値の値は claude-balancer の貸与のしきい値を原本にし、MindStella は持たない。ほかの理由（`quota_unknown` を含む）と `null` は飛ばす
+  - item: 切り替え先の判定
+    constraint: 使用中のアカウント以外に `unavailableReason` が `null` の行が 1 件以上あるときだけ起動し直しを呼ぶ。無ければ止めずに今のアカウントで続ける
+    notes: '`unavailableReason` は `kind: short` の貸与で判定した値で、`exec` が借りる `kind: long` の判定と合わないことがある。そのときは『MindStella のセッションの起動し直し』が `exec` の `125` を受けて `crashed` にする（単一ユースケース『異常シナリオ（しきい値以上で止めた後に借りられない）』）'
+  - item: 指定したアカウント
+    constraint: '`session.json` の `specified_account` を持ち、mindstella のホームの設定の `account.release_on_limit` が偽なら、起動し直しを呼ばない'
+    decided_by: CFG-489-1#
+  - item: 起動し直し
+    constraint: 『MindStella のセッションの起動し直し』を契機 `usage_threshold` で、HTTP を通さずに呼ぶ。応答の終わりを待つ・通知する・指定を解除するのは起動し直しの側で行う。受け付けられなかったとき（`409`）は次の間隔でもう一度確かめる
+  - item: claude-balancer が無い端末
+    constraint: '`PATH` に `claude-balancer` が無ければ見回りのスレッドを立てない'
+flows:
+  - name: 正常系
+    summary: 使用中のアカウントがしきい値以上で切り替え先があれば、契機 usage_threshold で起動し直す
+    setup:
+      - name: Mock
+        description: 'claude-balancer の常駐（テストごとに起動した HTTP のエンドポイント。`GET /accounts` で、アカウント A を `unavailableReason: five_hour_over_threshold`、アカウント B を `null` で返し、受けた要求を記録する）・claude-balancer の CLI（`PATH` の先頭に置く。受けた引数を記録し、`--` の後のコマンドを実行する）・Claude Code（`PATH` の先頭に置く。`/exit` が貼られたら SessionEnd を叩いて終わる）'
+      - name: 常駐サーバー
+        description: テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` と `XDG_CONFIG_HOME` はテストごとの一時フォルダ、`MINDSTELLA_USAGE_WATCH_INTERVAL` は 1。mindstella のホームの設定の `claude_balancer.url` は Mock のエンドポイント
+      - name: tmux
+        description: テストごとに専用のソケットで立てた tmux のサーバー（`TMUX_TMPDIR`）
+      - name: 状態
+        description: '`status: running`・`balancer_account: A` で、応答の途中でない MindStella のセッション'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WT as 見回りのスレッド
+        participant ST as 状態のフォルダ
+        participant CBA as claude-balancer の常駐（Mock）
+        participant RS as 起動し直し
+
+        WT->>ST: running の session.json を読む
+        WT->>CBA: GET /accounts
+        CBA-->>WT: A は five_hour_over_threshold・B は null
+        WT->>RS: 契機 usage_threshold で呼ぶ
+      ```
+    expected:
+      - Mock の常駐が `GET /accounts` を受けている
+      - Mock の Claude Code が `/exit` を受け、Mock の CLI が `exec` を 2 回受けている
+      - 起動し直した後の `session.json` の `status` が `running`
+    test: test_normal
+  - name: 正常系（切り替え先が無い）
+    summary: ほかに貸せるアカウントが無ければ起動し直さない
+    setup:
+      - name: Mock
+        description: 正常系と同じ。`GET /accounts` は、アカウント A を `five_hour_over_threshold`、アカウント B を `seven_day_over_threshold` で返す
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WT as 見回りのスレッド
+        participant CBA as claude-balancer の常駐（Mock）
+
+        WT->>CBA: GET /accounts
+        CBA-->>WT: A も B もしきい値以上
+        WT->>WT: 起動し直さない
+      ```
+    expected:
+      - Mock の Claude Code が `/exit` を受けていない
+      - '`session.json` の `status` が `running` のまま'
+    test: test_normal_when_no_other_account
+  - name: 正常系（指定の解除がオフ）
+    summary: 指定したアカウントで起動し、自動解除がオフなら起動し直さない
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ。mindstella のホームの設定の `account.release_on_limit` は `false`
+      - name: 状態
+        description: 正常系の `session.json` に `specified_account`（アカウント A の設定のフォルダ）を加えたもの
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WT as 見回りのスレッド
+        participant CBA as claude-balancer の常駐（Mock）
+
+        WT->>CBA: GET /accounts
+        CBA-->>WT: A はしきい値以上・B は貸せる
+        WT->>WT: 指定の解除がオフなので起動し直さない
+      ```
+    expected:
+      - Mock の Claude Code が `/exit` を受けていない
+      - '`session.json` の `status` が `running` のまま'
+    test: test_normal_when_release_off
+  - name: 正常系（claude-balancer の常駐へつながらない）
+    summary: つながらなければ起動し直さず、標準エラーに 1 行だけ記録して次の間隔を待つ
+    setup:
+      - name: 常駐サーバー
+        description: 正常系と同じ。`claude_balancer.url` は待ち受けの無いポート
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WT as 見回りのスレッド
+        participant CBA as claude-balancer の常駐
+
+        WT->>CBA: GET /accounts
+        CBA--xWT: つながらない
+        WT->>WT: 標準エラーに 1 行記録し、次の間隔を待つ
+      ```
+    expected:
+      - '`session.json` の `status` が `running` のまま'
+      - 常駐サーバーの標準エラーに、つながらないことの記録が、見回りが複数回回っても 1 行だけある
+      - 常駐サーバーが応答し続けている
+    test: test_normal_when_balancer_unreachable
+refs:
+  - IF-582-1#
+  - CFG-489-1#
+  - LIB-531-1#
+test_file: tests/integration/server/test_usage_watch.py

@@ -1,0 +1,110 @@
+id: MOD-616-1
+title: サーバー / ホームの設定 / home_settings.py
+lead: mindstella のホームの設定 `${XDG_CONFIG_HOME:-~/.config}/mindstella/settings.yaml` を読み、既定値を埋めた値を返す。常駐サーバーの起動時に 1 回だけ呼ぶ。
+constants:
+  - name: DEFAULT_BALANCER_URL
+    title: claude-balancer の常駐の既定の待ち受け先
+    container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
+    usecase: MindStella のセッションを起動し直す
+    summary: '`claude_balancer.url` が無いときに『利用枠の見回り』がつなぐ先（設定『サーバー』の既定値）'
+    value: '"http://127.0.0.1:8770"'
+data_models:
+  - name: HomeSettings
+    title: ホームの設定
+    container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
+    usecase: MindStella のセッションを起動し直す
+    summary: 読んだホームの設定（`frozen` の dataclass）
+    properties:
+      - name: balancer_url
+        type: str | None
+        description: '`claude_balancer.url`。キーが無ければ `None`（ペインに `CLAUDE_BALANCER_URL` を渡さない）'
+      - name: release_on_limit
+        type: bool
+        default: 'True'
+        description: '`account.release_on_limit`'
+    methods:
+      - name: query_url
+        title: 問い合わせ先
+        kind: メソッド
+        scope: public
+        summary: '`balancer_url` があればその値、無ければ `DEFAULT_BALANCER_URL` を返す'
+        args: []
+        returns:
+          type: str
+          description: claude-balancer の常駐の待ち受け先
+functions:
+  - name: home_settings_path
+    title: ホームの設定のファイルの場所
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
+    usecase: MindStella のセッションを起動し直す
+    scope: public
+    summary: '`XDG_CONFIG_HOME` があれば `{XDG_CONFIG_HOME}/mindstella/settings.yaml`、無ければ `~/.config/mindstella/settings.yaml` を返す'
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 環境変数
+    returns:
+      type: Path
+      description: 設定のファイルの絶対パス
+    unit_tests:
+      - name: test_home_settings_path
+        case: 正常
+        summary: XDG_CONFIG_HOME の有無で場所が変わる
+        condition: '`parametrize`: `XDG_CONFIG_HOME` が `/x` / 無い（`HOME` は `/h`）'
+        mock: なし
+        expected: '`/x/mindstella/settings.yaml` / `/h/.config/mindstella/settings.yaml`'
+  - name: load_home_settings
+    title: ホームの設定を読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
+    usecase: MindStella のセッションを起動し直す
+    scope: public
+    summary: 設定『サーバー』のファイル一覧の扱いで読む。キーは入れ子のマッピングとして読み（`claude_balancer:` の下の `url:`、`account:` の下の `release_on_limit:`）、ドットを含む 1 つのキーは知らないキーとして扱う。ファイルが無ければ既定値の `HomeSettings` を返し、知らないキーは標準エラーへ 1 行ずつ記録して読み飛ばす
+    args:
+      - name: path
+        type: Path
+        required: true
+        passing: positional
+        description: '`home_settings_path` の結果'
+    returns:
+      type: HomeSettings
+      description: 読んだ設定
+    exceptions:
+      - name: InvalidSettingsError
+        condition: YAML として読めない・最上位・`claude_balancer`・`account` がマッピングでない・`claude_balancer.url` が `http://` か `https://` で始まる文字列でない・`account.release_on_limit` が真偽値でない
+    unit_tests:
+      - name: test_load_home_settings
+        case: 正常
+        summary: ファイルの有無とキーで値が決まる
+        condition: '`parametrize`: ファイルが無い / 空のファイル / `{claude_balancer: {url: http://127.0.0.1:8780}, account: {release_on_limit: false}}`'
+        mock: なし（`tmp_path`）
+        expected: '`(None, True)` / `(None, True)` / `(http://127.0.0.1:8780, False)`。`query_url()` が `http://127.0.0.1:8770` / 同じ / `http://127.0.0.1:8780`'
+      - name: test_load_home_settings_when_unknown_key
+        case: 正常
+        summary: 知らないキーは記録して読み飛ばす
+        condition: '`{foo: 1, account: {bar: 2}, "claude_balancer.url": http://x}` のファイル'
+        mock: なし（`capsys`）
+        expected: 既定値の `HomeSettings` を返し、標準エラーに `foo`・`account.bar`・`claude_balancer.url`（ドットを含む 1 つのキー）の 3 行
+      - name: test_load_home_settings_when_invalid
+        case: 異常
+        summary: 読めない・型が違うときは InvalidSettingsError
+        condition: '`parametrize`: YAML の構文の誤り / 最上位が並び / `{claude_balancer: 1}` / `{account: [true]}` / `{claude_balancer: {url: ftp://x}}` / `{account: {release_on_limit: "no"}}`'
+        mock: なし
+        expected: 全て `InvalidSettingsError`
+classes:
+  - name: InvalidSettingsError
+    title: ホームの設定が読めない
+    container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
+    usecase: MindStella のセッションを起動し直す
+    summary: ホームの設定が読めないか値が誤っている例外。常駐サーバーが起動時に受けて終わる。メッセージにファイルのパスとキーを含める
+    kind: クラス
+    inherits: ValueError
+refs:
+  - CFG-489-1#
+  - IF-616-1#
+  - IF-582-1#
+test_files:
+  - tests/unit/scripts/test_home_settings.py

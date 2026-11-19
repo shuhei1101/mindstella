@@ -63,8 +63,12 @@ class SessionState:
     last_error: str | None = None
     # Claude Code が使う設定のフォルダの絶対パス（SessionStart のフックが入れる）
     claude_config_dir: str | None = None
-    # restarting の間の契機（api・rate_limit・compact・comment）。起動し直しが終わったら None
+    # restarting の間の契機（api・rate_limit・compact・comment・usage_threshold）。起動し直しが終わったら None
     restart_reason: str | None = None
+    # claude-balancer が貸したアカウント名（SessionStart のフックが入れる。claude-balancer を通さなければ None）
+    balancer_account: str | None = None
+    # 作成の依頼で指定したアカウントの設定のフォルダ。起動し直しで --account に渡し、解除したら None
+    specified_account: str | None = None
 
     def replace(self, **changes: Any) -> SessionState:
         """渡したキーだけを変えた値を返す。"""

@@ -34,7 +34,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で送る）、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。`stop-failure` では標準入力の `error` を送る。`pre-compact` では出来事を送れたときだけ `BLOCK_COMPACT` を標準出力に書く。SessionStart で `MINDSTELLA_LAUNCH_REASON` が `compact` で `source` が `startup` なら、`source` を `compact` にして再開の状況を引く。どの結末も 0 を返す'
+    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で、`balancer_account_from` の値があれば `balancer_account` で送る）、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。`stop-failure` では標準入力の `error` を送る。`pre-compact` では出来事を送れたときだけ `BLOCK_COMPACT` を標準出力に書く。SessionStart で `MINDSTELLA_LAUNCH_REASON` が `compact` で `source` が `startup` なら、`source` を `compact` にして再開の状況を引く。どの結末も 0 を返す'
     description: 依存が揃う前のシステムの `python3` で起動するので、Python 3.8 で読める構文と標準ライブラリだけで書く
     side_effects: 常駐サーバーへ出来事を送る
     args:
@@ -292,5 +292,28 @@ functions:
         condition: '`parametrize`: `source: compact`・`flow: src#doc` / `source: startup`・`flow: None`'
         mock: なし
         expected: '`再開`・`src#doc`・`mindstella/startup` を含む / `起動`・`mindstella/startup` を含み、進め方の文書の行を含まない。どちらも `/mindstella:` を含まない'
+  - name: balancer_account_from
+    title: 借りたアカウント名を取り出す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
+    usecase: MindStella のセッションを起動し直す
+    scope: public
+    summary: '`OTEL_RESOURCE_ATTRIBUTES` を `,` で区切った `{キー}={値}` のうち、キーが `claude_balancer.account` の値を返す。変数が無い・項目が無い・値が空なら `None`'
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 環境変数
+    returns:
+      type: str | None
+      description: claude-balancer が貸したアカウント名
+    unit_tests:
+      - name: test_balancer_account_from
+        case: 正常
+        summary: OTEL_RESOURCE_ATTRIBUTES からアカウント名を取り出す
+        condition: '`parametrize`: `ai_monitor_project=x,claude_balancer.client=mindstella,claude_balancer.account=sub6,claude_balancer.lease_id=l` / `claude_balancer.client=mindstella` / 変数が無い / `claude_balancer.account=`'
+        mock: なし
+        expected: '`sub6` / `None` / `None` / `None`'
 notes:
   ログ: '`logging` を使わず、送れなかったときだけ標準エラーに `[mindstella] {理由}` の 1 行を `print` で書く（フックのスクリプトは単一ファイルのスクリプトの規約に従い、Claude Code がフックの標準エラーを記録する）'

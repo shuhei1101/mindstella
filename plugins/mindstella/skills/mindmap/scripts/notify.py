@@ -23,6 +23,7 @@ StopReason = Literal[
     "stop_failed",
     "session_ended",
     "rate_limited",
+    "usage_threshold",
     "restart_failed",
 ]
 
@@ -34,6 +35,7 @@ STOP_REASON_TEXTS: dict[StopReason, str] = {
     "stop_failed": "停止処理の失敗",
     "session_ended": "Claude Code の終了",
     "rate_limited": "利用上限",
+    "usage_threshold": "利用枠の残りが少ないため切り替え",
     "restart_failed": "起動し直しの失敗",
 }
 

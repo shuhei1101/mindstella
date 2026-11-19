@@ -47,7 +47,15 @@ data_models:
         description: MindStella のセッションの Claude Code が使用する設定のフォルダの絶対パス。SessionStart のフックが入れる
       - name: restart_reason
         type: str | None
-        description: '`restarting` の間の契機（`api`・`rate_limit`・`compact`・`comment`）。起動し直しが終わったら `None`'
+        description: '`restarting` の間の契機（`api`・`rate_limit`・`compact`・`comment`・`usage_threshold`）。起動し直しが終わったら `None`'
+      - name: balancer_account
+        type: str | None
+        default: None
+        description: claude-balancer が貸したアカウント名（SessionStart のフックが入れる。claude-balancer を通さずに起動したときは `None`）
+      - name: specified_account
+        type: str | None
+        default: None
+        description: 作成の依頼で指定したアカウントの設定のフォルダの絶対パス。起動し直しで `--account` に渡し、指定を解除したら `None`
   - name: LaunchOptions
     title: 追加の MCP とプラグイン
     container: plugins/mindstella/skills/mindmap/scripts/state.py
