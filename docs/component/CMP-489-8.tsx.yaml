@@ -297,22 +297,6 @@ states:
         value: ほかの入力欄で音声入力中のため、音声で入力できません。
       - name: body
         value: D-2 も確認
-  - name: SavedFocusOnSubmit
-    description: 溜めた後に入力欄へ戻さない（タッチの端末の自動か「戻さない」）。見た目は Saved と同じで、フォーカスを「レビューに追加」のボタンに置く。入力欄から外れるためソフトウェアキーボードが閉じる
-    args:
-      - name: target
-        value: D-022
-      - name: status
-        value: saved
-      - name: count
-        value: '3'
-  - name: VoiceReviewedFocusOnSubmit
-    description: 文字起こしの結果をレビュー中に追加し、入力欄へ戻さない設定のとき。見た目は VoiceReviewed と同じで、✓ の位置に戻した「レビューに追加」のボタンにフォーカスを置く
-    args:
-      - name: target
-        value: D-022
-      - name: status
-        value: reviewed
 lead: 詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。選んだ箇所を添えられ、溜めた結果を入力の近くに出す。
 test_file: tests/integration/storybook_react/test_send_form_stories.py
 args:

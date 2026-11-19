@@ -176,15 +176,6 @@ states:
         value: ほかの入力欄で音声入力中のため、音声で入力できません。
       - name: body
         value: D-2 も確認
-  - name: SavedFocusOnSubmit
-    description: 溜めた後に入力欄へ戻さない（タッチの端末の自動か「戻さない」）。見た目は Saved と同じで、フォーカスを「レビューに追加」のボタンに置く。入力欄から外れるためソフトウェアキーボードが閉じる
-    args:
-      - name: thread
-        value: TH-2
-      - name: status
-        value: saved
-      - name: count
-        value: '3'
 lead: スレッドの下端に留める、返信をレビュー中に溜める入力欄と「レビューに追加」のボタン。箇所を添えず、入力が空の間はボタンを押せない。
 args:
   - name: thread
