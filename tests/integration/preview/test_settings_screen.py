@@ -178,7 +178,7 @@ def test_look_override(
     assert "ネットワークの見た目" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
     # パネルには見た目の選びを置かない
     assert page.locator(f"{SETTINGS_PANEL} .st-look").count() == 0
-    assert page.locator(f"{SETTINGS_PANEL} input[type=radio]").count() == 0
+    assert page.locator(f"{SETTINGS_PANEL} input[type=radio]:not([name=focus-after-add])").count() == 0
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
     # 開き直しても、個人の上書きを使う
     page.reload()

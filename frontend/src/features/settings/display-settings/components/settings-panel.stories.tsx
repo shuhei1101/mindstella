@@ -8,7 +8,7 @@ import { KIND_KEYS } from "@/shared/core/records";
 const meta = {
   title: "Settings/SettingsPanel",
   component: SettingsPanel,
-  args: { look: "deep", defaultLook: "deep", visibleKinds: [...KIND_KEYS], defaultKinds: [...KIND_KEYS], counts: { decisions: 12, tasks: 8, research: 3, docs: 5, terms: 9, notes: 4, logs: 20 }, overrides: [], canSave: true, message: null, storageAvailable: true, minimap: true, bodyView: { fold: true }, onKindsChange: fn(), onReset: fn(), onSaveDefault: fn(), onClose: fn(), onMinimapChange: fn(), onBodyViewChange: fn() },
+  args: { look: "deep", defaultLook: "deep", visibleKinds: [...KIND_KEYS], defaultKinds: [...KIND_KEYS], counts: { decisions: 12, tasks: 8, research: 3, docs: 5, terms: 9, notes: 4, logs: 20 }, overrides: [], canSave: true, message: null, storageAvailable: true, minimap: true, bodyView: { fold: true }, onKindsChange: fn(), onReset: fn(), onSaveDefault: fn(), onClose: fn(), onMinimapChange: fn(), onBodyViewChange: fn(), focusAfterAdd: "auto", pointerCoarse: false, onFocusAfterAddChange: fn() },
   // パネルの中と同じ見出しの順にするため、パネルの見出し「表示の設定」（h2）の下に置く
   decorators: [
     (Story) => (
@@ -59,3 +59,9 @@ export const ReviewOrderOverridden: Story = { args: { overrides: ["コメント�
 
 /** セクションの折りたたみをオフにした。「詳細に表示するもの」のチェックを切り替え、変えている項目に「セクションの折りたたみ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す */
 export const BodyViewOverridden: Story = { args: { bodyView: { fold: false }, overrides: ["セクションの折りたたみ"], look: "deep", defaultLook: "deep" } };
+
+/** タッチが主な端末で「レビューに追加した後のフォーカス」が自動。「自動」の下に「この端末では戻しません」を出す */
+export const FocusAfterAddCoarse: Story = { args: { focusAfterAdd: "auto", pointerCoarse: true, overrides: [], look: "deep", defaultLook: "deep" } };
+
+/** 「レビューに追加した後のフォーカス」を「戻さない」にした。変えている項目に「レビューに追加した後のフォーカス」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す */
+export const FocusAfterAddOverridden: Story = { args: { focusAfterAdd: "none", overrides: ["レビューに追加した後のフォーカス"], look: "deep", defaultLook: "deep" } };

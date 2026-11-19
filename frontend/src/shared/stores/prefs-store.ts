@@ -1,8 +1,9 @@
-// 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並び・詳細のコメントの入力の開閉を、今の画面と同じ `localStorage` のキーで読み書きする（インターフェース定義『SPAを開く』の制約「端末の保存領域」）
+// 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並び・詳細のコメントの入力の開閉・「レビューに追加」の後のフォーカスを、今の画面と同じ `localStorage` のキーで読み書きする（インターフェース定義『SPAを開く』の制約「端末の保存領域」）
 import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 
 import type { NetworkLook } from "@/shared/api/generated/model";
+import { focusAfterAddTarget } from "@/shared/core/display";
 import type { Filters } from "@/shared/core/filters";
 import type { Kind } from "@/shared/core/records";
 import { PREFS_KEY } from "@/shared/stores/theme-store";
@@ -23,6 +24,8 @@ export type Prefs = {
   commentsPinned?: true | null;
   reviewOrder?: "oldest" | null;
   commentFormClosed?: true | null;
+  /** 「レビューに追加」の後のフォーカスの上書き。null・無しは自動（端末の主な入力で決める） */
+  focusAfterAdd?: "input" | "none" | null;
 };
 
 /** 詳細の本文をスクロールした位置を残す sessionStorage のキー（今の画面と同じ） */
@@ -78,6 +81,23 @@ const subscribe = (listener: () => void): (() => void) => {
 
 /** 描画の中で端末の保存領域を読む。書き換えると描き直す（`readPrefs` の結果は React Compiler が覚えるので描画では使わない） */
 export const usePrefs = (): Prefs => parsePrefs(useSyncExternalStore(subscribe, () => localStorage.getItem(PREFS_KEY)));
+
+/** 端末の主な入力がタッチかのメディアクエリ */
+const COARSE_QUERY = "(pointer: coarse)";
+
+const subscribeCoarse = (listener: () => void): (() => void) => {
+  if (typeof window.matchMedia !== "function") return () => undefined;
+  const media = window.matchMedia(COARSE_QUERY);
+  media.addEventListener("change", listener);
+  return () => media.removeEventListener("change", listener);
+};
+
+/** 端末の主な入力がタッチか。変わったら描き直す（matchMedia を持たない環境はタッチでない） */
+export const usePointerCoarse = (): boolean =>
+  useSyncExternalStore(subscribeCoarse, () => typeof window.matchMedia === "function" && window.matchMedia(COARSE_QUERY).matches);
+
+/** 溜めた・送った後のフォーカスの移動先（上書きと端末の主な入力で決める） */
+export const useFocusAfterAddTarget = (): "input" | "submit" => focusAfterAddTarget(usePrefs(), usePointerCoarse());
 
 type PrefsState = {
   prefs: Prefs;

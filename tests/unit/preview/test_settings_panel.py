@@ -45,12 +45,15 @@ PANEL_SCRIPT = """(args) => {
         canSave: args.canSave,
         minimap: args.minimap,
         bodyView: args.bodyView,
+        focusAfterAdd: args.focusAfterAdd,
+        pointerCoarse: args.pointerCoarse,
         message: null,
         storageOk: true,
         on: {
             kinds: (value) => calls.push(["kinds", [...value].sort()]),
             minimap: (value) => calls.push(["minimap", value]),
             bodyView: (change) => calls.push(["bodyView", change]),
+            focusAfterAdd: (value) => calls.push(["focusAfterAdd", value]),
             reset: () => calls.push(["reset"]),
             save: () => calls.push(["save"]),
             close: () => calls.push(["close"]),
@@ -76,11 +79,24 @@ PANEL_SCRIPT = """(args) => {
         name: detailNames.find((name) => rowText(box).includes(name)) ?? null,
         checked: box.checked,
     }));
+    // 凡例「レビューに追加した後のフォーカス」のラジオのグループ（押す前の値）
+    const focusGroup = [...panel.querySelectorAll("fieldset")].find(
+        (set) => set.querySelector(":scope > legend")?.textContent === "レビューに追加した後のフォーカス"
+    );
+    const focusRadios = focusGroup === undefined ? [] : [...focusGroup.querySelectorAll('input[type="radio"]')];
+    const describedBy = focusGroup?.getAttribute("aria-describedby") ?? null;
+    const focus = focusGroup === undefined ? null : {
+        section: focusGroup.parentElement.closest("fieldset")?.querySelector(":scope > legend")?.textContent ?? null,
+        radios: focusRadios.map((radio) => ({text: rowText(radio).trim(), checked: radio.checked})),
+        description: describedBy === null ? null : document.getElementById(describedBy)?.textContent ?? null,
+    };
     const operate = args.operate ?? [];
     const result = {
         text: panel.textContent,
         buttons: [...panel.querySelectorAll("button")].map((button) => button.textContent.trim()),
-        radioCount: radios.length,
+        // 見た目のラジオの数（「レビューに追加した後のフォーカス」のラジオは数えない）
+        radioCount: radios.filter((radio) => !focusRadios.includes(radio)).length,
+        focus,
         // 表示する種類のチェックボックスの数（詳細に表示するもののチェックは数えない）
         checkboxCount: checkboxes.filter((box) => box !== minimapBox && !bodyViewBoxes.includes(box)).length,
         // 差分のミニマップのチェックボックスの状態と、それを包む凡例の文字（押す前の値）
@@ -96,6 +112,8 @@ PANEL_SCRIPT = """(args) => {
     };
     // 渡された順に、名前の行のチェックボックスを押す
     for (const name of operate) findCheckbox(name).click();
+    // 渡された名前で始まる行の「レビューに追加した後のフォーカス」のラジオを押す
+    if (args.operateFocus) focusRadios.find((radio) => rowText(radio).trim().startsWith(args.operateFocus)).click();
     result.calls = calls;
     return result;
 }"""
@@ -113,7 +131,10 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
         "canSave": True,
         "minimap": True,
         "bodyView": BODY_VIEW_DEFAULT,
+        "focusAfterAdd": "auto",
+        "pointerCoarse": False,
         "operate": [],
+        "operateFocus": None,
     }
     args.update(overrides)
     return preview_page.evaluate(PANEL_SCRIPT, args)
@@ -296,6 +317,67 @@ def test_settings_panel_when_body_view(
     # 検証
     checks = [(check["name"], check["checked"]) for check in observed["detailChecks"]]
     assert checks == expected_checks
+    assert observed["calls"] == [expected_call]
+    assert all(label in observed["buttons"] for label in expected_buttons)
+    assert "ワークスペースの既定にする" not in observed["buttons"]
+    assert all(text in observed["text"] for text in expected_texts)
+
+
+# 「レビューに追加した後のフォーカス」の区画の下の説明
+FOCUS_DESCRIPTION = "自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。"
+
+
+@pytest.mark.parametrize(
+    ("args", "expected_checked", "expected_auto_sub", "expected_call", "expected_buttons", "expected_texts"),
+    [
+        pytest.param(
+            {"focusAfterAdd": "auto", "pointerCoarse": False, "operateFocus": "戻さない"},
+            "自動",
+            "この端末では入力欄へ戻します",
+            ["focusAfterAdd", "none"],
+            [],
+            [],
+            id="auto_fine_press_none",
+        ),
+        pytest.param(
+            {
+                "focusAfterAdd": "none",
+                "pointerCoarse": True,
+                "overrides": ["レビューに追加した後のフォーカス"],
+                "operateFocus": "自動",
+            },
+            "戻さない",
+            "この端末では戻しません",
+            ["focusAfterAdd", "auto"],
+            ["既定に戻す"],
+            ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+            id="none_coarse_press_auto",
+        ),
+    ],
+)
+def test_settings_panel_when_focus_after_add(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    args: dict[str, Any],
+    expected_checked: str,
+    expected_auto_sub: str,
+    expected_call: list[Any],
+    expected_buttons: list[str],
+    expected_texts: list[str],
+) -> None:
+    """「レビューに追加した後のフォーカス」のラジオを出し、切り替えを知らせる。保存のボタンの比べには使わない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行（ラジオを押す）
+    observed = _observe(preview_page, **args)
+    # 検証
+    focus = observed["focus"]
+    assert focus is not None
+    assert focus["section"] == "コメントの入力"
+    assert [radio["text"].split("この端末")[0] for radio in focus["radios"]] == ["自動", "入力欄へ戻す", "戻さない"]
+    assert next(radio["text"] for radio in focus["radios"] if radio["checked"]).startswith(expected_checked)
+    assert expected_auto_sub in focus["radios"][0]["text"]
+    assert focus["description"] == FOCUS_DESCRIPTION
     assert observed["calls"] == [expected_call]
     assert all(label in observed["buttons"] for label in expected_buttons)
     assert "ワークスペースの既定にする" not in observed["buttons"]

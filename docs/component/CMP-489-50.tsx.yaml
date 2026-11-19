@@ -103,6 +103,18 @@ states:
         value: '{"fold": false}'
       - name: overrides
         value: '["セクションの折りたたみ"]'
+  - name: FocusAfterAddCoarse
+    description: タッチの端末で、「レビューに追加」の後のフォーカスが既定の自動。「自動」の下に「この端末では戻しません」を出す
+    args:
+      - name: pointerCoarse
+        value: 'true'
+  - name: FocusAfterAddOverridden
+    description: 「レビューに追加」の後のフォーカスを「戻さない」にした。変えている項目に「レビューに追加した後のフォーカス」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す
+    args:
+      - name: focusAfterAdd
+        value: none
+      - name: overrides
+        value: '["レビューに追加した後のフォーカス"]'
 lead: トップバーの「表示の設定」で左から出すパネルの中身。表示する種類と、区画「詳細に表示するもの」の差分のミニマップとセクションの折りたたみを選ばせ、この端末で変えている項目と「既定に戻す」、線で区切った下に「ワークスペースの既定にする」を出す。ネットワークの見た目はネットワークのドロップダウンで選び、このパネルでは選ばないが、変えている項目・既定に戻す・既定にするの対象には含める。差分のミニマップ・セクションの折りたたみと、詳細で選んだ本文の差分の並べ方は変えている項目・既定に戻すの対象にだけ含める。枠と開閉はコメントの一覧と同じ左のパネルを使う。
 args:
   - name: look
@@ -158,6 +170,19 @@ args:
     default: '{"fold": true}'
     description: 今当てている本文の見せ方（`fold` セクションの折りたたみの真偽値）。区画「詳細に表示するもの」の差分のミニマップの下に、チェックボックス 1 行で出す。ワークスペースの既定は持たず、「ワークスペースの既定にする」を出すかの比べには使わない
     status: planned
+  - name: focusAfterAdd
+    type: 列挙
+    required: false
+    default: auto
+    choices: auto・input・none
+    description: 今当てている「レビューに追加」の後のフォーカス。区画「詳細に表示するもの」の下の区画「コメントの入力」に、ラジオのグループ「レビューに追加した後のフォーカス」の「自動」「入力欄へ戻す」「戻さない」で出す。ワークスペースの既定は持たず、「ワークスペースの既定にする」を出すかの比べには使わない
+    status: planned
+  - name: pointerCoarse
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: '端末の主な入力がタッチか（`matchMedia("(pointer: coarse)")`）。「自動」の下に、真なら「この端末では戻しません」、偽なら「この端末では入力欄へ戻します」を出す'
+    status: planned
 events:
   - name: 表示する種類を変える
     when: 種類のチェックか「すべて」を付け外ししたとき
@@ -183,6 +208,10 @@ events:
     when: 「セクションの折りたたみ」のチェックを付け外ししたとき
     value: '`onBodyViewChange(key, value)`（`{key, value}`。`key` は `fold`、`value` は切り替えた後の真偽値）'
     description: 使う側が、既定と違う値のときは個人の上書きとして残し、既定と同じ値のときは上書きを外す。開いている詳細パネル・詳細の全画面をその場で描き直し、履歴には積まない
+  - name: 「レビューに追加」の後のフォーカスを切り替える
+    when: 区画「コメントの入力」のラジオを選んだとき
+    value: 選んだ値（`auto`・`input`・`none`）
+    description: 使う側が、`auto` のときは個人の上書きを外し、それ以外は個人の上書き `focus_after_add` に残す。描き直す画面は無く、履歴には積まない
 accessibility:
   - 表示する種類は凡例「表示する種類」の `fieldset` の中のチェックボックスにする。「すべて」の途中の状態は `indeterminate` で示す
   - 知らせは `role="status"`、端末に保存できないことは `role="alert"` で読み上げに伝える
@@ -190,6 +219,7 @@ accessibility:
   - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
   - 差分のミニマップは凡例「詳細に表示するもの」の `fieldset` の中のチェックボックスにし、読み上げの名前は「差分のミニマップ」
   - セクションの折りたたみは同じ `fieldset` の中のチェックボックスにし、読み上げの名前は「セクションの折りたたみ」
+  - 「レビューに追加」の後のフォーカスは凡例「コメントの入力」の `fieldset` の中に、凡例「レビューに追加した後のフォーカス」の `fieldset` のラジオで置く。「自動」の下の今の端末での振る舞いは選択肢の名前に含め、区画の下の説明「自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。」をグループの `aria-describedby` で指す
 test_file: tests/integration/storybook_react/test_settings_panel_stories.py
 refs:
   - CMP-489-49#

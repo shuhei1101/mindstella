@@ -6,7 +6,7 @@ components:
     title: 表示の設定
     kind: 画面
     usecase: 表示の設定を変える
-    summary: 画面設計『表示の設定.tsx』の要素と操作を描く。上書きを端末の保存領域に書き、既定にするで確かめのモーダルを開く
+    summary: 画面設計『表示の設定.tsx』の要素と操作を描く。上書きを端末の保存領域に書き（「レビューに追加」の後のフォーカスは `auto` で `focusAfterAdd` を `null`、それ以外はその値）、既定にするで確かめのモーダルを開く
     refs:
       - SCR-489-24#
     unit_tests:
@@ -22,6 +22,12 @@ components:
         condition: 上書きを持つ
         mock: MSW
         expected: '`resetPrefs` の値が保存領域に書かれる'
+      - name: test_display_settings_panel_when_focus_after_add
+        case: 正常
+        summary: 「レビューに追加」の後のフォーカスを変えて自動に戻す
+        condition: 「入力欄へ戻す」を選び、続けて「自動」を選ぶ
+        mock: MSW
+        expected: 保存領域の `focusAfterAdd` が `input` になり、「この端末で変えている項目」に「レビューに追加した後のフォーカス」が出る。自動を選ぶと `focusAfterAdd` が無い
     container: frontend/src/features/settings/display-settings/display-settings-panel.tsx
 notes:
   単体テスト: 同じフォルダの `display-settings-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）

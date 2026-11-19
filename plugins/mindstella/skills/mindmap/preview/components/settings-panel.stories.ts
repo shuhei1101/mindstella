@@ -28,7 +28,7 @@ const meta = {
     counts: COUNTS,
     overrides: [],
     canSave: true,
-    on: { kinds: fn(), minimap: fn(), bodyView: fn(), reset: fn(), save: fn(), close: fn() },
+    on: { kinds: fn(), minimap: fn(), bodyView: fn(), focusAfterAdd: fn(), reset: fn(), save: fn(), close: fn() },
   },
 } satisfies Meta<MindmapPreview.SettingsPanelProps>;
 
@@ -113,4 +113,14 @@ export const BodyViewOverridden: Story = {
     bodyView: { fold: false },
     overrides: ["セクションの折りたたみ"],
   },
+};
+
+/** タッチが主な端末で「レビューに追加した後のフォーカス」が自動。「自動」の下に「この端末では戻しません」を出す */
+export const FocusAfterAddCoarse: Story = {
+  args: { focusAfterAdd: "auto", pointerCoarse: true },
+};
+
+/** 「レビューに追加した後のフォーカス」を「戻さない」にした。変えている項目に「レビューに追加した後のフォーカス」と「既定に戻す」を出す */
+export const FocusAfterAddOverridden: Story = {
+  args: { focusAfterAdd: "none", overrides: ["レビューに追加した後のフォーカス"] },
 };

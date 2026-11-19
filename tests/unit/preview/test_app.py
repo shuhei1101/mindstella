@@ -24,6 +24,7 @@ DEFAULT_PREFS = {
     "sectionFold": None,
     "commentsPinned": None,
     "commentFormClosed": None,
+    "focusAfterAdd": None,
 }
 
 # 表示する種類の全て（ワークスペースの既定も上書きも無いときに表示する種類）
@@ -416,6 +417,7 @@ SAVED_PREFS = {
     "sectionFold": None,
     "commentsPinned": None,
     "commentFormClosed": None,
+    "focusAfterAdd": None,
 }
 
 
@@ -811,6 +813,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "sectionFold": False,
         "commentsPinned": True,
         "commentFormClosed": True,
+        "focusAfterAdd": "none",
     }
     # 実行
     result = preview_page.evaluate(
@@ -830,8 +833,37 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "sectionFold": None,
         "commentsPinned": True,
         "commentFormClosed": True,
+        "focusAfterAdd": None,
     }
     assert result["original"] == prefs
+
+
+@pytest.mark.parametrize(
+    ("focus_after_add", "coarse", "expected"),
+    [
+        pytest.param(None, False, "input", id="auto_fine"),
+        pytest.param(None, True, "submit", id="auto_coarse"),
+        pytest.param("input", True, "input", id="input_coarse"),
+        pytest.param("none", False, "submit", id="none_fine"),
+    ],
+)
+def test_focus_after_add_target(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    focus_after_add: str | None,
+    coarse: bool,
+    expected: str,
+) -> None:
+    """「レビューに追加」の後のフォーカスの移動先を、上書きと端末の種類で決める（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    prefs = {**DEFAULT_PREFS, "focusAfterAdd": focus_after_add}
+    # 実行
+    target = preview_page.evaluate(
+        """([prefs, coarse]) => MindmapPreview.focusAfterAddTarget(prefs, coarse)""", [prefs, coarse]
+    )
+    # 検証
+    assert target == expected
 
 
 def test_comment_counts(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:

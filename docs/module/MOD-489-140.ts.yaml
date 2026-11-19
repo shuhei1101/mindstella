@@ -96,6 +96,23 @@ functions:
       type: Prefs
       description: 保存領域の値
     container: frontend/src/shared/stores/prefs-store.ts
+  - name: useFocusAfterAddTarget
+    title: 「レビューに追加」の後のフォーカスの移動先
+    kind: フック
+    usecase: 項目へコメントする
+    summary: '`usePrefs` の `focusAfterAdd` と `matchMedia("(pointer: coarse)")` の変化を購読し、`focusAfterAddTarget`（`shared/core/display.ts`）で溜めた後のフォーカスの移動先を返す'
+    args: []
+    returns:
+      type: "'input' | 'submit'"
+      description: 入力欄か「レビューに追加」のボタン
+    unit_tests:
+      - name: test_use_focus_after_add_target
+        case: 正常
+        summary: 上書きと端末の種類で移動先を返す
+        condition: '`parametrize`: 上書き無し・`pointer: coarse` に当たらない / 上書き無し・当たる / `focusAfterAdd: input`・当たる'
+        mock: '`localStorage`・`matchMedia`'
+        expected: '`input` / `submit` / `input`'
+    container: frontend/src/shared/stores/prefs-store.ts
 stores:
   - name: usePrefsStore
     title: 端末の保存領域
@@ -135,6 +152,9 @@ stores:
       - name: commentFormClosed
         type: true | null
         description: 詳細のコメントの入力を閉じているか（今の画面の `Prefs.commentFormClosed`）
+      - name: focusAfterAdd
+        type: "'input' | 'none' | null"
+        description: 「レビューに追加」の後のフォーカスの上書き（インターフェース定義の `focus_after_add`）。`null` は自動
     container: frontend/src/shared/stores/prefs-store.ts
 notes:
   単体テスト: 同じフォルダの `prefs-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

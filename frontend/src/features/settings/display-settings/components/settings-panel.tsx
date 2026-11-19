@@ -1,14 +1,26 @@
-// 表示の設定の中身（部品設計『表示の設定.tsx』）。表示する種類と差分のミニマップと本文の表とセクションの見せ方を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す
+// 表示の設定の中身（部品設計『表示の設定.tsx』）。表示する種類と差分のミニマップと本文の表とセクションの見せ方と「レビューに追加」の後のフォーカスを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す
 import type { NetworkLook } from "@/shared/api/generated/model";
+import { useId } from "react";
+
 import { Icon, type IconName } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
-import { BODY_VIEW_LABELS, MINIMAP_LABEL } from "@/shared/core/display";
+import { BODY_VIEW_LABELS, FOCUS_AFTER_ADD_LABEL, MINIMAP_LABEL } from "@/shared/core/display";
 import { KIND_KEYS, KIND_LABEL, type Kind } from "@/shared/core/records";
 import type { BodyView } from "@/shared/core/markdown-decorate";
 
 /** パネルの下端に残す知らせ（`ok` は既定にした、`info` は既定が変わった） */
 export type SettingsMessage = { kind: "ok" | "info"; text: string };
+
+/** 「レビューに追加」の後のフォーカスの選び（`auto` は端末の主な入力で決める） */
+export type FocusAfterAdd = "auto" | "input" | "none";
+
+/** 「レビューに追加」の後のフォーカスの選択肢（値・名前） */
+const FOCUS_AFTER_ADD_OPTIONS = [
+  { key: "auto", label: "自動" },
+  { key: "input", label: "入力欄へ戻す" },
+  { key: "none", label: "戻さない" },
+] as const satisfies readonly { key: FocusAfterAdd; label: string }[];
 
 export type SettingsPanelProps = {
   look: NetworkLook;
@@ -28,6 +40,11 @@ export type SettingsPanelProps = {
   onClose: () => void;
   onMinimapChange: (shown: boolean) => void;
   onBodyViewChange: (key: keyof BodyView, value: boolean) => void;
+  /** 当てている「レビューに追加」の後のフォーカス（「ワークスペースの既定にする」を出すかの比べには使わない） */
+  focusAfterAdd: FocusAfterAdd;
+  /** 端末の主な入力がタッチか（「自動」の下の文を切り替える） */
+  pointerCoarse: boolean;
+  onFocusAfterAddChange: (value: FocusAfterAdd) => void;
   /** 「設定を編集する」を押したとき（渡さないと入口を出さない） */
   onWorkspace?: () => void;
 };
@@ -50,7 +67,8 @@ const AlwaysRow = ({ icon, label }: { icon: IconName; label: string }) => (
 );
 
 export const SettingsPanel = (props: SettingsPanelProps) => {
-  const { look, defaultLook, visibleKinds, defaultKinds, counts, overrides, canSave, message, storageAvailable, minimap, bodyView, onKindsChange, onReset, onSaveDefault, onMinimapChange, onBodyViewChange, onWorkspace } = props;
+  const { look, defaultLook, visibleKinds, defaultKinds, counts, overrides, canSave, message, storageAvailable, minimap, bodyView, focusAfterAdd, pointerCoarse, onKindsChange, onReset, onSaveDefault, onMinimapChange, onBodyViewChange, onFocusAfterAddChange, onWorkspace } = props;
+  const focusHintId = useId();
   const shown = KIND_KEYS.filter((kind) => visibleKinds.includes(kind));
   const allShown = shown.length === KIND_KEYS.length;
   const differs = look !== defaultLook || !sameKinds(visibleKinds, defaultKinds);
@@ -109,6 +127,26 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
             </li>
           ))}
         </ul>
+      </fieldset>
+      <fieldset className="m-0 grid gap-1 border-0 p-0">
+        <legend className="mb-1 font-medium">コメントの入力</legend>
+        <fieldset className="m-0 grid gap-1 border-0 p-0" aria-describedby={focusHintId}>
+          <legend className="mb-1">{FOCUS_AFTER_ADD_LABEL}</legend>
+          <ul className="m-0 grid list-none gap-1 p-0">
+            {FOCUS_AFTER_ADD_OPTIONS.map(({ key, label }) => (
+              <li key={key}>
+                <label className="flex min-h-10 items-center gap-2">
+                  <input type="radio" name="focus-after-add" value={key} checked={focusAfterAdd === key} className="size-4 accent-primary" onChange={() => onFocusAfterAddChange(key)} />
+                  <span className="grid">
+                    <span>{label}</span>
+                    {key === "auto" ? <span className="text-small text-muted-foreground">{pointerCoarse ? "この端末では戻しません" : "この端末では入力欄へ戻します"}</span> : null}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <p id={focusHintId} className="m-0 text-small text-muted-foreground">自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。</p>
+        </fieldset>
       </fieldset>
       <div className="grid gap-2">
         {overrides.length === 0 ? (

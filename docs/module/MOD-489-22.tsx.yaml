@@ -6,7 +6,7 @@ components:
     title: 詳細のコメント
     kind: コンポーネント
     usecase: 項目へコメントする
-    summary: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く。コメントの入力の `open` は `usePrefsStore` の `commentFormClosed` から渡し、`onToggleOpen` で書き換える。閉じている間に選んだ箇所の入口を押したら `commentFormClosed` を `null` にしてから入力欄へフォーカスを移す
+    summary: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く。コメントの入力の `open` は `usePrefsStore` の `commentFormClosed` から渡し、`onToggleOpen` で書き換える。コメントを溜めたら、`SendForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら入力の「レビューに追加」へ、`input` なら入力欄へフォーカスを移す。閉じている間に選んだ箇所の入口を押したら `commentFormClosed` を `null` にしてから入力欄へフォーカスを移す
     refs:
       - SCR-489-32#
       - SCR-489-30#
@@ -41,6 +41,12 @@ components:
         condition: 'D-1 の入力でマイクを押し、D-2 へ移ってから D-1 へ戻って ✓。`POST /api/transcriptions` が `{text: 案 A にする}` で、挙動が無い（`review`）'
         mock: MSW と `vi.stubGlobal`
         expected: 'D-2 の入力のマイクが `aria-disabled`、D-1 へ戻ると録音中の波形が出て、`POST /api/comments` が `{target: D-1, body: 案 A にする}` で 1 回、入力欄が空で「文字起こしの結果をレビュー中に追加しました。」'
+      - name: test_detail_comments_when_focus_after_add
+        case: 正常
+        summary: 溜めた後のフォーカスを移動先に従わせる
+        condition: '`parametrize`: `useFocusAfterAddTarget` が `input` / `submit` で本文を書いて溜める（201）。`submit` で空白だけを溜める'
+        mock: MSW・`useFocusAfterAddTarget`
+        expected: 入力欄にフォーカス / 「レビューに追加」にフォーカス。空白だけのときは入力欄にフォーカス
     container: frontend/src/features/detail/detail-panel/components/detail-comments.tsx
 notes:
   単体テスト: 同じフォルダの `detail-comments.test.tsx` に置く（knowledge の規約『フォルダ構成』）

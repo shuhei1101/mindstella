@@ -6,7 +6,7 @@ components:
     title: 表示の設定
     kind: コンポーネント
     usecase: 表示の設定を変える
-    summary: 部品設計『表示の設定.tsx』の props・イベント・状態を持つ
+    summary: 部品設計『表示の設定.tsx』の props・イベント・状態を持つ。区画「コメントの入力」のラジオは `focusAfterAdd`・`pointerCoarse` を受け、選んだ値を `onFocusAfterAddChange` で知らせる
     refs:
       - CMP-489-50#
     unit_tests:
@@ -22,6 +22,12 @@ components:
         condition: 見た目と種類が既定と同じ
         mock: なし
         expected: 「ワークスペースの既定にする」の代わりに同じ旨の文
+      - name: test_settings_panel_when_focus_after_add
+        case: 正常
+        summary: 「レビューに追加した後のフォーカス」のラジオ
+        condition: '`parametrize`: `focusAfterAdd: auto`・`pointerCoarse: false` / `pointerCoarse: true`。「戻さない」を押す'
+        mock: なし
+        expected: 凡例「コメントの入力」の中に 3 つのラジオがあり「自動」が選ばれ、その下に「この端末では入力欄へ戻します」 / 「この端末では戻しません」。グループの `aria-describedby` が区画の下の説明を指し、`onFocusAfterAddChange` が `none` で呼ばれる
     container: frontend/src/features/settings/display-settings/components/settings-panel.tsx
 notes:
   単体テスト: 同じフォルダの `settings-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
