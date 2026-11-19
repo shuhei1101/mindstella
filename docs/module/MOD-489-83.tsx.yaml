@@ -6,7 +6,7 @@ components:
     title: コメントの入力
     kind: コンポーネント
     usecase: 項目へコメントする
-    summary: 部品設計『コメントの入力.tsx』の props・イベント・状態を持つ
+    summary: 部品設計『コメントの入力.tsx』の props・イベント・状態を持つ。録音を終えた後のフォーカス（`useVoiceFocus`）は、`status` が `reviewed`・`sent` で `useFocusAfterAddTarget` が `submit` のときだけ「レビューに追加」へ、それ以外は入力欄へ移す。`useVoiceFocus` は返信の入力と共に使う
     refs:
       - CMP-489-8#
     unit_tests:
@@ -52,6 +52,12 @@ components:
         condition: '`status: reviewed` / `voice: disabled`・`voiceReason: ほかの入力欄で音声入力中のため、音声で入力できません。`'
         mock: なし
         expected: 結果の行に「文字起こしの結果をレビュー中に追加しました。」/ マイクが `aria-disabled="true"` で理由を `aria-describedby` で指し、入力欄に文字を打てる
+      - name: test_send_form_when_reviewed_focus_submit
+        case: 正常
+        summary: 入力欄へ戻さない設定で、文字起こしを溜めた後は「レビューに追加」へフォーカスを移す
+        condition: '`useFocusAfterAddTarget` が `submit`。`parametrize`: `voice: transcribing` から `idle`・`status: reviewed` / `status: sent` / `status: inserted` に描き直す'
+        mock: '`useFocusAfterAddTarget`'
+        expected: 「レビューに追加」にフォーカス / 「レビューに追加」にフォーカス / 入力欄にフォーカス
     container: frontend/src/shared/components/send-form.tsx
 notes:
   単体テスト: 同じフォルダの `send-form.test.tsx` に置く（knowledge の規約『フォルダ構成』）
