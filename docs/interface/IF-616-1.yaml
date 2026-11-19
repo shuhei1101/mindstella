@@ -136,3 +136,4 @@ refs:
   - IF-582-1#
   - CFG-489-1#
   - LIB-531-1#
+test_file: tests/integration/server/test_usage_watch.py
