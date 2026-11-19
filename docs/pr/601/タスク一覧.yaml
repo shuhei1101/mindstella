@@ -35,7 +35,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T02:09:33.601110+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T02:15:21.326832+00:00'
   - process: モック作成
     status: skipped
     reason: 画面を変えない API の追加のため対象外（画面の開き直しのボタンはスコープ外）
