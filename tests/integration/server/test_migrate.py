@@ -162,8 +162,8 @@ def _retired_range(directive: str, definition: dict[str, Any]) -> str:
 def _make_mdmark_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> Path:
     """A-1 に flow・sequence の図、A-2 に引数を書いた表のマーカーを持つ、v0.12.1 のワークスペースを作る。"""
     root = make_workspace(
-        make_item("A-1"),
-        make_item("A-2"),
+        make_item("A-1", body="docs/A-1.md"),
+        make_item("A-2", body="docs/A-2.md"),
         bodies={
             "A-1.md": f"# 構成\n\n{_retired_range('flow', RETIRED_FLOW)}\n{_retired_range('sequence', RETIRED_SEQUENCE)}",
             "A-2.md": "# 一覧\n\n<!-- table: data +count -->\n\n| 名前 | 数 |\n| --- | --- |\n| a | 1 |\n\n<!-- /table -->\n",
@@ -788,16 +788,16 @@ def test_normal_when_mdmark_documents(
     # 準備
     root = _make_mdmark_workspace(make_workspace, make_item)
     # 実行（実際の mdmark の CLI を呼ぶ。空の指定は既定の差し替えを外す）
-    result = _migrate(root, to_version=MDMARK_STEP_VERSION, env={MDMARK_COMMAND_ENV: ""})
+    result = _migrate(root, env={MDMARK_COMMAND_ENV: ""})
     # 検証
     assert result.error is None, result.text
     assert result.data is not None
     record = root / RECORD_DIR
-    first = (record / "docs" / "A-1.md").read_text(encoding="utf-8")
+    first = (record / "docs" / "A-1.mark.md").read_text(encoding="utf-8")
     assert "<!-- flow" not in first
     assert "<!-- sequence" not in first
     assert first.count("<!-- /map -->") == 2
-    second = (record / "docs" / "A-2.md").read_text(encoding="utf-8")
+    second = (record / "docs" / "A-2.mark.md").read_text(encoding="utf-8")
     assert '<!-- table: {"kind": "data"' in second
     settings = yaml.safe_load((record / SETTINGS).read_text(encoding="utf-8"))
     assert {"llm", "script"} <= set(settings["mdmark"]["map"]["kinds"])

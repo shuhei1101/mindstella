@@ -17,7 +17,7 @@ import yaml
 from workspace_fixtures import KIND_FILES, McpServer, ToolResult
 
 # 項目に渡すと本文のファイルに書く、本文の原文のキー → 本文のファイルの拡張子
-BODY_KEYS = {"body_markdown": ".md", "body_html": ".html"}
+BODY_KEYS = {"body_markdown": ".mark.md", "body_html": ".html"}
 
 
 def server_of(call_tool: Callable[..., ToolResult]) -> McpServer:
@@ -38,7 +38,7 @@ def write_items(
     """項目を足す・直す・消す書き換えを 1 回で書き、変更の検知が記録し終えるまで待って、足した項目の ID を返す。
 
     add は (種類, 項目) の並び、update は ID → 重ねるキー、remove は消す ID の並び。項目の
-    `body_markdown`・`body_html` は `docs/{ID}.md`・`docs/{ID}.html` に書き、項目の `body` にそのパスを入れる。
+    `body_markdown`・`body_html` は `docs/{ID}.mark.md`・`docs/{ID}.html` に書き、項目の `body` にそのパスを入れる。
     """
     new_ids = [_next_id(call_tool, workspace, kind) for kind, _ in add]
 
