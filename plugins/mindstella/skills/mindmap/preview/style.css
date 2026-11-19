@@ -2659,10 +2659,11 @@ body:has(.pe-ws) #main { display: none; }
 .stale-note .sn-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 
 /* 区画の中の区画（コメントの入力の「レビューに追加した後のフォーカス」）: 見出しを本文の太さにする */
-.st-sub-sec > legend { font-weight: 400; }
+.st-sub-sec { min-width: 0; margin: 0; padding: 0; border: 0; }
+.st-sub-sec > legend { margin-bottom: 8px; padding: 0; font-weight: 400; }
 /* 選択肢の名前の下の補足（「自動」の下のこの端末でどちらになるか） */
 .st-kinds .st-k-sub { display: block; color: var(--text-2); font-size: var(--fs-small); }
 /* 補足を持つ行: 2 段になる分だけ上下を詰める */
 .st-kinds label:has(.st-k-sub) { padding-top: 6px; padding-bottom: 6px; }
 /* 区画の下の説明 */
-.st-sec .st-hint { margin: 6px 0 0; color: var(--text-2); font-size: var(--fs-small); }
+.st-sub-sec .st-hint { margin: 6px 0 0; color: var(--text-2); font-size: var(--fs-small); }

@@ -193,7 +193,7 @@ var MindmapPreview;
                 MindmapPreview.h({ tag: "legend", children: ["コメントの入力"] }),
                 MindmapPreview.h({
                     tag: "fieldset",
-                    attrs: { class: "st-sec st-sub-sec", "aria-describedby": hintId },
+                    attrs: { class: "st-sub-sec", "aria-describedby": hintId },
                     children: [
                         MindmapPreview.h({ tag: "legend", children: [MindmapPreview.FOCUS_AFTER_ADD_LABEL] }),
                         MindmapPreview.h({

@@ -264,7 +264,7 @@ namespace MindmapPreview {
         h({ tag: "legend", children: ["コメントの入力"] }),
         h({
           tag: "fieldset",
-          attrs: { class: "st-sec st-sub-sec", "aria-describedby": hintId },
+          attrs: { class: "st-sub-sec", "aria-describedby": hintId },
           children: [
             h({ tag: "legend", children: [FOCUS_AFTER_ADD_LABEL] }),
             h({
