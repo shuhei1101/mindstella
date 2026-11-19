@@ -78,8 +78,8 @@ scope_out:
     reason: 'ストーリーの既存の不備で、今回の thread-post の変更（`table: false` の指定）と関係しない。今回の要望に含まれない'
     plan: '#599'
   - item: 埋め込んだ HTML のチャートの結合テスト 3 件（`test_embedded_html_in_full`・`test_normal_when_embedded_html`・`test_embedded_chart`）が、mdmark の図の右上のパネルの変更に追従しておらず fail すること
-    reason: mdmark の図のパネルの変更（shuhei1101/mdmark#659）にテストが追従していない既存の不具合で、develop（`044bbcb1`）でも 3 件とも同じ箇所で fail する。今回の要望（mdmark の最新を読み込む・mdmark の部品を上書きしない）に含まれない
+    reason: 'mdmark の図のパネルの変更（shuhei1101/mdmark#659）にテストが追従していない既存の不具合。develop（`044bbcb1`）の画面も設定の latest を jsDelivr の `gh/shuhei1101/mdmark@develop` で読み込んで #659 のパネルを描き、3 件とも同じ箇所で fail する（`テスト結果/20261119175809_044bbcb1_結合テスト.log`）。今回の要望（mdmark の最新を読み込む・mdmark の部品を上書きしない）に含まれない'
     plan: '#610'
   - item: 詳細パネルの差分のミニマップで印の無い所を押す結合テスト（`test_diff_minimap_when_empty_area_pressed`）が、押した位置まで本文が送られずに fail すること
-    reason: develop（`044bbcb1`）でも同じ値で fail する既存の不具合で、今回の変更（本文の表・mdmark の ref）と関係しない。今回の要望に含まれない
-    plan: '#611'
+    reason: develop でも同じ値（223.75、期待 424 ± 2）で fail する既存の不具合で、#553 が develop（`1013853b`）での fail を記録している。develop（`044bbcb1`）で流した出力は `テスト結果/20261119175809_044bbcb1_結合テスト.log`。今回の変更（本文の表・mdmark の ref）と関係しない。今回の要望に含まれない
+    plan: '#553'
