@@ -1,0 +1,41 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-47.yaml
+    impact: changed
+    detail: 項目へのコメントをレビュー中に溜めた後の入力欄へのフォーカスを、設定に従って戻すか戻さないかにする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-44.yaml
+    impact: changed
+    detail: 選んだ箇所へのコメントをレビュー中に溜めた後のフォーカスを、設定に従う
+    depends_on:
+      - docs/scenario/SC-489-47.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: スレッドの返信をレビュー中に溜めた後のフォーカスを、設定に従う
+    depends_on:
+      - docs/scenario/SC-489-47.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: changed
+    detail: 音声入力の文字起こしを確定してレビュー中に溜めた・送信した後のフォーカスを、設定に従う
+    depends_on:
+      - docs/scenario/SC-489-47.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: changed
+    detail: 表示の設定に、レビューに追加した後に入力欄へ戻るかの項目を加え、端末の種類ごとの既定と、既定に戻すの対象に含める
+    depends_on: []
+docs:
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: 表示の設定を変える節に、レビューに追加した後に入力欄へ戻るかの項目と端末の種類ごとの既定を加え、コメント・返信をレビューに追加した後のフォーカスの記述を設定に合わせる
+    status: todo
+scope_out:
+  - item: レビュー中の書き込みの修正・削除・元に戻すの後のフォーカス（詳細パネル・レビュー中の書き込みの画面）
+    reason: フォーカスの移動先は「修正」「元に戻す」のボタンで入力欄ではなく、ソフトウェアキーボードが開かない。要望は「レビューに追加」の後の入力欄へのフォーカス
+    plan: none
+  - item: 設定をワークスペースの既定（config.yaml）として保存する
+    reason: 既定が端末の種類で変わるため、表示の設定の個人の上書きと同じく端末の保存領域だけに持つ。ワークスペースの既定にするの対象に含めるかは判断が分かれるため、インターフェース定義設計のレビューで確定する
+    plan: none
