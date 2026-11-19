@@ -523,6 +523,31 @@ def test_thread_list_view_when_composing(
     assert any(field["ariaLabel"] == "新しいスレッド" for field in observed["fields"]) is composing
 
 
+def test_thread_list_view_when_target_composing(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """項目で絞っている間の新しいスレッドの入力の見出し（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    props = {
+        "composing": True,
+        "target": "D-1",
+        "free": {
+            "target": "D-1",
+            "loc": None,
+            "body": "",
+            "status": "idle",
+            "collapsed": False,
+            "on": {},
+        },
+    }
+    # 実行
+    observed = _run(preview_page, "threadListView", props)
+    # 検証
+    assert preview_page.evaluate(
+        "() => document.querySelector('.talk-new .send-label').textContent"
+    ) == "D-1 への新しいスレッド"
+    assert "D-1 への新しいスレッド" in observed["text"]
+
+
 # --- スレッド ---------------------------------------------------------------
 
 # 書き込み 3 件と記録 2 件を持つオープンのスレッド
