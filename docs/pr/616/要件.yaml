@@ -1,0 +1,65 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-582-1.yaml
+    impact: changed
+    detail: 使用中のアカウントの利用枠がしきい値以上になったら、利用上限のエラーを待たずに、応答の終わりを待って止め、別のアカウントで前の会話を引き継いで起動し直す契機を追加する。空いたアカウントが無いときは今のアカウントで続ける
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: following
+    detail: しきい値での切り替えで止めたときの、止まった理由の通知に追随する
+    depends_on:
+      - docs/scenario/SC-582-1.yaml
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: none
+    detail: 止まった後に別のアカウントで話し合いを続ける流れは変わらない
+    depends_on: []
+docs:
+  - page: docs/interface/IF-582-1.yaml
+    new: false
+    change: 契機にしきい値での切り替えを追加し、止め方（応答の終わりを待つ）・アカウント（しきい値以上のアカウントを除いて借りる）・停止の通知を決める
+    status: todo
+  - page: docs/interface/IF-570-1.yaml
+    new: false
+    change: 止まった理由にしきい値での切り替えを追加する
+    status: todo
+  - page: docs/library/LIB-531-1.yaml
+    new: false
+    change: 使用中のアカウントの消費率と貸せない理由を取得する claude-balancer の GET /accounts（IF-275-12）の使い方を追加する
+    status: todo
+  - page: docs/nonfunctional/NFR-489-1.yaml
+    new: false
+    change: 使用中のアカウントの利用枠を確かめる間隔の決定値を追加する
+    status: todo
+  - page: docs/er/ER-531-1.yaml
+    new: false
+    change: session.json の restart_reason に、しきい値での切り替えの値を追加する
+    status: todo
+  - page: docs/config/CFG-489-1.yaml
+    new: false
+    change: claude-balancer の待ち受けを読む指定が要るなら追加する（データ設計で決める）
+    status: todo
+  - page: docs/module/MOD-531-4.py.yaml
+    new: false
+    change: 使用中のアカウントの利用枠を周期で確かめ、しきい値以上なら起動し直しを依頼する処理を追加する
+    status: todo
+  - page: docs/module/MOD-568-1.py.yaml
+    new: false
+    change: 止まった理由の文言に、しきい値での切り替えを追加する
+    status: todo
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: 利用枠がしきい値以上になったときも、別のアカウントで続きから再開することを追記する
+    status: todo
+  - page: docs/guide/セットアップ手順-Discordに通知する.md
+    new: false
+    change: 通知の止まった理由に、しきい値での切り替えを追加する
+    status: todo
+scope_out:
+  - item: 画面での切り替えの表示
+    reason: 要望に含まれない。切り替えたことは Discord の停止の通知と『MindStella のセッションの一覧』で分かる
+    plan: none
+  - item: claude-balancer 側の変更（使用中のアカウントの消費率を取得する API の新設）
+    reason: 既存の GET /accounts（IF-275-12）がアカウントごとの消費率と、しきい値以上を表す貸せない理由を返すため。アカウントの設定のフォルダとアカウント名の対応が GET /accounts で取れなければ、インターフェース定義設計で claude-balancer へ起票して依存に加える
+    plan: none

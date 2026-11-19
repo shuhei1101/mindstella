@@ -1,0 +1,68 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T10:08:34.390207+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 既存の設計書があるため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T10:08:34.390207+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue でないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T10:08:34.390207+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: '利用枠の消費率と貸せない理由は claude-balancer の GET /accounts（IF-275-12）が返し、止めて別のアカウントで会話を引き継ぐ起動し直しは PR #582 で実装済みのため'
+    updated_by: planner
+    updated_at: '2026-11-19T10:08:34.390207+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 複合ユースケース『話し合いを記録しながら進める』の流れ（止まった後に別のアカウントで話し合いを続ける）は変わらず、契機の追加は単一ユースケース『MindStella のセッションを起動し直す』に閉じるため
+    updated_by: planner
+    updated_at: '2026-11-19T10:08:34.390207+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面を変更しないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T10:08:34.390207+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面を変更しないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T10:08:34.390207+00:00'
+  - process: 単一ユースケース設計
+    status: todo
+  - process: モック作成
+    status: skipped
+    reason: 画面を変更しないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T10:08:34.390207+00:00'
+  - process: データ設計
+    status: todo
+    note: 設定『サーバー』（CFG-489-1）に claude-balancer の待ち受けを読む指定を足すかを決める。足さなければ skipped にする
+  - process: インターフェース定義設計
+    status: todo
+  - process: 部品設計
+    status: skipped
+    reason: 画面を変更しないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T10:08:34.390207+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面を変更しないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T10:08:34.390207+00:00'
+  - process: モジュール構成設計
+    status: todo
+  - process: ドキュメント修正
+    status: todo
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
