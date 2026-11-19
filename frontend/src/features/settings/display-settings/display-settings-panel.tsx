@@ -12,7 +12,7 @@ import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
 import { markDisplaySaved, useDisplayMessage } from "@/shared/stores/display-notice-store";
-import { readPrefs, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
+import { readPrefs, usePointerCoarse, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
 
 /** 本文の見せ方の項目 → 端末の保存領域のキーと、上書きにする値 */
@@ -34,6 +34,7 @@ export const DisplaySettingsPanel = () => {
   const { setPanel, openList } = usePreviewSearch();
   const { rawIndex } = useRecords();
   const prefs = usePrefs();
+  const pointerCoarse = usePointerCoarse();
   const visible = useVisibleKinds();
   const clearTheme = useThemeStore((state) => state.clearTheme);
   const message = useDisplayMessage();
@@ -89,6 +90,10 @@ export const DisplaySettingsPanel = () => {
             storageAvailable={storageWorks()}
             minimap={prefs.minimap !== false}
             bodyView={bodyView}
+            focusAfterAdd={prefs.focusAfterAdd ?? "auto"}
+            pointerCoarse={pointerCoarse}
+            // 自動は上書きを外し、入力欄へ戻す・戻さないだけを上書きとして残す
+            onFocusAfterAddChange={(value) => { writePrefs({ focusAfterAdd: value === "auto" ? null : value }); }}
             onKindsChange={(kinds) => { writePrefs({ kinds }); }}
             onReset={() => {
               writePrefs(resetPrefs(readPrefs()));

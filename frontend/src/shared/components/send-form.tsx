@@ -7,6 +7,7 @@ import { Textarea } from "@/shared/components/ui/textarea";
 import { locationLabel, type Location } from "@/shared/core/records";
 import { formatElapsed } from "@/shared/core/voice";
 import { cn } from "@/shared/lib/cn";
+import { useFocusAfterAddTarget } from "@/shared/stores/prefs-store";
 
 /** 溜める状態。idle は結果を出さない */
 export type SendStatus = "idle" | "saving" | "saved" | "empty" | "failed" | "sent" | "inserted" | "reviewed" | "voice-failed";
@@ -145,15 +146,23 @@ export const VoiceWave = ({ voice, levels }: { voice: VoicePhase; levels: readon
 /** 入力欄を書き換えられないか（溜めている間・録音中・文字起こし中） */
 export const fieldLocked = (saving: boolean, voice: VoicePhase): boolean => saving || voice === "recording" || voice === "transcribing";
 
-/** 録音を始めたとき・録音中の入力欄が付いたときは ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す（入力欄は隠すだけで外さないため、選んだ範囲が残る） */
-export const useVoiceFocus = (voice: VoicePhase, field: RefObject<HTMLTextAreaElement | null>, done: RefObject<HTMLButtonElement | null>): void => {
+/** 録音を始めたとき・録音中の入力欄が付いたときは ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す（入力欄は隠すだけで外さないため、選んだ範囲が残る）。溜めた・送った（`reviewed`・`sent`）後は、入力欄へ戻さない設定なら ✓ の位置に戻った「レビューに追加」へ移す */
+export const useVoiceFocus = (voice: VoicePhase, field: RefObject<HTMLTextAreaElement | null>, done: RefObject<HTMLButtonElement | null>, submit: RefObject<HTMLButtonElement | null>, status: string): void => {
   const previous = useRef<VoicePhase>("idle");
+  const target = useFocusAfterAddTarget();
   useEffect(() => {
     const before = previous.current;
     previous.current = voice;
     if (voice === "recording" && before !== "recording") done.current?.focus();
-    if (voice === "idle" && (before === "recording" || before === "transcribing")) field.current?.focus();
-  }, [voice, field, done]);
+    if (voice !== "idle" || (before !== "recording" && before !== "transcribing")) return;
+    if ((status === "reviewed" || status === "sent") && target === "submit") submit.current?.focus();
+    else field.current?.focus();
+  }, [voice, field, done, submit, status, target]);
+};
+
+/** 溜めた後に、表示の設定に従って入力の入力欄か「レビューに追加」へフォーカスを移す（`form` は溜めた入力の form） */
+export const focusAfterAdded = (form: HTMLFormElement | null, target: "input" | "submit"): void => {
+  form?.querySelector<HTMLElement>(target === "submit" ? 'button[type="submit"]' : "textarea")?.focus();
 };
 
 /** 入力欄の右に並べる音声入力のボタン（idle・disabled はマイクと submit、recording・transcribing は × と ✓） */
@@ -308,7 +317,8 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
   const folded = collapsed && target === null;
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const doneRef = useRef<HTMLButtonElement>(null);
-  useVoiceFocus(voice, fieldRef, doneRef);
+  const submitRef = useRef<HTMLButtonElement>(null);
+  useVoiceFocus(voice, fieldRef, doneRef, submitRef, status);
   // 空白だけで溜めようとしたか（次に書き換えるまで出す）
   const [empty, setEmpty] = useState(false);
   // 溜めている印は待ちの後に出す
@@ -328,7 +338,9 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
   const trySave = (): void => {
     if (status === "saving") return;
     if (body.trim() === "") {
+      // 溜めず、入力欄へフォーカスを戻す
       setEmpty(true);
+      fieldRef.current?.focus();
       return;
     }
     onSubmit(target, loc, body);
@@ -390,7 +402,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
         onBlocked={onVoiceBlocked}
         onDone={() => onVoiceDone?.(target, loc, body)}
         submit={
-          <Button type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" aria-busy={status === "saving"} disabled={status === "saving"}>
+          <Button ref={submitRef} type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" aria-busy={status === "saving"} disabled={status === "saving"}>
             <Icon name="comment" />
           </Button>
         }

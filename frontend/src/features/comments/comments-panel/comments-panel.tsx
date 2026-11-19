@@ -1,12 +1,13 @@
 // コメントの一覧（画面設計『コメントの一覧.tsx』）。スレッドを状態とタグで絞って並べ、新しいスレッドを立てる左のパネル。パネルの中をスレッド・レビュー中の書き込みの画面と切り替える
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { ReviewView } from "@/features/comments/review/review-view";
 import { ThreadRow } from "@/features/comments/shared/thread-row";
 import { useCommentData } from "@/features/comments/shared/use-comment-data";
 import { ThreadView } from "@/features/comments/thread/thread-view";
 import { Icon } from "@/shared/components/icon";
-import { SendForm, type SendStatus } from "@/shared/components/send-form";
+import { focusAfterAdded, SendForm, type SendStatus } from "@/shared/components/send-form";
 import { Button } from "@/shared/components/ui/button";
 import { AppError } from "@/shared/core/app-error";
 import { pendingThreads, threadCounts, visibleThreads, type ThreadFilter } from "@/shared/core/comments";
@@ -14,7 +15,7 @@ import { useAddComment, useSaveDraft } from "@/shared/hooks/use-comments";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { cn } from "@/shared/lib/cn";
-import { usePrefs, writePrefs } from "@/shared/stores/prefs-store";
+import { useFocusAfterAddTarget, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 import { readVoiceState } from "@/shared/stores/voice-store";
 
 const FILTERS = [
@@ -37,6 +38,7 @@ type FreeState = { body: string; status: SendStatus; count: number | null; detai
 const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: FreeState | ((current: FreeState) => FreeState)) => void }) => {
   const add = useAddComment();
   const saveDraft = useSaveDraft();
+  const focusTarget = useFocusAfterAddTarget();
   const voice = useVoiceInput({
     key: NEW_THREAD_VOICE_KEY,
     destination: { target: null, loc: null },
@@ -76,11 +78,16 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
                 saveDraft({ target: null, loc: null, thread: null, body: next });
               }}
               onSubmit={(_target, _loc, text) => {
+                // 溜めた後にフォーカスを移す入力（押したボタンか入力欄を持つ form）
+                const sent = document.activeElement?.closest("form") ?? null;
                 setFree((current) => ({ ...current, status: "saving" }));
                 add.mutate(
                   { body: text },
                   {
-                    onSuccess: (result) => { setFree({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); },
+                    onSuccess: (result) => {
+                      flushSync(() => { setFree({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); });
+                      focusAfterAdded(sent, focusTarget);
+                    },
                     onError: (error) => { setFree((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
                   },
                 );

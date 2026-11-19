@@ -1,5 +1,6 @@
 // スレッド（画面設計『スレッド.tsx』）。書き込みと状態の変更を書いた順に並べ、下端で返信を溜め、上端でクローズとオープンへの戻しをする
 import { useEffect, useId, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { ReplyForm, type ReplyStatus } from "@/features/comments/shared/reply-form";
 import { ThreadPost } from "@/features/comments/shared/thread-post";
@@ -7,6 +8,7 @@ import { ThreadState } from "@/features/comments/shared/thread-state";
 import type { CommentData } from "@/features/comments/shared/use-comment-data";
 import { useMarkThreadSeen, useSetThreadStatus } from "@/features/comments/shared/use-threads";
 import { Icon } from "@/shared/components/icon";
+import { focusAfterAdded } from "@/shared/components/send-form";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { AppError } from "@/shared/core/app-error";
@@ -14,6 +16,7 @@ import { commentNumber, hasUnseen, threadTimeline, threadTitle, type ReviewItem 
 import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from "@/shared/hooks/use-comments";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { showLocation } from "@/shared/stores/location-highlight-store";
+import { useFocusAfterAddTarget } from "@/shared/stores/prefs-store";
 
 export type ThreadViewProps = {
   /** 開くスレッドの ID（まだ送っていない新しいスレッドはコメントの ID） */
@@ -36,6 +39,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   const markSeen = useMarkThreadSeen();
   const setStatus = useSetThreadStatus();
   const addComment = useAddComment();
+  const focusTarget = useFocusAfterAddTarget();
   const updateComment = useUpdateComment();
   const removeComment = useRemoveComment();
   const saveDraft = useSaveDraft();
@@ -106,12 +110,15 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
     );
   };
   const submitReply = (target: string, body: string): void => {
+    // 溜めた後にフォーカスを移す入力（押したボタンか入力欄を持つ form）
+    const sent = document.activeElement?.closest("form") ?? null;
     setReply((current) => ({ ...current, status: "saving" }));
     addComment.mutate(
       { target: null, loc: null, thread: target, body },
       {
         onSuccess: (result) => {
-          setReply({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null });
+          flushSync(() => { setReply({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); });
+          focusAfterAdded(sent, focusTarget);
         },
         onError: (error) => {
           setReply((current) => ({ ...current, status: "failed", detail: detailOf(error) }));

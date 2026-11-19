@@ -57,7 +57,8 @@ export const ReplyForm = ({ thread, body, status, count = null, detail = null, v
   const fieldId = useId();
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const doneRef = useRef<HTMLButtonElement>(null);
-  useVoiceFocus(voice, fieldRef, doneRef);
+  const submitRef = useRef<HTMLButtonElement>(null);
+  useVoiceFocus(voice, fieldRef, doneRef, submitRef, status);
   const messageId = `${fieldId}-msg`;
   const saving = status === "saving";
   const trySave = (): void => {
@@ -89,7 +90,7 @@ export const ReplyForm = ({ thread, body, status, count = null, detail = null, v
       <div className="flex items-end gap-2">
         <Textarea ref={fieldRef} id={fieldId} name="body" rows={1} maxLength={COMMENT_BODY_MAX_LENGTH} value={body} readOnly={fieldLocked(saving, voice)} hidden={voice === "recording"} aria-keyshortcuts="Control+Enter" aria-describedby={messageId} className="field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11" onChange={(event) => onInput(event.target.value)} onKeyDown={handleKeyDown} />
         <VoiceWave voice={voice} levels={levels} />
-        <VoiceButtons doneRef={doneRef} voice={voice} voiceReason={voiceReason} onStart={onVoiceStart} onCancel={onVoiceCancel} onBlocked={onVoiceBlocked} onDone={() => onVoiceDone?.(thread, body)} submit={<Button type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" data-focus="reply-send" disabled={saving || body.trim() === ""}>
+        <VoiceButtons doneRef={doneRef} voice={voice} voiceReason={voiceReason} onStart={onVoiceStart} onCancel={onVoiceCancel} onBlocked={onVoiceBlocked} onDone={() => onVoiceDone?.(thread, body)} submit={<Button ref={submitRef} type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-disabled:cursor-default aria-disabled:bg-muted aria-disabled:text-muted-foreground aria-disabled:hover:bg-muted pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" data-focus="reply-send" disabled={saving} aria-disabled={!saving && body.trim() === "" ? true : undefined}>
           <Icon name="comment" />
         </Button>} />
       </div>
