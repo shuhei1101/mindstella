@@ -95,4 +95,22 @@ describe("ReplyForm", () => {
     expect(screen.getByRole("button", { name: "レビューに追加" })).toHaveFocus();
     focusTarget.current = "input";
   });
+
+  // 入力が空の間の「レビューに追加」は押せないがフォーカスを受け、押しても Ctrl+Enter でも溜めない（正常系）
+  test("reply_form_when_empty", async () => {
+    // 準備
+    const onSubmit = vi.fn();
+    render(<ReplyForm thread="TH-1" body="  " status="idle" onSubmit={onSubmit} onInput={vi.fn()} />);
+    const submit = screen.getByRole("button", { name: "レビューに追加" });
+    // 実行
+    await userEvent.click(submit);
+    await userEvent.click(screen.getByRole("textbox"));
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    // 検証
+    expect(submit).toHaveAttribute("aria-disabled", "true");
+    expect(submit).toBeEnabled();
+    submit.focus();
+    expect(submit).toHaveFocus();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });
