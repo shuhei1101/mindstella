@@ -124,13 +124,9 @@ class FakeProjectIndex:
     def __init__(self, root: Path, allowed: list[Path]) -> None:
         """許可するフォルダを書いた端末の設定のファイルを作り、空きポートで待ち受ける。"""
         self.settings_path = root / "pi-settings.yaml"
-        self.settings_path.write_text(
-            yaml.safe_dump(
-                {"mindstella": {"allowed_dirs": [str(path) for path in allowed]}, "sources": []}
-            ),
-            encoding="utf-8",
-        )
+        self.allowed = allowed
         self.rows: dict[str, dict[str, Any]] = {}
+        self.save()
         self.docs: dict[str, list[dict[str, str]]] = {}
         self.version = 1
         self.requests: list[tuple[str, str, Any]] = []
@@ -238,6 +234,7 @@ class FakeProjectIndex:
                 "status": "not_served",
             }
             self.version += 1
+            self.save()
         return 201, {"result": "added"}
 
     def patch(self, path: str, body: Any) -> tuple[int, Any]:
@@ -259,6 +256,7 @@ class FakeProjectIndex:
             if "scope" in changes:
                 row["scope"] = changes["scope"]
             self.version += 1
+            self.save()
         return 200, {"version": str(self.version)}
 
     def put(self, body: Any) -> tuple[int, Any]:
@@ -268,6 +266,28 @@ class FakeProjectIndex:
                 return 409, {"current": str(self.version)}
             self.version += 1
         return 200, {"version": str(self.version)}
+
+    def save(self) -> None:
+        """端末の設定のファイルに、許可するフォルダと行（ファイルの形の snake_case）を書く。"""
+        sources = [
+            {
+                "id": row["id"],
+                "config": row["config"],
+                "scope": row["scope"],
+                "outside_read": row["outsideRead"],
+            }
+            for row in self.rows.values()
+        ]
+        self.settings_path.write_text(
+            yaml.safe_dump(
+                {
+                    "mindstella": {"allowed_dirs": [str(path) for path in self.allowed]},
+                    "sources": sources,
+                },
+                allow_unicode=True,
+            ),
+            encoding="utf-8",
+        )
 
     def changes(self) -> list[tuple[str, str, Any]]:
         """行を変える要求（POST・PATCH）だけを返す。"""
@@ -308,6 +328,7 @@ class SessionWorld:
                 "TMUX_TMPDIR": str(self.tmux_tmpdir),
                 "XDG_STATE_HOME": str(self.state_root.parent),
                 "PROJECT_INDEX_PORT": str(self.pi.port),
+                "PROJECT_INDEX_CONFIG": str(self.pi.settings_path),
             }
         )
         return {**env, **(extra or {})}

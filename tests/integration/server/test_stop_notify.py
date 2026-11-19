@@ -23,6 +23,10 @@ NO_SEND_WAIT_SEC = 1.0
 # 停止して状態に記録されるまで待つ秒数
 STOPPED_WAIT_SEC = 15.0
 
+# 落ちたことを見回る間隔を上書きする環境変数とテストの値（秒）
+CRASH_WATCH_INTERVAL_ENV = "MINDSTELLA_CRASH_WATCH_INTERVAL"
+CRASH_WATCH_INTERVAL_SEC = 1
+
 # 状態に無い MindStella のセッションの ID（落ちていることにする）
 CRASHED_SESSION_ID = "S-0000000000aa"
 
@@ -36,9 +40,11 @@ def webhook() -> Iterator[FakeWebhook]:
     fake.close()
 
 
-def _start(world: SessionWorld, webhook: FakeWebhook | None) -> McpServer:
+def _start(
+    world: SessionWorld, webhook: FakeWebhook | None, extra_env: dict[str, str] | None = None
+) -> McpServer:
     """Webhook の URL を記載した設定のファイルを指定して（webhook が None なら指定せずに）常駐サーバーを起動する。"""
-    extra = {MDMARK_COMMAND_ENV: NOOP_MDMARK_COMMAND}
+    extra = {MDMARK_COMMAND_ENV: NOOP_MDMARK_COMMAND, **(extra_env or {})}
     if webhook is not None:
         path = world.root / "webhook.ini"
         path.write_text(f"{webhook.url}\n", encoding="utf-8")
@@ -139,22 +145,20 @@ def test_normal_when_forced(session_world: SessionWorld, webhook: FakeWebhook) -
 
 
 def test_normal_when_session_crashed(session_world: SessionWorld, webhook: FakeWebhook) -> None:
-    """一覧でペインが無いことを検知して異常終了を 1 件送信し、その後の停止では送信しない（正常系）。"""
+    """見回りでペインが無いことを検知して異常終了を 1 件送信し、その後の停止では送信しない（正常系）。"""
     # 準備
     world = session_world
-    _start(world, webhook)
+    _start(world, webhook, {CRASH_WATCH_INTERVAL_ENV: str(CRASH_WATCH_INTERVAL_SEC)})
     workspace_id = str(world.create_workspace()["id"])
     world.write_session(workspace_id, session=CRASHED_SESSION_ID)
     # 実行
-    listed, body = world.api("GET", f"/workspaces/{workspace_id}/sessions")
+    wait_until(lambda: _status(world, workspace_id) == "crashed", timeout=STOPPED_WAIT_SEC)
     wait_until(lambda: webhook.requests)
     stopped, stop_body = world.api(
         "DELETE", f"/workspaces/{workspace_id}/sessions/{CRASHED_SESSION_ID}"
     )
     time.sleep(NO_SEND_WAIT_SEC)
     # 検証
-    assert listed == 200
-    assert body["sessions"][0]["status"] == "crashed"
     assert (stopped, stop_body["status"]) == (200, "stopped")
     assert len(webhook.requests) == 1
     assert _contents(webhook)[0].split("\n")[0] == "家計簿: 停止しました（異常終了）"
@@ -209,10 +213,10 @@ def test_normal_when_webhook_not_configured(session_world: SessionWorld) -> None
     assert "Webhook への送信" not in server.stderr_text()
 
 
-def test_normal_when_listed_while_stopping(
+def test_normal_when_closed_while_stopping(
     session_world: SessionWorld, webhook: FakeWebhook
 ) -> None:
-    """停止の依頼の途中に一覧がペインの無いことを検知しても送信せず、止め終えたときに停止の依頼を 1 件送信する（正常系）。"""
+    """停止の依頼の途中にクローズがペインの無いことを検知しても送信せず、止め終えたときに停止の依頼を 1 件送信する（正常系）。"""
     # 準備
     world = session_world
     world.set_claude_mode("exit_without_end")
@@ -222,14 +226,13 @@ def test_normal_when_listed_while_stopping(
     status, _body = world.api("DELETE", f"/workspaces/{workspace_id}/sessions/{session_id}")
     wait_until(lambda: world.noted("exit"), timeout=STOPPED_WAIT_SEC)
     wait_until(lambda: world.alive_claude_pids() == [], timeout=STOPPED_WAIT_SEC)
-    listed, body = world.api("GET", f"/workspaces/{workspace_id}/sessions")
+    closed, _closed_body = world.api("POST", f"/workspaces/{workspace_id}/close")
     wait_until(lambda: _status(world, workspace_id) == "stopped", timeout=STOPPED_WAIT_SEC)
     wait_until(lambda: webhook.requests)
     time.sleep(NO_SEND_WAIT_SEC)
     # 検証
     assert status == 202
-    assert listed == 200
-    assert body["sessions"][0]["status"] in ("crashed", "stopped")
+    assert closed == 200
     assert len(webhook.requests) == 1
     assert _contents(webhook)[0].split("\n")[0] == "家計簿: 停止しました（停止の依頼）"
 
