@@ -137,6 +137,50 @@ states:
     args:
       - name: post
         value: '{"id":"TH-1-2","author":"ai","body":"見直して気になった点を挙げます。\n1. 概要のタイルの並びが毎回変わる\n2. 検討事項の表で列の幅が狭い\n3. タスクのボードで完了の列が長い\n4. 資料のカードの日付が読みにくい\n5. ネットワークの玉の色が近い\n6. 詳細パネルの本文の図が小さい\n7. 変更履歴の時点の並びが分かりにくい","created":"2026-11-04T01:24:00+00:00"}'
+  - name: PendingEditingRecording
+    description: レビュー中の返信の修正の入力で録音中。「キャンセル」「修正」とマイクの位置に × の「キャンセル」と ✓ の「文字起こし」を置き、入力欄の場所に `levels` の波形、入力欄の下に失敗の色の丸と経過の時間を出す（部品『返信の入力』の `Recording` と同じ見た目）
+    args:
+      - name: pending
+        value: '{"id":"C-43","thread":"TH-1","target":null,"body":"確認: でよい","created":"2026-10-12T05:14:00+00:00"}'
+      - name: editing
+        value: 'true'
+      - name: voice
+        value: recording
+      - name: elapsed
+        value: '12'
+      - name: levels
+        value: '[0.25, 0.4, 0.7, 0.55, 0.9, 0.6, 0.35, 0.8, 1, 0.65]'
+  - name: PendingEditingTranscribing
+    description: 修正の入力で文字起こし中。2 つのボタンを押せなくし、✓ の位置と入力欄の下に回る印だけを出す。入力欄は読み取りだけ
+    args:
+      - name: pending
+        value: '{"id":"C-43","thread":"TH-1","target":null,"body":"確認: でよい","created":"2026-10-12T05:14:00+00:00"}'
+      - name: editing
+        value: 'true'
+      - name: voice
+        value: transcribing
+  - name: PendingEditingInserted
+    description: 修正の入力へ文字起こしの結果を挿入した。入力欄が挿入した全文で、「キャンセル」「修正」とマイクに戻し、入力欄の下に「文字起こしの結果を挿入しました。」を出す
+    args:
+      - name: pending
+        value: '{"id":"C-43","thread":"TH-1","target":null,"body":"確認: でよい","created":"2026-10-12T05:14:00+00:00"}'
+      - name: editing
+        value: 'true'
+      - name: editBody
+        value: '確認: 案 A にするでよい'
+      - name: voiceStatus
+        value: inserted
+  - name: PendingEditingVoiceDisabled
+    description: ほかの入力欄で音声入力中。修正の入力のマイクのボタンを押せない見た目にし、ホバーとフォーカスで理由のツールチップを出す。キーボードの入力と「修正」はできる
+    args:
+      - name: pending
+        value: '{"id":"C-43","thread":"TH-1","target":null,"body":"確認: でよい","created":"2026-10-12T05:14:00+00:00"}'
+      - name: editing
+        value: 'true'
+      - name: voice
+        value: disabled
+      - name: voiceReason
+        value: ほかの入力欄で音声入力中のため、音声で入力できません。
 lead: スレッドの中に書いた順で並べる 1 件。利用者と AI の書き込み・クローズとオープンへの戻しの記録・レビュー中の返信を、書き手と種類が見分けられる形で出す。
 args:
   - name: post
@@ -190,6 +234,44 @@ args:
     enabled_when: '`pending` を渡したとき'
     description: レビュー中の書き込みの本文を開いているか。部品『本文の折りたたみ』の `open` へそのまま渡す。使う側が書き込みごとに覚え、描き直しと本文の書き換えをまたいで保つ
     status: planned
+  - name: voice
+    type: 列挙
+    default: idle
+    choices: idle・disabled・recording・transcribing
+    enabled_when: '`editing` が true のとき'
+    description: 修正の入力の音声入力の状態。部品『返信の入力』の `voice` と同じ見た目で、idle は「キャンセル」の左にマイクのアイコンだけのボタンを置き、recording は「キャンセル」「修正」とマイクの位置を × の「キャンセル」と ✓ の「文字起こし」に切り替えて波形を出す
+    status: planned
+  - name: voiceReason
+    type: 文字列
+    enabled_when: '`voice` が `disabled` のとき'
+    description: マイクのボタンを押せない理由。部品『返信の入力』の `voiceReason` と同じ
+    status: planned
+  - name: elapsed
+    type: 整数
+    default: '0'
+    choices: 0 以上
+    enabled_when: '`voice` が `recording` のとき'
+    description: 録音を始めてからの秒数。部品『返信の入力』の `elapsed` と同じ
+    status: planned
+  - name: levels
+    type: 配列
+    default: '[]'
+    choices: 0〜1 の数の並び（古い順）
+    enabled_when: '`voice` が `recording` のとき'
+    description: 録音中の音量の並び。部品『返信の入力』の `levels` と同じ
+    status: planned
+  - name: voiceStatus
+    type: 列挙
+    default: idle
+    choices: idle・inserted・voice-failed
+    enabled_when: '`editing` が true のとき'
+    description: 修正の入力の音声入力の結果。inserted は入力欄の下に「文字起こしの結果を挿入しました。」、voice-failed は `voiceDetail` を印のアイコンと共に出す。入力を始めたら inserted を消す
+    status: planned
+  - name: voiceDetail
+    type: 文字列
+    enabled_when: '`voiceStatus` が `voice-failed` のとき'
+    description: 音声入力の失敗の理由（部品『返信の入力』の `voice-failed` の `detail` と同じ文）
+    status: planned
 events:
   - name: 項目を開く
     when: 本文の中の項目の ID のリンクを押したとき
@@ -219,6 +301,18 @@ events:
     when: '`pending` の「続きを読む」か「折りたたむ」を押したとき'
     value: '`onToggle(id, open)`（`pending.id`・開くか（真偽値））'
     description: 部品『本文の折りたたみ』の開閉をそのまま使う側へ渡す。使う側が書き込みの開閉を覚える
+  - name: 修正で録音を始める
+    when: 修正の入力のマイクのボタンを押したとき（`voice` が `idle`）
+    value: '`onEditVoiceStart(id)`（`pending.id`）'
+    description: 使う側が部品『返信の入力』の「録音を始める」と同じく録り始め、`voice` を `recording` にする
+  - name: 修正の録音をキャンセル
+    when: 修正の入力の × を押したとき（`voice` が `recording`）
+    value: '`onEditVoiceCancel(id)`（`pending.id`）'
+    description: 使う側が録音を捨てて `voice` を `idle` に戻す。`editing` と入力欄の中身は変えない
+  - name: 修正で文字起こし
+    when: 修正の入力の ✓ を押したとき（`voice` が `recording`）
+    value: '`onEditVoiceDone(id, body)`（`pending.id`・入力欄の中身そのまま）'
+    description: 使う側が `POST /api/transcriptions` へ送り、返った文字を入力欄のカーソルの位置へ挿入して `editBody` と `voiceStatus` を `inserted` にする（設定の挙動によらず、レビュー中への追加・送信はしない）。失敗は入力欄の中身を残して `voice-failed`。どちらもフォーカスを入力欄へ戻し、`voice` を `idle` に戻す（503 のときは `disabled`）
 accessibility:
   - 書き手は寄せと面の色だけでなく、頭の文字（「あなた」「AI」）でも示す。レビュー中は破線の枠に加えて印のアイコンと「レビュー中」の文字で示す
   - 日時は `time` 要素で `datetime` に元の日時を持つ
@@ -227,6 +321,7 @@ accessibility:
   - 書き換えの入力欄は `aria-keyshortcuts` に Ctrl+Enter を持つ。書き換えの「修正」の `title` は「修正（Ctrl+Enter）」
   - 書き換えを保てなかった理由は `role="alert"` で読み上げ、入力欄の `aria-describedby` から指す
   - 本文の中のまとまりのリンクは `href` を `#diff={まとまりの ID}` にした `a` 要素にし、読み上げの名前を `文言`、`title` をそのまとまりの説明にする。Tab で本文の並びの順に止まり、Enter で押せる
+  - 修正の入力のマイク・×・✓ の読み上げの名前とツールチップは、部品『返信の入力』の音声入力のボタンと同じにする
 test_file: tests/integration/storybook_react/test_thread_post_stories.py
 uses:
   - component: CMP-489-6#
