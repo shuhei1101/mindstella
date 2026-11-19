@@ -216,6 +216,20 @@ classes:
           type: None
           description: 何も返さない
         process: 1. `_stop` を立て、スレッドを `POLL_INTERVAL_SEC` の 2 倍まで待つ
+      - name: rebase
+        title: 前回の中身を作り直す
+        kind: メソッド
+        summary: 前回の中身と書き換えの印を指定した中身で置き換え、`snapshot/` に記載する。比べず、記録しない（`rebase_snapshot` が呼ぶ）
+        args:
+          - name: snapshot
+            type: Snapshot
+            required: true
+            passing: positional
+            description: 今の中身
+        returns:
+          type: None
+          description: 何も返さない
+        process: 1. 前回の中身を `snapshot` にし、書き換えの印を作り直して（`signature_of`）、`snapshot/` に記載する（`save_snapshot`）
 functions:
   - name: take_snapshot
     title: 今の中身を読む
@@ -497,6 +511,44 @@ functions:
         condition: '`("D-1",)` で、宛先がある台帳 / 宛先が無い台帳'
         mock: 貼り付けの関数
         expected: '前は `[mindstella] 同じ ID の項目が 2 件あります: D-1（decisions.yaml）` で始まる文で 1 回、後は呼ばれない'
+  - name: rebase_snapshot
+    title: 移し替えの後に前回の中身を作り直す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    scope: public
+    summary: 『記録の形式の移行』が手順を当てた後に、前回の中身を今の中身で作り直し、移し替えの書き換えを変更として記録しないようにする（ワークスペースの管理が、移し替えと同じ鍵の中で呼ぶ）
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの絶対パス
+      - name: state_root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+    returns:
+      type: None
+      description: 何も返さない
+    process: |-
+      1. 今の中身を読む（`take_snapshot`）
+      2. そのワークスペースの変更の検知が動いている場合（`detector_of`）、その `rebase` を呼ぶ
+      3. 動いていない場合、状態のフォルダの `workspaces/{ID}/snapshot/` に記載する（`save_snapshot`）。後で配信を立てたときの `start` は、`snapshot/` と今の中身が同じため記録しない
+    unit_tests:
+      - name: test_rebase_snapshot
+        case: 正常
+        summary: 移し替えの後に検知を始めても記録しない
+        condition: D-1 の本文が `docs/D-1.md` の `snapshot/` を持ち、記録を `docs/D-1.mark.md` へ移し替えたワークスペースで、`rebase_snapshot` を呼んでから `ChangeDetector.start` を呼ぶ
+        mock: '`threading.Thread`'
+        expected: '`snapshot/docs/D-1.mark.md` があり `snapshot/docs/D-1.md` が無い。`history.yaml`・`changes.yaml` が移し替えた後と同じ'
+      - name: test_rebase_snapshot_when_detecting
+        case: 正常
+        summary: 動いている検知の前回の中身も置き換える
+        condition: 変更の検知が動いているワークスペースで同じ移し替えをし、`rebase_snapshot` を呼んでから `poll` を呼ぶ
+        mock: '`threading.Thread`'
+        expected: '`history.yaml`・`changes.yaml` が移し替えた後と同じ'
 constants:
   - name: POLL_INTERVAL_SEC
     title: 見る間隔
