@@ -578,12 +578,24 @@ functions:
         condition: '配信元の行が `outsideRead: true`、`close_pending` が真'
         mock: 同上
         expected: '`{reopened: false}`、`patch_source` が呼ばれず、`close_pending` が偽'
-      - name: test_reopen_workspace_error
+      - name: test_reopen_workspace_error_when_unknown
         case: 異常
-        summary: 無いワークスペースは 404、project-index の失敗は 502
-        condition: '`ids` に無い / 配信元の行が無い / `patch_source` が `ProjectIndexError`'
-        mock: 同上
-        expected: '`ApiError`（404・`stage: workspace`）/ 同じ / `ApiError`（502・`stage: source`）で `close_pending` が真のまま'
+        summary: ID の一覧に無いワークスペースは 404
+        condition: '`ids` に無い'
+        mock: '`project_index.get_settings`'
+        expected: '`ApiError`（404・`stage: workspace`）'
+      - name: test_reopen_workspace_error_when_row_missing
+        case: 異常
+        summary: 配信元の行が無いワークスペースは 404
+        condition: '`ids` にあり、配信元の行が無い'
+        mock: '`project_index.get_settings`'
+        expected: '`ApiError`（404・`stage: workspace`）'
+      - name: test_reopen_workspace_error_when_patch_failed
+        case: 異常
+        summary: project-index の失敗は 502 で、クローズ待ちを解かない
+        condition: '`patch_source` が `ProjectIndexError`'
+        mock: '`project_index.get_settings`・`project_index.patch_source`'
+        expected: '`ApiError`（502・`stage: source`）で `close_pending` が真のまま'
   - name: delete_workspace
     title: ワークスペースを削除する
     kind: 関数
@@ -633,18 +645,36 @@ functions:
         condition: 配信元の行が無く、`workspaces/{ID}/` と `ids` の行がある
         mock: 同上
         expected: '`{deleted: true}`、`delete_source` が呼ばれず、`workspaces/{ID}/` と `ids` の行が無い'
-      - name: test_delete_workspace_error
-        case: 異常
-        summary: 無い・クローズしていない・project-index の失敗・状態を削除できない
-        condition: '`ids` に無い / 行が `outsideRead: true` / `delete_source` が `ProjectIndexError` / `delete_workspace_state` が `OSError`'
-        mock: 同上・`caplog`
-        expected: '`ApiError` が 404（`workspace`）/ 409（`not_closed`）/ 502（`source`）/ 500（`state`）。409・502・500 では `ids` の行が残り、500 では `caplog` に `mindstella.workspace.delete_failed`'
       - name: test_delete_workspace_concurrent
         case: 異常
         summary: 鍵を取った時点で ID の一覧に無ければ 404
         condition: 同じ ID の削除を 2 つのスレッドで同時に呼ぶ
         mock: '`project_index.get_settings`・`project_index.delete_source`・`ctx.previews`'
         expected: '片方が `{deleted: true}`、もう片方が `ApiError`（404、`stage: workspace`）で、`delete_source` が 1 回だけ呼ばれる'
+      - name: test_delete_workspace_error_when_unknown
+        case: 異常
+        summary: ID の一覧に無いワークスペースは 404
+        condition: '`ids` に無い'
+        mock: '`project_index.get_settings`'
+        expected: '`ApiError`（404・`stage: workspace`）'
+      - name: test_delete_workspace_error_when_not_closed
+        case: 異常
+        summary: クローズしていなければ 409 で、何も変えない
+        condition: '行が `outsideRead: true`'
+        mock: '`project_index.get_settings`・`project_index.delete_source`'
+        expected: '`ApiError`（409・`stage: not_closed`）、`delete_source` が呼ばれず、`ids` の行が残る'
+      - name: test_delete_workspace_error_when_source_failed
+        case: 異常
+        summary: project-index の失敗は 502 で、状態のフォルダを変えない
+        condition: '`delete_source` が `ProjectIndexError`'
+        mock: 同上
+        expected: '`ApiError`（502・`stage: source`）、`workspaces/{ID}/` と `ids` の行が残る'
+      - name: test_delete_workspace_error_when_state_failed
+        case: 異常
+        summary: 状態のフォルダを削除できなければ 500 で、ID の一覧の行を残す
+        condition: '`delete_workspace_state` が `OSError`'
+        mock: 同上・`caplog`
+        expected: '`ApiError`（500・`stage: state`）、`ids` の行が残り、`caplog` に `mindstella.workspace.delete_failed`'
 notes:
   ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`
   ログ: |

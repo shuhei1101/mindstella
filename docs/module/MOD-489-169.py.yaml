@@ -306,15 +306,21 @@ classes:
           - name: test_stop_workspace
             case: 正常
             summary: 一致する配信と変更の検知だけ止める
-            condition: 2 つのワークスペースを配信し、片方の ID を渡す / 配信していない ID を渡す
+            condition: 2 つのワークスペースを配信し、片方の ID を渡す
             mock: '`ChangeDetector`'
-            expected: 渡した ID の `url_of` が `None` で変更の検知の `stop` が呼ばれ、もう片方は URL を返す / 何も変わらない
+            expected: 渡した ID の `url_of` が `None` で変更の検知の `stop` が呼ばれ、もう片方は URL を返す
           - name: test_stop_workspace_then_start
             case: 正常
             summary: 止めた後の start で配信と変更の検知を新しく始める
             condition: '`stop_workspace` の後に同じフォルダを `start` する'
             mock: なし（本物の待ち受け。後で `stop_all`）
             expected: '`start` が `(url, True)` を返し、変更の検知が台帳にある'
+          - name: test_stop_workspace_when_not_served
+            case: 正常
+            summary: 配信していない ID なら何も変えない
+            condition: 1 つのワークスペースを配信し、配信していない ID を渡す
+            mock: '`ChangeDetector`'
+            expected: 配信しているワークスペースの `url_of` が同じ URL を返す
   - name: PreviewServer
     title: 配信
     container: plugins/mindstella/skills/mindmap/scripts/serve.py

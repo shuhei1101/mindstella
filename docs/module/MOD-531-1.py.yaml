@@ -396,9 +396,15 @@ functions:
       - name: test_delete_workspace_state
         case: 正常
         summary: フォルダを削除し、無ければ何もしない
-        condition: '`workspaces/{ID}/` に `session.json`・`snapshot/` がある / フォルダが無い'
+        condition: '`workspaces/{ID}/` に `session.json`・`snapshot/` がある'
         mock: なし
-        expected: フォルダが無く、`ids` は変わらない / 例外にならない
+        expected: フォルダが無く、`ids` は変わらない
+      - name: test_delete_workspace_state_when_missing
+        case: 正常
+        summary: フォルダが無ければ何もしない
+        condition: '`workspaces/{ID}/` が無い'
+        mock: なし
+        expected: 例外にならない
 notes:
   書き方: どのファイルも同じフォルダの一時ファイルに書いてから `os.replace` で置き換える。JSON は標準の `json`、`workspaces.yaml` は PyYAML で読み書きする
   ログ: |
