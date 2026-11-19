@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 利用枠のしきい値で止めたときの通知の止まった理由の文言
+    decision: 「利用枠の残りが少ないため切り替え」にする（推奨案 B）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: acc1da87
+    thread: https://github.com/shuhei1101/mindstella/pull/616#discussion_r4627356648
