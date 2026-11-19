@@ -35,10 +35,14 @@ functions:
       description: なし
     process: |-
       1. 状態のフォルダに ID の一覧が無ければ作り直す（`rebuild_ids_if_missing`）
+         - `Exception`（`workspaces.yaml` を書けない `OSError` など）を捕まえた場合、作り直しを飛ばして 2 へ進む
+           - `[ERROR]` ID の一覧の作り直しに失敗した（例外の種類・理由）
       2. 状態の照合を 1 回する（`sessions.watch_crashes_once`）
          - `[INFO]` 起動時の照合で落ちたものを記録した（数）
          - `yaml.YAMLError`・`ValueError`（ID の一覧が読めない）を捕まえた場合、照合を飛ばす
            - `[ERROR]` ID の一覧が読めず状態の照合を飛ばした（理由）
+         - そのほかの `Exception`（`workspaces.yaml` を読めない `PermissionError` など）を捕まえた場合も、照合を飛ばす
+           - `[ERROR]` 状態の照合に失敗した（例外の種類・理由）
     callees:
       - MOD-531-4#functions[watch_crashes_once]
     unit_tests:
@@ -54,6 +58,18 @@ functions:
         condition: 一時フォルダの `workspaces.yaml` が YAML として読めない
         mock: なし（一時フォルダ）
         expected: 例外を送らずに戻り、`ERROR` の記録が 1 件ある。`workspaces.yaml` が書き換わっていない
+      - name: test_reconcile_before_listen_when_rebuild_fails
+        case: 正常
+        summary: 作り直しが失敗しても照合して戻る
+        condition: '`rebuild_ids_if_missing` が `OSError` を送る。`sessions.watch_crashes_once` を呼ばれた回数を数える関数に差し替える'
+        mock: '`rebuild_ids_if_missing`・`sessions.watch_crashes_once`（monkeypatch）'
+        expected: 例外を送らずに戻り、`watch_crashes_once` が 1 回呼ばれ、`ERROR` の記録が 1 件ある
+      - name: test_reconcile_before_listen_when_watch_fails
+        case: 正常
+        summary: 照合が想定外の例外で失敗しても戻る
+        condition: '`sessions.watch_crashes_once` が `PermissionError` を送る'
+        mock: '`rebuild_ids_if_missing`・`sessions.watch_crashes_once`（monkeypatch）'
+        expected: 例外を送らずに戻り、`ERROR` の記録が 1 件ある
   - name: rebuild_ids_if_missing
     title: ID の一覧の作り直し
     kind: 関数
