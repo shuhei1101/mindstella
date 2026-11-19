@@ -134,7 +134,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
     key: `review:${editing?.id ?? ""}`,
     destination: { review: editing?.id ?? "", thread: null, target: id },
     view: "panel",
-    label: `${editing?.id ?? ""} へのコメントの修正`,
+    label: `${id} へのコメントの修正`,
     body: editing?.body ?? "",
     onBodyChange: (next) => {
       setEditing((current) => (current === null ? current : { ...current, body: next }));
