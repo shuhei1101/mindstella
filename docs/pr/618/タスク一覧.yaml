@@ -35,10 +35,12 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T14:19:06.960800+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T14:24:56.071764+00:00'
   - process: モック作成
     status: skipped
-    reason: 画面の見た目と操作を変えないため（モックの目次の改名はドキュメント修正で扱う）
+    reason: 画面の見た目と操作を変えないため
     updated_by: planner
     updated_at: '2026-11-19T14:19:06.960800+00:00'
   - process: データ設計
