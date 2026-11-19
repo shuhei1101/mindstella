@@ -312,7 +312,7 @@ settings:
     type: str
     required: false
     default: http://127.0.0.1:8770
-    description: 常駐サーバーが、使用中のアカウントの利用枠を確かめるのに `GET /accounts` を呼ぶ claude-balancer の常駐の待ち受け先。常駐サーバーを起動した環境から読む
+    description: 常駐サーバーが、使用中のアカウントの利用枠を確かめるのに `GET /accounts` を呼ぶ claude-balancer の常駐の待ち受け先。常駐サーバーが起動時に読み、MindStella のセッションを起動するときに `respawn-pane -e` で渡して、ペインの中の `claude-balancer exec` も同じ値を使う。値が無いときは渡さない
     missing: '`http://127.0.0.1:8770` へつなぐ'
     env_var: CLAUDE_BALANCER_URL
     reload: restart
@@ -320,6 +320,7 @@ settings:
     visibility: user
     refs:
       - IF-582-1#
+      - IF-531-2#
     notes:
       補足: claude-balancer の CLI と同じ環境変数を読む
   - key: MINDSTELLA_USAGE_WATCH_INTERVAL
