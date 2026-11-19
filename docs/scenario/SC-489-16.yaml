@@ -8,7 +8,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 整った記録
-        description: D-2 が D-1 に依存し、D-1 の本文が `.mindstella/docs/` にある検討事項。D-1 は案 A を採用した決定済み、D-2 は案 A・B を持つ未決定
+        description: D-2 が D-1 に依存し、D-1 の本文が `docs/` にある検討事項。D-1 は案 A を採用した決定済み、D-2 は案 A・B を持つ未決定
         notes: '`related: [{to: D-1, type: depends_on}]`'
     flow: |-
       ```mermaid
@@ -35,9 +35,9 @@ scenarios:
         description: 存在しない D-9 に依存する検討事項 D-1
         notes: '`related: [{to: D-9, type: depends_on}]`'
       - name: 本文の無い項目
-        description: 本文を指しているのに、`.mindstella/docs/` にその Markdown が無い調査 R-1 とメモ N-1
+        description: 本文を指しているのに、`docs/` にその Markdown が無い調査 R-1 とメモ N-1
       - name: 項目の無い本文
-        description: どの項目からも指されていない `.mindstella/docs/` の Markdown
+        description: どの項目からも指されていない `docs/` の Markdown
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -52,8 +52,8 @@ scenarios:
     expected:
       - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
       - 出力に、D-1 の `depends_on` の種類の `related` が存在しない D-9 を指す旨がある
-      - 出力に、R-1 と N-1 の本文が `.mindstella/docs/` に無い旨がある
-      - 出力に、どの項目からも指されていない `.mindstella/docs/` の Markdown のファイル名がある
+      - 出力に、R-1 と N-1 の本文が `docs/` に無い旨がある
+      - 出力に、どの項目からも指されていない `docs/` の Markdown のファイル名がある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_problems_found
   - name: 正常シナリオ（検討事項の案と状態が合わない）
@@ -120,7 +120,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 本文を HTML で持つ資料 A-1 と、本文を HTML で持つ資料 A-2
-        notes: A-1 の本文のファイルを消し、どの資料からも指されない HTML の本文のファイル `A-9` を `.mindstella/docs/` に置く
+        notes: A-1 の本文のファイルを消し、どの資料からも指されない HTML の本文のファイル `A-9` を `docs/` に置く
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -129,7 +129,7 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: 点検する
-        SV->>WS: 全ての YAML と .mindstella/docs/ を読む
+        SV->>WS: 全ての YAML と docs/ を読む
         SV-->>CC: 問題の一覧
       ```
     expected:
@@ -201,7 +201,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 本文を Markdown で持つ資料 A-1
-        notes: 本文に `![動画](../files/clip.mp4)`・`![無い動画](../files/missing.mp4)`・`![外の画像](https://example.com/a.png)` を持ち、`.mindstella/files/clip.mp4` だけを配置する
+        notes: 本文に `![動画](../files/clip.mp4)`・`![無い動画](../files/missing.mp4)`・`![外の画像](https://example.com/a.png)` を持ち、`files/clip.mp4` だけを配置する
     flow: |-
       ```mermaid
       sequenceDiagram

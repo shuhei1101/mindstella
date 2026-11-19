@@ -7,7 +7,7 @@ stakeholders:
     interest: どのセッションが書き込んだ変更も履歴に残り、変更履歴から差分を確かめられる
   - name: MindStella のセッション
     interest: 自分の書き込みと、ほかのセッションの書き込みが、別のまとまりに分かれる
-trigger: 配信しているワークスペースの記録のファイル（種類ごとの YAML と `.mindstella/docs/` の本文）が書き換わる
+trigger: 配信しているワークスペースの記録のファイル（種類ごとの YAML と `docs/` の本文）が書き換わる
 preconditions:
   - ワークスペースが作成済みで、常駐サーバーが配信している
 success_guarantee: 書き換えた項目の変更履歴・更新日・編集した人・通し番号が記録され、MindStella のセッションの応答の途中の変更はそのセッションのまだまとめていない変更に、それ以外は外部の変更のまとまりに入る。
@@ -258,7 +258,7 @@ scenarios:
         participant WS as ワークスペース
         participant CD as 変更の検知
 
-        U->>WS: mp4 を .mindstella/files/ に配置する
+        U->>WS: mp4 を files/ に配置する
         CD-->>WS: 見るファイルを比べる
         CD->>CD: 見るファイルが変わらないので、何も記録しない
       ```
