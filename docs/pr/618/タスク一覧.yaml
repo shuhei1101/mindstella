@@ -44,7 +44,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T14:19:06.960800+00:00'
   - process: データ設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T14:35:17.216268+00:00'
   - process: インターフェース定義設計
     status: todo
   - process: 部品設計
