@@ -33,3 +33,6 @@ scope_out:
   - item: 設定の書き換え（PATCH /workspaces/{id}）で追加の MCP・プラグインを指定し直す
     reason: 資料 A-107 の No 9 で別の Issue にしている。状態の取得は記録の有無だけを返す
     plan: '#524'
+  - item: 無操作の上限で止めた後の状態の取得（資料 A-126 の「正常シナリオ（無操作の上限で止めた後）」）
+    reason: 無操作の上限での停止は、利用者の判断で取りやめた（#521 を not planned。https://github.com/shuhei1101/mindstella/pull/594#discussion_r4622740669 ）
+    plan: none
