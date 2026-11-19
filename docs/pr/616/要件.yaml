@@ -67,11 +67,15 @@ docs:
   - page: docs/guide/話し合い-続きを再開する.md
     new: false
     change: 利用枠がしきい値以上になったときも、別のアカウントで続きから再開することを追記する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:53:44.586709+00:00'
   - page: docs/guide/セットアップ手順-Discordに通知する.md
     new: false
     change: 通知の止まった理由に、しきい値での切り替えを追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:53:44.586709+00:00'
   - page: docs/interface/IF-531-2.yaml
     change: 渡す環境変数に CLAUDE_BALANCER_URL（ホームの設定の claude_balancer.url）を追加し、session.json に balancer_account・specified_account を記録する
     status: done
@@ -119,6 +123,12 @@ docs:
     status: done
     updated_by: planner
     updated_at: '2026-11-19T12:47:04.622177+00:00'
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 起動し直しの契機にしきい値を追加し、指定したアカウントの解除とホームの設定 settings.yaml を書く
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:53:52.035030+00:00'
 scope_out:
   - item: 画面での切り替えの表示
     reason: 要望に含まれない。切り替えたことは Discord の停止の通知と『MindStella のセッションの一覧』で分かる
