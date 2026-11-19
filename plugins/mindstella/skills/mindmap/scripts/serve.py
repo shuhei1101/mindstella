@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, cast
 from urllib.parse import unquote, urlsplit
 
+import yaml
 from builder import PREVIEW_DIR, assemble_template, read_records
 from change_detection import ChangeDetector, detector_of, workspace_id_of
 from claude_input import InputTargets, Session
@@ -367,9 +368,9 @@ class PreviewRegistry:
         """ワークスペースの ID が一致する配信と変更の検知を台帳から外して止める。無ければ何もしない。"""
         # 鍵の中では台帳から外して手元に取るだけにし、フックと停止は鍵の外で呼ぶ
         with self._guard:
-            servers = [root for root in self._servers if workspace_id_of(root) == workspace_id]
+            servers = [root for root in self._servers if _matches_id(root, workspace_id)]
             taken = [self._servers.pop(root) for root in servers]
-            roots = [root for root in self._detectors if workspace_id_of(root) == workspace_id]
+            roots = [root for root in self._detectors if _matches_id(root, workspace_id)]
             detectors = [self._detectors.pop(root) for root in roots]
         for detector in detectors:
             detector.stop()
@@ -396,6 +397,16 @@ class PreviewRegistry:
                 run_hook(self._external.stop_hook, preview.port, preview.root.name)
         for preview in taken:
             preview.stop()
+
+
+def _matches_id(root: Path, workspace_id: str) -> bool:
+    """配信しているワークスペースの ID が一致するかを返す。設定を読めないワークスペースは一致しないものとする。"""
+    try:
+        return workspace_id_of(root) == workspace_id
+    except (OSError, yaml.YAMLError) as error:
+        # 設定が壊れている・読めない: 比べる対象から外して、ほかのワークスペースの削除を止めない
+        logger.warning("ワークスペースの ID を引けないため比べない: %s（%s）", root, error)
+        return False
 
 
 class PreviewHandler(BaseHTTPRequestHandler):
