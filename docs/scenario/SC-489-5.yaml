@@ -592,6 +592,37 @@ scenarios:
       - 詳細パネルで D-1 へ移っても、一覧は D-2 で絞ったままで、D-2 へ向けたスレッドの 1 件が出る
       - D-1 の詳細パネルのボタンを押すと、絞り込みが D-1 に変わり、D-1 へ向けたスレッドの 1 件が出る
     test: test_normal_when_item_changed_while_filtered
+  - name: 正常シナリオ（タッチの端末で返信を溜める）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを、端末の保存領域が空の実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: 端末の種類
+        description: タッチの端末
+        notes: '`pointer: coarse`。タッチを有効にした幅 390px'
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: スレッド
+        description: AI が立てたオープンのスレッド TH-1
+      - name: 開いている画面
+        description: コメントの一覧で TH-1 を開いている
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: 返信の入力に「起票してよい」を入れて「レビューに追加」を押す
+        P->>SV: レビュー中の返信を足す
+        SV-->>P: 受け付けた
+        P-->>U: スレッドの末尾に返信をレビュー中の印つきで出し、入力欄を空にして「レビューに追加」へフォーカスを移す
+      ```
+    expected:
+      - 溜めた後のフォーカスが返信の入力の「レビューに追加」のボタンにあり、返信の入力欄に無い
+      - スレッドの末尾に「起票してよい」がレビュー中の印つきで出る
+    test: test_normal_when_reply_added_on_touch
 lead: 利用者が、プレビューのコメントの一覧（左のパネル）でスレッドを開き、書き込みを読んで返信をレビューに追加し、レビュー中を確かめる画面からまとめて送り、話が済んだら任意の理由つきでクローズにする単一ユースケース。スレッドは単一ユースケース『コメントを選んで送る』で送った新しいスレッドと、単一ユースケース『AIがスレッドを立てる』でできる。返信を送る手順は『コメントを選んで送る』が持つ。
 issue: 208
 primary_actor: 利用者

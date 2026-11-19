@@ -1,12 +1,13 @@
 // コメントの一覧（画面設計『コメントの一覧.tsx』）。スレッドを状態・タグ・項目で絞って並べ、新しいスレッドを立てる左のパネル。パネルの中をスレッド・レビュー中の書き込みの画面と切り替える
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { ReviewView } from "@/features/comments/review/review-view";
 import { ThreadRow } from "@/features/comments/shared/thread-row";
 import { useCommentData } from "@/features/comments/shared/use-comment-data";
 import { ThreadView } from "@/features/comments/thread/thread-view";
 import { Icon } from "@/shared/components/icon";
-import { SendForm, type SendStatus } from "@/shared/components/send-form";
+import { focusAfterAdded, SendForm, type SendStatus } from "@/shared/components/send-form";
 import { Button } from "@/shared/components/ui/button";
 import { AppError } from "@/shared/core/app-error";
 import { pendingThreads, threadCounts, visibleThreads, type ThreadFilter } from "@/shared/core/comments";
@@ -15,7 +16,7 @@ import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { cn } from "@/shared/lib/cn";
-import { usePrefs, writePrefs } from "@/shared/stores/prefs-store";
+import { useFocusAfterAddTarget, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 import { readVoiceState } from "@/shared/stores/voice-store";
 
 const FILTERS = [
@@ -37,10 +38,13 @@ type FreeState = { body: string; status: SendStatus; count: number | null; detai
 /** 新しいスレッドの入力の見出し（項目で絞っている間は、その項目へ向ける） */
 const newThreadLabel = (target: string | null): string => (target === null ? "新しいスレッド" : `${target} への新しいスレッド`);
 
-/** 新しいスレッドの入力。閉じて外れても録音と文字起こしは続ける。項目で絞っている間は、溜めるスレッドをその項目へ向ける（書きかけは項目を指さない入力のまま） */
+/** 新しいスレッドの入力。閉じて外れても録音と文字起こしは続ける。項目で絞っている間は、溜めるスレッドと書きかけ・音声入力をその項目への箇所を持たない入力に向ける（詳細パネルの下端の入力と書きかけを共有する） */
 const NewThreadForm = ({ free, setFree, target }: { free: FreeState; setFree: (next: FreeState | ((current: FreeState) => FreeState)) => void; target: string | null }) => {
   const add = useAddComment();
   const saveDraft = useSaveDraft();
+  const focusTarget = useFocusAfterAddTarget();
+  // 溜めた後にフォーカスを移す、新しいスレッドの入力の form
+  const sendForm = useRef<HTMLFormElement>(null);
   const voice = useVoiceInput({
     key: NEW_THREAD_VOICE_KEY,
     destination: { target, loc: null },
@@ -58,6 +62,7 @@ const NewThreadForm = ({ free, setFree, target }: { free: FreeState; setFree: (n
   });
   return (
             <SendForm
+              formRef={sendForm}
               target={null}
               loc={null}
               label={newThreadLabel(target)}
@@ -84,7 +89,10 @@ const NewThreadForm = ({ free, setFree, target }: { free: FreeState; setFree: (n
                 add.mutate(
                   target === null ? { body: text } : { body: text, target },
                   {
-                    onSuccess: (result) => { setFree({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); },
+                    onSuccess: (result) => {
+                      flushSync(() => { setFree({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); });
+                      focusAfterAdded(sendForm.current, focusTarget);
+                    },
                     onError: (error) => { setFree((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
                   },
                 );

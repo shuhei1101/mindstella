@@ -254,6 +254,72 @@ scenarios:
       - 「続きを読む」を押すと、本文の 8 行が全て見える
       - ワークスペースのレビュー中のコメントの中身は変わらない
     test: test_normal_when_read_long_comment_in_detail
+  - name: 正常シナリオ（端末の種類ごとの既定で溜めた後のフォーカスを移す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを、端末の保存領域が空の実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: 端末の種類
+        description: 主な入力がマウスの端末と、タッチの端末
+        notes: '`parametrize`: `pointer: fine`（幅 1280px）/ `pointer: coarse`（タッチを有効にした幅 390px）'
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: D-1 の詳細パネルを開き、コメントの入力に「案 A にする」を入れる
+        U->>P: 「レビューに追加」を押す
+        P->>SV: レビュー中のコメントを足す
+        SV-->>P: 受け付けた
+        P-->>U: 溜めたことと件数を出し、入力欄を空にする
+        P-->>U: マウスの端末では入力欄へ、タッチの端末では「レビューに追加」へフォーカスを移す
+      ```
+    expected:
+      - '`pointer: fine` では、溜めた後のフォーカスがコメントの入力欄にある'
+      - '`pointer: coarse` では、溜めた後のフォーカスが「レビューに追加」のボタンにあり、コメントの入力欄に無い'
+      - どちらも、入力の近くに溜めたことが出て、入力欄が空で、レビュー中のコメントが 1 件ある
+    test: test_normal_when_focus_follows_pointer
+  - name: 正常シナリオ（表示の設定に従って溜めた後のフォーカスを移す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: 端末の種類
+        description: 主な入力がマウスの端末
+        notes: '`pointer: fine`。幅 1280px'
+      - name: 端末の上書き
+        description: 端末の保存領域に、表示の設定の「レビューに追加」の後のフォーカスを「戻さない」にした個人の上書きを残しておく
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: D-1 の詳細パネルで「案 A にする」を入れ、入力欄で Ctrl+Enter を押す
+        P->>SV: レビュー中のコメントを足す
+        SV-->>P: 受け付けた
+        P-->>U: 溜めたことと件数を出し、「レビューに追加」へフォーカスを移す
+        U->>P: 本文を空のまま「レビューに追加」を押す
+        P-->>U: 溜めず、本文が要ることを出して入力欄へフォーカスを移す
+      ```
+    expected:
+      - 溜めた後のフォーカスが「レビューに追加」のボタンにあり、コメントの入力欄に無い
+      - 本文が空のまま押した後は、溜めずにフォーカスがコメントの入力欄にある
+      - レビュー中のコメントが 1 件である
+    test: test_normal_when_focus_follows_setting
 lead: 利用者が、サーバーが配るプレビューの詳細パネルで、開いている項目へのコメントを書き、送らずにレビュー中として溜める単一ユースケース。溜めたコメントは単一ユースケース『コメントを選んで送る』でまとめて送る。
 issue: 67
 primary_actor: 利用者

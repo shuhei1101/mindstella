@@ -798,7 +798,7 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .send-submit { flex: none; width: calc(1lh + 18px); height: calc(1lh + 18px); line-height: 1.5; background: var(--text); color: var(--bg); border-color: var(--text); }
 .send-submit:hover { background: var(--text); color: var(--bg); opacity: .85; }
 /* 押せない送るボタン: 面を沈めて押せないことを示す */
-.send-submit:disabled, .send-submit:disabled:hover { background: var(--surface-2); border-color: var(--border); color: var(--text-3); opacity: 1; cursor: default; }
+.send-submit:disabled, .send-submit:disabled:hover, .send-submit[aria-disabled="true"], .send-submit[aria-disabled="true"]:hover { background: var(--surface-2); border-color: var(--border); color: var(--text-3); opacity: 1; cursor: default; }
 /* 溜めている間の送るボタン: 処理中のカーソルにする */
 .send-submit[data-saving]:disabled { cursor: progress; }
 /* タッチが主な端末: 送るボタンのタップ領域を 44px にし、1 行の入力欄も同じ高さにする */
@@ -2661,3 +2661,13 @@ body:has(.pe-ws) #main { display: none; }
 .stale-note { display: flex; align-items: center; gap: 8px; padding: 4px var(--page-pad); border-bottom: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: var(--fs-small); }
 .stale-note .st-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .stale-note .sn-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+/* 区画の中の区画（コメントの入力の「レビューに追加した後のフォーカス」）: 見出しを本文の太さにする */
+.st-sub-sec { min-width: 0; margin: 0; padding: 0; border: 0; }
+.st-sub-sec > legend { margin-bottom: 8px; padding: 0; font-weight: 400; }
+/* 選択肢の名前の下の補足（「自動」の下のこの端末でどちらになるか） */
+.st-kinds .st-k-sub { display: block; color: var(--text-2); font-size: var(--fs-small); }
+/* 補足を持つ行: 2 段になる分だけ上下を詰める */
+.st-kinds label:has(.st-k-sub) { padding-top: 6px; padding-bottom: 6px; }
+/* 区画の下の説明 */
+.st-sub-sec .st-hint { margin: 6px 0 0; color: var(--text-2); font-size: var(--fs-small); }

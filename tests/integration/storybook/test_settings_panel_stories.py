@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from playwright.sync_api import Page
 from storybook_fixture_types import OpenStory
 
@@ -41,7 +43,7 @@ def test_default(open_story: OpenStory) -> None:
     assert page.get_attribute(PANEL, "aria-label") == "表示の設定"
     # 見た目はネットワークのドロップダウンで選ぶので、パネルには選びを出さない
     assert page.locator(f"{PANEL} .st-look").count() == 0
-    assert page.locator(f"{PANEL} input[type=radio]").count() == 0
+    assert page.locator(f"{PANEL} input[type=radio]:not([name=focus-after-add])").count() == 0
     assert _buttons(page) == []
     text = page.inner_text(f"{PANEL} .st-wrap")
     assert "ワークスペースの既定のまま表示しています。" in text
@@ -212,3 +214,35 @@ def test_body_view_overridden(open_story: OpenStory) -> None:
     assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} .st-save")
     # 検証（表示する種類は既定のまま）
     assert page.inner_text(".st-all .n") == "7/7"
+
+
+def test_focus_after_add_coarse(open_story: OpenStory) -> None:
+    """タッチの端末で、「レビューに追加」の後のフォーカスが既定の自動。「自動」の下に「この端末では戻しません」を出す（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "focus-after-add-coarse")
+    section = page.locator(f"{PANEL} fieldset.st-sec", has=page.locator(":scope > legend", has_text="コメントの入力"))
+    group = page.get_by_role("group", name="レビューに追加した後のフォーカス")
+    # 検証（区画「詳細に表示するもの」の下に区画「コメントの入力」があり、3 つのラジオのうち「自動」が選ばれている）
+    assert section.count() == 1
+    assert group.get_by_role("radio").count() == 3
+    assert group.get_by_role("radio", name=re.compile(r"^自動\s*この端末では戻しません$")).is_checked()
+    assert group.get_by_role("radio", name="入力欄へ戻す").is_checked() is False
+    assert group.get_by_role("radio", name="戻さない").is_checked() is False
+    # 検証（グループの説明が区画の下の説明を指す）
+    hint = group.get_attribute("aria-describedby")
+    assert hint is not None
+    assert page.inner_text(f"#{hint}") == "自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。"
+    assert _buttons(page) == []
+
+
+def test_focus_after_add_overridden(open_story: OpenStory) -> None:
+    """「レビューに追加」の後のフォーカスを「戻さない」にした。変えている項目に「レビューに追加した後のフォーカス」と「既定に戻す」を出す（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "focus-after-add-overridden")
+    group = page.get_by_role("group", name="レビューに追加した後のフォーカス")
+    # 検証
+    assert group.get_by_role("radio", name="戻さない").is_checked()
+    assert "この端末では入力欄へ戻します" in group.inner_text()
+    assert _buttons(page) == ["既定に戻す"]
+    assert "レビューに追加した後のフォーカス" in page.inner_text(f"{PANEL} .st-over")
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} .st-wrap")

@@ -466,7 +466,7 @@ def test_reply(served_thread: tuple[str, Path], open_preview: OpenPreview) -> No
     url, root = served_thread
     page = open_preview(url)
     open_thread(page, "TH-1")
-    assert page.is_disabled(REPLY_SEND)
+    assert page.get_attribute(REPLY_SEND, "aria-disabled") == "true"
     # 実行
     page.fill(REPLY_TEXTAREA, "続きは D-1 で")
     page.click(REPLY_SEND)

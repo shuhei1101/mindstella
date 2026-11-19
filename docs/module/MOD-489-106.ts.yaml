@@ -65,15 +65,15 @@ functions:
       - name: test_override_names
         case: 正常
         summary: 変えている項目
-        condition: '`kinds`・`minimap: false`・`reviewOrder: ''oldest''`'
+        condition: '`kinds`・`minimap: false`・`reviewOrder: ''oldest''`・`focusAfterAdd: ''none''`'
         mock: なし
-        expected: 「表示する種類」「差分のミニマップ」「コメントの並び」
+        expected: 「表示する種類」「差分のミニマップ」「コメントの並び」「レビューに追加した後のフォーカス」
     container: frontend/src/shared/core/display.ts
   - name: resetPrefs
     title: 既定に戻した上書き
     kind: 関数
     usecase: 表示の設定を変える
-    summary: 見た目・表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並びを外す。`diffSel`・`commentsPinned`・`commentFormClosed` と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて描き直す
+    summary: 見た目・表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並び・「レビューに追加」の後のフォーカスを外す。`diffSel`・`commentsPinned`・`commentFormClosed` と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて描き直す
     args:
       - name: prefs
         type: Record<string, unknown>
@@ -110,6 +110,31 @@ functions:
         condition: '`undefined`'
         mock: なし
         expected: '`deep` と全ての種類'
+    container: frontend/src/shared/core/display.ts
+  - name: focusAfterAddTarget
+    title: 「レビューに追加」の後のフォーカスの移動先
+    kind: 関数
+    usecase: 項目へコメントする
+    summary: 個人の上書き `focusAfterAdd` が `input` なら `input`、`none` なら `submit`、無ければ（自動）端末の主な入力がタッチなら `submit`、それ以外は `input` を返す（制約「「レビューに追加」の後のフォーカス」）
+    args:
+      - name: prefs
+        type: Prefs
+        required: true
+        description: 個人の上書き
+      - name: coarse
+        type: boolean
+        required: true
+        description: '`matchMedia("(pointer: coarse)")` に当たるか'
+    returns:
+      type: "'input' | 'submit'"
+      description: 入力欄か「レビューに追加」のボタン
+    unit_tests:
+      - name: test_focus_after_add_target
+        case: 正常
+        summary: 上書きと端末の種類で移動先を決める
+        condition: '`parametrize`: 上書き無し・`coarse: false` / 上書き無し・`coarse: true` / `input`・`coarse: true` / `none`・`coarse: false`'
+        mock: なし
+        expected: '`input` / `submit` / `input` / `submit`'
     container: frontend/src/shared/core/display.ts
 notes:
   単体テスト: 同じフォルダの `display.test.ts` に置く（knowledge の規約『フォルダ構成』）

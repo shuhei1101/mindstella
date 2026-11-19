@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
@@ -23,6 +23,9 @@ const base = {
   onClose: vi.fn(),
   onMinimapChange: vi.fn(),
   onBodyViewChange: vi.fn(),
+  focusAfterAdd: "auto" as const,
+  pointerCoarse: false,
+  onFocusAfterAddChange: vi.fn(),
 };
 
 describe("SettingsPanel", () => {
@@ -44,5 +47,28 @@ describe("SettingsPanel", () => {
     // 検証
     expect(screen.queryByRole("button", { name: "ワークスペースの既定にする" })).not.toBeInTheDocument();
     expect(screen.getByText("見た目と表示する種類は、ワークスペースの既定と同じです。")).toBeInTheDocument();
+  });
+
+  // 「レビューに追加した後のフォーカス」のラジオ（正常系）
+  test.each([
+    { pointerCoarse: false, sub: "この端末では入力欄へ戻します" },
+    { pointerCoarse: true, sub: "この端末では戻しません" },
+  ])("settings_panel_when_focus_after_add (pointerCoarse: $pointerCoarse)", async ({ pointerCoarse, sub }) => {
+    // 準備
+    const onFocusAfterAddChange = vi.fn();
+    render(<SettingsPanel {...base} focusAfterAdd="auto" pointerCoarse={pointerCoarse} onFocusAfterAddChange={onFocusAfterAddChange} />);
+    const section = screen.getByRole("group", { name: "コメントの入力" });
+    const group = within(section).getByRole("group", { name: "レビューに追加した後のフォーカス" });
+    const radios = within(group).getAllByRole("radio");
+    // 実行
+    await userEvent.click(within(group).getByRole("radio", { name: /戻さない/ }));
+    // 検証
+    expect(radios).toHaveLength(3);
+    expect(radios[0]).toHaveAccessibleName(new RegExp(`^自動.*${sub}`));
+    expect(radios[1]).toHaveAccessibleName("入力欄へ戻す");
+    expect(radios[2]).toHaveAccessibleName("戻さない");
+    expect(radios[0]).toBeChecked();
+    expect(group).toHaveAccessibleDescription("自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。");
+    expect(onFocusAfterAddChange).toHaveBeenCalledWith("none");
   });
 });

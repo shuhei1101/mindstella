@@ -8,7 +8,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/reply-form.ts
     usecase: スレッドで話す
     kind: コンポーネント
-    summary: 部品設計『返信の入力』の引数を受け、入力と溜めるをコールバックで知らせる。入力欄が空白だけの間と `saving` の間は「レビューに追加」を `disabled` にする。入力欄の Esc は `preventDefault` と `stopPropagation` をしてからフォーカスを外す。入力欄と「レビューに追加」（アイコンだけのボタン）を 1 行（`.send-line`）に並べ、結果は入力欄の下に出す
+    summary: 部品設計『返信の入力』の引数を受け、入力と溜めるをコールバックで知らせる。入力欄が空白だけの間は「レビューに追加」を `aria-disabled="true"`（`disabled` にしない）、`saving` の間は `disabled` にする。入力欄の Esc は `preventDefault` と `stopPropagation` をしてからフォーカスを外す。入力欄と「レビューに追加」（アイコンだけのボタン）を 1 行（`.send-line`）に並べ、結果は入力欄の下に出す
     props:
       - name: thread
         type: string
@@ -69,7 +69,7 @@ components:
         summary: 状態ごとの入力欄と結果
         condition: '`parametrize`: 空 / `body` あり / `saving` / `saved`（`count: 3`）/ `failed` で `detail` が `null` / `failed` で `detail` あり'
         mock: なし（DOM を作って見る）
-        expected: ボタンが `disabled` / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、入力欄が 1 行で、結果の要素が `role="status"` で入力欄の `aria-describedby` が指し、「レビューに追加」のボタンは文字を持たず、`aria-label`「レビューに追加」と `title`「レビューに追加（Ctrl+Enter）」を持ち、入力欄と同じ行にある
+        expected: ボタンが `aria-disabled="true"` で `disabled` でない / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、入力欄が 1 行で、結果の要素が `role="status"` で入力欄の `aria-describedby` が指し、「レビューに追加」のボタンは文字を持たず、`aria-label`「レビューに追加」と `title`「レビューに追加（Ctrl+Enter）」を持ち、入力欄と同じ行にある
       - name: test_reply_form_when_voice
         case: 正常
         summary: 音声入力の状態とコールバック

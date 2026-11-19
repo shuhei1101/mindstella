@@ -6,7 +6,7 @@ components:
     title: コメントの一覧
     kind: 画面
     usecase: スレッドで話す
-    summary: 画面設計『コメントの一覧.tsx』の要素と操作を描く。search の `thread`・`review` でスレッド・レビュー中の書き込みの画面に切り替え、`tstatus`・`ttag`・`ttarget` で絞る。`ttarget` のときは向けた項目がその項目のスレッドとその項目へのまだ送っていない新しいスレッドだけを並べ、項目の絞り込みのチップ（× で `ttarget` を外し履歴に積まない）を出す。絞り込みと件数は `visibleThreads`・`threadCounts`・`pendingThreads`（`MOD-489-104`）に `target` を渡して求め、タグのチップの分母（`tag` を `null` にした `visibleThreads`）にも同じ `target` を渡す
+    summary: 画面設計『コメントの一覧.tsx』の要素と操作を描く。search の `thread`・`review` でスレッド・レビュー中の書き込みの画面に切り替え、`tstatus`・`ttag`・`ttarget` で絞る。`ttarget` のときは向けた項目がその項目のスレッドとその項目へのまだ送っていない新しいスレッドだけを並べ、項目の絞り込みのチップ（× で `ttarget` を外し履歴に積まない）を出す。絞り込みと件数は `visibleThreads`・`threadCounts`・`pendingThreads`（`MOD-489-104`）に `target` を渡して求め、タグのチップの分母（`tag` を `null` にした `visibleThreads`）にも同じ `target` を渡す。新しいスレッドの入力で溜めたら、`SendForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら「レビューに追加」へ、`input` なら入力欄へフォーカスを移す
     refs:
       - SCR-489-2#
     unit_tests:
@@ -52,6 +52,12 @@ components:
         condition: search が `panel=comments&ttarget=D-1`。「新しいスレッド」を押して書き、「レビューに追加」を押す
         mock: MSW
         expected: "入力の見出しが「D-1 への新しいスレッド」で、`POST /api/comments` の本文が `target: 'D-1'` を持ち `loc` を持たない"
+      - name: test_comments_panel_when_focus_after_add
+        case: 正常
+        summary: 新しいスレッドを溜めた後のフォーカスを移動先に従わせる
+        condition: '`parametrize`: `useFocusAfterAddTarget` が `input` / `submit` で新しいスレッドの入力に書いて溜める（201）'
+        mock: MSW・`useFocusAfterAddTarget`
+        expected: 入力欄にフォーカス / 「レビューに追加」にフォーカス
     container: frontend/src/features/comments/comments-panel/comments-panel.tsx
 notes:
   単体テスト: 同じフォルダの `comments-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
