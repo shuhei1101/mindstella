@@ -125,10 +125,11 @@ describe("CommentsPanel", () => {
     server.use(http.post("/api/comments", () => HttpResponse.json({ id: "C-3", created: "2026-11-01T00:00:00+00:00", count: 3 }, { status: 201 })));
     renderRoute("/spa/?panel=comments");
     const panel = await screen.findByRole("dialog", { name: "コメント" });
-    // 実行
+    // 実行（入力欄へ戻すかを確かめるときはボタンを押し、戻さないかを確かめるときは入力欄で Ctrl+Enter を押す）
     await userEvent.click(within(panel).getByRole("button", { name: "新しいスレッド" }));
     await userEvent.type(within(panel).getByRole("textbox"), "全体の進め方");
-    await userEvent.click(within(panel).getByRole("button", { name: /レビューに追加/ }));
+    if (target === "submit") await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    else await userEvent.click(within(panel).getByRole("button", { name: /レビューに追加/ }));
     // 検証
     const focused = target === "submit" ? () => within(panel).getByRole("button", { name: "レビューに追加" }) : () => within(panel).getByRole("textbox");
     await waitFor(() => expect(focused()).toHaveFocus());

@@ -210,9 +210,10 @@ describe("DetailComments", () => {
     renderRoute("/spa/?tab=docs&id=A-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     const field = await within(panel).findByRole("textbox", { name: /A-1 へのコメント/ });
-    // 実行
+    // 実行（入力欄へ戻すかを確かめるときはボタンを押し、戻さないかを確かめるときは入力欄で Ctrl+Enter を押す）
     await userEvent.type(field, body);
-    await userEvent.click(within(panel).getByRole("button", { name: /レビューに追加/ }));
+    if (expected === "submit") await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    else await userEvent.click(within(panel).getByRole("button", { name: /レビューに追加/ }));
     // 検証
     if (expected === "submit") {
       await waitFor(() => expect(within(panel).getByRole("button", { name: "レビューに追加" })).toHaveFocus());

@@ -208,9 +208,10 @@ describe("ThreadView", () => {
     renderRoute("/spa/?panel=comments&thread=TH-1");
     await screen.findByText("どちらにしますか");
     const panel = await screen.findByRole("dialog", { name: "コメント" });
-    // 実行
+    // 実行（入力欄へ戻すかを確かめるときはボタンを押し、戻さないかを確かめるときは入力欄で Ctrl+Enter を押す）
     await userEvent.type(within(panel).getByRole("textbox"), "案 A にする");
-    await userEvent.click(within(panel).getByRole("button", { name: /レビューに追加/ }));
+    if (target === "submit") await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    else await userEvent.click(within(panel).getByRole("button", { name: /レビューに追加/ }));
     // 検証
     const focused = target === "submit" ? () => within(panel).getByRole("button", { name: "レビューに追加" }) : () => within(panel).getByRole("textbox");
     await waitFor(() => expect(focused()).toHaveFocus());
