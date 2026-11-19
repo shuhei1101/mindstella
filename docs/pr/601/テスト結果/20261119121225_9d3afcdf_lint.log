@@ -1,0 +1,3 @@
+$ /tmp/pr601-venv/bin/ruff check plugins tests
+（TS の型検査と ESLint は、この PR が .ts・frontend/ を変えないため回していない）
+All checks passed!
