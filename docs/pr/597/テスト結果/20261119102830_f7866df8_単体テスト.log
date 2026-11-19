@@ -1,0 +1,64 @@
+$ python3 -m pytest tests/unit/scripts/test_project_index.py tests/unit/scripts/test_threads.py tests/unit/scripts/test_history.py tests/unit/scripts/test_workspaces.py tests/unit/scripts/test_sessions.py tests/unit/scripts/test_api.py tests/unit/scripts/test_server.py -q -p no:cacheprovider --basetemp=/tmp/planner-597-pt/red
+（/tmp/pytest-of-{利用者} が別の利用者のものなので --basetemp を指定）
+        """管理のツールの他は全てのツールを workspace つきで登録する（正常系）。"""
+        # 準備
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+        tools = _run_async(mcp_server.list_tools())
+        # 検証
+        schemas = _tool_schemas(tools)
+        assert tuple(schemas) == EXPECTED_TOOL_NAMES
+        assert server.TOOL_NAMES == EXPECTED_TOOL_NAMES
+>       assert _not_requiring(schemas, "workspace") == list(ADMIN_TOOL_NAMES)
+E       AssertionError: assert ['create_work...rkspace', ...] == ['workspaces'...session', ...]
+E         
+E         At index 0 diff: 'create_workspace' != 'workspaces'
+E         Right contains 2 more items, first extra item: 'server_status'
+E         Use -v to get more diff
+tests/unit/scripts/test_server.py:507: AssertionError
+_________________________ test_build_server_api_tools __________________________
+    def test_build_server_api_tools() -> None:
+        """MindStella の API と同じ操作のツールがあり、init が無い（正常系）。"""
+        # 準備
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+        names = [tool.name for tool in _run_async(mcp_server.list_tools())]
+        # 検証
+>       assert set(API_TOOL_NAMES) <= set(names)
+E       AssertionError: assert {'close_works...session', ...} <= {'adopt', 'ch...session', ...}
+E         
+E         Extra items in the left set:
+E         'workspaces'
+E         'workspace'
+tests/unit/scripts/test_server.py:519: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_project_index.py::test_settings_file[project-index-config]
+FAILED tests/unit/scripts/test_project_index.py::test_settings_file[xdg-config-home]
+FAILED tests/unit/scripts/test_project_index.py::test_settings_file[home] - A...
+FAILED tests/unit/scripts/test_project_index.py::test_read_source_rows - Attr...
+FAILED tests/unit/scripts/test_project_index.py::test_read_source_rows_error[missing]
+FAILED tests/unit/scripts/test_project_index.py::test_read_source_rows_error[broken]
+FAILED tests/unit/scripts/test_project_index.py::test_read_source_rows_error[not-list]
+FAILED tests/unit/scripts/test_threads.py::test_status_counts[threads] - Attr...
+FAILED tests/unit/scripts/test_threads.py::test_status_counts[missing] - Attr...
+FAILED tests/unit/scripts/test_history.py::test_last_updated - AttributeError...
+FAILED tests/unit/scripts/test_workspaces.py::test_workspace_status - Attribu...
+FAILED tests/unit/scripts/test_workspaces.py::test_workspace_status_by_state[closed]
+FAILED tests/unit/scripts/test_workspaces.py::test_workspace_status_by_state[stopped]
+FAILED tests/unit/scripts/test_workspaces.py::test_workspace_status_by_state[active]
+FAILED tests/unit/scripts/test_workspaces.py::test_workspace_status_without_launch
+FAILED tests/unit/scripts/test_workspaces.py::test_workspace_status_warnings[records-missing]
+FAILED tests/unit/scripts/test_workspaces.py::test_workspace_status_warnings[settings-broken]
+FAILED tests/unit/scripts/test_workspaces.py::test_workspace_status_warnings[history-mismatch]
+FAILED tests/unit/scripts/test_workspaces.py::test_workspace_status_unknown
+FAILED tests/unit/scripts/test_workspaces.py::test_list_workspaces[open-only]
+FAILED tests/unit/scripts/test_workspaces.py::test_list_workspaces[include-closed]
+FAILED tests/unit/scripts/test_workspaces.py::test_list_workspaces_settings_unreadable
+FAILED tests/unit/scripts/test_sessions.py::test_list_sessions[crashed] - Ass...
+FAILED tests/unit/scripts/test_sessions.py::test_list_sessions[stopping] - As...
+FAILED tests/unit/scripts/test_api.py::test_build_routes - AssertionError: as...
+FAILED tests/unit/scripts/test_server.py::test_build_server - AssertionError:...
+FAILED tests/unit/scripts/test_server.py::test_build_server_api_tools - Asser...
+27 failed, 317 passed in 10.85s
+
+実装の前から pass した test_list_sessions[running] と test_list_sessions_when_never_created は、起動中で生きている・一度も作っていないときの今の list_sessions（plugins/mindstella/skills/mindmap/scripts/sessions.py の list_sessions。PR #531 の 1013853b で入れた）の振る舞いによる
