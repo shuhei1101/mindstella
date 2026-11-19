@@ -306,3 +306,34 @@ settings:
       - IF-582-2#
     notes:
       補足: 結合テストが短くするために使う
+  - key: CLAUDE_BALANCER_URL
+    title: claude-balancer の常駐の待ち受け先
+    file: 環境変数
+    type: str
+    required: false
+    default: http://127.0.0.1:8770
+    description: 常駐サーバーが、使用中のアカウントの利用枠を確かめるのに `GET /accounts` を呼ぶ claude-balancer の常駐の待ち受け先。常駐サーバーを起動した環境から読む
+    missing: '`http://127.0.0.1:8770` へつなぐ'
+    env_var: CLAUDE_BALANCER_URL
+    reload: restart
+    status: planned
+    visibility: user
+    refs:
+      - IF-582-1#
+    notes:
+      補足: claude-balancer の CLI と同じ環境変数を読む
+  - key: MINDSTELLA_USAGE_WATCH_INTERVAL
+    title: 利用枠を見回る間隔の秒数
+    file: 環境変数
+    type: str
+    required: false
+    default: 非機能要件『利用枠を見回る間隔』の値
+    description: 使用中のアカウントの利用枠を見回る間隔の秒数を上書きする
+    env_var: MINDSTELLA_USAGE_WATCH_INTERVAL
+    reload: restart
+    status: planned
+    visibility: developer
+    refs:
+      - IF-582-1#
+    notes:
+      補足: 結合テストが短くするために使う
