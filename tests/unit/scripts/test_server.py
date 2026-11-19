@@ -65,6 +65,7 @@ EXPECTED_TOOL_NAMES = (
     "close_workspace",
     "reopen_workspace",
     "delete_workspace",
+    "update_workspace",
     "server_status",
     "server_stop",
 )
@@ -81,6 +82,7 @@ API_TOOL_NAMES = (
     "close_workspace",
     "reopen_workspace",
     "delete_workspace",
+    "update_workspace",
 )
 
 # workspace を受けないツール

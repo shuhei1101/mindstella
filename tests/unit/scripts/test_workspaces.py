@@ -17,6 +17,7 @@ import migrator
 import project_index
 import read_point
 import sessions
+import settings_update
 import state
 import workspaces
 from errors import ApiError, StepFailedError
@@ -845,6 +846,345 @@ def test_delete_workspace_concurrent(
         [{"id": workspace_id, "deleted": True}, (404, "workspace")], key=str
     )
     assert fake_pi.deleted == [workspace_id]
+
+
+def _plugin_dir(base: Path, name: str) -> str:
+    """プラグインの定義を持つフォルダを作り、絶対パスを返す。"""
+    folder = base / name
+    manifest = folder / workspaces.PLUGIN_MANIFEST
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text('{"name": "%s"}' % name, encoding="utf-8")
+    return str(folder)
+
+
+def _updatable(
+    allowed: Path, ctx: SimpleNamespace, *, plugin_dirs: list[str] | None = None
+) -> tuple[str, Path]:
+    """書き換えられるワークスペースを作り、ID と記録のフォルダを返す。"""
+    ctx.write_lock = threading.Lock()
+    body = _request(allowed / "家計簿", plugin_dirs=plugin_dirs or [])
+    _status, created = workspaces.create_workspace(body, ctx)
+    return created["id"], allowed / "家計簿"
+
+
+def _config(folder: Path) -> dict[str, Any]:
+    """記録のフォルダの config.yaml を読む。"""
+    return yaml.safe_load((folder / ".mindstella" / "config.yaml").read_text(encoding="utf-8"))
+
+
+def _launch_text(ctx: SimpleNamespace, workspace_id: str) -> str | None:
+    """launch.json の中身を読む。無ければ None。"""
+    path = state.workspace_dir(ctx.state_root, workspace_id) / state.LAUNCH_FILE
+    return path.read_text(encoding="utf-8") if path.exists() else None
+
+
+def test_update_workspace(
+    tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """4 つの指定を書き換え、変わったキーを返す（正常系）。"""
+    # 準備
+    workspace_id, folder = _updatable(allowed, ctx)
+    plugin = _plugin_dir(tmp_path, "aituber")
+    new_flow = {"source": "aituber", "doc": "flow-2"}
+    new_mcp = {"mcpServers": {"voice": {"command": "voice-mcp"}}}
+    # 実行
+    result = workspaces.update_workspace(
+        workspace_id,
+        {
+            "settings": {"summary": "台本の作成"},
+            "flow": new_flow,
+            "mcp_config": new_mcp,
+            "plugin_dirs": [plugin],
+        },
+        ctx,
+    )
+    # 検証
+    assert result == {
+        "id": workspace_id,
+        "changed": ["summary", "flow", "mcp_config", "plugin_dirs"],
+    }
+    config = _config(folder)
+    assert config["summary"] == "台本の作成"
+    assert config["flow"] == new_flow
+    assert state.read_launch(ctx.state_root, workspace_id) == LaunchOptions(
+        mcp_config=new_mcp, plugin_dirs=[plugin]
+    )
+
+
+def test_update_workspace_keeps_other_launch_key(
+    tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """プラグインだけを渡すと、追加の MCP の記録を残す（正常系）。"""
+    # 準備
+    workspace_id, folder = _updatable(allowed, ctx)
+    before = (folder / ".mindstella" / "config.yaml").read_text(encoding="utf-8")
+    plugin = _plugin_dir(tmp_path, "aituber")
+    # 実行
+    result = workspaces.update_workspace(workspace_id, {"plugin_dirs": [plugin]}, ctx)
+    # 検証
+    assert result["changed"] == ["plugin_dirs"]
+    assert state.read_launch(ctx.state_root, workspace_id) == LaunchOptions(
+        mcp_config=MCP_CONFIG, plugin_dirs=[plugin]
+    )
+    assert (folder / ".mindstella" / "config.yaml").read_text(encoding="utf-8") == before
+
+
+def test_update_workspace_launch_record_missing(
+    tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """launch.json が無ければ、指定しなかった方を空にして作る（正常系）。"""
+    # 準備
+    workspace_id, _folder = _updatable(allowed, ctx)
+    state.delete_launch(ctx.state_root, workspace_id)
+    plugin = _plugin_dir(tmp_path, "aituber")
+    # 実行
+    result = workspaces.update_workspace(workspace_id, {"plugin_dirs": [plugin]}, ctx)
+    # 検証
+    assert result["changed"] == ["plugin_dirs"]
+    assert state.read_launch(ctx.state_root, workspace_id) == LaunchOptions(
+        mcp_config={"mcpServers": {}}, plugin_dirs=[plugin]
+    )
+
+
+def test_update_workspace_flow_removed(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """flow: null は確かめずに flow を外す（正常系）。"""
+    # 準備
+    workspace_id, folder = _updatable(allowed, ctx)
+    called: list[object] = []
+    monkeypatch.setattr(workspaces, "check_flow", lambda *args: called.append(args))
+    # 実行
+    result = workspaces.update_workspace(workspace_id, {"flow": None}, ctx)
+    # 検証
+    assert result["changed"] == ["flow"]
+    assert called == []
+    assert "flow" not in _config(folder)
+
+
+def test_update_workspace_unchanged(
+    tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """同じ値は書かず、changed が空（正常系）。"""
+    # 準備
+    plugin = _plugin_dir(tmp_path, "aituber")
+    workspace_id, folder = _updatable(allowed, ctx, plugin_dirs=[plugin])
+    config_path = folder / ".mindstella" / "config.yaml"
+    launch_path = state.workspace_dir(ctx.state_root, workspace_id) / state.LAUNCH_FILE
+    summary = _config(folder)["summary"]
+    times = (config_path.stat().st_mtime_ns, launch_path.stat().st_mtime_ns)
+    # 実行
+    result = workspaces.update_workspace(
+        workspace_id, {"settings": {"summary": summary}, "plugin_dirs": [plugin]}, ctx
+    )
+    # 検証
+    assert result == {"id": workspace_id, "changed": []}
+    assert (config_path.stat().st_mtime_ns, launch_path.stat().st_mtime_ns) == times
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param({}, id="empty"),
+        pytest.param({"title": "x"}, id="unknown_key"),
+        pytest.param({"settings": {}}, id="empty_settings"),
+        pytest.param({"flow": "x"}, id="flow_not_object"),
+        pytest.param({"mcp_config": []}, id="mcp_config_not_object"),
+        pytest.param({"plugin_dirs": "x"}, id="plugin_dirs_not_list"),
+    ],
+)
+def test_update_workspace_error_when_body_invalid(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, body: dict[str, Any]
+) -> None:
+    """指定が無い・知らないキー・空の settings・形の違う値は 400（異常系）。"""
+    # 準備
+    workspace_id, folder = _updatable(allowed, ctx)
+    before = _config(folder)
+    launch = _launch_text(ctx, workspace_id)
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.update_workspace(workspace_id, body, ctx)
+    assert (caught.value.status, caught.value.stage) == (400, "body")
+    assert _config(folder) == before
+    assert _launch_text(ctx, workspace_id) == launch
+
+
+def test_update_workspace_error_when_unknown(fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+    """ID の一覧に無いワークスペースは 404（異常系）。"""
+    # 準備
+    ctx.write_lock = threading.Lock()
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.update_workspace("mindstella-x-000000", {"flow": None}, ctx)
+    assert (caught.value.status, caught.value.stage) == (404, "workspace")
+
+
+def test_update_workspace_error_when_records_missing(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """配信元の行のフォルダに記録が無ければ 409（異常系）。"""
+    # 準備
+    workspace_id, folder = _updatable(allowed, ctx)
+    (folder / ".mindstella" / "config.yaml").unlink()
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.update_workspace(workspace_id, {"flow": None}, ctx)
+    assert (caught.value.status, caught.value.stage) == (409, "records")
+
+
+def test_update_workspace_error_when_plugin_dir_unreadable(
+    tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """読めないプラグインのフォルダは 422 で、ほかの指定も書かない（異常系）。"""
+    # 準備
+    workspace_id, folder = _updatable(allowed, ctx)
+    before = _config(folder)
+    launch = _launch_text(ctx, workspace_id)
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.update_workspace(
+            workspace_id,
+            {"settings": {"summary": "台本の作成"}, "plugin_dirs": [str(tmp_path / "無い")]},
+            ctx,
+        )
+    assert (caught.value.status, caught.value.stage) == (422, "plugin_dirs")
+    assert _config(folder) == before
+    assert _launch_text(ctx, workspace_id) == launch
+
+
+def test_update_workspace_error_when_settings_invalid(
+    tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """スキーマに合わない設定は 422 で、何も書かない（異常系）。"""
+    # 準備
+    workspace_id, folder = _updatable(allowed, ctx)
+    before = _config(folder)
+    launch = _launch_text(ctx, workspace_id)
+    plugin = _plugin_dir(tmp_path, "aituber")
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.update_workspace(
+            workspace_id, {"settings": {"summary": ""}, "plugin_dirs": [plugin]}, ctx
+        )
+    assert (caught.value.status, caught.value.stage) == (422, "settings")
+    assert re.search(r"^config\.yaml: summary", caught.value.detail, re.MULTILINE)
+    assert _config(folder) == before
+    assert _launch_text(ctx, workspace_id) == launch
+
+
+def test_update_workspace_error_when_flow_unreadable(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """参照できない進め方の文書は 422 で、何も書かない（異常系）。"""
+    # 準備
+    workspace_id, folder = _updatable(allowed, ctx)
+    before = _config(folder)
+
+    def _unreadable(*_args: object) -> None:
+        raise ApiError(422, "flow", "進め方の文書を参照できません")
+
+    monkeypatch.setattr(workspaces, "check_flow", _unreadable)
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.update_workspace(
+            workspace_id, {"flow": {"source": "aituber", "doc": "無い"}}, ctx
+        )
+    assert (caught.value.status, caught.value.stage) == (422, "flow")
+    assert _config(folder) == before
+
+
+def test_update_workspace_error_when_launch_write_failed(
+    tmp_path: Path,
+    allowed: Path,
+    fake_pi: FakeProjectIndex,
+    ctx: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """launch.json を書けなければ config.yaml を戻して 500（異常系）。"""
+    # 準備
+    workspace_id, folder = _updatable(allowed, ctx)
+    before = _config(folder)
+    plugin = _plugin_dir(tmp_path, "aituber")
+
+    def _broken(*_args: object) -> None:
+        raise OSError("書けません")
+
+    monkeypatch.setattr(state, "write_launch", _broken)
+    # 実行・検証
+    with caplog.at_level(logging.ERROR), pytest.raises(ApiError) as caught:
+        workspaces.update_workspace(
+            workspace_id, {"settings": {"summary": "台本の作成"}, "plugin_dirs": [plugin]}, ctx
+        )
+    assert (caught.value.status, caught.value.stage) == (500, "write")
+    assert _config(folder) == before
+    assert any(record.message == "mindstella.workspace.update_failed" for record in caplog.records)
+
+
+def test_update_workspace_error_when_config_write_failed(
+    tmp_path: Path,
+    allowed: Path,
+    fake_pi: FakeProjectIndex,
+    ctx: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """config.yaml を書けなければ 500 で、launch.json を書かない（異常系）。"""
+    # 準備
+    workspace_id, _folder = _updatable(allowed, ctx)
+    launch = _launch_text(ctx, workspace_id)
+    plugin = _plugin_dir(tmp_path, "aituber")
+
+    def _broken(*_args: object) -> list[str]:
+        raise OSError("書けません")
+
+    monkeypatch.setattr(settings_update, "save_settings", _broken)
+    # 実行・検証
+    with caplog.at_level(logging.ERROR), pytest.raises(ApiError) as caught:
+        workspaces.update_workspace(
+            workspace_id, {"settings": {"summary": "台本の作成"}, "plugin_dirs": [plugin]}, ctx
+        )
+    assert (caught.value.status, caught.value.stage) == (500, "write")
+    assert _launch_text(ctx, workspace_id) == launch
+    assert any(record.message == "mindstella.workspace.update_failed" for record in caplog.records)
+
+
+def test_update_workspace_error_when_rollback_failed(
+    tmp_path: Path,
+    allowed: Path,
+    fake_pi: FakeProjectIndex,
+    ctx: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """戻しも失敗したら、戻したかを偽にして 500（異常系）。"""
+    # 準備
+    workspace_id, _folder = _updatable(allowed, ctx)
+    plugin = _plugin_dir(tmp_path, "aituber")
+    real_save = settings_update.save_settings
+    calls: list[int] = []
+
+    def _first_only(*args: Any) -> list[str]:
+        calls.append(1)
+        # 1 回目（書き換え）は通し、2 回目（戻し）で失敗する
+        if len(calls) == 1:
+            return real_save(*args)
+        raise OSError("戻せません")
+
+    def _broken(*_args: object) -> None:
+        raise OSError("書けません")
+
+    monkeypatch.setattr(settings_update, "save_settings", _first_only)
+    monkeypatch.setattr(state, "write_launch", _broken)
+    # 実行・検証
+    with caplog.at_level(logging.ERROR), pytest.raises(ApiError) as caught:
+        workspaces.update_workspace(
+            workspace_id, {"settings": {"summary": "台本の作成"}, "plugin_dirs": [plugin]}, ctx
+        )
+    assert (caught.value.status, caught.value.stage) == (500, "write")
+    failed = [r for r in caplog.records if r.message == "mindstella.workspace.update_failed"]
+    assert failed
+    assert getattr(failed[-1], "config_restored", None) is False
 
 
 def _stale_schema(folder: Path) -> None:
