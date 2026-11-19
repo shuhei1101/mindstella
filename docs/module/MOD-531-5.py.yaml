@@ -9,7 +9,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/api.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: IF-531-1〜6・IF-582-1（`POST /workspaces/{id}/sessions/{session}/restart` を `sessions.restart_session` の契機 `api` で呼ぶ。`force` はクエリ）・IF-489-32・IF-565-2 の経路を starlette の `Route` で返す。どの経路も `check_host` を通してから、ワークスペースの管理・セッションの管理を呼ぶ
+    summary: 'IF-531-1〜6・IF-597-1（`GET /workspaces/{id}` を `workspaces.workspace_status` で）・IF-597-2（`GET /workspaces` を `workspaces.list_workspaces` で。`include_closed` はクエリで `true`・`false` 以外は 400、`stage: request`）・IF-582-1（`POST /workspaces/{id}/sessions/{session}/restart` を `sessions.restart_session` の契機 `api` で呼ぶ。`force` はクエリ）・IF-601-1（`POST /workspaces/{id}/reopen` を `workspaces.reopen_workspace` で）・IF-601-2（`DELETE /workspaces/{id}` を `workspaces.delete_workspace` で）・IF-489-32・IF-565-2 の経路を starlette の `Route` で返す。どの経路も `check_host` を通してから、ワークスペースの管理・セッションの管理を呼ぶ'
     args:
       - name: ctx
         type: ServerContext
@@ -25,7 +25,7 @@ functions:
         summary: 経路とメソッドが揃う
         condition: '`build_routes` の結果'
         mock: なし
-        expected: '`POST /workspaces`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/close`・`POST /_admin/sessions/{session}/events`・`POST /_admin/sessions/{session}/resume`・`POST /_admin/sessions/{session}/read_point` がある'
+        expected: '`POST /workspaces`・`GET /workspaces`・`GET /workspaces/{id}`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/sessions/{session}/restart`・`POST /workspaces/{id}/close`・`POST /workspaces/{id}/reopen`・`DELETE /workspaces/{id}`・`POST /_admin/sessions/{session}/events`・`POST /_admin/sessions/{session}/resume`・`POST /_admin/sessions/{session}/read_point` がある'
   - name: check_host
     title: Host と Origin を確かめる
     kind: 関数
@@ -81,7 +81,7 @@ functions:
         mock: なし
         expected: ステータス 409、`Content-Type` が `application/problem+json`、本文に `stage`・`session`・`pane`
 notes:
-  MCP のツール: '`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` は入口（`server.py`）が登録し、同じワークスペースの管理・セッションの管理の関数を呼ぶ（`check_host` は `/mcp` の確かめに任せる）'
+  MCP のツール: '`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`・`reopen_workspace`・`delete_workspace` は入口（`server.py`）が登録し、同じワークスペースの管理・セッションの管理の関数を呼ぶ（`check_host` は `/mcp` の確かめに任せる）'
   ログ: |
     `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に書き足す）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
 

@@ -62,12 +62,16 @@ TOOL_NAMES = (
     "reply",
     "set_thread_status",
     "update_thread",
+    "workspaces",
+    "workspace",
     "create_workspace",
     "create_session",
     "sessions",
     "stop_session",
     "restart_session",
     "close_workspace",
+    "reopen_workspace",
+    "delete_workspace",
     "server_status",
     "server_stop",
 )
@@ -132,6 +136,8 @@ class ServerContext:
     port: int
     pi_port: int
     state_root: Path
+    # 配信元の行を直接読むグローバルの設定のファイル（project-index の端末の設定）
+    settings_file: Path
     locks: workspaces.WorkspaceLocks
     previews: PreviewRegistry
     plugin_root: Path
@@ -209,6 +215,7 @@ def main(
         port=port,
         pi_port=int(source.get(PI_PORT_ENV) or project_index.DEFAULT_PORT),
         state_root=state_root,
+        settings_file=project_index.settings_file(source),
         locks=workspaces.WorkspaceLocks(),
         previews=previews,
         plugin_root=plugin_root,
@@ -683,6 +690,31 @@ def build_server(
         )
 
     @server.tool(
+        name="workspaces",
+        description="クローズしていないワークスペースの ID・題名・画面の URL を、何も書き換えずに返す",
+    )
+    def list_workspaces(
+        include_closed: Annotated[
+            bool, Field(description="真ならクローズしたワークスペースも含める")
+        ] = False,
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        return call_tool(
+            lambda: workspaces.list_workspaces(include_closed, context), write_lock=write_lock
+        )
+
+    @server.tool(
+        name="workspace",
+        description="ワークスペースと MindStella のセッションの状態を、何も書き換えずに返す",
+    )
+    def workspace_status(
+        workspace_id: WorkspaceIdArg, session: SessionArg = None
+    ) -> CallToolResult:
+        return call_tool(
+            lambda: workspaces.workspace_status(workspace_id, context), write_lock=write_lock
+        )
+
+    @server.tool(
         name="create_workspace",
         description=(
             "許可するフォルダの下に、ワークスペースの記録を作るか残っている記録を開き、"
@@ -795,6 +827,24 @@ def build_server(
     def close_workspace(workspace_id: WorkspaceIdArg, session: SessionArg = None) -> CallToolResult:
         return call_tool(
             lambda: workspaces.close_workspace(workspace_id, context), write_lock=write_lock
+        )
+
+    @server.tool(
+        name="reopen_workspace",
+        description="クローズしたワークスペースの配信元の行を outside_read: true に戻し、クローズ待ちを解く。クローズしていなければクローズ待ちだけを解く",
+    )
+    def reopen_workspace(workspace_id: WorkspaceIdArg, session: SessionArg = None) -> CallToolResult:
+        return call_tool(
+            lambda: workspaces.reopen_workspace(workspace_id, context), write_lock=write_lock
+        )
+
+    @server.tool(
+        name="delete_workspace",
+        description="クローズしたワークスペースの配信元の行と状態のフォルダの記録を削除する。記録のフォルダは残す",
+    )
+    def delete_workspace(workspace_id: WorkspaceIdArg, session: SessionArg = None) -> CallToolResult:
+        return call_tool(
+            lambda: workspaces.delete_workspace(workspace_id, context), write_lock=write_lock
         )
 
     @server.tool(

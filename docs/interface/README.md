@@ -4,7 +4,7 @@
 
 ## 目次
 
-<!-- table: {"kind": "data"} -->
+<!-- table: data -->
 
 | ページ | 概要 |
 | --- | --- |
@@ -22,10 +22,14 @@
 | [常駐サーバーの状態](./IF-489-37.yaml) | server_status: 待ち受けのポート・バージョンと、配信しているワークスペースを返す |
 | [常駐サーバーの停止](./IF-489-36.yaml) | server_stop: 配信を全て止めて常駐サーバーを終える |
 | [ワークスペースの作成](./IF-531-1.yaml) | POST /workspaces: 許可するフォルダの下にワークスペースの記録を作るか開き、配信元に登録して ID と画面の URL を返す |
+| [ワークスペースの一覧](./IF-597-2.yaml) | GET /workspaces: クローズしていないワークスペースの ID・題名・画面の URL を、何も書き換えずに返す |
+| [状態の取得](./IF-597-1.yaml) | GET /workspaces/{id}: ワークスペースと MindStella のセッションの状態を、何も書き換えずに返す |
 | [MindStella のセッションの作成](./IF-531-2.yaml) | POST /workspaces/{id}/sessions: MindStella のセッションを tmux のペインで起動し、準備ができてから ID・ペイン・画面の URL を返す |
 | [MindStella のセッションの一覧](./IF-531-3.yaml) | GET /workspaces/{id}/sessions: 最後の MindStella のセッションの状態を返す |
 | [MindStella のセッションの停止](./IF-531-4.yaml) | DELETE /workspaces/{id}/sessions/{session}: すぐに受け付け、最後の書き込みを待って MindStella のセッションを止める |
 | [ワークスペースのクローズ](./IF-531-5.yaml) | POST /workspaces/{id}/close: MindStella のセッションが無いワークスペースの配信元の行を outside_read: false にする |
+| [ワークスペースの開き直し](./IF-601-1.yaml) | POST /workspaces/{id}/reopen: クローズしたワークスペースの配信元の行を戻し、クローズ待ちを解く |
+| [ワークスペースの削除](./IF-601-2.yaml) | DELETE /workspaces/{id}: クローズしたワークスペースの配信元の行と状態の記録を削除する |
 | [MindStella のセッションの出来事の受け取り](./IF-531-6.yaml) | POST /_admin/sessions/{session}/events: MindStella のセッションのフックが送る出来事を状態に記録する |
 | [MindStella のセッションのフック](./IF-531-7.yaml) | session_hook.py: MindStella のセッションでだけ、フックの出来事を常駐サーバーへ送り、進め方の文書の場所を注入する |
 | [採用する案の切り替え](./IF-489-40.yaml) | adopt: 検討事項の採用する案を 1 つに切り替える |

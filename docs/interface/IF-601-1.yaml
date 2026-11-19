@@ -1,0 +1,167 @@
+id: IF-601-1
+title: ワークスペースの開き直し
+entry:
+  kind: endpoint
+  value: POST `/workspaces/{id}/reopen`
+lead: 'クローズしたワークスペースの配信元の行を `outside_read: true` に戻し、クローズ待ちを解く。クローズしていないワークスペースはクローズ待ちだけを解く。MindStella の MCP の `reopen_workspace` も同じ処理を呼ぶ。'
+idempotent: true
+side_effects: クローズしたワークスペースの project-index の配信元の行の `outside_read` を真にする。状態の `close_pending` を偽にする（MindStella のセッションの状態が無いときは書かない）。MindStella のセッションは起動しない。記録と、状態のフォルダの追加の MCP・プラグインの記録は変えない
+request:
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: ワークスペースの ID
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+response:
+  - name: id
+    type: str
+    description: 開き直したワークスペースの ID
+  - name: reopened
+    type: bool
+    description: '配信元の行を `outside_read: true` に戻したとき真。クローズしていなかったとき偽'
+  - name: closed
+    type: bool
+    description: 常に偽
+status_codes:
+  - code: '200'
+    condition: 開き直した（クローズしていないワークスペースも 200）
+  - code: '404'
+    condition: '`id` のワークスペースが状態のフォルダの ID の一覧に無いか、配信元の行が無い'
+    notes: '`stage` は `workspace`'
+  - code: '502'
+    condition: project-index へつながらない、または行の参照・変更がエラーを返した
+    notes: クローズ待ちを解かない。`stage` は `source`
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+  - item: 受ける Host
+    constraint: 『ワークスペースのクローズ』と同じ
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: クローズ済みの判定
+    constraint: 'project-index の `GET /settings/sources` で引いた配信元の行が `outside_read: false` ならクローズ済みとする'
+  - item: 配信元の行
+    constraint: 'クローズ済みのときだけ、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: true` を送る。409（版が古い）なら 1 回だけ引き直して送り直す。『ワークスペースの作成』がクローズしたフォルダを開くとき（結果 `reopened`）も、同じ処理で行を戻す'
+  - item: クローズ待ち
+    constraint: 配信元の行を戻した後（クローズしていないときはすぐに）、セッションの管理に状態の `close_pending` を偽にするよう依頼する
+  - item: 取り込み待ちのコメント
+    constraint: 開き直しは MindStella のセッションを起動しない。クローズ待ちの間に届いてスレッドに残ったコメントは、開き直しの後も取り込み待ちのままにする
+  - item: 同時の依頼
+    constraint: ワークスペースごとの鍵を、配信元の行の参照からクローズ待ちを解くまで持つ（『ワークスペースのクローズ』『MindStella のセッションの作成』『ワークスペースの削除』と同じ鍵）
+  - item: MCP のツール
+    constraint: '`reopen_workspace` は `workspace_id` を受け、同じ処理を呼ぶ'
+flows:
+  - name: 正常系
+    summary: クローズしたワークスペースの配信元の行を戻し、クローズ待ちを解く
+    setup:
+      - name: Mock
+        description: project-index の Mock（テストが空きポートで立て、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。`GET /settings/sources` が一時ファイルの `settingsPath` を返し、`POST`・`PATCH`・`DELETE /settings/sources` の依頼を記録する）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: 'クローズしたワークスペース（配信元の行が `outside_read: false`、`session.json` の `close_pending` が真）。クローズ待ちの間に届いたコメントが 1 件、スレッドに取り込み待ちとして残っている'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/reopen
+        participant PI as project-index（Mock）
+
+        クライアント->>API: POST
+        API->>PI: GET /settings/sources
+        API->>PI: PATCH /settings/sources/{id}（outside_read: true）
+        API->>API: close_pending を偽にする
+        API-->>クライアント: 200 reopened: true
+      ```
+    expected:
+      - 応答が 200 で、`reopened` が真
+      - 'project-index の Mock が `outside_read: true` の変更を受けている'
+      - '`session.json` の `close_pending` が偽'
+      - tmux のセッションが立っておらず、コメントが取り込み待ちのまま
+      - 記録と `launch.json` が変わらない
+    test: test_normal
+  - name: 正常系（クローズしていない）
+    summary: 配信元の行を変えず、クローズ待ちだけを解く
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 'MindStella のセッションを API で止めたワークスペース（配信元の行が `outside_read: true`、`close_pending` が真）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/reopen
+        participant PI as project-index（Mock）
+
+        クライアント->>API: POST
+        API->>PI: GET /settings/sources
+        API->>API: close_pending を偽にする
+        API-->>クライアント: 200 reopened: false
+      ```
+    expected:
+      - 応答が 200 で、`reopened` が偽
+      - project-index の Mock が変更を受けていない
+      - '`session.json` の `close_pending` が偽'
+    test: test_normal_when_not_closed
+  - name: 異常系（ワークスペースが無い）
+    summary: 404 を返し、何も変えない
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 入力
+        description: 状態のフォルダの ID の一覧に無い ID
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/reopen
+
+        クライアント->>API: POST
+        API-->>クライアント: 404 stage: workspace
+      ```
+    expected:
+      - 応答が 404 で、`stage` が `workspace`
+      - project-index の Mock が変更を受けていない
+    test: test_error_when_workspace_missing
+  - name: 異常系（project-index の失敗）
+    summary: 502 を返し、クローズ待ちを解かない
+    setup:
+      - name: Mock
+        description: project-index の Mock（`PATCH /settings/sources/{id}` が 500 を返す）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 正常系と同じくクローズした
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/reopen
+        participant PI as project-index（Mock）
+
+        クライアント->>API: POST
+        API->>PI: PATCH /settings/sources/{id}
+        PI-->>API: 500
+        API-->>クライアント: 502 stage: source
+      ```
+    expected:
+      - 応答が 502 で、`stage` が `source`
+      - '`session.json` の `close_pending` が真のまま'
+    test: test_error_when_source_failed
+refs:
+  - IF-531-5#
+  - IF-531-1#
+  - IF-531-2#
+  - IF-597-1#
+  - API-531-1#
+callers:
+  - SC-601-1#
+test_file: tests/integration/server/test_reopen_workspace.py

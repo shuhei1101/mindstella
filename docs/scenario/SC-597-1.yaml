@@ -1,0 +1,453 @@
+id: SC-597-1
+title: ワークスペースとMindStella のセッションの状態を取得する
+lead: 外部のアプリがワークスペースの状態を依頼すると、MindStella はワークスペースの管理から記録とクローズの状態を、セッションの管理から MindStella のセッションの状態を集めて返却する単一ユースケース。状態の取得・ワークスペースの一覧・MindStella のセッションの一覧は、何も書き換えない。
+issue: 522
+test_file: tests/e2e/単一ユースケース/test_session_status.py
+primary_actor: 外部のアプリ（aituber など）
+stakeholders:
+  - name: 外部のアプリ
+    interest: 停止の完了・活動の期限・開き直すかを、ワークスペースと MindStella のセッションの状態から判断できる。状態を取得しても、MindStella のセッションと記録が変わらない
+  - name: 利用者
+    interest: 端末から、ワークスペースの一覧と、読んでいない AI の書き込み・取り込まれていないコメントの数を確認できる
+trigger: 外部のアプリが MindStella の API に、状態の取得（`GET /workspaces/{id}`）・ワークスペースの一覧（`GET /workspaces`）・MindStella のセッションの一覧（`GET /workspaces/{id}/sessions`）を依頼する
+preconditions:
+  - 常駐サーバーが起動している
+  - 外部のアプリがワークスペースを作っている（単一ユースケース『外部のアプリから起動する』）
+success_guarantee: 外部のアプリが、ワークスペースの状態・画面の URL・利用者が読んでいない AI の書き込みの数・MindStella のセッションが取り込んでいない利用者のコメントの数・最後の更新の日時・クローズ済みか・MindStella のセッションの状態・クローズ待ちか・追加の MCP とプラグインの記録があるかを受け取っている。記録・配信元の行・状態のフォルダは、依頼の前と同じ。
+minimal_guarantee: ワークスペースの部分を集められないときは、その項目を分からないとして警告を添え、MindStella のセッションの部分は返却する。何も書き換えない。
+frequency: 外部のアプリが停止の完了・活動の期限・開き直すかを判断するたび
+priority: 高
+reading: |-
+  | 呼び出し元 | 読み替え |
+  | --- | --- |
+  | 端末の起動のコマンド | 同じ MindStella の API を呼ぶので、外部のアプリを利用者に読み替える |
+  | MindStella の MCP の `workspace`・`workspaces`・`sessions` | 外部のアプリを、MCP を呼んだセッションに読み替える |
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（起動している。UserPromptSubmit のフックを呼び、Stop のフックを呼ばずに応答の途中のまま待つ）
+      - name: 常駐サーバー
+        description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル。落ちたことを見回る間隔（`MINDSTELLA_CRASH_WATCH_INTERVAL`）は、テストの間に見回らない長さ
+      - name: ワークスペース
+        description: 単一ユースケース『外部のアプリから起動する』で作ったワークスペースで、MindStella のセッションが応答の途中。利用者が読んでいない AI の書き込みが 2 件、取り込んでいない利用者のコメントが 1 件ある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM->>WSM: 記録から 2 つの未読の数と最後の更新の日時を集める
+        WSM->>WSM: グローバルの設定のファイルの配信元の行からクローズ済みかを判定する
+        WSM-->>API: 進行中・画面の URL・未読の 2 つの数・最後の更新・クローズ済みでない
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR->>MGR: 状態と、tmux のペインの ID とプロセスの ID を照合する
+        MGR-->>API: MindStella のセッションの ID・起動中・応答の途中・クローズ待ちでない・追加の MCP とプラグインの記録がある
+        API-->>APP: まとめた状態
+      ```
+    expected:
+      - 外部のアプリが、進行中・画面の URL・読んでいない AI の書き込み 2 件・取り込んでいないコメント 1 件・最後の更新の日時・MindStella のセッションの ID・起動中・応答の途中・クローズ待ちでない・クローズ済みでない・追加の MCP とプラグインの記録があるを受け取っている
+      - 記録・配信元の行・状態のフォルダが、依頼の前と同じ
+    test: test_normal
+  - name: 正常シナリオ（API で止めた後）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: MindStella のセッションを API で止めた後で、クローズしていない（単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』の停止まで）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: 画面の URL・未読の 2 つの数・最後の更新・クローズ済みでない
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR-->>API: 停止済み・クローズ待ち
+        API-->>APP: まとめた状態（ワークスペースは停止）
+      ```
+    expected:
+      - 外部のアプリが、ワークスペースが停止で、MindStella のセッションが停止済みでクローズ待ちであることを受け取っている
+    test: test_normal_when_stopped_by_api
+    notes:
+      外部のアプリの判断: クローズか開き直しを選ぶ
+  - name: 正常シナリオ（停止の途中）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（応答の途中のまま待つ）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 停止を受け、最後の書き込みが終わるのを待っている（単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: 画面の URL・未読の 2 つの数・最後の更新・クローズ済みでない
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR-->>API: 停止の途中・クローズ待ち
+        API-->>APP: まとめた状態
+      ```
+    expected:
+      - 外部のアプリが、MindStella のセッションが停止の途中でクローズ待ちであることを受け取っている
+    test: test_normal_when_stopping
+  - name: 正常シナリオ（待っている書き込みがある）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（応答の途中のまま待つ）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 停止の最後の書き込みを待つ上限を過ぎ、待っている書き込みがあると状態に記録された（単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』の異常シナリオの結果）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: 画面の URL・未読の 2 つの数・最後の更新・クローズ済みでない
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR-->>API: 起動中・待っている書き込みがある・クローズ待ち
+        API-->>APP: まとめた状態
+      ```
+    expected:
+      - 外部のアプリが、待っている書き込みがあることを受け取っている
+    test: test_normal_when_write_pending
+    notes:
+      外部のアプリの判断: 強制の停止を選べる
+  - name: 正常シナリオ（起動し直しの途中）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（起動したが、SessionStart のフックを呼ばずに待つ）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 起動し直しを依頼され、MindStella のセッションの準備を待っている（単一ユースケース『MindStella のセッションを起動し直す』）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: 画面の URL・未読の 2 つの数・最後の更新・クローズ済みでない
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR-->>API: 起動し直しの途中
+        API-->>APP: まとめた状態
+      ```
+    expected:
+      - 外部のアプリが、MindStella のセッションが起動し直しの途中であることを受け取っている
+    test: test_normal_when_restarting
+  - name: 正常シナリオ（起動し直しに失敗した後）
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` で空いたアカウントが無いと返却して終わる）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 起動し直しに失敗した（単一ユースケース『MindStella のセッションを起動し直す』の異常シナリオの結果）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: 画面の URL・未読の 2 つの数・最後の更新・クローズ済みでない
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR-->>API: 起動し直しに失敗した段階と理由（空いたアカウントが無い）
+        API-->>APP: まとめた状態
+      ```
+    expected:
+      - 外部のアプリが、起動し直しに失敗したことと、空いたアカウントが無いという理由を受け取っている
+    test: test_normal_when_restart_failed
+  - name: 正常シナリオ（追加の MCP・プラグインの記録が無い）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（追加の MCP とプラグインを指定されずに起動している）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 配信元の行と状態のフォルダの ID の一覧にはあるが、状態のフォルダに追加の MCP・プラグインの記録が無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: 画面の URL・未読の 2 つの数・最後の更新・クローズ済みでない
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR->>MGR: 状態のフォルダに追加の MCP・プラグインの記録があるかを確認する
+        MGR-->>API: 起動中・クローズ待ちでない・追加の MCP とプラグインの記録が無い
+        API-->>APP: まとめた状態
+      ```
+    expected:
+      - 外部のアプリが、追加の MCP・プラグインの記録が無いことを受け取っている
+      - 応答に、追加の MCP の定義とプラグインのフォルダが含まれていない
+      - 状態のフォルダが、依頼の前と同じ
+    test: test_normal_when_launch_options_missing
+    notes:
+      記録の有無: 中身は参照せず、記録があるかだけを返却する。指定が空の記録は「ある」とする
+      外部のアプリの判断: 設定の書き換えで指定し直し、起動し直しを依頼する
+  - name: 正常シナリオ（クローズしたワークスペース）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: '単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』でクローズした（配信元の行が `outside_read: false`）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: 画面の URL・未読の 2 つの数・最後の更新・クローズ済み
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR-->>API: 停止済み・クローズ待ち
+        API-->>APP: まとめた状態（ワークスペースは完了）
+      ```
+    expected:
+      - 外部のアプリが、ワークスペースが完了でクローズ済みであることと、MindStella のセッションが停止済みであることを受け取っている
+      - 外部のアプリが、未読の 2 つの数と最後の更新の日時を受け取っている
+    test: test_normal_when_closed
+    notes:
+      記録: クローズしても記録は残るので、未読の数と最後の更新も返却する
+  - name: 正常シナリオ（MindStella のセッションが落ちている）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（tmux のペインを閉じ、SessionEnd のフックを呼ばずに終わる）・Discord の Webhook（受けた要求を記録する HTTP のエンドポイント）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ。Webhook の設定のファイルは Mock のエンドポイントを指す
+      - name: ワークスペース
+        description: 状態には MindStella のセッションが起動中と記録されているが、tmux のペインとプロセスが無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: 画面の URL・未読の 2 つの数・最後の更新・クローズ済みでない
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR->>MGR: tmux のペインとプロセスが無い
+        MGR-->>API: 落ちている
+        API-->>APP: まとめた状態
+        APP->>API: MindStella のセッションの一覧を依頼する（GET /workspaces/{id}/sessions）
+        API-->>APP: 落ちている
+      ```
+    expected:
+      - 外部のアプリが、状態の取得と MindStella のセッションの一覧の両方で、MindStella のセッションが落ちていることを受け取り、状態の取得でワークスペースが進行中であることを受け取っている
+      - 状態のフォルダの MindStella のセッションの状態が、起動中のまま変わっていない
+      - Mock の Webhook が要求を受けていない
+    test: test_normal_when_session_crashed
+    notes:
+      記録と通知: 落ちたことの記録と『停止の通知』は、落ちたことの見回りと、作成・クローズ・起動し直しが行う
+  - name: 正常シナリオ（MindStella のセッションの一覧）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（起動している）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 単一ユースケース『外部のアプリから起動する』で作ったワークスペースで、MindStella のセッションが起動している
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant MGR as セッションの管理
+
+        APP->>API: MindStella のセッションの一覧を依頼する（GET /workspaces/{id}/sessions）
+        API->>MGR: MindStella のセッションの一覧を依頼する
+        MGR-->>API: MindStella のセッションの ID と状態
+        API-->>APP: 一覧
+      ```
+    expected:
+      - 外部のアプリが、MindStella のセッションの ID と起動中を受け取っている
+    test: test_normal_when_session_list
+  - name: 正常シナリオ（ワークスペースの一覧）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: クローズしていないワークスペースが 2 つ、クローズしたワークスペースが 1 つある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+
+        APP->>API: 一覧を依頼する（GET /workspaces）
+        API->>WSM: ワークスペースの一覧を依頼する
+        WSM->>WSM: 状態のフォルダの ID の一覧にある配信元の行から、クローズしていないものを選ぶ
+        WSM-->>API: ID・題名・画面の URL・クローズ済みかの一覧
+        API-->>APP: 一覧
+      ```
+    expected:
+      - 外部のアプリが、クローズしていない 2 つのワークスペースだけを、ID・題名・画面の URL・クローズ済みでないことと一緒に受け取っている
+    test: test_normal_when_list
+  - name: 正常シナリオ（クローズしたものを含める一覧）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: クローズしていないワークスペースが 2 つ、クローズしたワークスペースが 1 つある
+      - name: 依頼
+        description: クローズしたものを含める指定がある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+
+        APP->>API: クローズしたものを含める一覧を依頼する（GET /workspaces）
+        API->>WSM: ワークスペースの一覧を依頼する
+        WSM-->>API: ID・題名・画面の URL・クローズ済みかの一覧
+        API-->>APP: 一覧
+      ```
+    expected:
+      - 外部のアプリが、クローズ済みかを添えた 3 つのワークスペースを受け取っている
+    test: test_normal_when_list_with_closed
+  - name: 異常シナリオ（知らないワークスペースの ID）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: 依頼
+        description: 状態のフォルダのワークスペースの ID の一覧に無い ID
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: ワークスペースが無い
+        API-->>APP: ワークスペースが無いエラー
+      ```
+    expected:
+      - 外部のアプリが、ワークスペースが無いエラーを受け取っている
+    test: test_error_when_workspace_unknown
+    notes:
+      削除したワークスペース: 削除したワークスペースも同じエラーにする
+  - name: 異常シナリオ（記録のフォルダが無い）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（起動している）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 配信元の行はあるが、記録のフォルダ（`.mindstella/`）が削除されている
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: 記録のフォルダが無い
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR-->>API: MindStella のセッションの ID・起動中
+        API-->>APP: MindStella のセッションの状態と、記録のフォルダが無いことの警告
+      ```
+    expected:
+      - 外部のアプリが、MindStella のセッションの状態と、フォルダのパスを含む警告を受け取っている
+      - 配信元の行が残っている
+    test: test_error_when_records_missing
+  - name: 異常シナリオ（グローバルの設定を読めない）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（起動している）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: MindStella のセッションが起動した後に、グローバルの設定のファイルを YAML として読めない内容に書き換えた
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API->>WSM: ワークスペースの状態を依頼する
+        WSM-->>API: 画面の URL。未読の 2 つの数・最後の更新・クローズ済みかは分からない
+        API->>MGR: MindStella のセッションの状態を依頼する
+        MGR-->>API: MindStella のセッションの ID・起動中
+        API-->>APP: MindStella のセッションの状態と、分からない項目の警告
+      ```
+    expected:
+      - 外部のアプリが、画面の URL と MindStella のセッションの状態と、未読の数・最後の更新・クローズ済みかが分からないことの警告を受け取っている
+    test: test_error_when_settings_unreadable
+    notes:
+      分かる項目: ID の一覧は状態のフォルダにあるので、ワークスペースであることは分かる。記録のフォルダの場所とクローズ済みかは配信元の行にあるので、読めない間は分からない
+refs:
+  - SC-531-1#
+  - SC-531-2#
+  - SC-582-1#
+notes:
+  ワークスペースの状態: |-
+    | 状態 | 意味 |
+    | --- | --- |
+    | 進行中 | 話し合いを続けている。MindStella のセッションが無くても（落ちた）進行中 |
+    | 停止 | API で MindStella のセッションの停止を依頼した後（クローズ待ち） |
+    | 完了 | クローズした |
+  使い道: 停止の完了の確認（MindStella のセッションの一覧で確認する）、活動の期限の判断、開き直すかの判断、追加の MCP・プラグインの記録が無いことに気づいて設定の書き換えで指定し直す判断に使用する
+  未読の数: 利用者が読んでいない AI の書き込みと、MindStella のセッションが取り込んでいない利用者のコメントの 2 つの数で返却する
+  クローズの判定: 'ワークスペースの管理は、状態のフォルダのワークスペースの ID の一覧でワークスペースかを判定し、グローバルの設定のファイルの配信元の行を直接参照して記録のフォルダの場所を取得し、`outside_read: false` ならクローズ済みとする。project-index は呼ばない'
+  落ちたセッションの判定: 状態に起動中とあっても、tmux のペインとプロセスの両方が合わなければ、落ちていると返却する。状態の取得と一覧は状態を書き換えず、『停止の通知』も呼ばない
+  インターフェース定義で決めること: 返却のキーの名前と、一覧でクローズしたワークスペースを含める指定のキー
+  E2E の範囲: MindStella のセッションのエージェントは Mock にする
+  スコープ外: '画面への状態の表示は #586、開き直しと削除は #523、設定の書き換えは #524 で扱う。無操作の上限での停止は利用者の判断で取りやめた（#521）'

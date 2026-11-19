@@ -8,6 +8,7 @@ import fcntl
 import json
 import logging
 import os
+import shutil
 import tempfile
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
@@ -179,6 +180,15 @@ def write_launch(root: Path, workspace_id: str, options: LaunchOptions) -> None:
 def delete_launch(root: Path, workspace_id: str) -> None:
     """`launch.json` を消す（作成の巻き戻しに使う）。"""
     (workspace_dir(root, workspace_id) / LAUNCH_FILE).unlink(missing_ok=True)
+
+
+def delete_workspace_state(root: Path, workspace_id: str) -> None:
+    """`workspaces/{ID}/` を中身ごと消す。無ければ何もしない（`ids` は変えない）。"""
+    try:
+        shutil.rmtree(workspace_dir(root, workspace_id))
+    except FileNotFoundError:
+        # 既に無い: 前の削除で消えたものとして続ける
+        return
 
 
 def _write_ids(root: Path, ids: list[str]) -> None:

@@ -200,6 +200,17 @@ def awaiting_posts(thread: Thread) -> list[Post]:
     return [post for post in thread.posts if post.author == "user" and post.taken is None]
 
 
+def status_counts(root: Path) -> tuple[int, int, str | None]:
+    """利用者が読んでいない AI の書き込みの数・取り込み待ちの利用者の書き込みの数・最後の書き込みの日時を返す。何も書かない。"""
+    loaded = load_threads(root)
+    posts = [post for thread in loaded for post in thread.posts]
+    unseen_ai = sum(1 for post in posts if post.author == "ai" and not post.seen)
+    awaiting = sum(len(awaiting_posts(thread)) for thread in loaded)
+    # 日時は UTC のタイムゾーン付き ISO 8601 で揃っているので、文字列の大小で新しい方を選ぶ
+    latest = max((post.created for post in posts), default=None)
+    return unseen_ai, awaiting, latest
+
+
 def list_threads(
     workspace: Workspace,
     *,

@@ -840,3 +840,20 @@ def test_flush_pending(
     # 検証
     assert flushed["sets"] == expected_sets
     assert flushed["pending"] == expected_pending
+
+
+def test_last_updated(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """最も新しい updated を返し、行が無ければ None を返す（正常系）。"""
+    # 準備
+    with_rows = make_workspace(
+        make_item("D-1", updated="2026-10-01T00:00:00+00:00"),
+        make_item("D-2", updated=NOW),
+        name="with_rows",
+    )
+    without_rows = make_workspace(name="without_rows")
+    # 実行
+    latest = history.last_updated(with_rows)
+    missing = history.last_updated(without_rows)
+    # 検証
+    assert latest == NOW
+    assert missing is None

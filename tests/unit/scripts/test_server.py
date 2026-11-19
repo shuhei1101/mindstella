@@ -55,24 +55,32 @@ EXPECTED_TOOL_NAMES = (
     "reply",
     "set_thread_status",
     "update_thread",
+    "workspaces",
+    "workspace",
     "create_workspace",
     "create_session",
     "sessions",
     "stop_session",
     "restart_session",
     "close_workspace",
+    "reopen_workspace",
+    "delete_workspace",
     "server_status",
     "server_stop",
 )
 
 # MindStella の API と同じ操作のツール（インターフェース定義『ワークスペースの作成』ほか）
 API_TOOL_NAMES = (
+    "workspaces",
+    "workspace",
     "create_workspace",
     "create_session",
     "sessions",
     "stop_session",
     "restart_session",
     "close_workspace",
+    "reopen_workspace",
+    "delete_workspace",
 )
 
 # workspace を受けないツール

@@ -28,7 +28,7 @@ def test_normal(session_world: SessionWorld) -> None:
 
 
 def test_normal_when_crashed(session_world: SessionWorld) -> None:
-    """状態が running でもペインが無ければ crashed を返し、状態に記録する（正常系）。"""
+    """状態が running でもペインが無ければ crashed を返し、状態は書き換えない（正常系）。"""
     # 準備
     world = session_world
     world.start()
@@ -41,7 +41,7 @@ def test_normal_when_crashed(session_world: SessionWorld) -> None:
     assert body["sessions"][0]["status"] == "crashed"
     session = world.read_session(workspace_id)
     assert session is not None
-    assert session["status"] == "crashed"
+    assert session["status"] == "running"
 
 
 def test_normal_when_never_created(session_world: SessionWorld) -> None:

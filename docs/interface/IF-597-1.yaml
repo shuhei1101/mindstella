@@ -1,0 +1,281 @@
+id: IF-597-1
+title: 状態の取得
+entry:
+  kind: endpoint
+  value: GET `/workspaces/{id}`
+lead: ワークスペースの状態と、MindStella のセッションの状態をまとめて返す。何も書き換えない。MindStella の MCP の `workspace` も同じ処理を呼ぶ。
+idempotent: true
+side_effects: なし（記録・配信元の行・状態のフォルダ・プレビューの配信を変えず、『停止の通知』も呼ばない）
+request:
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: ワークスペースの ID
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+response:
+  - name: id
+    type: str
+    description: ワークスペースの ID
+  - name: status
+    type: Literal['active', 'stopped', 'closed'] | None
+    description: ワークスペースの状態。`closed` はクローズ済み、`stopped` はクローズしておらずクローズ待ち、`active` はそれ以外（MindStella のセッションが無い・落ちたときを含む）
+    notes: グローバルの設定のファイルを参照できないときは `None`
+  - name: title
+    type: str | None
+    description: 題名（記録の設定の `title`）
+    notes: 記録のフォルダが無いとき・記録の設定（`config.yaml`）が読めないとき・グローバルの設定のファイルを参照できないとき・`title` が無いときは `None`
+  - name: url
+    type: str | None
+    description: 画面の URL（『ワークスペースの作成』の `url` と同じ）
+    notes: そのワークスペースのプレビューを配信していないときは `None`（この操作は配信を立てない）
+  - name: closed
+    type: bool | None
+    description: クローズ済みか（配信元の行の `outside_read` が偽）
+    notes: グローバルの設定のファイルを参照できないときは `None`
+  - name: unseen_ai_posts
+    type: int | None
+    description: 利用者が読んでいない AI の書き込みの数（スレッドの書き込みのうち、書き手が `ai` で `seen` が偽のもの）
+    notes: 記録のフォルダが無いとき・スレッド・変更履歴が読めないとき・グローバルの設定のファイルを参照できないときは `None`
+  - name: awaiting_user_posts
+    type: int | None
+    description: MindStella のセッションが取り込んでいない利用者のコメントの数（`threads` の `awaiting` と同じ判定の書き込みの数）
+    notes: '`unseen_ai_posts` と同じ'
+  - name: updated
+    type: str | None
+    description: 記録の最後の更新の日時（ISO 8601）。項目の変更履歴（`history.yaml`）の `updated` と、スレッドの書き込みの `created` のうち最も新しいもの
+    notes: '`unseen_ai_posts` と同じ。項目もスレッドの書き込みも無いときも `None`'
+  - name: sessions
+    type: list
+    description: 『MindStella のセッションの一覧』の `sessions` と同じ値
+  - name: close_pending
+    type: bool
+    description: クローズ待ちか（『MindStella のセッションの一覧』の `close_pending` と同じ）
+  - name: launch_options_recorded
+    type: bool
+    description: 状態のフォルダに追加の MCP・プラグインの記録（`launch.json`）があるか。指定が空の記録も真。中身は返さない
+  - name: warnings
+    type: "list[{stage: Literal['records', 'settings'], detail: str}]"
+    description: 分からない項目があるときの警告。`records` は記録のフォルダが無いか、記録の設定・スレッド・変更履歴が読めない（`detail` にフォルダのパスか理由）、`settings` はグローバルの設定のファイルを参照できない（`detail` に理由）。無ければ空の並び
+response_notes: '`sessions`・`close_pending`・`launch_options_recorded` は、ワークスペースの部分を集められなくても返す'
+status_codes:
+  - code: '200'
+    condition: 返した（警告があるときも含む）
+  - code: '403'
+    condition: '`Host`・`Origin` が受ける値でない'
+    notes: '`stage` は `host`'
+  - code: '404'
+    condition: '`id` のワークスペースが状態のフォルダの ID の一覧に無い（削除したワークスペースを含む）'
+    notes: '`stage` は `workspace`'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+  - item: 受ける Host
+    constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: ワークスペースの判定
+    constraint: 状態のフォルダの `workspaces.yaml` の `ids` にあれば、ワークスペースとする。配信元の行は判定に使わない
+  - item: 配信元の行の参照
+    constraint: グローバルの設定のファイルを直接読み、`sources` の `id` が一致する行の `config`（`{フォルダ}/.mindstella/dev-docs.yaml`）から記録のフォルダを、`outside_read` からクローズ済みかを引く。project-index の API は呼ばない。グローバルの設定のファイルの場所は、project-index と同じく環境変数 `PROJECT_INDEX_CONFIG`、無ければ `${XDG_CONFIG_HOME:-~/.config}/project-index/settings.yaml`
+    notes: 'project-index の『設定: 索引のサーバー』（CFG-1）の端末の設定の場所と同じ規則'
+  - item: 参照できないとき
+    constraint: グローバルの設定のファイルが無い・YAML として読めない・`id` の行が無いときは、`settings` の警告を付け、`status`・`title`・`closed`・未読の 2 つの数・`updated` を `None` にする。記録のフォルダ（`.mindstella/config.yaml`）が無いときは、`records` の警告を付け、`title`・未読の 2 つの数・`updated` を `None` にする。記録の設定（`config.yaml`）が読めないときは、`records` の警告（`detail` に理由）を付け、`title` を `None` にする。スレッド（`threads.yaml`）・変更履歴（`history.yaml`）が読めないときは、`records` の警告（`detail` に理由）を付け、未読の 2 つの数・`updated` を `None` にする。いずれも 200 で、配信元の行は消さない
+  - item: ワークスペースの状態
+    constraint: '`closed` が真なら `closed`、偽で `close_pending` が真なら `stopped`、それ以外は `active`'
+  - item: 落ちたかの判定
+    constraint: 『MindStella のセッションの一覧』と同じ処理で `sessions` を作る（状態を書き換えない）
+  - item: 書き込まない
+    constraint: スレッドの既読・取り込み済み、前回参照した時点、`session.json`、`launch.json`、配信元の行、プレビューの配信を変えない
+  - item: 同時の依頼
+    constraint: 鍵を取らずに読む。ファイルは一時ファイルからの置き換えで書かれるので、書き込みの前か後の内容を読む
+  - item: MCP のツール
+    constraint: '`workspace` は `workspace_id` を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す。404 はエラー `エラー: {detail}`（『MCP サーバーの起動』のエラーの形）。`Host` の確かめは `/mcp` の確かめに任せる'
+flows:
+  - name: 正常系
+    summary: 起動中の MindStella のセッションと、未読の数・最後の更新を返す
+    setup:
+      - name: Mock
+        description: Claude Code（『MindStella のセッションの作成』の正常系と同じ。UserPromptSubmit のフックを叩き、応答の途中のまま待つ）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ、`PROJECT_INDEX_CONFIG` はテストごとの一時ファイルのグローバルの設定のファイル、`MINDSTELLA_CRASH_WATCH_INTERVAL` はテストの間に見回らない長さ）
+      - name: ワークスペース
+        description: MindStella のセッションが起動している。スレッドに `seen` が偽の AI の書き込みが 2 件、取り込み待ちの利用者の書き込みが 1 件ある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces/{id}
+
+        クライアント->>API: GET
+        API->>API: ID の一覧・グローバルの設定のファイル・記録・状態を読む
+        API-->>クライアント: 200 status: active
+      ```
+    expected:
+      - '`status` が `active`、`closed` が偽、`unseen_ai_posts` が 2、`awaiting_user_posts` が 1、`updated` が日時、`url` が画面の URL'
+      - '`sessions[0].status` が `running`、`responding` が真、`close_pending` が偽、`launch_options_recorded` が真、`warnings` が空'
+      - 記録・グローバルの設定のファイル・状態のフォルダの内容が、依頼の前と同じ
+    test: test_normal
+  - name: 正常系（停止の依頼の後）
+    summary: クローズ待ちのワークスペースを stopped で返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: '`session.json` が `stopped` で、クローズ待ち'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces/{id}
+
+        クライアント->>API: GET
+        API-->>クライアント: 200 status: stopped
+      ```
+    expected:
+      - '`status` が `stopped`、`sessions[0].status` が `stopped`、`close_pending` が真'
+    test: test_normal_when_stopped
+  - name: 正常系（クローズ済み）
+    summary: クローズしたワークスペースも記録の数と日時を返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 'グローバルの設定のファイルの配信元の行が `outside_read: false`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces/{id}
+
+        クライアント->>API: GET
+        API-->>クライアント: 200 status: closed
+      ```
+    expected:
+      - '`status` が `closed`、`closed` が真、未読の 2 つの数と `updated` が `None` でない'
+    test: test_normal_when_closed
+  - name: 正常系（落ちている）
+    summary: ペインが無ければ crashed を返し、状態は書き換えない
+    setup:
+      - name: Mock
+        description: Discord の Webhook（受けた要求を記録する HTTP のエンドポイント）
+      - name: 常駐サーバー
+        description: 正常系と同じ。`MINDSTELLA_DISCORD_WEBHOOK_FILE` はエンドポイントの URL を記載した一時ファイル
+      - name: ワークスペース
+        description: '`session.json` が `running` で、`pane` のペインが無い'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces/{id}
+
+        クライアント->>API: GET
+        API->>API: ペインとプロセスを確かめる（書き換えない）
+        API-->>クライアント: 200 sessions[0].status: crashed
+      ```
+    expected:
+      - '`status` が `active`、`sessions[0].status` が `crashed`'
+      - '`session.json` の `status` が `running` のまま'
+      - エンドポイントが要求を受けていない
+    test: test_normal_when_crashed
+  - name: 正常系（追加の MCP・プラグインの記録が無い）
+    summary: launch.json が無ければ偽を返し、中身は返さない
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 状態のフォルダに `launch.json` が無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces/{id}
+
+        クライアント->>API: GET
+        API-->>クライアント: 200 launch_options_recorded: false
+      ```
+    expected:
+      - '`launch_options_recorded` が偽'
+      - 応答に `mcp_config`・`plugin_dirs` のキーが無い
+      - 状態のフォルダに `launch.json` が作られていない
+    test: test_normal_when_launch_options_missing
+  - name: 異常系（知らない ID）
+    summary: ID の一覧に無い ID は 404
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 依頼
+        description: 状態のフォルダの ID の一覧に無い ID
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces/{id}
+
+        クライアント->>API: GET
+        API-->>クライアント: 404 stage: workspace
+      ```
+    expected:
+      - ステータスが 404 で、`stage` が `workspace`
+    test: test_error_when_unknown
+  - name: 異常系（記録のフォルダが無い・200）
+    summary: 記録のフォルダが無くても、セッションの状態と警告を返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 配信元の行と ID の一覧はあるが、`.mindstella/` が無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces/{id}
+
+        クライアント->>API: GET
+        API-->>クライアント: 200 warnings: records
+      ```
+    expected:
+      - '`warnings` に `stage` が `records` で `detail` にフォルダのパスを含む要素がある'
+      - 未読の 2 つの数と `updated` が `None`、`sessions` は返っている
+      - グローバルの設定のファイルの配信元の行が残っている
+    test: test_error_when_records_missing
+  - name: 異常系（グローバルの設定を読めない・200）
+    summary: グローバルの設定のファイルを読めなくても、セッションの状態と警告を返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: ID の一覧にあり、グローバルの設定のファイルが YAML として読めない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces/{id}
+
+        クライアント->>API: GET
+        API-->>クライアント: 200 warnings: settings
+      ```
+    expected:
+      - '`warnings` に `stage` が `settings` の要素がある'
+      - '`status`・`closed`・未読の 2 つの数・`updated` が `None`、`sessions` は返っている'
+    test: test_error_when_settings_unreadable
+refs:
+  - IF-531-3#
+  - IF-531-1#
+callers:
+  - SC-597-1#
+test_file: tests/integration/server/test_workspace_status.py

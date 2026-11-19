@@ -124,18 +124,16 @@ class FakeProjectIndex:
     def __init__(self, root: Path, allowed: list[Path]) -> None:
         """許可するフォルダを書いた端末の設定のファイルを作り、空きポートで待ち受ける。"""
         self.settings_path = root / "pi-settings.yaml"
-        self.settings_path.write_text(
-            yaml.safe_dump(
-                {"mindstella": {"allowed_dirs": [str(path) for path in allowed]}, "sources": []}
-            ),
-            encoding="utf-8",
-        )
+        self.allowed = allowed
         self.rows: dict[str, dict[str, Any]] = {}
+        self.save()
         self.docs: dict[str, list[dict[str, str]]] = {}
         self.version = 1
         self.requests: list[tuple[str, str, Any]] = []
         self.post_status: int | None = None
         self.patch_delay_sec = 0.0
+        self.patch_status: int | None = None
+        self.delete_status: int | None = None
         self._lock = threading.Lock()
         fake = self
 
@@ -175,6 +173,12 @@ class FakeProjectIndex:
                 body = self._body()
                 fake.requests.append(("PATCH", self.path, body))
                 status, payload = fake.patch(self.path, body)
+                self._send(status, payload)
+
+            def do_DELETE(self) -> None:
+                """配信元の行を削除する。"""
+                fake.requests.append(("DELETE", self.path, None))
+                status, payload = fake.delete(self.path)
                 self._send(status, payload)
 
             def do_PUT(self) -> None:
@@ -238,12 +242,15 @@ class FakeProjectIndex:
                 "status": "not_served",
             }
             self.version += 1
+            self.save()
         return 201, {"result": "added"}
 
     def patch(self, path: str, body: Any) -> tuple[int, Any]:
         """行のキーを変える。版が古ければ 409。"""
         if self.patch_delay_sec:
             time.sleep(self.patch_delay_sec)
+        if self.patch_status is not None:
+            return self.patch_status, {"detail": "Mock の失敗"}
         source_id = urllib.parse.unquote(path.rsplit("/", 1)[1])
         with self._lock:
             if body.get("expectedVersion") != str(self.version):
@@ -259,6 +266,24 @@ class FakeProjectIndex:
             if "scope" in changes:
                 row["scope"] = changes["scope"]
             self.version += 1
+            self.save()
+        return 200, {"version": str(self.version)}
+
+    def delete(self, path: str) -> tuple[int, Any]:
+        """行を削除する。`delete_status` があればその応答だけを返す。版が古ければ 409、行が無ければ 404。"""
+        if self.delete_status is not None:
+            return self.delete_status, {"detail": "Mock の失敗"}
+        parsed = urllib.parse.urlsplit(path)
+        source_id = urllib.parse.unquote(parsed.path.rsplit("/", 1)[1])
+        expected = urllib.parse.parse_qs(parsed.query).get("expectedVersion", [""])[0]
+        with self._lock:
+            if expected != str(self.version):
+                return 409, {"current": str(self.version)}
+            if source_id not in self.rows:
+                return 404, {}
+            del self.rows[source_id]
+            self.version += 1
+            self.save()
         return 200, {"version": str(self.version)}
 
     def put(self, body: Any) -> tuple[int, Any]:
@@ -269,9 +294,31 @@ class FakeProjectIndex:
             self.version += 1
         return 200, {"version": str(self.version)}
 
+    def save(self) -> None:
+        """端末の設定のファイルに、許可するフォルダと行（ファイルの形の snake_case）を書く。"""
+        sources = [
+            {
+                "id": row["id"],
+                "config": row["config"],
+                "scope": row["scope"],
+                "outside_read": row["outsideRead"],
+            }
+            for row in self.rows.values()
+        ]
+        self.settings_path.write_text(
+            yaml.safe_dump(
+                {
+                    "mindstella": {"allowed_dirs": [str(path) for path in self.allowed]},
+                    "sources": sources,
+                },
+                allow_unicode=True,
+            ),
+            encoding="utf-8",
+        )
+
     def changes(self) -> list[tuple[str, str, Any]]:
-        """行を変える要求（POST・PATCH）だけを返す。"""
-        return [request for request in self.requests if request[0] in ("POST", "PATCH")]
+        """行を変える要求（POST・PATCH・DELETE）だけを返す。"""
+        return [request for request in self.requests if request[0] in ("POST", "PATCH", "DELETE")]
 
     def close(self) -> None:
         """待ち受けを閉じる。"""
@@ -308,6 +355,7 @@ class SessionWorld:
                 "TMUX_TMPDIR": str(self.tmux_tmpdir),
                 "XDG_STATE_HOME": str(self.state_root.parent),
                 "PROJECT_INDEX_PORT": str(self.pi.port),
+                "PROJECT_INDEX_CONFIG": str(self.pi.settings_path),
             }
         )
         return {**env, **(extra or {})}

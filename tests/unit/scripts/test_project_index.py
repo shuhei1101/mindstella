@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 from collections.abc import Callable, Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -46,7 +47,7 @@ class FakeProjectIndex:
                 self.end_headers()
                 self.wfile.write(data)
 
-            do_GET = do_POST = do_PATCH = do_PUT = _reply
+            do_GET = do_POST = do_PATCH = do_PUT = do_DELETE = _reply
 
             def log_message(self, *args: object) -> None:
                 """記録を出さない。"""
@@ -200,6 +201,62 @@ def test_patch_source_conflict_twice(fake_pi: Callable[..., FakeProjectIndex]) -
     assert caught.value.status == 409
 
 
+def test_delete_source(fake_pi: Callable[..., FakeProjectIndex]) -> None:
+    """バージョンを付けて送り、409 なら 1 回だけ引き直して送り直す（正常系）。"""
+    # 準備
+    server = fake_pi(
+        {
+            ("GET", "/settings/sources"): [(200, {"version": "v1"}), (200, {"version": "v2"})],
+            ("DELETE", "/settings/sources/w"): [(409, {"current": "v2"}), (200, {"version": "v3"})],
+        }
+    )
+    # 実行
+    result = project_index.delete_source(server.port, "w")
+    # 検証
+    assert result is True
+    deletes = [path for method, path, _body in server.requests if method == "DELETE"]
+    assert deletes == [
+        "/settings/sources/w?expectedVersion=v1",
+        "/settings/sources/w?expectedVersion=v2",
+    ]
+
+
+def test_delete_source_missing(fake_pi: Callable[..., FakeProjectIndex]) -> None:
+    """行が無ければ偽を返す（正常系）。"""
+    # 準備
+    server = fake_pi(
+        {
+            ("GET", "/settings/sources"): [(200, {"version": "v1"})],
+            ("DELETE", "/settings/sources/w"): [(404, {})],
+        }
+    )
+    # 実行
+    result = project_index.delete_source(server.port, "w")
+    # 検証
+    assert result is False
+
+
+@pytest.mark.parametrize(
+    ("replies", "expected"),
+    [
+        pytest.param([(409, {})], 409, id="conflict_twice"),
+        pytest.param([(500, {})], 500, id="server_error"),
+    ],
+)
+def test_delete_source_error(
+    replies: list[Reply], expected: int, fake_pi: Callable[..., FakeProjectIndex]
+) -> None:
+    """409 が 2 回・500 は ProjectIndexError を送る（異常系）。"""
+    # 準備
+    server = fake_pi(
+        {("GET", "/settings/sources"): [(200, {"version": "v1"})], ("DELETE", "/settings/sources/w"): replies}
+    )
+    # 実行・検証
+    with pytest.raises(ProjectIndexError) as caught:
+        project_index.delete_source(server.port, "w")
+    assert caught.value.status == expected
+
+
 @pytest.mark.parametrize(
     ("docs", "expected"),
     [
@@ -329,3 +386,58 @@ def test_reload_sources_when_settings_unreadable(
     with pytest.raises(ProjectIndexError):
         project_index.reload_sources(server.port)
     assert [method for method, _path, _body in server.requests if method == "PUT"] == []
+
+
+@pytest.mark.parametrize(
+    ("environ", "expected"),
+    [
+        pytest.param(
+            {"PROJECT_INDEX_CONFIG": "/x/s.yaml", "XDG_CONFIG_HOME": "/c", "HOME": "/h"},
+            Path("/x/s.yaml"),
+            id="project-index-config",
+        ),
+        pytest.param(
+            {"XDG_CONFIG_HOME": "/c", "HOME": "/h"},
+            Path("/c/project-index/settings.yaml"),
+            id="xdg-config-home",
+        ),
+        pytest.param({"HOME": "/h"}, Path("/h/.config/project-index/settings.yaml"), id="home"),
+    ],
+)
+def test_settings_file(environ: dict[str, str], expected: Path) -> None:
+    """環境変数の優先順で場所を決める（正常系）。"""
+    # 実行
+    path = project_index.settings_file(environ)
+    # 検証
+    assert path == expected
+
+
+def test_read_source_rows(tmp_path: Path) -> None:
+    """sources の並びを返す（正常系）。"""
+    # 準備
+    settings_path = tmp_path / "settings.yaml"
+    settings_path.write_text(
+        yaml.safe_dump({"sources": [{"id": "a", "outside_read": False}]}), encoding="utf-8"
+    )
+    # 実行
+    rows = project_index.read_source_rows(settings_path)
+    # 検証
+    assert rows == [{"id": "a", "outside_read": False}]
+
+
+@pytest.mark.parametrize(
+    ("written_name", "text"),
+    [
+        pytest.param("other.yaml", "sources: []\n", id="missing"),
+        pytest.param("settings.yaml", "sources: [", id="broken"),
+        pytest.param("settings.yaml", "sources:\n  a: 1\n", id="not-list"),
+    ],
+)
+def test_read_source_rows_error(tmp_path: Path, written_name: str, text: str) -> None:
+    """読めなければ ProjectIndexError（異常系）。"""
+    # 準備
+    (tmp_path / written_name).write_text(text, encoding="utf-8")
+    settings_path = tmp_path / "settings.yaml"
+    # 実行・検証
+    with pytest.raises(ProjectIndexError, match=re.escape(str(settings_path))):
+        project_index.read_source_rows(settings_path)

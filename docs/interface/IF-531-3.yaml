@@ -5,7 +5,7 @@ entry:
   value: GET `/workspaces/{id}/sessions`
 lead: ワークスペースの最後の MindStella のセッション 1 つの状態を返す。停止の完了はこれで確かめる。MindStella の MCP の `sessions` も同じ処理を呼ぶ。
 idempotent: true
-side_effects: 状態が `running` でも tmux のペインか Claude Code のプロセスが無ければ、`crashed` として状態に記録し、『停止の通知』を止まった理由 `crashed` で呼ぶ。ほかは書かない
+side_effects: なし（落ちていても状態を書き換えず、『停止の通知』も呼ばない）
 request:
   - name: id
     type: str
@@ -51,11 +51,11 @@ constraints:
     constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 落ちたかの判定
-    constraint: '`session.json` の `pane` が tmux の `display-message -p -t {ペイン} ''#{pane_pid}''` で引けない、または `pid` のプロセスが無いか起動時刻が違う（『セッションの値の注入』の `claude_started_at` と同じ見分け方）'
+    constraint: '`status` が `running` のときだけ判定し、ペインかプロセスが無ければ `crashed` を返す（`stopping`・`restarting` は停止・起動し直しの処理に任せ、そのまま返す）。落ちたとするのは、`session.json` の `pane` が tmux の `display-message -p -t {ペイン} ''#{pane_pid}''` で引けない、または `pid` のプロセスが無いか起動時刻が違うとき（『セッションの値の注入』の `claude_started_at` と同じ見分け方）'
   - item: MCP のツール
     constraint: '`sessions` は `workspace_id` を受け、同じ処理を呼ぶ'
   - item: 停止の通知
-    constraint: '`running` から `crashed` に書き換えたときだけ、応答を返却する前に『停止の通知』を止まった理由 `crashed` で呼ぶ（送信は別のスレッドで行い、応答を待たせない）。`stopping`（停止の依頼の途中）から `crashed` への書き換えでは呼ばず、『MindStella のセッションの停止』が止め終えたときに呼ぶ。通知の成否は応答に含めない'
+    constraint: '呼ばない。落ちたことの記録と通知は、『落ちたことの見回り』と、作成・停止・クローズ・起動し直しが行う'
 flows:
   - name: 正常系
     summary: 起動中の MindStella のセッションを返す
@@ -79,7 +79,7 @@ flows:
       - 応答の `sessions` が 1 件で、`status` が `running`、`responding` が偽、`close_pending` が偽
     test: test_normal
   - name: 正常系（落ちている）
-    summary: 状態が running でもプロセスが無ければ crashed を返し、状態に記録する
+    summary: 状態が running でもプロセスが無ければ crashed を返し、状態は書き換えない
     setup:
       - name: Mock
         description: なし
@@ -94,12 +94,12 @@ flows:
         participant API as GET /workspaces/{id}/sessions
 
         クライアント->>API: GET
-        API->>API: ペインとプロセスを確かめる
+        API->>API: ペインとプロセスを確かめる（書き換えない）
         API-->>クライアント: 200 status: crashed
       ```
     expected:
       - 応答の `status` が `crashed`
-      - '`session.json` の `status` が `crashed`'
+      - '`session.json` の `status` が `running` のまま'
     test: test_normal_when_crashed
   - name: 正常系（一度も作っていない）
     summary: sessions が空の並び
@@ -127,6 +127,7 @@ refs:
   - IF-531-4#
   - IF-570-1#
   - IF-582-1#
+  - IF-597-1#
 callers:
   - SC-531-2#
 test_file: tests/integration/server/test_list_sessions.py

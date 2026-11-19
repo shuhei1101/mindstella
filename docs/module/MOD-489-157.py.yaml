@@ -1007,3 +1007,29 @@ functions:
         condition: '`pending` が `by: external`・`changed: [D-1]` の記録を `ai` で / `external` で渡す'
         mock: なし
         expected: '`ai` では `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」で `pending` が空。`external` では記録が変わらない'
+  - name: last_updated
+    title: 項目の最後の更新
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: ワークスペースとMindStella のセッションの状態を取得する
+    scope: public
+    summary: '`load_item_history` の行の `updated` のうち最も新しいものを返す。行が無ければ `None`'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: str | None
+      description: ISO 8601 の日時
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`load_item_history` と同じ'
+    unit_tests:
+      - name: test_last_updated
+        case: 正常
+        summary: 最も新しい updated を返す
+        condition: '`updated` が違う 2 行 / `history.yaml` が無い'
+        mock: なし
+        expected: 新しい方の日時 / `None`

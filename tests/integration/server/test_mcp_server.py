@@ -50,12 +50,16 @@ TOOL_NAMES = [
     "reply",
     "set_thread_status",
     "update_thread",
+    "workspaces",
+    "workspace",
     "create_workspace",
     "create_session",
     "sessions",
     "stop_session",
     "restart_session",
     "close_workspace",
+    "reopen_workspace",
+    "delete_workspace",
     "server_status",
     "server_stop",
 ]
@@ -116,12 +120,16 @@ def test_normal(start_server: StartServer) -> None:
     assert [
         tool["name"] for tool in tools if "workspace" not in tool["inputSchema"].get("required", [])
     ] == [
+        "workspaces",
+        "workspace",
         "create_workspace",
         "create_session",
         "sessions",
         "stop_session",
         "restart_session",
         "close_workspace",
+        "reopen_workspace",
+        "delete_workspace",
         "server_status",
         "server_stop",
     ]

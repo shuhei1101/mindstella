@@ -1,0 +1,46 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-597-1.yaml
+    impact: new
+    detail: 外部のアプリ・利用者・MindStella の MCP を呼んだセッションが、ワークスペースと MindStella のセッションの状態と、ワークスペースの一覧を、何も書き換えずに受け取る（資料 A-126）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-2.yaml
+    impact: following
+    detail: 停止の完了を MindStella のセッションの一覧で確かめる流れが、一覧が落ちたことを状態に記録しなくなる変更に追随する
+    depends_on:
+      - docs/scenario/SC-597-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-582-1.yaml
+    impact: run_only
+    detail: 落ちたことの記録と通知を見回りだけが行うようになっても、落ちた後のコメントで起動し直せるかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: changed
+    detail: MindStella のセッションが落ちたことを、一覧ではなく一定の間隔の見回りが見つけて通知する流れに変える
+    depends_on:
+      - docs/scenario/SC-597-1.yaml
+docs:
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 状態の取得（GET /workspaces/{id}）とワークスペースの一覧（GET /workspaces）の API と、MindStella の MCP の `workspace`・`workspaces` のツールを追加し、MindStella のセッションの一覧が状態を書き換えないことを記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T01:20:07.222574+00:00'
+scope_out:
+  - item: 画面に MindStella のセッションの状態（起動し直しの途中・失敗の理由・記録が無いことの警告）を表示する
+    reason: 画面の変更で、別の Issue がある
+    plan: '#586'
+  - item: 常駐サーバーの起動のときに状態を照合して落ちたものを記録する・ID の一覧を配信元の行から作り直す
+    reason: 資料 A-107 の No 10 で別の Issue にしている
+    plan: '#525'
+  - item: ワークスペースの開き直し・削除と、クローズ待ちを解く操作
+    reason: 資料 A-107 の No 8 で別の Issue にしている。状態の取得は、開き直し・削除の後の状態を返すだけにする
+    plan: '#523'
+  - item: 設定の書き換え（PATCH /workspaces/{id}）で追加の MCP・プラグインを指定し直す
+    reason: 資料 A-107 の No 9 で別の Issue にしている。状態の取得は記録の有無だけを返す
+    plan: '#524'
+  - item: 無操作の上限で止めた後の状態の取得（資料 A-126 の「正常シナリオ（無操作の上限で止めた後）」）
+    reason: 無操作の上限での停止は、利用者の判断で取りやめた（#521 を not planned。https://github.com/shuhei1101/mindstella/pull/594#discussion_r4622740669 ）
+    plan: none

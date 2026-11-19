@@ -125,7 +125,7 @@ classes:
       - name: _guard
         type: threading.RLock
         access: 内部 (_)
-        description: '`_servers` を触る間だけ取る鍵'
+        description: '`_servers`・`_detectors` を触る間だけ取る鍵'
       - name: _external
         type: ExternalAccess
         access: 内部 (_)
@@ -138,6 +138,10 @@ classes:
         type: Transcriber | None
         access: 内部 (_)
         description: 文字起こしのインターフェース（モジュール構成『文字起こし』。立てる配信へ渡す）
+      - name: _detectors
+        type: dict[Path, ChangeDetector]
+        access: 内部 (_)
+        description: ワークスペース → 配信と一緒に始めた変更の検知
     methods:
       - name: start
         title: 配信を立てる
@@ -280,6 +284,49 @@ classes:
           type: None
           description: '-'
         process: 1. `_input_targets.remember(root, session)` を呼ぶ
+      - name: stop_workspace
+        title: ワークスペースの配信を止める
+        kind: メソッド
+        summary: ワークスペースの ID が一致する配信と変更の検知を台帳から除外して止める。無ければ何もしない（『ワークスペースの削除』が状態のフォルダを削除する前に呼ぶ。同じフォルダで作り直すと `start` が配信と変更の検知を新しく始める）
+        args:
+          - name: workspace_id
+            type: str
+            required: true
+            passing: positional
+            description: ワークスペースの ID
+        returns:
+          type: None
+          description: '-'
+        process: |-
+          1. `_guard` を取り、`_servers` と `_detectors` のキーのうち `workspace_id_of`（『変更の検知』の関数）が `workspace_id` のものを台帳から除外して手元に取る（設定を読めないワークスペース（`OSError`・`yaml.YAMLError`）は `logger.warning` に残して比べる対象から外す）
+          2. `_guard` を放してから、手元の変更の検知ごとに `ChangeDetector.stop` を呼ぶ
+          3. `_external.stop_hook` があれば、手元の配信ごとに配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`。`stop_all` と同じ）
+          4. 手元の配信ごとに `PreviewServer.stop` を呼ぶ
+        unit_tests:
+          - name: test_stop_workspace
+            case: 正常
+            summary: 一致する配信と変更の検知だけ止める
+            condition: 2 つのワークスペースを配信し、片方の ID を渡す
+            mock: '`ChangeDetector`'
+            expected: 渡した ID の `url_of` が `None` で変更の検知の `stop` が呼ばれ、もう片方は URL を返す
+          - name: test_stop_workspace_then_start
+            case: 正常
+            summary: 止めた後の start で配信と変更の検知を新しく始める
+            condition: '`stop_workspace` の後に同じフォルダを `start` する'
+            mock: なし（本物の待ち受け。後で `stop_all`）
+            expected: '`start` が `(url, True)` を返し、変更の検知が台帳にある'
+          - name: test_stop_workspace_when_not_served
+            case: 正常
+            summary: 配信していない ID なら何も変えない
+            condition: 1 つのワークスペースを配信し、配信していない ID を渡す
+            mock: '`ChangeDetector`'
+            expected: 配信しているワークスペースの `url_of` が同じ URL を返す
+          - name: test_stop_workspace_when_other_settings_broken
+            case: 正常
+            summary: ほかのワークスペースの設定が壊れていても、一致する配信を止める
+            condition: 2 つのワークスペースを配信し、片方の `config.yaml` を YAML として壊して、もう片方の ID を指定する
+            mock: '`ChangeDetector`'
+            expected: 指定した ID の `url_of` が `None` で、壊れた方は URL を返却する
   - name: PreviewServer
     title: 配信
     container: plugins/mindstella/skills/mindmap/scripts/serve.py

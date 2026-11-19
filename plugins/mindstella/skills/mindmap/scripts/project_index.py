@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 from http import HTTPStatus
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any, Literal
 
 import yaml
@@ -105,6 +106,29 @@ def patch_source(port: int, source_id: str, changes: dict[str, Any]) -> None:
         raise _failed("PATCH", path, status, body)
 
 
+def delete_source(port: int, source_id: str) -> bool:
+    """今のバージョンを引いて行を削除する。バージョンが要更新なら 1 回だけ引き直して送り直す。行が無ければ偽を返す。"""
+    path = f"{SOURCES_PATH}/{urllib.parse.quote(source_id, safe='')}"
+    for attempt in range(2):
+        version = get_settings(port).get("version")
+        query = urllib.parse.urlencode({"expectedVersion": version})
+        status, body = _request(port, "DELETE", f"{path}?{query}")
+        # 削除した
+        if status == HTTPStatus.OK:
+            return True
+        # 行が無い: 前の削除で消えたものとして偽を返す
+        if status == HTTPStatus.NOT_FOUND:
+            return False
+        # 1 回目のバージョンが要更新: 引き直して送り直す
+        if status == CONFLICT and attempt == 0:
+            logger.warning(
+                "mindstella.project_index.version_conflict", extra={"source_id": source_id}
+            )
+            continue
+        raise _failed("DELETE", path, status, body)
+    raise _failed("DELETE", path, CONFLICT, {})
+
+
 def reload_sources(port: int) -> None:
     """端末の設定のファイルの行をそのまま `PUT /settings/sources` に送り、全ての配信元を再読み込みさせる。
 
@@ -113,7 +137,7 @@ def reload_sources(port: int) -> None:
     """
     for attempt in range(2):
         settings = get_settings(port)
-        rows = _settings_rows(Path(str(settings.get("settingsPath"))))
+        rows = read_source_rows(Path(str(settings.get("settingsPath"))))
         status, body = _request(
             port,
             "PUT",
@@ -130,7 +154,20 @@ def reload_sources(port: int) -> None:
         raise _failed("PUT", SOURCES_PATH, status, body)
 
 
-def _settings_rows(settings_path: Path) -> list[Any]:
+def settings_file(environ: Mapping[str, str]) -> Path:
+    """端末の設定のファイルの場所を、project-index と同じ環境変数の優先順で返す。"""
+    # PROJECT_INDEX_CONFIG があれば、その場所を使う
+    explicit = environ.get("PROJECT_INDEX_CONFIG")
+    if explicit:
+        return Path(explicit)
+    # 無ければ XDG_CONFIG_HOME（未設定なら ~/.config）の下の project-index/settings.yaml
+    config_home = environ.get("XDG_CONFIG_HOME") or str(
+        Path(environ.get("HOME") or Path.home()) / ".config"
+    )
+    return Path(config_home) / "project-index" / "settings.yaml"
+
+
+def read_source_rows(settings_path: Path) -> list[Any]:
     """端末の設定のファイルの `sources` の並びを返す。読めないか並びでなければ ProjectIndexError。"""
     try:
         data = yaml.safe_load(settings_path.read_text(encoding="utf-8"))
