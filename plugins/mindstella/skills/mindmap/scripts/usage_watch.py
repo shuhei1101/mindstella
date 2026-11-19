@@ -105,8 +105,18 @@ def watch_usage_once(
     request = restart or (
         lambda workspace_id: sessions.request_restart(workspace_id, RESTART_REASON, ctx)
     )
+    reasons = {row.get("account"): row.get("unavailableReason") for row in accounts}
     count = 0
     for workspace_id in choose_restarts(targets, accounts, ctx.home.release_on_limit):
+        account = targets[workspace_id]["balancer_account"]
+        logger.info(
+            "mindstella.usage.over_threshold",
+            extra={
+                "workspace_id": workspace_id,
+                "account": account,
+                "unavailable_reason": reasons.get(account),
+            },
+        )
         if request(workspace_id):
             count += 1
     return count

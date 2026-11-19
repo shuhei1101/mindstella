@@ -212,7 +212,10 @@ def main(
         home = load_home_settings(home_settings_path(source))
     except InvalidSettingsError as error:
         listening.close()
-        logger.error("常駐サーバーを待ち受けられません: %s", error)  # noqa: TRY400
+        logger.error(  # noqa: TRY400
+            "常駐サーバーを待ち受けられません: %s（設定『サーバー』の許す値を記載してください）",
+            error,
+        )
         return 1
 
     write_lock = threading.Lock()
