@@ -1,0 +1,250 @@
+$ /tmp/pr604-venv/bin/python -m pytest tests/unit --ignore=tests/unit/preview -q -p no:cacheprovider --basetemp=/tmp/planner-604-pt/red2
+（設計の修正（remove_flow）で足した build_server の単体テスト 3 件を加えた後の Red。テストコードの末尾は 6023fb68。workspaces.update_workspace と PATCH /workspaces/{id} の経路は f60b8f34 で実装済み。fail 5 件は全て MCP のツール update_workspace が無いこと（Unknown tool: update_workspace・TOOL_NAMES に無い）によるもので、実装の前から pass したテストは無い。tests/unit/preview は画面を変えないため除いた）
+........................................................................ [  4%]
+........................................................................ [  9%]
+........................................................................ [ 13%]
+........................................................................ [ 18%]
+........................................................................ [ 22%]
+........................................................................ [ 27%]
+........................................................................ [ 31%]
+........................................................................ [ 36%]
+........................................................................ [ 41%]
+........................................................................ [ 45%]
+........................................................................ [ 50%]
+......................................s................................. [ 54%]
+........................................................................ [ 59%]
+........................................................................ [ 63%]
+........................FFFFF........................................... [ 68%]
+........................................................................ [ 73%]
+........................................................................ [ 77%]
+........................................................................ [ 82%]
+........................................................................ [ 86%]
+........................................................................ [ 91%]
+........................................................................ [ 95%]
+.................................................................        [100%]
+=================================== FAILURES ===================================
+______________________________ test_build_server _______________________________
+
+    def test_build_server() -> None:
+        """管理のツールの他は全てのツールを workspace つきで登録する（正常系）。"""
+        # 準備
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+        tools = _run_async(mcp_server.list_tools())
+        # 検証
+        schemas = _tool_schemas(tools)
+>       assert tuple(schemas) == EXPECTED_TOOL_NAMES
+E       AssertionError: assert ('next_id', '...'commit', ...) == ('next_id', '...'commit', ...)
+E         
+E         At index 27 diff: 'server_status' != 'update_workspace'
+E         Right contains one more item: 'server_stop'
+E         Use -v to get more diff
+
+tests/unit/scripts/test_server.py:513: AssertionError
+_________________________ test_build_server_api_tools __________________________
+
+    def test_build_server_api_tools() -> None:
+        """MindStella の API と同じ操作のツールがあり、init が無い（正常系）。"""
+        # 準備
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+        names = [tool.name for tool in _run_async(mcp_server.list_tools())]
+        # 検証
+>       assert set(API_TOOL_NAMES) <= set(names)
+E       AssertionError: assert {'close_works...session', ...} <= {'adopt', 'ch...session', ...}
+E         
+E         Extra items in the left set:
+E         'update_workspace'
+
+tests/unit/scripts/test_server.py:527: AssertionError
+______________ test_build_server_when_update_workspace_omits_null ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ace28e7b90>
+
+    def test_build_server_when_update_workspace_omits_null(monkeypatch: pytest.MonkeyPatch) -> None:
+        """update_workspace は指定した引数だけを本文にして渡す（正常系）。"""
+        # 準備
+        received = _record_update(monkeypatch)
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+>       result = _run_async(
+            mcp_server.call_tool(
+                "update_workspace",
+                {"workspace_id": "mindstella-ws-000000", "plugin_dirs": ["/plugins/aituber"]},
+            )
+        )
+
+tests/unit/scripts/test_server.py:549: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/scripts/test_server.py:190: in _run_async
+    raise errors[0]
+tests/unit/scripts/test_server.py:181: in _target
+    outcome.append(asyncio.run(coroutine))
+                   ^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+/tmp/pr604-venv/lib/python3.12/site-packages/mcp/server/mcpserver/server.py:548: in call_tool
+    return await self._tool_manager.call_tool(name, arguments, context, convert_result=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <mcp.server.mcpserver.tools.tool_manager.ToolManager object at 0x77ace01b3350>
+name = 'update_workspace'
+arguments = {'workspace_id': 'mindstella-ws-000000', 'plugin_dirs': ['/plugins/aituber']}
+context = Context(), convert_result = True
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        context: Context[LifespanContextT, RequestT],
+        convert_result: bool = False,
+    ) -> Any:
+        """Call a tool by name with arguments."""
+        tool = self.get_tool(name)
+        if not tool:
+>           raise ToolError(f"Unknown tool: {name}")
+E           mcp.server.mcpserver.exceptions.ToolError: Unknown tool: update_workspace
+
+/tmp/pr604-venv/lib/python3.12/site-packages/mcp/server/mcpserver/tools/tool_manager.py:85: ToolError
+_____________ test_build_server_when_update_workspace_remove_flow ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ace007e6f0>
+
+    def test_build_server_when_update_workspace_remove_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+        """remove_flow: true を本文の flow: null にする（正常系）。"""
+        # 準備
+        received = _record_update(monkeypatch)
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+>       result = _run_async(
+            mcp_server.call_tool(
+                "update_workspace", {"workspace_id": "mindstella-ws-000000", "remove_flow": True}
+            )
+        )
+
+tests/unit/scripts/test_server.py:567: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/scripts/test_server.py:190: in _run_async
+    raise errors[0]
+tests/unit/scripts/test_server.py:181: in _target
+    outcome.append(asyncio.run(coroutine))
+                   ^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+/tmp/pr604-venv/lib/python3.12/site-packages/mcp/server/mcpserver/server.py:548: in call_tool
+    return await self._tool_manager.call_tool(name, arguments, context, convert_result=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <mcp.server.mcpserver.tools.tool_manager.ToolManager object at 0x77ace007d7f0>
+name = 'update_workspace'
+arguments = {'workspace_id': 'mindstella-ws-000000', 'remove_flow': True}
+context = Context(), convert_result = True
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        context: Context[LifespanContextT, RequestT],
+        convert_result: bool = False,
+    ) -> Any:
+        """Call a tool by name with arguments."""
+        tool = self.get_tool(name)
+        if not tool:
+>           raise ToolError(f"Unknown tool: {name}")
+E           mcp.server.mcpserver.exceptions.ToolError: Unknown tool: update_workspace
+
+/tmp/pr604-venv/lib/python3.12/site-packages/mcp/server/mcpserver/tools/tool_manager.py:85: ToolError
+____________ test_build_server_when_update_workspace_flow_conflict _____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ace01b2810>
+
+    def test_build_server_when_update_workspace_flow_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
+        """flow と remove_flow を同時に指定すると引数の誤り（異常系）。"""
+        # 準備
+        received = _record_update(monkeypatch)
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+>       result = _run_async(
+            mcp_server.call_tool(
+                "update_workspace",
+                {
+                    "workspace_id": "mindstella-ws-000000",
+                    "flow": {"source": "aituber", "doc": "flow-1"},
+                    "remove_flow": True,
+                },
+            )
+        )
+
+tests/unit/scripts/test_server.py:584: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/scripts/test_server.py:190: in _run_async
+    raise errors[0]
+tests/unit/scripts/test_server.py:181: in _target
+    outcome.append(asyncio.run(coroutine))
+                   ^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+/tmp/pr604-venv/lib/python3.12/site-packages/mcp/server/mcpserver/server.py:548: in call_tool
+    return await self._tool_manager.call_tool(name, arguments, context, convert_result=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <mcp.server.mcpserver.tools.tool_manager.ToolManager object at 0x77ace01b11f0>
+name = 'update_workspace'
+arguments = {'workspace_id': 'mindstella-ws-000000', 'flow': {'source': 'aituber', 'doc': 'flow-1'}, 'remove_flow': True}
+context = Context(), convert_result = True
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        context: Context[LifespanContextT, RequestT],
+        convert_result: bool = False,
+    ) -> Any:
+        """Call a tool by name with arguments."""
+        tool = self.get_tool(name)
+        if not tool:
+>           raise ToolError(f"Unknown tool: {name}")
+E           mcp.server.mcpserver.exceptions.ToolError: Unknown tool: update_workspace
+
+/tmp/pr604-venv/lib/python3.12/site-packages/mcp/server/mcpserver/tools/tool_manager.py:85: ToolError
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /tmp/pr604-venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_server.py::test_build_server - AssertionError:...
+FAILED tests/unit/scripts/test_server.py::test_build_server_api_tools - Asser...
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_update_workspace_omits_null
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_update_workspace_remove_flow
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_update_workspace_flow_conflict
+5 failed, 1571 passed, 1 skipped, 5 warnings in 34.35s
