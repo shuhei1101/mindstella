@@ -13,7 +13,7 @@ preconditions:
   - MindStella のセッションが、単一ユースケース『外部のアプリから起動する』か『端末から起動する』で一度起動している
   - ワークスペースがクローズ待ちでもクローズ済みでもない
 success_guarantee: MindStella のセッションが同じ MindStella のセッションの ID のまま起動中に戻り、状態に新しい Claude Code の `session_id` が記録されている。利用上限・しきい値・落ちた後のコメント・起動し直しの依頼では前の会話を引き継ぎ、圧縮では新規の会話で起動し直す。起動し直しの前に届いていたコメントは、起動し直した MindStella のセッションに取り込み待ちとして届く。
-minimal_guarantee: 起動し直しに失敗しても、届いたコメントは取り込み待ちのスレッドに残り、失敗した段階と理由が状態に記録されて『MindStella のセッションの一覧』で分かる。起動し直しの途中に失敗したときは、起動したプロセスを止めて tmux のペインを閉じる。しきい値の契機は、切り替え先のアカウントが無いときと利用枠を確かめられないときに止めず、今のアカウントで続ける。
+minimal_guarantee: 起動し直しに失敗しても、届いたコメントは取り込み待ちのスレッドに残り、失敗した段階と理由が状態に記録されて『MindStella のセッションの一覧』で分かる。起動し直しの途中に失敗したときは、起動したプロセスを止めて tmux のペインを閉じる。しきい値の契機は、止める前に切り替え先のアカウントが無いと分かったときと利用枠を確かめられないときに止めず、今のアカウントで続ける。
 frequency: 利用上限・しきい値・圧縮・落ちた後のコメント・起動し直しの依頼のたびに 1 回
 priority: 高
 scenarios:
@@ -274,7 +274,7 @@ scenarios:
         MGR->>MGR: 応答の途中なので、終わるまで待つ
         CC->>MGR: 応答の終わり（Stop のフック）
         MGR->>CC: 止めて tmux のペインを閉じる
-        MGR->>DC: 止まった理由「利用枠のしきい値」で通知する
+        MGR->>DC: 止まった理由「利用枠の残りが少ないため切り替え」で通知する
         MGR->>CB: tmux のペインの中で exec を起動する（claude --resume {前の session_id}）
         CB->>CC: しきい値以上のアカウント A を除き、アカウント B で前の会話を引き継いで起動する
         CC->>MGR: SessionStart（resume）で新しい session_id・アカウント B を登録する
@@ -284,7 +284,7 @@ scenarios:
       - Mock の Claude Code が Stop のフックを叩いた後に `/exit` を受けている
       - Mock の claude-balancer が `exec` を 2 回受け、2 回目の引数に `--resume` と 1 回目の Claude Code の `session_id` がある
       - 2 回目に起動した Claude Code の `CLAUDE_CONFIG_DIR` がアカウント B の設定のフォルダである
-      - Webhook の Mock が、止まった理由「利用枠のしきい値」の通知を 1 件だけ受けている
+      - Webhook の Mock が、止まった理由「利用枠の残りが少ないため切り替え」の通知を 1 件だけ受けている
       - 『MindStella のセッションの一覧』が、1 回目と同じ MindStella のセッションの ID を `running` で返し、アカウントが B である
     test: test_normal_when_usage_over_threshold
   - name: 正常シナリオ（しきい値以上で切り替え先のアカウントが無い）
@@ -342,6 +342,39 @@ scenarios:
       - Mock の Claude Code が `/exit` を受けていない
       - 『MindStella のセッションの一覧』が、同じ MindStella のセッションの ID を `running` で返す
     test: test_normal_when_usage_unavailable
+  - name: 異常シナリオ（しきい値以上で止めた後に借りられない）
+    setup:
+      - name: Mock
+        description: claude-balancer の CLI（`PATH` の先頭に置く。1 回目の `exec` は `--` の後のコマンドをアカウント A の `CLAUDE_CONFIG_DIR` で実行し、2 回目は借りられないとして子プロセスを起動せず終了コード 125 で終わり、標準エラーに理由を書く）・claude-balancer の常駐（`GET /accounts` を返す HTTP のエンドポイント。アカウント A を貸せない理由が 5 時間枠のしきい値以上、アカウント B を貸せる状態で返す）・Claude Code（`PATH` の先頭に置く。SessionStart のフックを叩いて待ち、`/exit` が貼られたら SessionEnd のフックを叩いて終わる）・Discord の Webhook（受けた本文を記録する HTTP のエンドポイント）
+      - name: 常駐サーバー
+        description: 正常シナリオ（しきい値以上）と同じ
+      - name: tmux
+        description: 正常シナリオ（利用上限）と同じ
+      - name: ワークスペース
+        description: MindStella のセッションがアカウント A で起動中で、取り込み待ちのスレッドを 1 件持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant MGR as セッションの管理
+        participant CBA as claude-balancer の常駐
+        participant CC as MindStella のセッション
+        participant CB as claude-balancer
+        participant DC as Discord
+
+        MGR->>CBA: 一定の間隔で、使用中のアカウントの利用枠を確かめる
+        CBA-->>MGR: アカウント A はしきい値以上・アカウント B は貸せる
+        MGR->>CC: 止めて tmux のペインを閉じる
+        MGR->>DC: 止まった理由「利用枠の残りが少ないため切り替え」で通知する
+        MGR->>CB: exec を起動する（claude --resume {前の session_id}）
+        CB-->>MGR: 終了コード 125（借りられない）
+        MGR->>MGR: ペインを閉じ、失敗した段階と理由を状態に記録する
+      ```
+    expected:
+      - 『MindStella のセッションの一覧』が、落ちている状態と、起動し直しに失敗した段階（アカウント）と理由（claude-balancer の標準エラー）を返す
+      - 取り込み待ちのスレッドが残っている
+      - tmux のペインが残っていない
+      - Webhook の Mock が、止まった理由「利用枠の残りが少ないため切り替え」の通知を 1 件だけ受け、起動し直しの失敗で重ねて通知を受けていない
+    test: test_error_when_no_account_after_usage_over_threshold
 refs:
   - SC-531-1#
   - SC-531-2#
