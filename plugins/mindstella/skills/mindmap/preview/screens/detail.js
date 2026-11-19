@@ -394,7 +394,8 @@ var MindmapPreview;
                                                     body: edit.editBody,
                                                     error: edit.editError,
                                                     focus: MindmapPreview.REVIEW_FOCUS,
-                                                    on: { saveEdit: edit.on.saveEdit, cancelEdit: edit.on.cancelEdit },
+                                                    voice: edit.editVoice ?? null,
+                                                    on: { saveEdit: edit.on.saveEdit, cancelEdit: edit.on.cancelEdit, voiceStart: edit.on.voiceStart, voiceCancel: edit.on.voiceCancel, voiceDone: edit.on.voiceDone, voiceBlocked: edit.on.voiceBlocked },
                                                 })
                                                 : fold?.body ?? null,
                                             // 開閉のボタンだけの行（ボタンを出さない間は CSS で行ごと出さない）

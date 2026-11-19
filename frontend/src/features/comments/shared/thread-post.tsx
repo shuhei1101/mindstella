@@ -4,13 +4,15 @@ import { AUTHOR_LABELS, PendingMark } from "@/features/comments/shared/thread-st
 import { Icon } from "@/shared/components/icon";
 import { PostBody } from "@/shared/components/post-body";
 import { ReviewBodyFold } from "@/shared/components/review-body-fold";
+import type { VoiceProps } from "@/shared/components/send-form";
 import { Button } from "@/shared/components/ui/button";
 import { reviewLabel, type ReviewItem, type ThreadEvent, type ThreadPostData } from "@/shared/core/comments";
 import { formatJst } from "@/shared/core/format";
 import type { LookupTitle } from "@/shared/core/post-links";
+import type { VoiceStatus } from "@/shared/hooks/use-voice-input";
 import { cn } from "@/shared/lib/cn";
 
-export type ThreadPostProps = {
+export type ThreadPostProps = Pick<VoiceProps, "voice" | "voiceReason" | "elapsed" | "levels"> & {
   post?: ThreadPostData | null;
   event?: ThreadEvent | null;
   pending?: ReviewItem | null;
@@ -20,10 +22,19 @@ export type ThreadPostProps = {
   editError?: string | null;
   editBody?: string | null;
   open?: boolean;
+  /** 修正の入力の音声入力の結果 */
+  voiceStatus?: VoiceStatus;
+  voiceDetail?: string | null;
   onOpenItem?: (id: string) => void;
   onEditStart?: (id: string) => void;
   onEditSubmit?: (id: string, body: string) => void;
   onEditCancel?: (id: string) => void;
+  /** 修正の入力の中身を書き換えた */
+  onEditInput?: (id: string, body: string) => void;
+  onEditVoiceStart?: () => void;
+  onEditVoiceCancel?: () => void;
+  onEditVoiceDone?: () => void;
+  onEditVoiceBlocked?: () => void;
   onRemove?: (id: string) => void;
   onOpenChangeSet?: (id: string) => void;
   onToggle?: (id: string, open: boolean) => void;
@@ -56,10 +67,21 @@ export const ThreadPost = ({
   editError = null,
   editBody = null,
   open = false,
+  voice,
+  voiceReason = null,
+  elapsed = 0,
+  levels = [],
+  voiceStatus = "idle",
+  voiceDetail = null,
   onOpenItem,
   onEditStart = noop,
   onEditSubmit = noop,
   onEditCancel = noop,
+  onEditInput = noop,
+  onEditVoiceStart,
+  onEditVoiceCancel,
+  onEditVoiceDone,
+  onEditVoiceBlocked,
   onRemove = noop,
   onOpenChangeSet,
   onToggle = noop,
@@ -85,7 +107,25 @@ export const ThreadPost = ({
           )}
         </div>
         {editing ? (
-          <ReviewEditForm id={pending.id} label={label} body={editBody ?? pending.body} error={editError} onSubmit={onEditSubmit} onCancel={onEditCancel} />
+          <ReviewEditForm
+            id={pending.id}
+            label={label}
+            body={editBody ?? pending.body}
+            error={editError}
+            voice={voice}
+            voiceReason={voiceReason}
+            elapsed={elapsed}
+            levels={levels}
+            voiceStatus={voiceStatus}
+            voiceDetail={voiceDetail}
+            onBodyChange={(body) => onEditInput(pending.id, body)}
+            onSubmit={onEditSubmit}
+            onCancel={onEditCancel}
+            onVoiceStart={onEditVoiceStart}
+            onVoiceCancel={onEditVoiceCancel}
+            onVoiceDone={onEditVoiceDone}
+            onVoiceBlocked={onEditVoiceBlocked}
+          />
         ) : (
           <ReviewBodyFold id={pending.id} label={label} body={pending.body} titles={titles} changeSets={changeSets} open={open} onToggle={onToggle} onOpenChangeSet={onOpenChangeSet} onOpenItem={onOpenItem}>
             {(content, toggle) => (

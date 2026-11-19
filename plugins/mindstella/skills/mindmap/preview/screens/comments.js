@@ -129,7 +129,9 @@ var MindmapPreview;
         });
     }
     /** 本文をその場で書き換える入力欄と「キャンセル」「修正」（コメントの一覧と詳細パネルが使う） */
-    function reviewEditForm({ item, body, error, focus, on, }) {
+    function reviewEditForm({ item, body, error, focus, voice = null, on, }) {
+        const phase = voice?.voice ?? "idle";
+        const recording = phase === "recording" || phase === "transcribing";
         const field = MindmapPreview.h({
             tag: "textarea",
             attrs: {
@@ -139,6 +141,9 @@ var MindmapPreview;
                 "aria-label": `${item.id} へのコメントの本文`,
                 "aria-keyshortcuts": "Control+Enter",
                 "data-focus": `${focus}edit:${item.id}`,
+                // 録音中は波形と入れ替えて隠し、文字起こし中は書き換えさせない（外さないので中身と選んだ範囲が残る）
+                hidden: phase === "recording",
+                readonly: recording,
                 onkeydown: (event) => {
                     const key = event;
                     // 変換の確定の Enter では確定しない
@@ -158,6 +163,18 @@ var MindmapPreview;
         });
         // 理由があるときだけ `role="alert"` を持たせる（空のまま警告として読み上げさせない）
         const message = MindmapPreview.h({ tag: "p", attrs: { class: "send-msg failed", role: error ? "alert" : null }, children: error ? [MindmapPreview.icon("alert"), error] : [] });
+        // 音声入力の録音中・文字起こし中と結果の行（音声入力が無ければ置かない）
+        const voiceMessage = voice === null
+            ? null
+            : MindmapPreview.h({
+                tag: "p",
+                attrs: { class: `send-msg ${MindmapPreview.messageState(phase, voice.voiceStatus ?? "idle")}`, role: "status" },
+                children: MindmapPreview.voiceProgressContent(phase, voice.elapsed ?? 0) ?? MindmapPreview.voiceResultContent(voice.voiceStatus, voice.voiceDetail) ?? [],
+            });
+        const actions = [
+            MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: on.cancelEdit }, children: ["キャンセル"] }),
+            MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit", title: "修正（Ctrl+Enter）" }, children: ["修正"] }),
+        ];
         const form = MindmapPreview.h({
             tag: "form",
             attrs: {
@@ -178,14 +195,16 @@ var MindmapPreview;
             },
             children: [
                 field,
+                voice === null ? null : MindmapPreview.voiceWave(phase, voice.levels ?? []),
                 message,
+                voiceMessage,
                 MindmapPreview.h({
                     tag: "div",
                     attrs: { class: "row-edit-actions" },
-                    children: [
-                        MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: on.cancelEdit }, children: ["キャンセル"] }),
-                        MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit", title: "修正（Ctrl+Enter）" }, children: ["修正"] }),
-                    ],
+                    // 音声入力があれば「キャンセル」の左にマイク、録音中は「キャンセル」「修正」を × と ✓ に替える
+                    children: voice === null
+                        ? actions
+                        : MindmapPreview.voiceButtons({ voice: phase, voiceReason: voice.voiceReason ?? null, textarea: field, submit: MindmapPreview.h({ tag: "span", attrs: { class: "row-edit-submit" }, children: actions }), on }),
                 }),
             ],
         });
@@ -343,7 +362,8 @@ var MindmapPreview;
                                 body: props.editBody ?? null,
                                 error: props.editError ?? null,
                                 focus: "",
-                                on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit },
+                                voice: props.editVoice ?? null,
+                                on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit, voiceStart: props.on.voiceStart, voiceCancel: props.on.voiceCancel, voiceDone: props.on.voiceDone, voiceBlocked: props.on.voiceBlocked },
                             })
                             : fold?.body ?? null,
                         // クローズのスレッドへの返信: 送れない理由と、そのスレッドを開く入口
@@ -741,8 +761,13 @@ var MindmapPreview;
             editing: props.editing === item.id && props.editingIn !== "detail",
             editBody: props.editBody ?? null,
             editError: props.editError ?? null,
+            ...(props.editVoice ?? {}),
             open: props.expanded.has(item.id),
             on: {
+                editVoiceStart: props.on.voiceStart,
+                editVoiceCancel: props.on.voiceCancel,
+                editVoiceDone: props.on.voiceDone,
+                editVoiceBlocked: props.on.voiceBlocked,
                 openId: (id) => props.on.openId(id),
                 changeSet: props.on.changeSet,
                 edit: props.on.edit,

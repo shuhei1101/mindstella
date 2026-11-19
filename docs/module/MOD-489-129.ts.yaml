@@ -44,3 +44,4 @@ functions:
     container: frontend/src/shared/hooks/use-preview-search.ts
 notes:
   単体テスト: 同じフォルダの `use-preview-search.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  修正の入力の音声入力: '`VoiceTarget` にレビュー中の書き込みの画面 `{review: true}` を追加する。`openVoiceInput` は受けたら `panel=comments&review=1`（`thread` を除外）に置き換える'

@@ -16,6 +16,7 @@ import { locationLabel, type Location } from "@/shared/core/records";
 import { commentsQuery } from "@/shared/hooks/preview-queries";
 import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from "@/shared/hooks/use-comments";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
+import { voiceEditingOf } from "@/shared/stores/voice-store";
 import { useFocusAfterAddTarget, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 
 export type DetailCommentsProps = {
@@ -60,7 +61,12 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
   const [form, setForm] = useState<{ body: string | null; status: SendStatus; count: number | null; detail: string | null }>({ body: null, status: "idle", count: null, detail: null });
   const [entry, setEntry] = useState<Entry | null>(null);
   const [removed, setRemoved] = useState<ReviewItem[]>([]);
-  const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(null);
+  // 書き換えている行。録音中か結果待ちの修正の入力があれば、その行を書き換えている状態で開く
+  const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(() => {
+    const voiced = voiceEditingOf("panel");
+    const item = voiced === null ? undefined : items.find((one) => one.id === voiced);
+    return item === undefined ? null : { id: item.id, body: item.body, error: null };
+  });
   const [opened, setOpened] = useState<Record<string, boolean>>({});
 
   // 本文の選択（ブラウザの選択の API）と同期して、選んだ箇所の入口を出す
@@ -123,6 +129,22 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
       return { start: field?.selectionStart ?? text.length, end: field?.selectionEnd ?? text.length };
     },
   });
+  // 修正の入力の音声入力（挿入だけ）。コメントの入力とは別の入力欄で、画面で同時に 1 つだけ録音する
+  const editVoice = useVoiceInput({
+    key: `review:${editing?.id ?? ""}`,
+    destination: { review: editing?.id ?? "", thread: null, target: id },
+    view: "panel",
+    label: `${editing?.id ?? ""} へのコメントの修正`,
+    body: editing?.body ?? "",
+    onBodyChange: (next) => {
+      setEditing((current) => (current === null ? current : { ...current, body: next }));
+    },
+    getSelection: () => {
+      const field = host.current?.querySelector<HTMLTextAreaElement>(`[data-comment="${CSS.escape(editing?.id ?? "")}"] form[data-part="edit"] textarea`);
+      const length = editing?.body.length ?? 0;
+      return { start: field?.selectionStart ?? length, end: field?.selectionEnd ?? length };
+    },
+  });
   return (
     <div ref={host} className="sticky bottom-0 grid gap-2 bg-card">
       {shown.length === 0 ? (
@@ -174,9 +196,23 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
                     <ReviewEditForm
                       id={item.id}
                       label={label}
-                      body={item.body}
+                      body={editing.body}
                       error={editing.error}
                       saving={update.isPending}
+                      voice={editVoice.voice}
+                      voiceReason={editVoice.voiceReason}
+                      elapsed={editVoice.elapsed}
+                      levels={editVoice.levels}
+                      voiceStatus={editVoice.status}
+                      voiceDetail={editVoice.detail}
+                      onBodyChange={(next) => {
+                        editVoice.clearResult();
+                        setEditing((current) => (current === null ? current : { ...current, body: next }));
+                      }}
+                      onVoiceStart={() => void editVoice.onVoiceStart()}
+                      onVoiceCancel={editVoice.onVoiceCancel}
+                      onVoiceDone={() => void editVoice.onVoiceDone()}
+                      onVoiceBlocked={editVoice.onVoiceBlocked}
                       onCancel={() => {
                         focusAfter(() => { setEditing(null); }, `[data-focus="edit:${item.id}"]`);
                       }}

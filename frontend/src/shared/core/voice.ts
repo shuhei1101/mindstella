@@ -154,8 +154,11 @@ export const acquireWakeLock = async (): Promise<() => void> => {
   }
 };
 
-/** 項目の ID とスレッドの ID の集まりから、録音の行き先があるかを返す関数を作る */
+/** 項目の ID とスレッドの ID（レビュー中の書き込みの ID を含む）の集まりから、録音の行き先があるかを返す関数を作る */
 export const voiceDestinationExists =
   ({ itemIds, threadIds }: { itemIds: ReadonlySet<string>; threadIds: ReadonlySet<string> }) =>
-  (destination: VoiceDestination): boolean =>
-    "thread" in destination ? threadIds.has(destination.thread) : destination.target === null || itemIds.has(destination.target);
+  (destination: VoiceDestination): boolean => {
+    // 修正の入力はレビュー中の書き込みがあるか
+    if ("review" in destination) return threadIds.has(destination.review);
+    return "thread" in destination ? threadIds.has(destination.thread) : destination.target === null || itemIds.has(destination.target);
+  };
