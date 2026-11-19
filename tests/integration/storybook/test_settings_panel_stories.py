@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from playwright.sync_api import Page
 from storybook_fixture_types import OpenStory
 
@@ -223,7 +225,7 @@ def test_focus_after_add_coarse(open_story: OpenStory) -> None:
     # 検証（区画「詳細に表示するもの」の下に区画「コメントの入力」があり、3 つのラジオのうち「自動」が選ばれている）
     assert section.count() == 1
     assert group.get_by_role("radio").count() == 3
-    assert group.get_by_role("radio", name="自動この端末では戻しません").is_checked()
+    assert group.get_by_role("radio", name=re.compile(r"^自動\s*この端末では戻しません$")).is_checked()
     assert group.get_by_role("radio", name="入力欄へ戻す").is_checked() is False
     assert group.get_by_role("radio", name="戻さない").is_checked() is False
     # 検証（グループの説明が区画の下の説明を指す）

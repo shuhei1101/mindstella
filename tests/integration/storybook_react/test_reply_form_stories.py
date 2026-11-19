@@ -70,7 +70,7 @@ def test_empty(open_story: OpenStory) -> None:
     assert page.inner_text(SEND).strip() == ""
     # 押せないがフォーカスは受ける（溜めた後に「レビューに追加」へフォーカスを移せる）
     assert page.get_attribute(SEND, "aria-disabled") == "true"
-    assert page.is_enabled(SEND)
+    assert page.get_attribute(SEND, "disabled") is None
     assert_submit_beside_field(page)
 
 
