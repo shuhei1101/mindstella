@@ -1,0 +1,52 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-604-1.yaml
+    impact: new
+    detail: 外部のアプリが、作ったワークスペースの進め方の文書・追加の MCP・プラグインを指定し直し、起動中の MindStella のセッションを起動し直して反映する。読めない指定は何も記録せずに失敗として受け取る（資料 A-107 の No 9・D-324）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: following
+    detail: 作成で追加の MCP・プラグインを記録しなかったときの指定し直しを、新しい設定の書き換えのユースケースへつなぐ
+    depends_on:
+      - docs/scenario/SC-604-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-597-1.yaml
+    impact: following
+    detail: 状態の取得で記録が無いと分かったときの指定し直しを、新しい設定の書き換えのユースケースへつなぎ、スコープ外の行を外す
+    depends_on:
+      - docs/scenario/SC-604-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-601-1.yaml
+    impact: following
+    detail: 'スコープ外の「設定の書き換えは #524」を、新しい設定の書き換えのユースケースへの参照にする'
+    depends_on:
+      - docs/scenario/SC-604-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-582-1.yaml
+    impact: run_only
+    detail: 書き換えた後の起動し直しで、新しい進め方の文書・追加の MCP・プラグインで起動することを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-36.yaml
+    impact: run_only
+    detail: MindStella のセッションが題名などの設定を書き換える流れが、設定の書き換えの追加で変わらないかを確かめる
+    depends_on: []
+docs:
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 設定の書き換え（PATCH /workspaces/{id}）の API と、MindStella の MCP の同じ処理を呼ぶツールを追加し、起動中の MindStella のセッションへの反映は起動し直しで行うことを記載する
+    status: todo
+scope_out:
+  - item: 設定の書き換えを受けたときに、起動中の MindStella のセッションを自動で起動し直す
+    reason: 起動中の MindStella のセッションには反映せず、外部のアプリが起動し直しを依頼すると決めている（資料 A-119 の「設定の書き換え」・D-324）
+    plan: none
+  - item: 画面から進め方の文書・追加の MCP・プラグインを書き換える
+    reason: 要望は API と MCP のツールで、画面の変更を含まない（資料 A-107 の No 9）
+    plan: none
+  - item: 常駐サーバーの起動のときに、ID の一覧と状態の記録を照合する
+    reason: 資料 A-107 の No 10 で別の Issue にしている
+    plan: '#525'
+  - item: インターフェース定義『MCP サーバーの起動』のツールとエンドポイントの一覧に、restart_session と起動し直しのエンドポイントを記載する
+    reason: 'PR #582 からの記載漏れで、今回の要望（設定の書き換え）に含まれない'
+    plan: '#602'
