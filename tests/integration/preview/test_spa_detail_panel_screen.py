@@ -107,7 +107,7 @@ def test_back_keeps_trail_over_filter(page: Page, spa_preview: str) -> None:
 def test_restores_body_scroll(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """本文を送った項目を開き直すと、その位置へ戻る（正常系）。"""
     long_body = "\n\n".join(f"段落 {number}" for number in range(200))
-    url = write_preview(make_item("D-1", title="長い本文", status="未決定", body="docs/D-1.md"), make_item("D-2", title="別の項目", status="未決定"), bodies={"D-1.md": long_body})
+    url = write_preview(make_item("D-1", title="長い本文", status="未決定", body="docs/D-1.mark.md"), make_item("D-2", title="別の項目", status="未決定"), bodies={"D-1.mark.md": long_body})
     open_spa(page, url, "?tab=decisions&id=D-1")
     page.get_by_text("段落 199").wait_for()
     page.locator("aside .panel-body").evaluate(f"(element) => {{ element.scrollTop = {SCROLLED_TOP}; }}")
@@ -154,7 +154,7 @@ def _linked(page: Page, write_preview: WritePreview, make_item: MakeItem) -> Loc
         make_item("D-3"),
         make_item("G-1", title="保存先", meaning="記録を置く場所"),
         make_item("G-3", title="AI", meaning="人工知能"),
-        bodies={"A-1.md": LINKED_BODY},
+        bodies={"A-1.mark.md": LINKED_BODY},
     )
     open_spa(page, url, "?tab=docs&id=A-1")
     panel = _panel(page)
@@ -229,7 +229,7 @@ def _scroll_by_arrow(page: Page, code: Locator) -> None:
 def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """本文のコードブロックは、長い行を折り返さずコードブロックの中だけで横に送り、フォーカスで止まって矢印で送れ、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_LINES_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": LONG_LINES_BODY})
     open_spa(page, url, "?tab=docs&id=A-1")
     code = _panel(page).locator(".md pre[tabindex='0']").first
     expect(code).to_be_visible()
@@ -244,7 +244,7 @@ def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make
 def test_body_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """本文は、項目が Markdown の `body` を持つときに mdmark で描き、HTML の本文では枠で描く（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), make_item("A-2", body="docs/A-2.html"), bodies={"A-1.md": "## 見出し\n\n段落\n", "A-2.html": HTML_BODY})
+    url = write_preview(make_item("A-1"), make_item("A-2", body="docs/A-2.html"), bodies={"A-1.mark.md": "## 見出し\n\n段落\n", "A-2.html": HTML_BODY})
     open_spa(page, url, "?tab=docs&id=A-1")
     expect(_panel(page).locator(".md").get_by_role("heading", name="見出し")).to_be_visible()
     # 実行
@@ -308,14 +308,14 @@ LONG_COMMENT = "\n\n".join(f"{index} 行目のコメント" for index in range(1
 def comment_preview(write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment) -> tuple[str, Path]:
     """D-1 へのレビュー中のコメント C-1（5 行目の箇所つき）・C-2・C-3（長い本文）を持つワークスペースの配信の URL とフォルダを返す。"""
     return write_review_preview(
-        make_item("D-1", title="記録の形", status="未決定", body="docs/D-1.md"),
+        make_item("D-1", title="記録の形", status="未決定", body="docs/D-1.mark.md"),
         make_item("D-2", title="画面の幅", status="保留"),
         comments=(
             make_comment("C-1", target="D-1", loc={"kind": "body", "start": 5, "end": 5, "text": "二つ目の段落"}, body="ここを直す"),
             make_comment("C-2", target="D-1", body="D-2 と合わせたい"),
             make_comment("C-3", target="D-1", body=LONG_COMMENT),
         ),
-        bodies={"D-1.md": COMMENT_BODY},
+        bodies={"D-1.mark.md": COMMENT_BODY},
     )
 
 
@@ -668,7 +668,7 @@ def test_heading_link_label(page: Page, write_preview: WritePreview, make_item: 
 def test_heading_link_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """見出しの無い本文には、見出しのリンクを置かない（正常系）。"""
     # 準備・実行
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": "見出しの無い段落\n"})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": "見出しの無い段落\n"})
     open_spa(page, url, "?tab=docs&id=A-1")
     _panel(page).locator(".md p").wait_for()
     # 検証
@@ -838,7 +838,7 @@ def test_html_body_action(page: Page, write_preview: WritePreview, make_item: Ma
 def test_html_code_block_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """Markdown の本文の `html` のコードブロックは、コードではなく枠で描く（正常系）。"""
     # 準備・実行
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": "前の段落\n\n```html\n<p>枠の中の段落</p>\n```\n"})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": "前の段落\n\n```html\n<p>枠の中の段落</p>\n```\n"})
     open_spa(page, url, "?tab=docs&id=A-1")
     # 検証
     expect(_panel(page).frame_locator(".md iframe.html-frame").locator("p")).to_have_text("枠の中の段落")
@@ -847,7 +847,7 @@ def test_html_code_block_visible(page: Page, write_preview: WritePreview, make_i
 def test_html_code_block_action(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """`html` のコードブロックの枠の中の相対の URL のリンクは、押しても移らない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": '```html\n<p><a id="rel" href="other.html">相対</a></p>\n```\n'})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": '```html\n<p><a id="rel" href="other.html">相対</a></p>\n```\n'})
     open_spa(page, url, "?tab=docs&id=A-1")
     frame = _panel(page).frame_locator(".md iframe.html-frame")
     before = page.url
@@ -880,7 +880,7 @@ def test_html_body_diff_action(page: Page, write_html_body_layout_preview: Write
 def test_description_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """説明の節は `description` を持つ資料・調査にだけ出す（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", description="資料の説明"), make_item("A-2"), bodies={"A-1.md": "本文\n", "A-2.md": "本文\n"})
+    url = write_preview(make_item("A-1", description="資料の説明"), make_item("A-2"), bodies={"A-1.mark.md": "本文\n", "A-2.mark.md": "本文\n"})
     open_spa(page, url, "?tab=docs&id=A-1")
     expect(_panel(page).locator("[data-key=description]")).to_contain_text("資料の説明")
     # 実行
@@ -892,7 +892,7 @@ def test_description_visible(page: Page, write_preview: WritePreview, make_item:
 def test_aliases_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """エイリアスの節は `aliases` を持つ資料・調査にだけ出す（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", aliases=["特殊効果"]), make_item("A-2"), bodies={"A-1.md": "本文\n", "A-2.md": "本文\n"})
+    url = write_preview(make_item("A-1", aliases=["特殊効果"]), make_item("A-2"), bodies={"A-1.mark.md": "本文\n", "A-2.mark.md": "本文\n"})
     open_spa(page, url, "?tab=docs&id=A-1")
     expect(_panel(page).get_by_role("heading", name="エイリアス")).to_be_visible()
     # 実行
@@ -914,7 +914,7 @@ def test_head_title_visible(page: Page, write_preview: WritePreview, make_item: 
     """見出しのタイトルは本文の先頭のタイトルが外れている間だけ出す（正常系）。"""
     # 準備
     long_body = "\n\n".join(f"{number} 番目の段落" for number in range(1, 121)) + "\n"
-    url = write_preview(make_item("A-1", title="長い本文の資料"), bodies={"A-1.md": long_body})
+    url = write_preview(make_item("A-1", title="長い本文の資料"), bodies={"A-1.mark.md": long_body})
     open_spa(page, url, "?tab=docs&id=A-1")
     head = _panel(page).locator("span[aria-hidden=true][title='長い本文の資料']")
     expect(head).to_have_css("opacity", "0")
@@ -1150,7 +1150,7 @@ def test_resizer_action(page: Page, spa_preview: str) -> None:
 def test_export_label(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """エクスポートのボタンの読み上げの名前は「エクスポート」（正常系）。"""
     # 準備・実行
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": "本文\n"})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": "本文\n"})
     open_spa(page, url, "?tab=docs&id=A-1")
     # 検証
     expect(_panel(page).get_by_role("button", name="エクスポート", exact=True)).to_be_visible()
@@ -1159,7 +1159,7 @@ def test_export_label(page: Page, write_preview: WritePreview, make_item: MakeIt
 def test_export_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """エクスポートは本文が Markdown の資料にだけ置き、HTML の資料・資料以外・編集の表示の間は置かない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), make_item("A-2", body="docs/A-2.html"), make_item("D-1"), bodies={"A-1.md": "本文\n", "A-2.html": HTML_BODY})
+    url = write_preview(make_item("A-1"), make_item("A-2", body="docs/A-2.html"), make_item("D-1"), bodies={"A-1.mark.md": "本文\n", "A-2.html": HTML_BODY})
     # 実行・検証（HTML の資料と資料以外）
     open_spa(page, url, "?tab=docs&id=A-2")
     expect(_panel(page).get_by_role("button", name="エクスポート", exact=True)).to_have_count(0)
@@ -1174,7 +1174,7 @@ def test_export_visible(page: Page, write_preview: WritePreview, make_item: Make
 def test_export_menu_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """エクスポートのメニューは「エクスポート」を押した間だけ出す（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": "本文\n"})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": "本文\n"})
     open_spa(page, url, "?tab=docs&id=A-1")
     expect(page.get_by_role("dialog", name="エクスポート")).to_have_count(0)
     # 実行
@@ -1184,9 +1184,9 @@ def test_export_menu_visible(page: Page, write_preview: WritePreview, make_item:
 
 
 def test_export_menu_action(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
-    """Markdown でエクスポートすると、サーバーの API を呼ばずに `{ID}.md` をダウンロードさせる（正常系）。"""
+    """Markdown でエクスポートすると、サーバーの API を呼ばずに `{ID}.mark.md` をダウンロードさせる（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": "本文の段落\n"})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": "本文の段落\n"})
     open_spa(page, url, "?tab=docs&id=A-1")
     _panel(page).get_by_role("button", name="エクスポート", exact=True).click()
     page.get_by_role("button", name=re.compile("^Markdown でエクスポート")).click()
@@ -1194,13 +1194,13 @@ def test_export_menu_action(page: Page, write_preview: WritePreview, make_item: 
     with page.expect_download() as download:
         page.get_by_role("button", name="エクスポート", exact=True).last.click()
     # 検証
-    assert download.value.suggested_filename == "A-1.md"
+    assert download.value.suggested_filename == "A-1.mark.md"
 
 
 def test_copy_value_label(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """操作できる部品の今の値をコピーするボタンの文言は「今の値をコピー」（正常系）。"""
     # 準備・実行
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": EMBEDDED_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": EMBEDDED_BODY})
     open_spa(page, url, "?tab=docs&id=A-1")
     # 検証
     expect(_panel(page).get_by_role("button", name="今の値をコピー")).to_have_text(re.compile("今の値をコピー"), timeout=DIAGRAM_TIMEOUT_MS)

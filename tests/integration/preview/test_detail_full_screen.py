@@ -356,7 +356,7 @@ def test_comment_input_keeps_location(
 ) -> None:
     """パネルで添えた箇所は、全画面へ切り替えても保つ（正常系）。"""
     # 準備
-    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md:not(.md-value)")
     select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
@@ -511,7 +511,7 @@ def test_selection_entry(
 ) -> None:
     """全画面でも本文の文を選ぶと入口を出し、入口はモーダルの中に置く。押すと箇所を添える（正常系）。"""
     # 準備
-    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open] .md")
     # 実行
@@ -527,7 +527,7 @@ def test_selection_entry_position_when_fits_above(
 ) -> None:
     """全画面でも、入口を選んだ範囲の始まりの上に、左端を揃えた 32px の丸で出す（正常系）。"""
     # 準備
-    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open] .md")
     page.evaluate(ANIMATIONS_FINISHED_JS)
@@ -547,7 +547,7 @@ def test_selection_entry_position_when_near_scroller_top(
 ) -> None:
     """選んだ範囲の始まりが本文のスクロール領域の上端の近くにあると、入口を選んだ範囲の終わりの下に、終わりの行の左端を揃えて出す（正常系）。"""
     # 準備（60 番目の段落を、本文のスクロール領域の上端に合わせる）
-    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.mark.md": LONG_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open] .md")
     page.evaluate(SCROLL_TEXT_TO_TOP_JS, [FULL_BODY, "60 番目の段落"])
@@ -566,7 +566,7 @@ def test_selection_entry_when_switched_from_panel(
 ) -> None:
     """詳細パネルから全画面に切り替えた後も、本文の文を選ぶと入口を全画面の中に 1 つ出す（正常系）。"""
     # 準備（詳細パネルで開き、文書に aside.panel が残る状態で全画面に切り替える）
-    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md")
     _open_full(page)
@@ -603,7 +603,7 @@ def _open_long_body_full(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> Page:
     """フォーカスできる要素を持たない、縦にあふれる本文の項目を全画面で開く。"""
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": LONG_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector(f"{FULL_BODY} .md")
     # 前提: 本文の中にフォーカスできる要素は無く、縦にあふれている
@@ -676,7 +676,7 @@ def test_body_focus_when_redrawn(
 ) -> None:
     """詳細パネルから全画面へ移った後、本文のスクロール領域にフォーカスして送り、書き換えの知らせで描き直しても、フォーカスとスクロールの位置が残る（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": LONG_BODY})
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
     page = open_preview(str(served.data["url"]), "#tab=docs&id=A-1")
@@ -867,7 +867,7 @@ def test_body_heading_link(
         make_item("A-1"),
         make_item("D-3"),
         make_item("G-1", title="保存先"),
-        bodies={"A-1.md": body},
+        bodies={"A-1.mark.md": body},
     )
     page = open_preview(url, "#tab=docs&view=table&id=A-1&full=1")
     page.wait_for_selector("dialog.full [data-heading]")
@@ -910,7 +910,7 @@ def test_code_block_and_diagram_raw_when_long_line(
 ) -> None:
     """全画面でも、本文のコードブロックは長い行を折り返さずコードブロックの中だけで横に送り、図の Raw は折り返して横にあふれず、どちらも axe の `scrollable-region-focusable` に当たらない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_LINES_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": LONG_LINES_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     # 実行
@@ -1051,7 +1051,7 @@ def test_head_title_on_scroll(
 ) -> None:
     """全画面でも、本文を送って先頭のタイトルが隠れたときだけ見出しにタイトルを出し、先頭へ戻すと隠す。ボタンは押し出されない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.md": LONG_BODY})
+    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.mark.md": LONG_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open] .d-title")
     # 実行
@@ -1233,7 +1233,7 @@ def test_body_wrap_when_long_words_and_tables(
 ) -> None:
     """全画面でも、本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は mdmark の表のスクロールの区画の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="docs/A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
+    url = write_preview(make_item("A-1", body="docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.set_viewport_size({"width": width, "height": 800})
     page.wait_for_selector("dialog.full .mdmark-table .mdmark-table-scroll")
@@ -1262,7 +1262,7 @@ def test_body_table_scroll_by_keyboard(
 ) -> None:
     """全画面でも、列の多い mdmark の表はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れる（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="docs/A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
+    url = write_preview(make_item("A-1", body="docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.set_viewport_size({"width": width, "height": 800})
     table = page.locator("dialog.full .mdmark-table .mdmark-table-scroll > table").first
@@ -1366,7 +1366,7 @@ def test_export_in_full(
 ) -> None:
     """全画面の見出しにも「エクスポート」の入口を置き、メニューをモーダルの中に出す。Esc はメニューだけを閉じ、全画面は閉じない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open]")
     entry = page.locator("dialog.full button.panel-export")
@@ -1404,7 +1404,7 @@ def test_export_menu_position_in_full(
     """全画面でも、メニューは入口の下に置き、画面の幅から左右 8px を引いた幅に収める（正常系）。"""
     # 準備
     page.set_viewport_size(viewport)
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY})
     open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open]")
     entry = page.locator("dialog.full button.panel-export")
@@ -1428,7 +1428,7 @@ def test_embedded_html_in_full(
     """全画面でも埋め込んだ HTML を本文の要素として描き、本文の幅いっぱいに広げ、チャートの倍率を変えられる（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("A-1", title="埋め込む資料"), make_item("A-2"), bodies={"A-1.md": EMBEDDED_BODY}
+        make_item("A-1", title="埋め込む資料"), make_item("A-2"), bodies={"A-1.mark.md": EMBEDDED_BODY}
     )
     open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)

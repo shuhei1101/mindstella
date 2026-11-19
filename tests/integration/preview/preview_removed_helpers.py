@@ -119,7 +119,7 @@ def build_removed_workspace(
         make_item("L-1"),
         make_item("L-2"),
         make_item("L-3"),
-        bodies={"A-1.md": "資料 1 の本文\n", "A-2.md": "資料 2 の本文\n", "A-3.md": "資料 3 の本文\n"},
+        bodies={"A-1.mark.md": "資料 1 の本文\n", "A-2.mark.md": "資料 2 の本文\n", "A-3.mark.md": "資料 3 の本文\n"},
     )
     workspace = str(root)
     # V-1: 検討事項とメモを足し、調査・資料・用語集・メモ・会話ログを取り下げる

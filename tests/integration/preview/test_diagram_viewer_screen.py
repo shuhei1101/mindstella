@@ -261,7 +261,7 @@ def _open_raw(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, body: str
 ) -> Page:
     """`body` の図の拡大を開いて Raw を押し、記法の枠が出るのを待つ。"""
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": body})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": body})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     page.click('aside.panel button[data-act="diagram-zoom"]')

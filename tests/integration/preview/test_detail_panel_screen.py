@@ -436,9 +436,9 @@ def test_adopted_section(
             answer="種類ごとに分ける",
             reason="探しやすい",
             options=ADOPTED_OPTIONS,
-            body="docs/D-1.md",
+            body="docs/D-1.mark.md",
         ),
-        bodies={"D-1.md": "## 経緯\n\n本文の段落\n"},
+        bodies={"D-1.mark.md": "## 経緯\n\n本文の段落\n"},
     )
     # 実行
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
@@ -543,8 +543,8 @@ def test_body_markdown_when_line_break_in_paragraph(
     """本文の段落の中の 1 つの改行は、改行にせず 1 つの段落に結合したままにする（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("D-1", status="未決定", body="docs/D-1.md"),
-        bodies={"D-1.md": f"{LINE_BREAK_VALUE}\n"},
+        make_item("D-1", status="未決定", body="docs/D-1.mark.md"),
+        bodies={"D-1.mark.md": f"{LINE_BREAK_VALUE}\n"},
     )
     # 実行
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
@@ -642,8 +642,8 @@ def test_content_when_body_in_other_kinds(
     """タスク・用語集・メモの本文も、ほかの種類と同じ本文の節に出す（正常系）。"""
     # 準備
     url = write_preview(
-        make_item(item_id, body=f"docs/{item_id}.md"),
-        bodies={f"{item_id}.md": "## 経緯\n\n会話で持ち越した\n"},
+        make_item(item_id, body=f"docs/{item_id}.mark.md"),
+        bodies={f"{item_id}.mark.md": "## 経緯\n\n会話で持ち越した\n"},
     )
     # 実行
     page = open_preview(url, f"#tab={tab}&view=table&id={item_id}")
@@ -1263,7 +1263,7 @@ def test_comment_input_draft_when_saved_with_location(
     # 準備
     url, root = write_review_preview(
         make_item("A-1"),
-        bodies={"A-1.md": THREE_LINE_BODY},
+        bodies={"A-1.mark.md": THREE_LINE_BODY},
         drafts=(make_draft(target="A-1", body="項目への書きかけ"),),
     )
     page = open_preview(url, "#tab=docs&id=A-1")
@@ -2041,7 +2041,7 @@ def test_review_row_remove_keeps_scroll(
     # 準備
     url, _ = write_review_preview(
         make_item("A-1"),
-        bodies={"A-1.md": LONG_BODY},
+        bodies={"A-1.mark.md": LONG_BODY},
         comments=(
             make_comment("C-1", target="A-1", body="1 件目"),
             make_comment("C-2", target="A-1", body="2 件目"),
@@ -2093,7 +2093,7 @@ def test_selection_entry_when_body(
 ) -> None:
     """本文の文を選ぶと入口を出し、押すと入口を閉じて、本文の行の範囲の箇所をコメントの入力に添えて入力欄へフォーカスを移す（正常系）。"""
     # 準備
-    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md:not(.md-value)")
     history_length = page.evaluate("history.length")
@@ -2113,7 +2113,7 @@ def test_selection_entry_when_comment_input_closed(
 ) -> None:
     """コメントの入力を閉じている間に入口を押すと、開いて端末に残してから、箇所を添えた入力欄へフォーカスを移す（正常系）。"""
     # 準備
-    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md:not(.md-value)")
     page.get_by_role("button", name="コメントの入力を閉じる").click()
@@ -2163,7 +2163,7 @@ def test_selection_entry_when_closed_by_escape(
 ) -> None:
     """入口は Esc で閉じ、選んだ範囲は残す（正常系）。"""
     # 準備
-    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md:not(.md-value)")
     select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
@@ -2187,7 +2187,7 @@ def test_highlight_location(
     url, _ = write_review_preview(
         make_item("A-1"),
         make_item("D-1"),
-        bodies={"A-1.md": THREE_LINE_BODY},
+        bodies={"A-1.mark.md": THREE_LINE_BODY},
         comments=(
             make_comment(
                 "C-1",
@@ -2257,7 +2257,7 @@ def test_highlight_location_when_mismatched(
     # 準備
     url, _ = write_review_preview(
         make_item("A-1"),
-        bodies={"A-1.md": THREE_LINE_BODY},
+        bodies={"A-1.mark.md": THREE_LINE_BODY},
         comments=(
             make_comment(
                 "C-1",
@@ -2281,7 +2281,7 @@ def _open_long_body(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> Page:
     """フォーカスできる要素を持たない、縦にあふれる本文の項目を詳細パネルで開く。"""
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": LONG_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector(f"{PANEL_BODY} .md")
     # 前提: 本文の中にフォーカスできる要素は無く、縦にあふれている
@@ -2354,7 +2354,7 @@ def test_body_focus_when_redrawn(
 ) -> None:
     """本文のスクロール領域にフォーカスして送った後、書き換えの知らせで描き直しても、フォーカスとスクロールの位置が残る（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": LONG_BODY})
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
     page = open_preview(str(served.data["url"]), "#tab=docs&id=A-1")
@@ -2413,8 +2413,8 @@ def test_body_scroll_restored(
     block_web_fonts(page)
     url = write_preview(
         make_item("D-1"),
-        make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}], body="docs/D-2.md"),
-        bodies={"D-2.md": LONG_BODY},
+        make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}], body="docs/D-2.mark.md"),
+        bodies={"D-2.mark.md": LONG_BODY},
     )
     page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     page.wait_for_selector(f"{PANEL_BODY} .md")
@@ -2461,7 +2461,7 @@ def test_body_scroll_when_heading(
     """位置を残した項目でも、見出しを示して開くときは残した位置ではなく見出しを出す（正常系）。"""
     # 準備
     block_web_fonts(page)
-    url = write_preview(make_item("D-1"), make_item("D-2", body="docs/D-2.md"), bodies={"D-2.md": TAIL_HEADING_BODY})
+    url = write_preview(make_item("D-1"), make_item("D-2", body="docs/D-2.mark.md"), bodies={"D-2.mark.md": TAIL_HEADING_BODY})
     page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     page.wait_for_selector(f"{PANEL_BODY} .md")
     page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
@@ -2493,9 +2493,9 @@ def test_body_scroll_when_comment_location(
             "D-3",
             status="要見直し",
             options=[{"key": "A", "content": "表で見せる", "pros": "並べやすい", "adopted": True}],
-            body="docs/D-3.md",
+            body="docs/D-3.mark.md",
         ),
-        bodies={"D-3.md": LONG_BODY},
+        bodies={"D-3.mark.md": LONG_BODY},
         comments=(
             make_comment(
                 "C-1",
@@ -3314,7 +3314,7 @@ def _write_linked_preview(write_preview: WritePreview, make_item: MakeItem) -> s
         make_item("D-5"),
         make_item("G-1", title="保存先", meaning="記録を置く場所"),
         make_item("G-3", title="AI", meaning="人工知能"),
-        bodies={"A-1.md": LINKED_BODY},
+        bodies={"A-1.mark.md": LINKED_BODY},
     )
 
 
@@ -3919,7 +3919,7 @@ def test_detail_description_aliases(
             conclusion="調べた結論",
             aliases=["効果"],
         ),
-        bodies={"A-1.md": "本文の段落\n", "A-2.md": "本文の段落\n"},
+        bodies={"A-1.mark.md": "本文の段落\n", "A-2.mark.md": "本文の段落\n"},
     )
     sections = """() => [...document.querySelectorAll('aside.panel .detail > *')]
         .map((e) => e.dataset.key ?? e.querySelector('h3, b')?.textContent ?? '')
@@ -3972,7 +3972,7 @@ def _open_long_lines(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> Page:
     """長い行を持つコードブロックと、記法に長い行を持つ図を本文に持つ項目を詳細パネルで開く。"""
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_LINES_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": LONG_LINES_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md:not(.md-value) pre:not(.dg-raw)")
     page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
@@ -4152,7 +4152,7 @@ def test_format_badge(
         make_item("A-1", body="docs/A-1.html"),
         make_item("A-2"),
         make_item("D-1"),
-        bodies={"A-1.html": HTML_BODY, "A-2.md": "資料の本文\n"},
+        bodies={"A-1.html": HTML_BODY, "A-2.mark.md": "資料の本文\n"},
     )
     # 実行・検証
     page = open_preview(url, "#tab=docs&id=A-1")
@@ -4187,7 +4187,7 @@ def test_html_code_block(
 ) -> None:
     """Markdown の本文の中の html のコードブロックを、コードではなく枠で描く（正常系）。"""
     # 準備・実行
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": BODY_WITH_HTML_CODE_BLOCK})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": BODY_WITH_HTML_CODE_BLOCK})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, HTML_CODE_FRAME)
     # 検証
@@ -4204,7 +4204,7 @@ def test_selection_entry_position_when_fits_above(
 ) -> None:
     """本文の文を選ぶと、入口を選んだ範囲の始まりの上に、左端を揃えた 32px の丸で出す（正常系）。"""
     # 準備
-    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md:not(.md-value)")
     page.evaluate(ANIMATIONS_FINISHED_JS)
@@ -4224,7 +4224,7 @@ def test_selection_entry_position_when_near_scroller_top(
 ) -> None:
     """選んだ範囲の始まりが本文のスクロール領域の上端の近くにあると、入口を選んだ範囲の終わりの下に、終わりの行の左端を揃えて出す（正常系）。"""
     # 準備（60 番目の段落を、本文のスクロール領域の上端に合わせる）
-    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.mark.md": LONG_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md:not(.md-value)")
     page.evaluate(SCROLL_TEXT_TO_TOP_JS, [PANEL_BODY, "60 番目の段落"])
@@ -4342,7 +4342,7 @@ def test_html_code_block_when_link_pressed(
         f'```html\n<p><a id="link" href="{link_target}/code">コードブロックのリンク</a></p>\n```\n\n'
         "後の段落\n"
     )
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": body})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": body})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, HTML_CODE_FRAME)
     frame = frame_of(page, HTML_CODE_FRAME)
@@ -4439,7 +4439,7 @@ def test_head_title_on_scroll(
     url = write_preview(
         make_item("A-1", title=HEAD_LONG_TITLE),
         make_item("N-1", title=HEAD_LONG_TITLE, content=LONG_BODY),
-        bodies={"A-1.md": LONG_BODY},
+        bodies={"A-1.mark.md": LONG_BODY},
     )
     page = open_preview(url, hash_text)
     _wait_panel_settled(page)
@@ -4492,7 +4492,7 @@ def test_head_title_kind_label_when_narrow(
 ) -> None:
     """幅 480px 以下でタイトルを出している間は種類の名前を見た目から外して読み上げには残し、481px 以上では外さない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.md": LONG_BODY})
+    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.mark.md": LONG_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.set_viewport_size({"width": width, "height": NARROW_HEIGHT})
     _wait_panel_settled(page)
@@ -4539,7 +4539,7 @@ def test_head_title_motion(
 ) -> None:
     """見出しのタイトルは opacity の動きで出し入れし、動きを減らす設定では何も動かさない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.md": LONG_BODY})
+    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.mark.md": LONG_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.emulate_media(reduced_motion=reduced_motion)
     _wait_panel_settled(page)
@@ -4559,7 +4559,7 @@ def test_head_title_motion_when_reduced(
 ) -> None:
     """動きを減らす設定では、見出しのタイトルを出す指定が付いた直後から不透明になっている（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.md": LONG_BODY})
+    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.mark.md": LONG_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.emulate_media(reduced_motion="reduce")
     _wait_panel_settled(page)
@@ -5021,7 +5021,7 @@ def test_body_wrap_when_long_words_and_tables(
 ) -> None:
     """本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は mdmark の表のスクロールの区画の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="docs/A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
+    url = write_preview(make_item("A-1", body="docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.set_viewport_size({"width": width, "height": 800})
     page.wait_for_selector("aside.panel .mdmark-table .mdmark-table-scroll")
@@ -5050,7 +5050,7 @@ def test_body_table_scroll_by_keyboard(
 ) -> None:
     """列の多い mdmark の表はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れる（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="docs/A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
+    url = write_preview(make_item("A-1", body="docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.set_viewport_size({"width": width, "height": 800})
     table = page.locator("aside.panel .mdmark-table .mdmark-table-scroll > table").first
@@ -5975,7 +5975,7 @@ def _open_embedded(
         make_item("A-1", title="埋め込む資料"),
         make_item("A-2"),
         make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
-        bodies={"A-1.md": EMBEDDED_BODY},
+        bodies={"A-1.mark.md": EMBEDDED_BODY},
     )
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)
@@ -6003,7 +6003,7 @@ def test_export_entry(
         make_item("A-1", title="Markdown の資料"),
         make_item("A-2", body="docs/A-2.html"),
         make_item("D-1"),
-        bodies={"A-1.md": MARKDOWN_EXPORT_BODY, "A-2.html": "<p>HTML の本文</p>"},
+        bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY, "A-2.html": "<p>HTML の本文</p>"},
     )
     # 実行
     page = open_preview(url, hash_text)
@@ -6025,7 +6025,7 @@ def test_export_entry_when_editing(
 ) -> None:
     """編集の表示の間は、「エクスポート」の入口を置かない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel.open .d-title")
     entries = page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True)
@@ -6045,7 +6045,7 @@ def test_export_menu_toggle(
 ) -> None:
     """入口を押すとメニューを開き、開いているときに押すと閉じる。開閉は `aria-expanded` で示す（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel.open .d-title")
     history_length = page.evaluate("history.length")
@@ -6072,7 +6072,7 @@ def test_export_menu_close_by_escape(
 ) -> None:
     """Esc はメニューだけを閉じ、詳細パネルは閉じずに入口へフォーカスを戻す（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel.open .d-title")
     entry = page.locator("aside.panel button.panel-export")
@@ -6092,7 +6092,7 @@ def test_export_menu_close_by_outside_press(
 ) -> None:
     """メニューの外を押すとメニューだけを閉じ、詳細パネルは閉じない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel.open .d-title")
     page.click("aside.panel button.panel-export")
@@ -6112,7 +6112,7 @@ def test_export_menu_close_when_item_moved(
     url = write_preview(
         make_item("A-1"),
         make_item("A-2", title="移った先"),
-        bodies={"A-1.md": MARKDOWN_EXPORT_BODY, "A-2.md": MARKDOWN_EXPORT_BODY},
+        bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY, "A-2.mark.md": MARKDOWN_EXPORT_BODY},
     )
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel.open .d-title")
@@ -6143,7 +6143,7 @@ def test_export_menu_position(
     """メニューは入口の下に右端を揃えて置き、画面の幅から左右 8px を引いた幅を超えない（正常系）。"""
     # 準備
     page.set_viewport_size(viewport)
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY})
     open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel.open .d-title")
     page.evaluate(ANIMATIONS_FINISHED_JS)

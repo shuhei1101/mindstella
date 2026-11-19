@@ -51,7 +51,7 @@ def test_normal_when_remove_location(
     """箇所を外して項目へのコメントにする（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1"), bodies={"A-1.md": "1 行目\n2 行目\n3 行目\n4 行目\n5 行目"}
+        make_item("A-1"), bodies={"A-1.mark.md": "1 行目\n2 行目\n3 行目\n4 行目\n5 行目"}
     )
     loc = {"kind": "body", "start": 5, "end": 5, "text": "5 行目"}
     write_comments(root, make_comment("C-1", target="A-1", loc=loc))

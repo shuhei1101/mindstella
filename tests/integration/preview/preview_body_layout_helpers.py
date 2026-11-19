@@ -143,7 +143,7 @@ def build_linked_body_layout_workspace(
         make_item("A-1"),
         make_item("D-1"),
         make_item("G-1", title="保存先", meaning="記録を置く場所"),
-        bodies={"A-1.md": LINKED_V1_BODY},
+        bodies={"A-1.mark.md": LINKED_V1_BODY},
     )
     workspace = str(root)
     _call(call_tool, "update", workspace=workspace, id="A-1", item={"body_markdown": LINKED_V2_BODY})

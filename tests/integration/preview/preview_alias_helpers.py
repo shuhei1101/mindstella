@@ -91,7 +91,7 @@ def write_alias_preview(
         ),
         make_item("G-1", title="特殊効果", meaning="画面に重ねる演出"),
         make_item("G-2", title="保存先", meaning="記録を置く場所"),
-        bodies={"A-1.md": body, "A-2.md": "資料 A-2 の本文の段落\n"},
+        bodies={"A-1.mark.md": body, "A-2.mark.md": "資料 A-2 の本文の段落\n"},
     )
 
 
@@ -114,5 +114,5 @@ def write_term_alias_preview(write_preview: WritePreview, make_item: MakeItem) -
         ),
         make_item("G-2", title="版の更新", aliases=["移し替え"], meaning="版を上げること"),
         make_item("G-3", title="旧名", aliases=["古い呼び方"], meaning="今は使わない用語", withdrawn=True),
-        bodies={"A-1.md": TERM_ALIAS_BODY},
+        bodies={"A-1.mark.md": TERM_ALIAS_BODY},
     )

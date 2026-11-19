@@ -88,7 +88,7 @@ def served_review(
         make_item("D-1"),
         make_item("D-2"),
         make_item("A-1"),
-        bodies={"A-1.md": THREE_LINE_BODY},
+        bodies={"A-1.mark.md": THREE_LINE_BODY},
         comments=(
             make_comment("C-1", target="D-1", body="案 A にする"),
             make_comment(
@@ -320,7 +320,7 @@ def test_send_when_stale(
     url, root = write_review_preview(
         make_item("D-1"),
         make_item("A-1"),
-        bodies={"A-1.md": THREE_LINE_BODY},
+        bodies={"A-1.mark.md": THREE_LINE_BODY},
         comments=(
             make_comment("C-1", target="D-1", body="案 A にする"),
             make_comment(
@@ -904,7 +904,7 @@ def test_stale_reason_and_detach(
     # 準備
     url, root = write_review_preview(
         make_item("A-1"),
-        bodies={"A-1.md": THREE_LINE_BODY},
+        bodies={"A-1.mark.md": THREE_LINE_BODY},
         comments=(
             make_comment(
                 "C-1",

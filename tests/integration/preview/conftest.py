@@ -79,10 +79,10 @@ def write_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WritePr
 def spa_preview(write_preview: WritePreview, make_item: MakeItem) -> str:
     """React の画面のテストが開く、検討事項・タスクと本文を持つワークスペースの配信の URL を返す。"""
     return write_preview(
-        make_item("D-1", title="記録の形", status="未決定", options=[{"key": "A", "content": "案 A"}], body="docs/D-1.md"),
+        make_item("D-1", title="記録の形", status="未決定", options=[{"key": "A", "content": "案 A"}], body="docs/D-1.mark.md"),
         make_item("D-2", title="画面の幅", status="保留", related=[{"to": "D-1", "type": "depends_on"}]),
         make_item("T-1", title="画面を作る", status="進行中"),
-        bodies={"D-1.md": SPA_BODY},
+        bodies={"D-1.mark.md": SPA_BODY},
     )
 
 
@@ -373,7 +373,7 @@ def sample_items(make_item: MakeItem) -> list[dict[str, Any]]:
         make_item(
             "D-3",
             status="要見直し",
-            body="docs/D-3.md",
+            body="docs/D-3.mark.md",
             options=[
                 {"key": "A", "content": "表で見せる", "pros": "並べやすい", "adopted": True},
                 {"key": "B", "content": "カードで見せる", "cons": ["数が多いと長い"]},
@@ -386,7 +386,7 @@ def sample_items(make_item: MakeItem) -> list[dict[str, Any]]:
         make_item("T-3", status="完了"),
         make_item("R-1", conclusion="結論の文"),
         make_item("A-1", status="完成", kind="文書"),
-        make_item("A-2", status="下書き", body="docs/A-2.md"),
+        make_item("A-2", status="下書き", body="docs/A-2.mark.md"),
         make_item("G-1", meaning="用語の意味"),
         make_item("N-1", content="メモの中身"),
         make_item("L-1", date="2026-10-01"),
@@ -397,9 +397,9 @@ def sample_items(make_item: MakeItem) -> list[dict[str, Any]]:
 def sample_bodies() -> dict[str, str]:
     """サンプルの項目が指す本文（`docs/` のファイル名 → 本文）。"""
     return {
-        "D-3.md": BODY_WITH_DIAGRAM,
-        "A-1.md": "# 納品物の本文\n",
-        "A-2.md": "下書きの本文\n",
+        "D-3.mark.md": BODY_WITH_DIAGRAM,
+        "A-1.mark.md": "# 納品物の本文\n",
+        "A-2.mark.md": "下書きの本文\n",
     }
 
 

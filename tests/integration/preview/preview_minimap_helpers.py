@@ -130,7 +130,7 @@ def build_minimap_workspace(
     root = make_workspace(
         make_item("A-1"),
         make_item("A-2"),
-        bodies={"A-1.md": MINIMAP_BODY_BEFORE, "A-2.md": UNCHANGED_BODY},
+        bodies={"A-1.mark.md": MINIMAP_BODY_BEFORE, "A-2.mark.md": UNCHANGED_BODY},
     )
     workspace = str(root)
     updated = write_tool(call_tool, "update", workspace=workspace, id="A-1", item={"body_markdown": MINIMAP_BODY_AFTER}

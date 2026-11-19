@@ -57,7 +57,7 @@ def test_normal(
 ) -> None:
     """チェックしたコメントだけをスレッドへ移し、残りはレビュー中に残す（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
+    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     loc = {"kind": "body", "start": 2, "end": 2, "text": "言い換えたい文"}
     no_target = make_comment("C-3", body="全体に目を通した")
     del no_target["target"]
@@ -227,7 +227,7 @@ def test_error_when_location_stale(
     """本文が書き換わって箇所が合わないコメントがあれば、どれも送らない（異常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1"), make_item("A-1"), bodies={"A-1.md": "1 行目\n2 行目\n3 行目"}
+        make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": "1 行目\n2 行目\n3 行目"}
     )
     stale_loc = {"kind": "body", "start": 5, "end": 5, "text": "5 行目"}
     write_comments(root, make_comment("C-1"), make_comment("C-2", target="A-1", loc=stale_loc))
@@ -366,7 +366,7 @@ def test_normal_when_entered_to_claude_code(
 ) -> None:
     """tmux の中で立てたとき、届いた件数を Claude Code のペインへ 1 回の入力として貼り、会話の記録で確かめる（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
+    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     loc = {"kind": "body", "start": 2, "end": 2, "text": "言い換えたい文"}
     no_target = make_comment("C-3", body="全体に目を通した\n2 行目")
     del no_target["target"]

@@ -449,7 +449,7 @@ def test_normal_when_settings(page: Page, spa_preview: str) -> None:
 
 def test_error_when_library_unavailable(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """描画のライブラリが読めないとき、原文とライブラリの名前を出す（異常系）。"""
-    url = write_preview(make_item("D-1", title="本文あり", status="未決定", body="docs/D-1.md"), bodies={"D-1.md": "本文の原文"})
+    url = write_preview(make_item("D-1", title="本文あり", status="未決定", body="docs/D-1.mark.md"), bodies={"D-1.mark.md": "本文の原文"})
 
     def _abort(route: Route) -> None:
         """mdmark の取得を止める。"""
@@ -528,7 +528,7 @@ def _workspace_yaml(root: Path, name: str) -> Any:
 def test_normal_when_comment_sent(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, call_tool: CallTool) -> None:
     """詳細の本文の文を選んで箇所を添えたコメントを溜め、コメントの一覧のレビュー中の書き込みからまとめて送る（正常系）。"""
     # 準備
-    url, root = write_review_preview(make_item("A-1", title="手引き"), bodies={"A-1.md": THREE_LINE_BODY})
+    url, root = write_review_preview(make_item("A-1", title="手引き"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     errors = watch_console(page)
     open_spa(page, url, "?tab=docs&id=A-1")
     panel = page.get_by_role("complementary", name="詳細")
@@ -765,7 +765,7 @@ def test_error_when_comment_send_stale(page: Page, write_review_preview: WriteRe
     url, root = write_review_preview(
         make_item("A-1", title="手引き"),
         comments=(make_comment("C-1", target="A-1", loc={"kind": "body", "start": 3, "end": 3, "text": "三行目の文"}, body="言い換える"),),
-        bodies={"A-1.md": THREE_LINE_BODY},
+        bodies={"A-1.mark.md": THREE_LINE_BODY},
     )
     errors = watch_console(page)
     open_spa(page, url, "?panel=comments&review=1")
@@ -810,7 +810,7 @@ def test_normal_when_duplicate_ids(
 def test_normal_when_embedded_files(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page) -> None:
     """本文の ../files/{名前} を配信の /files/{名前} に解決して、動画・画像を描く（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1"), bodies={"A-1.md": EMBEDDED_FILES_BODY})
+    root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": EMBEDDED_FILES_BODY})
     put_embedded_files(root)
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
