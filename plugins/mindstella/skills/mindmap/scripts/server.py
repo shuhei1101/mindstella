@@ -251,12 +251,6 @@ def main(
     )
     app = mcp_server.streamable_http_app(streamable_http_path=MCP_PATH, host=LISTEN_HOST)
     http_server = (make_server or _make_http_server)(app)
-    logger.info(
-        "常駐サーバーが待ち受けを始めた（ポート %s、バージョン %s、PID %s）",
-        port,
-        version,
-        os.getpid(),
-    )
     # 待ち受けの前に、ID の一覧を作り直し、前の常駐サーバーの間に落ちた MindStella のセッションを照合する
     startup.reconcile_before_listen(context)
     # 落ちた MindStella のセッションを見回る（終えるときに止める）
@@ -264,6 +258,12 @@ def main(
     sessions.start_crash_watch(context, stop_watch)
     # 待ち受けと並行して、エージェントフローの配信元の行を今のプラグインへ向け直す
     startup.start_agent_flows_check(context)
+    logger.info(
+        "常駐サーバーが待ち受けを始めた（ポート %s、バージョン %s、PID %s）",
+        port,
+        version,
+        os.getpid(),
+    )
     # uvicorn は終わり終えてから受けたシグナルを元の受け口へ送り直すので、SIGTERM を SystemExit にして finally まで進める
     previous_sigterm = signal.signal(signal.SIGTERM, _exit_on_sigterm)
     try:
