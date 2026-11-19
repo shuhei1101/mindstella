@@ -1,0 +1,11 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: run_only
+    detail: 録音中の波形の棒が枠を埋めた後も同じ幅で並ぶ。シナリオの記述は変わらない
+    depends_on: []
+scope_out:
+  - item: 'docs/mock/refs/500/assets/style.css の .send-wave i（同じ flex: 0 1 3px）'
+    reason: 'refs/500 は #500 で合意したモックの記録で、この作業 PR では書き換えないと判断した。docs/mock/components/send-form などが読むため、モックも揃えるかはレビューで確定する'
+    plan: none
+docs: []
