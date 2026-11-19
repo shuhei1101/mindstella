@@ -42,7 +42,7 @@ def reconcile_before_listen(ctx: Any) -> None:
         count = sessions.watch_crashes_once(ctx)
     except (yaml.YAMLError, ValueError) as error:
         # ID の一覧が読めない: 照合を飛ばす
-        logger.error("mindstella.startup.ids_unreadable", extra={"reason": str(error)})
+        logger.exception("mindstella.startup.ids_unreadable", extra={"reason": str(error)})
         return
     except Exception as error:
         # そのほかの失敗（workspaces.yaml を読めない など）: 照合を飛ばす
