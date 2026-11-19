@@ -1,4 +1,4 @@
-"""mdmark_ref.py（mdmark のバージョンの ref への解決と GitHub への問い合わせ）の単体テスト。"""
+"""mdmark_ref.py（mdmark のバージョンの ref への解決と GitHub・jsDelivr への問い合わせ）の単体テスト。"""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import pytest
 import mdmark_ref
 
 # 問い合わせは conftest の offline_mdmark_ref が差し替えるため、差し替える前の関数を取っておく
-from mdmark_ref import MdmarkRefResolver, RefLookupError, fetch_head_sha
+from mdmark_ref import MdmarkRefResolver, RefLookupError, check_dist_served, fetch_head_sha
 
 # 問い合わせが返す develop の先頭の commit の SHA
 SHA_A = "0123456789abcdef0123456789abcdef01234567"
@@ -36,6 +36,7 @@ class FakeGitHub:
     base_url: str
     paths: list[str] = field(default_factory=list)
     accepts: list[str | None] = field(default_factory=list)
+    ranges: list[str | None] = field(default_factory=list)
 
 
 # 偽の GitHub を立てる関数（応答を受け、基点の URL と記録を返す）
@@ -44,7 +45,7 @@ StartFakeGitHub = Callable[[FakeResponse], FakeGitHub]
 
 @pytest.fixture
 def start_fake_github(monkeypatch: pytest.MonkeyPatch) -> Iterator[StartFakeGitHub]:
-    """渡した応答を返す偽の GitHub を 127.0.0.1 の空きポートで立て、`GITHUB_API_BASE_URL` を向ける。"""
+    """渡した応答を返す偽のサーバーを 127.0.0.1 の空きポートで立て、`GITHUB_API_BASE_URL` と `JSDELIVR_BASE_URL` を向ける。"""
     # 環境のプロキシを通さずに、手元のサーバーへ届かせる
     monkeypatch.setenv("no_proxy", "127.0.0.1")
     monkeypatch.setenv("NO_PROXY", "127.0.0.1")
@@ -54,11 +55,12 @@ def start_fake_github(monkeypatch: pytest.MonkeyPatch) -> Iterator[StartFakeGitH
         record = FakeGitHub(base_url="")
 
         class _Handler(http.server.BaseHTTPRequestHandler):
-            """どの GET にも渡した応答を返し、パスと Accept を記録する。"""
+            """どの GET にも渡した応答を返し、パスと Accept と Range を記録する。"""
 
             def do_GET(self) -> None:
                 record.paths.append(self.path)
                 record.accepts.append(self.headers.get("Accept"))
+                record.ranges.append(self.headers.get("Range"))
                 self.send_response(response.status)
                 for name, value in response.headers.items():
                     self.send_header(name, value)
@@ -75,6 +77,7 @@ def start_fake_github(monkeypatch: pytest.MonkeyPatch) -> Iterator[StartFakeGitH
         servers.append((server, thread))
         record.base_url = f"http://127.0.0.1:{server.server_port}"
         monkeypatch.setattr(mdmark_ref, "GITHUB_API_BASE_URL", record.base_url)
+        monkeypatch.setattr(mdmark_ref, "JSDELIVR_BASE_URL", record.base_url)
         return record
 
     yield _start
@@ -109,11 +112,24 @@ class CountingFetch:
         return result
 
 
+class CountingCheck:
+    """呼ばれた SHA を記録し、`not_served` の SHA には jsDelivr が配らない例外を送る確認。"""
+
+    def __init__(self, not_served: frozenset[str] = frozenset()) -> None:
+        self.not_served = not_served
+        self.refs: list[str] = []
+
+    def __call__(self, ref: str) -> None:
+        self.refs.append(ref)
+        if ref in self.not_served:
+            raise RefLookupError("jsDelivr が配らない: HTTP 403", retry_at=None)
+
+
 def test_resolve_tag() -> None:
     """タグは問い合わせずにそのまま返す（正常系）。"""
     # 準備
     fetch = CountingFetch([SHA_A])
-    resolver = MdmarkRefResolver(fetch=fetch)
+    resolver = MdmarkRefResolver(fetch=fetch, check=CountingCheck())
     # 実行
     ref = resolver.resolve("v0.13.0")
     # 検証
@@ -126,7 +142,7 @@ def test_resolve_latest_held() -> None:
     # 準備
     fetch = CountingFetch([SHA_A, SHA_B])
     clock = Clock(1000.0)
-    resolver = MdmarkRefResolver(fetch=fetch, monotonic=clock)
+    resolver = MdmarkRefResolver(fetch=fetch, check=CountingCheck(), monotonic=clock)
     # 実行
     first = resolver.resolve("latest")
     second = resolver.resolve(None)
@@ -168,7 +184,7 @@ def test_resolve_lookup_failed(
     # 準備
     fetch = CountingFetch(results)
     clock = Clock(1000.0)
-    resolver = MdmarkRefResolver(fetch=fetch, monotonic=clock)
+    resolver = MdmarkRefResolver(fetch=fetch, check=CountingCheck(), monotonic=clock)
     for warmup_time in warmup_times:
         clock.now = warmup_time
         resolver.resolve("latest")
@@ -189,7 +205,7 @@ def test_resolve_retry_at() -> None:
     monotonic = Clock(1000.0)
     wall = Clock(2_000_000_000.0)
     fetch = CountingFetch([RefLookupError("HTTP 403", retry_at=2_000_000_600.0), SHA_A])
-    resolver = MdmarkRefResolver(fetch=fetch, monotonic=monotonic, wall=wall)
+    resolver = MdmarkRefResolver(fetch=fetch, check=CountingCheck(), monotonic=monotonic, wall=wall)
     resolver.resolve("latest")
     # 実行
     monotonic.now, wall.now = 1300.0, 2_000_000_300.0
@@ -202,6 +218,58 @@ def test_resolve_retry_at() -> None:
     assert calls_at_300 == 1
     assert at_600 == SHA_A
     assert fetch.calls == 2
+
+
+@pytest.mark.parametrize(
+    ("results", "warmup_times", "fail_time", "expected"),
+    [
+        pytest.param([SHA_B], [], 1000.0, "develop", id="no_previous_sha"),
+        pytest.param([SHA_A, SHA_B], [1000.0], 1150.0, SHA_A, id="previous_sha_expired"),
+    ],
+)
+def test_resolve_dist_not_served(
+    results: list[str | RefLookupError],
+    warmup_times: list[float],
+    fail_time: float,
+    expected: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """問い合わせた別の SHA を jsDelivr が配らなければ、前の SHA か develop を返し、失敗も保持する（異常系）。"""
+    # 準備
+    fetch = CountingFetch(results)
+    clock = Clock(1000.0)
+    resolver = MdmarkRefResolver(
+        fetch=fetch, check=CountingCheck(frozenset({SHA_B})), monotonic=clock
+    )
+    for warmup_time in warmup_times:
+        clock.now = warmup_time
+        resolver.resolve("latest")
+    clock.now = fail_time
+    caplog.set_level(logging.WARNING)
+    # 実行
+    failed = resolver.resolve("latest")
+    right_after = resolver.resolve("latest")
+    # 検証
+    assert (failed, right_after) == (expected, expected)
+    assert fetch.calls == len(results)
+    assert len([r for r in caplog.records if r.levelno == logging.WARNING]) == 1
+
+
+def test_resolve_same_sha_not_checked() -> None:
+    """問い合わせた SHA が保持している SHA と同じなら jsDelivr を確認しない（正常系）。"""
+    # 準備
+    fetch = CountingFetch([SHA_A])
+    check = CountingCheck()
+    clock = Clock(1000.0)
+    resolver = MdmarkRefResolver(fetch=fetch, check=check, monotonic=clock)
+    # 実行
+    first = resolver.resolve("latest")
+    clock.now = 1150.0
+    second = resolver.resolve("latest")
+    # 検証
+    assert (first, second) == (SHA_A, SHA_A)
+    assert fetch.calls == 2
+    assert check.refs == [SHA_A]
 
 
 def test_fetch_head_sha(start_fake_github: StartFakeGitHub) -> None:
@@ -284,11 +352,34 @@ def test_fetch_head_sha_invalid_when_unreachable(
     assert exc_info.value.retry_at is None
 
 
+@pytest.mark.parametrize("status", [200, 206])
+def test_check_dist_served(start_fake_github: StartFakeGitHub, status: int) -> None:
+    """200 と 206 なら例外を送らず、SHA の dist/index.js を Range: bytes=0-0 の GET で要求する（正常系）。"""
+    # 準備
+    jsdelivr = start_fake_github(FakeResponse(status, b"/"))
+    # 実行
+    check_dist_served(SHA_A)
+    # 検証
+    assert jsdelivr.paths == [f"/gh/shuhei1101/mdmark@{SHA_A}/dist/index.js"]
+    assert jsdelivr.ranges == ["bytes=0-0"]
+
+
+def test_check_dist_served_when_not_served(start_fake_github: StartFakeGitHub) -> None:
+    """403 は retry_at の無い例外にする（異常系）。"""
+    # 準備
+    start_fake_github(FakeResponse(403, b"Package size exceeded the configured limit of 50 MB"))
+    # 実行・検証
+    with pytest.raises(RefLookupError, match="jsDelivr が配らない: HTTP 403") as exc_info:
+        check_dist_served(SHA_A)
+    assert exc_info.value.retry_at is None
+
+
 def test_resolve_ref_shared(monkeypatch: pytest.MonkeyPatch) -> None:
     """2 回呼んでも同じ解決器の保持を使う（正常系）。"""
     # 準備
     fetch = CountingFetch([SHA_A, SHA_B])
     monkeypatch.setattr(mdmark_ref, "fetch_head_sha", fetch)
+    monkeypatch.setattr(mdmark_ref, "check_dist_served", CountingCheck())
     monkeypatch.setattr(mdmark_ref, "_resolver", None)
     # 実行
     first = mdmark_ref.resolve_ref("latest")
