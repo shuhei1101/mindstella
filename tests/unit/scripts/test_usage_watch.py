@@ -137,9 +137,7 @@ def test_fetch_accounts_when_unavailable(urlopen: Any, monkeypatch: pytest.Monke
             [],
             id="no-other-account",
         ),
-        pytest.param(
-            _session("w"), _accounts("quota_unknown", None), True, [], id="quota-unknown"
-        ),
+        pytest.param(_session("w"), _accounts("quota_unknown", None), True, [], id="quota-unknown"),
         pytest.param(_session("w"), _accounts(None, None), True, [], id="under-threshold"),
         pytest.param(
             _session("w", balancer_account="C"),
@@ -191,9 +189,10 @@ def _write(ctx: SimpleNamespace, workspace: str, session: SessionState) -> None:
     state.update_session(ctx.state_root, workspace, lambda _current: session)
 
 
-def test_watch_usage_once(ctx: SimpleNamespace) -> None:
+def test_watch_usage_once(ctx: SimpleNamespace, caplog: pytest.LogCaptureFixture) -> None:
     """見回る対象だけを照らし、選んだものを起動し直す（正常系）。"""
     # 準備
+    caplog.set_level(logging.INFO, logger="mindstella.usage_watch")
     _write(ctx, "w1", _session("w1"))
     _write(ctx, "w2", _session("w2", status="restarting"))
     _write(ctx, "w3", _session("w3", close_pending=True))
@@ -215,6 +214,14 @@ def test_watch_usage_once(ctx: SimpleNamespace) -> None:
     assert result == 1
     assert restarted == ["w1"]
     assert fetched == [BASE_URL]
+    records = [r for r in caplog.records if r.getMessage() == "mindstella.usage.over_threshold"]
+    assert len(records) == 1
+    assert records[0].levelno == logging.INFO
+    assert (
+        records[0].workspace_id,  # type: ignore[attr-defined]
+        records[0].account,  # type: ignore[attr-defined]
+        records[0].unavailable_reason,  # type: ignore[attr-defined]
+    ) == ("w1", "A", "five_hour_over_threshold")
 
 
 def test_watch_usage_once_when_no_target(ctx: SimpleNamespace) -> None:
