@@ -80,7 +80,7 @@ data_models:
     properties:
       - name: name
         type: str
-        description: '`docs/` の中のファイル名（`{ID}.md`、資料の HTML の本文は `{ID}.html`）'
+        description: '`docs/` の中のファイル名（`{ID}.mark.md`、資料の HTML の本文は `{ID}.html`）'
       - name: text
         type: str
         description: 本文（Markdown か HTML）
@@ -647,7 +647,7 @@ functions:
     usecase: 共通
     scope: public
     summary: 1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない
-    side_effects: 種類の YAML と `docs/{ID}.md` と `changes.yaml` を置き換える
+    side_effects: 種類の YAML と `docs/{ID}.mark.md` と `changes.yaml` を置き換える
     args:
       - name: workspace
         type: Workspace
@@ -698,9 +698,9 @@ functions:
       - name: test_save_change
         case: 正常
         summary: 項目の並びと本文を書き、一時ファイルを残さない
-        condition: D-1 を足した並びと本文 `D-1.md`
+        condition: D-1 を足した並びと本文 `D-1.mark.md`
         mock: なし
-        expected: '`decisions.yaml` を読むと D-1 があり、`docs/D-1.md` が渡した本文。ワークスペースに `.tmp` のファイルが無い'
+        expected: '`decisions.yaml` を読むと D-1 があり、`docs/D-1.mark.md` が渡した本文。ワークスペースに `.tmp` のファイルが無い'
       - name: test_save_change_when_schema_mismatch
         case: 異常
         summary: スキーマに合わない変更は書かない
@@ -718,16 +718,16 @@ functions:
       - name: test_save_change_when_yaml_replace_fails_with_previous_body
         case: 異常
         summary: YAML の置き換えに失敗したら前の本文に戻す
-        condition: '`docs/D-1.md` がある状態で本文を書き換える変更。`os.replace` を、置き換え先が `decisions.yaml` のときだけ `OSError` を送る関数に差し替える'
+        condition: '`docs/D-1.mark.md` がある状態で本文を書き換える変更。`os.replace` を、置き換え先が `decisions.yaml` のときだけ `OSError` を送る関数に差し替える'
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
-        expected: '`WriteFailedError`（メッセージに `decisions.yaml`）。`docs/D-1.md` と `decisions.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+        expected: '`WriteFailedError`（メッセージに `decisions.yaml`）。`docs/D-1.mark.md` と `decisions.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: YAML の置き換えで OSError
       - name: test_save_change_when_yaml_replace_fails_without_previous_body
         case: 異常
         summary: YAML の置き換えに失敗したら新しく書いた本文を消す
-        condition: '`docs/D-1.md` が無い状態で本文を足す変更。`os.replace` を同じように差し替える'
+        condition: '`docs/D-1.mark.md` が無い状態で本文を足す変更。`os.replace` を同じように差し替える'
         mock: '`os.replace`'
-        expected: '`WriteFailedError`。`docs/D-1.md` が無く、`decisions.yaml` が呼ぶ前と同じ'
+        expected: '`WriteFailedError`。`docs/D-1.mark.md` が無く、`decisions.yaml` が呼ぶ前と同じ'
         exception: YAML の置き換えで OSError
       - name: test_save_change_when_file_shape_broken
         case: 異常
@@ -747,7 +747,7 @@ functions:
         summary: まとまりの置き換えに失敗したら項目と本文を戻す
         condition: D-1 の本文を書き換え、`changes` を渡す変更。`os.replace` を、置き換え先が `changes.yaml` のときだけ `OSError` を送る関数に差し替える
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
-        expected: '`WriteFailedError`（メッセージに `changes.yaml`）。`decisions.yaml`・`docs/D-1.md`・`changes.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+        expected: '`WriteFailedError`（メッセージに `changes.yaml`）。`decisions.yaml`・`docs/D-1.mark.md`・`changes.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: changes.yaml の置き換えで OSError
       - name: test_save_change_when_decision_state
         case: 異常
@@ -855,7 +855,7 @@ functions:
         type: str
         required: true
         passing: positional
-        description: '`body` の値（記録のフォルダからのパス。`docs/{ID}.md`）'
+        description: '`body` の値（記録のフォルダからのパス。`docs/{ID}.mark.md`）'
     returns:
       type: str | None
       description: 本文。ファイルが無いか、名前が `docs/` の外を指すときは `None`
@@ -867,13 +867,13 @@ functions:
       - name: test_read_body
         case: 正常
         summary: ある本文を読む
-        condition: '`docs/D-1.md` を置き、`name` に `docs/D-1.md`'
+        condition: '`docs/D-1.mark.md` を置き、`name` に `docs/D-1.mark.md`'
         mock: なし
         expected: その中身
       - name: test_read_body_when_missing
         case: 正常
         summary: 無い本文は None
-        condition: '`docs/D-9.md` を置かない'
+        condition: '`docs/D-9.mark.md` を置かない'
         mock: なし
         expected: '`None`'
       - name: test_read_body_when_outside
@@ -1129,7 +1129,7 @@ functions:
     usecase: 記録の追加と更新
     scope: public
     summary: 複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない
-    side_effects: 種類の YAML と `docs/{ID}.md` と `changes.yaml` を置き換え、`removed_bodies` の本文を消す
+    side_effects: 種類の YAML と `docs/{ID}.mark.md` と `changes.yaml` を置き換え、`removed_bodies` の本文を消す
     args:
       - name: workspace
         type: Workspace
@@ -1173,9 +1173,9 @@ functions:
       - name: test_save_batch
         case: 正常
         summary: 複数の種類と本文とまとまりを書き、一時ファイルを残さない
-        condition: D-1 を足した検討事項の並び、T-1 を足したタスクの並び、本文 `D-1.md`、新しいまとまり
+        condition: D-1 を足した検討事項の並び、T-1 を足したタスクの並び、本文 `D-1.mark.md`、新しいまとまり
         mock: なし
-        expected: '`decisions.yaml`・`tasks.yaml`・`docs/D-1.md`・`changes.yaml` を読むと渡した中身。`.tmp` のファイルが無い'
+        expected: '`decisions.yaml`・`tasks.yaml`・`docs/D-1.mark.md`・`changes.yaml` を読むと渡した中身。`.tmp` のファイルが無い'
       - name: test_save_batch_when_schema_mismatch
         case: 異常
         summary: 1 つの種類でもスキーマに合わなければ何も書かない
@@ -1197,15 +1197,15 @@ functions:
       - name: test_save_batch_removes_bodies
         case: 正常
         summary: 書き換えた後に消す本文を消す
-        condition: N-2 を除いたメモの並び、`removed_bodies` に `N-2.md`（`docs/N-2.md` がある）
+        condition: N-2 を除いたメモの並び、`removed_bodies` に `N-2.mark.md`（`docs/N-2.mark.md` がある）
         mock: なし
-        expected: '`notes.yaml` に N-2 が無く、`docs/N-2.md` が無い'
+        expected: '`notes.yaml` に N-2 が無く、`docs/N-2.mark.md` が無い'
       - name: test_save_batch_when_body_removal_fails
         case: 異常
         summary: 本文を消せなければ、置き換えたファイルを戻す
-        condition: N-2 を除いたメモの並びと `removed_bodies` に `N-2.md`。本文を消す関数を `OSError` を送る関数に差し替える
+        condition: N-2 を除いたメモの並びと `removed_bodies` に `N-2.mark.md`。本文を消す関数を `OSError` を送る関数に差し替える
         mock: 本文を消す関数（`store` モジュールの参照を monkeypatch）
-        expected: '`WriteFailedError`（メッセージに `N-2.md`）。`notes.yaml`・`changes.yaml`・`docs/N-2.md` が呼ぶ前と同じ'
+        expected: '`WriteFailedError`（メッセージに `N-2.mark.md`）。`notes.yaml`・`changes.yaml`・`docs/N-2.mark.md` が呼ぶ前と同じ'
       - name: test_save_batch_when_other_kind_unchanged
         case: 正常
         summary: 差し替えない種類は検証し直さず、書き込んだ種類の結果を記録する
@@ -1475,7 +1475,7 @@ functions:
       - name: test_body_format
         case: 正常
         summary: 拡張子から形式を決める
-        condition: '`parametrize`: `A-1.md` / `A-1.html` / `None` / `A-1.txt`'
+        condition: '`parametrize`: `A-1.mark.md` / `A-1.html` / `None` / `A-1.txt`'
         expected: '`markdown` / `html` / `None` / `None`'
         mock: なし
   - name: build_source_config

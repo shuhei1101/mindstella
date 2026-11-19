@@ -155,7 +155,7 @@ functions:
       - name: test_search_items_when_html
         case: 正常
         summary: HTML の本文と html のコードブロックを描いた文で当てる
-        condition: '本文 `<p class="flow" data-step="1">画面の流れ</p>` の資料 A-1（`A-1.html`）と、同じ中身を言語指定 `html` のコードブロックに持つ資料 A-2（`A-2.md`）。`parametrize`: `画面の流れ` / `data-step` / `flow`'
+        condition: '本文 `<p class="flow" data-step="1">画面の流れ</p>` の資料 A-1（`A-1.html`）と、同じ中身を言語指定 `html` のコードブロックに持つ資料 A-2（`A-2.mark.md`）。`parametrize`: `画面の流れ` / `data-step` / `flow`'
         expected: A-1・A-2 / 返らない / 返らない
         mock: なし
   - name: locationLabel
@@ -205,7 +205,7 @@ functions:
       - name: test_body_format_of
         case: 正常
         summary: 拡張子から形式を決める
-        condition: '`parametrize`: `A-1.md` / `A-1.html` / `undefined`'
+        condition: '`parametrize`: `A-1.mark.md` / `A-1.html` / `undefined`'
         expected: '`md` / `html` / `null`'
         mock: なし
   - name: htmlText

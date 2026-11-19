@@ -58,15 +58,15 @@ functions:
       - name: test_check_workspace
         case: 正常
         summary: 整ったワークスペースは問題 0 件
-        condition: 'D-1（本文 `docs/D-1.md` あり）・D-2 `related: [{to: D-1, type: depends_on}]`'
+        condition: 'D-1（本文 `docs/D-1.mark.md` あり）・D-2 `related: [{to: D-1, type: depends_on}]`'
         mock: なし
         expected: 空の並び
       - name: test_check_workspace_when_problems
         case: 正常
         summary: 4 種類の問題をまとめて返す
-        condition: 'D-1 `related: [{to: D-9, type: depends_on}]`・D-2 `status: 完了`・R-1 `body: R-1.md`（ファイル無し）・`docs/X-1.md`（どこからも指されない）'
+        condition: 'D-1 `related: [{to: D-9, type: depends_on}]`・D-2 `status: 完了`・R-1 `body: R-1.mark.md`（ファイル無し）・`docs/X-1.mark.md`（どこからも指されない）'
         mock: なし
-        expected: '`broken_ref`（D-1・`related[0].to`）・`schema`（`items[1].status`）・`orphan_body`（`.mindstella/docs/X-1.md`）・`missing_body`（R-1）を含み、`.mindstella/decisions.yaml` → `.mindstella/docs/X-1.md` → `.mindstella/research.yaml` の順'
+        expected: '`broken_ref`（D-1・`related[0].to`）・`schema`（`items[1].status`）・`orphan_body`（`.mindstella/docs/X-1.mark.md`）・`missing_body`（R-1）を含み、`.mindstella/decisions.yaml` → `.mindstella/docs/X-1.mark.md` → `.mindstella/research.yaml` の順'
       - name: test_check_workspace_when_decision_state
         case: 正常
         summary: 案と状態の合わない検討事項を拾い、必須でない状態は拾わない
@@ -160,9 +160,9 @@ functions:
       - name: test_check_bodies
         case: 正常
         summary: 本文が無い項目と指されない本文を拾う
-        condition: 'R-1 `body: R-1.md`（ファイル無し）・D-1 `body: D-1.md`（ファイルあり）・`docs/X-1.md`'
+        condition: 'R-1 `body: R-1.mark.md`（ファイル無し）・D-1 `body: D-1.mark.md`（ファイルあり）・`docs/X-1.mark.md`'
         mock: なし
-        expected: '`missing_body`（R-1）と `orphan_body`（`docs/X-1.md`）の 2 件'
+        expected: '`missing_body`（R-1）と `orphan_body`（`docs/X-1.mark.md`）の 2 件'
       - name: test_check_bodies_when_html
         case: 正常
         summary: HTML の本文も本文のずれの対象にする
@@ -272,7 +272,7 @@ functions:
       - name: test_check_history_when_body_rewritten
         case: 正常
         summary: 手で書き換えた本文に当たらない変更履歴を拾う
-        condition: D-1 の本文を `run_update` で直した後、`docs/D-1.md` の全ての行を書き換える
+        condition: D-1 の本文を `run_update` で直した後、`docs/D-1.mark.md` の全ての行を書き換える
         mock: なし
         expected: '`stale_history`（D-1・`history[0].body_diff`）が 1 件'
       - name: test_check_history_when_broken_ref
@@ -376,11 +376,11 @@ functions:
         summary: 無いファイルだけを拾う
         condition: A-1 の本文に `![a](../files/clip.mp4)`・`![b](../files/missing.mp4)`・`![c](../files/sub/x%20y.png#t=1)` を持ち、`files/clip.mp4` と `files/sub/x y.png` を置く
         mock: なし（一時ディレクトリ）
-        expected: '`missing_file`（`file: docs/A-1.md`・`id: A-1`・`key: None`・`detail: ../files/missing.mp4`）の 1 件だけ'
+        expected: '`missing_file`（`file: docs/A-1.mark.md`・`id: A-1`・`key: None`・`detail: ../files/missing.mp4`）の 1 件だけ'
       - name: test_check_embedded_files_when_html_or_missing_body
         case: 正常
         summary: HTML の本文と無い本文は確かめない
-        condition: '`body: A-1.html`（`<img src="../files/missing.png">` を持つ）と、`body: A-2.md`（ファイル無し）'
+        condition: '`body: A-1.html`（`<img src="../files/missing.png">` を持つ）と、`body: A-2.mark.md`（ファイル無し）'
         mock: なし（一時ディレクトリ）
         expected: 空の並び
   - name: embedded_paths

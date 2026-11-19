@@ -20,7 +20,7 @@ data_models:
     properties:
       - name: files
         type: dict[str, str]
-        description: 記録のフォルダからのパス（`decisions.yaml`・`docs/D-1.md` など）→ 中身
+        description: 記録のフォルダからのパス（`decisions.yaml`・`docs/D-1.mark.md` など）→ 中身
       - name: git_head
         type: str | None
         description: '`git rev-parse HEAD`（Git の作業ツリーでなければ `None`）'
@@ -253,9 +253,9 @@ functions:
       - name: test_take_snapshot
         case: 正常
         summary: 種類の YAML と本文を読み、読めないファイルは前回の中身で埋める
-        condition: D-1（本文 `docs/D-1.md`）を持ち、`notes.yaml` が読めない中身のワークスペースと、`notes.yaml` を持つ前回の中身
+        condition: D-1（本文 `docs/D-1.mark.md`）を持ち、`notes.yaml` が読めない中身のワークスペースと、`notes.yaml` を持つ前回の中身
         mock: '`run`（Git の作業ツリーでない）'
-        expected: '`files` に `decisions.yaml`・`docs/D-1.md` と前回の `notes.yaml`、読めなかったファイルが `[notes.yaml]`、`git_head` が `None`'
+        expected: '`files` に `decisions.yaml`・`docs/D-1.mark.md` と前回の `notes.yaml`、読めなかったファイルが `[notes.yaml]`、`git_head` が `None`'
   - name: diff_snapshots
     title: 中身を比べる
     kind: 関数
