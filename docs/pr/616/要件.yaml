@@ -139,3 +139,6 @@ scope_out:
   - item: '`sessions.py` の `_wait_ready` の重なったコメント（「登録が入った: 準備ができた」が 2 行続く）と、リポジトリ全体の `ruff format --check` の不一致（202 ファイル）'
     reason: この PR の変更より前からあり、TL-7（lint）の全件実行に `ruff format --check` が入っていないため。この PR で変えた 7 ファイルは整形済み
     plan: none
+  - item: '`tests/integration/server/test_create_workspace.py` の `test_error_when_folder_not_allowed`（状態のフォルダに `workspaces.yaml` が作られている）と `test_error_when_host_not_local`（`HTTP Error 403` の後に接続が切れる）の fail'
+    reason: この PR の分岐点 71ba7658 のコードでも同じ 2 件が同じ理由で fail するため。この PR の変更と関係しない
+    plan: none
