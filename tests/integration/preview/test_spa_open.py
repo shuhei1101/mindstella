@@ -661,19 +661,58 @@ def test_normal_when_display_settings(page: Page, write_review_preview: WriteRev
 def test_normal_when_comment_search_mismatched(
     page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_thread: MakeThread
 ) -> None:
-    """無いスレッド・無いタグを指す値と、コメントの一覧を開いていないときのコメントの値を外して開く（正常系）。"""
+    """無いスレッド・無いタグ・無い項目を指す値と、コメントの一覧を開いていないときのコメントの値を外して開く（正常系）。"""
     # 準備
     url, _ = write_review_preview(make_item("D-1"), threads=(make_thread("TH-1", tags=["画面"]),))
     # 実行
-    open_spa(page, url, "?panel=comments&thread=TH-99&ttag=無いタグ")
+    open_spa(page, url, "?panel=comments&thread=TH-99&ttag=無いタグ&ttarget=D-99")
     # 検証
     expect(page.get_by_role("dialog", name="コメント").get_by_role("group", name="スレッドの状態で絞る")).to_be_visible()
     page.wait_for_function("() => location.search === '?panel=comments'")
     # 実行
-    open_spa(page, url, "?tab=decisions&thread=TH-1&review=1")
+    open_spa(page, url, "?tab=decisions&thread=TH-1&review=1&ttarget=D-1")
     # 検証
     page.wait_for_function("() => location.search === '?tab=decisions'")
     expect(page.get_by_role("dialog", name="コメント")).to_have_count(0)
+
+
+def test_normal_when_comment_target_filtered(
+    page: Page,
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    make_post: MakePost,
+    make_comment: MakeComment,
+) -> None:
+    """詳細パネルのボタンで、開いている項目で絞ったスレッドの一覧を開き、項目の絞り込みを外す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"),
+        make_item("D-2"),
+        threads=(
+            make_thread("TH-1", make_post("TH-1-1", body="D-1 の話", created="2026-10-12T01:00:00+00:00"), summary="D-1 の話", target="D-1"),
+            make_thread("TH-2", make_post("TH-2-1", body="D-2 の話", created="2026-10-12T02:00:00+00:00"), summary="D-2 の話", target="D-2"),
+        ),
+        comments=(make_comment("C-1", target="D-1", body="D-1 への新しいスレッド"),),
+    )
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    panel = page.get_by_role("dialog", name="コメント")
+    rows = panel.locator("li[data-thread], li[data-pending]")
+    before = page.evaluate("history.length")
+    # 実行
+    page.get_by_role("complementary", name="詳細").get_by_role("button", name="D-1 のコメントの一覧を開く").click()
+    # 検証
+    page.wait_for_function("() => location.search === '?tab=decisions&id=D-1&panel=comments&ttarget=D-1'")
+    expect(rows).to_have_count(2)
+    expect(rows.nth(0)).to_contain_text("D-1 への新しいスレッド")
+    expect(rows.nth(1)).to_contain_text("D-1 の話")
+    assert page.evaluate("history.length") == before
+    # 実行
+    panel.get_by_role("button", name="項目「D-1」の絞り込みを外す").click()
+    # 検証
+    page.wait_for_function("() => !new URLSearchParams(location.search).has('ttarget')")
+    expect(rows).to_have_count(3)
+    assert page.evaluate("history.length") == before
 
 
 def test_error_when_comment_body_empty(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem) -> None:

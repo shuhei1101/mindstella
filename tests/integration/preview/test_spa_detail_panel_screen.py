@@ -1386,3 +1386,31 @@ def test_related_items_by_type(page: Page, write_preview: WritePreview, make_ite
     panel.get_by_role("button", name="D-2").click()
     # 検証
     expect(panel.get_by_role("heading", name="派生元")).to_be_visible()
+
+
+@pytest.mark.parametrize(
+    ("search", "expected"),
+    [
+        pytest.param("?tab=decisions&id=D-1", 1, id="panel"),
+        pytest.param("?tab=decisions&id=D-1&full=1", 0, id="full"),
+    ],
+)
+def test_comments_button(page: Page, spa_preview: str, search: str, expected: int) -> None:
+    """見出しのコメントの一覧のボタンは、詳細パネルにだけ置き、押すとその項目で絞ったコメントの一覧を開いて履歴に積まない（正常系）。"""
+    # 準備
+    open_spa(page, spa_preview, search)
+    page.get_by_text("記録の形").first.wait_for()
+    button = page.get_by_role("button", name="D-1 のコメントの一覧を開く")
+    # 検証
+    expect(button).to_have_count(expected)
+    if expected == 0:
+        return
+    expect(button).to_have_attribute("title", "この項目のコメントの一覧")
+    before = page.evaluate("history.length")
+    # 実行
+    button.click()
+    # 検証
+    page.wait_for_url("**ttarget=D-1**")
+    assert "panel=comments" in page.url
+    assert page.evaluate("history.length") == before
+    expect(page.get_by_role("dialog", name="コメント")).to_contain_text("D-1")

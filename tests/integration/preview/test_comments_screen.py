@@ -946,3 +946,54 @@ def test_voice_input_focus_when_cancelled(
         "end": 4,
         "focused": True,
     }
+
+
+# 詳細パネルの見出しの、その項目で絞ったコメントの一覧を開くボタンと、項目の絞り込みのチップ
+ITEM_COMMENTS_BUTTON = "aside.panel .panel-head button[data-act='item-comments']"
+TARGET_CHIP = f"{COMMENTS_PANEL} .talk-target .chip"
+COMPOSE_HEADING = f"{COMMENTS_PANEL} .talk-new .send-label"
+
+
+def test_target_filter(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """詳細パネルのボタンでその項目で絞った一覧を開き、絞っている間の新しいスレッドはその項目へ向けて溜めて一覧に並べる。チップの × と、一覧を閉じて開き直すと絞らない（正常系）。"""
+    # 準備
+    url, root = served_threads
+    page = open_preview(url, DETAIL_HASH)
+    page.wait_for_selector(ITEM_COMMENTS_BUTTON)
+    # 実行（詳細パネルのボタンで開く）
+    page.click(ITEM_COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    # 検証（D-1 へ向けたスレッドだけ。D-2 への新しいスレッド C-41 は出ない）
+    assert page.inner_text(f"{TARGET_CHIP} .mono") == "D-1"
+    assert page.inner_text(f"{TARGET_CHIP} .t") == "最初の問い"
+    assert page.eval_on_selector_all(THREAD_ROWS, "rows => rows.map(r => r.querySelector('button').dataset.focus)") == [
+        "thread:TH-1"
+    ]
+    # 実行（絞っている間の新しいスレッド）
+    page.click(COMPOSE_BUTTON)
+    page.wait_for_selector(COMPOSE_TEXTAREA)
+    assert page.inner_text(COMPOSE_HEADING) == "D-1 への新しいスレッド"
+    page.fill(COMPOSE_TEXTAREA, "D-1 の進め方")
+    page.locator(f"{COMMENTS_PANEL} .talk-new").get_by_role("button", name="レビューに追加").click()
+    page.wait_for_selector(thread_row("new:C-44"), timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    saved = read_workspace_yaml(root, "comments.yaml")["items"]
+    assert (saved[-1]["id"], saved[-1].get("target"), saved[-1].get("loc")) == ("C-44", "D-1", None)
+    assert page.eval_on_selector_all(THREAD_ROWS, "rows => rows.map(r => r.querySelector('button').dataset.focus)") == [
+        "thread:new:C-44",
+        "thread:TH-1",
+    ]
+    # 実行（チップの × で外す）
+    page.get_by_role("button", name="項目「D-1」の絞り込みを外す").click()
+    # 検証
+    assert page.locator(TARGET_CHIP).count() == 0
+    assert page.locator(THREAD_ROWS).count() == 4
+    # 実行（もう一度絞ってから一覧を閉じ、トップバーで開き直す）
+    page.click(ITEM_COMMENTS_BUTTON)
+    page.wait_for_selector(TARGET_CHIP)
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open", state="detached")
+    open_list(page)
+    # 検証
+    assert page.locator(TARGET_CHIP).count() == 0
+    assert page.locator(THREAD_ROWS).count() == 4
