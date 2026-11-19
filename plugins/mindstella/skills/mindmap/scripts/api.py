@@ -105,6 +105,16 @@ def build_routes(ctx: Any) -> list[Route]:
         result = await run_in_threadpool(workspaces.close_workspace, request.path_params["id"], ctx)
         return JSONResponse(result)
 
+    async def reopen_workspace(request: Request) -> Response:
+        """ワークスペースを開き直す。"""
+        result = await run_in_threadpool(workspaces.reopen_workspace, request.path_params["id"], ctx)
+        return JSONResponse(result)
+
+    async def delete_workspace(request: Request) -> Response:
+        """ワークスペースを削除する。"""
+        result = await run_in_threadpool(workspaces.delete_workspace, request.path_params["id"], ctx)
+        return JSONResponse(result)
+
     async def record_event(request: Request) -> Response:
         """フックが送った出来事を記録する。"""
         body = await _json_body(request, required=True)
@@ -169,6 +179,8 @@ def build_routes(ctx: Any) -> list[Route]:
             methods=["POST"],
         ),
         Route("/workspaces/{id}/close", guarded(close_workspace), methods=["POST"]),
+        Route("/workspaces/{id}/reopen", guarded(reopen_workspace), methods=["POST"]),
+        Route("/workspaces/{id}", guarded(delete_workspace), methods=["DELETE"]),
         Route("/_admin/sessions/{session}/events", guarded(record_event), methods=["POST"]),
         Route("/_admin/sessions/{session}/resume", guarded(resume_status), methods=["POST"]),
         Route(

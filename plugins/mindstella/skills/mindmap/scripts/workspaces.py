@@ -330,6 +330,73 @@ def close_workspace(workspace_id: str, ctx: Any) -> dict[str, Any]:
     return {"id": workspace_id, "closed": True}
 
 
+def reopen_workspace(workspace_id: str, ctx: Any) -> dict[str, Any]:
+    """クローズ済みなら配信元の行を outside_read: true に戻し、どちらもクローズ待ちを解く。"""
+    with ctx.locks.for_workspace(workspace_id):
+        # 鍵を取ってから ID の一覧を確かめる（同時の削除の後なら 404）
+        if workspace_id not in state.read_ids(ctx.state_root):
+            raise ApiError(404, "workspace", f"ワークスペースがありません: {workspace_id}")
+        try:
+            row = find_workspace_row(ctx.pi_port, workspace_id)
+            # 配信元の行が無い: 開き直す先が無い
+            if row is None:
+                raise ApiError(404, "workspace", f"配信元の行がありません: {workspace_id}")
+            reopened = is_closed(row)
+            # クローズ済み: 行を戻す（失敗したらクローズ待ちを解かない）
+            if reopened:
+                project_index.patch_source(ctx.pi_port, workspace_id, {"outside_read": True})
+        except ProjectIndexError as error:
+            raise ApiError(502, "source", error.detail) from error
+        _clear_close_pending(ctx, workspace_id)
+    logger.info(
+        "mindstella.workspace.reopened",
+        extra={"workspace_id": workspace_id, "reopened": reopened},
+    )
+    return {"id": workspace_id, "reopened": reopened, "closed": False}
+
+
+def delete_workspace(workspace_id: str, ctx: Any) -> dict[str, Any]:
+    """クローズしたワークスペースの配信元の行・配信・状態の記録・ID の一覧の行をこの順に消す。記録のフォルダは残す。"""
+    with ctx.locks.for_workspace(workspace_id):
+        # 鍵を取ってから ID の一覧を確かめる（同時の削除の 2 つ目は 404）
+        if workspace_id not in state.read_ids(ctx.state_root):
+            raise ApiError(404, "workspace", f"ワークスペースがありません: {workspace_id}")
+        try:
+            row = find_workspace_row(ctx.pi_port, workspace_id)
+            # 行があるがクローズしていない: 何も変えない
+            if row is not None and not is_closed(row):
+                raise ApiError(
+                    409, "not_closed", "クローズしていないワークスペースは削除できません。先にクローズしてください"
+                )
+            # 行がありクローズ済み: 行を消す（行が無ければ前の削除で消えたものとして続ける）
+            if row is not None:
+                project_index.delete_source(ctx.pi_port, workspace_id)
+        except ProjectIndexError as error:
+            raise ApiError(502, "source", error.detail) from error
+        # 状態のフォルダを消す前に、書き直さないよう配信と変更の検知を止める
+        ctx.previews.stop_workspace(workspace_id)
+        try:
+            state.delete_workspace_state(ctx.state_root, workspace_id)
+        except OSError as error:
+            logger.exception(
+                "mindstella.workspace.delete_failed", extra={"workspace_id": workspace_id}
+            )
+            raise ApiError(500, "state", f"状態のフォルダを消せません: {error}") from error
+        # ID の一覧の行は最後に消す（途中で失敗したら同じ削除をもう一度受けられる）
+        state.remove_id(ctx.state_root, workspace_id)
+    logger.info("mindstella.workspace.deleted", extra={"workspace_id": workspace_id})
+    return {"id": workspace_id, "deleted": True}
+
+
+def _clear_close_pending(ctx: Any, workspace_id: str) -> None:
+    """MindStella のセッションの状態があれば、クローズ待ちを解く。"""
+    state.update_session(
+        ctx.state_root,
+        workspace_id,
+        lambda current: None if current is None else current.replace(close_pending=False),
+    )
+
+
 def workspace_status(workspace_id: str, ctx: Any) -> dict[str, Any]:
     """ワークスペースと MindStella のセッションの状態をまとめて返す。何も書かず、鍵も取らない。"""
     # 1. ID の一覧に無い: 知らないワークスペース
@@ -558,11 +625,7 @@ def _register_source(
     # クローズ済みの行: outside_read を戻してクローズ待ちを解く
     if is_closed(existing):
         project_index.patch_source(ctx.pi_port, workspace_id, {**changes, "outside_read": True})
-        state.update_session(
-            ctx.state_root,
-            workspace_id,
-            lambda current: None if current is None else current.replace(close_pending=False),
-        )
+        _clear_close_pending(ctx, workspace_id)
         return "reopened", True
     if changes:
         project_index.patch_source(ctx.pi_port, workspace_id, changes)
