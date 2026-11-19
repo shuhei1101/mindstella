@@ -63,7 +63,7 @@ scenarios:
       - name: project-index
         description: 正常シナリオと同じ。グローバルの設定のファイルには、ワークスペースでない配信元の行も 1 行ある
       - name: 状態
-        description: 状態のフォルダに `workspaces.yaml` が無い。A・B の `workspaces/{ID}/` は残っている
+        description: 状態のフォルダに `workspaces.yaml` が無い。A・B の `workspaces/{ID}/` は残っている。B の `session.json` は `running` でペインが無い
         notes: 利用者が状態のフォルダの ID の一覧を削除した場合に該当する（D-323）
     flow: |-
       ```mermaid
@@ -77,6 +77,7 @@ scenarios:
         SV->>PI: 配信元の行を参照する
         PI-->>SV: A・B・ワークスペースでない行・mindstella-agent-flows
         SV->>ST: A・B で ID の一覧を作る
+        SV->>ST: 作った ID の一覧で running の MindStella のセッションを照合し、B を crashed に書き換える
         SV->>SV: 待ち受ける
         APP->>SV: ワークスペースの一覧を依頼する（GET /workspaces）
         SV-->>APP: A・B
@@ -85,6 +86,7 @@ scenarios:
       - 状態のフォルダの `workspaces.yaml` の `ids` が A・B だけを持つ
       - ワークスペースの一覧が A・B を返却する
       - グローバルの設定のファイルが起動の前と同じ
+      - B の `session.json` の `status` が `crashed` になっている
     test: test_normal_when_ids_missing
   - name: 正常シナリオ（プラグインを更新した後）
     setup:
