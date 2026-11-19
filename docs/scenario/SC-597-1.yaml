@@ -275,7 +275,7 @@ scenarios:
         API-->>APP: 落ちている
       ```
     expected:
-      - 外部のアプリが、状態の取得と MindStella のセッションの一覧の両方で、MindStella のセッションが落ちていることを受け取っている
+      - 外部のアプリが、状態の取得と MindStella のセッションの一覧の両方で、MindStella のセッションが落ちていることを受け取り、状態の取得でワークスペースが進行中であることを受け取っている
       - 状態のフォルダの MindStella のセッションの状態が、起動中のまま変わっていない
       - Mock の Webhook が要求を受けていない
     test: test_normal_when_session_crashed

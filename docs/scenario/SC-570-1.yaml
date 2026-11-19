@@ -61,9 +61,7 @@ scenarios:
         participant SRV as 常駐サーバー
         participant DC as Discord
 
-        APP->>SRV: MindStella のセッションの一覧を取得する
-        SRV->>SRV: ペインとプロセスが無いので、落ちたことを記録する
-        SRV-->>APP: 落ちている
+        SRV->>SRV: 一定の間隔の見回りで、ペインとプロセスが無いことを見つけ、落ちたことを記録する
         SRV->>DC: 落ちたことを 1 件の通知で送信する
         APP->>SRV: 停止を依頼する
         SRV->>SRV: 停止済みを記録する（既に落ちたことを通知したので送信しない）
@@ -71,7 +69,7 @@ scenarios:
       ```
     expected:
       - エンドポイントに 1 件だけ要求が届き、止まった理由が異常終了になっている
-      - 一覧の後の停止の依頼で、通知が重ねて届いていない
+      - 見回りの後の停止の依頼で、通知が重ねて届いていない
     test: test_normal_when_session_crashed
   - name: 正常シナリオ（MindStella のセッションが自分で終了する）
     setup:

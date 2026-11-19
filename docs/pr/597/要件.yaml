@@ -15,6 +15,12 @@ use_cases:
     impact: run_only
     detail: 落ちたことの記録と通知を見回りだけが行うようになっても、落ちた後のコメントで起動し直せるかを確かめる
     depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: changed
+    detail: MindStella のセッションが落ちたことを、一覧ではなく一定の間隔の見回りが見つけて通知する流れに変える
+    depends_on:
+      - docs/scenario/SC-597-1.yaml
 docs:
   - page: docs/guide/コマンド.md
     new: false
