@@ -1494,6 +1494,7 @@ var MindmapPreview;
                         children: [MindmapPreview.icon("edit"), MindmapPreview.h({ tag: "span", attrs: { class: "lbl" }, children: [edit.editing ? "編集を終える" : "編集する"] })],
                     }),
                 exportSource === undefined || entry === undefined ? null : docExportControl({ item: entry.item, source: exportSource, index }),
+                full || on.comments === undefined ? null : itemCommentsButton(id, on.comments),
                 arrow("前の項目へ戻る", "←", position <= 0, on.back),
                 arrow("次の項目へ進む", "→", position >= length - 1, on.forward),
                 MindmapPreview.h({
@@ -1528,6 +1529,21 @@ var MindmapPreview;
     /** エクスポートのメニューと画面の左右の端との間に空ける余白（px） */
     const EXPORT_MENU_MARGIN_PX = 8;
     /** 資料のエクスポートの入口と、形式を選ぶメニュー。入口を押すとメニューを入口の下に右端を揃えて開き、「HTML でエクスポート」は mdmark を取って 1 枚の HTML を組み立てて保存させ、「Markdown でエクスポート」は警告の後に埋め込んだ HTML を除いた本文を保存させる。閉じたら入口へフォーカスを戻す */
+    /** 見出しの、その項目で絞ったコメントの一覧を開くボタン */
+    function itemCommentsButton(id, open) {
+        return MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                class: "icon-btn panel-comments",
+                type: "button",
+                "data-act": "item-comments",
+                "aria-label": `${id} のコメントの一覧を開く`,
+                title: "この項目のコメントの一覧",
+                onclick: () => open(id),
+            },
+            children: [MindmapPreview.icon("comment")],
+        });
+    }
     function docExportControl({ item, source, index }) {
         // 組み立てている間にメニューを閉じたとき、組み立て終えたファイルを保存させないための世代
         let generation = 0;

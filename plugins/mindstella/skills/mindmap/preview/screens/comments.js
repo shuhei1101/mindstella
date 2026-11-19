@@ -23,26 +23,27 @@ var MindmapPreview;
     function lastCreated(thread) {
         return thread.posts[thread.posts.length - 1].created;
     }
-    /** スレッドを状態とタグで絞り、最後の書き込みの新しい順に並べる（渡した配列は変えない） */
-    function visibleThreads(threads, filter, tag) {
+    /** スレッドを状態・タグ・向けた項目で絞り、最後の書き込みの新しい順に並べる（渡した配列は変えない） */
+    function visibleThreads(threads, filter, tag, target) {
         return threads
             .filter((thread) => filter === "all" || thread.status === filter)
             .filter((thread) => tag === null || thread.tags.includes(tag))
+            .filter((thread) => target === null || thread.target === target)
             .sort((a, b) => byTime(lastCreated(b), lastCreated(a)) || threadNumber(b.id) - threadNumber(a.id));
     }
     MindmapPreview.visibleThreads = visibleThreads;
-    /** タグで絞ったスレッドの、状態の絞り込みに出す件数 */
-    function threadCounts(threads, tag) {
-        const tagged = tag === null ? threads : threads.filter((thread) => thread.tags.includes(tag));
+    /** タグと向けた項目で絞ったスレッドの、状態の絞り込みに出す件数 */
+    function threadCounts(threads, tag, target) {
+        const tagged = threads.filter((thread) => (tag === null || thread.tags.includes(tag)) && (target === null || thread.target === target));
         const open = tagged.filter((thread) => thread.status === "open").length;
         return { open, closed: tagged.length - open, all: tagged.length };
     }
     MindmapPreview.threadCounts = threadCounts;
-    /** レビュー中の書き込みのうち、一覧の先頭に出す新しいスレッドの最初の書き込み（クローズの絞り込みとタグの絞り込みでは出さない） */
-    function pendingThreads(items, filter, tag) {
+    /** レビュー中の書き込みのうち、一覧の先頭に出す新しいスレッドの最初の書き込み（クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
+    function pendingThreads(items, filter, tag, target) {
         if (filter === "closed" || tag !== null)
             return [];
-        return items.filter((item) => item.thread === null);
+        return items.filter((item) => item.thread === null && (target === null || item.target === target));
     }
     MindmapPreview.pendingThreads = pendingThreads;
     /** レビュー中の書き込みが、クローズのスレッドへの返信か（スレッドが見つからなければ偽。サーバーが 409 で返す） */
@@ -463,9 +464,10 @@ var MindmapPreview;
         { value: "all", label: "すべて" },
     ];
     /** 0 件のときの文言 */
-    function emptyThreadsText({ filter, tag }) {
+    function emptyThreadsText({ filter, tag, target }) {
         const state = { open: "オープンの", closed: "クローズの", all: "" }[filter];
-        return tag === null ? `${state}スレッドはありません。` : `タグ「${tag}」の${state}スレッドはありません。`;
+        const head = `${target === null ? "" : `${target} への`}${tag === null ? "" : `タグ「${tag}」の`}`;
+        return `${head}${state}スレッドはありません。`;
     }
     /** スレッドを読めなかった理由の文言 */
     function threadsErrorText(error) {
@@ -506,13 +508,36 @@ var MindmapPreview;
             ],
         });
     }
+    /** 項目の絞り込みのチップ（ID とタイトルと外す ×。件数は状態の絞り込みが出す） */
+    function targetChip(target, title, clear) {
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "chips talk-chips talk-target" },
+            children: [
+                MindmapPreview.h({
+                    tag: "span",
+                    attrs: { class: "chip" },
+                    children: [
+                        MindmapPreview.icon("comment"),
+                        MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [target] }),
+                        title === null ? null : MindmapPreview.h({ tag: "span", attrs: { class: "t" }, children: [title] }),
+                        MindmapPreview.h({
+                            tag: "button",
+                            attrs: { type: "button", "aria-label": `項目「${target}」の絞り込みを外す`, "data-focus": "clear-target", onclick: () => clear() },
+                            children: [MindmapPreview.icon("x")],
+                        }),
+                    ],
+                }),
+            ],
+        });
+    }
     /** スレッドの一覧（絞り込みの帯・行・下端の新しいスレッド）を返す */
     function threadListView(props) {
-        const { threads, items, filter, tag, on } = props;
-        const counts = threadCounts(threads, tag);
-        const rows = visibleThreads(threads, filter, tag);
-        const pending = pendingThreads(items, filter, tag);
-        const total = threads.filter((thread) => filter === "all" || thread.status === filter).length;
+        const { threads, items, filter, tag, target, on } = props;
+        const counts = threadCounts(threads, tag, target);
+        const rows = visibleThreads(threads, filter, tag, target);
+        const pending = pendingThreads(items, filter, tag, target);
+        const total = threads.filter((thread) => (filter === "all" || thread.status === filter) && (target === null || thread.target === target)).length;
         const empty = rows.length + pending.length === 0;
         return [
             MindmapPreview.h({
@@ -533,6 +558,7 @@ var MindmapPreview;
                             children: [entry.label, MindmapPreview.h({ tag: "span", attrs: { class: "count" }, children: [counts[entry.value]] })],
                         })),
                     }),
+                    target === null ? null : targetChip(target, props.titleOf(target), on.clearTarget),
                     tag === null
                         ? null
                         : MindmapPreview.h({
@@ -567,7 +593,7 @@ var MindmapPreview;
                         : MindmapPreview.h({ tag: "p", attrs: { class: "send-msg failed", role: "alert" }, children: [MindmapPreview.icon("alert"), threadsErrorText(props.threadsError)] }),
                     empty
                         ? props.threadsError === null
-                            ? MindmapPreview.h({ tag: "p", attrs: { class: "comments-empty" }, children: [MindmapPreview.icon("comment"), emptyThreadsText({ filter, tag })] })
+                            ? MindmapPreview.h({ tag: "p", attrs: { class: "comments-empty" }, children: [MindmapPreview.icon("comment"), emptyThreadsText({ filter, tag, target })] })
                             : null
                         : MindmapPreview.h({
                             tag: "ul",

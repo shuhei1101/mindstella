@@ -1882,6 +1882,10 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 .talk-chips { margin: 0; min-height: 0; }
 /* チップのタグの印 */
 .talk-chips .chip > svg.icon { color: var(--text-3); }
+/* 項目の絞り込みのチップ: ID は等幅、タイトルは 1 行に収めて省略する */
+.talk-target .chip { max-width: 100%; }
+.talk-target .chip .mono { font-family: var(--font-mono); }
+.talk-target .chip .t { min-width: 0; margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* スレッドの一覧: 最後の書き込みの新しい順の縦並び */
 .th-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 /* スレッドの行: 開くボタンとタグを縦に積む */

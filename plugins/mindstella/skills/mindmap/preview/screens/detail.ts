@@ -29,6 +29,8 @@ namespace MindmapPreview {
       layout: (layout: BodyLayout) => void;
       /** レビュー中のコメントの並びの切り替えを押した（入れ替えた後の並び）。使う側が個人の上書きに残して描き直す */
       order: (order: ReviewOrder) => void;
+      /** その項目で絞ったコメントの一覧を開く（項目の ID）。サーバーの配信だけ渡し、渡されたときだけ見出しにボタンを置く */
+      comments?: (id: string) => void;
       /** HTML の本文の枠で文を選び終えた・選びを外した。使う側が選んだ箇所のコメントの入口を出す・閉じる */
       frame?: { select: (selection: HtmlFrameSelection) => void; clear: () => void };
     };
@@ -1658,6 +1660,7 @@ namespace MindmapPreview {
               children: [icon("edit"), h({ tag: "span", attrs: { class: "lbl" }, children: [edit.editing ? "編集を終える" : "編集する"] })],
             }),
         exportSource === undefined || entry === undefined ? null : docExportControl({ item: entry.item, source: exportSource, index }),
+        full || on.comments === undefined ? null : itemCommentsButton(id, on.comments),
         arrow("前の項目へ戻る", "←", position <= 0, on.back),
         arrow("次の項目へ進む", "→", position >= length - 1, on.forward),
         h({
@@ -1694,6 +1697,22 @@ namespace MindmapPreview {
   const EXPORT_MENU_MARGIN_PX = 8;
 
   /** 資料のエクスポートの入口と、形式を選ぶメニュー。入口を押すとメニューを入口の下に右端を揃えて開き、「HTML でエクスポート」は mdmark を取って 1 枚の HTML を組み立てて保存させ、「Markdown でエクスポート」は警告の後に埋め込んだ HTML を除いた本文を保存させる。閉じたら入口へフォーカスを戻す */
+  /** 見出しの、その項目で絞ったコメントの一覧を開くボタン */
+  function itemCommentsButton(id: string, open: (id: string) => void): HTMLElement {
+    return h({
+      tag: "button",
+      attrs: {
+        class: "icon-btn panel-comments",
+        type: "button",
+        "data-act": "item-comments",
+        "aria-label": `${id} のコメントの一覧を開く`,
+        title: "この項目のコメントの一覧",
+        onclick: () => open(id),
+      },
+      children: [icon("comment")],
+    });
+  }
+
   function docExportControl({ item, source, index }: { item: Item; source: string; index: RecordIndex }): HTMLElement {
     // 組み立てている間にメニューを閉じたとき、組み立て終えたファイルを保存させないための世代
     let generation = 0;

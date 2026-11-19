@@ -1,4 +1,4 @@
-// 詳細の見出し（種類と ID・戻る・進む・編集・エクスポート・全画面・閉じる）
+// 詳細の見出し（種類と ID・戻る・進む・編集・エクスポート・コメントの一覧・全画面・閉じる）
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
 import { DocExportControl } from "@/shared/components/doc-export-menu";
 import { Icon } from "@/shared/components/icon";
@@ -25,7 +25,7 @@ export type DetailHeaderProps = {
 };
 
 export const DetailHeader = ({ item, kind, index, full, editable, editing, pending, showTitle, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
-  const { canBack, canForward } = usePreviewSearch();
+  const { canBack, canForward, openItemComments } = usePreviewSearch();
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
   const editLabel = editing ? "編集を終える" : "編集する";
@@ -49,6 +49,11 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, pendi
         </Button>
       ) : null}
       {source === undefined ? null : <DocExportControl item={item} source={source} index={index} />}
+      {full ? null : (
+        <Button variant="ghost" size="icon" aria-label={`${item.id} のコメントの一覧を開く`} title="この項目のコメントの一覧" onClick={() => { openItemComments(item.id); }}>
+          <Icon name="comment" />
+        </Button>
+      )}
       <Button variant="ghost" size="icon" aria-label="前の項目へ戻る" title="前の項目へ戻る" disabled={!canBack} onClick={() => { window.history.back(); }}>
         ←
       </Button>

@@ -110,6 +110,8 @@ namespace MindmapPreview {
     filter: ThreadFilter;
     /** スレッドを絞っているタグ。パネルを閉じても保つ */
     tag: string | null;
+    /** スレッドを絞っている項目の ID。詳細パネルの「コメントの一覧」で入れ、項目の絞り込みの × とトップバーのコメントのボタンで開くときに外す */
+    target: string | null;
     /** 開いているスレッド（`pending` が真なら `id` はまだ送っていない新しいスレッドのコメントの ID） */
     openedThread: OpenedThread | null;
     /** 新しいスレッドの入力を出しているか */
@@ -970,7 +972,12 @@ namespace MindmapPreview {
           commentCount: comment.review.items.length,
           commentsOpen: comment.listOpen,
           commentsUnread: anyOpenUnseen(comment.threads),
-          onComments: () => (comment.listOpen ? closeList() : openList()),
+          onComments: () => {
+            if (comment.listOpen) return closeList();
+            // トップバーから開いた一覧は項目で絞らない
+            comment.target = null;
+            openList();
+          },
           settingsOpen: display.open,
           onSettings: () => (display.open ? closeSettings() : openSettings()),
           // 概要以外の画面に絞り込みのボタンを置き、値を選んでいる条件の数をバッジに出す
@@ -1268,6 +1275,8 @@ namespace MindmapPreview {
           },
           back: () => history.back(),
           forward: () => history.forward(),
+          // その項目で絞ったスレッドの一覧を開く（開いたままなら状態・タグの絞り込みを保ち、項目だけを差し替える）
+          ...(serverMode ? { comments: openItemComments } : {}),
           diagram: showDiagram,
           frame: { select: frameSelect, clear: frameClear },
           // 本文の見出しへ移った: ハッシュの `h` を、履歴に積まずに置き換える
@@ -1601,6 +1610,7 @@ namespace MindmapPreview {
       reviewFrom: "list",
       filter: "open",
       tag: null,
+      target: null,
       openedThread: null,
       composing: false,
       reason: { open: false, body: "", status: "idle", detail: null },
@@ -2306,6 +2316,14 @@ namespace MindmapPreview {
       comment.reviewFocus = null;
     };
 
+    /** 項目で絞ったスレッドの一覧を開く（開いていれば描き直す） */
+    const openItemComments = (id: string): void => {
+      comment.target = id;
+      resetPanelView();
+      if (comment.listOpen) renderComments();
+      else openList();
+    };
+
     /** コメントの一覧を開く（絞り込みのドロワーは閉じ、閉じる前の画面・開いていたスレッドから始める） */
     const openList = (): void => {
       // 絞り込みのドロワー・表示の設定のパネルとは 1 つだけを開く
@@ -2521,6 +2539,7 @@ namespace MindmapPreview {
       threadsError: comment.threadsError,
       filter: comment.filter,
       tag: comment.tag,
+      target: comment.target,
       opened: comment.openedThread,
       composing: comment.composing,
       free: formProps(null),
@@ -2559,6 +2578,10 @@ namespace MindmapPreview {
         },
         clearTag: () => {
           comment.tag = null;
+          renderComments();
+        },
+        clearTarget: () => {
+          comment.target = null;
           renderComments();
         },
         compose: (open) => {

@@ -1,4 +1,4 @@
-// コメントの一覧（画面設計『コメントの一覧.tsx』）。スレッドを状態とタグで絞って並べ、新しいスレッドを立てる左のパネル。パネルの中をスレッド・レビュー中の書き込みの画面と切り替える
+// コメントの一覧（画面設計『コメントの一覧.tsx』）。スレッドを状態・タグ・項目で絞って並べ、新しいスレッドを立てる左のパネル。パネルの中をスレッド・レビュー中の書き込みの画面と切り替える
 import { useEffect, useRef, useState } from "react";
 
 import { ReviewView } from "@/features/comments/review/review-view";
@@ -13,6 +13,7 @@ import { pendingThreads, threadCounts, visibleThreads, type ThreadFilter } from 
 import { useAddComment, useSaveDraft } from "@/shared/hooks/use-comments";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
+import { useRecords } from "@/shared/hooks/use-records";
 import { cn } from "@/shared/lib/cn";
 import { usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 import { readVoiceState } from "@/shared/stores/voice-store";
@@ -89,12 +90,32 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
   );
 };
 
+/** 項目の絞り込みのチップ（ID とタイトルと外す ×。件数は状態の絞り込みが出す） */
+const TargetChip = ({ target, title, onClear }: { target: string; title: string | undefined; onClear: () => void }) => (
+  <div className="flex min-w-0 items-center gap-1 border-b border-border px-3 py-1 text-small">
+    <Icon name="comment" />
+    <span className="font-mono">{target}</span>
+    {title === undefined ? null : <span className="min-w-0 truncate">{title}</span>}
+    <Button variant="ghost" size="icon" aria-label={`項目「${target}」の絞り込みを外す`} onClick={onClear}>
+      <Icon name="x" />
+    </Button>
+  </div>
+);
+
+const STATE_TEXT: Record<ThreadFilter, string> = { open: "オープンの", closed: "クローズの", all: "" };
+
+/** 0 件のときの文言（項目で絞っていれば頭に「{ID} への」、タグで絞っていれば「タグ「{タグ}」の」を付ける） */
+const emptyText = ({ filter, tag, target }: { filter: ThreadFilter; tag: string | null; target: string | null }): string =>
+  `${target === null ? "" : `${target} への`}${tag === null ? "" : `タグ「${tag}」の`}${STATE_TEXT[filter]}スレッドはありません。`;
+
 export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProps) => {
   const { search, setPanel, setComments } = usePreviewSearch();
   const data = useCommentData();
   const pinned = usePrefs().commentsPinned === true;
   const filter: ThreadFilter = search.tstatus ?? "open";
   const tag = search.ttag ?? null;
+  const target = search.ttarget ?? null;
+  const { index } = useRecords();
   const freeDraft = data.drafts.find((draft) => draft.target === null && draft.thread === null)?.body ?? "";
   // 新しいスレッドの入力で音声入力中なら、入力を出して開く
   const [composing, setComposing] = useState(() => readVoiceState().session?.key === NEW_THREAD_VOICE_KEY);
@@ -126,9 +147,10 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
     focusRow.current = null;
     document.querySelector<HTMLElement>(`[data-focus="thread:${from}"], [data-focus="thread:new:${from}"]`)?.focus();
   }, [search.thread, search.review]);
-  const counts = threadCounts({ threads: data.threads, tag });
-  const rows = visibleThreads({ threads: data.threads, filter, tag });
-  const pending = pendingThreads({ items: data.items, filter, tag });
+  const counts = threadCounts({ threads: data.threads, tag, target });
+  const rows = visibleThreads({ threads: data.threads, filter, tag, target });
+  const pending = pendingThreads({ items: data.items, filter, tag, target });
+  const targetTitle = target === null ? undefined : index?.byId.get(target)?.item.title;
   const repliesOf = new Set(data.items.map((item) => item.thread).filter((thread): thread is string => thread !== null));
   const header = (
     <div className="flex items-center gap-2 border-b border-border px-3 py-2">
@@ -166,13 +188,14 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
             </Button>
           ))}
         </div>
+        {target === null ? null : <TargetChip target={target} title={targetTitle} onClear={() => { setComments({ ttarget: undefined }); }} />}
         {tag === null ? null : (
           <div className="flex items-center gap-1 border-b border-border px-3 py-1 text-small">
             <span>#{tag}</span>
             <Button variant="ghost" size="icon" aria-label={`タグ「${tag}」の絞り込みを外す`} onClick={() => { setComments({ ttag: undefined }); }}>
               <Icon name="x" />
             </Button>
-            <span className="text-muted-foreground">{`${String(rows.length)} / ${String(visibleThreads({ threads: data.threads, filter, tag: null }).length)} 件`}</span>
+            <span className="text-muted-foreground">{`${String(rows.length)} / ${String(visibleThreads({ threads: data.threads, filter, tag: null, target }).length)} 件`}</span>
           </div>
         )}
         {data.threadsError === null ? null : (
@@ -192,7 +215,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
         {pending.length === 0 && rows.length === 0 && data.threadsError === null ? (
           <p className="m-0 flex items-center gap-1 px-3 py-2 text-small text-muted-foreground">
             <Icon name="comment" />
-            {`${tag === null ? "" : `タグ「${tag}」の`}${filter === "open" ? "オープンの" : filter === "closed" ? "クローズの" : ""}スレッドはありません。`}
+            {emptyText({ filter, tag, target })}
           </p>
         ) : null}
         {composing ? (

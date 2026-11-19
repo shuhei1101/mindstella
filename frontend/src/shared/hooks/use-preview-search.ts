@@ -42,10 +42,12 @@ export type PreviewSearchApi = {
   setFilters: (f: Record<string, string>) => void;
   setSort: (sort: string | undefined) => void;
   setDiff: (diff: string | undefined) => void;
-  /** 左のパネルを開閉する（置き換える）。コメントの一覧でないときは `thread`・`review`・`tstatus`・`ttag` を外す */
+  /** 左のパネルを開閉する（置き換える）。コメントの一覧でないときは `thread`・`review`・`tstatus`・`ttag`・`ttarget` を外す */
   setPanel: (panel: PreviewSearch["panel"]) => void;
   /** コメントの一覧の中の画面と絞り込みを移る（置き換える） */
-  setComments: (patch: Pick<Patch, "thread" | "review" | "tstatus" | "ttag">) => void;
+  setComments: (patch: Pick<Patch, "thread" | "review" | "tstatus" | "ttag" | "ttarget">) => void;
+  /** コメントの一覧を項目で絞ったスレッドの一覧で開く（置き換える）。開いたままなら `tstatus`・`ttag` を残す */
+  openItemComments: (id: string) => void;
   /** 別の画面の項目か一覧を開く（履歴に積む） */
   openList: (tab: PreviewTab, patch: Patch) => void;
   /** 記録に合わない値を外した search へ置き換える */
@@ -106,10 +108,14 @@ export const usePreviewSearch = (): PreviewSearchApi => {
       apply({ diff }, true);
     },
     setPanel: (panel) => {
-      apply(panel === "comments" ? { panel } : { panel, thread: undefined, review: undefined, tstatus: undefined, ttag: undefined }, true);
+      apply(panel === "comments" ? { panel } : { panel, thread: undefined, review: undefined, tstatus: undefined, ttag: undefined, ttarget: undefined }, true);
     },
     setComments: (patch) => {
       apply(patch, true);
+    },
+    openItemComments: (id) => {
+      const keep = search.panel === "comments" ? {} : { tstatus: undefined, ttag: undefined };
+      apply({ panel: "comments", ttarget: id, thread: undefined, review: undefined, ...keep }, true);
     },
     openList: (tab, patch) => {
       const next = patch.id === undefined ? EMPTY_TRAIL : { items: [patch.id], position: 0 };
@@ -131,15 +137,15 @@ export const usePreviewSearch = (): PreviewSearchApi => {
       }
       const full = target.full ? "1" : undefined;
       if (search.id === target.item && search.full === full) {
-        apply({ panel: undefined, thread: undefined, review: undefined, tstatus: undefined, ttag: undefined }, true);
+        apply({ panel: undefined, thread: undefined, review: undefined, tstatus: undefined, ttag: undefined, ttarget: undefined }, true);
         return;
       }
       const items = [...trail.items.slice(0, trail.position + 1), target.item];
-      void navigate({ search: (previous) => ({ ...previous, id: target.item, full, h: undefined, panel: undefined, thread: undefined, review: undefined, tstatus: undefined, ttag: undefined }), state: (previous) => ({ ...previous, trail: { items, position: trail.position + 1 } }) });
+      void navigate({ search: (previous) => ({ ...previous, id: target.item, full, h: undefined, panel: undefined, thread: undefined, review: undefined, tstatus: undefined, ttag: undefined, ttarget: undefined }), state: (previous) => ({ ...previous, trail: { items, position: trail.position + 1 } }) });
     },
     openFromSearch: (tab, id) => {
-      const { diff, panel, thread, review, tstatus, ttag } = search;
-      const next: PreviewSearch = { f: {}, tab, id, diff, panel, thread, review, tstatus, ttag };
+      const { diff, panel, thread, review, tstatus, ttag, ttarget } = search;
+      const next: PreviewSearch = { f: {}, tab, id, diff, panel, thread, review, tstatus, ttag, ttarget };
       const same = (tab ?? "overview") === (search.tab ?? "overview");
       void navigate({ search: next, replace: same, state: (previous) => ({ ...previous, trail: { items: [id], position: 0 } }) });
     },

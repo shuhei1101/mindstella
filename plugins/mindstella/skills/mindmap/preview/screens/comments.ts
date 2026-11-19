@@ -57,6 +57,8 @@ namespace MindmapPreview {
     filter: ThreadFilter;
     /** 絞っているタグ */
     tag: string | null;
+    /** 絞っている項目の ID */
+    target: string | null;
     /** 開いているスレッド */
     opened: OpenedThread | null;
     /** 新しいスレッドの入力を出しているか */
@@ -103,6 +105,8 @@ namespace MindmapPreview {
       /** タグで絞る（絞っているタグなら外す） */
       tag: (tag: string) => void;
       clearTag: () => void;
+      /** 項目の絞り込みを外す */
+      clearTarget: () => void;
       /** 新しいスレッドの入力を出す（真）／畳む（偽） */
       compose: (open: boolean) => void;
       /** スレッドを開く（まだ送っていない新しいスレッドはコメントの ID と `pending: true`） */
@@ -189,25 +193,26 @@ namespace MindmapPreview {
     return thread.posts[thread.posts.length - 1].created;
   }
 
-  /** スレッドを状態とタグで絞り、最後の書き込みの新しい順に並べる（渡した配列は変えない） */
-  export function visibleThreads(threads: Thread[], filter: ThreadFilter, tag: string | null): Thread[] {
+  /** スレッドを状態・タグ・向けた項目で絞り、最後の書き込みの新しい順に並べる（渡した配列は変えない） */
+  export function visibleThreads(threads: Thread[], filter: ThreadFilter, tag: string | null, target: string | null): Thread[] {
     return threads
       .filter((thread) => filter === "all" || thread.status === filter)
       .filter((thread) => tag === null || thread.tags.includes(tag))
+      .filter((thread) => target === null || thread.target === target)
       .sort((a, b) => byTime(lastCreated(b), lastCreated(a)) || threadNumber(b.id) - threadNumber(a.id));
   }
 
-  /** タグで絞ったスレッドの、状態の絞り込みに出す件数 */
-  export function threadCounts(threads: Thread[], tag: string | null): { open: number; closed: number; all: number } {
-    const tagged = tag === null ? threads : threads.filter((thread) => thread.tags.includes(tag));
+  /** タグと向けた項目で絞ったスレッドの、状態の絞り込みに出す件数 */
+  export function threadCounts(threads: Thread[], tag: string | null, target: string | null): { open: number; closed: number; all: number } {
+    const tagged = threads.filter((thread) => (tag === null || thread.tags.includes(tag)) && (target === null || thread.target === target));
     const open = tagged.filter((thread) => thread.status === "open").length;
     return { open, closed: tagged.length - open, all: tagged.length };
   }
 
-  /** レビュー中の書き込みのうち、一覧の先頭に出す新しいスレッドの最初の書き込み（クローズの絞り込みとタグの絞り込みでは出さない） */
-  export function pendingThreads(items: ReviewItem[], filter: ThreadFilter, tag: string | null): ReviewItem[] {
+  /** レビュー中の書き込みのうち、一覧の先頭に出す新しいスレッドの最初の書き込み（クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
+  export function pendingThreads(items: ReviewItem[], filter: ThreadFilter, tag: string | null, target: string | null): ReviewItem[] {
     if (filter === "closed" || tag !== null) return [];
-    return items.filter((item) => item.thread === null);
+    return items.filter((item) => item.thread === null && (target === null || item.target === target));
   }
 
   /** レビュー中の書き込みが、クローズのスレッドへの返信か（スレッドが見つからなければ偽。サーバーが 409 で返す） */
@@ -670,9 +675,10 @@ namespace MindmapPreview {
   ];
 
   /** 0 件のときの文言 */
-  function emptyThreadsText({ filter, tag }: { filter: ThreadFilter; tag: string | null }): string {
+  function emptyThreadsText({ filter, tag, target }: { filter: ThreadFilter; tag: string | null; target: string | null }): string {
     const state = { open: "オープンの", closed: "クローズの", all: "" }[filter];
-    return tag === null ? `${state}スレッドはありません。` : `タグ「${tag}」の${state}スレッドはありません。`;
+    const head = `${target === null ? "" : `${target} への`}${tag === null ? "" : `タグ「${tag}」の`}`;
+    return `${head}${state}スレッドはありません。`;
   }
 
   /** スレッドを読めなかった理由の文言 */
@@ -716,13 +722,37 @@ namespace MindmapPreview {
     });
   }
 
+  /** 項目の絞り込みのチップ（ID とタイトルと外す ×。件数は状態の絞り込みが出す） */
+  function targetChip(target: string, title: string | null, clear: () => void): HTMLElement {
+    return h({
+      tag: "div",
+      attrs: { class: "chips talk-chips talk-target" },
+      children: [
+        h({
+          tag: "span",
+          attrs: { class: "chip" },
+          children: [
+            icon("comment"),
+            h({ tag: "span", attrs: { class: "mono" }, children: [target] }),
+            title === null ? null : h({ tag: "span", attrs: { class: "t" }, children: [title] }),
+            h({
+              tag: "button",
+              attrs: { type: "button", "aria-label": `項目「${target}」の絞り込みを外す`, "data-focus": "clear-target", onclick: () => clear() },
+              children: [icon("x")],
+            }),
+          ],
+        }),
+      ],
+    });
+  }
+
   /** スレッドの一覧（絞り込みの帯・行・下端の新しいスレッド）を返す */
   export function threadListView(props: CommentsPanelProps): HTMLElement[] {
-    const { threads, items, filter, tag, on } = props;
-    const counts = threadCounts(threads, tag);
-    const rows = visibleThreads(threads, filter, tag);
-    const pending = pendingThreads(items, filter, tag);
-    const total = threads.filter((thread) => filter === "all" || thread.status === filter).length;
+    const { threads, items, filter, tag, target, on } = props;
+    const counts = threadCounts(threads, tag, target);
+    const rows = visibleThreads(threads, filter, tag, target);
+    const pending = pendingThreads(items, filter, tag, target);
+    const total = threads.filter((thread) => (filter === "all" || thread.status === filter) && (target === null || thread.target === target)).length;
     const empty = rows.length + pending.length === 0;
     return [
       h({
@@ -745,6 +775,7 @@ namespace MindmapPreview {
               }),
             ),
           }),
+          target === null ? null : targetChip(target, props.titleOf(target), on.clearTarget),
           tag === null
             ? null
             : h({
@@ -779,7 +810,7 @@ namespace MindmapPreview {
             : h({ tag: "p", attrs: { class: "send-msg failed", role: "alert" }, children: [icon("alert"), threadsErrorText(props.threadsError)] }),
           empty
             ? props.threadsError === null
-              ? h({ tag: "p", attrs: { class: "comments-empty" }, children: [icon("comment"), emptyThreadsText({ filter, tag })] })
+              ? h({ tag: "p", attrs: { class: "comments-empty" }, children: [icon("comment"), emptyThreadsText({ filter, tag, target })] })
               : null
             : h({
               tag: "ul",
