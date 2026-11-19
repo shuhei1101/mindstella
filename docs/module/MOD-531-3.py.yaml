@@ -711,10 +711,11 @@ functions:
       3. 鍵を取った後に `state.read_ids` に無ければ `ApiError`（404、`stage: workspace`）
       4. `find_workspace_row` で配信元の行を引く（`ProjectIndexError` は 502、`stage: source`。行が無ければ 404、`stage: workspace`）。`workspace_folder` でフォルダを引き、`.mindstella/config.yaml` が無ければ 409（`stage: records`）
       5. `state.read_launch` で今の記録を読み、指定した `mcp_config`・`plugin_dirs` を重ねて（記録が無ければ指定しなかった方を `{"mcpServers": {}}`・`[]`）`validate_options` で確かめる（422、`stage: mcp_config`・`plugin_dirs`）
-      6. `workspace_lock`（フォルダと `ctx.write_lock`）を取り、`store.load_workspace` で読んだ設定に `settings_update.stage_settings` で `settings` を当てる（`MindmapError` は 422、`stage: settings`、`detail` はエラーの本文）。`flow` を指定したときは、オブジェクトなら `check_flow` で確かめて置き換え、`null` なら確かめずにキーを外す（422、`stage: flow`。502、`stage: source`）
-      7. 設定が変わるときだけ `settings_update.save_settings` で `config.yaml` を書く（`MindmapError` は 422、`stage: settings`。書けなければ 500、`stage: write`）
-      8. `mcp_config`・`plugin_dirs` を指定したときだけ `state.write_launch` で書く。`OSError` のときは、手順 7 で書いていれば読んだときの設定で `save_settings` を呼んで戻し、`logger.exception` で `mindstella.workspace.update_failed` を書いて 500（`stage: write`）
-      9. 鍵を放し、`logger.info` で `mindstella.workspace.updated`（`workspace_id`・`changed`）を書く
+      6. `flow` にオブジェクトを指定したときは、`ctx.locks.for_workspace` だけを持つ間に `check_flow` で確かめる（422、`stage: flow`。502、`stage: source`）。`null` は確かめない
+      7. `workspace_lock`（フォルダと `ctx.write_lock`）を取り、`store.load_workspace` で読んだ設定に `settings_update.stage_settings` で `settings` を当て、`flow` を置き換える（`null` ならキーを外す）（`MindmapError` は 422、`stage: settings`、`detail` はエラーの本文）。`workspace_lock` を持つ間は project-index を呼ばない
+      8. 設定が変わるときだけ `settings_update.save_settings` で `config.yaml` を書く（`MindmapError` は 422、`stage: settings`。`OSError` などで書けなければ `logger.exception` で `mindstella.workspace.update_failed`（書けなかったファイル `config.yaml`）を書いて 500、`stage: write`）
+      9. 指定した `mcp_config`・`plugin_dirs` で今の記録の値が変わるとき（記録が無いときを含む）だけ `state.write_launch` で書く。`OSError` のときは、手順 8 で書いていれば読んだときの設定で `save_settings` を呼んで戻し、`logger.exception` で `mindstella.workspace.update_failed`（書けなかったファイル `launch.json`・`config.yaml` を戻したか）を書いて 500（`stage: write`）。戻しの `save_settings` も失敗したときは、戻したかを偽にして同じく 500
+      10. 鍵を放し、`logger.info` で `mindstella.workspace.updated`（`workspace_id`・`changed`）を書く
     unit_tests:
       - name: test_update_workspace
         case: 正常
@@ -788,6 +789,18 @@ functions:
         condition: '`state.write_launch` が `OSError`'
         mock: '`project_index.get_settings`・`state.write_launch`・`caplog`'
         expected: '`ApiError`（500・`stage: write`）、`config.yaml` が呼ぶ前と同じ、`caplog` に `mindstella.workspace.update_failed`'
+      - name: test_update_workspace_error_when_config_write_failed
+        case: 異常
+        summary: '`config.yaml` を書けなければ 500 で、`launch.json` を書かない'
+        condition: '`settings_update.save_settings` が `OSError`、`settings.summary` と `plugin_dirs` を渡す'
+        mock: '`project_index.get_settings`・`settings_update.save_settings`・`caplog`'
+        expected: '`ApiError`（500・`stage: write`）、`launch.json` が呼ぶ前と同じ、`caplog` に `mindstella.workspace.update_failed`'
+      - name: test_update_workspace_error_when_rollback_failed
+        case: 異常
+        summary: 戻しも失敗したら、戻したかを偽にして 500
+        condition: '`state.write_launch` が `OSError` で、戻しの `save_settings` も `OSError`'
+        mock: '`project_index.get_settings`・`state.write_launch`・`settings_update.save_settings`・`caplog`'
+        expected: '`ApiError`（500・`stage: write`）、`caplog` の `mindstella.workspace.update_failed` の戻したかが偽'
 notes:
   ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`
   ログ: |

@@ -95,7 +95,7 @@ constraints:
     constraint: 『ワークスペースの作成』と同じ
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 確かめる順
-    constraint: '`Host`・`Origin` → 本文 → ワークスペースごとの鍵を取る → ID の一覧と配信元の行 → 記録のフォルダ → `mcp_config` → `plugin_dirs` → `settings` → `flow` の参照 → `config.yaml` → `launch.json`。どこかで止まったら、それより後は何もしない'
+    constraint: '`Host`・`Origin` → 本文 → ワークスペースごとの鍵を取る → ID の一覧と配信元の行 → 記録のフォルダ → `mcp_config` → `plugin_dirs` → `flow` の参照 → ワークスペースのロックファイルを取る → `settings` → `config.yaml` → `launch.json`。どこかで止まったら、それより後は何もしない。ロックファイル（プロセスの中の書き込みの鍵を含む）を持つ間は project-index を呼ばない'
   - item: クローズしたワークスペース
     constraint: '配信元の行が `outside_read: false` でも受ける。`launch.json` はクローズで残るので、開き直した後の『MindStella のセッションの作成』から書き換えた指定で起動する'
   - item: 記録のフォルダ
