@@ -62,7 +62,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T01:16:31.491689+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
+    note: docs/guide/コマンド.md
+    updated_by: planner
+    updated_at: '2026-11-19T01:20:09.103877+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装

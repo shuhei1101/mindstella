@@ -25,7 +25,9 @@ docs:
   - page: docs/guide/コマンド.md
     new: false
     change: 状態の取得（GET /workspaces/{id}）とワークスペースの一覧（GET /workspaces）の API と、MindStella の MCP の `workspace`・`workspaces` のツールを追加し、MindStella のセッションの一覧が状態を書き換えないことを記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T01:20:07.222574+00:00'
 scope_out:
   - item: 画面に MindStella のセッションの状態（起動し直しの途中・失敗の理由・記録が無いことの警告）を表示する
     reason: 画面の変更で、別の Issue がある
