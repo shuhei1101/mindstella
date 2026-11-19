@@ -178,22 +178,31 @@ docs:
 scope_out:
   - item: PR ドキュメント（docs/pr/ の README.md・要件.md・計画書）の .mark.md への改名
     reason: ファイル名は AI Monitor のツール（create_draft_pr・read_pr_document）とテンプレートが決める。AI Monitor が shuhei1101/ai-monitor#3427（PR shuhei1101/ai-monitor#3684）でファイル名を変えたバージョンを配布した後に、追従として改名する
-    plan: to_file
+    plan: '#620'
   - item: 目次（index.yaml）から書き出す README.md（docs/README.md・docs/{種類}/README.md・docs/guide/README.md）の .mark.md への改名
     reason: ファイル名は AI Monitor の design_docs publish が決める。AI Monitor が shuhei1101/ai-monitor#3684 で書き出すファイル名を変えたバージョンを配布した後に、追従として書き出し直す
-    plan: to_file
+    plan: '#621'
   - item: docs/guide/変更履歴.md の .mark.md への改名
     reason: AI Monitor の規約『マージ手順』が release の変更履歴を docs/guide/変更履歴.md の固定のパスで書き足すため、改名すると release で別のページが作られる。shuhei1101/ai-monitor#3506 が配布された後に改名する
-    plan: to_file
+    plan: '#622'
   - item: モックの目次（docs/mock/ の index.md）のうち記法を含む 22 件の .mark.md への改名
     reason: モックのフォルダの目次のファイル名は AI Monitor の規約『モック画面』と Pages の共通レイアウト（docs/_theme/assets/app.js）が index.md で決める。AI Monitor の規約と共通レイアウトが .mark.md を扱うバージョンを配布した後に改名する。含めるかはレビューで確定する
-    plan: to_file
+    plan: '#623'
   - item: タブのページ（docs/guide/はじめに.md・使い方.md・リファレンス.md）の .mark.md への改名
     reason: 目次の行を並べるマーカーの間は AI Monitor の design_docs publish が書き出し、配布済みのバージョンはタブのページを {タブ名}.md の名前で書き出すため、改名すると改名前の名前のページが作り直される。AI Monitor が shuhei1101/ai-monitor#3684 で書き出すファイル名を変えたバージョンを配布した後に、README.md と一緒に書き出し直す
-    plan: to_file
-  - item: tests/integration/server/test_create_workspace.py の test_error_when_folder_not_allowed（状態のフォルダ state/mindstella が残る）・test_error_when_host_not_local（HTTP 403）の fail
-    reason: base の develop（origin/develop を書き出したコピー）でも同じく fail し、本文の拡張子の変更と関係しない
-    plan: to_file
-  - item: 画面の結合テストの test_detail_full_screen.py::test_embedded_html_in_full・test_detail_panel_screen.py の test_diff_minimap_when_empty_area_pressed・test_diff_body_layout_switch・test_fit_smallest・test_embedded_chart・test_open_preview.py::test_normal_when_embedded_html の fail
-    reason: 埋め込んだ HTML の図の拡大・縮小、ミニマップの位置、表示幅の判定のずれで、base の develop でも同じく fail する（test_diff_body_layout_switch は不安定）。本文の拡張子の変更と関係しない
-    plan: to_file
+    plan: '#621'
+  - item: test_create_workspace.py::test_error_when_folder_not_allowed の fail（状態のフォルダ state/mindstella が残る）
+    reason: base の develop でも同じく fail し、本文の拡張子の変更と関係しない
+    plan: '#624'
+  - item: test_create_workspace.py::test_error_when_host_not_local の fail（HTTP 403 の後の ConnectionResetError）
+    reason: base の develop でも同じく fail し、本文の拡張子の変更と関係しない。既存の Issue が扱う（#575 は間欠的としているが、今回は毎回 fail した）
+    plan: '#575'
+  - item: 画面の結合テストの test_embedded_html_in_full・test_normal_when_embedded_html・test_embedded_chart の fail（埋め込んだ HTML の図の拡大・縮小）
+    reason: base の develop でも同じく fail し、本文の拡張子の変更と関係しない。既存の Issue が扱う
+    plan: '#610'
+  - item: test_detail_panel_screen.py の test_diff_minimap_when_empty_area_pressed・test_diff_body_layout_switch の fail
+    reason: base の develop でも同じく fail する（test_diff_body_layout_switch は不安定）。本文の拡張子の変更と関係しない。既存の Issue が扱う
+    plan: '#553'
+  - item: test_detail_panel_screen.py::test_fit_smallest の fail（全画面のボタンが表示幅の外）
+    reason: base の develop でも同じく fail し、本文の拡張子の変更と関係しない
+    plan: '#625'
