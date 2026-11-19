@@ -34,7 +34,13 @@ import sessions
 import state
 import workspaces
 from claude_input import InputTargets, Session, parse_session
-from errors import ArgumentError, MindmapError, NotMindStellaSessionError, SchemaMismatchError
+from errors import (
+    ApiError,
+    ArgumentError,
+    MindmapError,
+    NotMindStellaSessionError,
+    SchemaMismatchError,
+)
 from serve import LISTEN_HOST, PreviewRegistry, load_external_access
 from store import LEGACY_HINT, require_workspace, workspace_lock
 from transcriber_registry import InvalidTranscriberError, load_transcriber
@@ -72,6 +78,7 @@ TOOL_NAMES = (
     "close_workspace",
     "reopen_workspace",
     "delete_workspace",
+    "update_workspace",
     "server_status",
     "server_stop",
 )
@@ -846,6 +853,49 @@ def build_server(
         return call_tool(
             lambda: workspaces.delete_workspace(workspace_id, context), write_lock=write_lock
         )
+
+    @server.tool(
+        name="update_workspace",
+        description=(
+            "ワークスペースの設定のキー・進め方の文書・追加の MCP・プラグインを書き換える。"
+            "起動中の MindStella のセッションには反映せず、起動し直し（restart_session）か次の作成から有効になる"
+        ),
+    )
+    def update_workspace(
+        workspace_id: WorkspaceIdArg,
+        settings: Annotated[
+            dict[str, Any] | None,
+            Field(description="置き換える設定のキー（update_settings と同じキー）"),
+        ] = None,
+        flow: Annotated[
+            dict[str, str] | None,
+            Field(description="進め方の文書 {source: 配信元の ID, doc: 文書の ID}"),
+        ] = None,
+        mcp_config: Annotated[
+            dict[str, Any] | None,
+            Field(description="Claude Code の --mcp-config に渡す JSON（{mcpServers: {...}}）"),
+        ] = None,
+        plugin_dirs: Annotated[
+            list[str] | None,
+            Field(description="Claude Code の --plugin-dir に渡すフォルダの絶対パス"),
+        ] = None,
+        remove_flow: Annotated[
+            bool, Field(description="真のとき進め方の文書を外す（flow と同時には指定できない）")
+        ] = False,
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        # SDK は省いた引数に既定値を入れて渡すので、null でない引数だけを本文にする
+        given = {"settings": settings, "flow": flow, "mcp_config": mcp_config, "plugin_dirs": plugin_dirs}
+        request = {key: value for key, value in given.items() if value is not None}
+
+        def run() -> dict[str, Any]:
+            if remove_flow:
+                if flow is not None:
+                    raise ApiError(400, "body", "flow と remove_flow は同時に指定できません")
+                request["flow"] = None
+            return workspaces.update_workspace(workspace_id, request, context)
+
+        return call_tool(run, write_lock=write_lock)
 
     @server.tool(
         name="server_status",
