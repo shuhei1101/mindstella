@@ -1,0 +1,338 @@
+title: ワークスペースの設定の書き換え
+entry:
+  kind: endpoint
+  value: PATCH `/workspaces/{id}`
+lead: ワークスペースの設定のキーと進め方の文書を `config.yaml` に、追加の MCP・プラグインを状態のフォルダの `launch.json` に書き換える。起動中の MindStella のセッションには反映せず、次の作成と起動し直しから有効になる。MindStella の MCP の `update_workspace` も同じ処理を呼ぶ。
+idempotent: true
+side_effects: 指定したキーだけを書き換える。`settings`・`flow` は `.mindstella/config.yaml`、`mcp_config`・`plugin_dirs` は状態のフォルダの `workspaces/{id}/launch.json`（無ければ作る）。起動中の MindStella のセッション・状態の `session.json`・project-index の配信元の行は変えない
+request:
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: ワークスペースの ID
+  - name: settings
+    type: object
+    required: false
+    default: なし（設定のキーを書き換えない）
+    location: body
+    description: 置き換える設定のキー。『設定の更新』の `settings` と同じキー（`summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`mdmark`）と同じ確かめ方
+    constraints: 1 つ以上のキー。`id`・`flow` と削除した設定のキーは受けない
+  - name: flow
+    type: '{source: str, doc: str} | None'
+    required: false
+    default: なし（進め方の文書を書き換えない）
+    location: body
+    nullable: true
+    description: 進め方の文書（project-index の配信元の ID と文書の ID）。`null` は進め方の文書を外す（SessionStart のフックは場所を注入しない）
+  - name: mcp_config
+    type: object
+    required: false
+    default: なし（追加の MCP の記録を書き換えない）
+    location: body
+    description: 'Claude Code の `--mcp-config` に渡す JSON（`{"mcpServers": {...}}`）。空にするときは `{"mcpServers": {}}`'
+    constraints: 『ワークスペースの作成』の `mcp_config` と同じ
+  - name: plugin_dirs
+    type: list[str]
+    required: false
+    default: なし（プラグインの記録を書き換えない）
+    location: body
+    description: Claude Code の `--plugin-dir` に渡すフォルダの絶対パス。空にするときは `[]`
+    constraints: 『ワークスペースの作成』の `plugin_dirs` と同じ
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+  - name: Origin
+    type: str
+    required: false
+    default: なし
+    location: header
+    description: ブラウザからの要求の送り元
+request_example: |-
+  ```json
+  {
+    "settings": {"summary": "台本の作成"},
+    "flow": {"source": "aituber", "doc": "FLOW-3"},
+    "plugin_dirs": ["/home/user/plugins/aituber"]
+  }
+  ```
+response:
+  - name: id
+    type: str
+    description: 書き換えたワークスペースの ID
+  - name: changed
+    type: list[str]
+    description: 値が変わったキー。設定のキーの名前と、`flow`・`mcp_config`・`plugin_dirs` を並べる。同じ値を指定したキーは入れない
+status_codes:
+  - code: '200'
+    condition: 書き換えた（値が変わらなかったときも 200 で、`changed` が空）
+  - code: '400'
+    condition: 本文が JSON のオブジェクトでない・4 つのキーのどれも無い・知らないキーがある・`flow` の形が違う・`mcp_config` がオブジェクトでない・`plugin_dirs` が文字列の並びでない
+    notes: 何も書かない。`stage` は `body`
+  - code: '403'
+    condition: '`Host`・`Origin` が受ける値でない'
+    notes: 何も書かない。`stage` は `host`
+  - code: '404'
+    condition: '`id` のワークスペースが状態のフォルダの ID の一覧に無いか、配信元の行が無い'
+    notes: 何も書かない。`stage` は `workspace`
+  - code: '409'
+    condition: 配信元の行が指すフォルダに `.mindstella/config.yaml` が無い
+    notes: 何も書かない。`stage` は `records`。`detail` にフォルダのパス
+  - code: '422'
+    condition: '`mcp_config`・`plugin_dirs` が読めない、`settings` が設定のスキーマに合わない、`flow` の文書を参照できない'
+    notes: 何も書かない。`stage` は `mcp_config`・`plugin_dirs`・`settings`・`flow` のどれか。`detail` に読めない値と理由（`settings` は『設定の更新』のエラーの行）
+  - code: '500'
+    condition: '`config.yaml` か `launch.json` を書けない'
+    notes: '`config.yaml` を書いた後に `launch.json` を書けないときは、`config.yaml` を書き換える前の中身に戻す。`stage` は `write`'
+  - code: '502'
+    condition: project-index へつながらない、または配信元の行・進め方の文書の参照がエラーを返した
+    notes: 何も書かない。`stage` は `source`
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+  - item: 受ける Host
+    constraint: 『ワークスペースの作成』と同じ
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: 確かめる順
+    constraint: '`Host`・`Origin` → 本文 → ワークスペースごとの鍵を取る → ID の一覧と配信元の行 → 記録のフォルダ → `mcp_config` → `plugin_dirs` → `settings` → `flow` の参照 → `config.yaml` → `launch.json`。どこかで止まったら、それより後は何もしない'
+  - item: クローズしたワークスペース
+    constraint: '配信元の行が `outside_read: false` でも受ける。`launch.json` はクローズで残るので、開き直した後の『MindStella のセッションの作成』から書き換えた指定で起動する'
+  - item: 記録のフォルダ
+    constraint: project-index の `GET /settings/sources` で引いた配信元の行の `config` からフォルダを引く（『状態の取得』と同じ）
+  - item: 設定のキー
+    constraint: 『設定の更新』の引数の確かめと置き換え（渡したキーだけを置き換え、スキーマと突き合わせる）を同じ関数で行う。変更履歴と書き換えのまとまりには入れない
+  - item: 進め方の文書の確かめ方
+    constraint: 『ワークスペースの作成』の制約「進め方の文書の確かめ方」と同じ 3 段。`null` は確かめずに `config.yaml` から `flow` を外す
+  - item: 追加の MCP・プラグインの確かめ方
+    constraint: 『ワークスペースの作成』と同じ関数で確かめる
+  - item: 追加の MCP・プラグインの記録
+    constraint: '`launch.json` を読み、指定したキーだけを置き換えて一時ファイルから書く。`launch.json` が無ければ、指定しなかったキーを空の指定（`{"mcpServers": {}}`・`[]`）にして作る（D-341）'
+  - item: 起動中の MindStella のセッション
+    constraint: 何もしない。反映は外部のアプリが依頼する『MindStella のセッションの起動し直し』か、次の『MindStella のセッションの作成』で行う（起動のたびに `config.yaml` の `flow` と `launch.json` を読む。D-324）
+  - item: 同時の依頼
+    constraint: ワークスペースごとの鍵を、ID の一覧の確かめから `launch.json` を書き終えるまで持つ（『MindStella のセッションの作成』『MindStella のセッションの起動し直し』『ワークスペースのクローズ』『ワークスペースの開き直し』『ワークスペースの削除』と同じ鍵）。`config.yaml` の書き込みは、MCP のツールと同じくワークスペースのロックファイルも取る
+  - item: MCP のツール
+    constraint: '`update_workspace` は `workspace_id`・`settings`・`flow`・`mcp_config`・`plugin_dirs` を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す。エラーは `エラー: {detail}`（『MCP サーバーの起動』のエラーの形）'
+flows:
+  - name: 正常系
+    summary: 設定のキー・進め方の文書・追加の MCP・プラグインを書き換え、起動中の MindStella のセッションは止めない
+    setup:
+      - name: Mock
+        description: project-index の Mock（テストが空きポートで立て、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。`GET /settings/sources` が一時ファイルの `settingsPath` とワークスペースと進め方の文書の配信元の行を返し、`GET /sources/{source}/docs` と文書の取得が書き換えた後の進め方の文書を返す）・Claude Code（起動したら SessionStart のフックを叩く）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: 進め方の文書・追加の MCP・プラグインを指定して作り、MindStella のセッションが起動しているワークスペース
+      - name: 入力
+        description: '`settings.summary`・`flow`・`mcp_config`・`plugin_dirs` を全て作成のときと別の値で渡す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as PATCH /workspaces/{id}
+        participant PI as project-index（Mock）
+
+        クライアント->>API: PATCH（settings・flow・mcp_config・plugin_dirs）
+        API-->>PI: GET /settings/sources
+        API-->>PI: 進め方の文書を参照する
+        API->>API: config.yaml を書く
+        API->>API: launch.json を書く
+        API-->>クライアント: 200 changed
+      ```
+    expected:
+      - 応答が 200 で、`changed` が `summary`・`flow`・`mcp_config`・`plugin_dirs`
+      - '`config.yaml` の `summary`・`flow` が渡した値で、ほかのキーが呼ぶ前と同じ'
+      - '`launch.json` の `mcp_config`・`plugin_dirs` が渡した値'
+      - Claude Code の Mock が 1 回だけ起動していて、`session.json` が呼ぶ前と同じ
+    test: test_normal
+  - name: 正常系（launch.json が無い）
+    summary: プラグインだけを渡すと、追加の MCP を空の指定にして launch.json を作る
+    setup:
+      - name: Mock
+        description: project-index の Mock（正常系と同じ）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 作った後に `launch.json` を消したワークスペース。MindStella のセッションは無い
+      - name: 入力
+        description: '`plugin_dirs` だけを渡す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as PATCH /workspaces/{id}
+        participant PI as project-index（Mock）
+
+        クライアント->>API: PATCH（plugin_dirs）
+        API-->>PI: GET /settings/sources
+        API->>API: launch.json を作る
+        API-->>クライアント: 200 changed
+      ```
+    expected:
+      - 応答が 200 で、`changed` が `plugin_dirs`
+      - '`launch.json` の `plugin_dirs` が渡した値で、`mcp_config` が `{"mcpServers": {}}`'
+      - '`config.yaml` が呼ぶ前と同じ'
+    test: test_normal_when_launch_record_missing
+  - name: 正常系（クローズした）
+    summary: クローズしたワークスペースのプラグインだけを書き換え、追加の MCP の記録を残す
+    setup:
+      - name: Mock
+        description: 'project-index の Mock（ワークスペースの行が `outside_read: false`）'
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 進め方の文書・追加の MCP・プラグインを指定して作り、クローズしたワークスペース
+      - name: 入力
+        description: '`plugin_dirs` だけを、作成のときと別の値で渡す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as PATCH /workspaces/{id}
+        participant PI as project-index（Mock）
+
+        クライアント->>API: PATCH（plugin_dirs）
+        API-->>PI: GET /settings/sources
+        API->>API: launch.json の plugin_dirs を書き換える
+        API-->>クライアント: 200 changed
+      ```
+    expected:
+      - 応答が 200 で、`changed` が `plugin_dirs`
+      - '`launch.json` の `plugin_dirs` が渡した値で、`mcp_config` が作成のときと同じ'
+      - project-index の Mock が配信元の行の変更を受けていない
+    test: test_normal_when_closed
+  - name: 異常系（読めないプラグインのフォルダ・422）
+    summary: ほかの指定が読めても、何も書かずに 422 を返す
+    setup:
+      - name: Mock
+        description: project-index の Mock（正常系と同じ）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 正常系と同じく作った。MindStella のセッションは無い
+      - name: 入力
+        description: 読める `settings.summary`・`mcp_config` と、無いフォルダを含む `plugin_dirs`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as PATCH /workspaces/{id}
+
+        クライアント->>API: PATCH（plugin_dirs に無いフォルダ）
+        API->>API: plugin_dirs が読めない
+        API-->>クライアント: 422 stage: plugin_dirs
+      ```
+    expected:
+      - 応答が 422 で、`stage` が `plugin_dirs`、`detail` に無いフォルダのパスがある
+      - '`config.yaml` と `launch.json` が呼ぶ前と同じ'
+    test: test_error_when_plugin_dir_unreadable
+  - name: 異常系（参照できない進め方の文書・422）
+    summary: 進め方の文書が無ければ、何も書かずに 422 を返す
+    setup:
+      - name: Mock
+        description: project-index の Mock（`GET /sources/{source}/docs` が指定した文書を返さない）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 異常系（読めないプラグインのフォルダ・422）と同じ
+      - name: 入力
+        description: 無い文書の `flow` と、読める `plugin_dirs`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as PATCH /workspaces/{id}
+        participant PI as project-index（Mock）
+
+        クライアント->>API: PATCH（flow）
+        API-->>PI: GET /sources/{source}/docs
+        PI-->>API: 文書が無い
+        API-->>クライアント: 422 stage: flow
+      ```
+    expected:
+      - 応答が 422 で、`stage` が `flow`
+      - '`config.yaml` と `launch.json` が呼ぶ前と同じ'
+    test: test_error_when_flow_unreadable
+  - name: 異常系（設定のスキーマに合わない・422）
+    summary: 設定のキーがスキーマに合わなければ、何も書かずに 422 を返す
+    setup:
+      - name: Mock
+        description: project-index の Mock（正常系と同じ）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 異常系（読めないプラグインのフォルダ・422）と同じ
+      - name: 入力
+        description: '`settings.summary` を空の文字列にし、読める `plugin_dirs` を渡す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as PATCH /workspaces/{id}
+
+        クライアント->>API: PATCH（summary が空）
+        API->>API: 設定のスキーマに合わない
+        API-->>クライアント: 422 stage: settings
+      ```
+    expected:
+      - '応答が 422 で、`stage` が `settings`、`detail` に `config.yaml: summary` で始まる行がある'
+      - '`config.yaml` と `launch.json` が呼ぶ前と同じ'
+    test: test_error_when_settings_invalid
+  - name: 異常系（ワークスペースが無い・404）
+    summary: 404 を返し、何も書かない
+    setup:
+      - name: Mock
+        description: project-index の Mock（正常系と同じ）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 入力
+        description: 状態のフォルダの ID の一覧に無い ID に `plugin_dirs` を渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as PATCH /workspaces/{id}
+
+        クライアント->>API: PATCH
+        API-->>クライアント: 404 stage: workspace
+      ```
+    expected:
+      - 応答が 404 で、`stage` が `workspace`
+      - 状態のフォルダが呼ぶ前と同じ
+    test: test_error_when_workspace_missing
+  - name: 異常系（指定が無い・400）
+    summary: 4 つのキーのどれも無い本文は、何も書かずに 400 を返す
+    setup:
+      - name: Mock
+        description: project-index の Mock（正常系と同じ）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 正常系と同じく作った
+      - name: 入力
+        description: 本文 `{}`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as PATCH /workspaces/{id}
+
+        クライアント->>API: PATCH（{}）
+        API-->>クライアント: 400 stage: body
+      ```
+    expected:
+      - 応答が 400 で、`stage` が `body`
+      - '`config.yaml` と `launch.json` が呼ぶ前と同じ'
+    test: test_error_when_body_empty
+refs:
+  - IF-531-1#
+  - IF-489-55#
+  - IF-582-1#
+  - IF-601-1#
+  - IF-597-1#
+  - API-531-1#
+callers:
+  - SC-604-1#
+test_file: tests/integration/server/test_update_workspace.py
+id: IF-604-1
