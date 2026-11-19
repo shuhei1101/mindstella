@@ -66,6 +66,19 @@ endpoints:
         condition: '`expectedVersion` が古い'
       - code: '422'
         condition: 行がスキーマに通らない
+  - name: DELETE /settings/sources/{id}
+    method: DELETE
+    path: /settings/sources/{id}?expectedVersion=
+    summary: 配信元の行を 1 行だけ削除し、その配信元を配信から除外する（project-index の『端末の設定の配信元の 1 行の削除』）。`expectedVersion` はクエリ。古ければ 409（`current` に今のバージョン）。『ワークスペースの削除』が呼ぶ
+    status_codes:
+      - code: '200'
+        condition: 削除した
+      - code: '404'
+        condition: 行が無い
+      - code: '409'
+        condition: '`expectedVersion` が古い'
+      - code: '400'
+        condition: '`expectedVersion` が無い'
 lead: 端末の設定（project-index と dev-docs が共有するグローバルの設定のファイル）の配信元の行を、1 行ずつ版を照合して追加・変更・削除する project-index の HTTP の API。MindStella のワークスペースの管理が、ワークスペースを配信元として登録・クローズするときに呼ぶ（D-300）。
 used_in:
   - plugins/mindstella/skills/mindmap/scripts/server.py

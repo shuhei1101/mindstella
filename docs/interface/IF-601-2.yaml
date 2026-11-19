@@ -1,0 +1,199 @@
+id: IF-601-2
+title: ワークスペースの削除
+entry:
+  kind: endpoint
+  value: DELETE `/workspaces/{id}`
+lead: クローズしたワークスペースの配信元の行を削除し、状態のフォルダのそのワークスペースの記録と ID の一覧の行を削除する。記録のフォルダは残す。MindStella の MCP の `delete_workspace` も同じ処理を呼ぶ。
+idempotent: false
+side_effects: project-index の配信元の行を削除する。そのワークスペースの変更の検知が動いていれば止める。状態のフォルダの `workspaces/{ID}/`（`session.json`・`launch.json`・`snapshot/`・`read_point.json`・`migration.json`）を削除し、最後に `workspaces.yaml` の `ids` から行を削除する。記録のフォルダ（`.mindstella/`）は変えない
+request:
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: ワークスペースの ID
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+response:
+  - name: id
+    type: str
+    description: 削除したワークスペースの ID
+  - name: deleted
+    type: bool
+    description: 常に真
+status_codes:
+  - code: '200'
+    condition: 削除した（配信元の行が既に無かったときも 200）
+  - code: '404'
+    condition: '`id` のワークスペースが状態のフォルダの ID の一覧に無い（削除済みを含む）'
+    notes: '`stage` は `workspace`。外部のアプリは、ステータス 404 と `stage` の `workspace` で削除済みと判定できる'
+  - code: '409'
+    condition: '配信元の行が `outside_read: false` でない（クローズしていない）'
+    notes: 何も変えない。`stage` は `not_closed`
+  - code: '500'
+    condition: 状態のフォルダの `workspaces/{ID}/` を削除できない
+    notes: ID の一覧の行を残す。`stage` は `state`
+  - code: '502'
+    condition: project-index へつながらない、または行の参照・削除がエラーを返した（404 を除く）
+    notes: 状態のフォルダを変えない。`stage` は `source`
+error_format: 『ワークスペースのクローズ』と同じ
+constraints:
+  - item: 受ける Host
+    constraint: 『ワークスペースのクローズ』と同じ
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: クローズ済みの判定
+    constraint: 'project-index の `GET /settings/sources` で引いた配信元の行が `outside_read: false` ならクローズ済みとする。行が無ければ、前の削除で行だけ削除済みとして続ける'
+  - item: 配信元の行
+    constraint: '`DELETE /settings/sources/{id}?expectedVersion=` で削除する。409（版が古い）なら 1 回だけ引き直して送り直す。404（行が無い）は削除済みとして続ける'
+  - item: 削除の順番
+    constraint: 配信元の行・変更の検知の停止・状態のフォルダの `workspaces/{ID}/`・ID の一覧の行の順に削除する。途中で失敗したときは ID の一覧の行が残り、同じ削除をもう一度受けられる
+  - item: 状態のフォルダ
+    constraint: '`workspaces/{ID}/` が無ければ削除済みとして続ける'
+  - item: 記録のフォルダ
+    constraint: 記録のフォルダ（`.mindstella/`）とワークスペースのフォルダのファイルを削除しない（Git で管理するため）
+  - item: 同時の依頼
+    constraint: ワークスペースごとの鍵を、ID の一覧の確認から ID の一覧の行の削除まで持つ。ID の一覧の書き込みは、ワークスペースをまたいだ 1 つの鍵で行う
+  - item: MCP のツール
+    constraint: '`delete_workspace` は `workspace_id` を受け、同じ処理を呼ぶ'
+flows:
+  - name: 正常系
+    summary: 配信元の行・状態のフォルダの記録・ID の一覧の行を削除する
+    setup:
+      - name: Mock
+        description: project-index の Mock（テストが空きポートで立て、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。`GET /settings/sources` が一時ファイルの `settingsPath` を返し、`POST`・`PATCH`・`DELETE /settings/sources` の依頼を記録する）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: クローズしたワークスペース。状態のフォルダに `session.json`・`launch.json`・`snapshot/`・`read_point.json` がある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}
+        participant PI as project-index（Mock）
+        participant ST as 状態のフォルダ
+
+        クライアント->>API: DELETE
+        API->>PI: GET /settings/sources
+        API->>PI: DELETE /settings/sources/{id}
+        API->>ST: workspaces/{ID}/ を削除する
+        API->>ST: ids から行を削除する
+        API-->>クライアント: 200 deleted
+      ```
+    expected:
+      - 応答が 200 で、`deleted` が真
+      - project-index の Mock が行の削除を受けている
+      - 状態のフォルダに `workspaces/{ID}/` が無く、`ids` に ID が無い
+      - 記録のフォルダが変わらない
+      - 同じ ID の `GET /workspaces/{id}` が 404
+    test: test_normal
+  - name: 正常系（配信元の行が既に無い）
+    summary: 前の削除で行だけ削除されたワークスペースの残りを削除する
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 配信元の行が無く、状態のフォルダの `workspaces/{ID}/` と `ids` の行が残っている
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}
+        participant PI as project-index（Mock）
+        participant ST as 状態のフォルダ
+
+        クライアント->>API: DELETE
+        API->>PI: GET /settings/sources
+        API->>ST: workspaces/{ID}/ を削除する
+        API->>ST: ids から行を削除する
+        API-->>クライアント: 200 deleted
+      ```
+    expected:
+      - 応答が 200
+      - project-index の Mock が行の削除を受けていない
+      - 状態のフォルダに `workspaces/{ID}/` が無く、`ids` に ID が無い
+    test: test_normal_when_source_row_missing
+  - name: 異常系（ワークスペースが無い）
+    summary: 404 を返し、何も変えない
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 入力
+        description: 状態のフォルダの ID の一覧に無い ID（削除済み）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}
+
+        クライアント->>API: DELETE
+        API-->>クライアント: 404 stage: workspace
+      ```
+    expected:
+      - 応答が 404 で、`stage` が `workspace`
+      - project-index の Mock が依頼を受けていない
+    test: test_error_when_workspace_missing
+  - name: 異常系（クローズしていない）
+    summary: 409 を返し、何も変えない
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 'MindStella のセッションを止めたが、クローズしていない（配信元の行が `outside_read: true`）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}
+        participant PI as project-index（Mock）
+
+        クライアント->>API: DELETE
+        API->>PI: GET /settings/sources
+        API-->>クライアント: 409 stage: not_closed
+      ```
+    expected:
+      - 応答が 409 で、`stage` が `not_closed`
+      - project-index の Mock が行の削除を受けておらず、状態のフォルダが変わらない
+    test: test_error_when_not_closed
+  - name: 異常系（project-index の失敗）
+    summary: 502 を返し、状態のフォルダを変えない
+    setup:
+      - name: Mock
+        description: project-index の Mock（`DELETE /settings/sources/{id}` が 500 を返す）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 正常系と同じくクローズした
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}
+        participant PI as project-index（Mock）
+
+        クライアント->>API: DELETE
+        API->>PI: DELETE /settings/sources/{id}
+        PI-->>API: 500
+        API-->>クライアント: 502 stage: source
+      ```
+    expected:
+      - 応答が 502 で、`stage` が `source`
+      - 状態のフォルダの `workspaces/{ID}/` と `ids` の行が残っている
+    test: test_error_when_source_failed
+refs:
+  - IF-531-5#
+  - IF-597-1#
+  - IF-540-2#
+  - API-531-1#
+callers:
+  - SC-601-1#
+test_file: tests/integration/server/test_delete_workspace.py
