@@ -273,7 +273,7 @@ def test_add_comment_when_location_and_no_target(
 ) -> None:
     """箇所を持つコメントと項目を指さないコメントを溜める（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1"), bodies={"A-1.md": A_BODY})
+    root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     # 実行
     comment, _count = comments.add_comment(root, data, now=_fixed_now)
     # 検証
@@ -349,7 +349,7 @@ def test_add_comment_when_rejected(
 ) -> None:
     """無い項目・合わない箇所・使えない ID は溜めない（異常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
+    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     write_comments(root, make_comment("C-1"), seq=3)
     before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行・検証
@@ -486,7 +486,7 @@ def test_update_comment(
 ) -> None:
     """本文を直す・箇所を外す（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
+    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     write_comments(
         root, make_comment("C-1"), make_comment("C-2", target="A-1", loc=LINE2_LOC), seq=2
     )
@@ -691,7 +691,7 @@ def test_send_comments(
 ) -> None:
     """チェックしたものだけを溜めた順に送り、新しいスレッドを立てる（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
+    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     no_target = make_comment("C-3")
     del no_target["target"]
     write_comments(
@@ -788,7 +788,7 @@ def test_send_comments_when_stale(
     """送れないコメントを全て返し、何も送らない（異常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1"), make_item("A-1"), bodies={"A-1.md": "1 行目\n2 行目\n3 行目"}
+        make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": "1 行目\n2 行目\n3 行目"}
     )
     write_threads(root, make_thread("TH-2", status="closed"))
     out_of_range = {"kind": "body", "start": 5, "end": 5, "text": "5 行目"}
@@ -1007,7 +1007,7 @@ def test_send_now_when_conflict(
 ) -> None:
     """向けた先が無いか送れない（異常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
+    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     write_threads(root, make_thread("TH-1", status="closed"))
     before = (root / RECORD_DIR / "threads.yaml").read_bytes()
     # 実行・検証

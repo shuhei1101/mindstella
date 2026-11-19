@@ -134,7 +134,7 @@ def test_search_items(
     data = make_data(
         decisions=[make_item("D-1"), make_item("D-2")],
         docs=[make_item("A-1")],
-        bodies={"docs/A-1.md": "ゼブラの話\n"},
+        bodies={"docs/A-1.mark.md": "ゼブラの話\n"},
     )
     load_preview_scripts()
     # 実行
@@ -158,7 +158,7 @@ def test_search_items(
                 "terms": [("G-1", {"title": "シナリオの依頼"})],
                 "docs": [("A-1", {})],
             },
-            {"docs/A-1.md": "シナリオの依頼の話\n"},
+            {"docs/A-1.mark.md": "シナリオの依頼の話\n"},
             "シナリオの依頼 ",
             [["G-1", 1], ["D-1", 2], ["A-1", 3]],
             id="title_exact_then_title_part_then_other",
@@ -180,7 +180,7 @@ def test_search_items(
                 "decisions": [("D-1", {"answer": "保存先は共有のフォルダにする"})],
                 "docs": [("A-2", {"title": "保存先の決め方"})],
             },
-            {"docs/A-2.md": "本文\n"},
+            {"docs/A-2.mark.md": "本文\n"},
             "保存先",
             [["A-2", 2], ["D-1", 3]],
             id="tier_before_kind_order",
@@ -191,7 +191,7 @@ def test_search_items(
                 "terms": [("G-1", {"title": "シナリオの依頼"})],
                 "docs": [("A-1", {})],
             },
-            {"docs/A-1.md": "シナリオの依頼の話\n"},
+            {"docs/A-1.mark.md": "シナリオの依頼の話\n"},
             "シナリオ 受け方",
             [["D-1", 2]],
             id="all_words_in_title",
