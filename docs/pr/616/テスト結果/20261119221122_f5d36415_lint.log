@@ -1,0 +1,4 @@
+$ ruff check plugins tests
+All checks passed!
+
+# npm run typecheck・npm run lint は TypeScript の検査で、この工程は Python のテストだけを変えたため実装の工程で全件を回す
