@@ -1,0 +1,132 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: changed
+    detail: MindStella のセッションが資料などの本文を記載するときの本文のファイル名が、mdmark の文書の拡張子になる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: 既存のワークスペースを開く前に、本文のファイルを mdmark の文書の拡張子へ改名し、項目が指す本文のパスを書き換える移し替えが加わる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-16.yaml
+    impact: following
+    detail: 本文のずれの点検が、改名後の本文のファイル名を対象にする
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-33.yaml
+    impact: following
+    detail: 検索で返る本文のパスが改名後のパスになる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: following
+    detail: 差分の表示で比べる本文のパスが改名後のパスになる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: run_only
+    detail: 本文の書き換えを履歴に残す対象のファイル名が変わるため、履歴が残り続けるかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: run_only
+    detail: 資料の本文を改名後のパスから取得して描けるかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-39.yaml
+    impact: run_only
+    detail: 資料を書き出したファイルの名前と中身が変わらないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: run_only
+    detail: 配る書き出しが改名後の本文を中に持つかを確かめる
+    depends_on: []
+docs:
+  - page: docs/guide/コマンド.md
+    new: false
+    change: コマンド.mark.md へ改名し、本文の docs/{ID}.md の記載とリンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.md
+    new: false
+    change: .mark.md へ改名し、次のバージョンの移し替えで本文のファイルが改名されることを記載する
+    status: todo
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: .mark.md へ改名し、リンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/ワークスペースの書式.md
+    new: false
+    change: .mark.md へ改名し、記録の本文のファイル名とリンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/使い方.md
+    new: false
+    change: .mark.md へ改名し、リンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/動作環境.md
+    new: false
+    change: .mark.md へ改名し、リンクを改名後のパスに修正する
+    status: todo
+  - page: docs/design-policy.md
+    new: false
+    change: design-policy.mark.md へ改名する
+    status: todo
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: 記録の本文のファイル名と、改名したページへのリンクを修正する
+    status: todo
+  - page: docs/guide/index.yaml
+    new: false
+    change: 改名したページの行の page を改名後のファイル名に修正する
+    status: todo
+  - page: docs/index.yaml
+    new: false
+    change: design-policy の行の page を改名後のファイル名に修正する
+    status: todo
+  - page: docs/guide/files.yml
+    new: false
+    change: 改名したページの行の path を改名後のパスに修正する
+    status: todo
+  - page: docs/_root/files.yml
+    new: false
+    change: design-policy の行の path を改名後のパスに修正する
+    status: todo
+  - page: docs/_theme/_data/nav.project.yml
+    new: false
+    change: 改名したページへのナビゲーションのリンクを修正する
+    status: todo
+  - page: docs/_config.yml
+    new: false
+    change: design-policy.md を指す設定を改名後のパスに修正する
+    status: todo
+  - page: dev-docs.yaml
+    new: false
+    change: docs/guide/files.yml の行の exclude の 使い方.md を改名後のファイル名に修正する
+    status: todo
+  - page: CLAUDE.md
+    new: false
+    change: 使い方 のリンクが改名したページを指していれば修正する
+    status: todo
+  - page: docs/index.md
+    new: false
+    change: 改名したページへのリンクを修正する
+    status: todo
+scope_out:
+  - item: PR ドキュメント（docs/pr/ の README.md・要件.md・計画書）の .mark.md への改名
+    reason: ファイル名は AI Monitor のツール（create_draft_pr・read_pr_document）とテンプレートが決める。AI Monitor が shuhei1101/ai-monitor#3427（PR shuhei1101/ai-monitor#3684）でファイル名を変えたバージョンを配布した後に、追従として改名する
+    plan: to_file
+  - item: 目次（index.yaml）から書き出す README.md（docs/README.md・docs/{種類}/README.md・docs/guide/README.md）の .mark.md への改名
+    reason: ファイル名は AI Monitor の design_docs publish が決める。AI Monitor が shuhei1101/ai-monitor#3684 で書き出すファイル名を変えたバージョンを配布した後に、追従として書き出し直す
+    plan: to_file
+  - item: docs/guide/変更履歴.md の .mark.md への改名
+    reason: AI Monitor の規約『マージ手順』が release の変更履歴を docs/guide/変更履歴.md の固定のパスで書き足すため、改名すると release で別のページが作られる。shuhei1101/ai-monitor#3506 が配布された後に改名する
+    plan: to_file
+  - item: モックの目次（docs/mock/ の index.md）のうち記法を含む 22 件の .mark.md への改名
+    reason: モックのフォルダの目次のファイル名は AI Monitor の規約『モック画面』と Pages の共通レイアウト（docs/_theme/assets/app.js）が index.md で決める。AI Monitor の規約と共通レイアウトが .mark.md を扱うバージョンを配布した後に改名する。含めるかはレビューで確定する
+    plan: to_file
