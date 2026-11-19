@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import shutil
@@ -853,7 +854,7 @@ def _plugin_dir(base: Path, name: str) -> str:
     folder = base / name
     manifest = folder / workspaces.PLUGIN_MANIFEST
     manifest.parent.mkdir(parents=True)
-    manifest.write_text('{"name": "%s"}' % name, encoding="utf-8")
+    manifest.write_text(json.dumps({"name": name}), encoding="utf-8")
     return str(folder)
 
 
