@@ -51,7 +51,7 @@ scenarios:
     expected:
       - 待ち受けを始めたときには、B の `session.json` の `status` が `crashed` になっている
       - A の `session.json` の `status` が `running` のまま
-      - エンドポイントが B の止まった理由が異常終了の要求を 1 件だけ受けている
+      - エンドポイントが、止まった理由が異常終了の B の要求を 1 件だけ受けている
       - ID の一覧と、グローバルの設定のファイルが起動の前と同じ
     test: test_normal
   - name: 正常シナリオ（ID の一覧が無い）
@@ -59,7 +59,7 @@ scenarios:
       - name: Mock
         description: なし（Claude Code を起動しない）
       - name: 常駐サーバー
-        description: 正常シナリオと同じ
+        description: 正常シナリオと同じ。ただし `MINDSTELLA_DISCORD_WEBHOOK_FILE` を指定しない
       - name: project-index
         description: 正常シナリオと同じ。グローバルの設定のファイルには、ワークスペースでない配信元の行も 1 行ある
       - name: 状態
@@ -93,7 +93,7 @@ scenarios:
       - name: Mock
         description: なし（Claude Code を起動しない）
       - name: 常駐サーバー
-        description: 正常シナリオと同じ
+        description: 正常シナリオと同じ。ただし `MINDSTELLA_DISCORD_WEBHOOK_FILE` を指定しない
       - name: project-index
         description: 正常シナリオと同じ。ただし `mindstella-agent-flows` の行の `config` は、更新の前のプラグインのフォルダの `agent-flows/dev-docs.yaml` を指す
       - name: 状態
@@ -123,7 +123,7 @@ scenarios:
       - name: Mock
         description: なし（Claude Code を起動しない）
       - name: 常駐サーバー
-        description: 正常シナリオと同じ。ただし `PROJECT_INDEX_PORT` は、どのプロセスも待ち受けていないポート
+        description: 正常シナリオと同じ。ただし `MINDSTELLA_DISCORD_WEBHOOK_FILE` を指定せず、`PROJECT_INDEX_PORT` は、どのプロセスも待ち受けていないポート
       - name: 状態
         description: 状態のフォルダに `workspaces.yaml` が無い
     flow: |-
@@ -142,19 +142,20 @@ scenarios:
     expected:
       - 常駐サーバーが `/mcp` と MindStella の API を待ち受けている
       - 状態のフォルダに `workspaces.yaml` が作られていない
-      - 常駐サーバーのログに、project-index へつながらず ID の一覧を作り直せなかったことが記録されている
+      - 常駐サーバーのログに、project-index へつながらず、ID の一覧の作り直しとエージェントフローの配信元の確認を飛ばしたことが記録されている
     test: test_error_when_project_index_down
 refs:
   - SC-489-20#
   - SC-570-1#
   - SC-597-1#
   - SC-531-1#
+  - IF-605-1#
 decisions:
   - D-323
 notes:
   順番: ID の一覧の作り直し → 状態の照合 → エージェントフローの配信元の確認の順に、待ち受けを始める前に行う。作り直した ID の一覧のワークスペースも照合の対象にする
   照合: 『落ちたことの見回り』の 1 回分と同じ判定・書き換えの鍵・通知を使用する。`stopping`・`restarting` は書き換えない。落ちた MindStella のセッションは起動し直さない（起動し直すのはコメントが届いたときと起動し直しの依頼）
-  ワークスペースの行: MindStella が作ったワークスペースの行の見分け方は、インターフェース定義で決める
+  ワークスペースの行: '`config` の末尾が `/.mindstella/dev-docs.yaml` の行（クローズした行も含む）。詳しい条件はインターフェース定義『常駐サーバーの起動時の照合』'
   エージェントフローの配信元の行が無いとき: 追加しない。追加するのは『ワークスペースの作成』のまま
   ID の一覧があるとき: 配信元の行と突き合わせず、書き換えない
 id: SC-605-1
