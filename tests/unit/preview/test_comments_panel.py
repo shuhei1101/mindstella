@@ -71,14 +71,14 @@ RUN_SCRIPT = """async (args) => {
     const noop = () => {};
     const calls = [];
     const names = [
-        "close", "pin", "review", "back", "filter", "tag", "clearTag", "compose", "openThread", "openId",
+        "close", "pin", "review", "back", "filter", "tag", "clearTag", "clearTarget", "compose", "openThread", "openId",
         "reply", "replyInput", "reasonOpen", "reasonInput", "setStatus", "check", "checkAll",
         "send", "open", "edit", "saveEdit", "cancelEdit", "remove", "restore", "unloc", "changeSet", "fold",
     ];
     const on = Object.fromEntries(names.map((name) => [name, (...a) => calls.push([name, ...a])]));
     const props = {
         view: "list", items: [], removed: [], threads: [], threadsError: null, filter: "open",
-        tag: null, opened: null, composing: false, pinned: false,
+        tag: null, target: null, opened: null, composing: false, pinned: false,
         free: {
             target: null, body: "", status: "idle", label: "新しいスレッド", collapsed: false,
             on: {input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop},
@@ -154,6 +154,7 @@ RUN_SCRIPT = """async (args) => {
             indeterminate: f.indeterminate, maxlength: f.getAttribute("maxlength"), value: f.value,
         })),
         alerts: [...host.querySelectorAll('[role="alert"]')].map((a) => norm(a.textContent)),
+        chips: [...host.querySelectorAll(".chip")].map((c) => norm(c.textContent)),
         setLinks: [...host.querySelectorAll("a.setlink")].map((a) => ({
             text: norm(a.textContent),
             bodyClass: a.closest(".post-body, .review-body").classList.contains("post-body")
@@ -369,6 +370,85 @@ def test_thread_list_view_when_tag(
     assert "1 / 2 件" in observed["text"]
     assert _threads_by_focus(observed) == ["thread:TH-1"]
     assert observed["calls"] == [["clearTag"]]
+
+
+# 項目で絞るときのスレッド（D-1 へ向けたオープンの TH-1・D-2 へ向けたオープンの TH-2・D-1 へ向けたクローズの TH-5）
+TARGET_THREADS = [
+    {**THREAD_1, "target": "D-1", "tags": ["画面"]},
+    {**THREAD_2, "target": "D-2", "tags": ["画面"]},
+    {**THREAD_5, "target": "D-1", "tags": []},
+]
+
+
+def test_thread_list_view_when_target(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """項目で絞るとチップを出し、その項目のスレッドと新しいスレッドだけを並べる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    props = {
+        "threads": TARGET_THREADS,
+        "items": [
+            make_review_item("C-41", target="D-1"),
+            make_review_item("C-42", target=None, target_title=None),
+        ],
+        "filter": "open",
+        "target": "D-1",
+    }
+    actions = [{"click": {"label": "項目「D-1」の絞り込みを外す"}}]
+    # 実行
+    observed = _run(preview_page, "threadListView", props, actions=actions)
+    # 検証
+    segments = {
+        button["focus"]: button["text"].replace(" ", "")
+        for button in observed["buttons"]
+        if (button["focus"] or "").startswith("filter:")
+    }
+    assert segments == {"filter:open": "オープン1", "filter:closed": "クローズ1", "filter:all": "すべて2"}
+    clear = next(button for button in observed["buttons"] if button["label"] == "項目「D-1」の絞り込みを外す")
+    assert clear["focus"] == "clear-target"
+    chip = next(item for item in observed["chips"] if "D-1" in item)
+    assert "問い" in chip
+    assert " 件" not in observed["text"]
+    assert _threads_by_focus(observed) == ["thread:new:C-41", "thread:TH-1"]
+    assert observed["calls"] == [["clearTarget"]]
+
+
+@pytest.mark.parametrize(
+    ("props", "expected_text", "expected_rows"),
+    [
+        pytest.param({"tag": "画面", "target": "D-1"}, "1 / 2 件", ["thread:TH-1"], id="tag_and_target"),
+        pytest.param(
+            {"filter": "closed", "tag": "画面", "target": "D-1"},
+            "D-1 へのタグ「画面」のクローズのスレッドはありません。",
+            [],
+            id="empty",
+        ),
+    ],
+)
+def test_thread_list_view_when_target_and_tag(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    props: dict[str, Any],
+    expected_text: str,
+    expected_rows: list[str],
+) -> None:
+    """項目とタグで絞った件数と空の状態の文言（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    threads = [
+        {**THREAD_1, "target": "D-1", "tags": ["画面"]},
+        {**THREAD_2, "target": "D-2", "tags": ["画面"]},
+        make_thread(
+            "TH-3",
+            target="D-1",
+            tags=["起票"],
+            posts=[make_post("user", "三つ目の質問", "2026-10-12T02:30:00+00:00")],
+        ),
+    ]
+    # 実行
+    observed = _run(preview_page, "threadListView", {"threads": threads, **props})
+    # 検証
+    assert expected_text in observed["text"]
+    assert _threads_by_focus(observed) == expected_rows
 
 
 @pytest.mark.parametrize(
@@ -1000,7 +1080,7 @@ def test_visible_threads(
     result = preview_page.evaluate(
         """([threads, status, tag]) => {
             const before = threads.map((thread) => thread.id);
-            const shown = MindmapPreview.visibleThreads(threads, status, tag).map((thread) => thread.id);
+            const shown = MindmapPreview.visibleThreads(threads, status, tag, null).map((thread) => thread.id);
             return {shown, untouched: threads.map((thread) => thread.id).join() === before.join()};
         }""",
         [VISIBLE_THREADS, status, tag],
@@ -1027,7 +1107,7 @@ def test_thread_counts(
     load_preview_scripts()
     # 実行
     counts = preview_page.evaluate(
-        "([threads, tag]) => MindmapPreview.threadCounts(threads, tag)", [VISIBLE_THREADS, tag]
+        "([threads, tag]) => MindmapPreview.threadCounts(threads, tag, null)", [VISIBLE_THREADS, tag]
     )
     # 検証
     assert counts == expected
@@ -1059,7 +1139,91 @@ def test_pending_threads(
     ]
     # 実行
     shown = preview_page.evaluate(
-        "([items, status, tag]) => MindmapPreview.pendingThreads(items, status, tag).map((item) => item.id)",
+        "([items, status, tag]) => MindmapPreview.pendingThreads(items, status, tag, null).map((item) => item.id)",
+        [items, status, tag],
+    )
+    # 検証
+    assert shown == expected
+
+
+@pytest.mark.parametrize(
+    ("status", "target", "expected"),
+    [
+        pytest.param("open", "D-1", ["TH-1"], id="open"),
+        pytest.param("all", "D-1", ["TH-5", "TH-1"], id="all"),
+        pytest.param("all", "D-9", [], id="missing"),
+    ],
+)
+def test_visible_threads_when_target(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    status: str,
+    target: str,
+    expected: list[str],
+) -> None:
+    """項目で絞る（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    shown = preview_page.evaluate(
+        """([threads, status, target]) =>
+            MindmapPreview.visibleThreads(threads, status, null, target).map((thread) => thread.id)""",
+        [TARGET_THREADS, status, target],
+    )
+    # 検証
+    assert shown == expected
+
+
+@pytest.mark.parametrize(
+    ("tag", "expected"),
+    [
+        pytest.param(None, {"open": 1, "closed": 1, "all": 2}, id="target"),
+        pytest.param("画面", {"open": 1, "closed": 0, "all": 1}, id="target_and_tag"),
+    ],
+)
+def test_thread_counts_when_target(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    tag: str | None,
+    expected: dict[str, int],
+) -> None:
+    """項目で絞った件数を数える（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    counts = preview_page.evaluate(
+        "([threads, tag]) => MindmapPreview.threadCounts(threads, tag, 'D-1')", [TARGET_THREADS, tag]
+    )
+    # 検証
+    assert counts == expected
+
+
+@pytest.mark.parametrize(
+    ("status", "tag", "expected"),
+    [
+        pytest.param("open", None, ["C-41"], id="open"),
+        pytest.param("closed", None, [], id="closed"),
+        pytest.param("open", "画面", [], id="tagged"),
+    ],
+)
+def test_pending_threads_when_target(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    status: str,
+    tag: str | None,
+    expected: list[str],
+) -> None:
+    """項目で絞ると、その項目への新しいスレッドだけを出す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    items = [
+        make_review_item("C-41", target="D-1"),
+        make_review_item("C-42", target=None, target_title=None),
+        make_review_item("C-43", target=None, thread="TH-1"),
+    ]
+    # 実行
+    shown = preview_page.evaluate(
+        "([items, status, tag]) => MindmapPreview.pendingThreads(items, status, tag, 'D-1').map((item) => item.id)",
         [items, status, tag],
     )
     # 検証

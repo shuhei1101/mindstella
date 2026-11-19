@@ -43,7 +43,7 @@ describe("visibleThreads", () => {
       thread({ id: "TH-3", status: "closed", tags: ["画面"] }),
     ];
     // 実行
-    const result = visibleThreads({ threads, filter: "open", tag: "画面" });
+    const result = visibleThreads({ threads, filter: "open", tag: "画面", target: null });
     // 検証
     expect(result.map((entry) => entry.id)).toEqual(["TH-1"]);
   });
@@ -55,14 +55,66 @@ describe("threadCounts", () => {
     // 準備
     const threads = [thread({ id: "TH-1" }), thread({ id: "TH-2" }), thread({ id: "TH-3", status: "closed" })];
     // 実行と検証
-    expect(threadCounts({ threads, tag: null })).toEqual({ open: 2, closed: 1, all: 3 });
+    expect(threadCounts({ threads, tag: null, target: null })).toEqual({ open: 2, closed: 1, all: 3 });
   });
 });
 
 describe("pendingThreads", () => {
   // タグで絞っている（正常系）
   test("pending_threads_when_tagged", () => {
-    expect(pendingThreads({ items: [item()], filter: "open", tag: "画面" })).toEqual([]);
+    expect(pendingThreads({ items: [item()], filter: "open", tag: "画面", target: null })).toEqual([]);
+  });
+});
+
+// 項目で絞るときのスレッド（D-1 へ向けたオープンの TH-1・D-2 へ向けたオープンの TH-2・D-1 へ向けたクローズの TH-5）
+const targetThreads = (): Thread[] => [
+  thread({ id: "TH-1", target: "D-1", tags: ["画面"], posts: [post({ created: "2026-11-01T01:00:00+00:00" })] }),
+  thread({ id: "TH-2", target: "D-2", tags: ["画面"], posts: [post({ created: "2026-11-01T02:00:00+00:00" })] }),
+  thread({ id: "TH-5", status: "closed", target: "D-1", posts: [post({ created: "2026-11-01T03:00:00+00:00" })] }),
+];
+
+describe("visibleThreads（項目）", () => {
+  // 項目で絞る（正常系）
+  test.each([
+    { filter: "open" as const, target: "D-1", expected: ["TH-1"] },
+    { filter: "all" as const, target: "D-1", expected: ["TH-5", "TH-1"] },
+    { filter: "all" as const, target: "D-9", expected: [] },
+  ])("visible_threads_when_target $filter $target", ({ filter, target, expected }) => {
+    // 実行
+    const result = visibleThreads({ threads: targetThreads(), filter, tag: null, target });
+    // 検証
+    expect(result.map((entry) => entry.id)).toEqual(expected);
+  });
+});
+
+describe("threadCounts（項目）", () => {
+  // 項目で絞った件数を数える（正常系）
+  test.each([
+    { tag: null, expected: { open: 1, closed: 1, all: 2 } },
+    { tag: "画面", expected: { open: 1, closed: 0, all: 1 } },
+  ])("thread_counts_when_target $tag", ({ tag, expected }) => {
+    // 実行と検証
+    expect(threadCounts({ threads: targetThreads(), tag, target: "D-1" })).toEqual(expected);
+  });
+});
+
+describe("pendingThreads（項目）", () => {
+  // 項目で絞ると、その項目への新しいスレッドだけを出す（正常系）
+  test.each([
+    { filter: "open" as const, tag: null, expected: ["C-41"] },
+    { filter: "closed" as const, tag: null, expected: [] },
+    { filter: "open" as const, tag: "画面", expected: [] },
+  ])("pending_threads_when_target $filter $tag", ({ filter, tag, expected }) => {
+    // 準備
+    const items = [
+      item({ id: "C-41", target: "D-1" }),
+      item({ id: "C-42", target: null }),
+      item({ id: "C-43", target: null, thread: "TH-1" }),
+    ];
+    // 実行
+    const result = pendingThreads({ items, filter, tag, target: "D-1" });
+    // 検証
+    expect(result.map((entry) => entry.id)).toEqual(expected);
   });
 });
 

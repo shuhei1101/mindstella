@@ -4143,3 +4143,87 @@ def test_detail_panel_when_embedded_html_diff(
     expect(panel.get_by_text("埋め込んだ HTML")).to_be_visible()
     # 変更後は、書き換えた段落に変わったマーカー、足した段落に足したマーカーが付く
     assert after == {"changed": ["書き換え後"], "added": ["足した段落"], "lineMarksInRanges": 0}
+
+
+# 見出しのコメントの一覧のボタンを確かめる詳細パネルを開き、ボタンの並びと押した結果を返す JavaScript
+OPEN_COMMENTS_BUTTON_SCRIPT = """async ({data, full, withComments}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const calls = [];
+    const on = {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop, heading: noop};
+    if (withComments) on.comments = (id) => calls.push(id);
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full,
+        on,
+        comment: null,
+        highlight: null,
+        diff: null,
+        edit: {
+            editing: false,
+            marks: {},
+            form: {
+                kind: "decisions", item: index.byId.get("D-1").item, settings: data.settings, marks: {},
+                removing: false, removedOptions: [], blocked: {}, referrers: [], errors: {}, usedTags: [],
+                on: {change: noop, remove: noop, cancelRemove: noop},
+            },
+            onToggle: noop,
+        },
+    });
+    document.body.append(panel);
+    if (full) panel.showModal(); else panel.classList.add("open");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const head = [...panel.querySelector(".panel-head").querySelectorAll("button")].map(
+        (button) => button.getAttribute("aria-label") ?? button.textContent.trim()
+    );
+    const button = panel.querySelector('[data-act="item-comments"]');
+    if (button !== null) button.click();
+    return {head, calls};
+}"""
+
+
+@pytest.mark.parametrize(
+    ("full", "with_comments", "expected_head", "expected_calls"),
+    [
+        pytest.param(
+            False,
+            True,
+            ["一覧へ戻る", "編集する", "D-1 のコメントの一覧を開く", "前の項目へ戻る", "次の項目へ進む", "全画面表示", "詳細を閉じる"],
+            ["D-1"],
+            id="panel",
+        ),
+        pytest.param(True, True, ["編集する", "前の項目へ戻る", "次の項目へ進む", "元の大きさに戻す"], [], id="full"),
+        pytest.param(
+            False,
+            False,
+            ["一覧へ戻る", "編集する", "前の項目へ戻る", "次の項目へ進む", "全画面表示", "詳細を閉じる"],
+            [],
+            id="no_comments",
+        ),
+    ],
+)
+def test_detail_panel_when_comments_button(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    full: bool,
+    with_comments: bool,
+    expected_head: list[str],
+    expected_calls: list[str],
+) -> None:
+    """見出しのコメントの一覧のボタンは、`on.comments` があり全画面でないときだけ置き、押すと項目の ID を知らせる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    data = make_data(decisions=[make_item("D-1")])
+    # 実行
+    observed = preview_page.evaluate(
+        OPEN_COMMENTS_BUTTON_SCRIPT, {"data": data, "full": full, "withComments": with_comments}
+    )
+    # 検証
+    assert observed == {"head": expected_head, "calls": expected_calls}

@@ -78,4 +78,31 @@ describe("DetailPanel", () => {
     expect(await within(panel).findByRole("textbox", { name: /D-1 へのコメント/ })).toBeInTheDocument();
     expect(within(panel).queryByRole("link", { name: "今の画面でコメントする" })).not.toBeInTheDocument();
   });
+  // 見出しのコメントの一覧のボタンで、その項目で絞ったコメントの一覧を開く（正常系）
+  test("detail_panel_when_comments_button", async () => {
+    // 準備
+    stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
+    renderRoute("/spa/?id=D-1&panel=comments&thread=TH-1&tstatus=all");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    const before = window.history.length;
+    // 実行
+    await userEvent.click(within(panel).getByRole("button", { name: "D-1 のコメントの一覧を開く" }));
+    // 検証
+    await waitFor(() => expect(window.location.search).toContain("ttarget=D-1"));
+    expect(window.location.search).toContain("panel=comments");
+    expect(window.location.search).toContain("tstatus=all");
+    expect(window.location.search).not.toContain("thread=");
+    expect(window.history.length).toBe(before);
+  });
+
+  // 全画面には見出しのコメントの一覧のボタンが無い（正常系）
+  test("detail_panel_when_comments_button_full", async () => {
+    // 準備
+    stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
+    // 実行
+    renderRoute("/spa/?id=D-1&full=1");
+    // 検証
+    await waitFor(() => expect(document.body).toHaveTextContent("D-1の題"));
+    expect(screen.queryByRole("button", { name: "D-1 のコメントの一覧を開く" })).toBeNull();
+  });
 });
