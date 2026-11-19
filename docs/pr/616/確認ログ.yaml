@@ -17,3 +17,9 @@ confirmations:
     approver: shuhei1101
     commit: 7a333ea8
     thread: https://github.com/shuhei1101/mindstella/pull/616#discussion_r4628403622
+  - topic: mindstella のホームの設定 settings.yaml のキー名と扱い
+    decision: claude_balancer.url と account.release_on_limit のキー名で、常駐サーバーが起動時に 1 回だけ参照する。ファイルが無ければ既定値、YAML として読めなければ起動時にエラー、知らないキーは記録して読み飛ばす（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: a562c966
+    thread: https://github.com/shuhei1101/mindstella/pull/616#discussion_r4628633492
