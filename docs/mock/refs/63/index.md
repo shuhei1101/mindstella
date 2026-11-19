@@ -3,7 +3,7 @@
 プレビューの項目の ID のボタン（`.idlink`）の押せる的を縦横 24px 以上にする（[PR #63](https://github.com/shuhei1101/mindmap/pull/63)）。
 画面は 21 の見本のデータとスタイルに 40 の資料のボードを合わせて読み、ID のボタンの分（`assets/style.css`）と、検討事項の表の前提の列（`assets/app.js`）を足す。
 
-<!-- table: data -->
+<!-- table: {"kind": "data"} -->
 
 | 画面 | 中身 |
 | --- | --- |
