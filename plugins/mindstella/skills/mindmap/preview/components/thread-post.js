@@ -66,7 +66,7 @@ var MindmapPreview;
         // 読めない: 知らせは出さず、項目の ID とまとまりのリンクも作らない
         if (MindmapPreview.missingLibraries(["mdmark"]).length > 0)
             return MindmapPreview.h({ tag: "p", attrs: { class: className }, children: [body] });
-        const root = MindmapPreview.withoutLineMarks(MindmapPreview.renderMarkdown(MindmapPreview.withHardBreaks(body)));
+        const root = MindmapPreview.withoutLineMarks(MindmapPreview.renderMarkdown(MindmapPreview.withHardBreaks(body), { table: false }));
         root.classList.add(className);
         // 図は描き終えるのを待たずに返す
         void MindmapPreview.renderDiagrams(root);
@@ -75,7 +75,7 @@ var MindmapPreview;
             frame.classList.add(MindmapPreview.HTML_BLOCK_CLASS);
             block.replaceWith(frame);
         }
-        MindmapPreview.decorateMarkdown({ root, fold: false, tables: false });
+        MindmapPreview.decorateMarkdown({ root, fold: false });
         linkChangeSets({ root, changeSets, onChangeSet: on.changeSet });
         buttonizeItemIds({ root, titles, onOpen: on.openId });
         return root;

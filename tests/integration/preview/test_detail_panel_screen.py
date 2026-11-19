@@ -96,7 +96,7 @@ from preview_body_view_helpers import (
     seed_body_view,
     table_state,
 )
-from preview_body_wrap_helpers import BODY_WIDTHS, WRAP_BODY, WRAP_ITEM_ID, WRAP_METRICS_JS
+from preview_body_wrap_helpers import BODY_WIDTHS, WRAP_BODY, WRAP_ITEM_ID, WRAP_METRICS_JS, WRAP_TABLE_LABEL
 from preview_body_scroll_helpers import (
     HANGING_LINES_JS,
     LONG_BODY,
@@ -5017,12 +5017,12 @@ def test_diff_html_body_layout_switch(
 def test_body_wrap_when_long_words_and_tables(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, width: int
 ) -> None:
-    """本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は包む入れ物の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
+    """本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は mdmark の表のスクロールの区画の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
     # 準備
     url = write_preview(make_item("A-1", body="docs/A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.set_viewport_size({"width": width, "height": 800})
-    page.wait_for_selector("aside.panel .md-table-wrap")
+    page.wait_for_selector("aside.panel .mdmark-table .mdmark-table-scroll")
     # 実行
     result = page.evaluate(WRAP_METRICS_JS, "aside.panel")
     # 検証
@@ -5034,32 +5034,30 @@ def test_body_wrap_when_long_words_and_tables(
     assert result["idrefOverflowWrap"] == "normal"
     assert result["idrefRows"] == 1
     wide, narrow = result["wraps"]
-    group = {"role": "group", "label": "本文の表", "tabindex": "0", "inside": True}
+    group = {"label": WRAP_TABLE_LABEL, "tabindex": "0", "inside": True}
     assert {key: wide[key] for key in group} == group
     assert {key: narrow[key] for key in group} == group
     assert wide["scrolls"] is True
     assert wide["overflowX"] in ("auto", "scroll")
     assert narrow["scrolls"] is False
-    assert narrow["tableNarrowerThanWrap"] is True
 
 
 @pytest.mark.parametrize("width", [320, 1280])
 def test_body_table_scroll_by_keyboard(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, width: int
 ) -> None:
-    """列の多い表を包む入れ物はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れて、フォーカスの枠は内側に描く（正常系）。"""
+    """列の多い mdmark の表はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れる（正常系）。"""
     # 準備
     url = write_preview(make_item("A-1", body="docs/A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.set_viewport_size({"width": width, "height": 800})
-    wrap = page.locator("aside.panel .md-table-wrap").first
-    wrap.wait_for()
+    table = page.locator("aside.panel .mdmark-table .mdmark-table-scroll > table").first
+    table.wait_for()
     # 実行
-    wrap.focus()
+    table.focus()
     page.keyboard.press("ArrowRight")
     # 検証
-    page.wait_for_function("selector => document.querySelector(selector).scrollLeft > 0", arg="aside.panel .md-table-wrap")
-    assert wrap.evaluate("element => getComputedStyle(element).outlineOffset") == "-2px"
+    page.wait_for_function("selector => document.querySelector(selector).scrollLeft > 0", arg="aside.panel .mdmark-table-scroll")
     assert page.evaluate("document.querySelector('aside.panel .panel-body').scrollLeft") == 0
 
 
@@ -5638,58 +5636,59 @@ def test_blocked_reason(
     assert field.locator(".pm.pm-blocked").count() == 1
 
 
-# 本文の表の見せ方を確かめる、本文のスクロール領域の中の表と、列の固定のボタン・開閉の矢印・しま模様の表
-BODY_TABLE_FRAME = f"{BODY_VIEW_SCOPE} .panel-body .md-table-frame"
-BODY_PIN_BUTTON = f"{BODY_VIEW_SCOPE} .panel-body button.md-pin"
+# 本文の表の見せ方を確かめる、本文のスクロール領域の中の mdmark の表と、ピン止めのボタン・開閉の矢印
+BODY_TABLE = f"{BODY_VIEW_SCOPE} .panel-body .mdmark-table"
+BODY_PIN_BUTTON = f"{BODY_VIEW_SCOPE} .panel-body button.mdmark-pin"
 BODY_FOLD_BUTTON = f"{BODY_VIEW_SCOPE} .panel-body button.md-fold"
-BODY_STRIPES_TABLE = f"{BODY_VIEW_SCOPE} .panel-body table.md-stripes"
 
-# 8 列の表の、最後の列を除く列の数（固定のボタンの数）
-BODY_PIN_COUNT = 7
+# 画面の CSS が当てた表の見せ方の印（列の幅・フェード・固定・見出しの固定・しま模様）
+TABLE_OVERRIDE_MARKS = (
+    "[data-col-size], [data-fade], .md-table-wrap, .md-table-frame, button.md-pin, .md-pinned, table.md-head-stick, table.md-stripes"
+)
+
+# 8 列の表の、ピン止めのボタンの数（列ごとに 1 つ）
+BODY_PIN_COUNT = 8
 
 
 def test_body_view(
     write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """資料の本文に、表の入れ物の枠・列の固定のボタン・見出しの固定・見出しの開閉の矢印を当てる。しま模様は既定ではオフ（正常系）。"""
+    """資料の本文の表を mdmark の表で描き（列ごとのピン止めのボタン）、見出しの開閉の矢印を当てる。画面の CSS の表の見せ方は無く、行は塗り分けない（正常系）。"""
     # 準備・実行
     url, _ = write_body_view_preview()
     open_body_view(page, open_preview, url, BODY_VIEW_HASH)
-    # 検証（表は枠で包み、固定のボタンは最後の列を除く 7 つ、見出しの矢印は 2 つ）
-    assert page.locator(BODY_TABLE_FRAME).count() == 1
-    assert page.locator(f"{BODY_TABLE_FRAME} > .md-table-wrap > table").count() == 1
+    # 検証（表は mdmark の表、ピン止めのボタンは列ごと、見出しの矢印は 2 つ）
+    assert page.locator(BODY_TABLE).count() == 1
     assert page.locator(BODY_PIN_BUTTON).count() == BODY_PIN_COUNT
     assert page.locator(BODY_FOLD_BUTTON).count() == 2
-    assert page.locator(f"{BODY_VIEW_SCOPE} .panel-body table.md-head-stick").count() == 1
-    assert page.locator(BODY_STRIPES_TABLE).count() == 0
-    colors = table_state(page)["rowColors"]
-    assert colors[0] == colors[1]
+    state = table_state(page)
+    assert state["overrides"] == 0
+    assert state["rowColors"][0] == state["rowColors"][1]
 
 
 def test_diff_body_view(
     write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """本文の差分にも、表の枠・列の固定のボタン・しま模様を当てる。見出しの開閉の矢印は置かず、足した行は差分の面のまま残す（正常系）。"""
+    """本文の差分の表も mdmark の表で描く。見出しの開閉の矢印は置かず、書き換えた行と足した行は差分の面になる（正常系）。"""
     # 準備
     url, _ = write_body_view_preview()
-    seed_body_view(page, {"tableStripes": True})
     # 実行
     open_body_view(page, open_preview, url, BODY_VIEW_DIFF_HASH)
     page.wait_for_selector(f"{BODY_VIEW_SCOPE} .md tr.df-row")
-    # 検証（枠・固定のボタン・しま模様はあり、矢印は無い）
-    assert page.locator(BODY_TABLE_FRAME).count() == 1
+    # 検証（mdmark の表とピン止めのボタンはあり、矢印と画面の CSS の表の見せ方は無い）
+    assert page.locator(BODY_TABLE).count() == 1
     assert page.locator(BODY_PIN_BUTTON).count() == BODY_PIN_COUNT
-    assert page.locator(BODY_STRIPES_TABLE).count() == 1
     assert page.locator(BODY_FOLD_BUTTON).count() == 0
-    # 検証（書き換えた行と足した行は、しま模様の色にならず差分の面のまま）
+    assert page.locator(f"{BODY_VIEW_SCOPE} .panel-body").locator(TABLE_OVERRIDE_MARKS).count() == 0
+    # 検証（書き換えた行と足した行は、差分の面になる）
     assert page.locator(f"{BODY_VIEW_SCOPE} .md tr.df-row").count() >= 2
     changed = page.eval_on_selector_all(
         f"{BODY_VIEW_SCOPE} .md tbody tr.df-row",
-        "rows => rows.map((row) => getComputedStyle(row.firstElementChild).backgroundColor)",
+        "rows => rows.map((row) => getComputedStyle(row.lastElementChild).backgroundColor)",
     )
     plain = page.eval_on_selector(
         f"{BODY_VIEW_SCOPE} .md tbody tr:not(.df-row)",
-        "row => getComputedStyle(row.firstElementChild).backgroundColor",
+        "row => getComputedStyle(row.lastElementChild).backgroundColor",
     )
     assert plain not in changed
 
@@ -5698,18 +5697,18 @@ def test_diff_body_view(
 def test_diff_body_view_when_side_by_side(
     write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page, column: str
 ) -> None:
-    """左右に並べた本文の左右の列にも、表の枠・列の固定のボタン・しま模様を当てる。見出しの開閉の矢印は置かない（正常系）。"""
+    """左右に並べた本文の左右の列の表も mdmark の表で描く。見出しの開閉の矢印は置かない（正常系）。"""
     # 準備
     url, _ = write_body_view_preview()
-    seed_body_view(page, {"bodyLayout": "side", "diffSel": "V-1", "tableStripes": True})
+    seed_body_view(page, {"bodyLayout": "side", "diffSel": "V-1"})
     page.set_viewport_size(BODY_VIEW_VIEWPORT)
     # 実行
     open_preview(url, BODY_VIEW_DIFF_HASH)
     open_side_by_side(page, LAYOUT_PANEL)
     # 検証
-    assert page.locator(f"{column} .md-table-frame").count() == 1
-    assert page.locator(f"{column} button.md-pin").count() == BODY_PIN_COUNT
-    assert page.locator(f"{column} table.md-stripes").count() == 1
+    assert page.locator(f"{column} .mdmark-table").count() == 1
+    assert page.locator(f"{column} button.mdmark-pin").count() == BODY_PIN_COUNT
+    assert page.locator(f"{column}").locator(TABLE_OVERRIDE_MARKS).count() == 0
     assert page.locator(f"{column} button.md-fold").count() == 0
 
 

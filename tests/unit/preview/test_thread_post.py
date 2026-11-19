@@ -324,7 +324,7 @@ MARKDOWN_POST_BODY_SCRIPT = """(source) => {
         classes: [...body.classList],
         heading: body.querySelector("h2")?.textContent ?? null,
         hardBreak: body.querySelector("p br") !== null,
-        tableInWrap: body.querySelector(".md-table-wrap > table") !== null,
+        tableOutsideMdmarkTable: body.querySelector("table") !== null && body.querySelector("table").closest(".mdmark-table") === null,
         noteIcon: title?.firstElementChild?.outerHTML === MindmapPreview.icon("note").outerHTML,
         paragraphButtons: [...body.querySelectorAll("p > button.idlink")].map((b) => b.textContent),
         cellButtons: [...body.querySelectorAll("td button.idlink")].map((b) => b.textContent),
@@ -348,7 +348,7 @@ def test_post_body_when_markdown(
     assert {"post-body", "mdmark"} <= set(observed["classes"])
     assert observed["heading"] == "結果"
     assert observed["hardBreak"] is True
-    assert observed["tableInWrap"] is True
+    assert observed["tableOutsideMdmarkTable"] is True
     assert observed["noteIcon"] is True
     assert observed["paragraphButtons"] == ["D-1"]
     assert observed["cellButtons"] == ["D-1"]

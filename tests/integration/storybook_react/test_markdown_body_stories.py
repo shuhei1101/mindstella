@@ -2,20 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 from playwright.sync_api import Page
+
 from .storybook_react_fixture_types import OpenStory
 
-# 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
-NARROW_SIZE = {"width": 390, "height": 844}
+# 狭い幅（動作環境の最も狭い画面の幅 320px）
+NARROW_SIZE = {"width": 320, "height": 844}
 
 # 位置の比べで許す差（px）
 TOLERANCE_PX = 2
-
-# 長文の列の幅（em）
-LONG_COLUMN_EM = 24
 
 # ストーリーが描き終わるまで待つ上限ミリ秒
 STORY_TIMEOUT_MS = 15_000
@@ -23,39 +19,24 @@ STORY_TIMEOUT_MS = 15_000
 # 見せ方を当て終わり、操作の後の描き直しが済むまで待つミリ秒
 SETTLE_MS = 500
 
-# 表の見出しのセルごとに、名前・列の種類・本体の最初の行のセルが折り返さないか・幅（px）を返す
-_COLUMNS_JS = """() => [...document.querySelectorAll('.md thead th')].map((cell, index) => ({
-    name: cell.firstChild.textContent.trim(),
-    size: cell.dataset.colSize,
-    nowrap: getComputedStyle(document.querySelectorAll('.md tbody tr:first-child td')[index]).whiteSpace === 'nowrap',
-    width: cell.getBoundingClientRect().width,
-}))"""
-
-# 表の入れ物・枠・本文の横の送りの状態と、表の中身（本体）の幅を返す
-_SCROLL_JS = """() => {
-    const wrap = document.querySelector('.md .md-table-wrap');
-    const frame = wrap.parentElement;
-    const md = document.querySelector('.md');
+# mdmark の表の入れ物・横のスクロールの区画・本文の区画の状態と、ピン止めした列の見出しを返す
+_TABLE_JS = """() => {
+    const scroll = document.querySelector('.mdmark .mdmark-table .mdmark-table-scroll');
+    const md = document.querySelector('.mdmark');
+    const edge = scroll.getBoundingClientRect().left;
     return {
-        wrapScrolls: wrap.scrollWidth > wrap.clientWidth,
+        scrolls: scroll.scrollWidth > scroll.clientWidth,
+        scrolled: scroll.scrollLeft > 0,
         mdScrolls: md.scrollWidth > md.clientWidth,
-        fade: frame.hasAttribute('data-fade'),
-        fadeShown: getComputedStyle(frame, '::after').content !== 'none',
-        tableWidth: wrap.querySelector('tbody').getBoundingClientRect().width,
-        mdWidth: md.getBoundingClientRect().width,
+        pinned: [...scroll.querySelectorAll('thead th.is-pinned-col')].map((cell) => cell.textContent.trim()),
+        pinnedLefts: [...scroll.querySelectorAll('thead th.is-pinned-col')].map((cell) => cell.getBoundingClientRect().left - edge),
     };
 }"""
 
-# 本体の行ごとに、先頭のセルの背景色を返す
-_ROW_COLORS_JS = """() => [...document.querySelectorAll('.md tbody tr')].map(
-    (row) => getComputedStyle(row.firstElementChild).backgroundColor
-)"""
-
-# 見出しの行の上端と、本文のスクロール領域の上端（px）を返す
-_HEAD_TOP_JS = """() => ({
-    area: document.querySelector('.panel-body').getBoundingClientRect().top,
-    head: document.querySelector('.md thead th').getBoundingClientRect().top,
-})"""
+# 本文の区画・表の入れ物・セルのうち、画面の CSS が当てた見た目の規則（MindStella の表の見せ方の印）の数を返す
+_OVERRIDES_JS = """() => document.querySelectorAll(
+    '.mdmark [data-col-size], .mdmark [data-fade], .mdmark .md-table-wrap, .mdmark .md-table-frame, .mdmark button.md-pin, .mdmark .md-pinned, .mdmark table.md-head-stick, .mdmark table.md-stripes'
+).length"""
 
 
 def _open(open_story: OpenStory, state: str) -> Page:
@@ -66,165 +47,77 @@ def _open(open_story: OpenStory, state: str) -> Page:
     return page
 
 
-def _columns(page: Page) -> dict[str, dict[str, Any]]:
-    """表の列を、見出しの名前ごとの種類・折り返し・幅で返す。"""
-    return {column["name"]: column for column in page.evaluate(_COLUMNS_JS)}
-
-
-def test_column_widths(open_story: OpenStory) -> None:
-    """8 列の表。短い列は折り返さず、長文の列は 24em で折り返し、中くらいの列は文節の区切りで折り返す。表は本文より広く、表の中だけで横に送れ、右端がフェードする（正常系）。"""
-    # 準備・実行
-    page = _open(open_story, "column-widths")
-    columns = _columns(page)
-    scroll = page.evaluate(_SCROLL_JS)
-    font_size = page.eval_on_selector(
-        ".md thead th:last-child", "e => parseFloat(getComputedStyle(e).fontSize)"
+def _pin_pressed(page: Page) -> dict[str, str | None]:
+    """ピン止めのボタンの読み上げの名前ごとの aria-pressed を返す。"""
+    return page.evaluate(
+        "() => Object.fromEntries([...document.querySelectorAll('.mdmark button.mdmark-pin')].map((b) => [b.getAttribute('aria-label'), b.getAttribute('aria-pressed')]))"
     )
-    # 検証（列の種類と折り返し）
-    assert (columns["ID"]["size"], columns["ID"]["nowrap"]) == ("short", True)
-    assert columns["優先度"]["size"] == "short"
-    assert columns["名前"]["size"] == "medium"
-    assert (columns["説明"]["size"], columns["説明"]["nowrap"]) == ("long", False)
-    # 検証（長文の列は 24em で折り返す。セルの余白の分だけ広い）
-    assert LONG_COLUMN_EM * font_size <= columns["説明"]["width"] <= LONG_COLUMN_EM * font_size + 40
-    # 検証（表は本文より広く、入れ物の中だけで送れ、右端がフェードする）
-    assert scroll["tableWidth"] > scroll["mdWidth"]
-    assert scroll["wrapScrolls"] is True
-    assert scroll["mdScrolls"] is False
-    assert scroll["fade"] is True
-    assert scroll["fadeShown"] is True
-    assert page.get_attribute(".md .md-table-wrap", "aria-label") == "本文の表"
 
 
-def test_small_table(open_story: OpenStory) -> None:
-    """2 列の表。本文の幅いっぱいに広げず、中身の幅で描き、フェードを出さない（正常系）。"""
+def test_mdmark_table(open_story: OpenStory) -> None:
+    """8 列の表を mdmark の表で描く。並べ替え・ピン止め・列の幅の変更のボタンは mdmark のまま。はみ出すため先頭の列が左端に留まり、表の中だけが横にスクロールする。画面の CSS の見せ方は無い（正常系）。"""
     # 準備・実行
-    page = _open(open_story, "small-table")
-    scroll = page.evaluate(_SCROLL_JS)
-    # 検証
-    assert scroll["tableWidth"] < scroll["mdWidth"]
-    assert scroll["wrapScrolls"] is False
-    assert scroll["fade"] is False
+    page = _open(open_story, "mdmark-table")
+    table = page.evaluate(_TABLE_JS)
+    pressed = _pin_pressed(page)
+    # 検証（mdmark の表の部品で描き、列ごとのピン止めと列の幅の変更、並べ替えのボタンを持つ）
+    assert page.locator(".mdmark .mdmark-table").count() == 1
+    assert len(pressed) == 8
+    assert page.locator(".mdmark .mdmark-table .mdmark-col-resize").count() == 8
+    assert page.locator(".mdmark .mdmark-table button.mdmark-sort").count() >= 1
+    # 検証（はみ出すので先頭の列だけが最初からピン止めされる）
+    assert pressed["「ID」の列をピン止め"] == "true"
+    assert [label for label, value in pressed.items() if value == "true"] == ["「ID」の列をピン止め"]
+    assert table["pinned"] == ["ID"]
+    # 検証（表の中だけが横にスクロールし、本文の区画はスクロールしない）
+    assert table["scrolls"] is True
+    assert table["mdScrolls"] is False
+    # 検証（画面の CSS の列の幅・フェード・固定・しま模様は無い）
+    assert page.evaluate(_OVERRIDES_JS) == 0
 
 
-def test_pin_hover(open_story: OpenStory) -> None:
-    """列の見出しにポインターを載せた。最後の列を除く見出しに固定のボタンが出る（正常系）。"""
+def test_pinned_columns(open_story: OpenStory) -> None:
+    """「名前」のピン止めのボタンを押して右へスクロールした。ID と名前の 2 列が左端に留まり、状態の列は留まらない（正常系）。"""
     # 準備・実行
-    page = _open(open_story, "pin-hover")
-    buttons = page.locator(".md thead button.md-pin")
-    # 検証（最後の列には無く、読み上げの名前は「{列名}まで固定」）
-    assert buttons.count() == 7
-    assert page.locator(".md thead th:last-child button.md-pin").count() == 0
-    assert buttons.first.get_attribute("aria-label") == "IDまで固定"
-    # 検証（フォーカスで出る。まだどの列も固定しない）
-    assert (
-        page.eval_on_selector(
-            ".md thead button.md-pin:focus-visible", "e => getComputedStyle(e).opacity"
-        )
-        == "1"
+    page = _open(open_story, "pinned-columns")
+    table = page.evaluate(_TABLE_JS)
+    pressed = _pin_pressed(page)
+    # 検証（ID と名前のピン止めのボタンが押された状態）
+    assert [label for label, value in pressed.items() if value == "true"] == ["「ID」の列をピン止め", "「名前」の列をピン止め"]
+    assert table["pinned"] == ["ID", "名前"]
+    # 検証（右へスクロールしても、2 列は表の左端から並んで見えている）
+    assert table["scrolled"] is True
+    assert abs(table["pinnedLefts"][0]) <= TOLERANCE_PX
+    assert table["pinnedLefts"] == sorted(table["pinnedLefts"])
+    status_left = page.evaluate(
+        "() => { const s = document.querySelector('.mdmark .mdmark-table-scroll'); return [...s.querySelectorAll('thead th')][1].getBoundingClientRect().left - s.getBoundingClientRect().left; }"
     )
-    assert page.locator(".md thead button.md-pin[aria-pressed=true]").count() == 0
-    assert page.locator(".md .md-pinned").count() == 0
+    assert status_left < 0
 
 
-def test_pinned(open_story: OpenStory) -> None:
-    """「名前」の固定のボタンを押して右へ送った。「名前」より左の列が左端に残り、固定した列の右端に影が付く（正常系）。"""
+def test_opaque_background(open_story: OpenStory) -> None:
+    """本文の背景は透明で、ピン止めした列は周りの面の色（`--card` を指定した `--mdmark-color-bg-opaque`）で塗られる（正常系）。"""
     # 準備・実行
-    page = _open(open_story, "pinned")
-    pressed = page.locator(".md thead button.md-pin[aria-pressed=true]")
-    names = page.evaluate(
-        "() => [...document.querySelectorAll('.md thead th.md-pinned')].map((cell) => cell.firstChild.textContent.trim())"
-    )
-    metrics = page.evaluate(
+    page = _open(open_story, "opaque-background")
+    colors = page.evaluate(
         """() => {
-            const wrap = document.querySelector('.md .md-table-wrap');
-            const edge = wrap.getBoundingClientRect().left;
+            const md = document.querySelector('.mdmark');
+            const probe = document.createElement('div');
+            probe.style.backgroundColor = 'var(--card)';
+            md.appendChild(probe);
+            const surface = getComputedStyle(probe).backgroundColor;
+            probe.remove();
             return {
-                scrolled: wrap.scrollLeft > 0,
-                lefts: [...document.querySelectorAll('.md thead th.md-pinned')].map((cell) => cell.getBoundingClientRect().left - edge),
+                md: getComputedStyle(md).backgroundColor,
+                pinned: getComputedStyle(document.querySelector('.mdmark td.is-pinned-col')).backgroundColor,
+                surface,
             };
         }"""
     )
-    # 検証（押した列だけ aria-pressed が true）
-    assert pressed.count() == 1
-    assert pressed.get_attribute("aria-label") == "名前まで固定"
-    # 検証（ID・状態・名前の 3 列が固定され、右端の列に影が付く）
-    assert names == ["ID", "状態", "名前"]
-    assert page.locator(".md thead th.md-pin-edge").count() == 1
-    assert (
-        page.eval_on_selector(".md thead th.md-pin-edge", "e => getComputedStyle(e).boxShadow")
-        != "none"
-    )
-    # 検証（右へ送っても、固定した列は入れ物の左端から並ぶ）
-    assert metrics["scrolled"] is True
-    assert abs(metrics["lefts"][0]) <= TOLERANCE_PX
-    assert metrics["lefts"] == sorted(metrics["lefts"])
-
-
-def test_pin_off(open_story: OpenStory) -> None:
-    """表示の設定で列の固定をオフにした。見出しに固定のボタンを置かない（正常系）。"""
-    # 準備・実行
-    page = _open(open_story, "pin-off")
-    # 検証（見出しの固定は残る）
-    assert page.locator(".md button.md-pin").count() == 0
-    assert page.locator(".md .md-pinned").count() == 0
-    assert page.locator(".md table.md-head-stick").count() == 1
-
-
-def test_head_stuck(open_story: OpenStory) -> None:
-    """縦に高さを限った本文の区画の中で、長い表の途中まで送った。見出しの行が区画の上端に残り、下の境に影が付く。表の下端を越えては残らない（正常系）。"""
-    # 準備・実行
-    page = _open(open_story, "head-stuck")
-    page.wait_for_selector(".md table.md-head-stuck")
-    top = page.evaluate(_HEAD_TOP_JS)
-    shadow = page.eval_on_selector(".md thead th", "e => getComputedStyle(e).boxShadow")
-    page.eval_on_selector(".panel-body", "e => { e.scrollTop = e.scrollHeight; }")
-    page.wait_for_timeout(SETTLE_MS)
-    bounds = page.evaluate(
-        """() => ({
-            head: document.querySelector('.md thead th').getBoundingClientRect().bottom,
-            table: document.querySelector('.md table').getBoundingClientRect().bottom,
-        })"""
-    )
-    # 検証（見出しの行が区画の上端に見え、下の境に影が付く）
-    assert abs(top["head"] - top["area"]) <= TOLERANCE_PX
-    assert shadow != "none"
-    # 検証（最後まで送ると、見出しの行は表の下端を越えない）
-    assert bounds["head"] <= bounds["table"] + TOLERANCE_PX
-
-
-def test_head_off(open_story: OpenStory) -> None:
-    """表示の設定で見出しの固定をオフにした。見出しの行も本文と一緒に送られる（正常系）。"""
-    # 準備・実行
-    page = _open(open_story, "head-off")
-    top = page.evaluate(_HEAD_TOP_JS)
     # 検証
-    assert page.locator(".md table.md-head-stick").count() == 0
-    assert top["head"] < top["area"] - TOLERANCE_PX
-
-
-def test_stripes(open_story: OpenStory) -> None:
-    """表示の設定でしま模様をオンにした。本体の行を 1 行おきに塗り分ける（正常系）。"""
-    # 準備・実行
-    page = _open(open_story, "stripes")
-    colors = page.evaluate(_ROW_COLORS_JS)
-    # 検証
-    assert colors[0] == colors[2] == colors[4]
-    assert colors[1] == colors[3] == colors[5]
-    assert colors[0] != colors[1]
-
-
-def test_stripes_in_diff(open_story: OpenStory) -> None:
-    """本文の差分でしま模様をオンにした。足した行と消した行は差分の面のままで、開閉を置かない（正常系）。"""
-    # 準備・実行
-    page = _open(open_story, "stripes-in-diff")
-    colors = page.evaluate(_ROW_COLORS_JS)
-    # 検証（足した行・消した行は、しま模様の面にならない）
-    assert colors[1] != colors[0]
-    assert colors[2] != colors[0]
-    assert colors[1] != colors[2]
-    assert page.locator(".md table.md-stripes").count() == 1
-    assert page.locator(".md button.md-fold").count() == 0
+    assert colors["md"] == "rgba(0, 0, 0, 0)"
+    assert colors["pinned"] == colors["surface"]
+    assert page.evaluate(_TABLE_JS)["scrolled"] is True
 
 
 def test_sections(open_story: OpenStory) -> None:
@@ -339,59 +232,41 @@ def test_callouts(open_story: OpenStory) -> None:
     """Alert の 5 種類の引用は、mdmark が種類の色の薄い面と細い枠の囲みと見出しで描き、見出しの頭に種類のアイコンを足す。マーカーの無い引用は囲みにならない（正常系）。"""
     # 準備・実行
     page = _open(open_story, "callouts")
-    titles = page.evaluate(
-        "() => [...document.querySelectorAll('.md .markdown-alert .markdown-alert-title')].map((e) => e.textContent.trim())"
-    )
-    kinds = page.evaluate(
-        "() => [...document.querySelectorAll('.md .markdown-alert')].map((e) => e.className)"
-    )
-    borders = page.evaluate(
-        "() => [...document.querySelectorAll('.md .markdown-alert')].map((e) => getComputedStyle(e).borderTopColor)"
-    )
-    fills = page.evaluate(
-        "() => [...document.querySelectorAll('.md .markdown-alert')].map((e) => getComputedStyle(e).backgroundColor)"
-    )
+    titles = page.evaluate("() => [...document.querySelectorAll('.md .markdown-alert .markdown-alert-title')].map((e) => e.textContent.trim())")
+    kinds = page.evaluate("() => [...document.querySelectorAll('.md .markdown-alert')].map((e) => e.className)")
+    borders = page.evaluate("() => [...document.querySelectorAll('.md .markdown-alert')].map((e) => getComputedStyle(e).borderTopColor)")
+    fills = page.evaluate("() => [...document.querySelectorAll('.md .markdown-alert')].map((e) => getComputedStyle(e).backgroundColor)")
     plain = page.locator(".md blockquote")
     # 検証（種類ごとの見出しとアイコン。マーカーの文字は残らない）
     assert titles == ["補足", "ヒント", "重要", "警告", "注意"]
-    assert kinds == [
-        f"markdown-alert markdown-alert-{kind}"
-        for kind in ("note", "tip", "important", "warning", "caution")
-    ]
+    assert kinds == [f"markdown-alert markdown-alert-{kind}" for kind in ("note", "tip", "important", "warning", "caution")]
     assert page.locator(".md .markdown-alert .markdown-alert-title svg.icon").count() == 5
     assert "[!" not in page.inner_text(".md")
     # 検証（種類ごとに枠と面の色が違い、枠は細い）
     assert len(set(borders)) == 5
     assert len(set(fills)) == 5
-    assert (
-        page.eval_on_selector(".md .markdown-alert", "e => getComputedStyle(e).borderTopWidth")
-        == "1px"
-    )
+    assert page.eval_on_selector(".md .markdown-alert", "e => getComputedStyle(e).borderTopWidth") == "1px"
     # 検証（マーカーの無い引用は囲みにならず、引用のまま残る）
     assert plain.count() == 1
     assert plain.evaluate("e => e.closest('.markdown-alert') === null")
 
 
 def test_narrow(open_story: OpenStory) -> None:
-    """画面の幅 390px。列の固定と固定のボタンを出さず、見出しの固定は残す。表は表の中だけで横に送れる（正常系）。"""
+    """画面の幅 320px。表は mdmark の表のまま表の中だけで横にスクロールし、本文の区画もページも横にスクロールしない（正常系）。"""
     # 準備・実行
     page = _open(open_story, "narrow")
     page.set_viewport_size(NARROW_SIZE)
     page.wait_for_timeout(SETTLE_MS)
-    scroll = page.evaluate(_SCROLL_JS)
-    # 検証（固定のボタンは隠れ、見出しの固定は残る）
-    assert page.locator(".md button.md-pin:visible").count() == 0
-    assert page.locator(".md table.md-head-stick").count() == 1
-    # 検証（表は入れ物の中だけで送れ、ページは横に送らない）
-    assert scroll["wrapScrolls"] is True
-    assert scroll["mdScrolls"] is False
-    assert page.evaluate(
-        "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
-    )
+    table = page.evaluate(_TABLE_JS)
+    # 検証
+    assert page.locator(".mdmark .mdmark-table").count() == 1
+    assert table["scrolls"] is True
+    assert table["mdScrolls"] is False
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
 
 
 def test_in_thread_post(open_story: OpenStory) -> None:
-    """スレッドの書き込みの本文。コードブロックの言語の札とコピーのボタン、Alert の見出しのアイコンを当て、表の列の幅・フェード・固定・見出しの固定とセクションの開閉は当てない（正常系）。"""
+    """スレッドの書き込みの本文。コードブロックの言語の札とコピーのボタン、Alert の見出しのアイコンを当て、表は mdmark の表の機能をオフにした共通のスタイルのまま描き、セクションの開閉は当てない（正常系）。"""
     # 準備・実行
     page = _open(open_story, "in-thread-post")
     # 検証（コードブロックの言語の札とコピーのボタンは当てる）
@@ -399,60 +274,67 @@ def test_in_thread_post(open_story: OpenStory) -> None:
     assert page.locator(".md .md-code button.code-copy").count() == 2
     # 検証（Alert の見出しのアイコンは当てる）
     assert page.locator(".md .markdown-alert .markdown-alert-title svg.icon").count() == 5
-    # 検証（表は mdmark のスタイルのまま。列の種類・固定・見出しの固定・フェードを当てない）
-    assert page.locator(".md [data-col-size]").count() == 0
-    assert page.locator(".md button.md-pin").count() == 0
-    assert page.locator(".md table.md-head-stick").count() == 0
-    assert page.locator(".md .md-table-frame[data-fade]").count() == 0
+    # 検証（表は mdmark の表の部品にせず、ピン止め・並べ替えを持たない。画面の CSS の見せ方も無い）
+    assert page.locator(".md table").count() >= 1
+    assert page.locator(".md .mdmark-table").count() == 0
+    assert page.locator(".md button.mdmark-pin").count() == 0
+    assert page.evaluate(_OVERRIDES_JS) == 0
     # 検証（セクションの開閉は置かない）
     assert page.locator(".md button.md-fold").count() == 0
     assert page.locator(".md .md-section-body").count() == 0
 
 
-# 範囲の外と中で、見せ方を当てた要素の数を返す（列の幅の印・フェード・固定のボタン・見出しの固定・しま模様・開閉の矢印。外は表の入れ物と開閉の矢印の数）
-_DECORATED_JS = """() => {
-    const decorated = [...document.querySelectorAll('.md th[data-col-size], .md [data-fade], .md button.md-pin, .md table.md-head-stick, .md table.md-stripes, .md button.md-fold')];
-    const inside = (element) => element.closest('.mdmark-html') !== null;
-    return {
-        inside: decorated.filter(inside).length,
-        outsideWraps: [...document.querySelectorAll('.md .md-table-wrap')].filter((e) => !inside(e)).length,
-        outsideFolds: decorated.filter((e) => !inside(e) && e.matches('button.md-fold')).length,
-    };
-}"""
-
-
 def test_embedded_html(open_story: OpenStory) -> None:
-    """本文の `<!-- html -->` の範囲の中の表・見出しには、列の幅・フェード・固定・見出しの固定・しま模様・開閉を当てず、書いた HTML と mdmark の部品の見た目のまま描く。範囲の前後の表と見出しには今までどおり当てる（正常系）。"""
+    """本文の `<!-- html -->` の範囲の中の見出しには開閉を当てず、書いた HTML と mdmark の部品の見た目のまま描く。範囲の前後の見出しには開閉を当てる（正常系）。"""
     # 準備・実行
     page = _open(open_story, "embedded-html")
     page.wait_for_selector(".md .mdmark-html figure", timeout=STORY_TIMEOUT_MS)
-    decorated = page.evaluate(_DECORATED_JS)
-    # 検証（範囲の中には、表・見出し・チャート・スライダーがあり、見せ方は当たっていない）
+    folds = page.evaluate(
+        "() => [...document.querySelectorAll('.md button.md-fold')].map((e) => e.closest('.mdmark-html') !== null)"
+    )
+    # 検証（範囲の中には、表・見出し・チャート・スライダーがある）
     assert page.locator(".md .mdmark-html table").count() >= 1
     assert page.locator(".md .mdmark-html :is(h1, h2, h3, h4)").count() >= 1
     assert page.locator(".md .mdmark-html figure.mdmark-diagram").count() >= 1
     assert page.locator(".md .mdmark-html input[type=range]").count() == 1
-    assert decorated["inside"] == 0
-    # 検証（範囲の中の表は、横に送る入れ物にも包まない）
-    assert page.locator(".md .mdmark-html table").evaluate_all(
-        "tables => tables.map(t => t.closest('.md-table-wrap') === null)"
-    ) == [True]
-    # 検証（範囲の前後の表と見出しには当たっている）
-    assert decorated["outsideWraps"] >= 1
-    assert decorated["outsideFolds"] >= 1
+    # 検証（開閉は範囲の外の見出しにだけ置き、画面の CSS の表の見せ方はどこにも無い）
+    assert folds != []
+    assert all(inside is False for inside in folds)
+    assert page.evaluate(_OVERRIDES_JS) == 0
+
+
+def test_table_in_diff(open_story: OpenStory) -> None:
+    """本文の差分の中の表。足した行・消した行の面の色と消した行の取り消し線が、ピン止めした列のセルにも付き、開閉を置かない（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "table-in-diff")
+    cells = page.evaluate(
+        """() => {
+            const style = (selector) => {
+                const cell = document.querySelector(selector);
+                return [getComputedStyle(cell).backgroundColor, getComputedStyle(cell).textDecorationLine];
+            };
+            return {
+                plain: style('.mdmark tbody tr:not(.df-row) td.is-pinned-col'),
+                added: style('.mdmark tr.df-add td.is-pinned-col'),
+                removed: style('.mdmark tr.df-del td.is-pinned-col'),
+            };
+        }"""
+    )
+    # 検証（ピン止めした列のセルにも、足した行・消した行の面の色が付き、消した行は取り消し線を持つ）
+    assert cells["added"][0] != cells["plain"][0]
+    assert cells["removed"][0] != cells["plain"][0]
+    assert cells["added"][0] != cells["removed"][0]
+    assert cells["removed"][1] == "line-through"
+    assert cells["plain"][1] == "none"
+    # 検証（開閉を置かない）
+    assert page.locator(".md button.md-fold").count() == 0
 
 
 # 部品設計の状態
 STATES = (
-    "column-widths",
-    "small-table",
-    "pin-hover",
-    "pinned",
-    "pin-off",
-    "head-stuck",
-    "head-off",
-    "stripes",
-    "stripes-in-diff",
+    "mdmark-table",
+    "pinned-columns",
+    "opaque-background",
     "sections",
     "folded",
     "fold-off",
@@ -462,6 +344,7 @@ STATES = (
     "narrow",
     "in-thread-post",
     "embedded-html",
+    "table-in-diff",
 )
 
 

@@ -1,4 +1,4 @@
-// Markdown の本文（部品設計『Markdownの本文.tsx』）。mdmark で描いた本文（表の入れ物・図の入れ物つき）を `useEffect` の中で置き、見せ方を当てる
+// Markdown の本文（部品設計『Markdownの本文.tsx』）。mdmark で描いた本文（`tables` なら mdmark の表の機能で描く表・図の入れ物つき）を `useEffect` の中で置き、見せ方を当てる
 import { useEffect, useRef } from "react";
 
 import { useLibrary } from "@/shared/adapters/libraries";
@@ -14,9 +14,9 @@ export const MarkdownBody = ({ source, display = BODY_VIEW_DEFAULT, fold = true,
     const root = host.current;
     if (root === null || status !== "ready") return undefined;
     // 描いた本文（mdmark が根に付けた見た目の属性ごと）を部品の要素へ置き、見せ方を当てる
-    const rendered = renderMarkdown(source);
+    const rendered = renderMarkdown(source, { table: tables });
     root.replaceChildren(rendered);
-    decorateMarkdown({ root: rendered, display, fold, tables });
+    decorateMarkdown({ root: rendered, display, fold });
     return () => {
       root.replaceChildren();
     };

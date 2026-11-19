@@ -95,13 +95,13 @@ def test_reset(page: Page, spa_preview: str) -> None:
     # 準備
     _open(page, spa_preview)
     _panel(page).get_by_role("checkbox", name="タスク").click()
-    _panel(page).get_by_role("checkbox", name="表のしま模様").click()
+    _panel(page).get_by_role("checkbox", name="セクションの折りたたみ").click()
     # 実行
     _panel(page).get_by_role("button", name="既定に戻す").click()
     # 検証
     prefs = _prefs(page)
     assert prefs.get("kinds") is None
-    assert prefs.get("tableStripes") is None
+    assert prefs.get("sectionFold") is None
     expect(_panel(page)).to_contain_text("ワークスペースの既定のまま表示しています。")
 
 

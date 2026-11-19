@@ -10,7 +10,7 @@ import type { VersionPair } from "@/shared/core/diff";
 import { h } from "@/shared/core/dom-parts";
 import { htmlBodyDiff } from "@/shared/core/html-body-diff";
 import { htmlFrameElement } from "@/shared/core/html-frame";
-import { bindTableHeads, decorateMarkdown, type BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
+import { decorateMarkdown, type BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
 import { bodyFormatOf, type Item, type RecordIndex } from "@/shared/core/records";
 import { sideBySideBodyDiff } from "@/shared/core/side-by-side";
 import { attachTermTips, scrollToHeading } from "@/shared/core/term-tips";
@@ -140,18 +140,14 @@ export const BodyView = ({ label, item, id, index, source, versions, layout, dis
     };
     wrapper.addEventListener("click", onDiagramTool);
     wrapper.append(...notes, ...(side === null ? [] : [side.root]), root);
-    // 文書に入れた後に、見出しへ送り、表の見出しの固定をつなぐ
-    let release: (() => void) | undefined;
+    // 文書に入れた後に、見出しへ送る
     const frame = requestAnimationFrame(() => {
-      const scroller = wrapper.closest<HTMLElement>(".panel-body");
-      if (scroller !== null) release = bindTableHeads(scroller);
       if (heading !== undefined && !scrollToHeading({ root, slug: heading })) onHeading(undefined);
     });
     return {
       node: wrapper,
       destroy: () => {
         cancelAnimationFrame(frame);
-        release?.();
       },
     };
     // heading の変更では描き直さない（見出しのリンクが送る）

@@ -1,0 +1,12 @@
+（develop の #608 の取り込みの後、HEAD 3fe40e86 で流した。docs/pr/591/ の外のコードを最後に変えた commit は ab712239）
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+
+> lint
+> eslint
+
+exit 0

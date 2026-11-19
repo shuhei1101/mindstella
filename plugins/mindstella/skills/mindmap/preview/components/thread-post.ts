@@ -130,7 +130,7 @@ namespace MindmapPreview {
   }): HTMLElement {
     // 読めない: 知らせは出さず、項目の ID とまとまりのリンクも作らない
     if (missingLibraries(["mdmark"]).length > 0) return h({ tag: "p", attrs: { class: className }, children: [body] });
-    const root = withoutLineMarks(renderMarkdown(withHardBreaks(body)));
+    const root = withoutLineMarks(renderMarkdown(withHardBreaks(body), { table: false }));
     root.classList.add(className);
     // 図は描き終えるのを待たずに返す
     void renderDiagrams(root);
@@ -139,7 +139,7 @@ namespace MindmapPreview {
       frame.classList.add(HTML_BLOCK_CLASS);
       block.replaceWith(frame);
     }
-    decorateMarkdown({ root, fold: false, tables: false });
+    decorateMarkdown({ root, fold: false });
     linkChangeSets({ root, changeSets, onChangeSet: on.changeSet });
     buttonizeItemIds({ root, titles, onOpen: on.openId });
     return root;

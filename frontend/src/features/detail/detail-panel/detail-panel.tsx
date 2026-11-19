@@ -109,7 +109,7 @@ const Meta = ({ item, keys }: { item: Item; keys: KeyDiffs | null }) => {
 /** 本文の差分の並べ方・本文の見せ方（端末の上書き） */
 const bodyDisplayOf = (): BodyDisplay => {
   const prefs = readPrefs();
-  return { pin: prefs.tablePin !== false, head: prefs.tableHead !== false, stripes: prefs.tableStripes === true, fold: prefs.sectionFold !== false };
+  return { fold: prefs.sectionFold !== false };
 };
 
 export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string };

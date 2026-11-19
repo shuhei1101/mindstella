@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 
 from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR, write_yaml
 
-from .fixture_types import CallTool, MakeItem, MakeWorkspace
+from .fixture_types import CallTool, MakeItem, MakeWorkspace, StartMdmarkRefServer
 from .history_helpers import DECISION_ITEM, add_item, commit, read_history, read_items, update_item
 from .http_helpers import http_request
+from .mdmark_ref_helpers import FAKE_HEAD_SHA, fake_github, fake_jsdelivr
 from record_write_helpers import write_tool
 
 # 検討事項 D-1 の本文
@@ -189,3 +191,32 @@ def test_normal_when_html_body(
     assert "<style>p { color: red; }</style>" in marked
     # 行の印を取り除くと原文に戻る
     assert re.sub(r' data-line(?:-end)?="\d+"', "", marked) == html_body
+
+
+def test_normal_when_mdmark_ref(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    start_mdmark_ref_server: StartMdmarkRefServer,
+) -> None:
+    """設定が latest のとき、develop の先頭の commit の SHA を mdmark_ref に返す（正常系）。"""
+    # 準備
+    github = fake_github()
+    jsdelivr = fake_jsdelivr()
+    github.start()
+    jsdelivr.start()
+    try:
+        server = start_mdmark_ref_server(github.base_url, jsdelivr.base_url)
+        settings = {**valid_settings, "mdmark": {"version": "latest"}}
+        served = server.call("preview_url", workspace=str(make_workspace(settings=settings)))
+        assert served.is_error is False, served.text
+        assert served.data is not None
+        # 実行
+        result = http_request(str(served.data["url"]), "/api/records")
+    finally:
+        github.stop()
+        jsdelivr.stop()
+    # 検証
+    assert result.status == HTTPStatus.OK
+    records = result.json()
+    assert records["mdmark_ref"] == FAKE_HEAD_SHA
+    assert records["settings"]["mdmark"]["version"] == "latest"

@@ -1,0 +1,19 @@
+confirmations:
+  - topic: 本文の表を mdmark の表の機能で描き、MindStella の表の見せ方と表示の設定の 3 項目を削除するか
+    decision: mdmark の表の機能で描き、「表の列の固定」「表の見出しの固定」「表のしま模様」を削除する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 304d618656340a8c8848a31320f84b6941f91c09
+    thread: https://github.com/shuhei1101/mindstella/pull/591#discussion_r4616534947
+  - topic: 表の見出し行の固定が無いまま先にマージするか、shuhei1101/mdmark#683 の対応を待つか
+    decision: 見出し行の固定が無いまま先に進めてマージし、mdmark#683 の対応後に固定を戻す（推奨案 A）。mdmark#683 は最優先で、表の見出し行は既定で常に固定するよう mdmark#683 に追記した
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 304d618656340a8c8848a31320f84b6941f91c09
+    thread: https://github.com/shuhei1101/mindstella/pull/591#discussion_r4616536650
+  - topic: 要件の終了の条件「最新を読み込むまでの遅れ」を「jsDelivr がその commit の配布物を配り始めてから 150 秒以内」に書き換えるか
+    decision: 「jsDelivr がその commit の配布物を配り始めてから 150 秒以内」にし、常駐サーバーは jsDelivr が配ることを確かめてから新しい commit に切り替える（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: c58a4aad
+    thread: https://github.com/shuhei1101/mindstella/pull/591#discussion_r4617970071

@@ -8,3 +8,5 @@ items:
     summary: "ワークスペースを project-index の配信元の行として登録・クローズする端末の設定の API"
   - page: API-568-1.yaml
     summary: Webhook でチャンネルへメッセージを投稿する Discord の API
+  - page: API-591-1.yaml
+    summary: mdmark の develop の先頭の commit の SHA を問い合わせる GitHub の REST API

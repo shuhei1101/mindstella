@@ -722,10 +722,10 @@ namespace MindmapPreview {
         root.append(piece);
         continue;
       }
-      // 足した塊の囲みの中・箇条書きや表の中ではなく、その外側の前へ差し込む（表は包む入れ物ごと外側にする）
+      // 足した塊の囲みの中・箇条書きや表の中ではなく、その外側の前へ差し込む（表は mdmark の表の入れ物ごと外側にする）
       const outer = target.parentElement?.matches("ins.df-blk") === true ? target.parentElement : target;
       const container = outer.closest("ul, ol, table") ?? outer;
-      (container.parentElement?.matches(`.${TABLE_WRAP_CLASS}`) === true ? container.parentElement : container).before(piece);
+      (container.closest<HTMLElement>(`.${MDMARK_TABLE_CLASS}`) ?? container).before(piece);
     }
     return placed;
   }
@@ -2167,8 +2167,6 @@ namespace MindmapPreview {
       attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "詳細の本文" },
       children: [content],
     });
-    // 本文を縦に送っても、見出しを固定した表の見出しの行を領域の上端に残す
-    bindTableHeads(body);
     const head = detailHead(props);
     bindHeadTitle({ head, body });
     // 見出しと下端の入力の間の本文だけをスクロールする。差分の表示の間で、表示の設定で外していなければ、本文の右にミニマップを並べる。編集の表示の間は下端のコメントの入力を隠す

@@ -29,12 +29,12 @@ export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, id, cla
     const root = host.current;
     if (root === null || status !== "ready") return undefined;
     // 描いた本文を部品の要素へ置き、ボタンとリンクを付ける
-    const rendered = withoutLineMarks(renderMarkdown(withHardBreaks(body)));
+    const rendered = withoutLineMarks(renderMarkdown(withHardBreaks(body), { table: false }));
     root.replaceChildren(rendered);
     // 図は描き終えるのを待たずに出し、`html` のコードブロックは枠に置き換える
     if (diagrams !== "loading") void renderDiagrams(rendered);
     drawHtmlBlocks(rendered);
-    decorateMarkdown({ root: rendered, fold: false, tables: false });
+    decorateMarkdown({ root: rendered, fold: false });
     linkChangeSets({ root: rendered, changeSets, onChangeSet: (set) => onOpenChangeSet?.(set) });
     buttonizeItemIds({ root: rendered, titles, onOpen: (item) => onOpenItem?.(item) });
     return () => {

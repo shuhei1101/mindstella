@@ -75,15 +75,14 @@ var MindmapPreview;
             minimap: null,
             bodyLayout: null,
             reviewOrder: null,
-            tablePin: null,
-            tableHead: null,
-            tableStripes: null,
             sectionFold: null,
             commentsPinned: null,
             commentFormClosed: null,
             focusAfterAdd: null,
         };
     }
+    /** 前の版が残した、今は読まない本文の表の見せ方の上書きの項目 */
+    const LEGACY_PREF_KEYS = ["tablePin", "tableHead", "tableStripes"];
     /** 端末の保存領域から設定を読む。読めないときは既定を返す */
     function loadPrefs(storage) {
         try {
@@ -91,6 +90,9 @@ var MindmapPreview;
             if (saved === null)
                 return defaultPrefs();
             const parsed = { ...defaultPrefs(), ...JSON.parse(saved) };
+            // 前の版が残した本文の表の見せ方の上書きは読まない
+            for (const key of LEGACY_PREF_KEYS)
+                delete parsed[key];
             // 選べない値の見た目・種類は、その項目だけワークスペースの既定に従う
             const looks = MindmapPreview.NETWORK_LOOKS.map((option) => option.key);
             if (!looks.includes(parsed.look))
@@ -110,13 +112,7 @@ var MindmapPreview;
             // レビュー中のコメントの並びの上書きは oldest だけを読む（新しい順は上書きを持たない）
             if (parsed.reviewOrder !== "oldest")
                 parsed.reviewOrder = null;
-            // 本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む
-            if (parsed.tablePin !== false)
-                parsed.tablePin = null;
-            if (parsed.tableHead !== false)
-                parsed.tableHead = null;
-            if (parsed.tableStripes !== true)
-                parsed.tableStripes = null;
+            // セクションの折りたたみの上書きは false だけを読む（オンは上書きを持たない）
             if (parsed.sectionFold !== false)
                 parsed.sectionFold = null;
             // コメントの一覧のピン止めは true だけを読む（ピン止めしないは値を持たない）
@@ -171,7 +167,7 @@ var MindmapPreview;
     function resolveDisplay(prefs, display) {
         const defaultLook = display?.network_look ?? MindmapPreview.BUILTIN_LOOK;
         const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
-        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスの順に並べる（条件が画面の既定と同じ画面は並べない）
+        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文のセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスの順に並べる（条件が画面の既定と同じ画面は並べない）
         const overrides = [
             ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
             ...(prefs.kinds === null ? [] : ["表示する種類"]),
@@ -179,9 +175,6 @@ var MindmapPreview;
             ...MindmapPreview.KIND_KEYS.filter((kind) => prefs.columns[kind] !== undefined).map((kind) => `表の列（${MindmapPreview.KIND_LABEL[kind]}）`),
             ...filterTabs().filter((tab) => prefs.filters[tab] !== undefined && !sameFilters(prefs.filters[tab], MindmapPreview.initialFilters(tab, {}, null))).map((tab) => `絞り込み（${screenName(tab)}）`),
             ...(prefs.minimap === false ? [MindmapPreview.MINIMAP_LABEL] : []),
-            ...(prefs.tablePin === false ? [MindmapPreview.BODY_VIEW_LABELS.pin] : []),
-            ...(prefs.tableHead === false ? [MindmapPreview.BODY_VIEW_LABELS.head] : []),
-            ...(prefs.tableStripes === true ? [MindmapPreview.BODY_VIEW_LABELS.stripes] : []),
             ...(prefs.sectionFold === false ? [MindmapPreview.BODY_VIEW_LABELS.fold] : []),
             ...(prefs.bodyLayout === "side" ? [MindmapPreview.BODY_LAYOUT_LABEL] : []),
             ...(prefs.reviewOrder === "oldest" ? [MindmapPreview.REVIEW_ORDER_LABEL] : []),
@@ -199,17 +192,12 @@ var MindmapPreview;
             bodyLayout: prefs.bodyLayout === "side" ? "side" : "inline",
             // 上書きが oldest のときだけ古い順に並べる
             reviewOrder: prefs.reviewOrder === "oldest" ? "oldest" : "newest",
-            // 上書きのある項目だけ既定と逆にする
-            bodyView: {
-                pin: prefs.tablePin !== false,
-                head: prefs.tableHead !== false,
-                stripes: prefs.tableStripes === true,
-                fold: prefs.sectionFold !== false,
-            },
+            // 上書きが false のときだけ折りたたみをオフにする
+            bodyView: { fold: prefs.sectionFold !== false },
         };
     }
     MindmapPreview.resolveDisplay = resolveDisplay;
-    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスを外した設定を返す（`diffSel`・`commentsPinned`・`commentFormClosed` は残し、渡した設定は変えない） */
+    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文のセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスを外した設定を返す（`diffSel`・`commentsPinned`・`commentFormClosed` は残し、渡した設定は変えない） */
     function clearOverrides(prefs) {
         return {
             ...prefs,
@@ -222,9 +210,6 @@ var MindmapPreview;
             bodyLayout: null,
             reviewOrder: null,
             focusAfterAdd: null,
-            tablePin: null,
-            tableHead: null,
-            tableStripes: null,
             sectionFold: null,
         };
     }
@@ -239,7 +224,7 @@ var MindmapPreview;
     }
     MindmapPreview.focusAfterAddTarget = focusAfterAddTarget;
     /** 本文の見せ方の項目 → 個人の上書きの項目 */
-    const BODY_VIEW_PREF = { pin: "tablePin", head: "tableHead", stripes: "tableStripes", fold: "sectionFold" };
+    const BODY_VIEW_PREF = { fold: "sectionFold" };
     /** 表示の既定が同じか（無いキーは同じ無しとして比べる） */
     function sameDisplay(a, b) {
         const key = (display) => JSON.stringify([display?.network_look ?? null, display?.visible_kinds ?? null]);

@@ -1,0 +1,345 @@
+# develop（044bbcb1）の worktree で流した。画面は設定の latest を https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.js（ブランチの ref）で読み込む。流す直前に同じ URL が返した応答: date: Thu, 19 Nov 2026 08:58:09 GMT x-jsd-version: develop x-jsd-version-type: branch etag: W/"a9833-c4855315af326a8e"。その配布物に shuhei1101/mdmark#659 の図の右上のパネル（mdmark-diagram-tools-group・data-open）が 1 件・4 件ある
+$ pytest tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/tmp-591-develop-baseline
+configfile: pytest.ini
+plugins: xdist-3.8.0, base-url-2.1.0, anyio-4.14.1, asyncio-1.4.0, playwright-0.9.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 4 items
+
+tests/integration/preview/test_detail_full_screen.py F                   [ 25%]
+tests/integration/preview/test_open_preview.py F                         [ 50%]
+tests/integration/preview/test_detail_panel_screen.py FF                 [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_embedded_html_in_full[chromium] _____________________
+
+write_preview = <function write_preview.<locals>._write at 0x74ab39dd62a0>
+open_preview = <function open_preview.<locals>._open at 0x74ab39dd7740>
+make_item = <function make_item.<locals>._make at 0x74ab39dd7b00>
+page = <Page url='http://127.0.0.1:46315/mindstella.html#tab=docs&id=A-1&full=1'>
+
+    def test_embedded_html_in_full(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+    ) -> None:
+        """全画面でも埋め込んだ HTML を本文の要素として描き、本文の幅いっぱいに広げ、チャートの倍率を変えられる（正常系）。"""
+        # 準備
+        url = write_preview(
+            make_item("A-1", title="埋め込む資料"), make_item("A-2"), bodies={"A-1.md": EMBEDDED_BODY}
+        )
+        open_preview(url, "#tab=docs&id=A-1")
+        page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)
+        panel_width = page.locator(RANGE).bounding_box()["width"]  # type: ignore[index]
+        # 実行
+        _open_full(page)
+        full_chart = "dialog.full .md .mdmark-html figure.mdmark-diagram"
+        page.wait_for_selector(full_chart, timeout=EMBED_TIMEOUT_MS)
+        range_box = page.locator("dialog.full .md > .mdmark-html").bounding_box()
+        chart = page.locator(full_chart).first
+        fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+>       chart.locator(ZOOM_IN).click()
+
+tests/integration/preview/test_detail_full_screen.py:1445: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:17876: in click
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_locator.py:165: in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:593: in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x74ab3b23b230>
+cb = <function Channel.send.<locals>.<lambda> at 0x74ab39e851c0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+E           Call log:
+E             - waiting for locator("dialog.full .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"in\"]")
+E               - locator resolved to <button type="button" data-tool="in" aria-label="拡大" class="mdmark-diagram-tool">…</button>
+E             - attempting click action
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E               - waiting 20ms
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E                 - waiting 100ms
+E               58 × waiting for element to be visible, enabled and stable
+E                  - element is not visible
+E                - retrying click action
+E                  - waiting 500ms
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+___________________ test_normal_when_embedded_html[chromium] ___________________
+
+write_preview = <function write_preview.<locals>._write at 0x74ab3a839bc0>
+open_preview = <function open_preview.<locals>._open at 0x74ab39cdc180>
+make_item = <function make_item.<locals>._make at 0x74ab3a83b100>
+page = <Page url='http://127.0.0.1:46569/mindstella.html#tab=docs&id=A-1'>
+
+    def test_normal_when_embedded_html(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+    ) -> None:
+        """Markdown の本文に埋め込んだ HTML を本文の中に描き、チャートを動かし、部品の今の値を JSON でコピーする（正常系）。"""
+        # 準備
+        page.context.grant_permissions(CLIPBOARD_PERMISSIONS)
+        url = write_preview(
+            make_item("A-1", title="埋め込む資料"),
+            make_item("A-2"),
+            make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
+            bodies={"A-1.md": EMBEDDED_BODY},
+        )
+        open_preview(url, "#tab=docs&id=A-1")
+        page.wait_for_selector(CHART, timeout=DIAGRAM_TIMEOUT_MS)
+        chart = page.locator(CHART).first
+        # 実行（範囲のボタンを押す）
+        page.get_by_role("button", name="実行", exact=True).click()
+        # 検証（範囲は枠に入れず本文の要素として描かれ、スクリプトとイベントの属性は動かない）
+        assert page.locator("aside.panel .md > .mdmark-html").count() == 1
+        assert page.locator("aside.panel iframe").count() == 0
+        assert page.locator(f"{RANGE} script, {RANGE} [onclick]").count() == 0
+        assert page.evaluate("[window.__script, window.__onclick]") == [None, None]
+        # 実行（拡大して、ドラッグする）
+        fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+>       chart.locator(ZOOM_IN).click()
+
+tests/integration/preview/test_open_preview.py:2405: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:17876: in click
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_locator.py:165: in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:593: in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x74ab3b23b230>
+cb = <function Channel.send.<locals>.<lambda> at 0x74ab39dd5b20>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+E           Call log:
+E             - waiting for locator("aside.panel .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"in\"]")
+E               - locator resolved to <button type="button" data-tool="in" aria-label="拡大" class="mdmark-diagram-tool">…</button>
+E             - attempting click action
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E               - waiting 20ms
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E                 - waiting 100ms
+E               58 × waiting for element to be visible, enabled and stable
+E                  - element is not visible
+E                - retrying click action
+E                  - waiting 500ms
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+________________________ test_embedded_chart[chromium] _________________________
+
+write_preview = <function write_preview.<locals>._write at 0x74ab39e0bce0>
+open_preview = <function open_preview.<locals>._open at 0x74ab39e09440>
+make_item = <function make_item.<locals>._make at 0x74ab3a83bc40>
+
+    def test_embedded_chart(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+    ) -> None:
+        """チャートは拡大・縮小のボタンとキーで倍率を変え、拡大した後はドラッグで位置を変える。図の拡大の画面は開かず、履歴に積まない（正常系）。"""
+        # 準備
+        page = _open_embedded(write_preview, open_preview, make_item)
+        chart = page.locator(CHART).first
+        history_length = page.evaluate("history.length")
+    
+        def _fit() -> int:
+            """チャートの倍率（%）を返す。"""
+            return int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    
+        initial = _fit()
+        # 検証（全体が収まる倍率では、縮小は押せず、動かすボタンは隠れている）
+>       expect(chart.locator('button[data-tool="out"]')).to_be_disabled()
+E       AssertionError: Locator expected to be disabled
+E       Actual value: enabled 
+E       Call log:
+E         - Expect "to_be_disabled" with timeout 5000ms
+E         - waiting for locator("aside.panel .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"out\"]")
+E           14 × locator resolved to <button type="button" data-tool="out" aria-label="縮小" class="mdmark-diagram-tool">…</button>
+E              - unexpected value "enabled"
+E       
+E       Aria snapshot:
+E       - banner:
+E         - text: mindstella 要件出しのスキル mindmap を設計する
+E         - button "すべての項目を検索": Ctrl+K
+E         - button "変更履歴"
+E         - button "表示の設定"
+E         - button "絞り込み"
+E         - button "コメント（レビュー中 0 件）": "0"
+E         - button "ダークに切り替え"
+E       - navigation "項目の種類":
+E         - link "概要":
+E           - /url: "#"
+E         - link "検討事項 0":
+E           - /url: "#tab=decisions"
+E         - link "タスク 0":
+E           - /url: "#tab=tasks"
+E         - link "調査 0":
+E           - /url: "#tab=research"
+E         - link "資料 2":
+E           - /url: "#tab=docs"
+E         - link "用語集 1":
+E           - /url: "#tab=terms"
+E         - link "メモ 0":
+E           - /url: "#tab=notes"
+E         - link "会話ログ 0":
+E           - /url: "#tab=logs"
+E         - link "ネットワーク":
+E           - /url: "#tab=graph"
+E       - main:
+E         - heading "資料" [level=1]
+E         - group "表示形式":
+E           - button "カード" [pressed]
+E           - button "ボード"
+E           - button "表"
+E         - button "資料の項目を追加": 項目を追加
+E         - button "図 MD 埋め込む資料 A-1 下書き"
+E         - button "図 MD A-2の題 A-2 下書き"
+E       - complementary "詳細":
+E         - separator "詳細パネルの幅"
+E         - text: 資料 A-1 MD
+E         - button "編集する"
+E         - button "エクスポート"
+E         - button "前の項目へ戻る" [disabled]: ←
+E         - button "次の項目へ進む" [disabled]: →
+E         - button "全画面表示"
+E         - button "詳細を閉じる"
+E         - region "詳細の本文":
+E           - text: 下書き
+E           - heading "埋め込む資料" [level=2]
+E           - term: 種類
+E           - definition: 図
+E           - term: 更新日
+E           - definition: 2026-10-01T00:00:00+00:00
+E           - heading "本文" [level=3]
+E           - paragraph: 範囲の外の文
+E           - paragraph:
+E             - text: ﾋﾟｰｸ時の
+E             - link "応答時間":
+E               - /url: "#tab=docs&id=G-1"
+E             - text: と
+E             - link "A-2":
+E               - /url: "#tab=docs&id=A-2"
+E           - 'figure "件数 範囲: 10 月・更新日: 2026-10-27"':
+E             - text: "件数 範囲: 10 月・更新日:"
+E             - time: 2026-10-27
+E             - toolbar "「件数」の表示":
+E               - button "倍率 100%。全体が収まる倍率に戻す": 100%
+E               - button "表示の操作を開く"
+E             - 'group "件数 範囲: 10 月・更新日: 2026-10-27"':
+E               - 'img "件数。自動返信: メール 10・電話 20"': 0 5 10 15 20 件 メール 電話 窓口
+E             - list "凡例":
+E               - listitem: 自動返信
+E           - group "リクエスト数の見積もり":
+E             - paragraph: リクエスト数の見積もり
+E             - text: リクエスト数
+E             - status: "5"
+E             - slider "リクエスト数": "5"
+E             - button "今の値をコピー"
+E             - 'figure "応答時間 範囲: ピーク時・更新日: 2026-10-27"':
+E               - text: "応答時間 範囲: ピーク時・更新日:"
+E               - time: 2026-10-27
+E               - toolbar "「応答時間」の表示":
+E                 - button "倍率 100%。全体が収まる倍率に戻す": 100%
+E                 - button "表示の操作を開く"
+E               - 'group "応答時間 範囲: ピーク時・更新日: 2026-10-27"':
+E                 - 'img "応答時間。今の値（5）: 50・55。既定の値（5）: 50・55"': 0 50 100 ミリ秒 0 1 経過
+E               - list "凡例":
+E                 - listitem: 今の値（5）
+E                 - listitem: 既定の値（5）
+E           - button "実行"
+E           - paragraph: 後ろの文
+E           - heading "レビュー中のコメント0" [level=3]
+E           - paragraph: レビュー中のコメントはありません。
+E         - text: A-1 へのコメント
+E         - button "コメントの入力を閉じる" [expanded]
+E         - textbox "A-1 へのコメント"
+E         - button "音声で入力"
+E         - button "レビューに追加"
+
+tests/integration/preview/test_detail_panel_screen.py:6204: AssertionError
+_____________ test_diff_minimap_when_empty_area_pressed[chromium] ______________
+
+write_minimap_preview = <function write_minimap_preview.<locals>._write at 0x74ab39e0bf60>
+open_preview = <function open_preview.<locals>._open at 0x74ab3884dbc0>
+page = <Page url='http://127.0.0.1:45429/mindstella.html#tab=docs&id=A-1&diff=V-1'>
+
+    def test_diff_minimap_when_empty_area_pressed(
+        write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """印の無い所を押すと、押した位置に見えている範囲の面の中央が来るまで本文をすぐ送り、履歴にもハッシュにも触れない（正常系）。"""
+        # 準備
+        _open_minimap_panel(write_minimap_preview, open_preview, page)
+        history_length = page.evaluate("history.length")
+        hash_before = page.evaluate("location.hash")
+        box = page.locator(f"{PANEL_SCOPE} .df-map").bounding_box()
+        assert box is not None
+        # 実行（帯の中ほどを押す）
+        pressed_y = press_empty_area(page, PANEL_SCOPE, offset_y=box["height"] / 2)
+        # 検証（押した位置に、見えている範囲の面の中央が来る）
+        metrics = map_metrics(page, PANEL_SCOPE)
+>       assert metrics["viewTop"] + metrics["viewHeight"] / 2 == pytest.approx(
+            pressed_y, abs=MINIMAP_TOLERANCE_PX
+        )
+E       assert 223.75 == 424 ± 2
+E         
+E         comparison failed
+E         Obtained: 223.75
+E         Expected: 424 ± 2
+
+tests/integration/preview/test_detail_panel_screen.py:4703: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium]
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed[chromium]
+========================= 4 failed in 96.26s (0:01:36) =========================

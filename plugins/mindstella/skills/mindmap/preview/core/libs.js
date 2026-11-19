@@ -12,7 +12,7 @@ var MindmapPreview;
     };
     /** 図の入れ物が原文を持つ属性の名前 */
     MindmapPreview.DIAGRAM_SOURCE_ATTR = "data-source";
-    /** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大・コードブロックのバーと行の部品と、mermaid の描画（プレビューが描いて差分を取る）も止める（`html`・`diagrams`・`map` は既定のまま） */
+    /** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大・コードブロックのバーと行の部品と、mermaid の描画（プレビューが描いて差分を取る）も止める（`html`・`diagrams`・`map` は既定のまま）。表の機能（`table`）はここではオフで持ち、`renderMarkdown` が `table` を偽で受けないときだけオンで指定する */
     MindmapPreview.MDMARK_FEATURES = {
         glossary: false,
         backlinks: false,
@@ -116,8 +116,8 @@ var MindmapPreview;
     MindmapPreview.LINE_ATTR = "data-line-start";
     /** Markdown の中の `html` のコードブロックを置き換えた、HTML の本文の枠の入れ物の class */
     MindmapPreview.HTML_BLOCK_CLASS = "html-block";
-    /** 本文の表を包む、表の中だけで横に送る入れ物の class */
-    MindmapPreview.TABLE_WRAP_CLASS = "md-table-wrap";
+    /** mdmark の表の機能が表を包む入れ物の class */
+    MindmapPreview.MDMARK_TABLE_CLASS = "mdmark-table";
     /** mdmark が属性を付けないコードブロックの `pre` を、キーボードのフォーカスで止まり横に送れる要素にする属性（mdmark がフェンスのコードブロックに付ける値と同じ） */
     MindmapPreview.CODE_BLOCK_ATTRS = { tabindex: "0", "aria-label": "コード" };
     /** HTML の本文の開きタグが持つ、中身が始まる元の HTML の行（1 始まり）の属性。サーバーが足す */
@@ -191,10 +191,11 @@ var MindmapPreview;
         }
     }
     MindmapPreview.resolveFileSources = resolveFileSources;
-    /** 要素の中に、機能を止めた mdmark で Markdown を描く（描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
-    function mountMarkdown({ root, markdown }) {
+    /** 要素の中に、機能を止めた mdmark で Markdown を描く（`table` が真なら表の機能だけオンにする。描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
+    function mountMarkdown({ root, markdown, table = false }) {
         const map = mdmarkConfig().map;
-        mdmark.mount(root, { markdown, config: { features: MindmapPreview.MDMARK_FEATURES, ...(map === undefined ? {} : { map }) } });
+        const features = table ? { ...MindmapPreview.MDMARK_FEATURES, table: true } : MindmapPreview.MDMARK_FEATURES;
+        mdmark.mount(root, { markdown, config: { features, ...(map === undefined ? {} : { map }) } });
         resolveFileSources(root);
         trimBreakNewlines(root);
         relabelParamCopy(root);
@@ -468,8 +469,8 @@ var MindmapPreview;
         return root;
     }
     MindmapPreview.renderValue = renderValue;
-    /** 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は横に送れる要素で包む */
-    function renderMarkdown(source) {
+    /** 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は `table`（省くと真）のとき mdmark の表の機能で描く */
+    function renderMarkdown(source, options = {}) {
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "md" } });
         const missing = missingLibraries(["mdmark"]);
         const hasDiagram = source.includes("```mermaid");
@@ -482,7 +483,7 @@ var MindmapPreview;
             return root;
         }
         // mdmark は描くときに無害化する（記録は利用者のもの）
-        mountMarkdown({ root, markdown: source });
+        mountMarkdown({ root, markdown: source, table: options.table !== false });
         convertSourceLines({ root, source });
         // 埋め込んだ HTML の範囲は `data-source-line` を持たないので、本文の中の n 番目の範囲に、n 番目の範囲の印の行を持たせる（範囲の中の要素には行の印を付けない）
         const ranges = embeddedHtmlRanges(source);
@@ -542,17 +543,6 @@ var MindmapPreview;
             if (line !== null)
                 block.setAttribute(MindmapPreview.LINE_ATTR, line);
             pre.replaceWith(block);
-        }
-        // 表を、表の中だけで横に送れる入れ物で包む（行の印は表の行に残し、入れ物には付けない）。埋め込んだ HTML の範囲の中の表は、書いた HTML のまま包まない
-        for (const table of root.querySelectorAll("table")) {
-            if (table.closest(`.${MindmapPreview.EMBEDDED_HTML_CLASS}`) !== null)
-                continue;
-            const wrap = MindmapPreview.h({
-                tag: "div",
-                attrs: { class: MindmapPreview.TABLE_WRAP_CLASS, tabindex: "0", role: "group", "aria-label": "本文の表" },
-            });
-            table.replaceWith(wrap);
-            wrap.append(table);
         }
         focusCodeBlocks(root);
         return root;

@@ -1,4 +1,4 @@
-"""Markdown の本文の見せ方（表の列の固定・見出しの固定・しま模様・セクションの折りたたみ）の結合テストが共有する、ワークスペースの作り方と値、操作・読み取りの関数。"""
+"""Markdown の本文の見せ方（mdmark の表・セクションの折りたたみ）の結合テストが共有する、ワークスペースの作り方と値、操作・読み取りの関数。"""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ ROW_COUNT = 20
 _TABLE_HEAD = "| ID | 状態 | 名前 | 担当 | 期限 | 種別 | 優先度 | 説明 |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n"
 
 # 説明の列の文（25 文字を超える長文）
-_DESCRIPTION = "列の文字数で幅と折り返しを決め、表が本文の幅に収まらないときは表の中だけで横に送れるようにする。"
+_DESCRIPTION = "表は mdmark の表の機能で描き、表が本文の幅に収まらないときは表の中だけで横にスクロールする。"
 
 
 def _row(number: int, description: str = _DESCRIPTION) -> str:
@@ -60,33 +60,26 @@ def _body(*, rows: int, description_of_second: str = _DESCRIPTION) -> str:
 BODY_BEFORE = _body(rows=ROW_COUNT - 1, description_of_second="書き換える前の説明です。")
 BODY_AFTER = _body(rows=ROW_COUNT)
 
-# 表の状態を返す（見出しの行・入れ物・固定した列・縦の位置・横の送り）
+# 表の状態を返す（見出しの列・ピン止めした列・横のスクロール・本文の区画・画面の CSS の表の見せ方の印・行の色）
 _TABLE_STATE_JS = """(scope) => {
     const area = document.querySelector(`${scope} .panel-body`);
-    const wrap = area.querySelector('.md-table-wrap');
-    const frame = wrap.parentElement;
-    const heads = [...wrap.querySelectorAll('thead th')];
-    const edge = wrap.getBoundingClientRect().left;
-    const fontSize = parseFloat(getComputedStyle(heads[heads.length - 1]).fontSize);
-    const named = (cell) => cell.firstChild.textContent.trim();
+    const scroll = area.querySelector('.mdmark-table .mdmark-table-scroll');
+    const heads = [...scroll.querySelectorAll('thead th')];
+    const edge = scroll.getBoundingClientRect().left;
+    const named = (cell) => cell.querySelector('.mdmark-th').textContent.trim();
+    const pinned = heads.filter((cell) => cell.classList.contains('is-pinned-col'));
     return {
         names: heads.map(named),
-        sizes: heads.map((cell) => cell.dataset.colSize),
-        widths: Object.fromEntries(heads.map((cell) => [named(cell), cell.getBoundingClientRect().width / fontSize])),
-        nowraps: Object.fromEntries(heads.map((cell, index) => [named(cell), getComputedStyle(wrap.querySelectorAll('tbody tr:first-child td')[index]).whiteSpace === 'nowrap'])),
-        fill: wrap.querySelector('tbody').getBoundingClientRect().width <= wrap.clientWidth + 1 && wrap.scrollWidth <= wrap.clientWidth,
-        wrapScrolls: wrap.scrollWidth > wrap.clientWidth,
-        fade: frame.hasAttribute('data-fade'),
-        scrollLeft: wrap.scrollLeft,
-        pinned: heads.filter((cell) => cell.classList.contains('md-pinned')).map(named),
-        pinnedLefts: heads.filter((cell) => cell.classList.contains('md-pinned')).map((cell) => cell.getBoundingClientRect().left - edge),
-        pinnedRights: heads.filter((cell) => cell.classList.contains('md-pinned')).map((cell) => cell.getBoundingClientRect().right - edge),
-        lastLeft: heads[heads.length - 1].getBoundingClientRect().left - edge,
-        wrapWidth: wrap.clientWidth,
-        areaTop: area.getBoundingClientRect().top,
-        headTop: heads[0].getBoundingClientRect().top,
-        stuck: wrap.querySelector('table').classList.contains('md-head-stuck'),
-        rowColors: [...wrap.querySelectorAll('tbody tr')].map((row) => getComputedStyle(row.firstElementChild).backgroundColor),
+        scrolls: scroll.scrollWidth > scroll.clientWidth,
+        scrollLeft: scroll.scrollLeft,
+        areaScrolls: area.scrollWidth > area.clientWidth,
+        pinned: pinned.map(named),
+        pinnedLefts: pinned.map((cell) => cell.getBoundingClientRect().left - edge),
+        lefts: Object.fromEntries(heads.map((cell) => [named(cell), cell.getBoundingClientRect().left - edge])),
+        overrides: area.querySelectorAll(
+            '[data-col-size], [data-fade], .md-table-wrap, .md-table-frame, button.md-pin, .md-pinned, table.md-head-stick, table.md-stripes'
+        ).length,
+        rowColors: [...scroll.querySelectorAll('tbody tr')].map((row) => getComputedStyle(row.lastElementChild).backgroundColor),
     };
 }"""
 
@@ -119,12 +112,12 @@ def open_body_view(page: Page, open_preview: Any, url: str, hash_text: str = BOD
     """画面の幅を決めてから、ハッシュを付けて開き、表が置かれて、パネルの動きが終わるまで待つ。"""
     page.set_viewport_size(BODY_VIEW_VIEWPORT)
     open_preview(url, hash_text)
-    page.wait_for_selector(f"{BODY_VIEW_SCOPE} .md-table-wrap", timeout=BODY_VIEW_TIMEOUT_MS)
+    page.wait_for_selector(f"{BODY_VIEW_SCOPE} .mdmark-table .mdmark-table-scroll", timeout=BODY_VIEW_TIMEOUT_MS)
     # パネルのすべり込みの間は位置が動くため、終わってから操作する
     page.evaluate(ANIMATIONS_FINISHED_JS)
     return page
 
 
 def table_state(page: Page, scope: str = BODY_VIEW_SCOPE) -> dict[str, Any]:
-    """本文の最初の表の、列の種類・幅・折り返し・固定・縦の位置・横の送りを返す。"""
+    """本文の最初の表の、列・ピン止め・横のスクロール・画面の CSS の見せ方の印・行の色を返す。"""
     return page.evaluate(_TABLE_STATE_JS, scope)
