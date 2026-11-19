@@ -19,7 +19,7 @@ catalogs:
         kind: コマンド
         purpose: 会話の再開とみなし、その会話を前回実行したアカウントを優先して借りる（利用上限などで貸せなければほかのアカウント）。子プロセスが終わった後、会話の記録の最も新しい assistant の記録の `error` が `rate_limit` なら、返却の前に利用上限の到達を自分で通知する。各アカウントの設定のフォルダの `projects/` が共通の置き場へのリンクなので、別のアカウントでも同じ会話を再開できる。セッションの管理が MindStella のセッションを起動し直す
   - name: 常駐の API と子プロセスの環境変数
-    version: 2026-11-19 に claude-balancer の develop の設計書で確かめた入出力（端末では未確認）
+    version: 2026-11-19 に claude-balancer の develop の設計書とこの端末で確かめた入出力
     entries:
       - name: GET {CLAUDE_BALANCER_URL}/accounts
         kind: API
@@ -36,8 +36,8 @@ used_in:
 upstream: shuhei1101/claude-balancer
 verification:
   state: 済
-  detail: 'claude-balancer の develop の設計書『借りて実行』（IF-275-21）で終了コードを確かめ、この端末の `claude-balancer exec --help` で引数を確かめた。この端末の `clients` は `ai-monitor`・`user`・`small-worker`・`aituber`・`ai-monitor-e2e` で、`mindstella` は無い。`--client user` で `exec -- claude` を tmux のペインの中で起動し、SessionStart のフックまでの時間を測った（非機能要件『MindStella のセッションの準備を待つ上限』）。`clients` に無い `--client mindstella` で `claude-balancer exec -- true` を流し、子プロセスを起動せずに「知らないクライアントです: mindstella」を標準エラーに出して終了コード 125 で終わることを確かめた（2026-11-15）'
-  date: '2026-11-15'
+  detail: 'claude-balancer の develop の設計書『借りて実行』（IF-275-21）で終了コードを確かめ、この端末の `claude-balancer exec --help` で引数を確かめた。この端末の `clients` は `ai-monitor`・`user`・`small-worker`・`aituber`・`ai-monitor-e2e` で、`mindstella` は無い。`--client user` で `exec -- claude` を tmux のペインの中で起動し、SessionStart のフックまでの時間を測った（非機能要件『MindStella のセッションの準備を待つ上限』）。`clients` に無い `--client mindstella` で `claude-balancer exec -- true` を流し、子プロセスを起動せずに「知らないクライアントです: mindstella」を標準エラーに出して終了コード 125 で終わることを確かめた（2026-11-15）。この端末の常駐の `GET http://127.0.0.1:8770/accounts` が `accounts[].account`・`accounts[].unavailableReason`（`five_hour_over_threshold`・`seven_day_over_threshold`・`quota_unknown`・`null`）を返すことと、`exec` で起動した Claude Code のプロセスの `OTEL_RESOURCE_ATTRIBUTES` が `claude_balancer.account=`・`claude_balancer.client=`・`claude_balancer.lease_id=` を持つことを確かめた（2026-11-19）'
+  date: '2026-11-19'
 limitations:
   - item: 利用の上限
     content: '全てのアカウントが利用の上限に達していると、`exec` はエラーで終わる。セッションの管理は 503（`stage: account`）を返す'
