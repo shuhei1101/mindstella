@@ -1,0 +1,68 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T07:28:35.053699+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書が既にあるため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T07:28:35.053699+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めの依頼ではないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T07:28:35.053699+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: スレッドが持つ向けた項目で一覧を絞る画面の処理だけで、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-19T07:28:35.053699+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 複合ユースケースの連鎖は変わらない
+    updated_by: planner
+    updated_at: '2026-11-19T07:28:35.053699+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: デザイン方針（docs/design-policy.md）があり、見た目の方向は変えない
+    updated_by: planner
+    updated_at: '2026-11-19T07:28:35.053699+00:00'
+  - process: 画面一覧・画面遷移
+    status: todo
+    note: 詳細パネルからコメントの一覧を開く遷移を追加する
+  - process: 単一ユースケース設計
+    status: todo
+    note: SC-489-5（スレッドで話す）と SC-489-46（項目の詳細を読む）に、項目で絞ったコメントの一覧を開いて読む操作を記載する
+  - process: モック作成
+    status: todo
+    note: コメントの一覧の項目の絞り込みのチップと、詳細パネルの見出しのコメントの一覧のボタン
+  - process: データ設計
+    status: skipped
+    reason: スレッドは向けた項目を既に持ち、データの構造は変わらない
+    updated_by: planner
+    updated_at: '2026-11-19T07:28:35.053699+00:00'
+  - process: インターフェース定義設計
+    status: todo
+    note: IF-489-70（SPAを開く）の search params に絞っている項目の値を追加する
+  - process: 部品設計
+    status: skipped
+    reason: 項目の絞り込みのチップと詳細パネルのボタンは画面設計の要素で、部品は追加・変更しない
+    updated_by: planner
+    updated_at: '2026-11-19T07:28:35.053699+00:00'
+  - process: 画面設計
+    status: todo
+    note: SCR-489-1・SCR-489-2（コメントの一覧）と SCR-489-31・SCR-489-32（詳細パネル）
+  - process: モジュール構成設計
+    status: todo
+    note: comments.ts・detail.ts・app.ts と comments-panel・detail-panel・preview-search
+  - process: ドキュメント修正
+    status: todo
+    note: docs/guide/プレビューを見る.md
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
