@@ -5,7 +5,7 @@ entry:
   value: DELETE `/workspaces/{id}`
 lead: クローズしたワークスペースの配信元の行を削除し、状態のフォルダのそのワークスペースの記録と ID の一覧の行を削除する。記録のフォルダは残す。MindStella の MCP の `delete_workspace` も同じ処理を呼ぶ。
 idempotent: false
-side_effects: project-index の配信元の行を削除する。そのワークスペースの変更の検知が動いていれば止める。状態のフォルダの `workspaces/{ID}/`（`session.json`・`launch.json`・`snapshot/`・`read_point.json`・`migration.json`）を削除し、最後に `workspaces.yaml` の `ids` から行を削除する。記録のフォルダ（`.mindstella/`）は変えない
+side_effects: project-index の配信元の行を削除する。そのワークスペースの配信と変更の検知が動いていれば止める（同じフォルダで作り直すと、配信と変更の検知を新しく始める）。状態のフォルダの `workspaces/{ID}/`（`session.json`・`launch.json`・`snapshot/`・`read_point.json`・`migration.json`）を削除し、最後に `workspaces.yaml` の `ids` から行を削除する。記録のフォルダ（`.mindstella/`）は変えない
 request:
   - name: id
     type: str
@@ -49,7 +49,7 @@ constraints:
   - item: 配信元の行
     constraint: '`DELETE /settings/sources/{id}?expectedVersion=` で削除する。409（版が古い）なら 1 回だけ引き直して送り直す。404（行が無い）は削除済みとして続ける'
   - item: 削除の順番
-    constraint: 配信元の行・変更の検知の停止・状態のフォルダの `workspaces/{ID}/`・ID の一覧の行の順に削除する。途中で失敗したときは ID の一覧の行が残り、同じ削除をもう一度受けられる
+    constraint: 配信元の行・配信と変更の検知の停止・状態のフォルダの `workspaces/{ID}/`・ID の一覧の行の順に削除する。途中で失敗したときは ID の一覧の行が残り、同じ削除をもう一度受けられる
   - item: 状態のフォルダ
     constraint: '`workspaces/{ID}/` が無ければ削除済みとして続ける'
   - item: 記録のフォルダ

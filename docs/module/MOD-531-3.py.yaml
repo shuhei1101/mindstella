@@ -559,8 +559,8 @@ functions:
       - name: ApiError
         condition: '404（`stage: workspace`）・502（`stage: source`）'
     process: |-
-      1. `state.read_ids` に無ければ `ApiError`（404、`stage: workspace`）
-      2. `ctx.locks.for_workspace` を取る
+      1. `ctx.locks.for_workspace` を取る
+      2. 鍵を取った後に `state.read_ids` に無ければ `ApiError`（404、`stage: workspace`）
       3. `find_workspace_row` で配信元の行を引く（`ProjectIndexError` は 502、`stage: source`。行が無ければ 404、`stage: workspace`）
       4. `is_closed` なら `project_index.patch_source` で `{outside_read: true}` にする（`ProjectIndexError` は 502、`stage: source`。クローズ待ちは解かない）
       5. `state.update_session` で `close_pending` を偽にする（`session.json` が無ければ書かない）。`create_workspace` の `reopened` も同じ内部の処理で解く
@@ -590,8 +590,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
     usecase: ワークスペースを開き直して削除する
     scope: public
-    summary: クローズしたワークスペースの配信元の行・変更の検知・状態のフォルダの `workspaces/{ID}/`・ID の一覧の行をこの順に削除する。記録のフォルダは変えない
-    side_effects: project-index の行を削除し、変更の検知を止め、状態のフォルダを削除する
+    summary: クローズしたワークスペースの配信元の行・配信と変更の検知・状態のフォルダの `workspaces/{ID}/`・ID の一覧の行をこの順に削除する。記録のフォルダは変えない
+    side_effects: project-index の行を削除し、配信と変更の検知を止め、状態のフォルダを削除する
     args:
       - name: workspace_id
         type: str
@@ -610,13 +610,13 @@ functions:
       - name: ApiError
         condition: '404（`stage: workspace`）・409（`stage: not_closed`）・500（`stage: state`）・502（`stage: source`）'
     process: |-
-      1. `state.read_ids` に無ければ `ApiError`（404、`stage: workspace`）
-      2. `ctx.locks.for_workspace` を取る
+      1. `ctx.locks.for_workspace` を取る
+      2. 鍵を取った後に `state.read_ids` に無ければ `ApiError`（404、`stage: workspace`）
       3. `find_workspace_row` で配信元の行を引く（`ProjectIndexError` は 502、`stage: source`）
          - 行があり `is_closed` でない: `ApiError`（409、`stage: not_closed`）で何も変えない
          - 行がありクローズ済み: `project_index.delete_source` で削除する（`ProjectIndexError` は 502、`stage: source`。状態のフォルダを変えない）
          - 行が無い: 前の削除で行だけ削除済みとして続ける
-      4. `ctx.previews.stop_detection` でそのワークスペースの変更の検知を止める
+      4. `ctx.previews.stop_workspace` でそのワークスペースの配信と変更の検知を止める
       5. `state.delete_workspace_state` で `workspaces/{ID}/` を削除する（`OSError` は `logger.exception` で `mindstella.workspace.delete_failed` を書き、500、`stage: state`。ID の一覧の行は残す）
       6. `state.remove_id` で ID の一覧から外す
       7. `logger.info` で `mindstella.workspace.deleted`（`workspace_id`）を書く
@@ -626,7 +626,7 @@ functions:
         summary: クローズ済みなら行・状態・ID の一覧の行を削除する
         condition: '配信元の行が `outsideRead: false`、`workspaces/{ID}/` に `session.json`・`launch.json`'
         mock: '`project_index.get_settings`・`project_index.delete_source`・`ctx.previews`'
-        expected: '`{deleted: true}`、`delete_source` と `stop_detection` が 1 回ずつ呼ばれ、`workspaces/{ID}/` と `ids` の行が無く、記録のフォルダが残る'
+        expected: '`{deleted: true}`、`delete_source` と `stop_workspace` が 1 回ずつ呼ばれ、`workspaces/{ID}/` と `ids` の行が無く、記録のフォルダが残る'
       - name: test_delete_workspace_source_row_missing
         case: 正常
         summary: 行が無ければ残りだけ削除する
@@ -639,6 +639,12 @@ functions:
         condition: '`ids` に無い / 行が `outsideRead: true` / `delete_source` が `ProjectIndexError` / `delete_workspace_state` が `OSError`'
         mock: 同上・`caplog`
         expected: '`ApiError` が 404（`workspace`）/ 409（`not_closed`）/ 502（`source`）/ 500（`state`）。409・502・500 では `ids` の行が残り、500 では `caplog` に `mindstella.workspace.delete_failed`'
+      - name: test_delete_workspace_concurrent
+        case: 異常
+        summary: 鍵を取った時点で ID の一覧に無ければ 404
+        condition: 同じ ID の削除を 2 つのスレッドで同時に呼ぶ
+        mock: '`project_index.get_settings`・`project_index.delete_source`・`ctx.previews`'
+        expected: '片方が `{deleted: true}`、もう片方が `ApiError`（404、`stage: workspace`）で、`delete_source` が 1 回だけ呼ばれる'
 notes:
   ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`
   ログ: |
