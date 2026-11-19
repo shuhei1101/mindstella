@@ -25,7 +25,7 @@ items:
     summary: "採用済みの外部ライブラリ / 外部ツールのリファレンス"
   - page: test-procedure/
     summary: "プロジェクト固有のテスト起動コマンドと前提条件"
-  - page: design-policy.md
+  - page: design-policy.mark.md
     summary: "mindstella の画面全体に通すデザインの方向性"
   - page: guide/
     summary: "mindstella の使い方（はじめに・使い方・リファレンス）"

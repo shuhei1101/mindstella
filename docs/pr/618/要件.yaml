@@ -49,106 +49,132 @@ use_cases:
     detail: 配る書き出しが改名後の本文を中に持つかを確かめる
     depends_on: []
 docs:
-  - page: docs/guide/コマンド.md
+  - page: docs/guide/コマンド.mark.md
     new: false
     change: コマンド.mark.md へ改名し、本文の docs/{ID}.md の記載とリンクを改名後のパスに修正する
-    status: todo
-  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.md
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
     new: false
     change: .mark.md へ改名し、次のバージョンの移し替えで本文のファイルが改名されることを記載する
-    status: todo
-  - page: docs/guide/プレビューを見る.md
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: .mark.md へ改名し、リンクを改名後のパスに修正する
-    status: todo
-  - page: docs/guide/ワークスペースの書式.md
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: .mark.md へ改名し、記録の本文のファイル名とリンクを改名後のパスに修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/使い方.md
     new: false
-    change: .mark.md へ改名し、リンクを改名後のパスに修正する
-    status: todo
-  - page: docs/guide/動作環境.md
+    change: 改名したページへのリンクを改名後のパスに修正する（タブのページは design_docs publish が書き出すため、改名はスコープ外）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/動作環境.mark.md
     new: false
     change: .mark.md へ改名し、リンクを改名後のパスに修正する
-    status: todo
-  - page: docs/design-policy.md
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/design-policy.mark.md
     new: false
     change: design-policy.mark.md へ改名する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
     change: 記録の本文のファイル名と、改名したページへのリンクを修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/index.yaml
     new: false
-    change: 改名したページの行の page を改名後のファイル名に修正し、docs/guide/README.md を書き出し直す
-    status: todo
+    change: 改名したページの行の page を改名後のファイル名に修正し、docs/guide/README.md の行のリンクを同じパスに修正する（配布済みの design_docs publish は .mark.md のリンクの文言を {名前}.mark にするため、書き出さずに修正する）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/index.yaml
     new: false
-    change: design-policy の行の page を改名後のファイル名に修正し、docs/README.md を書き出し直す
-    status: todo
+    change: design-policy の行の page を改名後のファイル名に修正し、docs/README.md の行のリンクを同じパスに修正する（書き出さない理由は docs/guide/index.yaml の行と同じ）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/files.yml
     new: false
     change: 改名したページの行の path を改名後のパスに修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/_root/files.yml
     new: false
     change: design-policy の行の path を改名後のパスに修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/_theme/_data/nav.project.yml
     new: false
     change: 改名したページへのナビゲーションのリンクを修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/_config.yml
     new: false
     change: defaults に、改名したページごとに permalink を改名前の公開 URL（{パス}.html）にする行を追加する。design-policy.md を指す設定を改名後のパスに修正する
-    status: todo
-  - page: dev-docs.yaml
-    new: false
-    change: docs/guide/files.yml の行の exclude の 使い方.md を改名後のファイル名に修正する
-    status: todo
-  - page: CLAUDE.md
-    new: false
-    change: 使い方 のリンクが改名したページを指していれば修正する
-    status: todo
-  - page: docs/index.md
-    new: false
-    change: 改名したページへのリンクを修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/エージェントフロー.md
     new: false
     change: 改名したページへのリンクを改名後のパスに修正する
-    status: todo
-  - page: docs/guide/コアコンセプト-話し合いの進め方.md
-    new: false
-    change: 改名したページへのリンクを改名後のパスに修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/リファレンス.md
     new: false
     change: 改名したページへのリンクを改名後のパスに修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
     new: false
     change: 改名したページへのリンクを改名後のパスに修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/セットアップ手順-プレビューを外から見る.md
     new: false
     change: 改名したページへのリンクを改名後のパスに修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/話し合い-セットアップから始める.md
     new: false
     change: 改名したページへのリンクを改名後のパスに修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/話し合い-続きを再開する.md
     new: false
     change: 改名したページへのリンクを改名後のパスに修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
   - page: docs/guide/変更履歴.md
     new: false
     change: 改名したページへのリンクを改名後のパスに修正する（このページの改名はスコープ外）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
 scope_out:
   - item: PR ドキュメント（docs/pr/ の README.md・要件.md・計画書）の .mark.md への改名
     reason: ファイル名は AI Monitor のツール（create_draft_pr・read_pr_document）とテンプレートが決める。AI Monitor が shuhei1101/ai-monitor#3427（PR shuhei1101/ai-monitor#3684）でファイル名を変えたバージョンを配布した後に、追従として改名する
@@ -161,4 +187,7 @@ scope_out:
     plan: to_file
   - item: モックの目次（docs/mock/ の index.md）のうち記法を含む 22 件の .mark.md への改名
     reason: モックのフォルダの目次のファイル名は AI Monitor の規約『モック画面』と Pages の共通レイアウト（docs/_theme/assets/app.js）が index.md で決める。AI Monitor の規約と共通レイアウトが .mark.md を扱うバージョンを配布した後に改名する。含めるかはレビューで確定する
+    plan: to_file
+  - item: タブのページ（docs/guide/はじめに.md・使い方.md・リファレンス.md）の .mark.md への改名
+    reason: 目次の行を並べるマーカーの間は AI Monitor の design_docs publish が書き出し、配布済みのバージョンはタブのページを {タブ名}.md の名前で書き出すため、改名すると改名前の名前のページが作り直される。AI Monitor が shuhei1101/ai-monitor#3684 で書き出すファイル名を変えたバージョンを配布した後に、README.md と一緒に書き出し直す
     plan: to_file

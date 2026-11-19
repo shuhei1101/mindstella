@@ -2,7 +2,7 @@
 files:
 - path: ../index.md
   visibility: public
-- path: ../design-policy.md
+- path: ../design-policy.mark.md
   name: デザイン方針
   description: mindstella の画面全体に通すデザインの方向性。画面の見た目の方向性を確認するとき・デザインスタイルを選ぶときに読む。
   tags:

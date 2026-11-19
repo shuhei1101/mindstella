@@ -20,7 +20,7 @@ mindstella のドキュメント全体の目次
 | [external-api](./external-api/) | 採用済みの外部 API のリファレンス |
 | [library](./library/) | 採用済みの外部ライブラリ / 外部ツールのリファレンス |
 | [test-procedure](./test-procedure/) | プロジェクト固有のテスト起動コマンドと前提条件 |
-| [design-policy](./design-policy.md) | mindstella の画面全体に通すデザインの方向性 |
+| [design-policy](./design-policy.mark.md) | mindstella の画面全体に通すデザインの方向性 |
 | [guide](./guide/) | mindstella の使い方（はじめに・使い方・リファレンス） |
 | [index](./index.md) | Pages のトップページ |
 
