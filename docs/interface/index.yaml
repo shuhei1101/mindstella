@@ -28,6 +28,10 @@ items:
     summary: "server_stop: 配信を全て止めて常駐サーバーを終える"
   - page: IF-531-1.yaml
     summary: "POST /workspaces: 許可するフォルダの下にワークスペースの記録を作るか開き、配信元に登録して ID と画面の URL を返す"
+  - page: IF-597-2.yaml
+    summary: "GET /workspaces: クローズしていないワークスペースの ID・題名・画面の URL を、何も書き換えずに返す"
+  - page: IF-597-1.yaml
+    summary: "GET /workspaces/{id}: ワークスペースと MindStella のセッションの状態を、何も書き換えずに返す"
   - page: IF-531-2.yaml
     summary: "POST /workspaces/{id}/sessions: MindStella のセッションを tmux のペインで起動し、準備ができてから ID・ペイン・画面の URL を返す"
   - page: IF-531-3.yaml

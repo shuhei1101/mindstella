@@ -1,20 +1,19 @@
 title: 停止の通知
 entry:
   kind: trigger
-  value: MindStella のセッションの `session.json` の `status` を、『MindStella のセッションの停止』・『MindStella のセッションの出来事の受け取り』と、生死を判定する処理（『MindStella のセッションの一覧』・『MindStella のセッションの作成』・『ワークスペースのクローズ』）が `stopped` か `crashed` に書き換えた後
+  value: MindStella のセッションの `session.json` の `status` を、『MindStella のセッションの停止』・『MindStella のセッションの出来事の受け取り』と、生死を判定する処理（『落ちたことの見回り』・『MindStella のセッションの作成』・『ワークスペースのクローズ』）が `stopped` か `crashed` に書き換えた後
 lead: MindStella のセッションが止まったことを常駐サーバーが記録したときに、利用者が用意した Webhook の設定のファイルの Discord の Webhook へ、止まったことと止まった理由を 1 件送信する。
 test_file: tests/integration/server/test_stop_notify.py
 idempotent: false
 side_effects: Discord の Webhook へ 1 件の `POST`。送信の結果を標準エラーへ 1 行記録する（Webhook の URL を含めない）
 callers:
-  - IF-531-3#
   - IF-531-4#
   - IF-531-6#
   - IF-531-2#
   - IF-531-5#
   - IF-582-1#
   - IF-582-2#
-exclusivity: 送信は常駐サーバーの中の別のスレッド（`daemon` のスレッド）で行い、停止・一覧・出来事の受け取りの応答と常駐サーバーの停止を待たせない。通知するかは、`session.json` を書き換える鍵の中で読んだ書き換える前の `status` で決める
+exclusivity: 送信は常駐サーバーの中の別のスレッド（`daemon` のスレッド）で行い、停止・見回り・出来事の受け取りの応答と常駐サーバーの停止を待たせない。通知するかは、`session.json` を書き換える鍵の中で読んだ書き換える前の `status` で決める
 exceptions:
   - name: なし（正常終了）
     condition: 送信した・送信しなかった・送信に失敗した、のどれでも例外を出さない
@@ -93,27 +92,25 @@ flows:
       - 'エンドポイントが 1 件だけ要求を受け、`content` の 1 行目が `{題名}: 停止しました（強制停止）`'
     test: test_normal_when_forced
   - name: 正常系（落ちている）
-    summary: 一覧でペインが無いことを検知して異常終了を 1 件送信し、その後の停止では送信しない
+    summary: 見回りでペインが無いことを検知して異常終了を 1 件送信し、その後の停止では送信しない
     setup:
       - name: Mock
         description: Discord の Webhook（200 を返却する）
       - name: 常駐サーバー
-        description: 正常系と同じ
+        description: 正常系と同じ。`MINDSTELLA_CRASH_WATCH_INTERVAL` は 1
       - name: 状態
         description: '`session.json` が `running` でペインが無い'
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant LS as GET /workspaces/{id}/sessions
+        participant WT as 落ちたことの見回り
         participant API as DELETE /workspaces/{id}/sessions/{session}
         participant IF as 停止の通知
         participant DC as Discord
 
-        クライアント->>LS: GET
-        LS->>LS: running から crashed
-        LS-->>クライアント: crashed
-        LS->>IF: crashed
+        WT->>WT: running から crashed
+        WT->>IF: crashed
         IF->>DC: POST ?wait=true content
         クライアント->>API: DELETE
         API->>API: crashed から stopped（送信しない）
