@@ -24,7 +24,7 @@ FIT_EXEMPT = ", ".join(
         ".topbar",
         ".tabbar",
         ".table-wrap",
-        ".md-table-wrap",
+        ".mdmark-table-scroll",
         ".cat-wrap",
         ".board",
         ".sr-only",

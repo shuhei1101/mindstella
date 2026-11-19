@@ -2184,14 +2184,10 @@ def test_normal_when_edits_saved(
     assert "新しい答え" in page.inner_text(f"{EDIT_PANEL} .panel-body")
 
 
-# 表を送る・畳むなどの描き直しが済むまで待つミリ秒
+# 表をスクロールする・畳むなどの描き直しが済むまで待つミリ秒
 BODY_VIEW_SETTLE_MS = 500
 
-# 長文の列の幅（em）。セルの余白の分だけ広い
-LONG_COLUMN_EM = 24
-CELL_PADDING_EM = 3
-
-# 見出しの行が領域の上端に残る位置の差（px）
+# ピン止めした列が表の左端に留まる位置の差（px）
 STUCK_TOLERANCE_PX = 2
 
 
@@ -2205,49 +2201,36 @@ def _body_view_checkbox(page: Page, label: str) -> Any:
 def test_normal_when_body_table_and_sections(
     write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """列の多い表を持つ資料を開くと、説明の列は 24em で折り返し、ID は折り返さず、表は表の中だけで横に送れる。列の固定のボタンで左の列を残し、縦に送ると見出しの行が領域の上端に残り、見出しの矢印で節を畳める（正常系）。"""
+    """列の多い表を持つ資料を開くと、表を mdmark の表で描き、はみ出すため ID の列が左端にピン止めされ、表の中だけで横にスクロールする。名前のピン止めのボタンで ID と名前を左に残し、見出しの矢印で節を畳める（正常系）。"""
     # 準備・実行
     url, _ = write_body_view_preview()
     open_body_view(page, open_preview, url)
     state = table_state(page)
-    # 検証（列の種類と折り返し。表は本文の幅に収まらず、表の中だけで送れる）
-    assert state["sizes"][0] == "short"
-    assert state["nowraps"]["ID"] is True
-    assert state["sizes"][-1] == "long"
-    assert state["nowraps"]["説明"] is False
-    assert LONG_COLUMN_EM <= state["widths"]["説明"] <= LONG_COLUMN_EM + CELL_PADDING_EM
-    assert state["fill"] is False
-    assert state["wrapScrolls"] is True
-    assert state["fade"] is True
-    assert state["pinned"] == []
-    # 検証（しま模様は既定でオフで、行を塗り分けない）
+    # 検証（mdmark の表で描き、はみ出すため ID の列が左端にピン止めされ、表の中だけでスクロールする）
+    assert state["names"][0] == "ID"
+    assert state["pinned"] == ["ID"]
+    assert state["scrolls"] is True
+    assert state["areaScrolls"] is False
+    # 検証（行は塗り分けず、画面の CSS の表の見せ方は無い）
     assert len(set(state["rowColors"])) == 1
-    # 実行（「名前まで固定」を押して、表を右端まで送る）
-    page.get_by_role("button", name="名前まで固定").click()
-    page.eval_on_selector(f"{BODY_VIEW_SCOPE} .md-table-wrap", "e => { e.scrollLeft = e.scrollWidth; }")
+    assert state["overrides"] == 0
+    # 実行（名前のピン止めのボタンを押して、表を右端までスクロールする）
+    page.get_by_role("button", name="「名前」の列をピン止め").click()
+    page.eval_on_selector(f"{BODY_VIEW_SCOPE} .mdmark-table-scroll", "e => { e.scrollLeft = e.scrollWidth; }")
     page.wait_for_timeout(BODY_VIEW_SETTLE_MS)
     pinned = table_state(page)
-    # 検証（押したボタンは押した状態で、左の 3 列は左端に残り、右端の説明の列が見える）
-    assert page.get_by_role("button", name="名前まで固定").get_attribute("aria-pressed") == "true"
-    assert pinned["pinned"] == ["ID", "状態", "名前"]
+    # 検証（押したボタンは押した状態で、ID と名前は左端から並んで残り、状態の列は左へ隠れる）
+    assert page.get_by_role("button", name="「名前」の列をピン止め").get_attribute("aria-pressed") == "true"
+    assert pinned["pinned"] == ["ID", "名前"]
     assert pinned["scrollLeft"] > 0
     assert abs(pinned["pinnedLefts"][0]) <= STUCK_TOLERANCE_PX
     assert pinned["pinnedLefts"] == sorted(pinned["pinnedLefts"])
-    assert pinned["pinnedRights"][-1] <= pinned["wrapWidth"] + STUCK_TOLERANCE_PX
-    assert 0 <= pinned["lastLeft"] < pinned["wrapWidth"]
-    assert pinned["fade"] is False
-    # 実行（本文を縦に送って、表の途中まで進める）
-    page.eval_on_selector(f"{BODY_VIEW_SCOPE} .panel-body", "e => { e.scrollTop = 300; }")
-    page.wait_for_selector(f"{BODY_VIEW_SCOPE} table.md-head-stuck")
-    stuck = table_state(page)
-    # 検証（見出しの行が領域の上端に残る）
-    assert abs(stuck["headTop"] - stuck["areaTop"]) <= STUCK_TOLERANCE_PX
-    # 実行（先頭へ戻して、見出し「比較」の矢印を押す）
-    page.eval_on_selector(f"{BODY_VIEW_SCOPE} .panel-body", "e => { e.scrollTop = 0; }")
+    assert pinned["lefts"]["状態"] < 0
+    # 実行（見出し「比較」の矢印を押す）
     page.get_by_role("button", name="比較を開閉").click()
     # 検証（比較の節は畳まれて表が隠れ、まとめの節は見えたまま）
     assert page.get_by_role("button", name="比較を開閉").get_attribute("aria-expanded") == "false"
-    assert page.locator(f"{BODY_VIEW_SCOPE} .md-table-wrap").is_visible() is False
+    assert page.locator(f"{BODY_VIEW_SCOPE} .mdmark-table").is_visible() is False
     assert page.get_by_text("表の見せ方をまとめた段落です。").is_visible() is True
     assert page.get_by_role("button", name="まとめを開閉").get_attribute("aria-expanded") == "true"
 
@@ -2255,35 +2238,29 @@ def test_normal_when_body_table_and_sections(
 def test_normal_when_body_view_overridden(
     write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """端末の保存領域に「しま模様をオン・セクションの折りたたみをオフ」の上書きがあると、行を塗り分け、見出しに矢印を置かない。表示の設定の変えている項目に並び、「既定に戻す」で矢印が戻り、しま模様が消える（正常系）。"""
+    """端末の保存領域に「セクションの折りたたみをオフ」の上書きがあると、見出しに矢印を置かない。表示の設定の変えている項目に並び、表の 3 項目のチェックは無く、「既定に戻す」で矢印が戻る（正常系）。"""
     # 準備
     url, _ = write_body_view_preview()
-    seed_body_view(page, {"tableStripes": True, "sectionFold": False})
+    seed_body_view(page, {"sectionFold": False})
     open_body_view(page, open_preview, url)
-    colors = table_state(page)["rowColors"]
     # 検証（上書きどおりに描く）
-    assert colors[0] == colors[2] == colors[4]
-    assert colors[0] != colors[1]
     assert page.locator(f"{BODY_VIEW_SCOPE} button.md-fold").count() == 0
     # 実行（表示の設定を開く）
     open_settings(page)
-    # 検証（上書きしたチェックだけが既定と違い、ワークスペースの既定に保存する対象には並ばない）
-    assert _body_view_checkbox(page, "表のしま模様").is_checked() is True
+    # 検証（上書きしたチェックだけが既定と違い、表の 3 項目のチェックは無く、ワークスペースの既定に保存する対象には並ばない）
     assert _body_view_checkbox(page, "セクションの折りたたみ").is_checked() is False
-    assert _body_view_checkbox(page, "表の列の固定").is_checked() is True
-    assert _body_view_checkbox(page, "表の見出しの固定").is_checked() is True
-    assert page.inner_text(f"{SETTINGS_PANEL} .st-over").endswith("表のしま模様・セクションの折りたたみ")
+    for removed in ("表の列の固定", "表の見出しの固定", "表のしま模様"):
+        assert _body_view_checkbox(page, removed).count() == 0
+    assert page.inner_text(f"{SETTINGS_PANEL} .st-over").endswith("セクションの折りたたみ")
     assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
     # 実行（既定に戻す）
     page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
     page.wait_for_selector(f"{BODY_VIEW_SCOPE} button.md-fold")
-    # 検証（しま模様は消え、矢印が戻り、上書きは外れる）
-    reset = table_state(page)["rowColors"]
-    assert reset[0] == reset[1]
+    # 検証（矢印が戻り、上書きは外れる）
     assert page.locator(f"{BODY_VIEW_SCOPE} button.md-fold").count() == 2
     prefs = read_prefs(page)
     assert prefs is not None
-    assert (prefs["tableStripes"], prefs["sectionFold"]) == (None, None)
+    assert prefs["sectionFold"] is None
     assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
 
 
