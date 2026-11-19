@@ -7,7 +7,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-14.yaml
     impact: changed
-    detail: 新規作成するワークスペースの本文のフォルダを直下の docs/ にし、配信の設定がそこを指す
+    detail: 新規作成するワークスペースの本文のフォルダを直下の docs/ にし、配信の設定がそこを指す。直下に docs/・files/ が既にあれば作成を断る
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-17.yaml
@@ -60,6 +60,12 @@ use_cases:
     impact: run_only
     detail: 画面が本文を今までどおり描くかを確認する
     depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: following
+    detail: 前回からの差分を見るときに手で書き換える本文を直下の docs/ にする
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
 docs:
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false

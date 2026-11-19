@@ -80,6 +80,33 @@ scenarios:
       - ワークスペースに `.mindstella/config.yaml` がある
       - 直下の `README.md` の中身が、作成を呼ぶ前と同じである
     test: test_normal_when_readme_exists
+  - name: 異常シナリオ（直下に docs/ か files/ が既にある）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ
+      - name: 利用者の docs/ を持つフォルダ
+        description: 利用者が作った `docs/memo.md` だけを直下に持ち、`.mindstella/` を持たないフォルダ
+        notes: 直下に `files/` だけがあるときも同じ振る舞いにする
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant CL as MindStella の API を呼ぶ側
+        participant WSM as ワークスペースの管理
+        participant WS as ワークスペース
+
+        CL->>WSM: フォルダを渡してワークスペースを作る
+        WSM->>WS: 直下に docs/ が既にあることを確認する
+        WSM-->>CL: 直下に docs/ が既にあるエラー（改名してから作り直す案内）
+      ```
+
+      <!-- /map -->
+    expected:
+      - 作成のツールがエラーを返し、エラーの本文に、直下に `docs/` が既にあるため改名してから作り直す案内がある
+      - '`.mindstella/` と直下の `README.md` が作られておらず、配信元の登録の依頼と状態のフォルダのワークスペースの ID の一覧が無い'
+      - 直下の `docs/memo.md` の中身が、作成を呼ぶ前と同じである
+    test: test_error_when_root_docs_exists
 lead: MindStella の API のワークスペースの作成が、許可するフォルダの下に、1 つの話し合いのフォルダ（ワークスペース）の記録を既定の設定で新しく作る単一ユースケース。題名・プレイブックなどの設定は、作った後に設定の更新で書く。
 issue: 3
 primary_actor: MindStella の API を呼ぶ側（外部のアプリ・起動のコマンド・`create_workspace` を呼ぶセッション）
@@ -92,7 +119,7 @@ preconditions:
   - 常駐サーバーが起動している
   - 渡すフォルダが、設定で許可するフォルダの下にある
 success_guarantee: 指定したフォルダの直下に本文のフォルダ `docs/` があり、`.mindstella/` に、既定の設定とワークスペースの ID を持つ `config.yaml` と、空の種類ごとの YAML・プラグインの版を書いた `mindstella-version.ini`・記録を project-index で配信する設定があり、全ての YAML がスキーマに合う。
-minimal_guarantee: 移す前の形のワークスペースがあるときは、フォルダの中身を書き換えない。記録が既にあるフォルダは作り直さずに開く（単一ユースケース『外部のアプリから起動する』）。
+minimal_guarantee: 移す前の形のワークスペースがあるときと、記録の無いフォルダの直下に `docs/`・`files/` が既にあるときは、フォルダの中身を書き換えない。記録が既にあるフォルダは作り直さずに開く（単一ユースケース『外部のアプリから起動する』）。
 test_file: tests/e2e/単一ユースケース/test_workspace_create.py
 refs:
   - SC-531-1#
