@@ -60,12 +60,17 @@ functions:
     title: 本文を描く
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 本文の Markdown を mdmark で描いた要素にする。処理は今の画面の『基盤』の `renderMarkdown` と同じ（処理 7 のコードブロックの `pre` のフォーカスの属性を含む）。`config.features` は今の画面の `MDMARK_FEATURES` と同じ値、`config.map` は『libraries』の `mdmarkMapConfig()`
+    summary: 本文の Markdown を mdmark で描いた要素にする。処理は今の画面の『基盤』の `renderMarkdown` と同じ（処理 6 のコードブロックの `pre` のフォーカスの属性と、`options.table` による表の機能の指定を含む）。`config.features` は今の画面の `MDMARK_FEATURES` と同じ値（`options.table` が偽でなければ `table` だけオン）、`config.map` は『libraries』の `mdmarkMapConfig()`
     args:
       - name: source
         type: string
         required: true
         description: 本文の Markdown
+      - name: options
+        type: '{table?: boolean}'
+        required: false
+        default: '{}'
+        description: '`table` は mdmark の表の機能をオンで指定するか（省くと真。スレッドの書き込みでは偽）'
     returns:
       type: HTMLElement
       description: 描いた本文（class `mdmark`）。mdmark が読めないときは、`libraryNotice` と原文の `pre` を持つ要素

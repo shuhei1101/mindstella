@@ -7,6 +7,7 @@ __all__ = [
     "WRAP_BODY",
     "WRAP_ITEM_ID",
     "WRAP_METRICS_JS",
+    "WRAP_TABLE_LABEL",
 ]
 
 # 本文の長い URL・インラインコード・表を確かめる幅（幅 320px・幅 389px 以下の境・幅 390px 以上・広い窓）
@@ -20,6 +21,9 @@ WIDE_COLUMNS = 30
 WIDE_HEADER = "| " + " | ".join(f"第{column}列" for column in range(1, WIDE_COLUMNS + 1)) + " |"
 WIDE_DIVIDER = "| " + " | ".join("---" for _ in range(WIDE_COLUMNS)) + " |"
 WIDE_ROW = "| " + " | ".join(f"2026-10-{column:02d}" for column in range(1, WIDE_COLUMNS + 1)) + " |"
+
+# mdmark が本文の表に付ける読み上げ名（`表: {直前の見出し}`）。本文の表は 2 つとも見出し「折り返し」の下にある
+WRAP_TABLE_LABEL = "表: 折り返し"
 
 # 空白を含まない長い URL、途中で切れない長いインラインコード、列の多い表（セルは折り返せない値）、幅に収まる表を持つ本文
 WRAP_BODY = f"""# 折り返し
@@ -39,7 +43,7 @@ WRAP_BODY = f"""# 折り返し
 | 1 | 2 |
 """
 
-# 本文のスクロール領域・長い URL と長いコードの折り返し・ID のリンクの折り返しの有無・2 つの表の入れ物の送れ方を読む
+# 本文のスクロール領域・長い URL と長いコードの折り返し・ID のリンクの折り返しの有無・2 つの mdmark の表のスクロールの区画の送れ方を読む
 WRAP_METRICS_JS = """(scope) => {
     const body = document.querySelector(`${scope} .panel-body`);
     const bodyBox = body.getBoundingClientRect();
@@ -56,13 +60,11 @@ WRAP_METRICS_JS = """(scope) => {
     const url = md.querySelector('a[href^="https://example.com/"]');
     const code = md.querySelector('p > code');
     const idref = md.querySelector('a.idref');
-    const wraps = [...md.querySelectorAll('.md-table-wrap')].map((wrap) => ({
-        role: wrap.getAttribute('role'),
-        label: wrap.getAttribute('aria-label'),
-        tabindex: wrap.getAttribute('tabindex'),
+    const wraps = [...md.querySelectorAll('.mdmark-table .mdmark-table-scroll')].map((wrap) => ({
+        label: wrap.querySelector('table').getAttribute('aria-label'),
+        tabindex: wrap.querySelector('table').getAttribute('tabindex'),
         scrolls: wrap.scrollWidth > wrap.clientWidth,
         overflowX: getComputedStyle(wrap).overflowX,
-        tableNarrowerThanWrap: wrap.querySelector('table').getBoundingClientRect().width < wrap.clientWidth - 1,
         inside: inside(wrap),
     }));
     return {

@@ -1,19 +1,18 @@
 // Markdownの本文のストーリー（部品設計『Markdownの本文.tsx』の状態）
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useEffect, useRef } from "react";
 import { waitFor } from "storybook/test";
 
 import { MarkdownBody, type MarkdownBodyProps } from "@/shared/components/markdown-body";
-import { BODY_VIEW_DEFAULT, bindTableHeads } from "@/shared/core/markdown-decorate";
+import { BODY_VIEW_DEFAULT } from "@/shared/core/markdown-decorate";
 
-/** ストーリーの引数（`height` を渡すと、高さを限った本文のスクロール領域に入れる） */
-type Args = MarkdownBodyProps & { height?: number };
+/** ストーリーの引数 */
+type Args = MarkdownBodyProps;
 
 /** 表の行（ID・状態・名前・担当・期限・種別・優先度・説明の 8 列）を `count` 行分並べた Markdown の表 */
 const tableSource = (count: number): string => {
   const rows = Array.from({ length: count }, (_, offset) => {
     const no = String(offset + 1);
-    return `| D-${no} | 検討中 | 本文の表の見せ方を決める ${no} | 佐藤 | 2026-10-${no.padStart(2, "0")} | 設計 | 高 | 列の文字数で幅と折り返しを決め、表が本文の幅に収まらないときは表の中だけで横に送れるようにする。 |`;
+    return `| D-${no} | 検討中 | 本文の表の見せ方を決める ${no} | 佐藤 | 2026-10-${no.padStart(2, "0")} | 設計 | 高 | 表は mdmark の表の機能で描き、表が本文の幅に収まらないときは表の中だけで横にスクロールする。 |`;
   });
   return ["| ID | 状態 | 名前 | 担当 | 期限 | 種別 | 優先度 | 説明 |", "| --- | --- | --- | --- | --- | --- | --- | --- |", ...rows, ""].join("\n");
 };
@@ -99,21 +98,6 @@ const EMBEDDED_SOURCE = [
   "",
 ].join("\n");
 
-/** 高さを限った本文のスクロール領域に本文を入れ、表の見出しの固定をつなぐ */
-const Scroller = ({ height, ...props }: MarkdownBodyProps & { height: number }) => {
-  const scroller = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const element = scroller.current;
-    return element === null ? undefined : bindTableHeads(element);
-  }, []);
-  return (
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- 本文のスクロール領域をキーボードで送れるようにする（詳細パネルの本文と同じ）
-    <div ref={scroller} className="panel-body" tabIndex={0} role="region" aria-label="詳細の本文" style={{ height: `${String(height)}px`, overflow: "auto" }}>
-      <MarkdownBody {...props} />
-    </div>
-  );
-};
-
 /** mdmark が描き、見せ方を当て終わった要素を待って返す */
 const rendered = async (canvas: HTMLElement, selector: string): Promise<HTMLElement> =>
   waitFor(() => {
@@ -125,9 +109,9 @@ const rendered = async (canvas: HTMLElement, selector: string): Promise<HTMLElem
 const meta = {
   title: "Shared/MarkdownBody",
   component: MarkdownBody,
-  render: ({ height, ...props }: Args) => (
+  render: (props: Args) => (
     <div style={{ width: "min(720px, 100%)" }}>
-      {height === undefined ? <MarkdownBody {...props} /> : <Scroller height={height} {...props} />}
+      <MarkdownBody {...props} />
     </div>
   ),
   args: { source: tableSource(6), display: BODY_VIEW_DEFAULT, fold: true },
@@ -137,62 +121,23 @@ export default meta;
 
 type Story = StoryObj<Args>;
 
-/** 8 列の表。短い列は折り返さず、長文の列は 24em で折り返し、中くらいの列は文節の区切りで折り返す。表は本文より広く、表の中だけで横に送れ、右端がフェードする */
-export const ColumnWidths: Story = {};
+/** 8 列の表。mdmark の表の機能で描かれ、列の幅と折り返し・並べ替え・ピン止め・列の幅の変更のボタンは mdmark のまま。表が本文の幅からはみ出すため、先頭の列が左端に留まり、表の中だけが横にスクロールする。画面の CSS が当てた列の幅・フェード・しま模様は無い */
+export const MdmarkTable: Story = {};
 
-/** 2 列の表。本文の幅いっぱいに広げず、中身の幅で描き、フェードを出さない */
-export const SmallTable: Story = { args: { source: SMALL_TABLE_SOURCE } };
-
-/** 列の見出しにポインターを載せた。最後の列を除く見出しに固定のボタンが出る（フォーカスで同じ見え方にする） */
-export const PinHover: Story = {
+/** 「名前」のピン止めのボタンを押して右へスクロールした。ID と名前の 2 列が左端に留まり、その間の状態の列は留まらない */
+export const PinnedColumns: Story = {
   play: async ({ canvasElement }) => {
-    (await rendered(canvasElement, "button.md-pin")).focus({ focusVisible: true });
+    (await rendered(canvasElement, 'button.mdmark-pin[aria-label="「名前」の列をピン止め"]')).click();
+    const scroll = canvasElement.querySelector<HTMLElement>(".mdmark-table-scroll");
+    if (scroll !== null) scroll.scrollLeft = scroll.scrollWidth;
   },
 };
 
-/** 「名前」の固定のボタンを押して右へ送った。「名前」より左の列が左端に残り、固定した列の右端に影が付き、ボタンは `aria-pressed="true"` */
-export const Pinned: Story = {
+/** 本文の背景は周りの面になじむ透明で、ピン止めした列・表の左右の端の影を隠す覆い・ツールチップは周りの面の色（`--mdmark-color-bg-opaque`）で塗られる。横にスクロールできない側の端に影が出ない */
+export const OpaqueBackground: Story = {
   play: async ({ canvasElement }) => {
-    (await rendered(canvasElement, 'button.md-pin[aria-label="名前まで固定"]')).click();
-    const wrap = canvasElement.querySelector<HTMLElement>(".md-table-wrap");
-    if (wrap !== null) wrap.scrollLeft = wrap.scrollWidth;
-  },
-};
-
-/** 表示の設定で列の固定をオフにした。見出しに固定のボタンを置かない */
-export const PinOff: Story = { args: { display: { ...BODY_VIEW_DEFAULT, pin: false } } };
-
-/** 縦に高さを限った本文の区画の中で、長い表の途中まで送った。見出しの行が区画の上端に残り、下の境に影が付く。表の下端を越えては残らない */
-export const HeadStuck: Story = {
-  args: { source: tableSource(30), height: 280 },
-  play: async ({ canvasElement }) => {
-    await rendered(canvasElement, "table.md-head-stick");
-    const scroller = canvasElement.querySelector<HTMLElement>(".panel-body");
-    if (scroller !== null) scroller.scrollTop = 160;
-  },
-};
-
-/** 表示の設定で見出しの固定をオフにした。見出しの行も本文と一緒に送られる */
-export const HeadOff: Story = {
-  args: { source: tableSource(30), height: 280, display: { ...BODY_VIEW_DEFAULT, head: false } },
-  play: async ({ canvasElement }) => {
-    await rendered(canvasElement, ".md-table-wrap");
-    const scroller = canvasElement.querySelector<HTMLElement>(".panel-body");
-    if (scroller !== null) scroller.scrollTop = 160;
-  },
-};
-
-/** 表示の設定でしま模様をオンにした。本体の行を 1 行おきに塗り分ける */
-export const Stripes: Story = { args: { display: { ...BODY_VIEW_DEFAULT, stripes: true } } };
-
-/** 本文の差分でしま模様をオンにした。足した行と消した行は差分の面のままで、開閉を置かない */
-export const StripesInDiff: Story = {
-  args: { source: `${SECTIONS_SOURCE}\n${tableSource(6)}`, display: { ...BODY_VIEW_DEFAULT, stripes: true }, fold: false },
-  play: async ({ canvasElement }) => {
-    await rendered(canvasElement, "table.md-stripes");
-    const rows = canvasElement.querySelectorAll("tbody tr");
-    rows[1]?.classList.add("df-row", "df-add");
-    rows[2]?.classList.add("df-row", "df-del");
+    const scroll = await rendered(canvasElement, ".mdmark-table-scroll");
+    scroll.scrollLeft = Math.floor((scroll.scrollWidth - scroll.clientWidth) / 2);
   },
 };
 
@@ -233,21 +178,32 @@ export const CodeCopied: Story = {
 /** `> [!NOTE]`・`[!TIP]`・`[!IMPORTANT]`・`[!WARNING]`・`[!CAUTION]` の引用を、種類の色の薄い面と細い枠で囲み、見出しにアイコンと「補足」「ヒント」「重要」「警告」「注意」を出す。印の無い引用は今の見た目のまま */
 export const Callouts: Story = { args: { source: CALLOUT_SOURCE } };
 
-/** 画面の幅 390px。列の固定と固定のボタンを出さず、見出しの固定は残す。表は表の中だけで横に送れる */
+/** 画面の幅 320px。表は mdmark の表のまま表の中だけで横にスクロールし、本文の区画は横にスクロールしない */
 export const Narrow: Story = {
-  args: { source: tableSource(30), height: 360 },
+  args: { source: tableSource(6) },
   parameters: {
     viewport: {
-      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+      options: { narrow: { name: "幅 320px", styles: { width: "320px", height: "844px" } } },
     },
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
 
-/** スレッドの書き込みの本文。コードブロックの言語の札とコピーのボタン、Alert の見出しのアイコンを当て、表の列の幅・フェード・固定・見出しの固定とセクションの開閉は当てない */
+/** スレッドの書き込みの本文。コードブロックの言語の札とコピーのボタン、Alert の見出しのアイコンを当て、表は mdmark の表の機能をオフにした共通のスタイルのまま描き、セクションの開閉は当てない */
 export const InThreadPost: Story = {
   args: { source: [CODE_SOURCE, CALLOUT_SOURCE, tableSource(3)].join("\n"), fold: false, tables: false },
 };
 
-/** 本文に `<!-- html -->` の範囲があり、中に表・見出し・チャート・スライダーを持つ。範囲の中の表・見出しには列の幅・フェード・固定・見出しの固定・しま模様・開閉を当てず、書いた HTML と mdmark の部品の見た目のまま描く。範囲の前後の表と見出しには今までどおり当てる */
+/** 本文に `<!-- html -->` の範囲（`.mdmark-html`）があり、中に表・見出し・チャート・スライダーを持つ。範囲の中の見出しには開閉を当てず、範囲の中の表・見出しは書いた HTML と mdmark の部品の見た目のまま描く。範囲の前後の見出しには今までどおり開閉を当てる */
 export const EmbeddedHtml: Story = { args: { source: EMBEDDED_SOURCE } };
+
+/** 本文の差分の中の表。足した行・消した行を持ち、mdmark の表で描かれる。足した行・消した行の面の色と消した行の取り消し線は、ピン止めして左端に留まった列のセルにも付き、開閉を置かない */
+export const TableInDiff: Story = {
+  args: { source: `${SECTIONS_SOURCE}\n${tableSource(6)}`, fold: false },
+  play: async ({ canvasElement }) => {
+    await rendered(canvasElement, ".mdmark-table");
+    const rows = canvasElement.querySelectorAll("tbody tr");
+    rows[1]?.classList.add("df-row", "df-add");
+    rows[2]?.classList.add("df-row", "df-del");
+  },
+};

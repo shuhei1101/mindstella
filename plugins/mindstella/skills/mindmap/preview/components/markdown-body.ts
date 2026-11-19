@@ -1,43 +1,22 @@
-// Markdown の本文の見せ方。描いた本文に、表の列の幅と折り返し・右端のフェード・コードブロックの言語の札とコピー・GitHub の Alert の囲みを常に当て、表示の設定で切り替える表の列の固定・表の見出しの固定・表のしま模様・セクションの折りたたみを当てる。
+// Markdown の本文の見せ方。描いた本文に、コードブロックの言語の札とコピー・GitHub の Alert の囲みを常に当て、表示の設定で切り替えるセクションの折りたたみを当てる。表は mdmark の表の機能のまま描き、見せ方を当てない。
 
 namespace MindmapPreview {
-  /** 本文の表とセクションの見せ方（表示の設定の 4 つの切り替え） */
+  /** 本文のセクションの見せ方（表示の設定の切り替え） */
   export type BodyView = {
-    /** 表の列の固定 */
-    pin: boolean;
-    /** 表の見出しの固定 */
-    head: boolean;
-    /** 表のしま模様 */
-    stripes: boolean;
     /** セクションの折りたたみ */
     fold: boolean;
   };
 
   /** 本文の見せ方の項目（表示の設定に並べる順） */
-  export const BODY_VIEW_KEYS: readonly (keyof BodyView)[] = ["pin", "head", "stripes", "fold"];
+  export const BODY_VIEW_KEYS: readonly (keyof BodyView)[] = ["fold"];
 
   /** 表示の設定のチェックボックスと「この端末で変えている項目」に出す名前 */
   export const BODY_VIEW_LABELS: Record<keyof BodyView, string> = {
-    pin: "表の列の固定",
-    head: "表の見出しの固定",
-    stripes: "表のしま模様",
     fold: "セクションの折りたたみ",
   };
 
-  /** 個人の上書きが無いときの本文の見せ方（列の固定・見出しの固定・折りたたみはオン、しま模様はオフ） */
-  export const BODY_VIEW_DEFAULT: BodyView = { pin: true, head: true, stripes: false, fold: true };
-
-  /** 全角を 1、半角を 0.5 と数えたセルの最大の文字数が `shortMax` 以下の列は短い列、`longMin` 以上の列は長文の列 */
-  const COLUMN_BOUNDS = { shortMax: 8, longMin: 25 };
-
-  /** 中くらいの列の最小の幅（em）の上限 */
-  const MEDIUM_MIN_EM_MAX = 14;
-
-  /** 中くらいの列の最小の幅を文字数の半分にこの値（em）を足した幅にする（文節の区切りでだけ折り返す分の余り） */
-  const MEDIUM_MIN_EM_SLACK = 2;
-
-  /** 長文の列を折り返す幅（em） */
-  const LONG_COLUMN_EM = 24;
+  /** 個人の上書きが無いときの本文の見せ方（折りたたみはオン） */
+  export const BODY_VIEW_DEFAULT: BodyView = { fold: true };
 
   /** 本文で使っている見出しの階層のうち、上からこの数の階層にだけ開閉を置く */
   const FOLD_LEVELS = 2;
@@ -54,129 +33,11 @@ namespace MindmapPreview {
     caution: "alert",
   };
 
-  /** 半角として数える文字の符号位置の上限 */
-  const HALF_WIDTH_MAX = 0xff;
-
-  /** 表を送らない枠の class（右端のフェードの基準） */
-  const TABLE_FRAME_CLASS = "md-table-frame";
-
   /** 節の中身の入れ物の class（畳むと `hidden="until-found"` にする） */
   const SECTION_BODY_CLASS = "md-section-body";
 
   /** 節の中身の入れ物に振る id の通し番号 */
   let sectionSeq = 0;
-
-  /** 前後の空白を除いた文字列の幅を、符号位置が U+00FF 以下の文字を 0.5、それ以外を 1 として数える */
-  export function textWidth(text: string): number {
-    let width = 0;
-    for (const char of text.trim()) width += (char.codePointAt(0) ?? 0) <= HALF_WIDTH_MAX ? 0.5 : 1;
-    return width;
-  }
-
-  /** 列のセルの最大の文字の幅から、列の種類と最小の幅（em。中くらいの列だけ持つ）を決める */
-  export function columnSize(maxWidth: number): { kind: "short" | "medium" | "long"; minEm: number | null } {
-    if (maxWidth <= COLUMN_BOUNDS.shortMax) return { kind: "short", minEm: null };
-    if (maxWidth >= COLUMN_BOUNDS.longMin) return { kind: "long", minEm: null };
-    return { kind: "medium", minEm: Math.min(Math.ceil(maxWidth / 2) + MEDIUM_MIN_EM_SLACK, MEDIUM_MIN_EM_MAX) };
-  }
-
-  /** 表の列ごとにセルの最大の文字の幅を数え、列のセルに種類（`data-col-size`）と中くらいの列の最小の幅（`--md-col-min`）を付ける */
-  function sizeColumns(table: HTMLTableElement): void {
-    const widths: number[] = [];
-    for (const row of table.rows) {
-      [...row.cells].forEach((cell, column) => {
-        widths[column] = Math.max(widths[column] ?? 0, textWidth(cell.textContent ?? ""));
-      });
-    }
-    for (const row of table.rows) {
-      [...row.cells].forEach((cell, column) => {
-        const size = columnSize(widths[column] ?? 0);
-        cell.dataset["colSize"] = size.kind;
-        if (size.minEm !== null) cell.style.setProperty("--md-col-min", `${size.minEm}em`);
-      });
-    }
-    table.style.setProperty("--md-col-long", `${LONG_COLUMN_EM}em`);
-  }
-
-  /** 表の入れ物を送らない枠で包み、右へまだ送れる間だけ枠に `data-fade` を付ける */
-  function frameTable(wrap: HTMLElement): void {
-    if (wrap.parentElement?.classList.contains(TABLE_FRAME_CLASS) === true) return;
-    const frame = h({ tag: "div", attrs: { class: TABLE_FRAME_CLASS } });
-    wrap.replaceWith(frame);
-    frame.append(wrap);
-    const update = (): void => {
-      frame.toggleAttribute("data-fade", wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 1);
-    };
-    wrap.addEventListener("scroll", update, { passive: true });
-    const observer = new ResizeObserver(update);
-    observer.observe(wrap);
-    const table = wrap.querySelector("table");
-    if (table !== null) observer.observe(table);
-    update();
-  }
-
-  /** 見出しのセルの文言（固定のボタンを除く） */
-  function headText(cell: HTMLTableCellElement): string {
-    return [...cell.childNodes]
-      .filter((node) => !(node instanceof HTMLElement && node.classList.contains("md-pin")))
-      .map((node) => node.textContent ?? "")
-      .join("")
-      .trim();
-  }
-
-  /** 表の固定した列（左から `pinTo` 列目まで）に、左の位置と右端の影のマーカーを付ける。`pinTo` が -1 なら固定しない */
-  function applyPins(table: HTMLTableElement): void {
-    const pinTo = Number(table.dataset["pinTo"] ?? "-1");
-    const head = table.tHead?.rows[0];
-    if (head === undefined) return;
-    // 列ごとの左の位置（見出しのセルの幅を積む）
-    const lefts: number[] = [];
-    let left = 0;
-    for (const cell of head.cells) {
-      lefts.push(left);
-      left += cell.getBoundingClientRect().width;
-    }
-    for (const row of table.rows) {
-      [...row.cells].forEach((cell, column) => {
-        const pinned = column <= pinTo;
-        cell.classList.toggle("md-pinned", pinned);
-        cell.classList.toggle("md-pin-edge", column === pinTo);
-        cell.style.left = pinned ? `${lefts[column] ?? 0}px` : "";
-      });
-    }
-    head.querySelectorAll(".md-pin").forEach((button, column) => {
-      button.setAttribute("aria-pressed", String(column === pinTo));
-    });
-  }
-
-  /** 表の見出し（最後の列を除く）に固定のボタンを置く。押した列より左を固定し、もう一度押すと外す。押すまで固定しない */
-  function addPinButtons(table: HTMLTableElement): void {
-    const head = table.tHead?.rows[0];
-    if (head === undefined || head.cells.length < 2 || head.querySelector(".md-pin") !== null) return;
-    table.classList.add("md-has-pin");
-    [...head.cells].slice(0, -1).forEach((cell, column) => {
-      const label = headText(cell);
-      cell.append(
-        h({
-          tag: "button",
-          attrs: {
-            class: "th-tool md-pin",
-            type: "button",
-            "aria-pressed": "false",
-            "aria-label": `${label === "" ? `${column + 1} 列目` : label}まで固定`,
-            title: "この列まで固定",
-            onclick: () => {
-              table.dataset["pinTo"] = String(Number(table.dataset["pinTo"] ?? "-1") === column ? -1 : column);
-              applyPins(table);
-            },
-          },
-          children: [icon("pin")],
-        }),
-      );
-    });
-    // 文字の読み込み・幅の変化で列の幅が変わったら、固定した列の位置を直す
-    new ResizeObserver(() => applyPins(table)).observe(table);
-  }
 
   /** 見出しの階層（元の Markdown の階層。無ければ要素の階層） */
   function headingLevel(element: HTMLElement): number {
@@ -321,58 +182,18 @@ namespace MindmapPreview {
     }
   }
 
-  /** 描いた本文に見せ方を当てる。`display` は表示の設定の値、`fold` は開閉を置ける本文か（本文の差分では偽にする）、`tables` は表の見せ方を当てるか（スレッドの書き込みでは偽にし、表は mdmark の共通のスタイルのまま描く） */
+  /** 描いた本文に見せ方を当てる。`display` は表示の設定の値、`fold` は開閉を置ける本文か（本文の差分では偽にする）。表は `renderMarkdown` の `table` で mdmark の表の機能のまま描き、ここでは当てない */
   export function decorateMarkdown({
     root,
     display = BODY_VIEW_DEFAULT,
     fold = true,
-    tables = true,
   }: {
     root: HTMLElement;
     display?: BodyView;
     fold?: boolean;
-    tables?: boolean;
   }): void {
-    for (const table of tables ? root.querySelectorAll("table") : []) {
-      // 埋め込んだ HTML の範囲の中の表には当てない
-      if (inEmbeddedHtml(table)) continue;
-      sizeColumns(table);
-      const wrap = table.closest<HTMLElement>(`.${TABLE_WRAP_CLASS}`);
-      if (wrap !== null) frameTable(wrap);
-      if (display.pin) addPinButtons(table);
-      table.classList.toggle("md-head-stick", display.head && table.tHead !== null);
-      table.classList.toggle("md-stripes", display.stripes);
-    }
     if (fold && display.fold) addFoldButtons(root);
     decorateCodeBlocks(root);
     decorateCallouts(root);
-  }
-
-  /** 本文のスクロール領域を縦に送っても、見出しを固定した表の見出しの行を領域の上端に残す。受け取りを外す関数を返す（表の入れ物が横に送るため CSS の sticky では残せず、領域の送り量を見出しのセルへ縦のずらしとして入れる） */
-  export function bindTableHeads(scroller: HTMLElement): () => void {
-    let frame = 0;
-    const update = (): void => {
-      frame = 0;
-      const top = scroller.getBoundingClientRect().top;
-      for (const table of scroller.querySelectorAll<HTMLTableElement>("table.md-head-stick")) {
-        const head = table.tHead;
-        if (head === null) continue;
-        const rect = table.getBoundingClientRect();
-        // 表の上端が領域の上端より上にある分だけ下げる（見出しの行が表の下端を越えない）
-        const max = Math.max(rect.height - head.offsetHeight, 0);
-        const offset = Math.min(Math.max(top - rect.top, 0), max);
-        for (const cell of head.rows[0]?.cells ?? []) cell.style.setProperty("--head-offset", `${offset}px`);
-        table.classList.toggle("md-head-stuck", offset > 0);
-      }
-    };
-    const onScroll = (): void => {
-      if (frame === 0) frame = requestAnimationFrame(update);
-    };
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    update();
-    return () => {
-      scroller.removeEventListener("scroll", onScroll);
-      if (frame !== 0) cancelAnimationFrame(frame);
-    };
   }
 }

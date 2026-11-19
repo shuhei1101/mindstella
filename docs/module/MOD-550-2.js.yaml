@@ -11,8 +11,8 @@ constants:
     title: Storybook が読む mdmark の配信元
     container: .storybook/main.js
     usecase: 共通
-    summary: Storybook の画面が読む mdmark の `dist/`。設定を持たないときの既定（`latest` = `@develop`）で、サーバーの `mdmark_dist_url` と同じ組み立て
-    value: '"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist"'
+    summary: Storybook の画面が読む mdmark の `dist/` の URL の形。`{ref}` に起動時に `resolveMdmarkRef`（`.storybook/mdmark-ref.js`）が決めた ref を入れる。サーバーの `mdmark_dist_url` と同じ組み立て
+    value: '"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist"'
 functions:
   - name: templateTags
     title: 雛形のタグの取り出し
@@ -26,9 +26,9 @@ functions:
       description: head に差し込むタグの並び
     process: |-
       1. `template.html` を読み、`TEMPLATE_TAGS` に当たるタグを並びの順に取り出す
-      2. `MDMARK_STORYBOOK_URL` の `index.css` を `href` に持ち `crossorigin="anonymous"` を付けた `<link rel="stylesheet">` と、`<script type="application/json" id="mindmap-mdmark-config">{"js": "{MDMARK_STORYBOOK_URL}/index.js", "map": {}}</script>` を足す（今の画面の `loadMdmark` がこの `js` を読む）
+      2. 起動時に決めた ref を入れた `MDMARK_STORYBOOK_URL` の `index.css` を `href` に持ち `crossorigin="anonymous"` を付けた `<link rel="stylesheet">` と、`<script type="application/json" id="mindmap-mdmark-config">{"js": "{MDMARK_STORYBOOK_URL}/index.js", "map": {}}</script>` を足す（今の画面の `loadMdmark` がこの `js` を読む）
       3. 改行でつないで返す
 notes:
-  React の画面の Storybook: '`.storybook-react/` は変えない。React の画面の `libraries.ts` は `setMdmarkSettings` を呼ばないと既定（`@develop`）の URL から読むため、ストーリーの loaders の `loadLibrary("mdmark")` がそのまま既定のバージョンを読む'
+  React の画面の Storybook: '`.storybook-react/` も同じ ref で mdmark を読む（モジュール構成『mdmark-ref.js』の使う側）'
   単体テスト: Storybook の設定は単体テストを持たない。ストーリーが mdmark で本文を描けることは、実装の後に Storybook を配信して確かめる
 id: MOD-550-2

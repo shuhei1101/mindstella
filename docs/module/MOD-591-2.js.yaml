@@ -1,0 +1,65 @@
+id: MOD-591-2
+title: プレビュー / Storybook / mdmark-ref.js
+lead: Storybook（`.storybook/`・`.storybook-react/`）を起動するときに、画面が読み込む mdmark の ref を決める。外部 API『GitHub』に mdmark の develop の先頭の commit の SHA を 1 回問い合わせ、問い合わせられなければ `develop` にする。
+directory: |-
+  ```
+  .storybook/
+    mdmark-ref.js   Storybook の起動時に mdmark の ref を決める（main.js と .storybook-react/main.ts が使う）
+  ```
+constants:
+  - name: MDMARK_HEAD_URL
+    title: develop の先頭の commit を問い合わせる URL
+    container: .storybook/mdmark-ref.js
+    usecase: 共通
+    summary: 外部 API『GitHub』の `GET /repos/shuhei1101/mdmark/commits/develop`
+    value: '"https://api.github.com/repos/shuhei1101/mdmark/commits/develop"'
+  - name: MDMARK_FALLBACK_REF
+    title: 問い合わせられないときの ref
+    container: .storybook/mdmark-ref.js
+    usecase: 共通
+    summary: 問い合わせられないときに使う ref（mdmark_ref.py の `MDMARK_LATEST_BRANCH` と同じ）
+    value: '"develop"'
+  - name: MDMARK_REF_TIMEOUT_MS
+    title: 問い合わせを待つ時間
+    container: .storybook/mdmark-ref.js
+    usecase: 共通
+    summary: 1 回の問い合わせ全体を待つミリ秒（`AbortSignal.timeout`）
+    value: '13000'
+    reason: mdmark_ref.py の接続 11 秒と読み取り 2 秒の合計（`fetch` は接続と読み取りを分けて待てないため、合計で待つ）
+  - name: MDMARK_REF_META
+    title: React の Storybook に ref を渡す meta 要素の名前
+    container: .storybook/mdmark-ref.js
+    usecase: 共通
+    summary: '`.storybook-react/main.ts` の `previewHead` が差し込む `<meta name="{この値}" content="{ref}">` の名前。`.storybook-react/preview.tsx` が読んで `setMdmarkSettings(undefined, ref)` を呼ぶ'
+    value: '"mindstella-mdmark-ref"'
+  - name: MDMARK_DIST_URL
+    title: jsDelivr の mdmark の配布物の URL の形
+    container: .storybook/mdmark-ref.js
+    usecase: 共通
+    summary: 問い合わせた SHA の `dist/index.js` を jsDelivr が配るかを確認する URL（`{ref}` に SHA）
+    value: '"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist/index.js"'
+  - name: MDMARK_DIST_TIMEOUT_MS
+    title: jsDelivr の確認を待つ時間
+    container: .storybook/mdmark-ref.js
+    usecase: 共通
+    summary: jsDelivr が配布物を配るかの 1 回の確認全体を待つミリ秒（`AbortSignal.timeout`）
+    value: '3000'
+    reason: mdmark_ref.py の jsDelivr の確認の接続 1 秒と読み取り 2 秒の合計
+functions:
+  - name: resolveMdmarkRef
+    title: Storybook の mdmark の ref の解決
+    kind: 関数
+    container: .storybook/mdmark-ref.js
+    usecase: 共通
+    scope: public
+    summary: develop の先頭の commit の SHA を問い合わせて返す。問い合わせられなければ理由を `console.warn` で 1 行出し、`MDMARK_FALLBACK_REF` を返す
+    returns:
+      type: Promise<string>
+      description: commit の SHA か `develop`
+    process: |-
+      1. `MDMARK_HEAD_URL` を `Accept: application/vnd.github.sha` と `AbortSignal.timeout(MDMARK_REF_TIMEOUT_MS)` で `fetch` する
+      2. 200 で、本文の前後の空白を除いたものが 40 文字の 16 進なら、`MDMARK_DIST_URL` のその SHA を `Range: bytes=0-0` の GET で `AbortSignal.timeout(MDMARK_DIST_TIMEOUT_MS)` まで待って要求し、200 か 206 なら SHA を返す
+         - それ以外・例外の場合、理由を `console.warn` で 1 行出し、`MDMARK_FALLBACK_REF` を返す
+notes:
+  使う側: '`.storybook/main.js` はトップレベルで 1 回 `await resolveMdmarkRef()` し、その ref で mdmark の URL を組み立てる。`.storybook-react/main.ts` は同じく 1 回解決し、`previewHead` で `MDMARK_REF_META` の meta 要素を差し込む。`.storybook-react/preview.tsx` の loaders は、描画のライブラリを読む前に meta 要素の ref で `setMdmarkSettings(undefined, ref)` を呼ぶ'
+  単体テスト: Storybook の設定は単体テストを持たない。ストーリーが develop の先頭の commit の mdmark で描けることは、Storybook の結合テストで確かめる

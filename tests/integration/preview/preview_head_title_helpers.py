@@ -17,10 +17,12 @@ HEAD_BUTTON_WIDTH_PX = 32
 # 出し入れの 0.15 秒の動きを終えるまで待つ上限ミリ秒
 HEAD_TITLE_TIMEOUT_MS = 5_000
 
-# 文字のフォントの読み込みと、パネルのすべり込みや出し入れの動きが全て終わるまで待つ（どちらも終わる前は幅や位置が動く）
+# 文字のフォントの読み込みと、パネルのすべり込みや出し入れの動きが全て終わるまで待つ（どちらも終わる前は幅や位置が動く）。
+# スクロールに連動する動き（mdmark の表の見出し行の animation-timeline）は終わらないため、時間で進む動きだけを待つ
 ANIMATIONS_FINISHED_JS = """async () => {
     await document.fonts.ready;
-    await Promise.all(document.getAnimations().map((animation) => animation.finished));
+    const timed = document.getAnimations().filter((animation) => animation.timeline === document.timeline);
+    await Promise.all(timed.map((animation) => animation.finished));
 }"""
 
 # 見出しのタイトルの出し入れが終わった状態（出す: 出ていて不透明 / 隠す: 出ていない）

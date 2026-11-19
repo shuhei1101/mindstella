@@ -28,7 +28,7 @@ describe("MarkdownBody", () => {
     const host = container.firstElementChild;
     unmount();
     // 検証
-    expect(renderMarkdown).toHaveBeenCalledWith("# 見出し");
+    expect(renderMarkdown).toHaveBeenCalledWith("# 見出し", { table: true });
     expect(host?.childNodes).toHaveLength(0);
   });
 

@@ -208,8 +208,8 @@ constants:
     title: mdmark のリポジトリ
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 共通
-    summary: '`CDN_REPO_URL` の `package` に入れる mdmark のリポジトリ'
-    value: '"shuhei1101/mdmark"'
+    summary: '`CDN_REPO_URL` の `package` に入れる mdmark のリポジトリ（mdmark_ref.py の `MDMARK_REPO`）'
+    value: 'mdmark_ref.MDMARK_REPO'
   - name: MDMARK_PART_FILES
     title: mdmark の部品のファイル
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
@@ -250,15 +250,21 @@ functions:
         default: None
         passing: keyword
         description: '`config.yaml` がスキーマに合わないときの合わない箇所の行（`read_records` だけが渡す）'
+      - name: mdmark_ref
+        type: str
+        required: true
+        passing: keyword
+        description: 画面が読み込む mdmark の ref（『記録の取得』の `mdmark_ref`）
     returns:
       type: dict[str, Any]
-      description: '`settings`・`decisions` など種類ごと（ファイル名から `.yaml` を落としたキー）・`bodies`・`marked_bodies`・`changes`・`derived`・`built_at`・`settings_problem`'
+      description: '`settings`・`decisions` など種類ごと（ファイル名から `.yaml` を落としたキー）・`bodies`・`marked_bodies`・`changes`・`derived`・`built_at`・`settings_problem`・`mdmark_ref`'
     process: |-
       1. 種類ごとの `items` をファイル名から `.yaml` を落としたキーで入れる（項目の `history` もそのまま入る）
       2. 項目の `body` が指す本文を読んで `bodies` に入れる（本文の読み込み。`read_body`。読めないものは入れない）。形式が `html` の本文は、行の印を足したもの（`mark_lines`）を `marked_bodies` にも入れる
       3. まとまりを読んで `changes` に入れる（`load_changes`）
       4. 画面に出す値を計算して `derived` に入れる（`derive_preview_values`）
       5. `settings_problem` を入れる（渡されなければ `null`。配る書き出しも同じキーを持つ）
+      6. `mdmark_ref` を入れる
     unit_tests:
       - name: test_collect_preview_data
         case: 正常
@@ -351,13 +357,13 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 共通
     scope: public
-    summary: 設定の mdmark のバージョンから、jsDelivr の配布ファイルの URL を組み立てる
+    summary: 解決した mdmark の ref から、jsDelivr の配布ファイルの URL を組み立てる
     args:
-      - name: version
-        type: str | None
+      - name: ref
+        type: str
         required: true
         passing: positional
-        description: 設定の `mdmark.version`（無ければ `None`）
+        description: mdmark_ref.py の `resolve_ref` が返した ref（commit の SHA・タグ・`develop`）
       - name: path
         type: str
         required: true
@@ -365,37 +371,41 @@ functions:
         description: '`dist/` の中のファイル名（`index.js` ほか）'
     returns:
       type: str
-      description: '`CDN_REPO_URL` に `MDMARK_PACKAGE` と ref（`latest` か `None` は `develop`、タグはそのまま）を入れた URL'
+      description: '`CDN_REPO_URL` に `MDMARK_PACKAGE` と ref を入れた URL'
     process: |-
-      1. `version` が `None` か `latest` なら ref を `develop`、それ以外は `version` にする
-      2. `dist/{path}` にして `CDN_REPO_URL` に入れる
+      1. `dist/{path}` にして、ref と一緒に `CDN_REPO_URL` に入れる
     unit_tests:
       - name: test_mdmark_dist_url
         case: 正常
-        summary: latest と無しは develop、タグはそのまま
-        condition: '`parametrize`: (`None`, `index.js`) / (`latest`, `index.css`) / (`v0.13.0`, `map.js`)'
+        summary: ref をそのまま URL に入れる
+        condition: '`parametrize`: (`0123456789abcdef0123456789abcdef01234567`, `index.js`) / (`develop`, `index.css`) / (`v0.13.0`, `map.js`)'
         mock: なし
-        expected: '`.../mdmark@develop/dist/index.js` / `.../mdmark@develop/dist/index.css` / `.../mdmark@v0.13.0/dist/map.js`'
+        expected: '`.../mdmark@0123456789abcdef0123456789abcdef01234567/dist/index.js` / `.../mdmark@develop/dist/index.css` / `.../mdmark@v0.13.0/dist/map.js`'
   - name: assemble_template
     title: 雛形の組み立て
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: プレビューを開く
     scope: public
-    summary: '`template.html` に CSS・JavaScript と、設定のバージョンの mdmark の読み込みを差し込んだ HTML を返す'
+    summary: '`template.html` に CSS・JavaScript と、解決した ref の mdmark の読み込みを差し込んだ HTML を返す'
     args:
       - name: mdmark_settings
         type: dict[str, Any]
         required: false
         default: '{}'
         passing: keyword
-        description: ワークスペースの設定の `mdmark`（`version`・`map`。無いキーは `latest`・空）
+        description: ワークスペースの設定の `mdmark`（`map` を使う。無いキーは空）
       - name: preview_dir
         type: Path
         required: false
         default: PREVIEW_DIR
         passing: keyword
         description: 雛形のフォルダ
+      - name: mdmark_ref
+        type: str
+        required: true
+        passing: keyword
+        description: mdmark_ref.py の `resolve_ref` が返した ref
     returns:
       type: str
       description: 差し込んだ HTML（`DATA_ELEMENT` は空のまま）
@@ -406,7 +416,7 @@ functions:
       3. `STYLE_SLOT`・`SCRIPT_SLOT` がそれぞれちょうど 1 つあることを確かめる
          - 1 つでない場合、`ValueError` を送る
       4. CSS を改行でつないで `STYLE_SLOT` の中身に、JavaScript を改行でつないで `SCRIPT_SLOT` の中身に入れる
-      5. `MDMARK_SLOT` がちょうど 1 つあることを確かめ（1 つでなければ `ValueError`）、`mdmark_dist_url` の `index.css` を `href` に持ち `crossorigin="anonymous"` を付けた `<link rel="stylesheet">` と、`MDMARK_CONFIG_OPEN` + `{"js": index.js の URL, "map": mdmark_settings の map}`（`escape_for_script`）+ `</script>` に置き換える。`integrity` は付けない
+      5. `MDMARK_SLOT` がちょうど 1 つあることを確かめ（1 つでなければ `ValueError`）、`mdmark_dist_url(mdmark_ref, …)` の `index.css` を `href` に持ち `crossorigin="anonymous"` を付けた `<link rel="stylesheet">` と、`MDMARK_CONFIG_OPEN` + `{"js": index.js の URL, "map": mdmark_settings の map}`（`escape_for_script`）+ `</script>` に置き換える。`integrity` は付けない
     exceptions:
       - name: ValueError
         condition: CSS が `</style`、JavaScript が `</script` を含むか、差し込み口が 0 個か 2 個以上
@@ -537,6 +547,12 @@ functions:
         default: fetch_url
         passing: keyword
         description: URL の中身を取る関数（単体テストで差し替える）
+      - name: resolve
+        type: Callable[[str | None], str]
+        required: false
+        default: resolve_ref
+        passing: injected
+        description: 設定の mdmark のバージョンを ref にする関数（mdmark_ref.py）。解決した ref を `assemble_standalone_template` と `collect_preview_data` に渡す
     returns:
       type: Path
       description: 書き出した `out`
@@ -743,12 +759,17 @@ functions:
         required: false
         default: '{}'
         passing: keyword
-        description: ワークスペースの設定の `mdmark`（`version`・`map`。無いキーは `latest`・空）
+        description: ワークスペースの設定の `mdmark`（`map` を使う。無いキーは空）
+      - name: mdmark_ref
+        type: str
+        required: true
+        passing: keyword
+        description: mdmark_ref.py の `resolve_ref` が返した ref。配布ファイル・ライセンスの URL とライセンスの表示の版に使う
     returns:
       type: str
       description: 外のファイルも URL も指さない HTML（`DATA_ELEMENT` は空のまま）
     process: |-
-      1. `mdmark_settings` で雛形を組み立て、外の読み込みを読む（`assemble_template`、`list_external_scripts`）。mdmark は `mdmark_dist_url` で `mdmark_settings` のバージョンの `index.css`・`index.js`・`MDMARK_PART_FILES` の URL にする
+      1. `mdmark_settings` と `mdmark_ref` で雛形を組み立て、外の読み込みを読む（`assemble_template`、`list_external_scripts`）。mdmark は `mdmark_dist_url` で `mdmark_ref` の `index.css`・`index.js`・`MDMARK_PART_FILES` の URL にする
       2. mdmark（`MDMARK_PACKAGE`）と外の読み込みごとに、`package` が同じ `VendorLibrary` を引く
          - 無い場合、`ValueError` を送る（同梱の誤り）
       3. mdmark の CSS・JavaScript・部品と、外の読み込みごとの配布ファイルを取り（`fetch`）、外の読み込みだけ sha384 を Base64 にした `sha384-{値}` がそれぞれの `integrity` と同じことを確かめる（mdmark は確かめない）
@@ -844,6 +865,12 @@ functions:
         default: now_utc
         passing: injected
         description: 読んだ日時を返す関数
+      - name: resolve
+        type: Callable[[str | None], str]
+        required: false
+        default: resolve_ref
+        passing: injected
+        description: 設定の mdmark のバージョンを ref にする関数（mdmark_ref.py）
     returns:
       type: dict[str, Any]
       description: '`collect_preview_data` の辞書。`config.yaml` が合わないときは `settings` が `last_settings` で、`settings_problem` に合わない箇所の行'
@@ -854,7 +881,8 @@ functions:
          - それ以外の問題がある場合、問題ごとの行を持った `SchemaMismatchError` を送る（`legacy` は `is_legacy_problem`）
          - `config.yaml` の問題があり、`last_settings` が `None` の場合、同じく `SchemaMismatchError` を送る
          - `config.yaml` の問題があり、`last_settings` がある場合、ワークスペースの `settings` を `last_settings` に差し替え（`dataclasses.replace`）、問題ごとの行を `settings_problem` にする
-      3. 読んだ日時と `settings_problem` を付けてまとめる（`collect_preview_data`）
+      3. まとめる設定（差し替えたときは `last_settings`）の `mdmark.version` を、`resolve` で ref にする
+      4. 読んだ日時と `settings_problem` と ref を付けてまとめる（`collect_preview_data`）
     exceptions:
       - name: SchemaMismatchError
         condition: '`config.yaml` 以外のどれかの YAML がスキーマに合わないか YAML として読めない、または `last_settings` を渡さずに `config.yaml` が合わない'

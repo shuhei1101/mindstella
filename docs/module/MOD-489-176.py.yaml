@@ -396,7 +396,7 @@ functions:
       description: '`{path}`'
     process: |-
       1. 書き出す先を確かめる（書き出す先の確かめ。`validate_export_out`）。ワークスペースを読む前に行い、`ArgumentError` では何も書かない
-      2. ワークスペースを読んで配る書き出しを書く（`load_workspace`、配る書き出し。`export_preview`）
+      2. ワークスペースを読んで配る書き出しを書く（`load_workspace`、配る書き出し。`export_preview`。mdmark の ref は `export_preview` が mdmark_ref.py の `resolve_ref` で解決し、配信と同じ保持を使う）
     exceptions:
       - name: ArgumentError
         condition: '`out` が `.html` で終わらない'
