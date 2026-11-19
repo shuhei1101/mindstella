@@ -255,7 +255,7 @@ def test_make_entry_records_editor(
 def test_make_entry_when_body_format_changed() -> None:
     """本文の形式を替えた回は前の body を before に入れる（正常系）。"""
     # 準備
-    before_item = {"id": "A-1", "title": "モック", "body": "A-1.md"}
+    before_item = {"id": "A-1", "title": "モック", "body": "A-1.mark.md"}
     after_item = {"id": "A-1", "title": "モック", "body": "A-1.html"}
     # 実行
     entry = history.make_entry(
@@ -269,7 +269,7 @@ def test_make_entry_when_body_format_changed() -> None:
     )
     # 検証
     assert entry is not None
-    assert entry["before"] == {"body": "A-1.md"}
+    assert entry["before"] == {"body": "A-1.mark.md"}
     assert history.apply_body_diff("<p>a</p>\n", entry["body_diff"]) == "a\n"
 
 

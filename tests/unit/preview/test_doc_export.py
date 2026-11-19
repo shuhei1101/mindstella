@@ -276,13 +276,13 @@ def test_download_text(preview_page: Page, load_preview_scripts: LoadPreviewScri
     with preview_page.expect_download() as download_info:
         preview_page.evaluate(
             """() => MindmapPreview.downloadText({
-                name: "A-1.md",
+                name: "A-1.mark.md",
                 text: "# 見出し",
                 type: "text/markdown",
             })"""
         )
     download = download_info.value
     # 検証
-    assert download.suggested_filename == "A-1.md"
+    assert download.suggested_filename == "A-1.mark.md"
     assert Path(download.path()).read_text(encoding="utf-8") == "# 見出し"
 

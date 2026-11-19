@@ -362,8 +362,8 @@ def test_stage_add_when_note_has_body(make_workspace: MakeWorkspace) -> None:
     new_staged, _ = commands.stage_add(staged, "note", item, now=_fixed_now)
     # 検証
     assert new_staged.items["note"][0]["id"] == "N-1"
-    assert new_staged.items["note"][0]["body"] == "docs/N-1.md"
-    assert new_staged.bodies["docs/N-1.md"].text == "b"
+    assert new_staged.items["note"][0]["body"] == "docs/N-1.mark.md"
+    assert new_staged.bodies["docs/N-1.mark.md"].text == "b"
 
 
 def test_stage_add_when_doc_has_html_body(make_workspace: MakeWorkspace) -> None:
@@ -504,7 +504,7 @@ def test_stage_update_when_body_format_changed(
 ) -> None:
     """形式を替えると前の形式の本文を消す書き込みにし、前の body を変更履歴に積む（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", body="docs/A-1.md"), bodies={"A-1.md": "a\nb\n"})
+    root = make_workspace(make_item("A-1", body="docs/A-1.mark.md"), bodies={"A-1.mark.md": "a\nb\n"})
     staged = _make_staged(root, 3)
     # 実行（Markdown から HTML へ）
     to_html, to_html_result = commands.stage_update(
@@ -514,15 +514,15 @@ def test_stage_update_when_body_format_changed(
     html_item = to_html.items["doc"][0]
     assert html_item["body"] == "docs/A-1.html"
     assert "docs/A-1.html" in to_html.bodies
-    assert to_html.removed_bodies == ["docs/A-1.md"]
+    assert to_html.removed_bodies == ["docs/A-1.mark.md"]
     assert to_html_result["changed"] == ["body", "body_html"]
     entry = to_html.history["A-1"]["history"][0]
-    assert entry["before"]["body"] == "docs/A-1.md"
+    assert entry["before"]["body"] == "docs/A-1.mark.md"
     assert history.apply_body_diff("<p>a</p>\n", entry["body_diff"]) == "a\nb\n"
     # 実行（続けて HTML から Markdown へ）
     to_markdown, _ = commands.stage_update(to_html, "A-1", {"body_markdown": "a\n"}, now=_fixed_now)
     # 検証
-    assert to_markdown.items["doc"][0]["body"] == "docs/A-1.md"
+    assert to_markdown.items["doc"][0]["body"] == "docs/A-1.mark.md"
     assert to_markdown.removed_bodies == ["docs/A-1.html"]
     assert "docs/A-1.html" not in to_markdown.bodies
 

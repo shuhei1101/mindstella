@@ -517,6 +517,8 @@ def test_create_workspace_migrated(
     config = yaml.safe_load((folder / ".mindstella" / "config.yaml").read_text(encoding="utf-8"))
     assert "playbooks" not in config
     assert read_point.load_migration_report(folder, state_root=ctx.state_root) is not None
+    # 配信の検知を立てない台帳でも、移し替えた後に前回の中身（rebase_snapshot の書き出し）がある
+    assert (ctx.state_root / "workspaces" / body["id"] / "snapshot" / "docs").is_dir()
 
 
 def test_create_workspace_newer(

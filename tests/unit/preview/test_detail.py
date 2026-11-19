@@ -4020,7 +4020,7 @@ def test_detail_panel_when_export_markdown(
     assert warned >= 1
     # 「戻る」でフォーカスが「Markdown でエクスポート」へ戻る
     assert "Markdown でエクスポート" in focused_after_back
-    assert download.suggested_filename == "A-1.md"
+    assert download.suggested_filename == "A-1.mark.md"
     assert "範囲の外の文" in exported
     assert "範囲の中の文" not in exported
     assert "<!-- html -->" not in exported

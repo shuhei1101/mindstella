@@ -253,8 +253,8 @@ def test_search_items_when_html(
     """HTML の本文と html のコードブロックを描いた文で当てる（正常系）。"""
     # 準備
     data = make_data(
-        docs=[make_item("A-1", body="docs/A-1.html"), make_item("A-2", body="docs/A-2.md")],
-        bodies={"docs/A-1.html": FLOW_PARAGRAPH, "docs/A-2.md": f"```html\n{FLOW_PARAGRAPH}\n```\n"},
+        docs=[make_item("A-1", body="docs/A-1.html"), make_item("A-2", body="docs/A-2.mark.md")],
+        bodies={"docs/A-1.html": FLOW_PARAGRAPH, "docs/A-2.mark.md": f"```html\n{FLOW_PARAGRAPH}\n```\n"},
     )
     load_preview_scripts()
     # 実行
@@ -272,7 +272,7 @@ def test_search_items_when_html(
 @pytest.mark.parametrize(
     ("body", "expected"),
     [
-        pytest.param("A-1.md", "md", id="markdown"),
+        pytest.param("A-1.mark.md", "md", id="markdown"),
         pytest.param("A-1.html", "html", id="html"),
         pytest.param(None, None, id="undefined"),
     ],

@@ -883,7 +883,7 @@ def test_records_response_when_settings_changed(
     ("file_name", "text", "changes"),
     [
         pytest.param("decisions.yaml", "items: []\n", True, id="rewrite_yaml"),
-        pytest.param("docs/D-1.md", "本文\n", True, id="add_body"),
+        pytest.param("docs/D-1.mark.md", "本文\n", True, id="add_body"),
         pytest.param("threads.yaml", "items: []\n", True, id="add_threads"),
         pytest.param("comments.yaml", "seq: 0\nitems: []\n", False, id="add_comments"),
         pytest.param("drafts.yaml", "items: []\n", False, id="add_drafts"),
