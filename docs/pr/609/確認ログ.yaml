@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 画面一覧・画面遷移
+    decision: コメントの一覧に項目での絞り込みを追加し、詳細パネルの見出しのボタンから開いている項目で絞った一覧を開く。新しい画面は作らず、重なりは今の決まりのまま（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 974d08b0
+    thread: https://github.com/shuhei1101/mindstella/pull/609#discussion_r4625697646

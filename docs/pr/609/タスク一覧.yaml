@@ -30,8 +30,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T07:28:35.053699+00:00'
   - process: 画面一覧・画面遷移
-    status: todo
+    status: done
     note: 詳細パネルからコメントの一覧を開く遷移を追加する
+    updated_by: planner
+    updated_at: '2026-11-19T07:43:27.520072+00:00'
   - process: 単一ユースケース設計
     status: todo
     note: SC-489-5（スレッドで話す）と SC-489-46（項目の詳細を読む）に、項目で絞ったコメントの一覧を開いて読む操作を記載する
