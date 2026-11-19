@@ -70,6 +70,8 @@ TOOL_NAMES = (
     "stop_session",
     "restart_session",
     "close_workspace",
+    "reopen_workspace",
+    "delete_workspace",
     "server_status",
     "server_stop",
 )
@@ -825,6 +827,24 @@ def build_server(
     def close_workspace(workspace_id: WorkspaceIdArg, session: SessionArg = None) -> CallToolResult:
         return call_tool(
             lambda: workspaces.close_workspace(workspace_id, context), write_lock=write_lock
+        )
+
+    @server.tool(
+        name="reopen_workspace",
+        description="クローズしたワークスペースの配信元の行を outside_read: true に戻し、クローズ待ちを解く。クローズしていなければクローズ待ちだけを解く",
+    )
+    def reopen_workspace(workspace_id: WorkspaceIdArg, session: SessionArg = None) -> CallToolResult:
+        return call_tool(
+            lambda: workspaces.reopen_workspace(workspace_id, context), write_lock=write_lock
+        )
+
+    @server.tool(
+        name="delete_workspace",
+        description="クローズしたワークスペースの配信元の行と状態のフォルダの記録を削除する。記録のフォルダは残す",
+    )
+    def delete_workspace(workspace_id: WorkspaceIdArg, session: SessionArg = None) -> CallToolResult:
+        return call_tool(
+            lambda: workspaces.delete_workspace(workspace_id, context), write_lock=write_lock
         )
 
     @server.tool(

@@ -1,0 +1,280 @@
+id: SC-601-1
+title: ワークスペースを開き直して削除する
+lead: 外部のアプリがクローズしたワークスペースの開き直しを依頼すると、MindStella は配信元の行を戻してクローズ待ちを解き、クローズの前と同じ進め方の文書・追加の MCP・プラグインで MindStella のセッションを作れるようにする。不要になったワークスペースの削除を依頼すると、配信元の行と状態のフォルダの記録を削除し、記録のフォルダは残す単一ユースケース。
+issue: 523
+test_file: tests/e2e/単一ユースケース/test_workspace_reopen_delete.py
+primary_actor: 外部のアプリ（aituber など）
+stakeholders:
+  - name: 外部のアプリ
+    interest: 終了した制作を再開するときに、クローズの前と同じ指定で MindStella のセッションを作り直せる。制作を削除するときに、前の試行で MindStella の側だけ削除済みでも、削除済みと判定して続けられる
+  - name: 利用者
+    interest: 削除したワークスペースの配信元の行と状態の記録が端末に残らず、Git で管理する記録のフォルダは消えない
+trigger: 外部のアプリが MindStella の API に、ワークスペースの開き直し（`POST /workspaces/{id}/reopen`）か削除（`DELETE /workspaces/{id}`）を依頼する
+preconditions:
+  - 常駐サーバーが起動している
+  - 外部のアプリがワークスペースを作っている（単一ユースケース『外部のアプリから起動する』）
+success_guarantee: '開き直した後は、ワークスペースの配信元の行が `outside_read: true` で、状態がクローズ待ちでなく、状態の取得が進行中を返却し、クローズ待ちの間に届いたコメントでは MindStella のセッションを起動せずスレッドに残し、MindStella のセッションの作成でクローズの前と同じ進め方の文書・追加の MCP・プラグインで起動できる。削除した後は、ワークスペースの配信元の行・状態のフォルダの `workspaces/{ID}/`・ID の一覧の行が無く、記録のフォルダは残っている。'
+minimal_guarantee: クローズしていないワークスペースの削除は断り、何も変えない。削除が途中で失敗したときは ID の一覧の行を残し、同じ削除をもう一度依頼すれば残りを削除できる。無いワークスペースの開き直し・削除は、ほかの失敗と区別できる、ワークスペースが無いエラーにする。
+frequency: 外部のアプリが終了した制作を再開するたび（開き直し）・制作を削除するたび（削除）
+priority: 高
+reading: |-
+  | 呼び出し元 | 読み替え |
+  | --- | --- |
+  | 端末の起動のコマンド | 同じ MindStella の API を呼ぶので、外部のアプリを利用者に読み替える |
+  | MindStella の MCP の開き直し・削除のツール | 外部のアプリを、MCP を呼んだセッションに読み替える |
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（起動したら SessionStart のフックを呼び、起動の引数を記録する）
+      - name: 常駐サーバー
+        description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
+      - name: project-index
+        description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）の行を書き換える
+      - name: ワークスペース
+        description: '単一ユースケース『外部のアプリから起動する』で進め方の文書・追加の MCP・プラグインを指定して作り、単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』でクローズした（配信元の行が `outside_read: false`・状態がクローズ待ち）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+        participant PI as project-index
+        participant CC as MindStella のセッション
+
+        APP->>API: 開き直しを依頼する（POST /workspaces/{id}/reopen）
+        API->>WSM: 開き直しを依頼する
+        WSM->>PI: 配信元の行を outside_read: true に戻す
+        PI-->>WSM: 変更した結果
+        WSM->>MGR: クローズ待ちを解くよう依頼する
+        API-->>APP: 開き直した
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API-->>APP: 進行中・クローズ待ちでない
+        APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+        API->>MGR: 作成を依頼する
+        MGR->>MGR: ワークスペースの設定の進め方の文書と、状態のフォルダの追加の MCP・プラグインを参照する
+        MGR->>CC: 参照した指定で起動する
+        CC->>MGR: SessionStart
+        API-->>APP: MindStella のセッションの ID と画面の URL
+      ```
+    expected:
+      - 'ワークスペースの配信元の行が `outside_read: true` になっている'
+      - 状態のクローズ待ちが解かれ、状態の取得が進行中を返却する
+      - Mock のセッションが、クローズの前と同じ進め方の文書・追加の MCP・プラグインで起動している
+      - MindStella のセッションの作成の応答に、追加の MCP・プラグインの記録が無いことの警告が無い
+      - 記録のフォルダが、開き直しの前と同じ
+    test: test_normal
+  - name: 正常シナリオ（クローズしていないワークスペース）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: project-index
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 'MindStella のセッションを API で止めた後で、クローズしていない（配信元の行が `outside_read: true`・状態がクローズ待ち）。クローズ待ちの間に画面で届いたコメントが 1 件、スレッドに取り込み待ちとして残っている'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+
+        APP->>API: 開き直しを依頼する（POST /workspaces/{id}/reopen）
+        API->>WSM: 開き直しを依頼する
+        WSM->>WSM: クローズしていないので、配信元の行は変えない
+        WSM->>MGR: クローズ待ちを解くよう依頼する
+        MGR->>MGR: クローズ待ちを解くだけで、取り込み待ちのコメントがあっても起動しない
+        API-->>APP: 開き直した
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API-->>APP: 進行中・クローズ待ちでない
+      ```
+    expected:
+      - 配信元の行が変わらず、状態のクローズ待ちが解かれている
+      - 状態の取得が、停止ではなく進行中を返却する
+      - MindStella のセッションが起動しておらず、クローズ待ちの間に届いたコメントがスレッドに取り込み待ちとして残っている
+    test: test_normal_when_not_closed
+    notes:
+      後から届いたコメント: クローズ待ちを解いた後に届いたコメントは、進行中のワークスペースと同じく、MindStella のセッションを起動し直して届ける（単一ユースケース『MindStella のセッションを起動し直す』）
+  - name: 正常シナリオ（クローズしたワークスペースを削除する）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: project-index
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 正常シナリオと同じくクローズした。状態のフォルダに MindStella のセッションの状態・追加の MCP とプラグインの記録・変更の検知の前回の中身・前回参照した時点がある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant PI as project-index
+        participant ST as 状態のフォルダ
+
+        APP->>API: 削除を依頼する（DELETE /workspaces/{id}）
+        API->>WSM: 削除を依頼する
+        WSM->>WSM: 配信元の行がクローズ済みかを確認する
+        WSM->>PI: 配信元の行を削除する
+        PI-->>WSM: 削除した結果
+        WSM->>ST: ワークスペースの記録（workspaces/{ID}/）を削除する
+        WSM->>ST: ID の一覧から行を削除する
+        API-->>APP: 削除した
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API-->>APP: ワークスペースが無いエラー
+      ```
+    expected:
+      - グローバルの設定のファイルに、ワークスペースの配信元の行が無い
+      - 状態のフォルダに、ワークスペースの `workspaces/{ID}/` と ID の一覧の行が無い
+      - 記録のフォルダ（`.mindstella/`）が残っている
+      - 削除の後の状態の取得が、ワークスペースが無いエラーを返却する
+    test: test_normal_when_delete_closed
+  - name: 正常シナリオ（途中で失敗した削除をもう一度依頼する）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: project-index
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 前の削除で配信元の行だけ削除され、状態のフォルダの `workspaces/{ID}/` と ID の一覧の行が残っている
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant ST as 状態のフォルダ
+
+        APP->>API: 削除を依頼する（DELETE /workspaces/{id}）
+        API->>WSM: 削除を依頼する
+        WSM->>WSM: 配信元の行が無いので、削除済みとして続ける
+        WSM->>ST: ワークスペースの記録（workspaces/{ID}/）を削除する
+        WSM->>ST: ID の一覧から行を削除する
+        API-->>APP: 削除した
+      ```
+    expected:
+      - 外部のアプリが削除の成功を受け取っている
+      - 状態のフォルダに、ワークスペースの `workspaces/{ID}/` と ID の一覧の行が無い
+    test: test_normal_when_delete_retried
+  - name: 異常シナリオ（無いワークスペースを削除する）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 前の削除で、配信元の行・状態のフォルダの記録・ID の一覧の行を全て削除した
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+
+        APP->>API: 削除を依頼する（DELETE /workspaces/{id}）
+        API->>WSM: 削除を依頼する
+        WSM->>WSM: 状態のフォルダの ID の一覧に無い
+        API-->>APP: ワークスペースが無いエラー
+      ```
+    expected:
+      - 外部のアプリが、ほかのエラー（クローズしていない・project-index の失敗）と区別できる、ワークスペースが無いエラーを受け取っている
+    test: test_error_when_delete_missing
+    notes:
+      外部のアプリの判断: aituber は、このエラーを削除済みとして扱い、制作の削除を続ける
+  - name: 異常シナリオ（クローズしていないワークスペースを削除する）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: project-index
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: MindStella のセッションを止めた後で、クローズしていない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+
+        APP->>API: 削除を依頼する（DELETE /workspaces/{id}）
+        API->>WSM: 削除を依頼する
+        WSM->>WSM: 配信元の行がクローズ済みでない
+        API-->>APP: 先にクローズするよう求めるエラー
+      ```
+    expected:
+      - 外部のアプリが、先にクローズするよう求めるエラーを受け取っている
+      - 配信元の行と状態のフォルダが、依頼の前と同じ
+    test: test_error_when_delete_not_closed
+  - name: 異常シナリオ（project-index が配信元の行の削除に失敗する）
+    setup:
+      - name: Mock
+        description: project-index（配信元の行の削除にエラーを返却する）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: クローズした
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant PI as project-index
+
+        APP->>API: 削除を依頼する（DELETE /workspaces/{id}）
+        API->>WSM: 削除を依頼する
+        WSM->>PI: 配信元の行を削除する
+        PI-->>WSM: エラー
+        API-->>APP: project-index の失敗のエラー
+      ```
+    expected:
+      - 外部のアプリが、project-index の失敗のエラーを受け取っている
+      - 状態のフォルダの `workspaces/{ID}/` と ID の一覧の行が残っている（同じ削除をもう一度依頼できる）
+    test: test_error_when_source_delete_failed
+  - name: 異常シナリオ（無いワークスペースを開き直す）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 状態のフォルダの ID の一覧に無い ID
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+
+        APP->>API: 開き直しを依頼する（POST /workspaces/{id}/reopen）
+        API->>WSM: 開き直しを依頼する
+        WSM->>WSM: 状態のフォルダの ID の一覧に無い
+        API-->>APP: ワークスペースが無いエラー
+      ```
+    expected:
+      - 外部のアプリが、ワークスペースが無いエラーを受け取っている
+      - グローバルの設定のファイルと状態のフォルダが、依頼の前と同じ
+    test: test_error_when_reopen_missing
+refs:
+  - SC-531-1#
+  - SC-531-2#
+  - SC-582-1#
+  - SC-597-1#
+notes:
+  受け持ち: 開き直しと削除はワークスペースの管理が受け持つ。クローズ待ちを解くのはセッションの管理に依頼する
+  記録のフォルダ: 削除は記録のフォルダを削除しない（Git で管理するため）。削除するのは外部のアプリか利用者
+  削除の順番: 配信元の行・状態のフォルダの `workspaces/{ID}/`・ID の一覧の行の順に削除し、ID の一覧の行を最後にする。途中で失敗しても、ID の一覧に行が残るので、同じ削除をもう一度依頼できる
+  排他: 開き直し・削除は、同じワークスペースの MindStella のセッションの作成・クローズと同じ順番で処理し、片方が終わってからもう片方を判定する
+  インターフェース定義で決めること: 開き直し・削除の応答のキー、ワークスペースが無いエラーをほかのエラーと区別する値、MindStella の MCP のツールの名前
+  E2E の範囲: MindStella のセッションのエージェントは Mock にする
+  スコープ外: '画面の開き直しのボタンは別の Issue、設定の書き換えは #524、常駐サーバーの起動のときの照合は #525 で扱う'

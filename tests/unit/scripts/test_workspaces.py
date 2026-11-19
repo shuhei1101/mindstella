@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import shutil
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -41,9 +42,17 @@ class FakePreviews:
         """立てたことにする。"""
         return PREVIEW_URL, True
 
+    def __init__(self) -> None:
+        """止めた配信の ID を空で始める。"""
+        self.stopped: list[str] = []
+
     def url_of(self, root: Path) -> str:
         """配っている URL を返す。"""
         return PREVIEW_URL
+
+    def stop_workspace(self, workspace_id: str) -> None:
+        """止めたワークスペースの ID を記録する。"""
+        self.stopped.append(workspace_id)
 
 
 class FakeProjectIndex:
@@ -58,6 +67,9 @@ class FakeProjectIndex:
         self.add_error: ProjectIndexError | None = None
         self.reloads = 0
         self.reload_error: ProjectIndexError | None = None
+        self.patch_error: ProjectIndexError | None = None
+        self.deleted: list[str] = []
+        self.delete_error: ProjectIndexError | None = None
 
     def get_settings(self, port: int) -> dict[str, Any]:
         """設定のファイルのパスと行を返す。"""
@@ -84,9 +96,18 @@ class FakeProjectIndex:
 
     def patch_source(self, port: int, source_id: str, changes: dict[str, Any]) -> None:
         """行のキーを変える。"""
+        if self.patch_error is not None:
+            raise self.patch_error
         self.patched.append((source_id, changes))
         if "outside_read" in changes:
             self.rows[source_id]["outsideRead"] = changes["outside_read"]
+
+    def delete_source(self, port: int, source_id: str) -> bool:
+        """行を削除する。行が無ければ偽を返す。"""
+        if self.delete_error is not None:
+            raise self.delete_error
+        self.deleted.append(source_id)
+        return self.rows.pop(source_id, None) is not None
 
     def reload_sources(self, port: int) -> None:
         """全ての配信元を読み直させたことを数える。"""
@@ -116,6 +137,7 @@ def fake_pi(tmp_path: Path, allowed: Path, monkeypatch: pytest.MonkeyPatch) -> F
     monkeypatch.setattr(project_index, "add_source", fake.add_source)
     monkeypatch.setattr(project_index, "patch_source", fake.patch_source)
     monkeypatch.setattr(project_index, "reload_sources", fake.reload_sources, raising=False)
+    monkeypatch.setattr(project_index, "delete_source", fake.delete_source, raising=False)
     monkeypatch.setattr(workspaces, "check_flow", lambda *_args: None)
     monkeypatch.setattr(sessions, "is_alive", lambda *_args, **_kwargs: False)
     return fake
@@ -628,6 +650,201 @@ def test_close_workspace_unknown(ctx: SimpleNamespace) -> None:
     with pytest.raises(ApiError) as caught:
         workspaces.close_workspace("mindstella-x-000000", ctx)
     assert caught.value.status == 404
+
+
+def _closed(allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> str:
+    """クローズしたワークスペースを作り、ID を返す。"""
+    _status, created = workspaces.create_workspace(_request(allowed / "家計簿"), ctx)
+    fake_pi.rows[created["id"]]["outsideRead"] = False
+    _write_session(ctx, created["id"], close_pending=True)
+    return created["id"]
+
+
+def test_reopen_workspace(allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+    """クローズ済みなら行を戻してクローズ待ちを解く（正常系）。"""
+    # 準備
+    workspace_id = _closed(allowed, fake_pi, ctx)
+    # 実行
+    result = workspaces.reopen_workspace(workspace_id, ctx)
+    # 検証
+    assert result == {"id": workspace_id, "reopened": True, "closed": False}
+    assert fake_pi.patched == [(workspace_id, {"outside_read": True})]
+    session = state.read_session(ctx.state_root, workspace_id)
+    assert session is not None
+    assert session.close_pending is False
+
+
+def test_reopen_workspace_not_closed(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """クローズしていなければクローズ待ちだけ解く（正常系）。"""
+    # 準備
+    _status, created = workspaces.create_workspace(_request(allowed / "家計簿"), ctx)
+    _write_session(ctx, created["id"], close_pending=True)
+    # 実行
+    result = workspaces.reopen_workspace(created["id"], ctx)
+    # 検証
+    assert result == {"id": created["id"], "reopened": False, "closed": False}
+    assert fake_pi.patched == []
+    session = state.read_session(ctx.state_root, created["id"])
+    assert session is not None
+    assert session.close_pending is False
+
+
+def test_reopen_workspace_error_when_unknown(fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+    """ID の一覧に無いワークスペースは 404（異常系）。"""
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.reopen_workspace("mindstella-x-000000", ctx)
+    assert (caught.value.status, caught.value.stage) == (404, "workspace")
+
+
+def test_reopen_workspace_error_when_row_missing(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """配信元の行が無いワークスペースは 404（異常系）。"""
+    # 準備
+    workspace_id = _closed(allowed, fake_pi, ctx)
+    del fake_pi.rows[workspace_id]
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.reopen_workspace(workspace_id, ctx)
+    assert (caught.value.status, caught.value.stage) == (404, "workspace")
+
+
+def test_reopen_workspace_error_when_patch_failed(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """project-index の失敗は 502 で、クローズ待ちを解かない（異常系）。"""
+    # 準備
+    workspace_id = _closed(allowed, fake_pi, ctx)
+    fake_pi.patch_error = ProjectIndexError(500, "壊れた")
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.reopen_workspace(workspace_id, ctx)
+    assert (caught.value.status, caught.value.stage) == (502, "source")
+    session = state.read_session(ctx.state_root, workspace_id)
+    assert session is not None
+    assert session.close_pending is True
+
+
+def test_delete_workspace(allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+    """クローズ済みなら行・状態・ID の一覧の行を削除する（正常系）。"""
+    # 準備
+    workspace_id = _closed(allowed, fake_pi, ctx)
+    # 実行
+    result = workspaces.delete_workspace(workspace_id, ctx)
+    # 検証
+    assert result == {"id": workspace_id, "deleted": True}
+    assert fake_pi.deleted == [workspace_id]
+    assert ctx.previews.stopped == [workspace_id]
+    assert not state.workspace_dir(ctx.state_root, workspace_id).exists()
+    assert workspace_id not in state.read_ids(ctx.state_root)
+    assert (allowed / "家計簿" / ".mindstella" / "config.yaml").is_file()
+
+
+def test_delete_workspace_source_row_missing(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """行が無ければ残りだけ削除する（正常系）。"""
+    # 準備
+    workspace_id = _closed(allowed, fake_pi, ctx)
+    del fake_pi.rows[workspace_id]
+    # 実行
+    result = workspaces.delete_workspace(workspace_id, ctx)
+    # 検証
+    assert result == {"id": workspace_id, "deleted": True}
+    assert fake_pi.deleted == []
+    assert not state.workspace_dir(ctx.state_root, workspace_id).exists()
+    assert workspace_id not in state.read_ids(ctx.state_root)
+
+
+def test_delete_workspace_error_when_unknown(fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+    """ID の一覧に無いワークスペースは 404（異常系）。"""
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.delete_workspace("mindstella-x-000000", ctx)
+    assert (caught.value.status, caught.value.stage) == (404, "workspace")
+
+
+def test_delete_workspace_error_when_not_closed(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """クローズしていなければ 409 で、何も変えない（異常系）。"""
+    # 準備
+    _status, created = workspaces.create_workspace(_request(allowed / "家計簿"), ctx)
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.delete_workspace(created["id"], ctx)
+    assert (caught.value.status, caught.value.stage) == (409, "not_closed")
+    assert fake_pi.deleted == []
+    assert created["id"] in state.read_ids(ctx.state_root)
+
+
+def test_delete_workspace_error_when_source_failed(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """project-index の失敗は 502 で、状態のフォルダを変えない（異常系）。"""
+    # 準備
+    workspace_id = _closed(allowed, fake_pi, ctx)
+    fake_pi.delete_error = ProjectIndexError(500, "壊れた")
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.delete_workspace(workspace_id, ctx)
+    assert (caught.value.status, caught.value.stage) == (502, "source")
+    assert state.workspace_dir(ctx.state_root, workspace_id).exists()
+    assert workspace_id in state.read_ids(ctx.state_root)
+
+
+def test_delete_workspace_error_when_state_failed(
+    allowed: Path,
+    fake_pi: FakeProjectIndex,
+    ctx: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """状態のフォルダを削除できなければ 500 で、ID の一覧の行を残す（異常系）。"""
+    # 準備
+    workspace_id = _closed(allowed, fake_pi, ctx)
+
+    def fail(*_args: object) -> None:
+        raise OSError("消せない")
+
+    monkeypatch.setattr(state, "delete_workspace_state", fail, raising=False)
+    caplog.set_level(logging.ERROR)
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.delete_workspace(workspace_id, ctx)
+    assert (caught.value.status, caught.value.stage) == (500, "state")
+    assert workspace_id in state.read_ids(ctx.state_root)
+    assert "mindstella.workspace.delete_failed" in caplog.messages
+
+
+def test_delete_workspace_concurrent(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """鍵を取った時点で ID の一覧に無ければ 404（異常系）。"""
+    # 準備
+    workspace_id = _closed(allowed, fake_pi, ctx)
+    results: list[object] = []
+
+    def delete() -> None:
+        try:
+            results.append(workspaces.delete_workspace(workspace_id, ctx))
+        except ApiError as error:
+            results.append((error.status, error.stage))
+
+    threads = [threading.Thread(target=delete) for _ in range(2)]
+    # 実行
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    # 検証
+    assert sorted(results, key=str) == sorted(
+        [{"id": workspace_id, "deleted": True}, (404, "workspace")], key=str
+    )
+    assert fake_pi.deleted == [workspace_id]
 
 
 def _stale_schema(folder: Path) -> None:

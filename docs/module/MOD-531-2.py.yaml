@@ -378,6 +378,49 @@ functions:
         condition: '`parametrize`: ファイルが無い / YAML として壊れている / `sources` が辞書'
         mock: なし
         expected: '`ProjectIndexError`（`detail` にパス）'
+  - name: delete_source
+    title: 配信元の行を削除する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+    usecase: ワークスペースを開き直して削除する
+    scope: public
+    summary: '`get_settings` で `version` を引き、`DELETE /settings/sources/{id}?expectedVersion=` を送る。409（バージョンが要更新）なら 1 回だけ引き直して送り直す'
+    args:
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: project-index のポート
+      - name: source_id
+        type: str
+        required: true
+        passing: positional
+        description: 行の ID
+    returns:
+      type: bool
+      description: 削除したら真、404（行が無い）なら偽
+    exceptions:
+      - name: ProjectIndexError
+        condition: 200・404 のほか、または 409 が 2 回
+    unit_tests:
+      - name: test_delete_source
+        case: 正常
+        summary: バージョンを付けて送り、409 なら 1 回だけ引き直す
+        condition: 1 回目の DELETE が 409、2 回目が 200
+        mock: テストの HTTP のサーバー
+        expected: 真を返し、DELETE が 2 回で、2 回目の `expectedVersion` が引き直したバージョン
+      - name: test_delete_source_missing
+        case: 正常
+        summary: 行が無ければ偽
+        condition: DELETE が 404
+        mock: テストの HTTP のサーバー
+        expected: 偽を返す
+      - name: test_delete_source_error
+        case: 異常
+        summary: 409 が 2 回・500 は ProjectIndexError
+        condition: DELETE が 2 回とも 409 / 500
+        mock: テストの HTTP のサーバー
+        expected: '`ProjectIndexError`（`status` が 409 / 500）'
 notes:
   HTTP: 標準ライブラリの `urllib.request` で送る。`Origin` を付けない（project-index はサーバーの側からの呼び出しとして受ける）
   ログ: |

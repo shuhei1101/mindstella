@@ -1,0 +1,46 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-601-1.yaml
+    impact: new
+    detail: 外部のアプリが、クローズしたワークスペースを開き直して同じ進め方の文書・追加の MCP・プラグインで MindStella のセッションを作り直し、不要になったワークスペースを削除して状態の記録も消す。無いワークスペースの削除は、ほかの失敗と区別できる失敗として受け取る（資料 A-107 の No 8・D-322・aituber の A-132）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-2.yaml
+    impact: following
+    detail: クローズの後の扱い（開き直しで戻す・削除で消す）を、新しい開き直しと削除のユースケースへつなぐ
+    depends_on:
+      - docs/scenario/SC-601-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: run_only
+    detail: クローズしたワークスペースのフォルダでワークスペースを作り直すと開き直す流れが、開き直しの処理を共通にしても変わらないかを確かめる
+    depends_on: []
+docs:
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 開き直し（POST /workspaces/{id}/reopen）と削除（DELETE /workspaces/{id}）の API と、MindStella の MCP の同じ処理を呼ぶツールを追加し、削除で無いワークスペースを指定したときのエラーを記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T02:47:47.184692+00:00'
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: クローズの後に、同じフォルダで作り直す代わりに開き直しで戻せることと、削除で配信元の行と状態の記録を消し、記録のフォルダは残ることを記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T02:47:47.184692+00:00'
+scope_out:
+  - item: 画面で、クローズしたワークスペースに起動のボタンの代わりに開き直しのボタンを出す（資料 A-119 の「画面での MindStella のセッション」）
+    reason: '画面の変更で、画面を常駐サーバーの 1 つのポートで配る #538 の後に作る。この PR の開き直しの API を前提にする'
+    plan: '#603'
+  - item: 削除で、記録のフォルダ（.mindstella/）を消す
+    reason: 記録のフォルダは Git で管理するため、MindStella は消さない（資料 A-119 の「ワークスペースの削除」）。消すのは外部のアプリか利用者
+    plan: none
+  - item: 設定の書き換え（PATCH /workspaces/{id}）で、開き直した後の追加の MCP・プラグインを指定し直す
+    reason: 資料 A-107 の No 9 で別の Issue にしている。開き直しはクローズの前の記録のまま起動できるところまでにする
+    plan: '#524'
+  - item: 常駐サーバーの起動のときに、ID の一覧に無い配信元の行や、削除の途中で止まった状態の記録を照合する
+    reason: 資料 A-107 の No 10 で別の Issue にしている
+    plan: '#525'
+  - item: インターフェース定義『MCP サーバーの起動』のツールとエンドポイントの一覧に、`restart_session` と `POST /workspaces/{id}/sessions/{session}/restart` を記載する
+    reason: 'IF-582-1 の制約と MOD-489-177 の `TOOL_NAMES` にあるのに一覧に無い（PR #582 からの記載漏れ）。今回の要望（開き直しと削除）に含まれない'
+    plan: '#602'

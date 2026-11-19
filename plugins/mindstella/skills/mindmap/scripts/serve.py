@@ -20,8 +20,9 @@ from pathlib import Path
 from typing import Any, cast
 from urllib.parse import unquote, urlsplit
 
+import yaml
 from builder import PREVIEW_DIR, assemble_template, read_records
-from change_detection import ChangeDetector, detector_of
+from change_detection import ChangeDetector, detector_of, workspace_id_of
 from claude_input import InputTargets, Session
 from comments import (
     ReviewComment,
@@ -363,6 +364,23 @@ class PreviewRegistry:
         """そのワークスペースの Claude Code への入力の宛先を、ツールを呼んだセッションにする。"""
         self._input_targets.remember(root, session)
 
+    def stop_workspace(self, workspace_id: str) -> None:
+        """ワークスペースの ID が一致する配信と変更の検知を台帳から外して止める。無ければ何もしない。"""
+        # 鍵の中では台帳から外して手元に取るだけにし、フックと停止は鍵の外で呼ぶ
+        with self._guard:
+            servers = [root for root in self._servers if _matches_id(root, workspace_id)]
+            taken = [self._servers.pop(root) for root in servers]
+            roots = [root for root in self._detectors if _matches_id(root, workspace_id)]
+            detectors = [self._detectors.pop(root) for root in roots]
+        for detector in detectors:
+            detector.stop()
+        # 配信を止める前に、終了時のフックを呼ぶ
+        if self._external.stop_hook:
+            for preview in taken:
+                run_hook(self._external.stop_hook, preview.port, preview.root.name)
+        for preview in taken:
+            preview.stop()
+
     def stop_all(self) -> None:
         """立てた配信ごとに終了時のフックを呼んでから全て止め、台帳を空にする。2 回呼んでも 2 回目は何もしない。"""
         # 鍵の中では台帳を空にして配信を手元に取るだけにし、フックと停止は鍵の外で呼ぶ
@@ -379,6 +397,16 @@ class PreviewRegistry:
                 run_hook(self._external.stop_hook, preview.port, preview.root.name)
         for preview in taken:
             preview.stop()
+
+
+def _matches_id(root: Path, workspace_id: str) -> bool:
+    """配信しているワークスペースの ID が一致するかを返す。設定を読めないワークスペースは一致しないものとする。"""
+    try:
+        return workspace_id_of(root) == workspace_id
+    except (OSError, yaml.YAMLError) as error:
+        # 設定が壊れている・読めない: 比べる対象から外して、ほかのワークスペースの削除を止めない
+        logger.warning("ワークスペースの ID を引けないため比べない: %s（%s）", root, error)
+        return False
 
 
 class PreviewHandler(BaseHTTPRequestHandler):

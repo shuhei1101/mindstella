@@ -1,0 +1,587 @@
+$ /tmp/pr601-venv/bin/python -m pytest tests/unit --ignore=tests/unit/preview -q -p no:cacheprovider --basetemp=/tmp/planner-601-pt/red
+（Red。/tmp/pr601-venv は requirements-dev.txt を入れたこの PR 用の仮想環境。tests/unit/preview は画面の単体テスト（TL-2）で、この PR は画面を変えないため除いた。fail の 24 件は全て今回追加したテストで、原因は実装が無いこと（AttributeError: reopen_workspace・delete_workspace・delete_workspace_state・delete_source・stop_workspace と、経路・ツールの一覧に 2 つが無いこと））
+.....F.................................................................. [  4%]
+........................................................................ [  9%]
+........................................................................ [ 13%]
+........................................................................ [ 18%]
+........................................................................ [ 23%]
+........................................................................ [ 27%]
+........................................................................ [ 32%]
+........................................................................ [ 37%]
+........................................................................ [ 41%]
+........................................................................ [ 46%]
+..............................FFFF...................................... [ 50%]
+......................................s................................. [ 55%]
+..............FFF....................................................... [ 60%]
+........................................................................ [ 64%]
+.......................FF............................................... [ 69%]
+........................................................................ [ 74%]
+...................................................FF................... [ 78%]
+........................................................................ [ 83%]
+........................................................................ [ 88%]
+........................................................................ [ 92%]
+........................................................................ [ 97%]
+...........FFFFFFFFFFFF...................                               [100%]
+=================================== FAILURES ===================================
+______________________________ test_build_routes _______________________________
+
+    def test_build_routes() -> None:
+        """経路とメソッドが揃う。"""
+        routes = api.build_routes(SimpleNamespace(port=PORT))
+        pairs = {
+            (route.path, method)
+            for route in routes
+            if isinstance(route, Route)
+            for method in route.methods or []
+        }
+>       assert {
+            ("/workspaces", "POST"),
+            ("/workspaces", "GET"),
+            ("/workspaces/{id}", "GET"),
+            ("/workspaces/{id}/sessions", "POST"),
+            ("/workspaces/{id}/sessions", "GET"),
+            ("/workspaces/{id}/sessions/{session}", "DELETE"),
+            ("/workspaces/{id}/sessions/{session}/restart", "POST"),
+            ("/workspaces/{id}/close", "POST"),
+            ("/workspaces/{id}/reopen", "POST"),
+            ("/workspaces/{id}", "DELETE"),
+            ("/_admin/sessions/{session}/events", "POST"),
+            ("/_admin/sessions/{session}/resume", "POST"),
+            ("/_admin/sessions/{session}/read_point", "POST"),
+        } <= pairs
+E       AssertionError: assert {('/_admin/se...DELETE'), ...} <= {('/_admin/se... 'POST'), ...}
+E         
+E         Extra items in the left set:
+E         ('/workspaces/{id}', 'DELETE')
+E         ('/workspaces/{id}/reopen', 'POST')
+
+tests/unit/scripts/test_api.py:42: AssertionError
+______________________________ test_delete_source ______________________________
+
+fake_pi = <function fake_pi.<locals>.make at 0x71ca91c58ea0>
+
+    def test_delete_source(fake_pi: Callable[..., FakeProjectIndex]) -> None:
+        """バージョンを付けて送り、409 なら 1 回だけ引き直して送り直す（正常系）。"""
+        # 準備
+        server = fake_pi(
+            {
+                ("GET", "/settings/sources"): [(200, {"version": "v1"}), (200, {"version": "v2"})],
+                ("DELETE", "/settings/sources/w"): [(409, {"current": "v2"}), (200, {"version": "v3"})],
+            }
+        )
+        # 実行
+>       result = project_index.delete_source(server.port, "w")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'project_index' has no attribute 'delete_source'. Did you mean: 'reload_sources'?
+
+tests/unit/scripts/test_project_index.py:214: AttributeError
+__________________________ test_delete_source_missing __________________________
+
+fake_pi = <function fake_pi.<locals>.make at 0x71ca91c58f40>
+
+    def test_delete_source_missing(fake_pi: Callable[..., FakeProjectIndex]) -> None:
+        """行が無ければ偽を返す（正常系）。"""
+        # 準備
+        server = fake_pi(
+            {
+                ("GET", "/settings/sources"): [(200, {"version": "v1"})],
+                ("DELETE", "/settings/sources/w"): [(404, {})],
+            }
+        )
+        # 実行
+>       result = project_index.delete_source(server.port, "w")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'project_index' has no attribute 'delete_source'. Did you mean: 'reload_sources'?
+
+tests/unit/scripts/test_project_index.py:234: AttributeError
+___________________ test_delete_source_error[conflict_twice] ___________________
+
+replies = [(409, {})], expected = 409
+fake_pi = <function fake_pi.<locals>.make at 0x71ca91c584a0>
+
+    @pytest.mark.parametrize(
+        ("replies", "expected"),
+        [
+            pytest.param([(409, {})], 409, id="conflict_twice"),
+            pytest.param([(500, {})], 500, id="server_error"),
+        ],
+    )
+    def test_delete_source_error(
+        replies: list[Reply], expected: int, fake_pi: Callable[..., FakeProjectIndex]
+    ) -> None:
+        """409 が 2 回・500 は ProjectIndexError を送る（異常系）。"""
+        # 準備
+        server = fake_pi(
+            {("GET", "/settings/sources"): [(200, {"version": "v1"})], ("DELETE", "/settings/sources/w"): replies}
+        )
+        # 実行・検証
+        with pytest.raises(ProjectIndexError) as caught:
+>           project_index.delete_source(server.port, "w")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'project_index' has no attribute 'delete_source'. Did you mean: 'reload_sources'?
+
+tests/unit/scripts/test_project_index.py:256: AttributeError
+____________________ test_delete_source_error[server_error] ____________________
+
+replies = [(500, {})], expected = 500
+fake_pi = <function fake_pi.<locals>.make at 0x71ca91c59da0>
+
+    @pytest.mark.parametrize(
+        ("replies", "expected"),
+        [
+            pytest.param([(409, {})], 409, id="conflict_twice"),
+            pytest.param([(500, {})], 500, id="server_error"),
+        ],
+    )
+    def test_delete_source_error(
+        replies: list[Reply], expected: int, fake_pi: Callable[..., FakeProjectIndex]
+    ) -> None:
+        """409 が 2 回・500 は ProjectIndexError を送る（異常系）。"""
+        # 準備
+        server = fake_pi(
+            {("GET", "/settings/sources"): [(200, {"version": "v1"})], ("DELETE", "/settings/sources/w"): replies}
+        )
+        # 実行・検証
+        with pytest.raises(ProjectIndexError) as caught:
+>           project_index.delete_source(server.port, "w")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'project_index' has no attribute 'delete_source'. Did you mean: 'reload_sources'?
+
+tests/unit/scripts/test_project_index.py:256: AttributeError
+_____________________________ test_stop_workspace ______________________________
+
+detected_registry = <serve.PreviewRegistry object at 0x71ca913326f0>
+make_workspace = <function make_workspace.<locals>._make at 0x71ca91c71620>
+make_item = <function make_item.<locals>._make at 0x71ca91c73420>
+
+    def test_stop_workspace(
+        detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """一致する配信と変更の検知だけ止める（正常系）。"""
+        # 準備
+        first = make_workspace(make_item("D-1"), name="a")
+        second = make_workspace(make_item("D-1"), name="b")
+        detected_registry.start(first)
+        detected_registry.start(second)
+        detector = detected_registry._detectors[first.resolve()]
+        # 実行
+>       detected_registry.stop_workspace(change_detection.workspace_id_of(first))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'PreviewRegistry' object has no attribute 'stop_workspace'
+
+tests/unit/scripts/test_serve.py:368: AttributeError
+_____________________ test_stop_workspace_when_not_served ______________________
+
+detected_registry = <serve.PreviewRegistry object at 0x71ca91331b80>
+make_workspace = <function make_workspace.<locals>._make at 0x71ca91c70d60>
+make_item = <function make_item.<locals>._make at 0x71ca91c71260>
+
+    def test_stop_workspace_when_not_served(
+        detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """配信していない ID なら何も変えない（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        url, _started = detected_registry.start(root)
+        # 実行
+>       detected_registry.stop_workspace("mindstella-x-000000")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'PreviewRegistry' object has no attribute 'stop_workspace'
+
+tests/unit/scripts/test_serve.py:384: AttributeError
+________________________ test_stop_workspace_then_start ________________________
+
+detected_registry = <serve.PreviewRegistry object at 0x71ca91c6b950>
+make_workspace = <function make_workspace.<locals>._make at 0x71ca91c73240>
+make_item = <function make_item.<locals>._make at 0x71ca915f5800>
+
+    def test_stop_workspace_then_start(
+        detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """止めた後の start で配信と変更の検知を新しく始める（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        detected_registry.start(root)
+>       detected_registry.stop_workspace(change_detection.workspace_id_of(root))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'PreviewRegistry' object has no attribute 'stop_workspace'
+
+tests/unit/scripts/test_serve.py:396: AttributeError
+______________________________ test_build_server _______________________________
+
+    def test_build_server() -> None:
+        """管理のツールの他は全てのツールを workspace つきで登録する（正常系）。"""
+        # 準備
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+        tools = _run_async(mcp_server.list_tools())
+        # 検証
+        schemas = _tool_schemas(tools)
+>       assert tuple(schemas) == EXPECTED_TOOL_NAMES
+E       AssertionError: assert ('next_id', '...'commit', ...) == ('next_id', '...'commit', ...)
+E         
+E         At index 25 diff: 'server_status' != 'reopen_workspace'
+E         Right contains 2 more items, first extra item: 'server_status'
+E         Use -v to get more diff
+
+tests/unit/scripts/test_server.py:511: AssertionError
+_________________________ test_build_server_api_tools __________________________
+
+    def test_build_server_api_tools() -> None:
+        """MindStella の API と同じ操作のツールがあり、init が無い（正常系）。"""
+        # 準備
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+        names = [tool.name for tool in _run_async(mcp_server.list_tools())]
+        # 検証
+>       assert set(API_TOOL_NAMES) <= set(names)
+E       AssertionError: assert {'close_works...session', ...} <= {'adopt', 'ch...session', ...}
+E         
+E         Extra items in the left set:
+E         'delete_workspace'
+E         'reopen_workspace'
+
+tests/unit/scripts/test_server.py:525: AssertionError
+_________________________ test_delete_workspace_state __________________________
+
+tmp_path = PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_state0')
+
+    def test_delete_workspace_state(tmp_path: Path) -> None:
+        """フォルダを中身ごと削除し、ids は変えない（正常系）。"""
+        # 準備
+        state.add_id(tmp_path, WORKSPACE_ID)
+        folder = state.workspace_dir(tmp_path, WORKSPACE_ID)
+        (folder / "snapshot").mkdir(parents=True)
+        (folder / "session.json").write_text("{}", encoding="utf-8")
+        # 実行
+>       state.delete_workspace_state(tmp_path, WORKSPACE_ID)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'state' has no attribute 'delete_workspace_state'
+
+tests/unit/scripts/test_state.py:154: AttributeError
+___________________ test_delete_workspace_state_when_missing ___________________
+
+tmp_path = PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_state_wh0')
+
+    def test_delete_workspace_state_when_missing(tmp_path: Path) -> None:
+        """フォルダが無ければ何もしない（正常系）。"""
+        # 実行
+>       state.delete_workspace_state(tmp_path, WORKSPACE_ID)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'state' has no attribute 'delete_workspace_state'
+
+tests/unit/scripts/test_state.py:163: AttributeError
+____________________________ test_reopen_workspace _____________________________
+
+allowed = PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8aed2e70>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace0/state'), locks... 0x71ca8aed0800>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace0/plugin'), tmux=None, proc=None)
+
+    def test_reopen_workspace(allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+        """クローズ済みなら行を戻してクローズ待ちを解く（正常系）。"""
+        # 準備
+        workspace_id = _closed(allowed, fake_pi, ctx)
+        # 実行
+>       result = workspaces.reopen_workspace(workspace_id, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'workspaces' has no attribute 'reopen_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:668: AttributeError
+_______________________ test_reopen_workspace_not_closed _______________________
+
+allowed = PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_not_clos0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8adbca10>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_not_clos0/state...e68b00>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_not_clos0/plugin'), tmux=None, proc=None)
+
+    def test_reopen_workspace_not_closed(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """クローズしていなければクローズ待ちだけ解く（正常系）。"""
+        # 準備
+        _status, created = workspaces.create_workspace(_request(allowed / "家計簿"), ctx)
+        _write_session(ctx, created["id"], close_pending=True)
+        # 実行
+>       result = workspaces.reopen_workspace(created["id"], ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'workspaces' has no attribute 'reopen_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:685: AttributeError
+___________________ test_reopen_workspace_error_when_unknown ___________________
+
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8ae288c0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_error_wh0/state...e28d70>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_error_wh0/plugin'), tmux=None, proc=None)
+
+    def test_reopen_workspace_error_when_unknown(fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+        """ID の一覧に無いワークスペースは 404（異常系）。"""
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.reopen_workspace("mindstella-x-000000", ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'reopen_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:698: AttributeError
+_________________ test_reopen_workspace_error_when_row_missing _________________
+
+allowed = PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_error_wh1/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8ae9f9e0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_error_wh1/state...e9d8e0>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_error_wh1/plugin'), tmux=None, proc=None)
+
+    def test_reopen_workspace_error_when_row_missing(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """配信元の行が無いワークスペースは 404（異常系）。"""
+        # 準備
+        workspace_id = _closed(allowed, fake_pi, ctx)
+        del fake_pi.rows[workspace_id]
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.reopen_workspace(workspace_id, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'reopen_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:711: AttributeError
+________________ test_reopen_workspace_error_when_patch_failed _________________
+
+allowed = PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_error_wh2/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8afb7890>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_error_wh2/state...fb4f20>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_reopen_workspace_error_wh2/plugin'), tmux=None, proc=None)
+
+    def test_reopen_workspace_error_when_patch_failed(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """project-index の失敗は 502 で、クローズ待ちを解かない（異常系）。"""
+        # 準備
+        workspace_id = _closed(allowed, fake_pi, ctx)
+        fake_pi.patch_error = ProjectIndexError(500, "壊れた")
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.reopen_workspace(workspace_id, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'reopen_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:724: AttributeError
+____________________________ test_delete_workspace _____________________________
+
+allowed = PosixPath('/tmp/planner-601-pt/red/test_delete_workspace0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8ae9e7b0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace0/state'), locks... 0x71ca8afb6900>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace0/plugin'), tmux=None, proc=None)
+
+    def test_delete_workspace(allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+        """クローズ済みなら行・状態・ID の一覧の行を削除する（正常系）。"""
+        # 準備
+        workspace_id = _closed(allowed, fake_pi, ctx)
+        # 実行
+>       result = workspaces.delete_workspace(workspace_id, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'workspaces' has no attribute 'delete_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:736: AttributeError
+___________________ test_delete_workspace_source_row_missing ___________________
+
+allowed = PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_source_r0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8adac0e0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_source_r0/state...c2d0a0>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_source_r0/plugin'), tmux=None, proc=None)
+
+    def test_delete_workspace_source_row_missing(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """行が無ければ残りだけ削除する（正常系）。"""
+        # 準備
+        workspace_id = _closed(allowed, fake_pi, ctx)
+        del fake_pi.rows[workspace_id]
+        # 実行
+>       result = workspaces.delete_workspace(workspace_id, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'workspaces' has no attribute 'delete_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:754: AttributeError
+___________________ test_delete_workspace_error_when_unknown ___________________
+
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca9243f500>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh0/state...ff0620>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh0/plugin'), tmux=None, proc=None)
+
+    def test_delete_workspace_error_when_unknown(fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+        """ID の一覧に無いワークスペースは 404（異常系）。"""
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.delete_workspace("mindstella-x-000000", ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'delete_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:766: AttributeError
+_________________ test_delete_workspace_error_when_not_closed __________________
+
+allowed = PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh1/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8ae9c470>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh1/state...e285f0>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh1/plugin'), tmux=None, proc=None)
+
+    def test_delete_workspace_error_when_not_closed(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """クローズしていなければ 409 で、何も変えない（異常系）。"""
+        # 準備
+        _status, created = workspaces.create_workspace(_request(allowed / "家計簿"), ctx)
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.delete_workspace(created["id"], ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'delete_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:778: AttributeError
+________________ test_delete_workspace_error_when_source_failed ________________
+
+allowed = PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh2/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8afb5040>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh2/state...fb5c70>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh2/plugin'), tmux=None, proc=None)
+
+    def test_delete_workspace_error_when_source_failed(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """project-index の失敗は 502 で、状態のフォルダを変えない（異常系）。"""
+        # 準備
+        workspace_id = _closed(allowed, fake_pi, ctx)
+        fake_pi.delete_error = ProjectIndexError(500, "壊れた")
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.delete_workspace(workspace_id, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'delete_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:793: AttributeError
+________________ test_delete_workspace_error_when_state_failed _________________
+
+allowed = PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh3/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8afb6f90>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh3/state...fb6e70>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_error_wh3/plugin'), tmux=None, proc=None)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x71ca8afb5b50>
+caplog = <_pytest.logging.LogCaptureFixture object at 0x71ca8afb7470>
+
+    def test_delete_workspace_error_when_state_failed(
+        allowed: Path,
+        fake_pi: FakeProjectIndex,
+        ctx: SimpleNamespace,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """状態のフォルダを削除できなければ 500 で、ID の一覧の行を残す（異常系）。"""
+        # 準備
+        workspace_id = _closed(allowed, fake_pi, ctx)
+    
+        def fail(*_args: object) -> None:
+            raise OSError("消せない")
+    
+        monkeypatch.setattr(state, "delete_workspace_state", fail, raising=False)
+        caplog.set_level(logging.ERROR)
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.delete_workspace(workspace_id, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'delete_workspace'. Did you mean: 'close_workspace'?
+
+tests/unit/scripts/test_workspaces.py:817: AttributeError
+_______________________ test_delete_workspace_concurrent _______________________
+
+allowed = PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_concurre0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71ca8afb6e40>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_concurre0/state...fb5370>, plugin_root=PosixPath('/tmp/planner-601-pt/red/test_delete_workspace_concurre0/plugin'), tmux=None, proc=None)
+
+    def test_delete_workspace_concurrent(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """鍵を取った時点で ID の一覧に無ければ 404（異常系）。"""
+        # 準備
+        workspace_id = _closed(allowed, fake_pi, ctx)
+        results: list[object] = []
+    
+        def delete() -> None:
+            try:
+                results.append(workspaces.delete_workspace(workspace_id, ctx))
+            except ApiError as error:
+                results.append((error.status, error.stage))
+    
+        threads = [threading.Thread(target=delete) for _ in range(2)]
+        # 実行
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        # 検証
+>       assert sorted(results, key=str) == sorted(
+            [{"id": workspace_id, "deleted": True}, (404, "workspace")], key=str
+        )
+E       AssertionError: assert [] == [(404, 'works...leted': True}]
+E         
+E         Right contains 2 more items, first extra item: (404, 'workspace')
+E         Use -v to get more diff
+
+tests/unit/scripts/test_workspaces.py:844: AssertionError
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /tmp/pr601-venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+tests/unit/scripts/test_workspaces.py::test_delete_workspace_concurrent
+  /tmp/pr601-venv/lib/python3.12/site-packages/_pytest/threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-138 (delete)
+  
+  Traceback (most recent call last):
+    File "/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/threading.py", line 1075, in _bootstrap_inner
+      self.run()
+    File "/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/threading.py", line 1012, in run
+      self._target(*self._args, **self._kwargs)
+    File "/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-workspace-reopen-delete/tests/unit/scripts/test_workspaces.py", line 833, in delete
+      results.append(workspaces.delete_workspace(workspace_id, ctx))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  AttributeError: module 'workspaces' has no attribute 'delete_workspace'. Did you mean: 'close_workspace'?
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/unit/scripts/test_workspaces.py::test_delete_workspace_concurrent
+  /tmp/pr601-venv/lib/python3.12/site-packages/_pytest/threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-139 (delete)
+  
+  Traceback (most recent call last):
+    File "/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/threading.py", line 1075, in _bootstrap_inner
+      self.run()
+    File "/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/threading.py", line 1012, in run
+      self._target(*self._args, **self._kwargs)
+    File "/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-workspace-reopen-delete/tests/unit/scripts/test_workspaces.py", line 833, in delete
+      results.append(workspaces.delete_workspace(workspace_id, ctx))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  AttributeError: module 'workspaces' has no attribute 'delete_workspace'. Did you mean: 'close_workspace'?
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_api.py::test_build_routes - AssertionError: as...
+FAILED tests/unit/scripts/test_project_index.py::test_delete_source - Attribu...
+FAILED tests/unit/scripts/test_project_index.py::test_delete_source_missing
+FAILED tests/unit/scripts/test_project_index.py::test_delete_source_error[conflict_twice]
+FAILED tests/unit/scripts/test_project_index.py::test_delete_source_error[server_error]
+FAILED tests/unit/scripts/test_serve.py::test_stop_workspace - AttributeError...
+FAILED tests/unit/scripts/test_serve.py::test_stop_workspace_when_not_served
+FAILED tests/unit/scripts/test_serve.py::test_stop_workspace_then_start - Att...
+FAILED tests/unit/scripts/test_server.py::test_build_server - AssertionError:...
+FAILED tests/unit/scripts/test_server.py::test_build_server_api_tools - Asser...
+FAILED tests/unit/scripts/test_state.py::test_delete_workspace_state - Attrib...
+FAILED tests/unit/scripts/test_state.py::test_delete_workspace_state_when_missing
+FAILED tests/unit/scripts/test_workspaces.py::test_reopen_workspace - Attribu...
+FAILED tests/unit/scripts/test_workspaces.py::test_reopen_workspace_not_closed
+FAILED tests/unit/scripts/test_workspaces.py::test_reopen_workspace_error_when_unknown
+FAILED tests/unit/scripts/test_workspaces.py::test_reopen_workspace_error_when_row_missing
+FAILED tests/unit/scripts/test_workspaces.py::test_reopen_workspace_error_when_patch_failed
+FAILED tests/unit/scripts/test_workspaces.py::test_delete_workspace - Attribu...
+FAILED tests/unit/scripts/test_workspaces.py::test_delete_workspace_source_row_missing
+FAILED tests/unit/scripts/test_workspaces.py::test_delete_workspace_error_when_unknown
+FAILED tests/unit/scripts/test_workspaces.py::test_delete_workspace_error_when_not_closed
+FAILED tests/unit/scripts/test_workspaces.py::test_delete_workspace_error_when_source_failed
+FAILED tests/unit/scripts/test_workspaces.py::test_delete_workspace_error_when_state_failed
+FAILED tests/unit/scripts/test_workspaces.py::test_delete_workspace_concurrent
+24 failed, 1529 passed, 1 skipped, 7 warnings in 33.86s

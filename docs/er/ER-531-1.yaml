@@ -210,5 +210,5 @@ tables:
         not_null: true
         description: '`{item, key, value}`。移せずに記録から消えた値'
 notes:
-  削除: ワークスペースの削除（#523）で、そのワークスペースの `workspaces/{ID}/` と `ids` の行を消す。クローズでは残す（D-322）
+  削除: インターフェース定義『ワークスペースの削除』で、そのワークスペースの `workspaces/{ID}/` と `ids` の行を消す。クローズでは残す（D-322）
   書き込み: 一時ファイルから `os.replace` で置き換える。`workspaces.yaml` は全体で 1 つの鍵、`session.json` はファイルごとの鍵を取って書く

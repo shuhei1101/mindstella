@@ -1,0 +1,4 @@
+$ /tmp/pr601-venv/bin/python -m pytest tests/integration/server/test_reopen_workspace.py tests/integration/server/test_delete_workspace.py tests/integration/server/test_mcp_server.py tests/integration/server/test_create_workspace.py tests/integration/server/test_close_workspace.py -q -p no:cacheprovider --basetemp=/tmp/planner-601-pt/it
+（並列数は 1（TL-3 は parallelism を持たない）。実行前の空きメモリ 22 GiB。/tmp/pr601-venv は requirements-dev.txt を入れたこの PR 用の仮想環境）
+..................................                                       [100%]
+34 passed in 46.59s

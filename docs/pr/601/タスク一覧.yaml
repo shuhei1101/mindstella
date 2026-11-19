@@ -1,0 +1,80 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T02:09:33.601110+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 既存の設計書があるため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T02:09:33.601110+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue でないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T02:09:33.601110+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: project-index の端末の設定の行の変更・削除の API と状態のフォルダのファイルの削除だけを使い、未検証の技術機構に依存しないため
+    updated_by: planner
+    updated_at: '2026-11-19T02:09:33.601110+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 開き直しと削除は外部のアプリが単独で呼ぶ単一ユースケースで、複合ユースケースの流れを変えないため（資料 A-107 の No 8）
+    updated_by: planner
+    updated_at: '2026-11-19T02:09:33.601110+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面を変えない API の追加のため対象外（画面の開き直しのボタンはスコープ外）
+    updated_by: planner
+    updated_at: '2026-11-19T02:09:33.601110+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面を変えない API の追加のため対象外（画面の開き直しのボタンはスコープ外）
+    updated_by: planner
+    updated_at: '2026-11-19T02:09:33.601110+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T02:15:21.326832+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面を変えない API の追加のため対象外（画面の開き直しのボタンはスコープ外）
+    updated_by: planner
+    updated_at: '2026-11-19T02:09:33.601110+00:00'
+  - process: インターフェース定義設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T02:31:47.737146+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 画面の部品を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T02:09:33.601110+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T02:09:33.601110+00:00'
+  - process: モジュール構成設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T02:38:55.423576+00:00'
+  - process: ドキュメント修正
+    status: done
+    note: docs/guide/コマンド.md・docs/guide/コアコンセプト-ワークスペース.md
+    updated_by: planner
+    updated_at: '2026-11-19T02:47:48.467339+00:00'
+  - process: 単体テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T02:56:09.500761+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T03:00:01.289137+00:00'
+  - process: 結合テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T03:12:44.577955+00:00'

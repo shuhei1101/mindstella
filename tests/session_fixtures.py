@@ -132,6 +132,8 @@ class FakeProjectIndex:
         self.requests: list[tuple[str, str, Any]] = []
         self.post_status: int | None = None
         self.patch_delay_sec = 0.0
+        self.patch_status: int | None = None
+        self.delete_status: int | None = None
         self._lock = threading.Lock()
         fake = self
 
@@ -171,6 +173,12 @@ class FakeProjectIndex:
                 body = self._body()
                 fake.requests.append(("PATCH", self.path, body))
                 status, payload = fake.patch(self.path, body)
+                self._send(status, payload)
+
+            def do_DELETE(self) -> None:
+                """配信元の行を削除する。"""
+                fake.requests.append(("DELETE", self.path, None))
+                status, payload = fake.delete(self.path)
                 self._send(status, payload)
 
             def do_PUT(self) -> None:
@@ -241,6 +249,8 @@ class FakeProjectIndex:
         """行のキーを変える。版が古ければ 409。"""
         if self.patch_delay_sec:
             time.sleep(self.patch_delay_sec)
+        if self.patch_status is not None:
+            return self.patch_status, {"detail": "Mock の失敗"}
         source_id = urllib.parse.unquote(path.rsplit("/", 1)[1])
         with self._lock:
             if body.get("expectedVersion") != str(self.version):
@@ -255,6 +265,23 @@ class FakeProjectIndex:
                 row["config"] = [changes["config"]]
             if "scope" in changes:
                 row["scope"] = changes["scope"]
+            self.version += 1
+            self.save()
+        return 200, {"version": str(self.version)}
+
+    def delete(self, path: str) -> tuple[int, Any]:
+        """行を削除する。`delete_status` があればその応答だけを返す。版が古ければ 409、行が無ければ 404。"""
+        if self.delete_status is not None:
+            return self.delete_status, {"detail": "Mock の失敗"}
+        parsed = urllib.parse.urlsplit(path)
+        source_id = urllib.parse.unquote(parsed.path.rsplit("/", 1)[1])
+        expected = urllib.parse.parse_qs(parsed.query).get("expectedVersion", [""])[0]
+        with self._lock:
+            if expected != str(self.version):
+                return 409, {"current": str(self.version)}
+            if source_id not in self.rows:
+                return 404, {}
+            del self.rows[source_id]
             self.version += 1
             self.save()
         return 200, {"version": str(self.version)}
@@ -290,8 +317,8 @@ class FakeProjectIndex:
         )
 
     def changes(self) -> list[tuple[str, str, Any]]:
-        """行を変える要求（POST・PATCH）だけを返す。"""
-        return [request for request in self.requests if request[0] in ("POST", "PATCH")]
+        """行を変える要求（POST・PATCH・DELETE）だけを返す。"""
+        return [request for request in self.requests if request[0] in ("POST", "PATCH", "DELETE")]
 
     def close(self) -> None:
         """待ち受けを閉じる。"""

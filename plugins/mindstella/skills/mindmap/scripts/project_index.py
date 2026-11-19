@@ -106,6 +106,29 @@ def patch_source(port: int, source_id: str, changes: dict[str, Any]) -> None:
         raise _failed("PATCH", path, status, body)
 
 
+def delete_source(port: int, source_id: str) -> bool:
+    """今のバージョンを引いて行を削除する。バージョンが要更新なら 1 回だけ引き直して送り直す。行が無ければ偽を返す。"""
+    path = f"{SOURCES_PATH}/{urllib.parse.quote(source_id, safe='')}"
+    for attempt in range(2):
+        version = get_settings(port).get("version")
+        query = urllib.parse.urlencode({"expectedVersion": version})
+        status, body = _request(port, "DELETE", f"{path}?{query}")
+        # 削除した
+        if status == HTTPStatus.OK:
+            return True
+        # 行が無い: 前の削除で消えたものとして偽を返す
+        if status == HTTPStatus.NOT_FOUND:
+            return False
+        # 1 回目のバージョンが要更新: 引き直して送り直す
+        if status == CONFLICT and attempt == 0:
+            logger.warning(
+                "mindstella.project_index.version_conflict", extra={"source_id": source_id}
+            )
+            continue
+        raise _failed("DELETE", path, status, body)
+    raise _failed("DELETE", path, CONFLICT, {})
+
+
 def reload_sources(port: int) -> None:
     """端末の設定のファイルの行をそのまま `PUT /settings/sources` に送り、全ての配信元を再読み込みさせる。
 
