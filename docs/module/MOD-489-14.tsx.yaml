@@ -6,7 +6,7 @@ components:
     title: スレッド
     kind: 画面
     usecase: スレッドで話す
-    summary: 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする。返信を溜めたら `useFocusAfterAddTarget` が `submit` なら返信の入力の「レビューに追加」へ、`input` なら入力欄へフォーカスを移す
+    summary: 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする。返信を溜めたら、`ReplyForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら返信の入力の「レビューに追加」へ、`input` なら入力欄へフォーカスを移す
     refs:
       - SCR-489-4#
     unit_tests:
