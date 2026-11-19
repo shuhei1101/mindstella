@@ -20,7 +20,7 @@ functions:
       - name: test_read_prefs_when_legacy_written
         case: 正常
         summary: 今の画面が書いた JSON を読める
-        condition: 今の画面の `Prefs` の形の JSON（`columns`・`filters`・`diffSel`・`minimap`・`bodyLayout`・`tablePin`）
+        condition: 今の画面の `Prefs` の形の JSON（`columns`・`filters`・`diffSel`・`minimap`・`bodyLayout`）に、前のバージョンの項目 `tablePin` を含めたもの
         mock: '`localStorage`'
         expected: 全ての項目を同じ値で読める
     container: frontend/src/shared/stores/prefs-store.ts
