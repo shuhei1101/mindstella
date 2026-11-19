@@ -1,4 +1,4 @@
-// コメントの一覧（画面設計『コメントの一覧.tsx』）。スレッドを状態とタグで絞って並べ、新しいスレッドを立てる左のパネル。パネルの中をスレッド・レビュー中の書き込みの画面と切り替える
+// コメントの一覧（画面設計『コメントの一覧.tsx』）。スレッドを状態・タグ・項目で絞って並べ、新しいスレッドを立てる左のパネル。パネルの中をスレッド・レビュー中の書き込みの画面と切り替える
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
@@ -14,6 +14,7 @@ import { pendingThreads, threadCounts, visibleThreads, type ThreadFilter } from 
 import { useAddComment, useSaveDraft } from "@/shared/hooks/use-comments";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
+import { useRecords } from "@/shared/hooks/use-records";
 import { cn } from "@/shared/lib/cn";
 import { useFocusAfterAddTarget, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 import { readVoiceState } from "@/shared/stores/voice-store";
@@ -34,8 +35,11 @@ const NEW_THREAD_VOICE_KEY = "new-thread";
 
 type FreeState = { body: string; status: SendStatus; count: number | null; detail: string | null };
 
-/** 新しいスレッドの入力。閉じて外れても録音と文字起こしは続ける */
-const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: FreeState | ((current: FreeState) => FreeState)) => void }) => {
+/** 新しいスレッドの入力の見出し（項目で絞っている間は、その項目へ向ける） */
+const newThreadLabel = (target: string | null): string => (target === null ? "新しいスレッド" : `${target} への新しいスレッド`);
+
+/** 新しいスレッドの入力。閉じて外れても録音と文字起こしは続ける。項目で絞っている間は、溜めるスレッドと書きかけ・音声入力をその項目への箇所を持たない入力に向ける（詳細パネルの下端の入力と書きかけを共有する） */
+const NewThreadForm = ({ free, setFree, target }: { free: FreeState; setFree: (next: FreeState | ((current: FreeState) => FreeState)) => void; target: string | null }) => {
   const add = useAddComment();
   const saveDraft = useSaveDraft();
   const focusTarget = useFocusAfterAddTarget();
@@ -43,16 +47,16 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
   const sendForm = useRef<HTMLFormElement>(null);
   const voice = useVoiceInput({
     key: NEW_THREAD_VOICE_KEY,
-    destination: { target: null, loc: null },
+    destination: { target, loc: null },
     view: "comments",
-    label: "新しいスレッド",
+    label: newThreadLabel(target),
     body: free.body,
     onBodyChange: (next) => {
       setFree({ body: next, status: "idle", count: null, detail: null });
-      saveDraft({ target: null, loc: null, thread: null, body: next }, true);
+      saveDraft({ target, loc: null, thread: null, body: next }, true);
     },
     getSelection: () => {
-      const field = document.querySelector<HTMLTextAreaElement>('form[data-collapsed] textarea, form:not([data-id]) textarea[aria-label="新しいスレッド"]');
+      const field = document.querySelector<HTMLTextAreaElement>(`form[data-collapsed] textarea, form:not([data-id]) textarea[aria-label="${newThreadLabel(target)}"]`);
       return { start: field?.selectionStart ?? free.body.length, end: field?.selectionEnd ?? free.body.length };
     },
   });
@@ -61,7 +65,7 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
               formRef={sendForm}
               target={null}
               loc={null}
-              label="新しいスレッド"
+              label={newThreadLabel(target)}
               body={free.body}
               status={voice.status === "idle" ? free.status : voice.status}
               count={free.count}
@@ -78,12 +82,12 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
               onInput={(next) => {
                 voice.clearResult();
                 setFree({ body: next, status: "idle", count: null, detail: null });
-                saveDraft({ target: null, loc: null, thread: null, body: next });
+                saveDraft({ target, loc: null, thread: null, body: next });
               }}
               onSubmit={(_target, _loc, text) => {
                 setFree((current) => ({ ...current, status: "saving" }));
                 add.mutate(
-                  { body: text },
+                  target === null ? { body: text } : { body: text, target },
                   {
                     onSuccess: (result) => {
                       flushSync(() => { setFree({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); });
@@ -97,13 +101,34 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
   );
 };
 
+/** 項目の絞り込みのチップ（ID とタイトルと外す ×。件数は状態の絞り込みが出す） */
+const TargetChip = ({ target, title, onClear }: { target: string; title: string | undefined; onClear: () => void }) => (
+  <div className="flex min-w-0 items-center gap-1 border-b border-border px-3 py-1 text-small">
+    <Icon name="comment" />
+    <span className="font-mono">{target}</span>
+    {title === undefined ? null : <span className="min-w-0 truncate">{title}</span>}
+    <Button variant="ghost" size="icon" aria-label={`項目「${target}」の絞り込みを外す`} onClick={onClear}>
+      <Icon name="x" />
+    </Button>
+  </div>
+);
+
+const STATE_TEXT: Record<ThreadFilter, string> = { open: "オープンの", closed: "クローズの", all: "" };
+
+/** 0 件のときの文言（項目で絞っていれば頭に「{ID} への」、タグで絞っていれば「タグ「{タグ}」の」を付ける） */
+const emptyText = ({ filter, tag, target }: { filter: ThreadFilter; tag: string | null; target: string | null }): string =>
+  `${target === null ? "" : `${target} への`}${tag === null ? "" : `タグ「${tag}」の`}${STATE_TEXT[filter]}スレッドはありません。`;
+
 export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProps) => {
   const { search, setPanel, setComments } = usePreviewSearch();
   const data = useCommentData();
   const pinned = usePrefs().commentsPinned === true;
   const filter: ThreadFilter = search.tstatus ?? "open";
   const tag = search.ttag ?? null;
-  const freeDraft = data.drafts.find((draft) => draft.target === null && draft.thread === null)?.body ?? "";
+  const target = search.ttarget ?? null;
+  const { index } = useRecords();
+  // 新しいスレッドの書きかけ（項目で絞っている間は、その項目への箇所を持たない書きかけ。詳細パネルの下端の入力と同じ）
+  const draftOf = (of: string | null): string => data.drafts.find((draft) => draft.target === of && draft.loc === null && draft.thread === null)?.body ?? "";
   // 新しいスレッドの入力で音声入力中なら、入力を出して開く
   const [composing, setComposing] = useState(() => readVoiceState().session?.key === NEW_THREAD_VOICE_KEY);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -116,7 +141,15 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   useEffect(() => {
     if (composing) composer.current?.querySelector("textarea")?.focus();
   }, [composing]);
-  const [free, setFree] = useState<{ body: string; status: SendStatus; count: number | null; detail: string | null }>({ body: freeDraft, status: "idle", count: null, detail: null });
+  // 向ける項目が変わったら、その項目の書きかけから始める
+  const [freeEntry, setFreeEntry] = useState<{ target: string | null; state: FreeState }>(() => ({ target, state: { body: draftOf(target), status: "idle", count: null, detail: null } }));
+  const free: FreeState = freeEntry.target === target ? freeEntry.state : { body: draftOf(target), status: "idle", count: null, detail: null };
+  const setFree = (next: FreeState | ((current: FreeState) => FreeState)): void => {
+    setFreeEntry((current) => {
+      const base = current.target === target ? current.state : { body: draftOf(target), status: "idle" as const, count: null, detail: null };
+      return { target, state: typeof next === "function" ? next(base) : next };
+    });
+  };
   const close = (): void => {
     setPanel(undefined);
   };
@@ -134,9 +167,10 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
     focusRow.current = null;
     document.querySelector<HTMLElement>(`[data-focus="thread:${from}"], [data-focus="thread:new:${from}"]`)?.focus();
   }, [search.thread, search.review]);
-  const counts = threadCounts({ threads: data.threads, tag });
-  const rows = visibleThreads({ threads: data.threads, filter, tag });
-  const pending = pendingThreads({ items: data.items, filter, tag });
+  const counts = threadCounts({ threads: data.threads, tag, target });
+  const rows = visibleThreads({ threads: data.threads, filter, tag, target });
+  const pending = pendingThreads({ items: data.items, filter, tag, target });
+  const targetTitle = target === null ? undefined : index?.byId.get(target)?.item.title;
   const repliesOf = new Set(data.items.map((item) => item.thread).filter((thread): thread is string => thread !== null));
   const header = (
     <div className="flex items-center gap-2 border-b border-border px-3 py-2">
@@ -174,13 +208,14 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
             </Button>
           ))}
         </div>
+        {target === null ? null : <TargetChip target={target} title={targetTitle} onClear={() => { setComments({ ttarget: undefined }); }} />}
         {tag === null ? null : (
           <div className="flex items-center gap-1 border-b border-border px-3 py-1 text-small">
             <span>#{tag}</span>
             <Button variant="ghost" size="icon" aria-label={`タグ「${tag}」の絞り込みを外す`} onClick={() => { setComments({ ttag: undefined }); }}>
               <Icon name="x" />
             </Button>
-            <span className="text-muted-foreground">{`${String(rows.length)} / ${String(visibleThreads({ threads: data.threads, filter, tag: null }).length)} 件`}</span>
+            <span className="text-muted-foreground">{`${String(rows.length)} / ${String(visibleThreads({ threads: data.threads, filter, tag: null, target }).length)} 件`}</span>
           </div>
         )}
         {data.threadsError === null ? null : (
@@ -200,18 +235,18 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
         {pending.length === 0 && rows.length === 0 && data.threadsError === null ? (
           <p className="m-0 flex items-center gap-1 px-3 py-2 text-small text-muted-foreground">
             <Icon name="comment" />
-            {`${tag === null ? "" : `タグ「${tag}」の`}${filter === "open" ? "オープンの" : filter === "closed" ? "クローズの" : ""}スレッドはありません。`}
+            {emptyText({ filter, tag, target })}
           </p>
         ) : null}
         {composing ? (
           <div ref={composer} className="grid border-t border-border">
             <div className="flex items-center px-3 pt-2">
-              <h3 className="m-0 flex-1 text-small font-medium">新しいスレッド</h3>
+              <h3 className="m-0 flex-1 text-small font-medium">{newThreadLabel(target)}</h3>
               <Button variant="ghost" size="icon" aria-label="新しいスレッドの入力を閉じる" onClick={() => { setComposing(false); }}>
                 <Icon name="x" />
               </Button>
             </div>
-            <NewThreadForm free={free} setFree={setFree} />
+            <NewThreadForm free={free} setFree={setFree} target={target} />
           </div>
         ) : (
           <div className="border-t border-border p-3">

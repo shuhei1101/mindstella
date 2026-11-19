@@ -1,0 +1,465 @@
+# 単体テスト作成の Red（テストコード b5b2cab6、実装の前）
+
+実装の前から pass したテストと、その振る舞いを持つコード:
+- test_pending_threads_when_target[closed]・[tagged]（今の画面）/ pending_threads_when_target closed・画面（React）: 状態の絞り込みがクローズかタグで絞るときに空を返す既存の分岐（plugins/mindstella/skills/mindmap/preview/screens/comments.ts の pendingThreads: 6bf9d54a・frontend/src/shared/core/comments.ts の pendingThreads: 099c6118）
+- test_detail_panel_when_comments_button[full]・[no_comments]（今の画面）/ detail_panel_when_comments_button_full（React）: ボタンが無いことを確かめる。見出しにボタンを置く処理がまだ無いため
+- normalize_search_when_target_missing の panel=comments・ttarget=D-1（記録にある項目）の行: 外さずに残ることを確かめる。normalizeSearch（frontend/src/shared/core/preview-search.ts）が知らないキーをそのまま返す既存の振る舞い（8354ede5）で pass する。D-99 と tab=decisions の行は外す処理が無いため fail
+
+$ python -m pytest tests/unit/preview/test_comments_panel.py tests/unit/preview/test_detail.py -q -p no:cacheprovider --basetemp=/tmp/chk609/pt
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: Cannot read properties of undefined (reading 'click')
+E               at eval (eval at evaluate (:311:30), <anonymous>:51:59)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+E       AssertionError: assert '1 / 2 件' in 'オープン2クローズ0すべて2画面2 / 3 件オープン二つ目の要約D-2あなた10/12 11:00画面オープン返信先の要約D-1AI10/12 10:00画面新しいスレッド'
+E       AssertionError: assert ['TH-2', 'TH-1'] == ['TH-1']
+E         
+E         At index 0 diff: 'TH-2' != 'TH-1'
+E         Left contains one more item: 'TH-1'
+E         Use -v to get more diff
+E       AssertionError: assert {'open': 2, '...: 1, 'all': 3} == {'open': 1, '...: 1, 'all': 2}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'open': 2} != {'open': 1}
+E         {'all': 3} != {'all': 2}
+E         Use -v to get more diff
+E       AssertionError: assert ['C-41', 'C-42'] == ['C-41']
+E         
+E         Left contains one more item: 'C-42'
+E         Use -v to get more diff
+E       AssertionError: assert {'head': ['一覧..., 'calls': []} == {'head': ['一覧...lls': ['D-1']}
+E         
+E         Differing items:
+E         {'head': ['一覧へ戻る', '編集する', '前の項目へ戻る', '次の項目へ進む', '全画面表示', '詳細を閉じる']} != {'head': ['一覧へ戻る', '編集する', 'D-1 のコメントの一覧を開く', '前の項目へ戻る', '次の項目へ進む', '全画面表示', ...]}
+E         {'calls': []} != {'calls': ['D-1']}
+E         Use -v to get more diff
+E       AssertionError: assert 'D-1 へのタグ「画面」のクローズのスレッドはありません。' in 'オープン2クローズ0すべて2画面0 / 0 件タグ「画面」のクローズのスレッドはありません。新しいスレッド'
+E       AssertionError: assert ['TH-5', 'TH-2', 'TH-1'] == ['TH-5', 'TH-1']
+E         
+E         At index 1 diff: 'TH-2' != 'TH-1'
+E         Left contains one more item: 'TH-1'
+E         Use -v to get more diff
+E       AssertionError: assert {'open': 2, '...: 0, 'all': 2} == {'open': 1, '...: 0, 'all': 1}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'open': 2} != {'open': 1}
+E         {'all': 2} != {'all': 1}
+E         Use -v to get more diff
+E       AssertionError: assert ['TH-5', 'TH-2', 'TH-1'] == []
+E         
+E         Left contains 3 more items, first extra item: 'TH-5'
+E         Use -v to get more diff
+FAILED tests/unit/preview/test_comments_panel.py::test_thread_list_view_when_target[chromium]
+FAILED tests/unit/preview/test_comments_panel.py::test_thread_list_view_when_target_and_tag[chromium-tag_and_target]
+FAILED tests/unit/preview/test_comments_panel.py::test_visible_threads_when_target[chromium-open]
+FAILED tests/unit/preview/test_comments_panel.py::test_thread_counts_when_target[chromium-target]
+FAILED tests/unit/preview/test_comments_panel.py::test_pending_threads_when_target[chromium-open]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_comments_button[chromium-panel]
+FAILED tests/unit/preview/test_comments_panel.py::test_thread_list_view_when_target_and_tag[chromium-empty]
+FAILED tests/unit/preview/test_comments_panel.py::test_visible_threads_when_target[chromium-all]
+FAILED tests/unit/preview/test_comments_panel.py::test_thread_counts_when_target[chromium-target_and_tag]
+FAILED tests/unit/preview/test_comments_panel.py::test_visible_threads_when_target[chromium-missing]
+10 failed, 177 passed in 77.62s (0:01:17)
+
+$ npx vitest run frontend/src/shared/core/comments.test.ts frontend/src/shared/core/preview-search.test.ts frontend/src/features/comments/comments-panel/comments-panel.test.tsx frontend/src/features/detail/detail-panel/detail-panel.test.tsx
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-comment-target-filter
+ ❯ frontend/src/shared/core/comments.test.ts (18 tests | 6 failed) 22ms
+   ❯ visibleThreads（項目） (3)
+     × visible_threads_when_target open D-1 9ms
+     × visible_threads_when_target all D-1 1ms
+     × visible_threads_when_target all D-9 1ms
+   ❯ threadCounts（項目） (2)
+     × thread_counts_when_target null 1ms
+     × thread_counts_when_target 画面 1ms
+   ❯ pendingThreads（項目） (3)
+     × pending_threads_when_target open null 1ms
+ ❯ frontend/src/shared/core/preview-search.test.ts (21 tests | 2 failed) 24ms
+   ❯ normalizeSearch (18)
+     × normalize_search_when_target_missing D-99 5ms
+     × normalize_search_when_target_missing D-1 1ms
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_comments_button
+  • GET /api/transcription
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx (7 tests | 1 failed) 895ms
+   ❯ DetailPanel (7)
+     × detail_panel_when_comments_button 106ms
+ ❯ frontend/src/features/comments/comments-panel/comments-panel.test.tsx (6 tests | 1 failed) 1806ms
+   ❯ CommentsPanel (6)
+     × comments_panel_when_target 1048ms
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/shared/core/comments.test.ts > visibleThreads（項目） > visible_threads_when_target open D-1
+AssertionError: expected [ 'TH-2', 'TH-1' ] to deeply equal [ 'TH-1' ]
+- Expected
++ Received
+  [
++   "TH-2",
+    "TH-1",
+  ]
+ ❯ frontend/src/shared/core/comments.test.ts:86:45
+     84|     const result = visibleThreads({ threads: targetThreads(), filter, …
+     85|     // 検証
+     86|     expect(result.map((entry) => entry.id)).toEqual(expected);
+       |                                             ^
+     87|   });
+     88| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+ FAIL  frontend/src/shared/core/comments.test.ts > visibleThreads（項目） > visible_threads_when_target all D-1
+AssertionError: expected [ 'TH-5', 'TH-2', 'TH-1' ] to deeply equal [ 'TH-5', 'TH-1' ]
+- Expected
++ Received
+  [
+    "TH-5",
++   "TH-2",
+    "TH-1",
+  ]
+ ❯ frontend/src/shared/core/comments.test.ts:86:45
+     84|     const result = visibleThreads({ threads: targetThreads(), filter, …
+     85|     // 検証
+     86|     expect(result.map((entry) => entry.id)).toEqual(expected);
+       |                                             ^
+     87|   });
+     88| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+ FAIL  frontend/src/shared/core/comments.test.ts > visibleThreads（項目） > visible_threads_when_target all D-9
+AssertionError: expected [ 'TH-5', 'TH-2', 'TH-1' ] to deeply equal []
+- Expected
++ Received
+- []
++ [
++   "TH-5",
++   "TH-2",
++   "TH-1",
++ ]
+ ❯ frontend/src/shared/core/comments.test.ts:86:45
+     84|     const result = visibleThreads({ threads: targetThreads(), filter, …
+     85|     // 検証
+     86|     expect(result.map((entry) => entry.id)).toEqual(expected);
+       |                                             ^
+     87|   });
+     88| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+ FAIL  frontend/src/shared/core/comments.test.ts > threadCounts（項目） > thread_counts_when_target null
+AssertionError: expected { open: 2, closed: 1, all: 3 } to deeply equal { open: 1, closed: 1, all: 2 }
+- Expected
++ Received
+  {
+-   "all": 2,
++   "all": 3,
+    "closed": 1,
+-   "open": 1,
++   "open": 2,
+  }
+ ❯ frontend/src/shared/core/comments.test.ts:97:76
+     95|   ])("thread_counts_when_target $tag", ({ tag, expected }) => {
+     96|     // 実行と検証
+     97|     expect(threadCounts({ threads: targetThreads(), tag, target: "D-1"…
+       |                                                                            ^
+     98|   });
+     99| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+ FAIL  frontend/src/shared/core/comments.test.ts > threadCounts（項目） > thread_counts_when_target 画面
+AssertionError: expected { open: 2, closed: +0, all: 2 } to deeply equal { open: 1, closed: +0, all: 1 }
+- Expected
++ Received
+  {
+-   "all": 1,
++   "all": 2,
+    "closed": 0,
+-   "open": 1,
++   "open": 2,
+  }
+ ❯ frontend/src/shared/core/comments.test.ts:97:76
+     95|   ])("thread_counts_when_target $tag", ({ tag, expected }) => {
+     96|     // 実行と検証
+     97|     expect(threadCounts({ threads: targetThreads(), tag, target: "D-1"…
+       |                                                                            ^
+     98|   });
+     99| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯
+ FAIL  frontend/src/shared/core/comments.test.ts > pendingThreads（項目） > pending_threads_when_target open null
+AssertionError: expected [ 'C-41', 'C-42' ] to deeply equal [ 'C-41' ]
+- Expected
++ Received
+  [
+    "C-41",
++   "C-42",
+  ]
+ ❯ frontend/src/shared/core/comments.test.ts:117:45
+    115|     const result = pendingThreads({ items, filter, tag, target: "D-1" …
+    116|     // 検証
+    117|     expect(result.map((entry) => entry.id)).toEqual(expected);
+       |                                             ^
+    118|   });
+    119| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/10]⎯
+ FAIL  frontend/src/shared/core/preview-search.test.ts > normalizeSearch > normalize_search_when_target_missing D-99
+AssertionError: expected { panel: 'comments', ttarget: 'D-99' } to deeply equal { panel: 'comments', …(1) }
+- Expected
++ Received
+  {
+    "panel": "comments",
+-   "ttarget": undefined,
++   "ttarget": "D-99",
+  }
+ ❯ frontend/src/shared/core/preview-search.test.ts:110:62
+    108|     const result = normalizeSearch(search(patch), context());
+    109|     // 検証
+    110|     expect({ panel: result.panel, ttarget: result.ttarget }).toEqual(e…
+       |                                                              ^
+    111|   });
+    112|
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/10]⎯
+ FAIL  frontend/src/shared/core/preview-search.test.ts > normalizeSearch > normalize_search_when_target_missing D-1
+AssertionError: expected { panel: undefined, ttarget: 'D-1' } to deeply equal { Object (panel, ttarget) }
+- Expected
++ Received
+  {
+    "panel": undefined,
+-   "ttarget": undefined,
++   "ttarget": "D-1",
+  }
+ ❯ frontend/src/shared/core/preview-search.test.ts:110:62
+    108|     const result = normalizeSearch(search(patch), context());
+    109|     // 検証
+    110|     expect({ panel: result.panel, ttarget: result.ttarget }).toEqual(e…
+       |                                                              ^
+    111|   });
+    112|
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/10]⎯
+ FAIL  frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_target
+AssertionError: expected [ …(3) ] to have a length of 2 but got 3
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-theme[39m=[32m"light"[39m
+[36m>[39m
+  [36m<head>[39m
+    [36m<link[39m
+      [33mcrossorigin[39m=[32m"anonymous"[39m
+      [33mhref[39m=[32m"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css"[39m
+      [33mrel[39m=[32m"stylesheet"[39m
+    [36m/>[39m
+  [36m</head>[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-dvh flex-col"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex min-w-0 flex-none items-center gap-2.5"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-5.5 flex-none text-mark"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2.2"[39m
+                [33mviewBox[39m=[32m"0 0 32 32"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"8"[39m
+                  [33mcy[39m=[32m"16"[39m
+                  [33mr[39m=[32m"4"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 16h5M17 16V7h5M17 16v9h5"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"25"[39m
+                  [33mcy[39m=[32m"7"[39m
+                  [33mr[39m=[32m"2.6"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"25"[39m
+                  [33mcy[39m=[32m"25"[39m
+                  [33mr[39m=[32m"2.6"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-bold tracking-tight max-xs:hidden"[39m
+              [36m>[39m
+                [0mmindstella[0m
+              [36m</span>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"[39m
+              [33mtitle[39m=[32m"要件出しのスキル mindmap を設計する"[39m
+            [36m>[39m
+              [0m要件出しのスキル mindmap を設計する[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex-1 basis-0"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33maria-keyshortcuts[39m=[32m"Control+K Meta+K"[39m
+              [33maria-label[39m=[32m"すべての項目を検索"[39m
+              [33mclass[39m=[32m"flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"11"[39m
+                  [33mcy[39m=[32m"11"[39m
+                  [33mr[39m=[32m"7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"m20 20-3.5-3.5"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"max-lg:hidden"[39m
+              [36m>[39m
+                [0mすべての項目を検索[0m
+              [36m</span>[39m
+              [36m<kbd[39m
+                [33mclass[39m=[32m"ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"[39m
+              [36m>[39m
+                [0mCtrl+K[0m
+              [36m</kbd>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-haspopup[39m=[32m"dialog"[39m
+              [33maria-label[39m=[32m"変更履歴"[39m
+              [33mclass[39m=[32m"inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 12a9 9 0 1 0 3-6.7L3 8"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 3v5h5"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 7v5l3 2"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"max-xl:hidden"[39m
+              [36m>[39m
+                [0m変更履歴[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex-1 basis-0"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-label[39m=[32m"表示の設定"[39m
+              [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm...
+- Expected
++ Received
+- 2
++ 3
+ ❯ frontend/src/features/comments/comments-panel/comments-panel.test.tsx:124:72
+    122|     const before = window.history.length;
+    123|     // 実行
+    124|     await waitFor(() => expect(within(panel).getAllByRole("listitem"))…
+       |                                                                        ^
+    125|     const rows = within(panel).getAllByRole("listitem").map((row) => r…
+    126|     await userEvent.click(within(panel).getByRole("button", { name: "項…
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/10]⎯
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_comments_button
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "D-1 のコメントの一覧を開く"
+Here are the accessible roles:
+  separator:
+  Name "詳細パネルの幅":
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細パネルの幅"[39m
+    [33maria-orientation[39m=[32m"vertical"[39m
+    [33maria-valuemax[39m=[32m"864"[39m
+    [33maria-valuemin[39m=[32m"480"[39m
+    [33maria-valuenow[39m=[32m"640"[39m
+    [33mclass[39m=[32m"absolute inset-y-0 left-0 w-1 cursor-col-resize hover:bg-mark-line max-lg:hidden"[39m
+    [33mrole[39m=[32m"separator"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  --------------------------------------------------button:
+  Name "編集する":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"編集する"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "前の項目へ戻る":
+  [36m<button[39m
+    [33maria-label[39m=[32m"前の項目へ戻る"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mdata-disabled[39m=[32m""[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"前の項目へ戻る"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "次の項目へ進む":
+  [36m<button[39m
+    [33maria-label[39m=[32m"次の項目へ進む"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mdata-disabled[39m=[32m""[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"次の項目へ進む"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "全画面表示":
+  [36m<button[39m
+    [33maria-label[39m=[32m"全画面表示"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"全画面表示"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "詳細を閉じる":
+  [36m<button[39m
+    [33maria-label[39m=[32m"詳細を閉じる"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  --------------------------------------------------region:
+  Name "詳細の本文":
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細の本文"[39m
+    [33mclass[39m=[32m"panel-body"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  heading:
+  Name "D-1の題":
+  [36m<h2[39m
+    [33mclass[39m=[32m"m-0 flex flex-wrap items-center gap-1 text-next font-semibold"[39m
+    [33mdata-key[39m=[32m"title"[39m
+  [36m/>[39m
+  Name "案":
+  [36m<h3[39m

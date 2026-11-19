@@ -62,23 +62,24 @@ export const threadTitle = (thread: Thread): string => {
 };
 
 /** スレッドを状態とタグで絞り、最後の書き込みの新しい順に並べる（渡した配列は変えない） */
-export const visibleThreads = ({ threads, filter, tag }: { threads: readonly Thread[]; filter: ThreadFilter; tag: string | null }): Thread[] =>
+export const visibleThreads = ({ threads, filter, tag, target }: { threads: readonly Thread[]; filter: ThreadFilter; tag: string | null; target: string | null }): Thread[] =>
   threads
     .filter((thread) => filter === "all" || thread.status === filter)
     .filter((thread) => tag === null || thread.tags.includes(tag))
+    .filter((thread) => target === null || thread.target === target)
     .sort((a, b) => byTime(lastCreated(b), lastCreated(a)) || idNumber(b.id) - idNumber(a.id));
 
-/** タグで絞ったスレッドの、状態の絞り込みに出す件数 */
-export const threadCounts = ({ threads, tag }: { threads: readonly Thread[]; tag: string | null }): { open: number; closed: number; all: number } => {
-  const tagged = tag === null ? threads : threads.filter((thread) => thread.tags.includes(tag));
+/** タグと項目で絞ったスレッドの、状態の絞り込みに出す件数 */
+export const threadCounts = ({ threads, tag, target }: { threads: readonly Thread[]; tag: string | null; target: string | null }): { open: number; closed: number; all: number } => {
+  const tagged = threads.filter((thread) => (tag === null || thread.tags.includes(tag)) && (target === null || thread.target === target));
   const open = tagged.filter((thread) => thread.status === "open").length;
   return { open, closed: tagged.length - open, all: tagged.length };
 };
 
-/** 一覧の先頭に出す、まだ送っていない新しいスレッド（クローズの絞り込みとタグの絞り込みでは出さない） */
-export const pendingThreads = ({ items, filter, tag }: { items: readonly ReviewItem[]; filter: ThreadFilter; tag: string | null }): ReviewItem[] => {
+/** 一覧の先頭に出す、まだ送っていない新しいスレッド（クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
+export const pendingThreads = ({ items, filter, tag, target }: { items: readonly ReviewItem[]; filter: ThreadFilter; tag: string | null; target: string | null }): ReviewItem[] => {
   if (filter === "closed" || tag !== null) return [];
-  return items.filter((item) => item.thread === null);
+  return items.filter((item) => item.thread === null && (target === null || item.target === target));
 };
 
 /** レビュー中の書き込みが、クローズのスレッドへの返信か（スレッドが見つからなければ偽） */

@@ -1,0 +1,28 @@
+# 実装の後の単体テスト（54127e14）
+
+$ python -m pytest tests/unit/preview -q -p no:cacheprovider --basetemp=/tmp/chk609/pt2
+........................................................................ [  7%]
+........................................................................ [ 15%]
+........................................................................ [ 23%]
+........................................................................ [ 30%]
+........................................................................ [ 38%]
+........................................................................ [ 46%]
+........................................................................ [ 54%]
+........................................................................ [ 61%]
+........................................................................ [ 69%]
+........................................................................ [ 77%]
+........................................................................ [ 84%]
+........................................................................ [ 92%]
+....................................................................     [100%]
+932 passed in 526.87s (0:08:46)
+
+$ npx vitest run
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-comment-target-filter
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ Test Files  84 passed (84)
+      Tests  329 passed (329)
+   Start at  17:59:39
+   Duration  23.20s (environment 43%, tests 28%, import 15%, setup 8%, transform 5%)
+Environment  jsdom was created 84 times · 63.23s total, 43% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments

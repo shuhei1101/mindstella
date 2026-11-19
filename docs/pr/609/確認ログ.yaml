@@ -1,0 +1,25 @@
+confirmations:
+  - topic: 画面一覧・画面遷移
+    decision: コメントの一覧に項目での絞り込みを追加し、詳細パネルの見出しのボタンから開いている項目で絞った一覧を開く。新しい画面は作らず、重なりは今の決まりのまま（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 974d08b0
+    thread: https://github.com/shuhei1101/mindstella/pull/609#discussion_r4625697646
+  - topic: 詳細パネルの見出しの、コメントの一覧のボタンの見た目
+    decision: コメントのアイコンだけのボタンを、編集する・エクスポートと前後の移動の間に置く（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: '91e49668'
+    thread: https://github.com/shuhei1101/mindstella/pull/609#discussion_r4625942397
+  - topic: 項目で絞ったコメントの一覧のモック
+    decision: モックのとおり進める。項目のチップは ID・タイトル・× だけで、件数は状態の絞り込みが出す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: '91e49668'
+    thread: https://github.com/shuhei1101/mindstella/pull/609#discussion_r4625943994
+  - topic: 項目で絞っている間の「新しいスレッド」の扱い
+    decision: 項目で絞っている間の「新しいスレッド」は、その項目へのスレッドとして溜め、入力の見出しを「{ID} への新しいスレッド」にする。入口のボタンの文言は「新しいスレッド」のまま（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 3cb8125c
+    thread: https://github.com/shuhei1101/mindstella/pull/609#discussion_r4626600642

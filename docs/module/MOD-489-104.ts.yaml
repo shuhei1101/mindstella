@@ -48,7 +48,7 @@ functions:
     title: 絞ったスレッド
     kind: 関数
     usecase: スレッドで話す
-    summary: 状態とタグで絞り、最後の書き込みの新しい順に並べる
+    summary: 状態・タグ・項目で絞り、最後の書き込みの新しい順に並べる
     args:
       - name: threads
         type: readonly Thread[]
@@ -62,6 +62,10 @@ functions:
         type: string | null
         required: true
         description: 絞るタグ
+      - name: target
+        type: string | null
+        required: true
+        description: 絞る項目の ID（スレッドの `target` が一致するものだけを残す。`null` なら項目で絞らない）。`CommentsPanel` はタグのチップの分母（`tag` を `null` にした件数）にも同じ `target` を渡す
     returns:
       type: Thread[]
       description: 絞ったスレッド
@@ -72,12 +76,18 @@ functions:
         condition: オープン 2 件（タグ「画面」1 件）とクローズ 1 件、`open` と「画面」
         mock: なし
         expected: タグ「画面」のオープンの 1 件
+      - name: test_visible_threads_when_target
+        case: 正常
+        summary: 項目で絞る
+        condition: "オープンの TH-1（D-1 へ向けた）・TH-2（D-2 へ向けた）とクローズの TH-5（D-1 へ向けた）。`test.each`: `{filter: 'open', tag: null, target: 'D-1'}` / `{filter: 'all', tag: null, target: 'D-1'}` / `{filter: 'all', tag: null, target: 'D-9'}`"
+        mock: なし
+        expected: '`[TH-1]` / `[TH-5, TH-1]` / `[]`'
     container: frontend/src/shared/core/comments.ts
   - name: threadCounts
     title: 状態ごとの件数
     kind: 関数
     usecase: スレッドで話す
-    summary: タグで絞った後の、オープン・クローズ・すべての件数
+    summary: タグ・項目で絞った後の、オープン・クローズ・すべての件数
     args:
       - name: threads
         type: readonly Thread[]
@@ -87,6 +97,10 @@ functions:
         type: string | null
         required: true
         description: 絞るタグ
+      - name: target
+        type: string | null
+        required: true
+        description: 絞る項目の ID（`null` なら項目で絞らない）
     returns:
       type: '{ open: number; closed: number; all: number }'
       description: 件数
@@ -97,12 +111,18 @@ functions:
         condition: オープン 2 件とクローズ 1 件
         mock: なし
         expected: '`{open: 2, closed: 1, all: 3}`'
+      - name: test_thread_counts_when_target
+        case: 正常
+        summary: 項目で絞った件数を数える
+        condition: "オープン 2 件（1 件が D-1 へ向けた・タグ `画面`）とクローズ 1 件（D-1 へ向けた）。`test.each`: `{tag: null, target: 'D-1'}` / `{tag: '画面', target: 'D-1'}`"
+        mock: なし
+        expected: '`{open: 1, closed: 1, all: 2}` / `{open: 1, closed: 0, all: 1}`'
     container: frontend/src/shared/core/comments.ts
   - name: pendingThreads
     title: まだ送っていない新しいスレッド
     kind: 関数
     usecase: コメントを選んで送る
-    summary: レビュー中の書き込みのうち `thread` を持たないものを溜めた順に返す。状態の絞り込みが `closed` か、タグで絞っているときは空
+    summary: レビュー中の書き込みのうち `thread` を持たないもの（`target` が `null` でなければその項目へ向けたものだけ）を溜めた順に返す。状態の絞り込みが `closed` か、タグで絞っているときは空
     args:
       - name: items
         type: readonly ReviewItem[]
@@ -116,6 +136,10 @@ functions:
         type: string | null
         required: true
         description: 絞るタグ
+      - name: target
+        type: string | null
+        required: true
+        description: 絞る項目の ID（`null` なら項目で絞らない）
     returns:
       type: ReviewItem[]
       description: まだ送っていない新しいスレッド
@@ -126,6 +150,12 @@ functions:
         condition: 「画面」で絞る
         mock: なし
         expected: 空
+      - name: test_pending_threads_when_target
+        case: 正常
+        summary: 項目で絞ると、その項目への新しいスレッドだけを出す
+        condition: "C-41（D-1 への新しいスレッド）・C-42（項目を指さない新しいスレッド）・C-43（返信）。`test.each`: `{filter: 'open', tag: null, target: 'D-1'}` / `{filter: 'closed', tag: null, target: 'D-1'}` / `{filter: 'open', tag: '画面', target: 'D-1'}`"
+        mock: なし
+        expected: '`[C-41]` / `[]` / `[]`'
     container: frontend/src/shared/core/comments.ts
   - name: isBlockedReply
     title: 送れない返信

@@ -26,6 +26,7 @@ export const PreviewSearchSchema = z.object({
   review: z.enum(["1"]).optional().catch(undefined),
   tstatus: z.enum(["closed", "all"]).optional().catch(undefined),
   ttag: z.string().optional().catch(undefined),
+  ttarget: z.string().optional().catch(undefined),
   search: z.enum(["1"]).optional().catch(undefined),
   q: z.string().optional().catch(undefined),
   f: z.record(z.string(), z.string()).catch({}),
@@ -115,11 +116,13 @@ export const normalizeSearch = (search: PreviewSearch, context: SearchContext): 
   if (next.panel === "comments") {
     if (next.thread !== undefined && threadIds !== undefined && !threadIds.includes(next.thread)) delete next.thread;
     if (next.ttag !== undefined && threadTags !== undefined && !threadTags.includes(next.ttag)) delete next.ttag;
+    if (next.ttarget !== undefined && !index.byId.has(next.ttarget)) delete next.ttarget;
   } else {
     delete next.thread;
     delete next.review;
     delete next.tstatus;
     delete next.ttag;
+    delete next.ttarget;
   }
   if (next.search === undefined || next.q?.trim() === "") delete next.q;
   return next;
