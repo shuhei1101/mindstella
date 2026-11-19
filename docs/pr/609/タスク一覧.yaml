@@ -65,8 +65,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T08:18:06.744251+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
     note: comments.ts・detail.ts・app.ts と comments-panel・detail-panel・preview-search
+    updated_by: planner
+    updated_at: '2026-11-19T08:26:18.941618+00:00'
   - process: ドキュメント修正
     status: todo
     note: docs/guide/プレビューを見る.md
