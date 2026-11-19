@@ -18,6 +18,9 @@ export const BODY_VIEW_LABELS = { pin: "表の列の固定", head: "表の見出
 const BODY_LAYOUT_LABEL = "本文の差分の並べ方";
 const REVIEW_ORDER_LABEL = "コメントの並び";
 
+/** 区画「コメントの入力」の「レビューに追加」の後のフォーカスの名前 */
+export const FOCUS_AFTER_ADD_LABEL = "レビューに追加した後のフォーカス";
+
 /** 見た目の名前 */
 export const lookLabel = (look: NetworkLook): string => LOOK_LABEL[look];
 
@@ -30,7 +33,7 @@ export const kindsText = (kinds: ReadonlySet<Kind>): string => {
 /** 絞り込みの条件が画面の既定と同じか */
 const sameFilters = (a: Filters, b: Filters): boolean => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 
-/** この端末で変えている項目の名前（見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並びの順） */
+/** この端末で変えている項目の名前（見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並び・「レビューに追加」の後のフォーカスの順） */
 export const overrideNames = ({ prefs, theme }: { prefs: Prefs; theme: Theme | null }): string[] => {
   const columns = prefs.columns ?? {};
   const filters = prefs.filters ?? {};
@@ -47,6 +50,7 @@ export const overrideNames = ({ prefs, theme }: { prefs: Prefs; theme: Theme | n
     ...(prefs.sectionFold === false ? [BODY_VIEW_LABELS.fold] : []),
     ...(prefs.bodyLayout === "side" ? [BODY_LAYOUT_LABEL] : []),
     ...(prefs.reviewOrder === "oldest" ? [REVIEW_ORDER_LABEL] : []),
+    ...(prefs.focusAfterAdd === "input" || prefs.focusAfterAdd === "none" ? [FOCUS_AFTER_ADD_LABEL] : []),
   ];
 };
 
@@ -61,6 +65,7 @@ export const resetPrefs = (prefs: Record<string, unknown>): Record<string, unkno
   minimap: null,
   bodyLayout: null,
   reviewOrder: null,
+  focusAfterAdd: null,
   tablePin: null,
   tableHead: null,
   tableStripes: null,
@@ -72,3 +77,10 @@ export const displayDefaults = (display: SettingsDisplay | undefined): { look: N
   look: display?.network_look ?? BUILTIN_LOOK,
   kinds: [...(display?.visible_kinds ?? KIND_KEYS)],
 });
+
+/** 「レビューに追加」の後のフォーカスの移動先。上書きが無ければ（自動）端末の主な入力がタッチなら「レビューに追加」、それ以外は入力欄 */
+export const focusAfterAddTarget = (prefs: Prefs, coarse: boolean): "input" | "submit" => {
+  if (prefs.focusAfterAdd === "input") return "input";
+  if (prefs.focusAfterAdd === "none") return "submit";
+  return coarse ? "submit" : "input";
+};
