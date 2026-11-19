@@ -31,6 +31,12 @@ constants:
     usecase: 外部のアプリから起動する
     summary: project-index に登録するエージェントフローの配信元の ID（インターフェース定義『エージェントフローの参照』）
     value: '"mindstella-agent-flows"'
+  - name: FILE_OUTSIDE_READ_KEY
+    title: ファイルの配信元の行の作業範囲の外のキー
+    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+    usecase: ワークスペースとMindStella のセッションの状態を取得する
+    summary: グローバルの設定のファイルの行のキー（API の応答の `OUTSIDE_READ_KEY` は camelCase）
+    value: '"outside_read"'
 functions:
   - name: workspace_id_for
     title: ワークスペースの ID を作る
@@ -430,6 +436,103 @@ functions:
         condition: '`add_source` が `ProjectIndexError`'
         mock: 同上・`caplog`
         expected: 例外にならず、`caplog` に `mindstella.agent_flows.register_failed`
+  - name: workspace_status
+    title: 状態の取得
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+    usecase: ワークスペースとMindStella のセッションの状態を取得する
+    scope: public
+    summary: IF-597-1 の応答を作る。何も書かず、鍵も取らない
+    description: |-
+      1. `state.read_ids` に `workspace_id` が無ければ `ApiError`（404、`stage: workspace`）
+      2. `project_index.read_source_rows(ctx.settings_file)` で行を読み、`id` が一致する行を引く。`ProjectIndexError` か行が無いときは `settings` の警告を付け、ワークスペースの部分を `None` にする
+      3. 行があれば、`workspace_folder` でフォルダを、`FILE_OUTSIDE_READ_KEY` が偽かで `closed` を引く。`.mindstella/config.yaml` が無ければ `records` の警告（`detail` にフォルダのパス）を付け、`title`・未読の数・`updated` を `None` にする
+      4. 記録があれば、設定の `title`、`threads.status_counts` の 2 つの数、`history.last_updated` と最後の書き込みの日時のうち新しい方を `updated` にする
+      5. `url` は `ctx.previews.url_of(フォルダ)`（配信を立てない。フォルダが分からなければ `None`）
+      6. `sessions.list_sessions` の `sessions`・`close_pending` と、`state.read_launch` が `None` でないか（`launch_options_recorded`）を足す
+      7. `status` は `closed` が真なら `closed`、偽で `close_pending` が真なら `stopped`、偽なら `active`、`closed` が `None` なら `None`
+    args:
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ・グローバルの設定のファイル・配信・tmux
+    returns:
+      type: dict
+      description: IF-597-1 の応答
+    exceptions:
+      - name: ApiError
+        condition: '404（`stage: workspace`）'
+    unit_tests:
+      - name: test_workspace_status
+        case: 正常
+        summary: ワークスペースとセッションの状態をまとめて書き換えない
+        condition: 'ID の一覧・`outside_read: true` の行・記録・`launch.json`・`running` の `session.json` がある'
+        mock: '`sessions.list_sessions`・`ctx.previews`'
+        expected: '`status: active`・`closed: false`・`launch_options_recorded: true`・`warnings: []`。状態のフォルダ・記録・グローバルの設定のファイルの中身が呼ぶ前と同じ'
+      - name: test_workspace_status_by_state
+        case: 正常
+        summary: closed と close_pending からワークスペースの状態を決める
+        condition: '`parametrize`: `outside_read: false` / `outside_read: true`・`close_pending: true` / `outside_read: true`・`close_pending: false`'
+        mock: '`sessions.list_sessions`'
+        expected: '`closed` / `stopped` / `active`'
+      - name: test_workspace_status_without_launch
+        case: 正常
+        summary: launch.json が無ければ偽で、中身を返さない
+        condition: '`launch.json` が無い'
+        mock: '`sessions.list_sessions`'
+        expected: '`launch_options_recorded: false`、応答に `mcp_config`・`plugin_dirs` が無い'
+      - name: test_workspace_status_warnings
+        case: 異常
+        summary: 記録か設定を参照できなければ警告を付ける
+        condition: '`parametrize`: `.mindstella/` が無い / グローバルの設定のファイルが壊れている'
+        mock: '`sessions.list_sessions`'
+        expected: '`warnings[0].stage` が `records`（`detail` にパス）で未読の数が `None` / `settings` で `status`・`closed` が `None`。どちらも `sessions` を返す'
+      - name: test_workspace_status_unknown
+        case: 異常
+        summary: ID の一覧に無ければ 404
+        condition: ID の一覧に無い ID
+        mock: なし
+        expected: '`ApiError`（404、`stage: workspace`）'
+  - name: list_workspaces
+    title: ワークスペースの一覧
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+    usecase: ワークスペースとMindStella のセッションの状態を取得する
+    scope: public
+    summary: IF-597-2 の応答を作る。ID の一覧の順に、配信元の行があるワークスペースを並べ、`include_closed` が偽ならクローズ済みを除く。グローバルの設定のファイルを参照できなければ空の並びと `settings` の警告。題名は記録の設定の `title`（記録が無ければ `None`）、`url` は `ctx.previews.url_of`。何も書かない
+    args:
+      - name: include_closed
+        type: bool
+        required: true
+        passing: positional
+        description: クローズしたものも含めるか
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ・グローバルの設定のファイル・配信
+    returns:
+      type: dict
+      description: '`{workspaces: [...], warnings: [...]}`'
+    unit_tests:
+      - name: test_list_workspaces
+        case: 正常
+        summary: クローズ済みを除くか含める
+        condition: '`parametrize`: `include_closed=False` / `True`。ID の一覧に 4 つ（開いている 2 つ・クローズ済み 1 つ・配信元の行が無い 1 つ）'
+        mock: '`ctx.previews`'
+        expected: ID の一覧の順の 2 件 / 3 件（行の無い 1 つはどちらも含まない）
+      - name: test_list_workspaces_settings_unreadable
+        case: 異常
+        summary: 設定を参照できなければ空と警告
+        condition: グローバルの設定のファイルが無い
+        mock: なし
+        expected: '`{workspaces: [], warnings: [{stage: settings, ...}]}`'
 notes:
   ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`
   ログ: |
