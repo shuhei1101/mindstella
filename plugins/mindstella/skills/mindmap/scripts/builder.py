@@ -22,6 +22,7 @@ from graph import list_ready
 from history import load_changes, load_item_history, merge_item_history
 from html_body import mark_lines
 from kinds import KINDS, SETTINGS_FILE
+from mdmark_ref import MDMARK_REPO, resolve_ref
 from store import NowFn, Workspace, now_utc
 
 # このファイルから見た `skills/mindmap/preview/`
@@ -136,14 +137,10 @@ MDMARK_SLOT = "<!-- mindmap-mdmark -->"
 MDMARK_CONFIG_OPEN = '<script type="application/json" id="mindmap-mdmark-config">'
 
 # `CDN_REPO_URL` の `package` に入れる mdmark のリポジトリ
-MDMARK_PACKAGE = "shuhei1101/mdmark"
+MDMARK_PACKAGE = MDMARK_REPO
 
 # `dist/index.js` が隣から `import()` する部品の配布ファイル
 MDMARK_PART_FILES = ("map.js", "view.js", "comments.js")
-
-# 設定の mdmark のバージョンの既定と、`latest` が指す mdmark のブランチ
-MDMARK_LATEST = "latest"
-MDMARK_LATEST_REF = "develop"
 
 # 配る書き出しに置く、mdmark の部品を中身に持つ要素の開きタグ（`{name}` に部品の名前）
 MDMARK_PART_OPEN = '<script type="text/plain" id="mindmap-mdmark-{name}">'
@@ -292,9 +289,13 @@ def replace_file(path: Path, text: str) -> None:
 
 
 def collect_preview_data(
-    workspace: Workspace, *, built_at: str, settings_problem: list[str] | None = None
+    workspace: Workspace,
+    *,
+    built_at: str,
+    mdmark_ref: str,
+    settings_problem: list[str] | None = None,
 ) -> dict[str, Any]:
-    """設定・7 種類・本文・まとまり・画面に出す値・読んだ日時・設定の問題を 1 つの辞書にまとめる（送信は含めない）。"""
+    """設定・7 種類・本文・まとまり・画面に出す値・読んだ日時・設定の問題・mdmark の ref を 1 つの辞書にまとめる（送信は含めない）。"""
     data: dict[str, Any] = {"settings": workspace.settings}
     rows = load_item_history(workspace.root)
     # 種類ごとの items を、ファイル名から `.yaml` を落としたキーで、history.yaml の行を合わせて入れる
@@ -324,11 +325,17 @@ def collect_preview_data(
     data["built_at"] = built_at
     # config.yaml がスキーマに合わないときの、合わない箇所の行（合うときと配る書き出しは null）
     data["settings_problem"] = settings_problem
+    # 画面が読み込む mdmark の ref（設定の mdmark のバージョンを解決したもの）
+    data["mdmark_ref"] = mdmark_ref
     return data
 
 
 def read_records(
-    root: Path, *, last_settings: dict[str, Any] | None = None, now: NowFn = now_utc
+    root: Path,
+    *,
+    last_settings: dict[str, Any] | None = None,
+    now: NowFn = now_utc,
+    resolve: Callable[[str | None], str] = resolve_ref,
 ) -> dict[str, Any]:
     """ワークスペースをその場で読んで検証し、記録の取得の辞書にして返す。config.yaml だけが合わないときは last_settings で返す。"""
     workspace = store.load_workspace(root)
@@ -348,12 +355,23 @@ def read_records(
             f"{problem.file}: {problem.key or store.WHOLE_PATH}: {problem.detail}"
             for problem in settings_problems
         ]
+        settings = cast("dict[str, Any]", last_settings)
         return collect_preview_data(
-            replace(workspace, settings=cast("dict[str, Any]", last_settings)),
+            replace(workspace, settings=settings),
             built_at=now(),
+            mdmark_ref=resolve(_mdmark_version(settings)),
             settings_problem=lines,
         )
-    return collect_preview_data(workspace, built_at=now())
+    return collect_preview_data(
+        workspace, built_at=now(), mdmark_ref=resolve(_mdmark_version(workspace.settings))
+    )
+
+
+def _mdmark_version(settings: dict[str, Any]) -> str | None:
+    """設定の `mdmark.version` を返す（無ければ None）。"""
+    mdmark_settings = settings.get("mdmark") or {}
+    version = mdmark_settings.get("version")
+    return version if isinstance(version, str) else None
 
 
 def escape_for_script(json_text: str) -> str:
@@ -373,20 +391,18 @@ def embed_data(template: str, data: dict[str, Any]) -> str:
     return template.replace(DATA_ELEMENT, f"{opened}{json_text}{CLOSE_TAG}")
 
 
-def mdmark_dist_url(version: str | None, path: str) -> str:
-    """設定の mdmark のバージョン（`latest` と `None` は develop）の、jsDelivr の `dist/{path}` の URL を返す。"""
-    return CDN_REPO_URL.format(package=MDMARK_PACKAGE, version=_mdmark_ref(version), path=f"dist/{path}")
-
-
-def _mdmark_ref(version: str | None) -> str:
-    """設定の mdmark のバージョンから、jsDelivr の ref を決める。"""
-    return MDMARK_LATEST_REF if version in (None, MDMARK_LATEST) else str(version)
+def mdmark_dist_url(ref: str, path: str) -> str:
+    """解決した mdmark の ref の、jsDelivr の `dist/{path}` の URL を返す。"""
+    return CDN_REPO_URL.format(package=MDMARK_PACKAGE, version=ref, path=f"dist/{path}")
 
 
 def assemble_template(
-    *, mdmark_settings: dict[str, Any] | None = None, preview_dir: Path = PREVIEW_DIR
+    *,
+    mdmark_settings: dict[str, Any] | None = None,
+    mdmark_ref: str,
+    preview_dir: Path = PREVIEW_DIR,
 ) -> str:
-    """`template.html` に CSS・JavaScript と、設定のバージョンの mdmark の読み込みを差し込んだ HTML を返す（`DATA_ELEMENT` は空のまま）。"""
+    """`template.html` に CSS・JavaScript と、解決した ref の mdmark の読み込みを差し込んだ HTML を返す（`DATA_ELEMENT` は空のまま）。"""
     template = (preview_dir / TEMPLATE_FILE).read_text(encoding="utf-8")
     styles = [(name, (preview_dir / name).read_text(encoding="utf-8")) for name in STYLE_FILES]
     scripts = [(name, (preview_dir / name).read_text(encoding="utf-8")) for name in SCRIPT_FILES]
@@ -404,14 +420,13 @@ def assemble_template(
     js = "\n".join(text for _, text in scripts)
     template = template.replace(STYLE_SLOT, f'<style id="mindmap-style">{css}{STYLE_CLOSE_TAG}')
     template = template.replace(SCRIPT_SLOT, f'<script id="mindmap-app">{js}{CLOSE_TAG}')
-    return template.replace(MDMARK_SLOT, _mdmark_loading(mdmark_settings or {}))
+    return template.replace(MDMARK_SLOT, _mdmark_loading(mdmark_settings or {}, mdmark_ref))
 
 
-def _mdmark_loading(mdmark_settings: dict[str, Any]) -> str:
-    """設定のバージョンの mdmark の CSS の `<link>` と、JavaScript の URL と `map` を持つ読み込みの設定の要素を返す。"""
-    version = mdmark_settings.get("version")
-    css_url = mdmark_dist_url(version, "index.css")
-    config = {"js": mdmark_dist_url(version, "index.js"), "map": mdmark_settings.get("map") or {}}
+def _mdmark_loading(mdmark_settings: dict[str, Any], ref: str) -> str:
+    """ref の mdmark の CSS の `<link>` と、JavaScript の URL と `map` を持つ読み込みの設定の要素を返す。"""
+    css_url = mdmark_dist_url(ref, "index.css")
+    config = {"js": mdmark_dist_url(ref, "index.js"), "map": mdmark_settings.get("map") or {}}
     config_text = escape_for_script(json.dumps(config, ensure_ascii=False))
     return (
         f'<link rel="stylesheet" href="{css_url}" crossorigin="anonymous">'
@@ -544,10 +559,11 @@ def assemble_standalone_template(
     libraries: tuple[VendorLibrary, ...] = VENDOR_LIBRARIES,
     fetch: FetchFn = fetch_url,
     mdmark_settings: dict[str, Any] | None = None,
+    mdmark_ref: str,
 ) -> str:
     """`assemble_template` の外の読み込みを、取った mdmark の CSS・JavaScript・部品、描画のライブラリの `<script>` とライセンスの表示の要素に置き換える。"""
     settings = mdmark_settings or {}
-    template = assemble_template(mdmark_settings=settings, preview_dir=preview_dir)
+    template = assemble_template(mdmark_settings=settings, mdmark_ref=mdmark_ref, preview_dir=preview_dir)
     scripts = list_external_scripts(template)
     # 取る前に、mdmark と外の読み込みごとのライセンスの表示の材料（VendorLibrary）を引く
     by_package = {library.package: library for library in libraries}
@@ -555,17 +571,15 @@ def assemble_standalone_template(
         if package not in by_package:
             raise ValueError(f"ライセンスの表示が無い外の読み込み: {package}")
 
-    # mdmark は設定のバージョンの配布ファイルを取る（integrity は確かめない）
-    version = settings.get("version")
+    # mdmark は解決した ref の配布ファイルを取る（integrity は確かめない）
     mdmark_files: list[tuple[str, str]] = []
     for name in ("index.css", "index.js", *MDMARK_PART_FILES):
-        url = mdmark_dist_url(version, name)
+        url = mdmark_dist_url(mdmark_ref, name)
         text = fetch(url).decode("utf-8")
         # 取った中身が script 要素を閉じる・開くタグ（CSS は style 要素を閉じるタグ）を含むと、埋め込んだ要素が壊れる
         _reject_tags(source=url, text=text, tags=_STYLE_TAGS if name.endswith(".css") else _SCRIPT_TAGS)
         mdmark_files.append((name, text))
     blocks: list[LicenseBlock] = []
-    mdmark_ref = _mdmark_ref(version)
     license_text, license_source, bundled_text, bundled_source = _license_texts(
         library=by_package[MDMARK_PACKAGE],
         base_url=CDN_REPO_URL,
@@ -676,6 +690,7 @@ def export_preview(
     built_at: str,
     preview_dir: Path = PREVIEW_DIR,
     fetch: FetchFn = fetch_url,
+    resolve: Callable[[str | None], str] = resolve_ref,
 ) -> Path:
     """検証してから、描画のライブラリとライセンスの表示を中に持つ雛形にデータを埋め込み、`out` を置き換える。"""
     # 問題があるときは取らず、書かない（前の out を残す）
@@ -684,9 +699,13 @@ def export_preview(
         raise store.build_mismatch_error(problems, workspace)
 
     # 取れないときは DownloadFailedError がそのまま上がる（書かない）
+    ref = resolve(_mdmark_version(workspace.settings))
     template = assemble_standalone_template(
-        preview_dir=preview_dir, fetch=fetch, mdmark_settings=workspace.settings.get("mdmark") or {}
+        preview_dir=preview_dir,
+        fetch=fetch,
+        mdmark_settings=workspace.settings.get("mdmark") or {},
+        mdmark_ref=ref,
     )
-    data = collect_preview_data(workspace, built_at=built_at)
+    data = collect_preview_data(workspace, built_at=built_at, mdmark_ref=ref)
     replace_file(out, embed_data(template, data))
     return out

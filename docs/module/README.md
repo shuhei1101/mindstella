@@ -114,7 +114,7 @@
 | [プレビュー / edits](./MOD-489-109.ts.yaml) | 保存待ちの編集を記録に重ねる計算（今の画面の `core/edits.ts` と同じ振る舞い） |
 | [プレビュー / doc-export](./MOD-489-107.ts.yaml) | 資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い） |
 | [プレビュー / body-links](./MOD-489-102.ts.yaml) | 描いた本文に、見出しのリンク・本文の印・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い） |
-| [プレビュー / markdown-decorate](./MOD-489-117.ts.yaml) | 描いた Markdown の本文の見せ方（表の列の幅・固定・見出しの固定・しま模様・セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し） |
+| [プレビュー / markdown-decorate](./MOD-489-117.ts.yaml) | 描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し） |
 | [プレビュー / minimap](./MOD-489-118.ts.yaml) | 差分のミニマップの印の計算と操作 |
 | [プレビュー / body-render](./MOD-489-103.ts.yaml) | 本文の差分の描画（足した・消した塊・語の面・図の差分） |
 | [プレビュー / side-by-side](./MOD-489-122.ts.yaml) | 左右に並べた本文の差分の組み立て |
@@ -156,6 +156,7 @@
 | [サーバー / 移行 / tags_to_objects.py](./MOD-489-187.py.yaml) | サーバー / 移行 / tags_to_objects.py |
 | [サーバー / 移行 / mdmark_documents.py](./MOD-550-1.py.yaml) | サーバー / 移行 / mdmark_documents.py |
 | [プレビュー / Storybook / main.js](./MOD-550-2.js.yaml) | プレビュー / Storybook / main.js |
+| [プレビュー / Storybook / mdmark-ref.js](./MOD-591-2.js.yaml) | プレビュー / Storybook / mdmark-ref.js |
 | [サーバー / 移行 / field_to_playbooks.py](./MOD-489-182.py.yaml) | サーバー / 移行 / field_to_playbooks.py |
 | [サーバー / 移行 / remove_discussion_keys.py](./MOD-565-3.py.yaml) | サーバー / 移行 / remove_discussion_keys.py |
 | [サーバー / 移行 / answer_to_adopted_option.py](./MOD-489-183.py.yaml) | サーバー / 移行 / answer_to_adopted_option.py |
@@ -281,5 +282,7 @@
 | [プレビュー / 画面と部品](./MOD-489-174.yaml) | 部品（表・トップバー・表示形式の切り替え）と画面。どれも「引数を受けて要素を返す関数」で、操作は引数のコールバックで入口に知らせる。 |
 | [サーバー / 作業の完了の通知 / notify.py](./MOD-568-1.py.yaml) | サーバー / 作業の完了の通知 / notify.py |
 | [サーバー / 入口 / startup.py](./MOD-605-1.py.yaml) | サーバー / 入口 / startup.py |
+| [サーバー / 配信 / files_serve.py](./MOD-587-1.py.yaml) | サーバー / 配信 / files_serve.py |
+| [サーバー / ビルド / mdmark_ref.py](./MOD-591-1.py.yaml) | サーバー / ビルド / mdmark_ref.py |
 
 <!-- /table -->

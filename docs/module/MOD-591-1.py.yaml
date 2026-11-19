@@ -1,0 +1,303 @@
+id: MOD-591-1
+title: サーバー / ビルド / mdmark_ref.py
+lead: ワークスペースの設定の mdmark のバージョンを、画面が読み込む jsDelivr の ref に解決する。`latest` は外部 API『GitHub』に mdmark の develop の先頭の commit の SHA を問い合わせ、常駐サーバーの中で保持する。配信（serve.py）と配る書き出し（commands.py）が呼ぶ。標準ライブラリだけに依存する。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    mdmark_ref.py   mdmark のバージョンの ref への解決と、GitHub への問い合わせの結果の保持
+  ```
+data_models:
+  - name: RefLookupError
+    title: ref を問い合わせられない
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    role: 例外
+    summary: GitHub に develop の先頭の commit を問い合わせられなかった
+    inherits: Exception
+    properties:
+      - name: reason
+        type: str
+        description: 問い合わせられなかった理由（標準エラーの 1 行に使う）
+        example: HTTP 403
+      - name: retry_at
+        type: float | None
+        description: 上限を超えた応答が示した、問い合わせ直せる時刻（UNIX 時刻の秒）。示さないときは `None`
+  - name: MdmarkRefResolver
+    title: mdmark の ref の解決
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    role: サービス
+    summary: 設定の mdmark のバージョンを ref に解決し、`latest` の問い合わせの結果を `REF_HOLD_SEC` 保持する。配信の要求ごとのスレッドから呼ばれるので、問い合わせと保持を `threading.Lock` で守る
+    properties:
+      - name: fetch
+        type: Callable[[], str]
+        access: 内部 (_)
+        default: fetch_head_sha
+        description: develop の先頭の commit を問い合わせる関数（生成時にキーワードで受ける）
+      - name: monotonic
+        type: Callable[[], float]
+        access: 内部 (_)
+        default: time.monotonic
+        description: 保持の期限を比べる時計（生成時にキーワードで受ける）
+      - name: wall
+        type: Callable[[], float]
+        access: 内部 (_)
+        default: time.time
+        description: '`retry_at`（UNIX 時刻）を比べる時計（生成時にキーワードで受ける）'
+      - name: held_ref
+        type: str | None
+        access: 内部 (_)
+        default: None
+        description: 前に問い合わせた SHA
+      - name: held_until
+        type: float
+        access: 内部 (_)
+        default: '0.0'
+        description: 保持の期限（`monotonic` の値）。この時刻より前は問い合わせない
+      - name: check
+        type: Callable[[str], None]
+        access: 内部 (_)
+        default: check_dist_served
+        description: 問い合わせた SHA を jsDelivr が配るかを確認する関数（生成時にキーワードで受ける）
+    methods:
+      - name: resolve
+        title: ref の解決
+        kind: メソッド
+        container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+        usecase: プレビューを開く
+        scope: public
+        summary: 設定の mdmark のバージョンを ref にする
+        args:
+          - name: version
+            type: str | None
+            required: true
+            passing: positional
+            description: 設定の `mdmark.version`（無ければ `None`）
+        returns:
+          type: str
+          description: タグならタグ、`latest` か `None` なら develop の先頭の commit の SHA（問い合わせられないときは前に問い合わせた SHA、無ければ `MDMARK_LATEST_BRANCH`）
+        process: |-
+          1. `version` が `None` でも `MDMARK_LATEST` でもなければ、そのまま返す（問い合わせない）
+          2. ロックを取り、今の `monotonic()` が保持の期限より前なら、保持している SHA（無ければ `MDMARK_LATEST_BRANCH`）を返す
+          3. `fetch()` を呼ぶ
+             - 返った SHA が保持している SHA と違う場合、`check(SHA)` で jsDelivr が配るかを確認する（`RefLookupError` は問い合わせられないときと同じく扱う）
+             - 確認できた（か同じ SHA）の場合、SHA を保持し、期限を今 + `REF_HOLD_SEC` にして返す
+             - `RefLookupError` の場合、標準エラーに理由を 1 行（`logger.warning`）記録し、期限を今 + `REF_HOLD_SEC` と、`retry_at` があれば今 + (`retry_at` − `wall()`) の遅い方にする。保持している SHA（無ければ `MDMARK_LATEST_BRANCH`）を返す
+        unit_tests:
+          - name: test_resolve_tag
+            case: 正常
+            summary: タグは問い合わせずにそのまま返す
+            condition: '`resolve("v0.13.0")`'
+            mock: '`fetch` に呼ばれた数を数える関数'
+            expected: '`v0.13.0` が返り、`fetch` は呼ばれない'
+          - name: test_resolve_latest_held
+            case: 正常
+            summary: latest と None は SHA にし、保持している間は問い合わせない
+            condition: '`resolve("latest")`・`resolve(None)` を続けて呼び、時計を 149 秒進めて呼び、150 秒進めて呼ぶ'
+            mock: '`fetch`（呼ばれるたびに別の SHA を返す）、`monotonic`'
+            expected: 初めの 3 回は同じ SHA で `fetch` は 1 回、150 秒進めた後は 2 つめの SHA で `fetch` は 2 回
+          - name: test_resolve_lookup_failed
+            case: 異常
+            summary: 問い合わせられないときは前の SHA か develop を返し、失敗も保持する
+            condition: '`parametrize`: 前に問い合わせた SHA が無い / ある（期限切れ後に失敗）。失敗の直後にもう一度呼ぶ'
+            mock: '`fetch`（`RefLookupError` を送る）、`monotonic`、`caplog`'
+            expected: '`develop` / 前の SHA が返り、警告の行が 1 行で、直後の呼び出しでは `fetch` を呼ばない'
+          - name: test_resolve_retry_at
+            case: 異常
+            summary: 上限を超えた応答が示した時刻が保持より遅ければ、その時刻まで問い合わせない
+            condition: '`retry_at` が今 + 600 秒の `RefLookupError` の後、時計を 300 秒・600 秒進めて呼ぶ'
+            mock: '`fetch`、`monotonic`、`wall`'
+            expected: 300 秒では `fetch` を呼ばず、600 秒では呼ぶ
+          - name: test_resolve_dist_not_served
+            case: 異常
+            summary: 問い合わせた別の SHA を jsDelivr が配らなければ、前の SHA か develop を返し、失敗も保持する
+            condition: '`parametrize`: 前に問い合わせた SHA が無い / ある（期限切れ後に別の SHA）。直後にもう一度呼ぶ'
+            mock: '`fetch`、`check`（別の SHA に `RefLookupError` を送る）、`monotonic`、`caplog`'
+            expected: '`develop` / 前の SHA が返り、警告の行が 1 行で、直後の呼び出しでは `fetch` を呼ばない'
+          - name: test_resolve_same_sha_not_checked
+            case: 正常
+            summary: 問い合わせた SHA が保持している SHA と同じなら jsDelivr を確認しない
+            condition: 同じ SHA を返す `fetch` で、時計を 150 秒ずつ進めて 2 回呼ぶ
+            mock: '`fetch`、`check`（呼ばれた数を数える）、`monotonic`'
+            expected: '`check` は 1 回だけ呼ばれる'
+constants:
+  - name: GITHUB_API_BASE_URL
+    title: GitHub の API の基点
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 問い合わせる基点の URL。結合テストは `sitecustomize` で偽のサーバーの `http://127.0.0.1:{ポート}` に差し替える（問い合わせるたびにこの定数を読む）
+    value: '"https://api.github.com"'
+  - name: MDMARK_REPO
+    title: mdmark のリポジトリ
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 問い合わせるリポジトリ（`{owner}/{repo}`）。builder.py の `MDMARK_PACKAGE` はこの定数を使う
+    value: '"shuhei1101/mdmark"'
+  - name: MDMARK_LATEST
+    title: 設定の既定のバージョン
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 設定の `mdmark.version` のうち、develop の先頭の commit に解決する値
+    value: '"latest"'
+  - name: MDMARK_LATEST_BRANCH
+    title: latest が指すブランチ
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 先頭の commit を問い合わせるブランチ。問い合わせられず、前に問い合わせた SHA も無いときの ref にも使う
+    value: '"develop"'
+  - name: REF_HOLD_SEC
+    title: 問い合わせた結果を保持する秒数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 問い合わせた SHA と、問い合わせられなかったことを保持し、その間は問い合わせない秒数
+    value: '150'
+    reason: 『プレビューの配信』の制約「mdmark の ref の解決」の導出（GitHub の API の認証なしの上限 60 回/時 ÷ 同じ端末で問い合わせる数 2 × 安全率 0.8）
+  - name: CONNECT_TIMEOUT_SEC
+    title: 接続を待つ秒数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 1 回の問い合わせで接続を待つ秒数
+    value: '11'
+    reason: 『プレビューの配信』の制約「mdmark の ref の解決」の導出（1,000 回の実測の接続の p99.9 が 7.10 秒 + 余裕 50%）
+  - name: READ_TIMEOUT_SEC
+    title: 読み取りを待つ秒数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 接続した後、応答を読み終えるまでの 1 回の読み取りを待つ秒数
+    value: '2'
+    reason: 『プレビューの配信』の制約「mdmark の ref の解決」の導出（1,000 回の実測の読み取りの p99.9 が 1.17 秒 + 余裕 50%）
+  - name: COMMIT_SHA
+    title: commit の SHA の形
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 応答の本文が commit の SHA かを確かめる正規表現（`re.fullmatch`）
+    value: re.compile(r"[0-9a-f]{40}")
+  - name: JSDELIVR_BASE_URL
+    title: jsDelivr の基点
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 問い合わせた SHA の配布物を jsDelivr が配るかを確認する基点の URL。結合テストは `sitecustomize` で偽のサーバーに差し替える（確認するたびにこの定数を参照する）
+    value: '"https://cdn.jsdelivr.net"'
+  - name: DIST_CONNECT_TIMEOUT_SEC
+    title: jsDelivr の確認で接続を待つ秒数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: jsDelivr が配布物を配るかの 1 回の確認で、接続を待つ秒数
+    value: '1'
+    reason: '『プレビューの配信』の制約「mdmark の ref の解決」の導出（`Range: bytes=0-0` の GET を 1,000 回測った接続の p99.9 が 0.038 秒 + 余裕 50% を秒に切り上げ）'
+  - name: DIST_READ_TIMEOUT_SEC
+    title: jsDelivr の確認で読み取りを待つ秒数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 接続した後、応答の頭を読み終えるまでの 1 回の読み取りを待つ秒数
+    value: '2'
+    reason: 『プレビューの配信』の制約「mdmark の ref の解決」の導出（同じ 1,000 回の読み取りの p99.9 が 1.30 秒 + 余裕 50%）
+functions:
+  - name: fetch_head_sha
+    title: develop の先頭の commit の問い合わせ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    scope: public
+    summary: '外部 API『GitHub』の `GET /repos/{MDMARK_REPO}/commits/{MDMARK_LATEST_BRANCH}` を `Accept: application/vnd.github.sha` で呼び、先頭の commit の SHA を返す（外との境界のアダプター）'
+    returns:
+      type: str
+      description: 40 文字の 16 進の SHA
+    process: |-
+      1. `GITHUB_API_BASE_URL` を分け、スキームが `https` なら `http.client.HTTPSConnection`、`http` なら `HTTPConnection` を `timeout=CONNECT_TIMEOUT_SEC` で作って接続する
+      2. 接続したソケットの待ちを `READ_TIMEOUT_SEC` にして、`Accept: application/vnd.github.sha`・`User-Agent: mindstella` で GET する
+      3. 応答が 200 で、本文を UTF-8 で読み前後の空白を除いたものが `COMMIT_SHA` に合えば返す
+         - 403・429 の場合、`Retry-After`（秒）があれば今の時刻 + その秒、無ければ `X-RateLimit-Reset`（UNIX 時刻）を `retry_at` にして `RefLookupError` を送る
+         - それ以外のステータス・形の合わない本文の場合、`RefLookupError`（`retry_at` は `None`）を送る
+      4. 接続・読み取りの `OSError`（待ちの上限を含む）と `http.client.HTTPException` は `RefLookupError`（`retry_at` は `None`）にして送る。接続は必ず閉じる
+    exceptions:
+      - name: RefLookupError
+        condition: 届かない・待ちの上限を超えた・200 以外・本文が SHA の形でない
+        message: 'mdmark の develop の commit を問い合わせられません: {理由}'
+    unit_tests:
+      - name: test_fetch_head_sha
+        case: 正常
+        summary: 200 の本文の SHA を返し、`Accept` と `User-Agent` を付ける
+        condition: '`GITHUB_API_BASE_URL` を `monkeypatch` で、空きポートの `http.server` で立てた偽のサーバー（`0123…567` と改行を返す）に向ける'
+        mock: 偽のサーバー
+        expected: '`0123456789abcdef0123456789abcdef01234567` が返り、偽のサーバーが受けた要求のパスが `/repos/shuhei1101/mdmark/commits/develop` で `Accept` が `application/vnd.github.sha`'
+      - name: test_fetch_head_sha_rate_limited
+        case: 異常
+        summary: 403 と `X-RateLimit-Reset`、429 と `Retry-After` は `retry_at` を持つ例外にする
+        condition: '`parametrize`: 403 + `X-RateLimit-Reset: 2000000000` / 429 + `Retry-After: 60`'
+        mock: 偽のサーバー、`time.time`
+        expected: '`RefLookupError` の `retry_at` が `2000000000` / 今の時刻 + 60'
+      - name: test_fetch_head_sha_invalid
+        case: 異常
+        summary: 500・SHA の形でない本文は `retry_at` の無い例外にする
+        condition: '`parametrize`: 500 / 200 で本文 `develop`'
+        mock: 偽のサーバー
+        expected: '`RefLookupError` の `retry_at` が `None`'
+      - name: test_fetch_head_sha_invalid_when_unreachable
+        case: 異常
+        summary: 誰も待ち受けないポートへは `retry_at` の無い例外にする
+        condition: '`GITHUB_API_BASE_URL` を誰も待ち受けない空きポートに向ける'
+        mock: なし
+        expected: '`RefLookupError` の `retry_at` が `None`'
+  - name: resolve_ref
+    title: 常駐サーバーの mdmark の ref の解決
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    scope: public
+    summary: 常駐サーバーに 1 つの `MdmarkRefResolver`（初めて呼ばれたときに作る）の `resolve` を呼ぶ。配信・配る書き出しが同じ保持を使う
+    args:
+      - name: version
+        type: str | None
+        required: true
+        passing: positional
+        description: 設定の `mdmark.version`
+    returns:
+      type: str
+      description: '`MdmarkRefResolver.resolve` の戻り値'
+    process: |-
+      1. モジュールの解決器が無ければ作る（ロックで 1 つにする）。`fetch` には、作る時点でモジュールの `fetch_head_sha` を引いてキーワードで指定する（`monkeypatch` で差し替えた関数を使用するため）
+      2. `resolve(version)` を返す
+    unit_tests:
+      - name: test_resolve_ref_shared
+        case: 正常
+        summary: 2 回呼んでも同じ解決器の保持を使う
+        condition: '`fetch_head_sha` を `monkeypatch` で呼ばれた数を数える関数にし、モジュールの解決器を空にしてから `resolve_ref("latest")` を 2 回呼ぶ'
+        mock: '`fetch_head_sha`'
+        expected: '`fetch_head_sha` は 1 回だけ呼ばれる'
+  - name: check_dist_served
+    title: jsDelivr が配布物を配るかの確認
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    scope: public
+    summary: 'jsDelivr の `{JSDELIVR_BASE_URL}/gh/{MDMARK_REPO}@{ref}/dist/index.js` を画面と同じ GET に `Range: bytes=0-0` を付けて要求し、200 か 206 でなければ `RefLookupError` を送る（外との境界のアダプター）'
+    args:
+      - name: ref
+        type: str
+        required: true
+        passing: positional
+        description: 問い合わせた commit の SHA
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. `JSDELIVR_BASE_URL` を分け、接続を `DIST_CONNECT_TIMEOUT_SEC`、読み取りを `DIST_READ_TIMEOUT_SEC` まで待って、`Range: bytes=0-0`・`User-Agent: mindstella` で GET する（応答の頭だけを読み、本文は読まない）
+      2. 200 か 206 なら返す
+         - それ以外のステータスの場合、`RefLookupError`（`retry_at` は `None`、理由は `jsDelivr が配らない: HTTP {ステータス}`）を送る
+      3. 接続・読み取りの `OSError` と `http.client.HTTPException` は `RefLookupError`（`retry_at` は `None`）にして送る。接続は必ず閉じる
+    unit_tests:
+      - name: test_check_dist_served
+        case: 正常
+        summary: '200 と 206 なら例外を送らず、SHA の `dist/index.js` を `Range: bytes=0-0` の GET で要求する'
+        condition: '`parametrize`: 200 / 206。`JSDELIVR_BASE_URL` をそのステータスを返す偽のサーバーに向ける'
+        mock: 偽のサーバー
+        expected: 例外を送らず、偽のサーバーが受けた要求が GET で `Range` が `bytes=0-0`、パスが `/gh/shuhei1101/mdmark@{SHA}/dist/index.js`
+      - name: test_check_dist_served_when_not_served
+        case: 異常
+        summary: 403 は `retry_at` の無い例外にする
+        condition: '`JSDELIVR_BASE_URL` を 403 を返す偽のサーバーに向ける'
+        mock: 偽のサーバー
+        expected: '`RefLookupError` の `retry_at` が `None`'
+test_files:
+  - tests/unit/scripts/test_mdmark_ref.py

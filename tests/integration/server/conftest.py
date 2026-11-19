@@ -17,6 +17,7 @@ from .fixture_types import (
     LockDirs,
     McpServer,
     StartFakeTranscriber,
+    StartMdmarkRefServer,
     StartServer,
     StartVoiceServer,
 )
@@ -138,6 +139,30 @@ def start_voice_server(start_server: StartServer, tmp_path: Path) -> StartVoiceS
         return start_server(extra_env=extra_env)
 
     return _start
+
+@pytest.fixture
+def start_mdmark_ref_server(start_server: StartServer, tmp_path: Path) -> StartMdmarkRefServer:
+    """mdmark の ref の解決が問い合わせる GitHub と jsDelivr の基点を差し替えて常駐サーバーを立てる関数を返す。"""
+
+    def _start(github_url: str, jsdelivr_url: str) -> McpServer:
+        """2 つの基点の URL を、読み込んだ後に差し替える sitecustomize を通して立てる。"""
+        hook_dir = tmp_path / "mdmark-ref-overrides"
+        hook_dir.mkdir(exist_ok=True)
+        overrides = {"mdmark_ref": {"GITHUB_API_BASE_URL": github_url, "JSDELIVR_BASE_URL": jsdelivr_url}}
+        (hook_dir / "sitecustomize.py").write_text(override_sitecustomize(overrides), encoding="utf-8")
+        return start_server(
+            extra_env={
+                "PYTHONPATH": os.pathsep.join(
+                    path for path in (str(hook_dir), os.environ.get("PYTHONPATH", "")) if path
+                ),
+                # 偽のサーバーへ、環境のプロキシを通さずに届かせる
+                "no_proxy": "127.0.0.1",
+                "NO_PROXY": "127.0.0.1",
+            }
+        )
+
+    return _start
+
 
 @pytest.fixture
 def unreachable_transcriber_url() -> Iterator[str]:

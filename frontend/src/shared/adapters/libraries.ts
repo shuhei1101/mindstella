@@ -1,12 +1,11 @@
-// 描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から読む。mdmark は設定のバージョンから `integrity` なしで、それ以外は `integrity` で確かめて読む（インターフェース定義『SPAを開く』の制約「描画のライブラリ」）
+// 描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から読む。mdmark は『記録の取得』の `mdmark_ref` から `integrity` なしで、それ以外は `integrity` で確かめて読む（インターフェース定義『SPAを開く』の制約「描画のライブラリ」）
 import { useSyncExternalStore } from "react";
 
-/** jsDelivr の mdmark の `dist/` の URL の形（`{ref}` に `develop` かタグ） */
+/** jsDelivr の mdmark の `dist/` の URL の形（`{ref}` に『記録の取得』の `mdmark_ref`。受ける前は `develop`） */
 export const MDMARK_CDN_BASE = "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist";
 
-/** 設定の mdmark のバージョンの既定と、`latest` が指す mdmark のブランチ */
-const MDMARK_LATEST = "latest";
-const MDMARK_LATEST_REF = "develop";
+/** ref を受ける前（前の版の配信が `mdmark_ref` を返さないときも）に読む mdmark のブランチ */
+const MDMARK_FALLBACK_REF = "develop";
 
 /** mdmark の `mount` の `config.map`（mdmark の設定の `map` と同じ形） */
 export type MdmarkMapConfig = Record<string, unknown>;
@@ -14,17 +13,16 @@ export type MdmarkMapConfig = Record<string, unknown>;
 /** 『記録の取得』の `settings.mdmark` */
 export type MdmarkSettings = { version?: string; map?: MdmarkMapConfig };
 
-let mdmarkRef = MDMARK_LATEST_REF;
+let mdmarkRef = MDMARK_FALLBACK_REF;
 let mdmarkMap: MdmarkMapConfig | undefined;
 
-/** `settings.mdmark` を受け取り、mdmark を読む URL と `mount` に指定する `map` を決める。読み始めた後に違うバージョンを受けたら、次に開いた画面から使う */
-export const setMdmarkSettings = (settings: MdmarkSettings | undefined): void => {
-  const version = settings?.version;
-  mdmarkRef = version === undefined || version === MDMARK_LATEST ? MDMARK_LATEST_REF : version;
+/** 『記録の取得』の `settings.mdmark` と `mdmark_ref` を受け取り、mdmark を読む URL（`mdmark_ref`。無ければ `develop`）と `mount` に指定する `map` を決める。読み始めた後に違う ref を受けたら、次に開いた画面から使う */
+export const setMdmarkSettings = (settings: MdmarkSettings | undefined, ref: string | undefined): void => {
+  mdmarkRef = ref ?? MDMARK_FALLBACK_REF;
   mdmarkMap = settings?.map;
 };
 
-/** `setMdmarkSettings` で決めた mdmark の JavaScript と CSS の URL を返す（受けていなければ `develop`） */
+/** `setMdmarkSettings` で決めた mdmark の JavaScript と CSS の URL を返す（ref を受けていなければ `develop`） */
 export const mdmarkUrls = (): { js: string; css: string } => {
   const base = MDMARK_CDN_BASE.replace("{ref}", mdmarkRef);
   return { js: `${base}/index.js`, css: `${base}/index.css` };
@@ -142,7 +140,7 @@ export const resetLibrariesForTest = (): void => {
   loading.clear();
   loaded.clear();
   failed.clear();
-  setMdmarkSettings(undefined);
+  setMdmarkSettings(undefined, undefined);
   importModule = importByUrl;
 };
 

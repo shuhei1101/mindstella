@@ -45,8 +45,8 @@ MDMARK_PARTS = ("map", "view", "comments")
 # 配る書き出しが雛形に足す `</script>` を持つ要素の数（mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示）
 MDMARK_ADDED_ELEMENTS = 6
 
-# 設定の mdmark のバージョンが無いとき（latest）に読む mdmark の ref
-MDMARK_LATEST_REF = "develop"
+# 設定の mdmark のバージョンが無いとき（latest）に読む mdmark の ref（develop の先頭の commit の SHA。問い合わせられなければ develop）
+MDMARK_LATEST_REF = re.compile(r"mdmark (?:[0-9a-f]{40}|develop)\n")
 
 # 資料の本文（要素を閉じる文字列を含む）
 BODY_WITH_SCRIPT_TAG = "本文に </script> を含む\n"
@@ -178,8 +178,6 @@ def test_normal(
     assert json.loads(_read_element(html, MDMARK_CONFIG_ELEMENT_OPEN)) == {"map": {}}
     # mdmark の CSS が id を持つ `<style>` の中身になる
     assert html.split(MDMARK_CSS_ELEMENT_OPEN, 1)[1].split("</style>", 1)[0] != ""
-    # 設定のバージョンが無いワークスペースは develop の最新を書き出す
-    mdmark_version = MDMARK_LATEST_REF
     # ライセンスの表示に、ライブラリごとの名前・版・著作権の表示・ライセンスの名前がある
     licenses = _read_element(html, LICENSES_ELEMENT_OPEN)
     versions = _template_versions()
@@ -188,8 +186,9 @@ def test_normal(
         assert notice in licenses
         assert f"License: {license_name}" in licenses
     # mdmark は、名前・版・著作権の表示・ライセンスの名前と、配布物が中に束ねた依存のライセンスの本文を持つ
-    mdmark_name, mdmark_license, mdmark_notice = EXPECTED_MDMARK_LICENSE
-    assert f"{mdmark_name} {mdmark_version}" in licenses
+    _, mdmark_license, mdmark_notice = EXPECTED_MDMARK_LICENSE
+    # 設定のバージョンが無いワークスペースは develop の最新（先頭の commit）を書き出す
+    assert MDMARK_LATEST_REF.search(licenses) is not None, licenses[:500]
     assert mdmark_notice in licenses
     assert f"License: {mdmark_license}" in licenses
     assert MDMARK_BUNDLED_LICENSES_HEAD in licenses

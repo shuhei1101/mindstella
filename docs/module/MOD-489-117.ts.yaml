@@ -1,12 +1,12 @@
 id: MOD-489-117
 title: プレビュー / markdown-decorate
-lead: 描いた Markdown の本文の見せ方（表の列の幅・固定・見出しの固定・しま模様・セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し）。
+lead: 描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し）。
 functions:
   - name: decorateMarkdown
     title: 本文の見せ方
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 描いた Markdown の本文の見せ方（表の列の幅・固定・見出しの固定・しま模様・セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し）
+    summary: 描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し。表は mdmark の表の機能のままで、見せ方を当てない）。振る舞いは今の画面の『markdown-body.ts』の `decorateMarkdown` と同じ
     args: []
     returns:
       type: unknown

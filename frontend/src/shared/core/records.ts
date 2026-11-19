@@ -219,6 +219,8 @@ export type MindmapData = Record<Kind, Item[]> & {
   built_at: string;
   /** `config.yaml` がスキーマに合わないときの、合わない箇所の行。合うとき・配る書き出しは null */
   settings_problem?: string[] | null;
+  /** 画面が読み込む mdmark の ref（設定の mdmark のバージョンをサーバーが解決したもの）。前の版の配信は持たない */
+  mdmark_ref?: string;
 };
 
 /** 記録の索引 */

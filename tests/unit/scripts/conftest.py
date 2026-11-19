@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import socket
 import sys
@@ -34,6 +35,24 @@ def isolate_state_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     state_home = tmp_path / "state-home"
     monkeypatch.setenv("XDG_STATE_HOME", str(state_home))
     return state_home
+
+
+@pytest.fixture(autouse=True)
+def offline_mdmark_ref(monkeypatch: pytest.MonkeyPatch) -> None:
+    """mdmark の latest の解決で GitHub に問い合わせず、問い合わせられないときの ref（develop）にする。
+
+    解決器は常駐サーバーに 1 つで問い合わせの結果を保持するため、テストごとに作り直させる。
+    """
+    # mdmark_ref.py がまだ無い（実装の前）なら、問い合わせる処理も無いので何もしない
+    if importlib.util.find_spec("mdmark_ref") is None:
+        return
+    import mdmark_ref
+
+    def _unreachable() -> str:
+        raise mdmark_ref.RefLookupError("単体テストでは問い合わせない", retry_at=None)
+
+    monkeypatch.setattr(mdmark_ref, "fetch_head_sha", _unreachable)
+    monkeypatch.setattr(mdmark_ref, "_resolver", None)
 
 
 @pytest.fixture

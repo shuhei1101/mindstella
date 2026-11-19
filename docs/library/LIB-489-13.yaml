@@ -2,11 +2,11 @@ id: LIB-489-13
 title: "mdmark"
 kind: "CDN の JS"
 version:
-  current: latest（ワークスペースの設定の `mdmark.version`。既定は develop の最新）
+  current: latest（ワークスペースの設定の `mdmark.version`。既定は develop の先頭の commit）
   latest: v0.13.0
   checked_on: '2026-11-17'
-  source: https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.js
-  pinning: ワークスペースの設定の `mdmark.version`（`latest` かタグ）で jsDelivr の GitHub の URL（`gh/shuhei1101/mdmark@{ref}/dist/`。`latest` は `develop`）を決めて読む。`integrity` は付けない（既定の `latest` は中身が変わるため。タグのときも付けない）。CSS は `crossorigin="anonymous"` の link 要素、JavaScript は `import()` で読む
+  source: https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{develop の先頭の commit の SHA}/dist/index.js
+  pinning: ワークスペースの設定の `mdmark.version`（`latest` かタグ）で jsDelivr の GitHub の URL（`gh/shuhei1101/mdmark@{ref}/dist/`。`latest` は常駐サーバーが GitHub に問い合わせた develop の先頭の commit の SHA のうち、jsDelivr が配ることを確認できたもの。問い合わせられないとき・jsDelivr が配らないときは、前に確認できた SHA か `develop`）を決めて読む。`integrity` は付けない（既定の `latest` は中身が変わるため。タグのときも付けない）。CSS は `crossorigin="anonymous"` の link 要素、JavaScript は `import()` で読む
 catalogs:
   - name: API
     version: v0.8.0
@@ -92,11 +92,11 @@ selection:
   decision: 'Issue #339 で、プレビューの描画を mdmark に置き換えると決まっている。重なる機能（用語のツールチップ・コメント・差分・印刷ほか）は設定で止める（PR #342 の要件の案 A）'
 install: |-
   ```html
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css" crossorigin="anonymous">
-  <script type="application/json" id="mindmap-mdmark-config">{"js": "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.js", "map": {}}</script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@05a79a26b04f557433469db12794a274629f3079/dist/index.css" crossorigin="anonymous">
+  <script type="application/json" id="mindmap-mdmark-config">{"js": "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@05a79a26b04f557433469db12794a274629f3079/dist/index.js", "map": {}}</script>
   ```
 
-  プレビューの画面が `import()` で `dist/index.js` を読む。グローバルには入らない
+  配信が `latest` を解決した commit の SHA（例は 2026-11-19 の develop）を URL に入れる。プレビューの画面が `import()` で `dist/index.js` を読む。グローバルには入らない
 limitations:
   - item: 図
     content: 埋め込んだ HTML の範囲の外の mermaid のコードブロックは描かないため、mermaid で描く
@@ -108,3 +108,9 @@ limitations:
     content: '部品のボタン（`button.mdmark-param-copy`）の文言は「今の値を写す」に固定で、替える設定が無い。mindstella は描いた後に `relabelParamCopy` で「今の値をコピー」に替える。設定は shuhei1101/mdmark#155 で追加し、付け替えは #351'
   - item: コードの色付け
     content: '`syntax` はコードブロックを描くときに highlight.js を jsDelivr から integrity なしで読む。mindstella はどの描画でも `syntax` を止める'
+  - item: 表の見出し行の固定
+    content: '2026-11-19 に develop `05a79a26` の `mount`（`features.table` をオン）で描いた 40 行の表で、`thead th` の上端を測った（Chromium は `data-mdmark-sticky="timeline"`、Firefox は `script`）。`mount` で描くと属性が `.mdmark-content` に付き、CSS の `.mdmark[data-mdmark-sticky]` の規則が当たらないため、ページでも区画でも表の上端から 400px スクロールすると見出し行が表と一緒に動いた。属性を `.mdmark` に付けると、ページのスクロールでは両方とも画面の上端に留まり、`overflow: auto` の区画（上端 48px）の中では Chromium が区画の上端（48）、Firefox が画面の上端（0）に留まった。`--mdmark-sticky-top: 48px` を指定すると Firefox は 48、Chromium は 96 になり、1 つの値で両方を区画の上端に揃えられない（shuhei1101/mdmark#683）。mindstella は、本文の表の見出し行が区画の上端に留まることを前提にしない'
+  - item: 表の列の幅のつまみの ARIA の値
+    content: '`features.table` をオンにして描いた表の列の幅のつまみ（`span.mdmark-col-resize`、`role="separator"`）は、`aria-valuemax` が `aria-valuemin`・`aria-valuenow` を下回る組み合わせになり、axe-core の `aria-valid-attr-value`（critical）に該当する（2026-11-19 に develop `aadba7dd` で確認。shuhei1101/mdmark#686）。mindstella は mdmark の部品を上書きせず、この検出を mdmark 由来として残す'
+  - item: 表のピン止めの列の配置
+    content: ピン止めした列（`td.is-pinned-col.is-pinned-edge`）は表のスクロールの区画（`div.mdmark-table-scroll`）の左端に 1px の隙間で寄り、Impeccable の `edge-flush-cards` に該当する。mdmark のピン止めの配置そのもので、mindstella はこの検出を mdmark 由来として残す

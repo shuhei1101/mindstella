@@ -1,0 +1,3624 @@
+# 単体テスト（Red）: テストコードの末尾の commit f88bf07d
+# 実行環境の都合: /tmp/pytest-of-shuhei2441 が root の所有のため TMPDIR=/tmp/pr591-tmp で実行。mdmark_ref.py が無いことで test_mdmark_ref.py の収集が止まるため --continue-on-collection-errors を付けた
+# 実装の前から pass したテスト: test_builder.py::test_mdmark_dist_url（今の mdmark_dist_url は latest でも未設定でもない値をそのまま ref にする。plugins/mindstella/skills/mindmap/scripts/builder.py の mdmark_dist_url、分岐点 cdf0ab8a の時点から）・test_thread_post.py::test_post_body_when_markdown（スレッドの書き込みは今も mdmark の表の機能をオフで描く。preview/core/libs.ts の MDMARK_FEATURES の table: false、分岐点 cdf0ab8a の時点から）
+
+$ pytest tests/unit --continue-on-collection-errors
+....................FFFFFFFF......FF.................................... [  2%]
+.......................................F...................F............ [  5%]
+........................................................................ [  8%]
+......................................F.................FF.............. [ 11%]
+.....................................F.................................. [ 14%]
+....................................FFFFFFF.......F..................... [ 17%]
+..........................F...........................................F. [ 20%]
+..........................................F............................. [ 23%]
+...........FFFFFFF......F.............................F................. [ 26%]
+........................................................................ [ 29%]
+FFFFFFF................................................................. [ 32%]
+...........F..................................F...............F......... [ 35%]
+........................................................FFF....FFFFF.... [ 38%]
+................FFFFFFFFFFFF............................................ [ 41%]
+........................................................................ [ 44%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 53%]
+........................................................................ [ 56%]
+........................................................................ [ 59%]
+........................................................................ [ 62%]
+........................................................................ [ 65%]
+........................................................................ [ 68%]
+............................................................s........... [ 71%]
+....................................................................F... [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 80%]
+........................................................................ [ 83%]
+........................................................................ [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 98%]
+................................                                         [100%]
+==================================== ERRORS ====================================
+____________ ERROR collecting tests/unit/scripts/test_mdmark_ref.py ____________
+ImportError while importing test module '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-mdmark-latest-fresh-dist/tests/unit/scripts/test_mdmark_ref.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_mdmark_ref.py:13: in <module>
+    import mdmark_ref
+E   ModuleNotFoundError: No module named 'mdmark_ref'
+=================================== FAILURES ===================================
+________________________ test_load_prefs[chromium-dark] ________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2864fe0>
+stored = '{"theme": "dark", "columns": {}}'
+expected = {'theme': 'dark', 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:218: AssertionError
+_________________ test_load_prefs_when_minimap[chromium-false] _________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2a18860>
+stored = '{"theme": "dark", "minimap": false}', expected_minimap = False
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:248: AssertionError
+_______________ test_load_prefs_when_body_layout[chromium-side] ________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2a19620>
+stored = '{"theme": "dark", "bodyLayout": "side"}'
+expected_body_layout = 'side'
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:278: AssertionError
+______________ test_load_prefs_when_review_order[chromium-oldest] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db294a200>
+stored = '{"theme": "dark", "reviewOrder": "oldest"}'
+expected_review_order = 'oldest'
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:308: AssertionError
+______________ test_load_prefs_when_body_view[chromium-fold_off] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db32f7a60>
+stored = '{"theme": "dark", "sectionFold": false}'
+expected_overrides = {'sectionFold': False}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param('{"theme": "dark", "sectionFold": false}', {"sectionFold": False}, id="fold_off"),
+            pytest.param('{"theme": "dark", "sectionFold": true}', {}, id="same_as_default"),
+            pytest.param('{"theme": "dark", "sectionFold": "no"}', {}, id="not_boolean"),
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false, "tableStripes": true}',
+                {},
+                id="previous_version_table_overrides",
+            ),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """セクションの折りたたみの上書きは既定と違う値だけを読み、前の版の表の上書きは読まない（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:342: AssertionError
+_____________ test_load_prefs_when_comments_pinned[chromium-true] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db32f68e0>
+stored = '{"theme": "dark", "commentsPinned": true}', expected_pinned = True
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:372: AssertionError
+___________ test_load_prefs_when_comment_form_closed[chromium-true] ____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db33020c0>
+stored = '{"theme": "dark", "commentFormClosed": true}', expected_closed = True
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:403: AssertionError
+__________________ test_save_prefs[chromium-working_storage] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db32b3ba0>
+setitem_throws = False, expected_saved = True
+expected_loaded = {'theme': 'dark', 'columns': {'decisions': {'hidden': ['tags'], 'pinTo': 'id'}}, 'look': 'dust', 'kinds': ['tasks'], ...}
+
+    @pytest.mark.parametrize(
+        ("setitem_throws", "expected_saved", "expected_loaded"),
+        [
+            pytest.param(False, True, SAVED_PREFS, id="working_storage"),
+            # 例外を送る保存領域では、読み戻した値は確かめない（偽を返し、例外を送らないことだけを確かめる）
+            pytest.param(True, False, None, id="setitem_throws"),
+        ],
+    )
+    def test_save_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        setitem_throws: bool,
+        expected_saved: bool,
+        expected_loaded: dict[str, Any] | None,
+    ) -> None:
+        """書けたかを返し、残した設定を読める。保存領域が例外を送っても例外を送らない（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行（savePrefs が例外を送ると evaluate が失敗する）
+        result = preview_page.evaluate(
+            """({prefs, setitemThrows}) => {
+                const values = new Map();
+                const storage = {
+                    getItem: (key) => values.get(key) ?? null,
+                    setItem: (key, value) => {
+                        if (setitemThrows) throw new Error("保存領域が使えません");
+                        values.set(key, value);
+                    },
+                };
+                const saved = MindmapPreview.savePrefs({storage, prefs});
+                return {saved, loaded: MindmapPreview.loadPrefs(storage)};
+            }""",
+            {"prefs": SAVED_PREFS, "setitemThrows": setitem_throws},
+        )
+        # 検証
+        assert result["saved"] is expected_saved
+>       assert expected_loaded is None or result["loaded"] == expected_loaded
+E       AssertionError: assert ({'theme': 'dark', 'columns': {'decisions': {'hidden': ['tags'], 'pinTo': 'id'}}, 'look': 'dust', 'kinds': ['tasks'], ...} is None or {'theme': 'da...'tasks'], ...} == {'theme': 'da...'tasks'], ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff)
+
+tests/unit/preview/test_app.py:458: AssertionError
+__________ test_resolve_display_when_body_view[chromium-no_override] ___________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db33c0ae0>
+prefs = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+expected = {'bodyView': {'fold': True}, 'overrides': []}
+
+    @pytest.mark.parametrize(
+        ("prefs", "expected"),
+        [
+            pytest.param(
+                DEFAULT_PREFS,
+                {"bodyView": {"fold": True}, "overrides": []},
+                id="no_override",
+            ),
+            pytest.param(
+                {**DEFAULT_PREFS, "sectionFold": False},
+                {"bodyView": {"fold": False}, "overrides": ["セクションの折りたたみ"]},
+                id="fold_off",
+            ),
+            pytest.param(
+                {**DEFAULT_PREFS, "minimap": False, "sectionFold": False, "bodyLayout": "side"},
+                {
+                    "bodyView": {"fold": False},
+                    "overrides": ["差分のミニマップ", "セクションの折りたたみ", "本文の差分の並べ方"],
+                },
+                id="between_minimap_and_body_layout",
+            ),
+        ],
+    )
+    def test_resolve_display_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        prefs: dict[str, Any],
+        expected: dict[str, Any],
+    ) -> None:
+        """セクションの折りたたみは上書きがあるときだけ偽にし、変えている項目に差分のミニマップと本文の差分の並べ方の間で並ぶ（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        resolved = preview_page.evaluate(
+            """(prefs) => {
+                const result = MindmapPreview.resolveDisplay(prefs, undefined);
+                return {bodyView: result.bodyView, overrides: result.overrides};
+            }""",
+            prefs,
+        )
+        # 検証
+>       assert resolved == expected
+E       AssertionError: assert {'bodyView': ...verrides': []} == {'bodyView': ...verrides': []}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'bodyView': {'pin': True, 'head': True, 'stripes': False, 'fold': True}} != {'bodyView': {'fold': True}}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:794: AssertionError
+________________________ test_clear_overrides[chromium] ________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db3287ec0>
+
+    def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+        """上書きだけを外し、差分の時点は残す（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        prefs = {
+            "theme": "dark",
+            "columns": RESEARCH_COLUMNS,
+            "look": "dust",
+            "kinds": ["tasks"],
+            "diffSel": "since",
+            "filters": {"tasks": TASKS_FILTERS},
+            "minimap": False,
+            "bodyLayout": "side",
+            "reviewOrder": "oldest",
+            "sectionFold": False,
+            "commentsPinned": True,
+            "commentFormClosed": True,
+        }
+        # 実行
+        result = preview_page.evaluate(
+            """(prefs) => ({cleared: MindmapPreview.clearOverrides(prefs), original: prefs})""", prefs
+        )
+        # 検証
+>       assert result["cleared"] == {
+            "theme": None,
+            "columns": {},
+            "look": None,
+            "kinds": None,
+            "diffSel": "since",
+            "filters": {},
+            "minimap": None,
+            "bodyLayout": None,
+            "reviewOrder": None,
+            "sectionFold": None,
+            "commentsPinned": True,
+            "commentFormClosed": True,
+        }
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:820: AssertionError
+__________ test_detail_panel_when_diff_removed_before_table[chromium] __________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db246b380>
+load_library = <function load_library.<locals>._load at 0x717db29a0040>
+load_mdmark = <function load_mdmark.<locals>._load at 0x717db27c5bc0>
+make_data = <function make_data.<locals>._make at 0x717db27c56c0>
+make_item = <function make_item.<locals>._make at 0x717db27c7560>
+
+    def test_detail_panel_when_diff_removed_before_table(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_library: LoadLibrary,
+        load_mdmark: LoadMdmark,
+        make_data: MakeData,
+        make_item: MakeItem,
+    ) -> None:
+        """表の直前で消した塊を、mdmark の表の入れ物の外（表の前）へ差し込む（正常系）。"""
+        # 準備
+        data = make_data(
+            decisions=[make_item("D-1", body="docs/D-1.md", history=[REMOVED_BEFORE_TABLE_ENTRY], seq=1)],
+            bodies={"docs/D-1.md": REMOVED_BEFORE_TABLE_NOW},
+        )
+        load_preview_scripts()
+        load_library("marked")
+        load_mdmark()
+        load_library("jsdiff")
+        # 実行
+        result = preview_page.evaluate(REMOVED_BEFORE_TABLE_SCRIPT, {"data": data, "point": DIFF_POINT})
+        # 検証
+>       assert result == {"insideMdmarkTable": False, "nextIsMdmarkTable": True}
+E       AssertionError: assert {'insideMdmar...Table': False} == {'insideMdmar...kTable': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'nextIsMdmarkTable': False} != {'nextIsMdmarkTable': True}
+E         Use -v to get more diff
+
+tests/unit/preview/test_detail.py:1749: AssertionError
+______________ test_detail_panel_when_body_view[chromium-default] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2498360>
+load_preview_styles = <function load_preview_styles.<locals>._load at 0x717db2498720>
+load_library = <function load_library.<locals>._load at 0x717db2578400>
+load_mdmark = <function load_mdmark.<locals>._load at 0x717db257ae80>
+make_data = <function make_data.<locals>._make at 0x717db2578e00>
+make_item = <function make_item.<locals>._make at 0x717db25e2700>
+body_view = {'fold': True}, with_diff = False, fold_first = False
+expected = {'arrows': ['比較', '料金'], 'inMdmarkTable': True}
+
+    @pytest.mark.parametrize(
+        ("body_view", "with_diff", "fold_first", "expected"),
+        [
+            pytest.param(
+                BODY_VIEW_DEFAULT,
+                False,
+                False,
+                {"arrows": ["比較", "料金"], "inMdmarkTable": True},
+                id="default",
+            ),
+            pytest.param(
+                {"fold": False},
+                False,
+                False,
+                {"arrows": [], "inMdmarkTable": True},
+                id="fold_off",
+            ),
+            pytest.param(
+                BODY_VIEW_DEFAULT,
+                True,
+                False,
+                {"arrows": [], "inMdmarkTable": True},
+                id="body_diff_has_no_fold",
+            ),
+            pytest.param(
+                BODY_VIEW_DEFAULT,
+                False,
+                True,
+                {"sectionOpen": True, "inView": True},
+                id="reveal_heading_after_fold",
+            ),
+        ],
+    )
+    def test_detail_panel_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_preview_styles: LoadPreviewStyles,
+        load_library: LoadLibrary,
+        load_mdmark: LoadMdmark,
+        make_data: MakeData,
+        make_item: MakeItem,
+        body_view: dict[str, bool],
+        with_diff: bool,
+        fold_first: bool,
+        expected: dict[str, Any],
+    ) -> None:
+        """本文に見せ方を当て、本文の差分には開閉を置かず、畳んだ見出しへ移るときは開く（正常系）。"""
+        # 準備
+        entries = [BODY_VIEW_ENTRY] if with_diff else []
+        data = make_data(
+            docs=[make_item("A-1", **({"history": entries, "seq": 1} if entries else {}))],
+            bodies={"docs/A-1.md": BODY_VIEW_BODY},
+        )
+        load_preview_scripts()
+        load_preview_styles()
+        load_library("marked")
+        load_mdmark()
+        load_library("jsdiff")
+        # 実行
+        result = preview_page.evaluate(
+            OPEN_BODY_VIEW_PANEL_SCRIPT,
+            {
+                "data": data,
+                "bodyView": body_view,
+                "point": DIFF_POINT if with_diff else None,
+                "heading": "料金",
+                "foldFirst": fold_first,
+            },
+        )
+        # 検証
+>       assert {key: result[key] for key in expected} == expected
+E       AssertionError: assert {'arrows': ['...Table': False} == {'arrows': ['...kTable': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'inMdmarkTable': False} != {'inMdmarkTable': True}
+E         Use -v to get more diff
+
+tests/unit/preview/test_detail.py:3551: AssertionError
+_______ test_render_markdown_when_table[chromium-table_feature_default] ________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db25e2840>
+load_mdmark = <function load_mdmark.<locals>._load at 0x717db205e160>
+options = None
+expected = {'tableCount': 2, 'inMdmarkTable': [True, True], 'tableWraps': 0, 'mdmarkTableMarks': [[None, None], [None, None]], ...}
+
+    @pytest.mark.parametrize(
+        ("options", "expected"),
+        [
+            pytest.param(
+                None,
+                {
+                    "tableCount": 2,
+                    "inMdmarkTable": [True, True],
+                    "tableWraps": 0,
+                    "mdmarkTableMarks": [[None, None], [None, None]],
+                    "rows": [["3", "5"], ["7", "9"]],
+                },
+                id="table_feature_default",
+            ),
+            pytest.param(
+                {"table": False},
+                {
+                    "tableCount": 2,
+                    "inMdmarkTable": [False, False],
+                    "tableWraps": 0,
+                    "mdmarkTableMarks": [],
+                    "rows": [["3", "5"], ["7", "9"]],
+                },
+                id="table_feature_off",
+            ),
+        ],
+    )
+    def test_render_markdown_when_table(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_mdmark: LoadMdmark,
+        options: dict[str, bool] | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """表を mdmark の表の機能で描き、行の印を変えない（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        load_mdmark()
+        # 実行
+        result = preview_page.evaluate(
+            """({source, options}) => {
+                const root = options === null
+                    ? MindmapPreview.renderMarkdown(source)
+                    : MindmapPreview.renderMarkdown(source, options);
+                const tables = [...root.querySelectorAll("table")];
+                return {
+                    tableCount: tables.length,
+                    inMdmarkTable: tables.map((table) => table.closest(".mdmark-table") !== null),
+                    tableWraps: root.querySelectorAll(".md-table-wrap").length,
+                    mdmarkTableMarks: [...root.querySelectorAll(".mdmark-table")].map((wrap) => [
+                        wrap.getAttribute("data-line-start"),
+                        wrap.getAttribute("data-source-line"),
+                    ]),
+                    rows: tables.map((table) =>
+                        [...table.querySelectorAll("tr")].map((row) => row.getAttribute("data-line-start")).filter((line) => line !== null)
+                    ),
+                };
+            }""",
+            {"source": TABLE_WRAP_SOURCE, "options": options},
+        )
+        # 検証
+>       assert result == expected
+E       AssertionError: assert {'tableCount'...rks': [], ...} == {'tableCount'..., None]], ...}
+E         
+E         Omitting 2 identical items, use -vv to show
+E         Differing items:
+E         {'mdmarkTableMarks': []} != {'mdmarkTableMarks': [[None, None], [None, None]]}
+E         {'inMdmarkTable': [False, False]} != {'inMdmarkTable': [True, True]}
+E         {'tableWraps': 2} != {'tableWraps': 0}
+E         Use -v to get more diff
+
+tests/unit/preview/test_libs.py:1764: AssertionError
+_________________ test_decorate_markdown_when_table[chromium] __________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db24da7a0>
+load_mdmark = <function load_mdmark.<locals>._load at 0x717db28cd940>
+
+    def test_decorate_markdown_when_table(
+        preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
+    ) -> None:
+        """mdmark の表の機能で描いた表に見せ方を当てない（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        load_mdmark()
+        # 実行
+        result = preview_page.evaluate(
+            DECORATE_RENDERED_SCRIPT, {"source": TABLES_SOURCE, "table": True}
+        )
+        # 検証
+>       assert result["inMdmarkTable"] is True
+E       assert False is True
+
+tests/unit/preview/test_markdown_body.py:315: AssertionError
+_______________ test_decorate_markdown_when_tables_off[chromium] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2564b80>
+load_mdmark = <function load_mdmark.<locals>._load at 0x717db27ae200>
+
+    def test_decorate_markdown_when_tables_off(
+        preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
+    ) -> None:
+        """表の機能をオフで描いた本文にも、コードと Alert の見せ方を当てる（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        load_mdmark()
+        # 実行
+        result = preview_page.evaluate(
+            DECORATE_RENDERED_SCRIPT, {"source": TABLES_SOURCE, "table": False}
+        )
+        # 検証
+>       assert result == {
+            "inMdmarkTable": False,
+            "tableUnchanged": True,
+            "colSizes": 0,
+            "frames": 0,
+            "pins": 0,
+            "codeButtons": 1,
+            "codeLabels": ["bash"],
+            "noteIcon": True,
+        }
+E       AssertionError: assert {'inMdmarkTab...ames': 1, ...} == {'inMdmarkTab...ames': 0, ...}
+E         
+E         Omitting 6 identical items, use -vv to show
+E         Differing items:
+E         {'colSizes': 6} != {'colSizes': 0}
+E         {'frames': 1} != {'frames': 0}
+E         Use -v to get more diff
+
+tests/unit/preview/test_markdown_body.py:332: AssertionError
+_______ test_settings_panel_when_body_view[chromium-default_press_fold] ________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2519800>
+args = {'bodyView': {'fold': True}, 'overrides': [], 'operate': ['セクションの折りたたみ']}
+expected_checks = [('差分のミニマップ', True), ('セクションの折りたたみ', True)]
+expected_call = ['bodyView', {'key': 'fold', 'value': False}]
+expected_buttons = [], expected_texts = []
+
+    @pytest.mark.parametrize(
+        ("args", "expected_checks", "expected_call", "expected_buttons", "expected_texts"),
+        [
+            pytest.param(
+                {"bodyView": BODY_VIEW_DEFAULT, "overrides": [], "operate": ["セクションの折りたたみ"]},
+                [("差分のミニマップ", True), ("セクションの折りたたみ", True)],
+                ["bodyView", {"key": "fold", "value": False}],
+                [],
+                [],
+                id="default_press_fold",
+            ),
+            pytest.param(
+                {
+                    "bodyView": {"fold": False},
+                    "overrides": ["セクションの折りたたみ"],
+                    "operate": ["セクションの折りたたみ"],
+                },
+                [("差分のミニマップ", True), ("セクションの折りたたみ", False)],
+                ["bodyView", {"key": "fold", "value": True}],
+                ["既定に戻す"],
+                ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+                id="overridden_press_fold",
+            ),
+        ],
+    )
+    def test_settings_panel_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        args: dict[str, Any],
+        expected_checks: list[tuple[str, bool]],
+        expected_call: list[Any],
+        expected_buttons: list[str],
+        expected_texts: list[str],
+    ) -> None:
+        """セクションの折りたたみのチェックを出し、切り替えを知らせる。保存のボタンの比べには使わない（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行（本文の見せ方のチェックを押す）
+        observed = _observe(preview_page, **args)
+        # 検証
+        checks = [(check["name"], check["checked"]) for check in observed["detailChecks"]]
+>       assert checks == expected_checks
+E       AssertionError: assert [('差分のミニマップ',...折りたたみ', True)] == [('差分のミニマップ',...折りたたみ', True)]
+E         
+E         At index 1 diff: ('表の列の固定', False) != ('セクションの折りたたみ', True)
+E         Left contains 3 more items, first extra item: ('表の見出しの固定', False)
+E         Use -v to get more diff
+
+tests/unit/preview/test_settings_panel.py:298: AssertionError
+____________________ test_load_prefs[chromium-broken_json] _____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db24eca40>
+stored = '{'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:218: AssertionError
+_________________ test_load_prefs_when_minimap[chromium-true] __________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db24efb00>
+stored = '{"theme": "dark", "minimap": true}', expected_minimap = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:248: AssertionError
+______________ test_load_prefs_when_body_layout[chromium-inline] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db28da0c0>
+stored = '{"theme": "dark", "bodyLayout": "inline"}'
+expected_body_layout = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:278: AssertionError
+______________ test_load_prefs_when_review_order[chromium-newest] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db1fe7ba0>
+stored = '{"theme": "dark", "reviewOrder": "newest"}'
+expected_review_order = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:308: AssertionError
+___________ test_load_prefs_when_body_view[chromium-same_as_default] ___________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db22c77e0>
+stored = '{"theme": "dark", "sectionFold": true}', expected_overrides = {}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param('{"theme": "dark", "sectionFold": false}', {"sectionFold": False}, id="fold_off"),
+            pytest.param('{"theme": "dark", "sectionFold": true}', {}, id="same_as_default"),
+            pytest.param('{"theme": "dark", "sectionFold": "no"}', {}, id="not_boolean"),
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false, "tableStripes": true}',
+                {},
+                id="previous_version_table_overrides",
+            ),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """セクションの折りたたみの上書きは既定と違う値だけを読み、前の版の表の上書きは読まない（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:342: AssertionError
+_____________ test_load_prefs_when_comments_pinned[chromium-false] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2489a80>
+stored = '{"theme": "dark", "commentsPinned": false}', expected_pinned = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:372: AssertionError
+___________ test_load_prefs_when_comment_form_closed[chromium-false] ___________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db22c3b00>
+stored = '{"theme": "dark", "commentFormClosed": false}', expected_closed = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:403: AssertionError
+____________ test_resolve_display_when_body_view[chromium-fold_off] ____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db254bec0>
+prefs = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+expected = {'bodyView': {'fold': False}, 'overrides': ['セクションの折りたたみ']}
+
+    @pytest.mark.parametrize(
+        ("prefs", "expected"),
+        [
+            pytest.param(
+                DEFAULT_PREFS,
+                {"bodyView": {"fold": True}, "overrides": []},
+                id="no_override",
+            ),
+            pytest.param(
+                {**DEFAULT_PREFS, "sectionFold": False},
+                {"bodyView": {"fold": False}, "overrides": ["セクションの折りたたみ"]},
+                id="fold_off",
+            ),
+            pytest.param(
+                {**DEFAULT_PREFS, "minimap": False, "sectionFold": False, "bodyLayout": "side"},
+                {
+                    "bodyView": {"fold": False},
+                    "overrides": ["差分のミニマップ", "セクションの折りたたみ", "本文の差分の並べ方"],
+                },
+                id="between_minimap_and_body_layout",
+            ),
+        ],
+    )
+    def test_resolve_display_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        prefs: dict[str, Any],
+        expected: dict[str, Any],
+    ) -> None:
+        """セクションの折りたたみは上書きがあるときだけ偽にし、変えている項目に差分のミニマップと本文の差分の並べ方の間で並ぶ（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        resolved = preview_page.evaluate(
+            """(prefs) => {
+                const result = MindmapPreview.resolveDisplay(prefs, undefined);
+                return {bodyView: result.bodyView, overrides: result.overrides};
+            }""",
+            prefs,
+        )
+        # 検証
+>       assert resolved == expected
+E       AssertionError: assert {'bodyView': ...セクションの折りたたみ']} == {'bodyView': ...セクションの折りたたみ']}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'bodyView': {'pin': True, 'head': True, 'stripes': False, 'fold': False}} != {'bodyView': {'fold': False}}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:794: AssertionError
+_____________ test_detail_panel_when_body_view[chromium-fold_off] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db1f4d260>
+load_preview_styles = <function load_preview_styles.<locals>._load at 0x717db25fc180>
+load_library = <function load_library.<locals>._load at 0x717db25ff4c0>
+load_mdmark = <function load_mdmark.<locals>._load at 0x717db25fea20>
+make_data = <function make_data.<locals>._make at 0x717db25feca0>
+make_item = <function make_item.<locals>._make at 0x717db25fdda0>
+body_view = {'fold': False}, with_diff = False, fold_first = False
+expected = {'arrows': [], 'inMdmarkTable': True}
+
+    @pytest.mark.parametrize(
+        ("body_view", "with_diff", "fold_first", "expected"),
+        [
+            pytest.param(
+                BODY_VIEW_DEFAULT,
+                False,
+                False,
+                {"arrows": ["比較", "料金"], "inMdmarkTable": True},
+                id="default",
+            ),
+            pytest.param(
+                {"fold": False},
+                False,
+                False,
+                {"arrows": [], "inMdmarkTable": True},
+                id="fold_off",
+            ),
+            pytest.param(
+                BODY_VIEW_DEFAULT,
+                True,
+                False,
+                {"arrows": [], "inMdmarkTable": True},
+                id="body_diff_has_no_fold",
+            ),
+            pytest.param(
+                BODY_VIEW_DEFAULT,
+                False,
+                True,
+                {"sectionOpen": True, "inView": True},
+                id="reveal_heading_after_fold",
+            ),
+        ],
+    )
+    def test_detail_panel_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_preview_styles: LoadPreviewStyles,
+        load_library: LoadLibrary,
+        load_mdmark: LoadMdmark,
+        make_data: MakeData,
+        make_item: MakeItem,
+        body_view: dict[str, bool],
+        with_diff: bool,
+        fold_first: bool,
+        expected: dict[str, Any],
+    ) -> None:
+        """本文に見せ方を当て、本文の差分には開閉を置かず、畳んだ見出しへ移るときは開く（正常系）。"""
+        # 準備
+        entries = [BODY_VIEW_ENTRY] if with_diff else []
+        data = make_data(
+            docs=[make_item("A-1", **({"history": entries, "seq": 1} if entries else {}))],
+            bodies={"docs/A-1.md": BODY_VIEW_BODY},
+        )
+        load_preview_scripts()
+        load_preview_styles()
+        load_library("marked")
+        load_mdmark()
+        load_library("jsdiff")
+        # 実行
+        result = preview_page.evaluate(
+            OPEN_BODY_VIEW_PANEL_SCRIPT,
+            {
+                "data": data,
+                "bodyView": body_view,
+                "point": DIFF_POINT if with_diff else None,
+                "heading": "料金",
+                "foldFirst": fold_first,
+            },
+        )
+        # 検証
+>       assert {key: result[key] for key in expected} == expected
+E       AssertionError: assert {'arrows': []...Table': False} == {'arrows': []...kTable': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'inMdmarkTable': False} != {'inMdmarkTable': True}
+E         Use -v to get more diff
+
+tests/unit/preview/test_detail.py:3551: AssertionError
+_________ test_render_markdown_when_table[chromium-table_feature_off] __________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db3273b00>
+load_mdmark = <function load_mdmark.<locals>._load at 0x717db33d40e0>
+options = {'table': False}
+expected = {'tableCount': 2, 'inMdmarkTable': [False, False], 'tableWraps': 0, 'mdmarkTableMarks': [], ...}
+
+    @pytest.mark.parametrize(
+        ("options", "expected"),
+        [
+            pytest.param(
+                None,
+                {
+                    "tableCount": 2,
+                    "inMdmarkTable": [True, True],
+                    "tableWraps": 0,
+                    "mdmarkTableMarks": [[None, None], [None, None]],
+                    "rows": [["3", "5"], ["7", "9"]],
+                },
+                id="table_feature_default",
+            ),
+            pytest.param(
+                {"table": False},
+                {
+                    "tableCount": 2,
+                    "inMdmarkTable": [False, False],
+                    "tableWraps": 0,
+                    "mdmarkTableMarks": [],
+                    "rows": [["3", "5"], ["7", "9"]],
+                },
+                id="table_feature_off",
+            ),
+        ],
+    )
+    def test_render_markdown_when_table(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_mdmark: LoadMdmark,
+        options: dict[str, bool] | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """表を mdmark の表の機能で描き、行の印を変えない（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        load_mdmark()
+        # 実行
+        result = preview_page.evaluate(
+            """({source, options}) => {
+                const root = options === null
+                    ? MindmapPreview.renderMarkdown(source)
+                    : MindmapPreview.renderMarkdown(source, options);
+                const tables = [...root.querySelectorAll("table")];
+                return {
+                    tableCount: tables.length,
+                    inMdmarkTable: tables.map((table) => table.closest(".mdmark-table") !== null),
+                    tableWraps: root.querySelectorAll(".md-table-wrap").length,
+                    mdmarkTableMarks: [...root.querySelectorAll(".mdmark-table")].map((wrap) => [
+                        wrap.getAttribute("data-line-start"),
+                        wrap.getAttribute("data-source-line"),
+                    ]),
+                    rows: tables.map((table) =>
+                        [...table.querySelectorAll("tr")].map((row) => row.getAttribute("data-line-start")).filter((line) => line !== null)
+                    ),
+                };
+            }""",
+            {"source": TABLE_WRAP_SOURCE, "options": options},
+        )
+        # 検証
+>       assert result == expected
+E       AssertionError: assert {'tableCount'...rks': [], ...} == {'tableCount'...rks': [], ...}
+E         
+E         Omitting 4 identical items, use -vv to show
+E         Differing items:
+E         {'tableWraps': 2} != {'tableWraps': 0}
+E         Use -v to get more diff
+
+tests/unit/preview/test_libs.py:1764: AssertionError
+______ test_settings_panel_when_body_view[chromium-overridden_press_fold] ______
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db22c2160>
+args = {'bodyView': {'fold': False}, 'overrides': ['セクションの折りたたみ'], 'operate': ['セクションの折りたたみ']}
+expected_checks = [('差分のミニマップ', True), ('セクションの折りたたみ', False)]
+expected_call = ['bodyView', {'key': 'fold', 'value': True}]
+expected_buttons = ['既定に戻す'], expected_texts = ['見た目と表示する種類は、ワークスペースの既定と同じです。']
+
+    @pytest.mark.parametrize(
+        ("args", "expected_checks", "expected_call", "expected_buttons", "expected_texts"),
+        [
+            pytest.param(
+                {"bodyView": BODY_VIEW_DEFAULT, "overrides": [], "operate": ["セクションの折りたたみ"]},
+                [("差分のミニマップ", True), ("セクションの折りたたみ", True)],
+                ["bodyView", {"key": "fold", "value": False}],
+                [],
+                [],
+                id="default_press_fold",
+            ),
+            pytest.param(
+                {
+                    "bodyView": {"fold": False},
+                    "overrides": ["セクションの折りたたみ"],
+                    "operate": ["セクションの折りたたみ"],
+                },
+                [("差分のミニマップ", True), ("セクションの折りたたみ", False)],
+                ["bodyView", {"key": "fold", "value": True}],
+                ["既定に戻す"],
+                ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+                id="overridden_press_fold",
+            ),
+        ],
+    )
+    def test_settings_panel_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        args: dict[str, Any],
+        expected_checks: list[tuple[str, bool]],
+        expected_call: list[Any],
+        expected_buttons: list[str],
+        expected_texts: list[str],
+    ) -> None:
+        """セクションの折りたたみのチェックを出し、切り替えを知らせる。保存のボタンの比べには使わない（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行（本文の見せ方のチェックを押す）
+        observed = _observe(preview_page, **args)
+        # 検証
+        checks = [(check["name"], check["checked"]) for check in observed["detailChecks"]]
+>       assert checks == expected_checks
+E       AssertionError: assert [('差分のミニマップ',...りたたみ', False)] == [('差分のミニマップ',...りたたみ', False)]
+E         
+E         At index 1 diff: ('表の列の固定', False) != ('セクションの折りたたみ', False)
+E         Left contains 3 more items, first extra item: ('表の見出しの固定', False)
+E         Use -v to get more diff
+
+tests/unit/preview/test_settings_panel.py:298: AssertionError
+___________________ test_load_prefs[chromium-storage_throws] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db25e09a0>
+stored = None
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:218: AssertionError
+______________ test_load_prefs_when_minimap[chromium-not_boolean] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db28dab60>
+stored = '{"theme": "dark", "minimap": "no"}', expected_minimap = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:248: AssertionError
+____________ test_load_prefs_when_body_layout[chromium-not_string] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db29d8b80>
+stored = '{"theme": "dark", "bodyLayout": 1}', expected_body_layout = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:278: AssertionError
+____________ test_load_prefs_when_review_order[chromium-not_string] ____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db26619e0>
+stored = '{"theme": "dark", "reviewOrder": 1}', expected_review_order = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:308: AssertionError
+_____________ test_load_prefs_when_body_view[chromium-not_boolean] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2094f40>
+stored = '{"theme": "dark", "sectionFold": "no"}', expected_overrides = {}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param('{"theme": "dark", "sectionFold": false}', {"sectionFold": False}, id="fold_off"),
+            pytest.param('{"theme": "dark", "sectionFold": true}', {}, id="same_as_default"),
+            pytest.param('{"theme": "dark", "sectionFold": "no"}', {}, id="not_boolean"),
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false, "tableStripes": true}',
+                {},
+                id="previous_version_table_overrides",
+            ),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """セクションの折りたたみの上書きは既定と違う値だけを読み、前の版の表の上書きは読まない（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:342: AssertionError
+__________ test_load_prefs_when_comments_pinned[chromium-not_boolean] __________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2275120>
+stored = '{"theme": "dark", "commentsPinned": "yes"}', expected_pinned = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:372: AssertionError
+________ test_load_prefs_when_comment_form_closed[chromium-not_boolean] ________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2305300>
+stored = '{"theme": "dark", "commentFormClosed": "yes"}', expected_closed = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:403: AssertionError
+_ test_resolve_display_when_body_view[chromium-between_minimap_and_body_layout] _
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db1f451c0>
+prefs = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+expected = {'bodyView': {'fold': False}, 'overrides': ['差分のミニマップ', 'セクションの折りたたみ', '本文の差分の並べ方']}
+
+    @pytest.mark.parametrize(
+        ("prefs", "expected"),
+        [
+            pytest.param(
+                DEFAULT_PREFS,
+                {"bodyView": {"fold": True}, "overrides": []},
+                id="no_override",
+            ),
+            pytest.param(
+                {**DEFAULT_PREFS, "sectionFold": False},
+                {"bodyView": {"fold": False}, "overrides": ["セクションの折りたたみ"]},
+                id="fold_off",
+            ),
+            pytest.param(
+                {**DEFAULT_PREFS, "minimap": False, "sectionFold": False, "bodyLayout": "side"},
+                {
+                    "bodyView": {"fold": False},
+                    "overrides": ["差分のミニマップ", "セクションの折りたたみ", "本文の差分の並べ方"],
+                },
+                id="between_minimap_and_body_layout",
+            ),
+        ],
+    )
+    def test_resolve_display_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        prefs: dict[str, Any],
+        expected: dict[str, Any],
+    ) -> None:
+        """セクションの折りたたみは上書きがあるときだけ偽にし、変えている項目に差分のミニマップと本文の差分の並べ方の間で並ぶ（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        resolved = preview_page.evaluate(
+            """(prefs) => {
+                const result = MindmapPreview.resolveDisplay(prefs, undefined);
+                return {bodyView: result.bodyView, overrides: result.overrides};
+            }""",
+            prefs,
+        )
+        # 検証
+>       assert resolved == expected
+E       AssertionError: assert {'bodyView': ... '本文の差分の並べ方']} == {'bodyView': ... '本文の差分の並べ方']}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'bodyView': {'pin': True, 'head': True, 'stripes': False, 'fold': False}} != {'bodyView': {'fold': False}}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:794: AssertionError
+_______ test_detail_panel_when_body_view[chromium-body_diff_has_no_fold] _______
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db29a1d00>
+load_preview_styles = <function load_preview_styles.<locals>._load at 0x717db29a36a0>
+load_library = <function load_library.<locals>._load at 0x717db29a3100>
+load_mdmark = <function load_mdmark.<locals>._load at 0x717db29a1940>
+make_data = <function make_data.<locals>._make at 0x717db29a1120>
+make_item = <function make_item.<locals>._make at 0x717db29a0680>
+body_view = {'fold': True}, with_diff = True, fold_first = False
+expected = {'arrows': [], 'inMdmarkTable': True}
+
+    @pytest.mark.parametrize(
+        ("body_view", "with_diff", "fold_first", "expected"),
+        [
+            pytest.param(
+                BODY_VIEW_DEFAULT,
+                False,
+                False,
+                {"arrows": ["比較", "料金"], "inMdmarkTable": True},
+                id="default",
+            ),
+            pytest.param(
+                {"fold": False},
+                False,
+                False,
+                {"arrows": [], "inMdmarkTable": True},
+                id="fold_off",
+            ),
+            pytest.param(
+                BODY_VIEW_DEFAULT,
+                True,
+                False,
+                {"arrows": [], "inMdmarkTable": True},
+                id="body_diff_has_no_fold",
+            ),
+            pytest.param(
+                BODY_VIEW_DEFAULT,
+                False,
+                True,
+                {"sectionOpen": True, "inView": True},
+                id="reveal_heading_after_fold",
+            ),
+        ],
+    )
+    def test_detail_panel_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_preview_styles: LoadPreviewStyles,
+        load_library: LoadLibrary,
+        load_mdmark: LoadMdmark,
+        make_data: MakeData,
+        make_item: MakeItem,
+        body_view: dict[str, bool],
+        with_diff: bool,
+        fold_first: bool,
+        expected: dict[str, Any],
+    ) -> None:
+        """本文に見せ方を当て、本文の差分には開閉を置かず、畳んだ見出しへ移るときは開く（正常系）。"""
+        # 準備
+        entries = [BODY_VIEW_ENTRY] if with_diff else []
+        data = make_data(
+            docs=[make_item("A-1", **({"history": entries, "seq": 1} if entries else {}))],
+            bodies={"docs/A-1.md": BODY_VIEW_BODY},
+        )
+        load_preview_scripts()
+        load_preview_styles()
+        load_library("marked")
+        load_mdmark()
+        load_library("jsdiff")
+        # 実行
+        result = preview_page.evaluate(
+            OPEN_BODY_VIEW_PANEL_SCRIPT,
+            {
+                "data": data,
+                "bodyView": body_view,
+                "point": DIFF_POINT if with_diff else None,
+                "heading": "料金",
+                "foldFirst": fold_first,
+            },
+        )
+        # 検証
+>       assert {key: result[key] for key in expected} == expected
+E       AssertionError: assert {'arrows': []...Table': False} == {'arrows': []...kTable': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'inMdmarkTable': False} != {'inMdmarkTable': True}
+E         Use -v to get more diff
+
+tests/unit/preview/test_detail.py:3551: AssertionError
+_______________ test_load_prefs[chromium-unknown_look_and_kinds] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2352a20>
+stored = '{"look": "rainbow", "kinds": ["decisions", "graph"]}'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:218: AssertionError
+___________ test_load_prefs_when_minimap[chromium-previous_version] ____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db1f66700>
+stored = '{"theme": "dark", "columns": {}}', expected_minimap = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:248: AssertionError
+_________ test_load_prefs_when_body_layout[chromium-previous_version] __________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db254a520>
+stored = '{"theme": "dark", "columns": {}}', expected_body_layout = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:278: AssertionError
+_________ test_load_prefs_when_review_order[chromium-previous_version] _________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db23528e0>
+stored = '{"theme": "dark", "columns": {}}', expected_review_order = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:308: AssertionError
+__ test_load_prefs_when_body_view[chromium-previous_version_table_overrides] ___
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db238d580>
+stored = '{"theme": "dark", "tablePin": false, "tableHead": false, "tableStripes": true}'
+expected_overrides = {}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param('{"theme": "dark", "sectionFold": false}', {"sectionFold": False}, id="fold_off"),
+            pytest.param('{"theme": "dark", "sectionFold": true}', {}, id="same_as_default"),
+            pytest.param('{"theme": "dark", "sectionFold": "no"}', {}, id="not_boolean"),
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false, "tableStripes": true}',
+                {},
+                id="previous_version_table_overrides",
+            ),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """セクションの折りたたみの上書きは既定と違う値だけを読み、前の版の表の上書きは読まない（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': False, 'tablePin': False, 'tableStripes': True}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:342: AssertionError
+_______ test_load_prefs_when_comments_pinned[chromium-previous_version] ________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db28db240>
+stored = '{"theme": "dark", "columns": {}}', expected_pinned = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:372: AssertionError
+_____ test_load_prefs_when_comment_form_closed[chromium-previous_version] ______
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db24689a0>
+stored = '{"theme": "dark", "columns": {}}', expected_closed = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:403: AssertionError
+___________________ test_load_prefs[chromium-look_and_kinds] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db24edbc0>
+stored = '{"look": "dust", "kinds": ["tasks"]}'
+expected = {'theme': None, 'columns': {}, 'look': 'dust', 'kinds': ['tasks'], ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...'tasks'], ...} == {'theme': Non...'tasks'], ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:218: AssertionError
+______________________ test_load_prefs[chromium-filters] _______________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db32859e0>
+stored = '{"filters": {"tasks": {"status": ["未着手"]}}}'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:218: AssertionError
+__________________ test_load_prefs[chromium-invalid_filters] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x717db2489620>
+stored = '{"filters": [1]}'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 12 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'tableHead': None, 'tablePin': None, 'tableStripes': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:218: AssertionError
+__________________________ test_collect_preview_data ___________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x717db2494360>
+make_item = <function make_item.<locals>._make at 0x717db2496f20>
+
+    def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """種類ごとのキーと、指された本文だけを集める（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1"),
+            make_item("R-1", body="docs/R-1.md"),
+            bodies={"A-1.md": "資料の本文\n", "X-1.md": "どこからも指されない本文\n"},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+>       data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: collect_preview_data() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:151: TypeError
+___________________ test_collect_preview_data_with_html_body ___________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x717db2495d00>
+make_item = <function make_item.<locals>._make at 0x717db2497740>
+
+    def test_collect_preview_data_with_html_body(
+        make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """HTML の本文は原文を bodies に、行の印つきを marked_bodies に入れる（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1"),
+            make_item("A-2", body="docs/A-2.html"),
+            bodies={"A-1.md": "資料の本文\n", "A-2.html": "<p>a</p>"},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+>       data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: collect_preview_data() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:188: TypeError
+____________________ test_collect_preview_data_with_changes ____________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x717db24945e0>
+make_item = <function make_item.<locals>._make at 0x717db2494220>
+
+    def test_collect_preview_data_with_changes(
+        make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """まとまりと変更履歴を含める（正常系）。"""
+        # 準備
+        entry = {"seq": 1, "at": BUILT_AT, "before": {"status": "未決定"}}
+        changes = {
+            "last_seq": 1,
+            "sets": [
+                {
+                    "id": "V-1",
+                    "at": BUILT_AT,
+                    "summary": "決める",
+                    "until_seq": 1,
+                    "added": [],
+                    "changed": ["D-1"],
+                }
+            ],
+            "pending": {"added": [], "changed": []},
+        }
+        root = make_workspace(
+            make_item("D-1", status="決定済み", history=[entry]),
+            raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+>       data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: collect_preview_data() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:220: TypeError
+____________________________ test_assemble_template ____________________________
+
+preview_dir = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_template0/preview')
+
+    def test_assemble_template(preview_dir: Path) -> None:
+        """CSS と JavaScript を並びの順に差し込む（正常系）。"""
+        # 実行
+>       html = builder.assemble_template(preview_dir=preview_dir, mdmark_ref="develop")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: assemble_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:269: TypeError
+________________ test_assemble_template_when_closing_tag[style] ________________
+
+preview_dir = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_template_when_cl0/preview')
+kind = 'style', closing_tag = '</STYLE>'
+
+    @pytest.mark.parametrize(
+        ("kind", "closing_tag"),
+        [
+            pytest.param("style", "</STYLE>", id="style"),
+            pytest.param("script", "</script>", id="script"),
+        ],
+    )
+    def test_assemble_template_when_closing_tag(preview_dir: Path, kind: str, closing_tag: str) -> None:
+        """閉じタグを含むファイルは差し込まない（異常系）。"""
+        # 準備
+        file_name = builder.STYLE_FILES[0] if kind == "style" else builder.SCRIPT_FILES[0]
+        (preview_dir / file_name).write_text(f"x {closing_tag} y", encoding="utf-8")
+        # 実行・検証
+        with pytest.raises(ValueError, match=file_name):
+>           builder.assemble_template(preview_dir=preview_dir, mdmark_ref="develop")
+E           TypeError: assemble_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:293: TypeError
+_______________ test_assemble_template_when_closing_tag[script] ________________
+
+preview_dir = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_template_when_cl1/preview')
+kind = 'script', closing_tag = '</script>'
+
+    @pytest.mark.parametrize(
+        ("kind", "closing_tag"),
+        [
+            pytest.param("style", "</STYLE>", id="style"),
+            pytest.param("script", "</script>", id="script"),
+        ],
+    )
+    def test_assemble_template_when_closing_tag(preview_dir: Path, kind: str, closing_tag: str) -> None:
+        """閉じタグを含むファイルは差し込まない（異常系）。"""
+        # 準備
+        file_name = builder.STYLE_FILES[0] if kind == "style" else builder.SCRIPT_FILES[0]
+        (preview_dir / file_name).write_text(f"x {closing_tag} y", encoding="utf-8")
+        # 実行・検証
+        with pytest.raises(ValueError, match=file_name):
+>           builder.assemble_template(preview_dir=preview_dir, mdmark_ref="develop")
+E           TypeError: assemble_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:293: TypeError
+________ test_assemble_template_when_slot_count_wrong[style_slot_none] _________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_template_when_sl0')
+slot_kind = 'style_slot_none', count_text = '0 個'
+
+    @pytest.mark.parametrize(
+        ("slot_kind", "count_text"),
+        [
+            pytest.param("style_slot_none", "0 個", id="style_slot_none"),
+            pytest.param("script_slot_two", "2 個", id="script_slot_two"),
+        ],
+    )
+    def test_assemble_template_when_slot_count_wrong(
+        tmp_path: Path, slot_kind: str, count_text: str
+    ) -> None:
+        """差し込み口が 1 つでない雛形は受け付けない（異常系）。"""
+        # 準備
+        if slot_kind == "style_slot_none":
+            template = f"{builder.MDMARK_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
+        else:
+            template = (
+                f"{builder.STYLE_SLOT}{builder.MDMARK_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT * 2}"
+            )
+        folder = tmp_path / "preview"
+        _write_preview_dir(folder, template)
+        # 実行・検証
+        with pytest.raises(ValueError, match=count_text):
+>           builder.assemble_template(preview_dir=folder, mdmark_ref="develop")
+E           TypeError: assemble_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:318: TypeError
+________ test_assemble_template_when_slot_count_wrong[script_slot_two] _________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_template_when_sl1')
+slot_kind = 'script_slot_two', count_text = '2 個'
+
+    @pytest.mark.parametrize(
+        ("slot_kind", "count_text"),
+        [
+            pytest.param("style_slot_none", "0 個", id="style_slot_none"),
+            pytest.param("script_slot_two", "2 個", id="script_slot_two"),
+        ],
+    )
+    def test_assemble_template_when_slot_count_wrong(
+        tmp_path: Path, slot_kind: str, count_text: str
+    ) -> None:
+        """差し込み口が 1 つでない雛形は受け付けない（異常系）。"""
+        # 準備
+        if slot_kind == "style_slot_none":
+            template = f"{builder.MDMARK_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
+        else:
+            template = (
+                f"{builder.STYLE_SLOT}{builder.MDMARK_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT * 2}"
+            )
+        folder = tmp_path / "preview"
+        _write_preview_dir(folder, template)
+        # 実行・検証
+        with pytest.raises(ValueError, match=count_text):
+>           builder.assemble_template(preview_dir=folder, mdmark_ref="develop")
+E           TypeError: assemble_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:318: TypeError
+______________________ test_assemble_standalone_template _______________________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ0')
+
+    def test_assemble_standalone_template(tmp_path: Path) -> None:
+        """外の読み込みを取った mdmark の中身・配布ファイルとライセンスの表示に置き換える（正常系）。"""
+        # 準備
+        scripts: list[Script] = [("a", b"/* a */"), ("b", b"/* b */")]
+        folder = _module_preview_dir(tmp_path, scripts)
+        responses = make_responses(scripts, mdmark=MODULE, mdmark_ref=MDMARK_VERSION)
+        responses[_bundled_url()] = "束ねた本文 m".encode()
+        fetch, calls = make_fetch(responses)
+        libraries = (_module_library(), make_library("a"), make_library("b"))
+        # 実行
+>       html = builder.assemble_standalone_template(
+            preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+        )
+E       TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:740: TypeError
+__________ test_assemble_standalone_template_when_integrity_mismatch ___________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ1')
+
+    def test_assemble_standalone_template_when_integrity_mismatch(tmp_path: Path) -> None:
+        """integrity と合わない配布ファイルは差し込まない（異常系）。"""
+        # 準備
+        folder = _module_preview_dir(tmp_path, [("a", b"/* a */")])
+        # 雛形の integrity と違う中身を返す
+        responses = make_responses([("a", b"/* x */")], mdmark=MODULE, mdmark_ref=MDMARK_VERSION)
+        responses[_bundled_url()] = "束ねた本文 m".encode()
+        fetch, _calls = make_fetch(responses)
+        libraries = (_module_library(), make_library("a"))
+        # 実行・検証
+        with pytest.raises(errors.DownloadFailedError, match=re.escape(dist_url("a"))):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:787: TypeError
+_______ test_assemble_standalone_template_when_tag_inside[dist_closing] ________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ2')
+overrides = {'dist': '</SCRIPT>'}
+match = 'https://cdn\\.jsdelivr\\.net/npm/a@1\\.0\\.0/a\\.js'
+
+    @pytest.mark.parametrize(
+        ("overrides", "match"),
+        [
+            pytest.param({"dist": "</SCRIPT>"}, re.escape(dist_url("a")), id="dist_closing"),
+            pytest.param({"dist": "x <!--<script y"}, re.escape(dist_url("a")), id="dist_opening"),
+            pytest.param(
+                {"js": "</script>"}, re.escape(mdmark_url("index.js", MDMARK_VERSION)), id="module_js"
+            ),
+            pytest.param(
+                {"part": "</script>"}, re.escape(mdmark_url("map.js", MDMARK_VERSION)), id="module_part"
+            ),
+            pytest.param(
+                {"css": "</Style>"}, re.escape(mdmark_url("index.css", MDMARK_VERSION)), id="module_css"
+            ),
+            pytest.param({"license": "本文 </script>"}, re.escape(license_url("a")), id="license"),
+            pytest.param({"module_license": "<script"}, r"m\.txt", id="license_file"),
+            pytest.param({"bundled": "束ねた <Script"}, "bundled.txt", id="bundled"),
+        ],
+    )
+    def test_assemble_standalone_template_when_tag_inside(
+        tmp_path: Path, overrides: dict[str, str], match: str
+    ) -> None:
+        """閉じタグか開きタグを含む中身は差し込まない（異常系）。"""
+        # 準備
+        texts = {
+            "js": "/* m */",
+            "css": ".m{}",
+            "part": "/* map.js */",
+            "dist": "/* a */",
+            "license": "本文 a",
+            "module_license": "本文 m",
+            "bundled": "束ねた本文",
+        } | overrides
+        scripts: list[Script] = [("a", texts["dist"].encode("utf-8"))]
+        folder = _module_preview_dir(tmp_path, scripts, texts["module_license"])
+        (folder / "licenses" / "bundled.txt").write_text(texts["bundled"], encoding="utf-8")
+        responses = make_responses(
+            scripts,
+            {"a": texts["license"]},
+            (texts["js"].encode("utf-8"), texts["css"].encode("utf-8")),
+            MDMARK_VERSION,
+        )
+        responses[mdmark_url("map.js", MDMARK_VERSION)] = texts["part"].encode("utf-8")
+        responses[_bundled_url()] = "束ねた本文 m".encode()
+        fetch, _calls = make_fetch(responses)
+        libraries = (
+            _module_library(),
+            make_library("a", bundled_license_file="licenses/bundled.txt"),
+        )
+        # 実行・検証
+        with pytest.raises(ValueError, match=match):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:845: TypeError
+_______ test_assemble_standalone_template_when_tag_inside[dist_opening] ________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ3')
+overrides = {'dist': 'x <!--<script y'}
+match = 'https://cdn\\.jsdelivr\\.net/npm/a@1\\.0\\.0/a\\.js'
+
+    @pytest.mark.parametrize(
+        ("overrides", "match"),
+        [
+            pytest.param({"dist": "</SCRIPT>"}, re.escape(dist_url("a")), id="dist_closing"),
+            pytest.param({"dist": "x <!--<script y"}, re.escape(dist_url("a")), id="dist_opening"),
+            pytest.param(
+                {"js": "</script>"}, re.escape(mdmark_url("index.js", MDMARK_VERSION)), id="module_js"
+            ),
+            pytest.param(
+                {"part": "</script>"}, re.escape(mdmark_url("map.js", MDMARK_VERSION)), id="module_part"
+            ),
+            pytest.param(
+                {"css": "</Style>"}, re.escape(mdmark_url("index.css", MDMARK_VERSION)), id="module_css"
+            ),
+            pytest.param({"license": "本文 </script>"}, re.escape(license_url("a")), id="license"),
+            pytest.param({"module_license": "<script"}, r"m\.txt", id="license_file"),
+            pytest.param({"bundled": "束ねた <Script"}, "bundled.txt", id="bundled"),
+        ],
+    )
+    def test_assemble_standalone_template_when_tag_inside(
+        tmp_path: Path, overrides: dict[str, str], match: str
+    ) -> None:
+        """閉じタグか開きタグを含む中身は差し込まない（異常系）。"""
+        # 準備
+        texts = {
+            "js": "/* m */",
+            "css": ".m{}",
+            "part": "/* map.js */",
+            "dist": "/* a */",
+            "license": "本文 a",
+            "module_license": "本文 m",
+            "bundled": "束ねた本文",
+        } | overrides
+        scripts: list[Script] = [("a", texts["dist"].encode("utf-8"))]
+        folder = _module_preview_dir(tmp_path, scripts, texts["module_license"])
+        (folder / "licenses" / "bundled.txt").write_text(texts["bundled"], encoding="utf-8")
+        responses = make_responses(
+            scripts,
+            {"a": texts["license"]},
+            (texts["js"].encode("utf-8"), texts["css"].encode("utf-8")),
+            MDMARK_VERSION,
+        )
+        responses[mdmark_url("map.js", MDMARK_VERSION)] = texts["part"].encode("utf-8")
+        responses[_bundled_url()] = "束ねた本文 m".encode()
+        fetch, _calls = make_fetch(responses)
+        libraries = (
+            _module_library(),
+            make_library("a", bundled_license_file="licenses/bundled.txt"),
+        )
+        # 実行・検証
+        with pytest.raises(ValueError, match=match):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:845: TypeError
+_________ test_assemble_standalone_template_when_tag_inside[module_js] _________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ4')
+overrides = {'js': '</script>'}
+match = 'https://cdn\\.jsdelivr\\.net/gh/shuhei1101/mdmark@v0\\.13\\.0/dist/index\\.js'
+
+    @pytest.mark.parametrize(
+        ("overrides", "match"),
+        [
+            pytest.param({"dist": "</SCRIPT>"}, re.escape(dist_url("a")), id="dist_closing"),
+            pytest.param({"dist": "x <!--<script y"}, re.escape(dist_url("a")), id="dist_opening"),
+            pytest.param(
+                {"js": "</script>"}, re.escape(mdmark_url("index.js", MDMARK_VERSION)), id="module_js"
+            ),
+            pytest.param(
+                {"part": "</script>"}, re.escape(mdmark_url("map.js", MDMARK_VERSION)), id="module_part"
+            ),
+            pytest.param(
+                {"css": "</Style>"}, re.escape(mdmark_url("index.css", MDMARK_VERSION)), id="module_css"
+            ),
+            pytest.param({"license": "本文 </script>"}, re.escape(license_url("a")), id="license"),
+            pytest.param({"module_license": "<script"}, r"m\.txt", id="license_file"),
+            pytest.param({"bundled": "束ねた <Script"}, "bundled.txt", id="bundled"),
+        ],
+    )
+    def test_assemble_standalone_template_when_tag_inside(
+        tmp_path: Path, overrides: dict[str, str], match: str
+    ) -> None:
+        """閉じタグか開きタグを含む中身は差し込まない（異常系）。"""
+        # 準備
+        texts = {
+            "js": "/* m */",
+            "css": ".m{}",
+            "part": "/* map.js */",
+            "dist": "/* a */",
+            "license": "本文 a",
+            "module_license": "本文 m",
+            "bundled": "束ねた本文",
+        } | overrides
+        scripts: list[Script] = [("a", texts["dist"].encode("utf-8"))]
+        folder = _module_preview_dir(tmp_path, scripts, texts["module_license"])
+        (folder / "licenses" / "bundled.txt").write_text(texts["bundled"], encoding="utf-8")
+        responses = make_responses(
+            scripts,
+            {"a": texts["license"]},
+            (texts["js"].encode("utf-8"), texts["css"].encode("utf-8")),
+            MDMARK_VERSION,
+        )
+        responses[mdmark_url("map.js", MDMARK_VERSION)] = texts["part"].encode("utf-8")
+        responses[_bundled_url()] = "束ねた本文 m".encode()
+        fetch, _calls = make_fetch(responses)
+        libraries = (
+            _module_library(),
+            make_library("a", bundled_license_file="licenses/bundled.txt"),
+        )
+        # 実行・検証
+        with pytest.raises(ValueError, match=match):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:845: TypeError
+________ test_assemble_standalone_template_when_tag_inside[module_part] ________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ5')
+overrides = {'part': '</script>'}
+match = 'https://cdn\\.jsdelivr\\.net/gh/shuhei1101/mdmark@v0\\.13\\.0/dist/map\\.js'
+
+    @pytest.mark.parametrize(
+        ("overrides", "match"),
+        [
+            pytest.param({"dist": "</SCRIPT>"}, re.escape(dist_url("a")), id="dist_closing"),
+            pytest.param({"dist": "x <!--<script y"}, re.escape(dist_url("a")), id="dist_opening"),
+            pytest.param(
+                {"js": "</script>"}, re.escape(mdmark_url("index.js", MDMARK_VERSION)), id="module_js"
+            ),
+            pytest.param(
+                {"part": "</script>"}, re.escape(mdmark_url("map.js", MDMARK_VERSION)), id="module_part"
+            ),
+            pytest.param(
+                {"css": "</Style>"}, re.escape(mdmark_url("index.css", MDMARK_VERSION)), id="module_css"
+            ),
+            pytest.param({"license": "本文 </script>"}, re.escape(license_url("a")), id="license"),
+            pytest.param({"module_license": "<script"}, r"m\.txt", id="license_file"),
+            pytest.param({"bundled": "束ねた <Script"}, "bundled.txt", id="bundled"),
+        ],
+    )
+    def test_assemble_standalone_template_when_tag_inside(
+        tmp_path: Path, overrides: dict[str, str], match: str
+    ) -> None:
+        """閉じタグか開きタグを含む中身は差し込まない（異常系）。"""
+        # 準備
+        texts = {
+            "js": "/* m */",
+            "css": ".m{}",
+            "part": "/* map.js */",
+            "dist": "/* a */",
+            "license": "本文 a",
+            "module_license": "本文 m",
+            "bundled": "束ねた本文",
+        } | overrides
+        scripts: list[Script] = [("a", texts["dist"].encode("utf-8"))]
+        folder = _module_preview_dir(tmp_path, scripts, texts["module_license"])
+        (folder / "licenses" / "bundled.txt").write_text(texts["bundled"], encoding="utf-8")
+        responses = make_responses(
+            scripts,
+            {"a": texts["license"]},
+            (texts["js"].encode("utf-8"), texts["css"].encode("utf-8")),
+            MDMARK_VERSION,
+        )
+        responses[mdmark_url("map.js", MDMARK_VERSION)] = texts["part"].encode("utf-8")
+        responses[_bundled_url()] = "束ねた本文 m".encode()
+        fetch, _calls = make_fetch(responses)
+        libraries = (
+            _module_library(),
+            make_library("a", bundled_license_file="licenses/bundled.txt"),
+        )
+        # 実行・検証
+        with pytest.raises(ValueError, match=match):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:845: TypeError
+________ test_assemble_standalone_template_when_tag_inside[module_css] _________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ6')
+overrides = {'css': '</Style>'}
+match = 'https://cdn\\.jsdelivr\\.net/gh/shuhei1101/mdmark@v0\\.13\\.0/dist/index\\.css'
+
+    @pytest.mark.parametrize(
+        ("overrides", "match"),
+        [
+            pytest.param({"dist": "</SCRIPT>"}, re.escape(dist_url("a")), id="dist_closing"),
+            pytest.param({"dist": "x <!--<script y"}, re.escape(dist_url("a")), id="dist_opening"),
+            pytest.param(
+                {"js": "</script>"}, re.escape(mdmark_url("index.js", MDMARK_VERSION)), id="module_js"
+            ),
+            pytest.param(
+                {"part": "</script>"}, re.escape(mdmark_url("map.js", MDMARK_VERSION)), id="module_part"
+            ),
+            pytest.param(
+                {"css": "</Style>"}, re.escape(mdmark_url("index.css", MDMARK_VERSION)), id="module_css"
+            ),
+            pytest.param({"license": "本文 </script>"}, re.escape(license_url("a")), id="license"),
+            pytest.param({"module_license": "<script"}, r"m\.txt", id="license_file"),
+            pytest.param({"bundled": "束ねた <Script"}, "bundled.txt", id="bundled"),
+        ],
+    )
+    def test_assemble_standalone_template_when_tag_inside(
+        tmp_path: Path, overrides: dict[str, str], match: str
+    ) -> None:
+        """閉じタグか開きタグを含む中身は差し込まない（異常系）。"""
+        # 準備
+        texts = {
+            "js": "/* m */",
+            "css": ".m{}",
+            "part": "/* map.js */",
+            "dist": "/* a */",
+            "license": "本文 a",
+            "module_license": "本文 m",
+            "bundled": "束ねた本文",
+        } | overrides
+        scripts: list[Script] = [("a", texts["dist"].encode("utf-8"))]
+        folder = _module_preview_dir(tmp_path, scripts, texts["module_license"])
+        (folder / "licenses" / "bundled.txt").write_text(texts["bundled"], encoding="utf-8")
+        responses = make_responses(
+            scripts,
+            {"a": texts["license"]},
+            (texts["js"].encode("utf-8"), texts["css"].encode("utf-8")),
+            MDMARK_VERSION,
+        )
+        responses[mdmark_url("map.js", MDMARK_VERSION)] = texts["part"].encode("utf-8")
+        responses[_bundled_url()] = "束ねた本文 m".encode()
+        fetch, _calls = make_fetch(responses)
+        libraries = (
+            _module_library(),
+            make_library("a", bundled_license_file="licenses/bundled.txt"),
+        )
+        # 実行・検証
+        with pytest.raises(ValueError, match=match):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:845: TypeError
+__________ test_assemble_standalone_template_when_tag_inside[license] __________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ7')
+overrides = {'license': '本文 </script>'}
+match = 'https://cdn\\.jsdelivr\\.net/npm/a@1\\.0\\.0/LICENSE'
+
+    @pytest.mark.parametrize(
+        ("overrides", "match"),
+        [
+            pytest.param({"dist": "</SCRIPT>"}, re.escape(dist_url("a")), id="dist_closing"),
+            pytest.param({"dist": "x <!--<script y"}, re.escape(dist_url("a")), id="dist_opening"),
+            pytest.param(
+                {"js": "</script>"}, re.escape(mdmark_url("index.js", MDMARK_VERSION)), id="module_js"
+            ),
+            pytest.param(
+                {"part": "</script>"}, re.escape(mdmark_url("map.js", MDMARK_VERSION)), id="module_part"
+            ),
+            pytest.param(
+                {"css": "</Style>"}, re.escape(mdmark_url("index.css", MDMARK_VERSION)), id="module_css"
+            ),
+            pytest.param({"license": "本文 </script>"}, re.escape(license_url("a")), id="license"),
+            pytest.param({"module_license": "<script"}, r"m\.txt", id="license_file"),
+            pytest.param({"bundled": "束ねた <Script"}, "bundled.txt", id="bundled"),
+        ],
+    )
+    def test_assemble_standalone_template_when_tag_inside(
+        tmp_path: Path, overrides: dict[str, str], match: str
+    ) -> None:
+        """閉じタグか開きタグを含む中身は差し込まない（異常系）。"""
+        # 準備
+        texts = {
+            "js": "/* m */",
+            "css": ".m{}",
+            "part": "/* map.js */",
+            "dist": "/* a */",
+            "license": "本文 a",
+            "module_license": "本文 m",
+            "bundled": "束ねた本文",
+        } | overrides
+        scripts: list[Script] = [("a", texts["dist"].encode("utf-8"))]
+        folder = _module_preview_dir(tmp_path, scripts, texts["module_license"])
+        (folder / "licenses" / "bundled.txt").write_text(texts["bundled"], encoding="utf-8")
+        responses = make_responses(
+            scripts,
+            {"a": texts["license"]},
+            (texts["js"].encode("utf-8"), texts["css"].encode("utf-8")),
+            MDMARK_VERSION,
+        )
+        responses[mdmark_url("map.js", MDMARK_VERSION)] = texts["part"].encode("utf-8")
+        responses[_bundled_url()] = "束ねた本文 m".encode()
+        fetch, _calls = make_fetch(responses)
+        libraries = (
+            _module_library(),
+            make_library("a", bundled_license_file="licenses/bundled.txt"),
+        )
+        # 実行・検証
+        with pytest.raises(ValueError, match=match):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:845: TypeError
+_______ test_assemble_standalone_template_when_tag_inside[license_file] ________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ8')
+overrides = {'module_license': '<script'}, match = 'm\\.txt'
+
+    @pytest.mark.parametrize(
+        ("overrides", "match"),
+        [
+            pytest.param({"dist": "</SCRIPT>"}, re.escape(dist_url("a")), id="dist_closing"),
+            pytest.param({"dist": "x <!--<script y"}, re.escape(dist_url("a")), id="dist_opening"),
+            pytest.param(
+                {"js": "</script>"}, re.escape(mdmark_url("index.js", MDMARK_VERSION)), id="module_js"
+            ),
+            pytest.param(
+                {"part": "</script>"}, re.escape(mdmark_url("map.js", MDMARK_VERSION)), id="module_part"
+            ),
+            pytest.param(
+                {"css": "</Style>"}, re.escape(mdmark_url("index.css", MDMARK_VERSION)), id="module_css"
+            ),
+            pytest.param({"license": "本文 </script>"}, re.escape(license_url("a")), id="license"),
+            pytest.param({"module_license": "<script"}, r"m\.txt", id="license_file"),
+            pytest.param({"bundled": "束ねた <Script"}, "bundled.txt", id="bundled"),
+        ],
+    )
+    def test_assemble_standalone_template_when_tag_inside(
+        tmp_path: Path, overrides: dict[str, str], match: str
+    ) -> None:
+        """閉じタグか開きタグを含む中身は差し込まない（異常系）。"""
+        # 準備
+        texts = {
+            "js": "/* m */",
+            "css": ".m{}",
+            "part": "/* map.js */",
+            "dist": "/* a */",
+            "license": "本文 a",
+            "module_license": "本文 m",
+            "bundled": "束ねた本文",
+        } | overrides
+        scripts: list[Script] = [("a", texts["dist"].encode("utf-8"))]
+        folder = _module_preview_dir(tmp_path, scripts, texts["module_license"])
+        (folder / "licenses" / "bundled.txt").write_text(texts["bundled"], encoding="utf-8")
+        responses = make_responses(
+            scripts,
+            {"a": texts["license"]},
+            (texts["js"].encode("utf-8"), texts["css"].encode("utf-8")),
+            MDMARK_VERSION,
+        )
+        responses[mdmark_url("map.js", MDMARK_VERSION)] = texts["part"].encode("utf-8")
+        responses[_bundled_url()] = "束ねた本文 m".encode()
+        fetch, _calls = make_fetch(responses)
+        libraries = (
+            _module_library(),
+            make_library("a", bundled_license_file="licenses/bundled.txt"),
+        )
+        # 実行・検証
+        with pytest.raises(ValueError, match=match):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:845: TypeError
+__________ test_assemble_standalone_template_when_tag_inside[bundled] __________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ9')
+overrides = {'bundled': '束ねた <Script'}, match = 'bundled.txt'
+
+    @pytest.mark.parametrize(
+        ("overrides", "match"),
+        [
+            pytest.param({"dist": "</SCRIPT>"}, re.escape(dist_url("a")), id="dist_closing"),
+            pytest.param({"dist": "x <!--<script y"}, re.escape(dist_url("a")), id="dist_opening"),
+            pytest.param(
+                {"js": "</script>"}, re.escape(mdmark_url("index.js", MDMARK_VERSION)), id="module_js"
+            ),
+            pytest.param(
+                {"part": "</script>"}, re.escape(mdmark_url("map.js", MDMARK_VERSION)), id="module_part"
+            ),
+            pytest.param(
+                {"css": "</Style>"}, re.escape(mdmark_url("index.css", MDMARK_VERSION)), id="module_css"
+            ),
+            pytest.param({"license": "本文 </script>"}, re.escape(license_url("a")), id="license"),
+            pytest.param({"module_license": "<script"}, r"m\.txt", id="license_file"),
+            pytest.param({"bundled": "束ねた <Script"}, "bundled.txt", id="bundled"),
+        ],
+    )
+    def test_assemble_standalone_template_when_tag_inside(
+        tmp_path: Path, overrides: dict[str, str], match: str
+    ) -> None:
+        """閉じタグか開きタグを含む中身は差し込まない（異常系）。"""
+        # 準備
+        texts = {
+            "js": "/* m */",
+            "css": ".m{}",
+            "part": "/* map.js */",
+            "dist": "/* a */",
+            "license": "本文 a",
+            "module_license": "本文 m",
+            "bundled": "束ねた本文",
+        } | overrides
+        scripts: list[Script] = [("a", texts["dist"].encode("utf-8"))]
+        folder = _module_preview_dir(tmp_path, scripts, texts["module_license"])
+        (folder / "licenses" / "bundled.txt").write_text(texts["bundled"], encoding="utf-8")
+        responses = make_responses(
+            scripts,
+            {"a": texts["license"]},
+            (texts["js"].encode("utf-8"), texts["css"].encode("utf-8")),
+            MDMARK_VERSION,
+        )
+        responses[mdmark_url("map.js", MDMARK_VERSION)] = texts["part"].encode("utf-8")
+        responses[_bundled_url()] = "束ねた本文 m".encode()
+        fetch, _calls = make_fetch(responses)
+        libraries = (
+            _module_library(),
+            make_library("a", bundled_license_file="licenses/bundled.txt"),
+        )
+        # 実行・検証
+        with pytest.raises(ValueError, match=match):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:845: TypeError
+_ test_assemble_standalone_template_when_library_unknown[script_without_library] _
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ10')
+scripts = [('c', b'/* c */')]
+make_libraries = <function <lambda> at 0x717db4871940>, package = 'c'
+
+    @pytest.mark.parametrize(
+        ("scripts", "make_libraries", "package"),
+        [
+            pytest.param(
+                [("c", b"/* c */")],
+                lambda: (_module_library(),),
+                "c",
+                id="script_without_library",
+            ),
+            pytest.param(
+                [("a", b"/* a */")],
+                lambda: (make_library("a"),),
+                builder.MDMARK_PACKAGE,
+                id="module_without_library",
+            ),
+        ],
+    )
+    def test_assemble_standalone_template_when_library_unknown(
+        tmp_path: Path,
+        scripts: list[Script],
+        make_libraries: Callable[[], tuple[builder.VendorLibrary, ...]],
+        package: str,
+    ) -> None:
+        """VENDOR_LIBRARIES に無いパッケージの読み込みは受け付けない（異常系）。"""
+        # 準備
+        folder = _module_preview_dir(tmp_path, scripts)
+        fetch, calls = make_fetch(make_responses(scripts, mdmark=MODULE, mdmark_ref=MDMARK_VERSION))
+        libraries = make_libraries()
+        # 実行・検証
+        with pytest.raises(ValueError, match=f"ライセンスの表示が無い外の読み込み: {re.escape(package)}"):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:882: TypeError
+_ test_assemble_standalone_template_when_library_unknown[module_without_library] _
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_assemble_standalone_templ11')
+scripts = [('a', b'/* a */')]
+make_libraries = <function <lambda> at 0x717db48719e0>
+package = 'shuhei1101/mdmark'
+
+    @pytest.mark.parametrize(
+        ("scripts", "make_libraries", "package"),
+        [
+            pytest.param(
+                [("c", b"/* c */")],
+                lambda: (_module_library(),),
+                "c",
+                id="script_without_library",
+            ),
+            pytest.param(
+                [("a", b"/* a */")],
+                lambda: (make_library("a"),),
+                builder.MDMARK_PACKAGE,
+                id="module_without_library",
+            ),
+        ],
+    )
+    def test_assemble_standalone_template_when_library_unknown(
+        tmp_path: Path,
+        scripts: list[Script],
+        make_libraries: Callable[[], tuple[builder.VendorLibrary, ...]],
+        package: str,
+    ) -> None:
+        """VENDOR_LIBRARIES に無いパッケージの読み込みは受け付けない（異常系）。"""
+        # 準備
+        folder = _module_preview_dir(tmp_path, scripts)
+        fetch, calls = make_fetch(make_responses(scripts, mdmark=MODULE, mdmark_ref=MDMARK_VERSION))
+        libraries = make_libraries()
+        # 実行・検証
+        with pytest.raises(ValueError, match=f"ライセンスの表示が無い外の読み込み: {re.escape(package)}"):
+>           builder.assemble_standalone_template(
+                preview_dir=folder, libraries=libraries, fetch=fetch,
+                mdmark_settings=MDMARK_SETTINGS,
+                mdmark_ref=MDMARK_VERSION,
+            )
+E           TypeError: assemble_standalone_template() got an unexpected keyword argument 'mdmark_ref'
+
+tests/unit/scripts/test_builder.py:882: TypeError
+_______________________ test_index_response_when_latest ________________________
+
+tmp_path = PosixPath('/tmp/pr591-tmp/pytest-of-shuhei2441/pytest-0/test_index_response_when_lates0')
+
+    def test_index_response_when_latest(tmp_path: Path) -> None:
+        """latest は resolve が返した ref で mdmark を読み込む（正常系）。"""
+        # 準備
+        preview_dir = tmp_path / "preview"
+        write_preview_dir(preview_dir, SMALL_TEMPLATE)
+        resolved: list[str | None] = []
+    
+        def _resolve(version: str | None) -> str:
+            resolved.append(version)
+            return "0123456789abcdef0123456789abcdef01234567"
+    
+        # 実行
+>       response = serve.index_response(
+            preview_dir, mdmark_settings={"version": "latest"}, resolve=_resolve
+        )
+E       TypeError: index_response() got an unexpected keyword argument 'resolve'
+
+tests/unit/scripts/test_serve.py:618: TypeError
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /tmp/pr591-venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-dark] - Asser...
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-side]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-oldest]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-fold_off]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-true]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-true]
+FAILED tests/unit/preview/test_app.py::test_save_prefs[chromium-working_storage]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_body_view[chromium-no_override]
+FAILED tests/unit/preview/test_app.py::test_clear_overrides[chromium] - Asser...
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_removed_before_table[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_view[chromium-default]
+FAILED tests/unit/preview/test_libs.py::test_render_markdown_when_table[chromium-table_feature_default]
+FAILED tests/unit/preview/test_markdown_body.py::test_decorate_markdown_when_table[chromium]
+FAILED tests/unit/preview/test_markdown_body.py::test_decorate_markdown_when_tables_off[chromium]
+FAILED tests/unit/preview/test_settings_panel.py::test_settings_panel_when_body_view[chromium-default_press_fold]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-broken_json]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-true]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-inline]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-newest]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-same_as_default]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_body_view[chromium-fold_off]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_view[chromium-fold_off]
+FAILED tests/unit/preview/test_libs.py::test_render_markdown_when_table[chromium-table_feature_off]
+FAILED tests/unit/preview/test_settings_panel.py::test_settings_panel_when_body_view[chromium-overridden_press_fold]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-storage_throws]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-not_string]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-not_string]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_body_view[chromium-between_minimap_and_body_layout]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_view[chromium-body_diff_has_no_fold]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-unknown_look_and_kinds]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-previous_version_table_overrides]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-look_and_kinds]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-filters] - As...
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-invalid_filters]
+FAILED tests/unit/scripts/test_builder.py::test_collect_preview_data - TypeEr...
+FAILED tests/unit/scripts/test_builder.py::test_collect_preview_data_with_html_body
+FAILED tests/unit/scripts/test_builder.py::test_collect_preview_data_with_changes
+FAILED tests/unit/scripts/test_builder.py::test_assemble_template - TypeError...
+FAILED tests/unit/scripts/test_builder.py::test_assemble_template_when_closing_tag[style]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_template_when_closing_tag[script]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_template_when_slot_count_wrong[style_slot_none]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_template_when_slot_count_wrong[script_slot_two]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_integrity_mismatch
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[dist_closing]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[dist_opening]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[module_js]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[module_part]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[module_css]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[license]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[license_file]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[bundled]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_library_unknown[script_without_library]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_library_unknown[module_without_library]
+FAILED tests/unit/scripts/test_serve.py::test_index_response_when_latest - Ty...
+ERROR tests/unit/scripts/test_mdmark_ref.py
+67 failed, 2340 passed, 1 skipped, 5 warnings, 1 error in 286.85s (0:04:46)
+
+$ npx vitest run
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-mdmark-latest-fresh-dist
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/shared/adapters/libraries.test.ts (6 tests | 1 failed) 34ms
+   ❯ setMdmarkSettings (3)
+     × set_mdmark_settings (latest) 7ms
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/shared/components/markdown-body.test.tsx (2 tests | 1 failed) 100ms
+   ❯ MarkdownBody (2)
+     × markdown_body 89ms
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/adapters/libraries.test.ts > setMdmarkSettings > set_mdmark_settings (latest)
+AssertionError: expected 'https://cdn.jsdelivr.net/gh/shuhei110…' to be 'https://cdn.jsdelivr.net/gh/shuhei110…' // Object.is equality
+
+Expected: "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@0123456789abcdef0123456789abcdef01234567/dist/index.js"
+Received: "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.js"
+
+ ❯ frontend/src/shared/adapters/libraries.test.ts:71:29
+     69|     setMdmarkSettings(settings, given);
+     70|     // 検証
+     71|     expect(mdmarkUrls().js).toBe(`${MDMARK_CDN}@${ref}/dist/index.js`);
+       |                             ^
+     72|     expect(mdmarkMapConfig()).toEqual(map);
+     73|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  frontend/src/shared/components/markdown-body.test.tsx > MarkdownBody > markdown_body
+AssertionError: expected "vi.fn()" to be called with arguments: [ '# 見出し', { table: true } ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "# 見出し",
+-   {
+-     "table": true,
+-   },
+  ]
+
+
+Number of calls: 1
+
+ ❯ frontend/src/shared/components/markdown-body.test.tsx:31:28
+     29|     unmount();
+     30|     // 検証
+     31|     expect(renderMarkdown).toHaveBeenCalledWith("# 見出し", { table: true…
+       |                            ^
+     32|     expect(host?.childNodes).toHaveLength(0);
+     33|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 82 passed (84)
+      Tests  2 failed | 314 passed (316)
+   Start at  01:35:53
+   Duration  14.46s (environment 44%, tests 25%, import 14%, transform 9%, setup 8%)
+
+Environment  jsdom was created 84 times · 40.08s total, 44% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

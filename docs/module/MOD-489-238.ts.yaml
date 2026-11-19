@@ -95,7 +95,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
     usecase: スレッドで話す
     kind: コンポーネント
-    summary: 書き込みの本文を、段落の中の改行を強制改行にして（`withHardBreaks`）`renderMarkdown` で描き、クラス `className` を付けた要素を返す。図は `renderDiagrams` で（描き終えるのを待たずに返す）、`html` のコードブロックの入れ物は部品『HTMLの本文の枠』（`htmlBodyFrame`、`selectable` は偽）で描き、`decorateMarkdown`（`tables`・`fold` は偽）を当てる。続けて本文の中の `a` のうち `href` が `#` で始まるものは、`#` の後ろを `URLSearchParams` で読んだ `diff` の値を `changeSets` で引き（`diff` 以外の引数は見ない）、`null` でなければまとまりのリンク（クラス `setlink`。`href` は `#diff={まとまりの ID}`、`title` にまとまりの説明、`data-focus` は `post-set:{ID}`）にし、`null` なら `a` を中の文字に置き換える。`#` で始まらないリンクは mdmark が描いたまま残す。まとまりのリンクを押すと既定の動作を止めて `on.changeSet` にまとまりの ID を渡す。その後、`pre`・`code`・`a`・図の入れ物・HTML の本文の枠の外の文字のうち `\b[A-Z]{1,2}-\d+\b` に合い `titles` が `null` でないものを、項目の ID のボタン（`button.idlink`。`title` にタイトル、`data-focus` は `post-id:{ID}`）にする（記録に無い ID とスレッドの ID `TH-1` は文字のまま）。リンクの見た目は詳細の本文のまとまりのリンクと同じにする（`style.css`）。mdmark が読めないときは、本文を文字のまま改行を保って持つ要素を返す（知らせは出さず、項目の ID とまとまりのリンクも作らない）
+    summary: 書き込みの本文を、段落の中の改行を強制改行にして（`withHardBreaks`）`renderMarkdown`（`table` は偽）で描き、クラス `className` を付けた要素を返す。図は `renderDiagrams` で（描き終えるのを待たずに返す）、`html` のコードブロックの入れ物は部品『HTMLの本文の枠』（`htmlBodyFrame`、`selectable` は偽）で描き、`decorateMarkdown`（`fold` は偽）を当てる。続けて本文の中の `a` のうち `href` が `#` で始まるものは、`#` の後ろを `URLSearchParams` で読んだ `diff` の値を `changeSets` で引き（`diff` 以外の引数は見ない）、`null` でなければまとまりのリンク（クラス `setlink`。`href` は `#diff={まとまりの ID}`、`title` にまとまりの説明、`data-focus` は `post-set:{ID}`）にし、`null` なら `a` を中の文字に置き換える。`#` で始まらないリンクは mdmark が描いたまま残す。まとまりのリンクを押すと既定の動作を止めて `on.changeSet` にまとまりの ID を渡す。その後、`pre`・`code`・`a`・図の入れ物・HTML の本文の枠の外の文字のうち `\b[A-Z]{1,2}-\d+\b` に合い `titles` が `null` でないものを、項目の ID のボタン（`button.idlink`。`title` にタイトル、`data-focus` は `post-id:{ID}`）にする（記録に無い ID とスレッドの ID `TH-1` は文字のまま）。リンクの見た目は詳細の本文のまとまりのリンクと同じにする（`style.css`）。mdmark が読めないときは、本文を文字のまま改行を保って持つ要素を返す（知らせは出さず、項目の ID とまとまりのリンクも作らない）
     props:
       - name: body
         type: string
@@ -129,7 +129,7 @@ components:
         summary: 本文を Markdown として描き、段落の中の改行を保ち、コードの中の ID はボタンにしない
         condition: 見出し `## 結果`、改行 1 つで 2 行にした段落「D-1 は A。」「2 行目」、セルに D-1 を持つ 1 列の表、インラインコードの D-1 だけの段落、`> [!NOTE]` の引用を持つ本文。`titles` は D-1 だけ。mdmark は `page.route` で返し `loadMdmark` で読む
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '`.post-body` が class `mdmark` を持ち、`h2`・`br` を持つ `p`・`.md-table-wrap` の中の `table`・補足のアイコンを持つ `div.markdown-alert` がある。段落と表のセルの D-1 は `button.idlink`、インラインコードの D-1 は文字のまま。表のセルは `data-col-size` を持たない'
+        expected: '`.post-body` が class `mdmark` を持ち、`h2`・`br` を持つ `p`・`.mdmark-table` に包まれない `table`・補足のアイコンを持つ `div.markdown-alert` がある。段落と表のセルの D-1 は `button.idlink`、インラインコードの D-1 は文字のまま。表のセルは `data-col-size` を持たない'
       - name: test_post_body_when_library_missing
         case: 正常
         summary: mdmark が読めなければ文字のまま改行を保つ

@@ -16,7 +16,7 @@ const base = {
   message: null,
   storageAvailable: true,
   minimap: true,
-  bodyView: { pin: true, head: true, stripes: false, fold: true },
+  bodyView: { fold: true },
   onKindsChange: vi.fn(),
   onReset: vi.fn(),
   onSaveDefault: vi.fn(),

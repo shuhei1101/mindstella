@@ -29,7 +29,7 @@ constants:
     title: mdmark で止める機能
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 共通
-    summary: '`mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大・コードブロックのバーと行の部品（`code`。オンだと `pre` を入れ物で包み、行の印と mermaid の原文の取り出しが変わる）と、mermaid の描画（プレビューが描いて差分を取る）も止める（`html`・`diagrams`・`map` は既定のまま）'
+    summary: '`mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大・コードブロックのバーと行の部品（`code`。オンだと `pre` を入れ物で包み、行の印と mermaid の原文の取り出しが変わる）と、mermaid の描画（プレビューが描いて差分を取る）も止める（`html`・`diagrams`・`map` は既定のまま）。表の機能（`table`）はここではオフで持ち、`renderMarkdown` が `table` を偽で受けないときだけオンで指定する'
     value: '{glossary: false, backlinks: false, comments: false, print: false, anchors: false, sections: false, table: false, toc: false, views: false, syntax: false, code: false, mermaid: false, "side-toc": false, "back-to-top": false, "diagram-resize": false, lightbox: false}'
     status: planned
   - name: MDMARK_PARAM_COPY_LABEL
@@ -105,20 +105,26 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は横に送れる要素で包み、コードブロックはフォーカスできる要素にする
+    summary: 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は `table` のとき mdmark の表の機能で描き、コードブロックはフォーカスできる要素にする
     args:
       - name: source
         type: string
         required: true
         passing: positional
         description: 本文の Markdown
+      - name: options
+        type: '{table?: boolean}'
+        required: false
+        default: '{}'
+        passing: positional
+        description: '`table` は mdmark の表の機能をオンで指定するか（省くと真。スレッドの書き込みでは偽。部品設計『Markdownの本文』）'
     returns:
       type: HTMLElement
       description: 描いた本文（class `mdmark`）。mdmark が読めないときは、`libraryNotice` と原文の `pre` を持つ要素
     process: |-
       1. mdmark が読めたか確かめる（`missingLibraries`）
          - 読めていない場合、知らせと原文を返す（本文に mermaid のコードブロックがあり mermaid も読めていなければ名前に足す）
-      2. `div` を作り、`mdmark.mount` に本文と、`config.features` の `MDMARK_FEATURES`・`config.map` の `#mindmap-mdmark-config` の `map`（無ければ指定しない）を渡して描く（描き直しは要素ごと作り直すので、返った `update`・`destroy` は使わない）。描いた後、`br` の直後の改行の文字を外す（mdmark は強制改行を `br` と改行の文字で描き、`selectionLocation` は改行の文字と `br` の両方を行として数えるため）。続けて `relabelParamCopy` を当てる
+      2. `div` を作り、`mdmark.mount` に本文と、`config.features` の `MDMARK_FEATURES`（`options.table` が偽でなければ `table` だけをオンにしたもの。mdmark が表を `.mdmark-table` と横にスクロールする入れ物で包む）・`config.map` の `#mindmap-mdmark-config` の `map`（無ければ指定しない）を渡して描く（描き直しは要素ごと作り直すので、返った `update`・`destroy` は使わない）。描いた後、`br` の直後の改行の文字を外す（mdmark は強制改行を `br` と改行の文字で描き、`selectionLocation` は改行の文字と `br` の両方を行として数えるため）。続けて `relabelParamCopy` を当てる
       3. mdmark が付けた `data-source-line`（0 始まりのブロックの開始行）を、元の行の印 `data-line-start`（1 始まり）に読み替える（PoC #80 の対応づけ。読み替えは PR #342 の PoC 結果）
          - 見出し・段落・リストの項目・表の行・`pre` は、値に 1 を足した `data-line-start` を付ける。フェンスのコードの `pre` は 2 を足す（中身の最初の行）。フェンスかは、原文のその行から行頭の空白・引用の `>`・リストのマーカーを除いた先が ```` ``` ```` か `~~~` で始まるかで判定する（`/^(?:[ \t]*(?:>|[-*+]|\d+[.)])[ \t]?)*[ \t]*(```|~~~)/`。PR #342 の PoC 結果）
          - 段落を持つリストの項目は中の段落に任せ、項目には付けない。リスト・表・引用・区切り線にも付けない
@@ -126,8 +132,7 @@ functions:
          - 埋め込んだ HTML の範囲（`.mdmark-html`）は `data-source-line` を持たないため、本文の中で n 番目の範囲に、`embeddedHtmlRanges` の n 番目の `open` を `data-html-open`、`close` を `data-html-close` で持たせる（範囲の中の要素には `data-line-start` を付けない）
       4. `.mdmark-html` と map の範囲（`.mdmark-map`。mdmark の map の部品が中の mermaid の原文を読んで描く）の外の `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に `pre` ごと置き換える（入れ物には `data-line-start` を付けない。描くのは `renderDiagrams`）
       5. `.mdmark-html` の外の `language-html` のコードブロックを、原文を `data-source` に持ち `pre` の `data-line-start` を残した HTML の本文の枠の入れ物（`.html-block`）に `pre` ごと置き換える（描くのは使う側が部品『HTMLの本文の枠』で、`selectable` は偽）
-      6. `.mdmark-html` の外の表（`table`）を 1 つずつ、表の中だけで横に送る入れ物（`div.md-table-wrap`、`tabindex="0"`・`role="group"`・`aria-label="本文の表"`）で包む（範囲の中の表は書いた HTML のまま包まない）。表の行の `data-line-start` は表に残し、入れ物には付けない（画面設計『詳細パネル』の本文。本文の差分の部品が描く本文とスレッドの書き込みも同じ）
-      7. `.mdmark-html` の外の、処理 4・5 で置き換えずに残ったコードブロックの `pre`（子に `code` を持つ `pre`）のうち、`tabindex` を持たないもの（mdmark の `fence` の規則を通らない字下げのコードブロック）に、`tabindex="0"`・`aria-label="コード"` を付ける（部品設計『Markdownの本文』。mdmark がフェンスのコードブロックに付けた `tabindex="0"`・`aria-label="コード: {言語}"` は残す。範囲の中の `pre` は書いた HTML のまま付けない）
+      6. `.mdmark-html` の外の、処理 4・5 で置き換えずに残ったコードブロックの `pre`（子に `code` を持つ `pre`）のうち、`tabindex` を持たないもの（mdmark の `fence` の規則を通らない字下げのコードブロック）に、`tabindex="0"`・`aria-label="コード"` を付ける（部品設計『Markdownの本文』。mdmark がフェンスのコードブロックに付けた `tabindex="0"`・`aria-label="コード: {言語}"` は残す。範囲の中の `pre` は書いた HTML のまま付けない）
     unit_tests:
       - name: test_render_markdown
         case: 正常
@@ -155,10 +160,10 @@ functions:
         expected: '`.html-block` が 1 つで `data-source` に原文、`pre` にコードとしては出ない。見出し・段落の `data-line-start` はコードブロックが無いときと同じ数え方'
       - name: test_render_markdown_when_table
         case: 正常
-        summary: 表を横に送れる入れ物で包み、行の印を変えない
-        condition: '`parametrize`: 段落の後に表を 2 つ持つ本文 / 範囲の外の表と、`<!-- html -->` の範囲の中の表を持つ本文'
+        summary: 表を mdmark の表の機能で描き、行の印を変えない
+        condition: '`parametrize`: 段落の後に表を 2 つ持つ本文を `options` を省いて描く / 同じ本文を `{table: false}` で描く'
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '`table` が 2 つとも `.md-table-wrap` の直下にあり、入れ物は `tabindex="0"`・`role="group"`・`aria-label="本文の表"` を持ち `data-line-start` を持たない。表の各行の `data-line-start` は包まないときと同じ。段落は包まない / 範囲の外の表だけが `.md-table-wrap` の直下にあり、範囲の中の表は `.md-table-wrap` の中に無い'
+        expected: '`table` が 2 つとも `.mdmark-table` の中にあり、`.md-table-wrap` が無い。表の各行の `data-line-start` は `{table: false}` のときと同じで、`.mdmark-table` は `data-line-start`・`data-source-line` を持たない / `table` が `.mdmark-table` に包まれない'
       - name: test_render_markdown_when_embedded_html
         case: 正常
         summary: 埋め込んだ HTML を本文の中に描き、範囲に元の行を持たせる
@@ -478,7 +483,7 @@ functions:
       1. mdmark が読めたか確かめる（`missingLibraries`）
          - 読めていない場合、渡した文字列を文字として持つ `span.md-value-raw` を返す（知らせは出さない。本文の `renderMarkdown` が出す）
       2. 段落の中の改行を強制改行にした Markdown（`withHardBreaks`）を、`mdmark.mount` に `config.features` の `MDMARK_FEATURES` を渡して描き、`br` の直後の改行の文字（`renderMarkdown` の処理 2 と同じ理由）と `data-source-line` を外す（`data-line-start` は付けず、mermaid のコードブロックも図にしない）
-      3. `.mdmark-html` の外のコードブロックの `pre` に、`renderMarkdown` の処理 7 と同じ属性を付ける
+      3. `.mdmark-html` の外のコードブロックの `pre` に、`renderMarkdown` の処理 6 と同じ属性を付ける
     unit_tests:
       - name: test_render_value
         case: 正常

@@ -3,6 +3,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { resolveMdmarkRef } from "./mdmark-ref.js";
+
 // プレビューのフォルダ（雛形・CSS・tsc が生成した JavaScript を持つ）
 const PREVIEW_DIR = fileURLToPath(new URL("../plugins/mindstella/skills/mindmap/preview", import.meta.url));
 
@@ -15,15 +17,19 @@ const APP_SCRIPT = "app.js";
 // 雛形の文字の link 要素と描画のライブラリの script 要素（版と integrity を雛形の 1 か所に保つため、雛形から取り出す。雛形は mdmark の差し込み口の印だけを持つ）
 const TEMPLATE_TAGS = /<link rel="stylesheet" href="https:\/\/fonts[^>]*>|<script src="https:\/\/cdn[^>]*><\/script>/g;
 
-// Storybook の画面が読む mdmark の `dist/`。設定を持たないときの既定（`latest` = `@develop`）で、サーバーの `mdmark_dist_url` と同じ組み立て
-const MDMARK_STORYBOOK_URL = "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist";
+// Storybook の画面が読む mdmark の `dist/` の URL の形。`{ref}` に起動時に決めた ref を入れる（サーバーの `mdmark_dist_url` と同じ組み立て）
+const MDMARK_STORYBOOK_URL = "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist";
+
+// 起動時に 1 回だけ決めた、画面が読み込む mdmark の ref
+const mdmarkRef = await resolveMdmarkRef();
 
 /** 雛形から文字と描画のライブラリを読むタグを取り出し、mdmark の読み込みを足して返す */
 function templateTags() {
   const template = readFileSync(`${PREVIEW_DIR}/template.html`, "utf8");
+  const base = MDMARK_STORYBOOK_URL.replace("{ref}", mdmarkRef);
   const mdmark = [
-    `<link rel="stylesheet" href="${MDMARK_STORYBOOK_URL}/index.css" crossorigin="anonymous">`,
-    `<script type="application/json" id="mindmap-mdmark-config">${JSON.stringify({ js: `${MDMARK_STORYBOOK_URL}/index.js`, map: {} })}</script>`,
+    `<link rel="stylesheet" href="${base}/index.css" crossorigin="anonymous">`,
+    `<script type="application/json" id="mindmap-mdmark-config">${JSON.stringify({ js: `${base}/index.js`, map: {} })}</script>`,
   ];
   return [...(template.match(TEMPLATE_TAGS) ?? []), ...mdmark].join("\n");
 }
