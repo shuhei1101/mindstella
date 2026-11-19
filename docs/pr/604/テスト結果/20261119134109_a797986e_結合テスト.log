@@ -1,0 +1,13 @@
+$ pytest tests/integration/server/test_mcp_server.py tests/integration/server/test_update_workspace.py
+（commit a797986e。並列数 1。TL-3 は parallelism を持たない）
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-workspace-settings-update
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 19 items
+
+tests/integration/server/test_mcp_server.py ..........                   [ 52%]
+tests/integration/server/test_update_workspace.py .........              [100%]
+
+============================= 19 passed in 25.44s ==============================
