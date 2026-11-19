@@ -65,8 +65,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T09:50:42.798320+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
     note: comments.ts・detail.ts・thread-post.ts・app.ts・voice.ts と review-edit-form・review-view・detail-comments・thread-view・voice-store・use-voice-input・preview-shell
+    updated_by: planner
+    updated_at: '2026-11-19T10:05:33.000434+00:00'
   - process: ドキュメント修正
     status: todo
     note: docs/guide/プレビューを見る.md
