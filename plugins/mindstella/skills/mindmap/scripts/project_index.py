@@ -53,9 +53,9 @@ class ProjectIndexError(Exception):
         self.detail = detail
 
 
-def get_settings(port: int) -> dict[str, Any]:
+def get_settings(port: int, *, timeout: float = REQUEST_TIMEOUT_SEC) -> dict[str, Any]:
     """`GET /settings/sources` の応答（`settingsPath`・`sources[]`・`version`）を返す。"""
-    status, body = _request(port, "GET", SOURCES_PATH)
+    status, body = _request(port, "GET", SOURCES_PATH, timeout=timeout)
     # 200 でない: 読めない
     if status != HTTPStatus.OK:
         raise _failed("GET", SOURCES_PATH, status, body)
@@ -243,7 +243,12 @@ def read_allowed_dirs(settings_path: Path) -> list[Path]:
 
 
 def _request(
-    port: int, method: str, path: str, body: dict[str, Any] | None = None
+    port: int,
+    method: str,
+    path: str,
+    body: dict[str, Any] | None = None,
+    *,
+    timeout: float = REQUEST_TIMEOUT_SEC,
 ) -> tuple[int, dict[str, Any]]:
     """JSON を送り、ステータスと JSON の本文を返す。つながらなければ ProjectIndexError。"""
     data = None if body is None else json.dumps(body).encode("utf-8")
@@ -254,7 +259,7 @@ def _request(
         headers={"Content-Type": "application/json", "Accept": "application/json"},
     )
     try:
-        with _OPENER.open(request, timeout=REQUEST_TIMEOUT_SEC) as response:
+        with _OPENER.open(request, timeout=timeout) as response:
             return response.status, _parse(response.read())
     except urllib.error.HTTPError as error:
         # 200 番台でない応答: ステータスと本文を返す

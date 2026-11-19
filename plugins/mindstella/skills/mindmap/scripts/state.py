@@ -116,6 +116,21 @@ def read_ids(root: Path) -> list[str]:
     return [str(value) for value in ids]
 
 
+def ids_exist(root: Path) -> bool:
+    """`workspaces.yaml` があるかを返す（中身は読まない）。"""
+    return (root / IDS_FILE).exists()
+
+
+def create_ids_if_missing(root: Path, ids: list[str]) -> bool:
+    """全体で 1 つの鍵を取り、`workspaces.yaml` が無いときだけ `ids` を書いて、書いたかを返す。"""
+    with _file_lock(root / IDS_FILE):
+        # 鍵を取るまでの間に作られた: 書き換えない
+        if ids_exist(root):
+            return False
+        _write_ids(root, ids)
+        return True
+
+
 def add_id(root: Path, workspace_id: str) -> None:
     """全体で 1 つの鍵を取り、`ids` に無ければ足して置き換える。"""
     with _file_lock(root / IDS_FILE):
