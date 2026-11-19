@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import re
+from collections.abc import Callable
+from typing import Any
+
 import pytest
-from playwright.sync_api import Page, Route
+from playwright.sync_api import Page, Route, expect
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_comment_helpers import (
     BAND_COUNT,
@@ -24,7 +28,16 @@ from preview_comment_helpers import (
     read_workspace_yaml,
     review_row,
 )
-from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_fixture_types import OpenPreview, StartVoicePreview, WriteReviewPreview
+from preview_voice_helpers import (
+    FAKE_MIC_SCRIPT,
+    FIELD_STATE_JS,
+    VOICE_TIMEOUT_MS,
+    assert_recording_wave,
+    put_caret,
+    start_recording,
+    wait_transcription_status,
+)
 from preview_post_link_helpers import DIFF_CHIP_TITLE, DIFF_SETTLE_MS, hash_params
 from preview_stack_helpers import DETAIL_HASH, is_inert, open_narrow, wait_front
 from claude_pane_fixtures import StartClaudePane
@@ -1381,3 +1394,69 @@ def test_row_more_when_folded_again(served_long: tuple[str, Path], open_preview:
     inside = page.evaluate(ROW_INSIDE_SCRIPT, _row("C-2"))
     assert inside["top"] >= -1
     assert inside["bottom"] >= -1
+
+
+def test_edit_voice_input(
+    page: Page,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: StartVoicePreview,
+    valid_settings: dict[str, Any],
+) -> None:
+    """修正の入力のマイクで録音し、文字起こし後の挙動が send でも結果を録音前のカーソルの位置へ挿入するだけで、送信もレビュー中の書き込みの書き換えもしない。フォーカスは入力欄の挿入した文字の後ろへ戻る（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = start_voice_preview(fake.url, make_item("D-1"), settings={**valid_settings, "transcription": {"action": "send"}})
+    write_comments(root, make_comment("C-1", body="確認: でよい"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        page.goto(f"{url}#tab=decisions&view=table")
+    open_review(page)
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    form = page.locator(f"{_row('C-1')} form.row-edit")
+    put_caret(form.locator("textarea"), "確認: でよい", 4)
+    # 実行
+    start_recording(form)
+    assert_recording_wave(form)
+    form.get_by_role("button", name="文字起こし", exact=True).click()
+    # 検証
+    expect(form.locator(".send-msg[role=status]")).to_have_text("文字起こしの結果を挿入しました。", timeout=VOICE_TIMEOUT_MS)
+    state = form.locator("textarea").evaluate(FIELD_STATE_JS)
+    assert {key: state[key] for key in ("value", "start", "end", "focused")} == {
+        "value": "確認: 案 A にするでよい",
+        "start": 11,
+        "end": 11,
+        "focused": True,
+    }
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "確認: でよい"
+    assert not (root / RECORD_DIR / "threads.yaml").exists()
+
+
+def test_edit_voice_input_when_sent(
+    page: Page,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: StartVoicePreview,
+) -> None:
+    """修正の入力で録音中にその書き込みをまとめて送ると、読み直しを待たずに録音を捨て、トップバーの音声入力中の表示を消して捨てたことを知らせる（異常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = start_voice_preview(fake.url, make_item("D-1"))
+    write_comments(root, make_comment("C-1", body="確認: でよい"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        page.goto(f"{url}#tab=decisions&view=table")
+    open_review(page)
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    start_recording(page.locator(f"{_row('C-1')} form.row-edit"))
+    expect(page.get_by_role("button", name=re.compile("^音声入力中（D-1 へのコメントの修正）"))).to_be_visible()
+    # 実行
+    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name=re.compile("^まとめて送る")).click()
+    # 検証
+    expect(page.get_by_text("C-1 が削除されたため、録音を破棄しました。")).to_be_visible(timeout=UPDATE_TIMEOUT_MS)
+    expect(page.get_by_role("button", name=re.compile("^音声入力中"))).to_have_count(0)
+    assert fake.jobs == []

@@ -216,7 +216,7 @@ from preview_stack_helpers import (
     open_narrow,
     wait_front,
 )
-from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeEdit, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeEdit, MakeItem, MakeWorkspace, WriteComments
 
 # 入力が止まるのを待たずに保つ書きかけが、ファイルに届くまで待つミリ秒
 DRAFT_FLUSH_WAIT_MS = 400
@@ -6835,3 +6835,49 @@ def test_comments_button(
     # 検証
     page.wait_for_selector("aside.comments-panel.open .talk-target .chip")
     assert page.inner_text("aside.comments-panel .talk-target .chip .mono") == "D-1"
+
+
+def test_review_edit_voice_input_after_moving(
+    page: Page,
+    make_item: _MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: _StartVoicePreview,
+) -> None:
+    """レビュー中のコメントの修正の入力で録音中にほかの項目へ移っても録音を続け、トップバーの表示を押すとその行の修正の入力のまま戻って ✓ にフォーカスがあり、✓ で既定の挙動（review）によらず結果を挿入するだけにする（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = start_voice_preview(fake.url, make_item("D-1"), make_item("D-2"))
+    write_comments(root, make_comment("C-1", body="確認: でよい"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        page.goto(f"{url}#tab=decisions&view=table&id=D-1")
+    row = "aside.panel li[data-comment='C-1']"
+    page.locator(row).get_by_role("button", name=ROW_EDIT_NAME).click()
+    form = page.locator(f"{row} form.row-edit")
+    put_caret(form.locator("textarea"), "確認: でよい", 4)
+    start_recording(form)
+    # 実行（ほかの項目へ移る）
+    page.evaluate("location.hash = '#tab=decisions&view=table&id=D-2'")
+    voice = page.get_by_role("button", name="音声入力中（D-1 へのコメントの修正）。録音中の入力欄へ移動")
+    expect(voice).to_be_visible()
+    # 実行（録音中の入力欄へ戻る）
+    voice.click()
+    # 検証
+    expect(page).to_have_url(re.compile("id=D-1"))
+    done = form.get_by_role("button", name="文字起こし", exact=True)
+    expect(done).to_be_focused()
+    # 実行（文字起こし）
+    done.click()
+    # 検証（挿入するだけで、レビュー中の書き込みを書き換えない）
+    expect(form.locator(".send-msg[role=status]")).to_have_text("文字起こしの結果を挿入しました。", timeout=VOICE_TIMEOUT_MS)
+    state = form.locator("textarea").evaluate(FIELD_STATE_JS)
+    assert {key: state[key] for key in ("value", "start", "end", "focused")} == {
+        "value": "確認: 案 A にするでよい",
+        "start": 11,
+        "end": 11,
+        "focused": True,
+    }
+    items = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"]
+    assert [(item["id"], item["body"]) for item in items] == [("C-1", "確認: でよい")]

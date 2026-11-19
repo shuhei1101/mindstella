@@ -4,17 +4,25 @@ from __future__ import annotations
 
 from preview_fixture_types import StartVoicePreview as _StartVoicePreview
 from preview_voice_helpers import (
+    FAKE_MIC_SCRIPT,
+    VOICE_TIMEOUT_MS,
     assert_mic_blocked_after_click,
+    assert_recording_wave,
+    put_caret,
+    start_recording,
+    wait_transcription_status,
 )
 from workspace_fixtures import MakeItem as _MakeItem, MakePost as _MakePost, MakeThread as _MakeThread
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from playwright.sync_api import Locator, Page, expect
 from preview_comment_helpers import free_comment, read_workspace_yaml
 from preview_fixture_types import WriteReviewPreview
 from preview_spa_helpers import open_spa
-from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread
+from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread, WriteComments
 
 # 書き込みを待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
@@ -255,3 +263,43 @@ def test_voice_input_when_service_stopped(
     # 検証
     field = page.get_by_role("textbox", name="返信")
     assert_mic_blocked_after_click(_panel(page).locator("form").filter(has=field), "[role=status]")
+
+
+def test_pending_post_edit_voice_input(
+    page: Page,
+    make_item: _MakeItem,
+    make_thread: _MakeThread,
+    make_post: _MakePost,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: _StartVoicePreview,
+    valid_settings: dict[str, Any],
+) -> None:
+    """スレッドの中のレビュー中の返信の修正の入力で録音し、文字起こし後の挙動が review でも結果を録音前のカーソルの位置へ挿入するだけで、レビュー中に溜めない（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = start_voice_preview(
+        fake.url,
+        make_item("D-1"),
+        threads=(make_thread("TH-1", make_post("TH-1-1", body="案を比べたい")),),
+        settings={**valid_settings, "transcription": {"action": "review"}},
+    )
+    write_comments(root, free_comment(make_comment("C-1", body="確認: でよい", thread="TH-1")))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        open_spa(page, url, "?panel=comments&thread=TH-1")
+    post = page.locator("article[data-comment='C-1']")
+    post.get_by_role("button", name="TH-1 への返信を修正").click()
+    form = post.locator("form[data-part=edit]")
+    put_caret(form.locator("textarea"), "確認: でよい", 4)
+    # 実行
+    start_recording(form)
+    assert_recording_wave(form)
+    form.get_by_role("button", name="文字起こし", exact=True).click()
+    # 検証
+    expect(form.locator("[role=status]")).to_have_text("文字起こしの結果を挿入しました。", timeout=VOICE_TIMEOUT_MS)
+    expect(form.locator("textarea")).to_have_value("確認: 案 A にするでよい")
+    expect(form.locator("textarea")).to_be_focused()
+    items = read_workspace_yaml(root, "comments.yaml")["items"]
+    assert [(item["id"], item["body"]) for item in items] == [("C-1", "確認: でよい")]
