@@ -386,6 +386,24 @@ def test_stop_workspace_when_not_served(
     assert detected_registry.url_of(root) == url
 
 
+def test_stop_workspace_when_other_settings_broken(
+    detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """ほかのワークスペースの設定が壊れていても、一致する配信を止める（正常系）。"""
+    # 準備
+    first = make_workspace(make_item("D-1"), name="a")
+    second = make_workspace(make_item("D-1"), name="b")
+    detected_registry.start(first)
+    detected_registry.start(second)
+    workspace_id = change_detection.workspace_id_of(first)
+    (second / ".mindstella" / "config.yaml").write_text("id: [壊れた\n", encoding="utf-8")
+    # 実行
+    detected_registry.stop_workspace(workspace_id)
+    # 検証
+    assert detected_registry.url_of(first) is None
+    assert detected_registry.url_of(second) is not None
+
+
 def test_stop_workspace_then_start(
     detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
