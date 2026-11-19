@@ -6,10 +6,9 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-44.yaml
-    impact: changed
-    detail: 選んだ箇所へのコメントをレビュー中に溜めた後のフォーカスを、設定に従う
-    depends_on:
-      - docs/scenario/SC-489-47.yaml
+    impact: none
+    detail: 選んだ箇所を添えて溜める操作は『項目へコメントする』と同じコメントの入力で、溜めた後のフォーカスは『項目へコメントする』が持つ。入口を押した後に入力欄へ移るのは書き始めるためで変えない
+    depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-5.yaml
     impact: changed

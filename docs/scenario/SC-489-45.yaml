@@ -471,6 +471,37 @@ scenarios:
       - 偽のサーバーが受けた音声が、マイクのボタンを押してから「文字起こし」を押すまでの全てで途切れていない
       - 文字起こしの後、コメントの入力の文字が「案 A にする」である
       - カーソルを入力欄の外へ移すと、再読み込みの操作をせずに検討事項の表に D-2 が出て、「更新があります」が消え、コメントの入力の文字が「案 A にする」のままである
+  - name: 正常シナリオ（タッチの端末で文字起こしをレビュー中に溜める）
+    setup:
+      - name: Mock
+        description: voice-paste の代わりに、`POST /web/transcriptions` で 202 と `job_id` を返し、`GET /web/transcriptions/{job_id}` で `done` と固定の文字「案 A にする」を返す偽のサーバーを 127.0.0.1 で立てる。MCP サーバーをその偽のサーバーへ向けて立て、サーバーが配るプレビューを、偽のマイクを許し端末の保存領域が空の実際のブラウザで開く
+      - name: 端末の種類
+        description: タッチの端末
+        notes: '`pointer: coarse`。タッチを有効にした幅 390px'
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が文字起こし後の挙動を持たない（既定の `review`）ワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1
+      - name: 開いている画面
+        description: D-1 の詳細パネルを開いている
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: マイクのボタンを押し、話してから「文字起こし」を押す
+        P->>SV: 録音した音声を送る
+        SV-->>P: 「案 A にする」
+        P->>SV: 入力欄の全文をレビュー中に溜める
+        SV-->>P: 溜めた結果
+        P-->>U: 入力欄を空にし、元のボタンに戻して「レビューに追加」へフォーカスを移す
+      ```
+    expected:
+      - レビュー中の書き込みが「案 A にする」の 1 件になる
+      - 溜めた後のフォーカスが「レビューに追加」のボタンにあり、コメントの入力欄に無い
+    test: test_normal_when_reviewed_on_touch
 notes:
   画面の文言: マイクのボタン・録音中のボタン・ツールチップ・結果の文言はモック作成で決め、画面設計に書く
   録音中の波形: 波形の見た目はモック作成で決め、部品設計に書く
