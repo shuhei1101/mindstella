@@ -1988,6 +1988,8 @@ def test_review_row_keyboard(
     wait_until_focused(page, f"{row} form.row-edit textarea")
     page.keyboard.press("Control+A")
     page.keyboard.type("案 B にする")
+    # 入力欄の後ろはマイク・「キャンセル」・「修正」の順に並ぶ
+    page.keyboard.press("Tab")
     page.keyboard.press("Tab")
     page.keyboard.press("Tab")
     page.keyboard.press("Enter")
