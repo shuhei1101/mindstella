@@ -55,6 +55,8 @@ EXPECTED_TOOL_NAMES = (
     "reply",
     "set_thread_status",
     "update_thread",
+    "workspaces",
+    "workspace",
     "create_workspace",
     "create_session",
     "sessions",
