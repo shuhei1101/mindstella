@@ -67,9 +67,9 @@ elements:
         value: 記録の取得の項目の ID とタイトル
       - name: editing
         value: そのレビュー中の書き込みをこの画面で書き換えているとき true
-      - name: edit_error
+      - name: editError
         value: レビュー中のコメントの書き換え（PATCH /api/comments/{id}）の失敗の理由
-      - name: change_sets
+      - name: changeSets
         value: 記録の取得.changes.sets のまとまりの ID と説明
       - name: open
         value: 画面がレビュー中の書き込みごとに覚えた開閉（既定は畳む）

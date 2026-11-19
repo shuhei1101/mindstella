@@ -103,7 +103,7 @@ elements:
         value: 行の読み上げの名前の頭（「{スレッドの ID} への返信」「{向けた項目の ID} へのコメント」「項目を指さないコメント」）
       - name: body
         value: レビュー中のコメントの読み取り.items[].body
-      - name: change_sets
+      - name: changeSets
         value: 記録の取得.changes.sets のまとまりの ID と説明
       - name: open
         value: 画面が行ごとに覚えた開閉（既定は畳む）
