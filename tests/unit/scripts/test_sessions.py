@@ -475,28 +475,48 @@ def test_create_session_not_ready(
     assert state.read_session(ctx.state_root, WORKSPACE_ID) is None
 
 
+def test_list_sessions_when_never_created(
+    ctx: SimpleNamespace, stopped_notices: list[tuple[str, str]]
+) -> None:
+    """一度も作っていなければ空の並びを返し、何も書き換えない（正常系）。"""
+    # 実行
+    body = sessions.list_sessions(WORKSPACE_ID, ctx)
+    # 検証
+    assert body == {"sessions": [], "close_pending": False}
+    assert state.read_session(ctx.state_root, WORKSPACE_ID) is None
+    assert stopped_notices == []
+
+
 @pytest.mark.parametrize(
-    ("written", "pane_alive", "expected"),
+    ("status", "pane_alive", "expected_status", "expected_pane"),
     [
-        pytest.param(False, True, None, id="never-created"),
-        pytest.param(True, True, "running", id="running"),
-        pytest.param(True, False, "crashed", id="crashed"),
+        pytest.param("running", True, "running", PANE, id="running"),
+        pytest.param("running", False, "crashed", None, id="crashed"),
+        pytest.param("stopping", False, "stopping", PANE, id="stopping"),
     ],
 )
 def test_list_sessions(
-    written: bool, pane_alive: bool, expected: str | None, ctx: SimpleNamespace
+    status: str,
+    pane_alive: bool,
+    expected_status: str,
+    expected_pane: str | None,
+    ctx: SimpleNamespace,
+    stopped_notices: list[tuple[str, str]],
 ) -> None:
-    """最後の MindStella のセッションを 1 つ返し、落ちていれば crashed にする。"""
-    if written:
-        _write_session(ctx)
+    """落ちていれば crashed を返して書き換えない（正常系）。"""
+    # 準備
+    _write_session(ctx, status=status)
     ctx.tmux.pane_alive = pane_alive
+    before = _session(ctx)
+    # 実行
     body = sessions.list_sessions(WORKSPACE_ID, ctx)
-    if expected is None:
-        assert body["sessions"] == []
-        return
-    assert [entry["status"] for entry in body["sessions"]] == [expected]
+    # 検証
     assert body["sessions"][0]["id"] == SESSION_ID
+    assert body["sessions"][0]["status"] == expected_status
+    assert body["sessions"][0]["pane"] == expected_pane
     assert body["close_pending"] is False
+    assert _session(ctx) == before
+    assert stopped_notices == []
 
 
 def _spawn(
@@ -841,7 +861,7 @@ def _set_status(ctx: SimpleNamespace, status: str | None) -> Callable[[], None]:
     [
         pytest.param(False, None, "stop_requested", id="stopping"),
         pytest.param(False, "stopped", "stop_requested", id="session-end-first"),
-        pytest.param(False, "crashed", "stop_requested", id="listed-while-stopping"),
+        pytest.param(False, "crashed", "stop_requested", id="closed-while-stopping"),
         pytest.param(True, None, "force_stopped", id="forced"),
     ],
 )

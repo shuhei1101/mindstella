@@ -281,7 +281,7 @@ response:
     description: '`mindstella`。Claude Code の中のツールの名前は `mcp__plugin_mindstella_mindstella__{ツール}` になる'
   - name: ツール
     type: list[str]
-    description: '`next_id`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`pending`・`check`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`・`server_status`・`server_stop`・`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`'
+    description: '`next_id`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`pending`・`check`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`・`server_status`・`server_stop`・`workspaces`・`workspace`・`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`'
   - name: 結果
     type: CallToolResult
     description: ツールの結果。構造化の結果（`structuredContent`）に JSON のオブジェクトを 1 個入れ、同じ JSON を文字列の本文（`content` の text）にも入れる
@@ -311,7 +311,7 @@ constraints:
   - item: ツールの引数
     constraint: 前のスクリプトのコマンドの引数と同じ中身を、引数の名前から `--` を落とした名前で受ける（`--workspace` → `workspace`）。設定の中身は `settings`（`update_settings`）の JSON のオブジェクトで受ける。Python の予約語と重なる `--from`・`--to` は `from_version`・`to_version` にする
   - item: ワークスペース
-    constraint: '`server_status`・`server_stop` と MindStella の API と同じ操作のツール（`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`）以外の全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスは `session.cwd` から読み、`session` が無いときは引数の誤りにする（常駐サーバーの作業フォルダは使わない）。`.mindstella/config.yaml` があるフォルダをワークスペースとして扱い、記録のファイルは全て `.mindstella/` の下で引く（直下には書かない）。`.mindstella/config.yaml` が無く、直下に `config.yaml` か `mindmap.yaml`（v0.6.0 より前の置き場所の設定ファイル）があるフォルダには、ツールは WorkspaceNotFoundError を返し、本文で起動スクリプトでワークスペースを開き直すと移し替えることを案内する'
+    constraint: '`server_status`・`server_stop` と MindStella の API と同じ操作のツール（`workspaces`・`workspace`・`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`）以外の全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスは `session.cwd` から読み、`session` が無いときは引数の誤りにする（常駐サーバーの作業フォルダは使わない）。`.mindstella/config.yaml` があるフォルダをワークスペースとして扱い、記録のファイルは全て `.mindstella/` の下で引く（直下には書かない）。`.mindstella/config.yaml` が無く、直下に `config.yaml` か `mindmap.yaml`（v0.6.0 より前の置き場所の設定ファイル）があるフォルダには、ツールは WorkspaceNotFoundError を返し、本文で起動スクリプトでワークスペースを開き直すと移し替えることを案内する'
   - item: セッションの値
     constraint: '`session` はツールの呼び出しごとに受け、モジュール変数に持たない。ペインへの入力の宛先は、そのワークスペースのプレビューの配信が最後に受けた `session` を持つ（『コメントをまとめて送る』）'
   - item: 同時の呼び出し
@@ -325,7 +325,7 @@ constraints:
     constraint: ツールは、成功もエラーも `CallToolResult` を自分で組み立てて返す（成功は `structured_content` と同じ JSON の本文、エラーは `is_error` を真にした本文）。例外を送って SDK に任せない
     notes: '`mcp` 2.3.0 で確かめた。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き（`ToolError` 以外は内容も消える）、`エラー: ` で始まらない'
   - item: MindStella の API
-    constraint: '`/mcp` と同じポートで、`POST /workspaces`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/close` と、フックの受け口 `POST /_admin/sessions/{session}/events` を待ち受ける。`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` の要求だけを受ける（D-304・D-340。`MINDSTELLA_ALLOWED_HOSTS` のホスト名はプレビューの配信だけが受ける）'
+    constraint: '`/mcp` と同じポートで、`POST /workspaces`・`GET /workspaces`・`GET /workspaces/{id}`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/close` と、フックの受け口 `POST /_admin/sessions/{session}/events` を待ち受ける。`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` の要求だけを受ける（D-304・D-340。`MINDSTELLA_ALLOWED_HOSTS` のホスト名はプレビューの配信だけが受ける）'
   - item: instructions
     constraint: 'MCP の初期化の応答の `instructions` に、記録の検索・書き込み・削除・関連のたどりは project-index の `search_docs`・`write_docs`・`delete_docs`・`trace_related` で行うこと、項目を足す前に `next_id` で ID を取ること、`commit` とスレッドの書き込みは MindStella のセッションだけが呼べること、記録の進め方は project-index の配信元 `mindstella-agent-flows` のエージェントフローに従うことを書く'
   - item: MindStella のセッションに限るツール

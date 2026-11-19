@@ -1,20 +1,19 @@
 title: 停止の通知
 entry:
   kind: trigger
-  value: MindStella のセッションの `session.json` の `status` を、『MindStella のセッションの停止』・『MindStella のセッションの出来事の受け取り』と、生死を判定する処理（『MindStella のセッションの一覧』・『MindStella のセッションの作成』・『ワークスペースのクローズ』）が `stopped` か `crashed` に書き換えた後
+  value: MindStella のセッションの `session.json` の `status` を、『MindStella のセッションの停止』・『MindStella のセッションの出来事の受け取り』と、生死を判定する処理（『落ちたことの見回り』・『MindStella のセッションの作成』・『ワークスペースのクローズ』）が `stopped` か `crashed` に書き換えた後
 lead: MindStella のセッションが止まったことを常駐サーバーが記録したときに、利用者が用意した Webhook の設定のファイルの Discord の Webhook へ、止まったことと止まった理由を 1 件送信する。
 test_file: tests/integration/server/test_stop_notify.py
 idempotent: false
 side_effects: Discord の Webhook へ 1 件の `POST`。送信の結果を標準エラーへ 1 行記録する（Webhook の URL を含めない）
 callers:
-  - IF-531-3#
   - IF-531-4#
   - IF-531-6#
   - IF-531-2#
   - IF-531-5#
   - IF-582-1#
   - IF-582-2#
-exclusivity: 送信は常駐サーバーの中の別のスレッド（`daemon` のスレッド）で行い、停止・一覧・出来事の受け取りの応答と常駐サーバーの停止を待たせない。通知するかは、`session.json` を書き換える鍵の中で読んだ書き換える前の `status` で決める
+exclusivity: 送信は常駐サーバーの中の別のスレッド（`daemon` のスレッド）で行い、停止・見回り・出来事の受け取りの応答と常駐サーバーの停止を待たせない。通知するかは、`session.json` を書き換える鍵の中で読んだ書き換える前の `status` で決める
 exceptions:
   - name: なし（正常終了）
     condition: 送信した・送信しなかった・送信に失敗した、のどれでも例外を出さない
@@ -93,27 +92,25 @@ flows:
       - 'エンドポイントが 1 件だけ要求を受け、`content` の 1 行目が `{題名}: 停止しました（強制停止）`'
     test: test_normal_when_forced
   - name: 正常系（落ちている）
-    summary: 一覧でペインが無いことを検知して異常終了を 1 件送信し、その後の停止では送信しない
+    summary: 見回りでペインが無いことを検知して異常終了を 1 件送信し、その後の停止では送信しない
     setup:
       - name: Mock
         description: Discord の Webhook（200 を返却する）
       - name: 常駐サーバー
-        description: 正常系と同じ
+        description: 正常系と同じ。`MINDSTELLA_CRASH_WATCH_INTERVAL` は 1
       - name: 状態
         description: '`session.json` が `running` でペインが無い'
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant LS as GET /workspaces/{id}/sessions
+        participant WT as 落ちたことの見回り
         participant API as DELETE /workspaces/{id}/sessions/{session}
         participant IF as 停止の通知
         participant DC as Discord
 
-        クライアント->>LS: GET
-        LS->>LS: running から crashed
-        LS-->>クライアント: crashed
-        LS->>IF: crashed
+        WT->>WT: running から crashed
+        WT->>IF: crashed
         IF->>DC: POST ?wait=true content
         クライアント->>API: DELETE
         API->>API: crashed から stopped（送信しない）
@@ -279,8 +276,8 @@ flows:
       - エンドポイントが 1 件だけ要求を受けている（再送信しない）
       - 標準エラーに `500` を含む失敗の行があり、エンドポイントの URL を含まない
     test: test_error_when_send_failed
-  - name: 正常系（停止の途中の一覧）
-    summary: 停止の依頼の途中に一覧がペインの無いことを検知しても送信せず、止め終えたときに停止の依頼を 1 件送信する
+  - name: 正常系（停止の途中のクローズ）
+    summary: 停止の依頼の途中にクローズがペインの無いことを検知しても送信せず、止め終えたときに停止の依頼を 1 件送信する
     setup:
       - name: Mock
         description: Discord の Webhook（200 を返却する）と、Claude Code（ペインに `/exit` が貼られたら SessionEnd を叩かずに終わる）
@@ -293,15 +290,15 @@ flows:
       sequenceDiagram
         participant クライアント
         participant API as DELETE /workspaces/{id}/sessions/{session}
-        participant LS as GET /workspaces/{id}/sessions
+        participant CL as POST /workspaces/{id}/close
         participant IF as 停止の通知
         participant DC as Discord
 
         クライアント->>API: DELETE
         API-->>クライアント: 202 stopping
         API->>API: /exit を貼る（SessionEnd は届かない）
-        クライアント->>LS: GET
-        LS->>LS: stopping から crashed（送信しない）
+        クライアント->>CL: POST
+        CL->>CL: stopping から crashed（送信しない）
         API->>API: crashed から stopped
         API->>IF: 止め終えた・stop_requested
         IF->>DC: POST ?wait=true content
@@ -309,7 +306,7 @@ flows:
     expected:
       - '`session.json` の `status` が `stopped`'
       - 'エンドポイントが 1 件だけ要求を受け、`content` の 1 行目が `{題名}: 停止しました（停止の依頼）`'
-    test: test_normal_when_listed_while_stopping
+    test: test_normal_when_closed_while_stopping
 refs:
   - SC-570-1#
   - IF-568-1#

@@ -273,6 +273,13 @@ def load_item_history(root: Path) -> dict[str, ItemHistory]:
     return rows
 
 
+def last_updated(root: Path) -> str | None:
+    """`history.yaml` の行のうち最も新しい `updated` を返す。行が無ければ `None`。何も書かない。"""
+    stamps = [row["updated"] for row in load_item_history(root).values() if "updated" in row]
+    # 日時は UTC のタイムゾーン付き ISO 8601 で揃っているので、文字列の大小で新しい方を選ぶ
+    return max(stamps, default=None)
+
+
 def merge_item_history(item: dict[str, Any], rows: dict[str, ItemHistory]) -> dict[str, Any]:
     """項目に `history.yaml` のその ID の行のキーを足した新しい項目を返す。行が無ければ項目のまま。"""
     row = rows.get(item.get("id", ""))

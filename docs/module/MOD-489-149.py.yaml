@@ -1159,3 +1159,29 @@ functions:
       - name: ThreadCloseRejectedError
         condition: '取り込み待ちの利用者の書き込み（`author: user` で `taken` が無い）か、利用者が未読の AI の書き込み（`author: ai` で `seen` が偽）がある'
         message: スレッド {ID} はクローズにできません
+  - name: status_counts
+    title: 状態の取得の未読の数
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: ワークスペースとMindStella のセッションの状態を取得する
+    scope: public
+    summary: 全てのスレッドの、書き手が `ai` で `seen` が偽の書き込みの数・`awaiting_posts` の数の合計・書き込みの `created` のうち最も新しいものを返す。何も書かない（鍵を取らない）
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: tuple[int, int, str | None]
+      description: '`(利用者が読んでいない AI の書き込みの数, 取り込んでいない利用者の書き込みの数, 最後の書き込みの日時)`。書き込みが無ければ日時は `None`'
+    unit_tests:
+      - name: test_status_counts
+        case: 正常
+        summary: 2 つの数と最後の日時を数える
+        condition: '`seen` が偽の AI の書き込み 2 件・`seen` が真の AI の書き込み 1 件・取り込み待ちの利用者の書き込み 1 件を 2 つのスレッドに分ける / `threads.yaml` が無い'
+        mock: なし
+        expected: '`(2, 1, {最も新しい created})` / `(0, 0, None)`。どちらも `threads.yaml` が呼ぶ前と同じ'
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`load_threads` と同じ（`threads.yaml` が YAML として読めない・スキーマに合わない）'

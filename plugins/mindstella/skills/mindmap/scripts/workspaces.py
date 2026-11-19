@@ -13,11 +13,13 @@ from typing import Any
 import yaml
 
 import commands
+import history
 import migrator
 import project_index
 import read_point
 import sessions
 import state
+import threads
 from errors import ApiError, SchemaMismatchError, StepFailedError, WorkspaceNewerError
 from kinds import LEGACY_SETTINGS_FILE, SETTINGS_FILE, records_root
 from migration_ops import describe_step
@@ -54,6 +56,9 @@ PLUGIN_MANIFEST = Path(".claude-plugin") / "plugin.json"
 
 # project-index の配信元の行の、外から参照できるかのキー（GET の応答）
 OUTSIDE_READ_KEY = "outsideRead"
+
+# グローバルの設定のファイルの行の作業範囲の外のキー（API の応答の OUTSIDE_READ_KEY は camelCase）
+FILE_OUTSIDE_READ_KEY = "outside_read"
 
 
 class WorkspaceLocks:
@@ -323,6 +328,136 @@ def close_workspace(workspace_id: str, ctx: Any) -> dict[str, Any]:
         )
     logger.info("mindstella.workspace.closed", extra={"workspace_id": workspace_id})
     return {"id": workspace_id, "closed": True}
+
+
+def workspace_status(workspace_id: str, ctx: Any) -> dict[str, Any]:
+    """ワークスペースと MindStella のセッションの状態をまとめて返す。何も書かず、鍵も取らない。"""
+    # 1. ID の一覧に無い: 知らないワークスペース
+    if workspace_id not in state.read_ids(ctx.state_root):
+        raise ApiError(404, "workspace", f"ワークスペースがありません: {workspace_id}")
+    warnings: list[dict[str, str]] = []
+    body: dict[str, Any] = {
+        "id": workspace_id,
+        "status": None,
+        "title": None,
+        "url": None,
+        "closed": None,
+        "unseen_ai_posts": None,
+        "awaiting_user_posts": None,
+        "updated": None,
+    }
+    # 2. グローバルの設定のファイルから配信元の行を引く
+    row, settings_warning = _file_row(ctx.settings_file, workspace_id)
+    if settings_warning is not None:
+        warnings.append(settings_warning)
+    # 3〜5. 行があれば、クローズ済みか・記録の中身・画面の URL を集める
+    if row is not None:
+        folder = workspace_folder(row)
+        body["closed"] = row.get(FILE_OUTSIDE_READ_KEY) is False
+        body["url"] = ctx.previews.url_of(folder)
+        body.update(_records_status(folder, warnings))
+    # 6. MindStella のセッションの状態と、追加の MCP・プラグインの記録があるか
+    listed = sessions.list_sessions(workspace_id, ctx)
+    body["sessions"] = listed["sessions"]
+    body["close_pending"] = listed["close_pending"]
+    body["launch_options_recorded"] = state.read_launch(ctx.state_root, workspace_id) is not None
+    # 7. ワークスペースの状態（行を参照できなければ分からない）
+    if body["closed"] is True:
+        body["status"] = "closed"
+    elif body["closed"] is False:
+        body["status"] = "stopped" if body["close_pending"] else "active"
+    body["warnings"] = warnings
+    return body
+
+
+def list_workspaces(include_closed: bool, ctx: Any) -> dict[str, Any]:
+    """ID の一覧の順に、配信元の行があるワークスペースの ID・題名・画面の URL・クローズ済みかを返す。何も書かない。"""
+    try:
+        rows = project_index.read_source_rows(ctx.settings_file)
+    except ProjectIndexError as error:
+        # グローバルの設定のファイルを参照できない: 空の並びと警告
+        return {"workspaces": [], "warnings": [{"stage": "settings", "detail": error.detail}]}
+    by_id = {row.get("id"): row for row in rows if isinstance(row, dict)}
+    listed: list[dict[str, Any]] = []
+    for workspace_id in state.read_ids(ctx.state_root):
+        row = by_id.get(workspace_id)
+        # 配信元の行が無い: 一覧に含めない
+        if row is None:
+            continue
+        closed = row.get(FILE_OUTSIDE_READ_KEY) is False
+        # クローズ済みで、含める指定が無い: 除く
+        if closed and not include_closed:
+            continue
+        folder = workspace_folder(row)
+        listed.append(
+            {
+                "id": workspace_id,
+                "title": _load_title(folder)[0],
+                "url": ctx.previews.url_of(folder),
+                "closed": closed,
+            }
+        )
+    return {"workspaces": listed, "warnings": []}
+
+
+def _file_row(
+    settings_file: Path, workspace_id: str
+) -> tuple[dict[str, Any] | None, dict[str, str] | None]:
+    """グローバルの設定のファイルからワークスペースの行を返す。参照できなければ行の代わりに settings の警告を返す。"""
+    try:
+        rows = project_index.read_source_rows(settings_file)
+    except ProjectIndexError as error:
+        return None, {"stage": "settings", "detail": error.detail}
+    for row in rows:
+        if isinstance(row, dict) and row.get("id") == workspace_id:
+            return row, None
+    return None, {
+        "stage": "settings",
+        "detail": f"グローバルの設定のファイルに配信元の行がありません: {settings_file}（{workspace_id}）",
+    }
+
+
+def _records_status(folder: Path, warnings: list[dict[str, str]]) -> dict[str, Any]:
+    """記録から題名・未読の 2 つの数・最後の更新の日時を集める。参照できない分は None にして warnings に足す。"""
+    # 記録のフォルダが無い: 記録の項目は全て分からない
+    if not (records_root(folder) / SETTINGS_FILE).is_file():
+        warnings.append({"stage": "records", "detail": f"記録のフォルダがありません: {folder}"})
+        return {}
+    title, title_error = _load_title(folder)
+    collected: dict[str, Any] = {"title": title}
+    # 記録の設定が読めない: 題名は分からないが、スレッドと変更履歴は続けて数える
+    if title_error is not None:
+        warnings.append({"stage": "records", "detail": title_error})
+    try:
+        unseen_ai, awaiting, last_post = threads.status_counts(folder)
+        last_item = history.last_updated(folder)
+    except SchemaMismatchError as error:
+        # スレッドか変更履歴が読めない: 題名だけを返す
+        reason = "、".join(error.lines) or str(error)
+        warnings.append({"stage": "records", "detail": f"{error}: {reason}"})
+        return collected
+    collected["unseen_ai_posts"] = unseen_ai
+    collected["awaiting_user_posts"] = awaiting
+    # 日時は UTC のタイムゾーン付き ISO 8601 で揃っているので、文字列の大小で新しい方を選ぶ
+    collected["updated"] = max(
+        (stamp for stamp in (last_item, last_post) if stamp is not None), default=None
+    )
+    return collected
+
+
+def _load_title(folder: Path) -> tuple[str | None, str | None]:
+    """記録の設定の title と、読めなかった理由を返す。記録か title が無ければ title は None。"""
+    path = records_root(folder) / SETTINGS_FILE
+    if not path.is_file():
+        return None, None
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as error:
+        # 読めないか YAML として壊れている: 題名を None にして理由を返す
+        reason = " ".join(str(error).split())
+        return None, f"記録の設定を読めません: {path}（{reason}）"
+    title = data.get("title") if isinstance(data, dict) else None
+    return (title if isinstance(title, str) else None), None
 
 
 def find_workspace_row(pi_port: int, workspace_id: str) -> dict[str, Any] | None:

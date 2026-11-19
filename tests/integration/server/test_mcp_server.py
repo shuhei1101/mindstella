@@ -50,6 +50,8 @@ TOOL_NAMES = [
     "reply",
     "set_thread_status",
     "update_thread",
+    "workspaces",
+    "workspace",
     "create_workspace",
     "create_session",
     "sessions",
@@ -116,6 +118,8 @@ def test_normal(start_server: StartServer) -> None:
     assert [
         tool["name"] for tool in tools if "workspace" not in tool["inputSchema"].get("required", [])
     ] == [
+        "workspaces",
+        "workspace",
         "create_workspace",
         "create_session",
         "sessions",

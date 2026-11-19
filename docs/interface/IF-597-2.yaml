@@ -1,0 +1,149 @@
+id: IF-597-2
+title: ワークスペースの一覧
+entry:
+  kind: endpoint
+  value: GET `/workspaces`
+lead: 状態のフォルダの ID の一覧にあるワークスペースのうち、クローズしていないものの ID・題名・画面の URL・クローズ済みかを返す。何も書き換えない。MindStella の MCP の `workspaces` も同じ処理を呼ぶ。
+idempotent: true
+side_effects: なし
+request:
+  - name: include_closed
+    type: bool
+    required: false
+    default: 'false'
+    location: query
+    description: 真ならクローズしたワークスペースも含める
+    constraints: '`true`・`false` のどちらか'
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+response:
+  - name: workspaces[].id
+    type: str
+    description: ワークスペースの ID
+  - name: workspaces[].title
+    type: str | None
+    description: 題名（記録の設定の `title`）
+    notes: 記録のフォルダが無いとき・`title` が無いときは `None`
+  - name: workspaces[].url
+    type: str | None
+    description: 画面の URL
+    notes: プレビューを配信していないときは `None`
+  - name: workspaces[].closed
+    type: bool
+    description: クローズ済みか
+  - name: warnings
+    type: "list[{stage: Literal['settings'], detail: str}]"
+    description: グローバルの設定のファイルを参照できないときの警告。無ければ空の並び
+response_notes: 並びは ID の一覧の順。ID の一覧にあって配信元の行が無いワークスペースは含めない。グローバルの設定のファイルを参照できないときは `workspaces` を空の並びにして警告を付ける
+status_codes:
+  - code: '200'
+    condition: 返した（警告があるときも含む）
+  - code: '400'
+    condition: '`include_closed` が `true`・`false` でない'
+    notes: '`stage` は `request`'
+  - code: '403'
+    condition: '`Host`・`Origin` が受ける値でない'
+    notes: '`stage` は `host`'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+  - item: 受ける Host
+    constraint: 『状態の取得』と同じ
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: 配信元の行の参照
+    constraint: 『状態の取得』の「配信元の行の参照」と同じく、グローバルの設定のファイルを直接読む。project-index の API は呼ばない
+  - item: MCP のツール
+    constraint: '`workspaces` は `include_closed` を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す'
+flows:
+  - name: 正常系
+    summary: クローズしていないワークスペースだけを返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 『状態の取得』の正常系と同じ
+      - name: ワークスペース
+        description: クローズしていないワークスペースが 2 つ、クローズしたワークスペースが 1 つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces
+
+        クライアント->>API: GET
+        API-->>クライアント: 200 workspaces: 2 件
+      ```
+    expected:
+      - '`workspaces` が 2 件で、どれも `closed` が偽'
+      - グローバルの設定のファイルと状態のフォルダの内容が、依頼の前と同じ
+    test: test_normal
+  - name: 正常系（クローズしたものを含める）
+    summary: include_closed でクローズしたものも返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces
+
+        クライアント->>API: GET ?include_closed=true
+        API-->>クライアント: 200 workspaces: 3 件
+      ```
+    expected:
+      - '`workspaces` が 3 件で、1 件だけ `closed` が真'
+    test: test_normal_when_include_closed
+  - name: 異常系（グローバルの設定を読めない・200）
+    summary: 読めないときは空の並びと警告
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: グローバルの設定のファイルが YAML として読めない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces
+
+        クライアント->>API: GET
+        API-->>クライアント: 200 workspaces: [] warnings: settings
+      ```
+    expected:
+      - '`workspaces` が空の並びで、`warnings` に `stage` が `settings` の要素がある'
+    test: test_error_when_settings_unreadable
+  - name: 異常系（指定の誤り）
+    summary: include_closed の値が違えば 400
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 依頼
+        description: '`include_closed=yes`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as GET /workspaces
+
+        クライアント->>API: GET ?include_closed=yes
+        API-->>クライアント: 400 stage: request
+      ```
+    expected:
+      - ステータスが 400 で、`stage` が `request`
+    test: test_error_when_invalid_flag
+refs:
+  - IF-597-1#
+callers:
+  - SC-597-1#
+test_file: tests/integration/server/test_list_workspaces.py

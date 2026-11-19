@@ -323,6 +323,61 @@ functions:
         condition: '`settingsPath` が無いファイルを指す'
         mock: テストの HTTP のサーバー
         expected: '`ProjectIndexError`。PUT を受けていない'
+  - name: settings_file
+    title: グローバルの設定のファイルの場所
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+    usecase: ワークスペースとMindStella のセッションの状態を取得する
+    scope: public
+    summary: project-index と同じ規則で、環境変数 `PROJECT_INDEX_CONFIG`、無ければ `${XDG_CONFIG_HOME:-~/.config}/project-index/settings.yaml` を返す（ファイルがあるかは確かめない）
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 環境変数
+    returns:
+      type: Path
+      description: グローバルの設定のファイルの絶対パス
+    unit_tests:
+      - name: test_settings_file
+        case: 正常
+        summary: 環境変数の優先順で場所を決める
+        condition: '`parametrize`: `PROJECT_INDEX_CONFIG=/x/s.yaml` / `XDG_CONFIG_HOME=/c` / どちらも無い（`HOME=/h`）'
+        mock: なし
+        expected: '`/x/s.yaml` / `/c/project-index/settings.yaml` / `/h/.config/project-index/settings.yaml`'
+  - name: read_source_rows
+    title: 配信元の行をファイルから読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+    usecase: ワークスペースとMindStella のセッションの状態を取得する
+    scope: public
+    summary: グローバルの設定のファイルの `sources` の並び（ファイルの書き方の snake_case の行）を返す。project-index の API は呼ばない。今の `_settings_rows` を公開にして `reload_sources` もこれを呼ぶ
+    args:
+      - name: settings_path
+        type: Path
+        required: true
+        passing: positional
+        description: グローバルの設定のファイル
+    returns:
+      type: list[dict]
+      description: 配信元の行の並び
+    exceptions:
+      - name: ProjectIndexError
+        condition: ファイルが無い・YAML として読めない・`sources` が並びでない（`status` は `None`、`detail` にパスと理由）
+    unit_tests:
+      - name: test_read_source_rows
+        case: 正常
+        summary: sources の並びを返す
+        condition: '`sources: [{id: a, outside_read: false}]` のファイル'
+        mock: なし
+        expected: '`[{id: a, outside_read: false}]`'
+      - name: test_read_source_rows_error
+        case: 異常
+        summary: 読めなければ ProjectIndexError
+        condition: '`parametrize`: ファイルが無い / YAML として壊れている / `sources` が辞書'
+        mock: なし
+        expected: '`ProjectIndexError`（`detail` にパス）'
 notes:
   HTTP: 標準ライブラリの `urllib.request` で送る。`Origin` を付けない（project-index はサーバーの側からの呼び出しとして受ける）
   ログ: |

@@ -4,7 +4,7 @@
 
 ## 目次
 
-<!-- table: {"kind": "data"} -->
+<!-- table: data -->
 
 | ページ | 概要 |
 | --- | --- |
@@ -22,6 +22,8 @@
 | [常駐サーバーの状態](./IF-489-37.yaml) | server_status: 待ち受けのポート・バージョンと、配信しているワークスペースを返す |
 | [常駐サーバーの停止](./IF-489-36.yaml) | server_stop: 配信を全て止めて常駐サーバーを終える |
 | [ワークスペースの作成](./IF-531-1.yaml) | POST /workspaces: 許可するフォルダの下にワークスペースの記録を作るか開き、配信元に登録して ID と画面の URL を返す |
+| [ワークスペースの一覧](./IF-597-2.yaml) | GET /workspaces: クローズしていないワークスペースの ID・題名・画面の URL を、何も書き換えずに返す |
+| [状態の取得](./IF-597-1.yaml) | GET /workspaces/{id}: ワークスペースと MindStella のセッションの状態を、何も書き換えずに返す |
 | [MindStella のセッションの作成](./IF-531-2.yaml) | POST /workspaces/{id}/sessions: MindStella のセッションを tmux のペインで起動し、準備ができてから ID・ペイン・画面の URL を返す |
 | [MindStella のセッションの一覧](./IF-531-3.yaml) | GET /workspaces/{id}/sessions: 最後の MindStella のセッションの状態を返す |
 | [MindStella のセッションの停止](./IF-531-4.yaml) | DELETE /workspaces/{id}/sessions/{session}: すぐに受け付け、最後の書き込みを待って MindStella のセッションを止める |

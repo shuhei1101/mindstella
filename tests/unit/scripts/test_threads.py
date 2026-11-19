@@ -1388,3 +1388,63 @@ def test_reset_unread_when_nothing(
     # 検証
     assert count == 0
     assert _mtime(root / RECORD_DIR / "threads.yaml") == state_before
+
+
+
+def _write_status_threads(
+    root: Path,
+    written: bool,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """状態の取得の数え方を確かめるスレッドを 2 つ書く（written が偽なら threads.yaml を作らない）。"""
+    if not written:
+        return
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", author="ai", seen=False, created=T_0030),
+            make_post("TH-1-2", author="ai", seen=True, created=T_0100),
+        ),
+        make_thread(
+            "TH-2",
+            make_post("TH-2-1", author="ai", seen=False, created=T_0100),
+            make_post("TH-2-2", created=T_0200),
+        ),
+    )
+
+
+def _read_threads_text(root: Path) -> str | None:
+    """threads.yaml の中身。無ければ None。"""
+    path = root / RECORD_DIR / "threads.yaml"
+    return path.read_text(encoding="utf-8") if path.is_file() else None
+
+
+@pytest.mark.parametrize(
+    ("written", "expected"),
+    [
+        pytest.param(True, (2, 1, T_0200), id="threads"),
+        pytest.param(False, (0, 0, None), id="missing"),
+    ],
+)
+def test_status_counts(
+    written: bool,
+    expected: tuple[int, int, str | None],
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """2 つの数と最後の日時を数え、何も書き換えない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    _write_status_threads(root, written, make_post, make_thread, write_threads)
+    before = _read_threads_text(root)
+    # 実行
+    counts = threads.status_counts(root)
+    # 検証
+    assert counts == expected
+    assert _read_threads_text(root) == before

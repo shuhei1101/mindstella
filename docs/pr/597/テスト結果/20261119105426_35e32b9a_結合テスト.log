@@ -1,0 +1,9 @@
+$ python3 -m pytest tests/integration/server/test_workspace_status.py tests/integration/server/test_list_workspaces.py tests/integration/server/test_list_sessions.py tests/integration/server/test_stop_notify.py tests/integration/server/test_restart_session.py tests/integration/server/test_mcp_server.py -q -p no:cacheprovider --basetemp=/tmp/planner-597-pt/it1
+.........................................                                [100%]
+41 passed in 102.29s (0:01:42)
+
+（実行範囲の表の 6 ファイル。テスト用の fixture（tests/session_fixtures.py）を変えたため、続けて同じ fixture で端末の設定のファイルと行の追加・変更を使う 2 ファイルを実行した）
+$ python3 -m pytest tests/integration/server/test_create_workspace.py tests/integration/server/test_close_workspace.py -q -p no:cacheprovider --basetemp=/tmp/planner-597-pt/it2
+...............                                                          [100%]
+15 passed in 28.00s
+（/tmp/pytest-of-{利用者} が別の利用者のものなので --basetemp を指定。並列数は TL-3 が parallelism を持たないため 1）
