@@ -1,0 +1,58 @@
+docs:
+  - page: docs/README.md
+    new: false
+    change: index.yaml から生成し直し、表の範囲のマーカーを JSON の記載にする
+    status: todo
+  - page: docs/interface/README.md
+    new: false
+    change: index.yaml から生成し直し、表の範囲のマーカーを JSON の記載にする
+    status: todo
+  - page: docs/scenario/README.md
+    new: false
+    change: index.yaml から生成し直し、表の範囲のマーカーを JSON の記載にする
+    status: todo
+  - page: docs/design-policy.md
+    new: false
+    change: mdmark upgrade でマーカーの引数を JSON の記載へ移す
+    status: todo
+  - page: docs/guide/コマンド.md
+    new: false
+    change: mdmark upgrade でマーカーの引数を JSON の記載へ移す
+    status: todo
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: mdmark upgrade でマーカーの引数を JSON の記載へ移す
+    status: todo
+  - page: docs/guide/ワークスペースの書式.md
+    new: false
+    change: mdmark upgrade でマーカーの引数を JSON の記載へ移す
+    status: todo
+  - page: docs/guide/動作環境.md
+    new: false
+    change: mdmark upgrade でマーカーの引数を JSON の記載へ移す
+    status: todo
+  - page: docs/guide/変更履歴.md
+    new: false
+    change: mdmark upgrade でマーカーの引数を JSON の記載へ移す
+    status: todo
+  - page: docs/mock/pages/index.md
+    new: false
+    change: docs/mock/ の Markdown（目次・refs・styles・components ほか 21 ファイル）へ mdmark upgrade を適用し、マーカーの引数を JSON の記載へ移す
+    status: todo
+  - page: docs/pr/102/要件.md
+    new: false
+    change: docs/pr/ の各 PR ドキュメントの Markdown（約 130 ファイル）へ mdmark upgrade を適用し、マーカーの引数を JSON の記載へ移す
+    status: todo
+scope_out:
+  - item: MindStella のワークスペースの文書を JSON の記載へ移す手段（移し替えの手順とスキル upgrade）
+    reason: '起点 Issue の本文で #532 へ移した'
+    plan: '#532'
+  - item: plugins/mindstella/skills/mindmap/references/文章の書き方.md のマーカー
+    reason: '#565 でファイルが削除され、develop に対象が無い'
+    plan: none
+  - item: 設計書の YAML（IF-489-52・SC-489-17）と docs/pr/487/要件.yaml・テストのフィクスチャ（tests/integration/server/test_migrate.py）が文字列として持つ今の書き方のマーカー
+    reason: ワークスペースの移し替えの入力の例として今の書き方を持ち、Markdown の文書のマーカーではない
+    plan: none
+  - item: プレビュー・Storybook が読む mdmark のバージョン
+    reason: '#483 と #591 で develop の最新とタグを読めるようになっており、この作業では変えない'
+    plan: none
