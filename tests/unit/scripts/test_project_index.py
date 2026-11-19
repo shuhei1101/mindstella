@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+import time
 from collections.abc import Callable, Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -91,6 +92,32 @@ def test_get_settings(fake_pi: Callable[..., FakeProjectIndex]) -> None:
     payload = {"settingsPath": "/s.yaml", "sources": [], "version": "v1"}
     server = fake_pi({("GET", "/settings/sources"): [(200, payload)]})
     assert project_index.get_settings(server.port) == payload
+
+
+def test_get_settings_when_timeout_given() -> None:
+    """渡した秒数で打ち切る（正常系）。"""
+    # 準備
+    class SlowHandler(BaseHTTPRequestHandler):
+        """1 秒待ってから応答する。"""
+
+        def do_GET(self) -> None:
+            """応答を遅らせる。"""
+            time.sleep(1.0)
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *args: object) -> None:
+            """記録を出さない。"""
+
+    slow = ThreadingHTTPServer(("127.0.0.1", 0), SlowHandler)
+    threading.Thread(target=slow.serve_forever, daemon=True).start()
+    started = time.monotonic()
+    # 実行・検証
+    with pytest.raises(ProjectIndexError, match="つながりません"):
+        project_index.get_settings(slow.server_address[1], timeout=0.2)
+    assert time.monotonic() - started < 0.9
+    slow.shutdown()
+    slow.server_close()
 
 
 @pytest.mark.parametrize(

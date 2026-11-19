@@ -1,0 +1,4 @@
+$ /tmp/pr604-venv/bin/python -m pytest tests/integration/server/test_startup_reconcile.py tests/integration/server/test_crash_watch.py tests/integration/plugin/test_agent_flows.py tests/integration/server/test_server_status.py tests/integration/server/test_mcp_server.py tests/integration/server/test_ensure_server.py -q -p no:cacheprovider --basetemp=/tmp/planner-605-pt/it-scope
+（サーバー.md の「結合テストの実行範囲」の表の範囲。並列数 1。コードとテストの末尾は 867ad5e7（以降の commit は docs/ だけ））
+..............................                                           [100%]
+30 passed in 146.43s (0:02:26)

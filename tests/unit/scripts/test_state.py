@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -47,6 +48,61 @@ def test_read_ids(tmp_path: Path) -> None:
     assert state.read_ids(tmp_path) == []
     (tmp_path / state.IDS_FILE).write_text("ids:\n  - a\n  - b\n", encoding="utf-8")
     assert state.read_ids(tmp_path) == ["a", "b"]
+
+
+def _write_ids_text(text: str) -> Callable[[Path], None]:
+    """状態のフォルダに workspaces.yaml を書く関数を返す。"""
+
+    def write(root: Path) -> None:
+        """workspaces.yaml に text を書く。"""
+        (root / state.IDS_FILE).write_text(text, encoding="utf-8")
+
+    return write
+
+
+def _leave_empty(root: Path) -> None:
+    """状態のフォルダに何も書かない。"""
+
+
+@pytest.mark.parametrize(
+    ("prepare", "expected"),
+    [
+        pytest.param(_leave_empty, False, id="missing"),
+        pytest.param(_write_ids_text(""), True, id="empty"),
+        pytest.param(_write_ids_text("ids: [a, b\n"), True, id="unreadable"),
+    ],
+)
+def test_ids_exist(prepare: Callable[[Path], None], expected: bool, tmp_path: Path) -> None:
+    """ファイルの有無を返す（正常系）。"""
+    # 準備
+    prepare(tmp_path)
+    # 実行
+    result = state.ids_exist(tmp_path)
+    # 検証
+    assert result is expected
+
+
+@pytest.mark.parametrize(
+    ("prepare", "expected_created", "expected_ids"),
+    [
+        pytest.param(_leave_empty, True, ["a", "b"], id="missing"),
+        pytest.param(_write_ids_text("ids:\n  - c\n"), False, ["c"], id="exists"),
+    ],
+)
+def test_create_ids_if_missing(
+    prepare: Callable[[Path], None],
+    expected_created: bool,
+    expected_ids: list[str],
+    tmp_path: Path,
+) -> None:
+    """無ければ書き、あれば書かない（正常系）。"""
+    # 準備
+    prepare(tmp_path)
+    # 実行
+    created = state.create_ids_if_missing(tmp_path, ["a", "b"])
+    # 検証
+    assert created is expected_created
+    assert state.read_ids(tmp_path) == expected_ids
 
 
 def test_add_id(tmp_path: Path) -> None:

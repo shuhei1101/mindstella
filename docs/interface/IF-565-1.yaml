@@ -58,7 +58,7 @@ constraints:
     constraint: プラグインの `agent-flows/` に 1 エージェントフロー 1 ファイルで置き、配信元の設定（`dev-docs.yaml`）とスキーマを同じフォルダに持つ。ファイルの名前と形式はモジュール構成設計で決める
   - item: 配信元の登録
     constraint: 『ワークスペースの作成』が、配信元 `mindstella-agent-flows` の行が無ければ project-index の `POST /settings/sources` で追加する。`config` は常駐サーバーが動くプラグインの `agent-flows/dev-docs.yaml`、`scope.read` は許可するフォルダとその下の全てのフォルダ、`outside_read` は真。`scope.write` は持たない
-    notes: 'プラグインを上げてパスが変わったときに登録し直す処理は #525'
+    notes: 'プラグインを上げてパスが変わったときは、『常駐サーバーの起動時の照合』が行の `config` を書き換える'
   - item: 読み方
     constraint: 'MindStella のセッションは project-index の `search_docs` を `source: mindstella-agent-flows`・`filter` の `id` の `eq`・`view: full` で呼ぶ。作業範囲の外のセッション（通常のセッション）は `outside_scope: true` を付ける。プラグインのファイルを Read で直接読まない'
   - item: 進み具合
@@ -117,4 +117,5 @@ refs:
   - IF-531-1#
   - IF-531-7#
   - IF-489-68#
+  - IF-605-1#
 test_file: tests/integration/plugin/test_agent_flows.py
