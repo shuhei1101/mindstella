@@ -308,7 +308,7 @@ settings:
       補足: 結合テストが短くするために使う
   - key: claude_balancer.url
     title: claude-balancer の常駐の待ち受け先
-    file: mindstella のホームの設定（`${XDG_CONFIG_HOME:-~/.config}/mindstella/settings.yaml`）
+    file: ~/.config/mindstella/settings.yaml
     type: str
     required: false
     default: http://127.0.0.1:8770
@@ -341,7 +341,7 @@ settings:
       補足: 結合テストが短くするために使う
   - key: account.release_on_limit
     title: 指定したアカウントの自動解除
-    file: mindstella のホームの設定（`${XDG_CONFIG_HOME:-~/.config}/mindstella/settings.yaml`）
+    file: ~/.config/mindstella/settings.yaml
     type: bool
     required: false
     default: 'true'
@@ -356,3 +356,7 @@ settings:
       - IF-582-1#
     introduced:
       pr: 616
+files:
+  - file: ~/.config/mindstella/settings.yaml
+    manages: claude-balancer の常駐の待ち受け先と、指定したアカウントの自動解除
+    notes: '`XDG_CONFIG_HOME` があれば `${XDG_CONFIG_HOME}/mindstella/settings.yaml` を読む。常駐サーバーが起動時に 1 回だけ読む。ファイルが無ければ全てのキーを既定値として扱う。YAML として読めないときと、最上位がマッピングでないときは、常駐サーバーが起動時に InvalidSettingsError で終わる。知らないキーは標準エラーへ記録して読み飛ばし、起動を続ける。Git の外に置き、利用者が作る（常駐サーバーは作らない）'
