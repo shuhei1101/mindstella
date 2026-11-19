@@ -58,6 +58,9 @@ docs:
     new: false
     change: 通知の止まった理由に、しきい値での切り替えを追加する
     status: todo
+  - page: docs/interface/IF-531-2.yaml
+    change: 渡す環境変数に、常駐サーバーが読んだ CLAUDE_BALANCER_URL を追加する（値が無いときは渡さない）
+    status: todo
 scope_out:
   - item: 画面での切り替えの表示
     reason: 要望に含まれない。切り替えたことは Discord の停止の通知と『MindStella のセッションの一覧』で分かる
