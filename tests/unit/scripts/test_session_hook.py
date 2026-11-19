@@ -391,3 +391,52 @@ def test_main_when_compact_relaunch(tmp_path: Path) -> None:
     )
     # 検証
     assert sources == ["compact"]
+
+
+@pytest.mark.parametrize(
+    ("environ", "expected"),
+    [
+        pytest.param(
+            {
+                "OTEL_RESOURCE_ATTRIBUTES": "ai_monitor_project=x,claude_balancer.client=mindstella,"
+                "claude_balancer.account=sub6,claude_balancer.lease_id=l"
+            },
+            "sub6",
+            id="account",
+        ),
+        pytest.param(
+            {"OTEL_RESOURCE_ATTRIBUTES": "claude_balancer.client=mindstella"}, None, id="no-item"
+        ),
+        pytest.param({}, None, id="no-variable"),
+        pytest.param({"OTEL_RESOURCE_ATTRIBUTES": "claude_balancer.account="}, None, id="empty"),
+    ],
+)
+def test_balancer_account_from(environ: dict[str, str], expected: str | None) -> None:
+    """OTEL_RESOURCE_ATTRIBUTES からアカウント名を取り出す（正常系）。"""
+    # 実行
+    result = session_hook.balancer_account_from(environ)
+    # 検証
+    assert result == expected
+
+
+def test_main_when_balancer_account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """SessionStart で借りたアカウント名を balancer_account で送る（正常系）。"""
+    # 準備
+    monkeypatch.setenv("HOME", str(tmp_path))
+    sent: list[dict[str, Any]] = []
+    # 実行
+    session_hook.main(
+        ["session-start"],
+        environ={
+            **ENVIRON,
+            "HOME": str(tmp_path),
+            "OTEL_RESOURCE_ATTRIBUTES": "claude_balancer.account=sub6",
+        },
+        stdin=io.StringIO(json.dumps({"session_id": "c1", "source": "startup"})),
+        stdout=io.StringIO(),
+        post=lambda port, session, body: sent.append(body),
+        resume=lambda port, session, source: _resume_status(),
+        advance=lambda port, session, until_seq: None,
+    )
+    # 検証
+    assert sent[0]["balancer_account"] == "sub6"
