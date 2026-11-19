@@ -196,3 +196,5 @@ refs:
   - MOD-531-4#
   - MOD-616-1#
   - LIB-531-1#
+test_files:
+  - tests/unit/scripts/test_usage_watch.py

@@ -106,3 +106,5 @@ refs:
   - CFG-489-1#
   - IF-616-1#
   - IF-582-1#
+test_files:
+  - tests/unit/scripts/test_home_settings.py
