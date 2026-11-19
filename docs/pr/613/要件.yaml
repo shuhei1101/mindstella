@@ -21,4 +21,6 @@ docs:
   - page: docs/guide/プレビューを見る.md
     new: false
     change: 「音声でコメントする」の節に、修正の入力欄でもマイクのボタンで入力でき、文字起こしの結果をカーソルの位置へ挿入するだけにすることを記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T10:21:52.815049+00:00'
