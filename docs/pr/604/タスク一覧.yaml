@@ -70,6 +70,7 @@ tasks:
     status: done
     updated_by: planner
     updated_at: '2026-11-19T04:13:18.166979+00:00'
+    note: cb0dda95（workspaces・api・server の一覧）と 6023fb68（build_server の remove_flow の 3 件）
   - process: 実装
     status: todo
   - process: 結合テスト作成
