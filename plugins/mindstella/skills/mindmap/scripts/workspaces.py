@@ -392,7 +392,7 @@ def list_workspaces(include_closed: bool, ctx: Any) -> dict[str, Any]:
         listed.append(
             {
                 "id": workspace_id,
-                "title": _read_title(folder),
+                "title": _load_title(folder)[0],
                 "url": ctx.previews.url_of(folder),
                 "closed": closed,
             }
@@ -423,7 +423,11 @@ def _records_status(folder: Path, warnings: list[dict[str, str]]) -> dict[str, A
     if not (records_root(folder) / SETTINGS_FILE).is_file():
         warnings.append({"stage": "records", "detail": f"記録のフォルダがありません: {folder}"})
         return {}
-    collected: dict[str, Any] = {"title": _read_title(folder)}
+    title, title_error = _load_title(folder)
+    collected: dict[str, Any] = {"title": title}
+    # 記録の設定が読めない: 題名は分からないが、スレッドと変更履歴は続けて数える
+    if title_error is not None:
+        warnings.append({"stage": "records", "detail": title_error})
     try:
         unseen_ai, awaiting, last_post = threads.status_counts(folder)
         last_item = history.last_updated(folder)
@@ -441,14 +445,19 @@ def _records_status(folder: Path, warnings: list[dict[str, str]]) -> dict[str, A
     return collected
 
 
-def _read_title(folder: Path) -> str | None:
-    """記録の設定の title を返す。記録か title が無ければ None。"""
+def _load_title(folder: Path) -> tuple[str | None, str | None]:
+    """記録の設定の title と、読めなかった理由を返す。記録か title が無ければ title は None。"""
     path = records_root(folder) / SETTINGS_FILE
     if not path.is_file():
-        return None
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return None, None
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as error:
+        # 読めないか YAML として壊れている: 題名を None にして理由を返す
+        reason = " ".join(str(error).split())
+        return None, f"記録の設定を読めません: {path}（{reason}）"
     title = data.get("title") if isinstance(data, dict) else None
-    return title if isinstance(title, str) else None
+    return (title if isinstance(title, str) else None), None
 
 
 def find_workspace_row(pi_port: int, workspace_id: str) -> dict[str, Any] | None:
