@@ -79,12 +79,14 @@ describe("ReviewView の修正の音声入力", () => {
       }),
     );
     renderRoute("/spa/?panel=comments&review=1");
-    await userEvent.click((await screen.findAllByRole("button", { name: "D-1 へのコメントを修正" }))[0]);
+    const [start] = await screen.findAllByRole("button", { name: "D-1 へのコメントを修正" });
+    if (start === undefined) throw new Error("修正のボタンが無い");
+    await userEvent.click(start);
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "音声で入力" }));
     await userEvent.click(await screen.findByRole("button", { name: "文字起こし" }));
     // 検証
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /の本文$/ })).toHaveValue(expect.stringContaining("案 A にする")));
+    await waitFor(() => expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: /の本文$/ }).value).toContain("案 A にする"));
     expect(screen.getByText("文字起こしの結果を挿入しました。")).toBeInTheDocument();
     expect(sent).toEqual([]);
   });

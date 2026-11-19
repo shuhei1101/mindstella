@@ -251,7 +251,7 @@ describe("DetailComments の修正の音声入力", () => {
     await userEvent.click(within(edit).getByRole("button", { name: "音声で入力" }));
     await userEvent.click(await within(edit).findByRole("button", { name: "文字起こし" }));
     // 検証
-    await waitFor(() => expect(within(edit).getByRole("textbox")).toHaveValue(expect.stringContaining("案 A にする")));
+    await waitFor(() => expect(within(edit).getByRole<HTMLTextAreaElement>("textbox").value).toContain("案 A にする"));
     expect(sent).toEqual([]);
     removeFakeMedia();
   });

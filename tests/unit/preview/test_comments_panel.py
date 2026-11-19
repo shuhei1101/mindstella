@@ -1534,7 +1534,7 @@ EDIT_FORM_VOICE_SCRIPT = (
             {"voice": "recording", "elapsed": 5, "levels": [0.5]},
             ["文字起こし", "キャンセル"],
             ["キャンセル", "文字起こし"],
-            [["voiceDone", {"body": "案 A にする", "start": 6, "end": 6}], ["voiceCancel"]],
+            [["voiceDone", {"body": "案 A にする", "start": 7, "end": 7}], ["voiceCancel"]],
             "0:05",
             id="recording",
         ),
