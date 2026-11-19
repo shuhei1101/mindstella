@@ -5,6 +5,7 @@ directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
     server.py          入口（常駐サーバーの待ち受けと終わり方・ツールの登録・結果とエラー・書き換えの鍵・状態と停止）
+    startup.py         起動時の照合（ID の一覧の作り直し・状態の照合・エージェントフローの配信元の確認）
     commands.py        ツールごとの処理（引数 → 各機能 → 結果の辞書）
     api.py             MindStella の API の経路（Host と Origin の確かめ・problem+json）
     workspaces.py      ワークスペースの管理（作成・クローズ・配信元の行・依頼の順番の鍵）

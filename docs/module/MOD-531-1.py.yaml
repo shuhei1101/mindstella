@@ -405,6 +405,58 @@ functions:
         condition: '`workspaces/{ID}/` が無い'
         mock: なし
         expected: 例外にならない
+  - name: ids_exist
+    title: ID の一覧があるか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 常駐サーバーの起動
+    scope: public
+    summary: '`workspaces.yaml` があるかを返す（中身は読まない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+    returns:
+      type: bool
+      description: ファイルがあれば真
+    unit_tests:
+      - name: test_ids_exist
+        case: 正常
+        summary: ファイルの有無を返す
+        condition: '`parametrize`: ファイル無し / 空のファイル / 読めないファイル'
+        mock: なし（一時フォルダ）
+        expected: '`False` / `True` / `True`'
+  - name: create_ids_if_missing
+    title: ID の一覧が無ければ作る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 常駐サーバーの起動
+    scope: public
+    summary: 全体で 1 つの鍵を取り、`workspaces.yaml` が無いときだけ `ids` を書いて、書いたかを返す
+    side_effects: '`workspaces.yaml` を書く'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: ids
+        type: list[str]
+        required: true
+        passing: positional
+        description: 書く ID の並び
+    returns:
+      type: bool
+      description: 書いたら真。鍵を取った時点で既にあれば偽
+    unit_tests:
+      - name: test_create_ids_if_missing
+        case: 正常
+        summary: 無ければ書き、あれば書かない
+        condition: 'ファイル無しで `[a, b]` / `ids: [c]` があるときに `[a, b]`'
+        mock: なし（一時フォルダ）
+        expected: '`True` で `read_ids` が `[a, b]` / `False` で `read_ids` が `[c]`'
 notes:
   書き方: どのファイルも同じフォルダの一時ファイルに書いてから `os.replace` で置き換える。JSON は標準の `json`、`workspaces.yaml` は PyYAML で読み書きする
   ログ: |

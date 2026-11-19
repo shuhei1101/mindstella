@@ -120,6 +120,7 @@ flows:
         クライアント->>IF: 常駐サーバーを起動する
         IF-->>クライアント: 待ち受けを始める
         IF-->>PI: GET /settings/sources
+        IF-->>PI: GET /settings/sources（PATCH の version）
         IF->>PI: PATCH /settings/sources/mindstella-agent-flows（config）
         PI-->>IF: 409
         IF-->>PI: GET /settings/sources
