@@ -8,6 +8,7 @@ const empty = { decisions: [], tasks: [], research: [], docs: [], terms: [], not
 const data = {
   ...empty,
   derived: { ready: [] },
+  decisions: [{ id: "D-1", title: "D-1の題", status: "未決定" }],
   tasks: [{ id: "T-1", title: "T-1の題", status: "進行中" }],
   docs: [{ id: "A-1", title: "A-1の題", body: "docs/A-1.html" }],
   changes: { last_seq: 1, sets: [{ id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "", until_seq: 1, added: [], changed: [] }], pending: { added: [], changed: [] } },
@@ -95,6 +96,18 @@ describe("normalizeSearch", () => {
     // 検証
     expect(result.thread).toBeUndefined();
     expect(result.review).toBeUndefined();
+  });
+
+  // 記録に無い項目で絞る値と、コメントの一覧を開いていないときの値（正常系）
+  test.each([
+    { patch: { panel: "comments" as const, ttarget: "D-99" }, expected: { panel: "comments", ttarget: undefined } },
+    { patch: { tab: "decisions" as const, ttarget: "D-1" }, expected: { panel: undefined, ttarget: undefined } },
+    { patch: { panel: "comments" as const, ttarget: "D-1" }, expected: { panel: "comments", ttarget: "D-1" } },
+  ])("normalize_search_when_target_missing $patch.ttarget", ({ patch, expected }) => {
+    // 実行
+    const result = normalizeSearch(search(patch), context());
+    // 検証
+    expect({ panel: result.panel, ttarget: result.ttarget }).toEqual(expected);
   });
 
   // 無いタグ（正常系）

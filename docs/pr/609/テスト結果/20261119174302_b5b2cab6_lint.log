@@ -1,0 +1,42 @@
+# 単体テスト作成の lint（テストコード b5b2cab6、実装の前）
+
+残る違反は、どれもテストが使う target・ttarget の型がまだ無い（実装が無い）ことによるもの。
+
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+frontend/src/shared/core/comments.test.ts(46,73): error TS2353: Object literal may only specify known properties, and 'target' does not exist in type '{ threads: readonly Thread[]; filter: ThreadFilter; tag: string | null; }'.
+frontend/src/shared/core/comments.test.ts(58,47): error TS2353: Object literal may only specify known properties, and 'target' does not exist in type '{ threads: readonly Thread[]; tag: string | null; }'.
+frontend/src/shared/core/comments.test.ts(65,73): error TS2353: Object literal may only specify known properties, and 'target' does not exist in type '{ items: readonly ReviewItem[]; filter: ThreadFilter; tag: string | null; }'.
+frontend/src/shared/core/comments.test.ts(84,82): error TS2353: Object literal may only specify known properties, and 'target' does not exist in type '{ threads: readonly Thread[]; filter: ThreadFilter; tag: string | null; }'.
+frontend/src/shared/core/comments.test.ts(97,58): error TS2353: Object literal may only specify known properties, and 'target' does not exist in type '{ threads: readonly Thread[]; tag: string | null; }'.
+frontend/src/shared/core/comments.test.ts(115,57): error TS2353: Object literal may only specify known properties, and 'target' does not exist in type '{ items: readonly ReviewItem[]; filter: ThreadFilter; tag: string | null; }'.
+frontend/src/shared/core/preview-search.test.ts(110,51): error TS2339: Property 'ttarget' does not exist on type '{ f: Record<string, string>; tab?: "graph" | "research" | "decisions" | "tasks" | "docs" | "terms" | "notes" | "logs" | "settings" | "overview" | undefined; view?: "map" | "table" | "board" | "cards" | undefined; ... 11 more ...; q?: string | undefined; }'.
+
+# 型検査で止まった後の ESLint（同じ作業ブランチ）
+$ npm run lint
+
+> lint
+> eslint
+
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-comment-target-filter/frontend/src/shared/core/preview-search.test.ts
+  110:35  error  Unsafe assignment of an error typed value  @typescript-eslint/no-unsafe-assignment
+
+✖ 1 problem (1 error, 0 warnings)
+
+
+# base ブランチ（develop 044bbcb1）で同じコマンド
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+
+> lint
+> eslint
+

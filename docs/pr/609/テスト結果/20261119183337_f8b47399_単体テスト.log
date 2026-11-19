@@ -1,0 +1,28 @@
+# 新しいスレッドの扱い（確認事項の推奨案 A）の反映の後の単体テスト（f8b47399）
+
+$ python -m pytest tests/unit/preview -q -p no:cacheprovider --basetemp=/tmp/chk609/pt4
+........................................................................ [  7%]
+........................................................................ [ 15%]
+........................................................................ [ 23%]
+........................................................................ [ 30%]
+........................................................................ [ 38%]
+........................................................................ [ 46%]
+........................................................................ [ 54%]
+........................................................................ [ 61%]
+........................................................................ [ 69%]
+........................................................................ [ 77%]
+........................................................................ [ 84%]
+........................................................................ [ 92%]
+.....................................................................    [100%]
+933 passed in 341.70s (0:05:41)
+
+$ npx vitest run
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-comment-target-filter
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ Test Files  84 passed (84)
+      Tests  330 passed (330)
+   Start at  18:32:31
+   Duration  18.03s (environment 44%, tests 27%, import 15%, setup 8%, transform 5%, worker 1%)
+Environment  jsdom was created 84 times · 49.31s total, 44% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments

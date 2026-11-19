@@ -114,6 +114,54 @@ describe("CommentsPanel", () => {
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     expect(await within(panel).findByRole("alert")).toHaveTextContent("スレッドを読めませんでした。");
   });
+  // 項目で絞ったスレッドを並べ、チップの × で外す（正常系）
+  test("comments_panel_when_target", async () => {
+    // 準備
+    server.use(
+      http.get("/api/threads", () =>
+        HttpResponse.json({ threads: [{ ...thread("TH-1", "open", "D-1 の話"), target: "D-1" }, { ...thread("TH-2", "open", "D-2 の話"), target: "D-2" }] }),
+      ),
+      http.get("/api/comments", () =>
+        HttpResponse.json({ items: [{ id: "C-41", target: "D-1", loc: null, thread: null, body: "D-1 への新しいスレッド", created: "2026-11-01T00:00:00+00:00" }], drafts: [] }),
+      ),
+    );
+    renderRoute("/spa/?panel=comments&ttarget=D-1");
+    const panel = await screen.findByRole("dialog", { name: "コメント" });
+    const before = window.history.length;
+    // 実行
+    await waitFor(() => expect(within(panel).getAllByRole("listitem")).toHaveLength(2));
+    const rows = within(panel).getAllByRole("listitem").map((row) => row.textContent);
+    await userEvent.click(within(panel).getByRole("button", { name: "項目「D-1」の絞り込みを外す" }));
+    // 検証
+    expect(rows[0]).toContain("D-1 への新しいスレッド");
+    expect(rows[1]).toContain("D-1 の話");
+    expect(panel).not.toHaveTextContent(/\d+ 件/);
+    await waitFor(() => expect(within(panel).getAllByRole("listitem")).toHaveLength(3));
+    expect(window.location.search).not.toContain("ttarget");
+    expect(window.history.length).toBe(before);
+  });
+  // 項目で絞っている間の新しいスレッドは、その項目へ向けて溜める（正常系）
+  test("comments_panel_when_target_new_thread", async () => {
+    // 準備
+    const bodies: unknown[] = [];
+    server.use(
+      http.post("/api/comments", async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ id: "C-3", created: "2026-11-01T00:00:00+00:00", count: 3 }, { status: 201 });
+      }),
+    );
+    renderRoute("/spa/?panel=comments&ttarget=D-1");
+    const panel = await screen.findByRole("dialog", { name: "コメント" });
+    // 実行
+    await userEvent.click(within(panel).getByRole("button", { name: "新しいスレッド" }));
+    await userEvent.type(within(panel).getByRole("textbox"), "D-1 の進め方");
+    await userEvent.click(within(panel).getByRole("button", { name: /レビューに追加/ }));
+    // 検証
+    expect(within(panel).getByRole("heading", { name: "D-1 への新しいスレッド" })).toBeInTheDocument();
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({ target: "D-1" });
+    expect(bodies[0]).not.toHaveProperty("loc");
+  });
 
   // 新しいスレッドを溜めた後のフォーカスを移動先に従わせる（正常系）
   test.each([

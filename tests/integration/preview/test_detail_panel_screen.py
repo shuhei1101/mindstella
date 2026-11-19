@@ -6793,3 +6793,45 @@ def test_related_items_by_type(write_preview: WritePreview, open_preview: OpenPr
     # 検証
     assert "派生した項目" in sections
     assert "派生元" in child_sections
+
+
+# 見出しの、その項目で絞ったコメントの一覧を開くボタン
+ITEM_COMMENTS_BUTTON = "button[data-act='item-comments']"
+
+
+@pytest.mark.parametrize(
+    ("hash_text", "expected"),
+    [
+        pytest.param("#tab=decisions&view=table&id=D-1", 1, id="panel"),
+        pytest.param("#tab=decisions&view=table&id=D-1&full=1", 0, id="full"),
+    ],
+)
+def test_comments_button(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    hash_text: str,
+    expected: int,
+) -> None:
+    """見出しのコメントの一覧のボタンは、詳細パネルにだけ編集すると前の項目へ戻るの間に置き、押すとその項目で絞ったコメントの一覧を開く（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", title="最初の問い"))
+    page = open_preview(url, hash_text)
+    page.wait_for_selector("aside.panel.open, dialog.full[open]")
+    # 検証
+    assert page.locator(ITEM_COMMENTS_BUTTON).count() == expected
+    if expected == 0:
+        return
+    labels = page.eval_on_selector_all(
+        "aside.panel .panel-head button",
+        "buttons => buttons.map(b => b.getAttribute('aria-label') ?? b.textContent.trim())",
+    )
+    index = labels.index("D-1 のコメントの一覧を開く")
+    assert labels[index - 1] == "編集する"
+    assert labels[index + 1] == "前の項目へ戻る"
+    assert page.get_attribute(f"aside.panel {ITEM_COMMENTS_BUTTON}", "title") == "この項目のコメントの一覧"
+    # 実行
+    page.click(f"aside.panel {ITEM_COMMENTS_BUTTON}")
+    # 検証
+    page.wait_for_selector("aside.comments-panel.open .talk-target .chip")
+    assert page.inner_text("aside.comments-panel .talk-target .chip .mono") == "D-1"

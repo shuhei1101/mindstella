@@ -1,0 +1,29 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: コメントの一覧を項目で絞り、絞ったまま状態を切り替えてスレッドを読む流れを追加する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 詳細パネルの見出しのボタンから、開いている項目で絞ったコメントの一覧を開く操作を追加する
+    depends_on:
+      - docs/scenario/SC-489-5.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-47.yaml
+    impact: following
+    detail: 追加したコメントを、詳細パネルのボタンから開くコメントの一覧で確認できることに追随する
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+docs:
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: コメントの一覧と詳細パネルのセクションに、項目で絞る操作と詳細パネルのボタンを記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T08:33:00.481827+00:00'
+scope_out:
+  - item: 詳細の全画面（SCR-489-29・SCR-489-30）へのコメントの一覧のボタンの配置
+    reason: Issue の対象は詳細パネル。全画面はモーダルで、後ろに開くコメントの一覧が隠れるため、今の判断では配置しない。配置するかはレビューで確定する
+    plan: none

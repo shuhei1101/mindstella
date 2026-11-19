@@ -784,6 +784,12 @@ elements:
     visible_when: 行の本文が折り返した後の見た目の行で 5 行を超え、この詳細パネルで本文を書き換えていない行
     action: その行の本文を開くか畳み直す（履歴に積まない）。折りたたんだときは行が画面から外れないように寄せる
     status: planned
+  - name: コメントの一覧
+    kind: button
+    position: 見出し > 編集する・エクスポートの右・前後の移動の左
+    description: コメントのアイコンだけのボタン。押すと、search params を `panel=comments`・`ttarget={開いている項目の ID}` にして、コメントの一覧をその項目で絞ったスレッドの一覧で開く（`thread`・`review` を外し、履歴に積まない）。コメントの一覧を開いたままなら `tstatus`・`ttag` を残す。幅 901px 以上でピン止めしていない間は、詳細パネルはグレーアウトの下になる（重なりの決まりは `notes` の「幅 900px 以下の重なり」のとおり）。読み上げの名前は「{ID} のコメントの一覧を開く」
+    visible_when: サーバーの配信で開いた詳細パネル（詳細の全画面には置かない）
+    action_ref: SCR-489-2#
   - name: 行の修正の音声入力
     kind: button
     position: レビュー中のコメント > 行 > 本文

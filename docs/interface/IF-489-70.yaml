@@ -396,26 +396,26 @@ flows:
       - 「設定を編集する」を押した後、パネルが閉じて設定の画面が開き、URL が `tab=settings`
     test: test_normal_when_display_settings
   - name: 正常系（コメントの search params が記録に合わない）
-    summary: 無いスレッド・無いタグを指す値と、コメントの一覧を開いていないときのコメントの値を外して開く
+    summary: 無いスレッド・無いタグ・無い項目を指す値と、コメントの一覧を開いていないときのコメントの値を外して開く
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
       - name: make_workspace
         description: タグ「画面」を持つオープンのスレッド TH-1 と検討事項 D-1 を持つワークスペース
-        notes: '`/spa/?panel=comments&thread=TH-99&ttag=無いタグ` で開き、続けて `/spa/?tab=decisions&thread=TH-1&review=1` で開く'
+        notes: '`/spa/?panel=comments&thread=TH-99&ttag=無いタグ&ttarget=D-99` で開き、続けて `/spa/?tab=decisions&thread=TH-1&review=1&ttarget=D-1` で開く'
     flow: |-
       ```mermaid
       sequenceDiagram
         actor ユーザー
         participant IF as React のプレビュー
 
-        ユーザー->>IF: panel=comments&thread=TH-99&ttag=無いタグ を開く
+        ユーザー->>IF: panel=comments&thread=TH-99&ttag=無いタグ&ttarget=D-99 を開く
         IF-->>ユーザー: スレッドの一覧
-        ユーザー->>IF: tab=decisions&thread=TH-1&review=1 を開く
+        ユーザー->>IF: tab=decisions&thread=TH-1&review=1&ttarget=D-1 を開く
         IF-->>ユーザー: コメントの一覧を開いていない検討事項
       ```
     expected:
-      - 1 つ目は、コメントの一覧にタグで絞っていないスレッドの一覧が出て、URL の search params が `panel=comments` だけ
+      - 1 つ目は、コメントの一覧にタグと項目で絞っていないスレッドの一覧が出て、URL の search params が `panel=comments` だけ
       - 2 つ目は、コメントの一覧が開いておらず、URL の search params が `tab=decisions` だけ
     test: test_normal_when_comment_search_mismatched
   - name: 異常系（コメントの本文が空）
@@ -540,6 +540,29 @@ flows:
     expected:
       - 本文の `video` の `src` が `/files/clip.mp4`、`img` の `src` が `/files/shot.png` で、動画は再生でき、画像は読み込みを終えている
     test: test_normal_when_embedded_files
+  - name: 正常系（項目で絞ったコメントの一覧を開く）
+    summary: 詳細パネルのボタンで、開いている項目で絞ったスレッドの一覧を開き、項目の絞り込みを外す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1・D-2 と、D-1 へ向けたオープンのスレッド TH-1・D-2 へ向けたオープンのスレッド TH-2・D-1 へのまだ送っていない新しいスレッド C-1 を持つワークスペース
+        notes: '`/spa/?tab=decisions&id=D-1` で開く'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+
+        ユーザー->>IF: 詳細パネルのコメントの一覧のボタンを押す
+        IF-->>ユーザー: D-1 で絞ったスレッドの一覧
+        ユーザー->>IF: 項目の絞り込みのチップの × を押す
+        IF-->>ユーザー: 項目で絞らないスレッドの一覧
+      ```
+    expected:
+      - ボタンを押した後、URL の search params が `tab=decisions&id=D-1&panel=comments&ttarget=D-1` で、一覧に C-1 と TH-1 だけが出て、履歴の数が変わらない
+      - × を押した後、URL から `ttarget` が外れ、一覧に C-1・TH-1・TH-2 が出て、履歴の数が変わらない
+    test: test_normal_when_comment_target_filtered
 lead: 利用者がサーバーの配信の `/spa/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの知らせを受けると記録を読み直して描き直す。
 callers:
   - SC-489-12#
@@ -679,6 +702,14 @@ request:
     location: body
     description: 詳細パネル・詳細の全画面で、本文の文か項目の値を選んだ範囲。本文は元の Markdown か HTML の行の範囲に、値はキーのパスに対応づけて箇所にする
     constraints: 『プレビューを開く』の request「選んだ範囲」と同じ
+  - name: ttarget
+    type: str
+    required: false
+    default: なし（項目で絞らない）
+    location: query
+    description: スレッドの一覧を絞る項目の ID。向けた項目がその項目のスレッドと、その項目へのまだ送っていない新しいスレッドだけを出す。詳細パネルのコメントの一覧のボタンが書き、項目の絞り込みのチップの × で外す。コメントの一覧を開いたままボタンを押したときは、`tstatus`・`ttag` を残して書き換える
+    constraints: '`panel` が `comments` のときだけ効く。それ以外のときと、記録に無い項目の ID は無いものとして扱い、URL から外す。トップバーのコメントのボタンで開くときは書かない'
+    example: D-12
 constraints:
   - item: 通信
     constraint: サーバーの配信（同じオリジンの `/api/`）と、描画のライブラリと Google Fonts の文字の配信元だけへ通信する。記録を外へ送らない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
@@ -698,7 +729,7 @@ constraints:
   - item: 履歴
     constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）と、全体の検索の結果から開いた項目の種類の画面が今の画面と違うときは履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・絞り込みと並べ替え・差分の時点の選び直し・左のパネルの開閉・コメントの一覧の中のスレッドとレビュー中の書き込みの画面の行き来・スレッドの絞り込み・全体の検索の開閉と検索の言葉の入力は積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む
   - item: 画面の移動と項目
-    constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`sort` を外す。移った先が検討事項のマップかネットワークのときは、`id` の項目を選んだ項目として示す。全体の検索の結果から項目を開くときは、その項目の種類の画面（表示しない種類の項目は概要）へ移り、`id` をその項目にして、`diff` と左のパネル（`panel`・`thread`・`review`・`tstatus`・`ttag`）を残し、`view`・`full`・`h`・`f.{列}`・`sort`・`search`・`q` を外す。開いた項目の種類の画面が今の画面と同じときも、同じく `view` を外して既定の表示形式で詳細パネルを開く
+    constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`sort` を外す。移った先が検討事項のマップかネットワークのときは、`id` の項目を選んだ項目として示す。全体の検索の結果から項目を開くときは、その項目の種類の画面（表示しない種類の項目は概要）へ移り、`id` をその項目にして、`diff` と左のパネル（`panel`・`thread`・`review`・`tstatus`・`ttag`・`ttarget`）を残し、`view`・`full`・`h`・`f.{列}`・`sort`・`search`・`q` を外す。開いた項目の種類の画面が今の画面と同じときも、同じく `view` を外して既定の表示形式で詳細パネルを開く
   - item: 保存した絞り込みの条件
     constraint: 画面ごとの絞り込みの条件を、今の画面と同じ端末の保存領域のキーに、条件を変えるたびに書く。URL に `f.{列}` が無い画面を開くときは保存した条件を当てて URL に書き、`f.{列}` があれば URL の条件で開いて保存した条件を書き換える。保存した値が今の記録に無ければ、その値を外して描く
   - item: 端末の保存領域

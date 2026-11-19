@@ -9,6 +9,7 @@ from preview_voice_helpers import (
 from workspace_fixtures import MakeItem as _MakeItem
 
 import json
+import re
 from pathlib import Path
 
 from playwright.sync_api import Locator, Page, Route, expect
@@ -254,3 +255,44 @@ def test_voice_input_when_service_stopped(
     # 検証
     field = page.get_by_role("textbox", name="新しいスレッド")
     assert_mic_blocked_after_click(_panel(page).locator("form").filter(has=field), "[role=status]")
+
+
+def test_target_filter(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """詳細パネルのボタンでその項目で絞った一覧を開き、絞っている間の新しいスレッドはその項目へ向けて溜めて一覧に並べる。チップの × と、一覧を閉じて開き直すと絞らない（正常系）。"""
+    # 準備
+    url, root = spa_comments_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    detail = page.get_by_role("complementary", name="詳細")
+    # 実行（詳細パネルのボタンで開く）
+    detail.get_by_role("button", name="D-1 のコメントの一覧を開く").click()
+    # 検証（D-1 へ向けたスレッドだけ。D-2 への新しいスレッド C-41 は出ない）
+    page.wait_for_url("**ttarget=D-1**")
+    expect(_panel(page)).to_contain_text("最初の問い")
+    expect(_rows(page)).to_have_count(1)
+    expect(_rows(page).first).to_contain_text("D-1 の案の相談")
+    # 実行（絞っている間の新しいスレッド）
+    _panel(page).get_by_role("button", name="新しいスレッド").click()
+    expect(_panel(page).get_by_role("heading", name="D-1 への新しいスレッド")).to_be_visible()
+    _panel(page).get_by_role("textbox", name="D-1 への新しいスレッド").fill("D-1 の進め方")
+    _panel(page).get_by_role("button", name="レビューに追加").click()
+    # 検証
+    expect(_rows(page)).to_have_count(2, timeout=UPDATE_TIMEOUT_MS)
+    expect(_rows(page).first).to_contain_text("D-1 の進め方")
+    saved = read_workspace_yaml(root, "comments.yaml")["items"]
+    assert (saved[-1].get("target"), saved[-1].get("loc"), saved[-1]["body"]) == ("D-1", None, "D-1 の進め方")
+    # 実行（チップの × で外す）
+    _panel(page).get_by_role("button", name="項目「D-1」の絞り込みを外す").click()
+    # 検証
+    expect(_rows(page)).to_have_count(4)
+    assert "ttarget=" not in page.url
+    # 実行（一覧を閉じてからもう一度絞り、閉じてトップバーで開き直す）
+    _panel(page).get_by_role("button", name="コメントの一覧を閉じる").click()
+    expect(_panel(page)).to_have_count(0)
+    detail.get_by_role("button", name="D-1 のコメントの一覧を開く").click()
+    page.wait_for_url("**ttarget=D-1**")
+    _panel(page).get_by_role("button", name="コメントの一覧を閉じる").click()
+    expect(_panel(page)).to_have_count(0)
+    page.get_by_role("button", name=re.compile(r"^コメント（")).click()
+    # 検証
+    expect(_rows(page)).to_have_count(4)
+    assert "ttarget=" not in page.url

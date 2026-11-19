@@ -110,6 +110,8 @@ namespace MindmapPreview {
     filter: ThreadFilter;
     /** スレッドを絞っているタグ。パネルを閉じても保つ */
     tag: string | null;
+    /** スレッドを絞っている項目の ID。詳細パネルの「コメントの一覧」で入れ、項目の絞り込みの × と一覧を閉じるときに外す */
+    target: string | null;
     /** 開いているスレッド（`pending` が真なら `id` はまだ送っていない新しいスレッドのコメントの ID） */
     openedThread: OpenedThread | null;
     /** 新しいスレッドの入力を出しているか */
@@ -1264,6 +1266,8 @@ namespace MindmapPreview {
           },
           back: () => history.back(),
           forward: () => history.forward(),
+          // その項目で絞ったスレッドの一覧を開く（開いたままなら状態・タグの絞り込みを保ち、項目だけを差し替える）
+          ...(serverMode ? { comments: openItemComments } : {}),
           diagram: showDiagram,
           frame: { select: frameSelect, clear: frameClear },
           // 本文の見出しへ移った: ハッシュの `h` を、履歴に積まずに置き換える
@@ -1597,6 +1601,7 @@ namespace MindmapPreview {
       reviewFrom: "list",
       filter: "open",
       tag: null,
+      target: null,
       openedThread: null,
       composing: false,
       reason: { open: false, body: "", status: "idle", detail: null },
@@ -1819,7 +1824,7 @@ namespace MindmapPreview {
       const keys = new Set<string>();
       const detailForm = document.querySelector<HTMLElement>("aside.panel form.send .send-body, dialog.full form.send .send-body");
       if (route.id !== null && detailForm !== null && !detailForm.hidden) keys.add(formKey(route.id, comment.pendingLoc.get(route.id) ?? null));
-      if (document.querySelector(".comments-panel .talk-new form.send") !== null) keys.add(formKey(null, null));
+      if (document.querySelector(".comments-panel .talk-new form.send") !== null) keys.add(formKey(comment.target, null));
       const opened = comment.openedThread;
       if (opened !== null && !opened.pending && document.querySelector(".comments-panel form.reply") !== null) {
         keys.add(formKey(null, null, opened.id));
@@ -2102,17 +2107,25 @@ namespace MindmapPreview {
 
     /** 入力欄を、今の状態で差し替える（`focus` が true なら入力欄へ、`submit` なら「レビューに追加」へフォーカスを移す）。別の項目へ移っていたら状態だけ持っておく */
     const redrawForm = ({ target, focus }: { target: string | null; focus: boolean | "submit" }): void => {
-      let field: HTMLTextAreaElement | null;
-      if (target === null) {
-        // 項目を指さない入力（新しいスレッド）はパネルの一部なので、パネルを描き直す
+      // 項目で絞っているコメントの一覧の新しいスレッドから溜めた・書いた: パネルも描き直し、フォーカスはパネルの入力へ移す
+      const fromPanel = target !== null && comment.listOpen && comment.composing && comment.target === target
+        && document.activeElement?.closest(".comments-panel") != null;
+      let field: HTMLTextAreaElement | null = null;
+      if (target === null || fromPanel) {
+        // 項目を指さない入力（新しいスレッド）と、項目で絞っている間の新しいスレッドはパネルの一部なので、パネルを描き直す
         renderComments();
         field = document.querySelector<HTMLTextAreaElement>(".comments-panel .talk-new form.send textarea");
-      } else {
+      }
+      if (target !== null) {
         const current = document.querySelector<HTMLFormElement>(route.full ? "dialog.full form.send" : "aside.panel form.send");
-        if (current === null || route.id !== target) return;
-        const next = sendForm(formProps(target));
-        current.replaceWith(next);
-        field = next.querySelector("textarea");
+        if (current !== null && route.id === target) {
+          const next = sendForm(formProps(target));
+          current.replaceWith(next);
+          // パネルから書いたときは、詳細パネルの入力は描き直すだけにする
+          if (!fromPanel) field = next.querySelector("textarea");
+        } else if (!fromPanel) {
+          return;
+        }
       }
       if (focus === false) return;
       if (focus === "submit") {
@@ -2140,9 +2153,9 @@ namespace MindmapPreview {
       redrawForm({ target, focus: true });
     };
 
-    /** 入力欄の引数。`target` が null なら、コメントの一覧の下端の項目を指さない入力 */
-    const formProps = (target: string | null): SendFormProps => {
-      const loc = target === null ? null : (comment.pendingLoc.get(target) ?? null);
+    /** 入力欄の引数。`target` が null なら、コメントの一覧の下端の項目を指さない入力。`inPanel` はコメントの一覧の下端の、絞っている項目への箇所を持たない入力 */
+    const formProps = (target: string | null, inPanel = false): SendFormProps => {
+      const loc = target === null || inPanel ? null : (comment.pendingLoc.get(target) ?? null);
       const state = formStateOf(target, loc);
       return {
         target,
@@ -2154,7 +2167,7 @@ namespace MindmapPreview {
         ...voiceOf(formKey(target, loc)),
         entered: state.entered ?? false,
         collapsed: false,
-        open: target === null || prefs.commentFormClosed !== true,
+        open: target === null || inPanel || prefs.commentFormClosed !== true,
         ...(target === null ? { label: "新しいスレッド" } : {}),
         on: {
           ...voiceHandlers(state),
@@ -2315,6 +2328,14 @@ namespace MindmapPreview {
       comment.reviewFocus = null;
     };
 
+    /** 項目で絞ったスレッドの一覧を開く（開いていれば描き直す） */
+    const openItemComments = (id: string): void => {
+      comment.target = id;
+      resetPanelView();
+      if (comment.listOpen) renderComments();
+      else openList();
+    };
+
     /** コメントの一覧を開く（絞り込みのドロワーは閉じ、閉じる前の画面・開いていたスレッドから始める） */
     const openList = (): void => {
       // 絞り込みのドロワー・表示の設定のパネルとは 1 つだけを開く
@@ -2353,6 +2374,8 @@ namespace MindmapPreview {
     const closeList = (): void => {
       flushDrafts();
       comment.listOpen = false;
+      // 項目の絞り込みはパネルを開いている間だけ保つ
+      comment.target = null;
       comment.opened = null;
       comment.highlight = null;
       comment.removed = [];
@@ -2532,9 +2555,11 @@ namespace MindmapPreview {
       threadsError: comment.threadsError,
       filter: comment.filter,
       tag: comment.tag,
+      target: comment.target,
       opened: comment.openedThread,
       composing: comment.composing,
-      free: formProps(null),
+      // 項目で絞っている間の新しいスレッドは、その項目への箇所を持たない入力（詳細パネルの下端の入力と書きかけを共有する）
+      free: formProps(comment.target, comment.target !== null),
       reply: replyState(),
       reason: comment.reason,
       checked: comment.checked,
@@ -2570,6 +2595,10 @@ namespace MindmapPreview {
         },
         clearTag: () => {
           comment.tag = null;
+          renderComments();
+        },
+        clearTarget: () => {
+          comment.target = null;
           renderComments();
         },
         compose: (open) => {
