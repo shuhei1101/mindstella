@@ -1,0 +1,17 @@
+$ TMPDIR=/tmp/planner-616-tmp python3 -m pytest -p no:cacheprovider tests/integration/server/test_usage_watch.py tests/integration/server/test_restart_session.py tests/integration/server/test_create_session.py tests/integration/server/test_session_events.py tests/integration/plugin/test_session_hook.py tests/integration/server/test_stop_notify.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-sessions-switch-account-on-usage-threshold
+configfile: pytest.ini
+plugins: xdist-3.8.0, base-url-2.1.0, anyio-4.14.1, asyncio-1.4.0, playwright-0.9.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 44 items
+
+tests/integration/server/test_usage_watch.py ....                        [  9%]
+tests/integration/server/test_restart_session.py ..........              [ 31%]
+tests/integration/server/test_create_session.py .........                [ 52%]
+tests/integration/server/test_session_events.py ....                     [ 61%]
+tests/integration/plugin/test_session_hook.py .......                    [ 77%]
+tests/integration/server/test_stop_notify.py ..........                  [100%]
+
+======================== 44 passed in 133.79s (0:02:13) ========================
