@@ -147,7 +147,15 @@ tables:
       - name: restart_reason
         title: 起動し直しの契機
         type: string | null
-        description: '`restarting` の間の契機（`api`・`rate_limit`・`compact`・`comment`）。起動し直しが終わったら `null`。失敗したときに『停止の通知』を呼ぶかを決める'
+        description: '`restarting` の間の契機（`api`・`rate_limit`・`compact`・`comment`・`usage_threshold`）。起動し直しが終わったら `null`。失敗したときに『停止の通知』を呼ぶかを決める'
+      - name: balancer_account
+        title: claude-balancer が貸したアカウント名
+        type: string | null
+        description: SessionStart のフックが `OTEL_RESOURCE_ATTRIBUTES` の `claude_balancer.account` から入れる。claude-balancer を通さずに起動したときは `null`。『利用枠の見回り』が `GET /accounts` の `account` と照らす
+      - name: specified_account
+        title: 指定したアカウント
+        type: string | null
+        description: 作成の依頼の `claude_config_dir` を `~` を展開した絶対パス。起動し直しで `--account` に渡す。利用上限・しきい値・借りられないときに指定を解除したら `null`。指定せずに作ったときも `null`
   - name: workspaces/{ID}/launch.json
     title: 追加の MCP とプラグイン
     datastore: JSON

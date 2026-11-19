@@ -1,0 +1,198 @@
+id: MOD-616-2
+title: サーバー / 利用枠の見回り / usage_watch.py
+lead: claude-balancer の常駐の `GET /accounts` を一定の間隔で呼び、使用中のアカウントがしきい値以上で切り替え先がある MindStella のセッションを、契機 `usage_threshold` で起動し直す。HTTP は標準ライブラリの `urllib.request` で送信する。
+constants:
+  - name: USAGE_WATCH_INTERVAL_SEC
+    title: 利用枠を見回る間隔
+    container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
+    usecase: MindStella のセッションを起動し直す
+    summary: 非機能要件『利用枠を見回る間隔』。環境変数 `MINDSTELLA_USAGE_WATCH_INTERVAL` で上書きする
+    value: '60.0'
+  - name: USAGE_QUERY_TIMEOUT_SEC
+    title: 利用枠の問い合わせを待つ上限
+    container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
+    usecase: MindStella のセッションを起動し直す
+    summary: 非機能要件『利用枠の問い合わせを待つ上限』
+    value: '5.0'
+  - name: OVER_THRESHOLD_REASONS
+    title: しきい値以上を表す貸せない理由
+    container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
+    usecase: MindStella のセッションを起動し直す
+    summary: claude-balancer の `unavailableReason` のうち、しきい値以上を表す値
+    value: frozenset({"five_hour_over_threshold", "seven_day_over_threshold"})
+functions:
+  - name: fetch_accounts
+    title: アカウント一覧を取る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
+    usecase: MindStella のセッションを起動し直す
+    role: アダプター
+    scope: public
+    summary: '`GET {base_url}/accounts` を `USAGE_QUERY_TIMEOUT_SEC` まで待って送信し、本文の `accounts` を返す'
+    args:
+      - name: base_url
+        type: str
+        required: true
+        passing: positional
+        description: '`HomeSettings.query_url()`'
+    returns:
+      type: list[dict]
+      description: '`accounts`（`account`・`unavailableReason` を持つ行）'
+    exceptions:
+      - name: BalancerUnavailableError
+        condition: つながらない・上限を過ぎた・`200` 以外・本文が JSON でないか `accounts` が並びでない
+    unit_tests:
+      - name: test_fetch_accounts
+        case: 正常
+        summary: accounts を返す
+        condition: '`urllib.request.urlopen` の偽が `{"accounts": [{"account": "a"}]}` を返す'
+        mock: '`urllib.request.urlopen`'
+        expected: '`[{"account": "a"}]`。URL が `{base_url}/accounts`、`timeout` が `USAGE_QUERY_TIMEOUT_SEC`'
+      - name: test_fetch_accounts_when_unavailable
+        case: 異常
+        summary: つながらない・読めないときは BalancerUnavailableError
+        condition: '`parametrize`: `URLError` / `TimeoutError` / `HTTPError` 500 / 本文が `x` / `{"accounts": 1}`'
+        mock: '`urllib.request.urlopen`'
+        expected: 全て `BalancerUnavailableError`
+  - name: choose_restarts
+    title: 起動し直すワークスペースを選ぶ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
+    usecase: MindStella のセッションを起動し直す
+    scope: public
+    summary: IF-616-1 の「使用中のアカウント」「しきい値以上の判定」「切り替え先の判定」「指定したアカウント」で、起動し直すワークスペースの ID を返す。何も書かない
+    args:
+      - name: sessions
+        type: dict[str, dict]
+        required: true
+        passing: positional
+        description: ワークスペースの ID と、見回る対象の `session.json`
+      - name: accounts
+        type: list[dict]
+        required: true
+        passing: positional
+        description: '`fetch_accounts` の結果'
+      - name: release_on_limit
+        type: bool
+        required: true
+        passing: positional
+        description: '`HomeSettings.release_on_limit`'
+    returns:
+      type: list[str]
+      description: 起動し直すワークスペースの ID
+    unit_tests:
+      - name: test_choose_restarts
+        case: 正常
+        summary: しきい値と切り替え先と指定で選ぶかが決まる
+        condition: '`parametrize`: A が `five_hour_over_threshold`・B が `null` / A が `seven_day_over_threshold`・B が `null` / A も B もしきい値以上 / A が `quota_unknown`・B が `null` / A が `null` / `balancer_account` が一覧に無い C / A がしきい値以上で `specified_account` あり・`release_on_limit` が偽 / 同じで真'
+        mock: なし
+        expected: 選ぶ / 選ぶ / 選ばない / 選ばない / 選ばない / 選ばない / 選ばない / 選ぶ
+  - name: watch_usage_once
+    title: 利用枠を 1 回見回る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
+    usecase: MindStella のセッションを起動し直す
+    scope: public
+    summary: IF-616-1 の 1 回分。ID の一覧のうち「見回る対象」の `session.json` を集め、無ければ何も呼ばずに 0 を返す。あれば `fetch` を 1 回呼び、`choose_restarts` が選んだワークスペースごとに `restart` を呼ぶ。`fetch` が `BalancerUnavailableError` を投げたら `None` を返す
+    args:
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ・ホームの設定
+      - name: fetch
+        type: Callable[[str], list[dict]]
+        required: false
+        default: fetch_accounts
+        passing: keyword
+        description: アカウント一覧を取る関数
+      - name: restart
+        type: Callable[[str], bool]
+        required: false
+        default: '`sessions.request_restart` を `usage_threshold` で呼ぶ関数'
+        passing: keyword
+        description: 起動し直しを呼ぶ関数
+    returns:
+      type: int | None
+      description: 起動し直しを呼んだ数。問い合わせに失敗したら `None`
+    unit_tests:
+      - name: test_watch_usage_once
+        case: 正常
+        summary: 見回る対象だけを照らし、選んだものを起動し直す
+        condition: '`running`・`balancer_account: A` / `restarting` / `running` で `close_pending` が真 / `running` で `balancer_account` が無い、の 4 つのワークスペース。`fetch` は A を `five_hour_over_threshold`・B を `null` で返す'
+        mock: '`fetch`・`restart`'
+        expected: 1 を返し、`restart` が 1 つ目の ID で 1 回だけ呼ばれ、`fetch` が 1 回
+      - name: test_watch_usage_once_when_no_target
+        case: 正常
+        summary: 見回る対象が無ければ問い合わせない
+        condition: '`running` のワークスペースが無い'
+        mock: '`fetch`・`restart`'
+        expected: 0 を返し、`fetch` を呼ばない
+      - name: test_watch_usage_once_when_unavailable
+        case: 異常
+        summary: 問い合わせに失敗したら起動し直さない
+        condition: '`fetch` が `BalancerUnavailableError` を投げる'
+        mock: '`fetch`・`restart`'
+        expected: '`None` を返し、`restart` を呼ばない'
+  - name: start_usage_watch
+    title: 利用枠の見回りを始める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
+    usecase: MindStella のセッションを起動し直す
+    scope: public
+    summary: '`PATH` に `claude-balancer` が無ければ `None` を返す。あれば、`USAGE_WATCH_INTERVAL_SEC`（環境変数で上書き）ごとに `watch_usage_once` を呼ぶ `daemon` のスレッドを始め、`stop` が立つまで繰り返す。問い合わせの失敗は、成功から失敗に変わった回だけ記録する。`watch_usage_once` の他の例外は記録して次の回へ進む'
+    args:
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ・ホームの設定
+      - name: stop
+        type: threading.Event
+        required: true
+        passing: positional
+        description: 常駐サーバーの停止で立つ印
+    returns:
+      type: threading.Thread | None
+      description: 始めたスレッド。claude-balancer が無ければ `None`
+    unit_tests:
+      - name: test_start_usage_watch
+        case: 正常
+        summary: 間隔ごとに見回り、stop で終わる
+        condition: 間隔を 0.01 秒に上書きし、`watch_usage_once` を数える偽にする。`shutil.which` はパスを返す。少し待って `stop` を立てる
+        mock: '`watch_usage_once`・`shutil.which`'
+        expected: 2 回以上呼ばれ、スレッドが終わっている
+      - name: test_start_usage_watch_without_balancer
+        case: 正常
+        summary: claude-balancer が無ければスレッドを始めない
+        condition: '`shutil.which` が `None`'
+        mock: '`shutil.which`'
+        expected: '`None` を返す'
+      - name: test_start_usage_watch_when_unavailable
+        case: 正常
+        summary: 問い合わせの失敗は失敗し始めた回だけ記録する
+        condition: '`watch_usage_once` の偽が `None`・`None`・0・`None` を返す'
+        mock: '`watch_usage_once`・`shutil.which`・ログ'
+        expected: '`mindstella.usage.query_failed` が 2 回（1 回目と 4 回目）'
+classes:
+  - name: BalancerUnavailableError
+    title: claude-balancer の常駐を問い合わせられない
+    container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
+    usecase: MindStella のセッションを起動し直す
+    summary: '`GET /accounts` がつながらない・上限を過ぎた・読めない例外。理由をメッセージに持つ'
+    kind: クラス
+    inherits: Exception
+notes:
+  ログ: |-
+    `logging.getLogger("mindstella.usage_watch")` で標準エラーへ書く。
+
+    | イベント名 | 水準 | いつ | 属性 |
+    | --- | --- | --- | --- |
+    | `mindstella.usage.query_failed` | WARN | 問い合わせが成功から失敗に変わった（起動直後の失敗を含む） | 問い合わせ先・理由 |
+    | `mindstella.usage.over_threshold` | INFO | 起動し直しを呼んだ | ワークスペースの ID・アカウント名・貸せない理由 |
+    | `mindstella.usage.watch_failed` | ERROR | 1 回の見回りで他の例外を捕まえた（`logger.exception`） | なし |
+refs:
+  - IF-616-1#
+  - MOD-531-4#
+  - MOD-616-1#
+  - LIB-531-1#

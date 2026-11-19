@@ -93,7 +93,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: 待ち受けのポートを取り、MCP サーバーを組み立てて `127.0.0.1` の HTTP で動かし、SIGTERM・SIGINT を受けるか `server_stop` が呼ばれたら、終了時のフックを呼んで配信を止めて終える。`ServerContext` を作り、待ち受けの前に起動時の照合（`startup.reconcile_before_listen`）をし、`sessions.start_crash_watch` で落ちたことの見回りを始め（終えるときに止める）、`InputTargets` に `_restarter`（`sessions.is_alive` で生きていれば偽、落ちていれば `sessions.request_restart` を `comment` で呼んで `sessions.wait_until_running` を待つ関数）を渡し、MindStella の API の経路（`api.build_routes`）を `/mcp`・`/_admin/status` と同じアプリに足す
+    summary: 待ち受けのポートを取り、MCP サーバーを組み立てて `127.0.0.1` の HTTP で動かし、SIGTERM・SIGINT を受けるか `server_stop` が呼ばれたら、終了時のフックを呼んで配信を止めて終える。`ServerContext` を作り、待ち受けの前に起動時の照合（`startup.reconcile_before_listen`）をし、`sessions.start_crash_watch` で落ちたことの見回りを、`usage_watch.start_usage_watch` で利用枠の見回りを始め（終えるときに止める）、`InputTargets` に `_restarter`（`sessions.is_alive` で生きていれば偽、落ちていれば `sessions.request_restart` を `comment` で呼んで `sessions.wait_until_running` を待つ関数）を渡し、MindStella の API の経路（`api.build_routes`）を `/mcp`・`/_admin/status` と同じアプリに足す
     description: 末尾で `sys.exit(main())`。
     side_effects: '`127.0.0.1` の `MINDSTELLA_PORT` で待ち受け、記録を標準エラーに書く'
     args:
@@ -125,12 +125,12 @@ functions:
            - `[ERROR]` MINDSTELLA_PORT の値が誤り（値。1〜65535 の整数を渡す案内）
          - `PortInUseError` を捕まえた場合、1 を返す
            - `[ERROR]` ポートが使われている（ポート。`MINDSTELLA_PORT` で別のポートを渡す案内）
-      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）と、文字起こしのインターフェース（`load_transcriber(environ)`。モジュール構成『文字起こしの引き当て』）を渡した配信の台帳（`PreviewRegistry`）を作る
+      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）と、ホームの設定（`home_settings.load_home_settings(home_settings.home_settings_path(environ))`。`InvalidSettingsError` を捕まえた場合、取ったソケットを閉じて `[ERROR]` ホームの設定の誤り（ファイルのパスとキー。設定『サーバー』の許す値の案内）を書き 1 を返す）と、文字起こしのインターフェース（`load_transcriber(environ)`。モジュール構成『文字起こしの引き当て』）を渡した配信の台帳（`PreviewRegistry`）を作る
          - `InvalidTranscriberError` を捕まえた場合、取ったソケットを閉じて 1 を返す
            - `[ERROR]` 文字起こしの環境変数の値が誤り（環境変数の名前と値。設定『サーバー』の許す値の案内）
       4. 起動した日時（UTC）・プラグインのフォルダ（`PLUGIN_VERSION_FILE.parent`）・プラグインのバージョン（`str(read_plugin_version())`）を控え、それらと台帳から状態を作る関数（`build_status`）を作る
       5. サーバーを組み立て（`build`。`status` に 4 の関数、`request_stop` に HTTP のサーバーの `should_exit` を真にする関数を渡す）、`streamable_http_app(streamable_http_path=MCP_PATH, host=LISTEN_HOST)` のアプリを `make_server` に渡す
-      6. 待ち受けの前の照合をし（`startup.reconcile_before_listen(context)`）、落ちたことの見回り（`sessions.start_crash_watch`）とエージェントフローの配信元の確認のスレッド（`startup.start_agent_flows_check(context)`）を始めてから、2 のソケットで動かす（`run(sockets=[ソケット])`）。SIGTERM・SIGINT の受け口は uvicorn が置き、受けると `should_exit` を真にする。uvicorn は終わり終えてから受けたシグナルを元の受け口へ送り直すので、動かす前に SIGTERM の受け口を `SystemExit(0)` を投げる関数にし、7 の後で元に戻す
+      6. 待ち受けの前の照合をし（`startup.reconcile_before_listen(context)`）、落ちたことの見回り（`sessions.start_crash_watch`）と利用枠の見回り（`usage_watch.start_usage_watch`）とエージェントフローの配信元の確認のスレッド（`startup.start_agent_flows_check(context)`）を始めてから、2 のソケットで動かす（`run(sockets=[ソケット])`）。SIGTERM・SIGINT の受け口は uvicorn が置き、受けると `should_exit` を真にする。uvicorn は終わり終えてから受けたシグナルを元の受け口へ送り直すので、動かす前に SIGTERM の受け口を `SystemExit(0)` を投げる関数にし、7 の後で元に戻す
          - `[INFO]` 常駐サーバーが待ち受けを始めた（ポート、バージョン、PID）
       7. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`。終了時のフックもここで呼ぶ）
          - `[INFO]` 常駐サーバーを終えた
@@ -763,3 +763,6 @@ data_models:
       - name: settings_file
         type: Path
         description: グローバルの設定のファイル（`project_index.settings_file(environ)`。状態の取得とワークスペースの一覧が直接読む）
+      - name: home
+        type: HomeSettings
+        description: mindstella のホームの設定（`home_settings.load_home_settings`。起動時に 1 回だけ読む）

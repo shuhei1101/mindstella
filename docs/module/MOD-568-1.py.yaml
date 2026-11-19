@@ -385,7 +385,7 @@ functions:
       - name: test_build_stopped_content
         case: 正常
         summary: 止まった理由ごとの文言と URL の 2 行
-        condition: '`parametrize`: 5 つの `StopReason` と `STOP_REASON_TEXTS` の文言。URL は `http://127.0.0.1:47800/mindstella.html`'
+        condition: '`parametrize`: 全ての `StopReason` と `STOP_REASON_TEXTS` の文言。URL は `http://127.0.0.1:47800/mindstella.html`'
         mock: なし
         expected: '`家計簿: 停止しました（{文言}）\nhttp://127.0.0.1:47800/mindstella.html`'
       - name: test_build_stopped_content_when_no_url
@@ -531,6 +531,8 @@ constants:
         value: '"利用上限"'
       - key: restart_failed
         value: '"起動し直しの失敗"'
+      - key: usage_threshold
+        value: '"利用枠の残りが少ないため切り替え"'
 refs:
   - IF-568-1#
   - API-568-1#
@@ -563,3 +565,6 @@ enums:
       - value: restart_failed
         title: 起動し直しの失敗
         description: '`api`・`compact` の契機の起動し直しに失敗した'
+      - value: usage_threshold
+        title: 利用枠の残りが少ないため切り替え
+        description: 使用中のアカウントの利用枠がしきい値以上になり、別のアカウントで起動し直すために止めた
