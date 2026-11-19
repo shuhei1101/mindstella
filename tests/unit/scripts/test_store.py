@@ -498,8 +498,8 @@ def test_save_change_when_schema_mismatch(make_workspace, make_item, snapshot_tr
     before = snapshot_tree(root)
     change = store.Change(
         kind="decision",
-        items=[make_item("D-1", body="docs/D-1.md", status="完了")],
-        body=store.BodyWrite(name="docs/D-1.md", text="本文\n"),
+        items=[make_item("D-1", body="docs/D-1.mark.md", status="完了")],
+        body=store.BodyWrite(name="docs/D-1.mark.md", text="本文\n"),
     )
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as exc_info:
@@ -518,8 +518,8 @@ def test_save_change_when_temp_write_fails(
     before = snapshot_tree(root)
     change = store.Change(
         kind="decision",
-        items=[make_item("D-1", body="docs/D-1.md")],
-        body=store.BodyWrite(name="docs/D-1.md", text="本文\n"),
+        items=[make_item("D-1", body="docs/D-1.mark.md")],
+        body=store.BodyWrite(name="docs/D-1.mark.md", text="本文\n"),
     )
     # store モジュールの参照を、本文の一時ファイルだけ書けないものに差し替える
     monkeypatch.setattr(store, "_write_temp", _fail_body_temp(store._write_temp))
@@ -710,18 +710,18 @@ def test_save_batch_when_replace_fails(
     """途中の置き換えに失敗したら、置き換えたファイルを戻す（異常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="docs/D-1.md"),
+        make_item("D-1", body="docs/D-1.mark.md"),
         make_item("T-1"),
-        bodies={"D-1.md": "前の本文\n"},
+        bodies={"D-1.mark.md": "前の本文\n"},
     )
     workspace = store.load_workspace(root)
     before = snapshot_tree(root)
     change = store.BatchChange(
         items={
-            "decision": [make_item("D-1", body="docs/D-1.md", answer="a")],
+            "decision": [make_item("D-1", body="docs/D-1.mark.md", answer="a")],
             "task": [make_item("T-1", result="r")],
         },
-        bodies=[store.BodyWrite(name="docs/D-1.md", text="新しい本文\n")],
+        bodies=[store.BodyWrite(name="docs/D-1.mark.md", text="新しい本文\n")],
     )
     # store モジュールの参照を、tasks.yaml への置き換えだけ失敗するものに差し替える
     monkeypatch.setattr(store.os, "replace", failing_replace("tasks.yaml"))
@@ -1469,7 +1469,9 @@ def test_validate_workspace_when_aliases(
 ) -> None:
     """資料・調査の `aliases`・`description` を受け、空の語を拾う（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", **docs_extra), make_item("R-1", **research_extra))
+    root = make_workspace(
+        make_item("A-1", body="docs/A-1.mark.md", **docs_extra), make_item("R-1", **research_extra)
+    )
     workspace = store.load_workspace(root)
     # 実行
     problems = store.validate_workspace(workspace)
