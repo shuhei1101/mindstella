@@ -1,5 +1,5 @@
 title: 常駐サーバーの起動
-lead: 常駐サーバーが起動したときに、待ち受けを始める前に、前の常駐サーバーの間に落ちた MindStella のセッションを落ちたものとして記録して通知し、ワークスペースの ID の一覧が無ければ配信元の行から作り直し、エージェントフローの配信元のパスが今のプラグインと違えば登録し直す単一ユースケース。
+lead: 常駐サーバーが起動したときに、待ち受けを始める前に、ワークスペースの ID の一覧が無ければ配信元の行から作り直し、前の常駐サーバーの間に落ちた MindStella のセッションを落ちたものとして記録して通知し、待ち受けを始めた後に、エージェントフローの配信元のパスが今のプラグインと違えば登録し直す単一ユースケース。
 issue: 525
 test_file: tests/e2e/単一ユースケース/test_resident_server_startup.py
 primary_actor: 常駐サーバー
@@ -11,7 +11,7 @@ stakeholders:
 trigger: 常駐サーバーが起動する（SessionStart のフック・起動のコマンドが systemd --user のユニットを起動する・再起動する、systemd --user が落ちた常駐サーバーを起動し直す）
 preconditions:
   - プラグイン mindstella がインストールされている
-success_guarantee: 待ち受けを始めたときには、状態が起動中の MindStella のセッションのうち tmux のペインか Claude Code のプロセスが無いものが落ちたと記録され、『停止の通知』が 1 件ずつ呼ばれている。状態のフォルダに ID の一覧が無かったときは、project-index の配信元の行のうち MindStella が作ったワークスペースの行の ID で作り直されている。配信元 `mindstella-agent-flows` の行は、今のプラグインのエージェントフローの配信の設定を指している。
+success_guarantee: 待ち受けを始めたときには、状態が起動中の MindStella のセッションのうち tmux のペインか Claude Code のプロセスが無いものが落ちたと記録され、『停止の通知』が 1 件ずつ呼ばれている。状態のフォルダに ID の一覧が無かったときは、project-index の配信元の行のうち MindStella が作ったワークスペースの行の ID で作り直されている。待ち受けを始めた後に、配信元 `mindstella-agent-flows` の行は今のプラグインのエージェントフローの配信の設定を指す。
 minimal_guarantee: 照合・ID の一覧の作り直し・エージェントフローの配信元の確認のどれかに失敗しても、常駐サーバーは待ち受けを始め、失敗を常駐サーバーのログに記録する。ID の一覧があるときは書き換えない。
 frequency: 常駐サーバーが起動するたび（端末の起動の後・プラグインの更新の後・常駐サーバーが落ちた後）
 priority: 高
@@ -44,9 +44,9 @@ scenarios:
         SV->>ST: B を crashed に書き換える
         SV->>IF: B・crashed
         IF->>DC: POST
+        SV->>SV: /mcp と MindStella の API を待ち受ける
         SV->>PI: 配信元の行を参照する
         PI-->>SV: mindstella-agent-flows の行は今のプラグインを指している
-        SV->>SV: /mcp と MindStella の API を待ち受ける
       ```
     expected:
       - 待ち受けを始めたときには、B の `session.json` の `status` が `crashed` になっている
@@ -106,10 +106,10 @@ scenarios:
         participant PI as project-index
 
         U->>SV: プラグインを更新した後に、起動のコマンドで常駐サーバーを再起動する
+        SV->>SV: 待ち受ける
         SV->>PI: 配信元の行を参照する
         PI-->>SV: mindstella-agent-flows の行は前のプラグインを指している
         SV->>PI: 行の config を今のプラグインの agent-flows/dev-docs.yaml へ変える
-        SV->>SV: 待ち受ける
         U->>PI: search_docs source=mindstella-agent-flows id=mindstella/startup
         PI-->>U: 今のプラグインのエージェントフロー
       ```
@@ -136,8 +136,11 @@ scenarios:
         SV->>ST: ID の一覧が無い
         SV->>PI: 配信元の行を参照する
         PI-->>SV: つながらない
-        SV->>SV: ID の一覧の作り直しとエージェントフローの配信元の確認を飛ばし、ログに記録する
+        SV->>SV: ID の一覧の作り直しを飛ばし、ログに記録する
         SV->>SV: 待ち受ける
+        SV->>PI: 配信元の行を参照する
+        PI-->>SV: つながらない
+        SV->>SV: エージェントフローの配信元の確認を飛ばし、ログに記録する
       ```
     expected:
       - 常駐サーバーが `/mcp` と MindStella の API を待ち受けている
@@ -153,7 +156,7 @@ refs:
 decisions:
   - D-323
 notes:
-  順番: ID の一覧の作り直し → 状態の照合 → エージェントフローの配信元の確認の順に、待ち受けを始める前に行う。作り直した ID の一覧のワークスペースも照合の対象にする
+  順番: ID の一覧の作り直し → 状態の照合の順に待ち受けを始める前に行い、エージェントフローの配信元の確認は待ち受けを始めた後に行う（普段の起動で project-index を待たないため）。作り直した ID の一覧のワークスペースも照合の対象にする
   照合: 『落ちたことの見回り』の 1 回分と同じ判定・書き換えの鍵・通知を使用する。`stopping`・`restarting` は書き換えない。落ちた MindStella のセッションは起動し直さない（起動し直すのはコメントが届いたときと起動し直しの依頼）
   ワークスペースの行: '`config` の末尾が `/.mindstella/dev-docs.yaml` の行（クローズした行も含む）。詳しい条件はインターフェース定義『常駐サーバーの起動時の照合』'
   エージェントフローの配信元の行が無いとき: 追加しない。追加するのは『ワークスペースの作成』のまま

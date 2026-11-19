@@ -1,35 +1,39 @@
 title: 常駐サーバーの起動時の照合
 entry:
   kind: trigger
-  value: 常駐サーバーの起動（`server.py` が `/mcp` と MindStella の API の待ち受けを始める前に 1 回）
-lead: 常駐サーバーが待ち受けを始める前に、状態のフォルダの ID の一覧が無ければ project-index の配信元の行から作り直し、起動中の MindStella のセッションを照合して落ちたものを記録・通知し、エージェントフローの配信元の行を今のプラグインへ向け直す。
+  value: 常駐サーバーの起動（`server.py` が `/mcp` と MindStella の API の待ち受けを始める前に 1 回と、待ち受けを始めた後に別のスレッドで 1 回）
+lead: 常駐サーバーが待ち受けを始める前に、状態のフォルダの ID の一覧が無ければ project-index の配信元の行から作り直し、起動中の MindStella のセッションを照合して落ちたものを記録・通知する。待ち受けを始めた後に、エージェントフローの配信元の行を今のプラグインへ向け直す。
 test_file: tests/integration/server/test_startup_reconcile.py
 idempotent: true
 side_effects: 状態のフォルダに `workspaces.yaml` が無いときだけ、ワークスペースの行の ID で `workspaces.yaml` を作る。`running` の `session.json` のうち落ちているものを `crashed` にし、『停止の通知』を止まった理由 `crashed` で呼ぶ。配信元 `mindstella-agent-flows` の行の `config` が今のプラグインと違うときだけ、project-index の `PATCH /settings/sources/{id}` で `config` を書き換える。ほかは書き込まない
-exclusivity: 待ち受けを始める前に、起動の処理の中で順に行う（MindStella の API・MCP の依頼はまだ受けない）。`workspaces.yaml` は全体で 1 つの鍵、`session.json` はファイルごとの鍵を取って書き込む（『落ちたことの見回り』と同じ鍵）
+exclusivity: ID の一覧の作り直しと状態の照合は、待ち受けを始める前に起動の処理の中で順に行う（MindStella の API・MCP の依頼はまだ受けない）。`workspaces.yaml` は全体で 1 つの鍵、`session.json` はファイルごとの鍵を取って書き込む（『落ちたことの見回り』と同じ鍵）。エージェントフローの配信元の確認は、待ち受けを始めた後に 1 本の `daemon` のスレッドで 1 回行い、同じ間に『ワークスペースの作成』が行を追加しても、`expectedVersion` の照合でどちらかが 409 を受けて取得し直す
 exceptions:
   - name: なし（正常終了）
     condition: 3 つの処理のどれかに失敗しても
     notes: 失敗した処理を常駐サーバーのログ（標準エラー）に 1 行記録して次の処理へ進み、待ち受けを始める
 constraints:
   - item: 順番
-    constraint: ID の一覧の作り直し → 状態の照合 → エージェントフローの配信元の確認。作り直した ID の一覧のワークスペースも照合する
+    constraint: 待ち受けを始める前に ID の一覧の作り直し → 状態の照合。作り直した ID の一覧のワークスペースも照合する。エージェントフローの配信元の確認は待ち受けを始めた後に行う
+    notes: 資料 A-119 の「常駐サーバーが起動した」の行で、待ち受けの前に要るのは ID の一覧（MCP と API がワークスペースを扱う前提）と状態の照合だけ。ID の一覧がある普段の起動は、待ち受けの前に project-index を呼ばない
   - item: 配信元の行の取得
-    constraint: project-index の `GET /settings/sources` を 1 回だけ呼び、ID の一覧の作り直しとエージェントフローの配信元の確認で同じ応答を使用する。ID の一覧があり作り直さないときも、エージェントフローの配信元の確認のために呼ぶ
+    constraint: project-index の `GET /settings/sources` で取得する。ID の一覧の作り直し（`workspaces.yaml` が無いときだけ、待ち受けの前に 1 回）とエージェントフローの配信元の確認（待ち受けの後に 1 回）で別々に呼ぶ。応答の行のキーは camelCase（`outsideRead`）
     notes: 端末の設定のファイルを直接参照しない（行の書き込みも読み取りも project-index の API で行う。D-300）
   - item: project-index の失敗
-    constraint: '`GET /settings/sources` が失敗した（つながらない・200 以外）ときは、ID の一覧の作り直しとエージェントフローの配信元の確認を飛ばし、飛ばした 2 つの処理と失敗の理由をログに 1 行記録する。状態の照合は行う。次の起動まで再試行しない'
-  - item: project-index の呼び出しの上限
-    constraint: 1 回の呼び出しは、ワークスペースの管理が project-index を呼ぶときと同じ上限で打ち切る
+    constraint: 待ち受けの前の `GET` が失敗した（つながらない・200 以外・上限で打ち切った）ときは ID の一覧の作り直しを飛ばし、待ち受けの後の `GET`・`PATCH` が失敗したときはエージェントフローの配信元の確認を飛ばす。どちらも飛ばした処理と失敗の理由をログに 1 行記録する。状態の照合は行う。409 の再送信のほかは、次の起動まで再試行しない
+  - item: 待ち受けの前の `GET` の上限
+    constraint: 5 秒。外側の『常駐サーバーの起動の確認』が待ち受けを待つ上限 10 秒に、内側の待ち（SDK を読み込んで待ち受けるまでの約 1 秒 + この `GET`）と余裕（内側の待ちの合計の 50%）を収める（(1 + 5) × 1.5 = 9 ≤ 10）。待ち受けるまでの時間は WSL での目安で、結合テストで測る
+    notes: 外側の上限は『常駐サーバーの起動の確認』の制約「起動を待つ上限」。導き方は規約『資源の値の決め方』の「入れ子の待ち」
+  - item: 待ち受けの後の呼び出しの上限
+    constraint: 1 回の呼び出しは、ワークスペースの管理が project-index を呼ぶときと同じ 10 秒（`project_index.py` の `REQUEST_TIMEOUT_SEC`）。外側に待つ処理が無いため、入れ子の待ちに入らない
   - item: ID の一覧の作り直しの条件
     constraint: '`workspaces.yaml` が無いときだけ作り直す。あるときは配信元の行と突き合わせず、書き換えない。あるが読めない（YAML として読めない・`ids` が並びでない）ときは書き換えず、ログに記録して状態の照合を飛ばす'
   - item: ワークスペースの行
-    constraint: '`config` の末尾が `/.mindstella/dev-docs.yaml` の行をワークスペースの行とし、その `id` を端末の設定の並び順で `ids` に入れる。クローズした行（`outside_read` が偽）も入れる（削除するまで ID の一覧に残すため。D-322）。`mindstella-agent-flows` とほかの配信元の行は入れない'
-    notes: 『ワークスペースの作成』の制約「配信元の行」の `config` の形
+    constraint: '`config` の末尾が `/.mindstella/dev-docs.yaml` の行をワークスペースの行とし、その `id` を端末の設定の並び順で `ids` に入れる。クローズした行（`outsideRead` が偽）も入れる（削除するまで ID の一覧に残すため。D-322）。`mindstella-agent-flows` とほかの配信元の行は入れない'
+    notes: 『ワークスペースの作成』の制約「配信元の行」の `config` の構造
   - item: 状態の照合
     constraint: 『落ちたことの見回り』の 1 回分と同じ。ID の一覧のワークスペースのうち `session.json` の `status` が `running` のものを、『MindStella のセッションの一覧』の「落ちたかの判定」で判定し、落ちていれば `crashed` にして『停止の通知』を `crashed` で呼ぶ。`stopping`・`restarting` は書き換えない。落ちた MindStella のセッションは起動し直さない
   - item: エージェントフローの配信元の確認
-    constraint: 配信元の行のうち `id` が `mindstella-agent-flows` の行の `config` が、起動した常駐サーバーのプラグインのフォルダの `agent-flows/dev-docs.yaml` の絶対パスと文字列で違えば、`PATCH /settings/sources/mindstella-agent-flows` に `expectedVersion`（取得した `version`）と `source.config`（今のパス）だけを送信する。409（バージョンが更新前）なら 1 回だけ `version` を取得し直して再送信する。行が無いときは追加しない。`scope`・`outside_read` は変えない
+    constraint: 配信元の行のうち `id` が `mindstella-agent-flows` の行の `config` が、起動した常駐サーバーのプラグインのフォルダの `agent-flows/dev-docs.yaml` の絶対パスと文字列で違えば、`PATCH /settings/sources/mindstella-agent-flows` に `expectedVersion`（取得した `version`）と `source.config`（今のパス）だけを送信する。409（バージョンが更新前）なら 1 回だけ `version` を取得し直して再送信する。行が無いときは追加しない。`scope`・`outsideRead` は変えない
     notes: 行の追加は『ワークスペースの作成』（『エージェントフローの参照』の制約「配信元の登録」）
   - item: ログ
     constraint: 処理ごとの失敗と、作り直した ID の数・`crashed` にした MindStella のセッションの数・書き換えた配信元の行を、常駐サーバーのログに 1 行ずつ記録する
@@ -54,24 +58,24 @@ flows:
 
         クライアント->>IF: 常駐サーバーを起動する
         IF-->>ST: workspaces.yaml がある
-        IF-->>PI: GET /settings/sources
         IF-->>ST: A・B の session.json
         IF->>ST: B を crashed に書き換える
         IF->>DC: B の止まった理由 crashed
-        IF->>IF: mindstella-agent-flows の config は今のプラグインと同じ
         IF-->>クライアント: 待ち受けを始める
+        IF-->>PI: GET /settings/sources
+        IF->>IF: mindstella-agent-flows の config は今のプラグインと同じ
       ```
     expected:
       - 待ち受けを始めたときには、B の `session.json` の `status` が `crashed`、A の `status` が `running`
       - Webhook の Mock が、止まった理由が異常終了の B の要求を 1 件だけ受けている
-      - project-index の Mock が `GET /settings/sources` を 1 件だけ受け、`PATCH` を受けていない
+      - project-index の Mock が、待ち受けを始める前には要求を受けず、待ち受けを始めた後に `GET /settings/sources` を 1 件だけ受け、`PATCH` を受けていない
       - '`workspaces.yaml` が起動の前と同じ'
     test: test_normal
   - name: 正常系（ID の一覧が無い）
     summary: ワークスペースの行の ID で workspaces.yaml を作り、作った ID の一覧で照合する
     setup:
       - name: Mock
-        description: project-index（正常系と同じ。ほかに、`config` が `.mindstella/dev-docs.yaml` で終わらない配信元の行と、`outside_read` が偽のワークスペース C の行も返却する）
+        description: project-index（正常系と同じ。ほかに、`config` が `.mindstella/dev-docs.yaml` で終わらない配信元の行と、`outsideRead` が偽のワークスペース C の行も返却する）
       - name: 常駐サーバー
         description: 正常系と同じ。ただし `MINDSTELLA_DISCORD_WEBHOOK_FILE` を指定しない
       - name: 状態
@@ -95,6 +99,7 @@ flows:
       - '`workspaces.yaml` の `ids` が端末の設定の並び順の A・B・C で、ワークスペースでない行と `mindstella-agent-flows` を含まない'
       - B の `session.json` の `status` が `crashed`
       - '`GET /workspaces` が A・B を返却する（C はクローズ済み）'
+      - project-index の Mock が `GET /settings/sources` を 2 件受けている（待ち受けの前の作り直しと、待ち受けの後の確認）
     test: test_normal_when_ids_missing
   - name: 正常系（プラグインを更新した後）
     summary: mindstella-agent-flows の行の config を今のプラグインのパスへ書き換える
@@ -113,13 +118,13 @@ flows:
         participant PI as project-index（Mock）
 
         クライアント->>IF: 常駐サーバーを起動する
+        IF-->>クライアント: 待ち受けを始める
         IF-->>PI: GET /settings/sources
         IF->>PI: PATCH /settings/sources/mindstella-agent-flows（config）
         PI-->>IF: 409
         IF-->>PI: GET /settings/sources
         IF->>PI: PATCH /settings/sources/mindstella-agent-flows（config）
         PI-->>IF: 200
-        IF-->>クライアント: 待ち受けを始める
       ```
     expected:
       - project-index の Mock が受けた 2 件の `PATCH` の本文が、`expectedVersion` と、今のプラグインのフォルダの `agent-flows/dev-docs.yaml` の絶対パスの `source.config` だけを持つ
@@ -142,9 +147,9 @@ flows:
         participant PI as project-index（Mock）
 
         クライアント->>IF: 常駐サーバーを起動する
+        IF-->>クライアント: 待ち受けを始める
         IF-->>PI: GET /settings/sources
         IF->>IF: mindstella-agent-flows の行が無い
-        IF-->>クライアント: 待ち受けを始める
       ```
     expected:
       - project-index の Mock が `POST`・`PATCH` を受けていない
@@ -170,13 +175,16 @@ flows:
         IF-->>ST: workspaces.yaml が無い
         IF-->>PI: GET /settings/sources
         PI-->>IF: つながらない
-        IF->>IF: 2 つの処理を飛ばしてログに記録する
+        IF->>IF: ID の一覧の作り直しを飛ばしてログに記録する
         IF-->>クライアント: 待ち受けを始める
+        IF-->>PI: GET /settings/sources
+        PI-->>IF: つながらない
+        IF->>IF: エージェントフローの配信元の確認を飛ばしてログに記録する
       ```
     expected:
       - '`GET /_admin/status` が応答する'
       - '`workspaces.yaml` が作られていない'
-      - 常駐サーバーのログに、ID の一覧の作り直しとエージェントフローの配信元の確認を飛ばしたことと、project-index へつながらなかったことが 1 行で記録されている
+      - 常駐サーバーのログに、project-index へつながらず ID の一覧の作り直しを飛ばしたことと、エージェントフローの配信元の確認を飛ばしたことが 1 行ずつ記録されている
     test: test_error_when_project_index_down
   - name: 異常系（ID の一覧が読めない・なし）
     summary: 読めない workspaces.yaml を書き換えず、照合を飛ばして待ち受ける
@@ -198,8 +206,8 @@ flows:
         クライアント->>IF: 常駐サーバーを起動する
         IF-->>ST: workspaces.yaml が読めない
         IF->>IF: 状態の照合を飛ばしてログに記録する
-        IF-->>PI: GET /settings/sources
         IF-->>クライアント: 待ち受けを始める
+        IF-->>PI: GET /settings/sources
       ```
     expected:
       - '`GET /_admin/status` が応答する'
@@ -220,4 +228,5 @@ decisions:
 notes:
   待ち受けまでの時間: project-index の呼び出しは待ち受けの前に行うため、project-index が応答しないまま上限まで待つと、『常駐サーバーの起動の確認』が待ち受けを待つ上限を超えることがある。そのときも常駐サーバーは起動を続け、次の会話の開始で待ち受けていると分かる
   再試行しない理由: project-index が落ちている間に ID の一覧の無いまま『ワークスペースの作成』が呼ばれると、作成したワークスペースだけの ID の一覧ができ、前のワークスペースは次の起動でも作り直されない（ID の一覧があるため）。この場合は、利用者が `workspaces.yaml` を削除して常駐サーバーを再起動すれば作り直される
+  待ち受けた直後: エージェントフローの配信元の確認が終わるまでの数秒は、`mindstella-agent-flows` の行が更新前のプラグインのパスを指したままのことがある
 id: IF-605-1
