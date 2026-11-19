@@ -136,3 +136,5 @@ components:
         condition: mdmark を読まない。本文 `**D-1**\n2 行目`、`titles` は D-1 だけ
         mock: なし
         expected: '`.post-body` の文字が `**D-1**\n2 行目` で改行が保たれ、`role="alert"`・`button`・`strong` を持たない'
+notes:
+  修正の入力の音声入力: レビュー中の書き込みの書き換えを `reviewEditForm` で描くとき、部品設計の `voice`・`voiceReason`・`elapsed`・`levels`・`voiceStatus`・`voiceDetail` と `on.editVoiceStart`・`on.editVoiceCancel`・`on.editVoiceDone` を、`reviewEditForm` の `voice` と `on.voiceStart`・`on.voiceCancel`・`on.voiceDone` へ渡す。ストーリーに部品設計の `PendingEditingRecording`・`PendingEditingTranscribing`・`PendingEditingInserted`・`PendingEditingVoiceDisabled` を足す

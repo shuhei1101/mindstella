@@ -25,3 +25,4 @@ components:
     container: frontend/src/features/comments/shared/thread-post.tsx
 notes:
   単体テスト: 同じフォルダの `thread-post.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  修正の入力の音声入力: '`editing` の間、部品設計の `voice`・`voiceReason`・`elapsed`・`levels`・`voiceStatus`・`voiceDetail` と `onEditVoiceStart`・`onEditVoiceCancel`・`onEditVoiceDone`（と押せないときの `onEditVoiceBlocked`）を `ReviewEditForm` へそのまま渡す。`editBody` は入力欄の中身で、書き換えは `onEditInput(id, body)` で使う側へ知らせる。ストーリーに部品設計の `PendingEditingRecording`・`PendingEditingTranscribing`・`PendingEditingInserted`・`PendingEditingVoiceDisabled` を足す'
