@@ -190,6 +190,25 @@ def test_workspace_ids() -> None:
     assert result == [WORKSPACE_A, WORKSPACE_C]
 
 
+def test_workspace_ids_when_config_list() -> None:
+    """config が並びの行は先頭の要素で見分ける（正常系）。"""
+    # 準備
+    settings = {
+        "sources": [
+            {"id": WORKSPACE_A, "config": ["/w/a/.mindstella/dev-docs.yaml"], "outsideRead": True},
+            {
+                "id": "mindstella-agent-flows",
+                "config": ["/p/agent-flows/dev-docs.yaml"],
+                "outsideRead": True,
+            },
+        ]
+    }
+    # 実行
+    result = startup.workspace_ids(settings)
+    # 検証
+    assert result == [WORKSPACE_A]
+
+
 def test_check_agent_flows_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """前のプラグインを指していれば config だけを書き換える（正常系）。"""
     # 準備
@@ -218,6 +237,31 @@ def test_check_agent_flows_source_when_same(tmp_path: Path, monkeypatch: pytest.
     settings = {
         "version": "v1",
         "sources": [_row("mindstella-agent-flows", _current_agent_flows_config())],
+    }
+    monkeypatch.setattr(project_index, "get_settings", lambda port, **kwargs: settings)
+    monkeypatch.setattr(project_index, "patch_source", lambda *args: patched.append(args))
+    # 実行
+    result = startup.check_agent_flows_source(_context(tmp_path))
+    # 検証
+    assert result is False
+    assert patched == []
+
+
+def test_check_agent_flows_source_when_config_list(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """config が今のパス 1 つの並びなら書き換えない（正常系）。"""
+    # 準備
+    patched: list[object] = []
+    settings = {
+        "version": "v1",
+        "sources": [
+            {
+                "id": "mindstella-agent-flows",
+                "config": [_current_agent_flows_config()],
+                "outsideRead": True,
+            }
+        ],
     }
     monkeypatch.setattr(project_index, "get_settings", lambda port, **kwargs: settings)
     monkeypatch.setattr(project_index, "patch_source", lambda *args: patched.append(args))
