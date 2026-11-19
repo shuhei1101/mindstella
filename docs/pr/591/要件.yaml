@@ -77,3 +77,9 @@ scope_out:
   - item: thread-post の `MarkdownPost` ストーリーの本文の画像に代替テキストが無く、axe の `image-alt` が出ること
     reason: 'ストーリーの既存の不備で、今回の thread-post の変更（`table: false` の指定）と関係しない。今回の要望に含まれない'
     plan: '#599'
+  - item: 全画面の埋め込んだ HTML の結合テスト（`test_embedded_html_in_full`）が、mdmark の図の右上のパネルが畳んで隠した拡大のボタンを押せずに fail すること
+    reason: mdmark の図のパネルの変更（shuhei1101/mdmark#659）にテストが追従していない既存の不具合で、develop（`044bbcb1`）でも同じ箇所で fail する。今回の要望（mdmark の最新を読み込む・mdmark の部品を上書きしない）に含まれない
+    plan: '#610'
+  - item: 詳細パネルの差分のミニマップで印の無い所を押す結合テスト（`test_diff_minimap_when_empty_area_pressed`）が、押した位置まで本文が送られずに fail すること
+    reason: develop（`044bbcb1`）でも同じ値で fail する既存の不具合で、今回の変更（本文の表・mdmark の ref）と関係しない。今回の要望に含まれない
+    plan: '#611'
