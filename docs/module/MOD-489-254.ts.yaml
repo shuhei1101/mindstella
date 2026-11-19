@@ -207,6 +207,25 @@ stores:
             condition: '`parametrize`: `review:C-1` を `view: thread` で録音中に `thread` / `review` で呼ぶ / `results` に `review:C-1`（`view: panel`）があり `panel` で呼ぶ / どちらも無い'
             mock: '`vi.stubGlobal`'
             expected: C-1 / null / C-1 / null
+      - name: discardReviewVoice
+        title: 削除・送信した書き込みへの録音を捨てる
+        kind: メソッド
+        summary: 画面からレビュー中の書き込みを削除・送信した応答が成功したときに呼ぶ。`session` の向けた先が `ids` のどれかの `review` なら、録音・文字起こしにかかわらず `cancelVoice` と同じく捨て、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にする。`results` の `review:{id}` も消す（記録の読み直しを待たずに捨て、「元に戻す」で戻しても結果を入れない）
+        args:
+          - name: ids
+            type: string[]
+            required: true
+            description: 削除・送信したレビュー中の書き込みの ID
+        returns:
+          type: void
+          description: '-'
+        unit_tests:
+          - name: test_discard_review_voice
+            case: 正常
+            summary: 削除・送信した書き込みへの録音と結果を、読み直しを待たずに捨てる
+            condition: '`parametrize`: `review:C-1` を録音中に `["C-1"]` / 文字起こし中に `["C-1"]` / `results` に `review:C-1` があり `["C-1"]` / `review:C-1` を録音中に `["C-2"]`'
+            mock: '`vi.stubGlobal`'
+            expected: '`cancel` が 1 回で `session` が null、`notice` が `discarded` / `finishVoice` が `discarded` を返し `results` が空 / `takeVoiceResult("review:C-1")` が null / `session` がそのまま'
 notes:
   単体テスト: 同じフォルダの `voice-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
   画面の消灯の抑止: '`visibilitychange` で画面が見えたとき、`session` が `recording` で抑止が解かれていれば `acquireWakeLock` を呼び直す。購読はストアを作るときに 1 回だけ張る'

@@ -103,4 +103,4 @@ components:
     container: frontend/src/app/preview-shell.tsx
 notes:
   単体テスト: 同じフォルダの `preview-shell.test.tsx` に置く（knowledge の規約『フォルダ構成』）
-  修正の入力の音声入力: '`voiceTargetFor` は、向けた先が `{review, thread, target}` のとき、開く画面が `thread` ならそのスレッド、`review` ならコメントの一覧のレビュー中の書き込みの画面、`panel`・`full` なら `target` の詳細パネル（詳細の全画面）を開く。`discardVoice` に渡す `exists` は、`review` の向けた先をレビュー中のコメント（`commentsQuery` の `items`）にその ID があるかで確かめる。単体テストに、修正の入力で録音中にトップバーの表示を押すとレビュー中の書き込みの画面が開き、そのコメントを消して読み直すと録音を捨てる場合（`test_preview_shell_when_review_voice`）を足す'
+  修正の入力の音声入力: '`voiceTargetFor` は、向けた先が `{review, thread, target}` のとき、開く画面が `thread` ならそのスレッド、`review` ならコメントの一覧のレビュー中の書き込みの画面、`panel`・`full` なら `target` の詳細パネル（詳細の全画面）を開く。`discardVoice` に渡す `exists` は、`review` の向けた先をレビュー中のコメント（`commentsQuery` の `items`）にその ID があるかで確かめる。単体テストに、修正の入力で録音中にトップバーの表示を押すとレビュー中の書き込みの画面が開き、ほかの画面でそのコメントが記録から無くなって読み直すと録音を捨てる場合（`test_preview_shell_when_review_voice`）を足す。画面からの削除・送信で捨てる経路は `use-comments` の `useRemoveComment`・`useSendComments` が `discardReviewVoice` を呼ぶ'

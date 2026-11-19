@@ -44,7 +44,7 @@ functions:
     title: 書き込みを消す
     kind: フック
     usecase: コメントを選んで送る
-    summary: '`DELETE /api/comments/{id}` を呼び、返った中身を「元に戻す」のために返す'
+    summary: '`DELETE /api/comments/{id}` を呼び、返った中身を「元に戻す」のために返す。成功したら `discardReviewVoice([id])` を呼ぶ'
     returns:
       type: UseMutationResult
       description: mutation
@@ -55,12 +55,18 @@ functions:
         condition: '200'
         mock: MSW
         expected: 返った中身に `id`・`created`
+      - name: test_use_remove_comment_when_review_voice
+        case: 正常
+        summary: 修正の入力で録音中の書き込みを消すと、読み直しを待たずに録音を捨てる
+        condition: '`review:C-1` を録音中。`DELETE /api/comments/C-1` が 200'
+        mock: MSW と `vi.stubGlobal`
+        expected: 応答の直後に `session` が nullで `notice` が `discarded`
     container: frontend/src/shared/hooks/use-comments.ts
   - name: useSendComments
     title: まとめて送る
     kind: フック
     usecase: コメントを選んで送る
-    summary: '`POST /api/comments/send` を呼び、成功でレビュー中の書き込みとスレッドを読み直す。409 の `stale` を返す'
+    summary: '`POST /api/comments/send` を呼び、成功で送った ID の `discardReviewVoice` を呼び、レビュー中の書き込みとスレッドを読み直す。409 の `stale` を返す'
     returns:
       type: UseMutationResult
       description: mutation
@@ -77,6 +83,12 @@ functions:
         condition: 409 と `stale`
         mock: MSW
         expected: '`stale` が返り、読み直さない'
+      - name: test_use_send_comments_when_review_voice
+        case: 正常
+        summary: 修正の入力で録音中の書き込みを送ると、録音を捨てる
+        condition: '`review:C-1` を録音中。`POST /api/comments/send` へ `[C-1]` が 201'
+        mock: MSW と `vi.stubGlobal`
+        expected: 応答の直後に `session` が nullで `notice` が `discarded`
     container: frontend/src/shared/hooks/use-comments.ts
   - name: useSaveDraft
     title: 書きかけの保存
