@@ -39,7 +39,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T06:41:17.688811+00:00'
   - process: モック作成
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T07:05:55.235503+00:00'
   - process: データ設計
     status: skipped
     reason: 設定は端末の保存領域の個人の上書きに持ち、データの設計書は持たない。キーと値の形はインターフェース定義の制約が持つ
