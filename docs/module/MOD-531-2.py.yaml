@@ -37,13 +37,19 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/project_index.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`GET /settings/sources` の応答（`settingsPath`・`sources[]`・`version`）を返す'
+    summary: '`GET /settings/sources` の応答（`settingsPath`・`sources[]`・`version`）を返す。打ち切る秒数を `timeout` で渡せる（省くと `REQUEST_TIMEOUT_SEC`）'
     args:
       - name: port
         type: int
         required: true
         passing: positional
         description: project-index のポート
+      - name: timeout
+        type: float
+        required: false
+        default: REQUEST_TIMEOUT_SEC
+        passing: keyword
+        description: 1 回の HTTP を打ち切る秒数。常駐サーバーの起動時の照合が待ち受けの前に短い値を渡す
     returns:
       type: dict
       description: 応答の JSON
@@ -57,6 +63,12 @@ functions:
         condition: テストが空きポートで立てた HTTP のサーバーが JSON を返す
         mock: なし
         expected: 同じ辞書
+      - name: test_get_settings_when_timeout_given
+        case: 正常
+        summary: 渡した秒数で打ち切る
+        condition: テストが空きポートで立てた、応答を 1 秒遅らせる HTTP のサーバーに `timeout=0.2` で呼ぶ
+        mock: なし
+        expected: '`ProjectIndexError` が約 0.2 秒で送られる'
   - name: add_source
     title: 配信元の行を足す
     kind: 関数

@@ -190,8 +190,8 @@
 
 /* 波形の棒: 音量（--lv は 0〜1）に合わせて伸ばし、録音中の丸と同じ色にする（今の画面の `.send-wave i` と同じ） */
 @utility wave-bar {
-  flex: 0 1 3px;
-  min-inline-size: 2px;
+  flex: none;
+  inline-size: 3px;
   block-size: max(2px, calc(var(--lv) * 100%));
   max-block-size: calc(1lh + 2px);
   background: var(--st-review);

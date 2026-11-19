@@ -1,0 +1,3 @@
+$ /tmp/pr604-venv/bin/ruff check tests/integration/server/test_startup_reconcile.py tests/integration/server/test_mcp_server.py tests/workspace_fixtures.py tests/session_fixtures.py plugins/mindstella/skills/mindmap/scripts/startup.py plugins/mindstella/skills/mindmap/scripts/server.py tests/unit/scripts/test_startup.py
+（結合テスト作成の lint。結合テスト作成と実装の修正で変えた Python のファイル。型検査と ESLint は .ts を変えないため回していない）
+All checks passed!

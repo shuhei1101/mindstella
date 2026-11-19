@@ -44,6 +44,11 @@ SERVER_SCRIPT = (
 # 子プロセス 1 回を待つ上限秒数
 COMMAND_TIMEOUT_SEC = 120
 
+# 常駐サーバーが project-index を呼ぶポートを読む環境変数と、待ち受けるプロセスの無いポート
+# （起動時の照合が利用者の端末の project-index を呼んで、配信元の行を書き換えないようにする）
+PROJECT_INDEX_PORT_ENV = "PROJECT_INDEX_PORT"
+UNREACHABLE_PROJECT_INDEX_PORT = "1"
+
 # 常駐サーバーが待ち受けるホストと、待ち受けのポートを読む環境変数の名前
 LISTEN_HOST = "127.0.0.1"
 PORT_ENV = "MINDSTELLA_PORT"
@@ -464,7 +469,12 @@ class McpServer:
 def start_server(tmp_path: Path) -> Iterator[StartServer]:
     """常駐サーバーを空きポートで子プロセスとして起動する関数を返し、テストの後で全て止める。"""
     # 子プロセスの入出力を UTF-8 に揃える（既定の文字コードに左右されないため）
-    base_env = {**os.environ, "PYTHONUTF8": "1", MDMARK_COMMAND_ENV: NOOP_MDMARK_COMMAND}
+    base_env = {
+        **os.environ,
+        "PYTHONUTF8": "1",
+        MDMARK_COMMAND_ENV: NOOP_MDMARK_COMMAND,
+        PROJECT_INDEX_PORT_ENV: UNREACHABLE_PROJECT_INDEX_PORT,
+    }
     started: list[McpServer] = []
 
     def _start(
@@ -496,6 +506,7 @@ def mcp_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[McpServer]:
             "PYTHONUTF8": "1",
             STATE_HOME_ENV: str(tmp_path_factory.mktemp("mcp-server-state")),
             MDMARK_COMMAND_ENV: NOOP_MDMARK_COMMAND,
+            PROJECT_INDEX_PORT_ENV: UNREACHABLE_PROJECT_INDEX_PORT,
         },
         cwd=tmp_path_factory.mktemp("mcp-server-cwd"),
     )

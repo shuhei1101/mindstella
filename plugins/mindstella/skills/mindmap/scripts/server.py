@@ -31,10 +31,17 @@ import commands
 import notify
 import project_index
 import sessions
+import startup
 import state
 import workspaces
 from claude_input import InputTargets, Session, parse_session
-from errors import ArgumentError, MindmapError, NotMindStellaSessionError, SchemaMismatchError
+from errors import (
+    ApiError,
+    ArgumentError,
+    MindmapError,
+    NotMindStellaSessionError,
+    SchemaMismatchError,
+)
 from serve import LISTEN_HOST, PreviewRegistry, load_external_access
 from store import LEGACY_HINT, require_workspace, workspace_lock
 from transcriber_registry import InvalidTranscriberError, load_transcriber
@@ -72,6 +79,7 @@ TOOL_NAMES = (
     "close_workspace",
     "reopen_workspace",
     "delete_workspace",
+    "update_workspace",
     "server_status",
     "server_stop",
 )
@@ -243,15 +251,19 @@ def main(
     )
     app = mcp_server.streamable_http_app(streamable_http_path=MCP_PATH, host=LISTEN_HOST)
     http_server = (make_server or _make_http_server)(app)
+    # 待ち受けの前に、ID の一覧を作り直し、前の常駐サーバーの間に落ちた MindStella のセッションを照合する
+    startup.reconcile_before_listen(context)
+    # 落ちた MindStella のセッションを見回る（終えるときに止める）
+    stop_watch = threading.Event()
+    sessions.start_crash_watch(context, stop_watch)
+    # 待ち受けと並行して、エージェントフローの配信元の行を今のプラグインへ向け直す
+    startup.start_agent_flows_check(context)
     logger.info(
         "常駐サーバーが待ち受けを始めた（ポート %s、バージョン %s、PID %s）",
         port,
         version,
         os.getpid(),
     )
-    # 落ちた MindStella のセッションを見回る（終えるときに止める）
-    stop_watch = threading.Event()
-    sessions.start_crash_watch(context, stop_watch)
     # uvicorn は終わり終えてから受けたシグナルを元の受け口へ送り直すので、SIGTERM を SystemExit にして finally まで進める
     previous_sigterm = signal.signal(signal.SIGTERM, _exit_on_sigterm)
     try:
@@ -846,6 +858,49 @@ def build_server(
         return call_tool(
             lambda: workspaces.delete_workspace(workspace_id, context), write_lock=write_lock
         )
+
+    @server.tool(
+        name="update_workspace",
+        description=(
+            "ワークスペースの設定のキー・進め方の文書・追加の MCP・プラグインを書き換える。"
+            "起動中の MindStella のセッションには反映せず、起動し直し（restart_session）か次の作成から有効になる"
+        ),
+    )
+    def update_workspace(
+        workspace_id: WorkspaceIdArg,
+        settings: Annotated[
+            dict[str, Any] | None,
+            Field(description="置き換える設定のキー（update_settings と同じキー）"),
+        ] = None,
+        flow: Annotated[
+            dict[str, str] | None,
+            Field(description="進め方の文書 {source: 配信元の ID, doc: 文書の ID}"),
+        ] = None,
+        mcp_config: Annotated[
+            dict[str, Any] | None,
+            Field(description="Claude Code の --mcp-config に渡す JSON（{mcpServers: {...}}）"),
+        ] = None,
+        plugin_dirs: Annotated[
+            list[str] | None,
+            Field(description="Claude Code の --plugin-dir に渡すフォルダの絶対パス"),
+        ] = None,
+        remove_flow: Annotated[
+            bool, Field(description="真のとき進め方の文書を外す（flow と同時には指定できない）")
+        ] = False,
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        # SDK は省いた引数に既定値を入れて渡すので、null でない引数だけを本文にする
+        given = {"settings": settings, "flow": flow, "mcp_config": mcp_config, "plugin_dirs": plugin_dirs}
+        request = {key: value for key, value in given.items() if value is not None}
+
+        def run() -> dict[str, Any]:
+            if remove_flow:
+                if flow is not None:
+                    raise ApiError(400, "body", "flow と remove_flow は同時に指定できません")
+                request["flow"] = None
+            return workspaces.update_workspace(workspace_id, request, context)
+
+        return call_tool(run, write_lock=write_lock)
 
     @server.tool(
         name="server_status",

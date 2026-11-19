@@ -1,0 +1,166 @@
+title: 常駐サーバーの起動
+lead: 常駐サーバーが起動したときに、待ち受けを始める前に、ワークスペースの ID の一覧が無ければ配信元の行から作り直し、前の常駐サーバーの間に落ちた MindStella のセッションを落ちたものとして記録して通知し、待ち受けを始めた後に、エージェントフローの配信元のパスが今のプラグインと違えば登録し直す単一ユースケース。
+issue: 525
+test_file: tests/e2e/単一ユースケース/test_resident_server_startup.py
+primary_actor: 常駐サーバー
+stakeholders:
+  - name: 利用者
+    interest: 常駐サーバーを起動し直した・プラグインを更新した後も、落ちた MindStella のセッションに気づけ、作ったワークスペースを扱え、エージェントフローを参照できる
+  - name: 外部のアプリ
+    interest: 常駐サーバーが起動し直した直後の状態の取得で、落ちた MindStella のセッションを起動中と受け取らない。状態のフォルダの ID の一覧が削除されても、作ったワークスペースを一覧と状態の取得で取得できる
+trigger: 常駐サーバーが起動する（SessionStart のフック・起動のコマンドが systemd --user のユニットを起動する・再起動する、systemd --user が落ちた常駐サーバーを起動し直す）
+preconditions:
+  - プラグイン mindstella がインストールされている
+success_guarantee: 待ち受けを始めたときには、状態が起動中の MindStella のセッションのうち tmux のペインか Claude Code のプロセスが無いものが落ちたと記録され、『停止の通知』が 1 件ずつ呼ばれている。状態のフォルダに ID の一覧が無かったときは、project-index の配信元の行のうち MindStella が作ったワークスペースの行の ID で作り直されている。待ち受けを始めた後に、配信元 `mindstella-agent-flows` の行は今のプラグインのエージェントフローの配信の設定を指す。
+minimal_guarantee: 照合・ID の一覧の作り直し・エージェントフローの配信元の確認のどれかに失敗しても、常駐サーバーは待ち受けを始め、失敗を常駐サーバーのログに記録する。ID の一覧があるときは書き換えない。
+frequency: 常駐サーバーが起動するたび（端末の起動の後・プラグインの更新の後・常駐サーバーが落ちた後）
+priority: 高
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。受けた要求を記録して 200 を返却する）。tmux のペインと Claude Code のプロセスは、テストが起動した tmux のセッションと子プロセスで作る
+      - name: 常駐サーバー
+        description: まだ起動していない。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index、`MINDSTELLA_DISCORD_WEBHOOK_FILE` はエンドポイントの URL を記載した一時ファイル
+      - name: project-index
+        description: テストごとに起動した project-index。グローバルの設定のファイル（一時ファイル）に、ワークスペース A・B の行と、今のプラグインの `agent-flows/dev-docs.yaml` を指す `mindstella-agent-flows` の行がある
+      - name: 状態
+        description: ID の一覧に A・B がある。A の MindStella のセッションは `stopped`。B の MindStella のセッションは `running` でペインが無い
+        notes: 前の常駐サーバーの間に B の MindStella のセッションが落ちた場合に該当する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant SD as systemd --user
+        participant SV as 常駐サーバー
+        participant ST as 状態のフォルダ
+        participant PI as project-index
+        participant IF as 停止の通知
+        participant DC as Discord（Mock）
+
+        SD->>SV: 起動する
+        SV->>ST: ID の一覧がある
+        SV->>ST: running の MindStella のセッションを参照する
+        SV->>SV: A は stopped・B は running でペインが無い
+        SV->>ST: B を crashed に書き換える
+        SV->>IF: B・crashed
+        IF->>DC: POST
+        SV->>SV: /mcp と MindStella の API を待ち受ける
+        SV->>PI: 配信元の行を参照する
+        PI-->>SV: mindstella-agent-flows の行は今のプラグインを指している
+      ```
+    expected:
+      - 待ち受けを始めたときには、B の `session.json` の `status` が `crashed` になっている
+      - A の `session.json` の `status` が `stopped` のまま
+      - エンドポイントが、止まった理由が異常終了の B の要求を 1 件だけ受けている
+      - ID の一覧と、グローバルの設定のファイルが起動の前と同じ
+    test: test_normal
+    notes:
+      A を stopped にした理由: 落ちたかの判定が、同じ tmux のサーバーにほかのセッションがあるとペインの無い B も生きていると判定するため（#606）。#606 を片付けたら、A をペインと Claude Code のプロセスがある `running` に戻す
+  - name: 正常シナリオ（ID の一覧が無い）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ。ただし `MINDSTELLA_DISCORD_WEBHOOK_FILE` を指定しない
+      - name: project-index
+        description: 正常シナリオと同じ。グローバルの設定のファイルには、ワークスペースでない配信元の行も 1 行ある
+      - name: 状態
+        description: 状態のフォルダに `workspaces.yaml` が無い。A・B の `workspaces/{ID}/` は残っている。B の `session.json` は `running` でペインが無い
+        notes: 利用者が状態のフォルダの ID の一覧を削除した場合に該当する（D-323）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant SV as 常駐サーバー
+        participant ST as 状態のフォルダ
+        participant PI as project-index
+
+        SV->>ST: ID の一覧が無い
+        SV->>PI: 配信元の行を参照する
+        PI-->>SV: A・B・ワークスペースでない行・mindstella-agent-flows
+        SV->>ST: A・B で ID の一覧を作る
+        SV->>ST: 作った ID の一覧で running の MindStella のセッションを照合し、B を crashed に書き換える
+        SV->>SV: 待ち受ける
+        APP->>SV: ワークスペースの一覧を依頼する（GET /workspaces）
+        SV-->>APP: A・B
+      ```
+    expected:
+      - 状態のフォルダの `workspaces.yaml` の `ids` が A・B だけを持つ
+      - ワークスペースの一覧が A・B を返却する
+      - グローバルの設定のファイルが起動の前と同じ
+      - B の `session.json` の `status` が `crashed` になっている
+    test: test_normal_when_ids_missing
+  - name: 正常シナリオ（プラグインを更新した後）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ。ただし `MINDSTELLA_DISCORD_WEBHOOK_FILE` を指定しない
+      - name: project-index
+        description: 正常シナリオと同じ。ただし `mindstella-agent-flows` の行の `config` は、更新の前のプラグインのフォルダの `agent-flows/dev-docs.yaml` を指す
+      - name: 状態
+        description: ID の一覧に A がある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant SV as 常駐サーバー
+        participant PI as project-index
+
+        U->>SV: プラグインを更新した後に、起動のコマンドで常駐サーバーを再起動する
+        SV->>SV: 待ち受ける
+        SV->>PI: 配信元の行を参照する
+        PI-->>SV: mindstella-agent-flows の行は前のプラグインを指している
+        SV->>PI: 行の config を今のプラグインの agent-flows/dev-docs.yaml へ変える
+        U->>PI: search_docs source=mindstella-agent-flows id=mindstella/startup
+        PI-->>U: 今のプラグインのエージェントフロー
+      ```
+    expected:
+      - グローバルの設定のファイルの `mindstella-agent-flows` の行の `config` が、今のプラグインのフォルダの `agent-flows/dev-docs.yaml` を指している
+      - '`mindstella-agent-flows` の行の `scope`・`outside_read` と、ほかの行が起動の前と同じ'
+      - '`search_docs` で `mindstella/startup` を参照できる'
+    test: test_normal_when_plugin_updated
+  - name: 異常シナリオ（project-index が待ち受けていない）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ。ただし `MINDSTELLA_DISCORD_WEBHOOK_FILE` を指定せず、`PROJECT_INDEX_PORT` は、どのプロセスも待ち受けていないポート
+      - name: 状態
+        description: 状態のフォルダに `workspaces.yaml` が無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant SV as 常駐サーバー
+        participant ST as 状態のフォルダ
+        participant PI as project-index
+
+        SV->>ST: ID の一覧が無い
+        SV->>PI: 配信元の行を参照する
+        PI-->>SV: つながらない
+        SV->>SV: ID の一覧の作り直しを飛ばし、ログに記録する
+        SV->>SV: 待ち受ける
+        SV->>PI: 配信元の行を参照する
+        PI-->>SV: つながらない
+        SV->>SV: エージェントフローの配信元の確認を飛ばし、ログに記録する
+      ```
+    expected:
+      - 常駐サーバーが `/mcp` と MindStella の API を待ち受けている
+      - 状態のフォルダに `workspaces.yaml` が作られていない
+      - 常駐サーバーのログに、project-index へつながらず、ID の一覧の作り直しとエージェントフローの配信元の確認を飛ばしたことが記録されている
+    test: test_error_when_project_index_down
+refs:
+  - SC-489-20#
+  - SC-570-1#
+  - SC-597-1#
+  - SC-531-1#
+  - IF-605-1#
+decisions:
+  - D-323
+notes:
+  順番: ID の一覧の作り直し → 状態の照合の順に待ち受けを始める前に行い、エージェントフローの配信元の確認は待ち受けを始めた後に行う（普段の起動で project-index を待たないため）。作り直した ID の一覧のワークスペースも照合の対象にする
+  照合: 『落ちたことの見回り』の 1 回分と同じ判定・書き換えの鍵・通知を使用する。`stopping`・`restarting` は書き換えない。落ちた MindStella のセッションは起動し直さない（起動し直すのはコメントが届いたときと起動し直しの依頼）
+  ワークスペースの行: '`config` の末尾が `/.mindstella/dev-docs.yaml` の行（クローズした行も含む）。詳しい条件はインターフェース定義『常駐サーバーの起動時の照合』'
+  エージェントフローの配信元の行が無いとき: 追加しない。追加するのは『ワークスペースの作成』のまま
+  ID の一覧があるとき: 配信元の行と突き合わせず、書き換えない
+id: SC-605-1

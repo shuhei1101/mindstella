@@ -1,0 +1,3 @@
+$ ruff check plugins tests
+All checks passed!
+exit=0

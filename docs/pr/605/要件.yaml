@@ -1,0 +1,53 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-605-1.yaml
+    impact: new
+    detail: 常駐サーバーが起動したときに、状態で起動中の MindStella のセッションを tmux のペインとプロセスで照合して無いものを落ちたものとして記録し、ワークスペースの ID の一覧が無ければ配信元の行から作り直し、プラグインの配信元（エージェントフロー）のパスが今のプラグインと違えば登録し直す（資料 A-107 の No 10・A-119 の「常駐サーバーが起動した」・D-323）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-20.yaml
+    impact: following
+    detail: 常駐サーバーが起動した後の照合を、新しい常駐サーバーの起動のユースケースへつなぐ
+    depends_on:
+      - docs/scenario/SC-605-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: run_only
+    detail: 起動時の照合で落ちたと記録した MindStella のセッションの止まったことの通知が、見回りのときと同じに届くかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-597-1.yaml
+    impact: run_only
+    detail: 作り直した ID の一覧で、ワークスペースの一覧と状態の取得が作り直す前と同じワークスペースを返すかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: run_only
+    detail: ワークスペースの作成でのエージェントフローの配信元の登録が、起動時の登録し直しの追加で変わらないかを確かめる
+    depends_on: []
+docs:
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 常駐サーバーが起動したときに、起動中の MindStella のセッションを照合して落ちたものを記録・通知すること、ワークスペースの ID の一覧が無ければ配信元の行から作り直すこと、エージェントフローの配信元のパスが今のプラグインと違えば登録し直すことを記載する（`mindstella-agent-flows` の行を足す記載と、見回りの記載に合わせる）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T05:41:59.680518+00:00'
+  - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
+    new: false
+    change: プラグインを更新して常駐サーバーを起動し直したときに、エージェントフローの配信元のパスが登録し直されることを記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T05:41:59.680518+00:00'
+scope_out:
+  - item: 起動時の照合で落ちたと記録した MindStella のセッションを、常駐サーバーが自動で起動し直す
+    reason: 落ちた後の起動し直しは、コメントが届いたときと起動し直しの依頼だけと決めている（インターフェース定義『落ちたことの見回り』の制約「起動し直し」・資料 A-119 の「常駐サーバーが起動した」の行）
+    plan: none
+  - item: 常駐サーバーを起動し直した後に、利用者のスクリプトを呼ぶフックで、配信していた画面の外部への公開を登録し直す
+    reason: 起動時の状態の照合とは別の要望で、同じ内容の open の Issue がある
+    plan: '#600'
+  - item: ID の一覧が有るときに、配信元の行と突き合わせて足りない ID・余分な ID を書き換える
+    reason: 要望は ID の一覧が無いときの作り直し（資料 A-119 の「常駐サーバーが起動した」の行・D-323）。インターフェース定義『常駐サーバーの起動時の照合』の制約「ID の一覧の作り直しの条件」で、あるときは突き合わせないと決めた
+    plan: none
+  - item: MindStella のセッションの落ちたかの判定（`sessions.py` の `_dead_reason`）が、同じ tmux のサーバーにほかのセッションがあると、ペインの無い MindStella のセッションを生きていると判定する
+    reason: インターフェース定義『MindStella のセッションの一覧』の「落ちたかの判定」が、tmux 3.4 の `display-message -p -t` が無いセッションを指しても終了コード 0 を返すことで成り立たない（結合テスト作成で気づいた対象外の不具合）。今回の要望（起動時の照合）は既存の判定を使うだけで、判定の修正を含まない
+    plan: '#606'
