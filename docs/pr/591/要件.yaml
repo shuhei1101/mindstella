@@ -70,7 +70,7 @@ scope_out:
     plan: none
   - item: 本文の表の見出し行を、本文の区画を縦にスクロールしても区画の上端に留めること
     reason: mdmark の `mount` で描いた表は見出し行を留めず、スクロールする区画の中で留める位置もブラウザで変わる（shuhei1101/mdmark#683）。画面の CSS で mdmark を上書きしない方針のため、mdmark の対応を待ち、対応後に制約「本文の表とセクションの見せ方」の「留めない」を外す。この PR を mdmark の対応の待ちにするかは、承認確認でユーザーに確認する
-    plan: to_file
+    plan: '#614'
   - item: 今の画面の Storybook が React の SPA のバンドルを module でない script として読み込み、全てのストーリーで `import.meta` のエラーが出ること
     reason: '`.storybook/main.js` の `componentScripts()` の既存の不具合で、PR #591 の変更の前から出ている。今回の要望（mdmark の最新を読み込む・mdmark の部品を上書きしない）に含まれない'
     plan: '#598'
