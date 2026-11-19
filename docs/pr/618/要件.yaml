@@ -40,8 +40,8 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-39.yaml
-    impact: run_only
-    detail: 資料を書き出したファイルの名前と中身が変わらないかを確かめる
+    impact: changed
+    detail: 資料を Markdown で書き出したファイルの拡張子が mdmark の文書の拡張子になる
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-11.yaml
