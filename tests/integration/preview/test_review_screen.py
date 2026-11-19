@@ -1460,3 +1460,38 @@ def test_edit_voice_input_when_sent(
     expect(page.get_by_text("C-1 が削除されたため、録音を破棄しました。")).to_be_visible(timeout=UPDATE_TIMEOUT_MS)
     expect(page.get_by_role("button", name=re.compile("^音声入力中"))).to_have_count(0)
     assert fake.jobs == []
+
+
+def test_edit_voice_input_when_removed(
+    page: Page,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: StartVoicePreview,
+) -> None:
+    """修正の入力で録音中に別の行の修正へ移り、録音中の書き込みを削除すると、読み直しを待たずに録音を捨ててトップバーの表示を消し、捨てたことを知らせる。「元に戻す」で戻しても文字起こしの結果を入れない（異常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = start_voice_preview(fake.url, make_item("D-1"))
+    write_comments(root, make_comment("C-1", body="確認: でよい"), make_comment("C-2", body="二つ目"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        page.goto(f"{url}#tab=decisions&view=table")
+    open_review(page)
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    start_recording(page.locator(f"{_row('C-1')} form.row-edit"))
+    page.locator(_row("C-2")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    expect(page.get_by_role("button", name=re.compile("^音声入力中（D-1 へのコメントの修正）"))).to_be_visible()
+    # 実行（削除）
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを削除").click()
+    # 検証（録音を捨てて知らせる）
+    expect(page.get_by_text("C-1 が削除されたため、録音を破棄しました。")).to_be_visible(timeout=UPDATE_TIMEOUT_MS)
+    expect(page.get_by_role("button", name=re.compile("^音声入力中"))).to_have_count(0)
+    # 実行（元に戻す）
+    page.get_by_role("button", name="元に戻す").click()
+    # 検証（戻した書き込みは元の本文のままで、文字起こしの結果を入れない）
+    page.wait_for_selector(f"{_row('C-1')} .review-body", timeout=UPDATE_TIMEOUT_MS)
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "確認: でよい"
+    expect(page.get_by_text("文字起こしの結果を挿入しました。")).to_have_count(0)
+    assert fake.jobs == []
