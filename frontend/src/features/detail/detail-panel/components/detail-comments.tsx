@@ -50,6 +50,8 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
   const formOpen = prefs.commentFormClosed !== true;
   const add = useAddComment();
   const focusTarget = useFocusAfterAddTarget();
+  // 溜めた後にフォーカスを移す、下端のコメントの入力の form
+  const sendForm = useRef<HTMLFormElement>(null);
   const update = useUpdateComment();
   const remove = useRemoveComment();
   const saveDraft = useSaveDraft();
@@ -199,6 +201,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
         </section>
       )}
       <SendForm
+        formRef={sendForm}
         target={id}
         loc={loc}
         body={text}
@@ -225,8 +228,6 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
         onCopyBody={(value) => { void navigator.clipboard.writeText(value); }}
         onBlur={(value) => { saveDraft({ target: id, loc, thread: null, body: value }, true); }}
         onSubmit={(target, location, value) => {
-          // 溜めた後にフォーカスを移す入力（押したボタンか入力欄を持つ form）
-          const sent = document.activeElement?.closest("form") ?? null;
           setForm((current) => ({ ...current, status: "saving" }));
           add.mutate(
             { target, loc: location, body: value },
@@ -236,7 +237,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
                   setLoc(null);
                   setForm({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null });
                 });
-                focusAfterAdded(sent, focusTarget);
+                focusAfterAdded(sendForm.current, focusTarget);
               },
               onError: (error) => { setForm((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
             },

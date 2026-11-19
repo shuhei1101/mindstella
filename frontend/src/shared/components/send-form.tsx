@@ -57,6 +57,8 @@ export type SendFormProps = VoiceProps & {
   onBlur?: (body: string) => void;
   /** 開閉のボタンを押したとき（押した後の開閉） */
   onToggleOpen?: (open: boolean) => void;
+  /** 部品の form（使う側が溜めた後のフォーカスを `focusAfterAdded` で移すのに使う） */
+  formRef?: RefObject<HTMLFormElement | null>;
   /** 録音中の ✓（入力欄の中身そのまま） */
   onVoiceDone?: (target: string | null, loc: Location | null, body: string) => void;
 };
@@ -309,7 +311,7 @@ const LocationChip = ({ loc, id, onClearLoc }: { loc: Location; id: string; onCl
   </div>
 );
 
-export const SendForm = ({ target, loc, body, status, count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, voice = "idle", voiceReason = null, elapsed = 0, levels = [], entered = false, onSubmit, onInput, onClearLoc, onCopyBody, onFocus, onBlur, onToggleOpen, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked }: SendFormProps) => {
+export const SendForm = ({ target, loc, body, status, count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, voice = "idle", voiceReason = null, elapsed = 0, levels = [], entered = false, onSubmit, onInput, onClearLoc, onCopyBody, onFocus, onBlur, onToggleOpen, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked, formRef }: SendFormProps) => {
   const fieldId = useId();
   const messageId = `${fieldId}-msg`;
   const locId = `${fieldId}-loc`;
@@ -416,7 +418,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
   );
 
   return (
-    <form noValidate data-id={target ?? undefined} data-collapsed={folded ? "" : undefined} className={cn("grid gap-1.5 border-t border-border p-3", folded && "gap-0 p-2", !open && target !== null && "py-2")} onSubmit={handleSubmit} onBlur={handleBlur}>
+    <form ref={formRef} noValidate data-id={target ?? undefined} data-collapsed={folded ? "" : undefined} className={cn("grid gap-1.5 border-t border-border p-3", folded && "gap-0 p-2", !open && target !== null && "py-2")} onSubmit={handleSubmit} onBlur={handleBlur}>
       {target === null ? (
         <>
           {line}

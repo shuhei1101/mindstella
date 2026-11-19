@@ -40,6 +40,8 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   const setStatus = useSetThreadStatus();
   const addComment = useAddComment();
   const focusTarget = useFocusAfterAddTarget();
+  // 溜めた後にフォーカスを移す、返信の入力の form
+  const replyForm = useRef<HTMLFormElement>(null);
   const updateComment = useUpdateComment();
   const removeComment = useRemoveComment();
   const saveDraft = useSaveDraft();
@@ -110,15 +112,13 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
     );
   };
   const submitReply = (target: string, body: string): void => {
-    // 溜めた後にフォーカスを移す入力（押したボタンか入力欄を持つ form）
-    const sent = document.activeElement?.closest("form") ?? null;
     setReply((current) => ({ ...current, status: "saving" }));
     addComment.mutate(
       { target: null, loc: null, thread: target, body },
       {
         onSuccess: (result) => {
           flushSync(() => { setReply({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); });
-          focusAfterAdded(sent, focusTarget);
+          focusAfterAdded(replyForm.current, focusTarget);
         },
         onError: (error) => {
           setReply((current) => ({ ...current, status: "failed", detail: detailOf(error) }));
@@ -283,6 +283,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
         </p>
       ) : (
         <ReplyForm
+          formRef={replyForm}
           thread={thread.id}
           body={reply.body}
           status={voice.status === "idle" ? reply.status : voice.status}

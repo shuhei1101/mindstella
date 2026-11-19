@@ -39,6 +39,8 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
   const add = useAddComment();
   const saveDraft = useSaveDraft();
   const focusTarget = useFocusAfterAddTarget();
+  // 溜めた後にフォーカスを移す、新しいスレッドの入力の form
+  const sendForm = useRef<HTMLFormElement>(null);
   const voice = useVoiceInput({
     key: NEW_THREAD_VOICE_KEY,
     destination: { target: null, loc: null },
@@ -56,6 +58,7 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
   });
   return (
             <SendForm
+              formRef={sendForm}
               target={null}
               loc={null}
               label="新しいスレッド"
@@ -78,15 +81,13 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
                 saveDraft({ target: null, loc: null, thread: null, body: next });
               }}
               onSubmit={(_target, _loc, text) => {
-                // 溜めた後にフォーカスを移す入力（押したボタンか入力欄を持つ form）
-                const sent = document.activeElement?.closest("form") ?? null;
                 setFree((current) => ({ ...current, status: "saving" }));
                 add.mutate(
                   { body: text },
                   {
                     onSuccess: (result) => {
                       flushSync(() => { setFree({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); });
-                      focusAfterAdded(sent, focusTarget);
+                      focusAfterAdded(sendForm.current, focusTarget);
                     },
                     onError: (error) => { setFree((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
                   },

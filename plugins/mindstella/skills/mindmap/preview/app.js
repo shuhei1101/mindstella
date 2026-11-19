@@ -1784,9 +1784,10 @@ var MindmapPreview;
                         }
                         if (!shown)
                             return;
-                        redrawVoiceForm(state, true);
-                        // 溜めた・送った: 入力欄へ戻さない設定なら、✓ の位置に戻った「レビューに追加」へフォーカスを移す
-                        if (delivered && addedFocus() === "submit")
+                        // 溜めた・送った: 入力欄へ戻さない設定なら、入力欄を経ずに ✓ の位置に戻った「レビューに追加」へフォーカスを移す
+                        const toSubmit = delivered && addedFocus() === "submit";
+                        redrawVoiceForm(state, !toSubmit);
+                        if (toSubmit)
                             focusSubmitOf(voiceField(state));
                         // 挿入した: カーソルを挿入した文字の後ろへ置く。中身が元のままの失敗: 押したときの範囲へ戻す
                         if (outcome.caret !== null && !delivered)

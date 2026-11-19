@@ -1,5 +1,5 @@
 // 返信の入力（部品設計『返信の入力.tsx』）。スレッドの下端に留める、返信をレビュー中に溜める入力欄と「レビューに追加」のボタン
-import { useId, useRef, type SyntheticEvent, type KeyboardEvent } from "react";
+import { useId, useRef, type KeyboardEvent, type RefObject, type SyntheticEvent } from "react";
 
 import { Icon } from "@/shared/components/icon";
 import { fieldLocked, useVoiceFocus, VoiceButtons, VoiceProgress, VoiceResult, VoiceWave, type VoiceProps } from "@/shared/components/send-form";
@@ -20,6 +20,8 @@ export type ReplyFormProps = VoiceProps & {
   count?: number | null;
   detail?: string | null;
   onSubmit: (thread: string, body: string) => void;
+  /** 部品の form（使う側が溜めた後のフォーカスを `focusAfterAdded` で移すのに使う） */
+  formRef?: RefObject<HTMLFormElement | null>;
   onInput: (body: string) => void;
   /** 録音中の ✓（スレッドの ID と入力欄の中身そのまま） */
   onVoiceDone?: (thread: string, body: string) => void;
@@ -53,7 +55,7 @@ const ReplyResult = ({ status, count, detail }: { status: ReplyStatus; count: nu
   return null;
 };
 
-export const ReplyForm = ({ thread, body, status, count = null, detail = null, voice = "idle", voiceReason = null, elapsed = 0, levels = [], entered = false, onSubmit, onInput, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked }: ReplyFormProps) => {
+export const ReplyForm = ({ thread, body, status, count = null, detail = null, voice = "idle", voiceReason = null, elapsed = 0, levels = [], entered = false, onSubmit, onInput, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked, formRef }: ReplyFormProps) => {
   const fieldId = useId();
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const doneRef = useRef<HTMLButtonElement>(null);
@@ -82,7 +84,7 @@ export const ReplyForm = ({ thread, body, status, count = null, detail = null, v
     }
   };
   return (
-    <form noValidate data-part="reply" className="grid gap-1.5 border-t border-border p-3" onSubmit={handleSubmit}>
+    <form ref={formRef} noValidate data-part="reply" className="grid gap-1.5 border-t border-border p-3" onSubmit={handleSubmit}>
       <label htmlFor={fieldId} className="text-small text-muted-foreground">
         返信
       </label>
