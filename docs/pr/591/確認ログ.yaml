@@ -11,3 +11,9 @@ confirmations:
     approver: shuhei1101
     commit: 304d618656340a8c8848a31320f84b6941f91c09
     thread: https://github.com/shuhei1101/mindstella/pull/591#discussion_r4616536650
+  - topic: 要件の終了の条件「最新を読み込むまでの遅れ」を「jsDelivr がその commit の配布物を配り始めてから 150 秒以内」に書き換えるか
+    decision: 「jsDelivr がその commit の配布物を配り始めてから 150 秒以内」にし、常駐サーバーは jsDelivr が配ることを確かめてから新しい commit に切り替える（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: c58a4aad
+    thread: https://github.com/shuhei1101/mindstella/pull/591#discussion_r4617970071
