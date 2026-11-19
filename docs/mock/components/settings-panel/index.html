@@ -125,7 +125,7 @@
         const items = w.opts.map(([v, l]) => `<li><label><input type="radio" name="${name}" value="${v}" data-act="sfocus" ${m.focus === v ? "checked" : ""}><span class="st-k-label">${l}${v === "auto" ? `<span class="st-k-sub">${w.sub[m.pointer]}</span>` : ""}</span></label></li>`).join("");
         const detail = document.querySelector(`[data-demo="${i}"] [data-act=sminimap]`).closest("fieldset");
         if (m.focusAt === "detail") {
-          detail.querySelector(".st-kinds").insertAdjacentHTML("beforeend", `<li role="none"><fieldset class="st-sec" style="padding: 8px 12px;"><legend>${w.label}</legend><ul class="st-kinds">${items}</ul></fieldset></li>`);
+          detail.querySelector(".st-kinds").insertAdjacentHTML("beforeend", `<li><fieldset class="st-sec" style="padding: 8px 12px;"><legend>${w.label}</legend><ul class="st-kinds">${items}</ul></fieldset></li>`);
         } else {
           detail.insertAdjacentHTML("afterend", `<fieldset class="st-sec"><legend>コメントの入力</legend><fieldset class="st-sec"><legend class="st-k-label" style="font-weight: 400;">${w.label}</legend><ul class="st-kinds">${items}</ul><p class="st-hint">${w.hint}</p></fieldset></fieldset>`);
         }
