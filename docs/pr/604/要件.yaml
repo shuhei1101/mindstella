@@ -36,7 +36,9 @@ docs:
   - page: docs/guide/コマンド.md
     new: false
     change: 設定の書き換え（PATCH /workspaces/{id}）の API と、MindStella の MCP の同じ処理を呼ぶツールを追加し、起動中の MindStella のセッションへの反映は起動し直しで行うことを記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T04:05:13.160919+00:00'
 scope_out:
   - item: 設定の書き換えを受けたときに、起動中の MindStella のセッションを自動で起動し直す
     reason: 起動中の MindStella のセッションには反映せず、外部のアプリが起動し直しを依頼すると決めている（資料 A-119 の「設定の書き換え」・D-324）
