@@ -35,8 +35,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T09:14:56.802785+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
     note: SC-489-45（音声でコメントする）に修正の入力欄の流れを記載し、SC-489-3（コメントを選んで送る）から参照する
+    updated_by: planner
+    updated_at: '2026-11-19T09:22:05.564613+00:00'
   - process: モック作成
     status: skipped
     reason: Issue がコメント・返信の入力欄と同じ操作（マイクのボタン・波形・× と ✓）を指定しており、見た目を作り手が決める余地が無い
