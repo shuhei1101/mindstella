@@ -237,7 +237,7 @@ scenarios:
         PI-->>CC: 中身と本文
       ```
     expected:
-      - 足した T-1・G-1・N-1 が、それぞれ `body` に `{ID}.md` を持ち、`.mindstella/docs/` にその Markdown がある
+      - 足した T-1・G-1・N-1 が、それぞれ `body` に `{ID}.mark.md` を持ち、`.mindstella/docs/` にその Markdown がある
       - 検索した本文が、T-1・G-1 は渡した本文、N-1 は 2 行目を書き換えた後の本文である
       - N-1 の本文の 1 行目は、書き換えの前と同じである
       - N-1 が変更履歴を 1 回分持ち、その回が本文の 2 行目の差分を持つ
@@ -334,24 +334,24 @@ scenarios:
         participant CD as 変更の検知
 
         CC->>PI: Markdown の本文を渡して資料 A-1 を書き込む
-        PI->>WS: docs.yaml と .mindstella/docs/A-1.md を書く
+        PI->>WS: docs.yaml と .mindstella/docs/A-1.mark.md を書く
         CC->>PI: body を A-1.html にし、HTML の本文を渡して A-1 を直す
         PI->>WS: docs.yaml と .mindstella/docs/A-1.html を書く
-        CD->>WS: どの項目も指さなくなった A-1.md を消す
+        CD->>WS: どの項目も指さなくなった A-1.mark.md を消す
         CC->>PI: A-1 の HTML の本文の 2 行目だけを書き換える
         CD->>WS: 本文の差分を変更履歴に積む
-        CC->>PI: body を A-1.md にし、Markdown の本文を渡して A-1 を直す
+        CC->>PI: body を A-1.mark.md にし、Markdown の本文を渡して A-1 を直す
         CD->>WS: どの項目も指さなくなった A-1.html を消す
       ```
     expected:
-      - HTML に替えた後、A-1 の `body` が `A-1.html` で、`.mindstella/docs/` に渡した HTML の本文があり、`A-1.md` が残らない
+      - HTML に替えた後、A-1 の `body` が `A-1.html` で、`.mindstella/docs/` に渡した HTML の本文があり、`A-1.mark.md` が残らない
       - 書き換えた後の HTML の本文の 2 行目が `<p>絞り込みの画面</p>` で、ほかの行は変わらない
       - A-1 の変更履歴が、HTML の本文の 2 行目の差分を持つ回を持つ
-      - Markdown に戻した後、A-1 の `body` が `A-1.md` で、`.mindstella/docs/` に `A-1.html` が残らない
+      - Markdown に戻した後、A-1 の `body` が `A-1.mark.md` で、`.mindstella/docs/` に `A-1.html` が残らない
       - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     test: test_normal_when_doc_body_html
     notes:
-      本文の形式の持ち方: 形式は `body` のファイル名の拡張子（`{ID}.md` / `{ID}.html`）で表す。HTML の本文を持てる種類は種類のスキーマが決める
+      本文の形式の持ち方: 形式は `body` のファイル名の拡張子（`{ID}.mark.md` / `{ID}.html`）で表す。HTML の本文を持てる種類は種類のスキーマが決める
   - name: 異常シナリオ（資料以外に HTML の本文を渡す）
     setup:
       - name: Mock
@@ -367,9 +367,9 @@ scenarios:
         participant PI as project-index
 
         CC->>PI: HTML の本文を渡してタスクを書き込む
-        PI-->>CC: 違反（タスクの body は .md だけ）
+        PI-->>CC: 違反（タスクの body は .mark.md だけ）
         CC->>PI: HTML の本文を渡して T-1 を直す
-        PI-->>CC: 違反（タスクの body は .md だけ）
+        PI-->>CC: 違反（タスクの body は .mark.md だけ）
       ```
     expected:
       - どちらの `write_docs` も違反を返し、違反にキー `body` がある

@@ -246,6 +246,38 @@ scenarios:
       - 写しが取られていない
       - project-index の `search_docs` で A-1 を参照した結果に、スキーマに合わない旨の警告が無い
     test: test_normal_when_schema_copy_stale
+  - name: 正常シナリオ（本文の Markdown を mdmark の文書の拡張子へ改名する）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。常駐サーバーと project-index を起動し、MindStella の API のワークスペースの作成と、MindStella の MCP の `check` を呼ぶ
+      - name: 本文が `.md` のワークスペース
+        description: '`.mindstella/mindstella-version.ini` がこの移し替えの手順を持つバージョンより前で、検討事項 D-1 が `body: docs/D-1.md`、資料 A-1 が `body: docs/A-1.md`、資料 A-2 が `body: docs/A-2.html` を持ち、`.mindstella/docs/` にそれぞれの本文のファイルがあるワークスペース'
+        notes: YAML と本文を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CL as 外部のアプリ（起動のコマンド）
+        participant SV as 常駐サーバー
+        participant WS as ワークスペース
+
+        CL->>SV: ワークスペースを作成する
+        SV->>WS: 写しを取る
+        SV->>WS: docs/ の Markdown の本文を .mark.md へ改名し、項目の body を書き換える
+        SV->>WS: 点検し、バージョンのファイルを書き換える
+        SV-->>CL: ワークスペースの ID と画面の URL
+        CL->>SV: check
+        SV-->>CL: 問題 0 件
+      ```
+    expected:
+      - D-1 の `body` が `docs/D-1.mark.md`、A-1 の `body` が `docs/A-1.mark.md` で、`.mindstella/docs/` の `D-1.mark.md`・`A-1.mark.md` の中身が移し替える前の `D-1.md`・`A-1.md` と同じである
+      - '`.mindstella/docs/` に `D-1.md`・`A-1.md` が残らない'
+      - A-2 の `body` と `A-2.html` の中身が、移し替える前と同じである
+      - 既存の項目の ID が変わらず、project-index の `search_docs` で D-1 の本文がヒットする
+      - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインのバージョンで、ワークスペースが配信されている'
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_markdown_bodies_renamed
+    notes:
+      改名先が既にあるとき: 改名先の `.mark.md` が既にあるときの扱いと、履歴（`history.yaml`）が指す本文のパスの扱いはインターフェース定義設計で決める
 lead: 常駐サーバーが、ワークスペースを読み込むときに記録のバージョンとプラグインのバージョンを比べ、古ければバージョンごとの手順を順に適用して移し替え、スキーマの複製をプラグインのスキーマにそろえてから配信する単一ユースケース。
 issue: 43
 primary_actor: 常駐サーバー
