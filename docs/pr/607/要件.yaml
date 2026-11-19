@@ -6,6 +6,6 @@ use_cases:
     depends_on: []
 scope_out:
   - item: 'docs/mock/refs/500/assets/style.css の .send-wave i（同じ flex: 0 1 3px）'
-    reason: 'refs/500 は #500 で合意したモックの記録で、この作業 PR では書き換えないと判断した。docs/mock/components/send-form などが読むため、モックも揃えるかはレビューで確定する'
+    reason: 'Issue #535 が見た目の結果（棒の幅 3px・間隔 2px を変えない）を決めていてモック作成の工程を閉じ、#500 のモックの記録（refs/500）は書き換えない。今のモックは 120 本の棒が枠を超えて 2px に縮んで描かれている'
     plan: none
 docs: []
