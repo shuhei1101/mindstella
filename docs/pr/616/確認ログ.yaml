@@ -5,3 +5,15 @@ confirmations:
     approver: shuhei1101
     commit: acc1da87
     thread: https://github.com/shuhei1101/mindstella/pull/616#discussion_r4627356648
+  - topic: claude-balancer の待ち受け先と指定アカウントの自動解除の設定の置き場所
+    decision: mindstella のホームの設定 ~/.config/mindstella/settings.yaml を新規作成し、claude_balancer.url（既定 http://127.0.0.1:8770）と自動解除のオンオフを配置する。claude_balancer.url はペインにも CLAUDE_BALANCER_URL で指定する。利用枠を見回る間隔の上書きは環境変数のまま（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 7a333ea8
+    thread: https://github.com/shuhei1101/mindstella/pull/616#discussion_r4628400309
+  - topic: アカウントを指定した MindStella のセッションの起動し直し
+    decision: 起動し直しても指定したアカウントを使い続け、利用上限・しきい値で指定を解除して自動で選んだアカウントへ切り替える。解除は設定でオンオフでき既定はオン。オフのときはどの契機でも指定したアカウントのまま続け、利用上限で止めたままにして通知する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 7a333ea8
+    thread: https://github.com/shuhei1101/mindstella/pull/616#discussion_r4628403622

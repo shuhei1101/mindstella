@@ -38,10 +38,10 @@ docs:
     status: todo
   - page: docs/config/CFG-489-1.yaml
     new: false
-    change: claude-balancer の常駐の待ち受け先（CLAUDE_BALANCER_URL）と、利用枠を見回る間隔の上書き（MINDSTELLA_USAGE_WATCH_INTERVAL）を追加する
-    status: done
+    change: 利用枠を見回る間隔の上書き（MINDSTELLA_USAGE_WATCH_INTERVAL）を追加し、claude-balancer の待ち受け先と指定アカウントの自動解除のオンオフを mindstella のホームの設定 ~/.config/mindstella/settings.yaml に配置する
+    status: todo
     updated_by: planner
-    updated_at: '2026-11-19T11:48:36.223204+00:00'
+    updated_at: '2026-11-19T12:06:53.462530+00:00'
   - page: docs/module/MOD-531-4.py.yaml
     new: false
     change: 使用中のアカウントの利用枠を周期で確かめ、しきい値以上なら起動し直しを依頼する処理を追加する
