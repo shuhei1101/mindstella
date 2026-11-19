@@ -392,8 +392,8 @@ namespace MindmapPreview {
         },
       },
       children: [
-        field,
-        voice === null ? null : voiceWave(phase, voice.levels ?? []),
+        // 録音中は入力欄の場所に波形を出す（返信の入力と同じ横並びの行に置き、入力欄の幅に広げる）
+        voice === null ? field : h({ tag: "div", attrs: { class: "send-line" }, children: [field, voiceWave(phase, voice.levels ?? [])] }),
         message,
         voiceMessage,
         h({

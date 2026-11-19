@@ -67,7 +67,7 @@ export const ThreadPost = ({
   editError = null,
   editBody = null,
   open = false,
-  voice,
+  voice = "idle",
   voiceReason = null,
   elapsed = 0,
   levels = [],

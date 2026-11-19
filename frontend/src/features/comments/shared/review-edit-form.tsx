@@ -99,22 +99,25 @@ export const ReviewEditForm = ({ id, label, body, error = null, saving = false, 
         trySave();
       }}
     >
-      <Textarea
-        ref={fieldRef}
-        aria-label={`${label}の本文`}
-        aria-keyshortcuts="Control+Enter"
-        value={body}
-        readOnly={fieldLocked(saving, phase)}
-        // 録音中は波形と入れ替えて隠す（外さないので中身と選んだ範囲が残る）
-        hidden={phase === "recording"}
-        className="field-sizing-content resize-y field-edit"
-        onKeyDown={handleKeyDown}
-        onChange={(event) => {
-          setEmpty(false);
-          onBodyChange(event.target.value);
-        }}
-      />
-      <VoiceWave voice={phase} levels={levels} />
+      {/* 録音中は入力欄の場所に波形を出す（返信の入力と同じ横並びの行に置き、入力欄の幅に広げる） */}
+      <div className="flex items-end gap-2">
+        <Textarea
+          ref={fieldRef}
+          aria-label={`${label}の本文`}
+          aria-keyshortcuts="Control+Enter"
+          value={body}
+          readOnly={fieldLocked(saving, phase)}
+          // 録音中は波形と入れ替えて隠す（外さないので中身と選んだ範囲が残る）
+          hidden={phase === "recording"}
+          className="field-sizing-content min-w-0 flex-1 resize-y field-edit"
+          onKeyDown={handleKeyDown}
+          onChange={(event) => {
+            setEmpty(false);
+            onBodyChange(event.target.value);
+          }}
+        />
+        <VoiceWave voice={phase} levels={levels} />
+      </div>
       <EditMessage voice={phase} elapsed={elapsed} message={message} voiceStatus={voiceStatus} voiceDetail={voiceDetail} />
       <div className="flex justify-end gap-1.5">
         {voice === undefined ? (
