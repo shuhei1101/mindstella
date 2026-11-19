@@ -90,8 +90,8 @@ def workspace_ids(settings: dict[str, Any]) -> list[str]:
         if not isinstance(row, dict):
             continue
         source_id = row.get("id")
-        config = row.get("config")
-        if not isinstance(source_id, str) or not isinstance(config, str):
+        config = _row_config(row)
+        if not isinstance(source_id, str) or config is None:
             continue
         # ワークスペースの記録を配る設定を指す行だけを、重ならないように並べる（クローズ済みも含める）
         if config.endswith(WORKSPACE_CONFIG_SUFFIX) and source_id not in ids:
@@ -108,7 +108,7 @@ def check_agent_flows_source(ctx: Any) -> bool:
         # 行が無い: 足すのは『ワークスペースの作成』なので何もしない
         if row is None:
             return False
-        before = row.get("config")
+        before = _row_config(row)
         # 今のプラグインを指している: 書き換えない
         if before == current:
             return False
@@ -141,3 +141,11 @@ def _find_row(settings: dict[str, Any], source_id: str) -> dict[str, Any] | None
         if isinstance(row, dict) and row.get("id") == source_id:
             return row
     return None
+
+
+def _row_config(row: dict[str, Any]) -> str | None:
+    """行の config を返す。並びなら先頭の要素、文字列でなければ None。"""
+    config = row.get("config")
+    # 複数の配信の設定を並べた行: 先頭の要素を行の config とする
+    first = (config[0] if config else None) if isinstance(config, list) else config
+    return first if isinstance(first, str) else None
