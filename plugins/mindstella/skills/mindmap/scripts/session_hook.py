@@ -21,6 +21,12 @@ from inject_session import find_claude_process
 # 常駐サーバーへ 1 回送る上限の秒数
 POST_TIMEOUT_SEC = 2.0
 
+# claude-balancer の exec が子プロセスに渡す OpenTelemetry の属性の環境変数
+OTEL_ATTRIBUTES_ENV = "OTEL_RESOURCE_ATTRIBUTES"
+
+# 属性のうち、claude-balancer が貸したアカウント名のキー
+BALANCER_ACCOUNT_KEY = "claude_balancer.account"
+
 # コマンドの引数から本文の `event` への対応
 EVENTS = {
     "session-start": "session_start",
@@ -229,7 +235,22 @@ def _build_body(
         # 起動したアカウント: Claude Code が使う設定のフォルダの絶対パス（無ければ既定の ~/.claude）
         config_dir = environ.get("CLAUDE_CONFIG_DIR") or os.path.join("~", ".claude")
         body["claude_config_dir"] = os.path.abspath(os.path.expanduser(config_dir))
+        # claude-balancer が貸したアカウント名があれば送る（claude-balancer を通さなければ無い）
+        account = balancer_account_from(environ)
+        if account is not None:
+            body["balancer_account"] = account
     return body
+
+
+def balancer_account_from(environ: Mapping[str, str]) -> str | None:
+    """`OTEL_RESOURCE_ATTRIBUTES` から claude-balancer が貸したアカウント名を取り出す。"""
+    # `{キー}={値}` を `,` で並べた値（claude-balancer の exec が子プロセスに足す）
+    for item in (environ.get(OTEL_ATTRIBUTES_ENV) or "").split(","):
+        key, _, value = item.partition("=")
+        # 貸したアカウント名の項目: 空でなければ返す
+        if key.strip() == BALANCER_ACCOUNT_KEY:
+            return value.strip() or None
+    return None
 
 
 def _read_port(environ: Mapping[str, str]) -> int:

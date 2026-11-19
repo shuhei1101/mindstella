@@ -113,7 +113,13 @@ LAUNCH_REASON_ENV = "MINDSTELLA_LAUNCH_REASON"
 LAUNCH_RECORD_MISSING = "launch_record_missing"
 
 # restart_reason に入る値
-RESTART_REASONS = ("api", "rate_limit", "compact", "comment")
+RESTART_REASONS = ("api", "rate_limit", "compact", "comment", "usage_threshold")
+
+# 指定したアカウントを解除する契機（ホームの設定の account.release_on_limit が真のとき）
+LIMIT_REASONS = ("rate_limit", "usage_threshold")
+
+# release_on_limit が偽で、指定したアカウントが利用上限に達したときの last_error の理由
+SPECIFIED_ACCOUNT_LIMITED = "指定したアカウントが利用上限に達した"
 
 # 最後の書き込みを待たずに止める契機
 NO_WAIT_REASONS = ("rate_limit", "compact")
@@ -202,6 +208,7 @@ def build_env(
     has_balancer: bool,
     *,
     launch_reason: str | None = None,
+    balancer_url: str | None = None,
 ) -> dict[str, str]:
     """MindStella のセッションに渡す環境変数を作る。"""
     env = {
@@ -216,6 +223,9 @@ def build_env(
         env["CLAUDE_CONFIG_DIR"] = claude_config_dir
     if launch_reason:
         env[LAUNCH_REASON_ENV] = launch_reason
+    # ホームの設定に claude-balancer の待ち受け先がある: ペインの claude-balancer にも同じ先を使わせる
+    if balancer_url:
+        env["CLAUDE_BALANCER_URL"] = balancer_url
     return env
 
 
@@ -344,12 +354,21 @@ def create_session(
             _read_flow(folder),
             claude_config_dir,
             balancer is not None,
+            balancer_url=ctx.home.balancer_url,
+        )
+        # 指定したアカウント: 起動し直しで --account に渡すため、~ を展開した絶対パスで記録する
+        specified = (
+            os.path.abspath(os.path.expanduser(claude_config_dir)) if claude_config_dir else None
         )
         state.update_session(
             ctx.state_root,
             workspace_id,
             lambda _current: SessionState(
-                session=session_id, status="running", pane=pane, started_at=now_utc()
+                session=session_id,
+                status="running",
+                pane=pane,
+                started_at=now_utc(),
+                specified_account=specified,
             ),
         )
         # 生きていないのに同じ名前の tmux のセッションが残っている: 閉じてから作る
@@ -500,6 +519,7 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
                 pane=event.get("pane") or current.pane,
                 socket=event.get("socket") or current.socket,
                 claude_config_dir=event.get("claude_config_dir") or current.claude_config_dir,
+                balancer_account=event.get("balancer_account"),
             )
         # 終了: clear・resume のほかは停止済み
         if kind == "session_end":
@@ -697,6 +717,11 @@ def _restart_in_background(
             ctx.tmux.run(["kill-session", "-t", f"={workspace_id}"])
         if reason == "rate_limit":
             notify_stopped(ctx, workspace_id, "rate_limited")
+        elif reason == "usage_threshold":
+            notify_stopped(ctx, workspace_id, "usage_threshold")
+        stage = "account"
+        if reason in LIMIT_REASONS:
+            _release_specified_account(ctx, workspace_id, session_id, reason)
         stage = "launch_options"
         options = state.read_launch(ctx.state_root, workspace_id)
         if options is not None:
@@ -743,13 +768,56 @@ def _relaunch(
 ) -> None:
     """同じ MindStella のセッションの ID で起動し、準備ができたら running に戻す。"""
     current = state.read_session(ctx.state_root, workspace_id)
+    try:
+        _launch_again(ctx, workspace_id, session_id, folder, options, reason, current)
+    except ApiError as error:
+        specified = current.specified_account if current else None
+        # 指定したアカウントを貸せなかった: 解除してよければ、指定を外して 1 回だけ起動し直す
+        if not (error.stage == "account" and specified and ctx.home.release_on_limit):
+            raise
+        logger.warning(
+            "mindstella.session.specified_account_released",
+            extra={"workspace_id": workspace_id, "session_id": session_id, "reason": reason},
+        )
+        _set_specified_account(ctx, workspace_id, session_id, None)
+        current = state.read_session(ctx.state_root, workspace_id)
+        _launch_again(ctx, workspace_id, session_id, folder, options, reason, current)
+    registered = state.read_session(ctx.state_root, workspace_id)
+    state.update_session(
+        ctx.state_root,
+        workspace_id,
+        lambda latest: (
+            None
+            if latest is None or latest.session != session_id
+            else latest.replace(
+                status="running", restart_reason=None, last_error=None, pending_write=False
+            )
+        ),
+    )
+    _paste(
+        ctx.tmux,
+        (registered.pane if registered else None) or _window(workspace_id),
+        FIRST_INPUT,
+    )
+
+
+def _launch_again(
+    ctx: Any,
+    workspace_id: str,
+    session_id: str,
+    folder: Path,
+    options: LaunchOptions | None,
+    reason: str,
+    current: SessionState | None,
+) -> None:
+    """記録した指定・会話・指定したアカウントで起動し、SessionStart の登録を待つ。失敗したら登録を戻す。"""
     resume_id = None if reason == "compact" else resume_id_for(current, folder)
     balancer = shutil.which("claude-balancer")
     command = build_command(
         options,
         _write_mcp_config(ctx.state_root, workspace_id, options),
         balancer,
-        None,
+        current.specified_account if current else None,
         resume_id=resume_id,
     )
     env = build_env(
@@ -760,6 +828,7 @@ def _relaunch(
         None,
         balancer is not None,
         launch_reason="compact" if reason == "compact" else None,
+        balancer_url=ctx.home.balancer_url,
     )
     # 準備の判定に使うため、登録を空けて起動する（失敗したら戻す）
     state.update_session(
@@ -787,22 +856,41 @@ def _relaunch(
             ),
         )
         raise
-    registered = state.read_session(ctx.state_root, workspace_id)
+
+
+def _release_specified_account(ctx: Any, workspace_id: str, session_id: str, reason: str) -> None:
+    """利用上限・しきい値の契機で、指定したアカウントを解除するか、起動し直さずに止める。"""
+    current = state.read_session(ctx.state_root, workspace_id)
+    # アカウントを指定していない: 自動で選ぶので何もしない
+    if current is None or not current.specified_account:
+        return
+    # 解除してよい: 指定を外して自動で選んだアカウントで起動し直す
+    if ctx.home.release_on_limit:
+        _set_specified_account(ctx, workspace_id, session_id, None)
+        logger.info(
+            "mindstella.session.specified_account_released",
+            extra={"workspace_id": workspace_id, "session_id": session_id, "reason": reason},
+        )
+        return
+    # 解除しない設定で利用上限に達した: 指定したアカウントでは続けられないため止めたままにする
+    if reason == "rate_limit":
+        raise ApiError(503, "account", SPECIFIED_ACCOUNT_LIMITED)
+
+
+def _set_specified_account(
+    ctx: Any, workspace_id: str, session_id: str, specified: str | None
+) -> None:
+    """同じ MindStella のセッションの specified_account を書き換える。"""
     state.update_session(
         ctx.state_root,
         workspace_id,
         lambda latest: (
             None
-            if latest is None or latest.session != session_id
-            else latest.replace(
-                status="running", restart_reason=None, last_error=None, pending_write=False
-            )
+            if latest is None
+            else latest.replace(specified_account=specified)
+            if latest.session == session_id
+            else latest
         ),
-    )
-    _paste(
-        ctx.tmux,
-        (registered.pane if registered else None) or _window(workspace_id),
-        FIRST_INPUT,
     )
 
 

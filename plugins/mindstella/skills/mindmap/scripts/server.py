@@ -33,8 +33,10 @@ import project_index
 import sessions
 import startup
 import state
+import usage_watch
 import workspaces
 from claude_input import InputTargets, Session, parse_session
+from home_settings import HomeSettings, InvalidSettingsError, home_settings_path, load_home_settings
 from errors import (
     ApiError,
     ArgumentError,
@@ -152,6 +154,8 @@ class ServerContext:
     tmux: sessions.TmuxRunner
     proc: sessions.ProcessInspector
     write_lock: threading.Lock
+    # mindstella のホームの設定（起動時に 1 回読む）
+    home: HomeSettings
 
 
 class InvalidPortError(Exception):
@@ -203,6 +207,14 @@ def main(
         )
         return 1
 
+    # ホームの設定を読む（読めない・値が誤っていれば待ち受けずに止まる）
+    try:
+        home = load_home_settings(home_settings_path(source))
+    except InvalidSettingsError as error:
+        listening.close()
+        logger.error("常駐サーバーを待ち受けられません: %s", error)  # noqa: TRY400
+        return 1
+
     write_lock = threading.Lock()
     state_root = state.state_root(source)
     previews = PreviewRegistry(
@@ -230,6 +242,7 @@ def main(
         tmux=sessions.TmuxRunner(),
         proc=sessions.ProcessInspector(),
         write_lock=write_lock,
+        home=home,
     )
 
     def status() -> dict[str, Any]:
@@ -256,6 +269,8 @@ def main(
     # 落ちた MindStella のセッションを見回る（終えるときに止める）
     stop_watch = threading.Event()
     sessions.start_crash_watch(context, stop_watch)
+    # 使用中のアカウントの利用枠を見回る（claude-balancer が無ければ始めない）
+    usage_watch.start_usage_watch(context, stop_watch)
     # 待ち受けと並行して、エージェントフローの配信元の行を今のプラグインへ向け直す
     startup.start_agent_flows_check(context)
     logger.info(
@@ -845,7 +860,9 @@ def build_server(
         name="reopen_workspace",
         description="クローズしたワークスペースの配信元の行を outside_read: true に戻し、クローズ待ちを解く。クローズしていなければクローズ待ちだけを解く",
     )
-    def reopen_workspace(workspace_id: WorkspaceIdArg, session: SessionArg = None) -> CallToolResult:
+    def reopen_workspace(
+        workspace_id: WorkspaceIdArg, session: SessionArg = None
+    ) -> CallToolResult:
         return call_tool(
             lambda: workspaces.reopen_workspace(workspace_id, context), write_lock=write_lock
         )
@@ -854,7 +871,9 @@ def build_server(
         name="delete_workspace",
         description="クローズしたワークスペースの配信元の行と状態のフォルダの記録を削除する。記録のフォルダは残す",
     )
-    def delete_workspace(workspace_id: WorkspaceIdArg, session: SessionArg = None) -> CallToolResult:
+    def delete_workspace(
+        workspace_id: WorkspaceIdArg, session: SessionArg = None
+    ) -> CallToolResult:
         return call_tool(
             lambda: workspaces.delete_workspace(workspace_id, context), write_lock=write_lock
         )
@@ -890,7 +909,12 @@ def build_server(
         session: SessionArg = None,
     ) -> CallToolResult:
         # SDK は省いた引数に既定値を入れて渡すので、null でない引数だけを本文にする
-        given = {"settings": settings, "flow": flow, "mcp_config": mcp_config, "plugin_dirs": plugin_dirs}
+        given = {
+            "settings": settings,
+            "flow": flow,
+            "mcp_config": mcp_config,
+            "plugin_dirs": plugin_dirs,
+        }
         request = {key: value for key, value in given.items() if value is not None}
 
         def run() -> dict[str, Any]:
