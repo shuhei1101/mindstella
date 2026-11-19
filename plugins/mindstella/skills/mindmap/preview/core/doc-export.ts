@@ -109,7 +109,7 @@ namespace MindmapPreview {
       .filter((entry) => entry.id !== item.id && entry.withdrawn !== true)
       .map((entry) => ({
         id: entry.id,
-        path: `${entry.id}.md`,
+        path: `${entry.id}.mark.md`,
         title: entry.title,
         ...(entry.aliases === undefined ? {} : { aliases: entry.aliases }),
         ...(entry.description === undefined ? {} : { description: entry.description }),

@@ -122,7 +122,7 @@ export const DocExportControl = ({ item, source, index }: DocExportControlProps)
             else setView("warn");
           }}
           onConfirm={() => {
-            downloadText({ name: `${item.id}.md`, text: stripEmbeddedHtml(source), type: "text/markdown" });
+            downloadText({ name: `${item.id}.mark.md`, text: stripEmbeddedHtml(source), type: "text/markdown" });
             setOpen(false);
           }}
           onBack={() => {

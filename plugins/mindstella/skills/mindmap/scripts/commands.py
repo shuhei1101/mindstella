@@ -317,7 +317,7 @@ def stage_add(
     added.update({key: value for key, value in item.items() if key not in BODY_INPUT_KEYS})
     body = _body_write(item_id, item)
     bodies = dict(staged.bodies)
-    # 本文を渡したときだけ、項目の body を `docs/{ID}.md`（資料の HTML は `docs/{ID}.html`）にして本文の書き込みを足す
+    # 本文を渡したときだけ、項目の body を `docs/{ID}.mark.md`（資料の HTML は `docs/{ID}.html`）にして本文の書き込みを足す
     if body is not None:
         added["body"] = body.name
         bodies[body.name] = body
@@ -373,7 +373,7 @@ def stage_update(
     previous_name = ref.item.get("body")
     bodies = dict(staged.bodies)
     removed_bodies = list(staged.removed_bodies)
-    # 本文を渡したときは body を `docs/{ID}.md` か `docs/{ID}.html` にする（changed に入れるのは値が変わったときだけ）
+    # 本文を渡したときは body を `docs/{ID}.mark.md` か `docs/{ID}.html` にする（changed に入れるのは値が変わったときだけ）
     if body is not None and merged.get("body") != body.name:
         merged["body"] = body.name
         changed.append("body")
@@ -822,11 +822,11 @@ def _write_changes(root: Path, record: Changes) -> None:
 
 
 def _body_write(item_id: str, item: dict[str, Any]) -> BodyWrite | None:
-    """`item` の `body_markdown` を `docs/{ID}.md`、`body_html` を `docs/{ID}.html` に書く本文にする。"""
+    """`item` の `body_markdown` を `docs/{ID}.mark.md`、`body_html` を `docs/{ID}.html` に書く本文にする。"""
     markdown = item.get(BODY_INPUT_KEY)
     html = item.get(HTML_BODY_INPUT_KEY)
     if markdown is not None:
-        return BodyWrite(name=f"{BODY_DIR}/{item_id}.md", text=str(markdown))
+        return BodyWrite(name=f"{BODY_DIR}/{item_id}.mark.md", text=str(markdown))
     if html is not None:
         return BodyWrite(name=f"{BODY_DIR}/{item_id}.html", text=str(html))
     # 本文を渡していない

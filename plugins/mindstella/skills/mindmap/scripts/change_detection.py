@@ -100,7 +100,7 @@ class Writer(StrEnum):
 class Snapshot:
     """見るファイルの前回の中身と、そのときの Git の位置。"""
 
-    # 記録のフォルダからのパス（`decisions.yaml`・`docs/D-1.md` など）→ 中身
+    # 記録のフォルダからのパス（`decisions.yaml`・`docs/D-1.mark.md` など）→ 中身
     files: dict[str, str]
     # `git rev-parse HEAD`（Git の作業ツリーでなければ None）
     git_head: str | None
@@ -193,6 +193,12 @@ class ChangeDetector:
                 files[name] = text
         self._snapshot = dataclasses.replace(self._snapshot, files=files)
         save_snapshot(self._snapshot_dir(), self._snapshot)
+
+    def rebase(self, snapshot: Snapshot) -> None:
+        """前回の中身と書き換えの印を渡した中身で置き換え、比べずに状態のフォルダにも書く。"""
+        self._snapshot = snapshot
+        self._signature = signature_of(self._root)
+        save_snapshot(self._snapshot_dir(), snapshot)
 
     def duplicate_ids(self) -> tuple[str, ...]:
         """最後に求めた重なった ID を返す。"""
@@ -300,6 +306,18 @@ def detector_of(root: Path) -> ChangeDetector | None:
     """そのワークスペースで動いている変更の検知を返す（無ければ None）。"""
     with _DETECTORS_GUARD:
         return _DETECTORS.get(root.resolve())
+
+
+def rebase_snapshot(root: Path, state_root: Path) -> None:
+    """記録の形式を移し替えた後に、前回の中身を今の中身で作り直す（移し替えの書き換えを変更として記録しない）。"""
+    snapshot, _ = take_snapshot(root)
+    detector = detector_of(root)
+    # 変更の検知が動いている: その前回の中身と書き換えの印も置き換える
+    if detector is not None:
+        detector.rebase(snapshot)
+        return
+    # 動いていない: 次に検知を始めたときに比べる前回の中身を書く
+    save_snapshot(workspace_dir(state_root, workspace_id_of(root)) / SNAPSHOT_DIR, snapshot)
 
 
 def signature_of(root: Path) -> str:

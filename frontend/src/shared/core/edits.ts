@@ -66,7 +66,7 @@ export const applyEdits = (data: MindmapData, edits: readonly PendingEdit[]): Mi
       const item = { id: edit.target, created: edit.created, updated: edit.created, ...values } as unknown as Item;
       // 本文の文字列は、本文の置き場所に移す
       if (typeof values["body"] === "string") {
-        item.body = `${edit.target}.md`;
+        item.body = `${edit.target}.mark.md`;
         applied.bodies[item.body] = values["body"];
       }
       applied[kind].push(item);
@@ -75,7 +75,7 @@ export const applyEdits = (data: MindmapData, edits: readonly PendingEdit[]): Mi
       if (item === undefined) continue;
       if (edit.op === "set") {
         if (key === "body") {
-          const name = item.body ?? `${item.id}.md`;
+          const name = item.body ?? `${item.id}.mark.md`;
           item.body = name;
           applied.bodies[name] = typeof edit.value === "string" ? edit.value : "";
         } else if (edit.value === null) {

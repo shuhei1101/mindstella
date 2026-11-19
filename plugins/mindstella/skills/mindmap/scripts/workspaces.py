@@ -12,6 +12,7 @@ from typing import Any
 
 import yaml
 
+import change_detection
 import commands
 import history
 import migrator
@@ -284,6 +285,9 @@ def _migrate(ctx: Any, folder: Path) -> tuple[dict[str, Any] | None, list[str]]:
     try:
         with workspace_lock(folder, threading.Lock(), require=migrator.require_migratable):
             report = migrator.migrate(folder)
+            # 手順を当てた: 同じ鍵の中で前回の中身を作り直し、移し替えの書き換えを変更として記録しない
+            if report.steps:
+                change_detection.rebase_snapshot(folder, ctx.state_root)
     except WorkspaceNewerError as error:
         raise ApiError(409, "version", str(error)) from error
     except (StepFailedError, SchemaMismatchError) as error:
