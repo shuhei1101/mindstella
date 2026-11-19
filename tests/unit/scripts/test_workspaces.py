@@ -850,6 +850,8 @@ def _break_records(folder: Path, settings_file: Path, case: str) -> None:
         shutil.rmtree(folder / ".mindstella")
     elif case == "settings-broken":
         settings_file.write_text("sources: [", encoding="utf-8")
+    elif case == "config-broken":
+        (folder / ".mindstella" / "config.yaml").write_text("title: [", encoding="utf-8")
     else:
         (folder / ".mindstella" / "history.yaml").write_text("items: []\n", encoding="utf-8")
 
@@ -861,22 +863,47 @@ def _break_records(folder: Path, settings_file: Path, case: str) -> None:
             "records-missing",
             "records",
             "家計簿",
-            {"status": "active", "closed": False, "unseen_ai_posts": None, "updated": None},
+            {
+                "status": "active",
+                "closed": False,
+                "unseen_ai_posts": None,
+                "awaiting_user_posts": None,
+                "updated": None,
+            },
             id="records-missing",
         ),
         pytest.param(
             "settings-broken",
             "settings",
             "settings.yaml",
-            {"status": None, "closed": None, "unseen_ai_posts": None, "updated": None},
+            {
+                "status": None,
+                "closed": None,
+                "unseen_ai_posts": None,
+                "awaiting_user_posts": None,
+                "updated": None,
+            },
             id="settings-broken",
         ),
         pytest.param(
             "history-mismatch",
             "records",
             "history.yaml",
-            {"status": "active", "closed": False, "unseen_ai_posts": None, "updated": None},
+            {
+                "status": "active",
+                "closed": False,
+                "unseen_ai_posts": None,
+                "awaiting_user_posts": None,
+                "updated": None,
+            },
             id="history-mismatch",
+        ),
+        pytest.param(
+            "config-broken",
+            "records",
+            "config.yaml",
+            {"status": "active", "title": None, "unseen_ai_posts": 0, "awaiting_user_posts": 0},
+            id="config-broken",
         ),
     ],
 )
@@ -898,7 +925,6 @@ def test_workspace_status_warnings(
     assert [warning["stage"] for warning in body["warnings"]] == [stage]
     assert detail_part in body["warnings"][0]["detail"]
     assert {key: body[key] for key in expected} == expected
-    assert body["awaiting_user_posts"] is None
     assert body["sessions"] == [RUNNING_SESSION]
 
 
