@@ -479,9 +479,9 @@ components:
       - name: test_thread_list_view_when_target
         case: 正常
         summary: 項目で絞るとチップを出し、その項目のスレッドと新しいスレッドだけを並べる
-        condition: オープンの TH-1（D-1 へ向けた）・TH-2（D-2 へ向けた）とクローズの TH-5（D-1 へ向けた）、レビュー中に C-41（D-1 への新しいスレッド）・C-42（項目を指さない新しいスレッド）。`filter` は `open`、`target` は `D-1`、`titleOf` は D-1 に「移し替え」を返す
+        condition: オープンの TH-1（D-1 へ向けた）・TH-2（D-2 へ向けた）とクローズの TH-5（D-1 へ向けた）、レビュー中に C-41（D-1 への新しいスレッド）・C-42（項目を指さない新しいスレッド）。`filter` は `open`、`target` は `D-1`、`titleOf` は D-1 に「問い」を返す
         mock: '`on.clearTarget`'
-        expected: 絞り込みが「オープン 1」「クローズ 1」「すべて 2」。チップに `D-1` と「移し替え」があり件数が無い。行が C-41・TH-1 の順。×（読み上げの名前「項目「D-1」の絞り込みを外す」、`data-focus` が `clear-target`）を押すと `on.clearTarget` が 1 回
+        expected: 絞り込みが「オープン 1」「クローズ 1」「すべて 2」。チップに `D-1` と「問い」があり件数が無い。行が C-41・TH-1 の順。×（読み上げの名前「項目「D-1」の絞り込みを外す」、`data-focus` が `clear-target`）を押すと `on.clearTarget` が 1 回
       - name: test_thread_list_view_when_target_and_tag
         case: 正常
         summary: 項目とタグで絞った件数と空の状態の文言

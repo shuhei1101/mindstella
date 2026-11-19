@@ -82,7 +82,7 @@ describe("DetailPanel", () => {
   test("detail_panel_when_comments_button", async () => {
     // 準備
     stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
-    renderRoute("/spa/?id=D-1&panel=comments&thread=TH-1&tstatus=all");
+    const { unmount } = renderRoute("/spa/?id=D-1&panel=comments&thread=TH-1&tstatus=all");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     const before = window.history.length;
     // 実行
@@ -93,15 +93,9 @@ describe("DetailPanel", () => {
     expect(window.location.search).toContain("tstatus=all");
     expect(window.location.search).not.toContain("thread=");
     expect(window.history.length).toBe(before);
-  });
-
-  // 全画面には見出しのコメントの一覧のボタンが無い（正常系）
-  test("detail_panel_when_comments_button_full", async () => {
-    // 準備
-    stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
-    // 実行
+    // 全画面にはボタンが無い
+    unmount();
     renderRoute("/spa/?id=D-1&full=1");
-    // 検証
     await waitFor(() => expect(document.body).toHaveTextContent("D-1の題"));
     expect(screen.queryByRole("button", { name: "D-1 のコメントの一覧を開く" })).toBeNull();
   });
