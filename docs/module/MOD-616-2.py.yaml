@@ -119,9 +119,9 @@ functions:
       - name: test_watch_usage_once
         case: 正常
         summary: 見回る対象だけを照らし、選んだものを起動し直す
-        condition: '`running`・`balancer_account: A` / `restarting` / `running` で `close_pending` が真 / `running` で `balancer_account` が無い、の 4 つのワークスペース。`fetch` は A を `five_hour_over_threshold`・B を `null` で返す'
+        condition: '`running`・`balancer_account: A` / `restarting` / `running` で `close_pending` が真 / `running` で `balancer_account` が無い / `running` で `pending_write` が真、の 5 つのワークスペース。`fetch` は A を `five_hour_over_threshold`・B を `null` で返す'
         mock: '`fetch`・`restart`'
-        expected: 1 を返し、`restart` が 1 つ目の ID で 1 回だけ呼ばれ、`fetch` が 1 回
+        expected: 1 を返し、`restart` が 1 つ目の ID で 1 回だけ呼ばれ、`fetch` が 1 回。`INFO` の `mindstella.usage.over_threshold` が 1 件で、1 つ目の ID・`A`・`five_hour_over_threshold` を持つ
       - name: test_watch_usage_once_when_no_target
         case: 正常
         summary: 見回る対象が無ければ問い合わせない

@@ -193,6 +193,13 @@ functions:
         condition: '`test_main` と同じ差し替え。`startup.reconcile_before_listen`・`startup.start_agent_flows_check` と偽の HTTP のサーバーの `run` を、呼ばれた順を記録する関数にする'
         mock: '`build`・`make_server`・`startup.reconcile_before_listen`・`startup.start_agent_flows_check`（monkeypatch）'
         expected: 照合 → エージェントフローの配信元の確認 → `run` の順に 1 回ずつ呼ばれ、どちらにも `ServerContext` が渡っている
+      - name: test_main_when_home_settings_invalid
+        case: 異常
+        summary: ホームの設定が読めなければ待ち受けずに 1
+        condition: '`environ` に `MINDSTELLA_PORT` の空きポートと、`release_on_limit` に文字列を書いた `settings.yaml` を置いたフォルダの `XDG_CONFIG_HOME`'
+        mock: '`build`・`make_server`（呼ばれないことを確かめる）'
+        expected: 1 を返し、`ERROR` の記録に `settings.yaml` と `release_on_limit` がある。`build`・`make_server` が呼ばれない
+        exception: InvalidSettingsError
   - name: read_port
     title: 待ち受けのポートの読み込み
     kind: 関数
