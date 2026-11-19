@@ -1,0 +1,1 @@
+# docs/ の文書のマーカーを mdmark upgrade で JSON の記載へ移す
