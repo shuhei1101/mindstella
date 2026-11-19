@@ -62,7 +62,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
     usecase: MindStella のセッションを起動し直す
     scope: public
-    summary: 設定『サーバー』のファイル一覧の扱いで読む。ファイルが無ければ既定値の `HomeSettings` を返し、知らないキーは標準エラーへ 1 行ずつ記録して読み飛ばす
+    summary: 設定『サーバー』のファイル一覧の扱いで読む。キーは入れ子のマッピングとして読み（`claude_balancer:` の下の `url:`、`account:` の下の `release_on_limit:`）、ドットを含む 1 つのキーは知らないキーとして扱う。ファイルが無ければ既定値の `HomeSettings` を返し、知らないキーは標準エラーへ 1 行ずつ記録して読み飛ばす
     args:
       - name: path
         type: Path
@@ -74,24 +74,24 @@ functions:
       description: 読んだ設定
     exceptions:
       - name: InvalidSettingsError
-        condition: YAML として読めない・最上位がマッピングでない・`claude_balancer.url` が `http://` か `https://` で始まる文字列でない・`account.release_on_limit` が真偽値でない
+        condition: YAML として読めない・最上位・`claude_balancer`・`account` がマッピングでない・`claude_balancer.url` が `http://` か `https://` で始まる文字列でない・`account.release_on_limit` が真偽値でない
     unit_tests:
       - name: test_load_home_settings
         case: 正常
         summary: ファイルの有無とキーで値が決まる
-        condition: '`parametrize`: ファイルが無い / 空のファイル / `claude_balancer.url: http://127.0.0.1:8780` と `account.release_on_limit: false`'
+        condition: '`parametrize`: ファイルが無い / 空のファイル / `{claude_balancer: {url: http://127.0.0.1:8780}, account: {release_on_limit: false}}`'
         mock: なし（`tmp_path`）
         expected: '`(None, True)` / `(None, True)` / `(http://127.0.0.1:8780, False)`。`query_url()` が `http://127.0.0.1:8770` / 同じ / `http://127.0.0.1:8780`'
       - name: test_load_home_settings_when_unknown_key
         case: 正常
         summary: 知らないキーは記録して読み飛ばす
-        condition: '`foo: 1` と `account.bar: 2` を持つファイル'
+        condition: '`{foo: 1, account: {bar: 2}, "claude_balancer.url": http://x}` のファイル'
         mock: なし（`capsys`）
-        expected: 既定値の `HomeSettings` を返し、標準エラーに `foo`・`account.bar` の 2 行
+        expected: 既定値の `HomeSettings` を返し、標準エラーに `foo`・`account.bar`・`claude_balancer.url`（ドットを含む 1 つのキー）の 3 行
       - name: test_load_home_settings_when_invalid
         case: 異常
         summary: 読めない・型が違うときは InvalidSettingsError
-        condition: '`parametrize`: YAML の構文の誤り / 最上位が並び / `url: ftp://x` / `release_on_limit: "no"`'
+        condition: '`parametrize`: YAML の構文の誤り / 最上位が並び / `{claude_balancer: 1}` / `{account: [true]}` / `{claude_balancer: {url: ftp://x}}` / `{account: {release_on_limit: "no"}}`'
         mock: なし
         expected: 全て `InvalidSettingsError`
 classes:
