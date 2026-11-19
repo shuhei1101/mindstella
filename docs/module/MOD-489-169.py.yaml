@@ -298,7 +298,7 @@ classes:
           type: None
           description: '-'
         process: |-
-          1. `_guard` を取り、`_servers` と `_detectors` のキーのうち `workspace_id_of`（『変更の検知』の関数）が `workspace_id` のものを台帳から除外して手元に取る
+          1. `_guard` を取り、`_servers` と `_detectors` のキーのうち `workspace_id_of`（『変更の検知』の関数）が `workspace_id` のものを台帳から除外して手元に取る（設定を読めないワークスペース（`OSError`・`yaml.YAMLError`）は `logger.warning` に残して比べる対象から外す）
           2. `_guard` を放してから、手元の変更の検知ごとに `ChangeDetector.stop` を呼ぶ
           3. `_external.stop_hook` があれば、手元の配信ごとに配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`。`stop_all` と同じ）
           4. 手元の配信ごとに `PreviewServer.stop` を呼ぶ
@@ -321,6 +321,12 @@ classes:
             condition: 1 つのワークスペースを配信し、配信していない ID を渡す
             mock: '`ChangeDetector`'
             expected: 配信しているワークスペースの `url_of` が同じ URL を返す
+          - name: test_stop_workspace_when_other_settings_broken
+            case: 正常
+            summary: ほかのワークスペースの設定が壊れていても、一致する配信を止める
+            condition: 2 つのワークスペースを配信し、片方の `config.yaml` を YAML として壊して、もう片方の ID を指定する
+            mock: '`ChangeDetector`'
+            expected: 指定した ID の `url_of` が `None` で、壊れた方は URL を返却する
   - name: PreviewServer
     title: 配信
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
