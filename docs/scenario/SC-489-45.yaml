@@ -512,7 +512,7 @@ scenarios:
       - name: Mock
         description: voice-paste の代わりに、`POST /web/transcriptions` で音声と用語集のプリセットを受けて 202 と `job_id` を返し、`GET /web/transcriptions/{job_id}` で `done` と固定の文字「案 A にする」を返す偽のサーバーを 127.0.0.1 で立てる。MCP サーバーをその偽のサーバーへ向けて立て、サーバーが配るプレビューを、偽のマイク（音声のファイルを流す）を許した実際のブラウザで開く。描画のライブラリは CDN から読む
       - name: make_workspace
-        description: 作成を済ませ、文字起こし後の挙動が既定の `review` のワークスペース
+        description: 作成を済ませ、`config.yaml` の文字起こし後の挙動が `send` のワークスペース
         notes: '`parametrize`: 修正の入力を開く画面がレビュー中の書き込みの画面 / スレッド / 詳細パネル'
       - name: 記録
         description: 未決定の検討事項 D-1 と、オープンのスレッド TH-1
@@ -647,7 +647,7 @@ scenarios:
       - 偽のサーバーが文字起こしの依頼を 1 件も受けておらず、偽の `release` が 1 回呼ばれ、トップバーの音声入力中の表示が消えている
       - '修正の入力の「キャンセル」の後、レビュー中の書き込みが「確認: 」のままである'
     test: test_normal_when_edit_recording_cancelled
-  - name: 異常シナリオ（修正の入力で録音中にその書き込みを削除する）
+  - name: 異常シナリオ（修正の入力で録音中にその書き込みを削除・送信する）
     setup:
       - name: Mock
         description: voice-paste の代わりに、`POST /web/transcriptions` で 202 と `job_id` を返し、`GET /web/transcriptions/{job_id}` で `done` と固定の文字「案 A にする」を返す偽のサーバーを 127.0.0.1 で立てる。MCP サーバーをその偽のサーバーへ向けて立て、サーバーが配るプレビューを、偽のマイク（音声のファイルを流す）を許した実際のブラウザで開く
@@ -659,22 +659,27 @@ scenarios:
         description: 'D-1 への新しいスレッドの「確認: 」'
       - name: 開いている画面
         description: D-1 の詳細パネルで、レビュー中のコメントの修正の入力を開き、マイクのボタンを押して録音中にしている
+      - name: 削除か送信
+        description: 録音中にその書き込みを無くす操作
+        notes: '`parametrize`: 削除する / チェックして送信する'
     flow: |-
       ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant P as プレビュー（ブラウザ）
         participant SV as サーバー
-        U->>P: コメントの一覧のレビュー中の書き込みの画面で、D-1 への書き込みを削除する
-        P->>SV: レビュー中の書き込みを削除する
+        U->>P: トップバーのコメントのボタンからコメントの一覧を開き、レビュー中の書き込みの画面を開く
+        U->>P: D-1 への書き込みを削除する（送信する側では、D-1 への書き込みをチェックして送信する）
+        P->>SV: レビュー中の書き込みを削除する（送信する側では、チェックした書き込みを送信する）
         P->>P: 録音を捨て、マイクと画面の消灯の抑止を解放する
         P-->>U: トップバーの音声入力中の表示を消し、録音を捨てたことを出す
       ```
     expected:
       - トップバーの音声入力中の表示が消え、録音を捨てたことが画面に出る
       - 偽のサーバーが文字起こしの依頼を 1 件も受けていない
-      - レビュー中の書き込みの画面に D-1 への書き込みが削除した行として出て、その他のマイクのボタンを押せる
-    test: test_error_when_edited_comment_removed_while_recording
+      - 削除する側では、レビュー中の書き込みの画面に D-1 への書き込みが削除した行として出て、その他のマイクのボタンを押せる
+      - '送信する側では、D-1 への書き込みがオープンのスレッドの最初の書き込み「確認: 」になり、偽のサーバーが文字起こしの依頼を受けていない'
+    test: test_error_when_edited_comment_gone_while_recording
 notes:
   画面の文言: マイクのボタン・録音中のボタン・ツールチップ・結果の文言はモック作成で決め、画面設計に書く
   録音中の波形: 波形の見た目はモック作成で決め、部品設計に書く
