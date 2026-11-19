@@ -1,6 +1,6 @@
 # Issue 索引
 
-<!-- table: data -->
+<!-- table: {"kind": "data"} -->
 
 | Issue / PR | 概要 |
 | --- | --- |
