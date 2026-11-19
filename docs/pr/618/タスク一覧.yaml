@@ -62,7 +62,9 @@ tasks:
     updated_at: '2026-11-19T14:48:28.518397+00:00'
     note: エクスポートのメニューの Markdown のダウンロードのファイル名（SCR-489-31・SCR-489-32）だけを修正した
   - process: モジュール構成設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T14:58:29.703370+00:00'
   - process: ドキュメント修正
     status: todo
     note: リポジトリの文書の .mark.md への改名と、改名したファイルを指すリンク・files.yml・dev-docs.yaml の修正
