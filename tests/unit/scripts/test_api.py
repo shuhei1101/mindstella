@@ -48,6 +48,8 @@ def test_build_routes() -> None:
         ("/workspaces/{id}/sessions/{session}", "DELETE"),
         ("/workspaces/{id}/sessions/{session}/restart", "POST"),
         ("/workspaces/{id}/close", "POST"),
+        ("/workspaces/{id}/reopen", "POST"),
+        ("/workspaces/{id}", "DELETE"),
         ("/_admin/sessions/{session}/events", "POST"),
         ("/_admin/sessions/{session}/resume", "POST"),
         ("/_admin/sessions/{session}/read_point", "POST"),

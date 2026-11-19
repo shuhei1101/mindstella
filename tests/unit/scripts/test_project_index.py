@@ -47,7 +47,7 @@ class FakeProjectIndex:
                 self.end_headers()
                 self.wfile.write(data)
 
-            do_GET = do_POST = do_PATCH = do_PUT = _reply
+            do_GET = do_POST = do_PATCH = do_PUT = do_DELETE = _reply
 
             def log_message(self, *args: object) -> None:
                 """記録を出さない。"""
@@ -199,6 +199,62 @@ def test_patch_source_conflict_twice(fake_pi: Callable[..., FakeProjectIndex]) -
     with pytest.raises(ProjectIndexError) as caught:
         project_index.patch_source(server.port, "w", {"outside_read": False})
     assert caught.value.status == 409
+
+
+def test_delete_source(fake_pi: Callable[..., FakeProjectIndex]) -> None:
+    """バージョンを付けて送り、409 なら 1 回だけ引き直して送り直す（正常系）。"""
+    # 準備
+    server = fake_pi(
+        {
+            ("GET", "/settings/sources"): [(200, {"version": "v1"}), (200, {"version": "v2"})],
+            ("DELETE", "/settings/sources/w"): [(409, {"current": "v2"}), (200, {"version": "v3"})],
+        }
+    )
+    # 実行
+    result = project_index.delete_source(server.port, "w")
+    # 検証
+    assert result is True
+    deletes = [path for method, path, _body in server.requests if method == "DELETE"]
+    assert deletes == [
+        "/settings/sources/w?expectedVersion=v1",
+        "/settings/sources/w?expectedVersion=v2",
+    ]
+
+
+def test_delete_source_missing(fake_pi: Callable[..., FakeProjectIndex]) -> None:
+    """行が無ければ偽を返す（正常系）。"""
+    # 準備
+    server = fake_pi(
+        {
+            ("GET", "/settings/sources"): [(200, {"version": "v1"})],
+            ("DELETE", "/settings/sources/w"): [(404, {})],
+        }
+    )
+    # 実行
+    result = project_index.delete_source(server.port, "w")
+    # 検証
+    assert result is False
+
+
+@pytest.mark.parametrize(
+    ("replies", "expected"),
+    [
+        pytest.param([(409, {})], 409, id="conflict_twice"),
+        pytest.param([(500, {})], 500, id="server_error"),
+    ],
+)
+def test_delete_source_error(
+    replies: list[Reply], expected: int, fake_pi: Callable[..., FakeProjectIndex]
+) -> None:
+    """409 が 2 回・500 は ProjectIndexError を送る（異常系）。"""
+    # 準備
+    server = fake_pi(
+        {("GET", "/settings/sources"): [(200, {"version": "v1"})], ("DELETE", "/settings/sources/w"): replies}
+    )
+    # 実行・検証
+    with pytest.raises(ProjectIndexError) as caught:
+        project_index.delete_source(server.port, "w")
+    assert caught.value.status == expected
 
 
 @pytest.mark.parametrize(

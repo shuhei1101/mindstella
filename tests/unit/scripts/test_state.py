@@ -143,6 +143,28 @@ def test_write_launch(tmp_path: Path) -> None:
     assert state.read_launch(tmp_path, WORKSPACE_ID) == options
 
 
+def test_delete_workspace_state(tmp_path: Path) -> None:
+    """フォルダを中身ごと削除し、ids は変えない（正常系）。"""
+    # 準備
+    state.add_id(tmp_path, WORKSPACE_ID)
+    folder = state.workspace_dir(tmp_path, WORKSPACE_ID)
+    (folder / "snapshot").mkdir(parents=True)
+    (folder / "session.json").write_text("{}", encoding="utf-8")
+    # 実行
+    state.delete_workspace_state(tmp_path, WORKSPACE_ID)
+    # 検証
+    assert not folder.exists()
+    assert state.read_ids(tmp_path) == [WORKSPACE_ID]
+
+
+def test_delete_workspace_state_when_missing(tmp_path: Path) -> None:
+    """フォルダが無ければ何もしない（正常系）。"""
+    # 実行
+    state.delete_workspace_state(tmp_path, WORKSPACE_ID)
+    # 検証
+    assert not state.workspace_dir(tmp_path, WORKSPACE_ID).exists()
+
+
 def test_delete_launch(tmp_path: Path) -> None:
     """あっても無くても、消した後はファイルが無い。"""
     state.delete_launch(tmp_path, WORKSPACE_ID)

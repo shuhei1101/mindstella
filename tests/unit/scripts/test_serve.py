@@ -20,6 +20,7 @@ import pytest
 import yaml
 
 import builder
+import change_detection
 import errors
 import serve
 from transcriber import (
@@ -324,6 +325,80 @@ def test_stop_all(
     connection = http.client.HTTPConnection("127.0.0.1", _port_of(url), timeout=HTTP_TIMEOUT_SEC)
     with pytest.raises(ConnectionRefusedError):
         connection.request("GET", "/")
+
+
+class FakeDetector:
+    """変更の検知の代わりに、始めたことと止めたことを記録する。"""
+
+    def __init__(self, root: Path, *_args: object) -> None:
+        """ワークスペースのフォルダを持つ。"""
+        self.root = root
+        self.stopped = False
+
+    def start(self) -> None:
+        """何もしない。"""
+
+    def stop(self) -> None:
+        """止めたことを記録する。"""
+        self.stopped = True
+
+
+@pytest.fixture
+def detected_registry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[serve.PreviewRegistry]:
+    """変更の検知を偽物にした、状態のフォルダつきの配信の台帳。"""
+    monkeypatch.setattr(serve, "ChangeDetector", FakeDetector)
+    created = serve.PreviewRegistry(threading.Lock(), state_root=tmp_path / "state")
+    yield created
+    created.stop_all()
+
+
+def test_stop_workspace(
+    detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """一致する配信と変更の検知だけ止める（正常系）。"""
+    # 準備
+    first = make_workspace(make_item("D-1"), name="a")
+    second = make_workspace(make_item("D-1"), name="b")
+    detected_registry.start(first)
+    detected_registry.start(second)
+    detector = detected_registry._detectors[first.resolve()]
+    # 実行
+    detected_registry.stop_workspace(change_detection.workspace_id_of(first))
+    # 検証
+    assert detected_registry.url_of(first) is None
+    assert detector.stopped is True
+    assert detected_registry.url_of(second) is not None
+    assert second.resolve() in detected_registry._detectors
+
+
+def test_stop_workspace_when_not_served(
+    detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """配信していない ID なら何も変えない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    url, _started = detected_registry.start(root)
+    # 実行
+    detected_registry.stop_workspace("mindstella-x-000000")
+    # 検証
+    assert detected_registry.url_of(root) == url
+
+
+def test_stop_workspace_then_start(
+    detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """止めた後の start で配信と変更の検知を新しく始める（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    detected_registry.start(root)
+    detected_registry.stop_workspace(change_detection.workspace_id_of(root))
+    # 実行
+    _url, started = detected_registry.start(root)
+    # 検証
+    assert started is True
+    assert root.resolve() in detected_registry._detectors
 
 
 def test_stop_all_when_stop_hook_set(
