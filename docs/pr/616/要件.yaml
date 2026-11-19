@@ -43,7 +43,9 @@ docs:
   - page: docs/er/ER-531-1.yaml
     new: false
     change: session.json の restart_reason に usage_threshold を追加し、balancer_account・specified_account の列を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:46:58.601668+00:00'
   - page: docs/config/CFG-489-1.yaml
     new: false
     change: 利用枠を見回る間隔の上書き（MINDSTELLA_USAGE_WATCH_INTERVAL）を追加し、claude-balancer の待ち受け先と指定アカウントの自動解除のオンオフを mindstella のホームの設定 ~/.config/mindstella/settings.yaml に配置する
@@ -53,11 +55,15 @@ docs:
   - page: docs/module/MOD-531-4.py.yaml
     new: false
     change: 使用中のアカウントの利用枠を周期で確かめ、しきい値以上なら起動し直しを依頼する処理を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:46:58.601668+00:00'
   - page: docs/module/MOD-568-1.py.yaml
     new: false
     change: 止まった理由の文言に、しきい値での切り替えを追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:46:58.601668+00:00'
   - page: docs/guide/話し合い-続きを再開する.md
     new: false
     change: 利用枠がしきい値以上になったときも、別のアカウントで続きから再開することを追記する
@@ -89,6 +95,30 @@ docs:
     status: done
     updated_by: planner
     updated_at: '2026-11-19T12:32:47.411365+00:00'
+  - page: docs/module/MOD-616-1.py.yaml
+    new: true
+    change: ホームの設定を読む home_settings.py のモジュール構成を作る
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:47:04.622177+00:00'
+  - page: docs/module/MOD-616-2.py.yaml
+    new: true
+    change: 利用枠の見回りの usage_watch.py のモジュール構成を作る
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:47:04.622177+00:00'
+  - page: docs/module/MOD-531-6.py.yaml
+    new: false
+    change: OTEL_RESOURCE_ATTRIBUTES から借りたアカウント名を取り出す関数を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:47:04.622177+00:00'
+  - page: docs/module/MOD-489-177.py.yaml
+    new: false
+    change: 起動時にホームの設定を読み、利用枠の見回りを始める
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:47:04.622177+00:00'
 scope_out:
   - item: 画面での切り替えの表示
     reason: 要望に含まれない。切り替えたことは Discord の停止の通知と『MindStella のセッションの一覧』で分かる
