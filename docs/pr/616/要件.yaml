@@ -19,22 +19,30 @@ docs:
   - page: docs/interface/IF-582-1.yaml
     new: false
     change: 契機にしきい値での切り替えを追加し、止め方（応答の終わりを待つ）・アカウント（しきい値以上のアカウントを除いて借りる）・停止の通知を決める
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:42.023711+00:00'
   - page: docs/interface/IF-570-1.yaml
     new: false
     change: 止まった理由にしきい値での切り替えを追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:42.023711+00:00'
   - page: docs/library/LIB-531-1.yaml
     new: false
     change: 使用中のアカウントの消費率と貸せない理由を取得する claude-balancer の GET /accounts（IF-275-12）の使い方を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:42.023711+00:00'
   - page: docs/nonfunctional/NFR-489-1.yaml
     new: false
     change: 使用中のアカウントの利用枠を確かめる間隔の決定値を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:42.023711+00:00'
   - page: docs/er/ER-531-1.yaml
     new: false
-    change: session.json の restart_reason に、しきい値での切り替えの値を追加する
+    change: session.json の restart_reason に usage_threshold を追加し、balancer_account・specified_account の列を追加する
     status: todo
   - page: docs/config/CFG-489-1.yaml
     new: false
@@ -59,8 +67,28 @@ docs:
     change: 通知の止まった理由に、しきい値での切り替えを追加する
     status: todo
   - page: docs/interface/IF-531-2.yaml
-    change: 渡す環境変数に、常駐サーバーが読んだ CLAUDE_BALANCER_URL を追加する（値が無いときは渡さない）
-    status: todo
+    change: 渡す環境変数に CLAUDE_BALANCER_URL（ホームの設定の claude_balancer.url）を追加し、session.json に balancer_account・specified_account を記録する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:42.023711+00:00'
+  - page: docs/interface/IF-616-1.yaml
+    new: true
+    change: 使用中のアカウントの利用枠を GET /accounts で見回り、しきい値以上で切り替え先があれば起動し直しを呼ぶインターフェースを作る
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:47.411365+00:00'
+  - page: docs/interface/IF-531-7.yaml
+    new: false
+    change: SessionStart で OTEL_RESOURCE_ATTRIBUTES の claude_balancer.account を balancer_account で送る
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:47.411365+00:00'
+  - page: docs/interface/IF-531-6.yaml
+    new: false
+    change: session_start で balancer_account を記録する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T12:32:47.411365+00:00'
 scope_out:
   - item: 画面での切り替えの表示
     reason: 要望に含まれない。切り替えたことは Discord の停止の通知と『MindStella のセッションの一覧』で分かる
