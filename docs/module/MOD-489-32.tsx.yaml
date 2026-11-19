@@ -40,6 +40,12 @@ components:
         condition: サーバーの配信で項目を開く
         mock: MSW
         expected: 下端に部品『DetailComments』があり、今の画面を開くリンクが無い
+      - name: test_detail_panel_when_comments_button
+        case: 正常
+        summary: 見出しのコメントの一覧のボタンで、その項目で絞ったコメントの一覧を開く
+        condition: サーバーの配信で search が `id=D-1&panel=comments&thread=TH-1&tstatus=all` のとき、読み上げの名前「D-1 のコメントの一覧を開く」のボタンを押す
+        mock: MSW
+        expected: search が `id=D-1&panel=comments&tstatus=all&ttarget=D-1`（`thread` が外れる）で、履歴の数が変わらない。全画面（`full=1`）ではボタンが無い
     container: frontend/src/features/detail/detail-panel/detail-panel.tsx
 notes:
   単体テスト: 同じフォルダの `detail-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）

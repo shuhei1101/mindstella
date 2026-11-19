@@ -100,9 +100,9 @@ components:
         required: true
         description: 全画面か
       - name: on
-        type: '{open, close, full, back, forward, diagram, heading, changeSet, layout, order}'
+        type: '{open, close, full, back, forward, diagram, heading, changeSet, layout, order, comments?}'
         required: true
-        description: 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。履歴に積む）・閉じる・全画面の切り替え・戻る進む・図を拡大する・本文の見出しへ移る（見出しの名前。使う側がハッシュの `h` を履歴に積まずに置き換える）・本文のまとまりのリンクを押した（`linkHeadings` の `onChangeSet` が知らせた `diff` の値。使う側が記録にあるまとまりか確かめて時点を切り替える）・本文の差分の並べ方を切り替える（`bodyDiffLayoutSwitch` が知らせた並べ方。使う側が個人の上書きに残して描き直す）・レビュー中のコメントの並びを切り替える（入れ替えた後の並び `'newest' | 'oldest'`。使う側が個人の上書きに残して描き直す）
+        description: 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。履歴に積む）・閉じる・全画面の切り替え・戻る進む・図を拡大する・本文の見出しへ移る（見出しの名前。使う側がハッシュの `h` を履歴に積まずに置き換える）・本文のまとまりのリンクを押した（`linkHeadings` の `onChangeSet` が知らせた `diff` の値。使う側が記録にあるまとまりか確かめて時点を切り替える）・本文の差分の並べ方を切り替える（`bodyDiffLayoutSwitch` が知らせた並べ方。使う側が個人の上書きに残して描き直す）・レビュー中のコメントの並びを切り替える（入れ替えた後の並び `'newest' | 'oldest'`。使う側が個人の上書きに残して描き直す）・その項目で絞ったコメントの一覧を開く（項目の ID。サーバーの配信だけ渡し、渡されたときだけ全画面でない見出しの編集する・エクスポートの右、前後の移動の左に、コメントのアイコンだけのボタン（`data-act` は `item-comments`。読み上げの名前「{ID} のコメントの一覧を開く」、`title` は「この項目のコメントの一覧」）を置く）
       - name: comment
         type: "{form: SendFormProps, reviews: ReviewState['items'], edit: ReviewEditProps} | null"
         required: true
@@ -434,6 +434,12 @@ components:
         condition: 'D-1 へのコメント C-63（「頭の 1 行 + `1.`〜`7.` の番号付きのリスト」の 8 行）と C-65（1 行）。`parametrize`: `expanded` が空 / `expanded` に C-63'
         mock: '`comment.edit.on.fold`'
         expected: C-63 の本文が `ol` を持ち（リストの行に行の並びの罫線が無い）、`folded` で本文の下に `data-focus` が `detail-more:C-63` の「続きを読む」。C-65 には開閉のボタンが無い。押すと `on.fold` が `(C-63, true)` / C-63 が `folded` を持たず「折りたたむ」
+      - name: test_detail_panel_when_comments_button
+        case: 正常
+        summary: 見出しのコメントの一覧のボタンは、`on.comments` があり全画面でないときだけ置き、押すと項目の ID を知らせる
+        condition: 'D-1 を描く。`parametrize`: `on.comments` があり `full` が偽 / `on.comments` があり `full` が真 / `on.comments` が無い'
+        mock: '`on.comments`'
+        expected: 読み上げの名前「D-1 のコメントの一覧を開く」のボタンが「編集する」と「前の項目へ戻る」の間にあり、押すと `on.comments` が `D-1` で 1 回 / ボタンが無い / ボタンが無い
   - name: panelResizer
     title: 幅の区切り
     kind: コンポーネント

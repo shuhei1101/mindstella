@@ -9,7 +9,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: スレッドで話す
     scope: public
-    summary: スレッドを状態とタグで絞り、最後の書き込みの新しい順に並べる
+    summary: スレッドを状態・タグ・項目で絞り、最後の書き込みの新しい順に並べる
     args:
       - name: threads
         type: Thread[]
@@ -26,6 +26,11 @@ functions:
         required: true
         passing: positional
         description: 絞るタグ
+      - name: target
+        type: string | null
+        required: true
+        passing: positional
+        description: 絞る項目の ID（スレッドの `target` が一致するものだけを残す。`null` なら項目で絞らない）
     returns:
       type: Thread[]
       description: 絞って並べたスレッド（渡した配列は変えない）
@@ -36,13 +41,19 @@ functions:
         condition: 'オープンの TH-1（01:00・タグ `画面`）・TH-2（02:00）とクローズの TH-5（03:00・タグ `画面`）。`parametrize`: `open`・`null` / `all`・`null` / `all`・`画面` / `closed`・`起票`'
         mock: なし
         expected: '`[TH-2, TH-1]` / `[TH-5, TH-2, TH-1]` / `[TH-5, TH-1]` / `[]`'
+      - name: test_visible_threads_when_target
+        case: 正常
+        summary: 項目で絞る
+        condition: 'オープンの TH-1（D-1 へ向けた）・TH-2（D-2 へ向けた）とクローズの TH-5（D-1 へ向けた）。`parametrize`: `open`・`null`・`D-1` / `all`・`null`・`D-1` / `all`・`null`・`D-9`'
+        mock: なし
+        expected: '`[TH-1]` / `[TH-5, TH-1]` / `[]`'
   - name: threadCounts
     title: 状態ごとの件数
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: スレッドで話す
     scope: public
-    summary: タグで絞ったスレッドの、状態の絞り込みに出す件数を返す
+    summary: タグ・項目で絞ったスレッドの、状態の絞り込みに出す件数を返す
     args:
       - name: threads
         type: Thread[]
@@ -54,6 +65,11 @@ functions:
         required: true
         passing: positional
         description: 絞るタグ
+      - name: target
+        type: string | null
+        required: true
+        passing: positional
+        description: 絞る項目の ID（`null` なら項目で絞らない）
     returns:
       type: '{open: number, closed: number, all: number}'
       description: 状態ごとの件数
@@ -64,6 +80,12 @@ functions:
         condition: 'オープン 2 件（1 件がタグ `画面`）とクローズ 1 件（タグ `画面`）。`parametrize`: `null` / `画面`'
         mock: なし
         expected: '`{open: 2, closed: 1, all: 3}` / `{open: 1, closed: 1, all: 2}`'
+      - name: test_thread_counts_when_target
+        case: 正常
+        summary: 項目で絞った件数を数える
+        condition: 'オープン 2 件（1 件が D-1 へ向けた・タグ `画面`）とクローズ 1 件（D-1 へ向けた）。`parametrize`: `null`・`D-1` / `画面`・`D-1`'
+        mock: なし
+        expected: '`{open: 1, closed: 1, all: 2}` / `{open: 1, closed: 0, all: 1}`'
   - name: pendingThreads
     title: まだ送っていない新しいスレッド
     kind: 関数
@@ -87,9 +109,14 @@ functions:
         required: true
         passing: positional
         description: 絞るタグ
+      - name: target
+        type: string | null
+        required: true
+        passing: positional
+        description: 絞る項目の ID（`null` なら項目で絞らない）
     returns:
       type: ReviewState['items']
-      description: '`thread` を持たない書き込み（溜めた順）。`filter` が `closed` か、`tag` が `null` でなければ空'
+      description: '`thread` を持たない書き込み（溜めた順。`target` が `null` でなければ、その項目へ向けたものだけ）。`filter` が `closed` か、`tag` が `null` でなければ空'
     unit_tests:
       - name: test_pending_threads
         case: 正常
@@ -97,6 +124,12 @@ functions:
         condition: 'C-41（新しいスレッド）・C-42（新しいスレッド）・C-43（返信）。`parametrize`: `open`・`null` / `all`・`null` / `closed`・`null` / `open`・`画面`'
         mock: なし
         expected: '`[C-41, C-42]` / `[C-41, C-42]` / `[]` / `[]`'
+      - name: test_pending_threads_when_target
+        case: 正常
+        summary: 項目で絞ると、その項目への新しいスレッドだけを出す
+        condition: 'C-41（D-1 への新しいスレッド）・C-42（項目を指さない新しいスレッド）・C-43（返信）。`parametrize`: `open`・`null`・`D-1` / `closed`・`null`・`D-1` / `open`・`画面`・`D-1`'
+        mock: なし
+        expected: '`[C-41]` / `[]` / `[]`'
   - name: isBlockedReply
     title: 送れない返信か
     kind: 関数
@@ -271,9 +304,9 @@ components:
         required: true
         description: 項目のタイトル（記録から消えていれば `null`）
       - name: on
-        type: '{close, pin, review, back, filter, tag, clearTag, compose, openThread, openId, changeSet, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc, fold}'
+        type: '{close, pin, review, back, filter, tag, clearTag, clearTarget, compose, openThread, openId, changeSet, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc, fold}'
         required: true
-        description: 閉じる・ピン止めの切り替え・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・まとまりのリンクを押した（まとまりの ID）・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す・本文を開く／畳む（書き込みの ID・開くか）
+        description: 閉じる・ピン止めの切り替え・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・項目の絞り込みを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・まとまりのリンクを押した（まとまりの ID）・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す・本文を開く／畳む（書き込みの ID・開くか）
       - name: changeSetOf
         type: '(id: string) => string | null'
         required: true
@@ -286,6 +319,10 @@ components:
         type: boolean
         required: true
         description: ピン止めしているか（入口の `Prefs.commentsPinned`）
+      - name: target
+        type: string | null
+        required: true
+        description: 絞っている項目の ID（詳細パネルの「コメントの一覧」で入る。絞っていなければ `null`）
     unit_tests:
       - name: test_comments_panel
         case: 正常
@@ -408,12 +445,12 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: スレッドで話す
     kind: 画面
-    summary: 画面設計『コメントの一覧』の見出しの帯より下を描く。状態の絞り込み（件数は `threadCounts`）・タグの絞り込みのチップ・行（`pendingThreads` の後に `visibleThreads`。どちらも `threadRow`）・空の状態・読めない理由・下端の「新しいスレッド」か新しいスレッドの入力（見出し・×・`sendForm`）を持つ。`data-focus` は絞り込みが `filter:{値}`、タグを外すが `clear-tag`、入口が `compose`、× が `compose-close`
+    summary: 画面設計『コメントの一覧』の見出しの帯より下を描く。状態の絞り込み（件数は `threadCounts`）・項目の絞り込みのチップ（コメントのアイコン・ID・`titleOf` のタイトル・×。件数は出さない）・タグの絞り込みのチップ（分母は状態・項目で絞った件数）・行（`pendingThreads` の後に `visibleThreads`。どちらも `target` を渡し、`threadRow` で描く）・空の状態・読めない理由・下端の「新しいスレッド」か新しいスレッドの入力（見出し・×・`sendForm`）を持つ。`data-focus` は絞り込みが `filter:{値}`、タグを外すが `clear-tag`、項目を外すが `clear-target`、入口が `compose`、× が `compose-close`
     props:
       - name: props
         type: CommentsPanelProps
         required: true
-        description: '`commentsPanel` の引数（`items`・`threads`・`threadsError`・`filter`・`tag`・`composing`・`free`・`on` を使う）'
+        description: '`commentsPanel` の引数（`items`・`threads`・`threadsError`・`filter`・`tag`・`target`・`titleOf`・`composing`・`free`・`on` を使う）'
     unit_tests:
       - name: test_thread_list_view
         case: 正常
@@ -439,6 +476,18 @@ components:
         condition: '`parametrize`: `composing` が偽 / 真'
         mock: '`on.compose`'
         expected: 「新しいスレッド」のボタン（押すと `on.compose` が真で 1 回）/ 見出し「新しいスレッド」と入力欄（`aria-label` が「新しいスレッド」）、× を押すと `on.compose` が偽で 1 回
+      - name: test_thread_list_view_when_target
+        case: 正常
+        summary: 項目で絞るとチップを出し、その項目のスレッドと新しいスレッドだけを並べる
+        condition: オープンの TH-1（D-1 へ向けた）・TH-2（D-2 へ向けた）とクローズの TH-5（D-1 へ向けた）、レビュー中に C-41（D-1 への新しいスレッド）・C-42（項目を指さない新しいスレッド）。`filter` は `open`、`target` は `D-1`、`titleOf` は D-1 に「移し替え」を返す
+        mock: '`on.clearTarget`'
+        expected: 絞り込みが「オープン 1」「クローズ 1」「すべて 2」。チップに `D-1` と「移し替え」があり件数が無い。行が C-41・TH-1 の順。×（読み上げの名前「項目「D-1」の絞り込みを外す」、`data-focus` が `clear-target`）を押すと `on.clearTarget` が 1 回
+      - name: test_thread_list_view_when_target_and_tag
+        case: 正常
+        summary: 項目とタグで絞った件数と空の状態の文言
+        condition: 'タグ `画面` の TH-1（D-1 へ向けた）・TH-2（D-2 へ向けた）とタグ `起票` の TH-3（D-1 へ向けた）。`parametrize`: `tag` が `画面`・`target` が `D-1` / `filter` が `closed`・`tag` が `画面`・`target` が `D-1`'
+        mock: なし
+        expected: タグのチップに「1 / 2 件」、行が TH-1 だけ / 「D-1 へのタグ「画面」のクローズのスレッドはありません。」
   - name: threadView
     title: スレッド
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
