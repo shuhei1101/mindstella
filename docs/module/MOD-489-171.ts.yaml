@@ -142,7 +142,7 @@ data_models:
         description: コメント・返信の入力の音声入力の状態
       - name: target
         type: string | null
-        description: スレッドを絞っている項目の ID。詳細パネルの「コメントの一覧」で入れ、項目の絞り込みの × とトップバーのコメントのボタンで開くときに `null` にする。ページを開いたときは `null`
+        description: スレッドを絞っている項目の ID。詳細パネルの「コメントの一覧」で入れ、項目の絞り込みの × と一覧を閉じるときに `null` にする。ページを開いたときは `null`
   - name: VoiceState
     title: 音声入力の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -973,7 +973,7 @@ notes:
     `start` の 5・6・8 に足す。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`target`・`openedThread`（`opened`）・`composing`・`reason`・`expanded` と、新しいスレッドの入力（`formKey(null, null)`）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
     - パネルを開くときは、閉じる前の `view`・`openedThread`・`composing`・`reviewFrom`・`reviewFocus` のまま描き、パネルの中のスクロールの位置を `listScroll` に戻す（ページを開いたときは `list` から始める）。スレッドを読み直し、`view` が `thread` で、開いていた送ったスレッドが読み直したスレッドに無ければ、`view` を `list`、`openedThread` を `null` にする
     - 「状態で絞る」「タグで絞る」（絞っているタグなら外す）「タグを外す」「項目の絞り込みを外す」では `filter`・`tag`・`target` を書き換えてパネルを描き直す
-    - トップバーのコメントのボタンで一覧を開くときは `target` を `null` にする。サーバーの配信では `detailPanel` に `on.comments` を渡し、受けたら `target` に項目の ID を入れてパネルの中の画面を開いた直後の状態（`view` は `list`、`openedThread`・`reviewFocus` は `null`、`composing` は偽、`reason` は閉じて空）に戻し、一覧を開いていなければ開き、開いていれば描き直す（`filter`・`tag` は保つ）。詳細パネルで別の項目へ移っても `target` は変えない
+    - 一覧を閉じるときは `target` を `null` にする（トップバー・未読のタイル・音声入力の帯など、詳細パネルのボタンでない入口で開くと項目で絞らない）。サーバーの配信では `detailPanel` に `on.comments` を渡し、受けたら `target` に項目の ID を入れてパネルの中の画面を開いた直後の状態（`view` は `list`、`openedThread`・`reviewFocus` は `null`、`composing` は偽、`reason` は閉じて空）に戻し、一覧を開いていなければ開き、開いていれば描き直す（`filter`・`tag` は保つ）。詳細パネルで別の項目へ移っても `target` は変えない
     - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。送ったスレッドで `hasUnseen` が真なら「既読にする」を行う（一覧の行・レビュー中の書き込みのどちらから開いても同じ。「スレッドの読み直し」）。「戻る」（`thread` から）では返信の書きかけを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す
     - 「レビュー中を開く」では返信の書きかけを待たずに保ち、`reviewFrom` に今の `view` を控えて `view` を `review` にする（`thread` から開いたときは `reviewFocus` にそのスレッドの ID）。「戻る」（`review` から）では `reviewFrom` へ戻る。`reviewFrom` が `thread` で、開いていたまだ送っていない新しいスレッドが `review.items` にも `removed` にも無ければ `list` へ戻る
     - 「新しいスレッドの入力を出す／畳む」では `composing` を入れ替え、出したときは入力欄へ、畳んだときは「新しいスレッド」へフォーカスを移す（書きかけは残す）

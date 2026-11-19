@@ -699,13 +699,7 @@ var MindmapPreview;
                 commentCount: comment.review.items.length,
                 commentsOpen: comment.listOpen,
                 commentsUnread: MindmapPreview.anyOpenUnseen(comment.threads),
-                onComments: () => {
-                    if (comment.listOpen)
-                        return closeList();
-                    // トップバーから開いた一覧は項目で絞らない
-                    comment.target = null;
-                    openList();
-                },
+                onComments: () => (comment.listOpen ? closeList() : openList()),
                 settingsOpen: display.open,
                 onSettings: () => (display.open ? closeSettings() : openSettings()),
                 // 概要以外の画面に絞り込みのボタンを置き、値を選んでいる条件の数をバッジに出す
@@ -2094,6 +2088,8 @@ var MindmapPreview;
         const closeList = () => {
             flushDrafts();
             comment.listOpen = false;
+            // 項目の絞り込みはパネルを開いている間だけ保つ
+            comment.target = null;
             comment.opened = null;
             comment.highlight = null;
             comment.removed = [];

@@ -110,7 +110,7 @@ namespace MindmapPreview {
     filter: ThreadFilter;
     /** スレッドを絞っているタグ。パネルを閉じても保つ */
     tag: string | null;
-    /** スレッドを絞っている項目の ID。詳細パネルの「コメントの一覧」で入れ、項目の絞り込みの × とトップバーのコメントのボタンで開くときに外す */
+    /** スレッドを絞っている項目の ID。詳細パネルの「コメントの一覧」で入れ、項目の絞り込みの × と一覧を閉じるときに外す */
     target: string | null;
     /** 開いているスレッド（`pending` が真なら `id` はまだ送っていない新しいスレッドのコメントの ID） */
     openedThread: OpenedThread | null;
@@ -972,12 +972,7 @@ namespace MindmapPreview {
           commentCount: comment.review.items.length,
           commentsOpen: comment.listOpen,
           commentsUnread: anyOpenUnseen(comment.threads),
-          onComments: () => {
-            if (comment.listOpen) return closeList();
-            // トップバーから開いた一覧は項目で絞らない
-            comment.target = null;
-            openList();
-          },
+          onComments: () => (comment.listOpen ? closeList() : openList()),
           settingsOpen: display.open,
           onSettings: () => (display.open ? closeSettings() : openSettings()),
           // 概要以外の画面に絞り込みのボタンを置き、値を選んでいる条件の数をバッジに出す
@@ -2362,6 +2357,8 @@ namespace MindmapPreview {
     const closeList = (): void => {
       flushDrafts();
       comment.listOpen = false;
+      // 項目の絞り込みはパネルを開いている間だけ保つ
+      comment.target = null;
       comment.opened = null;
       comment.highlight = null;
       comment.removed = [];
