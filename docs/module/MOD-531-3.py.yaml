@@ -447,7 +447,7 @@ functions:
       1. `state.read_ids` に `workspace_id` が無ければ `ApiError`（404、`stage: workspace`）
       2. `project_index.read_source_rows(ctx.settings_file)` で行を読み、`id` が一致する行を引く。`ProjectIndexError` か行が無いときは `settings` の警告を付け、ワークスペースの部分を `None` にする
       3. 行があれば、`workspace_folder` でフォルダを、`FILE_OUTSIDE_READ_KEY` が偽かで `closed` を引く。`.mindstella/config.yaml` が無ければ `records` の警告（`detail` にフォルダのパス）を付け、`title`・未読の数・`updated` を `None` にする
-      4. 記録があれば、設定の `title`、`threads.status_counts` の 2 つの数、`history.last_updated` と最後の書き込みの日時のうち新しい方を `updated` にする。`threads.status_counts`・`history.last_updated` が `SchemaMismatchError` を送出したときは、`records` の警告（`detail` に理由）を付け、未読の数・`updated` を `None` にして続ける
+      4. 記録があれば、設定の `title`（設定を YAML として読めなければ `records` の警告（`detail` に理由）を付けて `None`）、`threads.status_counts` の 2 つの数、`history.last_updated` と最後の書き込みの日時のうち新しい方を `updated` にする。`threads.status_counts`・`history.last_updated` が `SchemaMismatchError` を送出したときは、`records` の警告（`detail` に理由）を付け、未読の数・`updated` を `None` にして続ける
       5. `url` は `ctx.previews.url_of(フォルダ)`（配信を立てない。フォルダが分からなければ `None`）
       6. `sessions.list_sessions` の `sessions`・`close_pending` と、`state.read_launch` が `None` でないか（`launch_options_recorded`）を足す
       7. `status` は `closed` が真なら `closed`、偽で `close_pending` が真なら `stopped`、偽なら `active`、`closed` が `None` なら `None`
@@ -490,9 +490,9 @@ functions:
       - name: test_workspace_status_warnings
         case: 異常
         summary: 記録か設定を参照できなければ警告を付ける
-        condition: '`parametrize`: `.mindstella/` が無い / グローバルの設定のファイルが壊れている / `history.yaml` がスキーマに合わない'
+        condition: '`parametrize`: `.mindstella/` が無い / グローバルの設定のファイルが壊れている / `history.yaml` がスキーマに合わない / `config.yaml` が YAML として壊れている'
         mock: '`sessions.list_sessions`'
-        expected: '`warnings[0].stage` が `records`（`detail` にパス）で未読の数が `None` / `settings` で `status`・`closed` が `None` / `records`（`detail` に理由）で未読の数と `updated` が `None`。どちらも `sessions` を返す'
+        expected: '`warnings[0].stage` が `records`（`detail` にパス）で未読の数が `None` / `settings` で `status`・`closed` が `None` / `records`（`detail` に理由）で未読の数と `updated` が `None` / `records`（`detail` に `config.yaml`）で `title` が `None`、未読の数は数える。どちらも `sessions` を返す'
       - name: test_workspace_status_unknown
         case: 異常
         summary: ID の一覧に無ければ 404
