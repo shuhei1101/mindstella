@@ -60,8 +60,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T07:28:35.053699+00:00'
   - process: 画面設計
-    status: todo
+    status: done
     note: SCR-489-1・SCR-489-2（コメントの一覧）と SCR-489-31・SCR-489-32（詳細パネル）
+    updated_by: planner
+    updated_at: '2026-11-19T08:18:06.744251+00:00'
   - process: モジュール構成設計
     status: todo
     note: comments.ts・detail.ts・app.ts と comments-panel・detail-panel・preview-search
