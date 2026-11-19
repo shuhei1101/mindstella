@@ -778,7 +778,7 @@ def test_save_batch_when_body_removal_fails(
     )
     failing_unlink("N-2.mark.md")
     # 実行・検証
-    with pytest.raises(WriteFailedError, match=r"N-2\.md"):
+    with pytest.raises(WriteFailedError, match=r"N-2\.mark\.md"):
         store.save_batch(workspace, change)
     assert snapshot_tree(root) == before
     assert list(root.rglob("*.tmp")) == []

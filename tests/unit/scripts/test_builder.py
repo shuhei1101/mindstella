@@ -142,7 +142,7 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
     """種類ごとのキーと、指された本文だけを集める（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1"),
+        make_item("A-1", body="docs/A-1.mark.md"),
         make_item("R-1", body="docs/R-1.mark.md"),
         bodies={"A-1.mark.md": "資料の本文\n", "X-1.mark.md": "どこからも指されない本文\n"},
     )
@@ -179,7 +179,7 @@ def test_collect_preview_data_with_html_body(
     """HTML の本文は原文を bodies に、行の印つきを marked_bodies に入れる（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1"),
+        make_item("A-1", body="docs/A-1.mark.md"),
         make_item("A-2", body="docs/A-2.html"),
         bodies={"A-1.mark.md": "資料の本文\n", "A-2.html": "<p>a</p>"},
     )
@@ -485,7 +485,7 @@ def test_export_preview(
     # 準備
     root = make_workspace(
         make_item("D-1"),
-        make_item("A-1"),
+        make_item("A-1", body="docs/A-1.mark.md"),
         bodies={"A-1.mark.md": "本文 </script>\n"},
     )
     workspace = store.load_workspace(root)
