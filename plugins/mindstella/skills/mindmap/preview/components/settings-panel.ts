@@ -415,7 +415,8 @@ namespace MindmapPreview {
         storageOk ? null : storageNote(),
         kindsField(props),
         detailField(props),
-        commentInputField(props),
+        // 配る書き出し（ワークスペースの既定にできない）はコメントの入力を持たないため、区画を出さない
+        ...(props.canSave ? [commentInputField(props)] : []),
         resetBlock(props),
         canSave ? saveBlock(props) : null,
         messageLine(message),
