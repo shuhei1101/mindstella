@@ -1,0 +1,200 @@
+title: ワークスペースの設定を書き換えて起動し直す
+lead: 外部のアプリがワークスペースの進め方の文書・追加の MCP・プラグインの書き換えを依頼すると、MindStella は指定を確認して設定と状態のフォルダに記録し、起動中の MindStella のセッションには反映しない。外部のアプリが起動し直しを依頼すると、書き換えた指定で MindStella のセッションを起動し直す単一ユースケース。
+issue: 524
+test_file: tests/e2e/単一ユースケース/test_workspace_settings_update.py
+primary_actor: 外部のアプリ（aituber など）
+stakeholders:
+  - name: 外部のアプリ
+    interest: 作った後のワークスペースの進め方の文書・追加の MCP・プラグインを指定し直し、反映する時期を自分で決められる。作成の応答が追加の MCP・プラグインを記録しなかったと示したときに指定し直せる
+  - name: 利用者
+    interest: 話し合いの途中で MindStella のセッションが書き換えで止まらず、読めない指定で今の設定が壊れない
+trigger: 外部のアプリが MindStella の API に、ワークスペースの設定の書き換え（`PATCH /workspaces/{id}`）を依頼する
+preconditions:
+  - 常駐サーバーが起動している
+  - 外部のアプリがワークスペースを作っている（単一ユースケース『外部のアプリから起動する』）
+success_guarantee: 書き換えた後は、ワークスペースの設定の進め方の文書と、状態のフォルダの追加の MCP・プラグインの記録が指定した値で、指定しなかったキーは書き換える前と同じ。起動中の MindStella のセッションは止まらずに書き換える前の指定のまま動き、起動し直し（`restart`）か次の作成から、書き換えた指定で起動する。
+minimal_guarantee: 読めない指定が 1 つでもあれば何も記録せず、どの指定が読めないかを示すエラーにする。無いワークスペースの書き換えは、ほかの失敗と区別できる、ワークスペースが無いエラーにする。
+frequency: 外部のアプリが活動の途中で進め方・使用する MCP・プラグインを変えるたびと、作成の応答が追加の MCP・プラグインを記録しなかったと示したとき
+priority: 中
+reading: |-
+  | 呼び出し元 | 読み替え |
+  | --- | --- |
+  | 端末の起動のコマンド | 同じ MindStella の API を呼ぶので、外部のアプリを利用者に読み替える |
+  | MindStella の MCP の設定の書き換えのツール | 外部のアプリを、MCP を呼んだセッションに読み替える |
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（起動したら SessionStart のフックを呼び、起動の引数と環境変数を記録する）
+      - name: 常駐サーバー
+        description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指す
+      - name: project-index
+        description: テストごとに起動した project-index。進め方の文書を 2 つ（書き換える前と後）配信する
+      - name: ワークスペース
+        description: 単一ユースケース『外部のアプリから起動する』で進め方の文書・追加の MCP・プラグインを指定して作り、MindStella のセッションが起動している
+        notes: 書き換える前と後で、進め方の文書・追加の MCP の定義・プラグインのフォルダを全て別の値にする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+        participant PI as project-index
+        participant CC as MindStella のセッション
+
+        APP->>API: 設定の書き換えを依頼する（PATCH /workspaces/{id}）
+        API->>WSM: 書き換えを依頼する
+        WSM->>PI: 進め方の文書を参照できるか
+        PI-->>WSM: 参照できる
+        WSM->>WSM: 追加の MCP の定義とプラグインのフォルダを読めるか確認する
+        WSM->>WSM: 設定に進め方の文書を、状態のフォルダに追加の MCP・プラグインを記録する
+        API-->>APP: 書き換えた後の設定
+        Note over CC: 起動中の MindStella のセッションは書き換える前の指定のまま動く
+        APP->>API: 起動し直しを依頼する（POST /workspaces/{id}/sessions/{session}/restart）
+        API->>MGR: 起動し直しを依頼する
+        MGR->>CC: 止める
+        MGR->>MGR: 設定の進め方の文書と、状態のフォルダの追加の MCP・プラグインを参照する
+        MGR->>CC: 参照した指定で、前の会話を引き継いで起動する
+        CC->>MGR: SessionStart
+        API-->>APP: 起動し直しを受け付けた
+      ```
+    expected:
+      - ワークスペースの設定の進め方の文書と、状態のフォルダの追加の MCP・プラグインの記録が、書き換えの依頼で指定した値になっている
+      - 書き換えの応答を受け取った時点で、Mock のセッションが書き換える前の 1 回だけ起動している（書き換えで止まっていない）
+      - 起動し直した後の Mock のセッションが、書き換えた進め方の文書・追加の MCP・プラグインで起動している
+      - 起動し直した後の MindStella のセッションの ID が、書き換える前と同じ
+    test: test_normal
+  - name: 正常シナリオ（追加の MCP・プラグインの記録が無いワークスペース）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（起動したら SessionStart のフックを呼び、起動の引数を記録する）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: project-index
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 進め方の文書を指定して作った後で、状態のフォルダの追加の MCP・プラグインの記録が無い。MindStella のセッションは無い
+        notes: 作成の応答が、追加の MCP・プラグインの指定を記録しなかったと示した状態
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+        participant CC as MindStella のセッション
+
+        APP->>API: 追加の MCP・プラグインだけを指定して、設定の書き換えを依頼する（PATCH /workspaces/{id}）
+        API->>WSM: 書き換えを依頼する
+        WSM->>WSM: 追加の MCP の定義とプラグインのフォルダを読めるか確認する
+        WSM->>WSM: 状態のフォルダに追加の MCP・プラグインの記録を作る
+        API-->>APP: 書き換えた後の設定
+        APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+        API->>MGR: 作成を依頼する
+        MGR->>CC: 記録した指定で起動する
+        CC->>MGR: SessionStart
+        API-->>APP: MindStella のセッションの ID と画面の URL
+      ```
+    expected:
+      - 状態のフォルダに、指定した追加の MCP・プラグインの記録がある
+      - ワークスペースの設定の進め方の文書が、書き換える前と同じ
+      - MindStella のセッションの作成の応答に、追加の MCP・プラグインの記録が無いことの警告が無い
+      - Mock のセッションが、指定した追加の MCP・プラグインで起動している
+    test: test_normal_when_launch_record_missing
+  - name: 異常シナリオ（読めないプラグインのフォルダ）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: project-index
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 進め方の文書・追加の MCP・プラグインを指定して作った。MindStella のセッションは無い
+      - name: 書き換える設定
+        description: 参照できる進め方の文書と読める追加の MCP の定義に、無いプラグインのフォルダを混ぜて指定する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+
+        APP->>API: 設定の書き換えを依頼する（PATCH /workspaces/{id}）
+        API->>WSM: 書き換えを依頼する
+        WSM->>WSM: プラグインのフォルダが無い
+        API-->>APP: 読めないプラグインのフォルダを示すエラー
+      ```
+    expected:
+      - 外部のアプリが、読めないプラグインのフォルダを示すエラーを受け取っている
+      - ワークスペースの設定と、状態のフォルダの追加の MCP・プラグインの記録が、依頼の前と同じ（参照できる進め方の文書と読める追加の MCP も記録していない）
+    test: test_error_when_plugin_dir_unreadable
+  - name: 異常シナリオ（参照できない進め方の文書）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: project-index
+        description: 正常シナリオと同じ。指定する進め方の文書を配信しない
+      - name: ワークスペース
+        description: 異常シナリオ（読めないプラグインのフォルダ）と同じ
+      - name: 書き換える設定
+        description: project-index に無い進め方の文書を指定する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant PI as project-index
+
+        APP->>API: 設定の書き換えを依頼する（PATCH /workspaces/{id}）
+        API->>WSM: 書き換えを依頼する
+        WSM->>PI: 進め方の文書を参照できるか
+        PI-->>WSM: 文書が無い
+        API-->>APP: 参照できない進め方の文書を示すエラー
+      ```
+    expected:
+      - 外部のアプリが、参照できない進め方の文書を示すエラーを受け取っている
+      - ワークスペースの設定と、状態のフォルダの追加の MCP・プラグインの記録が、依頼の前と同じ
+    test: test_error_when_flow_unreadable
+  - name: 異常シナリオ（無いワークスペース）
+    setup:
+      - name: Mock
+        description: なし（Claude Code を起動しない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 状態のフォルダの ID の一覧に無い ID
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+
+        APP->>API: 設定の書き換えを依頼する（PATCH /workspaces/{id}）
+        API->>WSM: 書き換えを依頼する
+        WSM->>WSM: 状態のフォルダの ID の一覧に無い
+        API-->>APP: ワークスペースが無いエラー
+      ```
+    expected:
+      - 外部のアプリが、ほかのエラー（読めない指定・project-index の失敗）と区別できる、ワークスペースが無いエラーを受け取っている
+      - 状態のフォルダが、依頼の前と同じ
+    test: test_error_when_workspace_missing
+refs:
+  - SC-531-1#
+  - SC-582-1#
+  - SC-597-1#
+  - SC-601-1#
+notes:
+  受け持ち: 書き換えはワークスペースの管理が受け持つ。起動中の MindStella のセッションには何も依頼せず、反映は外部のアプリが依頼する起動し直しか、次の MindStella のセッションの作成で行う
+  確認の方法: 進め方の文書・追加の MCP・プラグインは、単一ユースケース『外部のアプリから起動する』の作成と同じ方法で確認し、全て読めたときだけ記録する
+  指定しなかったキー: 指定しなかったキーは書き換えない。追加の MCP だけ・プラグインだけを指定したときも、もう片方の記録は残す
+  クローズしたワークスペース: クローズしたワークスペースも書き換えを受ける。状態のフォルダの記録はクローズで残っているので、開き直した後の MindStella のセッションの作成から、書き換えた指定で起動する（単一ユースケース『ワークスペースを開き直して削除する』）
+  排他: 書き換えは、同じワークスペースの MindStella のセッションの作成・起動し直し・クローズと同じ順番で処理し、起動し直しが指定を参照している途中に記録を書き換えない
+  インターフェース定義で決めること: 書き換えで受けるキーの範囲（題名など設定のキーを含めるか）、応答のキー、読めない指定のエラーの値、MindStella の MCP のツールの名前
+  E2E の範囲: MindStella のセッションのエージェントは Mock にする
+id: SC-604-1
