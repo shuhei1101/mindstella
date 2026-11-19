@@ -16,7 +16,7 @@ constraints:
     constraint: 待ち受けを始める前に ID の一覧の作り直し → 状態の照合。作り直した ID の一覧のワークスペースも照合する。エージェントフローの配信元の確認は待ち受けを始めた後に行う
     notes: 資料 A-119 の「常駐サーバーが起動した」の行で、待ち受けの前に要るのは ID の一覧（MCP と API がワークスペースを扱う前提）と状態の照合だけ。ID の一覧がある普段の起動は、待ち受けの前に project-index を呼ばない
   - item: 配信元の行の取得
-    constraint: project-index の `GET /settings/sources` で取得する。ID の一覧の作り直し（`workspaces.yaml` が無いときだけ、待ち受けの前に 1 回）とエージェントフローの配信元の確認（待ち受けの後に 1 回）で別々に呼ぶ。応答の行のキーは camelCase（`outsideRead`）
+    constraint: project-index の `GET /settings/sources` で取得する。ID の一覧の作り直し（`workspaces.yaml` が無いときだけ、待ち受けの前に 1 回）とエージェントフローの配信元の確認（待ち受けの後に 1 回）で別々に呼ぶ。応答の行のキーは camelCase（`outsideRead`）。行の `config` は文字列か文字列の並びで、並びのときは先頭の要素を行の `config` として扱う（『ワークスペースの作成』と同じ）
     notes: 端末の設定のファイルを直接参照しない（行の書き込みも読み取りも project-index の API で行う。D-300）
   - item: project-index の失敗
     constraint: 待ち受けの前の `GET` が失敗した（つながらない・200 以外・上限で打ち切った）ときは ID の一覧の作り直しを飛ばし、待ち受けの後の `GET`・`PATCH` が失敗したときはエージェントフローの配信元の確認を飛ばす。どちらも飛ばした処理と失敗の理由をログに 1 行記録する。状態の照合は行う。409 の再送信のほかは、次の起動まで再試行しない

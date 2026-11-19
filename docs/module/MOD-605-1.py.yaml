@@ -136,7 +136,7 @@ functions:
     returns:
       type: list[str]
       description: ワークスペースの ID の並び（重なりなし）
-    process: 1. `sources` の行ごとに、辞書で `id` が文字列、`config` が `WORKSPACE_CONFIG_SUFFIX` で終わる行の `id` を、出た順に重なりなく並べて返す（`outsideRead` は見ない）
+    process: 1. `sources` の行ごとに、辞書で `id` が文字列、`config`（並びなら先頭の要素。`_row_config`）が `WORKSPACE_CONFIG_SUFFIX` で終わる行の `id` を、出た順に重なりなく並べて返す（`outsideRead` は見ない）
     unit_tests:
       - name: test_workspace_ids
         case: 正常
@@ -144,6 +144,12 @@ functions:
         condition: '行が A（`outsideRead: true`）・エージェントフロー・ほかの配信元・C（`outsideRead: false`）・`config` の無い行・辞書でない行'
         mock: なし
         expected: '`[A, C]`'
+      - name: test_workspace_ids_when_config_list
+        case: 正常
+        summary: config が並びの行は先頭の要素で見分ける
+        condition: '行が A（`config: [/w/a/.mindstella/dev-docs.yaml]`）・エージェントフロー（`config: [/p/agent-flows/dev-docs.yaml]`）'
+        mock: なし
+        expected: '`[A]`'
   - name: check_agent_flows_source
     title: エージェントフローの配信元の確認
     kind: 関数
@@ -164,7 +170,7 @@ functions:
     process: |-
       1. 配信元の行を取得し、`mindstella-agent-flows` の行を引く（`project_index.get_settings(ctx.pi_port)`）
          - 行が無い場合、偽を返す
-         - 行の `config` が `str(PLUGIN_DIR / AGENT_FLOWS_CONFIG)` と同じ場合、偽を返す
+         - 行の `config`（並びなら先頭の要素。`_row_config`）が `str(PLUGIN_DIR / AGENT_FLOWS_CONFIG)` と同じ場合、偽を返す
       2. `config` だけを今のパスへ書き換える（`project_index.patch_source(ctx.pi_port, AGENT_FLOWS_SOURCE, {"config": 今のパス})`。409 の 1 回の取得し直しは `patch_source` が行う）
          - `[INFO]` エージェントフローの配信元の行を書き換えた（前のパス・今のパス）
       3. 真を返す
@@ -198,6 +204,12 @@ functions:
         condition: '`parametrize`: `get_settings` が `ProjectIndexError` を送る / `patch_source` が `ProjectIndexError` を送る'
         mock: '`project_index.get_settings`・`project_index.patch_source`（monkeypatch）'
         expected: 偽を返し、`WARNING` の記録が 1 件ある
+      - name: test_check_agent_flows_source_when_config_list
+        case: 正常
+        summary: config が今のパス 1 つの並びなら書き換えない
+        condition: 行の `config` が `[今のプラグインのパス]`
+        mock: '`project_index.get_settings`・`project_index.patch_source`（monkeypatch）'
+        expected: 偽を返し、`patch_source` が呼ばれない
   - name: start_agent_flows_check
     title: エージェントフローの配信元の確認を始める
     kind: 関数
