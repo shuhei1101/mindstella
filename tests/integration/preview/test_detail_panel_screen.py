@@ -96,7 +96,7 @@ from preview_body_view_helpers import (
     seed_body_view,
     table_state,
 )
-from preview_body_wrap_helpers import BODY_WIDTHS, WRAP_BODY, WRAP_ITEM_ID, WRAP_METRICS_JS
+from preview_body_wrap_helpers import BODY_WIDTHS, WRAP_BODY, WRAP_ITEM_ID, WRAP_METRICS_JS, WRAP_TABLE_LABEL
 from preview_body_scroll_helpers import (
     HANGING_LINES_JS,
     LONG_BODY,
@@ -5034,7 +5034,7 @@ def test_body_wrap_when_long_words_and_tables(
     assert result["idrefOverflowWrap"] == "normal"
     assert result["idrefRows"] == 1
     wide, narrow = result["wraps"]
-    group = {"label": "表", "tabindex": "0", "inside": True}
+    group = {"label": WRAP_TABLE_LABEL, "tabindex": "0", "inside": True}
     assert {key: wide[key] for key in group} == group
     assert {key: narrow[key] for key in group} == group
     assert wide["scrolls"] is True

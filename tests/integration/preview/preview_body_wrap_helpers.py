@@ -7,6 +7,7 @@ __all__ = [
     "WRAP_BODY",
     "WRAP_ITEM_ID",
     "WRAP_METRICS_JS",
+    "WRAP_TABLE_LABEL",
 ]
 
 # 本文の長い URL・インラインコード・表を確かめる幅（幅 320px・幅 389px 以下の境・幅 390px 以上・広い窓）
@@ -20,6 +21,9 @@ WIDE_COLUMNS = 30
 WIDE_HEADER = "| " + " | ".join(f"第{column}列" for column in range(1, WIDE_COLUMNS + 1)) + " |"
 WIDE_DIVIDER = "| " + " | ".join("---" for _ in range(WIDE_COLUMNS)) + " |"
 WIDE_ROW = "| " + " | ".join(f"2026-10-{column:02d}" for column in range(1, WIDE_COLUMNS + 1)) + " |"
+
+# mdmark が本文の表に付ける読み上げ名（`表: {直前の見出し}`）。本文の表は 2 つとも見出し「折り返し」の下にある
+WRAP_TABLE_LABEL = "表: 折り返し"
 
 # 空白を含まない長い URL、途中で切れない長いインラインコード、列の多い表（セルは折り返せない値）、幅に収まる表を持つ本文
 WRAP_BODY = f"""# 折り返し
