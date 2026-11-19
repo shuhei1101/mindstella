@@ -368,6 +368,37 @@ functions:
         condition: ファイルあり / 無し
         mock: なし
         expected: どちらもファイルが無い
+  - name: delete_workspace_state
+    title: ワークスペースの状態を削除する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: ワークスペースを開き直して削除する
+    scope: public
+    summary: '`workspaces/{ID}/` を中身ごと削除する。無ければ何もしない（`ids` は変えない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+    returns:
+      type: None
+      description: なし
+    exceptions:
+      - name: OSError
+        condition: フォルダがあるのに削除できない
+    unit_tests:
+      - name: test_delete_workspace_state
+        case: 正常
+        summary: フォルダを削除し、無ければ何もしない
+        condition: '`workspaces/{ID}/` に `session.json`・`snapshot/` がある / フォルダが無い'
+        mock: なし
+        expected: フォルダが無く、`ids` は変わらない / 例外にならない
 notes:
   書き方: どのファイルも同じフォルダの一時ファイルに書いてから `os.replace` で置き換える。JSON は標準の `json`、`workspaces.yaml` は PyYAML で読み書きする
   ログ: |

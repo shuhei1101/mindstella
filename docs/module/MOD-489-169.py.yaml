@@ -280,6 +280,29 @@ classes:
           type: None
           description: '-'
         process: 1. `_input_targets.remember(root, session)` を呼ぶ
+      - name: stop_detection
+        title: 変更の検知を止める
+        kind: メソッド
+        summary: ワークスペースの ID が一致する変更の検知を台帳から除外して止める。配信は止めない。無ければ何もしない（『ワークスペースの削除』が状態のフォルダを削除する前に呼ぶ）
+        args:
+          - name: workspace_id
+            type: str
+            required: true
+            passing: positional
+            description: ワークスペースの ID
+        returns:
+          type: None
+          description: '-'
+        process: |-
+          1. `_guard` を取り、`_detectors` のキーのうち `workspace_id_of` が `workspace_id` のものを台帳から除外して手元に取る
+          2. `_guard` を放してから、手元の変更の検知ごとに `ChangeDetector.stop` を呼ぶ
+        unit_tests:
+          - name: test_stop_detection
+            case: 正常
+            summary: 一致する変更の検知だけ止め、配信は残す
+            condition: 2 つのワークスペースを配信し、片方の ID を渡す / 配信していない ID を渡す
+            mock: '`ChangeDetector`'
+            expected: 渡した ID の `stop` だけが呼ばれ、`url_of` は両方とも URL を返す / 何も呼ばれない
   - name: PreviewServer
     title: 配信
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
