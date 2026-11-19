@@ -6,11 +6,16 @@
 //   pin: コメントの一覧のピン止め（1: ピン止めする / 無し: ピン止めしない）
 //   open: コメントの一覧で開くスレッド / scroll=1: コメントの一覧を下まで送る / inside=1: 開いたスレッドの向けた項目を詳細パネルに開く
 //   pending=0: 保存待ちの編集 0 件
-//   item=1: 詳細パネルのコメントの一覧のボタンを押す / status: 続けて押す状態の絞り込み / move: 続けて詳細パネルで開く別の項目
+//   at: 詳細パネルで開く項目 / item=1: 詳細パネルのコメントの一覧のボタンを押す / status: 続けて押す状態の絞り込み / move: 続けて詳細パネルで開く別の項目
 (() => {
   const body = document.body;
   const params = new URLSearchParams(location.search);
 
+  // 609: クエリの at の項目の詳細パネルで開く（コメントの無い項目でボタンを押す見本）
+  if (params.get("at") !== null && body.dataset.initial) {
+    body.dataset.initial = body.dataset.initial.replace(/id=[^&]+/, `id=${params.get("at")}`);
+    if (location.hash !== "") history.replaceState(null, "", `#${body.dataset.initial}`);
+  }
   // ハッシュが無いときは、その画面の見本の状態で開く
   if (location.hash === "" && body.dataset.initial) {
     history.replaceState(null, "", `#${body.dataset.initial}`);

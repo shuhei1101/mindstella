@@ -12597,7 +12597,7 @@ var MindmapPreview;
         const rows = visibleThreads(threads, filter, tag, target);
         const pending = pendingThreads(items, filter, tag, target);
         const total = threads.filter((thread) => (filter === "all" || thread.status === filter) && (target === null || thread.target === target)).length;
-        // 609: 項目の絞り込みのチップ（ID とタイトル、外す ×）
+        // 609: 項目の絞り込みのチップ（ID とタイトル、外す ×。件数は状態の絞り込みが出す）
         const targetTitle = target === null ? null : props.titleOf(target);
         const targetChip = target === null
             ? null
@@ -12619,7 +12619,6 @@ var MindmapPreview;
                             }),
                         ],
                     }),
-                    tag === null ? MindmapPreview.h({ tag: "span", attrs: { class: "hint" }, children: [`${rows.length + pending.length} 件`] }) : null,
                 ],
             });
         const empty = rows.length + pending.length === 0;
