@@ -70,8 +70,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T08:26:18.941618+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: docs/guide/プレビューを見る.md
+    updated_by: planner
+    updated_at: '2026-11-19T08:33:02.359535+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
