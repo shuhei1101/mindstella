@@ -46,7 +46,7 @@ flows:
       - name: 常駐サーバー
         description: テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ、`PROJECT_INDEX_PORT` は project-index の Mock のポート、`MINDSTELLA_DISCORD_WEBHOOK_FILE` は Webhook の Mock の URL を記載した一時ファイル
       - name: 状態
-        description: '`workspaces.yaml` の `ids` が A・B。A の `session.json` は `running` でペインと Claude Code のプロセスがある。B の `session.json` は `running` でペインが無い'
+        description: '`workspaces.yaml` の `ids` が A・B。A の `session.json` は `stopped`。B の `session.json` は `running` でペインが無い'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -66,11 +66,13 @@ flows:
         IF->>IF: mindstella-agent-flows の config は今のプラグインと同じ
       ```
     expected:
-      - 待ち受けを始めたときには、B の `session.json` の `status` が `crashed`、A の `status` が `running`
+      - 待ち受けを始めたときには、B の `session.json` の `status` が `crashed`、A の `status` が `stopped` のまま
       - Webhook の Mock が、止まった理由が異常終了の B の要求を 1 件だけ受けている
-      - project-index の Mock が、待ち受けを始める前には要求を受けず、待ち受けを始めた後に `GET /settings/sources` を 1 件だけ受け、`PATCH` を受けていない
+      - project-index の Mock が受けた `GET /settings/sources` が、『停止の通知』が B の行を引く 1 件と待ち受けの後の確認の 1 件の 2 件だけで（ID の一覧があるので作り直しの GET は無い）、`PATCH` を受けていない
       - '`workspaces.yaml` が起動の前と同じ'
     test: test_normal
+    notes:
+      生きている A を置かない理由: 同じ tmux のサーバーに別のセッションがあると、『MindStella のセッションの一覧』の「落ちたかの判定」がペインの無い B も生きていると判定する（tmux 3.4 の `display-message -p -t` が、無いセッションを指しても終了コード 0 を返す）。判定を直す Issue が片付くまで、書き換えない側は `stopped` で確かめる
   - name: 正常系（ID の一覧が無い）
     summary: ワークスペースの行の ID で workspaces.yaml を作り、作った ID の一覧で照合する
     setup:
@@ -99,7 +101,7 @@ flows:
       - '`workspaces.yaml` の `ids` が端末の設定の並び順の A・B・C で、ワークスペースでない行と `mindstella-agent-flows` を含まない'
       - B の `session.json` の `status` が `crashed`
       - '`GET /workspaces` が A・B を返却する（C はクローズ済み）'
-      - project-index の Mock が `GET /settings/sources` を 2 件受けている（待ち受けの前の作り直しと、待ち受けの後の確認）
+      - project-index の Mock が `GET /settings/sources` を 2 件受けている（待ち受けの前の作り直しと、待ち受けの後の確認。Webhook を指定しないので『停止の通知』は行を引かない）
     test: test_normal_when_ids_missing
   - name: 正常系（プラグインを更新した後）
     summary: mindstella-agent-flows の行の config を今のプラグインのパスへ書き換える

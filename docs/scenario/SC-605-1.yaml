@@ -25,7 +25,7 @@ scenarios:
       - name: project-index
         description: テストごとに起動した project-index。グローバルの設定のファイル（一時ファイル）に、ワークスペース A・B の行と、今のプラグインの `agent-flows/dev-docs.yaml` を指す `mindstella-agent-flows` の行がある
       - name: 状態
-        description: ID の一覧に A・B がある。A の MindStella のセッションは `running` でペインと Claude Code のプロセスがある。B の MindStella のセッションは `running` でペインが無い
+        description: ID の一覧に A・B がある。A の MindStella のセッションは `stopped`。B の MindStella のセッションは `running` でペインが無い
         notes: 前の常駐サーバーの間に B の MindStella のセッションが落ちた場合に該当する
     flow: |-
       ```mermaid
@@ -40,7 +40,7 @@ scenarios:
         SD->>SV: 起動する
         SV->>ST: ID の一覧がある
         SV->>ST: running の MindStella のセッションを参照する
-        SV->>SV: A はペインとプロセスがある・B はペインが無い
+        SV->>SV: A は stopped・B は running でペインが無い
         SV->>ST: B を crashed に書き換える
         SV->>IF: B・crashed
         IF->>DC: POST
@@ -50,7 +50,7 @@ scenarios:
       ```
     expected:
       - 待ち受けを始めたときには、B の `session.json` の `status` が `crashed` になっている
-      - A の `session.json` の `status` が `running` のまま
+      - A の `session.json` の `status` が `stopped` のまま
       - エンドポイントが、止まった理由が異常終了の B の要求を 1 件だけ受けている
       - ID の一覧と、グローバルの設定のファイルが起動の前と同じ
     test: test_normal
