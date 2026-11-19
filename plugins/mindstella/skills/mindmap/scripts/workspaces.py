@@ -18,15 +18,22 @@ import migrator
 import project_index
 import read_point
 import sessions
+import settings_update
 import state
 import threads
-from errors import ApiError, SchemaMismatchError, StepFailedError, WorkspaceNewerError
+from errors import (
+    ApiError,
+    MindmapError,
+    SchemaMismatchError,
+    StepFailedError,
+    WorkspaceNewerError,
+)
 from kinds import LEGACY_SETTINGS_FILE, SETTINGS_FILE, records_root
 from migration_ops import describe_step
 from project_index import ProjectIndexError
 from readme import PLUGIN_DIR, README_FILE
 from state import LaunchOptions
-from store import workspace_lock
+from store import load_workspace, workspace_lock
 
 logger = logging.getLogger("mindstella.workspaces")
 
@@ -60,6 +67,12 @@ OUTSIDE_READ_KEY = "outsideRead"
 # グローバルの設定のファイルの行の作業範囲の外のキー（API の応答の OUTSIDE_READ_KEY は camelCase）
 FILE_OUTSIDE_READ_KEY = "outside_read"
 
+
+# 設定の書き換え（PATCH /workspaces/{id}）の本文が持てるキー
+UPDATE_KEYS = ("settings", "flow", "mcp_config", "plugin_dirs")
+
+# 追加の MCP の記録が無いときに、指定しなかった追加の MCP の値
+EMPTY_MCP_CONFIG: dict[str, Any] = {"mcpServers": {}}
 
 class WorkspaceLocks:
     """ワークスペースごと・フォルダごとの依頼の順番の鍵。ワークスペースの管理とセッションの管理が 1 つを共有する。"""
@@ -386,6 +399,163 @@ def delete_workspace(workspace_id: str, ctx: Any) -> dict[str, Any]:
         state.remove_id(ctx.state_root, workspace_id)
     logger.info("mindstella.workspace.deleted", extra={"workspace_id": workspace_id})
     return {"id": workspace_id, "deleted": True}
+
+
+def update_workspace(workspace_id: str, request: dict[str, Any], ctx: Any) -> dict[str, Any]:
+    """指定した設定のキー・進め方の文書を config.yaml に、追加の MCP・プラグインを launch.json に書き換える。"""
+    _check_update_request(request)
+    with ctx.locks.for_workspace(workspace_id):
+        # 鍵を取ってから ID の一覧を確かめる（同時の削除の後なら 404）
+        if workspace_id not in state.read_ids(ctx.state_root):
+            raise ApiError(404, "workspace", f"ワークスペースがありません: {workspace_id}")
+        try:
+            row = find_workspace_row(ctx.pi_port, workspace_id)
+        except ProjectIndexError as error:
+            raise ApiError(502, "source", error.detail) from error
+        if row is None:
+            raise ApiError(404, "workspace", f"配信元の行がありません: {workspace_id}")
+        folder = workspace_folder(row)
+        if not (records_root(folder) / SETTINGS_FILE).is_file():
+            raise ApiError(409, "records", f"記録のフォルダがありません: {folder}")
+        launch_changed, launch = _stage_launch(ctx, workspace_id, request)
+        flow = request.get("flow")
+        # 進め方の文書はプロセス全体の書き込みの鍵の外で確かめる（project-index を呼ぶため）
+        if isinstance(flow, dict):
+            check_flow(ctx.pi_port, flow, folder)
+        with workspace_lock(folder, ctx.write_lock):
+            changed = _write_settings(ctx, workspace_id, folder, request, launch_changed, launch)
+    logger.info(
+        "mindstella.workspace.updated", extra={"workspace_id": workspace_id, "changed": changed}
+    )
+    return {"id": workspace_id, "changed": changed}
+
+
+def _check_update_request(request: dict[str, Any]) -> None:
+    """書き換えの本文のキーと値の形を確かめる。"""
+    if not any(key in request for key in UPDATE_KEYS):
+        raise ApiError(
+            400, "body", f"{'・'.join(UPDATE_KEYS)} のどれか 1 つ以上を指定してください"
+        )
+    unknown = sorted(set(request) - set(UPDATE_KEYS))
+    if unknown:
+        raise ApiError(400, "body", f"知らないキーがあります: {', '.join(unknown)}")
+    if "settings" in request:
+        settings = request["settings"]
+        if not isinstance(settings, dict) or not settings:
+            raise ApiError(400, "body", "settings は 1 つ以上のキーを持つオブジェクトにしてください")
+    if "flow" in request:
+        flow = request["flow"]
+        if flow is not None and not (
+            isinstance(flow, dict)
+            and set(flow) == {"source", "doc"}
+            and all(isinstance(value, str) and value for value in flow.values())
+        ):
+            raise ApiError(
+                400, "body", "flow は source・doc の文字列を持つオブジェクトか null にしてください"
+            )
+    if "mcp_config" in request and not isinstance(request["mcp_config"], dict):
+        raise ApiError(400, "body", "mcp_config はオブジェクトにしてください")
+    if "plugin_dirs" in request:
+        plugin_dirs = request["plugin_dirs"]
+        if not isinstance(plugin_dirs, list) or not all(
+            isinstance(value, str) for value in plugin_dirs
+        ):
+            raise ApiError(400, "body", "plugin_dirs は文字列の並びにしてください")
+
+
+def _stage_launch(
+    ctx: Any, workspace_id: str, request: dict[str, Any]
+) -> tuple[list[str], LaunchOptions | None]:
+    """指定した追加の MCP・プラグインを今の記録に重ねて確かめ、変わったキーと書く記録を返す。"""
+    if "mcp_config" not in request and "plugin_dirs" not in request:
+        return [], None
+    current = state.read_launch(ctx.state_root, workspace_id)
+    base = current or LaunchOptions(mcp_config=dict(EMPTY_MCP_CONFIG), plugin_dirs=[])
+    mcp_config = request.get("mcp_config", base.mcp_config)
+    plugin_dirs = request.get("plugin_dirs", base.plugin_dirs)
+    options = validate_options(mcp_config, plugin_dirs)
+    changed = [
+        key
+        for key, before, after in (
+            ("mcp_config", base.mcp_config, options.mcp_config),
+            ("plugin_dirs", base.plugin_dirs, options.plugin_dirs),
+        )
+        if key in request and (current is None or before != after)
+    ]
+    # 記録が無いときは、値が同じでも記録を作る
+    if current is None or changed:
+        return changed, options
+    return [], None
+
+
+def _write_settings(
+    ctx: Any,
+    workspace_id: str,
+    folder: Path,
+    request: dict[str, Any],
+    launch_changed: list[str],
+    launch: LaunchOptions | None,
+) -> list[str]:
+    """設定のキーと進め方の文書を当てて config.yaml を書き、続けて launch.json を書く。"""
+    workspace = load_workspace(folder)
+    original = workspace.settings
+    try:
+        if "settings" in request:
+            staged = settings_update.stage_settings(workspace, request["settings"])
+            merged, changed = staged.settings, list(staged.changed)
+        else:
+            merged, changed = dict(original), []
+        if "flow" in request:
+            flow = request["flow"]
+            if flow is None:
+                merged.pop("flow", None)
+            else:
+                merged["flow"] = flow
+            if merged.get("flow") != original.get("flow"):
+                changed.append("flow")
+    except MindmapError as error:
+        raise ApiError(422, "settings", _error_detail(error)) from error
+    wrote_config = merged != original
+    if wrote_config:
+        try:
+            settings_update.save_settings(workspace, merged)
+        except OSError as error:
+            logger.exception(
+                "mindstella.workspace.update_failed",
+                extra={"workspace_id": workspace_id, "file": SETTINGS_FILE, "config_restored": None},
+            )
+            raise ApiError(500, "write", f"{SETTINGS_FILE} を書けません: {error}") from error
+        except MindmapError as error:
+            raise ApiError(422, "settings", _error_detail(error)) from error
+    if launch is not None:
+        try:
+            state.write_launch(ctx.state_root, workspace_id, launch)
+        except OSError as error:
+            restored = _restore_settings(folder, original) if wrote_config else None
+            logger.exception(
+                "mindstella.workspace.update_failed",
+                extra={
+                    "workspace_id": workspace_id,
+                    "file": state.LAUNCH_FILE,
+                    "config_restored": restored,
+                },
+            )
+            raise ApiError(500, "write", f"{state.LAUNCH_FILE} を書けません: {error}") from error
+    return changed + launch_changed
+
+
+def _error_detail(error: MindmapError) -> str:
+    """設定の更新のエラーを、メッセージと合わない箇所の行を改行でつないだ本文にする。"""
+    return "\n".join([str(error), *error.lines])
+
+
+def _restore_settings(folder: Path, original: dict[str, Any]) -> bool:
+    """launch.json を書けなかったとき、config.yaml を書き換える前の設定に戻す。戻せたら真。"""
+    try:
+        settings_update.save_settings(load_workspace(folder), original)
+    except (OSError, MindmapError):
+        return False
+    return True
 
 
 def _clear_close_pending(ctx: Any, workspace_id: str) -> None:

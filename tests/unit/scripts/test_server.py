@@ -65,6 +65,7 @@ EXPECTED_TOOL_NAMES = (
     "close_workspace",
     "reopen_workspace",
     "delete_workspace",
+    "update_workspace",
     "server_status",
     "server_stop",
 )
@@ -81,6 +82,7 @@ API_TOOL_NAMES = (
     "close_workspace",
     "reopen_workspace",
     "delete_workspace",
+    "update_workspace",
 )
 
 # workspace を受けないツール
@@ -524,6 +526,77 @@ def test_build_server_api_tools() -> None:
     # 検証
     assert set(API_TOOL_NAMES) <= set(names)
     assert "init" not in names
+
+
+def _record_update(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    """workspaces.update_workspace を、受けた本文を記録して空の変更を返す関数に差し替える。"""
+    received: list[dict[str, Any]] = []
+
+    def _update(workspace_id: str, request: dict[str, Any], _ctx: object) -> dict[str, Any]:
+        received.append(request)
+        return {"id": workspace_id, "changed": []}
+
+    monkeypatch.setattr(server.workspaces, "update_workspace", _update)
+    return received
+
+
+def test_build_server_when_update_workspace_omits_null(monkeypatch: pytest.MonkeyPatch) -> None:
+    """update_workspace は指定した引数だけを本文にして渡す（正常系）。"""
+    # 準備
+    received = _record_update(monkeypatch)
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    # 実行
+    result = _run_async(
+        mcp_server.call_tool(
+            "update_workspace",
+            {"workspace_id": "mindstella-ws-000000", "plugin_dirs": ["/plugins/aituber"]},
+        )
+    )
+    # 検証
+    assert isinstance(result, CallToolResult)
+    assert result.is_error is False
+    assert received == [{"plugin_dirs": ["/plugins/aituber"]}]
+
+
+def test_build_server_when_update_workspace_remove_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+    """remove_flow: true を本文の flow: null にする（正常系）。"""
+    # 準備
+    received = _record_update(monkeypatch)
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    # 実行
+    result = _run_async(
+        mcp_server.call_tool(
+            "update_workspace", {"workspace_id": "mindstella-ws-000000", "remove_flow": True}
+        )
+    )
+    # 検証
+    assert isinstance(result, CallToolResult)
+    assert result.is_error is False
+    assert received == [{"flow": None}]
+
+
+def test_build_server_when_update_workspace_flow_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
+    """flow と remove_flow を同時に指定すると引数の誤り（異常系）。"""
+    # 準備
+    received = _record_update(monkeypatch)
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    # 実行
+    result = _run_async(
+        mcp_server.call_tool(
+            "update_workspace",
+            {
+                "workspace_id": "mindstella-ws-000000",
+                "flow": {"source": "aituber", "doc": "flow-1"},
+                "remove_flow": True,
+            },
+        )
+    )
+    # 検証
+    assert isinstance(result, CallToolResult)
+    assert result.is_error is True
+    text = "".join(item.text for item in result.content if isinstance(item, TextContent))
+    assert "remove_flow" in text
+    assert received == []
 
 
 def test_build_server_when_relative_workspace(

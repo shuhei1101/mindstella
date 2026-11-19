@@ -16,6 +16,8 @@ items:
     summary: "ワークスペースと MindStella のセッションの状態とワークスペースの一覧を、何も書き換えずに取得する"
   - page: SC-601-1.yaml
     summary: "クローズしたワークスペースを開き直して同じ指定で MindStella のセッションを作り直し、不要になったワークスペースを状態の記録ごと削除する"
+  - page: SC-604-1.yaml
+    summary: "ワークスペースの進め方の文書・追加の MCP・プラグインを書き換え、起動し直しで MindStella のセッションに反映する"
   - page: SC-489-34.yaml
     summary: "ID を取ってから、project-index の書き込みで検討事項・タスクなどの項目を足す・直す"
   - page: SC-540-1.yaml

@@ -44,6 +44,8 @@ items:
     summary: "POST /workspaces/{id}/reopen: クローズしたワークスペースの配信元の行を戻し、クローズ待ちを解く"
   - page: IF-601-2.yaml
     summary: "DELETE /workspaces/{id}: クローズしたワークスペースの配信元の行と状態の記録を削除する"
+  - page: IF-604-1.yaml
+    summary: "PATCH /workspaces/{id}: ワークスペースの設定・進め方の文書・追加の MCP・プラグインを書き換える"
   - page: IF-531-6.yaml
     summary: "POST /_admin/sessions/{session}/events: MindStella のセッションのフックが送る出来事を状態に記録する"
   - page: IF-531-7.yaml

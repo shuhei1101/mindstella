@@ -1,0 +1,676 @@
+$ /tmp/pr604-venv/bin/python -m pytest tests/unit --ignore=tests/unit/preview -q -p no:cacheprovider --basetemp=/tmp/planner-604-pt/red
+（単体テスト作成の Red。テストコードの末尾は cb0dda95。/tmp/pr604-venv は requirements-dev.txt を入れたこの PR 用の仮想環境。tests/unit/preview は画面の単体テスト（TL-2）で、この PR は画面を変えないため除いた。fail 22 件は全て実装が無いこと（workspaces.update_workspace が無い・経路に PATCH /workspaces/{id} が無い・TOOL_NAMES に update_workspace が無い）によるもので、実装の前から pass したテストは無い）
+.....F.................................................................. [  4%]
+........................................................................ [  9%]
+........................................................................ [ 13%]
+........................................................................ [ 18%]
+........................................................................ [ 22%]
+........................................................................ [ 27%]
+........................................................................ [ 32%]
+........................................................................ [ 36%]
+........................................................................ [ 41%]
+........................................................................ [ 45%]
+........................................................................ [ 50%]
+......................................s................................. [ 54%]
+........................................................................ [ 59%]
+........................................................................ [ 64%]
+........................FF.............................................. [ 68%]
+........................................................................ [ 73%]
+........................................................................ [ 77%]
+........................................................................ [ 82%]
+........................................................................ [ 86%]
+........................................................................ [ 91%]
+........................................................................ [ 96%]
+........................FFFFFFFFFFFFFFFFFFF...................           [100%]
+=================================== FAILURES ===================================
+______________________________ test_build_routes _______________________________
+
+    def test_build_routes() -> None:
+        """経路とメソッドが揃う。"""
+        routes = api.build_routes(SimpleNamespace(port=PORT))
+        pairs = {
+            (route.path, method)
+            for route in routes
+            if isinstance(route, Route)
+            for method in route.methods or []
+        }
+>       assert {
+            ("/workspaces", "POST"),
+            ("/workspaces", "GET"),
+            ("/workspaces/{id}", "GET"),
+            ("/workspaces/{id}/sessions", "POST"),
+            ("/workspaces/{id}/sessions", "GET"),
+            ("/workspaces/{id}/sessions/{session}", "DELETE"),
+            ("/workspaces/{id}/sessions/{session}/restart", "POST"),
+            ("/workspaces/{id}/close", "POST"),
+            ("/workspaces/{id}/reopen", "POST"),
+            ("/workspaces/{id}", "DELETE"),
+            ("/workspaces/{id}", "PATCH"),
+            ("/_admin/sessions/{session}/events", "POST"),
+            ("/_admin/sessions/{session}/resume", "POST"),
+            ("/_admin/sessions/{session}/read_point", "POST"),
+        } <= pairs
+E       AssertionError: assert {('/_admin/se...DELETE'), ...} <= {('/_admin/se... 'POST'), ...}
+E         
+E         Extra items in the left set:
+E         ('/workspaces/{id}', 'PATCH')
+
+tests/unit/scripts/test_api.py:42: AssertionError
+______________________________ test_build_server _______________________________
+
+    def test_build_server() -> None:
+        """管理のツールの他は全てのツールを workspace つきで登録する（正常系）。"""
+        # 準備
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+        tools = _run_async(mcp_server.list_tools())
+        # 検証
+        schemas = _tool_schemas(tools)
+>       assert tuple(schemas) == EXPECTED_TOOL_NAMES
+E       AssertionError: assert ('next_id', '...'commit', ...) == ('next_id', '...'commit', ...)
+E         
+E         At index 27 diff: 'server_status' != 'update_workspace'
+E         Right contains one more item: 'server_stop'
+E         Use -v to get more diff
+
+tests/unit/scripts/test_server.py:513: AssertionError
+_________________________ test_build_server_api_tools __________________________
+
+    def test_build_server_api_tools() -> None:
+        """MindStella の API と同じ操作のツールがあり、init が無い（正常系）。"""
+        # 準備
+        mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+        # 実行
+        names = [tool.name for tool in _run_async(mcp_server.list_tools())]
+        # 検証
+>       assert set(API_TOOL_NAMES) <= set(names)
+E       AssertionError: assert {'close_works...session', ...} <= {'adopt', 'ch...session', ...}
+E         
+E         Extra items in the left set:
+E         'update_workspace'
+
+tests/unit/scripts/test_server.py:527: AssertionError
+____________________________ test_update_workspace _____________________________
+
+tmp_path = PosixPath('/tmp/planner-604-pt/red/test_update_workspace0')
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1a6eba0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace0/state'), locks...red/test_update_workspace0/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1a9d840>)
+
+    def test_update_workspace(
+        tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """4 つの指定を書き換え、変わったキーを返す（正常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        plugin = _plugin_dir(tmp_path, "aituber")
+        new_flow = {"source": "aituber", "doc": "flow-2"}
+        new_mcp = {"mcpServers": {"voice": {"command": "voice-mcp"}}}
+        # 実行
+>       result = workspaces.update_workspace(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            workspace_id,
+            {
+                "settings": {"summary": "台本の作成"},
+                "flow": new_flow,
+                "mcp_config": new_mcp,
+                "plugin_dirs": [plugin],
+            },
+            ctx,
+        )
+E       AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:891: AttributeError
+_________________ test_update_workspace_keeps_other_launch_key _________________
+
+tmp_path = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_keeps_ot0')
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_keeps_ot0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1af4260>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_keeps_ot0/state...update_workspace_keeps_ot0/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b169f900>)
+
+    def test_update_workspace_keeps_other_launch_key(
+        tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """プラグインだけを渡すと、追加の MCP の記録を残す（正常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = (folder / ".mindstella" / "config.yaml").read_text(encoding="utf-8")
+        plugin = _plugin_dir(tmp_path, "aituber")
+        # 実行
+>       result = workspaces.update_workspace(workspace_id, {"plugin_dirs": [plugin]}, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:923: AttributeError
+_________________ test_update_workspace_launch_record_missing __________________
+
+tmp_path = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_launch_r0')
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_launch_r0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1bf2480>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_launch_r0/state...update_workspace_launch_r0/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1522c00>)
+
+    def test_update_workspace_launch_record_missing(
+        tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """launch.json が無ければ、指定しなかった方を空にして作る（正常系）。"""
+        # 準備
+        workspace_id, _folder = _updatable(allowed, ctx)
+        state.delete_launch(ctx.state_root, workspace_id)
+        plugin = _plugin_dir(tmp_path, "aituber")
+        # 実行
+>       result = workspaces.update_workspace(workspace_id, {"plugin_dirs": [plugin]}, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:941: AttributeError
+______________________ test_update_workspace_flow_removed ______________________
+
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_flow_rem0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1b31610>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_flow_rem0/state...update_workspace_flow_rem0/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1a8b240>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d74b2f46120>
+
+    def test_update_workspace_flow_removed(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """flow: null は確かめずに flow を外す（正常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        called: list[object] = []
+        monkeypatch.setattr(workspaces, "check_flow", lambda *args: called.append(args))
+        # 実行
+>       result = workspaces.update_workspace(workspace_id, {"flow": None}, ctx)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:958: AttributeError
+_______________________ test_update_workspace_unchanged ________________________
+
+tmp_path = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_unchange0')
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_unchange0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b19922a0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_unchange0/state...update_workspace_unchange0/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1642b00>)
+
+    def test_update_workspace_unchanged(
+        tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """同じ値は書かず、changed が空（正常系）。"""
+        # 準備
+        plugin = _plugin_dir(tmp_path, "aituber")
+        workspace_id, folder = _updatable(allowed, ctx, plugin_dirs=[plugin])
+        config_path = folder / ".mindstella" / "config.yaml"
+        launch_path = state.workspace_dir(ctx.state_root, workspace_id) / state.LAUNCH_FILE
+        summary = _config(folder)["summary"]
+        times = (config_path.stat().st_mtime_ns, launch_path.stat().st_mtime_ns)
+        # 実行
+>       result = workspaces.update_workspace(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            workspace_id, {"settings": {"summary": summary}, "plugin_dirs": [plugin]}, ctx
+        )
+E       AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:977: AttributeError
+_____________ test_update_workspace_error_when_body_invalid[empty] _____________
+
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b415f4a0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh0/state...update_workspace_error_wh0/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b19c3b80>)
+body = {}
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            pytest.param({}, id="empty"),
+            pytest.param({"title": "x"}, id="unknown_key"),
+            pytest.param({"settings": {}}, id="empty_settings"),
+            pytest.param({"flow": "x"}, id="flow_not_object"),
+            pytest.param({"mcp_config": []}, id="mcp_config_not_object"),
+            pytest.param({"plugin_dirs": "x"}, id="plugin_dirs_not_list"),
+        ],
+    )
+    def test_update_workspace_error_when_body_invalid(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, body: dict[str, Any]
+    ) -> None:
+        """指定が無い・知らないキー・空の settings・形の違う値は 400（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = _config(folder)
+        launch = _launch_text(ctx, workspace_id)
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(workspace_id, body, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1006: AttributeError
+__________ test_update_workspace_error_when_body_invalid[unknown_key] __________
+
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh1/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b17a2450>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh1/state...update_workspace_error_wh1/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b19c2ac0>)
+body = {'title': 'x'}
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            pytest.param({}, id="empty"),
+            pytest.param({"title": "x"}, id="unknown_key"),
+            pytest.param({"settings": {}}, id="empty_settings"),
+            pytest.param({"flow": "x"}, id="flow_not_object"),
+            pytest.param({"mcp_config": []}, id="mcp_config_not_object"),
+            pytest.param({"plugin_dirs": "x"}, id="plugin_dirs_not_list"),
+        ],
+    )
+    def test_update_workspace_error_when_body_invalid(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, body: dict[str, Any]
+    ) -> None:
+        """指定が無い・知らないキー・空の settings・形の違う値は 400（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = _config(folder)
+        launch = _launch_text(ctx, workspace_id)
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(workspace_id, body, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1006: AttributeError
+________ test_update_workspace_error_when_body_invalid[empty_settings] _________
+
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh2/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1b328d0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh2/state...update_workspace_error_wh2/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1905880>)
+body = {'settings': {}}
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            pytest.param({}, id="empty"),
+            pytest.param({"title": "x"}, id="unknown_key"),
+            pytest.param({"settings": {}}, id="empty_settings"),
+            pytest.param({"flow": "x"}, id="flow_not_object"),
+            pytest.param({"mcp_config": []}, id="mcp_config_not_object"),
+            pytest.param({"plugin_dirs": "x"}, id="plugin_dirs_not_list"),
+        ],
+    )
+    def test_update_workspace_error_when_body_invalid(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, body: dict[str, Any]
+    ) -> None:
+        """指定が無い・知らないキー・空の settings・形の違う値は 400（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = _config(folder)
+        launch = _launch_text(ctx, workspace_id)
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(workspace_id, body, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1006: AttributeError
+________ test_update_workspace_error_when_body_invalid[flow_not_object] ________
+
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh3/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b16979e0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh3/state...update_workspace_error_wh3/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1c4f840>)
+body = {'flow': 'x'}
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            pytest.param({}, id="empty"),
+            pytest.param({"title": "x"}, id="unknown_key"),
+            pytest.param({"settings": {}}, id="empty_settings"),
+            pytest.param({"flow": "x"}, id="flow_not_object"),
+            pytest.param({"mcp_config": []}, id="mcp_config_not_object"),
+            pytest.param({"plugin_dirs": "x"}, id="plugin_dirs_not_list"),
+        ],
+    )
+    def test_update_workspace_error_when_body_invalid(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, body: dict[str, Any]
+    ) -> None:
+        """指定が無い・知らないキー・空の settings・形の違う値は 400（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = _config(folder)
+        launch = _launch_text(ctx, workspace_id)
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(workspace_id, body, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1006: AttributeError
+_____ test_update_workspace_error_when_body_invalid[mcp_config_not_object] _____
+
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh4/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1695790>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh4/state...update_workspace_error_wh4/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1c3d180>)
+body = {'mcp_config': []}
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            pytest.param({}, id="empty"),
+            pytest.param({"title": "x"}, id="unknown_key"),
+            pytest.param({"settings": {}}, id="empty_settings"),
+            pytest.param({"flow": "x"}, id="flow_not_object"),
+            pytest.param({"mcp_config": []}, id="mcp_config_not_object"),
+            pytest.param({"plugin_dirs": "x"}, id="plugin_dirs_not_list"),
+        ],
+    )
+    def test_update_workspace_error_when_body_invalid(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, body: dict[str, Any]
+    ) -> None:
+        """指定が無い・知らないキー・空の settings・形の違う値は 400（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = _config(folder)
+        launch = _launch_text(ctx, workspace_id)
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(workspace_id, body, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1006: AttributeError
+_____ test_update_workspace_error_when_body_invalid[plugin_dirs_not_list] ______
+
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh5/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1af7d10>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh5/state...update_workspace_error_wh5/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b2cda680>)
+body = {'plugin_dirs': 'x'}
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            pytest.param({}, id="empty"),
+            pytest.param({"title": "x"}, id="unknown_key"),
+            pytest.param({"settings": {}}, id="empty_settings"),
+            pytest.param({"flow": "x"}, id="flow_not_object"),
+            pytest.param({"mcp_config": []}, id="mcp_config_not_object"),
+            pytest.param({"plugin_dirs": "x"}, id="plugin_dirs_not_list"),
+        ],
+    )
+    def test_update_workspace_error_when_body_invalid(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, body: dict[str, Any]
+    ) -> None:
+        """指定が無い・知らないキー・空の settings・形の違う値は 400（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = _config(folder)
+        launch = _launch_text(ctx, workspace_id)
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(workspace_id, body, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1006: AttributeError
+___________________ test_update_workspace_error_when_unknown ___________________
+
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1bf1f70>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh6/state...update_workspace_error_wh6/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1761640>)
+
+    def test_update_workspace_error_when_unknown(fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+        """ID の一覧に無いワークスペースは 404（異常系）。"""
+        # 準備
+        ctx.write_lock = threading.Lock()
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace("mindstella-x-000000", {"flow": None}, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1018: AttributeError
+_______________ test_update_workspace_error_when_records_missing _______________
+
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh7/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1a6f290>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh7/state...update_workspace_error_wh7/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b15218c0>)
+
+    def test_update_workspace_error_when_records_missing(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """配信元の行のフォルダに記録が無ければ 409（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        (folder / ".mindstella" / "config.yaml").unlink()
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(workspace_id, {"flow": None}, ctx)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1031: AttributeError
+____________ test_update_workspace_error_when_plugin_dir_unreadable ____________
+
+tmp_path = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh8')
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh8/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1a6d400>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh8/state...update_workspace_error_wh8/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1636e40>)
+
+    def test_update_workspace_error_when_plugin_dir_unreadable(
+        tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """読めないプラグインのフォルダは 422 で、ほかの指定も書かない（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = _config(folder)
+        launch = _launch_text(ctx, workspace_id)
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                workspace_id,
+                {"settings": {"summary": "台本の作成"}, "plugin_dirs": [str(tmp_path / "無い")]},
+                ctx,
+            )
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1045: AttributeError
+______________ test_update_workspace_error_when_settings_invalid _______________
+
+tmp_path = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh9')
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh9/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b2ccd760>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh9/state...update_workspace_error_wh9/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1c22500>)
+
+    def test_update_workspace_error_when_settings_invalid(
+        tmp_path: Path, allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """スキーマに合わない設定は 422 で、何も書かない（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = _config(folder)
+        launch = _launch_text(ctx, workspace_id)
+        plugin = _plugin_dir(tmp_path, "aituber")
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                workspace_id, {"settings": {"summary": ""}, "plugin_dirs": [plugin]}, ctx
+            )
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1066: AttributeError
+_______________ test_update_workspace_error_when_flow_unreadable _______________
+
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh10/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b19fddc0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh10/stat...pdate_workspace_error_wh10/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1557f80>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d74b19ff830>
+
+    def test_update_workspace_error_when_flow_unreadable(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """参照できない進め方の文書は 422 で、何も書かない（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = _config(folder)
+    
+        def _unreadable(*_args: object) -> None:
+            raise ApiError(422, "flow", "進め方の文書を参照できません")
+    
+        monkeypatch.setattr(workspaces, "check_flow", _unreadable)
+        # 実行・検証
+        with pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                workspace_id, {"flow": {"source": "aituber", "doc": "無い"}}, ctx
+            )
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1089: AttributeError
+_____________ test_update_workspace_error_when_launch_write_failed _____________
+
+tmp_path = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh11')
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh11/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1695a60>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh11/stat...pdate_workspace_error_wh11/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1617580>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d74b1696390>
+caplog = <_pytest.logging.LogCaptureFixture object at 0x7d74b16961e0>
+
+    def test_update_workspace_error_when_launch_write_failed(
+        tmp_path: Path,
+        allowed: Path,
+        fake_pi: FakeProjectIndex,
+        ctx: SimpleNamespace,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """launch.json を書けなければ config.yaml を戻して 500（異常系）。"""
+        # 準備
+        workspace_id, folder = _updatable(allowed, ctx)
+        before = _config(folder)
+        plugin = _plugin_dir(tmp_path, "aituber")
+    
+        def _broken(*_args: object) -> None:
+            raise OSError("書けません")
+    
+        monkeypatch.setattr(state, "write_launch", _broken)
+        # 実行・検証
+        with caplog.at_level(logging.ERROR), pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                workspace_id, {"settings": {"summary": "台本の作成"}, "plugin_dirs": [plugin]}, ctx
+            )
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1116: AttributeError
+_____________ test_update_workspace_error_when_config_write_failed _____________
+
+tmp_path = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh12')
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh12/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1695490>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh12/stat...pdate_workspace_error_wh12/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1ba84c0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d74b1695880>
+caplog = <_pytest.logging.LogCaptureFixture object at 0x7d74b1697ad0>
+
+    def test_update_workspace_error_when_config_write_failed(
+        tmp_path: Path,
+        allowed: Path,
+        fake_pi: FakeProjectIndex,
+        ctx: SimpleNamespace,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """config.yaml を書けなければ 500 で、launch.json を書かない（異常系）。"""
+        # 準備
+        workspace_id, _folder = _updatable(allowed, ctx)
+        launch = _launch_text(ctx, workspace_id)
+        plugin = _plugin_dir(tmp_path, "aituber")
+    
+        def _broken(*_args: object) -> list[str]:
+            raise OSError("書けません")
+    
+        monkeypatch.setattr(settings_update, "save_settings", _broken)
+        # 実行・検証
+        with caplog.at_level(logging.ERROR), pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                workspace_id, {"settings": {"summary": "台本の作成"}, "plugin_dirs": [plugin]}, ctx
+            )
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1144: AttributeError
+_______________ test_update_workspace_error_when_rollback_failed _______________
+
+tmp_path = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh13')
+allowed = PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh13/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7d74b1a6cf20>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/planner-604-pt/red/test_update_workspace_error_wh13/stat...pdate_workspace_error_wh13/plugin'), tmux=None, proc=None, write_lock=<unlocked _thread.lock object at 0x7d74b1905d40>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d74b1a6cf50>
+caplog = <_pytest.logging.LogCaptureFixture object at 0x7d74b1a6f2f0>
+
+    def test_update_workspace_error_when_rollback_failed(
+        tmp_path: Path,
+        allowed: Path,
+        fake_pi: FakeProjectIndex,
+        ctx: SimpleNamespace,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """戻しも失敗したら、戻したかを偽にして 500（異常系）。"""
+        # 準備
+        workspace_id, _folder = _updatable(allowed, ctx)
+        plugin = _plugin_dir(tmp_path, "aituber")
+        real_save = settings_update.save_settings
+        calls: list[int] = []
+    
+        def _first_only(*args: Any) -> list[str]:
+            calls.append(1)
+            # 1 回目（書き換え）は通し、2 回目（戻し）で失敗する
+            if len(calls) == 1:
+                return real_save(*args)
+            raise OSError("戻せません")
+    
+        def _broken(*_args: object) -> None:
+            raise OSError("書けません")
+    
+        monkeypatch.setattr(settings_update, "save_settings", _first_only)
+        monkeypatch.setattr(state, "write_launch", _broken)
+        # 実行・検証
+        with caplog.at_level(logging.ERROR), pytest.raises(ApiError) as caught:
+>           workspaces.update_workspace(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                workspace_id, {"settings": {"summary": "台本の作成"}, "plugin_dirs": [plugin]}, ctx
+            )
+E           AttributeError: module 'workspaces' has no attribute 'update_workspace'. Did you mean: 'create_workspace'?
+
+tests/unit/scripts/test_workspaces.py:1181: AttributeError
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /tmp/pr604-venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_api.py::test_build_routes - AssertionError: as...
+FAILED tests/unit/scripts/test_server.py::test_build_server - AssertionError:...
+FAILED tests/unit/scripts/test_server.py::test_build_server_api_tools - Asser...
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace - Attribu...
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_keeps_other_launch_key
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_launch_record_missing
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_flow_removed
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_unchanged
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_body_invalid[empty]
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_body_invalid[unknown_key]
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_body_invalid[empty_settings]
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_body_invalid[flow_not_object]
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_body_invalid[mcp_config_not_object]
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_body_invalid[plugin_dirs_not_list]
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_unknown
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_records_missing
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_plugin_dir_unreadable
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_settings_invalid
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_flow_unreadable
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_launch_write_failed
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_config_write_failed
+FAILED tests/unit/scripts/test_workspaces.py::test_update_workspace_error_when_rollback_failed
+22 failed, 1551 passed, 1 skipped, 5 warnings in 33.66s

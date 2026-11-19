@@ -37,7 +37,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）。`init` を外し、`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` を足す
-    value: ("next_id", "update_settings", "adopt", "edit_option", "changes_since_read", "commit", "pending", "check", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "workspaces", "workspace", "create_workspace", "create_session", "sessions", "stop_session", "restart_session", "close_workspace", "reopen_workspace", "delete_workspace", "server_status", "server_stop")
+    value: ("next_id", "update_settings", "adopt", "edit_option", "changes_since_read", "commit", "pending", "check", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "workspaces", "workspace", "create_workspace", "create_session", "sessions", "stop_session", "restart_session", "close_workspace", "reopen_workspace", "delete_workspace", "update_workspace", "server_status", "server_stop")
   - name: DEFAULT_PORT
     title: 既定の待ち受けのポート
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -347,7 +347,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     scope: public
-    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る。`workspaces`（`include_closed`）・`workspace`（`workspace_id`）・`create_workspace`・`create_session`・`sessions`・`stop_session`・`restart_session`・`close_workspace`・`reopen_workspace`・`delete_workspace` は `ServerContext` を受け、ワークスペースの管理・セッションの管理の同じ関数を呼ぶ'
+    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る。`workspaces`（`include_closed`）・`workspace`（`workspace_id`）・`create_workspace`・`create_session`・`sessions`・`stop_session`・`restart_session`・`close_workspace`・`reopen_workspace`・`delete_workspace`・`update_workspace`（`workspace_id`・`settings`・`flow`・`mcp_config`・`plugin_dirs`・`remove_flow`。`null` でない引数だけを本文にして渡す。SDK が省いた引数に既定値を入れるため `flow` の未指定と `null` を区別できず、`remove_flow` が真のときだけ本文を `flow: null` にする。`remove_flow` と `flow` を同時に指定したら `ApiError`（400、`stage: body`））は `ServerContext` を受け、ワークスペースの管理・セッションの管理の同じ関数を呼ぶ'
     args:
       - name: previews
         type: PreviewRegistry
@@ -432,7 +432,7 @@ functions:
         summary: MindStella の API と同じ操作のツールがあり、init が無い
         condition: '`build_server` の結果のツールの一覧'
         mock: なし
-        expected: '`workspaces`・`workspace`・`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`・`reopen_workspace`・`delete_workspace` があり、`init` が無い'
+        expected: '`workspaces`・`workspace`・`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`・`reopen_workspace`・`delete_workspace`・`update_workspace` があり、`init` が無い'
       - name: test_build_server_when_marking_tool
         case: 正常
         summary: MindStella のセッションの reply が成功したら書き込みのマーカーを付ける
@@ -445,6 +445,24 @@ functions:
         condition: '`session.claude_session_id` を `xyz` にして `reply` を呼ぶ'
         mock: なし
         expected: '`is_error` が真で、`notify.MARKERS.take({ワークスペースの ID})` が偽'
+      - name: test_build_server_when_update_workspace_omits_null
+        case: 正常
+        summary: '`update_workspace` は指定した引数だけを本文にして渡す'
+        condition: '`workspace_id` と `plugin_dirs` だけで `update_workspace` を呼ぶ'
+        mock: '`workspaces.update_workspace`（受けた引数を記録して `{id, changed: []}` を返す）'
+        expected: '`workspaces.update_workspace` が受けた本文が `{plugin_dirs: [...]}` だけで、結果の `is_error` が偽'
+      - name: test_build_server_when_update_workspace_remove_flow
+        case: 正常
+        summary: '`remove_flow: true` を本文の `flow: null` にする'
+        condition: '`workspace_id` と `remove_flow: true` で `update_workspace` を呼ぶ'
+        mock: 同上
+        expected: '`workspaces.update_workspace` が受けた本文が `{flow: null}`'
+      - name: test_build_server_when_update_workspace_flow_conflict
+        case: 異常
+        summary: '`flow` と `remove_flow` を同時に指定すると引数の誤り'
+        condition: '`flow` と `remove_flow: true` を両方渡す'
+        mock: 同上
+        expected: '`is_error` が真で、本文に `remove_flow` があり、`workspaces.update_workspace` が呼ばれていない'
   - name: call_tool
     title: ツールの呼び出し
     kind: 関数
