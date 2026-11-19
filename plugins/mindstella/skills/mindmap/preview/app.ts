@@ -244,6 +244,8 @@ namespace MindmapPreview {
     commentsPinned: true | null;
     /** 詳細パネル・詳細の全画面の下端のコメントの入力を閉じているか。null は開く。個人の上書きではなく、「既定に戻す」でも消さない */
     commentFormClosed: true | null;
+    /** 「レビューに追加」の後のフォーカスの上書き。null は自動（端末の主な入力で決める。ワークスペースの既定は持たない） */
+    focusAfterAdd: "input" | "none" | null;
     /** 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う */
     opened?: unknown;
   };
@@ -305,6 +307,7 @@ namespace MindmapPreview {
       sectionFold: null,
       commentsPinned: null,
       commentFormClosed: null,
+      focusAfterAdd: null,
     };
   }
 
@@ -336,6 +339,8 @@ namespace MindmapPreview {
       if (parsed.commentsPinned !== true) parsed.commentsPinned = null;
       // コメントの入力の開閉は true だけを読む（開くは値を持たない）
       if (parsed.commentFormClosed !== true) parsed.commentFormClosed = null;
+      // 「レビューに追加」の後のフォーカスの上書きは input・none だけを読む（自動は上書きを持たない）
+      if (parsed.focusAfterAdd !== "input" && parsed.focusAfterAdd !== "none") parsed.focusAfterAdd = null;
       return parsed;
     } catch {
       return defaultPrefs();
@@ -398,7 +403,7 @@ namespace MindmapPreview {
   } {
     const defaultLook = display?.network_look ?? BUILTIN_LOOK;
     const defaultKinds = new Set<Kind>(display?.visible_kinds ?? KIND_KEYS);
-    // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びの順に並べる（条件が画面の既定と同じ画面は並べない）
+    // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスの順に並べる（条件が画面の既定と同じ画面は並べない）
     const overrides = [
       ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
       ...(prefs.kinds === null ? [] : ["表示する種類"]),
@@ -414,6 +419,7 @@ namespace MindmapPreview {
       ...(prefs.sectionFold === false ? [BODY_VIEW_LABELS.fold] : []),
       ...(prefs.bodyLayout === "side" ? [BODY_LAYOUT_LABEL] : []),
       ...(prefs.reviewOrder === "oldest" ? [REVIEW_ORDER_LABEL] : []),
+      ...(prefs.focusAfterAdd === "input" || prefs.focusAfterAdd === "none" ? [FOCUS_AFTER_ADD_LABEL] : []),
     ];
     return {
       look: prefs.look ?? defaultLook,
@@ -437,7 +443,7 @@ namespace MindmapPreview {
     };
   }
 
-  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びを外した設定を返す（`diffSel`・`commentsPinned`・`commentFormClosed` は残し、渡した設定は変えない） */
+  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスを外した設定を返す（`diffSel`・`commentsPinned`・`commentFormClosed` は残し、渡した設定は変えない） */
   export function clearOverrides(prefs: Prefs): Prefs {
     return {
       ...prefs,
@@ -449,11 +455,19 @@ namespace MindmapPreview {
       minimap: null,
       bodyLayout: null,
       reviewOrder: null,
+      focusAfterAdd: null,
       tablePin: null,
       tableHead: null,
       tableStripes: null,
       sectionFold: null,
     };
+  }
+
+  /** 「レビューに追加」の後のフォーカスの移動先。上書きが無ければ（自動）端末の主な入力がタッチなら「レビューに追加」、それ以外は入力欄 */
+  export function focusAfterAddTarget(prefs: Prefs, coarse: boolean): "input" | "submit" {
+    if (prefs.focusAfterAdd === "input") return "input";
+    if (prefs.focusAfterAdd === "none") return "submit";
+    return coarse ? "submit" : "input";
   }
 
   /** 本文の見せ方の項目 → 個人の上書きの項目 */
@@ -1765,6 +1779,15 @@ namespace MindmapPreview {
       return document.querySelector<HTMLTextAreaElement>(route.full ? "dialog.full form.send textarea" : "aside.panel form.send textarea");
     };
 
+    /** 溜めた・送った後のフォーカスの移動先（表示の設定の「レビューに追加した後のフォーカス」と端末の主な入力で決める） */
+    const addedFocus = (): "input" | "submit" =>
+      focusAfterAddTarget(prefs, typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches);
+
+    /** 入力欄を持つ入力の「レビューに追加」へフォーカスを移す */
+    const focusSubmitOf = (field: HTMLTextAreaElement | null): void => {
+      field?.closest("form")?.querySelector<HTMLButtonElement>(".send-submit")?.focus();
+    };
+
     /** 描き直した、録っていた入力の入力欄へフォーカスを移し、範囲を選ぶ */
     const focusVoiceField = (state: FormState, range: { start: number; end: number } | null): void => {
       const field = voiceField(state);
@@ -2028,6 +2051,8 @@ namespace MindmapPreview {
             }
             if (!shown) return;
             redrawVoiceForm(state, true);
+            // 溜めた・送った: 入力欄へ戻さない設定なら、✓ の位置に戻った「レビューに追加」へフォーカスを移す
+            if (delivered && addedFocus() === "submit") focusSubmitOf(voiceField(state));
             // 挿入した: カーソルを挿入した文字の後ろへ置く。中身が元のままの失敗: 押したときの範囲へ戻す
             if (outcome.caret !== null && !delivered) focusVoiceField(state, { start: outcome.caret, end: outcome.caret });
             else if (!delivered && outcome.body === input.body) focusVoiceField(state, selection);
@@ -2092,24 +2117,25 @@ namespace MindmapPreview {
       form?.querySelector("textarea")?.removeAttribute("aria-invalid");
     };
 
-    /** 入力欄を、今の状態で差し替える（`focus` なら入力欄へフォーカスを戻す）。別の項目へ移っていたら状態だけ持っておく */
-    const redrawForm = ({ target, focus }: { target: string | null; focus: boolean }): void => {
-      // 項目を指さない入力（新しいスレッド）はパネルの一部なので、パネルを描き直す
+    /** 入力欄を、今の状態で差し替える（`focus` が true なら入力欄へ、`submit` なら「レビューに追加」へフォーカスを移す）。別の項目へ移っていたら状態だけ持っておく */
+    const redrawForm = ({ target, focus }: { target: string | null; focus: boolean | "submit" }): void => {
+      let field: HTMLTextAreaElement | null;
       if (target === null) {
+        // 項目を指さない入力（新しいスレッド）はパネルの一部なので、パネルを描き直す
         renderComments();
-        if (focus) {
-          const field = document.querySelector<HTMLTextAreaElement>(".comments-panel .talk-new form.send textarea");
-          field?.focus();
-          field?.setSelectionRange(field.value.length, field.value.length);
-        }
+        field = document.querySelector<HTMLTextAreaElement>(".comments-panel .talk-new form.send textarea");
+      } else {
+        const current = document.querySelector<HTMLFormElement>(route.full ? "dialog.full form.send" : "aside.panel form.send");
+        if (current === null || route.id !== target) return;
+        const next = sendForm(formProps(target));
+        current.replaceWith(next);
+        field = next.querySelector("textarea");
+      }
+      if (focus === false) return;
+      if (focus === "submit") {
+        focusSubmitOf(field);
         return;
       }
-      const current = document.querySelector<HTMLFormElement>(route.full ? "dialog.full form.send" : "aside.panel form.send");
-      if (current === null || route.id !== target) return;
-      const next = sendForm(formProps(target));
-      current.replaceWith(next);
-      if (!focus) return;
-      const field = next.querySelector("textarea");
       field?.focus();
       field?.setSelectionRange(field.value.length, field.value.length);
     };
@@ -2216,7 +2242,7 @@ namespace MindmapPreview {
       comment.checked.add(added.id);
       await loadReview();
       refreshComments();
-      redrawForm({ target: state.target, focus: true });
+      redrawForm({ target: state.target, focus: addedFocus() === "submit" ? "submit" : true });
     };
 
     // ===== コメントの一覧 =====
@@ -2495,7 +2521,9 @@ namespace MindmapPreview {
       comment.checked.add(result.data.id);
       await loadReview();
       refreshComments();
-      document.querySelector<HTMLTextAreaElement>(".comments-panel form.reply textarea")?.focus();
+      const field = document.querySelector<HTMLTextAreaElement>(".comments-panel form.reply textarea");
+      if (addedFocus() === "submit") focusSubmitOf(field);
+      else field?.focus();
     };
 
     /** 返信の入力の中身が変わった。書きかけを保つ待ちを入れ、溜めた・失敗の結果は消す */
@@ -2916,6 +2944,8 @@ namespace MindmapPreview {
       canSave: serverMode,
       minimap: resolved.minimap,
       bodyView: resolved.bodyView,
+      focusAfterAdd: prefs.focusAfterAdd ?? "auto",
+      pointerCoarse: typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches,
       message: display.message,
       storageOk: display.storageOk,
       onWorkspace: serverMode && point === null ? openWorkspace : null,
@@ -2934,8 +2964,13 @@ namespace MindmapPreview {
           prefs[BODY_VIEW_PREF[key]] = (value === BODY_VIEW_DEFAULT[key] ? null : value) as never;
           changePrefs({ redrawMain: true });
         },
+        // 自動は上書きを外し、入力欄へ戻す・戻さないだけを上書きとして残す（開いている画面は描き直さない）
+        focusAfterAdd: (value) => {
+          prefs.focusAfterAdd = value === "auto" ? null : value;
+          changePrefs({ redrawMain: false });
+        },
         reset: () => {
-          // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を全て外し、ワークスペースの既定の表示に戻す
+          // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・「レビューに追加」の後のフォーカスを全て外し、ワークスペースの既定の表示に戻す
           Object.assign(prefs, clearOverrides(prefs));
           clearTablePrefs();
           // 開いている画面は、画面の既定の条件で開き直す
