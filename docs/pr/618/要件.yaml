@@ -83,11 +83,11 @@ docs:
     status: todo
   - page: docs/guide/index.yaml
     new: false
-    change: 改名したページの行の page を改名後のファイル名に修正する
+    change: 改名したページの行の page を改名後のファイル名に修正し、docs/guide/README.md を書き出し直す
     status: todo
   - page: docs/index.yaml
     new: false
-    change: design-policy の行の page を改名後のファイル名に修正する
+    change: design-policy の行の page を改名後のファイル名に修正し、docs/README.md を書き出し直す
     status: todo
   - page: docs/guide/files.yml
     new: false
@@ -103,7 +103,7 @@ docs:
     status: todo
   - page: docs/_config.yml
     new: false
-    change: design-policy.md を指す設定を改名後のパスに修正する
+    change: defaults に、改名したページごとに permalink を改名前の公開 URL（{パス}.html）にする行を追加する。design-policy.md を指す設定を改名後のパスに修正する
     status: todo
   - page: dev-docs.yaml
     new: false
@@ -116,6 +116,38 @@ docs:
   - page: docs/index.md
     new: false
     change: 改名したページへのリンクを修正する
+    status: todo
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/コアコンセプト-話し合いの進め方.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/リファレンス.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-プレビューを外から見る.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/話し合い-セットアップから始める.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: todo
+  - page: docs/guide/変更履歴.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する（このページの改名はスコープ外）
     status: todo
 scope_out:
   - item: PR ドキュメント（docs/pr/ の README.md・要件.md・計画書）の .mark.md への改名
