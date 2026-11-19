@@ -434,6 +434,7 @@ SAVED_PREFS = {
     "sectionFold": None,
     "commentsPinned": None,
     "commentFormClosed": None,
+    "focusAfterAdd": None,
 }
 
 
