@@ -387,7 +387,7 @@ def test_settings_panel_when_focus_after_add(
     assert focus is not None
     assert focus["section"] == "コメントの入力"
     assert [radio["text"].split("この端末")[0] for radio in focus["radios"]] == ["自動", "入力欄へ戻す", "戻さない"]
-    assert [radio["text"] for radio in focus["radios"] if radio["checked"]][0].startswith(expected_checked)
+    assert next(radio["text"] for radio in focus["radios"] if radio["checked"]).startswith(expected_checked)
     assert expected_auto_sub in focus["radios"][0]["text"]
     assert focus["description"] == FOCUS_DESCRIPTION
     assert observed["calls"] == [expected_call]

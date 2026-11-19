@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from "vitest";
 import { SendForm } from "@/shared/components/send-form";
 
 // 「レビューに追加」の後のフォーカスの移動先（テストごとに書き換える）
-const focusTarget = vi.hoisted(() => ({ current: "input" as "input" | "submit" }));
+const focusTarget = vi.hoisted((): { current: "input" | "submit" } => ({ current: "input" }));
 vi.mock("@/shared/stores/prefs-store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/shared/stores/prefs-store")>()),
   useFocusAfterAddTarget: () => focusTarget.current,
