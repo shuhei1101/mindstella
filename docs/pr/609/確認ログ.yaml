@@ -17,3 +17,9 @@ confirmations:
     approver: shuhei1101
     commit: '91e49668'
     thread: https://github.com/shuhei1101/mindstella/pull/609#discussion_r4625943994
+  - topic: 項目で絞っている間の「新しいスレッド」の扱い
+    decision: 項目で絞っている間の「新しいスレッド」は、その項目へのスレッドとして溜め、入力の見出しを「{ID} への新しいスレッド」にする。入口のボタンの文言は「新しいスレッド」のまま（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 3cb8125c
+    thread: https://github.com/shuhei1101/mindstella/pull/609#discussion_r4626600642
