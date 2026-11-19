@@ -1,0 +1,1 @@
+# ワークスペースと MindStella のセッションの状態を、何も書き換えずに取得できるようにする（GET /workspaces/{id}・GET /workspaces）
