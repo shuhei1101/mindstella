@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { readBodyScrolls, readPrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
+import { readBodyScrolls, readPrefs, useFocusAfterAddTarget, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
 import { PREFS_KEY } from "@/shared/stores/theme-store";
 
 describe("readPrefs", () => {
@@ -62,5 +63,32 @@ describe("readBodyScrolls", () => {
     expect(readBodyScrolls()).toEqual({ "R-1": 5 });
     sessionStorage.setItem("mindmap-body-scroll", "not json");
     expect(readBodyScrolls()).toEqual({});
+  });
+});
+
+describe("useFocusAfterAddTarget", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
+
+  // 上書きと端末の種類で移動先を返す（正常系）
+  test.each([
+    { name: "auto_fine", stored: {}, coarse: false, expected: "input" },
+    { name: "auto_coarse", stored: {}, coarse: true, expected: "submit" },
+    { name: "input_coarse", stored: { focusAfterAdd: "input" }, coarse: true, expected: "input" },
+  ])("use_focus_after_add_target ($name)", ({ stored, coarse, expected }) => {
+    // 準備
+    localStorage.setItem(PREFS_KEY, JSON.stringify(stored));
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(pointer: coarse)" && coarse,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    // 実行
+    const { result } = renderHook(() => useFocusAfterAddTarget());
+    // 検証
+    expect(result.current).toBe(expected);
   });
 });

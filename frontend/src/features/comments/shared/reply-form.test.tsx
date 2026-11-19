@@ -4,6 +4,13 @@ import { describe, expect, test, vi } from "vitest";
 
 import { ReplyForm } from "@/features/comments/shared/reply-form";
 
+// 「レビューに追加」の後のフォーカスの移動先（テストごとに書き換える）
+const focusTarget = vi.hoisted(() => ({ current: "input" as "input" | "submit" }));
+vi.mock("@/shared/stores/prefs-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/stores/prefs-store")>()),
+  useFocusAfterAddTarget: () => focusTarget.current,
+}));
+
 describe("ReplyForm", () => {
   // 溜める（正常系）
   test("reply_form", async () => {
@@ -74,5 +81,18 @@ describe("ReplyForm", () => {
     render(<ReplyForm thread="TH-1" body="" status="reviewed" onSubmit={vi.fn()} onInput={vi.fn()} />);
     // 検証
     expect(screen.getByRole("status")).toHaveTextContent("文字起こしの結果をレビュー中に追加しました。");
+  });
+
+  // 入力欄へ戻さない設定で、文字起こしを溜めた後は「レビューに追加」へフォーカスを移す（正常系）
+  test("reply_form_when_reviewed_focus_submit", () => {
+    // 準備
+    focusTarget.current = "submit";
+    const props = { thread: "TH-1", onSubmit: vi.fn(), onInput: vi.fn() };
+    const { rerender } = render(<ReplyForm {...props} body="確認: " status="idle" voice="transcribing" />);
+    // 実行
+    rerender(<ReplyForm {...props} body="" status="reviewed" voice="idle" />);
+    // 検証
+    expect(screen.getByRole("button", { name: "レビューに追加" })).toHaveFocus();
+    focusTarget.current = "input";
   });
 });

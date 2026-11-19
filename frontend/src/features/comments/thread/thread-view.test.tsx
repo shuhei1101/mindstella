@@ -11,6 +11,13 @@ import { RECORDS } from "@/testing/msw/handlers";
 import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
 
+// 「レビューに追加」の後のフォーカスの移動先（テストごとに書き換える）
+const focusTarget = vi.hoisted(() => ({ current: "input" as "input" | "submit" }));
+vi.mock("@/shared/stores/prefs-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/stores/prefs-store")>()),
+  useFocusAfterAddTarget: () => focusTarget.current,
+}));
+
 const unseen = {
   threads: [
     {
@@ -28,6 +35,7 @@ const unseen = {
 };
 
 afterEach(() => {
+  focusTarget.current = "input";
   resetVoiceStore();
   removeFakeWakeLock();
   vi.unstubAllGlobals();
@@ -183,5 +191,28 @@ describe("ThreadView", () => {
     await waitFor(() => expect(added).toEqual([{ thread: "TH-1", body: "x" }]));
     expect(await screen.findByText("文字起こしの結果をレビュー中に追加しました。")).toBeInTheDocument();
     removeFakeMedia();
+  });
+
+  // 返信を溜めた後のフォーカスを移動先に従わせる（正常系）
+  test.each([
+    { target: "input" as const },
+    { target: "submit" as const },
+  ])("thread_view_when_focus_after_add ($target)", async ({ target }) => {
+    // 準備
+    focusTarget.current = target;
+    server.use(
+      http.get("/api/threads", () => HttpResponse.json(unseen)),
+      http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: [] })),
+      http.post("/api/comments", () => HttpResponse.json({ id: "C-1", created: "2026-11-01T00:00:00+00:00", count: 1 }, { status: 201 })),
+    );
+    renderRoute("/spa/?panel=comments&thread=TH-1");
+    await screen.findByText("どちらにしますか");
+    const panel = await screen.findByRole("dialog", { name: "コメント" });
+    // 実行
+    await userEvent.type(within(panel).getByRole("textbox"), "案 A にする");
+    await userEvent.click(within(panel).getByRole("button", { name: /レビューに追加/ }));
+    // 検証
+    const focused = target === "submit" ? () => within(panel).getByRole("button", { name: "レビューに追加" }) : () => within(panel).getByRole("textbox");
+    await waitFor(() => expect(focused()).toHaveFocus());
   });
 });

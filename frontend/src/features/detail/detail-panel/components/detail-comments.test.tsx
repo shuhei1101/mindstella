@@ -13,9 +13,17 @@ import { renderRoute } from "@/testing/render";
 
 vi.mock("@/shared/adapters/libraries", async (original) => ({ ...(await original<object>()), ...(await import("@/testing/libraries")) }));
 
+// 「レビューに追加」の後のフォーカスの移動先（テストごとに書き換える）
+const focusTarget = vi.hoisted(() => ({ current: "input" as "input" | "submit" }));
+vi.mock("@/shared/stores/prefs-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/stores/prefs-store")>()),
+  useFocusAfterAddTarget: () => focusTarget.current,
+}));
+
 const doc = { id: "A-1", title: "A-1の題", status: "下書き", body: "docs/A-1.md" };
 
 afterEach(() => {
+  focusTarget.current = "input";
   localStorage.clear();
   resetVoiceStore();
   removeFakeWakeLock();
@@ -186,5 +194,30 @@ describe("DetailComments", () => {
     expect(await within(back).findByText("文字起こしの結果をレビュー中に追加しました。")).toBeInTheDocument();
     expect(within(back).getByRole("textbox", { name: /D-1 へのコメント/ })).toHaveValue("");
     removeFakeMedia();
+  });
+
+  // 溜めた後のフォーカスを移動先に従わせる（正常系）
+  test.each([
+    { name: "input", target: "input" as const, body: "ここを直す", expected: "input" },
+    { name: "submit", target: "submit" as const, body: "ここを直す", expected: "submit" },
+    { name: "submit_when_empty", target: "submit" as const, body: "   ", expected: "input" },
+  ])("detail_comments_when_focus_after_add ($name)", async ({ target, body, expected }) => {
+    // 準備
+    focusTarget.current = target;
+    stubRecords({ docs: [doc], bodies: { "docs/A-1.md": "本文" } });
+    server.use(http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })));
+    server.use(http.post("/api/comments", () => HttpResponse.json({ id: "C-1", created: "2026-11-01T00:00:00+00:00", count: 1 }, { status: 201 })));
+    renderRoute("/spa/?tab=docs&id=A-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    const field = await within(panel).findByRole("textbox", { name: /A-1 へのコメント/ });
+    // 実行
+    await userEvent.type(field, body);
+    await userEvent.click(within(panel).getByRole("button", { name: /レビューに追加/ }));
+    // 検証
+    if (expected === "submit") {
+      await waitFor(() => expect(within(panel).getByRole("button", { name: "レビューに追加" })).toHaveFocus());
+    } else {
+      await waitFor(() => expect(within(panel).getByRole("textbox", { name: /A-1 へのコメント/ })).toHaveFocus());
+    }
   });
 });

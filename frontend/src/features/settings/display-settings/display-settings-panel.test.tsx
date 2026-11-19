@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test } from "vitest";
 
@@ -33,5 +33,21 @@ describe("DisplaySettingsPanel", () => {
     expect(stored()["kinds"] ?? null).toBeNull();
     expect(stored()["theme"] ?? null).toBeNull();
     expect(stored()["diffSel"]).toBe("V-1");
+  });
+
+  // 「レビューに追加」の後のフォーカスを変えて自動に戻す（正常系）
+  test("display_settings_panel_when_focus_after_add", async () => {
+    // 準備
+    renderRoute("/spa/?panel=display");
+    const group = await screen.findByRole("group", { name: "レビューに追加した後のフォーカス" });
+    // 実行
+    await userEvent.click(within(group).getByRole("radio", { name: "入力欄へ戻す" }));
+    // 検証
+    expect(stored()["focusAfterAdd"]).toBe("input");
+    expect((await screen.findByText("この端末で変えている項目")).parentElement).toHaveTextContent("レビューに追加した後のフォーカス");
+    // 実行（自動に戻す）
+    await userEvent.click(within(group).getByRole("radio", { name: /^自動/ }));
+    // 検証
+    expect(stored()["focusAfterAdd"] ?? null).toBeNull();
   });
 });
