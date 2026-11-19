@@ -24,6 +24,7 @@ import migrator
 import notify
 import serve
 import server
+import startup
 import store
 from errors import (
     ArgumentError,
@@ -203,6 +204,13 @@ def _spy_stop_all(monkeypatch: pytest.MonkeyPatch) -> list[serve.PreviewRegistry
     return stopped
 
 
+@pytest.fixture(autouse=True)
+def _skip_startup_reconcile(monkeypatch: pytest.MonkeyPatch) -> None:
+    """main が端末の project-index へつながらないよう、起動時の照合を何もしない関数に差し替える。"""
+    monkeypatch.setattr(startup, "reconcile_before_listen", lambda ctx: None)
+    monkeypatch.setattr(startup, "start_agent_flows_check", lambda ctx: threading.Thread())
+
+
 @pytest.fixture
 def registry() -> Iterator[serve.PreviewRegistry]:
     """配信の台帳を作り、使い終わったら立てた配信を全て止める。"""
@@ -261,6 +269,29 @@ def test_main(monkeypatch: pytest.MonkeyPatch, free_port: int) -> None:
     assert result == 0
     assert spy.http_server.socket_names == [[("127.0.0.1", free_port)]]
     assert stopped == [spy.build_kwargs["previews"]]
+
+
+def test_main_when_reconciled(monkeypatch: pytest.MonkeyPatch, free_port: int) -> None:
+    """待ち受けの前に照合し、エージェントフローの配信元の確認を始める（正常系）。"""
+    # 準備
+    _spy_stop_all(monkeypatch)
+    order: list[tuple[str, object]] = []
+    monkeypatch.setattr(
+        startup, "reconcile_before_listen", lambda ctx: order.append(("reconcile", ctx))
+    )
+    monkeypatch.setattr(
+        startup,
+        "start_agent_flows_check",
+        lambda ctx: order.append(("agent_flows", ctx)) or threading.Thread(),
+    )
+    spy = _MainSpy(_FakeHttpServer(on_run=lambda: order.append(("run", None))))
+    # 実行
+    server.main(build=spy.build, make_server=spy.make_server, environ={"MINDSTELLA_PORT": str(free_port)})
+    # 検証
+    assert len(order) == 3
+    assert (order[0][0], order[1][0], order[2][0]) == ("reconcile", "agent_flows", "run")
+    assert isinstance(order[0][1], server.ServerContext)
+    assert order[1][1] is order[0][1]
 
 
 def test_main_when_server_raises(monkeypatch: pytest.MonkeyPatch, free_port: int) -> None:
