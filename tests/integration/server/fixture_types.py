@@ -46,6 +46,7 @@ __all__ = [
     "McpServer",
     "SnapshotTree",
     "StartFakeTranscriber",
+    "StartMdmarkRefServer",
     "StartServer",
     "StartVoiceServer",
     "ToolResult",
@@ -62,3 +63,5 @@ type FindOldPython = Callable[[], str]
 type StartFakeTranscriber = Callable[[FakeMode], FakeTranscriber]
 # 文字起こしのサービスの URL（と差し替える定数）を渡して常駐サーバーを立てる
 type StartVoiceServer = Callable[..., McpServer]
+# mdmark の ref の解決が問い合わせる GitHub と jsDelivr の基点の URL を渡して常駐サーバーを立てる
+type StartMdmarkRefServer = Callable[[str, str], McpServer]
