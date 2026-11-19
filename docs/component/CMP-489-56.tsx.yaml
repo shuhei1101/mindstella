@@ -176,6 +176,15 @@ states:
         value: ほかの入力欄で音声入力中のため、音声で入力できません。
       - name: body
         value: D-2 も確認
+  - name: SavedFocusOnSubmit
+    description: 溜めた後に入力欄へ戻さない（タッチの端末の自動か「戻さない」）。見た目は Saved と同じで、フォーカスを「レビューに追加」のボタンに置く。入力欄から外れるためソフトウェアキーボードが閉じる
+    args:
+      - name: thread
+        value: TH-2
+      - name: status
+        value: saved
+      - name: count
+        value: '3'
 lead: スレッドの下端に留める、返信をレビュー中に溜める入力欄と「レビューに追加」のボタン。箇所を添えず、入力が空の間はボタンを押せない。
 args:
   - name: thread
@@ -241,7 +250,7 @@ events:
   - name: 溜める
     when: 「レビューに追加」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。入力欄が空白だけのとき、`status` が `saving` の間、変換を確定する Enter では発火しない
     value: '`onSubmit(thread, body)`（thread・body（入力欄の中身そのまま））'
-    description: 使う側が `saving` にして `POST /api/comments` へ `thread` と `body` を送り、201 なら入力欄を空にして `saved`、それ以外は `failed` にする
+    description: 使う側が `saving` にして `POST /api/comments` へ `thread` と `body` を送り、201 なら入力欄を空にして `saved` にし、フォーカスを『プレビューを開く』の制約「「レビューに追加」の後のフォーカス」のとおり入力欄か「レビューに追加」のボタンへ移す。それ以外は `failed` にして入力欄へフォーカスを戻す
   - name: 入力
     when: 入力欄の中身が変わったとき
     value: '`onInput(body)`（body）'
@@ -257,7 +266,7 @@ events:
   - name: 文字起こし
     when: ✓ のボタンを押したとき（`voice` が `recording`）
     value: '`onVoiceDone(thread, body)`（thread・body（入力欄の中身そのまま））'
-    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送る。入力欄に戻して返った文字をカーソルの位置へ挿入し、設定の挙動（無ければ `review`）が `review` なら挿入した全文を `POST /api/comments` へ送ってレビュー中に溜め、溜められたら入力欄を空にして `reviewed`（溜められなければ全文を残して `voice-failed`）、`send` なら挿入した全文を `POST /api/comments/send-now` へ送って入力欄を空にし `sent`、`insert` なら送らずに `inserted` にする（送信は利用者が「レビューに追加」を押したとき）。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）。文字起こし中に入力欄が画面から消えても、返った文字は録音を始めた入力欄の書きかけへ挿入して同じく扱い、失敗のときは使う側がトップバーの下の帯で知らせる
+    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送る。入力欄に戻して返った文字をカーソルの位置へ挿入し、設定の挙動（無ければ `review`）が `review` なら挿入した全文を `POST /api/comments` へ送ってレビュー中に溜め、溜められたら入力欄を空にして `reviewed`（溜められなければ全文を残して `voice-failed`）、`send` なら挿入した全文を `POST /api/comments/send-now` へ送って入力欄を空にし `sent`、`insert` なら送らずに `inserted` にする（送信は利用者が「レビューに追加」を押したとき）。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）。`reviewed`・`sent` のときのフォーカスは制約「「レビューに追加」の後のフォーカス」に従い、それ以外は入力欄へ戻す。文字起こし中に入力欄が画面から消えても、返った文字は録音を始めた入力欄の書きかけへ挿入して同じく扱い、失敗のときは使う側がトップバーの下の帯で知らせる
   - name: 押せないマイクを押す
     when: '`voice` が `disabled` のマイクのボタンを押したとき'
     value: '`onVoiceBlocked()`'
@@ -272,7 +281,7 @@ accessibility:
   - マイクのボタンはアイコンだけのボタンにし、`aria-label`・`title` に「音声で入力」を持つ。押せないときは `aria-disabled="true"` でフォーカスを受けたまま、ツールチップに理由を出して `aria-describedby` から指す
   - 録音中の × と ✓ はアイコンだけのボタンにし、`aria-label`・`title` にそれぞれ「キャンセル」（ツールチップは「キャンセル（録音を破棄）」）と「文字起こし」を持つ。文字起こし中は ✓ を「文字起こし中」にして押せなくする
   - 録音を始めた・終えたことは結果の行（`role="status"`）の読み上げだけの「録音中」で伝え、経過の時間は読み上げない
-  - 録音中の波形は読み上げから外す（`aria-hidden`）。録音を始めたらフォーカスを ✓ の「文字起こし」へ移し、録音を終えたら入力欄へ戻してカーソルを録音前の位置に置く
+  - 録音中の波形は読み上げから外す（`aria-hidden`）。録音を始めたらフォーカスを ✓ の「文字起こし」へ移し、録音を終えたら入力欄へ戻してカーソルを録音前の位置に置く（文字起こしの結果を溜めた・送ったときは制約「「レビューに追加」の後のフォーカス」に従い、戻さないときは ✓ の位置に戻した「レビューに追加」に置く）
   - 'マイク・× ・✓ のボタンは「レビューに追加」と同じ大きさにし、タッチが主な端末（`pointer: coarse`）では 44 x 44 CSS px にする'
   - 画面の文言に文字起こしのサービスの名前（voice-paste）を出さない
   - トップバーの音声入力中の表示から戻ったときは、録音中なら ✓ の「文字起こし」へフォーカスを移す
