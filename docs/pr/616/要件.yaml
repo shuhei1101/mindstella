@@ -136,3 +136,6 @@ scope_out:
   - item: claude-balancer 側の変更（使用中のアカウントの消費率を取得する API の新設）
     reason: 既存の GET /accounts（IF-275-12）がアカウントごとの消費率と、しきい値以上を表す貸せない理由を返すため。アカウントの設定のフォルダとアカウント名の対応が GET /accounts で取れなければ、インターフェース定義設計で claude-balancer へ起票して依存に加える
     plan: none
+  - item: '`sessions.py` の `_wait_ready` の重なったコメント（「登録が入った: 準備ができた」が 2 行続く）と、リポジトリ全体の `ruff format --check` の不一致（202 ファイル）'
+    reason: この PR の変更より前からあり、TL-7（lint）の全件実行に `ruff format --check` が入っていないため。この PR で変えた 7 ファイルは整形済み
+    plan: none
