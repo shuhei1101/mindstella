@@ -1,0 +1,55 @@
+$ python3 -m pytest tests/unit
+
+==================================== ERRORS ====================================
+__________ ERROR collecting tests/unit/scripts/test_home_settings.py ___________
+ImportError while importing test module '/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-sessions-switch-account-on-usage-threshold/tests/unit/scripts/test_home_settings.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_home_settings.py:9: in <module>
+    import home_settings
+E   ModuleNotFoundError: No module named 'home_settings'
+_____________ ERROR collecting tests/unit/scripts/test_sessions.py _____________
+ImportError while importing test module '/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-sessions-switch-account-on-usage-threshold/tests/unit/scripts/test_sessions.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_sessions.py:24: in <module>
+    from home_settings import HomeSettings
+E   ModuleNotFoundError: No module named 'home_settings'
+___________ ERROR collecting tests/unit/scripts/test_usage_watch.py ____________
+ImportError while importing test module '/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-sessions-switch-account-on-usage-threshold/tests/unit/scripts/test_usage_watch.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_usage_watch.py:19: in <module>
+    import usage_watch
+E   ModuleNotFoundError: No module named 'usage_watch'
+=========================== short test summary info ============================
+ERROR tests/unit/scripts/test_home_settings.py
+ERROR tests/unit/scripts/test_sessions.py
+ERROR tests/unit/scripts/test_usage_watch.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!!
+3 errors in 1.77s
+exit=2
+
+# モジュールが無いため収集で止まらないファイルの個別実行
+$ python3 -m pytest tests/unit/scripts/test_notify.py tests/unit/scripts/test_session_hook.py
+tests/unit/scripts/test_session_hook.py:442: KeyError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_notify.py::test_build_stopped_content[usage-threshold]
+FAILED tests/unit/scripts/test_session_hook.py::test_balancer_account_from[account]
+FAILED tests/unit/scripts/test_session_hook.py::test_balancer_account_from[no-item]
+FAILED tests/unit/scripts/test_session_hook.py::test_balancer_account_from[no-variable]
+FAILED tests/unit/scripts/test_session_hook.py::test_balancer_account_from[empty]
+FAILED tests/unit/scripts/test_session_hook.py::test_main_when_balancer_account
+6 failed, 53 passed in 1.94s
+
+# 実装の前から pass したテスト
+- test_build_stopped_content[rate-limited]・[restart-failed]: notify.py の STOP_REASON_TEXTS の rate_limited・restart_failed（PR #582 の db1227b0 で入った既存の振る舞い）
