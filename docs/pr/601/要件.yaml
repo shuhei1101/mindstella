@@ -37,3 +37,6 @@ scope_out:
   - item: 常駐サーバーの起動のときに、ID の一覧に無い配信元の行や、削除の途中で止まった状態の記録を照合する
     reason: 資料 A-107 の No 10 で別の Issue にしている
     plan: '#525'
+  - item: インターフェース定義『MCP サーバーの起動』のツールとエンドポイントの一覧に、`restart_session` と `POST /workspaces/{id}/sessions/{session}/restart` を記載する
+    reason: 'IF-582-1 の制約と MOD-489-177 の `TOOL_NAMES` にあるのに一覧に無い（PR #582 からの記載漏れ）。今回の要望（開き直しと削除）に含まれない'
+    plan: '#602'
