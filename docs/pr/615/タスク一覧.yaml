@@ -70,8 +70,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T09:48:13.591539+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: docs/ の Markdown へ mdmark upgrade を適用し、目次の README.md を生成し直し、移行の報告に挙がった記載を記載し直す
+    updated_by: planner
+    updated_at: '2026-11-19T09:53:28.311726+00:00'
   - process: 単体テスト作成
     status: skipped
     reason: コードが変わらない
