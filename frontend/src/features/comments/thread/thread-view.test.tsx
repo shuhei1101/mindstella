@@ -217,3 +217,35 @@ describe("ThreadView", () => {
     await waitFor(() => expect(focused()).toHaveFocus());
   });
 });
+
+describe("ThreadView の修正の音声入力", () => {
+  // レビュー中の返信の修正の入力で録音し、設定によらず挿入だけにする（正常系）
+  test("thread_view_when_edit_voice", async () => {
+    // 準備
+    installFakeMedia();
+    stubRecords({ settings: { ...RECORDS.settings, transcription: { action: "send" } } });
+    const sent: unknown[] = [];
+    server.use(
+      http.get("/api/threads", () => HttpResponse.json(unseen)),
+      http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: [] })),
+      http.get("/api/comments", () => HttpResponse.json({ items: [{ id: "C-1", thread: "TH-1", target: null, target_title: null, loc: null, body: "確認: ", created: "2026-11-01T00:01:00+00:00" }], drafts: [] })),
+      http.get("/api/transcription", () => HttpResponse.json({ available: true, reason: null, detail: null, presets: [], action: "send", preset: null })),
+      http.post("/api/transcriptions", () => HttpResponse.json({ text: "案 A にする" })),
+      http.post("/api/comments/send-now", async ({ request }) => {
+        sent.push(await request.json());
+        return HttpResponse.json({ sent: "2026-11-09T00:00:00+00:00", thread: "TH-1", post: "TH-1-2", entered: true }, { status: 201 });
+      }),
+    );
+    renderRoute("/spa/?panel=comments&thread=TH-1");
+    await userEvent.click(await screen.findByRole("button", { name: "TH-1 への返信を修正" }));
+    const edit = (await screen.findByRole("textbox", { name: "TH-1 への返信の本文" })).closest("form");
+    if (edit === null) throw new Error("修正の入力が無い");
+    // 実行
+    await userEvent.click(within(edit).getByRole("button", { name: "音声で入力" }));
+    await userEvent.click(await within(edit).findByRole("button", { name: "文字起こし" }));
+    // 検証
+    await waitFor(() => expect(within(edit).getByRole("textbox")).toHaveValue(expect.stringContaining("案 A にする")));
+    expect(sent).toEqual([]);
+    removeFakeMedia();
+  });
+});

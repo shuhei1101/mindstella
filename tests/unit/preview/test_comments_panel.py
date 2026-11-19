@@ -1484,6 +1484,99 @@ def test_review_edit_form(
     assert observed["escapePrevented"] is expected_escape_prevented
 
 
+
+# 修正の入力を音声の引数で描き、ボタンを押して、呼ばれたコールバックと結果の行を集める
+EDIT_FORM_VOICE_SCRIPT = (
+    MOUNT_FUNCTION
+    + """
+({item, voice, press}) => {
+    const calls = [];
+    const host = mount(MindmapPreview.reviewEditForm({
+        item,
+        body: null,
+        error: null,
+        focus: "",
+        voice,
+        on: {
+            saveEdit: () => calls.push(["saveEdit"]),
+            cancelEdit: () => calls.push(["cancelEdit"]),
+            voiceStart: () => calls.push(["voiceStart"]),
+            voiceCancel: () => calls.push(["voiceCancel"]),
+            voiceDone: (input) => calls.push(["voiceDone", input]),
+            voiceBlocked: () => calls.push(["voiceBlocked"]),
+        },
+    }));
+    const field = host.querySelector("textarea");
+    field.setSelectionRange(field.value.length, field.value.length);
+    const labels = [...host.querySelectorAll("button")].map((button) => button.getAttribute("aria-label") ?? button.textContent.trim());
+    for (const label of press) host.querySelector(`button[aria-label="${label}"]`)?.click();
+    return {
+        labels,
+        calls,
+        statusText: host.querySelector('[role="status"]')?.textContent ?? "",
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("voice", "press", "expected_labels", "expected_calls", "expected_text"),
+    [
+        pytest.param(
+            {"voice": "idle"},
+            ["音声で入力"],
+            ["音声で入力", "キャンセル", "修正"],
+            [["voiceStart"]],
+            "",
+            id="idle",
+        ),
+        pytest.param(
+            {"voice": "recording", "elapsed": 5, "levels": [0.5]},
+            ["文字起こし", "キャンセル"],
+            ["キャンセル", "文字起こし"],
+            [["voiceDone", {"body": "案 A にする", "start": 6, "end": 6}], ["voiceCancel"]],
+            "0:05",
+            id="recording",
+        ),
+        pytest.param(
+            {"voice": "idle", "voiceStatus": "inserted", "voiceDetail": None},
+            [],
+            ["音声で入力", "キャンセル", "修正"],
+            [],
+            "文字起こしの結果を挿入しました。",
+            id="inserted",
+        ),
+        pytest.param(
+            None,
+            [],
+            ["キャンセル", "修正"],
+            [],
+            "",
+            id="no_voice",
+        ),
+    ],
+)
+def test_review_edit_form_voice(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    voice: dict[str, Any] | None,
+    press: list[str],
+    expected_labels: list[str],
+    expected_calls: list[list[Any]],
+    expected_text: str,
+) -> None:
+    """マイクのボタンと録音中の切り替え（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    observed = preview_page.evaluate(
+        EDIT_FORM_VOICE_SCRIPT, {"item": ITEM_1, "voice": voice, "press": press}
+    )
+    # 検証
+    assert observed["labels"] == expected_labels
+    assert observed["calls"] == expected_calls
+    assert expected_text in observed["statusText"]
+
 @pytest.mark.parametrize(
     (
         "body",

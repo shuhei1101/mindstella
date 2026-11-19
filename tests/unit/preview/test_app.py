@@ -1181,11 +1181,12 @@ def test_write_body_scrolls(
 
 
 # 録音の行き先の確かめを、記録とスレッドの取得の結果を渡して呼ぶ JavaScript
-CHECK_VOICE_SCRIPT = """async ({destination, records, threads}) =>
+CHECK_VOICE_SCRIPT = """async ({destination, records, threads, comments}) =>
     MindmapPreview.checkVoiceDestination({
         destination,
         fetchRecords: async () => records,
         fetchThreads: async () => threads,
+        fetchComments: async () => comments ?? {ok: true, items: []},
     })"""
 
 
@@ -1253,3 +1254,34 @@ def test_check_voice_destination_when_unreadable(
     )
     # 検証
     assert missing is None
+
+
+@pytest.mark.parametrize(
+    ("comments", "expected"),
+    [
+        pytest.param({"ok": True, "items": [{"id": "C-1"}]}, None, id="present"),
+        pytest.param({"ok": True, "items": [{"id": "C-2"}]}, "C-1", id="removed"),
+        pytest.param({"ok": False}, None, id="unreadable"),
+    ],
+)
+def test_check_voice_destination_when_review(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    comments: dict[str, Any],
+    expected: str | None,
+) -> None:
+    """修正の入力の行き先をレビュー中のコメントで確かめる（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    missing = preview_page.evaluate(
+        CHECK_VOICE_SCRIPT,
+        {
+            "destination": {"review": "C-1", "view": "thread"},
+            "records": {"ok": True, "data": {}},
+            "threads": {"ok": True, "threads": []},
+            "comments": comments,
+        },
+    )
+    # 検証
+    assert missing == expected

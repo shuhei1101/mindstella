@@ -4,6 +4,9 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { AppError } from "@/shared/core/app-error";
 import { useAddComment, useRemoveComment, useSaveDraft, useSendComments, useUpdateComment } from "@/shared/hooks/use-comments";
+import { readVoiceState, resetVoiceStore, startVoice } from "@/shared/stores/voice-store";
+import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
+import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
 import { server } from "@/testing/msw/server";
 import { renderPreviewHook } from "@/testing/render";
 
@@ -11,7 +14,17 @@ const queryKeys = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.map(
 
 afterEach(() => {
   vi.useRealTimers();
+  resetVoiceStore();
+  removeFakeMedia();
+  removeFakeWakeLock();
 });
+
+/** C-1 の修正の入力で録音を始める */
+const recordReviewEdit = async (): Promise<void> => {
+  installFakeMedia();
+  installFakeWakeLock();
+  await startVoice({ key: "review:C-1", destination: { review: "C-1", thread: "TH-1", target: null }, view: "review", label: "TH-1 への返信の修正", selection: { start: 0, end: 0 } });
+};
 
 describe("useAddComment", () => {
   // 読み直す（正常系）
@@ -128,5 +141,35 @@ describe("useSaveDraft", () => {
     await act(() => vi.advanceTimersByTimeAsync(600));
     // 検証
     expect(calls).toBe(1);
+  });
+});
+
+describe("useRemoveComment の修正の入力", () => {
+  // 修正の入力で録音中の書き込みを消すと、読み直しを待たずに録音を捨てる（正常系）
+  test("use_remove_comment_when_review_voice", async () => {
+    // 準備
+    await recordReviewEdit();
+    server.use(http.delete("/api/comments/:id", () => HttpResponse.json({ id: "C-1", thread: "TH-1", target: null, loc: null, body: "本文", created: "2026-11-01T00:00:00+00:00", count: 0 })));
+    const { result } = await renderPreviewHook("/", useRemoveComment);
+    // 実行
+    await act(() => result.current.mutateAsync("C-1"));
+    // 検証
+    expect(readVoiceState().session).toBeNull();
+    expect(readVoiceState().notice?.kind).toBe("discarded");
+  });
+});
+
+describe("useSendComments の修正の入力", () => {
+  // 修正の入力で録音中の書き込みを送ると、録音を捨てる（正常系）
+  test("use_send_comments_when_review_voice", async () => {
+    // 準備
+    await recordReviewEdit();
+    server.use(http.post("/api/comments/send", () => HttpResponse.json({ sent: "2026-11-01T00:00:00+00:00", items: [], entered: true }, { status: 201 })));
+    const { result } = await renderPreviewHook("/", useSendComments);
+    // 実行
+    await act(() => result.current.mutateAsync(["C-1"]));
+    // 検証
+    expect(readVoiceState().session).toBeNull();
+    expect(readVoiceState().notice?.kind).toBe("discarded");
   });
 });
