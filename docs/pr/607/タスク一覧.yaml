@@ -55,8 +55,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T06:30:17.785230+00:00'
   - process: 部品設計
-    status: todo
+    status: done
     note: コメントの入力・返信の入力（今の画面・React）の部品設計の録音中の波形に、録音を始めてから終えるまで棒の幅と間隔が変わらないことを書く
+    updated_by: planner
+    updated_at: '2026-11-19T06:34:32.054074+00:00'
   - process: 画面設計
     status: skipped
     reason: 波形は部品の中の見た目で、画面の構成は変わらない
