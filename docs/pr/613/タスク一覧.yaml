@@ -1,0 +1,70 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T09:14:56.802785+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書が既にあるため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T09:14:56.802785+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めの依頼ではないため対象外
+    updated_by: planner
+    updated_at: '2026-11-19T09:14:56.802785+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: コメント・返信の入力欄で動いている録音と文字起こしを修正の入力欄から呼ぶだけで、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-19T09:14:56.802785+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 複合ユースケースの連鎖は変わらない
+    updated_by: planner
+    updated_at: '2026-11-19T09:14:56.802785+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: デザイン方針（docs/design-policy.md）があり、見た目の方向は変えない
+    updated_by: planner
+    updated_at: '2026-11-19T09:14:56.802785+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の追加・削除と画面遷移の変更が無い
+    updated_by: planner
+    updated_at: '2026-11-19T09:14:56.802785+00:00'
+  - process: 単一ユースケース設計
+    status: todo
+    note: SC-489-45（音声でコメントする）に修正の入力欄の流れを記載し、SC-489-3（コメントを選んで送る）から参照する
+  - process: モック作成
+    status: skipped
+    reason: Issue がコメント・返信の入力欄と同じ操作（マイクのボタン・波形・× と ✓）を指定しており、見た目を作り手が決める余地が無い
+    updated_by: planner
+    updated_at: '2026-11-19T09:14:56.802785+00:00'
+  - process: データ設計
+    status: skipped
+    reason: ワークスペースの記録の構造は変わらない
+    updated_by: planner
+    updated_at: '2026-11-19T09:14:56.802785+00:00'
+  - process: インターフェース定義設計
+    status: todo
+    note: IF-489-70・IF-489-71 の制約「音声の入力」と、IF-489-58・IF-489-41 の呼ぶ入力欄
+  - process: 部品設計
+    status: todo
+    note: CMP-489-11・CMP-489-12（スレッドの書き込み）と CMP-489-19・CMP-489-20（トップバー）
+  - process: 画面設計
+    status: todo
+    note: SCR-489-8・SCR-489-9（レビュー中の書き込み）と SCR-489-31・SCR-489-32（詳細パネル）
+  - process: モジュール構成設計
+    status: todo
+    note: comments.ts・detail.ts・thread-post.ts・app.ts・voice.ts と review-edit-form・review-view・detail-comments・thread-view・voice-store・use-voice-input・preview-shell
+  - process: ドキュメント修正
+    status: todo
+    note: docs/guide/プレビューを見る.md
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo

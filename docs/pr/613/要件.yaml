@@ -1,0 +1,24 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: changed
+    detail: レビュー中の書き込みを修正するときも、マイクのボタンで話した内容を文字起こしし、修正の入力欄のカーソルの位置へ挿入する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: following
+    detail: レビュー中の書き込みを修正する操作から、音声でコメントするの修正の流れを参照する
+    depends_on:
+      - docs/scenario/SC-489-45.yaml
+scope_out:
+  - item: 保存待ちの編集（項目のキー・本文・案・設定）の入力欄の音声入力
+    reason: 要望はレビュー中の書き込みを修正する入力欄だけで、項目の編集の入力欄は含まない
+    plan: none
+  - item: 配る書き出しのマイクのボタン
+    reason: 配る書き出しはレビュー中の書き込みを持たず、修正の入力欄が無い
+    plan: none
+docs:
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: 「音声でコメントする」の節に、修正の入力欄でもマイクのボタンで入力でき、文字起こしの結果をカーソルの位置へ挿入するだけにすることを記載する
+    status: todo
