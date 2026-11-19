@@ -229,3 +229,5 @@ refs:
 decisions:
   - D-323
 id: MOD-605-1
+test_files:
+  - tests/unit/scripts/test_startup.py
