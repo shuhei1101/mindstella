@@ -2,7 +2,7 @@
 
 常駐サーバーは子プロセスで起動し、`PATH` の先頭に偽の `claude`・`claude-balancer` と、
 `TMUX_TMPDIR` をテストごとの一時フォルダにした tmux のラッパーを置く（利用者の tmux のサーバーに触れない）。
-状態のフォルダ（`XDG_STATE_HOME`）もテストごとの一時フォルダにする。fixture は `tests/conftest.py` が読み込む。
+状態のフォルダ（`XDG_STATE_HOME`）と mindstella のホームの設定のフォルダ（`XDG_CONFIG_HOME`）もテストごとの一時フォルダにする。fixture は `tests/conftest.py` が読み込む。
 """
 
 from __future__ import annotations
@@ -94,19 +94,31 @@ for line in sys.stdin:
 """
 
 # 偽の claude-balancer（受けた引数を記録し、`claude-balancer-exit` があれば理由を書いてその終了コードで終わる。
-# `--account` を受けたら、その値を `CLAUDE_CONFIG_DIR` に入れて `--` の後のコマンドを実行する）
+# `claude-balancer-account-exit` があれば、`--account` を受けたときだけ同じく終わる。
+# `--account` を受けたら、その値を `CLAUDE_CONFIG_DIR` に入れて `--` の後のコマンドを実行する。
+# `claude-balancer-accounts` があれば、n 回目の exec で空白区切りの n 番目（足りなければ最後）のアカウント名を、
+# 本物の exec と同じく `OTEL_RESOURCE_ATTRIBUTES` の `claude_balancer.account` に入れる）
 FAKE_BALANCER = """#!{python}
 import json, os, sys
 record = {record!r}
-with open(os.path.join(record, "balancer.jsonl"), "a") as stream:
+calls = os.path.join(record, "balancer.jsonl")
+with open(calls, "a") as stream:
     stream.write(json.dumps(sys.argv[1:]) + "\\n")
+separator = sys.argv.index("--")
 exit_file = os.path.join(record, "claude-balancer-exit")
+account_exit_file = os.path.join(record, "claude-balancer-account-exit")
+if os.path.exists(account_exit_file) and "--account" in sys.argv[:separator]:
+    exit_file = account_exit_file
 if os.path.exists(exit_file):
     sys.stderr.write("claude-balancer: 借りられるアカウントがありません\\n")
     sys.exit(int(open(exit_file).read().strip()))
-separator = sys.argv.index("--")
 if "--account" in sys.argv[:separator]:
     os.environ["CLAUDE_CONFIG_DIR"] = sys.argv[sys.argv.index("--account") + 1]
+accounts_file = os.path.join(record, "claude-balancer-accounts")
+if os.path.exists(accounts_file):
+    names = open(accounts_file).read().split()
+    count = len(open(calls).read().splitlines())
+    os.environ["OTEL_RESOURCE_ATTRIBUTES"] = "claude_balancer.account=" + names[min(count, len(names)) - 1]
 rest = sys.argv[separator + 1:]
 os.execvp(rest[0], rest)
 """
@@ -354,6 +366,7 @@ class SessionWorld:
                 "PYTHONUTF8": "1",
                 "TMUX_TMPDIR": str(self.tmux_tmpdir),
                 "XDG_STATE_HOME": str(self.state_root.parent),
+                "XDG_CONFIG_HOME": str(self.root / "config"),
                 "PROJECT_INDEX_PORT": str(self.pi.port),
                 "PROJECT_INDEX_CONFIG": str(self.pi.settings_path),
             }
@@ -470,6 +483,21 @@ class SessionWorld:
         """偽の claude-balancer を、借りられないときと同じく終わらせる。"""
         (self.record_dir / "claude-balancer-exit").write_text(str(code), encoding="utf-8")
 
+    def set_balancer_account_exit(self, code: int) -> None:
+        """偽の claude-balancer を、`--account` を受けたときだけ借りられないときと同じく終わらせる。"""
+        (self.record_dir / "claude-balancer-account-exit").write_text(str(code), encoding="utf-8")
+
+    def set_balancer_accounts(self, *names: str) -> None:
+        """偽の claude-balancer が exec ごとに貸すアカウント名を、貸す順に決める。"""
+        (self.record_dir / "claude-balancer-accounts").write_text(" ".join(names), encoding="utf-8")
+
+    def write_home_settings(self, text: str) -> Path:
+        """mindstella のホームの設定（`XDG_CONFIG_HOME/mindstella/settings.yaml`）を書く。"""
+        path = self.root / "config" / "mindstella" / "settings.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
     def remove_balancer(self) -> None:
         """`PATH` から claude-balancer を外す。"""
         (self.tools_dir / "claude-balancer").unlink()
@@ -522,6 +550,63 @@ class SessionWorld:
                 continue
         self.pi.close()
         shutil.rmtree(self.tmux_tmpdir, ignore_errors=True)
+
+
+@dataclass
+class FakeBalancerApi:
+    """claude-balancer の常駐の `GET /accounts` の Mock。受けた要求のパスを記録し、決めた accounts を返却する。"""
+
+    accounts: list[dict[str, Any]] = field(default_factory=list)
+    requests: list[str] = field(default_factory=list)
+    server: ThreadingHTTPServer | None = None
+
+    @property
+    def url(self) -> str:
+        """待ち受けの URL。"""
+        assert self.server is not None
+        return f"http://{LISTEN_HOST}:{self.server.server_address[1]}"
+
+    def start(self) -> None:
+        """空きポートで待ち受ける。"""
+        fake = self
+
+        class Handler(BaseHTTPRequestHandler):
+            """要求を記録して応答する。"""
+
+            def do_GET(self) -> None:
+                """パスを記録し、`/accounts` なら accounts を返却する。"""
+                fake.requests.append(self.path)
+                if self.path != "/accounts":
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                payload = json.dumps({"accounts": fake.accounts}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, *args: object) -> None:
+                """要求ごとの記録を出さない。"""
+
+        self.server = ThreadingHTTPServer((LISTEN_HOST, 0), Handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def close(self) -> None:
+        """待ち受けを止める。"""
+        if self.server is not None:
+            self.server.shutdown()
+            self.server.server_close()
+
+
+@pytest.fixture
+def balancer_api() -> Iterator[FakeBalancerApi]:
+    """claude-balancer の常駐の Mock を起動し、テストの後で閉じる。"""
+    fake = FakeBalancerApi()
+    fake.start()
+    yield fake
+    fake.close()
 
 
 def wait_until(condition: Callable[[], Any], timeout: float = WAIT_SEC) -> Any:
