@@ -5,7 +5,7 @@ entry:
   value: POST `/workspaces/{id}/sessions/{session}/restart`
 lead: MindStella のセッションを、同じ MindStella のセッションの ID のまま止めて起動し直す。外部のアプリの依頼のほか、利用上限・圧縮・落ちた後のコメントの契機でも、常駐サーバーの中から同じ処理を呼ぶ。MindStella の MCP の `restart_session` も同じ処理を呼ぶ。
 idempotent: false
-side_effects: '`session.json` の `status` を `restarting` にし、`close_pending` を偽にする。起動中なら Claude Code を止めて tmux のペインを閉じ、『MindStella のセッションの作成』と同じ起動のコマンドで tmux のセッションを立て直す。契機が利用上限のときは『停止の通知』を止まった理由 `rate_limited` で呼ぶ。失敗したときは `status` を `crashed` にし、`last_error` に段階と理由を記録する'
+side_effects: '`session.json` の `status` を `restarting` にし、`close_pending` を偽にする。起動中なら Claude Code を止めて tmux のペインを閉じ、『MindStella のセッションの作成』と同じ起動のコマンドで tmux のセッションを立て直す。契機が利用上限のときは『停止の通知』を止まった理由 `rate_limited` で、しきい値のときは `usage_threshold` で呼ぶ。指定したアカウントを解除したときは `specified_account` を `null` にする。失敗したときは `status` を `crashed` にし、`last_error` に段階と理由を記録する'
 request:
   - name: id
     type: str
@@ -54,7 +54,7 @@ constraints:
     constraint: 『MindStella のセッションの作成』と同じ
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 契機
-    constraint: '`api`（このエンドポイントと MCP のツール）・`rate_limit`（『MindStella のセッションの出来事の受け取り』の `stop_failure` の `error: rate_limit`）・`compact`（同じく `pre_compact`）・`comment`（『コメントをまとめて送る』）のどれか。内部の契機は HTTP を通さず同じ処理を呼び、`session.json` の `restart_reason` に記録する'
+    constraint: '`api`（このエンドポイントと MCP のツール）・`rate_limit`（『MindStella のセッションの出来事の受け取り』の `stop_failure` の `error: rate_limit`）・`compact`（同じく `pre_compact`）・`comment`（『コメントをまとめて送る』）・`usage_threshold`（『利用枠の見回り』）のどれか。内部の契機は HTTP を通さず同じ処理を呼び、`session.json` の `restart_reason` に記録する'
   - item: 起動し直す状態
     constraint: '`running`・`stopped`・`crashed` から起動し直す。`running` でもペインかプロセスが無ければ、止める工程を飛ばす。`comment` の契機は、クローズ待ち（`close_pending`）のとき起動し直さずに断る。`api` の契機はクローズ待ちを解く'
   - item: 止め方
@@ -66,16 +66,16 @@ constraints:
     constraint: '`compact` の契機は新規の会話で起動する。ほかの契機は、`session.json` の `claude_session_id` と `claude_config_dir` があり、会話の記録のファイル `{claude_config_dir}/projects/{ワークスペースのフォルダの絶対パスの英数字以外を - に置き換えた名前}/{claude_session_id}.jsonl` があれば、Claude Code の引数に `--resume {claude_session_id}` を付ける。無ければ付けずに新規の会話で起動する'
     notes: claude-balancer では各アカウントの `projects/` が共通の置き場へのリンクなので、前回のアカウントの設定のフォルダで確かめればよい（LIB-531-1）
   - item: アカウント
-    constraint: '`--account` を付けない。`--resume` を付けた `exec` は claude-balancer が前回のアカウントを優先し、利用上限に達したアカウントは貸与の判定で除外される。`compact` の契機はアカウントを指定しない'
+    constraint: '`session.json` の `specified_account` が無ければ `--account` を付けない。`--resume` を付けた `exec` は claude-balancer が前回のアカウントを優先し、利用上限・しきい値以上のアカウントは貸与の判定で除外される。`specified_account` があれば、どの契機でも `--account {specified_account}` を付ける。ただし `rate_limit`・`usage_threshold` の契機では、mindstella のホームの設定の `account.release_on_limit` が真なら、止めた後・起動の前に `specified_account` を `null` にして `--account` を付けずに借りる。偽なら、`rate_limit` では止めた後に起動し直さず、`last_error` を `account: 指定したアカウントが利用上限に達した` にして `crashed` にする（`usage_threshold` は『利用枠の見回り』が呼ばない）'
   - item: 起動の指定の確かめ
     constraint: '起動の前に、`launch.json` の `mcp_config` を『ワークスペースの作成』と同じ検査にかけ、`plugin_dirs` の各フォルダに `.claude-plugin/plugin.json` があるかを確かめる。通らなければ `claude-balancer exec` を起動せず、`last_error` を `launch_options: {読めない指定と理由}` にして `crashed` にする。`launch.json` が無ければ指定なしで起動し、応答の `warnings` に `launch_record_missing` を入れる'
   - item: 起動
     constraint: 『MindStella のセッションの作成』の「起動のコマンド」「Claude Code の引数」「渡す環境変数」「最初の入力」「準備を待つ上限」と同じ。`compact` の契機は環境変数 `MINDSTELLA_LAUNCH_REASON=compact` を足す。準備ができたら `status` を `running` にし、`restart_reason`・`last_error` を `null` に戻す
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
   - item: 失敗
-    constraint: '起動の失敗は『MindStella のセッションの作成』の 503（`account`）・502（`launch`）・504（`ready`）と同じ見分けで、ペインを閉じ、`last_error` を `{stage}: {detail}` にして `crashed` にする。応答は受け付けた時点で返しているので、失敗は一覧で確かめる'
+    constraint: '起動の失敗は『MindStella のセッションの作成』の 503（`account`）・502（`launch`）・504（`ready`）と同じ見分けで、ペインを閉じ、`last_error` を `{stage}: {detail}` にして `crashed` にする。応答は受け付けた時点で返しているので、失敗は一覧で確かめる。`--account` を付けた `exec` が子プロセスを起動せずに終わった（`account` の段階）ときは、標準エラーの理由を問わず、`account.release_on_limit` が真なら `specified_account` を `null` にしてペインを閉じ、`--account` を付けずに 1 回だけ起動し直す。それも失敗したときと、偽のときは `crashed` にする'
   - item: 停止の通知
-    constraint: '`rate_limit` の契機だけ、止めた後・起動の前に『停止の通知』を `rate_limited` で呼ぶ。`api`・`compact` の契機で起動に失敗したときは `restart_failed` で呼ぶ。`rate_limit`・`comment` の契機の失敗は、止まったことを通知済みなので呼ばない'
+    constraint: '`rate_limit` の契機は止めた後・起動の前に『停止の通知』を `rate_limited` で、`usage_threshold` の契機は `usage_threshold` で呼ぶ。`api`・`compact` の契機で起動に失敗したときは `restart_failed` で呼ぶ。`rate_limit`・`usage_threshold`・`comment` の契機の失敗は、止まったことを通知済みなので呼ばない'
   - item: 同時の依頼
     constraint: ワークスペースごとの鍵を状態を `restarting` にするまで持ち、止めて起動する工程は別のスレッドで行う。`restarting` の間に届いた内部の契機は重ねて起動しない（`comment` は準備ができるのを待つ）
   - item: MCP のツール
@@ -242,12 +242,117 @@ flows:
       - 応答が 409 で `stage` が `closed`
       - '`session.json` が変わっていない'
     test: test_error_when_closed
+  - name: 正常系（しきい値の契機）
+    summary: 応答の終わりを待って止め、usage_threshold で通知してから前の会話を引き継いで起動し直す
+    setup:
+      - name: Mock
+        description: 正常系と同じ。Claude Code は応答の途中で、しばらくして Stop を叩く。Discord の Webhook（受けた本文を記録する HTTP のエンドポイント）
+      - name: 常駐サーバー
+        description: 正常系と同じ。`MINDSTELLA_DISCORD_WEBHOOK_FILE` はエンドポイントの URL を記載した一時ファイル
+      - name: ワークスペース
+        description: 'MindStella のセッションが応答の途中（`responding: true`）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WT as 利用枠の見回り
+        participant RS as 起動し直し
+        participant IF as 停止の通知
+        participant CB as claude-balancer（Mock）
+
+        WT->>RS: 契機 usage_threshold
+        RS->>RS: Stop を待って止める
+        RS->>IF: usage_threshold
+        RS->>CB: exec -- claude --resume {session_id}
+      ```
+    expected:
+      - Mock の Claude Code が Stop を叩いた後に `/exit` を受けている
+      - Webhook の Mock が、止まった理由「利用枠の残りが少ないため切り替え」の通知を 1 件だけ受けている
+      - Mock の claude-balancer が 2 回目に受けた引数に `--resume` があり、`--account` が無い
+    test: test_normal_when_usage_over_threshold
+  - name: 正常系（指定したアカウント）
+    summary: specified_account があれば、そのアカウントを --account で借りて起動し直す
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 正常系の `session.json` に `specified_account`（アカウント A の設定のフォルダ）を加えたもの
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST .../restart
+        participant CB as claude-balancer（Mock）
+
+        クライアント->>API: POST
+        API->>CB: exec --account {specified_account} -- claude --resume {session_id}
+      ```
+    expected:
+      - Mock の claude-balancer が 2 回目に受けた引数に `--account` とアカウント A の設定のフォルダがある
+      - 起動し直した後の `session.json` の `specified_account` が変わらない
+    test: test_normal_with_specified_account
+  - name: 正常系（指定したアカウントを借りられず解除する）
+    summary: --account 付きの exec が 125 で終われば、指定を解除して --account を付けずに 1 回だけ起動し直す
+    setup:
+      - name: Mock
+        description: claude-balancer（受けた引数を記録する。`--account` があれば子プロセスを起動せず、標準エラーに理由を書いて 125 で終わる。無ければ `--` の後のコマンドを実行する）・Claude Code（正常系と同じ）
+      - name: 常駐サーバー
+        description: 正常系と同じ。mindstella のホームの設定は置かない
+      - name: 状態
+        description: '`status: crashed` で `specified_account` を持つ `session.json`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST .../restart
+        participant CB as claude-balancer（Mock）
+
+        クライアント->>API: POST
+        API->>CB: exec --account {specified_account}
+        CB-->>API: 125
+        API->>API: specified_account を null にし、ペインを閉じる
+        API->>CB: exec（--account なし）
+      ```
+    expected:
+      - Mock の claude-balancer が `--account` 付きの `exec` の後に `--account` の無い `exec` を 1 回受けている
+      - '`session.json` の `status` が `running` で、`specified_account` が `null`'
+    test: test_normal_when_specified_account_unavailable
+  - name: 異常系（指定の解除がオフで利用上限）
+    summary: release_on_limit が偽で利用上限の契機なら、止めて通知し、起動し直さずに crashed にする
+    setup:
+      - name: Mock
+        description: 正常系と同じ。Discord の Webhook（受けた本文を記録する HTTP のエンドポイント）
+      - name: 常駐サーバー
+        description: 正常系と同じ。mindstella のホームの設定の `account.release_on_limit` は `false`、`MINDSTELLA_DISCORD_WEBHOOK_FILE` はエンドポイントの URL を記載した一時ファイル
+      - name: ワークスペース
+        description: '`specified_account` を持つ起動中の MindStella のセッション'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant HK as 出来事の受け取り
+        participant RS as 起動し直し
+        participant IF as 停止の通知
+
+        HK->>RS: 契機 rate_limit
+        RS->>RS: 止める
+        RS->>IF: rate_limited
+        RS->>RS: release_on_limit が偽なので起動し直さず、crashed にする
+      ```
+    expected:
+      - Mock の claude-balancer が `exec` を 1 回だけ受けている
+      - '`session.json` の `status` が `crashed` で、`last_error` が `account:` で始まる'
+      - Webhook の Mock が、止まった理由「利用上限」の通知を 1 件だけ受けている
+      - tmux のセッションが残っていない
+    test: test_error_when_rate_limited_with_release_off
 refs:
   - IF-531-2#
   - IF-531-3#
   - IF-531-4#
   - IF-570-1#
   - LIB-531-1#
+  - IF-616-1#
+  - CFG-489-1#
 callers:
   - SC-582-1#
   - IF-531-6#

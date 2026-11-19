@@ -478,4 +478,31 @@ requirements:
         notes: 規約『資源の値の決め方』の既定の 50%
     refs:
       - IF-582-1#
+  - id: NFR-33
+    name: 利用枠を見回る間隔
+    english_name: usage_watch_interval
+    category: レート制限
+    external_constraint: claude-balancer が利用枠を取り込むのは 5 分ごとで、`GET /accounts` の消費率と貸せない理由はそれより短い間隔では変わらない
+    source_kind: 外部ライブラリの制限
+    source: https://github.com/shuhei1101/claude-balancer/blob/develop/docs/nonfunctional/NFR-275-1.yaml
+    value: '60'
+    unit: 秒（常駐サーバーが起動中の MindStella のセッションの使用中のアカウントの利用枠を `GET /accounts` で確かめる間隔）
+    rationale: しきい値以上を見つける遅れは、claude-balancer の取り込みの間隔（5 分）とこの間隔の和で決まる。取り込みより短い間隔で確かめても値は変わらないが、取り込みの直後に見つけるために 5 分より十分短くし、遅れを最大 6 分にする。`GET /accounts` は claude-balancer の SQLite を読むだけで外の API を呼ばず、見回り 1 回につき 1 回なので、端末と claude-balancer の負荷にならない。非機能要件『落ちたことを見回る間隔』と同じ値にする
+    measurement: 利用上限の契機（`rate_limit`）の起動し直しが、しきい値の契機より先に起きた回数を常駐サーバーの標準エラーで数え、利用者が多いと感じたら見直す
+    overflow: 間隔の間に利用上限に達したときは、利用上限の契機（`rate_limit`）で起動し直す
+    refs:
+      - IF-616-1#
+  - id: NFR-34
+    name: 利用枠の問い合わせを待つ上限
+    english_name: usage_query_timeout
+    category: 耐障害
+    external_constraint: 制限なし
+    source_kind: 制限なし
+    value: '5'
+    unit: 秒（『利用枠の見回り』が `GET /accounts` を 1 回送信し、応答を受けるまで）
+    rationale: '`GET /accounts` は claude-balancer の常駐が同じ端末の SQLite を読むだけなので、平常は 1 秒より十分短い。問い合わせは `daemon` の見回りのスレッドで行い、待つ間も他の処理は止まらない。上限は見回る間隔（60 秒）より十分短くし、見回りが重ならないようにする'
+    measurement: 常駐サーバーの標準エラーの、上限を過ぎた記録の回数を数え、見回りの 1% を超えたら見直す
+    overflow: 上限を過ぎたら打ち切り、その回は起動し直さずに次の間隔を待つ（『利用枠の見回り』の例外）
+    refs:
+      - IF-616-1#
 lead: mindstella が外部の制約から逆算して決める値。

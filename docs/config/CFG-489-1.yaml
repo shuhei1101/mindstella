@@ -320,6 +320,7 @@ settings:
     refs:
       - IF-582-1#
       - IF-531-2#
+      - IF-616-1#
     allowed: '`http://` か `https://` で始まる URL（違えば常駐サーバーが起動時に InvalidSettingsError で終わる）'
     reason: '端末ごとに変わる値なので、ホームの設定に置く（PR #616 の確認ログ）'
     introduced:
@@ -337,6 +338,7 @@ settings:
     visibility: developer
     refs:
       - IF-582-1#
+      - IF-616-1#
     notes:
       補足: 結合テストが短くするために使う
   - key: account.release_on_limit
@@ -354,6 +356,7 @@ settings:
     visibility: user
     refs:
       - IF-582-1#
+      - IF-616-1#
     introduced:
       pr: 616
 files:
