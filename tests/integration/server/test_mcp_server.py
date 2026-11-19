@@ -17,8 +17,10 @@ from external_access_helpers import read_hook_lines, read_settled_hook_lines, re
 from workspace_fixtures import (
     LISTEN_HOST,
     PORT_ENV,
+    PROJECT_INDEX_PORT_ENV,
     RECORD_DIR,
     SERVER_SCRIPT,
+    UNREACHABLE_PROJECT_INDEX_PORT,
     McpServer,
     free_port,
     is_listening,
@@ -88,7 +90,12 @@ def _run_server(port: str) -> subprocess.CompletedProcess[str]:
     """`MINDSTELLA_PORT` に port を渡して常駐サーバーを起動し、終わるまで待つ。"""
     return subprocess.run(
         [sys.executable, str(SERVER_SCRIPT)],
-        env={**os.environ, "PYTHONUTF8": "1", PORT_ENV: port},
+        env={
+            **os.environ,
+            "PYTHONUTF8": "1",
+            PORT_ENV: port,
+            PROJECT_INDEX_PORT_ENV: UNREACHABLE_PROJECT_INDEX_PORT,
+        },
         capture_output=True,
         text=True,
         encoding="utf-8",

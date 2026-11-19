@@ -621,6 +621,7 @@ def start():
         elif key == "StandardOutput":
             log = value.split(":", 1)[1]
     env.setdefault("PATH", "/usr/bin:/bin")
+    env.setdefault("PROJECT_INDEX_PORT", "1")
     env["HOME"] = os.environ["HOME"]
     os.makedirs(os.path.dirname(log), exist_ok=True)
     process = subprocess.Popen(command, env=env, stdin=subprocess.DEVNULL, stdout=open(log, "ab"), stderr=subprocess.STDOUT, start_new_session=True, cwd=os.environ["HOME"])
