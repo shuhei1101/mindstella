@@ -1231,12 +1231,12 @@ def test_diff_body_layout_kept_when_returned_to_panel(
 def test_body_wrap_when_long_words_and_tables(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, width: int
 ) -> None:
-    """全画面でも、本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は包む入れ物の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
+    """全画面でも、本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は mdmark の表のスクロールの区画の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
     # 準備
     url = write_preview(make_item("A-1", body="docs/A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.set_viewport_size({"width": width, "height": 800})
-    page.wait_for_selector("dialog.full .md-table-wrap")
+    page.wait_for_selector("dialog.full .mdmark-table .mdmark-table-scroll")
     # 実行
     result = page.evaluate(WRAP_METRICS_JS, "dialog.full")
     # 検証
@@ -1248,32 +1248,30 @@ def test_body_wrap_when_long_words_and_tables(
     assert result["idrefOverflowWrap"] == "normal"
     assert result["idrefRows"] == 1
     wide, narrow = result["wraps"]
-    group = {"role": "group", "label": "本文の表", "tabindex": "0", "inside": True}
+    group = {"label": "表", "tabindex": "0", "inside": True}
     assert {key: wide[key] for key in group} == group
     assert {key: narrow[key] for key in group} == group
     assert wide["scrolls"] is True
     assert wide["overflowX"] in ("auto", "scroll")
     assert narrow["scrolls"] is False
-    assert narrow["tableNarrowerThanWrap"] is True
 
 
 @pytest.mark.parametrize("width", [320, 1280])
 def test_body_table_scroll_by_keyboard(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, width: int
 ) -> None:
-    """全画面でも、列の多い表を包む入れ物はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れて、フォーカスの枠は内側に描く（正常系）。"""
+    """全画面でも、列の多い mdmark の表はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れる（正常系）。"""
     # 準備
     url = write_preview(make_item("A-1", body="docs/A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.set_viewport_size({"width": width, "height": 800})
-    wrap = page.locator("dialog.full .md-table-wrap").first
-    wrap.wait_for()
+    table = page.locator("dialog.full .mdmark-table .mdmark-table-scroll > table").first
+    table.wait_for()
     # 実行
-    wrap.focus()
+    table.focus()
     page.keyboard.press("ArrowRight")
     # 検証
-    page.wait_for_function("selector => document.querySelector(selector).scrollLeft > 0", arg="dialog.full .md-table-wrap")
-    assert wrap.evaluate("element => getComputedStyle(element).outlineOffset") == "-2px"
+    page.wait_for_function("selector => document.querySelector(selector).scrollLeft > 0", arg="dialog.full .mdmark-table-scroll")
     assert page.evaluate("document.querySelector('dialog.full .panel-body').scrollLeft") == 0
 
 
