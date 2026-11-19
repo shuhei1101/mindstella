@@ -251,7 +251,7 @@ components:
       - name: free
         type: SendFormProps
         required: true
-        description: "新しいスレッドの入力の引数（`target: null`・`label: '新しいスレッド'`・`collapsed: false`）"
+        description: "新しいスレッドの入力の引数（`target: null`・`label: '新しいスレッド'`・`collapsed: false`。項目で絞っている間は `target` がその項目の ID・`loc: null` で、入力の見出しを「{ID} への新しいスレッド」にする）"
       - name: reply
         type: '{body, status, count, detail}'
         required: true
@@ -488,6 +488,12 @@ components:
         condition: 'タグ `画面` の TH-1（D-1 へ向けた）・TH-2（D-2 へ向けた）とタグ `起票` の TH-3（D-1 へ向けた）。`parametrize`: `tag` が `画面`・`target` が `D-1` / `filter` が `closed`・`tag` が `画面`・`target` が `D-1`'
         mock: なし
         expected: タグのチップに「1 / 2 件」、行が TH-1 だけ / 「D-1 へのタグ「画面」のクローズのスレッドはありません。」
+      - name: test_thread_list_view_when_target_composing
+        case: 正常
+        summary: 項目で絞っている間の新しいスレッドの入力の見出し
+        condition: '`composing` が真で `target` が `D-1`、`free` の `target` が `D-1`'
+        mock: なし
+        expected: 入力の見出しが「D-1 への新しいスレッド」
   - name: threadView
     title: スレッド
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts

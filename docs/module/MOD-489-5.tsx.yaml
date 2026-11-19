@@ -46,6 +46,12 @@ components:
         condition: search が `panel=comments&ttarget=D-1`。D-1 へ向けたオープン 1 件・D-2 へ向けたオープン 1 件と、D-1 へのまだ送っていない新しいスレッド 1 件
         mock: MSW
         expected: D-1 のチップ（件数なし）と、2 行（新しいスレッド・D-1 へのスレッド）。× を押すと search から `ttarget` が外れ、3 行になり、履歴の数が変わらない
+      - name: test_comments_panel_when_target_new_thread
+        case: 正常
+        summary: 項目で絞っている間の新しいスレッドは、その項目へ向けて溜める
+        condition: search が `panel=comments&ttarget=D-1`。「新しいスレッド」を押して書き、「レビューに追加」を押す
+        mock: MSW
+        expected: "入力の見出しが「D-1 への新しいスレッド」で、`POST /api/comments` の本文が `target: 'D-1'` を持ち `loc` を持たない"
     container: frontend/src/features/comments/comments-panel/comments-panel.tsx
 notes:
   単体テスト: 同じフォルダの `comments-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）

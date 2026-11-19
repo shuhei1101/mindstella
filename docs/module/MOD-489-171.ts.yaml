@@ -970,7 +970,7 @@ notes:
     - 要求を送っている間に読み直した値で置き換えるときは、送っているスレッドを `withSeen` で既読にしてから置き換える（送る前のサーバーの値で写しを未読に戻さない）
     - 断られた・届かないときは画面に出さず、そのスレッドの ID を送っている控えから失敗の控えへ移してからスレッドを読み直す（写しをサーバーの値に戻す）
   スレッドの画面の操作: |-
-    `start` の 5・6・8 に足す。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`target`・`openedThread`（`opened`）・`composing`・`reason`・`expanded` と、新しいスレッドの入力（`formKey(null, null)`）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
+    `start` の 5・6・8 に足す。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`target`・`openedThread`（`opened`）・`composing`・`reason`・`expanded` と、新しいスレッドの入力（`formKey(null, null)`。`target` があれば、その項目への箇所を持たない入力 `formKey({ID}, null)` で、詳細パネルの下端の入力と状態を共有する。その入力を溜める・書くとパネルを描き直し、フォーカスがパネルにあればパネルの入力欄へ戻す）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
     - パネルを開くときは、閉じる前の `view`・`openedThread`・`composing`・`reviewFrom`・`reviewFocus` のまま描き、パネルの中のスクロールの位置を `listScroll` に戻す（ページを開いたときは `list` から始める）。スレッドを読み直し、`view` が `thread` で、開いていた送ったスレッドが読み直したスレッドに無ければ、`view` を `list`、`openedThread` を `null` にする
     - 「状態で絞る」「タグで絞る」（絞っているタグなら外す）「タグを外す」「項目の絞り込みを外す」では `filter`・`tag`・`target` を書き換えてパネルを描き直す
     - 一覧を閉じるときは `target` を `null` にする（トップバー・未読のタイル・音声入力の帯など、詳細パネルのボタンでない入口で開くと項目で絞らない）。サーバーの配信では `detailPanel` に `on.comments` を渡し、受けたら `target` に項目の ID を入れてパネルの中の画面を開いた直後の状態（`view` は `list`、`openedThread`・`reviewFocus` は `null`、`composing` は偽、`reason` は閉じて空）に戻し、一覧を開いていなければ開き、開いていれば描き直す（`filter`・`tag` は保つ）。詳細パネルで別の項目へ移っても `target` は変えない
