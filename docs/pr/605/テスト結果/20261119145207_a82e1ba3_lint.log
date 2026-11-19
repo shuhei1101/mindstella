@@ -1,0 +1,3 @@
+$ /tmp/pr604-venv/bin/ruff check plugins/mindstella/skills/mindmap/scripts/startup.py plugins/mindstella/skills/mindmap/scripts/state.py plugins/mindstella/skills/mindmap/scripts/project_index.py plugins/mindstella/skills/mindmap/scripts/server.py tests/unit/scripts/test_startup.py tests/unit/scripts/test_state.py tests/unit/scripts/test_project_index.py tests/unit/scripts/test_server.py
+（実装の lint。作業 PR が変えた Python のファイルだけ。型検査（npm run typecheck）と ESLint（npm run lint）は、この PR が .ts を変えないため回していない）
+All checks passed!
