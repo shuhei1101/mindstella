@@ -13,8 +13,10 @@ import { commentNumber, isBlockedReply, reviewLabel, threadTitle, type ReviewIte
 import { formatJst } from "@/shared/core/format";
 import { locationLabel } from "@/shared/core/records";
 import { useAddComment, useRemoveComment, useSendComments, useUpdateComment } from "@/shared/hooks/use-comments";
+import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { cn } from "@/shared/lib/cn";
 import { showLocation } from "@/shared/stores/location-highlight-store";
+import { voiceEditingOf } from "@/shared/stores/voice-store";
 
 export type ReviewViewProps = {
   data: CommentData;
@@ -85,7 +87,29 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
   const [removed, setRemoved] = useState<ReviewItem[]>([]);
   const [stale, setStale] = useState<Record<string, string>>({});
   const [outcome, setOutcome] = useState<SendOutcome | null>(null);
-  const [editing, setEditing] = useState<{ id: string; error: string | null } | null>(null);
+  // 書き換えている行。録音中か結果待ちの修正の入力があれば、その行を書き換えている状態で開く
+  const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(() => {
+    const voiced = voiceEditingOf("review");
+    const item = voiced === null ? undefined : items.find((one) => one.id === voiced);
+    return item === undefined ? null : { id: item.id, body: item.body, error: null };
+  });
+  const editingItem = editing === null ? null : (items.find((one) => one.id === editing.id) ?? null);
+  // 修正の入力の音声入力（挿入だけ）
+  const editVoice = useVoiceInput({
+    key: `review:${editing?.id ?? ""}`,
+    destination: { review: editing?.id ?? "", thread: editingItem?.thread ?? null, target: editingItem?.target ?? null },
+    view: "review",
+    label: editingItem === null ? "" : `${reviewLabel(editingItem)}の修正`,
+    body: editing?.body ?? "",
+    onBodyChange: (next) => {
+      setEditing((current) => (current === null ? current : { ...current, body: next }));
+    },
+    getSelection: () => {
+      const field = document.querySelector<HTMLTextAreaElement>(`[data-comment="${CSS.escape(editing?.id ?? "")}"] form[data-part="edit"] textarea`);
+      const length = editing?.body.length ?? 0;
+      return { start: field?.selectionStart ?? length, end: field?.selectionEnd ?? length };
+    },
+  });
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const send = useSendComments();
   const update = useUpdateComment();
@@ -219,7 +243,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                     <span className="flex-1" />
                     {editing?.id === item.id ? null : (
                       <>
-                        <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" onClick={() => { setEditing({ id: item.id, error: null }); }}>
+                        <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" onClick={() => { setEditing({ id: item.id, body: item.body, error: null }); }}>
                           <Icon name="edit" />
                         </Button>
                         <Button
@@ -246,11 +270,25 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                     <ReviewEditForm
                       id={item.id}
                       label={label}
-                      body={item.body}
+                      body={editing.body}
                       error={editing.error}
+                      voice={editVoice.voice}
+                      voiceReason={editVoice.voiceReason}
+                      elapsed={editVoice.elapsed}
+                      levels={editVoice.levels}
+                      voiceStatus={editVoice.status}
+                      voiceDetail={editVoice.detail}
+                      onBodyChange={(body) => {
+                        editVoice.clearResult();
+                        setEditing((current) => (current === null ? current : { ...current, body }));
+                      }}
+                      onVoiceStart={() => void editVoice.onVoiceStart()}
+                      onVoiceCancel={editVoice.onVoiceCancel}
+                      onVoiceDone={() => void editVoice.onVoiceDone()}
+                      onVoiceBlocked={editVoice.onVoiceBlocked}
                       onCancel={() => { setEditing(null); }}
                       onSubmit={(target, body) => {
-                        update.mutate({ id: target, body }, { onSuccess: () => { setEditing(null); }, onError: (error) => { setEditing({ id: target, error: error instanceof AppError ? error.message : "サーバーが止まっています。立ち上げ直してから直してください。" }); } });
+                        update.mutate({ id: target, body }, { onSuccess: () => { setEditing(null); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。立ち上げ直してから直してください。" }); } });
                       }}
                     />
                   ) : (

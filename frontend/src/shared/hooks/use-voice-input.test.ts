@@ -169,3 +169,47 @@ describe("useVoiceInput", () => {
     expect(other.result.current.voiceReason).toBe(VOICE_TEXT.busy);
   });
 });
+
+describe("useVoiceInput の修正の入力", () => {
+  // 修正の入力は設定によらず挿入だけ（正常系）
+  test("use_voice_input_when_review", async () => {
+    // 準備
+    installFakeMedia();
+    installFakeWakeLock();
+    const sent: unknown[] = [];
+    const added: unknown[] = [];
+    server.use(
+      http.get("/api/transcription", () => HttpResponse.json(AVAILABLE)),
+      http.post("/api/transcriptions", () => HttpResponse.json({ text: "案 A にする" })),
+      http.post("/api/comments", async ({ request }) => {
+        added.push(await request.json());
+        return HttpResponse.json({ id: "C-2", created: "2026-11-14T00:00:00+00:00", count: 2 }, { status: 201 });
+      }),
+      http.post("/api/comments/send-now", async ({ request }) => {
+        sent.push(await request.json());
+        return HttpResponse.json({ sent: "t", thread: "TH-1", post: "TH-1-1", entered: true }, { status: 201 });
+      }),
+    );
+    stubRecords({ settings: { ...RECORDS.settings, transcription: { action: "send" } } });
+    const onBodyChange = vi.fn();
+    const { result } = await renderPreviewHook("/", () =>
+      useVoiceInput({
+        key: "review:C-1",
+        destination: { review: "C-1", thread: "TH-1", target: null },
+        view: "thread",
+        label: "TH-1 への返信の修正",
+        body: "確認: ",
+        onBodyChange,
+        getSelection: () => ({ start: 4, end: 4 }),
+      }),
+    );
+    // 実行
+    await act(() => result.current.onVoiceStart());
+    await act(() => result.current.onVoiceDone());
+    // 検証
+    await waitFor(() => expect(onBodyChange).toHaveBeenCalledWith("確認: 案 A にする"));
+    expect(result.current.status).toBe("inserted");
+    expect(sent).toEqual([]);
+    expect(added).toEqual([]);
+  });
+});

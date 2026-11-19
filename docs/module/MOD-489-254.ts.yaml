@@ -11,7 +11,7 @@ stores:
       - name: session
         type: '{key, destination, label, phase, recording, elapsed, levels, selection, ticket} | null'
         initial: 'null'
-        description: 'いま録音・文字起こししている入力欄。`key` は入力欄の識別（`{target}#{loc}` か `thread:{id}` か `new-thread`）、`destination` は向けた先（`{target, loc}` か `{thread}`）と開く画面（`panel`・`full`・`comments`・`thread`）、`label` はトップバーに出す入力欄の名前、`phase` は `recording`・`transcribing`、`selection` はマイクを押したときの選んだ範囲、`ticket` は録音を始めるたびに 1 進める番号'
+        description: 'いま録音・文字起こししている入力欄。`key` は入力欄の識別（`{target}#{loc}` か `thread:{id}` か `new-thread`）、`destination` は向けた先（`{target, loc}` か `{thread}` か、レビュー中の書き込みの修正の `{review, thread, target}`）と開く画面（`panel`・`full`・`comments`・`thread`・`review`）。修正の入力の `key` は `review:{コメントの ID}`、`label` はトップバーに出す入力欄の名前、`phase` は `recording`・`transcribing`、`selection` はマイクを押したときの選んだ範囲、`ticket` は録音を始めるたびに 1 進める番号'
       - name: notice
         type: "{kind: 'discarded' | 'failed', text: string, key: string | null} | null"
         initial: 'null'
@@ -74,12 +74,12 @@ stores:
              - 断られた・届かない・`text` が空の場合、元の中身のまま `failed`（`detail` か `VOICE_TEXT.failed`）にする
           2. 文字起こしが返った時点で `session.ticket` が変わっていれば（`discardVoice` で捨てた）、溜めも送りもせずに `discarded` を返す
           3. `insertAtCursor` で挿入する
-          4. `action`（無ければ `review`）で分ける
+          4. `action`（無ければ `review`。向けた先が `review` のときは `action` によらず `insert`）で分ける
              - `review` の場合、`POST /api/comments` へ向けた先と全文を送り、201 なら空の中身の `reviewed`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.reviewFailed`）
              - `send` の場合、`POST /api/comments/send-now` へ送り、送れたら空の中身の `sent`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.sendFailed`）
              - `insert` の場合、挿入した中身と位置の `inserted`
           5. 溜める・送る間に `session.ticket` が変わっていれば、書きかけも知らせも当てずに `discarded` を返す。変わっていなければ `session` を null にする
-          6. `mounted()` が偽なら、結果の中身を `PUT /api/drafts` で書きかけに当て（失敗しても続ける）、`results` に入れる。`failed`・`unavailable` なら `notice` を `failed`（`key` と、失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする
+          6. `mounted()` が偽なら、結果の中身を `PUT /api/drafts` で書きかけに当て（失敗しても続ける。向けた先が `review` のときは当てない）、`results` に入れる。`failed`・`unavailable` なら `notice` を `failed`（`key` と、失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする
         unit_tests:
           - name: test_finish_voice
             case: 正常
@@ -105,10 +105,16 @@ stores:
             condition: '`parametrize`: 文字起こしが 503・`reason: stopped` / 502 / 届かない / `review` で `POST /api/comments` が 500'
             mock: MSW と `vi.stubGlobal`
             expected: '`unavailable`・`stopped` / `failed`・元の中身 / `failed`・`VOICE_TEXT.failed` / `failed`・`VOICE_TEXT.reviewFailed`・挿入した中身'
+          - name: test_finish_voice_when_review
+            case: 正常
+            summary: 修正の入力は挿入だけにし、画面に無い間も書きかけへ当てない
+            condition: '向けた先が `{review: C-1}`。`parametrize`: `action: send`・`mounted` が真 / `action: review`・`mounted` が偽'
+            mock: MSW と `vi.stubGlobal`
+            expected: '`inserted` で `send-now`・`POST /api/comments` を呼ばない / `results` に `inserted` が入り、`PUT /api/drafts` を呼ばない'
       - name: discardVoice
         title: 行き先が無くなった録音を捨てる
         kind: メソッド
-        summary: '記録を読み直したとき、`session.destination` の項目・スレッドが無ければ `cancelVoice` と同じく捨て、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にする'
+        summary: '記録を読み直したとき、`session.destination` の項目・スレッドが無ければ `cancelVoice` と同じく捨て、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にする。向けた先が `review` の `results` も、そのコメントが無ければ消す（削除した書き込みを「元に戻す」で戻しても結果を入れない）'
         args:
           - name: exists
             type: '(destination) => boolean'
@@ -124,6 +130,12 @@ stores:
             condition: '`exists` が真 / 偽'
             mock: '`vi.stubGlobal`'
             expected: '`session` がそのまま / null で `notice` が `discarded`'
+          - name: test_discard_voice_when_review_result
+            case: 正常
+            summary: 無くなったコメントへの結果を消す
+            condition: '`results` に `review:C-1` の結果があり、`exists` が C-1 に偽'
+            mock: なし
+            expected: '`takeVoiceResult("review:C-1")` が null'
       - name: dismissVoiceNotice
         title: 知らせを閉じる
         kind: メソッド
@@ -176,6 +188,44 @@ stores:
             condition: 登録して `dismissVoiceNotice` を呼び、やめてからもう一度呼ぶ
             mock: '`listener`（`vi.fn`）'
             expected: '`listener` が 1 回だけ呼ばれる'
+      - name: voiceEditingOf
+        title: 音声入力中の修正の入力
+        kind: メソッド
+        summary: 開く画面が `view` で、向けた先が `review` の入力欄のうち、録音・文字起こし中か `results` に結果を持つもののコメントの ID を返す。画面が付いたとき、その行を修正の入力のまま出すために読む
+        args:
+          - name: view
+            type: VoiceView
+            required: true
+            description: 開く画面
+        returns:
+          type: string | null
+          description: コメントの ID。無ければ null
+        unit_tests:
+          - name: test_voice_editing_of
+            case: 正常
+            summary: 録音中と結果待ちの修正の入力を返す
+            condition: '`parametrize`: `review:C-1` を `view: thread` で録音中に `thread` / `review` で呼ぶ / `results` に `review:C-1`（`view: panel`）があり `panel` で呼ぶ / どちらも無い'
+            mock: '`vi.stubGlobal`'
+            expected: C-1 / null / C-1 / null
+      - name: discardReviewVoice
+        title: 削除・送信した書き込みへの録音を捨てる
+        kind: メソッド
+        summary: 画面からレビュー中の書き込みを削除・送信した応答が成功したときに呼ぶ。`session` の向けた先が `ids` のどれかの `review` なら、録音・文字起こしにかかわらず `cancelVoice` と同じく捨て、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にする。`results` の `review:{id}` も消す（記録の読み直しを待たずに捨て、「元に戻す」で戻しても結果を入れない）
+        args:
+          - name: ids
+            type: string[]
+            required: true
+            description: 削除・送信したレビュー中の書き込みの ID
+        returns:
+          type: void
+          description: '-'
+        unit_tests:
+          - name: test_discard_review_voice
+            case: 正常
+            summary: 削除・送信した書き込みへの録音と結果を、読み直しを待たずに捨てる
+            condition: '`parametrize`: `review:C-1` を録音中に `["C-1"]` / 文字起こし中に `["C-1"]` / `results` に `review:C-1` があり `["C-1"]` / `review:C-1` を録音中に `["C-2"]`'
+            mock: '`vi.stubGlobal`'
+            expected: '`cancel` が 1 回で `session` が null、`notice` が `discarded` / `finishVoice` が `discarded` を返し `results` が空 / `takeVoiceResult("review:C-1")` が null / `session` がそのまま'
 notes:
   単体テスト: 同じフォルダの `voice-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
   画面の消灯の抑止: '`visibilitychange` で画面が見えたとき、`session` が `recording` で抑止が解かれていれば `acquireWakeLock` を呼び直す。購読はストアを作るときに 1 回だけ張る'

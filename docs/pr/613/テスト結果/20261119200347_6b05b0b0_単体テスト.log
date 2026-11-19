@@ -1,0 +1,13 @@
+# 単体テスト（全件 pass）
+# commit: 6b05b0b0
+# 実行日時: 2026-11-19 20:03 JST
+$ python3 -m pytest tests/unit/preview
+...............................................................          [100%]
+927 passed in 464.24s (0:07:44)
+pytest exit 0
+
+$ npx vitest run
+ Test Files  85 passed (85)
+      Tests  364 passed (364)
+   Duration  48.87s (environment 42%, tests 28%, import 17%, setup 9%, transform 4%)
+vitest exit 0

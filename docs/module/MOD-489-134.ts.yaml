@@ -27,6 +27,7 @@ functions:
       - `voice` は、`micSupported()` が偽なら `disabled`（`VOICE_TEXT.noMicrophone`）、可否の `available` が偽なら `disabled`（`detail`）、`session` がほかの `key` なら `disabled`（`VOICE_TEXT.busy`）、自分の `key` なら `session.phase`、それ以外は `idle`
       - `onVoiceStart` は `startVoice`、`onVoiceCancel` は `cancelVoice` を呼ぶ。`elapsed`・`levels` は `session` から読む
       - `onVoiceDone` は、記録の `settings.transcription.action`（無ければ `review`）と、部品が付いているかを返す関数で `finishVoice` を呼ぶ。部品が付いていれば結果を写し、`reviewed` は中身を空にしてレビュー中を読み直し、`sent` は中身を空にしてスレッドを読み直し（`entered`）、`inserted` は中身を書き換え、`failed` は中身を残して `detail` を出す
+      - 向けた先がレビュー中の書き込みの修正（`{review, thread, target}`）のときは、設定の挙動によらず `action: insert` で `finishVoice` を呼ぶ
       - 503 は可否の query のデータを返った `reason`・`detail` に書き換え、`voice` を `disabled` にする
       - 使う部品が外れても（unmount）・向けた先が変わっても録音と文字起こしは止めない。部品が付いたとき（mount）は `takeVoiceResult(key)` の結果があれば写す
     returns:
@@ -57,6 +58,12 @@ functions:
         condition: 偽の録音が `onLevel` を `0.25`・`0.75` で呼んだ後に × を押す
         mock: MSW と `vi.stubGlobal`
         expected: 録音中の `levels` が `[0.25, 0.75]`、× の後は `[]`
+      - name: test_use_voice_input_when_review
+        case: 正常
+        summary: 修正の入力は設定によらず挿入だけ
+        condition: '向けた先が `{review: C-1, thread: TH-1, target: null}`。`settings.transcription.action` が `send`。`POST /api/transcriptions` が `{text: 案 A にする}`'
+        mock: MSW と `vi.stubGlobal`
+        expected: '中身が `確認: 案 A にする` で `status` が `inserted`、`send-now`・`POST /api/comments` は呼ばれない'
     container: frontend/src/shared/hooks/use-voice-input.ts
 notes:
   単体テスト: 同じフォルダの `use-voice-input.test.ts` に置く（knowledge の規約『フォルダ構成』）

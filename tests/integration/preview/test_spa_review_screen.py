@@ -5,12 +5,23 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 from playwright.sync_api import Locator, Page, Route, expect
 from preview_comment_helpers import free_comment, read_workspace_yaml
-from preview_fixture_types import WriteReviewPreview
+from preview_fixture_types import StartVoicePreview, WriteReviewPreview
+from preview_voice_helpers import (
+    FAKE_MIC_SCRIPT,
+    VOICE_TIMEOUT_MS,
+    assert_recording_wave,
+    put_caret,
+    start_recording,
+    wait_transcription_status,
+)
 from preview_spa_helpers import open_spa
-from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread
+from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread, WriteComments
 
 # 5 行を超える本文
 LONG_BODY = "\n\n".join(f"{index} 行目の本文" for index in range(1, 9))
@@ -365,3 +376,36 @@ def test_more(page: Page, review_preview: tuple[str, Path]) -> None:
     more.click()
     # 検証
     expect(_row(page, "C-45").get_by_role("button", name="項目を指さないコメントの本文を折りたたむ")).to_have_text("折りたたむ")
+
+
+def test_edit_voice_input(
+    page: Page,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: StartVoicePreview,
+    valid_settings: dict[str, Any],
+) -> None:
+    """修正の入力のマイクで録音し、文字起こし後の挙動が send でも結果を録音前のカーソルの位置へ挿入するだけで、送信もレビュー中の書き込みの書き換えもしない（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = start_voice_preview(fake.url, make_item("D-1"), settings={**valid_settings, "transcription": {"action": "send"}})
+    write_comments(root, make_comment("C-1", body="確認: でよい"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        open_spa(page, url, "?panel=comments&review=1")
+    row = page.locator("li[data-comment='C-1']")
+    row.get_by_role("button", name="D-1 へのコメントを修正").click()
+    form = row.locator("form[data-part=edit]")
+    put_caret(form.locator("textarea"), "確認: でよい", 4)
+    # 実行
+    start_recording(form)
+    assert_recording_wave(form)
+    form.get_by_role("button", name="文字起こし", exact=True).click()
+    # 検証
+    expect(form.locator("[role=status]")).to_have_text("文字起こしの結果を挿入しました。", timeout=VOICE_TIMEOUT_MS)
+    expect(form.locator("textarea")).to_have_value("確認: 案 A にするでよい")
+    expect(form.locator("textarea")).to_be_focused()
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "確認: でよい"
+    assert not (root / ".mindstella" / "threads.yaml").exists()

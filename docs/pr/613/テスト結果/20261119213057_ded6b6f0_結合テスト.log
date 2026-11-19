@@ -1,0 +1,30 @@
+# 結合テスト（実行範囲の 12 ファイル）
+# commit: ded6b6f0
+# 結果: 672 passed・4 failed。4 件は develop（646a5656）でも同じく fail し、#610（埋め込んだ HTML のチャート）・#553（詳細パネルの幅）で扱っている
+# develop での確認:
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_fit_smallest[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+FAILED tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium]
+4 failed, 1 passed in 54.54s
+
+# /tmp/pytest-of-shuhei2441 が root の所有のため、TMPDIR だけを /tmp/pr613/tmp に替えて実行した
+$ TMPDIR=/tmp/pr613/tmp python3 -m pytest tests/integration/preview/test_comments_screen.py tests/integration/preview/test_review_screen.py tests/integration/preview/test_thread_screen.py tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_detail_full_screen.py tests/integration/preview/test_spa_comments_screen.py tests/integration/preview/test_spa_review_screen.py tests/integration/preview/test_spa_thread_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/preview/test_spa_detail_fullscreen_screen.py tests/integration/storybook/test_thread_post_stories.py tests/integration/storybook_react/test_thread_post_stories.py
+........................................................................ [ 10%]
+........................................................................ [ 21%]
+........................................................................ [ 31%]
+........................................................................ [ 42%]
+.F.............F..................................F..................... [ 53%]
+......................................................F................. [ 63%]
+........................................................................ [ 74%]
+........................................................................ [ 85%]
+........................................................................ [ 95%]
+............................                                             [100%]
+E         comparison failed
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_fit_smallest[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+FAILED tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium]
+4 failed, 672 passed in 1363.07s (0:22:43)
+it exit 1

@@ -68,6 +68,12 @@ const voiceTargetFor = (key: string): VoiceTarget | null => {
   const target = voiceTargetOf(key);
   if (target === null) return null;
   const { destination, view } = target;
+  // 修正の入力は、録音を始めた画面（レビュー中の書き込み・スレッド・詳細）を開く
+  if ("review" in destination) {
+    if (view === "review") return { review: true };
+    if (view === "thread") return { thread: destination.thread ?? destination.review };
+    return destination.target === null ? { review: true } : { item: destination.target, full: view === "full" };
+  }
   if ("thread" in destination) return { thread: destination.thread };
   if (view === "comments" || destination.target === null) return { thread: null };
   return { item: destination.target, full: view === "full" };

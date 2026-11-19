@@ -6,11 +6,14 @@ import { AppError } from "@/shared/core/app-error";
 import type { Location } from "@/shared/core/records";
 import { acquireWakeLock, insertAtCursor, pushLevel, RecordingError, startRecording, VOICE_TEXT, type Recording, type RecordingFailure } from "@/shared/core/voice";
 
-/** 向けた先（項目と箇所か、返信先のスレッド） */
-export type VoiceDestination = { target: string | null; loc: Location | null } | { thread: string };
+/** 向けた先（項目と箇所か、返信先のスレッドか、レビュー中の書き込みの修正） */
+export type VoiceDestination = { target: string | null; loc: Location | null } | { thread: string } | { review: string; thread: string | null; target: string | null };
 
 /** 入力欄を開く画面 */
-export type VoiceView = "panel" | "full" | "comments" | "thread";
+export type VoiceView = "panel" | "full" | "comments" | "thread" | "review";
+
+/** レビュー中の書き込みの修正への向けた先か */
+const isReview = (destination: VoiceDestination): destination is Extract<VoiceDestination, { review: string }> => "review" in destination;
 
 /** 録音を始めた入力欄 */
 export type VoiceInput = {
@@ -225,7 +228,8 @@ const transcribeAndDeliver = async ({ audio, destination, input, alive }: { audi
   if (!alive()) return { result: resultOf("discarded", input.body), stage: "transcribe" };
   // 話し声が無かった: 溜めも送りもしない
   if (text.trim() === "") return { result: resultOf("failed", input.body, { detail: VOICE_TEXT.failed }), stage: "transcribe" };
-  const action = input.action ?? "review";
+  // 修正の入力は設定によらず挿入だけにする（修正は利用者が「修正」で確定する）
+  const action = isReview(destination) ? "insert" : (input.action ?? "review");
   return { result: await deliver(destination, insertAtCursor(input.body, input.start, input.end, text), action), stage: action };
 };
 
@@ -250,7 +254,8 @@ export const finishVoice = async (input: VoiceFinishInput): Promise<VoiceResult>
   const { result, stage } = transcribed;
   useVoiceStore.setState({ session: null });
   if (input.mounted()) return result;
-  if (result.kind !== "unavailable") {
+  // 修正の入力の結果は書きかけへ当てない（修正の入力を開き直したときに当てる）
+  if (result.kind !== "unavailable" && !isReview(session.destination)) {
     try {
       await saveDraft({ ...session.destination, body: result.body });
     } catch {
@@ -265,14 +270,50 @@ export const finishVoice = async (input: VoiceFinishInput): Promise<VoiceResult>
 };
 
 /** 向けた先の ID（知らせに出す） */
-const destinationId = (destination: VoiceDestination): string => ("thread" in destination ? destination.thread : (destination.target ?? ""));
+const destinationId = (destination: VoiceDestination): string => {
+  if (isReview(destination)) return destination.review;
+  return "thread" in destination ? destination.thread : (destination.target ?? "");
+};
 
-/** 記録を読み直したとき、向けた先の項目・スレッドが無ければ録音を捨てて知らせる */
+/** 結果のうち、条件に当たる修正の入力の分を消す */
+const dropReviewResults = (drop: (destination: Extract<VoiceDestination, { review: string }>) => boolean): void => {
+  useVoiceStore.setState((state) => ({
+    results: Object.fromEntries(
+      Object.entries(state.results).filter(([key]) => {
+        const destination = targets.get(key)?.destination;
+        return destination === undefined || !isReview(destination) || !drop(destination);
+      }),
+    ),
+  }));
+};
+
+/** 記録を読み直したとき、向けた先の項目・スレッド・レビュー中の書き込みが無ければ録音を捨てて知らせ、無くなった書き込みの修正の結果も消す */
 export const discardVoice = (exists: (destination: VoiceDestination) => boolean): void => {
+  dropReviewResults((destination) => !exists(destination));
   const { session } = useVoiceStore.getState();
   if (session === null || exists(session.destination)) return;
   abandon();
   useVoiceStore.setState({ notice: { kind: "discarded", text: VOICE_TEXT.discarded(destinationId(session.destination)), key: null } });
+};
+
+/** 削除・送信した書き込みの修正の入力の録音と結果を、読み直しを待たずに捨てる（録音・文字起こし中なら知らせる） */
+export const discardReviewVoice = (ids: readonly string[]): void => {
+  dropReviewResults((destination) => ids.includes(destination.review));
+  const { session } = useVoiceStore.getState();
+  if (session === null || !isReview(session.destination) || !ids.includes(session.destination.review)) return;
+  abandon();
+  useVoiceStore.setState({ notice: { kind: "discarded", text: VOICE_TEXT.discarded(session.destination.review), key: null } });
+};
+
+/** 画面で録音中か、結果を待っている修正の入力の書き込みの ID（無ければ null） */
+export const voiceEditingOf = (view: VoiceView): string | null => {
+  const { session, results } = useVoiceStore.getState();
+  if (session !== null && session.view === view && isReview(session.destination)) return session.destination.review;
+  for (const key of Object.keys(results)) {
+    const target = targets.get(key);
+    if (target !== undefined && target.view === view && isReview(target.destination)) return target.destination.review;
+  }
+  return null;
 };
 
 /** 入力欄の向けた先と開く画面（録音を始めていない入力欄は null） */

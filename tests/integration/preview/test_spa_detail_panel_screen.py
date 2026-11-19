@@ -32,7 +32,7 @@ from preview_embed_helpers import EMBEDDED_BODY, build_embedded_diff_workspace
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import mismatch_body_diff
 from preview_spa_helpers import open_spa
-from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace, WriteComments
 from record_write_helpers import write_tool
 
 # 送る本文のスクロールの位置（px）
@@ -1414,3 +1414,45 @@ def test_comments_button(page: Page, spa_preview: str, search: str, expected: in
     assert "panel=comments" in page.url
     assert page.evaluate("history.length") == before
     expect(page.get_by_role("dialog", name="コメント")).to_contain_text("D-1")
+
+
+def test_review_edit_voice_input_after_moving(
+    page: Page,
+    make_item: _MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: _StartVoicePreview,
+) -> None:
+    """レビュー中のコメントの修正の入力で録音中にコメントの一覧を開いても録音を続け、トップバーの表示を押すとその行の修正の入力のまま戻って ✓ にフォーカスがあり、✓ で既定の挙動（review）によらず結果を挿入するだけにする（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = start_voice_preview(fake.url, make_item("D-1"))
+    write_comments(root, make_comment("C-1", body="確認: でよい"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        open_spa(page, url, "?tab=decisions&id=D-1")
+    row = _panel(page).locator("li[data-comment='C-1']")
+    row.get_by_role("button", name="D-1 へのコメントを修正").click()
+    form = row.locator("form[data-part=edit]")
+    put_caret(form.locator("textarea"), "確認: でよい", 4)
+    start_recording(form)
+    # 実行（コメントの一覧を開く）
+    page.get_by_role("button", name=re.compile("^コメント（")).click()
+    expect(page.get_by_role("dialog", name="コメント")).to_be_visible()
+    voice = page.get_by_role("button", name="音声入力中（D-1 へのコメントの修正）。録音中の入力欄へ移動")
+    expect(voice).to_be_visible()
+    # 実行（録音中の入力欄へ戻る）
+    voice.click()
+    # 検証
+    expect(page.get_by_role("dialog", name="コメント")).to_have_count(0)
+    done = form.get_by_role("button", name="文字起こし", exact=True)
+    expect(done).to_be_focused()
+    # 実行（文字起こし）
+    done.click()
+    # 検証（挿入するだけで、レビュー中の書き込みを書き換えない）
+    expect(form.locator("[role=status]")).to_have_text("文字起こしの結果を挿入しました。", timeout=VOICE_TIMEOUT_MS)
+    expect(form.locator("textarea")).to_have_value("確認: 案 A にするでよい")
+    expect(form.locator("textarea")).to_be_focused()
+    items = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"]
+    assert [(item["id"], item["body"]) for item in items] == [("C-1", "確認: でよい")]

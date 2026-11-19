@@ -150,9 +150,11 @@ export const useVoiceInput = ({ key, destination, view, label, body, onBodyChang
   const onVoiceDone = useCallback(async (): Promise<void> => {
     if (mine?.phase !== "recording") return;
     const { start, end } = getSelection();
-    const done = await finishVoice({ body, start, end, action: transcriptionAction(records.data), mounted: () => shownKey.current === key });
+    // 修正の入力は設定によらず挿入だけにする
+    const action = "review" in destination ? "insert" : transcriptionAction(records.data);
+    const done = await finishVoice({ body, start, end, action, mounted: () => shownKey.current === key });
     if (shownKey.current === key) apply(key, done);
-  }, [apply, body, getSelection, key, mine, records.data]);
+  }, [apply, body, destination, getSelection, key, mine, records.data]);
 
   const onVoiceBlocked = useCallback(() => {
     setResult({ key, status: "voice-failed", detail: blockedReason, entered: false });

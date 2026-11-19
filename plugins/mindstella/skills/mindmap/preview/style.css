@@ -941,6 +941,8 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 .row-edit .send-msg:empty { display: none; }
 /* やめる・直すの行: 右に寄せる */
 .row-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+/* 修正の入力のマイクの右の「キャンセル」「修正」: 並びに加わる */
+.row-edit-submit { display: contents; }
 /* 削除した行: 元に戻すボタンだけを残す */
 .comments-list .row.removed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; background: var(--surface-2); border-style: dashed; }
 /* 削除した旨 */

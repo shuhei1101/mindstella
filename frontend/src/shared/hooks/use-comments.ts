@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { addComment, removeComment, saveDraft, sendComments, updateComment } from "@/shared/api/generated/preview";
 import type { CommentInput, DraftInput, RemovedComment, SendReply } from "@/shared/api/generated/model";
 import { commentsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
+import { discardReviewVoice } from "@/shared/stores/voice-store";
 
 /** 入力が止まってから書きかけを保存するまでのミリ秒（今の画面の `DRAFT_SAVE_DELAY_MS` と同じ） */
 const DRAFT_SAVE_DELAY_MS = 500;
@@ -47,21 +48,25 @@ export const useUpdateComment = () => {
   });
 };
 
-/** 書き込みを消し、「元に戻す」のために消した中身を返す */
+/** 書き込みを消し、「元に戻す」のために消した中身を返す。その書き込みの修正の入力の録音と結果は、読み直しを待たずに捨てる */
 export const useRemoveComment = () => {
   const queryClient = useQueryClient();
   return useMutation<RemovedComment, Error, string>({
     mutationFn: async (id) => (await removeComment(id)).data as RemovedComment,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: commentsQuery().queryKey }),
+    onSuccess: (_removed, id) => {
+      discardReviewVoice([id]);
+      return queryClient.invalidateQueries({ queryKey: commentsQuery().queryKey });
+    },
   });
 };
 
-/** チェックした書き込みをまとめて送り、レビュー中の書き込みとスレッドを読み直す。409 の `stale` は AppError の `body` で受ける */
+/** チェックした書き込みをまとめて送り、送った書き込みの修正の入力の録音と結果を捨てて、レビュー中の書き込みとスレッドを読み直す。409 の `stale` は AppError の `body` で受ける */
 export const useSendComments = () => {
   const queryClient = useQueryClient();
   return useMutation<SendReply, Error, string[]>({
     mutationFn: async (ids) => (await sendComments({ ids })).data as SendReply,
-    onSuccess: async () => {
+    onSuccess: async (_reply, ids) => {
+      discardReviewVoice(ids);
       await Promise.all([queryClient.invalidateQueries({ queryKey: commentsQuery().queryKey }), queryClient.invalidateQueries({ queryKey: threadsQuery().queryKey })]);
     },
   });

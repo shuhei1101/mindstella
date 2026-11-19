@@ -562,7 +562,7 @@ functions:
       キー操作: 文書の `keydown` で `Ctrl+K`（`metaKey` の `Cmd+K` を含む）を受けたら、入力欄にフォーカスがあっても既定の動作を止め、全体の検索を開く（開いていれば検索の言葉を選び直す）。`/` では開かない
       画面の作り: '`body` を窓の高さに固定し、トップバーとタブの帯の下に画面ごとの領域（画面設計の「画面の領域」）を 1 つ置く（`style.css`）。ページ全体はスクロールさせず、表・ボード（幅 721px 以上）とマップ（幅 901px 以上）は領域の高さいっぱいに広げて中でスクロールさせ、それより狭い幅では領域ごとスクロールさせる。`100dvh` から帯と余白を引く高さの計算（`.table-wrap`・`.map-wrap`・`.fg-wrap`・`.g3-wrap`）はやめる。詳細パネルの位置（`.panel` の `top`）は帯の下のまま'
       見出しのハッシュ: '5 で詳細パネルに `Route.heading` を渡す。詳細パネルの `on.heading` では `Route.heading` を書き換え、履歴に積まずにハッシュを置き換える（`navigate`、`push: false`）。項目へ移るときは `heading` を `null` にする'
-      詳細パネルのレビュー中のコメントの操作: 詳細パネルには、コメントの一覧へ渡すのと同じ書き換えている行（`editing`・`editingIn`・`editError`・`editBody`）と、`CommentState.removed` のうちその項目へのものを `comment.edit` で渡し、`comment.edit.on` には一覧と同じ処理（修正を始める・`saveEdit`・キャンセル・`removeComment`・`restoreComment`）を渡す。書き換えている行は一覧と詳細パネルを合わせて 1 つで、修正を始めると前の書き換えを捨てる。修正を始めた場所（一覧なら `'list'`、詳細パネルなら `'detail'`）を `editingIn` に持ち、入力欄はその場所だけに描かせる。修正を始める・キャンセル・直せなかったときは、詳細パネルと一覧を両方描き直す（`refreshComments`）。詳細パネルの操作の後は、描き直した詳細パネルの中で、修正を始めたら入力欄（`detail-edit:{ID}`）、送るかキャンセルしたらその行の「修正」（`detail-edit-open:{ID}`）、削除したら「元に戻す」（`detail-restore:{ID}`）、戻したら戻した行の「修正」へフォーカスを移し、本文のスクロールの位置を保つ。コメントの一覧を開いていない間に、詳細パネルで別の項目へ移るかパネルを閉じたら、`CommentState.removed` と書き換えている行を捨てる。一覧を開いている間でも、詳細パネルで別の項目へ移るかパネルを閉じたら、`editingIn` が `'detail'` の書き換えを捨てる（`CommentState.removed` は残す）。一覧を閉じたら（表示の設定を開いて一覧を閉じるときも）、`editingIn` が `'list'` の書き換えを捨てる。どちらも、入力欄の無い側に「修正」「削除」の無い行を残さないため。配る書き出しとサーバーにつながらないときは、今と同じく `comment` を `null` で渡す
+      詳細パネルのレビュー中のコメントの操作: 詳細パネルには、コメントの一覧へ渡すのと同じ書き換えている行（`editing`・`editingIn`・`editError`・`editBody`）と、`CommentState.removed` のうちその項目へのものを `comment.edit` で渡し、`comment.edit.on` には一覧と同じ処理（修正を始める・`saveEdit`・キャンセル・`removeComment`・`restoreComment`）を渡す。書き換えている行は一覧と詳細パネルを合わせて 1 つで、修正を始めると前の書き換えを捨てる。修正を始めた場所（一覧なら `'list'`、詳細パネルなら `'detail'`）を `editingIn` に持ち、入力欄はその場所だけに描かせる。修正を始める・キャンセル・直せなかったときは、詳細パネルと一覧を両方描き直す（`refreshComments`）。詳細パネルの操作の後は、描き直した詳細パネルの中で、修正を始めたら入力欄（`detail-edit:{ID}`）、送るかキャンセルしたらその行の「修正」（`detail-edit-open:{ID}`）、削除したら「元に戻す」（`detail-restore:{ID}`）、戻したら戻した行の「修正」へフォーカスを移し、本文のスクロールの位置を保つ。コメントの一覧を開いていない間に、詳細パネルで別の項目へ移るかパネルを閉じたら、`CommentState.removed` と書き換えている行を捨てる。一覧を開いている間でも、詳細パネルで別の項目へ移るかパネルを閉じたら、`editingIn` が `'detail'` の書き換えを捨てる（`CommentState.removed` は残す）。一覧を閉じたら（表示の設定を開いて一覧を閉じるときも）、`editingIn` が `'list'` の書き換えを捨てる。どちらも、入力欄の無い側に「修正」「削除」の無い行を残さないため。ただし、書き換えている行の修正の入力で録音・文字起こし中か、入力欄に出していない文字起こしの結果があるとき（`editHeld`）は、書き換えを捨てない（トップバーから戻ったときに修正の入力のまま開くため）。配る書き出しとサーバーにつながらないときは、今と同じく `comment` を `null` で渡す
       差分の時点の引き継ぎ: 画面・項目を移るとき（画面と部品から受けた移る先の `Route` と、全体の検索から開くとき。`go`）は、移る先の `Route.diff` を今の `Route.diff` にしてから `route` に入れて書く（`navigate`）。概要の `tableRoute` のように `Route` を一から作る移る先でも `diff` を落とさない。`Route.diff` を変えるのは 3・10・13・14 だけ
       本文のまとまりのリンク: 詳細パネルの `on.changeSet` では、渡された値を `resolveDiffPoint` で引き、まとまりの ID として引けたときだけ 10 の「時点を選ぶ」と同じに扱う（`Prefs.diffSel` と `Route.diff` をそのまとまりにし、履歴に積まずにハッシュを置き換える。開いている画面・項目・全画面はそのまま）。引けなければ何もしない
       幅 900px 以下の重なり: 幅 900px 以下で `body.left-front` のとき、`.comments-panel`・`.settings-drawer`・`dialog.drawer.narrow` の `z-index` を `.panel`（35）より上にする（`style.css`）。`body.left-front` が無いときは変えない。幅 901px 以上では、グレーアウト（`.left-scrim`）を本文と詳細パネルの上、左のパネルの下に置き、`body.detail-above-scrim` のときだけ詳細パネルをグレーアウトの上に出す
@@ -926,13 +926,19 @@ functions:
         required: true
         passing: injected
         description: スレッドの取得（`threadApi().read`）
+      - name: fetchComments
+        type: '() => Promise<{ok: true, items: ReviewItem[]} | {ok: false}>'
+        required: true
+        passing: injected
+        description: レビュー中のコメントの取得（『レビュー中のコメントの読み取り』）。行き先が `review` のときだけ読む
     returns:
       type: Promise<string | null>
       description: 行き先が無くなっていればその ID。行き先が無い・新しいスレッド・あった・読めなかったときは null
     process: |-
       1. `destination` が null か新しいスレッドなら null を返す
-      2. `fetchRecords` と `fetchThreads` を読む。どちらかが読めなければ null を返す
-      3. 行き先がスレッドなら読んだスレッドの ID に、項目なら読んだ記録の項目の ID（`buildIndex`）にあるかを確かめ、無ければ行き先の ID を、あれば null を返す
+      2. 行き先がレビュー中の書き込みの修正（`review`）なら `fetchComments` を読み、読めなければ null、読んだレビュー中のコメントにその ID が無ければその ID、あれば null を返す
+      3. それ以外は `fetchRecords` と `fetchThreads` を読む。どちらかが読めなければ null を返す
+      4. 行き先がスレッドなら読んだスレッドの ID に、項目なら読んだ記録の項目の ID（`buildIndex`）にあるかを確かめ、無ければ行き先の ID を、あれば null を返す
     unit_tests:
       - name: test_check_voice_destination
         case: 正常
@@ -952,6 +958,12 @@ functions:
         condition: '`destination` が `{target: D-1, loc: null}`、`fetchRecords` が `{ok: false}`'
         mock: '`fetchRecords`・`fetchThreads`'
         expected: 'null'
+      - name: test_check_voice_destination_when_review
+        case: 正常
+        summary: 修正の入力の行き先をレビュー中のコメントで確かめる
+        condition: '`destination` が `{review: C-1, view: thread}`。`parametrize`: `fetchComments` が C-1 を含む / C-1 を含まない / `{ok: false}`'
+        mock: '`fetchRecords`・`fetchThreads`・`fetchComments`'
+        expected: null / `C-1` / null
   - name: focusAfterAddTarget
     title: 「レビューに追加」の後のフォーカスの移動先
     kind: 関数
@@ -1004,4 +1016,5 @@ notes:
     - 「まとめて送る」では、チェックした ID から `isBlockedReply` が真のものを除いて溜めた順に送る。201 の後はレビュー中に続けてスレッドも読み直す（`view` は `review` のまま）
     - 項目を開く（本文の中の ID・スレッドの向けた項目・レビュー中の行の向けた項目）では、パネルを開いたまま詳細パネルを開く。スレッドの向けた項目とレビュー中の行は `highlight` にその箇所を渡す
     - Esc は、幅 901px 以上か `StackState.front` が `detail` で詳細パネルを開いていれば、詳細パネルを閉じる。それ以外で入力欄にフォーカスがあるとき（`isTyping`）は何もしない（入力欄が自分で外れる）。それ以外は `view` が `thread`・`review` なら「戻る」と同じ、`list` ならパネルを閉じる
-    - パネルを閉じるときは、パネルの中のスクロールの位置を `listScroll` に控え、新しいスレッドと返信の書きかけを待たずに保ち、`removed` と `editingIn` が `'list'` の書き換えを捨てる（「詳細パネルのレビュー中のコメントの操作」と同じ）
+    - パネルを閉じるときは、パネルの中のスクロールの位置を `listScroll` に控え、新しいスレッドと返信の書きかけを待たずに保ち、`removed` と `editingIn` が `'list'` の書き換えを捨てる（「詳細パネルのレビュー中のコメントの操作」と同じ。修正の入力で録音・文字起こし中か、出していない結果があるとき（`editHeld`）は書き換えを捨てない）
+  修正の入力の音声入力: "`VoiceDestination` にレビュー中の書き込みの修正 `{review: ID, view: 'review' | 'thread' | 'panel' | 'full'}` を足す。修正の入力の `key` は `review:{ID}` で、`voiceHandlers` には `comment.edit` の書き換えていた中身を入力欄の状態として渡す。`destinationOf` が `review` を返すとき、`finishVoice` の `action` を設定によらず `insert` にする。入力欄が画面に無い間に終わった結果は、書きかけ（`saveDraft`）へ送らず `comment.edit` の書き換えていた中身へ入れ、`editing` をその ID、`editingIn` を録音を始めた画面にしたまま残す。`checkVoiceDestination` は `review` の向けた先をレビュー中のコメント（`review.items`）で確かめ、無ければ録音と結果を捨てて知らせる。`openVoiceInput` は `review` の向けた先の画面（コメントの一覧のレビュー中・スレッド・詳細パネル・詳細の全画面）を開き、その書き込みを修正の入力のまま描く。修正の入力の「修正」の「キャンセル」で書き換えを捨てるときは、録音を捨てる（`abandonVoice`）。画面からの削除（`removeComment`）とまとめて送る（`sendChecked`）の応答が成功した時点で、その ID の `review:{ID}` が録音・文字起こし中なら `abandonVoice` して知らせを discarded にし、`comment.edit` に取っておいたその ID の結果も捨てる（記録の読み直しを待たない。「元に戻す」で戻しても結果を入れない）。修正の入力の音声入力は次の処理で持つ。`editVoiceHandlers` は書き換えている行のマイク・×・✓・押せないマイクを受け、✓ では `action: insert` で `finishVoice` を呼ぶ。入力欄が画面に無い間に終わった結果は `editBody` に入れて `editVoicePending` を立て、失敗だけを知らせる。`editHeld`（その行で録音・文字起こし中か、`editVoicePending` が立っている）の間は、項目の移動と詳細パネル・一覧を閉じても書き換えを捨てない。`openEditVoiceInput` は `openVoiceInput` が `review:{ID}` を受けたときに向けた先の画面を開いて `editing`・`editingIn` を戻し、`editVoicePending` を下ろす。`discardEditVoice` は削除・送信した書き込みと、読み直しで無くなった書き込み（`discardMissingVoice`）の録音を捨てて知らせを discarded にし、出していない結果も捨てる。`removeComment`・`sendChecked` は `start` の中の処理で単体テストを置かず、読み直しを挟まない削除・送信で録音を捨てることは、結合テスト（単一ユースケース『音声でコメントする』の `異常シナリオ（修正の入力で録音中にその書き込みを削除・送信する）` を今の画面で開く流れ）で確かめる"

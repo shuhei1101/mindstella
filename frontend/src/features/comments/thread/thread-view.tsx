@@ -12,10 +12,11 @@ import { focusAfterAdded } from "@/shared/components/send-form";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { AppError } from "@/shared/core/app-error";
-import { commentNumber, hasUnseen, threadTimeline, threadTitle, type ReviewItem } from "@/shared/core/comments";
+import { commentNumber, hasUnseen, reviewLabel, threadTimeline, threadTitle, type ReviewItem } from "@/shared/core/comments";
 import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from "@/shared/hooks/use-comments";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { showLocation } from "@/shared/stores/location-highlight-store";
+import { voiceEditingOf } from "@/shared/stores/voice-store";
 import { useFocusAfterAddTarget } from "@/shared/stores/prefs-store";
 
 export type ThreadViewProps = {
@@ -72,7 +73,29 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   });
   const reasonId = useId();
   const [reason, setReason] = useState<{ open: boolean; body: string; detail: string | null; failed: boolean }>({ open: false, body: "", detail: null, failed: false });
-  const [editing, setEditing] = useState<{ id: string; error: string | null } | null>(null);
+  // 書き換えている行。録音中か結果待ちの修正の入力があれば、その行を書き換えている状態で開く
+  const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(() => {
+    const voiced = voiceEditingOf("thread");
+    const item = voiced === null ? undefined : items.find((one) => one.id === voiced);
+    return item === undefined ? null : { id: item.id, body: item.body, error: null };
+  });
+  const editingItem = editing === null ? null : (items.find((one) => one.id === editing.id) ?? null);
+  // 修正の入力の音声入力（挿入だけ）。返信の入力とは別の入力欄で、画面で同時に 1 つだけ録音する
+  const editVoice = useVoiceInput({
+    key: `review:${editing?.id ?? ""}`,
+    destination: { review: editing?.id ?? "", thread: editingItem?.thread ?? null, target: editingItem?.target ?? null },
+    view: "thread",
+    label: editingItem === null ? "" : `${reviewLabel(editingItem)}の修正`,
+    body: editing?.body ?? "",
+    onBodyChange: (next) => {
+      setEditing((current) => (current === null ? current : { ...current, body: next }));
+    },
+    getSelection: () => {
+      const field = document.querySelector<HTMLTextAreaElement>(`[data-comment="${CSS.escape(editing?.id ?? "")}"] form[data-part="edit"] textarea`);
+      const length = editing?.body.length ?? 0;
+      return { start: field?.selectionStart ?? length, end: field?.selectionEnd ?? length };
+    },
+  });
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [removed, setRemoved] = useState<ReviewItem[]>([]);
   // 理由の入力を閉じた後、次に描いた「状態を変える」へフォーカスを戻すか
@@ -134,11 +157,26 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
         changeSets={changeSets}
         editing={editing?.id === item.id}
         editError={editing?.id === item.id ? editing.error : null}
+        editBody={editing?.id === item.id ? editing.body : null}
+        voice={editVoice.voice}
+        voiceReason={editVoice.voiceReason}
+        elapsed={editVoice.elapsed}
+        levels={editVoice.levels}
+        voiceStatus={editVoice.status}
+        voiceDetail={editVoice.detail}
+        onEditInput={(_target, body) => {
+          editVoice.clearResult();
+          setEditing((current) => (current === null ? current : { ...current, body }));
+        }}
+        onEditVoiceStart={() => void editVoice.onVoiceStart()}
+        onEditVoiceCancel={editVoice.onVoiceCancel}
+        onEditVoiceDone={() => void editVoice.onVoiceDone()}
+        onEditVoiceBlocked={editVoice.onVoiceBlocked}
         open={opened[item.id] ?? false}
         onOpenItem={onOpenItem}
         onOpenChangeSet={onOpenChangeSet}
         onEditStart={(target) => {
-          setEditing({ id: target, error: null });
+          setEditing({ id: target, body: item.body, error: null });
         }}
         onEditCancel={() => {
           setEditing(null);
@@ -151,7 +189,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
                 setEditing(null);
               },
               onError: (error) => {
-                setEditing({ id: target, error: detailOf(error) ?? "サーバーが止まっています。立ち上げ直してから直してください。" });
+                setEditing({ id: target, body, error: detailOf(error) ?? "サーバーが止まっています。立ち上げ直してから直してください。" });
               },
             },
           );

@@ -79,6 +79,8 @@ namespace MindmapPreview {
     editError?: string | null;
     /** 本文を直せなかったとき、入力欄に残す直していた中身（無ければ元の本文） */
     editBody?: string | null;
+    /** 修正の入力の音声入力（配る書き出しでは渡さない） */
+    editVoice?: EditVoiceProps | null;
     /** 送れなかった書き込みの ID → 理由 */
     stale: Map<string, string>;
     result: SendOutcome | null;
@@ -92,7 +94,7 @@ namespace MindmapPreview {
     changeSetOf: (id: string) => string | null;
     /** 本文を開いているレビュー中の書き込みの ID */
     expanded: Set<string>;
-    on: {
+    on: EditVoiceHandlers & {
       close: () => void;
       /** ピン止めを切り替える */
       pin: () => void;
@@ -148,6 +150,17 @@ namespace MindmapPreview {
   /** 本文の書き換えを始めた場所（入力欄はその場所だけに描き、もう一方は本文だけで描く） */
   export type EditingIn = "list" | "detail";
 
+  /** 修正の入力の音声入力（`voiceStatus` は挿入した・失敗した結果、`voiceDetail` は失敗の理由） */
+  export type EditVoiceProps = VoiceProps & { voiceStatus?: "idle" | "inserted" | "voice-failed"; voiceDetail?: string | null };
+
+  /** 修正の入力のマイク・×・✓ のコールバック */
+  export type EditVoiceHandlers = {
+    voiceStart?: () => void;
+    voiceCancel?: () => void;
+    voiceDone?: (input: VoiceDoneInput) => void;
+    voiceBlocked?: () => void;
+  };
+
   /** 詳細パネルが行の修正・削除・元に戻すのために受け取る引数（コールバックはコメントの一覧と同じ形） */
   export type ReviewEditProps = {
     /** その項目へのコメントのうち、消したもの（元の場所に「元に戻す」を出す） */
@@ -160,9 +173,11 @@ namespace MindmapPreview {
     editError: string | null;
     /** 本文を直せなかったとき、入力欄に残す書き換えていた中身（無ければ元の本文） */
     editBody: string | null;
+    /** 修正の入力の音声入力（配る書き出しでは null） */
+    editVoice?: EditVoiceProps | null;
     /** 本文を開いているコメントの ID */
     expanded: Set<string>;
-    on: {
+    on: EditVoiceHandlers & {
       edit: (id: string) => void;
       saveEdit: (id: string, body: string) => void;
       cancelEdit: () => void;
@@ -302,14 +317,18 @@ namespace MindmapPreview {
     body,
     error,
     focus,
+    voice = null,
     on,
   }: {
     item: ReviewItem;
     body: string | null;
     error: string | null;
     focus: string;
-    on: { saveEdit: (id: string, body: string) => void; cancelEdit: () => void };
+    voice?: EditVoiceProps | null;
+    on: EditVoiceHandlers & { saveEdit: (id: string, body: string) => void; cancelEdit: () => void };
   }): HTMLElement {
+    const phase = voice?.voice ?? "idle";
+    const recording = phase === "recording" || phase === "transcribing";
     const field = h({
       tag: "textarea",
       attrs: {
@@ -319,6 +338,9 @@ namespace MindmapPreview {
         "aria-label": `${item.id} へのコメントの本文`,
         "aria-keyshortcuts": "Control+Enter",
         "data-focus": `${focus}edit:${item.id}`,
+        // 録音中は波形と入れ替えて隠し、文字起こし中は書き換えさせない（外さないので中身と選んだ範囲が残る）
+        hidden: phase === "recording",
+        readonly: recording,
         onkeydown: (event) => {
           const key = event as KeyboardEvent;
           // 変換の確定の Enter では確定しない
@@ -335,9 +357,22 @@ namespace MindmapPreview {
         },
       },
       children: [body ?? item.body],
-    });
+    }) as HTMLTextAreaElement;
     // 理由があるときだけ `role="alert"` を持たせる（空のまま警告として読み上げさせない）
     const message = h({ tag: "p", attrs: { class: "send-msg failed", role: error ? "alert" : null }, children: error ? [icon("alert"), error] : [] });
+    // 音声入力の録音中・文字起こし中と結果の行（音声入力が無ければ置かない）
+    const voiceMessage =
+      voice === null
+        ? null
+        : h({
+          tag: "p",
+          attrs: { class: `send-msg ${messageState(phase, voice.voiceStatus ?? "idle")}`, role: "status" },
+          children: voiceProgressContent(phase, voice.elapsed ?? 0) ?? voiceResultContent(voice.voiceStatus, voice.voiceDetail) ?? [],
+        });
+    const actions = [
+      h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: on.cancelEdit }, children: ["キャンセル"] }),
+      h({ tag: "button", attrs: { class: "btn primary", type: "submit", title: "修正（Ctrl+Enter）" }, children: ["修正"] }),
+    ];
     const form = h({
       tag: "form",
       attrs: {
@@ -357,15 +392,18 @@ namespace MindmapPreview {
         },
       },
       children: [
-        field,
+        // 録音中は入力欄の場所に波形を出す（返信の入力と同じ横並びの行に置き、入力欄の幅に広げる）
+        voice === null ? field : h({ tag: "div", attrs: { class: "send-line" }, children: [field, voiceWave(phase, voice.levels ?? [])] }),
         message,
+        voiceMessage,
         h({
           tag: "div",
           attrs: { class: "row-edit-actions" },
-          children: [
-            h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: on.cancelEdit }, children: ["キャンセル"] }),
-            h({ tag: "button", attrs: { class: "btn primary", type: "submit", title: "修正（Ctrl+Enter）" }, children: ["修正"] }),
-          ],
+          // 音声入力があれば「キャンセル」の左にマイク、録音中は「キャンセル」「修正」を × と ✓ に替える
+          children:
+            voice === null
+              ? actions
+              : voiceButtons({ voice: phase, voiceReason: voice.voiceReason ?? null, textarea: field, submit: h({ tag: "span", attrs: { class: "row-edit-submit" }, children: actions }), on }),
         }),
       ],
     });
@@ -541,7 +579,8 @@ namespace MindmapPreview {
                 body: props.editBody ?? null,
                 error: props.editError ?? null,
                 focus: "",
-                on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit },
+                voice: props.editVoice ?? null,
+                on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit, voiceStart: props.on.voiceStart, voiceCancel: props.on.voiceCancel, voiceDone: props.on.voiceDone, voiceBlocked: props.on.voiceBlocked },
               })
               : fold?.body ?? null,
             // クローズのスレッドへの返信: 送れない理由と、そのスレッドを開く入口
@@ -980,8 +1019,13 @@ namespace MindmapPreview {
       editing: props.editing === item.id && props.editingIn !== "detail",
       editBody: props.editBody ?? null,
       editError: props.editError ?? null,
+      ...(props.editVoice ?? {}),
       open: props.expanded.has(item.id),
       on: {
+        editVoiceStart: props.on.voiceStart,
+        editVoiceCancel: props.on.voiceCancel,
+        editVoiceDone: props.on.voiceDone,
+        editVoiceBlocked: props.on.voiceBlocked,
         openId: (id) => props.on.openId(id),
         changeSet: props.on.changeSet,
         edit: props.on.edit,

@@ -496,3 +496,5 @@ components:
         condition: 表示の幅 1280、`stored` 640。押して 100px 左の位置へ動かし、次のフレームの前に区切りを文書から外して、`stored` 640 の区切りを新しく描く。続けてフレームを進める
         mock: '`onChange`'
         expected: '`onChange` が 740 で 1 回だけ呼ばれる。新しい区切りの `aria-valuenow` と `--panel-w` が 740 で、フレームを進めても外した区切りが `--panel-w` を書き換えない'
+notes:
+  修正の入力の音声入力: レビュー中のコメントの行で `reviewEditForm` を描くとき、使う側（app.ts）が渡す修正の入力の音声（`comment.edit.voice`）と `on.voiceStart`・`on.voiceCancel`・`on.voiceDone`・`on.voiceBlocked` をそのまま渡す。配る書き出しでは `voice` を渡さない

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { VOICE_TEXT } from "@/shared/core/voice";
 import {
   cancelVoice,
+  discardReviewVoice,
   discardVoice,
   dismissVoiceNotice,
   subscribeVoice,
@@ -12,6 +13,7 @@ import {
   resetVoiceStore,
   startVoice,
   takeVoiceResult,
+  voiceEditingOf,
 } from "@/shared/stores/voice-store";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
@@ -22,6 +24,9 @@ const D1 = { key: "D-1#", destination: { target: "D-1", loc: null }, view: "pane
 
 /** D-2 のコメントの入力 */
 const D2 = { key: "D-2#", destination: { target: "D-2", loc: null }, view: "panel" as const, label: "D-2 へのコメント", selection: { start: 0, end: 0 } };
+
+/** C-1 への返信の修正の入力（スレッドの画面） */
+const C1 = { key: "review:C-1", destination: { review: "C-1", thread: "TH-1", target: null }, view: "thread" as const, label: "TH-1 への返信の修正", selection: { start: 4, end: 4 } };
 
 beforeEach(() => {
   resetVoiceStore();
@@ -272,5 +277,118 @@ describe("subscribeVoice", () => {
     dismissVoiceNotice();
     // 検証
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("finishVoice の修正の入力", () => {
+  // 修正の入力は挿入だけにし、画面に無い間も書きかけへ当てない（正常系）
+  test("finish_voice_when_review", async () => {
+    // 準備
+    installFakeMedia();
+    installFakeWakeLock();
+    const api = stubVoiceApi();
+    await startVoice(C1);
+    // 実行
+    const shown = await finishVoice({ body: "確認: ", start: 4, end: 4, action: "send", mounted: () => true });
+    // 検証
+    expect(shown.kind).toBe("inserted");
+    expect(shown.body).toBe("確認: 案 A にする");
+    expect(api.sent).toEqual([]);
+    expect(api.added).toEqual([]);
+    // 準備
+    resetVoiceStore();
+    await startVoice({ ...C1, view: "panel" as const });
+    // 実行
+    await finishVoice({ body: "確認: ", start: 4, end: 4, action: "review", mounted: () => false });
+    // 検証
+    expect(readVoiceState().results["review:C-1"]?.kind).toBe("inserted");
+    expect(api.added).toEqual([]);
+    expect(api.drafts).toEqual([]);
+  });
+});
+
+describe("discardVoice の修正の入力", () => {
+  // 無くなったコメントへの結果を消す（正常系）
+  test("discard_voice_when_review_result", async () => {
+    // 準備
+    installFakeMedia();
+    installFakeWakeLock();
+    stubVoiceApi();
+    await startVoice(C1);
+    await finishVoice({ body: "確認: ", start: 4, end: 4, action: "insert", mounted: () => false });
+    // 実行
+    discardVoice((destination) => !("review" in destination && destination.review === "C-1"));
+    // 検証
+    expect(takeVoiceResult("review:C-1")).toBeNull();
+  });
+});
+
+describe("voiceEditingOf", () => {
+  // 録音中と結果待ちの修正の入力を返す（正常系）
+  test("voice_editing_of", async () => {
+    // 準備
+    installFakeMedia();
+    installFakeWakeLock();
+    stubVoiceApi();
+    await startVoice(C1);
+    // 実行・検証
+    expect(voiceEditingOf("thread")).toBe("C-1");
+    expect(voiceEditingOf("review")).toBeNull();
+    // 準備
+    resetVoiceStore();
+    await startVoice({ ...C1, view: "panel" as const });
+    await finishVoice({ body: "確認: ", start: 4, end: 4, action: "insert", mounted: () => false });
+    // 実行・検証
+    expect(voiceEditingOf("panel")).toBe("C-1");
+    // 準備
+    resetVoiceStore();
+    // 実行・検証
+    expect(voiceEditingOf("panel")).toBeNull();
+  });
+});
+
+describe("discardReviewVoice", () => {
+  // 削除・送信した書き込みへの録音と結果を、読み直しを待たずに捨てる（正常系）
+  test("discard_review_voice", async () => {
+    // 準備
+    const media = installFakeMedia();
+    installFakeWakeLock();
+    stubVoiceApi();
+    await startVoice(C1);
+    // 実行
+    discardReviewVoice(["C-1"]);
+    // 検証
+    expect(media.stoppedTracks()).toBe(1);
+    expect(readVoiceState().session).toBeNull();
+    expect(readVoiceState().notice).toEqual({ kind: "discarded", text: VOICE_TEXT.discarded("C-1"), key: null });
+    // 準備
+    resetVoiceStore();
+    let respond: (() => void) | undefined;
+    stubVoiceApi({ transcribe: () => new Promise<Response>((resolve) => { respond = () => { resolve(HttpResponse.json({ text: "案 A にする" })); }; }) });
+    await startVoice(C1);
+    const pending = finishVoice({ body: "確認: ", start: 4, end: 4, action: "insert", mounted: () => false });
+    await vi.waitFor(() => { expect(respond).toBeDefined(); });
+    // 実行
+    discardReviewVoice(["C-1"]);
+    respond?.();
+    // 検証
+    expect((await pending).kind).toBe("discarded");
+    expect(readVoiceState().results).toEqual({});
+    // 準備
+    resetVoiceStore();
+    stubVoiceApi();
+    await startVoice(C1);
+    await finishVoice({ body: "確認: ", start: 4, end: 4, action: "insert", mounted: () => false });
+    // 実行
+    discardReviewVoice(["C-1"]);
+    // 検証
+    expect(takeVoiceResult("review:C-1")).toBeNull();
+    // 準備
+    resetVoiceStore();
+    await startVoice(C1);
+    // 実行
+    discardReviewVoice(["C-2"]);
+    // 検証
+    expect(readVoiceState().session?.key).toBe("review:C-1");
   });
 });

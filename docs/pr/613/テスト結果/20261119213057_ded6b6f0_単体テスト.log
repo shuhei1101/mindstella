@@ -1,0 +1,6 @@
+# 単体テスト（React。全件 pass）
+# commit: ded6b6f0（今の画面は 0fcd5a7b の後に変えていない）
+$ npx vitest run
+ Test Files  85 passed (85)
+      Tests  364 passed (364)
+vitest exit 0

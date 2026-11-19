@@ -213,3 +213,4 @@ functions:
         expected: true・false・true・true・false
 notes:
   単体テスト: 同じフォルダの `voice.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  修正の入力の音声入力: '`voiceDestinationExists` は、向けた先がレビュー中の書き込みの修正（`{review, thread, target}`）なら、`threadIds`（レビュー中の書き込みの ID を含む）にその ID があるかで確認する（`thread` を持つため、スレッドより先に分ける）'

@@ -392,3 +392,56 @@ def test_long_ai_post(open_story: OpenStory) -> None:
     assert page.locator(f"{POST} button[data-part=more]").count() == 0
     assert page.eval_on_selector(f"{POST} [data-part=body]", "e => e.parentElement.hasAttribute('data-folded')") is False
     assert page.locator(f"{POST} [data-part=body] ol > li").count() == 7
+
+
+# ボタンの読み上げの名前（アイコンだけのボタンは aria-label、文字のボタンは文字）を並びの順に返す
+BUTTON_NAMES_JS = "(buttons) => buttons.map((button) => button.getAttribute('aria-label') ?? button.textContent.trim())"
+
+
+def test_pending_editing_recording(open_story: OpenStory) -> None:
+    """レビュー中の返信の修正の入力で録音中。「キャンセル」「修正」とマイクの位置に × と ✓ を置き、入力欄の場所に入力欄の幅の波形、下に経過の時間を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadpost--pending-editing-recording")
+    # 検証
+    form = page.locator("#storybook-root > article form[data-part=edit]")
+    assert form.locator("button").evaluate_all(BUTTON_NAMES_JS) == ["キャンセル", "文字起こし"]
+    wave = form.locator(".send-wave, [data-part='voice-wave']")
+    assert wave.get_attribute("aria-hidden") == "true"
+    assert wave.locator("i").count() == 10
+    assert wave.bounding_box()["width"] >= form.bounding_box()["width"] * 0.9
+    assert form.locator("textarea").is_hidden()
+    assert "0:12" in form.locator("[role=status]").inner_text()
+
+
+def test_pending_editing_transcribing(open_story: OpenStory) -> None:
+    """修正の入力で文字起こし中。2 つのボタンを押せなくし、入力欄は読み取りだけ（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadpost--pending-editing-transcribing")
+    # 検証
+    form = page.locator("#storybook-root > article form[data-part=edit]")
+    assert form.get_by_role("button", name="キャンセル").is_disabled()
+    assert form.get_by_role("button", name="文字起こし中").is_disabled()
+    assert form.locator("textarea").get_attribute("readonly") is not None
+
+
+def test_pending_editing_inserted(open_story: OpenStory) -> None:
+    """修正の入力へ文字起こしの結果を挿入した。入力欄が挿入した全文で、マイクと「キャンセル」「修正」に戻し、挿入した旨を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadpost--pending-editing-inserted")
+    # 検証
+    form = page.locator("#storybook-root > article form[data-part=edit]")
+    assert form.locator("textarea").input_value() == "確認: 案 A にするでよい"
+    assert form.locator("button").evaluate_all(BUTTON_NAMES_JS) == ["音声で入力", "キャンセル", "修正"]
+    assert form.locator("[role=status]").inner_text() == "文字起こしの結果を挿入しました。"
+
+
+def test_pending_editing_voice_disabled(open_story: OpenStory) -> None:
+    """ほかの入力欄で音声入力中。修正の入力のマイクを押せない見た目にし、理由をツールチップに出す。入力と「修正」はできる（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadpost--pending-editing-voice-disabled")
+    # 検証
+    mic = page.locator("#storybook-root > article form[data-part=edit]").get_by_role("button", name="音声で入力")
+    assert mic.get_attribute("aria-disabled") == "true"
+    assert mic.get_attribute("title") == "ほかの入力欄で音声入力中のため、音声で入力できません。"
+    assert page.locator("#storybook-root > article form[data-part=edit] textarea").get_attribute("readonly") is None
+    assert page.locator("#storybook-root > article form[data-part=edit]").get_by_role("button", name="修正", exact=True).is_enabled()

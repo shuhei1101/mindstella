@@ -22,7 +22,7 @@ declare module "@tanstack/react-router" {
 type Patch = Partial<PreviewSearch>;
 
 /** 音声入力の入力欄の画面（詳細パネル・詳細の全画面の項目か、コメントの一覧のスレッドか新しいスレッド） */
-export type VoiceTarget = { item: string; full: boolean } | { thread: string | null };
+export type VoiceTarget = { item: string; full: boolean } | { thread: string | null } | { review: true };
 
 /** search と操作 */
 export type PreviewSearchApi = {
@@ -131,6 +131,11 @@ export const usePreviewSearch = (): PreviewSearchApi => {
       apply({ panel: "comments", thread: thread ?? undefined, review: undefined }, true);
     },
     openVoiceInput: (target) => {
+      // 修正の入力をレビュー中の書き込みの画面で録音した
+      if ("review" in target) {
+        apply({ panel: "comments", thread: undefined, review: "1" }, true);
+        return;
+      }
       if ("thread" in target) {
         apply({ panel: "comments", thread: target.thread ?? undefined, review: undefined }, true);
         return;

@@ -1,0 +1,74 @@
+# 単体テスト（Red: 実装前）
+# commit: 2560ce4c
+# 実行日時: 2026-11-19 19:36 JST
+$ python3 -m pytest tests/unit/preview
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: data[kind] is not iterable
+E               at Object.buildIndex (/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-review-edit-voice-input/plugins/mindstella/skills/mindmap/preview/core/records.js:78:36)
+E               at Object.checkVoiceDestination (/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-review-edit-voice-input/plugins/mindstella/skills/mindmap/preview/app.js:395:31)
+E               at async <anonymous>:337:30
+E       AssertionError: assert ['キャンセル', '修正'] == ['音声で入力', 'キャンセル', '修正']
+E         
+E         At index 0 diff: 'キャンセル' != '音声で入力'
+E         Right contains one more item: '修正'
+E         Use -v to get more diff
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: data[kind] is not iterable
+E               at Object.buildIndex (/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-review-edit-voice-input/plugins/mindstella/skills/mindmap/preview/core/records.js:78:36)
+E               at Object.checkVoiceDestination (/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-review-edit-voice-input/plugins/mindstella/skills/mindmap/preview/app.js:395:31)
+E               at async <anonymous>:337:30
+E       AssertionError: assert ['キャンセル', '修正'] == ['キャンセル', '文字起こし']
+E         
+E         At index 1 diff: '修正' != '文字起こし'
+E         Use -v to get more diff
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: data[kind] is not iterable
+E               at Object.buildIndex (/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-review-edit-voice-input/plugins/mindstella/skills/mindmap/preview/core/records.js:78:36)
+E               at Object.checkVoiceDestination (/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-review-edit-voice-input/plugins/mindstella/skills/mindmap/preview/app.js:395:31)
+E               at async <anonymous>:337:30
+E       AssertionError: assert ['キャンセル', '修正'] == ['音声で入力', 'キャンセル', '修正']
+E         
+E         At index 0 diff: 'キャンセル' != '音声で入力'
+E         Right contains one more item: '修正'
+E         Use -v to get more diff
+FAILED tests/unit/preview/test_app.py::test_check_voice_destination_when_review[chromium-present]
+FAILED tests/unit/preview/test_comments_panel.py::test_review_edit_form_voice[chromium-idle]
+FAILED tests/unit/preview/test_app.py::test_check_voice_destination_when_review[chromium-removed]
+FAILED tests/unit/preview/test_comments_panel.py::test_review_edit_form_voice[chromium-recording]
+FAILED tests/unit/preview/test_app.py::test_check_voice_destination_when_review[chromium-unreadable]
+FAILED tests/unit/preview/test_comments_panel.py::test_review_edit_form_voice[chromium-inserted]
+6 failed, 921 passed in 368.87s (0:06:08)
+
+$ npx vitest run
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_review_voice
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "音声で入力"
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+    188|     if (edit === null) throw new Error("修正の入力が無い");
+ FAIL  frontend/src/shared/hooks/use-comments.test.tsx > useRemoveComment の修正の入力 > use_remove_comment_when_review_voice
+AssertionError: expected { key: 'review:C-1', …(8) } to be null
+ FAIL  frontend/src/shared/hooks/use-comments.test.tsx > useSendComments の修正の入力 > use_send_comments_when_review_voice
+AssertionError: expected { key: 'review:C-1', …(8) } to be null
+ FAIL  frontend/src/shared/hooks/use-voice-input.test.ts > useVoiceInput の修正の入力 > use_voice_input_when_review
+AssertionError: expected "vi.fn()" to be called with arguments: [ '確認: 案 A にする' ]
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ FAIL  frontend/src/shared/stores/voice-store.test.ts > finishVoice の修正の入力 > finish_voice_when_review
+AssertionError: expected 'sent' to be 'inserted' // Object.is equality
+ FAIL  frontend/src/shared/stores/voice-store.test.ts > discardVoice の修正の入力 > discard_voice_when_review_result
+AssertionError: expected { kind: 'inserted', …(6) } to be null
+ FAIL  frontend/src/shared/stores/voice-store.test.ts > voiceEditingOf > voice_editing_of
+TypeError: voiceEditingOf is not a function
+ FAIL  frontend/src/shared/stores/voice-store.test.ts > discardReviewVoice > discard_review_voice
+TypeError: discardReviewVoice is not a function
+ FAIL  frontend/src/features/comments/review/review-view.test.tsx > ReviewView の修正の音声入力 > review_view_when_edit_voice
+TestingLibraryElementError: Unable to find role="button" and name "音声で入力"
+ FAIL  frontend/src/features/comments/shared/review-edit-form.test.tsx > ReviewEditForm > review_edit_form_voice
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "音声で入力"
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView の修正の音声入力 > thread_view_when_edit_voice
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "音声で入力"
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+    242|     if (edit === null) throw new Error("修正の入力が無い");
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments の修正の音声入力 > detail_comments_when_edit_voice
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "音声で入力"
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+    249|     if (edit === null) throw new Error("修正の入力が無い");
+ Test Files  8 failed | 77 passed (85)
+      Tests  12 failed | 352 passed (364)

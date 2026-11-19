@@ -1,0 +1,11 @@
+# 単体テスト（全件 pass）
+# commit: 0fcd5a7b（vitest は React を最後に変えた 3fff2004 の内容で実行。以降は今の画面だけを変えた）
+# 実行日時: 2026-11-19 20:35 JST
+$ python3 -m pytest tests/unit/preview
+927 passed in 320.48s (0:05:20)
+pytest exit 0
+
+$ npx vitest run
+ Test Files  85 passed (85)
+      Tests  364 passed (364)
+vitest exit 0

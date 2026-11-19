@@ -74,7 +74,11 @@ namespace MindmapPreview {
   };
 
   /** 録っている入力の向けた先と、戻るときに開く画面 */
-  export type VoiceDestination = { target: string; loc: Location | null; view: "panel" | "full" } | { thread: string } | { newThread: true };
+  export type VoiceDestination =
+    | { target: string; loc: Location | null; view: "panel" | "full" }
+    | { thread: string }
+    | { newThread: true }
+    | { review: string; view: "review" | "thread" | "panel" | "full" };
 
   /** コメントの画面の状態（開いている間だけ持つ。描き直し・項目の移動・詳細パネルと全画面の行き来でも保つ） */
   export type CommentState = {
@@ -632,12 +636,20 @@ namespace MindmapPreview {
     destination,
     fetchRecords: readRecords,
     fetchThreads,
+    fetchComments,
   }: {
     destination: VoiceDestination | null;
     fetchRecords: () => Promise<{ ok: true; data: MindmapData } | { ok: false }>;
     fetchThreads: () => Promise<{ ok: true; threads: Thread[] } | { ok: false }>;
+    fetchComments: () => Promise<{ ok: true; items: { id: string }[] } | { ok: false }>;
   }): Promise<string | null> {
     if (destination === null || "newThread" in destination) return null;
+    // 修正の入力: 読んだレビュー中のコメントにあるか（読めなければ確かめない）
+    if ("review" in destination) {
+      const comments = await fetchComments();
+      if (!comments.ok) return null;
+      return comments.items.some((item) => item.id === destination.review) ? null : destination.review;
+    }
     const [records, threads] = await Promise.all([readRecords(), fetchThreads()]);
     // 読めなければ確かめない（次の書き換えか、保留の解除の描き直しで確かめる）
     if (!records.ok || !threads.ok) return null;
@@ -1212,8 +1224,8 @@ namespace MindmapPreview {
         comment.detailExpanded.clear();
         if (!comment.listOpen) {
           comment.removed = [];
-          editing = null;
-        } else if (editingIn === "detail") {
+          if (!editHeld()) editing = null;
+        } else if (editingIn === "detail" && !editHeld()) {
           editing = null;
         }
         if (editing === null) {
@@ -1289,6 +1301,7 @@ namespace MindmapPreview {
               editingIn,
               editError,
               editBody,
+              editVoice: editVoiceProps(),
               expanded: comment.detailExpanded,
               on: reviewRowHandlers(REVIEW_FOCUS),
             },
@@ -1623,6 +1636,16 @@ namespace MindmapPreview {
     let editingIn: EditingIn = "list";
     let editError: string | null = null;
     let editBody: string | null = null;
+    /** 修正の入力の音声入力の結果（挿入した・失敗した）。修正を始め直す・確定する・やめると空にする */
+    let editVoiceResult: { status: "inserted" | "voice-failed"; detail: string | null } | null = null;
+    /** 修正の入力が画面に無い間に文字起こしが終わり、まだ入力欄に出していないか（出すまで `editing` を捨てない） */
+    let editVoicePending = false;
+    /** 最後に録音を始めた修正の入力の向けた先（帯の「入力欄を開く」で開く） */
+    let editVoiceDestination: Extract<VoiceDestination, { review: string }> | null = null;
+    /** 修正の入力の音声入力の `key` */
+    const editVoiceKey = (id: string): string => `review:${id}`;
+    /** 書き換えている行を、画面を移っても捨てずに残すか（その行で録音・文字起こし中か、出していない結果がある） */
+    const editHeld = (): boolean => editing !== null && (comment.voice.key === editVoiceKey(editing) || editVoicePending);
     /** 詳細パネルが今出している項目（別の項目へ移ったか閉じたかを知るため） */
     let detailShown: string | null = null;
     /** チェックした状態で入れるのは、初めて読んだコメントだけ */
@@ -1836,6 +1859,12 @@ namespace MindmapPreview {
     const discardMissingVoice = (): void => {
       const { destination } = comment.voice;
       if (destination === null || "newThread" in destination) return;
+      // 修正の入力: レビュー中のコメントに無ければ録音と結果を捨てる
+      if ("review" in destination) {
+        if (comment.review.items.some((item) => item.id === destination.review)) return;
+        discardEditVoice([destination.review]);
+        return;
+      }
       const id = "thread" in destination ? destination.thread : destination.target;
       const exists = "thread" in destination ? comment.threads.some((thread) => thread.id === id) : index.byId.has(id);
       if (exists) return;
@@ -1869,6 +1898,11 @@ namespace MindmapPreview {
 
     /** 入力の向けた先の画面を、その画面を今開くときと同じく開く（入力が閉じていれば開く）。録音中は ✓、文字起こし中は入力欄へフォーカスを移す */
     const openVoiceInput = (key: string): void => {
+      // 修正の入力は、録音を始めた画面をその行の修正の入力のまま開く
+      if (key.startsWith("review:")) {
+        openEditVoiceInput(key);
+        return;
+      }
       const state = comment.forms.get(key);
       if (state === undefined) return;
       const destination = comment.voice.key === key ? comment.voice.destination : voiceDestinationOf(state);
@@ -2054,6 +2088,199 @@ namespace MindmapPreview {
         },
       };
     };
+
+    /** 修正の入力の入力欄（書き換えている行を描いた場所の 1 つ） */
+    const editField = (): HTMLTextAreaElement | null =>
+      editing === null ? null : document.querySelector<HTMLTextAreaElement>(`form.row-edit textarea[data-focus$="edit:${CSS.escape(editing)}"]`);
+
+    /** 修正の入力の入力欄へフォーカスを移し、範囲があればその範囲を選ぶ */
+    const focusEditField = (range: { start: number; end: number } | null): void => {
+      const field = editField();
+      if (field === null) return;
+      field.focus();
+      if (range !== null) field.setSelectionRange(range.start, range.end);
+    };
+
+    /** 修正の入力を開く画面（一覧のレビュー中の書き込み・スレッドか、詳細パネル・詳細の全画面） */
+    const editViewOf = (): Extract<VoiceDestination, { review: string }>["view"] => {
+      if (editingIn === "detail") return route.full ? "full" : "panel";
+      return comment.view === "thread" ? "thread" : "review";
+    };
+
+    /** 修正の入力の音声入力の引数（書き換えていなければ null） */
+    const editVoiceProps = (): EditVoiceProps | null => {
+      if (editing === null) return null;
+      return { ...voiceOf(editVoiceKey(editing)), voiceStatus: editVoiceResult?.status ?? "idle", voiceDetail: editVoiceResult?.detail ?? null };
+    };
+
+    /** 削除・送信した書き込みや無くなった書き込みの修正の入力の録音と、出していない結果を捨てる（録音・文字起こし中なら知らせる） */
+    const discardEditVoice = (ids: readonly string[]): void => {
+      const { destination } = comment.voice;
+      if (destination !== null && "review" in destination && ids.includes(destination.review) && comment.voice.phase !== "idle") {
+        abandonVoice();
+        comment.voice.notice = { kind: "discarded", text: VOICE_TEXT.discarded(destination.review), key: null };
+        renderTop();
+      }
+      if (editing !== null && ids.includes(editing)) {
+        editVoiceResult = null;
+        editVoicePending = false;
+        editBody = null;
+      }
+    };
+
+    /** 修正の入力の向けた先の画面を開き、その行を修正の入力のまま描く。録音中は ✓、それ以外は入力欄へフォーカスを移す */
+    const openEditVoiceInput = (key: string): void => {
+      const voiced = comment.voice.destination;
+      const destination = comment.voice.key === key && voiced !== null && "review" in voiced ? voiced : editVoiceDestination;
+      if (destination === null || editVoiceKey(destination.review) !== key) return;
+      const item = comment.review.items.find((entry) => entry.id === destination.review);
+      if (item === undefined) return;
+      editing = item.id;
+      if (destination.view === "panel" || destination.view === "full") {
+        editingIn = "detail";
+        if (comment.listOpen) closeList();
+        const full = destination.view === "full";
+        if (item.target !== null && (route.id !== item.target || route.full !== full)) {
+          route = { ...route, full };
+          openItem(item.target, false);
+        } else {
+          refreshComments();
+        }
+      } else {
+        editingIn = "list";
+        if (!comment.listOpen) openList();
+        if (destination.view === "thread") {
+          const pending = item.thread === null;
+          const thread = item.thread ?? item.id;
+          if (comment.openedThread?.id !== thread || comment.view !== "thread") openThread(thread, pending);
+          else renderComments();
+        } else if (comment.view !== "review") {
+          openReview();
+        } else {
+          renderComments();
+        }
+      }
+      editVoicePending = false;
+      if (comment.voice.key === key && comment.voice.phase === "recording") document.querySelector<HTMLButtonElement>("form.row-edit .send-rec-done")?.focus();
+      else focusEditField(null);
+    };
+
+    /** 修正の入力のマイク・×・✓ のコールバック（文字起こしの結果は設定によらず入力欄へ挿入するだけ） */
+    const editVoiceHandlers = (): EditVoiceHandlers => ({
+      voiceStart: () => {
+        const id = editing;
+        // 書き換えていない・別の入力で録っている間は始めない
+        if (id === null || comment.voice.key !== null) return;
+        const key = editVoiceKey(id);
+        const ticket = comment.voice.ticket + 1;
+        comment.voice.ticket = ticket;
+        const field = editField();
+        comment.voice.selection = field === null ? null : { start: field.selectionStart, end: field.selectionEnd };
+        // 描き直しても書き換えていた中身を残す
+        if (field !== null) editBody = field.value;
+        editVoiceResult = null;
+        const item = comment.review.items.find((entry) => entry.id === id);
+        startRecording((level) => {
+          if (comment.voice.ticket === ticket && comment.voice.phase === "recording") addVoiceLevel(level);
+        })
+          .then((recording) => {
+            // 待つ間に書き換えをやめた・別の録音を始めた: 始めた録音を捨てる
+            if (comment.voice.ticket !== ticket || editing !== id) {
+              recording.cancel();
+              return;
+            }
+            editVoiceDestination = { review: id, view: editViewOf() };
+            Object.assign(comment.voice, {
+              key,
+              phase: "recording",
+              recording,
+              elapsed: 0,
+              levels: [],
+              destination: editVoiceDestination,
+              label: `${item === undefined ? id : reviewLabel(item)}の修正`,
+            });
+            window.clearInterval(voiceTimer);
+            voiceTimer = window.setInterval(() => {
+              comment.voice.elapsed += 1;
+              for (const time of document.querySelectorAll(".send-msg.recording .rec-time, .voice-btn .vb-time")) time.textContent = formatElapsed(comment.voice.elapsed);
+            }, 1000);
+            lockVoice(ticket);
+            refreshComments();
+            // 入力欄を波形に替えたため、録音中に押す ✓ へフォーカスを移す
+            document.querySelector<HTMLButtonElement>("form.row-edit .send-rec-done")?.focus();
+          })
+          .catch((failure: unknown) => {
+            if (comment.voice.ticket !== ticket) return;
+            editVoiceResult = { status: "voice-failed", detail: failure === "denied" ? VOICE_TEXT.denied : VOICE_TEXT.noMicrophone };
+            refreshComments();
+          });
+      },
+      voiceCancel: () => {
+        if (editing === null || comment.voice.key !== editVoiceKey(editing)) return;
+        const selection = comment.voice.selection;
+        abandonVoice();
+        refreshComments();
+        focusEditField(selection);
+      },
+      voiceDone: (input) => {
+        const { voice } = comment;
+        const recording = voice.recording;
+        const id = editing;
+        if (id === null || voice.key !== editVoiceKey(id) || recording === null) return;
+        const key = voice.key;
+        const ticket = voice.ticket;
+        window.clearInterval(voiceTimer);
+        releaseVoiceLock();
+        voice.phase = "transcribing";
+        editBody = input.body;
+        refreshComments();
+        const selection = voice.selection;
+        const label = voice.label ?? id;
+        // 入力欄は録音中に作り直されて選んだ範囲を失うため、押したときの範囲に挿入する
+        const range = selection ?? { start: input.start, end: input.end };
+        void finishVoice(recording, { ...input, ...range, action: "insert", destination: { target: null, loc: null } }, { ...voiceCalls, add: api.add }).then((outcome) => {
+          // 返る前に録音を捨てた・別の録音を始めた: 結果を捨てる
+          if (comment.voice.ticket !== ticket) return;
+          clearVoice();
+          if (outcome.kind === "unavailable") {
+            const known = comment.voice.availability;
+            comment.voice.availability = {
+              available: false,
+              reason: outcome.reason,
+              detail: outcome.detail,
+              presets: [],
+              action: known?.action ?? "review",
+              preset: known?.preset ?? null,
+            };
+          }
+          // 別の行の書き換えに移っていた: 結果を入れない
+          if (editing !== id) {
+            renderTop();
+            return;
+          }
+          const shown = editField() !== null;
+          editBody = outcome.body;
+          editVoiceResult = outcome.kind === "inserted" ? { status: "inserted", detail: null } : { status: "voice-failed", detail: outcome.detail };
+          // 入力欄が画面に無い: 開き直したときに出す。失敗だけを知らせる
+          if (!shown) {
+            editVoicePending = true;
+            if (outcome.kind !== "inserted") comment.voice.notice = { kind: "failed", text: awayVoiceText(outcome, "insert", label), key };
+            renderTop();
+            return;
+          }
+          refreshComments();
+          // 挿入した: カーソルを挿入した文字の後ろへ置く。失敗: 押したときの範囲へ戻す
+          focusEditField(outcome.caret === null ? selection : { start: outcome.caret, end: outcome.caret });
+        });
+      },
+      voiceBlocked: () => {
+        if (editing === null) return;
+        editVoiceResult = { status: "voice-failed", detail: voiceOf(editVoiceKey(editing)).voiceReason };
+        refreshComments();
+        // マイクを使えるページなら、サービスが使えるようになったかを読み直す（録音は始めない）
+        if (micSupported()) void refreshAvailability();
+      },
+    });
 
     // 画面が見えたとき、録音中で抑止が解かれていれば求め直す（ブラウザは画面が隠れると抑止を解く）
     document.addEventListener("visibilitychange", () => {
@@ -2363,7 +2590,7 @@ namespace MindmapPreview {
 
     /** 一覧で始めた書き換えを捨てる（一覧を閉じると、詳細パネルの行が本文だけのまま残るため）。捨てたかを返す */
     const discardListEdit = (): boolean => {
-      if (editing === null || editingIn !== "list") return false;
+      if (editing === null || editingIn !== "list" || editHeld()) return false;
       editing = null;
       editError = null;
       editBody = null;
@@ -2567,6 +2794,7 @@ namespace MindmapPreview {
       editingIn,
       editError,
       editBody,
+      editVoice: editVoiceProps(),
       stale: comment.stale,
       result: outcome,
       selected: comment.opened,
@@ -2661,6 +2889,8 @@ namespace MindmapPreview {
       editing = null;
       editError = null;
       editBody = null;
+      editVoiceResult = null;
+      editVoicePending = false;
       await reloadAndRefresh();
       toDetail(`edit-open:${id}`);
     };
@@ -2672,6 +2902,8 @@ namespace MindmapPreview {
         const { count: _count, ...item } = result.data;
         comment.removed = [...comment.removed, item];
         comment.stale.delete(id);
+        // 修正の入力で録っていた書き込み: 読み直しを待たずに録音と結果を捨てる（「元に戻す」で戻しても入れない）
+        discardEditVoice([id]);
       }
       await reloadAndRefresh();
     };
@@ -2704,17 +2936,24 @@ namespace MindmapPreview {
         if (focus !== "") focusDetail(`${focus}${key}`);
       };
       return {
+        ...editVoiceHandlers(),
         edit: (id) => {
           editing = id;
           editingIn = focus === "" ? "list" : "detail";
           editError = null;
           editBody = null;
+          editVoiceResult = null;
+          editVoicePending = false;
           refreshComments();
           toDetail(`edit:${id}`);
         },
         saveEdit: (id, body) => void saveEdit(id, body, toDetail),
         cancelEdit: () => {
           const canceled = editing;
+          // 修正の入力で録っている間の「キャンセル」: 録音も捨てる
+          if (canceled !== null && comment.voice.key === editVoiceKey(canceled)) abandonVoice();
+          editVoiceResult = null;
+          editVoicePending = false;
           editing = null;
           editError = null;
           editBody = null;
@@ -2752,6 +2991,8 @@ namespace MindmapPreview {
       if (result.ok && result.data !== null) {
         comment.removed = [];
         comment.stale = new Map();
+        // 修正の入力で録っていた書き込みを送った: 読み直しを待たずに録音と結果を捨てる
+        discardEditVoice(ids);
         outcome = { kind: "sent", count: ids.length, at: result.data.sent, entered: result.data.entered };
       } else if (!result.ok && result.status === 409) {
         comment.stale = new Map(result.stale.map((entry) => [entry.id, entry.reason]));
@@ -4135,6 +4376,10 @@ namespace MindmapPreview {
         fetchThreads: async () => {
           const result = await threadsApi.read();
           return result.ok && result.data !== null ? { ok: true, threads: result.data.threads } : { ok: false };
+        },
+        fetchComments: async () => {
+          const result = await api.read();
+          return result.ok && result.data !== null ? { ok: true, items: result.data.items } : { ok: false };
         },
       });
       // 確かめている間に録音が終わった・別の録音を始めたときは捨てない

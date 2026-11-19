@@ -2,7 +2,7 @@
 
 namespace MindmapPreview {
   /** 書き込み・状態の記録・レビュー中の書き込みの引数（`post`・`event`・`pending` のどれか 1 つを渡す） */
-  export type ThreadPostProps = {
+  export type ThreadPostProps = VoiceProps & {
     post?: Thread["posts"][number] | null;
     event?: Thread["events"][number] | null;
     pending?: ReviewState["items"][number] | null;
@@ -18,7 +18,15 @@ namespace MindmapPreview {
     editBody?: string | null;
     /** 直せなかった理由 */
     editError?: string | null;
+    /** 修正の入力の音声入力の結果（挿入した・失敗した）。`voice` を渡さないときはマイクのボタンを置かない */
+    voiceStatus?: "idle" | "inserted" | "voice-failed";
+    voiceDetail?: string | null;
     on: {
+      /** 修正の入力のマイク・×・✓・押せないマイク */
+      editVoiceStart?: () => void;
+      editVoiceCancel?: () => void;
+      editVoiceDone?: (input: VoiceDoneInput) => void;
+      editVoiceBlocked?: () => void;
       /** 本文の中の項目の ID を押した */
       openId: (id: string) => void;
       /** 本文の中のまとまりのリンクを押した（まとまりの ID） */
@@ -175,9 +183,11 @@ namespace MindmapPreview {
     editing,
     editBody,
     editError,
+    voice,
     open,
     on,
   }: {
+    voice: EditVoiceProps | null;
     item: ReviewState["items"][number];
     titles: (id: string) => string | null;
     changeSets: (id: string) => string | null;
@@ -215,7 +225,14 @@ namespace MindmapPreview {
           ],
         }),
         editing
-          ? reviewEditForm({ item, body: editBody, error: editError, focus: "", on: { saveEdit: on.saveEdit, cancelEdit: on.cancelEdit } })
+          ? reviewEditForm({
+            item,
+            body: editBody,
+            error: editError,
+            focus: "",
+            voice,
+            on: { saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, voiceStart: on.editVoiceStart, voiceCancel: on.editVoiceCancel, voiceDone: on.editVoiceDone, voiceBlocked: on.editVoiceBlocked },
+          })
           : fold?.body ?? null,
         // 開閉のボタンだけの行（ボタンを出さない間は CSS で行ごと出さない）
         fold === null ? null : h({ tag: "div", attrs: { class: "review-more-row" }, children: [fold.more] }),
@@ -234,12 +251,21 @@ namespace MindmapPreview {
     editBody = null,
     editError = null,
     open = false,
+    voice,
+    voiceReason = null,
+    elapsed = 0,
+    levels = [],
+    voiceStatus = "idle",
+    voiceDetail = null,
     on,
   }: ThreadPostProps): HTMLElement {
     // 状態の記録
     if (event !== null) return eventItem(event);
     // レビュー中の書き込み
-    if (pending !== null) return pendingItem({ item: pending, titles, changeSets, editing, editBody, editError, open, on });
+    if (pending !== null) {
+      const editVoice = voice === undefined ? null : { voice, voiceReason, elapsed, levels, voiceStatus, voiceDetail };
+      return pendingItem({ item: pending, titles, changeSets, editing, editBody, editError, voice: editVoice, open, on });
+    }
     // 書き込みが無い（渡し方の誤り）
     if (post === null) throw new Error("threadPost には post・event・pending のどれか 1 つを渡す");
     return h({

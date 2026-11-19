@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -176,6 +176,32 @@ describe("PreviewShell", () => {
     expect(await screen.findByText("T-1 が削除されたため、録音を破棄しました。")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^音声入力中/ })).toBeNull();
   });
+  // 修正の入力で録音中にトップバーから戻ると修正の入力のまま開き、コメントが無くなって読み直すと録音を捨てる（正常系）
+  test("preview_shell_when_review_voice", async () => {
+    // 準備
+    enableVoice();
+    const items = [{ id: "C-1", thread: null, target: "T-1", target_title: "T-1の題", loc: null, body: "確認: ", created: "2026-11-01T00:01:00+00:00" }];
+    server.use(http.get("/api/comments", () => HttpResponse.json({ items, drafts: [] })));
+    const view = renderRoute("/spa/?panel=comments&review=1");
+    await userEvent.click(await screen.findByRole("button", { name: "T-1 へのコメントを修正" }));
+    const edit = (await screen.findByRole("textbox", { name: "T-1 へのコメントの本文" })).closest("form");
+    if (edit === null) throw new Error("修正の入力が無い");
+    await userEvent.click(within(edit).getByRole("button", { name: "音声で入力" }));
+    await userEvent.click(screen.getByRole("button", { name: "戻る" }));
+    // 実行
+    await userEvent.click(await screen.findByRole("button", { name: /^音声入力中（T-1 へのコメントの修正）/ }));
+    // 検証
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("review")).toBe("1"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "文字起こし" })).toHaveFocus());
+    // 準備
+    server.use(http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })));
+    // 実行
+    await act(() => view.queryClient.invalidateQueries());
+    // 検証
+    expect(await screen.findByText("C-1 が削除されたため、録音を破棄しました。")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^音声入力中/ })).toBeNull();
+  });
+
   // 入力中に書き換わったら帯を出し、離れたら反映する（正常系）
   test("preview_shell_when_records_changed_while_typing", async () => {
     // 準備

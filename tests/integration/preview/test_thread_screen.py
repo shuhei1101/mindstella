@@ -4,14 +4,24 @@ from __future__ import annotations
 
 from preview_fixture_types import StartVoicePreview as _StartVoicePreview
 from preview_voice_helpers import (
+    FAKE_MIC_SCRIPT,
+    FIELD_STATE_JS,
+    VOICE_TIMEOUT_MS,
     assert_mic_blocked_after_click,
+    assert_recording_wave,
+    put_caret,
+    start_recording,
+    wait_transcription_status,
 )
 from workspace_fixtures import MakeItem as _MakeItem, MakePost as _MakePost, MakeThread as _MakeThread
 
 from pathlib import Path
 
+from collections.abc import Callable
+from typing import Any
+
 import pytest
-from playwright.sync_api import Page, Route
+from playwright.sync_api import Page, Route, expect
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
@@ -40,6 +50,7 @@ from workspace_fixtures import (
     MakeItem,
     MakePost,
     MakeThread,
+    WriteComments,
 )
 
 # 見出し・向けた項目・タグ・書き込みの並び
@@ -981,3 +992,50 @@ def test_voice_input_when_service_stopped(
     open_thread(page, "TH-1")
     # 検証
     assert_mic_blocked_after_click(page.locator(REPLY_FORM), ".send-msg")
+
+
+def test_pending_post_edit_voice_input(
+    page: Page,
+    make_item: _MakeItem,
+    make_thread: _MakeThread,
+    make_post: _MakePost,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: _StartVoicePreview,
+    valid_settings: dict[str, Any],
+) -> None:
+    """スレッドの中のレビュー中の返信の修正の入力で録音し、文字起こし後の挙動が review でも結果を録音前のカーソルの位置へ挿入するだけで、レビュー中に溜めない（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = start_voice_preview(
+        fake.url,
+        make_item("D-1"),
+        threads=(make_thread("TH-1", make_post("TH-1-1", body="案を比べたい")),),
+        settings={**valid_settings, "transcription": {"action": "review"}},
+    )
+    write_comments(root, free_comment(make_comment("C-1", body="確認: でよい", thread="TH-1")))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        page.goto(f"{url}#tab=decisions&view=table")
+    open_thread(page, "TH-1")
+    row = f"{POSTS}[data-comment='C-1']"
+    page.locator(row).get_by_role("button", name="TH-1 への返信を修正").click()
+    form = page.locator(f"{row} form.row-edit")
+    put_caret(form.locator("textarea"), "確認: でよい", 4)
+    # 実行
+    start_recording(form)
+    assert_recording_wave(form)
+    form.get_by_role("button", name="文字起こし", exact=True).click()
+    # 検証
+    expect(form.locator(".send-msg[role=status]")).to_have_text("文字起こしの結果を挿入しました。", timeout=VOICE_TIMEOUT_MS)
+    state = form.locator("textarea").evaluate(FIELD_STATE_JS)
+    assert {key: state[key] for key in ("value", "start", "end", "focused")} == {
+        "value": "確認: 案 A にするでよい",
+        "start": 11,
+        "end": 11,
+        "focused": True,
+    }
+    items = read_workspace_yaml(root, "comments.yaml")["items"]
+    assert len(items) == 1
+    assert items[0]["body"] == "確認: でよい"
