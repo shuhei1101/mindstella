@@ -13,7 +13,7 @@ trigger: 外部のアプリが MindStella の API に、ワークスペースの
 preconditions:
   - 常駐サーバーが起動している
   - 外部のアプリがワークスペースを作っている（単一ユースケース『外部のアプリから起動する』）
-success_guarantee: '開き直した後は、ワークスペースの配信元の行が `outside_read: true` で、状態がクローズ待ちでなく、状態の取得が進行中を返却し、MindStella のセッションの作成でクローズの前と同じ進め方の文書・追加の MCP・プラグインで起動できる。削除した後は、ワークスペースの配信元の行・状態のフォルダの `workspaces/{ID}/`・ID の一覧の行が無く、記録のフォルダは残っている。'
+success_guarantee: '開き直した後は、ワークスペースの配信元の行が `outside_read: true` で、状態がクローズ待ちでなく、状態の取得が進行中を返却し、クローズ待ちの間に届いたコメントでは MindStella のセッションを起動せずスレッドに残し、MindStella のセッションの作成でクローズの前と同じ進め方の文書・追加の MCP・プラグインで起動できる。削除した後は、ワークスペースの配信元の行・状態のフォルダの `workspaces/{ID}/`・ID の一覧の行が無く、記録のフォルダは残っている。'
 minimal_guarantee: クローズしていないワークスペースの削除は断り、何も変えない。削除が途中で失敗したときは ID の一覧の行を残し、同じ削除をもう一度依頼すれば残りを削除できる。無いワークスペースの開き直し・削除は、ほかの失敗と区別できる、ワークスペースが無いエラーにする。
 frequency: 外部のアプリが終了した制作を再開するたび（開き直し）・制作を削除するたび（削除）
 priority: 高
@@ -49,6 +49,8 @@ scenarios:
         PI-->>WSM: 変更した結果
         WSM->>MGR: クローズ待ちを解くよう依頼する
         API-->>APP: 開き直した
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API-->>APP: 進行中・クローズ待ちでない
         APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
         API->>MGR: 作成を依頼する
         MGR->>MGR: ワークスペースの設定の進め方の文書と、状態のフォルダの追加の MCP・プラグインを参照する
@@ -72,7 +74,7 @@ scenarios:
       - name: project-index
         description: 正常シナリオと同じ
       - name: ワークスペース
-        description: 'MindStella のセッションを API で止めた後で、クローズしていない（配信元の行が `outside_read: true`・状態がクローズ待ち）'
+        description: 'MindStella のセッションを API で止めた後で、クローズしていない（配信元の行が `outside_read: true`・状態がクローズ待ち）。クローズ待ちの間に画面で届いたコメントが 1 件、スレッドに取り込み待ちとして残っている'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -85,11 +87,15 @@ scenarios:
         API->>WSM: 開き直しを依頼する
         WSM->>WSM: クローズしていないので、配信元の行は変えない
         WSM->>MGR: クローズ待ちを解くよう依頼する
+        MGR->>MGR: クローズ待ちを解くだけで、取り込み待ちのコメントがあっても起動しない
         API-->>APP: 開き直した
+        APP->>API: 状態の取得を依頼する（GET /workspaces/{id}）
+        API-->>APP: 進行中・クローズ待ちでない
       ```
     expected:
       - 配信元の行が変わらず、状態のクローズ待ちが解かれている
       - 状態の取得が、停止ではなく進行中を返却する
+      - MindStella のセッションが起動しておらず、クローズ待ちの間に届いたコメントがスレッドに取り込み待ちとして残っている
     test: test_normal_when_not_closed
     notes:
       後から届いたコメント: クローズ待ちを解いた後に届いたコメントは、進行中のワークスペースと同じく、MindStella のセッションを起動し直して届ける（単一ユースケース『MindStella のセッションを起動し直す』）
@@ -158,38 +164,6 @@ scenarios:
       - 外部のアプリが削除の成功を受け取っている
       - 状態のフォルダに、ワークスペースの `workspaces/{ID}/` と ID の一覧の行が無い
     test: test_normal_when_delete_retried
-  - name: 正常シナリオ（削除の後に同じフォルダでワークスペースを作る）
-    setup:
-      - name: Mock
-        description: なし（Claude Code を起動しない）
-      - name: 常駐サーバー
-        description: 正常シナリオと同じ
-      - name: project-index
-        description: 正常シナリオと同じ
-      - name: ワークスペース
-        description: クローズして削除した。記録のフォルダは残っている
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant APP as 外部のアプリ
-        participant API as MindStella の API
-        participant WSM as ワークスペースの管理
-        participant PI as project-index
-        participant ST as 状態のフォルダ
-
-        APP->>API: 同じフォルダで、追加の MCP・プラグインを指定して作成を依頼する（POST /workspaces）
-        API->>WSM: 作成を依頼する
-        WSM->>WSM: 記録のフォルダが残っているので、その記録を開く
-        WSM->>ST: 追加の MCP・プラグインの記録が無いので、今回の指定を記録する
-        WSM->>PI: 配信元の行を追加する
-        WSM->>ST: ID の一覧に追加する
-        API-->>APP: ワークスペースの ID（削除の前と同じ）と画面の URL・今回の指定を記録した
-      ```
-    expected:
-      - 外部のアプリが、削除の前と同じワークスペースの ID と、今回の指定を記録したことを受け取っている
-      - グローバルの設定のファイルに配信元の行があり、状態のフォルダの ID の一覧に行がある
-      - 記録のフォルダの記録が、削除の前と同じ
-    test: test_normal_when_create_after_delete
   - name: 異常シナリオ（無いワークスペースを削除する）
     setup:
       - name: Mock
