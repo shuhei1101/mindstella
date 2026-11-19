@@ -40,7 +40,7 @@ response:
   - name: unseen_ai_posts
     type: int | None
     description: 利用者が読んでいない AI の書き込みの数（スレッドの書き込みのうち、書き手が `ai` で `seen` が偽のもの）
-    notes: 記録のフォルダが無いとき・グローバルの設定のファイルを参照できないときは `None`
+    notes: 記録のフォルダが無いとき・スレッド・変更履歴が読めないとき・グローバルの設定のファイルを参照できないときは `None`
   - name: awaiting_user_posts
     type: int | None
     description: MindStella のセッションが取り込んでいない利用者のコメントの数（`threads` の `awaiting` と同じ判定の書き込みの数）
@@ -60,7 +60,7 @@ response:
     description: 状態のフォルダに追加の MCP・プラグインの記録（`launch.json`）があるか。指定が空の記録も真。中身は返さない
   - name: warnings
     type: "list[{stage: Literal['records', 'settings'], detail: str}]"
-    description: 分からない項目があるときの警告。`records` は記録のフォルダが無い（`detail` にフォルダのパス）、`settings` はグローバルの設定のファイルを参照できない（`detail` に理由）。無ければ空の並び
+    description: 分からない項目があるときの警告。`records` は記録のフォルダが無いか、スレッド・変更履歴が読めない（`detail` にフォルダのパスか理由）、`settings` はグローバルの設定のファイルを参照できない（`detail` に理由）。無ければ空の並び
 response_notes: '`sessions`・`close_pending`・`launch_options_recorded` は、ワークスペースの部分を集められなくても返す'
 status_codes:
   - code: '200'
@@ -82,7 +82,7 @@ constraints:
     constraint: グローバルの設定のファイルを直接読み、`sources` の `id` が一致する行の `config`（`{フォルダ}/.mindstella/dev-docs.yaml`）から記録のフォルダを、`outside_read` からクローズ済みかを引く。project-index の API は呼ばない。グローバルの設定のファイルの場所は、project-index と同じく環境変数 `PROJECT_INDEX_CONFIG`、無ければ `${XDG_CONFIG_HOME:-~/.config}/project-index/settings.yaml`
     notes: 'project-index の『設定: 索引のサーバー』（CFG-1）の端末の設定の場所と同じ規則'
   - item: 参照できないとき
-    constraint: グローバルの設定のファイルが無い・YAML として読めない・`id` の行が無いときは、`settings` の警告を付け、`status`・`title`・`closed`・未読の 2 つの数・`updated` を `None` にする。記録のフォルダ（`.mindstella/config.yaml`）が無いときは、`records` の警告を付け、`title`・未読の 2 つの数・`updated` を `None` にする。どちらも 200 で、配信元の行は消さない
+    constraint: グローバルの設定のファイルが無い・YAML として読めない・`id` の行が無いときは、`settings` の警告を付け、`status`・`title`・`closed`・未読の 2 つの数・`updated` を `None` にする。記録のフォルダ（`.mindstella/config.yaml`）が無いときは、`records` の警告を付け、`title`・未読の 2 つの数・`updated` を `None` にする。スレッド（`threads.yaml`）・変更履歴（`history.yaml`）が読めないときは、`records` の警告（`detail` に理由）を付け、未読の 2 つの数・`updated` を `None` にする。いずれも 200 で、配信元の行は消さない
   - item: ワークスペースの状態
     constraint: '`closed` が真なら `closed`、偽で `close_pending` が真なら `stopped`、それ以外は `active`'
   - item: 落ちたかの判定
