@@ -58,6 +58,8 @@ TOOL_NAMES = [
     "stop_session",
     "restart_session",
     "close_workspace",
+    "reopen_workspace",
+    "delete_workspace",
     "server_status",
     "server_stop",
 ]
@@ -126,6 +128,8 @@ def test_normal(start_server: StartServer) -> None:
         "stop_session",
         "restart_session",
         "close_workspace",
+        "reopen_workspace",
+        "delete_workspace",
         "server_status",
         "server_stop",
     ]
