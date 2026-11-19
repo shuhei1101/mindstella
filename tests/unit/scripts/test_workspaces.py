@@ -684,3 +684,292 @@ def test_create_workspace_schema_reload_failed(
         workspaces.create_workspace(_request(folder), ctx)
     assert (caught.value.status, caught.value.stage) == (502, "source")
     assert (folder / ".mindstella" / "config.yaml").is_file()
+
+
+# 状態の取得のテストのワークスペースの ID
+STATUS_ID = "mindstella-家計簿-3f2a9c"
+
+# セッションの管理が返す MindStella のセッション
+RUNNING_SESSION = {
+    "id": "S-0123456789ab",
+    "status": "running",
+    "responding": False,
+    "pending_write": False,
+    "pane": f"{STATUS_ID}:0.0",
+    "last_error": None,
+}
+
+
+def _status_folder(tmp_path: Path, name: str, workspace_id: str) -> Path:
+    """題名を持つ記録のフォルダを作る。"""
+    folder = tmp_path / name
+    (folder / ".mindstella").mkdir(parents=True)
+    (folder / ".mindstella" / "config.yaml").write_text(
+        yaml.safe_dump(
+            {"id": workspace_id, "title": f"{name}の題名", "summary": name}, allow_unicode=True
+        ),
+        encoding="utf-8",
+    )
+    return folder
+
+
+def _write_rows(settings_path: Path, rows: list[tuple[str, Path, bool]]) -> None:
+    """グローバルの設定のファイルに配信元の行（ID・フォルダ・outside_read）を書く。"""
+    settings_path.write_text(
+        yaml.safe_dump(
+            {
+                "sources": [
+                    {
+                        "id": workspace_id,
+                        "config": [f"{folder}/.mindstella/dev-docs.yaml"],
+                        "outside_read": outside_read,
+                    }
+                    for workspace_id, folder, outside_read in rows
+                ]
+            },
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+
+
+def _snapshot(*roots: Path) -> dict[str, bytes]:
+    """フォルダの下の全てのファイルの中身。"""
+    return {
+        str(path): path.read_bytes()
+        for root in roots
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+@pytest.fixture
+def status_ctx(tmp_path: Path) -> SimpleNamespace:
+    """グローバルの設定のファイルの場所を持つ、入口が渡す値。"""
+    return SimpleNamespace(
+        port=8784,
+        pi_port=8786,
+        state_root=tmp_path / "state",
+        settings_file=tmp_path / "settings.yaml",
+        locks=WorkspaceLocks(),
+        previews=FakePreviews(),
+        plugin_root=tmp_path / "plugin",
+        tmux=None,
+        proc=None,
+    )
+
+
+@pytest.fixture
+def listed_sessions(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """セッションの管理の一覧の代わりに返す値（テストが close_pending を書き換える）。"""
+    body: dict[str, Any] = {"sessions": [RUNNING_SESSION], "close_pending": False}
+    monkeypatch.setattr(sessions, "list_sessions", lambda _workspace_id, _ctx: dict(body))
+    return body
+
+
+@pytest.fixture
+def status_workspace(tmp_path: Path, status_ctx: SimpleNamespace) -> Path:
+    """ID の一覧・開いている配信元の行・記録・launch.json がそろったワークスペースのフォルダ。"""
+    folder = _status_folder(tmp_path, "家計簿", STATUS_ID)
+    state.add_id(status_ctx.state_root, STATUS_ID)
+    state.write_launch(
+        status_ctx.state_root, STATUS_ID, LaunchOptions(mcp_config=None, plugin_dirs=[])
+    )
+    _write_rows(status_ctx.settings_file, [(STATUS_ID, folder, True)])
+    return folder
+
+
+def test_workspace_status(
+    status_workspace: Path,
+    status_ctx: SimpleNamespace,
+    listed_sessions: dict[str, Any],
+    tmp_path: Path,
+) -> None:
+    """ワークスペースとセッションの状態をまとめて書き換えない（正常系）。"""
+    # 準備
+    before = _snapshot(tmp_path)
+    # 実行
+    body = workspaces.workspace_status(STATUS_ID, status_ctx)
+    # 検証
+    assert body["id"] == STATUS_ID
+    assert body["status"] == "active"
+    assert body["closed"] is False
+    assert body["title"] == "家計簿の題名"
+    assert body["url"] == PREVIEW_URL
+    assert body["sessions"] == [RUNNING_SESSION]
+    assert body["close_pending"] is False
+    assert body["launch_options_recorded"] is True
+    assert body["warnings"] == []
+    assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    ("outside_read", "close_pending", "expected"),
+    [
+        pytest.param(False, False, "closed", id="closed"),
+        pytest.param(True, True, "stopped", id="stopped"),
+        pytest.param(True, False, "active", id="active"),
+    ],
+)
+def test_workspace_status_by_state(
+    outside_read: bool,
+    close_pending: bool,
+    expected: str,
+    status_workspace: Path,
+    status_ctx: SimpleNamespace,
+    listed_sessions: dict[str, Any],
+) -> None:
+    """closed と close_pending からワークスペースの状態を決める（正常系）。"""
+    # 準備
+    _write_rows(status_ctx.settings_file, [(STATUS_ID, status_workspace, outside_read)])
+    listed_sessions["close_pending"] = close_pending
+    # 実行
+    body = workspaces.workspace_status(STATUS_ID, status_ctx)
+    # 検証
+    assert body["status"] == expected
+
+
+def test_workspace_status_without_launch(
+    status_workspace: Path, status_ctx: SimpleNamespace, listed_sessions: dict[str, Any]
+) -> None:
+    """launch.json が無ければ偽で、中身を返さない（正常系）。"""
+    # 準備
+    state.delete_launch(status_ctx.state_root, STATUS_ID)
+    # 実行
+    body = workspaces.workspace_status(STATUS_ID, status_ctx)
+    # 検証
+    assert body["launch_options_recorded"] is False
+    assert "mcp_config" not in body
+    assert "plugin_dirs" not in body
+    assert state.read_launch(status_ctx.state_root, STATUS_ID) is None
+
+
+def _break_records(folder: Path, settings_file: Path, case: str) -> None:
+    """記録・グローバルの設定のファイル・変更履歴のどれかを参照できなくする。"""
+    if case == "records-missing":
+        shutil.rmtree(folder / ".mindstella")
+    elif case == "settings-broken":
+        settings_file.write_text("sources: [", encoding="utf-8")
+    else:
+        (folder / ".mindstella" / "history.yaml").write_text("items: []\n", encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("case", "stage", "detail_part", "expected"),
+    [
+        pytest.param(
+            "records-missing",
+            "records",
+            "家計簿",
+            {"status": "active", "closed": False, "unseen_ai_posts": None, "updated": None},
+            id="records-missing",
+        ),
+        pytest.param(
+            "settings-broken",
+            "settings",
+            "settings.yaml",
+            {"status": None, "closed": None, "unseen_ai_posts": None, "updated": None},
+            id="settings-broken",
+        ),
+        pytest.param(
+            "history-mismatch",
+            "records",
+            "history.yaml",
+            {"status": "active", "closed": False, "unseen_ai_posts": None, "updated": None},
+            id="history-mismatch",
+        ),
+    ],
+)
+def test_workspace_status_warnings(
+    case: str,
+    stage: str,
+    detail_part: str,
+    expected: dict[str, Any],
+    status_workspace: Path,
+    status_ctx: SimpleNamespace,
+    listed_sessions: dict[str, Any],
+) -> None:
+    """記録か設定を参照できなければ警告を付ける（異常系）。"""
+    # 準備
+    _break_records(status_workspace, status_ctx.settings_file, case)
+    # 実行
+    body = workspaces.workspace_status(STATUS_ID, status_ctx)
+    # 検証
+    assert [warning["stage"] for warning in body["warnings"]] == [stage]
+    assert detail_part in body["warnings"][0]["detail"]
+    assert {key: body[key] for key in expected} == expected
+    assert body["awaiting_user_posts"] is None
+    assert body["sessions"] == [RUNNING_SESSION]
+
+
+def test_workspace_status_unknown(status_ctx: SimpleNamespace) -> None:
+    """ID の一覧に無ければ 404（異常系）。"""
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.workspace_status("mindstella-無い-000000", status_ctx)
+    assert (caught.value.status, caught.value.stage) == (404, "workspace")
+
+
+@pytest.fixture
+def listed_workspaces(tmp_path: Path, status_ctx: SimpleNamespace) -> None:
+    """ID の一覧に 4 つ（開いている 2 つ・クローズ済み 1 つ・配信元の行が無い 1 つ）を書く。"""
+    folders = {
+        name: _status_folder(tmp_path, name, f"mindstella-{name}-000000")
+        for name in ("a", "b", "c", "d")
+    }
+    for name in ("a", "b", "c", "d"):
+        state.add_id(status_ctx.state_root, f"mindstella-{name}-000000")
+    _write_rows(
+        status_ctx.settings_file,
+        [
+            ("mindstella-a-000000", folders["a"], True),
+            ("mindstella-b-000000", folders["b"], False),
+            ("mindstella-c-000000", folders["c"], True),
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    ("include_closed", "expected"),
+    [
+        pytest.param(
+            False,
+            [("mindstella-a-000000", False), ("mindstella-c-000000", False)],
+            id="open-only",
+        ),
+        pytest.param(
+            True,
+            [
+                ("mindstella-a-000000", False),
+                ("mindstella-b-000000", True),
+                ("mindstella-c-000000", False),
+            ],
+            id="include-closed",
+        ),
+    ],
+)
+def test_list_workspaces(
+    include_closed: bool,
+    expected: list[tuple[str, bool]],
+    listed_workspaces: None,
+    status_ctx: SimpleNamespace,
+) -> None:
+    """クローズ済みを除くか含める（正常系）。"""
+    # 実行
+    body = workspaces.list_workspaces(include_closed, status_ctx)
+    # 検証
+    assert [(entry["id"], entry["closed"]) for entry in body["workspaces"]] == expected
+    assert body["workspaces"][0]["title"] == "aの題名"
+    assert body["workspaces"][0]["url"] == PREVIEW_URL
+    assert body["warnings"] == []
+
+
+def test_list_workspaces_settings_unreadable(status_ctx: SimpleNamespace) -> None:
+    """設定を参照できなければ空と警告（異常系）。"""
+    # 準備
+    state.add_id(status_ctx.state_root, STATUS_ID)
+    # 実行
+    body = workspaces.list_workspaces(False, status_ctx)
+    # 検証
+    assert body["workspaces"] == []
+    assert [warning["stage"] for warning in body["warnings"]] == ["settings"]
