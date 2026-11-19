@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
       - name: make_workspace
-        description: 7 つの種類を 1 件ずつ持ち、検討事項 D-1 が本文 `docs/D-1.md` を持つワークスペース
+        description: 7 つの種類を 1 件ずつ持ち、検討事項 D-1 が本文 `docs/D-1.mark.md` を持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -25,7 +25,7 @@ flows:
     expected:
       - ステータスが 200
       - '`settings` と 7 つの種類の項目が YAML と同じ'
-      - '`bodies` に `D-1.md` の本文がある'
+      - '`bodies` に `D-1.mark.md` の本文がある'
       - '`derived.ready` が、前提が全て決着した未決定の検討事項の ID を持ち、`derived` が `next`・`goal`・`progress` を持たない'
     test: test_normal
   - name: 正常系（書き換えた後）
@@ -145,7 +145,7 @@ flows:
       ```
     expected:
       - ステータスが 200
-      - '`bodies` の `A-1.md`・`A-2.html` がそれぞれのファイルの中身と同じ'
+      - '`bodies` の `A-1.mark.md`・`A-2.html` がそれぞれのファイルの中身と同じ'
       - '`marked_bodies` が `A-2.html` だけを持ち、`<p` の直後に ` data-line="4" data-line-end="4"` がある'
       - '`marked_bodies` の `A-2.html` の `<style>` に行の印が無く、` data-line="{数}"`・` data-line-end="{数}"` を取り除くと `bodies` の `A-2.html` と同じ'
     test: test_normal_when_html_body
@@ -194,7 +194,7 @@ response:
     description: 種類ごとの YAML の `items` の中身に、`history.yaml` のその項目の行のキー（`created`・`updated`・`updated_by`・`seq`・`added_seq`・`history`・`history_dropped_seq`）を足したもの（キー名はファイル名から `.yaml` を落としたもの）。行が無い項目はキーを足さない
   - name: bodies
     type: dict[str, str]
-    description: '`docs/` のファイル名 → 本文の原文（項目の `body` が指すものだけ。キーは `body` の値（Markdown は `docs/{ID}.md`、HTML は `docs/{ID}.html`）で、どちらも書いたまま）。画面はキーの拡張子で形式を決め、差分・検索・前の版の組み立てには原文を使う'
+    description: '`docs/` のファイル名 → 本文の原文（項目の `body` が指すものだけ。キーは `body` の値（Markdown は `docs/{ID}.mark.md`、HTML は `docs/{ID}.html`）で、どちらも書いたまま）。画面はキーの拡張子で形式を決め、差分・検索・前の版の組み立てには原文を使う'
   - name: built_at
     type: str
     description: 読んだ日時（UTC のタイムゾーン付き ISO 8601）。画面はつながらないときに「{日時} に読んだ記録」と出す

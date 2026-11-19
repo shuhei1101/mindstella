@@ -33,7 +33,7 @@ flows:
     expected:
       - ツールのエラーにならない
       - '`path` が `配る.html` の絶対パス'
-      - '`配る.html` の `mindmap-data` の中身を JSON として読むと、`settings` と 7 つの種類の項目が YAML と同じで、`bodies` に `A-1.md` の本文、`changes` に書き換えのまとまりがある'
+      - '`配る.html` の `mindmap-data` の中身を JSON として読むと、`settings` と 7 つの種類の項目が YAML と同じで、`bodies` に `A-1.mark.md` の本文、`changes` に書き換えのまとまりがある'
       - '`配る.html` の `script`・`link`・`img` に `src`・`href` を持つものが無く、import map も無い'
       - '`配る.html` の中の `</script>` の数が、雛形の数に、mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示の要素の 6 つを足した数（本文の `</script>` で要素が閉じていない）'
       - '`mindmap-mdmark` と部品（`mindmap-mdmark-map`・`mindmap-mdmark-view`・`mindmap-mdmark-comments`）の要素が中身を持ち、`mindmap-mdmark-config` の中身が `{"map": {}}`'
