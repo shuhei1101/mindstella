@@ -1,0 +1,6 @@
+# 結合テスト（レビューの指摘で足したテストのファイル）
+# commit: 9b78cd0e
+# /tmp/pytest-of-shuhei2441 が root の所有のため、TMPDIR だけを /tmp/pr613/tmp に替えて実行した
+$ TMPDIR=/tmp/pr613/tmp python3 -m pytest tests/integration/preview/test_review_screen.py
+..........................................................               [100%]
+58 passed in 124.10s (0:02:04)
