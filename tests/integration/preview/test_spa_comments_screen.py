@@ -285,7 +285,9 @@ def test_target_filter(page: Page, spa_comments_preview: tuple[str, Path]) -> No
     # 検証
     expect(_rows(page)).to_have_count(4)
     assert "ttarget=" not in page.url
-    # 実行（もう一度絞ってから一覧を閉じ、トップバーで開き直す）
+    # 実行（一覧を閉じてからもう一度絞り、閉じてトップバーで開き直す）
+    _panel(page).get_by_role("button", name="コメントの一覧を閉じる").click()
+    expect(_panel(page)).to_have_count(0)
     detail.get_by_role("button", name="D-1 のコメントの一覧を開く").click()
     page.wait_for_url("**ttarget=D-1**")
     _panel(page).get_by_role("button", name="コメントの一覧を閉じる").click()

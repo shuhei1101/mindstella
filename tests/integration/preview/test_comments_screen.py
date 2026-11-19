@@ -988,7 +988,9 @@ def test_target_filter(served_threads: tuple[str, Path], open_preview: OpenPrevi
     # 検証
     assert page.locator(TARGET_CHIP).count() == 0
     assert page.locator(THREAD_ROWS).count() == 4
-    # 実行（もう一度絞ってから一覧を閉じ、トップバーで開き直す）
+    # 実行（一覧を閉じてからもう一度絞り、閉じてトップバーで開き直す）
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open", state="detached")
     page.click(ITEM_COMMENTS_BUTTON)
     page.wait_for_selector(TARGET_CHIP)
     page.click(COMMENTS_BUTTON)
