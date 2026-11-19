@@ -1,0 +1,29 @@
+$ python3 -m pytest tests/integration/storybook/test_send_form_stories.py tests/integration/storybook/test_reply_form_stories.py tests/integration/storybook_react/test_send_form_stories.py tests/integration/storybook_react/test_reply_form_stories.py --basetemp=/tmp/chk607/pti
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-wave-bar-fixed-width
+configfile: pytest.ini
+plugins: xdist-3.8.0, base-url-2.1.0, anyio-4.14.1, asyncio-1.4.0, playwright-0.9.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 102 items
+
+tests/integration/storybook/test_send_form_stories.py .................. [ 17%]
+..............                                                           [ 31%]
+tests/integration/storybook/test_reply_form_stories.py ................. [ 48%]
+..                                                                       [ 50%]
+tests/integration/storybook_react/test_send_form_stories.py ............ [ 61%]
+....................                                                     [ 81%]
+tests/integration/storybook_react/test_reply_form_stories.py ........... [ 92%]
+........                                                                 [100%]
+
+============================= 102 passed in 55.35s =============================
+exit=0
+
+# 不具合を捕まえるかの確認（修正前の CSS で回した。commit はしていない）
+# style.css を origin/develop の版に戻して storybook build し直し、今の画面の RecordingNarrow のテストを回した
+$ python3 -m pytest tests/integration/storybook/test_send_form_stories.py tests/integration/storybook/test_reply_form_stories.py -k recording_narrow
+E       AssertionError: [2, 2, 2, 2, 2, 2, ...]
+tests/integration/storybook/test_send_form_stories.py:420: AssertionError
+E       AssertionError: [2, 2, 2, 2, 2, 2, ...]
+tests/integration/storybook/test_reply_form_stories.py:233: AssertionError
+2 failed, 49 deselected in 1.84s

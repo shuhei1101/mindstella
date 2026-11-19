@@ -1,0 +1,14 @@
+$ python3 -m pytest tests/unit --basetemp=/tmp/chk607/pt && npx vitest run
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2517 passed, 1 skipped, 5 warnings in 392.40s (0:06:32)
+pytest_exit=0
+ Test Files  84 passed (84)
+      Tests  316 passed (316)
+   Duration  18.95s (environment 44%, tests 26%, import 15%, setup 8%, transform 7%)
+vitest_exit=0
