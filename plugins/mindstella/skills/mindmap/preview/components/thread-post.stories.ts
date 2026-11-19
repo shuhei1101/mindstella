@@ -134,7 +134,7 @@ export const Pending: Story = { args: { pending: PENDING } };
 export const PendingEditing: Story = { args: { pending: PENDING, editing: true } };
 
 /** 修正の入力で書き換えているレビュー中の返信（部品設計の修正の入力の音声入力の状態） */
-const EDITING_PENDING = { id: "C-43", thread: "TH-1", target: null, loc: null, body: "確認: でよい", created: "2026-10-12T05:14:00+00:00" };
+const EDITING_PENDING = { id: "C-43", thread: "TH-1", target: null, target_title: null, loc: null, body: "確認: でよい", created: "2026-10-12T05:14:00+00:00" };
 
 /** 修正の入力で録音中。入力欄を波形に替え、「キャンセル」「修正」の位置に × と ✓、下に経過の時間 */
 export const PendingEditingRecording: Story = { args: { pending: EDITING_PENDING, editing: true, voice: "recording", elapsed: 12, levels: [0.25, 0.4, 0.7, 0.55, 0.9, 0.6, 0.35, 0.8, 1, 0.65] } };
@@ -143,7 +143,7 @@ export const PendingEditingRecording: Story = { args: { pending: EDITING_PENDING
 export const PendingEditingTranscribing: Story = { args: { pending: EDITING_PENDING, editing: true, voice: "transcribing" } };
 
 /** 修正の入力へ文字起こしの結果を挿入した。修正は「修正」を押して確定する */
-export const PendingEditingInserted: Story = { args: { pending: EDITING_PENDING, editing: true, editBody: "確認: 案 A にするでよい", voiceStatus: "inserted" } };
+export const PendingEditingInserted: Story = { args: { pending: EDITING_PENDING, editing: true, editBody: "確認: 案 A にするでよい", voice: "idle", voiceStatus: "inserted" } };
 
 /** 修正の入力のマイクを押せない（ほかの入力欄で録音中）。押すと理由のツールチップ */
 export const PendingEditingVoiceDisabled: Story = { args: { pending: EDITING_PENDING, editing: true, voice: "disabled", voiceReason: "ほかの入力欄で音声入力中のため、音声で入力できません。" } };

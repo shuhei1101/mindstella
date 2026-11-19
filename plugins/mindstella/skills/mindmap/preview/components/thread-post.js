@@ -147,13 +147,13 @@ var MindmapPreview;
         });
     }
     /** スレッドの書き込み・状態の記録・レビュー中の書き込みのどれか 1 つの `li` を返す */
-    function threadPost({ post = null, event = null, pending = null, titles = () => null, changeSets = () => null, editing = false, editBody = null, editError = null, open = false, voice = "idle", voiceReason = null, elapsed = 0, levels = [], voiceStatus = "idle", voiceDetail = null, on, }) {
+    function threadPost({ post = null, event = null, pending = null, titles = () => null, changeSets = () => null, editing = false, editBody = null, editError = null, open = false, voice, voiceReason = null, elapsed = 0, levels = [], voiceStatus = "idle", voiceDetail = null, on, }) {
         // 状態の記録
         if (event !== null)
             return eventItem(event);
         // レビュー中の書き込み
         if (pending !== null) {
-            const editVoice = { voice, voiceReason, elapsed, levels, voiceStatus, voiceDetail };
+            const editVoice = voice === undefined ? null : { voice, voiceReason, elapsed, levels, voiceStatus, voiceDetail };
             return pendingItem({ item: pending, titles, changeSets, editing, editBody, editError, voice: editVoice, open, on });
         }
         // 書き込みが無い（渡し方の誤り）

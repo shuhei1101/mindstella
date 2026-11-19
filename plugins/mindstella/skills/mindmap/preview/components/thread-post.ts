@@ -18,7 +18,7 @@ namespace MindmapPreview {
     editBody?: string | null;
     /** 直せなかった理由 */
     editError?: string | null;
-    /** 修正の入力の音声入力の結果（挿入した・失敗した） */
+    /** 修正の入力の音声入力の結果（挿入した・失敗した）。`voice` を渡さないときはマイクのボタンを置かない */
     voiceStatus?: "idle" | "inserted" | "voice-failed";
     voiceDetail?: string | null;
     on: {
@@ -251,7 +251,7 @@ namespace MindmapPreview {
     editBody = null,
     editError = null,
     open = false,
-    voice = "idle",
+    voice,
     voiceReason = null,
     elapsed = 0,
     levels = [],
@@ -263,7 +263,7 @@ namespace MindmapPreview {
     if (event !== null) return eventItem(event);
     // レビュー中の書き込み
     if (pending !== null) {
-      const editVoice = { voice, voiceReason, elapsed, levels, voiceStatus, voiceDetail };
+      const editVoice = voice === undefined ? null : { voice, voiceReason, elapsed, levels, voiceStatus, voiceDetail };
       return pendingItem({ item: pending, titles, changeSets, editing, editBody, editError, voice: editVoice, open, on });
     }
     // 書き込みが無い（渡し方の誤り）
