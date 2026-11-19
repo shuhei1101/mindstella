@@ -926,13 +926,19 @@ functions:
         required: true
         passing: injected
         description: スレッドの取得（`threadApi().read`）
+      - name: fetchComments
+        type: '() => Promise<{ok: true, items: ReviewItem[]} | {ok: false}>'
+        required: true
+        passing: injected
+        description: レビュー中のコメントの取得（『レビュー中のコメントの読み取り』）。行き先が `review` のときだけ読む
     returns:
       type: Promise<string | null>
       description: 行き先が無くなっていればその ID。行き先が無い・新しいスレッド・あった・読めなかったときは null
     process: |-
       1. `destination` が null か新しいスレッドなら null を返す
-      2. `fetchRecords` と `fetchThreads` を読む。どちらかが読めなければ null を返す
-      3. 行き先がスレッドなら読んだスレッドの ID に、項目なら読んだ記録の項目の ID（`buildIndex`）にあるかを確かめ、無ければ行き先の ID を、あれば null を返す
+      2. 行き先がレビュー中の書き込みの修正（`review`）なら `fetchComments` を読み、読めなければ null、読んだレビュー中のコメントにその ID が無ければその ID、あれば null を返す
+      3. それ以外は `fetchRecords` と `fetchThreads` を読む。どちらかが読めなければ null を返す
+      4. 行き先がスレッドなら読んだスレッドの ID に、項目なら読んだ記録の項目の ID（`buildIndex`）にあるかを確かめ、無ければ行き先の ID を、あれば null を返す
     unit_tests:
       - name: test_check_voice_destination
         case: 正常
@@ -952,6 +958,12 @@ functions:
         condition: '`destination` が `{target: D-1, loc: null}`、`fetchRecords` が `{ok: false}`'
         mock: '`fetchRecords`・`fetchThreads`'
         expected: 'null'
+      - name: test_check_voice_destination_when_review
+        case: 正常
+        summary: 修正の入力の行き先をレビュー中のコメントで確かめる
+        condition: '`destination` が `{review: C-1, view: thread}`。`parametrize`: `fetchComments` が C-1 を含む / C-1 を含まない / `{ok: false}`'
+        mock: '`fetchRecords`・`fetchThreads`・`fetchComments`'
+        expected: null / `C-1` / null
   - name: focusAfterAddTarget
     title: 「レビューに追加」の後のフォーカスの移動先
     kind: 関数
@@ -1005,4 +1017,4 @@ notes:
     - 項目を開く（本文の中の ID・スレッドの向けた項目・レビュー中の行の向けた項目）では、パネルを開いたまま詳細パネルを開く。スレッドの向けた項目とレビュー中の行は `highlight` にその箇所を渡す
     - Esc は、幅 901px 以上か `StackState.front` が `detail` で詳細パネルを開いていれば、詳細パネルを閉じる。それ以外で入力欄にフォーカスがあるとき（`isTyping`）は何もしない（入力欄が自分で外れる）。それ以外は `view` が `thread`・`review` なら「戻る」と同じ、`list` ならパネルを閉じる
     - パネルを閉じるときは、パネルの中のスクロールの位置を `listScroll` に控え、新しいスレッドと返信の書きかけを待たずに保ち、`removed` と `editingIn` が `'list'` の書き換えを捨てる（「詳細パネルのレビュー中のコメントの操作」と同じ）
-  修正の入力の音声入力: "`VoiceDestination` にレビュー中の書き込みの修正 `{review: ID, view: 'review' | 'thread' | 'panel' | 'full'}` を足す。修正の入力の `key` は `review:{ID}` で、`voiceHandlers` には `comment.edit` の書き換えていた中身を入力欄の状態として渡す。`destinationOf` が `review` を返すとき、`finishVoice` の `action` を設定によらず `insert` にする。入力欄が画面に無い間に終わった結果は、書きかけ（`saveDraft`）へ送らず `comment.edit` の書き換えていた中身へ入れ、`editing` をその ID、`editingIn` を録音を始めた画面にしたまま残す。`checkVoiceDestination` は `review` の向けた先をレビュー中のコメント（`review.items`）で確かめ、無ければ録音と結果を捨てて知らせる。`openVoiceInput` は `review` の向けた先の画面（コメントの一覧のレビュー中・スレッド・詳細パネル・詳細の全画面）を開き、その書き込みを修正の入力のまま描く。修正の入力の「修正」の「キャンセル」で書き換えを捨てるときは、録音を捨てる（`abandonVoice`）。画面からの削除（`removeComment`）とまとめて送る（`sendChecked`）の応答が成功した時点で、その ID の `review:{ID}` が録音・文字起こし中なら `abandonVoice` して知らせを discarded にし、`comment.edit` に取っておいたその ID の結果も捨てる（記録の読み直しを待たない。「元に戻す」で戻しても結果を入れない）。単体テストに `test_check_voice_destination_when_review` と、読み直しを挟まない削除・送信で録音を捨てる `test_remove_comment_when_review_voice`・`test_send_checked_when_review_voice` を足す"
+  修正の入力の音声入力: "`VoiceDestination` にレビュー中の書き込みの修正 `{review: ID, view: 'review' | 'thread' | 'panel' | 'full'}` を足す。修正の入力の `key` は `review:{ID}` で、`voiceHandlers` には `comment.edit` の書き換えていた中身を入力欄の状態として渡す。`destinationOf` が `review` を返すとき、`finishVoice` の `action` を設定によらず `insert` にする。入力欄が画面に無い間に終わった結果は、書きかけ（`saveDraft`）へ送らず `comment.edit` の書き換えていた中身へ入れ、`editing` をその ID、`editingIn` を録音を始めた画面にしたまま残す。`checkVoiceDestination` は `review` の向けた先をレビュー中のコメント（`review.items`）で確かめ、無ければ録音と結果を捨てて知らせる。`openVoiceInput` は `review` の向けた先の画面（コメントの一覧のレビュー中・スレッド・詳細パネル・詳細の全画面）を開き、その書き込みを修正の入力のまま描く。修正の入力の「修正」の「キャンセル」で書き換えを捨てるときは、録音を捨てる（`abandonVoice`）。画面からの削除（`removeComment`）とまとめて送る（`sendChecked`）の応答が成功した時点で、その ID の `review:{ID}` が録音・文字起こし中なら `abandonVoice` して知らせを discarded にし、`comment.edit` に取っておいたその ID の結果も捨てる（記録の読み直しを待たない。「元に戻す」で戻しても結果を入れない）。`removeComment`・`sendChecked` は `start` の中の処理で単体テストを置かず、読み直しを挟まない削除・送信で録音を捨てることは、結合テスト（単一ユースケース『音声でコメントする』の `異常シナリオ（修正の入力で録音中にその書き込みを削除・送信する）` を今の画面で開く流れ）で確かめる"
