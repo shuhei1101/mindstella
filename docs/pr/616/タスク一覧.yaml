@@ -44,10 +44,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T10:08:34.390207+00:00'
   - process: データ設計
-    status: todo
+    status: done
     note: 設定『サーバー』（CFG-489-1）に claude-balancer の待ち受けを読む指定を足すかを決める。足さなければ skipped にする
     updated_by: planner
-    updated_at: '2026-11-19T12:06:46.162904+00:00'
+    updated_at: '2026-11-19T12:16:08.269848+00:00'
   - process: インターフェース定義設計
     status: todo
   - process: 部品設計
