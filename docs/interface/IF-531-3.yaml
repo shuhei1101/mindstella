@@ -51,7 +51,7 @@ constraints:
     constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 落ちたかの判定
-    constraint: '`session.json` の `pane` が tmux の `display-message -p -t {ペイン} ''#{pane_pid}''` で引けない、または `pid` のプロセスが無いか起動時刻が違う（『セッションの値の注入』の `claude_started_at` と同じ見分け方）'
+    constraint: '`status` が `running` のときだけ判定し、ペインかプロセスが無ければ `crashed` を返す（`stopping`・`restarting` は停止・起動し直しの処理に任せ、そのまま返す）。落ちたとするのは、`session.json` の `pane` が tmux の `display-message -p -t {ペイン} ''#{pane_pid}''` で引けない、または `pid` のプロセスが無いか起動時刻が違うとき（『セッションの値の注入』の `claude_started_at` と同じ見分け方）'
   - item: MCP のツール
     constraint: '`sessions` は `workspace_id` を受け、同じ処理を呼ぶ'
   - item: 停止の通知
