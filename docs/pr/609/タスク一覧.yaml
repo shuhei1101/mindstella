@@ -40,8 +40,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T07:48:24.275461+00:00'
   - process: モック作成
-    status: todo
+    status: done
     note: コメントの一覧の項目の絞り込みのチップと、詳細パネルの見出しのコメントの一覧のボタン
+    updated_by: planner
+    updated_at: '2026-11-19T08:12:22.311352+00:00'
   - process: データ設計
     status: skipped
     reason: スレッドは向けた項目を既に持ち、データの構造は変わらない

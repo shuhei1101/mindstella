@@ -5,3 +5,15 @@ confirmations:
     approver: shuhei1101
     commit: 974d08b0
     thread: https://github.com/shuhei1101/mindstella/pull/609#discussion_r4625697646
+  - topic: 詳細パネルの見出しの、コメントの一覧のボタンの見た目
+    decision: コメントのアイコンだけのボタンを、編集する・エクスポートと前後の移動の間に置く（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: '91e49668'
+    thread: https://github.com/shuhei1101/mindstella/pull/609#discussion_r4625942397
+  - topic: 項目で絞ったコメントの一覧のモック
+    decision: モックのとおり進める。項目のチップは ID・タイトル・× だけで、件数は状態の絞り込みが出す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: '91e49668'
+    thread: https://github.com/shuhei1101/mindstella/pull/609#discussion_r4625943994
