@@ -37,7 +37,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）。`init` を外し、`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` を足す
-    value: ("next_id", "update_settings", "adopt", "edit_option", "changes_since_read", "commit", "pending", "check", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "workspaces", "workspace", "create_workspace", "create_session", "sessions", "stop_session", "restart_session", "close_workspace", "reopen_workspace", "delete_workspace", "server_status", "server_stop")
+    value: ("next_id", "update_settings", "adopt", "edit_option", "changes_since_read", "commit", "pending", "check", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "workspaces", "workspace", "create_workspace", "create_session", "sessions", "stop_session", "restart_session", "close_workspace", "reopen_workspace", "delete_workspace", "update_workspace", "server_status", "server_stop")
   - name: DEFAULT_PORT
     title: 既定の待ち受けのポート
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -347,7 +347,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     scope: public
-    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る。`workspaces`（`include_closed`）・`workspace`（`workspace_id`）・`create_workspace`・`create_session`・`sessions`・`stop_session`・`restart_session`・`close_workspace`・`reopen_workspace`・`delete_workspace` は `ServerContext` を受け、ワークスペースの管理・セッションの管理の同じ関数を呼ぶ'
+    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る。`workspaces`（`include_closed`）・`workspace`（`workspace_id`）・`create_workspace`・`create_session`・`sessions`・`stop_session`・`restart_session`・`close_workspace`・`reopen_workspace`・`delete_workspace`・`update_workspace`（`workspace_id`・`settings`・`flow`・`mcp_config`・`plugin_dirs`。指定した引数だけを本文にして渡し、`flow` は未指定と `null` を区別する）は `ServerContext` を受け、ワークスペースの管理・セッションの管理の同じ関数を呼ぶ'
     args:
       - name: previews
         type: PreviewRegistry
@@ -432,7 +432,7 @@ functions:
         summary: MindStella の API と同じ操作のツールがあり、init が無い
         condition: '`build_server` の結果のツールの一覧'
         mock: なし
-        expected: '`workspaces`・`workspace`・`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`・`reopen_workspace`・`delete_workspace` があり、`init` が無い'
+        expected: '`workspaces`・`workspace`・`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`・`reopen_workspace`・`delete_workspace`・`update_workspace` があり、`init` が無い'
       - name: test_build_server_when_marking_tool
         case: 正常
         summary: MindStella のセッションの reply が成功したら書き込みのマーカーを付ける

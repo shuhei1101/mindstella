@@ -675,6 +675,119 @@ functions:
         condition: '`delete_workspace_state` が `OSError`'
         mock: 同上・`caplog`
         expected: '`ApiError`（500・`stage: state`）、`ids` の行が残り、`caplog` に `mindstella.workspace.delete_failed`'
+  - name: update_workspace
+    title: ワークスペースの設定を書き換える
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+    usecase: ワークスペースの設定を書き換えて起動し直す
+    scope: public
+    summary: 指定した設定のキー・進め方の文書を `config.yaml` に、追加の MCP・プラグインを `launch.json` に書き換える。全ての指定を確かめてから書き、起動中の MindStella のセッションには何もしない
+    side_effects: '`.mindstella/config.yaml` と状態のフォルダの `workspaces/{id}/launch.json` を書く'
+    args:
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: request
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文（`settings`・`flow`・`mcp_config`・`plugin_dirs` のうち指定したキー）
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ・project-index のポート・鍵・プロセスの中の書き込みの鍵
+    returns:
+      type: dict
+      description: '`{id, changed}`。`changed` は値が変わった設定のキーと `flow`・`mcp_config`・`plugin_dirs`'
+    exceptions:
+      - name: ApiError
+        condition: '400（`stage: body`）・404（`stage: workspace`）・409（`stage: records`）・422（`stage: mcp_config`・`plugin_dirs`・`settings`・`flow`）・500（`stage: write`）・502（`stage: source`）'
+    process: |-
+      1. 本文のキーを確かめる（`settings`・`flow`・`mcp_config`・`plugin_dirs` のどれも無い・ほかのキーがある・`settings` が空かオブジェクトでない・`flow` が `null` でも `source`・`doc` の文字列を持つオブジェクトでもない・`mcp_config` がオブジェクトでない・`plugin_dirs` が文字列の並びでないときは `ApiError`（400、`stage: body`））
+      2. `ctx.locks.for_workspace` を取る
+      3. 鍵を取った後に `state.read_ids` に無ければ `ApiError`（404、`stage: workspace`）
+      4. `find_workspace_row` で配信元の行を引く（`ProjectIndexError` は 502、`stage: source`。行が無ければ 404、`stage: workspace`）。`workspace_folder` でフォルダを引き、`.mindstella/config.yaml` が無ければ 409（`stage: records`）
+      5. `state.read_launch` で今の記録を読み、指定した `mcp_config`・`plugin_dirs` を重ねて（記録が無ければ指定しなかった方を `{"mcpServers": {}}`・`[]`）`validate_options` で確かめる（422、`stage: mcp_config`・`plugin_dirs`）
+      6. `workspace_lock`（フォルダと `ctx.write_lock`）を取り、`store.load_workspace` で読んだ設定に `settings_update.stage_settings` で `settings` を当てる（`MindmapError` は 422、`stage: settings`、`detail` はエラーの本文）。`flow` を指定したときは、オブジェクトなら `check_flow` で確かめて置き換え、`null` なら確かめずにキーを外す（422、`stage: flow`。502、`stage: source`）
+      7. 設定が変わるときだけ `settings_update.save_settings` で `config.yaml` を書く（`MindmapError` は 422、`stage: settings`。書けなければ 500、`stage: write`）
+      8. `mcp_config`・`plugin_dirs` を指定したときだけ `state.write_launch` で書く。`OSError` のときは、手順 7 で書いていれば読んだときの設定で `save_settings` を呼んで戻し、`logger.exception` で `mindstella.workspace.update_failed` を書いて 500（`stage: write`）
+      9. 鍵を放し、`logger.info` で `mindstella.workspace.updated`（`workspace_id`・`changed`）を書く
+    unit_tests:
+      - name: test_update_workspace
+        case: 正常
+        summary: 4 つの指定を書き換え、変わったキーを返す
+        condition: '`settings.summary`・`flow`・`mcp_config`・`plugin_dirs` を今と別の値で渡す'
+        mock: '`project_index.get_settings`・`check_flow`'
+        expected: '`{id, changed: [summary, flow, mcp_config, plugin_dirs]}`、`config.yaml` と `launch.json` が渡した値'
+      - name: test_update_workspace_keeps_other_launch_key
+        case: 正常
+        summary: プラグインだけを渡すと、追加の MCP の記録を残す
+        condition: '`launch.json` があり、`plugin_dirs` だけを渡す'
+        mock: '`project_index.get_settings`'
+        expected: '`changed` が `plugin_dirs` だけで、`launch.json` の `mcp_config` が呼ぶ前と同じ、`config.yaml` を書かない'
+      - name: test_update_workspace_launch_record_missing
+        case: 正常
+        summary: '`launch.json` が無ければ、指定しなかった方を空にして作る'
+        condition: '`launch.json` が無く、`plugin_dirs` だけを渡す'
+        mock: '`project_index.get_settings`'
+        expected: '`launch.json` の `mcp_config` が `{"mcpServers": {}}`'
+      - name: test_update_workspace_flow_removed
+        case: 正常
+        summary: '`flow: null` は確かめずに `flow` を外す'
+        condition: '`flow` を持つ設定に `flow: null` を渡す'
+        mock: '`project_index.get_settings`・`check_flow`'
+        expected: '`check_flow` が呼ばれず、`config.yaml` が `flow` を持たない'
+      - name: test_update_workspace_unchanged
+        case: 正常
+        summary: 同じ値は書かず、`changed` が空
+        condition: 今と同じ `settings.summary` と `plugin_dirs` を渡す
+        mock: '`project_index.get_settings`'
+        expected: '`changed` が空で、`config.yaml`・`launch.json` の更新時刻が変わらない'
+      - name: test_update_workspace_error_when_body_invalid
+        case: 異常
+        summary: 指定が無い・知らないキー・空の `settings` は 400
+        condition: '`{}`・`{"title": "x"}`・`{"settings": {}}`・`{"flow": "x"}`'
+        mock: なし
+        expected: '`ApiError`（400・`stage: body`）で、鍵を取らず何も書かない'
+      - name: test_update_workspace_error_when_unknown
+        case: 異常
+        summary: ID の一覧に無いワークスペースは 404
+        condition: '`ids` に無い'
+        mock: '`project_index.get_settings`'
+        expected: '`ApiError`（404・`stage: workspace`）'
+      - name: test_update_workspace_error_when_records_missing
+        case: 異常
+        summary: 配信元の行のフォルダに記録が無ければ 409
+        condition: '`.mindstella/config.yaml` が無い'
+        mock: '`project_index.get_settings`'
+        expected: '`ApiError`（409・`stage: records`）'
+      - name: test_update_workspace_error_when_plugin_dir_unreadable
+        case: 異常
+        summary: 読めないプラグインのフォルダは 422 で、ほかの指定も書かない
+        condition: 読める `settings.summary` と、無いフォルダを含む `plugin_dirs`
+        mock: '`project_index.get_settings`'
+        expected: '`ApiError`（422・`stage: plugin_dirs`）で、`config.yaml`・`launch.json` が呼ぶ前と同じ'
+      - name: test_update_workspace_error_when_settings_invalid
+        case: 異常
+        summary: スキーマに合わない設定は 422
+        condition: '`settings.summary` が空の文字列'
+        mock: '`project_index.get_settings`'
+        expected: '`ApiError`（422・`stage: settings`）で、`detail` に `config.yaml: summary` で始まる行があり、何も書かない'
+      - name: test_update_workspace_error_when_flow_unreadable
+        case: 異常
+        summary: 参照できない進め方の文書は 422
+        condition: '`check_flow` が `ApiError`（422・`stage: flow`）'
+        mock: '`project_index.get_settings`・`check_flow`'
+        expected: '`ApiError`（422・`stage: flow`）で、何も書かない'
+      - name: test_update_workspace_error_when_launch_write_failed
+        case: 異常
+        summary: '`launch.json` を書けなければ `config.yaml` を戻して 500'
+        condition: '`state.write_launch` が `OSError`'
+        mock: '`project_index.get_settings`・`state.write_launch`・`caplog`'
+        expected: '`ApiError`（500・`stage: write`）、`config.yaml` が呼ぶ前と同じ、`caplog` に `mindstella.workspace.update_failed`'
 notes:
   ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`
   ログ: |
@@ -687,3 +800,5 @@ notes:
     | `mindstella.workspace.rollback_failed` | ERROR | 巻き戻しの削除が失敗した（`logger.exception`） | ワークスペースの ID・残ったパス |
     | `mindstella.workspace.closed` | INFO | `close_workspace` がクローズにした | ワークスペースの ID |
     | `mindstella.workspace.close_failed` | ERROR | `close_workspace` が 502 を返す | ワークスペースの ID・project-index のステータスと理由 |
+    | `mindstella.workspace.updated` | INFO | `update_workspace` が書き換えた | ワークスペースの ID・変わったキー |
+    | `mindstella.workspace.update_failed` | ERROR | `update_workspace` が `config.yaml` か `launch.json` を書けず 500 を返す（`logger.exception`） | ワークスペースの ID・書けなかったファイル・`config.yaml` を戻したか |

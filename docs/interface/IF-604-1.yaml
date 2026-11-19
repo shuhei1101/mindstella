@@ -69,7 +69,7 @@ status_codes:
   - code: '200'
     condition: 書き換えた（値が変わらなかったときも 200 で、`changed` が空）
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・4 つのキーのどれも無い・知らないキーがある・`flow` の形が違う・`mcp_config` がオブジェクトでない・`plugin_dirs` が文字列の並びでない
+    condition: 本文が JSON のオブジェクトでない・4 つのキーのどれも無い・`settings` が空のオブジェクト・知らないキーがある・`flow` の形が違う・`mcp_config` がオブジェクトでない・`plugin_dirs` が文字列の並びでない
     notes: 何も書かない。`stage` は `body`
   - code: '403'
     condition: '`Host`・`Origin` が受ける値でない'
@@ -325,6 +325,34 @@ flows:
       - 応答が 400 で、`stage` が `body`
       - '`config.yaml` と `launch.json` が呼ぶ前と同じ'
     test: test_error_when_body_empty
+  - name: 正常系（進め方の文書を外す）
+    summary: '`flow: null` で、進め方の文書を確かめずに `config.yaml` から外す'
+    setup:
+      - name: Mock
+        description: project-index の Mock（正常系と同じ。文書の一覧・取得の依頼を記録する）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 進め方の文書を指定して作ったワークスペース。MindStella のセッションは無い
+      - name: 入力
+        description: '`flow: null` だけを渡す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as PATCH /workspaces/{id}
+        participant PI as project-index（Mock）
+
+        クライアント->>API: PATCH（flow: null）
+        API-->>PI: GET /settings/sources
+        API->>API: config.yaml から flow を外す
+        API-->>クライアント: 200 changed
+      ```
+    expected:
+      - 応答が 200 で、`changed` が `flow`
+      - '`config.yaml` が `flow` を持たず、ほかのキーが呼ぶ前と同じ'
+      - project-index の Mock が文書の一覧・取得の依頼を受けていない
+    test: test_normal_when_flow_removed
 refs:
   - IF-531-1#
   - IF-489-55#
