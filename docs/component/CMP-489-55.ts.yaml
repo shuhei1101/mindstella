@@ -4,7 +4,7 @@ implementation: "plugins/mindstella/skills/mindmap/preview/components/reply-form
 story: "Preview/ReplyForm"
 states:
   - name: Empty
-    description: 入力欄が空。ラベル「返信」を常に見せ、「レビューに追加」を押せなくする。「レビューに追加」は入力欄の右に置くアイコンだけのボタン（吹き出し）にし、押せない間は面を沈める。結果が無い間は入力欄の下に行を取らない
+    description: 入力欄が空。ラベル「返信」を常に見せ、「レビューに追加」を押せなくする（`aria-disabled`。フォーカスは受ける）。「レビューに追加」は入力欄の右に置くアイコンだけのボタン（吹き出し）にし、押せない間は面を沈める。結果が無い間は入力欄の下に行を取らない
     args:
       - name: thread
         value: TH-2
@@ -277,6 +277,7 @@ accessibility:
   - 'マイク・× ・✓ のボタンは「レビューに追加」と同じ大きさにし、タッチが主な端末（`pointer: coarse`）では 44 x 44 CSS px にする'
   - 画面の文言に文字起こしのサービスの名前（voice-paste）を出さない
   - トップバーの音声入力中の表示から戻ったときは、録音中なら ✓ の「文字起こし」へフォーカスを移す
+  - 入力が空の間の「レビューに追加」は `aria-disabled="true"` にして押しても溜めず、`disabled` にしない（溜めた後に入力欄へ戻さないとき、空になった入力の「レビューに追加」へフォーカスを移す）
 refs:
   - CMP-489-7#
 test_file: tests/integration/storybook/test_reply_form_stories.py
