@@ -341,8 +341,8 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.md`）'
-        example: docs/D-12.md
+        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）'
+        example: docs/D-12.mark.md
       - name: sources
         title: 経緯
         type: array
@@ -389,8 +389,8 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.md`）。経緯や補足を残す'
-        example: docs/T-3.md
+        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）。経緯や補足を残す'
+        example: docs/T-3.mark.md
   - name: research.yaml
     title: 調査
     datastore: YAML
@@ -411,7 +411,7 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.md`）'
+        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）'
       - name: withdrawn
         title: 取り下げ
         type: boolean
@@ -454,8 +454,8 @@ tables:
         title: 本文
         type: string
         not_null: true
-        description: '`.mindstella/` からの本文のパス。拡張子で本文の形式を表し、Markdown は `docs/{ID}.md`、HTML は `docs/{ID}.html`。どちらか 1 つだけを指す。project-index の配信の設定の `body_file` が指す列'
-        check: '`docs/` で始まり、その後に `/`・`\` を含まず `.md` か `.html` で終わる（ほかの種類の `body` は `.md` だけ）'
+        description: '`.mindstella/` からの本文のパス。拡張子で本文の形式を表し、Markdown は `docs/{ID}.mark.md`、HTML は `docs/{ID}.html`。どちらか 1 つだけを指す。project-index の配信の設定の `body_file` が指す列'
+        check: '`docs/` で始まり、その後に `/`・`\` を含まず `.mark.md` か `.html` で終わる（ほかの種類の `body` は `.mark.md` だけ）'
         example: docs/A-3.html
       - name: withdrawn
         title: 取り下げ
@@ -499,8 +499,8 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.md`）。経緯や補足を残す'
-        example: docs/G-2.md
+        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）。経緯や補足を残す'
+        example: docs/G-2.mark.md
       - name: withdrawn
         title: 取り下げ
         type: boolean
@@ -525,8 +525,8 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.md`）。経緯や補足を残す'
-        example: docs/N-4.md
+        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）。経緯や補足を残す'
+        example: docs/N-4.mark.md
       - name: withdrawn
         title: 取り下げ
         type: boolean
@@ -553,7 +553,7 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.md`）。`related` はこの会話で更新した項目'
+        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）。`related` はこの会話で更新した項目'
       - name: withdrawn
         title: 取り下げ
         type: boolean
@@ -562,7 +562,7 @@ tables:
         title: 理由
         type: string
         description: 取り下げた理由
-  - name: docs/{ID}.md
+  - name: docs/{ID}.mark.md
     title: 本文
     datastore: Markdown
     summary: 項目の本文。メタデータは持たず、YAML の `body` から指される
@@ -875,7 +875,7 @@ tables:
       - name: (本文)
         title: 本文
         type: string
-        description: HTML の本文（文書全体でも断片でもよい）。書き込みは project-index の `write_docs`（項目の `body` が指すファイル）が行い、ファイル名は項目の ID に揃える。サーバーは中身を解釈・実行せず、画面はスクリプトを動かさない枠に描く。同じ項目の `{ID}.md` とは並んで持たない
+        description: HTML の本文（文書全体でも断片でもよい）。書き込みは project-index の `write_docs`（項目の `body` が指すファイル）が行い、ファイル名は項目の ID に揃える。サーバーは中身を解釈・実行せず、画面はスクリプトを動かさない枠に描く。同じ項目の `{ID}.mark.md` とは並んで持たない
   - name: threads.yaml
     title: スレッド
     datastore: YAML
