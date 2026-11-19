@@ -1,4 +1,4 @@
-"""ワークスペースと MindStella のセッションの作成・一覧・停止・クローズと、フックの出来事の受け取りの HTTP の経路。"""
+"""ワークスペースの作成・一覧・状態の取得・クローズと、MindStella のセッションの作成・一覧・停止、フックの出来事の受け取りの HTTP の経路。"""
 
 from __future__ import annotations
 
@@ -28,6 +28,9 @@ LOCAL_HOSTS = ("127.0.0.1", "localhost")
 # DELETE の force を真とみなす値
 TRUE_VALUES = ("1", "true", "yes")
 
+# GET /workspaces の include_closed が受ける値と、その真偽
+INCLUDE_CLOSED_VALUES = {"true": True, "false": False}
+
 
 def build_routes(ctx: Any) -> list[Route]:
     """MindStella の API の経路を返す。"""
@@ -37,6 +40,24 @@ def build_routes(ctx: Any) -> list[Route]:
         body = await _json_body(request, required=True)
         status, result = await run_in_threadpool(workspaces.create_workspace, body, ctx)
         return JSONResponse(result, status_code=status)
+
+    async def list_workspaces(request: Request) -> Response:
+        """ワークスペースの一覧を返す。"""
+        raw = request.query_params.get("include_closed", "false")
+        # true・false のどちらでもない: 要求の誤り
+        if raw not in INCLUDE_CLOSED_VALUES:
+            raise ApiError(400, "request", "include_closed は true か false にしてください")
+        result = await run_in_threadpool(
+            workspaces.list_workspaces, INCLUDE_CLOSED_VALUES[raw], ctx
+        )
+        return JSONResponse(result)
+
+    async def workspace_status(request: Request) -> Response:
+        """ワークスペースと MindStella のセッションの状態を返す。"""
+        result = await run_in_threadpool(
+            workspaces.workspace_status, request.path_params["id"], ctx
+        )
+        return JSONResponse(result)
 
     async def create_session(request: Request) -> Response:
         """MindStella のセッションを作る。"""
@@ -137,6 +158,8 @@ def build_routes(ctx: Any) -> list[Route]:
 
     return [
         Route("/workspaces", guarded(create_workspace), methods=["POST"]),
+        Route("/workspaces", guarded(list_workspaces), methods=["GET"]),
+        Route("/workspaces/{id}", guarded(workspace_status), methods=["GET"]),
         Route("/workspaces/{id}/sessions", guarded(create_session), methods=["POST"]),
         Route("/workspaces/{id}/sessions", guarded(list_sessions), methods=["GET"]),
         Route("/workspaces/{id}/sessions/{session}", guarded(stop_session), methods=["DELETE"]),

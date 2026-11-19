@@ -62,6 +62,8 @@ TOOL_NAMES = (
     "reply",
     "set_thread_status",
     "update_thread",
+    "workspaces",
+    "workspace",
     "create_workspace",
     "create_session",
     "sessions",
@@ -132,6 +134,8 @@ class ServerContext:
     port: int
     pi_port: int
     state_root: Path
+    # 配信元の行を直接読むグローバルの設定のファイル（project-index の端末の設定）
+    settings_file: Path
     locks: workspaces.WorkspaceLocks
     previews: PreviewRegistry
     plugin_root: Path
@@ -209,6 +213,7 @@ def main(
         port=port,
         pi_port=int(source.get(PI_PORT_ENV) or project_index.DEFAULT_PORT),
         state_root=state_root,
+        settings_file=project_index.settings_file(source),
         locks=workspaces.WorkspaceLocks(),
         previews=previews,
         plugin_root=plugin_root,
@@ -680,6 +685,31 @@ def build_server(
             session,
             lambda root: commands.run_update_thread(root, id, summary, tags, take),
             tool="update_thread",
+        )
+
+    @server.tool(
+        name="workspaces",
+        description="クローズしていないワークスペースの ID・題名・画面の URL を、何も書き換えずに返す",
+    )
+    def list_workspaces(
+        include_closed: Annotated[
+            bool, Field(description="真ならクローズしたワークスペースも含める")
+        ] = False,
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        return call_tool(
+            lambda: workspaces.list_workspaces(include_closed, context), write_lock=write_lock
+        )
+
+    @server.tool(
+        name="workspace",
+        description="ワークスペースと MindStella のセッションの状態を、何も書き換えずに返す",
+    )
+    def workspace_status(
+        workspace_id: WorkspaceIdArg, session: SessionArg = None
+    ) -> CallToolResult:
+        return call_tool(
+            lambda: workspaces.workspace_status(workspace_id, context), write_lock=write_lock
         )
 
     @server.tool(

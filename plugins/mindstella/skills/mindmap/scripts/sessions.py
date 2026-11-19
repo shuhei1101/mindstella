@@ -394,24 +394,23 @@ def create_session(
 
 
 def list_sessions(workspace_id: str, ctx: Any) -> dict[str, Any]:
-    """ワークスペースの最後の MindStella のセッション 1 つの状態を返す。落ちていれば crashed にする。"""
+    """ワークスペースの最後の MindStella のセッション 1 つの状態を返す。落ちていれば crashed として返し、状態は書き換えない。"""
     _require_known(ctx, workspace_id)
-    is_alive(
-        ctx.state_root,
-        workspace_id,
-        ctx.tmux,
-        ctx.proc,
-        on_crashed=lambda: notify_stopped(ctx, workspace_id, "crashed"),
-    )
     current = state.read_session(ctx.state_root, workspace_id)
     if current is None:
         return {"sessions": [], "close_pending": False}
+    status = current.status
+    pane = current.pane if current.status in ALIVE_STATUSES else None
+    # 起動中と記録されているのにペインかプロセスが無い: 落ちたとして返す（記録と通知は見回りが行う）
+    if current.status == "running" and _dead_reason(current, ctx.tmux, ctx.proc) is not None:
+        status = "crashed"
+        pane = None
     entry = {
         "id": current.session,
-        "status": current.status,
+        "status": status,
         "responding": current.responding,
         "pending_write": current.pending_write,
-        "pane": current.pane if current.status in ALIVE_STATUSES else None,
+        "pane": pane,
         "last_error": current.last_error,
     }
     return {"sessions": [entry], "close_pending": current.close_pending}
