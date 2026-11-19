@@ -166,6 +166,27 @@ VOICE_MESSAGE = ".send-msg"
 NARROWEST_WIDTH = 320
 NARROWEST_HEIGHT = 640
 
+# 録音中の波形の棒の幅と、隣り合う棒の間隔（録音を始めてから終えるまで変えない）
+BAR_WIDTH_PX = 3
+BAR_GAP_PX = 2
+BAR_SIZE_TOLERANCE_PX = 0.01
+
+# 録音中の波形の中身の幅（枠線と余白を除く）と、棒ごとの幅・隣の棒との間隔・棒の並びの幅を読む
+RECORDING_BARS_SCRIPT = """() => {
+  const wave = document.querySelector('.send-wave, [data-part="voice-wave"]');
+  const style = getComputedStyle(wave);
+  const inner = wave.getBoundingClientRect().width
+    - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+    - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth);
+  const bars = [...wave.querySelectorAll('i')].map((bar) => bar.getBoundingClientRect());
+  return {
+    inner,
+    widths: bars.map((bar) => bar.width),
+    gaps: bars.slice(1).map((bar, index) => bar.left - bars[index].right),
+    extent: bars[bars.length - 1].right - bars[0].left,
+  };
+}"""
+
 # 録音中の波形（入力欄の場所）と 2 つのボタンの位置と大きさ、入力欄を隠しているかを読む
 RECORDING_GEOMETRY_SCRIPT = """() => {
   const textarea = document.querySelector('textarea');
@@ -184,7 +205,7 @@ RECORDING_GEOMETRY_SCRIPT = """() => {
 }"""
 
 
-def assert_recording_buttons(page: Page) -> None:
+def assert_recording_buttons(page: Page, bars: int = 10) -> None:
     """マイクと「レビューに追加」の位置に、アイコンだけの × の「キャンセル」と ✓ の「文字起こし」を置いている。"""
     cancel = page.get_by_role("button", name="キャンセル")
     done = page.get_by_role("button", name="文字起こし", exact=True)
@@ -202,8 +223,16 @@ def assert_recording_buttons(page: Page) -> None:
     assert abs(geometry["cancelBottom"] - geometry["fieldBottom"]) <= POSITION_TOLERANCE_PX
     assert (geometry["cancelWidth"], geometry["cancelHeight"]) == (geometry["doneWidth"], geometry["doneHeight"])
     # 入力欄を隠し、同じ場所・同じ高さに読み上げない波形を出す
-    assert (geometry["textareaHidden"], geometry["waveHidden"], geometry["bars"]) == (True, "true", 10)
+    assert (geometry["textareaHidden"], geometry["waveHidden"], geometry["bars"]) == (True, "true", bars)
     assert abs(geometry["fieldHeight"] - geometry["cancelHeight"]) <= POSITION_TOLERANCE_PX
+
+
+def assert_bars_keep_size(page: Page, *, overflows: bool) -> None:
+    """録音中の波形の棒が、枠を超えるかに依らず同じ幅・同じ間隔で並ぶ。"""
+    sizes = page.evaluate(RECORDING_BARS_SCRIPT)
+    assert all(abs(width - BAR_WIDTH_PX) <= BAR_SIZE_TOLERANCE_PX for width in sizes["widths"]), sizes["widths"]
+    assert all(abs(gap - BAR_GAP_PX) <= BAR_SIZE_TOLERANCE_PX for gap in sizes["gaps"]), sizes["gaps"]
+    assert (sizes["extent"] > sizes["inner"]) is overflows
 
 
 def assert_mic_blocked(page: Page, reason: str) -> None:
@@ -232,6 +261,7 @@ def test_recording(open_story: OpenStory) -> None:
     page = open_story("preview-replyform--recording")
     # 検証
     assert_recording_buttons(page)
+    assert_bars_keep_size(page, overflows=False)
     assert "0:12" in page.inner_text(VOICE_MESSAGE)
     assert "録音中" in (page.text_content(VOICE_MESSAGE) or "")
     assert page.input_value("textarea") == ""
@@ -299,13 +329,15 @@ def test_voice_failed(open_story: OpenStory) -> None:
 
 
 def test_recording_narrow(open_story: OpenStory) -> None:
-    """最も狭い幅（320px）の録音中。2 つのボタンは同じ大きさで、入力欄の右に並んだまま収まる（正常系）。"""
+    """最も狭い幅（320px）の録音中。2 つのボタンは同じ大きさで、入力欄の右に並んだまま収まり、枠を超える 80 本の棒は同じ幅と間隔のまま並ぶ（正常系）。"""
     # 準備・実行
     page = open_story("preview-replyform--recording-narrow")
     page.set_viewport_size({"width": NARROWEST_WIDTH, "height": NARROWEST_HEIGHT})
     page.wait_for_function(f"innerWidth === {NARROWEST_WIDTH}")
     # 検証
-    assert_recording_buttons(page)
+    assert_recording_buttons(page, bars=80)
+    # 80 本の棒は波形の枠を超え、古い棒を左で切っても、棒を縮めない
+    assert_bars_keep_size(page, overflows=True)
     form = page.locator("form").bounding_box()
     assert form is not None
     assert form["width"] <= NARROWEST_WIDTH
