@@ -72,7 +72,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T05:42:01.840504+00:00'
   - process: 単体テスト作成
-    status: todo
+    status: done
+    note: 9ddabac3（test_startup・test_state・test_project_index・test_server）
+    updated_by: planner
+    updated_at: '2026-11-19T05:48:58.724402+00:00'
   - process: 実装
     status: todo
   - process: 結合テスト作成
