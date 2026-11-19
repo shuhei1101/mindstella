@@ -34,22 +34,25 @@ const NEW_THREAD_VOICE_KEY = "new-thread";
 
 type FreeState = { body: string; status: SendStatus; count: number | null; detail: string | null };
 
-/** 新しいスレッドの入力。閉じて外れても録音と文字起こしは続ける */
-const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: FreeState | ((current: FreeState) => FreeState)) => void }) => {
+/** 新しいスレッドの入力の見出し（項目で絞っている間は、その項目へ向ける） */
+const newThreadLabel = (target: string | null): string => (target === null ? "新しいスレッド" : `${target} への新しいスレッド`);
+
+/** 新しいスレッドの入力。閉じて外れても録音と文字起こしは続ける。項目で絞っている間は、溜めるスレッドをその項目へ向ける（書きかけは項目を指さない入力のまま） */
+const NewThreadForm = ({ free, setFree, target }: { free: FreeState; setFree: (next: FreeState | ((current: FreeState) => FreeState)) => void; target: string | null }) => {
   const add = useAddComment();
   const saveDraft = useSaveDraft();
   const voice = useVoiceInput({
     key: NEW_THREAD_VOICE_KEY,
-    destination: { target: null, loc: null },
+    destination: { target, loc: null },
     view: "comments",
-    label: "新しいスレッド",
+    label: newThreadLabel(target),
     body: free.body,
     onBodyChange: (next) => {
       setFree({ body: next, status: "idle", count: null, detail: null });
-      saveDraft({ target: null, loc: null, thread: null, body: next }, true);
+      saveDraft({ target, loc: null, thread: null, body: next }, true);
     },
     getSelection: () => {
-      const field = document.querySelector<HTMLTextAreaElement>('form[data-collapsed] textarea, form:not([data-id]) textarea[aria-label="新しいスレッド"]');
+      const field = document.querySelector<HTMLTextAreaElement>(`form[data-collapsed] textarea, form:not([data-id]) textarea[aria-label="${newThreadLabel(target)}"]`);
       return { start: field?.selectionStart ?? free.body.length, end: field?.selectionEnd ?? free.body.length };
     },
   });
@@ -57,7 +60,7 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
             <SendForm
               target={null}
               loc={null}
-              label="新しいスレッド"
+              label={newThreadLabel(target)}
               body={free.body}
               status={voice.status === "idle" ? free.status : voice.status}
               count={free.count}
@@ -74,12 +77,12 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
               onInput={(next) => {
                 voice.clearResult();
                 setFree({ body: next, status: "idle", count: null, detail: null });
-                saveDraft({ target: null, loc: null, thread: null, body: next });
+                saveDraft({ target, loc: null, thread: null, body: next });
               }}
               onSubmit={(_target, _loc, text) => {
                 setFree((current) => ({ ...current, status: "saving" }));
                 add.mutate(
-                  { body: text },
+                  target === null ? { body: text } : { body: text, target },
                   {
                     onSuccess: (result) => { setFree({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); },
                     onError: (error) => { setFree((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
@@ -116,7 +119,8 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   const tag = search.ttag ?? null;
   const target = search.ttarget ?? null;
   const { index } = useRecords();
-  const freeDraft = data.drafts.find((draft) => draft.target === null && draft.thread === null)?.body ?? "";
+  // 新しいスレッドの書きかけ（項目で絞っている間は、その項目への箇所を持たない書きかけ。詳細パネルの下端の入力と同じ）
+  const draftOf = (of: string | null): string => data.drafts.find((draft) => draft.target === of && draft.loc === null && draft.thread === null)?.body ?? "";
   // 新しいスレッドの入力で音声入力中なら、入力を出して開く
   const [composing, setComposing] = useState(() => readVoiceState().session?.key === NEW_THREAD_VOICE_KEY);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -129,7 +133,15 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   useEffect(() => {
     if (composing) composer.current?.querySelector("textarea")?.focus();
   }, [composing]);
-  const [free, setFree] = useState<{ body: string; status: SendStatus; count: number | null; detail: string | null }>({ body: freeDraft, status: "idle", count: null, detail: null });
+  // 向ける項目が変わったら、その項目の書きかけから始める
+  const [freeEntry, setFreeEntry] = useState<{ target: string | null; state: FreeState }>(() => ({ target, state: { body: draftOf(target), status: "idle", count: null, detail: null } }));
+  const free: FreeState = freeEntry.target === target ? freeEntry.state : { body: draftOf(target), status: "idle", count: null, detail: null };
+  const setFree = (next: FreeState | ((current: FreeState) => FreeState)): void => {
+    setFreeEntry((current) => {
+      const base = current.target === target ? current.state : { body: draftOf(target), status: "idle" as const, count: null, detail: null };
+      return { target, state: typeof next === "function" ? next(base) : next };
+    });
+  };
   const close = (): void => {
     setPanel(undefined);
   };
@@ -221,12 +233,12 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
         {composing ? (
           <div ref={composer} className="grid border-t border-border">
             <div className="flex items-center px-3 pt-2">
-              <h3 className="m-0 flex-1 text-small font-medium">新しいスレッド</h3>
+              <h3 className="m-0 flex-1 text-small font-medium">{newThreadLabel(target)}</h3>
               <Button variant="ghost" size="icon" aria-label="新しいスレッドの入力を閉じる" onClick={() => { setComposing(false); }}>
                 <Icon name="x" />
               </Button>
             </div>
-            <NewThreadForm free={free} setFree={setFree} />
+            <NewThreadForm free={free} setFree={setFree} target={target} />
           </div>
         ) : (
           <div className="border-t border-border p-3">

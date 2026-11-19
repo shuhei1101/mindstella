@@ -1819,7 +1819,7 @@ namespace MindmapPreview {
       const keys = new Set<string>();
       const detailForm = document.querySelector<HTMLElement>("aside.panel form.send .send-body, dialog.full form.send .send-body");
       if (route.id !== null && detailForm !== null && !detailForm.hidden) keys.add(formKey(route.id, comment.pendingLoc.get(route.id) ?? null));
-      if (document.querySelector(".comments-panel .talk-new form.send") !== null) keys.add(formKey(null, null));
+      if (document.querySelector(".comments-panel .talk-new form.send") !== null) keys.add(formKey(comment.target, null));
       const opened = comment.openedThread;
       if (opened !== null && !opened.pending && document.querySelector(".comments-panel form.reply") !== null) {
         keys.add(formKey(null, null, opened.id));
@@ -2099,21 +2099,25 @@ namespace MindmapPreview {
 
     /** 入力欄を、今の状態で差し替える（`focus` なら入力欄へフォーカスを戻す）。別の項目へ移っていたら状態だけ持っておく */
     const redrawForm = ({ target, focus }: { target: string | null; focus: boolean }): void => {
+      // 項目で絞っているコメントの一覧の新しいスレッドから溜めた・書いた: パネルも描き直し、パネルの入力欄へフォーカスを戻す
+      const fromPanel = target !== null && comment.listOpen && comment.composing && comment.target === target
+        && document.activeElement?.closest(".comments-panel") != null;
       // 項目を指さない入力（新しいスレッド）はパネルの一部なので、パネルを描き直す
-      if (target === null) {
+      if (target === null || fromPanel) {
         renderComments();
         if (focus) {
           const field = document.querySelector<HTMLTextAreaElement>(".comments-panel .talk-new form.send textarea");
           field?.focus();
           field?.setSelectionRange(field.value.length, field.value.length);
         }
-        return;
+        if (target === null) return;
       }
       const current = document.querySelector<HTMLFormElement>(route.full ? "dialog.full form.send" : "aside.panel form.send");
       if (current === null || route.id !== target) return;
       const next = sendForm(formProps(target));
       current.replaceWith(next);
-      if (!focus) return;
+      // パネルから書いたときは、詳細パネルの入力は描き直すだけにする
+      if (!focus || fromPanel) return;
       const field = next.querySelector("textarea");
       field?.focus();
       field?.setSelectionRange(field.value.length, field.value.length);
@@ -2136,9 +2140,9 @@ namespace MindmapPreview {
       redrawForm({ target, focus: true });
     };
 
-    /** 入力欄の引数。`target` が null なら、コメントの一覧の下端の項目を指さない入力 */
-    const formProps = (target: string | null): SendFormProps => {
-      const loc = target === null ? null : (comment.pendingLoc.get(target) ?? null);
+    /** 入力欄の引数。`target` が null なら、コメントの一覧の下端の項目を指さない入力。`inPanel` はコメントの一覧の下端の、絞っている項目への箇所を持たない入力 */
+    const formProps = (target: string | null, inPanel = false): SendFormProps => {
+      const loc = target === null || inPanel ? null : (comment.pendingLoc.get(target) ?? null);
       const state = formStateOf(target, loc);
       return {
         target,
@@ -2150,7 +2154,7 @@ namespace MindmapPreview {
         ...voiceOf(formKey(target, loc)),
         entered: state.entered ?? false,
         collapsed: false,
-        open: target === null || prefs.commentFormClosed !== true,
+        open: target === null || inPanel || prefs.commentFormClosed !== true,
         ...(target === null ? { label: "新しいスレッド" } : {}),
         on: {
           ...voiceHandlers(state),
@@ -2539,7 +2543,8 @@ namespace MindmapPreview {
       target: comment.target,
       opened: comment.openedThread,
       composing: comment.composing,
-      free: formProps(null),
+      // 項目で絞っている間の新しいスレッドは、その項目への箇所を持たない入力（詳細パネルの下端の入力と書きかけを共有する）
+      free: formProps(comment.target, comment.target !== null),
       reply: replyState(),
       reason: comment.reason,
       checked: comment.checked,

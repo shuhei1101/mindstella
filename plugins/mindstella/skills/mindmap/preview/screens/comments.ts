@@ -709,7 +709,7 @@ namespace MindmapPreview {
           tag: "div",
           attrs: { class: "talk-new-head" },
           children: [
-            h({ tag: "span", attrs: { class: "send-label" }, children: ["新しいスレッド"] }),
+            h({ tag: "span", attrs: { class: "send-label" }, children: [props.target === null ? "新しいスレッド" : `${props.target} への新しいスレッド`] }),
             h({
               tag: "button",
               attrs: { class: "icon-btn", type: "button", "aria-label": "新しいスレッドの入力を閉じる", "data-focus": "compose-close", onclick: () => props.on.compose(false) },
