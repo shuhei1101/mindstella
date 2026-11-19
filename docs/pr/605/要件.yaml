@@ -29,11 +29,15 @@ docs:
   - page: docs/guide/コマンド.md
     new: false
     change: 常駐サーバーが起動したときに、起動中の MindStella のセッションを照合して落ちたものを記録・通知すること、ワークスペースの ID の一覧が無ければ配信元の行から作り直すこと、エージェントフローの配信元のパスが今のプラグインと違えば登録し直すことを記載する（`mindstella-agent-flows` の行を足す記載と、見回りの記載に合わせる）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T05:41:59.680518+00:00'
   - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
     new: false
     change: プラグインを更新して常駐サーバーを起動し直したときに、エージェントフローの配信元のパスが登録し直されることを記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T05:41:59.680518+00:00'
 scope_out:
   - item: 起動時の照合で落ちたと記録した MindStella のセッションを、常駐サーバーが自動で起動し直す
     reason: 落ちた後の起動し直しは、コメントが届いたときと起動し直しの依頼だけと決めている（インターフェース定義『落ちたことの見回り』の制約「起動し直し」・資料 A-119 の「常駐サーバーが起動した」の行）
