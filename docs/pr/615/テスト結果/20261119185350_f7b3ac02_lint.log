@@ -1,0 +1,30 @@
+$ cat mdmark.config.yaml（移行と点検のときだけ配置する設定）
+version: v0.14.0
+build:
+  include:
+    - "docs/**/*.md"
+  out: .mdmark/build/index.html
+check:
+  suggestMarkExtension: false
+
+$ npx github:shuhei1101/mdmark#v0.14.0 upgrade --yes（移行の前の commit で実行した出力）
+手元のバージョン: v0.10.0
+目標のバージョン: v0.14.0
+v0.11.0:
+  call（壊す手順）: 文書のマーカーの今の書き方の引数を JSON のオブジェクトへ書き換える（書き出さない記載と拡張・`libraries` のマーカーは移行の報告に挙げる）
+v0.13.0:
+  call（壊す手順）: 文書の廃止した `flow`・`sequence` の範囲を map の範囲へ書き換え、使用していた種類を設定の `map.kinds`・`map.lines` へ書き足す（写さない値と読めない範囲は移行の報告に挙げる）
+v0.14.0:
+  call（壊す手順）: 文書の廃止した `er` の範囲を map の ER 図の範囲へ書き換える（写さない値と書き換えない範囲は移行の報告に挙げる）
+v0.11.0 の手順「文書のマーカーの今の書き方の引数を JSON のオブジェクトへ書き換える（書き出さない記載と拡張・`libraries` のマーカーは移行の報告に挙げる）」:
+  158 件の文書のマーカーを書き換えました。
+v0.13.0 の手順「文書の廃止した `flow`・`sequence` の範囲を map の範囲へ書き換え、使用していた種類を設定の `map.kinds`・`map.lines` へ書き足す（写さない値と読めない範囲は移行の報告に挙げる）」:
+  0 件の文書の廃止した図を map の範囲へ書き換えました。
+v0.14.0 の手順「文書の廃止した `er` の範囲を map の ER 図の範囲へ書き換える（写さない値と書き換えない範囲は移行の報告に挙げる）」:
+  0 件の文書の ER 図を map の範囲へ書き換えました。
+コピー: .mdmark/backup/20261119185209
+バージョンを v0.14.0 にしました
+
+$ npx github:shuhei1101/mdmark#v0.14.0 check
+ずれ 0 件
+exit=0
