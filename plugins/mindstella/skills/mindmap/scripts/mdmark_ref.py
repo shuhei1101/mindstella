@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import email.utils
 import http.client
 import logging
 import re
@@ -207,13 +206,10 @@ def check_dist_served(ref: str) -> None:
 
 
 def _retry_at(retry_after: str | None, rate_limit_reset: str | None) -> float | None:
-    """`Retry-After`（秒か日時）か `X-RateLimit-Reset`（UNIX 時刻）から、問い合わせ直せる時刻を返す。"""
-    # Retry-After がある: 秒ならいまからその秒後、日時ならその時刻
-    if retry_after is not None:
-        if retry_after.strip().isdigit():
-            return time.time() + int(retry_after.strip())
-        parsed = email.utils.parsedate_to_datetime(retry_after)
-        return parsed.timestamp() if parsed is not None else None
+    """`Retry-After`（秒）か `X-RateLimit-Reset`（UNIX 時刻）から、問い合わせ直せる時刻を返す。"""
+    # Retry-After が秒: いまからその秒後
+    if retry_after is not None and retry_after.strip().isdigit():
+        return time.time() + int(retry_after.strip())
     # X-RateLimit-Reset がある: その UNIX 時刻
     if rate_limit_reset is not None and rate_limit_reset.strip().isdigit():
         return float(rate_limit_reset.strip())
