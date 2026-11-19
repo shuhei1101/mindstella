@@ -19,6 +19,7 @@ OBSERVE_SCRIPT = """(props) => {
     const status = form.querySelector('[role="status"]');
     return {
         submitDisabled: submit.disabled,
+        submitAriaDisabled: submit.getAttribute("aria-disabled"),
         readOnly: textarea.readOnly,
         labelVisible: [...form.querySelectorAll("label")].some(
             (label) => label.textContent.trim() === "返信" && label.offsetParent !== null
@@ -52,13 +53,13 @@ BLOCKED = {"labelVisible": True, "describedByStatus": True}
     [
         pytest.param(
             {"thread": "TH-2", "body": ""},
-            {**BLOCKED, "submitDisabled": True, "readOnly": False},
+            {**BLOCKED, "submitDisabled": False, "submitAriaDisabled": "true", "readOnly": False},
             "",
             id="empty",
         ),
         pytest.param(
             {"thread": "TH-2", "body": "起票してよい"},
-            {**BLOCKED, "submitDisabled": False, "readOnly": False},
+            {**BLOCKED, "submitDisabled": False, "submitAriaDisabled": None, "readOnly": False},
             "",
             id="typing",
         ),
@@ -276,3 +277,21 @@ def test_reply_form_when_voice(
     assert observed["calls"] == expected_calls
     assert expected_text in observed["statusText"]
     assert observed["wave"] == expected_wave
+
+
+def test_reply_form_when_empty_submit_pressed(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """入力が空の間の「レビューに追加」は押しても溜めない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    saved = preview_page.evaluate(
+        """() => {
+            const saved = [];
+            const form = MindmapPreview.replyForm({thread: "TH-2", body: " ", on: {input: () => {}, save: (...args) => saved.push(args)}});
+            document.body.append(form);
+            form.querySelector('button[type="submit"]').click();
+            return saved;
+        }"""
+    )
+    # 検証
+    assert saved == []

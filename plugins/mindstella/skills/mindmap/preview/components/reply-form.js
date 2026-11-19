@@ -50,8 +50,11 @@ var MindmapPreview;
                 hidden: voice === "recording",
                 oninput: () => {
                     on.input(textarea.value);
-                    // 入力に合わせて、ボタンを押せるかを合わせる
-                    submit.disabled = saving || textarea.value.trim() === "";
+                    // 入力に合わせて、ボタンを押せるかを合わせる（空白だけの間はフォーカスを受けたまま押せなくする）
+                    if (textarea.value.trim() === "")
+                        submit.setAttribute("aria-disabled", "true");
+                    else
+                        submit.removeAttribute("aria-disabled");
                 },
                 onkeydown: (event) => {
                     const key = event;
@@ -78,7 +81,9 @@ var MindmapPreview;
                 "aria-label": "レビューに追加",
                 title: "レビューに追加（Ctrl+Enter）",
                 "data-focus": "reply-send",
-                disabled: saving || body.trim() === "",
+                disabled: saving,
+                // 空白だけの間は押しても溜めない。`disabled` にせず、溜めた後にこのボタンへフォーカスを移せるようにする
+                "aria-disabled": !saving && body.trim() === "" ? "true" : null,
             },
             children: [MindmapPreview.icon("comment")],
         });

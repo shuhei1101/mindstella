@@ -4,6 +4,13 @@ import { describe, expect, test, vi } from "vitest";
 
 import { SendForm } from "@/shared/components/send-form";
 
+// 「レビューに追加」の後のフォーカスの移動先（テストごとに書き換える）
+const focusTarget = vi.hoisted((): { current: "input" | "submit" } => ({ current: "input" }));
+vi.mock("@/shared/stores/prefs-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/stores/prefs-store")>()),
+  useFocusAfterAddTarget: () => focusTarget.current,
+}));
+
 describe("SendForm", () => {
   // 溜める（正常系）
   test("send_form", async () => {
@@ -126,5 +133,23 @@ describe("SendForm", () => {
     expect(mic).toHaveAccessibleDescription("ほかの入力欄で音声入力中のため、音声で入力できません。");
     await userEvent.type(screen.getByRole("textbox"), "a");
     expect(onInput).toHaveBeenCalledWith("a");
+  });
+
+  // 入力欄へ戻さない設定で、文字起こしを溜めた後は「レビューに追加」へフォーカスを移す（正常系）
+  test.each([
+    { status: "reviewed" as const, expected: "submit" },
+    { status: "sent" as const, expected: "submit" },
+    { status: "inserted" as const, expected: "input" },
+  ])("send_form_when_reviewed_focus_submit ($status)", ({ status, expected }) => {
+    // 準備
+    focusTarget.current = "submit";
+    const props = { target: "D-1", loc: null, onSubmit: vi.fn(), onInput: vi.fn() };
+    const { rerender } = render(<SendForm {...props} body="確認: " status="idle" voice="transcribing" />);
+    // 実行
+    rerender(<SendForm {...props} body={status === "inserted" ? "確認: でよい" : ""} status={status} voice="idle" />);
+    // 検証
+    const focused = expected === "submit" ? screen.getByRole("button", { name: "レビューに追加" }) : screen.getByRole("textbox");
+    expect(focused).toHaveFocus();
+    focusTarget.current = "input";
   });
 });

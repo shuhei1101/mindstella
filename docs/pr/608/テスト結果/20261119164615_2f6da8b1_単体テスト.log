@@ -1,0 +1,4586 @@
+# 単体テスト（Red）
+commit: 2f6da8b1
+
+実装の前から pass したテスト: send_form_when_reviewed_focus_submit (inserted) は、録音を終えたら入力欄へフォーカスを戻す既存の振る舞い（frontend/src/shared/components/send-form.tsx の useVoiceFocus。commit be94307e より前から develop にある）で pass する
+
+$ python3 -m pytest tests/unit/preview/test_app.py tests/unit/preview/test_settings_panel.py -q -p no:cacheprovider
+...FFFFFFF........FF................FFFFFFFF........F...........FFFFFFFF [ 69%]
+.......F.....FFFFFFF..F....F.FF                                          [100%]
+=================================== FAILURES ===================================
+________________________ test_load_prefs[chromium-dark] ________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b97bec9a0>
+stored = '{"theme": "dark", "columns": {}}'
+expected = {'theme': 'dark', 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:222: AssertionError
+_________________ test_load_prefs_when_minimap[chromium-false] _________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b97255f80>
+stored = '{"theme": "dark", "minimap": false}', expected_minimap = False
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:252: AssertionError
+_______________ test_load_prefs_when_body_layout[chromium-side] ________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b97255080>
+stored = '{"theme": "dark", "bodyLayout": "side"}'
+expected_body_layout = 'side'
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:282: AssertionError
+______________ test_load_prefs_when_review_order[chromium-oldest] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b97255ee0>
+stored = '{"theme": "dark", "reviewOrder": "oldest"}'
+expected_review_order = 'oldest'
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:312: AssertionError
+________ test_load_prefs_when_body_view[chromium-differs_from_default] _________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b972f79c0>
+stored = '{"theme": "dark", "tablePin": false, "tableHead": false, "tableStripes": true, "sectionFold": false}'
+expected_overrides = {'tablePin': False, 'tableHead': False, 'tableStripes': True, 'sectionFold': False}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false,'
+                ' "tableStripes": true, "sectionFold": false}',
+                {"tablePin": False, "tableHead": False, "tableStripes": True, "sectionFold": False},
+                id="differs_from_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": true, "tableHead": true,'
+                ' "tableStripes": false, "sectionFold": true}',
+                {},
+                id="same_as_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": "no", "tableHead": "no",'
+                ' "tableStripes": "no", "sectionFold": "no"}',
+                {},
+                id="not_boolean",
+            ),
+            pytest.param('{"theme": "dark", "columns": {}}', {}, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:357: AssertionError
+_____________ test_load_prefs_when_comments_pinned[chromium-true] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b972f4900>
+stored = '{"theme": "dark", "commentsPinned": true}', expected_pinned = True
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:387: AssertionError
+___________ test_load_prefs_when_comment_form_closed[chromium-true] ____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b9728bc40>
+stored = '{"theme": "dark", "commentFormClosed": true}', expected_closed = True
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:418: AssertionError
+________________________ test_clear_overrides[chromium] ________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b970baa20>
+
+    def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+        """上書きだけを外し、差分の時点は残す（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        prefs = {
+            "theme": "dark",
+            "columns": RESEARCH_COLUMNS,
+            "look": "dust",
+            "kinds": ["tasks"],
+            "diffSel": "since",
+            "filters": {"tasks": TASKS_FILTERS},
+            "minimap": False,
+            "bodyLayout": "side",
+            "reviewOrder": "oldest",
+            "tablePin": False,
+            "tableHead": False,
+            "tableStripes": True,
+            "sectionFold": False,
+            "commentsPinned": True,
+            "commentFormClosed": True,
+            "focusAfterAdd": "none",
+        }
+        # 実行
+        result = preview_page.evaluate(
+            """(prefs) => ({cleared: MindmapPreview.clearOverrides(prefs), original: prefs})""", prefs
+        )
+        # 検証
+>       assert result["cleared"] == {
+            "theme": None,
+            "columns": {},
+            "look": None,
+            "kinds": None,
+            "diffSel": "since",
+            "filters": {},
+            "minimap": None,
+            "bodyLayout": None,
+            "reviewOrder": None,
+            "tablePin": None,
+            "tableHead": None,
+            "tableStripes": None,
+            "sectionFold": None,
+            "commentsPinned": True,
+            "commentFormClosed": True,
+            "focusAfterAdd": None,
+        }
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Differing items:
+E         {'focusAfterAdd': 'none'} != {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:848: AssertionError
+_______________ test_focus_after_add_target[chromium-auto_fine] ________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b970e4040>
+focus_after_add = None, coarse = False, expected = 'input'
+
+    @pytest.mark.parametrize(
+        ("focus_after_add", "coarse", "expected"),
+        [
+            pytest.param(None, False, "input", id="auto_fine"),
+            pytest.param(None, True, "submit", id="auto_coarse"),
+            pytest.param("input", True, "input", id="input_coarse"),
+            pytest.param("none", False, "submit", id="none_fine"),
+        ],
+    )
+    def test_focus_after_add_target(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        focus_after_add: str | None,
+        coarse: bool,
+        expected: str,
+    ) -> None:
+        """「レビューに追加」の後のフォーカスの移動先を、上書きと端末の種類で決める（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        prefs = {**DEFAULT_PREFS, "focusAfterAdd": focus_after_add}
+        # 実行
+>       target = preview_page.evaluate(
+            """([prefs, coarse]) => MindmapPreview.focusAfterAddTarget(prefs, coarse)""", [prefs, coarse]
+        )
+
+tests/unit/preview/test_app.py:890: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7b4b987fb620>
+cb = <function Channel.send.<locals>.<lambda> at 0x7b4b97087a60>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.focusAfterAddTarget is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:37)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+___ test_settings_panel_when_focus_after_add[chromium-auto_fine_press_none] ____
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b970e7b00>
+args = {'focusAfterAdd': 'auto', 'pointerCoarse': False, 'operateFocus': '戻さない'}
+expected_checked = '自動', expected_auto_sub = 'この端末では入力欄へ戻します'
+expected_call = ['focusAfterAdd', 'none'], expected_buttons = []
+expected_texts = []
+
+    @pytest.mark.parametrize(
+        ("args", "expected_checked", "expected_auto_sub", "expected_call", "expected_buttons", "expected_texts"),
+        [
+            pytest.param(
+                {"focusAfterAdd": "auto", "pointerCoarse": False, "operateFocus": "戻さない"},
+                "自動",
+                "この端末では入力欄へ戻します",
+                ["focusAfterAdd", "none"],
+                [],
+                [],
+                id="auto_fine_press_none",
+            ),
+            pytest.param(
+                {
+                    "focusAfterAdd": "none",
+                    "pointerCoarse": True,
+                    "overrides": ["レビューに追加した後のフォーカス"],
+                    "operateFocus": "自動",
+                },
+                "戻さない",
+                "この端末では戻しません",
+                ["focusAfterAdd", "auto"],
+                ["既定に戻す"],
+                ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+                id="none_coarse_press_auto",
+            ),
+        ],
+    )
+    def test_settings_panel_when_focus_after_add(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        args: dict[str, Any],
+        expected_checked: str,
+        expected_auto_sub: str,
+        expected_call: list[Any],
+        expected_buttons: list[str],
+        expected_texts: list[str],
+    ) -> None:
+        """「レビューに追加した後のフォーカス」のラジオを出し、切り替えを知らせる。保存のボタンの比べには使わない（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行（ラジオを押す）
+>       observed = _observe(preview_page, **args)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/preview/test_settings_panel.py:384: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/preview/test_settings_panel.py:140: in _observe
+    return preview_page.evaluate(PANEL_SCRIPT, args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7b4b987fb620>
+cb = <function Channel.send.<locals>.<lambda> at 0x7b4b9728aa20>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: Cannot read properties of undefined (reading 'click')
+E               at eval (eval at evaluate (:311:30), <anonymous>:81:108)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+____________________ test_load_prefs[chromium-broken_json] _____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b970aaa20>
+stored = '{'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:222: AssertionError
+_________________ test_load_prefs_when_minimap[chromium-true] __________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b970a8a40>
+stored = '{"theme": "dark", "minimap": true}', expected_minimap = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:252: AssertionError
+______________ test_load_prefs_when_body_layout[chromium-inline] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b970a8e00>
+stored = '{"theme": "dark", "bodyLayout": "inline"}'
+expected_body_layout = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:282: AssertionError
+______________ test_load_prefs_when_review_order[chromium-newest] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b971abec0>
+stored = '{"theme": "dark", "reviewOrder": "newest"}'
+expected_review_order = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:312: AssertionError
+___________ test_load_prefs_when_body_view[chromium-same_as_default] ___________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b970b9800>
+stored = '{"theme": "dark", "tablePin": true, "tableHead": true, "tableStripes": false, "sectionFold": true}'
+expected_overrides = {}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false,'
+                ' "tableStripes": true, "sectionFold": false}',
+                {"tablePin": False, "tableHead": False, "tableStripes": True, "sectionFold": False},
+                id="differs_from_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": true, "tableHead": true,'
+                ' "tableStripes": false, "sectionFold": true}',
+                {},
+                id="same_as_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": "no", "tableHead": "no",'
+                ' "tableStripes": "no", "sectionFold": "no"}',
+                {},
+                id="not_boolean",
+            ),
+            pytest.param('{"theme": "dark", "columns": {}}', {}, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:357: AssertionError
+_____________ test_load_prefs_when_comments_pinned[chromium-false] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b970bbd80>
+stored = '{"theme": "dark", "commentsPinned": false}', expected_pinned = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:387: AssertionError
+___________ test_load_prefs_when_comment_form_closed[chromium-false] ___________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b9710f2e0>
+stored = '{"theme": "dark", "commentFormClosed": false}', expected_closed = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:418: AssertionError
+______________ test_focus_after_add_target[chromium-auto_coarse] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b971ec9a0>
+focus_after_add = None, coarse = True, expected = 'submit'
+
+    @pytest.mark.parametrize(
+        ("focus_after_add", "coarse", "expected"),
+        [
+            pytest.param(None, False, "input", id="auto_fine"),
+            pytest.param(None, True, "submit", id="auto_coarse"),
+            pytest.param("input", True, "input", id="input_coarse"),
+            pytest.param("none", False, "submit", id="none_fine"),
+        ],
+    )
+    def test_focus_after_add_target(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        focus_after_add: str | None,
+        coarse: bool,
+        expected: str,
+    ) -> None:
+        """「レビューに追加」の後のフォーカスの移動先を、上書きと端末の種類で決める（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        prefs = {**DEFAULT_PREFS, "focusAfterAdd": focus_after_add}
+        # 実行
+>       target = preview_page.evaluate(
+            """([prefs, coarse]) => MindmapPreview.focusAfterAddTarget(prefs, coarse)""", [prefs, coarse]
+        )
+
+tests/unit/preview/test_app.py:890: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7b4b987fb620>
+cb = <function Channel.send.<locals>.<lambda> at 0x7b4b97186200>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.focusAfterAddTarget is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:37)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+__ test_settings_panel_when_focus_after_add[chromium-none_coarse_press_auto] ___
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b96152160>
+args = {'focusAfterAdd': 'none', 'pointerCoarse': True, 'overrides': ['レビューに追加した後のフォーカス'], 'operateFocus': '自動'}
+expected_checked = '戻さない', expected_auto_sub = 'この端末では戻しません'
+expected_call = ['focusAfterAdd', 'auto'], expected_buttons = ['既定に戻す']
+expected_texts = ['見た目と表示する種類は、ワークスペースの既定と同じです。']
+
+    @pytest.mark.parametrize(
+        ("args", "expected_checked", "expected_auto_sub", "expected_call", "expected_buttons", "expected_texts"),
+        [
+            pytest.param(
+                {"focusAfterAdd": "auto", "pointerCoarse": False, "operateFocus": "戻さない"},
+                "自動",
+                "この端末では入力欄へ戻します",
+                ["focusAfterAdd", "none"],
+                [],
+                [],
+                id="auto_fine_press_none",
+            ),
+            pytest.param(
+                {
+                    "focusAfterAdd": "none",
+                    "pointerCoarse": True,
+                    "overrides": ["レビューに追加した後のフォーカス"],
+                    "operateFocus": "自動",
+                },
+                "戻さない",
+                "この端末では戻しません",
+                ["focusAfterAdd", "auto"],
+                ["既定に戻す"],
+                ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+                id="none_coarse_press_auto",
+            ),
+        ],
+    )
+    def test_settings_panel_when_focus_after_add(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        args: dict[str, Any],
+        expected_checked: str,
+        expected_auto_sub: str,
+        expected_call: list[Any],
+        expected_buttons: list[str],
+        expected_texts: list[str],
+    ) -> None:
+        """「レビューに追加した後のフォーカス」のラジオを出し、切り替えを知らせる。保存のボタンの比べには使わない（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行（ラジオを押す）
+>       observed = _observe(preview_page, **args)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/preview/test_settings_panel.py:384: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/preview/test_settings_panel.py:140: in _observe
+    return preview_page.evaluate(PANEL_SCRIPT, args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7b4b987fb620>
+cb = <function Channel.send.<locals>.<lambda> at 0x7b4b96124ae0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: Cannot read properties of undefined (reading 'click')
+E               at eval (eval at evaluate (:311:30), <anonymous>:81:108)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+___________________ test_load_prefs[chromium-storage_throws] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b96f2be20>
+stored = None
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:222: AssertionError
+______________ test_load_prefs_when_minimap[chromium-not_boolean] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b96ff9580>
+stored = '{"theme": "dark", "minimap": "no"}', expected_minimap = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:252: AssertionError
+____________ test_load_prefs_when_body_layout[chromium-not_string] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b96fe6fc0>
+stored = '{"theme": "dark", "bodyLayout": 1}', expected_body_layout = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:282: AssertionError
+____________ test_load_prefs_when_review_order[chromium-not_string] ____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b96f29080>
+stored = '{"theme": "dark", "reviewOrder": 1}', expected_review_order = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:312: AssertionError
+_____________ test_load_prefs_when_body_view[chromium-not_boolean] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b96fa53a0>
+stored = '{"theme": "dark", "tablePin": "no", "tableHead": "no", "tableStripes": "no", "sectionFold": "no"}'
+expected_overrides = {}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false,'
+                ' "tableStripes": true, "sectionFold": false}',
+                {"tablePin": False, "tableHead": False, "tableStripes": True, "sectionFold": False},
+                id="differs_from_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": true, "tableHead": true,'
+                ' "tableStripes": false, "sectionFold": true}',
+                {},
+                id="same_as_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": "no", "tableHead": "no",'
+                ' "tableStripes": "no", "sectionFold": "no"}',
+                {},
+                id="not_boolean",
+            ),
+            pytest.param('{"theme": "dark", "columns": {}}', {}, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:357: AssertionError
+__________ test_load_prefs_when_comments_pinned[chromium-not_boolean] __________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b96ffbd80>
+stored = '{"theme": "dark", "commentsPinned": "yes"}', expected_pinned = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:387: AssertionError
+________ test_load_prefs_when_comment_form_closed[chromium-not_boolean] ________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b96fe4cc0>
+stored = '{"theme": "dark", "commentFormClosed": "yes"}', expected_closed = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:418: AssertionError
+______________ test_focus_after_add_target[chromium-input_coarse] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b9727d120>
+focus_after_add = 'input', coarse = True, expected = 'input'
+
+    @pytest.mark.parametrize(
+        ("focus_after_add", "coarse", "expected"),
+        [
+            pytest.param(None, False, "input", id="auto_fine"),
+            pytest.param(None, True, "submit", id="auto_coarse"),
+            pytest.param("input", True, "input", id="input_coarse"),
+            pytest.param("none", False, "submit", id="none_fine"),
+        ],
+    )
+    def test_focus_after_add_target(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        focus_after_add: str | None,
+        coarse: bool,
+        expected: str,
+    ) -> None:
+        """「レビューに追加」の後のフォーカスの移動先を、上書きと端末の種類で決める（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        prefs = {**DEFAULT_PREFS, "focusAfterAdd": focus_after_add}
+        # 実行
+>       target = preview_page.evaluate(
+            """([prefs, coarse]) => MindmapPreview.focusAfterAddTarget(prefs, coarse)""", [prefs, coarse]
+        )
+
+tests/unit/preview/test_app.py:890: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7b4b987fb620>
+cb = <function Channel.send.<locals>.<lambda> at 0x7b4b9727c220>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.focusAfterAddTarget is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:37)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+_______________ test_load_prefs[chromium-unknown_look_and_kinds] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b972cd3a0>
+stored = '{"look": "rainbow", "kinds": ["decisions", "graph"]}'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:222: AssertionError
+___________ test_load_prefs_when_minimap[chromium-previous_version] ____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b971aa520>
+stored = '{"theme": "dark", "columns": {}}', expected_minimap = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:252: AssertionError
+_________ test_load_prefs_when_body_layout[chromium-previous_version] __________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b97ba6480>
+stored = '{"theme": "dark", "columns": {}}', expected_body_layout = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:282: AssertionError
+_________ test_load_prefs_when_review_order[chromium-previous_version] _________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b97ba5800>
+stored = '{"theme": "dark", "columns": {}}', expected_review_order = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:312: AssertionError
+__________ test_load_prefs_when_body_view[chromium-previous_version] ___________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b9720f380>
+stored = '{"theme": "dark", "columns": {}}', expected_overrides = {}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false,'
+                ' "tableStripes": true, "sectionFold": false}',
+                {"tablePin": False, "tableHead": False, "tableStripes": True, "sectionFold": False},
+                id="differs_from_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": true, "tableHead": true,'
+                ' "tableStripes": false, "sectionFold": true}',
+                {},
+                id="same_as_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": "no", "tableHead": "no",'
+                ' "tableStripes": "no", "sectionFold": "no"}',
+                {},
+                id="not_boolean",
+            ),
+            pytest.param('{"theme": "dark", "columns": {}}', {}, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:357: AssertionError
+_______ test_load_prefs_when_comments_pinned[chromium-previous_version] ________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b972d31a0>
+stored = '{"theme": "dark", "columns": {}}', expected_pinned = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:387: AssertionError
+_____ test_load_prefs_when_comment_form_closed[chromium-previous_version] ______
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b97226a20>
+stored = '{"theme": "dark", "columns": {}}', expected_closed = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:418: AssertionError
+_______________ test_focus_after_add_target[chromium-none_fine] ________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b97033e20>
+focus_after_add = 'none', coarse = False, expected = 'submit'
+
+    @pytest.mark.parametrize(
+        ("focus_after_add", "coarse", "expected"),
+        [
+            pytest.param(None, False, "input", id="auto_fine"),
+            pytest.param(None, True, "submit", id="auto_coarse"),
+            pytest.param("input", True, "input", id="input_coarse"),
+            pytest.param("none", False, "submit", id="none_fine"),
+        ],
+    )
+    def test_focus_after_add_target(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        focus_after_add: str | None,
+        coarse: bool,
+        expected: str,
+    ) -> None:
+        """「レビューに追加」の後のフォーカスの移動先を、上書きと端末の種類で決める（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        prefs = {**DEFAULT_PREFS, "focusAfterAdd": focus_after_add}
+        # 実行
+>       target = preview_page.evaluate(
+            """([prefs, coarse]) => MindmapPreview.focusAfterAddTarget(prefs, coarse)""", [prefs, coarse]
+        )
+
+tests/unit/preview/test_app.py:890: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7b4b987fb620>
+cb = <function Channel.send.<locals>.<lambda> at 0x7b4b971f72e0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.focusAfterAddTarget is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:37)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+___________________ test_load_prefs[chromium-look_and_kinds] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b971f7b00>
+stored = '{"look": "dust", "kinds": ["tasks"]}'
+expected = {'theme': None, 'columns': {}, 'look': 'dust', 'kinds': ['tasks'], ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...'tasks'], ...} == {'theme': Non...'tasks'], ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:222: AssertionError
+______________________ test_load_prefs[chromium-filters] _______________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b9713c4a0>
+stored = '{"filters": {"tasks": {"status": ["未着手"]}}}'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:222: AssertionError
+__________________ test_load_prefs[chromium-invalid_filters] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7b4b9712f880>
+stored = '{"filters": [1]}'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 15 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'focusAfterAdd': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:222: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-dark] - Asser...
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-side]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-oldest]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-differs_from_default]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-true]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-true]
+FAILED tests/unit/preview/test_app.py::test_clear_overrides[chromium] - Asser...
+FAILED tests/unit/preview/test_app.py::test_focus_after_add_target[chromium-auto_fine]
+FAILED tests/unit/preview/test_settings_panel.py::test_settings_panel_when_focus_after_add[chromium-auto_fine_press_none]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-broken_json]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-true]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-inline]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-newest]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-same_as_default]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_focus_after_add_target[chromium-auto_coarse]
+FAILED tests/unit/preview/test_settings_panel.py::test_settings_panel_when_focus_after_add[chromium-none_coarse_press_auto]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-storage_throws]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-not_string]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-not_string]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_focus_after_add_target[chromium-input_coarse]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-unknown_look_and_kinds]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_focus_after_add_target[chromium-none_fine]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-look_and_kinds]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-filters] - As...
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-invalid_filters]
+38 failed, 65 passed in 35.56s
+
+$ npx vitest run {変更した 9 ファイル}
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-focus-after-review-add
+
+ ❯ frontend/src/features/comments/shared/reply-form.test.tsx (6 tests | 1 failed) 426ms
+   ❯ ReplyForm (6)
+     × reply_form_when_reviewed_focus_submit 31ms
+ ❯ frontend/src/shared/components/send-form.test.tsx (10 tests | 2 failed) 653ms
+   ❯ SendForm (10)
+     × send_form_when_reviewed_focus_submit (reviewed) 40ms
+     × send_form_when_reviewed_focus_submit (sent) 16ms
+ ❯ frontend/src/features/settings/display-settings/components/settings-panel.test.tsx (4 tests | 2 failed) 639ms
+   ❯ SettingsPanel (4)
+     × settings_panel_when_focus_after_add (pointerCoarse: false) 206ms
+     × settings_panel_when_focus_after_add (pointerCoarse: true) 113ms
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/shared/stores/prefs-store.test.ts (8 tests | 3 failed) 38ms
+   ❯ useFocusAfterAddTarget (3)
+     × use_focus_after_add_target (auto_fine) 16ms
+     × use_focus_after_add_target (auto_coarse) 3ms
+     × use_focus_after_add_target (input_coarse) 2ms
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/shared/core/display.test.ts (9 tests | 6 failed) 22ms
+   ❯ overrideNames (1)
+     × override_names 9ms
+   ❯ resetPrefs (1)
+     × reset_prefs 1ms
+   ❯ focusAfterAddTarget (4)
+     × focus_after_add_target (auto_fine) 0ms
+     × focus_after_add_target (auto_coarse) 0ms
+     × focus_after_add_target (input_coarse) 0ms
+     × focus_after_add_target (none_fine) 0ms
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/features/settings/display-settings/display-settings-panel.test.tsx (3 tests | 1 failed) 1621ms
+   ❯ DisplaySettingsPanel (3)
+     × display_settings_panel_when_focus_after_add 1010ms
+Not implemented: Window's scrollTo() method
+stderr | frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_focus_after_add (input)
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+Not implemented: Window's scrollTo() method
+stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_focus_after_add (input)
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+Not implemented: Window's scrollTo() method
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_focus_after_add (input)
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_focus_after_add (submit)
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ❯ frontend/src/features/comments/comments-panel/comments-panel.test.tsx (7 tests | 2 failed) 3046ms
+   ❯ CommentsPanel (7)
+     × comments_panel_when_focus_after_add (input) 1127ms
+     × comments_panel_when_focus_after_add (submit) 1098ms
+Not implemented: Window's scrollTo() method
+stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_focus_after_add (submit)
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_focus_after_add (submit)
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ❯ frontend/src/features/comments/thread/thread-view.test.tsx (8 tests | 2 failed) 3718ms
+   ❯ ThreadView (8)
+     × thread_view_when_focus_after_add (input) 1137ms
+     × thread_view_when_focus_after_add (submit) 1107ms
+stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_focus_after_add (submit_when_empty)
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ❯ frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx (8 tests | 3 failed) 4513ms
+   ❯ DetailComments (8)
+     × detail_comments_when_focus_after_add (input) 1101ms
+     × detail_comments_when_focus_after_add (submit) 1082ms
+     × detail_comments_when_focus_after_add (submit_when_empty) 1071ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 22 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/components/send-form.test.tsx > SendForm > send_form_when_reviewed_focus_submit (reviewed)
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <button
+  aria-busy="false"
+  aria-label="レビューに追加"
+  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"
+  tabindex="0"
+  title="レビューに追加（Ctrl+Enter）"
+  type="submit"
+>
+  <svg
+    aria-hidden="true"
+    class="size-4 flex-none fill-none stroke-current"
+    height="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.75"
+    viewBox="0 0 24 24"
+    width="16"
+  >
+    <path
+      d="M4 5h16v11H10l-5 4v-4H4Z"
+    />
+    <path
+      d="M8 9h8M8 12.5h5"
+    />
+  </svg>
+</button>
+Received element with focus:
+  <textarea
+  aria-describedby="_r_e_-msg"
+  aria-keyshortcuts="Control+Enter"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_e_"
+  name="body"
+  rows="1"
+/>
+ ❯ frontend/src/shared/components/send-form.test.tsx:152:21
+    150|     // 検証
+    151|     const focused = expected === "submit" ? screen.getByRole("button",…
+    152|     expect(focused).toHaveFocus();
+       |                     ^
+    153|     focusTarget.current = "input";
+    154|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/22]⎯
+
+ FAIL  frontend/src/shared/components/send-form.test.tsx > SendForm > send_form_when_reviewed_focus_submit (sent)
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <button
+  aria-busy="false"
+  aria-label="レビューに追加"
+  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"
+  tabindex="0"
+  title="レビューに追加（Ctrl+Enter）"
+  type="submit"
+>
+  <svg
+    aria-hidden="true"
+    class="size-4 flex-none fill-none stroke-current"
+    height="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.75"
+    viewBox="0 0 24 24"
+    width="16"
+  >
+    <path
+      d="M4 5h16v11H10l-5 4v-4H4Z"
+    />
+    <path
+      d="M8 9h8M8 12.5h5"
+    />
+  </svg>
+</button>
+Received element with focus:
+  <textarea
+  aria-describedby="_r_g_-msg"
+  aria-keyshortcuts="Control+Enter"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_g_"
+  name="body"
+  rows="1"
+/>
+ ❯ frontend/src/shared/components/send-form.test.tsx:152:21
+    150|     // 検証
+    151|     const focused = expected === "submit" ? screen.getByRole("button",…
+    152|     expect(focused).toHaveFocus();
+       |                     ^
+    153|     focusTarget.current = "input";
+    154|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/22]⎯
+
+ FAIL  frontend/src/shared/core/display.test.ts > overrideNames > override_names
+AssertionError: expected [ '表示する種類', '差分のミニマップ', 'コメントの並び' ] to deeply equal [ '表示する種類', '差分のミニマップ', …(2) ]
+
+- Expected
++ Received
+
+  [
+    "表示する種類",
+    "差分のミニマップ",
+    "コメントの並び",
+-   "レビューに追加した後のフォーカス",
+  ]
+
+ ❯ frontend/src/shared/core/display.test.ts:34:51
+     32|     };
+     33|     // 実行と検証
+     34|     expect(overrideNames({ prefs, theme: null })).toEqual([
+       |                                                   ^
+     35|       "表示する種類",
+     36|       "差分のミニマップ",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/22]⎯
+
+ FAIL  frontend/src/shared/core/display.test.ts > resetPrefs > reset_prefs
+AssertionError: expected 'none' to be null
+
+- Expected:
+null
+
++ Received:
+"none"
+
+ ❯ frontend/src/shared/core/display.test.ts:65:45
+     63|     expect(result["theme"] ?? null).toBeNull();
+     64|     expect(result["kinds"] ?? null).toBeNull();
+     65|     expect(result["focusAfterAdd"] ?? null).toBeNull();
+       |                                             ^
+     66|   });
+     67| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/22]⎯
+
+ FAIL  frontend/src/shared/core/display.test.ts > focusAfterAddTarget > focus_after_add_target (auto_fine)
+ FAIL  frontend/src/shared/core/display.test.ts > focusAfterAddTarget > focus_after_add_target (auto_coarse)
+ FAIL  frontend/src/shared/core/display.test.ts > focusAfterAddTarget > focus_after_add_target (input_coarse)
+ FAIL  frontend/src/shared/core/display.test.ts > focusAfterAddTarget > focus_after_add_target (none_fine)
+TypeError: focusAfterAddTarget is not a function
+ ❯ frontend/src/shared/core/display.test.ts:84:12
+     82|     { name: "none_fine", prefs: { focusAfterAdd: "none" as const }, co…
+     83|   ])("focus_after_add_target ($name)", ({ prefs, coarse, expected }) =…
+     84|     expect(focusAfterAddTarget(prefs, coarse)).toBe(expected);
+       |            ^
+     85|   });
+     86| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/22]⎯
+
+ FAIL  frontend/src/shared/stores/prefs-store.test.ts > useFocusAfterAddTarget > use_focus_after_add_target (auto_fine)
+ FAIL  frontend/src/shared/stores/prefs-store.test.ts > useFocusAfterAddTarget > use_focus_after_add_target (auto_coarse)
+ FAIL  frontend/src/shared/stores/prefs-store.test.ts > useFocusAfterAddTarget > use_focus_after_add_target (input_coarse)
+TypeError: useFocusAfterAddTarget is not a function
+ ❯ frontend/src/shared/stores/prefs-store.test.ts:90:41
+     88|     }));
+     89|     // 実行
+     90|     const { result } = renderHook(() => useFocusAfterAddTarget());
+       |                                         ^
+     91|     // 検証
+     92|     expect(result.current).toBe(expected);
+ ❯ TestComponent node_modules/@testing-library/react/dist/pure.js:339:27
+ ❯ Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:28571:20
+ ❯ renderWithHooks node_modules/react-dom/cjs/react-dom-client.development.js:8030:22
+ ❯ updateFunctionComponent node_modules/react-dom/cjs/react-dom-client.development.js:10569:19
+ ❯ beginWork node_modules/react-dom/cjs/react-dom-client.development.js:12205:18
+ ❯ runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:1048:13
+ ❯ performUnitOfWork node_modules/react-dom/cjs/react-dom-client.development.js:19176:22
+ ❯ workLoopSync node_modules/react-dom/cjs/react-dom-client.development.js:19004:41
+ ❯ renderRootSync node_modules/react-dom/cjs/react-dom-client.development.js:18985:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/22]⎯
+
+ FAIL  frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_focus_after_add (input)
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <textarea
+  aria-describedby="_r_6_-msg"
+  aria-keyshortcuts="Control+Enter"
+  aria-label="新しいスレッド"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_6_"
+  name="body"
+  rows="1"
+/>
+Received element with focus:
+  <button
+  aria-busy="false"
+  aria-label="レビューに追加"
+  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"
+  tabindex="0"
+  title="レビューに追加（Ctrl+Enter）"
+  type="submit"
+>
+  <svg
+    aria-hidden="true"
+    class="size-4 flex-none fill-none stroke-current"
+    height="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.75"
+    viewBox="0 0 24 24"
+    width="16"
+  >
+    <path
+      d="M4 5h16v11H10l-5 4v-4H4Z"
+    />
+    <path
+      d="M8 9h8M8 12.5h5"
+    />
+  </svg>
+</button>
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+>
+  <head>
+    <link
+      crossorigin="anonymous"
+      href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-label="すべての項目を検索"
+              class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+                <path
+                  d="m20 20-3.5-3.5"
+                />
+              </svg>
+              <span
+                class="max-lg:hidden"
+              >
+                すべての項目を検索
+              </span>
+              <kbd
+                class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+              >
+                Ctrl+K
+              </kbd>
+            </button>
+            <button
+              aria-haspopup="dialog"
+              aria-label="変更履歴"
+              class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                />
+                <path
+                  d="M3 3v5h5"
+                />
+                <path
+                  d="M12 7v5l3 2"
+                />
+              </svg>
+              <span
+                class="max-xl:hidden"
+              >
+                変更履歴
+              </span>
+            </button>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-expanded="false"
+              aria-label="表示の設定"
+              class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm...
+ ❯ frontend/src/features/comments/comments-panel/comments-panel.test.tsx:135:43
+    133|     // 検証
+    134|     const focused = target === "submit" ? () => within(panel).getByRol…
+    135|     await waitFor(() => expect(focused()).toHaveFocus());
+       |                                           ^
+    136|   });
+    137| });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/22]⎯
+
+ FAIL  frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_focus_after_add (submit)
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <button
+  aria-busy="false"
+  aria-label="レビューに追加"
+  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"
+  tabindex="0"
+  title="レビューに追加（Ctrl+Enter）"
+  type="submit"
+>
+  <svg
+    aria-hidden="true"
+    class="size-4 flex-none fill-none stroke-current"
+    height="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.75"
+    viewBox="0 0 24 24"
+    width="16"
+  >
+    <path
+      d="M4 5h16v11H10l-5 4v-4H4Z"
+    />
+    <path
+      d="M8 9h8M8 12.5h5"
+    />
+  </svg>
+</button>
+Received element with focus:
+  <textarea
+  aria-describedby="_r_8_-msg"
+  aria-keyshortcuts="Control+Enter"
+  aria-label="新しいスレッド"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_8_"
+  name="body"
+  rows="1"
+/>
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+>
+  <head>
+    <link
+      crossorigin="anonymous"
+      href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-label="すべての項目を検索"
+              class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+                <path
+                  d="m20 20-3.5-3.5"
+                />
+              </svg>
+              <span
+                class="max-lg:hidden"
+              >
+                すべての項目を検索
+              </span>
+              <kbd
+                class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+              >
+                Ctrl+K
+              </kbd>
+            </button>
+            <button
+              aria-haspopup="dialog"
+              aria-label="変更履歴"
+              class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                />
+                <path
+                  d="M3 3v5h5"
+                />
+                <path
+                  d="M12 7v5l3 2"
+                />
+              </svg>
+              <span
+                class="max-xl:hidden"
+              >
+                変更履歴
+              </span>
+            </button>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-expanded="false"
+              aria-label="表示の設定"
+              class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm...
+ ❯ frontend/src/features/comments/comments-panel/comments-panel.test.tsx:135:43
+    133|     // 検証
+    134|     const focused = target === "submit" ? () => within(panel).getByRol…
+    135|     await waitFor(() => expect(focused()).toHaveFocus());
+       |                                           ^
+    136|   });
+    137| });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/22]⎯
+
+ FAIL  frontend/src/features/comments/shared/reply-form.test.tsx > ReplyForm > reply_form_when_reviewed_focus_submit
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <button
+  aria-label="レビューに追加"
+  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 pointer-coarse:size-11"
+  data-disabled=""
+  data-focus="reply-send"
+  disabled=""
+  tabindex="0"
+  title="レビューに追加（Ctrl+Enter）"
+  type="submit"
+>
+  <svg
+    aria-hidden="true"
+    class="size-4 flex-none fill-none stroke-current"
+    height="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.75"
+    viewBox="0 0 24 24"
+    width="16"
+  >
+    <path
+      d="M4 5h16v11H10l-5 4v-4H4Z"
+    />
+    <path
+      d="M8 9h8M8 12.5h5"
+    />
+  </svg>
+</button>
+Received element with focus:
+  <textarea
+  aria-describedby="_r_a_-msg"
+  aria-keyshortcuts="Control+Enter"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_a_"
+  maxlength="10000"
+  name="body"
+  rows="1"
+/>
+ ❯ frontend/src/features/comments/shared/reply-form.test.tsx:95:61
+     93|     rerender(<ReplyForm {...props} body="" status="reviewed" voice="id…
+     94|     // 検証
+     95|     expect(screen.getByRole("button", { name: "レビューに追加" })).toHaveFocu…
+       |                                                             ^
+     96|     focusTarget.current = "input";
+     97|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/22]⎯
+
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_focus_after_add (input)
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <textarea
+  aria-describedby="_r_m_-msg"
+  aria-keyshortcuts="Control+Enter"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_m_"
+  maxlength="10000"
+  name="body"
+  rows="1"
+/>
+Received element with focus:
+  <button
+  aria-label="レビューに追加"
+  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 pointer-coarse:size-11"
+  data-disabled=""
+  data-focus="reply-send"
+  disabled=""
+  tabindex="0"
+  title="レビューに追加（Ctrl+Enter）"
+  type="submit"
+>
+  <svg
+    aria-hidden="true"
+    class="size-4 flex-none fill-none stroke-current"
+    height="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.75"
+    viewBox="0 0 24 24"
+    width="16"
+  >
+    <path
+      d="M4 5h16v11H10l-5 4v-4H4Z"
+    />
+    <path
+      d="M8 9h8M8 12.5h5"
+    />
+  </svg>
+</button>
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+>
+  <head>
+    <link
+      crossorigin="anonymous"
+      href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-label="すべての項目を検索"
+              class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+                <path
+                  d="m20 20-3.5-3.5"
+                />
+              </svg>
+              <span
+                class="max-lg:hidden"
+              >
+                すべての項目を検索
+              </span>
+              <kbd
+                class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+              >
+                Ctrl+K
+              </kbd>
+            </button>
+            <button
+              aria-haspopup="dialog"
+              aria-label="変更履歴"
+              class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                />
+                <path
+                  d="M3 3v5h5"
+                />
+                <path
+                  d="M12 7v5l3 2"
+                />
+              </svg>
+              <span
+                class="max-xl:hidden"
+              >
+                変更履歴
+              </span>
+            </button>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-expanded="false"
+              aria-label="表示の設定"
+              class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm...
+ ❯ frontend/src/features/comments/thread/thread-view.test.tsx:217:43
+    215|     // 検証
+    216|     const focused = target === "submit" ? () => within(panel).getByRol…
+    217|     await waitFor(() => expect(focused()).toHaveFocus());
+       |                                           ^
+    218|   });
+    219| });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/22]⎯
+
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_focus_after_add (submit)
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <button
+  aria-label="レビューに追加"
+  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 pointer-coarse:size-11"
+  data-disabled=""
+  data-focus="reply-send"
+  disabled=""
+  tabindex="0"
+  title="レビューに追加（Ctrl+Enter）"
+  type="submit"
+>
+  <svg
+    aria-hidden="true"
+    class="size-4 flex-none fill-none stroke-current"
+    height="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.75"
+    viewBox="0 0 24 24"
+    width="16"
+  >
+    <path
+      d="M4 5h16v11H10l-5 4v-4H4Z"
+    />
+    <path
+      d="M8 9h8M8 12.5h5"
+    />
+  </svg>
+</button>
+Received element with focus:
+  <textarea
+  aria-describedby="_r_p_-msg"
+  aria-keyshortcuts="Control+Enter"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_p_"
+  maxlength="10000"
+  name="body"
+  rows="1"
+/>
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+>
+  <head>
+    <link
+      crossorigin="anonymous"
+      href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-label="すべての項目を検索"
+              class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+                <path
+                  d="m20 20-3.5-3.5"
+                />
+              </svg>
+              <span
+                class="max-lg:hidden"
+              >
+                すべての項目を検索
+              </span>
+              <kbd
+                class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+              >
+                Ctrl+K
+              </kbd>
+            </button>
+            <button
+              aria-haspopup="dialog"
+              aria-label="変更履歴"
+              class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                />
+                <path
+                  d="M3 3v5h5"
+                />
+                <path
+                  d="M12 7v5l3 2"
+                />
+              </svg>
+              <span
+                class="max-xl:hidden"
+              >
+                変更履歴
+              </span>
+            </button>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-expanded="false"
+              aria-label="表示の設定"
+              class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm...
+ ❯ frontend/src/features/comments/thread/thread-view.test.tsx:217:43
+    215|     // 検証
+    216|     const focused = target === "submit" ? () => within(panel).getByRol…
+    217|     await waitFor(() => expect(focused()).toHaveFocus());
+       |                                           ^
+    218|   });
+    219| });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/22]⎯
+
+ FAIL  frontend/src/features/settings/display-settings/display-settings-panel.test.tsx > DisplaySettingsPanel > display_settings_panel_when_focus_after_add
+TestingLibraryElementError: Unable to find role="group" and name "レビューに追加した後のフォーカス"
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span
+            class="flex min-w-0 flex-none items-center gap-2.5"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-5.5 flex-none text-mark"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 32 32"
+            >
+              <circle
+                cx="8"
+                cy="16"
+                r="4"
+              />
+              <path
+                d="M12 16h5M17 16V7h5M17 16v9h5"
+              />
+              <circle
+                cx="25"
+                cy="7"
+                r="2.6"
+              />
+              <circle
+                cx="25"
+                cy="25"
+                r="2.6"
+              />
+            </svg>
+            <span
+              class="font-bold tracking-tight max-xs:hidden"
+            >
+              mindstella
+            </span>
+          </span>
+          <span
+            class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+            title="要件出しのスキル mindmap を設計する"
+          >
+            要件出しのスキル mindmap を設計する
+          </span>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <span
+              class="max-lg:hidden"
+            >
+              すべての項目を検索
+            </span>
+            <kbd
+              class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <button
+            aria-haspopup="dialog"
+            aria-label="変更履歴"
+            class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 12a9 9 0 1 0 3-6.7L3 8"
+              />
+              <path
+                d="M3 3v5h5"
+              />
+              <path
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span
+              class="max-xl:hidden"
+            >
+              変更履歴
+            </span>
+          </button>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-expanded="true"
+            aria-label="表示の設定"
+            class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 border-topbar-fg-2 bg-topbar-hover max-xs:px-0.5"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+             ...
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span
+            class="flex min-w-0 flex-none items-center gap-2.5"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-5.5 flex-none text-mark"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 32 32"
+            >
+              <circle
+                cx="8"
+                cy="16"
+                r="4"
+              />
+              <path
+                d="M12 16h5M17 16V7h5M17 16v9h5"
+              />
+              <circle
+                cx="25"
+                cy="7"
+                r="2.6"
+              />
+              <circle
+                cx="25"
+                cy="25"
+                r="2.6"
+              />
+            </svg>
+            <span
+              class="font-bold tracking-tight max-xs:hidden"
+            >
+              mindstella
+            </span>
+          </span>
+          <span
+            class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+            title="要件出しのスキル mindmap を設計する"
+          >
+            要件出しのスキル mindmap を設計する
+          </span>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <span
+              class="max-lg:hidden"
+            >
+              すべての項目を検索
+            </span>
+            <kbd
+              class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <button
+            aria-haspopup="dialog"
+            aria-label="変更履歴"
+            class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 12a9 9 0 1 0 3-6.7L3 8"
+              />
+              <path
+                d="M3 3v5h5"
+              />
+              <path
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span
+              class="max-xl:hidden"
+            >
+              変更履歴
+            </span>
+          </button>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-expanded="true"
+            aria-label="表示の設定"
+            class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 border-topbar-fg-2 bg-topbar-hover max-xs:px-0.5"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+             ...
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/features/settings/display-settings/display-settings-panel.test.tsx:42:32
+     40|     // 準備
+     41|     renderRoute("/spa/?panel=display");
+     42|     const group = await screen.findByRole("group", { name: "レビューに追加した後…
+       |                                ^
+     43|     // 実行
+     44|     await userEvent.click(within(group).getByRole("radio", { name: "入力…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/22]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_focus_after_add (input)
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <textarea
+  aria-describedby="_r_u_-msg"
+  aria-keyshortcuts="Control+Enter"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_u_"
+  name="body"
+  rows="1"
+/>
+Received element with focus:
+  <button
+  aria-busy="false"
+  aria-label="レビューに追加"
+  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"
+  tabindex="0"
+  title="レビューに追加（Ctrl+Enter）"
+  type="submit"
+>
+  <svg
+    aria-hidden="true"
+    class="size-4 flex-none fill-none stroke-current"
+    height="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.75"
+    viewBox="0 0 24 24"
+    width="16"
+  >
+    <path
+      d="M4 5h16v11H10l-5 4v-4H4Z"
+    />
+    <path
+      d="M8 9h8M8 12.5h5"
+    />
+  </svg>
+</button>
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+>
+  <head />
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-label="すべての項目を検索"
+              class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+                <path
+                  d="m20 20-3.5-3.5"
+                />
+              </svg>
+              <span
+                class="max-lg:hidden"
+              >
+                すべての項目を検索
+              </span>
+              <kbd
+                class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+              >
+                Ctrl+K
+              </kbd>
+            </button>
+            <button
+              aria-haspopup="dialog"
+              aria-label="変更履歴"
+              class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                />
+                <path
+                  d="M3 3v5h5"
+                />
+                <path
+                  d="M12 7v5l3 2"
+                />
+              </svg>
+              <span
+                class="max-xl:hidden"
+              >
+                変更履歴
+              </span>
+            </button>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-expanded="false"
+              aria-label="表示の設定"
+              class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"
+              tabindex="0"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+    ...
+ ❯ frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx:221:94
+    219|       await waitFor(() => expect(within(panel).getByRole("button", { n…
+    220|     } else {
+    221|       await waitFor(() => expect(within(panel).getByRole("textbox", { …
+       |                                                                                              ^
+    222|     }
+    223|   });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/22]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_focus_after_add (submit)
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <button
+  aria-busy="false"
+  aria-label="レビューに追加"
+  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"
+  tabindex="0"
+  title="レビューに追加（Ctrl+Enter）"
+  type="submit"
+>
+  <svg
+    aria-hidden="true"
+    class="size-4 flex-none fill-none stroke-current"
+    height="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.75"
+    viewBox="0 0 24 24"
+    width="16"
+  >
+    <path
+      d="M4 5h16v11H10l-5 4v-4H4Z"
+    />
+    <path
+      d="M8 9h8M8 12.5h5"
+    />
+  </svg>
+</button>
+Received element with focus:
+  <textarea
+  aria-describedby="_r_12_-msg"
+  aria-keyshortcuts="Control+Enter"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_12_"
+  name="body"
+  rows="1"
+/>
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+>
+  <head />
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-label="すべての項目を検索"
+              class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+                <path
+                  d="m20 20-3.5-3.5"
+                />
+              </svg>
+              <span
+                class="max-lg:hidden"
+              >
+                すべての項目を検索
+              </span>
+              <kbd
+                class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+              >
+                Ctrl+K
+              </kbd>
+            </button>
+            <button
+              aria-haspopup="dialog"
+              aria-label="変更履歴"
+              class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                />
+                <path
+                  d="M3 3v5h5"
+                />
+                <path
+                  d="M12 7v5l3 2"
+                />
+              </svg>
+              <span
+                class="max-xl:hidden"
+              >
+                変更履歴
+              </span>
+            </button>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-expanded="false"
+              aria-label="表示の設定"
+              class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"
+              tabindex="0"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+    ...
+ ❯ frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx:219:90
+    217|     // 検証
+    218|     if (expected === "submit") {
+    219|       await waitFor(() => expect(within(panel).getByRole("button", { n…
+       |                                                                                          ^
+    220|     } else {
+    221|       await waitFor(() => expect(within(panel).getByRole("textbox", { …
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/22]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_focus_after_add (submit_when_empty)
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <textarea
+  aria-describedby="_r_16_-msg"
+  aria-invalid="true"
+  aria-keyshortcuts="Control+Enter"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_16_"
+  name="body"
+  rows="1"
+>······
+</textarea>
+Received element with focus:
+  <button
+  aria-busy="false"
+  aria-label="レビューに追加"
+  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"
+  tabindex="0"
+  title="レビューに追加（Ctrl+Enter）"
+  type="submit"
+>
+  <svg
+    aria-hidden="true"
+    class="size-4 flex-none fill-none stroke-current"
+    height="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.75"
+    viewBox="0 0 24 24"
+    width="16"
+  >
+    <path
+      d="M4 5h16v11H10l-5 4v-4H4Z"
+    />
+    <path
+      d="M8 9h8M8 12.5h5"
+    />
+  </svg>
+</button>
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+>
+  <head />
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-label="すべての項目を検索"
+              class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+                <path
+                  d="m20 20-3.5-3.5"
+                />
+              </svg>
+              <span
+                class="max-lg:hidden"
+              >
+                すべての項目を検索
+              </span>
+              <kbd
+                class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+              >
+                Ctrl+K
+              </kbd>
+            </button>
+            <button
+              aria-haspopup="dialog"
+              aria-label="変更履歴"
+              class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                />
+                <path
+                  d="M3 3v5h5"
+                />
+                <path
+                  d="M12 7v5l3 2"
+                />
+              </svg>
+              <span
+                class="max-xl:hidden"
+              >
+                変更履歴
+              </span>
+            </button>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-expanded="false"
+              aria-label="表示の設定"
+              class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"
+              tabindex="0"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+    ...
+ ❯ frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx:221:94
+    219|       await waitFor(() => expect(within(panel).getByRole("button", { n…
+    220|     } else {
+    221|       await waitFor(() => expect(within(panel).getByRole("textbox", { …
+       |                                                                                              ^
+    222|     }
+    223|   });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/22]⎯
+
+ FAIL  frontend/src/features/settings/display-settings/components/settings-panel.test.tsx > SettingsPanel > settings_panel_when_focus_after_add (pointerCoarse: false)
+ FAIL  frontend/src/features/settings/display-settings/components/settings-panel.test.tsx > SettingsPanel > settings_panel_when_focus_after_add (pointerCoarse: true)
+TestingLibraryElementError: Unable to find an accessible element with the role "group" and name "コメントの入力"
+
+Here are the accessible roles:
+
+  group:
+
+  Name "表示する種類":
+  <fieldset
+    class="m-0 grid gap-1 border-0 p-0"
+    data-part="kinds"
+  />
+
+  Name "詳細に表示するもの":
+  <fieldset
+    class="m-0 grid gap-1 border-0 p-0"
+  />
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  <ul
+    class="m-0 grid list-none gap-1 p-0"
+  />
+
+  Name "":
+  <ul
+    class="m-0 grid list-none gap-1 p-0"
+  />
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  <li
+    data-part="all"
+  />
+
+  Name "":
+  <li
+    class="flex min-h-10 items-center gap-2 text-muted-foreground"
+    data-part="always"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    class="flex min-h-10 items-center gap-2 text-muted-foreground"
+    data-part="always"
+  />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  --------------------------------------------------
+  checkbox:
+
+  Name "すべて7/7":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  Name "検討事項":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="decisions"
+  />
+
+  Name "タスク":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="tasks"
+  />
+
+  Name "調査":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="research"
+  />
+
+  Name "資料":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="docs"
+  />
+
+  Name "用語集":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="terms"
+  />
+
+  Name "メモ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="notes"
+  />
+
+  Name "会話ログ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="logs"
+  />
+
+  Name "差分のミニマップ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  Name "表の列の固定":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  Name "表の見出しの固定":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  Name "表のしま模様":
+  <input
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  Name "セクションの折りたたみ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p
+    class="m-0 text-small text-muted-foreground"
+  />
+
+  Name "":
+  <p
+    class="m-0 text-small text-muted-foreground"
+  />
+
+  --------------------------------------------------
+  status:
+
+  Name "":
+  <p
+    class="m-0 flex items-start gap-1 text-small"
+    data-part="message"
+    role="status"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="grid gap-4"
+      data-part="wrap"
+    >
+      <fieldset
+        class="m-0 grid gap-1 border-0 p-0"
+        data-part="kinds"
+      >
+        <legend
+          class="mb-1 font-medium"
+        >
+          表示する種類
+        </legend>
+        <ul
+          class="m-0 grid list-none gap-1 p-0"
+        >
+          <li
+            data-part="all"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+              />
+              <span
+                class="flex-1"
+              >
+                すべて
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              >
+                7/7
+              </span>
+            </label>
+          </li>
+          <li
+            class="flex min-h-10 items-center gap-2 text-muted-foreground"
+            data-part="always"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="m5 12 5 5 9-10"
+              />
+            </svg>
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 11 12 4l9 7"
+              />
+              <path
+                d="M5 10v10h14V10"
+              />
+            </svg>
+            <span
+              class="flex-1"
+            >
+              概要
+            </span>
+            <span
+              class="text-small"
+            >
+              常に表示
+            </span>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="decisions"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="8"
+                />
+                <path
+                  d="m9 12 2 2 4-4"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                検討事項
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="tasks"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <rect
+                  height="16"
+                  rx="2"
+                  width="16"
+                  x="4"
+                  y="4"
+                />
+                <path
+                  d="M8 9h8M8 13h8M8 17h5"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                タスク
+              </span>
+              <span
+                class="font-mon...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/settings/display-settings/components/settings-panel.test.tsx:60:28
+     58|     const onFocusAfterAddChange = vi.fn();
+     59|     render(<SettingsPanel {...base} focusAfterAdd="auto" pointerCoarse…
+     60|     const section = screen.getByRole("group", { name: "コメントの入力" });
+       |                            ^
+     61|     const group = within(section).getByRole("group", { name: "レビューに追加し…
+     62|     const radios = within(group).getAllByRole("radio");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/22]⎯
+
+
+ Test Files  9 failed (9)
+      Tests  22 failed | 41 passed (63)
+   Start at  16:45:53
+   Duration  6.68s (tests 53%, environment 21%, import 11%, transform 10%, setup 6%)
+

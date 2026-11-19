@@ -6,7 +6,7 @@ components:
     title: スレッド
     kind: 画面
     usecase: スレッドで話す
-    summary: 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする
+    summary: 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする。返信を溜めたら、`ReplyForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら返信の入力の「レビューに追加」へ、`input` なら入力欄へフォーカスを移す
     refs:
       - SCR-489-4#
     unit_tests:
@@ -46,6 +46,12 @@ components:
         condition: 'オープンの TH-1 の返信の入力でマイクを押して ✓。`POST /api/transcriptions` が `{text: x}` で、挙動が無い（`review`）'
         mock: MSW と `vi.stubGlobal`
         expected: '`POST /api/comments` が `{thread: TH-1, body: x}` で 1 回呼ばれ、入力欄が空で「文字起こしの結果をレビュー中に追加しました。」'
+      - name: test_thread_view_when_focus_after_add
+        case: 正常
+        summary: 返信を溜めた後のフォーカスを移動先に従わせる
+        condition: '`parametrize`: `useFocusAfterAddTarget` が `input` / `submit` で返信を溜める（201）'
+        mock: MSW・`useFocusAfterAddTarget`
+        expected: 返信の入力欄にフォーカス / 「レビューに追加」にフォーカス
     container: frontend/src/features/comments/thread/thread-view.tsx
 notes:
   単体テスト: 同じフォルダの `thread-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
+import pytest
 import yaml
 from integration.browser_tab_helpers import (
     LINK_PAGE_TITLE,
@@ -2689,3 +2690,60 @@ def test_normal_when_embedded_files(
     after = snapshot_tree(root)
     after.pop(".mindstella/.mindstella-opened")
     assert after == before
+
+
+# 詳細パネルの下端のコメントの入力（入力欄と「レビューに追加」）
+DETAIL_FIELD = "aside.panel form.send textarea"
+DETAIL_SUBMIT = "aside.panel form.send .send-submit"
+
+# 表示の設定の「レビューに追加した後のフォーカス」のラジオ（値ごと）
+FOCUS_RADIO = f"{SETTINGS_PANEL} input[name=focus-after-add]"
+
+
+@pytest.mark.browser_context_args(has_touch=True, viewport={"width": 390, "height": 844})
+def test_normal_when_focus_after_add(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """タッチの端末では自動で「レビューに追加」へ、「入力欄へ戻す」を選んだ後は入力欄へフォーカスを移し、「自動」に戻すと上書きを外す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    open_preview(url, "#tab=decisions&id=D-1")
+    page.wait_for_selector(DETAIL_FIELD, timeout=UPDATE_TIMEOUT_MS)
+    assert page.evaluate("matchMedia('(pointer: coarse)').matches") is True
+    # 実行（1 つ目を溜める）
+    page.fill(DETAIL_FIELD, "案 A にする")
+    page.click(DETAIL_SUBMIT)
+    # 検証（「レビューに追加」へフォーカスが移り、入力欄が空）
+    expect(page.locator(DETAIL_SUBMIT)).to_be_focused(timeout=UPDATE_TIMEOUT_MS)
+    assert page.input_value(DETAIL_FIELD) == ""
+    # 実行（表示の設定を開く）
+    open_settings(page)
+    # 検証（「自動」が選ばれ、その下にこの端末では戻さない旨が出る）
+    assert page.is_checked(f"{FOCUS_RADIO}[value=auto]")
+    assert "この端末では戻しません" in panel_text(page)
+    # 実行（「入力欄へ戻す」を選ぶ）
+    page.check(f"{FOCUS_RADIO}[value=input]")
+    # 検証
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["focusAfterAdd"] == "input"
+    assert "レビューに追加した後のフォーカス" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    # 実行（パネルを閉じて 2 つ目を溜める）
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SETTINGS_PANEL, state="detached")
+    page.fill(DETAIL_FIELD, "案 B も見たい")
+    page.click(DETAIL_SUBMIT)
+    # 検証（入力欄へフォーカスが戻る）
+    expect(page.locator(DETAIL_FIELD)).to_be_focused(timeout=UPDATE_TIMEOUT_MS)
+    # 実行（表示の設定で「自動」を選ぶ）
+    open_settings(page)
+    page.check(f"{FOCUS_RADIO}[value=auto]")
+    # 検証（個人の上書きから外れる）
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs.get("focusAfterAdd") is None

@@ -1,0 +1,10 @@
+/* PR #608: 表示の設定の「レビューに追加した後のフォーカス」と、コメント・返信の入力の溜めた後のフォーカス */
+
+/* 選択肢の行の補足: 自動のときに今の端末でどちらになるかを、選択肢の名前の下に小さく出す */
+.st-kinds .st-k-sub { display: block; color: var(--text-2); font-size: var(--fs-small); }
+/* 補足を持つ選択肢の行: 2 行になっても押せる的の高さを保ち、上下に余白を取る */
+.st-kinds label:has(.st-k-sub) { padding-top: 6px; padding-bottom: 6px; }
+/* 区画の下の説明: 何の後の設定かと、端末の種類で既定が変わることを 1 行で出す */
+.st-sec .st-hint { margin: 6px 0 0; color: var(--text-2); font-size: var(--fs-small); }
+/* 結果の行にフォーカスを置く案 B: 結果の行の輪を、ボタンと同じ印の色で内側に描く */
+.send-msg[tabindex="-1"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

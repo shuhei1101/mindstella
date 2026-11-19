@@ -1,5 +1,5 @@
 "use strict";
-// 表示の設定の中身。表示する種類と差分のミニマップと本文の表とセクションの見せ方を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
+// 表示の設定の中身。表示する種類と差分のミニマップと本文の表とセクションの見せ方と「レビューに追加」の後のフォーカスを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 選べるネットワークの見た目 */
@@ -19,6 +19,14 @@ var MindmapPreview;
     MindmapPreview.lookLabel = lookLabel;
     /** 差分のミニマップの呼び名（表示の設定の切り替えと「この端末で変えている項目」に出す名前） */
     MindmapPreview.MINIMAP_LABEL = "差分のミニマップ";
+    /** 「レビューに追加」の後のフォーカスの呼び名（表示の設定のラジオの凡例と「この端末で変えている項目」に出す名前） */
+    MindmapPreview.FOCUS_AFTER_ADD_LABEL = "レビューに追加した後のフォーカス";
+    /** 「レビューに追加」の後のフォーカスの選択肢（値・名前） */
+    const FOCUS_AFTER_ADD_OPTIONS = [
+        { key: "auto", label: "自動" },
+        { key: "input", label: "入力欄へ戻す" },
+        { key: "none", label: "戻さない" },
+    ];
     /** 種類 → 種類の行に出す印 */
     const KIND_ICON = {
         decisions: "decision",
@@ -175,6 +183,64 @@ var MindmapPreview;
             ],
         });
     }
+    /** コメントの入力の選び（「レビューに追加」の後のフォーカスの 3 つのラジオ。「自動」の下にこの端末でどちらになるかを出す） */
+    function commentInputField({ focusAfterAdd = "auto", pointerCoarse = false, on }) {
+        const hintId = "st-focus-after-add-hint";
+        return MindmapPreview.h({
+            tag: "fieldset",
+            attrs: { class: "st-sec" },
+            children: [
+                MindmapPreview.h({ tag: "legend", children: ["コメントの入力"] }),
+                MindmapPreview.h({
+                    tag: "fieldset",
+                    attrs: { class: "st-sub-sec", "aria-describedby": hintId },
+                    children: [
+                        MindmapPreview.h({ tag: "legend", children: [MindmapPreview.FOCUS_AFTER_ADD_LABEL] }),
+                        MindmapPreview.h({
+                            tag: "ul",
+                            attrs: { class: "st-kinds" },
+                            children: FOCUS_AFTER_ADD_OPTIONS.map(({ key, label }) => MindmapPreview.h({
+                                tag: "li",
+                                children: [
+                                    MindmapPreview.h({
+                                        tag: "label",
+                                        children: [
+                                            MindmapPreview.h({
+                                                tag: "input",
+                                                attrs: {
+                                                    type: "radio",
+                                                    name: "focus-after-add",
+                                                    value: key,
+                                                    checked: focusAfterAdd === key,
+                                                    "data-focus": `focus-after-add:${key}`,
+                                                    onchange: () => on.focusAfterAdd(key),
+                                                },
+                                            }),
+                                            MindmapPreview.h({
+                                                tag: "span",
+                                                attrs: { class: "st-k-label" },
+                                                children: [
+                                                    label,
+                                                    ...(key === "auto"
+                                                        ? [MindmapPreview.h({ tag: "span", attrs: { class: "st-k-sub" }, children: [pointerCoarse ? "この端末では戻しません" : "この端末では入力欄へ戻します"] })]
+                                                        : []),
+                                                ],
+                                            }),
+                                        ],
+                                    }),
+                                ],
+                            })),
+                        }),
+                        MindmapPreview.h({
+                            tag: "p",
+                            attrs: { class: "st-hint", id: hintId },
+                            children: ["自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。"],
+                        }),
+                    ],
+                }),
+            ],
+        });
+    }
     /** この端末で変えている項目と「既定に戻す」。上書きが無いときはボタンを出さず、その旨を出す */
     function resetBlock({ overrides, on }) {
         if (overrides.length === 0) {
@@ -271,6 +337,8 @@ var MindmapPreview;
                 storageOk ? null : storageNote(),
                 kindsField(props),
                 detailField(props),
+                // 配る書き出し（ワークスペースの既定にできない）はコメントの入力を持たないため、区画を出さない
+                ...(props.canSave ? [commentInputField(props)] : []),
                 resetBlock(props),
                 canSave ? saveBlock(props) : null,
                 messageLine(message),

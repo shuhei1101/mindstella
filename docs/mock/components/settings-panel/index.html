@@ -19,6 +19,8 @@
   <link rel="stylesheet" href="../../refs/95/assets/style.css">
   <!-- 種類の行のホバーで件数の文字を濃くする分 -->
   <link rel="stylesheet" href="../../refs/123/assets/style.css">
+  <!-- 「レビューに追加した後のフォーカス」の分 -->
+  <link rel="stylesheet" href="../../refs/608/assets/style.css">
   <style>
     /* カタログの節: 状態ごとの案を縦に並べる */
     .cat-sec { margin-top: 32px; }
@@ -63,7 +65,7 @@
       const counts = { decisions: 36, tasks: 8, research: 4, docs: 5, terms: 6, notes: 3, logs: 7 };
       const without = (...ks) => new Set(ALL.filter((k) => !ks.includes(k)));
       // 開いた直後の値（ワークスペースの既定も上書きも無い）
-      const base = { look: "deep", defLook: "deep", shown: new Set(ALL), defShown: new Set(ALL), counts, theme: "system", showTheme: false, overrides: [], save: "button", ws: { look: "deep", shown: new Set(ALL) }, msg: null, nostore: false, minimap: true, minimapLabel: "差分のミニマップ", minimapAt: "afterend", md: { pin: true, head: true, stripes: false, fold: true } };
+      const base = { look: "deep", defLook: "deep", shown: new Set(ALL), defShown: new Set(ALL), counts, theme: "system", showTheme: false, overrides: [], save: "button", ws: { look: "deep", shown: new Set(ALL) }, msg: null, nostore: false, minimap: true, minimapLabel: "差分のミニマップ", minimapAt: "afterend", md: { pin: true, head: true, stripes: false, fold: true }, focus: "auto", focusWords: "a", focusAt: "section", pointer: "fine" };
       const PANELS = [
         ["開いた直後（ワークスペースの既定のまま）", "上書きが無い。既定に戻すとワークスペースの既定にするのボタンを出さず、そのことを文言で示す。", {}],
         ["この端末で変えている（推奨の案 A）", "ネットワークのドロップダウンで選んだ見た目も含めて上書きを持つ項目を並べ、既定に戻すで 4 項目の上書きを外す。ワークスペースの既定にするは線で区切った下に置く。", { look: "dust", defLook: "starlight", defShown: without("notes"), overrides: ["ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）"] }],
@@ -81,6 +83,11 @@
         ["差分のミニマップ: 呼び名の案 C", "「変更箇所の帯」。ミニマップという言葉を使わない。", { minimapLabel: "変更箇所の帯" }],
         ["差分のミニマップ: 置き場所の案 B", "区画を表示する種類の上に置く。", { minimapAt: "beforebegin" }],
         ["本文の表とセクションの見せ方を変えている", "区画「詳細に表示するもの」の差分のミニマップの下に、表の列の固定・表の見出しの固定・表のしま模様・セクションの折りたたみのチェックを並べる。既定（列の固定・見出しの固定・折りたたみはオン、しま模様はオフ）と違う項目をこの端末で変えている項目に並べ、既定に戻すで戻す。ワークスペースの既定には保存しない。", { md: { pin: false, head: true, stripes: true, fold: true }, overrides: ["表の列の固定", "表のしま模様"] }],
+        ["レビューに追加した後のフォーカス: 自動（既定・推奨の文言の案 A）", "区画「詳細に表示するもの」の下に区画「コメントの入力」を置き、「レビューに追加した後のフォーカス」を 3 つから選ばせる。既定は自動で、マウスの端末では入力欄へ戻し、タッチの端末では戻さない。自動の下に、この端末でどちらになるかを出す。", {}],
+        ["レビューに追加した後のフォーカス: 自動（タッチの端末）", "同じ自動でも、タッチの端末では「この端末では戻しません」と出す。", { pointer: "coarse", narrow: true }],
+        ["レビューに追加した後のフォーカス: 戻さないにした", "自動と違う値を選ぶと、この端末で変えている項目に並べ、既定に戻すで自動に戻す。ワークスペースの既定には保存しない。", { focus: "none", overrides: ["レビューに追加した後のフォーカス"] }],
+        ["レビューに追加した後のフォーカス: 文言の案 B", "項目名「追加した後に入力欄へ戻る」、選択肢「自動（スマホでは戻らない）」「戻る」「戻らない」。", { focusWords: "b" }],
+        ["レビューに追加した後のフォーカス: 置き場所の案 B", "区画を分けず、区画「詳細に表示するもの」の末尾に並べる。", { focusAt: "detail" }],
       ];
       const CONFIRMS = [
         ["確かめ（2 つの項目を変える）", "今の既定と保存する値を並べる。最初のフォーカスは取り消すに置く。", { from: { look: "starlight", shown: without("notes") }, to: { look: "dust", shown: new Set(ALL) } }],
@@ -105,6 +112,23 @@
         const m = { ...base, ...o };
         document.querySelector(`[data-demo="${i}"] .st-kinds`).closest("fieldset").insertAdjacentHTML(m.minimapAt,
           `<fieldset class="st-sec"><legend>詳細に表示するもの</legend><ul class="st-kinds"><li><label><input type="checkbox" data-act="sminimap" ${m.minimap ? "checked" : ""}><span class="st-k-label">${m.minimapLabel}</span></label></li>${[["pin", "表の列の固定"], ["head", "表の見出しの固定"], ["stripes", "表のしま模様"], ["fold", "セクションの折りたたみ"]].map(([key, label]) => `<li><label><input type="checkbox" ${m.md[key] ? "checked" : ""}><span class="st-k-label">${label}</span></label></li>`).join("")}</ul></fieldset>`);
+      });
+      // コメントの入力の区画（「レビューに追加」の後のフォーカス）を、詳細に表示するものの区画の下（置き場所の案 B はその区画の末尾）に足す
+      const FOCUS_WORDS = {
+        a: { label: "レビューに追加した後のフォーカス", opts: [["auto", "自動"], ["input", "入力欄へ戻す"], ["none", "戻さない"]], sub: { fine: "この端末では入力欄へ戻します", coarse: "この端末では戻しません" }, hint: "自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。" },
+        b: { label: "追加した後に入力欄へ戻る", opts: [["auto", "自動（スマホでは戻らない）"], ["input", "戻る"], ["none", "戻らない"]], sub: { fine: "この端末では戻ります", coarse: "この端末では戻りません" }, hint: "戻らないときは、ソフトウェアキーボードを閉じたまま資料を読めます。" },
+      };
+      PANELS.forEach(([, , o], i) => {
+        const m = { ...base, ...o };
+        const w = FOCUS_WORDS[m.focusWords];
+        const name = `d${i}-focus`;
+        const items = w.opts.map(([v, l]) => `<li><label><input type="radio" name="${name}" value="${v}" data-act="sfocus" ${m.focus === v ? "checked" : ""}><span class="st-k-label">${l}${v === "auto" ? `<span class="st-k-sub">${w.sub[m.pointer]}</span>` : ""}</span></label></li>`).join("");
+        const detail = document.querySelector(`[data-demo="${i}"] [data-act=sminimap]`).closest("fieldset");
+        if (m.focusAt === "detail") {
+          detail.querySelector(".st-kinds").insertAdjacentHTML("beforeend", `<li><fieldset class="st-sec" style="padding: 8px 12px;"><legend>${w.label}</legend><ul class="st-kinds">${items}</ul></fieldset></li>`);
+        } else {
+          detail.insertAdjacentHTML("afterend", `<fieldset class="st-sec"><legend>コメントの入力</legend><fieldset class="st-sec"><legend class="st-k-label" style="font-weight: 400;">${w.label}</legend><ul class="st-kinds">${items}</ul><p class="st-hint">${w.hint}</p></fieldset></fieldset>`);
+        }
       });
       S.markMixed(document);
       // ホバー・フォーカスの見本: 表示する種類の 1 行にホバー、別の 1 つにフォーカスの輪

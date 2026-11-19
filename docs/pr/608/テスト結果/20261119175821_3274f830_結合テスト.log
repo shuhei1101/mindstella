@@ -1,0 +1,6 @@
+$ python3 -m pytest tests/integration/storybook/test_reply_form_stories.py tests/integration/storybook_react/test_reply_form_stories.py tests/integration/storybook/test_settings_panel_stories.py tests/integration/storybook_react/test_settings_panel_stories.py tests/integration/storybook_react/test_send_form_stories.py tests/integration/preview/test_thread_screen.py::test_reply tests/integration/preview/test_settings_screen.py tests/integration/preview/test_spa_display_settings_screen.py tests/integration/preview/test_open_preview.py::test_normal_when_focus_after_add tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_body_empty tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_body tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_comment_input_closed tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_html_body
+........................................................................ [ 49%]
+........................................................................ [ 99%]
+.                                                                        [100%]
+145 passed in 203.30s (0:03:23)
+exit=0

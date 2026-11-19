@@ -7,7 +7,7 @@ import { Icon } from "@/shared/components/icon";
 import { ReviewEditForm } from "@/features/comments/shared/review-edit-form";
 import { ReviewBodyFold } from "@/shared/components/review-body-fold";
 import { SelectionComment } from "@/shared/components/selection-comment";
-import { SendForm, type SendStatus } from "@/shared/components/send-form";
+import { focusAfterAdded, SendForm, type SendStatus } from "@/shared/components/send-form";
 import { Button } from "@/shared/components/ui/button";
 import { AppError } from "@/shared/core/app-error";
 import { selectionLocation } from "@/shared/core/body-links";
@@ -16,7 +16,7 @@ import { locationLabel, type Location } from "@/shared/core/records";
 import { commentsQuery } from "@/shared/hooks/preview-queries";
 import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from "@/shared/hooks/use-comments";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
-import { usePrefs, writePrefs } from "@/shared/stores/prefs-store";
+import { useFocusAfterAddTarget, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 
 export type DetailCommentsProps = {
   /** 開いている項目の ID */
@@ -49,6 +49,9 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
   const order = prefs.reviewOrder === "oldest" ? "oldest" : "newest";
   const formOpen = prefs.commentFormClosed !== true;
   const add = useAddComment();
+  const focusTarget = useFocusAfterAddTarget();
+  // 溜めた後にフォーカスを移す、下端のコメントの入力の form
+  const sendForm = useRef<HTMLFormElement>(null);
   const update = useUpdateComment();
   const remove = useRemoveComment();
   const saveDraft = useSaveDraft();
@@ -198,6 +201,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
         </section>
       )}
       <SendForm
+        formRef={sendForm}
         target={id}
         loc={loc}
         body={text}
@@ -229,8 +233,11 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
             { target, loc: location, body: value },
             {
               onSuccess: (result) => {
-                setLoc(null);
-                setForm({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null });
+                flushSync(() => {
+                  setLoc(null);
+                  setForm({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null });
+                });
+                focusAfterAdded(sendForm.current, focusTarget);
               },
               onError: (error) => { setForm((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
             },
