@@ -1607,7 +1607,7 @@ var MindmapPreview;
                     setView({ next: "warn" });
             },
             confirm: () => {
-                MindmapPreview.downloadText({ name: `${item.id}.md`, text: MindmapPreview.stripEmbeddedHtml(source), type: "text/markdown" });
+                MindmapPreview.downloadText({ name: `${item.id}.mark.md`, text: MindmapPreview.stripEmbeddedHtml(source), type: "text/markdown" });
                 menu.hidePopover();
             },
             back: () => setView({ next: "choose", focus: view === "warn" ? "md" : "html" }),

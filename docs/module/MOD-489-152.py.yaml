@@ -269,9 +269,9 @@ functions:
       - name: test_collect_preview_data
         case: 正常
         summary: 種類ごとのキーと、指された本文だけを集める
-        condition: 'A-1（`body: A-1.md`、ファイルあり）・R-1（`body: R-1.md`、ファイル無し）・`docs/X-1.md`（指されない）'
+        condition: 'A-1（`body: A-1.mark.md`、ファイルあり）・R-1（`body: R-1.mark.md`、ファイル無し）・`docs/X-1.mark.md`（指されない）'
         mock: なし
-        expected: キーが `settings`・`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs`・`bodies`・`marked_bodies`・`changes`・`derived`・`built_at`・`settings_problem`。`bodies` のキーが `A-1.md` だけ。`marked_bodies` が `{}`。`settings_problem` が `None`
+        expected: キーが `settings`・`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs`・`bodies`・`marked_bodies`・`changes`・`derived`・`built_at`・`settings_problem`。`bodies` のキーが `A-1.mark.md` だけ。`marked_bodies` が `{}`。`settings_problem` が `None`
       - name: test_collect_preview_data_with_changes
         case: 正常
         summary: まとまりと変更履歴を含める
@@ -281,8 +281,8 @@ functions:
       - name: test_collect_preview_data_with_html_body
         case: 正常
         summary: HTML の本文は原文を `bodies` に、行の印つきを `marked_bodies` に入れる
-        condition: 'A-1（`body: A-1.md`）・A-2（`body: A-2.html`、本文 `<p>a</p>`）'
-        expected: '`bodies` が `A-1.md`・`A-2.html` の原文を持ち、`marked_bodies` が `A-2.html` → `<p data-line="1" data-line-end="1">a</p>` だけを持つ'
+        condition: 'A-1（`body: A-1.mark.md`）・A-2（`body: A-2.html`、本文 `<p>a</p>`）'
+        expected: '`bodies` が `A-1.mark.md`・`A-2.html` の原文を持ち、`marked_bodies` が `A-2.html` → `<p data-line="1" data-line-end="1">a</p>` だけを持つ'
         mock: なし
   - name: escape_for_script
     title: 埋め込みのエスケープ
@@ -574,9 +574,9 @@ functions:
       - name: test_export_preview
         case: 正常
         summary: 記録と取ったライブラリとライセンスの表示を持つ HTML を out に書き、ワークスペースは触らない
-        condition: D-1 と資料 A-1（`docs/A-1.md` あり）を持つワークスペースと、外の読み込みの印の間に `MDMARK_SLOT` と 1 つの `<script src integrity>` を持つ `template.html`・空の CSS・JavaScript を置いた雛形のフォルダ。`out` はワークスペースの外の `tmp_path / "配る.html"`
+        condition: D-1 と資料 A-1（`docs/A-1.mark.md` あり）を持つワークスペースと、外の読み込みの印の間に `MDMARK_SLOT` と 1 つの `<script src integrity>` を持つ `template.html`・空の CSS・JavaScript を置いた雛形のフォルダ。`out` はワークスペースの外の `tmp_path / "配る.html"`
         mock: '`fetch`（URL ごとに決めた中身を返す関数。配布ファイルの中身は `integrity` と合うもの）'
-        expected: 戻り値が `out`。`out` の `mindmap-data` を JSON として読むと `decisions` に D-1、`bodies` に `A-1.md`。`out` に `src=`・`href=` が無く、`mindmap-licenses` の要素がある。ワークスペースのファイルが呼ぶ前と同じ
+        expected: 戻り値が `out`。`out` の `mindmap-data` を JSON として読むと `decisions` に D-1、`bodies` に `A-1.mark.md`。`out` に `src=`・`href=` が無く、`mindmap-licenses` の要素がある。ワークスペースのファイルが呼ぶ前と同じ
       - name: test_export_preview_when_schema_mismatch
         case: 異常
         summary: 問題があれば取らずに前の out を残す

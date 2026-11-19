@@ -1,0 +1,7 @@
+confirmations:
+  - topic: ワークスペースの記録の本文（Markdown）の拡張子の決め方
+    decision: Markdown の本文を全て docs/{ID}.mark.md にする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: '91e98410'
+    thread: https://github.com/shuhei1101/mindstella/pull/618#discussion_r4630263612

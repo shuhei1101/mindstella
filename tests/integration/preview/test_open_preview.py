@@ -253,8 +253,8 @@ def test_normal(
     # 準備
     url = write_preview(
         make_item("D-1"),
-        make_item("D-3", status="要見直し", body="docs/D-3.md"),
-        bodies={"D-3.md": BODY_WITH_DIAGRAM},
+        make_item("D-3", status="要見直し", body="docs/D-3.mark.md"),
+        bodies={"D-3.mark.md": BODY_WITH_DIAGRAM},
     )
     hash_text = "#tab=decisions&view=table&id=D-3"
     # 実行
@@ -376,7 +376,7 @@ def test_normal_when_exported_offline(
     """描画のライブラリを中に持つ配る書き出しは、通信が無くても本文・図・マップを描く（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-3", status="要見直し", body="docs/D-3.md"), bodies={"D-3.md": BODY_WITH_DIAGRAM}
+        make_item("D-3", status="要見直し", body="docs/D-3.mark.md"), bodies={"D-3.mark.md": BODY_WITH_DIAGRAM}
     )
     out = tmp_path / "配る.html"
     result = call_tool("export", workspace=str(root), out=str(out))
@@ -478,7 +478,7 @@ def test_error_when_library_unavailable(
     """描画のライブラリの配信元に届かないと、使う箇所に読み込めなかったライブラリの名前を出す（異常系）。"""
     # 準備
     url = write_preview(
-        make_item("D-3", status="要見直し", body="docs/D-3.md"), bodies={"D-3.md": BODY_WITH_DIAGRAM}
+        make_item("D-3", status="要見直し", body="docs/D-3.mark.md"), bodies={"D-3.mark.md": BODY_WITH_DIAGRAM}
     )
     page.route(LIBRARY_HOST_PATTERN, lambda route: route.abort())
     # 実行
@@ -601,7 +601,7 @@ def test_normal_when_sent(
 ) -> None:
     """本文の文を選んで箇所を添えたコメントを溜め、コメントの一覧からまとめて送る（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
     open_preview(served.data["url"], "#tab=docs&id=A-1")
@@ -917,7 +917,7 @@ def test_normal_when_heading_in_hash(
 ) -> None:
     """ハッシュの h が指す本文の見出しまで送って開く。見出しの # を押すと h をその見出しにし、履歴に積まない。本文に無い見出しなら本文の頭で開き、h を外す（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": HEADING_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": HEADING_BODY})
     # 実行（2 つ目の「決め方」を指して開く）
     page = open_preview(url, "#tab=docs&view=table&id=A-1&h=決め方-1")
     page.wait_for_selector(f"{PANEL_BODY} [data-heading]")
@@ -1017,7 +1017,7 @@ def test_normal_when_html_body(
     url = write_preview(
         make_item("A-1", body="docs/A-1.html"),
         make_item("A-2"),
-        bodies={"A-1.html": LEAKING_HTML_BODY, "A-2.md": "資料の本文\n"},
+        bodies={"A-1.html": LEAKING_HTML_BODY, "A-2.mark.md": "資料の本文\n"},
     )
     # 描く前の見本として、Markdown の本文の資料のタイトルとトップバーを測る
     page = open_preview(url, "#tab=docs&id=A-2")
@@ -1176,7 +1176,7 @@ def test_normal_when_html_code_block(
     url = write_preview(
         make_item("A-1"),
         make_item("A-2"),
-        bodies={"A-1.md": BODY_WITH_HTML_CODE_BLOCK, "A-2.md": BODY_WITHOUT_HTML_CODE_BLOCK},
+        bodies={"A-1.mark.md": BODY_WITH_HTML_CODE_BLOCK, "A-2.mark.md": BODY_WITHOUT_HTML_CODE_BLOCK},
     )
     # 描く前の見本として、コードブロックの無い本文の前後の段落の色を測る
     page = open_preview(url, "#tab=docs&id=A-2")
@@ -2270,7 +2270,7 @@ def test_normal_when_stored_panel_width(
 ) -> None:
     """同じタブで A-1 の詳細パネルの幅を 768px に変えて読み込み直すと、種類の違う D-3 の詳細パネルも 768px で開き、表の寄せも 768px になる（正常系）。"""
     # 準備（A-1 の詳細パネルで、幅の区切りを矢印キーで 8 回広げて 768px にする）
-    url = write_preview(make_item("A-1"), make_item("D-3"), bodies={"A-1.md": "資料の本文です。"})
+    url = write_preview(make_item("A-1"), make_item("D-3"), bodies={"A-1.mark.md": "資料の本文です。"})
     open_panel(page, open_preview, url, "#tab=docs&id=A-1", PANEL_VIEWPORT)
     press_key_times(page, "ArrowLeft", 8)
     # 実行（同じタブで D-3 を指すハッシュを読み込み直す）
@@ -2366,7 +2366,7 @@ def test_normal_when_embedded_html(
         make_item("A-1", title="埋め込む資料"),
         make_item("A-2"),
         make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
-        bodies={"A-1.md": EMBEDDED_BODY},
+        bodies={"A-1.mark.md": EMBEDDED_BODY},
     )
     open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector(CHART, timeout=DIAGRAM_TIMEOUT_MS)
@@ -2432,7 +2432,7 @@ def test_normal_when_exported_as_html(
     root = make_workspace(
         make_item("A-1", title="書き出す資料"),
         make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
-        bodies={"A-1.md": EXPORT_BODY},
+        bodies={"A-1.mark.md": EXPORT_BODY},
     )
     url = str(call_tool("preview_url", workspace=str(root)).data["url"])
     open_preview(url, "#tab=docs&id=A-1")
@@ -2496,7 +2496,7 @@ def test_normal_when_exported_as_markdown(
 ) -> None:
     """警告を挟んでから、埋め込んだ HTML を除いた Markdown をダウンロードさせる（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY})
     open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open]")
     history_length = page.evaluate("history.length")
@@ -2522,8 +2522,8 @@ def test_normal_when_exported_as_markdown(
         menu.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True).click()
     download = download_info.value
     exported = Path(download.path()).read_text(encoding="utf-8")
-    # 検証（A-1.md の 1 つで、範囲の外の文だけがある）
-    assert download.suggested_filename == "A-1.md"
+    # 検証（A-1.mark.md の 1 つで、範囲の外の文だけがある）
+    assert download.suggested_filename == "A-1.mark.md"
     assert "範囲の外の文" in exported
     assert "範囲の中の文" not in exported
     assert "<!-- html -->" not in exported
@@ -2543,7 +2543,7 @@ def test_error_when_export_library_unavailable(
 ) -> None:
     """HTML でエクスポートするときに mdmark を読めず、ダウンロードせずに理由を出し、再試行でエクスポートする（異常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), bodies={"A-1.md": "本文の段落\n"})
+    url = write_preview(make_item("A-1"), bodies={"A-1.mark.md": "本文の段落\n"})
     open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md:not(.md-value).mdmark")
     downloads: list[Download] = []
@@ -2651,7 +2651,7 @@ def test_normal_when_embedded_files(
 ) -> None:
     """本文の ../files/{名前} を配信の /files/{名前} に解決して、動画・画像を描く（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1"), bodies={"A-1.md": EMBEDDED_FILES_BODY})
+    root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": EMBEDDED_FILES_BODY})
     put_embedded_files(root)
     url = str(call_tool("preview_url", workspace=str(root)).data["url"])
     before = snapshot_tree(root)

@@ -19,7 +19,7 @@ def test_cards_in_id_order(page: Page, write_preview: WritePreview, make_item: M
 
 def test_board_and_table(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """ボードは状態の列、表は形式の列を持つ（正常系）。"""
-    url = write_preview(make_item("A-1", title="普通の資料", body="docs/A-1.md"), bodies={"A-1.md": "本文"})
+    url = write_preview(make_item("A-1", title="普通の資料", body="docs/A-1.mark.md"), bodies={"A-1.mark.md": "本文"})
     open_spa(page, url, "?tab=docs&view=board")
     expect(page.locator("[data-id='A-1']")).to_be_visible()
     open_spa(page, url, "?tab=docs&view=table")
@@ -167,7 +167,7 @@ def test_withdrawn_badge_visible(page: Page, write_removed_preview: WriteReviewP
     expect(page.locator("[data-id='A-1']")).not_to_contain_text("取り下げ")
 
 
-@pytest.mark.parametrize(("view", "body", "badge"), [("cards", "A-1.md", "MD"), ("cards", "A-1.html", "HTML"), ("board", "A-1.md", "MD")])
+@pytest.mark.parametrize(("view", "body", "badge"), [("cards", "A-1.mark.md", "MD"), ("cards", "A-1.html", "HTML"), ("board", "A-1.mark.md", "MD")])
 def test_format_badge_visible(page: Page, write_preview: WritePreview, make_item: MakeItem, view: str, body: str, badge: str) -> None:
     """本文を持つ資料のカード・ボードに、本文の形式の札（`MD` / `HTML`）を出す（正常系）。"""
     # 準備・実行

@@ -1770,7 +1770,7 @@ namespace MindmapPreview {
         else setView({ next: "warn" });
       },
       confirm: () => {
-        downloadText({ name: `${item.id}.md`, text: stripEmbeddedHtml(source), type: "text/markdown" });
+        downloadText({ name: `${item.id}.mark.md`, text: stripEmbeddedHtml(source), type: "text/markdown" });
         menu.hidePopover();
       },
       back: () => setView({ next: "choose", focus: view === "warn" ? "md" : "html" }),

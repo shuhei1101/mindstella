@@ -380,7 +380,7 @@ def test_normal_when_real_project_index(agent_flow_world: AgentFlowWorld) -> Non
                 "op": "create",
                 "kind": "docs",
                 "id": "A-1",
-                "data": {"title": "資料", "kind": "文書", "status": "下書き", "body": "docs/A-1.md", "@body": "本文"},
+                "data": {"title": "資料", "kind": "文書", "status": "下書き", "body": "docs/A-1.mark.md", "@body": "本文"},
             },
         ],
     )

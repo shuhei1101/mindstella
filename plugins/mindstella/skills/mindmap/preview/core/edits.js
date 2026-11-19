@@ -34,7 +34,7 @@ var MindmapPreview;
                 const item = { id: edit.target, created: edit.created, updated: edit.created, ...values };
                 // 本文の文字列は、本文の置き場所に移す
                 if (typeof values["body"] === "string") {
-                    item.body = `${edit.target}.md`;
+                    item.body = `${edit.target}.mark.md`;
                     applied.bodies[item.body] = values["body"];
                 }
                 applied[kind].push(item);
@@ -45,7 +45,7 @@ var MindmapPreview;
                     continue;
                 if (edit.op === "set") {
                     if (key === "body") {
-                        const name = item.body ?? `${item.id}.md`;
+                        const name = item.body ?? `${item.id}.mark.md`;
                         item.body = name;
                         applied.bodies[name] = String(edit.value ?? "");
                     }

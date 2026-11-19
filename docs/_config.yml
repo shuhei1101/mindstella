@@ -64,6 +64,28 @@ defaults:
     values:
       layout: default
 
+  # .mark.md のページは、拡張子の前までの名前から作る URL（{名前}.mark.html）でなく、改名前の URL のまま配る
+  - scope:
+      path: guide/コマンド.mark.md
+    values:
+      permalink: /guide/コマンド.html
+  - scope:
+      path: guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
+    values:
+      permalink: /guide/セットアップ手順-ワークスペースを今の版へ移し替える.html
+  - scope:
+      path: guide/プレビューを見る.mark.md
+    values:
+      permalink: /guide/プレビューを見る.html
+  - scope:
+      path: guide/ワークスペースの書式.mark.md
+    values:
+      permalink: /guide/ワークスペースの書式.html
+  - scope:
+      path: guide/動作環境.mark.md
+    values:
+      permalink: /guide/動作環境.html
+
 # jekyll-optional-front-matter を全ファイルに適用する
 optional_front_matter:
   remove_originals: true
@@ -95,7 +117,7 @@ exclude:
   - architecture/
   - component/
   - config/
-  - design-policy.md
+  - design-policy.mark.md
   - er/
   - external-api/
   - interface/

@@ -225,7 +225,7 @@ def test_docs_tile(
         make_item("A-1", status="確認中"),
         make_item("A-2", status="下書き"),
         make_item("A-3", status="確認中"),
-        bodies={"A-1.md": "本文\n", "A-2.md": "本文\n", "A-3.md": "本文\n"},
+        bodies={"A-1.mark.md": "本文\n", "A-2.mark.md": "本文\n", "A-3.mark.md": "本文\n"},
     )
     page = open_preview(url)
     # 実行

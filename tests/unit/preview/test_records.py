@@ -134,7 +134,7 @@ def test_search_items(
     data = make_data(
         decisions=[make_item("D-1"), make_item("D-2")],
         docs=[make_item("A-1")],
-        bodies={"docs/A-1.md": "ゼブラの話\n"},
+        bodies={"docs/A-1.mark.md": "ゼブラの話\n"},
     )
     load_preview_scripts()
     # 実行
@@ -158,7 +158,7 @@ def test_search_items(
                 "terms": [("G-1", {"title": "シナリオの依頼"})],
                 "docs": [("A-1", {})],
             },
-            {"docs/A-1.md": "シナリオの依頼の話\n"},
+            {"docs/A-1.mark.md": "シナリオの依頼の話\n"},
             "シナリオの依頼 ",
             [["G-1", 1], ["D-1", 2], ["A-1", 3]],
             id="title_exact_then_title_part_then_other",
@@ -180,7 +180,7 @@ def test_search_items(
                 "decisions": [("D-1", {"answer": "保存先は共有のフォルダにする"})],
                 "docs": [("A-2", {"title": "保存先の決め方"})],
             },
-            {"docs/A-2.md": "本文\n"},
+            {"docs/A-2.mark.md": "本文\n"},
             "保存先",
             [["A-2", 2], ["D-1", 3]],
             id="tier_before_kind_order",
@@ -191,7 +191,7 @@ def test_search_items(
                 "terms": [("G-1", {"title": "シナリオの依頼"})],
                 "docs": [("A-1", {})],
             },
-            {"docs/A-1.md": "シナリオの依頼の話\n"},
+            {"docs/A-1.mark.md": "シナリオの依頼の話\n"},
             "シナリオ 受け方",
             [["D-1", 2]],
             id="all_words_in_title",
@@ -253,8 +253,8 @@ def test_search_items_when_html(
     """HTML の本文と html のコードブロックを描いた文で当てる（正常系）。"""
     # 準備
     data = make_data(
-        docs=[make_item("A-1", body="docs/A-1.html"), make_item("A-2", body="docs/A-2.md")],
-        bodies={"docs/A-1.html": FLOW_PARAGRAPH, "docs/A-2.md": f"```html\n{FLOW_PARAGRAPH}\n```\n"},
+        docs=[make_item("A-1", body="docs/A-1.html"), make_item("A-2", body="docs/A-2.mark.md")],
+        bodies={"docs/A-1.html": FLOW_PARAGRAPH, "docs/A-2.mark.md": f"```html\n{FLOW_PARAGRAPH}\n```\n"},
     )
     load_preview_scripts()
     # 実行
@@ -272,7 +272,7 @@ def test_search_items_when_html(
 @pytest.mark.parametrize(
     ("body", "expected"),
     [
-        pytest.param("A-1.md", "md", id="markdown"),
+        pytest.param("A-1.mark.md", "md", id="markdown"),
         pytest.param("A-1.html", "html", id="html"),
         pytest.param(None, None, id="undefined"),
     ],

@@ -141,7 +141,7 @@ def test_normal(
         make_item("G-1"),
         make_item("N-1"),
         make_item("L-1"),
-        bodies={"A-1.md": BODY_WITH_SCRIPT_TAG},
+        bodies={"A-1.mark.md": BODY_WITH_SCRIPT_TAG},
         raw_files={"changes.yaml": COMMITTED_CHANGES},
     )
     before = snapshot_tree(root)
@@ -161,7 +161,7 @@ def test_normal(
     assert data["terms"] == [_stamped(make_item("G-1"))]
     assert data["notes"] == [_stamped(make_item("N-1"))]
     assert data["logs"] == [_stamped(make_item("L-1"))]
-    assert data["bodies"] == {"docs/A-1.md": BODY_WITH_SCRIPT_TAG}
+    assert data["bodies"] == {"docs/A-1.mark.md": BODY_WITH_SCRIPT_TAG}
     assert [entry["id"] for entry in data["changes"]["sets"]] == ["V-1"]
     # script・link・img が外のファイルや URL を指さず、import map も無い
     references = _ExternalReferences()

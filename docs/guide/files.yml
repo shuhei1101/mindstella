@@ -40,7 +40,7 @@ files:
   tags:
   - topic:ワークスペース
   - topic:使い方
-- path: プレビューを見る.md
+- path: プレビューを見る.mark.md
   name: プレビューの使い方
   description: 話し合いの記録を、サーバーが配るプレビューをブラウザで開いて読み返す。利用者がプレビューを開いて記録を読み、コメントを送る手順を調べるときに読む。
   visibility: public
@@ -110,7 +110,7 @@ files:
   - topic:セットアップ手順
   - topic:通知
   - tool:discord
-- path: セットアップ手順-ワークスペースを今の版へ移し替える.md
+- path: セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
   name: ワークスペースの移し替えの手順
   description: プラグインを上げた後に、ワークスペースの版の移し替えを確かめたいときに実行する。プラグインを上げた後にワークスペースを移し替える手順を調べるときに読む。
   visibility: public
@@ -127,7 +127,7 @@ files:
   tags:
   - topic:エージェントフロー
   - topic:リファレンス
-- path: コマンド.md
+- path: コマンド.mark.md
   name: コマンドのリファレンス
   description: エージェントフローが呼ぶ MCP のツールと、利用者が叩く起動スクリプトの一覧。MCP のツールと起動スクリプトの引数・出力・結果を調べるときに読む。
   visibility: public
@@ -136,7 +136,7 @@ files:
   - tool:mcp
   - topic:コマンド
   - topic:リファレンス
-- path: ワークスペースの書式.md
+- path: ワークスペースの書式.mark.md
   name: ワークスペースの書式のリファレンス
   description: ワークスペース（1 つの話し合いのフォルダ）のファイル構成と、各 YAML のキーの一覧。ワークスペースのファイル構成と YAML のキーを調べるときに読む。
   visibility: public
@@ -145,7 +145,7 @@ files:
   - tool:yaml
   - topic:リファレンス
   - topic:ワークスペース
-- path: 動作環境.md
+- path: 動作環境.mark.md
   name: 動作環境
   description: mindstella を使う端末に要る条件の一覧。mindstella を使う端末に要る条件を調べるときに読む。
   visibility: public

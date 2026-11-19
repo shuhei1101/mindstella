@@ -1019,7 +1019,7 @@ functions:
       - name: test_workspace_signature
         case: 正常
         summary: 書き換え・足す・消すで印が変わる
-        condition: '作成済みのワークスペース。`parametrize`: `.mindstella/decisions.yaml` を書き換える / `.mindstella/docs/D-1.md` を足す / `.mindstella/threads.yaml` を足す / `.mindstella/.mindstella.lock` を足す / `.mindstella/comments.yaml` を足す / `.mindstella/drafts.yaml` を足す'
+        condition: '作成済みのワークスペース。`parametrize`: `.mindstella/decisions.yaml` を書き換える / `.mindstella/docs/D-1.mark.md` を足す / `.mindstella/threads.yaml` を足す / `.mindstella/.mindstella.lock` を足す / `.mindstella/comments.yaml` を足す / `.mindstella/drafts.yaml` を足す'
         mock: なし
         expected: 前の 3 つは印が変わり、`.mindstella.lock`・`comments.yaml`・`drafts.yaml` は変わらない
       - name: test_workspace_signature_with_changes

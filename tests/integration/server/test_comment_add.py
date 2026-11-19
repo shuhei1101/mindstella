@@ -110,7 +110,7 @@ def test_normal_when_body_location(
 ) -> None:
     """本文の箇所を持つコメントを溜める（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1"), bodies={"A-1.md": A_BODY})
+    root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     url = serve_preview(root)
     loc = {"kind": "body", "start": 2, "end": 2, "text": "言い換えたい文"}
     # 実行
@@ -257,7 +257,7 @@ def test_error_when_location_stale(
 ) -> None:
     """本文に無い文を指す箇所は溜めない（異常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1"), bodies={"A-1.md": A_BODY})
+    root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     url = serve_preview(root)
     loc = {"kind": "body", "start": 1, "end": 1, "text": "本文に無い文"}
     # 実行

@@ -91,7 +91,7 @@ def _call(call_tool: Any, name: str, **arguments: Any) -> dict[str, Any]:
 
 def build_body_view_workspace(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool) -> Path:
     """8 列の表と見出し「比較」「まとめ」を持つ資料 A-4 を、2 行目の説明を書き換え最後の行を足して `commit`（V-1）したワークスペースを作る。"""
-    root = make_workspace(make_item("A-4"), bodies={"A-4.md": BODY_BEFORE})
+    root = make_workspace(make_item("A-4"), bodies={"A-4.mark.md": BODY_BEFORE})
     workspace = str(root)
     _call(call_tool, "update", workspace=workspace, id="A-4", item={"body_markdown": BODY_AFTER})
     _call(call_tool, "commit", workspace=workspace, summary="表を直す")

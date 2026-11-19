@@ -2,3 +2,6 @@ steps:
   - op: call
     script: remove_discussion_keys
     destructive: true
+  - op: call
+    script: markdown_bodies_to_mark_md
+    destructive: true

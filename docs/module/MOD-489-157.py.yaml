@@ -455,8 +455,8 @@ functions:
       - name: test_make_entry_when_body_format_changed
         case: 正常
         summary: 本文の形式を替えた回は前の `body` を `before` に入れる
-        condition: '前の項目 `body: A-1.md`・本文 `a\n`、後の項目 `body: A-1.html`・本文 `<p>a</p>\n`'
-        expected: '`before` が `{body: A-1.md}` で、`body_diff` を後の本文に当てると `a\n`'
+        condition: '前の項目 `body: A-1.mark.md`・本文 `a\n`、後の項目 `body: A-1.html`・本文 `<p>a</p>\n`'
+        expected: '`before` が `{body: A-1.mark.md}` で、`body_diff` を後の本文に当てると `a\n`'
         mock: なし
   - name: stack_history
     title: 変更履歴を積む

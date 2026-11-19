@@ -271,7 +271,7 @@ def test_docs_tile(write_preview: WritePreview, make_item: MakeItem, page: Page)
         make_item("A-1", status="確認中"),
         make_item("A-2", status="下書き"),
         make_item("A-3", status="確認中"),
-        bodies={"A-1.md": "本文\n", "A-2.md": "本文\n", "A-3.md": "本文\n"},
+        bodies={"A-1.mark.md": "本文\n", "A-2.mark.md": "本文\n", "A-3.mark.md": "本文\n"},
     )
     open_spa(page, url)
     # 実行
@@ -287,7 +287,7 @@ def test_docs_tile(write_preview: WritePreview, make_item: MakeItem, page: Page)
 def test_docs_tile_open(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
     """確認中の資料の行を押すと、資料の詳細パネルを開く（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", status="確認中"), bodies={"A-1.md": "本文\n"})
+    url = write_preview(make_item("A-1", status="確認中"), bodies={"A-1.mark.md": "本文\n"})
     open_spa(page, url)
     # 実行
     page.click('#tile-docs button[data-id="A-1"]')

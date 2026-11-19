@@ -187,7 +187,7 @@ class ItemRef:
 class BodyWrite:
     """`docs/` に書く 1 つの本文。"""
 
-    # 項目の `body` の値（記録のフォルダからのパス。`docs/{ID}.md`、資料の HTML の本文は `docs/{ID}.html`）
+    # 項目の `body` の値（記録のフォルダからのパス。`docs/{ID}.mark.md`、資料の HTML の本文は `docs/{ID}.html`）
     name: str
     # 本文（Markdown か HTML）
     text: str

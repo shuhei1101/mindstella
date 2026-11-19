@@ -825,7 +825,7 @@ def _write_format_preview(write_preview: WritePreview, make_item: MakeItem) -> s
     return write_preview(
         make_item("A-1", body="docs/A-1.html"),
         make_item("A-2"),
-        bodies={"A-1.html": "<p>一覧の画面</p>\n", "A-2.md": "資料の本文\n"},
+        bodies={"A-1.html": "<p>一覧の画面</p>\n", "A-2.mark.md": "資料の本文\n"},
     )
 
 
@@ -899,7 +899,7 @@ def test_fit_smallest(
 ADD_NARROW_VIEWPORT = {"width": 480, "height": 800}
 
 # 資料の本文のファイル（A-1〜A-3 の分）
-_BODIES = {"A-1.md": "本文\n", "A-2.md": "本文\n", "A-3.md": "本文\n"}
+_BODIES = {"A-1.mark.md": "本文\n", "A-2.mark.md": "本文\n", "A-3.mark.md": "本文\n"}
 
 
 

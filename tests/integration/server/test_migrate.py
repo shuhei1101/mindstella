@@ -162,8 +162,8 @@ def _retired_range(directive: str, definition: dict[str, Any]) -> str:
 def _make_mdmark_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> Path:
     """A-1 に flow・sequence の図、A-2 に引数を書いた表のマーカーを持つ、v0.12.1 のワークスペースを作る。"""
     root = make_workspace(
-        make_item("A-1"),
-        make_item("A-2"),
+        make_item("A-1", body="docs/A-1.md"),
+        make_item("A-2", body="docs/A-2.md"),
         bodies={
             "A-1.md": f"# 構成\n\n{_retired_range('flow', RETIRED_FLOW)}\n{_retired_range('sequence', RETIRED_SEQUENCE)}",
             "A-2.md": "# 一覧\n\n<!-- table: data +count -->\n\n| 名前 | 数 |\n| --- | --- |\n| a | 1 |\n\n<!-- /table -->\n",
@@ -788,16 +788,16 @@ def test_normal_when_mdmark_documents(
     # 準備
     root = _make_mdmark_workspace(make_workspace, make_item)
     # 実行（実際の mdmark の CLI を呼ぶ。空の指定は既定の差し替えを外す）
-    result = _migrate(root, to_version=MDMARK_STEP_VERSION, env={MDMARK_COMMAND_ENV: ""})
+    result = _migrate(root, env={MDMARK_COMMAND_ENV: ""})
     # 検証
     assert result.error is None, result.text
     assert result.data is not None
     record = root / RECORD_DIR
-    first = (record / "docs" / "A-1.md").read_text(encoding="utf-8")
+    first = (record / "docs" / "A-1.mark.md").read_text(encoding="utf-8")
     assert "<!-- flow" not in first
     assert "<!-- sequence" not in first
     assert first.count("<!-- /map -->") == 2
-    second = (record / "docs" / "A-2.md").read_text(encoding="utf-8")
+    second = (record / "docs" / "A-2.mark.md").read_text(encoding="utf-8")
     assert '<!-- table: {"kind": "data"' in second
     settings = yaml.safe_load((record / SETTINGS).read_text(encoding="utf-8"))
     assert {"llm", "script"} <= set(settings["mdmark"]["map"]["kinds"])
@@ -957,3 +957,74 @@ def test_normal_when_source_config_without_write_dates(
     after = _mtimes(root)
     changed = sorted(path for path in after if after[path] != before.get(path))
     assert changed == [".mindstella/dev-docs.yaml"]
+
+
+# D-1 の変更履歴（HTML の本文の回と Markdown の本文の回）
+MARKDOWN_BODY_HISTORY: list[dict[str, Any]] = [
+    {"seq": 3, "by": "ai", "at": "2026-11-02T00:00:00+00:00", "before": {"body": "docs/D-1.html"}},
+    {"seq": 2, "by": "ai", "at": "2026-11-01T00:00:00+00:00", "before": {"body": "docs/D-1.md"}},
+]
+
+
+def test_normal_when_markdown_bodies_renamed(
+    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
+) -> None:
+    """v0.14.0 の手順で、docs/ の Markdown の本文を .mark.md へ改名し、項目の body と変更履歴の before.body を書き換える（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item(
+            "D-1", body="docs/D-1.md", updated="2026-11-02T00:00:00+00:00", history=MARKDOWN_BODY_HISTORY
+        ),
+        make_item("A-1", body="docs/A-1.html"),
+        bodies={"D-1.md": "# 背景\n\n本文\n", "A-1.html": "<p>資料</p>\n", "X-1.md": "どこからも指されない本文\n"},
+    )
+    records = root / RECORD_DIR
+    (records / VERSION_FILE).write_text("v0.13.0\n", encoding="utf-8")
+    # 実行
+    result = _migrate(root)
+    # 検証
+    assert result.error is None, result.text
+    assert result.data is not None
+    assert [(step["version"], step["index"], step["op"], step["destructive"]) for step in result.data["steps"]] == [
+        ("v0.14.0", 1, "call", True),
+        ("v0.14.0", 2, "call", True),
+    ]
+    decision = _read_decisions(root)[0]
+    assert decision["body"] == "docs/D-1.mark.md"
+    assert (records / "docs" / "D-1.mark.md").read_text(encoding="utf-8") == "# 背景\n\n本文\n"
+    assert not (records / "docs" / "D-1.md").exists()
+    d1_row = yaml.safe_load((records / "history.yaml").read_text(encoding="utf-8"))["items"]["D-1"]
+    assert [entry["before"]["body"] for entry in d1_row["history"]] == ["docs/D-1.html", "docs/D-1.mark.md"]
+    assert [entry["seq"] for entry in d1_row["history"]] == [3, 2]
+    assert d1_row["updated"] == "2026-11-02T00:00:00+00:00"
+    assert _read_docs(root)[0]["body"] == "docs/A-1.html"
+    assert (records / "docs" / "A-1.html").read_text(encoding="utf-8") == "<p>資料</p>\n"
+    assert (records / "docs" / "X-1.mark.md").read_text(encoding="utf-8") == "どこからも指されない本文\n"
+    assert not (records / "docs" / "X-1.md").exists()
+    # もう一度当てても、ワークスペースが変わらない
+    after = snapshot_tree(root)
+    again = _migrate(root)
+    assert again.error is None, again.text
+    assert snapshot_tree(root) == after
+
+
+def test_error_when_mark_md_exists(
+    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
+) -> None:
+    """改名先が既にあるとき、手順が失敗して写しから戻す（異常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", body="docs/D-1.md"),
+        bodies={"D-1.md": "前の本文\n", "D-1.mark.md": "改名先の本文\n"},
+    )
+    records = root / RECORD_DIR
+    (records / VERSION_FILE).write_text("v0.13.0\n", encoding="utf-8")
+    before = snapshot_tree(root)
+    # 実行
+    result = _migrate(root)
+    # 検証
+    assert result.error == "StepFailedError"
+    assert result.text.startswith("v0.14.0 の手順 2（call）:")
+    assert "docs/D-1.mark.md" in result.text
+    assert snapshot_tree(root) == before
+    assert _read_version(root) == "v0.13.0"

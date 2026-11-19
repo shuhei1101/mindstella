@@ -318,21 +318,79 @@ def test_accept_own_write(
     assert len(rows["N-1"]["history"]) == 1
 
 
+def _rename_body(root: Path, make_item: MakeItem) -> None:
+    """D-1 の本文を `docs/D-1.mark.md` へ移し替える（『記録の形式の移行』の書き換えの代わり）。"""
+    docs = _records(root) / "docs"
+    (docs / "D-1.md").rename(docs / "D-1.mark.md")
+    _write_items(root, "decisions.yaml", make_item("D-1", body="docs/D-1.mark.md"))
+
+
+def test_rebase_snapshot(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """移し替えの後に検知を始めても記録しない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", body="docs/D-1.md"), bodies={"D-1.md": "本文\n"})
+    state_dir = tmp_path / "state"
+    snapshot_dir = _snapshot_dir(state_dir, root)
+    (snapshot_dir / "docs").mkdir(parents=True)
+    (snapshot_dir / "decisions.yaml").write_text(
+        (_records(root) / "decisions.yaml").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (snapshot_dir / "docs" / "D-1.md").write_text("本文\n", encoding="utf-8")
+    _rename_body(root, make_item)
+    history_before = _read(root, "history.yaml")
+    changes_before = _read(root, "changes.yaml")
+    # 実行
+    change_detection.rebase_snapshot(root, state_dir)
+    _started(root, state_dir, monkeypatch)
+    # 検証
+    assert (snapshot_dir / "docs" / "D-1.mark.md").read_text(encoding="utf-8") == "本文\n"
+    assert not (snapshot_dir / "docs" / "D-1.md").exists()
+    assert _read(root, "history.yaml") == history_before
+    assert _read(root, "changes.yaml") == changes_before
+
+
+def test_rebase_snapshot_when_detecting(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """動いている検知の前回の中身も置き換える（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", body="docs/D-1.md"), bodies={"D-1.md": "本文\n"})
+    state_dir = tmp_path / "state"
+    detector = _started(root, state_dir, monkeypatch)
+    _rename_body(root, make_item)
+    history_before = _read(root, "history.yaml")
+    changes_before = _read(root, "changes.yaml")
+    # 実行
+    change_detection.rebase_snapshot(root, state_dir)
+    detector.poll()
+    # 検証
+    assert _read(root, "history.yaml") == history_before
+    assert _read(root, "changes.yaml") == changes_before
+
+
 def test_take_snapshot(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """種類の YAML と本文を読み、読めないファイルは前回の中身で埋める（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="docs/D-1.md"),
-        bodies={"D-1.md": "本文\n"},
+        make_item("D-1", body="docs/D-1.mark.md"),
+        bodies={"D-1.mark.md": "本文\n"},
         raw_files={"notes.yaml": "items: [\n"},
     )
     previous = _snapshot({"notes.yaml": "items: []\n"})
     # 実行
     snapshot, unreadable = change_detection.take_snapshot(root, previous=previous, run=_not_work_tree)
     # 検証
-    assert sorted(snapshot.files) == ["decisions.yaml", "docs/D-1.md", "notes.yaml"]
+    assert sorted(snapshot.files) == ["decisions.yaml", "docs/D-1.mark.md", "notes.yaml"]
     assert snapshot.files["notes.yaml"] == "items: []\n"
-    assert snapshot.files["docs/D-1.md"] == "本文\n"
+    assert snapshot.files["docs/D-1.mark.md"] == "本文\n"
     assert unreadable == ["notes.yaml"]
     assert snapshot.git_head is None
 

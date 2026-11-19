@@ -101,7 +101,7 @@ constraints:
     notes: '本文の形は project-index の『端末の設定の配信元の 1 行の追加』（IF-32）、`/**` の当たり方はコアコンセプト『scope による権限』'
   - item: 配信の設定
     constraint: '記録が無いフォルダに、`.mindstella/dev-docs.yaml`（project-index の配信元の設定。書式は project-index のガイド『設定』）と `.mindstella/schemas/`（プラグインの `skills/mindmap/schemas/` の種類ごとの 7 つのスキーマと `common.schema.json` の複製）を書く。設定は `version: "3"`・`name`（ワークスペースの ID）・`description`（設定の `summary`）・`related.types`（`[depends_on, parent, for, see_also]`）と、種類ごとの 7 つの `documents` の行を持つ。行は `id`（種類の名前。`decisions` など）・`title`（種類の日本語の名前）・`paths`（`[{種類}.yaml]`）・`schema`（`schemas/{種類}.schema.json`）・`records: items`・`body_file: body`・`write_dates: false`（Git 管理外の配信元でも project-index の `write_docs` に `created`・`updated` を付けさせない。日時は `history.yaml` が持つ）・`metadata`（`id: id`・`name: title`・`description: lead`（持つ種類だけ）・`tags: tags[].name`・`main_tags: tags[main].name`・`related: related`・`status: status`（持つ種類だけ））'
-    notes: '`body` は `.mindstella/` からの相対で本文のファイルを指す（`docs/{ID}.md`。ER 図『ワークスペース』）。`threads.yaml`・`changes.yaml`・`config.yaml` などは配信しない（MindStella の MCP が読み書きする）'
+    notes: '`body` は `.mindstella/` からの相対で本文のファイルを指す（`docs/{ID}.mark.md`。ER 図『ワークスペース』）。`threads.yaml`・`changes.yaml`・`config.yaml` などは配信しない（MindStella の MCP が読み書きする）'
   - item: ID の一覧
     constraint: 状態のフォルダの `workspaces.yaml` の `ids` に足す。配信元の行の追加が通った後に足す
   - item: 追加の MCP・プラグインの記録

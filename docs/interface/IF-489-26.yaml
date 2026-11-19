@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: D-1（本文 `docs/D-1.md` あり）と、D-1 に依存する D-2 を持つワークスペース
+        description: D-1（本文 `docs/D-1.mark.md` あり）と、D-1 に依存する D-2 を持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -33,7 +33,7 @@ flows:
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 次の問題を手で仕込んだワークスペース
-        notes: 'D-1: `related: [{to: D-9, type: depends_on}]`（D-9 は無い）／D-2: `status: 完了`／R-1: `body: R-1.md` だが `docs/R-1.md` が無い／`docs/X-1.md` をどの項目も指さない／スレッド TH-1: `target: D-8`（D-8 は無い）'
+        notes: 'D-1: `related: [{to: D-9, type: depends_on}]`（D-9 は無い）／D-2: `status: 完了`／R-1: `body: R-1.mark.md` だが `docs/R-1.mark.md` が無い／`docs/X-1.mark.md` をどの項目も指さない／スレッド TH-1: `target: D-8`（D-8 は無い）'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -51,7 +51,7 @@ flows:
       - '`problems` に `broken_ref`（D-1・`related[0].to`・`D-9`）がある'
       - '`problems` に `broken_ref`（`.mindstella/threads.yaml`・TH-1・`target`・`D-8`）がある'
       - '`problems` に `schema`（`.mindstella/decisions.yaml`・`items[1].status`）がある'
-      - '`problems` に `missing_body`（R-1）と `orphan_body`（`.mindstella/docs/X-1.md`）がある'
+      - '`problems` に `missing_body`（R-1）と `orphan_body`（`.mindstella/docs/X-1.mark.md`）がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_problems_found
   - name: 正常系（変更履歴が本文とずれている）
@@ -60,7 +60,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 本文を持つ検討事項 D-1 の本文を直して変更の検知が変更履歴を積んだ後、`docs/D-1.md` の全ての行を手で書き換えたワークスペース
+        description: 本文を持つ検討事項 D-1 の本文を直して変更の検知が変更履歴を積んだ後、`docs/D-1.mark.md` の全ての行を手で書き換えたワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -249,7 +249,7 @@ flows:
       ```
     expected:
       - ツールのエラーにならず、`ok` が偽
-      - '`missing_file` の問題が 1 件だけで、`file` が `.mindstella/docs/A-1.md`、`id` が `A-1`、`key` が `null`、`detail` が `../files/missing.mp4`'
+      - '`missing_file` の問題が 1 件だけで、`file` が `.mindstella/docs/A-1.mark.md`、`id` が `A-1`、`key` が `null`、`detail` が `../files/missing.mp4`'
       - '`../files/clip.mp4`・絶対 URL・コードブロックの中のパスの問題が無い'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_embedded_file_missing
@@ -311,7 +311,7 @@ constraints:
   - item: 案と状態
     constraint: 検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）に合わない検討事項を `decision_state` にする。合わない決まり 1 つ = 1 件で、`key` は `items[{番号}].options` か `items[{番号}].status`、`detail` は ER 図の理由の行。`未整理`・`対象外`・`取り下げ` の検討事項が案を持たないことは問題にしない
   - item: 埋め込んだファイル
-    constraint: '`docs/*.md` の本文の画像の記法 `![…](パス)` のうち、相対パスだけを `docs/` を基準に解決し、ファイルが無いものを `missing_file` にする。問題は `file` が本文のファイル（例 `.mindstella/docs/A-1.md`）、`id` が本文を持つ項目の ID、`key` が `null`、`detail` が記法に書かれたパス（例 `../files/missing.mp4`）。絶対 URL・`data:`・`/` で始まるパス・コードブロックとインラインコードの中は確かめない。HTML の本文（`docs/*.html`）は確かめない。URL のフラグメント（`#`）とクエリ（`?`）は外してから確かめる'
+    constraint: '`docs/*.md` の本文の画像の記法 `![…](パス)` のうち、相対パスだけを `docs/` を基準に解決し、ファイルが無いものを `missing_file` にする。問題は `file` が本文のファイル（例 `.mindstella/docs/A-1.mark.md`）、`id` が本文を持つ項目の ID、`key` が `null`、`detail` が記法に書かれたパス（例 `../files/missing.mp4`）。絶対 URL・`data:`・`/` で始まるパス・コードブロックとインラインコードの中は確かめない。HTML の本文（`docs/*.html`）は確かめない。URL のフラグメント（`#`）とクエリ（`?`）は外してから確かめる'
 refs:
   - ER-489-1#
 test_file: tests/integration/server/test_check.py

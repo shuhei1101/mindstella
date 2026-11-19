@@ -225,7 +225,7 @@ def test_result_tiers(
     url = write_preview(
         make_item("D-1", answer="保存先は共有のフォルダにする"),
         make_item("A-2", title="保存先の決め方"),
-        bodies={"A-2.md": "本文\n"},
+        bodies={"A-2.mark.md": "本文\n"},
     )
     page = open_preview(url)
     page.keyboard.press("Control+K")
@@ -277,7 +277,7 @@ def test_search_by_html_body(write_preview: WritePreview, open_preview: OpenPrev
         make_item("A-1", body="docs/A-1.html"),
         make_item("A-2"),
         make_item("T-1"),
-        bodies={"A-1.html": FLOW_HTML_BODY, "A-2.md": FLOW_MARKDOWN_BODY},
+        bodies={"A-1.html": FLOW_HTML_BODY, "A-2.mark.md": FLOW_MARKDOWN_BODY},
     )
     page = open_preview(url)
     page.keyboard.press("Control+K")

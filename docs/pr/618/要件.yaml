@@ -1,0 +1,208 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: changed
+    detail: MindStella のセッションが資料などの本文を記載するときの本文のファイル名が、mdmark の文書の拡張子になる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: 既存のワークスペースを開く前に、本文のファイルを mdmark の文書の拡張子へ改名し、項目が指す本文のパスを書き換える移し替えが加わる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-16.yaml
+    impact: following
+    detail: 本文のずれの点検が、改名後の本文のファイル名を対象にする
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-33.yaml
+    impact: following
+    detail: 検索で返る本文のパスが改名後のパスになる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: following
+    detail: 差分の表示で比べる本文のパスが改名後のパスになる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: run_only
+    detail: 本文の書き換えを履歴に残す対象のファイル名が変わるため、履歴が残り続けるかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: run_only
+    detail: 資料の本文を改名後のパスから取得して描けるかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-39.yaml
+    impact: changed
+    detail: 資料を Markdown で書き出したファイルの拡張子が mdmark の文書の拡張子になる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: run_only
+    detail: 配る書き出しが改名後の本文を中に持つかを確かめる
+    depends_on: []
+docs:
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: コマンド.mark.md へ改名し、本文の docs/{ID}.md の記載とリンクを改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
+    new: false
+    change: .mark.md へ改名し、次のバージョンの移し替えで本文のファイルが改名されることを記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: .mark.md へ改名し、リンクを改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: .mark.md へ改名し、記録の本文のファイル名とリンクを改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/使い方.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する（タブのページは design_docs publish が書き出すため、改名はスコープ外）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/動作環境.mark.md
+    new: false
+    change: .mark.md へ改名し、リンクを改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/design-policy.mark.md
+    new: false
+    change: design-policy.mark.md へ改名する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: 記録の本文のファイル名と、改名したページへのリンクを修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/index.yaml
+    new: false
+    change: 改名したページの行の page を改名後のファイル名に修正し、docs/guide/README.md の行のリンクを同じパスに修正する（配布済みの design_docs publish は .mark.md のリンクの文言を {名前}.mark にするため、書き出さずに修正する）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/index.yaml
+    new: false
+    change: design-policy の行の page を改名後のファイル名に修正し、docs/README.md の行のリンクを同じパスに修正する（書き出さない理由は docs/guide/index.yaml の行と同じ）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/files.yml
+    new: false
+    change: 改名したページの行の path を改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/_root/files.yml
+    new: false
+    change: design-policy の行の path を改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/_theme/_data/nav.project.yml
+    new: false
+    change: 改名したページへのナビゲーションのリンクを修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/_config.yml
+    new: false
+    change: defaults に、改名したページごとに permalink を改名前の公開 URL（{パス}.html）にする行を追加する。design-policy.md を指す設定を改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/リファレンス.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/セットアップ手順-プレビューを外から見る.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/話し合い-セットアップから始める.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+  - page: docs/guide/変更履歴.md
+    new: false
+    change: 改名したページへのリンクを改名後のパスに修正する（このページの改名はスコープ外）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-19T16:17:49.831419+00:00'
+scope_out:
+  - item: PR ドキュメント（docs/pr/ の README.md・要件.md・計画書）の .mark.md への改名
+    reason: ファイル名は AI Monitor のツール（create_draft_pr・read_pr_document）とテンプレートが決める。AI Monitor が shuhei1101/ai-monitor#3427（PR shuhei1101/ai-monitor#3684）でファイル名を変えたバージョンを配布した後に、追従として改名する
+    plan: '#620'
+  - item: 目次（index.yaml）から書き出す README.md（docs/README.md・docs/{種類}/README.md・docs/guide/README.md）の .mark.md への改名
+    reason: ファイル名は AI Monitor の design_docs publish が決める。AI Monitor が shuhei1101/ai-monitor#3684 で書き出すファイル名を変えたバージョンを配布した後に、追従として書き出し直す
+    plan: '#621'
+  - item: docs/guide/変更履歴.md の .mark.md への改名
+    reason: AI Monitor の規約『マージ手順』が release の変更履歴を docs/guide/変更履歴.md の固定のパスで書き足すため、改名すると release で別のページが作られる。shuhei1101/ai-monitor#3506 が配布された後に改名する
+    plan: '#622'
+  - item: モックの目次（docs/mock/ の index.md）のうち記法を含む 22 件の .mark.md への改名
+    reason: モックのフォルダの目次のファイル名は AI Monitor の規約『モック画面』と Pages の共通レイアウト（docs/_theme/assets/app.js）が index.md で決める。AI Monitor の規約と共通レイアウトが .mark.md を扱うバージョンを配布した後に改名する。含めるかはレビューで確定する
+    plan: '#623'
+  - item: タブのページ（docs/guide/はじめに.md・使い方.md・リファレンス.md）の .mark.md への改名
+    reason: 目次の行を並べるマーカーの間は AI Monitor の design_docs publish が書き出し、配布済みのバージョンはタブのページを {タブ名}.md の名前で書き出すため、改名すると改名前の名前のページが作り直される。AI Monitor が shuhei1101/ai-monitor#3684 で書き出すファイル名を変えたバージョンを配布した後に、README.md と一緒に書き出し直す
+    plan: '#621'
+  - item: test_create_workspace.py::test_error_when_folder_not_allowed の fail（状態のフォルダ state/mindstella が残る）
+    reason: base の develop でも同じく fail し、本文の拡張子の変更と関係しない
+    plan: '#624'
+  - item: test_create_workspace.py::test_error_when_host_not_local の fail（HTTP 403 の後の ConnectionResetError）
+    reason: base の develop でも同じく fail し、本文の拡張子の変更と関係しない。既存の Issue が扱う（#575 は間欠的としているが、今回は毎回 fail した）
+    plan: '#575'
+  - item: 画面の結合テストの test_embedded_html_in_full・test_normal_when_embedded_html・test_embedded_chart の fail（埋め込んだ HTML の図の拡大・縮小）
+    reason: base の develop でも同じく fail し、本文の拡張子の変更と関係しない。既存の Issue が扱う
+    plan: '#610'
+  - item: test_detail_panel_screen.py の test_diff_minimap_when_empty_area_pressed・test_diff_body_layout_switch の fail
+    reason: base の develop でも同じく fail する（test_diff_body_layout_switch は不安定）。本文の拡張子の変更と関係しない。既存の Issue が扱う
+    plan: '#553'
+  - item: test_detail_panel_screen.py::test_fit_smallest の fail（全画面のボタンが表示幅の外）
+    reason: base の develop でも同じく fail し、本文の拡張子の変更と関係しない
+    plan: '#625'

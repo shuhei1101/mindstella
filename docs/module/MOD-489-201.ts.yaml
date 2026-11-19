@@ -170,9 +170,9 @@ functions:
       - name: test_download_text
         case: 正常
         summary: 名前と中身のとおりに保存される
-        condition: "`{name: 'A-1.md', text: '# 見出し', type: 'text/markdown'}`"
+        condition: "`{name: 'A-1.mark.md', text: '# 見出し', type: 'text/markdown'}`"
         mock: なし（`page.expect_download`）
-        expected: 保存されたファイルの名前が `A-1.md` で、中身が UTF-8 の `# 見出し`
+        expected: 保存されたファイルの名前が `A-1.mark.md` で、中身が UTF-8 の `# 見出し`
     status: planned
     introduced:
       pr: 348

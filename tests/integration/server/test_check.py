@@ -30,9 +30,9 @@ def test_normal_when_clean(
     """整ったワークスペースで問題 0 件を返す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="docs/D-1.md"),
+        make_item("D-1", body="docs/D-1.mark.md"),
         make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]),
-        bodies={"D-1.md": "本文\n"},
+        bodies={"D-1.mark.md": "本文\n"},
     )
     # 実行
     result = call_tool("check", workspace=str(root))
@@ -54,8 +54,8 @@ def test_normal_when_problems_found(
     root = make_workspace(
         make_item("D-1", related=[{"to": "D-9", "type": "depends_on"}]),
         make_item("D-2", status="完了"),
-        make_item("R-1", body="docs/R-1.md"),
-        bodies={"X-1.md": "どこからも指されない本文\n"},
+        make_item("R-1", body="docs/R-1.mark.md"),
+        bodies={"X-1.mark.md": "どこからも指されない本文\n"},
     )
     write_threads(root, make_thread("TH-1", target="D-8"))
     before = snapshot_tree(root)
@@ -70,7 +70,7 @@ def test_normal_when_problems_found(
         ("broken_ref", ".mindstella/threads.yaml", "TH-1", "target"),
         ("schema", ".mindstella/decisions.yaml", "D-2", "items[1].status"),
         ("missing_body", ".mindstella/research.yaml", "R-1", "items[0].body"),
-        ("orphan_body", ".mindstella/docs/X-1.md", None, None),
+        ("orphan_body", ".mindstella/docs/X-1.mark.md", None, None),
     }
     assert "D-9" in result.text
     assert "D-8" in result.text
@@ -104,7 +104,7 @@ def test_normal_when_history_stale(
     commit(watching.call, root, "足す")
     update_item(watching.call, root, "D-1", {"body_markdown": "1 行目\n書き換えた 2 行目\n3 行目\n"})
     watching.stop()
-    (root / RECORD_DIR / "docs" / "D-1.md").write_text(
+    (root / RECORD_DIR / "docs" / "D-1.mark.md").write_text(
         "手で書いた A\n手で書いた B\n手で書いた C\n", encoding="utf-8"
     )
     before = snapshot_tree(root)
@@ -278,7 +278,7 @@ def test_normal_when_embedded_file_missing(
 ) -> None:
     """資料の本文が指すワークスペースの中のファイルが無いものを missing_file にする（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", body="docs/A-1.md"), bodies={"A-1.md": EMBEDDED_BODY})
+    root = make_workspace(make_item("A-1", body="docs/A-1.mark.md"), bodies={"A-1.mark.md": EMBEDDED_BODY})
     files = root / RECORD_DIR / "files"
     files.mkdir()
     (files / "clip.mp4").write_bytes(b"mp4")
@@ -293,7 +293,7 @@ def test_normal_when_embedded_file_missing(
     assert missing == [
         {
             "kind": "missing_file",
-            "file": ".mindstella/docs/A-1.md",
+            "file": ".mindstella/docs/A-1.mark.md",
             "id": "A-1",
             "key": None,
             "detail": "../files/missing.mp4",

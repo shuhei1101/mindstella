@@ -1,0 +1,489 @@
+# 結合テスト（計画書『サーバー』の結合テストの実行範囲の表の範囲。回した commit: a434f061）
+
+fail した 8 件は、base の develop（origin/develop を git archive で書き出したコピー）でも同じく fail する。今回の変更によるものではない（スコープ外の行に記載）:
+
+- FAILED tests/integration/server/test_create_workspace.py::test_error_when_folder_not_allowed
+- FAILED tests/integration/server/test_create_workspace.py::test_error_when_host_not_local
+- FAILED tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium]
+- FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed[chromium]
+- FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_body_layout_switch[chromium]
+- FAILED tests/integration/preview/test_detail_panel_screen.py::test_fit_smallest[chromium]
+- FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+- FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium]
+
+test_diff_body_layout_switch は、作業ブランチで 2 回中 1 回 pass し、develop では 3 回とも fail した（不安定）。
+
+## 作業ブランチ
+
+$ python -m pytest tests/integration/server/test_check.py tests/integration/server/test_comment_add.py tests/integration/server/test_comment_update.py tests/integration/server/test_comments_send.py tests/integration/server/test_records.py tests/integration/server/test_export.py tests/integration/server/test_events.py tests/integration/server/test_migrate.py tests/integration/server/test_change_detection.py tests/integration/server/test_create_workspace.py tests/integration/preview/test_detail_full_screen.py tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_diagram_viewer_screen.py tests/integration/preview/test_docs_screen.py tests/integration/preview/test_open_preview.py tests/integration/preview/test_overview_screen.py tests/integration/preview/test_review_screen.py tests/integration/preview/test_search_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/preview/test_spa_diagram_viewer_screen.py tests/integration/preview/test_spa_docs_screen.py tests/integration/preview/test_spa_open.py tests/integration/preview/test_spa_overview_screen.py tests/integration/preview/test_spa_review_screen.py tests/integration/preview/test_spa_search_screen.py
+........................................................................ [  7%]
+...................................F..F................................. [ 15%]
+.......................F................................................ [ 23%]
+........................................................................ [ 31%]
+..............................................F.F...........F........... [ 38%]
+.......................F................................................ [ 46%]
+........................................................................ [ 54%]
+...................F.................................................... [ 62%]
+........................................................................ [ 69%]
+........................................................................ [ 77%]
+........................................................................ [ 85%]
+........................................................................ [ 93%]
+..............................................................           [100%]
+=================================== FAILURES ===================================
+______________________ test_error_when_folder_not_allowed ______________________
+
+session_world = SessionWorld(root=PosixPath('/tmp/ms618-it/test_error_when_folder_not_all0'), allowed=PosixPath('/tmp/ms618-it/test_er...eProjectIndex object at 0x7e2208539280>, servers=[<workspace_fixtures.McpServer object at 0x7e2208422b40>], port=20082)
+
+    def test_error_when_folder_not_allowed(session_world: SessionWorld) -> None:
+        """許可するフォルダの外は 403 を返し、何も書かない（異常系）。"""
+        # 準備
+        world = session_world
+        world.start()
+        folder = world.root / "outside" / "家計簿"
+        # 実行
+        status, body = world.api("POST", "/workspaces", {"folder": str(folder)})
+        # 検証
+        assert (status, body["stage"]) == (403, "folder"), body
+        assert not (folder / ".mindstella").exists()
+>       assert not world.state_root.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/ms618-it/test_error_when_folder_not_all0/state/mindstella').exists
+E        +      where PosixPath('/tmp/ms618-it/test_error_when_folder_not_all0/state/mindstella') = SessionWorld(root=PosixPath('/tmp/ms618-it/test_error_when_folder_not_all0'), allowed=PosixPath('/tmp/ms618-it/test_er...eProjectIndex object at 0x7e2208539280>, servers=[<workspace_fixtures.McpServer object at 0x7e2208422b40>], port=20082).state_root
+
+tests/integration/server/test_create_workspace.py:251: AssertionError
+________________________ test_error_when_host_not_local ________________________
+
+session_world = SessionWorld(root=PosixPath('/tmp/ms618-it/test_error_when_host_not_local0'), allowed=PosixPath('/tmp/ms618-it/test_er...eProjectIndex object at 0x7e2208599280>, servers=[<workspace_fixtures.McpServer object at 0x7e220859a210>], port=20088)
+
+    def test_error_when_host_not_local(session_world: SessionWorld) -> None:
+        """Host が端末の中の値でなければ 403（異常系）。"""
+        # 準備
+        world = session_world
+        world.start({"MINDSTELLA_ALLOWED_HOSTS": "example.test"})
+        # 実行
+        status, body = world.api(
+            "POST", "/workspaces", {"folder": str(world.folder())}, host="example.test"
+        )
+        # 検証
+        assert (status, body["stage"]) == (403, "host"), body
+        assert not world.folder().exists()
+>       assert world.pi.requests == []
+E       AssertionError: assert [('GET', '/se...urces', None)] == []
+E         
+E         Left contains 2 more items, first extra item: ('GET', '/settings/sources', None)
+E         Use -v to get more diff
+
+tests/integration/server/test_create_workspace.py:307: AssertionError
+_____________________ test_embedded_html_in_full[chromium] _____________________
+
+write_preview = <function write_preview.<locals>._write at 0x7e2206b10180>
+open_preview = <function open_preview.<locals>._open at 0x7e2206b07ec0>
+make_item = <function make_item.<locals>._make at 0x7e2206b05f80>
+page = <Page url='http://127.0.0.1:46391/mindstella.html#tab=docs&id=A-1&full=1'>
+
+    def test_embedded_html_in_full(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+    ) -> None:
+        """全画面でも埋め込んだ HTML を本文の要素として描き、本文の幅いっぱいに広げ、チャートの倍率を変えられる（正常系）。"""
+        # 準備
+        url = write_preview(
+            make_item("A-1", title="埋め込む資料"), make_item("A-2"), bodies={"A-1.mark.md": EMBEDDED_BODY}
+        )
+        open_preview(url, "#tab=docs&id=A-1")
+        page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)
+        panel_width = page.locator(RANGE).bounding_box()["width"]  # type: ignore[index]
+        # 実行
+        _open_full(page)
+        full_chart = "dialog.full .md .mdmark-html figure.mdmark-diagram"
+        page.wait_for_selector(full_chart, timeout=EMBED_TIMEOUT_MS)
+        range_box = page.locator("dialog.full .md > .mdmark-html").bounding_box()
+        chart = page.locator(full_chart).first
+        fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+>       chart.locator(ZOOM_IN).click()
+
+tests/integration/preview/test_detail_full_screen.py:1443: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/ms618-venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:18032: in click
+    self._sync(
+/tmp/ms618-venv/lib/python3.12/site-packages/playwright/_impl/_locator.py:165: in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/ms618-venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:594: in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+/tmp/ms618-venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7e2208598f50>
+cb = <function Channel.send.<locals>.<lambda> at 0x7e2206ce5d00>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+E           Call log:
+E             - waiting for locator("dialog.full .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"in\"]")
+E               - locator resolved to <button type="button" data-tool="in" aria-label="拡大" class="mdmark-diagram-tool">…</button>
+E             - attempting click action
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E               - waiting 20ms
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E                 - waiting 100ms
+E               58 × waiting for element to be visible, enabled and stable
+E                  - element is not visible
+E                - retrying click action
+E                  - waiting 500ms
+
+/tmp/ms618-venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+_____________ test_diff_minimap_when_empty_area_pressed[chromium] ______________
+
+write_minimap_preview = <function write_minimap_preview.<locals>._write at 0x7e22068a0d60>
+open_preview = <function open_preview.<locals>._open at 0x7e2204633f60>
+page = <Page url='http://127.0.0.1:45639/mindstella.html#tab=docs&id=A-1&diff=V-1'>
+
+    def test_diff_minimap_when_empty_area_pressed(
+        write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """印の無い所を押すと、押した位置に見えている範囲の面の中央が来るまで本文をすぐ送り、履歴にもハッシュにも触れない（正常系）。"""
+        # 準備
+        _open_minimap_panel(write_minimap_preview, open_preview, page)
+        history_length = page.evaluate("history.length")
+        hash_before = page.evaluate("location.hash")
+        box = page.locator(f"{PANEL_SCOPE} .df-map").bounding_box()
+        assert box is not None
+        # 実行（帯の中ほどを押す）
+        pressed_y = press_empty_area(page, PANEL_SCOPE, offset_y=box["height"] / 2)
+        # 検証（押した位置に、見えている範囲の面の中央が来る）
+        metrics = map_metrics(page, PANEL_SCOPE)
+>       assert metrics["viewTop"] + metrics["viewHeight"] / 2 == pytest.approx(
+            pressed_y, abs=MINIMAP_TOLERANCE_PX
+        )
+E       assert 223.75 == 424 ± 2
+E         
+E         comparison failed
+E         Obtained: 223.75
+E         Expected: 424 ± 2
+
+tests/integration/preview/test_detail_panel_screen.py:4705: AssertionError
+____________________ test_diff_body_layout_switch[chromium] ____________________
+
+write_body_layout_preview = <function write_body_layout_preview.<locals>._write at 0x7e22046b3f60>
+open_preview = <function open_preview.<locals>._open at 0x7e22068a1620>
+page = <Page url='http://127.0.0.1:46229/mindstella.html#tab=docs&id=A-1&diff=V-2'>
+
+    def test_diff_body_layout_switch(
+        write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """差分の表示の間、本文が変わった資料の本文の差分の頭に「インライン」「左右に並べる」の切り替えを出し、押すとその場で描き直し、履歴に積まず URL のハッシュも変えず、押したボタンにフォーカスを保つ（正常系）。"""
+        # 準備
+        url, _ = write_body_layout_preview()
+        _open_side_panel(page, open_preview, url)
+        page.wait_for_selector(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}")
+        history_length = page.evaluate("history.length")
+        hash_before = page.evaluate("location.hash")
+        # 検証（読み上げの名前の付いたボタンの組で、「インライン」を押した状態。本文の差分の印より前にある）
+        assert page.get_attribute(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}", "role") == "group"
+        assert page.get_attribute(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}", "aria-label") == LAYOUT_GROUP_NAME
+        assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]
+        assert page.evaluate(
+            """() => !!(document.querySelector('aside.panel .sbs-switch').compareDocumentPosition(
+                document.querySelector('aside.panel .md:not(.md-value) ins.df-blk')) & Node.DOCUMENT_POSITION_FOLLOWING)"""
+        )
+        # 実行（「左右に並べる」を押す）
+        page.get_by_role("button", name=SIDE_NAME).click()
+        open_side_by_side(page, LAYOUT_PANEL)
+        # 検証（押した状態が移り、押したボタンにフォーカスが残る。履歴もハッシュも変わらない）
+        assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["false", "true"]
+        assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "side"
+        assert page.evaluate("history.length") == history_length
+        assert page.evaluate("location.hash") == hash_before
+        # 実行（「インライン」を押す）
+        page.get_by_role("button", name=INLINE_NAME).click()
+        page.wait_for_selector(f"{LAYOUT_PANEL} .sbs", state="detached")
+        # 検証（インラインに戻り、フォーカスは押したボタンに残る）
+        assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]
+>       assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "inline"
+E       assert None == 'inline'
+E        +  where None = evaluate("document.activeElement?.getAttribute('data-layout')")
+E        +    where evaluate = <Page url='http://127.0.0.1:46229/mindstella.html#tab=docs&id=A-1&diff=V-2'>.evaluate
+
+tests/integration/preview/test_detail_panel_screen.py:4792: AssertionError
+_________________________ test_fit_smallest[chromium] __________________________
+
+write_sample_preview = <function write_sample_preview.<locals>._write at 0x7e2204772de0>
+open_preview = <function open_preview.<locals>._open at 0x7e22068a3b00>
+
+    def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+        """詳細パネルは、幅 320px で横にスクロールせず、本文の表・図・コードブロックのほかにあふれる区画が無く、閉じる・全画面のボタンが表示幅の中にある（正常系）。"""
+        # 準備
+        url = write_sample_preview()
+        page = open_preview(url, "#tab=decisions&view=table&id=D-3")
+        page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+        # 実行
+        set_smallest(page)
+        # 検証
+>       assert_fits_smallest(page, ("aside.panel", 'aside.panel button[data-act="close"]', 'aside.panel button[data-act="full"]'), scope="aside.panel")
+
+tests/integration/preview/test_detail_panel_screen.py:5075: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+page = <Page url='http://127.0.0.1:45465/mindstella.html#tab=decisions&view=table&id=D-3'>
+controls = ('aside.panel', 'aside.panel button[data-act="close"]', 'aside.panel button[data-act="full"]')
+scope = 'aside.panel'
+
+    def assert_fits_smallest(page: Page, controls: tuple[str, ...] = (), scope: str = "body") -> None:
+        """ページが横にスクロールせず、`scope` の中の区画がはみ出さず、操作の要素が表示幅の中にあることを確かめる。"""
+        report = fit_report(page, controls, scope)
+        assert report["pageOverflow"] == 0, f"ページが横に {report['pageOverflow']}px あふれる"
+        assert report["overflowing"] == [], f"横にあふれる区画: {report['overflowing']}"
+>       assert report["outside"] == [], f"表示幅の外にある操作: {report['outside']}"
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: 表示幅の外にある操作: ['aside.panel button[data-act="full"]: 表示幅の外']
+
+tests/integration/preview/preview_fit_helpers.py:117: AssertionError
+________________________ test_embedded_chart[chromium] _________________________
+
+write_preview = <function write_preview.<locals>._write at 0x7e2206c562a0>
+open_preview = <function open_preview.<locals>._open at 0x7e2206c9dda0>
+make_item = <function make_item.<locals>._make at 0x7e2206c54fe0>
+
+    def test_embedded_chart(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+    ) -> None:
+        """チャートは拡大・縮小のボタンとキーで倍率を変え、拡大した後はドラッグで位置を変える。図の拡大の画面は開かず、履歴に積まない（正常系）。"""
+        # 準備
+        page = _open_embedded(write_preview, open_preview, make_item)
+        chart = page.locator(CHART).first
+        history_length = page.evaluate("history.length")
+    
+        def _fit() -> int:
+            """チャートの倍率（%）を返す。"""
+            return int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    
+        initial = _fit()
+        # 検証（全体が収まる倍率では、縮小は押せず、動かすボタンは隠れている）
+>       expect(chart.locator('button[data-tool="out"]')).to_be_disabled()
+E       AssertionError: Locator expected to be disabled
+E       Actual value: enabled 
+E       Call log:
+E         - Expect "to_be_disabled" locator("aside.panel .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"out\"]") with timeout 5000ms
+E         - waiting for locator("aside.panel .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"out\"]")
+E           13 × locator resolved to <button type="button" data-tool="out" aria-label="縮小" class="mdmark-diagram-tool">…</button>
+E              - unexpected value "enabled"
+E       
+E       Aria snapshot:
+E       - banner:
+E         - text: mindstella 要件出しのスキル mindmap を設計する
+E         - button "すべての項目を検索": Ctrl+K
+E         - button "変更履歴"
+E         - button "表示の設定"
+E         - button "絞り込み"
+E         - button "コメント（レビュー中 0 件）": "0"
+E         - button "ダークに切り替え"
+E       - navigation "項目の種類":
+E         - link "概要":
+E           - /url: "#"
+E         - link "検討事項 0":
+E           - /url: "#tab=decisions"
+E         - link "タスク 0":
+E           - /url: "#tab=tasks"
+E         - link "調査 0":
+E           - /url: "#tab=research"
+E         - link "資料 2":
+E           - /url: "#tab=docs"
+E         - link "用語集 1":
+E           - /url: "#tab=terms"
+E         - link "メモ 0":
+E           - /url: "#tab=notes"
+E         - link "会話ログ 0":
+E           - /url: "#tab=logs"
+E         - link "ネットワーク":
+E           - /url: "#tab=graph"
+E       - main:
+E         - heading "資料" [level=1]
+E         - group "表示形式":
+E           - button "カード" [pressed]
+E           - button "ボード"
+E           - button "表"
+E         - button "資料の項目を追加": 項目を追加
+E         - button "図 MD 埋め込む資料 A-1 下書き"
+E         - button "図 MD A-2の題 A-2 下書き"
+E       - complementary "詳細":
+E         - separator "詳細パネルの幅"
+E         - text: 資料 A-1 MD
+E         - button "編集する"
+E         - button "エクスポート"
+E         - button "A-1 のコメントの一覧を開く"
+E         - button "前の項目へ戻る" [disabled]: ←
+E         - button "次の項目へ進む" [disabled]: →
+E         - button "全画面表示"
+E         - button "詳細を閉じる"
+E         - region "詳細の本文":
+E           - text: 下書き
+E           - heading "埋め込む資料" [level=2]
+E           - term: 種類
+E           - definition: 図
+E           - term: 更新日
+E           - definition: 2026-10-01T00:00:00+00:00
+E           - heading "本文" [level=3]
+E           - paragraph: 範囲の外の文
+E           - paragraph:
+E             - text: ﾋﾟｰｸ時の
+E             - link "応答時間":
+E               - /url: "#tab=docs&id=G-1"
+E             - text: と
+E             - link "A-2":
+E               - /url: "#tab=docs&id=A-2"
+E           - 'figure "件数 範囲: 10 月・更新日: 2026-10-27"':
+E             - text: "件数 範囲: 10 月・更新日:"
+E             - time: 2026-10-27
+E             - toolbar "「件数」の表示":
+E               - button "倍率 100%。全体が収まる倍率に戻す": 100%
+E               - button "表示の操作を開く"
+E             - 'group "件数 範囲: 10 月・更新日: 2026-10-27"':
+E               - 'img "件数。自動返信: メール 10・電話 20"': 0 5 10 15 20 件 メール 電話 窓口
+E             - list "凡例":
+E               - listitem: 自動返信
+E           - group "リクエスト数の見積もり":
+E             - paragraph: リクエスト数の見積もり
+E             - text: リクエスト数
+E             - status: "5"
+E             - slider "リクエスト数": "5"
+E             - button "今の値をコピー"
+E             - 'figure "応答時間 範囲: ピーク時・更新日: 2026-10-27"':
+E               - text: "応答時間 範囲: ピーク時・更新日:"
+E               - time: 2026-10-27
+E               - toolbar "「応答時間」の表示":
+E                 - button "倍率 100%。全体が収まる倍率に戻す": 100%
+E                 - button "表示の操作を開く"
+E               - 'group "応答時間 範囲: ピーク時・更新日: 2026-10-27"':
+E                 - 'img "応答時間。今の値（5）: 50・55。既定の値（5）: 50・55"': 0 50 100 ミリ秒 0 1 経過
+E               - list "凡例":
+E                 - listitem: 今の値（5）
+E                 - listitem: 既定の値（5）
+E           - button "実行"
+E           - paragraph: 後ろの文
+E           - heading "レビュー中のコメント0" [level=3]
+E           - paragraph: レビュー中のコメントはありません。
+E         - text: A-1 へのコメント
+E         - button "コメントの入力を閉じる" [expanded]
+E         - textbox "A-1 へのコメント"
+E         - button "音声で入力"
+E         - button "レビューに追加"
+
+tests/integration/preview/test_detail_panel_screen.py:6205: AssertionError
+___________________ test_normal_when_embedded_html[chromium] ___________________
+
+write_preview = <function write_preview.<locals>._write at 0x7e220480dda0>
+open_preview = <function open_preview.<locals>._open at 0x7e2206dc3380>
+make_item = <function make_item.<locals>._make at 0x7e2206dc3f60>
+page = <Page url='http://127.0.0.1:45995/mindstella.html#tab=docs&id=A-1'>
+
+    def test_normal_when_embedded_html(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+    ) -> None:
+        """Markdown の本文に埋め込んだ HTML を本文の中に描き、チャートを動かし、部品の今の値を JSON でコピーする（正常系）。"""
+        # 準備
+        page.context.grant_permissions(CLIPBOARD_PERMISSIONS)
+        url = write_preview(
+            make_item("A-1", title="埋め込む資料"),
+            make_item("A-2"),
+            make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
+            bodies={"A-1.mark.md": EMBEDDED_BODY},
+        )
+        open_preview(url, "#tab=docs&id=A-1")
+        page.wait_for_selector(CHART, timeout=DIAGRAM_TIMEOUT_MS)
+        chart = page.locator(CHART).first
+        # 実行（範囲のボタンを押す）
+        page.get_by_role("button", name="実行", exact=True).click()
+        # 検証（範囲は枠に入れず本文の要素として描かれ、スクリプトとイベントの属性は動かない）
+        assert page.locator("aside.panel .md > .mdmark-html").count() == 1
+        assert page.locator("aside.panel iframe").count() == 0
+        assert page.locator(f"{RANGE} script, {RANGE} [onclick]").count() == 0
+        assert page.evaluate("[window.__script, window.__onclick]") == [None, None]
+        # 実行（拡大して、ドラッグする）
+        fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+>       chart.locator(ZOOM_IN).click()
+
+tests/integration/preview/test_open_preview.py:2383: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/ms618-venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:18032: in click
+    self._sync(
+/tmp/ms618-venv/lib/python3.12/site-packages/playwright/_impl/_locator.py:165: in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/ms618-venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:594: in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+/tmp/ms618-venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7e2208598f50>
+cb = <function Channel.send.<locals>.<lambda> at 0x7e220465eac0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+E           Call log:
+E             - waiting for locator("aside.panel .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"in\"]")
+E               - locator resolved to <button type="button" data-tool="in" aria-label="拡大" class="mdmark-diagram-tool">…</button>
+E             - attempting click action
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E               - waiting 20ms
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E                 - waiting 100ms
+E               58 × waiting for element to be visible, enabled and stable
+E                  - element is not visible
+E                - retrying click action
+E                  - waiting 500ms
+
+/tmp/ms618-venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+=========================== short test summary info ============================
+FAILED tests/integration/server/test_create_workspace.py::test_error_when_folder_not_allowed
+FAILED tests/integration/server/test_create_workspace.py::test_error_when_host_not_local
+FAILED tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_body_layout_switch[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_fit_smallest[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium]
+8 failed, 918 passed in 1991.89s (0:33:11)
+exit=1

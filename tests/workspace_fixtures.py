@@ -540,7 +540,7 @@ def make_item() -> MakeItem:
         item.update(copy.deepcopy(KIND_DEFAULTS[item_id[0]]))
         # 資料は本文が必須なので、ID に揃えた本文のパス（YAML からの相対パス）を既定にする
         if item_id[0] == "A":
-            item["body"] = f"docs/{item_id}.md"
+            item["body"] = f"docs/{item_id}.mark.md"
         item.update(overrides)
         return item
 

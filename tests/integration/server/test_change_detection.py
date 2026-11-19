@@ -295,15 +295,15 @@ def test_normal_when_history_limit_exceeded(
     """保持する回数を超えた古い変更履歴を消し、同じ中身の書き換えでは積まない（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="docs/D-1.md"),
+        make_item("D-1", body="docs/D-1.mark.md"),
         settings={**valid_settings, "history_limit": 1},
-        bodies={"D-1.md": BODY_BEFORE},
+        bodies={"D-1.mark.md": BODY_BEFORE},
     )
     server = _start(start_server)
     _serve(server, root)
-    body = root / RECORD_DIR / "docs" / "D-1.md"
+    body = root / RECORD_DIR / "docs" / "D-1.mark.md"
     # 実行
-    _write_decisions(root, make_item("D-1", body="docs/D-1.md", answer="直した答え"))
+    _write_decisions(root, make_item("D-1", body="docs/D-1.mark.md", answer="直した答え"))
     _wait(lambda: _last_seq(root) == 1)
     _replace(body, BODY_AFTER)
     _wait(lambda: _last_seq(root) == 2)

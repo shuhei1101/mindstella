@@ -655,7 +655,7 @@ functions:
       1. 渡せないキーを確かめる（`validate_input_keys`。`index` はその種類の並びの長さ）。`tags` があれば `compact_tags` で主題でないタグの `main` を除く
       2. その種類の ID を 1 つ予約から振る（『ID の採番』の `reserve_ids`。`staged.items` と消した項目の記録（`removed_items`）を渡す）
       3. 通し番号を振り（`advance_seq`）、`id` を先頭に置いた項目を作り、`staged.history` にその ID の行（`created`・`updated`・`updated_by`（`editor`）・`seq`・`added_seq`）を足す
-         - `body_markdown` がある場合、項目の `body` を `docs/{ID}.md` にし、本文の書き込みを足す（どの種類も）
+         - `body_markdown` がある場合、項目の `body` を `docs/{ID}.mark.md` にし、本文の書き込みを足す（どの種類も）
          - `body_html` がある場合、項目の `body` を `docs/{ID}.html` にし、本文の書き込みを足す（資料だけ）
       4. まだまとめていない変更の `added` に ID を足す（`note_pending`）
       5. 末尾に足した並びと、`touched` にその種類を足した `Staged` を返す
@@ -671,7 +671,7 @@ functions:
         summary: メモにも本文を付ける
         condition: '空の `Staged` に `note` の `{"title": "t", "content": "c", "body_markdown": "b"}`'
         mock: '`now`'
-        expected: N-1 の `body` が `docs/N-1.md` で、`Staged` の本文の書き込みに `docs/N-1.md` → `b` がある
+        expected: N-1 の `body` が `docs/N-1.mark.md` で、`Staged` の本文の書き込みに `docs/N-1.mark.md` → `b` がある
       - name: test_stage_add_skips_removed_id
         case: 正常
         summary: 消した ID を振らない
@@ -737,7 +737,7 @@ functions:
     process: |-
       1. `staged.items` から項目を引き、渡せないキーを確かめる（`validate_input_keys`。`index` はその項目の位置）。渡した `tags` があれば `compact_tags` で主題でないタグの `main` を除く
       2. 変更を当てはめ（`merge_changes`）、`staged.history` のその ID の行の `updated` を今の日時、`updated_by` を `editor` にする
-         - `body_markdown` がある場合、`body` を `docs/{ID}.md` にし、本文の書き込みを作る（どの種類も）
+         - `body_markdown` がある場合、`body` を `docs/{ID}.mark.md` にし、本文の書き込みを作る（どの種類も）
          - `body_html` がある場合、`body` を `docs/{ID}.html` にし、本文の書き込みを作る（資料だけ）
          - 前の `body` があり新しい `body` と名前が違う（形式を替えた）場合、前の名前を `removed_bodies` に足す（同じ名前が `bodies` にあればそこから外す）。新しい名前が `removed_bodies` にあれば外す
          - `changed` には、`body` の名前が変わったとき `body` を、本文の中身が変わったとき渡したキー（`body_markdown` か `body_html`）を入れる
@@ -770,8 +770,8 @@ functions:
       - name: test_stage_update_when_body_format_changed
         case: 正常
         summary: 形式を替えると前の形式の本文を消す書き込みにし、前の `body` を変更履歴に積む
-        condition: '`body: A-1.md`（本文 `a\nb\n`）の資料 A-1 に `{"body_html": "<p>a</p>\n"}`。保持する回数は既定。続けて同じ `Staged` で `{"body_markdown": "a\n"}`'
-        expected: '1 回目: A-1 の `body` が `A-1.html`、`bodies` に `A-1.html`、`removed_bodies` が `["A-1.md"]`、`changed` が `body`・`body_html`、`history` の先頭の `before.body` が `A-1.md` で `body_diff` を今の本文に当てると `a\nb\n`。2 回目: `body` が `A-1.md`、`removed_bodies` が `["A-1.html"]` で `bodies` に `A-1.html` が無い'
+        condition: '`body: A-1.mark.md`（本文 `a\nb\n`）の資料 A-1 に `{"body_html": "<p>a</p>\n"}`。保持する回数は既定。続けて同じ `Staged` で `{"body_markdown": "a\n"}`'
+        expected: '1 回目: A-1 の `body` が `A-1.html`、`bodies` に `A-1.html`、`removed_bodies` が `["A-1.mark.md"]`、`changed` が `body`・`body_html`、`history` の先頭の `before.body` が `A-1.mark.md` で `body_diff` を今の本文に当てると `a\nb\n`。2 回目: `body` が `A-1.mark.md`、`removed_bodies` が `["A-1.html"]` で `bodies` に `A-1.html` が無い'
         mock: なし
       - name: test_stage_update_when_user_editor
         case: 正常

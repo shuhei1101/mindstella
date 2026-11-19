@@ -1,0 +1,394 @@
+# 単体テスト（Red）
+
+コマンド（リポジトリの直下）:
+
+pytest -q -p no:cacheprovider --basetemp=/tmp/ms618-pt tests/unit/scripts/test_builder.py tests/unit/scripts/test_history.py tests/unit/scripts/test_checker.py tests/unit/scripts/test_serve.py tests/unit/scripts/test_commands.py tests/unit/scripts/test_store.py tests/unit/scripts/test_change_detection.py tests/unit/scripts/test_workspaces.py tests/unit/scripts/test_markdown_bodies_to_mark_md.py tests/unit/preview/test_records.py tests/unit/preview/test_doc_export.py tests/unit/preview/test_detail.py
+
+fail・error は全て実装が無いことによる（migrations/v0.14.0/scripts/markdown_bodies_to_mark_md.py が無い・change_detection.rebase_snapshot が無い・本文を docs/{ID}.md に記載する・ダウンロードのファイル名が {ID}.md）。
+
+実装の前から pass したテスト（本文のパスの例を .mark.md にしただけのもの）は、.mark.md も .md で終わるため、次の既存の拡張子の判定で Markdown の本文として扱われる:
+
+- store.py の body_format（endswith(".md")。cdf0ab8a）: test_store・test_history・test_builder・test_commands の該当テスト
+- checker.py の _check_bodies・_check_embedded_files（glob("*.md")・endswith(".md")。a2865813）: test_check_workspace・test_check_workspace_when_problems・test_check_bodies・test_check_embedded_files*
+- change_detection.py の BODY_PATTERNS（"*.md"。0730919f）: test_take_snapshot
+- serve.py の workspace_signature（"*.md"。f3987a24）: test_workspace_signature
+- preview/core/records.ts の bodyFormatOf・searchItems（endsWith(".md")。84971011）: test_body_format_of・test_search_items_when_html
+
+出力:
+
+........................................................................ [  9%]
+............................................F........................... [ 19%]
+........................................................................ [ 28%]
+........................................................................ [ 38%]
+.........F.........F.................................................... [ 48%]
+........................................................................ [ 57%]
+.....................................................................FF. [ 67%]
+......................................F................................. [ 77%]
+.......................EEEE............................................. [ 86%]
+.......................F................................................ [ 96%]
+..........................                                               [100%]
+==================================== ERRORS ====================================
+________________________ ERROR at setup of test_migrate ________________________
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def markdown_bodies_to_mark_md(scripts_dir: Path) -> ModuleType:
+        """版のフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_markdown_bodies_to_mark_md", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_markdown_bodies_to_mark_md.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x79e82fdf2e40>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/markdown_bodies_to_mark_md.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/markdown_bodies_to_mark_md.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+_____________ ERROR at setup of test_migrate_when_already_current ______________
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def markdown_bodies_to_mark_md(scripts_dir: Path) -> ModuleType:
+        """版のフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_markdown_bodies_to_mark_md", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_markdown_bodies_to_mark_md.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x79e82fe8aa20>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/markdown_bodies_to_mark_md.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/markdown_bodies_to_mark_md.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+______________ ERROR at setup of test_migrate_when_target_exists _______________
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def markdown_bodies_to_mark_md(scripts_dir: Path) -> ModuleType:
+        """版のフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_markdown_bodies_to_mark_md", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_markdown_bodies_to_mark_md.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x79e82fe8baa0>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/markdown_bodies_to_mark_md.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/markdown_bodies_to_mark_md.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+________________ ERROR at setup of test_migrate_when_no_history ________________
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def markdown_bodies_to_mark_md(scripts_dir: Path) -> ModuleType:
+        """版のフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_markdown_bodies_to_mark_md", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_markdown_bodies_to_mark_md.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x79e82fed0650>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/markdown_bodies_to_mark_md.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-mark-md-extension/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/markdown_bodies_to_mark_md.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+=================================== FAILURES ===================================
+____________________ test_check_history_when_body_rewritten ____________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x79e82f93c360>
+make_item = <function make_item.<locals>._make at 0x79e82f93d260>
+
+    def test_check_history_when_body_rewritten(
+        make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """手で書き換えた本文に当たらない変更履歴を拾う（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", body="docs/D-1.mark.md"), bodies={"D-1.mark.md": "元の 1 行目\n元の 2 行目\n"}
+        )
+        ai_update(root, "D-1", {"body_markdown": "新しい 1 行目\n新しい 2 行目\n"})
+        (root / RECORD_DIR / "docs" / "D-1.mark.md").write_text(
+            "手で書いた 1 行目\n手で書いた 2 行目\n", encoding="utf-8"
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        problems = checker._check_history(workspace)
+        # 検証
+>       assert [(problem.kind, problem.id, problem.key) for problem in problems] == [
+            ("stale_history", "D-1", "history[0].body_diff")
+        ]
+E       AssertionError: assert [] == [('stale_hist...].body_diff')]
+E         
+E         Right contains one more item: ('stale_history', 'D-1', 'history[0].body_diff')
+E         Use -v to get more diff
+
+tests/unit/scripts/test_checker.py:326: AssertionError
+______________________ test_stage_add_when_note_has_body _______________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x79e8301d4540>
+
+    def test_stage_add_when_note_has_body(make_workspace: MakeWorkspace) -> None:
+        """メモにも本文を付ける（正常系）。"""
+        # 準備
+        staged = _make_staged(make_workspace(), 0)
+        item = {"title": "t", "content": "c", "body_markdown": "b"}
+        # 実行
+        new_staged, _ = commands.stage_add(staged, "note", item, now=_fixed_now)
+        # 検証
+        assert new_staged.items["note"][0]["id"] == "N-1"
+>       assert new_staged.items["note"][0]["body"] == "docs/N-1.mark.md"
+E       AssertionError: assert 'docs/N-1.md' == 'docs/N-1.mark.md'
+E         
+E         - docs/N-1.mark.md
+E         ?           -----
+E         + docs/N-1.md
+
+tests/unit/scripts/test_commands.py:365: AssertionError
+__________________ test_stage_update_when_body_format_changed __________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x79e8301d5f80>
+make_item = <function make_item.<locals>._make at 0x79e8301d63e0>
+
+    def test_stage_update_when_body_format_changed(
+        make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """形式を替えると前の形式の本文を消す書き込みにし、前の body を変更履歴に積む（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("A-1", body="docs/A-1.mark.md"), bodies={"A-1.mark.md": "a\nb\n"})
+        staged = _make_staged(root, 3)
+        # 実行（Markdown から HTML へ）
+        to_html, to_html_result = commands.stage_update(
+            staged, "A-1", {"body_html": "<p>a</p>\n"}, now=_fixed_now
+        )
+        # 検証
+        html_item = to_html.items["doc"][0]
+        assert html_item["body"] == "docs/A-1.html"
+        assert "docs/A-1.html" in to_html.bodies
+        assert to_html.removed_bodies == ["docs/A-1.mark.md"]
+        assert to_html_result["changed"] == ["body", "body_html"]
+        entry = to_html.history["A-1"]["history"][0]
+        assert entry["before"]["body"] == "docs/A-1.mark.md"
+        assert history.apply_body_diff("<p>a</p>\n", entry["body_diff"]) == "a\nb\n"
+        # 実行（続けて HTML から Markdown へ）
+        to_markdown, _ = commands.stage_update(to_html, "A-1", {"body_markdown": "a\n"}, now=_fixed_now)
+        # 検証
+>       assert to_markdown.items["doc"][0]["body"] == "docs/A-1.mark.md"
+E       AssertionError: assert 'docs/A-1.md' == 'docs/A-1.mark.md'
+E         
+E         - docs/A-1.mark.md
+E         ?           -----
+E         + docs/A-1.md
+
+tests/unit/scripts/test_commands.py:525: AssertionError
+_____________________________ test_rebase_snapshot _____________________________
+
+tmp_path = PosixPath('/tmp/ms618-pt/test_rebase_snapshot0')
+make_workspace = <function make_workspace.<locals>._make at 0x79e82fd96480>
+make_item = <function make_item.<locals>._make at 0x79e82fd94e00>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x79e82fdfc2f0>
+
+    def test_rebase_snapshot(
+        tmp_path: Path,
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """移し替えの後に検知を始めても記録しない（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1", body="docs/D-1.md"), bodies={"D-1.md": "本文\n"})
+        state_dir = tmp_path / "state"
+        snapshot_dir = _snapshot_dir(state_dir, root)
+        (snapshot_dir / "docs").mkdir(parents=True)
+        (snapshot_dir / "decisions.yaml").write_text(
+            (_records(root) / "decisions.yaml").read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        (snapshot_dir / "docs" / "D-1.md").write_text("本文\n", encoding="utf-8")
+        _rename_body(root, make_item)
+        history_before = _read(root, "history.yaml")
+        changes_before = _read(root, "changes.yaml")
+        # 実行
+>       change_detection.rebase_snapshot(root, state_dir)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'change_detection' has no attribute 'rebase_snapshot'. Did you mean: 'save_snapshot'?
+
+tests/unit/scripts/test_change_detection.py:348: AttributeError
+_____________________ test_rebase_snapshot_when_detecting ______________________
+
+tmp_path = PosixPath('/tmp/ms618-pt/test_rebase_snapshot_when_dete0')
+make_workspace = <function make_workspace.<locals>._make at 0x79e82fd97920>
+make_item = <function make_item.<locals>._make at 0x79e82fd97b00>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x79e82fdb7410>
+
+    def test_rebase_snapshot_when_detecting(
+        tmp_path: Path,
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """動いている検知の前回の中身も置き換える（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1", body="docs/D-1.md"), bodies={"D-1.md": "本文\n"})
+        state_dir = tmp_path / "state"
+        detector = _started(root, state_dir, monkeypatch)
+        _rename_body(root, make_item)
+        history_before = _read(root, "history.yaml")
+        changes_before = _read(root, "changes.yaml")
+        # 実行
+>       change_detection.rebase_snapshot(root, state_dir)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'change_detection' has no attribute 'rebase_snapshot'. Did you mean: 'save_snapshot'?
+
+tests/unit/scripts/test_change_detection.py:372: AttributeError
+________________________ test_create_workspace_migrated ________________________
+
+allowed = PosixPath('/tmp/ms618-pt/test_create_workspace_migrated0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x79e82fd509e0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/ms618-pt/test_create_workspace_migrated0/state'), locks=...t 0x79e82fd5a780>, plugin_root=PosixPath('/tmp/ms618-pt/test_create_workspace_migrated0/plugin'), tmux=None, proc=None)
+patch_plugin_version = <function patch_plugin_version.<locals>._install at 0x79e82fd09b20>
+
+    def test_create_workspace_migrated(
+        allowed: Path,
+        fake_pi: FakeProjectIndex,
+        ctx: SimpleNamespace,
+        patch_plugin_version: PatchPluginVersion,
+    ) -> None:
+        """前の版の記録は移し替えて開き、報告を残す（正常系）。"""
+        # 準備
+        patch_plugin_version("v0.14.0")
+        folder = _legacy_folder(allowed, "v0.13.0")
+        # 実行
+        status, body = workspaces.create_workspace(_request(folder), ctx)
+        # 検証
+        assert (status, body["result"]) == (200, "opened")
+        assert body["migration"]["from_version"] == "v0.13.0"
+        config = yaml.safe_load((folder / ".mindstella" / "config.yaml").read_text(encoding="utf-8"))
+        assert "playbooks" not in config
+        assert read_point.load_migration_report(folder, state_root=ctx.state_root) is not None
+        # 配信の検知を立てない台帳でも、移し替えた後に前回の中身（rebase_snapshot の書き出し）がある
+>       assert (ctx.state_root / "workspaces" / body["id"] / "snapshot" / "docs").is_dir()
+E       AssertionError: assert False
+E        +  where False = is_dir()
+E        +    where is_dir = ((((PosixPath('/tmp/ms618-pt/test_create_workspace_migrated0/state') / 'workspaces') / 'mindstella-家計簿-53e52d') / 'snapshot') / 'docs').is_dir
+E        +      where PosixPath('/tmp/ms618-pt/test_create_workspace_migrated0/state') = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/ms618-pt/test_create_workspace_migrated0/state'), locks=...t 0x79e82fd5a780>, plugin_root=PosixPath('/tmp/ms618-pt/test_create_workspace_migrated0/plugin'), tmux=None, proc=None).state_root
+
+tests/unit/scripts/test_workspaces.py:521: AssertionError
+_______________ test_detail_panel_when_export_markdown[chromium] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x79e82dd03240>
+load_preview_styles = <function load_preview_styles.<locals>._load at 0x79e82dd03880>
+load_mdmark = <function load_mdmark.<locals>._load at 0x79e82dd03ba0>
+make_data = <function make_data.<locals>._make at 0x79e82dd03d80>
+make_item = <function make_item.<locals>._make at 0x79e82dce34c0>
+
+    def test_detail_panel_when_export_markdown(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_preview_styles: LoadPreviewStyles,
+        load_mdmark: LoadMdmark,
+        make_data: MakeData,
+        make_item: MakeItem,
+    ) -> None:
+        """Markdown でエクスポートすると警告を挙げ、埋め込んだ HTML を除いた本文を保存させる（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        load_preview_styles()
+        load_mdmark()
+        data = _export_data(make_data, make_item)
+        preview_page.evaluate(
+            OPEN_EXPORT_PANEL_SCRIPT,
+            {"data": data, "id": "A-1", "full": False, "shared": False, "editing": False},
+        )
+        downloads: list[Any] = []
+        preview_page.on("download", lambda download: downloads.append(download))
+        preview_page.get_by_role("button", name="エクスポート", exact=True).click()
+        # 実行
+        preview_page.get_by_role("button", name="Markdown でエクスポート").click()
+        warned = preview_page.get_by_role("button", name="エクスポート", exact=True).count()
+        downloads_after_warning = len(downloads)
+        preview_page.get_by_role("button", name="戻る", exact=True).click()
+        focused_after_back = preview_page.evaluate("() => document.activeElement?.textContent ?? ''")
+        preview_page.get_by_role("button", name="Markdown でエクスポート").click()
+        with preview_page.expect_download() as download_info:
+            preview_page.get_by_role("dialog").get_by_role("button", name="エクスポート", exact=True).click()
+        download = download_info.value
+        exported = Path(download.path()).read_text(encoding="utf-8")
+        # 検証
+        # 警告の間は保存されず、警告の「エクスポート」が押せる
+        assert downloads_after_warning == 0
+        assert warned >= 1
+        # 「戻る」でフォーカスが「Markdown でエクスポート」へ戻る
+        assert "Markdown でエクスポート" in focused_after_back
+>       assert download.suggested_filename == "A-1.mark.md"
+E       AssertionError: assert 'A-1.md' == 'A-1.mark.md'
+E         
+E         - A-1.mark.md
+E         + A-1.md
+
+tests/unit/preview/test_detail.py:4023: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_checker.py::test_check_history_when_body_rewritten
+FAILED tests/unit/scripts/test_commands.py::test_stage_add_when_note_has_body
+FAILED tests/unit/scripts/test_commands.py::test_stage_update_when_body_format_changed
+FAILED tests/unit/scripts/test_change_detection.py::test_rebase_snapshot - At...
+FAILED tests/unit/scripts/test_change_detection.py::test_rebase_snapshot_when_detecting
+FAILED tests/unit/scripts/test_workspaces.py::test_create_workspace_migrated
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_export_markdown[chromium]
+ERROR tests/unit/scripts/test_markdown_bodies_to_mark_md.py::test_migrate - F...
+ERROR tests/unit/scripts/test_markdown_bodies_to_mark_md.py::test_migrate_when_already_current
+ERROR tests/unit/scripts/test_markdown_bodies_to_mark_md.py::test_migrate_when_target_exists
+ERROR tests/unit/scripts/test_markdown_bodies_to_mark_md.py::test_migrate_when_no_history
+7 failed, 735 passed, 4 errors in 80.71s (0:01:20)
+exit=1

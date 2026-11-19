@@ -142,7 +142,7 @@ def test_check_location(
     """書式の記号を外して合う箇所を通す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", options=OPTIONS), make_item("A-1"), bodies={"A-1.md": body}
+        make_item("D-1", options=OPTIONS), make_item("A-1"), bodies={"A-1.mark.md": body}
     )
     workspace = store.load_workspace(root)
     item = store.find_item(workspace, item_id).item
@@ -157,14 +157,14 @@ def test_check_location(
     [
         pytest.param(
             "A-1",
-            {"A-1.md": "1 行目\n2 行目\n3 行目"},
+            {"A-1.mark.md": "1 行目\n2 行目\n3 行目"},
             _body_location(1, 5, "1 行目"),
             "3 行",
             id="past_last_line",
         ),
         pytest.param(
             "A-1",
-            {"A-1.md": "1 行目\n2 行目\n3 行目"},
+            {"A-1.mark.md": "1 行目\n2 行目\n3 行目"},
             _body_location(1, 1, "存在しない文"),
             "1〜1 行目",
             id="text_missing",
