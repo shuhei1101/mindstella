@@ -1254,3 +1254,26 @@ def test_check_voice_destination_when_review(
     )
     # 検証
     assert missing == expected
+
+
+def test_open_storage_when_workspace_path(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """ワークスペースごとのキーで読み書きし、別のワークスペースからは読めない（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    result = preview_page.evaluate(
+        """() => {
+            localStorage.clear();
+            history.replaceState(null, "", "/w/mindstella-x-1/mindstella.html");
+            MindmapPreview.openStorage("localStorage").setItem(MindmapPreview.PREFS_KEY, "{}");
+            const written = localStorage.getItem("mindmap-preview:mindstella-x-1");
+            const plain = localStorage.getItem("mindmap-preview");
+            history.replaceState(null, "", "/w/other/mindstella.html");
+            const other = MindmapPreview.openStorage("localStorage").getItem(MindmapPreview.PREFS_KEY);
+            return { written, plain, other };
+        }"""
+    )
+    # 検証
+    assert result == {"written": "{}", "plain": None, "other": None}

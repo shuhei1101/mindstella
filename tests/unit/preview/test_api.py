@@ -806,3 +806,45 @@ def test_voice_api_when_unavailable(
     )
     # 検証
     assert {key: result[key] for key in expected} == expected
+
+
+@pytest.mark.parametrize(
+    ("pathname", "expected"),
+    [
+        pytest.param("/w/mindstella-x-1/mindstella.html", "/w/mindstella-x-1", id="served"),
+        pytest.param("/w/a%20b/mindstella.html", "/w/a%20b", id="encoded"),
+        pytest.param("/C:/x/export.html", "", id="export"),
+    ],
+)
+def test_workspace_path(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, pathname: str, expected: str
+) -> None:
+    """パスの先頭の /w/{workspace} を返し、無ければ空文字（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(pathname) => MindmapPreview.workspacePath(pathname)", pathname)
+    # 検証
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("pathname", "expected"),
+    [
+        pytest.param("/w/mindstella-x-1/mindstella.html", "mindmap-preview:mindstella-x-1", id="served"),
+        pytest.param("/w/a%20b/mindstella.html", "mindmap-preview:a b", id="encoded"),
+        pytest.param("/C:/x/export.html", "mindmap-preview", id="export"),
+    ],
+)
+def test_workspace_key(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, pathname: str, expected: str
+) -> None:
+    """サーバーの配信ではキーの末尾にワークスペースの ID を付ける（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        "(pathname) => MindmapPreview.workspaceKey('mindmap-preview', pathname)", pathname
+    )
+    # 検証
+    assert result == expected

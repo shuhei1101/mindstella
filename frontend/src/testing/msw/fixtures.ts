@@ -6,10 +6,10 @@ import { server } from "@/testing/msw/server";
 
 /** 記録の一部を差し替えて返す */
 export const stubRecords = (patch: Record<string, unknown>): void => {
-  server.use(http.get("/api/records", () => HttpResponse.json({ ...RECORDS, ...patch })));
+  server.use(http.get("*/api/records", () => HttpResponse.json({ ...RECORDS, ...patch })));
 };
 
 /** 保存待ちの編集を返す */
 export const stubEdits = (items: unknown[]): void => {
-  server.use(http.get("/api/edits", () => HttpResponse.json({ items, count: items.length })));
+  server.use(http.get("*/api/edits", () => HttpResponse.json({ items, count: items.length })));
 };

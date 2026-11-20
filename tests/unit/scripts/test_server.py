@@ -209,12 +209,13 @@ def _skip_startup_reconcile(monkeypatch: pytest.MonkeyPatch) -> None:
     """main が端末の project-index へつながらないよう、起動時の照合を何もしない関数に差し替える。"""
     monkeypatch.setattr(startup, "reconcile_before_listen", lambda ctx: None)
     monkeypatch.setattr(startup, "start_agent_flows_check", lambda ctx: threading.Thread())
+    monkeypatch.setattr(startup, "start_serve_registered", lambda ctx: threading.Thread(), raising=False)
 
 
 @pytest.fixture
 def registry() -> Iterator[serve.PreviewRegistry]:
     """配信の台帳を作り、使い終わったら立てた配信を全て止める。"""
-    created = serve.PreviewRegistry(threading.Lock())
+    created = serve.PreviewRegistry(threading.Lock(), port=8784)
     yield created
     created.stop_all()
 
@@ -253,7 +254,7 @@ def _session_of(cwd: Path) -> dict[str, str]:
 
 def _listing_of(started: list[tuple[Path, str]]) -> list[dict[str, Any]]:
     """start したワークスペースと URL から、配信の一覧に出るはずの要素を返す。"""
-    return [{"workspace": str(root.resolve()), "port": urlparse(url).port} for root, url in started]
+    return [{"workspace": str(root.resolve()), "url": url} for root, url in started]
 
 
 def test_main(monkeypatch: pytest.MonkeyPatch, free_port: int) -> None:
@@ -559,7 +560,7 @@ def _lacking_property(schemas: dict[str, dict[str, Any]], key: str) -> list[str]
 def test_build_server() -> None:
     """管理のツールの他は全てのツールを workspace つきで登録する（正常系）。"""
     # 準備
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784))
     # 実行
     tools = _run_async(mcp_server.list_tools())
     # 検証
@@ -574,7 +575,7 @@ def test_build_server() -> None:
 def test_build_server_api_tools() -> None:
     """MindStella の API と同じ操作のツールがあり、init が無い（正常系）。"""
     # 準備
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784))
     # 実行
     names = [tool.name for tool in _run_async(mcp_server.list_tools())]
     # 検証
@@ -598,7 +599,7 @@ def test_build_server_when_update_workspace_omits_null(monkeypatch: pytest.Monke
     """update_workspace は指定した引数だけを本文にして渡す（正常系）。"""
     # 準備
     received = _record_update(monkeypatch)
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784))
     # 実行
     result = _run_async(
         mcp_server.call_tool(
@@ -616,7 +617,7 @@ def test_build_server_when_update_workspace_remove_flow(monkeypatch: pytest.Monk
     """remove_flow: true を本文の flow: null にする（正常系）。"""
     # 準備
     received = _record_update(monkeypatch)
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784))
     # 実行
     result = _run_async(
         mcp_server.call_tool(
@@ -633,7 +634,7 @@ def test_build_server_when_update_workspace_flow_conflict(monkeypatch: pytest.Mo
     """flow と remove_flow を同時に指定すると引数の誤り（異常系）。"""
     # 準備
     received = _record_update(monkeypatch)
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784))
     # 実行
     result = _run_async(
         mcp_server.call_tool(
@@ -659,7 +660,7 @@ def test_build_server_when_relative_workspace(
     """相対パスの workspace をセッションの作業フォルダから読む（正常系）。"""
     # 準備
     make_workspace(make_item("D-1"), name="ws")
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784))
     # 実行
     result = _run_async(
         mcp_server.call_tool("pending", {"workspace": "ws", "session": _session_of(tmp_path)})
@@ -675,7 +676,7 @@ def test_build_server_when_relative_workspace(
 def test_build_server_when_relative_without_session() -> None:
     """セッションが無い相対パスは引数の誤り（異常系）。"""
     # 準備
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784))
     # 実行
     result = _run_async(mcp_server.call_tool("pending", {"workspace": "ws"}))
     # 検証
@@ -710,7 +711,7 @@ def test_build_server_when_status_route() -> None:
     """GET /_admin/status が status の結果を返す（正常系）。"""
     # 準備
     mcp_server = _build(
-        serve.PreviewRegistry(threading.Lock()), status=lambda: {"name": "mindstella"}
+        serve.PreviewRegistry(threading.Lock(), port=8784), status=lambda: {"name": "mindstella"}
     )
     # 実行
     with TestClient(mcp_server.streamable_http_app()) as client:
@@ -718,6 +719,27 @@ def test_build_server_when_status_route() -> None:
     # 検証
     assert response.status_code == 200
     assert response.json() == {"name": "mindstella"}
+
+
+def test_build_server_when_preview_route(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """配信の経路を MCP と同じ待ち受けに登録する（正常系）。"""
+    # 準備
+    registry = serve.PreviewRegistry(threading.Lock(), port=8784)
+    root = make_workspace(make_item("D-1"))
+    url, _started = registry.start(root)
+    mcp_server = _build(registry, status=lambda: {"name": "mindstella"})
+    # 実行
+    try:
+        with TestClient(mcp_server.streamable_http_app(), base_url="http://127.0.0.1:8784") as client:
+            page = client.get(urlparse(url).path)
+            status = client.get("/_admin/status")
+    finally:
+        registry.stop_all()
+    # 検証
+    assert page.status_code == 200
+    assert "text/html" in page.headers["Content-Type"]
+    assert status.status_code == 200
+    assert status.json() == {"name": "mindstella"}
 
 
 def test_call_tool() -> None:
@@ -911,7 +933,7 @@ def test_build_server_when_not_mindstella_session(
     root = make_workspace(make_item("D-1"), name="ws")
     state_root = tmp_path / "state"
     _write_mindstella_session(state_root, root, "abc")
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()), state_root=state_root)
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784), state_root=state_root)
     session = {**_session_of(tmp_path), "claude_session_id": "xyz"}
     # 実行
     result = _run_async(
@@ -953,7 +975,7 @@ def test_build_server_when_marking_tool(
     _write_mindstella_session(state_root, root, "abc")
     commands.run_new_thread(root, body="質問です", summary="質問", tags=None, target=None)
     monkeypatch.setattr(notify, "MARKERS", notify.WriteMarkers())
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()), state_root=state_root)
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784), state_root=state_root)
     session = {**_session_of(tmp_path), "claude_session_id": "abc"}
     # 実行
     result = _run_async(
@@ -987,7 +1009,7 @@ def test_build_server_when_marking_tool_failed(
     _write_mindstella_session(state_root, root, "abc")
     commands.run_new_thread(root, body="質問です", summary="質問", tags=None, target=None)
     monkeypatch.setattr(notify, "MARKERS", notify.WriteMarkers())
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()), state_root=state_root)
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784), state_root=state_root)
     session = {**_session_of(tmp_path), "claude_session_id": "xyz"}
     # 実行
     result = _run_async(

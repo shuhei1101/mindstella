@@ -40,6 +40,22 @@ describe("writePrefs", () => {
     // 検証
     expect(JSON.parse(localStorage.getItem(PREFS_KEY) as string)).toEqual({ theme: "dark", kinds: ["decisions"], commentsPinned: true, diffSel: "V-1" });
   });
+
+  // ワークスペースごとのキーに書く（正常系）
+  test("write_prefs_when_workspace_path", () => {
+    // 準備
+    localStorage.clear();
+    history.replaceState(null, "", "/w/mindstella-x-1/spa/");
+    // 実行
+    writePrefs({ diffSel: "V-1" });
+    // 検証
+    expect(JSON.parse(localStorage.getItem(`${PREFS_KEY}:mindstella-x-1`) as string)).toEqual({ diffSel: "V-1" });
+    expect(localStorage.getItem(PREFS_KEY)).toBeNull();
+  });
+
+  afterEach(() => {
+    history.replaceState(null, "", "/");
+  });
 });
 
 describe("readBodyScrolls", () => {
