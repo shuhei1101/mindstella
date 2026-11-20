@@ -1,51 +1,50 @@
 use_cases:
   - kind: composite
     scenario: docs/scenario/SC-489-50.yaml
-    impact: changed
-    detail: 記録を読み返すときに、項目を確認済みにする・確認済みを外す流れと、AI が書き換えた項目が未確認に戻ることを加える（#188）
+    impact: run_only
+    detail: 読み返しの流れは変わらないが、項目の詳細に確認済みのマーカーが加わり、画面をまたいだ読み返しを壊しうる（#188）
     depends_on: []
   - kind: composite
     scenario: docs/scenario/SC-489-52.yaml
-    impact: following
-    detail: 話し合いの途中で AI が項目を書き換えると、利用者の確認済みが外れることに追随する（#188）
-    depends_on:
-      - docs/scenario/SC-489-50.yaml
+    impact: changed
+    detail: 画面からコメントを送信した項目が確認済みになり、取り込みで AI がその項目を書き換えると未確認に戻る（#188）
+    depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-46.yaml
     impact: changed
     detail: 項目の詳細で、確認済みかを見て、確認済みにする・外す（#188）。最も狭い幅でも、詳細パネルの閉じる・全画面のボタンが表示幅に収まる（#625）
     depends_on:
-      - docs/scenario/SC-489-50.yaml
+      - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-489-47.yaml
     impact: changed
     detail: 項目へコメントを送ると、設定がオンならその項目が確認済みになる（#188）
     depends_on:
-      - docs/scenario/SC-489-50.yaml
+      - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-489-3.yaml
     impact: changed
     detail: 選んだコメントをまとめて送ると、設定がオンなら送った項目が確認済みになる（#188）
     depends_on:
-      - docs/scenario/SC-489-50.yaml
+      - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-540-1.yaml
     impact: changed
     detail: AI の書き込みで項目が変わると、その項目の確認済みを外す（#188）
     depends_on:
-      - docs/scenario/SC-489-50.yaml
+      - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-489-28.yaml
     impact: run_only
     detail: 利用者が画面で編集して保存した変更は AI の書き換えではないため確認済みを外さない。保存の流れは変わらないが、確認済みの扱いを壊しうる（#188）
     depends_on:
-      - docs/scenario/SC-489-50.yaml
+      - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-489-36.yaml
     impact: changed
     detail: コメントを送ったら確認済みにするかの設定（既定はオン）を切り替える（#188）
     depends_on:
-      - docs/scenario/SC-489-50.yaml
+      - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-489-5.yaml
     impact: changed
