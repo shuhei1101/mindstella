@@ -84,31 +84,60 @@ docs:
   - page: docs/architecture/ARCH-489-1.yaml
     new: false
     change: サーバーの runs_on・プレビューの runs_on の配信の待ち受け（空きポート・`preview.port`）を、常駐サーバーの 1 つのポートで全てのワークスペースを配る記述にする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
   - page: docs/nonfunctional/NFR-489-1.yaml
     new: false
     change: 待ち受けの決定値から配信ごとのポート（空きポート・`preview.port`）を外し、`MINDSTELLA_PORT` の 1 つにする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 画面の URL とポートの説明を、常駐サーバーの 1 つのポートでワークスペースごとの場所を開く説明にする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
   - page: docs/guide/セットアップ手順-プレビューを外から見る.md
     new: false
     change: ワークスペースごとに `preview.port` を固定して外の入口へつなぐ手順を、常駐サーバーのポートを 1 つつなぐ手順にする。配信の起動・終了のフックの呼ばれ方も合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: '`config.yaml` の `preview.port` の行を、データ設計で決めた扱い（削除か保持）に合わせる'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
   - page: docs/guide/コマンド.mark.md
     new: false
     change: '`preview_url`・`readme`・起動のコマンド・常駐サーバーの状態が返す画面の URL とポートの説明を、常駐サーバーの入口の URL に合わせる'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
   - page: docs/guide/動作環境.mark.md
     new: false
     change: 通信の行の待ち受けの説明を、常駐サーバーの 1 つのポートに合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
+    change: 許可するホスト名と配信のフックの説明を、常駐サーバーの画面の経路とワークスペースを配り始める・やめるときの呼び方に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    change: 配信のフックの説明を、ワークスペースを配り始める・やめるときの呼び方に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    change: README を書き直す時点を、プレビューを配り始めたとき（常駐サーバーの起動時を含む）に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
 scope_out:
   - item: 今の画面と雛形の削除・配る書き出しの React への付け替え
     reason: '要望は配信の作りの切り替えで、今の画面は呼び出しのパスだけを合わせる（#538 の後ろに #371 を回す計画の判断）'
