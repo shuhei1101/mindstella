@@ -151,10 +151,10 @@ flows:
         participant P as プレビューの配信
 
         クライアント->>IF: preview_url
-        IF->>P: 立てる
+        IF->>P: このワークスペースを配り始める
         IF-->>クライアント: URL
         クライアント->>IF: SIGTERM
-        IF->>HK: {コマンド} {ポート} {フォルダの名前}（待たない）
+        IF->>HK: {コマンド} {ポート} {フォルダの名前} {画面のパス}（待たない）
         IF->>P: 止める
         IF-->>クライアント: プロセスが終わる
       ```
@@ -317,7 +317,7 @@ constraints:
   - item: 同時の呼び出し
     constraint: ワークスペースを書き換えるツールと送信の受け付けは、プロセスの中の 1 本の鍵を取った後に、ワークスペースのロックファイル `.mindstella.lock` に `fcntl.flock` の排他ロックを取ってから読み・書く。同じワークスペースを開く別のプロセスとも排他する。ロックは取れるまで待ち、持つプロセスが落ちると OS が外す。読むだけのツールと配信はロックを取らない（書き換えは一時ファイルから `os.replace` で置き換えるため、書き込み途中のファイルを読まない）。project-index の `write_docs` はこのロックを取らないため、種類ごとの YAML を書くツールと画面の保存は、読んだ時点の中身と置き換える直前の中身を比べ、違えば再読み込みして 1 回だけ再適用し、それでも違えばエラーを返す。変更の検知は種類ごとの YAML を書かない（『変更の検知』）
   - item: 終わり方
-    constraint: SIGTERM・SIGINT を受けるか『常駐サーバーの停止』が呼ばれると、立てた配信ごとに終了時のフック（`MINDSTELLA_PREVIEW_STOP_HOOK`）を起動時と同じポートとワークスペースのフォルダの名前を追加して呼び、配信を止めてプロセスを終える。終了時のフックは 1 つの配信に 1 回だけ呼ぶ。フックのコマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない（立てられないときは標準エラーに記録して続ける）。MCP のクライアントが切れても終わらない
+    constraint: SIGTERM・SIGINT を受けるか『常駐サーバーの停止』が呼ばれると、配っているワークスペースごとに終了時のフック（`MINDSTELLA_PREVIEW_STOP_HOOK`）を起動時と同じポート・ワークスペースのフォルダの名前・画面のパスを追加して呼び、待ち受けを止めてプロセスを終える。終了時のフックは 1 つのワークスペースに 1 回だけ呼ぶ。フックのコマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない（立てられないときは標準エラーに記録して続ける）。MCP のクライアントが切れても終わらない
   - item: 参照する環境変数
     constraint: '`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`PROJECT_INDEX_PORT`・`XDG_STATE_HOME` を、常駐サーバーを起動した環境から読む。`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` は読まない（`session` で受ける）'
     notes: テストで常駐サーバーを呼ぶときは、tmux への入力を確かめるフロー以外で `session` に `tmux`・`tmux_pane` を入れない（テストを動かすペインへ貼らないため）
@@ -325,7 +325,7 @@ constraints:
     constraint: ツールは、成功もエラーも `CallToolResult` を自分で組み立てて返す（成功は `structured_content` と同じ JSON の本文、エラーは `is_error` を真にした本文）。例外を送出して SDK に任せない
     notes: '`mcp` 2.3.0 で確かめた。例外を送出すると本文の頭に `Error executing tool {ツール}: ` が付き（`ToolError` 以外は内容も消える）、`エラー: ` で始まらない'
   - item: MindStella の API
-    constraint: '`/mcp` と同じポートで、`POST /workspaces`・`GET /workspaces`・`GET /workspaces/{id}`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/close`・`POST /workspaces/{id}/reopen`・`DELETE /workspaces/{id}`・`PATCH /workspaces/{id}` と、フックのエンドポイント `POST /_admin/sessions/{session}/events` を待ち受ける。`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` の要求だけを受ける（D-304・D-340。`MINDSTELLA_ALLOWED_HOSTS` のホスト名はプレビューの配信だけが受ける）'
+    constraint: '`/mcp` と同じポートで、`POST /workspaces`・`GET /workspaces`・`GET /workspaces/{id}`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/close`・`POST /workspaces/{id}/reopen`・`DELETE /workspaces/{id}`・`PATCH /workspaces/{id}` と、フックのエンドポイント `POST /_admin/sessions/{session}/events` を待ち受ける。`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` の要求だけを受ける（D-304・D-340。`MINDSTELLA_ALLOWED_HOSTS` のホスト名はプレビューの配信の経路 `/w/{workspace}/` だけが受ける）。同じポートで、全てのワークスペースのプレビューの配信（『プレビューの配信』の制約「ワークスペースの区別」）も待ち受ける'
   - item: instructions
     constraint: 'MCP の初期化の応答の `instructions` に、記録の検索・書き込み・削除・関連のたどりは project-index の `search_docs`・`write_docs`・`delete_docs`・`trace_related` で行うこと、項目を追加する前に `next_id` で ID を取ること、`commit` とスレッドの書き込みは MindStella のセッションだけが呼べること、記録の進め方は project-index の配信元 `mindstella-agent-flows` のエージェントフローに従うことを書く'
   - item: MindStella のセッションに限るツール

@@ -5,7 +5,7 @@ entry:
   value: '`server_status`（同じ JSON を `GET /_admin/status` でも返す）'
 flows:
   - name: 正常系
-    summary: 待ち受けのポート・バージョン・配信しているワークスペースごとのポートを返す
+    summary: 待ち受けのポート・バージョン・配信しているワークスペースごとの画面の URL を返す
     setup:
       - name: Mock
         description: なし（テストを動かす Python で常駐サーバーを子プロセスとして起動し、MCP のクライアントでつなぐ）
@@ -22,7 +22,7 @@ flows:
       ```
     expected:
       - '`name` が `mindstella`、`version` がプラグインの `version.ini` のバージョン、`port` が `MINDSTELLA_PORT`、`pid` が常駐サーバーのプロセスの PID'
-      - '`previews` に、フォルダ A と B の絶対パスと、`preview_url` が返した URL のポートが 1 行ずつある'
+      - '`previews` に、フォルダ A と B の絶対パスと、`preview_url` が返した URL（どちらも `MINDSTELLA_PORT` のポート）が 1 行ずつある'
       - '`GET /_admin/status` の JSON が、`server_status` の結果と同じ'
     test: test_normal
   - name: 正常系（配信が無い）
@@ -42,7 +42,7 @@ flows:
     expected:
       - '`previews` が空の配列'
     test: test_normal_when_no_previews
-lead: 常駐サーバーの待ち受けのポート・バージョン・プロセスと、配信しているワークスペースごとのポートを返す。
+lead: 常駐サーバーの待ち受けのポート・バージョン・プロセスと、配信しているワークスペースごとの画面の URL を返す。
 idempotent: true
 side_effects: なし（何も書き込まない）
 request:
@@ -76,9 +76,9 @@ response:
   - name: previews[].workspace
     type: str
     description: 配信しているワークスペースの絶対パス
-  - name: previews[].port
+  - name: previews[].url
     type: int
-    description: その配信のポート
+    description: そのワークスペースの画面の URL（『プレビューの URL』の `url`）
 exceptions:
   - name: なし（正常終了）
     condition: 状態を返した
