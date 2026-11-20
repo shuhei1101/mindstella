@@ -10,14 +10,10 @@ URL のハッシュに `look={見た目}` と `theme={light / dark}` を足す�
 
 | 画面 | 中身 |
 | --- | --- |
-| [graph](../../pages/graph/123/index.md) | ネットワーク。5 つの見た目・見た目の選び・状態の印・ロックと鍵・コメントの印と鍵の順・星座の形のタブのアイコン |
 | [decisions](../../pages/decisions/123/index.md) | 検討事項のマップの節のロックと鍵（コメントの印と重ならない） |
 | [settings-panel](../../pages/settings-panel/123/index.md) | 見た目の選びを外した表示の設定のパネル |
 
 | 部品 | 中身 |
 | --- | --- |
-| [look-pick](../../components/look-pick/index.html) | ネットワークの見た目の選び |
-| [network-label](../../components/network-label/index.html) | ネットワークの名前・状態の印・鍵・コメントの印（A・B の並び） |
-| [map-lock](../../components/map-lock/index.html) | 検討事項のマップの節の鍵（コメントの印との並び） |
 | [topbar](../../components/topbar/index.html) | タブの帯の「ネットワーク」と星座の形のアイコン |
 | [settings-panel](../../components/settings-panel/index.html) | 見た目の選びを外した表示の設定のパネル |

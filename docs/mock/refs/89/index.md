@@ -14,7 +14,6 @@ URL のハッシュに `drawer=1` を足すと、ドロワーを開いた状態�
 | [tasks](../../pages/tasks/89/index.md) | タスクのボード・表 |
 | [docs](../../pages/docs/89/index.md) | 資料のカード・ボード・表 |
 | [records](../../pages/records/89/index.md) | 調査・用語集・メモ・会話ログの表 |
-| [graph](../../pages/graph/89/index.md) | つながり |
 | [overview](../../pages/overview/89/index.md) | 概要（変えない）。タイルの「すべて表示」から条件を選んだ一覧へ移る確かめ用 |
 
 <!-- /table -->
