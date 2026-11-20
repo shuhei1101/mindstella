@@ -1,6 +1,6 @@
 id: ER-489-1
 title: "ER 図: ワークスペース"
-lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。ファイルとフォルダ（`docs/`・`release/` を含む）は全てワークスペースの直下の記録のフォルダ `.mindstella/` に置き、表の物理名は `.mindstella/` からのパス。画面はサーバーの配信で開き、ワークスペースには置かない。直下には `.mindstella/` のほかに、このフォルダの起動・接続のコマンドとプレビューの URL を一覧にした `README.md` をサーバーが書く（記録ではなく、1 行目の自動で書いた印を確かめるほかにどのツールも読まない）。
+lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。項目の本文のフォルダ `docs/` と資料に埋め込むファイルのフォルダ `files/` はワークスペースの直下に、ほかのファイルとフォルダは直下の記録のフォルダ `.mindstella/` に置き、表の物理名は `docs/`・`files/` の表は直下から、ほかの表は `.mindstella/` からのパス。画面はサーバーの配信で開き、ワークスペースには置かない。直下には `.mindstella/`・`docs/`・`files/` のほかに、このフォルダの起動・接続のコマンドとプレビューの URL を一覧にした `README.md` をサーバーが書く（記録ではなく、1 行目の自動で書いた印を確かめるほかにどのツールも読まない）。
 er:
   entities:
     - name: 設定
@@ -341,8 +341,8 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）'
-        example: docs/D-12.mark.md
+        description: '`.mindstella/` からの本文の Markdown のパス（`../docs/{ID}.mark.md`）'
+        example: ../docs/D-12.mark.md
       - name: sources
         title: 経緯
         type: array
@@ -389,8 +389,8 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）。経緯や補足を残す'
-        example: docs/T-3.mark.md
+        description: '`.mindstella/` からの本文の Markdown のパス（`../docs/{ID}.mark.md`）。経緯や補足を残す'
+        example: ../docs/T-3.mark.md
   - name: research.yaml
     title: 調査
     datastore: YAML
@@ -411,7 +411,7 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）'
+        description: '`.mindstella/` からの本文の Markdown のパス（`../docs/{ID}.mark.md`）'
       - name: withdrawn
         title: 取り下げ
         type: boolean
@@ -454,9 +454,9 @@ tables:
         title: 本文
         type: string
         not_null: true
-        description: '`.mindstella/` からの本文のパス。拡張子で本文の形式を表し、Markdown は `docs/{ID}.mark.md`、HTML は `docs/{ID}.html`。どちらか 1 つだけを指す。project-index の配信の設定の `body_file` が指す列'
-        check: '`docs/` で始まり、その後に `/`・`\` を含まず `.mark.md` か `.html` で終わる（ほかの種類の `body` は `.mark.md` だけ）'
-        example: docs/A-3.html
+        description: '`.mindstella/` からの本文のパス。拡張子で本文の形式を表し、Markdown は `../docs/{ID}.mark.md`、HTML は `../docs/{ID}.html`。どちらか 1 つだけを指す。project-index の配信の設定の `body_file` が指す列'
+        check: '`../docs/` で始まり、その後に `/`・`\` を含まず `.mark.md` か `.html` で終わる（ほかの種類の `body` は `.mark.md` だけ）'
+        example: ../docs/A-3.html
       - name: withdrawn
         title: 取り下げ
         type: boolean
@@ -499,8 +499,8 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）。経緯や補足を残す'
-        example: docs/G-2.mark.md
+        description: '`.mindstella/` からの本文の Markdown のパス（`../docs/{ID}.mark.md`）。経緯や補足を残す'
+        example: ../docs/G-2.mark.md
       - name: withdrawn
         title: 取り下げ
         type: boolean
@@ -525,8 +525,8 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）。経緯や補足を残す'
-        example: docs/N-4.mark.md
+        description: '`.mindstella/` からの本文の Markdown のパス（`../docs/{ID}.mark.md`）。経緯や補足を残す'
+        example: ../docs/N-4.mark.md
       - name: withdrawn
         title: 取り下げ
         type: boolean
@@ -553,7 +553,7 @@ tables:
       - name: body
         title: 本文
         type: string
-        description: '`.mindstella/` からの本文の Markdown のパス（`docs/{ID}.mark.md`）。`related` はこの会話で更新した項目'
+        description: '`.mindstella/` からの本文の Markdown のパス（`../docs/{ID}.mark.md`）。`related` はこの会話で更新した項目'
       - name: withdrawn
         title: 取り下げ
         type: boolean
@@ -686,7 +686,7 @@ tables:
     summary: 種類ごとの YAML の項目と本文を project-index の配信元として配る設定
     scale: 1 ファイル
     access: 全件
-    description: 'ワークスペースの作成と移し替え（v0.13.0 の `place_source_config`）が書き、project-index が読む。書式は project-index のガイド『設定』。端末の設定の配信元の行の `config` がこのファイルを指す。MindStella のツールは書き換えない'
+    description: 'ワークスペースの作成と移し替え（v0.13.0 の `place_source_config`・v0.14.0 の `move_bodies_to_root`）が書き、project-index が読む。書式は project-index のガイド『設定』。端末の設定の配信元の行の `config` がこのファイルを指す。MindStella のツールは書き換えない'
     columns:
       - name: version
         title: 設定の版
@@ -714,6 +714,12 @@ tables:
         type: array
         not_null: true
         description: '種類ごとの 7 つの行。要素は `id`（種類の名前）・`title`・`paths`（`[{種類}.yaml]`）・`schema`（`schemas/{種類}.schema.json`）・`records: items`・`body_file: body`・`write_dates: false`（project-index に `created`・`updated` を付けさせない。日時は `history.yaml` が持つ）・`metadata`（共通のキーと列の対応）'
+      - name: paths_base
+        title: 配信元の基準
+        type: string
+        not_null: true
+        description: 配信元の基準のフォルダ。`..`（ワークスペースの直下）にして、項目の `body` が直下の `docs/` の本文を指せるようにする。project-index は配信元の基準のフォルダの外部の本文を返却しない
+        example: ..
   - name: schemas/
     title: 記録のスキーマ
     datastore: JSON

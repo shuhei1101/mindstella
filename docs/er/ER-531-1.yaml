@@ -186,7 +186,7 @@ tables:
       - name: 'docs/{ファイル名}'
         title: 本文の複製
         type: string
-        description: '`.mindstella/docs/` の本文の前回の中身'
+        description: 'ワークスペースの直下の `docs/` の本文の前回の中身'
   - name: workspaces/{ID}/read_point.json
     title: 前回参照した時点
     datastore: JSON
