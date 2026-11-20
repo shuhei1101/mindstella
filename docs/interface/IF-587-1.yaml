@@ -1,6 +1,6 @@
 id: IF-587-1
 title: ワークスペースのファイルの配信
-lead: '`preview_url` が立てた配信が、ワークスペースのファイルのフォルダ `.mindstella/files/` のファイルを `/files/` の下で返す。画面は資料の本文の `../files/{名前}` をこのパスへ解決して、動画・音声を再生し、画像を表示する。'
+lead: '`preview_url` が立てた配信が、ワークスペースの直下のファイルのフォルダ `files/` のファイルを `/files/` の下で返す。画面は資料の本文の `../files/{名前}` をこのパスへ解決して、動画・音声を再生し、画像を表示する。'
 entry:
   kind: endpoint
   value: GET /files/{path}
@@ -14,7 +14,7 @@ flows:
         description: 作成を済ませたワークスペース
       - name: ファイル
         description: 数秒の mp4・png
-        notes: '`.mindstella/files/clip.mp4` と `.mindstella/files/img/shot.png` に配置する'
+        notes: '`files/clip.mp4` と `files/img/shot.png` に配置する'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -38,7 +38,7 @@ flows:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: ファイル
-        description: 1000 バイトのファイル `.mindstella/files/clip.mp4`
+        description: 1000 バイトのファイル `files/clip.mp4`
         notes: '`Range: bytes=100-199`・`Range: bytes=900-`・`Range: bytes=-50` を付けて GET する'
     flow: |-
       ```mermaid
@@ -62,7 +62,7 @@ flows:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: ファイル
-        description: 1000 バイトのファイル `.mindstella/files/clip.mp4`
+        description: 1000 バイトのファイル `files/clip.mp4`
         notes: '`Range: bytes=1000-` を付けて GET する'
     flow: |-
       ```mermaid
@@ -84,15 +84,15 @@ flows:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: フォルダの外を指すパス
-        description: '`.mindstella/files/outside` をワークスペースの外のファイルへのシンボリックリンクにする'
-        notes: '`/files/missing.mp4`・`/files/../decisions.yaml`（`..` を正規化せずに送る）・`/files/%2e%2e/decisions.yaml`・`/files/outside`・`/files/`（フォルダそのもの）を GET する'
+        description: '`files/outside` をワークスペースの外のファイルへのシンボリックリンクにする'
+        notes: '`/files/missing.mp4`・`/files/../.mindstella/decisions.yaml`（`..` を正規化せずに送る）・`/files/%2e%2e/.mindstella/decisions.yaml`・`/files/outside`・`/files/`（フォルダそのもの）を GET する'
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as GET /files/{path}
 
-        クライアント->>IF: GET /files/../decisions.yaml
+        クライアント->>IF: GET /files/../.mindstella/decisions.yaml
         IF-->>クライアント: 404、problem+json
       ```
     expected:
@@ -107,7 +107,7 @@ flows:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: ファイル
-        description: '`.mindstella/files/clip.mp4`'
+        description: '`files/clip.mp4`'
         notes: '`Host: attacker.example:{ポート}` を付けて GET する'
     flow: |-
       ```mermaid
@@ -131,7 +131,7 @@ request:
     type: str
     required: true
     location: path
-    description: '`/files/` より後ろのパス。ファイルのフォルダ `.mindstella/files/` からの相対パスで、パーセントエンコードを戻してから解決する'
+    description: '`/files/` より後ろのパス。直下のファイルのフォルダ `files/` からの相対パスで、パーセントエンコードを戻してから解決する'
     constraints: 解決した先がファイルのフォルダの配下の通常のファイルでないときは 404
   - name: Range
     type: str

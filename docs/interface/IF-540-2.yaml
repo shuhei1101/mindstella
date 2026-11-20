@@ -11,7 +11,7 @@ callers:
   - IF-489-1#
 constraints:
   - item: 見るファイル
-    constraint: '`.mindstella/` の種類ごとの 7 つの YAML（`decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml`）と、`.mindstella/docs/` の直下の `*.md`・`*.html`'
+    constraint: '`.mindstella/` の種類ごとの 7 つの YAML（`decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml`）と、ワークスペースの直下の `docs/` の直下の `*.md`・`*.html`'
   - item: 見る間隔
     constraint: 『書き換えの知らせ』と同じ書き換えの印を 250ms ごとに作り直す。印が変わったときだけ中身を読んで比べる
     decided_by: NFR-489-1#requirements[画面への反映の時間]
@@ -30,7 +30,7 @@ constraints:
     constraint: MindStella のセッションの応答の途中に別のセッションが書き込んだ変更も、そのセッションの変更（`ai`）として記録する
     notes: 書き込みのファイルからは書いたセッションを見分けられないため、応答の途中の変更を全てそのセッションに帰属させる
   - item: 項目の比べ方
-    constraint: 種類ごとの YAML の `items` を `id` で突き合わせる。前回に無い ID は追加、今に無い ID は削除、両方にあってキーか本文の中身が違えば変更とする。本文は項目の `body` が指す `.mindstella/docs/` のファイルの中身で比べる
+    constraint: 種類ごとの YAML の `items` を `id` で突き合わせる。前回に無い ID は追加、今に無い ID は削除、両方にあってキーか本文の中身が違えば変更とする。本文は項目の `body` が指す直下の `docs/` のファイルの中身で比べる
   - item: 追加の記録
     constraint: '`history.yaml` にその項目の行を作り、`created`・`updated` を見つけた日時、`updated_by` を書いた元、`added_seq`・`seq` を `last_seq` + 1 にし、`pending.added` に ID を足す。変更履歴は積まない'
   - item: 変更履歴を積むとき
@@ -64,7 +64,7 @@ constraints:
   - item: MindStella のセッションが無いとき
     constraint: 貼り付けずに画面へだけ知らせる
   - item: ファイルのフォルダ
-    constraint: '`.mindstella/files/` は見ない（「見るファイル」の外）。ファイルの配置・差し替え・削除では、項目の変更も書き換えのまとまりも作らない'
+    constraint: '直下の `files/` は見ない（「見るファイル」の外）。ファイルの配置・差し替え・削除では、項目の変更も書き換えのまとまりも作らない'
   - item: ワークスペースの Git
     constraint: 読むだけで操作しない（commit・add をしない）。Git 管理外のワークスペースでも同じに動く
 exclusivity: ワークスペースごとに 1 つの検知だけが動く（常駐サーバーのプロセスの中のワークスペースごとの鍵を、MindStella の MCP のツール・画面の保存と共有する）
@@ -347,7 +347,7 @@ flows:
         participant IF as 変更の検知
         participant WS as ワークスペース
 
-        クライアント->>WS: .mindstella/files/clip.mp4 を配置する
+        クライアント->>WS: files/clip.mp4 を配置する
         IF-->>WS: 見るファイルを比べる
         IF->>IF: 変わった見るファイルが無い
       ```

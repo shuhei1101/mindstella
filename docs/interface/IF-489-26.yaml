@@ -51,7 +51,7 @@ flows:
       - '`problems` に `broken_ref`（D-1・`related[0].to`・`D-9`）がある'
       - '`problems` に `broken_ref`（`.mindstella/threads.yaml`・TH-1・`target`・`D-8`）がある'
       - '`problems` に `schema`（`.mindstella/decisions.yaml`・`items[1].status`）がある'
-      - '`problems` に `missing_body`（R-1）と `orphan_body`（`.mindstella/docs/X-1.mark.md`）がある'
+      - '`problems` に `missing_body`（R-1）と `orphan_body`（`docs/X-1.mark.md`）がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_problems_found
   - name: 正常系（変更履歴が本文とずれている）
@@ -173,7 +173,7 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`problems` が `missing_body`（A-1）と `orphan_body`（`.mindstella/docs/A-9.html`）の 2 件だけで、A-2 の問題が無い'
+      - '`problems` が `missing_body`（A-1）と `orphan_body`（`docs/A-9.html`）の 2 件だけで、A-2 の問題が無い'
     test: test_normal_when_html_body_problems_found
   - name: 正常系（文字列のタグの項目がある）
     summary: 前の版の形式の文字列のタグを `schema` の問題として拾い、移し替えを案内する
@@ -235,7 +235,7 @@ flows:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 本文を Markdown で持つ資料 A-1
-        notes: 本文に `![動画](../files/clip.mp4)`・`![無い](../files/missing.mp4)`・`![外](https://example.com/a.png)`・コードブロックの中の `![例](../files/sample.png)` を持ち、`.mindstella/files/clip.mp4` だけを配置する
+        notes: 本文に `![動画](../files/clip.mp4)`・`![無い](../files/missing.mp4)`・`![外](https://example.com/a.png)`・コードブロックの中の `![例](../files/sample.png)` を持ち、直下の `files/clip.mp4` だけを配置する
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -249,7 +249,7 @@ flows:
       ```
     expected:
       - ツールのエラーにならず、`ok` が偽
-      - '`missing_file` の問題が 1 件だけで、`file` が `.mindstella/docs/A-1.mark.md`、`id` が `A-1`、`key` が `null`、`detail` が `../files/missing.mp4`'
+      - '`missing_file` の問題が 1 件だけで、`file` が `docs/A-1.mark.md`、`id` が `A-1`、`key` が `null`、`detail` が `../files/missing.mp4`'
       - '`../files/clip.mp4`・絶対 URL・コードブロックの中のパスの問題が無い'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_embedded_file_missing
@@ -299,11 +299,11 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 点検するファイル
-    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`（無ければスレッド 0 件として扱う）・`changes.yaml`（無ければまとまり 0 件として扱う）・`comments.yaml`・`drafts.yaml`（無ければ 0 件として扱い、スキーマ違反だけを確かめる）・`docs/`・`files/`（埋め込んだファイルの有無を確かめるときだけ。中身は読まない）'
+    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`（無ければスレッド 0 件として扱う）・`changes.yaml`（無ければまとまり 0 件として扱う）・`comments.yaml`・`drafts.yaml`（無ければ 0 件として扱い、スキーマ違反だけを確かめる）と、ワークスペースの直下の `docs/`・`files/`（埋め込んだファイルの有無を確かめるときだけ。中身は読まない）'
   - item: 参照切れを確かめるキー
     constraint: '`related[].to`・`sources`、スレッドの `target`（持つときだけ）、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、`related[].type` の種類に合わない ID（`depends_on`・`parent` が自分と違う種類の項目、`for` が検討事項以外を指すなど）を `broken_ref` にする。`changes.yaml` のまとまり・`pending` と、取り込み待ちでないスレッド（`taken` が `null` の利用者の書き込みを持たないスレッド）の `target` が指す ID のうち、`changes.yaml` の `sets[].removed`・`pending.removed` にある ID（消した項目）は参照切れにしない。レビュー中のコメントと書きかけの `target` は確かめない（項目が消えたコメントは『コメントをまとめて送る』の 409 で画面に出る）'
   - item: 本文のずれ
-    constraint: '`body` が指す `docs/` のファイルが無いものを `missing_body`、どの項目の `body` からも指されない `docs/*.md`・`docs/*.html` を `orphan_body` にする'
+    constraint: '`body` が指す直下の `docs/` のファイルが無いものを `missing_body`、どの項目の `body` からも指されない `docs/*.md`・`docs/*.html` を `orphan_body` にする'
   - item: 問題の並び
     constraint: ファイル名の順、同じファイルの中は項目の並びの順
   - item: 変更履歴のずれ
@@ -311,7 +311,7 @@ constraints:
   - item: 案と状態
     constraint: 検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）に合わない検討事項を `decision_state` にする。合わない決まり 1 つ = 1 件で、`key` は `items[{番号}].options` か `items[{番号}].status`、`detail` は ER 図の理由の行。`未整理`・`対象外`・`取り下げ` の検討事項が案を持たないことは問題にしない
   - item: 埋め込んだファイル
-    constraint: '`docs/*.md` の本文の画像の記法 `![…](パス)` のうち、相対パスだけを `docs/` を基準に解決し、ファイルが無いものを `missing_file` にする。問題は `file` が本文のファイル（例 `.mindstella/docs/A-1.mark.md`）、`id` が本文を持つ項目の ID、`key` が `null`、`detail` が記法に書かれたパス（例 `../files/missing.mp4`）。絶対 URL・`data:`・`/` で始まるパス・コードブロックとインラインコードの中は確かめない。HTML の本文（`docs/*.html`）は確かめない。URL のフラグメント（`#`）とクエリ（`?`）は外してから確かめる'
+    constraint: '`docs/*.md` の本文の画像の記法 `![…](パス)` のうち、相対パスだけを `docs/` を基準に解決し、ファイルが無いものを `missing_file` にする。問題は `file` が本文のファイル（例 `docs/A-1.mark.md`）、`id` が本文を持つ項目の ID、`key` が `null`、`detail` が記法に書かれたパス（例 `../files/missing.mp4`）。絶対 URL・`data:`・`/` で始まるパス・コードブロックとインラインコードの中は確かめない。HTML の本文（`docs/*.html`）は確かめない。URL のフラグメント（`#`）とクエリ（`?`）は外してから確かめる'
 refs:
   - ER-489-1#
 test_file: tests/integration/server/test_check.py
