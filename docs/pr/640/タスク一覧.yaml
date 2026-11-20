@@ -50,8 +50,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T10:27:10.020226+00:00'
   - process: インターフェース定義設計
-    status: todo
+    status: done
     note: 画面・MCP の呼び出し元へ返却するメッセージと見出し・項目名の単語
+    updated_by: planner
+    updated_at: '2026-11-20T10:41:40.805224+00:00'
   - process: 部品設計
     status: todo
     note: 部品の文言・状態名の単語。置き換え先はユーザーの承認を得る
