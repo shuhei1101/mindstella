@@ -650,13 +650,13 @@ functions:
         description: 編集した人（MCP のツールは既定の `ai`、まとめて保存は `user`）
     returns:
       type: tuple[Staged, dict[str, Any]]
-      description: 新しい `Staged` と、`add` の結果 `{id, file, body}`
+      description: 新しい `Staged` と、`add` の結果 `{id, file, body}`（`file`・`body` はワークスペースの直下からの相対パス。`workspace_path`）
     process: |-
       1. 渡せないキーを確かめる（`validate_input_keys`。`index` はその種類の並びの長さ）。`tags` があれば `compact_tags` で主題でないタグの `main` を除く
       2. その種類の ID を 1 つ予約から振る（『ID の採番』の `reserve_ids`。`staged.items` と消した項目の記録（`removed_items`）を渡す）
       3. 通し番号を振り（`advance_seq`）、`id` を先頭に置いた項目を作り、`staged.history` にその ID の行（`created`・`updated`・`updated_by`（`editor`）・`seq`・`added_seq`）を足す
-         - `body_markdown` がある場合、項目の `body` を `docs/{ID}.mark.md` にし、本文の書き込みを足す（どの種類も）
-         - `body_html` がある場合、項目の `body` を `docs/{ID}.html` にし、本文の書き込みを足す（資料だけ）
+         - `body_markdown` がある場合、項目の `body` を `../docs/{ID}.mark.md`（`BODY_REF_PREFIX`）にし、本文の書き込みを足す（どの種類も）
+         - `body_html` がある場合、項目の `body` を `../docs/{ID}.html` にし、本文の書き込みを足す（資料だけ）
       4. まだまとめていない変更の `added` に ID を足す（`note_pending`）
       5. 末尾に足した並びと、`touched` にその種類を足した `Staged` を返す
     unit_tests:
@@ -671,7 +671,7 @@ functions:
         summary: メモにも本文を付ける
         condition: '空の `Staged` に `note` の `{"title": "t", "content": "c", "body_markdown": "b"}`'
         mock: '`now`'
-        expected: N-1 の `body` が `docs/N-1.mark.md` で、`Staged` の本文の書き込みに `docs/N-1.mark.md` → `b` がある
+        expected: N-1 の `body` が `../docs/N-1.mark.md` で、`Staged` の本文の書き込みに `../docs/N-1.mark.md` → `b` がある
       - name: test_stage_add_skips_removed_id
         case: 正常
         summary: 消した ID を振らない
@@ -682,7 +682,7 @@ functions:
         case: 正常
         summary: 資料の HTML の本文を `{ID}.html` の書き込みにする
         condition: '空の `Staged` に `doc` の `{"title": "t", "kind": "モック", "status": "下書き", "body_html": "<p>a</p>"}`'
-        expected: 項目の `body` が `docs/A-1.html` で `body_html` のキーを持たず、`bodies` に `docs/A-1.html` → `<p>a</p>`、結果の `body` が `.mindstella/docs/A-1.html`
+        expected: 項目の `body` が `../docs/A-1.html` で `body_html` のキーを持たず、`bodies` に `../docs/A-1.html` → `<p>a</p>`、結果の `file` が `.mindstella/docs.yaml`、`body` が `docs/A-1.html`
         mock: なし
       - name: test_stage_add_when_user_editor
         case: 正常
@@ -737,8 +737,8 @@ functions:
     process: |-
       1. `staged.items` から項目を引き、渡せないキーを確かめる（`validate_input_keys`。`index` はその項目の位置）。渡した `tags` があれば `compact_tags` で主題でないタグの `main` を除く
       2. 変更を当てはめ（`merge_changes`）、`staged.history` のその ID の行の `updated` を今の日時、`updated_by` を `editor` にする
-         - `body_markdown` がある場合、`body` を `docs/{ID}.mark.md` にし、本文の書き込みを作る（どの種類も）
-         - `body_html` がある場合、`body` を `docs/{ID}.html` にし、本文の書き込みを作る（資料だけ）
+         - `body_markdown` がある場合、`body` を `../docs/{ID}.mark.md`（`BODY_REF_PREFIX`）にし、本文の書き込みを作る（どの種類も）
+         - `body_html` がある場合、`body` を `../docs/{ID}.html` にし、本文の書き込みを作る（資料だけ）
          - 前の `body` があり新しい `body` と名前が違う（形式を替えた）場合、前の名前を `removed_bodies` に足す（同じ名前が `bodies` にあればそこから外す）。新しい名前が `removed_bodies` にあれば外す
          - `changed` には、`body` の名前が変わったとき `body` を、本文の中身が変わったとき渡したキー（`body_markdown` か `body_html`）を入れる
       3. 書き換える前の本文（`staged.bodies` にあればそれ、無ければ `read_body`）と比べて変更履歴の 1 回分を作る（`make_entry`。`seq` は `last_seq` + 1、`by` は `editor`）

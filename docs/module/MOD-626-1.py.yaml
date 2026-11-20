@@ -1,0 +1,115 @@
+id: MOD-626-1
+title: サーバー / 移行 / move_bodies_to_root.py
+lead: v0.14.0 の 3 手順目の変換。`.mindstella/docs/`・`.mindstella/files/` をワークスペースの直下へ移し、項目の `body` と変更履歴の `before.body` と配信の設定を書き換えて、`.mindstella/release/` を消す。`yaml` と標準ライブラリだけを読み、この版の形を自分で組み立てる。
+constants:
+  - name: RECORD_DIR
+    title: 記録のフォルダ
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+    usecase: 記録の形式の移行
+    summary: ワークスペースの直下の記録のフォルダ
+    value: '".mindstella"'
+  - name: MOVED_DIRS
+    title: 移すフォルダ
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+    usecase: 記録の形式の移行
+    summary: 記録のフォルダから直下へ同じ名前で移すフォルダ（本文と埋め込むファイル）
+    value: ("docs", "files")
+  - name: RELEASE_DIR
+    title: 書き出しのフォルダ
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+    usecase: 記録の形式の移行
+    summary: 消す記録のフォルダの中のフォルダ
+    value: '"release"'
+  - name: KIND_FILES
+    title: 種類のファイル
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+    usecase: 記録の形式の移行
+    summary: '`body` を書き換える種類ごとの YAML（`.mindstella/` からの相対パス）。配信の設定の `documents` の行の `id` は拡張子を落とした名前'
+    value: ("decisions.yaml", "tasks.yaml", "research.yaml", "docs.yaml", "terms.yaml", "notes.yaml", "logs.yaml")
+  - name: HISTORY_FILE
+    title: 変更履歴のファイル
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+    usecase: 記録の形式の移行
+    summary: '`before.body` を書き換える変更履歴の YAML（`.mindstella/` からの相対パス）'
+    value: '"history.yaml"'
+  - name: SOURCE_CONFIG_FILE
+    title: 配信の設定のファイル
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+    usecase: 記録の形式の移行
+    summary: '`paths_base`・`paths` を書き換える配信の設定（`.mindstella/` からの相対パス）'
+    value: '"dev-docs.yaml"'
+  - name: OLD_BODY_PREFIX
+    title: 移す前の本文の参照の頭
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+    usecase: 記録の形式の移行
+    summary: 書き換える `body`・`before.body` の値の頭
+    value: '"docs/"'
+  - name: NEW_BODY_PREFIX
+    title: 移した後の本文の参照の頭
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+    usecase: 記録の形式の移行
+    summary: 書き換えた後の値の頭（記録のフォルダから直下の `docs/` を指す）
+    value: '"../docs/"'
+  - name: PATHS_BASE
+    title: 配信元の基準
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+    usecase: 記録の形式の移行
+    summary: 配信の設定に足す `paths_base` の値。このキーを持つ設定は移し替え済みとして扱う
+    value: '".."'
+functions:
+  - name: move_bodies_to_root.migrate
+    title: 本文と埋め込むファイルを直下へ移す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: '`.mindstella/docs/`・`.mindstella/files/` を直下へ移し、本文の参照と配信の設定を書き換え、`.mindstella/release/` を消す'
+    side_effects: フォルダを移し、種類ごとの YAML・`history.yaml`・`dev-docs.yaml` を書き換え、`.mindstella/release/` を消す（本文と埋め込むファイルの中身は触らない）
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの直下
+    returns:
+      type: list[str]
+      description: 変えたファイルとフォルダ（ワークスペースからの相対パス。移したフォルダは移した先の `docs/`・`files/`、消したフォルダは `.mindstella/release/`。何も変えなければ空）
+    process: |-
+      1. `SOURCE_CONFIG_FILE` を読む。設定が `paths_base` を持たず、直下に `MOVED_DIRS` のどれかがあれば、何も書かずに `RuntimeError`（あるフォルダの名前と、改名してから開き直す案内）を送る
+      2. `KIND_FILES` の各ファイルの `items[]` の `body` と、`HISTORY_FILE` の各項目の行の `history[].before.body` のうち、`OLD_BODY_PREFIX` で始まる値を `NEW_BODY_PREFIX` で始まる値に置き換える（キーの並び・`updated`・変更履歴の並びは変えない）
+      3. 設定が `paths_base` を持たなければ `paths_base: PATHS_BASE` を足し、`documents` のうち `id` が `KIND_FILES` の拡張子を落とした名前の行の `paths` を `[f"{RECORD_DIR}/{ファイル}"]` にする（ほかの行・キーは変えない）
+      4. 書き換えた YAML だけを一時ファイルに書いてから置き換える。`MOVED_DIRS` のうち記録のフォルダにあるフォルダを `os.replace` で直下へ移し、`.mindstella/{RELEASE_DIR}/` があれば `shutil.rmtree` で消す
+      5. 変えたファイルとフォルダを返す。移すフォルダ・書き換える値・消すフォルダが無ければ何も書かない
+    exceptions:
+      - name: RuntimeError
+        condition: 移し替えていないワークスペースの直下に `docs/` か `files/` が既にある、または YAML を読めない。手順の `StepError` にして写しから戻すのは移行が担う
+    unit_tests:
+      - name: test_migrate
+        case: 正常
+        summary: 本文と埋め込むファイルを直下へ移し、参照と配信の設定を書き換え、release/ を消す
+        condition: 'D-1（`body: docs/D-1.mark.md`。`history.yaml` の D-1 の行に `before.body: docs/D-1.md` の回）・A-1（`body: docs/A-1.html`）と、`.mindstella/docs/` にそれぞれの本文、`.mindstella/files/clip.mp4`、`.mindstella/release/A-1.mark.md`、`paths_base` を持たず `paths` が `[{種類}.yaml]` の配信の設定（`terms` の行は `write_dates: true`）'
+        mock: なし（`tmp_path`）
+        expected: '直下の `docs/D-1.mark.md`・`docs/A-1.html`・`files/clip.mp4` が移す前と同じ中身で、`.mindstella/` に `docs/`・`files/`・`release/` が無い。D-1 の `body` が `../docs/D-1.mark.md`、`before.body` が `../docs/D-1.md`、A-1 の `body` が `../docs/A-1.html` で、D-1 の `updated` と変更履歴の並びが同じ。配信の設定が `paths_base: ..` を持ち、7 つの行の `paths` が `[.mindstella/{種類}.yaml]` で、`terms` の行の `write_dates` が `true` のまま。戻り値が `.mindstella/decisions.yaml`・`.mindstella/docs.yaml`・`.mindstella/history.yaml`・`.mindstella/dev-docs.yaml`・`docs/`・`files/`・`.mindstella/release/`'
+      - name: test_migrate_when_already_current
+        case: 正常
+        summary: もう一度当てても変わらない
+        condition: '`test_migrate` を当てた後のワークスペース（直下に `docs/`・`files/` があり、配信の設定が `paths_base` を持つ）'
+        mock: なし
+        expected: 戻り値が空で、全てのファイルが呼ぶ前と同じ
+      - name: test_migrate_when_root_folder_exists
+        case: 異常
+        summary: 移し替えていないワークスペースの直下に docs/ か files/ があれば何も書かずに失敗する
+        condition: '`parametrize`: `test_migrate` と同じワークスペースに直下の `docs/memo.md` / `.mindstella/files/` を持たず直下の `files/memo.png` だけを持つワークスペース'
+        mock: なし
+        expected: どちらも `RuntimeError`（メッセージにあるフォルダの名前と改名の案内）。全てのファイルが呼ぶ前と同じ
+      - name: test_migrate_without_bodies
+        case: 正常
+        summary: 本文も埋め込むファイルも持たないワークスペースでも配信の設定を書き換える
+        condition: '`.mindstella/docs/`・`.mindstella/files/`・`.mindstella/release/`・`history.yaml` を持たず、`paths_base` を持たない配信の設定を持つ'
+        mock: なし
+        expected: '配信の設定が `paths_base: ..` と `[.mindstella/{種類}.yaml]` を持ち、直下に `docs/`・`files/` を作らず、`history.yaml` を作らない。戻り値が `.mindstella/dev-docs.yaml` の 1 件'
+refs:
+  - IF-489-52#
+  - MOD-489-164#
+test_files:
+  - tests/unit/scripts/test_move_bodies_to_root.py

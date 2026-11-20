@@ -95,7 +95,7 @@ constants:
     title: 本文のフォルダ名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
-    summary: 本文の Markdown を置くフォルダ名（`records_root(root)` の下）
+    summary: 本文の Markdown と HTML を置くフォルダ名（ワークスペースの直下。`body_root(root)`）
     value: '"docs"'
   - name: LEGACY_SETTINGS_FILE
     title: 前の版の設定のファイル名
@@ -107,7 +107,7 @@ constants:
     title: 記録のフォルダ名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
-    summary: ワークスペースの直下に置く、設定・種類ごとの YAML・本文・リリース・版・ロックなど全ての記録をまとめるフォルダ名（ER 図『ワークスペース』）
+    summary: ワークスペースの直下に置く、設定・種類ごとの YAML・版・ロックなど、本文と埋め込むファイルのほかの記録をまとめるフォルダ名（ER 図『ワークスペース』）
     value: '".mindstella"'
   - name: EDITOR
     title: 編集した人
@@ -115,6 +115,12 @@ constants:
     usecase: 共通
     summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『入口』の `stage_add`・`stage_update`・`run_adopt` が引く
     value: '"ai"'
+  - name: BODY_REF_PREFIX
+    title: 本文の参照の頭
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: 項目の `body` の値の頭。記録のフォルダから直下の `BODY_DIR` を指す（project-index の `body_file` は YAML のファイルのフォルダから解かれる。ER 図『ワークスペース』）
+    value: f"../{BODY_DIR}/"
 functions:
   - name: kind_of_id
     title: ID の種類
@@ -156,7 +162,7 @@ functions:
     usecase: 共通
     scope: public
     summary: ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す
-    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』、『移行』の版のファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `.mindstella/` から始まる。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
+    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』、『移行』の版のファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `workspace_path` で作り、本文は `docs/`、ほかは `.mindstella/` から始まる。本文のフォルダは `body_root` が返す直下の `docs/` で、項目の `body` は記録のフォルダからの相対パス（`BODY_REF_PREFIX` で始まる）。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
     args:
       - name: root
         type: Path
@@ -174,3 +180,52 @@ functions:
         condition: '`tmp_path`'
         mock: なし
         expected: '`tmp_path / ".mindstella"`。フォルダは作られていない'
+  - name: body_root
+    title: 本文のフォルダ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    scope: public
+    summary: ワークスペースのフォルダから本文のフォルダ（`root / BODY_DIR`）を返す
+    description: 本文のファイルを並べる・本文のフォルダの配下かを確かめる関数は、`records_root(root) / BODY_DIR` ではなくこの関数が返すフォルダを使う。モジュール構成『読み書きと検証』『点検』『配信』『変更の検知』が当たる
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: Path
+      description: '`root / BODY_DIR`'
+    process: 1. `root / BODY_DIR` を返す（フォルダは作らない）
+    unit_tests:
+      - name: test_body_root
+        case: 正常
+        summary: 直下の docs を返す
+        condition: '`tmp_path`'
+        mock: なし
+        expected: '`tmp_path / "docs"`。フォルダは作られていない'
+  - name: workspace_path
+    title: ワークスペースからの相対パス
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    scope: public
+    summary: 記録のフォルダからの相対パスを、ワークスペースの直下からの相対パスにする
+    args:
+      - name: name
+        type: str
+        required: true
+        passing: positional
+        description: 記録のフォルダからの相対パス（`decisions.yaml`・項目の `body` の値 など）
+    returns:
+      type: str
+      description: ワークスペースの直下からの相対パス（`/` 区切り）
+    process: 1. `posixpath.normpath(f"{RECORD_DIR}/{name}")` を返す
+    unit_tests:
+      - name: test_workspace_path
+        case: 正常
+        summary: 記録のファイルと本文を直下からのパスにする
+        condition: '`decisions.yaml`・`../docs/D-1.mark.md`'
+        mock: なし
+        expected: '`.mindstella/decisions.yaml`・`docs/D-1.mark.md`'

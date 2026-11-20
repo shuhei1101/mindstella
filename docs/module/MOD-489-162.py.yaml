@@ -52,8 +52,8 @@ functions:
       5. スレッドのスキーマ違反と参照切れを拾う（`_check_threads`）
       6. レビュー中のコメントと書きかけのスキーマ違反を拾う（`_check_comments`）
       7. まとまりのスキーマ違反・参照切れと、変更履歴のずれを拾う（`_check_history`）
-      8. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
-      9. 各問題の `file`（記録のフォルダからの相対パス）の頭に `{RECORD_DIR}/` を付け、ワークスペースからの相対パスにする（1.〜7. の関数は記録のフォルダからの相対パスで拾う）
+      8. 各問題の `file`（記録のフォルダからの相対パス。本文は `BODY_REF_PREFIX` で始まる）を `workspace_path` でワークスペースからの相対パスにする（1.〜7. の関数は記録のフォルダからの相対パスで拾う。記録のファイルは `.mindstella/`、本文は `docs/` から始まる）
+      9. ワークスペースからの相対パスの順に並べる（同じファイルの中は拾った順を保つ）
     unit_tests:
       - name: test_check_workspace
         case: 正常
@@ -66,7 +66,7 @@ functions:
         summary: 4 種類の問題をまとめて返す
         condition: 'D-1 `related: [{to: D-9, type: depends_on}]`・D-2 `status: 完了`・R-1 `body: R-1.mark.md`（ファイル無し）・`docs/X-1.mark.md`（どこからも指されない）'
         mock: なし
-        expected: '`broken_ref`（D-1・`related[0].to`）・`schema`（`items[1].status`）・`orphan_body`（`.mindstella/docs/X-1.mark.md`）・`missing_body`（R-1）を含み、`.mindstella/decisions.yaml` → `.mindstella/docs/X-1.mark.md` → `.mindstella/research.yaml` の順'
+        expected: '`broken_ref`（D-1・`related[0].to`）・`schema`（`items[1].status`）・`orphan_body`（`docs/X-1.mark.md`）・`missing_body`（R-1）を含み、`.mindstella/decisions.yaml` → `.mindstella/research.yaml` → `docs/X-1.mark.md` の順'
       - name: test_check_workspace_when_decision_state
         case: 正常
         summary: 案と状態の合わない検討事項を拾い、必須でない状態は拾わない
@@ -143,7 +143,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/checker.py
     usecase: ワークスペースの点検
     scope: internal
-    summary: 指す本文が無い項目と、どこからも指されない `docs/*.md`・`docs/*.html` を拾う
+    summary: 指す本文が無い項目と、どこからも指されない直下の `docs/*.md`・`docs/*.html` を拾う
     args:
       - name: workspace
         type: Workspace
@@ -154,20 +154,20 @@ functions:
       type: list[Problem]
       description: 問題の並び
     process: |-
-      1. `body` を持つ項目ごとに、`docs/{body}` が無ければ `missing_body`（その項目の YAML・`key: items[n].body`）
-      2. `docs/` の `*.md` と `*.html` のうち、どの項目の `body` にも無いものを `orphan_body`（`file: docs/{名前}`・`id`・`key` は `None`）
+      1. `body` を持つ項目ごとに、`body` が指す本文（`read_body`）が無ければ `missing_body`（その項目の YAML・`key: items[n].body`）
+      2. 直下の `docs/`（`body_root`）の `*.md` と `*.html` のうち、`f"{BODY_REF_PREFIX}{名前}"` がどの項目の `body` にも無いものを `orphan_body`（`file: ../docs/{名前}`・`id`・`key` は `None`）
     unit_tests:
       - name: test_check_bodies
         case: 正常
         summary: 本文が無い項目と指されない本文を拾う
         condition: 'R-1 `body: R-1.mark.md`（ファイル無し）・D-1 `body: D-1.mark.md`（ファイルあり）・`docs/X-1.mark.md`'
         mock: なし
-        expected: '`missing_body`（R-1）と `orphan_body`（`docs/X-1.mark.md`）の 2 件'
+        expected: '`missing_body`（R-1）と `orphan_body`（`../docs/X-1.mark.md`）の 2 件'
       - name: test_check_bodies_when_html
         case: 正常
         summary: HTML の本文も本文のずれの対象にする
         condition: 'A-1 `body: A-1.html`（ファイル無し）・A-2 `body: A-2.html`（ファイルあり）・`docs/A-9.html`'
-        expected: '`missing_body`（A-1）と `orphan_body`（`docs/A-9.html`）の 2 件だけ'
+        expected: '`missing_body`（A-1）と `orphan_body`（`../docs/A-9.html`）の 2 件だけ'
         mock: なし
   - name: _check_threads
     title: スレッドの点検
@@ -366,17 +366,17 @@ functions:
       type: list[Problem]
       description: 問題の並び
     process: |-
-      1. `body` が `.md` で終わる項目ごとに、`docs/{body}` を読む（無ければ飛ばす。`missing_body` は `_check_bodies` が拾う）
+      1. `body` が `.md` で終わる項目ごとに、`body` が指す本文（`read_body`）を読む（無ければ飛ばす。`missing_body` は `_check_bodies` が拾う）
       2. 本文から埋め込みのパスを拾う（`embedded_paths`）
-      3. パスごとに、`#`・`?` より後ろを外して URL デコードし、`docs/` を基準に解決する
-         - 解決した先に通常のファイルが無い場合、`missing_file`（`file: docs/{body}`・`id`: 項目の ID・`key`: None・`detail`: 記法に書かれたパス）
+      3. パスごとに、`#`・`?` より後ろを外して URL デコードし、直下の `docs/`（`body_root`）を基準に解決する（`../files/` は直下の `files/` を指す）
+         - 解決した先に通常のファイルが無い場合、`missing_file`（`file`: 項目の `body`・`id`: 項目の ID・`key`: None・`detail`: 記法に書かれたパス）
     unit_tests:
       - name: test_check_embedded_files
         case: 正常
         summary: 無いファイルだけを拾う
-        condition: A-1 の本文に `![a](../files/clip.mp4)`・`![b](../files/missing.mp4)`・`![c](../files/sub/x%20y.png#t=1)` を持ち、`files/clip.mp4` と `files/sub/x y.png` を置く
+        condition: A-1 の本文に `![a](../files/clip.mp4)`・`![b](../files/missing.mp4)`・`![c](../files/sub/x%20y.png#t=1)` を持ち、直下の `files/clip.mp4` と `files/sub/x y.png` を置く
         mock: なし（一時ディレクトリ）
-        expected: '`missing_file`（`file: docs/A-1.mark.md`・`id: A-1`・`key: None`・`detail: ../files/missing.mp4`）の 1 件だけ'
+        expected: '`missing_file`（`file: ../docs/A-1.mark.md`・`id: A-1`・`key: None`・`detail: ../files/missing.mp4`）の 1 件だけ'
       - name: test_check_embedded_files_when_html_or_missing_body
         case: 正常
         summary: HTML の本文と無い本文は確かめない
