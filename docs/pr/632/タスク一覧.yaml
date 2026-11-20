@@ -1,0 +1,57 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:42.493540+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書がそろっている既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:42.493540+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではない
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:42.493540+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 機能の削除で、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:42.493540+00:00'
+  - process: 複合ユースケース設計
+    status: todo
+    note: SC-489-50（ネットワークを辿る段の削除）・SC-489-51（ネットワークの見た目の削除）
+  - process: デザインスタイル選定
+    status: skipped
+    reason: デザイン方針（docs/design-policy.mark.md）があり、Issue は見た目の方向を変えない
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:42.493540+00:00'
+  - process: 画面一覧・画面遷移
+    status: todo
+    note: ネットワークの画面の削除と、検討事項の表示形式からマップを外す画面遷移の変更
+  - process: 単一ユースケース設計
+    status: todo
+    note: SC-489-7・SC-489-24 の削除と、ネットワーク・マップ・見た目を含む単一 UC の追随
+  - process: モック作成
+    status: todo
+    note: 変わるトップバー・検討事項・表示の設定のモックと、ネットワーク・マップだけのモックの削除
+  - process: データ設計
+    status: todo
+    note: config.yaml の display から network_look を外す（ER 図・settings.schema.json）
+  - process: インターフェース定義設計
+    status: todo
+  - process: 部品設計
+    status: todo
+  - process: 画面設計
+    status: todo
+  - process: モジュール構成設計
+    status: todo
+  - process: ドキュメント修正
+    status: todo
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
