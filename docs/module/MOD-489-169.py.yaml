@@ -545,6 +545,12 @@ classes:
             condition: 同じワークスペースで `/w/{ID}/files/missing.mp4` と `/w/{ID}/files/../.mindstella/config.yaml`
             mock: なし（`TestClient`）
             expected: 'どちらも 404 の問題の応答で、本文に `config.yaml` の中身が無い。`Content-Security-Policy: sandbox`・`X-Content-Type-Options: nosniff` を持つ'
+          - name: test_send_file_when_large
+            case: 正常
+            summary: 書き出しの単位より大きいファイルは、最初の片を返した時点で残りを読んでいない
+            condition: '`FILE_WRITE_CHUNK` を 4 にし、12 バイトのファイルの計画（`plan_file`）で `_file_chunks` の最初の片を受けた後、ファイルの後ろの 8 バイトを書き換えてから残りを受ける'
+            mock: '`FILE_WRITE_CHUNK`（monkeypatch）'
+            expected: 最初の片が元の 4 バイトで、残りの片が書き換えた後の中身（全体を先に読み込んでいない）
       - name: _stream
         title: 書き換えの通知の応答
         kind: メソッド
