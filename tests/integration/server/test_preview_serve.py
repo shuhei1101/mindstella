@@ -8,9 +8,11 @@ from collections.abc import Callable, Iterator
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import pytest
+
+from session_fixtures import SessionWorld
 
 from .fixture_types import MakeItem, MakeWorkspace, McpServer, StartMdmarkRefServer, StartServer
 from .http_helpers import http_request
@@ -24,12 +26,17 @@ ALLOWED_HOST = "preview.example.test"
 # 画面のパス
 PAGE_PATH = "/mindstella.html"
 
+# どのワークスペースにも当たらない ID
+UNKNOWN_WORKSPACE_ID = "mindstella-unknown-000000"
+
 # 画面が読み込む mdmark の配布物の URL の頭（`{ref}/dist/{ファイル}` が続く）
 MDMARK_DIST_BASE = "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@"
 
 # 画面の mdmark の CSS の link 要素の href と、読み込みの設定の要素の中身を取る正規表現
 MDMARK_CSS_HREF = re.compile(r'<link rel="stylesheet" href="([^"]+/dist/index\.css)"')
-MDMARK_CONFIG = re.compile(r'<script type="application/json" id="mindmap-mdmark-config">(.*?)</script>', re.S)
+MDMARK_CONFIG = re.compile(
+    r'<script type="application/json" id="mindmap-mdmark-config">(.*?)</script>', re.S
+)
 
 # 雛形の mdmark のタグの例
 MDMARK_TAG = "v0.13.0"
@@ -109,7 +116,7 @@ def test_normal_when_root(
     result = http_request(url, "/")
     # 検証
     assert result.status == 302
-    assert result.headers["location"] == PAGE_PATH
+    assert result.headers["location"] == urlsplit(url).path
     assert result.text == ""
 
 
@@ -175,7 +182,10 @@ def test_normal_when_latest_resolved(
     first = _open_page(server, root)
     second = _open_page(server, root)
     # 検証
-    expected = (f"{MDMARK_DIST_BASE}{FAKE_HEAD_SHA}/dist/index.css", f"{MDMARK_DIST_BASE}{FAKE_HEAD_SHA}/dist/index.js")
+    expected = (
+        f"{MDMARK_DIST_BASE}{FAKE_HEAD_SHA}/dist/index.css",
+        f"{MDMARK_DIST_BASE}{FAKE_HEAD_SHA}/dist/index.js",
+    )
     assert _mdmark_urls(first) == expected
     assert _mdmark_urls(second) == expected
     assert len(github.paths) == 1
@@ -201,7 +211,11 @@ def test_normal_when_github_unreachable(
     # 検証
     css_url, _ = _mdmark_urls(html)
     assert css_url == f"{MDMARK_DIST_BASE}develop/dist/index.css"
-    warnings = [line for line in server.stderr_text().splitlines() if "mdmark の ref を問い合わせられない" in line]
+    warnings = [
+        line
+        for line in server.stderr_text().splitlines()
+        if "mdmark の ref を問い合わせられない" in line
+    ]
     assert len(warnings) == 1, server.stderr_text()
     assert jsdelivr.paths == []
 
@@ -247,3 +261,30 @@ def test_normal_when_dist_not_served(
     assert jsdelivr.paths == [f"/gh/shuhei1101/mdmark@{FAKE_HEAD_SHA}/dist/index.js"]
     warnings = [line for line in server.stderr_text().splitlines() if "jsDelivr が配らない" in line]
     assert len(warnings) == 1, server.stderr_text()
+
+
+def test_error_when_workspace_not_served(session_world: SessionWorld) -> None:
+    """配っていないワークスペースの経路は 404 を返す（異常系）。"""
+    # 準備（A を作成し、B を作成してから削除する。B のフォルダは残す）
+    world = session_world
+    world.start()
+    id_a = str(world.create_workspace("話し合いA")["id"])
+    id_b = str(world.create_workspace("話し合いB")["id"])
+    # 経路の ID はパーセントエンコードして送る
+    path_a = f"/w/{quote(id_a)}"
+    path_b = f"/w/{quote(id_b)}"
+    assert world.api("POST", f"/workspaces/{id_b}/close")[0] == 200
+    assert world.api("DELETE", f"/workspaces/{id_b}")[0] == 200
+    origin = f"http://127.0.0.1:{world.port}"
+    # 実行
+    results = [
+        http_request(origin, f"/w/{UNKNOWN_WORKSPACE_ID}{PAGE_PATH}"),
+        http_request(origin, f"{path_b}{PAGE_PATH}"),
+        http_request(origin, f"{path_b}/api/records"),
+    ]
+    # 検証
+    for result in results:
+        assert result.status == 404
+        assert result.headers["content-type"].startswith("application/problem+json")
+        assert '"decisions"' not in result.text
+    assert http_request(origin, f"{path_a}{PAGE_PATH}").status == 200

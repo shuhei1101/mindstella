@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 
 from .fixture_types import MakeItem, MakeWorkspace
-from .http_helpers import HTTP_TIMEOUT_SEC
+from .http_helpers import HTTP_TIMEOUT_SEC, workspace_path
 
 # ファイルのフォルダ（ワークスペースの直下からの相対パス）
 FILES_DIR = "files"
@@ -35,11 +35,11 @@ class RawResult:
 
 
 def _get(base_url: str, path: str, headers: dict[str, str] | None = None) -> RawResult:
-    """配信の URL にパスを正規化せずに追加して 1 回 GET し、本文をバイト列で返却する。"""
+    """配信の URL のワークスペースの経路の下のパスを、正規化せずに 1 回 GET し、本文をバイト列で返却する。"""
     parts = urlsplit(base_url)
     connection = http.client.HTTPConnection(parts.hostname, parts.port, timeout=HTTP_TIMEOUT_SEC)
     try:
-        connection.request("GET", path, headers=headers or {})
+        connection.request("GET", workspace_path(base_url, path), headers=headers or {})
         response = connection.getresponse()
         return RawResult(
             status=response.status,

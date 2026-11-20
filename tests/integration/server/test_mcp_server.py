@@ -10,6 +10,7 @@ import sys
 import threading
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import pytest
 import yaml
@@ -108,7 +109,12 @@ def _edit_many(server: McpServer, root: Path, first: int, errors: list[str]) -> 
     """D-{first} から EDITS_PER_PROCESS 件の検討事項へ案 B を足し、エラーになった本文を errors に集める。"""
     for number in range(first, first + EDITS_PER_PROCESS):
         result = server.call(
-            "edit_option", workspace=str(root), id=f"D-{number}", action="add", key="B", option=NEW_OPTION
+            "edit_option",
+            workspace=str(root),
+            id=f"D-{number}",
+            action="add",
+            key="B",
+            option=NEW_OPTION,
         )
         if result.is_error:
             errors.append(result.text)
@@ -183,8 +189,12 @@ def test_normal_when_relative_path_with_session(
     first = server.client
     second = server.connect()
     # 実行
-    first_result = first.call("next_id", workspace="talk", kind="decision", session={"cwd": str(tmp_path / "a")})
-    second_result = second.call("next_id", workspace="talk", kind="decision", session={"cwd": str(tmp_path / "b")})
+    first_result = first.call(
+        "next_id", workspace="talk", kind="decision", session={"cwd": str(tmp_path / "a")}
+    )
+    second_result = second.call(
+        "next_id", workspace="talk", kind="decision", session={"cwd": str(tmp_path / "b")}
+    )
     # 検証
     assert first_result.is_error is False, first_result.text
     assert first_result.data is not None
@@ -247,7 +257,7 @@ def test_normal_when_sigterm(
     record = tmp_path / "stop-hook.txt"
     server = start_server(extra_env={STOP_HOOK_ENV: recording_hook(record)})
     url = server.call("preview_url", workspace=str(root)).data["url"]
-    port = int(url.split(":")[2].split("/")[0])
+    parts = urlsplit(url)
     # 実行
     server.process.send_signal(signal.SIGTERM)
     exit_code = server.wait_exit()
@@ -256,8 +266,8 @@ def test_normal_when_sigterm(
     assert is_listening(server.port) is False
     with pytest.raises(OSError, match=r"."):
         http_request(url)
-    assert read_settled_hook_lines(record) == [f"{port} 家計簿"]
-    assert read_hook_lines(record) == [f"{port} 家計簿"]
+    assert read_settled_hook_lines(record) == [f"{parts.port} 家計簿 {parts.path}"]
+    assert read_hook_lines(record) == [f"{parts.port} 家計簿 {parts.path}"]
 
 
 def test_normal_when_client_disconnects(

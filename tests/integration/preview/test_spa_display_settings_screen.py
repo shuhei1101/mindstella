@@ -120,9 +120,9 @@ def test_defaults_changed_notice(page: Page, spa_preview: str) -> None:
     """他の人が既定を保存すると、画面の下に知らせを 6 秒出し、パネルに時刻つきで残す（正常系）。"""
     # 準備
     _open(page, spa_preview)
-    origin = page.evaluate("location.origin")
+    workspace_base = page.evaluate("location.origin + location.pathname.match(/^\\/w\\/[^/]+\\//)[0]")
     # 実行（他の人の保存として、既定の書き換えを直に送る）
-    response = page.request.put(f"{origin}/api/config/display", data={"visible_kinds": ["decisions", "tasks"]})
+    response = page.request.put(f"{workspace_base}api/config/display", data={"visible_kinds": ["decisions", "tasks"]})
     # 検証
     assert response.status == 200
     notice = page.get_by_role("status").filter(has_text="ワークスペースの既定が変わりました。")

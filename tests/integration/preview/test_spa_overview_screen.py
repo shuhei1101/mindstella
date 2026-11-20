@@ -149,7 +149,7 @@ def test_topbar_search_opens_dialog(write_sample_preview: WriteSamplePreview, pa
     page.get_by_role("button", name="すべての項目を検索").click()
     # 検証
     expect(page.get_by_role("dialog", name="すべての項目を検索")).to_be_visible()
-    assert page.evaluate("location.pathname + location.search") == "/spa/?search=1"
+    assert page.evaluate("location.pathname + location.search") == f"{urlsplit(url).path.rsplit('/', 1)[0]}/spa/?search=1"
 
 
 def test_topbar_theme(write_sample_preview: WriteSamplePreview, page: Page) -> None:

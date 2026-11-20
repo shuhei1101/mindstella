@@ -71,6 +71,9 @@ MDMARK_STEP_VERSION = "v0.13.0"
 MDMARK_STEP_INDEX = 5
 BEFORE_MDMARK_VERSION = "v0.12.1"
 
+# v0.13.0 までの config.yaml の、プレビューの配信の固定のポート
+FIXED_PREVIEW_PORT = 47800
+
 # mdmark の今の版で廃止した flow の範囲の定義（種類 llm・script のノード）
 RETIRED_FLOW = {
     "title": "問い合わせへの自動返信",
@@ -244,7 +247,9 @@ def _create_current_workspace(tmp_path: Path, valid_settings: dict[str, Any]) ->
     (records / "docs").mkdir(parents=True)
     write_yaml(records / "config.yaml", valid_settings)
     # 作成と同じく、2 行目にその版の手順を当て終えた数を置く
-    steps = yaml.safe_load((MIGRATIONS_DIR / PLUGIN_VERSION / "steps.yaml").read_text(encoding="utf-8"))["steps"]
+    steps = yaml.safe_load(
+        (MIGRATIONS_DIR / PLUGIN_VERSION / "steps.yaml").read_text(encoding="utf-8")
+    )["steps"]
     (records / VERSION_FILE).write_text(f"{PLUGIN_VERSION}\n{len(steps)}\n", encoding="utf-8")
     # 作成で置かれる、プラグインと同じ中身のスキーマの複製
     copies = records / "schemas"
@@ -1086,6 +1091,7 @@ def test_normal_when_markdown_bodies_renamed(
         ("v0.14.0", 2, "call", True),
         ("v0.14.0", 3, "call", True),
         ("v0.14.0", 4, "call", True),
+        ("v0.14.0", 5, "call", True),
     ]
     decision = _read_decisions(root)[0]
     assert decision["body"] == "../docs/D-1.mark.md"
@@ -1293,6 +1299,38 @@ def test_normal_when_network_look_removed(
         True,
     )
     assert _read_version(root) == PLUGIN_VERSION
+    # もう一度当てても、ワークスペースが変わらない
+    after = snapshot_tree(root)
+    again = _migrate(root)
+    assert again.error is None, again.text
+    assert snapshot_tree(root) == after
+
+
+def test_normal_when_preview_port_removed(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """v0.14.0 の手順で、config.yaml からプレビューの配信の設定 preview を消す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        settings={**valid_settings, "preview": {"port": FIXED_PREVIEW_PORT}}, legacy_bodies=True
+    )
+    records = root / RECORD_DIR
+    (records / VERSION_FILE).write_text("v0.13.0\n", encoding="utf-8")
+    # 実行
+    result = _migrate(root)
+    # 検証
+    assert result.error is None, result.text
+    assert result.data is not None
+    settings = yaml.safe_load((records / SETTINGS).read_text(encoding="utf-8"))
+    assert settings == valid_settings
+    v0_14_steps = [step for step in result.data["steps"] if step["version"] == "v0.14.0"]
+    assert (v0_14_steps[4]["index"], v0_14_steps[4]["op"], v0_14_steps[4]["destructive"]) == (
+        5,
+        "call",
+        True,
+    )
     # もう一度当てても、ワークスペースが変わらない
     after = snapshot_tree(root)
     again = _migrate(root)

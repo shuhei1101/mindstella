@@ -71,12 +71,12 @@ def open_pending(page: Page) -> None:
     page.wait_for_selector(PENDING_PANEL)
 
 
-# 保存待ちの編集（/api/edits）の items が条件に合ったかを読む判定を組み立てる。{match} には (items, arg) => 真偽 の関数を入れる。
+# 保存待ちの編集（開いた画面のワークスペースの経路の api/edits）の items が条件に合ったかを読む判定を組み立てる。{match} には (items, arg) => 真偽 の関数を入れる。
 # wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す。
 # 前の待ちの読み取りが後から届いても今の待ちの結果と取り違えないよう、結果に待ちごとの token を添えて比べる
 EDITS_MATCH_JS = """({{token, arg}}) => {{
   const match = {match};
-  fetch('/api/edits').then(r => r.json()).then(d => {{ window.editsMatch = {{token, found: match(d.items, arg)}}; }});
+  fetch(location.pathname.match(/^\/w\/[^/]+\//)[0] + 'api/edits').then(r => r.json()).then(d => {{ window.editsMatch = {{token, found: match(d.items, arg)}}; }});
   return window.editsMatch?.token === token && window.editsMatch.found;
 }}"""
 

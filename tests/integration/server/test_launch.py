@@ -280,7 +280,8 @@ def test_normal_when_server_status(world: LaunchWorld) -> None:
     assert str(world.sandbox.port) in result.stdout
     assert plugin_version() in result.stdout
     assert str(PLUGIN_DIR) in result.stdout
-    assert all(str(preview["port"]) in result.stdout for preview in status["previews"])
+    assert status["previews"]
+    assert all(preview["url"] in result.stdout for preview in status["previews"])
 
 
 def test_normal_when_server_restart(world: LaunchWorld) -> None:

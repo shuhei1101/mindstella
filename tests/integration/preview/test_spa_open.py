@@ -8,13 +8,14 @@ import re
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 
 from playwright.sync_api import Page, Route, expect
 from preview_fixture_types import WritePreview, WriteReviewPreview
 from preview_embedded_files_helpers import EMBEDDED_FILES_BODY, put_embedded_files
-from preview_spa_helpers import SPA_ROOT_PATH, open_spa, watch_console
+from preview_spa_helpers import open_spa, spa_url, watch_console
 from workspace_fixtures import (
     RECORD_DIR,
     CallTool,
@@ -91,7 +92,7 @@ def test_normal(
     assert page.get_attribute('header button[aria-label^="コメント"]', "aria-label") == (
         "コメント（未読あり・レビュー中 2 件）"
     )
-    assert page.evaluate("location.pathname + location.search") == SPA_ROOT_PATH
+    assert page.evaluate("location.pathname + location.search") == urlsplit(spa_url(url)).path
     assert console.messages == []
     assert console.exceptions == []
 

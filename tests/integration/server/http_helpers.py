@@ -32,6 +32,26 @@ class HttpResult:
         return json.loads(self.text)
 
 
+# ワークスペースの画面とその経路の頭（`/w/{workspace}`）
+WORKSPACE_PREFIX = "/w/"
+
+
+def workspace_path(base_url: str, path: str) -> str:
+    """配信の URL がワークスペースの画面（`/w/{workspace}/...`）なら、`/` で始まる path をそのワークスペースの経路の下へ解決する。
+
+    path が既に `/w/` で始まるときと、配信の URL がワークスペースの画面でないときは path のまま返す。
+    """
+    base_path = urlsplit(base_url).path
+    if (
+        not base_path.startswith(WORKSPACE_PREFIX)
+        or path.startswith(WORKSPACE_PREFIX)
+        or not path.startswith("/")
+    ):
+        return path
+    workspace = base_path[len(WORKSPACE_PREFIX) :].split("/", 1)[0]
+    return f"{WORKSPACE_PREFIX}{workspace}{path}"
+
+
 def http_request(
     base_url: str,
     path: str = "/",
@@ -40,13 +60,13 @@ def http_request(
     headers: dict[str, str] | None = None,
     body: str | bytes | None = None,
 ) -> HttpResult:
-    """配信の URL にパスを足して 1 回つなぐ。Host を headers で渡すと、その値を付けてつなぐ。body の bytes はそのまま送る。"""
+    """配信の URL のワークスペースの経路の下のパスへ 1 回つなぐ。Host を headers で渡すと、その値を付けてつなぐ。body の bytes はそのまま送る。"""
     parts = urlsplit(base_url)
     connection = http.client.HTTPConnection(parts.hostname, parts.port, timeout=HTTP_TIMEOUT_SEC)
     try:
         connection.request(
             method,
-            path,
+            workspace_path(base_url, path),
             body=body.encode("utf-8") if isinstance(body, str) else body,
             headers=headers or {},
         )
@@ -108,7 +128,7 @@ class EventStream:
             (parts.hostname, parts.port), timeout=HTTP_TIMEOUT_SEC
         )
         self._reader = self._socket.makefile("rb")
-        request = f"GET /api/events HTTP/1.1\r\nHost: {parts.hostname}:{parts.port}\r\n\r\n"
+        request = f"GET {workspace_path(base_url, '/api/events')} HTTP/1.1\r\nHost: {parts.hostname}:{parts.port}\r\n\r\n"
         self._socket.sendall(request.encode("ascii"))
         status_line = self._reader.readline().decode("ascii")
         self.status = int(status_line.split()[1])

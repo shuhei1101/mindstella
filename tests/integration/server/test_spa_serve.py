@@ -20,9 +20,9 @@ PAGE_PATH = "/mindstella.html"
 # 本文に出てはいけない `config.yaml` の中身の目印（設定の題名）
 SETTINGS_MARK = "要件出しのスキル mindmap を設計する"
 
-# SPA の本文が読む JavaScript と CSS のパス
-SCRIPT_SRC_PATTERN = re.compile(r'<script type="module"[^>]*src="(/spa/assets/[^"]+\.js)"')
-STYLESHEET_HREF_PATTERN = re.compile(r'<link rel="stylesheet"[^>]*href="(/spa/assets/[^"]+\.css)"')
+# SPA の本文が読む JavaScript と CSS の相対の参照（`./assets/`）
+SCRIPT_SRC_PATTERN = re.compile(r'<script type="module"[^>]*src="\./(assets/[^"]+\.js)"')
+STYLESHEET_HREF_PATTERN = re.compile(r'<link rel="stylesheet"[^>]*href="\./(assets/[^"]+\.css)"')
 
 # 配信が読む SPA の出力のフォルダを差し替えて常駐サーバーを起動するスクリプト
 MISSING_SPA_SERVER_SCRIPT = textwrap.dedent(
@@ -48,10 +48,10 @@ def _port(url: str) -> int:
 
 
 def _asset_path(pattern: re.Pattern[str], html: str) -> str:
-    """SPA の本文から、パターンに当たる静的なファイルのパスを返す。"""
+    """SPA の本文から、パターンに当たる静的なファイルの相対の参照を `spa/` の下のパスにして返す。"""
     match = pattern.search(html)
     assert match is not None, html
-    return match.group(1)
+    return f"{SPA_ROOT_PATH}{match.group(1)}"
 
 
 def test_normal(
@@ -115,7 +115,7 @@ def test_normal_when_no_trailing_slash(
     result = http_request(url, "/spa")
     # 検証
     assert result.status == 302
-    assert result.headers["location"] == SPA_ROOT_PATH
+    assert result.headers["location"] == f"{urlsplit(url).path.rsplit('/', 1)[0]}{SPA_ROOT_PATH}"
 
 
 def test_error_when_host_mismatch(
