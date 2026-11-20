@@ -449,7 +449,7 @@ def test_normal_when_settings(page: Page, spa_preview: str) -> None:
 
 def test_error_when_library_unavailable(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """描画のライブラリが読めないとき、原文とライブラリの名前を出す（異常系）。"""
-    url = write_preview(make_item("D-1", title="本文あり", status="未決定", body="docs/D-1.mark.md"), bodies={"D-1.mark.md": "本文の原文"})
+    url = write_preview(make_item("D-1", title="本文あり", status="未決定", body="../docs/D-1.mark.md"), bodies={"D-1.mark.md": "本文の原文"})
 
     def _abort(route: Route) -> None:
         """mdmark の取得を止める。"""
