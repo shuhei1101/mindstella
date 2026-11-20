@@ -16,10 +16,9 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-41.yaml
-    impact: following
-    detail: 起動のコマンドが示す画面の URL が、常駐サーバーの入口の URL になる
-    depends_on:
-      - docs/scenario/SC-489-12.yaml
+    impact: run_only
+    detail: 起動のコマンドは画面の URL を常駐サーバーの API から受け取って示すためシナリオの記述は変わらないが、示す URL が変わるため壊していないかを確かめる
+    depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-45.yaml
     impact: run_only

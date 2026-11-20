@@ -35,7 +35,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T18:04:42.718415+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T18:15:33.909344+00:00'
   - process: モック作成
     status: skipped
     reason: 画面の見た目・操作は変わらない（判定フローチャート『モック要否』）
