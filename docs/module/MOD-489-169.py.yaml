@@ -154,128 +154,6 @@ classes:
         access: 内部 (_)
         description: ワークスペースの ID → 配っているワークスペース（`_guard` の中で `_servers` と一緒に書き換える）
     methods:
-      - name: start
-        title: 配信を立てる
-        kind: メソッド
-        summary: そのワークスペースの配信を立て、URL と今立てたかを返す。立っていればその URL を返す
-        args:
-          - name: root
-            type: Path
-            required: true
-            passing: positional
-            description: ワークスペースの絶対パス
-        returns:
-          type: tuple[str, bool]
-          description: 配信の画面の URL（`http://127.0.0.1:{ポート}/mindstella.html`）と、この呼び出しで立てたか
-        process: |-
-          1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない・フックを呼ばない）
-          2. `config.yaml` を検査する（設定の検査。`check_settings`）
-             - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送出する（配信を立てない）
-          3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` と `_input_targets` と `_transcriber` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
-          4. そのワークスペースの変更の検知を始める（『変更の検知』の `ChangeDetector.start`。書き換えの鍵と入力の宛先を渡す）
-             - `[INFO]` 配信を立てた（ワークスペース、URL）
-          5. `_external.start_hook` があれば、配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`）
-          6. URL と `True` を返す
-        unit_tests:
-          - name: test_start
-            case: 正常
-            summary: 同じワークスペースは同じ URL、別なら別の URL
-            condition: 作成済みのワークスペース 2 つ。一つ目を 2 回、二つ目を 1 回 `start` する
-            mock: なし（本物の待ち受け。後で `stop_all`）
-            expected: 1 回目 `(url1, True)`、2 回目 `(url1, False)`、二つ目 `(url2, True)` で url1 と url2 のポートが違う。どちらも `http://127.0.0.1:` で始まり `/mindstella.html` で終わる
-          - name: test_start_when_settings_invalid
-            case: 異常
-            summary: config.yaml が合わなければ配信を立てず、修正すれば立てる
-            condition: '`display.visible_kinds` を `[rainbow]` にしたワークスペースで 2 回 `start` し、`[decisions]` に変更してもう 1 回 `start` する'
-            mock: なし（本物の待ち受け。後で `stop_all`）
-            expected: '1・2 回目は `SchemaMismatchError`（`lines` に `config.yaml: display.visible_kinds` で始まる行）で台帳が空。3 回目は `(url, True)`'
-          - name: test_start_when_port_fixed
-            case: 正常
-            summary: preview.port のポートで立てる
-            condition: '`config.yaml` の `preview.port` に、テストの中で取って閉じた空きポートを書いたワークスペース'
-            mock: なし（本物の待ち受け。後で `stop_all`）
-            expected: '`url` が `http://127.0.0.1:{そのポート}/mindstella.html`'
-          - name: test_start_when_start_hook_set
-            case: 正常
-            summary: 立てたときだけ起動時のフックを呼ぶ
-            condition: '`external=ExternalAccess(start_hook=("hook",))` で作り、同じワークスペースを 2 回 `start` する'
-            mock: '`run_hook`（`serve` モジュールの参照を monkeypatch し、受け取った引数を記録する）'
-            expected: '`run_hook` が 1 回だけ、`(("hook",), {配信のポート}, {フォルダの名前})` で呼ばれる'
-          - name: test_start_when_port_in_use
-            case: 異常
-            summary: preview.port が使われていれば ServeFailedError でフックを呼ばない
-            condition: テストが `127.0.0.1` で待ち受けたままのポートを `preview.port` に書き、`external=ExternalAccess(start_hook=("hook",))` で `start` する
-            mock: '`run_hook`（呼ばれたかを記録する）'
-            expected: '`ServeFailedError` で、台帳が空、`run_hook` が呼ばれていない'
-            exception: 待ち受けを立てられない
-      - name: stop_all
-        title: 全ての配信を止める
-        kind: メソッド
-        summary: 立てた配信ごとに終了時のフックを呼んでから全て止め、台帳を空にする。2 回呼んでも 2 回目は何もしない
-        returns:
-          type: None
-          description: '-'
-        process: |-
-          1. `_guard` を取り、台帳を空の辞書と入れ替えて、入れ替える前の配信を手元に取る（2 回目の呼び出しでは手元が空で、フックも `stop` も呼ばれない）
-          2. `_guard` を放してから、`_external.stop_hook` があれば、手元の配信ごとに配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`。配信を止める前に全て立てる）
-          3. 手元の配信ごとに `PreviewServer.stop` を呼ぶ
-        unit_tests:
-          - name: test_stop_all
-            case: 正常
-            summary: 止めた配信にはつながらない
-            condition: 1 つ立ててから `stop_all`
-            mock: なし
-            expected: その URL への `GET /` が `ConnectionRefusedError`
-          - name: test_stop_all_when_stop_hook_set
-            case: 正常
-            summary: 配信ごとに 1 回だけ終了時のフックを呼ぶ
-            condition: '`external=ExternalAccess(stop_hook=("hook",))` で作り、ワークスペース 2 つを `start` してから `stop_all` を 2 回呼ぶ'
-            mock: '`run_hook`（`serve` モジュールの参照を monkeypatch し、受け取った引数を記録する）'
-            expected: '`run_hook` が 2 回だけ、それぞれの配信のポートとフォルダの名前で呼ばれる'
-          - name: test_stop_all_when_reentered
-            case: 正常
-            summary: 止めている途中に同じスレッドから呼ばれても止まらず、フックを重ねて呼ばない
-            condition: '`external=ExternalAccess(stop_hook=("hook",))` で作り 1 つ立てる。差し替えた `run_hook` の中で同じ台帳の `stop_all` を呼ぶ'
-            mock: '`run_hook`（受け取った引数を記録し、中で `stop_all` を呼ぶ）'
-            expected: '`stop_all` が戻り、`run_hook` が 1 回だけ呼ばれ、その URL への `GET /` が `ConnectionRefusedError`'
-      - name: url_of
-        title: 配っている URL
-        kind: メソッド
-        summary: そのワークスペースを配っていれば画面の URL を、配っていなければ `None` を返す（配信を立てない）
-        args:
-          - name: root
-            type: Path
-            required: true
-            passing: positional
-            description: ワークスペースの絶対パス
-        returns:
-          type: str | None
-          description: 配信の画面の URL。台帳に無ければ `None`
-        process: |-
-          1. `_guard` を取り、`_servers` を `root.resolve()` で引いて URL を返す
-             - 無い場合、`None` を返す
-        unit_tests:
-          - name: test_url_of
-            case: 正常
-            summary: 立てたワークスペースだけ URL を返す
-            condition: 作成済みのワークスペース 2 つ。一つ目だけ `start` する
-            mock: なし（本物の待ち受け。後で `stop_all`）
-            expected: 一つ目は `start` が返した URL、二つ目は `None`。台帳の配信が 1 つのまま
-      - name: listing
-        title: 配信の一覧
-        kind: メソッド
-        summary: 立てた配信のワークスペースとポートを、ワークスペースの絶対パスの昇順で返す（`server_status`・`server_stop` の `previews`）
-        returns:
-          type: list[dict[str, Any]]
-          description: '`[{workspace: 絶対パスの文字列, port}]`'
-        process: 1. `_guard` を取り、`_servers` をワークスペースの昇順に並べて返す
-        unit_tests:
-          - name: test_listing
-            case: 正常
-            summary: ワークスペースの昇順に並べる
-            condition: '作成済みのワークスペース `b`・`a` の順に `start` する。`parametrize`: この 2 つ / 立てていない台帳'
-            mock: なし（本物の待ち受け。後で `stop_all`）
-            expected: '`a`・`b` の順で、それぞれ `start` が返した URL のポート / `[]`'
       - name: remember_session
         title: 宛先を書き換える
         kind: メソッド
@@ -295,10 +173,146 @@ classes:
           type: None
           description: '-'
         process: 1. `_input_targets.remember(root, session)` を呼ぶ
-      - name: stop_workspace
-        title: ワークスペースの配信を止める
+      - name: start
+        title: 配り始める
         kind: メソッド
-        summary: ワークスペースの ID が一致する配信と変更の検知を台帳から除外して止める。無ければ何もしない（『ワークスペースの削除』が状態のフォルダを削除する前に呼ぶ。同じフォルダで再作成すると `start` が配信と変更の検知を新しく始める）
+        summary: そのワークスペースを配り始め、画面の URL と今配り始めたかを返す。配っていればその URL を返す
+        args:
+          - name: root
+            type: Path
+            required: true
+            passing: positional
+            description: ワークスペースの絶対パス
+        returns:
+          type: tuple[str, bool]
+          description: 画面の URL（`url_of` と同じ）と、この呼び出しで配り始めたか
+        process: |-
+          1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない・フックを呼ばない）
+          2. ワークスペースの ID を引く（『変更の検知』の `workspace_id_of`）
+             - `_by_id` に別のフォルダがある場合、ID と配っているフォルダを持った `WorkspaceIdConflictError` を送出する（配らない・フックを呼ばない）
+          3. `config.yaml` を検査する（設定の検査。`check_settings`）
+             - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送出する（配らない）
+          4. 読んだ設定を初めの値に、`root`・ID・`_port`・`_write_lock`・`_external.allowed_hosts`・`_input_targets`・`_transcriber` で `ServeContext` を作り、`_servers` と `_by_id` に入れる
+          5. そのワークスペースの変更の検知を始める（『変更の検知』の `ChangeDetector.start`。書き換えの鍵と入力の宛先を渡す）
+             - `[INFO]` ワークスペースを配り始めた（ワークスペース、URL）
+          6. `_external.start_hook` があれば、`_port`・ワークスペースのフォルダの名前・画面のパス（`page_path`）でフックを呼ぶ（`run_hook`）
+          7. URL と `True` を返す
+        unit_tests:
+          - name: test_start
+            case: 正常
+            summary: 同じワークスペースは同じ URL、別ならパスの違う URL
+            condition: 作成済みのワークスペース 2 つ。`port=8784` で作った台帳で、一つ目を 2 回、二つ目を 1 回 `start` する
+            mock: なし（待ち受けを立てない。後で `stop_all`）
+            expected: 1 回目 `(url1, True)`、2 回目 `(url1, False)`、二つ目 `(url2, True)`。どちらも `http://127.0.0.1:8784/w/` で始まり `/mindstella.html` で終わり、間がそれぞれのワークスペースの ID をパーセントエンコードしたもの
+          - name: test_start_when_settings_invalid
+            case: 異常
+            summary: config.yaml が合わなければ配らず、修正すれば配る
+            condition: '`display.visible_kinds` を `[rainbow]` にしたワークスペースで 2 回 `start` し、`[decisions]` に変更してもう 1 回 `start` する'
+            mock: なし（後で `stop_all`）
+            expected: '1・2 回目は `SchemaMismatchError`（`lines` に `config.yaml: display.visible_kinds` で始まる行）で台帳が空。3 回目は `(url, True)`'
+          - name: test_start_when_start_hook_set
+            case: 正常
+            summary: 配り始めたときだけ起動時のフックを呼ぶ
+            condition: '`port=8784`・`external=ExternalAccess(start_hook=("hook",))` で作り、同じワークスペースを 2 回 `start` する'
+            mock: '`run_hook`（`serve` モジュールの参照を monkeypatch し、受け取った引数を記録する）'
+            expected: '`run_hook` が 1 回だけ、`(("hook",), 8784, {フォルダの名前}, "/w/{ID}/mindstella.html")` で呼ばれる'
+          - name: test_start_when_id_conflicts
+            case: 異常
+            summary: 配っている別のフォルダと ID が重なれば配らない
+            condition: 作成済みのワークスペース A を `start` し、A を丸ごとコピーした B（`config.yaml` の `id` が同じ）を `external=ExternalAccess(start_hook=("hook",))` の台帳で `start` する
+            mock: '`run_hook`（受け取った引数を記録する）'
+            expected: '`WorkspaceIdConflictError`（メッセージに ID と A のパス）で、台帳は A だけ、`run_hook` は A の 1 回だけ'
+            exception: ワークスペースの ID の重なり
+      - name: serve_registered
+        title: 登録済みのワークスペースを配り始める
+        kind: メソッド
+        summary: 渡したワークスペースを順に配り始め、配れなかったワークスペースは標準エラーに記録して続ける（常駐サーバーの起動時に ID の一覧のワークスペースを配る。インターフェース定義『プレビューの配信』の制約「配るワークスペース」）
+        args:
+          - name: roots
+            type: list[Path]
+            required: true
+            passing: positional
+            description: 配るワークスペースの絶対パス
+        returns:
+          type: int
+          description: この呼び出しで配り始めた数
+        process: |-
+          1. `roots` の順に `start` を呼ぶ
+             - `MindmapError`（`WorkspaceNotFoundError`・`SchemaMismatchError`・`WorkspaceIdConflictError`）の場合、そのワークスペースを飛ばして続ける
+               - `[WARNING]` ワークスペースを配れない（ワークスペース、理由）
+          2. `start` が `True` を返した数を返す
+        unit_tests:
+          - name: test_serve_registered
+            case: 正常
+            summary: 配れるワークスペースだけ配り、配れないもので止まらない
+            condition: 作成済みのワークスペース A・`config.yaml` をスキーマに合わなくした B・存在しないフォルダ C の順に渡す
+            mock: なし（後で `stop_all`）
+            expected: 1 を返し、A の `url_of` が URL、B・C は `None`。標準エラーに B と C の記録がある
+      - name: context_of
+        title: 配信の文脈を引く
+        kind: メソッド
+        summary: ワークスペースの ID で配っているワークスペースの配信の文脈を返す（要求のハンドラーが使う）
+        args:
+          - name: workspace_id
+            type: str
+            required: true
+            passing: positional
+            description: ワークスペースの ID（パーセントエンコードを戻したもの）
+        returns:
+          type: ServeContext | None
+          description: 配信の文脈。配っていなければ `None`
+        process: |-
+          1. `_guard` を取り、`_by_id` で引いたワークスペースの `_servers` の値を返す
+             - 無い場合、`None` を返す
+        unit_tests:
+          - name: test_context_of
+            case: 正常
+            summary: 配っている ID だけ文脈を返す
+            condition: ワークスペース A を `start` し、A の ID と配っていない ID を渡す
+            mock: なし
+            expected: A の ID は `root` が A の文脈、配っていない ID は `None`
+      - name: url_of
+        title: 配っている URL
+        kind: メソッド
+        summary: そのワークスペースを配っていれば画面の URL を、配っていなければ `None` を返す（配り始めない）
+        args:
+          - name: root
+            type: Path
+            required: true
+            passing: positional
+            description: ワークスペースの絶対パス
+        returns:
+          type: str | None
+          description: '`http://127.0.0.1:{_port}{page_path}`。台帳に無ければ `None`'
+        process: |-
+          1. `_guard` を取り、`_servers` を `root.resolve()` で引いた文脈の ID で URL を組み立てて返す（`page_path`）
+             - 無い場合、`None` を返す
+        unit_tests:
+          - name: test_url_of
+            case: 正常
+            summary: 配っているワークスペースだけ URL を返す
+            condition: 作成済みのワークスペース 2 つ。一つ目だけ `start` する
+            mock: なし（後で `stop_all`）
+            expected: 一つ目は `start` が返した URL、二つ目は `None`。台帳が 1 つのまま
+      - name: listing
+        title: 配信の一覧
+        kind: メソッド
+        summary: 配っているワークスペースと画面の URL を、ワークスペースの絶対パスの昇順で返す（`server_status`・`server_stop` の `previews`）
+        returns:
+          type: list[dict[str, Any]]
+          description: '`[{workspace: 絶対パスの文字列, url}]`'
+        process: 1. `_guard` を取り、`_servers` をワークスペースの昇順に並べて、それぞれの URL と返す
+        unit_tests:
+          - name: test_listing
+            case: 正常
+            summary: ワークスペースの昇順に並べる
+            condition: '作成済みのワークスペース `b`・`a` の順に `start` する。`parametrize`: この 2 つ / 配っていない台帳'
+            mock: なし（後で `stop_all`）
+            expected: '`a`・`b` の順で、それぞれ `start` が返した URL / `[]`'
+      - name: stop_workspace
+        title: ワークスペースを配るのをやめる
+        kind: メソッド
+        summary: ワークスペースの ID が一致する配信の文脈と変更の検知を台帳から除外して止める。無ければ何もしない（『ワークスペースの削除』が状態のフォルダを削除する前に呼ぶ。同じフォルダで再作成すると `start` が配信と変更の検知を新しく始める）
         args:
           - name: workspace_id
             type: str
@@ -309,35 +323,64 @@ classes:
           type: None
           description: '-'
         process: |-
-          1. `_guard` を取り、`_servers` と `_detectors` のキーのうち `workspace_id_of`（『変更の検知』の関数）が `workspace_id` のものを台帳から除外して手元に取る（設定を読めないワークスペース（`OSError`・`yaml.YAMLError`）は `logger.warning` に残して比べる対象から外す）
-          2. `_guard` を放してから、手元の変更の検知ごとに `ChangeDetector.stop` を呼ぶ
-          3. `_external.stop_hook` があれば、手元の配信ごとに配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`。`stop_all` と同じ）
-          4. 手元の配信ごとに `PreviewServer.stop` を呼ぶ
+          1. `_guard` を取り、`_by_id` で引いたワークスペースを `_servers`・`_by_id`・`_detectors` から除外して手元に取る
+          2. `_guard` を放してから、手元の変更の検知の `ChangeDetector.stop` を呼ぶ
+          3. `_external.stop_hook` があれば、`_port`・ワークスペースのフォルダの名前・画面のパスでフックを呼ぶ（`run_hook`）
         unit_tests:
           - name: test_stop_workspace
             case: 正常
-            summary: 一致する配信と変更の検知だけ止める
-            condition: 2 つのワークスペースを配信し、片方の ID を渡す
+            summary: 一致するワークスペースだけ配るのをやめる
+            condition: 2 つのワークスペースを配り、片方の ID を渡す
             mock: '`ChangeDetector`'
-            expected: 渡した ID の `url_of` が `None` で変更の検知の `stop` が呼ばれ、もう片方は URL を返す
+            expected: 渡した ID の `url_of`・`context_of` が `None` で変更の検知の `stop` が呼ばれ、もう片方は URL を返す
           - name: test_stop_workspace_then_start
             case: 正常
-            summary: 止めた後の start で配信と変更の検知を新しく始める
+            summary: やめた後の start で配信と変更の検知を新しく始める
             condition: '`stop_workspace` の後に同じフォルダを `start` する'
-            mock: なし（本物の待ち受け。後で `stop_all`）
+            mock: なし（後で `stop_all`）
             expected: '`start` が `(url, True)` を返し、変更の検知が台帳にある'
           - name: test_stop_workspace_when_not_served
             case: 正常
-            summary: 配信していない ID なら何も変えない
-            condition: 1 つのワークスペースを配信し、配信していない ID を渡す
+            summary: 配っていない ID なら何も変えない
+            condition: 1 つのワークスペースを配り、配っていない ID を渡す
             mock: '`ChangeDetector`'
-            expected: 配信しているワークスペースの `url_of` が同じ URL を返す
-          - name: test_stop_workspace_when_other_settings_broken
+            expected: 配っているワークスペースの `url_of` が同じ URL を返す
+          - name: test_stop_workspace_when_stop_hook_set
             case: 正常
-            summary: ほかのワークスペースの設定が壊れていても、一致する配信を止める
-            condition: 2 つのワークスペースを配信し、片方の `config.yaml` を YAML として壊して、もう片方の ID を指定する
-            mock: '`ChangeDetector`'
-            expected: 指定した ID の `url_of` が `None` で、壊れた方は URL を返却する
+            summary: やめたワークスペースについて終了時のフックを 1 回呼ぶ
+            condition: '`port=8784`・`external=ExternalAccess(stop_hook=("hook",))` で作り、1 つ配ってその ID を渡す'
+            mock: '`run_hook`（受け取った引数を記録する）'
+            expected: '`run_hook` が 1 回だけ、`(("hook",), 8784, {フォルダの名前}, "/w/{ID}/mindstella.html")` で呼ばれる'
+      - name: stop_all
+        title: 全てのワークスペースを配るのをやめる
+        kind: メソッド
+        summary: 配っているワークスペースごとに変更の検知を止め、終了時のフックを呼んで台帳を空にする。2 回呼んでも 2 回目は何もしない（常駐サーバーが終わるときに呼ぶ）
+        returns:
+          type: None
+          description: '-'
+        process: |-
+          1. `_guard` を取り、`_servers`・`_by_id`・`_detectors` を空の辞書と入れ替えて、入れ替える前の中身を手元に取る（2 回目の呼び出しでは手元が空）
+          2. `_guard` を放してから、手元の変更の検知ごとに `ChangeDetector.stop` を呼ぶ
+          3. `_external.stop_hook` があれば、手元の配信の文脈ごとに `_port`・ワークスペースのフォルダの名前・画面のパスでフックを呼ぶ（`run_hook`）
+        unit_tests:
+          - name: test_stop_all
+            case: 正常
+            summary: やめた後はどのワークスペースも引けない
+            condition: 2 つ配ってから `stop_all`
+            mock: なし
+            expected: どちらの `url_of`・`context_of` も `None`、`listing` が `[]`
+          - name: test_stop_all_when_stop_hook_set
+            case: 正常
+            summary: ワークスペースごとに 1 回だけ終了時のフックを呼ぶ
+            condition: '`external=ExternalAccess(stop_hook=("hook",))` で作り、ワークスペース 2 つを `start` してから `stop_all` を 2 回呼ぶ'
+            mock: '`run_hook`（`serve` モジュールの参照を monkeypatch し、受け取った引数を記録する）'
+            expected: '`run_hook` が 2 回だけ、それぞれ常駐サーバーのポート・フォルダの名前・画面のパスで呼ばれる'
+          - name: test_stop_all_when_reentered
+            case: 正常
+            summary: やめている途中に同じスレッドから呼ばれても止まらず、フックを重ねて呼ばない
+            condition: '`external=ExternalAccess(stop_hook=("hook",))` で作り 1 つ配る。差し替えた `run_hook` の中で同じ台帳の `stop_all` を呼ぶ'
+            mock: '`run_hook`（受け取った引数を記録し、中で `stop_all` を呼ぶ）'
+            expected: '`stop_all` が戻り、`run_hook` が 1 回だけ呼ばれる'
   - name: SettingsHolder
     title: 最後に検査に通った設定
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -1216,51 +1259,6 @@ functions:
         condition: '`{START_HOOK_ENV: "pub \"add"}`（閉じない引用符）'
         mock: なし
         expected: '`start_hook` が `()` で、例外を送出しない'
-  - name: run_hook
-    title: フックの呼び出し
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/serve.py
-    usecase: プレビューを外から見る
-    scope: public
-    summary: フックのコマンドの末尾にポートとワークスペースの名前を追加し、新しいセッションで立てて終わりを待たずに返す
-    side_effects: 子プロセスを立てる
-    args:
-      - name: command
-        type: tuple[str, ...]
-        required: true
-        passing: positional
-        description: フックのコマンドと引数（空でない）
-      - name: port
-        type: int
-        required: true
-        passing: positional
-        description: 配信のポート
-      - name: name
-        type: str
-        required: true
-        passing: positional
-        description: ワークスペースのフォルダの名前
-    returns:
-      type: bool
-      description: 立てられたか
-    process: |-
-      1. `subprocess.Popen([*command, str(port), name], start_new_session=True, stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL)` で立てる（シェルを通さない・終わりを待たない）
-         - `OSError` が起きた場合、偽を返す
-           - `[WARNING]` フックを立てられない（コマンド、理由）
-      2. 真を返す
-    unit_tests:
-      - name: test_run_hook
-        case: 正常
-        summary: 末尾にポートと名前を追加して立てる
-        condition: "`command=(sys.executable, \"-c\", \"import sys,pathlib; pathlib.Path(sys.argv[1]).write_text(' '.join(sys.argv[2:]))\", {一時ファイル})`、`port=47800`、`name=\"家計簿\"`"
-        mock: なし（本物の子プロセス）
-        expected: 真を返し、待つと一時ファイルの中身が `47800 家計簿`
-      - name: test_run_hook_when_command_missing
-        case: 異常
-        summary: コマンドが無ければ偽で例外を送出しない
-        condition: '`command=("mindstella-no-such-command",)`'
-        mock: なし
-        expected: 偽
   - name: threads_response
     title: スレッドの応答
     kind: 関数
@@ -1679,3 +1677,77 @@ functions:
         mock: 偽の実装
         expected: 415 / 403 / 400。どれも偽の実装が呼ばれない
         exception: 構造の違う要求
+  - name: run_hook
+    title: フックの呼び出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを外から見る
+    scope: public
+    summary: フックのコマンドの末尾にポート・ワークスペースの名前・画面のパスを追加し、新しいセッションで起動して終わりを待たずに返す
+    side_effects: 子プロセスを起動する
+    args:
+      - name: command
+        type: tuple[str, ...]
+        required: true
+        passing: positional
+        description: フックのコマンドと引数（空でない）
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 常駐サーバーのポート
+      - name: name
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダの名前
+      - name: path
+        type: str
+        required: true
+        passing: positional
+        description: そのワークスペースの画面のパス（`page_path`）
+    returns:
+      type: bool
+      description: 起動できたか
+    process: |-
+      1. `subprocess.Popen([*command, str(port), name, path], start_new_session=True, stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL)` で起動する（シェルを通さない・終わりを待たない）
+         - `OSError` が起きた場合、偽を返す
+           - `[WARNING]` フックを起動できない（コマンド、理由）
+      2. 真を返す
+    unit_tests:
+      - name: test_run_hook
+        case: 正常
+        summary: 末尾にポート・名前・画面のパスを追加して起動する
+        condition: "`command=(sys.executable, \"-c\", \"import sys,pathlib; pathlib.Path(sys.argv[1]).write_text(' '.join(sys.argv[2:]))\", {一時ファイル})`、`port=8784`、`name=\"家計簿\"`、`path=\"/w/mindstella-x-1/mindstella.html\"`"
+        mock: なし（本物の子プロセス）
+        expected: 真を返し、待つと一時ファイルの中身が `8784 家計簿 /w/mindstella-x-1/mindstella.html`
+      - name: test_run_hook_when_command_missing
+        case: 異常
+        summary: コマンドが無ければ偽で例外を送出しない
+        condition: '`command=("mindstella-no-such-command",)`'
+        mock: なし
+        expected: 偽
+  - name: page_path
+    title: 画面のパス
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    scope: public
+    summary: ワークスペースの ID から、常駐サーバーの待ち受けでの画面のパスを組み立てる（URL・フックの引数に使う）
+    args:
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+    returns:
+      type: str
+      description: '`{PREVIEW_PREFIX}/{quote(workspace_id, safe="")}{PAGE_PATH}`'
+    process: 1. ID を `urllib.parse.quote(workspace_id, safe="")` でパーセントエンコードし、`PREVIEW_PREFIX` と `PAGE_PATH` の間に置いて返す
+    unit_tests:
+      - name: test_page_path
+        case: 正常
+        summary: 日本語を含む ID をパーセントエンコードする
+        condition: '`parametrize`: `mindstella-notes-3f2a9c` / `mindstella-家計簿-3f2a9c`'
+        mock: なし
+        expected: '`/w/mindstella-notes-3f2a9c/mindstella.html` / `/w/mindstella-%E5%AE%B6%E8%A8%88%E7%B0%BF-3f2a9c/mindstella.html`'
