@@ -235,9 +235,18 @@ files:
   related:
   - to: MOD-565-3
     type: implements
+- path: skills/mindmap/migrations/v0.14.0/scripts/remove_network_look.py
+  name: ネットワークの見た目の既定を消す変換
+  description: 設定の表示の既定から削除したネットワークの見た目の既定を消し、空になった表示の既定も消す。v0.14.0 の変換を変更するときに読む。
+  tags:
+  - topic:移行
+  - topic:設定
+  related:
+  - to: MOD-542-1
+    type: implements
 - path: skills/mindmap/migrations/v0.14.0/steps.yaml
   name: v0.14.0 の移し替えの手順
-  description: v0.13.0 の形式から v0.14.0 へ、議論のキーを消す手順。v0.14.0 の移し替えを変更するときに読む。
+  description: v0.13.0 の形式から v0.14.0 へ、議論のキーを消し、本文のファイルを移し、ネットワークの見た目の既定を消す手順。v0.14.0 の移し替えを変更するときに読む。
   tags:
   - topic:移行
   - topic:手順
