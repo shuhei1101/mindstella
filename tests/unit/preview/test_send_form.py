@@ -96,7 +96,7 @@ EXPECTED_SUBMIT_BUTTON = {
                 "hasCopy": True,
                 "describedByStatus": True,
             },
-            "起動スクリプトで立ち上げ直し",
+            "起動スクリプトで再起動し",
             id="failed_unreachable",
         ),
         pytest.param(

@@ -930,7 +930,7 @@ def test_review_view_when_editing_in_detail(
         pytest.param(
             False,
             "2 件を送信しましたが、Claude Code には入力できませんでした（12:04）。"
-            "送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。",
+            "送信した内容は保存されていて、次に話し合いを始めたときに取り込まれます。",
             id="not_entered",
         ),
     ],
