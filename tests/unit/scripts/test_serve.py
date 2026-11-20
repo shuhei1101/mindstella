@@ -2193,6 +2193,28 @@ def test_send_file(
     assert part.headers["Content-Security-Policy"] == "sandbox"
 
 
+def test_send_file_when_large(
+    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """書き出しの単位より大きいファイルは、最初の片を返した時点で残りを読んでいない（正常系）。"""
+    # 準備（書き出しの単位を小さくし、最初の片を受けた後にファイルの後ろを書き換える）
+    monkeypatch.setattr(serve, "FILE_WRITE_CHUNK", 4)
+    root = make_workspace(make_item("D-1"))
+    files = root / "files"
+    files.mkdir()
+    path = files / "clip.mp4"
+    path.write_bytes(b"aaaabbbbcccc")
+    plan = serve.plan_file(path, None)
+    # 実行
+    chunks = serve._file_chunks(plan)
+    first = next(chunks)
+    path.write_bytes(b"aaaaXXXXYYYY")
+    rest = list(chunks)
+    # 検証（後ろの片は、最初の片を返した後の中身）
+    assert first == b"aaaa"
+    assert rest == [b"XXXX", b"YYYY"]
+
+
 def test_send_file_when_missing(
     registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
