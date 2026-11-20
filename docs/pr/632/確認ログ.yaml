@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 画面一覧・画面遷移
+    decision: ネットワークを削除し、検討事項・トップバー・表示の設定・既定の保存の確かめからマップ・ネットワークのタブ・見た目を除く。ネットワークを指す URL は概要、マップを指す URL は検討事項のボードを開く（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: '91949253'
+    thread: https://github.com/shuhei1101/mindstella/pull/632#discussion_r4638034904
