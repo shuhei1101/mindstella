@@ -62,7 +62,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-19T19:31:07.511107+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:51:36.202319+00:00'
   - process: ドキュメント修正
     status: todo
     note: 公開ドキュメント（ワークスペースの書式・コアコンセプト-ワークスペース・コマンド・プレビューを見る・セットアップ手順-ワークスペースを今の版へ移し替える）の本文と release/ の配置先
