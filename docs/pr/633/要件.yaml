@@ -1,0 +1,100 @@
+use_cases:
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: changed
+    detail: 記録を読み返すときに、項目を確認済みにする・確認済みを外す流れと、AI が書き換えた項目が未確認に戻ることを加える（#188）
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: following
+    detail: 話し合いの途中で AI が項目を書き換えると、利用者の確認済みが外れることに追随する（#188）
+    depends_on:
+      - docs/scenario/SC-489-50.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 項目の詳細で、確認済みかを見て、確認済みにする・外す（#188）。最も狭い幅でも、詳細パネルの閉じる・全画面のボタンが表示幅に収まる（#625）
+    depends_on:
+      - docs/scenario/SC-489-50.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-47.yaml
+    impact: changed
+    detail: 項目へコメントを送ると、設定がオンならその項目が確認済みになる（#188）
+    depends_on:
+      - docs/scenario/SC-489-50.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: changed
+    detail: 選んだコメントをまとめて送ると、設定がオンなら送った項目が確認済みになる（#188）
+    depends_on:
+      - docs/scenario/SC-489-50.yaml
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: changed
+    detail: AI の書き込みで項目が変わると、その項目の確認済みを外す（#188）
+    depends_on:
+      - docs/scenario/SC-489-50.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: run_only
+    detail: 利用者が画面で編集して保存した変更は AI の書き換えではないため確認済みを外さない。保存の流れは変わらないが、確認済みの扱いを壊しうる（#188）
+    depends_on:
+      - docs/scenario/SC-489-50.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-36.yaml
+    impact: changed
+    detail: コメントを送ったら確認済みにするかの設定（既定はオン）を切り替える（#188）
+    depends_on:
+      - docs/scenario/SC-489-50.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: コメントの一覧のパネルで、スレッドの書き込みの本文がパネルの幅で折り返し、横スクロールは幅に収まらない表・コードブロックの中だけになる（#619）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-14.yaml
+    impact: changed
+    detail: 許可するフォルダの外を指定して断られたときに、状態のフォルダを作らない（#624）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: ワークスペースのバージョンと同じバージョンに後から追加した移し替えの手順も既存のワークスペースで実行され、既に該当したワークスペースが手作業なしで復旧する（#628）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-605-1.yaml
+    impact: run_only
+    detail: 常駐サーバーの起動時の照合が状態のフォルダを作る箇所を修正する場合に、起動の流れを壊しうる（#624）
+    depends_on: []
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 項目を確認済みにする・外す操作と、AI が書き換えると未確認に戻ること、コメントを送ると確認済みになることを追加する（#188）
+    status: todo
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: 確認済みを持つキーと、コメントを送ったら確認済みにするかの設定のキーを追加する（#188）
+    status: todo
+  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
+    new: false
+    change: 同じバージョンに後から追加した移し替えの手順も実行されることに合わせて、移し替えが当たる条件の記載を修正する（#628。記載が条件に触れていなければ変更なしで閉じる）
+    status: todo
+scope_out:
+  - item: 今の画面（plugins/mindstella/skills/mindmap/preview）への確認済みのマーカーと、コメントの一覧の書き込みの折り返し
+    reason: '今の画面は #371 で削除するため、React の画面だけを対象にする（#619 の受付判断と同じ扱い）。#625 は今の画面の結合テストの fail のため対象に含める'
+    plan: '#371'
+  - item: 確認済みかどうかで項目を絞り込む
+    reason: '要望に含まれない。絞り込みの条件は #158 が扱う'
+    plan: '#158'
+  - item: 変更履歴の 1 件ごとの未読のマーカー
+    reason: '#188 は項目に対して付けるもので、変更履歴ごとの未読は #156 が扱う'
+    plan: '#156'
+  - item: iPhone の幅でスレッドを開くと画面全体が横にスクロールする事象
+    reason: 条件が違い、同じ原因とは決まっていない。#619 の原因を特定した時点で同じ原因と分かれば、統合をレビューで確定する
+    plan: '#585'
+  - item: 同じテストファイルの test_error_when_host_not_local の fail
+    reason: 別のテストの別の事象
+    plan: '#575'
+  - item: test_detail_panel_screen.py の図の拡大・ミニマップなどのテストの fail
+    reason: 別のテストの別の事象（#610 も同じ実行で fail した図の拡大のボタンを扱う）
+    plan: '#553'
