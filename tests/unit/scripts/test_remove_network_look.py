@@ -112,6 +112,6 @@ def test_migrate_when_unreadable(remove_network_look: ModuleType, tmp_path: Path
     broken = "summary: [題名\n"
     path = _write_config(tmp_path, broken)
     # 実行・検証
-    with pytest.raises(RuntimeError, match="config.yaml"):
+    with pytest.raises(RuntimeError, match=r"config\.yaml"):
         remove_network_look.migrate(tmp_path)
     assert path.read_text(encoding="utf-8") == broken
