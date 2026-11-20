@@ -70,14 +70,6 @@ def test_validate_settings_input_confirm_on_comment(settings: dict[str, Any]) ->
     settings_update.validate_settings_input(settings)
 
 
-def test_validate_settings_input_confirm_on_comment_invalid() -> None:
-    """真偽値でない confirm_on_comment は断る（異常系）。"""
-    # 実行・検証
-    with pytest.raises(SchemaMismatchError) as raised:
-        settings_update.validate_settings_input({"confirm_on_comment": "yes"})
-    assert any(line.startswith("config.yaml: confirm_on_comment") for line in raised.value.lines)
-
-
 def test_merge_settings() -> None:
     """渡したキーだけを置き換え、null で消し、並びを保つ（正常系）。"""
     # 準備
@@ -179,6 +171,20 @@ def test_update_settings(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     # 検証
     assert result == {"changed": ["summary", "links"], "files": [".mindstella/config.yaml"]}
     assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
+
+
+def test_update_settings_when_confirm_on_comment_invalid(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """真偽値でない confirm_on_comment は断る（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as raised:
+        settings_update.update_settings(root, {"confirm_on_comment": "yes"})
+    assert any(line.startswith("config.yaml: confirm_on_comment") for line in raised.value.lines)
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
 def test_update_settings_when_removed_key(

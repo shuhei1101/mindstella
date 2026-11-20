@@ -583,7 +583,7 @@ def test_migrate_when_same(
 ) -> None:
     """版が同じなら何も書かない（正常系）。"""
     # 準備
-    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n"})
+    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n3\n"})
     # 作成で置かれる、プラグインと同じ中身のスキーマの複製を持たせる
     _place_schema_copies(root, None)
     patch_plugin_version(V0140)
@@ -655,7 +655,7 @@ def test_migrate_when_same_with_stale_schema(
 ) -> None:
     """版が同じでも、中身が違うスキーマの複製を書き直して返す（正常系）。"""
     # 準備
-    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n"})
+    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n3\n"})
     copies = _place_schema_copies(root, "docs.schema.json")
     patch_plugin_version(V0140)
     config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
@@ -699,7 +699,7 @@ def test_migrate_when_same_without_write_dates(
 ) -> None:
     """版が同じでも、配信の設定の write_dates を持たない行に false を足す（正常系）。"""
     # 準備
-    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n"})
+    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n3\n"})
     _place_schema_copies(root, None)
     config = store.build_source_config("mindstella-a-123456", "a")
     for row in config["documents"]:
@@ -771,6 +771,20 @@ def test_plan_migration_when_older_with_applied(
         ("v0.1.0", 2),
         ("v0.2.0", 1),
     ]
+
+
+def test_plan_migration_when_older_without_applied(
+    make_workspace: MakeWorkspace, patch_plugin_version: PatchPluginVersion, tmp_path: Path
+) -> None:
+    """2 行目を持たない v0.14.0 より前の版は、その版の手順を当て直さない（正常系）。"""
+    # 準備
+    root = make_workspace(raw_files={VERSION_FILE: "v0.13.0\n"})
+    patch_plugin_version("v0.14.0")
+    migrations = _versioned_migrations(tmp_path / "steps", {"v0.13.0": 2, "v0.14.0": 1})
+    # 実行
+    report = migrator.plan_migration(root, migrations_dir=migrations)
+    # 検証
+    assert [(str(step.version), step.index) for step in report.steps] == [("v0.14.0", 1)]
 
 
 @pytest.mark.parametrize(("counts", "expected"), [({"v0.2.0": 3}, 3), ({}, 0)])
