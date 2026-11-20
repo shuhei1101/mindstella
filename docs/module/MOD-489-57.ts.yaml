@@ -31,7 +31,7 @@ functions:
 
       4. `changed` で 4 つの query の再読み込みを反映の依頼（`requestRefresh`）に渡す。音声入力があれば、続けて録音の行き先の確かめ（`checkVoiceDestination`）を呼ぶ
 
-      5. `duplicate_ids` で `data` の ID の配列を重なった ID のストアに入れる（閉じた後も、集まりが変われば再出する）
+      5. `duplicate_ids` で `data` の ID の配列を重なった ID のストアに入れる（閉じた後も、集まりが変われば再表示する）
 
       6. `error` で接続の状態を offline にする（前の記録の query は残す）
 

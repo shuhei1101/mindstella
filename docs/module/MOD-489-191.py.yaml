@@ -98,7 +98,7 @@ functions:
       - name: test_main_when_dependency_missing
         case: 正常
         summary: 足りなければ結果を出して 1
-        condition: '`run_check_env` を `DependencyMissingError(report)` を送信する関数に差し替える'
+        condition: '`run_check_env` を `DependencyMissingError(report)` を送出する関数に差し替える'
         mock: '`run_check_env`'
         expected: 1 を返し、標準出力が `report` の JSON
   - name: run_check_env
@@ -139,14 +139,14 @@ functions:
     process: |-
       1. `base_version` が `MIN_PYTHON` 以上かを `base_python_ok` にし、`base_python`・`base_python_version` と一緒に結果へ載せる
       2. 仮想環境の Python の場所を引き、`python_path` に載せる（`venv_python_path`）
-      3. その Python が無い場合、`venv_ok: false`・`python: null`・全ての `installed: null` と、作って入れるコマンド（`build_install_command` の `create`。`base_python_ok` が偽なら `null`）を持った `VenvNotFoundError(report)` を送信する
+      3. その Python が無い場合、`venv_ok: false`・`python: null`・全ての `installed: null` と、作って入れるコマンド（`build_install_command` の `create`。`base_python_ok` が偽なら `null`）を持った `VenvNotFoundError(report)` を送出する
       4. `probe` でバージョンとライブラリのバージョンを尋ねる
          - `None` が返った場合、バージョンを引けないものとして `python: null`・`python_ok: false` にする
          - それ以外は、バージョンが `MIN_PYTHON` 以上かを `python_ok` にする（`parse_version`）
       5. `REQUIREMENTS` の配布名ごとに入っているバージョンと下限を比べる（`parse_version`。`null` なら `ok: false`）
       6. 結果を判定する
-         - `python_ok` が偽の場合、再作成して入れるコマンド（`recreate`。`base_python_ok` が偽なら `null`）を持った `PythonVersionError(report)` を送信する
-         - 足りないライブラリがある場合、足りないものを入れるコマンド（`install`）を持った `DependencyMissingError(report)` を送信する
+         - `python_ok` が偽の場合、再作成して入れるコマンド（`recreate`。`base_python_ok` が偽なら `null`）を持った `PythonVersionError(report)` を送出する
+         - 足りないライブラリがある場合、足りないものを入れるコマンド（`install`）を持った `DependencyMissingError(report)` を送出する
          - それ以外は `install: null` の結果を返す
     exceptions:
       - name: VenvNotFoundError

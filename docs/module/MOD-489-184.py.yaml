@@ -28,7 +28,7 @@ functions:
          - `taken` を持つ送信は `status: closed` にし、`events` を `[{kind: closed, author: ai, reason: null, created: {taken}}]` にする
          - `taken` を持たない送信は `status: open`・`events: []` にする
       5. `{items: [...]}` を読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で `threads.yaml` に置く（送信が 0 件でも `items: []` で書く）
-         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して再送信する
+         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して再送出する
       6. `[.mindstella/threads.yaml]` を返す
     exceptions:
       - name: ValueError

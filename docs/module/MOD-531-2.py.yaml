@@ -68,7 +68,7 @@ functions:
         summary: 渡した秒数で打ち切る
         condition: テストが空きポートで立てた、応答を 1 秒遅らせる HTTP のサーバーに `timeout=0.2` で呼ぶ
         mock: なし
-        expected: '`ProjectIndexError` が約 0.2 秒で送信される'
+        expected: '`ProjectIndexError` が約 0.2 秒で送出される'
   - name: add_source
     title: 配信元の行を追加する
     kind: 関数

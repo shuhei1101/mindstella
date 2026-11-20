@@ -616,7 +616,7 @@ functions:
       description: '`out` を `resolve()` した絶対パス'
     process: |-
       1. `out` の拡張子を確かめる（大文字・小文字を区別しない）
-         - `.html` でない場合、`ArgumentError`（`out`・`.html のファイルを指してください: {パス}`）を送信する
+         - `.html` でない場合、`ArgumentError`（`out`・`.html のファイルを指してください: {パス}`）を送出する
       2. `resolve()` した `out` を返す
     exceptions:
       - name: ArgumentError

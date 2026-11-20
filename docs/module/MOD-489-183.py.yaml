@@ -26,7 +26,7 @@ functions:
          - それ以外の要素と、要素のほかのキー（`updated`・`history` を含む）は変えない
       4. 1 件も変えなかった場合、何も書かず空を返す
       5. 読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
-         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して再送信する
+         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して再送出する
       6. `[.mindstella/decisions.yaml]` を返す
     exceptions:
       - name: OSError

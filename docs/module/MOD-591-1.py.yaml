@@ -208,8 +208,8 @@ functions:
       2. 接続したソケットの待ちを `READ_TIMEOUT_SEC` にして、`Accept: application/vnd.github.sha`・`User-Agent: mindstella` で GET する
       3. 応答が 200 で、本文を UTF-8 で読み前後の空白を除いたものが `COMMIT_SHA` に合えば返す
          - 403・429 の場合、`Retry-After`（秒）があれば今の時刻 + その秒、無ければ `X-RateLimit-Reset`（UNIX 時刻）を `retry_at` にして `RefLookupError` を送出する
-         - それ以外のステータス・構造の合わない本文の場合、`RefLookupError`（`retry_at` は `None`）を送信する
-      4. 接続・読み取りの `OSError`（待ちの上限を含む）と `http.client.HTTPException` は `RefLookupError`（`retry_at` は `None`）にして送信する。接続は必ず閉じる
+         - それ以外のステータス・構造の合わない本文の場合、`RefLookupError`（`retry_at` は `None`）を送出する
+      4. 接続・読み取りの `OSError`（待ちの上限を含む）と `http.client.HTTPException` は `RefLookupError`（`retry_at` は `None`）にして送出する。接続は必ず閉じる
     exceptions:
       - name: RefLookupError
         condition: 届かない・待ちの上限を超えた・200 以外・本文が SHA の形式でない
@@ -284,8 +284,8 @@ functions:
     process: |-
       1. `JSDELIVR_BASE_URL` を分け、接続を `DIST_CONNECT_TIMEOUT_SEC`、読み取りを `DIST_READ_TIMEOUT_SEC` まで待って、`Range: bytes=0-0`・`User-Agent: mindstella` で GET する（応答の頭だけを読み、本文は読まない）
       2. 200 か 206 なら返す
-         - それ以外のステータスの場合、`RefLookupError`（`retry_at` は `None`、理由は `jsDelivr が配らない: HTTP {ステータス}`）を送信する
-      3. 接続・読み取りの `OSError` と `http.client.HTTPException` は `RefLookupError`（`retry_at` は `None`）にして送信する。接続は必ず閉じる
+         - それ以外のステータスの場合、`RefLookupError`（`retry_at` は `None`、理由は `jsDelivr が配らない: HTTP {ステータス}`）を送出する
+      3. 接続・読み取りの `OSError` と `http.client.HTTPException` は `RefLookupError`（`retry_at` は `None`）にして送出する。接続は必ず閉じる
     unit_tests:
       - name: test_check_dist_served
         case: 正常

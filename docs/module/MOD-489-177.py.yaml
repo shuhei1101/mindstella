@@ -219,7 +219,7 @@ functions:
     process: |-
       1. `environ` の `PORT_ENV` を読み、無いか空なら `DEFAULT_PORT` を返す
       2. 整数にして 1〜65535 なら返す
-         - 整数にできないか範囲の外なら、`InvalidPortError(値)` を送信する
+         - 整数にできないか範囲の外なら、`InvalidPortError(値)` を送出する
     exceptions:
       - name: InvalidPortError
         condition: 値が 1〜65535 の整数でない
@@ -257,7 +257,7 @@ functions:
       description: '`AF_INET`・`SOCK_STREAM` で `SO_REUSEADDR` を真にし、`(LISTEN_HOST, port)` に bind したソケット'
     process: |-
       1. ソケットを作り、`SO_REUSEADDR` を真にして `(LISTEN_HOST, port)` に bind して返す
-         - `OSError` が起きた場合、ソケットを閉じて `PortInUseError(port)` を送信する（`raise ... from`）
+         - `OSError` が起きた場合、ソケットを閉じて `PortInUseError(port)` を送出する（`raise ... from`）
     exceptions:
       - name: PortInUseError
         condition: bind できない
@@ -545,7 +545,7 @@ functions:
       - name: test_call_tool_when_unexpected_error
         case: 正常
         summary: 予期しない例外もトレースバックを出さずツールのエラー
-        condition: '`handler` が `KeyError("x")` を送信する'
+        condition: '`handler` が `KeyError("x")` を送出する'
         mock: なし
         expected: '`is_error` が真で、本文が `エラー: 予期しないエラー（KeyError）` で始まり `Traceback` を含まない'
       - name: test_call_tool_when_lock_root
@@ -653,7 +653,7 @@ functions:
     process: |-
       1. `~` を展開し、絶対パスならそのまま返す
       2. 相対パスで `session` があれば、`session.cwd` とつないで返す
-         - `session` が無い場合、`ArgumentError`（`argument`、`相対パスはセッションの作業フォルダが無いと読めません。絶対パスで渡してください`）を送信する
+         - `session` が無い場合、`ArgumentError`（`argument`、`相対パスはセッションの作業フォルダが無いと読めません。絶対パスで渡してください`）を送出する
     exceptions:
       - name: ArgumentError
         condition: 相対パスで `session` が無い
@@ -727,7 +727,7 @@ functions:
       description: 同じなら何も返さない
     process: |-
       1. ワークスペースの ID を引き（`workspace_id_of`）、状態の `session.json` を読む（セッションの管理の `read_session`）
-      2. `session.json` が無い・`claude_session_id` が無い・`session` が無い・`session.claude_session_id` が違う場合、`NotMindStellaSessionError`（`tool`）を送信する
+      2. `session.json` が無い・`claude_session_id` が無い・`session` が無い・`session.claude_session_id` が違う場合、`NotMindStellaSessionError`（`tool`）を送出する
     exceptions:
       - name: NotMindStellaSessionError
         condition: MindStella のセッションでない呼び出し
@@ -738,7 +738,7 @@ functions:
         summary: 同じ claude_session_id なら通し、違えば断る
         condition: '`claude_session_id` `abc` の `session.json` を置き、`abc` と `xyz` で呼ぶ'
         mock: なし
-        expected: '`abc` は何も送信せず、`xyz` は `NotMindStellaSessionError`（本文に `commit`）'
+        expected: '`abc` は何も送出せず、`xyz` は `NotMindStellaSessionError`（本文に `commit`）'
 data_models:
   - name: ServerContext
     title: 入口が渡す値

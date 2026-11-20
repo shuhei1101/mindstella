@@ -32,7 +32,7 @@ stores:
         unit_tests:
           - name: test_set_ids
             case: 正常
-            summary: 閉じた集まりと違う ID を受けたら再出する
+            summary: 閉じた集まりと違う ID を受けたら再表示する
             condition: '`["D-1"]` を受けて閉じ、`["D-1"]`・`["D-1", "T-2"]` の順に受ける'
             mock: なし
             expected: '`["D-1"]` の 2 回目の後は通知に渡す ID が空、`["D-1", "T-2"]` の後は 2 件'

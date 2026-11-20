@@ -98,10 +98,10 @@ functions:
         passing: keyword
         description: エラーの行の `items[{番号}]` に使う、その種類の並びの中の位置（追加するときは末尾の位置、修正するときはその項目の位置）
     process: |-
-      1. `RESERVED_KEYS` のキーがあれば `SchemaMismatchError`（`item: {キー}: ツールが付けるキーです`）を送信する（`body_markdown` はどの種類も渡せる）
+      1. `RESERVED_KEYS` のキーがあれば `SchemaMismatchError`（`item: {キー}: ツールが付けるキーです`）を送出する（`body_markdown` はどの種類も渡せる）
       2. `HTML_BODY_INPUT_KEY` がある場合
-         - `kind` が `doc` でなければ `SchemaMismatchError`（`{種類のファイル名}: items[{番号}].body_html: 資料だけが HTML の本文を持てる`）を送信する
-         - `BODY_INPUT_KEY` もあれば `SchemaMismatchError`（`{種類のファイル名}: items[{番号}].body_html: body_markdown と body_html は一緒に渡せない`）を送信する
+         - `kind` が `doc` でなければ `SchemaMismatchError`（`{種類のファイル名}: items[{番号}].body_html: 資料だけが HTML の本文を持てる`）を送出する
+         - `BODY_INPUT_KEY` もあれば `SchemaMismatchError`（`{種類のファイル名}: items[{番号}].body_html: body_markdown と body_html は一緒に渡せない`）を送出する
     exceptions:
       - name: SchemaMismatchError
         condition: '`RESERVED_KEYS`（`id`・`created`・`updated`・`updated_by`・`body` など）のどれかを持つ'
@@ -179,7 +179,7 @@ functions:
       type: tuple[dict[str, Any], str | None]
       description: 新しい項目と、それまで採用していた案の記号（無ければ `None`）
     process: |-
-      1. `options` にその記号の案が無ければ `OptionNotFoundError`（持っている記号の一覧つき）を送信する
+      1. `options` にその記号の案が無ければ `OptionNotFoundError`（持っている記号の一覧つき）を送出する
       2. それまで `adopted` が真だった最初の案の記号を控える
       3. 指定した案の `adopted` を真、ほかを偽にし、`status` を `決定済み` にした新しい項目を返す（`answer`・案の `recommended` は変えない）
     exceptions:
@@ -443,10 +443,10 @@ functions:
       description: '`{url, workspace, started}`（`diff` を渡したときは `url` の末尾に `#diff={diff}`）'
     process: |-
       1. ワークスペースを確かめる（`require_workspace`）
-      2. `diff` を渡した場合、まとまりを読み（`load_changes`。`SchemaMismatchError` はそのまま上がる）、`sets` に `id` が `diff` のまとまりが無ければ `ArgumentError`（`diff`、`記録に無いまとまりです: {diff}`）を送信する（台帳の `start` を呼ばない）
+      2. `diff` を渡した場合、まとまりを読み（`load_changes`。`SchemaMismatchError` はそのまま上がる）、`sets` に `id` が `diff` のまとまりが無ければ `ArgumentError`（`diff`、`記録に無いまとまりです: {diff}`）を送出する（台帳の `start` を呼ばない）
       3. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`。立てる前の検査の `SchemaMismatchError` はそのまま上がる）
       4. この呼び出しで立てたときだけ、直下の README をハッシュの無い URL つきで書き直す（README の書き込み。`write_readme(root, preview_url=url)`）
-         - `WriteFailedError` が起きた場合、再送信せずに続ける
+         - `WriteFailedError` が起きた場合、再送出せずに続ける
            - `[WARNING]` README を書けなかった（パス、理由）
       5. `diff` を渡した場合、`url` の末尾に `#diff={diff}` を付けて返す
     exceptions:
@@ -552,7 +552,7 @@ functions:
       type: dict[str, Any]
       description: '`{id, at, summary, added, changed, removed}`（まとめなかったときは `id`・`at`・`summary` が `None`、`added`・`changed`・`removed` が空。`removed` はまとまりの `removed` を `{id, kind, title}` にしたもの）'
     process: |-
-      1. 前後の空白を除いた `summary` が空か `SUMMARY_MAX_LENGTH` を超えれば `ArgumentError`（`summary`）を送信する
+      1. 前後の空白を除いた `summary` が空か `SUMMARY_MAX_LENGTH` を超えれば `ArgumentError`（`summary`）を送出する
       2. ワークスペースを確かめる（`require_workspace`）。まとまりを読む（`load_changes`）
       3. `pending.by` が `external` なら、先に外部の変更のまとまりにする（`flush_pending`）。その後にまとめる（`commit_pending`。`by` は `ai`）
          - 自分のまとまりが `None` の場合、外部の変更のまとまりだけを書いて（あれば）空の結果を返す
@@ -1362,7 +1362,7 @@ functions:
       type: dict[str, list[str]]
       description: '`{ids}`'
     process: |-
-      1. `kind` が `KINDS` に無ければ `ArgumentError`（`kind`）、`count` が 1〜`NEXT_ID_MAX_COUNT` でなければ `ArgumentError`（`count`）を送信する
+      1. `kind` が `KINDS` に無ければ `ArgumentError`（`kind`）、`count` が 1〜`NEXT_ID_MAX_COUNT` でなければ `ArgumentError`（`count`）を送出する
       2. ワークスペースを確かめ、その種類の項目とまとまりを読む（`require_workspace`、`read_kind_items`、`load_changes`）
       3. 予約から振る（『ID の採番』の `reserve_ids`。削除した項目の記録（`removed_items`）を渡す）
     exceptions:

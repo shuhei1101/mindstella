@@ -988,7 +988,7 @@ functions:
       - name: test_records_response_when_schema_mismatch
         case: 正常
         summary: スキーマに合わなければ 422
-        condition: '`read` が `SchemaMismatchError(lines=["decisions.yaml: items[0].status: 理由"])` を送信する'
+        condition: '`read` が `SchemaMismatchError(lines=["decisions.yaml: items[0].status: 理由"])` を送出する'
         mock: '`read`'
         expected: 422、`detail` がその行
       - name: test_records_response_when_workspace_removed

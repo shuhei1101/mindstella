@@ -26,7 +26,7 @@ functions:
       3. 今の `tags` に無い名前だけを `{name}` で追加し、全体を名前の順に並べる（今の要素の `summary` は残す）
          - 追加する名前が無く、並びも変わらない場合（タグを使っていない、または既に当てた）、何も書かず空を返す
       4. 設定のキーの並びを保って `tags` を置き換え（無ければ `categories` の後ろに置く）、読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
-         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して再送信する
+         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して再送出する
       5. `[.mindstella/config.yaml]` を返す
     exceptions:
       - name: ValueError

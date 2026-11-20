@@ -120,7 +120,7 @@ functions:
     process: |-
       1. `records_root(root) / VERSION_FILE` があればそれを、無ければ `root / VERSION_FILE`（v0.6.0 より前の置き場所）を読む対象にする。どちらも無ければ `None` を返す
       2. 1 行目を読み、バージョンにする（`parse_release_version`）
-         - `ValueError` の場合、`SchemaMismatchError`（`lines` に `mindstella-version.ini: 1 行目: {理由}`）を送信する
+         - `ValueError` の場合、`SchemaMismatchError`（`lines` に `mindstella-version.ini: 1 行目: {理由}`）を送出する
     exceptions:
       - name: SchemaMismatchError
         condition: バージョンのファイルの 1 行目がバージョンの形式でない

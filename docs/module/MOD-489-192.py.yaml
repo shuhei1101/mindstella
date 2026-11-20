@@ -223,7 +223,7 @@ functions:
       - name: test_main_when_dependency_missing
         case: 異常
         summary: 依存が足りなければ起動せずにそろえるコマンドを示す
-        condition: '`fetch` が `None` を返し、`run_check_env` が mcp の足りない `DependencyMissingError(report)` を送信する。`parametrize`: `["--hook"]` / `[]`'
+        condition: '`fetch` が `None` を返し、`run_check_env` が mcp の足りない `DependencyMissingError(report)` を送出する。`parametrize`: `["--hook"]` / `[]`'
         mock: '`fetch`・`start`・`run_check_env`'
         expected: 前者は 0、後者は 1 を返し、案内に `mcp` と `report` の `install` がある。`start` が呼ばれない
       - name: test_main_when_old_syntax

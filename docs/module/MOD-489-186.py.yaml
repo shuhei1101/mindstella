@@ -25,7 +25,7 @@ functions:
       2. `yaml.safe_load` で読む。一番上が辞書でなければ `config.yaml の形が崩れています` の `ValueError` を送出する
       3. `tags` のキーが無ければ、何も書かず空を返す
       4. 他のキーの並びを保って `tags` を削除し、読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
-         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して再送信する
+         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して再送出する
       5. `[.mindstella/config.yaml]` を返す
     exceptions:
       - name: ValueError

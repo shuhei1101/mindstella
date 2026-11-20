@@ -75,7 +75,7 @@ functions:
       type: list[str]
       description: 変えたファイルとフォルダ（ワークスペースからの相対パス。移したフォルダは移した先の `docs/`・`files/`、削除したフォルダは `.mindstella/release/`。何も変えなければ空）
     process: |-
-      1. `SOURCE_CONFIG_FILE` を読む。設定が `paths_base` を持たず、直下に `MOVED_DIRS` のどれかがあれば、何も書かずに `RuntimeError`（あるフォルダの名前と、改名してから再度開く案内）を送信する
+      1. `SOURCE_CONFIG_FILE` を読む。設定が `paths_base` を持たず、直下に `MOVED_DIRS` のどれかがあれば、何も書かずに `RuntimeError`（あるフォルダの名前と、改名してから再度開く案内）を送出する
       2. `KIND_FILES` の各ファイルの `items[]` の `body` と、`HISTORY_FILE` の各項目の行の `history[].before.body` のうち、`OLD_BODY_PREFIX` で始まる値を `NEW_BODY_PREFIX` で始まる値に置き換える（キーの並び・`updated`・変更履歴の並びは変えない）
       3. 設定が `paths_base` を持たなければ `paths_base: PATHS_BASE` を追加し、`documents` のうち `id` が `KIND_FILES` の拡張子を落とした名前の行の `paths` を `[f"{RECORD_DIR}/{ファイル}"]` にする（ほかの行・キーは変えない）
       4. 書き換えた YAML だけを一時ファイルに書いてから置き換える。`MOVED_DIRS` のうち記録のフォルダにあるフォルダを `os.replace` で直下へ移し、`.mindstella/{RELEASE_DIR}/` があれば `shutil.rmtree` で削除する

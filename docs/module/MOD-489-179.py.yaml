@@ -161,7 +161,7 @@ functions:
     process: |-
       1. `{migrations_dir}/{version}/steps.yaml` を読む
       2. `STEPS_SCHEMA` と突き合わせる
-         - 読めないか合わない場合、`StepsInvalidError`（`lines` に合わない箇所）を送信する
+         - 読めないか合わない場合、`StepsInvalidError`（`lines` に合わない箇所）を送出する
       3. `steps` の各要素を、`op` とそれ以外の引数に分けて `MigrationStep` にする
     exceptions:
       - name: StepsInvalidError
@@ -317,11 +317,11 @@ functions:
       description: 当てた手順・当てた後に値が要るキー・コピー
     process: |-
       1. 手順を並べる（`plan_migration`）
-         - `relation` が `newer` の場合、`WorkspaceNewerError`（メッセージに 2 つのバージョンとプラグインの更新の案内）を送信する
+         - `relation` が `newer` の場合、`WorkspaceNewerError`（メッセージに 2 つのバージョンとプラグインの更新の案内）を送出する
          - 手順が空の場合、コピーを取らずにそのまま返す
       2. コピーを取る（`take_backup`。バージョンは `to`）
       3. 手順を並びの順に当てる（`apply_step`）
-         - `StepError` が起きた場合、コピーから戻し（`restore_backup`）、`StepFailedError`（`{版} の手順 {番号}（{操作}）: {理由}`）を送信する
+         - `StepError` が起きた場合、コピーから戻し（`restore_backup`）、`StepFailedError`（`{版} の手順 {番号}（{操作}）: {理由}`）を送出する
          - 戻すことにも失敗した場合（`OSError`・git の終了コードが 0 でない）、`StepFailedError` の `lines` に `写しから戻せませんでした。写しは {backup.ref} にあります` を続ける
       4. 当てた後のワークスペースで、各 `set_default` の `file` をその手順より後の `rename_file` で改めた先の名前に読み替えて（`renamed_file`）値が要るキーを再収集し、手順とコピーを添えて返す
     exceptions:
@@ -572,8 +572,8 @@ functions:
          - `to_version` がプラグインのバージョンより前の場合、当てた結果をそのまま返す
       2. 値が要るキーに仮の値を入れる（`set_values`。`summary` はフォルダの名前、ほかのキーは空文字）。入れた値を `provisional` にする
       3. バージョンを書く（`record_version`）
-         - `SchemaMismatchError`・`WriteFailedError` の場合、コピーから戻し（`restore_backup`）てそのまま送信する
-      4. スキーマの複製と配信の設定をそろえ（`sync_source_schemas`・`add_write_dates`）、書き直したパスを `source_files` にする（`WriteFailedError` はそのまま送信する。バージョンは書いた後なのでコピーから戻さない）
+         - `SchemaMismatchError`・`WriteFailedError` の場合、コピーから戻し（`restore_backup`）てそのまま送出する
+      4. スキーマの複製と配信の設定をそろえ（`sync_source_schemas`・`add_write_dates`）、書き直したパスを `source_files` にする（`WriteFailedError` はそのまま送出する。バージョンは書いた後なのでコピーから戻さない）
       5. `reports` の行を `not_carried` にする。`{項目の ID}: {キー}: {値}` の行は 3 つに分け、それ以外の行は `item`・`key` を空にして行を `value` にする
       6. 結果を返す
     exceptions:

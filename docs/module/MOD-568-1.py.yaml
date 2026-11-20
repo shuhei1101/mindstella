@@ -222,7 +222,7 @@ functions:
       - name: test_send_webhook_when_http_error
         case: 正常
         summary: 500 は偽で、記録に URL を含めない
-        condition: '`HTTPError`（500）を送信する偽の `opener`。`caplog`'
+        condition: '`HTTPError`（500）を送出する偽の `opener`。`caplog`'
         mock: '`opener`'
         expected: 偽。記録に `500` を含み、URL を含まない。`opener` の呼び出しは 1 回
       - name: test_send_webhook_when_unreachable

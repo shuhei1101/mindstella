@@ -933,7 +933,7 @@ functions:
       description: 項目の ID → 履歴の行
     process: |-
       1. `records_root(root) / HISTORY_FILE` が無ければ空の辞書を返す
-      2. 読んで `items` の辞書を返す。YAML として読めないか `items` が辞書でなければ `SchemaMismatchError`（`history.yaml: items`）を送信する
+      2. 読んで `items` の辞書を返す。YAML として読めないか `items` が辞書でなければ `SchemaMismatchError`（`history.yaml: items`）を送出する
     exceptions:
       - name: SchemaMismatchError
         condition: '`history.yaml` が読めないか形式が違う'

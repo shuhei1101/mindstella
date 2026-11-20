@@ -329,7 +329,7 @@ components:
         expected: どのケースも `span.df-kv` の中に `span.df-word` が無く、前の値・今の値（前に無かったキーは今の値だけ）は今までどおり `del.df-was`・`ins.df-now` で並ぶ
       - name: test_detail_panel_when_diff_key_words_body_too_large
         case: 正常
-        summary: 本文の行の差分を打ち切ったときは、キーの値の語の差分にも時間を再足しない
+        summary: 本文の行の差分を打ち切ったときは、キーの値の語の差分にも時間を再加算しない
         condition: '`lead` を `要件は来週までに決める。` → `要件は今週までに決める。` にし、本文の行の差分が打ち切られる D-1 を `diff` つきで開く（`Diff.diffLines` が `undefined` を返し、その間に `performance.now()` が `LINE_DIFF_TIMEOUT_MS` より進むよう包む）'
         mock: 描画のライブラリの配信元（`page.route`）・`Diff.diffLines` と `performance.now()` を包む
         expected: 本文の頭に「本文の差分を計算しきれない旨」が出て、`data-key` が `lead` の要素の `del.df-was`・`ins.df-now` は今までどおり並び、`span.df-word` を持たない
