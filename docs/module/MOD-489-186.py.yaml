@@ -22,14 +22,14 @@ functions:
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
       1. `.mindstella/config.yaml` が無ければ空を返す
-      2. `yaml.safe_load` で読む。一番上が辞書でなければ `config.yaml の形が崩れています` の `ValueError` を送る
+      2. `yaml.safe_load` で読む。一番上が辞書でなければ `config.yaml の構造が崩れています` の `ValueError` を送信する
       3. `tags` のキーが無ければ、何も書かず空を返す
       4. 他のキーの並びを保って `tags` を削除し、読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
-         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して送り直す
+         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して再送信する
       5. `[.mindstella/config.yaml]` を返す
     exceptions:
       - name: ValueError
-        condition: '`config.yaml` の形が崩れている'
+        condition: '`config.yaml` の形式が崩れている'
       - name: OSError
         condition: 読めない・書けない
     unit_tests:
@@ -47,7 +47,7 @@ functions:
         expected: 戻り値が空で、`config.yaml` が呼ぶ前と同じ
       - name: test_remove_tag_vocabulary_when_broken
         case: 異常
-        summary: 設定の形が崩れていれば移さない
+        summary: 設定の構造が崩れていれば移さない
         condition: 一番上が配列の `config.yaml`
         mock: なし
         expected: '`ValueError`。`config.yaml` が呼ぶ前と同じ'

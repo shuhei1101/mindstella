@@ -66,7 +66,7 @@ events:
     value: '`onBack()`'
   - name: 再試行
     when: '`view` が `error` で「再試行」を押したとき'
-    description: 使う側が `view` を `busy` にして組み立てをやり直す
+    description: 使う側が `view` を `busy` にして組み立てを再実行する
     value: '`onRetry()`'
   - name: 閉じる
     when: Esc かメニューの外を押したとき

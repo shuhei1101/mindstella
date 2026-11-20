@@ -4,7 +4,7 @@ scenarios:
   - name: 正常シナリオ
     setup:
       - name: Mock
-        description: モデルを呼ばない。登録のサブコマンドを決めた引数で叩く。Claude Code の CLI を、`plugin list --json` に決めた `installPath` を返す偽のコマンドに差し替える。`installPath` の版のフォルダの `bin/mindstella` を、受け取った引数をファイルに書く偽のスクリプトに差し替える
+        description: モデルを呼ばない。登録のサブコマンドを決めた引数で叩く。Claude Code の CLI を、`plugin list --json` に決めた `installPath` を返す偽のコマンドに差し替える。`installPath` のバージョンのフォルダの `bin/mindstella` を、受け取った引数をファイルに書く偽のスクリプトに差し替える
         notes: 本物の起動スクリプトの先（依存の確認・常駐サーバーの起動・tmux）は『端末から起動する』が確かめる
       - name: ホームのフォルダ
         description: テストごとの空の一時フォルダを `HOME` にする。ログインシェルは bash で、`~/.bashrc` に利用者が書いた行を 1 行持つ
@@ -31,7 +31,7 @@ scenarios:
       ```
     expected:
       - 新しく開いた bash で `mindstella` が定義され、`MINDSTELLA_ALLOWED_HOSTS` が `preview.example.com` になっている
-      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、`installPath` の版の起動スクリプトが `{フォルダ}` を受け取る
+      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、`installPath` のバージョンの起動スクリプトが `{フォルダ}` を受け取る
       - 登録した後に起動した常駐サーバーが、`MINDSTELLA_ALLOWED_HOSTS` を `preview.example.com` として読む
       - 利用者が書いた `~/.bashrc` の行がそのまま残っている
       - ワークスペースのフォルダに何も書かれていない
@@ -57,7 +57,7 @@ scenarios:
         RS-->>CC: 登録済みの alias と環境変数
         CC->>RS: 変える環境変数だけを渡して登録する
         RS->>SH: 登録の範囲を書き直す
-        CC-->>U: 常駐サーバーを立ち上げ直すと新しい値が効くことを案内する
+        CC-->>U: 常駐サーバーを立ち再起動すると新しい値が効くことを案内する
       ```
     expected:
       - 新しく開いた bash で `MINDSTELLA_ALLOWED_HOSTS` が `b.example.com`、`MINDSTELLA_VENV` が `~/venvs/mindstella` のまま
@@ -67,26 +67,26 @@ scenarios:
   - name: 正常シナリオ（プラグインを上げた後）
     setup:
       - name: Mock
-        description: 正常シナリオと同じ偽の Claude Code。`installPath` は新しい版のフォルダを返す
+        description: 正常シナリオと同じ偽の Claude Code。`installPath` は新しいバージョンのフォルダを返す
       - name: 登録済みのホーム
-        description: 古い版をインストールしていたときに登録を済ませたホームのフォルダ
+        description: 古いバージョンをインストールしていたときに登録を済ませたホームのフォルダ
       - name: インストールしたプラグイン
-        description: 新しい版のフォルダだけがあり、古い版のフォルダは消えている
+        description: 新しいバージョンのフォルダだけがあり、古いバージョンのフォルダは消えている
     flow: |-
       ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant SH as 新しいシェル
         participant CC as Claude Code
-        participant LS as 起動スクリプト（新しい版）
+        participant LS as 起動スクリプト（新しいバージョン）
 
         U->>SH: mindstella {フォルダ}
         SH->>CC: インストールしたプラグインの一覧
-        CC-->>SH: 新しい版のフォルダ
+        CC-->>SH: 新しいバージョンのフォルダ
         SH->>LS: {フォルダ} を渡して叩く
       ```
     expected:
-      - 新しい版のフォルダの起動スクリプトが `{フォルダ}` を受け取って立ち上がる
+      - 新しいバージョンのフォルダの起動スクリプトが `{フォルダ}` を受け取って立ち上がる
       - シェルの設定の中身が、登録した直後と同じ（上げた後に登録し直さなくてよい）
     test: test_normal_when_plugin_upgraded
   - name: 正常シナリオ（登録を外す）
@@ -105,7 +105,7 @@ scenarios:
 
         U->>CC: 登録を外すサブコマンドを叩く
         CC->>RS: 登録を外す
-        RS->>SH: mindstella の登録だけを消す
+        RS->>SH: mindstella の登録だけを削除する
         CC-->>U: 新しいシェルから効くことを案内する
       ```
     expected:
@@ -139,13 +139,13 @@ scenarios:
       - 登録のスクリプトが 0 以外の終了コードで終わり、書き込めない理由と、手で書けば同じ登録になる行を返す
       - ホームのフォルダのどのファイルの中身も、呼ぶ前と同じ
     test: test_error_when_not_writable
-  - name: 正常シナリオ（アカウントごとの alias を足す）
+  - name: 正常シナリオ（アカウントごとの alias を追加する）
     setup:
       - name: Mock
-        description: 正常シナリオと同じ。ただし偽の Claude Code は、受け取った `CLAUDE_CONFIG_DIR` ごとに別の `installPath` を返す（既定のアカウントと `~/.claude-sub1` で別の版のフォルダ）。どちらのフォルダの偽の起動スクリプトも、自分のフォルダ・受け取った引数・`CLAUDE_CONFIG_DIR` の値をファイルに書く
+        description: 正常シナリオと同じ。ただし偽の Claude Code は、受け取った `CLAUDE_CONFIG_DIR` ごとに別の `installPath` を返す（既定のアカウントと `~/.claude-sub1` で別のバージョンのフォルダ）。どちらのフォルダの偽の起動スクリプトも、自分のフォルダ・受け取った引数・`CLAUDE_CONFIG_DIR` の値をファイルに書く
       - name: 登録済みのホーム
         description: 正常シナリオの登録（alias `mindstella`）を済ませたホームのフォルダ
-      - name: 足すアカウント
+      - name: 追加するアカウント
         description: 利用者が、名前 `sub1` で Claude Code の設定のフォルダ `~/.claude-sub1` を引数で渡す
     flow: |-
       ```mermaid
@@ -161,8 +161,8 @@ scenarios:
         CC-->>U: 新しいシェルで mindstella-sub1 {フォルダ} を叩くよう案内する
       ```
     expected:
-      - 新しく開いた bash で `mindstella-sub1 {フォルダ}` を叩くと、`~/.claude-sub1` で引いた `installPath` の版の起動スクリプトが `{フォルダ}` と `CLAUDE_CONFIG_DIR=~/.claude-sub1` を受け取る
-      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、既定のアカウントで引いた `installPath` の版の起動スクリプトが立ち上がり、alias から `CLAUDE_CONFIG_DIR` を受け取らない（シェルの既定のアカウントのまま）
+      - 新しく開いた bash で `mindstella-sub1 {フォルダ}` を叩くと、`~/.claude-sub1` で引いた `installPath` のバージョンの起動スクリプトが `{フォルダ}` と `CLAUDE_CONFIG_DIR=~/.claude-sub1` を受け取る
+      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、既定のアカウントで引いた `installPath` のバージョンの起動スクリプトが立ち上がり、alias から `CLAUDE_CONFIG_DIR` を受け取らない（シェルの既定のアカウントのまま）
       - シェルの設定に、`mindstella` と `mindstella-sub1` の登録が 1 つずつしかない
       - 利用者が書いた `~/.bashrc` の行がそのまま残っている
     test: test_normal_when_account_added
@@ -172,11 +172,11 @@ primary_actor: 利用者
 stakeholders:
   - name: 利用者
     interest: 起動スクリプトのパスを毎回引かずに、短い名前で話し合いを立ち上げられる。外から見る設定などの環境変数を毎回打たずに済む。自分で書いたシェルの設定は変わらない
-trigger: 利用者が、プラグインを入れた後に、インストールの手順に従って起動のコマンドの登録のサブコマンドを叩く。または登録を変える・外す・アカウントを足すためにサブコマンドを叩く
+trigger: 利用者が、プラグインを入れた後に、インストールの手順に従って起動のコマンドの登録のサブコマンドを叩く。または登録を変える・外す・アカウントを追加するためにサブコマンドを叩く
 preconditions:
   - プラグイン mindstella がインストールされている
   - システムの `bash` と `python3` がある（mindstella の仮想環境と MCP のツールは要らない）
-success_guarantee: 新しく開いたシェルで、alias `mindstella` にワークスペースのフォルダを渡すと、インストールしたプラグインの今の版の起動スクリプトが立ち上がり、登録した環境変数が入っている。アカウントを登録したときは、alias `mindstella-{アカウントの名前}` がそのアカウントの Claude Code の設定のフォルダで立ち上げる。登録し直しても、登録の行は重ならない。
+success_guarantee: 新しく開いたシェルで、alias `mindstella` にワークスペースのフォルダを渡すと、インストールしたプラグインの今のバージョンの起動スクリプトが立ち上がり、登録した環境変数が入っている。アカウントを登録したときは、alias `mindstella-{アカウントの名前}` がそのアカウントの Claude Code の設定のフォルダで立ち上げる。再登録しても、登録の行は重ならない。
 minimal_guarantee: シェルの設定に書き込めないときは、どのファイルも書き換えずに、理由と手で書く行を示して止まる。利用者が書いたシェルの設定の行と、ワークスペースは書き換えない。
 frequency: プラグインを入れた後に 1 回と、環境変数を変えたいとき
 priority: 中

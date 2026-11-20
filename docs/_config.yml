@@ -70,9 +70,9 @@ defaults:
     values:
       permalink: /guide/コマンド.html
   - scope:
-      path: guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
+      path: guide/セットアップ手順-ワークスペースを今のバージョンへ移し替える.mark.md
     values:
-      permalink: /guide/セットアップ手順-ワークスペースを今の版へ移し替える.html
+      permalink: /guide/セットアップ手順-ワークスペースを今のバージョンへ移し替える.html
   - scope:
       path: guide/プレビューを見る.mark.md
     values:

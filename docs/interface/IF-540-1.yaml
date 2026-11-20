@@ -20,7 +20,7 @@ request:
     type: '"decision" | "task" | "research" | "doc" | "term" | "note" | "log"'
     required: true
     location: argument
-    description: 足す項目の種類。ID の頭の文字が決まる（decision → D / task → T / research → R / doc → A / term → G / note → N / log → L）
+    description: 追加する項目の種類。ID の頭の文字が決まる（decision → D / task → T / research → R / doc → A / term → G / note → N / log → L）
   - name: count
     type: int
     required: false
@@ -48,14 +48,14 @@ exceptions:
     notes: ツールのエラー。エラーの本文に読めないファイル。予約を進めない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。引数の誤りは `エラー: 引数の誤り: {引数}: {理由}`'
 constraints:
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文）
   - item: ID の振り方
-    constraint: その種類の連番の最大 + 1 から `count` 個。最大は、今ある項目・`changes.yaml` の `sets[].removed`・`pending.removed` にあるその種類の ID と、そのワークスペースのその種類の予約の最大から取る。消した ID と予約した ID を振り直さない
+    constraint: その種類の連番の最大 + 1 から `count` 個。最大は、今ある項目・`changes.yaml` の `sets[].removed`・`pending.removed` にあるその種類の ID と、そのワークスペースのその種類の予約の最大から取る。削除した ID と予約した ID を再採番しない
   - item: 予約の持ち方
-    constraint: 常駐サーバーのメモリに、ワークスペースの ID・種類ごとに、振った最大の連番を 1 つだけ持つ。期限を設けず、書き込まれなかった ID は欠番になる。常駐サーバーを起動し直すと予約は消え、次の採番はファイルの最大から求める
-    notes: 書き込まれずに起動し直した予約の ID を後で振り直しても、その ID の項目はファイルに無いので重ならない
-  - item: 画面で足す項目
+    constraint: 常駐サーバーのメモリに、ワークスペースの ID・種類ごとに、振った最大の連番を 1 つだけ持つ。期限を設けず、書き込まれなかった ID は欠番になる。常駐サーバーを再起動すると予約は消え、次の採番はファイルの最大から求める
+    notes: 書き込まれずに再起動した予約の ID を後で再採番しても、その ID の項目はファイルに無いので重ならない
+  - item: 画面で追加する項目
     constraint: 保存待ちの編集をまとめて保存するとき（『保存待ちの編集をまとめて保存』）の ID も、同じ予約から振る
   - item: 重なった ID
     constraint: '`next_id` を通さずに書き込んで同じ ID が 2 件になったときは、変更の検知が見つけて通知する（『変更の検知』）'

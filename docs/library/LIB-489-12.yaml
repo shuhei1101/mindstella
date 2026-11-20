@@ -38,7 +38,7 @@ upstream: modelcontextprotocol/python-sdk
 verification:
   state: 済
   date: '2026-10-04'
-  detail: '2.3.0 を仮想環境に入れ、`MCPServer` の stdio のサーバーへ `ClientSession` でつないで確かめた。`CallToolResult` を自分で返すと `structured_content` と本文がそのまま届き、`is_error` を真にした本文も `エラー: ` で始まったまま届く。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き、`ToolError` 以外は内容が消える。要る引数が無いと、ツールを呼ぶ前に SDK が引数の名前を含むエラーを返す。結果の属性は `is_error`・`structured_content`・`server_info` のように snake_case。`streamable_http_app`・`custom_route`・`streamable_http_client` は Issue #338 の設計の時点では未確認で、実装のときに確かめる'
+  detail: '2.3.0 を仮想環境に入れ、`MCPServer` の stdio のサーバーへ `ClientSession` でつないで確かめた。`CallToolResult` を自分で返すと `structured_content` と本文がそのまま届き、`is_error` を真にした本文も `エラー: ` で始まったまま届く。例外を送出すると本文の頭に `Error executing tool {ツール}: ` が付き、`ToolError` 以外は内容が消える。要る引数が無いと、ツールを呼ぶ前に SDK が引数の名前を含むエラーを返す。結果の属性は `is_error`・`structured_content`・`server_info` のように snake_case。`streamable_http_app`・`custom_route`・`streamable_http_client` は Issue #338 の設計の時点では未確認で、実装のときに確かめる'
 license: MIT（商用利用可）
 official_url: https://modelcontextprotocol.io/
 docs_url: https://github.com/modelcontextprotocol/python-sdk

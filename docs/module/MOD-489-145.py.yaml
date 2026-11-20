@@ -1,18 +1,18 @@
 id: MOD-489-145
 title: サーバー / HTMLの本文 / html_body.py
-lead: 資料の HTML の本文の開きタグに原文の行の印を足す処理と、原文の行の範囲の描いた文を取り出す処理。どちらも Python の標準ライブラリ `html.parser.HTMLParser` で原文を読む。
+lead: 資料の HTML の本文の開きタグに原文の行のマーカーを追加する処理と、原文の行の範囲の描いた文を取り出す処理。どちらも Python の標準ライブラリ `html.parser.HTMLParser` で原文を読む。
 test_files:
   - tests/unit/scripts/test_html_body.py
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    html_body.py   HTML の本文の行の印と、行の範囲の描いた文
+    html_body.py   HTML の本文の行のマーカーと、行の範囲の描いた文
   ```
 constants:
   - name: LINE_ATTR
-    title: 行の印の属性
+    title: 行のマーカーの属性
     container: plugins/mindstella/skills/mindmap/scripts/html_body.py
-    summary: 開きタグに足す行の印の属性の名前。Markdown の本文の描画と同じ名前
+    summary: 開きタグに追加する行のマーカーの属性の名前。Markdown の本文の描画と同じ名前
     value: '"data-line"'
     usecase: 選んだ箇所へコメントする
     status: implemented
@@ -24,17 +24,17 @@ constants:
     usecase: 選んだ箇所へコメントする
     status: implemented
   - name: UNMARKED_TAGS
-    title: 行の印を足さない要素
+    title: 行のマーカーを追加しない要素
     container: plugins/mindstella/skills/mindmap/scripts/html_body.py
     summary: 文書の外枠と描いた文を持たない要素。`HIDDEN_TEXT_TAGS` を含む
     value: frozenset({"html", "head", "body", "meta", "link", "base"}) | HIDDEN_TEXT_TAGS
     usecase: 選んだ箇所へコメントする
     status: implemented
   - name: LINE_END_ATTR
-    title: 終わりの行の印の属性
+    title: 終わりの行のマーカーの属性
     container: plugins/mindstella/skills/mindmap/scripts/html_body.py
     usecase: 選んだ箇所へコメントする
-    summary: 開きタグに足す、要素が閉じる原文の行の印の属性の名前
+    summary: 開きタグに追加する、要素が閉じる原文の行のマーカーの属性の名前
     value: '"data-line-end"'
     status: implemented
   - name: VOID_TAGS
@@ -46,12 +46,12 @@ constants:
     status: implemented
 functions:
   - name: mark_lines
-    title: 行の印を足す
+    title: 行のマーカーを追加する
     container: plugins/mindstella/skills/mindmap/scripts/html_body.py
     usecase: 選んだ箇所へコメントする
     kind: 関数
     scope: public
-    summary: 開きタグのタグ名の直後に、中身が始まる原文の行と要素が閉じる原文の行の印を足した HTML を返す
+    summary: 開きタグのタグ名の直後に、中身が始まる原文の行と要素が閉じる原文の行のマーカーを追加した HTML を返す
     status: implemented
     args:
       - name: source
@@ -61,7 +61,7 @@ functions:
         description: HTML の本文の原文
     returns:
       type: str
-      description: 行の印を足した HTML。印の他は原文のままで、行の並びも変えない
+      description: 行のマーカーを追加した HTML。マーカーの他は原文のままで、行の並びも変えない
     process: |-
       1. 原文の各行の先頭の位置を控え、`HTMLParser`（`convert_charrefs=True`）で読む
       2. 開きタグと空要素ごとに、`getpos()` の行・列からタグの先頭の位置を、`get_starttag_text()` の改行の数からタグが閉じた行（始まりの行）を求める（`UNMARKED_TAGS` は飛ばす）。空要素の終わりの行は始まりの行と同じにし、それ以外は開いている要素の積み上げに積む
@@ -71,20 +71,20 @@ functions:
     unit_tests:
       - name: test_mark_lines
         case: 正常
-        summary: 開きタグに中身が始まる行の印を足す
+        summary: 開きタグに中身が始まる行のマーカーを追加する
         condition: '`parametrize`: 1 行の `<p>` / 2 行にまたがる開きタグ `<p\n class="a">` / コメントの中の `<p>` / `<style>` の中の `a > b` / 属性値の `>` / `<br/>` / 閉じタグを省いた `<li>`'
-        expected: 順に 1 行目 / 2 行目（タグが閉じた行）/ 印を足さない / 印を足さない / 属性の後ろでなくタグ名の直後に足す / 足す / それぞれの `<li>` に足す
+        expected: 順に 1 行目 / 2 行目（タグが閉じた行）/ マーカーを追加しない / マーカーを追加しない / 属性の後ろでなくタグ名の直後に追加する / 追加する / それぞれの `<li>` に追加する
         mock: なし
       - name: test_mark_lines_when_unmarked
         case: 正常
-        summary: 文書の外枠と描いた文を持たない要素には足さず、印を消すと原文に戻る
+        summary: 文書の外枠と描いた文を持たない要素には追加せず、マーカーを削除すると原文に戻る
         condition: '`<!doctype html>`・`<html>`・`<head>`・`<meta>`・`<title>`・`<style>`・`<body>`・`<script>` と段落を持つ文書'
-        expected: '`<p` だけに印があり、` data-line="{数}"`・` data-line-end="{数}"` を取り除くと原文と同じ'
+        expected: '`<p` だけにマーカーがあり、` data-line="{数}"`・` data-line-end="{数}"` を取り除くと原文と同じ'
         mock: なし
       - name: test_mark_lines_when_end_line
         case: 正常
-        summary: 要素が閉じる行の印を足す
-        condition: '`parametrize`: 3 行にまたがる `<section>\n<h2>見出し</h2>\n節の文\n</section>` / 閉じタグを省いた `<ul>\n<li>a\n<li>b\n</ul>` / 空要素 `<p>a<br>\nb</p>` / 閉じタグの無い `<div>\n<p>a`'
+        summary: 要素が閉じる行のマーカーを追加する
+        condition: '`parametrize`: 3 行にまたがる `<section>\n<h2>見出し</h2>\nセクションの文\n</section>` / 閉じタグを省いた `<ul>\n<li>a\n<li>b\n</ul>` / 空要素 `<p>a<br>\nb</p>` / 閉じタグの無い `<div>\n<p>a`'
         mock: なし
         expected: 終わりの行が、順に `<section>` は 4・`<h2>` は 2 / 両方の `<li>` が 4（`</ul>` の行）/ `<br>` は 1・`<p>` は 2 / `<div>`・`<p>` が 2（原文の最後の行）
   - name: text_of_lines

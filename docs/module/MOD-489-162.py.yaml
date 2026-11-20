@@ -187,7 +187,7 @@ functions:
       description: 問題の並び（ファイルが無ければ空）
     process: |-
       1. スレッドを読む（スレッドの読み込み。`load_threads`）
-         - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` は `threads.yaml`、`id` は `null`）にし、読める範囲のスレッドの向けた項目（`raw_thread_targets`）を 2 と同じく確かめた問題を後ろに足して返す
+         - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` は `threads.yaml`、`id` は `null`）にし、読める範囲のスレッドの向けた項目（`raw_thread_targets`）を 2 と同じく確かめた問題を後ろに追加して返す
       2. `target` を持つスレッドの（ID・`target`・取り込み待ちか）を、向けた項目の点検（`_check_thread_targets`）にかける
     unit_tests:
       - name: test_check_threads
@@ -199,7 +199,7 @@ functions:
       - name: test_check_threads_when_invalid
         case: 正常
         summary: 崩れたスレッドのファイルは schema にする
-        condition: TH-1 から `posts` を消した `threads.yaml`
+        condition: TH-1 から `posts` を削除した `threads.yaml`
         mock: なし
         expected: '`schema`（`file` が `threads.yaml`）の問題が 1 件以上'
       - name: test_check_threads_when_missing
@@ -210,7 +210,7 @@ functions:
         expected: 空の並び
       - name: test_check_threads_when_target_removed
         case: 正常
-        summary: 取り込み待ちでないスレッドが消した項目を指しても拾わず、取り込み待ちは拾う
+        summary: 取り込み待ちでないスレッドが削除した項目を指しても拾わず、取り込み待ちは拾う
         condition: '`changes.yaml` の `pending.removed` に N-1 の記録（N-1 は無い）。`parametrize`: 取り込み済みだけの TH-1（N-1）/ 取り込んでいない利用者の書き込みを持つクローズの TH-1（N-1）'
         mock: なし
         expected: 空の並び / `broken_ref`（TH-1・`target`）の 1 件
@@ -243,7 +243,7 @@ functions:
       - name: test_check_comments
         case: 正常
         summary: 崩れたファイルだけを schema にする
-        condition: '`parametrize`: C-1 から `body` を消した `comments.yaml` / `items: [` の `drafts.yaml` / 消えた D-9 への整った C-1 / どちらも無い'
+        condition: '`parametrize`: C-1 から `body` を削除した `comments.yaml` / `items: [` の `drafts.yaml` / 消えた D-9 への整った C-1 / どちらも無い'
         mock: なし
         expected: '`schema`（`file` が `comments.yaml`）が 1 件以上 / `schema`（`file` が `drafts.yaml`）が 1 件以上 / 空 / 空'
   - name: _check_history
@@ -265,14 +265,14 @@ functions:
     process: |-
       1. `changes.yaml` を読む（`load_changes`）
          - `SchemaMismatchError` の場合、`lines` を `schema`（`file: changes.yaml`）の問題にして、参照切れは確かめない
-      2. `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed` の ID が無く、消した項目の記録（`removed_items`）にも無ければ `broken_ref`（`file: changes.yaml`、`key` は `sets[0].added` の形）にする
+      2. `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed` の ID が無く、削除した項目の記録（`removed_items`）にも無ければ `broken_ref`（`file: changes.yaml`、`key` は `sets[0].added` の形式）にする
       3. 本文を持ち `history` を持つ項目ごとに、今の本文へ `history` を新しいものから順に当てる（`apply_body_diff`）
          - `None` を返した要素で止め、`stale_history`（`key: history[{位置}].body_diff`、`detail` にその回より前の本文の差分を出せないこと）にする
     unit_tests:
       - name: test_check_history_when_body_rewritten
         case: 正常
         summary: 手で書き換えた本文に当たらない変更履歴を拾う
-        condition: D-1 の本文を `run_update` で直した後、`docs/D-1.mark.md` の全ての行を書き換える
+        condition: D-1 の本文を `run_update` で修正した後、`docs/D-1.mark.md` の全ての行を書き換える
         mock: なし
         expected: '`stale_history`（D-1・`history[0].body_diff`）が 1 件'
       - name: test_check_history_when_broken_ref
@@ -283,7 +283,7 @@ functions:
         expected: '`broken_ref`（`changes.yaml`・`sets[0].changed`・`D-9`）'
       - name: test_check_history_when_item_removed
         case: 正常
-        summary: 消した項目の ID を参照切れにしない
+        summary: 削除した項目の ID を参照切れにしない
         condition: '`sets[1].added` に N-1、`sets[0].removed` に N-1 の記録を持ち、N-1 が無いワークスペース'
         mock: なし
         expected: 問題が 0 件
@@ -293,7 +293,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/checker.py
     usecase: 記録の削除と取り下げ
     scope: public
-    summary: 1 項目を指している記録を、エラーの行の形で返す（読むだけ）
+    summary: 1 項目を指している記録を、エラーの行の構造で返す（読むだけ）
     args:
       - name: workspace
         type: Workspace
@@ -304,7 +304,7 @@ functions:
         type: str
         required: true
         passing: positional
-        description: 消す項目の ID
+        description: 削除する項目の ID
     returns:
       type: list[str]
       description: '`{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行（指している記録が無ければ空）'
@@ -348,7 +348,7 @@ functions:
       description: 問題の並び
     process: |-
       1. 並びの 1 件ごとに、向けた項目が無ければ `broken_ref`（`file` は `threads.yaml`、`id` はスレッドの ID、`key` は `target`、`detail` は `存在しない ID: {target}`）にする
-         - 取り込み待ちでなく、向けた項目が消した項目の記録（`load_changes` の `removed_items`）にあるものは拾わない
+         - 取り込み待ちでなく、向けた項目が削除した項目の記録（`load_changes` の `removed_items`）にあるものは拾わない
   - name: _check_embedded_files
     title: 埋め込んだファイルの点検
     kind: 関数

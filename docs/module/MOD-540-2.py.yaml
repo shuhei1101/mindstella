@@ -37,13 +37,13 @@ data_models:
     properties:
       - name: added
         type: list[tuple[Kind, dict[str, Any]]]
-        description: 足した項目（種類の順・項目の並びの順）
+        description: 追加した項目（種類の順・項目の並びの順）
       - name: changed
         type: 'list[tuple[Kind, dict[str, Any], dict[str, Any], str | None, str | None]]'
         description: 変えた項目（種類・前の項目・今の項目・前の本文・今の本文）
       - name: removed
         type: list[tuple[Kind, dict[str, Any]]]
-        description: 消した項目（種類・前の項目）
+        description: 削除した項目（種類・前の項目）
 enums:
   - name: Writer
     title: 書いた元
@@ -80,7 +80,7 @@ classes:
       - name: _signature
         type: str
         access: 内部 (_)
-        description: 前回の書き換えの印（『配信』の `workspace_signature` と同じ作り方で、見るファイルだけ）
+        description: 前回の書き換えのマーカー（『配信』の `workspace_signature` と同じ作り方で、見るファイルだけ）
       - name: _duplicates
         type: tuple[str, ...]
         access: 内部 (_)
@@ -124,25 +124,25 @@ classes:
           - name: test_start_when_changed_while_stopped
             case: 正常
             summary: snapshot と違えば外部の変更として記録する
-            condition: D-1 の答えが違う `snapshot/decisions.yaml` を持つワークスペース
+            condition: D-1 の回答が違う `snapshot/decisions.yaml` を持つワークスペース
             mock: '`threading.Thread`'
             expected: '`history.yaml` の D-1 の変更履歴の `by` が `external`'
       - name: poll
         title: 書き換えを見る
         kind: メソッド
-        summary: 書き換えの印が変わったときだけ中身を読み、違いを記録する。外部の変更の自動のまとめの時刻も見る
+        summary: 書き換えのマーカーが変わったときだけ中身を読み、違いを記録する。外部の変更の自動のまとめの時刻も見る
         returns:
           type: None
           description: 何も返さない
         process: |-
-          1. 書き換えの印を作り直す（`signature_of`）。前と同じなら 4. へ
+          1. 書き換えのマーカーを再作成する（`signature_of`）。前と同じなら 4. へ
           2. 書き換えの鍵と `.mindstella.lock` を取り（『読み書きと検証』の `workspace_lock`）、今の中身を読む（`take_snapshot`）
              - 種類の YAML が読めない・`items` が配列でない場合、そのファイルは前回の中身のままにして比べない。初めてのときだけログに残す
                - `[WARNING]` `[change-detection] {ワークスペースの ID} unreadable: {ファイル}`
           3. 書いた元を見分け（`classify_writer`）、違いを求める（`diff_snapshots`）
              - 違いが無い、または書いた元が `git` の場合、前回の中身を置き換えるだけにする
              - それ以外の場合、記録して（`record_diff`）、前回の中身を置き換え、`snapshot/` に書く（`save_snapshot`）。書いた元が `external` なら `_external_since` を今にする
-             - 記録で `WriteFailedError` が起きた場合、前回の中身を置き換えずにログに残す（次の回で記録し直す）
+             - 記録で `WriteFailedError` が起きた場合、前回の中身を置き換えずにログに残す（次の回で記録し修正する）
                - `[ERROR]` `[change-detection] {ワークスペースの ID} write_failed: {パス}`
              - 重なった ID を求め（`find_duplicate_ids`）、前に知らせたものと違えば `_duplicates` を置き換え、ペインへ貼り付ける（`paste_duplicates`）
           4. `_external_since` から `EXTERNAL_COMMIT_DELAY_SEC` が過ぎていれば、鍵とロックを取って外部の変更をまとめ（『変更履歴』の `flush_pending` を `ai` で呼ぶのと同じく、`pending.by` が `external` のときだけ `commit_pending` で説明 `EXTERNAL_SUMMARY`・`by: external`）、`_external_since` を `None` にする
@@ -150,7 +150,7 @@ classes:
           - name: test_poll_when_external
             case: 正常
             summary: MindStella のセッションが応答の途中でなければ外部の変更として記録し、時間が過ぎたらまとめる
-            condition: D-1 を持つワークスペースで、D-1 の答えを書き換えてから `poll` を呼び、時計を `EXTERNAL_COMMIT_DELAY_SEC` 進めてもう一度呼ぶ
+            condition: D-1 を持つワークスペースで、D-1 の回答を書き換えてから `poll` を呼び、時計を `EXTERNAL_COMMIT_DELAY_SEC` 進めてもう一度呼ぶ
             mock: '`time.monotonic`・`classify_writer`（`external` を返す）'
             expected: '1 回目の後 `history.yaml` の D-1 の `updated_by` が `external` で `pending.by` が `external`。2 回目の後 `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」で `pending` が空。`decisions.yaml` は書き換えた後のまま'
           - name: test_poll_when_session
@@ -192,7 +192,7 @@ classes:
           description: 何も返さない
         process: |-
           1. 前回の中身の `written` のファイルだけを渡した中身で置き換え、ほかのファイルは前回の中身のままにする（`os.replace` から呼ぶまでの間に project-index が書いた分は、次の `poll` で違いとして記録する）
-          2. `snapshot/` に書く。書き換えの印は作り直さない（次の `poll` で中身を比べる）
+          2. `snapshot/` に書く。書き換えのマーカーは再作成しない（次の `poll` で中身を比べる）
         unit_tests:
           - name: test_accept_own_write
             case: 正常
@@ -217,9 +217,9 @@ classes:
           description: 何も返さない
         process: 1. `_stop` を立て、スレッドを `POLL_INTERVAL_SEC` の 2 倍まで待つ
       - name: rebase
-        title: 前回の中身を作り直す
+        title: 前回の中身を再作成する
         kind: メソッド
-        summary: 前回の中身と書き換えの印を指定した中身で置き換え、`snapshot/` に記載する。比べず、記録しない（`rebase_snapshot` が呼ぶ）
+        summary: 前回の中身と書き換えのマーカーを指定した中身で置き換え、`snapshot/` に記載する。比べず、記録しない（`rebase_snapshot` が呼ぶ）
         args:
           - name: snapshot
             type: Snapshot
@@ -229,7 +229,7 @@ classes:
         returns:
           type: None
           description: 何も返さない
-        process: 1. 前回の中身を `snapshot` にし、書き換えの印を作り直して（`signature_of`）、`snapshot/` に記載する（`save_snapshot`）
+        process: 1. 前回の中身を `snapshot` にし、書き換えのマーカーを再作成して（`signature_of`）、`snapshot/` に記載する（`save_snapshot`）
 functions:
   - name: take_snapshot
     title: 今の中身を読む
@@ -260,8 +260,8 @@ functions:
       type: tuple[Snapshot, list[str]]
       description: 今の中身と、読めなかったファイル
     process: |-
-      1. 種類ごとの YAML を UTF-8 で読み、YAML として読めて `items` が配列なら `files` に入れる。読めなければ読めなかったファイルに足し、`previous` があればその中身を入れる
-      2. 直下の `docs/`（`body_root`）の直下の `*.md`・`*.html` を読んで、`f"{BODY_DIR}/{ファイル名}"` の名前で `files` に入れる。書き換えの印（`signature_of`）も同じフォルダの本文を見る
+      1. 種類ごとの YAML を UTF-8 で読み、YAML として読めて `items` が配列なら `files` に入れる。読めなければ読めなかったファイルに追加し、`previous` があればその中身を入れる
+      2. 直下の `docs/`（`body_root`）の直下の `*.md`・`*.html` を読んで、`f"{BODY_DIR}/{ファイル名}"` の名前で `files` に入れる。書き換えのマーカー（`signature_of`）も同じフォルダの本文を見る
       3. ワークスペースが Git の作業ツリーなら `git rev-parse HEAD` と `git symbolic-ref -q HEAD` を読む（失敗したら `None`）
     unit_tests:
       - name: test_take_snapshot
@@ -299,7 +299,7 @@ functions:
       - name: test_diff_snapshots
         case: 正常
         summary: 追加・変更・削除と、本文だけの変更を見分ける
-        condition: 前回 D-1・D-2・D-3、今 D-1（答えを変えた）・D-2（本文だけ変えた）・D-4
+        condition: 前回 D-1・D-2・D-3、今 D-1（回答を変えた）・D-2（本文だけ変えた）・D-4
         mock: なし
         expected: 追加が D-4、変更が D-1・D-2（D-2 は前と今の本文つき）、削除が D-3
       - name: test_diff_snapshots_when_same
@@ -422,10 +422,10 @@ functions:
       description: 何も返さない
     process: |-
       1. 項目の履歴と記録を読む（『変更履歴』の `load_item_history`・`load_changes`）。書いた元が違う変更が入っていれば先にまとめる（`flush_pending`）
-      2. 追加ごとに、通し番号を振り（`advance_seq`）、`created`・`updated`・`updated_by`・`seq`・`added_seq` の行を作り、`pending.added` に足す（`note_pending`、`by` は書いた元）
-      3. 変更ごとに、1 回分を作り（`make_entry`、`by` は書いた元）、あれば通し番号を振って行の `seq`・`updated`・`updated_by` を書き換えて `confirmed` を除き（`unconfirm`）、行に積み（`history_limit`、`stack_history`。`read_seq` は 1. の `load_changes` が入れた前回参照した時点）、保持する回数が 0 より大きければ `pending.changed` に足す
-      4. 削除ごとに、通し番号を振り、`pending.removed` に足して（`note_removed`）、行を消す
-      5. `history.yaml` と `changes.yaml` を一時ファイルに書いてから `os.replace` で置き換える（`OSError` は一時ファイルを消して `WriteFailedError`）
+      2. 追加ごとに、連番を振り（`advance_seq`）、`created`・`updated`・`updated_by`・`seq`・`added_seq` の行を作り、`pending.added` に追加する（`note_pending`、`by` は書いた元）
+      3. 変更ごとに、1 回分を作り（`make_entry`、`by` は書いた元）、あれば連番を振って行の `seq`・`updated`・`updated_by` を書き換えて `confirmed` を除き（`unconfirm`）、行に積み（`history_limit`、`stack_history`。`read_seq` は 1. の `load_changes` が入れた前回参照した時点）、保持する回数が 0 より大きければ `pending.changed` に追加する
+      4. 削除ごとに、連番を振り、`pending.removed` に追加して（`note_removed`）、行を削除する
+      5. `history.yaml` と `changes.yaml` を一時ファイルに書いてから `os.replace` で置き換える（`OSError` は一時ファイルを削除して `WriteFailedError`）
     exceptions:
       - name: WriteFailedError
         condition: '`history.yaml` か `changes.yaml` を書けない'
@@ -434,7 +434,7 @@ functions:
       - name: test_record_diff
         case: 正常
         summary: 追加・変更・削除をそれぞれ記録する
-        condition: '`last_seq` 3 の記録で、追加 D-4・変更 D-1（答え）・削除 D-2 を `external` で記録する'
+        condition: '`last_seq` 3 の記録で、追加 D-4・変更 D-1（回答）・削除 D-2 を `external` で記録する'
         mock: '`now`'
         expected: '`history.yaml` に D-4 の行（`added_seq` 4）、D-1 の行に `by: external`・`before.answer` の 1 回分、D-2 の行が無い。`pending` が `added: [D-4]`・`changed: [D-1]`・`removed` に D-2・`by: external`'
       - name: test_record_diff_when_writer_differs
@@ -518,12 +518,12 @@ functions:
         mock: 貼り付けの関数
         expected: '前は `[mindstella] 同じ ID の項目が 2 件あります: D-1（decisions.yaml）` で始まる文で 1 回、後は呼ばれない'
   - name: rebase_snapshot
-    title: 移し替えの後に前回の中身を作り直す
+    title: 移し替えの後に前回の中身を再作成する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
     usecase: 書き込みを履歴に残す
     scope: public
-    summary: 『記録の形式の移行』が手順を当てた後に、前回の中身を今の中身で作り直し、移し替えの書き換えを変更として記録しないようにする（ワークスペースの管理が、移し替えと同じ鍵の中で呼ぶ）
+    summary: 『記録の形式の移行』が手順を当てた後に、前回の中身を今の中身で再作成し、移し替えの書き換えを変更として記録しないようにする（ワークスペースの管理が、移し替えと同じ鍵の中で呼ぶ）
     args:
       - name: root
         type: Path
@@ -560,7 +560,7 @@ constants:
     title: 見る間隔
     container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
     usecase: 書き込みを履歴に残す
-    summary: 書き換えの印を作り直す間隔（『書き換えの知らせ』と同じ。非機能要件「画面への反映の時間」）
+    summary: 書き換えのマーカーを再作成する間隔（『書き換えの通知』と同じ。非機能要件「画面への反映の時間」）
     value: '0.25'
   - name: EXTERNAL_COMMIT_DELAY_SEC
     title: 外部の変更を自動でまとめるまでの秒数
@@ -578,5 +578,5 @@ constants:
     title: 重なった ID の貼り付ける文
     container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
     usecase: 書き込みを履歴に残す
-    summary: ペインへ貼り付ける文の形（インターフェース定義『変更の検知』の「貼り付ける文」）
-    value: '[mindstella] 同じ ID の項目が 2 件あります: {ID}（{ファイル名}）。片方の ID を next_id で振り直してください'
+    summary: ペインへ貼り付ける文の構造（インターフェース定義『変更の検知』の「貼り付ける文」）
+    value: '[mindstella] 同じ ID の項目が 2 件あります: {ID}（{ファイル名}）。片方の ID を next_id で再採番してください'

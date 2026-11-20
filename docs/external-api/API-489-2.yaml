@@ -9,7 +9,7 @@ endpoints:
   - name: GET /web/glossary-presets
     method: GET
     path: /web/glossary-presets
-    summary: 用語集のプリセットの名前の一覧（`presets`）と、voice-paste の設定で選んでいるプリセット（`active`）を返す。文字起こしのインターフェースの voice-paste の実装が、使えるかの確かめとプリセットの候補に使う。200 なら使える、404 なら音声を受け付ける口が無い（`unsupported`）、接続を断られた・応答の上限を超えたなら届かない（`stopped`）、それ以外のステータスも `stopped` と同じに扱って標準エラーにステータスを記録する
+    summary: 用語集のプリセットの名前の一覧（`presets`）と、voice-paste の設定で選んでいるプリセット（`active`）を返す。文字起こしのインターフェースの voice-paste の実装が、使えるかの確かめとプリセットの候補に使う。200 なら使える、404 なら音声を受け付けるエンドポイントが無い（`unsupported`）、接続を断られた・応答の上限を超えたなら届かない（`stopped`）、それ以外のステータスも `stopped` と同じに扱って標準エラーにステータスを記録する
     status_codes:
       - code: '200'
         condition: 一覧を返した
@@ -18,7 +18,7 @@ endpoints:
   - name: POST /web/transcriptions
     method: POST
     path: /web/transcriptions
-    summary: '`multipart/form-data` の `audio`（音声のファイル）と任意の `glossary_preset` を受けてジョブを積み、202 と `job_id` を返す。本文の上限は 100,000,000 バイト。voice-paste の実装は `audio` のファイル名に `Content-Type` の形の拡張子を付け、`Origin` を付けずに送る（Origin の無い POST は Host が `127.0.0.1`・`localhost` のときだけ受ける。shuhei1101/voice-paste#256）。404 は口が無い、接続できないのは届かない、それ以外の 4xx・5xx は依頼を受け付けなかったと読み替える'
+    summary: '`multipart/form-data` の `audio`（音声のファイル）と任意の `glossary_preset` を受けてジョブを積み、202 と `job_id` を返す。本文の上限は 100,000,000 バイト。voice-paste の実装は `audio` のファイル名に `Content-Type` の形式の拡張子を付け、`Origin` を付けずに送信する（Origin の無い POST は Host が `127.0.0.1`・`localhost` のときだけ受ける。shuhei1101/voice-paste#256）。404 はエンドポイントが無い、接続できないのは届かない、それ以外の 4xx・5xx は依頼を受け付けなかったと読み替える'
     status_codes:
       - code: '202'
         condition: 受け付けた（`job_id`）

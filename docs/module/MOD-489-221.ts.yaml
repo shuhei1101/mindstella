@@ -105,7 +105,7 @@ components:
       - name: marks
         type: Record<string, 'pending' | 'remove' | 'blocked'>
         required: true
-        description: キーか案の記号 → 印の種類（入力欄の枠と名前の後ろの印）
+        description: キーか案の記号 → マーカーの種類（入力欄の枠と名前の後ろのマーカー）
       - name: removing
         type: boolean
         required: true

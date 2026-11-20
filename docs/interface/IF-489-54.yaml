@@ -8,7 +8,7 @@ flows:
     summary: 表示する種類の既定を書き、ほかのキーを残す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 作成を済ませ、`config.yaml` が `display` を持たないワークスペース
     flow: |-
@@ -34,10 +34,10 @@ flows:
     summary: 選べない種類は書かない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 作成を済ませたワークスペース
-        notes: '`visible_kinds` に `rainbow` を含めて送る'
+        notes: '`visible_kinds` に `rainbow` を含めて送信する'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -52,11 +52,11 @@ flows:
       - '`detail` に `visible_kinds` と選べる値がある'
       - '`config.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_value_invalid
-  - name: 異常系（送り元が違う・403）
+  - name: 異常系（送信元が違う・403）
     summary: 別のサイトのページからは書かない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 作成を済ませたワークスペース
         notes: '`Origin: https://attacker.example` を付ける'
@@ -77,7 +77,7 @@ flows:
     summary: ワークスペースのフォルダに書けないと、理由を返して何も変えない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 作成を済ませ、`preview_url` を呼んだ後にワークスペースのフォルダを読み取り専用（`0o500`）にしたワークスペース
     flow: |-
@@ -96,14 +96,14 @@ flows:
       - '`detail` に書けなかったパスと理由がある'
       - '`config.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_write_fails
-  - name: 異常系（削除したキーを送る・400）
-    summary: 削除したネットワークの見た目の既定を送ると、書かずに知らないキーを返す
+  - name: 異常系（削除したキーを送信する・400）
+    summary: 削除したネットワークの見た目の既定を送信すると、書かずに知らないキーを返す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 作成を済ませたワークスペース
-        notes: '`{"network_look": "glow", "visible_kinds": ["decisions"]}` を送る'
+        notes: '`{"network_look": "glow", "visible_kinds": ["decisions"]}` を送信する'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -120,7 +120,7 @@ flows:
     test: test_error_when_removed_key_sent
 lead: プレビューの表示の設定で「ワークスペースの既定にする」を確かめて保存したとき、表示する種類の既定を `config.yaml` の `display` に書く。書いたら開いている画面へ知らせる。
 idempotent: true
-side_effects: '`config.yaml` の `display` だけを書き換え、書き換えの知らせを送る。ほかのキーと種類ごとの YAML は書き換えない'
+side_effects: '`config.yaml` の `display` だけを書き換え、書き換えの知らせを送信する。ほかのキーと種類ごとの YAML は書き換えない'
 permissions: 配信の画面からの要求だけ（`Host` と `Origin` を確かめる）。役割での絞り込みは持たない（#25 が入れる）
 exclusivity: ほかの書き込むエンドポイントと同じく、書き換えの鍵（プロセスの中の鍵と `.mindstella.lock`）を取ってから読み書きする
 callers:
@@ -131,18 +131,18 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
+    constraints: '『プレビューの配信』の制約「接続先の確認」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
   - name: Origin
     type: str
     required: false
     location: header
-    description: 送り元
-    constraints: 無いか、『プレビューの配信』の制約「送り元の確かめ」に合うもの
+    description: 送信元
+    constraints: 無いか、『プレビューの配信』の制約「送信元の確認」に合うもの
   - name: Content-Type
     type: str
     required: true
     location: header
-    description: 本文の形
+    description: 本文の構造
     constraints: '`application/json`'
   - name: visible_kinds
     type: list[Literal['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs']]
@@ -177,10 +177,10 @@ status_codes:
     notes: '`detail` に書けなかったパスと理由。`config.yaml` は書く前の中身のまま'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
-  - item: 書き方
-    constraint: '`config.yaml` を読み、`display` だけを本文の値で丸ごと置き換え、スキーマと突き合わせてから一時ファイルに書いて `os.replace` で置き換える。キーの並びは今の並びを保ち、`display` が無ければ末尾に足す'
-  - item: 書き換えの知らせ
-    constraint: 書き終えたら『書き換えの知らせ』を送る（`config.yaml` の更新日時で見つける）
+  - item: 記載方法
+    constraint: '`config.yaml` を読み、`display` だけを本文の値で丸ごと置き換え、スキーマと突き合わせてから一時ファイルに書いて `os.replace` で置き換える。キーの並びは今の並びを保ち、`display` が無ければ末尾に追加する'
+  - item: 書き換えの通知
+    constraint: 書き終えたら『書き換えの通知』を送信する（`config.yaml` の更新日時で見つける）
   - item: 変更履歴
     constraint: '`changes.yaml` にも項目の `history` にも入れない'
   - item: 配る書き出し

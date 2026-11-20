@@ -2,7 +2,7 @@ id: API-591-1
 title: GitHub
 lead: リポジトリのブランチの先頭の commit を返す GitHub の REST API。常駐サーバーが mdmark の `latest` を develop の先頭の commit の SHA に解決するのに使用する。
 version:
-  api_version: REST API（`X-GitHub-Api-Version` を付けない既定の版）
+  api_version: REST API（`X-GitHub-Api-Version` を付けない既定のバージョン）
   checked_on: '2026-11-19'
 auth:
   method: なし（公開のリポジトリを認証なしで問い合わせる。上限は接続元の IP ごとに 60 回/時）

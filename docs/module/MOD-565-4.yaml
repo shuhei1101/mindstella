@@ -6,7 +6,7 @@ directory: |-
   plugins/mindstella/
     agent-flows/
       dev-docs.yaml            配信元 mindstella-agent-flows の設定（documents の行は agent_flow の 1 行。paths は *.yaml・schema は agent-flow.schema.json）
-      agent-flow.schema.json   エージェントフローの形（インターフェース定義『エージェントフローの参照』のリクエスト）
+      agent-flow.schema.json   エージェントフローの構造（インターフェース定義『エージェントフローの参照』のリクエスト）
       startup.yaml             mindstella/startup（起動と再開）
       on-comment.yaml          mindstella/on-comment（コメントの取り込み）
       record.yaml              mindstella/record（記録の使い分け）
@@ -17,7 +17,7 @@ notes:
   ファイルの名前: '1 エージェントフロー 1 ファイルで、ファイル名は ID の `mindstella/` の後ろに `.yaml` を付けたものにする。`dev-docs.yaml` の `metadata` は `id: id`・`name: title`・`description: summary`'
   スキーマ: '`agent-flow.schema.json` は `id`（列挙の 3 つ）・`title`・`summary`・`condition`・`steps[]`（`name`・`body`・任意の `when`・`calls[]`（`server` は `mindstella` か `project-index`、`tool`）・`refs[]`）だけを許し（`additionalProperties: false`）、`steps[].name` はエージェントフローの中で一意にする。`calls[].tool` が今のツールにあるかは結合テストが確かめる'
   注入文の雛形: '`session-start.yaml` は規約『プロンプトファイル』の 1 枚の YAML（`id: session-start`・`kind: hook`・`lang: ja`、1 行目のモードラインで knowledge のスキーマを指す）にする。`vars` は『再開の状況』の応答のキー（`context` を除く）で、常駐サーバーのモジュール構成『resume.py』の `render_context` が Jinja2 で描く（フックは描かない）。変数を含まない部品（エージェントフローの案内）を上、含む部品を下に並べる'
-  削除するフォルダ: '`skills/setup/`・`skills/session/`・`skills/upgrade/` と `skills/mindmap/references/`・`skills/mindmap/playbooks/` を消す。`references/` の文章・HTML・リサーチ・質問の書き方はエージェントフローが knowledge の規約を参照する（A-107）。`register.py` は `skills/mindmap/scripts/` へ移す（モジュール構成『register.py』）'
+  削除するフォルダ: '`skills/setup/`・`skills/session/`・`skills/upgrade/` と `skills/mindmap/references/`・`skills/mindmap/playbooks/` を削除する。`references/` の文章・HTML・リサーチ・質問の書き方はエージェントフローが knowledge の規約を参照する（A-107）。`register.py` は `skills/mindmap/scripts/` へ移す（モジュール構成『register.py』）'
 refs:
   - IF-565-1#
   - IF-489-68#

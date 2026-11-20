@@ -54,7 +54,7 @@ upstream: eslint/eslint
 verification:
   state: 済
   date: '2026-11-04'
-  detail: npx eslint が frontend/src の違反（非推奨の prefetchQuery・複雑度 62 の関数・クラスの並び）を検出し、直した後に終了コード 0 になることを確かめた。2026-11-05 に、enum・interface・function 宣言・非 null の断定・default export を含むファイルが 5 件の error になることを確かめた
+  detail: npx eslint が frontend/src の違反（非推奨の prefetchQuery・複雑度 62 の関数・クラスの並び）を検出し、修正した後に終了コード 0 になることを確かめた。2026-11-05 に、enum・interface・function 宣言・非 null の断定・default export を含むファイルが 5 件の error になることを確かめた
 license: MIT（eslint-plugin-sonarjs は LGPL-3.0-only、eslint-import-resolver-typescript は ISC、eslint-plugin-import・eslint-config-prettier は MIT。どれも開発用だけで配る物に入らない）
 official_url: https://eslint.org/
 docs_url: https://eslint.org/docs/latest/use/configure/

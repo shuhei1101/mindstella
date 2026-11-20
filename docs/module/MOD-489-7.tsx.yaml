@@ -31,7 +31,7 @@ components:
       - name: test_reply_form_when_recording_ended
         case: 正常
         summary: 録音を始めたら ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す
-        condition: '入力欄 `確認: でよい`・カーソル 4 で `voice: recording` に描き直し、続けて `voice: idle` に描き直す'
+        condition: '入力欄 `確認: でよい`・カーソル 4 で `voice: recording` に再描画し、続けて `voice: idle` に再描画する'
         mock: なし
         expected: 録音中は ✓ にフォーカスがあり、`idle` の後は入力欄が見えてフォーカスが入力欄にあり、`selectionStart`・`selectionEnd` が 4
       - name: test_reply_form_when_reviewed
@@ -43,7 +43,7 @@ components:
       - name: test_reply_form_when_reviewed_focus_submit
         case: 正常
         summary: 入力欄へ戻さない設定で、文字起こしを溜めた後は「レビューに追加」へフォーカスを移す
-        condition: '`useFocusAfterAddTarget` が `submit`。`voice: transcribing` から `idle`・`status: reviewed` に描き直す'
+        condition: '`useFocusAfterAddTarget` が `submit`。`voice: transcribing` から `idle`・`status: reviewed` に再描画する'
         mock: '`useFocusAfterAddTarget`'
         expected: 「レビューに追加」にフォーカスがある
     container: frontend/src/features/comments/shared/reply-form.tsx

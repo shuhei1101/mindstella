@@ -20,13 +20,13 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: set_thread_status workspace id TH-1 status closed reason
-        IF->>WS: 状態を closed にし、記録を足す
+        IF->>WS: 状態を closed にし、記録を追加する
         IF-->>クライアント: JSON（status closed・changed true）
       ```
     expected:
       - ツールのエラーにならない
       - 'TH-1 の `status` が `closed` で、`events` の末尾が `kind: closed`・`author: ai`・`reason: 了解を受けた`・日時'
-      - 書き込みは呼ぶ前と同じ（返信を足さない）
+      - 書き込みは呼ぶ前と同じ（返信を追加しない）
     test: test_normal
   - name: 正常系（オープンに戻す）
     summary: クローズのスレッドを AI が理由つきでオープンに戻す
@@ -34,8 +34,8 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 利用者が質問を送ってからクローズにしたスレッド TH-1 を持つワークスペース
-        notes: '`status` は `open`、`reason` は `質問に答える`'
+        description: 利用者が質問を送信してからクローズにしたスレッド TH-1 を持つワークスペース
+        notes: '`status` は `open`、`reason` は `質問に回答する`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -46,11 +46,11 @@ flows:
         IF-->>クライアント: JSON（status open・changed true）
       ```
     expected:
-      - 'TH-1 の `status` が `open` で、`events` の末尾が `kind: reopened`・`author: ai`・`reason: 質問に答える`'
-      - 続けて『スレッドへの返信』を呼ぶと返信が足せる
+      - 'TH-1 の `status` が `open` で、`events` の末尾が `kind: reopened`・`author: ai`・`reason: 質問に回答する`'
+      - 続けて『スレッドへの返信』を呼ぶと返信が追加できる
     test: test_normal_when_reopen
   - name: 正常系（既にその状態）
-    summary: 既に渡した状態なら記録を足さずに返す
+    summary: 既に渡した状態なら記録を追加せずに返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -153,13 +153,13 @@ flows:
       - 'ツールのエラーになり、本文が `エラー: ` で始まりトレースバックを含まない'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_write_fails
-  - name: 異常系（スレッドの形が崩れている・SchemaMismatchError）
+  - name: 異常系（スレッドの構造が崩れている・SchemaMismatchError）
     summary: 手で崩した threads.yaml には書かずに合わない箇所を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '`threads.yaml` の TH-1 から `posts` を消したワークスペース'
+        description: '`threads.yaml` の TH-1 から `posts` を削除したワークスペース'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -223,7 +223,7 @@ flows:
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 利用者の質問（取り込んでいない）と AI の返信（利用者の未読）を持ち、利用者がクローズにしたスレッド TH-1 を持つワークスペース
-        notes: '`status` は `open`、`reason` は `質問に答える`'
+        notes: '`status` は `open`、`reason` は `質問に回答する`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -260,7 +260,7 @@ flows:
     test: test_error_when_not_mindstella_session
 lead: AI がスレッドをクローズにするかオープンに戻し、書き手（AI）・任意の理由・日時をスレッドに残す。利用者の書き換えは『画面からのスレッドの状態の書き換え』。
 idempotent: true
-side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件足す（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
+side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件追加する（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
 callers:
   - IF-565-1#
 request:
@@ -333,9 +333,9 @@ error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を
 constraints:
   - item: 呼べるセッション
     constraint: そのワークスペースの MindStella のセッションだけ（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）。正常系のフローは、状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 理由の上限
     constraint: 400 文字

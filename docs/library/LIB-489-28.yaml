@@ -2,7 +2,7 @@ id: LIB-489-28
 title: "uvicorn"
 kind: "ライブラリ"
 version:
-  current: 0.54.0（mcp 2.3.0 が引き込んだ版）
+  current: 0.54.0（mcp 2.3.0 が引き込んだバージョン）
   checked_on: '2026-11-02'
   pinning: 直接の下限を決めない。mcp の依存（`uvicorn>=0.31.1`）として入る
 catalogs:
@@ -17,7 +17,7 @@ catalogs:
         purpose: 常駐サーバーの HTTP の待ち受けを動かす
       - name: Server.run(sockets=...)
         kind: メソッド
-        purpose: 先に bind したソケットで待ち受け、SIGTERM・SIGINT の受け口を置いて、終わるまで戻らない
+        purpose: 先に bind したソケットで待ち受け、SIGTERM・SIGINT のハンドラーを置いて、終わるまで戻らない
       - name: Server.should_exit
         kind: 属性
         purpose: 真にすると、返している途中のレスポンスを待ってから終わり始める（`server_stop` が使う）
@@ -32,7 +32,7 @@ upstream: Kludex/uvicorn
 verification:
   state: 済
   date: '2026-11-02'
-  detail: 0.54.0 で、`bind` したソケットを `Server.run(sockets=[...])` に渡すとそのポートで待ち受けた。`server_stop` で `should_exit` を真にすると、返している途中のレスポンスを返し終えてから終わり、`run` が戻った。SIGTERM を受けると終わり終えてから、受けたシグナルを `signal.raise_signal` で元の受け口へ送り直す（既定の受け口のままだと `run` の後の処理を通らずにプロセスが終わる）ため、`run` の間だけ SIGTERM の受け口を `SystemExit` を投げる関数にして、終了時のフックが呼ばれることを確かめた
+  detail: 0.54.0 で、`bind` したソケットを `Server.run(sockets=[...])` に渡すとそのポートで待ち受けた。`server_stop` で `should_exit` を真にすると、返している途中のレスポンスを返し終えてから終わり、`run` が戻った。SIGTERM を受けると終わり終えてから、受けたシグナルを `signal.raise_signal` で元のハンドラーへ再送信する（既定のハンドラーのままだと `run` の後の処理を通らずにプロセスが終わる）ため、`run` の間だけ SIGTERM のハンドラーを `SystemExit` を投げる関数にして、終了時のフックが呼ばれることを確かめた
 license: BSD-3-Clause（商用利用可）
 official_url: https://www.uvicorn.org/
 docs_url: https://www.uvicorn.org/settings/

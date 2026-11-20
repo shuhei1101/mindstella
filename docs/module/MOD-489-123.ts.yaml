@@ -1,12 +1,12 @@
 id: MOD-489-123
 title: プレビュー / term-tips
-lead: 本文の印のツールチップと、見出しへの送り・示す箇所。
+lead: 本文のマーカーのツールチップと、見出しへの送り・示す箇所。
 functions:
   - name: attachTermTips
-    title: 本文の印のツールチップ
+    title: 本文のマーカーのツールチップ
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 本文の印のツールチップと、見出しへの送り・示す箇所
+    summary: 本文のマーカーのツールチップと、見出しへの送り・示す箇所
     args: []
     returns:
       type: unknown

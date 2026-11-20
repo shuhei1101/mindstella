@@ -111,7 +111,7 @@ functions:
     title: 埋め込んだ HTML を除いた Markdown
     container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
     usecase: 資料のエクスポート
-    summary: 本文から `<!-- html -->` 〜 `<!-- /html -->` の範囲を印の行ごと除く
+    summary: 本文から `<!-- html -->` 〜 `<!-- /html -->` の範囲をマーカーの行ごと除く
     kind: 関数
     scope: public
     args:
@@ -129,7 +129,7 @@ functions:
     unit_tests:
       - name: test_strip_embedded_html
         case: 正常
-        summary: 範囲だけを除き、フェンスの中と閉じていない印は残す
+        summary: 範囲だけを除き、フェンスの中と閉じていないマーカーは残す
         condition: '`parametrize`: 範囲 2 つを持つ本文 / フェンスの中に `<!-- html -->` を持つ本文 / 閉じていない `<!-- html -->` を持つ本文'
         mock: なし
         expected: 範囲の行が無くなる / 本文のまま / 本文のまま

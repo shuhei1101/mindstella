@@ -24,10 +24,10 @@ components:
         expected: 表に行が並ぶ
       - name: test_decisions_screen_when_diff
         case: 正常
-        summary: 消した項目の帯
+        summary: 削除した項目の帯
         condition: '`diff=V-2`'
         mock: MSW
-        expected: 帯に消した項目
+        expected: 帯に削除した項目
     container: frontend/src/features/decisions/decisions/decisions-screen.tsx
 notes:
   単体テスト: 同じフォルダの `decisions-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）

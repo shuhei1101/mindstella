@@ -2,9 +2,9 @@ id: LIB-489-7
 title: "git"
 kind: "CLI"
 version:
-  current: 2.43.0（確かめた版）
+  current: 2.43.0（確かめたバージョン）
   checked_on: '2026-10-04'
-  pinning: 版は固定しない。git が無いか、作業ツリーの外、ignore されたファイルがある、コミットできないときは、使わずにフォルダの複製に回す
+  pinning: バージョンは固定しない。git が無いか、作業ツリーの外、ignore されたファイルがある、コミットできないときは、使わずにフォルダの複製に回す
 catalogs:
   - name: コマンド
     version: 2.43.0
@@ -35,7 +35,7 @@ catalogs:
         purpose: フォルダの下をコミットの中身に戻す
       - name: git clean -fdq -- .
         kind: コマンド
-        purpose: フォルダの下の、コミットに無いファイルとフォルダを消す
+        purpose: フォルダの下の、コミットに無いファイルとフォルダを削除する
 lead: ソースコードの変更を履歴として記録する分散型のバージョン管理の CLI。
 supplier: Git プロジェクト
 dependency_scope: 任意

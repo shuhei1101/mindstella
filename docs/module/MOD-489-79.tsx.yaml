@@ -12,4 +12,4 @@ components:
       - MOD-489-119#
     container: frontend/src/shared/components/post-body.tsx
 notes:
-  表とコードブロックの横スクロール: '本文は `table: false` で描くため表がスクロールの入れ物を持たない。描いた本文の `table` を `div.post-table-scroll`（`overflow-x: auto; max-width: 100%`）で包む。`pre` は既に `overflow: auto` を持つ。本文の入れ物（`div[data-part=body]`）に `min-w-0` を付け、段落・リストは入れ物の幅で折り返す（#619）。単体テストに、表を含む本文で `table` が `div.post-table-scroll` の中にあることを確かめるテストを足す'
+  表とコードブロックの横スクロール: '本文は `table: false` で描くため表がスクロールの入れ物を持たない。描いた本文の `table` を `div.post-table-scroll`（`overflow-x: auto; max-width: 100%`）で包む。`pre` は既に `overflow: auto` を持つ。本文の入れ物（`div[data-part=body]`）に `min-w-0` を付け、段落・リストは入れ物の幅で折り返す（#619）。単体テストに、表を含む本文で `table` が `div.post-table-scroll` の中にあることを確かめるテストを追加する'

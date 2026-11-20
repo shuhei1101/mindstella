@@ -7,7 +7,7 @@ functions:
     title: 日時の表示
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/components/send-form.ts
-    usecase: 回答・意見を送る
+    usecase: 回答・意見を送信する
     scope: public
     summary: UTC のタイムゾーン付き ISO 8601 を JST の `MM/DD HH:mm` にする（送信の結果と接続の状態が使う）
     args:
@@ -53,7 +53,7 @@ components:
         type: "'idle' | 'saving' | 'saved' | 'empty' | 'failed' | 'reviewed' | 'sent' | 'inserted' | 'voice-failed'"
         required: false
         default: "'idle'"
-        description: 溜める状態。`saving` が 1 秒を超えたら回る印と文言を出す（`SENDING_NOTICE_DELAY_MS`）。`sent` は送信した結果（`entered`）、`reviewed` は「文字起こしの結果をレビュー中に追加しました。」、`inserted` は「文字起こしの結果を挿入しました。」、`voice-failed` は `detail` を出す
+        description: 溜める状態。`saving` が 1 秒を超えたら回るマーカーと文言を出す（`SENDING_NOTICE_DELAY_MS`）。`sent` は送信した結果（`entered`）、`reviewed` は「文字起こしの結果をレビュー中に追加しました。」、`inserted` は「文字起こしの結果を挿入しました。」、`voice-failed` は `detail` を出す
       - name: count
         type: number | null
         required: false
@@ -63,17 +63,17 @@ components:
         type: string | null
         required: false
         default: 'null'
-        description: サーバーが返した理由。`failed` で `null` なら届かなかったとして立ち上げ直しの案内と本文のコピーのボタン（アイコンだけ。`aria-label`・`title`「本文をコピー」）を出す
+        description: サーバーが返した理由。`failed` で `null` なら届かなかったとして立ち再起動の案内と本文のコピーのボタン（アイコンだけ。`aria-label`・`title`「本文をコピー」）を出す
       - name: collapsed
         type: boolean
         required: false
         default: 'false'
-        description: 畳んだ形（`target` が `null` のときだけ使う）
+        description: 畳んだ状態（`target` が `null` のときだけ使う）
       - name: voice
         type: "'idle' | 'disabled' | 'recording' | 'transcribing'"
         required: false
         default: "'idle'"
-        description: 音声入力の状態（部品設計の `voice`）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする。`recording` は入力欄に `hidden` と `readonly` を付けて中身と選んだ範囲を残し、同じ場所に `aria-hidden` の `.send-wave` を置いて `levels` の 1 つごとに `--lv` を持つ `<i>` を並べる。描き直すたびに要素を作り直すため、フォーカスと選んだ範囲は使う側（入口）が置く
+        description: 音声入力の状態（部品設計の `voice`）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回るマーカーを出し、入力欄を `readonly` にする。`recording` は入力欄に `hidden` と `readonly` を付けて中身と選んだ範囲を残し、同じ場所に `aria-hidden` の `.send-wave` を置いて `levels` の 1 つごとに `--lv` を持つ `<i>` を並べる。再描画するたびに要素を再作成するため、フォーカスと選んだ範囲は使う側（入口）が置く
       - name: voiceReason
         type: string | null
         required: false
@@ -107,7 +107,7 @@ components:
         type: boolean
         required: false
         default: 'true'
-        description: 開いているか（`target` があるときだけ使う）。偽なら `.send-body` に `hidden` を付け、見出しの行だけを出す。`body` が空白だけでなければ見出しの右に書きかけの印（`edit` のアイコンと「書きかけ」）を出す
+        description: 開いているか（`target` があるときだけ使う）。偽なら `.send-body` に `hidden` を付け、見出しの行だけを出す。`body` が空白だけでなければ見出しの右に書きかけのマーカー（`edit` のアイコンと「下書き」）を出す
     unit_tests:
       - name: test_send_form
         case: 正常
@@ -129,7 +129,7 @@ components:
         expected: '`voiceStart` が 1 回 / `voiceCancel` が 1 回 / `voiceDone` が `{body: "確認: ", start: 4, end: 4}` で 1 回 / `voiceBlocked` が 1 回で `voiceStart` は呼ばれない'
       - name: test_send_form_when_location_and_no_target
         case: 正常
-        summary: 添えた箇所と項目を指さない形
+        summary: 添えた箇所と項目を指さない構造
         condition: '`parametrize`: `target: A-005`・`loc` が本文の 3 行目 / `target: null` / `target: null`・`collapsed: true`'
         mock: '`on.unquote`'
         expected: 「本文 3 行目」と選んだ文が出て × で `on.unquote` が 1 回、入力欄が 1 行 / ラベルが見えず入力欄の `aria-label` が「項目を指さないコメント」で入力欄が 1 行 / 「レビューに追加」が無く入力欄が 1 行
@@ -141,7 +141,7 @@ components:
         expected: '`on.save` が入力欄の中身で 1 回 / 呼ばれない'
       - name: test_send_form_when_open
         case: 正常
-        summary: 開閉のボタンと閉じた形
+        summary: 開閉のボタンと閉じた状態
         condition: '`parametrize`: `target: D-022`・`open: true` / `open: false` / `open: false`・`body: 案 A にする` / `target: null`。開閉のボタンを押す'
         mock: '`on.toggle`'
-        expected: ボタンの `aria-expanded` が `true` で `aria-label` が「コメントの入力を閉じる」、押すと `on.toggle` が `false` で 1 回 / `aria-expanded` が `false` で「コメントの入力を開く」、`.send-body` が `hidden` で書きかけの印が無い、押すと `on.toggle` が `true` で 1 回 / 書きかけの印「書きかけ」がある / 開閉のボタンが無い。どれも `aria-controls` が同じ部品の `.send-body` の `id` を指す
+        expected: ボタンの `aria-expanded` が `true` で `aria-label` が「コメントの入力を閉じる」、押すと `on.toggle` が `false` で 1 回 / `aria-expanded` が `false` で「コメントの入力を開く」、`.send-body` が `hidden` で書きかけのマーカーが無い、押すと `on.toggle` が `true` で 1 回 / 書きかけのマーカー「下書き」がある / 開閉のボタンが無い。どれも `aria-controls` が同じ部品の `.send-body` の `id` を指す

@@ -35,9 +35,9 @@ flows:
       - '`path` が `配る.html` の絶対パス'
       - '`配る.html` の `mindmap-data` の中身を JSON として読むと、`settings` と 7 つの種類の項目が YAML と同じで、`bodies` に `A-1.mark.md` の本文、`changes` に書き換えのまとまりがある'
       - '`配る.html` の `script`・`link`・`img` に `src`・`href` を持つものが無く、import map も無い'
-      - '`配る.html` の中の `</script>` の数が、雛形の数に、mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示の要素の 6 つを足した数（本文の `</script>` で要素が閉じていない）'
+      - '`配る.html` の中の `</script>` の数が、雛形の数に、mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示の要素の 6 つを追加した数（本文の `</script>` で要素が閉じていない）'
       - '`mindmap-mdmark` と部品（`mindmap-mdmark-map`・`mindmap-mdmark-view`・`mindmap-mdmark-comments`）の要素が中身を持ち、`mindmap-mdmark-config` の中身が `{"map": {}}`'
-      - '`mindmap-licenses` の中身に、mdmark・marked・mermaid・jsdiff のそれぞれの名前・版・著作権の表示・ライセンスの名前があり、mdmark の `THIRD_PARTY_LICENSES.txt` の本文がある'
+      - '`mindmap-licenses` の中身に、mdmark・marked・mermaid・jsdiff のそれぞれの名前・バージョン・著作権の表示・ライセンスの名前があり、mdmark の `THIRD_PARTY_LICENSES.txt` の本文がある'
     test: test_normal
   - name: 異常系（out の末尾が .html でない・引数の誤り）
     summary: 書き出す先の末尾が .html でないと、何も書かずに終わる
@@ -164,7 +164,7 @@ flows:
       - '`配る.html` の中身が呼ぶ前と同じ'
     test: test_error_when_download_fails
   - name: 正常系（HTML の本文を埋め込む）
-    summary: HTML の本文も、原文と行の印を足したものを埋め込みのデータに入れる
+    summary: HTML の本文も、原文と行のマーカーを追加したものを埋め込みのデータに入れる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて MCP のクライアントでツールを呼び、描画のライブラリの配布ファイルとライセンスの本文は jsDelivr から取る）
@@ -182,14 +182,14 @@ flows:
 
         クライアント->>IF: export workspace out
         IF-->>WS: 全ての YAML と docs/ を読む
-        IF->>IF: HTML の本文に行の印を足し、雛形にデータを入れる
+        IF->>IF: HTML の本文に行のマーカーを追加し、雛形にデータを入れる
         IF->>OUT: HTML を書く
         IF-->>クライアント: JSON（path）
       ```
     expected:
       - ツールのエラーにならない
       - '`配る.html` の `mindmap-data` の中身を JSON として読むと、`bodies` の `A-1.html` が本文のファイルと同じで、`marked_bodies` の `A-1.html` が『記録の取得』と同じ'
-      - '`配る.html` の中の `</script>` の数が、雛形の数に、mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示の要素の 6 つを足した数（本文の `</script>` で要素が閉じていない）'
+      - '`配る.html` の中の `</script>` の数が、雛形の数に、mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示の要素の 6 つを追加した数（本文の `</script>` で要素が閉じていない）'
     test: test_normal_when_html_body
 lead: ワークスペースの記録を、画面と描画のライブラリまで中に持つ見るだけの 1 枚の HTML にして、指定したパスへ書き出す。ワークスペースもサーバーもネットも持たない人へ配るために使う。
 idempotent: true
@@ -216,10 +216,10 @@ response:
     description: 書き出した HTML の絶対パス
   - name: 埋め込みのデータ
     type: dict
-    description: 『記録の取得』のレスポンスと同じ形で、`<script type="application/json" id="mindmap-data">` の中身に入る
+    description: 『記録の取得』のレスポンスと同じ構造で、`<script type="application/json" id="mindmap-data">` の中身に入る
   - name: ライセンスの表示
     type: str
-    description: '`<script type="text/plain" id="mindmap-licenses">` の中身。中に持つライブラリごとに、名前・版・著作権の表示・ライセンスの名前と本文を並べる。mermaid は、配布ファイルが中に束ねた依存ごとの名前・版とライセンスの本文も続ける。mdmark は、`preview/licenses/mdmark-LICENSE.txt` の MIT の本文の後に、配布物の `dist/THIRD_PARTY_LICENSES.txt`（中に束ねた依存ごとのライセンスの本文）を続ける。画面には出さない'
+    description: '`<script type="text/plain" id="mindmap-licenses">` の中身。中に持つライブラリごとに、名前・バージョン・著作権の表示・ライセンスの名前と本文を並べる。mermaid は、配布ファイルが中に束ねた依存ごとの名前・バージョンとライセンスの本文も続ける。mdmark は、`preview/licenses/mdmark-LICENSE.txt` の MIT の本文の後に、配布物の `dist/THIRD_PARTY_LICENSES.txt`（中に束ねた依存ごとのライセンスの本文）を続ける。画面には出さない'
 exceptions:
   - name: なし（正常終了）
     condition: 書き出せた
@@ -241,9 +241,9 @@ exceptions:
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。親のフォルダは作らず、前の `out` のファイルを残す
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。引数の誤りは引数の名前を出す'
 constraints:
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 雛形
     constraint: サーバーが配るプレビューと同じ `template.html` と画面の CSS・JavaScript を使い、CSS を `<style>`、JavaScript を `<script>` の中身として差し込む。雛形の描画のライブラリの `<script src>` と文字の `<link>` を外し、`<script src>` の URL から取った配布ファイルの中身を、画面の JavaScript より前の `<script>` の中身として差し込む。mdmark は、『プレビューの配信』の制約「mdmark の ref の解決」の ref の配布ファイルを取り、雛形の mdmark の CSS の `<link>` と JavaScript の参照を外し、CSS を `<style id="mindmap-mdmark-css">`、JavaScript を `<script type="text/plain" id="mindmap-mdmark">` の中身として差し込み、画面の JavaScript がその中身から作った Blob の URL を `import()` で読む。`index.js` が隣のファイルから読む部品（`map.js`・`view.js`・`comments.js`）も中身として差し込み、mdmark が公開する部品の読み込みの差し替え（shuhei1101/mdmark#624）でその中身を渡す。記録は `<script type="application/json" id="mindmap-data"></script>` の中身に入れる
@@ -251,13 +251,13 @@ constraints:
     constraint: 埋め込む JSON の `<`・`>`・`&` を、それぞれ JSON の Unicode エスケープ（バックスラッシュに続けて `u003c`・`u003e`・`u0026`）に置き換える。`JSON.parse` で元の文字に戻り、本文に `</script>` があっても要素を閉じさせない。差し込む CSS・JavaScript・ライブラリ・ライセンスの本文が `</style>`・`</script`・`<script` を含むときは、書き出さずにエラーにする（大文字・小文字を区別しない）
   - item: 読み込むファイル
     constraint: 書き出した HTML は外のファイルも URL も指さない（`script`・`link`・`img` に `src`・`href` を持たない）。文字は端末の文字で描く
-  - item: 見るだけ
+  - item: 閲覧のみ
     constraint: 画面の JavaScript はサーバーが配るものと同じものを差し込む。記録を埋め込みのデータから読み、コメントのボタン・一覧・入力・選んだ箇所の入口と書き換えの知らせの購読を出さない
   - item: 通信
-    constraint: ツールは、雛形の描画のライブラリの `<script src>` の URL（jsDelivr、版を固定）と、『プレビューの配信』の制約「mdmark の ref の解決」の ref の mdmark の配布ファイル（`dist/index.css`・`dist/index.js`・部品）の URL と、ライブラリのライセンスの本文の URL（同じ版。mdmark は `dist/THIRD_PARTY_LICENSES.txt`。mdmark の MIT の本文はプラグインの `preview/licenses/mdmark-LICENSE.txt` から読む）を取るときと、その ref を解決するために GitHub の API へ問い合わせるときだけ通信する。mdmark 以外の取った配布ファイルは雛形の `integrity`（sha384）と突き合わせ、合わなければ書き出さない。mdmark は突き合わせない。書き出した HTML は通信しない。ただし、HTML の本文が外の画像・CSS を指すときは、描くときにブラウザがその URL を読みに行き、ネットにつながらない端末では読めないまま描く（ツールは本文の中身を書き換えない）
+    constraint: ツールは、雛形の描画のライブラリの `<script src>` の URL（jsDelivr、バージョンを固定）と、『プレビューの配信』の制約「mdmark の ref の解決」の ref の mdmark の配布ファイル（`dist/index.css`・`dist/index.js`・部品）の URL と、ライブラリのライセンスの本文の URL（同じバージョン。mdmark は `dist/THIRD_PARTY_LICENSES.txt`。mdmark の MIT の本文はプラグインの `preview/licenses/mdmark-LICENSE.txt` から読む）を取るときと、その ref を解決するために GitHub の API へ問い合わせるときだけ通信する。mdmark 以外の取った配布ファイルは雛形の `integrity`（sha384）と突き合わせ、合わなければ書き出さない。mdmark は突き合わせない。書き出した HTML は通信しない。ただし、HTML の本文が外の画像・CSS を指すときは、描くときにブラウザがその URL を読みに行き、ネットにつながらない端末では読めないまま描く（ツールは本文の中身を書き換えない）
   - item: 待ちの上限
-    constraint: 1 回の要求で、接続と 1 回の読み取りをそれぞれ 30 秒まで待つ。取り直さず、届かなければ `DownloadFailedError` で終える
-    notes: jsDelivr から描画のライブラリの配布ファイル（最大 5.5MB）とライセンスの本文を取る時間の実測は 1 件あたり最大 0.65 秒（2026-10-03、手元の回線。mdmark の JavaScript・CSS・`THIRD_PARTY_LICENSES.txt` は 2026-10-25 に最大 0.05 秒）。待ちは読み取り 1 回ごとに効くので、遅い回線で全体が長くなっても途切れない限り止めない。取り直しは利用者が `export` を呼び直す
+    constraint: 1 回の要求で、接続と 1 回の読み取りをそれぞれ 30 秒まで待つ。再取得せず、届かなければ `DownloadFailedError` で終える
+    notes: jsDelivr から描画のライブラリの配布ファイル（最大 5.5MB）とライセンスの本文を取る時間の実測は 1 件あたり最大 0.65 秒（2026-10-03、手元の回線。mdmark の JavaScript・CSS・`THIRD_PARTY_LICENSES.txt` は 2026-10-25 に最大 0.05 秒）。待ちは読み取り 1 回ごとに効くので、遅い回線で全体が長くなっても途切れない限り止めない。再取得は利用者が `export` を再呼び出しする
 refs:
   - IF-489-51#
   - IF-489-71#

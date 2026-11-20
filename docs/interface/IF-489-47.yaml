@@ -4,13 +4,13 @@ entry:
   kind: mcp_tool
   value: '`edit_option`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__edit_option`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
-  - name: 正常系（足す）
-    summary: 案を並びの末尾に足し、変更履歴を積む
+  - name: 正常系（追加する）
+    summary: 案を並びの末尾に追加し、変更履歴を積む
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 案 A だけを持つ未決定の検討事項 D-1 を足して `commit` したワークスペース（保持する回数は既定の 5）
+        description: 案 A だけを持つ未決定の検討事項 D-1 を追加して `commit` したワークスペース（保持する回数は既定の 5）
       - name: 引数
         description: '`action: add`、`key: B`、`option` に `content`・`pros`'
     flow: |-
@@ -22,7 +22,7 @@ flows:
 
         クライアント->>IF: edit_option workspace id D-1 action add key B（option）
         IF-->>WS: 全ての YAML を読む
-        IF->>IF: 同じ記号が無いことを確かめて末尾に足し、変更履歴を積んでスキーマと突き合わせる
+        IF->>IF: 同じ記号が無いことを確かめて末尾に追加し、変更履歴を積んでスキーマと突き合わせる
         IF->>WS: decisions.yaml と changes.yaml を書く
         IF-->>クライアント: JSON（id・file・options・changed）
       ```
@@ -33,13 +33,13 @@ flows:
       - D-1 が `history` を 1 回分持ち、`before.options` が A だけの並び
       - '`changes.yaml` の `pending.changed` が `[D-1]` で、D-1 の `seq` が `last_seq` と同じ'
     test: test_normal_when_added
-  - name: 正常系（直す）
+  - name: 正常系（修正する）
     summary: 指した案の渡したキーだけを置き換え、ほかの案はそのまま残す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '`pros`・`cons` を持つ案 A と案 B を持つ検討事項 D-1 を足して `commit` したワークスペース'
+        description: '`pros`・`cons` を持つ案 A と案 B を持つ検討事項 D-1 を追加して `commit` したワークスペース'
       - name: 引数
         description: '`action: update`、`key: A`、`option` に `pros` と `cons: null`'
     flow: |-
@@ -51,7 +51,7 @@ flows:
 
         クライアント->>IF: edit_option workspace id D-1 action update key A（option）
         IF-->>WS: 全ての YAML を読む
-        IF->>IF: 案 A の pros を置き換え cons を消し、変更履歴を積む
+        IF->>IF: 案 A の pros を置き換え cons を削除し、変更履歴を積む
         IF->>WS: decisions.yaml と changes.yaml を書く
         IF-->>クライアント: JSON（options・changed）
       ```
@@ -61,13 +61,13 @@ flows:
       - 案 B と並びが呼ぶ前と同じ
       - D-1 が `history` を 1 回分持ち、`before.options` が呼ぶ前の並び
     test: test_normal_when_updated
-  - name: 正常系（消す）
-    summary: 採用していない案を消す
+  - name: 正常系（削除する）
+    summary: 採用していない案を削除する
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 案 A・B・C を持ち A を採用した決定済みの検討事項 D-1 を足して `commit` したワークスペース
+        description: 案 A・B・C を持ち A を採用した決定済みの検討事項 D-1 を追加して `commit` したワークスペース
       - name: 引数
         description: '`action: remove`、`key: B`'
     flow: |-
@@ -133,8 +133,8 @@ flows:
       - エラーの本文に `D-9` がある
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_id_not_found
-  - name: 異常系（同じ記号の案を足す・OptionExistsError）
-    summary: 既にある記号の案は足さない
+  - name: 異常系（同じ記号の案を追加する・OptionExistsError）
+    summary: 既にある記号の案は追加しない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -156,8 +156,8 @@ flows:
       - エラーの本文に `D-1` と `B` がある
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_key_exists
-  - name: 異常系（無い記号の案を直す・OptionNotFoundError）
-    summary: 無い記号の案は直さない
+  - name: 異常系（無い記号の案を修正する・OptionNotFoundError）
+    summary: 無い記号の案は修正しない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -179,8 +179,8 @@ flows:
       - エラーの本文に `D-1` と `Z` がある
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_key_not_found
-  - name: 異常系（採用している案を消す・AdoptedOptionError）
-    summary: 採用している案は消さず、採用を先に移すよう示す
+  - name: 異常系（採用している案を削除する・AdoptedOptionError）
+    summary: 採用している案は削除せず、採用を先に移すよう示す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -253,7 +253,7 @@ flows:
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_write_fails
   - name: 異常系（引数の誤り）
-    summary: 採用の印を option で渡すと、何も書かずに引数の誤りを返す
+    summary: 採用のマーカーを option で渡すと、何も書かずに引数の誤りを返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -276,13 +276,13 @@ flows:
       - 'エラーの本文が `エラー: 引数の誤り: option:` で始まり、`adopted` を含む'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_argument_invalid
-  - name: 正常系（推奨の印を付け替える）
-    summary: 案 B に推奨の印を立て、案 A の印を外す
+  - name: 正常系（推奨のマーカーを付け替える）
+    summary: 案 B に推奨のマーカーを立て、案 A のマーカーを外す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 案 A・B を持ち A に推奨の印を持つ未決定の検討事項 D-1 を足して `commit` したワークスペース
+        description: 案 A・B を持ち A に推奨のマーカーを持つ未決定の検討事項 D-1 を追加して `commit` したワークスペース
       - name: 引数
         description: '`action: update`、`key: B`、`option` に `recommended: true`'
     flow: |-
@@ -294,7 +294,7 @@ flows:
 
         クライアント->>IF: edit_option workspace id D-1 action update key B（recommended: true）
         IF-->>WS: 全ての YAML を読む
-        IF->>IF: 案 B に印を立て、案 A の印を外し、変更履歴を積んでスキーマと突き合わせる
+        IF->>IF: 案 B にマーカーを立て、案 A のマーカーを外し、変更履歴を積んでスキーマと突き合わせる
         IF->>WS: decisions.yaml と changes.yaml を書く
         IF-->>クライアント: JSON（options・changed）
       ```
@@ -305,8 +305,8 @@ flows:
       - D-1 の `status` が `未決定` のままで、どの案も `adopted` を持たない
       - D-1 が `history` を 1 回分持ち、`before.options` で案 A の `recommended` が真
     test: test_normal_when_recommendation_moved
-  - name: 異常系（最後の案を消す・LastOptionError）
-    summary: 案を必須にする状態の検討事項の最後の案は消さず、案を残すよう示す
+  - name: 異常系（最後の案を削除する・LastOptionError）
+    summary: 案を必須にする状態の検討事項の最後の案は削除せず、案を残すよう示す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -330,7 +330,7 @@ flows:
       - エラーの本文に `D-1`、`A`、案を 1 つ以上残す旨がある
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_last_option_removed
-lead: 検討事項の案を記号（`key`）で指して、1 つ足す・中身と推奨の印を直す・消す。指さない案と検討事項のほかのキーはそのまま残し（推奨の印を立てたときはほかの案の印を外す）、値が変わったときは書き換える前の案の並びを変更履歴に 1 回分積む。
+lead: 検討事項の案を記号（`key`）で指して、1 つ追加する・中身と推奨のマーカーを修正する・削除する。指さない案と検討事項のほかのキーはそのまま残し（推奨のマーカーを立てたときはほかの案のマーカーを外す）、値が変わったときは書き換える前の案の並びを変更履歴に 1 回分積む。
 idempotent: false
 side_effects: '`decisions.yaml` のその検討事項の `options` と、`history.yaml` のその項目の行の `updated`・`updated_by`（`ai`）を書き換える。値が変わったときは、『変更の検知』と同じ積み方で `history.yaml` の `history`・`seq` と `changes.yaml` の `last_seq`・`pending.changed` を書き換える。YAML・`history.yaml`・`changes.yaml` の一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
@@ -352,20 +352,20 @@ request:
     type: Literal['add', 'update', 'remove']
     required: true
     location: argument
-    description: '`add` は案を並びの末尾に足す、`update` は指した案の中身を直す、`remove` は指した案を消す'
+    description: '`add` は案を並びの末尾に追加する、`update` は指した案の中身を修正する、`remove` は指した案を削除する'
   - name: key
     type: str
     required: true
     location: argument
-    description: 案の記号。`add` では足す案の記号、`update`・`remove` では指す案の記号
+    description: 案の記号。`add` では追加する案の記号、`update`・`remove` では指す案の記号
     example: B
   - name: option
     type: dict
     required: false
     default: なし（`remove` のとき）
     location: argument
-    description: '`add` では足す案の中身。`update` では置き換えるキーと値で、渡したキーだけを置き換え、値が `null` のキーは消す'
-    constraints: キーは `content`・`pros`・`cons`・`note`・`reason`・`recommended` だけ（`key` は引数の `key`、`adopted` は『採用する案の切り替え』が持つ）。`recommended` は `true` で印を立て、`false` か `null` で印を外す。`add`・`update` では必ず渡し、`remove` では渡さない
+    description: '`add` では追加する案の中身。`update` では置き換えるキーと値で、渡したキーだけを置き換え、値が `null` のキーは削除する'
+    constraints: キーは `content`・`pros`・`cons`・`note`・`reason`・`recommended` だけ（`key` は引数の `key`、`adopted` は『採用する案の切り替え』が持つ）。`recommended` は `true` でマーカーを立て、`false` か `null` でマーカーを外す。`add`・`update` では必ず渡し、`remove` では渡さない
     example: '{"content": "種類ごとに分ける", "pros": "探しやすい", "recommended": true}'
 response:
   - name: id
@@ -379,7 +379,7 @@ response:
     description: 書き換えた後の案の並び
   - name: changed
     type: bool
-    description: 案の並びが変わったか（同じ値で直したときは偽）
+    description: 案の並びが変わったか（同じ値で修正したときは偽）
 exceptions:
   - name: なし（正常終了）
     condition: 書き換えられた
@@ -410,27 +410,27 @@ exceptions:
     notes: ツールのエラー。何も書き込まない
   - name: LastOptionError
     condition: '`remove` で、指した案がその検討事項の最後の案で、状態が `未整理`・`対象外`・`取り下げ` のどれでもない'
-    notes: ツールのエラー。エラーの本文に ID と記号と、案を 1 つ以上残す旨（先に `add` で別の案を足す案内）。何も書き込まない
+    notes: ツールのエラー。エラーの本文に ID と記号と、案を 1 つ以上残す旨（先に `add` で別の案を追加する案内）。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。案の記号のエラーは `エラー: {ID} の案 {記号}: {理由}` にする。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
   - item: 変更の検知との分担
     constraint: 書き込んだ後に、変更の検知（『変更の検知』）の前回の中身をこのツールが書いた中身で置き換え、変更の検知に二重に記録させない
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 案の並び
-    constraint: '`add` は末尾に足す。`update` はその案の位置のまま直し、`remove` はその案だけを抜く。ほかの案の中身と並びは変えない'
+    constraint: '`add` は末尾に追加する。`update` はその案の位置のまま修正し、`remove` はその案だけを抜く。ほかの案の中身と並びは変えない'
   - item: 採用と状態
     constraint: '案の `adopted` と検討事項の `status`・`answer` は書き換えない（採用と状態は『採用する案の切り替え』が書き換える）。`未整理`・`対象外`・`取り下げ` を除く状態の検討事項は、案を 1 つ以上残す'
   - item: 変更履歴
-    constraint: 『変更の検知』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「通し番号」と同じ（`by` は `ai`）。積んだとき `changes.yaml` の `pending.changed` に ID を足し、`pending.by` が `external` なら先に外部の変更のまとまりにする（『変更の検知』の「まだまとめていない変更の書いた元」）。`before` は `options`（書き換える前の案の並びの全体）
+    constraint: 『変更の検知』の「変更履歴を追加するとき」「変更履歴の 1 回分」「保持する回数」「連番」と同じ（`by` は `ai`）。積んだとき `changes.yaml` の `pending.changed` に ID を追加し、`pending.by` が `external` なら先に外部の変更のまとまりにする（『変更の検知』の「まだまとめていない変更の書き込み元」）。`before` は `options`（書き換える前の案の並びの全体）
   - item: 部分成功
     constraint: 起こさない。YAML か `changes.yaml` の置き換えに失敗したら、置き換えたものを前の中身に戻してからツールのエラーで終わる
-  - item: 推奨の印
-    constraint: '`recommended` が真の案は 0 か 1 つ。`option` に `recommended: true` を渡すと、その案に印を立ててほかの案の `recommended` のキーを消す。印を外した案は `recommended` のキーを持たない'
+  - item: 推奨のマーカー
+    constraint: '`recommended` が真の案は 0 か 1 つ。`option` に `recommended: true` を渡すと、その案にマーカーを立ててほかの案の `recommended` のキーを削除する。マーカーを外した案は `recommended` のキーを持たない'
   - item: 確認済みの解除
-    constraint: 変更履歴を積んだとき（`updated_by` を `ai` にしたとき）、`history.yaml` のその行の `confirmed` を消す（『変更の検知』の「確認済みの解除」と同じ）
+    constraint: 変更履歴を積んだとき（`updated_by` を `ai` にしたとき）、`history.yaml` のその行の `confirmed` を削除する（『変更の検知』の「確認済みの解除」と同じ）
 refs:
   - IF-540-2#
 test_file: tests/integration/server/test_edit_option.py

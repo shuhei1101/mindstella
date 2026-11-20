@@ -58,7 +58,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit`（説明「足す」）し、D-1 の `answer` を直して変更の検知が変更履歴を積んだワークスペース
+        description: 検討事項 D-1 を追加して `commit`（説明「追加」）し、D-1 の `answer` を修正して変更の検知が変更履歴を積んだワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -73,7 +73,7 @@ flows:
     expected:
       - ステータスが 200
       - '`decisions` の D-1 が `history` を 1 回分持ち、`history.yaml` の D-1 の行と同じ'
-      - '`changes.sets` が「足す」の 1 つで、`added` が `[D-1]`'
+      - '`changes.sets` が「追加」の 1 つで、`added` が `[D-1]`'
       - '`changes.pending.changed` が `[D-1]`'
     test: test_normal_when_history
   - name: 異常系（YAML がスキーマに合わない・422）
@@ -124,7 +124,7 @@ flows:
       - '`settings_problem` に `config.yaml: display.visible_kinds` で始まる行がある'
     test: test_normal_when_config_invalid
   - name: 正常系（HTML の本文がある）
-    summary: HTML の本文は原文を `bodies` に、行の印を足したものを `marked_bodies` に返す
+    summary: HTML の本文は原文を `bodies` に、行のマーカーを追加したものを `marked_bodies` に返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
@@ -140,14 +140,14 @@ flows:
 
         クライアント->>IF: GET /api/records
         IF-->>WS: 全ての YAML と docs/ を読む
-        IF->>IF: HTML の本文に行の印を足す
+        IF->>IF: HTML の本文に行のマーカーを追加する
         IF-->>クライアント: 200、JSON
       ```
     expected:
       - ステータスが 200
       - '`bodies` の `A-1.mark.md`・`A-2.html` がそれぞれのファイルの中身と同じ'
       - '`marked_bodies` が `A-2.html` だけを持ち、`<p` の直後に ` data-line="4" data-line-end="4"` がある'
-      - '`marked_bodies` の `A-2.html` の `<style>` に行の印が無く、` data-line="{数}"`・` data-line-end="{数}"` を取り除くと `bodies` の `A-2.html` と同じ'
+      - '`marked_bodies` の `A-2.html` の `<style>` に行のマーカーが無く、` data-line="{数}"`・` data-line-end="{数}"` を取り除くと `bodies` の `A-2.html` と同じ'
     test: test_normal_when_html_body
   - name: 正常系（mdmark の ref を返す）
     summary: 設定の mdmark のバージョンが `latest` のとき、develop の先頭の commit の SHA を `mdmark_ref` に返す
@@ -184,17 +184,17 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
+    constraints: '『プレビューの配信』の制約「接続先の確認」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
 response:
   - name: settings
     type: dict
     description: '`config.yaml` の中身。`display`（表示する種類の既定）と `mdmark`（画面が読み込む mdmark のバージョンと map の種類）を含む。`config.yaml` がスキーマに合わないときは、配信が持つ最後に検査に通った設定'
   - name: decisions / tasks / research / docs / terms / notes / logs
     type: list[dict]
-    description: 種類ごとの YAML の `items` の中身に、`history.yaml` のその項目の行のキー（`created`・`updated`・`updated_by`・`seq`・`added_seq`・`history`・`history_dropped_seq`・`confirmed`）を足したもの（キー名はファイル名から `.yaml` を落としたもの）。行が無い項目はキーを足さず、`confirmed` だけを持つ行からは `confirmed` だけを足す。`confirmed` を持たない項目は未確認
+    description: 種類ごとの YAML の `items` の中身に、`history.yaml` のその項目の行のキー（`created`・`updated`・`updated_by`・`seq`・`added_seq`・`history`・`history_dropped_seq`・`confirmed`）を追加したもの（キー名はファイル名から `.yaml` を落としたもの）。行が無い項目はキーを追加せず、`confirmed` だけを持つ行からは `confirmed` だけを追加する。`confirmed` を持たない項目は未確認
   - name: bodies
     type: dict[str, str]
-    description: '`docs/` のファイル名 → 本文の原文（項目の `body` が指すものだけ。キーは `body` の値（Markdown は `../docs/{ID}.mark.md`、HTML は `../docs/{ID}.html`）で、どちらも書いたまま）。画面はキーの拡張子で形式を決め、差分・検索・前の版の組み立てには原文を使う'
+    description: '`docs/` のファイル名 → 本文の原文（項目の `body` が指すものだけ。キーは `body` の値（Markdown は `../docs/{ID}.mark.md`、HTML は `../docs/{ID}.html`）で、どちらも書いたまま）。画面はキーの拡張子で形式を決め、差分・検索・前のバージョンの組み立てには原文を使う'
   - name: built_at
     type: str
     description: 読んだ日時（UTC のタイムゾーン付き ISO 8601）。画面はつながらないときに「{日時} に読んだ記録」と出す
@@ -204,20 +204,20 @@ response:
     notes: '決着は検討事項の決定済み・対象外・取り下げ、タスクの完了・中止。次の候補（並べ替え）とゴール判定は #518 で削除した'
   - name: changes
     type: dict
-    description: '`changes.yaml` の中身（`last_seq`・`sets`・`pending`）。無ければ `{last_seq: 0, sets: [], pending: {added: [], changed: []}}`。画面の変更履歴の一覧と、新規・変更の印はここから取る。種類ごとの項目は `history` を持ったまま返し、画面はそこから前の版を組み立てる'
+    description: '`changes.yaml` の中身（`last_seq`・`sets`・`pending`）。無ければ `{last_seq: 0, sets: [], pending: {added: [], changed: []}}`。画面の変更履歴の一覧と、新規・変更のマーカーはここから取る。種類ごとの項目は `history` を持ったまま返し、画面はそこから前のバージョンを組み立てる'
   - name: settings_problem
     type: list[str] | None
-    description: '`config.yaml` がスキーマに合わないとき、合わない箇所ごとの `config.yaml: {キーのパス}: {理由}`。合うときは `null`。画面は表示を変えず、設定を直すよう知らせる'
+    description: '`config.yaml` がスキーマに合わないとき、合わない箇所ごとの `config.yaml: {キーのパス}: {理由}`。合うときは `null`。画面は表示を変えず、設定を修正するよう知らせる'
   - name: marked_bodies
     type: dict[str, str]
-    description: '`bodies` の HTML の本文ごとの、ファイル名 → 開きタグに原文の行の印（`data-line`・`data-line-end`）を足した HTML。画面はこれを描き、選んだ範囲を本文の行の範囲にし、差分の印を付ける要素を決める。HTML の本文が無ければ `{}`'
-    notes: 印の足し方は制約「行の印」
+    description: '`bodies` の HTML の本文ごとの、ファイル名 → 開きタグに原文の行のマーカー（`data-line`・`data-line-end`）を追加した HTML。画面はこれを描き、選んだ範囲を本文の行の範囲にし、差分のマーカーを付ける要素を決める。HTML の本文が無ければ `{}`'
+    notes: マーカーの追加方は制約「行のマーカー」
   - name: mdmark_ref
     type: str
     description: 画面が読み込む mdmark の jsDelivr の ref（『プレビューの配信』の制約「mdmark の ref の解決」）。設定の `mdmark.version` がタグならタグ、`latest` か無ければ mdmark の develop の先頭の commit の SHA（問い合わせられないときは `develop`）。React の画面はこの ref で mdmark の URL を組み立てる
     example: 0123456789abcdef0123456789abcdef01234567
 response_notes: |-
-  配る書き出し（`export`）は、同じ形の JSON を `<script type="application/json" id="mindmap-data">` の中身に埋め込む。画面は埋め込みのデータがあればそれを読み、無ければこの API を読む。スレッド（`threads.yaml`）は返さない（『スレッドの読み取り』）。
+  配る書き出し（`export`）は、同じ形式の JSON を `<script type="application/json" id="mindmap-data">` の中身に埋め込む。画面は埋め込みのデータがあればそれを読み、無ければこの API を読む。スレッド（`threads.yaml`）は返さない（『スレッドの読み取り』）。
 status_codes:
   - code: '200'
     condition: 読めた
@@ -226,17 +226,17 @@ status_codes:
     notes: '`detail` に合わない箇所ごとの `{ファイル名}: {キーのパス}: {理由}` を改行でつなぐ。画面は前に読んだ記録で描き続ける'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
-  - item: 読む時
-    constraint: 呼ばれるたびにワークスペースの YAML と本文を読み直す（書き出しのファイルを持たない）
-  - item: 本文の形
+  - item: 読み込む時
+    constraint: 呼ばれるたびにワークスペースの YAML と本文を再読み込みする（書き出しのファイルを持たない）
+  - item: 本文の構造
     constraint: '`application/json; charset=utf-8`。日本語はエスケープしない。`Cache-Control: no-store`'
-  - item: 接続先の確かめ
+  - item: 接続先の確認
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403 を返す。確かめは『プレビューの配信』の異常系が持つ）
-  - item: 読みかけ
+  - item: 書き込み途中の読み込み
     constraint: ツールは YAML を一時ファイルから `os.replace` で置き換えるため、書きかけを読まない
-  - item: 設定の読み方
+  - item: 設定の読み込み方法
     constraint: 呼ばれるたびに `config.yaml` を読み、スキーマに合えば配信の「最後に検査に通った設定」をその値に差し替える。合わなければ差し替えず、最後に検査に通った設定を `settings` に、合わない箇所を `settings_problem` に入れて 200 を返す
-  - item: 行の印
-    constraint: Python の標準ライブラリ `html.parser.HTMLParser` で原文を読み、開きタグ（空要素を含む）のタグ名の直後に ` data-line="{始まりの行}" data-line-end="{終わりの行}"` を足す。始まりの行はその開きタグが閉じた原文の行（中身が始まる行、1 始まり）。終わりの行はその要素の閉じタグが始まる原文の行で、空要素は始まりの行と同じ。閉じタグを省いた要素は、その要素を含む要素のうち閉じタグを持つ最も内側のものの閉じタグが始まる行（無ければ原文の最後の行）。文書の外枠と描いた文を持たない要素（`html`・`head`・`body`・`meta`・`link`・`base`・`style`・`script`・`template`・`title`）には足さない。印の他は原文を変えず、行の並びも保つ
+  - item: 行のマーカー
+    constraint: Python の標準ライブラリ `html.parser.HTMLParser` で原文を読み、開きタグ（空要素を含む）のタグ名の直後に ` data-line="{始まりの行}" data-line-end="{終わりの行}"` を追加する。始まりの行はその開きタグが閉じた原文の行（中身が始まる行、1 始まり）。終わりの行はその要素の閉じタグが始まる原文の行で、空要素は始まりの行と同じ。閉じタグを省いた要素は、その要素を含む要素のうち閉じタグを持つ最も内側のものの閉じタグが始まる行（無ければ原文の最後の行）。文書の外枠と描いた文を持たない要素（`html`・`head`・`body`・`meta`・`link`・`base`・`style`・`script`・`template`・`title`）には追加しない。マーカーの他は原文を変えず、行の並びも保つ
     notes: PoC（#215）で、コメントの中のタグ・`<style>` / `<script>` の中の `<` `>`・属性値の `>`・複数行の開きタグ・閉じタグを省いた `<p>` / `<li>` を含む 12 ケースで確かめた
 test_file: tests/integration/server/test_records.py

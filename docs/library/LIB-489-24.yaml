@@ -19,7 +19,7 @@ catalogs:
         purpose: 概要のルートの search を Zod で検証する
       - name: redirect（beforeLoad）
         kind: 関数
-        purpose: 決めた値以外の search を URL から外して開き直す
+        purpose: 決めた値以外の search を URL から外して再度開く
       - name: '@tanstack/router-plugin/vite'
         kind: プラグイン
         purpose: routes/ から route-tree.gen.ts を生成する
@@ -34,7 +34,7 @@ upstream: TanStack/router
 verification:
   state: 済
   date: '2026-11-04'
-  detail: /spa/?tab=unknown が /spa/ に送り直され概要が開くこと、Vitest で createAppRouter の basepath と context を確かめた
+  detail: /spa/?tab=unknown が /spa/ に再送信され概要が開くこと、Vitest で createAppRouter の basepath と context を確かめた
 license: MIT
 official_url: https://tanstack.com/router
 docs_url: https://tanstack.com/router/latest/docs/framework/react/api/router

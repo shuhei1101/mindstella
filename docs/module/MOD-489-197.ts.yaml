@@ -41,10 +41,10 @@ data_models:
         description: '`unavailable` の理由'
 constants:
   - name: VOICE_MIME_TYPES
-    title: 録音の形の候補
+    title: 録音の構造の候補
     container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
     usecase: 音声でコメントする
-    summary: '`MediaRecorder.isTypeSupported` が真の最初の形で録る（どれも偽ならブラウザの既定）'
+    summary: '`MediaRecorder.isTypeSupported` が真の最初の形式で録る（どれも偽ならブラウザの既定）'
     value: "['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4']"
   - name: VOICE_TEXT
     title: 画面が持つ音声入力の文
@@ -81,7 +81,7 @@ constants:
     title: 音量を取る間隔
     container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
     usecase: 音声でコメントする
-    summary: 録音中にマイクの音量を取って波形の棒を 1 本足す間隔（ミリ秒）。`AnalyserNode` の `fftSize` 2048 が 48 kHz で 1 回に見る長さ（約 43 ms）以上にし、重ねて見ない。1 秒に 20 本で、話し始めてから 1 秒以内に棒の長さで声を拾えているかが分かる
+    summary: 録音中にマイクの音量を取って波形の棒を 1 本追加する間隔（ミリ秒）。`AnalyserNode` の `fftSize` 2048 が 48 kHz で 1 回に見る長さ（約 43 ms）以上にし、重ねて見ない。1 秒に 20 本で、話し始めてから 1 秒以内に棒の長さで声を拾えているかが分かる
     value: '50'
   - name: WAVE_LEVELS_MAX
     title: 持つ音量の数の上限
@@ -111,7 +111,7 @@ functions:
         summary: 持たない・断られたときは何もしない
         condition: '`parametrize`: `navigator.wakeLock` が無い / `request` が `NotAllowedError` で断る'
         mock: '`vi.stubGlobal`'
-        expected: 例外を送らず、返った関数を呼んでも何も起きない
+        expected: 例外を送出しず、返った関数を呼んでも何も起きない
     container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
   - name: micSupported
     title: マイクを使えるか
@@ -164,7 +164,7 @@ functions:
       1. `getUserMedia({audio: true})` を呼ぶ
          - `NotAllowedError`・`SecurityError` の場合、`'denied'` で断る
          - それ以外の失敗の場合、`'no-microphone'` で断る
-      2. `VOICE_MIME_TYPES` のうち `isTypeSupported` が真の最初の形（無ければ指定しない）で `MediaRecorder` を作り、`start()` する
+      2. `VOICE_MIME_TYPES` のうち `isTypeSupported` が真の最初の形式（無ければ指定しない）で `MediaRecorder` を作り、`start()` する
       3. `AudioContext` の `createMediaStreamSource` で同じストリームを `AnalyserNode`（`fftSize` 2048）へつなぎ、`WAVE_SAMPLE_MS` ごとに `getByteTimeDomainData` の値の 128 からの差の最大を 128 で割った 0〜1 の音量で `onLevel` を呼ぶ
       4. `stop` は `dataavailable` の塊を集め、`stop` の後に 1 つの `Blob` にして返す。`cancel` は塊を捨てる。どちらも音量を取るのをやめて `AudioContext` を `close()` し、ストリームの全てのトラックを `stop()` する
     unit_tests:
@@ -254,12 +254,12 @@ functions:
         mock: なし
         expected: '`0:00` / `0:12` / `1:12` / `60:00`'
   - name: pushLevel
-    title: 音量を足す
+    title: 音量を追加する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
     usecase: 音声でコメントする
     scope: public
-    summary: 音量の並びの末尾に 1 つ足し、`WAVE_LEVELS_MAX` を超えた古いものを先頭から捨てた新しい並びを返す（元の並びは変えない）
+    summary: 音量の並びの末尾に 1 つ追加し、`WAVE_LEVELS_MAX` を超えた古いものを先頭から捨てた新しい並びを返す（元の並びは変えない）
     args:
       - name: levels
         type: readonly number[]
@@ -270,14 +270,14 @@ functions:
         type: number
         required: true
         passing: positional
-        description: 足す音量（0〜1。範囲の外は 0 か 1 にそろえる）
+        description: 追加する音量（0〜1。範囲の外は 0 か 1 にそろえる）
     returns:
       type: number[]
-      description: 足した後の並び
+      description: 追加した後の並び
     unit_tests:
       - name: test_push_level
         case: 正常
-        summary: 末尾に足し、上限を超えた古いものを捨てる
+        summary: 末尾に追加し、上限を超えた古いものを捨てる
         condition: '`parametrize`: `([], 0.5)` / `([0.1, 0.2], 1.4)` / 長さ `WAVE_LEVELS_MAX` の並びに `0.3`'
         mock: なし
         expected: '`[0.5]` / `[0.1, 0.2, 1]` / 長さ `WAVE_LEVELS_MAX` で、先頭の 1 つが消え末尾が `0.3`。元の並びは変わらない'
@@ -288,7 +288,7 @@ functions:
     usecase: 音声でコメントする
     scope: public
     is_async: true
-    summary: 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が `review` なら全文をレビュー中に溜め、`send` なら全文をすぐ送る（`insert` なら送らない）
+    summary: 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が `review` なら全文をレビュー中に溜め、`send` なら全文をすぐ送信する（`insert` なら送信しない）
     args:
       - name: recording
         type: Recording
@@ -310,18 +310,18 @@ functions:
       type: Promise<VoiceOutcome>
       description: 結果
     process: |-
-      1. `recording.stop()` で音声を受け取り、`api.transcribe` に送る
+      1. `recording.stop()` で音声を受け取り、`api.transcribe` に送信する
          - 503 の場合、`unavailable`（`reason` と `detail`）を返す
          - 断られた（`detail` があればそれ、無ければ `VOICE_TEXT.failed`）・届かない（`VOICE_TEXT.failed`）場合、元の中身のまま `failed` を返す
          - `text` が前後の空白を除いて空の場合、元の中身のまま `VOICE_TEXT.failed` の `failed` を返す
       2. `insertAtCursor` で挿入する
       3. `action` が `insert` なら、挿入した中身と位置の `inserted` を返す
-      4. `action` が `review` なら、`api.add` に向けた先と挿入した全文を送る
+      4. `action` が `review` なら、`api.add` に向けた先と挿入した全文を送信する
          - 溜められた場合、空の中身と応答の `count` の `reviewed` を返す
          - 溜められなかった場合、挿入した中身と位置と `VOICE_TEXT.reviewFailed` の `failed` を返す
-      5. `api.sendNow` に向けた先と挿入した全文を送る
-         - 送れた場合、空の中身と応答の `entered` の `sent` を返す
-         - 送れなかった場合、挿入した中身と位置と `VOICE_TEXT.sendFailed` の `failed` を返す
+      5. `api.sendNow` に向けた先と挿入した全文を送信する
+         - 送信できた場合、空の中身と応答の `entered` の `sent` を返す
+         - 送信できなかった場合、挿入した中身と位置と `VOICE_TEXT.sendFailed` の `failed` を返す
     unit_tests:
       - name: test_finish_voice
         case: 正常

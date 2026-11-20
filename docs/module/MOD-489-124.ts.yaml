@@ -3,9 +3,9 @@ title: プレビュー / voice
 lead: コメント・返信の入力の録音と、カーソルの位置への挿入（今の画面の `core/voice.ts` と同じ振る舞い）。
 constants:
   - name: VOICE_MIME_TYPES
-    title: 録音の形の候補
+    title: 録音の構造の候補
     usecase: 音声でコメントする
-    summary: '`MediaRecorder.isTypeSupported` が真の最初の形で録る（今の画面と同じ並び）'
+    summary: '`MediaRecorder.isTypeSupported` が真の最初の形式で録る（今の画面と同じ並び）'
     value: "['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4']"
     container: frontend/src/shared/core/voice.ts
   - name: VOICE_TEXT
@@ -42,7 +42,7 @@ constants:
     title: 音量を取る間隔
     container: frontend/src/shared/core/voice.ts
     usecase: 音声でコメントする
-    summary: 録音中にマイクの音量を取って波形の棒を 1 本足す間隔（ミリ秒）。`AnalyserNode` の `fftSize` 2048 が 48 kHz で 1 回に見る長さ（約 43 ms）以上にし、重ねて見ない。1 秒に 20 本で、話し始めてから 1 秒以内に棒の長さで声を拾えているかが分かる
+    summary: 録音中にマイクの音量を取って波形の棒を 1 本追加する間隔（ミリ秒）。`AnalyserNode` の `fftSize` 2048 が 48 kHz で 1 回に見る長さ（約 43 ms）以上にし、重ねて見ない。1 秒に 20 本で、話し始めてから 1 秒以内に棒の長さで声を拾えているかが分かる
     value: '50'
   - name: WAVE_LEVELS_MAX
     title: 持つ音量の数の上限
@@ -84,7 +84,7 @@ functions:
         summary: 持たない・断られたときは何もしない
         condition: '`parametrize`: `navigator.wakeLock` が無い / `request` が `NotAllowedError` で断る'
         mock: '`vi.stubGlobal`'
-        expected: 例外を送らず、返った関数を呼んでも何も起きない
+        expected: 例外を送出しず、返った関数を呼んでも何も起きない
     container: frontend/src/shared/core/voice.ts
   - name: micSupported
     title: マイクを使えるか
@@ -147,12 +147,12 @@ functions:
         expected: '`確認: 案 A`・7 / `axc`・2 / `abx`・3'
     container: frontend/src/shared/core/voice.ts
   - name: pushLevel
-    title: 音量を足す
+    title: 音量を追加する
     kind: 関数
     container: frontend/src/shared/core/voice.ts
     usecase: 音声でコメントする
     scope: public
-    summary: 音量の並びの末尾に 1 つ足し、`WAVE_LEVELS_MAX` を超えた古いものを先頭から捨てた新しい並びを返す（元の並びは変えない）
+    summary: 音量の並びの末尾に 1 つ追加し、`WAVE_LEVELS_MAX` を超えた古いものを先頭から捨てた新しい並びを返す（元の並びは変えない）
     args:
       - name: levels
         type: readonly number[]
@@ -163,14 +163,14 @@ functions:
         type: number
         required: true
         passing: positional
-        description: 足す音量（0〜1。範囲の外は 0 か 1 にそろえる）
+        description: 追加する音量（0〜1。範囲の外は 0 か 1 にそろえる）
     returns:
       type: number[]
-      description: 足した後の並び
+      description: 追加した後の並び
     unit_tests:
       - name: test_push_level
         case: 正常
-        summary: 末尾に足し、上限を超えた古いものを捨てる
+        summary: 末尾に追加し、上限を超えた古いものを捨てる
         condition: '`parametrize`: `([], 0.5)` / `([0.1, 0.2], 1.4)` / 長さ `WAVE_LEVELS_MAX` の並びに `0.3`'
         mock: なし
         expected: '`[0.5]` / `[0.1, 0.2, 1]` / 長さ `WAVE_LEVELS_MAX` で、先頭の 1 つが消え末尾が `0.3`。元の並びは変わらない'
@@ -195,7 +195,7 @@ functions:
     kind: 関数
     container: frontend/src/shared/core/voice.ts
     usecase: 音声でコメントする
-    summary: 項目の ID とスレッドの ID の集まりから、録音の行き先があるかを返す関数を作る（外枠の描き直しと、書き換えの通知での確かめが共に使う）
+    summary: 項目の ID とスレッドの ID の集まりから、録音の行き先があるかを返す関数を作る（外枠の再描画と、書き換えの通知での確かめが共に使う）
     args:
       - name: ids
         type: '{itemIds: ReadonlySet<string>, threadIds: ReadonlySet<string>}'

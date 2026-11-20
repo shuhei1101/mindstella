@@ -37,7 +37,7 @@ flows:
     summary: '`TMUX`・`TMUX_PANE` が無ければ、`cwd` と `claude_config_dir` だけを入れる'
     setup:
       - name: Mock
-        description: 正常系と同じ。`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` を消した環境で起動する
+        description: 正常系と同じ。`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` を削除した環境で起動する
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -150,11 +150,11 @@ constraints:
     notes: Claude Code 2.1 は、フックを `bash` を挟んで起動する。間に別のコマンド（`claude-balancer` など）が挟まっても、名前が `claude` のプロセスで止まる（2026-11-02 に確かめた）
   - item: 起動時刻
     constraint: '`claude_started_at` は、`/proc/{PID}/stat` があればその 22 番目の欄 `starttime`（OS の起動からの clock ticks）、`/proc` が無い OS（macOS）は空白を 1 つにつめた `ps -o lstart= -p {PID}` の文字列。常駐サーバーも同じ求め方で比べる'
-    notes: '`ps -o lstart=` は OS の起動時刻（`/proc/stat` の `btime`）に `starttime` を足した時刻で、時計の補正で `btime` が動くと同じプロセスでも値が変わる（WSL2 で、約 14 秒ごとに 1 秒ずれるのを確かめた）'
+    notes: '`ps -o lstart=` は OS の起動時刻（`/proc/stat` の `btime`）に `starttime` を追加した時刻で、時計の補正で `btime` が動くと同じプロセスでも値が変わる（WSL2 で、約 14 秒ごとに 1 秒ずれるのを確かめた）'
   - item: tmux の外
     constraint: '`TMUX` か `TMUX_PANE` が空なら、`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` を入れない'
   - item: 上限
-    constraint: '`ps` をたどるのは 32 段まで'
+    constraint: '`ps` をたどるのは 32 階層まで'
     notes: Claude Code の下のフックのプロセスの深さは数段で、たどり続けて止まらないことを防ぐ上限
   - item: 許可の判断
     constraint: '`allow` を出すのは、`matcher` に該当する mindstella の MCP のツールの呼び出しだけ'

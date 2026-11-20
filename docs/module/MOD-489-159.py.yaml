@@ -26,7 +26,7 @@ classes:
     title: 文字起こしの設定の誤り
     container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
     usecase: 常駐サーバーの起動と停止
-    summary: '`MINDSTELLA_TRANSCRIBER` が実装の一覧に無いか、`MINDSTELLA_TRANSCRIBER_URL` が許す形でない（設定『サーバー』）。常駐サーバーの起動の入口が受けて、待ち受けずに終える'
+    summary: '`MINDSTELLA_TRANSCRIBER` が実装の一覧に無いか、`MINDSTELLA_TRANSCRIBER_URL` が許す形式でない（設定『サーバー』）。常駐サーバーの起動の入口が受けて、待ち受けずに終える'
     kind: クラス
     inherits: ValueError
     properties:
@@ -65,16 +65,16 @@ constants:
     title: 実装の一覧
     container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
     usecase: 音声でコメントする
-    summary: '`MINDSTELLA_TRANSCRIBER` の値 → URL を受けて実装を作る関数。別のサービスを足すときは、実装のモジュールとこの行を足す'
+    summary: '`MINDSTELLA_TRANSCRIBER` の値 → URL を受けて実装を作る関数。別のサービスを追加するときは、実装のモジュールとこの行を追加する'
     entries:
       - key: voice-paste
         value: VoicePasteTranscriber
         description: モジュール構成『voice-pasteの文字起こし』
   - name: URL_PATTERN
-    title: 許す URL の形
+    title: 許す URL の形式
     container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
     usecase: 音声でコメントする
-    summary: '`MINDSTELLA_TRANSCRIBER_URL` に許す形（`http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`。末尾の `/` は許す）'
+    summary: '`MINDSTELLA_TRANSCRIBER_URL` に許す形式（`http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`。末尾の `/` は許す）'
     value: re.compile(r"\Ahttp://(?:127\.0\.0\.1|localhost):(\d{1,5})/?\Z")
 functions:
   - name: load_transcriber
@@ -95,13 +95,13 @@ functions:
       description: 選んだ実装
     process: |-
       1. `TRANSCRIBER_ENV` の値を読む（前後の空白を除く。無いか空なら `DEFAULT_TRANSCRIBER`）
-         - `TRANSCRIBER_FACTORIES` に無い場合、`InvalidTranscriberError` を送る
+         - `TRANSCRIBER_FACTORIES` に無い場合、`InvalidTranscriberError` を送信する
       2. `TRANSCRIBER_URL_ENV` の値を読む（前後の空白を除く。無いか空なら `DEFAULT_TRANSCRIBER_URL`）
-         - `URL_PATTERN` に合わないか、ポートが 1〜65535 でない場合、`InvalidTranscriberError` を送る
+         - `URL_PATTERN` に合わないか、ポートが 1〜65535 でない場合、`InvalidTranscriberError` を送信する
       3. 末尾の `/` を外した URL で、`TRANSCRIBER_FACTORIES` の関数を呼んで返す
     exceptions:
       - name: InvalidTranscriberError
-        condition: 実装の一覧に無い名前か、許す形でない URL
+        condition: 実装の一覧に無い名前か、許す形式でない URL
         message: '{環境変数の名前} の値が誤りです: {値}'
     unit_tests:
       - name: test_load_transcriber

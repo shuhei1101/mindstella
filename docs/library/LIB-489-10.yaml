@@ -28,7 +28,7 @@ upstream: evilmartians/lefthook
 verification:
   state: 済
   date: '2026-11-04'
-  detail: PoC 検証（#430）で、違反を含む commit が pre-commit で止まり、直すと通ることを確かめた
+  detail: PoC 検証（#430）で、違反を含む commit が pre-commit で止まり、修正すると通ることを確かめた
 license: MIT（開発用だけで配る物に入らない）
 official_url: https://lefthook.dev/
 docs_url: https://lefthook.dev/configuration/

@@ -5,7 +5,7 @@ directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
     server.py          入口（常駐サーバーの待ち受けと終わり方・ツールの登録・結果とエラー・書き換えの鍵・状態と停止）
-    startup.py         起動時の照合（ID の一覧の作り直し・状態の照合・エージェントフローの配信元の確認）
+    startup.py         起動時の照合（ID の一覧の再作成・状態の照合・エージェントフローの配信元の確認）
     commands.py        ツールごとの処理（引数 → 各機能 → 結果の辞書）
     api.py             MindStella の API の経路（Host と Origin の確かめ・problem+json）
     workspaces.py      ワークスペースの管理（作成・クローズ・配信元の行・依頼の順番の鍵）
@@ -55,9 +55,9 @@ diagrams:
         配信 --> ビルド : 雛形と記録
         配信 --> コメント : /api/comments・/api/drafts
         配信 --> スレッド : /api/threads
-        配信 --> Claude Codeへの入力 : まとめて送った後
-        コメント --> スレッド : まとめて送る
-        入口 --> MindStellaのAPI : 経路を足す
+        配信 --> Claude Codeへの入力 : まとめて送信した後
+        コメント --> スレッド : まとめて送信する
+        入口 --> MindStellaのAPI : 経路を追加する
         入口 --> ワークスペースの管理 : create_workspace・close_workspace
         入口 --> セッションの管理 : create_session・sessions・stop_session
         MindStellaのAPI --> ワークスペースの管理
@@ -71,6 +71,6 @@ diagrams:
         Claude Codeへの入力 --> 常駐サーバーの状態 : MindStella のセッションの宛先
       ```
 notes:
-  モジュールの読み込み: サーバーはパッケージとして入れず、『常駐サーバーの起動の確認』（`ensure_server.py`）が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
+  モジュールの読み込み: サーバーはパッケージとして入れず、『常駐サーバーの起動の確認』（`ensure_server.py`）が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に追加して同じ名前で読む
   標準出力: サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く（『常駐サーバーの起動の確認』が標準出力と標準エラーを `~/.mindmap/server.log` へつなぐ）
   ツールを動かすスレッド: 'MCP の SDK は同期の関数のツールを作業スレッドで呼ぶ。複数のセッションのツールの呼び出しが並ぶため、書き換えは今までどおりプロセスの中の 1 本の鍵とワークスペースのロックで順にする'

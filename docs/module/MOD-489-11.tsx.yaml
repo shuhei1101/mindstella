@@ -1,20 +1,20 @@
 id: MOD-489-11
 title: プレビュー / thread-state
-lead: スレッドの状態の札・レビュー中の印・未読の札。
+lead: スレッドの状態の札・レビュー中のマーカー・未読の札。
 components:
   - name: ThreadState
     title: 状態の札
     kind: コンポーネント
     usecase: スレッドで話す
-    summary: スレッドの状態（オープン・クローズ・レビュー中）を色に加えて印と文字で出す
+    summary: スレッドの状態（オープン・クローズ・レビュー中）を色に加えてマーカーと文字で出す
     refs:
       - CMP-489-14#
     container: frontend/src/features/comments/shared/thread-state.tsx
   - name: PendingMark
-    title: レビュー中の印
+    title: レビュー中のマーカー
     kind: コンポーネント
     usecase: スレッドで話す
-    summary: レビュー中の返信を持つスレッドに出す印
+    summary: レビュー中の返信を持つスレッドに出すマーカー
     container: frontend/src/features/comments/shared/thread-state.tsx
   - name: UnseenMark
     title: 未読の札
@@ -31,5 +31,5 @@ constants:
   - name: STATE_LABELS
     title: 状態の札の文言
     usecase: スレッドで話す
-    summary: 状態の札の種類 → 印と文言
+    summary: 状態の札の種類 → マーカーと文言
     container: frontend/src/features/comments/shared/thread-state.tsx

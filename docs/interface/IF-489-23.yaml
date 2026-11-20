@@ -48,13 +48,13 @@ flows:
       - ステータスが 200 で、`items` と `drafts` が空
       - '`comments.yaml`・`drafts.yaml` が作られていない'
     test: test_normal_when_empty
-  - name: 異常系（形が崩れている・422）
+  - name: 異常系（構造が崩れている・422）
     summary: 手で崩した comments.yaml は読まずに合わない箇所を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
       - name: make_workspace
-        description: '`comments.yaml` の C-1 から `body` を消したワークスペース'
+        description: '`comments.yaml` の C-1 から `body` を削除したワークスペース'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -81,7 +81,7 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
+    constraints: '『プレビューの配信』の制約「接続先の確認」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
 response:
   - name: items[].id
     type: str
@@ -96,7 +96,7 @@ response:
     description: 向けた項目のタイトル。項目に紐づかないか、項目が消えていれば `null`
   - name: items[].loc
     type: dict | None
-    description: 選んだ箇所（`kind`・`start`・`end`・`key`・`text`）。箇所を持たなければ `null`。形は ER 図『ワークスペース』の `comments.yaml`
+    description: 選んだ箇所（`kind`・`start`・`end`・`key`・`text`）。箇所を持たなければ `null`。形式は ER 図『ワークスペース』の `comments.yaml`
   - name: items[].body
     type: str
     description: 本文
@@ -124,16 +124,16 @@ status_codes:
     condition: 読めた（`comments.yaml`・`drafts.yaml` が無いときはどちらも空）
   - code: '422'
     condition: '`comments.yaml`・`drafts.yaml` がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった'
-    notes: '`detail` は『記録の取得』の 422 と同じ形'
+    notes: '`detail` は『記録の取得』の 422 と同じ構造'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
-  - item: 読む時
-    constraint: 呼ばれるたびに `comments.yaml`・`drafts.yaml` と項目を読み直す。『記録の取得』はレビュー中のコメントと書きかけを返さない
-  - item: 本文の形
+  - item: 読み込む時
+    constraint: 呼ばれるたびに `comments.yaml`・`drafts.yaml` と項目を再読み込みする。『記録の取得』はレビュー中のコメントと書きかけを返さない
+  - item: 本文の構造
     constraint: '`application/json; charset=utf-8`。日本語はエスケープしない。`Cache-Control: no-store`'
-  - item: 接続先の確かめ
+  - item: 接続先の確認
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403。確かめは『プレビューの配信』の異常系が持つ）
-  - item: 読みかけ
+  - item: 書き込み途中の読み込み
     constraint: 書き換えは一時ファイルから `os.replace` で置き換えるため、書きかけを読まない
 refs:
   - ER-489-1#

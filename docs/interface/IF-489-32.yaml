@@ -3,7 +3,7 @@ title: 再開の状況
 entry:
   kind: endpoint
   value: POST `/_admin/sessions/{session}/resume`
-lead: MindStella のセッションの SessionStart のフックが呼び、起動と再開の注入に入れる状況（取り込み待ちのスレッドの件数・前回参照した後に変わった項目・要見直しの検討事項・進行中の作業）と、注入した後に前回参照した時点を進める通し番号を返す。
+lead: MindStella のセッションの SessionStart のフックが呼び、起動と再開の注入に入れる状況（取り込み待ちのスレッドの件数・前回参照した後に変わった項目・要見直しの検討事項・進行中の作業）と、注入した後に前回参照した時点を進める連番を返す。
 idempotent: true
 side_effects: 書き換えない。前回参照した時点は、フックが注入文を書き終えた後に『前回参照した時点の更新』で進める
 request:
@@ -31,10 +31,10 @@ response:
     description: 取り込み待ちのスレッド（AI が取り込んでいない利用者の書き込みを持つスレッド）の件数
   - name: changed[]
     type: list[{id, kind, title, updated_by}]
-    description: 前回参照した後（`read_seq` より後）に足した・変えた項目の ID と要約。前の値は返さない（『前回読んだ時点からの変更』で取得する）。前回参照した時点が無いときは空
+    description: 前回参照した後（`read_seq` より後）に追加した・変えた項目の ID と要約。前の値は返さない（『前回読んだ時点からの変更』で取得する）。前回参照した時点が無いときは空
   - name: removed[]
     type: list[{id, kind, title}]
-    description: 前回参照した後に消した項目
+    description: 前回参照した後に削除した項目
   - name: needs_review[]
     type: list[{id, title}]
     description: 状態が `要見直し` の検討事項
@@ -52,7 +52,7 @@ response:
     description: 状況をまとめたときの `changes.yaml` の `last_seq`。フックが『前回参照した時点の更新』へ渡す
   - name: context
     type: str
-    description: SessionStart の注入文。プラグインのプロンプトファイルを `trigger` とこの応答の値で描いた文で、起動の契機・取り込み待ちの件数・変わった項目と消した項目・要見直し・進行中・超えた件数・移し替えの報告・進め方の文書の場所と、`mindstella/startup` を参照して先に進める案内を持つ。`changed_more`・`removed_more` が 1 以上なら `changes_since_read` を呼んで残りと前の値を取る案内を持つ。次の候補・スキルの呼び方を持たない
+    description: SessionStart の注入文。プラグインのプロンプトファイルを `trigger` とこの応答の値で描いた文で、起動の契機・取り込み待ちの件数・変わった項目と削除した項目・要見直し・進行中・超えた件数・移し替えの報告・進め方の文書の場所と、`mindstella/startup` を参照して先に進める案内を持つ。`changed_more`・`removed_more` が 1 以上なら `changes_since_read` を呼んで残りと前の値を取る案内を持つ。次の候補・スキルの呼び方を持たない
 status_codes:
   - code: '200'
     condition: 状況をまとめた
@@ -75,7 +75,7 @@ constraints:
   - item: 件数の上限
     constraint: '`changed`・`removed`・`needs_review`・`in_progress` はそれぞれ 20 件まで。超えた分は件数だけを `{キー}_more` に入れる。注入に収まらない分は MindStella のセッションが `changes_since_read` で取得する（D-342）'
   - item: 移し替えの報告
-    constraint: '`migration` は『前回参照した時点の更新』が消すまで、呼ばれるたびに返す'
+    constraint: '`migration` は『前回参照した時点の更新』が削除するまで、呼ばれるたびに返す'
   - item: 注入文
     constraint: 'プロンプトファイルは規約『プロンプトファイル』の `kind: hook` の YAML にし、常駐サーバーが Jinja2（未定義の変数は誤り）で描く。置き場所はモジュール構成で決める'
 flows:
@@ -83,7 +83,7 @@ flows:
     summary: 再開のとき、前回参照した後の変更と要見直し・進行中・取り込み待ちを返し、前回参照した時点は進めない
     setup:
       - name: Mock
-        description: なし（HTTP のクライアントで送る）
+        description: なし（HTTP のクライアントで送信する）
       - name: 常駐サーバー
         description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
       - name: make_workspace
@@ -109,7 +109,7 @@ flows:
       - '`context` が契機 `再開`・取り込み待ちの件数 1・D-1・T-1・`mindstella/startup` を持ち、`/mindstella:` を持たない'
     test: test_normal
   - name: 正常系（起動）
-    summary: 前回参照した時点が無いときは変更を返さず、今の通し番号を until_seq で返す
+    summary: 前回参照した時点が無いときは変更を返さず、今の連番を until_seq で返す
     setup:
       - name: Mock
         description: なし

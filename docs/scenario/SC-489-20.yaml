@@ -22,7 +22,7 @@ scenarios:
 
         U->>CC: Claude Code を立ち上げる
         CC->>HK: SessionStart
-        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT でバージョンを尋ねる）
         HK->>SV: ポートで待ち受けているプロセスが無いので、systemd --user のユニットを起動する
         SV->>SV: 127.0.0.1 の MINDSTELLA_PORT で /mcp と MindStella の API を待ち受ける
         CC->>SV: ツールの一覧
@@ -53,8 +53,8 @@ scenarios:
 
         U->>C2: 2 つ目の Claude Code を立ち上げる
         C2->>HK: SessionStart
-        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
-        SV-->>HK: mindstella の版
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT でバージョンを尋ねる）
+        SV-->>HK: mindstella のバージョン
         C1->>SV: 状況（ワークスペースは作業フォルダ）
         SV-->>C1: フォルダ A の状況
         C2->>SV: 状況（ワークスペースは作業フォルダ）
@@ -95,7 +95,7 @@ scenarios:
       - name: 配信しているワークスペース
         description: プレビューの URL を取得済みのワークスペースのフォルダ A と B
       - name: 終了時のフック
-        description: 常駐サーバーを起動する環境の `MINDSTELLA_PREVIEW_STOP_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ書き足すコマンドを渡す
+        description: 常駐サーバーを起動する環境の `MINDSTELLA_PREVIEW_STOP_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ追記するコマンドを渡す
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -129,8 +129,8 @@ scenarios:
 
         U->>CC: プラグインを更新した後に Claude Code を立ち上げる
         CC->>HK: SessionStart
-        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版とプラグインのフォルダを尋ねる）
-        SV-->>HK: 同じ版、違うプラグインのフォルダ
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT でバージョンとプラグインのフォルダを尋ねる）
+        SV-->>HK: 同じバージョン、違うプラグインのフォルダ
         HK-->>CC: 古いコードで動いていることと、起動のコマンドで再起動する手順
         U->>SV: 起動のコマンドで常駐サーバーを再起動する（systemd --user のユニットを再起動する）
       ```
@@ -142,7 +142,7 @@ scenarios:
     setup:
       - name: Mock
         description: 正常シナリオと同じ
-      - name: 使われているポート
+      - name: 使用中のポート
         description: テストが先に `127.0.0.1` で待ち受けたポートを `MINDSTELLA_PORT` で渡す
     flow: |-
       ```mermaid
@@ -154,7 +154,7 @@ scenarios:
 
         U->>CC: Claude Code を立ち上げる
         CC->>HK: SessionStart
-        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT でバージョンを尋ねる）
         HK->>HK: ポートは開いているが mindstella の応答が無いので、ユニットを起動しない
         HK-->>CC: 使われているポートと、MINDSTELLA_PORT で変える手順を示し、立ち上げを止めない
       ```
@@ -182,10 +182,10 @@ refs:
   - SC-489-10#
   - SC-605-1#
 notes:
-  待ち受けているかの判定: '`MINDSTELLA_PORT` のポートで mindstella の常駐サーバーが版を返すかで決める。ポートで待ち受けているプロセスが無ければ、落ちているとみなしてユニットを起動する。ポートが開いているのに mindstella の応答が無ければ、ユニットを起動せずに使われているポートを示す（ユニットとして起動したプロセスの出力と終了コードは、起動した側に届かないため）'
-  古いコードの判定: 'Claude Code のプロファイル（`~/.claude`・`~/.claude-sub5` など）ごとにプラグインのフォルダのパスが違うので、パスの全体ではなく末尾のフォルダ名（コミットの SHA）で比べる。版の文字列が違うときも同じ案内を出す'
+  待ち受けているかの判定: '`MINDSTELLA_PORT` のポートで mindstella の常駐サーバーがバージョンを返すかで決める。ポートで待ち受けているプロセスが無ければ、落ちているとみなしてユニットを起動する。ポートが開いているのに mindstella の応答が無ければ、ユニットを起動せずに使われているポートを示す（ユニットとして起動したプロセスの出力と終了コードは、起動した側に届かないため）'
+  古いコードの判定: 'Claude Code のプロファイル（`~/.claude`・`~/.claude-sub5` など）ごとにプラグインのフォルダのパスが違うので、パスの全体ではなく末尾のフォルダ名（コミットの SHA）で比べる。バージョンの文字列が違うときも同じ案内を出す'
   状態を確かめる・止める手段: 起動のコマンドのサブコマンドが systemd --user のユニットを確かめる・止める・再起動する。サブコマンドの名前はインターフェース定義で決める
   E2E の範囲: 本物の Claude Code と systemd --user は使わず、SessionStart のフックが叩く起動の処理と、MCP のクライアントでの呼び出しを確かめる。プラグインの `.mcp.json` を Claude Code が読んでつなぐことは結合テストが確かめる
-  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
-  起動した後の照合: 常駐サーバーが待ち受けを始める前の状態の照合・ID の一覧の作り直し・エージェントフローの配信元の確認は、単一ユースケース『常駐サーバーの起動』が持つ
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を追加する
+  起動した後の照合: 常駐サーバーが待ち受けを始める前の状態の照合・ID の一覧の再作成・エージェントフローの配信元の確認は、単一ユースケース『常駐サーバーの起動』が持つ
 test_file: tests/e2e/単一ユースケース/test_resident_server.py

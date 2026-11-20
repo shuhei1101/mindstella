@@ -31,7 +31,7 @@ components:
         expected: 保存領域の `commentFormClosed` が `true` で、移った項目でも入力欄が無く見出しの行だけ / `commentFormClosed` が `null` になり、入力欄にフォーカスがある
       - name: test_detail_comments_when_voice
         case: 正常
-        summary: 音声で項目へのコメントを送る
+        summary: 音声で項目へのコメントを送信する
         condition: 'D-1 の入力でマイクを押して ✓。`POST /api/transcriptions` が `{text: 案 A にする}` で、挙動が `send`'
         mock: MSW と `vi.stubGlobal`
         expected: '`POST /api/comments/send-now` が `{target: D-1, body: 案 A にする}` で 1 回呼ばれ、入力欄が空で「送信し、Claude Code へ入力しました。」'
@@ -50,4 +50,4 @@ components:
     container: frontend/src/features/detail/detail-panel/components/detail-comments.tsx
 notes:
   単体テスト: 同じフォルダの `detail-comments.test.tsx` に置く（knowledge の規約『フォルダ構成』）
-  修正の入力の音声入力: '書き換えている行（`{id, body, error}`）の初めの値は `voiceEditingOf("panel")`（詳細の全画面は `full`）の ID にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread: null, target: 開いている項目}`、開く画面は `panel` か `full`、名前は「{ID} へのコメントの修正」）を使い、`ReviewEditForm` へ `body`・`onBodyChange` と音声の props を渡す。コメントの入力の `useVoiceInput` とは別の `key`。単体テストに `test_detail_comments_when_edit_voice` を足す'
+  修正の入力の音声入力: '書き換えている行（`{id, body, error}`）の初めの値は `voiceEditingOf("panel")`（詳細の全画面は `full`）の ID にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread: null, target: 開いている項目}`、開く画面は `panel` か `full`、名前は「{ID} へのコメントの修正」）を使い、`ReviewEditForm` へ `body`・`onBodyChange` と音声の props を渡す。コメントの入力の `useVoiceInput` とは別の `key`。単体テストに `test_detail_comments_when_edit_voice` を追加する'

@@ -53,7 +53,7 @@ scenarios:
       - name: Mock
         description: なし（project-index を立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませ、検討事項を 1 件足したワークスペース
+        description: 作成を済ませ、検討事項を 1 件追加したワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -74,7 +74,7 @@ scenarios:
       - name: Mock
         description: なし（project-index を立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませ、検討事項を `search_docs` の既定の件数より 5 件多く足したワークスペース
+        description: 作成を済ませ、検討事項を `search_docs` の既定の件数より 5 件多く追加したワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram

@@ -1,12 +1,12 @@
 id: MOD-489-163
 title: サーバー / 起動 / register.py
-lead: 起動のコマンドの `register` のサブコマンドが呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルの印の範囲へ書く・読み返す・外す。
+lead: 起動のコマンドの `register` のサブコマンドが呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルのマーカーの範囲へ書く・読み返す・外す。
 test_files:
   - tests/unit/scripts/test_register.py
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    register.py   登録のスクリプト（システムの python3 で起動。Python 3.8 で読める構文と標準ライブラリだけ。形はインターフェース定義『起動スクリプトの登録』）
+    register.py   登録のスクリプト（システムの python3 で起動。Python 3.8 で読める構文と標準ライブラリだけ。構造はインターフェース定義『起動スクリプトの登録』）
   ```
 diagrams:
   - name: 全体
@@ -54,7 +54,7 @@ classes:
     title: 扱えないシェル
     container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
-    summary: '`SHELL` の末尾の名前が `bash`・`zsh` のどちらでもない。`main` が `error` と、bash の形の `manual_lines` を出して終了コード 1 にする'
+    summary: '`SHELL` の末尾の名前が `bash`・`zsh` のどちらでもない。`main` が `error` と、bash の形式の `manual_lines` を出して終了コード 1 にする'
     kind: クラス
     inherits: Exception
     properties:
@@ -86,22 +86,22 @@ constants:
     summary: 既定のアカウントで立ち上げる alias。アカウントごとの alias は `{ALIAS_NAME}-{名前}`（確認ログの決定）
     value: '"mindstella"'
   - name: ACCOUNT_NAME_PATTERN
-    title: アカウントの名前の形
+    title: アカウントの名前の形式
     container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: 英小文字・数字・`-` の 1〜32 文字で、英小文字か数字で始まる
     value: r"^[a-z0-9][a-z0-9-]{0,31}$"
   - name: MARK_BEGIN
-    title: 印の始まり
+    title: マーカーの始まり
     container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
-    summary: ログインシェルの設定ファイルに足す範囲の頭の行
+    summary: ログインシェルの設定ファイルに追加する範囲の頭の行
     value: '"# >>> mindstella >>>"'
   - name: MARK_END
-    title: 印の終わり
+    title: マーカーの終わり
     container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
-    summary: ログインシェルの設定ファイルに足す範囲の尾の行
+    summary: ログインシェルの設定ファイルに追加する範囲の尾の行
     value: '"# <<< mindstella <<<"'
   - name: PLUGIN_ID
     title: プラグインの識別子
@@ -143,7 +143,7 @@ functions:
       description: 終了コード（0 正常 / 1 実行時のエラー / 2 引数の誤り）
     process: |-
       1. サブコマンドとオプションを argparse で解釈する（知らないサブコマンドは argparse が 2 で終える）
-         - `--env` が `KEY=VALUE` の形でない、キーが `ENV_KEYS` に無い、値が改行を含む、`--unset-env` が `ENV_KEYS` に無い、`--name` が `ACCOUNT_NAME_PATTERN` に合わない、`add-account` に `--name` か `--config-dir` が無い、`remove-account` に `--name` が無い場合、使い方と理由を標準エラーに出して 2 を返す（何も書かない）
+         - `--env` が `KEY=VALUE` の形式でない、キーが `ENV_KEYS` に無い、値が改行を含む、`--unset-env` が `ENV_KEYS` に無い、`--name` が `ACCOUNT_NAME_PATTERN` に合わない、`add-account` に `--name` か `--config-dir` が無い、`remove-account` に `--name` が無い場合、使い方と理由を標準エラーに出して 2 を返す（何も書かない）
       2. 登録の置き場所（`registration_dir`）とログインシェルの設定ファイル（`rc_file_path`）を決め、今の登録を読む（`read_registration`）
       3. サブコマンドごとに次をする
          - `show`: 何も書かない
@@ -151,10 +151,10 @@ functions:
          - `add-account`: 登録が無ければ空の登録から `apply_add_account` で組み替える（`--config-dir` は `expanduser` して絶対パスにする）
          - `remove-account`: `apply_remove_account` で組み替える
          - `remove`: 登録を `None` にする
-      4. `show` 以外は、書く中身を組み立てて（登録があれば `registration.json`・`render_shell`・`add_rc_block`、`None` なら 2 つのファイルを消し `remove_rc_block`）まとめて書く（`write_files`）
-      5. その後の登録を `build_report` で組み立て、`show` のときは `in_tmux`（`environ` の `TMUX` が空でないか）を足して、標準出力に JSON（`ensure_ascii=False`）で出し、 0 を返す
-         - `NotWritableError`・`UnsupportedShellError`・`UnknownAccountError` を捕まえた場合、`error` と（前の 2 つは）`manual_lines` を持った JSON を出して 1 を返す。`manual_lines` は印の範囲の中に `render_shell` の行をそのまま入れたもの（`remove` のときは持たせない）
-         - `read_registration` が `json.JSONDecodeError` を送った場合、何も書かずに `error` に「{registration.json のパス} を読めません」を入れた JSON を出して 1 を返す
+      4. `show` 以外は、書く中身を組み立てて（登録があれば `registration.json`・`render_shell`・`add_rc_block`、`None` なら 2 つのファイルを削除 `remove_rc_block`）まとめて書く（`write_files`）
+      5. その後の登録を `build_report` で組み立て、`show` のときは `in_tmux`（`environ` の `TMUX` が空でないか）を追加して、標準出力に JSON（`ensure_ascii=False`）で出し、 0 を返す
+         - `NotWritableError`・`UnsupportedShellError`・`UnknownAccountError` を捕まえた場合、`error` と（前の 2 つは）`manual_lines` を持った JSON を出して 1 を返す。`manual_lines` はマーカーの範囲の中に `render_shell` の行をそのまま入れたもの（`remove` のときは持たせない）
+         - `read_registration` が `json.JSONDecodeError` を送信した場合、何も書かずに `error` に「{registration.json のパス} を読めません」を入れた JSON を出して 1 を返す
     exceptions:
       - name: NotWritableError
         condition: 設定ファイルか登録の置き場所に書き込めない（捕まえて 1）
@@ -251,7 +251,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
-    summary: '`SHELL` と OS から、印の範囲を足す設定ファイルを決める'
+    summary: '`SHELL` と OS から、マーカーの範囲を追加する設定ファイルを決める'
     args:
       - name: environ
         type: Mapping[str, str]
@@ -268,7 +268,7 @@ functions:
       description: bash は `~/.bashrc`（`system` が `Darwin` なら `~/.bash_profile`・`~/.bash_login`・`~/.profile` のうち最初にあるもの、どれも無ければ `~/.bash_profile`）、zsh は `~/.zshrc`
     process: |-
       1. `SHELL` の末尾の名前を取り、上のとおりに分ける
-         - どちらでもない場合、`UnsupportedShellError` を送る
+         - どちらでもない場合、`UnsupportedShellError` を送信する
     exceptions:
       - name: UnsupportedShellError
         condition: '`SHELL` の末尾の名前が `bash`・`zsh` でない'
@@ -293,7 +293,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
-    summary: 登録の置き場所の `registration.json` を読む。無ければ `None`（読めない JSON は `json.JSONDecodeError` をそのまま送る）
+    summary: 登録の置き場所の `registration.json` を読む。無ければ `None`（読めない JSON は `json.JSONDecodeError` をそのまま送信する）
     args:
       - name: directory
         type: Path
@@ -344,12 +344,12 @@ functions:
         mock: なし
         expected: '`env` が `{MINDSTELLA_ALLOWED_HOSTS: b}`。渡した登録が変わっていない'
   - name: apply_add_account
-    title: アカウントを足す
+    title: アカウントを追加する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
-    summary: アカウントを足した登録を返す。同じ名前があれば設定のフォルダを書き換える
+    summary: アカウントを追加した登録を返す。同じ名前があれば設定のフォルダを書き換える
     args:
       - name: registration
         type: Registration
@@ -372,7 +372,7 @@ functions:
     unit_tests:
       - name: test_apply_add_account
         case: 正常
-        summary: 足す・書き換える
+        summary: 追加する・書き換える
         condition: '`parametrize`: `sub2` だけの登録に `sub1`・`/c1` / `sub1`・`/c1` の登録に `sub1`・`/c9`'
         mock: なし
         expected: '`accounts` が `sub1`・`sub2` の順 / `sub1` が 1 件だけで `config_dir` が `/c9`'
@@ -396,10 +396,10 @@ functions:
         description: アカウントの名前
     returns:
       type: Registration
-      description: そのアカウントを除いた写し
+      description: そのアカウントを除いたコピー
     process: |-
-      1. `registration` が `None` か、`accounts` に `name` が無ければ `UnknownAccountError` を送る
-      2. そのアカウントを除いた写しを返す
+      1. `registration` が `None` か、`accounts` に `name` が無ければ `UnknownAccountError` を送信する
+      2. そのアカウントを除いたコピーを返す
     exceptions:
       - name: UnknownAccountError
         condition: 登録が無いか、`name` のアカウントが無い
@@ -446,12 +446,12 @@ functions:
         mock: なし
         expected: "`export MINDSTELLA_ALLOWED_HOSTS='it'\\''s.example'`・`mindstella()`・`mindstella-sub1()` の行があり、`/c1` を渡す。構文の確かめがどちらも 0 で終わる"
   - name: add_rc_block
-    title: 印の範囲を足す
+    title: マーカーの範囲を追加する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
-    summary: 設定ファイルの中身に、`shell.sh` を読み込む印の範囲が無ければ末尾に足す
+    summary: 設定ファイルの中身に、`shell.sh` を読み込むマーカーの範囲が無ければ末尾に追加する
     args:
       - name: text
         type: str
@@ -465,24 +465,24 @@ functions:
         description: '`shell.sh` の絶対パス'
     returns:
       type: str
-      description: 足した中身。`MARK_BEGIN` の行が既にあれば `text` のまま
+      description: 追加した中身。`MARK_BEGIN` の行が既にあれば `text` のまま
     process: |-
       1. `MARK_BEGIN` の行があれば `text` をそのまま返す
-      2. 空でなければ、末尾の改行の有無によらず改行を 1 つ足し、`MARK_BEGIN`・`[ -f '{shell_file}' ] && . '{shell_file}'`・`MARK_END` の 3 行を足す（末尾が改行なら、印の前に空行が 1 つ入る）
+      2. 空でなければ、末尾の改行の有無によらず改行を 1 つ追加し、`MARK_BEGIN`・`[ -f '{shell_file}' ] && . '{shell_file}'`・`MARK_END` の 3 行を追加する（末尾が改行なら、マーカーの前に空行が 1 つ入る）
     unit_tests:
       - name: test_add_rc_block
         case: 正常
-        summary: 無ければ足し、あれば重ねない
-        condition: '`parametrize`: `export EDITOR=vim`（末尾の改行なし） / `export EDITOR=vim\n` / 空 / 既に印の範囲を持つ中身'
+        summary: 無ければ追加し、あれば重ねない
+        condition: '`parametrize`: `export EDITOR=vim`（末尾の改行なし） / `export EDITOR=vim\n` / 空 / 既にマーカーの範囲を持つ中身'
         mock: なし
         expected: '`export EDITOR=vim` の行の後に 3 行 / `export EDITOR=vim` の行と空行の後に 3 行 / 3 行だけ / 渡した中身と同じ'
   - name: remove_rc_block
-    title: 印の範囲を消す
+    title: マーカーの範囲を削除する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
-    summary: 設定ファイルの中身から、`MARK_BEGIN` から `MARK_END` までの行を消す。範囲の外の行は 1 字も変えず、`add_rc_block` が足した改行も戻す
+    summary: 設定ファイルの中身から、`MARK_BEGIN` から `MARK_END` までの行を削除する。範囲の外の行は 1 字も変えず、`add_rc_block` が追加した改行も戻す
     args:
       - name: text
         type: str
@@ -491,14 +491,14 @@ functions:
         description: 設定ファイルの今の中身
     returns:
       type: str
-      description: 消した中身。範囲が無ければ `text` のまま
+      description: 削除した中身。範囲が無ければ `text` のまま
     process: |-
       1. `MARK_BEGIN` の行が無ければ `text` をそのまま返す
-      2. `MARK_BEGIN` の行から `MARK_END` の行の末尾の改行までを消し、`MARK_BEGIN` の直前に改行があればその 1 つも消す（`add_rc_block` が足した改行）
+      2. `MARK_BEGIN` の行から `MARK_END` の行の末尾の改行までを削除し、`MARK_BEGIN` の直前に改行があればその 1 つも削除する（`add_rc_block` が追加した改行）
     unit_tests:
       - name: test_remove_rc_block
         case: 正常
-        summary: add_rc_block で足した範囲を消すと元に戻る
+        summary: add_rc_block で追加した範囲を削除すると元に戻る
         condition: '`parametrize`: `export EDITOR=vim\n` に `add_rc_block` した中身 / `export EDITOR=vim`（末尾の改行なし）に `add_rc_block` した中身 / 範囲を持たない中身'
         mock: なし
         expected: '`export EDITOR=vim\n` / `export EDITOR=vim` / 渡した中身と同じ'
@@ -508,23 +508,23 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
-    summary: ファイルごとの中身を、全て書けると確かめてから書く。中身が `None` のファイルは消す
-    side_effects: 渡したファイルを書き換える・消す。登録の置き場所のフォルダが無ければ作る
+    summary: ファイルごとの中身を、全て書けると確かめてから書く。中身が `None` のファイルは削除する
+    side_effects: 渡したファイルを書き換える・削除する。登録の置き場所のフォルダが無ければ作る
     args:
       - name: contents
         type: dict[Path, str | None]
         required: true
         passing: positional
-        description: ファイル → 書く中身（`None` は消す）
+        description: ファイル → 書く中身（`None` は削除する）
     returns:
       type: None
       description: '-'
     process: |-
       1. 書く先が既にあるシンボリックリンクなら、`os.path.realpath` で解いたリンク先を書く先にする（リンクはそのまま残し、リンク先の中身を書き換える）
       2. 全ての書く先について、あればそのファイルと親のフォルダ、無ければあるところまでの親のフォルダに書き込めるかを `os.access` で確かめる
-         - 書き込めないものがあれば、何も書かずに `NotWritableError` を送る
-      3. 中身のある書く先は、書く先と同じフォルダの一時ファイルに書いてから `os.replace` で置き換える（既にあれば元のファイルの権限を写す）。`None` のファイルはあれば消す
-         - 途中で `OSError` が起きたら、書きかけの一時ファイルを消してから `NotWritableError` にして送る（`raise ... from`）
+         - 書き込めないものがあれば、何も書かずに `NotWritableError` を送信する
+      3. 中身のある書く先は、書く先と同じフォルダの一時ファイルに書いてから `os.replace` で置き換える（既にあれば元のファイルの権限を写す）。`None` のファイルはあれば削除する
+         - 途中で `OSError` が起きたら、書きかけの一時ファイルを削除してから `NotWritableError` にして送信する（`raise ... from`）
     exceptions:
       - name: NotWritableError
         condition: どれかのファイルか親のフォルダに書き込めない
@@ -532,7 +532,7 @@ functions:
     unit_tests:
       - name: test_write_files
         case: 正常
-        summary: 書く・消す・フォルダを作る
+        summary: 書く・削除する・フォルダを作る
         condition: '`tmp_path` に既にある `a`（`None`）、まだ無い `sub/b`（`x`）、既にある `c`（`y`）、`dotfiles/rc` を指すシンボリックリンク `d`（`z`）'
         mock: なし
         expected: '`a` が無く、`sub/b` が `x`、`c` が `y`。`d` はシンボリックリンクのままで、`dotfiles/rc` の中身が `z`。`tmp_path` に一時ファイルが残っていない'

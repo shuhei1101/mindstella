@@ -1,12 +1,12 @@
 id: MOD-489-57
 title: プレビュー / events-client
-lead: インターフェース定義『書き換えの知らせ』。
+lead: インターフェース定義『書き換えの通知』。
 constants:
   - name: EVENTS_URL
     title: 書き換えの知らせのパス
     container: frontend/src/shared/adapters/events-client.ts
     usecase: SPAを開く
-    summary: インターフェース定義『書き換えの知らせ』
+    summary: インターフェース定義『書き換えの通知』
     value: '"/api/events"'
 functions:
   - name: connectEvents
@@ -14,24 +14,24 @@ functions:
     kind: 関数
     container: frontend/src/shared/adapters/events-client.ts
     usecase: SPAを開く
-    summary: '`EVENTS_URL` へ EventSource でつなぎ、`changed` とつなぎ直し（`open`）で記録の query の読み直しを反映の依頼（`requestRefresh`）に渡し、入力中・音声入力中は保留して離れたときに読み直し、`duplicate_ids` で重なった ID のストアを書き換え、接続の状態を書き換える。つなぎ直しは EventSource に任せる'
+    summary: '`EVENTS_URL` へ EventSource でつなぎ、`changed` とつなぎ修正（`open`）で記録の query の再読み込みを反映の依頼（`requestRefresh`）に渡し、入力中・音声入力中は保留して離れたときに再読み込みし、`duplicate_ids` で重なった ID のストアを書き換え、接続の状態を書き換える。つなぎ修正は EventSource に任せる'
     args:
       - name: queryClient
         type: QueryClient
         required: true
-        description: 読み直す query を持つ QueryClient
+        description: 再読み込みする query を持つ QueryClient
     returns:
       type: () => void
       description: 接続を閉じる関数
     process: '1. EventSource を `EVENTS_URL` で作る
 
-      2. 文字の入力欄のフォーカスを見張る（`watchTextFocus`）。反映の保留（`useRefreshHoldStore.subscribe`）と音声入力（`subscribeVoice`）が変わるたびに、保留の解除（`releaseRefresh`）に 4 つの query の読み直し（`invalidatePreview`）を渡す
+      2. 文字の入力欄のフォーカスを見張る（`watchTextFocus`）。反映の保留（`useRefreshHoldStore.subscribe`）と音声入力（`subscribeVoice`）が変わるたびに、保留の解除（`releaseRefresh`）に 4 つの query の再読み込み（`invalidatePreview`）を渡す
 
-      3. `open` で接続の状態を online にし、4 つの query の読み直しを反映の依頼（`requestRefresh`）に渡す（切れている間の書き換えを拾う）
+      3. `open` で接続の状態を online にし、4 つの query の再読み込みを反映の依頼（`requestRefresh`）に渡す（切れている間の書き換えを拾う）
 
-      4. `changed` で 4 つの query の読み直しを反映の依頼（`requestRefresh`）に渡す。音声入力があれば、続けて録音の行き先の確かめ（`checkVoiceDestination`）を呼ぶ
+      4. `changed` で 4 つの query の再読み込みを反映の依頼（`requestRefresh`）に渡す。音声入力があれば、続けて録音の行き先の確かめ（`checkVoiceDestination`）を呼ぶ
 
-      5. `duplicate_ids` で `data` の ID の配列を重なった ID のストアに入れる（閉じた後も、集まりが変われば出し直す）
+      5. `duplicate_ids` で `data` の ID の配列を重なった ID のストアに入れる（閉じた後も、集まりが変われば再表示する）
 
       6. `error` で接続の状態を offline にする（前の記録の query は残す）
 
@@ -39,32 +39,32 @@ functions:
     unit_tests:
       - name: test_connect_events_when_changed
         case: 正常
-        summary: changed で読み直す
-        condition: 偽物の EventSource から `changed` を送る
+        summary: changed で再読み込みする
+        condition: 偽物の EventSource から `changed` を送信する
         mock: EventSource（偽物）
         expected: 記録の query が invalidate される
       - name: test_connect_events_when_error
         case: 正常
         summary: 切れたら offline
-        condition: 偽物の EventSource から `error` を送り、続けて `open` を送る
+        condition: 偽物の EventSource から `error` を送信し、続けて `open` を送信する
         mock: EventSource（偽物）
         expected: '`error` の後に offline、`open` の後に online'
       - name: test_connect_events_when_duplicate_ids
         case: 正常
         summary: duplicate_ids で重なった ID のストアを書き換える
-        condition: '偽物の EventSource から `duplicate_ids`（`data: ["D-1"]`）を送る'
+        condition: '偽物の EventSource から `duplicate_ids`（`data: ["D-1"]`）を送信する'
         mock: EventSource（偽物）
         expected: 重なった ID のストアが `["D-1"]`
       - name: test_connect_events_when_typing
         case: 正常
-        summary: 入力中の changed は保留し、離れたら 1 回だけ読み直す
-        condition: '`textarea` にフォーカスがあるまま偽物の EventSource から `changed` を 2 回送り、続けてフォーカスを `button` へ移す'
+        summary: 入力中の changed は保留し、離れたら 1 回だけ再読み込みする
+        condition: '`textarea` にフォーカスがあるまま偽物の EventSource から `changed` を 2 回送信し、続けてフォーカスを `button` へ移す'
         mock: EventSource（偽物）
         expected: 離れるまで記録の query は invalidate されず `pending` が true、離れた後に 1 回だけ invalidate され `pending` が false
       - name: test_connect_events_when_voice_target_removed
         case: 正常
         summary: 音声入力中の changed で行き先が無ければ録音を捨てる
-        condition: T-1 へ録音中に、MSW の `GET /api/records` が T-1 の無い記録を返す状態で `changed` を送る
+        condition: T-1 へ録音中に、MSW の `GET /api/records` が T-1 の無い記録を返す状態で `changed` を送信する
         mock: EventSource（偽物）・MSW
         expected: '`changed` を受けた時点では記録の query は invalidate されず、`discardVoice` で録音が捨てられ、音声入力の知らせが discarded。録音が終わった後に保留の解除で記録の query が 1 回だけ invalidate される'
   - name: checkVoiceDestination

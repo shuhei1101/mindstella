@@ -7,7 +7,7 @@ constants:
     title: 押したとみなす移動の上限
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 前回からの差分を見る
-    summary: ポインターを押してから離すまでの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（タッチパッド・ペンで 1 回押すときのぶれを吸収する幅）。`MindmapPreview.PRESS_SLOP_PX` として出し、差分のミニマップの印を押したかドラッグかの見分けに使う
+    summary: ポインターを押してから離すまでの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（タッチパッド・ペンで 1 回押すときのぶれを吸収する幅）。`MindmapPreview.PRESS_SLOP_PX` として出し、差分のミニマップのマーカーを押したかドラッグかの見分けに使う
     value: '5'
 functions:
   - name: h
@@ -40,22 +40,22 @@ functions:
       - name: test_h
         case: 正常
         summary: 属性・リスナー・子を付けた要素を返す
-        condition: '`{tag: "button", attrs: {class: "b", disabled: true, title: null, hidden: false, onclick: 数える関数}, children: ["a", 1, null, false, 要素]}` で作り、click のイベントを送る'
+        condition: '`{tag: "button", attrs: {class: "b", disabled: true, title: null, hidden: false, onclick: 数える関数}, children: ["a", 1, null, false, 要素]}` で作り、click のイベントを送信する'
         mock: なし
         expected: '`className` が `b`、`disabled` が空の値で付き、`title`・`hidden` は無い。子は `a`・`1`・要素の 3 つ。関数が 1 回呼ばれる'
   - name: append
-    title: 子を足す
+    title: 子を追加する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 共通
     scope: public
-    summary: 要素の中に子を足す
+    summary: 要素の中に子を追加する
     args:
       - name: parent
         type: Element
         required: true
         passing: keyword
-        description: 足す先
+        description: 追加する先
       - name: children
         type: (Node | string | number | null | undefined | false)[]
         required: true
@@ -67,7 +67,7 @@ functions:
     unit_tests:
       - name: test_append
         case: 正常
-        summary: 偽の値を除いて末尾に足す
+        summary: 偽の値を除いて末尾に追加する
         condition: 子を 1 つ持つ要素に `["x", 0, undefined, false]`
         mock: なし
         expected: 子が `元の子・x・0` の 3 つ
@@ -95,12 +95,12 @@ functions:
         mock: なし
         expected: '`svg.icon` で `aria-hidden` が `true`、子の図形を 1 つ以上持つ'
   - name: statusMark
-    title: 状態の印
+    title: 状態のマーカー
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 共通
     scope: public
-    summary: 状態ごとの印（色と形）を 10px の枠に描く。検討事項・タスク・資料の状態を持つ
+    summary: 状態ごとのマーカー（色と形状）を 10px の枠に描く。検討事項・タスク・資料の状態を持つ
     args:
       - name: status
         type: string | undefined
@@ -113,7 +113,7 @@ functions:
     unit_tests:
       - name: test_status_mark
         case: 正常
-        summary: 知っている状態だけ印を返す
+        summary: 知っている状態だけマーカーを返す
         condition: '`parametrize`: `決定済み` / `要見直し` / `完成` / `知らない` / `undefined`'
         mock: なし
         expected: '`svg.mark` / `svg.mark` / `svg.mark` / `null` / `null`'
@@ -123,7 +123,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 共通
     scope: public
-    summary: 状態の印と名前を並べる
+    summary: 状態のマーカーと名前を並べる
     args:
       - name: status
         type: string | undefined
@@ -136,7 +136,7 @@ functions:
     unit_tests:
       - name: test_status_badge
         case: 正常
-        summary: 印と名前を並べ、状態が無ければ空
+        summary: マーカーと名前を並べ、状態が無ければ空
         condition: '`parametrize`: `未決定` / `undefined`'
         mock: なし
         expected: '`span.st` で `data-st` が `未決定`、文字が `未決定`、`svg.mark` を持つ / 子の無い断片'
@@ -188,12 +188,12 @@ functions:
         mock: なし
         expected: '`scrollLeft` が 50・`scrollTop` が 30 増え、離すと `dragging` が外れる / `scrollLeft`・`scrollTop` が変わらない'
   - name: markSelected
-    title: 選択中の印を付け替える
+    title: 選択中のマーカーを付け替える
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 共通
     scope: public
-    summary: 詳細パネルで開いている項目を持ち、描いてある行・カード・節（`main [data-id]`）の `selected` を付け替える
+    summary: 詳細パネルで開いている項目を持ち、描いてある行・カード・セクション（`main [data-id]`）の `selected` を付け替える
     side_effects: 開いている項目の ID を持ち替え、`main [data-id]` のクラスを書き換える
     args:
       - name: id
@@ -207,7 +207,7 @@ functions:
     unit_tests:
       - name: test_mark_selected
         case: 正常
-        summary: 開いた項目だけに印が付き、持った ID を引ける
+        summary: 開いた項目だけにマーカーが付き、持った ID を引ける
         condition: '`main` の中に `data-id` が D-1・D-2 の要素を置き、`parametrize`: `"D-2"` / `null`'
         mock: なし
         expected: D-2 だけが `selected`・`currentSelection()` が `D-2` / どれも `selected` でなく、`currentSelection()` が `null`
@@ -217,7 +217,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 共通
     scope: public
-    summary: '`markSelected` が最後に受けた ID を返す。描き直した行・カードに「選択中」の印を付けるのに使う'
+    summary: '`markSelected` が最後に受けた ID を返す。再描画した行・カードに「選択中」のマーカーを付けるのに使う'
     args: []
     returns:
       type: string | null
@@ -251,7 +251,7 @@ functions:
         expected: A だけに `inert` が付き、B・D は付かない。返った関数を呼ぶと A から外れ、C は `inert` のまま
       - name: test_inert_behind_when_redrawn
         case: 正常
-        summary: 本文を描き直してから呼び直すと、新しい部品も止まる
+        summary: 本文を再描画してから再呼び出しすると、新しい部品も止まる
         condition: '`test_inert_behind` と同じパネルと本文で呼んだ後、`main` の中身を左端のボタン E（x=10）だけに差し替え、返った解除を呼んでからもう一度呼ぶ'
         mock: なし
         expected: E に `inert` が付き、E にフォーカスを移せない
@@ -271,7 +271,7 @@ functions:
         description: 開いたパネル
     returns:
       type: () => void
-      description: 付けた分だけ `inert` を外す関数（パネルを閉じるとき・描き直す前に呼ぶ）
+      description: 付けた分だけ `inert` を外す関数（パネルを閉じるとき・再描画する前に呼ぶ）
     process: |-
       1. `main` からたどる。パネル自身・詳細パネル・既に `inert` の要素には付けない
       2. パネルか詳細パネルを中に持つ要素は、その子をたどる。それ以外の要素は、まとめて `inert` を付ける（パネルを中に持たない `main` は、`main` 自体に付ける）

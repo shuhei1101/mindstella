@@ -14,37 +14,37 @@ constants:
   - name: CLAUDE_COMMAND
     title: Claude Code のコマンドの名前
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 親をたどるときに Claude Code とみなす `ps -o comm=` の値
     value: '"claude"'
   - name: PARENT_DEPTH_MAX
     title: 親をたどる上限
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: フックのプロセスの親から `ps` でたどる段の上限（インターフェース定義『セッションの値の注入』の上限）
     value: '32'
   - name: DEFAULT_CONFIG_DIR
     title: 既定の設定のフォルダ
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: '`CLAUDE_CONFIG_DIR` が無いか空のときの Claude Code の設定のフォルダ'
     value: Path.home() / ".claude"
   - name: PROC_DIR
     title: プロセスの情報のフォルダ
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 起動時刻の `starttime` を読む `/proc`。無い OS では `ps -o lstart=` を使う
     value: Path("/proc")
   - name: STAT_STARTTIME_INDEX
     title: starttime の位置
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: '`/proc/{PID}/stat` のコマンドの名前を閉じる最後の `)` より後ろを空白で分けたときの、22 番目の欄 `starttime` の位置（0 始まり）'
     value: '19'
   - name: PERMISSION_REASON
     title: 許可の理由
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 出力の `permissionDecisionReason`（インターフェース定義『セッションの値の注入』の固定の文字列）
     value: '"mindstella のツールの呼び出しにセッションの値を入れた"'
 functions:
@@ -52,7 +52,7 @@ functions:
     title: セッションの値の注入の入口
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     scope: public
     summary: 標準入力のフックの入力を読み、`tool_input` の `session` をこのセッションの値で上書きした `updatedInput` を、`permissionDecision` の `allow` と一緒に標準出力に出す
     description: 末尾で `sys.exit(main())`。どの結末も終了コード 0 で終え、ツールの呼び出しを止めない。
@@ -121,7 +121,7 @@ functions:
     title: セッションの値の組み立て
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     scope: public
     summary: 作業フォルダ・環境変数・Claude Code のプロセスから、ツールの引数 `session` の辞書を作る
     args:
@@ -171,7 +171,7 @@ functions:
     title: Claude Code のプロセスを探す
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     scope: public
     summary: 渡した PID から親へたどり、最初に名前が `CLAUDE_COMMAND` のプロセスの PID と起動時刻を返す
     side_effects: '`ps` を子プロセスで呼ぶ'
@@ -219,7 +219,7 @@ functions:
     title: プロセスの起動時刻
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     scope: public
     summary: 同じ PID が別のプロセスに使い回されたのを見分ける、時計の補正で変わらない起動時刻の文字列を返す
     description: 常駐サーバーの `claude_input.is_session_alive` も、この関数で求めた値を `claude_started_at` と比べる。

@@ -4,7 +4,7 @@ test_files:
   - tests/unit/scripts/test_versions.py
 data_models:
   - name: Version
-    title: 版
+    title: バージョン
     container: plugins/mindstella/skills/mindmap/scripts/versions.py
     usecase: 記録の形式の移行
     role: 値オブジェクト
@@ -22,74 +22,74 @@ data_models:
         description: パッチ
 constants:
   - name: PLUGIN_VERSION_FILE
-    title: プラグインの版のファイル
+    title: プラグインのバージョンのファイル
     container: plugins/mindstella/skills/mindmap/scripts/versions.py
     usecase: 記録の形式の移行
     summary: '`plugins/mindstella/version.ini`（このファイルの 4 つ上のフォルダの `version.ini`）'
     value: Path(__file__).resolve().parents[3] / "version.ini"
   - name: VERSION_PATTERN
-    title: 版の形
+    title: バージョンの形式
     container: plugins/mindstella/skills/mindmap/scripts/versions.py
     usecase: 記録の形式の移行
-    summary: 版の文字列全体に当てる正規表現
+    summary: バージョンの文字列全体に当てる正規表現
     value: re.compile(r"v(\d+)\.(\d+)\.(\d+)")
 functions:
   - name: parse_release_version
-    title: 版の解釈
+    title: バージョンの解釈
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/versions.py
     usecase: 記録の形式の移行
     scope: public
-    summary: '`v{メジャー}.{マイナー}.{パッチ}` の文字列を版にする'
+    summary: '`v{メジャー}.{マイナー}.{パッチ}` の文字列をバージョンにする'
     args:
       - name: text
         type: str
         required: true
         passing: positional
-        description: 版の文字列（前後の空白は落とす）
+        description: バージョンの文字列（前後の空白は落とす）
     returns:
       type: Version
-      description: 解釈した版
+      description: 解釈したバージョン
     process: |-
       1. 前後の空白を落とし、`VERSION_PATTERN` に全体が当たるかを見る（`fullmatch`）
-         - 当たらない場合、`ValueError` を送る
+         - 当たらない場合、`ValueError` を送信する
       2. 3 つの整数で `Version` を作って返す
     exceptions:
       - name: ValueError
-        condition: 版の形でない
-        message: '版の形が違います: {text}（v{メジャー}.{マイナー}.{パッチ} で書いてください）'
+        condition: バージョンの形式でない
+        message: 'バージョンの形式が違います: {text}（v{メジャー}.{マイナー}.{パッチ} で書いてください）'
     unit_tests:
       - name: test_parse_release_version
         case: 正常
-        summary: 版を解釈し、整数で比べる
+        summary: バージョンを解釈し、整数で比べる
         condition: '`" v0.10.2\n"` と `v0.9.9`'
         mock: なし
         expected: '`Version(0, 10, 2)`。`v0.9.9` より大きく、`str()` が `v0.10.2`'
       - name: test_parse_release_version_when_invalid
         case: 異常
-        summary: 版の形でなければ送る
+        summary: バージョンの形式でなければ送信する
         condition: '`parametrize`: `0.3.0` / `v0.3` / `v0.3.0-rc1` / 空文字'
         mock: なし
         expected: '`ValueError`（`match` に `v{メジャー}`）'
-        exception: 版の形でない
+        exception: バージョンの形式でない
   - name: compare_versions
-    title: 版の比較
+    title: バージョンの比較
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/versions.py
     usecase: 記録の形式の移行
     scope: public
-    summary: ワークスペースの版をプラグインの版と比べる
+    summary: ワークスペースのバージョンをプラグインのバージョンと比べる
     args:
       - name: workspace
         type: Version | None
         required: true
         passing: positional
-        description: ワークスペースの版（版を記録する前の形式は `None`）
+        description: ワークスペースのバージョン（バージョンを記録する前の形式は `None`）
       - name: plugin
         type: Version
         required: true
         passing: positional
-        description: プラグインの版
+        description: プラグインのバージョン
     returns:
       type: Literal['older', 'same', 'newer']
       description: 比べた結果
@@ -102,12 +102,12 @@ functions:
         mock: なし
         expected: '`older` / `older` / `same` / `newer`'
   - name: read_workspace_version
-    title: ワークスペースの版の読み込み
+    title: ワークスペースのバージョンの読み込み
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/versions.py
     usecase: 記録の形式の移行
     scope: public
-    summary: '`.mindstella/mindstella-version.ini`（無ければ直下の `mindstella-version.ini`）の 1 行目を版にする。どちらも無ければ `None`'
+    summary: '`.mindstella/mindstella-version.ini`（無ければ直下の `mindstella-version.ini`）の 1 行目をバージョンにする。どちらも無ければ `None`'
     args:
       - name: root
         type: Path
@@ -116,72 +116,72 @@ functions:
         description: ワークスペースのフォルダ
     returns:
       type: Version | None
-      description: ワークスペースの版。版のファイルが無ければ `None`
+      description: ワークスペースのバージョン。バージョンのファイルが無ければ `None`
     process: |-
       1. `records_root(root) / VERSION_FILE` があればそれを、無ければ `root / VERSION_FILE`（v0.6.0 より前の置き場所）を読む対象にする。どちらも無ければ `None` を返す
-      2. 1 行目を読み、版にする（`parse_release_version`）
-         - `ValueError` の場合、`SchemaMismatchError`（`lines` に `mindstella-version.ini: 1 行目: {理由}`）を送る
+      2. 1 行目を読み、バージョンにする（`parse_release_version`）
+         - `ValueError` の場合、`SchemaMismatchError`（`lines` に `mindstella-version.ini: 1 行目: {理由}`）を送信する
     exceptions:
       - name: SchemaMismatchError
-        condition: 版のファイルの 1 行目が版の形でない
+        condition: バージョンのファイルの 1 行目がバージョンの形式でない
     unit_tests:
       - name: test_read_workspace_version
         case: 正常
-        summary: 1 行目の版を読む
-        condition: 1 行目が `v0.3.0`、2 行目に別の文字を書いた版のファイル
+        summary: 1 行目のバージョンを読む
+        condition: 1 行目が `v0.3.0`、2 行目に別の文字を書いたバージョンのファイル
         mock: なし
         expected: '`Version(0, 3, 0)`'
       - name: test_read_workspace_version_when_missing
         case: 正常
-        summary: 版のファイルが無ければ None
-        condition: 版のファイルを持たない `tmp_path`
+        summary: バージョンのファイルが無ければ None
+        condition: バージョンのファイルを持たない `tmp_path`
         mock: なし
         expected: '`None`'
       - name: test_read_workspace_version_when_invalid
         case: 異常
-        summary: 版の形でなければ送る
-        condition: 1 行目が `0.3` の版のファイル
+        summary: バージョンの形式でなければ送信する
+        condition: 1 行目が `0.3` のバージョンのファイル
         mock: なし
         expected: '`SchemaMismatchError`（`lines` が `mindstella-version.ini: ` で始まる 1 行）'
-        exception: 版の形でない
+        exception: バージョンの形式でない
       - name: test_read_workspace_version_when_at_top
         case: 正常
-        summary: 記録のフォルダに無ければ直下の版のファイルを読む
+        summary: 記録のフォルダに無ければ直下のバージョンのファイルを読む
         condition: '`parametrize`: 直下だけに `v0.5.0` / `.mindstella/` に `v0.6.0`、直下に `v0.5.0`'
         mock: なし
         expected: 前者は `v0.5.0`、後者は `v0.6.0`
   - name: read_plugin_version
-    title: プラグインの版の読み込み
+    title: プラグインのバージョンの読み込み
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/versions.py
     usecase: 記録の形式の移行
     scope: public
-    summary: プラグインの版のファイルの 1 行目を版にする
+    summary: プラグインのバージョンのファイルの 1 行目をバージョンにする
     args:
       - name: path
         type: Path
         required: false
         default: PLUGIN_VERSION_FILE
         passing: keyword
-        description: プラグインの版のファイル
+        description: プラグインのバージョンのファイル
     returns:
       type: Version
-      description: プラグインの版
-    process: 1. `path` の 1 行目を読み、版にする（`parse_release_version`）
+      description: プラグインのバージョン
+    process: 1. `path` の 1 行目を読み、バージョンにする（`parse_release_version`）
     unit_tests:
       - name: test_read_plugin_version
         case: 正常
-        summary: プラグインの版を読む
+        summary: プラグインのバージョンを読む
         condition: '`v0.3.0` と書いた一時ファイルを `path` に渡す'
         mock: なし
         expected: '`Version(0, 3, 0)`'
   - name: write_workspace_version
-    title: ワークスペースの版の書き込み
+    title: ワークスペースのバージョンの書き込み
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/versions.py
     usecase: 記録の形式の移行
     scope: public
-    summary: '`mindstella-version.ini` の 1 行目に版、2 行目に当て終えた手順の数を書く'
+    summary: '`mindstella-version.ini` の 1 行目にバージョン、2 行目に当て終えた手順の数を書く'
     side_effects: '`mindstella-version.ini` を書く'
     args:
       - name: root
@@ -193,18 +193,18 @@ functions:
         type: Version
         required: true
         passing: positional
-        description: 書く版
+        description: 書くバージョン
       - name: applied
         type: int
         required: true
         passing: keyword
-        description: 版の移し替えの手順のうち当て終えた数（0 以上）
+        description: バージョンの移し替えの手順のうち当て終えた数（0 以上）
     returns:
       type: None
       description: なし
     process: |-
       1. `f"{version}\n{applied}\n"` を一時ファイルに書き（`write_temp`）、`os.replace` で `records_root(root) / VERSION_FILE` に置き換える
-         - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
+         - `OSError` が起きた場合、一時ファイルを削除して `WriteFailedError` を送信する
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
@@ -212,14 +212,14 @@ functions:
     unit_tests:
       - name: test_write_workspace_version
         case: 正常
-        summary: 版と当て終えた手順の数を 2 行で書く
+        summary: バージョンと当て終えた手順の数を 2 行で書く
         condition: '`Version(0, 3, 0)` と `applied=3`'
         mock: なし
         expected: '`mindstella-version.ini` の中身が `v0.3.0\n3\n`'
       - name: test_write_workspace_version_when_write_fails
         case: 異常
-        summary: 置き換えられなければ送る
-        condition: '`os.replace` を `OSError` を送る関数に差し替える'
+        summary: 置き換えられなければ送信する
+        condition: '`os.replace` を `OSError` を送信する関数に差し替える'
         mock: '`os.replace`（`versions` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`mindstella-version.ini` と `.tmp` のファイルが無い'
         exception: 置き換えで OSError
@@ -229,7 +229,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/versions.py
     usecase: 記録の形式の移行
     scope: public
-    summary: 版のファイルの 2 行目を、その版の手順のうち当て終えた数にする。何も書かない
+    summary: バージョンのファイルの 2 行目を、そのバージョンの手順のうち当て終えた数にする。何も書かない
     args:
       - name: root
         type: Path
@@ -238,9 +238,9 @@ functions:
         description: ワークスペースのフォルダ
     returns:
       type: int | None
-      description: 当て終えた手順の数。版のファイルが無い、2 行目が無い、0 以上の整数として読めないときは `None`（その版の手順をまだ当てていないものとして扱う）
+      description: 当て終えた手順の数。バージョンのファイルが無い、2 行目が無い、0 以上の整数として読めないときは `None`（そのバージョンの手順をまだ当てていないものとして扱う）
     process: |-
-      1. `read_workspace_version` と同じ順で版のファイルを選ぶ（どちらも無ければ `None`）
+      1. `read_workspace_version` と同じ順でバージョンのファイルを選ぶ（どちらも無ければ `None`）
       2. 2 行目を 0 以上の整数として読めればその数、読めなければ `None` を返す（3 行目より後は読まない）
     unit_tests:
       - name: test_read_applied_steps
@@ -252,6 +252,6 @@ functions:
       - name: test_read_applied_steps_when_missing
         case: 正常
         summary: 数を読めなければ None
-        condition: '`parametrize`: 版のファイルが無い / `v0.14.0\n`（1 行だけ）/ 2 行目が `x` / 2 行目が `-1`'
+        condition: '`parametrize`: バージョンのファイルが無い / `v0.14.0\n`（1 行だけ）/ 2 行目が `x` / 2 行目が `-1`'
         mock: なし
         expected: '`None`'

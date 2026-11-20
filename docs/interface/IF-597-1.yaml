@@ -82,7 +82,7 @@ constraints:
     constraint: グローバルの設定のファイルを直接読み、`sources` の `id` が一致する行の `config`（`{フォルダ}/.mindstella/dev-docs.yaml`）から記録のフォルダを、`outside_read` からクローズ済みかを引く。project-index の API は呼ばない。グローバルの設定のファイルの場所は、project-index と同じく環境変数 `PROJECT_INDEX_CONFIG`、無ければ `${XDG_CONFIG_HOME:-~/.config}/project-index/settings.yaml`
     notes: 'project-index の『設定: 索引のサーバー』（CFG-1）の端末の設定の場所と同じ規則'
   - item: 参照できないとき
-    constraint: グローバルの設定のファイルが無い・YAML として読めない・`id` の行が無いときは、`settings` の警告を付け、`status`・`title`・`closed`・未読の 2 つの数・`updated` を `None` にする。記録のフォルダ（`.mindstella/config.yaml`）が無いときは、`records` の警告を付け、`title`・未読の 2 つの数・`updated` を `None` にする。記録の設定（`config.yaml`）が読めないときは、`records` の警告（`detail` に理由）を付け、`title` を `None` にする。スレッド（`threads.yaml`）・変更履歴（`history.yaml`）が読めないときは、`records` の警告（`detail` に理由）を付け、未読の 2 つの数・`updated` を `None` にする。いずれも 200 で、配信元の行は消さない
+    constraint: グローバルの設定のファイルが無い・YAML として読めない・`id` の行が無いときは、`settings` の警告を付け、`status`・`title`・`closed`・未読の 2 つの数・`updated` を `None` にする。記録のフォルダ（`.mindstella/config.yaml`）が無いときは、`records` の警告を付け、`title`・未読の 2 つの数・`updated` を `None` にする。記録の設定（`config.yaml`）が読めないときは、`records` の警告（`detail` に理由）を付け、`title` を `None` にする。スレッド（`threads.yaml`）・変更履歴（`history.yaml`）が読めないときは、`records` の警告（`detail` に理由）を付け、未読の 2 つの数・`updated` を `None` にする。いずれも 200 で、配信元の行は削除しない
   - item: ワークスペースの状態
     constraint: '`closed` が真なら `closed`、偽で `close_pending` が真なら `stopped`、それ以外は `active`'
   - item: 落ちたかの判定
@@ -92,7 +92,7 @@ constraints:
   - item: 同時の依頼
     constraint: 鍵を取らずに読む。ファイルは一時ファイルからの置き換えで書かれるので、書き込みの前か後の内容を読む
   - item: MCP のツール
-    constraint: '`workspace` は `workspace_id` を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す。404 はエラー `エラー: {detail}`（『MCP サーバーの起動』のエラーの形）。`Host` の確かめは `/mcp` の確かめに任せる'
+    constraint: '`workspace` は `workspace_id` を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す。404 はエラー `エラー: {detail}`（『MCP サーバーの起動』のエラーの構造）。`Host` の確かめは `/mcp` の確かめに任せる'
 flows:
   - name: 正常系
     summary: 起動中の MindStella のセッションと、未読の数・最後の更新を返す

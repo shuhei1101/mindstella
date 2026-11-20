@@ -12,7 +12,7 @@ components:
     unit_tests:
       - name: test_chips_input
         case: 正常
-        summary: 値を足す
+        summary: 値を追加する
         condition: 入力して Enter
         mock: なし
         expected: '`onChange` が新しい並びで呼ばれる'

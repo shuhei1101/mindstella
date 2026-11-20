@@ -40,7 +40,7 @@ functions:
     process: |-
       1. ワークスペースの ID を引き（`workspace_id_of`）、`state.workspace_dir(state_root, ID) / READ_POINT_FILE` を読む
       2. ファイルが無ければ `None` を返す
-      3. JSON として読めないか `read_seq` が 0 以上の整数でない場合、`read_point.json: read_seq: {理由}` の行を持った `SchemaMismatchError` を送る
+      3. JSON として読めないか `read_seq` が 0 以上の整数でない場合、`read_point.json: read_seq: {理由}` の行を持った `SchemaMismatchError` を送信する
     exceptions:
       - name: SchemaMismatchError
         condition: '`read_point.json` が壊れている'
@@ -93,7 +93,7 @@ functions:
       description: なし
     process: |-
       1. `workspaces/{ID}/` を作り、同じフォルダの一時ファイルに書いて `os.replace` で置き換える
-      2. 書けない場合、一時ファイルを消して `WriteFailedError` を送る（前の `read_point.json` はそのまま）
+      2. 書けない場合、一時ファイルを削除して `WriteFailedError` を送信する（前の `read_point.json` はそのまま）
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えに失敗した
@@ -111,7 +111,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/read_point.py
     usecase: 起動と再開
     scope: public
-    summary: 『前回参照した時点の更新』の処理。今の時点より大きいときだけ `until_seq` を書き、移し替えの報告を消す
+    summary: 『前回参照した時点の更新』の処理。今の時点より大きいときだけ `until_seq` を書き、移し替えの報告を削除する
     description: 呼ぶ側がワークスペースごとの鍵（`WorkspaceLocks`）を取る
     args:
       - name: root
@@ -123,7 +123,7 @@ functions:
         type: int
         required: true
         passing: positional
-        description: 『再開の状況』が返した通し番号
+        description: 『再開の状況』が返した連番
       - name: state_root
         type: Path | None
         required: false
@@ -134,9 +134,9 @@ functions:
       type: int
       description: 書き換えた後の `read_seq`
     process: |-
-      1. `until_seq` が 0 未満か、まとまりの `last_seq`（『変更履歴』の `load_changes`）より大きければ `ArgumentError` を送る
+      1. `until_seq` が 0 未満か、まとまりの `last_seq`（『変更履歴』の `load_changes`）より大きければ `ArgumentError` を送信する
       2. 今の時点を読み（`load_read_seq`）、無いか `until_seq` より小さければ `until_seq` を書く（`save_read_seq`）
-      3. 移し替えの報告を消す（`clear_migration_report`）
+      3. 移し替えの報告を削除する（`clear_migration_report`）
       4. 書き換えた後の時点を返す
     exceptions:
       - name: ArgumentError
@@ -146,7 +146,7 @@ functions:
     unit_tests:
       - name: test_advance_read_seq
         case: 正常
-        summary: 時点を進め、移し替えの報告を消す
+        summary: 時点を進め、移し替えの報告を削除する
         condition: '`read_seq` 3、`last_seq` 5、移し替えの報告ありで `until_seq` 5'
         mock: なし
         expected: '`5` を返し、`load_read_seq` が 5、`load_migration_report` が `None`'
@@ -158,7 +158,7 @@ functions:
         expected: '`5` を返し、`load_read_seq` が 5'
       - name: test_advance_read_seq_when_out_of_range
         case: 異常
-        summary: 通し番号の外は書かない
+        summary: 連番の外は書かない
         condition: '`parametrize`: `until_seq` -1 / `last_seq` 5 で `until_seq` 9'
         mock: なし
         expected: '`ArgumentError`。`load_read_seq` が呼ぶ前と同じ'
@@ -192,7 +192,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/read_point.py
     usecase: 起動と再開
     scope: public
-    summary: 『ワークスペースの作成』が移し替えた後に、報告を `migration.json` へ一時ファイルから置き換えて書く。既にあれば `not_carried`・`provisional` を末尾に足す
+    summary: 『ワークスペースの作成』が移し替えた後に、報告を `migration.json` へ一時ファイルから置き換えて書く。既にあれば `not_carried`・`provisional` を末尾に追加する
     args:
       - name: root
         type: Path
@@ -214,7 +214,7 @@ functions:
       type: None
       description: なし
     process: |-
-      1. 今の報告を読み（`load_migration_report`）、あれば並びを足し合わせる
+      1. 今の報告を読み（`load_migration_report`）、あれば並びを追加合わせる
       2. `save_read_seq` と同じ書き方で置き換える
     exceptions:
       - name: WriteFailedError
@@ -222,17 +222,17 @@ functions:
     unit_tests:
       - name: test_save_migration_report_appends
         case: 正常
-        summary: 知らせていない報告に足す
+        summary: 知らせていない報告に追加する
         condition: '`not_carried` 1 件の報告を書いた後に、`not_carried` 1 件・`provisional` 1 件を書く'
         mock: なし
         expected: '`load_migration_report` が `not_carried` 2 件・`provisional` 1 件'
   - name: clear_migration_report
-    title: 移し替えの報告を消す
+    title: 移し替えの報告を削除する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/read_point.py
     usecase: 起動と再開
     scope: public
-    summary: '`migration.json` を消す（無ければ何もしない）'
+    summary: '`migration.json` を削除する（無ければ何もしない）'
     args:
       - name: root
         type: Path
@@ -248,7 +248,7 @@ functions:
     returns:
       type: None
       description: なし
-    process: 1. `MIGRATION_REPORT_FILE` を `unlink(missing_ok=True)` で消す
+    process: 1. `MIGRATION_REPORT_FILE` を `unlink(missing_ok=True)` で削除する
 refs:
   - IF-489-33#
   - IF-489-32#

@@ -78,7 +78,7 @@ endpoints:
         notes: '`content` が 2000 文字を超える場合を含む'
       - code: '404'
         condition: Webhook が見つからない
-        notes: 消された・URL が誤っている
+        notes: 削除された・URL が誤っている
       - code: '429'
         condition: レートリミットに当たった
         notes: 本文の `retry_after` に待ち時間（秒）。再送信しない

@@ -33,5 +33,5 @@ diagrams:
         項目の場所 --> 種類の定義
       ```
 notes:
-  HTML の本文のスキーマ: '`docs.schema.json` の `body` の `pattern` を `^[^/\\]+\.(md|html)$` にし、ほかの 6 種類の `body` は `.md` のままにする。`common.schema.json` の `history[].before` の説明は、`body` を前に本文が無かった回と資料の本文の形式を替えた回だけ入れると直す（ER 図『ワークスペース』）'
-  タグのスキーマ: '`settings.schema.json` から `tags` を外す（`tags` を持つ `config.yaml` はスキーマに合わなくなり、`is_legacy_problem` が前の版の形式として扱う）。`common.schema.json` と `threads.schema.json` の `tags` の説明は、自由な文字列で、`tags` のツールが正規化した表記で数えると直す（ER 図『ワークスペース』）'
+  HTML の本文のスキーマ: '`docs.schema.json` の `body` の `pattern` を `^[^/\\]+\.(md|html)$` にし、ほかの 6 種類の `body` は `.md` のままにする。`common.schema.json` の `history[].before` の説明は、`body` を前に本文が無かった回と資料の本文の形式を替えた回だけ入れると修正する（ER 図『ワークスペース』）'
+  タグのスキーマ: '`settings.schema.json` から `tags` を外す（`tags` を持つ `config.yaml` はスキーマに合わなくなり、`is_legacy_problem` が前のバージョンの形式として扱う）。`common.schema.json` と `threads.schema.json` の `tags` の説明は、自由な文字列で、`tags` のツールが正規化した表記で数えると修正する（ER 図『ワークスペース』）'

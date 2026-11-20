@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: タイトル `問い A` と 3 行の本文を持つ検討事項 D-1 を足してこのツールを 1 回呼び、D-1 のタイトルを `問い B` に、続けてタイトルを `問い C` にし本文の 2 行目を直し、タスク T-1 を足して、変更の検知がそれぞれを記録したワークスペース（保持する回数は既定の 5）
+        description: タイトル `質問 A` と 3 行の本文を持つ検討事項 D-1 を追加してこのツールを 1 回呼び、D-1 のタイトルを `質問 B` に、続けてタイトルを `質問 C` にし本文の 2 行目を修正し、タスク T-1 を追加して、変更の検知がそれぞれを記録したワークスペース（保持する回数は既定の 5）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -20,7 +20,7 @@ flows:
 
         クライアント->>IF: changes_since_read workspace
         IF-->>WS: changes.yaml と全ての種類の YAML・本文を読む
-        IF->>IF: read_seq より後に足した・変えた項目と、読んだ時点の値を組み立てる
+        IF->>IF: read_seq より後に追加した・変えた項目と、読んだ時点の値を組み立てる
         IF->>WS: read_point.json の read_seq を last_seq に書く
         IF-->>クライアント: JSON（had_read_point・read_seq・until_seq・added・changed）
         クライアント->>IF: changes_since_read workspace（2 回目）
@@ -29,7 +29,7 @@ flows:
     expected:
       - ツールのエラーにならない
       - 1 回目の `had_read_point` が真で、`added` が T-1 の 1 件
-      - '1 回目の `changed` が D-1 の 1 件で、`before` が `{title: 問い A}`'
+      - '1 回目の `changed` が D-1 の 1 件で、`before` が `{title: 質問 A}`'
       - D-1 の `body_diff` を今の本文に当てると読んだ時点の本文になり、1 行目・3 行目を含まない
       - 1 回目の後、状態のフォルダの `read_point.json` の `read_seq` が `last_seq` と同じで `until_seq` とも同じ
       - 2 回目の `added`・`changed` が空
@@ -41,7 +41,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `answer` を直したワークスペース（状態のフォルダに `read_point.json` が無い）
+        description: 検討事項 D-1 を追加して `answer` を修正したワークスペース（状態のフォルダに `read_point.json` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -65,7 +65,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '`history_limit` を 0 にし、検討事項 D-1 を足してこのツールを 1 回呼び、D-1 の `answer` を直してタスク T-1 を足したワークスペース'
+        description: '`history_limit` を 0 にし、検討事項 D-1 を追加してこのツールを 1 回呼び、D-1 の `answer` を修正してタスク T-1 を追加したワークスペース'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -113,7 +113,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: このツールを 1 回呼んだ後に検討事項 D-1 を足し、状態のフォルダの書き込みの権限を外したワークスペース
+        description: このツールを 1 回呼んだ後に検討事項 D-1 を追加し、状態のフォルダの書き込みの権限を外したワークスペース
         notes: root で動かすときは skip する。権限を戻してから 2 回目を呼ぶ
     flow: |-
       ```mermaid
@@ -134,14 +134,14 @@ flows:
       - 1 回目の後、状態のフォルダの `read_point.json` の `read_seq` が呼ぶ前と同じ
       - 2 回目の `added` が D-1
     test: test_error_when_write_fails
-  - name: 正常系（読んだ後に項目を消した）
-    summary: 読んだ時点に有って後で消した項目だけを、消した項目として返す
+  - name: 正常系（読んだ後に項目を削除した）
+    summary: 読んだ時点に有って後で削除した項目だけを、削除した項目として返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
         notes: '-'
       - name: make_workspace
-        description: メモ N-1・N-2 を足してから `changes_since_read` を一度呼び、N-2 を消し、メモ N-3 を足して消して、変更の検知がそれぞれを記録したワークスペース
+        description: メモ N-1・N-2 を追加してから `changes_since_read` を一度呼び、N-2 を削除し、メモ N-3 を追加して削除して、変更の検知がそれぞれを記録したワークスペース
         notes: N-2 のタイトルは `重複したメモ`
     flow: |-
       ```mermaid
@@ -152,7 +152,7 @@ flows:
 
         クライアント->>IF: changes_since_read workspace
         IF-->>WS: changes.yaml と種類ごとの YAML を読む
-        IF->>IF: read_seq より後に消し、読んだ時点に有った項目を集める
+        IF->>IF: read_seq より後に削除し、読んだ時点に有った項目を集める
         IF->>WS: read_seq を last_seq に書く
         IF-->>クライアント: JSON（added・changed・removed）
       ```
@@ -168,7 +168,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足してこのツールを 1 回呼び、MindStella のセッションの応答の途中でない間に D-1 の答えを直して、変更の検知が外部の変更のまとまりにしたワークスペース
+        description: 検討事項 D-1 を追加してこのツールを 1 回呼び、MindStella のセッションの応答の途中でない間に D-1 の回答を修正して、変更の検知が外部の変更のまとまりにしたワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -183,10 +183,10 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`changed` が D-1 の 1 件で、変わったキーが `answer`、読んだ時点の答えを持つ'
+      - '`changed` が D-1 の 1 件で、変わったキーが `answer`、読んだ時点の回答を持つ'
       - D-1 の `updated_by` が `external`、`by` が `["external"]`
     test: test_normal_when_external
-lead: AI が最後に読んだ時点（状態のフォルダの `read_point.json` の `read_seq`）より後に足した・変えた・消した項目を、変わったキーと読んだ時点の値（本文は行の差分）つきで返し、`read_seq` を今の `last_seq` に書き換える。前回参照した時点は『再開の状況』と共有し、注入に収まらない変更を取得するときに呼ぶ。
+lead: AI が最後に読んだ時点（状態のフォルダの `read_point.json` の `read_seq`）より後に追加した・変えた・削除した項目を、変わったキーと読んだ時点の値（本文は行の差分）つきで返し、`read_seq` を今の `last_seq` に書き換える。前回参照した時点は『再開の状況』と共有し、注入に収まらない変更を取得するときに呼ぶ。
 idempotent: false
 side_effects: '状態のフォルダの `read_point.json` の `read_seq` を書き換える（D-326。`changes.yaml` が無ければ、まとまり 0 件・まだまとめていない変更なし・`last_seq: 0`・`read_seq: 0` で作る）。項目の YAML と本文は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）。読むのと `read_seq` を書くのを同じロックの中で行い、その間の書き換えを読み落とさない
@@ -224,16 +224,16 @@ response:
     description: 変わったキー → 読んだ時点の値（無かったキーは `null`）。保持する回数が 0 で変更履歴が無いときは `null`
   - name: changed[].body_diff
     type: list[{line, now, before}] | None
-    description: 本文が変わったとき、今の本文の行を読んだ時点の本文の行へ戻す差分（形は変更履歴の `body_diff` と同じ）。本文が変わっていないときと、保持する回数が 0 のときは `null`
+    description: 本文が変わったとき、今の本文の行を読んだ時点の本文の行へ戻す差分（形状は変更履歴の `body_diff` と同じ）。本文が変わっていないときと、保持する回数が 0 のときは `null`
   - name: changed[].updated_by
     type: '"ai" | "user" | "external" | None'
     description: 今の編集した人（最後に書き換えたのが誰か）。持たない項目は `null`
   - name: changed[].by
     type: list["ai" | "user" | "external"]
-    description: 読んだ時点より後の変更履歴の回を書き換えた人（重なりなし、`user`・`external`・`ai` の順）。ほかのセッションの書き込み（外部の変更）は `external`。利用者が直した後に AI が直しても、利用者の編集を見分けられる。`by` を持たない回と、保持する回数が 0 で変更履歴が無いときは空
+    description: 読んだ時点より後の変更履歴の回を書き換えた人（重なりなし、`user`・`external`・`ai` の順）。ほかのセッションの書き込み（外部の変更）は `external`。利用者が修正した後に AI が修正しても、利用者の編集を見分けられる。`by` を持たない回と、保持する回数が 0 で変更履歴が無いときは空
   - name: removed[]
     type: list[{id, kind, title}]
-    description: '`read_seq` より後に消し、読んだ時点に有った項目（`changes.yaml` の `sets[].removed`・`pending.removed` のうち `seq` が `read_seq` より大きく、`added_seq` が `read_seq` 以下のもの）。消した順。`title` は消したときのタイトル。`had_read_point` が偽のときは空'
+    description: '`read_seq` より後に削除し、読んだ時点に有った項目（`changes.yaml` の `sets[].removed`・`pending.removed` のうち `seq` が `read_seq` より大きく、`added_seq` が `read_seq` 以下のもの）。削除した順。`title` は削除したときのタイトル。`had_read_point` が偽のときは空'
 exceptions:
   - name: なし（正常終了）
     condition: 読めて、`read_seq` を書けた
@@ -246,17 +246,17 @@ exceptions:
     notes: ツールのエラー。`read_seq` を書き換えず、次に呼んだときに同じ変更を返す
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
-  - item: 読んだ時点の値の組み立て方
+  - item: 参照した時点の値の組み立て方法
     constraint: '`history.yaml` のその項目の行の `history` のうち `seq` が `read_seq` より大きい回を古い順に見て、キーごとに最も古い回の `before` を読んだ時点の値にする。本文はその回の `body_diff` を新しい順に当てて読んだ時点の本文を組み立て、今の本文との差分を返す。読んだ時点の値が今の値と同じキーは `before` に入れず、変わったキーも本文の差分も残らない項目は `changed` に入れない'
-  - item: 読んでいない回が残ること
+  - item: 参照していない回が残ること
     constraint: '`read_seq` があるとき、`read_seq` より大きい `seq` の回は保持する回数を超えても消えない（『変更の検知』の「保持する回数」）ため、読んだ時点の値を必ず組み立てられる'
   - item: 対象
-    constraint: 種類ごとの YAML の項目と、`changes.yaml` に記録した消した項目だけ。設定（`config.yaml`）と、フェーズ・対象・カテゴリーの付け替えは返さない（変更履歴を持たず、通し番号も進めない）。読んだ時点より後に足して消した項目は、読んだ時点にも今にも無いため返さない
-  - item: 読んだ時点が進むとき
+    constraint: 種類ごとの YAML の項目と、`changes.yaml` に記録した削除した項目だけ。設定（`config.yaml`）と、フェーズ・対象・カテゴリーの付け替えは返さない（変更履歴を持たず、連番も進めない）。読んだ時点より後に追加して削除した項目は、読んだ時点にも今にも無いため返さない
+  - item: 参照した時点が進むとき
     constraint: このツールを呼んだときだけ。ほかのツールの書き込みは `read_seq` を書き換えない
 refs:
   - IF-540-2#

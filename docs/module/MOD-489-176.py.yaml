@@ -22,7 +22,7 @@ data_models:
         description: 書き換えた種類
       - name: bodies
         type: dict[str, BodyWrite]
-        description: 書く本文（ファイル名 → 本文。同じ項目を二度直すと後の本文で置き換える）
+        description: 書く本文（ファイル名 → 本文。同じ項目を二度修正すると後の本文で置き換える）
       - name: history
         type: dict[str, ItemHistory]
         description: 当てた後の `history.yaml` の行（項目の ID → 行。『変更履歴』の `ItemHistory`）
@@ -31,7 +31,7 @@ data_models:
         description: 当てた後のまとまりの記録
       - name: removed_bodies
         type: list[str]
-        description: 書き込んだ後に消す `docs/` の本文のファイル名（形式を替えた資料の前の形式の本文）。`save_batch` の `BatchChange.removed_bodies` に渡す
+        description: 書き込んだ後に削除する `docs/` の本文のファイル名（形式を替えた資料の前の形式の本文）。`save_batch` の `BatchChange.removed_bodies` に渡す
         default: '[]'
 constants:
   - name: RESERVED_KEYS
@@ -96,12 +96,12 @@ functions:
         type: int
         required: true
         passing: keyword
-        description: エラーの行の `items[{番号}]` に使う、その種類の並びの中の位置（足すときは末尾の位置、直すときはその項目の位置）
+        description: エラーの行の `items[{番号}]` に使う、その種類の並びの中の位置（追加するときは末尾の位置、修正するときはその項目の位置）
     process: |-
-      1. `RESERVED_KEYS` のキーがあれば `SchemaMismatchError`（`item: {キー}: ツールが付けるキーです`）を送る（`body_markdown` はどの種類も渡せる）
+      1. `RESERVED_KEYS` のキーがあれば `SchemaMismatchError`（`item: {キー}: ツールが付けるキーです`）を送信する（`body_markdown` はどの種類も渡せる）
       2. `HTML_BODY_INPUT_KEY` がある場合
-         - `kind` が `doc` でなければ `SchemaMismatchError`（`{種類のファイル名}: items[{番号}].body_html: 資料だけが HTML の本文を持てる`）を送る
-         - `BODY_INPUT_KEY` もあれば `SchemaMismatchError`（`{種類のファイル名}: items[{番号}].body_html: body_markdown と body_html は一緒に渡せない`）を送る
+         - `kind` が `doc` でなければ `SchemaMismatchError`（`{種類のファイル名}: items[{番号}].body_html: 資料だけが HTML の本文を持てる`）を送信する
+         - `BODY_INPUT_KEY` もあれば `SchemaMismatchError`（`{種類のファイル名}: items[{番号}].body_html: body_markdown と body_html は一緒に渡せない`）を送信する
     exceptions:
       - name: SchemaMismatchError
         condition: '`RESERVED_KEYS`（`id`・`created`・`updated`・`updated_by`・`body` など）のどれかを持つ'
@@ -111,7 +111,7 @@ functions:
         summary: 渡せるキーだけなら何もしない
         condition: '`parametrize`: `decision` に `{"title": "t", "body_markdown": "b"}` / `task` に `{"title": "t", "body_markdown": "b"}` / `note` に `{"content": "c", "body_markdown": "b"}`'
         mock: なし
-        expected: 例外を送らない
+        expected: 例外を送出しない
       - name: test_validate_input_keys_when_reserved
         case: 異常
         summary: スクリプトが付けるキーを弾く
@@ -123,7 +123,7 @@ functions:
         case: 異常
         summary: 資料以外の `body_html` と、本文の両方の指定を弾く
         condition: '`parametrize`: `task` に `{"title": "t", "body_html": "<p>a</p>"}`（`index` 0） / `doc` に `{"title": "t", "body_markdown": "a", "body_html": "<p>a</p>"}`（`index` 2）'
-        expected: 'どちらも `SchemaMismatchError`。行が順に `tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる` / `docs.yaml: items[2].body_html: body_markdown と body_html は一緒に渡せない`。`doc` に `body_html` だけを渡すと何も送らない'
+        expected: 'どちらも `SchemaMismatchError`。行が順に `tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる` / `docs.yaml: items[2].body_html: body_markdown と body_html は一緒に渡せない`。`doc` に `body_html` だけを渡すと何も送信しない'
         mock: なし
   - name: merge_changes
     title: 変更の当てはめ
@@ -131,7 +131,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 記録の追加と更新
     scope: public
-    summary: 渡したキーを値ごと置き換え、`null` のキーを消した新しい項目を返す
+    summary: 渡したキーを値ごと置き換え、`null` のキーを削除した新しい項目を返す
     args:
       - name: item
         type: dict[str, Any]
@@ -147,13 +147,13 @@ functions:
       type: tuple[dict[str, Any], list[str]]
       description: 新しい項目と、値が変わった・消えたキー（渡した順）
     process: |-
-      1. 元の項目を写し、渡したキーごとに当てはめる
-         - 値が `None` の場合、キーがあれば消して変わったキーに加える
-         - それ以外で元の値と違う場合、置き換えて変わったキーに加える（新しいキーは末尾に足す）
+      1. 元の項目をコピー、渡したキーごとに当てはめる
+         - 値が `None` の場合、キーがあれば削除して変わったキーに加える
+         - それ以外で元の値と違う場合、置き換えて変わったキーに加える（新しいキーは末尾に追加する）
     unit_tests:
       - name: test_merge_changes
         case: 正常
-        summary: 置き換え・消す・同じ値を見分ける
+        summary: 置き換え・削除する・同じ値を見分ける
         condition: '元 `{"id": "D-1", "status": "未決定", "reason": "r", "lead": "l"}` に `{"status": "決定済み", "reason": null, "lead": "l", "answer": "a"}`'
         mock: なし
         expected: '`{"id": "D-1", "status": "決定済み", "lead": "l", "answer": "a"}` と `[status, reason, answer]`。元の項目は変わらない'
@@ -179,7 +179,7 @@ functions:
       type: tuple[dict[str, Any], str | None]
       description: 新しい項目と、それまで採用していた案の記号（無ければ `None`）
     process: |-
-      1. `options` にその記号の案が無ければ `OptionNotFoundError`（持っている記号の一覧つき）を送る
+      1. `options` にその記号の案が無ければ `OptionNotFoundError`（持っている記号の一覧つき）を送信する
       2. それまで `adopted` が真だった最初の案の記号を控える
       3. 指定した案の `adopted` を真、ほかを偽にし、`status` を `決定済み` にした新しい項目を返す（`answer`・案の `recommended` は変えない）
     exceptions:
@@ -208,7 +208,7 @@ functions:
         exception: その記号の案を持たない
       - name: test_switch_adopted_when_undecided
         case: 正常
-        summary: どの状態からも決定済みにし、推奨の印は残す
+        summary: どの状態からも決定済みにし、推奨のマーカーは残す
         condition: '`parametrize`: 状態が `未決定` / `要見直し` / `保留` で、案 A・B を持ち B に `recommended: true` を持つ検討事項に `key: B`'
         mock: なし
         expected: '`status` が `決定済み`、案 B だけが `adopted` が真で `recommended` が真のまま。渡した項目は変わらない'
@@ -234,14 +234,14 @@ functions:
       type: dict[str, Any]
       description: '`{workspace, files}`'
     process: |-
-      1. プラグインの版を読み（`read_plugin_version`）、ワークスペースを作る（ワークスペースの作成。`create_workspace(version=str(版), applied=count_steps(版))`）
+      1. プラグインのバージョンを読み（`read_plugin_version`）、ワークスペースを作る（ワークスペースの作成。`create_workspace(version=str(バージョン), applied=count_steps(バージョン))`）
     unit_tests:
       - name: test_run_init
         case: 正常
         summary: 作ったワークスペースとファイルを返す
         condition: まだ無い `tmp_path / "ws"` と正しい設定の辞書
         mock: なし
-        expected: '`workspace` が絶対パス、`files` が 12 件（8 つの YAML・`mindstella-version.ini`・2 つのフォルダ・`README.md`）、`mindstella-version.ini` が `plugins/mindstella/version.ini` と同じ版'
+        expected: '`workspace` が絶対パス、`files` が 12 件（8 つの YAML・`mindstella-version.ini`・2 つのフォルダ・`README.md`）、`mindstella-version.ini` が `plugins/mindstella/version.ini` と同じバージョン'
   - name: run_adopt
     title: adopt の処理
     kind: 関数
@@ -276,15 +276,15 @@ functions:
       description: '`{id, adopted, previous, status, previous_status}`（`status` は `決定済み`、`previous_status` は切り替える前の状態）'
     process: |-
       1. ワークスペース・まとまり・項目の履歴を読み、項目を引く（`load_workspace`、`load_changes`、`load_item_history`、`find_item`）
-         - 種類が `decision` でない場合、`ItemNotFoundError` を送る
+         - 種類が `decision` でない場合、`ItemNotFoundError` を送信する
       2. 採用を切り替え（`switch_adopted`）、履歴の行の `updated` を今の日時、`updated_by` を `EDITOR` にし、`unconfirm` で `confirmed` を除く
-      3. 変更履歴と通し番号を `stage_update` の 3. と同じく付ける（本文は変えないので `before_body` と `after_body` は同じ。`by` は `EDITOR`）
+      3. 変更履歴と連番を `stage_update` の 3. と同じく付ける（本文は変えないので `before_body` と `after_body` は同じ。`by` は `EDITOR`）
       4. 差し替えた並び・履歴・まとまりを書き込む（`save_change`。まとまりの `pending.by` が `external` なら、先に外部の変更のまとまりにする（`flush_pending`））
-         - `ConcurrentWriteError` の場合（project-index が間に書いた）、1. から読み直して 1 回だけ当て直す。2 回目も同じなら `ConcurrentWriteError` を送る
+         - `ConcurrentWriteError` の場合（project-index が間に書いた）、1. から再読み込みして 1 回だけ再適用する。2 回目も同じなら `ConcurrentWriteError` を送信する
       5. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（『変更の検知』の `accept_own_write`）
     exceptions:
       - name: ConcurrentWriteError
-        condition: 読み直して当て直しても、置き換える直前に種類の YAML がほかから書き換えられた
+        condition: 再読み込みして再適用しても、置き換える直前に種類の YAML がほかから書き換えられた
         message: '記録がほかから書き換えられました: {ファイル名}'
       - name: ItemNotFoundError
         condition: ID が検討事項でない
@@ -292,17 +292,17 @@ functions:
     unit_tests:
       - name: test_run_adopt_when_concurrent_write
         case: 正常
-        summary: 1 回目の書き込みでほかが書いていれば、読み直して当て直す
-        condition: '1 回目の `save_change` だけ `ConcurrentWriteError` を送り、その間に D-1 の `answer` を書き換えておく'
-        mock: '`save_change`（1 回目だけ送る）'
+        summary: 1 回目の書き込みでほかが書いていれば、再読み込みして再適用する
+        condition: '1 回目の `save_change` だけ `ConcurrentWriteError` を送信し、その間に D-1 の `answer` を書き換えておく'
+        mock: '`save_change`（1 回目だけ送信する）'
         expected: 2 回目で書き、書き換えた `answer` が残る
       - name: test_run_adopt_when_concurrent_write_twice
         case: 異常
         summary: 2 回続けてほかが書いていればエラー
-        condition: '`save_change` が 2 回とも `ConcurrentWriteError` を送る'
+        condition: '`save_change` が 2 回とも `ConcurrentWriteError` を送信する'
         mock: '`save_change`'
         expected: '`ConcurrentWriteError`'
-        exception: 当て直してもほかが書いた
+        exception: 再適用してもほかが書いた
       - name: test_run_adopt
         case: 正常
         summary: 切り替えて書き込む
@@ -340,7 +340,7 @@ functions:
       description: '`{ok, problems}`'
     process: |-
       1. ワークスペースを読み、点検する（`load_workspace`、`check_workspace`）
-      2. 前の版の形式の問題（`is_legacy_problem`。`written_ids` は渡さないので、`decision_state` の問題は全て当たる）は、`detail` に続けて `（起動スクリプトでワークスペースを開き直すと今の形式に移せます）` を足す
+      2. 前のバージョンの形式の問題（`is_legacy_problem`。`written_ids` は渡さないので、`decision_state` の問題は全て当たる）は、`detail` に続けて `（起動スクリプトでワークスペースを再度開くと今の形式に移せます）` を追加する
       3. 問題が無ければ `ok: true`、あれば `ok: false` を返す
     unit_tests:
       - name: test_run_check
@@ -354,19 +354,19 @@ functions:
         summary: 問題があれば ok が偽
         condition: 'D-1 `related: [{to: D-9, type: depends_on}]`'
         mock: なし
-        expected: '`ok: false`・`problems` が 1 件（例外を送らない）'
+        expected: '`ok: false`・`problems` が 1 件（例外を送出しない）'
       - name: test_run_check_when_legacy_format
         case: 正常
-        summary: 前の版の形式の問題に開き直しを案内する
+        summary: 前のバージョンの形式の問題に再度開くことを案内する
         condition: 'A-1（`done: true`）を YAML で直接書いたワークスペース'
         mock: なし
-        expected: '`ok: false`。A-1 の問題の `detail` が `（起動スクリプトでワークスペースを開き直すと今の形式に移せます）` で終わる'
+        expected: '`ok: false`。A-1 の問題の `detail` が `（起動スクリプトでワークスペースを再度開くと今の形式に移せます）` で終わる'
       - name: test_run_check_when_decision_state
         case: 正常
-        summary: 案と状態の合わない検討事項に開き直しを案内する
+        summary: 案と状態の合わない検討事項に再度開くことを案内する
         condition: 案を持たない未決定の D-1 を直接書いたワークスペース
         mock: なし
-        expected: '`ok` が偽で、`kind: decision_state`・`file: .mindstella/decisions.yaml`・`key: items[0].options` の問題の `detail` が開き直しの案内を含む'
+        expected: '`ok` が偽で、`kind: decision_state`・`file: .mindstella/decisions.yaml`・`key: items[0].options` の問題の `detail` が再度開くことの案内を含む'
   - name: run_export
     title: export の処理
     kind: 関数
@@ -443,10 +443,10 @@ functions:
       description: '`{url, workspace, started}`（`diff` を渡したときは `url` の末尾に `#diff={diff}`）'
     process: |-
       1. ワークスペースを確かめる（`require_workspace`）
-      2. `diff` を渡した場合、まとまりを読み（`load_changes`。`SchemaMismatchError` はそのまま上がる）、`sets` に `id` が `diff` のまとまりが無ければ `ArgumentError`（`diff`、`記録に無いまとまりです: {diff}`）を送る（台帳の `start` を呼ばない）
+      2. `diff` を渡した場合、まとまりを読み（`load_changes`。`SchemaMismatchError` はそのまま上がる）、`sets` に `id` が `diff` のまとまりが無ければ `ArgumentError`（`diff`、`記録に無いまとまりです: {diff}`）を送信する（台帳の `start` を呼ばない）
       3. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`。立てる前の検査の `SchemaMismatchError` はそのまま上がる）
       4. この呼び出しで立てたときだけ、直下の README をハッシュの無い URL つきで書き直す（README の書き込み。`write_readme(root, preview_url=url)`）
-         - `WriteFailedError` が起きた場合、送り直さずに続ける
+         - `WriteFailedError` が起きた場合、再送信せずに続ける
            - `[WARNING]` README を書けなかった（パス、理由）
       5. `diff` を渡した場合、`url` の末尾に `#diff={diff}` を付けて返す
     exceptions:
@@ -473,19 +473,19 @@ functions:
       - name: test_run_preview_url_when_started
         case: 正常
         summary: 立てたときだけ README に URL を書く
-        condition: 作成済みのワークスペース。偽の台帳の `start` が 1 回目 `(url, True)`、2 回目 `(url, False)` を返す。1 回目の後に `README.md` を消して 2 回目を呼ぶ
+        condition: 作成済みのワークスペース。偽の台帳の `start` が 1 回目 `(url, True)`、2 回目 `(url, False)` を返す。1 回目の後に `README.md` を削除して 2 回目を呼ぶ
         mock: '`previews`'
         expected: 1 回目の後、`README.md` が `url` を含む。2 回目の後、`README.md` が無いまま
       - name: test_run_preview_url_when_readme_write_fails
         case: 正常
         summary: README を書けなくても URL を返す
-        condition: 作成済みのワークスペースの `README.md` を消して同じ名前のフォルダを作る。偽の台帳の `start` が `(url, True)` を返す
+        condition: 作成済みのワークスペースの `README.md` を削除して同じ名前のフォルダを作る。偽の台帳の `start` が `(url, True)` を返す
         mock: '`previews`'
         expected: '例外が上がらず `started: true` の結果が返る。ログに WARNING が 1 件ある'
       - name: test_run_preview_url_when_diff_given
         case: 正常
         summary: まとまりを指す URL を返し、README にはハッシュを書かない
-        condition: 検討事項 D-1 を足して `commit` し、まとまり V-1 を持つワークスペース。偽の台帳の `start` が 1 回目 `(url, True)`、2 回目 `(url, False)` を返す。`diff="V-1"` で 2 回呼ぶ
+        condition: 検討事項 D-1 を追加して `commit` し、まとまり V-1 を持つワークスペース。偽の台帳の `start` が 1 回目 `(url, True)`、2 回目 `(url, False)` を返す。`diff="V-1"` で 2 回呼ぶ
         mock: '`previews`'
         expected: どちらの結果も `url` が `{url}#diff=V-1`。1 回目の後の `README.md` が `url` を含み、`#diff=` を含まない
       - name: test_run_preview_url_when_diff_not_found
@@ -552,11 +552,11 @@ functions:
       type: dict[str, Any]
       description: '`{id, at, summary, added, changed, removed}`（まとめなかったときは `id`・`at`・`summary` が `None`、`added`・`changed`・`removed` が空。`removed` はまとまりの `removed` を `{id, kind, title}` にしたもの）'
     process: |-
-      1. 前後の空白を除いた `summary` が空か `SUMMARY_MAX_LENGTH` を超えれば `ArgumentError`（`summary`）を送る
+      1. 前後の空白を除いた `summary` が空か `SUMMARY_MAX_LENGTH` を超えれば `ArgumentError`（`summary`）を送信する
       2. ワークスペースを確かめる（`require_workspace`）。まとまりを読む（`load_changes`）
       3. `pending.by` が `external` なら、先に外部の変更のまとまりにする（`flush_pending`）。その後にまとめる（`commit_pending`。`by` は `ai`）
          - 自分のまとまりが `None` の場合、外部の変更のまとまりだけを書いて（あれば）空の結果を返す
-      4. 新しい記録を `records_root(root) / CHANGES_FILE` に書く（一時ファイルから `os.replace`。`OSError` は一時ファイルを消して `WriteFailedError`）
+      4. 新しい記録を `records_root(root) / CHANGES_FILE` に書く（一時ファイルから `os.replace`。`OSError` は一時ファイルを削除して `WriteFailedError`）
     exceptions:
       - name: ArgumentError
         condition: '`summary` が空白だけか 200 文字を超える'
@@ -571,12 +571,12 @@ functions:
       - name: test_run_commit
         case: 正常
         summary: まだまとめていない変更をまとめる
-        condition: D-1 を足した直後。`summary` 「  足す 」
+        condition: D-1 を追加した直後。`summary` 「  追加する 」
         mock: '`now`'
-        expected: '`id` が `V-1`・`summary` が「足す」・`added` が `[D-1]`。`changes.yaml` の `pending` が空'
+        expected: '`id` が `V-1`・`summary` が「追加」・`added` が `[D-1]`。`changes.yaml` の `pending` が空'
       - name: test_run_commit_when_external_pending
         case: 正常
-        summary: 外部の変更を先に外部のまとまりにし、自分のまとまりは足さない
+        summary: 外部の変更を先に外部のまとまりにし、自分のまとまりは追加しない
         condition: '`pending` が `by: external`・`changed: [D-1]`。`summary` 「a」'
         mock: '`now`'
         expected: '結果の `id` が `None`。`changes.yaml` の `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」・`changed: [D-1]` で、`pending` が空'
@@ -593,7 +593,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 記録の追加と更新
     scope: public
-    summary: まだまとめていない変更を出力の形にする
+    summary: まだまとめていない変更を出力の構造にする
     args:
       - name: root
         type: Path
@@ -619,7 +619,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 記録の追加と更新
     scope: public
-    summary: ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す
+    summary: ID・日時・連番・本文を付けた 1 項目を、メモリの上の並びに追加する
     args:
       - name: staged
         type: Staged
@@ -653,17 +653,17 @@ functions:
       description: 新しい `Staged` と、`add` の結果 `{id, file, body}`（`file`・`body` はワークスペースの直下からの相対パス。`workspace_path`）
     process: |-
       1. 渡せないキーを確かめる（`validate_input_keys`。`index` はその種類の並びの長さ）。`tags` があれば `compact_tags` で主題でないタグの `main` を除く
-      2. その種類の ID を 1 つ予約から振る（『ID の採番』の `reserve_ids`。`staged.items` と消した項目の記録（`removed_items`）を渡す）
-      3. 通し番号を振り（`advance_seq`）、`id` を先頭に置いた項目を作り、`staged.history` にその ID の行（`created`・`updated`・`updated_by`（`editor`）・`seq`・`added_seq`）を足す
-         - `body_markdown` がある場合、項目の `body` を `../docs/{ID}.mark.md`（`BODY_REF_PREFIX`）にし、本文の書き込みを足す（どの種類も）
-         - `body_html` がある場合、項目の `body` を `../docs/{ID}.html` にし、本文の書き込みを足す（資料だけ）
-      4. まだまとめていない変更の `added` に ID を足す（`note_pending`）
-      5. 末尾に足した並びと、`touched` にその種類を足した `Staged` を返す
+      2. その種類の ID を 1 つ予約から振る（『ID の採番』の `reserve_ids`。`staged.items` と削除した項目の記録（`removed_items`）を渡す）
+      3. 連番を振り（`advance_seq`）、`id` を先頭に置いた項目を作り、`staged.history` にその ID の行（`created`・`updated`・`updated_by`（`editor`）・`seq`・`added_seq`）を追加する
+         - `body_markdown` がある場合、項目の `body` を `../docs/{ID}.mark.md`（`BODY_REF_PREFIX`）にし、本文の書き込みを追加する（どの種類も）
+         - `body_html` がある場合、項目の `body` を `../docs/{ID}.html` にし、本文の書き込みを追加する（資料だけ）
+      4. まだまとめていない変更の `added` に ID を追加する（`note_pending`）
+      5. 末尾に追加した並びと、`touched` にその種類を追加した `Staged` を返す
     unit_tests:
       - name: test_stage_add
         case: 正常
-        summary: 通し番号と編集した人を付けて足す
-        condition: '`last_seq` 3 の記録と D-1 を持つ `Staged` に検討事項を足す'
+        summary: 連番と編集した人を付けて追加する
+        condition: '`last_seq` 3 の記録と D-1 を持つ `Staged` に検討事項を追加する'
         mock: '`now`'
         expected: 結果の `id` が D-2。`history` の D-2 の行の `seq`・`added_seq` が 4、`updated_by` が `ai`、項目は `seq`・`updated_by` を持たず、新しい記録の `last_seq` が 4 で `pending.added` に D-2。渡した `Staged` はそのまま
       - name: test_stage_add_when_note_has_body
@@ -674,8 +674,8 @@ functions:
         expected: N-1 の `body` が `../docs/N-1.mark.md` で、`Staged` の本文の書き込みに `../docs/N-1.mark.md` → `b` がある
       - name: test_stage_add_skips_removed_id
         case: 正常
-        summary: 消した ID を振らない
-        condition: N-1 を持ち、記録の `pending.removed` に N-2 を持つ `Staged` にメモを足す
+        summary: 削除した ID を振らない
+        condition: N-1 を持ち、記録の `pending.removed` に N-2 を持つ `Staged` にメモを追加する
         mock: '`now`'
         expected: 結果の `id` が N-3
       - name: test_stage_add_when_doc_has_html_body
@@ -686,8 +686,8 @@ functions:
         mock: なし
       - name: test_stage_add_when_user_editor
         case: 正常
-        summary: 編集した人を渡すと、足した項目の `updated_by` にその人を書く
-        condition: 'タスク `{"title": "画面を作る", "status": "未着手"}` を `editor="user"` で足す'
+        summary: 編集した人を渡すと、追加した項目の `updated_by` にその人を書く
+        condition: 'タスク `{"title": "画面を作る", "status": "未着手"}` を `editor="user"` で追加する'
         mock: '`now`'
         expected: '`history` の T-1 の行の `updated_by` が `user`'
       - name: test_stage_add_when_main_false
@@ -702,7 +702,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 記録の追加と更新
     scope: public
-    summary: 1 項目のキーを置き換え、変更履歴と通し番号を付けて、メモリの上の並びを差し替える
+    summary: 1 項目のキーを置き換え、変更履歴と連番を付けて、メモリの上の並びを差し替える
     args:
       - name: staged
         type: Staged
@@ -739,11 +739,11 @@ functions:
       2. 変更を当てはめ（`merge_changes`）、`staged.history` のその ID の行の `updated` を今の日時、`updated_by` を `editor` にし、`unconfirm(row, editor)` で編集した人が `user` でなければ `confirmed` を除く
          - `body_markdown` がある場合、`body` を `../docs/{ID}.mark.md`（`BODY_REF_PREFIX`）にし、本文の書き込みを作る（どの種類も）
          - `body_html` がある場合、`body` を `../docs/{ID}.html` にし、本文の書き込みを作る（資料だけ）
-         - 前の `body` があり新しい `body` と名前が違う（形式を替えた）場合、前の名前を `removed_bodies` に足す（同じ名前が `bodies` にあればそこから外す）。新しい名前が `removed_bodies` にあれば外す
+         - 前の `body` があり新しい `body` と名前が違う（形式を替えた）場合、前の名前を `removed_bodies` に追加する（同じ名前が `bodies` にあればそこから外す）。新しい名前が `removed_bodies` にあれば外す
          - `changed` には、`body` の名前が変わったとき `body` を、本文の中身が変わったとき渡したキー（`body_markdown` か `body_html`）を入れる
       3. 書き換える前の本文（`staged.bodies` にあればそれ、無ければ `read_body`）と比べて変更履歴の 1 回分を作る（`make_entry`。`seq` は `last_seq` + 1、`by` は `editor`）
-         - 変わったものがある場合、通し番号を振り（`advance_seq`）、`staged.history` の行の `seq` をその番号にして、行に変更履歴を積む（`history_limit`、`stack_history`。`read_seq` は `load_changes` が入れた前回参照した時点）。保持する回数が 0 より大きければ、まだまとめていない変更の `changed` に ID を足す（`note_pending`）
-      4. その位置を差し替えた並びと、`touched` にその種類を足した `Staged` を返す
+         - 変わったものがある場合、連番を振り（`advance_seq`）、`staged.history` の行の `seq` をその番号にして、行に変更履歴を積む（`history_limit`、`stack_history`。`read_seq` は `load_changes` が入れた前回参照した時点）。保持する回数が 0 より大きければ、まだまとめていない変更の `changed` に ID を追加する（`note_pending`）
+      4. その位置を差し替えた並びと、`touched` にその種類を追加した `Staged` を返す
     exceptions:
       - name: ItemNotFoundError
         condition: '`staged.items` に ID が無い'
@@ -751,13 +751,13 @@ functions:
     unit_tests:
       - name: test_stage_update_when_limit_zero
         case: 正常
-        summary: 保持する回数が 0 でも通し番号を進める
+        summary: 保持する回数が 0 でも連番を進める
         condition: '`history_limit` 0、`last_seq` 3、D-1 に `{"answer": "a"}`'
         mock: '`now`'
         expected: D-1 の `seq` が 4 で `history` を持たず、新しい記録の `last_seq` が 4 で `pending.changed` が空
       - name: test_stage_update_when_nothing_changed
         case: 正常
-        summary: 変わったものが無ければ通し番号を進めない
+        summary: 変わったものが無ければ連番を進めない
         condition: '`answer: a` の D-1 に `{"answer": "a"}`'
         mock: '`now`'
         expected: '`changed` が空で、記録の `last_seq` と D-1 の `seq` が呼ぶ前と同じ'
@@ -769,7 +769,7 @@ functions:
         expected: D-1 の `updated_by` が `ai`、`history[0].by` が `ai` で、`history[0].before` に `updated_by` が無い
       - name: test_stage_update_when_body_format_changed
         case: 正常
-        summary: 形式を替えると前の形式の本文を消す書き込みにし、前の `body` を変更履歴に積む
+        summary: 形式を替えると前の形式の本文を削除する書き込みにし、前の `body` を変更履歴に積む
         condition: '`body: A-1.mark.md`（本文 `a\nb\n`）の資料 A-1 に `{"body_html": "<p>a</p>\n"}`。保持する回数は既定。続けて同じ `Staged` で `{"body_markdown": "a\n"}`'
         expected: '1 回目: A-1 の `body` が `A-1.html`、`bodies` に `A-1.html`、`removed_bodies` が `["A-1.mark.md"]`、`changed` が `body`・`body_html`、`history` の先頭の `before.body` が `A-1.mark.md` で `body_diff` を今の本文に当てると `a\nb\n`。2 回目: `body` が `A-1.mark.md`、`removed_bodies` が `["A-1.html"]` で `bodies` に `A-1.html` が無い'
         mock: なし
@@ -797,7 +797,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 検討事項の案の編集
     scope: public
-    summary: 検討事項の案の並びに、記号で指した 1 つの足す・直す・消すを当てた新しい並びを返す
+    summary: 検討事項の案の並びに、記号で指した 1 つの追加する・修正する・削除するを当てた新しい並びを返す
     args:
       - name: item
         type: dict[str, Any]
@@ -824,11 +824,11 @@ functions:
       description: 書き換えた後の `options`（新しい並び）
     process: |-
       1. `add`・`update` で `option` が無いか、`remove` で `option` があるか、`option` が `OPTION_KEYS` に無いキーを持つなら `ArgumentError`（`option`）
-      2. `add` の場合、同じ記号の案があれば `OptionExistsError`。無ければ `{key, **option}` を末尾に足す
+      2. `add` の場合、同じ記号の案があれば `OptionExistsError`。無ければ `{key, **option}` を末尾に追加する
       3. `update`・`remove` の場合、その記号の案が無ければ `OptionNotFoundError`
-         - `update` はその案に `option` を当てる（値が `None` のキーは消す）
+         - `update` はその案に `option` を当てる（値が `None` のキーは削除する）
          - `remove` はその案が `adopted` なら `AdoptedOptionError`、その案が最後の案で検討事項の状態が `OPTIONS_OPTIONAL_STATUSES` に無ければ `LastOptionError`、そうでなければ抜く
-      4. `add`・`update` で `option` の `recommended` が真の場合、ほかの案の `recommended` のキーを消す。偽の場合、その案の `recommended` のキーを消す（印を外した案はキーを持たない）
+      4. `add`・`update` で `option` の `recommended` が真の場合、ほかの案の `recommended` のキーを削除する。偽の場合、その案の `recommended` のキーを削除する（マーカーを外した案はキーを持たない）
     exceptions:
       - name: ArgumentError
         condition: '`option` の渡し方が合わない'
@@ -844,11 +844,11 @@ functions:
         message: '{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください'
       - name: LastOptionError
         condition: '`remove` で、案を必須にする状態の検討事項の最後の案を指した'
-        message: '{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください'
+        message: '{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を追加してください'
     unit_tests:
       - name: test_apply_option_edit
         case: 正常
-        summary: 足す・直す・消すで指した案だけが変わる
+        summary: 追加する・修正する・削除するで指した案だけが変わる
         condition: '案 A（`pros`・`cons`）・B を持つ検討事項。`parametrize`: `add` C / `update` A に `{"pros": "x", "cons": null}` / `remove` B'
         mock: なし
         expected: A・B・C / A の `pros` が x で `cons` が無く B はそのまま / A だけ
@@ -860,13 +860,13 @@ functions:
         expected: '`OptionExistsError` / `OptionNotFoundError` / `AdoptedOptionError` / `ArgumentError`'
       - name: test_apply_option_edit_when_recommended
         case: 正常
-        summary: 推奨の印を 1 つに付け替え、外した案はキーを持たない
+        summary: 推奨のマーカーを 1 つに付け替え、外した案はキーを持たない
         condition: '案 A（`recommended: true`）・B を持つ未決定の検討事項。`parametrize`: `update` で B に `recommended: true` / `update` で A に `recommended: false` / `add` で C に `recommended: true`'
         mock: なし
         expected: B だけが `recommended` を持つ / どの案も `recommended` を持たない / C だけが `recommended` を持つ。どれも `content` と並びは変わらない
       - name: test_apply_option_edit_when_last_option
         case: 異常
-        summary: 案を必須にする状態の最後の案は消さず、必須でない状態では消せる
+        summary: 案を必須にする状態の最後の案は削除せず、必須でない状態では削除できる
         condition: '案 A だけを持つ検討事項に `remove`。`parametrize`: 状態が `未決定` / `未整理`'
         mock: なし
         expected: '`LastOptionError`（メッセージに ID・`A`・`未決定`） / 空の並び'
@@ -876,7 +876,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 検討事項の案の編集
     scope: public
-    summary: 検討事項の案を 1 つ足す・直す・消す
+    summary: 検討事項の案を 1 つ追加する・修正する・削除する
     args:
       - name: root
         type: Path
@@ -917,11 +917,11 @@ functions:
       2. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
       3. 案の書き換えを当て（`apply_option_edit`）、その `options` を `item` にして更新を当てる（`stage_update`。`options` は `RESERVED_KEYS` に無いのでそのまま渡せる）
       4. 書き込む（`save_batch`。履歴も書く）。`changed` は `stage_update` の `changed` が `options` を含むか
-         - `ConcurrentWriteError` の場合、2. から読み直して 1 回だけ当て直す。2 回目も同じなら `ConcurrentWriteError` を送る
+         - `ConcurrentWriteError` の場合、2. から再読み込みして 1 回だけ再適用する。2 回目も同じなら `ConcurrentWriteError` を送信する
       5. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（`accept_own_write`）
     exceptions:
       - name: ConcurrentWriteError
-        condition: 読み直して当て直しても、置き換える直前に種類の YAML がほかから書き換えられた
+        condition: 再読み込みして再適用しても、置き換える直前に種類の YAML がほかから書き換えられた
         message: '記録がほかから書き換えられました: {ファイル名}'
       - name: ArgumentError
         condition: '`id` が検討事項の ID でない'
@@ -929,20 +929,20 @@ functions:
     unit_tests:
       - name: test_run_edit_option_when_concurrent_write
         case: 正常
-        summary: 1 回目の書き込みでほかが書いていれば、読み直して当て直す
-        condition: '1 回目の `save_batch` だけ `ConcurrentWriteError` を送り、その間に D-1 の `answer` を書き換えておく'
-        mock: '`save_batch`（1 回目だけ送る）'
+        summary: 1 回目の書き込みでほかが書いていれば、再読み込みして再適用する
+        condition: '1 回目の `save_batch` だけ `ConcurrentWriteError` を送信し、その間に D-1 の `answer` を書き換えておく'
+        mock: '`save_batch`（1 回目だけ送信する）'
         expected: 2 回目で書き、書き換えた `answer` が残る
       - name: test_run_edit_option_when_concurrent_write_twice
         case: 異常
         summary: 2 回続けてほかが書いていればエラー
-        condition: '`save_batch` が 2 回とも `ConcurrentWriteError` を送る'
+        condition: '`save_batch` が 2 回とも `ConcurrentWriteError` を送信する'
         mock: '`save_batch`'
         expected: '`ConcurrentWriteError`'
-        exception: 当て直してもほかが書いた
+        exception: 再適用してもほかが書いた
       - name: test_run_edit_option
         case: 正常
-        summary: 案を足して変更履歴と通し番号を付ける
+        summary: 案を追加して変更履歴と連番を付ける
         condition: '`commit` 済みの案 A だけを持つ D-1 に `add` B'
         mock: '`now`'
         expected: '`options` が A・B、`changed` が真。D-1 の `history[0].before` が `{options: [A]}` で `seq` が `last_seq`'
@@ -1015,7 +1015,7 @@ functions:
       - name: test_run_readme
         case: 正常
         summary: 配っていなければ URL なしで書く
-        condition: 作成済みのワークスペースの `README.md` を消す。`previews` は `url_of` が `None` を返す偽の台帳
+        condition: 作成済みのワークスペースの `README.md` を削除する。`previews` は `url_of` が `None` を返す偽の台帳
         mock: '`previews`'
         expected: '`{path: {絶対パス}/README.md, written: true, preview_url: null}`。`README.md` が `PREVIEW_HINT` を含む'
       - name: test_run_readme_when_serving
@@ -1043,7 +1043,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 送信の取り込み
     scope: public
-    summary: スレッドを絞ったキーだけの一覧を出力の形にする
+    summary: スレッドを絞ったキーだけの一覧を出力の構造にする
     args:
       - name: root
         type: Path
@@ -1131,9 +1131,9 @@ functions:
       type: dict[str, Any]
       description: '`{id, status, tags, summary, target, target_title, loc, posts, events}`'
     process: |-
-      1. ワークスペースを確かめ、読む形と未読の ID を作る（`require_workspace`、`view_thread`）。ワークスペース全体は読み込まない
+      1. ワークスペースを確かめ、読む構造と未読の ID を作る（`require_workspace`、`view_thread`）。ワークスペース全体は読み込まない
       2. 未読の ID があれば、`lock()` の中で既読にする（`mark_read`）
-      3. 1 の読む形を返す（`posts[].read` は読む前の値のまま）
+      3. 1 の読む構造を返す（`posts[].read` は読む前の値のまま）
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`config.yaml` が無い'
@@ -1162,7 +1162,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: AIがスレッドを立てる
     scope: public
-    summary: AI のスレッドを立て、出力の形にする
+    summary: AI のスレッドを立て、出力の構造にする
     args:
       - name: root
         type: Path
@@ -1207,7 +1207,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: スレッドで話す
     scope: public
-    summary: スレッドへ AI の返信を足し、出力の形にする
+    summary: スレッドへ AI の返信を追加し、出力の構造にする
     args:
       - name: root
         type: Path
@@ -1250,7 +1250,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: スレッドで話す
     scope: public
-    summary: AI がスレッドの状態を変え、出力の形にする
+    summary: AI がスレッドの状態を変え、出力の構造にする
     args:
       - name: root
         type: Path
@@ -1295,7 +1295,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 送信の取り込み
     scope: public
-    summary: スレッドの要約・タグ・取り込み済みを書き換え、出力の形にする
+    summary: スレッドの要約・タグ・取り込み済みを書き換え、出力の構造にする
     args:
       - name: root
         type: Path
@@ -1362,9 +1362,9 @@ functions:
       type: dict[str, list[str]]
       description: '`{ids}`'
     process: |-
-      1. `kind` が `KINDS` に無ければ `ArgumentError`（`kind`）、`count` が 1〜`NEXT_ID_MAX_COUNT` でなければ `ArgumentError`（`count`）を送る
+      1. `kind` が `KINDS` に無ければ `ArgumentError`（`kind`）、`count` が 1〜`NEXT_ID_MAX_COUNT` でなければ `ArgumentError`（`count`）を送信する
       2. ワークスペースを確かめ、その種類の項目とまとまりを読む（`require_workspace`、`read_kind_items`、`load_changes`）
-      3. 予約から振る（『ID の採番』の `reserve_ids`。消した項目の記録（`removed_items`）を渡す）
+      3. 予約から振る（『ID の採番』の `reserve_ids`。削除した項目の記録（`removed_items`）を渡す）
     exceptions:
       - name: ArgumentError
         condition: '`kind` が決めた種類でない、または `count` が範囲の外'

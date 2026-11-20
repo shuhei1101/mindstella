@@ -54,7 +54,7 @@ functions:
     returns:
       type: dict[str, list[tuple[str, str]]]
       description: 参照先の ID → `(参照元の ID, キー)` の並び（参照元の並びはファイルの並び）
-    process: 1. `IMPACT_KEYS` の項目の種類ごとに項目を見て、`related` のうち種類が `IMPACT_KEYS` にある要素の `to` ごとに `(自分の ID, 種類)` を足す
+    process: 1. `IMPACT_KEYS` の項目の種類ごとに項目を見て、`related` のうち種類が `IMPACT_KEYS` にある要素の `to` ごとに `(自分の ID, 種類)` を追加する
     unit_tests:
       - name: test_build_reverse_edges
         case: 正常

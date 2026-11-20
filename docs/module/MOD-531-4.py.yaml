@@ -31,7 +31,7 @@ constants:
     title: /exit の後に待つ上限
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: MindStella のセッションを止めてワークスペースをクローズにする
-    summary: '`/exit` を貼ってから Claude Code のプロセスが終わるまで待つ秒数。過ぎたら SIGTERM を送る'
+    summary: '`/exit` を貼ってから Claude Code のプロセスが終わるまで待つ秒数。過ぎたら SIGTERM を送信する'
     value: '10.0'
   - name: PANE_TAIL_LINES
     title: 返すペインの行数
@@ -60,31 +60,31 @@ constants:
   - name: EXEC_EXIT_WAIT_SEC
     title: exec の終了を待つ上限
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
-    summary: 起動し直しで `/exit` を貼ってから tmux のセッションが閉じるまで待つ秒数
-    value: 75.0（非機能要件『起動し直しで exec の終了を待つ上限』）
+    usecase: MindStella のセッションを再起動する
+    summary: 再起動で `/exit` を貼ってから tmux のセッションが閉じるまで待つ秒数
+    value: 75.0（非機能要件『再起動で exec の終了を待つ上限』）
   - name: CRASH_WATCH_INTERVAL_SEC
     title: 落ちたことを見回る間隔
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: 見回りの間隔の秒数。`MINDSTELLA_CRASH_WATCH_INTERVAL` で上書きできる
     value: 60.0（非機能要件『落ちたことを見回る間隔』）
   - name: LAUNCH_REASON_ENV
     title: 起動の契機の環境変数
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: 圧縮の契機で起動したことをフックへ渡す環境変数の名前
     value: '"MINDSTELLA_LAUNCH_REASON"'
   - name: LAUNCH_RECORD_MISSING
     title: 記録が無いことの警告
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
-    summary: 作成・起動し直しの応答の `warnings` に入れる値
+    summary: 作成・再起動の応答の `warnings` に入れる値
     value: '"launch_record_missing"'
   - name: RESTART_REASONS
-    title: 起動し直しの契機
+    title: 再起動の契機
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: '`restart_reason` に入る値'
     value: ("api", "rate_limit", "compact", "comment", "usage_threshold")
 functions:
@@ -102,7 +102,7 @@ functions:
     unit_tests:
       - name: test_new_session_id
         case: 正常
-        summary: 形と重なり
+        summary: 構造と重なり
         condition: 1,000 回振る
         mock: なし
         expected: 全て `^S-[0-9a-f]{12}$` に合い、重ならない
@@ -112,7 +112,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: ペインで動かすコマンドの引数の並びを作る（claude-balancer があれば `claude-balancer exec --client mindstella [--account {claude_config_dir}] -- claude ...`、無ければ `claude ...`）。`--account` は claude-balancer があり `claude_config_dir` があるときだけ付ける。`--mcp-config`・`--plugin-dir` を足し、`resume_id` があれば `--resume {resume_id}` を足す
+    summary: ペインで動かすコマンドの引数の並びを作る（claude-balancer があれば `claude-balancer exec --client mindstella [--account {claude_config_dir}] -- claude ...`、無ければ `claude ...`）。`--account` は claude-balancer があり `claude_config_dir` があるときだけ付ける。`--mcp-config`・`--plugin-dir` を追加し、`resume_id` があれば `--resume {resume_id}` を追加する
     args:
       - name: options
         type: LaunchOptions | None
@@ -133,7 +133,7 @@ functions:
         type: str | None
         required: true
         passing: positional
-        description: 依頼の `claude_config_dir`。起動し直しでは `session.json` の `specified_account`（claude-balancer の `--account` に渡す）
+        description: 依頼の `claude_config_dir`。再起動では `session.json` の `specified_account`（claude-balancer の `--account` に渡す）
       - name: resume_id
         type: str | None
         required: false
@@ -199,7 +199,7 @@ functions:
         required: false
         default: None
         passing: keyword
-        description: 起動の契機（圧縮の起動し直しのとき `compact`）
+        description: 起動の契機（圧縮の再起動のとき `compact`）
       - name: balancer_url
         type: str | None
         required: false
@@ -287,7 +287,7 @@ functions:
     scope: public
     summary: IF-531-2 の順で、残ったセッションを閉じてペインを作り、`remain-on-exit` を立ててからコマンドを動かし、SessionStart の登録かペインの終わりを待つ。既存の `session.json` から `resume_id_for` で引き継ぐ会話を決め、依頼の `claude_config_dir` を `~` を展開した絶対パスにして `specified_account` に記録し（無ければ `None`）、`build_env` に `ctx.home.balancer_url` を渡し、`launch.json` が無ければ指定なしで起動して応答の `warnings` に `LAUNCH_RECORD_MISSING` を入れる。既存の MindStella のセッションの生死の判定は `is_alive` に `on_crashed`（`notify_stopped` を `crashed` で呼ぶ）を渡す
     description: ワークスペースごとの鍵を、クローズ済みかの確かめから状態を書くまで持つ（準備を待つ間も）。`session.json` の読み書きは `state.update_session` の鍵を使う。ウィンドウ・ペインを指す tmux の `-t` は `={ワークスペースの ID}:`（末尾の `:` が無いとペインに当たらない）。最初の入力は SessionStart のフックが登録したペインへ貼る。409 の `pane` は 201 と同じ `{ワークスペースの ID}:0.0`
-    side_effects: tmux のセッションを作り、`session.json` を書く。失敗のときはペインを閉じて `session.json` を消す
+    side_effects: tmux のセッションを作り、`session.json` を書く。失敗のときはペインを閉じて `session.json` を削除する
     args:
       - name: workspace_id
         type: str
@@ -406,7 +406,7 @@ functions:
     usecase: MindStella のセッションを止めてワークスペースをクローズにする
     scope: public
     summary: '`close_pending` を真・`status` を `stopping` にしてすぐ返し、別のスレッドで応答の終わりを待って止める。落ちていれば止める工程を飛ばして commit し 200'
-    side_effects: '`session.json` を書き、ペインへ `/exit` を貼り、プロセスに SIGTERM を送り、tmux のセッションを閉じ、まとめていない変更を commit する'
+    side_effects: '`session.json` を書き、ペインへ `/exit` を貼り、プロセスに SIGTERM を送信し、tmux のセッションを閉じ、まとめていない変更を commit する'
     args:
       - name: workspace_id
         type: str
@@ -474,7 +474,7 @@ functions:
       - name: test_stop_session_thread_error
         case: 異常
         summary: 別のスレッドで例外が起きれば記録して status を戻す
-        condition: '`/exit` の貼り付けで `TmuxRunner` が例外を送る'
+        condition: '`/exit` の貼り付けで `TmuxRunner` が例外を送出する'
         mock: '`TmuxRunner`・止める処理を同じスレッドで走らせる・`caplog`'
         expected: '`caplog` に `mindstella.session.stop_failed`（ワークスペースの ID・段階 `exit`）、`session.json` の `status` が `running`（生きている）で `last_error` に段階と理由、`close_pending` が真'
       - name: test_stop_session_when_notifying
@@ -495,7 +495,7 @@ functions:
         condition: '`running` でペインが無い'
         mock: '`TmuxRunner`・`notify.notify_stopped`'
         expected: '`(200, {status: stopped})`、`notify_stopped` が `crashed` で 1 回だけ呼ばれる'
-    description: '別のスレッドの本体は例外で包む。例外（tmux のコマンドの失敗・commit の失敗・`session.json` の書き込みの失敗）を捕まえたら `logger.exception` で `mindstella.session.stop_failed` を書き、`is_alive` で判定して `status` を `running`（生きている）か `crashed`（落ちた）に戻し、`last_error` に段階と理由を入れる。`close_pending` は真のまま残す（外部のアプリは停止を依頼し直せる）。停止の通知: 別のスレッドが停止済みを記録したとき、同じ鍵の中で読んだ書き換える前の `status` が `stopping`・`stopped`・`crashed` なら `notify_stopped` を `force` で `stop_requested` か `force_stopped` で呼ぶ。例外の後に `crashed` に戻したときは `stop_failed` で呼び、`running` に戻したときは呼ばない。落ちていて 200 を返す経路は、`is_alive` の `on_crashed` だけが呼ぶ'
+    description: '別のスレッドの本体は例外で包む。例外（tmux のコマンドの失敗・commit の失敗・`session.json` の書き込みの失敗）を捕まえたら `logger.exception` で `mindstella.session.stop_failed` を書き、`is_alive` で判定して `status` を `running`（生きている）か `crashed`（落ちた）に戻し、`last_error` に段階と理由を入れる。`close_pending` は真のまま残す（外部のアプリは停止を依頼し修正できる）。停止の通知: 別のスレッドが停止済みを記録したとき、同じ鍵の中で読んだ書き換える前の `status` が `stopping`・`stopped`・`crashed` なら `notify_stopped` を `force` で `stop_requested` か `force_stopped` で呼ぶ。例外の後に `crashed` に戻したときは `stop_failed` で呼び、`running` に戻したときは呼ばない。落ちていて 200 を返す経路は、`is_alive` の `on_crashed` だけが呼ぶ'
   - name: record_event
     title: フックの出来事を記録する
     kind: 関数
@@ -529,7 +529,7 @@ functions:
         summary: 出来事ごとの書き換え
         condition: '`parametrize`: `session_start`（`source: startup`・`clear`・`fork`）/ `session_end`（`reason: clear`・`logout`）/ `prompt_submit` / `stop_failure`'
         mock: なし
-        expected: '`claude_session_id`・`claude_config_dir` を入れる・入れ直す / `running` のまま・`stopped` / `responding` 真 / 偽'
+        expected: '`claude_session_id`・`claude_config_dir` を入れる・再登録する / `running` のまま・`stopped` / `responding` 真 / 偽'
       - name: test_record_event_unknown
         case: 正常
         summary: 知らない MindStella のセッションは記録しない
@@ -556,13 +556,13 @@ functions:
         expected: '`notify_stopped` が `session_ended` で 1 回 / 呼ばれない / 呼ばれない'
       - name: test_record_event_when_rate_limit
         case: 正常
-        summary: stop_failure の rate_limit と pre_compact で起動し直しを始める
+        summary: stop_failure の rate_limit と pre_compact で再起動を始める
         condition: '`parametrize`: `stop_failure`・`error: rate_limit` / `stop_failure`・`error: server_error` / `pre_compact`。`status` は `running`'
         mock: '`request_restart`'
         expected: '`rate_limit` で 1 回 / 呼ばない / `compact` で 1 回'
       - name: test_record_event_when_restarting
         case: 正常
-        summary: 起動し直しの途中の session_end は状態を変えず通知しない
+        summary: 再起動の途中の session_end は状態を変えず通知しない
         condition: '`status` が `restarting` で `session_end`（`reason: other`）'
         mock: '`notify.notify_stopped`'
         expected: '`status` が `restarting` のままで `responding` が偽。`notify_stopped` を呼ばない'
@@ -661,7 +661,7 @@ functions:
     usecase: 起動と再開
     scope: public
     summary: IF-565-2 の処理。`session` のワークスペースを引き、ワークスペースごとの鍵の中で前回参照した時点を進める
-    side_effects: '`read_point.json` を書き、`migration.json` を消す'
+    side_effects: '`read_point.json` を書き、`migration.json` を削除する'
     args:
       - name: session_id
         type: str
@@ -697,7 +697,7 @@ functions:
         expected: '`{read_seq: 5}` を返す'
       - name: test_advance_read_point_when_invalid
         case: 異常
-        summary: 通し番号でない値・範囲の外は 400
+        summary: 連番でない値・範囲の外は 400
         condition: '`parametrize`: `until_seq: "5"` / `until_seq: 9`（`last_seq` 5）'
         mock: 同上
         expected: どちらも `ApiError`（400）。`read_seq` が 3 のまま
@@ -706,7 +706,7 @@ functions:
     title: 引き継ぐ会話の ID を決める
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: '`claude_session_id` と `claude_config_dir` があり、`claude_input.transcript_dirs` のフォルダのどれかに `{claude_session_id}.jsonl` があれば `claude_session_id` を返し、無ければ `None`'
     args:
@@ -734,7 +734,7 @@ functions:
     title: 起動の指定を読めるか確かめる
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: '`mcp_config` を『ワークスペースの管理』と同じ検査にかけ、`plugin_dirs` の各フォルダに `.claude-plugin/plugin.json` があるかを確かめ、読めなければ理由の文字列を返す'
     args:
@@ -750,18 +750,18 @@ functions:
       - name: test_check_launch_options
         case: 正常
         summary: プラグインのフォルダと MCP の定義を確かめる
-        condition: '`parametrize`: どちらも読める / プラグインのフォルダが無い / `mcp_config` の形が違う'
+        condition: '`parametrize`: どちらも読める / プラグインのフォルダが無い / `mcp_config` の形式が違う'
         mock: なし
         expected: '`None` / フォルダのパスを含む文字列 / 定義が読めないことを示す文字列'
   - name: restart_session
-    title: 起動し直しを受け付ける
+    title: 再起動を受け付ける
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: IF-582-1 の受け付け。ワークスペースごとの鍵の中でクローズ済み・`stopping`・`restarting` を断り、`status` を `restarting`、`restart_reason` を契機、契機が `api` なら `close_pending` を偽にして、止めて起動する工程を別のスレッドで始める
-    description: '別のスレッドは、生きていれば停止と同じ待ち方で `/exit` を貼り、`EXEC_EXIT_WAIT_SEC` まで tmux のセッションが閉じるのを待つ（過ぎたら `kill-session`）。最後の書き込みを待つ上限を過ぎたら起動し直さず、`pending_write` を真・`status` を `running`・`restart_reason` を `None` に戻す。契機が `rate_limit` なら `notify_stopped` を `rate_limited` で、`usage_threshold` なら `usage_threshold` で呼ぶ。`specified_account` があり契機が `rate_limit`・`usage_threshold` のとき、`ctx.home.release_on_limit` が真なら `specified_account` を `None` にしてから起動し、偽なら `rate_limit` では起動せずに `crashed`・`last_error` を `account: 指定したアカウントが利用上限に達した` にする。`check_launch_options`・`resume_id_for` の後、`create_session` と同じ起動の工程（`build_command` に `resume_id`、`build_env` に契機が `compact` のとき `LAUNCH_REASON_ENV`）で起動し、準備ができたら `running` にして `restart_reason`・`last_error` を戻す。`--account` を付けた起動が `account` の段階で失敗し、`ctx.home.release_on_limit` が真なら、`specified_account` を `None` にしてペインを閉じ、`--account` を付けずに 1 回だけ起動し直す。失敗はペインを閉じて `crashed`・`last_error` にし、契機が `api`・`compact` なら `notify_stopped` を `restart_failed` で呼ぶ'
-    side_effects: '`session.json` を書き換え、tmux のセッションを立て直す。停止の通知を呼ぶ'
+    description: '別のスレッドは、生きていれば停止と同じ待ち方で `/exit` を貼り、`EXEC_EXIT_WAIT_SEC` まで tmux のセッションが閉じるのを待つ（過ぎたら `kill-session`）。最後の書き込みを待つ上限を過ぎたら再起動せず、`pending_write` を真・`status` を `running`・`restart_reason` を `None` に戻す。契機が `rate_limit` なら `notify_stopped` を `rate_limited` で、`usage_threshold` なら `usage_threshold` で呼ぶ。`specified_account` があり契機が `rate_limit`・`usage_threshold` のとき、`ctx.home.release_on_limit` が真なら `specified_account` を `None` にしてから起動し、偽なら `rate_limit` では起動せずに `crashed`・`last_error` を `account: 指定したアカウントが利用上限に達した` にする。`check_launch_options`・`resume_id_for` の後、`create_session` と同じ起動の工程（`build_command` に `resume_id`、`build_env` に契機が `compact` のとき `LAUNCH_REASON_ENV`）で起動し、準備ができたら `running` にして `restart_reason`・`last_error` を戻す。`--account` を付けた起動が `account` の段階で失敗し、`ctx.home.release_on_limit` が真なら、`specified_account` を `None` にしてペインを閉じ、`--account` を付けずに 1 回だけ再起動する。失敗はペインを閉じて `crashed`・`last_error` にし、契機が `api`・`compact` なら `notify_stopped` を `restart_failed` で呼ぶ'
+    side_effects: '`session.json` を書き換え、tmux のセッションを再作成する。停止の通知を呼ぶ'
     args:
       - name: workspace_id
         type: str
@@ -797,13 +797,13 @@ functions:
     unit_tests:
       - name: test_restart_session
         case: 正常
-        summary: 起動中を止めて --resume で起動し直す
+        summary: 起動中を止めて --resume で再起動する
         condition: '`TmuxRunner` の偽。`session.json` が `running`、会話の記録のファイルがある。別のスレッドの終わりを待つ'
         mock: '`TmuxRunner`・`ProcessInspector`・`time.monotonic`・`time.sleep`'
         expected: '`(202, {status: restarting, warnings: []})`。`respawn-pane` の引数に `--resume` と `claude_session_id`。終わった後の `session.json` が `running` で `session` が変わらない'
       - name: test_restart_session_when_rejected
         case: 異常
-        summary: クローズ済み・停止の途中・起動し直しの途中は 409
+        summary: クローズ済み・停止の途中・再起動の途中は 409
         condition: '`parametrize`: クローズ済み / `stopping` / `restarting`'
         mock: '`TmuxRunner`'
         expected: '`ApiError` 409、`stage` が `closed` / `stopping` / `restarting`'
@@ -827,7 +827,7 @@ functions:
         expected: '`kill-session` の後に `new-session` を呼ぶ'
       - name: test_restart_session_when_write_timeout
         case: 異常
-        summary: 最後の書き込みを待つ上限を過ぎたら起動し直さず running に戻す
+        summary: 最後の書き込みを待つ上限を過ぎたら再起動せず running に戻す
         condition: 契機 `api`・`force` は偽。`session.json` が `running` で `responding` が真のまま、時刻を『最後の書き込みを待つ上限』より進める
         mock: '`TmuxRunner`・`time.monotonic`・`time.sleep`'
         expected: ペインに `/exit` を貼らない。終わった後の `session.json` が `running`・`pending_write` が真・`restart_reason` が `None`
@@ -845,21 +845,21 @@ functions:
         expected: '`respawn-pane` の引数に `--account /c` がある・`specified_account` が `/c` / 無い・`None` / 無い・`None` / ある・`/c`'
       - name: test_restart_session_when_release_off
         case: 異常
-        summary: release_on_limit が偽で利用上限なら起動し直さない
+        summary: release_on_limit が偽で利用上限なら再起動しない
         condition: '`specified_account` が `/c`、`ctx.home.release_on_limit` が偽、契機 `rate_limit`'
         mock: '`TmuxRunner`・`notify.notify_stopped`'
         expected: '`respawn-pane` を呼ばず、`crashed`・`last_error` が `account:` で始まる。`notify_stopped` を `rate_limited` で 1 回'
       - name: test_restart_session_when_specified_account_unavailable
         case: 正常
-        summary: --account 付きの起動が account の段階で失敗したら、指定を解除して 1 回だけ起動し直す
+        summary: --account 付きの起動が account の段階で失敗したら、指定を解除して 1 回だけ再起動する
         condition: '`specified_account` が `/c`、契機 `api`。`TmuxRunner` の偽は `--account` があると 125 で終わる。`parametrize`: `release_on_limit` が真 / 偽'
         mock: '`TmuxRunner`'
         expected: '`respawn-pane` を 2 回呼び 2 回目に `--account` が無く、`running`・`specified_account` が `None` / 1 回だけ呼び `crashed`・`last_error` が `account:`'
   - name: request_restart
-    title: 内部の契機で起動し直す
+    title: 内部の契機で再起動する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: '`rate_limit`・`compact`・`comment`・`usage_threshold` の契機で `restart_session` を呼ぶ。`restarting` なら重ねて起動せず真、`comment` でクローズ待ち・クローズ済みなら偽を返す（`ApiError` を外へ出さない）'
     args:
@@ -880,7 +880,7 @@ functions:
         description: 状態のフォルダ・鍵・ポート
     returns:
       type: bool
-      description: 起動し直しを始めたか、既に起動し直しの途中か
+      description: 再起動を始めたか、既に再起動の途中か
     unit_tests:
       - name: test_request_restart
         case: 正常
@@ -895,10 +895,10 @@ functions:
         mock: '`restart_session`'
         expected: 真で `restart_session` を `usage_threshold` で 1 回呼ぶ
   - name: wait_until_running
-    title: 起動し直しの終わりを待つ
+    title: 再起動の終わりを待つ
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: '`session.json` が `restarting` でなくなるまで `READY_POLL_SEC` ごとに読み、`running` なら真を返す。待つ上限は `STOP_WAIT_SEC + EXEC_EXIT_WAIT_SEC + READY_TIMEOUT_SEC`'
     args:
@@ -914,7 +914,7 @@ functions:
         description: 状態のフォルダ
     returns:
       type: bool
-      description: 起動し直したか
+      description: 再起動したか
     unit_tests:
       - name: test_wait_until_running
         case: 正常
@@ -926,7 +926,7 @@ functions:
     title: 落ちたことを 1 回見回る
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: IF-582-2 の 1 回分。ID の一覧のワークスペースのうち `running` のものに `is_alive` を `on_crashed`（`notify_stopped` を `crashed`）つきで呼ぶ。ワークスペースごとの例外は記録して次へ進む
     args:
@@ -949,7 +949,7 @@ functions:
     title: 落ちたことの見回りを始める
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: '`CRASH_WATCH_INTERVAL_SEC`（環境変数で上書き）ごとに `watch_crashes_once` を呼ぶ `daemon` のスレッドを始め、`stop` が立つまで繰り返す'
     args:
@@ -962,7 +962,7 @@ functions:
         type: threading.Event
         required: true
         passing: positional
-        description: 常駐サーバーの停止で立つ印
+        description: 常駐サーバーの停止で立つマーカー
     returns:
       type: threading.Thread
       description: 始めたスレッド
@@ -998,7 +998,7 @@ classes:
         summary: PID の起動時刻の文字列を返す。プロセスが無ければ `None`
 notes:
   ログ: |
-    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に書き足す）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
+    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に追記する）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
 
     | イベント名 | 水準 | いつ | 属性 |
     | --- | --- | --- | --- |

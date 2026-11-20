@@ -15,7 +15,7 @@ scenarios:
         participant WS as ワークスペース
 
         CL->>WSM: フォルダを渡してワークスペースを作る（POST /workspaces・create_workspace）
-        WSM->>WS: .mindstella/ に既定の設定（ワークスペースの ID・進め方の文書を含む）・空の YAML・版のファイルと、記録を project-index で配信する設定を書く
+        WSM->>WS: .mindstella/ に既定の設定（ワークスペースの ID・進め方の文書を含む）・空の YAML・バージョンのファイルと、記録を project-index で配信する設定を書く
         WSM->>WS: 直下に本文のフォルダ docs/ を作る
         WSM->>WS: 直下に README.md（コマンドの一覧）を書く
         WSM-->>CL: ワークスペースの ID と画面の URL
@@ -24,18 +24,18 @@ scenarios:
       - ワークスペースに `.mindstella/config.yaml` があり、既定の設定と、返したワークスペースの ID を持つ
       - ワークスペースの `.mindstella/` に `decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml` があり、どれも項目を持たない
       - ワークスペースの直下に `docs/` のフォルダがあり、`.mindstella/` に `docs/`・`release/` のフォルダが無い
-      - ワークスペースに `.mindstella/mindstella-version.ini` があり、1 行目がプラグインの版である
-      - ワークスペースの直下に、設定・種類ごとの YAML・版のファイルが無い
+      - ワークスペースに `.mindstella/mindstella-version.ini` があり、1 行目がプラグインのバージョンである
+      - ワークスペースの直下に、設定・種類ごとの YAML・バージョンのファイルが無い
       - ワークスペースの直下に `README.md` があり、このフォルダの起動・接続のコマンドの一覧があり、スキルの呼び方が無い
       - ワークスペースの全ての YAML がスキーマに合う
       - ワークスペースの `.mindstella/` に記録を配信する設定があり、種類ごとの YAML の項目を 1 件ずつの文書として、直下の `docs/` の本文をその項目の本文として指す
       - 配信元の登録の依頼の `config` が、その配信の設定のパスである
     test: test_normal
-  - name: 異常シナリオ（移す前の形のワークスペースがある）
+  - name: 異常シナリオ（移す前の構造のワークスペースがある）
     setup:
       - name: Mock
         description: 正常シナリオと同じ
-      - name: 移す前の形のワークスペース
+      - name: 移す前の構造のワークスペース
         description: '`.mindstella/` を持たず、直下に `mindmap.yaml` と種類ごとの YAML を持ち、検討事項 D-1 を持つフォルダ'
         notes: YAML を直接書いて作る
     flow: |-
@@ -45,7 +45,7 @@ scenarios:
         participant WSM as ワークスペースの管理
         participant WS as ワークスペース
 
-        CL->>WSM: 移す前の形のワークスペースのフォルダを渡して作る
+        CL->>WSM: 移す前の構造のワークスペースのフォルダを渡して作る
         WSM->>WS: 直下に mindmap.yaml があることを確かめる
         WSM-->>CL: 既にワークスペースがあるエラー（移し替えを案内する）
       ```
@@ -71,8 +71,8 @@ scenarios:
         participant WS as ワークスペース
 
         CL->>WSM: フォルダを渡してワークスペースを作る
-        WSM->>WS: .mindstella/ に既定の設定・空の YAML・版のファイルを書き、直下に docs/ を作る
-        WSM->>WS: 直下に、自動で書いた印の無い README.md があることを確かめ、書かない
+        WSM->>WS: .mindstella/ に既定の設定・空の YAML・バージョンのファイルを書き、直下に docs/ を作る
+        WSM->>WS: 直下に、自動で書いたマーカーの無い README.md があることを確かめ、書かない
         WSM-->>CL: ワークスペースの ID と画面の URL
       ```
     expected:
@@ -98,12 +98,12 @@ scenarios:
 
         CL->>WSM: フォルダを渡してワークスペースを作る
         WSM->>WS: 直下に docs/ が既にあることを確認する
-        WSM-->>CL: 直下に docs/ が既にあるエラー（改名してから作り直す案内）
+        WSM-->>CL: 直下に docs/ が既にあるエラー（改名してから再作成する案内）
       ```
 
       <!-- /map -->
     expected:
-      - 作成のツールがエラーを返し、エラーの本文に、直下に `docs/` が既にあるため改名してから作り直す案内がある
+      - 作成のツールがエラーを返し、エラーの本文に、直下に `docs/` が既にあるため改名してから再作成する案内がある
       - '`.mindstella/` と直下の `README.md` が作られておらず、配信元の登録の依頼と状態のフォルダのワークスペースの ID の一覧が無い'
       - 直下の `docs/memo.md` の中身が、作成を呼ぶ前と同じである
     test: test_error_when_root_docs_exists
@@ -118,8 +118,8 @@ preconditions:
   - プラグイン mindstella がインストールされている
   - 常駐サーバーが起動している
   - 渡すフォルダが、設定で許可するフォルダの下にある
-success_guarantee: 指定したフォルダの直下に本文のフォルダ `docs/` があり、`.mindstella/` に、既定の設定とワークスペースの ID を持つ `config.yaml` と、空の種類ごとの YAML・プラグインの版を書いた `mindstella-version.ini`・記録を project-index で配信する設定があり、全ての YAML がスキーマに合う。
-minimal_guarantee: 移す前の形のワークスペースがあるときと、記録の無いフォルダの直下に `docs/`・`files/` が既にあるときは、フォルダの中身を書き換えない。記録が既にあるフォルダは作り直さずに開く（単一ユースケース『外部のアプリから起動する』）。
+success_guarantee: 指定したフォルダの直下に本文のフォルダ `docs/` があり、`.mindstella/` に、既定の設定とワークスペースの ID を持つ `config.yaml` と、空の種類ごとの YAML・プラグインのバージョンを書いた `mindstella-version.ini`・記録を project-index で配信する設定があり、全ての YAML がスキーマに合う。
+minimal_guarantee: 移す前の構造のワークスペースがあるときと、記録の無いフォルダの直下に `docs/`・`files/` が既にあるときは、フォルダの中身を書き換えない。記録が既にあるフォルダは再作成せずに開く（単一ユースケース『外部のアプリから起動する』）。
 test_file: tests/e2e/単一ユースケース/test_workspace_create.py
 refs:
   - SC-531-1#

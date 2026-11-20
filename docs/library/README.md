@@ -16,7 +16,7 @@
 | [storybook](./LIB-489-21.yaml) | プレビューの部品を状態ごとのストーリーで見る（開発用） |
 | [playwright](./LIB-489-17.yaml) | プレビューのテストでブラウザを動かす（pytest-playwright。開発用） |
 | [typescript](./LIB-489-27.yaml) | プレビューのスクリプトを型検査し、.ts から .js へ変換する（開発用） |
-| [git](./LIB-489-7.yaml) | 移し替える前の写しを、git のコミットで取る・戻す |
+| [git](./LIB-489-7.yaml) | 移し替える前のコピーを、git のコミットで取る・戻す |
 | [mcp](./LIB-489-12.yaml) | MCP のサーバーを立て、スキルが呼ぶツールを載せる（Python の公式の SDK） |
 | [tmux](./LIB-489-26.yaml) | 起動スクリプトが、MCP サーバーを渡した Claude Code を動かすセッションを立てる |
 | [uvicorn](./LIB-489-28.yaml) | 常駐サーバーの HTTP の待ち受けを動かす |
@@ -30,7 +30,7 @@
 | [tailwindcss](./LIB-489-22.yaml) | プレビュー（React）のスタイルをトークンのクラスで書く |
 | [@base-ui/react](./LIB-489-3.yaml) | プレビュー（React）の shadcn/ui の部品の土台 |
 | [@tanstack/react-router](./LIB-489-24.yaml) | プレビュー（React）のルートと search params の検証 |
-| [@tanstack/react-query](./LIB-489-23.yaml) | プレビュー（React）がサーバーの記録を取得し、書き換えで読み直す |
+| [@tanstack/react-query](./LIB-489-23.yaml) | プレビュー（React）がサーバーの記録を取得し、書き換えで再読み込みする |
 | [@tanstack/react-table](./LIB-489-25.yaml) | プレビュー（React）の表の並べ替え・絞り込み・列の表示・ピン留めの状態を持つ |
 | [zustand](./LIB-489-32.yaml) | プレビュー（React）の接続の状態とライト / ダークを持つ |
 | [zod](./LIB-489-31.yaml) | プレビュー（React）の search params を検証する |

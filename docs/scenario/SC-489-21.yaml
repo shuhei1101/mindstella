@@ -76,7 +76,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 検討事項 D-1
-        description: 案 A・B を持ち、B に推奨の印を持つ未決定の検討事項
+        description: 案 A・B を持ち、B に推奨のマーカーを持つ未決定の検討事項
       - name: 検討事項 D-2
         description: 案 A を採用した要見直しの検討事項
     flow: |-

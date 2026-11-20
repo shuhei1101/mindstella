@@ -1,14 +1,14 @@
 id: MOD-489-147
 title: サーバー / コメント / comments.py
-lead: レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。文字起こしの結果の書き込み 1 件は、レビュー中に溜めずにすぐスレッドへ足す。箇所・スレッド・読み書きと検証に依存し、鍵は呼ぶ側（配信）が取る。
+lead: レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。文字起こしの結果の書き込み 1 件は、レビュー中に溜めずにすぐスレッドへ追加する。箇所・スレッド・読み書きと検証に依存し、鍵は呼ぶ側（配信）が取る。
 test_files:
   - tests/unit/scripts/test_comments.py
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/
-    schemas/comments.schema.json  comments.yaml の形（ER 図『ワークスペース』のレビュー中のコメント）
-    schemas/drafts.schema.json    drafts.yaml の形（同じく書きかけ）
-    scripts/comments.py           レビュー中のコメントと書きかけの読み書き・まとめて送る・すぐ送る
+    schemas/comments.schema.json  comments.yaml の構造（ER 図『ワークスペース』のレビュー中のコメント）
+    schemas/drafts.schema.json    drafts.yaml の構造（同じく書きかけ）
+    scripts/comments.py           レビュー中のコメントと書きかけの読み書き・まとめて送信する・すぐ送信する
   ```
 diagrams:
   - name: 全体
@@ -20,8 +20,8 @@ diagrams:
         class 箇所
         class スレッド
         class 読み書きと検証
-        コメント --> 箇所 : 形と合うかの確かめ
-        コメント --> スレッド : 返信先の確かめ・まとめて送る・すぐ送る
+        コメント --> 箇所 : 構造と合うかの確かめ
+        コメント --> スレッド : 返信先の確かめ・まとめて送信する・すぐ送信する
         コメント --> 読み書きと検証
       ```
 data_models:
@@ -90,9 +90,9 @@ data_models:
   - name: ReviewCommentView
     title: 読み取りのコメント
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     role: DTO
-    summary: 『レビュー中のコメントの読み取り』の `items[]` の 1 行。`ReviewComment` に `target_title` を足したもの。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    summary: 『レビュー中のコメントの読み取り』の `items[]` の 1 行。`ReviewComment` に `target_title` を追加したもの。`@dataclass(frozen=True, slots=True, kw_only=True)`
     properties:
       - name: id
         type: str
@@ -166,7 +166,7 @@ functions:
     process: |-
       1. ファイルが無ければ空を返す
       2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`COMMENTS_SCHEMA` と突き合わせる
-         - 読めないか合わない場合、`comments.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送る
+         - 読めないか合わない場合、`comments.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送信する
       3. `items` を連番の小さい順の `ReviewComment` にして返す（`loc` は `parse_location`）
     exceptions:
       - name: SchemaMismatchError
@@ -187,7 +187,7 @@ functions:
       - name: test_load_comments_when_invalid
         case: 異常
         summary: 読めない・合わないファイルは読まない
-        condition: '`parametrize`: `items: [` / C-1 から `body` を消したもの'
+        condition: '`parametrize`: `items: [` / C-1 から `body` を削除したもの'
         mock: なし
         expected: '`SchemaMismatchError`（`lines` が `comments.yaml: ` で始まる）'
         exception: 読めないかスキーマに合わない
@@ -210,7 +210,7 @@ functions:
     process: |-
       1. ファイルが無ければ空を返す
       2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`DRAFTS_SCHEMA` と突き合わせる
-         - 読めないか合わない場合、`drafts.yaml: {キーのパス}: {理由}` の `SchemaMismatchError` を送る
+         - 読めないか合わない場合、`drafts.yaml: {キーのパス}: {理由}` の `SchemaMismatchError` を送信する
       3. `items` を `Draft` にして返す
     exceptions:
       - name: SchemaMismatchError
@@ -226,9 +226,9 @@ functions:
     title: レビュー中の読み取り
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     scope: public
-    summary: レビュー中のコメントに向けた項目のタイトルを付け、書きかけと合わせて『レビュー中のコメントの読み取り』の形にする
+    summary: レビュー中のコメントに向けた項目のタイトルを付け、書きかけと合わせて『レビュー中のコメントの読み取り』の構造にする
     args:
       - name: workspace
         type: Workspace
@@ -260,8 +260,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
     usecase: 項目へコメントする
     scope: public
-    summary: 向けた先（項目と箇所か、返信先のスレッド）と本文を確かめ、レビュー中のコメントを 1 件足す。`id` を渡されたら消したコメントを同じ ID で戻す（鍵は呼ぶ側が取る。スレッドは作らない）
-    side_effects: '`comments.yaml` を一時ファイルから置き換える。新しく溜めたときは同じ向けた先の書きかけを `drafts.yaml` から消す'
+    summary: 向けた先（項目と箇所か、返信先のスレッド）と本文を確かめ、レビュー中のコメントを 1 件追加する。`id` を渡されたら削除したコメントを同じ ID で戻す（鍵は呼ぶ側が取る。スレッドは作らない）
+    side_effects: '`comments.yaml` を一時ファイルから置き換える。新しく溜めたときは同じ向けた先の書きかけを `drafts.yaml` から削除する'
     args:
       - name: root
         type: Path
@@ -286,19 +286,19 @@ functions:
       1. 入力を確かめる（`_parse_comment_input`）
       2. ワークスペースを読み（`load_workspace`）、`target` があれば項目を引く（`find_item`）
       3. `loc` があれば今の項目に合うかを確かめる（`check_location`）
-         - 合わなければ、その理由の `CommentConflictError` を送る
+         - 合わなければ、その理由の `CommentConflictError` を送信する
       4. `thread` があればスレッドを読み（`load_threads`）、ID で引く
-         - 無ければ `ThreadNotFoundError` を送る
-         - クローズなら `スレッド {ID} はクローズです` の `CommentConflictError` を送る（元に戻すときも同じ）
+         - 無ければ `ThreadNotFoundError` を送信する
+         - クローズなら `スレッド {ID} はクローズです` の `CommentConflictError` を送信する（元に戻すときも同じ）
       5. コメントを読む（`load_comments`）
-         - `id` がある場合、その ID が今の `items` にあるか連番が `seq` を超えれば `CommentConflictError` を送る。渡された ID と `created` で戻し、`seq` は変えない
-         - `id` が無ければ `C-{seq + 1}` と今の日時で足し、`seq` を 1 上げる
+         - `id` がある場合、その ID が今の `items` にあるか連番が `seq` を超えれば `CommentConflictError` を送信する。渡された ID と `created` で戻し、`seq` は変えない
+         - `id` が無ければ `C-{seq + 1}` と今の日時で追加し、`seq` を 1 上げる
       6. 連番の小さい順に並べた `{seq, items}` を書く（`_write_yaml`。`None` の `target`・`loc`・`thread` はキーを書かない）
-      7. 新しく溜めたとき、同じ向けた先（`target` と `loc` の組か、`thread`）の書きかけがあれば消して書く
-         - `WriteFailedError` の場合、`[WARNING]` 書きかけを消せなかった（パス・理由）を出して溜めたまま返す
+      7. 新しく溜めたとき、同じ向けた先（`target` と `loc` の組か、`thread`）の書きかけがあれば削除して書く
+         - `WriteFailedError` の場合、`[WARNING]` 書きかけを削除できなかった（パス・理由）を出して溜めたまま返す
     exceptions:
       - name: CommentInvalidError
-        condition: '`_parse_comment_input` が送るもの'
+        condition: '`_parse_comment_input` が送信するもの'
       - name: ItemNotFoundError
         condition: '`target` の項目がワークスペースに無い'
         message: '項目がありません: {target}'
@@ -314,7 +314,7 @@ functions:
     unit_tests:
       - name: test_add_comment
         case: 正常
-        summary: 連番を振って溜め、書きかけを消す
+        summary: 連番を振って溜め、書きかけを削除する
         condition: 'D-1、`seq: 2` と C-2、D-1 への書きかけ。`{target: D-1, body: "  案 A にする "}`。`now` は `2026-10-05T03:00:00+00:00`'
         mock: '`now`'
         expected: '`(C-3・D-1・案 A にする・now の値, 2)`。`comments.yaml` の `seq` が 3、`drafts.yaml` に D-1 への書きかけが無い'
@@ -326,7 +326,7 @@ functions:
         expected: 前者は渡した `loc` を持ち、後者は `target`・`loc` を持たない（ファイルにもキーが無い）
       - name: test_add_comment_when_restore
         case: 正常
-        summary: 消したコメントを同じ ID と日時で元の並びに戻す
+        summary: 削除したコメントを同じ ID と日時で元の並びに戻す
         condition: '`seq: 3` と C-1・C-3。`{id: C-2, created: 2026-10-05T01:00:00+00:00, target: D-1, body}`'
         mock: '`now`（呼ばれないことを確かめる）'
         expected: '`items` が C-1・C-2・C-3 の順で `seq` が 3。C-2 の `created` が渡した日時'
@@ -340,13 +340,13 @@ functions:
       - name: test_add_comment_when_write_fails
         case: 異常
         summary: 置き換えに失敗したら前のコメントを残す
-        condition: C-1 を持つワークスペース。`os.replace` を `OSError` を送る関数に差し替える
+        condition: C-1 を持つワークスペース。`os.replace` を `OSError` を送信する関数に差し替える
         mock: '`os.replace`（`comments` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`comments.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: 置き換えで OSError
       - name: test_add_comment_when_reply
         case: 正常
-        summary: オープンのスレッドへの返信を溜め、そのスレッドの書きかけを消す
+        summary: オープンのスレッドへの返信を溜め、そのスレッドの書きかけを削除する
         condition: 'オープンの TH-1 と、TH-1 への書きかけ・D-1 への書きかけ。`{thread: TH-1, body: 了解}`'
         mock: '`now`'
         expected: 溜めたコメントの `thread` が TH-1 で、ファイルに `target`・`loc` のキーが無い。`drafts.yaml` に D-1 への書きかけだけが残る。`threads.yaml` が呼ぶ前と同じ
@@ -358,10 +358,10 @@ functions:
         expected: '`ThreadNotFoundError` / `CommentConflictError`（メッセージに `クローズ`）。`comments.yaml` が無い'
         exception: スレッドが無い・クローズ
   - name: update_comment
-    title: コメントを直す
+    title: コメントを修正する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     scope: public
     summary: レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す（鍵は呼ぶ側が取る）
     side_effects: '`comments.yaml` を一時ファイルから置き換える'
@@ -399,24 +399,24 @@ functions:
     unit_tests:
       - name: test_update_comment
         case: 正常
-        summary: 本文を直す・箇所を外す
+        summary: 本文を修正する・箇所を外す
         condition: '`parametrize`: C-1 に `{body: " 案 A に決める "}` / 箇所を持つ C-2 に `{loc: null}`'
         mock: なし
         expected: C-1 の `body` が `案 A に決める` / C-2 の `loc` が `None`。どちらも `id`・`target`・`created`・並び・`seq` が呼ぶ前と同じ
       - name: test_update_comment_when_rejected
         case: 異常
-        summary: 形の誤りと無い ID は直さない
+        summary: 構造の誤りと無い ID は修正しない
         condition: '`parametrize`: `{}` / `{body: "  "}` / `{loc: {kind: body}}` / `C-9` に `{body: x}`'
         mock: なし
         expected: '`CommentInvalidError` / `CommentInvalidError` / `CommentInvalidError` / `CommentNotFoundError`。`comments.yaml` が呼ぶ前と同じ'
-        exception: 形の誤り・無い ID
+        exception: 構造の誤り・無い ID
   - name: delete_comment
-    title: コメントを消す
+    title: コメントを削除する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     scope: public
-    summary: レビュー中のコメント 1 件を消し、消した中身を返す（`seq` は変えない。鍵は呼ぶ側が取る）
+    summary: レビュー中のコメント 1 件を削除し、削除した中身を返す（`seq` は変えない。鍵は呼ぶ側が取る）
     side_effects: '`comments.yaml` を一時ファイルから置き換える'
     args:
       - name: root
@@ -431,25 +431,25 @@ functions:
         description: コメントの ID
     returns:
       type: tuple[ReviewComment, int]
-      description: 消したコメントと、消した後の件数
+      description: 削除したコメントと、削除した後の件数
     process: |-
       1. コメントを読み、ID で引く（無ければ `CommentNotFoundError`）
       2. その 1 件を除いた `{seq, items}` を書く（`_write_yaml`）
     exceptions:
       - name: CommentNotFoundError
-        condition: その ID のコメントがレビュー中に無い（既に消した・送ったものを含む）
+        condition: その ID のコメントがレビュー中に無い（既に削除した・送信したものを含む）
       - name: WriteFailedError
         condition: '`comments.yaml` を書けない'
     unit_tests:
       - name: test_delete_comment
         case: 正常
-        summary: 消して中身と件数を返す
+        summary: 削除して中身と件数を返す
         condition: '`seq: 3` と C-1・C-2・C-3 で `C-2`'
         mock: なし
         expected: '`(C-2, 2)`。`comments.yaml` が C-1・C-3 で `seq` が 3'
       - name: test_delete_comment_when_not_found
         case: 異常
-        summary: 無い ID は消さない
+        summary: 無い ID は削除しない
         condition: C-1 だけで `C-9`
         mock: なし
         expected: '`CommentNotFoundError`（メッセージに `C-9`）'
@@ -460,7 +460,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
     usecase: 項目へコメントする
     scope: public
-    summary: 向けた先（`target` と `loc` の組か、`thread`）の書きかけを上書きする。空の本文なら消す（鍵は呼ぶ側が取る）
+    summary: 向けた先（`target` と `loc` の組か、`thread`）の書きかけを上書きする。空の本文なら削除する（鍵は呼ぶ側が取る）
     side_effects: '`drafts.yaml` を一時ファイルから置き換える（無ければ作る）'
     args:
       - name: root
@@ -485,10 +485,10 @@ functions:
     process: |-
       1. `body` が文字列で `MAX_BODY_CHARS` 以下か、`target`・`thread` が文字列か無いか、`loc` を渡すときは `target` もあるか、`thread` を `target`・`loc` と一緒に渡していないかを確かめる（`loc` は `parse_location`。今の項目に合うかは確かめない）
       2. `body` が空でなければ、`target` の項目があるか（`find_item`）、`thread` のスレッドがあるか（`load_threads`。クローズでも保つ）を確かめる
-      3. 書きかけを読み、同じ向けた先の 1 件を除き、`body` が空でなければ今の日時で末尾に足して書く（`_write_yaml`）
+      3. 書きかけを読み、同じ向けた先の 1 件を除き、`body` が空でなければ今の日時で末尾に追加して書く（`_write_yaml`）
     exceptions:
       - name: CommentInvalidError
-        condition: '`body` が無いか文字列でないか上限を超える、`loc` だけで `target` が無い、`loc` の形が崩れている、`thread` を `target` か `loc` と一緒に渡した'
+        condition: '`body` が無いか文字列でないか上限を超える、`loc` だけで `target` が無い、`loc` の形式が崩れている、`thread` を `target` か `loc` と一緒に渡した'
       - name: ItemNotFoundError
         condition: 空でない本文で、`target` の項目が無い
       - name: WriteFailedError
@@ -504,17 +504,17 @@ functions:
         expected: '`drafts.yaml` が 2 件で、箇所を持たない D-1 の本文が `案 B も見たい`、箇所を持つ方は呼ぶ前と同じ'
       - name: test_save_draft_when_empty
         case: 正常
-        summary: 空の本文はその向けた先を消す。項目が無くても消せる
+        summary: 空の本文はその向けた先を削除する。項目が無くても削除できる
         condition: '消えた D-9 への書きかけ。`{target: D-9, body: ""}`'
         mock: なし
         expected: 例外にならず、`drafts.yaml` に D-9 への書きかけが無い
       - name: test_save_draft_when_rejected
         case: 異常
-        summary: 形の誤りと無い項目への書きかけは保たない
+        summary: 構造の誤りと無い項目への書きかけは保たない
         condition: '`parametrize`: `body` が無い / `body` が 10001 文字 / `loc` だけ / `{target: D-99, body: x}`'
         mock: なし
         expected: '`CommentInvalidError` / `CommentInvalidError` / `CommentInvalidError` / `ItemNotFoundError`。`drafts.yaml` が無い'
-        exception: 形の誤り・無い項目
+        exception: 構造の誤り・無い項目
       - name: test_save_draft_when_thread
         case: 正常
         summary: スレッドごとに保ち、クローズのスレッドへも保つ
@@ -527,14 +527,14 @@ functions:
         condition: '`parametrize`: `{thread: TH-9, body: x}` / `{thread: TH-1, target: D-1, body: x}`'
         mock: なし
         expected: '`ThreadNotFoundError` / `CommentInvalidError`（メッセージに `thread`）。`drafts.yaml` が無い'
-        exception: スレッドが無い・形の誤り
+        exception: スレッドが無い・構造の誤り
   - name: send_comments
-    title: まとめて送る
+    title: まとめて送信する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     scope: public
-    summary: 渡した ID のコメントを全て確かめてからスレッドへ足し、レビュー中から外す。1 件でも合わなければ何も書き換えない（鍵は呼ぶ側が取る）
+    summary: 渡した ID のコメントを全て確かめてからスレッドへ追加し、レビュー中から外す。1 件でも合わなければ何も書き換えない（鍵は呼ぶ側が取る）
     side_effects: '`threads.yaml` を先に、`comments.yaml` を後に一時ファイルから置き換える'
     args:
       - name: root
@@ -555,22 +555,22 @@ functions:
         description: 今の日時を返す関数
     returns:
       type: tuple[str, list[SentPost]]
-      description: 送った日時と、溜めた順の送ったコメント・スレッド・書き込みの ID（モジュール構成『スレッド』の `SentPost`）
+      description: 送信した日時と、溜めた順の送信したコメント・スレッド・書き込みの ID（モジュール構成『スレッド』の `SentPost`）
     process: |-
       1. `ids` が 1 件以上の文字列の配列で重なりが無いかを確かめる（合わなければ `ids: {理由}` の `CommentInvalidError`）
-      2. コメントを読み、無い ID があればその全てを持った `CommentNotFoundError` を送る
-      3. ワークスペースとスレッドを読み（`load_workspace`、`load_threads`）、渡したコメントを溜めた順に確かめる。同じ `comment` を持つ書き込みが既にあるコメントは確かめない（二重に送らないため、足さずに外すだけ）
+      2. コメントを読み、無い ID があればその全てを持った `CommentNotFoundError` を送信する
+      3. ワークスペースとスレッドを読み（`load_workspace`、`load_threads`）、渡したコメントを溜めた順に確かめる。同じ `comment` を持つ書き込みが既にあるコメントは確かめない（二重に送信しないため、追加せずに外すだけ）
          - 新しいスレッドの分は、向けた項目が無ければ `{target} がありません`、箇所が合わなければ `check_location` の理由を控える
          - 返信の分は、返信先のスレッドが無ければ `スレッド {ID} がありません`、クローズなら `スレッド {ID} はクローズです` を控える
-         - 控えが 1 件でもあれば、全てを `stale` に持った `CommentConflictError` を送る
-      4. 前の `threads.yaml` の中身（無ければ無いこと）を控え、スレッドへ足す（`UserPostInput` にして `append_user_posts`。`loc` は `location_to_dict`）
-      5. 送ったコメントを除いた `{seq, items}` を書く（`_write_yaml`）
-         - `WriteFailedError` の場合、控えた `threads.yaml` を書き戻し（無かったときは消す）、同じ例外を送る
-      6. 送った返信のスレッドの書きかけがあれば消して書く
-         - `WriteFailedError` の場合、`[WARNING]` 書きかけを消せなかった（パス・理由）を出して送ったまま返す
-      7. 送ったコメントが向いた項目を確認済みにする（`_confirm_targets`。新しいスレッドはコメントの `target`、返信は返信先のスレッドの `target`）
-      8. 送った日時と、コメント・スレッド・書き込みの ID の組を返す
-         - `[INFO]` コメントを送った（件数・スレッドの ID）
+         - 控えが 1 件でもあれば、全てを `stale` に持った `CommentConflictError` を送信する
+      4. 前の `threads.yaml` の中身（無ければ無いこと）を控え、スレッドへ追加する（`UserPostInput` にして `append_user_posts`。`loc` は `location_to_dict`）
+      5. 送信したコメントを除いた `{seq, items}` を書く（`_write_yaml`）
+         - `WriteFailedError` の場合、控えた `threads.yaml` を書き戻し（無かったときは削除する）、同じ例外を送出する
+      6. 送信した返信のスレッドの書きかけがあれば削除して書く
+         - `WriteFailedError` の場合、`[WARNING]` 書きかけを削除できなかった（パス・理由）を出して送信したまま返す
+      7. 送信したコメントが向いた項目を確認済みにする（`_confirm_targets`。新しいスレッドはコメントの `target`、返信は返信先のスレッドの `target`）
+      8. 送信した日時と、コメント・スレッド・書き込みの ID の組を返す
+         - `[INFO]` コメントを送信した（件数・スレッドの ID）
     exceptions:
       - name: CommentInvalidError
         condition: '`ids` が無い・空・文字列の配列でない・重なりがある'
@@ -580,64 +580,64 @@ functions:
         message: 'コメントがありません: {ID、ID}'
       - name: CommentConflictError
         condition: 向けた項目が消えたコメント、箇所が今の項目に合わないコメント、クローズか無いスレッドへの返信がある
-        message: 送れない書き込みが {件数} 件あります
+        message: 送信できない書き込みが {件数} 件あります
       - name: SchemaMismatchError
-        condition: '`load_comments`・`load_threads`・`load_workspace` が送るもの'
+        condition: '`load_comments`・`load_threads`・`load_workspace` が送信するもの'
       - name: WriteFailedError
         condition: '`threads.yaml` か `comments.yaml` を書けない（どちらも前のままに戻した後）'
     unit_tests:
       - name: test_send_comments
         case: 正常
-        summary: チェックしたものだけを溜めた順に送り、新しいスレッドを立てる
+        summary: チェックしたものだけを溜めた順に送信し、新しいスレッドを立てる
         condition: 'D-1・A-1、C-1（D-1）・C-2（A-1 の本文の 2 行目）・C-3（項目を指さない）。`{ids: [C-2, C-1]}`'
         mock: '`now`'
         expected: '`items` が C-1 → TH-1・TH-1-1、C-2 → TH-2・TH-2-1。`threads.yaml` がオープンの TH-1（D-1）・TH-2（A-1・`loc` あり）で書き込みが `comment` を持ち、`comments.yaml` が C-3 だけ'
       - name: test_send_comments_when_reply
         case: 正常
-        summary: 返信をスレッドの末尾に足し、そのスレッドの書きかけを消す
+        summary: 返信をスレッドの末尾に追加し、そのスレッドの書きかけを削除する
         condition: '書き込み 2 件のオープンの TH-1、C-1（`thread: TH-1`）、TH-1 への書きかけ。`{ids: [C-1]}`'
         mock: '`now`'
         expected: '`items` が C-1 → TH-1・TH-1-3。TH-1-3 が `author: user`・`read: False`・`taken: None`。`drafts.yaml` に TH-1 への書きかけが無い'
       - name: test_send_comments_when_rejected
         case: 異常
-        summary: 形の誤り・無い ID は何も送らない
+        summary: 構造の誤り・無い ID は何も送信しない
         condition: '`parametrize`: `{ids: []}` / `{ids: [C-1, C-1]}` / `{ids: [C-1, C-9]}`'
         mock: なし
         expected: '`CommentInvalidError` / `CommentInvalidError` / `CommentNotFoundError`（メッセージに `C-9`）。`threads.yaml` が無く、`comments.yaml` が呼ぶ前と同じ'
-        exception: 形の誤り・無い ID
+        exception: 構造の誤り・無い ID
       - name: test_send_comments_when_stale
         case: 異常
-        summary: 送れないコメントを全て返し、何も送らない
+        summary: 送信できないコメントを全て返し、何も送信しない
         condition: 'クローズの TH-2。C-1（D-1）・C-2（3 行の本文の 5 行目）・C-3（消えた D-9）・C-4（`thread: TH-2`）・C-5（`thread: TH-9`）で `{ids: [C-1, C-2, C-3, C-4, C-5]}`'
         mock: なし
         expected: '`CommentConflictError` の `stale` が C-2・C-3・C-4・C-5 の順で理由が空でない（C-4 の理由に `クローズ`）。`threads.yaml`・`comments.yaml` が呼ぶ前と同じ'
-        exception: 送れない書き込みがある
+        exception: 送信できない書き込みがある
       - name: test_send_comments_when_already_sent
         case: 正常
-        summary: 既に足してあるコメントは確かめずにレビュー中から外す
+        summary: 既に追加してあるコメントは確かめずにレビュー中から外す
         condition: '`comment: C-1` の書き込み TH-1-2 を持つクローズの TH-1 と、C-1（`thread: TH-1`）。`{ids: [C-1]}`'
         mock: '`now`'
         expected: '`items` が C-1 → TH-1・TH-1-2。`threads.yaml` が呼ぶ前と同じで、`comments.yaml` が空'
       - name: test_send_comments_when_comments_write_fails
         case: 異常
         summary: レビュー中を書けなければスレッドを書き戻す
-        condition: TH-1 と C-1 を持つワークスペース。`comments.yaml` への `os.replace` だけ `OSError` を送るように差し替える
+        condition: TH-1 と C-1 を持つワークスペース。`comments.yaml` への `os.replace` だけ `OSError` を送信するように差し替える
         mock: '`os.replace`'
         expected: '`WriteFailedError`。`threads.yaml`・`comments.yaml` が呼ぶ前と同じ'
         exception: 置き換えで OSError
       - name: test_send_comments_confirms_targets
         case: 正常
-        summary: 送ったコメントが向いた項目を確認済みにする
-        condition: '`parametrize`: `config.yaml` の `confirm_on_comment` が無い / `true` / `false`。D-1 への新しいスレッドのコメントと、R-1 を向いたスレッドへの返信と、項目を指さないコメントを送る'
+        summary: 送信したコメントが向いた項目を確認済みにする
+        condition: '`parametrize`: `config.yaml` の `confirm_on_comment` が無い / `true` / `false`。D-1 への新しいスレッドのコメントと、R-1 を向いたスレッドへの返信と、項目を指さないコメントを送信する'
         mock: '`now`'
         expected: '無い・`true` は `history.yaml` の D-1・R-1 の行が `confirmed: true` を持つ。`false` はどちらも持たない'
   - name: send_now
-    title: すぐ送る
+    title: すぐ送信する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
     usecase: 音声でコメントする
     scope: public
-    summary: 書き込み 1 件の向けた先と本文を確かめ、レビュー中に溜めずにスレッドへ足す（インターフェース定義『書き込みをすぐ送る』。鍵は呼ぶ側が取る）
+    summary: 書き込み 1 件の向けた先と本文を確かめ、レビュー中に溜めずにスレッドへ追加する（インターフェース定義『書き込みをすぐ送信する』。鍵は呼ぶ側が取る）
     side_effects: '`threads.yaml` を一時ファイルから置き換える。`comments.yaml`・`drafts.yaml` は読まず、書き換えない'
     args:
       - name: root
@@ -658,24 +658,24 @@ functions:
         description: 今の日時を返す関数
     returns:
       type: tuple[str, SentPost]
-      description: 送った日時と、スレッド・書き込みの ID（`SentPost` の `comment` は `None`）
+      description: 送信した日時と、スレッド・書き込みの ID（`SentPost` の `comment` は `None`）
     process: |-
-      1. 本文と向けた先の形を、溜めるときと同じく確かめる（`_validate_body`・`_parse_destination`。合わなければ `{キー}: {理由}` の `CommentInvalidError`）
-      2. ワークスペースとスレッドを読み（`load_workspace`、`load_threads`）、まとめて送るときと同じ理由で向けた先を確かめる（`_stale_reason` を、コメントでなく向けた先の組で受けるように分けたもの）
-         - 理由がある場合、その理由をメッセージにした `CommentConflictError` を送る（`stale` は空）
-      3. `comment` を `None` にした `UserPostInput` 1 件でスレッドへ足す（`append_user_posts`。`loc` は `location_to_dict`）
-      4. 送った書き込みが向いた項目を確認済みにする（`_confirm_targets`。`target` か、`thread` ならそのスレッドの `target`）
-      5. 送った日時と、足した `SentPost` を返す
-         - `[INFO]` 書き込みをすぐ送った（スレッドの ID）
+      1. 本文と向けた先の構造を、溜めるときと同じく確かめる（`_validate_body`・`_parse_destination`。合わなければ `{キー}: {理由}` の `CommentInvalidError`）
+      2. ワークスペースとスレッドを読み（`load_workspace`、`load_threads`）、まとめて送信するときと同じ理由で向けた先を確かめる（`_stale_reason` を、コメントでなく向けた先の組で受けるように分けたもの）
+         - 理由がある場合、その理由をメッセージにした `CommentConflictError` を送信する（`stale` は空）
+      3. `comment` を `None` にした `UserPostInput` 1 件でスレッドへ追加する（`append_user_posts`。`loc` は `location_to_dict`）
+      4. 送信した書き込みが向いた項目を確認済みにする（`_confirm_targets`。`target` か、`thread` ならそのスレッドの `target`）
+      5. 送信した日時と、追加した `SentPost` を返す
+         - `[INFO]` 書き込みをすぐ送信した（スレッドの ID）
     exceptions:
       - name: CommentInvalidError
-        condition: '`body` が空か長すぎる・`target` と `thread` を一緒に渡した・`loc` だけを渡した・`loc` の形の誤り'
+        condition: '`body` が空か長すぎる・`target` と `thread` を一緒に渡した・`loc` だけを渡した・`loc` の形式の誤り'
         message: '{キー}: {理由}'
       - name: CommentConflictError
         condition: '`target` の項目が無い・`loc` が今の項目に合わない・`thread` がクローズか無い'
         message: '{理由}'
       - name: SchemaMismatchError
-        condition: '`load_threads`・`load_workspace` が送るもの'
+        condition: '`load_threads`・`load_workspace` が送信するもの'
       - name: WriteFailedError
         condition: '`threads.yaml` を書けない'
     unit_tests:
@@ -687,28 +687,28 @@ functions:
         expected: '`SentPost(comment=None, thread=TH-1, post=TH-1-1)`。TH-1 がオープン・`target: D-1` で、書き込みが `author: user`・`body: 案 A にする`・`read: False`・`seen: True`・`taken: None` で `comment` を持たない。`comments.yaml` に C-1 が残る'
       - name: test_send_now_when_reply
         case: 正常
-        summary: オープンのスレッドの末尾に足す
+        summary: オープンのスレッドの末尾に追加する
         condition: '書き込み 1 件のオープンの TH-1、TH-1 への書きかけ。`{thread: TH-1, body: x}`'
         mock: '`now`'
         expected: '`SentPost(comment=None, thread=TH-1, post=TH-1-2)`。`drafts.yaml` の TH-1 への書きかけが残る'
       - name: test_send_now_when_invalid
         case: 異常
-        summary: 形の誤りは何も書かない
+        summary: 構造の誤りは何も書かない
         condition: '`parametrize`: `{body: "  "}` / `{target: D-1, thread: TH-1, body: x}` / `{loc: {kind: body, start: 1, end: 1, text: x}, body: x}`'
         mock: なし
         expected: '`CommentInvalidError`。`threads.yaml` が無い'
-        exception: 形の誤り
+        exception: 構造の誤り
       - name: test_send_now_when_conflict
         case: 異常
-        summary: 向けた先が無いか送れない
+        summary: 向けた先が無いか送信できない
         condition: '`parametrize`: `{target: D-9, body: x}` / クローズの TH-1 へ `{thread: TH-1, body: x}` / `{thread: TH-9, body: x}` / 3 行の本文の D-1 へ 5 行目の `loc`'
         mock: なし
         expected: '`CommentConflictError`（メッセージに `D-9` / `クローズ` / `TH-9` / 行数）。`threads.yaml` が呼ぶ前と同じ'
-        exception: 送れない向けた先
+        exception: 送信できない向けた先
       - name: test_send_now_confirms_target
         case: 正常
-        summary: すぐ送った書き込みが向いた項目を確認済みにする
-        condition: '`confirm_on_comment` が無いワークスペースで `{"target": "D-1", "body": "a"}` を送る'
+        summary: すぐ送信した書き込みが向いた項目を確認済みにする
+        condition: '`confirm_on_comment` が無いワークスペースで `{"target": "D-1", "body": "a"}` を送信する'
         mock: '`now`'
         expected: '`history.yaml` の D-1 の行が `confirmed: true` を持つ'
   - name: _parse_comment_input
@@ -717,7 +717,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
     usecase: 項目へコメントする
     scope: internal
-    summary: 溜める要求の `target`・`loc`・`thread`・`body`・`id`・`created` の形を確かめる
+    summary: 溜める要求の `target`・`loc`・`thread`・`body`・`id`・`created` の形式を確かめる
     args:
       - name: data
         type: dict[str, Any]
@@ -732,20 +732,20 @@ functions:
       2. `target` があれば文字列かを確かめる
       3. `loc` があれば `target` もあるかを確かめ、`parse_location` を当てる
       4. `thread` があれば文字列で、`target`・`loc` を一緒に渡していないかを確かめる
-      5. `id` があれば `C-{数字}` の形で `created` もあるかを、`created` があれば `id` もあるかを確かめる
-         - 合わない場合、`{キー}: {理由}` の `CommentInvalidError` を送る
+      5. `id` があれば `C-{数字}` の形式で `created` もあるかを、`created` があれば `id` もあるかを確かめる
+         - 合わない場合、`{キー}: {理由}` の `CommentInvalidError` を送信する
     exceptions:
       - name: CommentInvalidError
-        condition: '`body` が無い・文字列でない・空白だけ・上限を超える、`target` が文字列でない、`loc` だけで `target` が無い、`loc` の形が崩れている、`thread` が文字列でないか `target`・`loc` と一緒に渡した、`id` と `created` の組みが合わない'
+        condition: '`body` が無い・文字列でない・空白だけ・上限を超える、`target` が文字列でない、`loc` だけで `target` が無い、`loc` の形式が崩れている、`thread` が文字列でないか `target`・`loc` と一緒に渡した、`id` と `created` の組みが合わない'
         message: '{キー}: {理由}'
     unit_tests:
       - name: test_parse_comment_input_when_invalid
         case: 異常
-        summary: 形の誤りを拾う
+        summary: 構造の誤りを拾う
         condition: '`parametrize`: `body` が無い / `body` が `"  "` / `body` が 10001 文字 / `body` が `1` / `target` が `1` / `loc` だけ / `id` だけ / `id: X-1` / `thread` が `1` / `thread` と `target` / `thread` と `target`・`loc`'
         mock: なし
         expected: '`CommentInvalidError`（メッセージに順に `body`・`body`・`body`・`body`・`target`・`target`・`created`・`id`・`thread`・`thread`・`thread`）'
-        exception: 形の誤り
+        exception: 構造の誤り
       - name: test_parse_comment_input_when_boundary
         case: 正常
         summary: ちょうど上限の本文を受ける
@@ -776,19 +776,19 @@ functions:
       description: '-'
     process: |-
       1. `dump_yaml` した文を一時ファイルに書いて（`write_temp`）`os.replace` で置き換える
-         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る（`write_failed`）
+         - `OSError` の場合、一時ファイルを削除して `WriteFailedError` を送信する（`write_failed`）
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
         message: '書き込めませんでした: {パス}（{理由}）'
   - name: _confirm_targets
-    title: 送った項目の確認済み
+    title: 送信した項目の確認済み
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
-    usecase: コメントを送る
+    usecase: コメントを送信する
     scope: internal
     side_effects: '`history.yaml` を置き換える（`confirm_items`）'
-    summary: 設定の `confirm_on_comment` が真のとき、送った書き込みが向いた項目を確認済みにする
+    summary: 設定の `confirm_on_comment` が真のとき、送信した書き込みが向いた項目を確認済みにする
     args:
       - name: root
         type: Path
@@ -799,23 +799,23 @@ functions:
         type: Workspace
         required: true
         passing: positional
-        description: 送る前に読んだワークスペース（設定を読む）
+        description: 送信する前に読んだワークスペース（設定を読む）
       - name: targets
         type: list[str | None]
         required: true
         passing: positional
-        description: 送った書き込みごとの向いた項目の ID（項目を指さない書き込みは `None`）
+        description: 送信した書き込みごとの向いた項目の ID（項目を指さない書き込みは `None`）
     returns:
       type: None
       description: なし
     process: |-
       1. `workspace.settings` の `confirm_on_comment`（無ければ `True`）が偽なら何もしない
       2. `None` を除いた ID を `confirm_items` で確認済みにする
-         - `WriteFailedError` の場合、`[WARNING]` 確認済みにできなかった（パス・理由）を出して続ける（送った書き込みは戻さない）
+         - `WriteFailedError` の場合、`[WARNING]` 確認済みにできなかった（パス・理由）を出して続ける（送信した書き込みは戻さない）
     unit_tests:
       - name: test_confirm_targets_when_write_fails
         case: 正常
-        summary: 確認済みを書けなくても送ったままにする
-        condition: '`confirm_items` が `WriteFailedError` を送る'
+        summary: 確認済みを書けなくても送信したままにする
+        condition: '`confirm_items` が `WriteFailedError` を送信する'
         mock: '`confirm_items`'
-        expected: 例外を送らず、`WARNING` のログを 1 件出す
+        expected: 例外を送出しず、`WARNING` のログを 1 件出す

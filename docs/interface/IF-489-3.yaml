@@ -36,20 +36,20 @@ flows:
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
       - name: make_workspace
         description: 作成を済ませたワークスペース
-        notes: '`/spa/decisions?view=table` と、出力の外を指す `/spa/../config.yaml`（`..` を正規化せずに送る）を GET する'
+        notes: '`/spa/decisions?view=table` と、出力の外を指す `/spa/../config.yaml`（`..` を正規化せずに送信する）を GET する'
     flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /spa/{path}\n\n  クライアント->>IF: GET /spa/decisions?view=table\n  IF-->>クライアント: 200、index.html\n  クライアント->>IF: GET /spa/../config.yaml\n  IF-->>クライアント: 200、index.html\n```"
     expected:
       - どちらもステータスが 200 で、本文が `/spa/` の本文と同じ
       - 本文に `config.yaml` の中身が無い
     test: test_normal_when_client_route
   - name: 正常系（末尾のスラッシュが無い）
-    summary: '`/spa` は `/spa/` へ送り直す'
+    summary: '`/spa` は `/spa/` へ再送信する'
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
       - name: make_workspace
         description: 作成を済ませたワークスペース
-        notes: 送り直しを辿らずに `/spa` を GET する
+        notes: リダイレクトを辿らずに `/spa` を GET する
     flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /spa\n\n  クライアント->>IF: GET /spa\n  IF-->>クライアント: 302、Location: /spa/\n```"
     expected:
       - ステータスが 302 で、`Location` が `/spa/`
@@ -98,7 +98,7 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: 『プレビューの配信』の制約「接続先の確かめ」と同じ
+    constraints: 『プレビューの配信』の制約「接続先の確認」と同じ
 response:
   - name: 本文
     type: text/html / text/javascript / text/css / image/svg+xml
@@ -116,7 +116,7 @@ status_codes:
     condition: '`/spa` を開いた'
     notes: '`Location: /spa/`'
   - code: '403'
-    condition: '`Host` が『プレビューの配信』の制約「接続先の確かめ」に合わない'
+    condition: '`Host` が『プレビューの配信』の制約「接続先の確認」に合わない'
     notes: 本文は返さない
   - code: '500'
     condition: 出力のフォルダに `index.html` が無い（同梱の誤り）
@@ -125,9 +125,9 @@ constraints:
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ（『プレビューのURL』）'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
-  - item: 接続先の確かめ
-    constraint: 『プレビューの配信』の制約「接続先の確かめ」と同じ確かめを、`/spa` の下の全てのパスに当てる
-  - item: 出力の外のファイル
+  - item: 接続先の確認
+    constraint: 『プレビューの配信』の制約「接続先の確認」と同じ確かめを、`/spa` の下の全てのパスに当てる
+  - item: 出力フォルダの外部にあるファイル
     constraint: パスを解決した後に出力のフォルダの配下にあることを確かめ、外を指すときは `index.html` を返す
   - item: 読み込むファイル
     constraint: 返す HTML は、出力のフォルダの中のファイルと、Google Fonts の文字だけを読む

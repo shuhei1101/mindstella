@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: '`PATH` の先頭に偽の `claude` を置き、`plugin list --json` に決めた `installPath` を返す。`installPath` の `bin/mindstella` は、受け取った引数と `CLAUDE_CONFIG_DIR` をファイルに書く偽のスクリプト'
       - name: ホームのフォルダ
-        description: 空の一時フォルダを `HOME` にし、`XDG_CONFIG_HOME` を消す。`SHELL=/bin/bash`。`~/.bashrc` に利用者の行 `export EDITOR=vim` を 1 行持つ
+        description: 空の一時フォルダを `HOME` にし、`XDG_CONFIG_HOME` を削除する。`SHELL=/bin/bash`。`~/.bashrc` に利用者の行 `export EDITOR=vim` を 1 行持つ
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -20,7 +20,7 @@ flows:
 
         クライアント->>IF: set --env MINDSTELLA_ALLOWED_HOSTS=preview.example.com
         IF->>FS: ~/.config/mindstella/registration.json と shell.sh を書く
-        IF->>FS: ~/.bashrc の末尾に読み込む範囲を足す
+        IF->>FS: ~/.bashrc の末尾に読み込む範囲を追加する
         IF-->>クライアント: 登録の JSON、終了コード 0
       ```
     expected:
@@ -28,7 +28,7 @@ flows:
       - '標準出力の JSON の `registered` が `true`、`aliases` が `["mindstella"]`、`env` が `{"MINDSTELLA_ALLOWED_HOSTS": "preview.example.com"}`、`rc_file` が `~/.bashrc`'
       - '`bash -ic` で `type mindstella` が関数を返し、`echo $MINDSTELLA_ALLOWED_HOSTS` が `preview.example.com`'
       - "`bash -ic 'mindstella 家計簿アプリ'` で、偽の起動スクリプトが引数 `家計簿アプリ` を受け取る"
-      - '`~/.bashrc` の `export EDITOR=vim` の行がそのままで、mindstella の印で囲んだ範囲が 1 つだけある'
+      - '`~/.bashrc` の `export EDITOR=vim` の行がそのままで、mindstella のマーカーで囲んだ範囲が 1 つだけある'
     test: test_normal
   - name: 正常系（読み返す）
     summary: 登録済みの alias と環境変数を、何も書かずに返す
@@ -49,11 +49,11 @@ flows:
     expected:
       - 終了コードが 0
       - '`registered` が `true`、`env` が登録した値'
-      - '`TMUX` を消した環境で呼ぶと `in_tmux` が `false`、`TMUX` を渡すと `true`'
+      - '`TMUX` を削除した環境で呼ぶと `in_tmux` が `false`、`TMUX` を渡すと `true`'
       - ホームのフォルダのどのファイルの中身も、呼ぶ前と同じ
     test: test_normal_when_show
-  - name: 正常系（登録し直す）
-    summary: 渡した環境変数だけを書き換え、印の範囲は重ねない
+  - name: 正常系（再登録する）
+    summary: 渡した環境変数だけを書き換え、マーカーの範囲は重ねない
     setup:
       - name: Mock
         description: なし
@@ -72,7 +72,7 @@ flows:
       ```
     expected:
       - '`env` が `MINDSTELLA_ALLOWED_HOSTS=b.example.com`・`MINDSTELLA_VENV=~/venvs/mindstella`'
-      - '`~/.bashrc` の印で囲んだ範囲が 1 つだけで、`~/.bashrc` の中身が登録し直す前と同じ'
+      - '`~/.bashrc` のマーカーで囲んだ範囲が 1 つだけで、`~/.bashrc` の中身が再登録する前と同じ'
     test: test_normal_when_set_again
   - name: 正常系（文字起こしの接続先を登録する）
     summary: 文字起こしのサービスと接続先の環境変数を登録し、新しく開いた bash に入れる
@@ -97,7 +97,7 @@ flows:
       - '`env` が `MINDSTELLA_ALLOWED_HOSTS=preview.example.com`・`MINDSTELLA_TRANSCRIBER=voice-paste`・`MINDSTELLA_TRANSCRIBER_URL=http://127.0.0.1:47900`'
       - '`bash -ic` で `echo $MINDSTELLA_TRANSCRIBER` が `voice-paste`、`echo $MINDSTELLA_TRANSCRIBER_URL` が `http://127.0.0.1:47900`'
     test: test_normal_when_transcriber_set
-  - name: 正常系（アカウントを足す）
+  - name: 正常系（アカウントを追加する）
     summary: '`mindstella-{名前}` がそのアカウントの `installPath` で起動スクリプトを叩く'
     setup:
       - name: Mock
@@ -121,7 +121,7 @@ flows:
       - "`bash -ic 'mindstella 家計簿アプリ'` では、既定のアカウントで引いた `installPath` の偽の起動スクリプトが立ち上がり、`CLAUDE_CONFIG_DIR` を受け取らない"
     test: test_normal_when_account_added
   - name: 正常系（外す）
-    summary: 登録のファイルと印の範囲だけを消す
+    summary: 登録のファイルとマーカーの範囲だけを削除する
     setup:
       - name: Mock
         description: なし
@@ -135,7 +135,7 @@ flows:
         participant FS as ホームのフォルダ
 
         クライアント->>IF: remove
-        IF->>FS: registration.json と shell.sh を消し、印の範囲を消す
+        IF->>FS: registration.json と shell.sh を削除し、マーカーの範囲を削除する
         IF-->>クライアント: 登録の JSON、終了コード 0
       ```
     expected:
@@ -185,12 +185,12 @@ flows:
       ```
     expected:
       - 終了コードが 1
-      - '`error` に `~/.bashrc` に書き込めない旨があり、`manual_lines` に印の範囲と alias `mindstella` の定義の行がある'
+      - '`error` に `~/.bashrc` に書き込めない旨があり、`manual_lines` にマーカーの範囲と alias `mindstella` の定義の行がある'
       - '`registration.json`・`shell.sh` が無く、`~/.bashrc` の中身が呼ぶ前と同じ'
     test: test_error_when_not_writable
 lead: 起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{アカウントの名前}`（シェルの関数で定義する）と、起動スクリプトが読む環境変数を、ログインシェルの設定に登録・読み返し・外す、起動のコマンドのサブコマンド。MCP のツールも mindstella の仮想環境も使わず、システムの `python3` の標準ライブラリだけで動く。
 idempotent: true
-side_effects: '`set`・`add-account`・`remove-account` は `{XDG_CONFIG_HOME か ~/.config}/mindstella/` の `registration.json` と `shell.sh` を書き、ログインシェルの設定ファイルに `shell.sh` を読み込む印つきの範囲が無ければ末尾に足す。`remove` はその 2 つのファイルと印つきの範囲を消す。`show` は何も書かない。ワークスペースは書かない'
+side_effects: '`set`・`add-account`・`remove-account` は `{XDG_CONFIG_HOME か ~/.config}/mindstella/` の `registration.json` と `shell.sh` を書き、ログインシェルの設定ファイルに `shell.sh` を読み込むマーカーつきの範囲が無ければ末尾に追加する。`remove` はその 2 つのファイルとマーカーつきの範囲を削除する。`show` は何も書かない。ワークスペースは書かない'
 callers:
   - IF-489-56#
 request:
@@ -198,7 +198,7 @@ request:
     type: Literal['show', 'set', 'add-account', 'remove-account', 'remove']
     required: true
     location: argument
-    description: '`show` 登録を読む / `set` alias `mindstella` と環境変数を登録・書き直す / `add-account` アカウントごとの alias を足す・書き直す / `remove-account` アカウントの alias を外す / `remove` 登録を全て外す'
+    description: '`show` 登録を読む / `set` alias `mindstella` と環境変数を登録・書き直す / `add-account` アカウントごとの alias を追加する・書き直す / `remove-account` アカウントの alias を外す / `remove` 登録を全て外す'
   - name: --env
     type: str
     required: false
@@ -227,7 +227,7 @@ request:
     required: false
     default: なし
     location: argument
-    description: '`add-account` で必須。そのアカウントの Claude Code の設定のフォルダ。絶対パスに直して登録する'
+    description: '`add-account` で必須。そのアカウントの Claude Code の設定のフォルダ。絶対パスに修正して登録する'
     example: ~/.claude-sub1
   - name: HOME
     type: str
@@ -275,32 +275,32 @@ response:
     description: 失敗したときの理由。成功したときは持たない
   - name: manual_lines
     type: list[str] | None
-    description: 書き込めなかったとき、利用者が手でログインシェルの設定ファイルに書けば同じ登録になる行（印の範囲と alias `mindstella` の定義）。成功したときと、`remove` のときは持たない
+    description: 書き込めなかったとき、利用者が手でログインシェルの設定ファイルに書けば同じ登録になる行（マーカーの範囲と alias `mindstella` の定義）。成功したときと、`remove` のときは持たない
 exceptions:
   - name: なし（正常終了）
     condition: 登録を読んだ・書いた・外した
     notes: 終了コード 0。標準出力にその後の登録の JSON を出す
   - name: 引数の誤り
-    condition: サブコマンドが無い・知らない。`--env` のキーが許すキーでない。`--name` が形に合わない。`add-account` に `--name` か `--config-dir` が無い
+    condition: サブコマンドが無い・知らない。`--env` のキーが許すキーでない。`--name` が形式に合わない。`add-account` に `--name` か `--config-dir` が無い
     notes: 終了コード 2。何も書かず、使い方を標準エラーに出す
   - name: NotWritableError
     condition: ログインシェルの設定ファイルか登録の置き場所に書き込めない
     notes: 終了コード 1。どのファイルも書き換えず、標準出力の JSON の `error` に理由、`manual_lines` に手で書く行を入れる
   - name: UnsupportedShellError
     condition: '`SHELL` の末尾の名前が `bash`・`zsh` のどちらでもない'
-    notes: 終了コード 1。何も書かず、`error` に理由、`manual_lines` に手で書く行（bash の形）を入れる
+    notes: 終了コード 1。何も書かず、`error` に理由、`manual_lines` に手で書く行（bash の構造）を入れる
   - name: UnknownAccountError
     condition: '`remove-account` の `--name` が登録に無い'
     notes: 終了コード 1。何も書かず、`error` に登録済みのアカウントの名前を入れる
-  - name: 登録を読めない
+  - name: 登録を読み込めない
     condition: '`registration.json` を JSON として読めない'
     notes: 終了コード 1。何も書かず、`error` に読めないファイルのパスを入れる
 constraints:
-  - item: 書く先
-    constraint: 登録は `{XDG_CONFIG_HOME か ~/.config}/mindstella/registration.json`（登録の中身）と、そこから作る `shell.sh`（alias と `export`）に書く。ログインシェルの設定ファイルには `# >>> mindstella >>>` と `# <<< mindstella <<<` で囲んだ `shell.sh` を読み込む 1 行だけを足す
-    notes: 要件.md の書く先の案 B。書き直す・外すときに利用者の設定ファイルを書き換えるのは、印の範囲の足し引きだけになる
+  - item: 書き込み先
+    constraint: 登録は `{XDG_CONFIG_HOME か ~/.config}/mindstella/registration.json`（登録の中身）と、そこから作る `shell.sh`（alias と `export`）に書く。ログインシェルの設定ファイルには `# >>> mindstella >>>` と `# <<< mindstella <<<` で囲んだ `shell.sh` を読み込む 1 行だけを追加する
+    notes: 要件.md の書く先の案 B。書き直す・外すときに利用者の設定ファイルを書き換えるのは、マーカーの範囲の追加引きだけになる
   - item: 利用者の行
-    constraint: ログインシェルの設定ファイルの、印の範囲の外の行は 1 字も変えない。印の範囲が既にあれば足さない
+    constraint: ログインシェルの設定ファイルの、マーカーの範囲の外の行は 1 字も変えない。マーカーの範囲が既にあれば追加しない
   - item: alias mindstella
     constraint: 叩くたびに `claude plugin list --json` の `mindstella@mindstella` の `installPath` を引き、`{installPath}/bin/mindstella` に引数をそのまま渡す。JSON はシステムの `python3` で読み、`jq` に頼らない。引けなければ `[mindstella] エラー:` で始まる行を標準エラーに出して 1 を返す
   - item: alias mindstella-{名前}
@@ -308,7 +308,7 @@ constraints:
     notes: 起動のコマンドは受けた `CLAUDE_CONFIG_DIR` を『MindStella のセッションの作成』の `claude_config_dir` に渡す。claude-balancer がある端末では、MindStella のセッションのアカウントは claude-balancer が選ぶ（D-292）ため、この値は claude-balancer が無い端末でだけ使われる
   - item: 環境変数
     constraint: 登録した環境変数を `shell.sh` に `export` で書く。値はシェルの単引用符で囲む
-  - item: 書き方
+  - item: 記載方法
     constraint: 書く前に書き込めるかを全てのファイルで確かめ、各ファイルは同じフォルダの一時ファイルに書いてから置き換える。途中で失敗しても、書きかけのファイルを残さない。書く先がシンボリックリンクなら、リンクを残してリンク先を書き換える
   - item: 依存
     constraint: システムの `python3`（3.8 以上）の標準ライブラリだけ。mindstella の仮想環境・MCP のサーバー・`claude` を呼ばない

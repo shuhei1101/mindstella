@@ -11,7 +11,7 @@ functions:
       - name: title
         type: string
         required: true
-        description: 題
+        description: タイトル
       - name: source
         type: string
         required: true

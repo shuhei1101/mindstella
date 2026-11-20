@@ -33,7 +33,7 @@ flows:
       - '`claude plugin details` で hooks が、`SessionStart` の `reset_unread.py` と `ensure_server.py --hook` と `session_hook.py session-start` を呼ぶ 3 件、`SessionEnd`・`UserPromptSubmit`・`Stop`・`StopFailure` で `session_hook.py` を呼ぶ 4 件と、`matcher` が `mcp__plugin_mindstella_mindstella__.*` で `inject_session.py` を呼ぶ `PreToolUse` の 1 件'
       - その設定のフォルダで、`MINDSTELLA_PORT` に待ち受けているプロセスの無い空きポートを渡すと、`claude mcp list` の `plugin:mindstella:mindstella` がつながらない状態として出る
     test: test_normal
-lead: Claude Code がプラグイン mindstella をインストールして読み込むときの、プラグインのマニフェストとフォルダの形。
+lead: Claude Code がプラグイン mindstella をインストールして読み込むときの、プラグインのマニフェストとフォルダの構造。
 callers:
   - LIB-489-4#
 request:
@@ -75,7 +75,7 @@ request:
   - name: agent-flows/
     type: フォルダ
     required: true
-    description: 記録のエージェントフローと、project-index の配信元の設定・スキーマ。形はインターフェース定義『エージェントフローの参照』
+    description: 記録のエージェントフローと、project-index の配信元の設定・スキーマ。構造はインターフェース定義『エージェントフローの参照』
   - name: LICENSE
     type: ファイル
     required: true
@@ -83,7 +83,7 @@ request:
   - name: bin/mindstella
     type: ファイル
     required: true
-    description: 起動スクリプト。実行の権限を持つ。形はインターフェース定義『起動のコマンド』
+    description: 起動スクリプト。実行の権限を持つ。構造はインターフェース定義『起動のコマンド』
 request_example: |-
   ```json
   {
@@ -98,18 +98,18 @@ request_example: |-
 constraints:
   - item: 持つ部品
     constraint: エージェントフローと、`.mcp.json` の常駐サーバーへの接続 1 つと、`hooks/hooks.json` のフック（`SessionStart` の『未読へ戻す』『常駐サーバーの起動の確認』、`PreToolUse` の『セッションの値の注入』、`SessionStart`・`SessionEnd`・`UserPromptSubmit`・`Stop`・`StopFailure` の『MindStella のセッションのフック』）だけ。スキル・コマンド・エージェントは持たない（#518）。MCP サーバーの実体（`skills/mindmap/scripts/server.py`）は同梱し、`.mcp.json` は起動せずに `url` でつなぐだけにする（常駐サーバーの起動は『常駐サーバーの起動の確認』と起動のコマンドが担う）
-  - item: 版
+  - item: バージョン
     constraint: '`version` は持たない'
-    notes: 版の正はタグと `version.ini`（規約『バージョニング』）。マニフェストに写すと揃える作業がリリースごとに増える
-  - item: Claude Code の版
+    notes: バージョンの正はタグと `version.ini`（規約『バージョニング』）。マニフェストに写すと揃える作業がリリースごとに増える
+  - item: Claude Code のバージョン
     constraint: 2.1.287 以上
-    notes: 非機能要件の「Claude Code の版」
-  - item: ライセンスの本文の置き方
+    notes: 非機能要件の「Claude Code のバージョン」
+  - item: ライセンスの本文の配置方法
     constraint: リポジトリの直下とプラグインのフォルダの直下の 2 か所に、同じ本文の実体のファイルとして置く。シンボリックリンクにしない
     notes: 'Claude Code は、ローカルのパスからインストールするとプラグインのフォルダの外を指すシンボリックリンクを飛ばす（公式ドキュメント『Host and maintain a marketplace』の Share files within a marketplace with symlinks）。Windows の clone ではリンクが本文を持たないファイルになる'
-  - item: プラグインの版のファイル
-    constraint: '`plugins/mindstella/version.ini` の 1 行目にプラグインの版（`v{メジャー}.{マイナー}.{パッチ}`）を書く。スクリプトがワークスペースの版と比べるために読む。リポジトリの直下の `version.ini` の版より小さくしない'
-    notes: ワークスペースの形を変える PR が `migrations/{次の版}/` を足すときに、同じ PR でその版へ上げる。今のワークスペースがそのまま読める形の変更（スキーマを広げるだけなど）は、手順と版を足さず、`migrations/no-steps.yaml` に変えたスキーマのファイル名・変えた後の中身の SHA-256・理由の行を足す。リリースでは tester がリポジトリの直下の `version.ini` を上げるときに、形を変えなかったスプリントでも同じ版へ揃える。マニフェストの `version` には写さない（制約「版」）
+  - item: プラグインのバージョンのファイル
+    constraint: '`plugins/mindstella/version.ini` の 1 行目にプラグインのバージョン（`v{メジャー}.{マイナー}.{パッチ}`）を書く。スクリプトがワークスペースのバージョンと比べるために読む。リポジトリの直下の `version.ini` のバージョンより小さくしない'
+    notes: ワークスペースの構造を変える PR が `migrations/{次のバージョン}/` を追加するときに、同じ PR でそのバージョンへ上げる。今のワークスペースがそのまま読める形式の変更（スキーマを広げるだけなど）は、手順とバージョンを追加せず、`migrations/no-steps.yaml` に変えたスキーマのファイル名・変えた後の中身の SHA-256・理由の行を追加する。リリースでは tester がリポジトリの直下の `version.ini` を上げるときに、形式を変えなかったスプリントでも同じバージョンへ揃える。マニフェストの `version` には写さない（制約「バージョン」）
   - item: 接続の設定
     constraint: '`.mcp.json` の `mcpServers.mindstella` に `"type": "http"` と `"url": "http://127.0.0.1:${MINDSTELLA_PORT:-8784}/mcp"` だけを書く。`alwaysLoad` は付けない。`plugin.json` の `mcpServers` には書かない'
     notes: 規約『MCP サーバー作成ルール』の `registration-07`〜`10`。Claude Code の中のツールの名前は `mcp__plugin_mindstella_mindstella__{ツール}` になる

@@ -6,7 +6,7 @@ version:
   latest: 18.0.14
   checked_on: '2026-10-02'
   source: https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js
-  pinning: 版を固定し、script 要素に integrity（`sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo`）と `crossorigin="anonymous"` を付ける。上げるときは integrity も書き換える
+  pinning: バージョンを固定し、script 要素に integrity（`sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo`）と `crossorigin="anonymous"` を付ける。上げるときは integrity も書き換える
 catalogs:
   - name: API
     version: 18.0.14
@@ -41,7 +41,7 @@ verification:
   state: 済
   date: '2026-10-02'
   detail: file:// で開いた HTML から jsDelivr の `lib/marked.umd.js` を下の integrity と `crossorigin="anonymous"` 付きで読み、Chromium で `marked.parse` が見出しと表を描くことを確かめた
-license: MIT（商用利用可）。配る書き出しに入れるときは、版・著作権の表示（Copyright (c) 2018+, MarkedJS / Copyright (c) 2011-2018, Christopher Jeffrey）・MIT の本文・ソースの入手先（https://github.com/markedjs/marked の `v{版}` のタグ）を残す
+license: MIT（商用利用可）。配る書き出しに入れるときは、バージョン・著作権の表示（Copyright (c) 2018+, MarkedJS / Copyright (c) 2011-2018, Christopher Jeffrey）・MIT の本文・ソースの入手先（https://github.com/markedjs/marked の `v{バージョン}` のタグ）を残す
 official_url: https://marked.js.org/
 selection:
   candidates: '配信元として jsDelivr・unpkg・raw.esm.sh・cdnjs を比べた（[選定の案](https://github.com/shuhei1101/mindmap/pull/21#discussion_r4165328069)）。ライブラリそのものは Issue #5 で決まっている'

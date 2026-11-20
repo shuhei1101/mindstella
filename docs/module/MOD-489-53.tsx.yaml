@@ -18,10 +18,10 @@ components:
         expected: 状態の列にカード
       - name: test_tasks_screen_when_edit_added
         case: 正常
-        summary: 足す項目を差し込む
+        summary: 追加する項目を差し込む
         condition: '`item-add` の保存待ち'
         mock: MSW
-        expected: ID の無いカードに保存待ちの印
+        expected: ID の無いカードに保存待ちのマーカー
     container: frontend/src/features/tasks/tasks/tasks-screen.tsx
 notes:
   単体テスト: 同じフォルダの `tasks-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）

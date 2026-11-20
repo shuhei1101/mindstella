@@ -6,7 +6,7 @@ functions:
     title: 編集の重ね合わせ
     kind: 関数
     usecase: 画面で項目を編集して保存する
-    summary: 保存待ちの編集を記録に重ね、足す項目を ID の無い項目として差し込む
+    summary: 保存待ちの編集を記録に重ね、追加する項目を ID の無い項目として差し込む
     args:
       - name: data
         type: MindmapData
@@ -28,16 +28,16 @@ functions:
         expected: D-1 の `answer` が編集の値
       - name: test_apply_edits_when_item_add
         case: 正常
-        summary: 足す項目を差し込む
+        summary: 追加する項目を差し込む
         condition: '`item-add` の `new-1`'
         mock: なし
         expected: '`tasks` に `new-1` の項目'
     container: frontend/src/shared/core/edits.ts
   - name: pendingMarkOf
-    title: 保存待ちの印の種類
+    title: 保存待ちのマーカーの種類
     kind: 関数
     usecase: 画面で項目を編集して保存する
-    summary: 項目・キー・案の印の種類を返す
+    summary: 項目・キー・案のマーカーの種類を返す
     args:
       - name: edits
         type: readonly PendingEdit[]
@@ -58,7 +58,7 @@ functions:
         default: undefined
     returns:
       type: PendingMarkKind | null
-      description: 印の種類
+      description: マーカーの種類
     unit_tests:
       - name: test_pending_mark_of_when_remove
         case: 正常

@@ -1,6 +1,6 @@
 id: MOD-489-127
 title: プレビュー / use-diff-view
-lead: 差分の表示の時点と、項目ごとの印を返す。
+lead: 差分の表示の時点と、項目ごとのマーカーを返す。
 functions:
   - name: useDiffView
     title: 差分の表示
@@ -9,7 +9,7 @@ functions:
     summary: search の `diff` と端末の保存領域の時点から `DiffPoint` を解決し、`POST /api/opened` の時点を `sessionStorage` に持つ
     returns:
       type: DiffView
-      description: 時点・印・消した項目
+      description: 時点・マーカー・削除した項目
     unit_tests:
       - name: test_use_diff_view
         case: 正常
@@ -25,7 +25,7 @@ functions:
         expected: '`setDiff(''V-1'')` が呼ばれる'
       - name: test_use_diff_view_when_opened_stored
         case: 正常
-        summary: 同じタブで呼び直さない
+        summary: 同じタブで再呼び出ししない
         condition: '`sessionStorage` に時点がある'
         mock: MSW
         expected: '`POST /api/opened` が呼ばれない'

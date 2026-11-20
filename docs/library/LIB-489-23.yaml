@@ -19,7 +19,7 @@ catalogs:
         purpose: ルートの loader で先読みする（prefetchQuery は非推奨）
       - name: invalidateQueries
         kind: メソッド
-        purpose: 書き換えの知らせで記録の query を読み直す
+        purpose: 書き換えの知らせで記録の query を再読み込みする
 lead: サーバーのデータの取得・キャッシュ・再取得を持つ React のライブラリ。
 purl: pkg:npm/@tanstack/react-query
 dependency_scope: 必須

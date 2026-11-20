@@ -6,16 +6,16 @@ constants:
   - name: REVIEW_FOLD_LINES
     title: 本文を畳む行の数
     container: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 畳んだときに出す、折り返した後の見た目の行の数
     value: '5'
 components:
   - name: reviewBodyFold
     title: 本文の折りたたみ
     container: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     kind: コンポーネント
-    summary: "部品設計『本文の折りたたみ』の引数を受け、本文の要素と開閉のボタンを `{body, more}` で返す。本文は `postBody`（クラス `review-body`、`titles`・`changeSets`・`on.openId`・`on.changeSet` をそのまま渡す）で描き、`id` を `review-body-{ID}`、畳んでいる間はクラス `folded` と `--fold-lines` で高さを行の高さ × `lines` に限り、はみ出しを隠す（本文は Markdown のブロックを持つ）。開閉のボタン（`btn ghost review-more`、`aria-controls` は本文の `id`、`data-focus` は `{focus}more:{ID}`）は `hidden` で作り、`ResizeObserver` で本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ出す。押すと描き直さずに本文の `folded`・ボタンの印・文言・`aria-expanded`・読み上げの名前を切り替えて `on.toggle(id, open)` を呼び、折りたたんだときは行（`li`）を `scrollIntoView({block: 'nearest'})` で寄せる"
+    summary: "部品設計『本文の折りたたみ』の引数を受け、本文の要素と開閉のボタンを `{body, more}` で返す。本文は `postBody`（クラス `review-body`、`titles`・`changeSets`・`on.openId`・`on.changeSet` をそのまま渡す）で描き、`id` を `review-body-{ID}`、畳んでいる間はクラス `folded` と `--fold-lines` で高さを行の高さ × `lines` に限り、はみ出しを隠す（本文は Markdown のブロックを持つ）。開閉のボタン（`btn ghost review-more`、`aria-controls` は本文の `id`、`data-focus` は `{focus}more:{ID}`）は `hidden` で作り、`ResizeObserver` で本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ出す。押すと再描画せずに本文の `folded`・ボタンのマーカー・文言・`aria-expanded`・読み上げの名前を切り替えて `on.toggle(id, open)` を呼び、折りたたんだときは行（`li`）を `scrollIntoView({block: 'nearest'})` で寄せる"
     props:
       - name: id
         type: string

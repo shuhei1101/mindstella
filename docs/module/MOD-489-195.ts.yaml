@@ -26,7 +26,7 @@ data_models:
         description: 開いたときの `f.{列}`。どの表示形式でも、入口が絞り込みのドロワーの条件として受ける（`initialFilters`。書き戻さない）
       - name: heading
         type: string | null
-        description: 開いたときに詳細の本文で画面に入れる見出し（ハッシュの `h`。`headingSlug` の形）。`id` が無いときは `null`
+        description: 開いたときに詳細の本文で画面に入れる見出し（ハッシュの `h`。`headingSlug` の形式）。`id` が無いときは `null`
       - name: diff
         type: string | null
         description: 差分の表示で比べる時点（ハッシュの `diff`。`since`・`pending`・まとまりの ID）。記録にあるかは確かめず、入口が `resolveDiffPoint` で引く。無いときは `null`
@@ -115,7 +115,7 @@ functions:
         description: 画面の場所
     returns:
       type: string
-      description: '`#tab=...&view=...&id=...&full=1&h=...&diff=...` の形（`h` は `heading` があるときだけ、`diff` は `diff` があるときだけ）。全て既定なら空文字'
+      description: '`#tab=...&view=...&id=...&full=1&h=...&diff=...` の形式（`h` は `heading` があるときだけ、`diff` は `diff` があるときだけ）。全て既定なら空文字'
     unit_tests:
       - name: test_to_hash
         case: 正常

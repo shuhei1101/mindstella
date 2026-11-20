@@ -1,21 +1,21 @@
 summary: "サブシステムの外部インターフェースと処理フロー（サブシステム結合テストの元）"
 items:
   - page: IF-489-69.yaml
-    summary: "Claude Code がマーケットプレイスとして登録するときに読む marketplace.json の形"
+    summary: "Claude Code がマーケットプレイスとして登録するときに読む marketplace.json の構造"
   - page: IF-489-68.yaml
-    summary: "Claude Code がインストールして読み込む plugin.json とフォルダの形"
+    summary: "Claude Code がインストールして読み込む plugin.json とフォルダの構造"
   - page: IF-565-1.yaml
     summary: "agent-flows/: MindStella のセッションが project-index で引く起動・コメントの取り込み・記録のエージェントフロー"
   - page: IF-489-67.yaml
     summary: "mindstella register: 起動スクリプトを呼ぶ mindstella・mindstella-{名前} と環境変数を、ログインシェルの設定に登録・読み返し・外す"
   - page: IF-489-71.yaml
-    summary: "URL のハッシュが指す画面と項目を、サーバーから読んだ記録で開き、書き換えで描き直し、回答・意見を送る"
+    summary: "URL のハッシュが指す画面と項目を、サーバーから読んだ記録で開き、書き換えで再描画し、回答・意見を送信する"
   - page: IF-489-70.yaml
-    summary: "React のプレビューを `/spa/` で開き、記録を読んで search params が指す画面を描き、書き換えの知らせで描き直す"
+    summary: "React のプレビューを `/spa/` で開き、記録を読んで search params が指す画面を描き、書き換えの知らせで再描画する"
   - page: IF-489-56.yaml
     summary: "bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ。server のサブコマンドで常駐サーバーを確かめ・止め・再起動し、register のサブコマンドで起動スクリプトを登録する"
   - page: IF-489-27.yaml
-    summary: "check_env.py: スキル専用の仮想環境の Python と PyYAML・jsonschema・mcp・Jinja2 の版を確かめる"
+    summary: "check_env.py: スキル専用の仮想環境の Python と PyYAML・jsonschema・mcp・Jinja2 のバージョンを確かめる"
   - page: IF-489-1.yaml
     summary: "常駐の MCP サーバー mindstella を HTTP で待ち受ける。全てのツールに共通の結果とエラーの返し方"
   - page: IF-489-38.yaml
@@ -47,25 +47,25 @@ items:
   - page: IF-604-1.yaml
     summary: "PATCH /workspaces/{id}: ワークスペースの設定・進め方の文書・追加の MCP・プラグインを書き換える"
   - page: IF-531-6.yaml
-    summary: "POST /_admin/sessions/{session}/events: MindStella のセッションのフックが送る出来事を状態に記録する"
+    summary: "POST /_admin/sessions/{session}/events: MindStella のセッションのフックが送信する出来事を状態に記録する"
   - page: IF-531-7.yaml
-    summary: "session_hook.py: MindStella のセッションでだけ、フックの出来事を常駐サーバーへ送り、進め方の文書の場所を注入する"
+    summary: "session_hook.py: MindStella のセッションでだけ、フックの出来事を常駐サーバーへ送信し、進め方の文書の場所を注入する"
   - page: IF-489-40.yaml
     summary: "adopt: 検討事項の採用する案を 1 つに切り替える"
   - page: IF-489-32.yaml
     summary: "POST /_admin/sessions/{session}/resume: 起動・再開の契機に、取り込み待ちのスレッド・前回から変わった項目・要見直し・進行中を返す"
   - page: IF-565-2.yaml
-    summary: "POST /_admin/sessions/{session}/read_point: 注入を書き終えた後に、前回参照した時点を再開の状況が返した通し番号へ進める"
+    summary: "POST /_admin/sessions/{session}/read_point: 注入を書き終えた後に、前回参照した時点を再開の状況が返した連番へ進める"
   - page: IF-489-26.yaml
     summary: "check: スキーマ違反・参照切れ・本文のずれを洗い出す"
   - page: IF-489-52.yaml
-    summary: "migrate: 起動のときにワークスペースの版とプラグインの版を比べ、版ごとの手順を当てて版を書き換える"
+    summary: "migrate: 起動のときにワークスペースのバージョンとプラグインのバージョンを比べ、バージョンごとの手順を当ててバージョンを書き換える"
   - page: IF-489-57.yaml
     summary: "export: 描画のライブラリまで中に持つ見るだけの 1 枚の HTML を書き出す"
   - page: IF-489-17.yaml
     summary: "preview_url: ワークスペースを 127.0.0.1 の空きポートで配り、URL を返す"
   - page: IF-489-18.yaml
-    summary: "GET /mindstella.html: プレビューの画面を返す（/ はここへ送り直す）"
+    summary: "GET /mindstella.html: プレビューの画面を返す（/ はここへリダイレクトする）"
   - page: IF-489-3.yaml
     summary: "GET /spa/{path}: React のプレビュー（SPA）の index.html と出力の静的なファイルを返す（出力に無いパスは index.html）"
   - page: IF-489-51.yaml
@@ -75,11 +75,11 @@ items:
   - page: IF-540-1.yaml
     summary: "next_id: 項目を書き込む前に種類ごとの次の ID を返し、予約して並行して取った ID と重ねない"
   - page: IF-540-2.yaml
-    summary: "変更の検知: 記録の書き換えを前回の中身と比べて履歴と通し番号に記録し、外部の変更を自動でまとまりにし、重なった ID を知らせる"
+    summary: "変更の検知: 記録の書き換えを前回の中身と比べて履歴と連番に記録し、外部の変更を自動でまとまりにし、重なった ID を知らせる"
   - page: IF-489-43.yaml
     summary: "commit: まだまとめていない書き換えを説明つきのまとまりにする"
   - page: IF-489-4.yaml
-    summary: "pending: 最後のまとまりより後に足した・変えた項目を返す"
+    summary: "pending: 最後のまとまりより後に追加した・変えた項目を返す"
   - page: IF-489-34.yaml
     summary: "POST /api/opened: 前回プレビューを開いた日時を返し、今の日時に書き換える"
   - page: IF-489-55.yaml
@@ -91,19 +91,19 @@ items:
   - page: IF-489-22.yaml
     summary: "PATCH /api/comments/{id}: レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す"
   - page: IF-489-21.yaml
-    summary: "DELETE /api/comments/{id}: レビュー中のコメント 1 件を消し、元に戻すための中身を返す"
+    summary: "DELETE /api/comments/{id}: レビュー中のコメント 1 件を削除し、元に戻すための中身を返す"
   - page: IF-489-42.yaml
     summary: "PUT /api/drafts: コメントの入力欄の書きかけを向けた先ごとに保つ"
   - page: IF-489-6.yaml
     summary: "POST /api/comments/send: チェックしたレビュー中の書き込みをスレッドへ移す"
   - page: IF-489-47.yaml
-    summary: "edit_option: 検討事項の案を記号で指して 1 つ足す・直す・消す"
+    summary: "edit_option: 検討事項の案を記号で指して 1 つ追加する・修正する・削除する"
   - page: IF-489-33.yaml
-    summary: "changes_since_read: AI が前回読んだ時点より後に足した・変えた項目を返し、読んだ時点を進める"
+    summary: "changes_since_read: AI が前回読んだ時点より後に追加した・変えた項目を返し、読んだ時点を進める"
   - page: IF-489-54.yaml
     summary: "PUT /api/config/display: 見た目の既定と表示する種類の既定を config.yaml に書く"
   - page: IF-489-53.yaml
-    summary: "POST /api/config/reload: 手で直した config.yaml を検査し、通れば配信の設定を差し替える"
+    summary: "POST /api/config/reload: 手で修正した config.yaml を検査し、通れば配信の設定を差し替える"
   - page: IF-489-2.yaml
     summary: "readme: 直下の README.md を起動・接続・エージェントフローの案内・プレビューの一覧に書き直す"
   - page: IF-489-8.yaml
@@ -139,19 +139,19 @@ items:
   - page: IF-489-58.yaml
     summary: "POST /api/transcriptions: 録音した音声を文字起こしのサービスへ渡し、終わるまで待って起こした文字を返す"
   - page: IF-489-45.yaml
-    summary: "POST /api/comments/send-now: 入力欄の全文 1 件を、溜めずにスレッドへ送って Claude Code へ入力する"
+    summary: "POST /api/comments/send-now: 入力欄の全文 1 件を、溜めずにスレッドへ送信して Claude Code へ入力する"
   - page: IF-568-1.yaml
     summary: 応答の間に AI が書き込んだとき、応答の終わりに Discord へ作業の完了を通知する
   - page: IF-570-1.yaml
     summary: MindStella のセッションが止まったことを記録したとき、Discord へ止まったことと理由を通知する
   - page: IF-582-1.yaml
-    summary: MindStella のセッションを、同じ ID のまま止めて起動し直す（API・利用上限・圧縮・落ちた後のコメント）
+    summary: MindStella のセッションを、同じ ID のまま止めて再起動する（API・利用上限・圧縮・落ちた後のコメント）
   - page: IF-582-2.yaml
     summary: 起動中の MindStella のセッションを一定の間隔で見回り、落ちていれば記録して通知する
   - page: IF-616-1.yaml
-    summary: 起動中の MindStella のセッションが使用中のアカウントの利用枠を一定の間隔で確かめ、しきい値以上なら別のアカウントで起動し直す
+    summary: 起動中の MindStella のセッションが使用中のアカウントの利用枠を一定の間隔で確かめ、しきい値以上なら別のアカウントで再起動する
   - page: IF-605-1.yaml
-    summary: 常駐サーバーの起動時に、ID の一覧を作り直し、落ちた MindStella のセッションを記録し、エージェントフローの配信元を登録し直す
+    summary: 常駐サーバーの起動時に、ID の一覧を再作成し、落ちた MindStella のセッションを記録し、エージェントフローの配信元を再登録する
   - page: IF-587-1.yaml
     summary: ワークスペースのファイルのフォルダのファイルを `/files/` の下で配る（範囲の要求に対応）
   - page: IF-633-1.yaml

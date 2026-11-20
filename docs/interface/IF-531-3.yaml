@@ -23,7 +23,7 @@ response:
     description: MindStella のセッションの ID
   - name: sessions[].status
     type: Literal['running', 'stopping', 'restarting', 'stopped', 'crashed']
-    description: 起動中・停止の途中・起動し直しの途中・停止済み・落ちている
+    description: 起動中・停止の途中・再起動の途中・停止済み・落ちている
   - name: sessions[].responding
     type: bool
     description: 応答の途中か（UserPromptSubmit から Stop・StopFailure まで）
@@ -35,7 +35,7 @@ response:
     description: tmux のペイン。`stopped`・`crashed` では `None`
   - name: sessions[].last_error
     type: str | None
-    description: '最後の停止・起動し直しに失敗した段階と理由（`{stage}: {detail}`。『MindStella のセッションの停止』・『MindStella のセッションの起動し直し』の別のスレッドの失敗）。無ければ `None`'
+    description: '最後の停止・再起動に失敗した段階と理由（`{stage}: {detail}`。『MindStella のセッションの停止』・『MindStella のセッションの再起動』の別のスレッドの失敗）。無ければ `None`'
   - name: close_pending
     type: bool
     description: クローズ待ちか（API で停止を受けた後）
@@ -51,11 +51,11 @@ constraints:
     constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 落ちたかの判定
-    constraint: '`status` が `running` のときだけ判定し、ペインかプロセスが無ければ `crashed` を返す（`stopping`・`restarting` は停止・起動し直しの処理に任せ、そのまま返す）。落ちたとするのは、`session.json` の `pane` が tmux の `display-message -p -t {ペイン} ''#{pane_pid}''` で引けない、または `pid` のプロセスが無いか起動時刻が違うとき（『セッションの値の注入』の `claude_started_at` と同じ見分け方）'
+    constraint: '`status` が `running` のときだけ判定し、ペインかプロセスが無ければ `crashed` を返す（`stopping`・`restarting` は停止・再起動の処理に任せ、そのまま返す）。落ちたとするのは、`session.json` の `pane` が tmux の `display-message -p -t {ペイン} ''#{pane_pid}''` で引けない、または `pid` のプロセスが無いか起動時刻が違うとき（『セッションの値の注入』の `claude_started_at` と同じ見分け方）'
   - item: MCP のツール
     constraint: '`sessions` は `workspace_id` を受け、同じ処理を呼ぶ'
   - item: 停止の通知
-    constraint: '呼ばない。落ちたことの記録と通知は、『落ちたことの見回り』と、作成・停止・クローズ・起動し直しが行う'
+    constraint: '呼ばない。落ちたことの記録と通知は、『落ちたことの見回り』と、作成・停止・クローズ・再起動が行う'
 flows:
   - name: 正常系
     summary: 起動中の MindStella のセッションを返す

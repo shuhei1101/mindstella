@@ -6,7 +6,7 @@ test_file: tests/e2e/単一ユースケース/test_session_status.py
 primary_actor: 外部のアプリ（aituber など）
 stakeholders:
   - name: 外部のアプリ
-    interest: 停止の完了・活動の期限・開き直すかを、ワークスペースと MindStella のセッションの状態から判断できる。状態を取得しても、MindStella のセッションと記録が変わらない
+    interest: 停止の完了・活動の期限・再度開くかを、ワークスペースと MindStella のセッションの状態から判断できる。状態を取得しても、MindStella のセッションと記録が変わらない
   - name: 利用者
     interest: 端末から、ワークスペースの一覧と、読んでいない AI の書き込み・取り込まれていないコメントの数を確認できる
 trigger: 外部のアプリが MindStella の API に、状態の取得（`GET /workspaces/{id}`）・ワークスペースの一覧（`GET /workspaces`）・MindStella のセッションの一覧（`GET /workspaces/{id}/sessions`）を依頼する
@@ -15,7 +15,7 @@ preconditions:
   - 外部のアプリがワークスペースを作っている（単一ユースケース『外部のアプリから起動する』）
 success_guarantee: 外部のアプリが、ワークスペースの状態・画面の URL・利用者が読んでいない AI の書き込みの数・MindStella のセッションが取り込んでいない利用者のコメントの数・最後の更新の日時・クローズ済みか・MindStella のセッションの状態・クローズ待ちか・追加の MCP とプラグインの記録があるかを受け取っている。記録・配信元の行・状態のフォルダは、依頼の前と同じ。
 minimal_guarantee: ワークスペースの部分を集められないときは、その項目を分からないとして警告を添え、MindStella のセッションの部分は返却する。何も書き換えない。
-frequency: 外部のアプリが停止の完了・活動の期限・開き直すかを判断するたび
+frequency: 外部のアプリが停止の完了・活動の期限・再度開くかを判断するたび
 priority: 高
 reading: |-
   | 呼び出し元 | 読み替え |
@@ -80,7 +80,7 @@ scenarios:
       - 外部のアプリが、ワークスペースが停止で、MindStella のセッションが停止済みでクローズ待ちであることを受け取っている
     test: test_normal_when_stopped_by_api
     notes:
-      外部のアプリの判断: クローズか開き直しを選ぶ
+      外部のアプリの判断: クローズか再度開くことを選ぶ
   - name: 正常シナリオ（停止の途中）
     setup:
       - name: Mock
@@ -135,14 +135,14 @@ scenarios:
     test: test_normal_when_write_pending
     notes:
       外部のアプリの判断: 強制の停止を選べる
-  - name: 正常シナリオ（起動し直しの途中）
+  - name: 正常シナリオ（再起動の途中）
     setup:
       - name: Mock
         description: Claude Code のセッション（起動したが、SessionStart のフックを呼ばずに待つ）
       - name: 常駐サーバー
         description: 正常シナリオと同じ
       - name: ワークスペース
-        description: 起動し直しを依頼され、MindStella のセッションの準備を待っている（単一ユースケース『MindStella のセッションを起動し直す』）
+        description: 再起動を依頼され、MindStella のセッションの準備を待っている（単一ユースケース『MindStella のセッションを再起動する』）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -155,20 +155,20 @@ scenarios:
         API->>WSM: ワークスペースの状態を依頼する
         WSM-->>API: 画面の URL・未読の 2 つの数・最後の更新・クローズ済みでない
         API->>MGR: MindStella のセッションの状態を依頼する
-        MGR-->>API: 起動し直しの途中
+        MGR-->>API: 再起動の途中
         API-->>APP: まとめた状態
       ```
     expected:
-      - 外部のアプリが、MindStella のセッションが起動し直しの途中であることを受け取っている
+      - 外部のアプリが、MindStella のセッションが再起動の途中であることを受け取っている
     test: test_normal_when_restarting
-  - name: 正常シナリオ（起動し直しに失敗した後）
+  - name: 正常シナリオ（再起動に失敗した後）
     setup:
       - name: Mock
         description: claude-balancer（`exec` で空いたアカウントが無いと返却して終わる）
       - name: 常駐サーバー
         description: 正常シナリオと同じ
       - name: ワークスペース
-        description: 起動し直しに失敗した（単一ユースケース『MindStella のセッションを起動し直す』の異常シナリオの結果）
+        description: 再起動に失敗した（単一ユースケース『MindStella のセッションを再起動する』の異常シナリオの結果）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -181,11 +181,11 @@ scenarios:
         API->>WSM: ワークスペースの状態を依頼する
         WSM-->>API: 画面の URL・未読の 2 つの数・最後の更新・クローズ済みでない
         API->>MGR: MindStella のセッションの状態を依頼する
-        MGR-->>API: 起動し直しに失敗した段階と理由（空いたアカウントが無い）
+        MGR-->>API: 再起動に失敗した段階と理由（空いたアカウントが無い）
         API-->>APP: まとめた状態
       ```
     expected:
-      - 外部のアプリが、起動し直しに失敗したことと、空いたアカウントが無いという理由を受け取っている
+      - 外部のアプリが、再起動に失敗したことと、空いたアカウントが無いという理由を受け取っている
     test: test_normal_when_restart_failed
   - name: 正常シナリオ（追加の MCP・プラグインの記録が無い）
     setup:
@@ -218,7 +218,7 @@ scenarios:
     test: test_normal_when_launch_options_missing
     notes:
       記録の有無: 中身は参照せず、記録があるかだけを返却する。指定が空の記録は「ある」とする
-      外部のアプリの判断: 設定の書き換えで指定し直し、起動し直しを依頼する（単一ユースケース『ワークスペースの設定を書き換えて起動し直す』）
+      外部のアプリの判断: 設定の書き換えで指定し修正し、再起動を依頼する（単一ユースケース『ワークスペースの設定を書き換えて再起動する』）
   - name: 正常シナリオ（クローズしたワークスペース）
     setup:
       - name: Mock
@@ -280,7 +280,7 @@ scenarios:
       - Mock の Webhook が要求を受けていない
     test: test_normal_when_session_crashed
     notes:
-      記録と通知: 落ちたことの記録と『停止の通知』は、落ちたことの見回りと、作成・クローズ・起動し直しが行う
+      記録と通知: 落ちたことの記録と『停止の通知』は、落ちたことの見回りと、作成・クローズ・再起動が行う
   - name: 正常シナリオ（MindStella のセッションの一覧）
     setup:
       - name: Mock
@@ -445,10 +445,10 @@ notes:
     | 進行中 | 話し合いを続けている。MindStella のセッションが無くても（落ちた）進行中 |
     | 停止 | API で MindStella のセッションの停止を依頼した後（クローズ待ち） |
     | 完了 | クローズした |
-  使い道: 停止の完了の確認（MindStella のセッションの一覧で確認する）、活動の期限の判断、開き直すかの判断、追加の MCP・プラグインの記録が無いことに気づいて設定の書き換えで指定し直す判断に使用する
+  使い道: 停止の完了の確認（MindStella のセッションの一覧で確認する）、活動の期限の判断、再度開くかの判断、追加の MCP・プラグインの記録が無いことに気づいて設定の書き換えで指定し修正する判断に使用する
   未読の数: 利用者が読んでいない AI の書き込みと、MindStella のセッションが取り込んでいない利用者のコメントの 2 つの数で返却する
   クローズの判定: 'ワークスペースの管理は、状態のフォルダのワークスペースの ID の一覧でワークスペースかを判定し、グローバルの設定のファイルの配信元の行を直接参照して記録のフォルダの場所を取得し、`outside_read: false` ならクローズ済みとする。project-index は呼ばない'
   落ちたセッションの判定: 状態に起動中とあっても、tmux のペインとプロセスの両方が合わなければ、落ちていると返却する。状態の取得と一覧は状態を書き換えず、『停止の通知』も呼ばない
   インターフェース定義で決めること: 返却のキーの名前と、一覧でクローズしたワークスペースを含める指定のキー
   E2E の範囲: MindStella のセッションのエージェントは Mock にする
-  スコープ外: '画面への状態の表示は #586、開き直しと削除は #523 で扱う。無操作の上限での停止は利用者の判断で取りやめた（#521）'
+  スコープ外: '画面への状態の表示は #586、再度開くことと削除は #523 で扱う。無操作の上限での停止は利用者の判断で取りやめた（#521）'

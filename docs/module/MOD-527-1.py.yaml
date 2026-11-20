@@ -1,6 +1,6 @@
 id: MOD-527-1
 title: サーバー / 移行 / markdown_bodies_to_mark_md.py
-lead: v0.14.0 の 2 手順目の変換。`.mindstella/docs/` の Markdown の本文を `.mark.md` へ改名し、項目の `body` と変更履歴の `before.body` を書き換える。`yaml` と標準ライブラリだけを読み、この版の形を自分で組み立てる。
+lead: v0.14.0 の 2 手順目の変換。`.mindstella/docs/` の Markdown の本文を `.mark.md` へ改名し、項目の `body` と変更履歴の `before.body` を書き換える。`yaml` と標準ライブラリだけを読み、このバージョンの形式を自分で組み立てる。
 constants:
   - name: KIND_FILES
     title: 種類のファイル
@@ -39,12 +39,12 @@ functions:
       type: list[str]
       description: 変えたファイル（ワークスペースからの相対パス。改名した本文は改名後のパス。何も変えなければ空）
     process: |-
-      1. `.mindstella/docs/` の直下の `*.md` のうち名前が `MARK_SUFFIX` で終わらないファイルを名前の順に集める。どれかの改名先 `{名前}.mark.md` が既にあれば、何も書かずに `RuntimeError` を送る
+      1. `.mindstella/docs/` の直下の `*.md` のうち名前が `MARK_SUFFIX` で終わらないファイルを名前の順に集める。どれかの改名先 `{名前}.mark.md` が既にあれば、何も書かずに `RuntimeError` を送信する
       2. `KIND_FILES` の各ファイルの `items[]` の `body` と、`HISTORY_FILE` の各項目の行の `history[].before.body` のうち、`docs/{名前}.md` で `MARK_SUFFIX` で終わらない値を `docs/{名前}.mark.md` に置き換える（キーの並び・`updated`・変更履歴の並びは変えない）
       3. 1 で集めたファイルを `os.replace` で改名し、2 で書き換えた YAML だけを一時ファイルに書いてから置き換え、変えたファイルを返す。改名するファイルも書き換える値も無ければ何も書かない
     exceptions:
       - name: RuntimeError
-        condition: 改名先の `.mark.md` が既にある、または YAML を読めない。手順の `StepError` にして写しから戻すのは移行が担う
+        condition: 改名先の `.mark.md` が既にある、または YAML を読めない。手順の `StepError` にしてコピーから戻すのは移行が担う
     unit_tests:
       - name: test_migrate
         case: 正常

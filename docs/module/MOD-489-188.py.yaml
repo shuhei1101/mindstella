@@ -98,16 +98,16 @@ constants:
     summary: 本文の Markdown と HTML を置くフォルダ名（ワークスペースの直下。`body_root(root)`）
     value: '"docs"'
   - name: LEGACY_SETTINGS_FILE
-    title: 前の版の設定のファイル名
+    title: 前のバージョンの設定のファイル名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 記録の形式の移行
-    summary: v0.6.0 より前の版の設定のファイル名。直下にあってもワークスペースとしては扱わず、見つけたら移し替えを案内する（`require_workspace`）・作らない（`create_workspace`）・移し替えだけが見分ける（モジュール構成『移行』）
+    summary: v0.6.0 より前のバージョンの設定のファイル名。直下にあってもワークスペースとしては扱わず、見つけたら移し替えを案内する（`require_workspace`）・作らない（`create_workspace`）・移し替えだけが見分ける（モジュール構成『移行』）
     value: '"mindmap.yaml"'
   - name: RECORD_DIR
     title: 記録のフォルダ名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
-    summary: ワークスペースの直下に置く、設定・種類ごとの YAML・版・ロックなど、本文と埋め込むファイルのほかの記録をまとめるフォルダ名（ER 図『ワークスペース』）
+    summary: ワークスペースの直下に置く、設定・種類ごとの YAML・バージョン・ロックなど、本文と埋め込むファイルのほかの記録をまとめるフォルダ名（ER 図『ワークスペース』）
     value: '".mindstella"'
   - name: EDITOR
     title: 編集した人
@@ -137,10 +137,10 @@ functions:
         description: 項目の ID
     returns:
       type: Kind | None
-      description: 種類。`{頭の文字}-{正の整数}` の形でないか、頭の文字がどの種類にも当たらなければ `None`
+      description: 種類。`{頭の文字}-{正の整数}` の形式でないか、頭の文字がどの種類にも当たらなければ `None`
     process: |-
-      1. `{英大文字}-{数字}` の形かを確かめる
-         - 形が合わない場合、`None` を返す
+      1. `{英大文字}-{数字}` の形式かを確かめる
+         - 構造が合わない場合、`None` を返す
       2. 頭の文字が `prefix` に一致する種類を `KINDS` から引いて返す（無ければ `None`）
     unit_tests:
       - name: test_kind_of_id_when_known_prefix
@@ -151,7 +151,7 @@ functions:
         expected: '`decision`・`log`'
       - name: test_kind_of_id_when_unknown
         case: 正常
-        summary: 形が合わない・頭の文字が無い ID は None
+        summary: 構造が合わない・頭の文字が無い ID は None
         condition: '`X-1`・`D-`・`D-0x`・`d-1`'
         mock: なし
         expected: どれも `None`
@@ -162,7 +162,7 @@ functions:
     usecase: 共通
     scope: public
     summary: ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す
-    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』、『移行』の版のファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `workspace_path` で作り、本文は `docs/`、ほかは `.mindstella/` から始まる。本文のフォルダは `body_root` が返す直下の `docs/` で、項目の `body` は記録のフォルダからの相対パス（`BODY_REF_PREFIX` で始まる）。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
+    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』、『移行』のバージョンのファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `workspace_path` で作り、本文は `docs/`、ほかは `.mindstella/` から始まる。本文のフォルダは `body_root` が返す直下の `docs/` で、項目の `body` は記録のフォルダからの相対パス（`BODY_REF_PREFIX` で始まる）。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
     args:
       - name: root
         type: Path

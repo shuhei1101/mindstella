@@ -1,12 +1,12 @@
 id: MOD-489-87
 title: プレビュー / term-tip
-lead: 部品設計『本文の印のツールチップ.tsx』の props・イベント・状態を持つ。
+lead: 部品設計『本文のマーカーのツールチップ.tsx』の props・イベント・状態を持つ。
 components:
   - name: TermTip
-    title: 本文の印のツールチップ
+    title: 本文のマーカーのツールチップ
     kind: コンポーネント
     usecase: 項目の詳細を読む
-    summary: 部品設計『本文の印のツールチップ.tsx』の props・イベント・状態を持つ
+    summary: 部品設計『本文のマーカーのツールチップ.tsx』の props・イベント・状態を持つ
     refs:
       - CMP-489-36#
     container: frontend/src/shared/components/term-tip.tsx

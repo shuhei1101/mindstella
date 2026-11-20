@@ -7,13 +7,13 @@ classes:
     title: 常駐サーバーが起動直後に終わった
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
-    summary: 起動した常駐サーバーが待ち受ける前に落ちた（`systemctl --user is-active` が `failed`・`activating`）。ユニットの状態（`state`）と、`server.log` の書き足された末尾（`log_tail`）を持ち、`main` が出す
+    summary: 起動した常駐サーバーが待ち受ける前に落ちた（`systemctl --user is-active` が `failed`・`activating`）。ユニットの状態（`state`）と、`server.log` の追記された末尾（`log_tail`）を持ち、`main` が出す
     kind: クラス
     inherits: Exception
     properties:
       - name: log_tail
         type: list[str]
-        description: 起動してから `server.log` に書き足された行の末尾（`LOG_TAIL_LINES` 行まで）
+        description: 起動してから `server.log` に追記された行の末尾（`LOG_TAIL_LINES` 行まで）
   - name: ServerStartTimeoutError
     title: 常駐サーバーが応答しない
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
@@ -56,7 +56,7 @@ constants:
     title: 起動を確かめる間隔
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
-    summary: 起動を待つ間に `GET /_admin/status` を送る間隔の秒数
+    summary: 起動を待つ間に `GET /_admin/status` を送信する間隔の秒数
     value: '0.2'
   - name: LOG_TAIL_LINES
     title: 示す記録の行数
@@ -77,13 +77,13 @@ constants:
     summary: 常駐サーバーの systemd --user のユニット
     value: '"mindstella.service"'
   - name: UNIT_RESTART_SEC
-    title: 起動し直すまでの秒数
+    title: 再起動するまでの秒数
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
-    summary: ユニットの `RestartSec`。起動を待つ上限（10 秒）の間の起動し直しが 1 回までになる値
+    summary: ユニットの `RestartSec`。起動を待つ上限（10 秒）の間の再起動が 1 回までになる値
     value: '5'
   - name: UNIT_START_LIMIT
-    title: 起動し直しの上限
+    title: 再起動の上限
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     summary: ユニットの `StartLimitIntervalSec`・`StartLimitBurst`
@@ -104,7 +104,7 @@ constants:
     title: ポートが使われている
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
-    summary: '`fetch_status` が、つながるが mindstella の応答でないときに返す印'
+    summary: '`fetch_status` が、つながるが mindstella の応答でないときに返すマーカー'
     value: '"port_in_use"'
 functions:
   - name: main
@@ -113,7 +113,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: 常駐サーバーが同じバージョンと同じプラグインのフォルダで待ち受けていれば何もせず、違えば違いと再起動の手順を示し、ポートが別のプロセスに使われていれば起動せずに示し、落ちていれば systemd --user のユニットを書いて起動し、待ち受けるまで待つ。`--restart` では待ち受けていてもユニットを書き直して起動し直す。ポートを別のプロセスが使っているとき（`fetch_status` が `PORT_IN_USE`）と systemd --user が使えないとき（`show-environment` が 0 でない）は、例外を作らずに案内を出して止まる
+    summary: 常駐サーバーが同じバージョンと同じプラグインのフォルダで待ち受けていれば何もせず、違えば違いと再起動の手順を示し、ポートが別のプロセスに使われていれば起動せずに示し、落ちていれば systemd --user のユニットを書いて起動し、待ち受けるまで待つ。`--restart` では待ち受けていてもユニットを書き直して再起動する。ポートを別のプロセスが使っているとき（`fetch_status` が `PORT_IN_USE`）と systemd --user が使えないとき（`show-environment` が 0 でない）は、例外を作らずに案内を出して止まる
     description: 末尾で `sys.exit(main())`。SessionStart のフックは `--hook` を付け、起動のコマンドは付けずに呼ぶ。`mindstella server restart` は `--restart` を付ける
     side_effects: ユニットのファイルを書き、`systemctl --user` を呼ぶ。案内を標準出力か標準エラーに書く
     args:
@@ -164,7 +164,7 @@ functions:
         required: false
         default: Path.home() / ".mindmap" / "server.log"
         passing: keyword
-        description: 常駐サーバーの標準出力と標準エラーを書き足すファイル
+        description: 常駐サーバーの標準出力と標準エラーを追記するファイル
     returns:
       type: int
       description: 終了コード（`--hook` はどの結末も 0。無いときは 0 待ち受けている / 1 起動できない / 2 引数の誤りは argparse が終える）
@@ -173,12 +173,12 @@ functions:
       2. 確かめるポートを読む（`environ` の `MINDSTELLA_PORT`。無いか空なら `DEFAULT_PORT`）
          - 1〜65535 の整数でなければ、`[mindstella] エラー: MINDSTELLA_PORT の値 {値} は誤りです。1〜65535 の整数を渡してください` を出して失敗の終了コードを返す
       3. `fetch(port)` で状態を読む
-         - 状態が返った場合、`version` とプラグインのバージョン（`read_installed_version(PLUGIN_ROOT)`）を比べる。同じなら何も出さずに 0 を返す。違えば、`[mindstella] 常駐サーバーのバージョン {待ち受けている版} と、インストールしたプラグインのバージョン {今の版} が違います` と、`server_stop` で止めてから Claude Code を立ち上げ直す手順の行を出して 0 を返す（起動し直さない）
+         - 状態が返った場合、`version` とプラグインのバージョン（`read_installed_version(PLUGIN_ROOT)`）を比べる。同じなら何も出さずに 0 を返す。違えば、`[mindstella] 常駐サーバーのバージョン {待ち受けているバージョン} と、インストールしたプラグインのバージョン {今のバージョン} が違います` と、`server_stop` で止めてから Claude Code を立ち再起動する手順の行を出して 0 を返す（再起動しない）
       4. 依存を確かめる（`run_check_env`。仮想環境は `environ` の `MINDSTELLA_VENV`、無いか空なら `default_venv_dir()`）
          - `VenvNotFoundError`・`PythonVersionError`・`DependencyMissingError` を捕まえた場合、`[mindstella] エラー: 仮想環境の依存がそろっていません（{足りない配布名を・でつないだもの}）` と、`report` の `install` があればそのコマンドの行（無ければ Python 3.12 以上を入れてから仮想環境を作る案内の行）を出して、失敗の終了コードを返す
       5. `log_file` の今の大きさを控え（無ければ 0）、`start(python_path, environ=environ, log_file=log_file)` で起動する
       6. 待ち受けるまで待つ（`wait_until_ready`）
-         - 待ち受けた場合、`--hook` なら `[mindstella] 常駐サーバーを起動しました（ポート {port}）` と `/mcp` で mindstella につなぎ直す案内を出し、無ければ同じ 1 行目だけを出す。0 を返す
+         - 待ち受けた場合、`--hook` なら `[mindstella] 常駐サーバーを起動しました（ポート {port}）` と `/mcp` で mindstella につなぎ修正する案内を出し、無ければ同じ 1 行目だけを出す。0 を返す
          - `PortInUseError` を捕まえた場合、`[mindstella] エラー: ポート {port} は別のプロセスが使っています` と、`MINDSTELLA_PORT` で別のポートを渡す案内の行を出して、失敗の終了コードを返す
          - `ServerExitedError` を捕まえた場合、`[mindstella] エラー: 常駐サーバーが起動直後に終わりました（終了コード {n}）` と記録の末尾の行と `log_file` のパスを出して、失敗の終了コードを返す
          - `ServerStartTimeoutError` を捕まえた場合、`[mindstella] エラー: 常駐サーバーが {START_TIMEOUT_SEC} 秒以内に応答しません` と、`log_file` を見る案内の行を出して、失敗の終了コードを返す
@@ -198,14 +198,14 @@ functions:
     unit_tests:
       - name: test_main
         case: 正常
-        summary: 落ちていれば起動し、つなぎ直す案内を出す
-        condition: '`["--hook"]`。`fetch` は 1 回目つながらない、2 回目以降 `{name: mindstella, version: 今の版, plugin_root: このフォルダ}` を返す。`systemctl` は 0 を返す。`run_check_env` はそろっている結果を返す'
+        summary: 落ちていれば起動し、つなぎ修正する案内を出す
+        condition: '`["--hook"]`。`fetch` は 1 回目つながらない、2 回目以降 `{name: mindstella, version: 今のバージョン, plugin_root: このフォルダ}` を返す。`systemctl` は 0 を返す。`run_check_env` はそろっている結果を返す'
         mock: '`fetch`・`systemctl`・`run_check_env`・`time.sleep`・ユニットのフォルダ（`XDG_CONFIG_HOME`）'
         expected: 0 を返し、ユニットのファイルが書かれ、`systemctl` が `show-environment`・`daemon-reload`・`start mindstella.service` の順で呼ばれ、`stdout` に `ポート 8784` と `/mcp` がある
       - name: test_main_when_running
         case: 正常
         summary: 同じバージョンが待ち受けていれば何もしない
-        condition: '`["--hook"]`。`fetch` が `{name: mindstella, version: 今の版}` を返す'
+        condition: '`["--hook"]`。`fetch` が `{name: mindstella, version: 今のバージョン}` を返す'
         mock: '`fetch`・`start`'
         expected: 0 を返し、`start` が呼ばれず、`stdout` が空
       - name: test_main_when_outdated
@@ -223,7 +223,7 @@ functions:
       - name: test_main_when_dependency_missing
         case: 異常
         summary: 依存が足りなければ起動せずにそろえるコマンドを示す
-        condition: '`fetch` が `None` を返し、`run_check_env` が mcp の足りない `DependencyMissingError(report)` を送る。`parametrize`: `["--hook"]` / `[]`'
+        condition: '`fetch` が `None` を返し、`run_check_env` が mcp の足りない `DependencyMissingError(report)` を送信する。`parametrize`: `["--hook"]` / `[]`'
         mock: '`fetch`・`start`・`run_check_env`'
         expected: 前者は 0、後者は 1 を返し、案内に `mcp` と `report` の `install` がある。`start` が呼ばれない
       - name: test_main_when_old_syntax
@@ -246,7 +246,7 @@ functions:
         expected: '`--hook` で 0、無しで 1。ユニットのファイルが書かれず、出力に systemd --user が要ることの案内'
       - name: test_main_when_restart
         case: 正常
-        summary: --restart はユニットを書き直して起動し直す
+        summary: --restart はユニットを書き直して再起動する
         condition: '`["--restart"]`、`fetch` は待ち受けている状態を返す'
         mock: '`fetch`・`systemctl`'
         expected: ユニットの `ExecStart` がこのフォルダの `server.py` で、`systemctl` が `daemon-reload`・`restart mindstella.service` の順で呼ばれる
@@ -279,7 +279,7 @@ functions:
       type: dict | Literal["port_in_use"] | None
       description: 200 で JSON のオブジェクトの `name` が `SERVER_NAME` ならその辞書。それ以外は `None`
     process: |-
-      1. `opener.open(URL, timeout=STATUS_TIMEOUT_SEC)` で GET を送る
+      1. `opener.open(URL, timeout=STATUS_TIMEOUT_SEC)` で GET を送信する
       2. 200 で、本文を JSON のオブジェクトとして読め、`name` が `SERVER_NAME` ならその辞書を返す
          - つながらない・時間切れ・200 でない・JSON でない・`name` が違う（`OSError`・`urllib.error.URLError`・`ValueError` を含む）ときは `None` を返す
     unit_tests:
@@ -346,7 +346,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: '`mindstella.service` の中身（`Type=exec`・`ExecStart`・`StandardOutput=append:`・`StandardError=append:`・`Restart=on-failure`・`RestartSec`・`StartLimitIntervalSec`・`StartLimitBurst`・`Environment=`・`KillMode=process`（常駐サーバーが立てた tmux のサーバーを、起動し直しと停止で止めない））を返す'
+    summary: '`mindstella.service` の中身（`Type=exec`・`ExecStart`・`StandardOutput=append:`・`StandardError=append:`・`Restart=on-failure`・`RestartSec`・`StartLimitIntervalSec`・`StartLimitBurst`・`Environment=`・`KillMode=process`（常駐サーバーが立てた tmux のサーバーを、再起動と停止で止めない））を返す'
     args:
       - name: python_path
         type: str
@@ -447,7 +447,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: '`GET /_admin/status` に応答するまで `START_POLL_SEC` ごとに確かめ、`systemctl --user is-active mindstella.service` が `failed`・`activating` なら ServerExitedError、上限を過ぎたら ServerStartTimeoutError を送る'
+    summary: '`GET /_admin/status` に応答するまで `START_POLL_SEC` ごとに確かめ、`systemctl --user is-active mindstella.service` が `failed`・`activating` なら ServerExitedError、上限を過ぎたら ServerStartTimeoutError を送信する'
     args:
       - name: port
         type: int
@@ -493,10 +493,10 @@ functions:
       description: 待ち受けた常駐サーバーの状態
     process: |-
       1. 上限を `clock() + START_TIMEOUT_SEC` にし、上限まで次を繰り返す
-         - `process.poll()` が終了コードを返した場合、`fetch(port)` をもう 1 回呼び、状態が返ればそれを返す（同時に起動した別の `ensure_server.py` の常駐サーバーが先に待ち受けた）。状態が返らず、`127.0.0.1` のそのポートへつながれば `PortInUseError(port)`、つながらなければ記録のファイルの `log_offset` より後ろの末尾 `LOG_TAIL_LINES` 行を持った `ServerExitedError` を送る
+         - `process.poll()` が終了コードを返した場合、`fetch(port)` をもう 1 回呼び、状態が返ればそれを返す（同時に起動した別の `ensure_server.py` の常駐サーバーが先に待ち受けた）。状態が返らず、`127.0.0.1` のそのポートへつながれば `PortInUseError(port)`、つながらなければ記録のファイルの `log_offset` より後ろの末尾 `LOG_TAIL_LINES` 行を持った `ServerExitedError` を送信する
          - `fetch(port)` が状態を返せば、それを返す
          - `START_POLL_SEC` 待つ
-      2. 上限を過ぎたら `ServerStartTimeoutError` を送る
+      2. 上限を過ぎたら `ServerStartTimeoutError` を送信する
     exceptions:
       - name: PortInUseError
         condition: プロセスが終わり、`fetch` が状態を返さず、ポートに別のプロセスがつながる
@@ -516,7 +516,7 @@ functions:
         summary: 終わったら、先に待ち受けた mindstella があればその状態を返し、無ければポートの使われ方で分ける
         condition: '`unit_state` が `parametrize`: `failed` / `activating`。`fetch` は常に `None`。`log_file` の `log_offset` より後ろに 30 行'
         mock: '`fetch`・`unit_state`'
-        expected: '`ServerExitedError`（`state` がその状態、`log_tail` が書き足した末尾の 20 行）'
+        expected: '`ServerExitedError`（`state` がその状態、`log_tail` が追記した末尾の 20 行）'
         exception: プロセスが終わった
       - name: test_wait_until_ready_when_timeout
         case: 異常

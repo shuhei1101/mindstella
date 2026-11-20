@@ -3,9 +3,9 @@ title: 前回参照した時点の更新
 entry:
   kind: endpoint
   value: POST `/_admin/sessions/{session}/read_point`
-lead: MindStella のセッションの SessionStart のフックが、『再開の状況』の注入文を標準出力に書き終えた後に呼び、前回参照した時点を『再開の状況』が返した通し番号に進め、知らせた移し替えの報告を消す。
+lead: MindStella のセッションの SessionStart のフックが、『再開の状況』の注入文を標準出力に書き終えた後に呼び、前回参照した時点を『再開の状況』が返した連番に進め、知らせた移し替えの報告を削除する。
 idempotent: true
-side_effects: 状態のフォルダの `workspaces/{ワークスペースの ID}/read_point.json` の `read_seq` を `until_seq` に書き換え、`migration` で知らせた移し替えの報告を状態のフォルダから消す。ワークスペースの記録は書き換えない
+side_effects: 状態のフォルダの `workspaces/{ワークスペースの ID}/read_point.json` の `read_seq` を `until_seq` に書き換え、`migration` で知らせた移し替えの報告を状態のフォルダから削除する。ワークスペースの記録は書き換えない
 request:
   - name: session
     type: str
@@ -42,13 +42,13 @@ constraints:
   - item: 戻さない
     constraint: 今の `read_seq` が `until_seq` 以上なら書き換えない（`changes_since_read` が先に進めた時点を戻さない）。読むのと書き換えるのをワークスペースごとの鍵の中で行う
   - item: 移し替えの報告
-    constraint: 『再開の状況』が `migration` を返した後に、この呼び出しで消す。呼ばれなければ、次の『再開の状況』がもう一度返す
+    constraint: 『再開の状況』が `migration` を返した後に、この呼び出しで削除する。呼ばれなければ、次の『再開の状況』がもう一度返す
 flows:
   - name: 正常系
-    summary: until_seq まで前回参照した時点を進め、移し替えの報告を消す
+    summary: until_seq まで前回参照した時点を進め、移し替えの報告を削除する
     setup:
       - name: Mock
-        description: なし（HTTP のクライアントで送る）
+        description: なし（HTTP のクライアントで送信する）
       - name: 常駐サーバー
         description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
       - name: make_workspace
@@ -61,7 +61,7 @@ flows:
         participant ST as 状態のフォルダ
 
         クライアント->>API: until_seq: 5
-        API->>ST: read_seq を 5 に書き、移し替えの報告を消す
+        API->>ST: read_seq を 5 に書き、移し替えの報告を削除する
         API-->>クライアント: 200 read_seq: 5
       ```
     expected:
@@ -90,7 +90,7 @@ flows:
       - 応答が 200 で `read_seq` が 5
       - '`read_point.json` の `read_seq` が 5 のまま'
     test: test_normal_when_already_ahead
-  - name: 異常系（通し番号を超える・400）
+  - name: 異常系（連番を超える・400）
     summary: until_seq が last_seq より大きいと 400 を返し、何も書かない
     setup:
       - name: Mock

@@ -21,14 +21,14 @@ functions:
       type: list[str]
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
-      1. 種類ごとの YAML を読む。無いファイルは飛ばす。一番上が辞書でないか `items` が配列でない場合、`{ファイル名} の形が崩れています` の `ValueError` を送る
-      2. 項目ごとに `related` を作り直す。並びは `depends_on`・`parent`・`for`・元の `related` の順で、`depends_on`・`for` の ID と `parent` の ID は `type` にそのキーの名前、元の `related` の文字列は `type: see_also` を付ける。既に `{to, type}` の要素はそのまま残し、同じ `to`・`type` の組は最初の 1 件だけ残す
-      3. `depends_on`・`parent`・`for` のキーを消す。`updated`・`history` は変えない（`history` の `before` のキーの名前も変えない）
+      1. 種類ごとの YAML を読む。無いファイルは飛ばす。一番上が辞書でないか `items` が配列でない場合、`{ファイル名} の形式が崩れています` の `ValueError` を送信する
+      2. 項目ごとに `related` を再作成する。並びは `depends_on`・`parent`・`for`・元の `related` の順で、`depends_on`・`for` の ID と `parent` の ID は `type` にそのキーの名前、元の `related` の文字列は `type: see_also` を付ける。既に `{to, type}` の要素はそのまま残し、同じ `to`・`type` の組は最初の 1 件だけ残す
+      3. `depends_on`・`parent`・`for` のキーを削除する。`updated`・`history` は変えない（`history` の `before` のキーの名前も変えない）
       4. 変えたファイルだけを『読み書きと検証』の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
       5. 変えたファイルのワークスペースからの相対パスを返す
     exceptions:
       - name: ValueError
-        condition: 種類の YAML の形が崩れている
+        condition: 種類の YAML の形式が崩れている
       - name: OSError
         condition: 読めない・書けない
     unit_tests:

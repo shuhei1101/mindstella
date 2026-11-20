@@ -40,7 +40,7 @@ args:
   - name: rows
     type: オブジェクトの配列
     required: true
-    description: 行にする項目（埋め込みのデータの項目そのもの）。`withdrawn` が真の行は、差分の表示によらずタイトルの右、差分の印より前に部品『取り下げの札』を置き、行の文字を薄くする
+    description: 行にする項目（埋め込みのデータの項目そのもの）。`withdrawn` が真の行は、差分の表示によらずタイトルの右、差分のマーカーより前に部品『取り下げの札』を置き、行の文字を薄くする
   - name: sort
     type: オブジェクト
     required: false
@@ -64,13 +64,13 @@ args:
   - name: marks
     type: オブジェクト
     required: false
-    default: なし（印を出さない）
-    description: 項目の ID → `new`（新規）か `changed`（変更）。差分の表示の間だけ渡され、当たる行のタイトルの右に部品『差分の印』を文言なしで置く
+    default: なし（マーカーを出さない）
+    description: 項目の ID → `new`（新規）か `changed`（変更）。差分の表示の間だけ渡され、当たる行のタイトルの右に部品『差分のマーカー』を文言なしで置く
   - name: comments
     type: オブジェクト
     required: false
-    default: なし（印を出さない）
-    description: 項目の ID → レビュー中のコメントの件数（1 以上）。サーバーにつながって開いたときだけ渡され、当たる行のタイトルの右、差分の印の後ろに部品『コメントの印』を置く。収まらなければ次の行へ送る
+    default: なし（マーカーを出さない）
+    description: 項目の ID → レビュー中のコメントの件数（1 以上）。サーバーにつながって開いたときだけ渡され、当たる行のタイトルの右、差分のマーカーの後ろに部品『コメントのマーカー』を置く。収まらなければ次の行へ送信する
 events:
   - name: 並べ替え
     when: 見出しの文字を押したとき
@@ -79,7 +79,7 @@ events:
   - name: 絞り込み
     when: チップの × か「すべて解除」を押したとき
     value: '`onFilter(key, values)`（引数は key と値の配列）'
-    description: 使う側が `filters` を変えて表と絞り込みのドロワーを描き直す。サーバーの配信では、外した後の条件をその画面の条件として端末の保存領域に残す（配る書き出しでは残さない）
+    description: 使う側が `filters` を変えて表と絞り込みのドロワーを再描画する。サーバーの配信では、外した後の条件をその画面の条件として端末の保存領域に残す（配る書き出しでは残さない）
   - name: ピン留め
     when: 見出しのピンのボタンを押したとき
     value: '`onPin(key)`（引数は key）'
@@ -98,7 +98,7 @@ events:
     description: 使う側が詳細パネルを開く
 states:
   - name: Default
-    description: 通常。並べ替えの印は見出しにホバーかフォーカスしたときだけ出す。チップの行の右端に列のアイコンと「列の表示」のボタンを置き、チップの行と表の間を 12px 空ける
+    description: 通常。並べ替えのマーカーは見出しにホバーかフォーカスしたときだけ出す。チップの行の右端に列のアイコンと「列の表示」のボタンを置き、チップの行と表の間を 12px 空ける
   - name: SortedAsc
     description: タイトルで昇順。向きの矢印を出し、`aria-sort="ascending"`
     args:
@@ -122,18 +122,18 @@ states:
   - name: LongTitle
     description: 長いタイトル。タイトルの列は折り返し、ほかの列は崩れない
   - name: NoMatch
-    description: 該当なし（ピン留め中）。表の場所に該当なしと次の操作を書き、横に送っても文言は表の枠の左に留める
+    description: 該当なし（ピン留め中）。表の場所に該当なしと次の操作を書き、横に送信しても文言は表の枠の左に留める
     args:
       - name: filters
         value: '{"conf": ["中"]}'
       - name: pinTo
         value: id
   - name: ColumnsPopover
-    description: 列の表示のポップオーバーを開いている。題は「列の表示」。タイトルの列は外せない
+    description: 列の表示のポップオーバーを開いている。タイトルは「列の表示」。タイトルの列は外せない
     notes:
       見せ方: '`play` で「列の表示」のボタンを押して開く'
   - name: Marked
-    description: 差分の表示の間。変えた行のタイトルの右に ●、足した行に + を置き、印の無い行は変わらない
+    description: 差分の表示の間。変えた行のタイトルの右に ●、追加した行に + を置き、マーカーの無い行は変わらない
     args:
       - name: marks
         value: '{"D-5": "changed", "D-37": "new"}'
@@ -147,14 +147,14 @@ states:
       - name: filters
         value: '{"~title": ["移し"]}'
   - name: Commented
-    description: コメントを書いた行。タイトルの右に差分の印、その後ろにコメントの印を置き、印の無い行は変わらない
+    description: コメントを書いた行。タイトルの右に差分のマーカー、その後ろにコメントのマーカーを置き、マーカーの無い行は変わらない
     args:
       - name: marks
         value: '{"D-5": "changed"}'
       - name: comments
         value: '{"D-5": 1, "D-37": 12}'
   - name: Withdrawn
-    description: 取り下げた行。タイトルの右に取り下げの札、その後ろに差分の印を置き、行の文字を薄くする。取り下げていない行は変わらない。ホバー・フォーカスの見せ方はほかの行と同じ
+    description: 取り下げた行。タイトルの右に取り下げの札、その後ろに差分のマーカーを置き、行の文字を薄くする。取り下げていない行は変わらない。ホバー・フォーカスの見せ方はほかの行と同じ
     args:
       - name: marks
         value: '{"R-1": "changed"}'
@@ -170,4 +170,4 @@ refs:
   - CMP-489-47#
   - IF-489-70#
 notes:
-  組み方: TanStack Table の `useReactTable` に列と行を渡し、shadcn の data-table のガイドの形（`Table`・`TableHeader`・`TableRow`・`TableCell` の部品と、並べ替え・絞り込み・列の表示・列のピン留めの状態）で組む。並べ替えと絞り込みの状態は使う側が URL の search params から渡し、表は受け取った状態で行を並べて絞る（インターフェース定義『SPAを開く』の `sort`・`f.{列}`）
+  組み方: TanStack Table の `useReactTable` に列と行を渡し、shadcn の data-table のガイドの形式（`Table`・`TableHeader`・`TableRow`・`TableCell` の部品と、並べ替え・絞り込み・列の表示・列のピン留めの状態）で組む。並べ替えと絞り込みの状態は使う側が URL の search params から渡し、表は受け取った状態で行を並べて絞る（インターフェース定義『SPAを開く』の `sort`・`f.{列}`）

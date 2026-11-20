@@ -1,11 +1,11 @@
 title: サーバー / 入口 / startup.py
-lead: 常駐サーバーの起動時の照合（IF-605-1）を受け持つ。待ち受けの前に ID の一覧の作り直しと状態の照合を行い、待ち受けと並行するスレッドでエージェントフローの配信元の行を確認する。
+lead: 常駐サーバーの起動時の照合（IF-605-1）を受け持つ。待ち受けの前に ID の一覧の再作成と状態の照合を行い、待ち受けと並行するスレッドでエージェントフローの配信元の行を確認する。
 constants:
   - name: STARTUP_GET_TIMEOUT_SEC
     title: 待ち受けの前の GET の上限
     container: plugins/mindstella/skills/mindmap/scripts/startup.py
     usecase: 常駐サーバーの起動
-    summary: 待ち受けの前に ID の一覧を作り直すときの `GET /settings/sources` を打ち切る秒数
+    summary: 待ち受けの前に ID の一覧を再作成するときの `GET /settings/sources` を打ち切る秒数
     value: '5.0'
     refs:
       - IF-605-1#constraints[待ち受けの前の `GET` の上限]
@@ -22,7 +22,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/startup.py
     usecase: 常駐サーバーの起動
     scope: public
-    summary: ID の一覧が無ければ作り直し、状態の照合を 1 回して戻る。どれに失敗しても例外を送らない
+    summary: ID の一覧が無ければ再作成し、状態の照合を 1 回して戻る。どれに失敗しても例外を送出しない
     side_effects: '`workspaces.yaml` を作ることがある。`running` の `session.json` を `crashed` にし、『停止の通知』を呼ぶことがある'
     args:
       - name: ctx
@@ -34,9 +34,9 @@ functions:
       type: None
       description: なし
     process: |-
-      1. 状態のフォルダに ID の一覧が無ければ作り直す（`rebuild_ids_if_missing`）
-         - `Exception`（`workspaces.yaml` を書けない `OSError` など）を捕まえた場合、作り直しを飛ばして 2 へ進む
-           - `[ERROR]` ID の一覧の作り直しに失敗した（例外の種類・理由）
+      1. 状態のフォルダに ID の一覧が無ければ再作成する（`rebuild_ids_if_missing`）
+         - `Exception`（`workspaces.yaml` を書けない `OSError` など）を捕まえた場合、再作成を飛ばして 2 へ進む
+           - `[ERROR]` ID の一覧の再作成に失敗した（例外の種類・理由）
       2. 状態の照合を 1 回する（`sessions.watch_crashes_once`）
          - `[INFO]` 起動時の照合で落ちたものを記録した（数）
          - `yaml.YAMLError`・`ValueError`（ID の一覧が読めない）を捕まえた場合、照合を飛ばす
@@ -48,30 +48,30 @@ functions:
     unit_tests:
       - name: test_reconcile_before_listen
         case: 正常
-        summary: 作り直しの後に照合する
+        summary: 再作成の後に照合する
         condition: '`rebuild_ids_if_missing` と `sessions.watch_crashes_once` を呼ばれた順に記録する関数に差し替える'
         mock: '`rebuild_ids_if_missing`・`sessions.watch_crashes_once`（monkeypatch）'
-        expected: 作り直し → 照合の順に 1 回ずつ呼ばれる
+        expected: 再作成 → 照合の順に 1 回ずつ呼ばれる
       - name: test_reconcile_before_listen_when_ids_unreadable
         case: 正常
         summary: ID の一覧が読めなければ照合を飛ばして戻る
         condition: 一時フォルダの `workspaces.yaml` が YAML として読めない
         mock: なし（一時フォルダ）
-        expected: 例外を送らずに戻り、`ERROR` の記録が 1 件ある。`workspaces.yaml` が書き換わっていない
+        expected: 例外を送出しずに戻り、`ERROR` の記録が 1 件ある。`workspaces.yaml` が書き換わっていない
       - name: test_reconcile_before_listen_when_rebuild_fails
         case: 正常
-        summary: 作り直しが失敗しても照合して戻る
-        condition: '`rebuild_ids_if_missing` が `OSError` を送る。`sessions.watch_crashes_once` を呼ばれた回数を数える関数に差し替える'
+        summary: 再作成が失敗しても照合して戻る
+        condition: '`rebuild_ids_if_missing` が `OSError` を送信する。`sessions.watch_crashes_once` を呼ばれた回数を数える関数に差し替える'
         mock: '`rebuild_ids_if_missing`・`sessions.watch_crashes_once`（monkeypatch）'
-        expected: 例外を送らずに戻り、`watch_crashes_once` が 1 回呼ばれ、`ERROR` の記録が 1 件ある
+        expected: 例外を送出しずに戻り、`watch_crashes_once` が 1 回呼ばれ、`ERROR` の記録が 1 件ある
       - name: test_reconcile_before_listen_when_watch_fails
         case: 正常
         summary: 照合が想定外の例外で失敗しても戻る
-        condition: '`sessions.watch_crashes_once` が `PermissionError` を送る'
+        condition: '`sessions.watch_crashes_once` が `PermissionError` を送信する'
         mock: '`rebuild_ids_if_missing`・`sessions.watch_crashes_once`（monkeypatch）'
-        expected: 例外を送らずに戻り、`ERROR` の記録が 1 件ある
+        expected: 例外を送出しずに戻り、`ERROR` の記録が 1 件ある
   - name: rebuild_ids_if_missing
-    title: ID の一覧の作り直し
+    title: ID の一覧の再作成
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/startup.py
     usecase: 常駐サーバーの起動
@@ -91,10 +91,10 @@ functions:
       1. 状態のフォルダに `workspaces.yaml` があれば `None` を返す（`state.ids_exist`）
       2. 配信元の行を取得する（`project_index.get_settings(ctx.pi_port, timeout=STARTUP_GET_TIMEOUT_SEC)`）
          - `ProjectIndexError` を捕まえた場合、`None` を返す
-           - `[WARNING]` project-index へつながらず ID の一覧の作り直しを飛ばした（ステータス・理由）
+           - `[WARNING]` project-index へつながらず ID の一覧の再作成を飛ばした（ステータス・理由）
       3. ワークスペースの行の ID を並べ（`workspace_ids`）、一覧がまだ無ければ書く（`state.create_ids_if_missing`）
          - 書いた場合
-           - `[INFO]` ID の一覧を作り直した（数）
+           - `[INFO]` ID の一覧を再作成した（数）
          - 書かなかった（取得している間にできた）場合、`None` を返す
       4. 書いた ID の数を返す
     callees:
@@ -117,7 +117,7 @@ functions:
       - name: test_rebuild_ids_if_missing_when_project_index_fails
         case: 正常
         summary: project-index に失敗したら作らない
-        condition: '`workspaces.yaml` が無い。`get_settings` が `ProjectIndexError` を送る'
+        condition: '`workspaces.yaml` が無い。`get_settings` が `ProjectIndexError` を送信する'
         mock: '`project_index.get_settings`（monkeypatch）'
         expected: '`None` を返し、`workspaces.yaml` が無い。`WARNING` の記録が 1 件ある'
   - name: workspace_ids
@@ -156,8 +156,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/startup.py
     usecase: 常駐サーバーの起動
     scope: public
-    summary: '`mindstella-agent-flows` の行の `config` が今のプラグインの `agent-flows/dev-docs.yaml` と違えば書き換え、書き換えたかを返す。失敗しても例外を送らない'
-    side_effects: project-index の `PATCH /settings/sources/mindstella-agent-flows` を送ることがある
+    summary: '`mindstella-agent-flows` の行の `config` が今のプラグインの `agent-flows/dev-docs.yaml` と違えば書き換え、書き換えたかを返す。失敗しても例外を送出しない'
+    side_effects: project-index の `PATCH /settings/sources/mindstella-agent-flows` を送信することがある
     args:
       - name: ctx
         type: ServerContext
@@ -171,7 +171,7 @@ functions:
       1. 配信元の行を取得し、`mindstella-agent-flows` の行を引く（`project_index.get_settings(ctx.pi_port)`）
          - 行が無い場合、偽を返す
          - 行の `config`（並びなら先頭の要素。`_row_config`）が `str(PLUGIN_DIR / AGENT_FLOWS_CONFIG)` と同じ場合、偽を返す
-      2. `config` だけを今のパスへ書き換える（`project_index.patch_source(ctx.pi_port, AGENT_FLOWS_SOURCE, {"config": 今のパス})`。409 の 1 回の取得し直しは `patch_source` が行う）
+      2. `config` だけを今のパスへ書き換える（`project_index.patch_source(ctx.pi_port, AGENT_FLOWS_SOURCE, {"config": 今のパス})`。409 の 1 回の再取得は `patch_source` が行う）
          - `[INFO]` エージェントフローの配信元の行を書き換えた（前のパス・今のパス）
       3. 真を返す
       - 1・2 で `ProjectIndexError` を捕まえた場合、偽を返す
@@ -200,8 +200,8 @@ functions:
         expected: 偽を返し、`patch_source`・`add_source` が呼ばれない
       - name: test_check_agent_flows_source_when_project_index_fails
         case: 正常
-        summary: project-index に失敗しても例外を送らない
-        condition: '`parametrize`: `get_settings` が `ProjectIndexError` を送る / `patch_source` が `ProjectIndexError` を送る'
+        summary: project-index に失敗しても例外を送出しない
+        condition: '`parametrize`: `get_settings` が `ProjectIndexError` を送信する / `patch_source` が `ProjectIndexError` を送信する'
         mock: '`project_index.get_settings`・`project_index.patch_source`（monkeypatch）'
         expected: 偽を返し、`WARNING` の記録が 1 件ある
       - name: test_check_agent_flows_source_when_config_list

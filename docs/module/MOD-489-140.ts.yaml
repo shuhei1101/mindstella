@@ -20,7 +20,7 @@ functions:
       - name: test_read_prefs_when_legacy_written
         case: 正常
         summary: 今の画面が書いた JSON を読める
-        condition: 今の画面の `Prefs` の形の JSON（`columns`・`filters`・`diffSel`・`minimap`・`bodyLayout`）に、前のバージョンの項目 `tablePin` を含めたもの
+        condition: 今の画面の `Prefs` の形式の JSON（`columns`・`filters`・`diffSel`・`minimap`・`bodyLayout`）に、前のバージョンの項目 `tablePin` を含めたもの
         mock: '`localStorage`'
         expected: 全ての項目を同じ値で読める
     container: frontend/src/shared/stores/prefs-store.ts
@@ -117,7 +117,7 @@ stores:
   - name: usePrefsStore
     title: 端末の保存領域
     usecase: SPAを開く
-    summary: 今の画面の `Prefs`（`app.ts`）と同じ `mindmap-preview` のキーと値の形の JSON のうち、移す画面が使う項目だけを読み書きし、知らない項目を消さない
+    summary: 今の画面の `Prefs`（`app.ts`）と同じ `mindmap-preview` のキーと値の形式の JSON のうち、移す画面が使う項目だけを読み書きし、知らない項目を削除しない
     state:
       - name: columns
         type: Record<string, TablePrefs>

@@ -33,7 +33,7 @@ constants:
     summary: '`.storybook-react/main.ts` の `previewHead` が差し込む `<meta name="{この値}" content="{ref}">` の名前。`.storybook-react/preview.tsx` が読んで `setMdmarkSettings(undefined, ref)` を呼ぶ'
     value: '"mindstella-mdmark-ref"'
   - name: MDMARK_DIST_URL
-    title: jsDelivr の mdmark の配布物の URL の形
+    title: jsDelivr の mdmark の配布物の URL の形式
     container: .storybook/mdmark-ref.js
     usecase: 共通
     summary: 問い合わせた SHA の `dist/index.js` を jsDelivr が配るかを確認する URL（`{ref}` に SHA）

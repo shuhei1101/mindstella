@@ -13,12 +13,12 @@ catalogs:
     entries:
       - name: mount
         kind: 関数
-        purpose: 要素の中に Markdown を描き、描き直しと片付けの関数を返す
+        purpose: 要素の中に Markdown を描き、再描画と片付けの関数を返す
         params:
           - name: el
             type: HTMLElement
             required: true
-            description: 描く先の要素。中身を描いた結果で置き換え、class `mdmark` を足す
+            description: 描く先の要素。中身を描いた結果で置き換え、class `mdmark` を追加する
           - name: opts.markdown
             type: string
             required: true
@@ -38,18 +38,18 @@ catalogs:
         returns:
           - name: update
             type: '(markdown: string) => void'
-            description: 同じ要素に描き直す
+            description: 同じ要素に再描画する
           - name: destroy
             type: () => void
             description: 描いた中身と受け手を片付ける
         description: 描いたブロックは `data-source-line`（0 始まりのブロックの開始行）を持つ。フェンスのコード・字下げのコードは `pre` に、図（`mermaid`）と `html` のコードブロックは描かずに `pre` の中の `code.language-{言語}` に原文のまま残す。行全体の `<!-- html -->` 〜 `<!-- /html -->` の範囲は、中の HTML を要素のまま `div.mdmark-html` に描き（`data-source-line` を持たない）、範囲の中の図・チャート・`<mdmark-param>` の部品を動かせる。生の HTML の `onerror` の属性・`script` 要素・`javascript:` のリンクを取り除いて描く。GitHub の Alert は `markdown-alert` の囲みに「補足」「ヒント」「重要」「警告」「注意」の見出しで描く
       - name: version
         kind: 関数
-        purpose: 読み込んだ mdmark の版を返す
+        purpose: 読み込んだ mdmark のバージョンを返す
         returns:
           - name: '-'
             type: string
-            description: 版（`v0.8.0`）
+            description: バージョン（`v0.8.0`）
       - name: collectMatches
         kind: 関数
         purpose: 文書ごとに、用語に一致した位置を返す
@@ -86,7 +86,7 @@ verification:
   state: 済
   date: '2026-10-27'
   detail: 'PR #550 の PoC（PoC PR #551）で、jsDelivr の `@develop`（develop 95238122。`dist/` は 2026-11-14 の 73ca2603）を `integrity` なしで読み、`mount`・`collectMatches`・`version` が残ること、map の図、`config.map` の有無で種類の札とアイコンが変わること、`upgrade` の v0.11.0・v0.13.0 の変換を確かめた。配る書き出しの部品（`map.js`）の読み込みは shuhei1101/mdmark#624 を待つ。以前の確認: PR #348 の PoC（PoC PR #349）で、v0.8.0 のタグの commit `580fae8a` と `src` が同じ `a8c3d80` を読み、Chromium で埋め込んだ HTML の範囲・チャートの拡大と移動・操作できる部品と今の値のコピー・`collectMatches` の一致と正規化・`mount` の `index` の用語のツールチップを確かめた。JavaScript を `text/plain` で持たせ Blob の URL から `import()` した 1 枚の HTML が、通信を止めた `file://` で動くこと（`syntax` を止めたとき）も確かめた'
-license: MIT（develop のリポジトリの直下に LICENSE がある。v0.8.0 のリポジトリには LICENSE と `package.json` の `license` が無く、[shuhei1101/mdmark#140](https://github.com/shuhei1101/mdmark/issues/140) で追加する。追加されるまでは、MIT の本文を `plugins/mindstella/skills/mindmap/preview/licenses/mdmark-LICENSE.txt` に置き、バージョンを上げたら見直す）。同梱する依存（markdown-it・sanitize-html ほか）のライセンスは `dist/THIRD_PARTY_LICENSES.txt` に並ぶ。配る書き出しに入れるときは、名前・版・著作権の表示・ライセンスの本文と、`THIRD_PARTY_LICENSES.txt` の本文を残す
+license: MIT（develop のリポジトリの直下に LICENSE がある。v0.8.0 のリポジトリには LICENSE と `package.json` の `license` が無く、[shuhei1101/mdmark#140](https://github.com/shuhei1101/mdmark/issues/140) で追加する。追加されるまでは、MIT の本文を `plugins/mindstella/skills/mindmap/preview/licenses/mdmark-LICENSE.txt` に置き、バージョンを上げたら見直す）。同梱する依存（markdown-it・sanitize-html ほか）のライセンスは `dist/THIRD_PARTY_LICENSES.txt` に並ぶ。配る書き出しに入れるときは、名前・バージョン・著作権の表示・ライセンスの本文と、`THIRD_PARTY_LICENSES.txt` の本文を残す
 official_url: https://github.com/shuhei1101/mdmark
 selection:
   decision: 'Issue #339 で、プレビューの描画を mdmark に置き換えると決まっている。重なる機能（用語のツールチップ・コメント・差分・印刷ほか）は設定で止める（PR #342 の要件の案 A）'
@@ -103,7 +103,7 @@ limitations:
   - item: 行の範囲
     content: '`data-source-line` はブロックの開始行だけを持ち、0 始まり。フェンスのコードは開始行がフェンスの行になる'
   - item: 埋め込んだ HTML の行
-    content: '`div.mdmark-html` とその中の要素は `data-source-line` を持たない。mindstella は範囲の印の行を `embeddedHtmlRanges` で求めて付ける'
+    content: '`div.mdmark-html` とその中の要素は `data-source-line` を持たない。mindstella は範囲のマーカーの行を `embeddedHtmlRanges` で求めて付ける'
   - item: 今の値のコピーの文言
     content: '部品のボタン（`button.mdmark-param-copy`）の文言は「今の値を写す」に固定で、替える設定が無い。mindstella は描いた後に `relabelParamCopy` で「今の値をコピー」に替える。設定は shuhei1101/mdmark#155 で追加し、付け替えは #351'
   - item: コードの色付け

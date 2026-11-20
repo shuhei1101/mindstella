@@ -122,7 +122,7 @@ functions:
         description: 書き込む項目の `tags`
     returns:
       type: Any
-      description: 並びなら、`main` が `true` でない辞書から `main` を除いた新しい並び（並び・名前・ほかのキーは変えない）。並びでない値と、辞書でない要素はそのまま（形の誤りはスキーマの検証が拾う）
+      description: 並びなら、`main` が `true` でない辞書から `main` を除いた新しい並び（並び・名前・ほかのキーは変えない）。並びでない値と、辞書でない要素はそのまま（構造の誤りはスキーマの検証が拾う）
     unit_tests:
       - name: test_compact_tags
         case: 正常

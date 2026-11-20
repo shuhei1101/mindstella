@@ -1,23 +1,23 @@
 id: MOD-616-2
 title: サーバー / 利用枠の見回り / usage_watch.py
-lead: claude-balancer の常駐の `GET /accounts` を一定の間隔で呼び、使用中のアカウントがしきい値以上で切り替え先がある MindStella のセッションを、契機 `usage_threshold` で起動し直す。HTTP は標準ライブラリの `urllib.request` で送信する。
+lead: claude-balancer の常駐の `GET /accounts` を一定の間隔で呼び、使用中のアカウントがしきい値以上で切り替え先がある MindStella のセッションを、契機 `usage_threshold` で再起動する。HTTP は標準ライブラリの `urllib.request` で送信する。
 constants:
   - name: USAGE_WATCH_INTERVAL_SEC
     title: 利用枠を見回る間隔
     container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: 非機能要件『利用枠を見回る間隔』。環境変数 `MINDSTELLA_USAGE_WATCH_INTERVAL` で上書きする
     value: '60.0'
   - name: USAGE_QUERY_TIMEOUT_SEC
     title: 利用枠の問い合わせを待つ上限
     container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: 非機能要件『利用枠の問い合わせを待つ上限』
     value: '5.0'
   - name: OVER_THRESHOLD_REASONS
     title: しきい値以上を表す貸せない理由
     container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: claude-balancer の `unavailableReason` のうち、しきい値以上を表す値
     value: frozenset({"five_hour_over_threshold", "seven_day_over_threshold"})
 functions:
@@ -25,7 +25,7 @@ functions:
     title: アカウント一覧を取る
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     role: アダプター
     scope: public
     summary: '`GET {base_url}/accounts` を `USAGE_QUERY_TIMEOUT_SEC` まで待って送信し、本文の `accounts` を返す'
@@ -55,12 +55,12 @@ functions:
         mock: '`urllib.request.urlopen`'
         expected: 全て `BalancerUnavailableError`
   - name: choose_restarts
-    title: 起動し直すワークスペースを選ぶ
+    title: 再起動するワークスペースを選ぶ
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
-    summary: IF-616-1 の「使用中のアカウント」「しきい値以上の判定」「切り替え先の判定」「指定したアカウント」で、起動し直すワークスペースの ID を返す。何も書かない
+    summary: IF-616-1 の「使用中のアカウント」「しきい値以上の判定」「切り替え先の判定」「指定したアカウント」で、再起動するワークスペースの ID を返す。何も書かない
     args:
       - name: sessions
         type: dict[str, dict]
@@ -79,7 +79,7 @@ functions:
         description: '`HomeSettings.release_on_limit`'
     returns:
       type: list[str]
-      description: 起動し直すワークスペースの ID
+      description: 再起動するワークスペースの ID
     unit_tests:
       - name: test_choose_restarts
         case: 正常
@@ -91,7 +91,7 @@ functions:
     title: 利用枠を 1 回見回る
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: IF-616-1 の 1 回分。ID の一覧のうち「見回る対象」の `session.json` を集め、無ければ何も呼ばずに 0 を返す。あれば `fetch` を 1 回呼び、`choose_restarts` が選んだワークスペースごとに `restart` を呼ぶ。`fetch` が `BalancerUnavailableError` を投げたら `None` を返す
     args:
@@ -111,14 +111,14 @@ functions:
         required: false
         default: '`sessions.request_restart` を `usage_threshold` で呼ぶ関数'
         passing: keyword
-        description: 起動し直しを呼ぶ関数
+        description: 再起動を呼ぶ関数
     returns:
       type: int | None
-      description: 起動し直しを呼んだ数。問い合わせに失敗したら `None`
+      description: 再起動を呼んだ数。問い合わせに失敗したら `None`
     unit_tests:
       - name: test_watch_usage_once
         case: 正常
-        summary: 見回る対象だけを照らし、選んだものを起動し直す
+        summary: 見回る対象だけを照らし、選んだものを再起動する
         condition: '`running`・`balancer_account: A` / `restarting` / `running` で `close_pending` が真 / `running` で `balancer_account` が無い / `running` で `pending_write` が真、の 5 つのワークスペース。`fetch` は A を `five_hour_over_threshold`・B を `null` で返す'
         mock: '`fetch`・`restart`'
         expected: 1 を返し、`restart` が 1 つ目の ID で 1 回だけ呼ばれ、`fetch` が 1 回。`INFO` の `mindstella.usage.over_threshold` が 1 件で、1 つ目の ID・`A`・`five_hour_over_threshold` を持つ
@@ -130,7 +130,7 @@ functions:
         expected: 0 を返し、`fetch` を呼ばない
       - name: test_watch_usage_once_when_unavailable
         case: 異常
-        summary: 問い合わせに失敗したら起動し直さない
+        summary: 問い合わせに失敗したら再起動しない
         condition: '`fetch` が `BalancerUnavailableError` を投げる'
         mock: '`fetch`・`restart`'
         expected: '`None` を返し、`restart` を呼ばない'
@@ -138,7 +138,7 @@ functions:
     title: 利用枠の見回りを始める
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: '`PATH` に `claude-balancer` が無ければ `None` を返す。あれば、`USAGE_WATCH_INTERVAL_SEC`（環境変数で上書き）ごとに `watch_usage_once` を呼ぶ `daemon` のスレッドを始め、`stop` が立つまで繰り返す。問い合わせの失敗は、成功から失敗に変わった回だけ記録する。`watch_usage_once` の他の例外は記録して次の回へ進む'
     args:
@@ -151,7 +151,7 @@ functions:
         type: threading.Event
         required: true
         passing: positional
-        description: 常駐サーバーの停止で立つ印
+        description: 常駐サーバーの停止で立つマーカー
     returns:
       type: threading.Thread | None
       description: 始めたスレッド。claude-balancer が無ければ `None`
@@ -178,7 +178,7 @@ classes:
   - name: BalancerUnavailableError
     title: claude-balancer の常駐を問い合わせられない
     container: plugins/mindstella/skills/mindmap/scripts/usage_watch.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: '`GET /accounts` がつながらない・上限を過ぎた・読めない例外。理由をメッセージに持つ'
     kind: クラス
     inherits: Exception
@@ -189,7 +189,7 @@ notes:
     | イベント名 | 水準 | いつ | 属性 |
     | --- | --- | --- | --- |
     | `mindstella.usage.query_failed` | WARN | 問い合わせが成功から失敗に変わった（起動直後の失敗を含む） | 問い合わせ先・理由 |
-    | `mindstella.usage.over_threshold` | INFO | 起動し直しを呼んだ | ワークスペースの ID・アカウント名・貸せない理由 |
+    | `mindstella.usage.over_threshold` | INFO | 再起動を呼んだ | ワークスペースの ID・アカウント名・貸せない理由 |
     | `mindstella.usage.watch_failed` | ERROR | 1 回の見回りで他の例外を捕まえた（`logger.exception`） | なし |
 refs:
   - IF-616-1#

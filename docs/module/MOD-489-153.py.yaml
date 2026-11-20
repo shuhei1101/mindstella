@@ -30,7 +30,7 @@ constants:
     summary: ワークスペースの直下に書くファイルの名前
     value: '"README.md"'
   - name: README_MARK
-    title: 自動で書いた印
+    title: 自動で書いたマーカー
     container: plugins/mindstella/skills/mindmap/scripts/readme.py
     usecase: README の書き直し
     summary: サーバーが書いた README の 1 行目。この行で始まる README だけを書き直す
@@ -51,25 +51,25 @@ constants:
     title: 配っていないときの文面
     container: plugins/mindstella/skills/mindmap/scripts/readme.py
     usecase: README の書き直し
-    summary: プレビューの節に、URL の代わりに書く行
+    summary: プレビューのセクションに、URL の代わりに書く行
     value: '"MindStella のセッションにプレビューを頼むと URL が表示されます。"'
   - name: LAUNCH_OPTIONS
     title: 起動の引数の一覧
     container: plugins/mindstella/skills/mindmap/scripts/readme.py
     usecase: README の書き直し
-    summary: コマンドの節の起動の後ろに並べる、付けられる引数（`--flow`・`--mcp-config`・`--plugin-dir`）と説明の組
+    summary: コマンドのセクションの起動の後ろに並べる、付けられる引数（`--flow`・`--mcp-config`・`--plugin-dir`）と説明の組
     value: (("--flow {配信元の ID}#{文書の ID}", "..."), ("--mcp-config {ファイル}", "..."), ("--plugin-dir {フォルダ}", "..."))
   - name: DOC_LINKS
     title: ドキュメントのリンク
     container: plugins/mindstella/skills/mindmap/scripts/readme.py
     usecase: README の書き直し
-    summary: ドキュメントの節に並べる題名と URL
+    summary: ドキュメントのセクションに並べる題名と URL
     value: (("プレビューを見る", "https://shuhei1101.github.io/mindstella/guide/プレビューを見る.html"), ("起動スクリプトで立ち上げる", "https://shuhei1101.github.io/mindstella/guide/セットアップ手順-起動スクリプトで立ち上げる.html"))
   - name: FLOW_NOTE
     title: エージェントフローの案内
     container: plugins/mindstella/skills/mindmap/scripts/readme.py
     usecase: README の書き直し
-    summary: ドキュメントの節の末尾に書く 2 行（インターフェース定義『README の書き出し』の README の中身）
+    summary: ドキュメントのセクションの末尾に書く 2 行（インターフェース定義『README の書き出し』の README の中身）
     value: '"このファイルはワークスペースを開くたびに書き直されます。\nMindStella のセッションは、起動と再開・コメントの取り込み・記録の使い分けのエージェントフロー（`mindstella/startup`・`mindstella/on-comment`・`mindstella/record`）に従って記録します。"'
 functions:
   - name: render_readme
@@ -78,7 +78,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/readme.py
     usecase: README の書き直し
     scope: public
-    summary: インターフェース定義『README の書き出し』の制約「README の中身」の形の Markdown を作る
+    summary: インターフェース定義『README の書き出し』の制約「README の中身」の構造の Markdown を作る
     args:
       - name: root
         type: Path
@@ -100,23 +100,23 @@ functions:
       description: 1 行目が `README_MARK` で、末尾が改行の Markdown
     process: |-
       1. `root` を `resolve()` し、フォルダ名を見出しに、絶対パスを `shlex.quote` で引用してコマンドに使う。冒頭の説明の行の直後に `FLOW_NOTE` を書く
-      2. プレビューの節に `preview_url` を書く
+      2. プレビューのセクションに `preview_url` を書く
          - `None` の場合、`PREVIEW_HINT` を書く
-      3. コマンドの節に、起動（`{plugin_dir / LAUNCH_SCRIPT} {絶対パス}`。どちらも `shlex.quote`）・起動の任意の引数（`--flow`・`--mcp-config`・`--plugin-dir`）の一覧・接続（`tmux attach-session -t ={ワークスペースの ID}`。`workspaces.workspace_id_for` を `shlex.quote`）をこの順に、太字の見出し・短い説明・`bash` のコードブロックで書く
-      4. ドキュメントの節に `DOC_LINKS` を箇条書きのリンクで書く
+      3. コマンドのセクションに、起動（`{plugin_dir / LAUNCH_SCRIPT} {絶対パス}`。どちらも `shlex.quote`）・起動の任意の引数（`--flow`・`--mcp-config`・`--plugin-dir`）の一覧・接続（`tmux attach-session -t ={ワークスペースの ID}`。`workspaces.workspace_id_for` を `shlex.quote`）をこの順に、太字の見出し・短い説明・`bash` のコードブロックで書く
+      4. ドキュメントのセクションに `DOC_LINKS` を箇条書きのリンクで書く
     unit_tests:
       - name: test_render_readme
         case: 正常
         summary: 配っていないときの一覧を作る
         condition: '`root=tmp_path / "家計簿アプリ"`、`plugin_dir=Path("/p/mindstella/0.7.0")`、`preview_url=None`'
         mock: なし
-        expected: 1 行目が `README_MARK`、見出しが `# 家計簿アプリ`。節が `## プレビュー` → `## コマンド` → `## ドキュメント` の順で、プレビューの節が `PREVIEW_HINT` で `http://127.0.0.1` を含まない。コマンドの節に `**起動:**`・`**接続:**` がこの順にあり、それぞれの後ろの `bash` のコードブロックが起動（`/p/mindstella/0.7.0/bin/mindstella {絶対パス}`）・接続（`tmux attach-session -t =` と `workspace_id_for(root)`）。起動の節に `--flow`・`--mcp-config`・`--plugin-dir` の一覧がある。`/mindstella:` で始まるコマンドが無い。`DOC_LINKS` の 2 つの URL がドキュメントの節にあり、`FLOW_NOTE` が冒頭の説明の行の直後にある
+        expected: 1 行目が `README_MARK`、見出しが `# 家計簿アプリ`。セクションが `## プレビュー` → `## コマンド` → `## ドキュメント` の順で、プレビューのセクションが `PREVIEW_HINT` で `http://127.0.0.1` を含まない。コマンドのセクションに `**起動:**`・`**接続:**` がこの順にあり、それぞれの後ろの `bash` のコードブロックが起動（`/p/mindstella/0.7.0/bin/mindstella {絶対パス}`）・接続（`tmux attach-session -t =` と `workspace_id_for(root)`）。起動のセクションに `--flow`・`--mcp-config`・`--plugin-dir` の一覧がある。`/mindstella:` で始まるコマンドが無い。`DOC_LINKS` の 2 つの URL がドキュメントのセクションにあり、`FLOW_NOTE` が冒頭の説明の行の直後にある
       - name: test_render_readme_when_serving
         case: 正常
         summary: 配っているときは URL を書く
         condition: '`preview_url="http://127.0.0.1:43817/mindstella.html"`'
         mock: なし
-        expected: プレビューの節にその URL があり、`PREVIEW_HINT` が無い
+        expected: プレビューのセクションにその URL があり、`PREVIEW_HINT` が無い
       - name: test_render_readme_when_path_has_space
         case: 正常
         summary: 空白を含むパスを引用する
@@ -129,7 +129,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/readme.py
     usecase: README の書き直し
     scope: public
-    summary: 直下に `README.md` が無いか、自動で書いた印で始まるときだけ、今の値で書く
+    summary: 直下に `README.md` が無いか、自動で書いたマーカーで始まるときだけ、今の値で書く
     side_effects: ワークスペースの直下の `README.md` を書く
     args:
       - name: root
@@ -155,7 +155,7 @@ functions:
     process: |-
       1. `root / README_FILE` がファイルで、1 行目が `README_MARK` でなければ `False` を返す（読めない文字コードのファイルと、読み取りで `OSError` が起きるファイルも利用者のものとして扱う）
       2. 中身を組み立て（README の組み立て。`render_readme`）、同じフォルダの一時ファイルに書いて `os.replace` で置き換え、`True` を返す
-         - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
+         - `OSError` が起きた場合、一時ファイルを削除して `WriteFailedError` を送信する
     exceptions:
       - name: WriteFailedError
         condition: '`README.md` を書けない（同じ名前のフォルダがある・権限が無い など）'
@@ -169,13 +169,13 @@ functions:
         expected: '`True`。`README.md` の中身が `render_readme(tmp_path, plugin_dir=Path("/p"), preview_url=None)` と同じで、フォルダに一時ファイルが残っていない'
       - name: test_write_readme_when_generated
         case: 正常
-        summary: 印で始まる README は書き直す
+        summary: マーカーで始まる README は書き直す
         condition: '`README_MARK` と `古い中身` の 2 行の `README.md`。`preview_url="http://127.0.0.1:1/mindstella.html"`'
         mock: なし
         expected: '`True`。`README.md` が `古い中身` を含まず、その URL を含む'
       - name: test_write_readme_when_user_file
         case: 正常
-        summary: 印の無い README は書かない
+        summary: マーカーの無い README は書かない
         condition: '`parametrize`: `# 家計簿アプリの話し合い` の `README.md` / 空の `README.md` / UTF-8 で読めないバイト列の `README.md` / 権限を 000 にした `README.md`（root で動くときは skip）'
         mock: なし
         expected: どれも `False` で、`README.md` のバイト列が呼ぶ前と同じ

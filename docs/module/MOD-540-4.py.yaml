@@ -21,12 +21,12 @@ functions:
       type: list[str]
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
-      1. 種類ごとの YAML を読む（無いファイルは飛ばす。形が崩れていれば `ValueError`）
+      1. 種類ごとの YAML を読む（無いファイルは飛ばす。構造が崩れていれば `ValueError`）
       2. `body` が文字列で `/` を含まなければ `docs/{body}` にする。`updated`・`history` は変えない
       3. 変えたファイルだけを一時ファイルから `os.replace` で置き換え、相対パスを返す
     exceptions:
       - name: ValueError
-        condition: 種類の YAML の形が崩れている
+        condition: 種類の YAML の形式が崩れている
       - name: OSError
         condition: 読めない・書けない
     unit_tests:

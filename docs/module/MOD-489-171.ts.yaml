@@ -6,7 +6,7 @@ test_files:
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/preview/
-    template.html   雛形（描画のライブラリ（mdmark は import map と CSS の link）・文字の読み込みと、CSS・JavaScript・データの差し込み口）
+    template.html   雛形（描画のライブラリ（mdmark は import map と CSS の link）・文字の読み込みと、CSS・JavaScript・データの差し込み位置）
     tokens.css      デザイン方針のトークン（ライト / ダーク）
     style.css       画面と部品のスタイル
     app.ts          起動・画面の振り分け・端末の保存領域（差し込む順の最後）
@@ -31,10 +31,10 @@ data_models:
         description: 表示する種類（`decisions` など）。`null` はワークスペースの既定
       - name: diffSel
         type: string | null
-        description: 変更履歴で選んだ時点（`since`・`pending`・まとまりの ID）。`null` は差分を出さない。個人の上書きではなく、「既定に戻す」でも消さない
+        description: 変更履歴で選んだ時点（`since`・`pending`・まとまりの ID）。`null` は差分を出さない。個人の上書きではなく、「既定に戻す」でも削除しない
       - name: filters
         type: Record<string, Record<string, string[]>>
-        description: サーバーの配信で残した、画面（記録の表は種類）ごとの絞り込みの条件（`FilterState.byTab` と同じ形）。画面のキーが無ければ画面の既定の条件で開く。配る書き出しでは読まず書かない
+        description: サーバーの配信で残した、画面（記録の表は種類）ごとの絞り込みの条件（`FilterState.byTab` と同じ形式）。画面のキーが無ければ画面の既定の条件で開く。配る書き出しでは読まず書かない
       - name: minimap
         type: false | null
         description: 差分のミニマップを表示しない上書き。`null` は表示する（ワークスペースの既定は持たない）。表示するに戻すと `null` にする
@@ -46,24 +46,24 @@ data_models:
         description: 詳細のレビュー中のコメントを古い順に並べる上書き（インターフェース定義の `review_order`）。`null` は新しい順（ワークスペースの既定は持たない）。新しい順に戻すと `null` にする
       - name: opened
         type: unknown
-        description: 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`resolveSince` が `isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う。サーバーの配信では読まず書かない
+        description: 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`resolveSince` が `isOpenedPoint` で確かめてから読み、連番を持たない前のバージョンの値（日時の文字列）は無いものとして扱う。サーバーの配信では読まず書かない
       - name: sectionFold
         type: false | null
         description: セクションの折りたたみをオフにする上書き（`section_fold`）。`null` はオン。オンに戻すと `null` にする
       - name: commentsPinned
         type: true | null
-        description: コメントの一覧をピン止めしているか。`null` はピン止めしない。個人の上書きではなく、「既定に戻す」でも消さない
+        description: コメントの一覧をピン止めしているか。`null` はピン止めしない。個人の上書きではなく、「既定に戻す」でも削除しない
       - name: commentFormClosed
         type: true | null
-        description: 詳細パネル・詳細の全画面の下端のコメントの入力を閉じているか。`null` は開く。個人の上書きではなく、「既定に戻す」でも消さない
+        description: 詳細パネル・詳細の全画面の下端のコメントの入力を閉じているか。`null` は開く。個人の上書きではなく、「既定に戻す」でも削除しない
       - name: focusAfterAdd
         type: "'input' | 'none' | null"
         description: 「レビューに追加」の後のフォーカスの上書き（インターフェース定義の `focus_after_add`）。`null` は自動（ワークスペースの既定は持たない）。「自動」を選ぶと `null` にする
   - name: CommentState
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
-    usecase: コメントを選んで送る
-    summary: 開いている間だけ持つコメントの状態。描き直し・項目の移動・詳細パネルと全画面の行き来でも保つ。書きかけとレビュー中のコメントはサーバーが持ち、ここには読んだ写しを置く
+    usecase: コメントを選んで送信する
+    summary: 開いている間だけ持つコメントの状態。再描画・項目の移動・詳細パネルと全画面の行き来でも保つ。書きかけとレビュー中のコメントはサーバーが持ち、ここには読んだコピーを置く
     properties:
       - name: review
         type: ReviewState
@@ -76,13 +76,13 @@ data_models:
         description: 項目の ID → 選んだ箇所の入口を押して入力に添えた箇所
       - name: checked
         type: Set<string>
-        description: コメントの一覧でチェックしたコメントの ID（読んだときと溜めたときに足す）
+        description: コメントの一覧でチェックしたコメントの ID（読んだときと溜めたときに追加する）
       - name: removed
         type: ReviewState['items']
-        description: コメントの一覧か詳細パネルで消したコメント（一覧と詳細パネルで同じものを見る。一覧を閉じるかまとめて送ると空にする。一覧を開いていない間は、詳細パネルで別の項目へ移るかパネルを閉じると空にする）
+        description: コメントの一覧か詳細パネルで削除したコメント（一覧と詳細パネルで同じものを見る。一覧を閉じるかまとめて送信すると空にする。一覧を開いていない間は、詳細パネルで別の項目へ移るかパネルを閉じると空にする）
       - name: stale
         type: Map<string, string>
-        description: 送れなかった書き込みの ID → 理由（箇所を外す・削除・次に送るで消す）
+        description: 送信できなかった書き込みの ID → 理由（箇所を外す・削除・次に送信するで削除する）
       - name: listOpen
         type: boolean
         description: コメントの一覧を開いているか
@@ -97,7 +97,7 @@ data_models:
         description: 直前のスレッドの読み取りが断られた・届かなかったときの理由。読めたら `null`
       - name: view
         type: "'list' | 'thread' | 'review'"
-        description: パネルの中に出している画面。パネルを閉じても保ち、開き直したときにこの画面へ戻す（『スレッドの画面の操作』）
+        description: パネルの中に出している画面。パネルを閉じても保ち、再度開いたときにこの画面へ戻す（『スレッドの画面の操作』）
       - name: reviewFrom
         type: "'list' | 'thread'"
         description: レビュー中の書き込みを開く前の画面（「戻る」の戻り先）
@@ -109,7 +109,7 @@ data_models:
         description: スレッドを絞っているタグ。パネルを閉じても保つ
       - name: openedThread
         type: '{id: string, pending: boolean} | null'
-        description: 開いているスレッド（`pending` が真なら `id` はまだ送っていない新しいスレッドのコメントの ID）
+        description: 開いているスレッド（`pending` が真なら `id` はまだ送信していない新しいスレッドのコメントの ID）
       - name: composing
         type: boolean
         description: 新しいスレッドの入力を出しているか
@@ -121,13 +121,13 @@ data_models:
         description: スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID（一覧から開いたときは `null`）
       - name: expanded
         type: Set<string>
-        description: レビュー中の書き込みの画面とスレッドの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする）
+        description: レビュー中の書き込みの画面とスレッドの画面で本文を開いている書き込みの ID（`on.fold` で追加引きする。再描画と本文の書き換えでは保ち、パネルを閉じると空にする）
       - name: listScroll
         type: number
-        description: コメントの一覧を閉じたときのパネルの中（`.comments-body`）のスクロールの位置。開き直したときに戻す（ページを開いたときは 0）
+        description: コメントの一覧を閉じたときのパネルの中（`.comments-body`）のスクロールの位置。再度開いたときに戻す（ページを開いたときは 0）
       - name: detailExpanded
         type: Set<string>
-        description: 詳細パネルと詳細の全画面のレビュー中のコメントで本文を開いているコメントの ID（`detailPanel` の `comment.edit.on.fold` で足し引きし、`comment.edit.expanded` で渡す。描き直し・本文の書き換え・詳細の全画面との行き来では保ち、詳細パネルで別の項目へ移るかパネルを閉じると空にする）
+        description: 詳細パネルと詳細の全画面のレビュー中のコメントで本文を開いているコメントの ID（`detailPanel` の `comment.edit.on.fold` で追加引きし、`comment.edit.expanded` で渡す。再描画・本文の書き換え・詳細の全画面との行き来では保ち、詳細パネルで別の項目へ移るかパネルを閉じると空にする）
       - name: voice
         type: VoiceState
         description: コメント・返信の入力の音声入力の状態
@@ -138,7 +138,7 @@ data_models:
     title: 音声入力の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 音声でコメントする
-    summary: 開いている間だけ持つ録音の状態。録音は同時に 1 つで、録っている入力（`key`）にだけ `recording`・`transcribing` を渡し、録っている間はほかの入力のマイクを `disabled`（`VOICE_TEXT.busy`）で描く。録っている入力が画面から消えても（画面を移る・パネルや入力を閉じる）保ち、書き換えの知らせでの描き直しでも保つ
+    summary: 開いている間だけ持つ録音の状態。録音は同時に 1 つで、録っている入力（`key`）にだけ `recording`・`transcribing` を渡し、録っている間はほかの入力のマイクを `disabled`（`VOICE_TEXT.busy`）で描く。録っている入力が画面から消えても（画面を移る・パネルや入力を閉じる）保ち、書き換えの知らせでの再描画でも保つ
     properties:
       - name: availability
         type: TranscriptionStatus | null
@@ -154,10 +154,10 @@ data_models:
         description: 録音中の 1 回分
       - name: elapsed
         type: number
-        description: 録音を始めてからの秒数（1 秒ごとに進めて、録っている入力だけを描き直す）
+        description: 録音を始めてからの秒数（1 秒ごとに進めて、録っている入力だけを再描画する）
       - name: levels
         type: number[]
-        description: 録音中の音量の並び（`startRecording` の `onLevel` で `pushLevel` し、録っている入力の波形だけを描き直す。録音を終えたら空にする）
+        description: 録音中の音量の並び（`startRecording` の `onLevel` で `pushLevel` し、録っている入力の波形だけを再描画する。録音を終えたら空にする）
       - name: selection
         type: '{start: number, end: number} | null'
         description: マイクを押したときの入力欄の選んだ範囲（`selectionStart`・`selectionEnd`）。録音を終えて入力欄に戻すときに使い、戻したら `null` にする
@@ -180,7 +180,7 @@ data_models:
     title: 表示の設定の画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 表示の設定を変える
-    summary: 開いている間だけ持つ、表示の設定のパネル・確かめ・知らせの状態。描き直し・書き換えの知らせでも保つ
+    summary: 開いている間だけ持つ、表示の設定のパネル・確かめ・知らせの状態。再描画・書き換えの知らせでも保つ
     properties:
       - name: open
         type: boolean
@@ -201,7 +201,7 @@ data_models:
     title: 絞り込みの状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 項目を表で絞り込む
-    summary: 開いている間の絞り込みの状態。表示形式の切り替え・描き直し・書き換えの知らせでも保つ。サーバーの配信では、条件を変えるたびに `Prefs.filters` へ写して端末に残す
+    summary: 開いている間の絞り込みの状態。表示形式の切り替え・再描画・書き換えの知らせでも保つ。サーバーの配信では、条件を変えるたびに `Prefs.filters` へコピーて端末に残す
     properties:
       - name: byTab
         type: Record<string, Record<string, string[]>>
@@ -223,7 +223,7 @@ data_models:
     title: 編集の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 画面で項目を編集して保存する
-    summary: 開いている間だけ持つ編集・保存待ちの状態。保存待ちの編集はサーバーが持ち、ここには読んだ写しを置く。描き直し・書き換えの知らせでも保つ
+    summary: 開いている間だけ持つ編集・保存待ちの状態。保存待ちの編集はサーバーが持ち、ここには読んだコピーを置く。再描画・書き換えの知らせでも保つ
     properties:
       - name: edits
         type: PendingEdit[]
@@ -236,7 +236,7 @@ data_models:
         description: 保存待ちのパネルを開いているか（コメントの一覧・表示の設定・絞り込みのドロワーとは 1 つだけが真）
       - name: editing
         type: string | null
-        description: 詳細パネルで編集の表示にしている項目の ID（足す項目は仮の ID。別の項目を開くと `null`）
+        description: 詳細パネルで編集の表示にしている項目の ID（追加する項目は仮の ID。別の項目を開くと `null`）
       - name: adding
         type: Kind | null
         description: 仮の ID をまだ振られていない、開いたばかりの項目を追加する入力の種類
@@ -248,25 +248,25 @@ data_models:
         description: '`{target}:{key}` → 溜められなかった理由（届かない・断られた）'
       - name: toast
         type: string | null
-        description: 保存した知らせの文言（「{n} 件を保存しました。」。`NOTICE_MS` で消す）
+        description: 保存した知らせの文言（「{n} 件を保存しました。」。`NOTICE_MS` で削除する）
       - name: workspaceOpen
         type: boolean
         description: 設定の画面を開いているか
       - name: optionDrafts
         type: 'Map<string, {key: string; content: string}[]>'
-        description: 項目の ID（足す項目は仮の ID、仮の ID が振られる前は `NEW_ID_PREFIX`）→「案を追加」で置いた、まだ溜めていない書きかけの案の記号と中身
+        description: 項目の ID（追加する項目は仮の ID、仮の ID が振られる前は `NEW_ID_PREFIX`）→「案を追加」で置いた、まだ溜めていない書きかけの案の記号と中身
       - name: sentEdits
         type: 'Map<string, {value: unknown; settledSeq: number | null}>'
-        description: '`{target}:{op}:{key}`（`adopt` は `{target}:adopt`）→ 送信したが、まだ当てた読み取りに載っていない編集の値（`option-add` は入れない）と、溜められた後に送った最初の読み取りの番号（`settledSeq`。溜められるまでは `null`）。描き直しで `edits` の上に重ねて入力欄に描く'
+        description: '`{target}:{op}:{key}`（`adopt` は `{target}:adopt`）→ 送信したが、まだ当てた読み取りに載っていない編集の値（`option-add` は入れない）と、溜められた後に送信した最初の読み取りの番号（`settledSeq`。溜められるまでは `null`）。再描画で `edits` の上に重ねて入力欄に描く'
       - name: editsReadSeq
         type: number
-        description: 最後に送った保存待ちの編集の読み取りの番号
+        description: 最後に送信した保存待ちの編集の読み取りの番号
       - name: editsAppliedSeq
         type: number
         description: '`edits` に当てた読み取りの番号'
       - name: addSend
         type: '{kind: Kind; target: string | null; value: Record<string, unknown> | null; draft: Record<string, unknown>; tail: Promise<void>} | null'
-        description: 今開いている項目を追加する入力の送信の並び。追加の入力を開くたびに作り直す（保存待ちにある仮の ID の項目を `openAdded` で開き直したときは、`target` をその仮の ID、`value` を保存待ちのその `item-add` の `value` にして作る）。`target` は最初の `item-add` の応答で返った仮の ID（応答までは `null`）、`value` は最後に溜められた `item-add` の `value`、`draft` はタイトルを書く前の入力（`addDraft`）、`tail` は最後に積んだ送信が終わると解決する。閉じた・別の追加を始めた後も、積んだ送信はこの並びを参照して終える
+        description: 今開いている項目を追加する入力の送信の並び。追加の入力を開くたびに再作成する（保存待ちにある仮の ID の項目を `openAdded` で再度開いたときは、`target` をその仮の ID、`value` を保存待ちのその `item-add` の `value` にして作る）。`target` は最初の `item-add` の応答で返った仮の ID（応答までは `null`）、`value` は最後に溜められた `item-add` の `value`、`draft` はタイトルを書く前の入力（`addDraft`）、`tail` は最後に積んだ送信が終わると解決する。閉じた・別の追加を始めた後も、積んだ送信はこの並びを参照して終える
 constants:
   - name: PREFS_KEY
     title: 端末の保存領域のキー
@@ -278,13 +278,13 @@ constants:
     title: 書きかけを保つまでの待ち
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 項目へコメントする
-    summary: 入力が止まってから『書きかけの保存』を呼ぶまでの待ち（打つたびに書かず、打ち終えた直後に閉じても失うのがこの待ちの分だけで済む長さ。閉じるときは待たずに呼ぶ）
+    summary: 入力が止まってから『下書きの保存』を呼ぶまでの待ち（打つたびに書かず、打ち終えた直後に閉じても失うのがこの待ちの分だけで済む長さ。閉じるときは待たずに呼ぶ）
     value: '500'
   - name: SINCE_KEY
     title: 「前回開いてから」の始まりのキー
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 前回からの差分を見る
-    summary: そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない）。配る書き出しでは、前回開いた時点を `Prefs.opened` に持つ
+    summary: そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで再読み込みしても範囲を変えない）。配る書き出しでは、前回開いた時点を `Prefs.opened` に持つ
     value: '"mindmap-since"'
   - name: NOTICE_MS
     title: 既定が変わった知らせを出す長さ
@@ -340,7 +340,7 @@ functions:
         expected: '`null`'
       - name: test_read_embedded_data_when_missing
         case: 異常
-        summary: 要素が無ければ送る
+        summary: 要素が無ければ送信する
         condition: '`mindmap-data` を持たない文書'
         mock: なし
         expected: '`Error`'
@@ -351,8 +351,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`、`bodyLayout: null`、`reviewOrder: null`、`focusAfterAdd: null`、`sectionFold`・`commentsPinned`・`commentFormClosed` が `null`）を返し、選べない値の `kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap`、`side` でない `bodyLayout`、`oldest` でない `reviewOrder`、`input`・`none` でない `focusAfterAdd`、`false` でない `sectionFold`、`true` でない `commentsPinned`・`commentFormClosed` はその項目だけ既定にする。前の版が残した `tablePin`・`tableHead`・`tableStripes`・`look` は読まない'
-    description: 保存領域が使えない環境（例外を送る）では、開いている間だけ設定を保つ（インターフェース定義『プレビューを開く』の端末の保存領域）。
+    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`、`bodyLayout: null`、`reviewOrder: null`、`focusAfterAdd: null`、`sectionFold`・`commentsPinned`・`commentFormClosed` が `null`）を返し、選べない値の `kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap`、`side` でない `bodyLayout`、`oldest` でない `reviewOrder`、`input`・`none` でない `focusAfterAdd`、`false` でない `sectionFold`、`true` でない `commentsPinned`・`commentFormClosed` はその項目だけ既定にする。前のバージョンが残した `tablePin`・`tableHead`・`tableStripes`・`look` は読まない'
+    description: 保存領域が使えない環境（例外を送出する）では、開いている間だけ設定を保つ（インターフェース定義『プレビューを開く』の端末の保存領域）。
     args:
       - name: storage
         type: Storage
@@ -366,43 +366,43 @@ functions:
       - name: test_load_prefs
         case: 正常
         summary: 残した設定を読み、読めなければ既定
-        condition: '`parametrize`: `theme: dark` を残した / 値が壊れた JSON / `getItem` が例外を送る保存領域 / `kinds: [decisions, graph]` を残した / `look: dust` と `kinds: [tasks]` を残した（前の版が残した `theme`・`columns` だけの値もそのまま読める） / `filters: {tasks: {status: [未着手]}}` を残した / `filters: [1]` を残した'
+        condition: '`parametrize`: `theme: dark` を残した / 値が壊れた JSON / `getItem` が例外を送出する保存領域 / `kinds: [decisions, graph]` を残した / `look: dust` と `kinds: [tasks]` を残した（前のバージョンが残した `theme`・`columns` だけの値もそのまま読める） / `filters: {tasks: {status: [未着手]}}` を残した / `filters: [1]` を残した'
         mock: 保存領域（引数で渡す）
         expected: '`dark` / 既定 / 既定 / `kinds` が `null` / `kinds` が `[tasks]` で `look` を持たない（`filters` は `{}`） / `filters` が `{tasks: {status: [未着手]}}` / `filters` が `{}`'
       - name: test_load_prefs_when_minimap
         summary: 差分のミニマップの上書きは false だけを読む
         case: 正常
-        condition: '`parametrize`: `minimap: false` を残した / `minimap: true` を残した / `minimap: "no"` を残した / `minimap` を持たない前の版の値'
+        condition: '`parametrize`: `minimap: false` を残した / `minimap: true` を残した / `minimap: "no"` を残した / `minimap` を持たない前のバージョンの値'
         expected: '`minimap` が `false` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
         mock: 保存領域（引数で渡す）
       - name: test_load_prefs_when_body_layout
         case: 正常
         summary: 本文の差分の並べ方の上書きは side だけを読む
-        condition: '`parametrize`: `bodyLayout: side` を残した / `bodyLayout: inline` を残した / `bodyLayout: 1` を残した / `bodyLayout` を持たない前の版の値'
+        condition: '`parametrize`: `bodyLayout: side` を残した / `bodyLayout: inline` を残した / `bodyLayout: 1` を残した / `bodyLayout` を持たない前のバージョンの値'
         mock: 保存領域（引数で渡す）
         expected: '`bodyLayout` が `side` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
       - name: test_load_prefs_when_review_order
         case: 正常
         summary: レビュー中のコメントの並びの上書きは oldest だけを読む
-        condition: '`parametrize`: `reviewOrder: oldest` を残した / `reviewOrder: newest` を残した / `reviewOrder: 1` を残した / `reviewOrder` を持たない前の版の値'
+        condition: '`parametrize`: `reviewOrder: oldest` を残した / `reviewOrder: newest` を残した / `reviewOrder: 1` を残した / `reviewOrder` を持たない前のバージョンの値'
         mock: 保存領域（引数で渡す）
         expected: '`reviewOrder` が `oldest` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
       - name: test_load_prefs_when_body_view
         case: 正常
-        summary: セクションの折りたたみの上書きは既定と違う値だけを読み、前の版の表の上書きは読まない
-        condition: '`parametrize`: `sectionFold` が `false` を残した / `sectionFold` が `true` を残した / `sectionFold` が `"no"` を残した / 前の版が `tablePin`・`tableHead` を `false`、`tableStripes` を `true` で残した'
+        summary: セクションの折りたたみの上書きは既定と違う値だけを読み、前のバージョンの表の上書きは読まない
+        condition: '`parametrize`: `sectionFold` が `false` を残した / `sectionFold` が `true` を残した / `sectionFold` が `"no"` を残した / 前のバージョンが `tablePin`・`tableHead` を `false`、`tableStripes` を `true` で残した'
         mock: 保存領域（引数で渡す）
         expected: '`sectionFold` が `false` / `null` / `null` / 返した `Prefs` が `tablePin`・`tableHead`・`tableStripes` を持たず、`resolveDisplay` の `overrides` に表の名前が並ばない（ほかの項目はそのまま読める）'
       - name: test_load_prefs_when_comments_pinned
         case: 正常
         summary: コメントの一覧のピン止めは true だけを読む
-        condition: '`parametrize`: `commentsPinned: true` を残した / `commentsPinned: false` を残した / `commentsPinned: "yes"` を残した / `commentsPinned` を持たない前の版の値'
+        condition: '`parametrize`: `commentsPinned: true` を残した / `commentsPinned: false` を残した / `commentsPinned: "yes"` を残した / `commentsPinned` を持たない前のバージョンの値'
         mock: 保存領域（引数で渡す）
         expected: '`commentsPinned` が `true` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
       - name: test_load_prefs_when_comment_form_closed
         case: 正常
         summary: コメントの入力の開閉は true だけを読む
-        condition: '`parametrize`: `commentFormClosed: true` を残した / `commentFormClosed: false` を残した / `commentFormClosed: "yes"` を残した / `commentFormClosed` を持たない前の版の値'
+        condition: '`parametrize`: `commentFormClosed: true` を残した / `commentFormClosed: false` を残した / `commentFormClosed: "yes"` を残した / `commentFormClosed` を持たない前のバージョンの値'
         mock: 保存領域（引数で渡す）
         expected: '`commentFormClosed` が `true` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
   - name: savePrefs
@@ -411,7 +411,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`Prefs` を `localStorage` に残し、書けたかを返す。保存領域が例外を送るときは偽を返す（表示の設定の「この端末に保存できません」に使う）'
+    summary: '`Prefs` を `localStorage` に残し、書けたかを返す。保存領域が例外を送出するときは偽を返す（表示の設定の「この端末に保存できません」に使う）'
     side_effects: '`localStorage` の `PREFS_KEY` を書き換える'
     args:
       - name: storage
@@ -431,9 +431,9 @@ functions:
       - name: test_save_prefs
         case: 正常
         summary: 残した設定を読める
-        condition: '`parametrize`: 使える保存領域 / `setItem` が例外を送る保存領域'
+        condition: '`parametrize`: 使える保存領域 / `setItem` が例外を送出する保存領域'
         mock: 保存領域（引数で渡す）
-        expected: 真を返し `loadPrefs` で同じ値が読める / 偽を返し例外を送らない
+        expected: 真を返し `loadPrefs` で同じ値が読める / 偽を返し例外を送出しない
   - name: start
     title: 起動
     kind: 関数
@@ -441,7 +441,7 @@ functions:
     usecase: 共通
     scope: public
     summary: 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ
-    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`Ctrl+K`・`Cmd+K` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書き（サーバーの配信では画面ごとの絞り込みの条件も）を残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけ・既定の書き換えの API へ送る'
+    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`Ctrl+K`・`Cmd+K` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書き（サーバーの配信では画面ごとの絞り込みの条件も）を残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけ・既定の書き換えの API へ送信する'
     args: []
     returns:
       type: void
@@ -451,98 +451,98 @@ functions:
          - 読めない場合、本文にそのメッセージを出して終える
          - データがある場合、配る書き出しとしてそれを記録にし、コメントのボタン・一覧・入力・選んだ箇所の入口と接続の状態を出さない（以降の 2・6・7・8 をしない）。表示の設定は出し、「ワークスペースの既定にする」を出さない（`can_save: false`）
          - `null` の場合、サーバーの配信として 2 へ進む
-      2. 記録とレビュー中を読む（`fetchRecords`、`commentApi().read`。読んだコメントは全て `checked` に入れる）。待たずに文字起こしの可否を読み（`voiceApi().status`）、返ったら `VoiceState.availability` に入れて入力を描き直す
-         - 記録が届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ直しを待つ（13 へ）
-      3. 索引を作る（`buildIndex`）。端末の設定を読み（`loadPrefs`）、表示を読み分けて（`resolveDisplay`。記録の `settings.display`）テーマを当てる。ページの題（`document.title`）を `{設定の summary} | mindstella` にする
+      2. 記録とレビュー中を読む（`fetchRecords`、`commentApi().read`。読んだコメントは全て `checked` に入れる）。待たずに文字起こしの可否を読み（`voiceApi().status`）、返ったら `VoiceState.availability` に入れて入力を再描画する
+         - 記録が届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ修正を待つ（13 へ）
+      3. 索引を作る（`buildIndex`）。端末の設定を読み（`loadPrefs`）、表示を読み分けて（`resolveDisplay`。記録の `settings.display`）テーマを当てる。ページのタイトル（`document.title`）を `{設定の summary} | mindstella` にする
          - 「前回開いてから」の始まりを決める（`resolveSince`。読んだ記録の先頭のまとまりの `until_seq` を渡す）
          - 選んだ時点を引く（`resolveDiffPoint`。ハッシュの `diff`（`parseHash` の `Route.diff`）があればそれ、無ければ `Prefs.diffSel` と、始まり）。引けたら `Prefs.diffSel` と `Route.diff` をその時点にし、引けなければどちらも `null` にして残す（`savePrefs`）
       4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）。`tab` が表示しない種類を指す場合は `overview` のハッシュに置き換える（`id` は残し、詳細パネルは開く）。3 で `Route.diff` が読んだハッシュの `diff` と変わった場合も、そのハッシュに置き換える（`navigate`、`push: false`）
-      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。サーバーの配信では、録っている間は `voice`（`VoiceState.phase`・`label`・`elapsed`）、知らせがあれば `voiceNotice`（`VoiceState.notice`）も渡す。概要に表示する種類を渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類に印の付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の消した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る。`open` は `Prefs.commentFormClosed` が `true` なら偽）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
-         - 描き直しで詳細パネルを作り直すときは、本文のスクロールの位置を保ち、作り直す前に本文のスクロール領域にフォーカスがあれば、作り直した後の本文のスクロール領域へフォーカスを戻す
+      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。サーバーの配信では、録っている間は `voice`（`VoiceState.phase`・`label`・`elapsed`）、知らせがあれば `voiceNotice`（`VoiceState.notice`）も渡す。概要に表示する種類を渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類にマーカーの付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の削除した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは再度開いたときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから削除する（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る。`open` は `Prefs.commentFormClosed` が `true` なら偽）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
+         - 再描画で詳細パネルを再作成するときは、本文のスクロールの位置を保ち、再作成する前に本文のスクロール領域にフォーカスがあれば、再作成した後の本文のスクロール領域へフォーカスを戻す
          - 詳細パネル・全画面の本文のスクロール領域をスクロールしたら、開いている項目の位置を残す（`writeBodyScrolls`。`scroll` は伝わらないため `document` でキャプチャフェーズで受ける）。詳細パネルか全画面を開く・項目を移る・全画面と行き来するときは、見出し（`heading`）もコメントの箇所（`highlight`）も示さなければ、描いた次のコマで本文をその項目の位置へ戻す（位置は 3 で `readBodyScrolls` で読む。残っていなければ先頭から）
-         - 左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定・保存待ち）のどれかを開いているときは、描いた後に前の解除を呼んでから、本文の部品を止め直す（条件の変更・表示形式の切り替え・書き換えの知らせで作り直した本文にも乗せる）。ピン止めしたコメントの一覧（`Prefs.commentsPinned`）は `inertBehind` で覆った範囲だけを止め、グレーアウトを出さない。それ以外は、`body` の直下のグレーアウト（`div.left-scrim`。`aria-hidden`、トップバーとタブの帯の下から。幅 900px 以下では出さない）に `on` を付け、`inertOutside` で止める。詳細パネルは、左のパネルの中（グレーアウトの上に出した詳細パネルの中を含む）の押下で開いたときだけ `body` に `detail-above-scrim` を付けてグレーアウトの上に出し、それ以外は `inert` を付ける。押下の出どころは `click` をキャプチャフェーズで受けて控え、左のパネルか詳細パネルを閉じたら戻す
+         - 左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定・保存待ち）のどれかを開いているときは、描いた後に前の解除を呼んでから、本文の部品を止め修正する（条件の変更・表示形式の切り替え・書き換えの知らせで再作成した本文にも乗せる）。ピン止めしたコメントの一覧（`Prefs.commentsPinned`）は `inertBehind` で覆った範囲だけを止め、グレーアウトを出さない。それ以外は、`body` の直下のグレーアウト（`div.left-scrim`。`aria-hidden`、トップバーとタブの帯の下から。幅 900px 以下では出さない）に `on` を付け、`inertOutside` で止める。詳細パネルは、左のパネルの中（グレーアウトの上に出した詳細パネルの中を含む）の押下で開いたときだけ `body` に `detail-above-scrim` を付けてグレーアウトの上に出し、それ以外は `inert` を付ける。押下の出どころは `click` をキャプチャフェーズで受けて控え、左のパネルか詳細パネルを閉じたら戻す
          - グレーアウトを押したら、開いている左のパネルを、トップバーのそのパネルのボタンを押したときと同じに閉じ、そのボタンへフォーカスを戻す
-         - 詳細パネルを開く・別の項目へ移るときは `StackState.front` を `detail` にする。幅 900px 以下（`NARROW_QUERY`）で詳細パネルと左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）を両方開いているときは、`front` の側を前に出す。`left` なら `body` に `left-front` を付け、詳細パネル（`aside.panel`）に `inert` を付ける。`detail` なら `left-front` を外し、開いている左のパネルに `inert` を付ける。それ以外（幅 901px 以上・片方だけ開いている）では `left-front` と、この 2 つに付けた `inert` を外す。幅が 900px をまたいだとき（`NARROW_QUERY` の `change`）もやり直す
+         - 詳細パネルを開く・別の項目へ移るときは `StackState.front` を `detail` にする。幅 900px 以下（`NARROW_QUERY`）で詳細パネルと左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）を両方開いているときは、`front` の側を前に出す。`left` なら `body` に `left-front` を付け、詳細パネル（`aside.panel`）に `inert` を付ける。`detail` なら `left-front` を外し、開いている左のパネルに `inert` を付ける。それ以外（幅 901px 以上・片方だけ開いている）では `left-front` と、この 2 つに付けた `inert` を外す。幅が 900px をまたいだとき（`NARROW_QUERY` の `change`）も再実行する
       6. コメントの入力のコールバックを次で扱う
          - 「入力」では `forms` の `body` を書き換え、`DRAFT_SAVE_DELAY_MS` 待って書きかけを保つ（`saveDraft`。詳細パネル・一覧を閉じるときと項目を移るときは待たずに保つ。届かないときは何も出さない）
-         - 「溜める」では、本文が空白だけなら `empty` にして入力欄へフォーカスを戻す。そうでなければ `saving` にして送り（`add`）、溜めたら入力欄と添えた箇所を空にして `saved`（`count`）、レビュー中を読み直して溜めた ID を `checked` に足し、トップバー・詳細の一番下・一覧を描き直す。断られた・届かないなら本文を残して `failed`
+         - 「溜める」では、本文が空白だけなら `empty` にして入力欄へフォーカスを戻す。そうでなければ `saving` にして送り（`add`）、溜めたら入力欄と添えた箇所を空にして `saved`（`count`）、レビュー中を再読み込みして溜めた ID を `checked` に追加し、トップバー・詳細の一番下・一覧を再描画する。断られた・届かないなら本文を残して `failed`
          - 「箇所を外す」では `pendingLoc` から外し、書きかけは箇所を持たない向けた先へ移す
          - 「本文をコピー」では `navigator.clipboard.writeText` でコピーする
-         - 「開閉」では、押した後の開閉が閉じるなら `Prefs.commentFormClosed` を `true`、開くなら `null` にして残し（`savePrefs`）、開いている詳細パネル・詳細の全画面の下端の入力を描き直して、その開閉のボタンへフォーカスを戻す。書きかけ（`forms`）はそのまま残し、履歴に積まず、ハッシュも変えない
+         - 「開閉」では、押した後の開閉が閉じるなら `Prefs.commentFormClosed` を `true`、開くなら `null` にして残し（`savePrefs`）、開いている詳細パネル・詳細の全画面の下端の入力を再描画して、その開閉のボタンへフォーカスを戻す。書きかけ（`forms`）はそのまま残し、履歴に積まず、ハッシュも変えない
          - コメント・返信の入力に渡す `voice` は、`micSupported()` が偽なら `disabled`（`voiceReason` は `VOICE_TEXT.noMicrophone`）、`availability.available` が偽なら `disabled`（`availability.detail`）、録っている入力なら `VoiceState.phase`、ほかの入力で録っていれば `disabled`（`VOICE_TEXT.busy`）、それ以外は `idle`
-         - 「録音を始める」では、別の入力で録っていれば何もしない。押したときの入力欄の選んだ範囲を `selection` に持ち、`startRecording` で始め（`onLevel` で `levels` に `pushLevel` して録っている入力の波形を描き直す）、`key`・`recording`・`destination`・`label`・`phase: recording`・`elapsed: 0`・`levels: []` にして、描き直した入力の ✓ へフォーカスを移して `ticket` を進め、1 秒ごとに `elapsed` を進めて、トップバーを描き直す。`acquireWakeLock` の関数を `release` に持つ。`denied` なら `status` を `voice-failed`（`VOICE_TEXT.denied`）、`no-microphone` なら `voice-failed`（`VOICE_TEXT.noMicrophone`）にする
-         - 「録音をキャンセル」では `recording.cancel()` と `release` を呼び、`key`・`recording`・`destination`・`label` を `null`・`phase: idle` にしてトップバーを描き直し、入力欄の中身を変えず、描き直した入力欄へフォーカスを移して `selection` の範囲に戻す
-         - 「文字起こし」では `phase: transcribing` にして `release` を呼び、押したときの `ticket` と入力欄の中身・カーソルの位置・記録の `settings.transcription.action`（無ければ `review`）・向けた先で `finishVoice` を呼ぶ。返ったとき、`ticket` が違えば結果を捨てる。そうでなければ `phase: idle`・`key`・`destination`・`label` を `null` に戻してトップバーを描き直し、録っていた入力が画面に無ければ、結果の中身を `forms` に入れて書きかけを保ち（`saveDraft`）、`failed`・`unavailable` のときだけ `notice` を `failed`（失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする。画面にあれば、`reviewed` は `forms` の中身と添えた箇所を空にして `status: reviewed`、書きかけを消し（`saveDraft` を空で）、レビュー中を読み直して溜めた ID を `checked` に足し、トップバーの件数と一覧を描き直す。`sent` は `forms` の中身と添えた箇所を空にして `status: sent`（`entered`）、書きかけを消し（`saveDraft` を空で）、スレッドを読み直す。`inserted` は中身を書き換えて入力欄へフォーカスを移し、挿入した文字の後ろにカーソルを置いて `status: inserted`、`failed` は中身を書き換えて入力欄へフォーカスを移し、文字起こしの前に失敗して中身が元のままなら `selection` の範囲に戻して `voice-failed`（`detail`）、`unavailable` は `availability` を `available: false` と返った `reason`・`detail` に書き換えて `voice-failed`（`detail`）にする
-         - 「押せないマイクを押す」では `status` を `voice-failed`（`voiceReason` と同じ文）にし、`micSupported()` が真なら文字起こしの可否を読み直して `availability` に入れる（使えるようになっていれば `idle` で描き直す。録音は始めない）
-         - 録っている入力が画面から消えるとき（詳細パネル・全画面・コメントの一覧・スレッドを閉じる、入力を畳む、別の項目・スレッド・タブへ移る）は、録音も文字起こしも止めない。記録を読み直したとき、`destination` の項目・スレッドが無ければ `recording.cancel()` と `release` を呼び、`key`・`recording`・`destination`・`label` を `null`・`phase: idle` にして `ticket` を進め（文字起こし中の結果を捨てる）、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にしてトップバーを描き直す
-         - トップバーの「音声入力中の入力欄へ移る」では、`destination` の画面（詳細パネル・詳細の全画面は項目を開き、コメントの一覧は一覧を開いて新しいスレッドの入力を出し、スレッドは一覧でそのスレッドを開く）を、その画面を今開くときと同じ開き方と履歴の扱いで開き、入力が閉じていれば開いて、録音中は ✓、文字起こし中は入力欄へフォーカスを移す。「音声入力の入力欄を開く」は `notice.key` の入力の画面を同じく開いて `notice` を `null` にし、「音声入力の知らせを閉じる」は `notice` を `null` にする。どれもトップバーを描き直す
-         - `visibilitychange` で画面が見えたとき、`phase` が `recording` で `release` が `null` なら `acquireWakeLock` を呼び直す
+         - 「録音を始める」では、別の入力で録っていれば何もしない。押したときの入力欄の選んだ範囲を `selection` に持ち、`startRecording` で始め（`onLevel` で `levels` に `pushLevel` して録っている入力の波形を再描画する）、`key`・`recording`・`destination`・`label`・`phase: recording`・`elapsed: 0`・`levels: []` にして、再描画した入力の ✓ へフォーカスを移して `ticket` を進め、1 秒ごとに `elapsed` を進めて、トップバーを再描画する。`acquireWakeLock` の関数を `release` に持つ。`denied` なら `status` を `voice-failed`（`VOICE_TEXT.denied`）、`no-microphone` なら `voice-failed`（`VOICE_TEXT.noMicrophone`）にする
+         - 「録音をキャンセル」では `recording.cancel()` と `release` を呼び、`key`・`recording`・`destination`・`label` を `null`・`phase: idle` にしてトップバーを再描画し、入力欄の中身を変えず、再描画した入力欄へフォーカスを移して `selection` の範囲に戻す
+         - 「文字起こし」では `phase: transcribing` にして `release` を呼び、押したときの `ticket` と入力欄の中身・カーソルの位置・記録の `settings.transcription.action`（無ければ `review`）・向けた先で `finishVoice` を呼ぶ。返ったとき、`ticket` が違えば結果を捨てる。そうでなければ `phase: idle`・`key`・`destination`・`label` を `null` に戻してトップバーを再描画し、録っていた入力が画面に無ければ、結果の中身を `forms` に入れて書きかけを保ち（`saveDraft`）、`failed`・`unavailable` のときだけ `notice` を `failed`（失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする。画面にあれば、`reviewed` は `forms` の中身と添えた箇所を空にして `status: reviewed`、書きかけを削除（`saveDraft` を空で）、レビュー中を再読み込みして溜めた ID を `checked` に追加し、トップバーの件数と一覧を再描画する。`sent` は `forms` の中身と添えた箇所を空にして `status: sent`（`entered`）、書きかけを削除（`saveDraft` を空で）、スレッドを再読み込みする。`inserted` は中身を書き換えて入力欄へフォーカスを移し、挿入した文字の後ろにカーソルを置いて `status: inserted`、`failed` は中身を書き換えて入力欄へフォーカスを移し、文字起こしの前に失敗して中身が元のままなら `selection` の範囲に戻して `voice-failed`（`detail`）、`unavailable` は `availability` を `available: false` と返った `reason`・`detail` に書き換えて `voice-failed`（`detail`）にする
+         - 「押せないマイクを押す」では `status` を `voice-failed`（`voiceReason` と同じ文）にし、`micSupported()` が真なら文字起こしの可否を再読み込みして `availability` に入れる（使えるようになっていれば `idle` で再描画する。録音は始めない）
+         - 録っている入力が画面から消えるとき（詳細パネル・全画面・コメントの一覧・スレッドを閉じる、入力を畳む、別の項目・スレッド・タブへ移る）は、録音も文字起こしも止めない。記録を再読み込みしたとき、`destination` の項目・スレッドが無ければ `recording.cancel()` と `release` を呼び、`key`・`recording`・`destination`・`label` を `null`・`phase: idle` にして `ticket` を進め（文字起こし中の結果を捨てる）、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にしてトップバーを再描画する
+         - トップバーの「音声入力中の入力欄へ移る」では、`destination` の画面（詳細パネル・詳細の全画面は項目を開き、コメントの一覧は一覧を開いて新しいスレッドの入力を出し、スレッドは一覧でそのスレッドを開く）を、その画面を今開くときと同じ開き方と履歴の扱いで開き、入力が閉じていれば開いて、録音中は ✓、文字起こし中は入力欄へフォーカスを移す。「音声入力の入力欄を開く」は `notice.key` の入力の画面を同じく開いて `notice` を `null` にし、「音声入力の知らせを閉じる」は `notice` を `null` にする。どれもトップバーを再描画する
+         - `visibilitychange` で画面が見えたとき、`phase` が `recording` で `release` が `null` なら `acquireWakeLock` を再呼び出しする
          - 項目を指さない入力は、幅 720px 以下でフォーカスが無く本文が空なら `collapsed`
       7. 選んだ箇所の入口を次で扱う
          - `pointerup` と、ポインターを押していない間の `selectionchange` で、全画面を開いている間は全画面の中、それ以外は詳細パネルの中の選択から箇所を求め（`selectionLocation`）、あれば入口を出し、無ければ閉じる（図の拡大を開いている間は出さない）
-         - 「押す」では入口を閉じ、`Prefs.commentFormClosed` が `true` なら `null` にして残し（`savePrefs`）、`pendingLoc` に入れて下端の入力（全画面を開いている間は全画面の下端の入力）を描き直し、その入力欄へフォーカスを移す。「閉じる」では入口を閉じて本文へフォーカスを戻す
+         - 「押す」では入口を閉じ、`Prefs.commentFormClosed` が `true` なら `null` にして残し（`savePrefs`）、`pendingLoc` に入れて下端の入力（全画面を開いている間は全画面の下端の入力）を再描画し、その入力欄へフォーカスを移す。「閉じる」では入口を閉じて本文へフォーカスを戻す
       8. コメントの一覧のコールバックを次で扱う（どれも履歴に積まない）
          - トップバーのコメントのボタンで一覧を開くときは、表示の設定を閉じる（`DisplayState.open` を偽）。`StackState.front` を `left` にする
          - 「行の項目を開く」では一覧を開いたまま詳細パネルを開き、`highlight` にその箇所を渡す
-         - 「直しを送る」「箇所を外す」では `update`、「削除」では `remove` して消した中身を `removed` に入れ、「元に戻す」ではその中身を `id`・`created` ごと `add` して `removed` から外す。終えたらレビュー中を読み直して描き直す
-         - 「まとめて送る」ではチェックした ID を溜めた順に `send` し、201 なら `removed`・`stale` を空にして、結果を `sent`（`count` は送った件数、`at` は応答の `sent`、`entered` は応答の `entered`）にする（文言は `commentsPanel` が `entered` で出し分ける）。409 なら `stale` を入れて理由を出し、届かない・そのほかは理由を出す。どの場合もレビュー中を読み直す
+         - 「修正を送信する」「箇所を外す」では `update`、「削除」では `remove` して削除した中身を `removed` に入れ、「元に戻す」ではその中身を `id`・`created` ごと `add` して `removed` から外す。終えたらレビュー中を再読み込みして再描画する
+         - 「まとめて送信する」ではチェックした ID を溜めた順に `send` し、201 なら `removed`・`stale` を空にして、結果を `sent`（`count` は送信した件数、`at` は応答の `sent`、`entered` は応答の `entered`）にする（文言は `commentsPanel` が `entered` で出し分ける）。409 なら `stale` を入れて理由を出し、届かない・そのほかは理由を出す。どの場合もレビュー中を再読み込みする
          - Esc は、幅 901px 以上か `StackState.front` が `detail` で詳細パネルを開いていれば、詳細パネルを閉じる。それ以外は「スレッドの画面の操作」の Esc（`isTyping` の扱い・`view` ごとの戻る / 閉じる）に従う
          - 一覧を開くときは、絞り込みのドロワーと表示の設定のパネルを閉じる（`drawerOpen`・`DisplayState.open` を偽）
-         - 「ピン止めの切り替え」では `Prefs.commentsPinned` を `true` と `null` で入れ替えて残し（`savePrefs`）、パネルを開いたまま描き直して 5 のグレーアウトと止める部品をやり直す
+         - 「ピン止めの切り替え」では `Prefs.commentsPinned` を `true` と `null` で入れ替えて残し（`savePrefs`）、パネルを開いたまま再描画して 5 のグレーアウトと止める部品を再実行する
       9. 絞り込みのコールバックを次で扱う（どれも履歴に積まない）
          - トップバーの絞り込みのボタンでは `drawerOpen` を入れ替える。開くときはコメントの一覧と表示の設定のパネルを閉じ、`StackState.front` を `left` にする
          - Esc は、幅 900px 以下で `StackState.front` が `left` ならドロワーだけを閉じ、詳細パネルは閉じない
-         - 画面の「条件を変える」では `FilterState.byTab` のその画面の分を置き換え、トップバーと画面を描き直す（ドロワーは開いたまま）。サーバーの配信では、`Prefs.filters` のその画面の分も同じ条件に置き換えて残す（`savePrefs`。結果を `DisplayState.storageOk` に入れる。表示の設定を開いていれば描き直す）
-         - 画面の「ドロワーを閉じる」では `drawerOpen` を偽にして描き直し、トップバーの絞り込みのボタンへフォーカスを戻す
+         - 画面の「条件を変える」では `FilterState.byTab` のその画面の分を置き換え、トップバーと画面を再描画する（ドロワーは開いたまま）。サーバーの配信では、`Prefs.filters` のその画面の分も同じ条件に置き換えて残す（`savePrefs`。結果を `DisplayState.storageOk` に入れる。表示の設定を開いていれば再描画する）
+         - 画面の「ドロワーを閉じる」では `drawerOpen` を偽にして再描画し、トップバーの絞り込みのボタンへフォーカスを戻す
          - 概要へ移ったときは `drawerOpen` を偽にする
-      10. 変更履歴のコールバックを次で扱う（どれも記録を読み直さず、履歴に積まない）
+      10. 変更履歴のコールバックを次で扱う（どれも記録を再読み込みせず、履歴に積まない）
          - 「変更履歴を開く」では変更履歴のモーダルを開く（`historyDialog`。時点の件数は `resolveDiffPoint` の `added`・`changed`・`removed` の件数の和）
-         - 「時点を選ぶ」「差分の表示をやめる」では `Prefs.diffSel` を書き換えて残し（`savePrefs`）、3 の時点の引き直しと 5 をやり直す。`Route.diff` をその時点（やめるときは `null`）にしたハッシュに置き換える（`navigate`、`push: false`）
-      11. 表示の設定のコールバックを次で扱う（どれも記録を読み直さず、履歴に積まない）
+         - 「時点を選ぶ」「差分の表示をやめる」では `Prefs.diffSel` を書き換えて残し（`savePrefs`）、3 の時点の再取得と 5 を再実行する。`Route.diff` をその時点（やめるときは `null`）にしたハッシュに置き換える（`navigate`、`push: false`）
+      11. 表示の設定のコールバックを次で扱う（どれも記録を再読み込みせず、履歴に積まない）
          - トップバーの表示の設定のボタンで `DisplayState.open` を入れ替える。開くときはコメントの一覧と絞り込みのドロワーを閉じ（`listOpen`・`drawerOpen` を偽）、詳細パネルは開いたままにし、`StackState.front` を `left` にする。閉じる（×・Esc。幅 900px 以下で `StackState.front` が `left` なら Esc は表示の設定を閉じる。それ以外で詳細パネルを開いていれば Esc は詳細パネルを先に閉じる）ときはトップバーのボタンにフォーカスを戻す
-         - 「表示する種類を変える」では `Prefs.kinds` を書き換えて残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けと 5 をやり直す。開いている画面の種類を外したときは概要へ移す（`navigate`、`push: false`）
-         - 「既定に戻す」では個人の上書きを外して残し（`clearOverrides`、`savePrefs`）、`FilterState.byTab` を空にして、3 と 5 をやり直す（開いている画面は画面の既定の条件で開き直る）。フォーカスは「ワークスペースの既定のまま表示しています。」へ移す
+         - 「表示する種類を変える」では `Prefs.kinds` を書き換えて残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けと 5 を再実行する。開いている画面の種類を外したときは概要へ移す（`navigate`、`push: false`）
+         - 「既定に戻す」では個人の上書きを外して残し（`clearOverrides`、`savePrefs`）、`FilterState.byTab` を空にして、3 と 5 を再実行する（開いている画面は画面の既定の条件で開き直る）。フォーカスは「ワークスペースの既定のまま表示しています。」へ移す
          - 「ワークスペースの既定にする」では `DisplayState.confirm` を `{busy: false, error: null}` にして確かめを開く（`settingsConfirm`。`from` は既定、`to` は今当てている値）
-         - 確かめの「保存する」では `busy` にして送る（`putDisplay`）。200 なら確かめを閉じ、返った `display` を記録の `settings.display` と `savedDisplay` に入れ、`message` を「ワークスペースの既定にしました（{MM/DD HH:mm}）。」にして 3 と 5 をやり直す（個人の上書きはそのまま残す）。断られたら `error` に「保存できませんでした。{detail}」、届かないなら立ち上げ直しの案内を入れて確かめを描き直す（画面設計『既定の保存の確かめ』の文言）
+         - 確かめの「保存する」では `busy` にして送信する（`putDisplay`）。200 なら確かめを閉じ、返った `display` を記録の `settings.display` と `savedDisplay` に入れ、`message` を「ワークスペースの既定にしました（{MM/DD HH:mm}）。」にして 3 と 5 を再実行する（個人の上書きはそのまま残す）。断られたら `error` に「保存できませんでした。{detail}」、届かないなら立ち再起動の案内を入れて確かめを再描画する（画面設計『既定の保存の確かめ』の文言）
          - 確かめの「取り消す」と Esc（`busy` の間は受けない）では確かめを閉じ、「ワークスペースの既定にする」にフォーカスを戻す
-         - トップバーのライト / ダークと表の「列の表示」「初期設定に戻す」も `Prefs` の上書きとして残し、開いていれば表示の設定を描き直す（「この端末で変えている項目」を合わせる）
-      12. 書き換えの知らせにつなぐ（`subscribeEvents`）。`changed` では保存待ちの編集も読み直す（`editApi().read`）。読み直しは 1 回ずつ順に流し、流している間に `changed` を受けたら、終わった後にもう 1 回だけ読み直す（その間に続けて受けた知らせは 1 回にまとめる）。保存できた後とつながり直した後の読み直しも同じ順番に載せる
-         - `changed` を受けた場合、記録を読み直し、開いている画面・表示形式・ハッシュ・詳細パネルの項目・表の並べ替え・`FilterState`・`CommentState`・`DisplayState`・選んだ時点と「前回開いてから」の始まりを保ったまま 3・5 を履歴に積まずに描き直す。開いていた項目が消えていれば詳細パネルを閉じる。読み直しが読めない（422）場合は描き直さない
-         - 読み直した記録で選んだ時点が引けなくなった（まとまりが消えた・`pending` が空になった）場合、`Prefs.diffSel` と `Route.diff` を `null` にして残し（`savePrefs`）、ハッシュを置き換える（`navigate`、`push: false`）
-         - 読み直した `settings.display` が前と違う場合、`savedDisplay` と等しければ `savedDisplay` を `null` に戻すだけにする。そうでなければ、画面の下に「ワークスペースの既定が変わりました。」を `NOTICE_MS` の間出し、`message` を「ワークスペースの既定が変わりました（{MM/DD HH:mm}）。」にする（上書きを持たない項目だけが、読み分けで新しい既定になる）
-         - `duplicate_ids` を受けた場合、ID と記録の項目の種類の名前を `duplicateIds` にしてトップバーを描き直す。閉じたら `duplicateIds` を空にし、閉じたときの ID の集まりと違う `duplicate_ids` を受けるまで出し直さない。ID のリンクを押すとその項目の詳細パネルを開く
-         - つながりが切れた場合、接続の状態を `offline`（読んだ日時は最後に読めた記録の `built_at`）にしてトップバーを描き直す
-         - つながり直した場合、記録とレビュー中を読み直して接続の状態を `online` に戻す
-      13. `hashchange`・`popstate` で 3 の選んだ時点の引き直しと 4・5 を繰り返す
+         - トップバーのライト / ダークと表の「列の表示」「初期設定に戻す」も `Prefs` の上書きとして残し、開いていれば表示の設定を再描画する（「この端末で変えている項目」を合わせる）
+      12. 書き換えの知らせにつなぐ（`subscribeEvents`）。`changed` では保存待ちの編集も再読み込みする（`editApi().read`）。再読み込みは 1 回ずつ順に流し、流している間に `changed` を受けたら、終わった後にもう 1 回だけ再読み込みする（その間に続けて受けた知らせは 1 回にまとめる）。保存できた後とつながり修正した後の再読み込みも同じ順番に載せる
+         - `changed` を受けた場合、記録を再読み込みし、開いている画面・表示形式・ハッシュ・詳細パネルの項目・表の並べ替え・`FilterState`・`CommentState`・`DisplayState`・選んだ時点と「前回開いてから」の始まりを保ったまま 3・5 を履歴に積まずに再描画する。開いていた項目が消えていれば詳細パネルを閉じる。再読み込みが読めない（422）場合は再描画しない
+         - 再読み込みした記録で選んだ時点が引けなくなった（まとまりが消えた・`pending` が空になった）場合、`Prefs.diffSel` と `Route.diff` を `null` にして残し（`savePrefs`）、ハッシュを置き換える（`navigate`、`push: false`）
+         - 再読み込みした `settings.display` が前と違う場合、`savedDisplay` と等しければ `savedDisplay` を `null` に戻すだけにする。そうでなければ、画面の下に「ワークスペースの既定が変わりました。」を `NOTICE_MS` の間出し、`message` を「ワークスペースの既定が変わりました（{MM/DD HH:mm}）。」にする（上書きを持たない項目だけが、読み分けで新しい既定になる）
+         - `duplicate_ids` を受けた場合、ID と記録の項目の種類の名前を `duplicateIds` にしてトップバーを再描画する。閉じたら `duplicateIds` を空にし、閉じたときの ID の集まりと違う `duplicate_ids` を受けるまで再表示しない。ID のリンクを押すとその項目の詳細パネルを開く
+         - つながりが切れた場合、接続の状態を `offline`（読んだ日時は最後に読めた記録の `built_at`）にしてトップバーを再描画する
+         - つながり修正した場合、記録とレビュー中を再読み込みして接続の状態を `online` に戻す
+      13. `hashchange`・`popstate` で 3 の選んだ時点の再取得と 4・5 を繰り返す
       14. サーバーの配信では、編集を次で扱う（`EditState`。どれも履歴に積まない）
-         - 2 で保存待ちの編集も読む（`editApi().read`）。3 の索引は、差分の表示中でなければ `applyEdits` で当てた記録から作る（差分の表示中は当てない。保存待ちの編集は残し、やめると描き直す）
-         - 5 で、差分の表示中でなければ、トップバーに `pending`（件数・`EditState.open`・`blocked` があるか）、一覧の 4 画面に `edit`（`pendingMarkOf` で求めた印とその種類の `item-add`）、詳細パネルに `edit`、表示の設定に `onWorkspace` を渡す。`EditState.open` なら保存待ちのパネルを重ね、`workspaceOpen` なら本文の区画を設定の画面に置き換える
+         - 2 で保存待ちの編集も読む（`editApi().read`）。3 の索引は、差分の表示中でなければ `applyEdits` で当てた記録から作る（差分の表示中は当てない。保存待ちの編集は残し、やめると再描画する）
+         - 5 で、差分の表示中でなければ、トップバーに `pending`（件数・`EditState.open`・`blocked` があるか）、一覧の 4 画面に `edit`（`pendingMarkOf` で求めたマーカーとその種類の `item-add`）、詳細パネルに `edit`、表示の設定に `onWorkspace` を渡す。`EditState.open` なら保存待ちのパネルを重ね、`workspaceOpen` なら本文の区画を設定の画面に置き換える
          - 差分の表示に移ったときは、保存待ちのパネルと設定の画面を閉じ、`editing` を `null` にする
          - 「編集する」では `editing` をその項目と `null` で入れ替える。「項目を追加」では開いていた詳細パネルを閉じ、`adding` に種類を入れて空の項目の `detailEditForm` を詳細パネルと同じ置き方で開く
-         - 編集の表示の `on.change`・設定の画面の `on.change`・「項目を削除」では `editApi().add` で溜める（足す項目は、タイトルを書いたときに `target` を省いた `item-add` を送り、返った仮の ID を `editing` に入れて `adding` を `null` にする。続くキーは同じ `item-add` の `value` を送り直す。足す項目の `option-add`・`option-edit`・`option-remove`・`adopt` はその op では送らず、`value.options` を書き換えた同じ `item-add` を送り直す。`adopt` では選んだ案だけを `adopted: true` にして `status` を決定済みにする。足す項目の送信は、追加の入力を開くたびに作る送信の並び（`EditState.addSend`。保存待ちの仮の ID の項目を開き直したときは、その仮の ID と保存待ちの `item-add` の `value` で作る）に積み、前の送信が終わってから順に送る。送る `value` は、並びが持つ最後に溜められた `value`（まだ無ければ、その並びの追加の入力の `addDraft`）にその入力を当てて組み立て、溜められたら並びの `value` を送った値にする（保存待ちの編集の読み直しの結果は待たない）。当て先は `editing` ではなく並びが持つ仮の ID で引き、タイトルを書いた最初の `item-add` の応答より前に来た入力も、返った仮の ID の `item-add` へ当てて送り、`target` の無い `item-add` を重ねて送らない。追加の入力を閉じた・別の追加を始めた後も、並びに積んだ入力はその並びの仮の ID へ送る。最初の `item-add` の応答で `editing` を仮の ID、`adding` を `null` にするのは、その並びの追加の入力をまだ開いているときに限る。最初の `item-add` が断られた・届かないときは、並びに待たせた入力を送らずにその並びの `addDraft` に当てて残す）。溜めたら保存待ちの編集を読み直して 3・5 をやり直し、その入力欄へフォーカスを戻す。断られた・届かないときは `errors` に理由を入れ、入力を残して描き直す。「削除を取り消す」ではその `item-remove` を `editApi().remove` で外す
+         - 編集の表示の `on.change`・設定の画面の `on.change`・「項目を削除」では `editApi().add` で溜める（追加する項目は、タイトルを書いたときに `target` を省いた `item-add` を送信し、返った仮の ID を `editing` に入れて `adding` を `null` にする。続くキーは同じ `item-add` の `value` を再送信する。追加する項目の `option-add`・`option-edit`・`option-remove`・`adopt` はその op では送信せず、`value.options` を書き換えた同じ `item-add` を再送信する。`adopt` では選んだ案だけを `adopted: true` にして `status` を決定済みにする。追加する項目の送信は、追加の入力を開くたびに作る送信の並び（`EditState.addSend`。保存待ちの仮の ID の項目を再度開いたときは、その仮の ID と保存待ちの `item-add` の `value` で作る）に積み、前の送信が終わってから順に送信する。送信する `value` は、並びが持つ最後に溜められた `value`（まだ無ければ、その並びの追加の入力の `addDraft`）にその入力を当てて組み立て、溜められたら並びの `value` を送信した値にする（保存待ちの編集の再読み込みの結果は待たない）。当て先は `editing` ではなく並びが持つ仮の ID で引き、タイトルを書いた最初の `item-add` の応答より前に来た入力も、返った仮の ID の `item-add` へ当てて送信し、`target` の無い `item-add` を重ねて送信しない。追加の入力を閉じた・別の追加を始めた後も、並びに積んだ入力はその並びの仮の ID へ送信する。最初の `item-add` の応答で `editing` を仮の ID、`adding` を `null` にするのは、その並びの追加の入力をまだ開いているときに限る。最初の `item-add` が断られた・届かないときは、並びに待たせた入力を送信せずにその並びの `addDraft` に当てて残す）。溜めたら保存待ちの編集を再読み込みして 3・5 を再実行し、その入力欄へフォーカスを戻す。断られた・届かないときは `errors` に理由を入れ、入力を残して再描画する。「削除を取り消す」ではその `item-remove` を `editApi().remove` で外す
          - トップバーの保存待ちのボタンでは `EditState.open` を入れ替える。開くときはコメントの一覧・表示の設定・絞り込みのドロワーを閉じ、`StackState.front` を `left` にする。Esc と「閉じる」はコメントの一覧と同じに扱い、閉じたらトップバーの保存待ちのボタンへフォーカスを戻す
-         - 保存待ちのパネルの「開く」では、項目は詳細パネルを編集の表示で開き、`settings` は設定の画面を開く（幅 900px 以下ではパネルを閉じ、詳細パネルを閉じたら開き直す）。「取り消す」では `editApi().remove` して外した ID を `blocked` からも外し、読み直して描き直す
-         - 「まとめて保存する」では `status` を `saving` にして `editApi().save` を呼ぶ。200 なら `blocked` を空にしてパネルを閉じ、`editing` を `null`、`toast` を「{送った件数} 件を保存しました。」にして記録と保存待ちの編集を読み直す。409 なら `blocked` に結果を入れてパネルを開いたまま書き込めない編集の知らせへフォーカスを移す。届かないときは `offline` にする。どの場合も `idle` に戻してから描き直す（`offline` は次に保存するまで残す）
+         - 保存待ちのパネルの「開く」では、項目は詳細パネルを編集の表示で開き、`settings` は設定の画面を開く（幅 900px 以下ではパネルを閉じ、詳細パネルを閉じたら再度開く）。「取り消す」では `editApi().remove` して外した ID を `blocked` からも外し、再読み込みして再描画する
+         - 「まとめて保存する」では `status` を `saving` にして `editApi().save` を呼ぶ。200 なら `blocked` を空にしてパネルを閉じ、`editing` を `null`、`toast` を「{送信した件数} 件を保存しました。」にして記録と保存待ちの編集を再読み込みする。409 なら `blocked` に結果を入れてパネルを開いたまま書き込めない編集の知らせへフォーカスを移す。届かないときは `offline` にする。どの場合も `idle` に戻してから再描画する（`offline` は次に保存するまで残す）
          - 表示の設定の「設定を編集する」では表示の設定を閉じ、`workspaceOpen` を真にする（幅 900px 以下では保存待ちのパネルも閉じる）。設定の画面の「閉じる」では偽にして開く前の画面を描く
-         - 設定の画面を開くたびに文字起こしの可否を読み直し（`voiceApi().status`）、返ったら `VoiceState.availability` に入れて `workspaceSettings` の `transcription` に渡し、開いている設定の画面の音声入力のまとまり（`data-key` が `transcription.action`・`transcription.preset` の欄）だけを作り直した欄に差し替える（読めなければ `null`。ほかの欄は描き直さず、付け替え先の選択などの入力の途中を残す）
-         - 保存待ちの編集の読み取り（`editApi().read`。2・13 と、溜めた・取り消した・保存した後）は送った順に `EditState.editsReadSeq` で番号を振る。届いた読み取りの番号が `editsAppliedSeq` より小さければ結果を `edits` に当てずに捨て、当てたら `editsAppliedSeq` をその番号にする
-         - 編集の表示・設定の画面の `on.change` では、`editApi().add` を送る前に値を `EditState.sentEdits` に `settledSeq` を `null` にして入れる（`option-add` は入れず、`optionDrafts` の書きかけを溜められるまで残す）。溜められた（`add` が返った）ら、そのキーの値が入れた値のままのときだけ `settledSeq` をその時点の `editsReadSeq` + 1 にする。断られた・届かないときは外さず、理由と一緒に入力欄に残す。`sentEdits` から外すのは次の 3 つだけ: 保存待ちの編集の読み取りを `edits` に当てたら、当てた `edits` に同じキーで同じ値（JSON にして比べる）の編集があるキーと、当てた読み取りの番号が `settledSeq` 以上のキー（その読み取りがサーバーの今の保存待ちを表すため、`edits` にそのキーの編集が無い・ほかの端末の値で載っているも含めて値によらず）を外す／「取り消す」で外した編集と同じキーを外す／「まとめて保存する」が 200 なら全て外す
-         - 編集の表示の `on.draft` では、`EditState.optionDrafts` のその項目の分の記号の中身を書き換える（無ければ足す）。足したときだけ描き直し、その案の中身の入力欄へフォーカスを移す（打つたびには描き直さない）。その記号の `option-add` を溜められたら（足す項目では、その記号の案を加えた `value.options` の `item-add` を溜められたら）書きかけから外す。`editing` を変えたとき（追加の入力で仮の ID が振られたときを除く）・差分の表示に移ったとき・保存できたときは `optionDrafts` を空にする。詳細パネルの `form` に、その項目の書きかけを `optionDrafts` で渡す
+         - 設定の画面を開くたびに文字起こしの可否を再読み込み（`voiceApi().status`）、返ったら `VoiceState.availability` に入れて `workspaceSettings` の `transcription` に渡し、開いている設定の画面の音声入力のまとまり（`data-key` が `transcription.action`・`transcription.preset` の欄）だけを再作成した欄に差し替える（読めなければ `null`。ほかの欄は再描画せず、付け替え先の選択などの入力の途中を残す）
+         - 保存待ちの編集の読み取り（`editApi().read`。2・13 と、溜めた・取り消した・保存した後）は送信した順に `EditState.editsReadSeq` で番号を振る。届いた読み取りの番号が `editsAppliedSeq` より小さければ結果を `edits` に当てずに捨て、当てたら `editsAppliedSeq` をその番号にする
+         - 編集の表示・設定の画面の `on.change` では、`editApi().add` を送信する前に値を `EditState.sentEdits` に `settledSeq` を `null` にして入れる（`option-add` は入れず、`optionDrafts` の書きかけを溜められるまで残す）。溜められた（`add` が返った）ら、そのキーの値が入れた値のままのときだけ `settledSeq` をその時点の `editsReadSeq` + 1 にする。断られた・届かないときは外さず、理由と一緒に入力欄に残す。`sentEdits` から外すのは次の 3 つだけ: 保存待ちの編集の読み取りを `edits` に当てたら、当てた `edits` に同じキーで同じ値（JSON にして比べる）の編集があるキーと、当てた読み取りの番号が `settledSeq` 以上のキー（その読み取りがサーバーの今の保存待ちを表すため、`edits` にそのキーの編集が無い・ほかの端末の値で載っているも含めて値によらず）を外す／「取り消す」で外した編集と同じキーを外す／「まとめて保存する」が 200 なら全て外す
+         - 編集の表示の `on.draft` では、`EditState.optionDrafts` のその項目の分の記号の中身を書き換える（無ければ追加する）。追加したときだけ再描画し、その案の中身の入力欄へフォーカスを移す（打つたびには再描画しない）。その記号の `option-add` を溜められたら（追加する項目では、その記号の案を加えた `value.options` の `item-add` を溜められたら）書きかけから外す。`editing` を変えたとき（追加の入力で仮の ID が振られたときを除く）・差分の表示に移ったとき・保存できたときは `optionDrafts` を空にする。詳細パネルの `form` に、その項目の書きかけを `optionDrafts` で渡す
          - 追加の入力のパネルの `form` にも `optionDrafts` と `on.draft` を渡す。仮の ID が振られる前の書きかけは `NEW_ID_PREFIX` をキーにし、`item-add` を溜めて仮の ID が振られたら、そのキーの書きかけを仮の ID へ移す
 
     notes:
       確かめ方: 単体テストは持たない。インターフェース定義『プレビューを開く』の結合テストがこの流れを確かめる
-      キー操作: 文書の `keydown` で `Ctrl+K`（`metaKey` の `Cmd+K` を含む）を受けたら、入力欄にフォーカスがあっても既定の動作を止め、全体の検索を開く（開いていれば検索の言葉を選び直す）。`/` では開かない
+      キー操作: 文書の `keydown` で `Ctrl+K`（`metaKey` の `Cmd+K` を含む）を受けたら、入力欄にフォーカスがあっても既定の動作を止め、全体の検索を開く（開いていれば検索の言葉を再選択する）。`/` では開かない
       画面の作り: '`body` を窓の高さに固定し、トップバーとタブの帯の下に画面ごとの領域（画面設計の「画面の領域」）を 1 つ置く（`style.css`）。ページ全体はスクロールさせず、表・ボード（幅 721px 以上）は領域の高さいっぱいに広げて中でスクロールさせ、それより狭い幅では領域ごとスクロールさせる。`100dvh` から帯と余白を引く高さの計算（`.table-wrap`・`.map-wrap`・`.fg-wrap`・`.g3-wrap`）はやめる。詳細パネルの位置（`.panel` の `top`）は帯の下のまま'
       見出しのハッシュ: '5 で詳細パネルに `Route.heading` を渡す。詳細パネルの `on.heading` では `Route.heading` を書き換え、履歴に積まずにハッシュを置き換える（`navigate`、`push: false`）。項目へ移るときは `heading` を `null` にする'
-      詳細パネルのレビュー中のコメントの操作: 詳細パネルには、コメントの一覧へ渡すのと同じ書き換えている行（`editing`・`editingIn`・`editError`・`editBody`）と、`CommentState.removed` のうちその項目へのものを `comment.edit` で渡し、`comment.edit.on` には一覧と同じ処理（修正を始める・`saveEdit`・キャンセル・`removeComment`・`restoreComment`）を渡す。書き換えている行は一覧と詳細パネルを合わせて 1 つで、修正を始めると前の書き換えを捨てる。修正を始めた場所（一覧なら `'list'`、詳細パネルなら `'detail'`）を `editingIn` に持ち、入力欄はその場所だけに描かせる。修正を始める・キャンセル・直せなかったときは、詳細パネルと一覧を両方描き直す（`refreshComments`）。詳細パネルの操作の後は、描き直した詳細パネルの中で、修正を始めたら入力欄（`detail-edit:{ID}`）、送るかキャンセルしたらその行の「修正」（`detail-edit-open:{ID}`）、削除したら「元に戻す」（`detail-restore:{ID}`）、戻したら戻した行の「修正」へフォーカスを移し、本文のスクロールの位置を保つ。コメントの一覧を開いていない間に、詳細パネルで別の項目へ移るかパネルを閉じたら、`CommentState.removed` と書き換えている行を捨てる。一覧を開いている間でも、詳細パネルで別の項目へ移るかパネルを閉じたら、`editingIn` が `'detail'` の書き換えを捨てる（`CommentState.removed` は残す）。一覧を閉じたら（表示の設定を開いて一覧を閉じるときも）、`editingIn` が `'list'` の書き換えを捨てる。どちらも、入力欄の無い側に「修正」「削除」の無い行を残さないため。ただし、書き換えている行の修正の入力で録音・文字起こし中か、入力欄に出していない文字起こしの結果があるとき（`editHeld`）は、書き換えを捨てない（トップバーから戻ったときに修正の入力のまま開くため）。配る書き出しとサーバーにつながらないときは、今と同じく `comment` を `null` で渡す
+      詳細パネルのレビュー中のコメントの操作: 詳細パネルには、コメントの一覧へ渡すのと同じ書き換えている行（`editing`・`editingIn`・`editError`・`editBody`）と、`CommentState.removed` のうちその項目へのものを `comment.edit` で渡し、`comment.edit.on` には一覧と同じ処理（修正を始める・`saveEdit`・キャンセル・`removeComment`・`restoreComment`）を渡す。書き換えている行は一覧と詳細パネルを合わせて 1 つで、修正を始めると前の書き換えを捨てる。修正を始めた場所（一覧なら `'list'`、詳細パネルなら `'detail'`）を `editingIn` に持ち、入力欄はその場所だけに描かせる。修正を始める・キャンセル・修正できなかったときは、詳細パネルと一覧を両方再描画する（`refreshComments`）。詳細パネルの操作の後は、再描画した詳細パネルの中で、修正を始めたら入力欄（`detail-edit:{ID}`）、送信するかキャンセルしたらその行の「修正」（`detail-edit-open:{ID}`）、削除したら「元に戻す」（`detail-restore:{ID}`）、戻したら戻した行の「修正」へフォーカスを移し、本文のスクロールの位置を保つ。コメントの一覧を開いていない間に、詳細パネルで別の項目へ移るかパネルを閉じたら、`CommentState.removed` と書き換えている行を捨てる。一覧を開いている間でも、詳細パネルで別の項目へ移るかパネルを閉じたら、`editingIn` が `'detail'` の書き換えを捨てる（`CommentState.removed` は残す）。一覧を閉じたら（表示の設定を開いて一覧を閉じるときも）、`editingIn` が `'list'` の書き換えを捨てる。どちらも、入力欄の無い側に「修正」「削除」の無い行を残さないため。ただし、書き換えている行の修正の入力で録音・文字起こし中か、入力欄に出していない文字起こしの結果があるとき（`editHeld`）は、書き換えを捨てない（トップバーから戻ったときに修正の入力のまま開くため）。配る書き出しとサーバーにつながらないときは、今と同じく `comment` を `null` で渡す
       差分の時点の引き継ぎ: 画面・項目を移るとき（画面と部品から受けた移る先の `Route` と、全体の検索から開くとき。`go`）は、移る先の `Route.diff` を今の `Route.diff` にしてから `route` に入れて書く（`navigate`）。概要の `tableRoute` のように `Route` を一から作る移る先でも `diff` を落とさない。`Route.diff` を変えるのは 3・10・13・14 だけ
       本文のまとまりのリンク: 詳細パネルの `on.changeSet` では、渡された値を `resolveDiffPoint` で引き、まとまりの ID として引けたときだけ 10 の「時点を選ぶ」と同じに扱う（`Prefs.diffSel` と `Route.diff` をそのまとまりにし、履歴に積まずにハッシュを置き換える。開いている画面・項目・全画面はそのまま）。引けなければ何もしない
       幅 900px 以下の重なり: 幅 900px 以下で `body.left-front` のとき、`.comments-panel`・`.settings-drawer`・`dialog.drawer.narrow` の `z-index` を `.panel`（35）より上にする（`style.css`）。`body.left-front` が無いときは変えない。幅 901px 以上では、グレーアウト（`.left-scrim`）を本文と詳細パネルの上、左のパネルの下に置き、`body.detail-above-scrim` のときだけ詳細パネルをグレーアウトの上に出す
       書き込みのまとまりのリンク: コメントの一覧に `changeSetOf`（記録の `changes.sets` からまとまりの ID で説明を引く。無ければ `null`）を渡す。コメントの一覧の `on.changeSet` は詳細パネルの `on.changeSet` と同じく扱う（`resolveDiffPoint` で引けたときだけ 10 の「時点を選ぶ」と同じにし、履歴に積まずにハッシュを置き換える）。コメントの一覧（`listOpen`）と、その中の画面・開いているスレッドは変えない
-      本文の差分の並べ方: 詳細パネルに `resolveDisplay` の `bodyLayout` を渡す。詳細パネルの `on.layout`（押した並べ方）では、`side` なら `Prefs.bodyLayout` を `side`、`inline` なら `null` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直して開いている詳細パネル・詳細の全画面だけを描き直す。本文のスクロール領域の `scrollTop` を保ち、押した並べ方のボタン（`[data-layout]`）にフォーカスを戻す。履歴に積まず、ハッシュも変えない。表示の設定を開いていれば描き直す（「この端末で変えている項目」を合わせる）
-      レビュー中のコメントの並び: 詳細パネルに `resolveDisplay` の `reviewOrder` を渡す。詳細パネルの `on.order`（押した後の並び）では、`oldest` なら `Prefs.reviewOrder` を `oldest`、`newest` なら `null` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直して開いている詳細パネル・詳細の全画面だけを描き直す。本文のスクロール領域の `scrollTop` を保ち、並びの切り替えのボタン（`data-focus` が `detail-review-order`）にフォーカスを戻す。履歴に積まず、ハッシュも変えない。表示の設定を開いていれば描き直す（「この端末で変えている項目」を合わせる）
-      本文の表とセクションの見せ方: 詳細パネルと表示の設定に `resolveDisplay` の `bodyView` を渡す。表示の設定の `on.bodyView`（`{key, value}`）では、`value` が `BODY_VIEW_DEFAULT` のその項目と同じなら `Prefs` の対応する項目（`fold` → `sectionFold`）を `null`、違えば `value` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直して開いている詳細パネル・詳細の全画面と表示の設定だけを描き直す。本文のスクロール領域の `scrollTop` を保ち、押したチェックボックスにフォーカスを戻す。履歴に積まず、ハッシュも変えない
+      本文の差分の並べ方: 詳細パネルに `resolveDisplay` の `bodyLayout` を渡す。詳細パネルの `on.layout`（押した並べ方）では、`side` なら `Prefs.bodyLayout` を `side`、`inline` なら `null` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けを再実行して開いている詳細パネル・詳細の全画面だけを再描画する。本文のスクロール領域の `scrollTop` を保ち、押した並べ方のボタン（`[data-layout]`）にフォーカスを戻す。履歴に積まず、ハッシュも変えない。表示の設定を開いていれば再描画する（「この端末で変えている項目」を合わせる）
+      レビュー中のコメントの並び: 詳細パネルに `resolveDisplay` の `reviewOrder` を渡す。詳細パネルの `on.order`（押した後の並び）では、`oldest` なら `Prefs.reviewOrder` を `oldest`、`newest` なら `null` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けを再実行して開いている詳細パネル・詳細の全画面だけを再描画する。本文のスクロール領域の `scrollTop` を保ち、並びの切り替えのボタン（`data-focus` が `detail-review-order`）にフォーカスを戻す。履歴に積まず、ハッシュも変えない。表示の設定を開いていれば再描画する（「この端末で変えている項目」を合わせる）
+      本文の表とセクションの見せ方: 詳細パネルと表示の設定に `resolveDisplay` の `bodyView` を渡す。表示の設定の `on.bodyView`（`{key, value}`）では、`value` が `BODY_VIEW_DEFAULT` のその項目と同じなら `Prefs` の対応する項目（`fold` → `sectionFold`）を `null`、違えば `value` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けを再実行して開いている詳細パネル・詳細の全画面と表示の設定だけを再描画する。本文のスクロール領域の `scrollTop` を保ち、押したチェックボックスにフォーカスを戻す。履歴に積まず、ハッシュも変えない
       グレーアウトの色: 左のパネルのグレーアウト（`.left-scrim`）と詳細の全画面の後ろの幕（`dialog.full::backdrop`）は、ほかのモーダルと同じ `--scrim`（`style.css`）。使わなくなる `--scrim-soft` は `tokens.css` から削除する
   - name: formKey
     title: 入力欄のキー
@@ -658,8 +658,8 @@ functions:
         description: 今の端末の設定
     returns:
       type: Prefs
-      description: '`theme`・`kinds`・`minimap`・`bodyLayout`・`reviewOrder`・`focusAfterAdd`・`sectionFold` を `null`、`columns`・`filters` を空にした写し'
-    process: 1. `prefs` を写し、上の 9 項目を外して返す（渡した `prefs` は変えない）
+      description: '`theme`・`kinds`・`minimap`・`bodyLayout`・`reviewOrder`・`focusAfterAdd`・`sectionFold` を `null`、`columns`・`filters` を空にしたコピー'
+    process: 1. `prefs` をコピー、上の 9 項目を外して返す（渡した `prefs` は変えない）
     unit_tests:
       - name: test_clear_overrides
         case: 正常
@@ -673,7 +673,7 @@ functions:
     usecase: 項目へコメントする
     kind: 関数
     scope: public
-    summary: レビュー中のコメントを `target` ごとに数え、項目の ID → 件数の対応を返す。箇所を指すコメントもその項目の件数に数え、`target` が `null` のコメントは数えない。`start` はサーバーにつながって開いたときだけこれで作った対応を各画面の `comments` へ渡し（つながらないで開いたとき・配る書き出しは渡さない）、コメントを溜める・直す・消す・戻す・送る後に対応が変わったときだけ、画面を描き直さずに `refreshCommentMarks` で印を差し替える
+    summary: レビュー中のコメントを `target` ごとに数え、項目の ID → 件数の対応を返す。箇所を指すコメントもその項目の件数に数え、`target` が `null` のコメントは数えない。`start` はサーバーにつながって開いたときだけこれで作った対応を各画面の `comments` へ渡し（つながらないで開いたとき・配る書き出しは渡さない）、コメントを溜める・修正する・削除する・戻す・送信する後に対応が変わったときだけ、画面を再描画せずに `refreshCommentMarks` でマーカーを差し替える
     args:
       - name: items
         type: ReviewState['items']
@@ -703,7 +703,7 @@ functions:
     usecase: 前回からの差分を見る
     scope: public
     is_async: true
-    summary: そのタブの「前回開いてから」の始まりを決めて `SINCE_KEY` に残す。同じタブで読み込み直したときは、残した始まりをそのまま使う
+    summary: そのタブの「前回開いてから」の始まりを決めて `SINCE_KEY` に残す。同じタブで再読み込みしたときは、残した始まりをそのまま使う
     side_effects: '`session` の `SINCE_KEY` を書く。サーバーの配信では `post` がワークスペースの前回開いた時点を書き換える。配る書き出しでは `prefs.opened` を書き換えて `persist` を呼ぶ'
     args:
       - name: serverMode
@@ -747,21 +747,21 @@ functions:
       type: Promise<OpenedPoint>
       description: そのタブの「前回開いてから」の始まり
     process: |-
-      1. `session` の `SINCE_KEY` を JSON として読み、`isOpenedPoint` ならそれを返す（読めない・前の版の日時の文字列は残っていないものとして続ける）
+      1. `session` の `SINCE_KEY` を JSON として読み、`isOpenedPoint` ならそれを返す（読めない・前のバージョンの日時の文字列は残っていないものとして続ける）
       2. タブを開いた時点を `{at: now(), seq: headSeq}` にする
       3. サーバーの配信では `post` を呼び、前回の時点を `previous`、今の時点を `opened` にする（`null` なら前回の時点は無く、今の時点はタブを開いた時点）。配る書き出しでは、前回の時点を `prefs.opened`（`isOpenedPoint` でなければ無い）、今の時点をタブを開いた時点にし、`prefs.opened` を今の時点に書き換えて `persist` を呼ぶ
       4. 前回の時点があり、その `seq` が `headSeq` 以下ならそれを、それ以外（無い・`seq` が `headSeq` より大きい）は今の時点を始まりにする
-      5. 始まりを JSON で `SINCE_KEY` に書き（書けなければ何もしない。読み込み直すたびに決め直す）、返す
+      5. 始まりを JSON で `SINCE_KEY` に書き（書けなければ何もしない。再読み込みするたびに決め修正する）、返す
     unit_tests:
       - name: test_resolve_since
         case: 正常
-        summary: サーバーの配信では前回の時点を始まりにし、無い・通し番号が先のときは今の時点にする
+        summary: サーバーの配信では前回の時点を始まりにし、無い・連番が先のときは今の時点にする
         condition: '`serverMode` 真、`headSeq` 2、空の `session`。`parametrize`: `post` が `{previous: {at: A, seq: 1}, opened: {at: B, seq: 2}}` / `{previous: null, opened: {at: B, seq: 2}}` / `{previous: {at: A, seq: 5}, opened: {at: B, seq: 2}}` / `null`'
         mock: '`post`・`now`（引数で渡す）'
         expected: '`{at: A, seq: 1}` / `{at: B, seq: 2}` / `{at: B, seq: 2}` / `{at: now, seq: 2}`。どれも `session` の `SINCE_KEY` に返した値の JSON が入る'
       - name: test_resolve_since_when_kept
         case: 正常
-        summary: 同じタブに残した始まりを使い、前の版の値は使わない
+        summary: 同じタブに残した始まりを使い、前のバージョンの値は使わない
         condition: '`serverMode` 真。`parametrize`: `SINCE_KEY` に `{"at": A, "seq": 1}` / 日時の文字列 `2026-10-04T13:05:00+00:00`'
         mock: '`post`（呼んだ回数を数える）'
         expected: '`{at: A, seq: 1}` を返し `post` を呼ばない / `post` を 1 回呼び、その結果から決める'
@@ -800,7 +800,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 変えた幅を `session` の `PANEL_WIDTH_KEY` に書く（書けなければ何もしない）。`start` は全画面以外で詳細パネルを開くたびに（表示の幅によらない。幅 900px 以下で開いてから窓を広げても、区切りの窓の幅の受け取りが残した幅を当て直す）、`readPanelWidth` の値を `stored` にした `panelResizer` を `detailPanel` の `resizer` に渡し、`onChange` でこれを呼ぶ
+    summary: 変えた幅を `session` の `PANEL_WIDTH_KEY` に書く（書けなければ何もしない）。`start` は全画面以外で詳細パネルを開くたびに（表示の幅によらない。幅 900px 以下で開いてから窓を広げても、区切りの窓の幅の受け取りが残した幅を再適用する）、`readPanelWidth` の値を `stored` にした `panelResizer` を `detailPanel` の `resizer` に渡し、`onChange` でこれを呼ぶ
     side_effects: '`session` の `PANEL_WIDTH_KEY` を書く'
     args:
       - name: session
@@ -882,7 +882,7 @@ functions:
     usecase: 音声でコメントする
     scope: public
     is_async: true
-    summary: 音声入力の間に書き換えの通知を受けたとき、描いている記録とスレッドを書き換えずに読み直し、録音の行き先が無くなっていればその ID を返す
+    summary: 音声入力の間に書き換えの通知を受けたとき、描いている記録とスレッドを書き換えずに再読み込みし、録音の行き先が無くなっていればその ID を返す
     args:
       - name: destination
         type: VoiceDestination | null
@@ -966,28 +966,28 @@ functions:
         expected: '`input` / `submit` / `input` / `submit`'
     container: plugins/mindstella/skills/mindmap/preview/app.ts
 notes:
-  入力中の読み直しの保留: サーバーの配信では、`start` が呼ぶ `run` で描き直しの保留（`createRefreshHold`。`isVoiceActive` は `comment.voice.phase` が `idle` でないこと、`reload` は記録の読み直し、`onStaleChange` はトップバーの `stale` を書き換えて `renderTop`）を作る。書き換えの通知（`onChanged`）とつながり直したときの読み直しは `request` を呼び、音声入力があれば続けて `checkVoiceDestination` を呼んで、ID が返り、その時点でも `comment.voice` が同じ行き先で録音・文字起こし中なら録音を捨て（`abandonVoice`）、知らせを discarded にしてトップバーを描き直す（`renderTop`）。音声入力が終わったとき（文字起こしの結果が入った・キャンセル・失敗・捨てた）は `release` を呼ぶ。配る書き出しでは作らない
-  スレッドの読み直し: |-
-    `start` の 2（開いたとき）・13（`changed` を受けたときとつながり直したとき）では、記録とレビュー中に続けてスレッドも読む（`threadApi().read`）。読めたら `CommentState.threads` を置き換えて `threadsError` を `null` にし、断られた・届かないときは `threads` を前のまま残して `threadsError` に理由を入れる。読み直した後、パネルを開いていればスクロールの位置・絞り込み・入力中の返信と理由を保ったままパネルを描き直す（AI の返信・AI が立てたスレッド・AI のクローズとオープンへの戻しが届く）。配る書き出しでは読まない
-    読み直したらトップバーの `commentsUnread` を `anyOpenUnseen(threads)` で描き直す（パネルを閉じていても読む）。`view` が `thread` で、開いているスレッドが送ったもの（`openedThread.pending` が偽）で `hasUnseen` が真なら、「既読にする」を行う（開いている間に届いた返信も既読にする）
+  入力中の再読み込みの保留: サーバーの配信では、`start` が呼ぶ `run` で再描画の保留（`createRefreshHold`。`isVoiceActive` は `comment.voice.phase` が `idle` でないこと、`reload` は記録の再読み込みし、`onStaleChange` はトップバーの `stale` を書き換えて `renderTop`）を作る。書き換えの通知（`onChanged`）とつながり修正したときの再読み込みは `request` を呼び、音声入力があれば続けて `checkVoiceDestination` を呼んで、ID が返り、その時点でも `comment.voice` が同じ行き先で録音・文字起こし中なら録音を捨て（`abandonVoice`）、知らせを discarded にしてトップバーを再描画する（`renderTop`）。音声入力が終わったとき（文字起こしの結果が入った・キャンセル・失敗・捨てた）は `release` を呼ぶ。配る書き出しでは作らない
+  スレッドの再読み込み: |-
+    `start` の 2（開いたとき）・13（`changed` を受けたときとつながり修正したとき）では、記録とレビュー中に続けてスレッドも読む（`threadApi().read`）。読めたら `CommentState.threads` を置き換えて `threadsError` を `null` にし、断られた・届かないときは `threads` を前のまま残して `threadsError` に理由を入れる。再読み込みした後、パネルを開いていればスクロールの位置・絞り込み・入力中の返信と理由を保ったままパネルを再描画する（AI の返信・AI が立てたスレッド・AI のクローズとオープンへの戻しが届く）。配る書き出しでは読まない
+    再読み込みしたらトップバーの `commentsUnread` を `anyOpenUnseen(threads)` で再描画する（パネルを閉じていても読む）。`view` が `thread` で、開いているスレッドが送信したもの（`openedThread.pending` が偽）で `hasUnseen` が真なら、「既読にする」を行う（開いている間に届いた返信も既読にする）
 
-    「既読にする」は、「スレッドを開く」と読み直しの両方が使う 1 か所の処理。
-    - そのスレッドへの要求を送っている間と、そのスレッドへの要求が失敗してから別のスレッドを開くか一覧へ戻るまでの間は、呼ばない（送っているスレッドと失敗したスレッドの ID を控える。失敗の控えは「スレッドを開く」と「戻る」で空にする）
-    - `threadApi().seen` を呼ぶと同時に、`CommentState.threads` を `withSeen({ threads, id })` に置き換え、`anyOpenUnseen` が変わればトップバーを描き直す。応答は待たない
-    - 要求を送っている間に読み直した値で置き換えるときは、送っているスレッドを `withSeen` で既読にしてから置き換える（送る前のサーバーの値で写しを未読に戻さない）
-    - 断られた・届かないときは画面に出さず、そのスレッドの ID を送っている控えから失敗の控えへ移してからスレッドを読み直す（写しをサーバーの値に戻す）
+    「既読にする」は、「スレッドを開く」と再読み込みの両方が使う 1 か所の処理。
+    - そのスレッドへの要求を送信している間と、そのスレッドへの要求が失敗してから別のスレッドを開くか一覧へ戻るまでの間は、呼ばない（送信しているスレッドと失敗したスレッドの ID を控える。失敗の控えは「スレッドを開く」と「戻る」で空にする）
+    - `threadApi().seen` を呼ぶと同時に、`CommentState.threads` を `withSeen({ threads, id })` に置き換え、`anyOpenUnseen` が変わればトップバーを再描画する。応答は待たない
+    - 要求を送信している間に再読み込みした値で置き換えるときは、送信しているスレッドを `withSeen` で既読にしてから置き換える（送信する前のサーバーの値でコピーを未読に戻さない）
+    - 断られた・届かないときは画面に出さず、そのスレッドの ID を送信している控えから失敗の控えへ移してからスレッドを再読み込みする（コピーをサーバーの値に戻す）
   スレッドの画面の操作: |-
-    `start` の 5・6・8 に足す。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`target`・`openedThread`（`opened`）・`composing`・`reason`・`expanded` と、新しいスレッドの入力（`formKey(null, null)`。`target` があれば、その項目への箇所を持たない入力 `formKey({ID}, null)` で、詳細パネルの下端の入力と状態を共有する。その入力を溜める・書くとパネルを描き直し、フォーカスがパネルにあれば、溜めた後のフォーカスの移動先（`focusAfterAddTarget`）に従ってパネルの入力欄か「レビューに追加」へ移す）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
-    - パネルを開くときは、閉じる前の `view`・`openedThread`・`composing`・`reviewFrom`・`reviewFocus` のまま描き、パネルの中のスクロールの位置を `listScroll` に戻す（ページを開いたときは `list` から始める）。スレッドを読み直し、`view` が `thread` で、開いていた送ったスレッドが読み直したスレッドに無ければ、`view` を `list`、`openedThread` を `null` にする
-    - 「状態で絞る」「タグで絞る」（絞っているタグなら外す）「タグを外す」「項目の絞り込みを外す」では `filter`・`tag`・`target` を書き換えてパネルを描き直す
-    - 一覧を閉じるときは `target` を `null` にする（トップバー・未読のタイル・音声入力の帯など、詳細パネルのボタンでない入口で開くと項目で絞らない）。サーバーの配信では `detailPanel` に `on.comments` を渡し、受けたら `target` に項目の ID を入れてパネルの中の画面を開いた直後の状態（`view` は `list`、`openedThread`・`reviewFocus` は `null`、`composing` は偽、`reason` は閉じて空）に戻し、一覧を開いていなければ開き、開いていれば描き直す（`filter`・`tag` は保つ）。詳細パネルで別の項目へ移っても `target` は変えない
-    - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。送ったスレッドで `hasUnseen` が真なら「既読にする」を行う（一覧の行・レビュー中の書き込みのどちらから開いても同じ。「スレッドの読み直し」）。「戻る」（`thread` から）では返信の書きかけを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す
-    - 「レビュー中を開く」では返信の書きかけを待たずに保ち、`reviewFrom` に今の `view` を控えて `view` を `review` にする（`thread` から開いたときは `reviewFocus` にそのスレッドの ID）。「戻る」（`review` から）では `reviewFrom` へ戻る。`reviewFrom` が `thread` で、開いていたまだ送っていない新しいスレッドが `review.items` にも `removed` にも無ければ `list` へ戻る
+    `start` の 5・6・8 に追加する。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`target`・`openedThread`（`opened`）・`composing`・`reason`・`expanded` と、新しいスレッドの入力（`formKey(null, null)`。`target` があれば、その項目への箇所を持たない入力 `formKey({ID}, null)` で、詳細パネルの下端の入力と状態を共有する。その入力を溜める・書くとパネルを再描画し、フォーカスがパネルにあれば、溜めた後のフォーカスの移動先（`focusAfterAddTarget`）に従ってパネルの入力欄か「レビューに追加」へ移す）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
+    - パネルを開くときは、閉じる前の `view`・`openedThread`・`composing`・`reviewFrom`・`reviewFocus` のまま描き、パネルの中のスクロールの位置を `listScroll` に戻す（ページを開いたときは `list` から始める）。スレッドを再読み込みし、`view` が `thread` で、開いていた送信したスレッドが再読み込みしたスレッドに無ければ、`view` を `list`、`openedThread` を `null` にする
+    - 「状態で絞る」「タグで絞る」（絞っているタグなら外す）「タグを外す」「項目の絞り込みを外す」では `filter`・`tag`・`target` を書き換えてパネルを再描画する
+    - 一覧を閉じるときは `target` を `null` にする（トップバー・未読のタイル・音声入力の帯など、詳細パネルのボタンでない入口で開くと項目で絞らない）。サーバーの配信では `detailPanel` に `on.comments` を渡し、受けたら `target` に項目の ID を入れてパネルの中の画面を開いた直後の状態（`view` は `list`、`openedThread`・`reviewFocus` は `null`、`composing` は偽、`reason` は閉じて空）に戻し、一覧を開いていなければ開き、開いていれば再描画する（`filter`・`tag` は保つ）。詳細パネルで別の項目へ移っても `target` は変えない
+    - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。送信したスレッドで `hasUnseen` が真なら「既読にする」を行う（一覧の行・レビュー中の書き込みのどちらから開いても同じ。「スレッドの再読み込み」）。「戻る」（`thread` から）では返信の書きかけを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す
+    - 「レビュー中を開く」では返信の書きかけを待たずに保ち、`reviewFrom` に今の `view` を控えて `view` を `review` にする（`thread` から開いたときは `reviewFocus` にそのスレッドの ID）。「戻る」（`review` から）では `reviewFrom` へ戻る。`reviewFrom` が `thread` で、開いていたまだ送信していない新しいスレッドが `review.items` にも `removed` にも無ければ `list` へ戻る
     - 「新しいスレッドの入力を出す／畳む」では `composing` を入れ替え、出したときは入力欄へ、畳んだときは「新しいスレッド」へフォーカスを移す（書きかけは残す）
-    - 返信の「入力」「溜める」は 6 のコメントの入力と同じ扱いで、`add`・`saveDraft` に `{thread, body}` を送る（空白だけは部品が溜めさせないため `empty` は使わない）。溜めたらレビュー中を読み直して溜めた ID を `checked` に足し、トップバーとパネルを描き直す
-    - 「理由の入力を出す／閉じる」「理由の入力」では `reason` を書き換える。「状態を変える」では `reason.status` を `saving` にして送り（`threadApi().setStatus`）、200 なら `reason` を閉じて空にし、スレッドを読み直してパネルを描き直し、「状態を変える」へフォーカスを戻す。断られた・届かないなら `failed`（`detail`）にして理由の入力を開いたまま残す
-    - 「まとめて送る」では、チェックした ID から `isBlockedReply` が真のものを除いて溜めた順に送る。201 の後はレビュー中に続けてスレッドも読み直す（`view` は `review` のまま）
+    - 返信の「入力」「溜める」は 6 のコメントの入力と同じ扱いで、`add`・`saveDraft` に `{thread, body}` を送信する（空白だけは部品が溜めさせないため `empty` は使わない）。溜めたらレビュー中を再読み込みして溜めた ID を `checked` に追加し、トップバーとパネルを再描画する
+    - 「理由の入力を出す／閉じる」「理由の入力」では `reason` を書き換える。「状態を変える」では `reason.status` を `saving` にして送り（`threadApi().setStatus`）、200 なら `reason` を閉じて空にし、スレッドを再読み込みしてパネルを再描画し、「状態を変える」へフォーカスを戻す。断られた・届かないなら `failed`（`detail`）にして理由の入力を開いたまま残す
+    - 「まとめて送信する」では、チェックした ID から `isBlockedReply` が真のものを除いて溜めた順に送信する。201 の後はレビュー中に続けてスレッドも再読み込みする（`view` は `review` のまま）
     - 項目を開く（本文の中の ID・スレッドの向けた項目・レビュー中の行の向けた項目）では、パネルを開いたまま詳細パネルを開く。スレッドの向けた項目とレビュー中の行は `highlight` にその箇所を渡す
     - Esc は、幅 901px 以上か `StackState.front` が `detail` で詳細パネルを開いていれば、詳細パネルを閉じる。それ以外で入力欄にフォーカスがあるとき（`isTyping`）は何もしない（入力欄が自分で外れる）。それ以外は `view` が `thread`・`review` なら「戻る」と同じ、`list` ならパネルを閉じる
     - パネルを閉じるときは、パネルの中のスクロールの位置を `listScroll` に控え、新しいスレッドと返信の書きかけを待たずに保ち、`removed` と `editingIn` が `'list'` の書き換えを捨てる（「詳細パネルのレビュー中のコメントの操作」と同じ。修正の入力で録音・文字起こし中か、出していない結果があるとき（`editHeld`）は書き換えを捨てない）
-  修正の入力の音声入力: "`VoiceDestination` にレビュー中の書き込みの修正 `{review: ID, view: 'review' | 'thread' | 'panel' | 'full'}` を足す。修正の入力の `key` は `review:{ID}` で、`voiceHandlers` には `comment.edit` の書き換えていた中身を入力欄の状態として渡す。`destinationOf` が `review` を返すとき、`finishVoice` の `action` を設定によらず `insert` にする。入力欄が画面に無い間に終わった結果は、書きかけ（`saveDraft`）へ送らず `comment.edit` の書き換えていた中身へ入れ、`editing` をその ID、`editingIn` を録音を始めた画面にしたまま残す。`checkVoiceDestination` は `review` の向けた先をレビュー中のコメント（`review.items`）で確かめ、無ければ録音と結果を捨てて知らせる。`openVoiceInput` は `review` の向けた先の画面（コメントの一覧のレビュー中・スレッド・詳細パネル・詳細の全画面）を開き、その書き込みを修正の入力のまま描く。修正の入力の「修正」の「キャンセル」で書き換えを捨てるときは、録音を捨てる（`abandonVoice`）。画面からの削除（`removeComment`）とまとめて送る（`sendChecked`）の応答が成功した時点で、その ID の `review:{ID}` が録音・文字起こし中なら `abandonVoice` して知らせを discarded にし、`comment.edit` に取っておいたその ID の結果も捨てる（記録の読み直しを待たない。「元に戻す」で戻しても結果を入れない）。修正の入力の音声入力は次の処理で持つ。`editVoiceHandlers` は書き換えている行のマイク・×・✓・押せないマイクを受け、✓ では `action: insert` で `finishVoice` を呼ぶ。入力欄が画面に無い間に終わった結果は `editBody` に入れて `editVoicePending` を立て、失敗だけを知らせる。`editHeld`（その行で録音・文字起こし中か、`editVoicePending` が立っている）の間は、項目の移動と詳細パネル・一覧を閉じても書き換えを捨てない。`openEditVoiceInput` は `openVoiceInput` が `review:{ID}` を受けたときに向けた先の画面を開いて `editing`・`editingIn` を戻し、`editVoicePending` を下ろす。`discardEditVoice` は削除・送信した書き込みと、読み直しで無くなった書き込み（`discardMissingVoice`）の録音を捨てて知らせを discarded にし、出していない結果も捨てる。`removeComment`・`sendChecked` は `start` の中の処理で単体テストを置かず、読み直しを挟まない削除・送信で録音を捨てることは、結合テスト（単一ユースケース『音声でコメントする』の `異常シナリオ（修正の入力で録音中にその書き込みを削除・送信する）` を今の画面で開く流れ）で確かめる"
+  修正の入力の音声入力: "`VoiceDestination` にレビュー中の書き込みの修正 `{review: ID, view: 'review' | 'thread' | 'panel' | 'full'}` を追加する。修正の入力の `key` は `review:{ID}` で、`voiceHandlers` には `comment.edit` の書き換えていた中身を入力欄の状態として渡す。`destinationOf` が `review` を返すとき、`finishVoice` の `action` を設定によらず `insert` にする。入力欄が画面に無い間に終わった結果は、書きかけ（`saveDraft`）へ送信せず `comment.edit` の書き換えていた中身へ入れ、`editing` をその ID、`editingIn` を録音を始めた画面にしたまま残す。`checkVoiceDestination` は `review` の向けた先をレビュー中のコメント（`review.items`）で確かめ、無ければ録音と結果を捨てて知らせる。`openVoiceInput` は `review` の向けた先の画面（コメントの一覧のレビュー中・スレッド・詳細パネル・詳細の全画面）を開き、その書き込みを修正の入力のまま描く。修正の入力の「修正」の「キャンセル」で書き換えを捨てるときは、録音を捨てる（`abandonVoice`）。画面からの削除（`removeComment`）とまとめて送信（`sendChecked`）の応答が成功した時点で、その ID の `review:{ID}` が録音・文字起こし中なら `abandonVoice` して知らせを discarded にし、`comment.edit` に取っておいたその ID の結果も捨てる（記録の再読み込みを待たない。「元に戻す」で戻しても結果を入れない）。修正の入力の音声入力は次の処理で持つ。`editVoiceHandlers` は書き換えている行のマイク・×・✓・押せないマイクを受け、✓ では `action: insert` で `finishVoice` を呼ぶ。入力欄が画面に無い間に終わった結果は `editBody` に入れて `editVoicePending` を立て、失敗だけを知らせる。`editHeld`（その行で録音・文字起こし中か、`editVoicePending` が立っている）の間は、項目の移動と詳細パネル・一覧を閉じても書き換えを捨てない。`openEditVoiceInput` は `openVoiceInput` が `review:{ID}` を受けたときに向けた先の画面を開いて `editing`・`editingIn` を戻し、`editVoicePending` を下ろす。`discardEditVoice` は削除・送信した書き込みと、再読み込みで無くなった書き込み（`discardMissingVoice`）の録音を捨てて知らせを discarded にし、出していない結果も捨てる。`removeComment`・`sendChecked` は `start` の中の処理で単体テストを置かず、再読み込みを挟まない削除・送信で録音を捨てることは、結合テスト（単一ユースケース『音声でコメントする』の `異常シナリオ（修正の入力で録音中にその書き込みを削除・送信する）` を今の画面で開く流れ）で確かめる"

@@ -2,7 +2,7 @@ id: LIB-489-20
 title: "starlette"
 kind: "フレームワーク"
 version:
-  current: 1.7.0（mcp 2.3.0 が引き込んだ版）
+  current: 1.7.0（mcp 2.3.0 が引き込んだバージョン）
   checked_on: '2026-11-02'
   pinning: 直接の下限を決めない。mcp の依存（`starlette>=0.27`）として入る
 catalogs:
@@ -14,7 +14,7 @@ catalogs:
         purpose: '`GET /_admin/status` の JSON を返す'
       - name: starlette.testclient.TestClient
         kind: クラス
-        purpose: 単体テストで `streamable_http_app()` のアプリへ HTTP を送る
+        purpose: 単体テストで `streamable_http_app()` のアプリへ HTTP を送信する
 lead: Python の ASGI のウェブフレームワーク。
 purl: pkg:pypi/starlette
 supplier: Encode

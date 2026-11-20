@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませ、直下の `README.md` を消したワークスペース（フォルダ名は `家計簿アプリ`）
+        description: 作成を済ませ、直下の `README.md` を削除したワークスペース（フォルダ名は `家計簿アプリ`）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -27,12 +27,12 @@ flows:
       - ツールのエラーにならない
       - '`written` が真で、`preview_url` が `null`'
       - '`README.md` の 1 行目が `<!-- mindstella:readme -->`'
-      - '`README.md` の中身が、制約「README の中身」の形に、サーバーのプラグインのフォルダ・ワークスペースの絶対パス・セッションの名前を埋めたものと同じ（プレビューは配っていないときの文面）'
+      - '`README.md` の中身が、制約「README の中身」の構造に、サーバーのプラグインのフォルダ・ワークスペースの絶対パス・セッションの名前を埋めたものと同じ（プレビューは配っていないときの文面）'
       - 接続のコマンドのセッションの名前が `mindstella-家計簿アプリ-{ワークスペースの絶対パスの SHA-256 の先頭 6 桁}`
       - '`.mindstella/` の全てのファイルの中身が呼ぶ前と同じ'
     test: test_normal
   - name: 正常系（配信中）
-    summary: このプロセスがワークスペースを配っていれば、プレビューの節にその URL を書く
+    summary: このプロセスがワークスペースを配っていれば、プレビューのセクションにその URL を書く
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -53,15 +53,15 @@ flows:
     expected:
       - ツールのエラーにならない
       - '`preview_url` が `preview_url` のツールが返した `url` と同じ'
-      - '`README.md` のプレビューの節にその URL がある'
+      - '`README.md` のプレビューのセクションにその URL がある'
     test: test_normal_when_serving
   - name: 正常系（自動で書いた README がある）
-    summary: 1 行目に自動で書いた印がある README.md は、今の値で書き直す
+    summary: 1 行目に自動で書いたマーカーがある README.md は、今の値で書き直す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませ、直下の `README.md` の起動のコマンドを `/old/plugins/mindstella/0.6.0/bin/mindstella` に書き換えたワークスペース（1 行目の印は残す）
+        description: 作成を済ませ、直下の `README.md` の起動のコマンドを `/old/plugins/mindstella/0.6.0/bin/mindstella` に書き換えたワークスペース（1 行目のマーカーは残す）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -70,7 +70,7 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: readme workspace
-        IF-->>WS: README.md の 1 行目が印
+        IF-->>WS: README.md の 1 行目がマーカー
         IF->>WS: README.md を書き直す
         IF-->>クライアント: JSON（written: true）
       ```
@@ -80,7 +80,7 @@ flows:
       - '`README.md` が `/old/plugins/mindstella/0.6.0` を含まず、起動のコマンドがサーバーのプラグインのフォルダを指す'
     test: test_normal_when_generated_readme_exists
   - name: 正常系（利用者が書いた README がある）
-    summary: 自動で書いた印が無い README.md は書き換えない
+    summary: 自動で書いたマーカーが無い README.md は書き換えない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -94,7 +94,7 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: readme workspace
-        IF-->>WS: README.md の 1 行目が印でない
+        IF-->>WS: README.md の 1 行目がマーカーでない
         IF-->>クライアント: JSON（written: false）
       ```
     expected:
@@ -131,7 +131,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませ、直下の `README.md` を消して同じ名前のフォルダを作ったワークスペース
+        description: 作成を済ませ、直下の `README.md` を削除して同じ名前のフォルダを作ったワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -150,7 +150,7 @@ flows:
     test: test_error_when_write_fails
 lead: ワークスペースの直下の `README.md` を、このフォルダの起動・接続のコマンド、記録のエージェントフローの案内、配っているプレビューの URL の一覧に書き直す。利用者が書いた `README.md` は書き換えない。
 idempotent: true
-side_effects: ワークスペースの直下の `README.md` だけを書く（無いか、1 行目が自動で書いた印のとき）。`.mindstella/` は書かず、変更履歴と書き換えの知らせの対象にもしない
+side_effects: ワークスペースの直下の `README.md` だけを書く（無いか、1 行目が自動で書いたマーカーのとき）。`.mindstella/` は書かず、変更履歴と書き換えの知らせの対象にもしない
 callers:
   - IF-565-1#
 request:
@@ -166,7 +166,7 @@ response:
     description: 直下の `README.md` の絶対パス
   - name: written
     type: bool
-    description: この呼び出しで書いたか。利用者が書いた `README.md`（自動で書いた印が無い）があれば偽
+    description: この呼び出しで書いたか。利用者が書いた `README.md`（自動で書いたマーカーが無い）があれば偽
   - name: preview_url
     type: str | None
     description: README に書いたプレビューの URL。このプロセスがワークスペースを配っていなければ `null`
@@ -183,13 +183,13 @@ exceptions:
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。前からあったファイルを残す
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: README の中身
     constraint: |-
-      1 行目に自動で書いた印 `<!-- mindstella:readme -->` を置き、次の形の Markdown を続ける。`{…}` を埋め、コマンドに埋めるパスは `shlex.quote` で引用する。節はプレビュー → コマンド → ドキュメントの順。プレビューの節は、配っていれば URL の行、配っていなければ「MindStella のセッションにプレビューを頼むと URL が表示されます。」の行にする。コマンドは 1 つごとに、太字の見出し・短い説明・`bash` のコードブロックの 3 つで書く
+      1 行目に自動で書いたマーカー `<!-- mindstella:readme -->` を置き、次の形式の Markdown を続ける。`{…}` を埋め、コマンドに埋めるパスは `shlex.quote` で引用する。セクションはプレビュー → コマンド → ドキュメントの順。プレビューのセクションは、配っていれば URL の行、配っていなければ「MindStella のセッションにプレビューを頼むと URL が表示されます。」の行にする。コマンドは 1 つごとに、太字の見出し・短い説明・`bash` のコードブロックの 3 つで書く
 
       ~~~markdown
       <!-- mindstella:readme -->
@@ -223,7 +223,7 @@ constraints:
 
       **接続:**
 
-      起動中の MindStella のセッションにつなぎ直します。
+      起動中の MindStella のセッションにつなぎ修正します。
 
       ```bash
       tmux attach-session -t ={セッションの名前}
@@ -236,11 +236,11 @@ constraints:
       ~~~
   - item: 埋める値
     constraint: プラグインのフォルダは、動いている `server.py`（`{プラグインのフォルダ}/skills/mindmap/scripts/server.py`）から 3 つ上のフォルダ。セッションの名前はワークスペースの ID（『ワークスペースの作成』の `id`）と同じ規則（`mindstella-{フォルダ名}-{ハッシュ}`。フォルダ名の `.`・`:` を `-` に置き換え、ハッシュはシンボリックリンクを解いた絶対パスの SHA-256 の 16 進の先頭 6 桁）。ワークスペースの絶対パスもシンボリックリンクを解いたもの。URL はこのプロセスがワークスペースを配っている配信の URL（『プレビューの URL』の `url`）
-  - item: 書くかの判定
+  - item: 書き込むかの判定
     constraint: 直下に `README.md` が無いか、1 行目が `<!-- mindstella:readme -->` のときだけ書く。それ以外は利用者が書いたものとして書かない。`README.md` はこの判定のほかにどのツールも読まず、ワークスペースの見分けに使わない
-  - item: 書き方
+  - item: 記載方法
     constraint: 一時ファイルに書いてから `os.replace` で置き換える。中身が同じでも書き直す（`written` は真）
-  - item: 同じ書き方を使うツール
+  - item: 同じ記載方法を使用するツール
     constraint: 『ワークスペースの作成』（`init`）と『プレビューの URL』（配信を立てたとき）も、この制約の中身・判定・書き方で直下の `README.md` を書く
 exclusivity: README の書き込みは、`readme`・`preview_url` のどちらからでもワークスペースの排他ロックを取らない（`init` は作成のロックの中で書く）。一時ファイルから `os.replace` で置き換えるため、同時に書かれても壊れたファイルにならず、後から置き換えた方の中身が残る
 refs:

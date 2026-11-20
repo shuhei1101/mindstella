@@ -29,7 +29,7 @@ scenarios:
 
         U->>LS: 起動のコマンド {フォルダ}（進め方の文書・追加の MCP・プラグインは任意の引数）
         LS->>LS: 依存を確かめる
-        LS->>SV: 待ち受けているか（MINDSTELLA_PORT で版とプラグインのフォルダを尋ねる）
+        LS->>SV: 待ち受けているか（MINDSTELLA_PORT でバージョンとプラグインのフォルダを尋ねる）
         LS->>SV: ポートで待ち受けているプロセスが無いので、systemd --user のユニットを起動する
         LS->>SV: ワークスペースの作成を依頼する（POST /workspaces）
         SV-->>LS: ワークスペースの ID と画面の URL
@@ -107,7 +107,7 @@ scenarios:
       - name: 依存が揃った環境
         description: 正常シナリオと同じ
       - name: 古いコードの常駐サーバー
-        description: 'インストールしたプラグインと別のフォルダ（コミットの SHA の名前が違う）のサーバーが `MINDSTELLA_PORT` のポートで待ち受け、別のワークスペースのプレビューを配信している。`version.ini` の版は同じ'
+        description: 'インストールしたプラグインと別のフォルダ（コミットの SHA の名前が違う）のサーバーが `MINDSTELLA_PORT` のポートで待ち受け、別のワークスペースのプレビューを配信している。`version.ini` のバージョンは同じ'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -116,8 +116,8 @@ scenarios:
         participant SV as 常駐サーバー（古いコード）
 
         U->>LS: 起動のコマンド {フォルダ}
-        LS->>SV: 待ち受けているか（版とプラグインのフォルダを尋ねる）
-        SV-->>LS: 同じ版、違うプラグインのフォルダ
+        LS->>SV: 待ち受けているか（バージョンとプラグインのフォルダを尋ねる）
+        SV-->>LS: 同じバージョン、違うプラグインのフォルダ
         LS-->>U: 古いコードで動いていることと、起動のコマンドで再起動する手順を示す
         LS->>SV: ワークスペースの作成を依頼する（POST /workspaces）
         LS->>SV: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
@@ -154,7 +154,7 @@ scenarios:
         description: 正常シナリオと同じ
       - name: 依存が揃った環境
         description: 正常シナリオと同じ
-      - name: 使われているポート
+      - name: 使用中のポート
         description: テストが先に `127.0.0.1` で待ち受けたポートを `MINDSTELLA_PORT` で渡す
     flow: |-
       ```mermaid
@@ -164,7 +164,7 @@ scenarios:
         participant SV as 常駐サーバー
 
         U->>LS: 起動のコマンド {フォルダ}
-        LS->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
+        LS->>SV: 待ち受けているか（MINDSTELLA_PORT でバージョンを尋ねる）
         LS->>LS: ポートは開いているが mindstella の応答が無いので、ユニットを起動しない
         LS-->>U: 使われているポートと、MINDSTELLA_PORT で変える手順を示して止まる
       ```
@@ -333,7 +333,7 @@ issue: 67
 primary_actor: 利用者
 stakeholders:
   - name: 利用者
-    interest: コメントを送ったときに入力される MindStella のセッションで話し合いを始められる。依存が足りない・作れないときは何をすればよいかが分かる
+    interest: コメントを送信したときに入力される MindStella のセッションで話し合いを始められる。依存が足りない・作れないときは何をすればよいかが分かる
 trigger: 利用者が起動のコマンド（『起動スクリプトの登録』で登録した alias を含む）にワークスペースのフォルダを渡して叩く
 preconditions:
   - プラグイン mindstella がインストールされている

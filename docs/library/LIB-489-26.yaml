@@ -2,9 +2,9 @@ id: LIB-489-26
 title: "tmux"
 kind: "CLI"
 version:
-  current: 3.4（確かめた版）
+  current: 3.4（確かめたバージョン）
   checked_on: '2026-10-04'
-  pinning: 版は固定しない。起動スクリプトは `PATH` の `tmux` を使う。下限は非機能要件『tmux の版』
+  pinning: バージョンは固定しない。起動スクリプトは `PATH` の `tmux` を使う。下限は非機能要件『tmux のバージョン』
 catalogs:
   - name: コマンド
     version: '3.4'
@@ -23,10 +23,10 @@ catalogs:
         purpose: 標準入力の文字列を名前の付いたバッファへ読み込む。サーバーはツールの引数 `session` の `tmux` から取ったソケットを `-S {ソケット}` で渡して呼ぶ（`paste-buffer`・`send-keys`・`display-message` も同じ）
       - name: tmux paste-buffer -p -d -b {バッファ} -t {ペイン}
         kind: コマンド
-        purpose: バッファをブラケットペースト（`-p`）でペインへ貼り、貼った後にバッファを消す（`-d`）。Claude Code は貼られた改行で入力を確定しない
+        purpose: バッファをブラケットペースト（`-p`）でペインへ貼り、貼った後にバッファを削除する（`-d`）。Claude Code は貼られた改行で入力を確定しない
       - name: tmux send-keys -t {ペイン} Enter
         kind: コマンド
-        purpose: ペインへ `Enter` を送り、貼った入力を確定する
+        purpose: ペインへ `Enter` を送信し、貼った入力を確定する
       - name: 'tmux -S {ソケット} display-message -p -t {ペイン} "#{pane_pid}"'
         kind: コマンド
         purpose: 貼る前に、ペインで動くシェルの PID を読み、Claude Code のプロセスがその子孫かを確かめる
@@ -41,7 +41,7 @@ upstream: tmux/tmux
 verification:
   state: 済
   date: '2026-10-10'
-  detail: "3.4 で、`TMUX` を消し `TMUX_TMPDIR` を `/tmp` 直下の短いフォルダにした別のサーバーで確かめた。`has-session` は無ければ終了コード 1、あれば 0。`new-session -d -s -c -e -- {コマンド}` で作業フォルダと環境変数がコマンドに渡り、`display-message -p '#{session_path}'` が作業フォルダを返す。日本語のセッション名を使え、名前の `.` は tmux が `_` に置き換える。`-L` の別のサーバーで Claude Code 2.1.296 を動かし、`load-buffer` → `paste-buffer -p -d` → `send-keys Enter` で日本語 30 万文字までの複数行が 1 回の入力として入り、3 つのコマンドが 0.010 秒以内に終わることを確かめた（PR #201 の PoC）"
+  detail: "3.4 で、`TMUX` を削除 `TMUX_TMPDIR` を `/tmp` 直下の短いフォルダにした別のサーバーで確かめた。`has-session` は無ければ終了コード 1、あれば 0。`new-session -d -s -c -e -- {コマンド}` で作業フォルダと環境変数がコマンドに渡り、`display-message -p '#{session_path}'` が作業フォルダを返す。日本語のセッション名を使え、名前の `.` は tmux が `_` に置き換える。`-L` の別のサーバーで Claude Code 2.1.296 を動かし、`load-buffer` → `paste-buffer -p -d` → `send-keys Enter` で日本語 30 万文字までの複数行が 1 回の入力として入り、3 つのコマンドが 0.010 秒以内に終わることを確かめた（PR #201 の PoC）"
 license: ISC（商用利用可）
 official_url: https://github.com/tmux/tmux/wiki
 docs_url: https://man.openbsd.org/tmux.1

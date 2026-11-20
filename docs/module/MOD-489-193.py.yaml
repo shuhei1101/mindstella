@@ -24,7 +24,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/launch.py
     usecase: 起動スクリプトで立ち上げる
     scope: public
-    summary: '`claude plugin list --json` の一覧から、インストールした mindstella の今の版のフォルダを引く'
+    summary: '`claude plugin list --json` の一覧から、インストールした mindstella の今のバージョンのフォルダを引く'
     args:
       - name: listing
         type: list[dict[str, Any]]
@@ -36,7 +36,7 @@ functions:
       description: '`id` が `PLUGIN_ID` の要素の `installPath`'
     process: |-
       1. `id` が `PLUGIN_ID` の最初の要素を探し、その `installPath` を返す
-         - 無い場合、`PluginNotInstalledError` を送る
+         - 無い場合、`PluginNotInstalledError` を送信する
     exceptions:
       - name: PluginNotInstalledError
         condition: '`id` が `PLUGIN_ID` の要素が無い'
@@ -61,7 +61,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/launch.py
     usecase: 起動スクリプトで立ち上げる
     scope: public
-    summary: '`--find-plugin`: 標準入力のプラグインの一覧から、インストールした今の版のフォルダを標準出力に出す。`--start`: `run_start` を呼ぶ。`--server-status`: `run_server_status` を呼ぶ'
+    summary: '`--find-plugin`: 標準入力のプラグインの一覧から、インストールした今のバージョンのフォルダを標準出力に出す。`--start`: `run_start` を呼ぶ。`--server-status`: `run_server_status` を呼ぶ'
     description: 末尾で `sys.exit(run_launch())`。起動スクリプトが `{python_path} launch.py --folder {フォルダ}` で起動し、`claude plugin list --json` の出力を標準入力へ渡す。
     side_effects: 標準出力・標準エラーに書く
     args:
@@ -119,7 +119,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/launch.py
     usecase: 端末から起動する
     scope: public
-    summary: '`http://127.0.0.1:{port}{path}` へ JSON を送り、ステータスと JSON の本文を返す（`Host` は `127.0.0.1:{port}`）'
+    summary: '`http://127.0.0.1:{port}{path}` へ JSON を送信し、ステータスと JSON の本文を返す（`Host` は `127.0.0.1:{port}`）'
     args:
       - name: port
         type: int
@@ -155,10 +155,10 @@ functions:
     unit_tests:
       - name: test_api_request
         case: 正常
-        summary: 本文と Host を送り、4xx も本文を返す
+        summary: 本文と Host を送信し、4xx も本文を返す
         condition: テストが空きポートで HTTP のサーバーを立てる。201 / 409 の problem+json
         mock: なし
-        expected: '`(201, {...})` / `(409, {stage: exists, ...})`。送った `Host` が `127.0.0.1:{port}`'
+        expected: '`(201, {...})` / `(409, {stage: exists, ...})`。送信した `Host` が `127.0.0.1:{port}`'
   - name: run_start
     title: ワークスペースと MindStella のセッションを作る
     kind: 関数

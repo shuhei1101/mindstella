@@ -45,7 +45,7 @@ functions:
       description: '`{trigger, awaiting_threads, changed, changed_more, removed, removed_more, needs_review, needs_review_more, in_progress, in_progress_more, flow, migration, until_seq, context}`'
     process: |-
       1. ワークスペースとまとまりを読む（`load_workspace`、『変更履歴』の `load_changes`。`read_seq` は『前回参照した時点』の値）
-      2. 前回参照した時点より後に足した項目（`added_seq` が大きい）を種類の順に、続けて変えた項目（`seq` が大きい）を種類の順に `{id, kind, title, updated_by}` で並べて `changed` にする（前の値は組み立てない。`seq`・`added_seq` は『変更履歴』の `merge_item_history` で引く）。`removed` はまとまりの消した項目のうち、前回参照した時点にあって後で消したもの（`removed_items`）を `{id, kind, title}` にする。前回参照した時点が無ければどちらも空
+      2. 前回参照した時点より後に追加した項目（`added_seq` が大きい）を種類の順に、続けて変えた項目（`seq` が大きい）を種類の順に `{id, kind, title, updated_by}` で並べて `changed` にする（前の値は組み立てない。`seq`・`added_seq` は『変更履歴』の `merge_item_history` で引く）。`removed` はまとまりの削除した項目のうち、前回参照した時点にあって後で削除したもの（`removed_items`）を `{id, kind, title}` にする。前回参照した時点が無ければどちらも空
       3. 状態が `要見直し` の検討事項と `進行中` のタスクを `{id, title}` で連番の順に拾う
       4. 2.・3. の 4 つの並びを `SUMMARY_LIMIT` 件で切り、超えた件数を `{キー}_more` に入れる（超えなければ 0）
       5. スレッドを読み（`load_threads`）、取り込み待ちの書き込みを持つスレッドを数える（`awaiting_posts`）
@@ -71,12 +71,12 @@ functions:
       - name: test_summarize_resume_when_over_limit
         case: 正常
         summary: 上限を超えた分は件数だけにする
-        condition: 前回参照した後に足したメモ 25 件
+        condition: 前回参照した後に追加したメモ 25 件
         mock: なし
         expected: '`changed` が 20 件で `changed_more` が 5'
       - name: test_summarize_resume_when_migrated
         case: 正常
-        summary: 知らせていない移し替えの報告を返し、消さない
+        summary: 知らせていない移し替えの報告を返し、削除しない
         condition: '`save_migration_report` で `not_carried` 1 件を書いたワークスペースを 2 回まとめる'
         mock: なし
         expected: 2 回とも `migration.not_carried` が 1 件

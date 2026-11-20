@@ -43,11 +43,11 @@ constraints:
   - item: あるとみなす状態
     constraint: 『MindStella のセッションの作成』と同じ。落ちたものは無いとみなす
   - item: 配信元の行
-    constraint: 'project-index の `GET /settings/sources` で今の `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: false` を送る。409（版が古い）なら 1 回だけ引き直して送り直す'
-  - item: クローズの正本
+    constraint: 'project-index の `GET /settings/sources` で今の `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: false` を送信する。409（バージョンが古い）なら 1 回だけ再取得して再送信する'
+  - item: クローズの原本
     constraint: '配信元の行の `outside_read: false`。ワークスペースの設定には記録しない'
   - item: コメント
-    constraint: クローズ待ちとクローズの後に届いたコメントはスレッドに残し、ペインへ貼らない（『コメントをまとめて送る』）
+    constraint: クローズ待ちとクローズの後に届いたコメントはスレッドに残し、ペインへ貼らない（『コメントをまとめて送信する』）
   - item: 同時の依頼
     constraint: ワークスペースごとの鍵を、MindStella のセッションの有無の確かめから行の変更まで持つ
   - item: MCP のツール
@@ -118,7 +118,7 @@ flows:
         participant クライアント
         participant API as 常駐サーバー
 
-        クライアント->>API: POST close と POST sessions を同時に送る
+        クライアント->>API: POST close と POST sessions を同時に送信する
         API-->>クライアント: close は 200
         API-->>クライアント: sessions は 409 stage: closed
       ```

@@ -16,21 +16,21 @@ classes:
     title: ワークスペースが無い
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: '`config.yaml` が無いフォルダを指した。メッセージにフォルダのパス。`mindmap.yaml`（前の版の設定ファイル）だけがあるフォルダでは、`lines` に `UPGRADE_HINT` を持つ（`require_workspace`）'
+    summary: '`config.yaml` が無いフォルダを指した。メッセージにフォルダのパス。`mindmap.yaml`（前のバージョンの設定ファイル）だけがあるフォルダでは、`lines` に `UPGRADE_HINT` を持つ（`require_workspace`）'
     kind: クラス
     inherits: MindmapError
   - name: WorkspaceExistsError
     title: ワークスペースが既にある
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: ワークスペースの作成
-    summary: '`config.yaml` か `mindmap.yaml`（前の版の設定ファイル）が既にあるフォルダに作ろうとした。メッセージにフォルダのパス'
+    summary: '`config.yaml` か `mindmap.yaml`（前のバージョンの設定ファイル）が既にあるフォルダに作ろうとした。メッセージにフォルダのパス'
     kind: クラス
     inherits: MindmapError
   - name: SchemaMismatchError
     title: スキーマに合わない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: '書き込もうとした・書き出そうとした・読もうとしたワークスペースがスキーマに合わない。`lines` は問題ごとの `{ファイル名}: {キーのパス}: {理由}`。`legacy`（既定 `False`）は、問題に前の版の形式のものがあるか（ワークスペースを検証して送る側が `is_legacy_problem` で決める。`save_change`・`export_preview`・`read_records` が当たる）'
+    summary: '書き込もうとした・書き出そうとした・読もうとしたワークスペースがスキーマに合わない。`lines` は問題ごとの `{ファイル名}: {キーのパス}: {理由}`。`legacy`（既定 `False`）は、問題に前のバージョンの形式のものがあるか（ワークスペースを検証して送信する側が `is_legacy_problem` で決める。`save_change`・`export_preview`・`read_records` が当たる）'
     kind: クラス
     inherits: MindmapError
   - name: ItemNotFoundError
@@ -44,14 +44,14 @@ classes:
     title: 案が無い
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: '検討事項が渡した記号の案を持たない。メッセージは送る側が決める（採用する案の切り替えの `switch_adopted` は渡した記号と持っている記号の一覧、案の書き換えの `apply_option_edit` は `{ID} の案 {記号}: その記号の案がありません`）'
+    summary: '検討事項が渡した記号の案を持たない。メッセージは送信する側が決める（採用する案の切り替えの `switch_adopted` は渡した記号と持っている記号の一覧、案の書き換えの `apply_option_edit` は `{ID} の案 {記号}: その記号の案がありません`）'
     kind: クラス
     inherits: MindmapError
   - name: WriteFailedError
     title: 書き込みに失敗した
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: ファイルの書き込み・置き換えで `OSError` が起きた。後始末をした後に送る。メッセージに置き換え先のパスと `OSError` の理由（`raise ... from` で元の例外をつなぐ）
+    summary: ファイルの書き込み・置き換えで `OSError` が起きた。後始末をした後に送信する。メッセージに置き換え先のパスと `OSError` の理由（`raise ... from` で元の例外をつなぐ）
     kind: クラス
     inherits: MindmapError
   - name: DownloadFailedError
@@ -62,31 +62,31 @@ classes:
     kind: クラス
     inherits: MindmapError
   - name: WorkspaceNewerError
-    title: ワークスペースの版が新しい
+    title: ワークスペースのバージョンが新しい
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 記録の形式の移行
-    summary: ワークスペースの版がプラグインの版より新しいのに手順を当てる・版を書く。メッセージに 2 つの版とプラグインの更新の案内
+    summary: ワークスペースのバージョンがプラグインのバージョンより新しいのに手順を当てる・バージョンを書く。メッセージに 2 つのバージョンとプラグインの更新の案内
     kind: クラス
     inherits: MindmapError
   - name: StepFailedError
     title: 手順が失敗した
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 記録の形式の移行
-    summary: '移し替えの手順が失敗し、写しから戻した。メッセージは `{版} の手順 {番号}（{操作}）: {理由}`'
+    summary: '移し替えの手順が失敗し、コピーから戻した。メッセージは `{バージョン} の手順 {番号}（{操作}）: {理由}`'
     kind: クラス
     inherits: MindmapError
   - name: StepsInvalidError
-    title: 手順の形が違う
+    title: 手順の構造が違う
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 記録の形式の移行
-    summary: プラグインの `steps.yaml` が読めないか、手順の形のスキーマに合わない。`lines` は合わない箇所
+    summary: プラグインの `steps.yaml` が読めないか、手順の形式のスキーマに合わない。`lines` は合わない箇所
     kind: クラス
     inherits: MindmapError
   - name: ArgumentError
     title: 引数の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない・削除した設定のキーを渡した・スレッドの本文と要約と理由の長さ）。配信は 400 にする。メッセージは `引数の誤り: {引数の名前}: {理由}`'
+    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形式が違う・`out` が `.html` で終わらない・削除した設定のキーを渡した・スレッドの本文と要約と理由の長さ）。配信は 400 にする。メッセージは `引数の誤り: {引数の名前}: {理由}`'
     kind: クラス
     inherits: MindmapError
     properties:
@@ -104,21 +104,21 @@ classes:
     title: コメントの中身の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 項目へコメントする
-    summary: 'コメント・書きかけ・まとめて送るの要求のキーが無い・型が違う、本文が空白だけか上限を超える、箇所の形が崩れている。配信は 400 にする。メッセージは `{キーのパス}: {理由}`'
+    summary: 'コメント・書きかけ・まとめて送信の要求のキーが無い・型が違う、本文が空白だけか上限を超える、箇所の構造が崩れている。配信は 400 にする。メッセージは `{キーのパス}: {理由}`'
     kind: クラス
     inherits: MindmapError
   - name: CommentNotFoundError
     title: コメントが無い
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 渡した ID のコメントがレビュー中に無い。配信は 404 にする。メッセージに無い ID（複数なら、でつなぐ）
     kind: クラス
     inherits: MindmapError
   - name: CommentConflictError
     title: コメントが今の記録に合わない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: コメントを選んで送る
-    summary: 箇所が今の項目に合わない、向けた項目が消えた、返信先のスレッドがクローズか無い、または元に戻す ID が使えない。配信は 409 にする。メッセージは合わない理由。`stale` にコメントごとの `(ID, 理由)` を持つ（まとめて送るときだけ。それ以外は空）
+    usecase: コメントを選んで送信する
+    summary: 箇所が今の項目に合わない、向けた項目が消えた、返信先のスレッドがクローズか無い、または元に戻す ID が使えない。配信は 409 にする。メッセージは合わない理由。`stale` にコメントごとの `(ID, 理由)` を持つ（まとめて送信するときだけ。それ以外は空）
     kind: クラス
     inherits: MindmapError
     properties:
@@ -129,14 +129,14 @@ classes:
     title: 同じ記号の案がある
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 検討事項の案の編集
-    summary: '足そうとした記号の案を検討事項が既に持つ。メッセージは `{ID} の案 {記号}: 同じ記号の案が既にあります`'
+    summary: '追加しようとした記号の案を検討事項が既に持つ。メッセージは `{ID} の案 {記号}: 同じ記号の案が既にあります`'
     kind: クラス
     inherits: MindmapError
   - name: AdoptedOptionError
     title: 採用している案
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 検討事項の案の編集
-    summary: '採用している案を消そうとした。メッセージは `{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください`'
+    summary: '採用している案を削除しようとした。メッセージは `{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください`'
     kind: クラス
     inherits: MindmapError
   - name: SettingsInvalidError
@@ -150,14 +150,14 @@ classes:
     title: 最後の案
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 検討事項の案の編集
-    summary: '案を必須にする状態の検討事項の最後の案を消そうとした。メッセージは `{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください`'
+    summary: '案を必須にする状態の検討事項の最後の案を削除しようとした。メッセージは `{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を追加してください`'
     kind: クラス
     inherits: MindmapError
   - name: ItemReferencedError
     title: ほかの記録が指している
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 記録の削除と取り下げ
-    summary: '消そうとした項目をほかの記録が指している。メッセージは `{ID} はほかの記録が指しているため消せません`、`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行'
+    summary: '削除しようとした項目をほかの記録が指している。メッセージは `{ID} はほかの記録が指しているため消せません`、`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行'
     kind: クラス
     inherits: MindmapError
   - name: ThreadNotFoundError
@@ -175,10 +175,10 @@ classes:
     kind: クラス
     inherits: MindmapError
   - name: EditInvalidError
-    title: 編集の形が合わない
+    title: 編集の構造が合わない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 画面で項目を編集して保存する
-    summary: 保存待ちの編集の追加の本文の形・キー・値の型が合わない、または保存待ちが空で保存した。配信は 400 にする。メッセージは合わないキーと理由
+    summary: 保存待ちの編集の追加の本文の構造・キー・値の型が合わない、または保存待ちが空で保存した。配信は 400 にする。メッセージは合わないキーと理由
     kind: クラス
     inherits: MindmapError
   - name: EditNotFoundError
@@ -192,14 +192,14 @@ classes:
     title: 編集が溜めた編集と合わない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 画面で項目を編集して保存する
-    summary: 足す案の記号が既にある、または削除を溜めた項目へ削除以外の編集を溜めようとした。配信は 409 にする。メッセージは理由
+    summary: 追加する案の記号が既にある、または削除を溜めた項目へ削除以外の編集を溜めようとした。配信は 409 にする。メッセージは理由
     kind: クラス
     inherits: MindmapError
   - name: EditsBlockedError
     title: 書き込めない編集がある
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 画面で項目を編集して保存する
-    summary: 'まとめて保存で、書き込めない編集が 1 件以上ある。配信は 409 にし、本文に `blocked: [{id, reason, detail, refs}]` を足す。メッセージは「{n} 件の編集を書き込めないため、何も保存していません。」'
+    summary: 'まとめて保存で、書き込めない編集が 1 件以上ある。配信は 409 にし、本文に `blocked: [{id, reason, detail, refs}]` を追加する。メッセージは「{n} 件の編集を書き込めないため、何も保存していません。」'
     kind: クラス
     inherits: MindmapError
     properties:
@@ -237,6 +237,6 @@ classes:
     title: 直下に本文のフォルダと同じ名前のフォルダがある
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: ワークスペースの作成
-    summary: '記録の無いフォルダの直下に `docs/` か `files/` が既にある。メッセージにあるフォルダの名前と、改名してから作り直す案内。ワークスペースの管理は 409（`stage: root_folder`）にする'
+    summary: '記録の無いフォルダの直下に `docs/` か `files/` が既にある。メッセージにあるフォルダの名前と、改名してから再作成する案内。ワークスペースの管理は 409（`stage: root_folder`）にする'
     kind: クラス
     inherits: MindmapError

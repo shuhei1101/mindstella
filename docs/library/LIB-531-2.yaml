@@ -2,9 +2,9 @@ id: LIB-531-2
 title: systemd
 kind: サービス
 version:
-  current: 255（確かめた版）
+  current: 255（確かめたバージョン）
   checked_on: '2026-11-15'
-  pinning: 版は固定しない。`systemctl --user show-environment` が終了コード 0 の端末でだけ使う
+  pinning: バージョンは固定しない。`systemctl --user show-environment` が終了コード 0 の端末でだけ使う
 catalogs:
   - name: コマンド
     version: '255'
@@ -14,10 +14,10 @@ catalogs:
         purpose: systemd --user が使える端末かを確かめる
       - name: systemctl --user daemon-reload
         kind: コマンド
-        purpose: 書き換えたユニットのファイルを読み直す
+        purpose: 書き換えたユニットのファイルを再読み込みする
       - name: systemctl --user start|stop|restart mindstella.service
         kind: コマンド
-        purpose: 常駐サーバーを起動する・止める・起動し直す
+        purpose: 常駐サーバーを起動する・止める・再起動する
       - name: systemctl --user status mindstella.service
         kind: コマンド
         purpose: 起動を待つ上限を過ぎたときに、利用者が状態を確かめる
@@ -32,7 +32,7 @@ catalogs:
     entries:
       - name: ${XDG_CONFIG_HOME:-~/.config}/systemd/user/mindstella.service
         kind: ファイル
-        purpose: 常駐サーバーのユニット（`Type=exec`・`ExecStart`・`StandardOutput=append:`・`StandardError=append:`・`Restart=on-failure`・`RestartSec`・`StartLimitIntervalSec`・`StartLimitBurst`・`Environment=`）。『常駐サーバーの起動の確認』が起動と起動し直しのたびに書く
+        purpose: 常駐サーバーのユニット（`Type=exec`・`ExecStart`・`StandardOutput=append:`・`StandardError=append:`・`Restart=on-failure`・`RestartSec`・`StartLimitIntervalSec`・`StartLimitBurst`・`Environment=`）。『常駐サーバーの起動の確認』が起動と再起動のたびに書く
 lead: Linux のサービスの管理。利用者ごとの systemd --user で、ログインの間に常駐するプロセスを動かす。
 supplier: systemd プロジェクト
 dependency_scope: 必須

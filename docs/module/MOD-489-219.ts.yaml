@@ -61,7 +61,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
     usecase: 画面で項目を編集して保存する
     kind: 画面
-    summary: 画面設計『保存待ちのパネル』を、コメントの一覧と同じ左から出すパネル（幅 900px 以下は画面の幅いっぱい）に描く。編集を項目ごとにまとめ（`groupEdits`）、行の文言は `editRowText`。保存した知らせ（`role="status"`）もここに置き、使う側が 5 秒で消す
+    summary: 画面設計『保存待ちのパネル』を、コメントの一覧と同じ左から出すパネル（幅 900px 以下は画面の幅いっぱい）に描く。編集を項目ごとにまとめ（`groupEdits`）、行の文言は `editRowText`。保存した知らせ（`role="status"`）もここに置き、使う側が 5 秒で削除する
     props:
       - name: edits
         type: PendingEdit[]
