@@ -27,7 +27,7 @@ components:
         summary: 閉じた状態と開閉
         condition: '`open: false`・`body` ありで開閉のボタンを押す'
         mock: なし
-        expected: 入力欄と「レビューに追加」が無く「書きかけ」が出て、ボタンは `aria-expanded` が `false` で「コメントの入力を開く」。押すと `onToggleOpen` が `true` で呼ばれる
+        expected: 入力欄と「レビューに追加」が無く「下書き」が出て、ボタンは `aria-expanded` が `false` で「コメントの入力を開く」。押すと `onToggleOpen` が `true` で呼ばれる
       - name: test_send_form_when_voice
         case: 正常
         summary: 音声入力の状態ごとのボタンと結果の行

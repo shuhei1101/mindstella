@@ -123,7 +123,7 @@ components:
         type: ReviewItem | null
         required: false
         default: 'null'
-        description: まだ送信していない新しいスレッドの最初の書き込み（状態の札を「レビュー中」にし、タグを出さない）
+        description: まだ送信していない新規スレッドの最初の書き込み（状態の札を「レビュー中」にし、タグを出さない）
       - name: hasPendingReply
         type: boolean
         required: false
@@ -144,10 +144,10 @@ components:
         summary: 状態・タイトル・向けた項目・最後の書き手・タグを描く
         condition: '`parametrize`: AI が返信したオープンの TH-1（D-12・タグ `画面`）/ 要約が無く最後が利用者の TH-3 / クローズの TH-5 / 項目を指さない TH-4 / `hasPendingReply: true`'
         mock: なし（DOM を作って見る）
-        expected: 「オープン」と要約・`D-12`・「AI」・`time[datetime]`・タグのボタン / タイトルが最初の書き込みの 1 行目で書き手が「あなた」/ 「クローズ」/ ID が無い / 「レビュー中」のマーカーがある
+        expected: 「オープン」と要約・`D-12`・「AI」・`time[datetime]`・タグのボタン / タイトルが最初の書き込みの 1 行目で書き手が「あなた」/ 「クローズ」/ ID が無い / 「レビュー中」の記号がある
       - name: test_thread_row_when_pending
         case: 正常
-        summary: まだ送信していない新しいスレッドはレビュー中の札でタグを持たない
+        summary: まだ送信していない新規スレッドはレビュー中の札でタグを持たない
         condition: '`pending` に C-41（D-5）'
         mock: '`on.open`'
         expected: '「レビュー中」の札・`D-5`・「あなた」、タグが無い。行を押すと `on.open` が `C-41` と `pending: true` で 1 回'

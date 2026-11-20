@@ -43,7 +43,7 @@ functions:
     usecase: 項目へコメントする
     kind: 関数
     scope: public
-    summary: 項目のマーカーを置く場所（`data-comment-target` に項目の ID を持ち、自分では箱を作らない `span`）を返す。件数が 1 以上なら `commentMark` を入れ、無ければ空で返す。ボード・カード・表が `comments` を受けたときに置き、`refreshCommentMarks` が中身を差し替える
+    summary: 項目のアイコンを置く場所（`data-comment-target` に項目の ID を持ち、自分では箱を作らない `span`）を返す。件数が 1 以上なら `commentMark` を入れ、無ければ空で返す。ボード・カード・表が `comments` を受けたときに置き、`refreshCommentMarks` が中身を差し替える
     args:
       - name: id
         type: string

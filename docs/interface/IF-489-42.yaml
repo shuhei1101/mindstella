@@ -5,7 +5,7 @@ entry:
   value: PUT /api/drafts
 flows:
   - name: 正常系
-    summary: 向けた先ごとに書きかけを保ち、同じ向けた先は上書きする
+    summary: 向けた先ごとに下書きを保ち、同じ向けた先は上書きする
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
@@ -27,16 +27,16 @@ flows:
       ```
     expected:
       - どちらのステータスも 204
-      - '`drafts.yaml` に D-1 への書きかけが 1 件だけあり、本文が `案 B も見たい`'
+      - '`drafts.yaml` に D-1 への下書きが 1 件だけあり、本文が `案 B も見たい`'
       - '`レビュー中のコメントの読み取り` の `drafts` に同じ本文がある'
     test: test_normal
   - name: 正常系（空で削除する）
-    summary: 入力欄を空にしたら書きかけを削除する
+    summary: 入力欄を空にしたら下書きを削除する
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
-        description: 検討事項 D-1 と、D-1 への書きかけを持つワークスペース
+        description: 検討事項 D-1 と、D-1 への下書きを持つワークスペース
         notes: '`{target: D-1, body: ""}`'
     flow: |-
       ```mermaid
@@ -51,7 +51,7 @@ flows:
       ```
     expected:
       - ステータスが 204
-      - '`drafts.yaml` に D-1 への書きかけが無い'
+      - '`drafts.yaml` に D-1 への下書きが無い'
     test: test_normal_when_empty_body
   - name: 異常系（送信元が違う・403）
     summary: 別のサイトのページからは保たない
@@ -75,7 +75,7 @@ flows:
       - '`drafts.yaml` が無い'
     test: test_error_when_origin_mismatch
   - name: 異常系（項目が無い・404）
-    summary: ワークスペースに無い ID への書きかけは保たない
+    summary: ワークスペースに無い ID への下書きは保たない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
@@ -95,8 +95,8 @@ flows:
       - ステータスが 404 で、`detail` に `D-99` がある
       - '`drafts.yaml` が無い'
     test: test_error_when_target_not_found
-  - name: 正常系（スレッドの返信の書きかけ）
-    summary: スレッドごとに返信の書きかけを保つ
+  - name: 正常系（スレッドの返信の下書き）
+    summary: スレッドごとに返信の下書きを保つ
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
@@ -121,7 +121,7 @@ flows:
       - '`drafts.yaml` に `thread: TH-1` と `thread: TH-2` の 2 件があり、どちらも `target`・`loc` を持たない'
       - '`GET /api/comments` の `drafts` に 2 件が `thread` つきで返る'
     test: test_normal_when_thread
-lead: コメントの入力欄の書きかけを、向けた先（項目と箇所の組）ごとに `drafts.yaml` へ保つ。空の本文を受けたらその書きかけを削除する。パネルを閉じても・再読み込みしても・起動スクリプトで再起動しても、『レビュー中のコメントの読み取り』で戻せる。
+lead: コメントの入力欄の下書きを、向けた先（項目と箇所の組）ごとに `drafts.yaml` へ保つ。空の本文を受けたらその下書きを削除する。パネルを閉じても・再読み込みしても・起動スクリプトで再起動しても、『レビュー中のコメントの読み取り』で戻せる。
 idempotent: true
 side_effects: '`drafts.yaml` のその向けた先の 1 件を書き換えるか削除する（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
@@ -165,7 +165,7 @@ request:
     type: str
     required: true
     location: body
-    description: 書きかけの本文。空文字ならその向けた先の書きかけを削除する
+    description: 下書きの本文。空文字ならその向けた先の下書きを削除する
     constraints: 10000 文字以下
     example: 案 B も見たい
   - name: thread
@@ -203,7 +203,7 @@ constraints:
   - item: 呼ぶ間隔
     constraint: 画面は入力が止まってから待って 1 回呼ぶ（待ちの長さはモジュール構成で決める）。パネルを閉じるときは待たずに呼ぶ
   - item: 向けた先の同じさ
-    constraint: '`target` と `loc`（`kind`・`start`・`end`・`key`・`text` の全て）が同じものか、`thread` が同じものを同じ向けた先として上書きする。スレッドの返信の書きかけはクローズのスレッドへも保つ（戻したときに入力欄へ戻す）'
+    constraint: '`target` と `loc`（`kind`・`start`・`end`・`key`・`text` の全て）が同じものか、`thread` が同じものを同じ向けた先として上書きする。スレッドの返信の下書きはクローズのスレッドへも保つ（戻したときに入力欄へ戻す）'
   - item: 本文の上限
     constraint: '`body` と `loc.text` は 10000 文字。リクエストの本文は 128KiB まで読み、超えたら読まずに 400'
     decided_by: NFR-489-1#requirements[送信の本文の長さ]

@@ -59,7 +59,7 @@ stores:
         title: 文字起こしを終える
         kind: メソッド
         is_async: true
-        summary: 録音を止めて文字起こしし、受け取った入力欄の中身へ挿入して設定の挙動で溜める・送信する。入力欄が画面に無い間に終わったら書きかけへ当て、失敗だけを知らせる
+        summary: 録音を止めて文字起こしし、受け取った入力欄の中身へ挿入して設定の挙動で溜める・送信する。入力欄が画面に無い間に終わったら下書きへ当て、失敗だけを知らせる
         args:
           - name: input
             type: "{body: string, start: number, end: number, action: 'review' | 'send' | 'insert', mounted: () => boolean}"
@@ -78,8 +78,8 @@ stores:
              - `review` の場合、`POST /api/comments` へ向けた先と全文を送信し、201 なら空の中身の `reviewed`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.reviewFailed`）
              - `send` の場合、`POST /api/comments/send-now` へ送信し、送信できたら空の中身の `sent`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.sendFailed`）
              - `insert` の場合、挿入した中身と位置の `inserted`
-          5. 溜める・送信する間に `session.ticket` が変わっていれば、書きかけも知らせも当てずに `discarded` を返す。変わっていなければ `session` を null にする
-          6. `mounted()` が偽なら、結果の中身を `PUT /api/drafts` で書きかけに当て（失敗しても続ける。向けた先が `review` のときは当てない）、`results` に入れる。`failed`・`unavailable` なら `notice` を `failed`（`key` と、失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする
+          5. 溜める・送信する間に `session.ticket` が変わっていれば、下書きも知らせも当てずに `discarded` を返す。変わっていなければ `session` を null にする
+          6. `mounted()` が偽なら、結果の中身を `PUT /api/drafts` で下書きに当て（失敗しても続ける。向けた先が `review` のときは当てない）、`results` に入れる。`failed`・`unavailable` なら `notice` を `failed`（`key` と、失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする
         unit_tests:
           - name: test_finish_voice
             case: 正常
@@ -89,13 +89,13 @@ stores:
             expected: '`POST /api/comments` が `確認: 案 A にする` で 1 回、`reviewed` で中身が空 / 同じ / `inserted`・`caret: 11` でどの送信も呼ばない / `send-now` が 1 回で `sent`'
           - name: test_finish_voice_when_unmounted
             case: 正常
-            summary: 入力欄が画面に無い間に終わったら書きかけへ当て、失敗だけ知らせる
+            summary: 入力欄が画面に無い間に終わったら下書きへ当て、失敗だけ知らせる
             condition: '`mounted` が偽。`POST /api/comments` が 201 / 500 / 500 で `PUT /api/drafts` も 500'
             mock: MSW と `vi.stubGlobal`
             expected: '`results` に `reviewed` が入り `notice` が null / `PUT /api/drafts` が挿入した全文で呼ばれ、`notice` が `failed` で `key` を持つ / `PUT /api/drafts` も 500 でも `results` に `failed` が入り `notice` が `failed`'
           - name: test_finish_voice_when_discarded
             case: 正常
-            summary: 文字起こし中に行き先が無くなって録音を捨てたら、溜めず・書きかけも知らせも当てない
+            summary: 文字起こし中に行き先が無くなって録音を捨てたら、溜めず・下書きも知らせも当てない
             condition: '`mounted` が偽。文字起こしの応答を待つ間に `discardVoice(() => false)` を呼ぶ'
             mock: MSW と `vi.stubGlobal`
             expected: '`discarded` を返し、`POST /api/comments`・`PUT /api/drafts` を呼ばず、`results` が空で `notice` が `discarded` のまま'
@@ -107,7 +107,7 @@ stores:
             expected: '`unavailable`・`stopped` / `failed`・元の中身 / `failed`・`VOICE_TEXT.failed` / `failed`・`VOICE_TEXT.reviewFailed`・挿入した中身'
           - name: test_finish_voice_when_review
             case: 正常
-            summary: 修正の入力は挿入だけにし、画面に無い間も書きかけへ当てない
+            summary: 修正の入力は挿入だけにし、画面に無い間も下書きへ当てない
             condition: '向けた先が `{review: C-1}`。`parametrize`: `action: send`・`mounted` が真 / `action: review`・`mounted` が偽'
             mock: MSW と `vi.stubGlobal`
             expected: '`inserted` で `send-now`・`POST /api/comments` を呼ばない / `results` に `inserted` が入り、`PUT /api/drafts` を呼ばない'

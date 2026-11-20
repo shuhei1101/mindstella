@@ -200,7 +200,7 @@ functions:
       - name: ids
         type: '{itemIds: ReadonlySet<string>, threadIds: ReadonlySet<string>}'
         required: true
-        description: 記録の項目の ID と、スレッドとレビュー中の新しいスレッドの ID
+        description: 記録の項目の ID と、スレッドとレビュー中の新規スレッドの ID
     returns:
       type: '(destination: VoiceDestination) => boolean'
       description: 行き先がスレッドなら `threadIds` に、項目なら `target` が null か `itemIds` にあれば true

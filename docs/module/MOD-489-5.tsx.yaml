@@ -6,7 +6,7 @@ components:
     title: コメントの一覧
     kind: 画面
     usecase: スレッドで話す
-    summary: 画面設計『コメントの一覧.tsx』の要素と操作を描く。search の `thread`・`review` でスレッド・レビュー中の書き込みの画面に切り替え、`tstatus`・`ttag`・`ttarget` で絞る。`ttarget` のときは向けた項目がその項目のスレッドとその項目へのまだ送信していない新しいスレッドだけを並べ、項目の絞り込みのチップ（× で `ttarget` を外し履歴に積まない）を出す。絞り込みと件数は `visibleThreads`・`threadCounts`・`pendingThreads`（`MOD-489-104`）に `target` を渡して求め、タグのチップの分母（`tag` を `null` にした `visibleThreads`）にも同じ `target` を渡す。新しいスレッドの入力で溜めたら、`SendForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら「レビューに追加」へ、`input` なら入力欄へフォーカスを移す
+    summary: 画面設計『コメントの一覧.tsx』の要素と操作を描く。search の `thread`・`review` でスレッド・レビュー中の書き込みの画面に切り替え、`tstatus`・`ttag`・`ttarget` で絞る。`ttarget` のときは向けた項目がその項目のスレッドとその項目へのまだ送信していない新規スレッドだけを並べ、項目の絞り込みのチップ（× で `ttarget` を外し履歴に積まない）を出す。絞り込みと件数は `visibleThreads`・`threadCounts`・`pendingThreads`（`MOD-489-104`）に `target` を渡して求め、タグのチップの分母（`tag` を `null` にした `visibleThreads`）にも同じ `target` を渡す。新規スレッドの入力で溜めたら、`SendForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら「レビューに追加」へ、`input` なら入力欄へフォーカスを移す
     refs:
       - SCR-489-2#
     unit_tests:
@@ -18,8 +18,8 @@ components:
         expected: オープンの 2 行
       - name: test_comments_panel_when_new_thread
         case: 正常
-        summary: 新しいスレッドを溜める
-        condition: 新しいスレッドの入力に書いて溜める
+        summary: 新規スレッドを溜める
+        condition: 新規スレッドの入力に書いて溜める
         mock: MSW
         expected: '`POST /api/comments` が `target` 無しで呼ばれ、一覧の先頭に追加される'
       - name: test_comments_panel_when_back_focus
@@ -43,19 +43,19 @@ components:
       - name: test_comments_panel_when_target
         case: 正常
         summary: 項目で絞ったスレッドを並べ、チップの × で外す
-        condition: search が `panel=comments&ttarget=D-1`。D-1 へ向けたオープン 1 件・D-2 へ向けたオープン 1 件と、D-1 へのまだ送信していない新しいスレッド 1 件
+        condition: search が `panel=comments&ttarget=D-1`。D-1 へ向けたオープン 1 件・D-2 へ向けたオープン 1 件と、D-1 へのまだ送信していない新規スレッド 1 件
         mock: MSW
-        expected: D-1 のチップ（件数なし）と、2 行（新しいスレッド・D-1 へのスレッド）。× を押すと search から `ttarget` が外れ、3 行になり、履歴の数が変わらない
+        expected: D-1 のチップ（件数なし）と、2 行（新規スレッド・D-1 へのスレッド）。× を押すと search から `ttarget` が外れ、3 行になり、履歴の数が変わらない
       - name: test_comments_panel_when_target_new_thread
         case: 正常
-        summary: 項目で絞っている間の新しいスレッドは、その項目へ向けて溜める
-        condition: search が `panel=comments&ttarget=D-1`。「新しいスレッド」を押して書き、「レビューに追加」を押す
+        summary: 項目で絞っている間の新規スレッドは、その項目へ向けて溜める
+        condition: search が `panel=comments&ttarget=D-1`。「新規スレッド」を押して書き、「レビューに追加」を押す
         mock: MSW
         expected: "入力の見出しが「D-1 への新しいスレッド」で、`POST /api/comments` の本文が `target: 'D-1'` を持ち `loc` を持たない"
       - name: test_comments_panel_when_focus_after_add
         case: 正常
-        summary: 新しいスレッドを溜めた後のフォーカスを移動先に従わせる
-        condition: '`parametrize`: `useFocusAfterAddTarget` が `input` / `submit` で新しいスレッドの入力に書いて溜める（201）'
+        summary: 新規スレッドを溜めた後のフォーカスを移動先に従わせる
+        condition: '`parametrize`: `useFocusAfterAddTarget` が `input` / `submit` で新規スレッドの入力に書いて溜める（201）'
         mock: MSW・`useFocusAfterAddTarget`
         expected: 入力欄にフォーカス / 「レビューに追加」にフォーカス
     container: frontend/src/features/comments/comments-panel/comments-panel.tsx

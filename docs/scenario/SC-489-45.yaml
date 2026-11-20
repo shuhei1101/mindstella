@@ -517,7 +517,7 @@ scenarios:
       - name: 記録
         description: 未決定の検討事項 D-1 と、オープンのスレッド TH-1
       - name: レビュー中の書き込み
-        description: 'D-1 への新しいスレッドの「確認: でよい」と、TH-1 への返信「確認: でよい」'
+        description: 'D-1 への新規スレッドの「確認: でよい」と、TH-1 への返信「確認: でよい」'
       - name: 開いている画面
         description: '修正する書き込みの「修正」を押して修正の入力を開き、カーソルを「確認: 」の後ろに置いている'
     flow: |-
@@ -555,7 +555,7 @@ scenarios:
       - name: 記録
         description: 未決定の検討事項 D-1・D-2
       - name: レビュー中の書き込み
-        description: 'D-1 への新しいスレッドの「確認: 」'
+        description: 'D-1 への新規スレッドの「確認: 」'
       - name: 開いている画面
         description: コメントの一覧のレビュー中の書き込みの画面で、D-1 への書き込みの修正の入力を開き、カーソルを末尾に置いている
     flow: |-
@@ -592,7 +592,7 @@ scenarios:
       - name: 記録
         description: 未決定の検討事項 D-1・D-2
       - name: レビュー中の書き込み
-        description: 'D-1 への新しいスレッドの「確認: 」'
+        description: 'D-1 への新規スレッドの「確認: 」'
       - name: 開いている画面
         description: D-1 の詳細パネルで、レビュー中のコメントの修正の入力を開き、カーソルを末尾に置いている
     flow: |-
@@ -615,7 +615,7 @@ scenarios:
     expected:
       - 文字起こしを終えた後、トップバーの音声入力中の表示が消え、エラーや知らせの帯が出ない
       - 'D-1 の詳細パネルを開くと、D-1 への書き込みが修正の入力のままで、入力欄が「確認: 案 A にする」である'
-      - 'レビュー中の書き込みは「確認: 」のままで、書きかけ（`drafts.yaml`）は変わらない'
+      - 'レビュー中の書き込みは「確認: 」のままで、下書き（`drafts.yaml`）は変わらない'
     test: test_normal_when_edit_transcribed_away
   - name: 正常シナリオ（修正の入力で録音中にキャンセルする）
     setup:
@@ -626,7 +626,7 @@ scenarios:
       - name: 記録
         description: 未決定の検討事項 D-1
       - name: レビュー中の書き込み
-        description: 'D-1 への新しいスレッドの「確認: 」'
+        description: 'D-1 への新規スレッドの「確認: 」'
       - name: 開いている画面
         description: レビュー中の書き込みの画面で、D-1 への書き込みの修正の入力を開き、マイクのボタンを押して録音中にしている
       - name: 画面の消灯の抑止
@@ -656,7 +656,7 @@ scenarios:
       - name: 記録
         description: 未決定の検討事項 D-1
       - name: レビュー中の書き込み
-        description: 'D-1 への新しいスレッドの「確認: 」（C-1）と「二つ目」（C-2）'
+        description: 'D-1 への新規スレッドの「確認: 」（C-1）と「二つ目」（C-2）'
       - name: 開いている画面
         description: コメントの一覧のレビュー中の書き込みの画面で、C-1 の修正の入力を開き、マイクのボタンを押して録音中にしている
       - name: 削除か送信

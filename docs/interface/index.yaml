@@ -85,7 +85,7 @@ items:
   - page: IF-489-55.yaml
     summary: "update_settings: 設定のキーを置き換える"
   - page: IF-489-23.yaml
-    summary: "GET /api/comments: レビュー中のコメントと書きかけをその場で読んで返す"
+    summary: "GET /api/comments: レビュー中のコメントと下書きをその場で読んで返す"
   - page: IF-489-24.yaml
     summary: "POST /api/comments: 項目・選んだ箇所へのコメントか項目に紐づかないコメントをレビュー中に溜める"
   - page: IF-489-22.yaml
@@ -93,7 +93,7 @@ items:
   - page: IF-489-21.yaml
     summary: "DELETE /api/comments/{id}: レビュー中のコメント 1 件を削除し、元に戻すための中身を返す"
   - page: IF-489-42.yaml
-    summary: "PUT /api/drafts: コメントの入力欄の書きかけを向けた先ごとに保つ"
+    summary: "PUT /api/drafts: コメントの入力欄の下書きを向けた先ごとに保つ"
   - page: IF-489-6.yaml
     summary: "POST /api/comments/send: チェックしたレビュー中の書き込みをスレッドへ移す"
   - page: IF-489-47.yaml

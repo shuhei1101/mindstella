@@ -208,7 +208,7 @@ events:
   - name: 音声入力の知らせを閉じる
     when: 帯の × を押したとき
     value: なし（`data-act="voice-dismiss"`）
-    description: 使う側が帯を削除する。書きかけは変えない
+    description: 使う側が帯を削除する。下書きは変えない
   - name: 重なった ID の項目を開く
     when: 重なった ID の通知の ID のリンクを押したとき
     value: id（`data-id`）

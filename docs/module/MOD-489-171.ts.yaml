@@ -63,14 +63,14 @@ data_models:
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: コメントを選んで送信する
-    summary: 開いている間だけ持つコメントの状態。再描画・項目の移動・詳細パネルと全画面の行き来でも保つ。書きかけとレビュー中のコメントはサーバーが持ち、ここには読んだコピーを置く
+    summary: 開いている間だけ持つコメントの状態。再描画・項目の移動・詳細パネルと全画面の行き来でも保つ。下書きとレビュー中のコメントはサーバーが持ち、ここには読んだコピーを置く
     properties:
       - name: review
         type: ReviewState
-        description: 最後に読んだレビュー中のコメントと書きかけ
+        description: 最後に読んだレビュー中のコメントと下書き
       - name: forms
         type: Map<string, {target, loc, thread, body, status, count, detail}>
-        description: 入力欄ごと（`formKey`）の書きかけと溜める状態。スレッドの返信の入力欄は `thread` を持ち、`target`・`loc` を `null` にする
+        description: 入力欄ごと（`formKey`）の下書きと溜める状態。スレッドの返信の入力欄は `thread` を持ち、`target`・`loc` を `null` にする
       - name: pendingLoc
         type: Map<string, Location>
         description: 項目の ID → 選んだ箇所の入口を押して入力に添えた箇所
@@ -109,10 +109,10 @@ data_models:
         description: スレッドを絞っているタグ。パネルを閉じても保つ
       - name: openedThread
         type: '{id: string, pending: boolean} | null'
-        description: 開いているスレッド（`pending` が真なら `id` はまだ送信していない新しいスレッドのコメントの ID）
+        description: 開いているスレッド（`pending` が真なら `id` はまだ送信していない新規スレッドのコメントの ID）
       - name: composing
         type: boolean
-        description: 新しいスレッドの入力を出しているか
+        description: 新規スレッドの入力を出しているか
       - name: reason
         type: "{open: boolean, body: string, status: 'idle' | 'saving' | 'failed', detail: string | null}"
         description: 開いているスレッドの理由の入力の状態。スレッドを開く・一覧へ戻るときに閉じて空にする
@@ -166,10 +166,10 @@ data_models:
         description: 録音を始めるたびに 1 進める番号。文字起こしの結果が返ったとき、押したときの番号と違えば結果を捨てる
       - name: destination
         type: "{target, loc, view: 'panel' | 'full'} | {thread} | {newThread: true} | null"
-        description: 録っている入力の向けた先と、戻るときに開く画面（詳細パネル・詳細の全画面・コメントの一覧の新しいスレッド・スレッド）
+        description: 録っている入力の向けた先と、戻るときに開く画面（詳細パネル・詳細の全画面・コメントの一覧の新規スレッド・スレッド）
       - name: label
         type: string | null
-        description: トップバーの `voice.label`（「{ID} へのコメント」「新しいスレッド」「{スレッド} への返信」）
+        description: トップバーの `voice.label`（「{ID} へのコメント」「新規スレッド」「{スレッド} への返信」）
       - name: notice
         type: "{kind: 'discarded' | 'failed', text: string, key: string | null} | null"
         description: トップバーの `voiceNotice`。`failed` は「入力欄を開く」で開く入力の `key` を持つ
@@ -254,7 +254,7 @@ data_models:
         description: 設定の画面を開いているか
       - name: optionDrafts
         type: 'Map<string, {key: string; content: string}[]>'
-        description: 項目の ID（追加する項目は仮の ID、仮の ID が振られる前は `NEW_ID_PREFIX`）→「案を追加」で置いた、まだ溜めていない書きかけの案の記号と中身
+        description: 項目の ID（追加する項目は仮の ID、仮の ID が振られる前は `NEW_ID_PREFIX`）→「案を追加」で置いた、まだ溜めていない下書きの案の記号と中身
       - name: sentEdits
         type: 'Map<string, {value: unknown; settledSeq: number | null}>'
         description: '`{target}:{op}:{key}`（`adopt` は `{target}:adopt`）→ 送信したが、まだ当てた読み取りに載っていない編集の値（`option-add` は入れない）と、溜められた後に送信した最初の読み取りの番号（`settledSeq`。溜められるまでは `null`）。再描画で `edits` の上に重ねて入力欄に描く'
@@ -275,7 +275,7 @@ constants:
     summary: '`Prefs` を残す `localStorage` のキー'
     value: '"mindmap-preview"'
   - name: DRAFT_SAVE_DELAY_MS
-    title: 書きかけを保つまでの待ち
+    title: 下書きを保つまでの待ち
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 項目へコメントする
     summary: 入力が止まってから『下書きの保存』を呼ぶまでの待ち（打つたびに書かず、打ち終えた直後に閉じても失うのがこの待ちの分だけで済む長さ。閉じるときは待たずに呼ぶ）
@@ -441,7 +441,7 @@ functions:
     usecase: 共通
     scope: public
     summary: 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ
-    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`Ctrl+K`・`Cmd+K` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書き（サーバーの配信では画面ごとの絞り込みの条件も）を残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけ・既定の書き換えの API へ送信する'
+    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`Ctrl+K`・`Cmd+K` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書き（サーバーの配信では画面ごとの絞り込みの条件も）を残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・下書き・既定の書き換えの API へ送信する'
     args: []
     returns:
       type: void
@@ -464,18 +464,18 @@ functions:
          - グレーアウトを押したら、開いている左のパネルを、トップバーのそのパネルのボタンを押したときと同じに閉じ、そのボタンへフォーカスを戻す
          - 詳細パネルを開く・別の項目へ移るときは `StackState.front` を `detail` にする。幅 900px 以下（`NARROW_QUERY`）で詳細パネルと左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）を両方開いているときは、`front` の側を前に出す。`left` なら `body` に `left-front` を付け、詳細パネル（`aside.panel`）に `inert` を付ける。`detail` なら `left-front` を外し、開いている左のパネルに `inert` を付ける。それ以外（幅 901px 以上・片方だけ開いている）では `left-front` と、この 2 つに付けた `inert` を外す。幅が 900px をまたいだとき（`NARROW_QUERY` の `change`）も再実行する
       6. コメントの入力のコールバックを次で扱う
-         - 「入力」では `forms` の `body` を書き換え、`DRAFT_SAVE_DELAY_MS` 待って書きかけを保つ（`saveDraft`。詳細パネル・一覧を閉じるときと項目を移るときは待たずに保つ。届かないときは何も出さない）
+         - 「入力」では `forms` の `body` を書き換え、`DRAFT_SAVE_DELAY_MS` 待って下書きを保つ（`saveDraft`。詳細パネル・一覧を閉じるときと項目を移るときは待たずに保つ。届かないときは何も出さない）
          - 「溜める」では、本文が空白だけなら `empty` にして入力欄へフォーカスを戻す。そうでなければ `saving` にして送り（`add`）、溜めたら入力欄と添えた箇所を空にして `saved`（`count`）、レビュー中を再読み込みして溜めた ID を `checked` に追加し、トップバー・詳細の一番下・一覧を再描画する。断られた・届かないなら本文を残して `failed`
-         - 「箇所を外す」では `pendingLoc` から外し、書きかけは箇所を持たない向けた先へ移す
+         - 「箇所を外す」では `pendingLoc` から外し、下書きは箇所を持たない向けた先へ移す
          - 「本文をコピー」では `navigator.clipboard.writeText` でコピーする
-         - 「開閉」では、押した後の開閉が閉じるなら `Prefs.commentFormClosed` を `true`、開くなら `null` にして残し（`savePrefs`）、開いている詳細パネル・詳細の全画面の下端の入力を再描画して、その開閉のボタンへフォーカスを戻す。書きかけ（`forms`）はそのまま残し、履歴に積まず、ハッシュも変えない
+         - 「開閉」では、押した後の開閉が閉じるなら `Prefs.commentFormClosed` を `true`、開くなら `null` にして残し（`savePrefs`）、開いている詳細パネル・詳細の全画面の下端の入力を再描画して、その開閉のボタンへフォーカスを戻す。下書き（`forms`）はそのまま残し、履歴に積まず、ハッシュも変えない
          - コメント・返信の入力に渡す `voice` は、`micSupported()` が偽なら `disabled`（`voiceReason` は `VOICE_TEXT.noMicrophone`）、`availability.available` が偽なら `disabled`（`availability.detail`）、録っている入力なら `VoiceState.phase`、ほかの入力で録っていれば `disabled`（`VOICE_TEXT.busy`）、それ以外は `idle`
          - 「録音を始める」では、別の入力で録っていれば何もしない。押したときの入力欄の選んだ範囲を `selection` に持ち、`startRecording` で始め（`onLevel` で `levels` に `pushLevel` して録っている入力の波形を再描画する）、`key`・`recording`・`destination`・`label`・`phase: recording`・`elapsed: 0`・`levels: []` にして、再描画した入力の ✓ へフォーカスを移して `ticket` を進め、1 秒ごとに `elapsed` を進めて、トップバーを再描画する。`acquireWakeLock` の関数を `release` に持つ。`denied` なら `status` を `voice-failed`（`VOICE_TEXT.denied`）、`no-microphone` なら `voice-failed`（`VOICE_TEXT.noMicrophone`）にする
          - 「録音をキャンセル」では `recording.cancel()` と `release` を呼び、`key`・`recording`・`destination`・`label` を `null`・`phase: idle` にしてトップバーを再描画し、入力欄の中身を変えず、再描画した入力欄へフォーカスを移して `selection` の範囲に戻す
-         - 「文字起こし」では `phase: transcribing` にして `release` を呼び、押したときの `ticket` と入力欄の中身・カーソルの位置・記録の `settings.transcription.action`（無ければ `review`）・向けた先で `finishVoice` を呼ぶ。返ったとき、`ticket` が違えば結果を捨てる。そうでなければ `phase: idle`・`key`・`destination`・`label` を `null` に戻してトップバーを再描画し、録っていた入力が画面に無ければ、結果の中身を `forms` に入れて書きかけを保ち（`saveDraft`）、`failed`・`unavailable` のときだけ `notice` を `failed`（失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする。画面にあれば、`reviewed` は `forms` の中身と添えた箇所を空にして `status: reviewed`、書きかけを削除（`saveDraft` を空で）、レビュー中を再読み込みして溜めた ID を `checked` に追加し、トップバーの件数と一覧を再描画する。`sent` は `forms` の中身と添えた箇所を空にして `status: sent`（`entered`）、書きかけを削除（`saveDraft` を空で）、スレッドを再読み込みする。`inserted` は中身を書き換えて入力欄へフォーカスを移し、挿入した文字の後ろにカーソルを置いて `status: inserted`、`failed` は中身を書き換えて入力欄へフォーカスを移し、文字起こしの前に失敗して中身が元のままなら `selection` の範囲に戻して `voice-failed`（`detail`）、`unavailable` は `availability` を `available: false` と返った `reason`・`detail` に書き換えて `voice-failed`（`detail`）にする
+         - 「文字起こし」では `phase: transcribing` にして `release` を呼び、押したときの `ticket` と入力欄の中身・カーソルの位置・記録の `settings.transcription.action`（無ければ `review`）・向けた先で `finishVoice` を呼ぶ。返ったとき、`ticket` が違えば結果を捨てる。そうでなければ `phase: idle`・`key`・`destination`・`label` を `null` に戻してトップバーを再描画し、録っていた入力が画面に無ければ、結果の中身を `forms` に入れて下書きを保ち（`saveDraft`）、`failed`・`unavailable` のときだけ `notice` を `failed`（失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする。画面にあれば、`reviewed` は `forms` の中身と添えた箇所を空にして `status: reviewed`、下書きを削除（`saveDraft` を空で）、レビュー中を再読み込みして溜めた ID を `checked` に追加し、トップバーの件数と一覧を再描画する。`sent` は `forms` の中身と添えた箇所を空にして `status: sent`（`entered`）、下書きを削除（`saveDraft` を空で）、スレッドを再読み込みする。`inserted` は中身を書き換えて入力欄へフォーカスを移し、挿入した文字の後ろにカーソルを置いて `status: inserted`、`failed` は中身を書き換えて入力欄へフォーカスを移し、文字起こしの前に失敗して中身が元のままなら `selection` の範囲に戻して `voice-failed`（`detail`）、`unavailable` は `availability` を `available: false` と返った `reason`・`detail` に書き換えて `voice-failed`（`detail`）にする
          - 「押せないマイクを押す」では `status` を `voice-failed`（`voiceReason` と同じ文）にし、`micSupported()` が真なら文字起こしの可否を再読み込みして `availability` に入れる（使えるようになっていれば `idle` で再描画する。録音は始めない）
          - 録っている入力が画面から消えるとき（詳細パネル・全画面・コメントの一覧・スレッドを閉じる、入力を畳む、別の項目・スレッド・タブへ移る）は、録音も文字起こしも止めない。記録を再読み込みしたとき、`destination` の項目・スレッドが無ければ `recording.cancel()` と `release` を呼び、`key`・`recording`・`destination`・`label` を `null`・`phase: idle` にして `ticket` を進め（文字起こし中の結果を捨てる）、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にしてトップバーを再描画する
-         - トップバーの「音声入力中の入力欄へ移る」では、`destination` の画面（詳細パネル・詳細の全画面は項目を開き、コメントの一覧は一覧を開いて新しいスレッドの入力を出し、スレッドは一覧でそのスレッドを開く）を、その画面を今開くときと同じ開き方と履歴の扱いで開き、入力が閉じていれば開いて、録音中は ✓、文字起こし中は入力欄へフォーカスを移す。「音声入力の入力欄を開く」は `notice.key` の入力の画面を同じく開いて `notice` を `null` にし、「音声入力の知らせを閉じる」は `notice` を `null` にする。どれもトップバーを再描画する
+         - トップバーの「音声入力中の入力欄へ移る」では、`destination` の画面（詳細パネル・詳細の全画面は項目を開き、コメントの一覧は一覧を開いて新規スレッドの入力を出し、スレッドは一覧でそのスレッドを開く）を、その画面を今開くときと同じ開き方と履歴の扱いで開き、入力が閉じていれば開いて、録音中は ✓、文字起こし中は入力欄へフォーカスを移す。「音声入力の入力欄を開く」は `notice.key` の入力の画面を同じく開いて `notice` を `null` にし、「音声入力の知らせを閉じる」は `notice` を `null` にする。どれもトップバーを再描画する
          - `visibilitychange` で画面が見えたとき、`phase` が `recording` で `release` が `null` なら `acquireWakeLock` を再呼び出しする
          - 項目を指さない入力は、幅 720px 以下でフォーカスが無く本文が空なら `collapsed`
       7. 選んだ箇所の入口を次で扱う
@@ -526,9 +526,9 @@ functions:
          - 表示の設定の「設定を編集する」では表示の設定を閉じ、`workspaceOpen` を真にする（幅 900px 以下では保存待ちのパネルも閉じる）。設定の画面の「閉じる」では偽にして開く前の画面を描く
          - 設定の画面を開くたびに文字起こしの可否を再読み込み（`voiceApi().status`）、返ったら `VoiceState.availability` に入れて `workspaceSettings` の `transcription` に渡し、開いている設定の画面の音声入力のまとまり（`data-key` が `transcription.action`・`transcription.preset` の欄）だけを再作成した欄に差し替える（読めなければ `null`。ほかの欄は再描画せず、付け替え先の選択などの入力の途中を残す）
          - 保存待ちの編集の読み取り（`editApi().read`。2・13 と、溜めた・取り消した・保存した後）は送信した順に `EditState.editsReadSeq` で番号を振る。届いた読み取りの番号が `editsAppliedSeq` より小さければ結果を `edits` に当てずに捨て、当てたら `editsAppliedSeq` をその番号にする
-         - 編集の表示・設定の画面の `on.change` では、`editApi().add` を送信する前に値を `EditState.sentEdits` に `settledSeq` を `null` にして入れる（`option-add` は入れず、`optionDrafts` の書きかけを溜められるまで残す）。溜められた（`add` が返った）ら、そのキーの値が入れた値のままのときだけ `settledSeq` をその時点の `editsReadSeq` + 1 にする。断られた・届かないときは外さず、理由と一緒に入力欄に残す。`sentEdits` から外すのは次の 3 つだけ: 保存待ちの編集の読み取りを `edits` に当てたら、当てた `edits` に同じキーで同じ値（JSON にして比べる）の編集があるキーと、当てた読み取りの番号が `settledSeq` 以上のキー（その読み取りがサーバーの今の保存待ちを表すため、`edits` にそのキーの編集が無い・ほかの端末の値で載っているも含めて値によらず）を外す／「取り消す」で外した編集と同じキーを外す／「まとめて保存する」が 200 なら全て外す
-         - 編集の表示の `on.draft` では、`EditState.optionDrafts` のその項目の分の記号の中身を書き換える（無ければ追加する）。追加したときだけ再描画し、その案の中身の入力欄へフォーカスを移す（打つたびには再描画しない）。その記号の `option-add` を溜められたら（追加する項目では、その記号の案を加えた `value.options` の `item-add` を溜められたら）書きかけから外す。`editing` を変えたとき（追加の入力で仮の ID が振られたときを除く）・差分の表示に移ったとき・保存できたときは `optionDrafts` を空にする。詳細パネルの `form` に、その項目の書きかけを `optionDrafts` で渡す
-         - 追加の入力のパネルの `form` にも `optionDrafts` と `on.draft` を渡す。仮の ID が振られる前の書きかけは `NEW_ID_PREFIX` をキーにし、`item-add` を溜めて仮の ID が振られたら、そのキーの書きかけを仮の ID へ移す
+         - 編集の表示・設定の画面の `on.change` では、`editApi().add` を送信する前に値を `EditState.sentEdits` に `settledSeq` を `null` にして入れる（`option-add` は入れず、`optionDrafts` の下書きを溜められるまで残す）。溜められた（`add` が返った）ら、そのキーの値が入れた値のままのときだけ `settledSeq` をその時点の `editsReadSeq` + 1 にする。断られた・届かないときは外さず、理由と一緒に入力欄に残す。`sentEdits` から外すのは次の 3 つだけ: 保存待ちの編集の読み取りを `edits` に当てたら、当てた `edits` に同じキーで同じ値（JSON にして比べる）の編集があるキーと、当てた読み取りの番号が `settledSeq` 以上のキー（その読み取りがサーバーの今の保存待ちを表すため、`edits` にそのキーの編集が無い・ほかの端末の値で載っているも含めて値によらず）を外す／「取り消す」で外した編集と同じキーを外す／「まとめて保存する」が 200 なら全て外す
+         - 編集の表示の `on.draft` では、`EditState.optionDrafts` のその項目の分の記号の中身を書き換える（無ければ追加する）。追加したときだけ再描画し、その案の中身の入力欄へフォーカスを移す（打つたびには再描画しない）。その記号の `option-add` を溜められたら（追加する項目では、その記号の案を加えた `value.options` の `item-add` を溜められたら）下書きから外す。`editing` を変えたとき（追加の入力で仮の ID が振られたときを除く）・差分の表示に移ったとき・保存できたときは `optionDrafts` を空にする。詳細パネルの `form` に、その項目の下書きを `optionDrafts` で渡す
+         - 追加の入力のパネルの `form` にも `optionDrafts` と `on.draft` を渡す。仮の ID が振られる前の下書きは `NEW_ID_PREFIX` をキーにし、`item-add` を溜めて仮の ID が振られたら、そのキーの下書きを仮の ID へ移す
 
     notes:
       確かめ方: 単体テストは持たない。インターフェース定義『プレビューを開く』の結合テストがこの流れを確かめる
@@ -550,7 +550,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 項目へコメントする
     scope: public
-    summary: 向けた先（`target` と `loc` の組か、`thread`）を 1 つの文字列にする（サーバーの書きかけの同じさと同じ比べ方）
+    summary: 向けた先（`target` と `loc` の組か、`thread`）を 1 つの文字列にする（サーバーの下書きの同じさと同じ比べ方）
     args:
       - name: target
         type: string | null
@@ -581,7 +581,7 @@ functions:
         expected: 同じ / 違う / 同じ / 違う
       - name: test_form_key_when_thread
         case: 正常
-        summary: スレッドごとに別のキーで、新しいスレッドの入力とも別
+        summary: スレッドごとに別のキーで、新規スレッドの入力とも別
         condition: '`parametrize`: `(null, null, TH-1)` と `(null, null, TH-1)` / `(null, null, TH-1)` と `(null, null, TH-2)` / `(null, null, TH-1)` と `(null, null)`'
         mock: なし
         expected: 同じ / 違う / 違う
@@ -906,9 +906,9 @@ functions:
         description: レビュー中のコメントの取得（『レビュー中のコメントの読み取り』）。行き先が `review` のときだけ読む
     returns:
       type: Promise<string | null>
-      description: 行き先が無くなっていればその ID。行き先が無い・新しいスレッド・あった・読めなかったときは null
+      description: 行き先が無くなっていればその ID。行き先が無い・新規スレッド・あった・読めなかったときは null
     process: |-
-      1. `destination` が null か新しいスレッドなら null を返す
+      1. `destination` が null か新規スレッドなら null を返す
       2. 行き先がレビュー中の書き込みの修正（`review`）なら `fetchComments` を読み、読めなければ null、読んだレビュー中のコメントにその ID が無ければその ID、あれば null を返す
       3. それ以外は `fetchRecords` と `fetchThreads` を読む。どちらかが読めなければ null を返す
       4. 行き先がスレッドなら読んだスレッドの ID に、項目なら読んだ記録の項目の ID（`buildIndex`）にあるかを確かめ、無ければ行き先の ID を、あれば null を返す
@@ -941,7 +941,7 @@ functions:
     title: 「レビューに追加」の後のフォーカスの移動先
     kind: 関数
     usecase: 項目へコメントする
-    summary: '`prefs.focusAfterAdd` が `input` なら `input`、`none` なら `submit`、`null`（自動）なら `coarse` が真で `submit`、偽で `input` を返す。コメント・新しいスレッド・返信を溜めた後（`redrawForm` の `focus`・返信の結果）と、音声入力の `reviewed`・`sent` の後（`redrawVoiceForm`）で、`submit` のときはその入力の「レビューに追加」（`.send-submit`）へフォーカスを移すのに使う。空白・失敗・`insert` の後はこの関数を使わず入力欄へ戻す'
+    summary: '`prefs.focusAfterAdd` が `input` なら `input`、`none` なら `submit`、`null`（自動）なら `coarse` が真で `submit`、偽で `input` を返す。コメント・新規スレッド・返信を溜めた後（`redrawForm` の `focus`・返信の結果）と、音声入力の `reviewed`・`sent` の後（`redrawVoiceForm`）で、`submit` のときはその入力の「レビューに追加」（`.send-submit`）へフォーカスを移すのに使う。空白・失敗・`insert` の後はこの関数を使わず入力欄へ戻す'
     args:
       - name: prefs
         type: Prefs
@@ -977,17 +977,17 @@ notes:
     - 要求を送信している間に再読み込みした値で置き換えるときは、送信しているスレッドを `withSeen` で既読にしてから置き換える（送信する前のサーバーの値でコピーを未読に戻さない）
     - 断られた・届かないときは画面に出さず、そのスレッドの ID を送信している控えから失敗の控えへ移してからスレッドを再読み込みする（コピーをサーバーの値に戻す）
   スレッドの画面の操作: |-
-    `start` の 5・6・8 に追加する。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`target`・`openedThread`（`opened`）・`composing`・`reason`・`expanded` と、新しいスレッドの入力（`formKey(null, null)`。`target` があれば、その項目への箇所を持たない入力 `formKey({ID}, null)` で、詳細パネルの下端の入力と状態を共有する。その入力を溜める・書くとパネルを再描画し、フォーカスがパネルにあれば、溜めた後のフォーカスの移動先（`focusAfterAddTarget`）に従ってパネルの入力欄か「レビューに追加」へ移す）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
+    `start` の 5・6・8 に追加する。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`target`・`openedThread`（`opened`）・`composing`・`reason`・`expanded` と、新規スレッドの入力（`formKey(null, null)`。`target` があれば、その項目への箇所を持たない入力 `formKey({ID}, null)` で、詳細パネルの下端の入力と状態を共有する。その入力を溜める・書くとパネルを再描画し、フォーカスがパネルにあれば、溜めた後のフォーカスの移動先（`focusAfterAddTarget`）に従ってパネルの入力欄か「レビューに追加」へ移す）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
     - パネルを開くときは、閉じる前の `view`・`openedThread`・`composing`・`reviewFrom`・`reviewFocus` のまま描き、パネルの中のスクロールの位置を `listScroll` に戻す（ページを開いたときは `list` から始める）。スレッドを再読み込みし、`view` が `thread` で、開いていた送信したスレッドが再読み込みしたスレッドに無ければ、`view` を `list`、`openedThread` を `null` にする
     - 「状態で絞る」「タグで絞る」（絞っているタグなら外す）「タグを外す」「項目の絞り込みを外す」では `filter`・`tag`・`target` を書き換えてパネルを再描画する
     - 一覧を閉じるときは `target` を `null` にする（トップバー・未読のタイル・音声入力の帯など、詳細パネルのボタンでない入口で開くと項目で絞らない）。サーバーの配信では `detailPanel` に `on.comments` を渡し、受けたら `target` に項目の ID を入れてパネルの中の画面を開いた直後の状態（`view` は `list`、`openedThread`・`reviewFocus` は `null`、`composing` は偽、`reason` は閉じて空）に戻し、一覧を開いていなければ開き、開いていれば再描画する（`filter`・`tag` は保つ）。詳細パネルで別の項目へ移っても `target` は変えない
-    - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。送信したスレッドで `hasUnseen` が真なら「既読にする」を行う（一覧の行・レビュー中の書き込みのどちらから開いても同じ。「スレッドの読み直し」）。「戻る」（`thread` から）では返信の書きかけを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す
-    - 「レビュー中を開く」では返信の書きかけを待たずに保ち、`reviewFrom` に今の `view` を控えて `view` を `review` にする（`thread` から開いたときは `reviewFocus` にそのスレッドの ID）。「戻る」（`review` から）では `reviewFrom` へ戻る。`reviewFrom` が `thread` で、開いていたまだ送信していない新しいスレッドが `review.items` にも `removed` にも無ければ `list` へ戻る
-    - 「新しいスレッドの入力を出す／畳む」では `composing` を入れ替え、出したときは入力欄へ、畳んだときは「新しいスレッド」へフォーカスを移す（書きかけは残す）
+    - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。送信したスレッドで `hasUnseen` が真なら「既読にする」を行う（一覧の行・レビュー中の書き込みのどちらから開いても同じ。「スレッドの読み直し」）。「戻る」（`thread` から）では返信の下書きを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す
+    - 「レビュー中を開く」では返信の下書きを待たずに保ち、`reviewFrom` に今の `view` を控えて `view` を `review` にする（`thread` から開いたときは `reviewFocus` にそのスレッドの ID）。「戻る」（`review` から）では `reviewFrom` へ戻る。`reviewFrom` が `thread` で、開いていたまだ送信していない新規スレッドが `review.items` にも `removed` にも無ければ `list` へ戻る
+    - 「新しいスレッドの入力を出す／畳む」では `composing` を入れ替え、出したときは入力欄へ、畳んだときは「新規スレッド」へフォーカスを移す（下書きは残す）
     - 返信の「入力」「溜める」は 6 のコメントの入力と同じ扱いで、`add`・`saveDraft` に `{thread, body}` を送信する（空白だけは部品が溜めさせないため `empty` は使わない）。溜めたらレビュー中を再読み込みして溜めた ID を `checked` に追加し、トップバーとパネルを再描画する
     - 「理由の入力を出す／閉じる」「理由の入力」では `reason` を書き換える。「状態を変える」では `reason.status` を `saving` にして送り（`threadApi().setStatus`）、200 なら `reason` を閉じて空にし、スレッドを再読み込みしてパネルを再描画し、「状態を変える」へフォーカスを戻す。断られた・届かないなら `failed`（`detail`）にして理由の入力を開いたまま残す
     - 「まとめて送信する」では、チェックした ID から `isBlockedReply` が真のものを除いて溜めた順に送信する。201 の後はレビュー中に続けてスレッドも再読み込みする（`view` は `review` のまま）
     - 項目を開く（本文の中の ID・スレッドの向けた項目・レビュー中の行の向けた項目）では、パネルを開いたまま詳細パネルを開く。スレッドの向けた項目とレビュー中の行は `highlight` にその箇所を渡す
     - Esc は、幅 901px 以上か `StackState.front` が `detail` で詳細パネルを開いていれば、詳細パネルを閉じる。それ以外で入力欄にフォーカスがあるとき（`isTyping`）は何もしない（入力欄が自分で外れる）。それ以外は `view` が `thread`・`review` なら「戻る」と同じ、`list` ならパネルを閉じる
-    - パネルを閉じるときは、パネルの中のスクロールの位置を `listScroll` に控え、新しいスレッドと返信の書きかけを待たずに保ち、`removed` と `editingIn` が `'list'` の書き換えを捨てる（「詳細パネルのレビュー中のコメントの操作」と同じ。修正の入力で録音・文字起こし中か、出していない結果があるとき（`editHeld`）は書き換えを捨てない）
-  修正の入力の音声入力: "`VoiceDestination` にレビュー中の書き込みの修正 `{review: ID, view: 'review' | 'thread' | 'panel' | 'full'}` を追加する。修正の入力の `key` は `review:{ID}` で、`voiceHandlers` には `comment.edit` の書き換えていた中身を入力欄の状態として渡す。`destinationOf` が `review` を返すとき、`finishVoice` の `action` を設定によらず `insert` にする。入力欄が画面に無い間に終わった結果は、書きかけ（`saveDraft`）へ送信せず `comment.edit` の書き換えていた中身へ入れ、`editing` をその ID、`editingIn` を録音を始めた画面にしたまま残す。`checkVoiceDestination` は `review` の向けた先をレビュー中のコメント（`review.items`）で確かめ、無ければ録音と結果を捨てて知らせる。`openVoiceInput` は `review` の向けた先の画面（コメントの一覧のレビュー中・スレッド・詳細パネル・詳細の全画面）を開き、その書き込みを修正の入力のまま描く。修正の入力の「修正」の「キャンセル」で書き換えを捨てるときは、録音を捨てる（`abandonVoice`）。画面からの削除（`removeComment`）とまとめて送信（`sendChecked`）の応答が成功した時点で、その ID の `review:{ID}` が録音・文字起こし中なら `abandonVoice` して知らせを discarded にし、`comment.edit` に取っておいたその ID の結果も捨てる（記録の再読み込みを待たない。「元に戻す」で戻しても結果を入れない）。修正の入力の音声入力は次の処理で持つ。`editVoiceHandlers` は書き換えている行のマイク・×・✓・押せないマイクを受け、✓ では `action: insert` で `finishVoice` を呼ぶ。入力欄が画面に無い間に終わった結果は `editBody` に入れて `editVoicePending` を立て、失敗だけを知らせる。`editHeld`（その行で録音・文字起こし中か、`editVoicePending` が立っている）の間は、項目の移動と詳細パネル・一覧を閉じても書き換えを捨てない。`openEditVoiceInput` は `openVoiceInput` が `review:{ID}` を受けたときに向けた先の画面を開いて `editing`・`editingIn` を戻し、`editVoicePending` を下ろす。`discardEditVoice` は削除・送信した書き込みと、再読み込みで無くなった書き込み（`discardMissingVoice`）の録音を捨てて知らせを discarded にし、出していない結果も捨てる。`removeComment`・`sendChecked` は `start` の中の処理で単体テストを置かず、再読み込みを挟まない削除・送信で録音を捨てることは、結合テスト（単一ユースケース『音声でコメントする』の `異常シナリオ（修正の入力で録音中にその書き込みを削除・送信する）` を今の画面で開く流れ）で確かめる"
+    - パネルを閉じるときは、パネルの中のスクロールの位置を `listScroll` に控え、新規スレッドと返信の下書きを待たずに保ち、`removed` と `editingIn` が `'list'` の書き換えを捨てる（「詳細パネルのレビュー中のコメントの操作」と同じ。修正の入力で録音・文字起こし中か、出していない結果があるとき（`editHeld`）は書き換えを捨てない）
+  修正の入力の音声入力: "`VoiceDestination` にレビュー中の書き込みの修正 `{review: ID, view: 'review' | 'thread' | 'panel' | 'full'}` を追加する。修正の入力の `key` は `review:{ID}` で、`voiceHandlers` には `comment.edit` の書き換えていた中身を入力欄の状態として渡す。`destinationOf` が `review` を返すとき、`finishVoice` の `action` を設定によらず `insert` にする。入力欄が画面に無い間に終わった結果は、下書き（`saveDraft`）へ送信せず `comment.edit` の書き換えていた中身へ入れ、`editing` をその ID、`editingIn` を録音を始めた画面にしたまま残す。`checkVoiceDestination` は `review` の向けた先をレビュー中のコメント（`review.items`）で確かめ、無ければ録音と結果を捨てて知らせる。`openVoiceInput` は `review` の向けた先の画面（コメントの一覧のレビュー中・スレッド・詳細パネル・詳細の全画面）を開き、その書き込みを修正の入力のまま描く。修正の入力の「修正」の「キャンセル」で書き換えを捨てるときは、録音を捨てる（`abandonVoice`）。画面からの削除（`removeComment`）とまとめて送信（`sendChecked`）の応答が成功した時点で、その ID の `review:{ID}` が録音・文字起こし中なら `abandonVoice` して知らせを discarded にし、`comment.edit` に取っておいたその ID の結果も捨てる（記録の再読み込みを待たない。「元に戻す」で戻しても結果を入れない）。修正の入力の音声入力は次の処理で持つ。`editVoiceHandlers` は書き換えている行のマイク・×・✓・押せないマイクを受け、✓ では `action: insert` で `finishVoice` を呼ぶ。入力欄が画面に無い間に終わった結果は `editBody` に入れて `editVoicePending` を立て、失敗だけを知らせる。`editHeld`（その行で録音・文字起こし中か、`editVoicePending` が立っている）の間は、項目の移動と詳細パネル・一覧を閉じても書き換えを捨てない。`openEditVoiceInput` は `openVoiceInput` が `review:{ID}` を受けたときに向けた先の画面を開いて `editing`・`editingIn` を戻し、`editVoicePending` を下ろす。`discardEditVoice` は削除・送信した書き込みと、再読み込みで無くなった書き込み（`discardMissingVoice`）の録音を捨てて知らせを discarded にし、出していない結果も捨てる。`removeComment`・`sendChecked` は `start` の中の処理で単体テストを置かず、再読み込みを挟まない削除・送信で録音を捨てることは、結合テスト（単一ユースケース『音声でコメントする』の `異常シナリオ（修正の入力で録音中にその書き込みを削除・送信する）` を今の画面で開く流れ）で確かめる"

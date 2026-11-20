@@ -428,7 +428,7 @@ components:
         summary: レビュー中のコメントの長い本文を Markdown で描いて畳む
         condition: 'D-1 へのコメント C-63（「頭の 1 行 + `1.`〜`7.` の番号付きのリスト」の 8 行）と C-65（1 行）。`parametrize`: `expanded` が空 / `expanded` に C-63'
         mock: '`comment.edit.on.fold`'
-        expected: C-63 の本文が `ol` を持ち（リストの行に行の並びの罫線が無い）、`folded` で本文の下に `data-focus` が `detail-more:C-63` の「続きを読む」。C-65 には開閉のボタンが無い。押すと `on.fold` が `(C-63, true)` / C-63 が `folded` を持たず「折りたたむ」
+        expected: C-63 の本文が `ol` を持ち（リストの行に行の並びの罫線が無い）、`folded` で本文の下に `data-focus` が `detail-more:C-63` の「続きを表示」。C-65 には開閉のボタンが無い。押すと `on.fold` が `(C-63, true)` / C-63 が `folded` を持たず「折りたたむ」
       - name: test_detail_panel_when_comments_button
         case: 正常
         summary: 見出しのコメントの一覧のボタンは、`on.comments` があり全画面でないときだけ置き、押すと項目の ID を知らせる

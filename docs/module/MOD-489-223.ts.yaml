@@ -99,7 +99,7 @@ components:
         type: boolean
         required: false
         default: 'false'
-        description: オープンのスレッドに利用者の未読があるか（部品設計『トップバー』の `comments_unread`）。`comments` が真のときだけ効き、吹き出しのマーカーの右上に点を重ねて読み上げの名前を「コメント（未読あり・レビュー中 {件数} 件）」にする（点は `aria-hidden`）
+        description: オープンのスレッドに利用者の未読があるか（部品設計『トップバー』の `comments_unread`）。`comments` が真のときだけ効き、吹き出しのアイコンの右上に点を重ねて読み上げの名前を「コメント（未読あり・レビュー中 {件数} 件）」にする（点は `aria-hidden`）
       - name: pending
         type: boolean
         required: false

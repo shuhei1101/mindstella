@@ -93,7 +93,7 @@ states:
           ID の等幅は残す。
           以上。
   - name: NoTarget
-    description: 項目を指さないコメント（コメントの一覧の新しいスレッドの入力）。見出しを出さず、入力欄と右の「レビューに追加」だけにする。名前「項目を指さないコメント」は読み上げにだけ持つ
+    description: 項目を指さないコメント（コメントの一覧の新規スレッドの入力）。見出しを出さず、入力欄と右の「レビューに追加」だけにする。名前「項目を指さないコメント」は読み上げにだけ持つ
   - name: Narrow
     description: 幅 390px。左右の余白をパネルの本文に揃える。部品の幅によらず入力欄と「レビューに追加」を 1 行に並べ、結果は入力欄の下に幅いっぱいで出す
     args:
@@ -131,7 +131,7 @@ states:
       - name: open
         value: 'false'
   - name: ClosedWithDraft
-    description: 書きかけを残して閉じた。「{ID} へのコメント」の右に鉛筆のアイコンと「下書き」を出す
+    description: 下書きを残して閉じた。「{ID} へのコメント」の右に鉛筆のアイコンと「下書き」を出す
     args:
       - name: target
         value: D-022
@@ -297,7 +297,7 @@ states:
         value: ほかの入力欄で音声入力中のため、音声で入力できません。
       - name: body
         value: D-2 も確認
-lead: 詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。選んだ箇所を添えられ、溜めた結果を入力の近くに出す。
+lead: 詳細パネル・詳細の全画面の下端と、コメントの一覧の新規スレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。選んだ箇所を添えられ、溜めた結果を入力の近くに出す。
 test_file: tests/integration/storybook/test_send_form_stories.py
 status: implemented
 args:
@@ -392,14 +392,14 @@ events:
   - name: 入力
     when: 入力欄の中身が変わったとき
     value: body
-    description: 使う側が書きかけを `PUT /api/drafts` で保ち、`saved`・`empty` の結果を削除して `idle` に戻す（`failed` は次に溜めるまで残す）
+    description: 使う側が下書きを `PUT /api/drafts` で保ち、`saved`・`empty` の結果を削除して `idle` に戻す（`failed` は次に溜めるまで残す）
   - name: 箇所を外す
     when: 添えた箇所の × を押したとき
     description: 使う側が `loc` を外して項目へのコメントに戻す。入力欄の中身は残し、フォーカスを入力欄へ移す
   - name: 本文をコピー
     when: '`failed` で `detail` が無いときに出るコピーのボタン（本文をコピー）を押したとき'
     value: body
-    description: 使う側が入力欄の中身をクリップボードへコピーする（サーバーが止まっている間は書きかけを保てないため）
+    description: 使う側が入力欄の中身をクリップボードへコピーする（サーバーが止まっている間は下書きを保てないため）
   - name: 入力欄に入る
     when: 入力欄にフォーカスしたとき
     description: 使う側が `collapsed` を false にして広げる
@@ -422,7 +422,7 @@ events:
   - name: 文字起こし
     when: ✓ のボタンを押したとき（`voice` が `recording`）
     value: target・loc・body（入力欄の中身そのまま）
-    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送信する。入力欄に戻して返った文字をカーソルの位置へ挿入し、設定の挙動（無ければ `review`）が `review` なら挿入した全文を `POST /api/comments` へ送信してレビュー中に溜め、溜められたら入力欄を空にして `reviewed`（溜められなければ全文を残して `voice-failed`）、`send` なら挿入した全文を `POST /api/comments/send-now` へ送信して入力欄を空にし `sent`、`insert` なら送信せずに `inserted` にする（送信は利用者が「レビューに追加」を押したとき）。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）。`reviewed`・`sent` のときのフォーカスは制約「「レビューに追加」の後のフォーカス」に従い、それ以外は入力欄へ戻す。文字起こし中に入力欄が画面から消えても、返った文字は録音を始めた入力欄の書きかけへ挿入して同じく扱い、失敗のときは使う側がトップバーの下の帯で知らせる
+    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送信する。入力欄に戻して返った文字をカーソルの位置へ挿入し、設定の挙動（無ければ `review`）が `review` なら挿入した全文を `POST /api/comments` へ送信してレビュー中に溜め、溜められたら入力欄を空にして `reviewed`（溜められなければ全文を残して `voice-failed`）、`send` なら挿入した全文を `POST /api/comments/send-now` へ送信して入力欄を空にし `sent`、`insert` なら送信せずに `inserted` にする（送信は利用者が「レビューに追加」を押したとき）。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）。`reviewed`・`sent` のときのフォーカスは制約「「レビューに追加」の後のフォーカス」に従い、それ以外は入力欄へ戻す。文字起こし中に入力欄が画面から消えても、返った文字は録音を始めた入力欄の下書きへ挿入して同じく扱い、失敗のときは使う側がトップバーの下の帯で知らせる
   - name: 押せないマイクを押す
     when: '`voice` が `disabled` のマイクのボタンを押したとき'
     value: なし
@@ -436,7 +436,7 @@ accessibility:
   - 失敗と本文が空は、赤の色だけでなくマーカーのアイコンと文言でも伝える
   - '「レビューに追加」は 1 行の入力欄と同じ高さの正方形にし、タッチが主な端末（`pointer: coarse`）では 44 x 44 CSS px にする'
   - 開閉のボタンは `aria-label`・`title` に、開いている間は「コメントの入力を閉じる」、閉じている間は「コメントの入力を開く」を持ち、`aria-expanded` で開閉を、`aria-controls` で開閉する範囲を指す
-  - 書きかけのマーカーは「下書き」を文字で出し、鉛筆のアイコンは読み上げから外す
+  - 下書きのマーカーは「下書き」を文字で出し、鉛筆のアイコンは読み上げから外す
 
   - マイクのボタンはアイコンだけのボタンにし、`aria-label`・`title` に「音声で入力」を持つ。押せないときは `aria-disabled="true"` でフォーカスを受けたまま、ツールチップに理由を出して `aria-describedby` から指す
   - 録音中の × と ✓ はアイコンだけのボタンにし、`aria-label`・`title` にそれぞれ「キャンセル」（ツールチップは「キャンセル（録音を破棄）」）と「文字起こし」を持つ。文字起こし中は ✓ を「文字起こし中」にして押せなくする

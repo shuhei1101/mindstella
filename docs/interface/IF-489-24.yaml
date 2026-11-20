@@ -5,12 +5,12 @@ entry:
   value: POST /api/comments
 flows:
   - name: 正常系
-    summary: 項目へのコメントを溜め、その向けた先の書きかけを削除する
+    summary: 項目へのコメントを溜め、その向けた先の下書きを削除する
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
-        description: 検討事項 D-1 と、D-1 への書きかけ「案 A に」を持ち、`comments.yaml` を持たないワークスペース
+        description: 検討事項 D-1 と、D-1 への下書き「案 A に」を持ち、`comments.yaml` を持たないワークスペース
         notes: '`target` は D-1、`body` は `案 A にする`'
     flow: |-
       ```mermaid
@@ -20,15 +20,15 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: POST {target: D-1, body: 案 A にする}
-        IF-->>WS: 項目・コメント・書きかけを読む
+        IF-->>WS: 項目・コメント・下書きを読む
         IF->>WS: comments.yaml に追加する
-        IF->>WS: drafts.yaml から D-1 の書きかけを削除する
+        IF->>WS: drafts.yaml から D-1 の下書きを削除する
         IF-->>クライアント: 201、JSON（id・created・count）
       ```
     expected:
       - ステータスが 201 で、`id` が `C-1`、`count` が 1
       - '`comments.yaml` に `id: C-1`・`target: D-1`・`body: 案 A にする` の 1 件があり、`seq` が 1'
-      - '`drafts.yaml` に D-1 への書きかけが無い'
+      - '`drafts.yaml` に D-1 への下書きが無い'
       - '`threads.yaml` が作られておらず、`decisions.yaml` の中身が溜める前と同じ'
     test: test_normal
   - name: 正常系（本文の箇所）
@@ -286,7 +286,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
-        description: AI が立てたオープンのスレッド TH-1 と、TH-1 への返信の書きかけを持つワークスペース
+        description: AI が立てたオープンのスレッド TH-1 と、TH-1 への返信の下書きを持つワークスペース
         notes: '本文は `{"thread": "TH-1", "body": "起票してよい"}`'
     flow: |-
       ```mermaid
@@ -297,13 +297,13 @@ flows:
 
         クライアント->>IF: POST {thread: TH-1, body}
         IF-->>WS: スレッドを読んでオープンを確かめる
-        IF->>WS: comments.yaml に追加し、TH-1 への書きかけを削除する
+        IF->>WS: comments.yaml に追加し、TH-1 への下書きを削除する
         IF-->>クライアント: 201
       ```
     expected:
       - ステータスが 201
       - '`comments.yaml` のそのコメントが `thread: TH-1` を持ち、`target`・`loc` を持たない'
-      - '`drafts.yaml` に TH-1 への書きかけが無い'
+      - '`drafts.yaml` に TH-1 への下書きが無い'
       - '`threads.yaml` の中身が溜める前と同じ'
     test: test_normal_when_reply
   - name: 異常系（クローズのスレッドへの返信・409）
@@ -329,7 +329,7 @@ flows:
     test: test_error_when_thread_closed
 lead: 詳細パネル・詳細の全画面・コメントの一覧の入力から、項目・選んだ箇所へのコメントか項目に紐づかないコメントを受け、送信せずにレビュー中のコメントとして `comments.yaml` に溜める。削除したコメントを元に戻すときもこれを呼ぶ。
 idempotent: false
-side_effects: '`comments.yaml` に 1 件追加（無ければ作る）、同じ向けた先（`target` と `loc`）の書きかけを `drafts.yaml` から削除する。どちらも一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
+side_effects: '`comments.yaml` に 1 件追加（無ければ作る）、同じ向けた先（`target` と `loc`）の下書きを `drafts.yaml` から削除する。どちらも一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
   - IF-489-71#
 request:
@@ -422,7 +422,7 @@ request:
   - name: thread
     type: str
     required: false
-    default: なし（新しいスレッドの最初の書き込み）
+    default: なし（新規スレッドの最初の書き込み）
     location: body
     description: 既存のスレッドへの返信を溜めるときの、そのスレッドの ID
     constraints: オープンのスレッド。`target`・`loc` と一緒に渡さない
@@ -471,7 +471,7 @@ status_codes:
     notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ構造
   - code: '500'
     condition: '`comments.yaml` を書けない（権限が無い など）'
-    notes: '`detail` に書けなかったパスと理由。`comments.yaml` は前のまま。書きかけを削除できなかったときは溜めたまま 201 を返す'
+    notes: '`detail` に書けなかったパスと理由。`comments.yaml` は前のまま。下書きを削除できなかったときは溜めたまま 201 を返す'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 書き込む中身
@@ -479,7 +479,7 @@ constraints:
   - item: 箇所の確認
     constraint: 本文の箇所は、行の範囲がその項目の本文の行数に収まり、その行の範囲の文に選んだ文が含まれるかを確かめる。値の箇所は、キーがその項目にあり、その値に選んだ文が含まれるかを確かめる。比べる前に、選んだ文と元の文の両方から記号 `*`・`_`・`~`・`` ` ``・`\`・`|`・`#`・`>` と空白・改行を外す。Markdown の本文の元の文は先に、各行の行頭のリストの記号（`-`・`+`・`数字.`・`数字)`）・表の区切りの行・コードブロックのフェンスの行・画像（`![代わりの文](URL)` を丸ごと）を外し、リンク `[文](URL)` を `文` にし、文字参照を文字に戻す。HTML の本文の元の文は、`html.parser.HTMLParser` で原文を読んだときの文の断片のうち、その行の範囲にあるものをつなぐ（タグとコメントを外し、`style`・`script`・`template`・`title` の中身を除き、文字参照を文字に戻す）。『コメントをまとめて送信する』も同じ確かめ方を使う
   - item: 下書き
-    constraint: 溜めたら、同じ向けた先（`target` と `loc` の組か、`thread`）の書きかけを `drafts.yaml` から削除する（元に戻すときは削除しない）
+    constraint: 溜めたら、同じ向けた先（`target` と `loc` の組か、`thread`）の下書きを `drafts.yaml` から削除する（元に戻すときは削除しない）
   - item: 本文の上限
     constraint: '`body` と `loc.text` は 10000 文字。リクエストの本文は 128KiB まで読み、超えたら読まずに 400'
     decided_by: NFR-489-1#requirements[送信の本文の長さ]

@@ -211,7 +211,7 @@ response:
   - name: marked_bodies
     type: dict[str, str]
     description: '`bodies` の HTML の本文ごとの、ファイル名 → 開きタグに原文の行のマーカー（`data-line`・`data-line-end`）を追加した HTML。画面はこれを描き、選んだ範囲を本文の行の範囲にし、差分のマーカーを付ける要素を決める。HTML の本文が無ければ `{}`'
-    notes: マーカーの追加方は制約「行のマーカー」
+    notes: マーカーの追加方法は制約「行のマーカー」
   - name: mdmark_ref
     type: str
     description: 画面が読み込む mdmark の jsDelivr の ref（『プレビューの配信』の制約「mdmark の ref の解決」）。設定の `mdmark.version` がタグならタグ、`latest` か無ければ mdmark の develop の先頭の commit の SHA（問い合わせられないときは `develop`）。React の画面はこの ref で mdmark の URL を組み立てる
@@ -233,7 +233,7 @@ constraints:
   - item: 接続先の確認
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403 を返す。確かめは『プレビューの配信』の異常系が持つ）
   - item: 書き込み途中の読み込み
-    constraint: ツールは YAML を一時ファイルから `os.replace` で置き換えるため、書きかけを読まない
+    constraint: ツールは YAML を一時ファイルから `os.replace` で置き換えるため、書き込み途中のファイルを読まない
   - item: 設定の読み込み方法
     constraint: 呼ばれるたびに `config.yaml` を読み、スキーマに合えば配信の「最後に検査に通った設定」をその値に差し替える。合わなければ差し替えず、最後に検査に通った設定を `settings` に、合わない箇所を `settings_problem` に入れて 200 を返す
   - item: 行のマーカー

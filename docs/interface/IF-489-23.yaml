@@ -5,12 +5,12 @@ entry:
   value: GET /api/comments
 flows:
   - name: 正常系
-    summary: レビュー中のコメントを溜めた順に、書きかけと一緒に返す
+    summary: レビュー中のコメントを溜めた順に、下書きと一緒に返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
       - name: make_workspace
-        description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1）・C-2（項目を指さない）と、D-1 への書きかけを持つワークスペース
+        description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1）・C-2（項目を指さない）と、D-1 への下書きを持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -25,7 +25,7 @@ flows:
     expected:
       - ステータスが 200 で、`items` が C-1・C-2 の順
       - C-1 の `target_title` が D-1 のタイトルで、C-2 の `target` と `target_title` が `null`
-      - '`drafts` に D-1 への書きかけが 1 件ある'
+      - '`drafts` に D-1 への下書きが 1 件ある'
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じ
     test: test_normal
   - name: 正常系（まだ無い）
@@ -70,7 +70,7 @@ flows:
     expected:
       - 'ステータスが 422 で、`detail` に `comments.yaml: items[0]` で始まる行がある'
     test: test_error_when_schema_mismatch
-lead: レビュー中のコメントと書きかけを、その場で読んで返す。プレビューの画面が開いたときと、コメントの一覧・詳細の一番下のレビュー中のコメントを描くときに読む。
+lead: レビュー中のコメントと下書きを、その場で読んで返す。プレビューの画面が開いたときと、コメントの一覧・詳細の一番下のレビュー中のコメントを描くときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
@@ -105,20 +105,20 @@ response:
     description: 溜めた日時（UTC のタイムゾーン付き ISO 8601）
   - name: drafts[].target
     type: str | None
-    description: 書きかけの入力欄が向ける項目の ID。項目に紐づかないコメントの入力欄は `null`
+    description: 下書きの入力欄が向ける項目の ID。項目に紐づかないコメントの入力欄は `null`
   - name: drafts[].loc
     type: dict | None
     description: 入力欄に添えた箇所。無ければ `null`
   - name: drafts[].body
     type: str
-    description: 書きかけの本文
+    description: 下書きの本文
   - name: items[].thread
     type: str | None
-    description: 返信のとき、向けたスレッドの ID。新しいスレッドの最初の書き込みは `null`
+    description: 返信のとき、向けたスレッドの ID。新規スレッドの最初の書き込みは `null`
     example: TH-3
   - name: drafts[].thread
     type: str | None
-    description: スレッドの返信の入力欄の書きかけのとき、そのスレッドの ID。それ以外は `null`
+    description: スレッドの返信の入力欄の下書きのとき、そのスレッドの ID。それ以外は `null`
 status_codes:
   - code: '200'
     condition: 読めた（`comments.yaml`・`drafts.yaml` が無いときはどちらも空）
@@ -128,13 +128,13 @@ status_codes:
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 読み込む時
-    constraint: 呼ばれるたびに `comments.yaml`・`drafts.yaml` と項目を再読み込みする。『記録の取得』はレビュー中のコメントと書きかけを返さない
+    constraint: 呼ばれるたびに `comments.yaml`・`drafts.yaml` と項目を再読み込みする。『記録の取得』はレビュー中のコメントと下書きを返さない
   - item: 本文の構造
     constraint: '`application/json; charset=utf-8`。日本語はエスケープしない。`Cache-Control: no-store`'
   - item: 接続先の確認
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403。確かめは『プレビューの配信』の異常系が持つ）
   - item: 書き込み途中の読み込み
-    constraint: 書き換えは一時ファイルから `os.replace` で置き換えるため、書きかけを読まない
+    constraint: 書き換えは一時ファイルから `os.replace` で置き換えるため、書き込み途中のファイルを読まない
 refs:
   - ER-489-1#
   - SC-489-3#

@@ -107,13 +107,13 @@ data_models:
         description: レビュー中のコメントの ID。すぐ送信する書き込み（レビュー中を経ない）は `None`
       - name: thread
         type: str | None
-        description: 返信先のスレッドの ID。新しいスレッドの最初の書き込みは `None`
+        description: 返信先のスレッドの ID。新規スレッドの最初の書き込みは `None`
       - name: target
         type: str | None
-        description: 新しいスレッドの向けた項目の ID
+        description: 新規スレッドの向けた項目の ID
       - name: loc
         type: dict[str, Any] | None
-        description: 新しいスレッドの最初の書き込みに添えた箇所
+        description: 新規スレッドの最初の書き込みに添えた箇所
       - name: body
         type: str
         description: 本文
@@ -871,7 +871,7 @@ functions:
     unit_tests:
       - name: test_append_user_posts
         case: 正常
-        summary: 新しいスレッドを立て、返信を末尾に追加する
+        summary: 新規スレッドを立て、返信を末尾に追加する
         condition: '書き込み 2 件の TH-1・TH-3 を持つワークスペース。C-1（D-1）・C-2（A-1 の本文の 2 行目）・C-3（項目を指さない）・C-4（`thread: TH-1`）。`now` は `2026-10-13T03:00:00+00:00`'
         mock: '`now`'
         expected: '`(now の値, [C-1 → TH-4・TH-4-1, C-2 → TH-5・TH-5-1, C-3 → TH-6・TH-6-1, C-4 → TH-1・TH-1-3])`。TH-4 が `open`・`tags: []`・`summary: None`・`target: D-1`、TH-5 が `loc` を持ち、TH-6 が `target`・`loc` のキーを持たない。追加した書き込みはどれも `author: user`・`read: False`・`seen: True`・`taken: None`・`comment` が元のコメントの ID'

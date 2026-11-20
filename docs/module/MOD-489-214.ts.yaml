@@ -102,12 +102,12 @@ components:
         type: string
         required: false
         default: "'項目を指さないコメント'"
-        description: '`target` が `null` のときの入力欄の `aria-label`（コメントの一覧の新しいスレッドの入力は「新しいスレッド」）'
+        description: '`target` が `null` のときの入力欄の `aria-label`（コメントの一覧の新規スレッドの入力は「新規スレッド」）'
       - name: open
         type: boolean
         required: false
         default: 'true'
-        description: 開いているか（`target` があるときだけ使う）。偽なら `.send-body` に `hidden` を付け、見出しの行だけを出す。`body` が空白だけでなければ見出しの右に書きかけのマーカー（`edit` のアイコンと「書きかけ」）を出す
+        description: 開いているか（`target` があるときだけ使う）。偽なら `.send-body` に `hidden` を付け、見出しの行だけを出す。`body` が空白だけでなければ見出しの右に下書きのマーカー（`edit` のアイコンと「下書き」）を出す
     unit_tests:
       - name: test_send_form
         case: 正常
@@ -144,4 +144,4 @@ components:
         summary: 開閉のボタンと閉じた状態
         condition: '`parametrize`: `target: D-022`・`open: true` / `open: false` / `open: false`・`body: 案 A にする` / `target: null`。開閉のボタンを押す'
         mock: '`on.toggle`'
-        expected: ボタンの `aria-expanded` が `true` で `aria-label` が「コメントの入力を閉じる」、押すと `on.toggle` が `false` で 1 回 / `aria-expanded` が `false` で「コメントの入力を開く」、`.send-body` が `hidden` で書きかけのマーカーが無い、押すと `on.toggle` が `true` で 1 回 / 書きかけのマーカー「書きかけ」がある / 開閉のボタンが無い。どれも `aria-controls` が同じ部品の `.send-body` の `id` を指す
+        expected: ボタンの `aria-expanded` が `true` で `aria-label` が「コメントの入力を閉じる」、押すと `on.toggle` が `false` で 1 回 / `aria-expanded` が `false` で「コメントの入力を開く」、`.send-body` が `hidden` で下書きのマーカーが無い、押すと `on.toggle` が `true` で 1 回 / 下書きのマーカー「下書き」がある / 開閉のボタンが無い。どれも `aria-controls` が同じ部品の `.send-body` の `id` を指す

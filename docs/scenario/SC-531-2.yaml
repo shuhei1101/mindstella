@@ -254,7 +254,7 @@ issue: 516
 primary_actor: 外部のアプリ（aituber など）
 stakeholders:
 - name: 外部のアプリ
-  interest: 活動を終えたときに、書きかけを失わずに MindStella のセッションを止め、アカウントを返せる
+  interest: 活動を終えたときに、下書きを失わずに MindStella のセッションを止め、アカウントを返せる
 - name: 利用者
   interest: クローズの後に送信したコメントが消えずにスレッドに残る
 trigger: 外部のアプリが MindStella の API に MindStella のセッションの停止を依頼する

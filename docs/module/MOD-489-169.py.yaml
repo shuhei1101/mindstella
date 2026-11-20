@@ -1,6 +1,6 @@
 id: MOD-489-169
 title: サーバー / 配信 / serve.py
-lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの通知を返し、レビュー中のコメント・書きかけ・まとめて送信する・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送信するを受け付ける。まとめて送信した後とすぐ送信した後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。
+lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの通知を返し、レビュー中のコメント・下書き・まとめて送信する・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送信するを受け付ける。まとめて送信した後とすぐ送信した後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。
 test_files:
   - tests/unit/scripts/test_serve.py
 directory: |-
@@ -389,7 +389,7 @@ classes:
              - `/files/` で始まる場合、ワークスペースのファイルを書き出す（`_send_file`。`/files/` より後ろのパスと `Range` を渡す）
              - `/api/records` の場合、記録を返す（`records_response`。配信の文脈を渡す）
              - `/api/events` の場合、`200`・`Content-Type: text/event-stream`・`Cache-Control: no-store` を書き、書き換えを知らせ続ける（`stream_events`。書き換えのマーカーは `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの。書き込みが `BrokenPipeError`・`ConnectionResetError` で失敗したら終える）
-             - `/api/comments` の場合、レビュー中のコメントと書きかけを返す（`comments_response`）
+             - `/api/comments` の場合、レビュー中のコメントと下書きを返す（`comments_response`）
              - `/api/threads` の場合、スレッドを返す（`threads_response`）
              - `/api/edits` の場合、保存待ちの編集を返す（`edits_response`）
              - `/api/transcription` の場合、文字起こしの可否を返す（`transcription_response`）
@@ -440,7 +440,7 @@ classes:
       - name: do_PUT
         title: PUT の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/api/drafts` を書きかけを保つ受け付けへ、`/api/config/display` を設定の既定の書き換えへ、`/api/items/{id}/confirmed` を確認済みの設定と解除へ渡す'
+        summary: '`Host` を確かめ、`/api/drafts` を下書きを保つ受け付けへ、`/api/config/display` を設定の既定の書き換えへ、`/api/items/{id}/confirmed` を確認済みの設定と解除へ渡す'
         returns:
           type: None
           description: '-'
@@ -1114,7 +1114,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: コメントを選んで送信する
     scope: public
-    summary: レビュー中のコメントと書きかけをその場で読んだ JSON を返す
+    summary: レビュー中のコメントと下書きをその場で読んだ JSON を返す
     args:
       - name: root
         type: Path
@@ -1131,8 +1131,8 @@ functions:
     unit_tests:
       - name: test_comments_response
         case: 正常
-        summary: レビュー中と書きかけを返す。無ければ空
-        condition: '`parametrize`: D-1 への C-1 と書きかけを持つ / `comments.yaml`・`drafts.yaml` が無い'
+        summary: レビュー中と下書きを返す。無ければ空
+        condition: '`parametrize`: D-1 への C-1 と下書きを持つ / `comments.yaml`・`drafts.yaml` が無い'
         mock: なし
         expected: 200。`items` に C-1（`target_title` 付き）、`drafts` に 1 件 / `items`・`drafts` が空
       - name: test_comments_response_when_invalid

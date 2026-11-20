@@ -50,7 +50,7 @@ functions:
       3. 参照切れを拾う（`_check_refs`）
       4. 本文のずれを拾う（`_check_bodies`）。続けて、埋め込んだファイルの参照切れを拾う（`_check_embedded_files`）
       5. スレッドのスキーマ違反と参照切れを拾う（`_check_threads`）
-      6. レビュー中のコメントと書きかけのスキーマ違反を拾う（`_check_comments`）
+      6. レビュー中のコメントと下書きのスキーマ違反を拾う（`_check_comments`）
       7. まとまりのスキーマ違反・参照切れと、変更履歴のずれを拾う（`_check_history`）
       8. 各問題の `file`（記録のフォルダからの相対パス。本文は `BODY_REF_PREFIX` で始まる）を `workspace_path` でワークスペースからの相対パスにする（1.〜7. の関数は記録のフォルダからの相対パスで拾う。記録のファイルは `.mindstella/`、本文は `docs/` から始まる）
       9. ワークスペースからの相対パスの順に並べる（同じファイルの中は拾った順を保つ）
@@ -237,7 +237,7 @@ functions:
       type: list[Problem]
       description: 問題の並び（ファイルが無ければ空）
     process: |-
-      1. レビュー中のコメントと書きかけをそれぞれ読む（`load_comments`、`load_drafts`）
+      1. レビュー中のコメントと下書きをそれぞれ読む（`load_comments`、`load_drafts`）
          - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` はそのファイル名、`id` は `null`）にする
     unit_tests:
       - name: test_check_comments
@@ -310,7 +310,7 @@ functions:
       description: '`{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行（指している記録が無ければ空）'
     process: |-
       1. 種類の順に、`related[].to`・`sources` で `item_id` を指すほかの項目を拾う（`{種類のファイル}: {指している項目の ID}: {related.{種類} か sources}`）
-      2. レビュー中のコメント・書きかけの `target` が指していれば拾う（`load_comments`・`load_drafts`。コメントは `comments.yaml: {コメントの ID}: target`、書きかけは `drafts.yaml: items[{番号}]: target`）
+      2. レビュー中のコメント・下書きの `target` が指していれば拾う（`load_comments`・`load_drafts`。コメントは `comments.yaml: {コメントの ID}: target`、下書きは `drafts.yaml: items[{番号}]: target`）
       3. 取り込み待ちのスレッド（`awaiting_posts` が 1 件以上。オープンでもクローズでも）の `target` が指していれば拾う（`load_threads`。`threads.yaml: {スレッドの ID}: target`）
     unit_tests:
       - name: test_find_referrers

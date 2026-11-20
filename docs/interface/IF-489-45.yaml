@@ -67,9 +67,9 @@ flows:
     expected:
       - どちらもステータスが 409 で、`threads.yaml` の中身が送信する前と同じ
     test: test_error_when_target_stale
-lead: 文字起こし後の挙動が `send` のときに、コメント・返信の入力の全文 1 件を、レビュー中に溜めずにすぐスレッドへ送信する。新しいスレッドの分はオープンのスレッドを立てて最初の書き込みにし、返信の分は向けたスレッドの末尾に追加し、『コメントをまとめて送信する』と同じく Claude Code へ入力する。レビュー中の書き込みは触らない。
+lead: 文字起こし後の挙動が `send` のときに、コメント・返信の入力の全文 1 件を、レビュー中に溜めずにすぐスレッドへ送信する。新規スレッドの分はオープンのスレッドを立てて最初の書き込みにし、返信の分は向けたスレッドの末尾に追加し、『コメントをまとめて送信する』と同じく Claude Code へ入力する。レビュー中の書き込みは触らない。
 idempotent: false
-side_effects: '`threads.yaml` に新しいスレッドか返信の書き込みを 1 件追加する（無ければ作る。一時ファイルから `os.replace` で置き換える）。`comments.yaml` とほかのファイルは書き換えない。書き終えた後、送信先のペインがあれば『コメントをまとめて送信する』と同じやり方で Claude Code のペインへ文字列を入力する'
+side_effects: '`threads.yaml` に新規スレッドか返信の書き込みを 1 件追加する（無ければ作る。一時ファイルから `os.replace` で置き換える）。`comments.yaml` とほかのファイルは書き換えない。書き終えた後、送信先のペインがあれば『コメントをまとめて送信する』と同じやり方で Claude Code のペインへ文字列を入力する'
 callers:
   - IF-489-71#
   - IF-489-70#
@@ -104,7 +104,7 @@ request:
     required: false
     default: なし（項目を指さない）
     location: body
-    description: 新しいスレッドを向ける項目の ID
+    description: 新規スレッドを向ける項目の ID
     constraints: '`thread` と一緒に渡せない'
   - name: loc
     type: object | None
@@ -116,7 +116,7 @@ request:
   - name: thread
     type: str | None
     required: false
-    default: なし（新しいスレッド）
+    default: なし（新規スレッド）
     location: body
     description: 返信を追加するオープンのスレッドの ID
     constraints: '`target`・`loc` と一緒に渡せない'

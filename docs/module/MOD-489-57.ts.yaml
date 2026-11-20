@@ -80,7 +80,7 @@ functions:
     process: |-
       1. 音声入力（`readVoiceState().session`）が無ければ何もしない
       2. `GET /api/records`・`GET /api/threads`・`GET /api/comments` を生成した関数（`getRecords`・`getThreads`・`getComments`）で読む（query のキャッシュは書き換えない）。どれかが 200 でなければ何もしない
-      3. 記録の索引（`buildIndex`）の項目の ID と、スレッドとレビュー中の新しいスレッドの ID から行き先の有無の関数（`voiceDestinationExists`）を作り、`discardVoice` に渡す
+      3. 記録の索引（`buildIndex`）の項目の ID と、スレッドとレビュー中の新規スレッドの ID から行き先の有無の関数（`voiceDestinationExists`）を作り、`discardVoice` に渡す
     unit_tests:
       - name: test_check_voice_destination
         case: 正常

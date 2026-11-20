@@ -25,7 +25,7 @@ data_models:
     title: 配信の結果
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
     usecase: コメントを選んで送信する
-    summary: 'コメント・書きかけの API を呼んだ結果（`{ok: true, data} | {ok: false, status, detail, stale}`。届かなければ `status`・`detail` は `null`）'
+    summary: 'コメント・下書きの API を呼んだ結果（`{ok: true, data} | {ok: false, status, detail, stale}`。届かなければ `status`・`detail` は `null`）'
     properties:
       - name: ok
         type: boolean
@@ -49,7 +49,7 @@ data_models:
     title: 箇所
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
     usecase: 選んだ箇所へコメントする
-    summary: コメント・書きかけが持つ `loc`（ER 図『ワークスペース』）
+    summary: コメント・下書きが持つ `loc`（ER 図『ワークスペース』）
     properties:
       - name: kind
         type: "'body' | 'value'"
@@ -74,10 +74,10 @@ data_models:
     properties:
       - name: items
         type: '{id, target, target_title, loc, thread, body, created}[]'
-        description: レビュー中のコメント（溜めた順）。`thread` を持つものはスレッドへの返信、持たないものは新しいスレッドの最初の書き込み
+        description: レビュー中のコメント（溜めた順）。`thread` を持つものはスレッドへの返信、持たないものは新規スレッドの最初の書き込み
       - name: drafts
         type: '{target, loc, thread, body}[]'
-        description: 書きかけ
+        description: 下書き
   - name: Thread
     title: スレッド
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -358,7 +358,7 @@ functions:
     usecase: 共通
     scope: public
     is_async: true
-    summary: コメント・書きかけの API を 1 回呼び、`ApiResult` にする
+    summary: コメント・下書きの API を 1 回呼び、`ApiResult` にする
     args:
       - name: method
         type: "'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'"
@@ -408,7 +408,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
     usecase: コメントを選んで送信する
     scope: public
-    summary: コメント・書きかけの 6 つの呼び出しを `callApi` に当てた関数の束を返す
+    summary: コメント・下書きの 6 つの呼び出しを `callApi` に当てた関数の束を返す
     args:
       - name: fetchFn
         type: typeof fetch
@@ -429,7 +429,7 @@ functions:
         expected: '`GET api/comments` / `POST api/comments` / `PATCH api/comments/C-1`（本文 `{"loc":null}`）/ `DELETE api/comments/C-1` / `PUT api/drafts` / `POST api/comments/send`（本文 `{"ids":["C-1"]}`）'
       - name: test_comment_api_when_thread
         case: 正常
-        summary: 返信と返信の書きかけは thread を本文に持つ
+        summary: 返信と返信の下書きは thread を本文に持つ
         condition: "`parametrize`: `add({thread: 'TH-1', body: x})` / `saveDraft({thread: 'TH-1', body: x})`"
         mock: '`fetchFn`'
         expected: '`POST api/comments`（本文 `{"thread":"TH-1","body":"x"}`）/ `PUT api/drafts`（同じ本文）'

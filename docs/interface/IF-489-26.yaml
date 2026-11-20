@@ -301,7 +301,7 @@ constraints:
   - item: 点検するファイル
     constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`（無ければスレッド 0 件として扱う）・`changes.yaml`（無ければまとまり 0 件として扱う）・`comments.yaml`・`drafts.yaml`（無ければ 0 件として扱い、スキーマ違反だけを確かめる）と、ワークスペースの直下の `docs/`・`files/`（埋め込んだファイルの有無を確かめるときだけ。中身は読まない）'
   - item: 参照切れを確認するキー
-    constraint: '`related[].to`・`sources`、スレッドの `target`（持つときだけ）、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、`related[].type` の種類に合わない ID（`depends_on`・`parent` が自分と違う種類の項目、`for` が検討事項以外を指すなど）を `broken_ref` にする。`changes.yaml` のまとまり・`pending` と、取り込み待ちでないスレッド（`taken` が `null` の利用者の書き込みを持たないスレッド）の `target` が指す ID のうち、`changes.yaml` の `sets[].removed`・`pending.removed` にある ID（削除した項目）は参照切れにしない。レビュー中のコメントと書きかけの `target` は確かめない（項目が消えたコメントは『コメントをまとめて送信する』の 409 で画面に出る）'
+    constraint: '`related[].to`・`sources`、スレッドの `target`（持つときだけ）、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、`related[].type` の種類に合わない ID（`depends_on`・`parent` が自分と違う種類の項目、`for` が検討事項以外を指すなど）を `broken_ref` にする。`changes.yaml` のまとまり・`pending` と、取り込み待ちでないスレッド（`taken` が `null` の利用者の書き込みを持たないスレッド）の `target` が指す ID のうち、`changes.yaml` の `sets[].removed`・`pending.removed` にある ID（削除した項目）は参照切れにしない。レビュー中のコメントと下書きの `target` は確かめない（項目が消えたコメントは『コメントをまとめて送信する』の 409 で画面に出る）'
   - item: 本文のずれ
     constraint: '`body` が指す直下の `docs/` のファイルが無いものを `missing_body`、どの項目の `body` からも指されない `docs/*.md`・`docs/*.html` を `orphan_body` にする'
   - item: 問題の並び

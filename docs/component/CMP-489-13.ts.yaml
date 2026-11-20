@@ -26,12 +26,12 @@ states:
       - name: thread
         value: '{"id":"TH-3","status":"open","tags":["資料"],"summary":null,"target":"A-1","posts":[{"author":"user","body":"A-1 の背景のセクションが長いので、3 行にまとめてほしい。経緯は会話ログへのリンクで足りる","created":"2026-10-12T05:01:00+00:00"}],"events":[]}'
   - name: PendingNewToItem
-    description: まだ送信していない、項目へ向けた新しいスレッド。状態の札の代わりに鉛筆のアイコンと「レビュー中」の札、行の枠を破線にする。タイトルは最初の書き込みの 1 行目、書き手は「あなた」、日時は溜めた日時。タグは出さない
+    description: まだ送信していない、項目へ向けた新規スレッド。状態の札の代わりに鉛筆のアイコンと「レビュー中」の札、行の枠を破線にする。タイトルは最初の書き込みの 1 行目、書き手は「あなた」、日時は溜めた日時。タグは出さない
     args:
       - name: pending
         value: '{"id":"C-41","target":"D-5","thread":null,"body":"コピーは git のコミットで取るほうが戻しやすいと思う","created":"2026-10-12T05:10:00+00:00"}'
   - name: PendingNewFree
-    description: まだ送信していない、項目を指さない新しいスレッド。2 行目に ID を出さない
+    description: まだ送信していない、項目を指さない新規スレッド。2 行目に ID を出さない
     args:
       - name: pending
         value: '{"id":"C-42","target":null,"thread":null,"body":"移し替えの手順の名前はバージョンの番号だけでよい？","created":"2026-10-12T05:12:00+00:00"}'
@@ -76,7 +76,7 @@ states:
     args:
       - name: thread
         value: '{"id":"TH-6","status":"closed","tags":["起票"],"summary":"T-4 の Issue の起票の確認。起票して完了","target":"T-4","posts":[{"author":"user","body":"起票してよい","created":"2026-10-12T03:00:00+00:00","seen":true},{"author":"ai","body":"T-4 の Issue を起票しました。","created":"2026-10-12T03:07:00+00:00","seen":false}],"events":[{"kind":"closed","author":"ai","reason":"起票した","created":"2026-10-12T03:07:00+00:00"}]}'
-lead: スレッドの一覧に並べる 1 件の行。状態の札・タイトル・向けた項目・最後の書き手と日時・レビュー中のマーカー・タグを出し、押すとそのスレッドを開く。まだ送信していない新しいスレッドも同じ構造で「レビュー中」の札にする。
+lead: スレッドの一覧に並べる 1 件の行。状態の札・タイトル・向けた項目・最後の書き手と日時・レビュー中のマーカー・タグを出し、押すとそのスレッドを開く。まだ送信していない新規スレッドも同じ構造で「レビュー中」の札にする。
 status: implemented
 args:
   - name: thread
@@ -87,7 +87,7 @@ args:
   - name: pending
     type: オブジェクト
     default: なし（`thread` を渡す）
-    description: まだ送信していない新しいスレッドの最初の書き込み（『レビュー中のコメントの読み取り』の `items[]` のうち `thread` を持たないもの）。タイトルは本文の 1 行目、書き手は「あなた」、日時は溜めた日時（`created`）。タグを出さない
+    description: まだ送信していない新規スレッドの最初の書き込み（『レビュー中のコメントの読み取り』の `items[]` のうち `thread` を持たないもの）。タイトルは本文の 1 行目、書き手は「あなた」、日時は溜めた日時（`created`）。タグを出さない
     status: implemented
   - name: has_pending_reply
     type: 真偽値
@@ -104,7 +104,7 @@ args:
 events:
   - name: 開く
     when: 行のタグ以外の所を押したとき（Enter・Space を含む）
-    value: 送信したスレッドは `thread.id`、まだ送信していない新しいスレッドは `pending.id`
+    value: 送信したスレッドは `thread.id`、まだ送信していない新規スレッドは `pending.id`
     description: 使う側がパネルの中をスレッドの画面に切り替える
   - name: タグで絞る
     when: タグの札を押したとき

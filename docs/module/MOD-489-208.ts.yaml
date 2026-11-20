@@ -64,7 +64,7 @@ components:
         summary: 5 行を超える本文だけを畳み、開閉のボタンを出す
         condition: '幅 320px の入れ物に描く。`parametrize`: 改行で 2 行の本文 / 改行で 8 行の本文（各行は折り返さない短さ）/ 改行の無い、折り返して 8 行になる本文'
         mock: なし（ブラウザで DOM を作って見る）
-        expected: 開閉のボタンが `hidden` で、本文が全て見える / 本文が `folded` で高さが行の高さ × 5、ボタンが「続きを読む」で `aria-expanded="false"`・`aria-controls` が本文の `id` / 同じく畳まれ、ボタンを出す
+        expected: 開閉のボタンが `hidden` で、本文が全て見える / 本文が `folded` で高さが行の高さ × 5、ボタンが「続きを表示」で `aria-expanded="false"`・`aria-controls` が本文の `id` / 同じく畳まれ、ボタンを出す
       - name: test_review_body_fold_when_toggle
         case: 正常
         summary: 開閉で本文とボタンを切り替え、使う側に知らせる

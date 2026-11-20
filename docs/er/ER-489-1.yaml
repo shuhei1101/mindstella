@@ -88,7 +88,7 @@ er:
           comment: '参照: 検討事項.id'
         - type: string
           name: body
-    - name: 書きかけ
+    - name: 下書き
       columns:
         - type: string
           name: target
@@ -164,7 +164,7 @@ er:
       from_cardinality: 0..n
       to_cardinality: 0..1
       label: target（送信と同じ）
-    - from: 書きかけ
+    - from: 下書き
       to: 検討事項
       from_column: target
       to_column: id
@@ -605,7 +605,7 @@ tables:
     scale: 1 件
     deletion: 削除しない
     access: '`fcntl.flock` の排他ロックだけを取り、中身は読み書きしない'
-    description: 書き換えるツールと、送信・レビュー中のコメント・書きかけの受け付けが初めてロックを取るときに作る。点検・書き換えの通知・移し替えの対象にしない
+    description: 書き換えるツールと、送信・レビュー中のコメント・下書きの受け付けが初めてロックを取るときに作る。点検・書き換えの通知・移し替えの対象にしない
     columns:
       - name: (中身)
         title: 中身
@@ -847,10 +847,10 @@ tables:
         title: 返信先のスレッド
         type: string
         not_null: false
-        description: 既存のスレッドへの返信のとき、そのスレッドの ID。新しいスレッドの最初の書き込み（項目の詳細パネル・新しいスレッドの入力欄で溜めたもの）はキーを持たない。持つときは `target`・`loc` を持たない
+        description: 既存のスレッドへの返信のとき、そのスレッドの ID。新規スレッドの最初の書き込み（項目の詳細パネル・新規スレッドの入力欄で溜めたもの）はキーを持たない。持つときは `target`・`loc` を持たない
         example: TH-3
   - name: drafts.yaml
-    title: 書きかけ
+    title: 下書き
     datastore: YAML
     summary: コメントの入力欄に書いて、まだ溜めていない本文
     primary_key: (target, loc, thread)
@@ -858,7 +858,7 @@ tables:
     growth: 入力欄に書くたびに、向けた先ごとに 1 件を書き換える
     deletion: 溜めたとき・入力欄を空にしたときに物理削除する
     access: 全件
-    description: '`items:` の配列を持ち、1 要素 = 1 つの入力欄の書きかけ。向けた先（`target` と `loc` の組か、`thread`）ごとに 1 件。初めて書きかけを保つときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーの下書きの保存（`PUT /api/drafts`）とコメントの追加だけで、project-index の配信の対象にしない。共通のキー（`common.schema.json`）は持たない'
+    description: '`items:` の配列を持ち、1 要素 = 1 つの入力欄の下書き。向けた先（`target` と `loc` の組か、`thread`）ごとに 1 件。初めて下書きを保つときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーの下書きの保存（`PUT /api/drafts`）とコメントの追加だけで、project-index の配信の対象にしない。共通のキー（`common.schema.json`）は持たない'
     columns:
       - name: target
         title: 向けた項目
@@ -875,7 +875,7 @@ tables:
         title: 本文
         type: string
         not_null: true
-        description: 書きかけの本文。1〜10000 文字（空白だけも保つ）
+        description: 下書きの本文。1〜10000 文字（空白だけも保つ）
         example: 案 B も見たい
       - name: updated
         title: 書いた日時
@@ -888,7 +888,7 @@ tables:
         title: 返信先のスレッド
         type: string
         not_null: false
-        description: スレッドの返信の入力欄の書きかけのとき、そのスレッドの ID。持つときは `target`・`loc` を持たない
+        description: スレッドの返信の入力欄の下書きのとき、そのスレッドの ID。持つときは `target`・`loc` を持たない
         example: TH-3
   - name: docs/{ID}.html
     title: HTML の本文
@@ -906,7 +906,7 @@ tables:
     summary: 利用者と AI が書き込みを積むスレッド。状態・タグ・要約・クローズとオープンへの戻しの記録を持つ
     primary_key: id
     scale: ~1000
-    growth: まとめて送信した新しいスレッドの分と、AI が立てるたびに 1 件追加する。書き込みは返信のたびに追加する
+    growth: まとめて送信した新規スレッドの分と、AI が立てるたびに 1 件追加する。書き込みは返信のたびに追加する
     deletion: 削除しない（クローズにして残す）
     access: 全件
     description: '`items:` の配列を持ち、1 要素 = 1 件のスレッド。初めてスレッドを作ったときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーのまとめて送信（`POST /api/comments/send`）・状態の書き換え（`PATCH /api/threads/{id}`）・利用者の既読（`POST /api/threads/{id}/seen`）・スレッドの MCP のツール・未読へ戻すスクリプトだけで、project-index の配信の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは ID の連番の小さい順（立てた順）。前のバージョンの送信（`submissions.yaml`）は移し替えの手順でここへ移す'

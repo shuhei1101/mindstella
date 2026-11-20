@@ -104,7 +104,7 @@ classes:
     title: コメントの中身の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 項目へコメントする
-    summary: 'コメント・書きかけ・まとめて送信の要求のキーが無い・型が違う、本文が空白だけか上限を超える、箇所の構造が崩れている。配信は 400 にする。メッセージは `{キーのパス}: {理由}`'
+    summary: 'コメント・下書き・まとめて送信の要求のキーが無い・型が違う、本文が空白だけか上限を超える、箇所の構造が崩れている。配信は 400 にする。メッセージは `{キーのパス}: {理由}`'
     kind: クラス
     inherits: MindmapError
   - name: CommentNotFoundError

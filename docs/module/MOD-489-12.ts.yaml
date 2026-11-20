@@ -6,7 +6,7 @@ functions:
     title: コメントの画面が読む値
     kind: 関数
     usecase: スレッドで話す
-    summary: レビュー中の書き込み・書きかけ・スレッド・項目のタイトル・まとまりの説明を、記録・レビュー中のコメント・スレッドの query から組む
+    summary: レビュー中の書き込み・下書き・スレッド・項目のタイトル・まとまりの説明を、記録・レビュー中のコメント・スレッドの query から組む
     args: []
     returns:
       type: CommentData

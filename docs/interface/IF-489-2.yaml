@@ -61,7 +61,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませ、直下の `README.md` の起動のコマンドを `/old/plugins/mindstella/0.6.0/bin/mindstella` に書き換えたワークスペース（1 行目のマーカーは残す）
+        description: 作成を済ませ、直下の `README.md` の起動のコマンドを `/old/plugins/mindstella/0.6.0/bin/mindstella` に書き換えたワークスペース（1 行目のアイコンは残す）
     flow: |-
       ```mermaid
       sequenceDiagram

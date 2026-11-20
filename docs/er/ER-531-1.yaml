@@ -99,11 +99,11 @@ tables:
       - name: claude_session_id
         title: Claude Code の session_id
         type: string | null
-        description: SessionStart のフックが入れる。`clear`・`compact` の後は再登録する。入るまで `null`。止まった・落ちた後も削除せず、再起動と次の作成が会話を引き継ぐときに使用する
+        description: SessionStart のフックが入れる。`clear`・`compact` の後は再入力する。入るまで `null`。止まった・落ちた後も削除せず、再起動と次の作成が会話を引き継ぐときに使用する
       - name: pane
         title: tmux のペイン
         type: string | null
-        description: '`{tmux のセッションの名前}:0.0`。SessionStart のフックが `TMUX_PANE` で再登録する。止まった・落ちたら `null`'
+        description: '`{tmux のセッションの名前}:0.0`。SessionStart のフックが `TMUX_PANE` で再入力する。止まった・落ちたら `null`'
       - name: socket
         title: tmux のソケット
         type: string | null

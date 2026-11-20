@@ -511,7 +511,7 @@ functions:
       - name: test_diff_diagram_from_source_when_parse_fails
         case: 異常
         summary: 解析できない記法は null
-        condition: 前のバージョンが書きかけの flowchart（`A -->` で終わる）
+        condition: 前のバージョンが下書きの flowchart（`A -->` で終わる）
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`null`。例外を外へ出さない'
       - name: test_diff_diagram_from_source_when_before_not_flowchart

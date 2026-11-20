@@ -524,7 +524,7 @@ functions:
       2. 全ての書く先について、あればそのファイルと親のフォルダ、無ければあるところまでの親のフォルダに書き込めるかを `os.access` で確かめる
          - 書き込めないものがあれば、何も書かずに `NotWritableError` を送出する
       3. 中身のある書く先は、書く先と同じフォルダの一時ファイルに書いてから `os.replace` で置き換える（既にあれば元のファイルの権限を写す）。`None` のファイルはあれば削除する
-         - 途中で `OSError` が起きたら、書きかけの一時ファイルを削除してから `NotWritableError` にして送出する（`raise ... from`）
+         - 途中で `OSError` が起きたら、下書きの一時ファイルを削除してから `NotWritableError` にして送出する（`raise ... from`）
     exceptions:
       - name: NotWritableError
         condition: どれかのファイルか親のフォルダに書き込めない
