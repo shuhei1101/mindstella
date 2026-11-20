@@ -2,6 +2,7 @@
 # サーバーは 9adccb31 で実行（その後の commit は tests/integration/preview/ だけを変えた）。画面は b144d78e で全件を実行し、その後に直したテストを 849328fe で流し直した
 
 ## tests/integration/server/
+$ pytest tests/integration/server
 E         - path: documents[5].schema
 E           rule: 'スキーマのファイルが無い: schemas/notes.schema.json'
 E         - path: documents[6].schema
