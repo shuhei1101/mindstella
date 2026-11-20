@@ -37,7 +37,7 @@ flows:
       - '`配る.html` の `script`・`link`・`img` に `src`・`href` を持つものが無く、import map も無い'
       - '`配る.html` の中の `</script>` の数が、雛形の数に、mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示の要素の 6 つを足した数（本文の `</script>` で要素が閉じていない）'
       - '`mindmap-mdmark` と部品（`mindmap-mdmark-map`・`mindmap-mdmark-view`・`mindmap-mdmark-comments`）の要素が中身を持ち、`mindmap-mdmark-config` の中身が `{"map": {}}`'
-      - '`mindmap-licenses` の中身に、mdmark・marked・elkjs・mermaid・jsdiff のそれぞれの名前・版・著作権の表示・ライセンスの名前があり、elkjs のソースコードの入手先の URL と、mdmark の `THIRD_PARTY_LICENSES.txt` の本文がある'
+      - '`mindmap-licenses` の中身に、mdmark・marked・mermaid・jsdiff のそれぞれの名前・版・著作権の表示・ライセンスの名前があり、mdmark の `THIRD_PARTY_LICENSES.txt` の本文がある'
     test: test_normal
   - name: 異常系（out の末尾が .html でない・引数の誤り）
     summary: 書き出す先の末尾が .html でないと、何も書かずに終わる
@@ -219,7 +219,7 @@ response:
     description: 『記録の取得』のレスポンスと同じ形で、`<script type="application/json" id="mindmap-data">` の中身に入る
   - name: ライセンスの表示
     type: str
-    description: '`<script type="text/plain" id="mindmap-licenses">` の中身。中に持つライブラリごとに、名前・版・著作権の表示・ライセンスの名前と本文を並べる。elkjs は EPL-2.0 を選んだ旨と、ソースコードの入手先（リポジトリと版のタグの URL）を持つ。mermaid は、配布ファイルが中に束ねた依存ごとの名前・版とライセンスの本文も続ける。mdmark は、`preview/licenses/mdmark-LICENSE.txt` の MIT の本文の後に、配布物の `dist/THIRD_PARTY_LICENSES.txt`（中に束ねた依存ごとのライセンスの本文）を続ける。画面には出さない'
+    description: '`<script type="text/plain" id="mindmap-licenses">` の中身。中に持つライブラリごとに、名前・版・著作権の表示・ライセンスの名前と本文を並べる。mermaid は、配布ファイルが中に束ねた依存ごとの名前・版とライセンスの本文も続ける。mdmark は、`preview/licenses/mdmark-LICENSE.txt` の MIT の本文の後に、配布物の `dist/THIRD_PARTY_LICENSES.txt`（中に束ねた依存ごとのライセンスの本文）を続ける。画面には出さない'
 exceptions:
   - name: なし（正常終了）
     condition: 書き出せた
