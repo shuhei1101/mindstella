@@ -1,0 +1,7 @@
+confirmations:
+  - topic: エディタで直接編集した項目も未確認に戻すか
+    decision: 画面から保存した変更以外は全て未確認に戻す（MindStella のセッション・通常の Claude Code のセッション・エディタでの直接の編集。推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638092598
