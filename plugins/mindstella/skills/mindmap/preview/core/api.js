@@ -2,7 +2,20 @@
 // サーバーの配信とのやり取り。記録の取得・レビュー中のコメントと下書き・まとめて送る・スレッド・書き換えの知らせの購読。
 var MindmapPreview;
 (function (MindmapPreview) {
-    /** 配信のパス（画面が開いた URL からの相対パス） */
+    /** パスの先頭の `/w/{workspace}`（`{workspace}` は `/` を含まない 1 つ以上の文字） */
+    const WORKSPACE_PATH_PATTERN = /^\/w\/([^/]+)/;
+    /** パスの先頭の `/w/{workspace}`（パーセントエンコードのまま）。該当しなければ空文字（React の画面の workspace-path と同じ） */
+    function workspacePath(pathname = location.pathname) {
+        return WORKSPACE_PATH_PATTERN.exec(pathname)?.[0] ?? "";
+    }
+    MindmapPreview.workspacePath = workspacePath;
+    /** サーバーの配信では `{key}:{ワークスペースの ID}`、該当しなければ key のまま（配る書き出しはキーを変えない） */
+    function workspaceKey(key, pathname = location.pathname) {
+        const encoded = WORKSPACE_PATH_PATTERN.exec(pathname)?.[1];
+        return encoded === undefined ? key : `${key}:${decodeURIComponent(encoded)}`;
+    }
+    MindmapPreview.workspaceKey = workspaceKey;
+    /** 配信のパス（画面が開いた URL からの相対パス。`/w/{workspace}/mindstella.html` から解決して `/w/{workspace}/api/...` になる） */
     MindmapPreview.API_PATHS = {
         records: "api/records",
         events: "api/events",

@@ -443,10 +443,20 @@ namespace MindmapPreview {
     return key(a) === key(b);
   }
 
-  /** 端末の保存領域（開けない環境では、何も返さない保存領域） */
-  function openStorage(kind: "localStorage" | "sessionStorage"): Storage {
+  /** 端末の保存領域。キーは workspaceKey で読み替える（サーバーの配信では末尾にワークスペースの ID が付く）。開けない環境では、何も返さない保存領域 */
+  export function openStorage(kind: "localStorage" | "sessionStorage"): Storage {
     try {
-      return window[kind];
+      const storage = window[kind];
+      return {
+        get length() {
+          return storage.length;
+        },
+        clear: () => storage.clear(),
+        getItem: (key: string) => storage.getItem(workspaceKey(key)),
+        key: (index: number) => storage.key(index),
+        removeItem: (key: string) => storage.removeItem(workspaceKey(key)),
+        setItem: (key: string, value: string) => storage.setItem(workspaceKey(key), value),
+      };
     } catch {
       return {
         length: 0,

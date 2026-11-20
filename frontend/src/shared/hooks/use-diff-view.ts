@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { postOpened } from "@/shared/api/generated/preview";
 import { resolveDiffPoint, type DiffPoint, type OpenedPoint } from "@/shared/core/diff";
+import { workspaceKey } from "@/shared/core/workspace-path";
 import { useRecords } from "@/shared/hooks/use-records";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { usePrefs } from "@/shared/stores/prefs-store";
@@ -25,7 +26,7 @@ const isOpenedPoint = (value: unknown): value is OpenedPoint => {
 
 const readStored = (): OpenedPoint | null => {
   try {
-    const value: unknown = JSON.parse(sessionStorage.getItem(OPENED_SESSION_KEY) ?? "null");
+    const value: unknown = JSON.parse(sessionStorage.getItem(workspaceKey(OPENED_SESSION_KEY)) ?? "null");
     return isOpenedPoint(value) ? value : null;
   } catch {
     return null;
@@ -39,7 +40,7 @@ const openOnce = (): Promise<OpenedPoint | null> => {
     .then((reply) => {
       const body = reply.data;
       const point = isOpenedPoint(body.previous) ? body.previous : body.opened;
-      sessionStorage.setItem(OPENED_SESSION_KEY, JSON.stringify(point));
+      sessionStorage.setItem(workspaceKey(OPENED_SESSION_KEY), JSON.stringify(point));
       return point;
     })
     .catch(() => null)

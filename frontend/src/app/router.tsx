@@ -4,12 +4,13 @@ import { createRouter } from "@tanstack/react-router";
 
 import { routeTree } from "@/route-tree.gen";
 import { parseSearchString, stringifySearchString } from "@/shared/core/preview-search";
+import { workspacePath } from "@/shared/core/workspace-path";
 
-/** ルーターの頭 */
+/** ルーターの頭のうち、ワークスペースのパスの頭より後ろ */
 export const ROUTER_BASEPATH = "/spa";
 
 export const createAppRouter = (queryClient: QueryClient) =>
-  createRouter({ routeTree, basepath: ROUTER_BASEPATH, context: { queryClient }, parseSearch: parseSearchString, stringifySearch: stringifySearchString });
+  createRouter({ routeTree, basepath: `${workspacePath()}${ROUTER_BASEPATH}`, context: { queryClient }, parseSearch: parseSearchString, stringifySearch: stringifySearchString });
 
 declare module "@tanstack/react-router" {
   // 宣言のマージで TanStack Router の型を登録するには interface が要る

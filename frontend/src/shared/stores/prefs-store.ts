@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { focusAfterAddTarget } from "@/shared/core/display";
 import type { Filters } from "@/shared/core/filters";
 import type { Kind } from "@/shared/core/records";
+import { workspaceKey } from "@/shared/core/workspace-path";
 import { PREFS_KEY } from "@/shared/stores/theme-store";
 
 /** 種類ごとの表示する列とピン留め */
@@ -32,7 +33,7 @@ export const BODY_SCROLL_KEY = "mindmap-body-scroll";
 /** そのタブで詳細の本文をスクロールした位置を読む（項目の ID → 位置。0 以上の数だけを返す） */
 export const readBodyScrolls = (): Record<string, number> => {
   try {
-    const parsed: unknown = JSON.parse(sessionStorage.getItem(BODY_SCROLL_KEY) ?? "{}");
+    const parsed: unknown = JSON.parse(sessionStorage.getItem(workspaceKey(BODY_SCROLL_KEY)) ?? "{}");
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
     return Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, number] => typeof entry[1] === "number" && entry[1] >= 0));
   } catch {
@@ -43,7 +44,7 @@ export const readBodyScrolls = (): Record<string, number> => {
 /** 項目の本文をスクロールした位置を残す */
 export const writeBodyScroll = (id: string, top: number): void => {
   try {
-    sessionStorage.setItem(BODY_SCROLL_KEY, JSON.stringify({ ...readBodyScrolls(), [id]: top }));
+    sessionStorage.setItem(workspaceKey(BODY_SCROLL_KEY), JSON.stringify({ ...readBodyScrolls(), [id]: top }));
   } catch {
     // 書けない保存領域では残さない
   }
@@ -59,7 +60,7 @@ const parsePrefs = (text: string | null): Record<string, unknown> => {
   }
 };
 
-const readAll = (): Record<string, unknown> => parsePrefs(localStorage.getItem(PREFS_KEY));
+const readAll = (): Record<string, unknown> => parsePrefs(localStorage.getItem(workspaceKey(PREFS_KEY)));
 
 /** 保存領域の JSON を読み、読めない項目は持たないものとして扱う */
 export const readPrefs = (): Prefs => readAll();
@@ -68,7 +69,7 @@ const listeners = new Set<() => void>();
 
 /** 変えた項目だけを書き、ほかの項目を残す */
 export const writePrefs = (patch: Partial<Prefs>): void => {
-  localStorage.setItem(PREFS_KEY, JSON.stringify({ ...readAll(), ...patch }));
+  localStorage.setItem(workspaceKey(PREFS_KEY), JSON.stringify({ ...readAll(), ...patch }));
   for (const listener of listeners) listener();
 };
 
@@ -78,7 +79,7 @@ const subscribe = (listener: () => void): (() => void) => {
 };
 
 /** 描画の中で端末の保存領域を読む。書き換えると描き直す（`readPrefs` の結果は React Compiler が覚えるので描画では使わない） */
-export const usePrefs = (): Prefs => parsePrefs(useSyncExternalStore(subscribe, () => localStorage.getItem(PREFS_KEY)));
+export const usePrefs = (): Prefs => parsePrefs(useSyncExternalStore(subscribe, () => localStorage.getItem(workspaceKey(PREFS_KEY))));
 
 /** 端末の主な入力がタッチかのメディアクエリ */
 const COARSE_QUERY = "(pointer: coarse)";
