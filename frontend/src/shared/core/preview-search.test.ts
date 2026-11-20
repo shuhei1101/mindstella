@@ -46,6 +46,18 @@ describe("parsePreviewSearch", () => {
     expect(parsed.tab).toBeUndefined();
     expect(parsed.full).toBeUndefined();
   });
+
+  // 削除したネットワーク・検討事項のマップを指す値は落とす（正常系）
+  test.each([
+    { name: "graph", raw: { tab: "graph" }, tab: undefined },
+    { name: "map", raw: { tab: "decisions", view: "map" }, tab: "decisions" },
+  ])("parse_preview_search_when_removed_view ($name)", ({ raw, tab }) => {
+    // 実行
+    const parsed = parsePreviewSearch(raw);
+    // 検証
+    expect(parsed.tab).toBe(tab);
+    expect(parsed.view).toBeUndefined();
+  });
 });
 
 describe("parseSearchString", () => {
@@ -61,7 +73,7 @@ describe("parseSearchString", () => {
 describe("normalizeSearch", () => {
   // 画面が持たない形式（正常系）
   test("normalize_search_when_view_mismatched", () => {
-    expect(normalizeSearch(search({ tab: "tasks", view: "map" }), context()).view).toBeUndefined();
+    expect(normalizeSearch(search({ tab: "tasks", view: "cards" }), context()).view).toBeUndefined();
   });
 
   // 記録に無い項目（正常系）
@@ -142,15 +154,6 @@ describe("normalizeSearch", () => {
     // 検証
     expect(result.id).toBe("A-1");
     expect(result.h).toBeUndefined();
-  });
-
-  // ネットワークは表示する種類によらず開き、表示形式を持たない（正常系）
-  test("normalize_search_when_graph", () => {
-    // 実行
-    const result = normalizeSearch(search({ tab: "graph", view: "table" }), context({ visibleKinds: ["decisions"] }));
-    // 検証
-    expect(result.tab).toBe("graph");
-    expect(result.view).toBeUndefined();
   });
 
   // 検索を開いていない言葉（正常系）

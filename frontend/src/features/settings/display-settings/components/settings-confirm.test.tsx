@@ -5,8 +5,8 @@ import { describe, expect, test, vi } from "vitest";
 import { SettingsConfirm } from "@/features/settings/display-settings/components/settings-confirm";
 import { KIND_KEYS } from "@/shared/core/records";
 
-const from = { look: "deep" as const, visibleKinds: [...KIND_KEYS] };
-const to = { look: "dust" as const, visibleKinds: KIND_KEYS.filter((kind) => kind !== "notes") };
+const from = { visibleKinds: [...KIND_KEYS] };
+const to = { visibleKinds: KIND_KEYS.filter((kind) => kind !== "notes") };
 
 describe("SettingsConfirm", () => {
   // 保存する（正常系）
@@ -16,8 +16,10 @@ describe("SettingsConfirm", () => {
     render(<SettingsConfirm from={from} to={to} busy={false} error={null} onSave={onSave} onCancel={vi.fn()} />);
     // 実行
     await userEvent.click(screen.getByRole("button", { name: "保存する" }));
-    // 検証
+    // 検証（表示する種類だけを並べる）
     expect(onSave).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/メモを表示しない/)).toBeInTheDocument();
+    expect(screen.queryByText(/見た目/)).not.toBeInTheDocument();
   });
 
   // 保存の途中（正常系）

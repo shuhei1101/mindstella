@@ -1511,17 +1511,6 @@ files:
   related:
   - to: plugins/mindstella/skills/mindmap/preview/core/edits.ts
     type: tests
-- path: unit/preview/test_graph.py
-  name: ネットワークの単体テスト
-  description: graph/graph.ts（ネットワーク）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ネットワーク
-  - topic:単体テスト
-  related:
-  - to: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
-    type: tests
 - path: unit/preview/test_history_dialog.py
   name: 変更履歴の単体テスト
   description: components/history-dialog.ts（変更履歴）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1542,27 +1531,6 @@ files:
   - topic:単体テスト
   related:
   - to: plugins/mindstella/skills/mindmap/preview/core/libs.ts
-    type: tests
-- path: unit/preview/test_lock.py
-  name: ロックの押下の判定・2 回押しの読み替え・鍵の震えの量の単体テスト
-  description: core/lock.ts（ロックの押下の判定・2 回押しの読み替え・鍵の震えの量）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:単体テスト
-  related:
-  - to: plugins/mindstella/skills/mindmap/preview/core/lock.ts
-    type: tests
-- path: unit/preview/test_looks.py
-  name: ネットワークの 5 つの見た目の描き方と、一度だけ焼く絵の単体テスト
-  description: graph/looks.ts（ネットワークの 5 つの見た目の描き方と、一度だけ焼く絵）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ネットワーク
-  - topic:単体テスト
-  related:
-  - to: plugins/mindstella/skills/mindmap/preview/graph/looks.ts
     type: tests
 - path: unit/preview/test_markdown_body.py
   name: Markdown の本文の見せ方の単体テスト
@@ -2154,6 +2122,17 @@ files:
   - topic:設定
   related:
   - to: plugins/mindstella/skills/mindmap/migrations/v0.11.0/scripts/remove_tag_vocabulary.py
+    type: tests
+- path: unit/scripts/test_remove_network_look.py
+  name: 設定からネットワークの見た目の既定を削除する変換の単体テスト
+  description: migrations/v0.14.0/scripts/remove_network_look.py（設定からネットワークの見た目の既定を削除する変換）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:設定
+  - topic:移行
+  related:
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_network_look.py
     type: tests
 - path: unit/scripts/test_reset_unread.py
   name: スレッドを未読へ戻すスクリプトの単体テスト

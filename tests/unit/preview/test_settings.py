@@ -13,8 +13,6 @@ ALL_KINDS = ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"]
 DRAWER_SCRIPT = """(kinds) => {
     const calls = [];
     const panel = {
-        look: "deep",
-        defaultLook: "deep",
         kinds: new Set(kinds),
         defaultKinds: new Set(kinds),
         counts: {decisions: 1, tasks: 1, research: 1, docs: 1, terms: 1, notes: 1, logs: 1},

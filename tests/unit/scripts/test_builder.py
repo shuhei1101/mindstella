@@ -98,11 +98,11 @@ def test_read_records_when_schema_mismatch(
     assert exc_info.value.lines[0].startswith("decisions.yaml: items[0].status:")
 
 
-def _settings_with_look(base: dict[str, Any], look: str | None) -> dict[str, Any] | None:
-    """見た目の既定を look にした設定を返す。look が None なら None を返す。"""
-    if look is None:
+def _settings_with_kinds(base: dict[str, Any], kinds: list[str] | None) -> dict[str, Any] | None:
+    """表示する種類の既定を kinds にした設定を返す。kinds が None なら None を返す。"""
+    if kinds is None:
         return None
-    return {**base, "display": {"network_look": look}}
+    return {**base, "display": {"visible_kinds": kinds}}
 
 
 def _read_records_or_lines(root: Path, last_settings: dict[str, Any] | None) -> dict[str, Any]:
@@ -114,28 +114,28 @@ def _read_records_or_lines(root: Path, last_settings: dict[str, Any] | None) -> 
 
 
 @pytest.mark.parametrize(
-    ("last_look", "expected_look", "problem_key"),
+    ("last_kinds", "expected_kinds", "problem_key"),
     [
-        pytest.param("starlight", "starlight", "settings_problem", id="with_last_settings"),
+        pytest.param(["decisions"], ["decisions"], "settings_problem", id="with_last_settings"),
         pytest.param(None, None, "error_lines", id="without_last_settings"),
     ],
 )
 def test_read_records_when_settings_invalid(
     make_workspace: MakeWorkspace,
     valid_settings: dict[str, Any],
-    last_look: str | None,
-    expected_look: str | None,
+    last_kinds: list[str] | None,
+    expected_kinds: list[str] | None,
     problem_key: str,
 ) -> None:
     """config.yaml だけが合わなければ最後に通った設定で返す（正常系）。"""
     # 準備
-    root = make_workspace(settings=_settings_with_look(valid_settings, "rainbow"))
-    last_settings = _settings_with_look(valid_settings, last_look)
+    root = make_workspace(settings=_settings_with_kinds(valid_settings, ["rainbow"]))
+    last_settings = _settings_with_kinds(valid_settings, last_kinds)
     # 実行
     outcome = _read_records_or_lines(root, last_settings)
     # 検証
-    assert outcome.get("settings", {}).get("display", {}).get("network_look") == expected_look
-    assert outcome[problem_key][0].startswith("config.yaml: display.network_look: ")
+    assert outcome.get("settings", {}).get("display", {}).get("visible_kinds") == expected_kinds
+    assert outcome[problem_key][0].startswith("config.yaml: display.visible_kinds")
 
 
 def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

@@ -21,7 +21,7 @@ describe("displayChanged", () => {
     const { result } = render();
     // 実行
     act(() => {
-      displayChanged({ next: { network_look: "dust", visible_kinds: ["decisions"] }, at: AT });
+      displayChanged({ next: { visible_kinds: ["decisions"] }, at: AT });
     });
     // 検証
     expect(result.current.noticeAt).toBe(AT);
@@ -34,12 +34,12 @@ describe("displayChanged", () => {
     // 準備
     const { result } = render();
     act(() => {
-      expectDisplaySave({ network_look: "deep", visible_kinds: ["tasks"] });
+      expectDisplaySave({ visible_kinds: ["tasks"] });
       markDisplaySaved(AT);
     });
     // 実行
     act(() => {
-      displayChanged({ next: { network_look: "deep", visible_kinds: ["tasks"] }, at: AT });
+      displayChanged({ next: { visible_kinds: ["tasks"] }, at: AT });
     });
     // 検証
     expect(result.current.noticeAt).toBeNull();

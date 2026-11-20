@@ -3552,21 +3552,18 @@ def test_detail_panel_when_body_view(
 
 
 @pytest.mark.parametrize(
-    ("viewport", "map_view", "expected"),
+    ("viewport", "expected"),
     [
-        pytest.param(1280, False, 880, id="side_1280"),
-        pytest.param(1100, False, 700, id="side_1100"),
-        pytest.param(1099, False, 939, id="overlap_1099"),
-        pytest.param(1000, False, 840, id="overlap_1000"),
-        pytest.param(1000, True, 600, id="map_1000"),
-        pytest.param(901, True, 501, id="map_901"),
+        pytest.param(1280, 880, id="side_1280"),
+        pytest.param(1100, 700, id="side_1100"),
+        pytest.param(1099, 939, id="overlap_1099"),
+        pytest.param(1000, 840, id="overlap_1000"),
     ],
 )
 def test_panel_width_max(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     viewport: int,
-    map_view: bool,
     expected: int,
 ) -> None:
     """本文を寄せる幅は本文に残す幅、重ねる幅は左に残す幅で上限を決める（正常系）。"""
@@ -3574,8 +3571,8 @@ def test_panel_width_max(
     load_preview_scripts()
     # 実行
     result = preview_page.evaluate(
-        "({viewport, mapView}) => MindmapPreview.panelWidthMax({viewport, mapView})",
-        {"viewport": viewport, "mapView": map_view},
+        "({viewport}) => MindmapPreview.panelWidthMax({viewport})",
+        {"viewport": viewport},
     )
     # 検証
     assert result == expected
@@ -3622,7 +3619,6 @@ MOUNT_RESIZER_SCRIPT = """({stored}) => {
     window.resizerCalls = [];
     const resizer = MindmapPreview.panelResizer({
         stored,
-        mapView: () => false,
         onChange: (width) => window.resizerCalls.push(width),
     });
     // ドラッグで押せるように、画面の右寄りに大きさを持たせて置く
@@ -3684,7 +3680,6 @@ REMOUNT_RESIZER_SCRIPT = """() => {
     window.removedResizer.remove();
     const resizer = MindmapPreview.panelResizer({
         stored: 640,
-        mapView: () => false,
         onChange: (width) => window.resizerCalls.push(width),
     });
     Object.assign(resizer.style, {

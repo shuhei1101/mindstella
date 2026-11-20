@@ -237,34 +237,6 @@ def test_drawer_groups_when_no_values(
     assert keys == ["status"]
 
 
-def test_drawer_groups_when_hit(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts
-) -> None:
-    """キーワードに一致した件数を添える（正常系）。"""
-    # 準備
-    rows = [
-        {"id": "D-1", "status": "未決定"},
-        {"id": "D-2", "status": "未決定"},
-        {"id": "D-3", "status": "保留"},
-    ]
-    load_preview_scripts()
-    # 実行
-    values = preview_page.evaluate(
-        f"""({{rows}}) => {{
-            {COLUMNS_JS}
-            const columns = makeColumns([{{key: "status", order: ["未決定", "保留"]}}]);
-            const hit = (row) => row.id === "D-1";
-            const groups = MindmapPreview.drawerGroups({{rows, columns, filters: {{}}, hit}});
-            return groups.find((group) => group.key === "status").values.map(
-                (entry) => [entry.value, entry.count, entry.hit]
-            );
-        }}""",
-        {"rows": rows},
-    )
-    # 検証
-    assert values == [["未決定", 2, 1], ["保留", 1, 0]]
-
-
 @pytest.mark.parametrize(
     ("filters", "expected"),
     [
