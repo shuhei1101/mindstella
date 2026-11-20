@@ -1,0 +1,9 @@
+# python3 -m pytest tests/unit
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2614 passed, 1 skipped, 5 warnings in 353.54s (0:05:53)
+exit=0
+
+# npx vitest run
+ Test Files  79 passed (79)
+      Tests  338 passed (338)
+exit=0

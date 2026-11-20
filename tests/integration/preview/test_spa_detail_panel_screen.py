@@ -1356,7 +1356,7 @@ def test_edit_relations(page: Page, spa_preview: str) -> None:
     adding.fill("画面の幅")
     adding.press("Enter")
     # 検証（タイトルで前提を足す）
-    expect(page.get_by_role("group", name="前提").get_by_role("button", name="D-2 を外す")).to_be_visible()
+    expect(page.get_by_role("group", name="前提").get_by_role("button", name="D-2 を解除")).to_be_visible()
     page.get_by_role("button", name="保存待ち").first.click()
     expect(page.get_by_role("complementary", name="保存待ちの編集")).to_contain_text("D-2")
     page.keyboard.press("Escape")
