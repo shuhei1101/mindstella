@@ -29,6 +29,52 @@ use_cases:
     impact: run_only
     detail: 記録しながら画面で読み返す流れで、画面の開き方が変わるため壊していないかを確かめる
     depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-2.yaml
+    impact: changed
+    detail: README に書くプレビューの URL が、常駐サーバーのポートのワークスペースごとの画面の URL になる
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-587-1.yaml
+    impact: run_only
+    detail: 資料に埋め込んだファイルを開く場所にワークスペースの区別が加わるため、ほかのワークスペースのファイルが届かないこととあわせて壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-568-1.yaml
+    impact: run_only
+    detail: 作業の完了の通知に載せるプレビューの URL が変わるため、壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: run_only
+    detail: 停止の通知に載せるプレビューの URL が変わるため、壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: run_only
+    detail: 画面から書き込む経路の場所が変わるため、履歴に残るかを壊していないか確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: run_only
+    detail: 外部のアプリへ返却する画面の URL が変わるため、壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-597-1.yaml
+    impact: run_only
+    detail: ワークスペースの状態が返却する画面の URL が変わるため、壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-601-1.yaml
+    impact: run_only
+    detail: 再度開いたワークスペースの画面の URL と、削除したときに配るのをやめる振る舞いが 1 つのポートの作りでも壊れていないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-604-1.yaml
+    impact: run_only
+    detail: 設定の書き換えが返却する画面の URL が変わるため、壊していないかを確かめる
+    depends_on: []
 docs:
   - page: docs/architecture/ARCH-489-1.yaml
     new: false

@@ -20,9 +20,8 @@ scenarios:
         SV->>WS: 今のプラグインのフォルダ・セッションの名前で一覧を書き直す（プレビューは URL を持たない）
         SV-->>CC: 書いた README のパス
         CC->>SV: プレビューの URL
-        SV->>SV: 配信を立てる
-        SV->>WS: プレビューのセクションを URL にして書き直す
-        SV-->>CC: 127.0.0.1 の URL
+        SV->>WS: プレビューのセクションを、常駐サーバーのポートのこのワークスペースの画面の URL にして書き直す
+        SV-->>CC: 127.0.0.1 の常駐サーバーのポートの URL
       ```
     expected:
       - README の書き直しの後、起動のコマンドが `{サーバーのプラグインのフォルダ}/bin/mindstella {ワークスペースの絶対パス}` で、`/old/plugins/mindstella/0.6.0` を含まない
@@ -74,21 +73,20 @@ scenarios:
         SV->>WS: 直下の README.md に自動で書いたマーカーが無い
         SV-->>CC: 書かなかったこと
         CC->>SV: プレビューの URL
-        SV->>SV: 配信を立てる
-        SV-->>CC: 127.0.0.1 の URL（README は書かない）
+        SV-->>CC: 127.0.0.1 の常駐サーバーのポートの URL（README は書かない）
       ```
     expected:
       - README の書き直しの結果が、書かなかったことを示す
       - README の書き直しとプレビューの URL の後も、直下の `README.md` の中身が呼ぶ前と同じである
-      - プレビューの URL がエラーにならず、`127.0.0.1` の `/mindstella.html` を指す
+      - プレビューの URL がエラーにならず、`127.0.0.1` の常駐サーバーの待ち受けのポート（`MINDSTELLA_PORT`）を指し、パスでこのワークスペースの画面を指す
     test: test_normal_when_user_readme_exists
-lead: MindStella の API でワークスペースを作るときとプレビューを配り始めたときに、サーバーがワークスペースの直下の `README.md` を、今のプラグインのフォルダ・起動のコマンドの引数・プレビューの URL を使ったコマンドの一覧に書き直す単一ユースケース。
+lead: MindStella の API でワークスペースを作るときとプレビューの URL を返却するときに、サーバーがワークスペースの直下の `README.md` を、今のプラグインのフォルダ・起動のコマンドの引数・プレビューの URL を使ったコマンドの一覧に書き直す単一ユースケース。
 issue: 103
 primary_actor: 常駐サーバー
 stakeholders:
   - name: 利用者
     interest: フォルダを開いたときに、そのまま叩ける起動・接続のコマンドと、今のプレビューの URL が分かる
-trigger: 'MindStella の API でワークスペースを作る（記録が残っているフォルダを開くことを含む）とき。プレビューの配信を立てたとき'
+trigger: 'MindStella の API でワークスペースを作る（記録が残っているフォルダを開くことを含む）とき。プレビューの URL を返却するとき'
 preconditions:
   - ワークスペースが今のバージョンの形式（`.mindstella/config.yaml` がある）
 success_guarantee: 直下の `README.md` のプレビューのセクションと起動・接続のコマンドが、今のプラグインのフォルダ・セッションの名前・配っている URL を指し、スキルの呼び方を持たない
