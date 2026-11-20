@@ -126,8 +126,8 @@ class ThreadCloseRejectedError(MindmapError):
     """取り込み待ちの利用者の書き込みか利用者が未読の AI の書き込みのあるスレッドを、AI がクローズにしようとした。`lines` に当たった条件ごとの書き込みの ID と案内を持つ。"""
 
 
-class ServeFailedError(MindmapError):
-    """プレビューの配信の待ち受けを立てられない（`OSError`）。"""
+class WorkspaceIdConflictError(MindmapError):
+    """配ろうとしたワークスペースの ID が、配っている別のフォルダの ID と同じ（フォルダをコピーした・別の場所へクローンした）。"""
 
 
 class CommentInvalidError(MindmapError):

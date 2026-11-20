@@ -1,4 +1,4 @@
-"""ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。
+"""常駐サーバーの待ち受けの `/w/{workspace}` の下で、全てのワークスペースのプレビューを配る。
 
 画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・下書き・まとめて送る・スレッドの状態の書き換え・設定の既定の書き換え・設定の再読み込みを受け付ける。
 まとめて送った後は Claude Code へ入力する。
@@ -6,21 +6,25 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import shlex
 import subprocess
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import AsyncIterator, Callable, Iterator, Mapping
 from dataclasses import asdict, dataclass
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
-import yaml
+from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
+from starlette.requests import Request
+from starlette.responses import Response as StarletteResponse
+from starlette.responses import StreamingResponse
+
 from builder import PREVIEW_DIR, assemble_template, read_records
 from change_detection import ChangeDetector, detector_of, workspace_id_of
 from claude_input import InputTargets, Session
@@ -48,7 +52,7 @@ from errors import (
     ItemNotFoundError,
     MindmapError,
     SchemaMismatchError,
-    ServeFailedError,
+    WorkspaceIdConflictError,
     SettingsInvalidError,
     ThreadNotFoundError,
     WorkspaceNotFoundError,
@@ -100,7 +104,7 @@ from threads import (
 
 logger = logging.getLogger(__name__)
 
-# 待ち受けのアドレス（ポートは `config.yaml` の `preview.port` があればそれ、無ければ 0 で OS に選ばせる）
+# 常駐サーバーの待ち受けのアドレス（画面の URL に使う）
 LISTEN_HOST = "127.0.0.1"
 
 # 許可するホスト名・起動時のフック・終了時のフックを読む環境変数の名前
@@ -122,9 +126,6 @@ MAX_REQUEST_BYTES = 131072
 
 # POST /api/transcriptions の本文を読む上限（非機能要件「録音の大きさの上限」）
 MAX_AUDIO_BYTES = 80_000_000
-
-# Content-Length を持たない音声の本文を、上限まで数えながら読む 1 回のバイト数
-AUDIO_READ_CHUNK = 65536
 
 # 受ける音声の Content-Type の頭
 AUDIO_TYPE_PREFIX = "audio/"
@@ -162,11 +163,18 @@ EDITS_PATH = "/api/edits"
 # 保存待ちの編集をまとめて保存するパス
 EDITS_SAVE_PATH = "/api/edits/save"
 
+# 記録の取得と書き換えの通知のパス
+RECORDS_PATH = "/api/records"
+EVENTS_PATH = "/api/events"
+
 # 前回開いた日時のパス
 OPENED_PATH = "/api/opened"
 
-# 配信が画面を返すパス。`/` はここへ送り直し、`PreviewServer.url` はこのパスで終わる
+# 配信が画面を返すパス（ワークスペースのパスの頭より後ろ）。`/w/{workspace}/` はここへ送り直し、画面の URL はこのパスで終わる
 PAGE_PATH = "/mindstella.html"
+
+# 全てのワークスペースの画面と、画面が呼ぶ経路の頭（`/w/{workspace}`）
+PREVIEW_PREFIX = "/w"
 
 # React のプレビュー（SPA）を配るパスの頭と、プレビューのフォルダの中の出力のフォルダの名前
 SPA_PATH = "/spa"
@@ -234,6 +242,7 @@ class ServeContext:
     """要求の受け口が使う、配っているワークスペースと待ち受けの値。"""
 
     root: Path
+    # 常駐サーバーの待ち受けのポート（`check_host`・`check_origin` と画面の URL に使う）
     port: int
     # プロセスの中の書き換えの鍵
     write_lock: threading.Lock
@@ -247,6 +256,8 @@ class ServeContext:
     input_targets: InputTargets | None = None
     # 文字起こしのインターフェース（None なら文字起こしの可否は stopped）
     transcriber: Transcriber | None = None
+    # ワークスペースの ID（画面のパスに使う）
+    workspace_id: str = ""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -272,75 +283,70 @@ class Response:
     location: str | None = None
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
-class PreviewServer:
-    """1 つのワークスペースの待ち受けと、それを動かすスレッド。"""
-
-    root: Path
-    # `http://127.0.0.1:{ポート}/mindstella.html`
-    url: str
-    httpd: ThreadingHTTPServer
-    thread: threading.Thread
-    # 待ち受けのポート（フックへ渡す）
-    port: int
-
-    def stop(self) -> None:
-        """待ち受けを止めて閉じる（つながっている書き換えの知らせは、書き込みが失敗して終わる）。"""
-        self.httpd.shutdown()
-        self.httpd.server_close()
-
-
 class PreviewRegistry:
-    """このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、終わるときに全て止める。"""
+    """このプロセスが配っているワークスペースを絶対パスごとに 1 つ（配信の文脈）持ち、ワークスペースの ID でも引けるようにする。待ち受けは持たない。"""
 
     def __init__(
         self,
         write_lock: threading.Lock,
         *,
+        port: int,
         external: ExternalAccess | None = None,
         transcriber: Transcriber | None = None,
         input_targets: InputTargets | None = None,
         state_root: Path | None = None,
     ) -> None:
-        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）と文字起こしと入力の宛先の台帳と状態のフォルダを受け取り、空の台帳を作る。
+        """ツールと共有する書き換えの鍵と、常駐サーバーのポートと、外から見る設定（無ければ空）と文字起こしと入力の宛先の台帳と状態のフォルダを受け取り、空の台帳を作る。
 
-        状態のフォルダを渡すと、配信を立てるたびにそのワークスペースの変更の検知を始める。
+        状態のフォルダを渡すと、配り始めるたびにそのワークスペースの変更の検知を始める。
         """
-        self._servers: dict[Path, PreviewServer] = {}
+        self._servers: dict[Path, ServeContext] = {}
+        self._by_id: dict[str, Path] = {}
         self._detectors: dict[Path, ChangeDetector] = {}
         self._state_root = state_root
         self._write_lock = write_lock
+        self._port = port
         self._external = ExternalAccess() if external is None else external
-        # ワークスペースごとの Claude Code への入力の宛先（立てる配信へ渡す。配信の前に受けたセッションも持つ）
+        # ワークスペースごとの Claude Code への入力の宛先（配信の文脈へ渡す。配る前に受けたセッションも持つ）
         self._input_targets = InputTargets() if input_targets is None else input_targets
-        # 文字起こしのインターフェース（立てる配信へ渡す）
+        # 文字起こしのインターフェース（配信の文脈へ渡す）
         self._transcriber = transcriber
-        # `_servers` を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
+        # 台帳を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
         self._guard = threading.RLock()
 
     def start(self, root: Path) -> tuple[str, bool]:
-        """そのワークスペースの配信を立て、URL と今立てたかを返す。立っていればその URL を返す。"""
+        """そのワークスペースを配り始め、画面の URL と今配り始めたかを返す。配っていればその URL を返す。"""
         key = root.resolve()
         with self._guard:
             existing = self._servers.get(key)
-            # 立っている: その URL を返す
+            # 配っている: その URL を返す（検査しない・フックを呼ばない）
             if existing is not None:
-                return existing.url, False
-            # 立てる前に config.yaml を検査する（合わなければ配信を立てない）
+                return self._url(existing.workspace_id), False
+            workspace_id = workspace_id_of(key)
+            served = self._by_id.get(workspace_id)
+            # 同じ ID の別のフォルダを配っている: 配らない
+            if served is not None:
+                raise WorkspaceIdConflictError(
+                    f"ワークスペースの ID が配っている別のフォルダと重なります: {workspace_id}（{served}）"
+                )
+            # 配る前に config.yaml を検査する（合わなければ配らない）
             settings, problems = check_settings(key)
             if problems:
                 raise build_mismatch_error(problems)
-            preview = start_preview_server(
-                key,
+            context = ServeContext(
+                root=key,
+                port=self._port,
                 write_lock=self._write_lock,
-                settings=settings,
-                port=settings.get("preview", {}).get("port", 0),
+                settings=SettingsHolder(settings),
                 allowed_hosts=self._external.allowed_hosts,
                 input_targets=self._input_targets,
                 transcriber=self._transcriber,
+                workspace_id=workspace_id,
             )
-            self._servers[key] = preview
-            logger.info("配信を立てた: %s %s", key, preview.url)
+            self._servers[key] = context
+            self._by_id[workspace_id] = key
+            url = self._url(workspace_id)
+            logger.info("ワークスペースを配り始めた: %s %s", key, url)
             # そのワークスペースの変更の検知を始める
             if self._state_root is not None:
                 detector = ChangeDetector(
@@ -348,415 +354,390 @@ class PreviewRegistry:
                 )
                 detector.start()
                 self._detectors[key] = detector
-            # 立てた直後に起動時のフックを呼ぶ
+            # 配り始めた直後に起動時のフックを呼ぶ
             if self._external.start_hook:
-                run_hook(self._external.start_hook, preview.port, key.name)
-            return preview.url, True
+                run_hook(self._external.start_hook, self._port, key.name, page_path(workspace_id))
+            return url, True
+
+    def context_of(self, workspace_id: str) -> ServeContext | None:
+        """ワークスペースの ID で配信の文脈を引く。配っていなければ None。"""
+        with self._guard:
+            root = self._by_id.get(workspace_id)
+            return None if root is None else self._servers.get(root)
 
     def url_of(self, root: Path) -> str | None:
-        """そのワークスペースを配っていれば画面の URL を、配っていなければ None を返す（配信は立てない）。"""
+        """そのワークスペースを配っていれば画面の URL を、配っていなければ None を返す（配り始めない）。"""
         with self._guard:
-            preview = self._servers.get(root.resolve())
-        return None if preview is None else preview.url
+            context = self._servers.get(root.resolve())
+        return None if context is None else self._url(context.workspace_id)
 
     def listing(self) -> list[dict[str, Any]]:
-        """立てた配信のワークスペースとポートを、ワークスペースの絶対パスの昇順で返す。"""
+        """配っているワークスペースと画面の URL を、ワークスペースの絶対パスの昇順で返す。"""
         with self._guard:
             servers = sorted(self._servers.items())
-        return [{"workspace": str(root), "port": preview.port} for root, preview in servers]
+        return [{"workspace": str(root), "url": self._url(context.workspace_id)} for root, context in servers]
 
     def remember_session(self, root: Path, session: Session) -> None:
         """そのワークスペースの Claude Code への入力の宛先を、ツールを呼んだセッションにする。"""
         self._input_targets.remember(root, session)
 
     def stop_workspace(self, workspace_id: str) -> None:
-        """ワークスペースの ID が一致する配信と変更の検知を台帳から外して止める。無ければ何もしない。"""
+        """ワークスペースの ID が一致するワークスペースを配るのをやめ、変更の検知を止める。無ければ何もしない。"""
         # 鍵の中では台帳から外して手元に取るだけにし、フックと停止は鍵の外で呼ぶ
         with self._guard:
-            servers = [root for root in self._servers if _matches_id(root, workspace_id)]
-            taken = [self._servers.pop(root) for root in servers]
-            roots = [root for root in self._detectors if _matches_id(root, workspace_id)]
-            detectors = [self._detectors.pop(root) for root in roots]
-        for detector in detectors:
+            root = self._by_id.pop(workspace_id, None)
+            context = None if root is None else self._servers.pop(root, None)
+            detector = None if root is None else self._detectors.pop(root, None)
+        if detector is not None:
             detector.stop()
-        # 配信を止める前に、終了時のフックを呼ぶ
-        if self._external.stop_hook:
-            for preview in taken:
-                run_hook(self._external.stop_hook, preview.port, preview.root.name)
-        for preview in taken:
-            preview.stop()
+        if context is not None and self._external.stop_hook:
+            run_hook(self._external.stop_hook, self._port, context.root.name, page_path(workspace_id))
 
     def stop_all(self) -> None:
-        """立てた配信ごとに終了時のフックを呼んでから全て止め、台帳を空にする。2 回呼んでも 2 回目は何もしない。"""
-        # 鍵の中では台帳を空にして配信を手元に取るだけにし、フックと停止は鍵の外で呼ぶ
+        """配っているワークスペースごとに終了時のフックを呼び、台帳を空にする。2 回呼んでも 2 回目は何もしない。"""
+        # 鍵の中では台帳を空にして手元に取るだけにし、フックと停止は鍵の外で呼ぶ
         with self._guard:
             taken = list(self._servers.values())
             self._servers = {}
+            self._by_id = {}
             detectors = list(self._detectors.values())
             self._detectors = {}
         for detector in detectors:
             detector.stop()
-        # 配信を止める前に、終了時のフックを全て立てる
         if self._external.stop_hook:
-            for preview in taken:
-                run_hook(self._external.stop_hook, preview.port, preview.root.name)
-        for preview in taken:
-            preview.stop()
+            for context in taken:
+                run_hook(
+                    self._external.stop_hook,
+                    self._port,
+                    context.root.name,
+                    page_path(context.workspace_id),
+                )
+
+    def _url(self, workspace_id: str) -> str:
+        """ワークスペースの画面の URL を組み立てる。"""
+        return f"http://{LISTEN_HOST}:{self._port}{page_path(workspace_id)}"
 
 
-def _matches_id(root: Path, workspace_id: str) -> bool:
-    """配信しているワークスペースの ID が一致するかを返す。設定を読めないワークスペースは一致しないものとする。"""
-    try:
-        return workspace_id_of(root) == workspace_id
-    except (OSError, yaml.YAMLError) as error:
-        # 設定が壊れている・読めない: 比べる対象から外して、ほかのワークスペースの削除を止めない
-        logger.warning("ワークスペースの ID を引けないため比べない: %s（%s）", root, error)
-        return False
+def page_path(workspace_id: str) -> str:
+    """ワークスペースの画面のパス（`/w/{パーセントエンコードした ID}/mindstella.html`）を返す。"""
+    return f"{PREVIEW_PREFIX}/{quote(workspace_id, safe='')}{PAGE_PATH}"
 
 
-class PreviewHandler(BaseHTTPRequestHandler):
-    """パスごとに処理の関数へ振り分け、返った応答を書く。要求と応答の読み書きだけを持つ。"""
+class PreviewEndpoint:
+    """常駐サーバーの経路 `/w/{workspace}` と `/w/{workspace}/{rest:path}` に登録する Starlette のエンドポイント。
 
-    @property
-    def context(self) -> ServeContext:
-        """待ち受けに持たせた、配信の文脈を返す。"""
-        return cast("ServeContext", getattr(self.server, "context"))  # noqa: B009
+    ワークスペースの ID で配信の文脈を引き、メソッドとパスで処理の関数へ振り分け、返った応答を Starlette の応答にする。
+    同期の処理の関数はスレッドで呼ぶ。
+    """
 
-    def do_GET(self) -> None:
-        """`Host` を確かめ、`/`・`/mindstella.html`・`/spa`・`/files/`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads`・`/api/transcription` を処理の関数へ振り分ける。"""
-        context = self.context
+    def __init__(self, registry: PreviewRegistry) -> None:
+        """配信の台帳を受け取る。"""
+        self._registry = registry
+
+    async def __call__(self, request: Request) -> StarletteResponse:
+        """配信の文脈を引き、`Host` を確かめ、メソッドとパスで処理の関数へ振り分ける。"""
+        workspace = str(request.path_params["workspace"])
+        context = self._registry.context_of(workspace)
+        # 配っていないワークスペース
+        if context is None:
+            return _to_starlette(problem_response(HTTPStatus.NOT_FOUND, "配っていないワークスペースです"))
         # 接続先が合わない
-        if not check_host(
-            self.headers.get("Host"), context.port, allowed_hosts=context.allowed_hosts
-        ):
-            self._reply(problem_response(HTTPStatus.FORBIDDEN, "接続先が合いません"))
-            return
-        path = urlsplit(self.path).path
+        if not check_host(request.headers.get("host"), context.port, allowed_hosts=context.allowed_hosts):
+            return _to_starlette(problem_response(HTTPStatus.FORBIDDEN, "接続先が合いません"))
+        base = f"{PREVIEW_PREFIX}/{quote(workspace, safe='')}"
+        rest = request.path_params.get("rest")
+        # `/w/{workspace}`: 末尾に `/` を付けて送り直す
+        if rest is None:
+            return _to_starlette(redirect_response(f"{base}/"))
+        path = f"/{rest}"
+        handlers = {
+            "GET": self._get,
+            "POST": self._post,
+            "PUT": self._put,
+            "PATCH": self._patch,
+            "DELETE": self._delete,
+        }
+        handler = handlers.get(request.method)
+        if handler is None:
+            return _to_starlette(problem_response(HTTPStatus.METHOD_NOT_ALLOWED, f"メソッドを受けません: {request.method}"))
+        return await handler(request, context, path, base)
+
+    async def _get(self, request: Request, context: ServeContext, path: str, base: str) -> StarletteResponse:
+        """画面・SPA・ファイル・記録・書き換えの通知・コメント・スレッド・編集・文字起こしの可否へ振り分ける。"""
+        origin = request.headers.get("origin")
         if path == "/":
-            # 画面のパスへ送り直す
-            self._reply(redirect_response(PAGE_PATH))
-        elif path == PAGE_PATH:
-            self._reply(
-                index_response(
-                    context.preview_dir,
-                    mdmark_settings=context.settings.current().get("mdmark") or {},
+            return _to_starlette(redirect_response(f"{base}{PAGE_PATH}"))
+        if path == PAGE_PATH:
+            return await _call(
+                lambda: index_response(
+                    context.preview_dir, mdmark_settings=context.settings.current().get("mdmark") or {}
                 )
             )
-        elif path == SPA_PATH:
-            self._reply(redirect_response(f"{SPA_PATH}/"))
-        elif path.startswith(f"{SPA_PATH}/"):
-            self._reply(spa_response(context.preview_dir / SPA_DIR, path.removeprefix(SPA_PATH)))
-        elif path.startswith(FILES_PATH):
-            self._send_file(context, path.removeprefix(FILES_PATH))
-        elif path == "/api/records":
-            self._reply(records_response(context))
-        elif path == "/api/events":
-            self._stream(context)
-        elif path == COMMENTS_PATH:
-            self._reply(comments_response(context.root))
-        elif path == THREADS_PATH:
-            self._reply(threads_response(context.root))
-        elif path == EDITS_PATH:
-            self._reply(edits_response(context.root))
-        elif path == TRANSCRIPTION_PATH:
-            self._reply(transcription_response(context, origin=self.headers.get("Origin")))
-        else:
-            self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
+        if path == SPA_PATH:
+            return _to_starlette(redirect_response(f"{base}{SPA_PATH}/"))
+        if path.startswith(f"{SPA_PATH}/"):
+            return await _call(
+                lambda: spa_response(context.preview_dir / SPA_DIR, path.removeprefix(SPA_PATH))
+            )
+        if path.startswith(FILES_PATH):
+            return await self._send_file(context, path.removeprefix(FILES_PATH), request.headers.get("range"))
+        if path == EVENTS_PATH:
+            return self._stream(request, context)
+        simple = {
+            RECORDS_PATH: lambda: records_response(context),
+            COMMENTS_PATH: lambda: comments_response(context.root),
+            THREADS_PATH: lambda: threads_response(context.root),
+            EDITS_PATH: lambda: edits_response(context.root),
+            TRANSCRIPTION_PATH: lambda: transcription_response(context, origin=origin),
+        }
+        call = simple.get(path)
+        if call is None:
+            return _to_starlette(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
+        return await _call(call)
 
-    def do_POST(self) -> None:
-        """前回開いた日時を返す・スレッドを利用者の既読にする・レビュー中のコメントを溜める・まとめて送る・設定の再読み込みを処理の関数へ渡す。"""
-        path = self._checked_path()
+    async def _post(self, request: Request, context: ServeContext, path: str, base: str) -> StarletteResponse:
+        """前回開いた日時・設定の再読み込み・保存待ちの編集・既読・コメント・まとめて送信する・すぐ送信する・文字起こしへ振り分ける。"""
+        origin = request.headers.get("origin")
         seen_thread_id = _seen_thread_id_of(path)
         if path == OPENED_PATH:
-            # 本文を読まずに、前回開いた日時を返して書き換える
-            self._reply(opened_response(self.context))
-        elif path == CONFIG_RELOAD_PATH:
-            # 本文を読まずに、設定を読み直す
-            self._reply(reload_response(self.context, origin=self.headers.get("Origin")))
-        elif path == EDITS_SAVE_PATH:
-            # 本文を読まずに、保存待ちの編集をまとめて保存する
-            self._reply(edits_save_response(self.context, origin=self.headers.get("Origin")))
-        elif path == EDITS_PATH:
-            self._write(lambda root, data: _edit_added(*add_edit(root, data)), HTTPStatus.CREATED)
-        elif seen_thread_id is not None:
-            # 本文を読まずに、そのスレッドを利用者の既読にする
-            self._reply(
-                seen_response(self.context, seen_thread_id, origin=self.headers.get("Origin"))
+            return await _call(lambda: opened_response(context))
+        if path == CONFIG_RELOAD_PATH:
+            return await _call(lambda: reload_response(context, origin=origin))
+        if path == EDITS_SAVE_PATH:
+            return await _call(lambda: edits_save_response(context, origin=origin))
+        if path == EDITS_PATH:
+            return await _write(request, context, lambda root, data: _edit_added(*add_edit(root, data)), HTTPStatus.CREATED)
+        if seen_thread_id is not None:
+            return await _call(lambda: seen_response(context, seen_thread_id, origin=origin))
+        if path == COMMENTS_PATH:
+            return await _write(
+                request, context, lambda root, data: _added_body(*add_comment(root, data)), HTTPStatus.CREATED
             )
-        elif path == COMMENTS_PATH:
-            self._write(
-                lambda root, data: _added_body(*add_comment(root, data)), HTTPStatus.CREATED
-            )
-        elif path == SEND_PATH:
+        if path == SEND_PATH:
             # 書き換えの鍵を外した後に、足した書き込みを Claude Code へ入力する
-            self._write(
+            return await _write(
+                request,
+                context,
                 lambda root, data: _sent_body(*send_comments(root, data)),
                 HTTPStatus.CREATED,
-                after=lambda body: _entered_body(self.context, body),
+                after=lambda body: _entered_body(context, body),
             )
-        elif path == SEND_NOW_PATH:
-            # まとめて送るのと同じく、鍵を外した後に Claude Code へ入力する（件数は 1）
-            self._write(
+        if path == SEND_NOW_PATH:
+            # まとめて送信するのと同じく、鍵を外した後に Claude Code へ入力する（件数は 1）
+            return await _write(
+                request,
+                context,
                 lambda root, data: _sent_now_body(*send_now(root, data)),
                 HTTPStatus.CREATED,
-                after=lambda body: _entered_body(self.context, body),
+                after=lambda body: _entered_body(context, body),
             )
-        elif path == TRANSCRIPTIONS_PATH:
-            self._transcribe()
-        elif path is not None:
-            self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
+        if path == TRANSCRIPTIONS_PATH:
+            return await self._transcribe(request, context)
+        return _to_starlette(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
-    def do_PUT(self) -> None:
-        """下書きを保つ・設定の既定を書き換える・確認済みを付け外しする要求を受け付けの関数へ渡す。"""
-        path = self._checked_path()
+    async def _put(self, request: Request, context: ServeContext, path: str, base: str) -> StarletteResponse:
+        """下書き・設定の既定・確認済みへ振り分ける。"""
         if path == DRAFTS_PATH:
-            self._write(_saved_draft, HTTPStatus.NO_CONTENT)
-        elif path == CONFIG_DISPLAY_PATH:
-            self._write(update_display, HTTPStatus.OK)
-        elif (item_id := _confirmed_item_id_of(path)) is not None:
-            self._write(lambda root, data: set_confirmed(root, item_id, data), HTTPStatus.OK)
-        elif path is not None:
-            self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
+            return await _write(request, context, _saved_draft, HTTPStatus.NO_CONTENT)
+        if path == CONFIG_DISPLAY_PATH:
+            return await _write(request, context, update_display, HTTPStatus.OK)
+        item_id = _confirmed_item_id_of(path)
+        if item_id is not None:
+            return await _write(
+                request, context, lambda root, data: set_confirmed(root, item_id, data), HTTPStatus.OK
+            )
+        return _to_starlette(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
-    def do_PATCH(self) -> None:
-        """レビュー中のコメント 1 件の書き換えとスレッド 1 件の状態の書き換えを受け付けの関数へ渡す。"""
-        path = self._checked_path()
+    async def _patch(self, request: Request, context: ServeContext, path: str, base: str) -> StarletteResponse:
+        """レビュー中のコメント 1 件の書き換えとスレッド 1 件の状態の書き換えへ振り分ける。"""
         comment_id = _comment_id_of(path)
         thread_id = _thread_id_of(path)
         if comment_id is not None:
-            self._write(
+            return await _write(
+                request,
+                context,
                 lambda root, data: _updated_body(update_comment(root, comment_id, data)),
                 HTTPStatus.OK,
             )
-        elif thread_id is not None:
-            self._write(
-                lambda root, data: patch_thread_status(root, thread_id, data), HTTPStatus.OK
+        if thread_id is not None:
+            return await _write(
+                request, context, lambda root, data: patch_thread_status(root, thread_id, data), HTTPStatus.OK
             )
-        elif path is not None:
-            self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
+        return _to_starlette(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
-    def do_DELETE(self) -> None:
-        """レビュー中のコメント 1 件を消す要求を受け付けの関数へ渡す。"""
-        path = self._checked_path()
+    async def _delete(self, request: Request, context: ServeContext, path: str, base: str) -> StarletteResponse:
+        """レビュー中のコメント 1 件と保存待ちの編集 1 件の削除へ振り分ける。"""
+        origin = request.headers.get("origin")
         comment_id = _comment_id_of(path)
         edit_id = _edit_id_of(path)
         if comment_id is not None:
-            self._reply(
-                delete_response(
-                    self.context, origin=self.headers.get("Origin"), comment_id=comment_id
-                )
-            )
-        elif edit_id is not None:
-            self._reply(
-                edit_delete_response(
-                    self.context, origin=self.headers.get("Origin"), edit_id=edit_id
-                )
-            )
-        elif path is not None:
-            self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
+            return await _call(lambda: delete_response(context, origin=origin, comment_id=comment_id))
+        if edit_id is not None:
+            return await _call(lambda: edit_delete_response(context, origin=origin, edit_id=edit_id))
+        return _to_starlette(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
-    def log_message(self, format: str, *args: Any) -> None:
-        """標準の要求の記録を `logging` の `DEBUG` に回す（標準エラーへの直接の書き込みをやめる）。"""
-        logger.debug("受けた要求: %s", format % args)
+    async def _send_file(self, context: ServeContext, sub_path: str, range_header: str | None) -> StarletteResponse:
+        """ワークスペースのファイルを解決し、200・206・416 で本文を分けて返す。解決できなければ 404。"""
+        path = resolve_file(context.root / FILES_DIR, sub_path)
+        # フォルダの外部・無い・フォルダは、パスを含めずに 404 にする
+        if path is None:
+            return _to_starlette(
+                problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"), FILE_SECURITY_HEADERS
+            )
+        try:
+            plan = plan_file(path, range_header)
+        except OSError:
+            # 解決した後に消された
+            return _to_starlette(
+                problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"), FILE_SECURITY_HEADERS
+            )
+        headers = {"Content-Type": plan.content_type, "Content-Length": str(plan.length)}
+        headers.update(dict(plan.headers))
+        return StreamingResponse(iterate_in_threadpool(_file_chunks(plan)), status_code=plan.status, headers=headers)
 
-    def _checked_path(self) -> str | None:
-        """`Host` を確かめて要求のパスを返す。接続先が合わなければ 403 を書いて None を返す。"""
-        # 接続先が合わない
-        if not check_host(
-            self.headers.get("Host"), self.context.port, allowed_hosts=self.context.allowed_hosts
-        ):
-            self._reply(problem_response(HTTPStatus.FORBIDDEN, "接続先が合いません"))
-            return None
-        return urlsplit(self.path).path
+    def _stream(self, request: Request, context: ServeContext) -> StreamingResponse:
+        """`text/event-stream` で、画面が閉じるまで書き換えを知らせ続ける。知らせの見張りは別のスレッドで動かす。"""
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue[bytes] = asyncio.Queue()
+        closed = threading.Event()
 
-    def _write(
-        self,
-        handle: Callable[[Path, dict[str, Any]], Any],
-        status: int,
-        *,
-        after: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
-    ) -> None:
-        """本文の長さを確かめて読み、書き込む受け付けの関数へ渡して応答を書く。after は鍵を外した後に呼ぶ処理。"""
-        length = self._content_length()
-        # 長さが無いか、上限を超える: 本文を読まずに断る
-        if length is None or length > MAX_REQUEST_BYTES:
-            self._reply(
-                problem_response(
-                    HTTPStatus.BAD_REQUEST,
-                    f"本文の長さが要ります（{MAX_REQUEST_BYTES} バイトまで）",
+        def _write(chunk: bytes) -> None:
+            """画面が閉じていれば書き出しをやめさせ、閉じていなければキューへ渡す。"""
+            if closed.is_set():
+                raise BrokenPipeError("画面が閉じました")
+            loop.call_soon_threadsafe(queue.put_nowait, chunk)
+
+        def _sleep(seconds: float) -> None:
+            """次の見張りまで待つ。待つ間に画面が閉じたら書き出しをやめさせる。"""
+            if closed.wait(seconds):
+                raise BrokenPipeError("画面が閉じました")
+
+        def _watch() -> None:
+            """画面が閉じるまで書き換えを見張る。"""
+            try:
+                stream_events(
+                    context.root,
+                    _write,
+                    sleep=_sleep,
+                    # 再読み込みはファイルが変わらなくても知らせるため、回数を印に混ぜる
+                    signature=lambda root: (
+                        f"{workspace_signature(root)}|settings:{context.settings.revision()}"
+                    ),
                 )
-            )
-            return
-        self._reply(
-            write_response(
-                self.context,
-                content_type=self.headers.get("Content-Type"),
-                origin=self.headers.get("Origin"),
-                body=self.rfile.read(length),
-                handle=handle,
-                status=status,
-                after=after,
-            )
+            except (BrokenPipeError, ConnectionResetError):
+                return
+
+        watcher = threading.Thread(target=_watch, name=f"mindstella-events-{context.workspace_id}", daemon=True)
+        watcher.start()
+
+        async def _chunks() -> AsyncIterator[bytes]:
+            """キューの片を順に返し、画面が閉じたら見張りを終わらせる。"""
+            try:
+                while True:
+                    try:
+                        chunk = await asyncio.wait_for(queue.get(), timeout=POLL_INTERVAL_SEC)
+                    except TimeoutError:
+                        if await request.is_disconnected():
+                            return
+                        continue
+                    yield chunk
+            finally:
+                closed.set()
+
+        return StreamingResponse(
+            _chunks(), media_type=EVENT_STREAM_TYPE, headers={"Cache-Control": "no-store"}
         )
 
-    def _transcribe(self) -> None:
-        """音声の本文を上限まで読み、文字起こしの受け付けへ渡して応答を書く。"""
-        body = self._read_audio()
-        # 上限を超える: 読むのをやめて断る
-        if body is None:
-            self._reply(
-                problem_response(
-                    HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
-                    f"録音が大きすぎます（{MAX_AUDIO_BYTES} バイトまで）",
-                )
-            )
-            return
-        self._reply(
-            transcribe_response(
-                self.context,
-                content_type=self.headers.get("Content-Type"),
-                origin=self.headers.get("Origin"),
+    async def _transcribe(self, request: Request, context: ServeContext) -> StarletteResponse:
+        """音声の本文を上限まで数えながら読み、文字起こしの受け付けへ渡す。上限を超えたら 413。"""
+        too_large = problem_response(
+            HTTPStatus.REQUEST_ENTITY_TOO_LARGE, f"録音が大きすぎます（{MAX_AUDIO_BYTES} バイトまで）"
+        )
+        length = _content_length(request)
+        # 長さが分かる: 読む前に上限と比べる
+        if length is not None and length > MAX_AUDIO_BYTES:
+            return _to_starlette(too_large)
+        chunks: list[bytes] = []
+        total = 0
+        async for chunk in request.stream():
+            total += len(chunk)
+            if total > MAX_AUDIO_BYTES:
+                return _to_starlette(too_large)
+            chunks.append(chunk)
+        body = b"".join(chunks)
+        return await _call(
+            lambda: transcribe_response(
+                context,
+                content_type=request.headers.get("content-type"),
+                origin=request.headers.get("origin"),
                 body=body,
             )
         )
 
-    def _read_audio(self) -> bytes | None:
-        """音声の本文を読む。Content-Length があれば先に上限と比べ、無ければ数えながら読む。上限を超えたら None。"""
-        length = self._content_length()
-        if length is not None:
-            # 長さが分かる: 読む前に上限と比べる
-            if length > MAX_AUDIO_BYTES:
-                return None
-            return self.rfile.read(length)
-        # 長さが無い: 接続が閉じるまで、上限を超えないかを数えながら読む
-        chunks: list[bytes] = []
-        total = 0
-        while chunk := self.rfile.read1(AUDIO_READ_CHUNK):
-            total += len(chunk)
-            if total > MAX_AUDIO_BYTES:
-                return None
-            chunks.append(chunk)
-        return b"".join(chunks)
 
-    def _content_length(self) -> int | None:
-        """`Content-Length` を整数で返す（無い・整数でない・負のときは None）。"""
-        text = self.headers.get("Content-Length")
-        if text is None:
-            return None
-        try:
-            length = int(text)
-        except ValueError:
-            return None
-        return length if length >= 0 else None
-
-    def _reply(self, response: Response, extra_headers: tuple[tuple[str, str], ...] = ()) -> None:
-        """ステータスコード・ヘッダー（extra_headers を加える）・本文を書く（常に控えさせない）。"""
-        self.send_response(response.status)
-        self.send_header("Content-Type", response.content_type)
-        self.send_header("Content-Length", str(len(response.body)))
-        self.send_header("Cache-Control", "no-store")
-        for name, value in extra_headers:
-            self.send_header(name, value)
-        # 送り直す応答は宛先を持つ
-        if response.location is not None:
-            self.send_header("Location", response.location)
-        self.end_headers()
-        # 204 は本文を持たない
-        if response.status != HTTPStatus.NO_CONTENT:
-            self.wfile.write(response.body)
-
-    def _send_file(self, context: ServeContext, sub_path: str) -> None:
-        """ワークスペースのファイルを解決し、200・206・416 のヘッダーを書いて本文を分けて書き出す。解決できなければ 404。"""
-        path = resolve_file(context.root / FILES_DIR, sub_path)
-        # フォルダの外部・無い・フォルダは、パスを含めずに 404 にする
-        if path is None:
-            self._reply(problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"), FILE_SECURITY_HEADERS)
-            return
-        try:
-            plan = plan_file(path, self.headers.get("Range"))
-        except OSError:
-            # 解決した後に消された
-            self._reply(problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"), FILE_SECURITY_HEADERS)
-            return
-        # 控えさせない _reply は使わず、ファイルの応答のヘッダーで書く
-        self.send_response(plan.status)
-        self.send_header("Content-Type", plan.content_type)
-        self.send_header("Content-Length", str(plan.length))
-        for name, value in plan.headers:
-            self.send_header(name, value)
-        self.end_headers()
-        try:
-            write_file(plan, self.wfile.write)
-        except (BrokenPipeError, ConnectionResetError):
-            # ブラウザが再生位置を移して接続を切った
-            return
-
-    def _stream(self, context: ServeContext) -> None:
-        """`200` と `text/event-stream` を書き、画面が閉じるまで書き換えを知らせ続ける。"""
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", EVENT_STREAM_TYPE)
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-
-        def _write(chunk: bytes) -> None:
-            """書いてすぐ送り出す。"""
-            self.wfile.write(chunk)
-            self.wfile.flush()
-
-        try:
-            self.wfile.flush()
-            stream_events(
-                context.root,
-                _write,
-                # 再読み込みはファイルが変わらなくても知らせるため、回数を印に混ぜる
-                signature=lambda root: (
-                    f"{workspace_signature(root)}|settings:{context.settings.revision()}"
-                ),
-            )
-        except (BrokenPipeError, ConnectionResetError):
-            # 見出しを送る前に画面が閉じた
-            return
+def _file_chunks(plan: Any) -> Iterator[bytes]:
+    """計画の範囲のファイルの中身を、書き出しの単位ごとに返す。"""
+    chunks: list[bytes] = []
+    write_file(plan, chunks.append)
+    yield from chunks
 
 
-def start_preview_server(
-    root: Path,
-    *,
-    write_lock: threading.Lock,
-    settings: dict[str, Any],
-    port: int = 0,
-    allowed_hosts: frozenset[str] = frozenset(),
-    input_targets: InputTargets | None = None,
-    transcriber: Transcriber | None = None,
-) -> PreviewServer:
-    """`LISTEN_HOST` の port（0 なら空きポート）で待ち受け、デーモンのスレッドで動かし始める。settings は立てる前に検査に通った設定。"""
+def _content_length(request: Request) -> int | None:
+    """`Content-Length` を整数で返す（無い・整数でない・負のときは None）。"""
+    text = request.headers.get("content-length")
+    if text is None:
+        return None
     try:
-        httpd = ThreadingHTTPServer((LISTEN_HOST, port), PreviewHandler)
-    except OSError as error:
-        raise ServeFailedError(
-            f"プレビューの配信を立てられません（ポート {port}）: {error}"
-        ) from error
-    httpd.daemon_threads = True
-    bound_port = httpd.server_address[1]
-    # 要求の受け口が `self.server.context` で引けるように、待ち受けに持たせる
-    context = ServeContext(
-        root=root,
-        port=bound_port,
-        write_lock=write_lock,
-        settings=SettingsHolder(settings),
-        allowed_hosts=allowed_hosts,
-        input_targets=input_targets,
-        transcriber=transcriber,
+        length = int(text)
+    except ValueError:
+        return None
+    return length if length >= 0 else None
+
+
+async def _call(make: Callable[[], Response]) -> StarletteResponse:
+    """同期の処理の関数をスレッドで呼び、返った応答を Starlette の応答にする。"""
+    return _to_starlette(await run_in_threadpool(make))
+
+
+async def _write(
+    request: Request,
+    context: ServeContext,
+    handle: Callable[[Path, dict[str, Any]], Any],
+    status: int,
+    *,
+    after: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+) -> StarletteResponse:
+    """本文の長さを確かめて読み、書き込む受け付けの関数へ渡して応答にする。after は鍵を外した後に呼ぶ処理。"""
+    length = _content_length(request)
+    # 長さが無いか、上限を超える: 本文を読まずに断る
+    if length is None or length > MAX_REQUEST_BYTES:
+        return _to_starlette(
+            problem_response(HTTPStatus.BAD_REQUEST, f"本文の長さが要ります（{MAX_REQUEST_BYTES} バイトまで）")
+        )
+    body = await request.body()
+    return await _call(
+        lambda: write_response(
+            context,
+            content_type=request.headers.get("content-type"),
+            origin=request.headers.get("origin"),
+            body=body,
+            handle=handle,
+            status=status,
+            after=after,
+        )
     )
-    setattr(httpd, "context", context)  # noqa: B010
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    return PreviewServer(
-        root=root,
-        url=f"http://{LISTEN_HOST}:{bound_port}{PAGE_PATH}",
-        httpd=httpd,
-        thread=thread,
-        port=bound_port,
-    )
+
+
+def _to_starlette(response: Response, extra_headers: tuple[tuple[str, str], ...] = ()) -> StarletteResponse:
+    """処理の関数が返した応答を、控えさせない Starlette の応答にする（extra_headers を加える）。"""
+    headers = {"Content-Type": response.content_type, "Cache-Control": "no-store"}
+    headers.update(dict(extra_headers))
+    # 送り直す応答は宛先を持つ
+    if response.location is not None:
+        headers["Location"] = response.location
+    # 204 は本文を持たない
+    body = b"" if response.status == HTTPStatus.NO_CONTENT else response.body
+    return StarletteResponse(content=body, status_code=response.status, headers=headers)
 
 
 def host_part(value: str) -> str:
@@ -822,18 +803,18 @@ def _split_hook(environ: Mapping[str, str], key: str) -> tuple[str, ...]:
         return ()
 
 
-def run_hook(command: tuple[str, ...], port: int, name: str) -> bool:
-    """フックのコマンドの末尾にポートとワークスペースの名前を足し、新しいセッションで立てて終わりを待たずに返す。"""
+def run_hook(command: tuple[str, ...], port: int, name: str, path: str) -> bool:
+    """フックのコマンドの末尾に常駐サーバーのポート・ワークスペースの名前・画面のパスを足し、新しいセッションで起動して終わりを待たずに返す。"""
     try:
         subprocess.Popen(
-            [*command, str(port), name],
+            [*command, str(port), name, path],
             start_new_session=True,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
     except OSError as error:
-        logger.warning("フックを立てられない: %s（%s）", command, error)
+        logger.warning("フックを起動できない: %s（%s）", command, error)
         return False
     return True
 
