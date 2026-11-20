@@ -668,7 +668,7 @@ def test_migrate_when_same_with_stale_schema(
     assert (copies / "docs.schema.json").read_bytes() == (
         store.SCHEMA_DIR / "docs.schema.json"
     ).read_bytes()
-    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == f"{V0140}\n"
+    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == f"{V0140}\n3\n"
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
@@ -711,7 +711,7 @@ def test_migrate_when_same_without_write_dates(
     report = migrator.migrate(root)
     # 検証
     assert report.source_files == [".mindstella/dev-docs.yaml"]
-    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == f"{V0140}\n"
+    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == f"{V0140}\n3\n"
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
@@ -731,9 +731,9 @@ def _versioned_migrations(base: Path, counts: dict[str, int]) -> Path:
 @pytest.mark.parametrize(
     ("version_text", "expected"),
     [
-        pytest.param("v0.2.0\n1\n", [2, 3], id="applied_one"),
-        pytest.param("v0.2.0\n", [1, 2, 3], id="no_second_line"),
-        pytest.param("v0.2.0\n3\n", [], id="applied_all"),
+        pytest.param("v0.14.0\n1\n", [2, 3], id="applied_one"),
+        pytest.param("v0.14.0\n", [1, 2, 3], id="no_second_line"),
+        pytest.param("v0.14.0\n3\n", [], id="applied_all"),
     ],
 )
 def test_plan_migration_when_steps_added_to_same_version(
@@ -746,13 +746,13 @@ def test_plan_migration_when_steps_added_to_same_version(
     """同じ版に後から足した手順を集める（正常系）。"""
     # 準備
     root = make_workspace(raw_files={VERSION_FILE: version_text})
-    patch_plugin_version("v0.2.0")
-    migrations = _versioned_migrations(tmp_path / "steps", {"v0.2.0": 3})
+    patch_plugin_version("v0.14.0")
+    migrations = _versioned_migrations(tmp_path / "steps", {"v0.14.0": 3})
     # 実行
     report = migrator.plan_migration(root, migrations_dir=migrations)
     # 検証
     assert [(str(step.version), step.index) for step in report.steps] == [
-        ("v0.2.0", index) for index in expected
+        ("v0.14.0", index) for index in expected
     ]
 
 
