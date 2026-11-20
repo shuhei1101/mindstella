@@ -90,7 +90,7 @@ ALL_SEEN = _thread(
     ],
 )
 
-# まだ送っていない新しいスレッドの最初の書き込み
+# まだ送っていない新規スレッドの最初の書き込み
 PENDING = {
     "id": "C-41",
     "target": "D-5",
@@ -186,7 +186,7 @@ def test_thread_row(
 def test_thread_row_when_pending(
     preview_page: Page, load_preview_scripts: LoadPreviewScripts
 ) -> None:
-    """まだ送っていない新しいスレッドはレビュー中の札でタグを持たない（正常系）。"""
+    """まだ送っていない新規スレッドはレビュー中の札でタグを持たない（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行

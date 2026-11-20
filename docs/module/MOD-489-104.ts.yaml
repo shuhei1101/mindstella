@@ -5,7 +5,7 @@ functions:
   - name: commentNumber
     title: コメントの ID の番号
     kind: 関数
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: '`C-{番号}` の番号を返す。読めない ID は 0'
     args:
       - name: id
@@ -24,7 +24,7 @@ functions:
         expected: '12'
     container: frontend/src/shared/core/comments.ts
   - name: threadTitle
-    title: スレッドの題
+    title: スレッドのタイトル
     kind: 関数
     usecase: スレッドで話す
     summary: '`summary`、無ければ最初の書き込みの 1 行目'
@@ -35,7 +35,7 @@ functions:
         description: スレッド
     returns:
       type: string
-      description: 題
+      description: タイトル
     unit_tests:
       - name: test_thread_title_when_no_summary
         case: 正常
@@ -119,9 +119,9 @@ functions:
         expected: '`{open: 1, closed: 1, all: 2}` / `{open: 1, closed: 0, all: 1}`'
     container: frontend/src/shared/core/comments.ts
   - name: pendingThreads
-    title: まだ送っていない新しいスレッド
+    title: まだ送信していない新規スレッド
     kind: 関数
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: レビュー中の書き込みのうち `thread` を持たないもの（`target` が `null` でなければその項目へ向けたものだけ）を溜めた順に返す。状態の絞り込みが `closed` か、タグで絞っているときは空
     args:
       - name: items
@@ -142,7 +142,7 @@ functions:
         description: 絞る項目の ID（`null` なら項目で絞らない）
     returns:
       type: ReviewItem[]
-      description: まだ送っていない新しいスレッド
+      description: まだ送信していない新規スレッド
     unit_tests:
       - name: test_pending_threads_when_tagged
         case: 正常
@@ -152,15 +152,15 @@ functions:
         expected: 空
       - name: test_pending_threads_when_target
         case: 正常
-        summary: 項目で絞ると、その項目への新しいスレッドだけを出す
-        condition: "C-41（D-1 への新しいスレッド）・C-42（項目を指さない新しいスレッド）・C-43（返信）。`test.each`: `{filter: 'open', tag: null, target: 'D-1'}` / `{filter: 'closed', tag: null, target: 'D-1'}` / `{filter: 'open', tag: '画面', target: 'D-1'}`"
+        summary: 項目で絞ると、その項目への新規スレッドだけを出す
+        condition: "C-41（D-1 への新規スレッド）・C-42（項目を指さない新規スレッド）・C-43（返信）。`test.each`: `{filter: 'open', tag: null, target: 'D-1'}` / `{filter: 'closed', tag: null, target: 'D-1'}` / `{filter: 'open', tag: '画面', target: 'D-1'}`"
         mock: なし
         expected: '`[C-41]` / `[]` / `[]`'
     container: frontend/src/shared/core/comments.ts
   - name: isBlockedReply
-    title: 送れない返信
+    title: 送信できない返信
     kind: 関数
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: クローズのスレッドへの返信か
     args:
       - name: item
@@ -173,7 +173,7 @@ functions:
         description: スレッド
     returns:
       type: boolean
-      description: 送れないとき true
+      description: 送信できないとき true
     unit_tests:
       - name: test_is_blocked_reply
         case: 正常
@@ -206,7 +206,7 @@ functions:
   - name: reviewLabel
     title: レビュー中の書き込みの読み上げの名前
     kind: 関数
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 「{スレッドの ID} への返信」「{向けた項目の ID} へのコメント」「項目を指さないコメント」
     args:
       - name: item
@@ -249,7 +249,7 @@ functions:
     title: 既読にしたスレッド
     kind: 関数
     usecase: スレッドで話す
-    summary: 開いたスレッドの書き込みを既読にした並びを返す（`POST /api/threads/{id}/seen` の応答を待たずに印を消す）
+    summary: 開いたスレッドの書き込みを既読にした並びを返す（`POST /api/threads/{id}/seen` の応答を待たずにマーカーを削除する）
     args:
       - name: threads
         type: readonly Thread[]

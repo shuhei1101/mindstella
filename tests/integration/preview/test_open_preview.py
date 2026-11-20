@@ -227,7 +227,7 @@ DIFF_SETTLE_MS = 10_000
 # 溜めたコメントを受け付けるパス
 COMMENTS_PATH = "/api/comments"
 
-# コメントの一覧の送る帯の「まとめて送る」
+# コメントの一覧の送る帯の「まとめて送信」
 LIST_SEND_BUTTON = f"{COMMENTS_PANEL} .send-band button.btn.primary"
 
 
@@ -507,7 +507,7 @@ def test_normal_when_rewritten(
     assert served.data is not None
     open_preview(served.data["url"], "#tab=decisions&view=table&id=D-3")
     page.wait_for_selector("aside.panel.open .d-title")
-    page.fill(SEND_TEXTAREA, "書きかけ")
+    page.fill(SEND_TEXTAREA, "下書き")
     # 入力欄から離れておく（入力中は描き直しを保留する）
     page.evaluate("document.activeElement.blur()")
     opened_url = page.url
@@ -528,7 +528,7 @@ def test_normal_when_rewritten(
     assert page.get_attribute('nav.tabbar a[data-tab="decisions"]', "aria-current") == "page"
     assert page.get_attribute('.segment button[data-view="table"]', "aria-pressed") == "true"
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
-    assert page.input_value(SEND_TEXTAREA) == "書きかけ"
+    assert page.input_value(SEND_TEXTAREA) == "下書き"
     assert page.url == opened_url
     assert page.evaluate("history.length") == history_length
 
@@ -589,7 +589,7 @@ def test_normal_when_sent(
     open_preview: OpenPreview,
     page: Any,
 ) -> None:
-    """本文の文を選んで箇所を添えたコメントを溜め、コメントの一覧からまとめて送る（正常系）。"""
+    """本文の文を選んで箇所を添えたコメントを溜め、コメントの一覧からまとめて送信（正常系）。"""
     # 準備
     root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     served = call_tool("preview_url", workspace=str(root))
@@ -617,7 +617,7 @@ def test_normal_when_sent(
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
     assert page.inner_text("aside.panel .d-review .review-body") == "ここは言い換える"
     assert page.inner_text("aside.panel .d-review .review-loc-name") == "本文 2 行目"
-    # 実行（コメントのボタンから一覧を開き、まとめて送る）
+    # 実行（コメントのボタンから一覧を開き、まとめて送信）
     page.focus(COMMENTS_BUTTON)
     page.keyboard.press("Enter")
     page.wait_for_selector(f"{COMMENTS_PANEL}.open")
@@ -1728,7 +1728,7 @@ def test_normal_when_diff_minimap(
     page.locator(f"{PANEL_SCOPE} .df-map .df-map-m").nth(1).focus()
     page.keyboard.press("Home")
     # 検証
-    assert page.evaluate("document.activeElement?.getAttribute('aria-label')") == "消した箇所（1 / 2）"
+    assert page.evaluate("document.activeElement?.getAttribute('aria-label')") == "削除した箇所（1 / 2）"
     # 検証（ここまでの間、ハッシュは変わらず、履歴は増えない）
     assert _hash_params(page) == {"tab": ["docs"], "id": ["A-1"], "diff": ["V-1"]}
     assert page.evaluate("history.length") == history_length

@@ -8,7 +8,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
     usecase: スレッドで話す
     kind: コンポーネント
-    summary: 部品設計『スレッドの書き込み』の引数を受け、書き込み・状態の記録・レビュー中の書き込みのどれか 1 つの `li` を返す。本文は `postBody`（クラス `post-body`）で描く。レビュー中の書き込みの書き換えていない本文は `reviewBodyFold`（`label` は `reviewLabel`、`titles`・`changeSets` はそのまま、`open` は `open`、`on.toggle` は `on.fold`、`on.openId`・`on.changeSet` はそのまま）で描き、本文にクラス `post-body` を足して、本文の下に開閉のボタンだけの行（`review-more-row`。ボタンが `hidden` の間は行ごと出さない）を置く。レビュー中の書き込みの「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm` で描く（`focus` の接頭辞は空）
+    summary: 部品設計『スレッドの書き込み』の引数を受け、書き込み・状態の記録・レビュー中の書き込みのどれか 1 つの `li` を返す。本文は `postBody`（クラス `post-body`）で描く。レビュー中の書き込みの書き換えていない本文は `reviewBodyFold`（`label` は `reviewLabel`、`titles`・`changeSets` はそのまま、`open` は `open`、`on.toggle` は `on.fold`、`on.openId`・`on.changeSet` はそのまま）で描き、本文にクラス `post-body` を追加して、本文の下に開閉のボタンだけの行（`review-more-row`。ボタンが `hidden` の間は行ごと出さない）を置く。レビュー中の書き込みの「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm` で描く（`focus` の接頭辞は空）
     props:
       - name: post
         type: Thread['posts'][number] | null
@@ -39,16 +39,16 @@ components:
         type: string | null
         required: false
         default: 'null'
-        description: 直せなかったときに入力欄に残す中身
+        description: 修正できなかったときに入力欄に残す中身
       - name: editError
         type: string | null
         required: false
         default: 'null'
-        description: 直せなかった理由
+        description: 修正できなかった理由
       - name: on
         type: '{openId, changeSet, edit, saveEdit, cancelEdit, remove, fold}'
         required: true
-        description: 本文の中の項目の ID を押した・まとまりのリンクを押した・修正を始める・書き換えを送る・キャンセル・削除・レビュー中の書き込みの本文を開く／畳む（書き込みの ID・開くか）
+        description: 本文の中の項目の ID を押した・まとまりのリンクを押した・修正を始める・書き換えを送信する・キャンセル・削除・レビュー中の書き込みの本文を開く／畳む（書き込みの ID・開くか）
       - name: changeSets
         type: '(id: string) => string | null'
         required: false
@@ -74,10 +74,10 @@ components:
         expected: 「あなたがクローズにしました」と理由の行 / 「あなたがオープンに戻しました」で理由の行が無い / 「AI がクローズにしました」/ 「AI がオープンに戻しました」。どれも `time[datetime]` を持つ
       - name: test_thread_post_when_pending
         case: 正常
-        summary: レビュー中の書き込みの印・修正・削除と、書き換えている形
+        summary: レビュー中の書き込みのマーカー・修正・削除と、書き換えている形式
         condition: '`pending` に C-43（`thread: TH-1`）。`parametrize`: 既定 / `editing: true` / `editing: true`・`editError` あり'
         mock: '`on.edit`・`on.remove`'
-        expected: 「レビュー中」の印と、読み上げの名前「TH-1 への返信を修正」「TH-1 への返信を削除」のボタン（押すとそれぞれ 1 回）/ 入力欄と「キャンセル」「修正」がありアイコンのボタンが無い / 理由が `role="alert"` で出る
+        expected: 「レビュー中」の記号と、読み上げの名前「TH-1 への返信を修正」「TH-1 への返信を削除」のボタン（押すとそれぞれ 1 回）/ 入力欄と「キャンセル」「修正」がありアイコンのボタンが無い / 理由が `role="alert"` で出る
       - name: test_thread_post_when_change_set_link
         case: 正常
         summary: 書き込みとレビュー中の書き込みのまとまりのリンク
@@ -87,9 +87,9 @@ components:
       - name: test_thread_post_when_pending_folded
         case: 正常
         summary: レビュー中の書き込みだけを畳み、開閉を知らせる
-        condition: '幅 320px の入れ物に描く。`parametrize`: 改行で 8 行の `pending`（C-61、`thread: TH-1`）/ 同じ本文の `pending` を `open: true` / 同じ本文の `pending` を `editing: true` / 同じ本文の AI の `post`。最初の場合だけ「続きを読む」を押す'
+        condition: '幅 320px の入れ物に描く。`parametrize`: 改行で 8 行の `pending`（C-61、`thread: TH-1`）/ 同じ本文の `pending` を `open: true` / 同じ本文の `pending` を `editing: true` / 同じ本文の AI の `post`。最初の場合だけ「続きを表示」を押す'
         mock: '`on.fold`'
-        expected: 本文が `folded` で本文の下の `review-more-row` に「続きを読む」（読み上げの名前「TH-1 への返信の続きを読む」）。押すと `on.fold` が `(C-61, true)` で 1 回 / `folded` を持たず「折りたたむ」/ 入力欄だけで開閉のボタンが無い / 8 行が全て見え、開閉のボタンが無い
+        expected: 本文が `folded` で本文の下の `review-more-row` に「続きを表示」（読み上げの名前「TH-1 への返信の続きを表示」）。押すと `on.fold` が `(C-61, true)` で 1 回 / `folded` を持たず「折りたたむ」/ 入力欄だけで開閉のボタンが無い / 8 行が全て見え、開閉のボタンが無い
   - name: postBody
     title: 書き込みの本文
     container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
@@ -137,4 +137,4 @@ components:
         mock: なし
         expected: '`.post-body` の文字が `**D-1**\n2 行目` で改行が保たれ、`role="alert"`・`button`・`strong` を持たない'
 notes:
-  修正の入力の音声入力: レビュー中の書き込みの書き換えを `reviewEditForm` で描くとき、部品設計の `voice`・`voiceReason`・`elapsed`・`levels`・`voiceStatus`・`voiceDetail` と `on.editVoiceStart`・`on.editVoiceCancel`・`on.editVoiceDone` を、`reviewEditForm` の `voice` と `on.voiceStart`・`on.voiceCancel`・`on.voiceDone` へ渡す。ストーリーに部品設計の `PendingEditingRecording`・`PendingEditingTranscribing`・`PendingEditingInserted`・`PendingEditingVoiceDisabled` を足す
+  修正の入力の音声入力: レビュー中の書き込みの書き換えを `reviewEditForm` で描くとき、部品設計の `voice`・`voiceReason`・`elapsed`・`levels`・`voiceStatus`・`voiceDetail` と `on.editVoiceStart`・`on.editVoiceCancel`・`on.editVoiceDone` を、`reviewEditForm` の `voice` と `on.voiceStart`・`on.voiceCancel`・`on.voiceDone` へ渡す。ストーリーに部品設計の `PendingEditingRecording`・`PendingEditingTranscribing`・`PendingEditingInserted`・`PendingEditingVoiceDisabled` を追加する

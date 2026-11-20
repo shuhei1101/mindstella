@@ -41,7 +41,7 @@ describe("ReviewBodyFold", () => {
     // 実行
     renderFold("一\n二\n三\n四\n五\n六");
     // 検証
-    const toggle = await screen.findByRole("button", { name: "D-1 へのコメントの続きを読む" });
+    const toggle = await screen.findByRole("button", { name: "D-1 へのコメントの続きを表示" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 

@@ -35,7 +35,7 @@ INDEXED_STEP = re.compile(r"^([^\[\]]+)\[([^\]]*)\]$")
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Location:
-    """コメント・書きかけ・スレッドが持つ `loc`。"""
+    """コメント・下書き・スレッドが持つ `loc`。"""
 
     # `body` は本文の文、`value` は項目の値
     kind: Literal["body", "value"]

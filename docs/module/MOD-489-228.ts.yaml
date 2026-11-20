@@ -8,7 +8,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts
     usecase: 選んだ箇所へコメントする
     kind: コンポーネント
-    summary: 部品設計『選んだ箇所のコメントの入口』の印だけの丸。選んだ範囲の始まりの上に出し（画面の端か本文のスクロール領域の上端に収まらなければ終わりの下、左右は画面の端から 8px の内側）、名前のツールチップを子の要素に持つ。押す・Esc をコールバックで知らせる。押したときに選択が外れないよう `pointerdown` の既定の動きを止める
+    summary: 部品設計『選んだ箇所のコメントの起点』のマーカーだけの丸。選んだ範囲の始まりの上に出し（画面の端か本文のスクロール領域の上端に収まらなければ終わりの下、左右は画面の端から 8px の内側）、名前のツールチップを子の要素に持つ。押す・Esc をコールバックで知らせる。押したときに選択が外れないよう `pointerdown` の既定の動きを止める
     props:
       - name: anchor
         type: '{first: DOMRect, last: DOMRect}'

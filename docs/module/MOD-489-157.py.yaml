@@ -74,13 +74,13 @@ data_models:
         description: まとめたときの `last_seq`
       - name: added
         type: list[str]
-        description: 足した項目の ID
+        description: 追加した項目の ID
       - name: changed
         type: list[str]
         description: 変えた項目の ID
       - name: removed
         type: NotRequired[list[RemovedItem]]
-        description: 消した項目。消した項目が無いまとまりはキーを持たない
+        description: 削除した項目。削除した項目が無いまとまりはキーを持たない
       - name: by
         type: NotRequired[Literal["ai", "user", "external"]]
         description: まとめた変更の書いた元（`commit` は `ai`、まとめて保存は `user`、変更の検知が自動でまとめた外部の変更は `external`）
@@ -94,18 +94,18 @@ data_models:
     properties:
       - name: last_seq
         type: int
-        description: 最後に振った通し番号（変更履歴を積むとき・項目を足すとき・項目を消すとき・保持する回数が 0 で値を変えるときに進む）
+        description: 最後に振った連番（変更履歴を積むとき・項目を追加するとき・項目を削除するとき・保持する回数が 0 で値を変えるときに進む）
       - name: sets
         type: list[ChangeSet]
         description: 新しい順のまとまり
       - name: pending
         type: Pending
-        description: まだまとめていない変更。`added`・`changed`（項目の ID）と、任意の `removed`（`list[RemovedItem]`。無ければ消した項目なし）を持つ `TypedDict`
+        description: まだまとめていない変更。`added`・`changed`（項目の ID）と、任意の `removed`（`list[RemovedItem]`。無ければ削除した項目なし）を持つ `TypedDict`
       - name: read_seq
         type: NotRequired[int]
         description: AI が最後に読んだ時点。`load_changes` が『前回参照した時点』の `read_point.json` の値で入れる（`changes.yaml` の値は `read_point.json` が無いときだけ使う）。無ければキーが無い
   - name: RemovedItem
-    title: 消した項目の記録
+    title: 削除した項目の記録
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の削除と取り下げ
     role: DTO
@@ -114,19 +114,19 @@ data_models:
     properties:
       - name: id
         type: str
-        description: 消した項目の ID
+        description: 削除した項目の ID
       - name: kind
         type: Kind
-        description: 消した項目の種類
+        description: 削除した項目の種類
       - name: title
         type: str
-        description: 消したときのタイトル
+        description: 削除したときのタイトル
       - name: seq
         type: int
-        description: 消したときに振った通し番号
+        description: 削除したときに振った連番
       - name: added_seq
         type: int
-        description: 消した項目が持っていた `added_seq`（持たなければ 0）
+        description: 削除した項目が持っていた `added_seq`（持たなければ 0）
   - name: Pending
     title: まだまとめていない変更
     container: plugins/mindstella/skills/mindmap/scripts/history.py
@@ -137,13 +137,13 @@ data_models:
     properties:
       - name: added
         type: list[str]
-        description: 足した項目の ID（書き換えた順）
+        description: 追加した項目の ID（書き換えた順）
       - name: changed
         type: list[str]
-        description: 変えた項目の ID（書き換えた順。足した項目は入れない）
+        description: 変えた項目の ID（書き換えた順。追加した項目は入れない）
       - name: removed
         type: NotRequired[list[RemovedItem]]
-        description: 消した項目（消した順）。無ければ消した項目なし
+        description: 削除した項目（削除した順）。無ければ削除した項目なし
       - name: by
         type: NotRequired[Literal["ai", "external"]]
         description: 入っている変更の書いた元。無ければ `ai`
@@ -152,7 +152,7 @@ data_models:
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 前回からの差分を見る
     role: DTO
-    summary: '`OPENED_FILE` の中身で、`POST /api/opened` の `previous`・`opened` の形'
+    summary: '`OPENED_FILE` の中身で、`POST /api/opened` の `previous`・`opened` の形式'
     description: '`TypedDict`。'
     properties:
       - name: at
@@ -160,14 +160,14 @@ data_models:
         description: 開いた日時（UTC のタイムゾーン付き ISO 8601）。範囲の始まりの表示にだけ使う
       - name: seq
         type: int
-        description: 開いた時点の通し番号（`head_until_seq`）。0 以上
+        description: 開いた時点の連番（`head_until_seq`）。0 以上
   - name: ItemHistory
     title: 項目の履歴の行
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
     role: DTO
     summary: '`history.yaml` の `items` の 1 行（ER 図『ワークスペース』の `history.yaml`）'
-    description: '`TypedDict`。`history`・`history_dropped_seq`・`confirmed` は持つときだけ（`NotRequired`）。確認済みの付け外しが作った行は `confirmed` だけを持つ。'
+    description: '`TypedDict`。`history`・`history_dropped_seq`・`confirmed` は持つときだけ（`NotRequired`）。確認済みの設定と解除が作った行は `confirmed` だけを持つ。'
     properties:
       - name: created
         type: str
@@ -180,16 +180,16 @@ data_models:
         description: 編集した人
       - name: seq
         type: int
-        description: 最後に振った通し番号
+        description: 最後に振った連番
       - name: added_seq
         type: int
-        description: 足したときの通し番号
+        description: 追加したときの連番
       - name: history
         type: list[HistoryEntry]
         description: 変更履歴（新しい順）
       - name: history_dropped_seq
         type: int
-        description: 消した変更履歴の通し番号の最大
+        description: 削除した変更履歴の連番の最大
       - name: confirmed
         type: bool
         description: 確認済み。`true` のときだけ持ち、解除するとキーを削除する
@@ -210,7 +210,7 @@ constants:
     title: 前回開いた日時のファイル名
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 前回からの差分を見る
-    summary: プレビューを最後に開いた日時（1 行目）と通し番号（2 行目）を持つファイルの名前（`records_root(root)` の下）
+    summary: プレビューを最後に開いた日時（1 行目）と連番（2 行目）を持つファイルの名前（`records_root(root)` の下）
     value: '".mindstella-opened"'
   - name: DEFAULT_HISTORY_LIMIT
     title: 保持する回数の既定
@@ -268,7 +268,7 @@ functions:
     process: |-
       1. `records_root(root) / CHANGES_FILE` が無ければ空の記録にする
       2. あれば読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`CHANGES_SCHEMA` と突き合わせる
-         - YAML として読めないか合わない場合、`changes.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送る
+         - YAML として読めないか合わない場合、`changes.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送出する
       3. `read_seq` を『前回参照した時点』の値にする（`load_read_seq`）
          - `read_point.json` が無く、`changes.yaml` が前のバージョンの `read_seq` を持つ場合、その値を使う
          - どちらも無ければ `read_seq` を持たない
@@ -287,7 +287,7 @@ functions:
       - name: test_load_changes_when_schema_mismatch
         case: 異常
         summary: 崩れたファイルは読まない
-        condition: '`pending` から `added` を消した `changes.yaml`'
+        condition: '`pending` から `added` を削除した `changes.yaml`'
         mock: なし
         expected: '`SchemaMismatchError`（`lines` に `changes.yaml: pending` で始まる行）'
         exception: スキーマに合わない
@@ -348,7 +348,7 @@ functions:
       - name: test_diff_body
         case: 正常
         summary: 変えた行だけを持ち、当てると前の本文になる
-        condition: 3 行の本文の 2 行目を書き換え、4 行目を足した後の本文
+        condition: 3 行の本文の 2 行目を書き換え、4 行目を追加した後の本文
         mock: なし
         expected: 1 行目・3 行目を含まず、`apply_body_diff(after, 戻り値)` が前の本文の行と等しい
       - name: test_diff_body_when_large_rewrite
@@ -417,7 +417,7 @@ functions:
         type: int
         required: true
         passing: keyword
-        description: 積むときの通し番号
+        description: 積むときの連番
       - name: at
         type: str
         required: true
@@ -439,8 +439,8 @@ functions:
     unit_tests:
       - name: test_make_entry
         case: 正常
-        summary: 変わった・消えた・足したキーを前の値で持つ
-        condition: '`answer` を足し、`status` を変え、`lead` を消し、`updated` を変えた項目。本文は同じ'
+        summary: 変わった・消えた・追加したキーを前の値で持つ
+        condition: '`answer` を追加し、`status` を変え、`lead` を削除し、`updated` を変えた項目。本文は同じ'
         mock: なし
         expected: '`before` が `{answer: None, status: 未決定, lead: l}` で `updated` を含まず、`body_diff` が無い'
       - name: test_make_entry_when_nothing_changed
@@ -467,7 +467,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
     scope: public
-    summary: 項目の `history` の先頭に 1 回分を足し、保持する回数を超えた古いものを消して、消した回の最大の `seq` を `history_dropped_seq` に残した新しい項目を返す
+    summary: 項目の `history` の先頭に 1 回分を追加し、保持する回数を超えた古いものを削除して、削除した回の最大の `seq` を `history_dropped_seq` に残した新しい項目を返す
     args:
       - name: item
         type: dict[str, Any]
@@ -496,23 +496,23 @@ functions:
       1. `limit` が 0 の場合、`history`・`history_dropped_seq` を除いた行を返す
       2. `entry` が `None` の場合、行をそのまま返す
       3. `[entry] + 今の history` のうち、先頭 `limit` 個と、`read_seq` が `None` でなければ `seq` が `read_seq` より大きいものを、並びを保って `history` にする
-      4. 残り（消した要素）があれば、その最大の `seq` と今の `history_dropped_seq` の大きい方を `history_dropped_seq` にする
+      4. 残り（削除した要素）があれば、その最大の `seq` と今の `history_dropped_seq` の大きい方を `history_dropped_seq` にする
     unit_tests:
       - name: test_stack_history
         case: 正常
-        summary: 保持する回数を超えた古いものを消し、消した回の seq を残す
+        summary: 保持する回数を超えた古いものを削除し、削除した回の seq を残す
         condition: '`history` を seq 5 の 1 回分持ち `history_dropped_seq` が 3 の項目に、seq 9 の新しい 1 回分、`limit` 1'
         mock: なし
         expected: '`history` が seq 9 の 1 回分だけで、`history_dropped_seq` が 5'
       - name: test_stack_history_when_not_dropped
         case: 正常
-        summary: 消さなければ消した回の seq を付けない
+        summary: 消さなければ削除した回の seq を付けない
         condition: '`history` を持たない項目に新しい 1 回分、`limit` 1'
         mock: なし
         expected: '`history` が新しい 1 回分で、`history_dropped_seq` のキーが無い'
       - name: test_stack_history_when_limit_zero
         case: 正常
-        summary: 回数が 0 なら変更履歴を消す
+        summary: 回数が 0 なら変更履歴を削除する
         condition: '`history` と `history_dropped_seq` を持つ項目、`limit` 0'
         mock: なし
         expected: 戻り値が `history`・`history_dropped_seq` のキーを持たない
@@ -523,12 +523,12 @@ functions:
         mock: なし
         expected: '`history` が seq 6・seq 4 の 2 回分で、`history_dropped_seq` が 2'
   - name: note_pending
-    title: まだまとめていない変更に足す
+    title: まだまとめていない変更に追加する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
     scope: public
-    summary: '`pending` の `added` か `changed` に ID を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）'
+    summary: '`pending` の `added` か `changed` に ID を追加した新しい記録を返す（連番は進めない。進めるのは `advance_seq`）'
     args:
       - name: changes
         type: Changes
@@ -544,7 +544,7 @@ functions:
         type: Literal['added', 'changed']
         required: true
         passing: positional
-        description: 足したか変えたか
+        description: 追加したか変えたか
       - name: by
         type: Literal["ai", "external"]
         required: false
@@ -556,12 +556,12 @@ functions:
       description: 新しい記録
     process: |-
       1. `pending.by` に `by`（`ai` か `external`）を書く（呼ぶ側は、書いた元が違う変更が入っていれば先に `flush_pending` でまとめる）
-      2. `kind` が `changed` で、ID が既に `pending.added` か `pending.changed` にあれば足さない（`added` も同じ ID を二度足さない）
+      2. `kind` が `changed` で、ID が既に `pending.added` か `pending.changed` にあれば追加しない（`added` も同じ ID を二度追加しない）
     unit_tests:
       - name: test_note_pending
         case: 正常
-        summary: 足した項目は変えても changed に入らず、通し番号は進めない
-        condition: '`last_seq` 0 の記録に D-1 を `added` で足し、続けて D-1 を `changed` で足す'
+        summary: 追加した項目は変えても changed に入らず、連番は進めない
+        condition: '`last_seq` 0 の記録に D-1 を `added` で追加し、続けて D-1 を `changed` で追加する'
         mock: なし
         expected: '`pending.added` が `[D-1]`、`pending.changed` が空、`last_seq` が 0'
   - name: commit_pending
@@ -570,7 +570,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
     scope: public
-    summary: まだまとめていない変更を 1 つのまとまりにした新しい記録と、足したまとまりを返す
+    summary: まだまとめていない変更を 1 つのまとまりにした新しい記録と、追加したまとまりを返す
     args:
       - name: changes
         type: Changes
@@ -615,7 +615,7 @@ functions:
         expected: まとまりが `None` で、記録が渡したものと等しい
       - name: test_commit_pending_when_only_removed
         case: 正常
-        summary: 消した項目だけでもまとまりにする
+        summary: 削除した項目だけでもまとまりにする
         condition: '`pending` が `added: []`・`changed: []`・`removed: [N-2 の記録]`'
         mock: なし
         expected: まとまりの `removed` が N-2 の 1 件、新しい記録の `pending` の `added`・`changed`・`removed` が空
@@ -625,7 +625,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
     scope: public
-    summary: '`pending` の項目を、タイトルと変えたキーつきで返す（`pending` のツールの結果の形）'
+    summary: '`pending` の項目を、タイトルと変えたキーつきで返す（`pending` のツールの結果の形式）'
     args:
       - name: workspace
         type: Workspace
@@ -653,7 +653,7 @@ functions:
         expected: '`added` が T-1 とそのタイトル、`changed` が D-1 で `keys` が `answer`・`status`・`body_markdown`'
       - name: test_pending_view_when_removed
         case: 正常
-        summary: 消した項目を removed で返す
+        summary: 削除した項目を removed で返す
         condition: '`pending.removed` に N-2（`kind: note`・`title: 重複したメモ`）、`pending.added`・`pending.changed` が空'
         mock: なし
         expected: '`removed` が `[{id: N-2, kind: note, title: 重複したメモ}]`、`added`・`changed` が空'
@@ -664,7 +664,7 @@ functions:
     usecase: 前回からの差分を見る
     scope: public
     side_effects: ワークスペースの `OPENED_FILE` を置き換える
-    summary: '`OPENED_FILE` の前回開いた時点を読んでから今の日時と通し番号に書き換え、前の時点を返す'
+    summary: '`OPENED_FILE` の前回開いた時点を読んでから今の日時と連番に書き換え、前の時点を返す'
     args:
       - name: root
         type: Path
@@ -678,11 +678,11 @@ functions:
         description: 今の時点（今の日時と `head_until_seq`）
     returns:
       type: OpenedPoint | None
-      description: 前の時点。無い・1 行目が日時として読めない・2 行目が無い（前の版の形）・2 行目が 0 以上の整数として読めなければ `None`
+      description: 前の時点。無い・1 行目が日時として読めない・2 行目が無い（前のバージョンの形式）・2 行目が 0 以上の整数として読めなければ `None`
     process: |-
       1. `records_root(root) / OPENED_FILE` を読む（無ければ `None`。1 行目を `datetime.fromisoformat` で、2 行目を 0 以上の整数として読めなければ `None`）
       2. 一時ファイルに `{opened.at}\n{opened.seq}\n` を書いて `os.replace` で置き換える
-         - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
+         - `OSError` が起きた場合、一時ファイルを削除して `WriteFailedError` を送出する
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError`
@@ -691,17 +691,17 @@ functions:
       - name: test_touch_opened
         case: 正常
         summary: 前の時点を返して書き換える
-        condition: 無い状態で 1 回、別の日時と通し番号でもう 1 回呼ぶ
+        condition: 無い状態で 1 回、別の日時と連番でもう 1 回呼ぶ
         mock: なし
         expected: 1 回目が `None`、2 回目が 1 回目の `opened`。ファイルの 1 行目が 2 回目の `at`、2 行目が 2 回目の `seq`
       - name: test_touch_opened_when_previous_unreadable
         case: 正常
-        summary: 通し番号を読めない前の時点は無いものとして返し、今の形で書き換える
-        condition: '`parametrize`: 1 行の日時だけ（前の版の形）/ 2 行目が `x` / 2 行目が `-1` / 1 行目が日時でない'
+        summary: 連番を読めない前の時点は無いものとして返し、今の構造で書き換える
+        condition: '`parametrize`: 1 行の日時だけ（前のバージョンの形式）/ 2 行目が `x` / 2 行目が `-1` / 1 行目が日時でない'
         mock: なし
         expected: '`None` を返し、ファイルが渡した `opened` の 2 行になる'
   - name: advance_seq
-    title: 通し番号を振る
+    title: 連番を振る
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
@@ -716,7 +716,7 @@ functions:
     returns:
       type: tuple[Changes, int]
       description: 新しい記録と、振った番号（`last_seq` + 1）
-    process: 1. `last_seq` を 1 進めた写しを作り、その番号と一緒に返す（項目を足す・変更履歴を積む・保持する回数が 0 で値を変えるときに呼ぶ）
+    process: 1. `last_seq` を 1 進めたコピーを作り、その番号と一緒に返す（項目を追加する・変更履歴を積む・保持する回数が 0 で値を変えるときに呼ぶ）
     unit_tests:
       - name: test_advance_seq
         case: 正常
@@ -773,7 +773,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 前回読んだ時点からの変更を読む
     scope: public
-    summary: AI が最後に読んだ時点より後に足した・変えた項目を、`changes_since_read` の結果の形に並べる
+    summary: AI が最後に読んだ時点より後に追加した・変えた項目を、`changes_since_read` の結果の形式に並べる
     args:
       - name: workspace
         type: Workspace
@@ -791,10 +791,10 @@ functions:
     process: |-
       1. `read_seq` が無ければ `{had_read_point: False, read_seq: None, until_seq: last_seq, added: [], changed: [], removed: []}` を返す
       2. 種類の順（`KINDS`）、項目の並びの順に、項目と `history.yaml` のその ID の行を合わせて見る（`load_item_history`）
-         - `added_seq` が `read_seq` より大きい項目は `added` に `{id, kind, title, updated_by}` で足す（`updated_by` を持たなければ `None`）
-         - それ以外で `seq` が `read_seq` より大きい項目は、保持する回数が 0 なら `before`・`body_diff` を `None`、`by` を空にして `changed` に足す。それ以外は本文を読み（`read_body`）、読んだ時点の値を組み立てて（`values_at_read`）、変わったキーか本文の差分があれば `changed` に足す
+         - `added_seq` が `read_seq` より大きい項目は `added` に `{id, kind, title, updated_by}` で追加する（`updated_by` を持たなければ `None`）
+         - それ以外で `seq` が `read_seq` より大きい項目は、保持する回数が 0 なら `before`・`body_diff` を `None`、`by` を空にして `changed` に追加する。それ以外は本文を読み（`read_body`）、読んだ時点の値を組み立てて（`values_at_read`）、変わったキーか本文の差分があれば `changed` に追加する
          - `changed` の要素は `updated_by`（今の値。無ければ `None`）と、`by`（`seq` が `read_seq` より大きい変更履歴の回の `by` を重なりなく `user`・`external`・`ai` の順で並べたもの。`by` を持たない回は数えない）を持つ
-      3. 消した項目の記録（`removed_items`）のうち、`seq` が `read_seq` より大きく `added_seq` が `read_seq` 以下のものを `{id, kind, title}` にして `removed` に並べる
+      3. 削除した項目の記録（`removed_items`）のうち、`seq` が `read_seq` より大きく `added_seq` が `read_seq` 以下のものを `{id, kind, title}` にして `removed` に並べる
       4. `until_seq` を `last_seq` にして返す
     unit_tests:
       - name: test_changes_since
@@ -817,23 +817,23 @@ functions:
         expected: '`changed` が D-1 で `before`・`body_diff` が `None`'
       - name: test_changes_since_reports_editors
         case: 正常
-        summary: 読んだ後に利用者と AI が直した項目で、両方を返す
+        summary: 読んだ後に利用者と AI が修正した項目で、両方を返す
         condition: '`read_seq` 3。D-1 が `updated_by: ai` で、`history` に `seq` 5（`by: ai`）・4（`by: user`）・2（`by: user`）の回を持つ'
         mock: なし
         expected: '`changed` の D-1 が `updated_by: ai`、`by: [user, ai]`（`seq` 2 の回は数えない）'
       - name: test_changes_since_when_removed
         case: 正常
-        summary: 読んだ時点に有って後で消した項目だけを返す
+        summary: 読んだ時点に有って後で削除した項目だけを返す
         condition: '`read_seq` 3。`pending.removed` に N-2（`added_seq` 2・`seq` 4）・N-3（`added_seq` 5・`seq` 6）、`sets[0].removed` に N-1（`added_seq` 1・`seq` 2）'
         mock: なし
-        expected: '`removed` が N-2 の 1 件（N-1 は読む前に消した、N-3 は読んだ後に足して消した）'
+        expected: '`removed` が N-2 の 1 件（N-1 は読む前に削除した、N-3 は読んだ後に追加して削除した）'
   - name: note_removed
-    title: 消した項目を記録する
+    title: 削除した項目を記録する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の削除と取り下げ
     scope: public
-    summary: '`pending.added`・`pending.changed` から ID を除き、`pending.removed` の末尾に消した項目を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）'
+    summary: '`pending.added`・`pending.changed` から ID を除き、`pending.removed` の末尾に削除した項目を追加した新しい記録を返す（連番は進めない。進めるのは `advance_seq`）'
     args:
       - name: changes
         type: Changes
@@ -844,33 +844,33 @@ functions:
         type: RemovedItem
         required: true
         passing: positional
-        description: 消した項目の記録
+        description: 削除した項目の記録
     returns:
       type: Changes
       description: 新しい記録
     process: |-
       1. `pending.added`・`pending.changed` から `removed.id` を除く
-      2. `pending.removed`（無ければ空）の末尾に `removed` を足す（`pending.added` にあった項目も足す）
+      2. `pending.removed`（無ければ空）の末尾に `removed` を追加する（`pending.added` にあった項目も追加する）
     unit_tests:
       - name: test_note_removed
         case: 正常
-        summary: 変えた項目を消すと changed から除き removed に足す
+        summary: 変えた項目を削除すると changed から除き removed に追加する
         condition: '`pending.changed` が `[D-1, D-2]` の記録に D-1 の記録（`seq` 5・`added_seq` 1）'
         mock: なし
         expected: '`pending.changed` が `[D-2]`、`pending.removed` が D-1 の 1 件。渡した記録はそのまま'
       - name: test_note_removed_when_added_since_commit
         case: 正常
-        summary: まとめる前に足した項目も removed に記録する
+        summary: まとめる前に追加した項目も removed に記録する
         condition: '`pending.added` が `[N-1]` の記録に N-1 の記録'
         mock: なし
         expected: '`pending.added` が空、`pending.removed` が N-1 の 1 件'
   - name: removed_items
-    title: 消した項目の記録を並べる
+    title: 削除した項目の記録を並べる
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の削除と取り下げ
     scope: public
-    summary: '`sets[].removed` と `pending.removed` の記録を、消した順（`seq` の小さい順）に並べて返す'
+    summary: '`sets[].removed` と `pending.removed` の記録を、削除した順（`seq` の小さい順）に並べて返す'
     args:
       - name: changes
         type: Changes
@@ -879,22 +879,22 @@ functions:
         description: 今の記録
     returns:
       type: list[RemovedItem]
-      description: 消した項目の記録（無ければ空）
+      description: 削除した項目の記録（無ければ空）
     process: 1. 全てのまとまりの `removed` と `pending.removed` を集め、`seq` の小さい順に並べる（キーが無いまとまりは飛ばす）
     unit_tests:
       - name: test_removed_items
         case: 正常
-        summary: まとまりとまだまとめていない変更の記録を消した順に返す
+        summary: まとまりとまだまとめていない変更の記録を削除した順に返す
         condition: '`sets[0].removed` に N-1（`seq` 3）、`removed` を持たない `sets[1]`、`pending.removed` に N-2（`seq` 5）'
         mock: なし
         expected: N-1・N-2 の順の 2 件
   - name: head_until_seq
-    title: 先頭のまとまりの通し番号
+    title: 先頭のまとまりの連番
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 前回からの差分を見る
     scope: public
-    summary: 先頭（最新）のまとまりの `until_seq` を返す。開いた時点の通し番号に使う
+    summary: 先頭（最新）のまとまりの `until_seq` を返す。開いた時点の連番に使う
     description: '`last_seq` ではなくこの値を使う。`commit_pending` は `until_seq` に `last_seq` をそのまま入れるため、`last_seq` を開いた時点にすると、開く前に書き換えて開いた後にまとめたまとまりが範囲から落ちる'
     args:
       - name: changes
@@ -911,7 +911,7 @@ functions:
     unit_tests:
       - name: test_head_until_seq
         case: 正常
-        summary: 先頭のまとまりの通し番号を返し、`last_seq` は返さない
+        summary: 先頭のまとまりの連番を返し、`last_seq` は返さない
         condition: '`parametrize`: まとまりが無い（`last_seq` 3）/ まとまり 2 つ（新しい順に `until_seq` 5・2、`last_seq` 7）'
         mock: なし
         expected: 0 / 5
@@ -933,10 +933,10 @@ functions:
       description: 項目の ID → 履歴の行
     process: |-
       1. `records_root(root) / HISTORY_FILE` が無ければ空の辞書を返す
-      2. 読んで `items` の辞書を返す。YAML として読めないか `items` が辞書でなければ `SchemaMismatchError`（`history.yaml: items`）を送る
+      2. 読んで `items` の辞書を返す。YAML として読めないか `items` が辞書でなければ `SchemaMismatchError`（`history.yaml: items`）を送出する
     exceptions:
       - name: SchemaMismatchError
-        condition: '`history.yaml` が読めないか形が違う'
+        condition: '`history.yaml` が読めないか形式が違う'
         message: 'スキーマに合いません（`history.yaml: items`）'
     unit_tests:
       - name: test_load_item_history
@@ -951,7 +951,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の取得
     scope: public
-    summary: 項目に `history.yaml` のその ID の行のキーを足した新しい項目を返す（『記録の取得』と、項目の履歴を読む処理が使う）
+    summary: 項目に `history.yaml` のその ID の行のキーを追加した新しい項目を返す（『記録の取得』と、項目の履歴を読む処理が使う）
     args:
       - name: item
         type: dict[str, Any]
@@ -965,12 +965,12 @@ functions:
         description: '`load_item_history` の戻り値'
     returns:
       type: dict[str, Any]
-      description: 行のキーを足した項目。行が無ければ項目のまま
-    process: 1. その ID の行があれば、項目のキーの後ろに行のキーを足した新しい辞書を返す
+      description: 行のキーを追加した項目。行が無ければ項目のまま
+    process: 1. その ID の行があれば、項目のキーの後ろに行のキーを追加した新しい辞書を返す
     unit_tests:
       - name: test_merge_item_history
         case: 正常
-        summary: 行のキーを足す
+        summary: 行のキーを追加する
         condition: D-1 の項目と、D-1 の `updated`・`history` を持つ行
         mock: なし
         expected: 項目のキーに続けて `updated`・`history` を持つ
@@ -1074,13 +1074,13 @@ functions:
         mock: なし
         expected: '`confirmed: true` を持つ行'
   - name: set_confirmed
-    title: 確認済みの付け外し
+    title: 確認済みの設定と解除
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/history.py
-    usecase: 確認済みの付け外し
+    usecase: 確認済みの設定と解除
     scope: public
     side_effects: '`history.yaml` を置き換える（既にその状態なら書かない）'
-    summary: インターフェース定義『確認済みの付け外し』の受け付け。本文の `confirmed` を確かめ、`history.yaml` のその項目の行の `confirmed` だけを書き換える（鍵は呼ぶ側が取る）
+    summary: インターフェース定義『確認済みの設定と解除』の受け付け。本文の `confirmed` を確かめ、`history.yaml` のその項目の行の `confirmed` だけを書き換える（鍵は呼ぶ側が取る）
     args:
       - name: root
         type: Path
@@ -1101,11 +1101,11 @@ functions:
       type: dict[str, Any]
       description: '`{"id": item_id, "confirmed": 書き換えた後の値}`'
     process: |-
-      1. `data` の `confirmed` が真偽値でなければ `ArgumentError` を送る
+      1. `data` の `confirmed` が真偽値でなければ `ArgumentError` を送出する
       2. `load_workspace(root)` と `find_item` で項目が記録にあることを確かめる
-      3. `load_item_history(root)` のその ID の行から、確認済みにするときは `confirmed: true` を足した行、解除するときは `confirmed` を除いた行を作る（行が無ければ `confirmed` だけの行。除いて空になった行は行ごと除く）
+      3. `load_item_history(root)` のその ID の行から、確認済みにするときは `confirmed: true` を追加した行、解除するときは `confirmed` を除いた行を作る（行が無ければ `confirmed` だけの行。除いて空になった行は行ごと除く）
       4. 作った行が今の行と同じなら書かずに返す
-      5. `_write_rows` で `history.yaml` を置き換える（種類ごとの YAML・`changes.yaml`・更新日時・通し番号・変更履歴は変えない）
+      5. `_write_rows` で `history.yaml` を置き換える（種類ごとの YAML・`changes.yaml`・更新日時・連番・変更履歴は変えない）
     exceptions:
       - name: ArgumentError
         condition: '`confirmed` が無いか真偽値でない'
@@ -1154,10 +1154,10 @@ functions:
     title: 送信した項目の確認済み
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/history.py
-    usecase: コメントを送る
+    usecase: コメントを送信する
     scope: public
     side_effects: '`history.yaml` を置き換える（確認済みにする項目が無ければ書かない）'
-    summary: コメントをまとめて送る・すぐ送るが、送信したコメントが向いた項目をまとめて確認済みにする（鍵は呼ぶ側が取る）
+    summary: コメントをまとめて送信する・すぐ送信するが、送信したコメントが向いた項目をまとめて確認済みにする（鍵は呼ぶ側が取る）
     args:
       - name: root
         type: Path
@@ -1174,8 +1174,8 @@ functions:
       description: 確認済みにした項目の ID（既に確認済みの項目と記録に無い項目を除く。渡した順）
     process: |-
       1. `load_workspace(root)` にある ID だけを、重なりを除いて残す
-      2. `load_item_history(root)` の行のうち、`confirmed` を持たない行に `confirmed: true` を足す（行が無ければ `confirmed` だけの行を作る）
-      3. 足した行があれば `_write_rows` で `history.yaml` を置き換える
+      2. `load_item_history(root)` の行のうち、`confirmed` を持たない行に `confirmed: true` を追加する（行が無ければ `confirmed` だけの行を作る）
+      3. 追加した行があれば `_write_rows` で `history.yaml` を置き換える
     exceptions:
       - name: WriteFailedError
         condition: '`history.yaml` の書き込みか置き換えで `OSError`'
@@ -1197,7 +1197,7 @@ functions:
     title: 履歴の行の書き込み
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/history.py
-    usecase: 確認済みの付け外し
+    usecase: 確認済みの設定と解除
     scope: internal
     side_effects: '`history.yaml` を置き換える'
     summary: '`history.yaml` を `{items: rows}` で一時ファイルに書いてから `os.replace` で置き換える'
@@ -1217,7 +1217,7 @@ functions:
       description: なし
     process: |-
       1. `write_temp(records_root(root) / HISTORY_FILE, dump_yaml({"items": rows}))` で一時ファイルを書き、`os.replace` で置き換える
-         - `OSError` が起きた場合、一時ファイルを削除して `write_failed` の `WriteFailedError` を送る（前の `history.yaml` を残す）
+         - `OSError` が起きた場合、一時ファイルを削除して `write_failed` の `WriteFailedError` を送出する（前の `history.yaml` を残す）
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError`

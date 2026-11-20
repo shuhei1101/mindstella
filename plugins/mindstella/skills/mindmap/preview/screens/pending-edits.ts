@@ -84,7 +84,7 @@ namespace MindmapPreview {
     const key = edit.key ?? "";
     switch (edit.op) {
       case "item-add":
-        return { what: "項目を追加", before: null, after: flat((edit.value as { title?: string } | null)?.title) };
+        return { what: "項目追加", before: null, after: flat((edit.value as { title?: string } | null)?.title) };
       case "item-remove":
         return { what: "項目を削除", before: null, after: null };
       case "setting":
@@ -259,7 +259,7 @@ namespace MindmapPreview {
             h({
               tag: "p",
               attrs: { class: "pe-alert-next" },
-              children: ["保存待ちの編集は残っています。サーバーを立ち上げ直してから、もう一度保存してください。"],
+              children: ["保存待ちの編集は残っています。サーバーを再起動してから、もう一度保存してください。"],
             }),
           ],
         }),
@@ -343,7 +343,7 @@ namespace MindmapPreview {
               : h({
                   tag: "p",
                   attrs: { class: "pe-foot-sum" },
-                  children: [`${edits.length} 件${removals > 0 ? `（うち削除 ${removals} 件）` : ""}をワークスペースに書きます`],
+                  children: [`${edits.length} 件${removals > 0 ? `（うち削除 ${removals} 件）` : ""}をワークスペースに書き込みます`],
                 }),
             h({
               tag: "button",

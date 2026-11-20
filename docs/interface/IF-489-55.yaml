@@ -301,8 +301,8 @@ request:
     type: dict
     required: true
     location: argument
-    description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
-    constraints: キーは `summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment`・`mdmark` だけ。`confirm_on_comment` は真偽値。`mdmark` は `version` だけを受けて `version` だけを置き換え、移し替えの手順が書いた `mdmark.map` を残す。`null` で消せるのは任意の `description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment` だけ（`confirm_on_comment` を消すと既定の `true` になる）。1 つ以上のキーを持つ。削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）は引数の誤り
+    description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは削除する。渡さないキーはそのまま
+    constraints: キーは `summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment`・`mdmark` だけ。`confirm_on_comment` は真偽値。`mdmark` は `version` だけを受けて `version` だけを置き換え、移し替えの手順が書いた `mdmark.map` を残す。`null` で削除できるのは任意の `description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment` だけ（`confirm_on_comment` を削除すると既定の `true` になる）。1 つ以上のキーを持つ。削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）は引数の誤り
     example: '{"display": {"visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"]}}'
 request_example: |-
   ```json
@@ -310,7 +310,7 @@ request_example: |-
     "workspace": "~/discussions/要件出し",
     "settings": {
       "summary": "要件出しのスキル mindmap を設計する",
-      "description": "スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。"
+      "description": "スキル mindmap の記録の構造とプレビューの画面を、作り始められるところまで決める話し合い。"
     }
   }
   ```
@@ -339,18 +339,18 @@ exceptions:
     notes: ツールのエラー。エラーの本文に受け付けないキー。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 書き換えられるキー
     constraint: '`settings` の制約に並べたキー（`summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment`・`mdmark`）。`display`（表示する種類の既定）と `transcription`（文字起こし後の挙動・用語集のプリセット）は丸ごと置き換える'
   - item: 検証の範囲
     constraint: 書き換えた後の `config.yaml` をスキーマと突き合わせる。参照先の ID があるかは確かめない（点検が持つ）
-  - item: YAML の書き方
-    constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない。キーの並びは今の `config.yaml` の並びを保ち、新しいキーは末尾に足す'
+  - item: YAML の記載方法
+    constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない。キーの並びは今の `config.yaml` の並びを保ち、新しいキーは末尾に追加する'
   - item: 部分成功
-    constraint: 起こさない。書き換える全てのファイルの一時ファイルを書き終えてから置き換え、途中で失敗したら置き換えたファイルを前の中身に戻してからツールのエラーで終わる（残った一時ファイルも消す）
-  - item: 書き換えの知らせ
-    constraint: 書き終えたら、ほかの書き換えるツールと同じく開いているプレビューへ知らせる（『書き換えの知らせ』）
+    constraint: 起こさない。書き換える全てのファイルの一時ファイルを書き終えてから置き換え、途中で失敗したら置き換えたファイルを前の中身に戻してからツールのエラーで終わる（残った一時ファイルも削除する）
+  - item: 書き換えの通知
+    constraint: 書き終えたら、ほかの書き換えるツールと同じく開いているプレビューへ知らせる（『書き換えの通知』）
 test_file: tests/integration/server/test_update_settings.py

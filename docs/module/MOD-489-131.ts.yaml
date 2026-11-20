@@ -5,7 +5,7 @@ functions:
   - name: useScreenEdit
     title: 一覧の編集の入口
     kind: 関数
-    usecase: 画面で項目を足す
+    usecase: 画面で項目を追加する
     summary: 一覧の画面の編集の入口を組む
     args: []
     returns:

@@ -16,7 +16,7 @@ catalogs:
         purpose: tokens.css のトークンを色・文字の大きさ・角丸のクラスへ割り当てる
       - name: '--color-*: initial'
         kind: 設定
-        purpose: 標準のパレットのクラスを消す
+        purpose: 標準のパレットのクラスを削除する
       - name: --breakpoint-*
         kind: 設定
         purpose: 今の画面と同じ幅の区切り（361・390・481・721・901・1101・1441px）
@@ -25,7 +25,7 @@ catalogs:
         purpose: 差分の札の幅など、決まった値の小さなクラス
       - name: clsx + tailwind-merge（extendTailwindMerge）
         kind: 関数
-        purpose: cn でクラスを合わせる。足した文字の大きさ・角丸を色のクラスと取り違えないよう教える
+        purpose: cn でクラスを合わせる。追加した文字の大きさ・角丸を色のクラスと取り違えないよう教える
       - name: class-variance-authority
         kind: 関数
         purpose: Button の variants

@@ -242,7 +242,7 @@ def test_rows(
     assert rows["E-2"].locator("ins, del").count() == 0
     assert rows["E-3"].locator(".pe-what").inner_text() == "題名"
     assert " ".join(rows["E-3"].locator("del").inner_text().split()).endswith(SETTINGS_SUMMARY)
-    assert rows["E-4"].locator(".pe-what").inner_text() == "項目を追加"
+    assert rows["E-4"].locator(".pe-what").inner_text() == "項目追加"
     assert rows["E-4"].locator("ins").inner_text() == "画面を作る"
 
 
@@ -263,7 +263,7 @@ def test_undo(
     assert [edit["id"] for edit in read_edits_file(root)["items"]] == ["E-2", "E-3", "E-4"]
     assert page.inner_text(f"{PENDING_PANEL} h2").replace("\n", " ") == "保存待ち 3 件"
     # 実行（最後の行）
-    page.get_by_role("button", name="タスクを追加 の項目を追加の編集を取り消す").click()
+    page.get_by_role("button", name="タスクを追加 の項目追加の編集を取り消す").click()
     expect(page.locator("#pe-row-E-4")).to_have_count(0)
     # 検証（最後の行）
     assert page.evaluate("document.activeElement.getAttribute('aria-label')") == (
@@ -302,10 +302,10 @@ def test_summary(
     # 準備・実行
     page, _ = _open_panel(write_edit_preview, make_item, make_edit, open_preview)
     # 検証
-    assert page.inner_text(f"{PENDING_PANEL} .pe-foot-sum") == "4 件（うち削除 1 件）をワークスペースに書きます"
+    assert page.inner_text(f"{PENDING_PANEL} .pe-foot-sum") == "4 件（うち削除 1 件）をワークスペースに書き込みます"
     # 削除を取り消すと括弧が消える
     page.get_by_role("button", name="N-1 の項目を削除の編集を取り消す").click()
-    expect(page.locator(f"{PENDING_PANEL} .pe-foot-sum")).to_have_text("3 件をワークスペースに書きます")
+    expect(page.locator(f"{PENDING_PANEL} .pe-foot-sum")).to_have_text("3 件をワークスペースに書き込みます")
 
 
 def test_save_label(
@@ -435,7 +435,7 @@ def test_offline(
     assert alert.get_attribute("role") == "alert"
     text = alert.inner_text()
     assert "サーバーにつながらないため、保存できませんでした。" in text
-    assert "保存待ちの編集は残っています。サーバーを立ち上げ直してから、もう一度保存してください。" in text
+    assert "保存待ちの編集は残っています。サーバーを再起動してから、もう一度保存してください。" in text
     assert len(read_edits_file(root)["items"]) == 4
     assert page.is_enabled(SAVE_BUTTON)
     # 直ったあとの保存は通る

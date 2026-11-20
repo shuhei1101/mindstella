@@ -125,7 +125,7 @@ def test_normal_when_entered_to_claude_code(
     assert result.json()["entered"] is True
     assert len(pane.lines()) == 1
     assert (
-        '"content": "[mindstella] ユーザーからのコメントが 1 件届きました。読み直してください。"'
+        '"content": "[mindstella] ユーザーからのコメントが 1 件届きました。再読み込みしてください。"'
         in pane.lines()[0]
     )
 

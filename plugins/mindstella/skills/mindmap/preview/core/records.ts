@@ -101,7 +101,7 @@ namespace MindmapPreview {
     until_seq: number;
     added: string[];
     changed: string[];
-    /** 消した項目。何も消していないまとまりは持たない */
+    /** 削除した項目。何も消していないまとまりは持たない */
     removed?: RemovedItem[];
     /** まとめた変更の書いた元（`ai`・`user`・`external`）。このキーを入れる前のまとまりは持たない */
     by?: "ai" | "user" | "external";

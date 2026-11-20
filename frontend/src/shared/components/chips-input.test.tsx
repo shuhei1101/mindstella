@@ -16,6 +16,17 @@ describe("ChipsInput", () => {
     expect(onChange).toHaveBeenCalledWith(["一", "二"], null);
   });
 
+  // チップの × ボタンは「{値} を解除」の名前で、押すとその値を除く（正常系）
+  test("chips_input_when_removed", async () => {
+    // 準備
+    const onChange = vi.fn();
+    render(<ChipsInput controlId="tags" name="タグ" values={["一", "二"]} onChange={onChange} />);
+    // 実行
+    await userEvent.click(screen.getByRole("button", { name: "一 を解除" }));
+    // 検証
+    expect(onChange).toHaveBeenCalledWith(["二"], "一");
+  });
+
   // 誤りを返した値は追加せず、入力欄の直下に原因を出す（正常系）
   test("chips_input_when_validate", async () => {
     // 準備

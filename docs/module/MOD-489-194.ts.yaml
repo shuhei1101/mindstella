@@ -11,7 +11,7 @@ data_models:
     properties:
       - name: data
         type: object
-        description: 埋め込みのデータ（`settings`・7 種類・`bodies`・`derived`・`built_at`）そのもの。着手可能な検討事項は `derived` をそのまま使い、画面で計算し直さない
+        description: 埋め込みのデータ（`settings`・7 種類・`bodies`・`derived`・`built_at`）そのもの。着手可能な検討事項は `derived` をそのまま使い、画面で再計算しない
       - name: byId
         type: Map<string, {kind, item}>
         description: ID → 種類と項目
@@ -52,7 +52,7 @@ functions:
       description: 索引
     process: |-
       1. 7 種類の項目を ID で `byId` に入れる
-      2. 各項目の `related[].to`・`sources` が指す ID ごとに、指した側の ID を `referencedBy` に足す（記録に無い ID もそのまま持つ）
+      2. 各項目の `related[].to`・`sources` が指す ID ごとに、指した側の ID を `referencedBy` に追加する（記録に無い ID もそのまま持つ）
       3. `derived.ready` の ID を `readyIds` に入れる
     unit_tests:
       - name: test_build_index
@@ -88,7 +88,7 @@ functions:
         summary: 関係の種類ごとに分ける
         condition: 'D-2（`related: [{to: D-1, type: depends_on}]`）・T-1（`related: [{to: D-1, type: for}]`）・L-1（`related: [{to: D-1, type: see_also}]`）・N-1（`related: [{to: D-1, type: see_also}]`）と D-1（`related: [{to: D-0, type: depends_on}]`）'
         mock: なし
-        expected: 'D-1 の `prerequisites` が D-0、`successors` が D-2、`tasks` が T-1、`logs` が L-1、`referencedBy` が N-1。D-3（`related: [{to: D-1, type: parent}]`）を足すと D-1 の `children` が D-3、D-3 の `parents` が D-1'
+        expected: 'D-1 の `prerequisites` が D-0、`successors` が D-2、`tasks` が T-1、`logs` が L-1、`referencedBy` が N-1。D-3（`related: [{to: D-1, type: parent}]`）を追加すると D-1 の `children` が D-3、D-3 の `parents` が D-1'
   - name: refsOf
     title: 種類ごとの関連の指す先
     kind: 関数

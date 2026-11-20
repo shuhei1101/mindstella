@@ -8,7 +8,7 @@ components:
     kind: コンポーネント
     container: plugins/mindstella/skills/mindmap/preview/components/settings-confirm.ts
     usecase: ワークスペースの既定を変える
-    summary: 部品設計『既定の保存の確かめ』の引数を受け、`dialog` を `showModal()` で開く。最初のフォーカスは取り消す。`busy` の間は 2 つのボタンを押せなくし、Esc（`cancel` のイベント）を止める。表示する種類は「すべて表示」か「{外した種類}を表示しない」で書く
+    summary: 部品設計『既定の保存の確認』の引数を受け、`dialog` を `showModal()` で開く。最初のフォーカスは取り消す。`busy` の間は 2 つのボタンを押せなくし、Esc（`cancel` のイベント）を止める。表示する種類は「すべて表示」か「{外した種類}を表示しない」で書く
     props:
       - name: from
         type: '{kinds: Set<string>}'

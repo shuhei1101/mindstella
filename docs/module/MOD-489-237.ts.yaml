@@ -33,12 +33,12 @@ components:
         type: string | null
         required: false
         default: 'null'
-        description: サーバーが返した理由。`failed` で `null` なら立ち上げ直しの案内を出す
+        description: サーバーが返した理由。`failed` で `null` なら再起動の案内を出す
       - name: voice
         type: "'idle' | 'disabled' | 'recording' | 'transcribing'"
         required: false
         default: "'idle'"
-        description: 音声入力の状態（部品設計の `voice`。ボタンと結果の行は `sendForm` と同じ）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする。`recording` は入力欄に `hidden` と `readonly` を付けて中身と選んだ範囲を残し、同じ場所に `aria-hidden` の `.send-wave` を置いて `levels` の 1 つごとに `--lv` を持つ `<i>` を並べる。描き直すたびに要素を作り直すため、フォーカスと選んだ範囲は使う側（入口）が置く
+        description: 音声入力の状態（部品設計の `voice`。ボタンと結果の行は `sendForm` と同じ）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回るマーカーを出し、入力欄を `readonly` にする。`recording` は入力欄に `hidden` と `readonly` を付けて中身と選んだ範囲を残し、同じ場所に `aria-hidden` の `.send-wave` を置いて `levels` の 1 つごとに `--lv` を持つ `<i>` を並べる。再描画するたびに要素を再作成するため、フォーカスと選んだ範囲は使う側（入口）が置く
       - name: voiceReason
         type: string | null
         required: false
@@ -69,7 +69,7 @@ components:
         summary: 状態ごとの入力欄と結果
         condition: '`parametrize`: 空 / `body` あり / `saving` / `saved`（`count: 3`）/ `failed` で `detail` が `null` / `failed` で `detail` あり'
         mock: なし（DOM を作って見る）
-        expected: ボタンが `aria-disabled="true"` で `disabled` でない / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、入力欄が 1 行で、結果の要素が `role="status"` で入力欄の `aria-describedby` が指し、「レビューに追加」のボタンは文字を持たず、`aria-label`「レビューに追加」と `title`「レビューに追加（Ctrl+Enter）」を持ち、入力欄と同じ行にある
+        expected: ボタンが `aria-disabled="true"` で `disabled` でない / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。再起動してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、入力欄が 1 行で、結果の要素が `role="status"` で入力欄の `aria-describedby` が指し、「レビューに追加」のボタンは文字を持たず、`aria-label`「レビューに追加」と `title`「レビューに追加（Ctrl+Enter）」を持ち、入力欄と同じ行にある
       - name: test_reply_form_when_voice
         case: 正常
         summary: 音声入力の状態とコールバック

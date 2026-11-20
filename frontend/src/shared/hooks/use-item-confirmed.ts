@@ -10,7 +10,7 @@ import { recordsQuery } from "@/shared/hooks/preview-queries";
 const FAILED_PREFIX = "確認済みを書き換えられませんでした。";
 
 /** サーバーに届かなかったときに続ける文 */
-const UNREACHABLE_MESSAGE = "サーバーが止まっています。立ち上げ直してから押してください。";
+const UNREACHABLE_MESSAGE = "サーバーが止まっています。再起動してから押してください。";
 
 export type ItemConfirmed = {
   /** 描く確認済み（応答を待つ間は押した後の値） */

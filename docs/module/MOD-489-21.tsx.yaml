@@ -6,12 +6,12 @@ components:
     title: 本文の表示
     kind: コンポーネント
     usecase: 項目の詳細を読む
-    summary: 本文の形式と差分の表示に応じて描く部品を選び、描いた後に `h` の見出しへ送る。本文に無い見出しは本文の頭で開き、URL から `h` を外す
+    summary: 本文の形式と差分の表示に応じて描く部品を選び、描いた後に `h` の見出しへ送信する。本文に無い見出しは本文の頭で開き、URL から `h` を外す
     container: frontend/src/features/detail/detail-panel/components/body-view.tsx
     unit_tests:
       - name: test_body_view_when_heading
         case: 正常
-        summary: 見出しへ送る
+        summary: 見出しへ送信する
         condition: '`h=決め方` と見出しを持つ本文'
         mock: mdmark の `mount`
         expected: その見出しが本文の区画に入る

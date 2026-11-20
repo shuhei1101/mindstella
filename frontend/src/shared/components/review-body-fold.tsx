@@ -54,9 +54,9 @@ export const ReviewBodyFold = ({ id, label, body, changeSets, open, lines = REVI
     </div>
   );
   const toggle = exceeds ? (
-    <Button variant="ghost" aria-expanded={open} aria-controls={bodyId} data-part="more" aria-label={open ? `${label}の本文を折りたたむ` : `${label}の続きを読む`} data-focus={`${focus}more:${id}`} onClick={() => onToggle(id, !open)}>
+    <Button variant="ghost" aria-expanded={open} aria-controls={bodyId} data-part="more" aria-label={open ? `${label}の本文を折りたたむ` : `${label}の続きを表示`} data-focus={`${focus}more:${id}`} onClick={() => onToggle(id, !open)}>
       <Icon name="chev" className={open ? "-rotate-90" : "rotate-90"} />
-      <span>{open ? "折りたたむ" : "続きを読む"}</span>
+      <span>{open ? "折りたたむ" : "続きを表示"}</span>
     </Button>
   ) : null;
   return <>{children(content, toggle)}</>;

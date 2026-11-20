@@ -76,7 +76,7 @@ settings:
     type: str
     required: false
     default: なし（何も呼ばない）
-    description: プレビューの配信を立てた直後に呼ぶコマンド。末尾に配信のポートとワークスペースの名前（フォルダの名前）を引数で足して呼ぶ（例 `pub add` なら `pub add 47800 家計簿`）。外の入口へポートを登録するのに使う。常駐サーバーを起動した環境から読む
+    description: プレビューの配信を立てた直後に呼ぶコマンド。末尾に配信のポートとワークスペースの名前（フォルダの名前）を引数で追加して呼ぶ（例 `pub add` なら `pub add 47800 家計簿`）。外の入口へポートを登録するのに使う。常駐サーバーを起動した環境から読む
     missing: 呼ばない
     env_var: MINDSTELLA_PREVIEW_START_HOOK
     reload: restart
@@ -95,7 +95,7 @@ settings:
     type: str
     required: false
     default: なし（何も呼ばない）
-    description: 常駐サーバーが終わるときに、立てた配信ごとに呼ぶコマンド。末尾に起動時と同じポートとワークスペースの名前を引数で足して呼ぶ（例 `pub rm` なら `pub rm 47800 家計簿`）。外の入口からポートの登録を消すのに使う。常駐サーバーを起動した環境から読む
+    description: 常駐サーバーが終わるときに、立てた配信ごとに呼ぶコマンド。末尾に起動時と同じポートとワークスペースの名前を引数で追加して呼ぶ（例 `pub rm` なら `pub rm 47800 家計簿`）。外の入口からポートの登録を削除するのに使う。常駐サーバーを起動した環境から読む
     missing: 呼ばない
     env_var: MINDSTELLA_PREVIEW_STOP_HOOK
     reload: restart
@@ -269,7 +269,7 @@ settings:
     missing: 通知しない。ファイルが無い・1 行目が `http://` か `https://` で始まらないときも通知しない
     env_var: MINDSTELLA_DISCORD_WEBHOOK_FILE
     reload: restart
-    allowed: ファイルのパス。中身の差し替えは起動し直さずに有効になる
+    allowed: ファイルのパス。中身の差し替えは再起動せずに有効になる
     reason: Webhook の URL はそれ自体が資格情報なので、環境変数にもリポジトリにも `config.yaml` にも配置せず、利用者が用意したファイルの場所だけを指定する
     status: planned
     visibility: user
@@ -283,7 +283,7 @@ settings:
     type: str
     required: false
     default: なし（圧縮でない起動）
-    description: 『MindStella のセッションの起動し直し』が圧縮の契機で起動するときに `compact` で渡す。『MindStella のセッションのフック』の SessionStart が、`source` が `startup` でも再開として注入する
+    description: 『MindStella のセッションの再起動』が圧縮の契機で起動するときに `compact` で渡す。『MindStella のセッションのフック』の SessionStart が、`source` が `startup` でも再開として注入する
     env_var: MINDSTELLA_LAUNCH_REASON
     reload: restart
     status: planned
@@ -347,7 +347,7 @@ settings:
     type: bool
     required: false
     default: 'true'
-    description: アカウントを指定して起動した MindStella のセッションで、指定したアカウントが利用上限に達した・利用枠がしきい値以上になった・借りられなかったときに、指定を解除して自動で選んだアカウントへ切り替えるか。`false` のときは指定したアカウント以外では起動し直さない
+    description: アカウントを指定して起動した MindStella のセッションで、指定したアカウントが利用上限に達した・利用枠がしきい値以上になった・借りられなかったときに、指定を解除して自動で選んだアカウントへ切り替えるか。`false` のときは指定したアカウント以外では再起動しない
     missing: 指定を解除して切り替える
     reload: restart
     allowed: '`true` か `false`（違えば常駐サーバーが起動時に InvalidSettingsError で終わる）'

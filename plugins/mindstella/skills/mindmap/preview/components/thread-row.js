@@ -68,7 +68,7 @@ var MindmapPreview;
             children: [MindmapPreview.icon("hash"), tag],
         });
     }
-    /** スレッドの行（`li`）を返す。送ったスレッドと、まだ送っていない新しいスレッドのどちらも同じ形で描く */
+    /** スレッドの行（`li`）を返す。送ったスレッドと、まだ送っていない新規スレッドのどちらも同じ形で描く */
     function threadRow({ thread = null, pending = null, hasPendingReply = false, activeTag = null, on }) {
         const last = thread === null ? null : thread.posts[thread.posts.length - 1];
         const sent = thread !== null && last !== null;

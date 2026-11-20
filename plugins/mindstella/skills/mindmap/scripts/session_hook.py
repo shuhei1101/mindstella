@@ -109,7 +109,7 @@ def main(
         # 常駐サーバーへ送れない: 会話を止めずに 1 行だけ残す
         sent = False
         print(
-            f"[mindstella] 常駐サーバーへ出来事を送れません（{body['event']}）: {error}",
+            f"[mindstella] 常駐サーバーへ出来事を送信できません（{body['event']}）: {error}",
             file=sys.stderr,
         )
     # 圧縮の前: 常駐サーバーが起動し直すので、送れたときだけ圧縮を止める

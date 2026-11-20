@@ -1,5 +1,5 @@
 id: MOD-489-177
-title: サーバー / 入口 / server.py
+title: サーバー / エントリーポイント / server.py
 test_files:
   - tests/unit/scripts/test_server.py
 classes:
@@ -36,7 +36,7 @@ constants:
     title: ツールの名前
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
-    summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）。`init` を外し、`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` を足す
+    summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）。`init` を外し、`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` を追加する
     value: ("next_id", "update_settings", "adopt", "edit_option", "changes_since_read", "commit", "pending", "check", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "workspaces", "workspace", "create_workspace", "create_session", "sessions", "stop_session", "restart_session", "close_workspace", "reopen_workspace", "delete_workspace", "update_workspace", "server_status", "server_stop")
   - name: DEFAULT_PORT
     title: 既定の待ち受けのポート
@@ -84,7 +84,7 @@ constants:
     title: MCP の案内
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
-    summary: MCP の初期化の応答の `instructions`。記録の検索・書き込み・削除・関連のたどりは project-index の `search_docs`・`write_docs`・`delete_docs`・`trace_related` で行い、項目を足す前に `next_id` で ID を取り、`commit` とスレッドの書き込みは MindStella のセッションだけが呼べること、記録の進め方は配信元 `mindstella-agent-flows` のエージェントフローに従うことを書く
+    summary: MCP の初期化の応答の `instructions`。記録の検索・書き込み・削除・関連のたどりは project-index の `search_docs`・`write_docs`・`delete_docs`・`trace_related` で行い、項目を追加する前に `next_id` で ID を取り、`commit` とスレッドの書き込みは MindStella のセッションだけが呼べること、記録の進め方は配信元 `mindstella-agent-flows` のエージェントフローに従うことを書く
     value: （インターフェース定義『MCP サーバーの起動』の制約「instructions」の文）
 functions:
   - name: main
@@ -93,7 +93,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: 待ち受けのポートを取り、MCP サーバーを組み立てて `127.0.0.1` の HTTP で動かし、SIGTERM・SIGINT を受けるか `server_stop` が呼ばれたら、終了時のフックを呼んで配信を止めて終える。`ServerContext` を作り、待ち受けの前に起動時の照合（`startup.reconcile_before_listen`）をし、`sessions.start_crash_watch` で落ちたことの見回りを、`usage_watch.start_usage_watch` で利用枠の見回りを始め（終えるときに止める）、`InputTargets` に `_restarter`（`sessions.is_alive` で生きていれば偽、落ちていれば `sessions.request_restart` を `comment` で呼んで `sessions.wait_until_running` を待つ関数）を渡し、MindStella の API の経路（`api.build_routes`）を `/mcp`・`/_admin/status` と同じアプリに足す
+    summary: 待ち受けのポートを取り、MCP サーバーを組み立てて `127.0.0.1` の HTTP で動かし、SIGTERM・SIGINT を受けるか `server_stop` が呼ばれたら、終了時のフックを呼んで配信を止めて終える。`ServerContext` を作り、待ち受けの前に起動時の照合（`startup.reconcile_before_listen`）をし、`sessions.start_crash_watch` で落ちたことの見回りを、`usage_watch.start_usage_watch` で利用枠の見回りを始め（終えるときに止める）、`InputTargets` に `_restarter`（`sessions.is_alive` で生きていれば偽、落ちていれば `sessions.request_restart` を `comment` で呼んで `sessions.wait_until_running` を待つ関数）を渡し、MindStella の API の経路（`api.build_routes`）を `/mcp`・`/_admin/status` と同じアプリに追加する
     description: 末尾で `sys.exit(main())`。
     side_effects: '`127.0.0.1` の `MINDSTELLA_PORT` で待ち受け、記録を標準エラーに書く'
     args:
@@ -130,7 +130,7 @@ functions:
            - `[ERROR]` 文字起こしの環境変数の値が誤り（環境変数の名前と値。設定『サーバー』の許す値の案内）
       4. 起動した日時（UTC）・プラグインのフォルダ（`PLUGIN_VERSION_FILE.parent`）・プラグインのバージョン（`str(read_plugin_version())`）を控え、それらと台帳から状態を作る関数（`build_status`）を作る
       5. サーバーを組み立て（`build`。`status` に 4 の関数、`request_stop` に HTTP のサーバーの `should_exit` を真にする関数を渡す）、`streamable_http_app(streamable_http_path=MCP_PATH, host=LISTEN_HOST)` のアプリを `make_server` に渡す
-      6. 待ち受けの前の照合をし（`startup.reconcile_before_listen(context)`）、落ちたことの見回り（`sessions.start_crash_watch`）と利用枠の見回り（`usage_watch.start_usage_watch`）とエージェントフローの配信元の確認のスレッド（`startup.start_agent_flows_check(context)`）を始めてから、2 のソケットで動かす（`run(sockets=[ソケット])`）。SIGTERM・SIGINT の受け口は uvicorn が置き、受けると `should_exit` を真にする。uvicorn は終わり終えてから受けたシグナルを元の受け口へ送り直すので、動かす前に SIGTERM の受け口を `SystemExit(0)` を投げる関数にし、7 の後で元に戻す
+      6. 待ち受けの前の照合をし（`startup.reconcile_before_listen(context)`）、落ちたことの見回り（`sessions.start_crash_watch`）と利用枠の見回り（`usage_watch.start_usage_watch`）とエージェントフローの配信元の確認のスレッド（`startup.start_agent_flows_check(context)`）を始めてから、2 のソケットで動かす（`run(sockets=[ソケット])`）。SIGTERM・SIGINT のハンドラーは uvicorn が置き、受けると `should_exit` を真にする。uvicorn は終わり終えてから受けたシグナルを元のハンドラーへ再送信するので、動かす前に SIGTERM のハンドラーを `SystemExit(0)` を投げる関数にし、7 の後で元に戻す
          - `[INFO]` 常駐サーバーが待ち受けを始めた（ポート、バージョン、PID）
       7. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`。終了時のフックもここで呼ぶ）
          - `[INFO]` 常駐サーバーを終えた
@@ -145,7 +145,7 @@ functions:
       - name: test_main_when_server_raises
         case: 正常
         summary: HTTP のサーバーが例外で戻っても配信を止める
-        condition: '`test_main` と同じで、`run` が `RuntimeError` を送る'
+        condition: '`test_main` と同じで、`run` が `RuntimeError` を送出する'
         mock: '`build`・`make_server`'
         expected: '`RuntimeError` が伝わり、`previews.stop_all` が呼ばれている'
       - name: test_main_when_external_access_set
@@ -219,7 +219,7 @@ functions:
     process: |-
       1. `environ` の `PORT_ENV` を読み、無いか空なら `DEFAULT_PORT` を返す
       2. 整数にして 1〜65535 なら返す
-         - 整数にできないか範囲の外なら、`InvalidPortError(値)` を送る
+         - 整数にできないか範囲の外なら、`InvalidPortError(値)` を送出する
     exceptions:
       - name: InvalidPortError
         condition: 値が 1〜65535 の整数でない
@@ -257,7 +257,7 @@ functions:
       description: '`AF_INET`・`SOCK_STREAM` で `SO_REUSEADDR` を真にし、`(LISTEN_HOST, port)` に bind したソケット'
     process: |-
       1. ソケットを作り、`SO_REUSEADDR` を真にして `(LISTEN_HOST, port)` に bind して返す
-         - `OSError` が起きた場合、ソケットを閉じて `PortInUseError(port)` を送る（`raise ... from`）
+         - `OSError` が起きた場合、ソケットを閉じて `PortInUseError(port)` を送出する（`raise ... from`）
     exceptions:
       - name: PortInUseError
         condition: bind できない
@@ -386,7 +386,7 @@ functions:
         type: ServerContext
         required: true
         passing: keyword
-        description: ワークスペースの管理・セッションの管理・MindStella の API に渡す値（MindStella の API の経路も `custom_route` で足す）
+        description: ワークスペースの管理・セッションの管理・MindStella の API に渡す値（MindStella の API の経路も `custom_route` で追加する）
     returns:
       type: MCPServer
       description: 名前が `SERVER_NAME` で、ツールを `TOOL_NAMES` の順に持つサーバー
@@ -394,11 +394,11 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数と、全てのツールに共通の `session: dict[str, Any] | None = None` を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）。`MCPServer` の `instructions` に `INSTRUCTIONS` を渡す
          - `MINDSTELLA_SESSION_TOOLS` のツールは、ツールの処理を呼ぶ前に MindStella のセッションかを確かめ（`require_mindstella_session`）、違えば `error_result` を返す。ツールの処理が成功したら、同じ鍵の中でツールの名前・ワークスペースの ID（`workspaces.workspace_id_of`）・結果を渡して書き込みのマーカーを付ける（『作業の完了の通知』の `mark_written`）
-         - `workspace` を受ける関数は、`session` を読み（`parse_session`）、`workspace` を絶対パスにし（`resolve_workspace`）、セッションがあればそのワークスペースの宛先を書き換えてから（`previews.remember_session`）、ツールの処理を呼ぶ。`resolve_workspace` が `ArgumentError` を送った場合、ツールの処理を呼ばずにエラーの結果を返す（`error_result`）。`out` も同じセッションで絶対パスにする（`argument="out"`）
+         - `workspace` を受ける関数は、`session` を読み（`parse_session`）、`workspace` を絶対パスにし（`resolve_workspace`）、セッションがあればそのワークスペースの宛先を書き換えてから（`previews.remember_session`）、ツールの処理を呼ぶ。`resolve_workspace` が `ArgumentError` を送出した場合、ツールの処理を呼ばずにエラーの結果を返す（`error_result`）。`out` も同じセッションで絶対パスにする（`argument="out"`）
          - `server_status` は `call_tool(status)`、`server_stop` は `call_tool(lambda: run_server_stop(previews, request_stop=request_stop))` にする（`session` は受けても使わない）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
          - ワークスペースを書き換えるツール（`init`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`new_thread`・`reply`・`set_thread_status`・`update_thread`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
-         - `thread` は `lock_root` を渡さず、既読を書くときだけ鍵を取れるよう、`run_thread` に `lock=lambda: workspace_lock(root, write_lock)` を渡す（インターフェース定義『スレッドを読む』の同時の呼び出し）
+         - `thread` は `lock_root` を渡さず、既読を書くときだけ鍵を取れるよう、`run_thread` に `lock=lambda: workspace_lock(root, write_lock)` を渡す（インターフェース定義『スレッドの取得』の同時の呼び出し）
       3. `@server.custom_route(STATUS_PATH, methods=["GET"])` で、`status()` を `JSONResponse` で返す入口を登録する
       4. サーバーを返す
     unit_tests:
@@ -430,7 +430,7 @@ functions:
       - name: test_build_server_when_status_route
         case: 正常
         summary: GET /_admin/status が status の結果を返す
-        condition: '`status` が `{"name": "mindstella"}` を返す関数。`streamable_http_app()` のアプリを `starlette.testclient.TestClient` で開き、`GET /_admin/status` を送る'
+        condition: '`status` が `{"name": "mindstella"}` を返す関数。`streamable_http_app()` のアプリを `starlette.testclient.TestClient` で開き、`GET /_admin/status` を送信する'
         mock: '`status`'
         expected: '200 で、JSON が `{"name": "mindstella"}`'
       - name: test_build_server_when_not_mindstella_session
@@ -483,7 +483,7 @@ functions:
     usecase: 共通
     scope: public
     summary: ツールの処理を呼び、結果を構造化の結果に、エラーをツールのエラーにする
-    description: 例外を送って SDK に任せると本文の頭に `Error executing tool` が付くため、ここで全ての例外を `CallToolResult` にする（インターフェース定義『MCP サーバーの起動』の結果の組み立て）。
+    description: 例外を送出して SDK に任せると本文の頭に `Error executing tool` が付くため、ここで全ての例外を `CallToolResult` にする（インターフェース定義『MCP サーバーの起動』の結果の組み立て）。
     args:
       - name: handler
         type: Callable[[], dict[str, Any]]
@@ -539,13 +539,13 @@ functions:
       - name: test_call_tool_when_mindmap_error
         case: 正常
         summary: MindmapError はツールのエラー
-        condition: '`handler` が `WorkspaceNotFoundError` を送る'
+        condition: '`handler` が `WorkspaceNotFoundError` を送出する'
         mock: なし
         expected: '`is_error` が真で、本文が `エラー: ` で始まる'
       - name: test_call_tool_when_unexpected_error
         case: 正常
         summary: 予期しない例外もトレースバックを出さずツールのエラー
-        condition: '`handler` が `KeyError("x")` を送る'
+        condition: '`handler` が `KeyError("x")` を送出する'
         mock: なし
         expected: '`is_error` が真で、本文が `エラー: 予期しないエラー（KeyError）` で始まり `Traceback` を含まない'
       - name: test_call_tool_when_lock_root
@@ -556,7 +556,7 @@ functions:
         expected: 控えた値が真で、呼んだ後は鍵が外れている。`tmp_path / ".mindstella.lock"` がある
       - name: test_call_tool_when_lock_require
         case: 正常
-        summary: 渡した確かめの関数で、前の版の設定ファイルだけのフォルダにも鍵を取る
+        summary: 渡した確かめの関数で、前のバージョンの設定ファイルだけのフォルダにも鍵を取る
         condition: '`mindmap.yaml` だけを置いた `tmp_path` を `lock_root` に、`require_migratable` を `lock_require` に渡す。`handler` は `{}` を返す'
         mock: なし
         expected: '`is_error` が偽で、`tmp_path / ".mindstella.lock"` がある'
@@ -602,7 +602,7 @@ functions:
         type: MindmapError
         required: true
         passing: positional
-        description: 送られた例外
+        description: 送出された例外
     returns:
       type: CallToolResult
       description: '`is_error` が真で、本文がエラーの行を改行でつないだ文字列 1 つ'
@@ -619,7 +619,7 @@ functions:
         expected: '`is_error` が真で、本文の 1 行目が `エラー: ` で始まり 2 行目がその行'
       - name: test_error_result_when_legacy_format
         case: 正常
-        summary: 前の版の形式には開き直しを案内する
+        summary: 前のバージョンの形式には再オープンを案内する
         condition: '`legacy=True` の `SchemaMismatchError`'
         mock: なし
         expected: 本文の最後の行が `LEGACY_HINT`
@@ -653,7 +653,7 @@ functions:
     process: |-
       1. `~` を展開し、絶対パスならそのまま返す
       2. 相対パスで `session` があれば、`session.cwd` とつないで返す
-         - `session` が無い場合、`ArgumentError`（`argument`、`相対パスはセッションの作業フォルダが無いと読めません。絶対パスで渡してください`）を送る
+         - `session` が無い場合、`ArgumentError`（`argument`、`相対パスはセッションの作業フォルダが無いと読めません。絶対パスで渡してください`）を送出する
     exceptions:
       - name: ArgumentError
         condition: 相対パスで `session` が無い
@@ -727,7 +727,7 @@ functions:
       description: 同じなら何も返さない
     process: |-
       1. ワークスペースの ID を引き（`workspace_id_of`）、状態の `session.json` を読む（セッションの管理の `read_session`）
-      2. `session.json` が無い・`claude_session_id` が無い・`session` が無い・`session.claude_session_id` が違う場合、`NotMindStellaSessionError`（`tool`）を送る
+      2. `session.json` が無い・`claude_session_id` が無い・`session` が無い・`session.claude_session_id` が違う場合、`NotMindStellaSessionError`（`tool`）を送出する
     exceptions:
       - name: NotMindStellaSessionError
         condition: MindStella のセッションでない呼び出し
@@ -738,7 +738,7 @@ functions:
         summary: 同じ claude_session_id なら通し、違えば断る
         condition: '`claude_session_id` `abc` の `session.json` を置き、`abc` と `xyz` で呼ぶ'
         mock: なし
-        expected: '`abc` は何も送らず、`xyz` は `NotMindStellaSessionError`（本文に `commit`）'
+        expected: '`abc` は何も送出せず、`xyz` は `NotMindStellaSessionError`（本文に `commit`）'
 data_models:
   - name: ServerContext
     title: 入口が渡す値

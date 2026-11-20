@@ -19,7 +19,7 @@ stores:
       - name: results
         type: Record<string, VoiceResult>
         initial: '{}'
-        description: 入力欄が画面に無い間に終わった結果。入力欄の部品が次に付いたとき（mount）に `takeVoiceResult` で受け取り、`status` に当てて消す
+        description: 入力欄が画面に無い間に終わった結果。入力欄の部品が次に付いたとき（mount）に `takeVoiceResult` で受け取り、`status` に当てて削除する
     actions:
       - name: startVoice
         title: 録音を始める
@@ -59,7 +59,7 @@ stores:
         title: 文字起こしを終える
         kind: メソッド
         is_async: true
-        summary: 録音を止めて文字起こしし、受け取った入力欄の中身へ挿入して設定の挙動で溜める・送る。入力欄が画面に無い間に終わったら書きかけへ当て、失敗だけを知らせる
+        summary: 録音を止めて文字起こしし、受け取った入力欄の中身へ挿入して設定の挙動で溜める・送信する。入力欄が画面に無い間に終わったら下書きへ当て、失敗だけを知らせる
         args:
           - name: input
             type: "{body: string, start: number, end: number, action: 'review' | 'send' | 'insert', mounted: () => boolean}"
@@ -69,17 +69,17 @@ stores:
           type: Promise<VoiceResult>
           description: '`reviewed`（空の中身・`count`）・`sent`（空の中身・`entered`）・`inserted`（中身・`caret`）・`failed`（中身・`detail`）・`unavailable`（`reason`・`detail`）・`discarded`（文字起こし中に録音を捨てた。何もしない）'
         process: |-
-          1. `phase: transcribing` にして `releaseWakeLock` を呼び、`recording.stop()` の音声を `POST /api/transcriptions` へ送る
+          1. `phase: transcribing` にして `releaseWakeLock` を呼び、`recording.stop()` の音声を `POST /api/transcriptions` へ送信する
              - 503 の場合、`unavailable` にする
              - 断られた・届かない・`text` が空の場合、元の中身のまま `failed`（`detail` か `VOICE_TEXT.failed`）にする
           2. 文字起こしが返った時点で `session.ticket` が変わっていれば（`discardVoice` で捨てた）、溜めも送りもせずに `discarded` を返す
           3. `insertAtCursor` で挿入する
           4. `action`（無ければ `review`。向けた先が `review` のときは `action` によらず `insert`）で分ける
-             - `review` の場合、`POST /api/comments` へ向けた先と全文を送り、201 なら空の中身の `reviewed`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.reviewFailed`）
-             - `send` の場合、`POST /api/comments/send-now` へ送り、送れたら空の中身の `sent`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.sendFailed`）
+             - `review` の場合、`POST /api/comments` へ向けた先と全文を送信し、201 なら空の中身の `reviewed`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.reviewFailed`）
+             - `send` の場合、`POST /api/comments/send-now` へ送信し、送信できたら空の中身の `sent`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.sendFailed`）
              - `insert` の場合、挿入した中身と位置の `inserted`
-          5. 溜める・送る間に `session.ticket` が変わっていれば、書きかけも知らせも当てずに `discarded` を返す。変わっていなければ `session` を null にする
-          6. `mounted()` が偽なら、結果の中身を `PUT /api/drafts` で書きかけに当て（失敗しても続ける。向けた先が `review` のときは当てない）、`results` に入れる。`failed`・`unavailable` なら `notice` を `failed`（`key` と、失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする
+          5. 溜める・送信する間に `session.ticket` が変わっていれば、下書きも知らせも当てずに `discarded` を返す。変わっていなければ `session` を null にする
+          6. `mounted()` が偽なら、結果の中身を `PUT /api/drafts` で下書きに当て（失敗しても続ける。向けた先が `review` のときは当てない）、`results` に入れる。`failed`・`unavailable` なら `notice` を `failed`（`key` と、失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする
         unit_tests:
           - name: test_finish_voice
             case: 正常
@@ -89,13 +89,13 @@ stores:
             expected: '`POST /api/comments` が `確認: 案 A にする` で 1 回、`reviewed` で中身が空 / 同じ / `inserted`・`caret: 11` でどの送信も呼ばない / `send-now` が 1 回で `sent`'
           - name: test_finish_voice_when_unmounted
             case: 正常
-            summary: 入力欄が画面に無い間に終わったら書きかけへ当て、失敗だけ知らせる
+            summary: 入力欄が画面に無い間に終わったら下書きへ当て、失敗だけ知らせる
             condition: '`mounted` が偽。`POST /api/comments` が 201 / 500 / 500 で `PUT /api/drafts` も 500'
             mock: MSW と `vi.stubGlobal`
             expected: '`results` に `reviewed` が入り `notice` が null / `PUT /api/drafts` が挿入した全文で呼ばれ、`notice` が `failed` で `key` を持つ / `PUT /api/drafts` も 500 でも `results` に `failed` が入り `notice` が `failed`'
           - name: test_finish_voice_when_discarded
             case: 正常
-            summary: 文字起こし中に行き先が無くなって録音を捨てたら、溜めず・書きかけも知らせも当てない
+            summary: 文字起こし中に行き先が無くなって録音を捨てたら、溜めず・下書きも知らせも当てない
             condition: '`mounted` が偽。文字起こしの応答を待つ間に `discardVoice(() => false)` を呼ぶ'
             mock: MSW と `vi.stubGlobal`
             expected: '`discarded` を返し、`POST /api/comments`・`PUT /api/drafts` を呼ばず、`results` が空で `notice` が `discarded` のまま'
@@ -107,14 +107,14 @@ stores:
             expected: '`unavailable`・`stopped` / `failed`・元の中身 / `failed`・`VOICE_TEXT.failed` / `failed`・`VOICE_TEXT.reviewFailed`・挿入した中身'
           - name: test_finish_voice_when_review
             case: 正常
-            summary: 修正の入力は挿入だけにし、画面に無い間も書きかけへ当てない
+            summary: 修正の入力は挿入だけにし、画面に無い間も下書きへ当てない
             condition: '向けた先が `{review: C-1}`。`parametrize`: `action: send`・`mounted` が真 / `action: review`・`mounted` が偽'
             mock: MSW と `vi.stubGlobal`
             expected: '`inserted` で `send-now`・`POST /api/comments` を呼ばない / `results` に `inserted` が入り、`PUT /api/drafts` を呼ばない'
       - name: discardVoice
         title: 行き先が無くなった録音を捨てる
         kind: メソッド
-        summary: '記録を読み直したとき、`session.destination` の項目・スレッドが無ければ `cancelVoice` と同じく捨て、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にする。向けた先が `review` の `results` も、そのコメントが無ければ消す（削除した書き込みを「元に戻す」で戻しても結果を入れない）'
+        summary: '記録を再読み込みしたとき、`session.destination` の項目・スレッドが無ければ `cancelVoice` と同じく捨て、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にする。向けた先が `review` の `results` も、そのコメントが無ければ削除する（削除した書き込みを「元に戻す」で戻しても結果を入れない）'
         args:
           - name: exists
             type: '(destination) => boolean'
@@ -132,7 +132,7 @@ stores:
             expected: '`session` がそのまま / null で `notice` が `discarded`'
           - name: test_discard_voice_when_review_result
             case: 正常
-            summary: 無くなったコメントへの結果を消す
+            summary: 無くなったコメントへの結果を削除する
             condition: '`results` に `review:C-1` の結果があり、`exists` が C-1 に偽'
             mock: なし
             expected: '`takeVoiceResult("review:C-1")` が null'
@@ -146,14 +146,14 @@ stores:
         unit_tests:
           - name: test_dismiss_voice_notice
             case: 正常
-            summary: 知らせを消す
+            summary: 知らせを削除する
             condition: '`notice` があるときに呼ぶ'
             mock: なし
             expected: '`notice` が null'
       - name: takeVoiceResult
         title: 画面に無い間の結果を受け取る
         kind: メソッド
-        summary: '`results` から `key` の結果を返して消す'
+        summary: '`results` から `key` の結果を返して削除する'
         args:
           - name: key
             type: string
@@ -172,7 +172,7 @@ stores:
       - name: subscribeVoice
         title: 状態の購読
         kind: メソッド
-        summary: React の外（書き換えの知らせへの接続）から、状態が変わるたびに呼ぶ関数を登録する。ストアは公開しない
+        summary: React の外（書き換えの通知への接続）から、状態が変わるたびに呼ぶ関数を登録する。ストアは公開しない
         args:
           - name: listener
             type: () => void
@@ -210,7 +210,7 @@ stores:
       - name: discardReviewVoice
         title: 削除・送信した書き込みへの録音を捨てる
         kind: メソッド
-        summary: 画面からレビュー中の書き込みを削除・送信した応答が成功したときに呼ぶ。`session` の向けた先が `ids` のどれかの `review` なら、録音・文字起こしにかかわらず `cancelVoice` と同じく捨て、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にする。`results` の `review:{id}` も消す（記録の読み直しを待たずに捨て、「元に戻す」で戻しても結果を入れない）
+        summary: 画面からレビュー中の書き込みを削除・送信した応答が成功したときに呼ぶ。`session` の向けた先が `ids` のどれかの `review` なら、録音・文字起こしにかかわらず `cancelVoice` と同じく捨て、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にする。`results` の `review:{id}` も削除する（記録の再読み込みを待たずに捨て、「元に戻す」で戻しても結果を入れない）
         args:
           - name: ids
             type: string[]
@@ -222,10 +222,10 @@ stores:
         unit_tests:
           - name: test_discard_review_voice
             case: 正常
-            summary: 削除・送信した書き込みへの録音と結果を、読み直しを待たずに捨てる
+            summary: 削除・送信した書き込みへの録音と結果を、再読み込みを待たずに捨てる
             condition: '`parametrize`: `review:C-1` を録音中に `["C-1"]` / 文字起こし中に `["C-1"]` / `results` に `review:C-1` があり `["C-1"]` / `review:C-1` を録音中に `["C-2"]`'
             mock: '`vi.stubGlobal`'
             expected: '`cancel` が 1 回で `session` が null、`notice` が `discarded` / `finishVoice` が `discarded` を返し `results` が空 / `takeVoiceResult("review:C-1")` が null / `session` がそのまま'
 notes:
   単体テスト: 同じフォルダの `voice-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
-  画面の消灯の抑止: '`visibilitychange` で画面が見えたとき、`session` が `recording` で抑止が解かれていれば `acquireWakeLock` を呼び直す。購読はストアを作るときに 1 回だけ張る'
+  画面の消灯の抑止: '`visibilitychange` で画面が見えたとき、`session` が `recording` で抑止が解かれていれば `acquireWakeLock` を再呼び出しする。購読はストアを作るときに 1 回だけ張る'

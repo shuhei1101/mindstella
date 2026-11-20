@@ -88,7 +88,7 @@ def test_pending_edits_panel(
     assert "最初の問い" in result["text"]
     assert "N-1" in result["text"]
     assert "設定" in result["text"]
-    assert "3 件（うち削除 1 件）をワークスペースに書きます" in result["text"]
+    assert "3 件（うち削除 1 件）をワークスペースに書き込みます" in result["text"]
     assert result["saveText"] == "まとめて保存する（1 件を削除）"
     assert calls == [["undo", "E-1"], ["save"]]
 

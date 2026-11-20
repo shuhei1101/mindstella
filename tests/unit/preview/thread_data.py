@@ -37,7 +37,7 @@ def make_thread(thread_id: str, **overrides: Any) -> dict[str, Any]:
 
 
 def make_review_item(item_id: str, **overrides: Any) -> dict[str, Any]:
-    """レビュー中の書き込み 1 件（画面へ返す形）を作る。項目 D-1 への新しいスレッドの最初の書き込みが既定。"""
+    """レビュー中の書き込み 1 件（画面へ返す形）を作る。項目 D-1 への新規スレッドの最初の書き込みが既定。"""
     item: dict[str, Any] = {
         "id": item_id,
         "target": "D-1",

@@ -265,13 +265,13 @@ def apply_option_edit(
     # 採用している案は消せない
     if options[position].get("adopted") is True:
         raise AdoptedOptionError(
-            f"{prefix}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください"
+            f"{prefix}: 採用している案は削除できません。先に adopt で採用をほかの案へ移してください"
         )
     # 案を必須にする状態の検討事項は、最後の案を消せない
     status = item.get("status")
     if len(options) == 1 and status not in OPTIONS_OPTIONAL_STATUSES:
         raise LastOptionError(
-            f"{prefix}: 状態 {status} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください"
+            f"{prefix}: 状態 {status} の検討事項は案を 1 つ以上持ちます。先に add で別の案を追加してください"
         )
     del options[position]
     return options
@@ -306,7 +306,7 @@ def stage_add(
     # 主題でないタグは main を持たない
     if "tags" in item:
         item = {**item, "tags": compact_tags(item["tags"])}
-    # 先に振った ID が無ければ予約から振り、消した項目の ID は振り直さない
+    # 先に振った ID が無ければ予約から振り、削除した項目の ID は振り直さない
     if item_id is None:
         item_id = reserve_ids(
             staged.workspace.root,

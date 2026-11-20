@@ -218,10 +218,10 @@ from preview_stack_helpers import (
 )
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeEdit, MakeItem, MakeWorkspace, WriteComments
 
-# 入力が止まるのを待たずに保つ書きかけが、ファイルに届くまで待つミリ秒
+# 入力が止まるのを待たずに保つ下書きが、ファイルに届くまで待つミリ秒
 DRAFT_FLUSH_WAIT_MS = 400
 
-# 溜める POST の応答を止めるミリ秒（書きかけを保つ待ち `DRAFT_SAVE_DELAY_MS` の 500 より長く）
+# 溜める POST の応答を止めるミリ秒（下書きを保つ待ち `DRAFT_SAVE_DELAY_MS` の 500 より長く）
 POST_HOLD_MS = 1_000
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
@@ -1145,11 +1145,11 @@ def test_comment_input_when_toggle_open(
     open_preview: OpenPreview,
     make_item: MakeItem,
 ) -> None:
-    """開閉のボタンで閉じると端末に残し、項目を移っても開き直しても閉じた形で出す。開くと残した値を消す。書きかけは閉じても残る（正常系）。"""
+    """開閉のボタンで閉じると端末に残し、項目を移っても開き直しても閉じた形で出す。開くと残した値を消す。下書きは閉じても残る（正常系）。"""
     # 準備
     url, _ = write_review_preview(make_item("D-1"), make_item("D-2"))
     page = open_preview(url, "#tab=decisions&id=D-1")
-    page.fill(DETAIL_TEXTAREA, "閉じる前の書きかけ")
+    page.fill(DETAIL_TEXTAREA, "閉じる前の下書き")
     # 実行（閉じる）
     page.get_by_role("button", name="コメントの入力を閉じる").click()
     # 検証
@@ -1157,7 +1157,7 @@ def test_comment_input_when_toggle_open(
     expect(toggle).to_be_focused()
     assert toggle.get_attribute("aria-expanded") == "false"
     assert not page.locator(DETAIL_TEXTAREA).is_visible()
-    expect(page.locator("aside.panel form.send")).to_contain_text("書きかけ")
+    expect(page.locator("aside.panel form.send")).to_contain_text("下書き")
     assert page.evaluate(COMMENT_FORM_CLOSED_JS) is True
     # 実行（別の項目へ移る・開き直す）
     page.evaluate("location.hash = '#tab=decisions&id=D-2'")
@@ -1180,24 +1180,24 @@ def test_comment_input_draft(
     make_item: MakeItem,
     make_draft: MakeDraft,
 ) -> None:
-    """書きかけは入力が止まったときに保ち、開き直すと入力欄へ戻す（正常系）。"""
+    """下書きは入力が止まったときに保ち、開き直すと入力欄へ戻す（正常系）。"""
     # 準備
     url, root = write_review_preview(
-        make_item("D-1"), make_item("D-2"), drafts=(make_draft(target="D-2", body="D-2 の書きかけ"),)
+        make_item("D-1"), make_item("D-2"), drafts=(make_draft(target="D-2", body="D-2 の下書き"),)
     )
     page = open_preview(url, "#tab=decisions&id=D-1")
     # 実行
-    page.fill(DETAIL_TEXTAREA, "D-1 の書きかけ")
+    page.fill(DETAIL_TEXTAREA, "D-1 の下書き")
     page.wait_for_timeout(DRAFT_WAIT_MS)
     page.reload()
     page.wait_for_selector(DETAIL_TEXTAREA)
     # 検証
     drafts = read_workspace_yaml(root, "drafts.yaml")["items"]
     assert sorted((item["target"], item["body"]) for item in drafts) == [
-        ("D-1", "D-1 の書きかけ"),
-        ("D-2", "D-2 の書きかけ"),
+        ("D-1", "D-1 の下書き"),
+        ("D-2", "D-2 の下書き"),
     ]
-    assert page.input_value(DETAIL_TEXTAREA) == "D-1 の書きかけ"
+    assert page.input_value(DETAIL_TEXTAREA) == "D-1 の下書き"
 
 
 def test_comment_input_draft_when_closed(
@@ -1205,18 +1205,18 @@ def test_comment_input_draft_when_closed(
     open_preview: OpenPreview,
     make_item: MakeItem,
 ) -> None:
-    """入力が止まるのを待たずにパネルを閉じても、書きかけを保つ（正常系）。"""
+    """入力が止まるのを待たずにパネルを閉じても、下書きを保つ（正常系）。"""
     # 準備
     url, root = write_review_preview(make_item("D-1"))
     page = open_preview(url, "#tab=decisions&id=D-1")
-    page.fill(DETAIL_TEXTAREA, "閉じる前の書きかけ")
+    page.fill(DETAIL_TEXTAREA, "閉じる前の下書き")
     # 実行
     page.click('aside.panel button[data-act="close"]')
     page.wait_for_function("!document.querySelector('aside.panel.open')")
     page.wait_for_timeout(DRAFT_FLUSH_WAIT_MS)
     # 検証
     drafts = read_workspace_yaml(root, "drafts.yaml")["items"]
-    assert [(item["target"], item["body"]) for item in drafts] == [("D-1", "閉じる前の書きかけ")]
+    assert [(item["target"], item["body"]) for item in drafts] == [("D-1", "閉じる前の下書き")]
 
 
 def test_comment_input_draft_when_saved_at_once(
@@ -1225,8 +1225,8 @@ def test_comment_input_draft_when_saved_at_once(
     make_item: MakeItem,
     page: Page,
 ) -> None:
-    """入力の直後（書きかけを保つ待ちより前）に溜め、溜める応答が待ちより遅れても、drafts.yaml に書きかけが残らない（正常系）。"""
-    # 準備（溜める POST はサーバーへ流して処理させ、その応答を書きかけを保つ待ちより長く画面へ止める。GET はそのまま流す）
+    """入力の直後（下書きを保つ待ちより前）に溜め、溜める応答が待ちより遅れても、drafts.yaml に下書きが残らない（正常系）。"""
+    # 準備（溜める POST はサーバーへ流して処理させ、その応答を下書きを保つ待ちより長く画面へ止める。GET はそのまま流す）
     url, root = write_review_preview(make_item("D-1"))
     held: list[tuple[Route, APIResponse]] = []
     page.route("**/api/comments", lambda route: _hold_post_response(route, held))
@@ -1255,12 +1255,12 @@ def test_comment_input_draft_when_saved_with_location(
     make_item: MakeItem,
     make_draft: MakeDraft,
 ) -> None:
-    """箇所を持つ入力を溜めても、箇所を持たない入力の書きかけは残る（正常系）。"""
+    """箇所を持つ入力を溜めても、箇所を持たない入力の下書きは残る（正常系）。"""
     # 準備
     url, root = write_review_preview(
         make_item("A-1"),
         bodies={"A-1.mark.md": THREE_LINE_BODY},
-        drafts=(make_draft(target="A-1", body="項目への書きかけ"),),
+        drafts=(make_draft(target="A-1", body="項目への下書き"),),
     )
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md:not(.md-value)")
@@ -1278,10 +1278,10 @@ def test_comment_input_draft_when_saved_with_location(
     ]
     drafts = read_workspace_yaml(root, "drafts.yaml")["items"]
     assert [(item["target"], item.get("loc"), item["body"]) for item in drafts] == [
-        ("A-1", None, "項目への書きかけ")
+        ("A-1", None, "項目への下書き")
     ]
     assert page.locator(".send-loc").count() == 0
-    assert page.input_value(DETAIL_TEXTAREA) == "項目への書きかけ"
+    assert page.input_value(DETAIL_TEXTAREA) == "項目への下書き"
 
 
 def test_review_comments(
@@ -1317,7 +1317,7 @@ def test_review_comments(
         ["案 C のデメリット", "表の密度が下がる", "ここは別の言い方にしたい"],
         [None, None, "案 A にする"],
     ]
-    # 行ごとの「修正」「削除」（読み上げの名前と `title`）。チェックは持たない（まとめて送るは一覧で行う）
+    # 行ごとの「修正」「削除」（読み上げの名前と `title`）。チェックは持たない（まとめて送信は一覧で行う）
     assert page.eval_on_selector_all(
         "aside.panel .d-review li",
         "rows => rows.map(r => [...r.querySelectorAll('.row-actions button')].map(b => [b.getAttribute('aria-label'), b.title]))",
@@ -1492,7 +1492,7 @@ def test_review_row_actions_at_top_right_when_narrow(
 def test_review_row_edit_button(
     served_review_rows: tuple[str, Path], open_preview: OpenPreview
 ) -> None:
-    """行の「修正」は鉛筆の印だけのボタンで、読み上げの名前は「{項目の ID} へのコメントを修正」、`title` は「修正」にする（正常系）。"""
+    """行の「修正」は鉛筆のアイコンだけのボタンで、読み上げの名前は「{項目の ID} へのコメントを修正」、`title` は「修正」にする（正常系）。"""
     # 準備
     url, _ = served_review_rows
     # 実行
@@ -1507,7 +1507,7 @@ def test_review_row_edit_button(
 def test_review_row_remove_button(
     served_review_rows: tuple[str, Path], open_preview: OpenPreview
 ) -> None:
-    """行の「削除」はごみ箱の印だけのボタンで、読み上げの名前は「{項目の ID} へのコメントを削除」、`title` は「削除」にする（正常系）。"""
+    """行の「削除」はごみ箱のアイコンだけのボタンで、読み上げの名前は「{項目の ID} へのコメントを削除」、`title` は「削除」にする（正常系）。"""
     # 準備
     url, _ = served_review_rows
     # 実行
@@ -1691,7 +1691,7 @@ def test_review_row_edit_when_shortcut(
 def test_review_row_edit_when_shortcut_and_body_empty(
     served_review_rows: tuple[str, Path], open_preview: OpenPreview, page: Page
 ) -> None:
-    """空白だけの本文は Ctrl+Enter でも送らず、入力欄を要見直しにして「コメントを入れてから直してください。」を出す（異常系）。"""
+    """空白だけの本文は Ctrl+Enter でも送らず、入力欄を要見直しにして「コメントを入れてから修正してください。」を出す（異常系）。"""
     # 準備
     url, root = served_review_rows
     patches: list[str] = []
@@ -1705,7 +1705,7 @@ def test_review_row_edit_when_shortcut_and_body_empty(
     # 実行
     page.press(field, "Control+Enter")
     # 検証
-    assert page.inner_text(f"{row} form.row-edit .send-msg") == "コメントを入れてから直してください。"
+    assert page.inner_text(f"{row} form.row-edit .send-msg") == "コメントを入れてから修正してください。"
     assert page.get_attribute(f"{row} form.row-edit .send-msg", "role") == "alert"
     assert page.get_attribute(field, "aria-invalid") == "true"
     assert patches == []
@@ -1730,7 +1730,7 @@ def test_review_row_edit_shortcut_hint(
 def test_review_row_edit_when_body_empty(
     served_review_rows: tuple[str, Path], open_preview: OpenPreview, page: Page
 ) -> None:
-    """空白だけの本文は送らず、入力欄を要見直しにして「コメントを入れてから直してください。」を出す（異常系）。"""
+    """空白だけの本文は送らず、入力欄を要見直しにして「コメントを入れてから修正してください。」を出す（異常系）。"""
     # 準備
     url, root = served_review_rows
     patches: list[str] = []
@@ -1744,7 +1744,7 @@ def test_review_row_edit_when_body_empty(
     # 実行
     page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     # 検証
-    assert page.inner_text(f"{row} form.row-edit .send-msg") == "コメントを入れてから直してください。"
+    assert page.inner_text(f"{row} form.row-edit .send-msg") == "コメントを入れてから修正してください。"
     assert page.get_attribute(f"{row} form.row-edit .send-msg", "role") == "alert"
     assert page.get_attribute(field, "aria-invalid") == "true"
     assert patches == []
@@ -1780,7 +1780,7 @@ def test_review_row_edit_when_server_refuses(
 def test_review_row_edit_when_unreachable(
     served_review_rows: tuple[str, Path], open_preview: OpenPreview, page: Page
 ) -> None:
-    """サーバーに届かないときは、入力を残して「サーバーが止まっています。立ち上げ直してから直してください。」を出す（異常系）。"""
+    """サーバーに届かないときは、入力を残して「サーバーが止まっています。再起動してから修正してください。」を出す（異常系）。"""
     # 準備
     url, _ = served_review_rows
     page.route(
@@ -1796,7 +1796,7 @@ def test_review_row_edit_when_unreachable(
     # 検証
     assert (
         page.inner_text(f"{row} form.row-edit .send-msg")
-        == "サーバーが止まっています。立ち上げ直してから直してください。"
+        == "サーバーが止まっています。再起動してから修正してください。"
     )
     assert page.input_value(field) == "案 B にする"
 
@@ -2015,16 +2015,16 @@ def test_review_row_keyboard(
 def test_review_row_remove_keeps_input(
     served_review_rows: tuple[str, Path], open_preview: OpenPreview
 ) -> None:
-    """行を消して描き直しても、コメントの入力欄の書きかけを保つ（正常系）。"""
+    """行を消して描き直しても、コメントの入力欄の下書きを保つ（正常系）。"""
     # 準備
     url, _ = served_review_rows
     page = open_preview(url, "#tab=decisions&id=D-1")
-    page.fill(DETAIL_TEXTAREA, "書きかけ")
+    page.fill(DETAIL_TEXTAREA, "下書き")
     # 実行
     _row_button(page, "C-1", ROW_REMOVE_NAME).click()
     page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
     # 検証
-    assert page.input_value(DETAIL_TEXTAREA) == "書きかけ"
+    assert page.input_value(DETAIL_TEXTAREA) == "下書き"
 
 
 def test_review_row_remove_keeps_scroll(
@@ -2788,7 +2788,7 @@ def test_diff_body_when_added_mark_in_loose_list(
 def test_diff_diagram(
     write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """flowchart は足した・変えたノードと辺に色を付け、図の下に凡例と「消したもの」を並べる。色を付けない種類は枠に色を付け、Raw で見るよう案内する（正常系）。"""
+    """flowchart は足した・変えたノードと辺に色を付け、図の下に凡例と「削除したもの」を並べる。色を付けない種類は枠に色を付け、Raw で見るよう案内する（正常系）。"""
     # 準備・実行
     url, _ = write_history_preview()
     _open_diff_panel(page, open_preview, url, "V-2")
@@ -4612,7 +4612,7 @@ def test_diff_minimap(
     assert toolbar.get_attribute("role") == "toolbar"
     assert toolbar.get_attribute("aria-orientation") == "vertical"
     assert toolbar.get_attribute("aria-label") == "変わった箇所"
-    assert [shape["label"] for shape in shapes] == ["消した箇所（1 / 2）", "足した箇所（2 / 2）"]
+    assert [shape["label"] for shape in shapes] == ["削除した箇所（1 / 2）", "追加した箇所（2 / 2）"]
     # 検証（印は 1 つのタブの止まりにまとめる）
     assert page.locator(f"{PANEL_SCOPE} .df-map .df-map-m[tabindex='0']").count() == 1
     assert page.locator(f"{PANEL_SCOPE} .df-map .df-map-m[tabindex='-1']").count() == 1
@@ -5179,7 +5179,7 @@ def test_edit_toggle_narrow(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """幅 480px 以下は鉛筆の印だけにし、文字を読み上げと title に残す（正常系）。"""
+    """幅 480px 以下は鉛筆のアイコンだけにし、文字を読み上げと title に残す（正常系）。"""
     # 準備
     url, _ = write_edit_preview(*_edit_items(make_item), settings=valid_settings)
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
@@ -5434,7 +5434,7 @@ def test_options_edit(
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（2 件）", timeout=EDIT_SETTLE_MS)
     wait_saved_edit(page, "B", "B", op="adopt")
     # 実行（案を足す）
-    page.get_by_role("button", name="案を追加").click()
+    page.get_by_role("button", name="案追加").click()
     draft = page.get_by_label("案 C の中身")
     draft.fill("足した案 C")
     _blur_and_wait(page, draft, 3)
@@ -5485,12 +5485,12 @@ def test_option_draft_when_redrawn(
     open_preview: OpenPreview,
     call_tool: CallTool,
 ) -> None:
-    """「案を追加」で置いた書きかけの案は、入力の途中で記録を書き換えても描き直さずに打った中身ごと残り、離れたときに 1 回だけ描き直して溜める（正常系）。"""
+    """「案を追加」で置いた下書きの案は、入力の途中で記録を書き換えても描き直さずに打った中身ごと残り、離れたときに 1 回だけ描き直して溜める（正常系）。"""
     # 準備
     page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
-    page.get_by_role("button", name="案を追加").click()
+    page.get_by_role("button", name="案追加").click()
     draft = page.get_by_label("案 C の中身")
-    draft.fill("書きかけの案 C")
+    draft.fill("下書きの案 C")
     page.evaluate(f"document.querySelector('{EDIT_FORM}').dataset.drawn = 'before'")
     # 実行（離れずに記録を書き換える）
     added = write_tool(call_tool, "add", workspace=str(root), kind="decision", item=NEW_DECISION)
@@ -5510,9 +5510,9 @@ def test_option_draft_when_redrawn(
     )
     # 検証
     assert added.is_error is False, added.text
-    assert held == {"drawn": "before", "value": "書きかけの案 C", "focused": True}
-    wait_saved_edit(page, "C", {"content": "書きかけの案 C"}, op="option-add")
-    expect(page.get_by_label("案 C の中身")).to_have_value("書きかけの案 C")
+    assert held == {"drawn": "before", "value": "下書きの案 C", "focused": True}
+    wait_saved_edit(page, "C", {"content": "下書きの案 C"}, op="option-add")
+    expect(page.get_by_label("案 C の中身")).to_have_value("下書きの案 C")
     expect(band).to_have_count(0, timeout=UPDATE_TIMEOUT_MS)
 
 
@@ -5627,7 +5627,7 @@ def test_blocked_reason(
     assert note.count() == 1
     text = note.inner_text()
     assert text.startswith("溜めた後の ")
-    assert "に AI がこの項目を書き換えたため、書き込めません。取り消してから入れ直してください。" in text
+    assert "に AI がこの項目を書き換えたため、書き込めません。取り消してから再入力してください。" in text
     assert "10/05" in text
     assert "is-blocked" in field.get_attribute("class")
     assert field.locator("textarea").evaluate("e => getComputedStyle(e).borderTopStyle") == "solid"
@@ -6346,7 +6346,7 @@ def test_embedded_html_diff(
     group.get_by_role("button", name=names[1]).click()
     assert _pressed() == ["false", "true", "false"]
     expect(legend).to_be_visible()
-    assert legend.inner_text().split() == ["足した", "変わった"]
+    assert legend.inner_text().split() == ["追加した", "変わった"]
 
 
 def test_embedded_html_diff_when_range_unchanged(
@@ -6498,10 +6498,10 @@ def test_edit_tags_main_toggle(
     group.get_by_role("button", name="記録の形 を主題").click()
     # 検証（元の主題に戻す）
     wait_no_saved_edits(page)
-    # 実行（主題を外す）
+    # 実行（主題を解除）
     group.get_by_role("button", name="画面 を主題").click()
     wait_saved_edit(page, "tags", [{"name": "画面"}, {"name": "記録の形"}])
-    # 検証（主題を外す。主題でないタグは main を持たない）
+    # 検証（主題を解除。主題でないタグは main を持たない）
     assert read_edits_file(root)["items"][0]["value"] == [{"name": "画面"}, {"name": "記録の形"}]
 
 
@@ -6578,7 +6578,7 @@ def served_long_review(
 
 
 def test_review_row_body_folded(served_long_review: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """行の本文を Markdown で描き、5 行を超える本文は 5 行までに畳んで本文の下に「続きを読む」を出す。5 行以下の行には出さない（正常系）。"""
+    """行の本文を Markdown で描き、5 行を超える本文は 5 行までに畳んで本文の下に「続きを表示」を出す。5 行以下の行には出さない（正常系）。"""
     # 準備
     url, _ = served_long_review
     # 実行
@@ -6587,8 +6587,8 @@ def test_review_row_body_folded(served_long_review: tuple[str, Path], open_previ
     # 検証
     assert page.evaluate(REVIEW_FOLD_STATE_JS, {"host": "aside.panel", "id": "C-1"}) == {
         "folded": True,
-        "text": "続きを読む",
-        "label": "D-1 へのコメントの続きを読む",
+        "text": "続きを表示",
+        "label": "D-1 へのコメントの続きを表示",
         "focus": "detail-more:C-1",
         "listItem": ["list-item", "0px"],
     }
@@ -6602,7 +6602,7 @@ def test_review_row_body_folded(served_long_review: tuple[str, Path], open_previ
 
 
 def test_review_row_more(served_long_review: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """「続きを読む」で全文を開いて「折りたたむ」に変え、詳細の全画面へ切り替えても開いたまま。ハッシュの項目は変えない（正常系）。"""
+    """「続きを表示」で全文を開いて「折りたたむ」に変え、詳細の全画面へ切り替えても開いたまま。ハッシュの項目は変えない（正常系）。"""
     # 準備
     url, _ = served_long_review
     page = open_preview(url, "#tab=decisions&id=D-1")

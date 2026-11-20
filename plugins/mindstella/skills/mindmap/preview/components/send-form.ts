@@ -51,7 +51,7 @@ namespace MindmapPreview {
     detail?: string | null;
     /** 畳んだ形（`target` が null のときだけ使う） */
     collapsed?: boolean;
-    /** `target` が null のときの入力欄の読み上げの名前（コメントの一覧の新しいスレッドの入力は「新しいスレッド」） */
+    /** `target` が null のときの入力欄の読み上げの名前（コメントの一覧の新規スレッドの入力は「新規スレッド」） */
     label?: string;
     /** 開いているか（`target` があるときだけ使う）。偽なら見出しの行だけを出す */
     open?: boolean;
@@ -115,7 +115,7 @@ namespace MindmapPreview {
       if (detail !== null && detail !== undefined) {
         return [icon("alert"), h({ tag: "span", children: [`レビューに追加できませんでした。${detail}`] })];
       }
-      // サーバーに届かなかった: 立ち上げ直すと URL が変わり、書きかけは引き継がれないので、本文をコピーする手段を添える
+      // サーバーに届かなかった: 立ち上げ直すと URL が変わり、下書きは引き継がれないので、本文をコピーする手段を添える
       return [
         icon("alert"),
         h({
@@ -125,7 +125,7 @@ namespace MindmapPreview {
             h({
               tag: "span",
               children: [
-                "レビューに追加できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから追加してください。",
+                "レビューに追加できませんでした。サーバーが止まっています。起動スクリプトで再起動し、示された新しい URL で開いてから追加してください。",
               ],
             }),
             h({
@@ -290,7 +290,7 @@ namespace MindmapPreview {
             h({ tag: "span", attrs: { class: "send-loc-name" }, children: [locationLabel(loc)] }),
             h({
               tag: "button",
-              attrs: { class: "icon-btn send-unquote", type: "button", "aria-label": "箇所を外す", title: "箇所を外す", onclick: onUnquote },
+              attrs: { class: "icon-btn send-unquote", type: "button", "aria-label": "箇所を解除", title: "箇所を解除", onclick: onUnquote },
               children: [icon("x")],
             }),
           ],
@@ -423,7 +423,7 @@ namespace MindmapPreview {
       });
     }
 
-    /** 見出しの行（「{ID} へのコメント」・書きかけの印・開閉のボタン） */
+    /** 見出しの行（「{ID} へのコメント」・下書きの印・開閉のボタン） */
     function head(): HTMLElement {
       const toggleLabel = open ? "コメントの入力を閉じる" : "コメントの入力を開く";
       return h({
@@ -436,7 +436,7 @@ namespace MindmapPreview {
             children: [h({ tag: "span", attrs: { class: "mono" }, children: [target ?? ""] }), " へのコメント"],
           }),
           !open && body.trim() !== ""
-            ? h({ tag: "span", attrs: { class: "send-draft" }, children: [icon("edit"), "書きかけ"] })
+            ? h({ tag: "span", attrs: { class: "send-draft" }, children: [icon("edit"), "下書き"] })
             : null,
           h({
             tag: "button",

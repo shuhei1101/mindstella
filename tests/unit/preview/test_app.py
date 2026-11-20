@@ -511,7 +511,7 @@ def test_form_key_when_thread(
     second: list[Any],
     expected_same: bool,
 ) -> None:
-    """スレッドごとに別のキーで、新しいスレッドの入力とも別（正常系）。"""
+    """スレッドごとに別のキーで、新規スレッドの入力とも別（正常系）。"""
     # 準備
     load_preview_scripts(include_app=True)
     # 実行

@@ -1,5 +1,5 @@
 id: MOD-489-189
-title: サーバー / 読み書きと検証 / store.py
+title: サーバー / 読み込みと書き込みと検証 / store.py
 test_files:
   - tests/unit/scripts/test_store.py
 data_models:
@@ -43,13 +43,13 @@ data_models:
         description: 問題の種類
       - name: file
         type: str
-        description: 記録のフォルダ（`records_root(root)`）からの相対パス（`decisions.yaml` の形）。点検の結果に返すときは、モジュール構成『点検』の `check_workspace` がワークスペースからの相対パス（`.mindstella/decisions.yaml`）にする
+        description: 記録のフォルダ（`records_root(root)`）からの相対パス（`decisions.yaml` の形式）。点検の結果に返すときは、モジュール構成『点検』の `check_workspace` がワークスペースからの相対パス（`.mindstella/decisions.yaml`）にする
       - name: id
         type: str | None
         description: 問題のある項目の ID
       - name: key
         type: str | None
-        description: キーのパス（`items[0].status` の形）
+        description: キーのパス（`items[0].status` の形式）
       - name: detail
         type: str
         description: 中身
@@ -136,7 +136,7 @@ data_models:
       - name: removed_bodies
         type: list[str]
         default: '[]'
-        description: 書き換えた後に消す本文のパス（`body` の値。形式を替えた資料の前の形式の本文）
+        description: 書き換えた後に削除する本文のパス（`body` の値。形式を替えた資料の前の形式の本文）
       - name: settings
         type: dict[str, Any] | None
         default: None
@@ -175,16 +175,16 @@ constants:
     summary: 置き換える前に書く一時ファイルの拡張子（置き換えるファイルと同じフォルダに作る）
     value: '".tmp"'
   - name: LEGACY_HINT
-    title: 前の版の形式の案内
+    title: 前のバージョンの形式の案内
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
-    summary: 前の版の形式でスキーマに合わないときに続ける 1 行
-    value: '"ヒント: 前の版の形式の記録は、起動スクリプトでワークスペースを開き直すと今の形式に移せます"'
+    summary: 前のバージョンの形式でスキーマに合わないときに続ける 1 行
+    value: '"ヒント: 前のバージョンの形式の記録は、起動スクリプトでワークスペースを再度開くと今の形式に移せます"'
   - name: VERSION_FILE
-    title: 版のファイル
+    title: バージョンのファイル
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
-    summary: ワークスペースの版を持つファイルの名前（`records_root(root)` の下。v0.6.0 より前は直下）
+    summary: ワークスペースのバージョンを持つファイルの名前（`records_root(root)` の下。v0.6.0 より前は直下）
     value: '"mindstella-version.ini"'
   - name: LOCK_FILE
     title: 書き換えのロックのファイル
@@ -196,8 +196,8 @@ constants:
     title: 移し替えの案内
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
-    summary: 記録のフォルダが無く直下に前の版の設定ファイル（`config.yaml` か `mindmap.yaml`）があるフォルダの WorkspaceNotFoundError・WorkspaceExistsError に続ける 1 行（`{root}` はフォルダの絶対パス）
-    value: '"ヒント: 前の版の形の記録があります。起動スクリプトで {root} を開き直すと今の版へ移し替えます"'
+    summary: 記録のフォルダが無く直下に前のバージョンの設定ファイル（`config.yaml` か `mindmap.yaml`）があるフォルダの WorkspaceNotFoundError・WorkspaceExistsError に続ける 1 行（`{root}` はフォルダの絶対パス）
+    value: '"ヒント: 前のバージョンの形式の記録があります。起動スクリプトで {root} を再度開くと今のバージョンへ移し替えます"'
   - name: YAML_LOADER
     title: YAML の読み込みに使用するローダー
     container: plugins/mindstella/skills/mindmap/scripts/store.py
@@ -211,7 +211,7 @@ constants:
     usecase: 共通
     summary: libyaml の C 実装を持つ PyYAML では `yaml.CSafeDumper`、持たない PyYAML では `yaml.SafeDumper`
     value: getattr(yaml, "CSafeDumper", yaml.SafeDumper)
-    description: 書き出した YAML を読み込み直すと同じ値になる。長い文字列の折り返しの位置だけが 2 つで異なる（外部ライブラリ『PyYAML』）
+    description: 書き出した YAML を再読み込みすると同じ値になる。長い文字列の折り返しの位置だけが 2 つで異なる（外部ライブラリ『PyYAML』）
   - name: MISSING_DIGEST
     title: 無い種類のファイルの要約
     container: plugins/mindstella/skills/mindmap/scripts/store.py
@@ -224,7 +224,7 @@ constants:
     usecase: 共通
     summary: '`(ワークスペースのフォルダ, ファイル名)` → `(バイト列の要約, そのファイルの問題)`。常駐サーバーのプロセスの間だけ持ち、ファイルごとに最後の 1 件だけを残す'
     value: '{}'
-    description: '`validate_workspace` が書き、`unchanged` のファイルで要約が同じなら検証の代わりに使用する。書き込む関数は書き込んだ中身の要約で置き換える。スキーマはプロセスの間に変わらない（プラグインの更新は常駐サーバーを立ち上げ直す）ため、要約が同じなら問題も同じになる'
+    description: '`validate_workspace` が書き、`unchanged` のファイルで要約が同じなら検証の代わりに使用する。書き込む関数は書き込んだ中身の要約で置き換える。スキーマはプロセスの間に変わらない（プラグインの更新は常駐サーバーを再起動する）ため、要約が同じなら問題も同じになる'
   - name: OPTIONS_OPTIONAL_STATUSES
     title: 案を持たなくてよい状態
     container: plugins/mindstella/skills/mindmap/scripts/store.py
@@ -276,9 +276,9 @@ functions:
       1. `root` を絶対パスにし、ワークスペースを確かめる（`require_workspace`）
       2. `records_root(root)` の下の設定と `KINDS` の順の種類ごとの YAML を読み、読んだ値をそのまま `raw` に、バイト列の要約を `digests` に入れる（読む。`_read_yaml`）
          - 種類のファイルが無い場合、`{"items": []}` を入れ、`digests` に `MISSING_DIGEST` を入れる
-         - YAML として読めない場合（設定も含む）、`kind: schema`・`key: (全体)` の問題を `load_problems` に足し、`raw` にも `digests` にも入れない
+         - YAML として読めない場合（設定も含む）、`kind: schema`・`key: (全体)` の問題を `load_problems` に追加し、`raw` にも `digests` にも入れない
       3. `settings` は設定の値が辞書のときだけその値、それ以外は空にする
-      4. `items` は、値が辞書で `items` が配列のときだけその要素のうち辞書のものを取り出し、それ以外は空にする（形の誤りは検証が `raw` から拾う）
+      4. `items` は、値が辞書で `items` が配列のときだけその要素のうち辞書のものを取り出し、それ以外は空にする（構造の誤りは検証が `raw` から拾う）
       5. `Workspace` を返す（`root` は直下のフォルダのまま）
     exceptions:
       - name: WorkspaceNotFoundError
@@ -374,7 +374,7 @@ functions:
         expected: その 1 件を含む
       - name: test_validate_workspace_when_top_level_invalid
         case: 正常
-        summary: 一番上の形の誤りを拾う
+        summary: 一番上の構造の誤りを拾う
         condition: '`parametrize`: `decisions.yaml` が一番上の配列 / `decisions.yaml` が `items` の横に `extra` のキーを持つ'
         mock: なし
         expected: '`file: decisions.yaml`・`kind: schema` の問題があり、`key` が `(全体)`'
@@ -399,7 +399,7 @@ functions:
       - name: test_validate_workspace_when_unchanged
         case: 正常
         summary: 差し替えていないファイルは前回の検証の結果を使用する
-        condition: '`status: 完了` の D-1 を持つワークスペースを読み込んで `unchanged` に全てのファイルを渡して 1 回検証した後、`_file_problems` を呼ばれた回数を数える関数に差し替える。`parametrize`: `unchanged=["decisions.yaml"]` / `unchanged` を渡さない / `unchanged=["decisions.yaml"]` で、1 回目の後に `decisions.yaml` を書き換えて読み込み直す'
+        condition: '`status: 完了` の D-1 を持つワークスペースを読み込んで `unchanged` に全てのファイルを渡して 1 回検証した後、`_file_problems` を呼ばれた回数を数える関数に差し替える。`parametrize`: `unchanged=["decisions.yaml"]` / `unchanged` を渡さない / `unchanged=["decisions.yaml"]` で、1 回目の後に `decisions.yaml` を書き換えて再読み込みする'
         mock: '`_file_problems`（`store` モジュールの参照を monkeypatch）'
         expected: 'どれも `decisions.yaml: items[0].status` の問題を含む。`decisions.yaml` で `_file_problems` を呼んだ回数が 0 / 1 / 1'
   - name: _file_problems
@@ -424,8 +424,8 @@ functions:
       type: list[Problem]
       description: そのファイルの問題。キーのパスの順
     process: |-
-      1. 値をそのまま、ファイルに対応するスキーマと突き合わせ、`iter_errors` のエラーごとに問題を作る（一番上の形の誤りもここで拾う。検証器は `load_validators`）
-         - キーのパスは `absolute_path` を `items[0].status` の形にする（`_format_path`。一番上は `(全体)`）
+      1. 値をそのまま、ファイルに対応するスキーマと突き合わせ、`iter_errors` のエラーごとに問題を作る（一番上の構造の誤りもここで拾う。検証器は `load_validators`）
+         - キーのパスは `absolute_path` を `items[0].status` の形式にする（`_format_path`。一番上は `(全体)`）
          - パスが `items[{n}]` を含み、その要素が `id` を持つ場合、その `id` を問題の `id` に入れる
       2. 種類の YAML なら、`items` の各要素の `tags` が並びのとき、`duplicate_tag_indexes` が返す位置ごとに `kind: schema`・キーのパス `items[{i}].tags[{j}]`・`detail` `同じタグが既にある` の問題を追加する（`id` はその要素の `id`）
       3. `decisions.yaml` なら、`check_decision_rules` の問題を追加する
@@ -454,7 +454,7 @@ functions:
     usecase: 共通
     scope: public
     summary: ワークスペースの YAML の文字列を `YAML_LOADER` で読み込む
-    description: ワークスペースの記録の YAML を読み込む全ての関数（`_read_yaml`、モジュール構成『スレッド』の `load_threads`・`raw_thread_targets`、モジュール構成『変更履歴』の `load_changes`、モジュール構成『コメント』の `load_comments`・`load_drafts`、モジュール構成『保存待ちの編集』の `load_edits`）が使用する。前の版の形式を移し替える関数（モジュール構成『移行』）は使用しない
+    description: ワークスペースの記録の YAML を読み込む全ての関数（`_read_yaml`、モジュール構成『スレッド』の `load_threads`・`raw_thread_targets`、モジュール構成『変更履歴』の `load_changes`、モジュール構成『コメント』の `load_comments`・`load_drafts`、モジュール構成『保存待ちの編集』の `load_edits`）が使用する。前のバージョンの形式を移し替える関数（モジュール構成『移行』）は使用しない
     args:
       - name: text
         type: str
@@ -553,12 +553,12 @@ functions:
       description: 項目の場所
     process: |-
       1. 種類を引く（ID の種類。`kind_of_id`）
-         - 種類が無い場合、`ItemNotFoundError` を送る
+         - 種類が無い場合、`ItemNotFoundError` を送出する
       2. その種類の `items` から `id` が一致する最初の項目を探す
-         - 無い場合、`ItemNotFoundError` を送る
+         - 無い場合、`ItemNotFoundError` を送出する
     exceptions:
       - name: ItemNotFoundError
-        condition: ID の形が合わないか、頭の文字がどの種類にも当たらない
+        condition: ID の形式が合わないか、頭の文字がどの種類にも当たらない
         message: '項目がありません: {item_id}'
       - name: ItemNotFoundError
         condition: その種類に ID の項目が無い
@@ -590,7 +590,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の追加と更新
     scope: public
-    summary: その種類の連番の最大 + 1 の ID を返す（消した ID を振り直さない）
+    summary: その種類の連番の最大 + 1 の ID を返す（削除した ID を再採番しない）
     args:
       - name: workspace
         type: Workspace
@@ -607,12 +607,12 @@ functions:
         required: false
         default: ()
         passing: keyword
-        description: 今の項目に無いが振らない ID（消した項目の ID）
+        description: 今の項目に無いが振らない ID（削除した項目の ID）
     returns:
       type: str
       description: '`{頭の文字}-{連番}`'
     process: |-
-      1. その種類の項目の `id` と `taken`（消した ID と、『ID の採番』の予約の最大を含む）のうち、頭の文字が一致し連番が数字のものの最大を取る（無ければ 0）
+      1. その種類の項目の `id` と `taken`（削除した ID と、『ID の採番』の予約の最大を含む）のうち、頭の文字が一致し連番が数字のものの最大を取る（無ければ 0）
       2. 最大 + 1 で ID を作って返す
     unit_tests:
       - name: test_next_id
@@ -629,7 +629,7 @@ functions:
         expected: '`T-1`'
       - name: test_next_id_skips_taken
         case: 正常
-        summary: 消した ID を振り直さない
+        summary: 削除した ID を再採番しない
         condition: N-1 だけを持ち、`taken` に `N-2`・`D-5`
         mock: なし
         expected: '`N-3`（ほかの種類の `D-5` は見ない）'
@@ -666,30 +666,30 @@ functions:
         passing: positional
         description: 書き込む変更
     process: |-
-      1. 変更する種類のファイルが、書き戻しても中身を失わない形かを確かめる
-         - そのファイルが `load_problems` にある（YAML として読めない）か、`raw` のそのファイルの値が `{"items": items のその種類}` と等しくない（一番上が辞書でない・`items` の横にキーがある・`items` が配列でない・辞書でない要素があるなど、`_extract_items` が落とすものがある）場合、変更を当てる前のワークスペースのそのファイルの問題（`validate_workspace` のうち `file` がそのファイルのもの）を持った `SchemaMismatchError` を送る（何も書かない）
-         - 項目の中の値だけが合わない問題はここでは止めない（変更で直せるため。残っていれば 2. で止まる）
+      1. 変更する種類のファイルが、書き戻しても中身を失わない構造かを確かめる
+         - そのファイルが `load_problems` にある（YAML として読めない）か、`raw` のそのファイルの値が `{"items": items のその種類}` と等しくない（一番上が辞書でない・`items` の横にキーがある・`items` が配列でない・辞書でない要素があるなど、`_extract_items` が落とすものがある）場合、変更を当てる前のワークスペースのそのファイルの問題（`validate_workspace` のうち `file` がそのファイルのもの）を持った `SchemaMismatchError` を送出する（何も書かない）
+         - 項目の中の値だけが合わない問題はここでは止めない（変更で修正できるため。残っていれば 2. で止まる）
       2. `raw` のその種類のファイルを `{"items": 変更後の並び}` に差し替えたワークスペースを作り、検証する（ワークスペースの検証。`validate_workspace`。`unchanged` は差し替えたファイルを除く `raw` のファイル）
-         - 問題がある場合、書き換える項目の ID（`_written_ids`）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
+         - 問題がある場合、書き換える項目の ID（`_written_ids`）を `written_ids` にして `SchemaMismatchError` を送出する（`build_mismatch_error`。何も書かない）
       3. YAML の一時ファイルを書く（`dump_yaml`、`write_temp`）。本文があれば本文の一時ファイルも書き、置き換える前の本文を控える（無ければ `None`）。`history` があれば `history.yaml`、`changes` があれば `changes.yaml` の一時ファイルも書き、置き換える前の種類の YAML を控える
-         - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
+         - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを削除して `WriteFailedError` を送出する
       4. 置き換える直前に、書き換える種類の YAML の今の中身の要約（`_digest`）が、読んだときの `workspace.digests` と同じかを確かめる
-         - 違う場合（project-index の `write_docs` が間に書いた）、一時ファイルを消して `ConcurrentWriteError` を送る（何も置き換えない。呼ぶ側が読み直して 1 回だけ当て直す）
+         - 違う場合（project-index の `write_docs` が間に書いた）、一時ファイルを削除して `ConcurrentWriteError` を送出する（何も置き換えない。呼ぶ側が再読み込みして 1 回だけ再適用する）
       5. 本文 → YAML → `history.yaml` → `changes.yaml` の順に `os.replace` で置き換える
-         - 本文の置き換えで `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
-         - YAML の置き換えで `OSError` が起きた場合、本文を控えに戻し（控えが `None` なら本文を消し）、残った一時ファイルを消して `WriteFailedError` を送る
-         - `changes.yaml` の置き換えで `OSError` が起きた場合、YAML を控えに戻し、本文も YAML のときと同じく戻し、残った一時ファイルを消して `WriteFailedError` を送る
-      6. 書き込んだ種類の YAML の文字列の要約（`_digest`）と空の問題で、`_VALIDATION_CACHE` の `(root, ファイル名)` を置き換える（次の読み込みで同じ中身を検証し直さない）
+         - 本文の置き換えで `OSError` が起きた場合、一時ファイルを削除して `WriteFailedError` を送出する
+         - YAML の置き換えで `OSError` が起きた場合、本文を控えに戻し（控えが `None` なら本文を削除）、残った一時ファイルを削除して `WriteFailedError` を送出する
+         - `changes.yaml` の置き換えで `OSError` が起きた場合、YAML を控えに戻し、本文も YAML のときと同じく戻し、残った一時ファイルを削除して `WriteFailedError` を送出する
+      6. 書き込んだ種類の YAML の文字列の要約（`_digest`）と空の問題で、`_VALIDATION_CACHE` の `(root, ファイル名)` を置き換える（次の読み込みで同じ中身を再検証しない）
       7. 書き込んだ種類の YAML と本文の名前と中身を返す（`save_batch` の 7. と同じ）
     exceptions:
       - name: ConcurrentWriteError
         condition: 置き換える直前に、書き換える種類の YAML が読んだときと違う
         message: '記録がほかから書き換えられました: {ファイル名}'
       - name: SchemaMismatchError
-        condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または変更を当てた後のワークスペースに問題がある
+        condition: 変更する種類のファイルが読めないか書き戻すと中身を失う構造、または変更を当てた後のワークスペースに問題がある
         message: スキーマに合いません（`lines` に問題ごとの行）
       - name: WriteFailedError
-        condition: 一時ファイルの書き込みか、本文・YAML・`changes.yaml` の置き換えで `OSError` が起きた（置き換えたものを戻し、一時ファイルを消した後）
+        condition: 一時ファイルの書き込みか、本文・YAML・`changes.yaml` の置き換えで `OSError` が起きた（置き換えたものを戻し、一時ファイルを削除した後）
         message: '書き込めませんでした: {パス}（{理由}）'
       - name: WriteFailedError
         condition: YAML の置き換えで `OSError` が起きた（本文を戻した後）
@@ -705,34 +705,34 @@ functions:
       - name: test_save_change
         case: 正常
         summary: 項目の並びと本文を書き、一時ファイルを残さない
-        condition: D-1 を足した並びと本文 `D-1.mark.md`
+        condition: D-1 を追加した並びと本文 `D-1.mark.md`
         mock: なし
         expected: '`decisions.yaml` を読むと D-1 があり、`docs/D-1.mark.md` が渡した本文。ワークスペースに `.tmp` のファイルが無い'
       - name: test_save_change_when_schema_mismatch
         case: 異常
         summary: スキーマに合わない変更は書かない
-        condition: '`status: 完了` の D-1 を足した並びと本文'
+        condition: '`status: 完了` の D-1 を追加した並びと本文'
         mock: なし
         expected: '`SchemaMismatchError`（`lines` に `decisions.yaml: items[0].status:` で始まる行）。`decisions.yaml` と `docs/` が呼ぶ前と同じ'
         exception: 変更を当てた後のワークスペースに問題がある
       - name: test_save_change_when_temp_write_fails
         case: 異常
         summary: 一時ファイルを書けなければ何も置き換えない
-        condition: '`_write_temp` を、本文の一時ファイルのときだけ `OSError` を送る関数に差し替える'
+        condition: '`_write_temp` を、本文の一時ファイルのときだけ `OSError` を送出する関数に差し替える'
         mock: '`_write_temp`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`decisions.yaml` と `docs/` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: 一時ファイルの書き込みで OSError
       - name: test_save_change_when_yaml_replace_fails_with_previous_body
         case: 異常
         summary: YAML の置き換えに失敗したら前の本文に戻す
-        condition: '`docs/D-1.mark.md` がある状態で本文を書き換える変更。`os.replace` を、置き換え先が `decisions.yaml` のときだけ `OSError` を送る関数に差し替える'
+        condition: '`docs/D-1.mark.md` がある状態で本文を書き換える変更。`os.replace` を、置き換え先が `decisions.yaml` のときだけ `OSError` を送出する関数に差し替える'
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `decisions.yaml`）。`docs/D-1.mark.md` と `decisions.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: YAML の置き換えで OSError
       - name: test_save_change_when_yaml_replace_fails_without_previous_body
         case: 異常
-        summary: YAML の置き換えに失敗したら新しく書いた本文を消す
-        condition: '`docs/D-1.mark.md` が無い状態で本文を足す変更。`os.replace` を同じように差し替える'
+        summary: YAML の置き換えに失敗したら新しく書いた本文を削除する
+        condition: '`docs/D-1.mark.md` が無い状態で本文を追加する変更。`os.replace` を同じように差し替える'
         mock: '`os.replace`'
         expected: '`WriteFailedError`。`docs/D-1.mark.md` が無く、`decisions.yaml` が呼ぶ前と同じ'
         exception: YAML の置き換えで OSError
@@ -742,24 +742,24 @@ functions:
         condition: 'D-1・D-2 を持つ `decisions.yaml` を崩してから読み、D-1 だけの並びの変更を渡す。`parametrize`: 一番上が配列 / `items` の横に `extra` のキー / `items` に文字列の要素 / YAML として読めない'
         mock: なし
         expected: '`SchemaMismatchError`（`lines` がどれも `decisions.yaml: ` で始まる）。`decisions.yaml` と `docs/` が呼ぶ前と同じ'
-        exception: 書き戻すと中身を失う形
+        exception: 書き戻すと中身を失う構造
       - name: test_save_change_when_item_value_fixed
         case: 正常
-        summary: 項目の中の合わない値は、それを直す変更なら書ける
-        condition: '`status: 完了` の D-1 を持つ `decisions.yaml` を読み、`status: 未決定` に直した並びの変更を渡す'
+        summary: 項目の中の合わない値は、それを修正する変更なら書ける
+        condition: '`status: 完了` の D-1 を持つ `decisions.yaml` を読み、`status: 未決定` に変更した並びの変更を渡す'
         mock: なし
         expected: 例外にならず、`decisions.yaml` を読むと D-1 の `status` が `未決定`
       - name: test_save_change_when_changes_replace_fails
         case: 異常
         summary: まとまりの置き換えに失敗したら項目と本文を戻す
-        condition: D-1 の本文を書き換え、`changes` を渡す変更。`os.replace` を、置き換え先が `changes.yaml` のときだけ `OSError` を送る関数に差し替える
+        condition: D-1 の本文を書き換え、`changes` を渡す変更。`os.replace` を、置き換え先が `changes.yaml` のときだけ `OSError` を送出する関数に差し替える
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `changes.yaml`）。`decisions.yaml`・`docs/D-1.mark.md`・`changes.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: changes.yaml の置き換えで OSError
       - name: test_save_change_when_decision_state
         case: 異常
-        summary: 書き換える項目以外の案と状態の合わない検討事項があるときだけ、前の版の形式とする
-        condition: '`parametrize`: 案を持たない未決定の D-2 が残るワークスペースで、決まりに合う D-1 の `lead` だけを直した並び / 決まりに合う D-1・D-2 のワークスペースで、D-1 を採用した案の無い決定済みに直した並び'
+        summary: 書き換える項目以外の案と状態の合わない検討事項があるときだけ、前のバージョンの形式とする
+        condition: '`parametrize`: 案を持たない未決定の D-2 が残るワークスペースで、決まりに合う D-1 の `lead` だけを修正した並び / 決まりに合う D-1・D-2 のワークスペースで、D-1 を採用した案の無い決定済みに変更した並び'
         mock: なし
         expected: どちらも `SchemaMismatchError` でファイルは呼ぶ前と同じ。`legacy` が真（`lines` が D-2 の行） / 偽（`lines` が D-1 の行）
   - name: create_workspace
@@ -768,7 +768,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: ワークスペースの作成
     scope: public
-    summary: 設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイルを作り、直下に `docs/` を作って README を書く
+    summary: 設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・バージョンのファイルを作り、直下に `docs/` を作って README を書く
     side_effects: フォルダとファイルを作る
     args:
       - name: root
@@ -785,21 +785,21 @@ functions:
         type: str
         required: true
         passing: keyword
-        description: 版のファイルに書くプラグインの版（`v0.3.0` の形。入口が `read_plugin_version` で読んで渡す）
+        description: バージョンのファイルに書くプラグインのバージョン（`v0.3.0` の形式。入口が `read_plugin_version` で読んで渡す）
       - name: applied
         type: int
         required: true
         passing: keyword
-        description: 版のファイルの 2 行目に書く、`version` の移し替えの手順の数（入口が `count_steps` で数えて渡す）
+        description: バージョンのファイルの 2 行目に書く、`version` の移し替えの手順の数（入口が `count_steps` で数えて渡す）
     returns:
       type: list[str]
       description: 作ったファイルとフォルダ（ワークスペースからの相対パス。フォルダは末尾に `/`）。先頭が `docs/`、`README.md` はこの呼び出しで書いたときだけ末尾に載せ、ほかは `.mindstella/` から始まる
     process: |-
-      1. `records_root(root) / SETTINGS_FILE` があれば `WorkspaceExistsError` を送る。直下に `SETTINGS_FILE` か `LEGACY_SETTINGS_FILE` があれば、`lines` に `UPGRADE_HINT` を持つ `WorkspaceExistsError` を送る（前の版のワークスペースの記録を残したまま空の記録を作らない）。直下に `BODY_DIR` か `FILES_DIR` があれば、あるフォルダの名前を持つ `RootFolderExistsError` を送る（利用者のフォルダと本文を混ぜない）
+      1. `records_root(root) / SETTINGS_FILE` があれば `WorkspaceExistsError` を送出する。直下に `SETTINGS_FILE` か `LEGACY_SETTINGS_FILE` があれば、`lines` に `UPGRADE_HINT` を持つ `WorkspaceExistsError` を送出する（前のバージョンのワークスペースの記録を残したまま空の記録を作らない）。直下に `BODY_DIR` か `FILES_DIR` があれば、あるフォルダの名前を持つ `RootFolderExistsError` を送出する（利用者のフォルダと本文を混ぜない）
       2. 設定と空の 7 種類で `Workspace` を組み、検証する（ワークスペースの検証。`validate_workspace`）
-         - 問題がある場合、`SchemaMismatchError` を送る（フォルダも作らない）
+         - 問題がある場合、`SchemaMismatchError` を送出する（フォルダも作らない）
       3. `records_root(root)` と直下の `body_root(root)` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version`・改行・`applied`・改行）と、記録の配信の設定（`SOURCE_CONFIG_FILE`。`build_source_config`）とスキーマの複製（`SOURCE_SCHEMA_DIR` へ `SCHEMA_DIR` の種類ごとの 7 つと `COMMON_SCHEMA`）を書き、直下の README を書き（README の書き込み。`write_readme(root)`）、最後に `config.yaml` を書く（`dump_yaml`。README と `docs/` のほかはどれも `records_root(root)` の下）
-         - `OSError` か README の `WriteFailedError` が起きた場合、この関数が作ったファイルとフォルダ（この呼び出しで書いた README を含む。前からあった README は消さない）を消して `WriteFailedError` を送る（`config.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
+         - `OSError` か README の `WriteFailedError` が起きた場合、この関数が作ったファイルとフォルダ（この呼び出しで書いた README を含む。前からあった README は削除しない）を削除して `WriteFailedError` を送出する（`config.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
     exceptions:
       - name: WorkspaceExistsError
         condition: '`root` に `.mindstella/config.yaml` が既にあるか、直下に `config.yaml` か `mindmap.yaml` がある'
@@ -807,11 +807,11 @@ functions:
       - name: SchemaMismatchError
         condition: 設定が設定のスキーマに合わない
       - name: WriteFailedError
-        condition: フォルダ・ファイルを作る途中で `OSError` が起きた（作ったものを消した後）
+        condition: フォルダ・ファイルを作る途中で `OSError` が起きた（作ったものを削除した後）
         message: '書き込めませんでした: {パス}（{理由}）'
       - name: RootFolderExistsError
         condition: 直下に `docs/` か `files/` が既にある
-        message: '直下に {フォルダの名前}/ が既にあります: {root}（改名してから作り直す案内）'
+        message: '直下に {フォルダの名前}/ が既にあります: {root}（改名してから再作成する案内）'
     unit_tests:
       - name: test_create_workspace
         case: 正常
@@ -835,8 +835,8 @@ functions:
         exception: 設定が設定のスキーマに合わない
       - name: test_create_workspace_when_write_fails
         case: 異常
-        summary: 途中で書けなくなったら作ったものを消す
-        condition: '`dump_yaml` で作った文字列を書く処理を、`logs.yaml` のときだけ `OSError` を送るように `Path.write_text` を差し替える。`tmp_path / "ws"`（無い）'
+        summary: 途中で書けなくなったら作ったものを削除する
+        condition: '`dump_yaml` で作った文字列を書く処理を、`logs.yaml` のときだけ `OSError` を送出するように `Path.write_text` を差し替える。`tmp_path / "ws"`（無い）'
         mock: '`Path.write_text`（monkeypatch）'
         expected: '`WriteFailedError`。`tmp_path / "ws"` が無い'
         exception: 作る途中で OSError
@@ -848,7 +848,7 @@ functions:
         expected: 戻り値に `README.md` が無く、`.mindstella/config.yaml` がある。`README.md` の中身が呼ぶ前と同じ
       - name: test_create_workspace_when_readme_write_fails
         case: 異常
-        summary: README を書けなければ作ったものを消す
+        summary: README を書けなければ作ったものを削除する
         condition: '`README.md` という名前のフォルダだけを置いた `tmp_path` と正しい設定'
         mock: なし
         expected: '`WriteFailedError`。`.mindstella/` が無く、`README.md` のフォルダが残っている'
@@ -951,7 +951,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
     scope: internal
-    summary: '`absolute_path` を `items[0].status` の形の文字列にする'
+    summary: '`absolute_path` を `items[0].status` の形式の文字列にする'
     args:
       - name: path
         type: Iterable[str | int]
@@ -1006,12 +1006,12 @@ functions:
         mock: なし（umask は `os.umask` で設定し、後で戻す）
         expected: 一時ファイルの権限が `0o640` / `0o644`
   - name: is_legacy_problem
-    title: 前の版の形式の問題か
+    title: 前のバージョンの形式の問題か
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     scope: public
-    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の文字列のタグ・書き込む項目以外の案と状態の合わない検討事項・書き込む項目以外の v0.13.0 より前の形の項目）から来ているかを返す
+    summary: 問題が、前のバージョンの形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の文字列のタグ・書き込む項目以外の案と状態の合わない検討事項・書き込む項目以外の v0.13.0 より前の構造の項目）から来ているかを返す
     args:
       - name: problem
         type: Problem
@@ -1031,25 +1031,25 @@ functions:
         description: 書き込むツールが書き換える項目の ID（`build_mismatch_error` が渡す）。点検・読み込みは渡さない
     returns:
       type: bool
-      description: 前の版の形式から来ていれば真
+      description: 前のバージョンの形式から来ていれば真
     process: |-
       1. `kind` が `decision_state` の場合、`id` が `written_ids` に無ければ真、あれば偽を返す
       2. `kind` が `schema` でない場合、偽を返す
       3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field`・`tags` か削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）のどれかを持てば真
-      4. `key` が `items[{i}].tags[{j}]` の形で、`id` が `written_ids` に無い場合、その要素が文字列なら真、それ以外は偽
-      5. `id` があり `written_ids` に無く、その ID の項目が v0.13.0 より前の形（履歴のキー・参照のキー（`LEGACY_ITEM_KEYS`）を持つ、`related` に文字列の要素がある、`body` が `/` を含まない文字列）なら真
+      4. `key` が `items[{i}].tags[{j}]` の形式で、`id` が `written_ids` に無い場合、その要素が文字列なら真、それ以外は偽
+      5. `id` があり `written_ids` に無く、その ID の項目が v0.13.0 より前の構造（履歴のキー・参照のキー（`LEGACY_ITEM_KEYS`）を持つ、`related` に文字列の要素がある、`body` が `/` を含まない文字列）なら真
       6. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
       7. それ以外は偽
     unit_tests:
       - name: test_is_legacy_problem
         case: 正常
-        summary: 前の版の形式の問題を見分ける
-        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした今の形の D-1（v0.13.0 より前の形のキーを持たない）を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と削除したキー `playbooks` を持つ設定の `config.yaml` の問題 / `tags` を持つ設定の `config.yaml` の問題'
+        summary: 前のバージョンの形式の問題を見分ける
+        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした今の構造の D-1（v0.13.0 より前の構造のキーを持たない）を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と削除したキー `playbooks` を持つ設定の `config.yaml` の問題 / `tags` を持つ設定の `config.yaml` の問題'
         mock: なし
         expected: 真 / 真 / 偽 / 偽 / 真 / 真
       - name: test_is_legacy_problem_when_decision_state
         case: 正常
-        summary: 書き込む項目以外の案と状態の合わない検討事項だけを前の版の形式とする
+        summary: 書き込む項目以外の案と状態の合わない検討事項だけを前のバージョンの形式とする
         condition: 'D-1 の `kind: decision_state` の問題。`parametrize`: `written_ids` なし / `written_ids` が `{D-1}` / `written_ids` が `{D-2}`'
         mock: なし
         expected: 真 / 偽 / 真
@@ -1061,7 +1061,7 @@ functions:
         expected: 真 / 偽
       - name: test_is_legacy_problem_when_legacy_item_form
         case: 正常
-        summary: 書き込む項目以外の v0.13.0 より前の形の項目だけを前のバージョンの形式とする
+        summary: 書き込む項目以外の v0.13.0 より前の構造の項目だけを前のバージョンの形式とする
         condition: 'D-1 が `created`・`updated` を持つワークスペースを検証した D-1 の `schema` の問題。`parametrize`: `written_ids` なし / `written_ids` が `{D-1}`'
         mock: なし
         expected: 真 / 偽
@@ -1096,16 +1096,16 @@ functions:
         required: false
         default: require_workspace
         passing: keyword
-        description: '`create` が偽のときにワークスペースを確かめる関数。モジュール構成『ワークスペースの管理』の移し替えだけが、前の版の `mindmap.yaml` だけのフォルダも通す `require_migratable`（モジュール構成『移行』）を渡す'
+        description: '`create` が偽のときにワークスペースを確かめる関数。モジュール構成『ワークスペースの管理』の移し替えだけが、前のバージョンの `mindmap.yaml` だけのフォルダも通す `require_migratable`（モジュール構成『移行』）を渡す'
     returns:
       type: Iterator[None]
       description: 鍵とロックを持っている間だけ返す
     process: |-
       1. `process_lock` を取る
-      2. `create` が真なら `records_root(root)` を作る（`parents=True`・`exist_ok`）。偽なら、ワークスペースを確かめ（`require(root)`）、送られたら何も作らずに伝える（`process_lock` は放す）
-      3. ロックファイルを追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ。ロックファイルは `records_root(root) / LOCK_FILE`。`require` が `require_migratable` で `records_root(root)` が無い（移す前の形）ときだけ、直下の `root / LOCK_FILE` を使う。開けない（`OSError`）ときは `WriteFailedError` を送る
+      2. `create` が真なら `records_root(root)` を作る（`parents=True`・`exist_ok`）。偽なら、ワークスペースを確かめ（`require(root)`）、送信されたら何も作らずに伝える（`process_lock` は放す）
+      3. ロックファイルを追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ。ロックファイルは `records_root(root) / LOCK_FILE`。`require` が `require_migratable` で `records_root(root)` が無い（移す前の形式）ときだけ、直下の `root / LOCK_FILE` を使う。開けない（`OSError`）ときは `WriteFailedError` を送出する
       4. 呼び出し元の処理を動かす
-      5. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す。2 でフォルダを作っていて、中が `LOCK_FILE` だけのまま例外で終わったときは、`LOCK_FILE` と作ったフォルダ（`records_root(root)` と、無かった `root`）を消してから例外を伝える（インターフェース定義『ワークスペースの作成』の「フォルダが作られていない」）
+      5. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す。2 でフォルダを作っていて、中が `LOCK_FILE` だけのまま例外で終わったときは、`LOCK_FILE` と作ったフォルダ（`records_root(root)` と、無かった `root`）を削除してから例外を伝える（インターフェース定義『ワークスペースの作成』の「フォルダが作られていない」）
     unit_tests:
       - name: test_workspace_lock
         case: 正常
@@ -1116,7 +1116,7 @@ functions:
       - name: test_workspace_lock_when_raises
         case: 正常
         summary: 中の処理が例外でも放す
-        condition: '`config.yaml` を置いた `tmp_path`。`with` の中で `ValueError` を送る'
+        condition: '`config.yaml` を置いた `tmp_path`。`with` の中で `ValueError` を送出する'
         mock: なし
         expected: '`ValueError` が伝わり、`process_lock` が外れ、子プロセスがロックを取れる'
       - name: test_workspace_lock_when_folder_missing
@@ -1139,7 +1139,7 @@ functions:
         expected: '`require_migratable` では `with` の中に入り、`tmp_path / ".mindstella.lock"` がある。既定では `WorkspaceNotFoundError`（`lines` に移し替えの案内）が伝わり、`.mindstella.lock` は作られない'
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`create` が偽で、`require` が送った（既定の `require_workspace` では `root` に `config.yaml` が無い）'
+        condition: '`create` が偽で、`require` が送信した（既定の `require_workspace` では `root` に `config.yaml` が無い）'
         message: 'ワークスペースがありません: {root}'
       - name: WriteFailedError
         condition: '`LOCK_FILE` を開けない（書き込みの権限が無い等）'
@@ -1151,7 +1151,7 @@ functions:
     usecase: 記録の追加と更新
     scope: public
     summary: 複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない
-    side_effects: 種類の YAML と直下の `docs/` の本文と `changes.yaml` を置き換え、`removed_bodies` の本文を消す
+    side_effects: 種類の YAML と直下の `docs/` の本文と `changes.yaml` を置き換え、`removed_bodies` の本文を削除する
     args:
       - name: workspace
         type: Workspace
@@ -1164,23 +1164,23 @@ functions:
         passing: positional
         description: 書き込む変更
     process: |-
-      1. `items` の種類ごとに、書き戻しても中身を失わない形かを確かめる（`save_change` の 1. と同じ）
+      1. `items` の種類ごとに、書き戻しても中身を失わない構造かを確かめる（`save_change` の 1. と同じ）
       2. `raw` の `items` の種類のファイル（`settings` があれば `config.yaml` も）を全て差し替えたワークスペースを作り、検証する（`validate_workspace`。`unchanged` は差し替えたファイルを除く `raw` のファイル）
-         - 問題がある場合、書き換える項目の ID（種類ごとの `_written_ids` の和）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
+         - 問題がある場合、書き換える項目の ID（種類ごとの `_written_ids` の和）を `written_ids` にして `SchemaMismatchError` を送出する（`build_mismatch_error`。何も書かない）
       3. 書く全てのファイル（本文・種類の YAML・`config.yaml`・`threads.yaml`・`history.yaml`・`changes.yaml`・`edits.yaml`。`None` のものは書かない）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）。`removed_bodies` の本文の中身も控える
-         - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
+         - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを削除して `WriteFailedError` を送出する
       4. 置き換える直前に、書き換える種類の YAML の今の中身の要約（`_digest`）が、読んだときの `workspace.digests` と同じかを確かめる
-         - 違う場合（project-index の `write_docs` が間に書いた）、一時ファイルを消して `ConcurrentWriteError` を送る（何も置き換えない。呼ぶ側が読み直して 1 回だけ当て直す）
-      5. 本文 → 種類の YAML（`KINDS` の順）→ `config.yaml` → `threads.yaml` → `history.yaml` → `changes.yaml` → `edits.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を消す（無ければ飛ばす）
-         - 途中で `OSError` が起きた場合、置き換えたファイルと消した本文を控えに戻し（控えが `None` なら消し）、残った一時ファイルを消して `WriteFailedError` を送る
-      6. 書き込んだ種類の YAML と `config.yaml` の文字列の要約（`_digest`）と空の問題で、`_VALIDATION_CACHE` の `(root, ファイル名)` を置き換える（次の読み込みで同じ中身を検証し直さない）
-      7. 書き込んだ種類の YAML と本文の名前と中身（消した本文は `None`）を返す。名前は変更の検知の前回の中身のキーで、種類の YAML は記録のフォルダからのファイル名、本文は `f"{BODY_DIR}/{ファイル名}"`
+         - 違う場合（project-index の `write_docs` が間に書いた）、一時ファイルを削除して `ConcurrentWriteError` を送出する（何も置き換えない。呼ぶ側が再読み込みして 1 回だけ再適用する）
+      5. 本文 → 種類の YAML（`KINDS` の順）→ `config.yaml` → `threads.yaml` → `history.yaml` → `changes.yaml` → `edits.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を削除する（無ければ飛ばす）
+         - 途中で `OSError` が起きた場合、置き換えたファイルと削除した本文を控えに戻し（控えが `None` なら削除）、残った一時ファイルを削除して `WriteFailedError` を送出する
+      6. 書き込んだ種類の YAML と `config.yaml` の文字列の要約（`_digest`）と空の問題で、`_VALIDATION_CACHE` の `(root, ファイル名)` を置き換える（次の読み込みで同じ中身を再検証しない）
+      7. 書き込んだ種類の YAML と本文の名前と中身（削除した本文は `None`）を返す。名前は変更の検知の前回の中身のキーで、種類の YAML は記録のフォルダからのファイル名、本文は `f"{BODY_DIR}/{ファイル名}"`
     exceptions:
       - name: ConcurrentWriteError
         condition: 置き換える直前に、書き換える種類の YAML が読んだときと違う
         message: '記録がほかから書き換えられました: {ファイル名}'
       - name: SchemaMismatchError
-        condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または差し替えた後のワークスペースに問題がある
+        condition: 変更する種類のファイルが読めないか書き戻すと中身を失う構造、または差し替えた後のワークスペースに問題がある
         message: スキーマに合いません（`lines` に問題ごとの行）
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（置き換えたものを戻した後）
@@ -1196,7 +1196,7 @@ functions:
       - name: test_save_batch
         case: 正常
         summary: 複数の種類と本文とまとまりを書き、一時ファイルを残さない
-        condition: D-1 を足した検討事項の並び、T-1 を足したタスクの並び、本文 `D-1.mark.md`、新しいまとまり
+        condition: D-1 を追加した検討事項の並び、T-1 を追加したタスクの並び、本文 `D-1.mark.md`、新しいまとまり
         mock: なし
         expected: '`decisions.yaml`・`tasks.yaml`・`docs/D-1.mark.md`・`changes.yaml` を読むと渡した中身。`.tmp` のファイルが無い'
       - name: test_save_batch_when_schema_mismatch
@@ -1208,43 +1208,43 @@ functions:
       - name: test_save_batch_when_replace_fails
         case: 異常
         summary: 途中の置き換えに失敗したら、置き換えたファイルを戻す
-        condition: 検討事項とタスクの並びと本文。`os.replace` を、置き換え先が `tasks.yaml` のときだけ `OSError` を送る関数に差し替える
+        condition: 検討事項とタスクの並びと本文。`os.replace` を、置き換え先が `tasks.yaml` のときだけ `OSError` を送出する関数に差し替える
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `tasks.yaml`）。`decisions.yaml`・`tasks.yaml`・`docs/` が呼ぶ前と同じで、`.tmp` のファイルが無い'
       - name: test_save_batch_when_decision_state
         case: 異常
-        summary: 書き換える項目以外の案と状態の合わない検討事項があるときだけ、前の版の形式とする
-        condition: '`parametrize`: 案を持たない未決定の D-2 が残るワークスペースで、案を持つ未決定の D-3 と T-1 を足した並び / 決まりに合うワークスペースで、案を持たない未決定の D-3 を足した並び'
+        summary: 書き換える項目以外の案と状態の合わない検討事項があるときだけ、前のバージョンの形式とする
+        condition: '`parametrize`: 案を持たない未決定の D-2 が残るワークスペースで、案を持つ未決定の D-3 と T-1 を追加した並び / 決まりに合うワークスペースで、案を持たない未決定の D-3 を追加した並び'
         mock: なし
         expected: どちらも `SchemaMismatchError` でファイルは呼ぶ前と同じ。`legacy` が真 / 偽
       - name: test_save_batch_removes_bodies
         case: 正常
-        summary: 書き換えた後に消す本文を消す
+        summary: 書き換えた後に削除する本文を削除する
         condition: N-2 を除いたメモの並び、`removed_bodies` に `N-2.mark.md`（`docs/N-2.mark.md` がある）
         mock: なし
         expected: '`notes.yaml` に N-2 が無く、`docs/N-2.mark.md` が無い'
       - name: test_save_batch_when_body_removal_fails
         case: 異常
         summary: 本文を消せなければ、置き換えたファイルを戻す
-        condition: N-2 を除いたメモの並びと `removed_bodies` に `N-2.mark.md`。本文を消す関数を `OSError` を送る関数に差し替える
-        mock: 本文を消す関数（`store` モジュールの参照を monkeypatch）
+        condition: N-2 を除いたメモの並びと `removed_bodies` に `N-2.mark.md`。本文を削除する関数を `OSError` を送出する関数に差し替える
+        mock: 本文を削除する関数（`store` モジュールの参照を monkeypatch）
         expected: '`WriteFailedError`（メッセージに `N-2.mark.md`）。`notes.yaml`・`changes.yaml`・`docs/N-2.mark.md` が呼ぶ前と同じ'
       - name: test_save_batch_when_other_kind_unchanged
         case: 正常
-        summary: 差し替えない種類は検証し直さず、書き込んだ種類の結果を記録する
-        condition: D-1 を持つワークスペースを読み込んで `unchanged` に全てのファイルを渡して 1 回検証した後、`_file_problems` を呼ばれたファイル名を記録する関数に差し替え、T-1 を足したタスクの並びを書き込む。続けて読み込み直して `validate_workspace` を `unchanged` に全てのファイルを渡して呼ぶ
+        summary: 差し替えない種類は再検証せず、書き込んだ種類の結果を記録する
+        condition: D-1 を持つワークスペースを読み込んで `unchanged` に全てのファイルを渡して 1 回検証した後、`_file_problems` を呼ばれたファイル名を記録する関数に差し替え、T-1 を追加したタスクの並びを書き込む。続けて再読み込みして `validate_workspace` を `unchanged` に全てのファイルを渡して呼ぶ
         mock: '`_file_problems`（`store` モジュールの参照を monkeypatch）'
-        expected: '`_file_problems` を呼んだのが書き込みの検証の `tasks.yaml` だけで、読み込み直した後の検証では呼ばない'
+        expected: '`_file_problems` を呼んだのが書き込みの検証の `tasks.yaml` だけで、再読み込みした後の検証では呼ばない'
       - name: test_save_batch_when_previous_batch_rejected
         case: 正常
         summary: スキーマに合わずに止まった書き込みの後も、差し替えなかったファイルを誤った記録で止めない
-        condition: 'D-1 を持つワークスペースを読み込んで `unchanged` に全てのファイルを渡して 1 回検証した後、D-1 を `status: 完了` にした検討事項の並びを書き込んで `SchemaMismatchError` で止まる。続けて読み込み直し、T-1 を足したタスクの並びを書き込む'
+        condition: 'D-1 を持つワークスペースを読み込んで `unchanged` に全てのファイルを渡して 1 回検証した後、D-1 を `status: 完了` にした検討事項の並びを書き込んで `SchemaMismatchError` で止まる。続けて再読み込みし、T-1 を追加したタスクの並びを書き込む'
         mock: なし
         expected: 2 回目の書き込みが例外にならず、`tasks.yaml` に T-1 がある
       - name: test_save_batch_with_settings_and_edits
         case: 正常
         summary: 設定・スレッド・保存待ちの編集も一緒に書き、途中で失敗すれば全て戻す
-        condition: '題名を変えた `settings`、タグを付け替えた `threads`、空の `edits`、T-1 を足したタスクの並び。`parametrize`: そのまま / `os.replace` を置き換え先が `edits.yaml` のときだけ `OSError` を送る関数に差し替える'
+        condition: '題名を変えた `settings`、タグを付け替えた `threads`、空の `edits`、T-1 を追加したタスクの並び。`parametrize`: そのまま / `os.replace` を置き換え先が `edits.yaml` のときだけ `OSError` を送出する関数に差し替える'
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`tasks.yaml`・`config.yaml`・`threads.yaml`・`edits.yaml` が渡した中身 / `WriteFailedError`（メッセージに `edits.yaml`）で、全てのファイルが呼ぶ前と同じ'
   - name: require_workspace
@@ -1253,7 +1253,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
     scope: public
-    summary: '`.mindstella/config.yaml` があるかを確かめ、無ければ送る。直下に前の版の設定ファイルだけがあれば移し替えを案内する'
+    summary: '`.mindstella/config.yaml` があるかを確かめ、無ければ送信する。直下に前のバージョンの設定ファイルだけがあれば移し替えを案内する'
     args:
       - name: root
         type: Path
@@ -1265,14 +1265,14 @@ functions:
       description: '`config.yaml` があれば何も返さない'
     process: |-
       1. `records_root(root) / SETTINGS_FILE` がファイルなら戻る
-      2. `root / SETTINGS_FILE` か `root / LEGACY_SETTINGS_FILE` がファイルなら、`lines` に `UPGRADE_HINT`（`{root}` を埋めたもの）を持つ `WorkspaceNotFoundError` を送る
-      3. どれも無ければ `WorkspaceNotFoundError` を送る
+      2. `root / SETTINGS_FILE` か `root / LEGACY_SETTINGS_FILE` がファイルなら、`lines` に `UPGRADE_HINT`（`{root}` を埋めたもの）を持つ `WorkspaceNotFoundError` を送出する
+      3. どれも無ければ `WorkspaceNotFoundError` を送出する
 
-      `load_workspace`・`workspace_lock`（`create` が偽で `require` を渡さないとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは前の版の形も通すため呼ばない
+      `load_workspace`・`workspace_lock`（`create` が偽で `require` を渡さないとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは前のバージョンの形式も通すため呼ばない
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`root` に `.mindstella/config.yaml` が無い'
-        message: 'ワークスペースがありません: {root}（直下に前の版の設定ファイルがあるときは `lines` に移し替えの案内）'
+        message: 'ワークスペースがありません: {root}（直下に前のバージョンの設定ファイルがあるときは `lines` に移し替えの案内）'
     unit_tests:
       - name: test_require_workspace
         case: 正常
@@ -1282,7 +1282,7 @@ functions:
         expected: 例外にならない
       - name: test_require_workspace_when_missing
         case: 異常
-        summary: 無いフォルダと、前の版の形のフォルダを分けて送る
+        summary: 無いフォルダと、前のバージョンの形式のフォルダを分けて送信する
         condition: '`parametrize`: 空の `tmp_path` / 直下に `mindmap.yaml` だけを置いた `tmp_path` / 直下に `config.yaml` だけを置いた `tmp_path`'
         mock: なし
         expected: どれも `WorkspaceNotFoundError`（メッセージに `tmp_path`）。空のフォルダは `lines` が空、ほかの 2 つは `lines` が `UPGRADE_HINT` に `tmp_path` を埋めた 1 行
@@ -1308,7 +1308,7 @@ functions:
       1. ワークスペースを確かめる（`require_workspace`）
       2. `config.yaml` を読む（`_read_yaml`）
          - YAML として読めない場合、空の設定と `key: (全体)` の問題 1 件を返す
-      3. 設定のスキーマの検証器で突き合わせ、`validate_workspace` と同じ形の問題（キーのパスは `_format_path`）を並べて返す
+      3. 設定のスキーマの検証器で突き合わせ、`validate_workspace` と同じ形式の問題（キーのパスは `_format_path`）を並べて返す
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`root` に `config.yaml` が無い'
@@ -1373,7 +1373,7 @@ functions:
         type: Any
         required: true
         passing: positional
-        description: '`raw` の `decisions.yaml` の値（形が崩れていてもよい）'
+        description: '`raw` の `decisions.yaml` の値（形式が崩れていてもよい）'
     returns:
       type: list[Problem]
       description: '`kind: decision_state`・`file: decisions.yaml` の問題。項目の並びの順、同じ項目の中は ER 図の決まりの順'
@@ -1399,7 +1399,7 @@ functions:
         expected: 3 件で、`id`・`key` が D-1 の `items[0].options`・D-2 の `items[1].options`・D-3 の `items[2].status`。D-3 の `detail` に `A` と `未決定` を含む
       - name: test_check_decision_rules_when_malformed
         case: 正常
-        summary: 形の崩れた要素は飛ばす
+        summary: 構造の崩れた要素は飛ばす
         condition: '`items` の要素に文字列と、`options` が文字列の検討事項'
         mock: なし
         expected: 空の並び
@@ -1409,7 +1409,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
     scope: public
-    summary: '問題ごとの `{ファイル名}: {キーのパス}: {理由}` の行と、前の版の形式の問題を含むかを持つ `SchemaMismatchError` を作る'
+    summary: '問題ごとの `{ファイル名}: {キーのパス}: {理由}` の行と、前のバージョンの形式の問題を含むかを持つ `SchemaMismatchError` を作る'
     args:
       - name: problems
         type: list[Problem]
@@ -1421,7 +1421,7 @@ functions:
         required: false
         default: None
         passing: positional
-        description: 問題を出したワークスペース。渡すと前の版の形式の問題かも決める
+        description: 問題を出したワークスペース。渡すと前のバージョンの形式の問題かも決める
       - name: written_ids
         type: frozenset[str]
         required: false
@@ -1430,14 +1430,14 @@ functions:
         description: 書き込むツールが書き換える項目の ID。`is_legacy_problem` へそのまま渡す
     returns:
       type: SchemaMismatchError
-      description: '`lines` に問題ごとの行、`legacy` に前の版の形式の問題を 1 件でも含むか'
+      description: '`lines` に問題ごとの行、`legacy` に前のバージョンの形式の問題を 1 件でも含むか'
     process: |-
       1. 問題ごとに `{file}: {key。無ければ (全体)}: {detail}` の行を作る
-      2. `workspace` がある場合、問題のどれかが前の版の形式かを決める（`is_legacy_problem(problem, workspace, written_ids=written_ids)`）。無ければ `legacy` は偽
+      2. `workspace` がある場合、問題のどれかが前のバージョンの形式かを決める（`is_legacy_problem(problem, workspace, written_ids=written_ids)`）。無ければ `legacy` は偽
     unit_tests:
       - name: test_build_mismatch_error_when_decision_state
         case: 正常
-        summary: 書き込む項目だけが案と状態に合わないときは前の版の形式にしない
+        summary: 書き込む項目だけが案と状態に合わないときは前のバージョンの形式にしない
         condition: 'D-1 の `kind: decision_state` の問題 1 件とワークスペース。`parametrize`: `written_ids` が `{D-1}` / `written_ids` なし'
         mock: なし
         expected: '`legacy` が偽 / 真。どちらも `lines` が `decisions.yaml: items[0].options:` で始まる 1 行'
@@ -1447,7 +1447,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
     scope: internal
-    summary: 読んだ時点の並びと変更後の並びを比べ、足した項目と中身が違う項目の ID を返す
+    summary: 読んだ時点の並びと変更後の並びを比べ、追加した項目と中身が違う項目の ID を返す
     args:
       - name: before
         type: list[dict[str, Any]]
@@ -1468,8 +1468,8 @@ functions:
     unit_tests:
       - name: test_written_ids
         case: 正常
-        summary: 足した項目と直した項目だけを返す
-        condition: 読んだ時点が D-1・D-2、変更後が D-1（そのまま）・D-2（`status` を直した）・D-3（足した）
+        summary: 追加した項目と修正した項目だけを返す
+        condition: 読んだ時点が D-1・D-2、変更後が D-1（そのまま）・D-2（`status` を修正した）・D-3（追加した）
         mock: なし
         expected: '`{D-2, D-3}`'
   - name: body_format
@@ -1524,7 +1524,7 @@ functions:
       description: インターフェース定義『ワークスペースの作成』の制約「配信の設定」の中身
     process: |-
       1. `version: "3"`・`name`・`description`・`related.types`（`RELATED_TYPES`）・`paths_base`（`SOURCE_PATHS_BASE`）を置く
-      2. `KINDS` の順に、種類ごとの `documents` の行（`id`・`title`・`paths`（`[f"{RECORD_DIR}/{種類のファイル}"]`）・`schema`・`records: items`・`body_file: body`・`write_dates: false`・`metadata`）を足す
+      2. `KINDS` の順に、種類ごとの `documents` の行（`id`・`title`・`paths`（`[f"{RECORD_DIR}/{種類のファイル}"]`）・`schema`・`records: items`・`body_file: body`・`write_dates: false`・`metadata`）を追加する
     unit_tests:
       - name: test_build_source_config
         case: 正常
@@ -1553,9 +1553,9 @@ functions:
       1. `.mindstella/schemas/`（`SOURCE_SCHEMA_DIR`）が無ければ作る
       2. `source_schema_files` の各ファイルについて、`SCHEMA_DIR` のファイルと複製の中身（バイト列）を比べる
          - 同じ場合、書かない
-         - 複製が無いか違う場合、一時ファイルに書いてから置き換え（`write_temp`・`os.replace`）、パスを結果に足す
-         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る
-      3. 複製の側にだけあるファイルは消さない
+         - 複製が無いか違う場合、一時ファイルに書いてから置き換え（`write_temp`・`os.replace`）、パスを結果に追加する
+         - `OSError` の場合、一時ファイルを削除して `WriteFailedError` を送出する
+      3. 複製の側にだけあるファイルは削除しない
     exceptions:
       - name: WriteFailedError
         condition: フォルダの作成・書き込み・置き換えで `OSError` が起きた
@@ -1564,7 +1564,7 @@ functions:
       - name: test_sync_source_schemas
         case: 正常
         summary: 違うファイルと無いファイルだけを書き直し、複製の側にだけあるファイルを残す
-        condition: '`docs.schema.json` を別の中身に書き換え、`terms.schema.json` を消し、`legacy.schema.json` を置いた複製'
+        condition: '`docs.schema.json` を別の中身に書き換え、`terms.schema.json` を削除し、`legacy.schema.json` を置いた複製'
         mock: なし
         expected: '`[.mindstella/schemas/docs.schema.json, .mindstella/schemas/terms.schema.json]` を返し、2 つの中身がプラグインのスキーマと同じ。`legacy.schema.json` と、ほかの複製の更新日時が呼ぶ前と同じ'
       - name: test_sync_source_schemas_when_same
@@ -1575,20 +1575,20 @@ functions:
         expected: 空の並びを返し、複製の更新日時が呼ぶ前と同じ
       - name: test_sync_source_schemas_when_write_fails
         case: 異常
-        summary: 置き換えられなければ送る
-        condition: '`docs.schema.json` を別の中身に書き換えた複製。`os.replace` を `OSError` を送る関数に差し替える'
+        summary: 置き換えられなければ送信する
+        condition: '`docs.schema.json` を別の中身に書き換えた複製。`os.replace` を `OSError` を送出する関数に差し替える'
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`docs.schema.json` が呼ぶ前と同じで、一時ファイルが残っていない'
         exception: 書き込みか置き換えで OSError
     callers:
       - MOD-489-179#functions[migrate]
   - name: add_write_dates
-    title: 配信の設定に日時の指定を足す
+    title: 配信の設定に日時の指定を追加する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     scope: public
-    summary: '`.mindstella/dev-docs.yaml` の種類の行のうち `write_dates` を持たない行に `write_dates: false` を足す'
+    summary: '`.mindstella/dev-docs.yaml` の種類の行のうち `write_dates` を持たない行に `write_dates: false` を追加する'
     side_effects: '`.mindstella/dev-docs.yaml` を書く'
     args:
       - name: root
@@ -1602,10 +1602,10 @@ functions:
     process: |-
       1. `.mindstella/dev-docs.yaml`（`SOURCE_CONFIG_FILE`）が無ければ空を返す
          - YAML として読めない、または `documents` が並びでない場合、書かずに空を返す（利用者が書き換えた設定に手を加えず、project-index の検証に任せる）
-      2. YAML を読み、`documents` の行のうち `id` が `SOURCE_DOCUMENTS` の種類の行の ID で `write_dates` を持たない行に `write_dates: false` を足す（既に持つ行とほかの行・キーは変えない）
-         - 足す行が無い場合、空を返す
+      2. YAML を読み、`documents` の行のうち `id` が `SOURCE_DOCUMENTS` の種類の行の ID で `write_dates` を持たない行に `write_dates: false` を追加する（既に持つ行とほかの行・キーは変えない）
+         - 追加する行が無い場合、空を返す
       3. 一時ファイルに書いてから置き換える（`dump_yaml`・`_write_temp`・`os.replace`）
-         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る
+         - `OSError` の場合、一時ファイルを削除して `WriteFailedError` を送出する
     exceptions:
       - name: WriteFailedError
         condition: 書き込みか置き換えで `OSError` が起きた
@@ -1613,20 +1613,20 @@ functions:
     unit_tests:
       - name: test_add_write_dates
         case: 正常
-        summary: write_dates を持たない種類の行だけに false を足し、利用者が書いた値を残す
-        condition: '`create_workspace` で作り、`dev-docs.yaml` の全ての行から `write_dates` を消し、`terms` の行を `write_dates: true` にしたワークスペース'
+        summary: write_dates を持たない種類の行だけに false を追加し、利用者が書いた値を残す
+        condition: '`create_workspace` で作り、`dev-docs.yaml` の全ての行から `write_dates` を削除し、`terms` の行を `write_dates: true` にしたワークスペース'
         mock: なし
         expected: '`[.mindstella/dev-docs.yaml]` を返し、`terms` 以外の 6 行が `write_dates: false`、`terms` が `true` のままで、ほかのキーの値が呼ぶ前と同じ'
       - name: test_add_write_dates_when_present
         case: 正常
         summary: 全ての行が持つか設定が無ければ書かない
-        condition: '`parametrize`: `create_workspace` で作ったワークスペース / `dev-docs.yaml` を消したワークスペース'
+        condition: '`parametrize`: `create_workspace` で作ったワークスペース / `dev-docs.yaml` を削除したワークスペース'
         mock: なし
         expected: 空の並びを返し、ワークスペースが呼ぶ前と同じ
       - name: test_add_write_dates_when_write_fails
         case: 異常
-        summary: 置き換えられなければ送る
-        condition: '`write_dates` を消した `dev-docs.yaml`。`os.replace` を `OSError` を送る関数に差し替える'
+        summary: 置き換えられなければ送信する
+        condition: '`write_dates` を削除した `dev-docs.yaml`。`os.replace` を `OSError` を送出する関数に差し替える'
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`dev-docs.yaml` が呼ぶ前と同じで一時ファイルが残っていない'
         exception: 書き込みか置き換えで OSError

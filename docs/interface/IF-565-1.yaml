@@ -3,7 +3,7 @@ title: エージェントフローの参照
 entry:
   kind: operation
   value: '`plugins/mindstella/agent-flows/` のエージェントフローの YAML（project-index の配信元 `mindstella-agent-flows`。MindStella のセッションと通常のセッションが `search_docs` で ID を指して参照する）'
-lead: プラグインに同梱する記録のエージェントフロー（起動と再開・コメントの取り込み・記録の使い分け）のファイルの形と、project-index の配信元として配り、どのセッションからも ID で参照できるようにする取り決め。
+lead: プラグインに同梱する記録のエージェントフロー（起動と再開・コメントの取り込み・記録の使い分け）のファイルの構造と、project-index の配信元として配り、どのセッションからも ID で参照できるようにする取り決め。
 idempotent: true
 side_effects: なし（参照だけ）。配信元の行の追加は『ワークスペースの作成』が行う
 request:
@@ -50,22 +50,22 @@ request:
 exceptions:
   - name: なし（正常終了）
     condition: '`search_docs` がエージェントフローを返した'
-  - name: エージェントフローの形の誤り
+  - name: エージェントフローの構造の誤り
     condition: エージェントフローがスキーマに合わないか、`calls` が無いツールを指す
     notes: 結合テストが検出し、プラグインを配る前に止める
 constraints:
-  - item: 置き場所
+  - item: 配置場所
     constraint: プラグインの `agent-flows/` に 1 エージェントフロー 1 ファイルで置き、配信元の設定（`dev-docs.yaml`）とスキーマを同じフォルダに持つ。ファイルの名前と形式はモジュール構成設計で決める
   - item: 配信元の登録
     constraint: 『ワークスペースの作成』が、配信元 `mindstella-agent-flows` の行が無ければ project-index の `POST /settings/sources` で追加する。`config` は常駐サーバーが動くプラグインの `agent-flows/dev-docs.yaml`、`scope.read` は許可するフォルダとその下の全てのフォルダ、`outside_read` は真。`scope.write` は持たない
     notes: 'プラグインを上げてパスが変わったときは、『常駐サーバーの起動時の照合』が行の `config` を書き換える'
-  - item: 読み方
+  - item: 読み込み方法
     constraint: 'MindStella のセッションは project-index の `search_docs` を `source: mindstella-agent-flows`・`filter` の `id` の `eq`・`view: full` で呼ぶ。作業範囲の外のセッション（通常のセッション）は `outside_scope: true` を付ける。プラグインのファイルを Read で直接読まない'
   - item: 進み具合
     constraint: エージェントフローは工程ごとの進み具合を持たない（D-330）。圧縮・クリアの後は記録と commit から戻す
   - item: スレッドで回答を求めない
-    constraint: コメントの取り込みと記録の使い分けは、利用者の回答が要ることを検討事項に挙げ、回の最後に追加した検討事項と反映した回答を新しいスレッド 1 件に表で通知する（D-481）
-  - item: 文章と HTML の書き方
+    constraint: コメントの取り込みと記録の使い分けは、利用者の回答が要ることを検討事項に挙げ、回の最後に追加した検討事項と反映した回答を新規スレッド 1 件に表で通知する（D-481）
+  - item: 文章と HTML の記載方法
     constraint: エージェントフローに持たず、knowledge の規約を参照する（A-107）
 flows:
   - name: 正常系

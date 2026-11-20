@@ -48,11 +48,11 @@ status_codes:
   - code: '404'
     condition: '`id` のワークスペースが状態のフォルダの ID の一覧に無い'
   - code: '409'
-    condition: MindStella のセッションが既にある（起動中・停止の途中・起動し直しの途中）、またはワークスペースがクローズ済み
+    condition: MindStella のセッションが既にある（起動中・停止の途中・再起動の途中）、またはワークスペースがクローズ済み
     notes: '`stage` は `exists` か `closed`。`exists` のときは拡張のメンバー `session`・`pane` に起動中の MindStella のセッションを入れる'
   - code: '503'
     condition: ペインのコマンドが SessionStart の登録の前に終了コード 125 で終わった（claude-balancer が借りられない・指定したアカウントを貸せないか claude-balancer の設定に無い・`--client mindstella` が claude-balancer の `clients` に無い・claude-balancer のバックエンドへつながらない）
-    notes: ペインを閉じる。ほかのアカウントで起動し直さない。`stage` は `account`。`detail` にペインの最後の 20 行（claude-balancer の標準エラー）を入れる
+    notes: ペインを閉じる。ほかのアカウントで再起動しない。`stage` は `account`。`detail` にペインの最後の 20 行（claude-balancer の標準エラー）を入れる
   - code: '502'
     condition: ペインのコマンドが SessionStart の登録の前に 125 以外の終了コードで終わった（Claude Code が起動直後に終わった・`claude` が見つからない（127）など）
     notes: ペインを閉じる。`stage` は `launch`。`detail` に終了コードとペインの最後の 20 行
@@ -71,11 +71,11 @@ constraints:
     notes: '`new-session -d` はセッションを立てた時点で返るので、ペインの中の `claude-balancer exec` の終了コードは tmux から読む。claude-balancer の `exec` は、借りられない・クライアントが無い・バックエンドへつながらないときに子プロセスを起動せず 125 で終わる（LIB-531-1）'
   - item: Claude Code の引数
     constraint: '`launch.json` の `mcp_config` が空でなければ一時ファイルに書いて `--mcp-config {ファイル}`、`plugin_dirs` の各フォルダに `--plugin-dir {フォルダ}`。起動の指示は SessionStart の注入（『MindStella のセッションのフック』）で渡し、`--append-system-prompt` は渡さない。引数ごとに分けて渡し、シェルで解釈させない'
-  - item: 渡す環境変数
+  - item: 指定する環境変数
     constraint: '`MINDSTELLA_SESSION`（MindStella のセッションの ID）・`MINDSTELLA_WORKSPACE`（ワークスペースの ID）・`MINDSTELLA_PORT`、設定に進め方の文書があれば `MINDSTELLA_FLOW`（`{配信元の ID}#{文書の ID}`）、mindstella のホームの設定に `claude_balancer.url` があればその値を `CLAUDE_BALANCER_URL`。tmux の `respawn-pane -e` で渡す'
     decided_by: CFG-489-1#
   - item: 最初の入力
-    constraint: SessionStart のフックが登録した後、SessionStart のフックが登録したペイン（`TMUX_PANE`）へ 1 行の文字列（`[mindstella] MindStella のセッションを起動しました`）を『コメントをまとめて送る』と同じ貼り方で入れる
+    constraint: SessionStart のフックが登録した後、SessionStart のフックが登録したペイン（`TMUX_PANE`）へ 1 行の文字列（`[mindstella] MindStella のセッションを起動しました`）を『コメントをまとめて送信する』と同じ貼り方で入れる
     notes: 'SessionStart の注入だけでは応答が始まらないため（#481 の資料に未反映の点）。起動と再開のエージェントフローの指示の注入は #518'
   - item: 準備を待つ上限
     constraint: "0.5 秒ごとに、状態の `claude_session_id` が入ったかと、`display-message -p -t ={ワークスペースの ID}: '#{pane_dead} #{pane_dead_status}'` でペインのコマンドが終わったかを読み、上限まで待つ。登録が入ったら 201、ペインのコマンドが先に終わったら終了コードで 503（125）と 502（ほか）を分け、`capture-pane -p -S -20` で最後の 20 行を読んでからペインを閉じる。上限を過ぎたら 504"
@@ -88,11 +88,11 @@ constraints:
     constraint: '`create_session` は `workspace_id`・`claude_config_dir` を受け、同じ処理を呼ぶ'
   - item: claude-balancer のクライアント
     constraint: '`claude-balancer exec` の `--client` は `mindstella`。claude-balancer の設定の `clients` に `mindstella` が要る（無ければ 503 で、`detail` に claude-balancer の標準エラーが入る）'
-    notes: claude-balancer は起動時に `clients` を読む。足したら claude-balancer を起動し直す
+    notes: claude-balancer は起動時に `clients` を読む。追加したら claude-balancer を再起動する
   - item: 停止の通知
     constraint: 既存の MindStella のセッションの生死の判定で `running` から `crashed` に書き換えたときだけ、『停止の通知』を止まった理由 `crashed` で呼ぶ（送信は別のスレッドで行い、応答を待たせない）。`stopping` から `crashed` への書き換えでは呼ばない。通知の成否は応答に含めない
   - item: 前の会話の引き継ぎ
-    constraint: 既存の `session.json`（停止済み・落ちている）に `claude_session_id` があれば、『MindStella のセッションの起動し直し』の「会話の引き継ぎ」と同じ見分けで `--resume {claude_session_id}` を付ける。MindStella のセッションの ID は新しく振る
+    constraint: 既存の `session.json`（停止済み・落ちている）に `claude_session_id` があれば、『MindStella のセッションの再起動』の「会話の引き継ぎ」と同じ見分けで `--resume {claude_session_id}` を付ける。MindStella のセッションの ID は新しく振る
   - item: 追加の MCP・プラグインの記録が無い
     constraint: '`launch.json` が無ければ `--mcp-config`・`--plugin-dir` を付けずに起動し、応答の `warnings` に `launch_record_missing` を入れる。`launch.json` は作らない'
 flows:
@@ -115,7 +115,7 @@ flows:
         participant TM as tmux
         participant CB as claude-balancer（Mock）
         participant CC as Claude Code（Mock）
-        participant HK as フックの受け口
+        participant HK as フックのエンドポイント
 
         クライアント->>API: POST
         API->>TM: new-session（コマンドなし）・remain-on-exit on
@@ -309,7 +309,7 @@ flows:
       - 応答の `account` が渡したフォルダの絶対パス
     test: test_normal_when_account_specified
   - name: 異常系（指定したアカウントを借りられない・503）
-    summary: 指定したアカウントを claude-balancer が貸せず 125 で終われば、ほかのアカウントで起動し直さず 503
+    summary: 指定したアカウントを claude-balancer が貸せず 125 で終われば、ほかのアカウントで再起動せず 503
     setup:
       - name: Mock
         description: claude-balancer（`--account` を受けたら、標準エラーに貸せない理由を書いて終了コード 125 で終わる）

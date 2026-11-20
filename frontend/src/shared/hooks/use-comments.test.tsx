@@ -53,7 +53,7 @@ describe("useAddComment", () => {
 });
 
 describe("useUpdateComment", () => {
-  // 箇所を外す（正常系）
+  // 箇所を解除（正常系）
   test("use_update_comment", async () => {
     // 準備
     const bodies: unknown[] = [];

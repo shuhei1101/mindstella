@@ -29,7 +29,7 @@ export const SettingsConfirmDialog = ({ open, onOpenChange, from, to, onSaved }:
           onOpenChange(false);
         },
         onError: (reason) => {
-          setError(reason instanceof AppError ? `保存できませんでした。${reason.message}` : "保存できませんでした。サーバーが止まっています。立ち上げ直してから保存してください。");
+          setError(reason instanceof AppError ? `保存できませんでした。${reason.message}` : "保存できませんでした。サーバーが止まっています。再起動してから保存してください。");
         },
       },
     );

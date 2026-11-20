@@ -13,11 +13,11 @@
   <!-- 実装のトークンとスタイルをそのまま読む -->
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
-  <!-- 押せる的の下限: 実装の style.css に足す規則。?plan=current のとき外して今の見た目を出す -->
+  <!-- 押せる的の下限: 実装の style.css に追加する規則。?plan=current のとき外して今の見た目を出す -->
   <style id="plan-a">
-    /* 表示の設定・絞り込み・コメントのボタン: どの幅でも、件数の札を持たない間も幅 --target-min 以上にし、印を中央に置く（幅で区切らず、狭い幅の詰め方を足しても 24px を割らない） */
+    /* 表示の設定・絞り込み・コメントのボタン: どの幅でも、件数の札を持たない間も幅 --target-min 以上にし、マーカーを中央に置く（幅で区切らず、狭い幅の詰め方を追加しても 24px を割らない） */
     .topbar :is(.comments-btn, .filter-btn, .settings-btn) { min-width: var(--target-min); justify-content: center; }
-    /* 狭い幅（389px 以下）・つながらない・差分ありの間: 印だけのボタン（検索・変更履歴・ライト / ダーク）を幅 26px にし、下限で広がった分を右の余白から取らない */
+    /* 狭い幅（389px 以下）・つながらない・差分ありの間: マーカーだけのボタン（検索・変更履歴・ライト / ダーク）を幅 26px にし、下限で広がった分を右の余白から取らない */
     @media (max-width: 389px) {
       .topbar:has(.conn):has(.df-chip) :is(.search-trigger, .top-btn, .hist-btn) { width: 26px; }
     }
@@ -37,7 +37,7 @@
     @media (min-width: 390px) and (max-width: 480px) {
       /* 差分の札: 名前を先に縮める。札が 5.5em に届くまでボタンは縮まない */
       .topbar .df-chip { flex-shrink: 10000; }
-      /* 印だけのボタン（検索・変更履歴・ライト / ダーク）: 札が縮みきってもはみ出す分だけ、幅 32px から 28px まで縮む。高さは保つ */
+      /* マーカーだけのボタン（検索・変更履歴・ライト / ダーク）: 札が縮みきってもはみ出す分だけ、幅 32px から 28px まで縮む。高さは保つ */
       .topbar :is(.search-trigger, .hist-btn, .top-btn), .topbar:has(.conn) :is(.search-trigger, .hist-btn) { flex: 0 1 32px; min-width: 28px; }
     }
   </style>
@@ -111,7 +111,7 @@
       filterCount: Number(params.get("fc") ?? 0),
       onFilter: noop,
     }));
-    // 件数の札の幅の広い中身の印: 部品のスクリプトが付ける想定の data-wide を、見本では描いた後に付ける
+    // 件数の札の幅の広い中身のマーカー: 部品のスクリプトが付ける想定の data-wide を、見本では描いた後に付ける
     if (Number(params.get("fc") ?? 0) >= 10) document.querySelector(".filter-btn .fbadge")?.setAttribute("data-wide", "");
     if (Number(params.get("cc") ?? 3) > 99) document.querySelector(".comments-btn .count")?.setAttribute("data-wide", "");
   </script>

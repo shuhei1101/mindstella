@@ -3,7 +3,7 @@ title: MindStella のセッションの出来事の受け取り
 entry:
   kind: endpoint
   value: POST `/_admin/sessions/{session}/events`
-lead: MindStella のセッションのフックが送る出来事（起動・終了・応答の始まりと終わり）を受け、状態のフォルダの MindStella のセッションに記録する。
+lead: MindStella のセッションのフックが送信する出来事（起動・終了・応答の始まりと終わり）を受け、状態のフォルダの MindStella のセッションに記録する。
 idempotent: true
 side_effects: '`session.json` の `claude_session_id`・`pid`・`pane`・`claude_config_dir`・`balancer_account`・`status`・`responding` を書き換える。`prompt_submit`・`stop`・`stop_failure`・`session_end` で『作業の完了の通知』の書き込みのマーカーを解除し、`stop` の応答を返却した後に『作業の完了の通知』を呼ぶ。`session_end` が `running` から `stopped` に書き換えたときに『停止の通知』を呼ぶ'
 request:
@@ -97,7 +97,7 @@ constraints:
   - item: 受ける Host
     constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
   - item: 記録する中身
-    constraint: '`session_start`: `claude_session_id`・`pid`・`pid_started_at`・`pane`・`socket`・`claude_config_dir`・`balancer_account`（送られなければ `null`）を入れる（`clear`・`compact`・`fork` の後は新しい `claude_session_id` で入れ直す）。`session_end`: `reason` が `clear`・`resume` 以外なら `status` を `stopped`、`responding` を偽にする。`prompt_submit`: `responding` を真。`stop`・`stop_failure`: `responding` を偽'
+    constraint: '`session_start`: `claude_session_id`・`pid`・`pid_started_at`・`pane`・`socket`・`claude_config_dir`・`balancer_account`（送信されなければ `null`）を入れる（`clear`・`compact`・`fork` の後は新しい `claude_session_id` で再入力する）。`session_end`: `reason` が `clear`・`resume` 以外なら `status` を `stopped`、`responding` を偽にする。`prompt_submit`: `responding` を真。`stop`・`stop_failure`: `responding` を偽'
   - item: 同時の依頼
     constraint: '`session.json` ごとの書き込みの鍵だけを取って読み・書く。ワークスペースごとの順番の鍵は取らない（『MindStella のセッションの作成』が鍵を持ったまま SessionStart の登録を待つため）'
   - item: 作業の完了の通知
@@ -105,17 +105,17 @@ constraints:
   - item: 停止の通知
     constraint: '`session_end`（`reason` が `clear`・`resume` 以外）で書き換える前の `status` が `running` のときだけ、『停止の通知』を止まった理由 `session_ended` で呼ぶ。`stopping`（停止の依頼の途中）からの書き換えでは呼ばず、『MindStella のセッションの停止』が止め終えたときに呼ぶ。通知の成否は応答に含めない'
   - item: 利用上限
-    constraint: '`stop_failure` の `error` が `rate_limit` で、`status` が `running` のとき、応答を返した後に『MindStella のセッションの起動し直し』を契機 `rate_limit` で呼ぶ'
+    constraint: '`stop_failure` の `error` が `rate_limit` で、`status` が `running` のとき、応答を返した後に『MindStella のセッションの再起動』を契機 `rate_limit` で呼ぶ'
   - item: 圧縮
-    constraint: '`pre_compact` で `status` が `running` のとき、応答を返した後に『MindStella のセッションの起動し直し』を契機 `compact` で呼ぶ'
-  - item: 起動し直しの途中の終了
+    constraint: '`pre_compact` で `status` が `running` のとき、応答を返した後に『MindStella のセッションの再起動』を契機 `compact` で呼ぶ'
+  - item: 再起動の途中の終了
     constraint: '`status` が `restarting` のときの `session_end` は、`status` を書き換えず `responding` を偽にするだけにし、『停止の通知』を呼ばない'
 flows:
   - name: 正常系
     summary: SessionStart で claude_session_id とペインを記録する
     setup:
       - name: Mock
-        description: なし（HTTP のクライアントで送る）
+        description: なし（HTTP のクライアントで送信する）
       - name: 常駐サーバー
         description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
       - name: 状態
@@ -131,7 +131,7 @@ flows:
       ```
     expected:
       - '`session.json` に `claude_session_id`・`pane`・`pid` が入っている'
-      - '`session.json` の `claude_config_dir` が送った値'
+      - '`session.json` の `claude_config_dir` が送信した値'
     test: test_normal
   - name: 正常系（応答の始まりと終わり）
     summary: prompt_submit で responding が真、stop で偽

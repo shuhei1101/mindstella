@@ -80,7 +80,7 @@ SNAPSHOT_DIR = "snapshot"
 
 # ペインへ貼り付ける、重なった ID の文の形（`{entries}` に `{ID}（{ファイル名}）` を `、` でつないで入れる）
 DUPLICATE_MESSAGE = (
-    "[mindstella] 同じ ID の項目が 2 件あります: {entries}。片方の ID を next_id で振り直してください"
+    "[mindstella] 同じ ID の項目が 2 件あります: {entries}。片方の ID を next_id で再採番してください"
 )
 
 # 重なった ID の文で、ID を並べる区切り
@@ -127,7 +127,7 @@ class ItemDiff:
     added: list[tuple[Kind, dict[str, Any]]]
     # 変えた項目（種類・前の項目・今の項目・前の本文・今の本文）
     changed: list[tuple[Kind, dict[str, Any], dict[str, Any], str | None, str | None]]
-    # 消した項目（種類・前の項目）
+    # 削除した項目（種類・前の項目）
     removed: list[tuple[Kind, dict[str, Any]]]
 
     def is_empty(self) -> bool:

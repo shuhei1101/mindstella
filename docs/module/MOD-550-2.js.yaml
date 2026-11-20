@@ -5,13 +5,13 @@ constants:
     title: 雛形から取り出すタグ
     container: .storybook/main.js
     usecase: 共通
-    summary: 雛形から取り出す、文字の `<link>` と描画のライブラリの `<script src>` の正規表現。mdmark の `<link>` と import map は取り出さない（雛形は `MDMARK_SLOT` の印だけを持つ）
+    summary: 雛形から取り出す、文字の `<link>` と描画のライブラリの `<script src>` の正規表現。mdmark の `<link>` と import map は取り出さない（雛形は `MDMARK_SLOT` のマーカーだけを持つ）
     value: /<link rel="stylesheet" href="https:\/\/fonts[^>]*>|<script src="https:\/\/cdn[^>]*><\/script>/g
   - name: MDMARK_STORYBOOK_URL
     title: Storybook が読む mdmark の配信元
     container: .storybook/main.js
     usecase: 共通
-    summary: Storybook の画面が読む mdmark の `dist/` の URL の形。`{ref}` に起動時に `resolveMdmarkRef`（`.storybook/mdmark-ref.js`）が決めた ref を入れる。サーバーの `mdmark_dist_url` と同じ組み立て
+    summary: Storybook の画面が読む mdmark の `dist/` の URL の形式。`{ref}` に起動時に `resolveMdmarkRef`（`.storybook/mdmark-ref.js`）が決めた ref を入れる。サーバーの `mdmark_dist_url` と同じ組み立て
     value: '"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist"'
 functions:
   - name: templateTags
@@ -20,13 +20,13 @@ functions:
     container: .storybook/main.js
     usecase: 共通
     scope: internal
-    summary: 雛形から文字と描画のライブラリを読むタグを取り出し、mdmark の読み込みを足して返す
+    summary: 雛形から文字と描画のライブラリを読むタグを取り出し、mdmark の読み込みを追加して返す
     returns:
       type: string
       description: head に差し込むタグの並び
     process: |-
       1. `template.html` を読み、`TEMPLATE_TAGS` に当たるタグを並びの順に取り出す
-      2. 起動時に決めた ref を入れた `MDMARK_STORYBOOK_URL` の `index.css` を `href` に持ち `crossorigin="anonymous"` を付けた `<link rel="stylesheet">` と、`<script type="application/json" id="mindmap-mdmark-config">{"js": "{MDMARK_STORYBOOK_URL}/index.js", "map": {}}</script>` を足す（今の画面の `loadMdmark` がこの `js` を読む）
+      2. 起動時に決めた ref を入れた `MDMARK_STORYBOOK_URL` の `index.css` を `href` に持ち `crossorigin="anonymous"` を付けた `<link rel="stylesheet">` と、`<script type="application/json" id="mindmap-mdmark-config">{"js": "{MDMARK_STORYBOOK_URL}/index.js", "map": {}}</script>` を追加する（今の画面の `loadMdmark` がこの `js` を読む）
       3. 改行でつないで返す
 notes:
   React の画面の Storybook: '`.storybook-react/` も同じ ref で mdmark を読む（モジュール構成『mdmark-ref.js』の使う側）'

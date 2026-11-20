@@ -434,7 +434,7 @@ def test_diff_on(open_story: OpenStory) -> None:
     )
     assert dotted == ["decisions", "docs"]
     assert page.inner_text("nav[aria-label=項目の種類] a[data-tab=decisions] > span.mono") == "12"
-    assert page.inner_text("nav[aria-label=項目の種類] .sr-only") == "新規・変更・消した項目があります"
+    assert page.inner_text("nav[aria-label=項目の種類] .sr-only") == "新規・変更・削除した項目があります"
 
 
 def test_diff_on_narrow(open_story: OpenStory) -> None:

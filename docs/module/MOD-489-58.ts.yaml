@@ -1,6 +1,6 @@
 id: MOD-489-58
 title: プレビュー / libraries
-lead: 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」）。
+lead: 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」）。
 constants:
   - name: LIBRARIES
     title: 描画のライブラリの一覧
@@ -10,7 +10,7 @@ constants:
   - name: MDMARK_CDN_BASE
     title: mdmark の配信元の URL
     usecase: SPAを開く
-    summary: 'jsDelivr の mdmark の `dist/` の URL の形（`{ref}` に『記録の取得』の `mdmark_ref`。受ける前は `develop`）'
+    summary: 'jsDelivr の mdmark の `dist/` の URL の形式（`{ref}` に『記録の取得』の `mdmark_ref`。受ける前は `develop`）'
     value: '"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist"'
     container: frontend/src/shared/adapters/libraries.ts
 functions:
@@ -27,7 +27,7 @@ functions:
       - name: ref
         type: string | undefined
         required: true
-        description: 『記録の取得』の `mdmark_ref`（前の版の配信が返した記録で無いときは `undefined`。React の Storybook は `.storybook/mdmark-ref.js` が決めた ref）
+        description: 『記録の取得』の `mdmark_ref`（前のバージョンの配信が返した記録で無いときは `undefined`。React の Storybook は `.storybook/mdmark-ref.js` が決めた ref）
     returns:
       type: void
       description: なし

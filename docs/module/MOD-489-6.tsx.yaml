@@ -5,15 +5,15 @@ components:
   - name: ReviewView
     title: レビュー中の書き込み
     kind: 画面
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 画面設計『レビュー中の書き込み.tsx』の要素と操作を描く。チェックの状態は画面が持つ
     refs:
       - SCR-489-9#
     unit_tests:
       - name: test_review_view
         case: 正常
-        summary: まとめて送る
-        condition: 2 件をチェックしたまま送る
+        summary: まとめて送信する
+        condition: 2 件をチェックしたまま送信する
         mock: MSW
         expected: '`POST /api/comments/send` が 2 件の ID で呼ばれる'
       - name: test_review_view_when_stale
@@ -21,8 +21,8 @@ components:
         summary: 箇所が合わない
         condition: 409 と `stale`
         mock: MSW
-        expected: 行に理由と「箇所を外す」
+        expected: 行に理由と「箇所を解除」
     container: frontend/src/features/comments/review/review-view.tsx
 notes:
   単体テスト: 同じフォルダの `review-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）
-  修正の入力の音声入力: '書き換えている行を `{id, body, error}` で持ち、初めの値は `voiceEditingOf("review")` の ID（本文はそのコメントの本文）にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread, target}`、開く画面は `review`、名前は「{ID} へのコメントの修正」か「{スレッド} への返信の修正」）を使い、`ReviewEditForm` へ `body`・`onBodyChange` と音声の props を渡す。単体テストに、修正の入力のマイクで録音して文字起こしの結果が入力欄に入る場合（`test_review_view_when_edit_voice`）を足す'
+  修正の入力の音声入力: '書き換えている行を `{id, body, error}` で持ち、初めの値は `voiceEditingOf("review")` の ID（本文はそのコメントの本文）にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread, target}`、開く画面は `review`、名前は「{ID} へのコメントの修正」か「{スレッド} への返信の修正」）を使い、`ReviewEditForm` へ `body`・`onBodyChange` と音声の props を渡す。単体テストに、修正の入力のマイクで録音して文字起こしの結果が入力欄に入る場合（`test_review_view_when_edit_voice`）を追加する'

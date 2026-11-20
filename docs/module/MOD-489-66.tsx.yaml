@@ -12,8 +12,8 @@ components:
     unit_tests:
       - name: test_diff_minimap_when_no_marks
         case: 正常
-        summary: 印が無い
-        condition: 差分の印を持たない本文
+        summary: マーカーが無い
+        condition: 差分のマーカーを持たない本文
         mock: なし
         expected: 帯を描かない
     container: frontend/src/shared/components/diff-minimap.tsx

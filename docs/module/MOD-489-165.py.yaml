@@ -1,12 +1,12 @@
 id: MOD-489-165
 title: サーバー / 箇所 / locations.py
-lead: コメントが指す箇所（本文の行の範囲か項目の値のキーと、選んだ文）の形を確かめ、今の項目に合うかを確かめる。読み書きと検証だけに依存し、書き込まない。
+lead: コメントが指す箇所（本文の行の範囲か項目の値のキーと、選んだ文）の形式を確かめ、今の項目に合うかを確かめる。読み書きと検証だけに依存し、書き込まない。
 test_files:
   - tests/unit/scripts/test_locations.py
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    locations.py   箇所の形の確かめ・今の項目に合うかの確かめ・書式の記号を外した比べ方
+    locations.py   箇所の構造の確かめ・今の項目に合うかの確かめ・書式の記号を外した比べ方
   ```
 data_models:
   - name: Location
@@ -14,7 +14,7 @@ data_models:
     container: plugins/mindstella/skills/mindmap/scripts/locations.py
     usecase: 選んだ箇所へコメントする
     role: DTO
-    summary: コメント・書きかけ・スレッドが持つ `loc`（ER 図『ワークスペース』）。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    summary: コメント・下書き・スレッドが持つ `loc`（ER 図『ワークスペース』）。`@dataclass(frozen=True, slots=True, kw_only=True)`
     properties:
       - name: kind
         type: Literal['body', 'value']
@@ -54,7 +54,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/locations.py
     usecase: 選んだ箇所へコメントする
     scope: public
-    summary: 要求の `loc` の形を確かめ、`Location` にする
+    summary: 要求の `loc` の形式を確かめ、`Location` にする
     args:
       - name: value
         type: Any
@@ -68,7 +68,7 @@ functions:
       1. オブジェクトで、`kind` が `body` か `value` かを確かめる
       2. `body` なら `start`・`end` が 1 以上の整数（真偽値でない）で `start <= end` か、`value` なら `key` が空でない文字列かを確かめる
       3. `text` が文字列で、前後の空白を除いて 1〜`MAX_BODY_CHARS` 文字かを確かめる
-         - どれかに合わない場合、`loc.{キー}: {理由}` の `CommentInvalidError` を送る
+         - どれかに合わない場合、`loc.{キー}: {理由}` の `CommentInvalidError` を送出する
     exceptions:
       - name: CommentInvalidError
         condition: オブジェクトでない、`kind` が違う、`kind` に合うキーが無いか型が違う、`start > end`、`text` が空白だけか上限を超える
@@ -86,7 +86,7 @@ functions:
         condition: '`parametrize`: `[]` / `kind: line` / `body` で `end` が無い / `start: 3, end: 2` / `start: true` / `value` で `key` が無い / `text: "  "` / `text` が 10001 文字'
         mock: なし
         expected: '`CommentInvalidError`（メッセージが `loc` で始まる）'
-        exception: 箇所の形の誤り
+        exception: 箇所の構造の誤り
   - name: location_to_dict
     title: 箇所の書き出し
     kind: 関数

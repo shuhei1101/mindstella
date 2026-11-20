@@ -25,7 +25,7 @@ export const Busy: Story = { args: { busy: true } };
 export const ErrorReadOnly: Story = { args: { error: "保存できませんでした。ワークスペースのフォルダに書き込めません（読み取り専用）。フォルダに書き込めるようにしてから、もう一度保存してください。" } };
 
 /** サーバーが止まっていて保存できなかった。コメントを送れなかったときと同じ直し方を出す */
-export const ErrorOffline: Story = { args: { error: "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。" } };
+export const ErrorOffline: Story = { args: { error: "保存できませんでした。サーバーが止まっています。起動スクリプトで再起動し、示された新しい URL で開いてから保存してください。" } };
 
 /** 幅 320pxで外した種類が多い。値を折り返す */
 export const Narrow: Story = { args: { to: {"visibleKinds": ["logs"]} } };

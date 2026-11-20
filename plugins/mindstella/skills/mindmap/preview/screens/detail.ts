@@ -1035,14 +1035,14 @@ namespace MindmapPreview {
     });
   }
 
-  /** 図の下に出す、凡例と「消したもの」 */
+  /** 図の下に出す、凡例と「削除したもの」 */
   function diagramNotes({ colored, removed }: { colored: boolean; removed: string[] }): HTMLElement {
     const legend = colored
       ? h({
         tag: "div",
         attrs: { class: "df-legend" },
         children: [
-          h({ tag: "span", attrs: { class: "df-lg df-lg-add" }, children: [h({ tag: "i", attrs: { "aria-hidden": "true" } }), "足した"] }),
+          h({ tag: "span", attrs: { class: "df-lg df-lg-add" }, children: [h({ tag: "i", attrs: { "aria-hidden": "true" } }), "追加した"] }),
           h({ tag: "span", attrs: { class: "df-lg df-lg-chg" }, children: [h({ tag: "i", attrs: { "aria-hidden": "true" } }), "変わった"] }),
         ],
       })
@@ -1065,7 +1065,7 @@ namespace MindmapPreview {
             tag: "div",
             attrs: { class: "df-removed" },
             children: [
-              h({ tag: "span", attrs: { class: "df-removed-t" }, children: ["消したもの"] }),
+              h({ tag: "span", attrs: { class: "df-removed-t" }, children: ["削除したもの"] }),
               h({
                 tag: "ul",
                 children: removed.map((name) =>
@@ -1107,7 +1107,7 @@ namespace MindmapPreview {
     return diagram;
   }
 
-  /** 変わった図に、色・凡例と消したもの・Raw の行ごとの差分を付ける。前の版の図を描けない・色を付けない種類・突き合わせを打ち切ったときは、図の枠に色を付ける */
+  /** 変わった図に、色・凡例と削除したもの・Raw の行ごとの差分を付ける。前の版の図を描けない・色を付けない種類・突き合わせを打ち切ったときは、図の枠に色を付ける */
   export async function decorateDiagram({ figure, beforeSource }: { figure: HTMLElement; beforeSource: string }): Promise<void> {
     const holder = figure.querySelector<HTMLElement>(".mermaid");
     const afterSource = holder?.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "";

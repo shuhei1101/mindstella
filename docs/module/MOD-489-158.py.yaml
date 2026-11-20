@@ -115,7 +115,7 @@ classes:
     title: 文字起こしの失敗
     container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
     usecase: 音声でコメントする
-    summary: 文字起こしのインターフェースが送る例外の基底。メッセージはサービスの理由（標準エラーにだけ記録し、応答に出さない）
+    summary: 文字起こしのインターフェースが送出する例外の基底。メッセージはサービスの理由（標準エラーにだけ記録し、応答に出さない）
     kind: クラス
     inherits: Exception
   - name: TranscriberStoppedError
@@ -198,6 +198,6 @@ functions:
       - name: test_check_availability_when_unavailable
         case: 正常
         summary: 届かない・対応していない・持たないは理由つきで使えない
-        condition: '`parametrize`: `presets()` が `TranscriberStoppedError` / `TranscriberUnsupportedError` を送る偽の実装 / `None`'
+        condition: '`parametrize`: `presets()` が `TranscriberStoppedError` / `TranscriberUnsupportedError` を送出する偽の実装 / `None`'
         mock: 偽の実装
         expected: '`available` が偽で `presets` が空。`reason` が `stopped` / `unsupported` / `stopped`、`detail` が `UNAVAILABLE_DETAILS` のその理由の文'

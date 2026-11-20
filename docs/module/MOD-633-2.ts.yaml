@@ -1,10 +1,10 @@
 title: プレビュー / use-item-confirmed
-lead: 項目の確認済みの付け外しを送り、応答を待つ間は押した後の値を返す。
+lead: 項目の確認済みの設定と解除を送信し、応答を待つ間は押した後の値を返す。
 functions:
   - name: useItemConfirmed
-    title: 確認済みの付け外し
+    title: 確認済みの設定と解除
     kind: 関数
-    usecase: 確認済みの付け外し
+    usecase: 確認済みの設定と解除
     summary: 開いている項目の確認済みと、付け外しの操作を返す
     args:
       - name: id
@@ -22,11 +22,11 @@ functions:
       description: 描く値（応答を待つ間は押した後の値）・応答を待っているか・直前の失敗の文（無ければ `null`）・押したときの操作
     process: |-
       1. orval が生成した `setItemConfirmed`（PUT `/api/items/{id}/confirmed`）の mutation を使う
-      2. `toggle` で `!confirmed` を送る。応答を待つ間は `mutation.variables` の値を `confirmed` にし、`saving` を真にする
+      2. `toggle` で `!confirmed` を送信する。応答を待つ間は `mutation.variables` の値を `confirmed` にし、`saving` を真にする
       3. 成功したら記録の query を invalidate する（`preview-queries` の記録のキー）
-      4. 失敗したら記録の値に戻し、`error` を「確認済みを書き換えられませんでした。」と `detail`（届かないときは「サーバーが止まっています。立ち上げ直してから押してください。」）を続けた文にする。次に `toggle` を呼ぶか `id` が変わると `null` に戻す
+      4. 失敗したら記録の値に戻し、`error` を「確認済みを書き換えられませんでした。」と `detail`（届かないときは「サーバーが止まっています。再起動してから押してください。」）を続けた文にする。次に `toggle` を呼ぶか `id` が変わると `null` に戻す
     container: frontend/src/shared/hooks/use-item-confirmed.ts
 notes:
-  API: '`frontend/openapi.yaml` に PUT `/api/items/{id}/confirmed`（`operationId: setItemConfirmed`、本文 `{confirmed}`、応答 `{id, confirmed}`）を足し、記録の取得の項目に任意の `confirmed`（真偽値）、設定に任意の `confirm_on_comment`（真偽値）を足して orval で生成し直す。MSW の handler（`frontend/src/testing/msw/handlers.ts`）にも受け口を足す'
+  API: '`frontend/openapi.yaml` に PUT `/api/items/{id}/confirmed`（`operationId: setItemConfirmed`、本文 `{confirmed}`、応答 `{id, confirmed}`）を追加し、記録の取得の項目に任意の `confirmed`（真偽値）、設定に任意の `confirm_on_comment`（真偽値）を追加して orval で再生成する。MSW の handler（`frontend/src/testing/msw/handlers.ts`）にもエンドポイントを追加する'
   単体テスト: 同じフォルダの `use-item-confirmed.test.tsx` に置く。押した直後に値が変わり `saving` が真になること、成功で記録を invalidate すること、失敗で元の値に戻り `error` に文が入り、次の `toggle` で `null` に戻ることを確かめる
 id: MOD-633-2

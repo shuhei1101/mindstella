@@ -1132,7 +1132,7 @@ def test_update_thread_when_rejected(
 
 
 def _input(comment: str | None, **overrides: Any) -> threads.UserPostInput:
-    """足す利用者の書き込みを作る（新しいスレッドの最初の書き込みで項目 D-1 を指すのが既定）。"""
+    """足す利用者の書き込みを作る（新規スレッドの最初の書き込みで項目 D-1 を指すのが既定）。"""
     values: dict[str, Any] = {
         "comment": comment,
         "thread": None,
@@ -1151,7 +1151,7 @@ def test_append_user_posts(
     make_thread: MakeThread,
     write_threads: WriteThreads,
 ) -> None:
-    """新しいスレッドを立て、返信を末尾に足す（正常系）。"""
+    """新規スレッドを立て、返信を末尾に足す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
     write_threads(

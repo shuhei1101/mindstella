@@ -19,10 +19,10 @@ functions:
         expected: 記録・コメント・編集・スレッドの queryKey
     container: frontend/src/shared/hooks/preview-queries.ts
   - name: invalidatePreview
-    title: 読み直し
+    title: 再読み込み
     kind: 関数
     usecase: SPAを開く
-    summary: 書き換えの知らせと編集の後に 4 つの query を読み直す
+    summary: 書き換えの通知と編集の後に 4 つの query を再読み込みする
     args:
       - name: queryClient
         type: QueryClient
@@ -34,7 +34,7 @@ functions:
     unit_tests:
       - name: test_invalidate_preview
         case: 正常
-        summary: 4 つを読み直す
+        summary: 4 つを再読み込みする
         condition: なし
         mock: '`invalidateQueries`'
         expected: 4 つの queryKey で呼ばれる

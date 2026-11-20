@@ -76,7 +76,7 @@ var MindmapPreview;
                     type: "button",
                     "aria-label": `${entry.name} を主題`,
                     "aria-pressed": isMain ? "true" : "false",
-                    title: isMain ? "主題を外す" : "主題にする",
+                    title: isMain ? "主題を解除" : "主題にする",
                     "data-index": index,
                     disabled,
                     onclick: () => {
@@ -105,7 +105,7 @@ var MindmapPreview;
                         attrs: {
                             class: "pe-chip-x",
                             type: "button",
-                            "aria-label": `${entry.name} を外す`,
+                            "aria-label": `${entry.name} を解除`,
                             disabled,
                             onclick: () => {
                                 current = current.filter((_, position) => position !== index);

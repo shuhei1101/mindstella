@@ -7,13 +7,13 @@ layers:
       ```bash
       pytest tests/unit
       ```
-    description: pytest で、サーバーの関数を `tests/unit/scripts/` から直接呼んで確かめる。`conftest.py` が `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足すので、各モジュールを `import store` のように同じ名前で読む。ファイルの読み書きは `tmp_path` の一時フォルダで行い、利用者の環境は触れない。MCP のツールは SDK の `MCPServer` を同じプロセスの中で呼び、配信は `127.0.0.1` の空きポートで本物の待ち受けを立てて止める。
+    description: pytest で、サーバーの関数を `tests/unit/scripts/` から直接呼んで確かめる。`conftest.py` が `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に追加するので、各モジュールを `import store` のように同じ名前で読む。ファイルの読み書きは `tmp_path` の一時フォルダで行い、利用者の環境は触れない。MCP のツールは SDK の `MCPServer` を同じプロセスの中で呼び、配信は `127.0.0.1` の空きポートで本物の待ち受けを立てて止める。
     prerequisites:
       - Python 3.12 以上と pytest
       - PyYAML 5.1 以上・jsonschema 4.18.0 以上・mcp 2.3.0 以上が、テストを動かす Python に入っている
       - 実行はリポジトリの直下で行う
       - 開発側の点検（`tests/unit/scripts/test_migration_coverage.py`）は `v*` のタグを読む。タグを取っていない clone では `git fetch --tags` を先に流す（タグが 1 つも無ければ skip する）。タグから中身が変わったスキーマが全て「手順の要らない変更の一覧」（`plugins/mindstella/skills/mindmap/migrations/no-steps.yaml`）に今の中身のハッシュで載っていれば、手順を求めない。消えたスキーマは一覧で通さない
-      - git の写しのテスト（`tests/unit/scripts/test_backup.py`）は git を使う。テストの中で一時フォルダに `git init` し、作者の名前とメールはそのリポジトリの設定に置く
+      - git のコピーのテスト（`tests/unit/scripts/test_backup.py`）は git を使う。テストの中で一時フォルダに `git init` し、作者の名前とメールはそのリポジトリの設定に置く
     run_one:
       label: ファイル
       command: |-
@@ -70,7 +70,7 @@ layers:
     prerequisites:
       - 単体テスト（フロント）の前提
       - jsDelivr と Google Fonts へ HTTPS で届く（『プレビューを開く』の正常系は描画のライブラリを配信元から読む）
-      - '部品のテスト（`tests/integration/storybook/`）: 先に `npx storybook build -o storybook-static` を済ませておく（Node 20.19 以上。部品のストーリー（Storybook）の節）'
+      - '部品のテスト（`tests/integration/storybook/`）: 先に `npx storybook build -o storybook-static` を済ませておく（Node 20.19 以上。部品のストーリー（Storybook）のセクション）'
       - 'React の部品のテスト（`tests/integration/storybook_react/`）: 先に `npm run build-storybook-react` を済ませておく。SPA のテストは、commit したビルドの出力（`preview/spa/`）を開く'
     run_all: |-
       ```bash
@@ -85,7 +85,7 @@ layers:
     notes:
       画面の起動: |-
         1. `make_workspace` で記録を置いたワークスペースを作り、MCP サーバーの `preview_url`（fixture `call_tool`）で配信を立てて URL を得る（手で確かめるときは、常駐サーバーにつながった Claude Code から `preview_url` を呼ぶ）。
-        2. その URL に URL のハッシュを付けて開く。ハッシュで画面・表示形式・項目を指す（例 `#tab=decisions&view=table&id=D-3`。形はインターフェース定義『プレビューを開く』）。配る書き出しは `export` で書き出した HTML を `file://` で開く。
+        2. その URL に URL のハッシュを付けて開く。ハッシュで画面・表示形式・項目を指す（例 `#tab=decisions&view=table&id=D-3`。形式はインターフェース定義『プレビューを開く』）。配る書き出しは `export` で書き出した HTML を `file://` で開く。
         3. 本文の領域 `main#main` に子が入るまで待つ。本文の図は描画のライブラリが読み終わった後に SVG になるので、図を確かめるときは `.mermaid svg` が出るまで待つ。
         4. 要素は画面設計の項目 ID（`#tile-next` ほか）で引く。項目 ID を持たない要素は、画面設計の名前に当たる見出し・ボタンの読み上げ名で引く。
         5. 幅の違いを確かめるときは、開いた後に `set_viewport_size` で幅を変える。
@@ -101,7 +101,7 @@ layers:
     name: lint
     description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）で今の画面の `.ts`・ストーリーの `.ts` と React の側（`frontend/tsconfig.json`）を、ESLint（`npm run lint`。`eslint.config.js`）で React の側の `frontend/src/` を検査する。formatter と import の並びの検査は含めない。commit の前に lefthook（`lefthook.yml`）が、`frontend/` かビルドの設定を変えたときは `npm run build` の後に `preview/spa/` に未 commit の差分があれば止める
     prerequisites:
-      - Python 3.12 以上と、`requirements-dev.txt` で固定した版の ruff（外部ライブラリ『ruff』）
+      - Python 3.12 以上と、`requirements-dev.txt` で固定したバージョンの ruff（外部ライブラリ『ruff』）
       - Node 20.19 以上で `npm ci` を済ませてある（postinstall が lefthook のフックを共有の `.git/hooks/` に入れる）
       - 実行はリポジトリの直下で行う。`/mnt/c` の上の worktree では ESLint に約 60 秒かかる
     run_all: |-
@@ -126,5 +126,5 @@ notes:
 
     React の部品のストーリーは別の設定（`.storybook-react/`）で、`npm run storybook-react`（ポート 6007）で開き、`npm run build-storybook-react` で `storybook-react-static/` に書き出す。API は MSW の worker が返す。
 prerequisites:
-  - conftest がテスト全体の始まる前に `MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`MINDSTELLA_ALLOWED_HOSTS` をテストのプロセスから消して走らせる。手元のシェルに設定してあっても、テストは手元のフックのコマンドを呼ばず、結果は設定していないシェルと変わらない
+  - conftest がテスト全体の始まる前に `MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`MINDSTELLA_ALLOWED_HOSTS` をテストのプロセスから削除して走らせる。手元のシェルに設定してあっても、テストは手元のフックのコマンドを呼ばず、結果は設定していないシェルと変わらない
   - フックと許可するホスト名を確かめるテストは、値を `start_server` の `extra_env` や関数の引数で自分で渡す

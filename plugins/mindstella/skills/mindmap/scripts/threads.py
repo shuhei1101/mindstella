@@ -114,11 +114,11 @@ class UserPostInput:
 
     # レビュー中のコメントの ID（すぐ送る書き込みはレビュー中を経ないため None）
     comment: str | None
-    # 返信先のスレッドの ID（新しいスレッドの最初の書き込みは None）
+    # 返信先のスレッドの ID（新規スレッドの最初の書き込みは None）
     thread: str | None
-    # 新しいスレッドの向けた項目の ID
+    # 新規スレッドの向けた項目の ID
     target: str | None
-    # 新しいスレッドの最初の書き込みに添えた箇所
+    # 新規スレッドの最初の書き込みに添えた箇所
     loc: dict[str, Any] | None
     body: str
 

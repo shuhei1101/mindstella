@@ -52,12 +52,12 @@ args:
     type: 文字列
     required: false
     enabled_when: '`connection` が `offline` のとき'
-    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1440px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 900px 以下は印だけを見せて文言を読み上げにだけ残す
+    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1440px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 900px 以下はマーカーだけを見せて文言を読み上げにだけ残す
   - name: tabs[].marked
     type: 真偽値
     required: false
     default: 'false'
-    description: 差分の表示の間、その種類に新規・変更・消した項目があるか。真のとき、件数を残したままタブの右上に点を重ね、「新規・変更・消した項目があります」を読み上げに残す。タブの幅は変えない
+    description: 差分の表示の間、その種類に新規・変更・削除した項目があるか。真のとき、件数を残したままタブの右上に点を重ね、「新規・変更・削除した項目があります」を読み上げに残す。タブの幅は変えない
   - name: diffPoint
     type: オブジェクト
     required: false
@@ -74,7 +74,7 @@ args:
     default: '0'
     choices: 0 以上
     enabled_when: '`comments` が `true` のとき'
-    description: レビュー中のコメントの件数。印と「コメント」の右に出す。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない。99 を超えたら件数の札に幅の広い中身の印 `data-wide` を付ける
+    description: レビュー中のコメントの件数。マーカーと「コメント」の右に出す。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない。99 を超えたら件数の札に幅の広い中身のマーカー `data-wide` を付ける
   - name: commentsOpen
     type: 真偽値
     required: false
@@ -95,7 +95,7 @@ args:
     default: '0'
     choices: 0 以上
     enabled_when: '`filter` が `true` のとき'
-    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけ印の色のバッジで「絞り込み」の右に出し、0 のときはバッジを出さない。10 以上のときはバッジに幅の広い中身の印 `data-wide` を付ける
+    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけマーカーの色のバッジで「絞り込み」の右に出し、0 のときはバッジを出さない。10 以上のときはバッジに幅の広い中身のマーカー `data-wide` を付ける
   - name: filterOpen
     type: 真偽値
     default: 'false'
@@ -106,19 +106,19 @@ args:
     required: false
     default: 'false'
     enabled_when: '`comments` が `true` のとき'
-    description: オープンのスレッドに利用者の未読の書き込みがあるか。`true` のとき、コメントのボタンの吹き出しの印の右上に点を重ねる（ボタンの幅は変えない。件数は出さない）。点の色は暗い地で読める印の色（`--teal-400`）
+    description: オープンのスレッドに利用者の未読の書き込みがあるか。`true` のとき、コメントのボタンの吹き出しのアイコンの右上に点を重ねる（ボタンの幅は変えない。件数は出さない）。点の色は暗い地で読めるマーカーの色（`--teal-400`）
   - name: pending
     type: 真偽値
     required: false
     default: 'false'
-    description: 保存待ちのボタンを出すか。サーバーの配信で保存待ちの編集が 1 件以上あるとき true、配る書き出しと差分の表示の間は false。出すときは絞り込みのボタンとコメントのボタンの間に置き、幅 1100px 以下は「保存待ち」の文字を隠して印と件数だけにする。幅 480px 以下で出している間はツール名の文字を隠して幅を回す
+    description: 保存待ちのボタンを出すか。サーバーの配信で保存待ちの編集が 1 件以上あるとき true、配る書き出しと差分の表示の間は false。出すときは絞り込みのボタンとコメントのボタンの間に置き、幅 1100px 以下は「保存待ち」の文字を隠してマーカーと件数だけにする。幅 480px 以下で出している間はツール名の文字を隠して幅を回す
   - name: pendingCount
     type: 整数
     required: false
     default: '0'
     choices: 1 以上
     enabled_when: '`pending` が `true` のとき'
-    description: 保存待ちの編集の件数。重ねた紙の印と「保存待ち」の右に印の色の塗りで出す。99 を超えたら `99+` にして幅を揺らさず、件数の札に幅の広い中身の印 `data-wide` を付ける
+    description: 保存待ちの編集の件数。重ねた紙のアイコンと「保存待ち」の右にマーカーの色の塗りで出す。99 を超えたら `99+` にして幅を揺らさず、件数の札に幅の広い中身のマーカー `data-wide` を付ける
   - name: pendingOpen
     type: 真偽値
     required: false
@@ -130,27 +130,27 @@ args:
     required: false
     default: 'false'
     enabled_when: '`pending` が `true` のとき'
-    description: 直前の保存で書き込めない編集があったか。真のとき、印を警告に替え、件数の塗りをトップバーの上の失敗の赤（`--red-300`）にする
+    description: 直前の保存で書き込めない編集があったか。真のとき、マーカーを警告に替え、件数の塗りをトップバーの上の失敗の赤（`--red-300`）にする
   - name: voice
     type: オブジェクト
     required: false
     default: なし（出さない）
-    description: 音声入力中の入力欄。`state`（recording・transcribing）・`label`（入力欄の名前。「{ID} へのコメント」「新しいスレッド」「{スレッド} への返信」「{ID} へのコメントの修正」「{スレッド} への返信の修正」）・`elapsed`（録音を始めてからの秒数）を持つ。あるとき、コメントのボタンの左隣に失敗の色（`--red-300`）の枠のボタンを出す。recording は失敗の色のマイクのアイコン・「音声入力中」・`elapsed` を `m:ss`、transcribing は回る印・「文字起こし中」で枠をトップバーの線の色にする。幅 1100px 以下は文字を隠してアイコンと時間、幅 480px 以下はアイコンだけにする。配る書き出しでは渡さない
+    description: 音声入力中の入力欄。`state`（recording・transcribing）・`label`（入力欄の名前。「{ID} へのコメント」「新規スレッド」「{スレッド} への返信」「{ID} へのコメントの修正」「{スレッド} への返信の修正」）・`elapsed`（録音を始めてからの秒数）を持つ。あるとき、コメントのボタンの左隣に失敗の色（`--red-300`）の枠のボタンを出す。recording は失敗の色のマイクのアイコン・「音声入力中」・`elapsed` を `m:ss`、transcribing は回るマーカー・「文字起こし中」で枠をトップバーの線の色にする。幅 1100px 以下は文字を隠してアイコンと時間、幅 480px 以下はアイコンだけにする。配る書き出しでは渡さない
   - name: voiceNotice
     type: オブジェクト
     required: false
     default: なし（出さない）
-    description: 音声入力の知らせ。`kind`（discarded・failed）と `text`（理由の文）を持つ。あるとき、トップバーの下にページの幅の帯を出し、警告の印・`text`・閉じる × を並べる。failed は `text` の右に「入力欄を開く」のボタンも出す。帯は × か「入力欄を開く」を押すまで残す
+    description: 音声入力の知らせ。`kind`（discarded・failed）と `text`（理由の文）を持つ。あるとき、トップバーの下にページの幅の帯を出し、警告のマーカー・`text`・閉じる × を並べる。failed は `text` の右に「入力欄を開く」のボタンも出す。帯は × か「入力欄を開く」を押すまで残す
   - name: duplicateIds
     type: オブジェクトの配列
     required: false
     default: '`[]`（通知を出さない）'
-    description: '重なった ID と種類の名前（`{id, kind}`）。空でなければ、タブの帯の下に重なった ID の通知を出す（『書き換えの知らせ』の `event: duplicate_ids` から使う側が組み立て、閉じたら重なった ID の集まりが変わるまで空を渡す）'
+    description: '重なった ID と種類の名前（`{id, kind}`）。空でなければ、タブの帯の下に重なった ID の通知を出す（『書き換えの通知』の `event: duplicate_ids` から使う側が組み立て、閉じたら重なった ID の集まりが変わるまで空を渡す）'
   - name: stale
     type: 真偽値
     required: false
     default: 'false'
-    description: 入力中・音声入力中に記録の書き換えを受け、画面への反映を保留しているか（『SPAを開く』の制約「入力中の読み直しの保留」）。真のとき、トップバーの下にページの幅の帯を出し、印の色（`--accent`）の点と「更新があります。入力欄から離れると反映します。」を並べる。帯は押せず、閉じるボタンも持たない。どの幅でも文言を省かず、折り返す。音声入力の知らせ（`voiceNotice`）と同時にあるときは、音声入力の知らせの下に出す。配る書き出しでは渡さない
+    description: 入力中・音声入力中に記録の書き換えを受け、画面への反映を保留しているか（『SPAを開く』の制約「入力中の再読み込みの保留」）。真のとき、トップバーの下にページの幅の帯を出し、マーカーの色（`--accent`）の点と「更新があります。入力欄から離れると反映します。」を並べる。帯は押せず、閉じるボタンも持たない。どの幅でも文言を省かず、折り返す。音声入力の知らせ（`voiceNotice`）と同時にあるときは、音声入力の知らせの下に出す。配る書き出しでは渡さない
 events:
   - name: 画面を移る
     when: タブを押したとき
@@ -170,7 +170,7 @@ events:
     value: '`onOpenHistory()`'
   - name: 差分の表示をやめる
     when: 選んだ時点の札の × を押したとき
-    description: 使う側が選んだ時点を消して端末の保存領域に残し、印と差分のない画面に描き直す
+    description: 使う側が選んだ時点を削除して端末の保存領域に残し、マーカーと差分のない画面に再描画する
     value: '`onClearDiff()`'
   - name: コメントを開く
     when: コメントのボタンを押したとき（0 件でも押せる）
@@ -195,11 +195,11 @@ events:
   - name: 音声入力の入力欄を開く
     when: 帯の「入力欄を開く」を押したとき（`voiceNotice.kind` が failed）
     value: '`onOpenVoice()`'
-    description: 使う側が「音声入力中の入力欄へ移る」と同じく入力欄の画面を開いてフォーカスを移し、帯を消す
+    description: 使う側が「音声入力中の入力欄へ移る」と同じく入力欄の画面を開いてフォーカスを移し、帯を削除する
   - name: 音声入力の知らせを閉じる
     when: 帯の × を押したとき
     value: '`onDismissVoiceNotice()`'
-    description: 使う側が帯を消す。書きかけは変えない
+    description: 使う側が帯を削除する。下書きは変えない
   - name: 重なった ID の項目を開く
     when: 重なった ID の通知の ID のリンクを押したとき
     value: '`onOpenDuplicate(id)`'
@@ -214,7 +214,7 @@ states:
       - name: duplicateIds
         value: '[{"id": "D-12", "kind": "検討事項"}]'
   - name: Overview
-    description: 概要を開いている。開いている画面のタブに印の色の下線
+    description: 概要を開いている。開いている画面のタブにマーカーの色の下線
     args:
       - name: current
         value: overview
@@ -229,11 +229,11 @@ states:
       - name: theme
         value: dark
   - name: Narrow
-    description: 幅 390px。検索の入口を虫眼鏡だけにし、題名を隠す。タブは帯の中で横に送る
+    description: 幅 390px。検索の入口を虫眼鏡だけにし、題名を隠す。タブは帯の中で横にスクロールする
     notes:
       見せ方: Storybook（React）の画面幅を 390px にして確かめる
   - name: Offline
-    description: サーバーにつながらない。検索の入口の左に、印と「サーバーにつながりません（{日時} に読んだ記録）」を出す。印を `--red-300`、文言をトップバーの文字色（`--topbar-fg`）で出す
+    description: サーバーにつながらない。検索の入口の左に、マーカーと「サーバーにつながりません（{日時} に読んだ記録）」を出す。マーカーを `--red-300`、文言をトップバーの文字色（`--topbar-fg`）で出す
     args:
       - name: connection
         value: offline
@@ -242,7 +242,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 1441px にして見せる（幅 1440px 以下は「つながりません」だけになる）
   - name: OfflineNarrow
-    description: 幅 390px でサーバーにつながらない。印だけを出し、「つながりません」を読み上げに、読んだ日時を `title` に持つ
+    description: 幅 390px でサーバーにつながらない。マーカーだけを出し、「つながりません」を読み上げに、読んだ日時を `title` に持つ
     args:
       - name: connection
         value: offline
@@ -299,7 +299,7 @@ states:
       - name: commentsOpen
         value: 'true'
   - name: CommentsNarrow
-    description: 幅 390px。コメントのボタンの文字を隠し、印と件数だけにする
+    description: 幅 390px。コメントのボタンの文字を隠し、マーカーと件数だけにする
     args:
       - name: comments
         value: 'true'
@@ -340,7 +340,7 @@ states:
       - name: commentCount
         value: '2'
   - name: FilterOn
-    description: 2 つの条件で絞り込み中。「絞り込み」の右に印の色のバッジ「2」を出す
+    description: 2 つの条件で絞り込み中。「絞り込み」の右にマーカーの色のバッジ「2」を出す
     args:
       - name: filter
         value: 'true'
@@ -409,7 +409,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 1101px・1440px・1441px にして見せる
   - name: FilterDiffOfflineNarrow
-    description: 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態を印だけにし、要素の間隔は差分を出している間のどの幅でも 8px にする。幅 480px 以下ではツール名の印も隠す。トップバーもページも横にはみ出さず、札は `5.5em` 以上を取る
+    description: 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態をマーカーだけにし、要素の間隔は差分を出している間のどの幅でも 8px にする。幅 480px 以下ではツール名のマーカーも隠す。トップバーもページも横にはみ出さず、札は `5.5em` 以上を取る
     args:
       - name: connection
         value: offline
@@ -428,7 +428,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 390px・405px・480px・481px・519px・900px にして見せる
   - name: FilterOfflineNarrow
-    description: 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。接続の状態を印だけにし、幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない
+    description: 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。接続の状態をマーカーだけにし、幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない
     args:
       - name: connection
         value: offline
@@ -473,7 +473,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 390px・480px・481px・900px にして見せる
   - name: CommentsUnread
-    description: オープンのスレッドに未読がある。吹き出しの印の右上に点を重ね、レビュー中の件数はそのまま出す。ボタンの幅は `Comments` と同じ
+    description: オープンのスレッドに未読がある。吹き出しのアイコンの右上に点を重ね、レビュー中の件数はそのまま出す。ボタンの幅は `Comments` と同じ
     args:
       - name: comments
         value: 'true'
@@ -502,7 +502,7 @@ states:
       - name: commentsOpen
         value: 'true'
   - name: CommentsUnreadNarrow
-    description: 幅 390px で未読がある。コメントのボタンは印と件数だけで、点を重ねてもボタンと × を押し出さず 390px の中に収める
+    description: 幅 390px で未読がある。コメントのボタンはマーカーと件数だけで、点を重ねてもボタンと × を押し出さず 390px の中に収める
     args:
       - name: comments
         value: 'true'
@@ -513,7 +513,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 390px にして見せる
   - name: FitNarrowest
-    description: 幅 320〜389px で、サーバーにつながり、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。ツール名の文字を隠し（印は残す）、印だけのボタン（検索・変更履歴・ライト / ダーク）を高さ 32px・幅 28px に揃えて縮ませず、要素の間隔 1px・左右の余白 8px、表示の設定・絞り込み・コメントのボタンの左右の余白 2px・ボタンの中の印と件数の間隔 2px に詰める。表示の設定・絞り込み・コメントのボタンは幅の下限を `--target-min`（24px）にし、件数の札を持たない間は印を中央に置く。ボタンを 1 つも隠さず、絞り込みのバッジ 2 桁・コメントの件数 `99+` までトップバーもページも横にはみ出さない。幅 390px 以上は `FilterHistoryNarrow` と同じ
+    description: 幅 320〜389px で、サーバーにつながり、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。ツール名の文字を隠し（マーカーは残す）、マーカーだけのボタン（検索・変更履歴・ライト / ダーク）を高さ 32px・幅 28px に揃えて縮ませず、要素の間隔 1px・左右の余白 8px、表示の設定・絞り込み・コメントのボタンの左右の余白 2px・ボタンの中のマーカーと件数の間隔 2px に詰める。表示の設定・絞り込み・コメントのボタンは幅の下限を `--target-min`（24px）にし、件数の札を持たない間はマーカーを中央に置く。ボタンを 1 つも隠さず、絞り込みのバッジ 2 桁・コメントの件数 `99+` までトップバーもページも横にはみ出さない。幅 390px 以上は `FilterHistoryNarrow` と同じ
     args:
       - name: filter
         value: 'true'
@@ -526,7 +526,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 320px・361px・389px・390px にして見せる。変更履歴のボタンを出すため、ストーリーは `変更履歴を開く` を受ける
   - name: FitNarrowestDiff
-    description: 幅 320〜389px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。`FitNarrowest` の詰め方に加えてツール名の印も隠し、差分の間の要素の間隔も 1px にする。札は空いた幅まで伸び、どの幅でも `5.5em` 以上を取る。トップバーもページも横にはみ出さない
+    description: 幅 320〜389px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。`FitNarrowest` の詰め方に加えてツール名のマーカーも隠し、差分の間の要素の間隔も 1px にする。札は空いた幅まで伸び、どの幅でも `5.5em` 以上を取る。トップバーもページも横にはみ出さない
     args:
       - name: filter
         value: 'true'
@@ -541,7 +541,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 320px・361px・389px・390px にして見せる
   - name: FitNarrowestOffline
-    description: 幅 320〜389px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。`FitNarrowest` と同じ詰め方で、接続の状態は印だけにする。ツール名の印は残す。トップバーもページも横にはみ出さない
+    description: 幅 320〜389px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。`FitNarrowest` と同じ詰め方で、接続の状態はマーカーだけにする。ツール名のマーカーは残す。トップバーもページも横にはみ出さない
     args:
       - name: connection
         value: offline
@@ -558,7 +558,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 320px・361px・389px・390px にして見せる。変更履歴のボタンを出すため、ストーリーは `変更履歴を開く` を受ける
   - name: FitNarrowestOfflineDiff
-    description: 幅 320〜389px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。収める中身が最も広い組み合わせ。`FitNarrowestDiff` と同じ詰め方で、接続の状態は印だけにする。つながらず差分を出している間だけ、印だけのボタン（検索・変更履歴・ライト / ダーク）を幅 26px にして、トップバーの左右の余白 8px を保つ。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない
+    description: 幅 320〜389px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。収める中身が最も広い組み合わせ。`FitNarrowestDiff` と同じ詰め方で、接続の状態はマーカーだけにする。つながらず差分を出している間だけ、マーカーだけのボタン（検索・変更履歴・ライト / ダーク）を幅 26px にして、トップバーの左右の余白 8px を保つ。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない
     args:
       - name: connection
         value: offline
@@ -577,7 +577,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 320px・361px・389px・390px にして見せる
   - name: FitNarrowestNoCount
-    description: 幅 320〜389px で、サーバーにつながり、絞り込み（件数なし）・表示の設定・コメント（0 件）・変更履歴のボタンを出し、差分を表示していない間。`FitNarrowest` と同じ詰め方で、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、印を中央に置く
+    description: 幅 320〜389px で、サーバーにつながり、絞り込み（件数なし）・表示の設定・コメント（0 件）・変更履歴のボタンを出し、差分を表示していない間。`FitNarrowest` と同じ詰め方で、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、マーカーを中央に置く
     args:
       - name: filter
         value: 'true'
@@ -601,7 +601,7 @@ states:
       - name: commentCount
         value: '120'
   - name: FitWideDiff
-    description: 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。件数の札に `data-wide` があり差分の札を出しているので、`FitNarrowestDiff` と同じ詰め方（ツール名の文字と印を隠し、要素の間隔 1px・左右の余白 8px、印だけのボタンを幅 28px、3 つのボタンの左右の余白と印と件数の間隔 2px、幅の下限 `--target-min`（24px））にする。件数の札を持たない表示の設定のボタンは幅 24px で印を中央に置く。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffNarrow` と同じ
+    description: 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。件数の札に `data-wide` があり差分の札を出しているので、`FitNarrowestDiff` と同じ詰め方（ツール名の文字とマーカーを隠し、要素の間隔 1px・左右の余白 8px、マーカーだけのボタンを幅 28px、3 つのボタンの左右の余白とマーカーと件数の間隔 2px、幅の下限 `--target-min`（24px））にする。件数の札を持たない表示の設定のボタンは幅 24px でマーカーを中央に置く。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffNarrow` と同じ
     args:
       - name: filter
         value: 'true'
@@ -614,7 +614,7 @@ states:
       - name: diffPoint
         value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
   - name: FitWideOffline
-    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` があり接続の状態を出しているので、`FitNarrowestOffline` と同じ詰め方（ツール名の文字を隠し、印は残す。3 つのボタンの幅の下限 `--target-min`）にする。件数の札を持たない表示の設定のボタンは幅 24px で印を中央に置く。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterOfflineNarrow` と同じ
+    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` があり接続の状態を出しているので、`FitNarrowestOffline` と同じ詰め方（ツール名の文字を隠し、マーカーは残す。3 つのボタンの幅の下限 `--target-min`）にする。件数の札を持たない表示の設定のボタンは幅 24px でマーカーを中央に置く。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterOfflineNarrow` と同じ
     args:
       - name: connection
         value: offline
@@ -629,7 +629,7 @@ states:
       - name: commentCount
         value: '120'
   - name: FitWideOfflineDiff
-    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。`FitWideDiff` と同じ詰め方（印だけのボタンは幅 28px のまま、3 つのボタンの幅の下限 `--target-min`）で、接続の状態は印だけにする。札はどの幅でも `5.5em` 以上を取り、トップバーの左右の余白 8px を保ち、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffOfflineNarrow` と同じ
+    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。`FitWideDiff` と同じ詰め方（マーカーだけのボタンは幅 28px のまま、3 つのボタンの幅の下限 `--target-min`）で、接続の状態はマーカーだけにする。札はどの幅でも `5.5em` 以上を取り、トップバーの左右の余白 8px を保ち、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffOfflineNarrow` と同じ
     args:
       - name: connection
         value: offline
@@ -646,7 +646,7 @@ states:
       - name: diffPoint
         value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
   - name: FitWideOfflineDiffNoFilter
-    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（件数なし）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。コメントの件数に `data-wide` が付き `FitWideOfflineDiff` と同じ詰め方になるので、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、印を中央に置く
+    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（件数なし）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。コメントの件数に `data-wide` が付き `FitWideOfflineDiff` と同じ詰め方になるので、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、マーカーを中央に置く
     args:
       - name: connection
         value: offline
@@ -665,7 +665,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 390px・480px にして見せる
   - name: Pending
-    description: 保存待ちが 5 件。絞り込みとコメントのボタンの間に、重ねた紙の印・「保存待ち」・印の色の塗りの件数「5」を出す
+    description: 保存待ちが 5 件。絞り込みとコメントのボタンの間に、重ねた紙のアイコン・「保存待ち」・マーカーの色の塗りの件数「5」を出す
     args:
       - name: pending
         value: 'true'
@@ -687,7 +687,7 @@ states:
       - name: comments
         value: 'true'
   - name: PendingBlocked
-    description: 直前の保存で書き込めない編集があった。印を警告に替え、件数の塗りを失敗の赤にする
+    description: 直前の保存で書き込めない編集があった。マーカーを警告に替え、件数の塗りを失敗の赤にする
     args:
       - name: pending
         value: 'true'
@@ -707,7 +707,7 @@ states:
       - name: comments
         value: 'true'
   - name: PendingNarrow
-    description: 幅 390px。保存待ちのボタンの文字を隠して印と件数だけにし、ツール名の文字を隠す（印は残す）。絞り込み・表示の設定・コメント・変更履歴のボタンを 1 つも隠さず、トップバーもページも横にはみ出さない
+    description: 幅 390px。保存待ちのボタンの文字を隠してマーカーと件数だけにし、ツール名の文字を隠す（マーカーは残す）。絞り込み・表示の設定・コメント・変更履歴のボタンを 1 つも隠さず、トップバーもページも横にはみ出さない
     args:
       - name: pending
         value: 'true'
@@ -718,7 +718,7 @@ states:
       - name: comments
         value: 'true'
   - name: PendingFitNarrowest
-    description: 幅 320〜389px で、保存待ち（`99+`）・絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出す間。`FitNarrowest` の詰め方に保存待ちのボタンも加え（左右の余白 2px・印と件数の間隔 2px・幅の下限 `--target-min`）、トップバーもページも横にはみ出さない
+    description: 幅 320〜389px で、保存待ち（`99+`）・絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出す間。`FitNarrowest` の詰め方に保存待ちのボタンも加え（左右の余白 2px・マーカーと件数の間隔 2px・幅の下限 `--target-min`）、トップバーもページも横にはみ出さない
     args:
       - name: pending
         value: 'true'
@@ -738,7 +738,7 @@ states:
       - name: voice
         value: '{"state": "recording", "label": "D-022 へのコメント", "elapsed": 12}'
   - name: VoiceTranscribing
-    description: 文字起こし中。アイコンを回る印に替え、「文字起こし中」にして、枠をトップバーの線の色にする
+    description: 文字起こし中。アイコンを回るマーカーに替え、「文字起こし中」にして、枠をトップバーの線の色にする
     args:
       - name: voice
         value: '{"state": "transcribing", "label": "D-022 へのコメント"}'
@@ -793,17 +793,17 @@ uses:
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
-  - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
-  - 接続の状態は `role="status"` で読み上げに伝え、色だけでなく印のアイコンと文言でも示す。押せる部品にはしない
+  - ホバーは面の色、キーボードのフォーカスはマーカーの色の輪で見分ける
+  - 接続の状態は `role="status"` で読み上げに伝え、色だけでなくマーカーのアイコンと文言でも示す。押せる部品にはしない
   - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、狭い幅で文言を隠しても名前を残す。札の × は「差分の表示をやめる」の読み上げ名を持つ
   - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、`commentsUnread` が `true` のときは「コメント（未読あり・レビュー中 {件数} 件）」にする。点は読み上げから外し、一覧を開いているかを `aria-expanded` で示す
   - 表示の設定のボタンの読み上げの名前は「表示の設定」で、狭い幅で文字を隠しても残し、パネルを開いているかを `aria-expanded` で示す
   - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、狭い幅で文字を隠しても名前を残す
   - 検索の入口は `aria-keyshortcuts="Control+K Meta+K"` でキーの近道を支援技術にも伝える。キーの案内は `kbd` 要素で出し、狭い幅で文字を隠しても読み上げ名「すべての項目を検索」を残す
-  - どの幅でも、全てのボタン（差分の札の × を含む）の押せる的を縦横 `--target-min`（24px）以上に保つ。表示の設定・絞り込み・コメントのボタンの幅の下限は幅で区切らずに持ち、狭い幅の詰め方を足しても 24px を割らないようにする
+  - どの幅でも、全てのボタン（差分の札の × を含む）の押せる的を縦横 `--target-min`（24px）以上に保つ。表示の設定・絞り込み・コメントのボタンの幅の下限は幅で区切らずに持ち、狭い幅の詰め方を追加しても 24px を割らないようにする
   - '音声入力中の表示はボタンにし、読み上げの名前を「音声入力中（{label}）。録音中の入力欄へ移動」（文字起こし中は「文字起こし中（{label}）。入力欄へ移動」）、ツールチップに「音声入力中: {label}。押すと録音中の入力欄へ移動します」（文字起こし中は「文字起こし中: {label}。押すと入力欄へ移動します」）を持つ。経過の時間とアイコンは読み上げから外し、狭い幅で文字を隠しても名前を残す。色だけでなくマイクのアイコンと文言で音声入力中を伝える'
-  - 音声入力の知らせの帯は `role="status"` で読み上げに伝え、× に読み上げの名前「閉じる」を持つ。警告の印は読み上げから外す
+  - 音声入力の知らせの帯は `role="status"` で読み上げに伝え、× に読み上げの名前「閉じる」を持つ。警告のマーカーは読み上げから外す
   - 「更新があります」の帯は `role="status"` で読み上げに伝え、点は読み上げから外す。押せる部品にはしない。色だけでなく文言で保留を伝える
 notes:
-  部品の作り: shadcn/ui（Base UI 版）の Button を使い、ボタンの見た目の違いは Button の variants で持つ。色・余白はデザイン方針のトークンだけを Tailwind のクラスで指す
+  部品の作り: shadcn/ui（Base UI バージョン）の Button を使い、ボタンの見た目の違いは Button の variants で持つ。色・余白はデザイン方針のトークンだけを Tailwind のクラスで指す
   引数の名前: 今の部品（関連の『トップバー』の `.ts`）と同じ引数・イベント・状態を、camelCase の props と `on{動作}` の props で持つ

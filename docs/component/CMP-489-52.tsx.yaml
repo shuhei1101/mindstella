@@ -27,7 +27,7 @@ events:
   - name: 切り替え
     when: 選んでいない形式のボタンを押したとき（クリック・Enter・Space）
     value: '`onChange(key)`（引数は key）'
-    description: 使う側がその形式で描き直し、URL の search params の `view` を置き換える（履歴に積まない）
+    description: 使う側がその形式で再描画し、URL の search params の `view` を置き換える（履歴に積まない）
 css_properties:
   - name: --view-switch-item-width
     syntax: <length>
@@ -58,6 +58,6 @@ states:
 accessibility:
   - ボタンは `button` 要素にし、選んでいる形式を `aria-pressed="true"` で伝える
   - 全体を `role="group"` にし、`aria-label` に「表示形式」を付ける
-  - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
+  - ホバーは面の色、キーボードのフォーカスはマーカーの色の輪で見分ける
 refs:
   - CMP-489-51#

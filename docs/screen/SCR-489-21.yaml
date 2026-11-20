@@ -16,25 +16,25 @@ elements:
       - name: connection
         value: サーバーの配信で、`GET /api/events` のつながりが切れている間と `GET /api/records` に届かないときは offline、それ以外と配る書き出しは online（プレビューを開く.接続の状態）
       - name: duplicateIds
-        value: 書き換えの知らせの duplicate_ids の ID と、記録の取得の項目の種類の名前（閉じた後は、集まりが変わるまで []）
+        value: 書き換えの通知の duplicate_ids の ID と、記録の取得の項目の種類の名前（閉じた後は、集まりが変わるまで []）
       - name: read_at
         value: 記録の取得.built_at（最後に読めた記録）
       - name: diffPoint
-        value: 変更履歴で選んだ時点の名前と日時（プレビューを開く.変更履歴で選んだ時点。選んでいなければ渡さない）。`tabs[].marked` はその時点で印の付く項目か消した項目を持つ種類
+        value: 変更履歴で選んだ時点の名前と日時（プレビューを開く.変更履歴で選んだ時点。選んでいなければ渡さない）。`tabs[].marked` はその時点でマーカーの付く項目か削除した項目を持つ種類
       - name: comments
         value: サーバーの配信では true、配る書き出しでは false
       - name: comment_count
-        value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
+        value: レビュー中のコメントの読み取り.items の件数（溜める・削除する・元に戻す・まとめて送信の後に再描画する）
       - name: comments_open
         value: コメントの一覧を開いているか
       - name: settings_open
         value: 表示の設定のパネルを開いているか
       - name: comments_unread
-        value: スレッドの読み取り.threads のうち `status` が `open` で `posts[].seen` が `false` の書き込みを持つものが 1 件以上あるとき true（コメントの一覧を閉じていても、画面を開いたときと書き換えの知らせで読み直す）
+        value: スレッドの読み取り.threads のうち `status` が `open` で `posts[].seen` が `false` の書き込みを持つものが 1 件以上あるとき true（コメントの一覧を閉じていても、画面を開いたときと書き換えの通知で再読み込みする）
       - name: pending
         value: サーバーの配信では true、配る書き出しでは false
       - name: pending_count
-        value: 保存待ちの編集の読み取り.items の件数（溜める・取り消す・まとめて保存するの後に描き直す）
+        value: 保存待ちの編集の読み取り.items の件数（溜める・取り消す・まとめて保存するの後に再描画する）
       - name: pending_open
         value: 保存待ちのパネルを開いているか
       - name: pending_blocked
@@ -42,7 +42,7 @@ elements:
       - name: voice
         value: 画面で 1 つの音声入力の状態（SPAを開く・プレビューを開く.音声の入力）。録音・文字起こし中だけ渡し、`label` は録音を始めた入力欄の名前。配る書き出しでは渡さない
       - name: voiceNotice
-        value: 録音を破棄した（行き先の項目・スレッドが記録から無くなった）か、入力欄が画面に無い間に文字起こし・レビュー中への追加・送信が失敗したときの理由。× か「入力欄を開く」で消す
+        value: 録音を破棄した（行き先の項目・スレッドが記録から無くなった）か、入力欄が画面に無い間に文字起こし・レビュー中への追加・送信が失敗したときの理由。× か「入力欄を開く」で削除する
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 要見直し
@@ -60,15 +60,15 @@ elements:
     type: 文字列
     visible_when: 設定が話し合いの概要を持つとき（無ければ行を出さない）
     source: プレビューを開く.mindmap-data.settings.description
-  - name: タイルの項目の差分の印
+  - name: タイルの項目の差分のマーカー
     kind: label
     component: CMP-489-31#
     args:
       - name: kind
-        value: 選んだ時点で足した項目は new、変えた項目は changed（記録の取得.changes）
+        value: 選んだ時点で追加した項目は new、変えた項目は changed（記録の取得.changes）
     description: 未読の AI の書き込み以外のタイル（未決定・要見直し・確認中の資料）の各行で、項目のタイトルの横に文言なしで置く
     io: 表示
-    visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
+    visible_when: 差分の表示の間で、その項目が選んだ時点で追加されたか変わったとき
   - name: 画面の領域
     kind: region
     description: トップバーとタブの帯の下の、窓の高さに収めた領域。ページ全体は縦にも横にもスクロールさせず、トップバーとタブの帯は常に見えたままにする。タイルはこの領域の中で縦にスクロールする

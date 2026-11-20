@@ -5,12 +5,12 @@ entry:
   value: '`pending`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__pending`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
-    summary: 足した項目と、変えた項目・キーを返す
+    summary: 追加した項目と、変えた項目・キーを返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` した後、D-1 の `answer`・`status` を直し、タスク T-1 を足して、変更の検知が `pending` に記録したワークスペース（保持する回数は既定の 5）
+        description: 検討事項 D-1 を追加して `commit` した後、D-1 の `answer`・`status` を修正し、タスク T-1 を追加して、変更の検知が `pending` に記録したワークスペース（保持する回数は既定の 5）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -71,13 +71,13 @@ flows:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
     test: test_error_when_workspace_not_found
-  - name: 異常系（記録の形が崩れている・SchemaMismatchError）
+  - name: 異常系（記録の構造が崩れている・SchemaMismatchError）
     summary: 手で崩した changes.yaml は読まずに合わない箇所を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '`changes.yaml` の `pending` から `added` を消したワークスペース'
+        description: '`changes.yaml` の `pending` から `added` を削除したワークスペース'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -94,14 +94,14 @@ flows:
       - ツールのエラーになる
       - 'エラーの本文に `changes.yaml: pending` で始まる行がある'
     test: test_error_when_schema_mismatch
-  - name: 正常系（消した項目がある）
-    summary: まとめた後に消した項目を、ID・種類・消したときのタイトルで返す
+  - name: 正常系（削除した項目がある）
+    summary: まとめた後に削除した項目を、ID・種類・削除したときのタイトルで返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
         notes: '-'
       - name: make_workspace
-        description: メモ N-1・N-2 を足して `commit` し、N-2 を消して、変更の検知が `pending.removed` に記録したワークスペース
+        description: メモ N-1・N-2 を追加して `commit` し、N-2 を削除して、変更の検知が `pending.removed` に記録したワークスペース
         notes: N-2 のタイトルは `重複したメモ`
     flow: |-
       ```mermaid
@@ -119,7 +119,7 @@ flows:
       - '`removed` が N-2 の 1 件で、`kind` が `note`、`title` が `重複したメモ`'
       - '`added`・`changed` が空'
     test: test_normal_when_item_removed
-lead: 最後のまとまりより後に足した項目と、変えた項目・変えたキーと、消した項目を返す。読むだけで、まとめない。
+lead: 最後のまとまりより後に追加した項目と、変えた項目・変えたキーと、削除した項目を返す。読むだけで、まとめない。
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
@@ -134,14 +134,14 @@ request:
 response:
   - name: added[].id
     type: str
-    description: 足した項目の ID
+    description: 追加した項目の ID
     example: T-1
   - name: added[].title
     type: str
     description: その項目のタイトル
   - name: changed[].id
     type: str
-    description: 変えた項目の ID（足した項目は `added` にだけ入る）
+    description: 変えた項目の ID（追加した項目は `added` にだけ入る）
     example: D-1
   - name: changed[].title
     type: str
@@ -152,13 +152,13 @@ response:
     example: '["answer", "status"]'
   - name: removed[].id
     type: str
-    description: 最後のまとまりより後に消した項目の ID（その間に足して消した項目も含む。その項目は `added` には入らない）
+    description: 最後のまとまりより後に削除した項目の ID（その間に追加して削除した項目も含む。その項目は `added` には入らない）
   - name: removed[].kind
     type: str
-    description: 消した項目の種類
+    description: 削除した項目の種類
   - name: removed[].title
     type: str
-    description: 消したときのタイトル
+    description: 削除したときのタイトル
   - name: by
     type: '"ai" | "external"'
     description: まだまとめていない変更の書いた元（`changes.yaml` の `pending.by`。無ければ `ai`）。`external` は、MindStella のセッションの応答の途中でない間の変更で、変更の検知が自動でまとまりにする
@@ -174,12 +174,12 @@ exceptions:
     notes: ツールのエラー。エラーの本文に合わない箇所
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
-  - item: 返す項目
-    constraint: '`changes.yaml` の `pending` の `added`・`changed` の ID と、`removed` の ID・種類・タイトル。変えたキーは、その項目の変更履歴のうち `seq` が最後のまとまりの `until_seq` より大きいものから取る。保持する回数を超えて消えた分のキーは返らない。`removed` が無い `changes.yaml`（この機能を入れる前の版）は、消した項目を空で返す'
+  - item: 返却する項目
+    constraint: '`changes.yaml` の `pending` の `added`・`changed` の ID と、`removed` の ID・種類・タイトル。変えたキーは、その項目の変更履歴のうち `seq` が最後のまとまりの `until_seq` より大きいものから取る。保持する回数を超えて消えた分のキーは返らない。`removed` が無い `changes.yaml`（この機能を入れる前のバージョン）は、削除した項目を空で返す'
   - item: 並び
     constraint: '`pending` に入った順（書き換えた順）'
   - item: 件数

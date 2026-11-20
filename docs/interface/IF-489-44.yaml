@@ -1,5 +1,5 @@
 id: IF-489-44
-title: "書き換えの知らせ"
+title: "書き換えの通知"
 entry:
   kind: endpoint
   value: GET /api/events
@@ -21,9 +21,9 @@ flows:
 
         クライアント->>IF: GET /api/events
         IF-->>クライアント: 200（つないだまま）
-        クライアント->>T: edit_option workspace D-1（案 B を足す）
+        クライアント->>T: edit_option workspace D-1（案 B を追加する）
         T->>WS: decisions.yaml を書く
-        IF->>WS: 書き換えの印が変わった
+        IF->>WS: 書き換えのマーカーが変わった
         IF-->>クライアント: event: changed
       ```
     expected:
@@ -45,14 +45,14 @@ flows:
         participant T as edit_option（2 つ目の MCP のツール）
 
         クライアント->>IF: GET /api/events
-        クライアント->>T: edit_option workspace D-1（案 B を足す）
+        クライアント->>T: edit_option workspace D-1（案 B を追加する）
         IF-->>クライアント: event: changed
       ```
     expected:
       - '`edit_option` を呼んでから 1 秒以内に `event: changed` が届く'
     test: test_normal_when_other_process_writes
   - name: 正常系（書き換えが無い）
-    summary: 書き換えが無ければ changed を送らない
+    summary: 書き換えが無ければ changed を送信しない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/api/events` へ HTTP のクライアントでつなぐ）
@@ -65,7 +65,7 @@ flows:
         participant IF as GET /api/events
 
         クライアント->>IF: GET /api/events
-        IF->>IF: 書き換えの印が変わらない
+        IF->>IF: 書き換えのマーカーが変わらない
       ```
     expected:
       - 'つないでから 2 秒の間に `event: changed` が届かない'
@@ -115,7 +115,7 @@ flows:
     expected:
       - '書いてから 1 秒以内に `event: duplicate_ids` が届き、`data` が `["D-1"]`'
     test: test_normal_when_duplicate_ids
-lead: 配信しているワークスペースのファイルが書き換わったら、開いている画面へ Server-Sent Events で知らせる。画面は知らせを受けて『記録の取得』を読み直す。
+lead: 配信しているワークスペースのファイルが書き換わったら、開いている画面へ Server-Sent Events で知らせる。画面は知らせを受けて『記録の取得』を再読み込みする。
 idempotent: true
 side_effects: なし（読むだけ。接続ごとにワークスペースのファイルの更新日時を見続ける）
 callers:
@@ -126,39 +126,39 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
+    constraints: '『プレビューの配信』の制約「接続先の確認」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
 response:
   - name: Content-Type
     type: str
     description: '`text/event-stream`'
   - name: event changed
     type: Server-Sent Events のイベント
-    description: '`event: changed` と `data: {書き換えの印}`。書き換えの印は、見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ文字列で、画面は中身を読まない'
+    description: '`event: changed` と `data: {書き換えの印}`。書き換えのマーカーは、見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ文字列で、画面は中身を読まない'
   - name: event duplicate_ids
     type: Server-Sent Events のイベント
-    description: '`event: duplicate_ids` と `data: {重なった ID の JSON の配列}`。変更の検知が同じ ID の項目を 2 件以上見つけ、重なった ID の集まりが前と変わったときに送る（『変更の検知』）。重なりが無くなったときは空の配列を送る'
+    description: '`event: duplicate_ids` と `data: {重なった ID の JSON の配列}`。変更の検知が同じ ID の項目を 2 件以上見つけ、重なった ID の集まりが前と変わったときに送信する（『変更の検知』）。重なりが無くなったときは空の配列を送信する'
   - name: 保つための行
     type: Server-Sent Events のコメント
-    description: '`: keepalive`。15 秒知らせが無ければ送る'
+    description: '`: keepalive`。15 秒知らせが無ければ送信する'
 status_codes:
   - code: '200'
-    condition: つないだ。接続を閉じるまで知らせを送り続ける
+    condition: つないだ。接続を閉じるまで知らせを送信し続ける
 response_notes: |-
   > [!NOTE]
-  > つながりが切れたら、ブラウザの EventSource が自分でつなぎ直す。サーバーが止まっている間は画面に「サーバーにつながりません」と出し、前に読んだ記録で描き続ける（『プレビューを開く』）。
+  > つながりが切れたら、ブラウザの EventSource が自分で再接続する。サーバーが止まっている間は画面に「サーバーにつながりません」と出し、前に読んだ記録で描き続ける（『プレビューを開く』）。
 constraints:
-  - item: 見るファイル
-    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`history.yaml`・`docs/` の直下の `*.md`・`*.html`。`comments.yaml`・`drafts.yaml` は見ない（書くのは画面だけで、画面が応答から描き直す）。`threads.yaml` は AI の返信・スレッドを立てる・クローズとオープンへの戻しを開いている画面へ届けるために見る（AI の既読だけの書き換えも知らせる）'
-  - item: 見る間隔
-    constraint: 250ms ごとに書き換えの印を作り直し、前と違えば知らせる
+  - item: 監視するファイル
+    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`history.yaml`・`docs/` の直下の `*.md`・`*.html`。`comments.yaml`・`drafts.yaml` は見ない（書くのは画面だけで、画面が応答から再描画する）。`threads.yaml` は AI の返信・スレッドの作成・クローズとオープンへの戻しを開いている画面へ届けるために見る（AI の既読だけの書き換えも知らせる）'
+  - item: 監視する間隔
+    constraint: 250ms ごとに書き換えのマーカーを再作成し、前と違えば知らせる
     decided_by: NFR-489-1#requirements[画面への反映の時間]
   - item: 保つための行の間隔
     constraint: 15 秒
   - item: 書き換えた元
-    constraint: 問わない。このプロセスのツール・別のプロセスのツール・project-index の書き込み・手での書き換え・画面からまとめて送る・画面からのクローズのどれでも知らせる
+    constraint: 問わない。このプロセスのツール・別のプロセスのツール・project-index の書き込み・手での書き換え・画面からまとめて送信する・画面からのクローズのどれでも知らせる
   - item: 接続の数
     constraint: 制限なし（開いている画面ごとに 1 本。端末の中だけで使う）
-  - item: 接続先の確かめ
+  - item: 接続先の確認
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403 を返す。確かめは『プレビューの配信』の異常系が持つ）
 refs:
   - IF-489-51#

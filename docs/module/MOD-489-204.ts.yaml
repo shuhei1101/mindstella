@@ -21,7 +21,7 @@ components:
     kind: コンポーネント
     container: plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts
     usecase: 表示の設定を変える
-    summary: 部品設計『表示の設定』の引数を受け、表示する種類を変える・差分のミニマップを切り替える・本文の見せ方を切り替える・既定に戻す・ワークスペースの既定にする・閉じるをコールバックで知らせる。「ワークスペースの既定にする」を出すかは `kinds` と `defaultKinds` で比べる（`minimap` は比べに含めない）。「すべて」は `toggleAllBox` と同じく途中の印を持つ。表示する種類の下に `fieldset`（凡例「詳細に表示するもの」）を置き、`MINIMAP_LABEL` のチェックボックスと、`BODY_VIEW_LABELS` の `fold` のチェックボックスをこの順に 1 行ずつ出す（`bodyView` は比べに含めない）。詳細に表示するものの下に `fieldset`（凡例「コメントの入力」）を置き、`FOCUS_AFTER_ADD_LABEL` を凡例にしたラジオの `fieldset`（「自動」「入力欄へ戻す」「戻さない」）と区画の下の説明（グループの `aria-describedby`）を出し、「自動」の下に `pointerCoarse` で「この端末では入力欄へ戻します」「この端末では戻しません」を出す（`focusAfterAdd` は比べに含めない）。描き直しても操作していた部品にフォーカスを戻す
+    summary: 部品設計『表示の設定』の引数を受け、表示する種類を変える・差分のミニマップを切り替える・本文の見せ方を切り替える・既定に戻す・ワークスペースの既定にする・閉じるをコールバックで知らせる。「ワークスペースの既定にする」を出すかは `kinds` と `defaultKinds` で比べる（`minimap` は比べに含めない）。「すべて」は `toggleAllBox` と同じく途中のマーカーを持つ。表示する種類の下に `fieldset`（凡例「詳細に表示するもの」）を置き、`MINIMAP_LABEL` のチェックボックスと、`BODY_VIEW_LABELS` の `fold` のチェックボックスをこの順に 1 行ずつ出す（`bodyView` は比べに含めない）。詳細に表示するものの下に `fieldset`（凡例「コメントの入力」）を置き、`FOCUS_AFTER_ADD_LABEL` を凡例にしたラジオの `fieldset`（「自動」「入力欄へ戻す」「戻さない」）と区画の下の説明（グループの `aria-describedby`）を出し、「自動」の下に `pointerCoarse` で「この端末では入力欄へ戻します」「この端末では戻しません」を出す（`focusAfterAdd` は比べに含めない）。再描画しても操作していた部品にフォーカスを戻す
     props:
       - name: kinds
         type: Set<string>

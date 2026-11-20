@@ -1,20 +1,20 @@
 id: SC-582-1
-title: MindStella のセッションを起動し直す
-lead: MindStella のセッションが利用上限に達した・使用中のアカウントの利用枠がしきい値以上になった・圧縮を止めた・落ちた後にコメントが届いた・起動し直しを依頼されたときに、常駐サーバーが MindStella のセッションを止めて同じ MindStella のセッションの ID のまま起動し直し、契機に応じて前の会話を引き継ぐ単一ユースケース。
+title: MindStella のセッションを再起動する
+lead: MindStella のセッションが利用上限に達した・使用中のアカウントの利用枠がしきい値以上になった・圧縮を止めた・落ちた後にコメントが届いた・再起動を依頼されたときに、常駐サーバーが MindStella のセッションを止めて同じ MindStella のセッションの ID のまま再起動し、契機に応じて前の会話を引き継ぐ単一ユースケース。
 issue: 520
 primary_actor: 常駐サーバー
 stakeholders:
   - name: 利用者
-    interest: アカウントが利用上限に達しても、利用上限で応答が途中で止まる前に別のアカウントへ切り替わり、MindStella のセッションが落ちても、リセットや起動のコマンドを待たずに同じ会話の続きから話し合いを続けられる。アカウントを指定して起動した MindStella のセッションは、起動し直しても指定したアカウントのまま続き、指定したアカウントが利用上限に達するかしきい値以上になったときだけ、設定に従って指定を解除して別のアカウントへ切り替わる。起動し直せないときは理由が分かり、送ったコメントが消えない
+    interest: アカウントが利用上限に達しても、利用上限で応答が途中で止まる前に別のアカウントへ切り替わり、MindStella のセッションが落ちても、リセットや起動のコマンドを待たずに同じ会話の続きから話し合いを続けられる。アカウントを指定して起動した MindStella のセッションは、再起動しても指定したアカウントのまま続き、指定したアカウントが利用上限に達するかしきい値以上になったときだけ、設定に従って指定を解除して別のアカウントへ切り替わる。再起動できないときは理由が分かり、送信したコメントが消えない
   - name: 外部のアプリ
-    interest: MindStella のセッションの ID が起動し直しで変わらず、起動し直しの途中・失敗の理由を API で確かめられる
-trigger: StopFailure のフックが利用上限を送信する・常駐サーバーが一定の間隔で確かめた使用中のアカウントの利用枠がしきい値以上になる・PreCompact のフックが起動し直しを依頼する・MindStella のセッションが無いワークスペースへコメントが届く・外部のアプリが起動し直しを依頼する（`POST /workspaces/{id}/sessions/{session}/restart`）
+    interest: MindStella のセッションの ID が再起動で変わらず、再起動の途中・失敗の理由を API で確かめられる
+trigger: StopFailure のフックが利用上限を送信する・常駐サーバーが一定の間隔で確かめた使用中のアカウントの利用枠がしきい値以上になる・PreCompact のフックが再起動を依頼する・MindStella のセッションが無いワークスペースへコメントが届く・外部のアプリが再起動を依頼する（`POST /workspaces/{id}/sessions/{session}/restart`）
 preconditions:
   - MindStella のセッションが、単一ユースケース『外部のアプリから起動する』か『端末から起動する』で一度起動している
   - ワークスペースがクローズ待ちでもクローズ済みでもない
-success_guarantee: MindStella のセッションが同じ MindStella のセッションの ID のまま起動中に戻り、状態に新しい Claude Code の `session_id` が記録されている。利用上限・しきい値・落ちた後のコメント・起動し直しの依頼では前の会話を引き継ぎ、圧縮では新規の会話で起動し直す。起動し直しの前に届いていたコメントは、起動し直した MindStella のセッションに取り込み待ちとして届く。
-minimal_guarantee: 起動し直しに失敗しても、届いたコメントは取り込み待ちのスレッドに残り、失敗した段階と理由が状態に記録されて『MindStella のセッションの一覧』で分かる。起動し直しの途中に失敗したときは、起動したプロセスを止めて tmux のペインを閉じる。しきい値の契機は、止める前に切り替え先のアカウントが無いと分かったときと利用枠を確かめられないときに止めず、今のアカウントで続ける。指定の解除をオフにした MindStella のセッションは、指定したアカウント以外では起動し直さない。
-frequency: 利用上限・しきい値・圧縮・落ちた後のコメント・起動し直しの依頼のたびに 1 回
+success_guarantee: MindStella のセッションが同じ MindStella のセッションの ID のまま起動中に戻り、状態に新しい Claude Code の `session_id` が記録されている。利用上限・しきい値・落ちた後のコメント・再起動の依頼では前の会話を引き継ぎ、圧縮では新規の会話で再起動する。再起動の前に届いていたコメントは、再起動した MindStella のセッションに取り込み待ちとして届く。
+minimal_guarantee: 再起動に失敗しても、届いたコメントは取り込み待ちのスレッドに残り、失敗した段階と理由が状態に記録されて『MindStella のセッションの一覧』で分かる。再起動の途中に失敗したときは、起動したプロセスを止めて tmux のペインを閉じる。しきい値の契機は、止める前に切り替え先のアカウントが無いと分かったときと利用枠を確かめられないときに止めず、今のアカウントで続ける。指定の解除をオフにした MindStella のセッションは、指定したアカウント以外では再起動しない。
+frequency: 利用上限・しきい値・圧縮・落ちた後のコメント・再起動の依頼のたびに 1 回
 priority: 高
 scenarios:
   - name: 正常シナリオ（利用上限）
@@ -38,7 +38,7 @@ scenarios:
 
         CC->>HK: StopFailure（rate_limit）
         HK->>MGR: 利用上限を送信する
-        MGR->>MGR: 状態を起動し直しの途中にする
+        MGR->>MGR: 状態を再起動の途中にする
         MGR->>CC: 止めて tmux のペインを閉じる
         CB->>CB: 子プロセスの終了後に会話の記録から利用上限を見分け、アカウント A を貸さなくする
         MGR->>DC: 止まった理由「利用上限」で通知する
@@ -75,9 +75,9 @@ scenarios:
         participant CB as claude-balancer
 
         CC->>HK: PreCompact
-        HK->>MGR: 起動し直しを依頼する
+        HK->>MGR: 再起動を依頼する
         HK-->>CC: 圧縮を止める
-        MGR->>MGR: 状態を起動し直しの途中にする
+        MGR->>MGR: 状態を再起動の途中にする
         MGR->>CC: 止めて tmux のペインを閉じる
         MGR->>CB: 起動の契機「圧縮」を環境変数に入れ、新規の会話で exec を起動する
         CB->>CC: Claude Code を起動する
@@ -112,9 +112,9 @@ scenarios:
 
         MGR->>MGR: 一定の間隔の見回りで、ペインとプロセスが無いことを見つけ、落ちたことを記録する
         MGR->>DC: 止まった理由「異常終了」で通知する
-        U->>NT: 画面でコメントを送る
-        NT->>NT: スレッドに足す
-        NT->>MGR: MindStella のセッションが無いので、起動し直しを依頼する
+        U->>NT: 画面でコメントを送信する
+        NT->>NT: スレッドに追加する
+        NT->>MGR: MindStella のセッションが無いので、再起動を依頼する
         MGR->>CB: exec を起動する（claude --resume {前の session_id}）
         CB->>CC: 前の会話を引き継いで起動する
         CC->>MGR: SessionStart（resume）で登録する
@@ -127,7 +127,7 @@ scenarios:
       - ペインに届いた件数の入力が貼られ、コメントがスレッドに取り込み待ちとして残っている
       - 『MindStella のセッションの一覧』が、同じ MindStella のセッションの ID を `running` で返す
     test: test_normal_when_comment_after_crash
-  - name: 正常シナリオ（起動し直しの依頼）
+  - name: 正常シナリオ（再起動の依頼）
     setup:
       - name: Mock
         description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（応答の途中で、しばらくして Stop のフックを叩き、`/exit` が貼られたら SessionEnd のフックを叩いて終わる）
@@ -146,10 +146,10 @@ scenarios:
         participant CC as MindStella のセッション
         participant CB as claude-balancer
 
-        APP->>API: 起動し直しを依頼する（POST /workspaces/{id}/sessions/{session}/restart）
-        API->>MGR: 起動し直しを依頼する
+        APP->>API: 再起動を依頼する（POST /workspaces/{id}/sessions/{session}/restart）
+        API->>MGR: 再起動を依頼する
         API-->>APP: 受け付けた
-        MGR->>MGR: 状態を起動し直しの途中にする
+        MGR->>MGR: 状態を再起動の途中にする
         MGR->>MGR: 応答の途中なので、終わるまで待つ
         CC->>MGR: 応答の終わり（Stop のフック）
         MGR->>CC: 止めて tmux のペインを閉じる
@@ -159,10 +159,10 @@ scenarios:
         API-->>APP: 起動中
       ```
     expected:
-      - 外部のアプリが、起動し直しの依頼をすぐに受け付けられている
-      - 待つ間の『MindStella のセッションの一覧』が起動し直しの途中を返している
-      - MindStella のセッションは Stop のフックの後に止まり、`--resume` と前の `session_id` で起動し直している
-      - 起動し直しの後の一覧が、同じ MindStella のセッションの ID を `running` で返す
+      - 外部のアプリが、再起動の依頼をすぐに受け付けられている
+      - 待つ間の『MindStella のセッションの一覧』が再起動の途中を返している
+      - MindStella のセッションは Stop のフックの後に止まり、`--resume` と前の `session_id` で再起動している
+      - 再起動の後の一覧が、同じ MindStella のセッションの ID を `running` で返す
       - 状態がクローズ待ちになっていない
     test: test_normal_when_restart_requested
   - name: 正常シナリオ（記録した会話を参照できない）
@@ -183,7 +183,7 @@ scenarios:
         participant CB as claude-balancer
         participant CC as MindStella のセッション
 
-        APP->>MGR: 起動し直しを依頼する
+        APP->>MGR: 再起動を依頼する
         MGR->>MGR: 記録した会話の記録のファイルがあるか確かめる
         MGR->>CB: 無いので --resume を付けずに、新規の会話で exec を起動する
         CB->>CC: 起動する
@@ -211,8 +211,8 @@ scenarios:
         participant MGR as セッションの管理
         participant CB as claude-balancer
 
-        U->>NT: 画面でコメントを送る
-        NT->>MGR: 起動し直しを依頼する
+        U->>NT: 画面でコメントを送信する
+        NT->>MGR: 再起動を依頼する
         MGR->>CB: exec を起動する
         CB-->>MGR: 終了コード 125（借りられない）
         MGR->>MGR: ペインを閉じ、失敗した段階と理由を状態に記録する
@@ -220,7 +220,7 @@ scenarios:
       ```
     expected:
       - コメントがスレッドに取り込み待ちとして残っている
-      - 『MindStella のセッションの一覧』が、落ちている状態と、起動し直しに失敗した段階（アカウント）と理由（claude-balancer の標準エラー）を返す
+      - 『MindStella のセッションの一覧』が、落ちている状態と、再起動に失敗した段階（アカウント）と理由（claude-balancer の標準エラー）を返す
       - tmux のペインが残っていない
     test: test_error_when_no_account
   - name: 異常シナリオ（追加のプラグインのフォルダが無い）
@@ -238,16 +238,16 @@ scenarios:
         participant API as MindStella の API
         participant MGR as セッションの管理
 
-        APP->>API: 起動し直しを依頼する
-        API->>MGR: 起動し直しを依頼する
+        APP->>API: 再起動を依頼する
+        API->>MGR: 再起動を依頼する
         MGR->>MGR: 記録した追加の MCP の定義とプラグインのフォルダを読めるか確かめる
         MGR->>MGR: 読めないので起動せず、失敗した段階と理由を状態に記録する
         APP->>API: MindStella のセッションの一覧を取得する
-        API-->>APP: 落ちている・起動し直しに失敗した理由（読めないプラグインのフォルダ）
+        API-->>APP: 落ちている・再起動に失敗した理由（読めないプラグインのフォルダ）
       ```
     expected:
       - Mock の claude-balancer が `exec` を受けていない
-      - 『MindStella のセッションの一覧』が、起動し直しに失敗した段階と、読めないプラグインのフォルダを示す理由を返す
+      - 『MindStella のセッションの一覧』が、再起動に失敗した段階と、読めないプラグインのフォルダを示す理由を返す
     test: test_error_when_plugin_dir_missing
   - name: 正常シナリオ（しきい値以上）
     setup:
@@ -270,7 +270,7 @@ scenarios:
 
         MGR->>CBA: 一定の間隔で、使用中のアカウントの利用枠を確かめる
         CBA-->>MGR: アカウント A はしきい値以上・アカウント B は貸せる
-        MGR->>MGR: 状態を起動し直しの途中にする
+        MGR->>MGR: 状態を再起動の途中にする
         MGR->>MGR: 応答の途中なので、終わるまで待つ
         CC->>MGR: 応答の終わり（Stop のフック）
         MGR->>CC: 止めて tmux のペインを閉じる
@@ -306,7 +306,7 @@ scenarios:
 
         MGR->>CBA: 一定の間隔で、使用中のアカウントの利用枠を確かめる
         CBA-->>MGR: アカウント A はしきい値以上・ほかに貸せるアカウントが無い
-        MGR->>MGR: 切り替え先が無いので、起動し直さない
+        MGR->>MGR: 切り替え先が無いので、再起動しない
         Note over CC: アカウント A のまま続ける
       ```
     expected:
@@ -334,7 +334,7 @@ scenarios:
 
         MGR->>CBA: 一定の間隔で、使用中のアカウントの利用枠を確かめる
         CBA--xMGR: つながらない
-        MGR->>MGR: 起動し直さず、次の間隔でもう一度確かめる
+        MGR->>MGR: 再起動せず、次の間隔でもう一度確かめる
         Note over CC: アカウント A のまま続ける
       ```
     expected:
@@ -370,12 +370,12 @@ scenarios:
         MGR->>MGR: ペインを閉じ、失敗した段階と理由を状態に記録する
       ```
     expected:
-      - 『MindStella のセッションの一覧』が、落ちている状態と、起動し直しに失敗した段階（アカウント）と理由（claude-balancer の標準エラー）を返す
+      - 『MindStella のセッションの一覧』が、落ちている状態と、再起動に失敗した段階（アカウント）と理由（claude-balancer の標準エラー）を返す
       - 取り込み待ちのスレッドが残っている
       - tmux のペインが残っていない
-      - Webhook の Mock が、止まった理由「利用枠の残りが少ないため切り替え」の通知を 1 件だけ受け、起動し直しの失敗で重ねて通知を受けていない
+      - Webhook の Mock が、止まった理由「利用枠の残りが少ないため切り替え」の通知を 1 件だけ受け、再起動の失敗で重ねて通知を受けていない
     test: test_error_when_no_account_after_usage_over_threshold
-  - name: 正常シナリオ（指定したアカウントで起動し直す）
+  - name: 正常シナリオ（指定したアカウントで再起動する）
     setup:
       - name: Mock
         description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（応答の途中ではなく、`/exit` が貼られたら SessionEnd のフックを叩いて終わる）
@@ -393,7 +393,7 @@ scenarios:
         participant CC as MindStella のセッション
         participant CB as claude-balancer
 
-        APP->>MGR: 起動し直しを依頼する
+        APP->>MGR: 再起動を依頼する
         MGR->>CC: 止めて tmux のペインを閉じる
         MGR->>CB: 指定したアカウント A で exec を起動する（--account A・claude --resume {前の session_id}）
         CB->>CC: アカウント A で前の会話を引き継いで起動する
@@ -432,7 +432,7 @@ scenarios:
     expected:
       - Mock の claude-balancer が 1 回目に受けた引数に `--account` があり、2 回目に受けた引数に `--account` が無く `--resume` と 1 回目の `session_id` がある
       - 2 回目に起動した Claude Code の `CLAUDE_CONFIG_DIR` がアカウント B の設定のフォルダである
-      - 続けて起動し直しを依頼すると、Mock の claude-balancer が 3 回目に受けた引数に `--account` が無い
+      - 続けて再起動を依頼すると、Mock の claude-balancer が 3 回目に受けた引数に `--account` が無い
       - Webhook の Mock が、止まった理由「利用上限」の通知を 1 件だけ受けている
     test: test_normal_when_specified_account_rate_limited
   - name: 正常シナリオ（指定の解除がオフでしきい値以上）
@@ -454,7 +454,7 @@ scenarios:
 
         MGR->>CBA: 一定の間隔で、使用中のアカウントの利用枠を確かめる
         CBA-->>MGR: アカウント A はしきい値以上・アカウント B は貸せる
-        MGR->>MGR: 指定の解除がオフなので、起動し直さない
+        MGR->>MGR: 指定の解除がオフなので、再起動しない
         Note over CC: アカウント A のまま続ける
       ```
     expected:
@@ -485,7 +485,7 @@ scenarios:
         HK->>MGR: 利用上限を送信する
         MGR->>CC: 止めて tmux のペインを閉じる
         MGR->>DC: 止まった理由「利用上限」で通知する
-        MGR->>MGR: 指定の解除がオフなので起動し直さず、落ちた状態と理由を記録する
+        MGR->>MGR: 指定の解除がオフなので再起動せず、落ちた状態と理由を記録する
       ```
     expected:
       - Mock の claude-balancer が `exec` を 1 回だけ受けている
@@ -526,10 +526,10 @@ scenarios:
     expected:
       - Mock の claude-balancer が 1 回目に受けた引数に `--account` があり、2 回目に受けた引数に `--account` が無く `--resume` と 1 回目の `session_id` がある
       - 2 回目に起動した Claude Code の `CLAUDE_CONFIG_DIR` がアカウント B の設定のフォルダである
-      - 続けて起動し直しを依頼すると、Mock の claude-balancer が 3 回目に受けた引数に `--account` が無い
+      - 続けて再起動を依頼すると、Mock の claude-balancer が 3 回目に受けた引数に `--account` が無い
       - Webhook の Mock が、止まった理由「利用枠の残りが少ないため切り替え」の通知を 1 件だけ受けている
     test: test_normal_when_specified_account_usage_over_threshold
-  - name: 正常シナリオ（指定したアカウントを借りられない間に起動し直して指定を解除する）
+  - name: 正常シナリオ（指定したアカウントを借りられない間に再起動して指定を解除する）
     setup:
       - name: Mock
         description: claude-balancer（`exec` で受けた引数を記録する。`--account` でアカウント A を受けると、貸せないとして子プロセスを起動せず終了コード 125 で終わり、標準エラーに理由を書く。`--account` が無ければ `--` の後のコマンドをアカウント B の `CLAUDE_CONFIG_DIR` で実行する）・Claude Code（PreCompact のフックを叩いた後、`/exit` が貼られたら SessionEnd のフックを叩いて終わる）
@@ -548,7 +548,7 @@ scenarios:
         participant CB as claude-balancer
 
         CC->>HK: PreCompact
-        HK->>MGR: 起動し直しを依頼する
+        HK->>MGR: 再起動を依頼する
         MGR->>CC: 止めて tmux のペインを閉じる
         MGR->>CB: 指定したアカウント A で exec を起動する（--account A）
         CB-->>MGR: 終了コード 125（アカウント A を貸せない）
@@ -564,7 +564,7 @@ scenarios:
   - name: 異常シナリオ（指定の解除がオフで指定したアカウントを借りられない）
     setup:
       - name: Mock
-        description: claude-balancer・Claude Code（正常シナリオ（指定したアカウントを借りられない間に起動し直して指定を解除する）と同じ）
+        description: claude-balancer・Claude Code（正常シナリオ（指定したアカウントを借りられない間に再起動して指定を解除する）と同じ）
       - name: 常駐サーバー
         description: 正常シナリオ（利用上限）と同じ。mindstella のホームの設定で指定の解除をオフにする
       - name: tmux
@@ -580,15 +580,15 @@ scenarios:
         participant CB as claude-balancer
 
         CC->>HK: PreCompact
-        HK->>MGR: 起動し直しを依頼する
+        HK->>MGR: 再起動を依頼する
         MGR->>CC: 止めて tmux のペインを閉じる
         MGR->>CB: 指定したアカウント A で exec を起動する（--account A）
         CB-->>MGR: 終了コード 125（アカウント A を貸せない）
-        MGR->>MGR: 指定の解除がオフなので借り直さず、ペインを閉じ、失敗した段階と理由を状態に記録する
+        MGR->>MGR: 指定の解除がオフなので再度借りず、ペインを閉じ、失敗した段階と理由を状態に記録する
       ```
     expected:
       - Mock の claude-balancer が `exec` を `--account` 付きの 1 回だけ受けている
-      - 『MindStella のセッションの一覧』が、落ちている状態と、起動し直しに失敗した段階（アカウント）と理由（claude-balancer の標準エラー）を返す
+      - 『MindStella のセッションの一覧』が、落ちている状態と、再起動に失敗した段階（アカウント）と理由（claude-balancer の標準エラー）を返す
       - 取り込み待ちのスレッドが残っている
       - tmux のペインが残っていない
     test: test_error_when_specified_account_unavailable_with_release_off
@@ -603,13 +603,13 @@ notes:
     | 契機 | 会話 | アカウント |
     | --- | --- | --- |
     | 利用上限 | 前の会話を引き継ぐ（`--resume`） | 利用上限に達したアカウントは claude-balancer の貸与の判定で除外される |
-    | しきい値 | 前の会話を引き継ぐ（`--resume`） | しきい値以上のアカウントは claude-balancer の貸与の判定で除外される。切り替え先のアカウントが無ければ起動し直さない |
+    | しきい値 | 前の会話を引き継ぐ（`--resume`） | しきい値以上のアカウントは claude-balancer の貸与の判定で除外される。切り替え先のアカウントが無ければ再起動しない |
     | 圧縮 | 新規の会話 | 指定しない |
     | 落ちた・無操作の上限で止めた後のコメント | 前の会話を引き継ぐ | `--resume` で claude-balancer が前回のアカウントを優先する |
-    | 起動し直しの依頼 | 前の会話を引き継ぐ | `--resume` で claude-balancer が前回のアカウントを優先する |
+    | 再起動の依頼 | 前の会話を引き継ぐ | `--resume` で claude-balancer が前回のアカウントを優先する |
 
-    アカウントを指定して起動した MindStella のセッションは、どの契機でも指定したアカウントを `--account` で借りる。ただし、利用上限・しきい値の契機では、mindstella のホームの設定の指定の解除がオン（既定）なら指定を解除して上の表のとおりに借り、以降はアカウントを指定しない MindStella のセッションとして扱う。指定の解除がオフなら、しきい値では起動し直さず、利用上限では止めたまま起動し直さない。
-    それ以外の契機で、指定したアカウントがしきい値以上か利用上限で `exec --account` が借りられず `125` で終わったときは、指定の解除がオンなら指定を解除してアカウントを指定せずに 1 回だけ借り直し、オフなら落ちた状態と理由を記録する。
-  起動し直さないとき: クローズ待ち（API で停止を受けた）とクローズの後は、コメントが届いても起動し直さない（単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』）。
-  利用上限の通知: 利用上限の到達の claude-balancer への通知は、子プロセスが利用上限で終わったときに `claude-balancer exec` が自分で行う。常駐サーバーは `exec` が終わるのを待ってから起動し直し、`report-limit` を呼ばない。
-  画面の表示: '起動し直している間と失敗の理由を画面に出すことは、この単一ユースケースの範囲の外（PR #582 の確認ログで別の Issue にすると決定）。'
+    アカウントを指定して起動した MindStella のセッションは、どの契機でも指定したアカウントを `--account` で借りる。ただし、利用上限・しきい値の契機では、mindstella のホームの設定の指定の解除がオン（既定）なら指定を解除して上の表のとおりに借り、以降はアカウントを指定しない MindStella のセッションとして扱う。指定の解除がオフなら、しきい値では再起動せず、利用上限では止めたまま再起動しない。
+    それ以外の契機で、指定したアカウントがしきい値以上か利用上限で `exec --account` が借りられず `125` で終わったときは、指定の解除がオンなら指定を解除してアカウントを指定せずに 1 回だけ再度借りること、オフなら落ちた状態と理由を記録する。
+  再起動しないとき: クローズ待ち（API で停止を受けた）とクローズの後は、コメントが届いても再起動しない（単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』）。
+  利用上限の通知: 利用上限の到達の claude-balancer への通知は、子プロセスが利用上限で終わったときに `claude-balancer exec` が自分で行う。常駐サーバーは `exec` が終わるのを待ってから再起動し、`report-limit` を呼ばない。
+  画面の表示: '再起動している間と失敗の理由を画面に出すことは、この単一ユースケースの範囲の外（PR #582 の確認ログで別の Issue にすると決定）。'

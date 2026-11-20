@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <!-- トークン・今のプレビューのスタイル・この PR で追加するスタイル・カタログの見た目 -->
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
   <link rel="stylesheet" href="../../refs/235/assets/style.css">
@@ -25,31 +25,31 @@
     <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / thread-view</nav>
     <h1>スレッド 1 件</h1>
 
-    <!-- AI の問い（オープン） -->
+    <!-- AI の質問（オープン） -->
     <section class="cat-sec">
-      <h2>AI の問い（オープン）</h2>
-      <p>見出しは、上の行に「一覧へ戻る」と「クローズにする」、その下に状態の札と題、向けた項目とタグ。AI の書き込みは左に寄せて面の色を変え、利用者の書き込みは右に寄せる。書き手は名前でも示す。</p>
+      <h2>AI の質問（オープン）</h2>
+      <p>見出しは、上の行に「一覧へ戻る」と「クローズにする」、その下に状態の札とタイトル、向けた項目とタグ。AI の書き込みは左に寄せて面の色を変え、利用者の書き込みは右に寄せる。書き手は名前でも示す。</p>
       <div class="stage" id="s-asking"></div>
     </section>
 
     <!-- レビュー中の返信を持つ -->
     <section class="cat-sec">
       <h2>レビュー中の返信を持つ</h2>
-      <p>溜めた返信は、書き込みの末尾に破線の枠と「レビュー中」の印つきで出し、その場で修正・削除する。</p>
+      <p>溜めた返信は、書き込みの末尾に破線の枠と「レビュー中」の記号つきで出し、その場で修正・削除する。</p>
       <div class="stage" id="s-pending"></div>
     </section>
 
-    <!-- レビュー中の返信を修正している・消した -->
+    <!-- レビュー中の返信を修正している・削除した -->
     <section class="cat-sec">
-      <h2>レビュー中の返信を修正している・消した</h2>
-      <p>左が修正の入力（キャンセル・修正）、右が消した後（元の場所に「元に戻す」）。</p>
+      <h2>レビュー中の返信を修正している・削除した</h2>
+      <p>左が修正の入力（キャンセル・修正）、右が削除した後（元の場所に「元に戻す」）。</p>
       <div class="stage" id="s-editing"></div>
     </section>
 
     <!-- 最後の書き込みが利用者 -->
     <section class="cat-sec">
       <h2>最後の書き込みが利用者</h2>
-      <p>書き込みの後ろには何も足さない。</p>
+      <p>書き込みの後ろには何も追加しない。</p>
       <div class="stage" id="s-user-last"></div>
     </section>
 
@@ -63,7 +63,7 @@
     <!-- AI がクローズにした -->
     <section class="cat-sec">
       <h2>AI がクローズにした</h2>
-      <p>記録の書き手を「AI が」にする。返信は足されず、下端は返信の入力の代わりに「クローズにしたスレッドです。」、見出しのボタンは「オープンに戻す」。</p>
+      <p>記録の書き手を「AI が」にする。返信は追加されず、下端は返信の入力の代わりに「クローズにしたスレッドです。」、見出しのボタンは「オープンに戻す」。</p>
       <div class="stage" id="s-ai-closed"></div>
     </section>
 
@@ -88,17 +88,17 @@
       <div class="stage" id="s-closed"></div>
     </section>
 
-    <!-- まだ送っていない新しいスレッド -->
+    <!-- まだ送信していない新規スレッド -->
     <section class="cat-sec">
-      <h2>まだ送っていない新しいスレッド</h2>
-      <p>状態の札は「レビュー中」。最初の書き込みをレビュー中の印つきで出し、クローズと返信の入力を出さない。</p>
+      <h2>まだ送信していない新規スレッド</h2>
+      <p>状態の札は「レビュー中」。最初の書き込みをレビュー中のマーカーつきで出し、クローズと返信の入力を出さない。</p>
       <div class="stage" id="s-new"></div>
     </section>
 
     <!-- クローズにできなかった -->
     <section class="cat-sec">
       <h2>クローズにできなかった</h2>
-      <p>見出しの下に理由と直し方を出す（自動で消さない）。理由の入力は開いたまま残す。</p>
+      <p>見出しの下に理由と修正方法を出す（自動で削除しない）。理由の入力は開いたまま残す。</p>
       <div class="stage" id="s-failed"></div>
     </section>
 

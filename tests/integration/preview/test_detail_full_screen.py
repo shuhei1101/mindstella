@@ -312,26 +312,26 @@ def test_id_button_size(
 def test_comment_input(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """サーバーの配信で開くと、コメントの入力を全画面の下端に出す。パネルと行き来しても書きかけを保つ（正常系）。"""
+    """サーバーの配信で開くと、コメントの入力を全画面の下端に出す。パネルと行き来しても下書きを保つ（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=table&id=D-2")
-    page.fill("aside.panel form.send textarea", "書きかけ")
+    page.fill("aside.panel form.send textarea", "下書き")
     # 実行
     _open_full(page)
     # 検証
     assert page.get_attribute("dialog.full form.send", "data-id") == "D-2"
     assert page.inner_text("dialog.full form.send label.send-label") == "D-2 へのコメント"
-    assert page.input_value("dialog.full form.send textarea") == "書きかけ"
+    assert page.input_value("dialog.full form.send textarea") == "下書き"
     dialog_box = page.locator("dialog.full").bounding_box()
     form_box = page.locator("dialog.full form.send").bounding_box()
     assert dialog_box is not None
     assert form_box is not None
     assert abs((dialog_box["y"] + dialog_box["height"]) - (form_box["y"] + form_box["height"])) <= 2
-    # 全画面から戻しても書きかけを保つ
+    # 全画面から戻しても下書きを保つ
     page.click('dialog.full button[data-act="full"]')
     page.wait_for_selector("aside.panel.open")
-    assert page.input_value("aside.panel form.send textarea") == "書きかけ"
+    assert page.input_value("aside.panel form.send textarea") == "下書き"
 
 
 def test_comment_input_when_closed(
@@ -1105,7 +1105,7 @@ def test_diff_minimap(
     # 検証（帯は本文に重ならず、消した・足したの印が上下の順に並ぶ）
     assert metrics["mapLeft"] >= metrics["bodyRight"] - 1
     assert metrics["mapWidth"] == MINIMAP_WIDTH_PX
-    assert [shape["label"] for shape in shapes] == ["消した箇所（1 / 2）", "足した箇所（2 / 2）"]
+    assert [shape["label"] for shape in shapes] == ["削除した箇所（1 / 2）", "追加した箇所（2 / 2）"]
     assert shapes[0]["top"] < shapes[1]["top"]
     assert not added_paragraph_in_view(page, FULL_SCOPE)
     # 実行

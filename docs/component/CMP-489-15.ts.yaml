@@ -7,7 +7,7 @@ states:
     description: 主題のタグが 1 つと、主題でないタグが 1 つ
     args:
       - name: values
-        value: '[{"name": "画面", "main": true}, {"name": "記録の形"}]'
+        value: '[{"name": "画面", "main": true}, {"name": "記録の構造"}]'
   - name: TwoMain
     description: 主題のタグが 2 つ。主題を先頭へ寄せず、記録の順のまま並べる
     args:
@@ -28,7 +28,7 @@ states:
     args:
       - name: values
         value: '[{"name": "すべての画面の絞り込みとドロワーの並び", "main": true}, {"name": "ゴールと設定"}, {"name": "タスク"}]'
-lead: 項目のタグを記録の順のまま並べる。主題のタグは枠と文字を 1 段濃くし、名前の前に二重丸のマーカーを置く。
+lead: 項目のタグを記録の順のまま並べる。主題のタグは枠と文字を 1 段階濃くし、名前の前に二重丸のマーカーを置く。
 args:
   - name: values
     type: オブジェクトの配列

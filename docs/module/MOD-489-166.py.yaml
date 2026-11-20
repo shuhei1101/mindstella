@@ -30,10 +30,10 @@ constants:
     summary: '`update_settings` の `settings` に渡せるキー'
     value: ("summary", "description", "links", "history_limit", "display", "transcription", "mdmark", "confirm_on_comment")
   - name: REMOVABLE_KEYS
-    title: null で消せる設定のキー
+    title: null で削除できる設定のキー
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
-    summary: 値が `null` のときに消してよい任意のキー
+    summary: 値が `null` のときに削除してよい任意のキー
     value: ("description", "links", "history_limit", "display", "transcription", "confirm_on_comment")
   - name: REMOVED_KEYS
     title: 削除した設定のキー
@@ -92,10 +92,10 @@ functions:
         exception: 削除したキー
       - name: test_validate_settings_input_confirm_on_comment
         case: 正常
-        summary: コメントの送信で確認済みにするかを書き換え・消せる
+        summary: コメントの送信で確認済みにするかを書き換え・削除できる
         condition: '`parametrize`: `{"confirm_on_comment": false}` / `{"confirm_on_comment": null}`'
         mock: なし
-        expected: 例外を送らない（`settings.schema.json` の `confirm_on_comment` は真偽値）
+        expected: 例外を送出しない（`settings.schema.json` の `confirm_on_comment` は真偽値）
   - name: merge_settings
     title: 設定の置き換え
     kind: 関数
@@ -118,13 +118,13 @@ functions:
       type: tuple[dict[str, Any], list[str]]
       description: 置き換えた設定（新しい辞書）と、値が変わった・消えたキーの名前（`settings` の並び）
     process: |-
-      1. `current` を写し、キーの並びを保つ
-      2. `settings` のキーごとに、値が `None` ならキーを消し、それ以外は値ごと置き換える（無いキーは末尾に足す）。`mdmark` だけは今の `mdmark` の `version` を置き換え、`map` を残す
+      1. `current` をコピー、キーの並びを保つ
+      2. `settings` のキーごとに、値が `None` ならキーを削除し、それ以外は値ごと置き換える（無いキーは末尾に追加する）。`mdmark` だけは今の `mdmark` の `version` を置き換え、`map` を残す
       3. 前と値が違うキーだけを変わったキーに入れる
     unit_tests:
       - name: test_merge_settings
         case: 正常
-        summary: 渡したキーだけを置き換え、null で消し、並びを保つ
+        summary: 渡したキーだけを置き換え、null で削除し、並びを保つ
         condition: '`summary`・`links`・`history_limit` を持つ設定に `{"summary": "新しい題名", "links": null, "description": "概要", "history_limit": 前と同じ値}`'
         mock: なし
         expected: '`summary` が新しい題名、`links` が無く、`description` が末尾にあり、他のキーの並びがそのまま。変わったキーが `[summary, links, description]`'
@@ -158,12 +158,12 @@ functions:
     process: |-
       1. `settings` が `workspace.settings` と同じなら何も書かずに空を返す
       2. `raw` の設定を差し替えたワークスペースを作り、検証する（`validate_workspace`）
-         - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
+         - 問題がある場合、`SchemaMismatchError` を送出する（何も書かない）
       3. 一時ファイルに書き（`dump_yaml`、`write_temp`）、`os.replace` で置き換える
-         - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
+         - `OSError` が起きた場合、一時ファイルを削除して `WriteFailedError` を送出する
     exceptions:
       - name: SchemaMismatchError
-        condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または差し替えた後のワークスペースに問題がある
+        condition: 変更する種類のファイルが読めないか書き戻すと中身を失う構造、または差し替えた後のワークスペースに問題がある
         message: スキーマに合いません（`lines` に問題ごとの行）
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（置き換えたファイルを戻した後）
@@ -185,7 +185,7 @@ functions:
       - name: test_save_settings_when_replace_fails
         case: 異常
         summary: 置き換えに失敗したら一時ファイルを残さない
-        condition: '`os.replace` を `OSError` を送る関数に差し替える'
+        condition: '`os.replace` を `OSError` を送出する関数に差し替える'
         mock: '`os.replace`（`settings_update` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `config.yaml`）。`config.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: 置き換えで OSError
@@ -281,13 +281,13 @@ functions:
       1. 本文を確かめる
          - `visible_kinds` が無い場合、`SettingsInvalidError`（`visible_kinds: 渡してください`）
          - `visible_kinds` 以外のキー（削除した `network_look` を含む）がある場合、`SettingsInvalidError`（`{キー}: 知らないキーです`）
-         - 本文を、設定のスキーマの `display` の部分（`properties.display`。共通のスキーマを登録した検証器で）と突き合わせ、合わない場合は問題ごとの `{キーのパス}: {理由}`（列挙の誤りは選べる値を含む）をメッセージにした `SettingsInvalidError` を送る（選べる種類の名前はスキーマだけが持つ）
+         - 本文を、設定のスキーマの `display` の部分（`properties.display`。共通のスキーマを登録した検証器で）と突き合わせ、合わない場合は問題ごとの `{キーのパス}: {理由}`（列挙の誤りは選べる値を含む）をメッセージにした `SettingsInvalidError` を送出する（選べる種類の名前はスキーマだけが持つ）
       2. `config.yaml` を検査する（`check_settings`）
-         - 問題がある場合、`SchemaMismatchError` を送る（崩れた設定の上に書き足さない。配信は 422）
-      3. 読んだ設定の `display` を `{visible_kinds}` に置き換える（キーの並びは保ち、`display` が無ければ末尾に足す）
+         - 問題がある場合、`SchemaMismatchError` を送出する（崩れた設定の上に追記しない。配信は 422）
+      3. 読んだ設定の `display` を `{visible_kinds}` に置き換える（キーの並びは保ち、`display` が無ければ末尾に追加する）
       4. 置き換えた設定を書く（設定の書き込み。`save_settings`。ワークスペース全体を検証してから一時ファイルと `os.replace` で置き換える）
          - 書けない場合、`WriteFailedError` がそのまま上がる（配信は 500）
-      5. `{display}` を返す（変更履歴にも書き換えのまとまりにも入れない。書き換えの知らせは `config.yaml` の更新日時で配信が見つける）
+      5. `{display}` を返す（変更履歴にも書き換えのまとまりにも入れない。書き換えの通知は `config.yaml` の更新日時で配信が見つける）
     exceptions:
       - name: SettingsInvalidError
         condition: 本文の `visible_kinds` が無いか値が合わない、またはほかのキーがある
@@ -314,8 +314,8 @@ functions:
         exception: 本文の値が合わない
       - name: test_update_display_when_settings_broken
         case: 異常
-        summary: 崩れた config.yaml には書き足さない
-        condition: '`summary` を消した `config.yaml` のワークスペースに正しい本文'
+        summary: 崩れた config.yaml には追記しない
+        condition: '`summary` を削除した `config.yaml` のワークスペースに正しい本文'
         mock: なし
         expected: '`SchemaMismatchError`（`lines` に `config.yaml: ` と `summary`）。`config.yaml` が呼ぶ前と同じ'
         exception: 今の config.yaml が合わない

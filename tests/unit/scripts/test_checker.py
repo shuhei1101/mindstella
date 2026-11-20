@@ -279,7 +279,7 @@ def test_check_threads_when_target_removed(
     status: str,
     expected_keys: set[tuple[str, str, str | None, str | None]],
 ) -> None:
-    """取り込み待ちでないスレッドが消した項目を指しても拾わず、取り込み待ちは拾う（正常系）。"""
+    """取り込み待ちでないスレッドが削除した項目を指しても拾わず、取り込み待ちは拾う（正常系）。"""
     # 準備
     changes = {
         "last_seq": 2,
@@ -359,7 +359,7 @@ def test_check_history_when_broken_ref(make_workspace: MakeWorkspace, make_item:
 
 
 def test_check_history_when_item_removed(make_workspace: MakeWorkspace) -> None:
-    """消した項目の ID を参照切れにしない（正常系）。"""
+    """削除した項目の ID を参照切れにしない（正常系）。"""
     # 準備
     removed = {"id": "N-1", "kind": "note", "title": "メモ", "seq": 3, "added_seq": 1}
     changes = {

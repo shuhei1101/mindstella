@@ -1,12 +1,12 @@
 id: MOD-489-93
 title: プレビュー / popover
-lead: shadcn/ui の Popover（Base UI 版）。
+lead: shadcn/ui の Popover（Base UI バージョン）。
 components:
   - name: Popover
-    title: shadcn/ui の Popover（Base UI 版）
+    title: shadcn/ui の Popover（Base UI バージョン）
     kind: コンポーネント
     usecase: 共通
-    summary: shadcn/ui の Popover（Base UI 版）
+    summary: shadcn/ui の Popover（Base UI バージョン）
     container: frontend/src/shared/components/ui/popover.tsx
 notes:
   単体テスト: 同じフォルダの `popover.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -21,13 +21,13 @@ functions:
       type: list[str]
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
-      1. `.mindstella/config.yaml` からワークスペースの ID と `summary` を読む。ID が無ければ『ワークスペースの管理』の `workspace_id_for` で振り、`config.yaml` のほかのキーを変えずに `id` を足して一時ファイルから置き換える（`dev-docs.yaml` の有無と関係なく行う）
+      1. `.mindstella/config.yaml` からワークスペースの ID と `summary` を読む。ID が無ければ『ワークスペースの管理』の `workspace_id_for` で振り、`config.yaml` のほかのキーを変えずに `id` を追加して一時ファイルから置き換える（`dev-docs.yaml` の有無と関係なく行う）
       2. `.mindstella/dev-docs.yaml` が無ければ、『読み書きと検証』の `build_source_config` の中身を一時ファイルから書く
       3. `.mindstella/schemas/` を作り、プラグインの種類ごとの 7 つのスキーマと `common.schema.json` を複製する（中身が同じファイルは書かない）
       4. 書いたファイルの相対パスを返す
     exceptions:
       - name: ValueError
-        condition: 種類の YAML の形が崩れている
+        condition: 種類の YAML の形式が崩れている
       - name: OSError
         condition: 読めない・書けない
     unit_tests:

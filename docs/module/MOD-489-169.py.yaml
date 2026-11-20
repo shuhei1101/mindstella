@@ -1,12 +1,12 @@
 id: MOD-489-169
 title: サーバー / 配信 / serve.py
-lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送るを受け付ける。まとめて送った後とすぐ送った後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。
+lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの通知を返し、レビュー中のコメント・下書き・まとめて送信する・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送信するを受け付ける。まとめて送信した後とすぐ送信した後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。
 test_files:
   - tests/unit/scripts/test_serve.py
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    serve.py   配信の台帳・待ち受け・要求の振り分け・画面と記録・書き換えの知らせ・コメントの受け付け・最後に検査に通った設定と再読み込み・文字起こしの受け付け
+    serve.py   配信の台帳・待ち受け・要求の振り分け・画面と記録・書き換えの通知・コメントの受け付け・最後に検査に通った設定と再読み込み・文字起こしの受け付け
   ```
 diagrams:
   - name: 全体
@@ -16,7 +16,7 @@ diagrams:
         direction LR
         class 配信の台帳
         class 配信
-        class 要求の受け口
+        class 要求のハンドラー
         class ビルド
         class コメント
         class スレッド
@@ -27,12 +27,12 @@ diagrams:
         配信の台帳 --> 配信 : ワークスペースごとに 1 つ
         配信の台帳 --> 外から見る設定
         配信の台帳 --> フックの呼び出し : 立てたとき・止めるとき
-        配信 --> 要求の受け口
-        要求の受け口 --> ビルド : 雛形・記録
-        要求の受け口 --> コメント : /api/comments・/api/drafts
-        要求の受け口 --> スレッド : /api/threads
-        要求の受け口 --> Claude Codeへの入力 : まとめて送った後・すぐ送った後
-        要求の受け口 --> 文字起こしのインターフェース : /api/transcription・/api/transcriptions
+        配信 --> 要求のハンドラー
+        要求のハンドラー --> ビルド : 雛形・記録
+        要求のハンドラー --> コメント : /api/comments・/api/drafts
+        要求のハンドラー --> スレッド : /api/threads
+        要求のハンドラー --> Claude Codeへの入力 : まとめて送信した後・すぐ送信した後
+        要求のハンドラー --> 文字起こしのインターフェース : /api/transcription・/api/transcriptions
       ```
 data_models:
   - name: ServeContext
@@ -40,7 +40,7 @@ data_models:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     role: DTO
-    summary: 要求の受け口が使う、配っているワークスペースと待ち受けの値。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    summary: 要求のハンドラーが使う、配っているワークスペースと待ち受けの値。`@dataclass(frozen=True, slots=True, kw_only=True)`
     properties:
       - name: root
         type: Path
@@ -65,7 +65,7 @@ data_models:
       - name: input_targets
         type: InputTargets | None
         default: None
-        description: ワークスペースごとの Claude Code への入力の宛先（モジュール構成『ClaudeCodeへの入力』）。`None` ならまとめて送った後に入力しない
+        description: ワークスペースごとの Claude Code への入力の宛先（モジュール構成『ClaudeCodeへの入力』）。`None` ならまとめて送信した後に入力しない
       - name: transcriber
         type: Transcriber | None
         default: None
@@ -159,7 +159,7 @@ classes:
         process: |-
           1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない・フックを呼ばない）
           2. `config.yaml` を検査する（設定の検査。`check_settings`）
-             - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送る（配信を立てない）
+             - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送出する（配信を立てない）
           3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` と `_input_targets` と `_transcriber` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
           4. そのワークスペースの変更の検知を始める（『変更の検知』の `ChangeDetector.start`。書き換えの鍵と入力の宛先を渡す）
              - `[INFO]` 配信を立てた（ワークスペース、URL）
@@ -174,8 +174,8 @@ classes:
             expected: 1 回目 `(url1, True)`、2 回目 `(url1, False)`、二つ目 `(url2, True)` で url1 と url2 のポートが違う。どちらも `http://127.0.0.1:` で始まり `/mindstella.html` で終わる
           - name: test_start_when_settings_invalid
             case: 異常
-            summary: config.yaml が合わなければ配信を立てず、直せば立てる
-            condition: '`display.visible_kinds` を `[rainbow]` にしたワークスペースで 2 回 `start` し、`[decisions]` に直してもう 1 回 `start` する'
+            summary: config.yaml が合わなければ配信を立てず、修正すれば立てる
+            condition: '`display.visible_kinds` を `[rainbow]` にしたワークスペースで 2 回 `start` し、`[decisions]` に変更してもう 1 回 `start` する'
             mock: なし（本物の待ち受け。後で `stop_all`）
             expected: '1・2 回目は `SchemaMismatchError`（`lines` に `config.yaml: display.visible_kinds` で始まる行）で台帳が空。3 回目は `(url, True)`'
           - name: test_start_when_port_fixed
@@ -287,7 +287,7 @@ classes:
       - name: stop_workspace
         title: ワークスペースの配信を止める
         kind: メソッド
-        summary: ワークスペースの ID が一致する配信と変更の検知を台帳から除外して止める。無ければ何もしない（『ワークスペースの削除』が状態のフォルダを削除する前に呼ぶ。同じフォルダで作り直すと `start` が配信と変更の検知を新しく始める）
+        summary: ワークスペースの ID が一致する配信と変更の検知を台帳から除外して止める。無ければ何もしない（『ワークスペースの削除』が状態のフォルダを削除する前に呼ぶ。同じフォルダで再作成すると `start` が配信と変更の検知を新しく始める）
         args:
           - name: workspace_id
             type: str
@@ -358,9 +358,9 @@ classes:
         returns:
           type: None
           description: '-'
-        process: 1. `httpd.shutdown()` と `httpd.server_close()` を呼ぶ（つながっている書き換えの知らせは、書き込みが失敗して終わる）
+        process: 1. `httpd.shutdown()` と `httpd.server_close()` を呼ぶ（つながっている書き換えの通知は、書き込みが失敗して終わる）
   - name: PreviewHandler
-    title: 要求の受け口
+    title: 要求のハンドラー
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     role: ライブラリが要求するクラス
@@ -382,14 +382,14 @@ classes:
         process: |-
           1. `Host` が合わなければ 403 を返す（`check_host`、`problem_response`）
           2. パスで分ける（クエリとハッシュは見ない）
-             - `/` の場合、`302`・`Location: /mindstella.html`・本文なしで送り直す（`PAGE_PATH`）
+             - `/` の場合、`302`・`Location: /mindstella.html`・本文なしで再送信する（`PAGE_PATH`）
              - `/mindstella.html` の場合、最後に検査に通った設定の `mdmark` で画面を返す（`index_response`）
-             - `/spa` の場合、`302`・`Location: /spa/`・本文なしで送り直す（`SPA_PATH`）
+             - `/spa` の場合、`302`・`Location: /spa/`・本文なしで再送信する（`SPA_PATH`）
              - `/spa/` で始まる場合、SPA の出力のファイルを返す（`spa_response`。`{プレビューのフォルダ}/{SPA_DIR}` と `/spa` より後ろのパスを渡す）
              - `/files/` で始まる場合、ワークスペースのファイルを書き出す（`_send_file`。`/files/` より後ろのパスと `Range` を渡す）
              - `/api/records` の場合、記録を返す（`records_response`。配信の文脈を渡す）
-             - `/api/events` の場合、`200`・`Content-Type: text/event-stream`・`Cache-Control: no-store` を書き、書き換えを知らせ続ける（`stream_events`。書き換えの印は `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの。書き込みが `BrokenPipeError`・`ConnectionResetError` で失敗したら終える）
-             - `/api/comments` の場合、レビュー中のコメントと書きかけを返す（`comments_response`）
+             - `/api/events` の場合、`200`・`Content-Type: text/event-stream`・`Cache-Control: no-store` を書き、書き換えを知らせ続ける（`stream_events`。書き換えのマーカーは `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの。書き込みが `BrokenPipeError`・`ConnectionResetError` で失敗したら終える）
+             - `/api/comments` の場合、レビュー中のコメントと下書きを返す（`comments_response`）
              - `/api/threads` の場合、スレッドを返す（`threads_response`）
              - `/api/edits` の場合、保存待ちの編集を返す（`edits_response`）
              - `/api/transcription` の場合、文字起こしの可否を返す（`transcription_response`）
@@ -405,14 +405,14 @@ classes:
           1. `Host` が合わなければ 403 を返す
           2. パスで分ける
              - `/api/opened` の場合、本文を読まずに前回開いた日時を返す（`opened_response`）
-             - `/api/config/reload` の場合、本文を読まずに設定を読み直す（`reload_response`）
+             - `/api/config/reload` の場合、本文を読まずに設定を再読み込みする（`reload_response`）
              - `/api/edits/save` の場合、本文を読まずに保存待ちの編集をまとめて保存する（`edits_save_response`）
              - `/api/edits` の場合、`add_edit` を受け付けの処理にする（`handle` は `add_edit` の本文と、新しく溜めたら 201・書き換えたか外したら 200 を組にして返す）
              - `/api/threads/{id}/seen`（`id` は `/` を含まない）の場合、本文を読まずにそのスレッドを利用者の既読にする（`seen_response`）
              - `/api/transcriptions` の場合、`Content-Length` があれば `MAX_AUDIO_BYTES` と比べ、超えれば読まずに 413 を返す。無ければ `AUDIO_READ_CHUNK` ずつ読みながら数え、`MAX_AUDIO_BYTES` を超えた時点で読むのをやめて 413 を返す。読んだ本文で文字起こしする（`transcribe_response`。3・4 は通らない）
-             - `/api/comments/send-now` の場合、`send_now` を受け付けの処理にし、`/api/comments/send` と同じく `entered` を足す処理を `after` にする（件数は 1）。応答の本文は `{sent, thread, post, entered, restarted}`
+             - `/api/comments/send-now` の場合、`send_now` を受け付けの処理にし、`/api/comments/send` と同じく `entered` を追加する処理を `after` にする（件数は 1）。応答の本文は `{sent, thread, post, entered, restarted}`
              - `/api/comments` なら `add_comment`、`/api/comments/send` なら `send_comments` を受け付けの処理にする。それ以外は 404 を返す
-             - `/api/comments/send` は、`context.input_targets` があれば `context.input_targets.enter_or_restart(context.root, len(items))` の結果、無ければ偽を `entered`・`restarted` として本文に足す処理を `after` にする（書き換えの鍵を外してから入力する。`items` には二重に送らないで既にあった書き込みも含める）。応答の本文は `{sent, items: [{comment, thread, post}], entered, restarted}`
+             - `/api/comments/send` は、`context.input_targets` があれば `context.input_targets.enter_or_restart(context.root, len(items))` の結果、無ければ偽を `entered`・`restarted` として本文に追加する処理を `after` にする（書き換えの鍵を外してから入力する。`items` には二重に送信しないで既にあった書き込みも含める）。応答の本文は `{sent, items: [{comment, thread, post}], entered, restarted}`
           3. `Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば、本文を読まずに 400 を返す
           4. 本文を読み、受け付ける（`write_response`。成功は 201）
       - name: log_message
@@ -426,7 +426,7 @@ classes:
       - name: do_PATCH
         title: PATCH の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/api/comments/{id}` をコメントを直す受け付けへ、`/api/threads/{id}` をスレッドの状態の受け付けへ渡す'
+        summary: '`Host` を確かめ、`/api/comments/{id}` をコメントを修正する受け付けへ、`/api/threads/{id}` をスレッドの状態の受け付けへ渡す'
         returns:
           type: None
           description: '-'
@@ -440,7 +440,7 @@ classes:
       - name: do_PUT
         title: PUT の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/api/drafts` を書きかけを保つ受け付けへ、`/api/config/display` を設定の既定の書き換えへ、`/api/items/{id}/confirmed` を確認済みの付け外しへ渡す'
+        summary: '`Host` を確かめ、`/api/drafts` を下書きを保つ受け付けへ、`/api/config/display` を設定の既定の書き換えへ、`/api/items/{id}/confirmed` を確認済みの設定と解除へ渡す'
         returns:
           type: None
           description: '-'
@@ -455,7 +455,7 @@ classes:
       - name: do_DELETE
         title: DELETE の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/api/comments/{id}` をコメントを消す受け付けへ渡す'
+        summary: '`Host` を確かめ、`/api/comments/{id}` をコメントを削除する受け付けへ渡す'
         returns:
           type: None
           description: '-'
@@ -522,7 +522,7 @@ classes:
       - name: _revision
         type: int
         access: 内部 (_)
-        description: 再読み込みで差し替えた回数（0 から）。書き換えの印に混ぜて、ファイルが変わらない再読み込みでも知らせる
+        description: 再読み込みで差し替えた回数（0 から）。書き換えのマーカーに混ぜて、ファイルが変わらない再読み込みでも知らせる
       - name: _guard
         type: threading.Lock
         access: 内部 (_)
@@ -590,13 +590,13 @@ constants:
     title: 書き換えを見る間隔
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
-    summary: 書き換えの印を作り直す間隔（非機能要件の「画面への反映の時間」の内訳）
+    summary: 書き換えのマーカーを再作成する間隔（非機能要件の「画面への反映の時間」の内訳）
     value: '0.25'
   - name: KEEPALIVE_SEC
     title: 保つための行の間隔
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
-    summary: '知らせが無いままこの秒数が過ぎたら `: keepalive` を送る（インターフェース定義『書き換えの知らせ』）'
+    summary: '知らせが無いままこの秒数が過ぎたら `: keepalive` を送信する（インターフェース定義『書き換えの通知』）'
     value: '15'
   - name: MAX_REQUEST_BYTES
     title: 要求の本文の上限
@@ -629,16 +629,16 @@ constants:
     summary: POST で音声を受けて文字起こしする（インターフェース定義『音声の文字起こし』）
     value: '"/api/transcriptions"'
   - name: SEND_NOW_PATH
-    title: すぐ送るのパス
+    title: すぐ送信するのパス
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: 音声でコメントする
-    summary: POST で書き込み 1 件をすぐスレッドへ送る（インターフェース定義『書き込みをすぐ送る』）
+    summary: POST で書き込み 1 件をすぐスレッドへ送信する（インターフェース定義『書き込みをすぐ送信する』）
     value: '"/api/comments/send-now"'
   - name: PAGE_PATH
     title: 画面のパス
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
-    summary: 配信が画面を返すパス。`/` はここへ送り直し、`PreviewServer.url` はこのパスで終わる
+    summary: 配信が画面を返すパス。`/` はここへ再送信し、`PreviewServer.url` はこのパスで終わる
     value: '"/mindstella.html"'
   - name: ALLOWED_HOSTS_ENV
     title: 許可するホスト名の環境変数
@@ -659,7 +659,7 @@ constants:
     summary: 配信を止めるときのフックを読む環境変数の名前（設定『サーバー』）
     value: '"MINDSTELLA_PREVIEW_STOP_HOOK"'
   - name: ORIGIN_SCHEMES
-    title: 許可するホスト名の送り元のスキーム
+    title: 許可するホスト名の送信元のスキーム
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを外から見る
     summary: '`Origin` で許可するホスト名を受けるスキーム（`check_origin`）'
@@ -705,8 +705,8 @@ constants:
   - name: ITEMS_PATH
     title: 項目のパス
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
-    usecase: 確認済みの付け外し
-    summary: PUT `/api/items/{id}/confirmed`（確認済みの付け外し）の頭
+    usecase: 確認済みの設定と解除
+    summary: PUT `/api/items/{id}/confirmed`（確認済みの設定と解除）の頭
     value: '"/api/items"'
 functions:
   - name: start_preview_server
@@ -716,7 +716,7 @@ functions:
     usecase: プレビューを開く
     scope: public
     summary: '`LISTEN_HOST` の渡したポート（0 なら空きポート）で待ち受け、デーモンのスレッドで動かし始める'
-    side_effects: ソケットを開き、スレッドを立てる
+    side_effects: ソケットを開き、スレッドの作成
     args:
       - name: root
         type: Path
@@ -762,7 +762,7 @@ functions:
       description: 立てた配信
     process: |-
       1. `ThreadingHTTPServer((LISTEN_HOST, port), PreviewHandler)` を作り、`daemon_threads` を真にする
-         - `OSError` が起きた場合、`ServeFailedError` を送る
+         - `OSError` が起きた場合、`ServeFailedError` を送出する
       2. 割り当てられたポート・`SettingsHolder(settings)`・`allowed_hosts`・`input_targets`・`transcriber` で `ServeContext` を作り、待ち受けの `context` に持たせる
       3. `serve_forever` をデーモンのスレッドで動かし、`http://127.0.0.1:{ポート}{PAGE_PATH}` とポートを持つ `PreviewServer` を返す
     exceptions:
@@ -775,11 +775,11 @@ functions:
         summary: 127.0.0.1 だけで待ち受ける
         condition: 作成済みのワークスペース
         mock: なし（後で `stop`）
-        expected: '`httpd.server_address[0]` が `127.0.0.1`、ポートが 0 でない。`url` が `/mindstella.html` で終わり、`url` への GET が 200、`/` への GET（送り直しを辿らない）が 302 で `Location` が `/mindstella.html`'
+        expected: '`httpd.server_address[0]` が `127.0.0.1`、ポートが 0 でない。`url` が `/mindstella.html` で終わり、`url` への GET が 200、`/` への GET（再送信を辿らない）が 302 で `Location` が `/mindstella.html`'
       - name: test_start_preview_server_when_bind_fails
         case: 異常
         summary: 待ち受けを立てられなければ ServeFailedError
-        condition: '`ThreadingHTTPServer` を `OSError` を送る関数に差し替える'
+        condition: '`ThreadingHTTPServer` を `OSError` を送出する関数に差し替える'
         mock: '`ThreadingHTTPServer`（`serve` モジュールの参照を monkeypatch）'
         expected: '`ServeFailedError`'
         exception: 待ち受けを立てられない
@@ -827,7 +827,7 @@ functions:
         mock: なし
         expected: 真 / 真 / 偽 / 偽
   - name: check_origin
-    title: 送り元の確かめ
+    title: 送信元の確かめ
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: 共通
@@ -859,13 +859,13 @@ functions:
     unit_tests:
       - name: test_check_origin
         case: 正常
-        summary: 無いか配信と同じ送り元だけ通す
+        summary: 無いか配信と同じ送信元だけ通す
         condition: '`parametrize`: `None` / `http://127.0.0.1:5000` / `http://localhost:5000` / `https://attacker.example` / `http://127.0.0.1:5001`。`port=5000`、`allowed_hosts=frozenset()`'
         mock: なし
         expected: 真 / 真 / 真 / 偽 / 偽
       - name: test_check_origin_when_allowed
         case: 正常
-        summary: 許可したホスト名の https / http の送り元を通す
+        summary: 許可したホスト名の https / http の送信元を通す
         condition: '`parametrize`: `https://preview.example.test` / `http://preview.example.test:8443` / `ftp://preview.example.test` / `https://other.example.test`。`port=5000`、`allowed_hosts=frozenset({"preview.example.test"})`'
         mock: なし
         expected: 真 / 真 / 偽 / 偽
@@ -929,12 +929,12 @@ functions:
       1. `mdmark_settings` の `version` を `resolve` で ref にし、`mdmark_settings` と ref で雛形を組み立てる（雛形の組み立て。`assemble_template`）
          - `ValueError` の場合、500 を返す（`problem_response`）
            - `[ERROR]` 同梱の雛形の誤り（例外のメッセージ）
-      2. 組み立てた HTML を UTF-8 にして返す（要求ごとに読み直し、控えない。プラグインを上げた後に古い画面を返さない）
+      2. 組み立てた HTML を UTF-8 にして返す（要求ごとに再読み込みし、控えない。プラグインを上げた後に古い画面を返さない）
     unit_tests:
       - name: test_index_response
         case: 正常
         summary: 差し込んだ雛形を返し、記録は空のまま
-        condition: '差し込み口と `DATA_ELEMENT` を持つ小さな雛形のフォルダ。`mdmark_settings` が `{"version": "v0.13.0"}`'
+        condition: '差し込み位置と `DATA_ELEMENT` を持つ小さな雛形のフォルダ。`mdmark_settings` が `{"version": "v0.13.0"}`'
         mock: なし
         expected: 200 で、本文に `DATA_ELEMENT` がそのままあり、`STYLE_FILES` の中身と `mdmark@v0.13.0/dist/index.js` が入っている
       - name: test_index_response_when_template_invalid
@@ -946,7 +946,7 @@ functions:
       - name: test_index_response_when_latest
         case: 正常
         summary: latest は resolve が返した ref で mdmark を読み込む
-        condition: '差し込み口を持つ小さな雛形のフォルダ。`mdmark_settings` が `{"version": "latest"}`'
+        condition: '差し込み位置を持つ小さな雛形のフォルダ。`mdmark_settings` が `{"version": "latest"}`'
         mock: '`resolve`（`0123456789abcdef0123456789abcdef01234567` を返す）'
         expected: 200 で、本文に `mdmark@0123456789abcdef0123456789abcdef01234567/dist/index.css` と `index.js` が入っている
   - name: records_response
@@ -976,7 +976,7 @@ functions:
          - `SchemaMismatchError` の場合、`lines` を改行でつないだ `detail` の 422 を返す
          - `WorkspaceNotFoundError` の場合、そのメッセージの 422 を返す
       2. `settings_problem` が `None` なら、読んだ `settings` を最後に検査に通った設定にする（`SettingsHolder.accept`）
-      3. 種類ごとの項目に `history.yaml` の行のキーを足す（『変更履歴』の `load_item_history`・`merge_item_history`。`bodies` のキーは項目の `body` の値）
+      3. 種類ごとの項目に `history.yaml` の行のキーを追加する（『変更履歴』の `load_item_history`・`merge_item_history`。`bodies` のキーは項目の `body` の値）
       4. `ensure_ascii=False` の JSON を返す
     unit_tests:
       - name: test_records_response
@@ -988,13 +988,13 @@ functions:
       - name: test_records_response_when_schema_mismatch
         case: 正常
         summary: スキーマに合わなければ 422
-        condition: '`read` が `SchemaMismatchError(lines=["decisions.yaml: items[0].status: 理由"])` を送る'
+        condition: '`read` が `SchemaMismatchError(lines=["decisions.yaml: items[0].status: 理由"])` を送出する'
         mock: '`read`'
         expected: 422、`detail` がその行
       - name: test_records_response_when_workspace_removed
         case: 正常
         summary: config.yaml が無くなったら 422
-        condition: '`read` が `WorkspaceNotFoundError` を送る'
+        condition: '`read` が `WorkspaceNotFoundError` を送出する'
         mock: '`read`'
         expected: '422'
       - name: test_records_response_when_settings_changed
@@ -1004,7 +1004,7 @@ functions:
         mock: なし
         expected: '1 回目は 200 で `settings.display.visible_kinds` が `[tasks]`、`settings_problem` が `null`。控えが `[tasks]` になる。2 回目は 200 で `[tasks]` のまま、`settings_problem` に `config.yaml: display.visible_kinds` で始まる行'
   - name: workspace_signature
-    title: 書き換えの印
+    title: 書き換えのマーカー
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
@@ -1018,42 +1018,42 @@ functions:
         description: 配っているワークスペース
     returns:
       type: str
-      description: 書き換えの印。どれかのファイルが変わる・足される・消されると変わる
+      description: 書き換えのマーカー。どれかのファイルが変わる・追加される・削除されると変わる
     process: |-
       1. `records_root(root)` の下の `config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`history.yaml`・`edits.yaml` と、直下の `docs/`（`body_root(root)`）の直下の `*.md`・`*.html` を名前の順に並べる（本文は直下からのパスで更新日時と大きさを読む）（`.mindstella-opened`・`comments.yaml`・`drafts.yaml` は見ない）
       2. ファイルごとに `{名前}:{st_mtime_ns}:{st_size}` を作り（無いファイルは `{名前}:-`）、`|` でつなぐ
     unit_tests:
       - name: test_workspace_signature
         case: 正常
-        summary: 書き換え・足す・消すで印が変わる
-        condition: '作成済みのワークスペース。`parametrize`: `.mindstella/decisions.yaml` を書き換える / 直下の `docs/D-1.mark.md` を足す / `.mindstella/threads.yaml` を足す / `.mindstella/.mindstella.lock` を足す / `.mindstella/comments.yaml` を足す / `.mindstella/drafts.yaml` を足す'
+        summary: 書き換え・追加する・削除するでマーカーが変わる
+        condition: '作成済みのワークスペース。`parametrize`: `.mindstella/decisions.yaml` を書き換える / 直下の `docs/D-1.mark.md` を追加する / `.mindstella/threads.yaml` を追加する / `.mindstella/.mindstella.lock` を追加する / `.mindstella/comments.yaml` を追加する / `.mindstella/drafts.yaml` を追加する'
         mock: なし
-        expected: 前の 3 つは印が変わり、`.mindstella.lock`・`comments.yaml`・`drafts.yaml` は変わらない
+        expected: 前の 3 つはマーカーが変わり、`.mindstella.lock`・`comments.yaml`・`drafts.yaml` は変わらない
       - name: test_workspace_signature_with_changes
         case: 正常
         summary: まとまりは見て、前回開いた日時は見ない
-        condition: '`parametrize`: `.mindstella/changes.yaml` を足す / `.mindstella/.mindstella-opened` を足す'
+        condition: '`parametrize`: `.mindstella/changes.yaml` を追加する / `.mindstella/.mindstella-opened` を追加する'
         mock: なし
-        expected: '`changes.yaml` では印が変わり、`.mindstella-opened` では変わらない'
+        expected: '`changes.yaml` ではマーカーが変わり、`.mindstella-opened` では変わらない'
       - name: test_workspace_signature_with_html_body
         case: 正常
-        summary: HTML の本文の書き換えでも印が変わる
-        condition: '`docs/A-1.html` を持つワークスペース。`parametrize`: `docs/A-1.html` を書き換える / `docs/A-2.html` を足す'
-        expected: どちらも書き換えの前と後で印が違う
+        summary: HTML の本文の書き換えでもマーカーが変わる
+        condition: '`docs/A-1.html` を持つワークスペース。`parametrize`: `docs/A-1.html` を書き換える / `docs/A-2.html` を追加する'
+        expected: どちらも書き換えの前と後でマーカーが違う
         mock: なし
       - name: test_workspace_signature_with_edits
         case: 正常
-        summary: 保存待ちの編集の書き換えでも印が変わる
-        condition: '`.mindstella/edits.yaml` を足す'
+        summary: 保存待ちの編集の書き換えでもマーカーが変わる
+        condition: '`.mindstella/edits.yaml` を追加する'
         mock: なし
-        expected: 足す前と後で印が違う
+        expected: 追加する前と後でマーカーが違う
   - name: stream_events
-    title: 書き換えの知らせ
+    title: 書き換えの通知
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     scope: public
-    summary: 書き換えの印を `POLL_INTERVAL_SEC` ごとに作り直し、変わったら `changed` を、知らせが無いまま `KEEPALIVE_SEC` が過ぎたら保つための行を書き続ける
+    summary: 書き換えのマーカーを `POLL_INTERVAL_SEC` ごとに再作成し、変わったら `changed` を、知らせが無いまま `KEEPALIVE_SEC` が過ぎたら保つための行を書き続ける
     side_effects: '`write` で書き続ける'
     args:
       - name: root
@@ -1065,7 +1065,7 @@ functions:
         type: Callable[[bytes], None]
         required: true
         passing: positional
-        description: 書いて送り出す関数（`wfile.write` と `flush`）
+        description: 書いて送信す関数（`wfile.write` と `flush`）
       - name: sleep
         type: Callable[[float], None]
         required: false
@@ -1083,38 +1083,38 @@ functions:
         required: false
         default: workspace_signature
         passing: injected
-        description: 書き換えの印を作る関数
+        description: 書き換えのマーカーを作る関数
     returns:
       type: None
-      description: '`write` が `BrokenPipeError`・`ConnectionResetError` を送ったら戻る'
+      description: '`write` が `BrokenPipeError`・`ConnectionResetError` を送出したら戻る'
     process: |-
-      1. 今の印を控え、最後に書いた時刻を今にする
+      1. 今のマーカーを控え、最後に書いた時刻を今にする
       2. つながっている間、繰り返す
-         - `POLL_INTERVAL_SEC` 待ち、印を作り直す
-         - 印が前と違う場合、`event: changed` と `data: {印}` の知らせを書き、控えと時刻を更める
+         - `POLL_INTERVAL_SEC` 待ち、マーカーを再作成する
+         - マーカーが前と違う場合、`event: changed` と `data: {印}` の知らせを書き、控えと時刻を更める
          - 変更の検知の重なった ID の集まりが前に書いたものと違う場合（『変更の検知』の `ChangeDetector.duplicate_ids`）、`event: duplicate_ids` と `data: {ID の JSON の配列}` を書く
          - そうでなく、最後に書いてから `KEEPALIVE_SEC` 以上経った場合、`: keepalive` を書く
-      3. `write` が `BrokenPipeError`・`ConnectionResetError` を送ったら戻る（画面が閉じた）
+      3. `write` が `BrokenPipeError`・`ConnectionResetError` を送出したら戻る（画面が閉じた）
     unit_tests:
       - name: test_stream_events
         case: 正常
-        summary: 印が変わったときだけ changed を書く
-        condition: '`signature` が `a` → `a` → `b` → `b` → `c` を返し、2 回目の `write`（`c` への `changed`）が `BrokenPipeError` を送る。`sleep` は待たない。`clock` は 0.25 ずつ進む'
+        summary: マーカーが変わったときだけ changed を書く
+        condition: '`signature` が `a` → `a` → `b` → `b` → `c` を返し、2 回目の `write`（`c` への `changed`）が `BrokenPipeError` を送出する。`sleep` は待たない。`clock` は 0.25 ずつ進む'
         mock: '`signature`・`sleep`・`clock`・`write`'
         expected: '書いたものが `event: changed\ndata: b\n\n` の 1 つだけで、戻る'
       - name: test_stream_events_when_idle
         case: 正常
         summary: 変わらないまま 15 秒経つと保つための行を書く
-        condition: '`signature` は常に `a`。`clock` は 1 回ごとに 5 秒進む。2 回目の `write` が `ConnectionResetError` を送る'
+        condition: '`signature` は常に `a`。`clock` は 1 回ごとに 5 秒進む。2 回目の `write` が `ConnectionResetError` を送出する'
         mock: '`signature`・`sleep`・`clock`・`write`'
         expected: '1 回目に書いたものが `: keepalive\n\n` で、戻る'
   - name: comments_response
     title: レビュー中の応答
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     scope: public
-    summary: レビュー中のコメントと書きかけをその場で読んだ JSON を返す
+    summary: レビュー中のコメントと下書きをその場で読んだ JSON を返す
     args:
       - name: root
         type: Path
@@ -1131,8 +1131,8 @@ functions:
     unit_tests:
       - name: test_comments_response
         case: 正常
-        summary: レビュー中と書きかけを返す。無ければ空
-        condition: '`parametrize`: D-1 への C-1 と書きかけを持つ / `comments.yaml`・`drafts.yaml` が無い'
+        summary: レビュー中と下書きを返す。無ければ空
+        condition: '`parametrize`: D-1 への C-1 と下書きを持つ / `comments.yaml`・`drafts.yaml` が無い'
         mock: なし
         expected: 200。`items` に C-1（`target_title` 付き）、`drafts` に 1 件 / `items`・`drafts` が空
       - name: test_comments_response_when_invalid
@@ -1147,7 +1147,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: 共通
     scope: public
-    summary: 本文の形と送り元を確かめ、書き換えの鍵を取って渡した処理を呼び、結果の応答を返す
+    summary: 本文の構造と送信元を確かめ、書き換えの鍵を取って渡した処理を呼び、結果の応答を返す
     args:
       - name: context
         type: ServeContext
@@ -1184,7 +1184,7 @@ functions:
         required: false
         default: None
         passing: keyword
-        description: 書き換えの鍵を外した後、`handle` が返した本文を受けて応答の本文を返す処理（まとめて送るの Claude Code への入力）。`handle` が `MindmapError` を送ったときは呼ばない
+        description: 書き換えの鍵を外した後、`handle` が返した本文を受けて応答の本文を返す処理（まとめて送信の Claude Code への入力）。`handle` が `MindmapError` を送出したときは呼ばない
     returns:
       type: Response
       description: 成功の応答か、問題の応答
@@ -1206,14 +1206,14 @@ functions:
         expected: '201 で本文 `{"ok": true}` / 204 で本文が空。`handle` が `(root, {"a": 1})` で 1 回呼ばれる'
       - name: test_write_response_when_rejected
         case: 正常
-        summary: 形・送り元の誤りは処理を呼ばずに問題の応答
+        summary: 構造・送信元の誤りは処理を呼ばずに問題の応答
         condition: '`parametrize`: `text/plain` / `Origin: https://attacker.example` / 本文 `[1]` / 本文 `{`'
         mock: '`handle`'
         expected: 415 / 403 / 400 / 400。`handle` が呼ばれない
       - name: test_write_response_when_after
         case: 正常
         summary: 鍵を外した後に after を呼び、その結果を返す
-        condition: '`handle` は `{"ok": true}` を返す。`after` は呼ばれたときに書き換えの鍵が取れるか（`write_lock.acquire(blocking=False)`）を控え、`{**body, "entered": true}` を返す。`parametrize`: `handle` が成功 / `handle` が `CommentConflictError` を送る'
+        condition: '`handle` は `{"ok": true}` を返す。`after` は呼ばれたときに書き換えの鍵が取れるか（`write_lock.acquire(blocking=False)`）を控え、`{**body, "entered": true}` を返す。`parametrize`: `handle` が成功 / `handle` が `CommentConflictError` を送出する'
         mock: '`handle`・`after`'
         expected: '前者は 201 で本文 `{"ok": true, "entered": true}`、`after` の中で鍵が取れた。後者は 409 で `after` が呼ばれない'
       - name: test_write_response_when_status_returned
@@ -1223,12 +1223,12 @@ functions:
         mock: '`handle`'
         expected: '200 で本文 `{"id": "E-1"}`'
   - name: delete_response
-    title: コメントを消す受け付け
+    title: コメントを削除する受け付け
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     scope: public
-    summary: 送り元を確かめ、書き換えの鍵を取ってコメントを消し、消した中身を返す（本文を持たないため `Content-Type` は確かめない）
+    summary: 送信元を確かめ、書き換えの鍵を取ってコメントを削除し、削除した中身を返す（本文を持たないため `Content-Type` は確かめない）
     args:
       - name: context
         type: ServeContext
@@ -1244,19 +1244,19 @@ functions:
         type: str
         required: true
         passing: keyword
-        description: 消すコメントの ID
+        description: 削除するコメントの ID
     returns:
       type: Response
       description: 200 の `{id, target, loc, body, created, count}`、または問題の応答
     process: |-
       1. `Origin` が合わなければ 403 を返す（`check_origin`）
-      2. 書き換えの鍵を取って（`workspace_lock`）コメントを消す（`delete_comment`）
+      2. 書き換えの鍵を取って（`workspace_lock`）コメントを削除する（`delete_comment`）
          - `MindmapError` の場合、`error_response` の応答を返す
-      3. 200 で消した中身と件数を返す
+      3. 200 で削除した中身と件数を返す
     unit_tests:
       - name: test_delete_response
         case: 正常
-        summary: 消して中身を返し、送り元が違えば消さない
+        summary: 削除して中身を返し、送信元が違えば削除しない
         condition: 'C-1・C-2 を持つワークスペース。`parametrize`: `Origin` 無しで `C-2` / `Origin: https://attacker.example` で `C-2` / `Origin` 無しで `C-9`'
         mock: なし
         expected: 200 で `id` が C-2・`count` が 1 / 403 / 404。後の 2 つは `comments.yaml` が呼ぶ前と同じ
@@ -1272,7 +1272,7 @@ functions:
         type: MindmapError
         required: true
         passing: positional
-        description: 処理が送った例外
+        description: 処理が送出した例外
     returns:
       type: Response
       description: 問題の応答
@@ -1280,8 +1280,8 @@ functions:
       1. 種類で分ける
          - `CommentInvalidError`・`SettingsInvalidError`・`ArgumentError`・`EditInvalidError` は 400
          - `ItemNotFoundError`・`CommentNotFoundError`・`ThreadNotFoundError`・`EditNotFoundError` は 404
-         - `CommentConflictError` は 409（`stale` があれば本文に `stale: [{id, reason}]` を足す）
-         - `EditConflictError` は 409、`EditsBlockedError` は 409（本文に `blocked: [{id, reason, detail, refs}]` を足す）
+         - `CommentConflictError` は 409（`stale` があれば本文に `stale: [{id, reason}]` を追加する）
+         - `EditConflictError` は 409、`EditsBlockedError` は 409（本文に `blocked: [{id, reason, detail, refs}]` を追加する）
          - `WorkspaceNotFoundError`・`SchemaMismatchError` は 422（`detail` はメッセージに `lines` を改行でつないだもの）
          - `WriteFailedError` は 500
          - それ以外は 500
@@ -1306,7 +1306,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: 前回からの差分を見る
     scope: public
-    summary: 前回開いた日時と通し番号を返し、今の値に書き換える（インターフェース定義『前回開いた日時』）
+    summary: 前回開いた日時と連番を返し、今の値に書き換える（インターフェース定義『前回開いた日時』）
     args:
       - name: context
         type: ServeContext
@@ -1323,7 +1323,7 @@ functions:
       type: Response
       description: 200 と `{previous, opened}`、`changes.yaml` が読めなければ 422、書けなければ 500 の problem+json
     process: |-
-      1. `changes.yaml` を読み（`load_changes`。記録のロックは取らない）、今の通し番号を求める（`head_until_seq`）
+      1. `changes.yaml` を読み（`load_changes`。記録のロックは取らない）、今の連番を求める（`head_until_seq`）
          - `SchemaMismatchError` の場合、`.mindstella-opened` を書き換えずに 422 を返す（`problem_response`、`detail` は `error.lines` を改行でつなぐ）
       2. 前回開いた時点を `{at: now(), seq}` に書き換える（`touch_opened`。記録のロックは取らない）
          - `WriteFailedError` の場合、500 を返す（`problem_response`、`detail` に理由）
@@ -1331,7 +1331,7 @@ functions:
     unit_tests:
       - name: test_opened_response
         case: 正常
-        summary: 2 回目は 1 回目の時点を返し、通し番号は先頭のまとまりの `until_seq`
+        summary: 2 回目は 1 回目の時点を返し、連番は先頭のまとまりの `until_seq`
         condition: '`.mindstella-opened` を持たず、まとまり 1 つとまだまとめていない変更を持つワークスペースで 2 回呼ぶ。`now` は 1 回目と 2 回目で違う日時'
         mock: '`now`'
         expected: 1 回目の `previous` が `null`、`opened.seq` が先頭のまとまりの `until_seq`（`last_seq` でない）。2 回目の `previous` が 1 回目の `opened`
@@ -1345,7 +1345,7 @@ functions:
       - name: test_opened_response_when_write_fails
         case: 異常
         summary: 書けなければ 500
-        condition: '`touch_opened` を `WriteFailedError` を送る関数に差し替える'
+        condition: '`touch_opened` を `WriteFailedError` を送出する関数に差し替える'
         mock: '`touch_opened`（`serve` モジュールの参照を monkeypatch）'
         expected: ステータスが 500、`Content-Type` が `application/problem+json`
         exception: 書き込めない
@@ -1375,7 +1375,7 @@ functions:
       2. `config.yaml` を検査する（`check_settings`。書き換えの鍵は取らない）
          - `WorkspaceNotFoundError` の場合、422 を返す（`error_response`）
          - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を改行でつないだ `detail` の 422 を返す（最後に通った設定はそのまま）
-      3. 読んだ設定に差し替えて回数を進め（`SettingsHolder.reload`。書き換えの印が変わり、書き換えの知らせが届く）、200 で `{settings}` を返す
+      3. 読んだ設定に差し替えて回数を進め（`SettingsHolder.reload`。書き換えのマーカーが変わり、書き換えの通知が届く）、200 で `{settings}` を返す
     unit_tests:
       - name: test_reload_response
         case: 正常
@@ -1452,14 +1452,14 @@ functions:
         summary: 分けられないフックは空にする
         condition: '`{START_HOOK_ENV: "pub \"add"}`（閉じない引用符）'
         mock: なし
-        expected: '`start_hook` が `()` で、例外を送らない'
+        expected: '`start_hook` が `()` で、例外を送出しない'
   - name: run_hook
     title: フックの呼び出し
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを外から見る
     scope: public
-    summary: フックのコマンドの末尾にポートとワークスペースの名前を足し、新しいセッションで立てて終わりを待たずに返す
+    summary: フックのコマンドの末尾にポートとワークスペースの名前を追加し、新しいセッションで立てて終わりを待たずに返す
     side_effects: 子プロセスを立てる
     args:
       - name: command
@@ -1488,13 +1488,13 @@ functions:
     unit_tests:
       - name: test_run_hook
         case: 正常
-        summary: 末尾にポートと名前を足して立てる
+        summary: 末尾にポートと名前を追加して立てる
         condition: "`command=(sys.executable, \"-c\", \"import sys,pathlib; pathlib.Path(sys.argv[1]).write_text(' '.join(sys.argv[2:]))\", {一時ファイル})`、`port=47800`、`name=\"家計簿\"`"
         mock: なし（本物の子プロセス）
         expected: 真を返し、待つと一時ファイルの中身が `47800 家計簿`
       - name: test_run_hook_when_command_missing
         case: 異常
-        summary: コマンドが無ければ偽で例外を送らない
+        summary: コマンドが無ければ偽で例外を送出しない
         condition: '`command=("mindstella-no-such-command",)`'
         mock: なし
         expected: 偽
@@ -1515,7 +1515,7 @@ functions:
       type: Response
       description: '200・`application/json; charset=utf-8`・`Cache-Control: no-store` の応答。読めなければ 422'
     process: |-
-      1. ワークスペースを読み、画面へ返す形にする（`load_workspace`、`threads_for_preview`）
+      1. ワークスペースを読み、画面へ返す構造にする（`load_workspace`、`threads_for_preview`）
          - `SchemaMismatchError`・`WorkspaceNotFoundError` の場合、422 を返す（`error_response`）
       2. `ensure_ascii=False` の JSON を返す
     unit_tests:
@@ -1580,7 +1580,7 @@ functions:
         expected: '`{id: TH-1, status: closed, changed: true}`。`events` の末尾の `author` が `user` で、書き込みの `taken` が `None` のまま'
       - name: test_patch_thread_status_when_same_or_rejected
         case: 正常
-        summary: 既にその状態なら変えず、形の誤りと無い ID は断る
+        summary: 既にその状態なら変えず、構造の誤りと無い ID は断る
         condition: 'オープンの TH-1。`parametrize`: `{status: open}` / `{}` / `{status: closed, reason: 401 文字}` / `TH-9` に `{status: closed}`'
         mock: なし
         expected: '`changed: false` / `ArgumentError` / `ArgumentError` / `ThreadNotFoundError`。どれも `threads.yaml` が呼ぶ前と同じ'
@@ -1615,11 +1615,11 @@ functions:
       1. `Origin` が合わなければ 403 を返す（`check_origin`）
       2. ワークスペースを確かめ、スレッドを読んで ID で引く（`require_workspace`、`load_threads`。鍵を取らない）
          - `seen` が偽の書き込みが無ければ、書かずに 200 で `{id, seen: []}` を返す
-      3. 書き換えの鍵を取って（`workspace_lock`）既読にする（`mark_seen`。鍵を取るまでに足された書き込みも既読にする）
+      3. 書き換えの鍵を取って（`workspace_lock`）既読にする（`mark_seen`。鍵を取るまでに追加された書き込みも既読にする）
          - `MindmapError` の場合、`error_response` の応答を返す（`ThreadNotFoundError` は 404、`SchemaMismatchError`・`WorkspaceNotFoundError` は 422、`WriteFailedError` は 500）
       4. 200・`application/json; charset=utf-8`・`Cache-Control: no-store` で `{id, seen}` を返す
     exceptions:
-      - name: なし（問題の応答を返す）
+      - name: なし（問題の応答を返却する）
         condition: 無い ID・崩れた `threads.yaml`・書けないときは `error_response` の応答にする
     unit_tests:
       - name: test_seen_response
@@ -1636,11 +1636,11 @@ functions:
         expected: '200 で `{id: TH-1, seen: []}`。`workspace_lock` が呼ばれず、`threads.yaml` の更新日時が呼ぶ前と同じ'
       - name: test_seen_response_when_rejected
         case: 異常
-        summary: 送り元の違い・無い ID・崩れたファイルは書かない
-        condition: '`parametrize`: `origin="https://attacker.example"` / `TH-9` / `threads.yaml` の書き込みから `seen` を消す'
+        summary: 送信元の違い・無い ID・崩れたファイルは書かない
+        condition: '`parametrize`: `origin="https://attacker.example"` / `TH-9` / `threads.yaml` の書き込みから `seen` を削除する'
         mock: なし
         expected: 403 / 404（`detail` に `TH-9`）/ 422。どれも `threads.yaml` が呼ぶ前と同じ
-        exception: 送り元の違い・無い ID・スキーマに合わない
+        exception: 送信元の違い・無い ID・スキーマに合わない
   - name: edits_response
     title: 保存待ちの編集の応答
     kind: 関数
@@ -1674,7 +1674,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: 画面で項目を編集して保存する
     scope: public
-    summary: 送り元を確かめ、書き換えの鍵を取って 1 件の編集を取り消す
+    summary: 送信元を確かめ、書き換えの鍵を取って 1 件の編集を取り消す
     args:
       - name: context
         type: ServeContext
@@ -1702,7 +1702,7 @@ functions:
     unit_tests:
       - name: test_edit_delete_response
         case: 正常
-        summary: 取り消し、送り元の誤り・無い ID は問題の応答
+        summary: 取り消し、送信元の誤り・無い ID は問題の応答
         condition: 'E-1 を持つ。`parametrize`: `E-1` / `Origin: https://attacker.example` で `E-1` / `E-9`'
         mock: なし
         expected: 200 で `removed` が `[E-1]` / 403 で `edits.yaml` が前のまま / 404
@@ -1712,7 +1712,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: 画面で項目を編集して保存する
     scope: public
-    summary: 送り元を確かめ、本文を読まずに書き換えの鍵を取って保存待ちの編集をまとめて保存する
+    summary: 送信元を確かめ、本文を読まずに書き換えの鍵を取って保存待ちの編集をまとめて保存する
     args:
       - name: context
         type: ServeContext
@@ -1731,11 +1731,11 @@ functions:
       1. `Origin` が合わなければ 403 を返す（`check_origin`）
       2. 書き換えの鍵を取って（`workspace_lock`）`save_edits` を呼ぶ
          - `MindmapError` の場合、`error_response` の応答を返す
-      3. 200 で本文を返す（書き換えの知らせは `stream_events` が書き換えの印の変化で送る）
+      3. 200 で本文を返す（書き換えの通知は `stream_events` が書き換えのマーカーの変化で送信する）
     unit_tests:
       - name: test_edits_save_response
         case: 正常
-        summary: 保存し、送り元の誤り・書き込めない編集は問題の応答
+        summary: 保存し、送信元の誤り・書き込めない編集は問題の応答
         condition: 'D-1 と E-1（D-1 の `answer`）。`parametrize`: そのまま / `Origin: https://attacker.example` / E-1 を溜めた後に MCP で D-1 を書き換える'
         mock: なし
         expected: 200 で `changed` が `[D-1]` / 403 / 409 で本文の `blocked` が E-1（`changed`）
@@ -1835,16 +1835,16 @@ functions:
       - name: test_transcription_response_when_unavailable
         case: 正常
         summary: 使えないときも 200 で理由を返し、設定が無ければ既定
-        condition: '`transcription` を持たないワークスペース。`presets()` が `TranscriberStoppedError` を送る偽の実装'
+        condition: '`transcription` を持たないワークスペース。`presets()` が `TranscriberStoppedError` を送出する偽の実装'
         mock: 偽の実装
         expected: '200 で `available: false`・`reason: stopped`・`presets: []`・`action: review`・`preset: null`。本文に `voice-paste` を含まない'
       - name: test_transcription_response_when_rejected
         case: 異常
-        summary: 送り元の違いと崩れた設定
+        summary: 送信元の違いと崩れた設定
         condition: '`parametrize`: `origin="https://attacker.example"` / `transcription.action` が `paste` の `config.yaml`'
         mock: 偽の実装
         expected: '403 / 422（`detail` に `config.yaml: transcription.action`）'
-        exception: 送り元の違い・スキーマに合わない
+        exception: 送信元の違い・スキーマに合わない
   - name: transcribe_response
     title: 音声の文字起こしの受け付け
     kind: 関数
@@ -1905,14 +1905,14 @@ functions:
       - name: test_transcribe_response_when_transcriber_failed
         case: 異常
         summary: 文字起こしの失敗の種類をステータスに分ける
-        condition: '`parametrize`: `transcribe` が `TranscriberStoppedError` / `TranscriberUnsupportedError` / `TranscriptionFailedError("busy")` / `TranscriptionTimeoutError` を送る / `context.transcriber` が `None`'
+        condition: '`parametrize`: `transcribe` が `TranscriberStoppedError` / `TranscriberUnsupportedError` / `TranscriptionFailedError("busy")` / `TranscriptionTimeoutError` を送出する / `context.transcriber` が `None`'
         mock: 偽の実装
         expected: '503・`reason: stopped` / 503・`reason: unsupported` / 502（`detail` が `FAILED_DETAIL` で `busy` を含まない）/ 504 / 503・`reason: stopped`'
         exception: 文字起こしの失敗
       - name: test_transcribe_response_when_rejected
         case: 異常
-        summary: 形の違う要求は文字起こしへ渡さない
+        summary: 構造の違う要求は文字起こしへ渡さない
         condition: '`parametrize`: `Content-Type: application/json` / `origin="https://attacker.example"` / 空の本文'
         mock: 偽の実装
         expected: 415 / 403 / 400。どれも偽の実装が呼ばれない
-        exception: 形の違う要求
+        exception: 構造の違う要求

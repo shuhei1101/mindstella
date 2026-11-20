@@ -1,7 +1,7 @@
 summary: "クラス / 関数 / 関数型 インデックス（単体テストの元）"
 items:
   - page: MOD-489-1.tsx.yaml
-    summary: "QueryClientProvider と RouterProvider を組み、書き換えの知らせへつなぐ（書き換えの知らせへの接続）"
+    summary: "QueryClientProvider と RouterProvider を組み、書き換えの通知へつなぐ（書き換えの通知への接続）"
   - page: MOD-489-3.ts.yaml
     summary: "knowledge の規約『QueryClient』の defaultOptions"
   - page: MOD-489-4.tsx.yaml
@@ -51,7 +51,7 @@ items:
   - page: MOD-489-27.tsx.yaml
     summary: "項目の追加の入力。タイトルを離れたときに `item-add` を溜め、残りのキーは返った仮の ID で書き換える"
   - page: MOD-489-22.tsx.yaml
-    summary: "詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く"
+    summary: "詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを表示）、本文の選択から出す選んだ箇所のコメントの入口を描く"
   - page: MOD-489-20.tsx.yaml
     summary: "画面設計『詳細の全画面.tsx』の要素と操作を描く"
   - page: MOD-489-33.tsx.yaml
@@ -65,13 +65,13 @@ items:
   - page: MOD-489-50.ts.yaml
     summary: "設定の画面の入力の Zod スキーマ"
   - page: MOD-489-45.tsx.yaml
-    summary: "部品設計『既定の保存の確かめ.tsx』の props・イベント・状態を持つ"
+    summary: "部品設計『既定の保存の確認.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-46.tsx.yaml
     summary: "部品設計『表示の設定.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-47.tsx.yaml
     summary: "画面設計『表示の設定.tsx』の要素と操作を描く。上書きを端末の保存領域に書き、既定にするで確かめのモーダルを開く"
   - page: MOD-489-48.tsx.yaml
-    summary: "画面設計『既定の保存の確かめ.tsx』の要素と操作を描く。shadcn/ui の Dialog に部品『既定の保存の確かめ』を置き、`open`・`onOpenChange` は親が持つ"
+    summary: "画面設計『既定の保存の確認.tsx』の要素と操作を描く。shadcn/ui の Dialog に部品『既定の保存の確認』を置き、`open`・`onOpenChange` は親が持つ"
   - page: MOD-489-49.ts.yaml
     summary: "ワークスペースの既定の書き換えの mutation"
   - page: MOD-489-5.tsx.yaml
@@ -87,7 +87,7 @@ items:
   - page: MOD-489-10.tsx.yaml
     summary: "部品設計『スレッドの行.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-11.tsx.yaml
-    summary: "スレッドの状態の札・レビュー中の印・未読の札"
+    summary: "スレッドの状態の札・レビュー中のマーカー・未読の札"
   - page: MOD-489-12.ts.yaml
     summary: "コメントの一覧・スレッド・レビュー中の書き込みの画面が読む値"
   - page: MOD-489-13.ts.yaml
@@ -101,35 +101,35 @@ items:
   - page: MOD-489-56.ts.yaml
     summary: "orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる"
   - page: MOD-489-57.ts.yaml
-    summary: "インターフェース定義『書き換えの知らせ』"
+    summary: "インターフェース定義『書き換えの通知』"
   - page: MOD-489-58.ts.yaml
-    summary: "描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」）"
+    summary: "描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」）"
   - page: MOD-489-74.tsx.yaml
-    summary: "24px の枠に描いた線のアイコンと、状態の 10px の印"
+    summary: "24px の枠に描いた線のアイコンと、状態の 10px のマーカー"
   - page: MOD-489-88.tsx.yaml
     summary: "部品設計『トップバー.tsx』の props・イベント・状態を持つ"
   - page: MOD-540-8.tsx.yaml
     summary: "部品設計『重なった ID の通知.tsx』の props・イベント・状態を持つ。"
   - page: MOD-489-89.tsx.yaml
-    summary: "shadcn/ui の Button（Base UI 版）。見た目の違いは variants（default・secondary・ghost・outline・destructive）で持つ"
+    summary: "shadcn/ui の Button（Base UI バージョン）。見た目の違いは variants（default・secondary・ghost・outline・destructive）で持つ"
   - page: MOD-489-96.tsx.yaml
     summary: "shadcn/ui の Table"
   - page: MOD-489-91.tsx.yaml
-    summary: "shadcn/ui の Dialog（Base UI 版）"
+    summary: "shadcn/ui の Dialog（Base UI バージョン）"
   - page: MOD-489-95.tsx.yaml
-    summary: "shadcn/ui の Sheet（Base UI 版）"
+    summary: "shadcn/ui の Sheet（Base UI バージョン）"
   - page: MOD-489-93.tsx.yaml
-    summary: "shadcn/ui の Popover（Base UI 版）"
+    summary: "shadcn/ui の Popover（Base UI バージョン）"
   - page: MOD-489-90.tsx.yaml
-    summary: "shadcn/ui の Checkbox（Base UI 版）"
+    summary: "shadcn/ui の Checkbox（Base UI バージョン）"
   - page: MOD-489-92.tsx.yaml
     summary: "shadcn/ui の Input"
   - page: MOD-489-97.tsx.yaml
     summary: "shadcn/ui の Textarea"
   - page: MOD-489-94.tsx.yaml
-    summary: "shadcn/ui の Select（Base UI 版）"
+    summary: "shadcn/ui の Select（Base UI バージョン）"
   - page: MOD-489-98.tsx.yaml
-    summary: "shadcn/ui の Tooltip（Base UI 版）"
+    summary: "shadcn/ui の Tooltip（Base UI バージョン）"
   - page: MOD-489-85.tsx.yaml
     summary: "部品設計『表.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-70.tsx.yaml
@@ -137,9 +137,9 @@ items:
   - page: MOD-489-99.tsx.yaml
     summary: "部品設計『表示形式の切り替え.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-65.tsx.yaml
-    summary: "部品設計『差分の印.tsx』の props・イベント・状態を持つ"
+    summary: "部品設計『差分のマーカー.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-80.tsx.yaml
-    summary: "部品設計『消した項目の帯.tsx』の props・イベント・状態を持つ"
+    summary: "部品設計『削除した項目の帯.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-71.tsx.yaml
     summary: "部品設計『変更履歴.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-66.tsx.yaml
@@ -155,7 +155,7 @@ items:
   - page: MOD-489-77.tsx.yaml
     summary: "部品設計『Markdownの本文.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-87.tsx.yaml
-    summary: "部品設計『本文の印のツールチップ.tsx』の props・イベント・状態を持つ"
+    summary: "部品設計『本文のマーカーのツールチップ.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-67.tsx.yaml
     summary: "部品設計『資料のエクスポートのメニュー.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-100.tsx.yaml
@@ -169,9 +169,9 @@ items:
   - page: MOD-489-63.tsx.yaml
     summary: "部品設計『チップの入力.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-64.tsx.yaml
-    summary: "部品設計『コメントの印.tsx』の props・イベント・状態を持つ"
+    summary: "部品設計『コメントのマーカー.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-78.tsx.yaml
-    summary: "部品設計『保存待ちの印.tsx』の props・イベント・状態を持つ"
+    summary: "部品設計『保存待ちのマーカー.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-68.tsx.yaml
     summary: "React の外で組み立てた要素を置く入れ物"
   - page: MOD-489-69.tsx.yaml
@@ -181,13 +181,13 @@ items:
   - page: MOD-489-75.tsx.yaml
     summary: "一覧の表の共通の列"
   - page: MOD-489-76.tsx.yaml
-    summary: "一覧の画面の枠（表示形式の切り替え・項目の追加・消した項目の帯・絞り込みのドロワーと表の状態）"
+    summary: "一覧の画面の枠（表示形式の切り替え・項目の追加・削除した項目の帯・絞り込みのドロワーと表の状態）"
   - page: MOD-489-59.tsx.yaml
     summary: "書き込めない理由の表示"
   - page: MOD-489-81.tsx.yaml
     summary: "部品設計『本文の折りたたみ.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-82.tsx.yaml
-    summary: "部品設計『選んだ箇所のコメントの入口.tsx』の props・イベント・状態を持つ"
+    summary: "部品設計『選んだ箇所のコメントの起点.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-83.tsx.yaml
     summary: "部品設計『コメントの入力.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-79.tsx.yaml
@@ -207,13 +207,13 @@ items:
   - page: MOD-489-107.ts.yaml
     summary: "資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い）"
   - page: MOD-489-102.ts.yaml
-    summary: "描いた本文に、見出しのリンク・本文の印・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）"
+    summary: "描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）"
   - page: MOD-489-117.ts.yaml
     summary: "描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し）"
   - page: MOD-489-118.ts.yaml
-    summary: "差分のミニマップの印の計算と操作"
+    summary: "差分のミニマップのマーカーの計算と操作"
   - page: MOD-489-103.ts.yaml
-    summary: "本文の差分の描画（足した・消した塊・語の面・図の差分）"
+    summary: "本文の差分の描画（追加した・削除した塊・語の面・図の差分）"
   - page: MOD-489-122.ts.yaml
     summary: "左右に並べた本文の差分の組み立て"
   - page: MOD-489-112.ts.yaml
@@ -221,13 +221,13 @@ items:
   - page: MOD-489-113.ts.yaml
     summary: "スクリプトを動かさない HTML の本文の枠の組み立て"
   - page: MOD-489-123.ts.yaml
-    summary: "本文の印のツールチップと、見出しへの送り・示す箇所"
+    summary: "本文のマーカーのツールチップと、見出しへの送り・示す箇所"
   - page: MOD-489-115.ts.yaml
     summary: "一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て"
   - page: MOD-489-111.ts.yaml
     summary: "日時と値の文字の組み立て"
   - page: MOD-489-108.ts.yaml
-    summary: "mdmark が描いた本文の中へ足す要素の組み立て"
+    summary: "mdmark が描いた本文の中へ追加する要素の組み立て"
   - page: MOD-489-104.ts.yaml
     summary: "コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` の DOM に触らない関数と同じ振る舞い）"
   - page: MOD-489-106.ts.yaml
@@ -239,13 +239,13 @@ items:
   - page: MOD-489-135.ts.yaml
     summary: "clsx と tailwind-merge でクラス名を 1 つにする"
   - page: MOD-489-136.ts.yaml
-    summary: "書き換えの知らせがつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」）"
+    summary: "書き換えの通知がつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」）"
   - page: MOD-540-9.ts.yaml
     summary: "変更の検知が知らせた重なった ID と、利用者が閉じた集まり。"
   - page: MOD-489-254.ts.yaml
     summary: "画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」）"
   - page: MOD-557-1.ts.yaml
-    summary: "入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の読み直しの保留」）"
+    summary: "入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の再読み込みの保留」）"
   - page: MOD-489-141.ts.yaml
     summary: "今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す"
   - page: MOD-489-140.ts.yaml
@@ -257,7 +257,7 @@ items:
   - page: MOD-489-139.ts.yaml
     summary: "コメントの一覧（レビュー中の書き込みの行・スレッドの向けた項目）から開いた項目の中で示す箇所"
   - page: MOD-489-142.css.yaml
-    summary: "Tailwind を読み、`--color-*: initial` で標準のパレットを消し、`@theme inline` でトークンを割り当てる"
+    summary: "Tailwind を読み、`--color-*: initial` で標準のパレットを削除し、`@theme inline` でトークンを割り当てる"
   - page: MOD-489-143.css.yaml
     summary: "デザイン方針のトークンを :root の 3 ティア（プリミティブ・セマンティック・派生）で持つ。値は採用した見本（`docs/mock/styles/shadcn-swiss-cards/`）から写す"
   - page: MOD-489-125.ts.yaml
@@ -265,7 +265,7 @@ items:
   - page: MOD-489-129.ts.yaml
     summary: "search の読み書き"
   - page: MOD-489-127.ts.yaml
-    summary: "差分の表示の時点と、項目ごとの印を返す"
+    summary: "差分の表示の時点と、項目ごとのマーカーを返す"
   - page: MOD-489-128.ts.yaml
     summary: "保存待ちの編集を溜める・取り消す・まとめて保存する mutation"
   - page: MOD-489-132.ts.yaml
@@ -273,15 +273,15 @@ items:
   - page: MOD-489-130.ts.yaml
     summary: "記録に保存待ちの編集を重ねた索引を読む"
   - page: MOD-633-2.ts.yaml
-    summary: "項目の確認済みの付け外しを送り、応答を待つ間は押した後の値を返す"
+    summary: "項目の確認済みの設定と解除を送信し、応答を待つ間は押した後の値を返す"
   - page: MOD-489-131.ts.yaml
     summary: "一覧の画面の編集の入口を組む"
   - page: MOD-489-133.ts.yaml
     summary: "表示する種類を返す"
   - page: MOD-489-126.ts.yaml
-    summary: "レビュー中の書き込みを溜める・書き換える・消す・まとめて送る mutation と、書きかけの保存"
+    summary: "レビュー中の書き込みを溜める・書き換える・削除する・まとめて送信する mutation と、下書きの保存"
   - page: MOD-489-134.ts.yaml
-    summary: "文字起こしの可否の query と、コメント・返信の入力の録音・文字起こし・すぐ送るの props"
+    summary: "文字起こしの可否の query と、コメント・返信の入力の録音・文字起こし・すぐ送信するの props"
   - page: MOD-489-185.py.yaml
     summary: "サーバー / 移行 / tags_to_vocabulary.py"
   - page: MOD-489-186.py.yaml
@@ -321,7 +321,7 @@ items:
   - page: MOD-540-2.py.yaml
     summary: "サーバー / 変更の検知 / change_detection.py"
   - page: MOD-489-171.ts.yaml
-    summary: "プレビューを開いたときに記録を読み（配る書き出しは埋め込みから、サーバーの配信は『記録の取得』から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・コメントの読み書き・端末の保存領域につなぐ。"
+    summary: "プレビューを開いたときに記録を読み（配る書き出しは埋め込みから、サーバーの配信は『記録の取得』から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの通知・コメントの読み書き・端末の保存領域につなぐ。"
   - page: MOD-489-205.ts.yaml
     summary: "プレビュー / 画面と部品 / body-diff-layout-switch.ts"
   - page: MOD-489-243.ts.yaml
@@ -379,7 +379,7 @@ items:
   - page: MOD-489-196.ts.yaml
     summary: "プレビュー / 基盤 / api.ts"
   - page: MOD-489-173.ts.yaml
-    summary: "差分の表示の計算。変更履歴で選んだ時点から印を付ける項目を決め、項目の `history` から前の版を組み立て、本文・記法の行と図の要素を比べる。DOM には触らず、描くのは画面が持つ。"
+    summary: "差分の表示の計算。変更履歴で選んだ時点からマーカーを付ける項目を決め、項目の `history` から前のバージョンを組み立て、本文・記法の行と図の要素を比べる。DOM には触らず、描くのは画面が持つ。"
   - page: MOD-489-201.ts.yaml
     summary: "プレビュー / 基盤 / doc-export.ts"
   - page: MOD-489-199.ts.yaml
@@ -431,11 +431,11 @@ items:
   - page: MOD-489-162.py.yaml
     summary: "ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれを問題として洗い出す。読み書きと検証だけに依存し、ファイルを書かない。"
   - page: MOD-489-144.py.yaml
-    summary: "ツールの呼び出しが運んだセッションの値を読み、ワークスペースごとに宛先を持つ。まとめて送った後に、そのワークスペースを指して最後にツールを呼んだセッションが生きているかを確かめてからペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。tmux と ps を子プロセスで呼び、会話の記録（jsonl）を読む。"
+    summary: "ツールの呼び出しが運んだセッションの値を読み、ワークスペースごとに宛先を持つ。まとめて送信した後に、そのワークスペースを指して最後にツールを呼んだセッションが生きているかを確かめてからペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。tmux と ps を子プロセスで呼び、会話の記録（jsonl）を読む。"
   - page: MOD-489-176.py.yaml
     summary: "サーバー / 入口 / commands.py"
   - page: MOD-489-147.py.yaml
-    summary: "レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。文字起こしの結果の書き込み 1 件は、レビュー中に溜めずにすぐスレッドへ足す。箇所・スレッド・読み書きと検証に依存し、鍵は呼ぶ側（配信）が取る。"
+    summary: "レビュー中のコメント（`comments.yaml`）と下書き（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。文字起こしの結果の書き込み 1 件は、レビュー中に溜めずにすぐスレッドへ追加する。箇所・スレッド・読み書きと検証に依存し、鍵は呼ぶ側（配信）が取る。"
   - page: MOD-489-155.py.yaml
     summary: "プレビューで利用者が溜めた保存待ちの編集（`edits.yaml`）を読み書きし、まとめて保存するときに項目と設定へ当てる。読み書きと検証・入口（項目の追加と更新）・設定の更新・変更履歴に依存し、鍵は呼ぶ側（配信）が取る。例外はモジュール構成『読み書きと検証』の `EditInvalidError`・`EditNotFoundError`・`EditConflictError`・`EditsBlockedError`。単体テストは `tests/unit/scripts/test_edits.py` に置く。"
   - page: MOD-489-192.py.yaml
@@ -463,7 +463,7 @@ items:
   - page: MOD-489-157.py.yaml
     summary: "項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』と『前回参照した時点』に依存し、書き込みは `save_change`・`save_batch` に任せる。"
   - page: MOD-489-145.py.yaml
-    summary: "資料の HTML の本文の開きタグに原文の行の印を足す処理と、原文の行の範囲の描いた文を取り出す処理。どちらも Python の標準ライブラリ `html.parser.HTMLParser` で原文を読む。"
+    summary: "資料の HTML の本文の開きタグに原文の行のマーカーを追加する処理と、原文の行の範囲の描いた文を取り出す処理。どちらも Python の標準ライブラリ `html.parser.HTMLParser` で原文を読む。"
   - page: MOD-489-150.py.yaml
     summary: "Claude Code の `PreToolUse` のフックが呼ぶスクリプト。mindstella のツールを呼んだセッションの作業フォルダ・tmux のペイン・設定のフォルダ・Claude Code のプロセスを、ツールの入力の `session` に入れて返す。"
   - page: MOD-489-188.py.yaml
@@ -471,7 +471,7 @@ items:
   - page: MOD-489-193.py.yaml
     summary: "サーバー / 起動 / launch.py"
   - page: MOD-489-165.py.yaml
-    summary: "コメントが指す箇所（本文の行の範囲か項目の値のキーと、選んだ文）の形を確かめ、今の項目に合うかを確かめる。読み書きと検証だけに依存し、書き込まない。"
+    summary: "コメントが指す箇所（本文の行の範囲か項目の値のキーと、選んだ文）の形式を確かめ、今の項目に合うかを確かめる。読み書きと検証だけに依存し、書き込まない。"
   - page: MOD-489-181.py.yaml
     summary: "サーバー / 移行 / migration_ops.py"
   - page: MOD-489-179.py.yaml
@@ -481,7 +481,7 @@ items:
   - page: MOD-489-160.py.yaml
     summary: "Claude Code の `SessionStart` のフックが呼ぶスクリプト。作業フォルダとその直下のワークスペースを探し、ロックを取ってスレッドの書き込みを未読に戻す。スレッドと読み書きと検証に依存する。単体テストは `tests/unit/scripts/test_reset_unread.py` に置く。"
   - page: MOD-489-169.py.yaml
-    summary: "ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送るを受け付ける。まとめて送った後とすぐ送った後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。"
+    summary: "ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの通知を返し、レビュー中のコメント・下書き・まとめて送信する・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送信するを受け付ける。まとめて送信した後とすぐ送信した後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。"
   - page: MOD-489-177.py.yaml
     summary: "サーバー / 入口 / server.py"
   - page: MOD-489-166.py.yaml
@@ -491,7 +491,7 @@ items:
   - page: MOD-489-151.py.yaml
     summary: "タグを NFKC と小文字にそろえた表記にし、使われているタグのうち字面の近いものを並べる。検索から使う。"
   - page: MOD-489-149.py.yaml
-    summary: "スレッド（`threads.yaml`）を読み書きする。まとめて送られた利用者の書き込みを足し、AI の一覧・既読・返信・状態と要約の書き換え・取り込み済みを担い、画面へ返す形を作る。読み書きと検証だけに依存し、鍵は呼ぶ側（入口・コメント・配信・未読へ戻す）が取る。単体テストは `tests/unit/scripts/test_threads.py` に置く。"
+    summary: "スレッド（`threads.yaml`）を読み書きする。まとめて送信された利用者の書き込みを追加し、AI の一覧・既読・返信・状態と要約の書き換え・取り込み済みを担い、画面へ返す構造を作る。読み書きと検証だけに依存し、鍵は呼ぶ側（入口・コメント・配信・未読へ戻す）が取る。単体テストは `tests/unit/scripts/test_threads.py` に置く。"
   - page: MOD-489-158.py.yaml
     summary: "配信が音声を文字に起こすときに依存する文字起こしのインターフェースと、使えるかの確かめ・失敗の種類を持つ。サービスごとの呼び方は実装のモジュール、環境変数で実装を選ぶ処理は引き当てのモジュールが持ち、配信はこのモジュールだけを import する。どのモジュールも import しない。"
   - page: MOD-489-159.py.yaml
@@ -499,15 +499,15 @@ items:
   - page: MOD-489-178.py.yaml
     summary: "サーバー / 移行 / versions.py"
   - page: MOD-489-146.py.yaml
-    summary: "文字起こしのインターフェースの voice-paste の実装。プリセットの一覧を読み、音声を `multipart/form-data` で依頼し、ジョブの状態を取りに行って終わるまで待つ。HTTP は標準ライブラリの `urllib.request` で送り、文字起こしだけに依存する。"
+    summary: "文字起こしのインターフェースの voice-paste の実装。プリセットの一覧を読み、音声を `multipart/form-data` で依頼し、ジョブの状態を取りに行って終わるまで待つ。HTTP は標準ライブラリの `urllib.request` で送信し、文字起こしだけに依存する。"
   - page: MOD-489-163.py.yaml
-    summary: "起動のコマンドの `register` のサブコマンドが呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルの印の範囲へ書く・読み返す・外す。"
+    summary: "起動のコマンドの `register` のサブコマンドが呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルのマーカーの範囲へ書く・読み返す・外す。"
   - page: MOD-489-154.yaml
     summary: "検討事項とタスクの依存をたどり、影響と着手できる検討事項を出す。読み書きと検証だけに依存し、ファイルを書かない。"
   - page: MOD-489-156.yaml
     summary: "常駐する MCP サーバー `mindstella` を `127.0.0.1` の HTTP で待ち受け、ツールを登録し、ツールの引数を各機能へ渡して、結果を構造化の結果・エラーをツールのエラーにする。プレビューの配信と、常駐サーバーの状態と停止も同じプロセスに持つ。"
   - page: MOD-489-164.yaml
-    summary: "ワークスペースの版とプラグインの版を比べ、版ごとの移し替えの手順（`migrations/{版}/steps.yaml`）を並べる・写しを取って当てる・値を入れる・版を書き換える。読み書きと検証だけに依存する。"
+    summary: "ワークスペースのバージョンとプラグインのバージョンを比べ、バージョンごとの移し替えの手順（`migrations/{版}/steps.yaml`）を並べる・コピーを取って当てる・値を入れる・バージョンを書き換える。読み書きと検証だけに依存する。"
   - page: MOD-489-167.yaml
     summary: "ワークスペースの YAML と本文を読み書きし、JSON Schema と突き合わせる。ほかの全てのモジュールがここに依存し、ここはほかに依存しない。"
   - page: MOD-489-168.yaml

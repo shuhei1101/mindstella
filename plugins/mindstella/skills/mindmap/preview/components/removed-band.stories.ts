@@ -1,4 +1,4 @@
-// 消した項目の帯のストーリー（部品設計『消した項目の帯』の状態）。
+// 削除した項目の帯のストーリー（部品設計『削除した項目の帯』の状態）。
 
 import type { Meta, StoryObj } from "@storybook/html-vite";
 
@@ -17,7 +17,7 @@ export default meta;
 
 type Story = StoryObj<MindmapPreview.RemovedBandProps>;
 
-/** 1 件。見出し「消した項目」と件数 1 の右に、消した印・ID・タイトルを 1 つ並べる */
+/** 1 件。見出し「削除した項目」と件数 1 の右に、消した印・ID・タイトルを 1 つ並べる */
 export const One: Story = {};
 
 /** 3 件で長いタイトルを含む。項目を横に並べて折り返し、タイトルは途中で切らずに折り返す */

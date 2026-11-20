@@ -1,6 +1,6 @@
 id: MOD-542-1
 title: サーバー / 移行 / remove_network_look.py
-lead: v0.14.0 の 4 手順目の変換。`.mindstella/config.yaml` の `display` から削除したネットワークの見た目の既定 `network_look` を消し、`display` が空になったら `display` も消す。`yaml` と標準ライブラリだけを読み、この版の形を自分で組み立てる。
+lead: v0.14.0 の 4 手順目の変換。`.mindstella/config.yaml` の `display` から削除したネットワークの見た目の既定 `network_look` を削除し、`display` が空になったら `display` も削除する。`yaml` と標準ライブラリだけを読み、このバージョンの形式を自分で組み立てる。
 constants:
   - name: CONFIG_FILE
     title: 設定のファイル
@@ -9,19 +9,19 @@ constants:
     summary: 書き換える設定（ワークスペースの直下からの相対パス）
     value: '".mindstella/config.yaml"'
   - name: REMOVED_KEY
-    title: 消すキー
+    title: 削除するキー
     container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_network_look.py
     usecase: 記録の形式の移行
-    summary: '`display` から消すキー'
+    summary: '`display` から削除するキー'
     value: '"network_look"'
 functions:
   - name: remove_network_look.migrate
-    title: ネットワークの見た目の既定を消す
+    title: ネットワークの見た目の既定を削除する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_network_look.py
     usecase: 記録の形式の移行
     scope: public
-    summary: '`config.yaml` の `display` から `network_look` を消し、空になった `display` も消す'
+    summary: '`config.yaml` の `display` から `network_look` を削除し、空になった `display` も削除する'
     side_effects: '`config.yaml` を書き換える（ほかのファイルは触らない）'
     args:
       - name: root
@@ -35,15 +35,15 @@ functions:
     process: |-
       1. `CONFIG_FILE` が無ければ空を返す
       2. `CONFIG_FILE` を読み、`display` がオブジェクトで `REMOVED_KEY` を持たなければ何も書かずに空を返す
-      3. `display` から `REMOVED_KEY` を消し、`display` が空になったら `display` も消す（ほかのキーと並びは変えない）
+      3. `display` から `REMOVED_KEY` を削除し、`display` が空になったら `display` も削除する（ほかのキーと並びは変えない）
       4. 一時ファイルに書いてから `os.replace` で置き換え、`CONFIG_FILE` を返す
     exceptions:
       - name: RuntimeError
-        condition: '`config.yaml` を YAML として読めない。手順の `StepError` にして写しから戻すのは移行が担う'
+        condition: '`config.yaml` を YAML として読めない。手順の `StepError` にしてコピーから戻すのは移行が担う'
     unit_tests:
       - name: test_migrate
         case: 正常
-        summary: '`network_look` を消し、空になった `display` も消す'
+        summary: '`network_look` を削除し、空になった `display` も削除する'
         condition: '`parametrize`: `display: {network_look: glow}` と `summary` を持つ設定 / `display: {network_look: dust, visible_kinds: [decisions]}` を持つ設定'
         mock: なし（`tmp_path`）
         expected: '`display` が無く `summary` が同じ / `display` が `{visible_kinds: [decisions]}`。どちらも戻り値が `.mindstella/config.yaml` の 1 件で、ほかのキーと並びが同じ'

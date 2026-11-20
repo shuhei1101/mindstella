@@ -35,7 +35,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: TH-1（オープン・取り込んでいない利用者の書き込み）・TH-2（利用者が返信を送ってからクローズにした。その返信を取り込んでいない）・TH-3（オープン・利用者の書き込みは取り込み済みで AI の未読）を持つワークスペース
+        description: TH-1（オープン・取り込んでいない利用者の書き込み）・TH-2（利用者が返信を送信してからクローズにした。その返信を取り込んでいない）・TH-3（オープン・利用者の書き込みは取り込み済みで AI の未読）を持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -115,13 +115,13 @@ flows:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
     test: test_error_when_workspace_not_found
-  - name: 異常系（スレッドの形が崩れている・SchemaMismatchError）
+  - name: 異常系（スレッドの構造が崩れている・SchemaMismatchError）
     summary: 手で崩した threads.yaml は読まずに合わない箇所を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '`threads.yaml` の TH-1 から `status` を消したワークスペース'
+        description: '`threads.yaml` の TH-1 から `status` を削除したワークスペース'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -220,7 +220,7 @@ response:
     description: AI が取り込んでいない利用者の書き込みの件数
 response_example: |-
   ```json
-  {"items": [{"id": "TH-3", "status": "open", "tags": ["起票"], "summary": null, "head": "案 A にする", "target": "D-1", "target_title": "写しの取り方", "last_author": "user", "last_at": "2026-10-12T03:00:00+00:00", "posts": 1, "unread": 1, "awaiting": 1}]}
+  {"items": [{"id": "TH-3", "status": "open", "tags": ["起票"], "summary": null, "head": "案 A にする", "target": "D-1", "target_title": "コピーの取り方", "last_author": "user", "last_at": "2026-10-12T03:00:00+00:00", "posts": 1, "unread": 1, "awaiting": 1}]}
   ```
 exceptions:
   - name: なし（正常終了）
@@ -234,16 +234,16 @@ exceptions:
     notes: ツールのエラー。エラーの本文に合わない箇所
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 絞り込み
     constraint: 渡した条件を全て満たすスレッドだけを返す。取り込み待ちは状態によらず取り込むため、`awaiting` が真で `status` を渡さないときは `all` として扱う（単一ユースケース『送信の取り込み』）
   - item: 並び
     constraint: 最後の書き込みの日時の新しい順。同じ日時は ID の連番の大きい順
-  - item: 返す中身
-    constraint: キーだけを返し、書き込みの本文・状態の記録は返さない。本文は『スレッドを読む』で読む
+  - item: 返却する中身
+    constraint: キーだけを返し、書き込みの本文・状態の記録は返さない。本文は『スレッドの取得』で読む
   - item: 件数
     constraint: 制限なし（キーだけのため、ER 図の `threads.yaml` の規模 ~1000 件でも結果は小さい）
   - item: 同時の呼び出し

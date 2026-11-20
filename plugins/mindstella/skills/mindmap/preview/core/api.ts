@@ -1,4 +1,4 @@
-// サーバーの配信とのやり取り。記録の取得・レビュー中のコメントと書きかけ・まとめて送る・スレッド・書き換えの知らせの購読。
+// サーバーの配信とのやり取り。記録の取得・レビュー中のコメントと下書き・まとめて送る・スレッド・書き換えの知らせの購読。
 
 namespace MindmapPreview {
   /** 配信のパス（画面が開いた URL からの相対パス） */
@@ -23,7 +23,7 @@ namespace MindmapPreview {
     | { ok: true; data: MindmapData }
     | { ok: false; reason: "unreachable" | "invalid"; detail: string | null };
 
-  /** コメント・書きかけの API を呼んだ結果。届かなかったとき `status`・`detail` は null */
+  /** コメント・下書きの API を呼んだ結果。届かなかったとき `status`・`detail` は null */
   export type ApiResult<T> =
     | { ok: true; data: T | null }
     | {
@@ -80,7 +80,7 @@ namespace MindmapPreview {
     refs: string[];
   };
 
-  /** コメント・書きかけが持つ箇所（本文の行の範囲か、項目の値のキーと、選んだ文） */
+  /** コメント・下書きが持つ箇所（本文の行の範囲か、項目の値のキーと、選んだ文） */
   export type Location = {
     kind: "body" | "value";
     /** `body` のときの始めの行（1 始まり） */
@@ -93,7 +93,7 @@ namespace MindmapPreview {
     text: string;
   };
 
-  /** 『レビュー中のコメントの読み取り』の本文。`thread` を持つ書き込みはスレッドへの返信、持たないものは新しいスレッドの最初の書き込み */
+  /** 『レビュー中のコメントの読み取り』の本文。`thread` を持つ書き込みはスレッドへの返信、持たないものは新規スレッドの最初の書き込み */
   export type ReviewState = {
     items: {
       id: string;
@@ -204,7 +204,7 @@ namespace MindmapPreview {
     return callApi("PUT", API_PATHS.configDisplay, display, fetchFn);
   }
 
-  /** コメント・書きかけの API を 1 回呼ぶ。届かないときと、断られたときを分ける */
+  /** コメント・下書きの API を 1 回呼ぶ。届かないときと、断られたときを分ける */
   export async function callApi<T = unknown>(
     method: Method,
     path: string,
@@ -251,7 +251,7 @@ namespace MindmapPreview {
     };
   }
 
-  /** コメント・書きかけの API の 6 つの呼び出しを束ねて返す */
+  /** コメント・下書きの API の 6 つの呼び出しを束ねて返す */
   export function commentApi(fetchFn: FetchFn = window.fetch.bind(window)) {
     return {
       read: () => callApi<ReviewState>("GET", API_PATHS.comments, null, fetchFn),

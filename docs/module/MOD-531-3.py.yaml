@@ -83,7 +83,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`mcp_config` の形（`mcpServers` のオブジェクト）と予約の名前、`plugin_dirs` の各フォルダの `.claude-plugin/plugin.json` を確かめる'
+    summary: '`mcp_config` の形式（`mcpServers` のオブジェクト）と予約の名前、`plugin_dirs` の各フォルダの `.claude-plugin/plugin.json` を確かめる'
     args:
       - name: mcp_config
         type: dict | None
@@ -104,7 +104,7 @@ functions:
     unit_tests:
       - name: test_validate_options
         case: 正常
-        summary: 形が合えば LaunchOptions
+        summary: 構造が合えば LaunchOptions
         condition: '`{mcpServers: {aituber: {...}}}` と `plugin.json` を持つフォルダ'
         mock: なし
         expected: 同じ値の `LaunchOptions`
@@ -120,7 +120,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: IF-531-1 の「進め方の文書の確かめ方」の 3 段で確かめる
+    summary: IF-531-1 の「進め方の文書の確認方法」の 3 段階で確かめる
     args:
       - name: pi_port
         type: int
@@ -146,7 +146,7 @@ functions:
     unit_tests:
       - name: test_check_flow
         case: 正常
-        summary: 3 段とも通れば例外なし
+        summary: 3 段階とも通れば例外なし
         condition: '`scope.read` がフォルダに当たり、一覧に ID があり、文書が 200'
         mock: '`project_index` の関数'
         expected: 例外なし
@@ -163,8 +163,8 @@ functions:
     usecase: 外部のアプリから起動する
     scope: public
     summary: IF-531-1 の確かめる順で、記録を作るか開き、配信元の行と ID の一覧を揃える
-    description: '記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名）を渡して書く。記録があるフォルダは、開く前に『記録の形式の移行』の `migrator.migrate` を `workspace_lock`（`require=require_migratable`）の中で呼ぶ。移し替えたら、報告の `provisional`・`not_carried` を『前回参照した時点』の `save_migration_report` で状態のフォルダに残し、応答の `migration` にも入れ、同じ鍵の中で『変更の検知』の `rebase_snapshot` を呼び、前回の中身を作り直す（移し替えの書き換えを変更として記録しない）。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も消す。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）。配信元の行は、`GET /settings/sources` に行が無いときだけ追加し、行があれば追加の依頼を送らない。配信元の行を足した後に、配信元 `mindstella-agent-flows` の行が無ければ足す（`ensure_agent_flows_source`）。行があり、`workspace_folder` が今回のフォルダでないときは、そのフォルダに `.mindstella/config.yaml` があり、その `id` が同じ ID（記録が残っている）なら（記録が無いときにフォルダから振る `workspace_id_of` は使わない） `ApiError`（409、`stage: duplicate`、`detail` にそのフォルダ）、無ければ `project_index.patch_source` で `config`・`scope`（クローズ済みなら `outside_read: true` も）を今回のフォルダの値へ変更する。変更が `ProjectIndexError` のときは 502（`stage: source`）で、記録は削除しない（記録はこの依頼で作っていない）。記録の設定は書き換えない。移し替えの結果の `source_files` が 1 件以上で、配信元の行の追加・変更（`add_source`・`patch_source`）を送らなかったときは、`project_index.reload_sources` で全ての配信元を読み直させる（`ProjectIndexError` は 502、`stage: source`。記録は消さない）。そのために、配信元の行を揃える内部の処理は、結果に加えて行を送ったかを返す。移し替えを呼ぶ内部の処理は、応答の `migration`（手順が無ければ `null`）とは別に、移し替えの結果の `source_files` を返す'
-    side_effects: '`.mindstella/` と `README.md`・`launch.json`・`workspaces.yaml` を書き、project-index へ行を送る'
+    description: '記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名）を渡して書く。記録があるフォルダは、開く前に『記録の形式の移行』の `migrator.migrate` を `workspace_lock`（`require=require_migratable`）の中で呼ぶ。移し替えたら、報告の `provisional`・`not_carried` を『前回参照した時点』の `save_migration_report` で状態のフォルダに残し、応答の `migration` にも入れ、同じ鍵の中で『変更の検知』の `rebase_snapshot` を呼び、前回の中身を再作成する（移し替えの書き換えを変更として記録しない）。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も削除する。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを追加する）。配信元の行は、`GET /settings/sources` に行が無いときだけ追加し、行があれば追加の依頼を送信しない。配信元の行を追加した後に、配信元 `mindstella-agent-flows` の行が無ければ追加する（`ensure_agent_flows_source`）。行があり、`workspace_folder` が今回のフォルダでないときは、そのフォルダに `.mindstella/config.yaml` があり、その `id` が同じ ID（記録が残っている）なら（記録が無いときにフォルダから振る `workspace_id_of` は使わない） `ApiError`（409、`stage: duplicate`、`detail` にそのフォルダ）、無ければ `project_index.patch_source` で `config`・`scope`（クローズ済みなら `outside_read: true` も）を今回のフォルダの値へ変更する。変更が `ProjectIndexError` のときは 502（`stage: source`）で、記録は削除しない（記録はこの依頼で作っていない）。記録の設定は書き換えない。移し替えの結果の `source_files` が 1 件以上で、配信元の行の追加・変更（`add_source`・`patch_source`）を送信しなかったときは、`project_index.reload_sources` で全ての配信元を読み直させる（`ProjectIndexError` は 502、`stage: source`。記録は削除しない）。そのために、配信元の行を揃える内部の処理は、結果に加えて行を送信したかを返す。移し替えを呼ぶ内部の処理は、応答の `migration`（手順が無ければ `null`）とは別に、移し替えの結果の `source_files` を返す'
+    side_effects: '`.mindstella/` と `README.md`・`launch.json`・`workspaces.yaml` を書き、project-index へ行を送信する'
     args:
       - name: request
         type: dict
@@ -209,13 +209,13 @@ functions:
         expected: '`(200, {result: reopened})`、`patch_source` が `{outside_read: true}` で呼ばれ、`close_pending` が偽'
       - name: test_create_workspace_rollback
         case: 異常
-        summary: 配信元の登録に失敗したら作った記録を消す
+        summary: 配信元の登録に失敗したら作った記録を削除する
         condition: '`add_source` が `ProjectIndexError`'
         mock: 同上
         expected: '`ApiError`（502、`stage: source`）、`.mindstella/`・直下の `README.md`・`launch.json` が無く、`ids` に無い'
       - name: test_create_workspace_rollback_keeps_user_readme
         case: 異常
-        summary: 利用者の README は巻き戻しで消さない
+        summary: 利用者の README は巻き戻しで削除しない
         condition: 作成の前から直下に利用者の `README.md`、`add_source` が `ProjectIndexError`
         mock: '`project_index.add_source`'
         expected: '`README.md` が元の中身のまま'
@@ -227,8 +227,8 @@ functions:
         expected: '`ApiError`（403、`stage: folder`）、何も書かれていない'
       - name: test_create_workspace_migrated
         case: 正常
-        summary: 前の版の記録は移し替えて開き、報告を残す
-        condition: 版 v0.13.0 で `playbooks` を持つ記録のフォルダ
+        summary: 前のバージョンの記録は移し替えて開き、報告を残す
+        condition: バージョン v0.13.0 で `playbooks` を持つ記録のフォルダ
         mock: '`project_index.add_source`・`check_flow`・配信の URL'
         expected: '`(200, {result: opened, migration: {from_version: v0.13.0, ...}})`、`config.yaml` が `playbooks` を持たず、`load_migration_report` が報告を返し、`rebase_snapshot` が呼ばれる'
       - name: test_create_workspace_rollback_failed
@@ -239,17 +239,17 @@ functions:
         expected: '`ApiError`（502、`detail` に残ったパス）、`caplog` に `mindstella.workspace.rollback_failed`'
       - name: test_create_workspace_newer
         case: 異常
-        summary: 記録の版が新しければ 409
-        condition: プラグインより新しい版の記録のフォルダ
+        summary: 記録のバージョンが新しければ 409
+        condition: プラグインより新しいバージョンの記録のフォルダ
         mock: 同上
-        expected: '`ApiError`（409、`stage: version`）。記録が呼ぶ前と同じで配信元の行を足さない'
-        exception: 版が新しい
+        expected: '`ApiError`（409、`stage: version`）。記録が呼ぶ前と同じで配信元の行を追加しない'
+        exception: バージョンが新しい
       - name: test_create_workspace_migration_failed
         case: 異常
         summary: 移し替えが失敗したら 422
         condition: '`migrator.migrate` が `StepFailedError`'
         mock: 同上・`migrator.migrate`
-        expected: '`ApiError`（422、`stage: migration`）。配信元の行を足さない'
+        expected: '`ApiError`（422、`stage: migration`）。配信元の行を追加しない'
         exception: 移し替えが失敗
       - name: test_create_workspace_moved
         case: 正常
@@ -271,28 +271,28 @@ functions:
         expected: '`ApiError`（409、`stage: duplicate`、`detail` にもう一方のフォルダ）、`patch_source`・`add_source` が呼ばれない'
       - name: test_create_workspace_moved_patch_failed
         case: 異常
-        summary: 行の変更が失敗すれば 502 で記録は消さない
+        summary: 行の変更が失敗すれば 502 で記録は削除しない
         condition: test_create_workspace_moved と同じで、`patch_source` が `ProjectIndexError`
         mock: 同上
         expected: '`ApiError`（502、`stage: source`）、`.mindstella/` と `launch.json` が残る'
       - name: test_create_workspace_schema_reloaded
         case: 正常
-        summary: スキーマの複製を書き直し、行を送らないときは全ての配信元を読み直させる
-        condition: 今の版の記録・`launch.json`・`ids`・配信元の行があり、`.mindstella/schemas/docs.schema.json` を別の中身に書き換えたフォルダ
+        summary: スキーマの複製を書き直し、行を送信しないときは全ての配信元を読み直させる
+        condition: 今のバージョンの記録・`launch.json`・`ids`・配信元の行があり、`.mindstella/schemas/docs.schema.json` を別の中身に書き換えたフォルダ
         mock: '`project_index.get_settings`・`project_index.reload_sources`・配信の URL'
         expected: '`(200, {result: already_open, migration: null})`、`reload_sources` が 1 回呼ばれ、`add_source`・`patch_source` が呼ばれない'
       - name: test_create_workspace_schema_rewritten_row_added
         case: 正常
-        summary: 行を追加するときは読み直しを重ねて送らない
-        condition: 今の版の記録があり、配信元の行が無く、`.mindstella/schemas/docs.schema.json` を別の中身に書き換えたフォルダ
+        summary: 行を追加するときは再読み込みを重ねて送信しない
+        condition: 今のバージョンの記録があり、配信元の行が無く、`.mindstella/schemas/docs.schema.json` を別の中身に書き換えたフォルダ
         mock: '`project_index.add_source`・`project_index.reload_sources`・配信の URL'
         expected: '`(200, {result: opened})`、`add_source` が 1 回呼ばれ、`reload_sources` が呼ばれない'
       - name: test_create_workspace_schema_reload_failed
         case: 異常
-        summary: 読み直しに失敗したら 502
+        summary: 再読み込みに失敗したら 502
         condition: '`test_create_workspace_schema_reloaded` と同じフォルダで、`reload_sources` が `ProjectIndexError`'
         mock: 同上
-        expected: '`ApiError`（502、`stage: source`）。記録は消さない'
+        expected: '`ApiError`（502、`stage: source`）。記録は削除しない'
       - name: test_create_workspace_root_folder_exists
         case: 異常
         summary: 記録が無く直下に docs/ か files/ があれば 409
@@ -402,8 +402,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: project-index に配信元 `mindstella-agent-flows` の行が無ければ足す（インターフェース定義『エージェントフローの参照』の制約「配信元の登録」）
-    side_effects: project-index へ行を送る
+    summary: project-index に配信元 `mindstella-agent-flows` の行が無ければ追加する（インターフェース定義『エージェントフローの参照』の制約「配信元の登録」）
+    side_effects: project-index へ行を送信する
     args:
       - name: ctx
         type: ServerContext
@@ -420,19 +420,19 @@ functions:
       description: なし
     process: |-
       1. `GET /settings/sources` に `AGENT_FLOWS_SOURCE` の行があれば何もしない
-      2. 無ければ `POST /settings/sources` で足す（`config` は `PLUGIN_DIR / "agent-flows" / "dev-docs.yaml"`、`scope.read` は `allowed_dirs` の各フォルダと `{フォルダ}/**`、`outside_read` は真、`scope.write` は持たない）
-         - 409（同じ `id` の行がある）の場合、足さずに終わる
+      2. 無ければ `POST /settings/sources` で追加する（`config` は `PLUGIN_DIR / "agent-flows" / "dev-docs.yaml"`、`scope.read` は `allowed_dirs` の各フォルダと `{フォルダ}/**`、`outside_read` は真、`scope.write` は持たない）
+         - 409（同じ `id` の行がある）の場合、追加せずに終わる
          - `ProjectIndexError` の場合、`logger.warning` で `mindstella.agent_flows.register_failed` を書いて終わる（ワークスペースの作成は止めない）
     unit_tests:
       - name: test_ensure_agent_flows_source
         case: 正常
-        summary: 行が無ければ足す
+        summary: 行が無ければ追加する
         condition: '`GET /settings/sources` に `mindstella-agent-flows` が無い。`allowed_dirs` が `[/w]`'
         mock: '`project_index.get_settings`・`project_index.add_source`'
         expected: '`add_source` が `id: mindstella-agent-flows`・プラグインの `agent-flows/dev-docs.yaml`・`scope.read: [/w, /w/**]`・`scope.write` なしで 1 回呼ばれる'
       - name: test_ensure_agent_flows_source_when_exists
         case: 正常
-        summary: 行があれば何も送らない
+        summary: 行があれば何も送信しない
         condition: '`GET /settings/sources` に `mindstella-agent-flows` がある'
         mock: 同上
         expected: '`add_source` が呼ばれない'
@@ -455,7 +455,7 @@ functions:
       3. 行があれば、`workspace_folder` でフォルダを、`FILE_OUTSIDE_READ_KEY` が偽かで `closed` を引く。`.mindstella/config.yaml` が無ければ `records` の警告（`detail` にフォルダのパス）を付け、`title`・未読の数・`updated` を `None` にする
       4. 記録があれば、設定の `title`（設定を YAML として読めなければ `records` の警告（`detail` に理由）を付けて `None`）、`threads.status_counts` の 2 つの数、`history.last_updated` と最後の書き込みの日時のうち新しい方を `updated` にする。`threads.status_counts`・`history.last_updated` が `SchemaMismatchError` を送出したときは、`records` の警告（`detail` に理由）を付け、未読の数・`updated` を `None` にして続ける
       5. `url` は `ctx.previews.url_of(フォルダ)`（配信を立てない。フォルダが分からなければ `None`）
-      6. `sessions.list_sessions` の `sessions`・`close_pending` と、`state.read_launch` が `None` でないか（`launch_options_recorded`）を足す
+      6. `sessions.list_sessions` の `sessions`・`close_pending` と、`state.read_launch` が `None` でないか（`launch_options_recorded`）を追加する
       7. `status` は `closed` が真なら `closed`、偽で `close_pending` が真なら `stopped`、偽なら `active`、`closed` が `None` なら `None`
     args:
       - name: workspace_id
@@ -540,10 +540,10 @@ functions:
         mock: なし
         expected: '`{workspaces: [], warnings: [{stage: settings, ...}]}`'
   - name: reopen_workspace
-    title: ワークスペースを開き直す
+    title: ワークスペースを再度開く
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
-    usecase: ワークスペースを開き直して削除する
+    usecase: ワークスペースを再度開いて削除する
     scope: public
     summary: 'クローズ済みなら配信元の行を `outside_read: true` に戻し、どちらも `close_pending` を偽にする。MindStella のセッションは起動しない'
     side_effects: project-index の行を変え、`session.json` の `close_pending` を書く
@@ -606,7 +606,7 @@ functions:
     title: ワークスペースを削除する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
-    usecase: ワークスペースを開き直して削除する
+    usecase: ワークスペースを再度開いて削除する
     scope: public
     summary: クローズしたワークスペースの配信元の行・配信と変更の検知・状態のフォルダの `workspaces/{ID}/`・ID の一覧の行をこの順に削除する。記録のフォルダは変えない
     side_effects: project-index の行を削除し、配信と変更の検知を止め、状態のフォルダを削除する
@@ -685,7 +685,7 @@ functions:
     title: ワークスペースの設定を書き換える
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
-    usecase: ワークスペースの設定を書き換えて起動し直す
+    usecase: ワークスペースの設定を書き換えて再起動する
     scope: public
     summary: 指定した設定のキー・進め方の文書を `config.yaml` に、追加の MCP・プラグインを `launch.json` に書き換える。全ての指定を確かめてから書き、起動中の MindStella のセッションには何もしない
     side_effects: '`.mindstella/config.yaml` と状態のフォルダの `workspaces/{id}/launch.json` を書く'
@@ -808,9 +808,9 @@ functions:
         mock: '`project_index.get_settings`・`state.write_launch`・`settings_update.save_settings`・`caplog`'
         expected: '`ApiError`（500・`stage: write`）、`caplog` の `mindstella.workspace.update_failed` の戻したかが偽'
 notes:
-  ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`
+  ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『エントリーポイント』の `ServerContext`
   ログ: |
-    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に書き足す）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
+    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に追記する）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
 
     | イベント名 | 水準 | いつ | 属性 |
     | --- | --- | --- | --- |

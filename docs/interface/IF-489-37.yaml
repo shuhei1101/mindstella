@@ -84,7 +84,7 @@ exceptions:
     condition: 状態を返した
     notes: 結果を返す
 constraints:
-  - item: HTTP の入口
+  - item: HTTP のエンドポイント
     constraint: '`GET /_admin/status` は `/mcp` と同じポートで待ち受け、`application/json` で同じ JSON を返す。MCP のクライアントを持たない『常駐サーバーの起動の確認』と起動スクリプトが読む'
   - item: 並び
     constraint: '`previews` はワークスペースの絶対パスの昇順'

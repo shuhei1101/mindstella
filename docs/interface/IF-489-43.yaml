@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` した後、D-1 の `answer` を直し、タスク T-1 を足して、変更の検知が `pending` に記録したワークスペース（保持する回数は既定の 5）
+        description: 検討事項 D-1 を追加して `commit` した後、D-1 の `answer` を修正し、タスク T-1 を追加して、変更の検知が `pending` に記録したワークスペース（保持する回数は既定の 5）
       - name: MindStella のセッション
         description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
     flow: |-
@@ -34,12 +34,12 @@ flows:
       - '`decisions.yaml`・`tasks.yaml` の中身が呼ぶ前と同じ'
     test: test_normal
   - name: 正常系（まとめる書き換えが無い）
-    summary: まだまとめていない書き換えが無ければ、まとまりを足さない
+    summary: まだまとめていない書き換えが無ければ、まとまりを追加しない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` したワークスペース
+        description: 検討事項 D-1 を追加して `commit` したワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -62,7 +62,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足し、まだ `commit` していないワークスペース
+        description: 検討事項 D-1 を追加し、まだ `commit` していないワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -99,13 +99,13 @@ flows:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
     test: test_error_when_workspace_not_found
-  - name: 異常系（記録の形が崩れている・SchemaMismatchError）
+  - name: 異常系（記録の構造が崩れている・SchemaMismatchError）
     summary: 手で崩した changes.yaml ではまとめず、合わない箇所を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '`changes.yaml` の `pending` から `added` を消したワークスペース'
+        description: '`changes.yaml` の `pending` から `added` を削除したワークスペース'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -129,7 +129,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足し、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        description: 検討事項 D-1 を追加し、ワークスペースのフォルダの書き込みの権限を外したワークスペース
         notes: root で動かすときは skip する
     flow: |-
       ```mermaid
@@ -148,14 +148,14 @@ flows:
       - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
       - '`changes.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_write_fails
-  - name: 正常系（消した項目をまとめる）
-    summary: 消した項目だけがあるときも、まとまりを 1 つ足す
+  - name: 正常系（削除した項目をまとめる）
+    summary: 削除した項目だけがあるときも、まとまりを 1 つ追加する
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
         notes: '-'
       - name: make_workspace
-        description: メモ N-1・N-2 を足して `commit` し、N-2 を消して、変更の検知が `pending.removed` に記録したワークスペース
+        description: メモ N-1・N-2 を追加して `commit` し、N-2 を削除して、変更の検知が `pending.removed` に記録したワークスペース
         notes: '-'
       - name: MindStella のセッション
         description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
@@ -171,7 +171,7 @@ flows:
 
         クライアント->>IF: commit workspace summary
         IF-->>WS: changes.yaml を読む
-        IF->>WS: sets の先頭に removed を持つまとまりを足し、pending を空にする
+        IF->>WS: sets の先頭に removed を持つまとまりを追加し、pending を空にする
         IF-->>クライアント: JSON（id・at・summary・added・changed・removed）
       ```
     expected:
@@ -210,7 +210,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足し、まだ `commit` していないワークスペース
+        description: 検討事項 D-1 を追加し、まだ `commit` していないワークスペース
       - name: MindStella のセッション
         description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
       - name: 呼ぶ値
@@ -230,7 +230,7 @@ flows:
     test: test_error_when_not_mindstella_session
 lead: まだまとめていない書き換え（最後のまとまりより後に `pending` に入った書き換え）を、日時と一言の説明を付けた 1 つのまとまりにする。プレビューの変更履歴は、このまとまりを並べる。
 idempotent: false
-side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ足し、`pending` を空にする。項目の YAML と本文は書き換えない'
+side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ追加し、`pending` を空にする。項目の YAML と本文は書き換えない'
 callers:
   - IF-565-1#
 request:
@@ -256,26 +256,26 @@ request:
 response:
   - name: id
     type: str | None
-    description: 足したまとまりの ID。まだまとめていない書き換えが無く、まとまりを足さなかったときは `null`
+    description: 追加したまとまりの ID。まだまとめていない書き換えが無く、まとまりを追加しなかったときは `null`
     example: V-3
   - name: at
     type: str | None
-    description: まとめた日時（UTC のタイムゾーン付き ISO 8601、秒まで）。足さなかったときは `null`
+    description: まとめた日時（UTC のタイムゾーン付き ISO 8601、秒まで）。追加しなかったときは `null`
   - name: summary
     type: str | None
-    description: 前後の空白を除いた説明。足さなかったときは `null`
+    description: 前後の空白を除いた説明。追加しなかったときは `null`
   - name: added
     type: list[str]
-    description: このまとまりで足した項目の ID
+    description: このまとまりで追加した項目の ID
   - name: changed
     type: list[str]
-    description: このまとまりで変えた項目の ID（足した項目は含めない）
+    description: このまとまりで変えた項目の ID（追加した項目は含めない）
   - name: removed
     type: list[{id, kind, title}]
-    description: このまとまりで消した項目（ID・種類・消したときのタイトル）
+    description: このまとまりで削除した項目（ID・種類・削除したときのタイトル）
 exceptions:
   - name: なし（正常終了）
-    condition: まとめた（まだまとめていない書き換えが無く、何も足さなかったときも含む）
+    condition: まとめた（まだまとめていない書き換えが無く、何も追加しなかったときも含む）
     notes: 結果を返す
   - name: 引数の誤り
     condition: '`summary` が空白だけか、200 文字を超える'
@@ -296,26 +296,26 @@ error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を
 constraints:
   - item: 呼べるセッション
     constraint: そのワークスペースの MindStella のセッションだけ（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）。正常系のフローは、状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: まとまりの ID
     constraint: '`V-` + 連番。連番はまとまりの最大 + 1（まとまりが無ければ 1）で、番号を使い回さない'
   - item: まとまりの中身
-    constraint: '`changes.yaml` の `pending` の `added`・`changed`・`removed` をそのまま写し、`until_seq` に `last_seq` を書く。`removed` が空のときはまとまりに `removed` のキーを置かない。まとまりに入る変更履歴は、1 つ前のまとまりの `until_seq` より大きく、このまとまりの `until_seq` 以下の `seq` を持つもの（ER 図『ワークスペース』の `changes.yaml`）'
-  - item: まとまりの書いた元
-    constraint: '足したまとまりに `by: ai` を書く'
+    constraint: '`changes.yaml` の `pending` の `added`・`changed`・`removed` をそのままコピーし、`until_seq` に `last_seq` を書く。`removed` が空のときはまとまりに `removed` のキーを置かない。まとまりに入る変更履歴は、1 つ前のまとまりの `until_seq` より大きく、このまとまりの `until_seq` 以下の `seq` を持つもの（ER 図『ワークスペース』の `changes.yaml`）'
+  - item: まとまりの書き込み元
+    constraint: '追加したまとまりに `by: ai` を書く'
   - item: 外部の変更が残っているとき
-    constraint: '`pending.by` が `external` なら、それを先に説明「ほかのセッションの書き込み」・`by: external` のまとまりにしてから、このまとまりを足す。外部の変更だけが残っていたときは、外部の変更のまとまりだけを足し、結果はまとまりを足さなかったときと同じにする'
+    constraint: '`pending.by` が `external` なら、それを先に説明「ほかのセッションの書き込み」・`by: external` のまとまりにしてから、このまとまりを追加する。外部の変更だけが残っていたときは、外部の変更のまとまりだけを追加し、結果はまとまりを追加しなかったときと同じにする'
     notes: 外部の変更は MindStella のセッションの応答の途中でない間にだけ記録されるため、`commit` を呼んだ応答の変更と混ざらない（『変更の検知』）
   - item: まだまとめていない書き換えが無いとき
-    constraint: '`pending` の `added`・`changed`・`removed` が全て空なら、まとまりを足さず、`changes.yaml` も書かない'
+    constraint: '`pending` の `added`・`changed`・`removed` が全て空なら、まとまりを追加せず、`changes.yaml` も書かない'
   - item: まとまりの保持
-    constraint: 消さない（保持する回数は項目の変更履歴だけにかかる）
+    constraint: 削除しない（保持する回数は項目の変更履歴だけにかかる）
   - item: 巻き戻し
     constraint: 持たない。まとめた後も書き換えはワークスペースに残る
-  - item: YAML の書き方
+  - item: YAML の記載方法
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。一時ファイルに書いてから `os.replace` で置き換える'
   - item: 作業の完了の通知
     constraint: まとまりを作ったときに、呼んだ MindStella のセッションに『作業の完了の通知』の書き込みのマーカーを付ける。まとめる変更が無くてまとまりを作らなかったときと、失敗したときは付けない

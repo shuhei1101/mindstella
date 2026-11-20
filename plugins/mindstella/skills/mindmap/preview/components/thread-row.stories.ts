@@ -53,7 +53,7 @@ const REPLIED = thread("TH-1", {
 /** オープンで AI が返信した。1 行目に状態の札「オープン」と要約（2 行まで）、2 行目に向けた項目の ID・最後の書き手「AI」・最後の書き込みの日時、行の下にタグ */
 export const Replied: Story = { args: { thread: REPLIED } };
 
-/** レビュー中の返信を持つ。2 行目の末尾に破線の枠・鉛筆の印・「レビュー中」の印 */
+/** レビュー中の返信を持つ。2 行目の末尾に破線の枠・鉛筆のアイコン・「レビュー中」の印 */
 export const PendingReply: Story = { args: { thread: REPLIED, hasPendingReply: true } };
 
 /** AI が立てたスレッド（利用者の返事待ち）。最後の書き手は「AI」 */
@@ -79,7 +79,7 @@ export const NoSummary: Story = {
   },
 };
 
-/** まだ送っていない、項目へ向けた新しいスレッド。状態の札の代わりに鉛筆の印と「レビュー中」の札、行の枠を破線にする。タグは出さない */
+/** まだ送っていない、項目へ向けた新規スレッド。状態の札の代わりに鉛筆のアイコンと「レビュー中」の札、行の枠を破線にする。タグは出さない */
 export const PendingNewToItem: Story = {
   args: {
     pending: {
@@ -94,7 +94,7 @@ export const PendingNewToItem: Story = {
   },
 };
 
-/** まだ送っていない、項目を指さない新しいスレッド。2 行目に ID を出さない */
+/** まだ送っていない、項目を指さない新規スレッド。2 行目に ID を出さない */
 export const PendingNewFree: Story = {
   args: {
     pending: {

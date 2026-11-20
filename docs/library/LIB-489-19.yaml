@@ -6,7 +6,7 @@ version:
   latest: 0.17.1
   checked_on: '2026-10-16'
   source: requirements-dev.txt
-  pinning: '`requirements-dev.txt` に `ruff==0.17.1` と版を固定する。0 系は版が上がると規則の既定や検査が変わるため、上げるときは違反の出方を確かめてから上げる'
+  pinning: '`requirements-dev.txt` に `ruff==0.17.1` とバージョンを固定する。0 系はバージョンが上がると規則の既定や検査が変わるため、上げるときは違反の出方を確かめてから上げる'
 catalogs:
   - name: コマンド
     version: 0.17.1

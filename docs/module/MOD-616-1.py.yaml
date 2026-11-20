@@ -5,14 +5,14 @@ constants:
   - name: DEFAULT_BALANCER_URL
     title: claude-balancer の常駐の既定の待ち受け先
     container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: '`claude_balancer.url` が無いときに『利用枠の見回り』がつなぐ先（設定『サーバー』の既定値）'
     value: '"http://127.0.0.1:8770"'
 data_models:
   - name: HomeSettings
     title: ホームの設定
     container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: 読んだホームの設定（`frozen` の dataclass）
     properties:
       - name: balancer_url
@@ -37,7 +37,7 @@ functions:
     title: ホームの設定のファイルの場所
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: '`XDG_CONFIG_HOME` があれば `{XDG_CONFIG_HOME}/mindstella/settings.yaml`、無ければ `~/.config/mindstella/settings.yaml` を返す'
     args:
@@ -60,7 +60,7 @@ functions:
     title: ホームの設定を読む
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: 設定『サーバー』のファイル一覧の扱いで読む。キーは入れ子のマッピングとして読み（`claude_balancer:` の下の `url:`、`account:` の下の `release_on_limit:`）、ドットを含む 1 つのキーは知らないキーとして扱う。ファイルが無ければ既定値の `HomeSettings` を返し、知らないキーは標準エラーへ 1 行ずつ記録して読み飛ばす
     args:
@@ -98,7 +98,7 @@ classes:
   - name: InvalidSettingsError
     title: ホームの設定が読めない
     container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: ホームの設定が読めないか値が誤っている例外。常駐サーバーが起動時に受けて終わる。メッセージにファイルのパスとキーを含める
     kind: クラス
     inherits: ValueError

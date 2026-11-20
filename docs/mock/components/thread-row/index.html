@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <!-- トークン・今のプレビューのスタイル・この PR で追加するスタイル・カタログの見た目 -->
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
   <link rel="stylesheet" href="../../refs/235/assets/style.css">
@@ -35,14 +35,14 @@
     <!-- レビュー中の返信を持つスレッド -->
     <section class="cat-sec">
       <h2>レビュー中の返信を持つスレッド</h2>
-      <p>2 行目の末尾に「レビュー中」の印を出す（破線の枠・鉛筆の印・文字）。</p>
+      <p>2 行目の末尾に「レビュー中」の記号を出す（破線の枠・鉛筆のアイコン・文字）。</p>
       <div class="stage" id="s-pending-reply"></div>
     </section>
 
     <!-- AI が立てたスレッド（利用者の返事待ち） -->
     <section class="cat-sec">
       <h2>AI が立てたスレッド（利用者の返事待ち）</h2>
-      <p>最初の書き込みが AI の問い。最後の書き手は AI。</p>
+      <p>最初の書き込みが AI の質問。最後の書き手は AI。</p>
       <div class="stage" id="s-asking"></div>
     </section>
 
@@ -53,9 +53,9 @@
       <div class="stage" id="s-no-summary"></div>
     </section>
 
-    <!-- まだ送っていない新しいスレッド -->
+    <!-- まだ送信していない新規スレッド -->
     <section class="cat-sec">
-      <h2>まだ送っていない新しいスレッド</h2>
+      <h2>まだ送信していない新規スレッド</h2>
       <p>状態の札の代わりに「レビュー中」の札を出し、行の枠を破線にする。上が項目へ向けたもの、下が項目を指さないもの。</p>
       <div class="stage" id="s-pending-new"></div>
     </section>
@@ -63,7 +63,7 @@
     <!-- クローズ -->
     <section class="cat-sec">
       <h2>クローズ</h2>
-      <p>状態の札を「クローズ」にし、色は薄い文字にする（印と文字でも分ける）。上が利用者がクローズにしたもの、下が AI がクローズにしたもの（行の見た目は同じ）。</p>
+      <p>状態の札を「クローズ」にし、色は薄い文字にする（マーカーと文字でも分ける）。上が利用者がクローズにしたもの、下が AI がクローズにしたもの（行の見た目は同じ）。</p>
       <div class="stage" id="s-closed"></div>
     </section>
 
@@ -77,7 +77,7 @@
     <!-- タグで絞っている行 -->
     <section class="cat-sec">
       <h2>タグで絞っている行</h2>
-      <p>絞っているタグは枠の全体と面で示す（押し直すと外れる）。</p>
+      <p>絞っているタグは枠の全体と面で示す（再度押すと外れる）。</p>
       <div class="stage" id="s-tagged"></div>
     </section>
 
@@ -88,17 +88,17 @@
       <div class="stage" id="s-hover"></div>
     </section>
 
-    <!-- 一覧の全体（絞り込みの帯・行・新しいスレッドの入口） -->
+    <!-- 一覧の全体（絞り込みの帯・行・新規スレッドの入口） -->
     <section class="cat-sec">
-      <h2>一覧の全体（絞り込みの帯・行・新しいスレッドの入口）</h2>
-      <p>左がタグで絞っていないとき、右がタグ「画面」で絞ったとき（解除のチップと「残った件数 / 全体の件数」。タグで絞っている間は、まだ送っていない新しいスレッドを出さない）。</p>
+      <h2>一覧の全体（絞り込みの帯・行・新規スレッドの入口）</h2>
+      <p>左がタグで絞っていないとき、右がタグ「画面」で絞ったとき（解除のチップと「残った件数 / 全体の件数」。タグで絞っている間は、まだ送信していない新規スレッドを出さない）。</p>
       <div class="stage" id="s-band"></div>
     </section>
 
-    <!-- 新しいスレッドを書く -->
+    <!-- 新規スレッドを書く -->
     <section class="cat-sec">
-      <h2>新しいスレッドを書く</h2>
-      <p>「新しいスレッド」を押すと、同じ場所に見出し・入力欄・「レビューに追加」を出す。× で畳む。</p>
+      <h2>新規スレッドを書く</h2>
+      <p>「新規スレッド」を押すと、同じ場所に見出し・入力欄・「レビューに追加」を出す。× で畳む。</p>
       <div class="stage" id="s-compose"></div>
     </section>
 

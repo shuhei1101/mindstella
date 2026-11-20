@@ -5,10 +5,10 @@ entry:
   value: POST /api/config/reload
 flows:
   - name: 正常系
-    summary: 手で直した `config.yaml` が検査に通れば、新しい設定を使い知らせる
+    summary: 手で修正した `config.yaml` が検査に通れば、新しい設定を使い知らせる
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 作成を済ませたワークスペース。`preview_url` を呼んだ後に `config.yaml` の `display.visible_kinds` を `[decisions, tasks]` に直接書き換える
     flow: |-
@@ -26,13 +26,13 @@ flows:
     expected:
       - ステータスが 200 で、`settings.display.visible_kinds` が `[decisions, tasks]`
       - '`GET /api/records` の `settings.display.visible_kinds` が `[decisions, tasks]`'
-      - '`GET /api/events` に書き換えの知らせが届く'
+      - '`GET /api/events` に書き換えの通知が届く'
     test: test_normal
   - name: 異常系（検査に通らない・422）
     summary: 崩れた `config.yaml` では、最後に通った設定のまま違う箇所を返す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: '`config.yaml` の `display.visible_kinds` を `[decisions]` にしたワークスペース。`preview_url` を呼んだ後に `display.visible_kinds` を `[rainbow]` に直接書き換える'
     flow: |-
@@ -53,9 +53,9 @@ flows:
       - '`GET /api/records` の `settings.display.visible_kinds` が `[decisions]` のまま'
       - '`config.yaml` の中身が、手で崩したまま（サーバーが書き換えていない）'
     test: test_error_when_check_fails
-lead: 利用者が `config.yaml` を手で直した後に呼び、`config.yaml` をスキーマと突き合わせた結果を返す。通れば配信の「最後に検査に通った設定」を差し替えて開いている画面へ知らせ、通らなければ前の設定のまま違う箇所を返す。
+lead: 利用者が `config.yaml` を手で修正した後に呼び、`config.yaml` をスキーマと突き合わせた結果を返す。通れば配信の「最後に検査に通った設定」を差し替えて開いている画面へ知らせ、通らなければ前の設定のまま違う箇所を返す。
 idempotent: true
-side_effects: ワークスペースには書かない。検査に通れば、配信が持つ最後に検査に通った設定を差し替え、書き換えの知らせを送る
+side_effects: ワークスペースには書かない。検査に通れば、配信が持つ最後に検査に通った設定を差し替え、書き換えの通知を送信する
 permissions: '`Host` と `Origin` を確かめる（`Origin` が無い HTTP のクライアントからの要求は通す）'
 callers:
   - SC-489-35#
@@ -65,13 +65,13 @@ request:
     required: true
     location: header
     description: 接続先
-    constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
+    constraints: '『プレビューの配信』の制約「接続先の確認」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
   - name: Origin
     type: str
     required: false
     location: header
-    description: 送り元
-    constraints: 無いか、『プレビューの配信』の制約「送り元の確かめ」に合うもの
+    description: 送信元
+    constraints: 無いか、『プレビューの配信』の制約「送信元の確認」に合うもの
 request_example: |-
   ```bash
   curl -X POST http://127.0.0.1:43817/api/config/reload
@@ -90,10 +90,10 @@ status_codes:
     notes: '`detail` に合わない箇所ごとの `config.yaml: {キーのパス}: {理由}`。配信は最後に検査に通った設定のまま'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
-  - item: 読み方
+  - item: 読み込み方法
     constraint: '`config.yaml` だけを読んでスキーマと突き合わせる。種類ごとの YAML は読まない'
-  - item: 書き換えの知らせ
-    constraint: 検査に通ったときだけ、開いている画面へ『書き換えの知らせ』を送る
+  - item: 書き換えの通知
+    constraint: 検査に通ったときだけ、開いている画面へ『書き換えの通知』を送信する
   - item: 本文
     constraint: 要求の本文は読まない（空でよい）
 refs:

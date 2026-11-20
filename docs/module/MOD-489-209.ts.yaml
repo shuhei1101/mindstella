@@ -279,7 +279,7 @@ components:
     usecase: 項目を表で絞り込む
     kind: コンポーネント
     summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・列の表示・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`。タグの列は値を `tagNames` の名前にし（絞り込み・並べ替えは名前で、主題かどうかによらない）、セルは `tagNames` の名前を `tagList` に渡す（主題のマーカーを出さない）
-    description: 描き直す前に表の入れ物の `scrollLeft`・`scrollTop` を控え、描いた後に戻す。
+    description: 再描画する前に表の入れ物の `scrollLeft`・`scrollTop` を控え、描いた後に戻す。
     props:
       - name: kind
         type: string
@@ -320,7 +320,7 @@ components:
         type: Record<string, 'new' | 'changed'>
         required: false
         default: '{}'
-        description: 項目の ID → 差分の印。当たる行のタイトルの右に `diffMark` を置く（部品設計『表』の `marks`）
+        description: 項目の ID → 差分のマーカー。当たる行のタイトルの右に `diffMark` を置く（部品設計『表』の `marks`）
       - name: comments
         type: Record<string, number>
         required: false
@@ -329,10 +329,10 @@ components:
     unit_tests:
       - name: test_table_when_withdrawn
         case: 正常
-        summary: 取り下げた行だけに札を差分の印より前に置き、文字を薄くする
+        summary: 取り下げた行だけに札を差分のマーカーより前に置き、文字を薄くする
         condition: '`withdrawn: true` の R-1 と、`withdrawn` を持たない R-2 の行。`marks` が `{"R-1": "changed"}`'
         mock: なし（DOM を作って見る）
-        expected: R-1 の行のタイトルの右に取り下げの札、その後ろに変更の印が並び、行が薄い文字の class を持つ。R-2 の行は札も薄い文字の class も持たない
+        expected: R-1 の行のタイトルの右に取り下げの札、その後ろに変更のマーカーが並び、行が薄い文字の class を持つ。R-2 の行は札も薄い文字の class も持たない
       - name: test_table_when_main_tag
         case: 正常
         summary: タグの列は主題の有無によらず名前で出す
@@ -357,4 +357,4 @@ components:
       - name: onFilter
         type: '(filters: Record<string, string[]>) => void'
         required: true
-        description: 解除した後の新しい条件を知らせる（部品設計『表』の `絞り込み` のイベント）。× は押した値を外し、値が残らない条件は `key` ごと消す。「すべて解除」は `{}`。組み立ては `filterChips` が持ち、`table` も同じものを使う
+        description: 解除した後の新しい条件を知らせる（部品設計『表』の `絞り込み` のイベント）。× は押した値を外し、値が残らない条件は `key` ごと削除する。「すべて解除」は `{}`。組み立ては `filterChips` が持ち、`table` も同じものを使う

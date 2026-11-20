@@ -85,7 +85,7 @@ flows:
         description: 作成を済ませたワークスペース
       - name: フォルダの外を指すパス
         description: '`files/outside` をワークスペースの外のファイルへのシンボリックリンクにする'
-        notes: '`/files/missing.mp4`・`/files/../.mindstella/decisions.yaml`（`..` を正規化せずに送る）・`/files/%2e%2e/.mindstella/decisions.yaml`・`/files/outside`・`/files/`（フォルダそのもの）を GET する'
+        notes: '`/files/missing.mp4`・`/files/../.mindstella/decisions.yaml`（`..` を正規化せずに送信する）・`/files/%2e%2e/.mindstella/decisions.yaml`・`/files/outside`・`/files/`（フォルダそのもの）を GET する'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -145,7 +145,7 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: 『プレビューの配信』の制約「接続先の確かめ」と同じ
+    constraints: 『プレビューの配信』の制約「接続先の確認」と同じ
 response:
   - name: 本文
     type: bytes
@@ -174,7 +174,7 @@ status_codes:
   - code: '206'
     condition: '`Range` の範囲を返せた'
   - code: '403'
-    condition: '`Host` が『プレビューの配信』の制約「接続先の確かめ」に合わない'
+    condition: '`Host` が『プレビューの配信』の制約「接続先の確認」に合わない'
     notes: 本文は返さない
   - code: '404'
     condition: ファイルが無い、フォルダを指す、ファイルのフォルダの外を指す
@@ -185,12 +185,12 @@ constraints:
   - item: 待ち受け
     constraint: 『プレビューのURL』が立てた配信と同じ待ち受けで、新しいポートを開かない
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
-  - item: 接続先の確かめ
-    constraint: 『プレビューの配信』の制約「接続先の確かめ」と同じ確かめを、`/files/` の下の全てのパスに当てる
-  - item: フォルダの外のファイル
+  - item: 接続先の確認
+    constraint: 『プレビューの配信』の制約「接続先の確認」と同じ確かめを、`/files/` の下の全てのパスに当てる
+  - item: フォルダの外部にあるファイル
     constraint: シンボリックリンクをたどって解決した後に、ファイルのフォルダの配下にあることを確かめる。フォルダの中の一覧は返さない
   - item: 大きなファイル
-    constraint: ファイルを丸ごとメモリへ読まず、一定の大きさずつ読んで送る。大きさの値はモジュール構成で導く。送る途中でブラウザが接続を切っても、ほかの要求の応答を止めない
+    constraint: ファイルを丸ごとメモリへ読まず、一定の大きさずつ読んで送信する。大きさの値はモジュール構成で導く。送信する途中でブラウザが接続を切っても、ほかの要求の応答を止めない
   - item: Git 管理外のワークスペース
     constraint: ワークスペースが Git のリポジトリかどうかによらず同じに返す
   - item: 通信

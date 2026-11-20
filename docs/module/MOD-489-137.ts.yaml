@@ -49,7 +49,7 @@ functions:
       - name: display
         type: SettingsDisplay
         required: true
-        description: 送る値
+        description: 送信する値
     returns: &id001
       type: void
       description: '-'
@@ -78,12 +78,12 @@ functions:
     title: 既定が変わった知らせ
     kind: 関数
     usecase: ワークスペースの既定を変える
-    summary: 読み直した記録の既定が前と違うときに外枠が呼ぶ。控えた値と同じなら控えを外すだけにし、違えば画面の下の知らせと、パネルの `message`「ワークスペースの既定が変わりました（{日時}）。」を出す
+    summary: 再読み込みした記録の既定が前と違うときに外枠が呼ぶ。控えた値と同じなら控えを外すだけにし、違えば画面の下の知らせと、パネルの `message`「ワークスペースの既定が変わりました（{日時}）。」を出す
     args:
       - name: next
         type: SettingsDisplay | undefined
         required: true
-        description: 読み直した記録の `settings.display`
+        description: 再読み込みした記録の `settings.display`
       - name: at
         type: string
         required: true
@@ -104,10 +104,10 @@ functions:
         expected: 知らせを出さず、`message` は「ワークスペースの既定にしました（…）。」のまま
     container: frontend/src/shared/stores/display-notice-store.ts
   - name: clearDisplayNotice
-    title: 知らせを消す
+    title: 知らせを削除する
     kind: 関数
     usecase: ワークスペースの既定を変える
-    summary: 画面の下の知らせを消す（外枠が 6 秒後に呼ぶ）
+    summary: 画面の下の知らせを削除する（外枠が 6 秒後に呼ぶ）
     args: []
     returns: *id001
     container: frontend/src/shared/stores/display-notice-store.ts

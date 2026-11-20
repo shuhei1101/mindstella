@@ -4,14 +4,14 @@ namespace MindmapPreview {
   /** 書き手の呼び名 */
   export const AUTHOR_LABELS = { user: "あなた", ai: "AI" } as const;
 
-  /** 状態の札の種類（レビュー中は、まだ送っていない新しいスレッド） */
+  /** 状態の札の種類（レビュー中は、まだ送っていない新規スレッド） */
   export type ThreadStateKind = Thread["status"] | "pending";
 
   /** スレッドの行の引数 */
   export type ThreadRowProps = {
     /** 送ったスレッド。`pending` とどちらか片方 */
     thread?: Thread | null;
-    /** まだ送っていない新しいスレッドの最初の書き込み（状態の札を「レビュー中」にし、タグを出さない） */
+    /** まだ送っていない新規スレッドの最初の書き込み（状態の札を「レビュー中」にし、タグを出さない） */
     pending?: ReviewState["items"][number] | null;
     /** レビュー中の返信を持つか（2 行目の末尾にレビュー中の印を出す） */
     hasPendingReply?: boolean;
@@ -95,7 +95,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** スレッドの行（`li`）を返す。送ったスレッドと、まだ送っていない新しいスレッドのどちらも同じ形で描く */
+  /** スレッドの行（`li`）を返す。送ったスレッドと、まだ送っていない新規スレッドのどちらも同じ形で描く */
   export function threadRow({ thread = null, pending = null, hasPendingReply = false, activeTag = null, on }: ThreadRowProps): HTMLElement {
     const last = thread === null ? null : thread.posts[thread.posts.length - 1];
     const sent = thread !== null && last !== null;

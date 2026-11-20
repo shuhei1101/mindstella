@@ -1,4 +1,4 @@
-"""comments.py（レビュー中のコメントと書きかけの読み書き・まとめて送る）の単体テスト。"""
+"""comments.py（レビュー中のコメントと下書きの読み書き・まとめて送る）の単体テスト。"""
 
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ def _read_comments(root: Path) -> dict[str, Any]:
 
 
 def _read_drafts(root: Path) -> list[dict[str, Any]]:
-    """ワークスペースの drafts.yaml の書きかけの並びを返す（ファイルが無ければ空）。"""
+    """ワークスペースの drafts.yaml の下書きの並びを返す（ファイルが無ければ空）。"""
     path = root / RECORD_DIR / "drafts.yaml"
     if not path.exists():
         return []
@@ -90,8 +90,8 @@ def _reply_comment(comment_id: str, thread: str) -> dict[str, Any]:
     }
 
 
-def _reply_draft(thread: str, body: str = "書きかけ") -> dict[str, Any]:
-    """スレッドへの返信の書きかけ（target・loc を持たない）を作る。"""
+def _reply_draft(thread: str, body: str = "下書き") -> dict[str, Any]:
+    """スレッドへの返信の下書き（target・loc を持たない）を作る。"""
     return {"thread": thread, "body": body, "updated": DEFAULT_TIMESTAMP}
 
 
@@ -165,7 +165,7 @@ def test_load_drafts(
     drafts: list[dict[str, Any]] | None,
     expected_targets: list[str | None],
 ) -> None:
-    """書きかけを読む。無ければ空（正常系）。"""
+    """下書きを読む。無ければ空（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     if drafts is not None:
@@ -184,7 +184,7 @@ def test_list_review(
     write_comments: WriteComments,
     write_drafts: WriteDrafts,
 ) -> None:
-    """タイトルを付けて書きかけと返す（正常系）。"""
+    """タイトルを付けて下書きと返す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", title="問い"))
     no_target = make_comment("C-3")
@@ -211,7 +211,7 @@ def test_list_review_when_thread(
     write_comments: WriteComments,
     write_drafts: WriteDrafts,
 ) -> None:
-    """返信と返信の書きかけは返信先を持つ（正常系）。"""
+    """返信と返信の下書きは返信先を持つ（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     write_comments(root, _reply_comment("C-1", "TH-1"))
@@ -234,7 +234,7 @@ def test_add_comment(
     write_comments: WriteComments,
     write_drafts: WriteDrafts,
 ) -> None:
-    """連番を振って溜め、書きかけを消す（正常系）。"""
+    """連番を振って溜め、下書きを消す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-2"), seq=2)
@@ -387,7 +387,7 @@ def test_add_comment_when_reply(
     write_drafts: WriteDrafts,
     write_threads: WriteThreads,
 ) -> None:
-    """オープンのスレッドへの返信を溜め、そのスレッドの書きかけを消す（正常系）。"""
+    """オープンのスレッドへの返信を溜め、そのスレッドの下書きを消す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     write_threads(root, make_thread("TH-1"))
@@ -484,7 +484,7 @@ def test_update_comment(
     data: dict[str, Any],
     expected_items: list[dict[str, Any]],
 ) -> None:
-    """本文を直す・箇所を外す（正常系）。"""
+    """本文を直す・箇所を解除（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     write_comments(
@@ -572,7 +572,7 @@ def test_save_draft(
     """向けた先ごとに上書きする（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    located = make_draft(target="D-1", loc=LINE2_LOC, body="箇所の書きかけ")
+    located = make_draft(target="D-1", loc=LINE2_LOC, body="箇所の下書き")
     write_drafts(root, make_draft(target="D-1", body="案 A に"), located)
     # 実行
     comments.save_draft(root, {"target": "D-1", "body": "案 B も見たい"}, now=_fixed_now)
@@ -618,7 +618,7 @@ def test_save_draft_when_rejected(
     data: dict[str, Any],
     expected_error: type[MindmapError],
 ) -> None:
-    """形の誤りと無い項目への書きかけは保たない（異常系）。"""
+    """形の誤りと無い項目への下書きは保たない（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     # 実行・検証
@@ -689,7 +689,7 @@ def test_send_comments(
     make_comment: MakeComment,
     write_comments: WriteComments,
 ) -> None:
-    """チェックしたものだけを溜めた順に送り、新しいスレッドを立てる（正常系）。"""
+    """チェックしたものだけを溜めた順に送り、新規スレッドを立てる（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
     no_target = make_comment("C-3")
@@ -731,7 +731,7 @@ def test_send_comments_when_reply(
     write_drafts: WriteDrafts,
     write_threads: WriteThreads,
 ) -> None:
-    """返信をスレッドの末尾に足し、そのスレッドの書きかけを消す（正常系）。"""
+    """返信をスレッドの末尾に足し、そのスレッドの下書きを消す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     write_threads(root, make_thread("TH-1", make_post("TH-1-1"), make_post("TH-1-2")))
@@ -915,7 +915,7 @@ def test_send_now(
     make_comment: MakeComment,
     write_comments: WriteComments,
 ) -> None:
-    """新しいスレッドを立てて最初の書き込みにし、レビュー中の書き込みは残す（正常系）。"""
+    """新規スレッドを立てて最初の書き込みにし、レビュー中の書き込みは残す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))

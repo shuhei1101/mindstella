@@ -1,4 +1,4 @@
-"""コメントをまとめて送る（POST /api/comments/send）の結合テスト。"""
+"""コメントをまとめて送信（POST /api/comments/send）の結合テスト。"""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from .http_helpers import HttpResult, http_request, post_json
 from .thread_helpers import read_threads, threads_path
 from workspace_fixtures import RECORD_DIR, StartServer
 
-# まとめて送るのパス
+# まとめて送信のパス
 SEND_PATH = "/api/comments/send"
 
 # 資料 A-1 の本文
@@ -117,7 +117,7 @@ def test_normal_when_reply(
     call_tool: CallTool,
     serve_preview: Callable[[Path], str],
 ) -> None:
-    """返信は向けたスレッドの末尾に足し、新しいスレッドは作らない（正常系）。"""
+    """返信は向けたスレッドの末尾に足し、新規スレッドは作らない（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     write_threads(
@@ -389,7 +389,7 @@ def test_normal_when_entered_to_claude_code(
     assert result.json()["entered"] is True
     assert len(pane.lines()) == 1
     assert (
-        '"content": "[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。"'
+        '"content": "[mindstella] ユーザーからのコメントが 3 件届きました。再読み込みしてください。"'
         in pane.lines()[0]
     )
     threads = read_threads(root)

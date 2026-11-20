@@ -132,13 +132,13 @@ flows:
       - 'ツールのエラーになり、本文が `エラー: ` で始まりトレースバックを含まない'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_write_fails
-  - name: 異常系（スレッドの形が崩れている・SchemaMismatchError）
+  - name: 異常系（スレッドの構造が崩れている・SchemaMismatchError）
     summary: 手で崩した threads.yaml には書かずに合わない箇所を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '`threads.yaml` の TH-1 から `status` を消したワークスペース'
+        description: '`threads.yaml` の TH-1 から `status` を削除したワークスペース'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -252,9 +252,9 @@ error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を
 constraints:
   - item: 呼べるセッション
     constraint: そのワークスペースの MindStella のセッションだけ（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）。正常系のフローは、状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 取り込み済みにする範囲
     constraint: 『スレッドへの返信』と同じく、AI が既読にした利用者の書き込みだけ。クローズのスレッドも書き換える
@@ -264,7 +264,7 @@ constraints:
   - item: 同時の呼び出し
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
   - item: タグ
-    constraint: 『スレッドを立てる』と同じ
+    constraint: 『スレッドの作成』と同じ
 refs:
   - ER-489-1#tables[threads.yaml]
   - SC-489-43#

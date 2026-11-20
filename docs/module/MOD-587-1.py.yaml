@@ -238,7 +238,7 @@ functions:
       3. `FILE_HEADERS` を付けた `FilePlan` を返す
     exceptions:
       - name: OSError
-        condition: 大きさを読めない（解決の後に消された等）
+        condition: 大きさを読めない（解決の後に削除された等）
         message: 標準のメッセージ
         notes: 捕まえずに伝播し、配信が 404 にする
     unit_tests:

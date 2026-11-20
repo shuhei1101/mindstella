@@ -155,9 +155,9 @@ namespace MindmapPreview {
       tag: "div",
       attrs: { class: "df-legend" },
       children: [
-        h({ tag: "span", attrs: { class: "df-lg df-lg-add" }, children: [h({ tag: "i", attrs: { "aria-hidden": "true" } }), "足した"] }),
+        h({ tag: "span", attrs: { class: "df-lg df-lg-add" }, children: [h({ tag: "i", attrs: { "aria-hidden": "true" } }), "追加した"] }),
         h({ tag: "span", attrs: { class: "df-lg df-lg-chg" }, children: [h({ tag: "i", attrs: { "aria-hidden": "true" } }), "変わった"] }),
-        removedOnly ? h({ tag: "span", attrs: { class: "muted" }, children: ["消した箇所は原文の差分で見られます"] }) : null,
+        removedOnly ? h({ tag: "span", attrs: { class: "muted" }, children: ["削除した箇所は原文の差分で見られます"] }) : null,
       ],
     });
   }

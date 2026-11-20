@@ -66,7 +66,7 @@ events:
     description: 使う側が `view` を `choose` にし、`warn` からは `focus` を `md`、`error` からは `html` にする
   - name: 再試行
     when: '`view` が `error` で「再試行」を押したとき'
-    description: 使う側が `view` を `busy` にして組み立てをやり直す
+    description: 使う側が `view` を `busy` にして組み立てを再実行する
   - name: 閉じる
     when: Esc かメニューの外を押したとき
     description: 使う側がメニューを閉じ、入口の「エクスポート」の `aria-expanded` を `false` に戻してフォーカスを戻す。組み立てている間に閉じたときは、組み立て終えたファイルをダウンロードさせない

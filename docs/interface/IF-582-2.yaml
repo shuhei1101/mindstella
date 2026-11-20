@@ -21,8 +21,8 @@ constraints:
     constraint: 『MindStella のセッションの一覧』の「落ちたかの判定」と同じ
   - item: 停止の通知
     constraint: '`running` から `crashed` に書き換えたときだけ『停止の通知』を `crashed` で呼ぶ。作成・停止・クローズが先に書き換えていれば呼ばない'
-  - item: 起動し直し
-    constraint: 見回りでは起動し直さない。起動し直すのはコメントが届いたとき（『コメントをまとめて送る』）と起動し直しの依頼
+  - item: 再起動
+    constraint: 見回りでは再起動しない。再起動するのはコメントが届いたとき（『コメントをまとめて送信する』）と再起動の依頼
   - item: 起動のとき
     constraint: 常駐サーバーの起動では、最初の間隔を待たずに『常駐サーバーの起動時の照合』が同じ 1 回分を待ち受けの前に呼ぶ
 flows:
@@ -53,7 +53,7 @@ flows:
       - 一覧も停止も呼ばずに、`session.json` の `status` が `crashed` になる
       - エンドポイントが 1 件だけ要求を受け、止まった理由が異常終了
     test: test_normal
-  - name: 正常系（起動し直しの途中）
+  - name: 正常系（再起動の途中）
     summary: restarting の MindStella のセッションは書き換えない
     setup:
       - name: Mock

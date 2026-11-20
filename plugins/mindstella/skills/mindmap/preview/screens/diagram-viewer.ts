@@ -1,4 +1,4 @@
-// 図の拡大。ホイールで拡大・縮小し、背景のドラッグで動かす。図の文字は選んでコピーできる（文字の上のドラッグは選択に任せる）。差分の表示の間は、色・凡例と消したもの・Raw の行ごとの差分も出す。
+// 図の拡大。ホイールで拡大・縮小し、背景のドラッグで動かす。図の文字は選んでコピーできる（文字の上のドラッグは選択に任せる）。差分の表示の間は、色・凡例と削除したもの・Raw の行ごとの差分も出す。
 
 namespace MindmapPreview {
   /** 図の拡大の引数 */
@@ -9,7 +9,7 @@ namespace MindmapPreview {
       /** 閉じる（開いた元の詳細パネルか詳細の全画面の本文に戻る） */
       close: () => void;
     };
-    /** 差分の表示の間、その図の前の版の記法。あるとき詳細パネルと同じ色と「消したもの」を窓の下端に出し、Raw で記法の行の差分を出す */
+    /** 差分の表示の間、その図の前の版の記法。あるとき詳細パネルと同じ色と「削除したもの」を窓の下端に出し、Raw で記法の行の差分を出す */
     diff?: DiagramViewerDiff | null;
   };
 
@@ -123,7 +123,7 @@ namespace MindmapPreview {
           },
           children: ["Raw"],
         });
-    // 差分の表示の間: 詳細パネルの図と同じ凡例と「消したもの」を窓の下端に置き、色を付けない種類は窓に枠の色を付ける
+    // 差分の表示の間: 詳細パネルの図と同じ凡例と「削除したもの」を窓の下端に置き、色を付けない種類は窓に枠の色を付ける
     const figure = diff === null ? null : svg.closest("figure.diagram");
     const notes = figure?.querySelector(":scope > .df-notes")?.cloneNode(true) as HTMLElement | undefined;
     notes?.classList.add("v-notes");

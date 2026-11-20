@@ -420,7 +420,7 @@ var MindmapPreview;
         // ===== 行 =====
         /** セルの中身 */
         const cellContent = (column, row, fresh) => {
-            // 追加する項目の ID は保存で決まるので、ID の列は「—」にする
+            // 追加する項目の ID は保存時に決定ので、ID の列は「—」にする
             if (fresh && column.key === "id")
                 return MindmapPreview.h({ tag: "span", attrs: { class: "pe-noid" }, children: ["—"] });
             const content = column.cell?.(row) ?? valuesOf(column, row).join(column.num === true ? "" : "、");

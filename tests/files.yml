@@ -66,8 +66,8 @@ files:
   - topic:ヘルパー
   - topic:結合テスト
 - path: integration/preview/preview_added_mark_helpers.py
-  name: 本文の差分の足した印の結合テストの補助
-  description: 本文の差分の足した印（足した色の面と +）の結合テストが共有する、ワークスペースの作り方と線の測り方。テストの準備や共有の操作を追加・変更するときに読む。
+  name: 本文の差分の追加したマーカーの結合テストの補助
+  description: 本文の差分の追加したマーカー（追加した色の面と +）の結合テストが共有する、ワークスペースの作り方と線の測り方。テストの準備や共有の操作を追加・変更するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -77,8 +77,8 @@ files:
   - topic:本文
   - topic:結合テスト
 - path: integration/preview/preview_alias_helpers.py
-  name: 資料・調査のエイリアスの本文の印とツールチップの結合テストの補助
-  description: 資料・調査のエイリアスの本文の印とツールチップの結合テストが共通で使う、記録・本文・選び方。テストの準備や共有の操作を追加・変更するときに読む。
+  name: 資料・調査のエイリアスの本文のマーカーとツールチップの結合テストの補助
+  description: 資料・調査のエイリアスの本文のマーカーとツールチップの結合テストが共通で使う、記録・本文・選び方。テストの準備や共有の操作を追加・変更するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -248,8 +248,8 @@ files:
   - topic:ヘルパー
   - topic:結合テスト
 - path: integration/preview/preview_mark_helpers.py
-  name: コメントの印の結合テストの補助
-  description: コメントの印の結合テストが共有する値と、画面の印を読む関数。テストの準備や共有の操作を追加・変更するときに読む。
+  name: コメントのマーカーの結合テストの補助
+  description: コメントのマーカーの結合テストが共有する値と、画面のマーカーを読む関数。テストの準備や共有の操作を追加・変更するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -296,8 +296,8 @@ files:
   - topic:ワークスペース
   - topic:結合テスト
 - path: integration/preview/preview_removed_helpers.py
-  name: 消した項目の帯・取り下げの札の結合テストの補助
-  description: 消した項目の帯・取り下げの札の結合テストが共有する、消した項目と取り下げた項目を持つワークスペースの作り方と値。テストの準備や共有の操作を追加・変更するときに読む。
+  name: 削除した項目の帯・取り下げの札の結合テストの補助
+  description: 削除した項目の帯・取り下げの札の結合テストが共有する、削除した項目と取り下げた項目を持つワークスペースの作り方と値。テストの準備や共有の操作を追加・変更するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -647,7 +647,7 @@ files:
   - topic:結合テスト
 - path: integration/server/test_comments_send.py
   name: POST /api/comments/sendの結合テスト
-  description: コメントをまとめて送る（POST /api/comments/send）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  description: コメントをまとめて送信（POST /api/comments/send）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:コメント
@@ -674,7 +674,7 @@ files:
   - topic:設定
 - path: integration/server/test_draft_save.py
   name: PUT /api/draftsの結合テスト
-  description: 書きかけの保存（PUT /api/drafts）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  description: 下書きの保存（PUT /api/drafts）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:結合テスト
@@ -1011,8 +1011,8 @@ files:
   - topic:ストーリー
   - topic:結合テスト
 - path: integration/storybook/test_comment_mark_stories.py
-  name: 部品設計『コメントの印』の状態の結合テスト
-  description: 部品設計『コメントの印』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 部品設計『コメントのマーカー』の状態の結合テスト
+  description: 部品設計『コメントのマーカー』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook
@@ -1020,8 +1020,8 @@ files:
   - topic:ストーリー
   - topic:結合テスト
 - path: integration/storybook/test_diff_mark_stories.py
-  name: 部品設計『差分の印』の状態の結合テスト
-  description: 部品設計『差分の印』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 部品設計『差分のマーカー』の状態の結合テスト
+  description: 部品設計『差分のマーカー』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook
@@ -1107,16 +1107,16 @@ files:
   - topic:本文
   - topic:結合テスト
 - path: integration/storybook/test_pending_mark_stories.py
-  name: 部品設計『保存待ちの印』の状態の結合テスト
-  description: 部品設計『保存待ちの印』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 部品設計『保存待ちのマーカー』の状態の結合テスト
+  description: 部品設計『保存待ちのマーカー』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook
   - topic:ストーリー
   - topic:結合テスト
 - path: integration/storybook/test_removed_band_stories.py
-  name: 部品設計『消した項目の帯』の状態の結合テスト
-  description: 部品設計『消した項目の帯』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 部品設計『削除した項目の帯』の状態の結合テスト
+  description: 部品設計『削除した項目の帯』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook
@@ -1202,8 +1202,8 @@ files:
   - topic:タグ
   - topic:結合テスト
 - path: integration/storybook/test_term_tip_stories.py
-  name: 部品設計『本文の印のツールチップ』の状態の結合テスト
-  description: 部品設計『本文の印のツールチップ』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 部品設計『本文のマーカーのツールチップ』の状態の結合テスト
+  description: 部品設計『本文のマーカーのツールチップ』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook
@@ -1352,7 +1352,7 @@ files:
   - topic:単体テスト
 - path: unit/preview/test_api.py
   name: サーバーの配信とのやり取りの単体テスト
-  description: core/api.ts（サーバーの配信とのやり取り：記録の取得・レビュー中のコメント・書きかけ・まとめて送る・書き換えの知らせ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  description: core/api.ts（サーバーの配信とのやり取り：記録の取得・レビュー中のコメント・下書き・まとめて送信する・書き換えの知らせ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -1396,8 +1396,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/components/chips-input.ts
     type: tests
 - path: unit/preview/test_comment_mark.py
-  name: コメントの印・印の差し替えの単体テスト
-  description: components/comment-mark.ts（コメントの印・印の差し替え）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: コメントのマーカー・マーカーの差し替えの単体テスト
+  description: components/comment-mark.ts（コメントのマーカー・マーカーの差し替え）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -1452,8 +1452,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
     type: tests
 - path: unit/preview/test_diff.py
-  name: 選んだ時点の印・前の版の組み立て・行の差分・図の要素の突き合わせの単体テスト
-  description: core/diff.ts（選んだ時点の印・前の版の組み立て・行の差分・図の要素の突き合わせ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 選んだ時点のマーカー・前のバージョンの組み立て・行の差分・図の要素の突き合わせの単体テスト
+  description: core/diff.ts（選んだ時点のマーカー・前のバージョンの組み立て・行の差分・図の要素の突き合わせ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -1496,8 +1496,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
     type: tests
 - path: unit/preview/test_dom.py
-  name: 要素の組み立て・アイコン・状態の印・選択中の単体テスト
-  description: core/dom.ts（要素の組み立て・アイコン・状態の印・選択中）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 要素の組み立て・アイコン・状態のマーカー・選択中の単体テスト
+  description: core/dom.ts（要素の組み立て・アイコン・状態のマーカー・選択中）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -1517,8 +1517,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/components/duplicate-id-notice.ts
     type: tests
 - path: unit/preview/test_edits.py
-  name: 保存待ちの編集を当てた記録・保存待ちの印の種類の単体テスト
-  description: core/edits.ts（保存待ちの編集を当てた記録・保存待ちの印の種類）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 保存待ちの編集を当てた記録・保存待ちのマーカーの種類の単体テスト
+  description: core/edits.ts（保存待ちの編集を当てた記録・保存待ちのマーカーの種類）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -1583,8 +1583,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
     type: tests
 - path: unit/preview/test_pending_mark.py
-  name: 保存待ちの印の単体テスト
-  description: components/pending-mark.ts（保存待ちの印）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 保存待ちのマーカーの単体テスト
+  description: components/pending-mark.ts（保存待ちのマーカー）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -1734,8 +1734,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/screens/tasks.ts
     type: tests
 - path: unit/preview/test_term_tip.py
-  name: 本文の印のツールチップの単体テスト
-  description: components/term-tip.ts（本文の印のツールチップ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 本文のマーカーのツールチップの単体テスト
+  description: components/term-tip.ts（本文のマーカーのツールチップ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -1758,8 +1758,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
     type: tests
 - path: unit/preview/test_thread_row.py
-  name: スレッドの行・状態の札・レビュー中の印・題の決め方の単体テスト
-  description: components/thread-row.ts（スレッドの行・状態の札・レビュー中の印・題の決め方）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: スレッドの行・状態の札・レビュー中のマーカー・タイトルの決め方の単体テスト
+  description: components/thread-row.ts（スレッドの行・状態の札・レビュー中のマーカー・タイトルの決め方）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -1792,7 +1792,7 @@ files:
     type: tests
 - path: unit/preview/thread_data.py
   name: スレッドの画面向けデータを作る単体テストの補助
-  description: スレッドとレビュー中の書き込みの画面向けデータ（サーバーが返す形）を作る、単体テストの補助。テストの準備や共有の操作を追加・変更するときに読む。
+  description: スレッドとレビュー中の書き込みの画面向けデータ（サーバーが返す構造）を作る、単体テストの補助。テストの準備や共有の操作を追加・変更するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -1837,8 +1837,8 @@ files:
   - topic:単体テスト
   - topic:ヘルパー
 - path: unit/scripts/test_answer_to_adopted_option.py
-  name: 決定済みの答えから採用した案を作る変換の単体テスト
-  description: migrations/v0.7.0/scripts/answer_to_adopted_option.py（決定済みの答えから採用した案を作る変換）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 決定済みの回答から採用した案を作る変換の単体テスト
+  description: migrations/v0.7.0/scripts/answer_to_adopted_option.py（決定済みの回答から採用した案を作る変換）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:単体テスト
@@ -1846,7 +1846,7 @@ files:
   - to: plugins/mindstella/skills/mindmap/migrations/v0.7.0/scripts/answer_to_adopted_option.py
     type: tests
 - path: unit/scripts/test_backup.py
-  name: 写しの取り方と戻し方の単体テスト
+  name: コピーの取り方と戻し方の単体テスト
   description: git は一時フォルダの作業ツリーで実際に呼ぶ。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
@@ -1906,7 +1906,7 @@ files:
     type: tests
 - path: unit/scripts/test_claude_input.py
   name: Claude Code のペインへの入力の単体テスト
-  description: claude_input.py（まとめて送った後の Claude Code への入力：送り先・tmux への貼り付け・会話の記録での確かめ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  description: claude_input.py（まとめて送信した後の Claude Code への入力：送信先・tmux への貼り付け・会話の記録での確かめ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:単体テスト
@@ -1923,8 +1923,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/scripts/commands.py
     type: tests
 - path: unit/scripts/test_comments.py
-  name: レビュー中のコメントと書きかけの読み書き・まとめて送るの単体テスト
-  description: comments.py（レビュー中のコメントと書きかけの読み書き・まとめて送る）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: レビュー中のコメントと下書きの読み書き・まとめて送信の単体テスト
+  description: comments.py（レビュー中のコメントと下書きの読み書き・まとめて送信する）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:コメント
@@ -1992,8 +1992,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/scripts/history.py
     type: tests
 - path: unit/scripts/test_html_body.py
-  name: HTML の本文の行の印と、行の範囲の描いた文の単体テスト
-  description: html_body.py（HTML の本文の行の印と、行の範囲の描いた文）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: HTML の本文の行のマーカーと、行の範囲の描いた文の単体テスト
+  description: html_body.py（HTML の本文の行のマーカーと、行の範囲の描いた文）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:html
@@ -2042,8 +2042,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/scripts/launch.py
     type: tests
 - path: unit/scripts/test_locations.py
-  name: コメントが指す箇所の形の確かめ・今の項目に合うかの確かめの単体テスト
-  description: locations.py（コメントが指す箇所の形の確かめ・今の項目に合うかの確かめ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: コメントが指す箇所の構造の確かめ・今の項目に合うかの確かめの単体テスト
+  description: locations.py（コメントが指す箇所の構造の確かめ・今の項目に合うかの確かめ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:コメント
@@ -2063,7 +2063,7 @@ files:
     type: tests
 - path: unit/scripts/test_migration_coverage.py
   name: スキーマの変更と移し替えの手順の対応の点検
-  description: 開発側の点検：ワークスペースの形（スキーマ）を変えた PR（任意のキーを足すだけの変更を除く）が、版を上げて移し替えの手順を足しているか。テストの期待値や準備を確認・修正するときに読む。
+  description: 開発側の点検：ワークスペースの構造（スキーマ）を変えた PR（任意のキーを追加するだけの変更を除く）が、バージョンを上げて移し替えの手順を追加しているか。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:ワークスペース
@@ -2080,8 +2080,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/scripts/migration_ops.py
     type: tests
 - path: unit/scripts/test_migrator.py
-  name: 手順の読み込みと、並べる・当てる・値を入れる・版を書く処理の単体テスト
-  description: migrator.py（手順の読み込みと、並べる・当てる・値を入れる・版を書く処理）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 手順の読み込みと、並べる・当てる・値を入れる・バージョンを書く処理の単体テスト
+  description: migrator.py（手順の読み込みと、並べる・当てる・値を入れる・バージョンを書く処理）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:単体テスト
@@ -2251,8 +2251,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/scripts/threads.py
     type: tests
 - path: unit/scripts/test_versions.py
-  name: 版の解釈・比較・読み書きの単体テスト
-  description: versions.py（版の解釈・比較・読み書き）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: バージョンの解釈・比較・読み書きの単体テスト
+  description: versions.py（バージョンの解釈・比較・読み書き）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:単体テスト
@@ -2261,7 +2261,7 @@ files:
     type: tests
 - path: unit/test_isolated_environment.py
   name: テストの環境変数の隔離の単体テスト
-  description: tests/conftest.py が手元のフックと許可するホスト名の環境変数を消して走らせることの単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  description: tests/conftest.py が手元のフックと許可するホスト名の環境変数を削除して走らせることの単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:フック
@@ -2360,16 +2360,16 @@ files:
   - topic:ストーリー
   - topic:結合テスト
 - path: integration/storybook_react/test_comment_mark_stories.py
-  name: 部品設計『コメントの印.tsx』の状態（React の Storybook のストーリー）の結合テスト
-  description: 部品設計『コメントの印.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 部品設計『コメントのマーカー.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『コメントのマーカー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook
   - topic:ストーリー
   - topic:結合テスト
 - path: integration/storybook_react/test_diff_mark_stories.py
-  name: 部品設計『差分の印.tsx』の状態（React の Storybook のストーリー）の結合テスト
-  description: 部品設計『差分の印.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 部品設計『差分のマーカー.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『差分のマーカー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook
@@ -2432,16 +2432,16 @@ files:
   - topic:ストーリー
   - topic:結合テスト
 - path: integration/storybook_react/test_pending_mark_stories.py
-  name: 部品設計『保存待ちの印.tsx』の状態（React の Storybook のストーリー）の結合テスト
-  description: 部品設計『保存待ちの印.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 部品設計『保存待ちのマーカー.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『保存待ちのマーカー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook
   - topic:ストーリー
   - topic:結合テスト
 - path: integration/storybook_react/test_removed_band_stories.py
-  name: 部品設計『消した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト
-  description: 部品設計『消した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 部品設計『削除した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『削除した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook
@@ -2472,8 +2472,8 @@ files:
   - topic:ストーリー
   - topic:結合テスト
 - path: integration/storybook_react/test_term_tip_stories.py
-  name: 部品設計『本文の印のツールチップ.tsx』の状態（React の Storybook のストーリー）の結合テスト
-  description: 部品設計『本文の印のツールチップ.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: 部品設計『本文のマーカーのツールチップ.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『本文のマーカーのツールチップ.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook

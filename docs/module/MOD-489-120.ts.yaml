@@ -34,7 +34,7 @@ data_models:
         description: 左のパネル（保存待ち・コメントの一覧・表示の設定）
       - name: thread
         type: string | undefined
-        description: コメントの一覧で開いているスレッド（`TH-{番号}` か、まだ送っていない新しいスレッドの `C-{番号}`）
+        description: コメントの一覧で開いているスレッド（`TH-{番号}` か、まだ送信していない新規スレッドの `C-{番号}`）
       - name: review
         type: '''1'' | undefined'
         description: レビュー中の書き込みの画面
@@ -116,7 +116,7 @@ functions:
     title: 記録に合わせた search
     kind: 関数
     usecase: SPAを開く
-    summary: 表示しない種類の `tab`、差分の表示中の `settings`・`panel=pending`、画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、本文が HTML の資料の `h`、表に無い `sort`、0 件の `panel=pending` を外す。`panel` が `comments` でないときの `thread`・`review`・`tstatus`・`ttag`・`ttarget`、スレッドにもまだ送っていない新しいスレッドにも無い `thread`、どのスレッドにも無い `ttag`、記録に無い項目の `ttarget` を外す。`search` が無いときと前後の空白を除いて空のときの `q` を外す。本文に無い見出しは本文を描いた後に決まるため、部品『BodyView』が外す
+    summary: 表示しない種類の `tab`、差分の表示中の `settings`・`panel=pending`、画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、本文が HTML の資料の `h`、表に無い `sort`、0 件の `panel=pending` を外す。`panel` が `comments` でないときの `thread`・`review`・`tstatus`・`ttag`・`ttarget`、スレッドにもまだ送信していない新規スレッドにも無い `thread`、どのスレッドにも無い `ttag`、記録に無い項目の `ttarget` を外す。`search` が無いときと前後の空白を除いて空のときの `q` を外す。本文に無い見出しは本文を描いた後に決まるため、部品『BodyView』が外す
     args:
       - name: search
         type: PreviewSearch
@@ -125,7 +125,7 @@ functions:
       - name: context
         type: SearchContext
         required: true
-        description: 判定に要る値。`index`（記録の索引）・`pendingCount`（保存待ちの編集の件数）・`visibleKinds`（表示する種類）・`diffActive`（差分の表示中か）・`sortColumns`（開く画面の表の並べられる列）・`threadIds`（スレッドとまだ送っていない新しいスレッドの ID）・`threadTags`（スレッドのタグ）
+        description: 判定に要る値。`index`（記録の索引）・`pendingCount`（保存待ちの編集の件数）・`visibleKinds`（表示する種類）・`diffActive`（差分の表示中か）・`sortColumns`（開く画面の表の並べられる列）・`threadIds`（スレッドとまだ送信していない新規スレッドの ID）・`threadTags`（スレッドのタグ）
     returns:
       type: PreviewSearch
       description: 外した後の search

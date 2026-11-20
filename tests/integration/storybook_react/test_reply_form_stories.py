@@ -79,7 +79,7 @@ def test_typing(open_story: OpenStory) -> None:
     # 準備・実行
     page = open_story("comments-replyform--typing")
     # 検証
-    assert page.input_value("textarea") == "起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい"
+    assert page.input_value("textarea") == "起票してよい。題は「バージョンの範囲から当てる手順を返すコマンド」に縮めてほしい"
     assert page.is_enabled(SEND)
     page.focus("textarea")
     assert page.eval_on_selector("textarea", "e => getComputedStyle(e).outlineStyle") == "solid"
@@ -114,7 +114,7 @@ def test_failed_unreachable(open_story: OpenStory) -> None:
     assert page.input_value("textarea") == "起票してよい"
     assert (
         page.inner_text(MESSAGE)
-        == "レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。"
+        == "レビューに追加できませんでした。サーバーが止まっています。再起動してから追加してください。"
     )
     assert page.locator(f"{MESSAGE} svg").count() == 1
 

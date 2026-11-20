@@ -25,7 +25,7 @@ def test_item_add_flow(page: Page, spa_preview: str) -> None:
     title.blur()
     card = page.locator("[data-new-id]")
     expect(card).to_contain_text("足すタスク")
-    expect(card).to_contain_text("ID は保存で決まる")
+    expect(card).to_contain_text("ID は保存時に決定")
     panel.get_by_role("button", name="追加の入力を閉じる").click()
     expect(panel).to_be_hidden()
     card.click()
@@ -153,14 +153,14 @@ def test_board_comment_mark_visible(page: Page, write_commented_preview: WriteRe
 
 
 def test_removed_band_visible(page: Page, write_removed_preview: WriteReviewPreview) -> None:
-    """選んだ時点でタスクを消したときだけ消した項目の帯を出す（正常系）。"""
+    """選んだ時点でタスクを消したときだけ削除した項目の帯を出す（正常系）。"""
     # 準備
     url, _ = write_removed_preview()
     open_spa(page, url, "?tab=tasks&diff=V-2")
-    expect(page.get_by_role("region", name="この時点で消した項目")).to_have_count(0)
+    expect(page.get_by_role("region", name="この時点で削除した項目")).to_have_count(0)
     # 実行
     open_spa(page, url, "?tab=tasks&diff=pending")
-    band = page.get_by_role("region", name="この時点で消した項目")
+    band = page.get_by_role("region", name="この時点で削除した項目")
     # 検証
     expect(band).to_be_visible()
     expect(band.get_by_role("listitem")).to_contain_text(["T-2"])
@@ -171,7 +171,7 @@ def test_add_button_label(page: Page, spa_preview: str) -> None:
     # 準備・実行
     open_spa(page, spa_preview, "?tab=tasks")
     # 検証
-    expect(page.get_by_role("button", name="タスクの項目を追加")).to_have_text("項目を追加")
+    expect(page.get_by_role("button", name="タスクの項目を追加")).to_have_text("項目追加")
 
 
 def test_add_button_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:

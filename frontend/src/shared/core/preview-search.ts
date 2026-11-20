@@ -43,7 +43,7 @@ export type SearchContext = {
   visibleKinds: readonly Kind[];
   diffActive: boolean;
   sortColumns: readonly string[];
-  /** スレッドとまだ送っていない新しいスレッドの ID（スレッドを読む前は undefined にして `thread` を外さない） */
+  /** スレッドとまだ送っていない新規スレッドの ID（スレッドを読む前は undefined にして `thread` を外さない） */
   threadIds?: readonly string[];
   /** スレッドのタグ（スレッドを読む前は undefined にして `ttag` を外さない） */
   threadTags?: readonly string[];

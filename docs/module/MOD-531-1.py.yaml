@@ -41,13 +41,13 @@ data_models:
         description: 起動した日時
       - name: last_error
         type: str | None
-        description: 最後の停止・起動し直しに失敗した段階と理由。次に作成・停止が通ったら `None` に戻す
+        description: 最後の停止・再起動に失敗した段階と理由。次に作成・停止が通ったら `None` に戻す
       - name: claude_config_dir
         type: str | None
         description: MindStella のセッションの Claude Code が使用する設定のフォルダの絶対パス。SessionStart のフックが入れる
       - name: restart_reason
         type: str | None
-        description: '`restarting` の間の契機（`api`・`rate_limit`・`compact`・`comment`・`usage_threshold`）。起動し直しが終わったら `None`'
+        description: '`restarting` の間の契機（`api`・`rate_limit`・`compact`・`comment`・`usage_threshold`）。再起動が終わったら `None`'
       - name: balancer_account
         type: str | None
         default: None
@@ -55,7 +55,7 @@ data_models:
       - name: specified_account
         type: str | None
         default: None
-        description: 作成の依頼で指定したアカウントの設定のフォルダの絶対パス。起動し直しで `--account` に渡し、指定を解除したら `None`
+        description: 作成の依頼で指定したアカウントの設定のフォルダの絶対パス。再起動で `--account` に渡し、指定を解除したら `None`
   - name: LaunchOptions
     title: 追加の MCP とプラグイン
     container: plugins/mindstella/skills/mindmap/scripts/state.py
@@ -162,12 +162,12 @@ functions:
         mock: なし
         expected: '`[]` / `[a, b]`'
   - name: add_id
-    title: ID を一覧に足す
+    title: ID を一覧に追加する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/state.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: 全体で 1 つの鍵（`workspaces.yaml.lock` の `fcntl.flock`）を取り、`ids` に無ければ足して一時ファイルから置き換える
+    summary: 全体で 1 つの鍵（`workspaces.yaml.lock` の `fcntl.flock`）を取り、`ids` に無ければ追加して一時ファイルから置き換える
     side_effects: '`workspaces.yaml` を書く'
     args:
       - name: root
@@ -179,21 +179,21 @@ functions:
         type: str
         required: true
         passing: positional
-        description: 足す ID
+        description: 追加する ID
     returns:
       type: None
       description: なし
     unit_tests:
       - name: test_add_id
         case: 正常
-        summary: 重ねて足しても 1 件
-        condition: 同じ ID を 2 回足す
+        summary: 重ねて追加しても 1 件
+        condition: 同じ ID を 2 回追加する
         mock: なし
         expected: '`ids` に 1 件だけある'
       - name: test_add_id_concurrent
         case: 正常
-        summary: 並行して足しても失わない
-        condition: 2 つのスレッドから別の ID を 50 回ずつ足す
+        summary: 並行して追加しても失わない
+        condition: 2 つのスレッドから別の ID を 50 回ずつ追加する
         mock: なし
         expected: '`ids` が 100 件'
   - name: remove_id
@@ -252,7 +252,7 @@ functions:
     usecase: 外部のアプリから起動する
     scope: public
     summary: '`session.json` ごとの鍵（`session.json.lock`）を取り、今の値を渡した関数で書き換えて置き換える。今の値が無いときは `None` を渡す'
-    side_effects: '`session.json` を書くか消す'
+    side_effects: '`session.json` を書くか削除する'
     args:
       - name: root
         type: Path
@@ -268,14 +268,14 @@ functions:
         type: Callable[[SessionState | None], SessionState | None]
         required: true
         passing: positional
-        description: 新しい値を返す関数。`None` を返すとファイルを消す
+        description: 新しい値を返す関数。`None` を返すとファイルを削除する
     returns:
       type: SessionState | None
       description: 書いた後の値
     unit_tests:
       - name: test_update_session
         case: 正常
-        summary: 書き換えと消すことができる
+        summary: 書き換えと削除することができる
         condition: '`responding` を真にする関数 / `None` を返す関数'
         mock: なし
         expected: ファイルの `responding` が真 / ファイルが無い
@@ -348,13 +348,13 @@ functions:
         mock: なし
         expected: '`read_launch` が同じ値を返す'
   - name: delete_launch
-    title: 起動の指定を消す
+    title: 起動の指定を削除する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/state.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`launch.json` を消す（作成の巻き戻しに使う）'
-    side_effects: '`launch.json` を消す'
+    summary: '`launch.json` を削除する（作成の巻き戻しに使う）'
+    side_effects: '`launch.json` を削除する'
     args:
       - name: root
         type: Path
@@ -380,7 +380,7 @@ functions:
     title: ワークスペースの状態を削除する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/state.py
-    usecase: ワークスペースを開き直して削除する
+    usecase: ワークスペースを再度開いて削除する
     scope: public
     summary: '`workspaces/{ID}/` を中身ごと削除する。無ければ何もしない（`ids` は変えない）'
     args:
@@ -468,7 +468,7 @@ functions:
 notes:
   書き方: どのファイルも同じフォルダの一時ファイルに書いてから `os.replace` で置き換える。JSON は標準の `json`、`workspaces.yaml` は PyYAML で読み書きする
   ログ: |
-    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に書き足す）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
+    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に追記する）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
 
     | イベント名 | 水準 | いつ | 属性 |
     | --- | --- | --- | --- |

@@ -60,7 +60,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 本文を持つ検討事項 D-1 の本文を直して変更の検知が変更履歴を積んだ後、`docs/D-1.mark.md` の全ての行を手で書き換えたワークスペース
+        description: 本文を持つ検討事項 D-1 の本文を修正して変更の検知が変更履歴を積んだ後、`docs/D-1.mark.md` の全ての行を手で書き換えたワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -129,13 +129,13 @@ flows:
       - D-4・D-5・D-6 の問題が無い
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_options_and_status_mismatch
-  - name: 正常系（消した項目がまとまりに残る）
-    summary: 過去のまとまりと取り込み待ちでないスレッドが消した項目を指していても、参照切れにしない
+  - name: 正常系（削除した項目がまとまりに残る）
+    summary: 過去のまとまりと取り込み待ちでないスレッドが削除した項目を指していても、参照切れにしない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: メモ N-1 を足して `commit` し、N-1 へ向けたスレッド TH-1 の利用者の書き込みを取り込み済みにしてから、N-1 を消して変更の検知が記録した後にもう一度 `commit` したワークスペース
+        description: メモ N-1 を追加して `commit` し、N-1 へ向けたスレッド TH-1 の利用者の書き込みを取り込み済みにしてから、N-1 を削除して変更の検知が記録した後にもう一度 `commit` したワークスペース
         notes: 1 つ目のまとまりの `added` と TH-1 の `target` が N-1 を指す
     flow: |-
       ```mermaid
@@ -146,7 +146,7 @@ flows:
 
         クライアント->>IF: check workspace
         IF-->>WS: 全ての YAML・changes.yaml・threads.yaml を読む
-        IF->>IF: 消した項目の記録にある N-1 を参照切れから外す
+        IF->>IF: 削除した項目の記録にある N-1 を参照切れから外す
         IF-->>クライアント: JSON（ok が真）
       ```
     expected:
@@ -159,7 +159,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 本文を HTML で持つ資料 A-1・A-2 を持ち、A-1 の本文のファイルを消して、どの項目も指さない `docs/A-9.html` を置いたワークスペース
+        description: 本文を HTML で持つ資料 A-1・A-2 を持ち、A-1 の本文のファイルを削除して、どの項目も指さない `docs/A-9.html` を置いたワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -176,7 +176,7 @@ flows:
       - '`problems` が `missing_body`（A-1）と `orphan_body`（`docs/A-9.html`）の 2 件だけで、A-2 の問題が無い'
     test: test_normal_when_html_body_problems_found
   - name: 正常系（文字列のタグの項目がある）
-    summary: 前の版の形式の文字列のタグを `schema` の問題として拾い、移し替えを案内する
+    summary: 前のバージョンの形式の文字列のタグを `schema` の問題として拾い、移し替えを案内する
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -198,7 +198,7 @@ flows:
     expected:
       - ツールのエラーにならず、`ok` が偽
       - '`problems` が `kind` が `schema` の 1 件だけで、`file` が `decisions.yaml`、`key` が `items[0].tags[0]`'
-      - その問題の `detail` に、ワークスペースを開き直すと今の形式に移る旨がある
+      - その問題の `detail` に、ワークスペースを再度開くと今の形式に移る旨がある
       - D-2 の問題が無い
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_string_tags
@@ -255,7 +255,7 @@ flows:
     test: test_normal_when_embedded_file_missing
 lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の本文（Markdown と HTML）のずれ・案と状態の合わない検討事項を全て洗い出す。
 idempotent: true
-side_effects: なし（読むだけ。見つけた問題は直さない）
+side_effects: なし（読むだけ。見つけた問題は修正しない）
 request:
   - name: workspace
     type: str
@@ -281,10 +281,10 @@ response:
     description: 問題のあるキーのパス（`items[0].status`・`related[0].to` など）
   - name: problems[].detail
     type: str
-    description: 中身（参照先の ID・スキーマの理由など）。前のバージョンの形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・`config.yaml` の `tags`・文字列のタグ・削除したキー）で合わない `schema` は、理由に続けて、ワークスペースを開き直すと『記録の形式の移行』が今の形式に移すことを書く
+    description: 中身（参照先の ID・スキーマの理由など）。前のバージョンの形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・`config.yaml` の `tags`・文字列のタグ・削除したキー）で合わない `schema` は、理由に続けて、ワークスペースを再度開くと『記録の形式の移行』が今の形式に移すことを書く
 response_notes: |-
   > [!NOTE]
-  > 問題があるときも点検そのものは正常に終えているので、ツールのエラーにせず、同じ形の結果（`ok: false`）を返す。
+  > 問題があるときも点検そのものは正常に終えているので、ツールのエラーにせず、同じ構造の結果（`ok: false`）を返す。
 exceptions:
   - name: なし（正常終了）
     condition: 点検できた
@@ -294,14 +294,14 @@ exceptions:
     notes: ツールのエラー
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 点検するファイル
     constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`（無ければスレッド 0 件として扱う）・`changes.yaml`（無ければまとまり 0 件として扱う）・`comments.yaml`・`drafts.yaml`（無ければ 0 件として扱い、スキーマ違反だけを確かめる）と、ワークスペースの直下の `docs/`・`files/`（埋め込んだファイルの有無を確かめるときだけ。中身は読まない）'
-  - item: 参照切れを確かめるキー
-    constraint: '`related[].to`・`sources`、スレッドの `target`（持つときだけ）、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、`related[].type` の種類に合わない ID（`depends_on`・`parent` が自分と違う種類の項目、`for` が検討事項以外を指すなど）を `broken_ref` にする。`changes.yaml` のまとまり・`pending` と、取り込み待ちでないスレッド（`taken` が `null` の利用者の書き込みを持たないスレッド）の `target` が指す ID のうち、`changes.yaml` の `sets[].removed`・`pending.removed` にある ID（消した項目）は参照切れにしない。レビュー中のコメントと書きかけの `target` は確かめない（項目が消えたコメントは『コメントをまとめて送る』の 409 で画面に出る）'
+  - item: 参照切れを確認するキー
+    constraint: '`related[].to`・`sources`、スレッドの `target`（持つときだけ）、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、`related[].type` の種類に合わない ID（`depends_on`・`parent` が自分と違う種類の項目、`for` が検討事項以外を指すなど）を `broken_ref` にする。`changes.yaml` のまとまり・`pending` と、取り込み待ちでないスレッド（`taken` が `null` の利用者の書き込みを持たないスレッド）の `target` が指す ID のうち、`changes.yaml` の `sets[].removed`・`pending.removed` にある ID（削除した項目）は参照切れにしない。レビュー中のコメントと下書きの `target` は確かめない（項目が消えたコメントは『コメントをまとめて送信する』の 409 で画面に出る）'
   - item: 本文のずれ
     constraint: '`body` が指す直下の `docs/` のファイルが無いものを `missing_body`、どの項目の `body` からも指されない `docs/*.md`・`docs/*.html` を `orphan_body` にする'
   - item: 問題の並び

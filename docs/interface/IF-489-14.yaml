@@ -1,5 +1,5 @@
 id: IF-489-14
-title: "スレッドを読む"
+title: "スレッドの取得"
 entry:
   kind: mcp_tool
   value: '`thread`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__thread`）。結果とエラーの返し方は『MCP サーバーの起動』'
@@ -117,13 +117,13 @@ flows:
       - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_write_fails
-  - name: 異常系（スレッドの形が崩れている・SchemaMismatchError）
+  - name: 異常系（スレッドの構造が崩れている・SchemaMismatchError）
     summary: 手で崩した threads.yaml は読まずに合わない箇所を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '`threads.yaml` の TH-1 の書き込みから `author` を消したワークスペース'
+        description: '`threads.yaml` の TH-1 の書き込みから `author` を削除したワークスペース'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -184,7 +184,7 @@ response:
     description: その項目のタイトル。項目が消えていれば `null`
   - name: loc
     type: dict | None
-    description: 最初の書き込みに添えた箇所。形は ER 図『ワークスペース』の `threads.yaml`
+    description: 最初の書き込みに添えた箇所。構造は ER 図『ワークスペース』の `threads.yaml`
   - name: posts[].id
     type: str
     description: 書き込みの ID
@@ -234,9 +234,9 @@ exceptions:
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。前の `threads.yaml` を残す
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 既読にする範囲
     constraint: 返した書き込みだけを既読にする。取り込み済み（`taken`）は書かない（取り込み済みにするのは記録した後の『スレッドの書き換え』か『スレッドへの返信』）

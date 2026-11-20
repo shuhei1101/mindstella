@@ -52,12 +52,12 @@ export const Board = ({ columns, card, emptyText, added }: BoardProps) => (
 
 export type AddedCardProps = { item: Item; mark: PendingMarkKind; onOpen: (id: string) => void };
 
-/** 追加する項目のカード。破線の枠で、ID の場所に「ID は保存で決まる」を置く */
+/** 追加する項目のカード。破線の枠で、ID の場所に「ID は保存時に決定」を置く */
 export const AddedCard = ({ item, mark, onOpen }: AddedCardProps) => (
   <button type="button" data-new-id={item.id} className="flex w-full cursor-pointer flex-col gap-1 rounded-card border border-dashed border-mark-line bg-card p-2 text-left hover:bg-row-hover" onClick={() => { onOpen(item.id); }}>
     <span className="text-small font-medium">{addedTitle(item.title)}</span>
     <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-      <span>ID は保存で決まる</span>
+      <span>ID は保存時に決定</span>
       <PendingMark kind={mark} />
     </span>
   </button>

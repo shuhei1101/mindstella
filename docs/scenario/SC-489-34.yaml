@@ -10,8 +10,8 @@ scenarios:
       - name: MindStella のセッション
         description: 状態に登録した、応答の途中の MindStella のセッションの `session_id` で呼ぶ
       - name: 検討事項の中身
-        description: タイトル・状態・問いの説明・影響度・案
-        notes: 状態 `未決定`、影響度 `大`、案 A・B（推奨の印は A）
+        description: タイトル・状態・質問の説明・影響度・案
+        notes: 状態 `未決定`、影響度 `大`、案 A・B（推奨のマーカーは A）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -26,23 +26,23 @@ scenarios:
         CC->>PI: D-1 の検討事項を書き込む
         PI->>PI: スキーマと突き合わせる
         PI->>WS: decisions.yaml に書く
-        PI-->>CC: 書き込んだ文書の版
+        PI-->>CC: 書き込んだ文書のバージョン
         CD->>WS: 書き換わった decisions.yaml を見つけ、D-1 に作成日・更新日・編集した人を記録する
-        CC->>PI: D-1 の答えと状態を直し、案 A を採用にする
+        CC->>PI: D-1 の回答と状態を修正し、案 A を採用にする
         PI->>WS: decisions.yaml に書く
-        CD->>WS: 書き換わった decisions.yaml を見つけ、更新日を変えて直す前の値を変更履歴に積む
+        CD->>WS: 書き換わった decisions.yaml を見つけ、更新日を変えて修正する前の値を変更履歴に積む
       ```
     expected:
       - '`next_id` が返した ID が `D-` で始まる'
-      - '`.mindstella/decisions.yaml` にその ID の項目が 1 件あり、足したタイトル・問いの説明・影響度を持つ'
-      - 足した項目が案 A・B を持ち、案 A だけが推奨の印を持つ
-      - 更新の後、その項目の答えと状態が直した値になっている
+      - '`.mindstella/decisions.yaml` にその ID の項目が 1 件あり、追加したタイトル・質問の説明・影響度を持つ'
+      - 追加した項目が案 A・B を持ち、案 A だけが推奨のマーカーを持つ
+      - 更新の後、その項目の回答と状態が修正した値になっている
       - 更新の後、その項目が決定済みで、案 A だけが採用である
       - その項目の作成日が追加のときの値のまま、更新日が記録されている
-      - 足した時点と更新の後のどちらでも、その項目の `updated_by` が `ai` である
+      - 追加した時点と更新の後のどちらでも、その項目の `updated_by` が `ai` である
       - ワークスペースの全ての YAML がスキーマに合う
-      - 足しただけの時点では、その項目は変更履歴を持たない
-      - 更新の後、その項目が変更履歴を 1 回分持ち、直す前の答えと状態と、書き換えた人 `ai` が入っている
+      - 追加しただけの時点では、その項目は変更履歴を持たない
+      - 更新の後、その項目が変更履歴を 1 回分持ち、修正する前の回答と状態と、書き換えた人 `ai` が入っている
     test: test_normal
   - name: 正常シナリオ（並行して ID を取る）
     setup:
@@ -71,7 +71,7 @@ scenarios:
       - name: Mock
         description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
-        description: 作成を済ませ、検討事項を 1 件足したワークスペース
+        description: 作成を済ませ、検討事項を 1 件追加したワークスペース
       - name: 検討事項の中身
         description: 状態に、決めた状態の名前に無い値を入れた検討事項
         notes: 状態 `完了`（タスクの状態で、検討事項には無い）
@@ -91,12 +91,12 @@ scenarios:
       - 違反に、合わないキー `status` と、その値 `完了` がある
       - ワークスペースの全てのファイルの中身が、書き込みを呼ぶ前と同じである
     test: test_error_when_schema_mismatch
-  - name: 異常シナリオ（存在しない ID を直す）
+  - name: 異常シナリオ（存在しない ID を修正する）
     setup:
       - name: Mock
         description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
-        description: 作成を済ませ、検討事項を 1 件足したワークスペース
+        description: 作成を済ませ、検討事項を 1 件追加したワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -104,7 +104,7 @@ scenarios:
         participant PI as project-index
         participant WS as ワークスペース
 
-        CC->>PI: 存在しない ID の答えを直す
+        CC->>PI: 存在しない ID の回答を修正する
         PI->>WS: ID を探して見つからない
         PI-->>CC: 文書が無いエラー
       ```
@@ -118,7 +118,7 @@ scenarios:
       - name: Mock
         description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
-        description: 作成を済ませ、検討事項 D-1 を 1 件足して `commit` したワークスペース
+        description: 作成を済ませ、検討事項 D-1 を 1 件追加して `commit` したワークスペース
       - name: MindStella のセッション
         description: 状態に登録した、応答の途中の MindStella のセッションの `session_id` で呼ぶ
     flow: |-
@@ -130,7 +130,7 @@ scenarios:
         participant WS as ワークスペース
         participant CD as 変更の検知
 
-        CC->>PI: D-1 の答えを直す
+        CC->>PI: D-1 の回答を修正する
         CC->>MS: タスクの次の ID を取る
         CC->>PI: タスク T-1 を書き込む
         CD->>WS: 書き換えを見つけ、まだまとめていない変更に記録する
@@ -142,7 +142,7 @@ scenarios:
         MS-->>CC: 空
       ```
     expected:
-      - 1 回目の `pending` が D-1（変えたキー `answer`）と T-1（足した）を返す
+      - 1 回目の `pending` が D-1（変えたキー `answer`）と T-1（追加した）を返す
       - '`commit` の後、まとまりが 1 つ増え、日時と説明「D-1 を決め、T-1 を積む」を持つ'
       - D-1 の変更履歴と T-1 が、そのまとまりに属する
       - 2 回目の `pending` が空を返す
@@ -153,9 +153,9 @@ scenarios:
       - name: Mock
         description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
-        description: 作成を済ませ、検討事項 D-1 を 1 件足して `commit` したワークスペース
+        description: 作成を済ませ、検討事項 D-1 を 1 件追加して `commit` したワークスペース
       - name: 書き込む操作
-        description: 検討事項 D-2 を足す → D-2 を進めるタスク T-1 を足す → D-1 の答えと状態を直す、の 3 つをこの順に 1 回の `write_docs` で渡す
+        description: 検討事項 D-2 を追加する → D-2 を進めるタスク T-1 を追加する → D-1 の回答と状態を修正する、の 3 つをこの順に 1 回の `write_docs` で渡す
         notes: D-2・T-1 の ID は先に `next_id` で取る。T-1 の `related` は種類 `for` で D-2 を指す
     flow: |-
       ```mermaid
@@ -171,16 +171,16 @@ scenarios:
         CC->>PI: 追加・追加・更新の操作を並べて書き込む
         PI->>PI: 全てを当てた後に検査する
         PI->>WS: decisions.yaml と tasks.yaml を書く
-        CD->>WS: 書き換えを見つけ、日時・通し番号・変更履歴を記録する
+        CD->>WS: 書き換えを見つけ、日時・連番・変更履歴を記録する
         CC->>PI: D-1 を検索する
-        PI-->>CC: 直した後の D-1
+        PI-->>CC: 修正した後の D-1
       ```
     expected:
       - '`write_docs` が 3 つの操作の結果を渡した順に返す'
       - 'T-1 が `related: [{to: D-2, type: for}]` を持つ'
-      - 検索した D-1 が、直した後の答えと状態を持つ
-      - D-1 が変更履歴を 1 回分持ち、直す前の答えと状態が入っている
-      - '`pending` が D-2・T-1（足した）と D-1（変えた）を返す'
+      - 検索した D-1 が、修正した後の回答と状態を持つ
+      - D-1 が変更履歴を 1 回分持ち、修正する前の回答と状態が入っている
+      - '`pending` が D-2・T-1（追加した）と D-1（変えた）を返す'
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_batched
   - name: 異常シナリオ（まとめた操作の途中が合わない）
@@ -188,9 +188,9 @@ scenarios:
       - name: Mock
         description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
-        description: 作成を済ませ、検討事項 D-1 を 1 件足したワークスペース
+        description: 作成を済ませ、検討事項 D-1 を 1 件追加したワークスペース
       - name: 書き込む操作
-        description: 正しい検討事項を足す → D-1 の状態を、決めた状態の名前に無い値に直す、の 2 つを 1 回の `write_docs` で渡す
+        description: 正しい検討事項を追加する → D-1 の状態を、決めた状態の名前に無い値に変更する、の 2 つを 1 回の `write_docs` で渡す
         notes: 状態 `完了`（タスクの状態で、検討事項には無い）
     flow: |-
       ```mermaid
@@ -206,7 +206,7 @@ scenarios:
     expected:
       - '`write_docs` が違反を返し、書き込まない'
       - 違反に、合わないのが 2 つ目の操作であることと、キー `status` と値 `完了` がある
-      - 1 つ目の検討事項も足されていない
+      - 1 つ目の検討事項も追加されていない
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_batch_has_invalid_operation
   - name: 正常シナリオ（タスク・用語集・メモに本文を書く）
@@ -217,7 +217,7 @@ scenarios:
         description: 作成を済ませた、項目を持たないワークスペース
       - name: 本文
         description: タスク T-1・用語 G-1・メモ N-1 にそれぞれ渡す 2 行の本文の Markdown と、N-1 の 2 行目を書き換える `text_edits`
-        notes: 'T-1 の本文 `経緯: 会話で持ち越した\n終わり方: 検証の結果を残す`。N-1 は 2 行目を `補足: 書き直した` に直す'
+        notes: 'T-1 の本文 `経緯: 会話で持ち越した\n終わり方: 検証の結果を残す`。N-1 は 2 行目を `補足: 書き直した` に変更する'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -237,14 +237,14 @@ scenarios:
         PI-->>CC: 中身と本文
       ```
     expected:
-      - 足した T-1・G-1・N-1 が、それぞれ `body` に `../docs/{ID}.mark.md` を持ち、`docs/` にその Markdown がある
+      - 追加した T-1・G-1・N-1 が、それぞれ `body` に `../docs/{ID}.mark.md` を持ち、`docs/` にその Markdown がある
       - 検索した本文が、T-1・G-1 は渡した本文、N-1 は 2 行目を書き換えた後の本文である
       - N-1 の本文の 1 行目は、書き換えの前と同じである
       - N-1 が変更履歴を 1 回分持ち、その回が本文の 2 行目の差分を持つ
       - T-1・G-1・N-1 の `updated_by` が `ai` である
       - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     test: test_normal_when_body_for_every_kind
-  - name: 正常シナリオ（未整理の検討事項を案を持たずに足す）
+  - name: 正常シナリオ（未整理の検討事項を案を持たずに追加する）
     setup:
       - name: Mock
         description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
@@ -264,11 +264,11 @@ scenarios:
         PI->>WS: decisions.yaml に書く
       ```
     expected:
-      - D-1 が足され、案を持たない
+      - D-1 が追加され、案を持たない
       - D-1 が取り下げで、案を持たない
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_unsorted_without_options
-  - name: 異常シナリオ（案を持たない検討事項を足す）
+  - name: 異常シナリオ（案を持たない検討事項を追加する）
     setup:
       - name: Mock
         description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
@@ -294,9 +294,9 @@ scenarios:
       - name: Mock
         description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
-        description: 作成を済ませ、案 A・B を持つ未決定の検討事項 D-1 を足したワークスペース
+        description: 作成を済ませ、案 A・B を持つ未決定の検討事項 D-1 を追加したワークスペース
       - name: 書き込み
-        description: D-1 を採用した案を持たないまま決定済みに直す更新と、案 A を採用にしたまま未決定で足す追加
+        description: D-1 を採用した案を持たないまま決定済みに変更する更新と、案 A を採用にしたまま未決定で追加する追加
         notes: 2 回に分けて呼ぶ
     flow: |-
       ```mermaid
@@ -304,7 +304,7 @@ scenarios:
         participant CC as MindStella のセッション
         participant PI as project-index
 
-        CC->>PI: D-1 を、採用した案を持たないまま決定済みに直す
+        CC->>PI: D-1 を、採用した案を持たないまま決定済みに変更する
         PI->>PI: スキーマと突き合わせて、決定済みが採用した案を持たない
         PI-->>CC: 違反
         CC->>PI: 案 A を採用にした未決定の検討事項を書き込む
@@ -323,7 +323,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませた、項目を持たないワークスペース
       - name: 本文
-        description: 資料 A-1 を足すときの 2 行の Markdown の本文と、形式を HTML に替えるときの 3 行の HTML の本文と、HTML の 2 行目を書き換える `text_edits` と、形式を Markdown に戻すときの 2 行の Markdown の本文
+        description: 資料 A-1 を追加するときの 2 行の Markdown の本文と、形式を HTML に替えるときの 3 行の HTML の本文と、HTML の 2 行目を書き換える `text_edits` と、形式を Markdown に戻すときの 2 行の Markdown の本文
         notes: HTML の本文 `<h1>画面のモック</h1>\n<p>一覧の画面</p>\n<p>詳細の画面</p>`。書き換えは 2 行目を `<p>絞り込みの画面</p>` にする
     flow: |-
       ```mermaid
@@ -335,13 +335,13 @@ scenarios:
 
         CC->>PI: Markdown の本文を渡して資料 A-1 を書き込む
         PI->>WS: docs.yaml と docs/A-1.mark.md を書く
-        CC->>PI: body を ../docs/A-1.html にし、HTML の本文を渡して A-1 を直す
+        CC->>PI: body を ../docs/A-1.html にし、HTML の本文を渡して A-1 を修正する
         PI->>WS: docs.yaml と docs/A-1.html を書く
-        CD->>WS: どの項目も指さなくなった A-1.mark.md を消す
+        CD->>WS: どの項目も指さなくなった A-1.mark.md を削除する
         CC->>PI: A-1 の HTML の本文の 2 行目だけを書き換える
         CD->>WS: 本文の差分を変更履歴に積む
-        CC->>PI: body を ../docs/A-1.mark.md にし、Markdown の本文を渡して A-1 を直す
-        CD->>WS: どの項目も指さなくなった A-1.html を消す
+        CC->>PI: body を ../docs/A-1.mark.md にし、Markdown の本文を渡して A-1 を修正する
+        CD->>WS: どの項目も指さなくなった A-1.html を削除する
       ```
     expected:
       - HTML に替えた後、A-1 の `body` が `../docs/A-1.html` で、`docs/` に渡した HTML の本文があり、`A-1.mark.md` が残らない
@@ -359,7 +359,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませた、タスク T-1 を持つワークスペース
       - name: 本文
-        description: タスクを足すときと T-1 を直すときに渡す HTML の本文（`body` が `../docs/{ID}.html`）
+        description: タスクを追加するときと T-1 を修正するときに渡す HTML の本文（`body` が `../docs/{ID}.html`）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -368,7 +368,7 @@ scenarios:
 
         CC->>PI: HTML の本文を渡してタスクを書き込む
         PI-->>CC: 違反（タスクの body は .mark.md だけ）
-        CC->>PI: HTML の本文を渡して T-1 を直す
+        CC->>PI: HTML の本文を渡して T-1 を修正する
         PI-->>CC: 違反（タスクの body は .mark.md だけ）
       ```
     expected:
@@ -382,8 +382,8 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませた、項目を持たないワークスペース
       - name: 資料・調査の中身
-        description: エイリアスと説明を持つ資料 A-1 と調査 R-1。A-1 を直すときはエイリアスを 1 つ足す
-        notes: 'A-1 はタイトル `特殊効果のスキーマ`、`aliases: [特殊効果]`、`description: 特殊効果の設定ファイルのキーと型`。直して `aliases: [特殊効果, エフェクト]`（`add_to`）。R-1 は `aliases: [特殊効果の描画]`、`description` を持つ'
+        description: エイリアスと説明を持つ資料 A-1 と調査 R-1。A-1 を修正するときはエイリアスを 1 つ追加する
+        notes: 'A-1 はタイトル `特殊効果のスキーマ`、`aliases: [特殊効果]`、`description: 特殊効果の設定ファイルのキーと型`。修正して `aliases: [特殊効果, エフェクト]`（`add_to`）。R-1 は `aliases: [特殊効果の描画]`、`description` を持つ'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -394,14 +394,14 @@ scenarios:
 
         CC->>PI: エイリアスと説明を渡して資料 A-1 と調査 R-1 を書き込む
         PI->>WS: docs.yaml と research.yaml に書く
-        CC->>PI: A-1 のエイリアスに 1 つ足す
+        CC->>PI: A-1 のエイリアスに 1 つ追加する
         PI->>WS: docs.yaml に書く
-        CD->>WS: 更新日を変え、直す前のエイリアスを変更履歴に積む
+        CD->>WS: 更新日を変え、修正する前のエイリアスを変更履歴に積む
       ```
     expected:
       - A-1 と R-1 が、渡したエイリアスと説明を持つ
-      - 直した後、A-1 のエイリアスが `特殊効果`・`エフェクト` で、説明は足したときのままである
-      - A-1 が変更履歴を 1 回分持ち、直す前のエイリアス（`特殊効果` だけ）が入っている
+      - 修正した後、A-1 のエイリアスが `特殊効果`・`エフェクト` で、説明は追加したときのままである
+      - A-1 が変更履歴を 1 回分持ち、修正する前のエイリアス（`特殊効果` だけ）が入っている
       - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     test: test_normal_when_aliases_and_description
   - name: 正常シナリオ（新しいタグを付ける）
@@ -409,7 +409,7 @@ scenarios:
       - name: Mock
         description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
-        description: 作成を済ませ、タグ `通知` を持つ検討事項 D-1 を足したワークスペース
+        description: 作成を済ませ、タグ `通知` を持つ検討事項 D-1 を追加したワークスペース
       - name: 検討事項の中身
         description: 既に使われているタグと、まだどの項目も持たないタグを持つ検討事項
         notes: タグ `通知`・`通知機能`
@@ -429,7 +429,7 @@ scenarios:
       ```
     expected:
       - '`write_docs` が違反にせず、検討事項を書き込む'
-      - '`.mindstella/decisions.yaml` の足した検討事項が、タグ `通知`・`通知機能` を持つ'
+      - '`.mindstella/decisions.yaml` の追加した検討事項が、タグ `通知`・`通知機能` を持つ'
       - '`config.yaml` がタグのキー（`tags`）を持たない'
       - '書き込んだ後の `search_docs` の `group_by: tags` が、`通知`（2 件）と `通知機能`（1 件）を返す'
     test: test_normal_when_new_tag
@@ -487,20 +487,20 @@ scenarios:
       - 違反に、合わない箇所 `tags[{番号}]` と、オブジェクトで渡すことが要るという理由がある
       - ワークスペースの全てのファイルの中身が、書き込みを呼ぶ前と同じである
     test: test_error_when_tag_is_string
-lead: MindStella のセッションが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログを、MindStella の MCP で ID を取ってから project-index の書き込みでワークスペースに足し、後から直す単一ユースケース。
+lead: MindStella のセッションが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログを、MindStella の MCP で ID を取ってから project-index の書き込みでワークスペースに追加し、後から修正する単一ユースケース。
 issue: 3
 primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
-    interest: 会話で決めたことが漏れなく残る。形の崩れた記録で、ワークスペースが読めなくならない
+    interest: 会話で決めたことが漏れなく残る。構造の崩れた記録で、ワークスペースが読めなくならない
 trigger: MindStella のセッションが記録の使い分けで、発言を記録する項目に振り分け終える
 preconditions:
   - ワークスペースが作成済みである
-success_guarantee: 足した項目は `next_id` が振った種類の頭の文字の ID を持ち、変更の検知が作成日・更新日・編集した人（MindStella のセッションの書き込みは `ai`）を記録し、直した項目の更新日が変わり、ワークスペースの全ての YAML がスキーマに合う。どの種類の項目も本文を持て、資料は本文を Markdown か HTML のどちらかで持てる。
+success_guarantee: 追加した項目は `next_id` が振った種類の頭の文字の ID を持ち、変更の検知が作成日・更新日・編集した人（MindStella のセッションの書き込みは `ai`）を記録し、修正した項目の更新日が変わり、ワークスペースの全ての YAML がスキーマに合う。どの種類の項目も本文を持て、資料は本文を Markdown か HTML のどちらかで持てる。
 minimal_guarantee: スキーマに合わない書き込み・存在しない ID への書き込みでは、project-index がどのファイルも書き換えない。
 test_file: tests/e2e/単一ユースケース/test_record_add_update.py
 notes:
-  読んでいない回: AI が最後に読んだ時点より後の回は、保持する回数を超えても消さない。読んだ時点の記録が無いワークスペースでは、今までどおり超えた古い回を消す（正常シナリオ（保持する回数を超えて直す）はこの形）。保持する回数が 0 のときは、今までどおり積まない
-  検討事項の案: 検討事項は、`未整理`・`対象外`・`取り下げ` を除く状態で案を 1 つ以上持つ。`決定済み` は採用した案を 1 つ持ち、採用した案を持つ検討事項は `未決定` にならない。この決まりは種類のスキーマが持ち、project-index の書き込みの検査で止まる。セットアップで足す検討事項もこの形で作る
-  変更履歴: 変更履歴・作成日・更新日・編集した人・通し番号は、変更の検知が書き込みを見つけて記録する（単一ユースケース『書き込みを履歴に残す』）。保持する回数と読んでいない回の扱いも、そちらが持つ
+  読んでいない回: AI が最後に読んだ時点より後の回は、保持する回数を超えても削除しない。読んだ時点の記録が無いワークスペースでは、今までどおり超えた古い回を削除する（正常シナリオ（保持する回数を超えて修正する）はこの構造）。保持する回数が 0 のときは、今までどおり積まない
+  検討事項の案: 検討事項は、`未整理`・`対象外`・`取り下げ` を除く状態で案を 1 つ以上持つ。`決定済み` は採用した案を 1 つ持ち、採用した案を持つ検討事項は `未決定` にならない。この決まりは種類のスキーマが持ち、project-index の書き込みの検査で止まる。セットアップで追加する検討事項もこの構造で作る
+  変更履歴: 変更履歴・作成日・更新日・編集した人・連番は、変更の検知が書き込みを見つけて記録する（単一ユースケース『書き込みを履歴に残す』）。保持する回数と読んでいない回の扱いも、そちらが持つ
   本文の書き込み: 本文のファイルは、project-index#83 で入る `write_docs` の本文の書き込みで書く。この作業 PR は project-index#83 のリリースの後にマージする

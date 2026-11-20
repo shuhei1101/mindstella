@@ -92,7 +92,7 @@ export const RawDiff: Story = {
   },
 };
 
-/** 段落を消しただけ。描いた結果には印を付けられないため、凡例に「消した箇所は原文の差分で見られます」を添える */
+/** 段落を消しただけ。描いた結果には印を付けられないため、凡例に「削除した箇所は原文の差分で見られます」を添える */
 export const RemovedOnly: Story = { args: { before: BEFORE, after: REMOVED, marked: REMOVED_MARKED } };
 
 /** 選んだ時点の本文が Markdown。切り替えを出さず、原文の差分だけを出す */

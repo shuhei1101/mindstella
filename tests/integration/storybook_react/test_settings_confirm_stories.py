@@ -77,7 +77,7 @@ def test_error_offline(open_story: OpenStory) -> None:
     page = _open(open_story, "error-offline")
     # 検証
     assert page.inner_text(f"{DIALOG} [data-part=error]") == (
-        "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、"
+        "保存できませんでした。サーバーが止まっています。起動スクリプトで再起動し、"
         "示された新しい URL で開いてから保存してください。"
     )
 

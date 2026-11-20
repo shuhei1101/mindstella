@@ -1,6 +1,6 @@
 id: MOD-489-146
 title: サーバー / voice-pasteの文字起こし / voice_paste.py
-lead: 文字起こしのインターフェースの voice-paste の実装。プリセットの一覧を読み、音声を `multipart/form-data` で依頼し、ジョブの状態を取りに行って終わるまで待つ。HTTP は標準ライブラリの `urllib.request` で送り、文字起こしだけに依存する。
+lead: 文字起こしのインターフェースの voice-paste の実装。プリセットの一覧を読み、音声を `multipart/form-data` で依頼し、ジョブの状態を取りに行って終わるまで待つ。HTTP は標準ライブラリの `urllib.request` で送信し、文字起こしだけに依存する。
 test_files:
   - tests/unit/scripts/test_voice_paste.py
 directory: |-
@@ -24,7 +24,7 @@ classes:
       - name: opener
         type: Callable[..., http.client.HTTPResponse]
         default: プロキシを使わない `urllib.request.build_opener(urllib.request.ProxyHandler({})).open`
-        description: 要求を送る関数（単体テストで差し替える）。`opener(要求, timeout=秒数)` で呼ぶ（`OpenerDirector.open` の 2 番目の位置引数は `data` のため、待ちの上限はキーワードで渡す）。環境変数のプロキシを通さない
+        description: 要求を送信する関数（単体テストで差し替える）。`opener(要求, timeout=秒数)` で呼ぶ（`OpenerDirector.open` の 2 番目の位置引数は `data` のため、待ちの上限はキーワードで渡す）。環境変数のプロキシを通さない
       - name: sleep
         type: Callable[[float], None]
         default: time.sleep
@@ -42,18 +42,18 @@ classes:
           type: list[str]
           description: プリセットの名前（返った並び）
         process: |-
-          1. `GET {base_url}{PRESETS_PATH}` を送る（`_request`）
-             - 届かない場合、`TranscriberStoppedError` を送る
+          1. `GET {base_url}{PRESETS_PATH}` を送信する（`_request`）
+             - 届かない場合、`TranscriberStoppedError` を送出する
           2. ステータスで分ける
-             - 404 の場合、`TranscriberUnsupportedError` を送る（Linux で動いている）
-             - 200 以外の場合、`TranscriberStoppedError` を送る
+             - 404 の場合、`TranscriberUnsupportedError` を送出する（Linux で動いている）
+             - 200 以外の場合、`TranscriberStoppedError` を送出する
                - `[WARNING]` 文字起こしのサービスがプリセットの一覧に {ステータス} を返した
-          3. 本文の `presets` が文字列の配列でなければ `TranscriberStoppedError` を送る
-             - `[WARNING]` 文字起こしのサービスのプリセットの一覧の形が違う
+          3. 本文の `presets` が文字列の配列でなければ `TranscriberStoppedError` を送出する
+             - `[WARNING]` 文字起こしのサービスのプリセットの一覧の構造が違う
           4. `presets` を返す
         exceptions:
           - name: TranscriberStoppedError
-            condition: 届かない・404 以外の 200 でないステータス・本文の形が違う
+            condition: 届かない・404 以外の 200 でないステータス・本文の構造が違う
             message: '{理由}'
           - name: TranscriberUnsupportedError
             condition: '404'
@@ -68,7 +68,7 @@ classes:
           - name: test_presets_when_unavailable
             case: 異常
             summary: 届かない・エンドポイントが無い・崩れた応答を分ける
-            condition: '`parametrize`: `opener` が `URLError(ConnectionRefusedError())` / `TimeoutError` を送る / 404 / 500 / 200・`{"presets": "一般"}` を返す'
+            condition: '`parametrize`: `opener` が `URLError(ConnectionRefusedError())` / `TimeoutError` を送出する / 404 / 500 / 200・`{"presets": "一般"}` を返す'
             mock: '`opener`'
             expected: '`TranscriberStoppedError` / `TranscriberStoppedError` / `TranscriberUnsupportedError` / `TranscriberStoppedError` / `TranscriberStoppedError`'
             exception: TranscriberStoppedError・TranscriberUnsupportedError
@@ -96,24 +96,24 @@ classes:
           type: str
           description: '`done` の `text`（無いか文字列でなければ空文字）'
         process: |-
-          1. 音声とプリセットを multipart にし（`_multipart`）、`POST {base_url}{JOBS_PATH}` を送る（`_request`。再試行しない）
-             - 届かない場合、`TranscriberStoppedError` を送る
+          1. 音声とプリセットを multipart にし（`_multipart`）、`POST {base_url}{JOBS_PATH}` を送信する（`_request`。再試行しない）
+             - 届かない場合、`TranscriberStoppedError` を送出する
           2. ステータスで分ける
-             - 404 の場合、`TranscriberUnsupportedError` を送る
-             - 202 以外の場合、`TranscriptionFailedError` を送る（本文の `detail` があればメッセージに入れる）
-             - 202 で本文の `job_id` が文字列でない場合、`TranscriptionFailedError` を送る
+             - 404 の場合、`TranscriberUnsupportedError` を送出する
+             - 202 以外の場合、`TranscriptionFailedError` を送出する（本文の `detail` があればメッセージに入れる）
+             - 202 で本文の `job_id` が文字列でない場合、`TranscriptionFailedError` を送出する
           3. 最後に進んだ時刻（`clock()`）と、最後の `state`・`progress` を控え、終わるまで繰り返す
-             - `sleep(POLL_INTERVAL_SEC)` の後、`GET {base_url}{JOBS_PATH}/{job_id}` を送る
+             - `sleep(POLL_INTERVAL_SEC)` の後、`GET {base_url}{JOBS_PATH}/{job_id}` を送信する
                - 1 回の要求が `REQUEST_TIMEOUT_SEC` を超えた場合、待ちを続ける
-               - 接続を断られた場合、`TranscriberStoppedError` を送る
-               - 404 の場合、`TranscriptionFailedError` を送る（ジョブが無い）
+               - 接続を断られた場合、`TranscriberStoppedError` を送出する
+               - 404 の場合、`TranscriptionFailedError` を送出する（ジョブが無い）
                - 200 以外の場合、待ちを続ける
                  - `[WARNING]` 文字起こしのサービスがジョブの状態に {ステータス} を返した
              - `state` が `done` なら `text` を返す
-             - `state` が `failed` なら `TranscriptionFailedError` を送る（`error` をメッセージに入れる）
+             - `state` が `failed` なら `TranscriptionFailedError` を送出する（`error` をメッセージに入れる）
              - `state`・`progress` が控えと違えば、控えと最後に進んだ時刻を書き換える
-             - 最後に進んだ時刻から `WAIT_LIMIT_SEC` を超えたら、`TranscriptionTimeoutError` を送る
-          4. どの失敗も、送る前に `[WARNING]` 文字起こしに失敗した（理由）を記録する。音声の中身は記録しない
+             - 最後に進んだ時刻から `WAIT_LIMIT_SEC` を超えたら、`TranscriptionTimeoutError` を送出する
+          4. どの失敗も、送信する前に `[WARNING]` 文字起こしに失敗した（理由）を記録する。音声の中身は記録しない
         exceptions:
           - name: TranscriberStoppedError
             condition: 依頼が届かない・待つ間に接続を断られた
@@ -176,9 +176,9 @@ classes:
             cost: なし（端末の中の常駐アプリ）
             notes: 同上
       - name: _request
-        title: 要求を送る
+        title: 要求を送信する
         kind: メソッド
-        summary: 1 回の要求を `REQUEST_TIMEOUT_SEC` で送り、ステータスと本文の JSON を返す
+        summary: 1 回の要求を `REQUEST_TIMEOUT_SEC` で送信し、ステータスと本文の JSON を返す
         args:
           - name: method
             type: Literal['GET', 'POST']
@@ -206,7 +206,7 @@ classes:
           type: tuple[int, Any]
           description: ステータスと、本文の JSON（読めなければ `None`）
         process: |-
-          1. `Origin` を付けない `urllib.request.Request` を作り、`opener(要求, timeout=REQUEST_TIMEOUT_SEC)` で送る
+          1. `Origin` を付けない `urllib.request.Request` を作り、`opener(要求, timeout=REQUEST_TIMEOUT_SEC)` で送信する
              - `HTTPError` の場合、そのステータスと本文で続ける
           2. 本文を UTF-8 の JSON として読み、ステータスと組にして返す
              - `URLError`・`TimeoutError`・`ConnectionError` はそのまま上げる（呼ぶ側が種類に分ける）
@@ -214,7 +214,7 @@ classes:
           - name: test_request_when_http_error
             case: 正常
             summary: 4xx・5xx もステータスと本文で返す
-            condition: '`opener` が 400・`{"detail": "x"}` の `HTTPError` を送る'
+            condition: '`opener` が 400・`{"detail": "x"}` の `HTTPError` を送出する'
             mock: '`opener`'
             expected: '`(400, {"detail": "x"})`'
           - name: test_request
@@ -270,7 +270,7 @@ constants:
     title: 文字起こしのジョブのパス
     container: plugins/mindstella/skills/mindmap/scripts/voice_paste.py
     usecase: 音声でコメントする
-    summary: 外部 API『voice-paste』の `POST /web/transcriptions` と、`/{job_id}` を足した `GET`
+    summary: 外部 API『voice-paste』の `POST /web/transcriptions` と、`/{job_id}` を追加した `GET`
     value: '"/web/transcriptions"'
   - name: REQUEST_TIMEOUT_SEC
     title: 1 回の要求の上限

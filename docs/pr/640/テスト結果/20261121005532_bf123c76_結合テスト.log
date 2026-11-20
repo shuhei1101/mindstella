@@ -1,0 +1,43 @@
+# npx storybook build -o storybook-static && npm run build-storybook-react
+storybook=0
+storybook-react=0
+
+# pytest tests/integration/plugin/test_agent_flows.py tests/integration/plugin/test_session_hook.py tests/integration/preview/test_comments_screen.py tests/integration/preview/test_decisions_screen.py tests/integration/preview/test_detail_full_screen.py tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_docs_screen.py tests/integration/preview/test_history_screen.py tests/integration/preview/test_open_preview.py tests/integration/preview/test_overview_screen.py tests/integration/preview/test_pending_panel_screen.py tests/integration/preview/test_records_screen.py tests/integration/preview/test_review_screen.py tests/integration/preview/test_settings_confirm_screen.py tests/integration/preview/test_spa_comments_screen.py tests/integration/preview/test_spa_decisions_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/preview/test_spa_docs_screen.py tests/integration/preview/test_spa_open.py tests/integration/preview/test_spa_overview_screen.py tests/integration/preview/test_spa_pending_edits_screen.py tests/integration/preview/test_spa_records_screen.py tests/integration/preview/test_spa_review_screen.py tests/integration/preview/test_spa_tasks_screen.py tests/integration/preview/test_spa_thread_screen.py tests/integration/preview/test_spa_workspace_settings_screen.py tests/integration/preview/test_tasks_screen.py tests/integration/preview/test_thread_screen.py tests/integration/preview/test_topbar_screen.py tests/integration/preview/test_workspace_settings_screen.py tests/integration/server/test_comments_send.py tests/integration/server/test_comments_send_now.py tests/integration/storybook/test_chips_input_stories.py tests/integration/storybook/test_diff_minimap_stories.py tests/integration/storybook/test_html_body_diff_stories.py tests/integration/storybook/test_removed_band_stories.py tests/integration/storybook/test_reply_form_stories.py tests/integration/storybook/test_review_body_fold_stories.py tests/integration/storybook/test_send_form_stories.py tests/integration/storybook/test_settings_confirm_stories.py tests/integration/storybook/test_thread_post_stories.py tests/integration/storybook/test_topbar_stories.py tests/integration/storybook_react/test_chips_input_stories.py tests/integration/storybook_react/test_diff_minimap_stories.py tests/integration/storybook_react/test_html_body_diff_stories.py tests/integration/storybook_react/test_removed_band_stories.py tests/integration/storybook_react/test_reply_form_stories.py tests/integration/storybook_react/test_review_body_fold_stories.py tests/integration/storybook_react/test_send_form_stories.py tests/integration/storybook_react/test_settings_confirm_stories.py tests/integration/storybook_react/test_thread_post_stories.py tests/integration/storybook_react/test_topbar_stories.py  -rfE
+E         comparison failed
+FAILED tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium]
+FAILED tests/integration/preview/test_spa_detail_panel_screen.py::test_edit_relations[chromium]
+5 failed, 2050 passed in 3283.30s (0:54:43)
+exit=1
+
+# 比較のため、develop 1792643a の worktree で同じ 52 ファイルを実行（cd /home/shuhei2441/repo/mindstella/.claude/worktrees/develop）
+# npx storybook build -o storybook-static && npm run build-storybook-react
+storybook=0
+storybook-react=0
+# pytest {同じ 52 ファイル} -rfE
+E         comparison failed
+FAILED tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_pinned[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_body_layout_switch[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium]
+6 failed, 2049 passed in 3248.62s (0:54:08)
+exit=1
+
+# 作業ブランチで fail したテストを単独で再実行（cd /home/shuhei2441/repo/mindstella/.claude/worktrees/chore-docs-word-choice）
+# pytest tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full
+tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed
+tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart
+tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html
+tests/integration/preview/test_spa_detail_panel_screen.py::test_edit_relations -rA
+E         comparison failed
+FAILED tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium]
+FAILED tests/integration/preview/test_spa_detail_panel_screen.py::test_edit_relations[chromium]
+5 failed in 100.54s (0:01:40)
+exit=1

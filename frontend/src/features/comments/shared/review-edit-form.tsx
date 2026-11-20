@@ -78,7 +78,7 @@ export const ReviewEditForm = ({ id, label, body, error = null, saving = false, 
       trySave();
     }
   };
-  const message = empty ? "コメントを入れてから直してください。" : error;
+  const message = empty ? "コメントを入れてから修正してください。" : error;
   const actions = (
     <>
       <Button variant="ghost" disabled={saving} onClick={() => onCancel(id)}>

@@ -441,7 +441,7 @@ def test_removed_band(
 def test_removed_band_when_filtered(
     write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """絞り込みの条件で一覧の行が 0 件になっても、消した項目は絞り込まず全て帯に出す（正常系）。"""
+    """絞り込みの条件で一覧の行が 0 件になっても、削除した項目は絞り込まず全て帯に出す（正常系）。"""
     # 準備・実行
     url, _ = write_removed_preview()
     preselect_diff(page, "V-2")
@@ -1225,7 +1225,7 @@ def test_add_button(
     # 検証
     button = page.locator(ADD_BUTTON)
     assert button.count() == 1
-    assert button.inner_text().strip() == "項目を追加"
+    assert button.inner_text().strip() == "項目追加"
     assert button.get_attribute("aria-label") == "検討事項の項目を追加"
     bar = page.locator(".toolbar").bounding_box()
     box = button.bounding_box()
@@ -1251,7 +1251,7 @@ def test_add_button_narrow(
     label = button.locator(".lbl").bounding_box()
     assert label is None or label["width"] <= 1
     assert button.locator("svg.icon").is_visible()
-    assert button.get_attribute("title") == "項目を追加"
+    assert button.get_attribute("title") == "項目追加"
     assert page.get_by_role("button", name="検討事項の項目を追加").count() == 1
 
 
@@ -1382,7 +1382,7 @@ def test_added_items_board(
     make_edit: MakeEdit,
     open_preview: OpenPreview,
 ) -> None:
-    """ボードは、溜めた状態の列（無ければ「未整理」）の先頭に破線の枠で出す。ID の場所に「ID は保存で決まる」を置き、タイトルが空なら「（タイトル未入力）」と出す（正常系）。"""
+    """ボードは、溜めた状態の列（無ければ「未整理」）の先頭に破線の枠で出す。ID の場所に「ID は保存時に決定」を置き、タイトルが空なら「（タイトル未入力）」と出す（正常系）。"""
     # 準備
     url, _ = write_edit_preview(
         make_item("D-1", title="今ある問い", status="未決定"),
@@ -1402,7 +1402,7 @@ def test_added_items_board(
     ) == [["未決定", ["new-1", "D-1"]], ["未整理", ["new-2", "D-2"]]]
     first = page.locator(".card[data-new-id='new-1']")
     assert first.evaluate("e => getComputedStyle(e).borderTopStyle") == "dashed"
-    assert first.locator(".pe-noid").inner_text() == "ID は保存で決まる"
+    assert first.locator(".pe-noid").inner_text() == "ID は保存時に決定"
     assert first.locator(".c-ttl").inner_text() == "足す問い"
     assert first.locator(".pm.pm-pending").count() == 1
     assert page.locator(".card[data-new-id='new-2'] .c-ttl").inner_text() == "（タイトル未入力）"
@@ -1463,7 +1463,7 @@ def _wait_added_options(page: Page, expected: list[dict[str, object]]) -> None:
 def test_add_item_with_options(
     write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
 ) -> None:
-    """追加の入力で書いた案は `item-add` の value.options に溜め、採用を選ぶと決定済みにする。案を削除しても同じ記号の書きかけを残さず、開き直すと案をそのまま出す（正常系）。"""
+    """追加の入力で書いた案は `item-add` の value.options に溜め、採用を選ぶと決定済みにする。案を削除しても同じ記号の下書きを残さず、開き直すと案をそのまま出す（正常系）。"""
     # 準備
     url, root = write_edit_preview(make_item("D-1"))
     # ボードは既定で決定済みの列を外すため、表で開く
@@ -1471,7 +1471,7 @@ def test_add_item_with_options(
     start_add(page, "足す問い")
     # 実行（案 A・B を書いて離れる）
     for key, content in (("A", "項目ごと"), ("B", "まとめて")):
-        page.get_by_role("button", name="案を追加").click()
+        page.get_by_role("button", name="案追加").click()
         area = page.get_by_label(f"案 {key} の中身")
         area.fill(content)
         area.blur()
@@ -1551,10 +1551,10 @@ def test_add_item_with_options_when_sent_before_response(
     start_add(page, "足す問い")
     release = _hold_edit_posts(page)
     # 実行（案 A を書いて離れ、その送信の応答より前に案 B を書いて離れる）
-    page.get_by_role("button", name="案を追加").click()
+    page.get_by_role("button", name="案追加").click()
     page.get_by_label("案 A の中身").fill("項目ごと")
     page.get_by_label("案 A の中身").blur()
-    page.get_by_role("button", name="案を追加").click()
+    page.get_by_role("button", name="案追加").click()
     page.get_by_label("案 B の中身").fill("まとめて")
     page.get_by_label("案 B の中身").blur()
     release()

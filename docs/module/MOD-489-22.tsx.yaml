@@ -1,12 +1,12 @@
 id: MOD-489-22
 title: プレビュー / detail-comments
-lead: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く。
+lead: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを表示）、本文の選択から出す選んだ箇所のコメントの入口を描く。
 components:
   - name: DetailComments
     title: 詳細のコメント
     kind: コンポーネント
     usecase: 項目へコメントする
-    summary: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く。コメントの入力の `open` は `usePrefsStore` の `commentFormClosed` から渡し、`onToggleOpen` で書き換える。コメントを溜めたら、`SendForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら入力の「レビューに追加」へ、`input` なら入力欄へフォーカスを移す。閉じている間に選んだ箇所の入口を押したら `commentFormClosed` を `null` にしてから入力欄へフォーカスを移す
+    summary: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを表示）、本文の選択から出す選んだ箇所のコメントの入口を描く。コメントの入力の `open` は `usePrefsStore` の `commentFormClosed` から渡し、`onToggleOpen` で書き換える。コメントを溜めたら、`SendForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら入力の「レビューに追加」へ、`input` なら入力欄へフォーカスを移す。閉じている間に選んだ箇所の入口を押したら `commentFormClosed` を `null` にしてから入力欄へフォーカスを移す
     refs:
       - SCR-489-32#
       - SCR-489-30#
@@ -31,7 +31,7 @@ components:
         expected: 保存領域の `commentFormClosed` が `true` で、移った項目でも入力欄が無く見出しの行だけ / `commentFormClosed` が `null` になり、入力欄にフォーカスがある
       - name: test_detail_comments_when_voice
         case: 正常
-        summary: 音声で項目へのコメントを送る
+        summary: 音声で項目へのコメントを送信する
         condition: 'D-1 の入力でマイクを押して ✓。`POST /api/transcriptions` が `{text: 案 A にする}` で、挙動が `send`'
         mock: MSW と `vi.stubGlobal`
         expected: '`POST /api/comments/send-now` が `{target: D-1, body: 案 A にする}` で 1 回呼ばれ、入力欄が空で「送信し、Claude Code へ入力しました。」'
@@ -50,4 +50,4 @@ components:
     container: frontend/src/features/detail/detail-panel/components/detail-comments.tsx
 notes:
   単体テスト: 同じフォルダの `detail-comments.test.tsx` に置く（knowledge の規約『フォルダ構成』）
-  修正の入力の音声入力: '書き換えている行（`{id, body, error}`）の初めの値は `voiceEditingOf("panel")`（詳細の全画面は `full`）の ID にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread: null, target: 開いている項目}`、開く画面は `panel` か `full`、名前は「{ID} へのコメントの修正」）を使い、`ReviewEditForm` へ `body`・`onBodyChange` と音声の props を渡す。コメントの入力の `useVoiceInput` とは別の `key`。単体テストに `test_detail_comments_when_edit_voice` を足す'
+  修正の入力の音声入力: '書き換えている行（`{id, body, error}`）の初めの値は `voiceEditingOf("panel")`（詳細の全画面は `full`）の ID にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread: null, target: 開いている項目}`、開く画面は `panel` か `full`、名前は「{ID} へのコメントの修正」）を使い、`ReviewEditForm` へ `body`・`onBodyChange` と音声の props を渡す。コメントの入力の `useVoiceInput` とは別の `key`。単体テストに `test_detail_comments_when_edit_voice` を追加する'

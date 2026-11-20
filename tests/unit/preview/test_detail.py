@@ -1068,7 +1068,7 @@ async ({data, reviews, expanded}) => {
                 "listItemBorder": "0px",
                 "listItemDisplay": "list-item",
                 "moreShown": True,
-                "moreText": "続きを読む",
+                "moreText": "続きを表示",
                 "moreFocus": "detail-more:C-63",
             },
             [["C-63", True]],

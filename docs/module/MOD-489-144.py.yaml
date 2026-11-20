@@ -1,6 +1,6 @@
 id: MOD-489-144
 title: サーバー / ClaudeCodeへの入力 / claude_input.py
-lead: ツールの呼び出しが運んだセッションの値を読み、ワークスペースごとに宛先を持つ。まとめて送った後に、そのワークスペースを指して最後にツールを呼んだセッションが生きているかを確かめてからペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。tmux と ps を子プロセスで呼び、会話の記録（jsonl）を読む。
+lead: ツールの呼び出しが運んだセッションの値を読み、ワークスペースごとに宛先を持つ。まとめて送信した後に、そのワークスペースを指して最後にツールを呼んだセッションが生きているかを確かめてからペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。tmux と ps を子プロセスで呼び、会話の記録（jsonl）を読む。
 test_files:
   - tests/unit/scripts/test_claude_input.py
 directory: |-
@@ -16,11 +16,11 @@ diagrams:
         direction LR
         class 宛先の台帳
         class Claude Codeへの入力
-        class 送り先
+        class 送信先
         class 生きているかの確かめ
         class tmuxへの貼り付け
         class 会話の記録での確かめ
-        宛先の台帳 --> 送り先 : ワークスペースごとに持つ
+        宛先の台帳 --> 送信先 : ワークスペースごとに持つ
         宛先の台帳 --> Claude Codeへの入力 : ペインごとの入力の鍵と貼り付けの鍵を渡す
         Claude Codeへの入力 --> 生きているかの確かめ
         Claude Codeへの入力 --> tmuxへの貼り付け
@@ -30,7 +30,7 @@ data_models:
   - name: Session
     title: セッションの値
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     role: DTO
     summary: ツールの引数 `session`（インターフェース定義『MCP サーバーの起動』）を読んだ値。`@dataclass(frozen=True, slots=True, kw_only=True)`
     properties:
@@ -57,9 +57,9 @@ data_models:
         default: None
         description: そのプロセスの起動時刻（`inject_session.process_started_at` の値）
   - name: InputTarget
-    title: 送り先
+    title: 送信先
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     role: DTO
     summary: ペインへ入力するのに要る値がそろったセッションの宛先と会話の記録の場所。`@dataclass(frozen=True, slots=True, kw_only=True)`
     properties:
@@ -85,7 +85,7 @@ classes:
   - name: InputTargets
     title: 宛先の台帳
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     role: 長期保持のランタイム状態
     summary: ワークスペースの絶対パスごとに、最後にツールを呼んだセッションの宛先を 1 つ持つ。プロセスに 1 つだけ作り、配信の台帳が持つ。宛先を引くときは、先に状態のフォルダの MindStella のセッション（`mindstella_session_target`）を見る
     kind: クラス
@@ -101,14 +101,14 @@ classes:
       - name: _pane_locks
         type: dict[tuple[str, str], threading.Lock]
         access: 内部 (_)
-        description: ペイン（ソケットとペインの組）→ ペインごとの入力の鍵。同じペインへ同時に送られた 2 回の入力と確かめを重ねない。`_guard` を取って引き、無ければ作る
+        description: ペイン（ソケットとペインの組）→ ペインごとの入力の鍵。同じペインへ同時に送信された 2 回の入力と確かめを重ねない。`_guard` を取って引き、無ければ作る
       - name: _paste_lock
         type: threading.Lock
         access: 内部 (_)
         description: プロセスの中の 1 本の貼り付けの鍵。名前の付いたバッファ（`PASTE_BUFFER`）を共有するため、生きているかの確かめと tmux の 3 つのコマンドを重ねない
       - name: _restarter
         type: Callable[[Path], bool] | None
-        description: ワークスペースのフォルダを受け、MindStella のセッションが落ちていれば（`running` なら `is_alive` で確認する）契機 `comment` で起動し直して準備ができたかを返す関数（『入口』が `sessions.request_restart` と `sessions.wait_until_running` で作って渡す）。`None` なら起動し直さない
+        description: ワークスペースのフォルダを受け、MindStella のセッションが落ちていれば（`running` なら `is_alive` で確認する）契機 `comment` で再起動して準備ができたかを返す関数（『エントリーポイント』が `sessions.request_restart` と `sessions.wait_until_running` で作って渡す）。`None` なら再起動しない
     methods:
       - name: remember
         title: 宛先を書き換える
@@ -186,9 +186,9 @@ classes:
             mock: '`enter_to_claude`（`claude_input` モジュールの参照を monkeypatch し、渡された `pane_lock`・`paste_lock` を控えて偽を返す）'
             expected: A と B の `pane_lock` が同じもので、C の `pane_lock` はそれと別のもの。3 回とも `paste_lock` が同じもの
       - name: enter_or_restart
-        title: 宛先へ入力し、無ければ起動し直してから入力する
+        title: 宛先へ入力し、無ければ再起動してから入力する
         kind: メソッド
-        summary: '`enter` と同じく入力し、状態のフォルダの MindStella のセッションが `crashed`（`running` でも落ちていれば）でクローズ待ちでなければ、`_restarter` で起動し直してから起動し直したペインへ入力する'
+        summary: '`enter` と同じく入力し、状態のフォルダの MindStella のセッションが `crashed`（`running` でも落ちていれば）でクローズ待ちでなければ、`_restarter` で再起動してから再起動したペインへ入力する'
         args:
           - name: root
             type: Path
@@ -212,64 +212,64 @@ classes:
         unit_tests:
           - name: test_enter_or_restart
             case: 正常
-            summary: 落ちていれば起動し直してから入力する
-            condition: '`parametrize`: `running` で生きている / `running` で落ちている（起動し直すまで貼れない） / `restarting` / `crashed` で `_restarter` が真 / `crashed` で `_restarter` が偽 / クローズ待ち'
+            summary: 落ちていれば再起動してから入力する
+            condition: '`parametrize`: `running` で生きている / `running` で落ちている（再起動するまで貼れない） / `restarting` / `crashed` で `_restarter` が真 / `crashed` で `_restarter` が偽 / クローズ待ち'
             mock: '`enter_to_claude`（真を返す）・`_restarter`'
             expected: '`(True, False)` / `(True, True)` / `(False, False)` / `(True, True)` / `(False, False)` / `(False, False)`。`running` で生きているとき・`restarting`・クローズ待ちでは `_restarter` を呼ばない'
 constants:
   - name: INPUT_TEMPLATE
     title: 入力する文字列の雛形
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
-    summary: '`{count}` に件数を入れて貼る 1 行。`[mindstella]` は `session` が利用者の発言と見分ける印'
-    value: '"[mindstella] ユーザーからのコメントが {count} 件届きました。読み直してください。"'
+    usecase: コメントを選んで送信する
+    summary: '`{count}` に件数を入れて貼る 1 行。`[mindstella]` は `session` が利用者の発言と見分けるマーカー'
+    value: '"[mindstella] ユーザーからのコメントが {count} 件届きました。再読み込みしてください。"'
   - name: PASTE_DEADLINE_SEC
     title: 貼り付けの上限
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 貼り付けの鍵を取ってから、生きているかの確かめと tmux の 3 つのコマンドを打ち切るまでの秒数（非機能要件『ClaudeCodeへの貼り付けの上限』）
     value: '0.5'
   - name: CONFIRM_DEADLINE_SEC
     title: 入力を確かめる上限
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: tmux の 3 つのコマンドを終えてから、届いたかの確かめを打ち切るまでの秒数（非機能要件『ClaudeCodeへの入力を確かめる上限』）
     value: '5.0'
   - name: DELIVERY_POLL_SEC
     title: 会話の記録を読む間隔
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
-    summary: '`Enter` の後、書き足された行を読み直す間隔の秒数'
+    usecase: コメントを選んで送信する
+    summary: '`Enter` の後、追記された行を再読み込みする間隔の秒数'
     value: '0.05'
   - name: PASTE_BUFFER
     title: 貼り付けに使うバッファ
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: '`load-buffer` と `paste-buffer` で使う名前の付いたバッファ（利用者のバッファを書き換えない）'
     value: '"mindstella-input"'
   - name: PARENT_DEPTH_MAX
     title: 親をたどる上限
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
-    summary: Claude Code のプロセスからペインのプロセスまで `ps -o ppid=` でたどる段の上限（インターフェース定義『コメントをまとめて送る』の宛先が生きているかの確かめ）
+    usecase: コメントを選んで送信する
+    summary: Claude Code のプロセスからペインのプロセスまで `ps -o ppid=` でたどる段の上限（インターフェース定義『コメントをまとめて送信する』の宛先が生きているかの確かめ）
     value: '32'
   - name: DEFAULT_CONFIG_DIR
     title: 既定の設定のフォルダ
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: '`session.claude_config_dir` が無いか空のときの Claude Code の設定のフォルダ'
     value: Path.home() / ".claude"
   - name: TRANSCRIPT_NAME_MAX
     title: 会話の記録のフォルダ名の上限
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
-    summary: Claude Code が会話の記録のフォルダ名をそのまま使う上限の文字数（超えると先頭この文字数に `-{パスのハッシュ}` を足す。外部ライブラリ『claude-code』）
+    usecase: コメントを選んで送信する
+    summary: Claude Code が会話の記録のフォルダ名をそのまま使う上限の文字数（超えると先頭この文字数に `-{パスのハッシュ}` を追加する。外部ライブラリ『claude-code』）
     value: '200'
 functions:
   - name: parse_session
     title: セッションの値の読み込み
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: ツールの引数 `session` を `Session` にする。作業フォルダが読めなければ `None`
     kind: 関数
     scope: public
@@ -296,7 +296,7 @@ functions:
         expected: '`cwd` が `/w`、`claude_config_dir` が `/c`、`tmux` が `/s,1,0`、`tmux_pane` が `%3`、`claude_pid` が 42、`claude_started_at` が `Mon Nov 2 10:00:00 2026`'
       - name: test_parse_session_when_partial
         case: 正常
-        summary: 足りない値・形の違う値は None にする
+        summary: 足りない値・形式の違う値は None にする
         condition: '`parametrize`: `{cwd: "/w"}` / `{cwd: "/w", tmux: "", claude_pid: "42"}` / `{cwd: "/w", claude_pid: true}`'
         mock: なし
         expected: どれも `cwd` が `/w`、`claude_config_dir` が `DEFAULT_CONFIG_DIR`、`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` が `None`
@@ -307,10 +307,10 @@ functions:
         mock: なし
         expected: '`None`'
   - name: input_target
-    title: 送り先の組み立て
+    title: 送信先の組み立て
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
-    summary: セッションから送り先を作る。ペインへ入力するのに要る値が欠けていれば `None`
+    usecase: コメントを選んで送信する
+    summary: セッションから送信先を作る。ペインへ入力するのに要る値が欠けていれば `None`
     kind: 関数
     scope: public
     args:
@@ -321,7 +321,7 @@ functions:
         description: セッション
     returns:
       type: InputTarget | None
-      description: 送り先。`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` のどれかが無ければ `None`
+      description: 送信先。`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` のどれかが無ければ `None`
     process: |-
       1. 4 つの値のどれかが `None` なら `None` を返す
       2. `tmux` の最初の `,` より前をソケットにし、`cwd`・`claude_config_dir` と合わせて `InputTarget` を返す
@@ -341,7 +341,7 @@ functions:
   - name: is_session_alive
     title: 宛先が生きているかの確かめ
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 宛先の Claude Code のプロセスが起動時刻ごと残っていて、宛先のペインのプロセスかその子孫かを確かめ、違えば理由を返す
     kind: 関数
     scope: public
@@ -351,7 +351,7 @@ functions:
         type: InputTarget
         required: true
         passing: positional
-        description: 送り先
+        description: 送信先
       - name: deadline
         type: float
         required: true
@@ -404,7 +404,7 @@ functions:
   - name: transcript_dirs
     title: 会話の記録のフォルダ
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 作業フォルダに当たる会話の記録のフォルダを、Claude Code と同じ名前の作り方で引く
     kind: 関数
     scope: public
@@ -413,14 +413,14 @@ functions:
         type: InputTarget
         required: true
         passing: positional
-        description: 送り先
+        description: 送信先
     returns:
       type: list[Path]
       description: 名前が `TRANSCRIPT_NAME_MAX` 文字以下なら `[{config_dir}/projects/{名前}]`（無くてもよい）、超えるなら `projects` の直下で `{先頭 TRANSCRIPT_NAME_MAX 文字}-` で始まるフォルダの全て（無ければ空）
     process: |-
       1. `str(target.cwd)` を UTF-16 の単位で見て、英数字（`A-Za-z0-9`）以外の単位を 1 つずつ `-` に置き換えた名前を作る（サロゲートペアの文字は `--` になる。Claude Code の JavaScript の `replace(/[^a-zA-Z0-9]/g, "-")` と同じ）
       2. 名前が `TRANSCRIPT_NAME_MAX` 文字以下なら、`target.config_dir / "projects" / {名前}` だけを返す
-      3. 超えるなら、`target.config_dir / "projects"` の直下で、名前が `{名前の先頭 TRANSCRIPT_NAME_MAX 文字}-` で始まるフォルダを全て返す（Claude Code は末尾にパスのハッシュを足すが、そのハッシュは作らず、取り違えは `find_delivery` が行の `cwd` で除く）
+      3. 超えるなら、`target.config_dir / "projects"` の直下で、名前が `{名前の先頭 TRANSCRIPT_NAME_MAX 文字}-` で始まるフォルダを全て返す（Claude Code は末尾にパスのハッシュを追加するが、そのハッシュは作らず、取り違えは `find_delivery` が行の `cwd` で除く）
          - `projects` が無ければ空を返す
     unit_tests:
       - name: test_transcript_dirs
@@ -438,7 +438,7 @@ functions:
   - name: input_text
     title: 入力する文字列
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 件数を入れた `INPUT_TEMPLATE` を返す
     kind: 関数
     scope: public
@@ -447,7 +447,7 @@ functions:
         type: int
         required: true
         passing: positional
-        description: 届いた件数（まとめて送った応答の `items` の件数）
+        description: 届いた件数（まとめて送信した応答の `items` の件数）
     returns:
       type: str
       description: 改行を含まない 1 行
@@ -458,11 +458,11 @@ functions:
         summary: 件数を入れた 1 行
         condition: '`count=3`'
         mock: なし
-        expected: '`[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。`'
+        expected: '`[mindstella] ユーザーからのコメントが 3 件届きました。再読み込みしてください。`'
   - name: snapshot_sizes
     title: 会話の記録の大きさの控え
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: フォルダごとに直下の各 jsonl の大きさを控える
     kind: 関数
     scope: public
@@ -494,8 +494,8 @@ functions:
   - name: find_delivery
     title: 届いたかの判定
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
-    summary: 控えより後ろへ書き足された行に、入力が会話か待ち行列に入った印があるかを返す
+    usecase: コメントを選んで送信する
+    summary: 控えより後ろへ追記された行に、入力が会話か待ち行列に入ったマーカーがあるかを返す
     kind: 関数
     scope: public
     args:
@@ -538,23 +538,23 @@ functions:
       - name: test_find_delivery_when_not_found
         case: 正常
         summary: 当たらない行だけなら届いていない
-        condition: '`parametrize`: 控えより前にだけ当たる行がある / `cwd` が違う user の行 / 本文に `text` を含まない user の行 / `operation` が `dequeue` の行 / 改行で終わらない書きかけの当たる行 / 読めない行だけ / フォルダが無い'
+        condition: '`parametrize`: 控えより前にだけ当たる行がある / `cwd` が違う user の行 / 本文に `text` を含まない user の行 / `operation` が `dequeue` の行 / 改行で終わらない入力途中の当たる行 / 読めない行だけ / フォルダが無い'
         mock: なし
         expected: どれも偽
   - name: paste_to_pane
     title: tmux への貼り付け
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 文字列をブラケットペーストでペインへ貼り、`Enter` で確定する。失敗の理由を返す
     kind: 関数
     scope: public
-    side_effects: tmux の名前の付いたバッファへ書き、ペインへ貼ってキーを送る
+    side_effects: tmux の名前の付いたバッファへ書き、ペインへ貼ってキーを送信する
     args:
       - name: target
         type: InputTarget
         required: true
         passing: positional
-        description: 送り先（`socket`・`pane` が空でない）
+        description: 送信先（`socket`・`pane` が空でない）
       - name: text
         type: str
         required: true
@@ -604,7 +604,7 @@ functions:
   - name: enter_to_claude
     title: Claude Code への入力
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 宛先が生きていれば届いた件数の 1 行をペインへ貼り、上限までに会話の記録に入ったかを返す。入力できなかった理由を記録する
     kind: 関数
     scope: public
@@ -615,7 +615,7 @@ functions:
         type: InputTarget | None
         required: true
         passing: positional
-        description: 送り先（`InputTargets.target_of` の結果）
+        description: 送信先（`InputTargets.target_of` の結果）
       - name: count
         type: int
         required: true
@@ -625,7 +625,7 @@ functions:
         type: threading.Lock | None
         required: true
         passing: keyword
-        description: 送り先のペインの入力の鍵（`target` が `None` なら `None`）
+        description: 送信先のペインの入力の鍵（`target` が `None` なら `None`）
       - name: paste_lock
         type: threading.Lock
         required: true
@@ -671,19 +671,19 @@ functions:
             - 理由が返った場合、偽を返す
               - `[WARNING]` Claude Code へ入力できない（理由）
       5. `paste_lock` を離してから、`confirm_deadline` を `clock() + CONFIRM_DEADLINE_SEC` にする
-      6. `confirm_deadline` まで、`transcript_dirs` を引き直して `find_delivery` を呼び、真なら真を返し、偽なら `min(DELIVERY_POLL_SEC, 残り)` 待って読み直す（名前が上限を超えるとき、新しい会話のフォルダが貼った後に作られても拾う）。待った秒の合計も `CONFIRM_DEADLINE_SEC` を超えない
+      6. `confirm_deadline` まで、`transcript_dirs` を再取得して `find_delivery` を呼び、真なら真を返し、偽なら `min(DELIVERY_POLL_SEC, 残り)` 待って再読み込みする（名前が上限を超えるとき、新しい会話のフォルダが貼った後に作られても拾う）。待った秒の合計も `CONFIRM_DEADLINE_SEC` を超えない
       7. 偽を返す
          - `[WARNING]` Claude Code の会話の記録に入力が入らない（`CONFIRM_DEADLINE_SEC` 秒）
     unit_tests:
       - name: test_enter_to_claude
         case: 正常
         summary: 貼った後に会話の記録に入れば真
-        condition: '`proc_dir` は無いフォルダ。送り先。`run` は `ps`・`display-message` に生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返し、`send-keys` を受けたときに会話の記録のフォルダの jsonl へ `cwd` が一致し本文が入力の文字列の user の行を書き足す'
+        condition: '`proc_dir` は無いフォルダ。送信先。`run` は `ps`・`display-message` に生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返し、`send-keys` を受けたときに会話の記録のフォルダの jsonl へ `cwd` が一致し本文が入力の文字列の user の行を追記する'
         mock: '`run`・`clock`・`sleep`'
         expected: 真を返し、`load-buffer` の標準入力が `input_text(2)`（`count=2`）
       - name: test_enter_to_claude_when_outside_tmux
         case: 正常
-        summary: 送り先が無ければ ps・tmux を呼ばずに偽
+        summary: 送信先が無ければ ps・tmux を呼ばずに偽
         condition: '`target=None`'
         mock: '`run`'
         expected: 偽を返し、`run` が呼ばれない
@@ -698,23 +698,23 @@ functions:
         summary: 貼れなければ偽と理由の記録
         condition: '`proc_dir` は無いフォルダ。`run` が生きている宛先の値を返し、`paste-buffer` で終了コード 1 を返す'
         mock: '`run`・`clock`・`sleep`'
-        expected: 偽を返し、`WARNING` の記録に `paste-buffer` を含む理由がある。会話の記録を読み直さない（`sleep` が呼ばれない）
+        expected: 偽を返し、`WARNING` の記録に `paste-buffer` を含む理由がある。会話の記録を再読み込みしない（`sleep` が呼ばれない）
       - name: test_enter_to_claude_when_not_delivered
         case: 正常
         summary: 上限までに入らなければ偽
-        condition: '`proc_dir` は無いフォルダ。`run` が生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返し、会話の記録に何も書き足さない。`clock` は `sleep` の分だけ進む'
+        condition: '`proc_dir` は無いフォルダ。`run` が生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返し、会話の記録に何も追記しない。`clock` は `sleep` の分だけ進む'
         mock: '`run`・`clock`・`sleep`'
         expected: 偽を返し、`sleep` に渡した秒の合計が `CONFIRM_DEADLINE_SEC` を超えない。`WARNING` の記録がある。`sleep` が呼ばれている間は `paste_lock` を持っていない
       - name: test_enter_to_claude_when_paste_slow
         case: 正常
         summary: 確かめの上限は貼り終えてから数える
-        condition: '`proc_dir` は無いフォルダ。`run` が生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返すたびに `clock` を 0.1 秒進め、会話の記録に何も書き足さない。`clock` は `sleep` の分だけ進む'
+        condition: '`proc_dir` は無いフォルダ。`run` が生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返すたびに `clock` を 0.1 秒進め、会話の記録に何も追記しない。`clock` は `sleep` の分だけ進む'
         mock: '`run`・`clock`・`sleep`'
         expected: 偽を返し、`sleep` に渡した秒の合計が `CONFIRM_DEADLINE_SEC` と等しい（`math.isclose`）
       - name: test_enter_to_claude_when_concurrent
         case: 正常
         summary: 同時の入力を重ねない
-        condition: '`proc_dir` は無いフォルダ。2 つのスレッドから同じ送り先と同じ `pane_lock`・`paste_lock` で呼ぶ。`run` は生きている宛先の値を返し、呼ばれている間に他方の `run` が始まっていないかを控える'
+        condition: '`proc_dir` は無いフォルダ。2 つのスレッドから同じ送信先と同じ `pane_lock`・`paste_lock` で呼ぶ。`run` は生きている宛先の値を返し、呼ばれている間に他方の `run` が始まっていないかを控える'
         mock: '`run`・`clock`・`sleep`'
         expected: 一方の 3 つのコマンドの間に他方のコマンドが入らない
   - name: mindstella_session_target

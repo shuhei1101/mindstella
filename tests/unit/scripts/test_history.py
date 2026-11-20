@@ -41,7 +41,7 @@ def _empty_changes() -> dict[str, Any]:
 
 
 def _removed(item_id: str, seq: int, added_seq: int, title: str = "重複したメモ") -> dict[str, Any]:
-    """消した項目の記録（changes.yaml の removed の 1 要素）を作る。種類は ID の頭の文字から決める。"""
+    """削除した項目の記録（changes.yaml の removed の 1 要素）を作る。種類は ID の頭の文字から決める。"""
     kinds = {
         "D": "decision",
         "T": "task",
@@ -384,7 +384,7 @@ def test_commit_pending_when_empty() -> None:
 
 
 def test_commit_pending_when_only_removed() -> None:
-    """消した項目だけでもまとまりにする（正常系）。"""
+    """削除した項目だけでもまとまりにする（正常系）。"""
     # 準備
     removed = _removed("N-2", seq=3, added_seq=2)
     changes = {
@@ -442,7 +442,7 @@ def test_pending_view(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
 
 
 def test_pending_view_when_removed(make_workspace: MakeWorkspace) -> None:
-    """消した項目を removed で返す（正常系）。"""
+    """削除した項目を removed で返す（正常系）。"""
     # 準備
     workspace = store.load_workspace(make_workspace())
     changes = {
@@ -685,7 +685,7 @@ def test_changes_since_reports_editors(make_workspace: MakeWorkspace, make_item:
 
 
 def test_changes_since_when_removed(make_workspace: MakeWorkspace) -> None:
-    """読んだ時点に有って後で消した項目だけを返す（正常系）。"""
+    """読んだ時点に有って後で削除した項目だけを返す（正常系）。"""
     # 準備
     workspace = store.load_workspace(make_workspace())
     changes = {

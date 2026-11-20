@@ -6,7 +6,7 @@ test_files:
 directory: |-
   ```
   plugins/mindstella/
-    hooks/hooks.json                     SessionStart で reset_unread.py を呼ぶ（形はインターフェース定義『未読へ戻す』の起動するコマンド。同じ SessionStart の ensure_server.py と、PreToolUse の inject_session.py も置く）
+    hooks/hooks.json                     SessionStart で reset_unread.py を呼ぶ（構造はインターフェース定義『未読へ戻す』の起動するコマンド。同じ SessionStart の ensure_server.py と、PreToolUse の inject_session.py も置く）
     skills/mindmap/scripts/
       reset_unread.py                    ワークスペースを探して未読へ戻す（仮想環境の Python で起動）
   ```
@@ -21,7 +21,7 @@ constants:
     title: ロックを試す間隔
     container: plugins/mindstella/skills/mindmap/scripts/reset_unread.py
     usecase: スレッドで話す
-    summary: 取れなかったロックを試し直す間隔の秒数（上限の中で 40 回試せ、待ちが会話の始まりに感じられない長さ）
+    summary: 取れなかったロックを再試行する間隔の秒数（上限の中で 40 回試せ、待ちが会話の始まりに感じられない長さ）
     value: '0.05'
 functions:
   - name: find_workspaces
@@ -162,4 +162,4 @@ functions:
         mock: '`stdin`・`stderr`'
         expected: 0。`b` の書き込みが未読で、`stderr` に `a` のパスを含む 1 行、標準出力が空
 notes:
-  フックの定義: '`hooks/hooks.json` は `SessionStart` に `matcher` を持たない `command` のフックを置き（モジュール構成『起動』の `ensure_server.py` のフックと並べる）、コマンドをインターフェース定義『未読へ戻す』の制約「起動するコマンド」の文字列にする。スクリプトは起動したファイルのフォルダから `store`・`threads` を読む（モジュール構成『入口』の「モジュールの読み込み」と同じ）。`print` を使わず、`logging` も標準エラーへ出す'
+  フックの定義: '`hooks/hooks.json` は `SessionStart` に `matcher` を持たない `command` のフックを置き（モジュール構成『起動』の `ensure_server.py` のフックと並べる）、コマンドをインターフェース定義『未読へ戻す』の制約「起動するコマンド」の文字列にする。スクリプトは起動したファイルのフォルダから `store`・`threads` を読む（モジュール構成『エントリーポイント』の「モジュールの読み込み」と同じ）。`print` を使わず、`logging` も標準エラーへ出す'

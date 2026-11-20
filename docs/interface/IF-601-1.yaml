@@ -1,5 +1,5 @@
 id: IF-601-1
-title: ワークスペースの開き直し
+title: ワークスペースの再オープン
 entry:
   kind: endpoint
   value: POST `/workspaces/{id}/reopen`
@@ -20,7 +20,7 @@ request:
 response:
   - name: id
     type: str
-    description: 開き直したワークスペースの ID
+    description: 再度開いたワークスペースの ID
   - name: reopened
     type: bool
     description: '配信元の行を `outside_read: true` に戻したとき真。クローズしていなかったとき偽'
@@ -29,7 +29,7 @@ response:
     description: 常に偽
 status_codes:
   - code: '200'
-    condition: 開き直した（クローズしていないワークスペースも 200）
+    condition: 再度開いた（クローズしていないワークスペースも 200）
   - code: '404'
     condition: '`id` のワークスペースが状態のフォルダの ID の一覧に無いか、配信元の行が無い'
     notes: '`stage` は `workspace`'
@@ -44,11 +44,11 @@ constraints:
   - item: クローズ済みの判定
     constraint: 'project-index の `GET /settings/sources` で引いた配信元の行が `outside_read: false` ならクローズ済みとする'
   - item: 配信元の行
-    constraint: 'クローズ済みのときだけ、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: true` を送る。409（版が古い）なら 1 回だけ引き直して送り直す。『ワークスペースの作成』がクローズしたフォルダを開くとき（結果 `reopened`）も、同じ処理で行を戻す'
+    constraint: 'クローズ済みのときだけ、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: true` を送信する。409（バージョンが古い）なら 1 回だけ再取得して再送信する。『ワークスペースの作成』がクローズしたフォルダを開くとき（結果 `reopened`）も、同じ処理で行を戻す'
   - item: クローズ待ち
     constraint: 配信元の行を戻した後（クローズしていないときはすぐに）、セッションの管理に状態の `close_pending` を偽にするよう依頼する
   - item: 取り込み待ちのコメント
-    constraint: 開き直しは MindStella のセッションを起動しない。クローズ待ちの間に届いてスレッドに残ったコメントは、開き直しの後も取り込み待ちのままにする
+    constraint: 再オープンは MindStella のセッションを起動しない。クローズ待ちの間に届いてスレッドに残ったコメントは、再オープンの後も取り込み待ちのままにする
   - item: 同時の依頼
     constraint: ワークスペースごとの鍵を、配信元の行の参照からクローズ待ちを解くまで持つ（『ワークスペースのクローズ』『MindStella のセッションの作成』『ワークスペースの削除』と同じ鍵）
   - item: MCP のツール

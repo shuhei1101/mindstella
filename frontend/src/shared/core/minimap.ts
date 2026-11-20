@@ -45,8 +45,8 @@ const MINIMAP_HIT_MS = 1600;
 
 /** 印の種類 → 読み上げの名前と `title` の頭 */
 const MINIMAP_KIND_NAME: Record<MinimapKind, string> = {
-  add: "足した箇所",
-  del: "消した箇所",
+  add: "追加した箇所",
+  del: "削除した箇所",
   chg: "変わった箇所",
 };
 

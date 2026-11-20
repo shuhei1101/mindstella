@@ -286,14 +286,14 @@ def test_transcription(
     preset = page.get_by_label("用語集のプリセット", exact=True)
     # 検証（今の値と候補）
     expect(page.get_by_role("radio", name="レビュー中に追加する")).to_be_checked()
-    radios = page.get_by_role("radio", name=re.compile("^(レビュー中に追加する|入力欄へ挿入する|送信する)$"))
+    radios = page.get_by_role("radio", name=re.compile("^(レビュー中に追加する|入力欄へ挿入する|送信)$"))
     assert [radios.nth(i).get_attribute("value") for i in range(radios.count())] == ["review", "insert", "send"]
     expect(preset).to_have_value("開発")
     expect(preset.locator("option")).to_have_text(["サービスの既定", "一般", "開発"])
     assert "文字起こしの結果を挿入した全文をレビュー中に追加し、送信しません。" in page.inner_text(f"{WS} .pe-field[data-key='transcription.action'] .pe-hint")
     assert page.inner_text(f"{PRESET_FIELD} .pe-hint") == "文字起こしの補正に使用する用語集です。候補は文字起こしのサービスから取得します。"
     # 実行（文字起こし後の挙動）
-    page.get_by_role("radio", name="送信する").check()
+    page.get_by_role("radio", name="送信").check()
     # 検証
     wait_edits_match(page, TRANSCRIPTION_EDIT_MATCH_JS, {"action": "send", "preset": "開発"})
     # 実行（用語集のプリセット）
@@ -322,6 +322,6 @@ def test_transcription_when_service_stopped(
     expect(preset).to_be_disabled()
     assert preset.locator("option").all_inner_texts() == ["開発"]
     assert page.inner_text(f"{PRESET_FIELD} .pe-hint") == (
-        "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。"
+        "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を再度開いてください。"
     )
     expect(page.get_by_role("radio", name="入力欄へ挿入する")).to_be_enabled()

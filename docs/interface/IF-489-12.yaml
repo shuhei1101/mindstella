@@ -5,12 +5,12 @@ entry:
   value: '`reply`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__reply`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
-    summary: 返信を足し、要約を書き直し、読んだ利用者の書き込みを取り込み済みにする
+    summary: 返信を追加し、要約を書き直し、読んだ利用者の書き込みを取り込み済みにする
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 と、D-1 へのオープンのスレッド TH-1 を持つワークスペース。TH-1 の書き込みは利用者の `案 A にする`（既読で、取り込んでいない）と、その後に送られた利用者の `案 B も見たい`（未読で、取り込んでいない）
+        description: 検討事項 D-1 と、D-1 へのオープンのスレッド TH-1 を持つワークスペース。TH-1 の書き込みは利用者の `案 A にする`（既読で、取り込んでいない）と、その後に送信された利用者の `案 B も見たい`（未読で、取り込んでいない）
         notes: '`body` は `D-1 を案 A で決定にしました`、`summary` は `D-1 の案の相談。案 A で決定`'
     flow: |-
       ```mermaid
@@ -21,16 +21,16 @@ flows:
 
         クライアント->>IF: reply workspace id TH-1 body summary
         IF-->>WS: threads.yaml を読む
-        IF->>WS: 返信を足し、要約を書き、既読の利用者の書き込みを取り込み済みにする
+        IF->>WS: 返信を追加し、要約を書き、既読の利用者の書き込みを取り込み済みにする
         IF-->>クライアント: JSON（post TH-1-3・taken [TH-1-1]）
       ```
     expected:
       - ツールのエラーにならない
-      - 'TH-1 の末尾に AI の `D-1 を案 A で決定にしました`（`read: true`）が足され、要約が渡した文になる'
+      - 'TH-1 の末尾に AI の `D-1 を案 A で決定にしました`（`read: true`）が追加され、要約が渡した文になる'
       - '`案 A にする` の `taken` に日時が入り、未読の `案 B も見たい` は `taken` が `null` のまま'
       - '`taken` が `["TH-1-1"]`'
       - スレッドの状態はオープンのまま
-      - '足した AI の書き込みが `seen: false`（利用者の未読）で、利用者の書き込みの `seen` は呼ぶ前と同じ'
+      - '追加した AI の書き込みが `seen: false`（利用者の未読）で、利用者の書き込みの `seen` は呼ぶ前と同じ'
     test: test_normal
   - name: 正常系（取り込み済みにしない）
     summary: take を偽にすると返信と要約だけを書く
@@ -50,7 +50,7 @@ flows:
         IF-->>クライアント: JSON（taken は空）
       ```
     expected:
-      - TH-1 の末尾に AI の返信が足される
+      - TH-1 の末尾に AI の返信が追加される
       - 利用者の書き込みはどちらも `taken` が `null` のままで、`taken` が空
     test: test_normal_when_not_take
   - name: 異常系（クローズのスレッド・ThreadClosedError）
@@ -59,7 +59,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 利用者が質問を送ってからクローズにしたスレッド TH-1 を持つワークスペース
+        description: 利用者が質問を送信してからクローズにしたスレッド TH-1 を持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -136,13 +136,13 @@ flows:
       - 'ツールのエラーになり、本文が `エラー: ` で始まりトレースバックを含まない'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_write_fails
-  - name: 異常系（スレッドの形が崩れている・SchemaMismatchError）
+  - name: 異常系（スレッドの構造が崩れている・SchemaMismatchError）
     summary: 手で崩した threads.yaml には書かずに合わない箇所を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '`threads.yaml` の TH-1 から `status` を消したワークスペース'
+        description: '`threads.yaml` の TH-1 から `status` を削除したワークスペース'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -200,9 +200,9 @@ flows:
       - 'ツールのエラーになり、本文が `エラー: MindStella のセッションだけが呼べます: reply`'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_not_mindstella_session
-lead: オープンのスレッドの末尾に AI の返信を足し、同じ呼び出しで要約を書き直して、AI が読んだ利用者の書き込みを取り込み済みにする。
+lead: オープンのスレッドの末尾に AI の返信を追加し、同じ呼び出しで要約を書き直して、AI が読んだ利用者の書き込みを取り込み済みにする。
 idempotent: false
-side_effects: '`threads.yaml` のそのスレッドに書き込みを 1 件足し、`summary` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
+side_effects: '`threads.yaml` のそのスレッドに書き込みを 1 件追加し、`summary` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
   - IF-565-1#
 request:
@@ -222,7 +222,7 @@ request:
     type: str
     required: true
     location: argument
-    description: 返信の本文。足した・直した項目があればその ID を書く
+    description: 返信の本文。追加した・修正した項目があればその ID を書く
     constraints: 前後の空白を除いて 1〜10000 文字
   - name: summary
     type: str
@@ -248,7 +248,7 @@ response:
     description: スレッドの ID
   - name: post
     type: str
-    description: 足した書き込みの ID
+    description: 追加した書き込みの ID
     example: TH-1-3
   - name: created
     type: str
@@ -285,12 +285,12 @@ error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を
 constraints:
   - item: 呼べるセッション
     constraint: そのワークスペースの MindStella のセッションだけ（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）。正常系のフローは、状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 取り込み済みにする範囲
-    constraint: 'AI が既読にした（`read: true`）利用者の書き込みだけ。読んだ後に送られた未読の書き込みは取り込み待ちに残す'
+    constraint: 'AI が既読にした（`read: true`）利用者の書き込みだけ。読んだ後に送信された未読の書き込みは取り込み待ちに残す'
   - item: 本文と要約の上限
     constraint: 本文 10000 文字・要約 400 文字
     decided_by: NFR-489-1#requirements[スレッドの要約と理由の長さ]
@@ -298,7 +298,7 @@ constraints:
   - item: クローズのスレッド
     constraint: 返信しない。AI は返信が要るとき、『スレッドの状態の書き換え』で理由つきでオープンに戻してから呼ぶ（要件『オープン・クローズ』）
   - item: 同時の呼び出し
-    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からのまとめて送る・クローズと重なっても、どちらの書き換えも失わない
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からのまとめて送信する・クローズと重なっても、どちらの書き換えも失わない
   - item: 作業の完了の通知
     constraint: 返信を追加したときに、呼んだ MindStella のセッションに『作業の完了の通知』の書き込みのマーカーを付ける。失敗したときは付けない
 refs:

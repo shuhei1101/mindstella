@@ -39,7 +39,7 @@ namespace MindmapPreview {
     if (status === "failed") {
       const reason =
         detail === null || detail === undefined
-          ? "サーバーが止まっています。立ち上げ直してから追加してください。"
+          ? "サーバーが止まっています。再起動してから追加してください。"
           : detail;
       return [icon("alert"), h({ tag: "span", children: [`レビューに追加できませんでした。${reason}`] })];
     }

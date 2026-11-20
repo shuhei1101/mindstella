@@ -106,7 +106,7 @@ def test_tag_filter(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
     _open(page, spa_comments_preview)
     # 実行
     _rows(page).filter(has_text="D-1 の案の相談").get_by_role("button", name="タグ「画面」で絞る").click()
-    # 検証（タグで絞ると、まだ送っていない新しいスレッドは並べない）
+    # 検証（タグで絞ると、まだ送っていない新規スレッドは並べない）
     page.wait_for_url("**ttag=**")
     expect(_rows(page)).to_have_count(1)
     expect(_panel(page)).to_contain_text("1 / 2 件")
@@ -118,7 +118,7 @@ def test_tag_filter(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
 
 
 def test_thread_rows(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """まだ送っていない新しいスレッドを先頭に、続けてスレッドを最後の書き込みの新しい順に並べ、行を押すとスレッドの画面を開く（正常系）。"""
+    """まだ送っていない新規スレッドを先頭に、続けてスレッドを最後の書き込みの新しい順に並べ、行を押すとスレッドの画面を開く（正常系）。"""
     # 準備
     _open(page, spa_comments_preview)
     # 検証（並び）
@@ -143,14 +143,14 @@ def test_empty_state(page: Page, spa_comments_preview: tuple[str, Path]) -> None
 
 
 def test_threads_unreadable(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """スレッドを読めないとき、理由を `role="alert"` で出し、まだ送っていない新しいスレッドは並べる（異常系）。"""
+    """スレッドを読めないとき、理由を `role="alert"` で出し、まだ送っていない新規スレッドは並べる（異常系）。"""
     # 準備
     page.route("**/api/threads", lambda route: route.abort())
     # 実行
     _open(page, spa_comments_preview)
     # 検証
     alert = _panel(page).get_by_role("alert")
-    expect(alert).to_have_text("スレッドを読めませんでした。サーバーが止まっています。立ち上げ直してから開いてください。")
+    expect(alert).to_have_text("スレッドを読めませんでした。サーバーが止まっています。再起動してから開いてください。")
     expect(_rows(page)).to_have_count(1)
     expect(_rows(page).first).to_have_attribute("data-pending", "C-41")
 
@@ -172,13 +172,13 @@ def test_threads_unreadable_with_detail(page: Page, spa_comments_preview: tuple[
 
 
 def test_new_thread(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """「新しいスレッド」を押すと入力を出して入力欄へフォーカスを移し、溜めると一覧の先頭と入口の件数に足す（正常系）。"""
+    """「新規スレッド」を押すと入力を出して入力欄へフォーカスを移し、溜めると一覧の先頭と入口の件数に足す（正常系）。"""
     # 準備
     _, root = spa_comments_preview
     _open(page, spa_comments_preview)
     # 実行
-    _panel(page).get_by_role("button", name="新しいスレッド").click()
-    field = _panel(page).get_by_role("textbox", name="新しいスレッド")
+    _panel(page).get_by_role("button", name="新規スレッド").click()
+    field = _panel(page).get_by_role("textbox", name="新規スレッド")
     # 検証（入力欄へフォーカス）
     expect(field).to_be_focused()
     # 実行
@@ -187,7 +187,7 @@ def test_new_thread(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
     # 検証
     expect(field).to_have_value("")
     expect(_panel(page).get_by_role("button", name="レビュー中の書き込みを確かめる（3 件）")).to_be_visible()
-    # まだ送っていない新しいスレッドは、溜めた順に一覧の先頭へ並べる
+    # まだ送っていない新規スレッドは、溜めた順に一覧の先頭へ並べる
     expect(_panel(page).locator("li[data-pending]")).to_have_count(2)
     expect(_panel(page).locator("li[data-pending]").last).to_contain_text("全体を見直したい")
     items = read_workspace_yaml(root, "comments.yaml")["items"]
@@ -195,17 +195,17 @@ def test_new_thread(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
 
 
 def test_new_thread_close(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """新しいスレッドの入力を閉じると「新しいスレッド」に戻し、書きかけは残す（正常系）。"""
+    """新規スレッドの入力を閉じると「新規スレッド」に戻し、下書きは残す（正常系）。"""
     # 準備
     _open(page, spa_comments_preview)
-    _panel(page).get_by_role("button", name="新しいスレッド").click()
-    _panel(page).get_by_role("textbox", name="新しいスレッド").fill("書きかけの文")
+    _panel(page).get_by_role("button", name="新規スレッド").click()
+    _panel(page).get_by_role("textbox", name="新規スレッド").fill("下書きの文")
     # 実行
-    _panel(page).get_by_role("button", name="新しいスレッドの入力を閉じる").click()
+    _panel(page).get_by_role("button", name="新規スレッドの入力を閉じる").click()
     # 検証
-    expect(_panel(page).get_by_role("textbox", name="新しいスレッド")).to_have_count(0)
-    _panel(page).get_by_role("button", name="新しいスレッド").click()
-    expect(_panel(page).get_by_role("textbox", name="新しいスレッド")).to_have_value("書きかけの文")
+    expect(_panel(page).get_by_role("textbox", name="新規スレッド")).to_have_count(0)
+    _panel(page).get_by_role("button", name="新規スレッド").click()
+    expect(_panel(page).get_by_role("textbox", name="新規スレッド")).to_have_value("下書きの文")
 
 
 def test_pin(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
@@ -246,34 +246,34 @@ def test_voice_input_when_service_stopped(
     start_voice_preview: _StartVoicePreview,
     unreachable_transcriber_url: str,
 ) -> None:
-    """新しいスレッドの入力で、文字起こしのサービスが起動していないときはマイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
+    """新規スレッドの入力で、文字起こしのサービスが起動していないときはマイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
     # 準備
     url, _ = start_voice_preview(unreachable_transcriber_url, make_item("D-1"))
     open_spa(page, url, "?tab=decisions&panel=comments")
     # 実行
-    _panel(page).get_by_role("button", name="新しいスレッド").click()
+    _panel(page).get_by_role("button", name="新規スレッド").click()
     # 検証
-    field = page.get_by_role("textbox", name="新しいスレッド")
+    field = page.get_by_role("textbox", name="新規スレッド")
     assert_mic_blocked_after_click(_panel(page).locator("form").filter(has=field), "[role=status]")
 
 
 def test_target_filter(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """詳細パネルのボタンでその項目で絞った一覧を開き、絞っている間の新しいスレッドはその項目へ向けて溜めて一覧に並べる。チップの × と、一覧を閉じて開き直すと絞らない（正常系）。"""
+    """詳細パネルのボタンでその項目で絞った一覧を開き、絞っている間の新規スレッドはその項目へ向けて溜めて一覧に並べる。チップの × と、一覧を閉じて開き直すと絞らない（正常系）。"""
     # 準備
     url, root = spa_comments_preview
     open_spa(page, url, "?tab=decisions&id=D-1")
     detail = page.get_by_role("complementary", name="詳細")
     # 実行（詳細パネルのボタンで開く）
     detail.get_by_role("button", name="D-1 のコメントの一覧を開く").click()
-    # 検証（D-1 へ向けたスレッドだけ。D-2 への新しいスレッド C-41 は出ない）
+    # 検証（D-1 へ向けたスレッドだけ。D-2 への新規スレッド C-41 は出ない）
     page.wait_for_url("**ttarget=D-1**")
     expect(_panel(page)).to_contain_text("最初の問い")
     expect(_rows(page)).to_have_count(1)
     expect(_rows(page).first).to_contain_text("D-1 の案の相談")
-    # 実行（絞っている間の新しいスレッド）
-    _panel(page).get_by_role("button", name="新しいスレッド").click()
-    expect(_panel(page).get_by_role("heading", name="D-1 への新しいスレッド")).to_be_visible()
-    _panel(page).get_by_role("textbox", name="D-1 への新しいスレッド").fill("D-1 の進め方")
+    # 実行（絞っている間の新規スレッド）
+    _panel(page).get_by_role("button", name="新規スレッド").click()
+    expect(_panel(page).get_by_role("heading", name="D-1 への新規スレッド")).to_be_visible()
+    _panel(page).get_by_role("textbox", name="D-1 への新規スレッド").fill("D-1 の進め方")
     _panel(page).get_by_role("button", name="レビューに追加").click()
     # 検証
     expect(_rows(page)).to_have_count(2, timeout=UPDATE_TIMEOUT_MS)

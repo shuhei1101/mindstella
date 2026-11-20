@@ -5,8 +5,8 @@ functions:
   - name: useLocationHighlight
     title: 示す箇所
     kind: 関数
-    usecase: コメントを選んで送る
-    summary: 開いている項目の中で示す箇所を返す（別の項目の箇所は返さない）。詳細パネル・詳細の全画面が、本文を描き終えた後に `applyHighlight` で印の色の地を付ける
+    usecase: コメントを選んで送信する
+    summary: 開いている項目の中で示す箇所を返す（別の項目の箇所は返さない）。詳細パネル・詳細の全画面が、本文を描き終えた後に `applyHighlight` でマーカーの色の地を付ける
     args:
       - name: id
         type: string
@@ -19,7 +19,7 @@ functions:
   - name: showLocation
     title: 示す箇所の控え
     kind: 関数
-    usecase: コメントを選んで送る
+    usecase: コメントを選んで送信する
     summary: 項目を開く前に、その項目の中で示す箇所を控える（箇所を持たない書き込みは控えを外す）
     args:
       - name: target

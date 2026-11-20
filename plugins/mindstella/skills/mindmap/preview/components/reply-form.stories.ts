@@ -21,7 +21,7 @@ export const Empty: Story = {};
 
 /** 入力中。入力欄に印の色の輪。「レビューに追加」を押せる */
 export const Typing: Story = {
-  args: { body: "起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい" },
+  args: { body: "起票してよい。題は「バージョンの範囲から当てる手順を返すコマンド」に縮めてほしい" },
   play: ({ canvasElement }) => {
     canvasElement.querySelector("textarea")?.focus();
   },

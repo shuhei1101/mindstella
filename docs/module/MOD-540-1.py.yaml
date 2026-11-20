@@ -30,7 +30,7 @@ classes:
       - name: reserve
         title: 予約から振る
         kind: メソッド
-        summary: その種類の連番の最大（項目・消した ID・予約）+ 1 から `count` 個の ID を振り、予約を進める
+        summary: その種類の連番の最大（項目・削除した ID・予約）+ 1 から `count` 個の ID を振り、予約を進める
         args:
           - name: root
             type: Path
@@ -51,7 +51,7 @@ classes:
             type: Iterable[str]
             required: true
             passing: positional
-            description: 消した項目の ID（『変更履歴』の `removed_items`）
+            description: 削除した項目の ID（『変更履歴』の `removed_items`）
           - name: count
             type: int
             required: false
@@ -63,13 +63,13 @@ classes:
           description: 振った ID（小さい順）
         process: |-
           1. `_guard` を取る
-          2. `taken` に、`_reserved` のその（ワークスペース, 種類）の連番の ID を足して、最大 + 1 の ID を求める（『読み書きと検証』の `next_id`）
+          2. `taken` に、`_reserved` のその（ワークスペース, 種類）の連番の ID を追加して、最大 + 1 の ID を求める（『読み書きと検証』の `next_id`）
           3. その連番から `count` 個の ID を作り、`_reserved` を最後の連番にする
         unit_tests:
           - name: test_reserve
             case: 正常
-            summary: 項目と消した ID の最大の次から振る
-            condition: D-1・D-2 の項目と、消した D-3 で `count` 2
+            summary: 項目と削除した ID の最大の次から振る
+            condition: D-1・D-2 の項目と、削除した D-3 で `count` 2
             mock: なし
             expected: '`[D-4, D-5]`'
           - name: test_reserve_when_reserved
@@ -118,7 +118,7 @@ functions:
         type: Iterable[str]
         required: true
         passing: positional
-        description: 消した項目の ID
+        description: 削除した項目の ID
       - name: count
         type: int
         required: false
@@ -134,5 +134,5 @@ constants:
     title: プロセスの予約
     container: plugins/mindstella/skills/mindmap/scripts/ids.py
     usecase: 記録の追加と更新
-    summary: 常駐サーバーのプロセスに 1 つの `IdReservations`（起動し直すと空になる）
+    summary: 常駐サーバーのプロセスに 1 つの `IdReservations`（再起動すると空になる）
     value: IdReservations()

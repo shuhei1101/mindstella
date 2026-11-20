@@ -27,7 +27,7 @@ flows:
       - '`claude plugin marketplace add` にリポジトリの直下を渡すと、登録済みのマーケットプレイスの一覧に `mindstella` が出る'
       - マーケットプレイス mindstella から入れられるプラグインが `mindstella` の 1 件だけである
     test: test_normal
-lead: Claude Code がこのリポジトリをマーケットプレイスとして登録するときに読む、マーケットプレイスのマニフェストの形。
+lead: Claude Code がこのリポジトリをマーケットプレイスとして登録するときに読む、マーケットプレイスのマニフェストの構造。
 callers:
   - LIB-489-4#
 request:
@@ -94,9 +94,9 @@ request_example: |-
   }
   ```
 constraints:
-  - item: 載せるプラグインの数
+  - item: 読み込むプラグインの数
     constraint: 1 件（mindstella だけ）
-  - item: Claude Code の版
+  - item: Claude Code のバージョン
     constraint: 2.1.287 以上
-    notes: 非機能要件の「Claude Code の版」
+    notes: 非機能要件の「Claude Code のバージョン」
 test_file: tests/integration/plugin/test_marketplace_registration.py

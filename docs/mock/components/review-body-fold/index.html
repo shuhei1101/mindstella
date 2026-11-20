@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <!-- トークン・今のプレビューのスタイル・この PR で追加するスタイル・カタログの見た目 -->
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
   <link rel="stylesheet" href="../../refs/329/assets/style.css">
@@ -27,7 +27,7 @@
     <!-- 5 行以下 -->
     <section class="cat-sec">
       <h2>5 行以下の本文</h2>
-      <p>何も足さない。左は項目を指さない新しいスレッド（行の頭は「新しいスレッド」の札だけ）、右は返信。</p>
+      <p>何も追加しない。左は項目を指さない新規スレッド（行の頭は「新規スレッド」の札だけ）、右は返信。</p>
       <div class="stage" id="s-short"></div>
     </section>
 
@@ -48,14 +48,14 @@
     <!-- 開いた -->
     <section class="cat-sec">
       <h2>開いた</h2>
-      <p>全文を出し、ボタンは「折りたたむ」（印は上向き）。押すと 5 行までに畳み直す。</p>
+      <p>全文を出し、ボタンは「折りたたむ」（マーカーは上向き）。押すと 5 行までに再度畳む。</p>
       <div class="stage" id="s-open"></div>
     </section>
 
     <!-- 返信の長い本文 -->
     <section class="cat-sec">
       <h2>返信の長い本文</h2>
-      <p>返信の行は「スレッドを開く」を持たない。案 B では「続きを読む」だけの行になる。</p>
+      <p>返信の行は「スレッドを開く」を持たない。案 B では「続きを表示」だけの行になる。</p>
       <div class="stage" id="s-reply"></div>
     </section>
 
@@ -74,7 +74,7 @@
     </section>
   </main>
 
-  <!-- 台ごとの見本: app.js の本文の折りたたみへ状態ごとの本文を渡して、行の形に置く -->
+  <!-- 台ごとの見本: app.js の本文の折りたたみへ状態ごとの本文を渡して、行の構造に置く -->
   <script>
     const { h, postBody, reviewBodyFold, reviewRowActions, threadState } = MindmapPreview;
     /** 見本の本文 */
@@ -82,29 +82,29 @@
       short: "次に開くときは T-14 から読みたい",
       reply: "書き直しを読みました。表はこれで分かります。\n図の凡例だけ R-1 の結果に合わせてください。",
       lines: "全体を読み返して気になった点をまとめます。\n1. 概要のタイルの並びが毎回変わる\n2. 検討事項の表で列の幅が狭い\n3. タスクのボードで完了の列が長い\n4. 資料のカードの日付が読みにくい\n5. 用語集の別名の列が狭い\n6. 詳細パネルの本文の図が小さい\n7. 変更履歴の時点の並びが分かりにくい",
-      wrap: "A-14 の手引きは、差分の表示を初めて使う人が最初に読む資料なので、冒頭で「何と何を比べているのか」を一文で言い切ってから、選んだ時点の決め方、足した・変えた・消した項目の印の読み方、本文の差分の並べ方の切り替え、図の差分の見方の順に並べ直したほうが読みやすいと思います。今は印の読み方が最後にあり、表の行の消し方の説明より後に出てくるため、表を読んでいる途中で印の意味が分からずに上へ戻ることになります。",
-      narrow: "表の列の幅が狭くて読みにくい。ID の列は短くしてよいので、タイトルの列を広げてほしい。\n並べ替えの印も小さく、押せる場所が分かりにくい。\n列の表示のボタンも見つけにくい。",
+      wrap: "A-14 の手引きは、差分の表示を初めて使う人が最初に読む資料なので、冒頭で「何と何を比べているのか」を一文で言い切ってから、選んだ時点の決め方、追加した・変えた・削除した項目のアイコンの読み方、本文の差分の並べ方の切り替え、図の差分の見方の順に再整列したほうが読みやすいと思います。今はマーカーの読み方が最後にあり、表の行の削除方法の説明より後に出てくるため、表を読んでいる途中でマーカーの意味が分からずに上へ戻ることになります。",
+      narrow: "表の列の幅が狭くて読みにくい。ID の列は短くしてよいので、タイトルの列を広げてほしい。\n並べ替えのマーカーも小さく、押せる場所が分かりにくい。\n列の表示のボタンも見つけにくい。",
     };
     /** 見本の ID の連番 */
     let seq = 0;
     const noop = () => {};
 
-    /** 行 1 件（variant: 「続きを読む」の置き場所の案、kind: new は項目を指さない新しいスレッド・reply は返信） */
+    /** 行 1 件（variant: 「続きを表示」の置き場所の案、kind: new は項目を指さない新規スレッド・reply は返信） */
     const row = ({ body, variant = "a", kind = "new" }) => {
       seq += 1;
       const item = { id: `C-${60 + seq}`, target: null, thread: kind === "reply" ? "TH-1" : null };
       const label = kind === "reply" ? "TH-1 への返信" : "項目を指さないコメント";
       const fold = reviewBodyFold({ item, label, body: postBody({ body, titles: () => null, changeSets: () => null, className: "review-body", on: { openId: noop, changeSet: noop } }) });
-      // 行の頭: 返信は返信先のスレッドの状態の札と題、項目を指さない新しいスレッドは札だけ
+      // 行の頭: 返信は返信先のスレッドの状態の札とタイトル、項目を指さない新規スレッドは札だけ
       const head = kind === "reply"
         ? [h({ tag: "span", attrs: { class: "row-kind" }, children: ["返信"] }), h({ tag: "button", attrs: { class: "row-target idlink-like", type: "button" }, children: [threadState("open"), h({ tag: "span", attrs: { class: "t" }, children: ["A-14 の手引きの書き直しの相談"] })] })]
-        : [h({ tag: "span", attrs: { class: "row-kind" }, children: ["新しいスレッド"] })];
+        : [h({ tag: "span", attrs: { class: "row-kind" }, children: ["新規スレッド"] })];
       const openThread = kind === "new" ? h({ tag: "button", attrs: { class: "btn ghost", type: "button" }, children: ["スレッドを開く"] }) : null;
       return h({
         tag: "li",
         attrs: { class: "row" },
         children: [
-          h({ tag: "input", attrs: { type: "checkbox", class: "row-check", checked: true, "aria-label": `${label}を送る` } }),
+          h({ tag: "input", attrs: { type: "checkbox", class: "row-check", checked: true, "aria-label": `${label}を送信する` } }),
           h({
             tag: "div",
             attrs: { class: "row-main" },
@@ -113,7 +113,7 @@
               fold.body,
               // 案 A: 本文のすぐ下
               variant === "a" ? h({ tag: "div", attrs: { class: "review-more-row" }, children: [fold.more] }) : null,
-              // 案 B: 「スレッドを開く」と同じ行（返信は「続きを読む」だけの行）
+              // 案 B: 「スレッドを開く」と同じ行（返信は「続きを表示」だけの行）
               variant === "b" || openThread !== null ? h({ tag: "div", attrs: { class: "row-thread-open" }, children: [variant === "b" ? fold.more : null, openThread] }) : null,
             ],
           }),
@@ -137,7 +137,7 @@
     /** 測り終えた後（描いた 2 フレーム後）に、台の要素へ手を入れる */
     const afterMeasure = (callback) => requestAnimationFrame(() => requestAnimationFrame(callback));
 
-    place("s-short", [column("項目を指さない新しいスレッド", [row({ body: BODIES.short })]), column("返信", [row({ body: BODIES.reply, kind: "reply" })])]);
+    place("s-short", [column("項目を指さない新規スレッド", [row({ body: BODIES.short })]), column("返信", [row({ body: BODIES.reply, kind: "reply" })])]);
     place("s-lines", [column("案 A 本文のすぐ下", [row({ body: BODIES.lines })]), column("案 B 「スレッドを開く」と同じ行", [row({ body: BODIES.lines, variant: "b" })])]);
     place("s-wrap", [column("案 A 本文のすぐ下", [row({ body: BODIES.wrap })]), column("案 B 「スレッドを開く」と同じ行", [row({ body: BODIES.wrap, variant: "b" })])]);
     place("s-open", [column("案 A 本文のすぐ下", [row({ body: BODIES.lines })]), column("案 B 「スレッドを開く」と同じ行", [row({ body: BODIES.lines, variant: "b" })])]);
@@ -145,7 +145,7 @@
     place("s-states", [column("ホバー", [row({ body: BODIES.lines })]), column("キーボードのフォーカス", [row({ body: BODIES.lines })])]);
     place("s-narrow", [column("案 A 本文のすぐ下", [row({ body: BODIES.narrow })]), column("案 B 「スレッドを開く」と同じ行", [row({ body: BODIES.narrow, variant: "b" })])]);
     afterMeasure(() => {
-      // 開いた: 「続きを読む」を押した状態にする
+      // 開いた: 「続きを表示」を押した状態にする
       for (const button of document.querySelectorAll("#s-open .review-more")) button.click();
       // ホバー・フォーカスの見本の状態
       const [hover, focus] = document.querySelectorAll("#s-states .review-more");

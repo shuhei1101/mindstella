@@ -7,7 +7,7 @@ constants:
     title: 送信の上限
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 外部のアプリから起動する
-    summary: 常駐サーバーへ 1 回送る上限
+    summary: 常駐サーバーへ 1 回送信する上限
     value: 2.0（非機能要件『フックの送信の上限』）
   - name: EVENTS
     title: 出来事の名前
@@ -24,9 +24,9 @@ constants:
   - name: BLOCK_COMPACT
     title: 圧縮を止める出力
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     summary: PreCompact で標準出力に書く JSON
-    value: '{"decision": "block", "reason": "[mindstella] 圧縮の代わりに起動し直します"}'
+    value: '{"decision": "block", "reason": "[mindstella] 圧縮の代わりに再起動します"}'
 functions:
   - name: main
     title: フックの入口
@@ -34,9 +34,9 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で、`balancer_account_from` の値があれば `balancer_account` で送る）、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。`stop-failure` では標準入力の `error` を送る。`pre-compact` では出来事を送れたときだけ `BLOCK_COMPACT` を標準出力に書く。SessionStart で `MINDSTELLA_LAUNCH_REASON` が `compact` で `source` が `startup` なら、`source` を `compact` にして再開の状況を引く。どの結末も 0 を返す'
+    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で、`balancer_account_from` の値があれば `balancer_account` で送信する）、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。`stop-failure` では標準入力の `error` を送信する。`pre-compact` では出来事を送信できたときだけ `BLOCK_COMPACT` を標準出力に書く。SessionStart で `MINDSTELLA_LAUNCH_REASON` が `compact` で `source` が `startup` なら、`source` を `compact` にして再開の状況を引く。どの結末も 0 を返す'
     description: 依存が揃う前のシステムの `python3` で起動するので、Python 3.8 で読める構文と標準ライブラリだけで書く
-    side_effects: 常駐サーバーへ出来事を送る
+    side_effects: 常駐サーバーへ出来事を送信する
     args:
       - name: argv
         type: list[str] | None
@@ -67,7 +67,7 @@ functions:
         required: false
         default: post_event
         passing: injected
-        description: 送る関数
+        description: 送信する関数
       - name: resume
         type: Callable[[int, str, str], dict]
         required: false
@@ -86,7 +86,7 @@ functions:
     unit_tests:
       - name: test_main
         case: 正常
-        summary: SessionStart で設定のフォルダとともに送り、状況を注入してから時点を進める
+        summary: SessionStart で設定のフォルダとともに送信し、状況を注入してから時点を進める
         condition: '`[session-start]`、`MINDSTELLA_SESSION`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR`（`~/c`）あり、入力 `{session_id: c1, source: compact}`、`resume` が `context`・`until_seq` 7 を返す'
         mock: '`post`・`resume`・`advance`・PID の引き方'
         expected: '0 を返し、`post` が `event: session_start`・`claude_config_dir: {HOME}/c` で、`resume` が `compact` で、`advance` が 7 でこの順に呼ばれ、`advance` より前に標準出力の `additionalContext` が `resume` の `context` と同じ'
@@ -122,25 +122,25 @@ functions:
         expected: '`post` だけが呼ばれ、標準出力が空'
       - name: test_main_when_rate_limit
         case: 正常
-        summary: stop-failure で error を送る
+        summary: stop-failure で error を送信する
         condition: '`stop-failure`、標準入力に `error: rate_limit`'
         mock: '`post_event`'
         expected: '`post_event` が `event: stop_failure`・`error: rate_limit` を受け、標準出力が空で 0 を返す'
       - name: test_main_when_pre_compact
         case: 正常
-        summary: 送れたときだけ圧縮を止める
+        summary: 送信できたときだけ圧縮を止める
         condition: '`parametrize`: `post_event` が成功 / つながらない / `MINDSTELLA_SESSION` が無い'
         mock: '`post_event`'
         expected: 標準出力が `BLOCK_COMPACT` / 空 / 空。どれも 0 を返す
       - name: test_main_when_compact_relaunch
         case: 正常
-        summary: 圧縮で起動し直した startup は再開として引く
+        summary: 圧縮で再起動した startup は再開として引く
         condition: '`session-start`・`source: startup`、`MINDSTELLA_LAUNCH_REASON=compact`'
         mock: '`post_event`・`request_resume`・`post_read_point`'
         expected: '`request_resume` が `source: compact` を受けている'
     process: |-
       1. `MINDSTELLA_SESSION` が無ければ標準入力を読み捨てて 0 を返す
-      2. 出来事を送る（`post`）。送れなければ標準エラーに 1 行書き、続ける
+      2. 出来事を送信する（`post`）。送れなければ標準エラーに 1 行書き、続ける
       3. SessionStart で `source` が `fork` でない場合
          - 再開の状況を引く（`resume`）。つながらない・200 でない・打ち切った場合、状況を `None` にして標準エラーに 1 行書く
          - 注入文を、状況があればその `context`、無ければ `fallback_context`（`MINDSTELLA_FLOW`）にし、`hookSpecificOutput.additionalContext` に入れた JSON を標準出力に書いて `flush` する
@@ -148,17 +148,17 @@ functions:
       4. 0 を返す
       - name: test_main_without_config_dir
         case: 正常
-        summary: CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送る
+        summary: CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送信する
         condition: '`[session-start]`、`MINDSTELLA_SESSION` あり、`CLAUDE_CONFIG_DIR` 無し、`HOME` を一時フォルダにする'
         mock: '`post`・`resume`・`advance`・PID の引き方'
         expected: '`post` の本文の `claude_config_dir` が `{HOME}/.claude`'
   - name: post_event
-    title: 出来事を送る
+    title: 出来事を送信する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`POST /_admin/sessions/{session}/events` に JSON を送る（`POST_TIMEOUT_SEC` で打ち切る）'
+    summary: '`POST /_admin/sessions/{session}/events` に JSON を送信する（`POST_TIMEOUT_SEC` で打ち切る）'
     args:
       - name: port
         type: int
@@ -194,7 +194,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 起動と再開
     scope: public
-    summary: '`POST /_admin/sessions/{session}/resume` に `source` を送り、応答の JSON を返す（`POST_TIMEOUT_SEC` で打ち切る）'
+    summary: '`POST /_admin/sessions/{session}/resume` に `source` を送信し、応答の JSON を返す（`POST_TIMEOUT_SEC` で打ち切る）'
     args:
       - name: port
         type: int
@@ -230,7 +230,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 起動と再開
     scope: public
-    summary: '`POST /_admin/sessions/{session}/read_point` に `until_seq` を送る（`POST_TIMEOUT_SEC` で打ち切る）'
+    summary: '`POST /_admin/sessions/{session}/read_point` に `until_seq` を送信する（`POST_TIMEOUT_SEC` で打ち切る）'
     args:
       - name: port
         type: int
@@ -296,7 +296,7 @@ functions:
     title: 借りたアカウント名を取り出す
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
-    usecase: MindStella のセッションを起動し直す
+    usecase: MindStella のセッションを再起動する
     scope: public
     summary: '`OTEL_RESOURCE_ATTRIBUTES` を `,` で区切った `{キー}={値}` のうち、キーが `claude_balancer.account` の値を返す。変数が無い・項目が無い・値が空なら `None`'
     args:
@@ -316,4 +316,4 @@ functions:
         mock: なし
         expected: '`sub6` / `None` / `None` / `None`'
 notes:
-  ログ: '`logging` を使わず、送れなかったときだけ標準エラーに `[mindstella] {理由}` の 1 行を `print` で書く（フックのスクリプトは単一ファイルのスクリプトの規約に従い、Claude Code がフックの標準エラーを記録する）'
+  ログ: '`logging` を使わず、送信できなかったときだけ標準エラーに `[mindstella] {理由}` の 1 行を `print` で書く（フックのスクリプトは単一ファイルのスクリプトの規約に従い、Claude Code がフックの標準エラーを記録する）'

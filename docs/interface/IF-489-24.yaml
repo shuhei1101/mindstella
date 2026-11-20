@@ -5,12 +5,12 @@ entry:
   value: POST /api/comments
 flows:
   - name: 正常系
-    summary: 項目へのコメントを溜め、その向けた先の書きかけを消す
+    summary: 項目へのコメントを溜め、その向けた先の下書きを削除する
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
-        description: 検討事項 D-1 と、D-1 への書きかけ「案 A に」を持ち、`comments.yaml` を持たないワークスペース
+        description: 検討事項 D-1 と、D-1 への下書き「案 A に」を持ち、`comments.yaml` を持たないワークスペース
         notes: '`target` は D-1、`body` は `案 A にする`'
     flow: |-
       ```mermaid
@@ -20,22 +20,22 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: POST {target: D-1, body: 案 A にする}
-        IF-->>WS: 項目・コメント・書きかけを読む
-        IF->>WS: comments.yaml に足す
-        IF->>WS: drafts.yaml から D-1 の書きかけを消す
+        IF-->>WS: 項目・コメント・下書きを読む
+        IF->>WS: comments.yaml に追加する
+        IF->>WS: drafts.yaml から D-1 の下書きを削除する
         IF-->>クライアント: 201、JSON（id・created・count）
       ```
     expected:
       - ステータスが 201 で、`id` が `C-1`、`count` が 1
       - '`comments.yaml` に `id: C-1`・`target: D-1`・`body: 案 A にする` の 1 件があり、`seq` が 1'
-      - '`drafts.yaml` に D-1 への書きかけが無い'
+      - '`drafts.yaml` に D-1 への下書きが無い'
       - '`threads.yaml` が作られておらず、`decisions.yaml` の中身が溜める前と同じ'
     test: test_normal
   - name: 正常系（本文の箇所）
     summary: 本文の文を選んだコメントを、書式の記号を外して箇所を確かめて溜める
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 本文に 3 行の段落を持つ資料 A-1 を持つワークスペース
         notes: '本文の 2 行目は `- **言い換えたい**文`。`loc` は `{kind: body, start: 2, end: 2, text: 言い換えたい文}`'
@@ -49,7 +49,7 @@ flows:
         クライアント->>IF: POST {target: A-1, loc: 本文の 2 行目, body}
         IF-->>WS: A-1 の本文を読む
         IF->>IF: 記号を外して 2 行目に選んだ文がある
-        IF->>WS: comments.yaml に足す
+        IF->>WS: comments.yaml に追加する
         IF-->>クライアント: 201
       ```
     expected:
@@ -60,10 +60,10 @@ flows:
     summary: '`target` を持たないコメントを溜める'
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 作成を済ませたワークスペース
-        notes: '`body` だけを送る'
+        notes: '`body` だけを送信する'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -72,7 +72,7 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: POST {body: 全体に目を通した}
-        IF->>WS: comments.yaml に足す
+        IF->>WS: comments.yaml に追加する
         IF-->>クライアント: 201
       ```
     expected:
@@ -83,10 +83,10 @@ flows:
     summary: 削除したコメントを同じ ID と溜めた日時で戻し、並びも元の場所に戻る
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 検討事項 D-1 と、レビュー中のコメント C-1・C-3 を持ち、`seq` が 3 のワークスペース
-        notes: C-2 を削除した後の形。`id` は `C-2`、`created` は削除で返った日時
+        notes: C-2 を削除した後の形式。`id` は `C-2`、`created` は削除で返った日時
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -106,7 +106,7 @@ flows:
     summary: 空白だけの本文は溜めない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
         notes: '`body` は `"  "`'
@@ -123,11 +123,11 @@ flows:
       - ステータスが 400 で、`detail` に `body` がある
       - '`comments.yaml` が無い'
     test: test_error_when_body_empty
-  - name: 異常系（送り元が違う・403）
+  - name: 異常系（送信元が違う・403）
     summary: 別のサイトのページからは溜めない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
         notes: '`Origin: https://attacker.example` を付ける'
@@ -148,7 +148,7 @@ flows:
     summary: ワークスペースに無い ID へは溜めない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 検討事項 D-1 だけを持つワークスペース
         notes: '`target` は `D-99`'
@@ -169,7 +169,7 @@ flows:
     summary: 選んだ文がその行の範囲に無ければ溜めない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 本文に 3 行の段落を持つ資料 A-1 を持つワークスペース
         notes: '`loc` は `{kind: body, start: 1, end: 1, text: 本文に無い文}`'
@@ -190,13 +190,13 @@ flows:
       - '`comments.yaml` が無い'
     test: test_error_when_location_stale
   - name: 異常系（本文が JSON でない・415）
-    summary: フォームの形の本文は溜めない
+    summary: フォームの構造の本文は溜めない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
-        notes: '`Content-Type: application/x-www-form-urlencoded` で `target=D-1&body=x` を送る'
+        notes: '`Content-Type: application/x-www-form-urlencoded` で `target=D-1&body=x` を送信する'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -214,7 +214,7 @@ flows:
     summary: 書き込めないワークスペースでは前のコメントを残す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 検討事項 D-1 とレビュー中のコメント C-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
         notes: root で動かすときは skip する
@@ -233,8 +233,8 @@ flows:
       - ステータスが 500 で、`detail` が書けなかったパスを含み、トレースバックを含まない
       - '`comments.yaml` の中身が溜める前と同じ'
     test: test_error_when_write_fails
-  - name: 正常系（許可したホスト名の送り元）
-    summary: 許可したホスト名の `Host` と `Origin` の送り元から、コメントを足せる
+  - name: 正常系（許可したホスト名の送信元）
+    summary: 許可したホスト名の `Host` と `Origin` の送信元から、コメントを追加できる
     setup:
       - name: Mock
         description: なし（`MINDSTELLA_ALLOWED_HOSTS` を `preview.example.test` にして MCP サーバーを立て、`preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
@@ -252,13 +252,13 @@ flows:
       ```
     expected:
       - ステータスが 201
-      - '`Origin: https://other.example.test` で送ると 403 で、コメントが増えない'
+      - '`Origin: https://other.example.test` で送信すると 403 で、コメントが増えない'
     test: test_normal_when_origin_allowed
   - name: 正常系（HTML の本文の箇所）
     summary: HTML の本文の文を選んだコメントを、タグを外した文と照らして溜める
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 本文を HTML で持つ資料 A-1 を持つワークスペース
         notes: '本文の 1・2 行目は `<style>` とコメント、4 行目は `<p>言い<b>換え</b>たい文</p>`。`loc` は `{kind: body, start: 4, end: 4, text: 言い換えたい文}`'
@@ -272,21 +272,21 @@ flows:
         クライアント->>IF: POST {target: A-1, loc: 本文の 4 行目, body}
         IF-->>WS: A-1 の HTML の本文を読む
         IF->>IF: タグを外して 4 行目に選んだ文がある
-        IF->>WS: comments.yaml に足す
+        IF->>WS: comments.yaml に追加する
         IF-->>クライアント: 201
       ```
     expected:
       - ステータスが 201
       - '`comments.yaml` のそのコメントが、渡した `loc` をそのまま持つ'
-      - 同じ本文で `loc.text` を `p { color` にして送ると、`<style>` の中身は当てないため 409
+      - 同じ本文で `loc.text` を `p { color` にして送信すると、`<style>` の中身は当てないため 409
     test: test_normal_when_html_body_location
   - name: 正常系（スレッドへの返信）
     summary: オープンのスレッドへの返信をレビュー中に溜め、スレッドには書かない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
-        description: AI が立てたオープンのスレッド TH-1 と、TH-1 への返信の書きかけを持つワークスペース
+        description: AI が立てたオープンのスレッド TH-1 と、TH-1 への返信の下書きを持つワークスペース
         notes: '本文は `{"thread": "TH-1", "body": "起票してよい"}`'
     flow: |-
       ```mermaid
@@ -297,20 +297,20 @@ flows:
 
         クライアント->>IF: POST {thread: TH-1, body}
         IF-->>WS: スレッドを読んでオープンを確かめる
-        IF->>WS: comments.yaml に足し、TH-1 への書きかけを消す
+        IF->>WS: comments.yaml に追加し、TH-1 への下書きを削除する
         IF-->>クライアント: 201
       ```
     expected:
       - ステータスが 201
       - '`comments.yaml` のそのコメントが `thread: TH-1` を持ち、`target`・`loc` を持たない'
-      - '`drafts.yaml` に TH-1 への書きかけが無い'
+      - '`drafts.yaml` に TH-1 への下書きが無い'
       - '`threads.yaml` の中身が溜める前と同じ'
     test: test_normal_when_reply
   - name: 異常系（クローズのスレッドへの返信・409）
     summary: クローズのスレッドへの返信は溜めない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: クローズのスレッド TH-1 を持つワークスペース
         notes: '本文は `{"thread": "TH-1", "body": "了解"}`'
@@ -327,9 +327,9 @@ flows:
       - ステータスが 409 で、`detail` にクローズであることがある
       - '`comments.yaml` が無い'
     test: test_error_when_thread_closed
-lead: 詳細パネル・詳細の全画面・コメントの一覧の入力から、項目・選んだ箇所へのコメントか項目に紐づかないコメントを受け、送らずにレビュー中のコメントとして `comments.yaml` に溜める。削除したコメントを元に戻すときもこれを呼ぶ。
+lead: 詳細パネル・詳細の全画面・コメントの一覧の入力から、項目・選んだ箇所へのコメントか項目に紐づかないコメントを受け、送信せずにレビュー中のコメントとして `comments.yaml` に溜める。削除したコメントを元に戻すときもこれを呼ぶ。
 idempotent: false
-side_effects: '`comments.yaml` に 1 件足し（無ければ作る）、同じ向けた先（`target` と `loc`）の書きかけを `drafts.yaml` から消す。どちらも一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
+side_effects: '`comments.yaml` に 1 件追加（無ければ作る）、同じ向けた先（`target` と `loc`）の下書きを `drafts.yaml` から削除する。どちらも一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
   - IF-489-71#
 request:
@@ -338,20 +338,20 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
+    constraints: '『プレビューの配信』の制約「接続先の確認」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
   - name: Content-Type
     type: str
     required: true
     location: header
-    description: 本文の形
+    description: 本文の構造
     constraints: '`application/json`'
   - name: Origin
     type: str
     required: false
     default: なし（確かめない）
     location: header
-    description: ブラウザが付ける送り元
-    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`・許可するホスト名の `https` / `http`）
+    description: ブラウザが付ける送信元
+    constraints: 付いていれば『プレビューの配信』の制約「送信元の確認」に合うもの（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`・許可するホスト名の `https` / `http`）
   - name: target
     type: str
     required: false
@@ -422,7 +422,7 @@ request:
   - name: thread
     type: str
     required: false
-    default: なし（新しいスレッドの最初の書き込み）
+    default: なし（新規スレッドの最初の書き込み）
     location: body
     description: 既存のスレッドへの返信を溜めるときの、そのスレッドの ID
     constraints: オープンのスレッド。`target`・`loc` と一緒に渡さない
@@ -452,41 +452,41 @@ status_codes:
   - code: '201'
     condition: 溜めた
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・`body` が無いか空白だけか 10000 文字を超える・`loc` の形が崩れている（`target` が無い、`kind` に合うキーが無い など）・`thread` を `target` か `loc` と一緒に渡した・リクエストの本文が 128KiB を超える
+    condition: 本文が JSON のオブジェクトでない・`body` が無いか空白だけか 10000 文字を超える・`loc` の形式が崩れている（`target` が無い、`kind` に合うキーが無い など）・`thread` を `target` か `loc` と一緒に渡した・リクエストの本文が 128KiB を超える
     notes: 何も書かない
   - code: '403'
-    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
+    condition: '`Origin` が『プレビューの配信』の制約「送信元の確認」に合わない'
     notes: 何も書かない
   - code: '404'
     condition: '`target` の項目か `thread` のスレッドがワークスペースに無い'
     notes: 何も書かない
   - code: '409'
-    condition: 箇所が今の項目に合わない（「箇所の確かめ」）、`thread` のスレッドがクローズ、または `id` が今のレビュー中にあるか `seq` を超える
+    condition: 箇所が今の項目に合わない（「箇所の確認」）、`thread` のスレッドがクローズ、または `id` が今のレビュー中にあるか `seq` を超える
     notes: 何も書かない。`detail` に合わない理由
   - code: '415'
     condition: '`Content-Type` が `application/json` でない'
     notes: 何も書かない
   - code: '422'
     condition: ワークスペースの YAML（`comments.yaml`・`drafts.yaml` を含む）がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった
-    notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
+    notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ構造
   - code: '500'
     condition: '`comments.yaml` を書けない（権限が無い など）'
-    notes: '`detail` に書けなかったパスと理由。`comments.yaml` は前のまま。書きかけを消せなかったときは溜めたまま 201 を返す'
+    notes: '`detail` に書けなかったパスと理由。`comments.yaml` は前のまま。下書きを削除できなかったときは溜めたまま 201 を返す'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
-  - item: 書く中身
-    constraint: '`id`（`C-{seq + 1}`。元に戻すときは渡した ID）・`target`（あれば）・`loc`（あれば）・`thread`（あれば）・`body`（前後の空白を除く）・`created`。新しく振ったときは `seq` を 1 上げる。スレッドは作らない（作るのは『コメントをまとめて送る』）。ER 図『ワークスペース』の `comments.yaml`'
-  - item: 箇所の確かめ
-    constraint: 本文の箇所は、行の範囲がその項目の本文の行数に収まり、その行の範囲の文に選んだ文が含まれるかを確かめる。値の箇所は、キーがその項目にあり、その値に選んだ文が含まれるかを確かめる。比べる前に、選んだ文と元の文の両方から記号 `*`・`_`・`~`・`` ` ``・`\`・`|`・`#`・`>` と空白・改行を外す。Markdown の本文の元の文は先に、各行の行頭のリストの記号（`-`・`+`・`数字.`・`数字)`）・表の区切りの行・コードブロックのフェンスの行・画像（`![代わりの文](URL)` を丸ごと）を外し、リンク `[文](URL)` を `文` にし、文字参照を文字に戻す。HTML の本文の元の文は、`html.parser.HTMLParser` で原文を読んだときの文の断片のうち、その行の範囲にあるものをつなぐ（タグとコメントを外し、`style`・`script`・`template`・`title` の中身を除き、文字参照を文字に戻す）。『コメントをまとめて送る』も同じ確かめ方を使う
-  - item: 書きかけ
-    constraint: 溜めたら、同じ向けた先（`target` と `loc` の組か、`thread`）の書きかけを `drafts.yaml` から消す（元に戻すときは消さない）
+  - item: 書き込む中身
+    constraint: '`id`（`C-{seq + 1}`。元に戻すときは渡した ID）・`target`（あれば）・`loc`（あれば）・`thread`（あれば）・`body`（前後の空白を除く）・`created`。新しく振ったときは `seq` を 1 上げる。スレッドは作らない（作るのは『コメントをまとめて送信する』）。ER 図『ワークスペース』の `comments.yaml`'
+  - item: 箇所の確認
+    constraint: 本文の箇所は、行の範囲がその項目の本文の行数に収まり、その行の範囲の文に選んだ文が含まれるかを確かめる。値の箇所は、キーがその項目にあり、その値に選んだ文が含まれるかを確かめる。比べる前に、選んだ文と元の文の両方から記号 `*`・`_`・`~`・`` ` ``・`\`・`|`・`#`・`>` と空白・改行を外す。Markdown の本文の元の文は先に、各行の行頭のリストの記号（`-`・`+`・`数字.`・`数字)`）・表の区切りの行・コードブロックのフェンスの行・画像（`![代わりの文](URL)` を丸ごと）を外し、リンク `[文](URL)` を `文` にし、文字参照を文字に戻す。HTML の本文の元の文は、`html.parser.HTMLParser` で原文を読んだときの文の断片のうち、その行の範囲にあるものをつなぐ（タグとコメントを外し、`style`・`script`・`template`・`title` の中身を除き、文字参照を文字に戻す）。『コメントをまとめて送信する』も同じ確かめ方を使う
+  - item: 下書き
+    constraint: 溜めたら、同じ向けた先（`target` と `loc` の組か、`thread`）の下書きを `drafts.yaml` から削除する（元に戻すときは削除しない）
   - item: 本文の上限
     constraint: '`body` と `loc.text` は 10000 文字。リクエストの本文は 128KiB まで読み、超えたら読まずに 400'
     decided_by: NFR-489-1#requirements[送信の本文の長さ]
   - item: 件数の上限
-    constraint: 設けない（溜めるのは利用者 1 人が 1 回の読み返しで書く分で、まとめて送ると減る）
-  - item: 送り元の確かめ
-    constraint: 『コメントをまとめて送る』と同じ
+    constraint: 設けない（溜めるのは利用者 1 人が 1 回の読み返しで書く分で、まとめて送信すると減る）
+  - item: 送信元の確認
+    constraint: 『コメントをまとめて送信する』と同じ
   - item: 同時の書き込み
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。コメントの ID は重ならない
   - item: 待ち受け

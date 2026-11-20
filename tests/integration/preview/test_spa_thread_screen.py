@@ -119,7 +119,7 @@ def test_status_failed(page: Page, spa_comments_preview: tuple[str, Path]) -> No
     # 実行
     _panel(page).get_by_role("textbox", name="理由（任意）").press("Control+Enter")
     # 検証
-    expect(_panel(page).get_by_role("alert")).to_have_text("クローズにできませんでした。サーバーが止まっています。立ち上げ直してから押してください。")
+    expect(_panel(page).get_by_role("alert")).to_have_text("クローズにできませんでした。サーバーが止まっています。再起動してから押してください。")
     expect(_panel(page).get_by_role("textbox", name="理由（任意）")).to_be_visible()
 
 
@@ -212,11 +212,11 @@ def test_closed_notice(page: Page, spa_comments_preview: tuple[str, Path]) -> No
 
 
 def test_pending_notice(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """まだ送っていない新しいスレッドは「まだ送っていないスレッドです。」を出し、状態を変えるボタンと返信の入力を出さない（正常系）。"""
+    """まだ送っていない新規スレッドは「まだ送信していないスレッドです。」を出し、状態を変えるボタンと返信の入力を出さない（正常系）。"""
     # 準備・実行
     _open(page, spa_comments_preview, "C-41")
     # 検証
-    expect(_panel(page)).to_contain_text("まだ送っていないスレッドです。")
+    expect(_panel(page)).to_contain_text("まだ送信していないスレッドです。")
     expect(_panel(page).get_by_role("button", name="クローズにする")).to_have_count(0)
     expect(_panel(page).get_by_role("textbox", name="返信")).to_have_count(0)
     expect(_panel(page).locator("[data-state=pending]")).to_have_text("レビュー中")
@@ -230,7 +230,7 @@ def test_more(
     make_post: MakePost,
     make_thread: MakeThread,
 ) -> None:
-    """5 行を超えるレビュー中の返信は畳んで「続きを読む」を出し、押すと開いて「折りたたむ」にする（正常系）。"""
+    """5 行を超えるレビュー中の返信は畳んで「続きを表示」を出し、押すと開いて「折りたたむ」にする（正常系）。"""
     # 準備
     url, _ = write_review_preview(
         make_item("D-1"),
@@ -238,9 +238,9 @@ def test_more(
         comments=(free_comment(make_comment("C-43", body=LONG_REPLY, thread="TH-1")),),
     )
     open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
-    more = _panel(page).get_by_role("button", name="TH-1 への返信の続きを読む")
+    more = _panel(page).get_by_role("button", name="TH-1 への返信の続きを表示")
     # 検証
-    expect(more).to_have_text("続きを読む")
+    expect(more).to_have_text("続きを表示")
     # 実行
     more.click()
     # 検証

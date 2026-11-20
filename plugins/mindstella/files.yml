@@ -2,7 +2,7 @@
 files:
 - path: .claude-plugin/plugin.json
   name: プラグインのマニフェスト
-  description: Claude Code がプラグイン mindstella を読み込むときの名前・版・説明を持つ。プラグインの名前・版・スキルの置き場所を変更するときに読む。
+  description: Claude Code がプラグイン mindstella を読み込むときの名前・バージョン・説明を持つ。プラグインの名前・バージョン・スキルの置き場所を変更するときに読む。
   tags:
   - tool:claude-code
   - topic:プラグイン
@@ -19,7 +19,7 @@ files:
   - topic:サーバー
 - path: agent-flows/agent-flow.schema.json
   name: エージェントフローのスキーマ
-  description: 記録のエージェントフローの YAML の形。エージェントフローのキーを変更するときに読む。
+  description: 記録のエージェントフローの YAML の形式。エージェントフローのキーを変更するときに読む。
   tags:
   - topic:エージェントフロー
   - topic:スキーマ
@@ -96,7 +96,7 @@ files:
     type: implements
 - path: hooks/hooks.json
   name: フックの登録
-  description: 会話の始まりにスレッドを未読へ戻して常駐サーバーを起動するフックと、mindstella のツールの呼び出しにセッションの値を入れるフックを登録する。PreCompact では圧縮を止めて常駐サーバーへ起動し直しを依頼するフックを登録する。SessionStart・PreToolUse・PreCompact のフックで動かすスクリプトを変更するときに読む。
+  description: 会話の始まりにスレッドを未読へ戻して常駐サーバーを起動するフックと、mindstella のツールの呼び出しにセッションの値を入れるフックを登録する。PreCompact では圧縮を止めて常駐サーバーへ再起動を依頼するフックを登録する。SessionStart・PreToolUse・PreCompact のフックで動かすスクリプトを変更するときに読む。
   tags:
   - tool:claude-code
   - topic:フック
@@ -226,8 +226,8 @@ files:
   - to: MOD-489-164
     type: implements
 - path: skills/mindmap/migrations/v0.14.0/scripts/remove_discussion_keys.py
-  name: 議論のキーを消す変換
-  description: 設定から削除するキーを消し、項目の対象・カテゴリーをタグへ、属性・観点・確かさを本文へ移す。v0.14.0 の変換を変更するときに読む。
+  name: 議論のキーを削除する変換
+  description: 設定から削除するキーを削除し、項目の対象・カテゴリーをタグへ、属性・観点・確かさを本文へ移す。v0.14.0 の変換を変更するときに読む。
   tags:
   - topic:移行
   - topic:タグ
@@ -236,8 +236,8 @@ files:
   - to: MOD-565-3
     type: implements
 - path: skills/mindmap/migrations/v0.14.0/scripts/remove_network_look.py
-  name: ネットワークの見た目の既定を消す変換
-  description: 設定の表示の既定から削除したネットワークの見た目の既定を消し、空になった表示の既定も消す。v0.14.0 の変換を変更するときに読む。
+  name: ネットワークの見た目の既定を削除する変換
+  description: 設定の表示の既定から削除したネットワークの見た目の既定を削除し、空になった表示の既定も削除する。v0.14.0 の変換を変更するときに読む。
   tags:
   - topic:移行
   - topic:設定
@@ -246,7 +246,7 @@ files:
     type: implements
 - path: skills/mindmap/migrations/v0.14.0/steps.yaml
   name: v0.14.0 の移し替えの手順
-  description: v0.13.0 の形式から v0.14.0 へ、議論のキーを消し、本文のファイルを移し、ネットワークの見た目の既定を消す手順。v0.14.0 の移し替えを変更するときに読む。
+  description: v0.13.0 の形式から v0.14.0 へ、議論のキーを削除し、本文のファイルを移し、ネットワークの見た目の既定を削除する手順。v0.14.0 の移し替えを変更するときに読む。
   tags:
   - topic:移行
   - topic:手順
@@ -294,7 +294,7 @@ files:
     type: implements
 - path: skills/mindmap/migrations/v0.7.0/scripts/answer_to_adopted_option.py
   name: v0.7.0 の移し替えのスクリプト
-  description: 決定済みで答えを持ち案を持たない検討事項に、答えから採用した案を 1 つ作る。v0.7.0 の移し替えを修正するときに読む。
+  description: 決定済みで回答を持ち案を持たない検討事項に、回答から採用した案を 1 つ作る。v0.7.0 の移し替えを修正するときに読む。
   tags:
   - topic:バージョン
   - topic:移行
@@ -407,8 +407,8 @@ files:
   - to: CMP-489-17
     type: implements
 - path: skills/mindmap/preview/components/comment-mark.stories.ts
-  name: コメントの印のストーリー
-  description: 部品『コメントの印』の状態ごとの Storybook のストーリー。コメントの印の状態を追加・変更するときに読む。
+  name: コメントのマーカーのストーリー
+  description: 部品『コメントのマーカー』の状態ごとの Storybook のストーリー。コメントのマーカーの状態を追加・変更するときに読む。
   tags:
   - tool:storybook
   - topic:ストーリー
@@ -417,8 +417,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
     type: see_also
 - path: skills/mindmap/preview/components/comment-mark.ts
-  name: コメントの印
-  description: コメントを書いた項目に、吹き出しの線と件数の小さなピルを出す。コメントの印の表示や操作を変更するときに読む。
+  name: コメントのマーカー
+  description: コメントを書いた項目に、吹き出しの線と件数の小さなピルを出す。コメントのマーカーの表示や操作を変更するときに読む。
   tags:
   - tool:typescript
   - topic:プレビュー
@@ -429,8 +429,8 @@ files:
   - to: CMP-489-9
     type: implements
 - path: skills/mindmap/preview/components/diff-mark.stories.ts
-  name: 差分の印のストーリー
-  description: 部品『差分の印』の状態ごとの Storybook のストーリー。差分の印の状態を追加・変更するときに読む。
+  name: 差分のマーカーのストーリー
+  description: 部品『差分のマーカー』の状態ごとの Storybook のストーリー。差分のマーカーの状態を追加・変更するときに読む。
   tags:
   - tool:storybook
   - topic:ストーリー
@@ -439,8 +439,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts
     type: see_also
 - path: skills/mindmap/preview/components/diff-mark.ts
-  name: 差分の印
-  description: 差分の表示の間、選んだ時点で足した項目に新規（太い +）、変えた項目に変更（塗った ●）、消した項目に消した（太い −）の印を出す。差分の印の表示や操作を変更するときに読む。
+  name: 差分のマーカー
+  description: 差分の表示の間、選んだ時点で追加した項目に新規（太い +）、変えた項目に変更（塗った ●）、削除した項目に削除した（太い −）の記号を出す。差分のマーカーの表示や操作を変更するときに読む。
   tags:
   - tool:typescript
   - topic:プレビュー
@@ -462,7 +462,7 @@ files:
     type: see_also
 - path: skills/mindmap/preview/components/diff-minimap.ts
   name: 差分のミニマップ
-  description: 差分の表示の間、詳細の本文のスクロール領域を包み、スクロールバーの外側に変わった箇所の印を並べた縦の帯を置く。差分のミニマップの表示や操作を変更するときに読む。
+  description: 差分の表示の間、詳細の本文のスクロール領域を包み、スクロールバーの外側に変わった箇所のマーカーを並べた縦の帯を置く。差分のミニマップの表示や操作を変更するときに読む。
   tags:
   - tool:typescript
   - topic:プレビュー
@@ -573,7 +573,7 @@ files:
     type: see_also
 - path: skills/mindmap/preview/components/html-body-diff.ts
   name: HTML の本文の差分
-  description: 差分の表示の間、HTML の本文を描いた結果の上で変わった行を含む要素に印を付け、「原文の差分」に切り替えると原文の行の差分を出す。HTML の本文の差分の表示や操作を変更するときに読む。
+  description: 差分の表示の間、HTML の本文を描いた結果の上で変わった行を含む要素にマーカーを付け、「原文の差分」に切り替えると原文の行の差分を出す。HTML の本文の差分の表示や操作を変更するときに読む。
   tags:
   - tool:typescript
   - topic:プレビュー
@@ -628,8 +628,8 @@ files:
   - to: CMP-489-5
     type: implements
 - path: skills/mindmap/preview/components/pending-mark.stories.ts
-  name: 保存待ちの印のストーリー
-  description: 部品『保存待ちの印』の状態ごとの Storybook のストーリー。保存待ちの印の状態を追加・変更するときに読む。
+  name: 保存待ちのマーカーのストーリー
+  description: 部品『保存待ちのマーカー』の状態ごとの Storybook のストーリー。保存待ちのマーカーの状態を追加・変更するときに読む。
   tags:
   - tool:storybook
   - topic:ストーリー
@@ -638,8 +638,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/components/pending-mark.ts
     type: see_also
 - path: skills/mindmap/preview/components/pending-mark.ts
-  name: 保存待ちの印
-  description: 保存待ちの編集がある項目・キー・案に、破線の枠と印と文字の札を出す。保存待ちの印の表示や操作を変更するときに読む。
+  name: 保存待ちのマーカー
+  description: 保存待ちの編集がある項目・キー・案に、破線の枠とマーカーと文字の札を出す。保存待ちのマーカーの表示や操作を変更するときに読む。
   tags:
   - tool:typescript
   - topic:プレビュー
@@ -650,8 +650,8 @@ files:
   - to: CMP-489-21
     type: implements
 - path: skills/mindmap/preview/components/removed-band.stories.ts
-  name: 消した項目の帯のストーリー
-  description: 部品『消した項目の帯』の状態ごとの Storybook のストーリー。消した項目の帯の状態を追加・変更するときに読む。
+  name: 削除した項目の帯のストーリー
+  description: 部品『削除した項目の帯』の状態ごとの Storybook のストーリー。削除した項目の帯の状態を追加・変更するときに読む。
   tags:
   - tool:storybook
   - topic:ストーリー
@@ -660,8 +660,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/components/removed-band.ts
     type: see_also
 - path: skills/mindmap/preview/components/removed-band.ts
-  name: 消した項目の帯
-  description: 差分の表示の間、選んだ時点で消したその種類の項目を、一覧の上に消した印・ID・消したときのタイトルで並べる。消した項目の帯の表示や操作を変更するときに読む。
+  name: 削除した項目の帯
+  description: 差分の表示の間、選んだ時点で削除したその種類の項目を、一覧の上に削除したマーカー・ID・削除したときのタイトルで並べる。削除した項目の帯の表示や操作を変更するときに読む。
   tags:
   - tool:typescript
   - topic:プレビュー
@@ -727,7 +727,7 @@ files:
     type: see_also
 - path: skills/mindmap/preview/components/selection-comment.ts
   name: 選んだ箇所のコメントの入口
-  description: 本文の文章か項目の値を選び終えたときに、選んだ範囲の近くに出す印だけの丸いボタン。選んだ箇所のコメントの入口の表示や操作を変更するときに読む。
+  description: 本文の文章か項目の値を選び終えたときに、選んだ範囲の近くに出すマーカーだけの丸いボタン。選んだ箇所のコメントの入口の表示や操作を変更するときに読む。
   tags:
   - tool:typescript
   - topic:プレビュー
@@ -870,8 +870,8 @@ files:
   - to: CMP-489-15
     type: implements
 - path: skills/mindmap/preview/components/term-tip.stories.ts
-  name: 本文の印のツールチップのストーリー
-  description: 部品『本文の印のツールチップ』の状態ごとの Storybook のストーリー。本文の印のツールチップの状態を追加・変更するときに読む。
+  name: 本文のマーカーのツールチップのストーリー
+  description: 部品『本文のマーカーのツールチップ』の状態ごとの Storybook のストーリー。本文のマーカーのツールチップの状態を追加・変更するときに読む。
   tags:
   - tool:storybook
   - topic:ストーリー
@@ -880,8 +880,8 @@ files:
   - to: plugins/mindstella/skills/mindmap/preview/components/term-tip.ts
     type: see_also
 - path: skills/mindmap/preview/components/term-tip.ts
-  name: 本文の印のツールチップ
-  description: 本文の印（用語のタイトルと別名・資料と調査のエイリアスに一致した語）に乗せる・フォーカスすると、一致した項目を用語 → 資料 → 調査の順に並べて印の上に出す。本文の印のツールチップの表示や操作を変更するときに読む。
+  name: 本文のマーカーのツールチップ
+  description: 本文のマーカー（用語のタイトルと別名・資料と調査のエイリアスに一致した語）に乗せる・フォーカスすると、一致した項目を用語 → 資料 → 調査の順に並べてマーカーの上に出す。本文のマーカーのツールチップの表示や操作を変更するときに読む。
   tags:
   - tool:typescript
   - topic:プレビュー
@@ -925,7 +925,7 @@ files:
     type: see_also
 - path: skills/mindmap/preview/components/thread-row.ts
   name: スレッドの行
-  description: スレッドの一覧に並べる 1 件で、状態の札・題・向けた項目・最後の書き手と日時・レビュー中の印・タグを出し、押すとそのスレッドを開く。スレッドの行の表示や操作を変更するときに読む。
+  description: スレッドの一覧に並べる 1 件で、状態の札・タイトル・向けた項目・最後の書き手と日時・レビュー中のマーカー・タグを出し、押すとそのスレッドを開く。スレッドの行の表示や操作を変更するときに読む。
   tags:
   - tool:typescript
   - topic:プレビュー
@@ -1003,7 +1003,7 @@ files:
     type: implements
 - path: skills/mindmap/preview/core/api.ts
   name: サーバーの配信とのやり取り
-  description: 記録の取得・レビュー中のコメントと書きかけ・まとめて送る・スレッド・書き換えの知らせの購読。プレビューが呼ぶ配信の API を追加・変更するときに読む。
+  description: 記録の取得・レビュー中のコメントと下書き・まとめて送信する・スレッド・書き換えの知らせの購読。プレビューが呼ぶ配信の API を追加・変更するときに読む。
   tags:
   - tool:typescript
   - topic:api
@@ -1013,7 +1013,7 @@ files:
     type: implements
 - path: skills/mindmap/preview/core/diff.ts
   name: 差分の表示の計算
-  description: 変更履歴で選んだ時点から印を付ける項目を決め、項目の `history` から前の版を組み立て、本文・記法の行と図の要素を比べる。差分の印や前の版の組み立てを変更するときに読む。
+  description: 変更履歴で選んだ時点からマーカーを付ける項目を決め、項目の `history` から前のバージョンを組み立て、本文・記法の行と図の要素を比べる。差分のマーカーや前のバージョンの組み立てを変更するときに読む。
   tags:
   - tool:jsdiff
   - tool:typescript
@@ -1034,7 +1034,7 @@ files:
     type: implements
 - path: skills/mindmap/preview/core/dom.ts
   name: 画面の要素の組み立て
-  description: 画面が共通で使う要素の組み立てと、アイコン・状態の印。画面が共通で使う要素・アイコン・状態の印を変更するときに読む。
+  description: 画面が共通で使う要素の組み立てと、アイコン・状態のマーカー。画面が共通で使う要素・アイコン・状態のマーカーを変更するときに読む。
   tags:
   - tool:typescript
   - topic:dom
@@ -1044,7 +1044,7 @@ files:
     type: implements
 - path: skills/mindmap/preview/core/edits.ts
   name: 保存待ちの編集の表示の値
-  description: 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちの印の種類。保存待ちの編集を当てた表示や印の種類を変更するときに読む。
+  description: 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちのマーカーの種類。保存待ちの編集を当てた表示やマーカーの種類を変更するときに読む。
   tags:
   - tool:typescript
   - topic:編集
@@ -1053,7 +1053,7 @@ files:
     type: implements
 - path: skills/mindmap/preview/core/globals.d.ts
   name: 描画のライブラリの型
-  description: npm の同じ版の型を割り当てる。雛形が CDN から読むライブラリの型を追加・変更するときに読む。
+  description: npm の同じバージョンの型を割り当てる。雛形が CDN から読むライブラリの型を追加・変更するときに読む。
   tags:
   - tool:typescript
   - topic:型
@@ -1073,7 +1073,7 @@ files:
     type: implements
 - path: skills/mindmap/preview/core/records.ts
   name: 記録の索引と検索
-  description: 次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使い、画面で計算し直さない。項目の索引・関係する項目・検索の求め方を変更するときに読む。
+  description: 次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使い、画面で再計算しない。項目の索引・関係する項目・検索の求め方を変更するときに読む。
   tags:
   - tool:typescript
   - topic:検索
@@ -1083,7 +1083,7 @@ files:
     type: implements
 - path: skills/mindmap/preview/core/router.ts
   name: URL のハッシュと履歴
-  description: 画面・表示形式・開いている項目・全画面・絞り込みを、`URLSearchParams` の形で持つ。URL のハッシュで持つ画面の状態を追加・変更するときに読む。
+  description: 画面・表示形式・開いている項目・全画面・絞り込みを、`URLSearchParams` の形式で持つ。URL のハッシュで持つ画面の状態を追加・変更するときに読む。
   tags:
   - tool:typescript
   - topic:url
@@ -1246,7 +1246,7 @@ files:
     type: implements
 - path: skills/mindmap/preview/style.css
   name: プレビューのスタイル
-  description: '開発者ツール × スイス: 無彩色の骨格に、印の 1 色（枝の線と選択）だけを置く。プレビューの画面と部品の見た目を変更するときに読む。'
+  description: '開発者ツール × スイス: 無彩色の骨格に、マーカーの 1 色（枝の線と選択）だけを置く。プレビューの画面と部品の見た目を変更するときに読む。'
   tags:
   - tool:css
   - topic:スタイル
@@ -1276,7 +1276,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/changes.schema.json
   name: 変更履歴のスキーマ
-  description: ワークスペースの変更履歴の YAML の形を決める JSON Schema。変更履歴の YAML のキーを追加・変更するときに読む。
+  description: ワークスペースの変更履歴の YAML の形式を決める JSON Schema。変更履歴の YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1288,7 +1288,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/comments.schema.json
   name: レビュー中のコメントのスキーマ
-  description: ワークスペースのレビュー中のコメントの YAML の形を決める JSON Schema。レビュー中のコメントの YAML のキーを追加・変更するときに読む。
+  description: ワークスペースのレビュー中のコメントの YAML の形式を決める JSON Schema。レビュー中のコメントの YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1302,7 +1302,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/common.schema.json
   name: 共通の型のスキーマ
-  description: ワークスペースの共通の型の YAML の形を決める JSON Schema。共通の型の YAML のキーを追加・変更するときに読む。
+  description: ワークスペースの共通の型の YAML の形式を決める JSON Schema。共通の型の YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1314,7 +1314,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/decisions.schema.json
   name: 検討事項のスキーマ
-  description: ワークスペースの検討事項の YAML の形を決める JSON Schema。検討事項の YAML のキーを追加・変更するときに読む。
+  description: ワークスペースの検討事項の YAML の形式を決める JSON Schema。検討事項の YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1326,7 +1326,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/docs.schema.json
   name: 資料のスキーマ
-  description: ワークスペースの資料の YAML の形を決める JSON Schema。資料の YAML のキーを追加・変更するときに読む。
+  description: ワークスペースの資料の YAML の形式を決める JSON Schema。資料の YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1335,8 +1335,8 @@ files:
   - to: ER-489-1
     type: implements
 - path: skills/mindmap/schemas/drafts.schema.json
-  name: 書きかけのスキーマ
-  description: ワークスペースの書きかけの YAML の形を決める JSON Schema。書きかけの YAML のキーを追加・変更するときに読む。
+  name: 下書きのスキーマ
+  description: ワークスペースの下書きの YAML の形式を決める JSON Schema。下書きの YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1350,7 +1350,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/edits.schema.json
   name: 保存待ちの編集のスキーマ
-  description: ワークスペースの保存待ちの編集の YAML の形を決める JSON Schema。保存待ちの編集の YAML のキーを追加・変更するときに読む。
+  description: ワークスペースの保存待ちの編集の YAML の形式を決める JSON Schema。保存待ちの編集の YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1362,7 +1362,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/logs.schema.json
   name: 会話ログのスキーマ
-  description: ワークスペースの会話ログの YAML の形を決める JSON Schema。会話ログの YAML のキーを追加・変更するときに読む。
+  description: ワークスペースの会話ログの YAML の形式を決める JSON Schema。会話ログの YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1372,7 +1372,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/migration-steps.schema.json
   name: 移し替えの手順のスキーマ
-  description: ワークスペースの移し替えの手順の YAML の形を決める JSON Schema。移し替えの手順の YAML のキーを追加・変更するときに読む。
+  description: ワークスペースの移し替えの手順の YAML の形式を決める JSON Schema。移し替えの手順の YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1384,7 +1384,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/notes.schema.json
   name: メモのスキーマ
-  description: ワークスペースのメモの YAML の形を決める JSON Schema。メモの YAML のキーを追加・変更するときに読む。
+  description: ワークスペースのメモの YAML の形式を決める JSON Schema。メモの YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1394,7 +1394,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/research.schema.json
   name: 調査のスキーマ
-  description: ワークスペースの調査の YAML の形を決める JSON Schema。調査の YAML のキーを追加・変更するときに読む。
+  description: ワークスペースの調査の YAML の形式を決める JSON Schema。調査の YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1404,7 +1404,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/settings.schema.json
   name: 設定のスキーマ
-  description: ワークスペースの設定の YAML の形を決める JSON Schema。設定の YAML のキーを追加・変更するときに読む。
+  description: ワークスペースの設定の YAML の形式を決める JSON Schema。設定の YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1416,7 +1416,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/tasks.schema.json
   name: タスクのスキーマ
-  description: ワークスペースのタスクの YAML の形を決める JSON Schema。タスクの YAML のキーを追加・変更するときに読む。
+  description: ワークスペースのタスクの YAML の形式を決める JSON Schema。タスクの YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1426,7 +1426,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/terms.schema.json
   name: 用語集のスキーマ
-  description: ワークスペースの用語集の YAML の形を決める JSON Schema。用語集の YAML のキーを追加・変更するときに読む。
+  description: ワークスペースの用語集の YAML の形式を決める JSON Schema。用語集の YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1436,7 +1436,7 @@ files:
     type: implements
 - path: skills/mindmap/schemas/threads.schema.json
   name: スレッドのスキーマ
-  description: ワークスペースのスレッドの YAML の形を決める JSON Schema。スレッドの YAML のキーを追加・変更するときに読む。
+  description: ワークスペースのスレッドの YAML の形式を決める JSON Schema。スレッドの YAML のキーを追加・変更するときに読む。
   tags:
   - tool:jsonschema
   - topic:スキーマ
@@ -1449,8 +1449,8 @@ files:
   - to: ER-489-1
     type: implements
 - path: skills/mindmap/scripts/backup.py
-  name: 移し替える前の写し
-  description: 移し替える前の写しの取り方と戻し方（git のコミットか、フォルダの複製）。写しの取り方と戻し方を変更するときに読む。
+  name: 移し替える前のコピー
+  description: 移し替える前のコピーの取り方と戻し方（git のコミットか、フォルダの複製）。コピーの取り方と戻し方を変更するときに読む。
   tags:
   - tool:git
   - topic:バックアップ
@@ -1460,7 +1460,7 @@ files:
     type: implements
 - path: skills/mindmap/scripts/builder.py
   name: プレビューの記録の組み立てと配る書き出し
-  description: ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に差し込み、配る書き出しを書く。プレビューへ渡す記録の形や配る書き出しを変更するときに読む。
+  description: ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に差し込み、配る書き出しを書く。プレビューへ渡す記録の構造や配る書き出しを変更するときに読む。
   tags:
   - topic:html
   - topic:ビルド
@@ -1480,7 +1480,7 @@ files:
     type: implements
 - path: skills/mindmap/scripts/check_env.py
   name: 依存の確認
-  description: スキル専用の仮想環境の Python の版と、PyYAML・jsonschema・mcp の版を確かめる。スキルの仮想環境で確認する Python とライブラリの版を変更するときに読む。
+  description: スキル専用の仮想環境の Python のバージョンと、PyYAML・jsonschema・mcp のバージョンを確かめる。スキルの仮想環境で確認する Python とライブラリのバージョンを変更するときに読む。
   tags:
   - tool:python
   - topic:依存
@@ -1500,7 +1500,7 @@ files:
     type: implements
 - path: skills/mindmap/scripts/claude_input.py
   name: Claude Code のペインへの入力
-  description: ツールの呼び出しが運んだセッションの値をワークスペースごとの宛先として持ち、まとめて送った後にそのペインへ 1 行の文字列を貼る。まとめて送った後に Claude Code のペインへ貼る処理を変更するときに読む。
+  description: ツールの呼び出しが運んだセッションの値をワークスペースごとの宛先として持ち、まとめて送信した後にそのペインへ 1 行の文字列を貼る。まとめて送信した後に Claude Code のペインへ貼る処理を変更するときに読む。
   tags:
   - tool:tmux
   - topic:コメント
@@ -1519,8 +1519,8 @@ files:
   - to: MOD-489-176
     type: implements
 - path: skills/mindmap/scripts/comments.py
-  name: レビュー中のコメントと書きかけ
-  description: レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。コメントの読み書きとまとめて送る処理を変更するときに読む。
+  name: レビュー中のコメントと下書き
+  description: レビュー中のコメント（`comments.yaml`）と下書き（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。コメントの読み書きとまとめて送信する処理を変更するときに読む。
   tags:
   - tool:yaml
   - topic:コメント
@@ -1587,8 +1587,8 @@ files:
   - to: MOD-489-157
     type: implements
 - path: skills/mindmap/scripts/html_body.py
-  name: HTML の本文の行の印
-  description: 資料の HTML の本文の、開きタグへの原文の行の印（始まりと終わり）と、行の範囲の描いた文。HTML の本文の行の範囲の扱いを変更するときに読む。
+  name: HTML の本文の行のマーカー
+  description: 資料の HTML の本文の、開きタグへの原文の行のマーカー（始まりと終わり）と、行の範囲の描いた文。HTML の本文の行の範囲の扱いを変更するときに読む。
   tags:
   - topic:html
   - topic:本文
@@ -1635,7 +1635,7 @@ files:
     type: implements
 - path: skills/mindmap/scripts/locations.py
   name: コメントが指す箇所
-  description: コメントが指す箇所（本文の行の範囲か項目の値のキーと、選んだ文）の形を確かめ、今の項目に合うかを確かめる。コメントが指す箇所の形と照合を変更するときに読む。
+  description: コメントが指す箇所（本文の行の範囲か項目の値のキーと、選んだ文）の形式を確かめ、今の項目に合うかを確かめる。コメントが指す箇所の構造と照合を変更するときに読む。
   tags:
   - topic:コメント
   - topic:箇所
@@ -1652,7 +1652,7 @@ files:
     type: implements
 - path: skills/mindmap/scripts/migrator.py
   name: ワークスペースの移し替え
-  description: ワークスペースの版とプラグインの版を比べ、版ごとの手順を並べる・写しを取って当てる・値を入れる・版を書き換える。版の比較と移し替えの流れを変更するときに読む。
+  description: ワークスペースのバージョンとプラグインのバージョンを比べ、バージョンごとの手順を並べる・コピーを取って当てる・値を入れる・バージョンを書き換える。バージョンの比較と移し替えの流れを変更するときに読む。
   tags:
   - topic:バージョン
   - topic:移行
@@ -1766,8 +1766,8 @@ files:
   - to: MOD-489-149
     type: implements
 - path: skills/mindmap/scripts/versions.py
-  name: 版の解釈と比較
-  description: 版（`v{メジャー}.{マイナー}.{パッチ}`）の解釈・比較・読み書き。版の書式や比べ方を変更するときに読む。
+  name: バージョンの解釈と比較
+  description: バージョン（`v{メジャー}.{マイナー}.{パッチ}`）の解釈・比較・読み書き。バージョンの書式や比べ方を変更するときに読む。
   tags:
   - topic:バージョン
   related:

@@ -6,17 +6,17 @@ functions:
     title: 編集を溜める
     kind: フック
     usecase: 画面で項目を編集して保存する
-    summary: '`POST /api/edits` を呼び、成功で読み直す'
+    summary: '`POST /api/edits` を呼び、成功で再読み込みする'
     returns:
       type: UseMutationResult
       description: mutation
     unit_tests:
       - name: test_use_add_edit
         case: 正常
-        summary: 読み直す
+        summary: 再読み込みする
         condition: '201'
         mock: MSW
-        expected: 編集の query が読み直される
+        expected: 編集の query が再読み込みされる
       - name: test_use_add_edit_when_error
         case: 異常
         summary: 400 の detail
@@ -28,17 +28,17 @@ functions:
     title: 編集を取り消す
     kind: フック
     usecase: 画面で項目を編集して保存する
-    summary: '`DELETE /api/edits/{id}` を呼び、成功で読み直す'
+    summary: '`DELETE /api/edits/{id}` を呼び、成功で再読み込みする'
     returns:
       type: UseMutationResult
       description: mutation
     unit_tests:
       - name: test_use_cancel_edit
         case: 正常
-        summary: 読み直す
+        summary: 再読み込みする
         condition: '200'
         mock: MSW
-        expected: 編集の query が読み直される
+        expected: 編集の query が再読み込みされる
     container: frontend/src/shared/hooks/use-edits.ts
   - name: useSaveEdits
     title: まとめて保存する
@@ -56,10 +56,10 @@ functions:
     unit_tests:
       - name: test_use_save_edits
         case: 正常
-        summary: 記録を読み直す
+        summary: 記録を再読み込みする
         condition: '200'
         mock: MSW
-        expected: 4 つの query が読み直される
+        expected: 4 つの query が再読み込みされる
       - name: test_use_save_edits_when_unmounted
         case: 正常
         summary: 呼んだ部品が外れても結果を残す

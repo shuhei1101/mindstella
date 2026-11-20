@@ -1056,7 +1056,7 @@ def _post_body(**fields: Any) -> bytes:
     return json.dumps(fields, ensure_ascii=False).encode("utf-8")
 
 
-# レビュー中のコメントと書きかけの YAML（comments_response の入力）
+# レビュー中のコメントと下書きの YAML（comments_response の入力）
 COMMENTS_TEXT = (
     "seq: 1\nitems:\n  - id: C-1\n    target: D-1\n    body: 案 A にする\n"
     "    created: '2026-10-01T00:00:00+00:00'\n"
@@ -1085,7 +1085,7 @@ def test_comments_response(
     expected_titles: list[str],
     expected_draft_count: int,
 ) -> None:
-    """レビュー中と書きかけを返す。無ければ空（正常系）。"""
+    """レビュー中と下書きを返す。無ければ空（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", title="問い"), raw_files=raw_files)
     # 実行

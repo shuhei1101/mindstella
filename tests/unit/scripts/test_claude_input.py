@@ -23,10 +23,10 @@ WORK_DIR = Path("/work/ws")
 WORK_FOLDER_NAME = "-work-ws"
 
 # 届いたかの判定で探す、入力した文字列
-TEXT = "[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。"
+TEXT = "[mindstella] ユーザーからのコメントが 3 件届きました。再読み込みしてください。"
 
 # 件数 2 で入力する文字列と、その UTF-8 のバイト列
-INPUT_TEXT_2 = "[mindstella] ユーザーからのコメントが 2 件届きました。読み直してください。"
+INPUT_TEXT_2 = "[mindstella] ユーザーからのコメントが 2 件届きました。再読み込みしてください。"
 INPUT_BYTES_2 = INPUT_TEXT_2.encode("utf-8")
 
 # 名前が 230 文字になる作業フォルダと、その名前の先頭 200 文字（`-` を含む）

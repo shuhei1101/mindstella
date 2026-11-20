@@ -1,4 +1,4 @@
-// レビュー中の書き込みを溜める・書き換える・消す・まとめて送る mutation と、書きかけの保存
+// レビュー中の書き込みを溜める・書き換える・消す・まとめて送る mutation と、下書きの保存
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
@@ -7,27 +7,27 @@ import type { CommentInput, DraftInput, RemovedComment, SendReply } from "@/shar
 import { commentsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { discardReviewVoice } from "@/shared/stores/voice-store";
 
-/** 入力が止まってから書きかけを保存するまでのミリ秒（今の画面の `DRAFT_SAVE_DELAY_MS` と同じ） */
+/** 入力が止まってから下書きを保存するまでのミリ秒（今の画面の `DRAFT_SAVE_DELAY_MS` と同じ） */
 const DRAFT_SAVE_DELAY_MS = 500;
 
-/** 書きかけの向けた先のキー（項目・箇所・スレッドの組） */
+/** 下書きの向けた先のキー（項目・箇所・スレッドの組） */
 const draftKey = ({ target, loc, thread }: Pick<DraftInput, "target" | "loc" | "thread">): string => JSON.stringify([target ?? null, loc ?? null, thread ?? null]);
 
-/** 向けた先ごとの、予約した書きかけの保存 */
+/** 向けた先ごとの、予約した下書きの保存 */
 const draftTimers = new Map<string, number>();
 
-/** 書きかけを送る。保てなかったときは画面に出さない（今の画面と同じ。入力欄の中身は残り、次の入力か溜めたときに送り直す） */
+/** 下書きを送る。保てなかったときは画面に出さない（今の画面と同じ。入力欄の中身は残り、次の入力か溜めたときに送り直す） */
 const sendDraft = (draft: DraftInput): void => {
   saveDraft(draft).catch(() => undefined);
 };
 
-/** 予約した書きかけの保存を取り消す */
+/** 予約した下書きの保存を取り消す */
 const cancelDraft = (key: string): void => {
   window.clearTimeout(draftTimers.get(key));
   draftTimers.delete(key);
 };
 
-/** 書き込みを溜め、レビュー中の書き込みを読み直す。溜めた向けた先の予約した書きかけの保存は取り消す（サーバーがその書きかけを消すため） */
+/** 書き込みを溜め、レビュー中の書き込みを読み直す。溜めた向けた先の予約した下書きの保存は取り消す（サーバーがその下書きを消すため） */
 export const useAddComment = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -72,7 +72,7 @@ export const useSendComments = () => {
   });
 };
 
-/** 書きかけの保存を予約する関数（入力が止まって 500ms 後に `PUT /api/drafts`。向けた先ごとに待ちを分ける）。入力欄を離れたときは `now` を真にしてすぐ送る */
+/** 下書きの保存を予約する関数（入力が止まって 500ms 後に `PUT /api/drafts`。向けた先ごとに待ちを分ける）。入力欄を離れたときは `now` を真にしてすぐ送る */
 export const useSaveDraft = () =>
   useCallback((draft: DraftInput, now = false) => {
     const key = draftKey(draft);

@@ -15,16 +15,16 @@
   <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <!-- 今のプレビューのスタイル -->
   <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
-  <!-- この PR で足す編集・保存待ちのスタイルと、モック専用の操作列 -->
+  <!-- この PR で追加する編集・保存待ちのスタイルと、モック専用の操作列 -->
   <link rel="stylesheet" href="../../../../refs/325/assets/style.css">
-  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <!-- 描画のライブラリ: 雛形と同じバージョンを固定して読み、integrity でファイルの中身を確かめる -->
   <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
 </head>
-<!-- data-initial: ハッシュが無いときに開く状態（タスクのボード）/ data-del: 消す編集を含む保存の案（a: ボタンに消す件数 / b: 消す行を先頭に分ける）。保存待ちのパネルはクエリの pe=1 で開いて始める -->
+<!-- data-initial: ハッシュが無いときに開く状態（タスクのボード）/ data-del: 削除する編集を含む保存の案（a: ボタンに削除する件数 / b: 削除する行を先頭に分ける）。保存待ちのパネルはクエリの pe=1 で開いて始める -->
 <body data-initial="tab=tasks" data-del="a" data-pe="1" data-sample="mixed">
   <!-- モック専用の操作列: 案・論点の案・見本・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
   <div class="mockbar" role="group" aria-label="モックの操作">
@@ -42,7 +42,7 @@
     <a href="#" data-set="sample=none&amp;pe=1&amp;diff=">0 件</a>
     <a href="#" data-set="sample=mixed&amp;pe=1&amp;diff=V-6">差分の表示中</a>
     <span class="label">操作:</span>
-    <!-- data-mock-act: edit.js が、この端末に残した保存待ちの編集を消して見本の状態から開き直す -->
+    <!-- data-mock-act: edit.js が、この端末に残した保存待ちの編集を削除して見本の状態から再度開く -->
     <button type="button" data-mock-act="reset">見本の保存待ちに戻す</button>
     <span class="spacer"></span>
     <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">pending-edits</a> / <a href="../index.md">325</a> / a-count-in-button</nav>

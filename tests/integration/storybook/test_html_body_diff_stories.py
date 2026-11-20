@@ -31,7 +31,7 @@ def test_rendered(open_story: OpenStory) -> None:
     assert buttons.all_inner_texts() == ["描いた結果", "原文の差分"]
     assert [button.get_attribute("aria-pressed") for button in buttons.all()] == ["true", "false"]
     legend = page.inner_text(LEGEND)
-    assert "足した" in legend
+    assert "追加した" in legend
     assert "変わった" in legend
     assert page.evaluate(MARKED_PARAGRAPHS_SCRIPT) == [
         ["一つ目の段落", None],
@@ -65,7 +65,7 @@ def test_removed_only(open_story: OpenStory) -> None:
     page = open_story("preview-htmlbodydiff--removed-only")
     wait_frame_rendered(page, f"{MARKED} iframe")
     # 検証
-    assert "消した箇所は原文の差分で見られます" in page.inner_text(LEGEND)
+    assert "削除した箇所は原文の差分で見られます" in page.inner_text(LEGEND)
     assert frame_of(page, f"{MARKED} iframe").locator("[data-df]").count() == 0
 
 
@@ -234,6 +234,6 @@ def test_range_after(open_story: OpenStory) -> None:
     )
     assert marked == [["一つ目の段落", None], ["書き換えた二つ目の段落", "chg"], ["足した段落", "add"]]
     legend = page.inner_text(LEGEND)
-    assert "足した" in legend
+    assert "追加した" in legend
     assert "変わった" in legend
     assert page.locator(RAW).is_hidden()

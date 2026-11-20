@@ -22,12 +22,12 @@ functions:
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
       1. `.mindstella/history.yaml` を読む（無ければ空の `items`）
-      2. 種類ごとの YAML の項目ごとに、移すキーを取り出し、`history.yaml` のその ID の行へ足す（行が既にそのキーを持てば上書きしない）。項目からそのキーを消す
+      2. 種類ごとの YAML の項目ごとに、移すキーを取り出し、`history.yaml` のその ID の行へ追加する（行が既にそのキーを持てば上書きしない）。項目からそのキーを削除する
       3. `history.yaml` を先に、変えた種類の YAML をその後に、一時ファイルから `os.replace` で置き換える
       4. 変えたファイルの相対パスを返す
     exceptions:
       - name: ValueError
-        condition: 種類の YAML の形が崩れている
+        condition: 種類の YAML の形式が崩れている
       - name: OSError
         condition: 読めない・書けない
     unit_tests:

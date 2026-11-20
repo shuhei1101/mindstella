@@ -5,7 +5,7 @@ entry:
   value: POST `/workspaces`
 lead: 許可するフォルダの下に、ワークスペースの記録を作るか残っている記録を開き、project-index の配信元に登録して、ワークスペースの ID と画面の URL を返す。MindStella の MCP の `create_workspace` も同じ処理を呼ぶ。
 idempotent: true
-side_effects: 記録が無いフォルダには `.mindstella/` に既定の設定（ワークスペースの ID・進め方の文書）と空の記録と、記録を project-index の配信元として配る設定（`dev-docs.yaml`・`schemas/`）を書き（『ワークスペースの作成』と同じ書き方）、直下に本文のフォルダ `docs/` を作って `README.md` を書く。状態のフォルダに追加の MCP・プラグインを記録し、project-index の配信元の行を追加し、状態のフォルダのワークスペースの ID の一覧に足す。記録が既にあるフォルダは、記録のバージョンが古ければ『記録の形式の移行』で移し替えてから開き、それ以外はスキーマの複製（『記録の形式の移行』の制約『スキーマの複製』）のほかは書き換えない。スキーマの複製を書き直したときは、project-index にその配信元を読み直させる。そのワークスペースのプレビューの配信を立てる
+side_effects: 記録が無いフォルダには `.mindstella/` に既定の設定（ワークスペースの ID・進め方の文書）と空の記録と、記録を project-index の配信元として配る設定（`dev-docs.yaml`・`schemas/`）を書き（『ワークスペースの作成』と同じ書き方）、直下に本文のフォルダ `docs/` を作って `README.md` を書く。状態のフォルダに追加の MCP・プラグインを記録し、project-index の配信元の行を追加し、状態のフォルダのワークスペースの ID の一覧に追加する。記録が既にあるフォルダは、記録のバージョンが古ければ『記録の形式の移行』で移し替えてから開き、それ以外はスキーマの複製（『記録の形式の移行』の制約『スキーマの複製』）のほかは書き換えない。スキーマの複製を書き直したときは、project-index にその配信元を読み直させる。そのワークスペースのプレビューの配信を立てる
 request:
   - name: folder
     type: str
@@ -43,7 +43,7 @@ request:
     required: false
     default: なし
     location: header
-    description: ブラウザからの要求の送り元
+    description: ブラウザからの要求の送信元
 response:
   - name: id
     type: str
@@ -67,26 +67,26 @@ status_codes:
   - code: '200'
     condition: '`result` が `opened`・`reopened`・`already_open`'
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・`folder` が絶対パスでない・`flow` の形が違う
+    condition: 本文が JSON のオブジェクトでない・`folder` が絶対パスでない・`flow` の形式が違う
     notes: 何も書かない
   - code: '403'
     condition: 許可するフォルダの外、または `Host`・`Origin` が受ける値でない
     notes: 何も書かない。`stage` は `folder` か `host`
   - code: '409'
     condition: 記録のバージョンがプラグインのバージョンより新しい、配信元の行が指す別のフォルダに同じ ID の記録がある、または記録が無いフォルダの直下に `docs/` か `files/` が既にある
-    notes: 何も書かない。記録のバージョンが新しいときは `stage` が `version` で、`detail` にワークスペースとプラグインのバージョンと、プラグインを更新する案内。同じ ID の記録が別のフォルダにあるときは `stage` が `duplicate` で、`detail` にそのフォルダのパス。直下に `docs/` か `files/` があるときは `stage` が `root_folder` で、`detail` に既にあるフォルダの名前と、改名してから作り直す案内
+    notes: 何も書かない。記録のバージョンが新しいときは `stage` が `version` で、`detail` にワークスペースとプラグインのバージョンと、プラグインを更新する案内。同じ ID の記録が別のフォルダにあるときは `stage` が `duplicate` で、`detail` にそのフォルダのパス。直下に `docs/` か `files/` があるときは `stage` が `root_folder` で、`detail` に既にあるフォルダの名前と、改名してから再作成する案内
   - code: '422'
     condition: '`mcp_config`・`plugin_dirs` が読めない、`flow` の文書を参照できない（文書が無い・配信元の `scope.read` にフォルダが含まれない）、または『記録の形式の移行』が手順の途中で失敗した'
-    notes: 何も書かない。`stage` は `mcp_config`・`plugin_dirs`・`flow`・`migration` のどれか。`detail` に読めない値と理由（`migration` は失敗したバージョン・手順・理由。記録は写しから戻し、配信しない）
+    notes: 何も書かない。`stage` は `mcp_config`・`plugin_dirs`・`flow`・`migration` のどれか。`detail` に読めない値と理由（`migration` は失敗したバージョン・手順・理由。記録はコピーから戻し、配信しない）
   - code: '502'
     condition: project-index へつながらない、または配信元の行の追加・変更がエラーを返した
-    notes: この依頼で作った記録と状態のフォルダの記録を消す（記録が既にあって開いたときは記録を消さない）。`stage` は `source`
+    notes: この依頼で作った記録と状態のフォルダの記録を削除する（記録が既にあって開いたときは記録を削除しない）。`stage` は `source`
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
 constraints:
   - item: 受ける Host
     constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
-  - item: 確かめる順
+  - item: 確認する順
     constraint: '`Host`・`Origin` → 本文 → 許可するフォルダ → `mcp_config` → `plugin_dirs` → 既に開いているか → 記録の形式の移行（記録があるときだけ）→ `flow` の参照（記録が無いときだけ）→ 直下の `docs/`・`files/`（記録が無いときだけ）→ 書き込み → 配信元の行 → ID の一覧。どこかで止まったら、それより後は何もしない'
   - item: 既定の設定
     constraint: '記録が無いフォルダの `config.yaml` は、`id`（ワークスペースの ID）・`flow`（渡したときだけ）・`summary`（フォルダ名）にする。題名・概要は、作った後に『設定の更新』で書く（ER 図『ワークスペース』の `config.yaml`）'
@@ -95,30 +95,30 @@ constraints:
     constraint: project-index の `GET /settings/sources` が返す `settingsPath` のファイルを読み、最上位の `mindstella.allowed_dirs`（絶対パスの並び）を使う。キーが無いか空なら、どのフォルダも許可しない（403）
     notes: project-index は知らないキーを警告にして読み込みを続ける（shuhei1101/project-index#11）
   - item: 記録が既にあるフォルダ
-    constraint: '`.mindstella/config.yaml` があれば作り直さずに開く。進め方の文書は設定のまま使い、今回の `flow` は使わない（D-283）。追加の MCP・プラグインは、状態のフォルダに記録が無いときだけ今回の指定を記録する（D-321）。配信元の行が無ければ追加し、`outside_read` が偽（クローズ済み）なら真に戻してクローズ待ちを解く（`reopened`）。`outside_read` を戻すときは、`GET /settings/sources` で `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: true` を送る。409（版が古い）なら 1 回だけ引き直して送り直す。配信元の行の `config` が今回のフォルダの `.mindstella/dev-docs.yaml` でない（フォルダを移したかコピーした）ときは、行の `config` が指すフォルダに同じ `id` の記録（`.mindstella/config.yaml`）があれば 409（`stage: duplicate`）。無ければ `PATCH /settings/sources/{id}` で `source.config`・`source.scope` を今回のフォルダの値（『配信元の行』と同じ形）へ変更し、`result` を `opened` にする（`expectedVersion` を添え、409 なら 1 回だけ `version` を取得し直して再送信する。それでも通らないときと project-index がそのほかの失敗を返したときは 502（`stage: source`）で、記録と状態のフォルダの記録は削除しない）。その行がクローズ済みなら、同じ依頼で `source.outside_read: true` も送信して `reopened` にする。記録の設定に `id` が無ければフォルダから振った ID を使用し、記録の設定は書き換えない（`id` の記録は v0.13.0 の移し替えが行う）'
+    constraint: '`.mindstella/config.yaml` があれば再作成せずに開く。進め方の文書は設定のまま使い、今回の `flow` は使わない（D-283）。追加の MCP・プラグインは、状態のフォルダに記録が無いときだけ今回の指定を記録する（D-321）。配信元の行が無ければ追加し、`outside_read` が偽（クローズ済み）なら真に戻してクローズ待ちを解く（`reopened`）。`outside_read` を戻すときは、`GET /settings/sources` で `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: true` を送信する。409（バージョンが古い）なら 1 回だけ再取得して再送信する。配信元の行の `config` が今回のフォルダの `.mindstella/dev-docs.yaml` でない（フォルダを移したかコピーした）ときは、行の `config` が指すフォルダに同じ `id` の記録（`.mindstella/config.yaml`）があれば 409（`stage: duplicate`）。無ければ `PATCH /settings/sources/{id}` で `source.config`・`source.scope` を今回のフォルダの値（『配信元の行』と同じ形式）へ変更し、`result` を `opened` にする（`expectedVersion` を添え、409 なら 1 回だけ `version` を再取得して再送信する。それでも通らないときと project-index がそのほかの失敗を返したときは 502（`stage: source`）で、記録と状態のフォルダの記録は削除しない）。その行がクローズ済みなら、同じ依頼で `source.outside_read: true` も送信して `reopened` にする。記録の設定に `id` が無ければフォルダから振った ID を使用し、記録の設定は書き換えない（`id` の記録は v0.13.0 の移し替えが行う）'
   - item: 配信元の行
-    constraint: 'project-index の `POST /settings/sources` に `{"source": {"id": {ID}, "config": "{フォルダ}/.mindstella/dev-docs.yaml", "scope": {"read": ["{フォルダ}", "{フォルダ}/**"], "write": ["{フォルダ}", "{フォルダ}/**"]}, "outside_read": true}}` と、`GET /settings/sources` で取得した `version` を `expectedVersion` として送信する。409 のうち `result: exists` でないもの（内容のバージョンの不一致）は、1 回だけ `version` を取得し直して再送信する。`scope` はワークスペースのフォルダと、その下の全てのフォルダを作業場所にしたセッションを対象にする。同じ `id` の行がある（409・`result: exists`）ときは、`same` が真なら追加済みとして続け、偽なら 502'
-    notes: '本文の形は project-index の『端末の設定の配信元の 1 行の追加』（IF-32）、`/**` の当たり方はコアコンセプト『scope による権限』'
+    constraint: 'project-index の `POST /settings/sources` に `{"source": {"id": {ID}, "config": "{フォルダ}/.mindstella/dev-docs.yaml", "scope": {"read": ["{フォルダ}", "{フォルダ}/**"], "write": ["{フォルダ}", "{フォルダ}/**"]}, "outside_read": true}}` と、`GET /settings/sources` で取得した `version` を `expectedVersion` として送信する。409 のうち `result: exists` でないもの（内容のバージョンの不一致）は、1 回だけ `version` を再取得して再送信する。`scope` はワークスペースのフォルダと、その下の全てのフォルダを作業場所にしたセッションを対象にする。同じ `id` の行がある（409・`result: exists`）ときは、`same` が真なら追加済みとして続け、偽なら 502'
+    notes: '本文の構造は project-index の『端末の設定の配信元の 1 行の追加』（IF-32）、`/**` の当たり方はコアコンセプト『scope による権限』'
   - item: 配信の設定
     constraint: '記録が無いフォルダに、`.mindstella/dev-docs.yaml`（project-index の配信元の設定。書式は project-index のガイド『設定』）と `.mindstella/schemas/`（プラグインの `skills/mindmap/schemas/` の種類ごとの 7 つのスキーマと `common.schema.json` の複製）を書く。設定は `version: "3"`・`name`（ワークスペースの ID）・`description`（設定の `summary`）・`related.types`（`[depends_on, parent, for, see_also]`）・`paths_base: ..`（配信元の基準をワークスペースの直下にする）と、種類ごとの 7 つの `documents` の行を持つ。行は `id`（種類の名前。`decisions` など）・`title`（種類の日本語の名前）・`paths`（`[.mindstella/{種類}.yaml]`。配信元の基準から解かれる）・`schema`（`schemas/{種類}.schema.json`）・`records: items`・`body_file: body`・`write_dates: false`（Git 管理外の配信元でも project-index の `write_docs` に `created`・`updated` を付けさせない。日時は `history.yaml` が持つ）・`metadata`（`id: id`・`name: title`・`description: lead`（持つ種類だけ）・`tags: tags[].name`・`main_tags: tags[main].name`・`related: related`・`status: status`（持つ種類だけ））'
     notes: '`body` は `.mindstella/` からの相対で直下の `docs/` の本文のファイルを指す（`../docs/{ID}.mark.md`。ER 図『ワークスペース』）。project-index は `body_file` を YAML のファイルのフォルダから解き、配信元の基準の外部の本文を返却しない。`threads.yaml`・`changes.yaml`・`config.yaml` などは配信しない（MindStella の MCP が読み書きする）'
   - item: ID の一覧
-    constraint: 状態のフォルダの `workspaces.yaml` の `ids` に足す。配信元の行の追加が通った後に足す
+    constraint: 状態のフォルダの `workspaces.yaml` の `ids` に追加する。配信元の行の追加が通った後に追加する
   - item: 追加の MCP・プラグインの記録
     constraint: 状態のフォルダの `workspaces/{id}/launch.json` に `mcp_config` と `plugin_dirs` を書く。指定が空でも書く（記録が無いことと区別する。D-320）
   - item: 同時の依頼
     constraint: 同じフォルダへの作成はフォルダごとの鍵、ID の一覧の書き込みは全体で 1 つの鍵、記録と状態の書き込みはワークスペースごとの鍵（セッションの管理と共有する）を取ってから行う
   - item: MCP のツール
-    constraint: '`create_workspace` は同じ引数（`folder`・`flow`・`mcp_config`・`plugin_dirs`）を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す。エラーは `エラー: {detail}`（『MCP サーバーの起動』のエラーの形）。`Host` の確かめは `/mcp` の確かめに任せる'
-  - item: 進め方の文書の確かめ方
-    constraint: 'project-index の HTTP の読み取り API で 3 段に確かめる。(1) `GET /settings/sources` の `flow.source` の行の `scope.read` に、ワークスペースのフォルダが当たる（当たらなければ 422・理由 `scope`）。(2) `GET /sources/{flow.source}/docs` の一覧から、`id` が `flow.doc` の文書のパスを引く（無ければ 422・理由 `missing`。配信元が無ければ 404 の `missing: source`）。(3) `GET /sources/{flow.source}/docs/{パス}?id={flow.doc}` が 200 を返す（404 なら 422・理由 `missing`）'
+    constraint: '`create_workspace` は同じ引数（`folder`・`flow`・`mcp_config`・`plugin_dirs`）を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す。エラーは `エラー: {detail}`（『MCP サーバーの起動』のエラーの構造）。`Host` の確かめは `/mcp` の確かめに任せる'
+  - item: 進め方の文書の確認方法
+    constraint: 'project-index の HTTP の読み取り API で 3 段階に確かめる。(1) `GET /settings/sources` の `flow.source` の行の `scope.read` に、ワークスペースのフォルダが当たる（当たらなければ 422・理由 `scope`）。(2) `GET /sources/{flow.source}/docs` の一覧から、`id` が `flow.doc` の文書のパスを引く（無ければ 422・理由 `missing`。配信元が無ければ 404 の `missing: source`）。(3) `GET /sources/{flow.source}/docs/{パス}?id={flow.doc}` が 200 を返す（404 なら 422・理由 `missing`）'
     notes: 常駐サーバーは文書の MCP（`search_docs`）を呼ばない
   - item: 記録の形式の移行
-    constraint: '記録があるフォルダは、開く前に『記録の形式の移行』を当てる。利用者に確認せずに移し替え、移せなかった値は応答の `migration.not_carried` に載せる（D-288。PR #565 の確認ログ）。利用者への知らせは、MindStella のセッションが起動と再開のエージェントフローで通知のスレッドにする。移行の結果の `source_files` が 1 件以上で、配信元の行が既にあり、この依頼で行を変更しない（『既に記録があるフォルダ』の `PATCH` を送らない）ときは、`GET /settings/sources` で `version` と `settingsPath` を引き、`settingsPath` の端末の設定の `sources` の行を書き換えずにそのまま、`expectedVersion` とともに `PUT /settings/sources` に送って、全ての配信元を読み直させる（project-index の『端末の設定の保存』は全ての行を再読み込みする。『端末の設定の配信元の 1 行の変更』は値が変わらない行の配信元を使い回すので、読み直されない。`GET` の応答の行は状態を含む camelCase の形で、端末の設定の行と形が違うので送らない）。`source_files` が 1 件以上になるのはプラグインを上げた後にそのワークスペースを初めて開くときだけなので、全ての配信元の再読み込みもそのときだけになる。行を追加する、または行を変更する `PATCH` を送るときは、それで読み直されるので重ねて送らない。409（版が古い）なら 1 回だけ引き直して送り直し、それでも通らないときと project-index がそのほかの失敗を返したときは 502（`stage: source`）'
+    constraint: '記録があるフォルダは、開く前に『記録の形式の移行』を当てる。利用者に確認せずに移し替え、移せなかった値は応答の `migration.not_carried` に載せる（D-288。PR #565 の確認ログ）。利用者への知らせは、MindStella のセッションが起動と再開のエージェントフローで通知のスレッドにする。移行の結果の `source_files` が 1 件以上で、配信元の行が既にあり、この依頼で行を変更しない（『既に記録があるフォルダ』の `PATCH` を送信しない）ときは、`GET /settings/sources` で `version` と `settingsPath` を引き、`settingsPath` の端末の設定の `sources` の行を書き換えずにそのまま、`expectedVersion` とともに `PUT /settings/sources` に送信して、全ての配信元を読み直させる（project-index の『端末の設定の保存』は全ての行を再読み込みする。『端末の設定の配信元の 1 行の変更』は値が変わらない行の配信元を使い回すので、再読み込みされない。`GET` の応答の行は状態を含む camelCase の構造で、端末の設定の行と構造が違うので送信しない）。`source_files` が 1 件以上になるのはプラグインを上げた後にそのワークスペースを初めて開くときだけなので、全ての配信元の再読み込みもそのときだけになる。行を追加する、または行を変更する `PATCH` を送信するときは、それで再読み込みされるので重ねて送信しない。409（バージョンが古い）なら 1 回だけ再取得して再送信し、それでも通らないときと project-index がそのほかの失敗を返したときは 502（`stage: source`）'
   - item: エージェントフローの配信元
-    constraint: 配信元の行を足した後に、project-index に配信元 `mindstella-agent-flows` の行が無ければ、『エージェントフローの参照』の制約「配信元の登録」のとおり足す。同じ `id` の行がある（409）ときは足さずに続ける。失敗してもワークスペースの作成は止めず、常駐サーバーのログに 1 行書く
-  - item: project-index の版
-    constraint: 配信の設定の `write_dates` を知らない project-index（shuhei1101/project-index の 368b731 より前）は、`documents` の行が `write_dates` を持つ配信の設定を検証に通さず、その配信元を配信しない（端末の設定の行の状態が `not_served`）。この操作は配信元の行の状態を確かめず、そのまま開いて応答を返す（記録は配信されず、MindStella のセッションの `search_docs`・`write_docs` が配信元を見つけられない）。必要な project-index の版は、使い方『動作環境』に記載する
+    constraint: 配信元の行を追加した後に、project-index に配信元 `mindstella-agent-flows` の行が無ければ、『エージェントフローの参照』の制約「配信元の登録」のとおり追加する。同じ `id` の行がある（409）ときは追加せずに続ける。失敗してもワークスペースの作成は止めず、常駐サーバーのログに 1 行書く
+  - item: project-index のバージョン
+    constraint: 配信の設定の `write_dates` を知らない project-index（shuhei1101/project-index の 368b731 より前）は、`documents` の行が `write_dates` を持つ配信の設定を検証に通さず、その配信元を配信しない（端末の設定の行の状態が `not_served`）。この操作は配信元の行の状態を確かめず、そのまま開いて応答を返す（記録は配信されず、MindStella のセッションの `search_docs`・`write_docs` が配信元を見つけられない）。必要な project-index のバージョンは、使い方『動作環境』に記載する
 flows:
   - name: 正常系
     summary: 記録が無いフォルダに記録を作り、配信元に登録して ID と URL を返す
@@ -147,7 +147,7 @@ flows:
         API->>PI: GET /settings/sources
         PI-->>API: version
         API->>PI: POST /settings/sources（expectedVersion）
-        API->>API: workspaces.yaml の ids に足す
+        API->>API: workspaces.yaml の ids に追加する
         API-->>クライアント: 201 id・url・created・launch_options_recorded: true
       ```
     expected:
@@ -279,7 +279,7 @@ flows:
       - 記録・状態のフォルダの記録・配信元の行が作られていない
     test: test_error_when_options_invalid
   - name: 異常系（配信元の登録に失敗する）
-    summary: 502 を返し、この依頼で作った記録と状態のフォルダの記録を消す
+    summary: 502 を返し、この依頼で作った記録と状態のフォルダの記録を削除する
     setup:
       - name: Mock
         description: project-index の Mock の `POST /settings/sources` が 500 を返す
@@ -297,12 +297,12 @@ flows:
         クライアント->>API: folder
         API->>PI: POST /settings/sources
         PI-->>API: 500
-        API->>API: 書いた記録と launch.json を消す
+        API->>API: 書いた記録と launch.json を削除する
         API-->>クライアント: 502 stage: source
       ```
     expected:
       - 応答が 502 で `stage` が `source`
-      - フォルダに `.mindstella/` が無く、状態のフォルダに `launch.json` が無く、`ids` に足されていない
+      - フォルダに `.mindstella/` が無く、状態のフォルダに `launch.json` が無く、`ids` に追加されていない
     test: test_error_when_source_registration_fails
   - name: 異常系（別のホスト）
     summary: '`Host` が受ける値でなければ 403'
@@ -381,7 +381,7 @@ flows:
       - project-index の Mock が行の変更も追加も受けておらず、両方のフォルダの記録が変わっていない
     test: test_error_when_duplicate_id
   - name: 正常系（スキーマの複製を書き直した記録を開く）
-    summary: 今のバージョンの記録のスキーマの複製を書き直し、端末の設定の行をそのまま送る PUT で project-index に配信元を読み直させる
+    summary: 今のバージョンの記録のスキーマの複製を書き直し、端末の設定の行をそのまま送信する PUT で project-index に配信元を読み直させる
     setup:
       - name: Mock
         description: 'project-index の Mock（テストが空きポートで立て、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。`GET /settings/sources` が一時ファイルの `settingsPath` とそのワークスペースの行（`outside_read: true`）を返し、`POST`・`PATCH`・`DELETE /settings/sources` の依頼を記録する。一時ファイルの `mindstella.allowed_dirs` はテストの一時フォルダ）'
@@ -408,7 +408,7 @@ flows:
       - 'project-index の Mock が、`expectedVersion` と一時ファイルの端末の設定の `sources` と同じ行を持つ `PUT /settings/sources` を 1 回受け、`POST`・`PATCH` を受けていない'
     test: test_normal_when_schema_copy_rewritten
   - name: 正常系（実際の project-index で記録を書き込み・検索する）
-    summary: 作った Git 管理外のワークスペースを実際の project-index で配信し、記録の作成・更新、本文を持たない項目の検索・更新、スキーマの複製を更新前に戻した後の開き直しを通す
+    summary: 作った Git 管理外のワークスペースを実際の project-index で配信し、記録の作成・更新、本文を持たない項目の検索・更新、スキーマの複製を更新前に戻した後の再オープンを通す
     setup:
       - name: Mock
         description: なし（実際の project-index をテストごとの一時フォルダの端末の設定と空きポートで起動し、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。準備はエージェントフローの参照の結合テストと同じで、project-index のクローンが無ければ skip する）
@@ -434,7 +434,7 @@ flows:
     expected:
       - 検討事項の作成と更新の `write_docs` が検査に通って書き込まれ、記録の YAML の項目が `created`・`updated` を持たない
       - 本文を持たない G-1 が `search_docs` でヒットし、`write_docs` で更新でき、結果に読み込めない文書の警告が無い
-      - スキーマの複製を更新前に戻して開き直した後、資料を参照した `search_docs` の結果にスキーマに合わない旨の警告が無い
+      - スキーマの複製を更新前に戻して再度開いた後、資料を参照した `search_docs` の結果にスキーマに合わない旨の警告が無い
     test: test_normal_when_real_project_index
   - name: 異常系（直下に docs/ が既にある）
     summary: 記録が無く直下に利用者の docs/ があれば 409 を返し、何も書かない
@@ -457,7 +457,7 @@ flows:
         API-->>クライアント: 409 stage: root_folder
       ```
     expected:
-      - 応答が 409 で `stage` が `root_folder`、`detail` に `docs/` と改名してから作り直す案内がある
+      - 応答が 409 で `stage` が `root_folder`、`detail` に `docs/` と改名してから再作成する案内がある
       - フォルダに `.mindstella/` と直下の `README.md` が無く、状態のフォルダと project-index の Mock に記録が無い
       - 直下の `docs/memo.md` の中身が、依頼の前と同じ
     test: test_error_when_root_docs_exists

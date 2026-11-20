@@ -6,8 +6,8 @@ scenarios:
       - name: Mock
         description: モデルを呼ばない。起動のコマンドの代わりに常駐サーバーを立て、MindStella の API のワークスペースの作成と、プレビューの URL の取得を呼ぶ
       - name: make_workspace
-        description: 作成を済ませ、直下の `README.md` の起動のコマンドを、別の版のプラグインのフォルダ（`/old/plugins/mindstella/0.6.0`）に書き換えたワークスペース
-        notes: プラグインを上げた後のワークスペースと同じ形
+        description: 作成を済ませ、直下の `README.md` の起動のコマンドを、別のバージョンのプラグインのフォルダ（`/old/plugins/mindstella/0.6.0`）に書き換えたワークスペース
+        notes: プラグインを上げた後のワークスペースと同じ構造
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -16,21 +16,21 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: ワークスペースを作成する
-        SV->>WS: 直下の README.md の 1 行目に自動で書いた印があることを確かめる
+        SV->>WS: 直下の README.md の 1 行目に自動で書いたマーカーがあることを確かめる
         SV->>WS: 今のプラグインのフォルダ・セッションの名前で一覧を書き直す（プレビューは URL を持たない）
         SV-->>CC: 書いた README のパス
         CC->>SV: プレビューの URL
         SV->>SV: 配信を立てる
-        SV->>WS: プレビューの節を URL にして書き直す
+        SV->>WS: プレビューのセクションを URL にして書き直す
         SV-->>CC: 127.0.0.1 の URL
       ```
     expected:
       - README の書き直しの後、起動のコマンドが `{サーバーのプラグインのフォルダ}/bin/mindstella {ワークスペースの絶対パス}` で、`/old/plugins/mindstella/0.6.0` を含まない
-      - 起動のコマンドの節に、任意の引数（進め方の文書・追加の MCP・プラグイン）の一覧がある
+      - 起動のコマンドのセクションに、任意の引数（進め方の文書・追加の MCP・プラグイン）の一覧がある
       - 接続のコマンドが、起動のコマンドでこのワークスペースの MindStella のセッションのペインへつなぐ呼び方である
       - スキルの呼び方（`/mindstella:session`・`/mindstella:setup`・`/mindstella:upgrade`）が無い
-      - プレビューの URL を頼む前は、プレビューの節が URL を持たず、起動の応答が返す画面の URL を開く案内である
-      - プレビューの URL を頼んだ後、プレビューの節が返った URL である
+      - プレビューの URL を頼む前は、プレビューのセクションが URL を持たず、起動の応答が返す画面の URL を開く案内である
+      - プレビューの URL を頼んだ後、プレビューのセクションが返った URL である
       - '`.mindstella/` の全てのファイルの中身が、呼ぶ前と同じである'
     test: test_normal
   - name: 正常シナリオ（README が無い）
@@ -38,8 +38,8 @@ scenarios:
       - name: Mock
         description: 正常シナリオと同じ
       - name: make_workspace
-        description: 作成を済ませ、直下の `README.md` を消したワークスペース
-        notes: この機能を入れる前のバージョンで作り、記録が残っているフォルダを開くワークスペースと同じ形
+        description: 作成を済ませ、直下の `README.md` を削除したワークスペース
+        notes: この機能を入れる前のバージョンで作り、記録が残っているフォルダを開くワークスペースと同じ構造
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -53,8 +53,8 @@ scenarios:
         SV-->>CC: 書いた README のパス
       ```
     expected:
-      - 直下に `README.md` があり、1 行目が自動で書いた印である
-      - プレビューの節と、起動・接続のコマンドがあり、スキルの呼び方が無い
+      - 直下に `README.md` があり、1 行目が自動で書いたマーカーである
+      - プレビューのセクションと、起動・接続のコマンドがあり、スキルの呼び方が無い
     test: test_normal_when_readme_missing
   - name: 正常シナリオ（利用者が書いた README がある）
     setup:
@@ -62,7 +62,7 @@ scenarios:
         description: 正常シナリオと同じ
       - name: make_workspace
         description: 作成を済ませ、直下の `README.md` を利用者が書いた中身に置き換えたワークスペース
-        notes: '`README.md` の中身は `# 家計簿アプリの話し合い`（自動で書いた印が無い）'
+        notes: '`README.md` の中身は `# 家計簿アプリの話し合い`（自動で書いたマーカーが無い）'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -71,7 +71,7 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: ワークスペースを作成する
-        SV->>WS: 直下の README.md に自動で書いた印が無い
+        SV->>WS: 直下の README.md に自動で書いたマーカーが無い
         SV-->>CC: 書かなかったこと
         CC->>SV: プレビューの URL
         SV->>SV: 配信を立てる
@@ -90,7 +90,7 @@ stakeholders:
     interest: フォルダを開いたときに、そのまま叩ける起動・接続のコマンドと、今のプレビューの URL が分かる
 trigger: 'MindStella の API でワークスペースを作る（記録が残っているフォルダを開くことを含む）とき。プレビューの配信を立てたとき'
 preconditions:
-  - ワークスペースが今の版の形（`.mindstella/config.yaml` がある）
-success_guarantee: 直下の `README.md` のプレビューの節と起動・接続のコマンドが、今のプラグインのフォルダ・セッションの名前・配っている URL を指し、スキルの呼び方を持たない
-minimal_guarantee: 利用者が書いた `README.md`（自動で書いた印が無いもの）と `.mindstella/` の記録は変えない
+  - ワークスペースが今のバージョンの形式（`.mindstella/config.yaml` がある）
+success_guarantee: 直下の `README.md` のプレビューのセクションと起動・接続のコマンドが、今のプラグインのフォルダ・セッションの名前・配っている URL を指し、スキルの呼び方を持たない
+minimal_guarantee: 利用者が書いた `README.md`（自動で書いたマーカーが無いもの）と `.mindstella/` の記録は変えない
 test_file: tests/e2e/単一ユースケース/test_readme_rewrite.py

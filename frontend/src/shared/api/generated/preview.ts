@@ -215,7 +215,7 @@ export const getGetCommentsUrl = () => {
 }
 
 /**
- * @summary レビュー中のコメントと書きかけを返す
+ * @summary レビュー中のコメントと下書きを返す
  */
 export const getComments = async ( options?: Parameters<typeof apiClient>[1]): Promise<getCommentsResponse> => {
 
@@ -286,7 +286,7 @@ export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, 
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary レビュー中のコメントと書きかけを返す
+ * @summary レビュー中のコメントと下書きを返す
  */
 
 export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(
@@ -1202,7 +1202,7 @@ export const getUpdateCommentUrl = (id: string,) => {
 }
 
 /**
- * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す
+ * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を解除
  */
 export const updateComment = async (id: string,
     commentPatch: CommentPatch, options?: Parameters<typeof apiClient>[1]): Promise<updateCommentResponse> => {
@@ -1293,7 +1293,7 @@ export function useUpdateComment<TData = Awaited<ReturnType<typeof updateComment
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す
+ * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を解除
  */
 
 export function useUpdateComment<TData = Awaited<ReturnType<typeof updateComment>>, TError = Problem>(
@@ -1607,7 +1607,7 @@ export const getSaveDraftUrl = () => {
 }
 
 /**
- * @summary コメントの入力欄の書きかけを向けた先ごとに保つ
+ * @summary コメントの入力欄の下書きを向けた先ごとに保つ
  */
 export const saveDraft = async (draftInput: DraftInput, options?: Parameters<typeof apiClient>[1]): Promise<saveDraftResponse> => {
 
@@ -1692,7 +1692,7 @@ export function useSaveDraft<TData = Awaited<ReturnType<typeof saveDraft>>, TErr
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary コメントの入力欄の書きかけを向けた先ごとに保つ
+ * @summary コメントの入力欄の下書きを向けた先ごとに保つ
  */
 
 export function useSaveDraft<TData = Awaited<ReturnType<typeof saveDraft>>, TError = Problem>(

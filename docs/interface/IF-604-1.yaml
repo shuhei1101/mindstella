@@ -2,7 +2,7 @@ title: ワークスペースの設定の書き換え
 entry:
   kind: endpoint
   value: PATCH `/workspaces/{id}`
-lead: ワークスペースの設定のキーと進め方の文書を `config.yaml` に、追加の MCP・プラグインを状態のフォルダの `launch.json` に書き換える。起動中の MindStella のセッションには反映せず、次の作成と起動し直しから有効になる。MindStella の MCP の `update_workspace` も同じ処理を呼ぶ。
+lead: ワークスペースの設定のキーと進め方の文書を `config.yaml` に、追加の MCP・プラグインを状態のフォルダの `launch.json` に書き換える。起動中の MindStella のセッションには反映せず、次の作成と再起動から有効になる。MindStella の MCP の `update_workspace` も同じ処理を呼ぶ。
 idempotent: true
 side_effects: 指定したキーだけを書き換える。`settings`・`flow` は `.mindstella/config.yaml`、`mcp_config`・`plugin_dirs` は状態のフォルダの `workspaces/{id}/launch.json`（無ければ作る）。起動中の MindStella のセッション・状態の `session.json`・project-index の配信元の行は変えない
 request:
@@ -49,7 +49,7 @@ request:
     required: false
     default: なし
     location: header
-    description: ブラウザからの要求の送り元
+    description: ブラウザからの要求の送信元
 request_example: |-
   ```json
   {
@@ -69,7 +69,7 @@ status_codes:
   - code: '200'
     condition: 書き換えた（値が変わらなかったときも 200 で、`changed` が空）
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・4 つのキーのどれも無い・`settings` が空のオブジェクト・知らないキーがある・`flow` の形が違う・`mcp_config` がオブジェクトでない・`plugin_dirs` が文字列の並びでない
+    condition: 本文が JSON のオブジェクトでない・4 つのキーのどれも無い・`settings` が空のオブジェクト・知らないキーがある・`flow` の形式が違う・`mcp_config` がオブジェクトでない・`plugin_dirs` が文字列の並びでない
     notes: 何も書かない。`stage` は `body`
   - code: '403'
     condition: '`Host`・`Origin` が受ける値でない'
@@ -94,26 +94,26 @@ constraints:
   - item: 受ける Host
     constraint: 『ワークスペースの作成』と同じ
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
-  - item: 確かめる順
+  - item: 確認する順
     constraint: '`Host`・`Origin` → 本文 → ワークスペースごとの鍵を取る → ID の一覧と配信元の行 → 記録のフォルダ → `mcp_config` → `plugin_dirs` → `flow` の参照 → ワークスペースのロックファイルを取る → `settings` → `config.yaml` → `launch.json`。どこかで止まったら、それより後は何もしない。ロックファイル（プロセスの中の書き込みの鍵を含む）を持つ間は project-index を呼ばない'
   - item: クローズしたワークスペース
-    constraint: '配信元の行が `outside_read: false` でも受ける。`launch.json` はクローズで残るので、開き直した後の『MindStella のセッションの作成』から書き換えた指定で起動する'
+    constraint: '配信元の行が `outside_read: false` でも受ける。`launch.json` はクローズで残るので、再度開いた後の『MindStella のセッションの作成』から書き換えた指定で起動する'
   - item: 記録のフォルダ
     constraint: project-index の `GET /settings/sources` で引いた配信元の行の `config` からフォルダを引く（『状態の取得』と同じ）
   - item: 設定のキー
     constraint: 『設定の更新』の引数の確かめと置き換え（渡したキーだけを置き換え、スキーマと突き合わせる）を同じ関数で行う。変更履歴と書き換えのまとまりには入れない
-  - item: 進め方の文書の確かめ方
-    constraint: 『ワークスペースの作成』の制約「進め方の文書の確かめ方」と同じ 3 段。`null` は確かめずに `config.yaml` から `flow` を外す
-  - item: 追加の MCP・プラグインの確かめ方
+  - item: 進め方の文書の確認方法
+    constraint: 『ワークスペースの作成』の制約「進め方の文書の確認方法」と同じ 3 段階。`null` は確かめずに `config.yaml` から `flow` を外す
+  - item: 追加の MCP・プラグインの確認方法
     constraint: 『ワークスペースの作成』と同じ関数で確かめる
   - item: 追加の MCP・プラグインの記録
     constraint: '`launch.json` を読み、指定したキーだけを置き換えて一時ファイルから書く。`launch.json` が無ければ、指定しなかったキーを空の指定（`{"mcpServers": {}}`・`[]`）にして作る（D-341）'
   - item: 起動中の MindStella のセッション
-    constraint: 何もしない。反映は外部のアプリが依頼する『MindStella のセッションの起動し直し』か、次の『MindStella のセッションの作成』で行う（起動のたびに `config.yaml` の `flow` と `launch.json` を読む。D-324）
+    constraint: 何もしない。反映は外部のアプリが依頼する『MindStella のセッションの再起動』か、次の『MindStella のセッションの作成』で行う（起動のたびに `config.yaml` の `flow` と `launch.json` を読む。D-324）
   - item: 同時の依頼
-    constraint: ワークスペースごとの鍵を、ID の一覧の確かめから `launch.json` を書き終えるまで持つ（『MindStella のセッションの作成』『MindStella のセッションの起動し直し』『ワークスペースのクローズ』『ワークスペースの開き直し』『ワークスペースの削除』と同じ鍵）。`config.yaml` の書き込みは、MCP のツールと同じくワークスペースのロックファイルも取る
+    constraint: ワークスペースごとの鍵を、ID の一覧の確かめから `launch.json` を書き終えるまで持つ（『MindStella のセッションの作成』『MindStella のセッションの再起動』『ワークスペースのクローズ』『ワークスペースの再オープン』『ワークスペースの削除』と同じ鍵）。`config.yaml` の書き込みは、MCP のツールと同じくワークスペースのロックファイルも取る
   - item: MCP のツール
-    constraint: '`update_workspace` は `workspace_id`・`settings`・`flow`・`mcp_config`・`plugin_dirs`・`remove_flow`（真偽。既定は偽）を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す。エラーは `エラー: {detail}`（『MCP サーバーの起動』のエラーの形）。MCP の SDK は省いた引数に既定値を入れて渡すため、ツールは `null` の引数を指定しなかったものとして本文に入れず、進め方の文書を外すときは `remove_flow: true` を本文の `flow: null` にする。`remove_flow` と `flow` を同時に指定すると引数の誤り（本文の 400 と同じ `stage: body`）'
+    constraint: '`update_workspace` は `workspace_id`・`settings`・`flow`・`mcp_config`・`plugin_dirs`・`remove_flow`（真偽。既定は偽）を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す。エラーは `エラー: {detail}`（『MCP サーバーの起動』のエラーの構造）。MCP の SDK は省いた引数に既定値を入れて渡すため、ツールは `null` の引数を指定しなかったものとして本文に入れず、進め方の文書を外すときは `remove_flow: true` を本文の `flow: null` にする。`remove_flow` と `flow` を同時に指定すると引数の誤り（本文の 400 と同じ `stage: body`）'
 flows:
   - name: 正常系
     summary: 設定のキー・進め方の文書・追加の MCP・プラグインを書き換え、起動中の MindStella のセッションは止めない
@@ -154,7 +154,7 @@ flows:
       - name: 常駐サーバー
         description: 正常系と同じ
       - name: ワークスペース
-        description: 作った後に `launch.json` を消したワークスペース。MindStella のセッションは無い
+        description: 作った後に `launch.json` を削除したワークスペース。MindStella のセッションは無い
       - name: 入力
         description: '`plugin_dirs` だけを渡す'
     flow: |-

@@ -494,7 +494,7 @@ def _workspace_yaml(root: Path, name: str) -> Any:
 
 
 def test_normal_when_comment_sent(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, call_tool: CallTool) -> None:
-    """詳細の本文の文を選んで箇所を添えたコメントを溜め、コメントの一覧のレビュー中の書き込みからまとめて送る（正常系）。"""
+    """詳細の本文の文を選んで箇所を添えたコメントを溜め、コメントの一覧のレビュー中の書き込みからまとめて送信（正常系）。"""
     # 準備
     url, root = write_review_preview(make_item("A-1", title="手引き"), bodies={"A-1.mark.md": THREE_LINE_BODY})
     errors = watch_console(page)
@@ -519,10 +519,10 @@ def test_normal_when_comment_sent(page: Page, write_review_preview: WriteReviewP
     page.wait_for_url("**review=1**")
     # 検証
     assert _history_length(page) == before
-    # 実行（まとめて送る）
-    page.get_by_role("dialog", name="コメント").get_by_role("button", name="まとめて送る（1 件）").click()
+    # 実行（まとめて送信）
+    page.get_by_role("dialog", name="コメント").get_by_role("button", name="まとめて送信（1 件）").click()
     # 検証
-    expect(page.get_by_role("dialog", name="コメント").get_by_role("status").filter(has_text="1 件を送り")).to_be_visible()
+    expect(page.get_by_role("dialog", name="コメント").get_by_role("status").filter(has_text="1 件を送信し")).to_be_visible()
     expect(page.locator(COMMENTS_BUTTON)).to_have_attribute("aria-label", "コメント（レビュー中 0 件）")
     awaiting = call_tool("threads", workspace=str(root), awaiting=True)
     assert awaiting.data is not None
@@ -575,20 +575,20 @@ def test_normal_when_thread_replied_and_closed(
 
 
 def test_normal_when_comment_draft_restored(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem) -> None:
-    """コメントの入力欄の書きかけをサーバーに保ち、読み込み直すと同じ入力欄に戻す（正常系）。"""
+    """コメントの入力欄の下書きをサーバーに保ち、読み込み直すと同じ入力欄に戻す（正常系）。"""
     # 準備
     url, root = write_review_preview(make_item("D-1"))
     open_spa(page, url, "?tab=decisions&id=D-1")
     field = page.get_by_role("complementary", name="詳細").get_by_role("textbox", name="D-1 へのコメント")
-    # 実行（書いて入力を止め、書きかけの保存を待つ）
+    # 実行（書いて入力を止め、下書きの保存を待つ）
     with page.expect_response(lambda response: response.url.endswith("/api/drafts") and response.request.method == "PUT"):
-        field.fill("書きかけの文")
+        field.fill("下書きの文")
     # 検証
-    assert [(draft["target"], draft["body"]) for draft in _workspace_yaml(root, "drafts.yaml")["items"]] == [("D-1", "書きかけの文")]
+    assert [(draft["target"], draft["body"]) for draft in _workspace_yaml(root, "drafts.yaml")["items"]] == [("D-1", "下書きの文")]
     # 実行（読み込み直す）
     page.reload()
     # 検証
-    expect(page.get_by_role("complementary", name="詳細").get_by_role("textbox", name="D-1 へのコメント")).to_have_value("書きかけの文")
+    expect(page.get_by_role("complementary", name="詳細").get_by_role("textbox", name="D-1 へのコメント")).to_have_value("下書きの文")
 
 
 def test_normal_when_display_settings(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem) -> None:
@@ -661,7 +661,7 @@ def test_normal_when_comment_target_filtered(
             make_thread("TH-1", make_post("TH-1-1", body="D-1 の話", created="2026-10-12T01:00:00+00:00"), summary="D-1 の話", target="D-1"),
             make_thread("TH-2", make_post("TH-2-1", body="D-2 の話", created="2026-10-12T02:00:00+00:00"), summary="D-2 の話", target="D-2"),
         ),
-        comments=(make_comment("C-1", target="D-1", body="D-1 への新しいスレッド"),),
+        comments=(make_comment("C-1", target="D-1", body="D-1 への新規スレッド"),),
     )
     open_spa(page, url, "?tab=decisions&id=D-1")
     panel = page.get_by_role("dialog", name="コメント")
@@ -672,7 +672,7 @@ def test_normal_when_comment_target_filtered(
     # 検証
     page.wait_for_function("() => location.search === '?tab=decisions&id=D-1&panel=comments&ttarget=D-1'")
     expect(rows).to_have_count(2)
-    expect(rows.nth(0)).to_contain_text("D-1 への新しいスレッド")
+    expect(rows.nth(0)).to_contain_text("D-1 への新規スレッド")
     expect(rows.nth(1)).to_contain_text("D-1 の話")
     assert page.evaluate("history.length") == before
     # 実行
@@ -728,7 +728,7 @@ def test_error_when_comment_server_unreachable(
 
 
 def test_error_when_comment_send_stale(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment, call_tool: CallTool) -> None:
-    """まとめて送るの 409 では、箇所が合わない書き込みの行に理由を出し、どれも送らない（異常系）。"""
+    """まとめて送信の 409 では、箇所が合わない書き込みの行に理由を出し、どれも送らない（異常系）。"""
     # 準備
     url, root = write_review_preview(
         make_item("A-1", title="手引き"),
@@ -739,14 +739,14 @@ def test_error_when_comment_send_stale(page: Page, write_review_preview: WriteRe
     open_spa(page, url, "?panel=comments&review=1")
     panel = page.get_by_role("dialog", name="コメント")
     expect(panel.locator("li[data-comment='C-1']")).to_be_visible()
-    # 実行（A-1 の本文を 1 行にしてから、まとめて送る）
+    # 実行（A-1 の本文を 1 行にしてから、まとめて送信）
     updated = write_tool(call_tool, "update", workspace=str(root), id="A-1", item={"body_markdown": "一行だけ\n"})
     assert updated.is_error is False, updated.text
-    panel.get_by_role("button", name="まとめて送る（1 件）").click()
+    panel.get_by_role("button", name="まとめて送信（1 件）").click()
     # 検証
     row = panel.locator("li[data-comment='C-1']")
     expect(row.get_by_role("alert")).to_be_visible()
-    expect(row.get_by_role("button", name="箇所を外す")).to_be_visible()
+    expect(row.get_by_role("button", name="箇所を解除")).to_be_visible()
     assert [item["id"] for item in _workspace_yaml(root, "comments.yaml")["items"]] == ["C-1"]
     assert (_workspace_yaml(root, "threads.yaml") or {"items": []})["items"] == []
     assert errors.exceptions == []

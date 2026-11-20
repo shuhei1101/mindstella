@@ -21,7 +21,7 @@ flows:
 
         クライアント->>IF: preview_url workspace
         IF->>P: 127.0.0.1 の空きポートで立てる
-        IF->>WS: 直下の README.md のプレビューの節を URL にして書き直す
+        IF->>WS: 直下の README.md のプレビューのセクションを URL にして書き直す
         IF-->>クライアント: JSON（url・started: true）
       ```
     expected:
@@ -29,10 +29,10 @@ flows:
       - '`url` が `http://127.0.0.1:` で始まって `/mindstella.html` で終わり、`started` が真'
       - '`url` を GET すると 200 が返る'
       - ワークスペースに `preview.html` が無い
-      - 直下の `README.md` のプレビューの節に `url` がある
+      - 直下の `README.md` のプレビューのセクションに `url` がある
     test: test_normal
   - name: 正常系（2 回目）
-    summary: 同じワークスペースで呼び直すと、同じ URL を返して配信を増やさない
+    summary: 同じワークスペースで再呼び出しすると、同じ URL を返して配信を増やさない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -101,7 +101,7 @@ flows:
     summary: 待ち受けを立てられないとエラーで終わる
     setup:
       - name: Mock
-        description: 待ち受けを立てる処理を、OSError を送る偽に差し替える
+        description: 待ち受けを立てる処理を、OSError を送出する偽に差し替える
       - name: make_workspace
         description: 作成を済ませたワークスペース
     flow: |-
@@ -119,7 +119,7 @@ flows:
       - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
     test: test_error_when_serve_fails
   - name: 正常系（利用者が書いた README がある）
-    summary: 自動で書いた印の無い README.md は書き換えずに配信を立てる
+    summary: 自動で書いたマーカーの無い README.md は書き換えずに配信を立てる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -135,7 +135,7 @@ flows:
 
         クライアント->>IF: preview_url workspace
         IF->>P: 127.0.0.1 の空きポートで立てる
-        IF-->>WS: README.md の 1 行目が自動で書いた印でない（書かない）
+        IF-->>WS: README.md の 1 行目が自動で書いたマーカーでない（書かない）
         IF-->>クライアント: JSON（url・started: true）
       ```
     expected:
@@ -172,10 +172,10 @@ flows:
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: 使われているポート
+      - name: 使用中のポート
         description: テストが `127.0.0.1` で待ち受けたままにしたポートを、`config.yaml` の `preview.port` に書いたワークスペース
       - name: 起動時のフック
-        description: '`MINDSTELLA_PREVIEW_START_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ書き足すコマンド'
+        description: '`MINDSTELLA_PREVIEW_START_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ追記するコマンド'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -189,17 +189,17 @@ flows:
     expected:
       - 'ツールのエラーになり、本文が `エラー: ` で始まり、そのポートの番号を含む'
       - 先に待ち受けていたソケットがそのままつながる
-      - フックの書き足すファイルが無い
+      - フックの追記するファイルが無い
     test: test_error_when_port_in_use
   - name: 正常系（起動時のフック）
-    summary: 配信を立てたときだけ、起動時のフックをポートとワークスペースの名前を足して呼ぶ
+    summary: 配信を立てたときだけ、起動時のフックをポートとワークスペースの名前を追加して呼ぶ
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 起動時のフック
-        description: '`MINDSTELLA_PREVIEW_START_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ書き足すコマンド'
+        description: '`MINDSTELLA_PREVIEW_START_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ追記するコマンド'
         notes: '`preview_url` を 2 回呼ぶ'
     flow: |-
       ```mermaid
@@ -215,7 +215,7 @@ flows:
         IF-->>クライアント: JSON（同じ url・started: false）
       ```
     expected:
-      - フックの書き足すファイルに 1 行だけあり、`url` のポートとワークスペースのフォルダの名前が並ぶ
+      - フックの追記するファイルに 1 行だけあり、`url` のポートとワークスペースのフォルダの名前が並ぶ
       - '`MINDSTELLA_PREVIEW_START_HOOK` を存在しないコマンドにしても、ツールのエラーにならず `url` を返す'
     test: test_normal_when_start_hook_set
   - name: 正常系（まとまりを指す）
@@ -224,7 +224,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` し、まとまり V-1 を持つワークスペース。ツールを呼ぶ常駐サーバーでは、このワークスペースの配信を起動していない
+        description: 検討事項 D-1 を追加して `commit` し、まとまり V-1 を持つワークスペース。ツールを呼ぶ常駐サーバーでは、このワークスペースの配信を起動していない
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -241,8 +241,8 @@ flows:
     expected:
       - ツールのエラーにならない
       - '`url` が `http://127.0.0.1:` で始まり `/mindstella.html#diff=V-1` で終わる'
-      - 直下の `README.md` のプレビューの節の URL がハッシュを持たない
-      - 同じワークスペースで `diff` を渡さずに呼び直すと、ハッシュの無い同じポートの `url` が返り、`started` が偽
+      - 直下の `README.md` のプレビューのセクションの URL がハッシュを持たない
+      - 同じワークスペースで `diff` を渡さずに再呼び出しすると、ハッシュの無い同じポートの `url` が返り、`started` が偽
     test: test_normal_when_diff_given
   - name: 異常系（記録に無いまとまり・引数の誤り）
     summary: changes.yaml に無いまとまりを diff に渡すと、配信を立てずに終わる
@@ -250,7 +250,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` し、まとまり V-1 だけを持つワークスペース。ツールを呼ぶ常駐サーバーでは、このワークスペースの配信を起動していない
+        description: 検討事項 D-1 を追加して `commit` し、まとまり V-1 だけを持つワークスペース。ツールを呼ぶ常駐サーバーでは、このワークスペースの配信を起動していない
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -273,7 +273,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` し、まとまり V-1 を持つワークスペース。`diff` を渡さずに `preview_url` を 1 回呼んでおく
+        description: 検討事項 D-1 を追加して `commit` し、まとまり V-1 を持つワークスペース。`diff` を渡さずに `preview_url` を 1 回呼んでおく
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -295,7 +295,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` し、まとまり V-1 だけを持つワークスペース。`diff` を渡さずに `preview_url` を 1 回呼んでおく
+        description: 検討事項 D-1 を追加して `commit` し、まとまり V-1 だけを持つワークスペース。`diff` を渡さずに `preview_url` を 1 回呼んでおく
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -314,7 +314,7 @@ flows:
     test: test_error_when_diff_not_found_while_serving
 lead: ワークスペースのプレビューを配る URL を返す。このプロセスでまだ配っていなければ、`127.0.0.1` の空きポートで配信を立てる。
 idempotent: true
-side_effects: 初めて呼んだワークスペースについて、このプロセスの中に配信（『プレビューの配信』『記録の取得』『書き換えの知らせ』・『設定の既定の書き換え』・『設定の再読み込み』と、レビュー中のコメント・書きかけ・まとめて送るの受け付け）を立てる。配信を立てたときは、直下の `README.md` を『README の書き出し』と同じ判定・書き方で書き直す。`.mindstella/` には書かない
+side_effects: 初めて呼んだワークスペースについて、このプロセスの中に配信（『プレビューの配信』『記録の取得』『書き換えの通知』・『設定の既定の書き換え』・『設定の再読み込み』と、レビュー中のコメント・下書き・まとめて送信の受け付け）を立てる。配信を立てたときは、直下の `README.md` を『README の書き出し』と同じ判定・書き方で書き直す。`.mindstella/` には書かない
 callers:
   - IF-565-1#
 request:
@@ -361,23 +361,23 @@ exceptions:
     notes: ツールのエラー。エラーの本文に渡した ID。まだ配っていなければ配信を立てない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
-  - item: 結果の形
+  - item: 結果の構造
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
-  - item: エラーの返し方
+  - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ。ポートは、`config.yaml` の `preview.port` があればそのポート、無ければ OS に選ばせる（ポート 0 で待ち受ける）'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 配信の数
-    constraint: 1 つのプロセスの中で、ワークスペース（絶対パス）ごとに 1 つ。同じワークスペースで呼び直すと同じ URL を返す。別のプロセスが同じワークスペースを配っていても、このプロセスは別のポートで配る
+    constraint: 1 つのプロセスの中で、ワークスペース（絶対パス）ごとに 1 つ。同じワークスペースで再呼び出しすると同じ URL を返す。別のプロセスが同じワークスペースを配っていても、このプロセスは別のポートで配る
   - item: 配信を止める時
     constraint: 常駐サーバーのプロセスが終わるとき（『MCP サーバーの起動』の終わり方。『常駐サーバーの停止』を含む）。ツールを呼んだセッションが終わっても止めない。ワークスペースごとに止めるツールは持たない
   - item: 起動時の検査
     constraint: 配信を立てる前に `config.yaml` だけをスキーマと突き合わせる（種類ごとの YAML は『記録の取得』が読むたびに確かめる）。通った設定を、配信の「最後に検査に通った設定」の初めの値にする。既に配っているワークスペースでは確かめずに同じ URL を返す
-  - item: README の書き直し
-    constraint: 配信を立てた呼び出し（`started` が真）だけ、配信を立てた後に『README の書き出し』の制約「README の中身」「埋める値」「書くかの判定」「書き方」で直下の `README.md` を書き直す。書けなくても配信は止めず、標準エラーに記録して URL を返す
+  - item: README の更新
+    constraint: 配信を立てた呼び出し（`started` が真）だけ、配信を立てた後に『README の書き出し』の制約「README の中身」「埋める値」「書き込むかの判定」「記載方法」で直下の `README.md` を書き直す。書けなくても配信は止めず、標準エラーに記録して URL を返す
   - item: 起動時のフック
-    constraint: '配信を立てた呼び出し（`started` が真）だけ、配信を立てた直後に `MINDSTELLA_PREVIEW_START_HOOK` のコマンドを、末尾にポートとワークスペースのフォルダの名前を引数で足して呼ぶ（『設定: サーバー』）。コマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない。立てられない（コマンドが見つからない・引数を分けられない）ときは標準エラーに記録し、配信は止めずに URL を返す'
+    constraint: '配信を立てた呼び出し（`started` が真）だけ、配信を立てた直後に `MINDSTELLA_PREVIEW_START_HOOK` のコマンドを、末尾にポートとワークスペースのフォルダの名前を引数で追加して呼ぶ（『設定: サーバー』）。コマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない。立てられない（コマンドが見つからない・引数を分けられない）ときは標準エラーに記録し、配信は止めずに URL を返す'
     decided_by: IF-489-1#constraints[終わり方]
   - item: まとまりを指す URL
     constraint: '`diff` は呼び出しのたびに（既に配っているワークスペースでも）`changes.yaml` を読んで `sets` にあるかを確かめる。あれば、配信の URL の末尾に `#diff={ID}` を付けて返す。まだ配っていなければ、配信を立てる前に確かめる。直下の `README.md` にはハッシュを付けない配信の URL を書く'

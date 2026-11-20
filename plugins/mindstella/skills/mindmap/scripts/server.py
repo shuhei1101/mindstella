@@ -537,7 +537,7 @@ def build_server(
 
     @server.tool(
         name="pending",
-        description="まだまとめていない変更（足した項目・変えた項目とキー・消した項目）を返す",
+        description="まだまとめていない変更（足した項目・変えた項目とキー・削除した項目）を返す",
     )
     def pending(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
         return read(workspace, session, commands.run_pending)

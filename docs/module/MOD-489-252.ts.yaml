@@ -8,7 +8,7 @@ functions:
     container: frontend/src/features/search/search/use-search-shortcut.ts
     usecase: 項目を検索する
     scope: public
-    summary: '`window` の `keydown` で `Ctrl+K`・`Cmd+K` を受け、ブラウザの既定の動きを止めて `onOpen` を呼ぶ。開いている間は受けない（開いている間の `Ctrl+K` は `SearchDialog` が既定の動きを止めて検索の言葉を選び直す）'
+    summary: '`window` の `keydown` で `Ctrl+K`・`Cmd+K` を受け、ブラウザの既定の動きを止めて `onOpen` を呼ぶ。開いている間は受けない（開いている間の `Ctrl+K` は `SearchDialog` が既定の動きを止めて検索の言葉を再選択する）'
     args:
       - name: open
         type: boolean

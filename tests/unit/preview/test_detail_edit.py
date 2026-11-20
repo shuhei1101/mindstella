@@ -66,7 +66,7 @@ def test_detail_edit_form(
     valid_settings: dict[str, Any],
 ) -> None:
     """離れたときにキー・案を溜める（正常系）。"""
-    # 準備: 「案を追加」で置いた中身の空な書きかけの案 C を状態から渡す
+    # 準備: 「案追加」で置いた中身の空な下書きの案 C を状態から渡す
     load_preview_scripts()
     _mount(
         preview_page,
@@ -82,7 +82,7 @@ def test_detail_edit_form(
     added = preview_page.get_by_label("案 C の中身")
     added.fill("案 C の中身")
     added.blur()
-    # 書きかけの案に打ったときの on.draft は除き、溜めた on.change だけを並べる
+    # 下書きの案に打ったときの on.draft は除き、溜めた on.change だけを並べる
     calls = preview_page.evaluate(
         """() => window.calls
             .filter(([name]) => name === "change")
@@ -98,8 +98,8 @@ def test_detail_edit_form_when_option_drafts(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """書きかけの案を状態から描き、置く・打つたびに知らせる（正常系）。"""
-    # 準備: 案 A・B を持つ検討事項に、中身「下書き」の書きかけの案 C を渡す
+    """下書きの案を状態から描き、置く・打つたびに知らせる（正常系）。"""
+    # 準備: 案 A・B を持つ検討事項に、中身「下書き」の下書きの案 C を渡す
     load_preview_scripts()
     _mount(
         preview_page,
@@ -109,8 +109,8 @@ def test_detail_edit_form_when_option_drafts(
     )
     draft = preview_page.get_by_label("案 C の中身")
     shown = draft.input_value()
-    # 実行: 「案を追加」で次の記号 D を置き、案 C に打つ（離れない）
-    preview_page.get_by_role("button", name="案を追加").click()
+    # 実行: 「案追加」で次の記号 D を置き、案 C に打つ（離れない）
+    preview_page.get_by_role("button", name="案追加").click()
     draft.fill("下書き 2")
     calls = preview_page.evaluate("() => window.calls")
     # 検証

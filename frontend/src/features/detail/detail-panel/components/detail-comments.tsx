@@ -1,4 +1,4 @@
-// 詳細のコメント。詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）と、本文の選択から出す選んだ箇所のコメントの入口を描く
+// 詳細のコメント。詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを表示）と、本文の選択から出す選んだ箇所のコメントの入口を描く
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -217,7 +217,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
                         focusAfter(() => { setEditing(null); }, `[data-focus="edit:${item.id}"]`);
                       }}
                       onSubmit={(target, body) => {
-                        update.mutate({ id: target, body }, { onSuccess: () => { focusAfter(() => { setEditing(null); }, `[data-focus="edit:${target}"]`); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。立ち上げ直してから直してください。" }); } });
+                        update.mutate({ id: target, body }, { onSuccess: () => { focusAfter(() => { setEditing(null); }, `[data-focus="edit:${target}"]`); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。再起動してから修正してください。" }); } });
                       }}
                     />
                   ) : (

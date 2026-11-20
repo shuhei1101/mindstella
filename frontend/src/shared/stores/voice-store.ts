@@ -237,7 +237,7 @@ const transcribeAndDeliver = async ({ audio, destination, input, alive }: { audi
 const awayText = (stage: VoiceStage, label: string): string =>
   stage === "review" ? VOICE_TEXT.awayReviewFailed(label) : stage === "send" ? VOICE_TEXT.awaySendFailed(label) : VOICE_TEXT.awayTranscribeFailed(label);
 
-/** 文字起こしを終える。入力欄が画面に無い間に終わったら書きかけへ当て、失敗だけを知らせる */
+/** 文字起こしを終える。入力欄が画面に無い間に終わったら下書きへ当て、失敗だけを知らせる */
 export const finishVoice = async (input: VoiceFinishInput): Promise<VoiceResult> => {
   const { session } = useVoiceStore.getState();
   const current = recording;
@@ -249,17 +249,17 @@ export const finishVoice = async (input: VoiceFinishInput): Promise<VoiceResult>
   const audio = await current.stop();
   const alive = (): boolean => useVoiceStore.getState().session?.ticket === session.ticket;
   const transcribed = await transcribeAndDeliver({ audio, destination: session.destination, input, alive });
-  // 溜める・送る間に録音を捨てた: 書きかけも知らせも当てない
+  // 溜める・送る間に録音を捨てた: 下書きも知らせも当てない
   if (!alive()) return resultOf("discarded", input.body);
   const { result, stage } = transcribed;
   useVoiceStore.setState({ session: null });
   if (input.mounted()) return result;
-  // 修正の入力の結果は書きかけへ当てない（修正の入力を開き直したときに当てる）
+  // 修正の入力の結果は下書きへ当てない（修正の入力を開き直したときに当てる）
   if (result.kind !== "unavailable" && !isReview(session.destination)) {
     try {
       await saveDraft({ ...session.destination, body: result.body });
     } catch {
-      // 書きかけを保てない（サーバーが止まった・届かない）: 結果と知らせは当てて続ける
+      // 下書きを保てない（サーバーが止まった・届かない）: 結果と知らせは当てて続ける
     }
   }
   useVoiceStore.setState((state) => ({

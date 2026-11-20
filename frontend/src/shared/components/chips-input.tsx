@@ -58,7 +58,7 @@ export const ChipsInput = ({ controlId, name, hint = "", values, suggestions = n
               disabled={disabled}
               aria-label={`${entry.name} を主題`}
               aria-pressed={entry.main === true}
-              title={entry.main === true ? "主題を外す" : "主題にする"}
+              title={entry.main === true ? "主題を解除" : "主題にする"}
               className="-my-1 -ml-1 inline-flex size-6 flex-none cursor-pointer items-center justify-center"
               onClick={() => {
                 onChange(output(current.map((tag, position) => (position !== index ? tag : tag.main === true ? { name: tag.name } : { name: tag.name, main: true }))), null);
@@ -72,7 +72,7 @@ export const ChipsInput = ({ controlId, name, hint = "", values, suggestions = n
           <button
             type="button"
             disabled={disabled}
-            aria-label={`${entry.name} を外す`}
+            aria-label={`${entry.name} を解除`}
             className="cursor-pointer"
             onClick={() => {
               onChange(output(current.filter((_, position) => position !== index)), entry.name);

@@ -5,14 +5,14 @@ condition: MindStella のセッションを起動したとき、/clear の後、
 steps:
   - name: 状況を確認する
     body: |-
-      SessionStart のフックが注入した、取り込み待ちのスレッドの件数・前回参照した後に変わった項目と消した項目・要見直しの検討事項・進行中のタスクを確認する。
+      SessionStart のフックが注入した、取り込み待ちのスレッドの件数・前回参照した後に変わった項目と削除した項目・要見直しの検討事項・進行中のタスクを確認する。
       注入に収まらなかった変更がある（注入文に件数だけが書かれている）ときだけ、`changes_since_read` で残りと前の値を取得する。
       注入文に移し替えの報告があれば、移せなかった値と仮の値を入れたキーを、回の最後の通知（mindstella/on-comment の「検討事項と回答を通知する」）に含める。仮の値は検討事項に挙げて利用者に確かめる。
     calls:
       - {server: mindstella, tool: changes_since_read}
   - name: まだまとめていない変更を取得する
     body: |-
-      `pending` で、まだまとめていない変更（足した項目・変えた項目とキー・消した項目）を読む。
+      `pending` で、まだまとめていない変更（追加した項目・変えた項目とキー・削除した項目）を読む。
     calls:
       - {server: mindstella, tool: pending}
   - name: まとめ忘れを commit する

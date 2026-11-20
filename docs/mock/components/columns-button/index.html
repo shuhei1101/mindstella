@@ -16,9 +16,9 @@
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
   <link rel="stylesheet" href="../../refs/223/assets/style.css">
   <style>
-    /* カタログの節: 状態ごとの案を縦に並べる */
+    /* カタログのセクション: 状態ごとの案を縦に並べる */
     .cat-sec { margin-top: 32px; }
-    /* カタログの節の見出し */
+    /* カタログのセクションの見出し */
     .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
     /* 状態の説明 */
     .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
@@ -62,17 +62,17 @@
     </section>
     <section class="cat-sec">
       <h2>案A: 文言の案 B「列」</h2>
-      <p>文言だけを「列」にしたもの。列を足す・並べ替えるボタンとも読める。</p>
+      <p>文言だけを「列」にしたもの。列を追加する・並べ替えるボタンとも読める。</p>
       <div class="stage"><div class="table-block"><div class="table-toolbar"><div class="chips"></div><button class="btn cols-btn-table" type="button" data-popover="columns" aria-label="列"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列</span></button></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div></div>
     </section>
     <section class="cat-sec">
       <h2>案A: ホバー・フォーカス</h2>
-      <p>ホバーは面の色、キーボードのフォーカスは印の色の輪。</p>
+      <p>ホバーは面の色、キーボードのフォーカスはマーカーの色の輪。</p>
       <div class="stage"><div style="display:grid;gap:12px"><div class="table-block"><div class="table-toolbar"><div class="chips"></div><button class="btn cols-btn-table is-hover" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列の表示</span></button></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div><div class="table-block"><div class="table-toolbar"><div class="chips"></div><button class="btn cols-btn-table is-focus" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列の表示</span></button></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div></div></div>
     </section>
     <section class="cat-sec">
       <h2>案A: ポップオーバーを開いている</h2>
-      <p>ポップオーバーの題をボタンと同じ「列の表示」にする。中身（列の付け外し・タイトルは外せない・初期設定に戻す）は変えない。</p>
+      <p>ポップオーバーのタイトルをボタンと同じ「列の表示」にする。中身（列の付け外し・タイトルは外せない・初期設定に戻す）は変えない。</p>
       <div class="stage"><div class="table-block"><div class="table-toolbar"><div class="chips"></div><button class="btn cols-btn-table" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列の表示</span></button></div><div class="pop" style="position: static; display: block; width: 260px; margin: 8px 0 0 auto;"><p class="pop-title">列の表示</p><label><input type="checkbox" checked>ID</label><label><input type="checkbox" checked disabled>タイトル</label><label><input type="checkbox" checked>確度</label><label><input type="checkbox">タグ</label><div class="pop-foot"><button class="btn ghost" type="button">列・並べ替え・固定を初期設定に戻す</button></div></div></div></div>
     </section>
     <section class="cat-sec">

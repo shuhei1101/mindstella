@@ -1,14 +1,14 @@
 id: MOD-489-164
 title: "サーバー / 移行"
-lead: ワークスペースの版とプラグインの版を比べ、版ごとの移し替えの手順（`migrations/{版}/steps.yaml`）を並べる・写しを取って当てる・値を入れる・版を書き換える。読み書きと検証だけに依存する。
+lead: ワークスペースのバージョンとプラグインのバージョンを比べ、バージョンごとの移し替えの手順（`migrations/{版}/steps.yaml`）を並べる・コピーを取って当てる・値を入れる・バージョンを書き換える。読み書きと検証だけに依存する。
 directory: |-
   ```
   plugins/mindstella/
-    version.ini                        プラグインの版（1 行目）
+    version.ini                        プラグインのバージョン（1 行目）
     skills/mindmap/
       migrations/
         v0.3.0/
-          steps.yaml                   版を記録する前の形式 → v0.3.0 の手順
+          steps.yaml                   バージョンを記録する前の形式 → v0.3.0 の手順
         v0.5.0/
           steps.yaml                   v0.4.0 の形式 → v0.5.0 の手順
           scripts/
@@ -18,7 +18,7 @@ directory: |-
         v0.7.0/
           steps.yaml                   v0.6.0 の形式 → v0.7.0 の手順
           scripts/
-            answer_to_adopted_option.py  決定済みの検討事項の答えから採用した案を作る変換
+            answer_to_adopted_option.py  決定済みの検討事項の回答から採用した案を作る変換
         v0.8.0/
           steps.yaml                   v0.7.0 の形式 → v0.8.0 の手順（送信をスレッドへ移す）
           scripts/
@@ -40,19 +40,19 @@ directory: |-
           scripts/
             mdmark_documents.py        mdmark の CLI の `upgrade` で資料を移し、map の種類を `config.yaml` へ移す変換
         v0.14.0/
-          steps.yaml                   v0.13.0 の形式 → v0.14.0 の手順（議論のキーを消し、本文を .mark.md にして直下へ移し、ネットワークの見た目の既定を消す）
+          steps.yaml                   v0.13.0 の形式 → v0.14.0 の手順（議論のキーを削除し、本文を .mark.md にして直下へ移し、ネットワークの見た目の既定を削除する）
           scripts/
-            remove_discussion_keys.py  削除する設定のキーを消し、項目の対象・カテゴリーをタグへ、属性・観点・確かさを本文へ移す変換
+            remove_discussion_keys.py  削除する設定のキーを削除し、項目の対象・カテゴリーをタグへ、属性・観点・確かさを本文へ移す変換
             markdown_bodies_to_mark_md.py  Markdown の本文を .mark.md へ改名する変換
-            move_bodies_to_root.py     本文と埋め込むファイルを直下へ移し、release/ を消す変換
-            remove_network_look.py     設定の display から network_look を消す変換
+            move_bodies_to_root.py     本文と埋め込むファイルを直下へ移し、release/ を削除する変換
+            remove_network_look.py     設定の display から network_look を削除する変換
       schemas/
-        migration-steps.schema.json    steps.yaml の形
+        migration-steps.schema.json    steps.yaml の構造
       scripts/
-        versions.py                    版の解釈・比較・読み書き
-        migrator.py                    手順の読み込みと、並べる・当てる・値を入れる・版を書く処理
+        versions.py                    バージョンの解釈・比較・読み書き
+        migrator.py                    手順の読み込みと、並べる・当てる・値を入れる・バージョンを書く処理
         migration_ops.py               操作ごとの当て方と、手順の 1 行の説明
-        backup.py                      写しの取り方と戻し方（git のコミットかフォルダの複製）
+        backup.py                      コピーの取り方と戻し方（git のコミットかフォルダの複製）
   ```
 diagrams:
   - name: 全体
@@ -61,16 +61,16 @@ diagrams:
       classDiagram
         direction LR
         class 移し替えの処理
-        class 版
+        class バージョン
         class 操作の当て方
-        class 写し
+        class コピー
         class 読み書きと検証
-        移し替えの処理 --> 版 : 比べる・書く
+        移し替えの処理 --> バージョン : 比べる・書く
         移し替えの処理 --> 操作の当て方 : 手順を 1 つずつ当てる
-        移し替えの処理 --> 写し : 取る・戻す
-        移し替えの処理 --> 読み書きと検証 : 版を書く前の点検
-        操作の当て方 --> 読み書きと検証 : YAML の書き方
-        版 --> 読み書きと検証 : 一時ファイル
+        移し替えの処理 --> コピー : 取る・戻す
+        移し替えの処理 --> 読み書きと検証 : バージョンを書く前の点検
+        操作の当て方 --> 読み書きと検証 : YAML の記載方法
+        バージョン --> 読み書きと検証 : 一時ファイル
       ```
 notes:
   v0.3.0 の手順: |-
@@ -81,14 +81,14 @@ notes:
     3. `set_default`: `file: mindmap.yaml`・`each_item: false`・`key: summary`・`ask: 話し合いの題名`
 
     `scripts/` は使わないので置かない。
-  手順の形のスキーマ: '`schemas/migration-steps.schema.json` は `steps` の各要素を `op` で分け（`oneOf`）、インターフェース定義『記録の形式の移行』の制約「操作と引数」の引数だけを許す（`additionalProperties: false`）。`set_default` は `value` か `ask` のどちらか 1 つを持つ。'
-  開発側の点検: '`tests/unit/scripts/test_migration_coverage.py` に置く。`v*` のタグを版の順に並べた先頭（最新のタグ）の `plugins/mindstella/skills/mindmap/schemas/` と今の `schemas/` を比べ（`git show {タグ}:{パス}`。`migration-steps.schema.json` は比べない）、タグの時点にあったスキーマのファイルが消えたか中身が変わったのに `list_versions` に「最新のタグより新しく、プラグインの版以下」の版が無ければ落とす（`test_schema_changes_have_migration`）。足したスキーマのファイルは、無ければ空として読むため比べない（`submissions.schema.json`。確認ログ『送信とロックファイルの置き場所』）。タグが 1 つも無い clone では skip する。あわせて、プラグインの版がリポジトリの直下の `version.ini` の版より前でないことを確かめる（`test_plugin_version_not_behind_release_version`）。hotfix のタグは直下の `version.ini` もプラグインの版も動かさないため、最新のタグとは比べない'
-  分野をプレイブックの配列へ移す手順: '`migrations/v0.5.0/steps.yaml` は `call`（`script: field_to_playbooks`）の 1 つだけを並べる。`scripts/field_to_playbooks.py` が `migrate(root)` を持つ。設定のスキーマを変えるため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.5.0` にする（開発側の点検が、最新のタグより新しくプラグインの版以下の手順を求める）。'
-  設定ファイルの名前を改める手順: '`migrations/v0.6.0/steps.yaml` はインターフェース定義『記録の形式の移行』の制約「v0.6.0 の手順」の順に並べる（どれも `destructive: true`）。(1) `rename_file`（`mindmap.yaml` → `config.yaml`）。(2) `decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml`・`changes.yaml`・`comments.yaml`・`drafts.yaml`・`submissions.yaml`・`mindstella-version.ini`・`.mindstella-opened` を 1 つずつ `rename_file` で `.mindstella/{同じ名前}` へ。(3) `docs`・`release` を `move_dir` で `.mindstella/docs`・`.mindstella/release` へ。(4) `rename_file`（`config.yaml` → `.mindstella/config.yaml`）。(5) `preview.html`・`.mindstella.lock` を `delete`。`scripts/` は使わないので置かない。設定のスキーマと記録の置き場所が変わるため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.6.0` にする。v0.3.0・v0.5.0 の手順と `field_to_playbooks.py` は移す前に当たるため直下の `mindmap.yaml`・`docs.yaml` を指したままにし、今の形（`.mindstella/config.yaml`）のワークスペースに当てたときは対象が無いため飛ばす（`apply_step`・`migrate`）'
-  決定済みの答えから採用した案を作る手順: '`migrations/v0.7.0/steps.yaml` は `call`（`script: answer_to_adopted_option`）の 1 つだけを並べる（`destructive` は持たない）。`scripts/answer_to_adopted_option.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_answer_to_adopted_option.py` に置く。`schemas/decisions.schema.json` の案に `recommended`（真偽値。真の案は 0 か 1 つ。`adopted` の `contains` と `allOf` で並べる）を足すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.7.0` にする。状態ごとの案の要否と、採用した案と状態の組は、スキーマではなく読み書きと検証の `check_decision_rules` が見る'
-  送信をスレッドへ移す手順: '`migrations/v0.8.0/steps.yaml` は `call`（`script: submissions_to_threads`）と `delete`（`path: .mindstella/submissions.yaml`）をこの順に並べる（破壊的な操作は `delete` だけ）。`scripts/submissions_to_threads.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_submissions_to_threads.py` に置く。`schemas/submissions.schema.json` を消して `schemas/threads.schema.json` を足し、`comments.schema.json`・`drafts.schema.json` に `thread` を足すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.8.0` にする。変換はプラグインの `threads.py` を読まず、この版の形を自分で組み立てる（後の版で `threads.py` の形が変わっても、この版の手順が変わらないように）'
-  タグの語彙を外す手順: '`migrations/v0.11.0/steps.yaml` は `call`（`script: remove_tag_vocabulary`、`destructive: true`）の 1 つだけを並べる。`schemas/migration-steps.schema.json` の `call` に任意の `destructive`（真偽値。省いたら偽）を足し、入口は `op` が `DESTRUCTIVE_OPS` にあるか `args` の `destructive` が真の手順を破壊的として出す（タグの説明が戻せなくなるため）。`scripts/remove_tag_vocabulary.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_remove_tag_vocabulary.py` に置く。`schemas/settings.schema.json` から `tags` を外すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.11.0` にする'
-  項目のタグをオブジェクトにする手順: '`migrations/v0.12.0/steps.yaml` は `call`（`script: tags_to_objects`、`destructive: true`）の 1 つだけを並べる（表記をそろえて重なるタグを外すと戻せないため）。`scripts/tags_to_objects.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_tags_to_objects.py` に置く。`schemas/common.schema.json` の `tags` の要素を `{name, main?}` にするため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.12.0` にする'
-  議論のキーを消す手順: '`migrations/v0.14.0/steps.yaml` は `call`（`script: remove_discussion_keys`、`destructive: true`）の 1 つだけを並べる。`scripts/remove_discussion_keys.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_remove_discussion_keys.py` に置く。`schemas/settings.schema.json` から `goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories` を、`schemas/common.schema.json` と種類ごとのスキーマから `phase`・`target`・`category`・`attrs`・`weight`・`deliverable`・`angles`・`confidence` を外すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.14.0` にする。変換はプラグインの `store.py` を読まず、この版の形を自分で組み立てる'
-  本文を直下へ移す手順: '`migrations/v0.14.0/steps.yaml` の 3 つ目に `call`（`script: move_bodies_to_root`、`destructive: true`）を並べる。`scripts/move_bodies_to_root.py` が `migrate(root)` を持ち（モジュール構成『move_bodies_to_root.py』）、単体テストは `tests/unit/scripts/test_move_bodies_to_root.py` に置く。種類ごとの 7 つのスキーマの `body` の `pattern` を `^\.\./docs/` で始まる形にし、`description` を「記録のフォルダからの相対。`../docs/{ID}.mark.md`」にする（資料は `../docs/{ID}.html` も）。プラグインの版は v0.14.0 のまま。変換はプラグインの `store.py`・`kinds.py` を読まず、この版の形を自分で組み立てる'
-  ネットワークの見た目の既定を消す手順: '`migrations/v0.14.0/steps.yaml` の 4 つ目に `call`（`script: remove_network_look`、`destructive: true`）を並べる。`scripts/remove_network_look.py` が `migrate(root)` を持ち（モジュール構成『remove_network_look.py』）、単体テストは `tests/unit/scripts/test_remove_network_look.py` に置く。`schemas/settings.schema.json` の `display` から `network_look` を外す。プラグインの版は v0.14.0 のまま。変換はプラグインの `store.py` を読まず、この版の形を自分で組み立てる'
+  手順の構造のスキーマ: '`schemas/migration-steps.schema.json` は `steps` の各要素を `op` で分け（`oneOf`）、インターフェース定義『記録の形式の移行』の制約「操作と引数」の引数だけを許す（`additionalProperties: false`）。`set_default` は `value` か `ask` のどちらか 1 つを持つ。'
+  開発側の点検: '`tests/unit/scripts/test_migration_coverage.py` に置く。`v*` のタグをバージョンの順に並べた先頭（最新のタグ）の `plugins/mindstella/skills/mindmap/schemas/` と今の `schemas/` を比べ（`git show {タグ}:{パス}`。`migration-steps.schema.json` は比べない）、タグの時点にあったスキーマのファイルが消えたか中身が変わったのに `list_versions` に「最新のタグより新しく、プラグインの版以下」のバージョンが無ければ落とす（`test_schema_changes_have_migration`）。追加したスキーマのファイルは、無ければ空として読むため比べない（`submissions.schema.json`。確認ログ『送信とロックファイルの置き場所』）。タグが 1 つも無い clone では skip する。あわせて、プラグインのバージョンがリポジトリの直下の `version.ini` のバージョンより前でないことを確かめる（`test_plugin_version_not_behind_release_version`）。hotfix のタグは直下の `version.ini` もプラグインのバージョンも動かさないため、最新のタグとは比べない'
+  分野をプレイブックの配列へ移す手順: '`migrations/v0.5.0/steps.yaml` は `call`（`script: field_to_playbooks`）の 1 つだけを並べる。`scripts/field_to_playbooks.py` が `migrate(root)` を持つ。設定のスキーマを変えるため、プラグインのバージョン（`plugins/mindstella/version.ini`）を `v0.5.0` にする（開発側の点検が、最新のタグより新しくプラグインの版以下の手順を求める）。'
+  設定ファイルの名前を改める手順: '`migrations/v0.6.0/steps.yaml` はインターフェース定義『記録の形式の移行』の制約「v0.6.0 の手順」の順に並べる（どれも `destructive: true`）。(1) `rename_file`（`mindmap.yaml` → `config.yaml`）。(2) `decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml`・`changes.yaml`・`comments.yaml`・`drafts.yaml`・`submissions.yaml`・`mindstella-version.ini`・`.mindstella-opened` を 1 つずつ `rename_file` で `.mindstella/{同じ名前}` へ。(3) `docs`・`release` を `move_dir` で `.mindstella/docs`・`.mindstella/release` へ。(4) `rename_file`（`config.yaml` → `.mindstella/config.yaml`）。(5) `preview.html`・`.mindstella.lock` を `delete`。`scripts/` は使わないので置かない。設定のスキーマと記録の置き場所が変わるため、プラグインのバージョン（`plugins/mindstella/version.ini`）を `v0.6.0` にする。v0.3.0・v0.5.0 の手順と `field_to_playbooks.py` は移す前に当たるため直下の `mindmap.yaml`・`docs.yaml` を指したままにし、今の形式（`.mindstella/config.yaml`）のワークスペースに当てたときは対象が無いため飛ばす（`apply_step`・`migrate`）'
+  決定済みの回答から採用した案を作る手順: '`migrations/v0.7.0/steps.yaml` は `call`（`script: answer_to_adopted_option`）の 1 つだけを並べる（`destructive` は持たない）。`scripts/answer_to_adopted_option.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_answer_to_adopted_option.py` に置く。`schemas/decisions.schema.json` の案に `recommended`（真偽値。真の案は 0 か 1 つ。`adopted` の `contains` と `allOf` で並べる）を追加するため、プラグインのバージョン（`plugins/mindstella/version.ini`）を `v0.7.0` にする。状態ごとの案の要否と、採用した案と状態の組は、スキーマではなく読み書きと検証の `check_decision_rules` が見る'
+  送信をスレッドへ移す手順: '`migrations/v0.8.0/steps.yaml` は `call`（`script: submissions_to_threads`）と `delete`（`path: .mindstella/submissions.yaml`）をこの順に並べる（破壊的な操作は `delete` だけ）。`scripts/submissions_to_threads.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_submissions_to_threads.py` に置く。`schemas/submissions.schema.json` を削除して `schemas/threads.schema.json` を追加し、`comments.schema.json`・`drafts.schema.json` に `thread` を追加するため、プラグインのバージョン（`plugins/mindstella/version.ini`）を `v0.8.0` にする。変換はプラグインの `threads.py` を読まず、このバージョンの形式を自分で組み立てる（後のバージョンで `threads.py` の形式が変わっても、このバージョンの手順が変わらないように）'
+  タグの語彙を外す手順: '`migrations/v0.11.0/steps.yaml` は `call`（`script: remove_tag_vocabulary`、`destructive: true`）の 1 つだけを並べる。`schemas/migration-steps.schema.json` の `call` に任意の `destructive`（真偽値。省いたら偽）を追加し、入口は `op` が `DESTRUCTIVE_OPS` にあるか `args` の `destructive` が真の手順を破壊的として出す（タグの説明が戻せなくなるため）。`scripts/remove_tag_vocabulary.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_remove_tag_vocabulary.py` に置く。`schemas/settings.schema.json` から `tags` を外すため、プラグインのバージョン（`plugins/mindstella/version.ini`）を `v0.11.0` にする'
+  項目のタグをオブジェクトにする手順: '`migrations/v0.12.0/steps.yaml` は `call`（`script: tags_to_objects`、`destructive: true`）の 1 つだけを並べる（表記をそろえて重なるタグを外すと戻せないため）。`scripts/tags_to_objects.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_tags_to_objects.py` に置く。`schemas/common.schema.json` の `tags` の要素を `{name, main?}` にするため、プラグインのバージョン（`plugins/mindstella/version.ini`）を `v0.12.0` にする'
+  議論のキーを削除する手順: '`migrations/v0.14.0/steps.yaml` は `call`（`script: remove_discussion_keys`、`destructive: true`）の 1 つだけを並べる。`scripts/remove_discussion_keys.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_remove_discussion_keys.py` に置く。`schemas/settings.schema.json` から `goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories` を、`schemas/common.schema.json` と種類ごとのスキーマから `phase`・`target`・`category`・`attrs`・`weight`・`deliverable`・`angles`・`confidence` を外すため、プラグインのバージョン（`plugins/mindstella/version.ini`）を `v0.14.0` にする。変換はプラグインの `store.py` を読まず、このバージョンの形式を自分で組み立てる'
+  本文を直下へ移す手順: '`migrations/v0.14.0/steps.yaml` の 3 つ目に `call`（`script: move_bodies_to_root`、`destructive: true`）を並べる。`scripts/move_bodies_to_root.py` が `migrate(root)` を持ち（モジュール構成『move_bodies_to_root.py』）、単体テストは `tests/unit/scripts/test_move_bodies_to_root.py` に置く。種類ごとの 7 つのスキーマの `body` の `pattern` を `^\.\./docs/` で始まる形式にし、`description` を「記録のフォルダからの相対。`../docs/{ID}.mark.md`」にする（資料は `../docs/{ID}.html` も）。プラグインのバージョンは v0.14.0 のまま。変換はプラグインの `store.py`・`kinds.py` を読まず、このバージョンの形式を自分で組み立てる'
+  ネットワークの見た目の既定を削除する手順: '`migrations/v0.14.0/steps.yaml` の 4 つ目に `call`（`script: remove_network_look`、`destructive: true`）を並べる。`scripts/remove_network_look.py` が `migrate(root)` を持ち（モジュール構成『remove_network_look.py』）、単体テストは `tests/unit/scripts/test_remove_network_look.py` に置く。`schemas/settings.schema.json` の `display` から `network_look` を外す。プラグインのバージョンは v0.14.0 のまま。変換はプラグインの `store.py` を読まず、このバージョンの形式を自分で組み立てる'

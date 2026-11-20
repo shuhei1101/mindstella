@@ -150,7 +150,7 @@ export const PendingEditingVoiceDisabled: Story = { args: { pending: EDITING_PEN
 
 /** 書き換えを保てなかった。入力を残し、印のアイコンと理由を出す */
 export const PendingEditFailed: Story = {
-  args: { pending: PENDING, editing: true, editError: "サーバーが止まっています。立ち上げ直してから直してください。" },
+  args: { pending: PENDING, editing: true, editError: "サーバーが止まっています。再起動してから修正してください。" },
 };
 
 /** 幅 390px。利用者と AI の寄せは保ち、書き込みの幅を部品の幅の 9 割までに広げる */
@@ -258,13 +258,13 @@ const LONG_PENDING = {
   created: "2026-11-04T05:10:00+00:00",
 };
 
-/** 改行で 8 行のレビュー中の返信。行の高さの 5 行分までを出し、本文の下の行に下向きの印と「続きを読む」を出す */
+/** 改行で 8 行のレビュー中の返信。行の高さの 5 行分までを出し、本文の下の行に下向きの印と「続きを表示」を出す */
 export const PendingFolded: Story = { args: { pending: LONG_PENDING } };
 
 /** 開いたレビュー中の返信。全文を出し、本文の下の行に上向きの印と「折りたたむ」を出す（`aria-expanded="true"`） */
 export const PendingOpened: Story = { args: { pending: LONG_PENDING, open: true } };
 
-/** 改行で 8 行の AI の書き込み。送った書き込みは畳まず全文を出し、「続きを読む」を出さない */
+/** 改行で 8 行の AI の書き込み。送った書き込みは畳まず全文を出し、「続きを表示」を出さない */
 export const LongAiPost: Story = {
   args: {
     post: {

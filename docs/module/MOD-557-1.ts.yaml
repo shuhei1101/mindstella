@@ -1,11 +1,11 @@
 title: プレビュー / refresh-hold-store
-lead: 入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の読み直しの保留」）。
+lead: 入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の再読み込みの保留」）。
 stores:
   - name: useRefreshHoldStore
     title: 反映の保留
     container: frontend/src/shared/stores/refresh-hold-store.ts
     usecase: SPAを開く
-    summary: 文字を入力する欄にフォーカスがあるか・反映を保留しているか・帯を出す・消す直前の基準の要素の画面の上の位置を持つ
+    summary: 文字を入力する欄にフォーカスがあるか・反映を保留しているか・帯を出す・削除する直前の基準の要素の画面の上の位置を持つ
     state:
       - name: focused
         type: boolean
@@ -18,11 +18,11 @@ stores:
       - name: heldElement
         type: HTMLElement | null
         initial: 'null'
-        description: 保留を始めたときにフォーカスがあった要素。`restoreAnchor` では消さず、保留を下ろすときにフォーカスのある要素が無ければ基準にする
+        description: 保留を始めたときにフォーカスがあった要素。`restoreAnchor` では削除せず、保留を下ろすときにフォーカスのある要素が無ければ基準にする
       - name: anchor
         type: '{element: HTMLElement, top: number} | null'
         initial: 'null'
-        description: 帯を出す・消す直前の基準の要素と、その画面の上の位置（`getBoundingClientRect().top`）。帯を出す・消して描いた後に位置を戻すために使い、戻したら null にする
+        description: 帯を出す・削除する直前の基準の要素と、その画面の上の位置（`getBoundingClientRect().top`）。帯を出す・削除して描いた後に位置を戻すために使い、戻したら null にする
     actions: []
 functions:
   - name: isTextEntry
@@ -104,13 +104,13 @@ functions:
     kind: 関数
     container: frontend/src/shared/stores/refresh-hold-store.ts
     usecase: SPAを開く
-    summary: 保留する間なら `pending` を立てて読み直さず、そうでなければすぐ読み直す
+    summary: 保留する間なら `pending` を立てて再読み込みせず、そうでなければすぐ再読み込みする
     args:
       - name: refresh
         type: () => void
         required: true
         passing: injected
-        description: 画面に反映する読み直し
+        description: 画面に反映する再読み込み
     returns:
       type: void
       description: '-'
@@ -122,7 +122,7 @@ functions:
     unit_tests:
       - name: test_request_refresh
         case: 正常
-        summary: 入力中でなければすぐ読み直す
+        summary: 入力中でなければすぐ再読み込みする
         condition: '`focused` false・音声入力なし'
         mock: '`refresh`（`vi.fn`）'
         expected: '`refresh` が 1 回呼ばれ、`pending` が false'
@@ -137,13 +137,13 @@ functions:
     kind: 関数
     container: frontend/src/shared/stores/refresh-hold-store.ts
     usecase: SPAを開く
-    summary: 保留していて、保留する間でなくなっていれば、`pending` を下ろして 1 回だけ読み直す
+    summary: 保留していて、保留する間でなくなっていれば、`pending` を下ろして 1 回だけ再読み込みする
     args:
       - name: refresh
         type: () => void
         required: true
         passing: injected
-        description: 画面に反映する読み直し
+        description: 画面に反映する再読み込み
     returns:
       type: void
       description: '-'
@@ -155,13 +155,13 @@ functions:
     unit_tests:
       - name: test_release_refresh
         case: 正常
-        summary: 離れたら 1 回だけ読み直す
+        summary: 離れたら 1 回だけ再読み込みする
         condition: '`textarea` にフォーカスがあるまま `requestRefresh` を呼び、帯を出した後の `restoreAnchor` を呼んでから、フォーカスを外して `focused` false・音声入力なしで 2 回呼ぶ'
         mock: '`refresh`（`vi.fn`）'
         expected: '`refresh` が 1 回だけ呼ばれ、`pending` が false、`heldElement` が null、`anchor.element` がその `textarea`'
       - name: test_release_refresh_when_holding
         case: 正常
-        summary: まだ入力中なら読み直さない
+        summary: まだ入力中なら再読み込みしない
         condition: '`pending` true・音声入力の `session` あり'
         mock: '`refresh`（`vi.fn`）'
         expected: '`refresh` が呼ばれず、`pending` が true のまま'
@@ -170,7 +170,7 @@ functions:
     kind: 関数
     container: frontend/src/shared/stores/refresh-hold-store.ts
     usecase: SPAを開く
-    summary: 帯を出した後と消した後、`anchor` の要素の画面の上の位置が帯を出す・消す直前と同じになるよう、要素をスクロールする祖先を差の分だけ送る
+    summary: 帯を出した後と削除した後、`anchor` の要素の画面の上の位置が帯を出す・削除する直前と同じになるよう、要素をスクロールする祖先を差の分だけ送信する
     returns:
       type: void
       description: '-'
@@ -178,19 +178,19 @@ functions:
     process: |-
       1. `anchor` が null か、要素が文書から外れていれば何もしない
       2. 今の `getBoundingClientRect().top` と `anchor.top` の差を求める
-      3. 差が 0 でなければ、要素の最も近いスクロールする祖先（無ければ `document.scrollingElement`）を差の分だけ送る
+      3. 差が 0 でなければ、要素の最も近いスクロールする祖先（無ければ `document.scrollingElement`）を差の分だけ送信する
       4. `anchor` を null にする
     unit_tests:
       - name: test_restore_anchor
         case: 正常
-        summary: ずれた分だけ送る
+        summary: ずれた分だけ送信する
         condition: '`anchor.top` 100、今の top 130 の要素をスクロールする祖先の中に置く'
         mock: '`getBoundingClientRect`（`vi.spyOn`）'
         expected: 祖先の `scrollTop` が 30 増え、`anchor` が null
       - name: test_restore_anchor_when_released
         case: 正常
-        summary: 帯を消して上へずれた分だけ戻す
-        condition: '`anchor.top` 130、帯を消した後の今の top 100 の要素をスクロールする祖先の中に置く'
+        summary: 帯を削除して上へずれた分だけ戻す
+        condition: '`anchor.top` 130、帯を削除した後の今の top 100 の要素をスクロールする祖先の中に置く'
         mock: '`getBoundingClientRect`（`vi.spyOn`）'
         expected: 祖先の `scrollTop` が 30 減り、`anchor` が null
   - name: useStale

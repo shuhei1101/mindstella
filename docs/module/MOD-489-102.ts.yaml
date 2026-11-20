@@ -1,6 +1,6 @@
 id: MOD-489-102
 title: プレビュー / body-links
-lead: 描いた本文に、見出しのリンク・本文の印・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）。
+lead: 描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）。
 functions:
   - name: linkHeadings
     title: 見出しのリンク
@@ -28,10 +28,10 @@ functions:
         expected: 2 つ目の ID の末尾が `-1`
     container: frontend/src/shared/core/body-links.ts
   - name: linkBody
-    title: 本文の印と項目のリンク
+    title: 本文のマーカーと項目のリンク
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 用語・資料・調査の語に印を付け、項目の ID をリンクにする
+    summary: 用語・資料・調査の語にマーカーを付け、項目の ID をリンクにする
     args:
       - name: root
         type: HTMLElement

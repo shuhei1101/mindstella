@@ -1,5 +1,5 @@
 id: MOD-531-5
-title: サーバー / 入口 / api.py
+title: サーバー / エントリーポイント / api.py
 test_files:
   - tests/unit/scripts/test_api.py
 functions:
@@ -76,14 +76,14 @@ functions:
     unit_tests:
       - name: test_problem_response
         case: 正常
-        summary: 形とステータス
+        summary: 構造とステータス
         condition: '`ApiError(409, ''exists'', ''…'', session=''S-1'', pane=''w:0.0'')`'
         mock: なし
         expected: ステータス 409、`Content-Type` が `application/problem+json`、本文に `stage`・`session`・`pane`
 notes:
   MCP のツール: '`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`・`reopen_workspace`・`delete_workspace`・`update_workspace` は入口（`server.py`）が登録し、同じワークスペースの管理・セッションの管理の関数を呼ぶ（`check_host` は `/mcp` の確かめに任せる）'
   ログ: |
-    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に書き足す）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
+    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に追記する）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
 
     | イベント名 | 水準 | いつ | 属性 |
     | --- | --- | --- | --- |

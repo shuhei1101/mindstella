@@ -87,14 +87,14 @@ scenarios:
       - 出力に D-4・D-5・D-6 が無い
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_options_and_status_mismatch
-  - name: 正常シナリオ（消した項目がまとまりに残る）
+  - name: 正常シナリオ（削除した項目がまとまりに残る）
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 作成を済ませたワークスペース
-      - name: 消した項目
-        description: メモ N-1 を足して `commit` し、N-1 を消してもう一度 `commit` した記録
+      - name: 削除した項目
+        description: メモ N-1 を追加して `commit` し、N-1 を削除してもう一度 `commit` した記録
         notes: 1 つ目のまとまりの `added` が N-1 を持ち、N-1 は今の notes.yaml に無い
     flow: |-
       ```mermaid
@@ -105,7 +105,7 @@ scenarios:
 
         CC->>SV: ワークスペースを点検する
         SV->>WS: 全ての YAML と changes.yaml を読む
-        SV->>SV: まとまりが指す ID のうち、消した項目として記録された ID を参照切れから外す
+        SV->>SV: まとまりが指す ID のうち、削除した項目として記録された ID を参照切れから外す
         SV-->>CC: 問題が無い
       ```
     expected:
@@ -120,7 +120,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 本文を HTML で持つ資料 A-1 と、本文を HTML で持つ資料 A-2
-        notes: A-1 の本文のファイルを消し、どの資料からも指されない HTML の本文のファイル `A-9` を `docs/` に置く
+        notes: A-1 の本文のファイルを削除し、どの資料からも指されない HTML の本文のファイル `A-9` を `docs/` に置く
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -144,9 +144,9 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 参照切れのスレッド
-        description: 最初の書き込みが、一度も足していない D-9 を指すオープンのスレッド
-      - name: 消した項目を指す取り込み済みのスレッド
-        description: メモ N-1 を足して `commit` し、N-1 を消してもう一度 `commit` した後に残った、最初の書き込みが N-1 を指すクローズのスレッド
+        description: 最初の書き込みが、一度も追加していない D-9 を指すオープンのスレッド
+      - name: 削除した項目を指す取り込み済みのスレッド
+        description: メモ N-1 を追加して `commit` し、N-1 を削除してもう一度 `commit` した後に残った、最初の書き込みが N-1 を指すクローズのスレッド
         notes: 利用者の書き込みは取り込み済み。スレッドのファイルを直接書いて作る
       - name: スキーマに合わないスレッド
         description: 状態がオープンでもクローズでもないスレッド
@@ -165,7 +165,7 @@ scenarios:
     expected:
       - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
       - 出力に、スレッドの最初の書き込みが存在しない D-9 を指す旨が、参照切れとしてある
-      - 出力に、消した N-1 を指すクローズのスレッドが無い
+      - 出力に、削除した N-1 を指すクローズのスレッドが無い
       - 出力に、状態がオープンでもクローズでもないスレッドが、スキーマ違反としてある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_threads_problems_found
@@ -224,8 +224,8 @@ issue: 3
 primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
-    interest: 消した項目を指したままの記録や、どの項目にも結び付かない本文が残らない
-trigger: MindStella のセッションが記録を書き終えた、または利用者がワークスペースを手で直した
+    interest: 削除した項目を指したままの記録や、どの項目にも結び付かない本文が残らない
+trigger: MindStella のセッションが記録を書き終えた、または利用者がワークスペースを手で修正した
 preconditions:
   - ワークスペースが作成済みである
 success_guarantee: 参照切れとずれが全て、どの項目のどのキーかとともに出る。どのファイルも書き換えない。

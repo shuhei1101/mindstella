@@ -1,4 +1,4 @@
-// コメントの一覧（画面設計『コメントの一覧.tsx』）。スレッドを状態・タグ・項目で絞って並べ、新しいスレッドを立てる左のパネル。パネルの中をスレッド・レビュー中の書き込みの画面と切り替える
+// コメントの一覧（画面設計『コメントの一覧.tsx』）。スレッドを状態・タグ・項目で絞って並べ、新規スレッドを立てる左のパネル。パネルの中をスレッド・レビュー中の書き込みの画面と切り替える
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
@@ -30,20 +30,20 @@ export type CommentsPanelProps = {
   onOpenChangeSet: (id: string) => void;
 };
 
-/** 新しいスレッドの入力の、音声入力の識別 */
+/** 新規スレッドの入力の、音声入力の識別 */
 const NEW_THREAD_VOICE_KEY = "new-thread";
 
 type FreeState = { body: string; status: SendStatus; count: number | null; detail: string | null };
 
-/** 新しいスレッドの入力の見出し（項目で絞っている間は、その項目へ向ける） */
-const newThreadLabel = (target: string | null): string => (target === null ? "新しいスレッド" : `${target} への新しいスレッド`);
+/** 新規スレッドの入力の見出し（項目で絞っている間は、その項目へ向ける） */
+const newThreadLabel = (target: string | null): string => (target === null ? "新規スレッド" : `${target} への新規スレッド`);
 
-/** 新しいスレッドの入力。閉じて外れても録音と文字起こしは続ける。項目で絞っている間は、溜めるスレッドと書きかけ・音声入力をその項目への箇所を持たない入力に向ける（詳細パネルの下端の入力と書きかけを共有する） */
+/** 新規スレッドの入力。閉じて外れても録音と文字起こしは続ける。項目で絞っている間は、溜めるスレッドと下書き・音声入力をその項目への箇所を持たない入力に向ける（詳細パネルの下端の入力と下書きを共有する） */
 const NewThreadForm = ({ free, setFree, target }: { free: FreeState; setFree: (next: FreeState | ((current: FreeState) => FreeState)) => void; target: string | null }) => {
   const add = useAddComment();
   const saveDraft = useSaveDraft();
   const focusTarget = useFocusAfterAddTarget();
-  // 溜めた後にフォーカスを移す、新しいスレッドの入力の form
+  // 溜めた後にフォーカスを移す、新規スレッドの入力の form
   const sendForm = useRef<HTMLFormElement>(null);
   const voice = useVoiceInput({
     key: NEW_THREAD_VOICE_KEY,
@@ -127,9 +127,9 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   const tag = search.ttag ?? null;
   const target = search.ttarget ?? null;
   const { index } = useRecords();
-  // 新しいスレッドの書きかけ（項目で絞っている間は、その項目への箇所を持たない書きかけ。詳細パネルの下端の入力と同じ）
+  // 新規スレッドの下書き（項目で絞っている間は、その項目への箇所を持たない下書き。詳細パネルの下端の入力と同じ）
   const draftOf = (of: string | null): string => data.drafts.find((draft) => draft.target === of && draft.loc === null && draft.thread === null)?.body ?? "";
-  // 新しいスレッドの入力で音声入力中なら、入力を出して開く
+  // 新規スレッドの入力で音声入力中なら、入力を出して開く
   const [composing, setComposing] = useState(() => readVoiceState().session?.key === NEW_THREAD_VOICE_KEY);
   const heading = useRef<HTMLHeadingElement>(null);
   const composer = useRef<HTMLDivElement>(null);
@@ -137,11 +137,11 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   useEffect(() => {
     heading.current?.focus();
   }, []);
-  // 新しいスレッドの入力を出したら、入力欄へフォーカスを移す
+  // 新規スレッドの入力を出したら、入力欄へフォーカスを移す
   useEffect(() => {
     if (composing) composer.current?.querySelector("textarea")?.focus();
   }, [composing]);
-  // 向ける項目が変わったら、その項目の書きかけから始める
+  // 向ける項目が変わったら、その項目の下書きから始める
   const [freeEntry, setFreeEntry] = useState<{ target: string | null; state: FreeState }>(() => ({ target, state: { body: draftOf(target), status: "idle", count: null, detail: null } }));
   const free: FreeState = freeEntry.target === target ? freeEntry.state : { body: draftOf(target), status: "idle", count: null, detail: null };
   const setFree = (next: FreeState | ((current: FreeState) => FreeState)): void => {
@@ -221,7 +221,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
         {data.threadsError === null ? null : (
           <p role="alert" className="m-0 flex items-start gap-1 px-3 py-2 text-small text-destructive">
             <Icon name="alert" />
-            <span>{`スレッドを読めませんでした。${data.threadsError.detail ?? "サーバーが止まっています。立ち上げ直してから開いてください。"}`}</span>
+            <span>{`スレッドを読めませんでした。${data.threadsError.detail ?? "サーバーが止まっています。再起動してから開いてください。"}`}</span>
           </p>
         )}
         <ul className="m-0 min-h-0 flex-1 list-none overflow-y-auto p-0">
@@ -242,7 +242,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
           <div ref={composer} className="grid border-t border-border">
             <div className="flex items-center px-3 pt-2">
               <h3 className="m-0 flex-1 text-small font-medium">{newThreadLabel(target)}</h3>
-              <Button variant="ghost" size="icon" aria-label="新しいスレッドの入力を閉じる" onClick={() => { setComposing(false); }}>
+              <Button variant="ghost" size="icon" aria-label="新規スレッドの入力を閉じる" onClick={() => { setComposing(false); }}>
                 <Icon name="x" />
               </Button>
             </div>
@@ -252,7 +252,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
           <div className="border-t border-border p-3">
             <Button variant="outline" onClick={() => { setComposing(true); }}>
               <Icon name="plus" />
-              新しいスレッド
+              新規スレッド
             </Button>
           </div>
         )}

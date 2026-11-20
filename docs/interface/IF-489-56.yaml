@@ -12,7 +12,7 @@ flows:
       - name: 仮想環境
         description: PyYAML・jsonschema・mcp・Jinja2 を見せた仮想環境を `MINDSTELLA_VENV` で渡す
       - name: tmux
-        description: テストごとの短い一時フォルダ（`/tmp` の直下）を `TMUX_TMPDIR` にし、`TMUX` を消した環境で動かす tmux のサーバー
+        description: テストごとの短い一時フォルダ（`/tmp` の直下）を `TMUX_TMPDIR` にし、`TMUX` を削除した環境で動かす tmux のサーバー
         notes: 利用者の tmux のセッションに触れない。`TMUX` があると tmux は `TMUX_TMPDIR` よりそのソケットを使い、ソケットのパスが長いとつながらない（tmux 3.4 で確かめた）
       - name: 設定のフォルダ
         description: 一時フォルダを `CLAUDE_CONFIG_DIR` で渡す
@@ -54,32 +54,32 @@ flows:
       - 標準エラーに、起動したアカウントとして応答の `account`（`CLAUDE_CONFIG_DIR` に渡した一時フォルダの絶対パス）がある
     test: test_normal
   - name: 正常系（プラグインを上げた後）
-    summary: 古い版のフォルダのスクリプトを叩いても、新しい版の常駐サーバーを起動する
+    summary: 古いバージョンのフォルダのスクリプトを叩いても、新しいバージョンの常駐サーバーを起動する
     setup:
       - name: Mock
-        description: 正常系と同じ偽の `claude`。`installPath` は新しい版のフォルダを返す
+        description: 正常系と同じ偽の `claude`。`installPath` は新しいバージョンのフォルダを返す
       - name: 仮想環境
         description: 正常系と同じ
       - name: プラグインのフォルダ
-        description: 古い版と新しい版の 2 つのフォルダ。古い版のフォルダの `bin/mindstella` を叩く
+        description: 古いバージョンと新しいバージョンの 2 つのフォルダ。古いバージョンのフォルダの `bin/mindstella` を叩く
       - name: tmux
         description: 正常系と同じ
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as bin/mindstella（古い版）
+        participant IF as bin/mindstella（古いバージョン）
         participant CC as claude（偽）
 
         クライアント->>IF: mindstella {フォルダ}
         IF->>CC: plugin list --json
-        CC-->>IF: 新しい版の installPath
-        IF->>IF: 新しい版の ensure_server.py で常駐サーバーを起動する
+        CC-->>IF: 新しいバージョンの installPath
+        IF->>IF: 新しいバージョンの ensure_server.py で常駐サーバーを起動する
         IF-->>クライアント: 終了コード 0
       ```
     expected:
       - 終了コードが 0
-      - '`GET /_admin/status` の `plugin_root` が新しい版のフォルダ'
+      - '`GET /_admin/status` の `plugin_root` が新しいバージョンのフォルダ'
     test: test_normal_when_plugin_upgraded
   - name: 正常系（MindStella のセッションが既にある）
     summary: 起動中の MindStella のセッションがあれば新しく作らず、そのペインへつなぐコマンドを返す
@@ -321,7 +321,7 @@ flows:
       ```
     expected:
       - 常駐サーバーのプロセスの環境変数 `MINDSTELLA_ALLOWED_HOSTS` が `preview.example.test`（systemd --user ではユニットの `Environment=` に書かれている）
-      - MindStella のセッションの `claude` の環境変数に `MINDSTELLA_ALLOWED_HOSTS` を足していない
+      - MindStella のセッションの `claude` の環境変数に `MINDSTELLA_ALLOWED_HOSTS` を追加していない
     test: test_normal_when_external_settings
   - name: 正常系（古いコードの常駐サーバーが待ち受けている）
     summary: 待ち受けている常駐サーバーのバージョンかプラグインのフォルダが違えば、再起動せずに違いと手順を示し、ワークスペースと MindStella のセッションは作る
@@ -451,7 +451,7 @@ flows:
     test: test_error_when_session_not_created
 lead: 依存を確かめ、mindstella の常駐サーバーが落ちていれば起動してから、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ。`server` のサブコマンドで常駐サーバーの状態を確かめ・止め・再起動する。
 idempotent: false
-side_effects: 常駐サーバーが落ちていれば起動する（『常駐サーバーの起動の確認』）。『ワークスペースの作成』と『MindStella のセッションの作成』を呼ぶ（ワークスペースの記録・状態のフォルダ・配信元の行・tmux のセッションはそれらが書く）。`server stop`・`server restart` は常駐サーバーを止める・起動し直す
+side_effects: 常駐サーバーが落ちていれば起動する（『常駐サーバーの起動の確認』）。『ワークスペースの作成』と『MindStella のセッションの作成』を呼ぶ（ワークスペースの記録・状態のフォルダ・配信元の行・tmux のセッションはそれらが書く）。`server stop`・`server restart` は常駐サーバーを止める・再起動する
 callers:
   - SC-489-41#
 request:
@@ -577,13 +577,13 @@ exceptions:
     notes: 終了コード 1。応答の `detail` と画面の URL を標準エラーに出す
 error_format: '標準エラーに `[mindstella] エラー: {内容}` の行を出し、そろえるコマンドがあれば次の行に出す。'
 constraints:
-  - item: 確かめる順
+  - item: 確認する順
     constraint: 引数 → 依存（『依存の確認』をシステムの `python3` で起動）→ `tmux` → `claude` → プラグインのフォルダ → 常駐サーバー（『常駐サーバーの起動の確認』を `installPath` の `ensure_server.py` で起動）→ 『ワークスペースの作成』→ 『MindStella のセッションの作成』。どれかで止まったら、それより後は何もしない
-  - item: 使う版
-    constraint: 叩いたスクリプトの版ではなく、`claude plugin list --json` の `installPath` が指すインストールした今の版の常駐サーバーを起動する。既に古いコードの常駐サーバーが待ち受けていれば、再起動せずに違いと手順を標準エラーに出し、ワークスペースと MindStella のセッションは作る
+  - item: 使用するバージョン
+    constraint: 叩いたスクリプトのバージョンではなく、`claude plugin list --json` の `installPath` が指すインストールした今のバージョンの常駐サーバーを起動する。既に古いコードの常駐サーバーが待ち受けていれば、再起動せずに違いと手順を標準エラーに出し、ワークスペースと MindStella のセッションは作る
   - item: 既にある MindStella のセッション
     constraint: 『MindStella のセッションの作成』が 409（`exists`）を返したら、応答の `pane` のセッションへつなぐ（端末でなければ、つなぐコマンドを出して終わる）。標準エラーに既にあった旨を出す
-  - item: 書くもの
+  - item: 書き込むもの
     constraint: 書かない（ワークスペースの記録と状態は MindStella の API が書き、常駐サーバーの記録は『常駐サーバーの起動の確認』が書く）
   - item: シェル
     constraint: '`bash`（`set -euo pipefail`）。JSON の読み書きは仮想環境の Python で行い、`jq` に頼らない'
@@ -592,14 +592,14 @@ constraints:
   - item: セッションの指し方
     constraint: tmux の `-t` には頭に `=` を付けた名前（`-t ={ワークスペースの ID}`）を渡し、完全に一致するセッションだけを指す
     notes: '`=` が無いと tmux は名前の前方一致でも当て、別のワークスペースのセッションを指す（tmux 3.4 で確かめた）'
-  - item: 常駐サーバーへ渡す環境変数
+  - item: 常駐サーバーへ指定する環境変数
     constraint: '`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`MINDSTELLA_TRANSCRIBER`・`MINDSTELLA_TRANSCRIBER_URL`・`PROJECT_INDEX_PORT` を、常駐サーバーを起動するときに呼び出し元の環境のまま渡す（systemd --user ではユニットの `Environment=` に書く）。常駐サーバーが既に待ち受けているときは、新しい値は効かない（`mindstella server restart` で効く）'
     notes: テストは常駐サーバーを起動する全てのフローで、空きポートを `MINDSTELLA_PORT` で渡す（利用者の端末の 8784 に触れない）
   - item: MindStella の API の呼び方
-    constraint: 仮想環境の Python の標準ライブラリ（`urllib.request`）で `http://127.0.0.1:{MINDSTELLA_PORT}` へ JSON を送る。`Host` は `127.0.0.1:{ポート}`。準備を待つ上限（『MindStella のセッションの作成』）より長く待つため、打ち切りは準備を待つ上限に 10 秒を足す
+    constraint: 仮想環境の Python の標準ライブラリ（`urllib.request`）で `http://127.0.0.1:{MINDSTELLA_PORT}` へ JSON を送信する。`Host` は `127.0.0.1:{ポート}`。準備を待つ上限（『MindStella のセッションの作成』）より長く待つため、打ち切りは準備を待つ上限に 10 秒を追加する
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
   - item: server のサブコマンド
-    constraint: '`status` は `GET /_admin/status` を読んで出す（待ち受けていなければ終了コード 1）。`stop` は `systemctl --user stop mindstella.service`。`restart` は、`installPath` の `ensure_server.py` を `--restart` で呼ぶ（ユニットを `installPath` のフォルダで書き直してから起動し直す。『常駐サーバーの起動の確認』の「起動し直し」）'
+    constraint: '`status` は `GET /_admin/status` を読んで出す（待ち受けていなければ終了コード 1）。`stop` は `systemctl --user stop mindstella.service`。`restart` は、`installPath` の `ensure_server.py` を `--restart` で呼ぶ（ユニットを `installPath` のフォルダで書き直してから再起動する。『常駐サーバーの起動の確認』の「再起動」）'
   - item: register のサブコマンド
     constraint: システムの `python3` でプラグインの登録のスクリプトを呼ぶ。依存の確認・常駐サーバーの起動・MindStella の API は呼ばない（『起動スクリプトの登録』の制約「動く Python」）。スクリプトの置き場所はモジュール構成設計で決める
 refs:
@@ -613,5 +613,5 @@ refs:
   - IF-489-67#
   - LIB-565-1#
 notes:
-  置き場所: プラグインの `bin/` に置き、インストールした版のフォルダから叩く。利用者は `claude plugin list --json` の `installPath` から場所を引く（手順は公開ドキュメント『起動スクリプトで立ち上げる』）か、インターフェース定義『起動スクリプトの登録』で登録した `mindstella`・`mindstella-{名前}` から叩く
+  置き場所: プラグインの `bin/` に置き、インストールしたバージョンのフォルダから叩く。利用者は `claude plugin list --json` の `installPath` から場所を引く（手順は公開ドキュメント『起動スクリプトで立ち上げる』）か、インターフェース定義『起動スクリプトの登録』で登録した `mindstella`・`mindstella-{名前}` から叩く
 test_file: tests/integration/server/test_launch.py

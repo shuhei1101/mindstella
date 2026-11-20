@@ -20,7 +20,7 @@ export type Thread = {
   events: ThreadEvent[];
 };
 
-/** レビュー中の書き込み 1 件（`GET /api/comments` の `items[]`。新しいスレッドの最初の書き込みか、スレッドへの返信） */
+/** レビュー中の書き込み 1 件（`GET /api/comments` の `items[]`。新規スレッドの最初の書き込みか、スレッドへの返信） */
 export type ReviewItem = {
   id: string;
   target: string | null;
@@ -31,7 +31,7 @@ export type ReviewItem = {
   created: string;
 };
 
-/** 入力欄の書きかけ 1 件（`GET /api/comments` の `drafts[]`） */
+/** 入力欄の下書き 1 件（`GET /api/comments` の `drafts[]`） */
 export type Draft = { target: string | null; loc: Location | null; thread: string | null; body: string };
 
 /** スレッドの状態の絞り込み */
@@ -76,7 +76,7 @@ export const threadCounts = ({ threads, tag, target }: { threads: readonly Threa
   return { open, closed: tagged.length - open, all: tagged.length };
 };
 
-/** 一覧の先頭に出す、まだ送っていない新しいスレッド（クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
+/** 一覧の先頭に出す、まだ送っていない新規スレッド（クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
 export const pendingThreads = ({ items, filter, tag, target }: { items: readonly ReviewItem[]; filter: ThreadFilter; tag: string | null; target: string | null }): ReviewItem[] => {
   if (filter === "closed" || tag !== null) return [];
   return items.filter((item) => item.thread === null && (target === null || item.target === target));

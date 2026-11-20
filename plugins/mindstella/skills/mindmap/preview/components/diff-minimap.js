@@ -14,8 +14,8 @@ var MindmapPreview;
     const MINIMAP_HIT_MS = 1600;
     /** 印の種類 → 読み上げの名前と `title` の頭 */
     const MINIMAP_KIND_NAME = {
-        add: "足した箇所",
-        del: "消した箇所",
+        add: "追加した箇所",
+        del: "削除した箇所",
         chg: "変わった箇所",
     };
     /** 印にする要素（キーの差分の行・本文の足した / 消した塊・箇条書きの足した項目・表の行・図の差分の枠・Raw の行・埋め込んだ HTML の範囲の差分） */

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
   <meta name="color-scheme" content="light dark">
-  <title>未読の印（案 A: 角の点） | mindstella プレビューのモック</title>
+  <title>未読のマーカー（案 A: 角の点） | mindstella プレビューのモック</title>
   <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,16 +15,16 @@
   <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <!-- 今のプレビューのスタイル -->
   <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
-  <!-- この PR で足す未読の印のスタイルと、モック専用の操作列 -->
+  <!-- この PR で追加する未読のマーカーのスタイルと、モック専用の操作列 -->
   <link rel="stylesheet" href="../../../../refs/258/assets/style.css">
-  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <!-- 描画のライブラリ: 雛形と同じバージョンを固定して読み、integrity でファイルの中身を確かめる -->
   <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
 </head>
-<!-- data-initial: ハッシュが無いときに開く状態（検討事項の表）/ data-unread-mark: コメントのボタンの未読の印の出し方（dot: 案 A 角の点） -->
+<!-- data-initial: ハッシュが無いときに開く状態（検討事項の表）/ data-unread-mark: コメントのボタンの未読のマーカーの出し方（dot: 案 A 角の点） -->
 <body data-initial="tab=decisions&amp;view=table" data-unread-mark="dot">
   <!-- モック専用の操作列: 案・見本の状態・モックの操作・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
   <div class="mockbar" role="group" aria-label="モックの操作">
@@ -42,7 +42,7 @@
     <a href="#" data-set="open=TH-4">未読のスレッドを開いた（TH-4）</a>
     <a href="#" data-set="drawer=1&amp;offline=1">サーバーにつながらない</a>
     <span class="label">操作:</span>
-    <!-- data-mock-act: mock.js がサーバーの代わりに記録を書き換え、書き換えの知らせを送る -->
+    <!-- data-mock-act: mock.js がサーバーの代わりに記録を書き換え、書き換えの知らせを送信する -->
     <button type="button" data-mock-act="ai-reply">AI が返信する（TH-3）</button>
     <button type="button" data-mock-act="ai-thread">AI がスレッドを立てる</button>
     <button type="button" data-mock-act="ai-reopen">AI がオープンに戻して返信する（TH-9）</button>

@@ -139,7 +139,7 @@ def test_with_body_location(open_story: OpenStory) -> None:
     assert page.inner_text("label.send-label") == "A-005 へのコメント"
     assert page.inner_text(".send-loc-name") == "本文 3 行目"
     assert page.inner_text(".send-quote") == "受け取る人へ渡す形"
-    assert page.get_by_role("button", name="箇所を外す").count() == 1
+    assert page.get_by_role("button", name="箇所を解除").count() == 1
     # 添えた箇所は入力欄の説明として、結果の前に指す
     assert page.get_attribute("textarea", "aria-describedby") == (
         f"{page.get_attribute('.send-loc', 'id')} {page.get_attribute('.send-msg', 'id')}"
@@ -220,7 +220,7 @@ def test_failed_unreachable(open_story: OpenStory) -> None:
     assert page.input_value("textarea") == "案 A にする"
     message = page.inner_text(".send-msg")
     assert "レビューに追加できませんでした。サーバーが止まっています。" in message
-    assert "起動スクリプトで立ち上げ直し" in message
+    assert "起動スクリプトで再起動し" in message
     assert "示された新しい URL で開いてから追加してください。" in message
     copy = page.get_by_role("button", name="本文をコピー")
     assert copy.count() == 1
@@ -327,7 +327,7 @@ def test_closed(open_story: OpenStory) -> None:
     assert toggle.get_attribute("aria-expanded") == "false"
     assert toggle.get_attribute("title") == "コメントの入力を開く"
     assert "D-022 へのコメント" in page.inner_text("form")
-    assert "書きかけ" not in page.inner_text("form")
+    assert "下書き" not in page.inner_text("form")
     assert not page.locator("textarea").is_visible()
     assert not page.locator('button[aria-label="レビューに追加"]').is_visible()
     body = page.locator(f"#{toggle.get_attribute('aria-controls')}")
@@ -336,11 +336,11 @@ def test_closed(open_story: OpenStory) -> None:
 
 
 def test_closed_with_draft(open_story: OpenStory) -> None:
-    """書きかけを残して閉じた。「{ID} へのコメント」の右に鉛筆の印と「書きかけ」を出す（正常系）。"""
+    """下書きを残して閉じた。「{ID} へのコメント」の右に鉛筆のアイコンと「下書き」を出す（正常系）。"""
     # 準備・実行
     page = open_story("preview-sendform--closed-with-draft")
     # 検証
-    assert "書きかけ" in page.inner_text("form")
+    assert "下書き" in page.inner_text("form")
     toggle = page.get_by_role("button", name="コメントの入力を開く")
     assert toggle.get_attribute("aria-expanded") == "false"
     assert not page.locator("textarea").is_visible()

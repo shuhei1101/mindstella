@@ -48,7 +48,7 @@ export const ErrorReadOnly: Story = {
 export const ErrorOffline: Story = {
   args: {
     error:
-      "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。",
+      "保存できませんでした。サーバーが止まっています。起動スクリプトで再起動し、示された新しい URL で開いてから保存してください。",
   },
 };
 

@@ -7,11 +7,11 @@ directory: |-
   ```
   plugins/mindstella/skills/mindmap/
     preview/
-      template.html   プレビューの雛形（CSS・JavaScript・データの差し込み口と、描画のライブラリ・文字の読み込み。読み込みは EXTERNAL_START と EXTERNAL_END の間に置く。mdmark は MDMARK_SLOT の印）
+      template.html   プレビューの雛形（CSS・JavaScript・データの差し込み位置と、描画のライブラリ・文字の読み込み。読み込みは EXTERNAL_START と EXTERNAL_END の間に置く。mdmark は MDMARK_SLOT のマーカー）
       tokens.css・style.css・*.ts（と tsc が生成した *.js）  画面の中身（モジュール構成『プレビュー』）
       licenses/
-        README.md  mermaid-bundled.txt を集め直す手順（使うコマンドと写すもの）と、mdmark-LICENSE.txt を置いている理由
-        mermaid-bundled.txt  mermaid.min.js が中に束ねた依存（mermaid の本番の依存を node_modules から辿った全てのパッケージ）ごとの、名前・版と LICENSE の写。mermaid の版を上げたら集め直す
+        README.md  mermaid-bundled.txt を再収集する手順（使うコマンドと写すもの）と、mdmark-LICENSE.txt を置いている理由
+        mermaid-bundled.txt  mermaid.min.js が中に束ねた依存（mermaid の本番の依存を node_modules から辿った全てのパッケージ）ごとの、名前・バージョンと LICENSE の写。mermaid のバージョンを上げたら再収集する
         mdmark-LICENSE.txt  mdmark の MIT の本文（v0.7.0 のリポジトリに LICENSE が無いため置く。mdmark のバージョンを上げたら見直す）
     scripts/
       builder.py      雛形の組み立て・記録の収集・埋め込みと、配る書き出し
@@ -46,7 +46,7 @@ data_models:
         example: LICENSE
       - name: bundled_license_file
         type: str | None
-        description: 配布ファイルが中に束ねた依存の、名前・版とライセンスの本文を並べたファイルの、雛形のフォルダからの相対パス。束ねた依存が無いライブラリは `None`
+        description: 配布ファイルが中に束ねた依存の、名前・バージョンとライセンスの本文を並べたファイルの、雛形のフォルダからの相対パス。束ねた依存が無いライブラリは `None`
         example: licenses/mermaid-bundled.txt
       - name: repository
         type: str
@@ -54,7 +54,7 @@ data_models:
         example: https://github.com/markedjs/marked
       - name: tag
         type: str
-        description: 版のタグの形（`{version}` に外の読み込みの版を入れる）。入手先は `{repository}/tree/{tag}`
+        description: バージョンのタグの形式（`{version}` に外の読み込みのバージョンを入れる）。入手先は `{repository}/tree/{tag}`
         example: v{version}
       - name: license_file
         type: str | None
@@ -62,7 +62,7 @@ data_models:
         example: licenses/mdmark-LICENSE.txt
       - name: bundled_license_path
         type: str | None
-        description: 配布物が中に束ねた依存の、名前・版とライセンスの本文を並べたパッケージの中のファイル（取る。`CDN_REPO_URL` の `path`）。`bundled_license_file` と両方は持たない。無ければ `None`
+        description: 配布物が中に束ねた依存の、名前・バージョンとライセンスの本文を並べたパッケージの中のファイル（取る。`CDN_REPO_URL` の `path`）。`bundled_license_file` と両方は持たない。無ければ `None`
         example: dist/THIRD_PARTY_LICENSES.txt
   - name: ExternalScript
     title: 外の読み込み
@@ -84,7 +84,7 @@ data_models:
         example: marked
       - name: version
         type: str
-        description: URL の版
+        description: URL のバージョン
         example: 0.12.0
   - name: LicenseBlock
     title: ライセンスの表示の材料
@@ -98,7 +98,7 @@ data_models:
         description: ライブラリ
       - name: version
         type: str
-        description: 外の読み込みの版
+        description: 外の読み込みのバージョン
       - name: license_text
         type: str
         description: 取ったか `license_file` から読んだライセンスの本文
@@ -131,13 +131,13 @@ constants:
     summary: 雛形のフォルダからの相対パス。tsc が `.ts` から生成した `.js` を並びの順につなぐ（起動する `app.js` が最後）。中身はモジュール構成『プレビュー』のディレクトリ構成
     value: ("core/dom.js", "core/records.js", "core/libs.js", "core/diff.js", "core/router.js", "core/api.js", "core/edits.js", "core/voice.js", "core/refresh-hold.js", "components/view-switch.js", "components/duplicate-id-notice.js", "components/topbar.js", "components/diff-mark.js", "components/removed-band.js", "components/withdrawn-badge.js", "components/comment-mark.js", "components/history-dialog.js", "components/table.js", "components/filter-drawer.js", "components/send-form.js", "components/reply-form.js", "components/thread-row.js", "components/thread-post.js", "components/selection-comment.js", "components/term-tip.js", "components/settings-panel.js", "components/settings-confirm.js", "components/body-format-badge.js", "components/html-body-frame.js", "components/html-body-diff.js", "components/body-diff-layout-switch.js", "components/side-by-side-body-diff.js", "components/diff-minimap.js", "components/pending-mark.js", "screens/overview.js", "screens/decisions.js", "screens/tasks.js", "screens/docs.js", "screens/records.js", "screens/detail-edit.js", "screens/detail.js", "screens/comments.js", "screens/pending-edits.js", "screens/workspace-settings.js", "screens/settings.js", "screens/search.js", "screens/diagram-viewer.js", "app.js")
   - name: STYLE_SLOT
-    title: CSS の差し込み口
+    title: CSS の差し込み位置
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: プレビューを開く
     summary: '`template.html` がちょうど 1 つ持つ、CSS を入れる空の要素'
     value: "'<style id=\"mindmap-style\"></style>'"
   - name: SCRIPT_SLOT
-    title: JavaScript の差し込み口
+    title: JavaScript の差し込み位置
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: プレビューを開く
     summary: '`template.html` がちょうど 1 つ持つ、JavaScript を入れる空の要素（`DATA_ELEMENT` より後ろ）'
@@ -146,7 +146,7 @@ constants:
     title: 配る書き出しに入れるライブラリの一覧
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
-    summary: 描画のライブラリ（mdmark（`MDMARK_PACKAGE`）と雛形の `<script src>` の並び）ごとの、ライセンスの表示に使う `VendorLibrary`。`package` で mdmark と外の読み込みの URL のパッケージ名と結ぶ。版と URL と `integrity` は設定と雛形が持ち、ここには持たない
+    summary: 描画のライブラリ（mdmark（`MDMARK_PACKAGE`）と雛形の `<script src>` の並び）ごとの、ライセンスの表示に使う `VendorLibrary`。`package` で mdmark と外の読み込みの URL のパッケージ名と結ぶ。バージョンと URL と `integrity` は設定と雛形が持ち、ここには持たない
     value: (VendorLibrary(package="shuhei1101/mdmark", name="mdmark", notice="Copyright (c) 2026 shuhei1101", license="MIT", license_path=None, license_file="licenses/mdmark-LICENSE.txt", bundled_license_path="dist/THIRD_PARTY_LICENSES.txt", bundled_license_file=None, repository="https://github.com/shuhei1101/mdmark", tag="{version}"), VendorLibrary(package="marked", name="marked", notice="Copyright (c) 2018+, MarkedJS / Copyright (c) 2011-2018, Christopher Jeffrey", license="MIT", license_path="LICENSE", license_file=None, bundled_license_path=None, bundled_license_file=None, repository="https://github.com/markedjs/marked", tag="v{version}"), VendorLibrary(package="mermaid", name="mermaid", notice="Copyright (c) 2014 - 2022 Knut Sveidqvist", license="MIT", license_path="LICENSE", license_file=None, bundled_license_path=None, bundled_license_file="licenses/mermaid-bundled.txt", repository="https://github.com/mermaid-js/mermaid", tag="mermaid@{version}"), VendorLibrary(package="diff", name="jsdiff", notice="Copyright (c) 2009-2015, Kevin Decker", license="BSD-3-Clause", license_path="LICENSE", license_file=None, bundled_license_path=None, bundled_license_file=None, repository="https://github.com/kpdecker/jsdiff", tag="v{version}"))
   - name: FETCH_TIMEOUT_SEC
     title: 取るときの待ちの上限
@@ -158,7 +158,7 @@ constants:
     title: パッケージのファイルの URL
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
-    summary: jsDelivr の、版を固定したパッケージの中のファイルの URL の形。ライセンスの本文を取るのに使う
+    summary: jsDelivr の、バージョンを固定したパッケージの中のファイルの URL の形式。ライセンスの本文を取るのに使う
     value: '"https://cdn.jsdelivr.net/npm/{package}@{version}/{path}"'
   - name: EXTERNAL_START
     title: 外の読み込みの始まり
@@ -182,7 +182,7 @@ constants:
     title: GitHub のリポジトリのファイルの URL
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
-    summary: jsDelivr の、タグを固定した GitHub のリポジトリの中のファイルの URL の形。mdmark の配布物と同梱物のライセンスを取るのに使う
+    summary: jsDelivr の、タグを固定した GitHub のリポジトリの中のファイルの URL の形式。mdmark の配布物と同梱物のライセンスを取るのに使う
     value: '"https://cdn.jsdelivr.net/gh/{package}@{version}/{path}"'
     status: planned
   - name: MDMARK_OPEN
@@ -193,10 +193,10 @@ constants:
     value: "'<script type=\"text/plain\" id=\"mindmap-mdmark\">'"
     status: planned
   - name: MDMARK_SLOT
-    title: mdmark の読み込みの差し込み口
+    title: mdmark の読み込みの差し込み位置
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: プレビューを開く
-    summary: 雛形の `EXTERNAL_START` と `EXTERNAL_END` の間に 1 つだけ置く印。配信のたびに、設定のバージョンの mdmark の CSS の `<link>` と `MDMARK_CONFIG_OPEN` の要素に置き換える
+    summary: 雛形の `EXTERNAL_START` と `EXTERNAL_END` の間に 1 つだけ置くマーカー。配信のたびに、設定のバージョンの mdmark の CSS の `<link>` と `MDMARK_CONFIG_OPEN` の要素に置き換える
     value: "'<!-- mindmap-mdmark -->'"
   - name: MDMARK_CONFIG_OPEN
     title: mdmark の読み込みの設定の要素
@@ -232,7 +232,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: プレビューを開く
     scope: public
-    summary: 設定・7 種類・本文・まとまり・読んだ日時を 1 つの辞書にまとめる（インターフェース定義『記録の取得』のレスポンスの形。スレッドは含めない）
+    summary: 設定・7 種類・本文・まとまり・読んだ日時を 1 つの辞書にまとめる（インターフェース定義『記録の取得』のレスポンスの構造。スレッドは含めない）
     args:
       - name: workspace
         type: Workspace
@@ -260,7 +260,7 @@ functions:
       description: '`settings`・`decisions` など種類ごと（ファイル名から `.yaml` を落としたキー）・`bodies`・`marked_bodies`・`changes`・`derived`・`built_at`・`settings_problem`・`mdmark_ref`'
     process: |-
       1. 種類ごとの `items` をファイル名から `.yaml` を落としたキーで入れる（項目の `history` もそのまま入る）
-      2. 項目の `body` が指す本文を読んで `bodies` に入れる（本文の読み込み。`read_body`。読めないものは入れない）。形式が `html` の本文は、行の印を足したもの（`mark_lines`）を `marked_bodies` にも入れる
+      2. 項目の `body` が指す本文を読んで `bodies` に入れる（本文の読み込み。`read_body`。読めないものは入れない）。形式が `html` の本文は、行のマーカーを追加したもの（`mark_lines`）を `marked_bodies` にも入れる
       3. まとまりを読んで `changes` に入れる（`load_changes`）
       4. 画面に出す値を計算して `derived` に入れる（`derive_preview_values`）
       5. `settings_problem` を入れる（渡されなければ `null`。配る書き出しも同じキーを持つ）
@@ -280,7 +280,7 @@ functions:
         expected: '`changes` が `changes.yaml` と同じで、`decisions` の D-1 が `history` を持つ'
       - name: test_collect_preview_data_with_html_body
         case: 正常
-        summary: HTML の本文は原文を `bodies` に、行の印つきを `marked_bodies` に入れる
+        summary: HTML の本文は原文を `bodies` に、行のマーカーつきを `marked_bodies` に入れる
         condition: 'A-1（`body: A-1.mark.md`）・A-2（`body: A-2.html`、本文 `<p>a</p>`）'
         expected: '`bodies` が `A-1.mark.md`・`A-2.html` の原文を持ち、`marked_bodies` が `A-2.html` → `<p data-line="1" data-line-end="1">a</p>` だけを持つ'
         mock: なし
@@ -331,7 +331,7 @@ functions:
       description: 埋め込んだ HTML
     process: |-
       1. 雛形に `DATA_ELEMENT` がちょうど 1 つあるか確かめる
-         - 1 つでない場合、`ValueError` を送る（同梱の雛形の誤り）
+         - 1 つでない場合、`ValueError` を送出する（同梱の雛形の誤り）
       2. データを `json.dumps(ensure_ascii=False)` し、エスケープして（`escape_for_script`）要素の中身に入れる
     exceptions:
       - name: ValueError
@@ -412,20 +412,20 @@ functions:
     process: |-
       1. `template.html` と、`STYLE_FILES`・`SCRIPT_FILES` を並びの順に UTF-8 で読む
       2. CSS に `</style`、JavaScript に `</script` が無いことを確かめる（大文字・小文字を区別しない）
-         - ある場合、`ValueError` を送る（同梱の雛形の誤り）
+         - ある場合、`ValueError` を送出する（同梱の雛形の誤り）
       3. `STYLE_SLOT`・`SCRIPT_SLOT` がそれぞれちょうど 1 つあることを確かめる
-         - 1 つでない場合、`ValueError` を送る
+         - 1 つでない場合、`ValueError` を送出する
       4. CSS を改行でつないで `STYLE_SLOT` の中身に、JavaScript を改行でつないで `SCRIPT_SLOT` の中身に入れる
       5. `MDMARK_SLOT` がちょうど 1 つあることを確かめ（1 つでなければ `ValueError`）、`mdmark_dist_url(mdmark_ref, …)` の `index.css` を `href` に持ち `crossorigin="anonymous"` を付けた `<link rel="stylesheet">` と、`MDMARK_CONFIG_OPEN` + `{"js": index.js の URL, "map": mdmark_settings の map}`（`escape_for_script`）+ `</script>` に置き換える。`integrity` は付けない
     exceptions:
       - name: ValueError
-        condition: CSS が `</style`、JavaScript が `</script` を含むか、差し込み口が 0 個か 2 個以上
-        message: 雛形の {ファイル名} が {閉じタグ} を含みます / 雛形に差し込み口 {要素} が 1 つだけありません（{個数} 個）
+        condition: CSS が `</style`、JavaScript が `</script` を含むか、差し込み位置が 0 個か 2 個以上
+        message: 雛形の {ファイル名} が {閉じタグ} を含みます / 雛形に差し込み位置 {要素} が 1 つだけありません（{個数} 個）
     unit_tests:
       - name: test_assemble_template
         case: 正常
         summary: CSS と JavaScript を並びの順に差し込む
-        condition: '`tmp_path` に差し込み口と `DATA_ELEMENT` を持つ `template.html` と、`STYLE_FILES`・`SCRIPT_FILES` の名前のファイル（中身はファイル名のコメント）'
+        condition: '`tmp_path` に差し込み位置と `DATA_ELEMENT` を持つ `template.html` と、`STYLE_FILES`・`SCRIPT_FILES` の名前のファイル（中身はファイル名のコメント）'
         mock: なし
         expected: '`<style id="mindmap-style">` の中に CSS が並びの順で、`<script id="mindmap-app">` の中に JavaScript が並びの順であり、`DATA_ELEMENT` は空のまま'
       - name: test_assemble_template_when_closing_tag
@@ -434,14 +434,14 @@ functions:
         condition: '`parametrize`: CSS に `</STYLE>` / JavaScript に `</script>`'
         mock: なし
         expected: '`ValueError`（`match` にそのファイル名）'
-        exception: 閉じタグを含むか差し込み口が 1 つでない
+        exception: 閉じタグを含むか差し込み位置が 1 つでない
       - name: test_assemble_template_when_slot_count_wrong
         case: 異常
-        summary: 差し込み口が 1 つでない雛形
+        summary: 差し込み位置が 1 つでない雛形
         condition: '`parametrize`: `STYLE_SLOT` 0 個 / `SCRIPT_SLOT` 2 個'
         mock: なし
         expected: '`ValueError`（`match` に個数）'
-        exception: 閉じタグを含むか差し込み口が 1 つでない
+        exception: 閉じタグを含むか差し込み位置が 1 つでない
   - name: derive_preview_values
     title: プレビューに出す値の計算
     kind: 関数
@@ -492,10 +492,10 @@ functions:
     process: |-
       1. 一時ファイルに書く（一時ファイルへの書き込み。`write_temp`）
       2. `os.replace` で `path` を置き換える
-         - 1・2 で `OSError` が起きた場合、残った一時ファイルを消して `WriteFailedError` を送る（`write_failed`。親のフォルダが無いときもここに入り、フォルダは作らない）
+         - 1・2 で `OSError` が起きた場合、残った一時ファイルを削除して `WriteFailedError` を送出する（`write_failed`。親のフォルダが無いときもここに入り、フォルダは作らない）
     exceptions:
       - name: WriteFailedError
-        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（一時ファイルを消した後）
+        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（一時ファイルを削除した後）
         message: '書き込めませんでした: {パス}（{理由}）'
     unit_tests:
       - name: test_replace_file
@@ -558,7 +558,7 @@ functions:
       description: 書き出した `out`
     process: |-
       1. ワークスペースを検証する（ワークスペースの検証。`validate_workspace`）
-         - 問題がある場合、`SchemaMismatchError` を送る（取らず、書かない）
+         - 問題がある場合、`SchemaMismatchError` を送出する（取らず、書かない）
       2. ワークスペースの設定の `mdmark` で配る書き出しの雛形を組み立て、データを集めて埋め込む（`assemble_standalone_template`、`collect_preview_data`、`embed_data`）
          - 取れない場合、`DownloadFailedError` がそのまま上がる（書かない）
       3. `out` を置き換える（`replace_file`）
@@ -574,7 +574,7 @@ functions:
       - name: test_export_preview
         case: 正常
         summary: 記録と取ったライブラリとライセンスの表示を持つ HTML を out に書き、ワークスペースは触らない
-        condition: D-1 と資料 A-1（`docs/A-1.mark.md` あり）を持つワークスペースと、外の読み込みの印の間に `MDMARK_SLOT` と 1 つの `<script src integrity>` を持つ `template.html`・空の CSS・JavaScript を置いた雛形のフォルダ。`out` はワークスペースの外の `tmp_path / "配る.html"`
+        condition: D-1 と資料 A-1（`docs/A-1.mark.md` あり）を持つワークスペースと、外の読み込みのマーカーの間に `MDMARK_SLOT` と 1 つの `<script src integrity>` を持つ `template.html`・空の CSS・JavaScript を置いた雛形のフォルダ。`out` はワークスペースの外の `tmp_path / "配る.html"`
         mock: '`fetch`（URL ごとに決めた中身を返す関数。配布ファイルの中身は `integrity` と合うもの）'
         expected: 戻り値が `out`。`out` の `mindmap-data` を JSON として読むと `decisions` に D-1、`bodies` に `A-1.mark.md`。`out` に `src=`・`href=` が無く、`mindmap-licenses` の要素がある。ワークスペースのファイルが呼ぶ前と同じ
       - name: test_export_preview_when_schema_mismatch
@@ -588,7 +588,7 @@ functions:
         case: 異常
         summary: 取れなければ前の out を残す
         condition: 前の `out` を置く
-        mock: '`fetch`（`DownloadFailedError` を送る関数）'
+        mock: '`fetch`（`DownloadFailedError` を送出する関数）'
         expected: '`DownloadFailedError`。`out` が呼ぶ前と同じ'
         exception: 取れないか integrity と合わない
       - name: test_export_preview_when_out_dir_missing
@@ -616,7 +616,7 @@ functions:
       description: '`out` を `resolve()` した絶対パス'
     process: |-
       1. `out` の拡張子を確かめる（大文字・小文字を区別しない）
-         - `.html` でない場合、`ArgumentError`（`out`・`.html のファイルを指してください: {パス}`）を送る
+         - `.html` でない場合、`ArgumentError`（`out`・`.html のファイルを指してください: {パス}`）を送出する
       2. `resolve()` した `out` を返す
     exceptions:
       - name: ArgumentError
@@ -654,28 +654,28 @@ functions:
       description: '`<script src>` の並びの順'
     process: |-
       1. `EXTERNAL_START`・`EXTERNAL_END` がそれぞれちょうど 1 つあり、`EXTERNAL_START` が前にあることを確かめる
-         - そうでない場合、`ValueError` を送る（同梱の雛形の誤り）
+         - そうでない場合、`ValueError` を送出する（同梱の雛形の誤り）
       2. 間の `src` を持つ `<script>` 要素から `src` と `integrity` を読む（`html.parser.HTMLParser`）
-      3. `src` を `https://cdn.jsdelivr.net/npm/{package}@{version}/{path}` の形で分ける
-         - `integrity` が無いか、`src` がこの形でない場合、`ValueError` を送る
+      3. `src` を `https://cdn.jsdelivr.net/npm/{package}@{version}/{path}` の形式で分ける
+         - `integrity` が無いか、`src` がこの形式でない場合、`ValueError` を送出する
     exceptions:
       - name: ValueError
-        condition: 外の読み込みの印が 1 つずつでないか順が逆、または `<script src>` が `integrity` を持たないか jsDelivr の版を固定した URL でない
-        message: '雛形に外の読み込みの印が 1 つずつありません / 雛形の外の読み込みが版を固定した jsDelivr の URL と integrity を持ちません: {src}'
+        condition: 外の読み込みのマーカーが 1 つずつでないか順が逆、または `<script src>` が `integrity` を持たないか jsDelivr のバージョンを固定した URL でない
+        message: '雛形に外の読み込みのマーカーが 1 つずつありません / 雛形の外の読み込みがバージョンを固定した jsDelivr の URL と integrity を持ちません: {src}'
     unit_tests:
       - name: test_list_external_scripts
         case: 正常
-        summary: 印の間の script を並びの順に読み、印の外と import map・link は読まない
-        condition: 印の外に `<script src="a.js">`、印の間に 2 つの `<script src="https://cdn.jsdelivr.net/npm/x@1.0.0/x.js" integrity="sha384-...">` と `<script type="importmap">`・`<link href>` を持つ雛形
+        summary: マーカーの間の script を並びの順に読み、マーカーの外と import map・link は読まない
+        condition: マーカーの外に `<script src="a.js">`、マーカーの間に 2 つの `<script src="https://cdn.jsdelivr.net/npm/x@1.0.0/x.js" integrity="sha384-...">` と `<script type="importmap">`・`<link href>` を持つ雛形
         mock: なし
         expected: 2 つの `ExternalScript` が並びの順で、`package`・`version`・`url`・`integrity` が `src` と合う
       - name: test_list_external_scripts_when_invalid
         case: 異常
-        summary: 印や script の形が違う雛形
-        condition: '`parametrize`: `EXTERNAL_START` 0 個 / `EXTERNAL_END` 2 個 / `EXTERNAL_END` が前 / `integrity` が無い / 版を持たない URL'
+        summary: マーカーや script の構造が違う雛形
+        condition: '`parametrize`: `EXTERNAL_START` 0 個 / `EXTERNAL_END` 2 個 / `EXTERNAL_END` が前 / `integrity` が無い / バージョンを持たない URL'
         mock: なし
         expected: '`ValueError`'
-        exception: 印が 1 つずつでないか script の形が違う
+        exception: マーカーが 1 つずつでないか script の構造が違う
       - name: test_template_matches_vendor_libraries
         case: 正常
         summary: 本物の雛形の外の読み込みと VENDOR_LIBRARIES が 1 対 1 で結べる
@@ -690,7 +690,7 @@ functions:
     usecase: 配る書き出し
     scope: public
     summary: URL を GET して本文のバイト列を返す。`FetchFn` の本物
-    side_effects: HTTPS で外へ要求を送る
+    side_effects: HTTPS で外へ要求を送信する
     args:
       - name: url
         type: str
@@ -708,7 +708,7 @@ functions:
       description: 本文
     process: |-
       1. `urllib.request.urlopen(url, timeout=timeout)` で取る（環境変数のプロキシに従う）
-         - `URLError`・`OSError`（`TimeoutError` を含む）か、200 以外が返った場合、`DownloadFailedError` を送る（取り直さない）
+         - `URLError`・`OSError`（`TimeoutError` を含む）か、200 以外が返った場合、`DownloadFailedError` を送出する（再取得しない）
       2. 本文を全て読んで返す
     exceptions:
       - name: DownloadFailedError
@@ -764,19 +764,19 @@ functions:
         type: str
         required: true
         passing: keyword
-        description: mdmark_ref.py の `resolve_ref` が返した ref。配布ファイル・ライセンスの URL とライセンスの表示の版に使う
+        description: mdmark_ref.py の `resolve_ref` が返した ref。配布ファイル・ライセンスの URL とライセンスの表示のバージョンに使う
     returns:
       type: str
       description: 外のファイルも URL も指さない HTML（`DATA_ELEMENT` は空のまま）
     process: |-
       1. `mdmark_settings` と `mdmark_ref` で雛形を組み立て、外の読み込みを読む（`assemble_template`、`list_external_scripts`）。mdmark は `mdmark_dist_url` で `mdmark_ref` の `index.css`・`index.js`・`MDMARK_PART_FILES` の URL にする
       2. mdmark（`MDMARK_PACKAGE`）と外の読み込みごとに、`package` が同じ `VendorLibrary` を引く
-         - 無い場合、`ValueError` を送る（同梱の誤り）
+         - 無い場合、`ValueError` を送出する（同梱の誤り）
       3. mdmark の CSS・JavaScript・部品と、外の読み込みごとの配布ファイルを取り（`fetch`）、外の読み込みだけ sha384 を Base64 にした `sha384-{値}` がそれぞれの `integrity` と同じことを確かめる（mdmark は確かめない）
-         - 違う場合、`DownloadFailedError` を送る
-      4. ライブラリごとに、ライセンスの本文を、`license_path` があれば取り（mdmark は `mdmark_dist_url`、外の読み込みは `CDN_PACKAGE_URL` に版を入れた URL）、無ければ `license_file` を雛形のフォルダから読む。束ねた依存のライセンスは、`bundled_license_path` があれば同じく取り（mdmark は `mdmark_dist_url` に `bundled_license_path` の `dist/` の後ろを渡す）、`bundled_license_file` があれば雛形のフォルダから読む
+         - 違う場合、`DownloadFailedError` を送出する
+      4. ライブラリごとに、ライセンスの本文を、`license_path` があれば取り（mdmark は `mdmark_dist_url`、外の読み込みは `CDN_PACKAGE_URL` にバージョンを入れた URL）、無ければ `license_file` を雛形のフォルダから読む。束ねた依存のライセンスは、`bundled_license_path` があれば同じく取り（mdmark は `mdmark_dist_url` に `bundled_license_path` の `dist/` の後ろを渡す）、`bundled_license_file` があれば雛形のフォルダから読む
       5. 取った・読んだ中身を UTF-8 で読み、JavaScript・配布ファイル・ライセンスの本文・束ねた依存のライセンスが `</script` と `<script` を、CSS が `</style` を含まないことを確かめる（大文字・小文字を区別しない。`<!--` の後の `<script` は script 要素を閉じさせなくする）
-         - 含む場合、`ValueError` を送る（取った中身の誤り）
+         - 含む場合、`ValueError` を送出する（取った中身の誤り）
       6. `EXTERNAL_START` から `EXTERNAL_END` まで（両方を含む。mdmark の `<link>` と読み込みの設定の要素も消える）を、`MDMARK_CSS_OPEN` + CSS + `</style>`、`MDMARK_OPEN` + JavaScript + `</script>`、部品ごとの `<script type="text/plain" id="mindmap-mdmark-{部品の名前}">` + 中身 + `</script>`、`MDMARK_CONFIG_OPEN` + `{"map": 設定の mdmark.map}` + `</script>`、外の読み込みごとの `<script>{配布ファイルの中身}</script>` を並びの順につないだものと、`LICENSES_OPEN` + ライセンスの表示（mdmark、外の読み込みの順。`format_licenses`）+ `</script>` に置き換える
     exceptions:
       - name: ValueError
@@ -789,9 +789,9 @@ functions:
       - name: test_assemble_standalone_template
         case: 正常
         summary: 外の読み込みを取った mdmark の中身・配布ファイルとライセンスの表示に置き換える
-        condition: '`tmp_path` に、外の読み込みの印の間に `MDMARK_SLOT` と 2 つの `<script src integrity>`（パッケージ `a`・`b`）を持つ `template.html` と、中身 `本文 m` の `licenses/m.txt`。`MDMARK_PACKAGE`（`license_file` が `licenses/m.txt`、`bundled_license_path` が `dist/T.txt`）・`a`・`b` の `VendorLibrary`（入手先の `repository` は `https://` を持たない値）。`mdmark_settings` が `{"version": "v0.13.0", "map": {"kinds": {"llm": {}}}}`'
+        condition: '`tmp_path` に、外の読み込みのマーカーの間に `MDMARK_SLOT` と 2 つの `<script src integrity>`（パッケージ `a`・`b`）を持つ `template.html` と、中身 `本文 m` の `licenses/m.txt`。`MDMARK_PACKAGE`（`license_file` が `licenses/m.txt`、`bundled_license_path` が `dist/T.txt`）・`a`・`b` の `VendorLibrary`（入手先の `repository` は `https://` を持たない値）。`mdmark_settings` が `{"version": "v0.13.0", "map": {"kinds": {"llm": {}}}}`'
         mock: '`fetch`（mdmark の JavaScript は `/* m */`、CSS は `.m{}`、部品は `/* {部品の名前} */`、配布ファイルは `/* a */`・`/* b */`（`integrity` はそれぞれの sha384）。`dist/T.txt` の URL には `束ねた本文 m`、ライセンスの URL には `本文 a`・`本文 b`）'
-        expected: '`https://`・外の読み込みの印・`MDMARK_SLOT` が無い。`<style id="mindmap-mdmark-css">.m{}</style>` があり、`mindmap-mdmark` の要素の中身が `/* m */`、`mindmap-mdmark-map` の要素の中身が `/* map.js */`、`mindmap-mdmark-config` の要素の中身が `{"map": {"kinds": {"llm": {}}}}`。`/* m */`・`/* a */`・`/* b */` がこの順で、どれも `<script id="mindmap-app">` より前にある。`mindmap-licenses` の要素の中に `本文 m`・`束ねた本文 m`・`本文 a`・`本文 b` がこの順にある。`fetch` に渡った mdmark の URL が全て `@v0.13.0` で、`MDMARK_PACKAGE` のライセンスの本文の URL を含まない'
+        expected: '`https://`・外の読み込みのマーカー・`MDMARK_SLOT` が無い。`<style id="mindmap-mdmark-css">.m{}</style>` があり、`mindmap-mdmark` の要素の中身が `/* m */`、`mindmap-mdmark-map` の要素の中身が `/* map.js */`、`mindmap-mdmark-config` の要素の中身が `{"map": {"kinds": {"llm": {}}}}`。`/* m */`・`/* a */`・`/* b */` がこの順で、どれも `<script id="mindmap-app">` より前にある。`mindmap-licenses` の要素の中に `本文 m`・`束ねた本文 m`・`本文 a`・`本文 b` がこの順にある。`fetch` に渡った mdmark の URL が全て `@v0.13.0` で、`MDMARK_PACKAGE` のライセンスの本文の URL を含まない'
         exception: '-'
       - name: test_assemble_standalone_template_when_integrity_mismatch
         case: 異常
@@ -820,7 +820,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
     scope: public
-    summary: ライブラリごとの名前・版・著作権の表示・ライセンスの名前・ソースコードの入手先・ライセンスの本文・束ねた依存のライセンスを並べた文字列を返す
+    summary: ライブラリごとの名前・バージョン・著作権の表示・ライセンスの名前・ソースコードの入手先・ライセンスの本文・束ねた依存のライセンスを並べた文字列を返す
     args:
       - name: blocks
         type: list[LicenseBlock]
@@ -831,15 +831,15 @@ functions:
       type: str
       description: ライブラリごとの塊を空行で区切った文字列
     process: |-
-      1. 塊ごとに、`{name} {version}`・`notice`・`License: {license}`・`Source: {repository}/tree/{tag}`（`tag` の `{version}` に版を入れる）の行と、`license_text`、`bundled_text` があればその見出しの行 `{name} が中に持つライブラリ` と本文をこの順に並べる
+      1. 塊ごとに、`{name} {version}`・`notice`・`License: {license}`・`Source: {repository}/tree/{tag}`（`tag` の `{version}` にバージョンを入れる）の行と、`license_text`、`bundled_text` があればその見出しの行 `{name} が中に持つライブラリ` と本文をこの順に並べる
       2. 塊を並びの順に空行でつなぐ
     unit_tests:
       - name: test_format_licenses
         case: 正常
-        summary: ライブラリごとに名前・版・著作権・ライセンス・入手先・本文を並べる
-        condition: '2 つの `LicenseBlock`（`license_text` は `本文 A`・`本文 B`。2 つ目だけ `bundled_text` が `束ねた本文`。1 つ目の `tag` は `v{version}`・版 `1.2.3`）'
+        summary: ライブラリごとに名前・バージョン・著作権・ライセンス・入手先・本文を並べる
+        condition: '2 つの `LicenseBlock`（`license_text` は `本文 A`・`本文 B`。2 つ目だけ `bundled_text` が `束ねた本文`。1 つ目の `tag` は `v{version}`・バージョン `1.2.3`）'
         mock: なし
-        expected: '1 つ目の名前と版・`notice`・`License:`・`Source: {repository}/tree/v1.2.3`・`本文 A` がこの順にあり、その後に 2 つ目の塊が空行を挟んで続き、2 つ目の `本文 B` の後に見出しの行と `束ねた本文` がある。1 つ目の塊には見出しの行が無い'
+        expected: '1 つ目の名前とバージョン・`notice`・`License:`・`Source: {repository}/tree/v1.2.3`・`本文 A` がこの順にあり、その後に 2 つ目の塊が空行を挟んで続き、2 つ目の `本文 B` の後に見出しの行と `束ねた本文` がある。1 つ目の塊には見出しの行が無い'
   - name: read_records
     title: 記録の読み出し
     kind: 関数
@@ -858,7 +858,7 @@ functions:
         required: false
         default: None
         passing: keyword
-        description: 配信が持つ最後に検査に通った設定（`SettingsHolder.current`）。`None` なら `config.yaml` の問題もほかと同じく送る
+        description: 配信が持つ最後に検査に通った設定（`SettingsHolder.current`）。`None` なら `config.yaml` の問題もほかと同じく送信する
       - name: now
         type: NowFn
         required: false
@@ -878,8 +878,8 @@ functions:
       1. ワークスペースを読み、検証する（`load_workspace`、`validate_workspace`）
          - `config.yaml` が無い場合、`WorkspaceNotFoundError` がそのまま上がる
       2. 問題を `file` が `config.yaml` のものとそれ以外に分ける
-         - それ以外の問題がある場合、問題ごとの行を持った `SchemaMismatchError` を送る（`legacy` は `is_legacy_problem`）
-         - `config.yaml` の問題があり、`last_settings` が `None` の場合、同じく `SchemaMismatchError` を送る
+         - それ以外の問題がある場合、問題ごとの行を持った `SchemaMismatchError` を送出する（`legacy` は `is_legacy_problem`）
+         - `config.yaml` の問題があり、`last_settings` が `None` の場合、同じく `SchemaMismatchError` を送出する
          - `config.yaml` の問題があり、`last_settings` がある場合、ワークスペースの `settings` を `last_settings` に差し替え（`dataclasses.replace`）、問題ごとの行を `settings_problem` にする
       3. まとめる設定（差し替えたときは `last_settings`）の `mdmark.version` を、`resolve` で ref にする
       4. 読んだ日時と `settings_problem` と ref を付けてまとめる（`collect_preview_data`）
@@ -890,7 +890,7 @@ functions:
       - name: test_read_records
         case: 正常
         summary: その場で読んだ記録を返す
-        condition: D-1 を持つワークスペース。`now` は `2026-10-04T03:00:00+00:00`。一度読んだ後に D-2 を足してもう一度読む
+        condition: D-1 を持つワークスペース。`now` は `2026-10-04T03:00:00+00:00`。一度読んだ後に D-2 を追加してもう一度読む
         mock: '`now`'
         expected: 1 回目の `decisions` が D-1 だけ、2 回目が D-1・D-2。`built_at` が `now` の値
       - name: test_read_records_when_schema_mismatch
@@ -911,7 +911,7 @@ function_types:
     title: URL の中身を取る関数
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
-    summary: URL を受けて本文のバイト列を返す。取れなければ `DownloadFailedError` を送る（`type FetchFn = Callable[[str], bytes]`）
+    summary: URL を受けて本文のバイト列を返す。取れなければ `DownloadFailedError` を送出する（`type FetchFn = Callable[[str], bytes]`）
     args:
       - name: url
         type: str

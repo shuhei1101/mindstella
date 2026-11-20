@@ -1,0 +1,4 @@
+# pytest tests/integration/preview/test_spa_detail_panel_screen.py::test_edit_relations -rA
+PASSED tests/integration/preview/test_spa_detail_panel_screen.py::test_edit_relations[chromium]
+1 passed in 7.76s
+exit=0

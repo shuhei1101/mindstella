@@ -22,7 +22,7 @@ export type TopbarTab = {
   icon: IconName;
   /** その種類の項目の件数（概要は持たない） */
   count?: number;
-  /** 差分の表示の間、その種類に新規・変更・消した項目があるか */
+  /** 差分の表示の間、その種類に新規・変更・削除した項目があるか */
   marked?: boolean;
 };
 
@@ -172,7 +172,7 @@ const TabLink = ({
       {tab.count === undefined ? null : <span className="mono text-tab-count font-normal text-subtle-foreground">{tab.count}</span>}
       {tab.marked === true ? (
         <span className="absolute top-2.75 left-5.5 size-2 rounded-full bg-diff-changed ring-2 ring-card">
-          <span className="sr-only">新規・変更・消した項目があります</span>
+          <span className="sr-only">新規・変更・削除した項目があります</span>
         </span>
       ) : null}
     </a>

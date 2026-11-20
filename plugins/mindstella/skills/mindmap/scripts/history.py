@@ -140,15 +140,15 @@ class HistoryEntry(TypedDict):
 class RemovedItem(TypedDict):
     """`changes.yaml` の `pending.removed`・`sets[].removed` の 1 要素。"""
 
-    # 消した項目の ID
+    # 削除した項目の ID
     id: str
-    # 消した項目の種類
+    # 削除した項目の種類
     kind: Kind
     # 消したときのタイトル
     title: str
     # 消したときに振った通し番号
     seq: int
-    # 消した項目が持っていた `added_seq`（持たなければ 0）
+    # 削除した項目が持っていた `added_seq`（持たなければ 0）
     added_seq: int
 
 
@@ -161,7 +161,7 @@ class ChangeSet(TypedDict):
     until_seq: int
     added: list[str]
     changed: list[str]
-    # 消した項目。消した項目が無いまとまりはキーを持たない
+    # 削除した項目。削除した項目が無いまとまりはキーを持たない
     removed: NotRequired[list[RemovedItem]]
     # まとめた変更の書いた元。このキーを入れる前のまとまりは持たない
     by: NotRequired[Writer]
@@ -174,7 +174,7 @@ class Pending(TypedDict):
     added: list[str]
     # 変えた項目の ID（書き換えた順。足した項目は入れない）
     changed: list[str]
-    # 消した項目（消した順）。無ければ消した項目なし
+    # 削除した項目（消した順）。無ければ削除した項目なし
     removed: NotRequired[list[RemovedItem]]
     # 入っている変更の書いた元。無ければ `ai`
     by: NotRequired[Literal["ai", "external"]]
@@ -417,7 +417,7 @@ def note_pending(
     by: Literal["ai", "external"] = "ai",
 ) -> Changes:
     """まだまとめていない変更に ID を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）。"""
-    # 消した項目の記録はそのまま引き継ぐ
+    # 削除した項目の記録はそのまま引き継ぐ
     pending: Pending = {
         **changes["pending"],
         "added": list(changes["pending"]["added"]),
@@ -432,7 +432,7 @@ def note_pending(
 
 
 def note_removed(changes: Changes, removed: RemovedItem) -> Changes:
-    """`pending.added`・`pending.changed` から消した ID を除き、`pending.removed` の末尾に消した項目を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）。"""
+    """`pending.added`・`pending.changed` から消した ID を除き、`pending.removed` の末尾に削除した項目を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）。"""
     pending = changes["pending"]
     noted: Pending = {
         "added": [item_id for item_id in pending["added"] if item_id != removed["id"]],
@@ -480,7 +480,7 @@ def commit_pending(
         "added": list(pending["added"]),
         "changed": list(pending["changed"]),
     }
-    # 消した項目があるときだけ、まとまりに写す
+    # 削除した項目があるときだけ、まとまりに写す
     if pending_removed:
         change_set["removed"] = list(pending_removed)
     change_set["by"] = by
@@ -493,7 +493,7 @@ def commit_pending(
 
 
 def pending_view(workspace: Workspace, changes: Changes) -> dict[str, Any]:
-    """まだまとめていない項目を、タイトルと変えたキーつきで返し、消した項目も並べる（`pending` のツールの結果の形）。"""
+    """まだまとめていない項目を、タイトルと変えたキーつきで返し、削除した項目も並べる（`pending` のツールの結果の形）。"""
     sets = changes["sets"]
     rows = load_item_history(workspace.root)
     # 最後のまとまりより後の変更履歴だけが、まだまとめていない分
@@ -546,7 +546,7 @@ def values_at_read(
 
 
 def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
-    """AI が最後に読んだ時点より後に足した・変えた・消した項目を、`changes_since_read` の結果の形に並べる。"""
+    """AI が最後に読んだ時点より後に足した・変えた・削除した項目を、`changes_since_read` の結果の形に並べる。"""
     read_seq = changes.get("read_seq")
     # 読んだ時点の記録が無い: 差分を返さない
     if read_seq is None:
@@ -600,7 +600,7 @@ def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
                     "body_diff": body_diff,
                 }
             )
-    # 読んだ時点に有って、後で消した項目（読んだ後に足して消した項目は、読んだ時点にも今にも無いので返さない）
+    # 読んだ時点に有って、後で削除した項目（読んだ後に足して削除した項目は、読んだ時点にも今にも無いので返さない）
     removed = [
         {"id": entry["id"], "kind": entry["kind"], "title": entry["title"]}
         for entry in removed_items(changes)

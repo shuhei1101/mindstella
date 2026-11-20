@@ -5,12 +5,12 @@
   <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>未読の印 | mindstella 部品のモック</title>
+  <title>未読のマーカー | mindstella 部品のモック</title>
   <!-- 文字: デザイン方針の Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目（#235 のカタログと同じ） -->
+  <!-- トークン・今のプレビューのスタイル・この PR で追加するスタイル・カタログの見た目（#235 のカタログと同じ） -->
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
   <link rel="stylesheet" href="../../refs/258/assets/style.css">
@@ -29,7 +29,7 @@
   <main class="catalog">
     <!-- パンくず -->
     <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / unread-mark</nav>
-    <h1>未読の印</h1>
+    <h1>未読のマーカー</h1>
 
     <!-- スレッドの行: 未読と既読 -->
     <section class="cat-sec">
@@ -38,52 +38,52 @@
       <div class="stage" id="s-row"></div>
     </section>
 
-    <!-- 状態の札・レビュー中の印と並んだとき -->
+    <!-- 状態の札・レビュー中のマーカーと並んだとき -->
     <section class="cat-sec">
-      <h2>状態の札・レビュー中の印と並んだとき</h2>
-      <p>状態の札は線の枠と印、レビュー中の印は破線の枠と鉛筆の印、未読の印は塗りつぶしと点で、形が違う。上から、AI が立てたスレッド（未読）・未読とレビュー中の返信の両方を持つ行・まだ送っていない新しいスレッド（未読にならない）。</p>
+      <h2>状態の札・レビュー中のマーカーと並んだとき</h2>
+      <p>状態の札は線の枠とマーカー、レビュー中のマーカーは破線の枠と鉛筆のアイコン、未読のマーカーは塗りつぶしと点で、形状が違う。上から、AI が立てたスレッド（未読）・未読とレビュー中の返信の両方を持つ行・まだ送信していない新規スレッド（未読にならない）。</p>
       <div class="stage" id="s-mixed"></div>
     </section>
 
     <!-- クローズのスレッドの未読 -->
     <section class="cat-sec">
       <h2>クローズのスレッドの未読</h2>
-      <p>行には未読の印を出す。トップバーの印には数えない（オープンのスレッドの未読だけで出す）。</p>
+      <p>行には未読のマーカーを出す。トップバーのマーカーには数えない（オープンのスレッドの未読だけで出す）。</p>
       <div class="stage" id="s-closed"></div>
     </section>
 
     <!-- 長い要約・タグを持つ未読の行 -->
     <section class="cat-sec">
       <h2>長い要約・タグを持つ未読の行</h2>
-      <p>要約は 2 行で末尾を省く。未読の印は 2 行目の先頭のまま動かない。</p>
+      <p>要約は 2 行で末尾を省く。未読のマーカーは 2 行目の先頭のまま動かない。</p>
       <div class="stage" id="s-long"></div>
     </section>
 
     <!-- ホバー・フォーカス -->
     <section class="cat-sec">
       <h2>未読の行のホバー・フォーカス</h2>
-      <p>ホバーは行の面を変え、フォーカスは開くボタンの枠の全体に出す。未読の印の見た目は変えない。</p>
+      <p>ホバーは行の面を変え、フォーカスは開くボタンの枠の全体に出す。未読のマーカーの見た目は変えない。</p>
       <div class="stage" id="s-hover"></div>
     </section>
 
     <!-- 案 A: コメントのボタンの角の点 -->
     <section class="cat-sec">
       <h2>コメントのボタン 案 A（推奨）: 角の点</h2>
-      <p>吹き出しの印の右上に点を重ね、レビュー中の件数はそのまま残す。ボタンの幅は変わらない。読み上げの名前は「コメント（未読あり・レビュー中 3 件）」。上から、未読なし・未読あり・未読ありでレビュー中 0 件・未読ありで一覧を開いている・未読ありでホバー・件数が多い。</p>
+      <p>吹き出しのアイコンの右上に点を重ね、レビュー中の件数はそのまま残す。ボタンの幅は変わらない。読み上げの名前は「コメント（未読あり・レビュー中 3 件）」。上から、未読なし・未読あり・未読ありでレビュー中 0 件・未読ありで一覧を開いている・未読ありでホバー・件数が多い。</p>
       <div class="stage col" id="s-btn-a"></div>
     </section>
 
     <!-- 案 B: コメントのボタンの未読の件数 -->
     <section class="cat-sec">
       <h2>コメントのボタン 案 B: 未読の件数</h2>
-      <p>未読のスレッドの件数を、点つきの別の色の塗りでレビュー中の件数の前に足す。読み上げの名前は「コメント（未読 2 件・レビュー中 3 件）」。並びは案 A と同じ。</p>
+      <p>未読のスレッドの件数を、点つきの別の色の塗りでレビュー中の件数の前に追加する。読み上げの名前は「コメント（未読 2 件・レビュー中 3 件）」。並びは案 A と同じ。</p>
       <div class="stage col" id="s-btn-b"></div>
     </section>
 
     <!-- 狭い幅（390px） -->
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
-      <p>未読の行の一覧。トップバーのボタンが印と件数だけになる形は、画面の幅で決まるため、幅 390px でこのページを開いて上の案 A・案 B の帯で見る。</p>
+      <p>未読の行の一覧。トップバーのボタンがマーカーと件数だけになる形状は、画面の幅で決まるため、幅 390px でこのページを開いて上の案 A・案 B の帯で見る。</p>
       <div class="stage narrow" id="s-narrow"></div>
     </section>
   </main>
@@ -104,7 +104,7 @@
       /** 見本のスレッド（書き込みの seen が false のものが利用者の未読） */
       const replied = (seen) => ({
         id: "TH-1", status: "open", tags: ["画面"], target: "D-12", target_title: null, loc: null, events: [],
-        summary: "D-12 の失敗時の扱いの相談。案 B（写しから戻す）で決まった",
+        summary: "D-12 の失敗時の扱いの相談。案 B（コピーから戻す）で決まった",
         posts: [
           { id: "TH-1-1", author: "user", body: "D-12 は案 B にしたい", created: at("01:20"), seen: true },
           { id: "TH-1-2", author: "ai", body: "D-12 を案 B で決定にしました。", created: at("01:24"), seen },
@@ -127,13 +127,13 @@
       };
       const long = {
         id: "TH-4", status: "open", tags: ["調査", "画面"], target: null, target_title: null, loc: null, events: [],
-        summary: "移し替えの手順を画面で見られるかの質問。今は見られず、T-6 の点検の結果を、版ごとの操作の一覧にした資料 A-9 にまとめることになった",
+        summary: "移し替えの手順を画面で見られるかの質問。今は見られず、T-6 の点検の結果を、バージョンごとの操作の一覧にした資料 A-9 にまとめることになった",
         posts: [
           { id: "TH-4-1", author: "user", body: "移し替えの手順は、プレビューのどこかで見られる？", created: at("00:10"), seen: true },
-          { id: "TH-4-4", author: "ai", body: "T-6 の点検の結果を、版ごとの一覧にした資料 A-9 を足しました。", created: at("00:41"), seen: false },
+          { id: "TH-4-4", author: "ai", body: "T-6 の点検の結果を、バージョンごとの一覧にした資料 A-9 を追加ました。", created: at("00:41"), seen: false },
         ],
       };
-      const newThread = { id: "C-41", target: "D-5", target_title: null, loc: null, thread: null, body: "写しは git のコミットで取るほうが戻しやすいと思う", created: at("05:10") };
+      const newThread = { id: "C-41", target: "D-5", target_title: null, loc: null, thread: null, body: "コピーは git のコミットで取るほうが戻しやすいと思う", created: at("05:10") };
 
       /** 行を開く・タグを押す（見本では何もしない） */
       const on = { open: () => {}, tag: () => {} };
@@ -152,11 +152,11 @@
       document.querySelector("#s-hover .pane:nth-child(2) .th-open").classList.add("is-focus");
       place("s-narrow", [list([row(asking), row(replied(false), { hasPendingReply: true }), row(long), row(closed), row(replied(true))])]);
 
-      /** トップバーの帯（タブの帯を除く）。印の出し方は body の data-unread-mark で切り替える */
+      /** トップバーの帯（タブの帯を除く）。マーカーの出し方は body の data-unread-mark で切り替える */
       const bar = (mark, { count, unread, open = false, hover = false }) => {
         document.body.dataset.unreadMark = mark;
         const top = MindmapPreview.topbar({
-          title: "mindstella（mindmap）の改善を話し合い、Issue に起票できる形にまとめる",
+          title: "mindstella（mindmap）の改善を話し合い、Issue に起票できる形式にまとめる",
           tabs: [], current: "overview", theme,
           onNavigate: () => {}, onSearch: () => {}, onTheme: () => {},
           comments: true, commentCount: count, commentUnread: unread, commentsOpen: open, onComments: () => {},

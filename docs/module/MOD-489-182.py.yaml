@@ -20,13 +20,13 @@ functions:
       type: list[str]
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
-      1. `mindmap.yaml` が無い場合、何も書かず空を返す（既に `config.yaml` に改めた今の形のワークスペース）
+      1. `mindmap.yaml` が無い場合、何も書かず空を返す（既に `config.yaml` に改めた今の形式のワークスペース）
       2. `mindmap.yaml` を `yaml.safe_load` で読む
       3. 設定が `field` を持たない場合、何も書かず空を返す
-      4. `field` と `playbooks` を両方持つ場合、`ValueError`（`field と playbooks を両方持ちます`）を送る（`call` が手順の失敗にする）
+      4. `field` と `playbooks` を両方持つ場合、`ValueError`（`field と playbooks を両方持ちます`）を送出する（`call` が手順の失敗にする）
       5. キーの並びを保ったまま、`field` の位置に `playbooks: [{field の値}]` を置いた新しい辞書を作る（`target_label` など他のキーは変えない）
       6. 読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
-         - 置き換えで `OSError` が起きた場合、一時ファイルを消して送り直す
+         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して再送出する
       7. `[mindmap.yaml]` を返す
     exceptions:
       - name: ValueError
@@ -49,7 +49,7 @@ functions:
         expected: 戻り値が空、中身と更新日時が呼ぶ前と同じ
       - name: test_migrate_when_both
         case: 異常
-        summary: field と playbooks を両方持つ設定は送り、何も書かない
+        summary: field と playbooks を両方持つ設定は送信し、何も書かない
         condition: '`field` と `playbooks` を両方持つ `mindmap.yaml`'
         mock: なし
         expected: '`ValueError`、中身が呼ぶ前と同じ'

@@ -78,7 +78,7 @@ BLOCKED = {"labelVisible": True, "describedByStatus": True}
         pytest.param(
             {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": None},
             BLOCKED,
-            "レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。",
+            "レビューに追加できませんでした。サーバーが止まっています。再起動してから追加してください。",
             id="failed_unreachable",
         ),
         pytest.param(

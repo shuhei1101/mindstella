@@ -172,7 +172,7 @@ def _text_of(result: CallToolResult) -> str:
 
 
 def _run_async[T](coroutine: Coroutine[Any, Any, T]) -> T:
-    """動いているイベントループがあっても呼べるよう、新しいスレッドで `asyncio.run` を呼んで結果を返す。"""
+    """動いているイベントループがあっても呼べるよう、新規スレッドで `asyncio.run` を呼んで結果を返す。"""
     outcome: list[T] = []
     errors: list[BaseException] = []
 

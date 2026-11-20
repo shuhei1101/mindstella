@@ -283,7 +283,7 @@ def write_files(contents: dict[Path, str | None]) -> None:
                 os.chmod(temp_name, NEW_FILE_MODE)
             os.replace(temp_name, str(path))
         except OSError as error:
-            # 書きかけの一時ファイルを残さない
+            # 下書きの一時ファイルを残さない
             if temp_name is not None and os.path.exists(temp_name):
                 os.unlink(temp_name)
             raise NotWritableError(path) from error

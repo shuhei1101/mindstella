@@ -1,0 +1,21 @@
+# git archive 1792643a | tar -x -C /tmp/wordconv337/scan/before
+# git archive a009bea0 | tar -x -C /tmp/wordconv337/scan/after
+
+# python3 -I "/mnt/c/Users/shuhe/repo/knowledge/tmp/ui、ドキュメントの文章ベストプラクティス/集計/reposcan.py" /tmp/wordconv337/scan/before   （修正前: origin/develop 1792643a）
+{"hits": 22951, "jp_chars": 2514132, "density": 91.3, "top_files": [["docs/interface/IF-489-71.yaml", 318], ["docs/guide/プレビューを見る.mark.md", 252], ["docs/module/MOD-489-171.ts.yaml", 247], ["plugins/mindstella/skills/mindmap/preview/app.ts", 239], ["docs/scenario/SC-489-18.yaml", 222], ["docs/guide/コマンド.mark.md", 210], ["plugins/mindstella/skills/mindmap/preview/screens/detail.ts", 201], ["docs/module/MOD-489-179.py.yaml", 194]], "top_words": [["印", 3981], ["直し", 2621], ["版", 2082], ["消し", 1866], ["直す", 1791], ["足し", 1762], ["足す", 1747], ["送る", 1489]], "files_with_hits": 1815}
+
+# python3 -I "/mnt/c/Users/shuhe/repo/knowledge/tmp/ui、ドキュメントの文章ベストプラクティス/集計/reposcan.py" /tmp/wordconv337/scan/after   （修正後: a009bea0）
+{"hits": 10669, "jp_chars": 2563793, "density": 41.6, "top_files": [["plugins/mindstella/skills/mindmap/preview/app.ts", 231], ["plugins/mindstella/skills/mindmap/preview/screens/detail.ts", 197], ["frontend/src/shared/core/body-render.ts", 95], ["plugins/mindstella/skills/mindmap/preview/core/diff.ts", 88], ["frontend/src/shared/core/diff.ts", 87], ["docs/pr/79/プレビュー.md", 87], ["docs/pr/179/プレビュー.md", 85], ["docs/pr/180/要件.md", 83]], "top_words": [["印", 1684], ["直し", 1640], ["足す", 970], ["直す", 933], ["版", 886], ["足し", 879], ["消し", 693], ["形", 550]], "files_with_hits": 1244}
+
+# 分類ごとの件数（reposcan.py と同じ照合・拡張子・除外で、ファイルのパスで分類した）
+## before
+13385	それ以外（文書・設計書・YAML・モック）
+6686	過去の PR ドキュメント（docs/pr/。640 を除く）
+2641	コード（.ts・.tsx。コメント・識別子・UI 文言の文章を含む）
+239	過去の作業 PR のモックのコピー（docs/mock/refs/）
+## after
+6686	過去の PR ドキュメント（docs/pr/。640 を除く）
+2461	コード（.ts・.tsx。コメント・識別子・UI 文言の文章を含む）
+1173	それ以外（文書・設計書・YAML・モック）
+239	過去の作業 PR のモックのコピー（docs/mock/refs/）
+110	この PR の PR ドキュメント（docs/pr/640/）

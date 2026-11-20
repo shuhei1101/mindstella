@@ -4,11 +4,11 @@ test_files:
   - tests/unit/scripts/test_backup.py
 data_models:
   - name: Backup
-    title: 写し
+    title: コピー
     container: plugins/mindstella/skills/mindmap/scripts/backup.py
     usecase: 記録の形式の移行
     role: DTO
-    summary: 取った写し。出力の `backup` と同じキー
+    summary: 取ったコピー。出力の `backup` と同じキー
     properties:
       - name: kind
         type: Literal['git', 'copy']
@@ -18,20 +18,20 @@ data_models:
         description: コミットの ID か、複製したフォルダの絶対パス
 constants:
   - name: BACKUP_COMMIT_MESSAGE
-    title: 写しのコミットのメッセージ
+    title: コピーのコミットのメッセージ
     container: plugins/mindstella/skills/mindmap/scripts/backup.py
     usecase: 記録の形式の移行
-    summary: git の写しのコミットのメッセージ（`{version}` は `--to`）
-    value: '"mindstella: {version} へ移し替える前の写し"'
+    summary: git のコピーのコミットのメッセージ（`{version}` は `--to`）
+    value: '"mindstella: {version} へ移し替える前のコピー"'
 functions:
   - name: take_backup
-    title: 写しを取る
+    title: コピーを取る
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/backup.py
     usecase: 記録の形式の移行
     scope: public
     summary: git の作業ツリーの中で ignore されたファイルが無ければワークスペースのパスだけをコミットし、そうでなければ隣のフォルダへ複製する
-    side_effects: git のコミットを足すか、ワークスペースの隣にフォルダを作る
+    side_effects: git のコミットを追加するか、ワークスペースの隣にフォルダを作る
     args:
       - name: root
         type: Path
@@ -42,19 +42,19 @@ functions:
         type: Version
         required: true
         passing: positional
-        description: 移し替える先の版（`to_version`）
+        description: 移し替える先のバージョン（`to_version`）
     returns:
       type: Backup
-      description: 取った写し
+      description: 取ったコピー
     process: |-
       1. `root` を cwd にして `git rev-parse --is-inside-work-tree` を呼ぶ
          - git が無いか終了コードが 0 でない場合、4 へ進む
       2. `git ls-files --others --ignored --exclude-standard -- .` が 1 行でも返せば、4 へ進む
       3. `git add -A -- .` の後、`git commit -m {BACKUP_COMMIT_MESSAGE} -- .` を呼び、`git rev-parse HEAD` の ID で `Backup(kind="git")` を返す
-         - 変更が無くてコミットしなかった場合、今の `HEAD` を写しにする
+         - 変更が無くてコミットしなかった場合、今の `HEAD` をコピーにする
          - コミットが失敗した場合（作者の名前が無い等）、`git reset -q -- .` でステージを戻して 4 へ進む
       4. `root` の隣の `{root.name}.before-{version}`（既にあれば末尾に `-{YYYYmmddHHMMSS}`）へ `shutil.copytree` で複製し、絶対パスで `Backup(kind="copy")` を返す
-         - `OSError` の場合、作りかけの複製を消して `WriteFailedError` を送る
+         - `OSError` の場合、作りかけの複製を削除して `WriteFailedError` を送出する
     exceptions:
       - name: WriteFailedError
         condition: 複製に失敗した
@@ -79,18 +79,18 @@ functions:
         expected: '`kind: copy`。コミットが増えていない'
       - name: test_take_backup_when_copy_exists
         case: 正常
-        summary: 同じ名前の写しがあれば日時を足す
+        summary: 同じ名前のコピーがあれば日時を追加する
         condition: '`{名前}.before-v0.3.0` が既にある'
         mock: なし
         expected: '`ref` が `{名前}.before-v0.3.0-` で始まる別のフォルダ'
   - name: restore_backup
-    title: 写しから戻す
+    title: コピーから戻す
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/backup.py
     usecase: 記録の形式の移行
     scope: public
-    summary: ワークスペースを写しの中身に戻す
-    side_effects: ワークスペースのファイルを書き戻す・消す
+    summary: ワークスペースをコピーの中身に戻す
+    side_effects: ワークスペースのファイルを書き戻す・削除する
     args:
       - name: root
         type: Path
@@ -101,23 +101,23 @@ functions:
         type: Backup
         required: true
         passing: positional
-        description: 取った写し
+        description: 取ったコピー
     returns:
       type: None
       description: なし
     process: |-
       1. `git` なら、`root` を cwd にして `git checkout {ref} -- .` と `git clean -fdq -- .` を呼ぶ
-      2. `copy` なら、`root` の中身を消してから `ref` の中身を `root` へ複製する（`shutil.copytree(dirs_exist_ok=True)`）
+      2. `copy` なら、`root` の中身を削除してから `ref` の中身を `root` へ複製する（`shutil.copytree(dirs_exist_ok=True)`）
     unit_tests:
       - name: test_restore_backup_when_copy
         case: 正常
-        summary: 複製から書き戻し、増えたファイルを消す
-        condition: 複製を取った後に `docs.yaml` を書き換え、`new.yaml` を足したワークスペース
+        summary: 複製から書き戻し、増えたファイルを削除する
+        condition: 複製を取った後に `docs.yaml` を書き換え、`new.yaml` を追加したワークスペース
         mock: なし
-        expected: '`docs.yaml` が写しの中身で、`new.yaml` が無い'
+        expected: '`docs.yaml` がコピーの中身で、`new.yaml` が無い'
       - name: test_restore_backup_when_git
         case: 正常
-        summary: コミットの中身に戻し、増えたファイルを消す
-        condition: git の写しを取った後に `docs.yaml` を書き換え、`new.yaml` を足したワークスペース
+        summary: コミットの中身に戻し、増えたファイルを削除する
+        condition: git のコピーを取った後に `docs.yaml` を書き換え、`new.yaml` を追加したワークスペース
         mock: なし
         expected: '`docs.yaml` がコミットの中身で、`new.yaml` が無い'

@@ -2,4 +2,4 @@
 
 | 案 | 説明 |
 | --- | --- |
-| [standard](./standard/index.html) | 点検で直した語を当てる。図の「拡大表示」のボタン |
+| [standard](./standard/index.html) | 点検で修正した語を当てる。図の「拡大表示」のボタン |

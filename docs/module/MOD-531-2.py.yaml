@@ -28,7 +28,7 @@ constants:
     title: 1 回の呼び出しの上限
     container: plugins/mindstella/skills/mindmap/scripts/project_index.py
     usecase: 外部のアプリから起動する
-    summary: project-index への 1 回の HTTP を打ち切る秒数。project-index は配信元を読み直してから返すので、読み直しの時間を見込む
+    summary: project-index への 1 回の HTTP を打ち切る秒数。project-index は配信元を再読み込みしてから返すので、再読み込みの時間を見込む
     value: '10.0'
 functions:
   - name: get_settings
@@ -68,14 +68,14 @@ functions:
         summary: 渡した秒数で打ち切る
         condition: テストが空きポートで立てた、応答を 1 秒遅らせる HTTP のサーバーに `timeout=0.2` で呼ぶ
         mock: なし
-        expected: '`ProjectIndexError` が約 0.2 秒で送られる'
+        expected: '`ProjectIndexError` が約 0.2 秒で送出される'
   - name: add_source
-    title: 配信元の行を足す
+    title: 配信元の行を追加する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/project_index.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`get_settings` で `version` を取得し、`POST /settings/sources` に `{source: row, expectedVersion: version}` を送信する。201 なら `added`、409 で `result: exists` なら `same` を見て `exists_same`・`exists_different` を返す。409 でそれ以外（内容のバージョンの不一致）なら 1 回だけ `version` を取得し直して再送信する'
+    summary: '`get_settings` で `version` を取得し、`POST /settings/sources` に `{source: row, expectedVersion: version}` を送信する。201 なら `added`、409 で `result: exists` なら `same` を見て `exists_same`・`exists_different` を返す。409 でそれ以外（内容のバージョンの不一致）なら 1 回だけ `version` を再取得して再送信する'
     args:
       - name: port
         type: int
@@ -99,7 +99,7 @@ functions:
         summary: 201・409 の same で結果を分ける
         condition: '`parametrize`: 201 / 409 `{result: exists, same: true}` / 409 `{result: exists, same: false}`'
         mock: テストの HTTP のサーバー
-        expected: '`added` / `exists_same` / `exists_different`。送った本文が `{source: row, expectedVersion: {GET /settings/sources の version}}`'
+        expected: '`added` / `exists_same` / `exists_different`。送信した本文が `{source: row, expectedVersion: {GET /settings/sources の version}}`'
       - name: test_add_source_error
         case: 異常
         summary: 422・500 とつながらないときは ProjectIndexError
@@ -108,10 +108,10 @@ functions:
         expected: '`ProjectIndexError`'
       - name: test_add_source_version_conflict
         case: 正常
-        summary: 内容のバージョンの不一致は 1 回だけ取得し直して再送信する
+        summary: 内容のバージョンの不一致は 1 回だけ再取得して再送信する
         condition: 1 回目の POST が `result` を持たない 409、2 回目が 201
         mock: テストの HTTP のサーバー
-        expected: '`added`。GET が 2 回、POST が 2 回で、2 回目の `expectedVersion` が取得し直した `version`'
+        expected: '`added`。GET が 2 回、POST が 2 回で、2 回目の `expectedVersion` が再取得した `version`'
       - name: test_add_source_version_conflict_twice
         case: 異常
         summary: 内容のバージョンの不一致が 2 回続けば ProjectIndexError
@@ -124,7 +124,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/project_index.py
     usecase: MindStella のセッションを止めてワークスペースをクローズにする
     scope: public
-    summary: '`get_settings` で `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source` を送る。409（版が古い）なら 1 回だけ引き直して送り直す'
+    summary: '`get_settings` で `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source` を送信する。409（バージョンが古い）なら 1 回だけ再取得して再送信する'
     args:
       - name: port
         type: int
@@ -150,10 +150,10 @@ functions:
     unit_tests:
       - name: test_patch_source
         case: 正常
-        summary: 版を付けて送り、409 なら 1 回だけ引き直す
+        summary: バージョンを付けて送信し、409 なら 1 回だけ再取得する
         condition: 1 回目の PATCH が 409、2 回目が 200
         mock: テストの HTTP のサーバー
-        expected: GET が 2 回、PATCH が 2 回で、2 回目の `expectedVersion` が引き直した版
+        expected: GET が 2 回、PATCH が 2 回で、2 回目の `expectedVersion` が再取得したバージョン
       - name: test_patch_source_conflict_twice
         case: 異常
         summary: 2 回続けて 409 なら ProjectIndexError
@@ -294,9 +294,9 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/project_index.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: 端末の設定のファイルの `sources` の行をそのまま `PUT /settings/sources` に送り、全ての配信元を再読み込みさせる。409（版が古い）なら 1 回だけ引き直して送り直す
+    summary: 端末の設定のファイルの `sources` の行をそのまま `PUT /settings/sources` に送信し、全ての配信元を再読み込みさせる。409（バージョンが古い）なら 1 回だけ再取得して再送信する
     description: '`GET /settings/sources` の応答の行は状態を含む camelCase の構造で `PUT` の要求の行と違うので、行は応答ではなく `settingsPath` のファイルから読む'
-    side_effects: project-index の端末の設定のファイルを同じ行で書き換えさせる（行の値は変わらない。project-index が行を組み立て直すので、`sources` の行の中のコメントや書き方は残らないことがある）
+    side_effects: project-index の端末の設定のファイルを同じ行で書き換えさせる（行の値は変わらない。project-index が行を組み再作成するので、`sources` の行の中のコメントや書き方は残らないことがある）
     args:
       - name: port
         type: int
@@ -309,20 +309,20 @@ functions:
     process: |-
       1. `get_settings` で `version` と `settingsPath` を引く
       2. `settingsPath` のファイルを YAML として読み、`sources` の並びを取る
-      3. `PUT /settings/sources` に `expectedVersion` と `sources` を送る
+      3. `PUT /settings/sources` に `expectedVersion` と `sources` を送信する
          - 200 の場合、戻る
-         - 1 回目が 409 の場合、1 から引き直して送り直す
-         - それ以外の場合、`ProjectIndexError` を送る
+         - 1 回目が 409 の場合、1 から再取得して再送信する
+         - それ以外の場合、`ProjectIndexError` を送出する
     exceptions:
       - name: ProjectIndexError
         condition: 200 のほか、409 が 2 回、または端末の設定のファイルが読めない・`sources` が並びでない
     unit_tests:
       - name: test_reload_sources
         case: 正常
-        summary: ファイルの行をそのまま送り、409 なら 1 回だけ引き直す
+        summary: ファイルの行をそのまま送信し、409 なら 1 回だけ再取得する
         condition: '`settingsPath` の一時ファイルに `sources` の 2 行。1 回目の PUT が 409、2 回目が 200'
         mock: テストの HTTP のサーバー
-        expected: PUT が 2 回で、どちらも `sources` がファイルの 2 行と同じ。2 回目の `expectedVersion` が引き直した版
+        expected: PUT が 2 回で、どちらも `sources` がファイルの 2 行と同じ。2 回目の `expectedVersion` が再取得したバージョン
       - name: test_reload_sources_when_conflict_twice
         case: 異常
         summary: 2 回続けて 409 なら ProjectIndexError
@@ -331,7 +331,7 @@ functions:
         expected: '`ProjectIndexError`（`status` が 409）'
       - name: test_reload_sources_when_settings_unreadable
         case: 異常
-        summary: 端末の設定のファイルが無ければ送らない
+        summary: 端末の設定のファイルが無ければ送信しない
         condition: '`settingsPath` が無いファイルを指す'
         mock: テストの HTTP のサーバー
         expected: '`ProjectIndexError`。PUT を受けていない'
@@ -394,9 +394,9 @@ functions:
     title: 配信元の行を削除する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/project_index.py
-    usecase: ワークスペースを開き直して削除する
+    usecase: ワークスペースを再度開いて削除する
     scope: public
-    summary: '`get_settings` で `version` を引き、`DELETE /settings/sources/{id}?expectedVersion=` を送る。409（バージョンが要更新）なら 1 回だけ引き直して送り直す'
+    summary: '`get_settings` で `version` を引き、`DELETE /settings/sources/{id}?expectedVersion=` を送信する。409（バージョンが要更新）なら 1 回だけ再取得して再送信する'
     args:
       - name: port
         type: int
@@ -417,10 +417,10 @@ functions:
     unit_tests:
       - name: test_delete_source
         case: 正常
-        summary: バージョンを付けて送り、409 なら 1 回だけ引き直す
+        summary: バージョンを付けて送信し、409 なら 1 回だけ再取得する
         condition: 1 回目の DELETE が 409、2 回目が 200
         mock: テストの HTTP のサーバー
-        expected: 真を返し、DELETE が 2 回で、2 回目の `expectedVersion` が引き直したバージョン
+        expected: 真を返し、DELETE が 2 回で、2 回目の `expectedVersion` が再取得したバージョン
       - name: test_delete_source_missing
         case: 正常
         summary: 行が無ければ偽
@@ -434,11 +434,11 @@ functions:
         mock: テストの HTTP のサーバー
         expected: '`ProjectIndexError`（`status` が 409 / 500）'
 notes:
-  HTTP: 標準ライブラリの `urllib.request` で送る。`Origin` を付けない（project-index はサーバーの側からの呼び出しとして受ける）
+  HTTP: 標準ライブラリの `urllib.request` で送信する。`Origin` を付けない（project-index はサーバーの側からの呼び出しとして受ける）
   ログ: |
-    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に書き足す）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
+    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に追記する）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
 
     | イベント名 | 水準 | いつ | 属性 |
     | --- | --- | --- | --- |
-    | `mindstella.project_index.version_conflict` | WARN | `add_source`・`patch_source` が内容のバージョンの不一致の 409 を受けて `version` を取得し直した | 配信元の ID |
-    | `mindstella.project_index.request_failed` | WARN | `ProjectIndexError` を送る（呼び出し元が 502 にするときは呼び出し元が ERROR を書くので、ここでは段階を残すだけ） | メソッド・パス・ステータス・理由 |
+    | `mindstella.project_index.version_conflict` | WARN | `add_source`・`patch_source` が内容のバージョンの不一致の 409 を受けて `version` を再取得した | 配信元の ID |
+    | `mindstella.project_index.request_failed` | WARN | `ProjectIndexError` を送出する（呼び出し元が 502 にするときは呼び出し元が ERROR を書くので、ここでは段階を残すだけ） | メソッド・パス・ステータス・理由 |

@@ -67,7 +67,7 @@ export const Paragraphs: Story = {};
 /** 段落の中の語を書き換えた。左の消した段落と右の足した段落が向かい合い、変わった語だけに濃い面を付ける */
 export const Rewritten: Story = { args: { before: REWRITTEN_BEFORE, after: REWRITTEN_AFTER } };
 
-/** 表の行と箇条書きの項目を変えた。左に消した行・項目、右に足した行・項目の印を付け、消した箇条書きの項目は消した色の面と取り消し線で出す */
+/** 表の行と箇条書きの項目を変えた。左に消した行・項目、右に足した行・項目の印を付け、削除した箇条書きの項目は消した色の面と取り消し線で出す */
 export const TableAndList: Story = { args: { before: TABLE_AND_LIST_BEFORE, after: TABLE_AND_LIST_AFTER } };
 
 /** 図の記法を変えた。左は選んだ時点の図に消した色の破線の枠だけを付け、右は今の図に今と同じ色付けと凡例を付ける */

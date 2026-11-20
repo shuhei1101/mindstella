@@ -1,6 +1,6 @@
 id: ER-489-1
 title: "ER 図: ワークスペース"
-lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。項目の本文のフォルダ `docs/` と資料に埋め込むファイルのフォルダ `files/` はワークスペースの直下に、ほかのファイルとフォルダは直下の記録のフォルダ `.mindstella/` に置き、表の物理名は `docs/`・`files/` の表は直下から、ほかの表は `.mindstella/` からのパス。画面はサーバーの配信で開き、ワークスペースには置かない。直下には `.mindstella/`・`docs/`・`files/` のほかに、このフォルダの起動・接続のコマンドとプレビューの URL を一覧にした `README.md` をサーバーが書く（記録ではなく、1 行目の自動で書いた印を確かめるほかにどのツールも読まない）。
+lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形式。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。項目の本文のフォルダ `docs/` と資料に埋め込むファイルのフォルダ `files/` はワークスペースの直下に、ほかのファイルとフォルダは直下の記録のフォルダ `.mindstella/` に置き、表の物理名は `docs/`・`files/` の表は直下から、ほかの表は `.mindstella/` からのパス。画面はサーバーの配信で開き、ワークスペースには置かない。直下には `.mindstella/`・`docs/`・`files/` のほかに、このフォルダの起動・接続のコマンドとプレビューの URL を一覧にした `README.md` をサーバーが書く（記録ではなく、1 行目の自動で書いたマーカーを確かめるほかにどのツールも読まない）。
 er:
   entities:
     - name: 設定
@@ -88,7 +88,7 @@ er:
           comment: '参照: 検討事項.id'
         - type: string
           name: body
-    - name: 書きかけ
+    - name: 下書き
       columns:
         - type: string
           name: target
@@ -164,7 +164,7 @@ er:
       from_cardinality: 0..n
       to_cardinality: 0..1
       label: target（送信と同じ）
-    - from: 書きかけ
+    - from: 下書き
       to: 検討事項
       from_column: target
       to_column: id
@@ -177,7 +177,7 @@ er:
       to_column: body
       from_cardinality: '1'
       to_cardinality: 0..1
-      label: まとめて送ると移る
+      label: まとめて送信すると移る
     - from: タスク
       to: 本文
       from_column: body
@@ -205,7 +205,7 @@ er:
       to_column: id
       from_cardinality: 0..n
       to_cardinality: 0..1
-      label: target（どの種類の項目も指す。足す項目は仮の ID）
+      label: target（どの種類の項目も指す。追加する項目は仮の ID）
     - from: 保存待ちの編集
       to: 設定
       from_column: target
@@ -246,13 +246,13 @@ tables:
         type: string
         not_null: false
         length: 1 字以上 60 字以内
-        description: 任意。何についての話し合いかを 1 文の短い文で。AI がセットアップと範囲の見直しで書き、利用者は `config.yaml` を直して書き換える。プレビューの概要の画面の題名の上に出す。題名（`summary`）・ゴールの概要（`goal.summary`）とは別のもの
-        example: スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。
+        description: 任意。何についての話し合いかを 1 文の短い文で。AI がセットアップと範囲の見直しで書き、利用者は `config.yaml` を修正して書き換える。プレビューの概要の画面の題名の上に出す。題名（`summary`）・ゴールの概要（`goal.summary`）とは別のもの
+        example: スキル mindmap の記録の構造とプレビューの画面を、作り始められるところまで決める話し合い。
       - name: history_limit
         title: 保持する回数
         type: number
         default: '5'
-        description: 項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 5 として扱う。AI がまだ読んでいない回（前回参照した時点より後の回）は、この回数を超えても消さない
+        description: 項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 5 として扱う。AI がまだ読んでいない回（前回参照した時点より後の回）は、この回数を超えても削除しない
         example: '3'
       - name: display
         title: 表示の既定
@@ -267,24 +267,24 @@ tables:
       - name: preview
         title: プレビューの配信
         type: object
-        description: 任意。`port`（配信が `127.0.0.1` で待ち受けるポート。1〜65535 の整数。無ければ OS が選んだ空きポート）を持つ。外の入口（トンネル・リバースプロキシ）にポートを 1 回だけ登録するときに書く。配信を立てるときだけ読み、『設定の再読み込み』では待ち受けを変えない（Claude Code を開き直して立て直すと効く）
+        description: 任意。`port`（配信が `127.0.0.1` で待ち受けるポート。1〜65535 の整数。無ければ OS が選んだ空きポート）を持つ。外の入口（トンネル・リバースプロキシ）にポートを 1 回だけ登録するときに書く。配信を立てるときだけ読み、『設定の再読み込み』では待ち受けを変えない（Claude Code を再度開いて再作成すると効く）
         example: '{port: 47800}'
       - name: mdmark
         title: 画面が読み込む mdmark
         type: object
-        description: 任意。`version`（画面・Storybook・配る書き出しが読み込む mdmark のバージョン。`latest` か `v{数字}.{数字}.{数字}` のタグ。無ければ `latest`。`latest` は jsDelivr の `gh/shuhei1101/mdmark@develop` を指す）と `map`（map の図の種類。mdmark の設定の `map` と同じ形の `kinds`・`lines`。移し替えの変換が書き足し、画面が `mount` の `config.map` に指定する）を持つ。`version` は `update_settings` が書き、`map` は移し替えの手順だけが書く（`update_settings` は `map` を受けず、`version` を書き換えても残す）。『設定の再読み込み』の後に開いた画面から効く
+        description: 任意。`version`（画面・Storybook・配る書き出しが読み込む mdmark のバージョン。`latest` か `v{数字}.{数字}.{数字}` のタグ。無ければ `latest`。`latest` は jsDelivr の `gh/shuhei1101/mdmark@develop` を指す）と `map`（map の図の種類。mdmark の設定の `map` と同じ形式の `kinds`・`lines`。移し替えの変換が追記し、画面が `mount` の `config.map` に指定する）を持つ。`version` は `update_settings` が書き、`map` は移し替えの手順だけが書く（`update_settings` は `map` を受けず、`version` を書き換えても残す）。『設定の再読み込み』の後に開いた画面から効く
         example: '{version: latest, map: {kinds: {llm: {label: LLM, icon: bot, shape: rounded, color: purple}}}}'
       - name: confirm_on_comment
         title: コメントの送信で確認済みにする
         type: boolean
         default: 'true'
-        description: 任意。`true` なら、コメントをまとめて送る・すぐ送るで書き込みを向けた項目を確認済みにする。無ければ `true` として扱う。`update_settings` と設定の画面が書く
+        description: 任意。`true` なら、コメントをまとめて送信する・すぐ送信するで書き込みを向けた項目を確認済みにする。無ければ `true` として扱う。`update_settings` と設定の画面が書く
         example: 'false'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
     datastore: JSON
     summary: 種類ごとの YAML の項目が共通で持つキー（各種類のスキーマが `$ref` で指す）
-    description: 種類ごとの YAML はどれも `items:` の配列を持ち、1 要素 = 1 項目。この表のキーは全ての種類の項目が持つ。作成日時・更新日時・編集した人・通し番号・変更履歴は項目に持たず、`history.yaml` に持つ。
+    description: 種類ごとの YAML はどれも `items:` の配列を持ち、1 要素 = 1 項目。この表のキーは全ての種類の項目が持つ。作成日時・更新日時・編集した人・連番・変更履歴は項目に持たず、`history.yaml` に持つ。
     columns:
       - name: id
         title: ID
@@ -292,13 +292,13 @@ tables:
         not_null: true
         primary_key: true
         auto: 採番
-        description: 種類の頭の文字 + `-` + 連番。頭の文字で種類が決まる（D 検討事項 / T タスク / R 調査 / A 資料 / G 用語集 / N メモ / L 会話ログ）。連番はその種類の最大 + 1 で、消した番号を使い回さない
+        description: 種類の頭の文字 + `-` + 連番。頭の文字で種類が決まる（D 検討事項 / T タスク / R 調査 / A 資料 / G 用語集 / N メモ / L 会話ログ）。連番はその種類の最大 + 1 で、削除した番号を使い回さない
         example: D-12
       - name: title
         title: タイトル
         type: string
         not_null: true
-        description: 題
+        description: タイトル
       - name: tags
         title: タグ
         type: array
@@ -316,11 +316,11 @@ tables:
   - name: decisions.yaml
     title: 検討事項
     datastore: YAML
-    summary: 問いと答えの単位（未決定のものも入る）
+    summary: 質問と回答の単位（未決定のものも入る）
     primary_key: id
     scale: ~1000
     access: 全件
-    deletion: 消さず、状態を `取り下げ` か `対象外` にする
+    deletion: 削除せず、状態を `取り下げ` か `対象外` にする
     columns:
       - name: status
         title: 状態
@@ -329,17 +329,17 @@ tables:
         enum_values: 未決定 / 決定済み / 要見直し / 保留 / 未整理 / 対象外 / 取り下げ
         description: 検討事項の状態
       - name: lead
-        title: 問いの説明
+        title: 質問の説明
         type: string
-        description: 何を決める問いか
+        description: 何を決める質問か
       - name: answer
-        title: 答え
+        title: 回答
         type: string
-        description: 決まった答え
+        description: 決まった回答
       - name: options
         title: 案
         type: array
-        description: 要素は `key`（記号）・`content`・`pros`・`cons`・`note`・`adopted`（真偽値）・`recommended`（真偽値。AI が推す案の印）・`reason`。`adopted` が真の案と `recommended` が真の案は、それぞれ 0 か 1 つ。状態との決まりはこの表の説明
+        description: 要素は `key`（記号）・`content`・`pros`・`cons`・`note`・`adopted`（真偽値）・`recommended`（真偽値。AI が推す案のマーカー）・`reason`。`adopted` が真の案と `recommended` が真の案は、それぞれ 0 か 1 つ。状態との決まりはこの表の説明
       - name: reason
         title: 理由
         type: string
@@ -362,7 +362,7 @@ tables:
       | `決定済み` は、`adopted` が真の案を 1 つ持つ | `{ID} は決定済みなのに採用した案を持たない（adopt で案を採用する）` |
       | `adopted` が真の案を持つ検討事項は `未決定` にしない（方針転換で `要見直し` にした検討事項は、前に採用した案を持ったままでよい） | `{ID} は採用した案 {記号} を持つのに未決定（adopt で決定済みにするか、採用を外す）` |
 
-      理由の行は、スキーマに合わない箇所と同じ `decisions.yaml: items[{番号}].{options か status}: {理由}` の形で返す。
+      理由の行は、スキーマに合わない箇所と同じ `decisions.yaml: items[{番号}].{options か status}: {理由}` の構造で返す。
   - name: tasks.yaml
     title: タスク
     datastore: YAML
@@ -370,7 +370,7 @@ tables:
     primary_key: id
     scale: ~1000
     access: 全件
-    deletion: 消さず、状態を `中止` にする
+    deletion: 削除せず、状態を `中止` にする
     columns:
       - name: kind
         title: 種類
@@ -406,7 +406,7 @@ tables:
     access: 全件
     columns:
       - name: question
-        title: 問い
+        title: 質問
         type: string
         not_null: true
         description: 何を調べたか
@@ -421,7 +421,7 @@ tables:
       - name: withdrawn
         title: 取り下げ
         type: boolean
-        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+        description: やめた項目を記録に残したまま取り下げたマーカー。取り下げていなければキーを持たない
       - name: reason
         title: 理由
         type: string
@@ -466,7 +466,7 @@ tables:
       - name: withdrawn
         title: 取り下げ
         type: boolean
-        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+        description: やめた項目を記録に残したまま取り下げたマーカー。取り下げていなければキーを持たない
       - name: reason
         title: 理由
         type: string
@@ -497,7 +497,7 @@ tables:
       - name: aliases
         title: 別名
         type: array
-        description: 同じものを指す別の言い方。プレビューは本文の語がこれに一致すると、タイトルと同じ印とツールチップを出す
+        description: 同じものを指す別の言い方。プレビューは本文の語がこれに一致すると、タイトルと同じマーカーとツールチップを出す
       - name: avoid
         title: 使わない表記
         type: array
@@ -510,7 +510,7 @@ tables:
       - name: withdrawn
         title: 取り下げ
         type: boolean
-        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+        description: やめた項目を記録に残したまま取り下げたマーカー。取り下げていなければキーを持たない
       - name: reason
         title: 理由
         type: string
@@ -536,7 +536,7 @@ tables:
       - name: withdrawn
         title: 取り下げ
         type: boolean
-        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+        description: やめた項目を記録に残したまま取り下げたマーカー。取り下げていなければキーを持たない
       - name: reason
         title: 理由
         type: string
@@ -547,9 +547,9 @@ tables:
     summary: 会話の要約と残しておきたい言葉。後から書き換えない
     primary_key: id
     scale: ~1000
-    growth: 会話ごとに足す
+    growth: 会話ごとに追加する
     access: 全件
-    deletion: 消さない
+    deletion: 削除しない
     columns:
       - name: date
         title: 日付
@@ -563,7 +563,7 @@ tables:
       - name: withdrawn
         title: 取り下げ
         type: boolean
-        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+        description: やめた項目を記録に残したまま取り下げたマーカー。取り下げていなければキーを持たない
       - name: reason
         title: 理由
         type: string
@@ -579,15 +579,15 @@ tables:
         type: string
         description: Markdown の本文。front matter を持たない。書き込みは project-index の `write_docs`（項目の `body` が指すファイル）が行い、ファイル名は項目の ID に揃える
   - name: mindstella-version.ini
-    title: 版
+    title: バージョン
     datastore: テキスト
-    summary: ワークスペースを最後に整えたときのプラグインの版
+    summary: ワークスペースを最後に整えたときのプラグインのバージョン
     scale: 1 行
     access: 全件
-    description: '`init` が作るときに書き、『記録の形式の移行』が移し替えた後に書き換える。無ければ、ワークスペースの直下の版のファイル（v0.6.0 より前の置き場所）を読み、それも無ければ版を記録する前の形式として扱う'
+    description: '`init` が作るときに書き、『記録の形式の移行』が移し替えた後に書き換える。無ければ、ワークスペースの直下のバージョンのファイル（v0.6.0 より前の置き場所）を読み、それも無ければバージョンを記録する前の形式として扱う'
     columns:
       - name: (1 行目)
-        title: 版
+        title: バージョン
         type: string
         not_null: true
         description: '`v{メジャー}.{マイナー}.{パッチ}`'
@@ -596,16 +596,16 @@ tables:
         title: 当て終えた手順の数
         type: number
         not_null: false
-        description: 1 行目の版の移し替えの手順のうち、当て終えた数（0 以上の整数）。`init` が作るときと『記録の形式の移行』が版を書くときに、その版のフォルダの手順の数（版のフォルダが無ければ 0）を一緒に書き、同じ版に後から足した手順を当てるかの判定に使う。無いか整数でなければ、1 行目の版が v0.14.0 以上ならその版の手順をまだ当てていないものとして、v0.14.0 より前ならその版の手順を全て当て終えたものとして扱う（2 行目を書く前に同じ版へ後から手順を足したのは v0.14.0 だけで、それより前の版の手順には当て直すと失敗するものがあるため）。3 行目より後は読まない
+        description: 1 行目のバージョンの移し替えの手順のうち、当て終えた数（0 以上の整数）。`init` が作るときと『記録の形式の移行』がバージョンを書くときに、そのバージョンのフォルダの手順の数（バージョンのフォルダが無ければ 0）を一緒に書き、同じバージョンに後から追加した手順を当てるかの判定に使う。無いか整数でなければ、1 行目のバージョンが v0.14.0 以上ならそのバージョンの手順をまだ当てていないものとして、v0.14.0 より前ならそのバージョンの手順を全て当て終えたものとして扱う（2 行目を書く前に同じバージョンへ後から手順を追加したのは v0.14.0 だけで、それより前のバージョンの手順には再適用すると失敗するものがあるため）。3 行目より後は読まない
         example: '3'
   - name: .mindstella.lock
     title: 書き換えのロック
     datastore: テキスト
     summary: 同じワークスペースを書き換えるプロセスどうしの排他に使う空のファイル
     scale: 1 件
-    deletion: 消さない
+    deletion: 削除しない
     access: '`fcntl.flock` の排他ロックだけを取り、中身は読み書きしない'
-    description: 書き換えるツールと、送信・レビュー中のコメント・書きかけの受け付けが初めてロックを取るときに作る。点検・書き換えの知らせ・移し替えの対象にしない
+    description: 書き換えるツールと、送信・レビュー中のコメント・下書きの受け付けが初めてロックを取るときに作る。点検・書き換えの通知・移し替えの対象にしない
     columns:
       - name: (中身)
         title: 中身
@@ -614,84 +614,84 @@ tables:
   - name: history.yaml
     title: 項目の履歴
     datastore: YAML
-    summary: 項目ごとの作成日時・更新日時・編集した人・通し番号・変更履歴・確認済み
+    summary: 項目ごとの作成日時・更新日時・編集した人・連番・変更履歴・確認済み
     scale: ~1000
-    growth: 項目を足すたびに 1 件
-    deletion: 項目を消したときにその項目の行を消す（消した項目は `changes.yaml` の `removed` に残る）
+    growth: 項目を追加するたびに 1 件
+    deletion: 項目を削除したときにその項目の行を削除する（削除した項目は `changes.yaml` の `removed` に残る）
     access: キー（項目の ID）
-    description: '最上位に `items:` の対応（項目の ID → その項目の行）を持つ。変更の検知・`adopt`・案の書き換え・画面の保存・設定の更新・確認済みの付け外し・コメントの送信だけが、`.mindstella.lock` を取って書く。project-index の配信の対象にせず、種類ごとの YAML の項目はこれらのキーを持たない（project-index の `write_docs` と同じファイルを書かないため）。『記録の取得』は、各項目へこの行のキーを足して返す。無ければどの項目も履歴を持たないものとして扱う'
+    description: '最上位に `items:` の対応（項目の ID → その項目の行）を持つ。変更の検知・`adopt`・案の書き換え・画面の保存・設定の更新・確認済みの設定と解除・コメントの送信だけが、`.mindstella.lock` を取って書く。project-index の配信の対象にせず、種類ごとの YAML の項目はこれらのキーを持たない（project-index の `write_docs` と同じファイルを書かないため）。『記録の取得』は、各項目へこの行のキーを追加して返す。無ければどの項目も履歴を持たないものとして扱う'
     columns:
       - name: items.{ID}.created
         title: 作成日時
         type: string
         not_null: false
         auto: 作成日時
-        description: UTC のタイムゾーン付き ISO 8601。項目を足したときに変更の検知が書く。`confirmed` だけを持つ行は持たない
+        description: UTC のタイムゾーン付き ISO 8601。項目を追加したときに変更の検知が書く。`confirmed` だけを持つ行は持たない
         example: '2026-10-02T08:00:00+00:00'
       - name: items.{ID}.updated
         title: 更新日時
         type: string
         not_null: false
         auto: 更新日時
-        description: UTC のタイムゾーン付き ISO 8601。項目を足した・値を変えたときに書く。`confirmed` だけを持つ行は持たない
+        description: UTC のタイムゾーン付き ISO 8601。項目を追加した・値を変えたときに書く。`confirmed` だけを持つ行は持たない
       - name: items.{ID}.updated_by
         title: 編集した人
         type: string
-        description: 最後に項目を足した・値を変えたのが AI か利用者かほかのセッションか。`ai`（MindStella のセッションの応答の途中の書き込みと MindStella の MCP のツールの書き込み）・`user`（画面からの編集）・`external`（それ以外の書き込み。『変更の検知』）。`updated` を書き換える全ての書き込み（`update_settings` のフェーズ・対象・カテゴリーの付け替えを含む）が一緒に書く。このキーを入れる前に書いた項目は、次に書き換えるまで持たず、編集した人が分からないものとして扱う。変更の検知が付ける
+        description: 最後に項目を追加した・値を変えたのが AI か利用者かほかのセッションか。`ai`（MindStella のセッションの応答の途中の書き込みと MindStella の MCP のツールの書き込み）・`user`（画面からの編集）・`external`（それ以外の書き込み。『変更の検知』）。`updated` を書き換える全ての書き込み（`update_settings` のフェーズ・対象・カテゴリーの付け替えを含む）が一緒に書く。このキーを入れる前に書いた項目は、次に書き換えるまで持たず、編集した人が分からないものとして扱う。変更の検知が付ける
         example: ai
       - name: items.{ID}.seq
-        title: 最後に振った通し番号
+        title: 最後に振った連番
         type: number
         not_null: false
-        description: その項目を足した・値を変えたときに振った `changes.yaml` の通し番号のうち、最も新しいもの。『前回読んだ時点からの変更』が `read_seq` と比べる。このキーを入れる前に足した項目は、次に値を変えるまでキーを持たない。変更の検知が付ける
+        description: その項目を追加した・値を変えたときに振った `changes.yaml` の連番のうち、最も新しいもの。『前回読んだ時点からの変更』が `read_seq` と比べる。このキーを入れる前に追加した項目は、次に値を変えるまでキーを持たない。変更の検知が付ける
         example: '14'
       - name: items.{ID}.added_seq
-        title: 足したときの通し番号
+        title: 追加したときの連番
         type: number
         not_null: false
-        description: その項目を足したときに振った `changes.yaml` の通し番号。『前回読んだ時点からの変更』が、読んだ時点より後に足した項目と変えた項目を分けるのに使う。このキーを入れる前に足した項目は持たない。変更の検知が付ける
+        description: その項目を追加したときに振った `changes.yaml` の連番。『前回読んだ時点からの変更』が、読んだ時点より後に追加した項目と変えた項目を分けるのに使う。このキーを入れる前に追加した項目は持たない。変更の検知が付ける
         example: '14'
       - name: items.{ID}.history
         title: 変更履歴
         type: array
-        description: '変更の検知・`adopt`・案の書き換え・画面の保存が値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。要素は `seq`（`changes.yaml` の通し番号）・`at`（書き換えた日時）・`by`（その回を書き換えたのが `ai` か `user` か `external`（ほかのセッションの書き込み）か。このキーを入れる前に積んだ回は持たない）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は `before` に入れず、本文の全文も持たない。ただし `body` は、前に本文が無かった回（`null`）と資料の本文の形式を替えた回（前のファイル名）だけ `before` に入れる。数は設定の `history_limit` までで、超えた古い要素は次に積むときに消す。ただし `changes.yaml` の `read_seq` より大きい `seq` の要素（AI がまだ読んでいない回）は、超えても消さない。無ければ変更履歴 0 回分として扱う。変更の検知が付ける'
+        description: '変更の検知・`adopt`・案の書き換え・画面の保存が値を変えるたびに先頭に 1 要素を追加し、新しい順に並べる。要素は `seq`（`changes.yaml` の連番）・`at`（書き換えた日時）・`by`（その回を書き換えたのが `ai` か `user` か `external`（ほかのセッションの書き込み）か。このキーを入れる前に積んだ回は持たない）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は `before` に入れず、本文の全文も持たない。ただし `body` は、前に本文が無かった回（`null`）と資料の本文の形式を替えた回（前のファイル名）だけ `before` に入れる。数は設定の `history_limit` までで、超えた古い要素は次に積むときに削除する。ただし `changes.yaml` の `read_seq` より大きい `seq` の要素（AI がまだ読んでいない回）は、超えても削除しない。無ければ変更履歴 0 回分として扱う。変更の検知が付ける'
       - name: items.{ID}.history_dropped_seq
-        title: 消した変更履歴の通し番号
+        title: 削除した変更履歴の連番
         type: number
         not_null: false
-        description: 保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。消すたびに大きい方へ書き換える。差分の表示で、選んだ時点の範囲の中の回が消えたかを見分けるのに使う。一度も消していなければキーを持たない。変更の検知が付ける
+        description: 保持する回数を超えて `history` から削除した要素のうち、最も大きい `seq`。削除するたびに大きい方へ書き換える。差分の表示で、選んだ時点の範囲の中の回が消えたかを見分けるのに使う。一度も削除していなければキーを持たない。変更の検知が付ける
         example: '5'
       - name: items.{ID}.confirmed
         title: 確認済み
         type: boolean
         default: 'false'
-        description: 利用者がその項目を確認したか。『確認済みの付け外し』が `true`・`false` を書き、コメントをまとめて送る・すぐ送るが、設定の `confirm_on_comment` が `true` のとき書き込みを向けた項目に `true` を書く。画面の保存以外で `updated` を書き換える書き込み（`updated_by` が `ai` か `external`）が `false` に戻す。無ければ未確認として扱い、`false` に戻すときはキーごと消す。行が無い項目を確認済みにするときは、`confirmed` だけを持つ行を作り、その行の `confirmed` を消すときは行ごと消す。変更履歴（`history`）の `before` には入れず、付け外しで `updated`・`seq` は変えない
+        description: 利用者がその項目を確認したか。『確認済みの設定と解除』が `true`・`false` を書き、コメントをまとめて送信する・すぐ送信するが、設定の `confirm_on_comment` が `true` のとき書き込みを向けた項目に `true` を書く。画面の保存以外で `updated` を書き換える書き込み（`updated_by` が `ai` か `external`）が `false` に戻す。無ければ未確認として扱い、`false` に戻すときはキーごと削除する。行が無い項目を確認済みにするときは、`confirmed` だけを持つ行を作り、その行の `confirmed` を削除するときは行ごと削除する。変更履歴（`history`）の `before` には入れず、付け外しで `updated`・`seq` は変えない
         example: 'true'
   - name: changes.yaml
     title: 書き換えのまとまり
     datastore: YAML
     summary: '`commit` でまとめた書き換えのまとまりと、まだまとめていない変更'
     scale: ~1000
-    growth: ステップごとに `commit` で 1 件足す
-    deletion: 消さない
+    growth: ステップごとに `commit` で 1 件追加する
+    deletion: 削除しない
     access: 全件
-    description: '変更の検知・`adopt`・案の書き換え・画面の保存が初めて書き換えたときにサーバーが作り、無ければまとまり 0 件・まだまとめていない変更なしとして扱う。まとまりに入る項目の変更履歴は、1 つ前のまとまりの `until_seq` より大きく、そのまとまりの `until_seq` 以下の `seq` を持つもの。`sets[].removed`・`pending.removed` は消した項目のただ 1 つの記録で、新しい ID を振るときに消した ID を避けるのにも使う。`add`・`update` の対象にしない'
+    description: '変更の検知・`adopt`・案の書き換え・画面の保存が初めて書き換えたときにサーバーが作り、無ければまとまり 0 件・まだまとめていない変更なしとして扱う。まとまりに入る項目の変更履歴は、1 つ前のまとまりの `until_seq` より大きく、そのまとまりの `until_seq` 以下の `seq` を持つもの。`sets[].removed`・`pending.removed` は削除した項目のただ 1 つの記録で、新しい ID を振るときに削除した ID を避けるのにも使う。`add`・`update` の対象にしない'
     columns:
       - name: last_seq
-        title: 最後の通し番号
+        title: 最後の連番
         type: number
         not_null: true
-        description: 最後に振った通し番号。変更履歴を積むとき・項目を足すとき・項目を消すとき・保持する回数が 0 で変更履歴を積まずに値を変えるときに 1 足す
+        description: 最後に振った連番。変更履歴を積むとき・項目を追加するとき・項目を削除するとき・保持する回数が 0 で変更履歴を積まずに値を変えるときに 1 追加する
       - name: sets
         title: まとまり
         type: array
         not_null: true
-        description: 新しい順。要素は `id`（`V-` + 連番）・`at`（まとめた日時）・`summary`（一言の説明）・`until_seq`（まとめたときの `last_seq`）・`added`（足した項目の ID）・`changed`（変えた項目の ID。足した項目は入れない）・`removed`（消した項目。要素は `pending.removed` と同じ形。消した項目が無いまとまりはキーを持たない）・`by`（まとめた変更の書いた元。`commit` は `ai`、画面の保存は `user`、変更の検知が自動でまとめた外部の変更は `external`。このキーを入れる前のまとまりは持たない）
+        description: 新しい順。要素は `id`（`V-` + 連番）・`at`（まとめた日時）・`summary`（一言の説明）・`until_seq`（まとめたときの `last_seq`）・`added`（追加した項目の ID）・`changed`（変えた項目の ID。追加した項目は入れない）・`removed`（削除した項目。要素は `pending.removed` と同じ形式。削除した項目が無いまとまりはキーを持たない）・`by`（まとめた変更の書いた元。`commit` は `ai`、画面の保存は `user`、変更の検知が自動でまとめた外部の変更は `external`。このキーを入れる前のまとまりは持たない）
       - name: pending
         title: まだまとめていない変更
         type: object
         not_null: true
-        description: '`added`・`changed`（書き換えた順の ID）と `removed`（消した順。要素は `id`・`kind`（種類）・`title`（消したときのタイトル）・`seq`（消したときに振った通し番号）・`added_seq`（消した項目が持っていた `added_seq`。持たなければ 0））。`removed` は任意で、無ければ消した項目なしとして扱う。保持する回数が 0 の書き換えは `changed` に入れない。最後のまとまりより後に足して消した項目は `added` から除き、`removed` に記録する。`by`（任意。`ai` か `external`。無ければ `ai`）は入っている変更の書いた元で、書いた元が違う変更を入れる前に、入っている変更を先にまとまりにする（『変更の検知』）'
+        description: '`added`・`changed`（書き換えた順の ID）と `removed`（削除した順。要素は `id`・`kind`（種類）・`title`（削除したときのタイトル）・`seq`（削除したときに振った連番）・`added_seq`（削除した項目が持っていた `added_seq`。持たなければ 0））。`removed` は任意で、無ければ削除した項目なしとして扱う。保持する回数が 0 の書き換えは `changed` に入れない。最後のまとまりより後に追加して削除した項目は `added` から除き、`removed` に記録する。`by`（任意。`ai` か `external`。無ければ `ai`）は入っている変更の書いた元で、書いた元が違う変更を入れる前に、入っている変更を先にまとまりにする（『変更の検知』）'
       - name: read_seq
         title: AI が最後に読んだ時点
         type: number
@@ -707,10 +707,10 @@ tables:
     description: 'ワークスペースの作成と移し替え（v0.13.0 の `place_source_config`・v0.14.0 の `move_bodies_to_root`）が書き、project-index が読む。書式は project-index のガイド『設定』。端末の設定の配信元の行の `config` がこのファイルを指す。MindStella のツールは書き換えない'
     columns:
       - name: version
-        title: 設定の版
+        title: 設定のバージョン
         type: string
         not_null: true
-        description: project-index の設定の版
+        description: project-index の設定のバージョン
         example: '"3"'
       - name: name
         title: 名前
@@ -744,7 +744,7 @@ tables:
     summary: '`dev-docs.yaml` の行が指す、種類ごとのスキーマと共通のキーのスキーマ'
     scale: 8 ファイル
     access: ファイル名で引く
-    description: プラグインの `skills/mindmap/schemas/` の種類ごとの 7 つのスキーマと `common.schema.json` の複製。ワークスペースの作成と移し替えが書き、移し替えのたびにプラグインの版で置き換える。project-index の `write_docs` が書き込む前に突き合わせる
+    description: プラグインの `skills/mindmap/schemas/` の種類ごとの 7 つのスキーマと `common.schema.json` の複製。ワークスペースの作成と移し替えが書き、移し替えのたびにプラグインのバージョンで置き換える。project-index の `write_docs` が書き込む前に突き合わせる
     columns:
       - name: (中身)
         title: 中身
@@ -753,10 +753,10 @@ tables:
   - name: .mindstella-opened
     title: 前回開いた日時
     datastore: テキスト
-    summary: プレビューを最後に開いた日時と通し番号
+    summary: プレビューを最後に開いた日時と連番
     scale: 2 行
     access: 全件
-    description: プレビューのタブが開いたときにサーバーが書き換える（『前回開いた日時』）。書き換えの知らせ・点検・移し替えの対象にしない。2 行目を持たない前の版の形は、前回開いた時点なしとして読む
+    description: プレビューのタブが開いたときにサーバーが書き換える（『前回開いた日時』）。書き換えの通知・点検・移し替えの対象にしない。2 行目を持たない前のバージョンの形式は、前回開いた時点なしとして読む
     columns:
       - name: (1 行目)
         title: 日時
@@ -765,7 +765,7 @@ tables:
         description: UTC のタイムゾーン付き ISO 8601
         example: '2026-10-04T13:05:00+00:00'
       - name: (2 行目)
-        title: 通し番号
+        title: 連番
         type: number
         not_null: true
         description: 開いた時点の `changes.yaml` の先頭のまとまりの `until_seq`（まとまりが無ければ 0）。「前回開いてから」は `until_seq` がこれより大きいまとまりを範囲にする
@@ -773,11 +773,11 @@ tables:
   - name: comments.yaml
     title: レビュー中のコメント
     datastore: YAML
-    summary: プレビューで書いて溜め、まだ送っていないコメント
+    summary: プレビューで書いて溜め、まだ送信していないコメント
     primary_key: id
     scale: ~100
-    growth: 詳細パネル・詳細の全画面・コメントの一覧で溜めるたびに 1 件足す
-    deletion: 削除と、まとめて送ったときに物理削除する（送ったものは `threads.yaml` へ移る）
+    growth: 詳細パネル・詳細の全画面・コメントの一覧で溜めるたびに 1 件追加する
+    deletion: 削除と、まとめて送信したときに物理削除する（送信したものは `threads.yaml` へ移る）
     access: 全件
     description: 最上位に `seq`（最後に振った連番。振った番号を使い回さないために持つ）と `items:` の配列を持ち、1 要素 = 1 件のコメント。初めて溜めたときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーのコメントの受け付け（`/api/comments`）だけで、project-index の配信の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは連番の小さい順（溜めた順）。チェックの状態は画面だけが持ち、ここには書かない
     columns:
@@ -847,10 +847,10 @@ tables:
         title: 返信先のスレッド
         type: string
         not_null: false
-        description: 既存のスレッドへの返信のとき、そのスレッドの ID。新しいスレッドの最初の書き込み（項目の詳細パネル・新しいスレッドの入力欄で溜めたもの）はキーを持たない。持つときは `target`・`loc` を持たない
+        description: 既存のスレッドへの返信のとき、そのスレッドの ID。新規スレッドの最初の書き込み（項目の詳細パネル・新規スレッドの入力欄で溜めたもの）はキーを持たない。持つときは `target`・`loc` を持たない
         example: TH-3
   - name: drafts.yaml
-    title: 書きかけ
+    title: 下書き
     datastore: YAML
     summary: コメントの入力欄に書いて、まだ溜めていない本文
     primary_key: (target, loc, thread)
@@ -858,7 +858,7 @@ tables:
     growth: 入力欄に書くたびに、向けた先ごとに 1 件を書き換える
     deletion: 溜めたとき・入力欄を空にしたときに物理削除する
     access: 全件
-    description: '`items:` の配列を持ち、1 要素 = 1 つの入力欄の書きかけ。向けた先（`target` と `loc` の組か、`thread`）ごとに 1 件。初めて書きかけを保つときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーの書きかけの保存（`PUT /api/drafts`）とコメントの追加だけで、project-index の配信の対象にしない。共通のキー（`common.schema.json`）は持たない'
+    description: '`items:` の配列を持ち、1 要素 = 1 つの入力欄の下書き。向けた先（`target` と `loc` の組か、`thread`）ごとに 1 件。初めて下書きを保つときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーの下書きの保存（`PUT /api/drafts`）とコメントの追加だけで、project-index の配信の対象にしない。共通のキー（`common.schema.json`）は持たない'
     columns:
       - name: target
         title: 向けた項目
@@ -870,12 +870,12 @@ tables:
         title: 箇所
         type: object
         not_null: false
-        description: 入力欄に添えた箇所。形は `comments.yaml` の `loc` と同じ
+        description: 入力欄に添えた箇所。構造は `comments.yaml` の `loc` と同じ
       - name: body
         title: 本文
         type: string
         not_null: true
-        description: 書きかけの本文。1〜10000 文字（空白だけも保つ）
+        description: 下書きの本文。1〜10000 文字（空白だけも保つ）
         example: 案 B も見たい
       - name: updated
         title: 書いた日時
@@ -888,7 +888,7 @@ tables:
         title: 返信先のスレッド
         type: string
         not_null: false
-        description: スレッドの返信の入力欄の書きかけのとき、そのスレッドの ID。持つときは `target`・`loc` を持たない
+        description: スレッドの返信の入力欄の下書きのとき、そのスレッドの ID。持つときは `target`・`loc` を持たない
         example: TH-3
   - name: docs/{ID}.html
     title: HTML の本文
@@ -906,10 +906,10 @@ tables:
     summary: 利用者と AI が書き込みを積むスレッド。状態・タグ・要約・クローズとオープンへの戻しの記録を持つ
     primary_key: id
     scale: ~1000
-    growth: まとめて送った新しいスレッドの分と、AI が立てるたびに 1 件足す。書き込みは返信のたびに足す
-    deletion: 消さない（クローズにして残す）
+    growth: まとめて送信した新規スレッドの分と、AI が立てるたびに 1 件追加する。書き込みは返信のたびに追加する
+    deletion: 削除しない（クローズにして残す）
     access: 全件
-    description: '`items:` の配列を持ち、1 要素 = 1 件のスレッド。初めてスレッドを作ったときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーのまとめて送る（`POST /api/comments/send`）・状態の書き換え（`PATCH /api/threads/{id}`）・利用者の既読（`POST /api/threads/{id}/seen`）・スレッドの MCP のツール・未読へ戻すスクリプトだけで、project-index の配信の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは ID の連番の小さい順（立てた順）。前の版の送信（`submissions.yaml`）は移し替えの手順でここへ移す'
+    description: '`items:` の配列を持ち、1 要素 = 1 件のスレッド。初めてスレッドを作ったときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーのまとめて送信（`POST /api/comments/send`）・状態の書き換え（`PATCH /api/threads/{id}`）・利用者の既読（`POST /api/threads/{id}/seen`）・スレッドの MCP のツール・未読へ戻すスクリプトだけで、project-index の配信の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは ID の連番の小さい順（立てた順）。前のバージョンの送信（`submissions.yaml`）は移し替えの手順でここへ移す'
     columns:
       - name: id
         title: ID
@@ -937,7 +937,7 @@ tables:
         type: string
         not_null: false
         description: 何の話で、どう決着したか。AI が書き、まだ書いていなければ `null`。前後の空白を除いて 1〜400 文字
-        example: D-12 の失敗時の扱いの相談。案 B（写しから戻す）で決まった
+        example: D-12 の失敗時の扱いの相談。案 B（コピーから戻す）で決まった
       - name: target
         title: 向けた項目
         type: string
@@ -948,7 +948,7 @@ tables:
         title: 箇所
         type: object
         not_null: false
-        description: 最初の書き込みに添えた箇所。形は `comments.yaml` の `loc` と同じ。`target` を持つときだけ持つ
+        description: 最初の書き込みに添えた箇所。構造は `comments.yaml` の `loc` と同じ。`target` を持つときだけ持つ
       - name: posts
         title: 書き込み
         type: array
@@ -978,23 +978,23 @@ tables:
         type: string
         not_null: true
         auto: 作成日時
-        description: UTC のタイムゾーン付き ISO 8601。利用者の書き込みは送った日時
+        description: UTC のタイムゾーン付き ISO 8601。利用者の書き込みは送信した日時
         example: '2026-10-12T03:00:00+00:00'
       - name: posts[].read
         title: AI の既読
         type: boolean
         not_null: true
-        description: AI が `thread` で読んだか。利用者の書き込みは `false` で足し、AI の書き込みは `true` で足す。セッションを開いたときに全て `false` に戻す
+        description: AI が `thread` で読んだか。利用者の書き込みは `false` で追加し、AI の書き込みは `true` で追加する。セッションを開いたときに全て `false` に戻す
       - name: posts[].taken
         title: 取り込んだ日時
         type: string
         not_null: false
-        description: 利用者の書き込みだけが持つ。AI が取り込み済みにした日時（UTC のタイムゾーン付き ISO 8601）。取り込んでいなければ `null`。未読に戻しても消さない
+        description: 利用者の書き込みだけが持つ。AI が取り込み済みにした日時（UTC のタイムゾーン付き ISO 8601）。取り込んでいなければ `null`。未読に戻しても削除しない
       - name: posts[].comment
         title: 元のコメント
         type: string
         not_null: false
-        description: まとめて送ったレビュー中のコメントの ID。まとめて送る途中で落ち、同じコメントがレビュー中に残ったとき、次に送ったときに二重に足さないために持つ。AI の書き込みと、移し替えた送信はキーを持たない
+        description: まとめて送信したレビュー中のコメントの ID。まとめて送信する途中で落ち、同じコメントがレビュー中に残ったとき、次に送信したときに二重に追加しないために持つ。AI の書き込みと、移し替えた送信はキーを持たない
         example: C-1
       - name: events
         title: 状態の記録
@@ -1029,17 +1029,17 @@ tables:
         title: 利用者の既読
         type: boolean
         not_null: true
-        description: 利用者がプレビューでそのスレッドを開いたか。AI の書き込みは `false` で足し、利用者の書き込みと移し替えた送信は `true` で足す。画面でスレッドを開いたとき（`POST /api/threads/{id}/seen`）にそのスレッドの全てを `true` にする。セッションを開いたときに戻すのは AI の既読 `read` だけで、このキーは戻さない
+        description: 利用者がプレビューでそのスレッドを開いたか。AI の書き込みは `false` で追加し、利用者の書き込みと移し替えた送信は `true` で追加する。画面でスレッドを開いたとき（`POST /api/threads/{id}/seen`）にそのスレッドの全てを `true` にする。セッションを開いたときに戻すのは AI の既読 `read` だけで、このキーは戻さない
   - name: edits.yaml
     title: 保存待ちの編集
     datastore: YAML
     summary: プレビューで利用者が溜め、まだ保存していない項目と設定の編集
     primary_key: id
     scale: ~100
-    growth: 詳細パネル・設定の画面・追加の入力で溜めるたびに 1 件足すか書き換える
+    growth: 詳細パネル・設定の画面・追加の入力で溜めるたびに 1 件追加するか書き換える
     deletion: 1 件ずつの取り消しと、まとめて保存したときに物理削除する（保存したものは項目・設定・`changes.yaml` へ移る）
     access: 全件
-    description: 最上位に `seq`（最後に振った編集の連番）・`new_seq`（最後に振った足す項目の仮の ID の連番）と `items:` の配列を持ち、1 要素 = 1 件の編集。どちらの連番も振った番号を使い回さない。初めて溜めたときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーの保存待ちの編集の受け付け（`/api/edits`）だけで、project-index の配信の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは連番の小さい順（溜めた順）。保存で書き込めなかった理由はここに書かず、保存の応答だけが返す
+    description: 最上位に `seq`（最後に振った編集の連番）・`new_seq`（最後に振った追加する項目の仮の ID の連番）と `items:` の配列を持ち、1 要素 = 1 件の編集。どちらの連番も振った番号を使い回さない。初めて溜めたときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーの保存待ちの編集の受け付け（`/api/edits`）だけで、project-index の配信の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは連番の小さい順（溜めた順）。保存で書き込めなかった理由はここに書かず、保存の応答だけが返す
     columns:
       - name: id
         title: ID
@@ -1053,14 +1053,14 @@ tables:
         title: 編集するもの
         type: string
         not_null: true
-        description: 編集する項目の ID（どの種類でもよい）、足す項目の仮の ID（`new-` + 連番。連番は `new_seq` + 1）、または設定（`settings`）
+        description: 編集する項目の ID（どの種類でもよい）、追加する項目の仮の ID（`new-` + 連番。連番は `new_seq` + 1）、または設定（`settings`）
         example: D-17
       - name: op
         title: 編集の種類
         type: string
         not_null: true
         description: 編集の種類
-        enum_values: "'set'（項目のキー 1 つか本文を書き換える）/ 'option-add'（案を 1 つ足す）/ 'option-edit'（案 1 つの中身を書き換える）/ 'option-remove'（案を 1 つ消す）/ 'adopt'（採用する案を切り替える）/ 'item-add'（項目を 1 つ足す）/ 'item-remove'（項目を 1 つ消す）/ 'setting'（設定のキー 1 つを書き換える）"
+        enum_values: "'set'（項目のキー 1 つか本文を書き換える）/ 'option-add'（案を 1 つ追加する）/ 'option-edit'（案 1 つの中身を書き換える）/ 'option-remove'（案を 1 つ削除する）/ 'adopt'（採用する案を切り替える）/ 'item-add'（項目を 1 つ追加する）/ 'item-remove'（項目を 1 つ削除する）/ 'setting'（設定のキー 1 つを書き換える）"
         example: set
       - name: key
         title: キー
@@ -1070,7 +1070,7 @@ tables:
       - name: value
         title: 編集した後の値
         type: string / number / boolean / object / array
-        description: そのキーの型の値。`adopt` は採用する案の記号（採用を外すときは `null`）、`item-add` は足す項目のキーと値のオブジェクト。`option-remove`・`item-remove` は `null`
+        description: そのキーの型の値。`adopt` は採用する案の記号（採用を外すときは `null`）、`item-add` は追加する項目のキーと値のオブジェクト。`option-remove`・`item-remove` は `null`
         example: ゴールはフェーズごとに 1 つ持つ
       - name: before
         title: 元の値
