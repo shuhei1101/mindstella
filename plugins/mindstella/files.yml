@@ -1062,13 +1062,6 @@ files:
   related:
   - to: MOD-489-198
     type: implements
-- path: skills/mindmap/preview/core/lock.ts
-  name: 注目の起点のロック
-  description: 注目の起点を 1 つの項目に留める。ネットワークと検討事項のマップのロックの判定を変更するときに読む。
-  tags:
-  - tool:typescript
-  - topic:ロック
-  related: []
 - path: skills/mindmap/preview/core/records.ts
   name: 記録の索引と検索
   description: 次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使い、画面で計算し直さない。項目の索引・関係する項目・検索の求め方を変更するときに読む。
@@ -1089,22 +1082,6 @@ files:
   related:
   - to: MOD-489-195
     type: implements
-- path: skills/mindmap/preview/graph/graph.ts
-  name: ネットワークの計算と描画
-  description: 全種類の項目を、関連（依存・関連・根拠・進めるタスク）でつないで 3D で描く。ネットワークの玉・線の配置や操作を変更するときに読む。
-  tags:
-  - tool:typescript
-  - topic:グラフ
-  - topic:ネットワーク
-  related: []
-- path: skills/mindmap/preview/graph/looks.ts
-  name: ネットワークの見た目
-  description: 毎コマ graph.ts が計算した玉・線を受け取り、見た目ごとに地・線・流れる光・星の順に描く。ネットワークの 5 つの見た目の描き方を変更するときに読む。
-  tags:
-  - tool:typescript
-  - topic:テーマ
-  - topic:ネットワーク
-  related: []
 - path: skills/mindmap/preview/licenses/README.md
   name: 配る書き出しのライセンスのフォルダの説明
   description: ライブラリのライセンスの本文のうち、リポジトリに置くものを入れるフォルダ。配る書き出しに入れるライブラリのライセンスを追加・変更するときに読む。

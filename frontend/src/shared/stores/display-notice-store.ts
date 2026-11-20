@@ -16,9 +16,9 @@ type DisplayNoticeState = {
   noticeAt: string | null;
 };
 
-/** 既定の値が同じか（見た目と表示する種類を、並びまで比べる） */
+/** 既定の値が同じか（表示する種類を、並びまで比べる） */
 export const sameDisplay = (a: SettingsDisplay | null | undefined, b: SettingsDisplay | null | undefined): boolean => {
-  const key = (display: SettingsDisplay | null | undefined): string => JSON.stringify([display?.network_look ?? null, display?.visible_kinds ?? null]);
+  const key = (display: SettingsDisplay | null | undefined): string => JSON.stringify(display?.visible_kinds ?? null);
   return key(a) === key(b);
 };
 

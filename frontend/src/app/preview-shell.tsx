@@ -7,7 +7,6 @@ import { DecisionsScreen } from "@/features/decisions/decisions/decisions-screen
 import { DetailFullscreen } from "@/features/detail/detail-fullscreen/detail-fullscreen";
 import { DetailPanel } from "@/features/detail/detail-panel/detail-panel";
 import { DocsScreen } from "@/features/docs/docs/docs-screen";
-import { GraphScreen } from "@/features/graph/graph/graph-screen";
 import { PendingEditsPanel } from "@/features/edits/pending-edits/pending-edits-panel";
 import { HistoryScreen } from "@/features/history/history/history-dialog";
 import { ItemAddPanel } from "@/features/detail/detail-panel/components/item-add-panel";
@@ -204,14 +203,6 @@ export const PreviewShell = () => {
     if (data === undefined) return null;
     if (tab === "overview") return <OverviewScreen />;
     if (tab === "settings") return <WorkspaceSettingsScreen />;
-    if (tab === "graph") {
-      return (
-        <main id="main" className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <h1 className="sr-only">ネットワーク</h1>
-          <GraphScreen drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />
-        </main>
-      );
-    }
     const list = (() => {
       if (tab === "decisions") return <DecisionsScreen drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />;
       if (tab === "tasks") return <TasksScreen drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />;

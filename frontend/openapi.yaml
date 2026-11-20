@@ -462,9 +462,6 @@ paths:
                 $ref: "#/components/schemas/Problem"
 components:
   schemas:
-    NetworkLook:
-      type: string
-      enum: [glow, starlight, constellation, deep, dust]
     Loc:
       type: object
       required: [kind]
@@ -595,9 +592,9 @@ components:
           items: { type: string }
     DisplayInput:
       type: object
-      required: [network_look, visible_kinds]
+      required: [visible_kinds]
+      additionalProperties: false
       properties:
-        network_look: { $ref: "#/components/schemas/NetworkLook" }
         visible_kinds:
           type: array
           items: { $ref: "#/components/schemas/Kind" }
@@ -607,9 +604,8 @@ components:
       properties:
         display:
           type: object
-          required: [network_look, visible_kinds]
+          required: [visible_kinds]
           properties:
-            network_look: { $ref: "#/components/schemas/NetworkLook" }
             visible_kinds:
               type: array
               items: { $ref: "#/components/schemas/Kind" }
@@ -762,7 +758,6 @@ components:
         display:
           type: object
           properties:
-            network_look: { $ref: "#/components/schemas/NetworkLook" }
             visible_kinds:
               type: array
               items: { $ref: "#/components/schemas/Kind" }

@@ -9,7 +9,7 @@ import type { Filters } from "@/shared/core/filters";
 import { cn } from "@/shared/lib/cn";
 
 /** 条件の値 */
-export type FilterValue = { value: string; count: number; hit?: number };
+export type FilterValue = { value: string; count: number };
 
 /** 条件 1 つ */
 export type FilterGroup = { key: string; label: string; values: FilterValue[]; mark?: "status" | "kind" };
@@ -105,13 +105,12 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
                 </Button>
               ) : null}
               <ul>
-                {group.values.map(({ value, count, hit }) => (
+                {group.values.map(({ value, count }) => (
                   <li key={value}>
                     <label className={cn("flex items-center gap-1 py-0.5 text-small", count === 0 && "text-subtle-foreground")}>
                       <Checkbox value={value} data-key={group.key} checked={chosen.includes(value)} onChange={() => { onToggleValue(group.key, value); }} />
                       {group.mark === "status" ? <StatusMark status={value} /> : null}
                       <span className="min-w-0 flex-1 wrap-break-word">{value}</span>
-                      {hit !== undefined && hit > 0 ? <span aria-label={`キーワードに一致した項目 ${String(hit)} 件`} className="flex-none font-mono text-xs text-mark">{hit}</span> : null}
                       <span aria-label={`${String(count)} 件`} className={cn("flex-none font-mono text-xs", count === 0 ? "text-subtle-foreground" : "text-muted-foreground")}>{count}</span>
                     </label>
                   </li>

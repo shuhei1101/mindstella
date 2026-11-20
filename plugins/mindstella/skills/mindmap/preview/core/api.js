@@ -68,7 +68,7 @@ var MindmapPreview;
         }
     }
     MindmapPreview.postOpened = postOpened;
-    /** ワークスペースの既定として、見た目と表示する種類を保存する。200 なら `data` が書いた後の `{display}` */
+    /** ワークスペースの既定として、表示する種類を保存する。200 なら `data` が書いた後の `{display}` */
     async function putDisplay(display, fetchFn = window.fetch.bind(window)) {
         return callApi("PUT", MindmapPreview.API_PATHS.configDisplay, display, fetchFn);
     }

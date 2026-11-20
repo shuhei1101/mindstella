@@ -1,8 +1,8 @@
 // 既定の保存の確かめ。ワークスペースの既定として保存する前に、今の既定と保存する値を並べるモーダル。
 
 namespace MindmapPreview {
-  /** 見た目と表示する種類の組（今の既定・保存する値） */
-  export type DisplayChoice = { look: string; kinds: Set<string> };
+  /** 表示する種類（今の既定・保存する値） */
+  export type DisplayChoice = { kinds: Set<string> };
 
   /** 既定の保存の確かめの引数 */
   export type SettingsConfirmProps = {
@@ -77,7 +77,6 @@ namespace MindmapPreview {
           tag: "dl",
           attrs: { class: "sc-list" },
           children: [
-            confirmRow({ label: "ネットワークの見た目", from: lookLabel(from.look), to: lookLabel(to.look) }),
             confirmRow({ label: "表示する種類", from: kindsText(from.kinds), to: kindsText(to.kinds) }),
           ],
         }),

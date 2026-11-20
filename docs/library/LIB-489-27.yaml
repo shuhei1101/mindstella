@@ -25,7 +25,7 @@ catalogs:
         purpose: 厳しい型検査（6.0 からの既定）
       - name: skipLibCheck
         kind: 設定
-        purpose: React の側（`frontend/tsconfig.json`）で、依存の型（@storybook/react・vitest・@rolldown/plugin-babel など）にある誤りで止まらないようにする。今の画面の `tsconfig.json` は持たない（elkjs を外した後は依存の型に誤りが無い）
+        purpose: React の側（`frontend/tsconfig.json`）と今の画面のストーリーの型検査（`.storybook/tsconfig.json`）で、依存の型（@storybook/react・vitest・@rolldown/plugin-babel など）にある誤りで止まらないようにする。今の画面の `tsconfig.json` は持たない（elkjs を外した後は依存の型に誤りが無い）
       - name: types
         kind: 設定
         purpose: 自動で読む @types を空にする（6.0 からの既定）

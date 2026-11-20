@@ -13,7 +13,6 @@ namespace MindmapPreview {
 
   /** 表示形式 → ボタンのアイコン */
   const VIEW_ICON: Record<View, IconName> = {
-    map: "map",
     board: "board",
     cards: "cards",
     table: "table",

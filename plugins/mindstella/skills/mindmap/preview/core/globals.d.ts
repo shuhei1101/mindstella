@@ -31,9 +31,6 @@ declare const mdmark: {
 /** Markdown を HTML に描く marked（本文の差分の塊を分ける `marked.lexer` だけに使う） */
 declare const marked: typeof import("marked").marked;
 
-/** マップの配置を計算する ELK（`new ELK().layout(...)` で使う） */
-declare const ELK: typeof import("elkjs").default;
-
 /** 図を SVG に描く mermaid */
 declare const mermaid: typeof import("mermaid").default;
 

@@ -289,3 +289,19 @@ functions:
         condition: '`main` の外（`body` の直下）に置いたパネル P と、ボタン A を持つ `main`'
         mock: なし
         expected: '`main` に `inert` が付き、A にフォーカスを移せない。返った関数を呼ぶと `main` から外れる'
+  - name: isTyping
+    title: 文字の入力欄か
+    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
+    usecase: 共通
+    kind: 関数
+    scope: public
+    summary: 要素が文字を入力する欄（`input`・`textarea`・`select`・編集できる要素）かを返す。入口が Esc で入力欄から外れるだけにする判定（コメントの一覧・追加の入力）に使う。単体テストは持たず、インターフェース定義『プレビューを開く』の結合テストが確かめる
+    args:
+      - name: element
+        type: Element | null
+        required: true
+        passing: positional
+        description: フォーカスのある要素
+    returns:
+      type: boolean
+      description: 文字の入力欄なら true

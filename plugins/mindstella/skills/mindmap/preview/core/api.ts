@@ -196,9 +196,9 @@ namespace MindmapPreview {
     }
   }
 
-  /** ワークスペースの既定として、見た目と表示する種類を保存する。200 なら `data` が書いた後の `{display}` */
+  /** ワークスペースの既定として、表示する種類を保存する。200 なら `data` が書いた後の `{display}` */
   export async function putDisplay(
-    display: { network_look: string; visible_kinds: string[] },
+    display: { visible_kinds: string[] },
     fetchFn: FetchFn = window.fetch.bind(window),
   ): Promise<ApiResult<{ display: DisplayDefaults }>> {
     return callApi("PUT", API_PATHS.configDisplay, display, fetchFn);

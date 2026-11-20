@@ -47,8 +47,8 @@ namespace MindmapPreview {
   /** 値の件数を数える条件の定義（値の並びを持つ） */
   export type ConditionColumn = FilterColumn & Pick<Column, "order">;
 
-  /** ドロワーの条件の値（件数と、キーワードに一致した件数） */
-  export type FilterValue = { value: string; count: number; hit?: number };
+  /** ドロワーの条件の値（件数） */
+  export type FilterValue = { value: string; count: number };
 
   /** ドロワーの条件 1 つ（部品設計『絞り込み』の `groups[]`） */
   export type FilterGroup = {
@@ -223,17 +223,15 @@ namespace MindmapPreview {
     return Object.fromEntries(Object.entries(filters).filter(([name]) => name !== key));
   }
 
-  /** 絞り込みのドロワーに並べる条件と、条件ごとの値・件数を組む（キーワードに一致した件数を `hit` で添えられる） */
+  /** 絞り込みのドロワーに並べる条件と、条件ごとの値・件数を組む */
   export function drawerGroups({
     rows,
     columns,
     filters,
-    hit,
   }: {
     rows: Row[];
     columns: (ConditionColumn & Pick<Column, "label">)[];
     filters: Filters;
-    hit?: (row: Row) => boolean;
   }): FilterGroup[] {
     const rank = (key: string): number => {
       const position = LEADING_CONDITION_KEYS.indexOf(key);
@@ -245,20 +243,10 @@ namespace MindmapPreview {
       const counts = filterCounts({ rows, columns, filters, key: column.key });
       // 値を 1 つも持たない条件は並べない
       if (counts.length === 0) continue;
-      // キーワードに一致した件数は、その条件以外の条件で絞った行で数える
-      const others = hit === undefined ? [] : filterRows({ rows, columns, filters: withoutKey(filters, column.key) });
       groups.push({
         key: column.key,
         label: column.label,
-        values: counts.map(({ value, count }) =>
-          hit === undefined
-            ? { value, count }
-            : {
-                value,
-                count,
-                hit: others.filter((row) => hit(row) && valuesOf(column, row).includes(value)).length,
-              },
-        ),
+        values: counts.map(({ value, count }) => ({ value, count })),
         ...(column.key === "status" ? { mark: "status" as const } : {}),
         ...(column.key === "type" ? { mark: "kind" as const } : {}),
       });

@@ -68,11 +68,7 @@ namespace MindmapPreview {
     checked: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>',
     unchecked: '<rect x="4" y="4" width="16" height="16" rx="3"/>',
     copy: '<rect x="9" y="9" width="12" height="12" rx="1"/><path d="M5 15V4a1 1 0 0 1 1-1h11"/>',
-    network: '<path d="M4 18.5 10 13.5l5 3M10 13.5 7.5 6.5M15 16.5l3.2-6.6" stroke-width="1.15"/><circle cx="4" cy="18.5" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="13.5" r="2.2" fill="currentColor" stroke="none"/><circle cx="15" cy="16.5" r="1.8" fill="currentColor" stroke="none"/><circle cx="7.5" cy="6.5" r="1.8" fill="currentColor" stroke="none"/><path d="m19 1.8 1.05 3.15L23.2 6l-3.15 1.05L19 10.2l-1.05-3.15L14.8 6l3.15-1.05Z" fill="currentColor" stroke="none"/>',
-    lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
-    unlock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
     cards: '<rect x="3" y="4" width="8" height="7" rx="1"/><rect x="13" y="4" width="8" height="7" rx="1"/><rect x="3" y="13" width="8" height="7" rx="1"/><rect x="13" y="13" width="8" height="7" rx="1"/>',
-    map: '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 12h3l4-5M11.5 12l4 5"/>',
     graph: '<circle cx="12" cy="12" r="3"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="7" r="2"/><circle cx="6" cy="20" r="2"/><circle cx="19" cy="19" r="2"/><path d="M9.5 10.5 5.6 7.2M14.6 10.9l3.6-2.6M10 14.4l-2.6 4M14.3 14.2l3.3 3.4"/>',
     link: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
     pause: '<path d="M8 5v14M16 5v14"/>',
@@ -229,16 +225,16 @@ namespace MindmapPreview {
     return h({ tag: "p", attrs: { class: "empty" }, children: [text] });
   }
 
-  /** 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす */
+  /** 押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（差分のミニマップの印が使う） */
   export const PRESS_SLOP_PX = 5;
 
-  /** 背景（ボタンなどの上でない所）をつかんで、スクロールする要素を動かせるようにする。`onPress` は、背景を押して離したとき（ドラッグでないとき）に、離したときのイベントを渡して呼ぶ */
-  export function enableDragScroll(scroller: HTMLElement, onPress?: (event: PointerEvent) => void): void {
-    let drag: { x: number; y: number; left: number; top: number; moved: boolean } | null = null;
+  /** 背景（ボタンなどの上でない所）をつかんで、スクロールする要素を動かせるようにする */
+  export function enableDragScroll(scroller: HTMLElement): void {
+    let drag: { x: number; y: number; left: number; top: number } | null = null;
     scroller.addEventListener("pointerdown", (event) => {
       // 左ボタンで、押せるものの上でないとき
       if (event.button !== 0 || (event.target as Element).closest("button, a, input, label")) return;
-      drag = { x: event.clientX, y: event.clientY, left: scroller.scrollLeft, top: scroller.scrollTop, moved: false };
+      drag = { x: event.clientX, y: event.clientY, left: scroller.scrollLeft, top: scroller.scrollTop };
       scroller.classList.add("dragging");
       scroller.setPointerCapture(event.pointerId);
     });
@@ -246,8 +242,6 @@ namespace MindmapPreview {
       if (drag === null) return;
       const dx = event.clientX - drag.x;
       const dy = event.clientY - drag.y;
-      // 一度でも上限を超えて動いたら、離した位置が近くてもドラッグとして扱う
-      if (Math.abs(dx) > PRESS_SLOP_PX || Math.abs(dy) > PRESS_SLOP_PX) drag.moved = true;
       scroller.scrollLeft = drag.left - dx;
       scroller.scrollTop = drag.top - dy;
     });
@@ -255,15 +249,11 @@ namespace MindmapPreview {
       drag = null;
       scroller.classList.remove("dragging");
     };
-    scroller.addEventListener("pointerup", (event) => {
-      const pressed = drag !== null && !drag.moved;
-      release();
-      if (pressed) onPress?.(event);
-    });
+    scroller.addEventListener("pointerup", release);
     scroller.addEventListener("pointercancel", release);
   }
 
-  /** 詳細パネルで開いている項目の ID（表の行・カード・マップの節に「選択中」の印を付けるために持つ） */
+  /** 詳細パネルで開いている項目の ID（表の行・カードに「選択中」の印を付けるために持つ） */
   let selectedItemId: string | null = null;
 
   /** 開いている項目の ID */
@@ -277,5 +267,10 @@ namespace MindmapPreview {
     for (const element of document.querySelectorAll<HTMLElement>("main [data-id]")) {
       element.classList.toggle("selected", element.dataset["id"] === id);
     }
+  }
+
+  /** 要素が文字を入力する欄か（`input`・`textarea`・`select`・編集できる要素。Esc で入力欄から外れるだけにする判定に使う） */
+  export function isTyping(element: Element | null): boolean {
+    return element instanceof HTMLElement && (element.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(element.tagName));
   }
 }

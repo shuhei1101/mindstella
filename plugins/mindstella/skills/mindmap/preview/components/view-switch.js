@@ -4,7 +4,6 @@ var MindmapPreview;
 (function (MindmapPreview) {
     /** 表示形式 → ボタンのアイコン */
     const VIEW_ICON = {
-        map: "map",
         board: "board",
         cards: "cards",
         table: "table",

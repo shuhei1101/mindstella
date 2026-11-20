@@ -2,6 +2,16 @@
 // 絞り込みのドロワー。条件ごとに値を件数つきのチェックボックスで並べ、タブの帯の下から左に重ねる非モーダルのパネルとして開く。
 var MindmapPreview;
 (function (MindmapPreview) {
+    /** 項目の種類 → 色のトークン（種類の点の色） */
+    const KIND_COLOR_VAR = {
+        decisions: "--k-dec",
+        tasks: "--k-task",
+        research: "--k-res",
+        docs: "--k-doc",
+        terms: "--k-term",
+        notes: "--k-note",
+        logs: "--k-log",
+    };
     /** 次に描いたドロワーでフォーカスを移す先（操作した部品が描き直しで消えても、フォーカスを失わないために持つ） */
     let pendingFocus = null;
     /** 文字の欄の入力を条件に当てるまで待つミリ秒（打ち終えるのを待つ長さ）と、そのタイマー */
@@ -31,11 +41,11 @@ var MindmapPreview;
         const kind = MindmapPreview.KIND_KEYS.find((key) => MindmapPreview.KIND_LABEL[key] === value);
         if (kind === undefined)
             return null;
-        return MindmapPreview.h({ tag: "span", attrs: { class: "kdot", style: `background:var(${MindmapPreview.KIND_COLOR_VAR[kind]})` } });
+        return MindmapPreview.h({ tag: "span", attrs: { class: "kdot", style: `background:var(${KIND_COLOR_VAR[kind]})` } });
     }
     /** 条件 1 つ（見出し・選んだ数と「解除」・値の並び） */
     function conditionGroup({ group, chosen, on }) {
-        const values = group.values.map(({ value, count, hit }) => MindmapPreview.h({
+        const values = group.values.map(({ value, count }) => MindmapPreview.h({
             tag: "li",
             children: [
                 MindmapPreview.h({
@@ -58,9 +68,6 @@ var MindmapPreview;
                         }),
                         valueMark({ mark: group.mark, value }),
                         MindmapPreview.h({ tag: "span", attrs: { class: "fd-v" }, children: [value] }),
-                        hit !== undefined && hit > 0
-                            ? MindmapPreview.h({ tag: "span", attrs: { class: "hit-n", "aria-label": `キーワードに一致した項目 ${hit} 件` }, children: [hit] })
-                            : null,
                         MindmapPreview.h({ tag: "span", attrs: { class: "n", "aria-label": `${count} 件` }, children: [count] }),
                     ],
                 }),
@@ -119,8 +126,8 @@ var MindmapPreview;
     }
     /** 絞り込みのドロワーの狭い幅の境（これ以下はトップバーの下から全幅で重ねる） */
     const DRAWER_NARROW_QUERY = "(max-width: 900px)";
-    /** 画面が持つ条件と絞り込みの結果から、ドロワーを組む（開いていなければ null）。キーワードに一致した件数を添える画面は `hit` を、文字の欄を出す画面は `textColumns` を渡す */
-    function screenDrawer({ drawerOpen, rows, columns, textColumns = [], filters, shown, hit, onFilter, onClose, }) {
+    /** 画面が持つ条件と絞り込みの結果から、ドロワーを組む（開いていなければ null）。文字の欄を出す画面は `textColumns` を渡す */
+    function screenDrawer({ drawerOpen, rows, columns, textColumns = [], filters, shown, onFilter, onClose, }) {
         if (!drawerOpen)
             return null;
         // 値を選ぶ条件の件数は、文字の条件で絞った行で数える
@@ -128,7 +135,7 @@ var MindmapPreview;
         const valueFilters = Object.fromEntries(Object.entries(filters).filter(([key]) => !key.startsWith(MindmapPreview.TEXT_FILTER_PREFIX)));
         const narrowed = MindmapPreview.filterRows({ rows, columns: textColumns, filters: textFilters });
         return filterDrawer({
-            groups: MindmapPreview.drawerGroups({ rows: narrowed, columns, filters: valueFilters, ...(hit === undefined ? {} : { hit }) }),
+            groups: MindmapPreview.drawerGroups({ rows: narrowed, columns, filters: valueFilters }),
             texts: textColumns.map((column) => ({
                 key: column.key,
                 label: column.label,

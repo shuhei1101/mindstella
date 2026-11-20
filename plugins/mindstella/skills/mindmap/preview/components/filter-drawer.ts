@@ -1,6 +1,17 @@
 // 絞り込みのドロワー。条件ごとに値を件数つきのチェックボックスで並べ、タブの帯の下から左に重ねる非モーダルのパネルとして開く。
 
 namespace MindmapPreview {
+  /** 項目の種類 → 色のトークン（種類の点の色） */
+  const KIND_COLOR_VAR: Record<Kind, string> = {
+    decisions: "--k-dec",
+    tasks: "--k-task",
+    research: "--k-res",
+    docs: "--k-doc",
+    terms: "--k-term",
+    notes: "--k-note",
+    logs: "--k-log",
+  };
+
   /** 絞り込みのドロワーの引数 */
   export type FilterDrawerProps = {
     /** 条件の並び（`drawerGroups` の結果） */
@@ -69,7 +80,7 @@ namespace MindmapPreview {
 
   /** 条件 1 つ（見出し・選んだ数と「解除」・値の並び） */
   function conditionGroup({ group, chosen, on }: { group: FilterGroup; chosen: string[]; on: FilterDrawerProps["on"] }): HTMLElement {
-    const values = group.values.map(({ value, count, hit }) =>
+    const values = group.values.map(({ value, count }) =>
       h({
         tag: "li",
         children: [
@@ -93,9 +104,6 @@ namespace MindmapPreview {
               }),
               valueMark({ mark: group.mark, value }),
               h({ tag: "span", attrs: { class: "fd-v" }, children: [value] }),
-              hit !== undefined && hit > 0
-                ? h({ tag: "span", attrs: { class: "hit-n", "aria-label": `キーワードに一致した項目 ${hit} 件` }, children: [hit] })
-                : null,
               h({ tag: "span", attrs: { class: "n", "aria-label": `${count} 件` }, children: [count] }),
             ],
           }),
@@ -166,7 +174,7 @@ namespace MindmapPreview {
   /** 絞り込みのドロワーの狭い幅の境（これ以下はトップバーの下から全幅で重ねる） */
   const DRAWER_NARROW_QUERY = "(max-width: 900px)";
 
-  /** 画面が持つ条件と絞り込みの結果から、ドロワーを組む（開いていなければ null）。キーワードに一致した件数を添える画面は `hit` を、文字の欄を出す画面は `textColumns` を渡す */
+  /** 画面が持つ条件と絞り込みの結果から、ドロワーを組む（開いていなければ null）。文字の欄を出す画面は `textColumns` を渡す */
   export function screenDrawer({
     drawerOpen,
     rows,
@@ -174,7 +182,6 @@ namespace MindmapPreview {
     textColumns = [],
     filters,
     shown,
-    hit,
     onFilter,
     onClose,
   }: {
@@ -183,12 +190,11 @@ namespace MindmapPreview {
     rows: Row[];
     /** ドロワーの条件にする列（`filterable` の列） */
     columns: (ConditionColumn & Pick<Column, "label">)[];
-    /** 文字の欄を出す列（`textColumns` の結果）。ネットワークは渡さない */
+    /** 文字の欄を出す列（`textColumns` の結果） */
     textColumns?: Column[];
     filters: Filters;
     /** 今の条件に合う行の件数 */
     shown: number;
-    hit?: (row: Row) => boolean;
     onFilter: (filters: Filters) => void;
     onClose: () => void;
   }): HTMLDialogElement | null {
@@ -198,7 +204,7 @@ namespace MindmapPreview {
     const valueFilters = Object.fromEntries(Object.entries(filters).filter(([key]) => !key.startsWith(TEXT_FILTER_PREFIX)));
     const narrowed = filterRows({ rows, columns: textColumns, filters: textFilters });
     return filterDrawer({
-      groups: drawerGroups({ rows: narrowed, columns, filters: valueFilters, ...(hit === undefined ? {} : { hit }) }),
+      groups: drawerGroups({ rows: narrowed, columns, filters: valueFilters }),
       texts: textColumns.map((column) => ({
         key: column.key,
         label: column.label,
