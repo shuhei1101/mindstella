@@ -8,12 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from workspace_fixtures import RECORD_DIR
 
 from .fixture_types import MakeItem, MakeWorkspace
 from .http_helpers import HTTP_TIMEOUT_SEC
 
-# ファイルのフォルダ（記録のフォルダからの相対パス）
+# ファイルのフォルダ（ワークスペースの直下からの相対パス）
 FILES_DIR = "files"
 
 # 範囲の要求で使用する 1000 バイトのファイルの中身（バイトの位置が値から分かる並び）
@@ -60,7 +59,7 @@ def _port(url: str) -> int:
 
 def _put_file(root: Path, name: str, data: bytes) -> None:
     """ワークスペースのファイルのフォルダに、name のファイルを配置する。"""
-    path = root / RECORD_DIR / FILES_DIR / name
+    path = root / FILES_DIR / name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
 
@@ -139,12 +138,12 @@ def test_error_when_not_found_or_outside(
     _put_file(root, "clip.mp4", CLIP_BYTES)
     outside = root.parent / "outside-secret.txt"
     outside.write_bytes(OUTSIDE_MARK)
-    (root / RECORD_DIR / FILES_DIR / "outside").symlink_to(outside)
+    (root / FILES_DIR / "outside").symlink_to(outside)
     url = serve_preview(root)
     # 実行（`..` は正規化せずにそのまま送信する）
     missing = _get(url, "/files/missing.mp4")
-    parent = _get(url, "/files/../decisions.yaml")
-    encoded = _get(url, "/files/%2e%2e/decisions.yaml")
+    parent = _get(url, "/files/../.mindstella/decisions.yaml")
+    encoded = _get(url, "/files/%2e%2e/.mindstella/decisions.yaml")
     symlink = _get(url, "/files/outside")
     folder = _get(url, "/files/")
     # 検証

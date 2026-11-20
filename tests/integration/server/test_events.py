@@ -95,12 +95,12 @@ def test_normal_when_html_body_rewritten(
     """YAML を書き換えずに HTML の本文のファイルだけが変わっても知らせる（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": "<p>一覧の画面</p>\n"}
+        make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": "<p>一覧の画面</p>\n"}
     )
     stream = open_events(serve_preview(root))
     time.sleep(WATCH_START_SEC)
     # 実行
-    (root / RECORD_DIR / "docs" / "A-1.html").write_text("<p>書き換えた画面</p>\n", encoding="utf-8")
+    (root / "docs" / "A-1.html").write_text("<p>書き換えた画面</p>\n", encoding="utf-8")
     # 検証
     assert stream.wait_for_changed(CHANGED_WITHIN_SEC) is True
 

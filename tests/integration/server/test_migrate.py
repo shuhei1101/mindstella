@@ -168,6 +168,7 @@ def _make_mdmark_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -
             "A-1.md": f"# 構成\n\n{_retired_range('flow', RETIRED_FLOW)}\n{_retired_range('sequence', RETIRED_SEQUENCE)}",
             "A-2.md": "# 一覧\n\n<!-- table: data +count -->\n\n| 名前 | 数 |\n| --- | --- |\n| a | 1 |\n\n<!-- /table -->\n",
         },
+        legacy_bodies=True,
     )
     (root / RECORD_DIR / VERSION_FILE).write_text(f"{BEFORE_MDMARK_VERSION}\n", encoding="utf-8")
     return root
@@ -299,8 +300,8 @@ def test_normal_when_apply(make_legacy_workspace: MakeLegacyWorkspace) -> None:
     history = yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))["items"]
     assert history["A-1"]["updated"] == before["A-1"]["updated"]
     assert history["A-2"]["updated"] == before["A-2"]["updated"]
-    # 設定ファイルの名前が改まって記録のフォルダへ移る
-    assert [path.name for path in root.iterdir()] == [RECORD_DIR]
+    # 設定ファイルの名前が改まって記録のフォルダへ移り、本文のフォルダは v0.14.0 の手順で直下へ戻る
+    assert sorted(path.name for path in root.iterdir()) == [RECORD_DIR, "docs"]
     settings = yaml.safe_load((root / RECORD_DIR / SETTINGS).read_text(encoding="utf-8"))
     assert settings["summary"] == root.name
     assert {"file": ".mindstella/config.yaml", "key": "summary", "value": root.name} in payload["provisional"]
@@ -495,7 +496,7 @@ def test_error_when_schema_mismatch(
 ) -> None:
     """手順を当てた後にスキーマに合わなければ写しから戻し、バージョンを書かない（異常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "summary": 123})
+    root = make_workspace(settings={**valid_settings, "summary": 123}, legacy_bodies=True)
     (root / RECORD_DIR / VERSION_FILE).write_text("v0.13.0\n", encoding="utf-8")
     before = snapshot_tree(root)
     # 実行
@@ -793,11 +794,11 @@ def test_normal_when_mdmark_documents(
     assert result.error is None, result.text
     assert result.data is not None
     record = root / RECORD_DIR
-    first = (record / "docs" / "A-1.mark.md").read_text(encoding="utf-8")
+    first = (root / "docs" / "A-1.mark.md").read_text(encoding="utf-8")
     assert "<!-- flow" not in first
     assert "<!-- sequence" not in first
     assert first.count("<!-- /map -->") == 2
-    second = (record / "docs" / "A-2.mark.md").read_text(encoding="utf-8")
+    second = (root / "docs" / "A-2.mark.md").read_text(encoding="utf-8")
     assert '<!-- table: {"kind": "data"' in second
     settings = yaml.safe_load((record / SETTINGS).read_text(encoding="utf-8"))
     assert {"llm", "script"} <= set(settings["mdmark"]["map"]["kinds"])
@@ -857,10 +858,11 @@ def test_normal_when_discussion_keys_removed(
             attrs={"優先度": "高"},
             weight="大",
         ),
-        make_item("A-1", deliverable=True, status="完成"),
+        make_item("A-1", deliverable=True, status="完成", body="docs/A-1.mark.md"),
         make_item("R-1", angles=["費用", "運用"], confidence="中"),
         settings={**valid_settings, **DISCUSSION_SETTINGS},
-        bodies={"A-1.md": "資料の本文\n"},
+        bodies={"A-1.mark.md": "資料の本文\n"},
+        legacy_bodies=True,
     )
     records = root / RECORD_DIR
     (records / VERSION_FILE).write_text("v0.13.0\n", encoding="utf-8")
@@ -882,7 +884,8 @@ def test_normal_when_discussion_keys_removed(
     research_body = (records / research["body"]).read_text(encoding="utf-8")
     assert "| 観点 | 費用・運用 |" in research_body
     assert "| 確かさ | 中 |" in research_body
-    assert (records / "release" / "資料.md").read_text(encoding="utf-8") == "書き出した資料\n"
+    # 書き出した資料のコピーは v0.14.0 の手順 3 が消す
+    assert not (records / "release").exists()
     assert _read_version(root) == PLUGIN_VERSION
     # もう一度当てても、ワークスペースが変わらない
     after = snapshot_tree(root)
@@ -977,6 +980,7 @@ def test_normal_when_markdown_bodies_renamed(
         ),
         make_item("A-1", body="docs/A-1.html"),
         bodies={"D-1.md": "# 背景\n\n本文\n", "A-1.html": "<p>資料</p>\n", "X-1.md": "どこからも指されない本文\n"},
+        legacy_bodies=True,
     )
     records = root / RECORD_DIR
     (records / VERSION_FILE).write_text("v0.13.0\n", encoding="utf-8")
@@ -988,19 +992,21 @@ def test_normal_when_markdown_bodies_renamed(
     assert [(step["version"], step["index"], step["op"], step["destructive"]) for step in result.data["steps"]] == [
         ("v0.14.0", 1, "call", True),
         ("v0.14.0", 2, "call", True),
+        ("v0.14.0", 3, "call", True),
     ]
     decision = _read_decisions(root)[0]
-    assert decision["body"] == "docs/D-1.mark.md"
-    assert (records / "docs" / "D-1.mark.md").read_text(encoding="utf-8") == "# 背景\n\n本文\n"
-    assert not (records / "docs" / "D-1.md").exists()
+    assert decision["body"] == "../docs/D-1.mark.md"
+    assert (root / "docs" / "D-1.mark.md").read_text(encoding="utf-8") == "# 背景\n\n本文\n"
+    assert not (root / "docs" / "D-1.md").exists()
     d1_row = yaml.safe_load((records / "history.yaml").read_text(encoding="utf-8"))["items"]["D-1"]
-    assert [entry["before"]["body"] for entry in d1_row["history"]] == ["docs/D-1.html", "docs/D-1.mark.md"]
+    assert [entry["before"]["body"] for entry in d1_row["history"]] == ["../docs/D-1.html", "../docs/D-1.mark.md"]
     assert [entry["seq"] for entry in d1_row["history"]] == [3, 2]
     assert d1_row["updated"] == "2026-11-02T00:00:00+00:00"
-    assert _read_docs(root)[0]["body"] == "docs/A-1.html"
-    assert (records / "docs" / "A-1.html").read_text(encoding="utf-8") == "<p>資料</p>\n"
-    assert (records / "docs" / "X-1.mark.md").read_text(encoding="utf-8") == "どこからも指されない本文\n"
-    assert not (records / "docs" / "X-1.md").exists()
+    assert _read_docs(root)[0]["body"] == "../docs/A-1.html"
+    assert (root / "docs" / "A-1.html").read_text(encoding="utf-8") == "<p>資料</p>\n"
+    assert (root / "docs" / "X-1.mark.md").read_text(encoding="utf-8") == "どこからも指されない本文\n"
+    assert not (root / "docs" / "X-1.md").exists()
+    assert not (records / "docs").exists()
     # もう一度当てても、ワークスペースが変わらない
     after = snapshot_tree(root)
     again = _migrate(root)
@@ -1016,6 +1022,7 @@ def test_error_when_mark_md_exists(
     root = make_workspace(
         make_item("D-1", body="docs/D-1.md"),
         bodies={"D-1.md": "前の本文\n", "D-1.mark.md": "改名先の本文\n"},
+        legacy_bodies=True,
     )
     records = root / RECORD_DIR
     (records / VERSION_FILE).write_text("v0.13.0\n", encoding="utf-8")

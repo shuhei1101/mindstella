@@ -295,15 +295,15 @@ def test_normal_when_history_limit_exceeded(
     """保持する回数を超えた古い変更履歴を消し、同じ中身の書き換えでは積まない（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="docs/D-1.mark.md"),
+        make_item("D-1", body="../docs/D-1.mark.md"),
         settings={**valid_settings, "history_limit": 1},
         bodies={"D-1.mark.md": BODY_BEFORE},
     )
     server = _start(start_server)
     _serve(server, root)
-    body = root / RECORD_DIR / "docs" / "D-1.mark.md"
+    body = root / "docs" / "D-1.mark.md"
     # 実行
-    _write_decisions(root, make_item("D-1", body="docs/D-1.mark.md", answer="直した答え"))
+    _write_decisions(root, make_item("D-1", body="../docs/D-1.mark.md", answer="直した答え"))
     _wait(lambda: _last_seq(root) == 1)
     _replace(body, BODY_AFTER)
     _wait(lambda: _last_seq(root) == 2)
@@ -443,10 +443,10 @@ def test_normal_when_files_folder_written(
     head = _git_in(in_git, "rev-parse", "HEAD")
     index = (in_git / ".git" / "index").read_bytes()
     # 実行
-    (in_git / RECORD_DIR / "files").mkdir()
-    (in_git / RECORD_DIR / "files" / "clip.mp4").write_bytes(b"mp4")
-    (plain / RECORD_DIR / "files").mkdir()
-    (plain / RECORD_DIR / "files" / "clip.mp4").write_bytes(b"mp4")
+    (in_git / "files").mkdir()
+    (in_git / "files" / "clip.mp4").write_bytes(b"mp4")
+    (plain / "files").mkdir()
+    (plain / "files" / "clip.mp4").write_bytes(b"mp4")
     time.sleep(EXTERNAL_DELAY_SEC + QUIET_SEC)
     # 検証
     assert _records_snapshot(in_git) == before_git
