@@ -51,7 +51,7 @@ components:
         summary: 項目で絞っている間の新規スレッドは、その項目へ向けて溜める
         condition: search が `panel=comments&ttarget=D-1`。「新規スレッド」を押して書き、「レビューに追加」を押す
         mock: MSW
-        expected: "入力の見出しが「D-1 への新しいスレッド」で、`POST /api/comments` の本文が `target: 'D-1'` を持ち `loc` を持たない"
+        expected: "入力の見出しが「D-1 への新規スレッド」で、`POST /api/comments` の本文が `target: 'D-1'` を持ち `loc` を持たない"
       - name: test_comments_panel_when_focus_after_add
         case: 正常
         summary: 新規スレッドを溜めた後のフォーカスを移動先に従わせる

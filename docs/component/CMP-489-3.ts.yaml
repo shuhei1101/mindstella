@@ -70,7 +70,7 @@ events:
   - name: 選び終えた
     when: '`selectable` が真で、枠の文書の `pointerup`・`selectionchange` の後に空でない選択があるとき'
     value: '`{start, end, text, rects}`。`start`・`end` は元の HTML の行（インターフェース定義『プレビューを開く』の制約「選んだ箇所の対応づけ」の数え方）、`text` は選んだ描いた文、`rects` は選択の最初と最後の矩形に枠の位置を追加した親の画面の座標'
-    description: 使う側が『選んだ箇所のコメントの入口』を `rects` の近くに出し、押されたら `start`・`end`・`text` を箇所にする
+    description: 使う側が『選んだ箇所のコメントの起点』を `rects` の近くに出し、押されたら `start`・`end`・`text` を箇所にする
   - name: 選びを外した
     when: '`selectable` が真で、枠の中の選択が空になったとき'
     description: 使う側が入口を閉じる

@@ -40,7 +40,7 @@ flows:
         description: 検討事項 D-1 を持つワークスペース
     flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant TM as tmux\n  \n  クライアント->>IF: POST {target: D-1, body}\n  IF->>TM: 「ユーザーからのコメントが 1 件届きました」を貼って確定する\n  IF-->>クライアント: 201、entered=true\n```"
     expected:
-      - 会話の記録に `[mindstella] ユーザーからのコメントが 1 件届きました。読み直してください。` が 1 件だけ入る
+      - 会話の記録に `[mindstella] ユーザーからのコメントが 1 件届きました。再読み込みしてください。` が 1 件だけ入る
       - '`entered` が `true`'
     test: test_normal_when_entered_to_claude_code
   - name: 異常系（本文が空・400）

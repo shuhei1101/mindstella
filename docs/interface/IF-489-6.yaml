@@ -197,7 +197,7 @@ flows:
       ```
     expected:
       - ステータスが 201 で、`entered` が `true`
-      - 会話の記録に user の行が 1 件だけ増え、その本文が `[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。` である
+      - 会話の記録に user の行が 1 件だけ増え、その本文が `[mindstella] ユーザーからのコメントが 3 件届きました。再読み込みしてください。` である
       - '`threads.yaml` の TH-1〜TH-3 の最初の書き込みがどれも `taken: null`（取り込み済みにするのは Claude Code が記録した後）'
       - 応答が送信してから 0.5 秒以内に返る
     test: test_normal_when_entered_to_claude_code
@@ -558,7 +558,7 @@ constraints:
   - item: 二重に送信しない
     constraint: 同じ `comment` を持つ書き込みが既にあるコメントは追加せず、そのスレッドと書き込みの ID を `items[]` に返してレビュー中から外す（`threads.yaml` を書いた後、`comments.yaml` を書く前にプロセスが落ちたとき）
   - item: 送信先
-    constraint: '状態のフォルダにこのワークスペースの MindStella のセッションの記録（`session.json`）があるときは、`close_pending` が偽で `status` が `running` のときだけ、その `pane` を宛先にし、`pid`・`pid_started_at` を『宛先が生きているかの確かめ』の `claude_pid`・`claude_started_at` に使う。`close_pending` が真か、MindStella のセッションが止まっている・落ちているときは入力せず（`entered: false`）、書き込みはスレッドに残す。記録が無いワークスペースは、このワークスペースを指して最後にツールを呼んだセッションの `session`（『MCP サーバーの起動』の `session`）を宛先にし、`session.tmux_pane` のペインへ、`session.tmux` の最初の `,` より前のソケット（`tmux -S {ソケット}`）で入力する。常駐サーバーは、`workspace` と `session` を受けたツールの呼び出しのたびに、そのワークスペースの宛先を書き換える（配信の前に受けた分も持つ）。宛先が無い・`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` のどれかが無いときは tmux を呼ばずに `entered: false` にする'
+    constraint: '状態のフォルダにこのワークスペースの MindStella のセッションの記録（`session.json`）があるときは、`close_pending` が偽で `status` が `running` のときだけ、その `pane` を宛先にし、`pid`・`pid_started_at` を『宛先が生きているかの確認』の `claude_pid`・`claude_started_at` に使う。`close_pending` が真か、MindStella のセッションが止まっている・落ちているときは入力せず（`entered: false`）、書き込みはスレッドに残す。記録が無いワークスペースは、このワークスペースを指して最後にツールを呼んだセッションの `session`（『MCP サーバーの起動』の `session`）を宛先にし、`session.tmux_pane` のペインへ、`session.tmux` の最初の `,` より前のソケット（`tmux -S {ソケット}`）で入力する。常駐サーバーは、`workspace` と `session` を受けたツールの呼び出しのたびに、そのワークスペースの宛先を書き換える（配信の前に受けた分も持つ）。宛先が無い・`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` のどれかが無いときは tmux を呼ばずに `entered: false` にする'
     notes: '宛先はワークスペースごとに 1 つ。同じワークスペースを 2 つのセッションが指すと、後から呼んだ方に貼る 記録が無いワークスペースの宛先（最後にツールを呼んだセッション）は、通常のセッションのコメントのやり取りを外す #518 まで残す。MindStella のセッションが無いときの再起動は #520'
   - item: 宛先の生存確認
     constraint: '貼る前に、`claude_pid` のプロセスの起動時刻（Linux は `/proc/{claude_pid}/stat` の 22 番目の欄 `starttime`、`/proc` が無い OS は `ps -o lstart= -p {claude_pid}`）が `claude_started_at` と一致し、そのプロセスが `tmux -S {ソケット} display-message -p -t {tmux_pane} "#{pane_pid}"` の PID かその子孫であることを確かめる。どれかが違えば（プロセスが無い・PID が使い回された・ペインが無い・別のペインへ移った）、tmux へ貼らずに `entered: false` にし、宛先のセッションが終わった旨を標準エラーに記録する'
@@ -566,7 +566,7 @@ constraints:
   - item: 入力の時点
     constraint: '`threads.yaml` と `comments.yaml` を書き終え、書き換えの鍵とワークスペースのロックを外してから入力する。鍵を持ったまま tmux と会話の記録を待たない。同じペイン（`session.tmux` のソケットと `session.tmux_pane` の組）への入力と確かめは、ペインごとの入力の鍵で順に行い、同じペインへ同時に送信された 2 回の入力を重ねない。生きているかの確かめと tmux の 3 つのコマンドは、名前の付いたバッファを共有するため、プロセスの中の 1 本の貼り付けの鍵で順に行う。貼り付けの鍵は届いたかの確かめの間は持たず、別のペインへの送信は前の送信が届いたかの確かめを待たない'
   - item: 入力する文字列
-    constraint: '`[mindstella] ユーザーからのコメントが {足した件数} 件届きました。読み直してください。` の 1 行だけを入力する（新規スレッドと返信を合わせた件数）。スレッドの ID・向けた項目・箇所・本文は入れない'
+    constraint: '`[mindstella] ユーザーからのコメントが {足した件数} 件届きました。再読み込みしてください。` の 1 行だけを入力する（新規スレッドと返信を合わせた件数）。スレッドの ID・向けた項目・箇所・本文は入れない'
     notes: 'ユーザーが決めた文面（PR #201 の確認ログ）。`[mindstella]` は `session` が利用者の発言と見分けるマーカーで、Claude Code は取り込み待ちのスレッドの一覧で中身を読む（インターフェース定義『話し合いの進行』の制約「送信の取り込み」）'
   - item: 入力のやり方
     constraint: 文字列を `tmux -S {ソケット} load-buffer -b {名前の付いたバッファ} -` へ標準入力で渡し、`tmux -S {ソケット} paste-buffer -p -d -b {同じバッファ} -t {session.tmux_pane}` でブラケットペーストとして貼り、待たずに `tmux -S {ソケット} send-keys -t {session.tmux_pane} Enter` で確定する。ペインの状態（打ちかけ・選択の表示）は見ない

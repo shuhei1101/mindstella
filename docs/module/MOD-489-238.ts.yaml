@@ -89,7 +89,7 @@ components:
         summary: レビュー中の書き込みだけを畳み、開閉を知らせる
         condition: '幅 320px の入れ物に描く。`parametrize`: 改行で 8 行の `pending`（C-61、`thread: TH-1`）/ 同じ本文の `pending` を `open: true` / 同じ本文の `pending` を `editing: true` / 同じ本文の AI の `post`。最初の場合だけ「続きを表示」を押す'
         mock: '`on.fold`'
-        expected: 本文が `folded` で本文の下の `review-more-row` に「続きを表示」（読み上げの名前「TH-1 への返信の続きを読む」）。押すと `on.fold` が `(C-61, true)` で 1 回 / `folded` を持たず「折りたたむ」/ 入力欄だけで開閉のボタンが無い / 8 行が全て見え、開閉のボタンが無い
+        expected: 本文が `folded` で本文の下の `review-more-row` に「続きを表示」（読み上げの名前「TH-1 への返信の続きを表示」）。押すと `on.fold` が `(C-61, true)` で 1 回 / `folded` を持たず「折りたたむ」/ 入力欄だけで開閉のボタンが無い / 8 行が全て見え、開閉のボタンが無い
   - name: postBody
     title: 書き込みの本文
     container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts

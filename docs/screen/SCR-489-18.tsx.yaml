@@ -1,5 +1,5 @@
 id: SCR-489-18
-title: 既定の保存の確かめ
+title: 既定の保存の確認
 screen: frontend/src/features/settings/display-settings/settings-confirm-dialog.tsx
 elements:
   - name: 確かめの中身

@@ -1,5 +1,5 @@
 id: MOD-531-5
-title: サーバー / 入口 / api.py
+title: サーバー / エントリーポイント / api.py
 test_files:
   - tests/unit/scripts/test_api.py
 functions:

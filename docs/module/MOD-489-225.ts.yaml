@@ -42,4 +42,4 @@ components:
         type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
         required: false
         default: 'null'
-        description: 表の上の帯の「列の表示」の左に「項目を追加」を置き（押すと開いているタブの種類で `onAdd`）、表の行に `marks`、表の先頭の行に `adds` を出す。そのほかは `decisionsScreen` の `edit` と同じ
+        description: 表の上の帯の「列の表示」の左に「項目追加」を置き（押すと開いているタブの種類で `onAdd`）、表の行に `marks`、表の先頭の行に `adds` を出す。そのほかは `decisionsScreen` の `edit` と同じ

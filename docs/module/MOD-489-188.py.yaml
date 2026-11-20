@@ -1,5 +1,5 @@
 id: MOD-489-188
-title: サーバー / 読み書きと検証 / kinds.py
+title: サーバー / 読み込みと書き込みと検証 / kinds.py
 test_files:
   - tests/unit/scripts/test_kinds.py
 data_models:
@@ -113,7 +113,7 @@ constants:
     title: 編集した人
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
-    summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『入口』の `stage_add`・`stage_update`・`run_adopt` が引く
+    summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『エントリーポイント』の `stage_add`・`stage_update`・`run_adopt` が引く
     value: '"ai"'
   - name: BODY_REF_PREFIX
     title: 本文の参照の頭

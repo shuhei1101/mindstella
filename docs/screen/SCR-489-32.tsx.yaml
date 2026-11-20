@@ -177,7 +177,7 @@ elements:
     visible_when: サーバーの配信で開いたとき、レビュー中のコメントの行（削除した行を含む）が 2 件以上のとき
     action_ref: IF-489-71#constraints[レビュー中のコメントの並び]
     status: planned
-  - name: 選んだ箇所のコメントの入口
+  - name: 選んだ箇所のコメントの起点
     kind: button
     component: CMP-489-58#
     args:

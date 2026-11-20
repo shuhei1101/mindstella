@@ -321,7 +321,7 @@ functions:
          - 手順が空の場合、コピーを取らずにそのまま返す
       2. コピーを取る（`take_backup`。バージョンは `to`）
       3. 手順を並びの順に当てる（`apply_step`）
-         - `StepError` が起きた場合、コピーから戻し（`restore_backup`）、`StepFailedError`（`{版} の手順 {番号}（{操作}）: {理由}`）を送出する
+         - `StepError` が起きた場合、コピーから戻し（`restore_backup`）、`StepFailedError`（`{バージョン} の手順 {番号}（{操作}）: {理由}`）を送出する
          - 戻すことにも失敗した場合（`OSError`・git の終了コードが 0 でない）、`StepFailedError` の `lines` に `写しから戻せませんでした。写しは {backup.ref} にあります` を続ける
       4. 当てた後のワークスペースで、各 `set_default` の `file` をその手順より後の `rename_file` で改めた先の名前に読み替えて（`renamed_file`）値が要るキーを再収集し、手順とコピーを添えて返す
     exceptions:

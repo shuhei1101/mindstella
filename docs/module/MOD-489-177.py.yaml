@@ -1,5 +1,5 @@
 id: MOD-489-177
-title: サーバー / 入口 / server.py
+title: サーバー / エントリーポイント / server.py
 test_files:
   - tests/unit/scripts/test_server.py
 classes:

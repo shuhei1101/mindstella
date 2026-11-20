@@ -1,5 +1,5 @@
 id: MOD-489-171
-title: プレビュー / 入口 / app.ts
+title: プレビュー / エントリーポイント / app.ts
 lead: プレビューを開いたときに記録を読み（配る書き出しは埋め込みから、サーバーの配信は『記録の取得』から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの通知・コメントの読み書き・端末の保存領域につなぐ。
 test_files:
   - tests/unit/preview/test_app.py
@@ -254,7 +254,7 @@ data_models:
         description: 設定の画面を開いているか
       - name: optionDrafts
         type: 'Map<string, {key: string; content: string}[]>'
-        description: 項目の ID（追加する項目は仮の ID、仮の ID が振られる前は `NEW_ID_PREFIX`）→「案を追加」で置いた、まだ溜めていない下書きの案の記号と中身
+        description: 項目の ID（追加する項目は仮の ID、仮の ID が振られる前は `NEW_ID_PREFIX`）→「案追加」で置いた、まだ溜めていない下書きの案の記号と中身
       - name: sentEdits
         type: 'Map<string, {value: unknown; settledSeq: number | null}>'
         description: '`{target}:{op}:{key}`（`adopt` は `{target}:adopt`）→ 送信したが、まだ当てた読み取りに載っていない編集の値（`option-add` は入れない）と、溜められた後に送信した最初の読み取りの番号（`settledSeq`。溜められるまでは `null`）。再描画で `edits` の上に重ねて入力欄に描く'
@@ -466,7 +466,7 @@ functions:
       6. コメントの入力のコールバックを次で扱う
          - 「入力」では `forms` の `body` を書き換え、`DRAFT_SAVE_DELAY_MS` 待って下書きを保つ（`saveDraft`。詳細パネル・一覧を閉じるときと項目を移るときは待たずに保つ。届かないときは何も出さない）
          - 「溜める」では、本文が空白だけなら `empty` にして入力欄へフォーカスを戻す。そうでなければ `saving` にして送り（`add`）、溜めたら入力欄と添えた箇所を空にして `saved`（`count`）、レビュー中を再読み込みして溜めた ID を `checked` に追加し、トップバー・詳細の一番下・一覧を再描画する。断られた・届かないなら本文を残して `failed`
-         - 「箇所を外す」では `pendingLoc` から外し、下書きは箇所を持たない向けた先へ移す
+         - 「箇所を解除」では `pendingLoc` から外し、下書きは箇所を持たない向けた先へ移す
          - 「本文をコピー」では `navigator.clipboard.writeText` でコピーする
          - 「開閉」では、押した後の開閉が閉じるなら `Prefs.commentFormClosed` を `true`、開くなら `null` にして残し（`savePrefs`）、開いている詳細パネル・詳細の全画面の下端の入力を再描画して、その開閉のボタンへフォーカスを戻す。下書き（`forms`）はそのまま残し、履歴に積まず、ハッシュも変えない
          - コメント・返信の入力に渡す `voice` は、`micSupported()` が偽なら `disabled`（`voiceReason` は `VOICE_TEXT.noMicrophone`）、`availability.available` が偽なら `disabled`（`availability.detail`）、録っている入力なら `VoiceState.phase`、ほかの入力で録っていれば `disabled`（`VOICE_TEXT.busy`）、それ以外は `idle`
@@ -484,7 +484,7 @@ functions:
       8. コメントの一覧のコールバックを次で扱う（どれも履歴に積まない）
          - トップバーのコメントのボタンで一覧を開くときは、表示の設定を閉じる（`DisplayState.open` を偽）。`StackState.front` を `left` にする
          - 「行の項目を開く」では一覧を開いたまま詳細パネルを開き、`highlight` にその箇所を渡す
-         - 「直しを送る」「箇所を外す」では `update`、「削除」では `remove` して削除した中身を `removed` に入れ、「元に戻す」ではその中身を `id`・`created` ごと `add` して `removed` から外す。終えたらレビュー中を再読み込みして再描画する
+         - 「修正」「箇所を解除」では `update`、「削除」では `remove` して削除した中身を `removed` に入れ、「元に戻す」ではその中身を `id`・`created` ごと `add` して `removed` から外す。終えたらレビュー中を再読み込みして再描画する
          - 「まとめて送信する」ではチェックした ID を溜めた順に `send` し、201 なら `removed`・`stale` を空にして、結果を `sent`（`count` は送信した件数、`at` は応答の `sent`、`entered` は応答の `entered`）にする（文言は `commentsPanel` が `entered` で出し分ける）。409 なら `stale` を入れて理由を出し、届かない・そのほかは理由を出す。どの場合もレビュー中を再読み込みする
          - Esc は、幅 901px 以上か `StackState.front` が `detail` で詳細パネルを開いていれば、詳細パネルを閉じる。それ以外は「スレッドの画面の操作」の Esc（`isTyping` の扱い・`view` ごとの戻る / 閉じる）に従う
          - 一覧を開くときは、絞り込みのドロワーと表示の設定のパネルを閉じる（`drawerOpen`・`DisplayState.open` を偽）
@@ -503,7 +503,7 @@ functions:
          - 「表示する種類を変える」では `Prefs.kinds` を書き換えて残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けと 5 を再実行する。開いている画面の種類を外したときは概要へ移す（`navigate`、`push: false`）
          - 「既定に戻す」では個人の上書きを外して残し（`clearOverrides`、`savePrefs`）、`FilterState.byTab` を空にして、3 と 5 を再実行する（開いている画面は画面の既定の条件で開き直る）。フォーカスは「ワークスペースの既定のまま表示しています。」へ移す
          - 「ワークスペースの既定にする」では `DisplayState.confirm` を `{busy: false, error: null}` にして確かめを開く（`settingsConfirm`。`from` は既定、`to` は今当てている値）
-         - 確かめの「保存する」では `busy` にして送信する（`putDisplay`）。200 なら確かめを閉じ、返った `display` を記録の `settings.display` と `savedDisplay` に入れ、`message` を「ワークスペースの既定にしました（{MM/DD HH:mm}）。」にして 3 と 5 を再実行する（個人の上書きはそのまま残す）。断られたら `error` に「保存できませんでした。{detail}」、届かないなら再起動の案内を入れて確かめを再描画する（画面設計『既定の保存の確かめ』の文言）
+         - 確かめの「保存する」では `busy` にして送信する（`putDisplay`）。200 なら確かめを閉じ、返った `display` を記録の `settings.display` と `savedDisplay` に入れ、`message` を「ワークスペースの既定にしました（{MM/DD HH:mm}）。」にして 3 と 5 を再実行する（個人の上書きはそのまま残す）。断られたら `error` に「保存できませんでした。{detail}」、届かないなら再起動の案内を入れて確かめを再描画する（画面設計『既定の保存の確認』の文言）
          - 確かめの「取り消す」と Esc（`busy` の間は受けない）では確かめを閉じ、「ワークスペースの既定にする」にフォーカスを戻す
          - トップバーのライト / ダークと表の「列の表示」「初期設定に戻す」も `Prefs` の上書きとして残し、開いていれば表示の設定を再描画する（「この端末で変えている項目」を合わせる）
       12. 書き換えの通知につなぐ（`subscribeEvents`）。`changed` では保存待ちの編集も再読み込みする（`editApi().read`）。再読み込みは 1 回ずつ順に流し、流している間に `changed` を受けたら、終わった後にもう 1 回だけ再読み込みする（その間に続けて受けた知らせは 1 回にまとめる）。保存できた後と再接続した後の再読み込みも同じ順番に載せる
@@ -518,7 +518,7 @@ functions:
          - 2 で保存待ちの編集も読む（`editApi().read`）。3 の索引は、差分の表示中でなければ `applyEdits` で当てた記録から作る（差分の表示中は当てない。保存待ちの編集は残し、やめると再描画する）
          - 5 で、差分の表示中でなければ、トップバーに `pending`（件数・`EditState.open`・`blocked` があるか）、一覧の 4 画面に `edit`（`pendingMarkOf` で求めたマーカーとその種類の `item-add`）、詳細パネルに `edit`、表示の設定に `onWorkspace` を渡す。`EditState.open` なら保存待ちのパネルを重ね、`workspaceOpen` なら本文の区画を設定の画面に置き換える
          - 差分の表示に移ったときは、保存待ちのパネルと設定の画面を閉じ、`editing` を `null` にする
-         - 「編集する」では `editing` をその項目と `null` で入れ替える。「項目を追加」では開いていた詳細パネルを閉じ、`adding` に種類を入れて空の項目の `detailEditForm` を詳細パネルと同じ置き方で開く
+         - 「編集する」では `editing` をその項目と `null` で入れ替える。「項目追加」では開いていた詳細パネルを閉じ、`adding` に種類を入れて空の項目の `detailEditForm` を詳細パネルと同じ置き方で開く
          - 編集の表示の `on.change`・設定の画面の `on.change`・「項目を削除」では `editApi().add` で溜める（追加する項目は、タイトルを書いたときに `target` を省いた `item-add` を送信し、返った仮の ID を `editing` に入れて `adding` を `null` にする。続くキーは同じ `item-add` の `value` を再送信する。追加する項目の `option-add`・`option-edit`・`option-remove`・`adopt` はその op では送信せず、`value.options` を書き換えた同じ `item-add` を再送信する。`adopt` では選んだ案だけを `adopted: true` にして `status` を決定済みにする。追加する項目の送信は、追加の入力を開くたびに作る送信の並び（`EditState.addSend`。保存待ちの仮の ID の項目を再度開いたときは、その仮の ID と保存待ちの `item-add` の `value` で作る）に積み、前の送信が終わってから順に送信する。送信する `value` は、並びが持つ最後に溜められた `value`（まだ無ければ、その並びの追加の入力の `addDraft`）にその入力を当てて組み立て、溜められたら並びの `value` を送信した値にする（保存待ちの編集の再読み込みの結果は待たない）。当て先は `editing` ではなく並びが持つ仮の ID で引き、タイトルを書いた最初の `item-add` の応答より前に来た入力も、返った仮の ID の `item-add` へ当てて送信し、`target` の無い `item-add` を重ねて送信しない。追加の入力を閉じた・別の追加を始めた後も、並びに積んだ入力はその並びの仮の ID へ送信する。最初の `item-add` の応答で `editing` を仮の ID、`adding` を `null` にするのは、その並びの追加の入力をまだ開いているときに限る。最初の `item-add` が断られた・届かないときは、並びに待たせた入力を送信せずにその並びの `addDraft` に当てて残す）。溜めたら保存待ちの編集を再読み込みして 3・5 を再実行し、その入力欄へフォーカスを戻す。断られた・届かないときは `errors` に理由を入れ、入力を残して再描画する。「削除を取り消す」ではその `item-remove` を `editApi().remove` で外す
          - トップバーの保存待ちのボタンでは `EditState.open` を入れ替える。開くときはコメントの一覧・表示の設定・絞り込みのドロワーを閉じ、`StackState.front` を `left` にする。Esc と「閉じる」はコメントの一覧と同じに扱い、閉じたらトップバーの保存待ちのボタンへフォーカスを戻す
          - 保存待ちのパネルの「開く」では、項目は詳細パネルを編集の表示で開き、`settings` は設定の画面を開く（幅 900px 以下ではパネルを閉じ、詳細パネルを閉じたら再度開く）。「取り消す」では `editApi().remove` して外した ID を `blocked` からも外し、再読み込みして再描画する
@@ -983,7 +983,7 @@ notes:
     - 一覧を閉じるときは `target` を `null` にする（トップバー・未読のタイル・音声入力の帯など、詳細パネルのボタンでない入口で開くと項目で絞らない）。サーバーの配信では `detailPanel` に `on.comments` を渡し、受けたら `target` に項目の ID を入れてパネルの中の画面を開いた直後の状態（`view` は `list`、`openedThread`・`reviewFocus` は `null`、`composing` は偽、`reason` は閉じて空）に戻し、一覧を開いていなければ開き、開いていれば再描画する（`filter`・`tag` は保つ）。詳細パネルで別の項目へ移っても `target` は変えない
     - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。送信したスレッドで `hasUnseen` が真なら「既読にする」を行う（一覧の行・レビュー中の書き込みのどちらから開いても同じ。「スレッドの読み直し」）。「戻る」（`thread` から）では返信の下書きを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す
     - 「レビュー中を開く」では返信の下書きを待たずに保ち、`reviewFrom` に今の `view` を控えて `view` を `review` にする（`thread` から開いたときは `reviewFocus` にそのスレッドの ID）。「戻る」（`review` から）では `reviewFrom` へ戻る。`reviewFrom` が `thread` で、開いていたまだ送信していない新規スレッドが `review.items` にも `removed` にも無ければ `list` へ戻る
-    - 「新しいスレッドの入力を出す／畳む」では `composing` を入れ替え、出したときは入力欄へ、畳んだときは「新規スレッド」へフォーカスを移す（下書きは残す）
+    - 「新規スレッドの入力を出す／畳む」では `composing` を入れ替え、出したときは入力欄へ、畳んだときは「新規スレッド」へフォーカスを移す（下書きは残す）
     - 返信の「入力」「溜める」は 6 のコメントの入力と同じ扱いで、`add`・`saveDraft` に `{thread, body}` を送信する（空白だけは部品が溜めさせないため `empty` は使わない）。溜めたらレビュー中を再読み込みして溜めた ID を `checked` に追加し、トップバーとパネルを再描画する
     - 「理由の入力を出す／閉じる」「理由の入力」では `reason` を書き換える。「状態を変える」では `reason.status` を `saving` にして送り（`threadApi().setStatus`）、200 なら `reason` を閉じて空にし、スレッドを再読み込みしてパネルを再描画し、「状態を変える」へフォーカスを戻す。断られた・届かないなら `failed`（`detail`）にして理由の入力を開いたまま残す
     - 「まとめて送信する」では、チェックした ID から `isBlockedReply` が真のものを除いて溜めた順に送信する。201 の後はレビュー中に続けてスレッドも再読み込みする（`view` は `review` のまま）

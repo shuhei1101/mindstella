@@ -808,7 +808,7 @@ functions:
         mock: '`project_index.get_settings`・`state.write_launch`・`settings_update.save_settings`・`caplog`'
         expected: '`ApiError`（500・`stage: write`）、`caplog` の `mindstella.workspace.update_failed` の戻したかが偽'
 notes:
-  ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`
+  ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『エントリーポイント』の `ServerContext`
   ログ: |
     `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に追記する）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
 

@@ -70,7 +70,7 @@ components:
         summary: 開閉で本文とボタンを切り替え、使う側に知らせる
         condition: 改行で 8 行の本文、`label` は「項目を指さないコメント」。ボタンを 2 回押す
         mock: '`on.toggle`'
-        expected: 1 回目で本文が `folded` を外し、ボタンが「折りたたむ」・`aria-expanded="true"`・読み上げの名前「項目を指さないコメントの本文を折りたたむ」で `on.toggle` が `(id, true)`。2 回目で元に戻り、読み上げの名前が「項目を指さないコメントの続きを読む」で `on.toggle` が `(id, false)`
+        expected: 1 回目で本文が `folded` を外し、ボタンが「折りたたむ」・`aria-expanded="true"`・読み上げの名前「項目を指さないコメントの本文を折りたたむ」で `on.toggle` が `(id, true)`。2 回目で元に戻り、読み上げの名前が「項目を指さないコメントの続きを表示」で `on.toggle` が `(id, false)`
       - name: test_review_body_fold_when_open
         case: 正常
         summary: 開いた状態で描く

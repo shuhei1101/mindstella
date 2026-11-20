@@ -1619,7 +1619,7 @@ functions:
          - `MindmapError` の場合、`error_response` の応答を返す（`ThreadNotFoundError` は 404、`SchemaMismatchError`・`WorkspaceNotFoundError` は 422、`WriteFailedError` は 500）
       4. 200・`application/json; charset=utf-8`・`Cache-Control: no-store` で `{id, seen}` を返す
     exceptions:
-      - name: なし（問題の応答を返す）
+      - name: なし（問題の応答を返却する）
         condition: 無い ID・崩れた `threads.yaml`・書けないときは `error_response` の応答にする
     unit_tests:
       - name: test_seen_response

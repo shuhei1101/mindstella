@@ -21,7 +21,7 @@ components:
         summary: 箇所が合わない
         condition: 409 と `stale`
         mock: MSW
-        expected: 行に理由と「箇所を外す」
+        expected: 行に理由と「箇所を解除」
     container: frontend/src/features/comments/review/review-view.tsx
 notes:
   単体テスト: 同じフォルダの `review-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）

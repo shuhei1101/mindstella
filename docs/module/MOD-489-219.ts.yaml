@@ -18,7 +18,7 @@ functions:
         description: 編集
     returns:
       type: '{what: string, before: string | Tag[] | null, after: string | Tag[] | null}'
-      description: '`what` はキーの呼び名・「案 {記号}」・「案 {記号} を追加」・「案 {記号} を削除」・「採用する案」・「項目を追加」・「項目を削除」・設定のキーの呼び名。本文・削除は `before`・`after` を `null`、追加は `before` を `null`。`tags` の `set` は `before`・`after` を `{name, main?}` の並びのまま返し（行は `tagList` で描く）、それ以外の配列は「、」でつなぐ'
+      description: '`what` はキーの呼び名・「案 {記号}」・「案 {記号} 追加」・「案 {記号} を削除」・「採用する案」・「項目追加」・「項目を削除」・設定のキーの呼び名。本文・削除は `before`・`after` を `null`、追加は `before` を `null`。`tags` の `set` は `before`・`after` を `{name, main?}` の並びのまま返し（行は `tagList` で描く）、それ以外の配列は「、」でつなぐ'
     unit_tests:
       - name: test_edit_row_text
         case: 正常
@@ -89,7 +89,7 @@ components:
         summary: 項目ごとのまとまりと件数、削除の件数を出し、操作を知らせる
         condition: E-1（D-1 の `answer`）・E-2（N-1 の削除）・E-3（題名）。E-1 の取り消すと「まとめて保存する」を押す
         mock: '`on.undo`・`on.save`'
-        expected: 見出しが「保存待ち」「3 件」、まとまりが D-1・N-1・設定の 3 つ、合計が「3 件（うち削除 1 件）をワークスペースに書きます」、ボタンが「まとめて保存する（1 件を削除）」。`on.undo` が E-1 で 1 回、`on.save` が 1 回
+        expected: 見出しが「保存待ち」「3 件」、まとまりが D-1・N-1・設定の 3 つ、合計が「3 件（うち削除 1 件）をワークスペースに書き込みます」、ボタンが「まとめて保存する（1 件を削除）」。`on.undo` が E-1 で 1 回、`on.save` が 1 回
       - name: test_pending_edits_panel_when_empty_or_blocked
         case: 異常
         summary: 空・書き込めない・届かない・送信中の表示

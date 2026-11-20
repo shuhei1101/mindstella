@@ -237,7 +237,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/notify.py
     usecase: 作業の完了を通知する
     scope: public
-    summary: ツールの名前が `MARKING_TOOLS` で、結果が書き込んだことを示すときだけ `MARKERS` に付ける（『入口』が成功したツールの後に呼ぶ）
+    summary: ツールの名前が `MARKING_TOOLS` で、結果が書き込んだことを示すときだけ `MARKERS` に付ける（『エントリーポイント』が成功したツールの後に呼ぶ）
     args:
       - name: tool
         type: str

@@ -1,5 +1,5 @@
 id: MOD-489-176
-title: サーバー / 入口 / commands.py
+title: サーバー / エントリーポイント / commands.py
 test_files:
   - tests/unit/scripts/test_commands.py
 data_models:
@@ -841,7 +841,7 @@ functions:
         message: '{ID} の案 {記号}: その記号の案がありません'
       - name: AdoptedOptionError
         condition: '`remove` で採用している案を指した'
-        message: '{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください'
+        message: '{ID} の案 {記号}: 採用している案は削除できません。先に adopt で採用をほかの案へ移してください'
       - name: LastOptionError
         condition: '`remove` で、案を必須にする状態の検討事項の最後の案を指した'
         message: '{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を追加してください'

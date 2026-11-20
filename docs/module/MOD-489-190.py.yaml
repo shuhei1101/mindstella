@@ -1,5 +1,5 @@
 id: MOD-489-190
-title: サーバー / 読み書きと検証 / errors.py
+title: サーバー / 読み込みと書き込みと検証 / errors.py
 classes:
   - name: MindmapError
     title: ツールのエラー
@@ -72,7 +72,7 @@ classes:
     title: 手順が失敗した
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 記録の形式の移行
-    summary: '移し替えの手順が失敗し、コピーから戻した。メッセージは `{版} の手順 {番号}（{操作}）: {理由}`'
+    summary: '移し替えの手順が失敗し、コピーから戻した。メッセージは `{バージョン} の手順 {番号}（{操作}）: {理由}`'
     kind: クラス
     inherits: MindmapError
   - name: StepsInvalidError
@@ -136,7 +136,7 @@ classes:
     title: 採用している案
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 検討事項の案の編集
-    summary: '採用している案を削除しようとした。メッセージは `{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください`'
+    summary: '採用している案を削除しようとした。メッセージは `{ID} の案 {記号}: 採用している案は削除できません。先に adopt で採用をほかの案へ移してください`'
     kind: クラス
     inherits: MindmapError
   - name: SettingsInvalidError
@@ -150,14 +150,14 @@ classes:
     title: 最後の案
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 検討事項の案の編集
-    summary: '案を必須にする状態の検討事項の最後の案を削除しようとした。メッセージは `{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください`'
+    summary: '案を必須にする状態の検討事項の最後の案を削除しようとした。メッセージは `{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を追加してください`'
     kind: クラス
     inherits: MindmapError
   - name: ItemReferencedError
     title: ほかの記録が指している
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 記録の削除と取り下げ
-    summary: '削除しようとした項目をほかの記録が指している。メッセージは `{ID} はほかの記録が指しているため消せません`、`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行'
+    summary: '削除しようとした項目をほかの記録が指している。メッセージは `{ID} はほかの記録が指しているため削除できません`、`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行'
     kind: クラス
     inherits: MindmapError
   - name: ThreadNotFoundError

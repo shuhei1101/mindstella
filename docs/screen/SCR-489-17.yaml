@@ -1,5 +1,5 @@
 id: SCR-489-17
-title: "既定の保存の確かめ"
+title: "既定の保存の確認"
 elements:
   - name: 確かめの中身
     kind: dialog

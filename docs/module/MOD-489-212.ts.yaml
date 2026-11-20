@@ -44,7 +44,7 @@ components:
         type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
         required: false
         default: 'null'
-        description: 編集の入口。配る書き出し・差分の表示中は `null`。表示形式の切り替えの帯の右端に「項目を追加」（幅 480px 以下はマーカーだけ。押すと `onAdd`）を置き、ボードのカード・表の行のタイトルの後ろに `marks` の `pendingEditMark` を置く。`adds`（追加する項目。`id` は仮の ID）はボードの状態の列の先頭と表の先頭の行に破線の枠で出し、ID の場所に「ID は保存で決まる」（表は「—」）を置く。押すと `on.open` に仮の ID を渡す
+        description: 編集の入口。配る書き出し・差分の表示中は `null`。表示形式の切り替えの帯の右端に「項目追加」（幅 480px 以下はマーカーだけ。押すと `onAdd`）を置き、ボードのカード・表の行のタイトルの後ろに `marks` の `pendingEditMark` を置く。`adds`（追加する項目。`id` は仮の ID）はボードの状態の列の先頭と表の先頭の行に破線の枠で出し、ID の場所に「ID は保存時に決定」（表は「—」）を置く。押すと `on.open` に仮の ID を渡す
     unit_tests:
       - name: test_decisions_screen_when_removed
         case: 正常

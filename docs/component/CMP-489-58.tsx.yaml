@@ -1,5 +1,5 @@
 id: CMP-489-58
-title: 選んだ箇所のコメントの入口
+title: 選んだ箇所のコメントの起点
 implementation: frontend/src/shared/components/selection-comment.tsx#SelectionComment
 story: Shared/SelectionComment
 states:

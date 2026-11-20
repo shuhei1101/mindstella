@@ -1,5 +1,5 @@
 id: MOD-489-189
-title: サーバー / 読み書きと検証 / store.py
+title: サーバー / 読み込みと書き込みと検証 / store.py
 test_files:
   - tests/unit/scripts/test_store.py
 data_models:

@@ -1,5 +1,5 @@
 id: CMP-489-34
-title: 既定の保存の確かめ
+title: 既定の保存の確認
 implementation: frontend/src/features/settings/display-settings/components/settings-confirm.tsx#SettingsConfirm
 story: Settings/SettingsConfirm
 states:

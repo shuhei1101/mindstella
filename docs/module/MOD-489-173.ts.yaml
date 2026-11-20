@@ -92,7 +92,7 @@ data_models:
         description: 文字が変わったノード・辺の要素
       - name: removed
         type: string[]
-        description: 前にだけあるノード・辺の文字（「消したもの」に並べる）
+        description: 前にだけあるノード・辺の文字（「削除したもの」に並べる）
   - name: RemovedItem
     title: 削除した項目
     container: plugins/mindstella/skills/mindmap/preview/core/diff.ts

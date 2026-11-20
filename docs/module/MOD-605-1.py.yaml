@@ -1,4 +1,4 @@
-title: サーバー / 入口 / startup.py
+title: サーバー / エントリーポイント / startup.py
 lead: 常駐サーバーの起動時の照合（IF-605-1）を受け持つ。待ち受けの前に ID の一覧の再作成と状態の照合を行い、待ち受けと並行するスレッドでエージェントフローの配信元の行を確認する。
 constants:
   - name: STARTUP_GET_TIMEOUT_SEC

@@ -127,7 +127,7 @@ components:
         summary: マーカーのある本文で帯とマーカーを出し、出さないときは本文だけを包む
         case: 正常
         condition: '`parametrize`: 追加した塊と削除した行を持つ本文で `shown: true` / 同じ本文で `shown: false` / 差分のマーカーの無い本文で `shown: true`'
-        expected: 枠の子が本文と帯で、帯にマーカーのボタンが 2 つ（読み上げの名前「足した箇所（1 / 2）」「消した箇所（2 / 2）」、先頭だけ `tabindex="0"`）/ 枠の子が本文だけ / 帯が `hidden` で枠に `has-map` が無い
+        expected: 枠の子が本文と帯で、帯にマーカーのボタンが 2 つ（読み上げの名前「追加した箇所（1 / 2）」「削除した箇所（2 / 2）」、先頭だけ `tabindex="0"`）/ 枠の子が本文だけ / 帯が `hidden` で枠に `has-map` が無い
         mock: なし（DOM を作って見る）
       - name: test_diff_minimap_frame_when_keys
         summary: 矢印・Home / End でマーカーの間を移り、ハッシュを変えない

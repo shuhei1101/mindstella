@@ -108,7 +108,7 @@ classes:
         description: プロセスの中の 1 本の貼り付けの鍵。名前の付いたバッファ（`PASTE_BUFFER`）を共有するため、生きているかの確かめと tmux の 3 つのコマンドを重ねない
       - name: _restarter
         type: Callable[[Path], bool] | None
-        description: ワークスペースのフォルダを受け、MindStella のセッションが落ちていれば（`running` なら `is_alive` で確認する）契機 `comment` で再起動して準備ができたかを返す関数（『入口』が `sessions.request_restart` と `sessions.wait_until_running` で作って渡す）。`None` なら再起動しない
+        description: ワークスペースのフォルダを受け、MindStella のセッションが落ちていれば（`running` なら `is_alive` で確認する）契機 `comment` で再起動して準備ができたかを返す関数（『エントリーポイント』が `sessions.request_restart` と `sessions.wait_until_running` で作って渡す）。`None` なら再起動しない
     methods:
       - name: remember
         title: 宛先を書き換える
@@ -458,7 +458,7 @@ functions:
         summary: 件数を入れた 1 行
         condition: '`count=3`'
         mock: なし
-        expected: '`[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。`'
+        expected: '`[mindstella] ユーザーからのコメントが 3 件届きました。再読み込みしてください。`'
   - name: snapshot_sizes
     title: 会話の記録の大きさの控え
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
