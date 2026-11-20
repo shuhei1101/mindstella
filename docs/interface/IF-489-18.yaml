@@ -25,20 +25,20 @@ flows:
       - 本文に `<style>` と `<script>` があり、`mindmap-data` の要素が空
     test: test_normal
   - name: 正常系（/ を開く）
-    summary: '`/` は画面のパスへリダイレクトする'
+    summary: '`/w/{workspace}/` は画面のパスへリダイレクトする'
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
       - name: make_workspace
         description: 作成を済ませたワークスペース
-        notes: リダイレクトを辿らずに `/` を GET する
+        notes: リダイレクトを辿らずに `/w/{workspace}/` を GET する
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as 配信
 
-        クライアント->>IF: GET /
+        クライアント->>IF: GET /w/{workspace}/
         IF-->>クライアント: 302、Location: /w/{workspace}/mindstella.html
       ```
     expected:
@@ -207,7 +207,31 @@ flows:
       - 返した HTML の mdmark の CSS と JavaScript の URL が `mdmark@develop/dist/` を含む
       - 常駐サーバーの標準エラーに、jsDelivr が配らない旨の 1 行がある
     test: test_normal_when_dist_not_served
-lead: '`preview_url` が立てた配信が、プレビューの画面（雛形に CSS と JavaScript を差し込んだ HTML）を `/w/{workspace}/mindstella.html` で返す。`/` は `/w/{workspace}/mindstella.html` へ再送信する。記録は画面が『記録の取得』で読む。'
+  - name: 異常系（配っていないワークスペース・404）
+    summary: 配っていないワークスペースの ID を指すと、画面も記録も返さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース A（`preview_url` を呼ぶ）と B（`preview_url` を呼ばない）
+        notes: '`/w/mindstella-unknown-000000/mindstella.html`・`/w/{B の ID}/mindstella.html`・`/w/{B の ID}/api/records` を GET する'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as 配信
+
+        クライアント->>IF: GET /w/{知らない ID}/mindstella.html
+        IF-->>クライアント: 404
+        クライアント->>IF: GET /w/{B の ID}/api/records
+        IF-->>クライアント: 404
+      ```
+    expected:
+      - 3 つともステータスが 404 で、`Content-Type` が `application/problem+json`
+      - 本文に B の記録が無い
+      - A の `/w/{A の ID}/mindstella.html` は 200 のまま
+    test: test_error_when_workspace_not_served
+lead: '常駐サーバーが、`preview_url` で配り始めたワークスペースのプレビューの画面（雛形に CSS と JavaScript を差し込んだ HTML）を `/w/{workspace}/mindstella.html` で返す。`/w/{workspace}/` は `/w/{workspace}/mindstella.html` へ再送信する。記録は画面が『記録の取得』で読む。'
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
@@ -218,7 +242,7 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '`127.0.0.1:{ポート}`・`localhost:{ポート}` か、ポートを外したホスト名の部分が許可するホスト名のどれかと同じもの（制約「接続先の確認」）'
+    constraints: '`127.0.0.1:{常駐サーバーのポート}`・`localhost:{常駐サーバーのポート}` か、ポートを外したホスト名の部分が許可するホスト名のどれかと同じもの（制約「接続先の確認」）'
 response:
   - name: 本文
     type: text/html
@@ -230,20 +254,20 @@ status_codes:
   - code: '200'
     condition: 画面を返せた
   - code: '302'
-    condition: '`/` を開いた'
+    condition: '`/w/{workspace}/` を開いた'
     notes: '`Location: /w/{workspace}/mindstella.html`'
   - code: '403'
     condition: '`Host` が制約「接続先の確認」に合わない'
     notes: 本文は返さない
   - code: '404'
-    condition: '`/`・`/w/{workspace}/mindstella.html`・`/w/{workspace}/spa`（`/w/{workspace}/spa/{path}` を含む。『SPAの配信』）・`/w/{workspace}/api/records`・`/w/{workspace}/api/events`・`/w/{workspace}/api/comments`（`/w/{workspace}/api/comments/{id}`・`/w/{workspace}/api/comments/send` を含む）・`/w/{workspace}/api/drafts`・`/w/{workspace}/api/config/display`・`/w/{workspace}/api/config/reload` 以外のパス'
+    condition: '`{workspace}` が配っているワークスペースの ID でない（知らない ID・削除したワークスペース）。または `/w/{workspace}/`・`/w/{workspace}/mindstella.html`・`/w/{workspace}/spa`（`/w/{workspace}/spa/{path}` を含む。『SPAの配信』）・`/w/{workspace}/api/records`・`/w/{workspace}/api/events`・`/w/{workspace}/api/comments`（`/w/{workspace}/api/comments/{id}`・`/w/{workspace}/api/comments/send` を含む）・`/w/{workspace}/api/drafts`・`/w/{workspace}/api/config/display`・`/w/{workspace}/api/config/reload` 以外のパス'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 待ち受け
-    constraint: '`127.0.0.1` だけ（『プレビューの URL』）'
+    constraint: '常駐サーバーが `127.0.0.1` の `MINDSTELLA_PORT` で待ち受ける経路だけ（『プレビューの URL』）'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 接続先の確認
-    constraint: '全てのパスで `Host` を確かめ、合わなければ 403 を返す（別のサイトがこの端末の名前を名乗って配信を読む DNS の付け替えを防ぐ）。受けるのは `127.0.0.1:{ポート}`・`localhost:{ポート}` と、ポートを外したホスト名の部分が許可するホスト名（『設定: サーバー』の `MINDSTELLA_ALLOWED_HOSTS`）のどれかと同じもの。比べるときは大文字と小文字を区別しない。許可するホスト名は入口のポートを問わない（トンネル・リバースプロキシが転送したものしか `127.0.0.1` に届かないため）'
+    constraint: '全てのパスで `Host` を確かめ、合わなければ 403 を返す（別のサイトがこの端末の名前を名乗って配信を読む DNS の付け替えを防ぐ）。受けるのは `127.0.0.1:{常駐サーバーのポート}`・`localhost:{常駐サーバーのポート}` と、ポートを外したホスト名の部分が許可するホスト名（『設定: サーバー』の `MINDSTELLA_ALLOWED_HOSTS`）のどれかと同じもの。比べるときは大文字と小文字を区別しない。許可するホスト名は入口のポートを問わない（トンネル・リバースプロキシが転送したものしか `127.0.0.1` に届かないため）'
   - item: 差し込みの安全
     constraint: 差し込む CSS・JavaScript が `</style>`・`</script>` を含むときは、同梱の雛形の誤りとして 500 を返す
   - item: 読み込むファイル
@@ -251,10 +275,12 @@ constraints:
   - item: 通信
     constraint: 配信は、制約「mdmark の ref の解決」の GitHub の API への問い合わせと jsDelivr への配布物の確認のほかは外へ通信しない
   - item: 送信元の確認
-    constraint: 書き込むエンドポイントは、`Origin` が付いていれば確かめ、合わなければ 403 を返す（別のサイトのページからの書き込みを防ぐ）。受けるのは `http://127.0.0.1:{ポート}`・`http://localhost:{ポート}` と、スキームが `https` か `http` で、ポートを外したホスト名の部分が許可するホスト名のどれかと同じもの。`Origin` が無い要求（HTTP のクライアントからの要求）は通す
+    constraint: 書き込むエンドポイントは、`Origin` が付いていれば確かめ、合わなければ 403 を返す（別のサイトのページからの書き込みを防ぐ）。受けるのは `http://127.0.0.1:{常駐サーバーのポート}`・`http://localhost:{常駐サーバーのポート}` と、スキームが `https` か `http` で、ポートを外したホスト名の部分が許可するホスト名のどれかと同じもの。`Origin` が無い要求（HTTP のクライアントからの要求）は通す
   - item: mdmark の ref の解決
     constraint: 'ワークスペースの設定の `mdmark.version` がタグのときはタグを、`latest` か無いときは mdmark の develop の先頭の commit の SHA（40 文字の 16 進）を mdmark の ref にする。SHA は外部 API『GitHub』で問い合わせ、常駐サーバーの中で 150 秒保持し、保持している間は問い合わせない。1 回の問い合わせは、接続を 11 秒、読み取りを 2 秒まで待ち、再取得しない。問い合わせた SHA が保持している SHA と違うときは、jsDelivr にその SHA の `dist/index.js` を画面と同じ GET に `Range: bytes=0-0` を付けて 1 回要求し（接続を 1 秒、読み取りを 2 秒まで待ち、本文は読まない）、200 か 206 のときだけその SHA を ref にする。200 も 206 でもないとき（新しい commit を jsDelivr がまだ配らず 403 を返す間など）は、問い合わせられないときと同じく扱う。問い合わせられないとき（届かない・200 以外・SHA の形式でない・jsDelivr が配らない）は、前に問い合わせた SHA があればそれを、無ければ `develop` を ref にし、標準エラーに 1 行記録して、問い合わせられなかったことも 150 秒保持する。develop に新しい commit が入った後の最初の 1 回は、画面を返すまでに問い合わせ（最大 13 秒）と確認（最大 3 秒）で最大 16 秒待つ。外部 API『GitHub』が上限を超えた応答を返したときは、その応答が示す時刻まで問い合わせない。問い合わせる基点の URL（既定は `https://api.github.com`）と配布物を確かめる jsDelivr の基点の URL（既定は `https://cdn.jsdelivr.net`）は常駐サーバーの定数に持ち、結合テストは文字起こしのテストと同じく、常駐サーバーを起動するときに `sitecustomize` で定数を差し替えて偽のサーバーへ向ける。『記録の取得』の `mdmark_ref` と『配る書き出し』も、同じ ref を使用する'
     notes: '150 秒: GitHub の API の認証なしの上限 60 回/時 ÷ 同じ端末で問い合わせる数 2（常駐サーバー・Storybook）× 安全率 0.8 = 24 回/時。接続 11 秒・読み取り 2 秒: 2026-11-19 に認証つきで同じエンドポイントを 1,000 回呼んだ実測（200 が 999 回、30 秒でも接続できなかったのが 1 回）で、接続の p99.9 が 7.10 秒、読み取り（応答の終了まで − 接続）の p99.9 が 1.17 秒。それぞれに余裕 50% を加え、秒に切り上げた。認証のあり・なしで応答の時間は変わらない前提を置く。commit を指す jsDelivr の URL は `cache-control: immutable` で中身が変わらないため、ブラウザ・CDN のキャッシュが更新前の配布物を返さない。jsDelivr の確認: 2026-11-19 に mdmark の develop の先頭の commit（`aadba7dd`。push の約 15 分後）の `dist/index.js` が「Package size exceeded the configured limit of 50 MB」の 403 を返し、約 4 分後には同じ URL が 200 を返した。配らない commit を ref にすると画面が mdmark を読めず本文を描けないため、確かめてから切り替える。403 を見たのは画面と同じ GET なので、確認も GET で行い、`Range: bytes=0-0` で本文を減らす（jsDelivr は 1,000 回のうち 998 回を 200、2 回を 206 で返したため、どちらも配っていると判定する）。jsDelivr の接続 1 秒・読み取り 2 秒: 2026-11-19 に配っている commit（`05a79a26`）の `dist/index.js` を `Range: bytes=0-0` の GET で 1,000 回要求した実測（全て 200 か 206）で、接続の p99.9 が 0.038 秒、読み取り（応答の終了まで − 接続）の p99.9 が 1.30 秒。それぞれに余裕 50% を加え、秒に切り上げた'
+  - item: ワークスペースの区別
+    constraint: 画面と画面が呼ぶ全ての経路（この画面・『SPAの配信』・『ワークスペースのファイルの配信』・`/api/*`）は `/w/{workspace}/` を先頭に持ち、`{workspace}`（『プレビューの URL』の制約「画面のパス」）で指したワークスペースだけを読み書きする。別のワークスペースの記録・ファイル・書き換えの通知を返さず、別のワークスペースへ書かない。`/w/` の外は、常駐サーバーの MCP（`/mcp`）と MindStella の API（`/workspaces`・`/_admin`）だけを持ち、画面を返さない
 refs:
   - IF-489-17#
   - IF-489-71#
