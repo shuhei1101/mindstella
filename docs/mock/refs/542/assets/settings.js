@@ -22,17 +22,8 @@
   };
   const icon = (n) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
-  // ネットワークの見た目: 値・名前・中身の短い説明（上書きの一覧と確かめに名前を出す）
-  const LOOKS = [
-    { key: "glow", label: "グロウ", note: "玉と流れる光に、やわらかい光のにじみ" },
-    { key: "starlight", label: "星の光", note: "白い芯と色の光。明るい星に十字の光条" },
-    { key: "constellation", label: "星図", note: "回転に合わせて回る天球の経緯線" },
-    { key: "deep", label: "深宇宙", note: "星空と星雲の地に、光のにじむ星" },
-    { key: "dust", label: "星屑", note: "色を抜いた細かな点と細い線" },
-  ];
-  // 組み込みの既定: ワークスペースの既定も個人の上書きも無いときの値
-  const BUILTIN_LOOK = "deep";
-  // 表示する種類を選べる画面。概要とネットワークは選べず、常に出す
+  // 542: ネットワークの見た目の一覧と組み込みの既定を除く
+  // 表示する種類を選べる画面。概要は選べず、常に出す
   const KINDS = [
     { key: "decisions", label: "検討事項", icon: "decision" },
     { key: "tasks", label: "タスク", icon: "task" },
@@ -43,7 +34,6 @@
     { key: "logs", label: "会話ログ", icon: "log" },
   ];
   const THEMES = [["system", "端末に合わせる"], ["light", "ライト"], ["dark", "ダーク"]];
-  const lookLabel = (k) => LOOKS.find((l) => l.key === k).label;
   // 表示する種類を、外した種類の名前で書く（全て出すときは「すべて表示」）
   const kindsText = (shown) => {
     const off = KINDS.filter((k) => !shown.has(k.key)).map((k) => k.label);
@@ -91,8 +81,8 @@
   const MSG_ICON = { ok: "check", info: "sliders", warn: "alert" };
 
   /**
-   * 表示の設定のパネルの中身（見出しの帯と本文）を返す。見た目はネットワークのドロップダウンで選び、パネルには選びを置かない。
-   * m: p（id と name の頭）・look・defLook・shown・defShown・counts・theme・showTheme・overrides・save（button / sections / none）・ws・msg・nostore
+   * 表示の設定のパネルの中身（見出しの帯と本文）を返す。
+   * m: p（id と name の頭）・shown・defShown・counts・theme・showTheme・overrides・save（button / sections / none）・ws・msg・nostore
    */
   const panelHtml = (m) => {
     const sections = m.save === "sections";
@@ -116,7 +106,7 @@
 
   /**
    * ワークスペースの既定として保存する前の確かめの中身を返す。
-   * c: from（今の既定の look・shown）・to（保存する値）・busy（保存している途中）・error（保存できなかった理由）
+   * c: from（今の既定の shown）・to（保存する値）・busy（保存している途中）・error（保存できなかった理由）
    */
   const confirmHtml = (c) => `<h2 id="sc-h">ワークスペースの既定を書き換えますか</h2>
     <p class="sc-lead">このワークスペースを開く全員の既定が変わります。表示の設定を自分で変えている人には、変えた項目は当たりません。</p>
@@ -127,5 +117,5 @@
   // まとめて選ぶチェックの途中の状態（一部だけを選んでいる）は HTML の属性で持てないため、描いた後に付ける
   const markMixed = (root) => { for (const b of root.querySelectorAll("[data-act=skindall]")) b.indeterminate = b.dataset.mixed === "1"; };
 
-  window.SETTINGS_UI = { LOOKS, KINDS, BUILTIN_LOOK, icon, lookLabel, kindsText, sameSet, panelHtml, confirmHtml, markMixed };
+  window.SETTINGS_UI = { KINDS, icon, kindsText, sameSet, panelHtml, confirmHtml, markMixed };
 })();

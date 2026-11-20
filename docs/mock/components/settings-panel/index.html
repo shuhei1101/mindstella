@@ -65,19 +65,19 @@
       const counts = { decisions: 36, tasks: 8, research: 4, docs: 5, terms: 6, notes: 3, logs: 7 };
       const without = (...ks) => new Set(ALL.filter((k) => !ks.includes(k)));
       // 開いた直後の値（ワークスペースの既定も上書きも無い）
-      const base = { look: "deep", defLook: "deep", shown: new Set(ALL), defShown: new Set(ALL), counts, theme: "system", showTheme: false, overrides: [], save: "button", ws: { look: "deep", shown: new Set(ALL) }, msg: null, nostore: false, minimap: true, minimapLabel: "差分のミニマップ", minimapAt: "afterend", md: { pin: true, head: true, stripes: false, fold: true }, focus: "auto", focusWords: "a", focusAt: "section", pointer: "fine" };
+      const base = { shown: new Set(ALL), defShown: new Set(ALL), counts, theme: "system", showTheme: false, overrides: [], save: "button", ws: { shown: new Set(ALL) }, msg: null, nostore: false, minimap: true, minimapLabel: "差分のミニマップ", minimapAt: "afterend", md: { pin: true, head: true, stripes: false, fold: true }, focus: "auto", focusWords: "a", focusAt: "section", pointer: "fine" };
       const PANELS = [
         ["開いた直後（ワークスペースの既定のまま）", "上書きが無い。既定に戻すとワークスペースの既定にするのボタンを出さず、そのことを文言で示す。", {}],
-        ["この端末で変えている（推奨の案 A）", "上書きを持つ項目を並べ、既定に戻すで 3 項目の上書きを外す。ワークスペースの既定にするは線で区切った下に置く。", { look: "dust", defLook: "starlight", defShown: without("notes"), overrides: ["表示する種類", "ライト / ダーク", "表の列（調査）"] }],
+        ["この端末で変えている（推奨の案 A）", "上書きを持つ項目を並べ、既定に戻すで 3 項目の上書きを外す。ワークスペースの既定にするは線で区切った下に置く。", { defShown: without("notes"), overrides: ["表示する種類", "ライト / ダーク", "表の列（調査）"] }],
         ["表示する種類を一部外した", "すべてのチェックを途中の印にし、選んだ数を出す。概要は常に出す行にする。", { shown: without("terms", "logs"), overrides: ["表示する種類"] }],
         ["保存した直後", "今の選びが既定と同じになり、ボタンの代わりにそのことと保存した知らせを出す。", { shown: without("logs"), defShown: without("logs"), overrides: ["表示する種類"], msg: { kind: "ok", text: "ワークスペースの既定にしました（10/05 14:20）。" } }],
-        ["他の人が保存した既定が届いた", "上書きを持たない項目に新しい既定を当て、パネルにも知らせを残す（画面の下の知らせは消える）。", { look: "starlight", defLook: "starlight", shown: without("logs"), defShown: without("logs"), msg: { kind: "info", text: "ワークスペースの既定が変わりました（10/05 14:22）。" } }],
+        ["他の人が保存した既定が届いた", "上書きを持たない項目に新しい既定を当て、パネルにも知らせを残す（画面の下の知らせは消える）。", { shown: without("logs"), defShown: without("logs"), msg: { kind: "info", text: "ワークスペースの既定が変わりました（10/05 14:22）。" } }],
         ["端末に保存できない", "選んだ表示は当てるが、開いている間だけであることを先頭に出す。", { nostore: true, shown: without("logs"), overrides: ["表示する種類"] }],
         ["配る書き出し", "表示する種類はその端末の上書きとして変えられる。ワークスペースの既定にするは出さない。", { save: "none", shown: without("logs"), overrides: ["表示する種類"] }],
         ["案 B: ライト / ダークもパネルに置く", "トップバーの切り替えと同じ選びを、端末に合わせるを含む 3 つのセグメントで並べる。", { showTheme: true, theme: "dark", overrides: ["ライト / ダーク"] }],
-        ["案 B: ワークスペースの既定を別の区画で選ぶ", "この端末の区画とワークスペースの既定の区画を分け、既定は保存するまで画面に当てない。", { save: "sections", ws: { look: "starlight", shown: without("logs") } }],
+        ["案 B: ワークスペースの既定を別の区画で選ぶ", "この端末の区画とワークスペースの既定の区画を分け、既定は保存するまで画面に当てない。", { save: "sections", ws: { shown: without("logs") } }],
         ["ホバー・キーボードのフォーカス", "種類の行のホバーは面の色、フォーカスは印の色の輪。", { hover: true }],
-        ["狭い幅（390px）", "画面の幅いっぱいに出す。行の高さと押せる的は変えない。", { narrow: true, look: "dust", defLook: "starlight", overrides: ["表示する種類"], shown: without("notes") }],
+        ["狭い幅（390px）", "画面の幅いっぱいに出す。行の高さと押せる的は変えない。", { narrow: true, overrides: ["表示する種類"], shown: without("notes") }],
         ["差分のミニマップを表示しない", "表示する種類の下の区画「詳細に表示するもの」のチェックを外すと、その場で詳細からミニマップを外し、この端末で変えている項目に並べる。既定に戻すで表示するに戻る。ワークスペースの既定には保存しない。", { minimap: false, overrides: ["差分のミニマップ"] }],
         ["差分のミニマップ: 呼び名の案 B", "「変わった箇所のミニマップ」。差分という言葉を使わない。", { minimapLabel: "変わった箇所のミニマップ" }],
         ["差分のミニマップ: 呼び名の案 C", "「変更箇所の帯」。ミニマップという言葉を使わない。", { minimapLabel: "変更箇所の帯" }],
@@ -90,11 +90,11 @@
         ["レビューに追加した後のフォーカス: 置き場所の案 B", "区画を分けず、区画「詳細に表示するもの」の末尾に並べる。", { focusAt: "detail" }],
       ];
       const CONFIRMS = [
-        ["確かめ（表示する種類を変える）", "今の既定と保存する値を並べる。最初のフォーカスは取り消すに置く。", { from: { look: "starlight", shown: without("notes") }, to: { look: "dust", shown: new Set(ALL) } }],
-        ["保存している途中", "閉じられないようにし、保存するボタンに待つ印を出す。", { from: { look: "deep", shown: new Set(ALL) }, to: { look: "glow", shown: without("logs") }, busy: true }],
-        ["保存できなかった（フォルダに書き込めない）", "モーダルの中に理由と直し方を出し、もう一度保存できる。config.yaml と画面の表示は保存の前のまま。", { from: { look: "deep", shown: new Set(ALL) }, to: { look: "glow", shown: without("logs") }, error: "保存できませんでした。ワークスペースのフォルダに書き込めません（読み取り専用）。フォルダに書き込めるようにしてから、もう一度保存してください。" }],
-        ["保存できなかった（サーバーが止まっている）", "コメントを送れなかったときと同じ直し方を出す。", { from: { look: "deep", shown: new Set(ALL) }, to: { look: "glow", shown: without("logs") }, error: "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。" }],
-        ["狭い幅（320px）・外した種類が多い", "値は折り返す。", { from: { look: "deep", shown: new Set(ALL) }, to: { look: "constellation", shown: new Set(["logs"]) }, narrow: true }],
+        ["確かめ（表示する種類を変える）", "今の既定と保存する値を並べる。最初のフォーカスは取り消すに置く。", { from: { shown: without("notes") }, to: { shown: new Set(ALL) } }],
+        ["保存している途中", "閉じられないようにし、保存するボタンに待つ印を出す。", { from: { shown: new Set(ALL) }, to: { shown: without("logs") }, busy: true }],
+        ["保存できなかった（フォルダに書き込めない）", "モーダルの中に理由と直し方を出し、もう一度保存できる。config.yaml と画面の表示は保存の前のまま。", { from: { shown: new Set(ALL) }, to: { shown: without("logs") }, error: "保存できませんでした。ワークスペースのフォルダに書き込めません（読み取り専用）。フォルダに書き込めるようにしてから、もう一度保存してください。" }],
+        ["保存できなかった（サーバーが止まっている）", "コメントを送れなかったときと同じ直し方を出す。", { from: { shown: new Set(ALL) }, to: { shown: without("logs") }, error: "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。" }],
+        ["狭い幅（320px）・外した種類が多い", "値は折り返す。", { from: { shown: new Set(ALL) }, to: { shown: new Set(["logs"]) }, narrow: true }],
       ];
       const sec = (h, p, inner) => `<section class="cat-sec"><h2>${h}</h2><p>${p}</p><div class="stage">${inner}</div></section>`;
       let html = "";
