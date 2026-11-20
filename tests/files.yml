@@ -763,6 +763,12 @@ files:
   - tool:pytest
   - topic:フック
   - topic:結合テスト
+- path: integration/server/test_item_confirmed.py
+  name: 確認済みの付け外しの結合テスト
+  description: 確認済みの付け外し（PUT /api/items/{id}/confirmed）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
 - path: integration/server/test_launch.py
   name: 起動スクリプトの結合テスト
   description: bin/mindstella（起動スクリプト）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -886,6 +892,15 @@ files:
   tags:
   - tool:pytest
   - topic:結合テスト
+- path: integration/server/test_server_watchdog.py
+  name: テストの常駐サーバーの見張りの結合テスト
+  description: pytest のプロセスが無くなったらテストが起動した常駐サーバーを止める見張り（server_watchdog.py）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:常駐
+  - topic:サーバー
+  - topic:結合テスト
+  - action:停止
 - path: integration/server/test_set_thread_status.py
   name: スレッドの状態の書き換えの結合テスト
   description: set_thread_status（スレッドの状態の書き換え）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1272,6 +1287,14 @@ files:
   - tool:storybook
   - topic:ヘルパー
   - topic:結合テスト
+- path: integration/storybook_react/test_confirmed_toggle_stories.py
+  name: React の確認済みの切り替えのストーリーの結合テスト
+  description: 部品『確認済みの切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
 - path: integration/storybook_react/test_duplicate_id_notice_stories.py
   name: React の重なった ID の通知のストーリーの結合テスト
   description: 部品『重なった ID の通知.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1317,6 +1340,16 @@ files:
   - topic:テスト
   - topic:ヘルパー
   - topic:履歴
+- path: server_watchdog.py
+  name: テストの常駐サーバーの見張り
+  description: pytest のプロセスが無くなったら、テストが起動した常駐サーバーを止める見張りのスクリプトと、見張りを切り離して起動する関数。テストの常駐サーバーの起動や後片付けを変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:テスト
+  - topic:常駐
+  - topic:サーバー
+  - topic:ヘルパー
+  - action:停止
 - path: unit/preview/conftest.py
   name: プレビューの単体テストの共通の fixture
   description: プレビューの単体テスト（フロント）の共通 fixture。テストの準備や共有の操作を追加・変更するときに読む。

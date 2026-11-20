@@ -30,6 +30,7 @@ from typing import Any
 import pytest
 import yaml
 from mcp import ClientSession
+from server_watchdog import spawn as spawn_watchdog
 from mcp.client.streamable_http import streamable_http_client
 
 # このファイルから見たリポジトリの直下（tests の 1 つ上）
@@ -353,6 +354,8 @@ class McpServer:
             env={**env, PORT_ENV: str(self.port)},
             cwd=cwd,
         )
+        # pytest が後片付けの前に終わっても常駐サーバーが残らないよう、見張りを起動する
+        spawn_watchdog(self.process.pid)
         # 出力のパイプは満杯になるとサーバーの書き込みが止まるので、別のスレッドで読み続ける
         self._output_lines: deque[str] = deque(maxlen=STDERR_KEEP_LINES)
         self._output_reader = threading.Thread(target=self._drain_output, daemon=True)

@@ -238,7 +238,7 @@ def test_error_when_duplicate_id(session_world: SessionWorld) -> None:
 
 
 def test_error_when_folder_not_allowed(session_world: SessionWorld) -> None:
-    """許可するフォルダの外は 403 を返し、何も書かない（異常系）。"""
+    """許可するフォルダの外は 403 を返し、記録もワークスペースの登録も書かない（異常系）。"""
     # 準備
     world = session_world
     world.start()
@@ -248,7 +248,9 @@ def test_error_when_folder_not_allowed(session_world: SessionWorld) -> None:
     # 検証
     assert (status, body["stage"]) == (403, "folder"), body
     assert not (folder / ".mindstella").exists()
-    assert not world.state_root.exists()
+    # 状態のフォルダの workspaces.yaml は起動時の照合が作るため、登録が増えないことを確かめる
+    assert _ids(world) == []
+    assert not (world.state_root / "workspaces").exists()
     assert world.pi.changes() == []
 
 

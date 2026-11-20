@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from preview_edit_helpers import wait_edits_match
+from preview_edit_helpers import wait_edits_match, wait_saved_edit
 from preview_fixture_types import StartVoicePreview as _StartVoicePreview
 from preview_voice_helpers import wait_transcription_status
 
@@ -176,3 +176,19 @@ def test_transcription_when_service_stopped(
         "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。"
     )
     expect(page.get_by_role("radio", name="入力欄へ挿入する")).to_be_enabled()
+
+
+def test_confirm_on_comment(page: Page, spa_preview: str) -> None:
+    """「コメントの送信で確認済みにする」は既定でオンで、ヒントを読み上げの説明に持ち、外すと confirm_on_comment の setting を溜める（正常系）。"""
+    # 準備
+    open_spa(page, spa_preview, "?tab=settings")
+    checkbox = page.get_by_role("checkbox", name="コメントの送信で確認済みにする")
+    # 検証
+    expect(page.get_by_role("group", name="コメント")).to_be_visible()
+    expect(checkbox).to_be_checked()
+    expect(checkbox).to_have_accessible_description("オンのとき、コメントを送信した項目を確認済みにします。")
+    # 実行
+    checkbox.uncheck()
+    # 検証
+    wait_saved_edit(page, "confirm_on_comment", False, op="setting")
+

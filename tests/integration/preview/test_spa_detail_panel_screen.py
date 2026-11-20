@@ -1456,3 +1456,53 @@ def test_review_edit_voice_input_after_moving(
     expect(form.locator("textarea")).to_be_focused()
     items = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"]
     assert [(item["id"], item["body"]) for item in items] == [("C-1", "確認: でよい")]
+
+
+def _confirmed_rows(root: Path) -> dict[str, Any]:
+    """`history.yaml` の `items` を読む。"""
+    return yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))["items"]
+
+
+def test_confirmed_toggle(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem) -> None:
+    """見出しの「確認済み」を押すと項目を確認済みにし、もう一度押すと解除する。記録を取得し直しても押した状態で描く（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("D-1", title="記録の形"))
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    toggle = page.get_by_role("complementary", name="詳細").get_by_role("button", name="確認済み")
+    expect(toggle).to_have_attribute("aria-pressed", "false")
+    # 実行
+    toggle.click()
+    # 検証
+    expect(toggle).to_have_attribute("aria-pressed", "true")
+    expect(toggle).to_be_enabled()
+    assert _confirmed_rows(root)["D-1"]["confirmed"] is True
+    page.reload()
+    expect(toggle).to_have_attribute("aria-pressed", "true")
+    # 実行（解除）
+    toggle.click()
+    # 検証
+    expect(toggle).to_have_attribute("aria-pressed", "false")
+    expect(toggle).to_be_enabled()
+    assert "confirmed" not in _confirmed_rows(root).get("D-1", {})
+
+
+def test_confirmed_toggle_when_unreachable(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem) -> None:
+    """付け外しが届かないときは押す前の状態に戻し、見出しの下に失敗を出す。別の項目を開くと消す（異常系）。"""
+    # 準備
+    url, _ = write_edit_preview(make_item("D-1", title="記録の形"), make_item("D-2", title="画面の幅"))
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    toggle = panel.get_by_role("button", name="確認済み")
+    page.route("**/api/items/*/confirmed", lambda route: route.abort())
+    # 実行
+    toggle.click()
+    # 検証
+    alert = panel.get_by_role("alert")
+    expect(alert).to_have_text("確認済みを書き換えられませんでした。サーバーが止まっています。立ち上げ直してから押してください。")
+    expect(toggle).to_have_attribute("aria-pressed", "false")
+    # 実行（別の項目を開く）
+    page.goto(page.url.replace("id=D-1", "id=D-2"))
+    # 検証
+    expect(panel.get_by_role("button", name="確認済み")).to_be_visible()
+    expect(panel.get_by_role("alert")).to_have_count(0)
+

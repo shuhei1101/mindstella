@@ -35,6 +35,9 @@ SCRIPTS_DIR = REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "scr
 # MindStella のセッションのフック
 HOOK_SCRIPT = SCRIPTS_DIR / "session_hook.py"
 
+# テストが起動した常駐サーバーを、pytest が無くなったら止める見張り
+WATCHDOG_SCRIPT = Path(__file__).resolve().parent / "server_watchdog.py"
+
 # 偽のコマンドのほかに常駐サーバーへ見せる PATH（利用者の `~/.local/bin` の claude・claude-balancer を見せない）
 SYSTEM_PATH = "/usr/local/bin:/usr/bin:/bin"
 
@@ -664,7 +667,8 @@ def session_world(tmp_path: Path) -> Iterator[SessionWorld]:
     world.cleanup()
 
 
-# systemctl の Mock（`--user` の引数を記録し、ユニットのファイルの ExecStart・Environment= で常駐サーバーを起動・停止する）
+# systemctl の Mock（`--user` の引数を記録し、ユニットのファイルの ExecStart・Environment= で常駐サーバーを起動・停止する。
+# 起動した常駐サーバーは、pytest が後片付けの前に終わっても残らないよう見張りを付ける）
 FAKE_SYSTEMCTL = """#!{python}
 import json, os, shlex, signal, subprocess, sys, time
 record = {record!r}
@@ -711,6 +715,7 @@ def start():
     os.makedirs(os.path.dirname(log), exist_ok=True)
     process = subprocess.Popen(command, env=env, stdin=subprocess.DEVNULL, stdout=open(log, "ab"), stderr=subprocess.STDOUT, start_new_session=True, cwd=os.environ["HOME"])
     open(pid_file, "w").write(str(process.pid))
+    subprocess.Popen([sys.executable, {watchdog!r}, str({pytest_pid}), str(process.pid)], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
 name = args[0] if args else ""
 if name == "show-environment":
@@ -770,7 +775,7 @@ def fake_systemctl(tmp_path: Path) -> Iterator[FakeSystemctl]:
     record_dir.mkdir()
     python = shutil.which("python3", path=SYSTEM_PATH) or sys.executable
     _write_script(
-        bin_dir / "systemctl", FAKE_SYSTEMCTL.format(python=python, record=str(record_dir))
+        bin_dir / "systemctl", FAKE_SYSTEMCTL.format(python=python, record=str(record_dir), watchdog=str(WATCHDOG_SCRIPT), pytest_pid=os.getpid())
     )
     fake = FakeSystemctl(bin_dir=bin_dir, record_dir=record_dir)
     yield fake

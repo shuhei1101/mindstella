@@ -30,6 +30,15 @@ UPDATE_TIMEOUT_MS = 10_000
 # 5 行を超えるレビュー中の返信の本文
 LONG_REPLY = "\n\n".join(f"{index} 行目の返信" for index in range(1, 9))
 
+# パネルの幅より広い表とコードブロックを持つ書き込みの本文（表のセルは折り返さない英数字）
+WIDE_BODY = (
+    "| " + " | ".join(f"column_heading_{index:02d}" for index in range(1, 16)) + " |\n"
+    + "| " + " | ".join("---" for _ in range(15)) + " |\n"
+    + "| " + " | ".join(f"cell_value_{index:02d}" for index in range(1, 16)) + " |\n\n"
+    + "```\n" + "長いコードの行" * 40 + "\n```\n\n"
+    + "段落の文は" * 60
+)
+
 
 def _panel(page: Page) -> Locator:
     """コメントの一覧のパネルを返す。"""
@@ -303,3 +312,43 @@ def test_pending_post_edit_voice_input(
     expect(form.locator("textarea")).to_be_focused()
     items = read_workspace_yaml(root, "comments.yaml")["items"]
     assert [(item["id"], item["body"]) for item in items] == [("C-1", "確認: でよい")]
+
+
+def test_wide_table_scrolls_inside(
+    page: Page,
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+) -> None:
+    """パネルの幅より広い表・コードブロックを持つ書き込みは、並びと書き込みをパネルの幅に収め、表とコードブロックの中だけを横にスクロールし、段落は折り返す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"),
+        threads=(make_thread("TH-1", make_post("TH-1-1", body=WIDE_BODY, read=True), target="D-1"),),
+    )
+    for width in (1280, 390):
+        page.set_viewport_size({"width": width, "height": 900})
+        # 実行
+        open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+        post = _panel(page).locator("article").filter(has_text="column_heading_01").first
+        expect(post).to_be_visible()
+        # 検証
+        sizes = post.evaluate(
+            """(article) => {
+              const list = article.closest('ol');
+              const scroller = article.querySelector('.post-table-scroll');
+              const table = scroller.querySelector('table');
+              const pre = article.querySelector('pre');
+              const paragraph = [...article.querySelectorAll('p')].find((element) => element.textContent.includes('段落の文は'));
+              return {
+                list: list.scrollWidth <= list.clientWidth,
+                article: article.getBoundingClientRect().right <= list.getBoundingClientRect().right + 1,
+                table: [scroller, table].some((element) => element.scrollWidth > element.clientWidth && getComputedStyle(element).overflowX === 'auto'),
+                code: pre.scrollWidth > pre.clientWidth,
+                wrapped: paragraph.getBoundingClientRect().height > parseFloat(getComputedStyle(paragraph).lineHeight) * 1.5,
+              };
+            }"""
+        )
+        assert sizes == {"list": True, "article": True, "table": True, "code": True, "wrapped": True}, (width, sizes)
+
