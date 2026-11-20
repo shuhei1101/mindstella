@@ -151,7 +151,7 @@ external_systems:
       事前確認: 要。起動スクリプトが、`PATH` に `claude` があることと、`claude plugin list --json` に mindstella があることを確かめ、無ければ Claude Code を立てずに止まる。常駐サーバーは、SessionStart のフックと起動スクリプトが `GET /_admin/status` で待ち受けているかを確かめ、落ちていれば起動する。。MindStella のセッションは、SessionStart のフックが状態に登録したことで準備ができたと判定し、上限まで待つ
     detail: LIB-489-4#
   - name: jsDelivr
-    purpose: プレビューの描画のライブラリ（mdmark・marked・elkjs・mermaid）と差分の計算のライブラリ（jsdiff）の取得。サーバーが配るプレビューは開いたブラウザが読み、配る書き出し（`export`）は書き出すときに取って中に持つ
+    purpose: プレビューの描画のライブラリ（mdmark・marked・mermaid）と差分の計算のライブラリ（jsdiff）の取得。サーバーが配るプレビューは開いたブラウザが読み、配る書き出し（`export`）は書き出すときに取って中に持つ
     direction: 受信のみ
     protocol: HTTPS
     notes:
@@ -159,7 +159,6 @@ external_systems:
     refs:
       - LIB-489-13#
       - LIB-489-11#
-      - LIB-489-5#
       - LIB-489-14#
   - name: Google Fonts
     purpose: プレビューの文字（Inter・Noto Sans JP・JetBrains Mono）の取得

@@ -8,8 +8,6 @@ items:
     summary: "ワークスペースの YAML を JSON Schema で検証する"
   - page: LIB-489-11.yaml
     summary: "プレビューで本文の差分の塊を Markdown の token ごとに分ける"
-  - page: LIB-489-5.yaml
-    summary: "プレビューの検討事項のマップの配置を計算する"
   - page: LIB-489-14.yaml
     summary: "プレビューで本文の図を SVG に描く"
   - page: LIB-489-21.yaml
