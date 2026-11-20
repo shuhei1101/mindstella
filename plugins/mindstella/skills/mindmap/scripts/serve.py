@@ -316,8 +316,17 @@ class PreviewRegistry:
         self._guard = threading.RLock()
 
     def start(self, root: Path) -> tuple[str, bool]:
-        """そのワークスペースを配り始め、画面の URL と今配り始めたかを返す。配っていればその URL を返す。"""
+        """そのワークスペースを配り始め、画面の URL と今配り始めたかを返す。配っていればその URL を返す。
+
+        同じ ID の別のフォルダを配っていて、そのフォルダに同じ ID の記録が無ければ（フォルダを移した）、
+        前のフォルダの配信をやめてから root を配る。
+        """
         key = root.resolve()
+        with self._guard:
+            moved = self._take_moved(key)
+        # 前のフォルダの変更の検知と終了時のフックは、鍵の外で止める・呼ぶ
+        if moved is not None:
+            self._release(*moved)
         with self._guard:
             existing = self._servers.get(key)
             # 配っている: その URL を返す（検査しない・フックを呼ばない）
@@ -359,6 +368,31 @@ class PreviewRegistry:
             if self._external.start_hook:
                 run_hook(self._external.start_hook, self._port, key.name, page_path(workspace_id))
             return url, True
+
+    def _take_moved(self, key: Path) -> tuple[ServeContext, ChangeDetector | None] | None:
+        """key と同じ ID の別のフォルダを配っていて、そのフォルダに同じ ID の記録が無ければ、台帳から外して返す（鍵を取って呼ぶ）。"""
+        if key in self._servers:
+            return None
+        workspace_id = workspace_id_of(key)
+        served = self._by_id.get(workspace_id)
+        # 同じ ID の記録が前のフォルダに残っている（コピー・クローン）か、配っていない: 外さない
+        if served is None or _has_record_of(served, workspace_id):
+            return None
+        del self._by_id[workspace_id]
+        logger.info("移す前のフォルダを配るのをやめる: %s → %s", served, key)
+        return self._servers.pop(served), self._detectors.pop(served, None)
+
+    def _release(self, context: ServeContext, detector: ChangeDetector | None) -> None:
+        """台帳から外したワークスペースの変更の検知を止め、終了時のフックを呼ぶ（鍵の外で呼ぶ）。"""
+        if detector is not None:
+            detector.stop()
+        if self._external.stop_hook:
+            run_hook(
+                self._external.stop_hook,
+                self._port,
+                context.root.name,
+                page_path(context.workspace_id),
+            )
 
     def context_of(self, workspace_id: str) -> ServeContext | None:
         """ワークスペースの ID で配信の文脈を引く。配っていなければ None。"""
@@ -417,6 +451,11 @@ class PreviewRegistry:
     def _url(self, workspace_id: str) -> str:
         """ワークスペースの画面の URL を組み立てる。"""
         return f"http://{LISTEN_HOST}:{self._port}{page_path(workspace_id)}"
+
+
+def _has_record_of(folder: Path, workspace_id: str) -> bool:
+    """folder に workspace_id の記録（`.mindstella/config.yaml`）が残っていれば真を返す。"""
+    return (records_root(folder) / SETTINGS_FILE).is_file() and workspace_id_of(folder) == workspace_id
 
 
 def page_path(workspace_id: str) -> str:
@@ -645,8 +684,9 @@ class PreviewEndpoint:
             finally:
                 closed.set()
 
+        # media_type で渡すと charset が付くため、ヘッダーで渡す
         return StreamingResponse(
-            _chunks(), media_type=EVENT_STREAM_TYPE, headers={"Cache-Control": "no-store"}
+            _chunks(), headers={"Content-Type": EVENT_STREAM_TYPE, "Cache-Control": "no-store"}
         )
 
     async def _transcribe(self, request: Request, context: ServeContext) -> StarletteResponse:
