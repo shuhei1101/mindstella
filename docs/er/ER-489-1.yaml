@@ -584,14 +584,20 @@ tables:
     summary: ワークスペースを最後に整えたときのプラグインの版
     scale: 1 行
     access: 全件
-    description: '`init` が作るときに書き、`migrate --record` が移し替えた後に書き換える。無ければ、ワークスペースの直下の版のファイル（v0.6.0 より前の置き場所）を読み、それも無ければ版を記録する前の形式として扱う'
+    description: '`init` が作るときに書き、『記録の形式の移行』が移し替えた後に書き換える。無ければ、ワークスペースの直下の版のファイル（v0.6.0 より前の置き場所）を読み、それも無ければ版を記録する前の形式として扱う'
     columns:
       - name: (1 行目)
         title: 版
         type: string
         not_null: true
-        description: '`v{メジャー}.{マイナー}.{パッチ}`。2 行目より後は読まない'
+        description: '`v{メジャー}.{マイナー}.{パッチ}`'
         example: v0.3.0
+      - name: (2 行目)
+        title: 当て終えた手順の数
+        type: number
+        not_null: false
+        description: 1 行目の版の移し替えの手順のうち、当て終えた数（0 以上の整数）。『記録の形式の移行』が版を書くときに一緒に書き、同じ版に後から足した手順を当てるかの判定に使う。無いか整数でなければ、その版の手順をまだ当てていないものとして扱う。3 行目より後は読まない
+        example: '3'
   - name: .mindstella.lock
     title: 書き換えのロック
     datastore: テキスト

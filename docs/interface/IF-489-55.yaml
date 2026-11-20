@@ -302,7 +302,7 @@ request:
     required: true
     location: argument
     description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
-    constraints: キーは `summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`mdmark` だけ。`mdmark` は `version` だけを受けて `version` だけを置き換え、移し替えの手順が書いた `mdmark.map` を残す。`null` で消せるのは任意の `description`・`links`・`history_limit`・`display`・`transcription` だけ。1 つ以上のキーを持つ。削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）は引数の誤り
+    constraints: キーは `summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment`・`mdmark` だけ。`confirm_on_comment` は真偽値。`mdmark` は `version` だけを受けて `version` だけを置き換え、移し替えの手順が書いた `mdmark.map` を残す。`null` で消せるのは任意の `description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment` だけ（`confirm_on_comment` を消すと既定の `true` になる）。1 つ以上のキーを持つ。削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）は引数の誤り
     example: '{"display": {"network_look": "starlight", "visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"]}}'
 request_example: |-
   ```json
@@ -344,7 +344,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 書き換えられるキー
-    constraint: '`settings` の制約に並べたキー（`summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`mdmark`）。`display`（見た目の既定・表示する種類の既定）と `transcription`（文字起こし後の挙動・用語集のプリセット）は丸ごと置き換える'
+    constraint: '`settings` の制約に並べたキー（`summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment`・`mdmark`）。`display`（見た目の既定・表示する種類の既定）と `transcription`（文字起こし後の挙動・用語集のプリセット）は丸ごと置き換える'
   - item: 検証の範囲
     constraint: 書き換えた後の `config.yaml` をスキーマと突き合わせる。参照先の ID があるかは確かめない（点検が持つ）
   - item: YAML の書き方
