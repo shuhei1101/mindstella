@@ -87,7 +87,7 @@ def test_mdmark_documents_migrate(
 ) -> None:
     """map の種類を config.yaml へ移し、一時のファイルを消す（正常系）。"""
     # 準備
-    root = make_workspace(raw_files={"docs/A-1.md": "# 前の本文\n"})
+    root = make_workspace(raw_files={"docs/A-1.md": "# 前の本文\n"}, legacy_bodies=True)
     version_before = _read_config(root).get("mdmark", {}).get("version")
     _use_command(monkeypatch, tmp_path, FAKE_UPGRADE)
     # 実行
@@ -109,7 +109,7 @@ def test_mdmark_documents_migrate_when_command_fails(
 ) -> None:
     """CLI が失敗したら理由つきで送り、一時のファイルを残さない（異常系）。"""
     # 準備
-    root = make_workspace(raw_files={"docs/A-1.md": "# 前の本文\n"})
+    root = make_workspace(raw_files={"docs/A-1.md": "# 前の本文\n"}, legacy_bodies=True)
     _use_command(monkeypatch, tmp_path, FAILING_UPGRADE)
     # 実行・検証
     with pytest.raises(RuntimeError, match="変換できません"):

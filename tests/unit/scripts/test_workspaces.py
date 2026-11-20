@@ -487,6 +487,34 @@ def test_create_workspace_folder_not_allowed(
     assert not ctx.state_root.exists()
 
 
+@pytest.mark.parametrize(
+    ("folder_name", "file_name"),
+    [pytest.param("docs", "memo.md", id="docs"), pytest.param("files", "memo.png", id="files")],
+)
+def test_create_workspace_root_folder_exists(
+    folder_name: str,
+    file_name: str,
+    allowed: Path,
+    fake_pi: FakeProjectIndex,
+    ctx: SimpleNamespace,
+) -> None:
+    """記録が無く直下に docs/ か files/ があれば 409 で、何も書かない（異常系）。"""
+    # 準備
+    folder = allowed / "家計簿"
+    (folder / folder_name).mkdir(parents=True)
+    (folder / folder_name / file_name).write_text("利用者のファイル\n", encoding="utf-8")
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.create_workspace(_request(folder), ctx)
+    assert (caught.value.status, caught.value.stage) == (409, "root_folder")
+    assert f"{folder_name}/" in caught.value.detail
+    assert not (folder / ".mindstella").exists()
+    assert not (folder / "README.md").exists()
+    assert (folder / folder_name / file_name).read_text(encoding="utf-8") == "利用者のファイル\n"
+    assert fake_pi.added == []
+    assert not ctx.state_root.exists()
+
+
 def _legacy_folder(allowed: Path, version: str) -> Path:
     """版 version の記録を持ち、設定に削除したキー playbooks を持つワークスペースのフォルダを作る。"""
     folder = allowed / "家計簿"

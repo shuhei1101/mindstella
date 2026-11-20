@@ -17,8 +17,9 @@ FILE_SIZE = 1000
 def files_dir(tmp_path: Path) -> Path:
     """ワークスペースのファイルのフォルダ（`clip.mp4`・`img/shot a.png` を配置し、フォルダの外部に `decisions.yaml`・`secret.txt` を配置する）を返却する。"""
     records = tmp_path / ".mindstella"
-    folder = records / files_serve.FILES_DIR
+    folder = tmp_path / files_serve.FILES_DIR
     (folder / "img").mkdir(parents=True)
+    records.mkdir()
     (folder / "clip.mp4").write_bytes(b"\x00" * FILE_SIZE)
     (folder / "img" / "shot a.png").write_bytes(b"png")
     (records / "decisions.yaml").write_text("items: []\n", encoding="utf-8")
@@ -54,8 +55,8 @@ def test_resolve_file(files_dir: Path) -> None:
 @pytest.mark.parametrize(
     "sub_path",
     [
-        pytest.param("../decisions.yaml", id="parent"),
-        pytest.param("%2e%2e/decisions.yaml", id="encoded_parent"),
+        pytest.param("../.mindstella/decisions.yaml", id="parent"),
+        pytest.param("%2e%2e/.mindstella/decisions.yaml", id="encoded_parent"),
         pytest.param("outside", id="symlink"),
         pytest.param("/etc/passwd", id="absolute"),
     ],

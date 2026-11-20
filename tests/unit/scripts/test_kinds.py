@@ -49,3 +49,28 @@ def test_records_root(tmp_path: Path) -> None:
     assert records == tmp_path / ".mindstella"
     # フォルダは作らない
     assert not records.exists()
+
+
+def test_body_root(tmp_path: Path) -> None:
+    """直下の docs を返す（正常系）。"""
+    # 実行
+    body_dir = kinds.body_root(tmp_path)
+    # 検証
+    assert body_dir == tmp_path / "docs"
+    # フォルダは作らない
+    assert not body_dir.exists()
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        pytest.param("decisions.yaml", ".mindstella/decisions.yaml", id="record_file"),
+        pytest.param("../docs/D-1.mark.md", "docs/D-1.mark.md", id="body"),
+    ],
+)
+def test_workspace_path(name: str, expected: str) -> None:
+    """記録のファイルと本文を直下からのパスにする（正常系）。"""
+    # 実行
+    path = kinds.workspace_path(name)
+    # 検証
+    assert path == expected

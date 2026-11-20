@@ -882,12 +882,12 @@ def test_records_response_when_settings_changed(
 @pytest.mark.parametrize(
     ("file_name", "text", "changes"),
     [
-        pytest.param("decisions.yaml", "items: []\n", True, id="rewrite_yaml"),
+        pytest.param(".mindstella/decisions.yaml", "items: []\n", True, id="rewrite_yaml"),
         pytest.param("docs/D-1.mark.md", "本文\n", True, id="add_body"),
-        pytest.param("threads.yaml", "items: []\n", True, id="add_threads"),
-        pytest.param("comments.yaml", "seq: 0\nitems: []\n", False, id="add_comments"),
-        pytest.param("drafts.yaml", "items: []\n", False, id="add_drafts"),
-        pytest.param(".mindstella.lock", "", False, id="add_lock_file"),
+        pytest.param(".mindstella/threads.yaml", "items: []\n", True, id="add_threads"),
+        pytest.param(".mindstella/comments.yaml", "seq: 0\nitems: []\n", False, id="add_comments"),
+        pytest.param(".mindstella/drafts.yaml", "items: []\n", False, id="add_drafts"),
+        pytest.param(".mindstella/.mindstella.lock", "", False, id="add_lock_file"),
     ],
 )
 def test_workspace_signature(
@@ -902,7 +902,7 @@ def test_workspace_signature(
     root = make_workspace(make_item("D-1"))
     before = serve.workspace_signature(root)
     # 実行
-    (root / RECORD_DIR / file_name).write_text(text, encoding="utf-8")
+    (root / file_name).write_text(text, encoding="utf-8")
     after = serve.workspace_signature(root)
     # 検証
     assert (after != before) is changes
@@ -912,12 +912,12 @@ def test_workspace_signature(
     ("file_name", "text", "changes"),
     [
         pytest.param(
-            "changes.yaml",
+            ".mindstella/changes.yaml",
             "last_seq: 0\nsets: []\npending:\n  added: []\n  changed: []\n",
             True,
             id="add_changes",
         ),
-        pytest.param(".mindstella-opened", FIRST_OPENED, False, id="add_opened"),
+        pytest.param(".mindstella/.mindstella-opened", FIRST_OPENED, False, id="add_opened"),
     ],
 )
 def test_workspace_signature_with_changes(
@@ -932,7 +932,7 @@ def test_workspace_signature_with_changes(
     root = make_workspace(make_item("D-1"))
     before = serve.workspace_signature(root)
     # 実行
-    (root / RECORD_DIR / file_name).write_text(text, encoding="utf-8")
+    (root / file_name).write_text(text, encoding="utf-8")
     after = serve.workspace_signature(root)
     # 検証
     assert (after != before) is changes
@@ -950,9 +950,9 @@ def test_workspace_signature_with_html_body(
 ) -> None:
     """HTML の本文の書き換えでも印が変わる（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": "<p>前</p>\n"})
+    root = make_workspace(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": "<p>前</p>\n"})
     before = serve.workspace_signature(root)
-    target = root / RECORD_DIR / "docs" / file_name
+    target = root / "docs" / file_name
     # 実行
     target.write_text("<p>書き換えた後の本文</p>\n", encoding="utf-8")
     after = serve.workspace_signature(root)
@@ -2163,7 +2163,7 @@ def test_send_file(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     # 準備
     root = make_workspace(make_item("D-1"))
     data = bytes(range(250)) * 4
-    files = root / RECORD_DIR / "files"
+    files = root / "files"
     files.mkdir()
     (files / "clip.mp4").write_bytes(data)
     preview = serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
@@ -2191,14 +2191,14 @@ def test_send_file_when_missing(make_workspace: MakeWorkspace, make_item: MakeIt
     """解決できなければ 404（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    (root / RECORD_DIR / "files").mkdir()
+    (root / "files").mkdir()
     config = (root / RECORD_DIR / "config.yaml").read_bytes()
     preview = serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
     try:
         port = _port_of(preview.url)
         # 実行
         missing = _get_raw(port, "/files/missing.mp4")
-        outside = _get_raw(port, "/files/../config.yaml")
+        outside = _get_raw(port, "/files/../.mindstella/config.yaml")
     finally:
         preview.stop()
     # 検証

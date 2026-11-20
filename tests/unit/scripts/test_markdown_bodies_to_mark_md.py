@@ -55,6 +55,7 @@ def _markdown_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> P
             "A-1.html": "<p>資料</p>\n",
             "X-1.md": "どこからも指されない本文\n",
         },
+        legacy_bodies=True,
     )
 
 
@@ -119,6 +120,7 @@ def test_migrate_when_target_exists(
     root = make_workspace(
         make_item("D-1", body="docs/D-1.md"),
         bodies={"D-1.md": "前の本文\n", "D-1.mark.md": "改名先の本文\n"},
+        legacy_bodies=True,
     )
     before = snapshot_tree(root)
     # 実行・検証
@@ -132,7 +134,7 @@ def test_migrate_when_no_history(
 ) -> None:
     """変更履歴のファイルが無くても改名する（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", body="docs/D-1.md"), bodies={"D-1.md": "本文\n"})
+    root = make_workspace(make_item("D-1", body="docs/D-1.md"), bodies={"D-1.md": "本文\n"}, legacy_bodies=True)
     (root / RECORD_DIR / "history.yaml").unlink()
     # 実行
     markdown_bodies_to_mark_md.migrate(root)

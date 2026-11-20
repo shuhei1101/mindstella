@@ -362,12 +362,12 @@ def test_stage_add_when_note_has_body(make_workspace: MakeWorkspace) -> None:
     new_staged, _ = commands.stage_add(staged, "note", item, now=_fixed_now)
     # 検証
     assert new_staged.items["note"][0]["id"] == "N-1"
-    assert new_staged.items["note"][0]["body"] == "docs/N-1.mark.md"
-    assert new_staged.bodies["docs/N-1.mark.md"].text == "b"
+    assert new_staged.items["note"][0]["body"] == "../docs/N-1.mark.md"
+    assert new_staged.bodies["../docs/N-1.mark.md"].text == "b"
 
 
 def test_stage_add_when_doc_has_html_body(make_workspace: MakeWorkspace) -> None:
-    """資料の HTML の本文を `docs/{ID}.html` の書き込みにする（正常系）。"""
+    """資料の HTML の本文を `../docs/{ID}.html` の書き込みにする（正常系）。"""
     # 準備
     staged = _make_staged(make_workspace(), 0)
     item = {"title": "t", "kind": "モック", "status": "下書き", "body_html": "<p>a</p>"}
@@ -376,10 +376,10 @@ def test_stage_add_when_doc_has_html_body(make_workspace: MakeWorkspace) -> None
     # 検証
     added = new_staged.items["doc"][0]
     assert added["id"] == "A-1"
-    assert added["body"] == "docs/A-1.html"
+    assert added["body"] == "../docs/A-1.html"
     assert "body_html" not in added
-    assert new_staged.bodies["docs/A-1.html"].text == "<p>a</p>"
-    assert result["body"] == ".mindstella/docs/A-1.html"
+    assert new_staged.bodies["../docs/A-1.html"].text == "<p>a</p>"
+    assert result["body"] == "docs/A-1.html"
 
 
 def test_stage_add_skips_removed_id(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -504,7 +504,7 @@ def test_stage_update_when_body_format_changed(
 ) -> None:
     """形式を替えると前の形式の本文を消す書き込みにし、前の body を変更履歴に積む（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", body="docs/A-1.mark.md"), bodies={"A-1.mark.md": "a\nb\n"})
+    root = make_workspace(make_item("A-1", body="../docs/A-1.mark.md"), bodies={"A-1.mark.md": "a\nb\n"})
     staged = _make_staged(root, 3)
     # 実行（Markdown から HTML へ）
     to_html, to_html_result = commands.stage_update(
@@ -512,19 +512,19 @@ def test_stage_update_when_body_format_changed(
     )
     # 検証
     html_item = to_html.items["doc"][0]
-    assert html_item["body"] == "docs/A-1.html"
-    assert "docs/A-1.html" in to_html.bodies
-    assert to_html.removed_bodies == ["docs/A-1.mark.md"]
+    assert html_item["body"] == "../docs/A-1.html"
+    assert "../docs/A-1.html" in to_html.bodies
+    assert to_html.removed_bodies == ["../docs/A-1.mark.md"]
     assert to_html_result["changed"] == ["body", "body_html"]
     entry = to_html.history["A-1"]["history"][0]
-    assert entry["before"]["body"] == "docs/A-1.mark.md"
+    assert entry["before"]["body"] == "../docs/A-1.mark.md"
     assert history.apply_body_diff("<p>a</p>\n", entry["body_diff"]) == "a\nb\n"
     # 実行（続けて HTML から Markdown へ）
     to_markdown, _ = commands.stage_update(to_html, "A-1", {"body_markdown": "a\n"}, now=_fixed_now)
     # 検証
-    assert to_markdown.items["doc"][0]["body"] == "docs/A-1.mark.md"
-    assert to_markdown.removed_bodies == ["docs/A-1.html"]
-    assert "docs/A-1.html" not in to_markdown.bodies
+    assert to_markdown.items["doc"][0]["body"] == "../docs/A-1.mark.md"
+    assert to_markdown.removed_bodies == ["../docs/A-1.html"]
+    assert "../docs/A-1.html" not in to_markdown.bodies
 
 
 @pytest.mark.parametrize(
