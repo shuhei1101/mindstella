@@ -239,7 +239,7 @@ def _threads_by_focus(observed: dict[str, Any]) -> list[str]:
             "一覧へ戻る",
             id="thread",
         ),
-        pytest.param("review", [], False, [], "まとめて送る", id="review"),
+        pytest.param("review", [], False, [], "まとめて送信", id="review"),
     ],
 )
 def test_comments_panel(
@@ -816,7 +816,7 @@ def test_review_view(preview_page: Page, load_preview_scripts: LoadPreviewScript
     # 検証
     assert "レビュー中の書き込み" in observed["text"]
     assert "2 / 4 件" in observed["text"]
-    send = next(button for button in observed["buttons"] if button["text"].startswith("まとめて送る"))
+    send = next(button for button in observed["buttons"] if button["text"].startswith("まとめて送信"))
     assert send["text"] == "まとめて送信（2 件）"
     select_all = next(
         field for field in observed["fields"] if field["type"] == "checkbox" and field["indeterminate"]
@@ -871,7 +871,7 @@ def test_review_view_when_empty(
     observed = _run(preview_page, "reviewView", {"items": [], "removed": []})
     # 検証
     assert "レビュー中の書き込みはありません。" in observed["text"]
-    assert not any(button["text"].startswith("まとめて送る") for button in observed["buttons"])
+    assert not any(button["text"].startswith("まとめて送信") for button in observed["buttons"])
 
 
 @pytest.mark.parametrize(
@@ -897,10 +897,10 @@ def test_review_view_when_send_disabled(
         preview_page,
         "reviewView",
         props,
-        actions=[{"click": {"text": "まとめて送る"}}],
+        actions=[{"click": {"text": "まとめて送信"}}],
     )
     # 検証
-    send = next(button for button in observed["buttons"] if button["text"].startswith("まとめて送る"))
+    send = next(button for button in observed["buttons"] if button["text"].startswith("まとめて送信"))
     assert send["disabled"] is True
     assert "send" not in _call_names(observed)
     assert expected_text in observed["text"]

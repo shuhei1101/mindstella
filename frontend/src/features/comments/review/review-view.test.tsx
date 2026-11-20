@@ -55,7 +55,7 @@ describe("ReviewView", () => {
     );
     renderRoute("/spa/?panel=comments&review=1");
     // 実行
-    await userEvent.click(await screen.findByRole("button", { name: /まとめて送る/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /まとめて送信/ }));
     // 検証
     expect(await screen.findByRole("alert")).toHaveTextContent("本文の 3 行目がありません");
     expect(screen.getByRole("button", { name: "箇所を解除" })).toBeInTheDocument();

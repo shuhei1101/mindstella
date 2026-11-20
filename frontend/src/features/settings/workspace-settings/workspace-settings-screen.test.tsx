@@ -47,7 +47,7 @@ describe("WorkspaceSettingsScreen", () => {
     );
     const { unmount } = renderRoute("/spa/?tab=settings");
     // 実行
-    const radios = await screen.findAllByRole("radio", { name: /レビュー中に追加する|入力欄へ挿入する|送信する/ });
+    const radios = await screen.findAllByRole("radio", { name: /レビュー中に追加する|入力欄へ挿入する|送信/ });
     expect(radios.map((radio) => radio.getAttribute("value"))).toEqual(["review", "insert", "send"]);
     expect(screen.getByRole("radio", { name: "レビュー中に追加する" })).toBeChecked();
     await userEvent.click(screen.getByRole("radio", { name: "送信" }));
