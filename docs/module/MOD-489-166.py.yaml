@@ -96,12 +96,6 @@ functions:
         condition: '`parametrize`: `{"confirm_on_comment": false}` / `{"confirm_on_comment": null}`'
         mock: なし
         expected: 例外を送らない（`settings.schema.json` の `confirm_on_comment` は真偽値）
-      - name: test_validate_settings_input_confirm_on_comment_invalid
-        case: 異常
-        summary: 真偽値でない confirm_on_comment は断る
-        condition: '`{"confirm_on_comment": "yes"}`'
-        mock: なし
-        expected: '`SchemaMismatchError`（行が `config.yaml: confirm_on_comment` で始まる）'
   - name: merge_settings
     title: 設定の置き換え
     kind: 関数
@@ -256,6 +250,12 @@ functions:
         condition: '`display` を持たない設定のワークスペースに `{"display": {"network_look": "starlight", "visible_kinds": [会話ログを除く 6 種類]}}`。続けて `{"display": {"network_look": "glow"}}` を渡す'
         mock: なし
         expected: '1 回目の `changed` が `[display]`、`files` が `[.mindstella/config.yaml]`、`config.yaml` の `display` が渡した値で `summary`・`history_limit` が呼ぶ前と同じ。2 回目の後は `display` が `{network_look: glow}` だけ（`visible_kinds` を持たない）'
+      - name: test_update_settings_when_confirm_on_comment_invalid
+        case: 異常
+        summary: 真偽値でない confirm_on_comment は断る（型は `settings.schema.json` との突き合わせで弾く）
+        condition: '正しい設定のワークスペースで `{"confirm_on_comment": "yes"}`'
+        mock: なし
+        expected: '`SchemaMismatchError`（行が `config.yaml: confirm_on_comment` で始まる）。`config.yaml` が呼ぶ前と同じ'
   - name: update_display
     title: 表示の既定の書き換え
     kind: 関数

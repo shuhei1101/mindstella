@@ -104,6 +104,12 @@ constants:
     usecase: 記録の形式の移行
     summary: '`schemas/migration-steps.schema.json`'
     value: SCHEMA_DIR / "migration-steps.schema.json"
+  - name: UNTRACKED_STEPS_FROM
+    title: 当て終えた数を持たない版の手順を当て直す版の下限
+    container: plugins/mindstella/skills/mindmap/scripts/migrator.py
+    usecase: 記録の形式の移行
+    summary: 版のファイルが 2 行目を持たないとき、この版以上ならその版の手順を全て当て直し、より前なら当て直さない（2 行目を書く前に同じ版へ後から手順を足したのは v0.14.0 だけ）
+    value: Version(0, 14, 0)
 functions:
   - name: list_versions
     title: 手順の版の一覧
@@ -219,7 +225,7 @@ functions:
       2. ワークスペースの版とプラグインの版を読み（`read_workspace_version`・`read_plugin_version`）、比べる（`compare_versions`）
       3. `from_version`・`to_version` を省いた分を 2 の版で埋める
       4. `list_versions` のうち `from` より後（`from` が `None` なら全て）で `to` 以下の版の手順を、版の順に読む（`load_steps`）
-         - `from_version` を省いてワークスペースの版で埋め、その版が `to` 以下の場合、その版のフォルダの手順のうち `read_applied_steps` の数より後ろ（数が `None` なら全て）を先に並べる（同じ版に後から足した手順）
+         - `from_version` を省いてワークスペースの版で埋め、その版が `to` 以下の場合、その版のフォルダの手順のうち `read_applied_steps` の数より後ろ（数が `None` なら、その版が `UNTRACKED_STEPS_FROM` 以上のときは全て、より前のときは無し）を先に並べる（同じ版に後から足した手順）
       5. 各手順の値が要るキーを集め（`list_needed_values`。同じ `file`・`key` は 1 つ）、`file` をその手順より後の `rename_file` で改めた先の名前にする（`renamed_file`）。`MigrationReport` を返す
     exceptions:
       - name: WorkspaceNotFoundError
@@ -268,6 +274,12 @@ functions:
         condition: 版のファイルが `v0.1.0\n1\n`。`migrations/v0.1.0` が 2 手順、`v0.2.0` が 1 手順、プラグインの版が v0.2.0
         mock: '`read_plugin_version`'
         expected: '`steps` が v0.1.0 #2、v0.2.0 #1 の順'
+      - name: test_plan_migration_when_older_without_applied
+        case: 正常
+        summary: 2 行目を持たない v0.14.0 より前の版は、その版の手順を当て直さない
+        condition: 版のファイルが `v0.13.0\n`。`migrations/v0.13.0` が 2 手順、`v0.14.0` が 1 手順、プラグインの版が v0.14.0
+        mock: '`read_plugin_version`'
+        expected: '`steps` が v0.14.0 #1 だけ'
   - name: apply_migration
     title: 手順を当てる
     kind: 関数
