@@ -97,27 +97,6 @@ flows:
       - 'エラーの本文に `config.yaml: display.visible_kinds` で始まり、選べる値を含む行がある'
       - 同じワークスペースでもう一度呼ぶと、配信を立てずに同じエラーになる（配信が立っていない）
     test: test_error_when_config_invalid
-  - name: 異常系（待ち受けを立てられない・ServeFailedError）
-    summary: 待ち受けを立てられないとエラーで終わる
-    setup:
-      - name: Mock
-        description: 待ち受けを立てる処理を、OSError を送出する偽に差し替える
-      - name: make_workspace
-        description: 作成を済ませたワークスペース
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as preview_url（MCP のツール）
-
-        クライアント->>IF: preview_url workspace
-        IF->>IF: 待ち受けを立てられない
-        IF-->>クライアント: ツールのエラー
-      ```
-    expected:
-      - ツールのエラーになる
-      - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
-    test: test_error_when_serve_fails
   - name: 正常系（利用者が書いた README がある）
     summary: 自動で書いたマーカーの無い README.md は書き換えずに配信を立てる
     setup:
