@@ -12,13 +12,13 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-46.yaml
     impact: changed
-    detail: 項目の詳細で、確認済みかを見て、確認済みにする・外す（#188）。最も狭い幅でも、詳細パネルの閉じる・全画面のボタンが表示幅に収まる（#625）
+    detail: 項目の詳細で、確認済みかを見て、確認済みにする・解除する（#188）。#625 の最も狭い幅のボタンの収まりは、画面設計と結合テストで扱い、シナリオは変えない
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-489-47.yaml
-    impact: changed
-    detail: 項目へコメントを送ると、設定がオンならその項目が確認済みになる（#188）
+    impact: none
+    detail: コメントを溜めるだけでは確認済みは変わらず、送信で確認済みにするのは『コメントを選んで送る』が持つ（#188）
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
@@ -30,7 +30,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-540-1.yaml
     impact: changed
-    detail: AI の書き込みで項目が変わると、その項目の確認済みを外す（#188）
+    detail: 利用者が画面から保存した変更以外（MindStella のセッション・通常のセッション）の書き換えで項目が変わると、その項目の確認済みを解除する（#188）
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
@@ -41,8 +41,8 @@ use_cases:
       - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-489-36.yaml
-    impact: changed
-    detail: コメントを送ったら確認済みにするかの設定（既定はオン）を切り替える（#188）
+    impact: none
+    detail: コメントの送信で確認済みにするかの設定の配置先はデータ設計で決める。ワークスペースの設定に決まったら、この行を changed に戻して設定を書き換えるシナリオを追加する（#188）
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
@@ -52,8 +52,8 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-14.yaml
-    impact: changed
-    detail: 許可するフォルダの外を指定して断られたときに、状態のフォルダを作らない（#624）
+    impact: none
+    detail: 許可するフォルダの外の指定は『外部のアプリから起動する』の異常シナリオが持ち、状態のフォルダが作られる原因はインターフェース定義設計で特定する。シナリオの記述は変えない（#624）
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-17.yaml
