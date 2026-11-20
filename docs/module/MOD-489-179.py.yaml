@@ -108,7 +108,7 @@ constants:
     title: 当て終えた数を持たない版の手順を当て直す版の下限
     container: plugins/mindstella/skills/mindmap/scripts/migrator.py
     usecase: 記録の形式の移行
-    summary: 版のファイルが 2 行目を持たないとき、この版以上ならその版の手順を全て当て直し、より前なら当て直さない（2 行目を書く前に同じ版へ後から手順を足したのは v0.14.0 だけ）
+    summary: 版のファイルが 2 行目を持たないとき、この版以上ならその版の手順を全て当て直し、より前なら当て直さない（2 行目を書く前に同じ版へ後から手順を足したのは v0.14.0 だけ。`migrations/v0.14.0/` の版の番号を変えるときは一緒に直す）
     value: Version(0, 14, 0)
 functions:
   - name: list_versions
