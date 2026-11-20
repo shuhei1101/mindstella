@@ -60,11 +60,12 @@ from errors import (
 )
 from files_serve import (
     FILE_SECURITY_HEADERS,
+    FILE_WRITE_CHUNK,
     FILES_DIR,
     FILES_PATH,
+    FilePlan,
     plan_file,
     resolve_file,
-    write_file,
 )
 from history import head_until_seq, load_changes, set_confirmed, touch_opened
 from kinds import BODY_REF_PREFIX, KINDS, SETTINGS_FILE, body_root, records_root
@@ -675,11 +676,21 @@ class PreviewEndpoint:
         )
 
 
-def _file_chunks(plan: Any) -> Iterator[bytes]:
-    """計画の範囲のファイルの中身を、書き出しの単位ごとに返す。"""
-    chunks: list[bytes] = []
-    write_file(plan, chunks.append)
-    yield from chunks
+def _file_chunks(plan: FilePlan) -> Iterator[bytes]:
+    """計画の範囲のファイルの中身を、書き出しの単位ごとに読んでは返す（全体を読み込まない。接続が切れたら読むのをやめる）。"""
+    remaining = plan.length
+    if remaining == 0:
+        return
+    # 先読みのバッファを持たず、書き出しの単位だけを読む
+    with plan.path.open("rb", buffering=0) as stream:
+        stream.seek(plan.start)
+        while remaining > 0:
+            chunk = stream.read(min(FILE_WRITE_CHUNK, remaining))
+            # 書き出す途中でファイルが縮んだ
+            if not chunk:
+                return
+            remaining -= len(chunk)
+            yield chunk
 
 
 def _content_length(request: Request) -> int | None:
