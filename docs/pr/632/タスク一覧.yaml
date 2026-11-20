@@ -40,8 +40,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T03:23:21.213690+00:00'
   - process: モック作成
-    status: todo
+    status: done
     note: 変わるトップバー・検討事項・表示の設定のモックと、ネットワーク・マップだけのモックの削除
+    updated_by: planner
+    updated_at: '2026-11-20T03:52:34.029461+00:00'
   - process: データ設計
     status: todo
     note: config.yaml の display から network_look を外す（ER 図・settings.schema.json）

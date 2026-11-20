@@ -5,3 +5,9 @@ confirmations:
     approver: shuhei1101
     commit: '91949253'
     thread: https://github.com/shuhei1101/mindstella/pull/632#discussion_r4638034904
+  - topic: モック
+    decision: 検討事項の表示形式をボード・表にし、タブの帯からネットワークを、表示の設定と既定の保存の確かめからネットワークの見た目を除いたモックで進める（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 0ce887e5
+    thread: https://github.com/shuhei1101/mindstella/pull/632#discussion_r4638252343
