@@ -814,6 +814,6 @@ def test_record_version_writes_applied(make_workspace: MakeWorkspace, make_item:
     # 検証
     lines = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()
     assert lines == ["v0.14.0", str(expected)]
-    assert expected == 4
+    assert expected == 5
     missing_lines = (missing / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()
     assert missing_lines == ["v99.0.0", "0"]
