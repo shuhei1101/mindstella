@@ -13,8 +13,6 @@ constants:
         value: mdmark
       - key: marked
         value: marked
-      - key: elkjs
-        value: ELK
       - key: mermaid
         value: mermaid
       - key: jsdiff
@@ -88,7 +86,7 @@ functions:
         type: string
         required: true
         passing: keyword
-        description: 表示できないもの（本文・図・マップ）
+        description: 表示できないもの（本文・図）
     returns:
       type: HTMLElement
       description: '`{what}を表示できません。読み込めなかったライブラリ: {名前を「・」でつなぐ}` と、「通信を確認して、ページを再読み込みしてください。」を持つ要素（文字は `textContent` で入れる）'

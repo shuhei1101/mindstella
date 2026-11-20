@@ -40,11 +40,12 @@ directory: |-
           scripts/
             mdmark_documents.py        mdmark の CLI の `upgrade` で資料を移し、map の種類を `config.yaml` へ移す変換
         v0.14.0/
-          steps.yaml                   v0.13.0 の形式 → v0.14.0 の手順（議論のキーを消し、本文を .mark.md にして直下へ移す）
+          steps.yaml                   v0.13.0 の形式 → v0.14.0 の手順（議論のキーを消し、本文を .mark.md にして直下へ移し、ネットワークの見た目の既定を消す）
           scripts/
             remove_discussion_keys.py  削除する設定のキーを消し、項目の対象・カテゴリーをタグへ、属性・観点・確かさを本文へ移す変換
             markdown_bodies_to_mark_md.py  Markdown の本文を .mark.md へ改名する変換
             move_bodies_to_root.py     本文と埋め込むファイルを直下へ移し、release/ を消す変換
+            remove_network_look.py     設定の display から network_look を消す変換
       schemas/
         migration-steps.schema.json    steps.yaml の形
       scripts/
@@ -90,3 +91,4 @@ notes:
   項目のタグをオブジェクトにする手順: '`migrations/v0.12.0/steps.yaml` は `call`（`script: tags_to_objects`、`destructive: true`）の 1 つだけを並べる（表記をそろえて重なるタグを外すと戻せないため）。`scripts/tags_to_objects.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_tags_to_objects.py` に置く。`schemas/common.schema.json` の `tags` の要素を `{name, main?}` にするため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.12.0` にする'
   議論のキーを消す手順: '`migrations/v0.14.0/steps.yaml` は `call`（`script: remove_discussion_keys`、`destructive: true`）の 1 つだけを並べる。`scripts/remove_discussion_keys.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_remove_discussion_keys.py` に置く。`schemas/settings.schema.json` から `goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories` を、`schemas/common.schema.json` と種類ごとのスキーマから `phase`・`target`・`category`・`attrs`・`weight`・`deliverable`・`angles`・`confidence` を外すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.14.0` にする。変換はプラグインの `store.py` を読まず、この版の形を自分で組み立てる'
   本文を直下へ移す手順: '`migrations/v0.14.0/steps.yaml` の 3 つ目に `call`（`script: move_bodies_to_root`、`destructive: true`）を並べる。`scripts/move_bodies_to_root.py` が `migrate(root)` を持ち（モジュール構成『move_bodies_to_root.py』）、単体テストは `tests/unit/scripts/test_move_bodies_to_root.py` に置く。種類ごとの 7 つのスキーマの `body` の `pattern` を `^\.\./docs/` で始まる形にし、`description` を「記録のフォルダからの相対。`../docs/{ID}.mark.md`」にする（資料は `../docs/{ID}.html` も）。プラグインの版は v0.14.0 のまま。変換はプラグインの `store.py`・`kinds.py` を読まず、この版の形を自分で組み立てる'
+  ネットワークの見た目の既定を消す手順: '`migrations/v0.14.0/steps.yaml` の 4 つ目に `call`（`script: remove_network_look`、`destructive: true`）を並べる。`scripts/remove_network_look.py` が `migrate(root)` を持ち（モジュール構成『remove_network_look.py』）、単体テストは `tests/unit/scripts/test_remove_network_look.py` に置く。`schemas/settings.schema.json` の `display` から `network_look` を外す。プラグインの版は v0.14.0 のまま。変換はプラグインの `store.py` を読まず、この版の形を自分で組み立てる'

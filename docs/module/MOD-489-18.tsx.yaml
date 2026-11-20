@@ -5,7 +5,7 @@ components:
   - name: DecisionsScreen
     title: 検討事項の画面
     kind: 画面
-    usecase: 検討事項をマップで辿る
+    usecase: プレビューを開く
     summary: 画面設計『検討事項.tsx』の要素と操作を描く
     refs:
       - SCR-489-20#

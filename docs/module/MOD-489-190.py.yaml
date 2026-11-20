@@ -143,7 +143,7 @@ classes:
     title: 表示の既定の中身の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: ワークスペースの既定を変える
-    summary: '既定の書き換えの要求の本文に `network_look`・`visible_kinds` が無い・値が合わない。配信は 400 にする。メッセージは `{キー}: {理由}`（選べる値を含む）'
+    summary: '既定の書き換えの要求の本文に `visible_kinds` が無い・値が合わない、またはほかのキーがある。配信は 400 にする。メッセージは `{キー}: {理由}`（選べる値を含む）'
     kind: クラス
     inherits: MindmapError
   - name: LastOptionError

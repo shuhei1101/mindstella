@@ -1312,22 +1312,22 @@ functions:
       - name: test_check_settings
         case: 正常
         summary: 合う設定は問題 0 件で、display も読む
-        condition: '`display: {network_look: starlight, visible_kinds: [decisions]}` を持つ設定'
+        condition: '`display: {visible_kinds: [decisions]}` を持つ設定'
         mock: なし
-        expected: 設定の `display.network_look` が `starlight`、問題が空
+        expected: 設定の `display.visible_kinds` が `[decisions]`、問題が空
       - name: test_check_settings_when_invalid
         case: 正常
         summary: 合わない設定と読めない設定を問題にする
-        condition: '`parametrize`: `display.network_look` が `rainbow` / `display.visible_kinds` が `[decisions, decisions]` / YAML として読めない'
+        condition: '`parametrize`: `display` が削除した `network_look` を持つ / `display.visible_kinds` が `[decisions, decisions]` / YAML として読めない'
         mock: なし
-        expected: '`key` が `display.network_look` / `display.visible_kinds` / `(全体)` の問題が 1 件以上。どれも `file` が `config.yaml`'
+        expected: '`key` が `display` / `display.visible_kinds` / `(全体)` の問題が 1 件以上。どれも `file` が `config.yaml`'
   - name: load_display_validator
     title: 表示の既定の検証器の用意
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: ワークスペースの既定を変える
     scope: public
-    summary: 設定のスキーマの `display` の部分（`properties.display`）だけを検証する検証器を作る（選べる見た目と種類の名前はスキーマだけが持つ。設定の更新の `update_display` が使う）
+    summary: 設定のスキーマの `display` の部分（`properties.display`）だけを検証する検証器を作る（選べる種類の名前はスキーマだけが持つ。設定の更新の `update_display` が使う）
     returns:
       type: Draft202012Validator
       description: '`display` の検証器'

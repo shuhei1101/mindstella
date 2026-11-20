@@ -35,4 +35,4 @@ components:
       - name: texts
         type: '{key, label, value}[]'
         required: false
-        description: 文字の欄。画面は表の列を `textColumns` に通して組み、`value` は `selected` の `~{列}` の文字。画面は `drawerGroups` に文字の条件で絞った行を渡し、値の件数をその行で数える。省くと文字の欄を出さない（ネットワーク）
+        description: 文字の欄。画面は表の列を `textColumns` に通して組み、`value` は `selected` の `~{列}` の文字。画面は `drawerGroups` に文字の条件で絞った行を渡し、値の件数をその行で数える。省くと文字の欄を出さない

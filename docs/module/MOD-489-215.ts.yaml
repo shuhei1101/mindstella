@@ -9,7 +9,7 @@ functions:
     usecase: コメントを選んで送る
     kind: 関数
     scope: public
-    summary: 本文の画面の中の印を置く場所（`data-comment-target` を持つ要素。カード・節点・字下げの一覧の行・表の行が描くときに項目の ID を入れて置く）ごとに、`counts` の件数で `commentMark` を入れ替える。件数が無い場所は空にする。画面を描き直さないので、スクロールの位置・マップの拡大と位置は動かない
+    summary: 本文の画面の中の印を置く場所（`data-comment-target` を持つ要素。カード・節点・字下げの一覧の行・表の行が描くときに項目の ID を入れて置く）ごとに、`counts` の件数で `commentMark` を入れ替える。件数が無い場所は空にする。画面を描き直さないので、スクロールの位置は動かない
     args:
       - name: root
         type: ParentNode
@@ -43,7 +43,7 @@ functions:
     usecase: 項目へコメントする
     kind: 関数
     scope: public
-    summary: 項目の印を置く場所（`data-comment-target` に項目の ID を持ち、自分では箱を作らない `span`）を返す。件数が 1 以上なら `commentMark` を入れ、無ければ空で返す。ボード・カード・マップの節点・字下げの一覧・表が `comments` を受けたときに置き、`refreshCommentMarks` が中身を差し替える
+    summary: 項目の印を置く場所（`data-comment-target` に項目の ID を持ち、自分では箱を作らない `span`）を返す。件数が 1 以上なら `commentMark` を入れ、無ければ空で返す。ボード・カード・表が `comments` を受けたときに置き、`refreshCommentMarks` が中身を差し替える
     args:
       - name: id
         type: string
@@ -64,7 +64,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
     usecase: 項目へコメントする
     kind: コンポーネント
-    summary: 部品設計『コメントの印』の引数を受け、吹き出しの線と件数（99 を超えると「99+」）、読み上げにだけ残す「コメント {実数} 件」と `title` を持つ `span` を返す。ボード・カード・マップの節点・字下げの一覧・表・ネットワークの名前の横が使う
+    summary: 部品設計『コメントの印』の引数を受け、吹き出しの線と件数（99 を超えると「99+」）、読み上げにだけ残す「コメント {実数} 件」と `title` を持つ `span` を返す。ボード・カード・表が使う
     props:
       - name: count
         type: number

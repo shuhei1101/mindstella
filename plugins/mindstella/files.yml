@@ -1068,9 +1068,7 @@ files:
   tags:
   - tool:typescript
   - topic:ロック
-  related:
-  - to: MOD-489-200
-    type: implements
+  related: []
 - path: skills/mindmap/preview/core/records.ts
   name: 記録の索引と検索
   description: 次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使い、画面で計算し直さない。項目の索引・関係する項目・検索の求め方を変更するときに読む。
@@ -1098,9 +1096,7 @@ files:
   - tool:typescript
   - topic:グラフ
   - topic:ネットワーク
-  related:
-  - to: MOD-489-213
-    type: implements
+  related: []
 - path: skills/mindmap/preview/graph/looks.ts
   name: ネットワークの見た目
   description: 毎コマ graph.ts が計算した玉・線を受け取り、見た目ごとに地・線・流れる光・星の順に描く。ネットワークの 5 つの見た目の描き方を変更するときに読む。
@@ -1108,9 +1104,7 @@ files:
   - tool:typescript
   - topic:テーマ
   - topic:ネットワーク
-  related:
-  - to: MOD-489-216
-    type: implements
+  related: []
 - path: skills/mindmap/preview/licenses/README.md
   name: 配る書き出しのライセンスのフォルダの説明
   description: ライブラリのライセンスの本文のうち、リポジトリに置くものを入れるフォルダ。配る書き出しに入れるライブラリのライセンスを追加・変更するときに読む。

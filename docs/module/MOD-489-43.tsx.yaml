@@ -29,12 +29,6 @@ components:
         condition: 要見直しの検討事項を返し、要見直しの「すべて表示」を押す
         mock: MSW・ルーターのメモリの履歴
         expected: search が `tab=decisions`・`view=table`・`f.status=要見直し` になる
-      - name: test_overview_screen_when_network
-        case: 正常
-        summary: ネットワークは今の画面へ
-        condition: トップバーのネットワークの入口を押す
-        mock: MSW・`window.location.assign`
-        expected: '`assign` が今の画面の `#tab=graph` で呼ばれる'
       - name: test_overview_screen_when_unread
         case: 正常
         summary: 未読の行はスレッドへ

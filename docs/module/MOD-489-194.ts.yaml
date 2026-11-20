@@ -243,7 +243,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/records.ts
     usecase: 共通
     scope: public
-    summary: 項目の `tags` から名前だけを並びの順に取り出す（表の列・絞り込み・ネットワークの条件・使われているタグが使う）
+    summary: 項目の `tags` から名前だけを並びの順に取り出す（表の列・絞り込み・使われているタグが使う）
     args:
       - name: tags
         type: readonly (Tag | string)[] | undefined
