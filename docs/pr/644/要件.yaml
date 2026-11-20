@@ -43,6 +43,66 @@ use_cases:
     impact: run_only
     detail: 開発の依存（今の Storybook）を外しても、利用者の入れ方でプラグインを入れて起動できる
     depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: following
+    detail: 選んだ時点・開いた項目を残す場所が React の画面の URL の search params になることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-25.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-48.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-587-1.yaml
+    impact: following
+    detail: 動画・音声・画像を確認する画面が React の画面だけになることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: following
+    detail: マイクのボタンを置く画面が React の画面だけになることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
 docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false

@@ -69,7 +69,7 @@ scenarios:
       ```
     expected:
       - A-1 の詳細パネルが開き、箇所の行が画面の中にあり、示されている
-      - 戻る操作で詳細パネルが閉じ、レビュー中を確かめる画面が開いたままで、URL のハッシュが `id` を持たない
+      - 戻る操作で詳細パネルが閉じ、レビュー中を確かめる画面が開いたままで、URL の search params が `id` を持たない
     test: test_normal_when_jump_to_location
   - name: 正常シナリオ（修正して削除して戻す）
     setup:

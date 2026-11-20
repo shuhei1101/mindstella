@@ -27,11 +27,11 @@ scenarios:
         P-->>U: 資料のタブと A-1 の詳細パネル
       ```
     expected:
-      - / キーを押しても全体の検索は開かず、URL のハッシュも変わらない
+      - / キーを押しても全体の検索は開かず、URL の search params も変わらない
       - Ctrl+K を押すと全体の検索が開き、入力欄にフォーカスがある
       - 結果に D-2 と A-1 があり、T-1 は無い
       - A-1 を押した後、検索が閉じ、資料のタブと A-1 の詳細パネルが開く
-      - URL のハッシュが資料のタブと A-1 を指す
+      - URL の search params が資料のタブと A-1 を指す
     test: test_normal
   - name: 正常シナリオ（該当なし）
     setup:
@@ -56,7 +56,7 @@ scenarios:
       ```
     expected:
       - 結果の場所に「該当する項目はありません。別の条件を試してください。」が出る
-      - Esc で検索が閉じ、開く前の画面のままで URL のハッシュも変わらない
+      - Esc で検索が閉じ、開く前の画面のままで URL の search params も変わらない
     test: test_normal_when_no_match
   - name: 正常シナリオ（完全に一致する項目がある）
     setup:
