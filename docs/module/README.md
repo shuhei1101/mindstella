@@ -161,6 +161,7 @@
 | [サーバー / 移行 / markdown_bodies_to_mark_md.py](./MOD-527-1.py.yaml) | サーバー / 移行 / markdown_bodies_to_mark_md.py |
 | [サーバー / 移行 / move_bodies_to_root.py](./MOD-626-1.py.yaml) | サーバー / 移行 / move_bodies_to_root.py |
 | [サーバー / 移行 / remove_network_look.py](./MOD-542-1.py.yaml) | サーバー / 移行 / remove_network_look.py |
+| [サーバー / 移行 / remove_preview_port.py](./MOD-642-2.py.yaml) | サーバー / 移行 / remove_preview_port.py |
 | [サーバー / 移行 / answer_to_adopted_option.py](./MOD-489-183.py.yaml) | サーバー / 移行 / answer_to_adopted_option.py |
 | [サーバー / 移行 / submissions_to_threads.py](./MOD-489-184.py.yaml) | サーバー / 移行 / submissions_to_threads.py |
 | [サーバー / 移行 / refs_to_related.py](./MOD-540-3.py.yaml) | サーバー / 移行 / v0.13.0 の参照のキーを種類つきの関連へ移す移し替え |

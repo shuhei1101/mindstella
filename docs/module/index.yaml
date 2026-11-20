@@ -306,6 +306,8 @@ items:
     summary: "サーバー / 移行 / move_bodies_to_root.py"
   - page: MOD-542-1.py.yaml
     summary: "サーバー / 移行 / remove_network_look.py"
+  - page: MOD-642-2.py.yaml
+    summary: "サーバー / 移行 / remove_preview_port.py"
   - page: MOD-489-183.py.yaml
     summary: "サーバー / 移行 / answer_to_adopted_option.py"
   - page: MOD-489-184.py.yaml

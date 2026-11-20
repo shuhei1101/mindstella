@@ -628,7 +628,7 @@ flows:
       ```
     expected:
       - 例外にならない
-      - '`steps` が `version: v0.14.0` の 4 件で、`remove_discussion_keys`・`markdown_bodies_to_mark_md`・`move_bodies_to_root`・`remove_network_look` がどれも `destructive: true`'
+      - '`steps` が `version: v0.14.0` の 5 件で、`remove_discussion_keys`・`markdown_bodies_to_mark_md`・`move_bodies_to_root`・`remove_network_look`・`remove_preview_port` がどれも `destructive: true`'
       - D-1 の `body` が `../docs/D-1.mark.md` で、直下の `docs/D-1.mark.md` の中身が呼ぶ前の `D-1.md` と同じで、`D-1.md` が残らない
       - '`history.yaml` の D-1 の変更履歴の `before.body` が `../docs/D-1.html` と `../docs/D-1.mark.md` で、変更履歴の並びと D-1 の `updated` が呼ぶ前と同じ'
       - A-1 の `body` が `../docs/A-1.html` で、直下の `docs/A-1.html` の中身が呼ぶ前と同じ
@@ -746,6 +746,33 @@ flows:
       - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインのバージョン'
       - 同じ呼び出しをもう一度当てても、ワークスペースが変わらない
     test: test_normal_when_network_look_removed
+  - name: 正常系（プレビューの配信の設定を削除する）
+    summary: v0.14.0 の手順で、config.yaml から preview を削除する
+    setup:
+      - name: Mock
+        description: なし（関数 `migrate` を直接呼ぶ）
+      - name: make_workspace
+        description: 'バージョン v0.13.0 で、`config.yaml` が `summary` と `preview: {port: 47800}` を持つワークスペース'
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as migrate
+        participant WS as ワークスペース
+
+        クライアント->>IF: migrate workspace
+        IF->>WS: コピーを取る
+        IF->>WS: v0.14.0 の手順を当てる（remove_preview_port で preview を削除する）
+        IF->>WS: スキーマと突き合わせ、バージョンのファイルを書く
+        IF-->>クライアント: 結果（steps・backup）
+      ```
+    expected:
+      - 例外にならない
+      - '`config.yaml` が `preview` を持たず、`summary` とほかのキーは呼ぶ前と同じ'
+      - '`steps` の v0.14.0 の 5 件目が `op: call`・`destructive: true`'
+      - 同じ呼び出しをもう一度当てても、ワークスペースが変わらない
+    test: test_normal_when_preview_port_removed
 lead: ワークスペースを開く前に、ワークスペースのバージョンとプラグインのバージョンを比べ、古ければ間のバージョンの移し替えの手順（`migrations/{バージョン}/steps.yaml`）を利用者に確認せずに順に当て、スキーマに合えばバージョンのファイルを書き換える。
 idempotent: false
 side_effects: '手順を当てる前にコピーを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書き、値が要るキーに仮の値を入れ、`to_version` がプラグインのバージョンのときは `.mindstella/mindstella-version.ini` を書く。バージョンが同じときも含め、プラグインのスキーマと中身が違うスキーマの複製（`.mindstella/schemas/`）を書き直し、配信の設定（`.mindstella/dev-docs.yaml`）の `write_dates` を持たない種類の行に `write_dates: false` を追加する。手順が失敗するかスキーマに合わなければコピーから戻す'
@@ -892,7 +919,7 @@ constraints:
   - item: 移し替えるとき
     constraint: ワークスペースのバージョンがプラグインより古いときと、同じで「当て終えた手順の数」がそのバージョンの手順の数より少ない（数が無く、バージョンが v0.14.0 以上のときを含む）ときだけ手順を当てる。同じで当て終えた手順の数がそのバージョンの手順の数以上のときは手順を当てず、スキーマの複製と配信の設定（『スキーマの複製』『配信の設定の日時』）のほかは何も書かず、新しいときは WorkspaceNewerError（D-288）
   - item: v0.14.0 の手順
-    constraint: '次の順の 4 手順。どれも破壊的な操作。(1) `call`（`remove_discussion_keys`）。`.mindstella/config.yaml` から `goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories` を削除する。種類ごとの YAML の項目の `target`・`category` は値を `topic:{値}` のタグ（既にあれば追加しない）へ、`attrs` は本文の末尾の「属性」の表（キーと値）へ、調査の `angles`・`confidence` は本文の末尾の「観点と確かさ」の表へ移してキーを削除する。`phase`・検討事項の `weight`・資料の `deliverable` は移さずに削除する。`.mindstella/release/` はこの手順では削除しない（(3) で削除する）。書き換えた項目の変更履歴は変えない（D-276 A・D-277 A・D-278 A）。(2) `call`（`markdown_bodies_to_mark_md`）。`.mindstella/docs/` の直下の `*.md` のうち `.mark.md` でないファイルを `{名前}.mark.md` へ改名し、種類ごとの YAML の項目の `body` と `history.yaml` の変更履歴の `before.body` のうち `docs/{名前}.md` を `docs/{名前}.mark.md` に書き換える。どの項目からも指されない `*.md` も改名する。改名先が既にあれば StepFailedError。`docs/{名前}.html` と、既に `.mark.md` のファイル・`body` は変えない。書き換えた項目の `updated` と変更履歴の並びは変えない。(3) `call`（`move_bodies_to_root`）。`.mindstella/docs/`・`.mindstella/files/` をワークスペースの直下の `docs/`・`files/` へ移す。`.mindstella/dev-docs.yaml` が `paths_base` を持たない（まだ移し替えていない）ときに、直下に `docs/` か `files/` が既にあれば、`.mindstella/docs/`・`.mindstella/files/` の有無に関わらず何も移さずに StepFailedError（理由に既にあるフォルダの名前と、改名してから再度開く案内）。`paths_base` を持つときは移し替え済みとして直下のフォルダを確かめない。種類ごとの YAML の項目の `body` と `history.yaml` の変更履歴の `before.body` のうち `docs/` で始まる値を `../docs/` で始まる値に書き換える。`.mindstella/dev-docs.yaml` に `paths_base: ..` を追加し、`id` が種類の名前の 7 つの `documents` の行の `paths` を `[.mindstella/{種類}.yaml]` に書き換える（ほかの行・キーは変えない）。`.mindstella/release/` を削除する。`.mindstella/docs/`・`.mindstella/files/` が無ければそのフォルダは移さず、`../docs/` で始まる値と書き換え済みの配信の設定は変えない。書き換えた項目の `updated` と変更履歴の並びは変えない。移し替えた後は、呼ぶ側が変更の検知の前回の中身を再作成する（『変更の検知』の `rebase_snapshot`）。(4) `call`（`remove_network_look`）。`.mindstella/config.yaml` の `display` から `network_look` を削除し、`display` が空になったら `display` も削除する。`display` か `network_look` が無ければ何も書かない'
+    constraint: '次の順の 5 手順。どれも破壊的な操作。(1) `call`（`remove_discussion_keys`）。`.mindstella/config.yaml` から `goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories` を削除する。種類ごとの YAML の項目の `target`・`category` は値を `topic:{値}` のタグ（既にあれば追加しない）へ、`attrs` は本文の末尾の「属性」の表（キーと値）へ、調査の `angles`・`confidence` は本文の末尾の「観点と確かさ」の表へ移してキーを削除する。`phase`・検討事項の `weight`・資料の `deliverable` は移さずに削除する。`.mindstella/release/` はこの手順では削除しない（(3) で削除する）。書き換えた項目の変更履歴は変えない（D-276 A・D-277 A・D-278 A）。(2) `call`（`markdown_bodies_to_mark_md`）。`.mindstella/docs/` の直下の `*.md` のうち `.mark.md` でないファイルを `{名前}.mark.md` へ改名し、種類ごとの YAML の項目の `body` と `history.yaml` の変更履歴の `before.body` のうち `docs/{名前}.md` を `docs/{名前}.mark.md` に書き換える。どの項目からも指されない `*.md` も改名する。改名先が既にあれば StepFailedError。`docs/{名前}.html` と、既に `.mark.md` のファイル・`body` は変えない。書き換えた項目の `updated` と変更履歴の並びは変えない。(3) `call`（`move_bodies_to_root`）。`.mindstella/docs/`・`.mindstella/files/` をワークスペースの直下の `docs/`・`files/` へ移す。`.mindstella/dev-docs.yaml` が `paths_base` を持たない（まだ移し替えていない）ときに、直下に `docs/` か `files/` が既にあれば、`.mindstella/docs/`・`.mindstella/files/` の有無に関わらず何も移さずに StepFailedError（理由に既にあるフォルダの名前と、改名してから再度開く案内）。`paths_base` を持つときは移し替え済みとして直下のフォルダを確かめない。種類ごとの YAML の項目の `body` と `history.yaml` の変更履歴の `before.body` のうち `docs/` で始まる値を `../docs/` で始まる値に書き換える。`.mindstella/dev-docs.yaml` に `paths_base: ..` を追加し、`id` が種類の名前の 7 つの `documents` の行の `paths` を `[.mindstella/{種類}.yaml]` に書き換える（ほかの行・キーは変えない）。`.mindstella/release/` を削除する。`.mindstella/docs/`・`.mindstella/files/` が無ければそのフォルダは移さず、`../docs/` で始まる値と書き換え済みの配信の設定は変えない。書き換えた項目の `updated` と変更履歴の並びは変えない。移し替えた後は、呼ぶ側が変更の検知の前回の中身を再作成する（『変更の検知』の `rebase_snapshot`）。(4) `call`（`remove_network_look`）。`.mindstella/config.yaml` の `display` から `network_look` を削除し、`display` が空になったら `display` も削除する。`display` か `network_look` が無ければ何も書かない。(5) `call`（`remove_preview_port`）。`.mindstella/config.yaml` からプレビューの配信の設定 `preview`（`port`）を削除する（全てのワークスペースを常駐サーバーのポートで配るため）。`preview` が無ければ何も書かない'
     notes: バージョンの番号は計画の次の Sprint のバージョン。Sprint のバージョンが変わったら合わせる
   - item: スキーマの複製
     constraint: 手順を当ててバージョンのファイルを書いた後と、バージョンが同じで手順を当てないときに、配信の設定が指すスキーマ（`common.schema.json` と種類ごとのスキーマ）の `.mindstella/schemas/` の複製をプラグインの `skills/mindmap/schemas/` の同じ名前のファイルと比べ、無いか中身が違うファイルだけを書き直して `source_files` に返す。複製の側にだけあるファイルは削除しない（配信の設定が指さないので検査に使われない）。コピーは取らない。書けなければ WriteFailedError。`to_version` がプラグインのバージョンより古いとき・WorkspaceNewerError のとき・手順が失敗したときは比べない。project-index は Git 管理外の配信元のスキーマを読み込んだ時点のまま使うので、`source_files` が 1 件以上のときは呼ぶ側（『ワークスペースの作成』）が配信元を読み直させる

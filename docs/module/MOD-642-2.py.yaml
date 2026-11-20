@@ -1,0 +1,64 @@
+id: MOD-642-2
+title: サーバー / 移行 / remove_preview_port.py
+lead: v0.14.0 の 5 手順目の変換。`.mindstella/config.yaml` から削除したプレビューの配信の設定 `preview` を削除する。`yaml` と標準ライブラリだけを読み、このバージョンの形式を自分で組み立てる。
+constants:
+  - name: CONFIG_FILE
+    title: 設定のファイル
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_preview_port.py
+    usecase: 記録の形式の移行
+    summary: 書き換える設定（ワークスペースの直下からの相対パス）
+    value: '".mindstella/config.yaml"'
+  - name: REMOVED_KEY
+    title: 削除するキー
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_preview_port.py
+    usecase: 記録の形式の移行
+    summary: 設定から削除するキー
+    value: '"preview"'
+functions:
+  - name: remove_preview_port.migrate
+    title: プレビューの配信の設定を削除する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_preview_port.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: '`config.yaml` から `preview` を削除する'
+    side_effects: '`config.yaml` を書き換える（ほかのファイルは触らない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの直下
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。書き換えたときは `.mindstella/config.yaml` の 1 件。何も変えなければ空）
+    process: |-
+      1. `CONFIG_FILE` が無ければ空を返す
+      2. `CONFIG_FILE` を読み、オブジェクトで `REMOVED_KEY` を持たなければ何も書かずに空を返す
+      3. `REMOVED_KEY` を削除する（ほかのキーと並びは変えない）
+      4. 一時ファイルに書いてから `os.replace` で置き換え、`CONFIG_FILE` を返す
+    exceptions:
+      - name: RuntimeError
+        condition: '`config.yaml` を YAML として読めない。手順の `StepError` にしてコピーから戻すのは移行が担う'
+    unit_tests:
+      - name: test_migrate
+        case: 正常
+        summary: '`preview` を削除する'
+        condition: '`summary`・`preview: {port: 47800}`・`display` をこの順で持つ設定'
+        mock: なし（`tmp_path`）
+        expected: '`preview` が無く、`summary`・`display` が同じ値と並び。戻り値が `.mindstella/config.yaml` の 1 件'
+      - name: test_migrate_when_already_current
+        case: 正常
+        summary: もう一度当てても変わらない
+        condition: '`parametrize`: `test_migrate` を当てた後の設定 / `config.yaml` が無いワークスペース'
+        mock: なし
+        expected: 戻り値が空で、ファイルが呼ぶ前と同じ（無いファイルを作らない）
+      - name: test_migrate_when_unreadable
+        case: 異常
+        summary: 読めない設定は書き換えずに失敗する
+        condition: YAML として読めない `config.yaml`
+        mock: なし
+        expected: '`RuntimeError`。ファイルが呼ぶ前と同じ'
+refs:
+  - IF-489-52#
+  - MOD-489-164#
