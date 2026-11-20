@@ -13,7 +13,6 @@ STATES = (
     "shared-filterdrawer--selected",
     "shared-filterdrawer--zero-value",
     "shared-filterdrawer--long-tag",
-    "shared-filterdrawer--keyword-hits",
     "shared-filterdrawer--no-match",
     "shared-filterdrawer--narrow",
     "shared-filterdrawer--text-conditions",
@@ -93,26 +92,6 @@ def test_long_tag(open_story: OpenStory) -> None:
     assert short is not None
     assert box["height"] > short["height"]
     assert count["x"] + count["width"] <= box["x"] + box["width"] + 1
-
-
-def test_keyword_hits(open_story: OpenStory) -> None:
-    """キーワードに一致した件数を、件数の左に印の色で出す。0 件の一致は出さない（正常系）。"""
-    # 準備・実行
-    dialog = open_story("shared-filterdrawer--keyword-hits").get_by_role("dialog", name="絞り込み")
-    hit = dialog.get_by_label("キーワードに一致した項目 2 件")
-    count = dialog.get_by_label("5 件")
-    # 検証
-    expect(hit).to_have_text("2")
-    expect(dialog.get_by_label("キーワードに一致した項目 1 件")).to_have_count(1)
-    assert dialog.get_by_label("キーワードに一致した項目 0 件").count() == 0
-    hit_box = hit.bounding_box()
-    count_box = count.bounding_box()
-    assert hit_box is not None
-    assert count_box is not None
-    assert hit_box["x"] < count_box["x"]
-    assert hit.evaluate("e => getComputedStyle(e).color") != count.evaluate(
-        "e => getComputedStyle(e).color"
-    )
 
 
 def test_no_match(open_story: OpenStory) -> None:

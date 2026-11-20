@@ -30,15 +30,15 @@ def test_normal(
     url = serve_preview(root)
     stream = open_events(url)
     write_yaml(
-        root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"network_look": "dust"}}
+        root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"visible_kinds": ["decisions", "tasks"]}}
     )
     # 実行
     result = http_request(url, RELOAD_PATH, method="POST")
     # 検証
     assert result.status == 200
-    assert result.json()["settings"]["display"]["network_look"] == "dust"
+    assert result.json()["settings"]["display"]["visible_kinds"] == ["decisions", "tasks"]
     records = http_request(url, "/api/records").json()
-    assert records["settings"]["display"]["network_look"] == "dust"
+    assert records["settings"]["display"]["visible_kinds"] == ["decisions", "tasks"]
     assert stream.wait_for_changed(CHANGED_WITHIN_SEC) is True
 
 
@@ -49,11 +49,11 @@ def test_error_when_check_fails(
 ) -> None:
     """崩れた config.yaml では、最後に通った設定のまま違う箇所を返す（異常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "display": {"network_look": "starlight"}})
+    root = make_workspace(settings={**valid_settings, "display": {"visible_kinds": ["decisions"]}})
     url = serve_preview(root)
     write_yaml(
         root / RECORD_DIR / "config.yaml",
-        {**valid_settings, "display": {"network_look": "rainbow"}},
+        {**valid_settings, "display": {"visible_kinds": ["rainbow"]}},
     )
     before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
@@ -62,9 +62,9 @@ def test_error_when_check_fails(
     assert result.status == 422
     assert result.headers["content-type"].startswith("application/problem+json")
     assert any(
-        line.startswith("config.yaml: display.network_look: ")
+        line.startswith("config.yaml: display.visible_kinds")
         for line in result.json()["detail"].splitlines()
     )
     records = http_request(url, "/api/records").json()
-    assert records["settings"]["display"]["network_look"] == "starlight"
+    assert records["settings"]["display"]["visible_kinds"] == ["decisions"]
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == before

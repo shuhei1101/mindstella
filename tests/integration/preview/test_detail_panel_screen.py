@@ -778,7 +778,6 @@ def test_side_by_side_when_wide(
         pytest.param("#tab=decisions&view=table", ".table-wrap", "D-2", 1280, id="table_1280"),
         pytest.param("#tab=decisions&view=table", ".table-wrap", "D-2", 1440, id="table_1440"),
         pytest.param("#tab=decisions&view=table", ".table-wrap", "D-2", 1920, id="table_1920"),
-        pytest.param("#tab=decisions&view=map", ".map-wrap", "D-2", 1440, id="map_1440"),
         pytest.param("#tab=docs&view=table", ".table-wrap", "A-1", 1920, id="docs_wide_1920"),
     ],
 )
@@ -802,10 +801,7 @@ def test_side_by_side_moves_content_left(
     }}"""
     before = page.evaluate(box_js)
     # 実行
-    if frame == ".map-wrap":
-        page.click(f'#decision-map button[data-node="{item}"]')
-    else:
-        page.click(f'table.grid button.row-open[data-id="{item}"]')
+    page.click(f'table.grid button.row-open[data-id="{item}"]')
     page.wait_for_selector("aside.panel.open")
     # パネルがすべり込んで、窓の右端に着くまで待つ（動きの間は位置が動く）
     page.wait_for_function(
@@ -5748,7 +5744,7 @@ def test_panel_resizer_default(
         pytest.param("#tab=docs&view=table&id=A-1", id="docs"),
         pytest.param("#tab=tasks&view=table&id=T-1", id="tasks"),
         pytest.param("#tab=research&id=R-1", id="research"),
-        pytest.param("#tab=decisions&view=map&id=D-2", id="map"),
+        pytest.param("#tab=decisions&view=board&id=D-2", id="decisions"),
     ],
 )
 def test_panel_resizer_default_for_every_kind(
@@ -5860,7 +5856,6 @@ def test_panel_resizer_stored_on_release(
     [
         pytest.param("#tab=decisions&view=table&id=D-3", 1280, 880, id="table_side_by_side"),
         pytest.param("#tab=decisions&view=table&id=D-3", 1000, 840, id="table_overlay"),
-        pytest.param("#tab=decisions&view=map&id=D-3", 1000, 600, id="map_side_by_side"),
     ],
 )
 def test_panel_resizer_max(
@@ -5871,7 +5866,7 @@ def test_panel_resizer_max(
     width: int,
     expected_max: int,
 ) -> None:
-    """上限は、本文を寄せる幅では本文に 400px、重ねる幅では左に 160px を残す幅になり、End で上限まで広げると本文のマップも寄せる（正常系）。"""
+    """上限は、本文を寄せる幅では本文に 400px、重ねる幅では左に 160px を残す幅になる（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_panel(page, open_preview, url, hash_text, {"width": width, "height": 800})

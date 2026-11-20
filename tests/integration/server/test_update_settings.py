@@ -16,7 +16,7 @@ DESCRIPTION = (
 )
 
 # 表示の既定
-DISPLAY = {"network_look": "deep"}
+DISPLAY = {"visible_kinds": ["decisions", "tasks"]}
 
 
 def _read_yaml(root: Path, file_name: str) -> Any:
@@ -169,7 +169,6 @@ def test_normal_when_display(
     root = make_workspace()
     before = _read_yaml(root, "config.yaml")
     display = {
-        "network_look": "starlight",
         "visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"],
     }
     # 実行

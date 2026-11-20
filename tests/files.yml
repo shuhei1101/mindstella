@@ -277,15 +277,6 @@ files:
   - topic:ワークスペース
   - topic:差分
   - topic:結合テスト
-- path: integration/preview/preview_network_helpers.py
-  name: ネットワークの画面の結合テストの補助
-  description: ネットワークの画面の結合テストが共有する値と、キャンバスを外から観測する関数。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ネットワーク
-  - topic:ヘルパー
-  - topic:結合テスト
 - path: integration/preview/preview_panel_width_helpers.py
   name: 詳細パネルの幅の区切りの結合テストの補助
   description: 詳細パネルの幅の区切りの結合テストが共有する、保存領域のキーと値、画面の幅、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
@@ -426,14 +417,6 @@ files:
   - tool:pytest
   - topic:結合テスト
   - topic:資料
-- path: integration/preview/test_graph_screen.py
-  name: 画面設計『ネットワーク』の結合テスト
-  description: 画面設計『ネットワーク』（キャンバスは項目 ID `graph-canvas`）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ネットワーク
-  - topic:結合テスト
 - path: integration/preview/test_history_screen.py
   name: 画面設計『変更履歴』の結合テスト
   description: 画面設計『変更履歴』の結合テスト。テストの期待値や準備を確認・修正するときに読む。

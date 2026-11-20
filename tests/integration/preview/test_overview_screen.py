@@ -370,7 +370,7 @@ def test_visible_kinds_keep_links(
 ) -> None:
     """表示する種類の既定が全ての種類のときは、「すべて表示」を出す（正常系）。"""
     # 準備
-    settings = {**sample_settings, "display": {"network_look": "deep"}}
+    settings = {**sample_settings, "display": {"visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"]}}
     url = write_preview(*sample_items, settings=settings, bodies=sample_bodies)
     # 実行
     page = open_preview(url)

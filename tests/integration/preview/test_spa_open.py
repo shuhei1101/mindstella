@@ -337,37 +337,6 @@ def _history_length(page: Page) -> int:
     return length
 
 
-def test_normal_when_graph(make_workspace: MakeWorkspace, call_tool: CallTool, page: Page) -> None:
-    """タブの帯の右端のネットワークの入口で、`id` の項目を選んだネットワークを開き、`f.{列}` で描く玉を絞る（正常系）。"""
-    # 準備
-    url = _served_with_commit(
-        make_workspace,
-        call_tool,
-        ("decision", {"title": "記録の形", "status": "決定済み", "answer": "種類ごとに分ける", "options": [{"key": "A", "content": "種類ごとに分ける", "adopted": True}]}),
-        ("decision", {"title": "画面の幅", "status": "要見直し", "options": [{"key": "A", "content": "案 A"}]}),
-    )
-    console = watch_console(page)
-    open_spa(page, url, "?tab=decisions&view=table&id=D-1&diff=V-1")
-    before = _history_length(page)
-    # 実行（ネットワークの入口を押す）
-    page.get_by_role("link", name="ネットワーク").click()
-    page.wait_for_url("**/spa/?tab=graph*")
-    opened = (page.evaluate("location.pathname + location.search"), _history_length(page))
-    # 実行（絞り込みのドロワーで状態「要見直し」を選ぶ）
-    page.get_by_role("button", name="絞り込み").click()
-    page.get_by_role("dialog", name="絞り込み").get_by_role("checkbox", name=re.compile("^要見直し")).click()
-    page.wait_for_url(re.compile("f.status="))
-    # 検証
-    assert opened == (f"{SPA_ROOT_PATH}?tab=graph&id=D-1&diff=V-1", before + 1)
-    assert page.get_attribute(CURRENT_TAB, "data-tab") == "graph"
-    expect(page.get_by_role("complementary", name="詳細")).to_contain_text("記録の形")
-    assert page.evaluate("decodeURIComponent(location.search)") == "?tab=graph&id=D-1&diff=V-1&f.status=要見直し"
-    assert _history_length(page) == before + 1
-    expect(page.get_by_role("button", name="状態: 要見直し の条件を解除")).to_be_visible()
-    assert console.messages == []
-    assert console.exceptions == []
-
-
 def test_normal_when_search(make_workspace: MakeWorkspace, call_tool: CallTool, page: Page) -> None:
     """`Ctrl+K` で全体の検索を開き、検索の言葉にヒットした項目を選んで、その項目のタブと詳細パネルを開く（正常系）。"""
     # 準備
@@ -484,7 +453,6 @@ def test_error_when_save_blocked(page: Page, spa_preview: str) -> None:
     panel.get_by_role("button", name="まとめて保存する").click()
     expect(panel.get_by_role("alert")).to_contain_text("何も保存していません")
     expect(row).to_be_visible()
-
 
 
 # ─── コメントと表示の設定 ───

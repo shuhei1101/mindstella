@@ -137,21 +137,21 @@ def test_error_when_config_invalid(
 ) -> None:
     """config.yaml がスキーマに合わないと、違う箇所を返して配信を立てない（異常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "display": {"network_look": "rainbow"}})
+    root = make_workspace(settings={**valid_settings, "display": {"visible_kinds": ["rainbow"]}})
     before = snapshot_tree(root)
     # 実行
     result = call_tool("preview_url", workspace=str(root))
     # 検証
     assert result.is_error is True
     assert any(
-        line.startswith("config.yaml: display.network_look: ") and "glow" in line
+        line.startswith("config.yaml: display.visible_kinds") and "decisions" in line
         for line in result.text.splitlines()
     )
     assert snapshot_tree(root) == before
     # 配信が立っていないので、もう一度呼んでも同じエラーになる
     again = call_tool("preview_url", workspace=str(root))
     assert again.is_error is True
-    assert "config.yaml: display.network_look: " in again.text
+    assert "config.yaml: display.visible_kinds" in again.text
 
 
 def test_error_when_serve_fails(

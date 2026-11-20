@@ -138,11 +138,11 @@ def test_normal_when_config_invalid(
 ) -> None:
     """配信中に config.yaml を崩しても、最後に検査に通った設定で記録を返し、合わない箇所を添える（正常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "display": {"network_look": "starlight"}})
+    root = make_workspace(settings={**valid_settings, "display": {"visible_kinds": ["decisions"]}})
     url = serve_preview(root)
     write_yaml(
         root / RECORD_DIR / "config.yaml",
-        {**valid_settings, "display": {"network_look": "rainbow"}},
+        {**valid_settings, "display": {"visible_kinds": ["rainbow"]}},
     )
     before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
@@ -150,9 +150,9 @@ def test_normal_when_config_invalid(
     # 検証
     assert result.status == 200
     records = result.json()
-    assert records["settings"]["display"]["network_look"] == "starlight"
+    assert records["settings"]["display"]["visible_kinds"] == ["decisions"]
     assert any(
-        line.startswith("config.yaml: display.network_look: ")
+        line.startswith("config.yaml: display.visible_kinds")
         for line in records["settings_problem"]
     )
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == before

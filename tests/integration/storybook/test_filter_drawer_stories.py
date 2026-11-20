@@ -142,34 +142,6 @@ def test_long_tag(open_story: OpenStory) -> None:
     assert len(set(rights)) == 1
 
 
-def test_keyword_hits(open_story: OpenStory) -> None:
-    """検討事項のマップでキーワードに一致した項目がある。一致した件数を件数の左に印の色で出す（正常系）。"""
-    # 準備・実行
-    page = _open_drawer(open_story, "preview-filterdrawer--keyword-hits")
-    # 検証
-    # 一致が 1 件以上の値にだけ、読み上げ名つきで一致した件数を出す
-    hits = page.eval_on_selector_all(
-        "dialog.drawer .fd-opt",
-        "opts => opts.map(o => [o.querySelector('.fd-v').textContent, o.querySelector('.hit-n')?.textContent ?? null, o.querySelector('.hit-n')?.getAttribute('aria-label') ?? null])",
-    )
-    assert hits == [
-        ["要見直し", "1", "キーワードに一致した項目 1 件"],
-        ["未決定", "2", "キーワードに一致した項目 2 件"],
-        ["保留", None, None],
-    ]
-    # 一致した件数は件数の左にあり、背景が付く
-    boxes = page.evaluate(
-        """() => {
-            const opt = document.querySelector('dialog.drawer .fd-opt');
-            return [opt.querySelector('.hit-n'), opt.querySelector('.n')].map(
-                (e) => e.getBoundingClientRect().right,
-            );
-        }"""
-    )
-    assert boxes[0] < boxes[1]
-    assert page.eval_on_selector("dialog.drawer .hit-n", "e => getComputedStyle(e).backgroundColor") != "rgba(0, 0, 0, 0)"
-
-
 def test_no_match(open_story: OpenStory) -> None:
     """該当なし。見出しの右は「8 件中 0 件」、下端のボタンは「0 件を表示」（正常系）。"""
     # 準備・実行
