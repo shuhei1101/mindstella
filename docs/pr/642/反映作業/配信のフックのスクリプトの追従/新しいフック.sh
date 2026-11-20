@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# mindstella のワークスペースを配り始める・やめるときのフックから呼び、shuhdev-gateway へ公開・取り下げする。
+# 使い方（mindstella が末尾に常駐サーバーのポート・ワークスペースの名前・画面のパスを足して呼ぶ）:
+#   mindstella-gw-hook start {ポート} {ワークスペースの名前} {画面のパス}
+#   mindstella-gw-hook stop  {ポート} {ワークスペースの名前} {画面のパス}
+set -euo pipefail
+
+GW="$HOME/.local/bin/gw"
+# gw add の名前の元（日本語のワークスペース名はサブドメインに使えないため固定）
+BASE_NAME="mindstella"
+# 画面のパスごとに gw add が付けた名前を控える場所
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mindstella-gw-hook"
+LOG_FILE="$STATE_DIR/hook.log"
+
+if [ "$#" -ne 4 ]; then
+  echo "使い方: $0 start|stop {ポート} {ワークスペースの名前} {画面のパス}" >&2
+  exit 2
+fi
+ACTION="$1"
+PORT="$2"
+WORKSPACE="$3"
+PAGE_PATH="$4"
+# 全てのワークスペースが同じポートのため、控えは画面のパスで分ける
+STATE_FILE="$STATE_DIR/$(printf '%s' "$PAGE_PATH" | tr -c 'A-Za-z0-9._-' '_')"
+
+mkdir -p "$STATE_DIR"
+# フックは出力を捨てて呼ばれるため、結果はログへ残す
+exec >>"$LOG_FILE" 2>&1
+echo "$(date '+%F %T %Z') $ACTION port=$PORT workspace=$WORKSPACE path=$PAGE_PATH"
+
+case "$ACTION" in
+  start)
+    # 出力は「{名前} {公開 URL}」の 1 行
+    OUTPUT="$("$GW" add "$BASE_NAME" "$PORT" --title "Mindstella $WORKSPACE" --path "$PAGE_PATH" --rewrite-origin)"
+    echo "$OUTPUT"
+    echo "${OUTPUT%% *}" >"$STATE_FILE"
+    ;;
+  stop)
+    if [ ! -f "$STATE_FILE" ]; then
+      echo "画面のパス $PAGE_PATH の控えがありません"
+      exit 1
+    fi
+    "$GW" rm "$(cat "$STATE_FILE")"
+    rm -f "$STATE_FILE"
+    ;;
+  *)
+    echo "start か stop を渡してください: $ACTION"
+    exit 2
+    ;;
+esac
