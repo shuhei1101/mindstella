@@ -20,8 +20,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T02:52:42.493540+00:00'
   - process: 複合ユースケース設計
-    status: todo
+    status: done
     note: SC-489-50（ネットワークを辿る段の削除）・SC-489-51（ネットワークの見た目の削除）
+    updated_by: planner
+    updated_at: '2026-11-20T03:02:18.603358+00:00'
   - process: デザインスタイル選定
     status: skipped
     reason: デザイン方針（docs/design-policy.mark.md）があり、Issue は見た目の方向を変えない
