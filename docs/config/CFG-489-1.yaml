@@ -23,7 +23,7 @@ settings:
     type: int
     required: false
     default: '8784'
-    description: 常駐サーバーが `127.0.0.1` で待ち受けるポート。常駐サーバーが起動時に読み、プラグインの `.mcp.json` の `url` と『常駐サーバーの起動の確認』も同じ値を使う
+    description: 常駐サーバーが `127.0.0.1` で待ち受けるポート。MCP・MindStella の API と、全てのワークスペースの画面をこのポートで配る。常駐サーバーが起動時に読み、プラグインの `.mcp.json` の `url` と『常駐サーバーの起動の確認』も同じ値を使う
     missing: 8784 で待ち受ける
     env_var: MINDSTELLA_PORT
     reload: restart
@@ -57,7 +57,7 @@ settings:
     type: str
     required: false
     default: なし（`127.0.0.1` と `localhost` だけを受ける）
-    description: プレビューの配信が `Host` と `Origin` で受ける外のホスト名。トンネル・リバースプロキシの内側で、端末の外から開くときに設定する。常駐サーバーを起動した環境から読む
+    description: 常駐サーバーが画面の要求の `Host` と `Origin` で受ける外のホスト名。トンネル・リバースプロキシの内側で、端末の外から開くときに設定する。常駐サーバーを起動した環境から読む
     missing: 外のホスト名を受けない（今と同じ動き）
     env_var: MINDSTELLA_ALLOWED_HOSTS
     reload: restart
@@ -71,12 +71,12 @@ settings:
     introduced:
       pr: 155
   - key: MINDSTELLA_PREVIEW_START_HOOK
-    title: 配信を立てたときのフック
+    title: ワークスペースを配り始めたときのフック
     file: 環境変数
     type: str
     required: false
     default: なし（何も呼ばない）
-    description: プレビューの配信を立てた直後に呼ぶコマンド。末尾に配信のポートとワークスペースの名前（フォルダの名前）を引数で追加して呼ぶ（例 `pub add` なら `pub add 47800 家計簿`）。外の入口へポートを登録するのに使う。常駐サーバーを起動した環境から読む
+    description: ワークスペースの画面を常駐サーバーのポートで配り始めた直後に、ワークスペースごとに呼ぶコマンド。末尾に常駐サーバーのポート・ワークスペースの名前（フォルダの名前）・そのワークスペースの画面のパスを引数で追加して呼ぶ（例 `pub add` なら `pub add 8784 家計簿 {画面のパス}`。画面のパスの構造は『プレビューの配信』）。外の入口へワークスペースの画面を登録するのに使用する。常駐サーバーを起動した環境から読む
     missing: 呼ばない
     env_var: MINDSTELLA_PREVIEW_START_HOOK
     reload: restart
@@ -90,12 +90,12 @@ settings:
     introduced:
       pr: 155
   - key: MINDSTELLA_PREVIEW_STOP_HOOK
-    title: 配信を止めるときのフック
+    title: 常駐サーバーを止めるときのフック
     file: 環境変数
     type: str
     required: false
     default: なし（何も呼ばない）
-    description: 常駐サーバーが終わるときに、立てた配信ごとに呼ぶコマンド。末尾に起動時と同じポートとワークスペースの名前を引数で追加して呼ぶ（例 `pub rm` なら `pub rm 47800 家計簿`）。外の入口からポートの登録を削除するのに使う。常駐サーバーを起動した環境から読む
+    description: 常駐サーバーが終わるときに、配っているワークスペースごとに呼ぶコマンド。末尾に起動時と同じポート・ワークスペースの名前・画面のパスを引数で追加して呼ぶ（例 `pub rm` なら `pub rm 8784 家計簿 {画面のパス}`）。外の入口からワークスペースの画面の登録を削除するのに使用する。常駐サーバーを起動した環境から読む
     missing: 呼ばない
     env_var: MINDSTELLA_PREVIEW_STOP_HOOK
     reload: restart
