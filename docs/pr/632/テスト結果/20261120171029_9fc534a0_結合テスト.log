@@ -408,3 +408,15 @@ FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded
 FAILED tests/integration/preview/test_detail_panel_screen.py::test_fit_smallest[chromium]
 FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
 3 failed, 1 passed in 54.27s
+
+# test_diff_minimap_when_empty_area_pressed を作業ブランチで単独で流した結果（commit 3b61390bc45256e6246a2944810087bfe574a605。3 回）
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed
+.                                                                        [100%]
+1 passed in 8.62s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed
+.                                                                        [100%]
+1 passed in 8.27s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed
+.                                                                        [100%]
+1 passed in 10.36s
+（3b61390b は 9fc534a0 から docs/pr/632/ だけを変えた commit で、テストと実装は同じ）
