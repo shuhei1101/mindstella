@@ -181,7 +181,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/versions.py
     usecase: 記録の形式の移行
     scope: public
-    summary: '`mindstella-version.ini` に版を 1 行で書く'
+    summary: '`mindstella-version.ini` の 1 行目に版、2 行目に当て終えた手順の数を書く'
     side_effects: '`mindstella-version.ini` を書く'
     args:
       - name: root
@@ -194,11 +194,16 @@ functions:
         required: true
         passing: positional
         description: 書く版
+      - name: applied
+        type: int
+        required: true
+        passing: keyword
+        description: 版の移し替えの手順のうち当て終えた数（0 以上）
     returns:
       type: None
       description: なし
     process: |-
-      1. `str(version)` と改行を一時ファイルに書き（`write_temp`）、`os.replace` で `records_root(root) / VERSION_FILE` に置き換える
+      1. `f"{version}\n{applied}\n"` を一時ファイルに書き（`write_temp`）、`os.replace` で `records_root(root) / VERSION_FILE` に置き換える
          - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: WriteFailedError
@@ -207,10 +212,10 @@ functions:
     unit_tests:
       - name: test_write_workspace_version
         case: 正常
-        summary: 版を 1 行で書く
-        condition: '`Version(0, 3, 0)`'
+        summary: 版と当て終えた手順の数を 2 行で書く
+        condition: '`Version(0, 3, 0)` と `applied=3`'
         mock: なし
-        expected: '`mindstella-version.ini` の中身が `v0.3.0\n`'
+        expected: '`mindstella-version.ini` の中身が `v0.3.0\n3\n`'
       - name: test_write_workspace_version_when_write_fails
         case: 異常
         summary: 置き換えられなければ送る
@@ -218,3 +223,35 @@ functions:
         mock: '`os.replace`（`versions` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`mindstella-version.ini` と `.tmp` のファイルが無い'
         exception: 置き換えで OSError
+  - name: read_applied_steps
+    title: 当て終えた手順の数の読み取り
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/versions.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: 版のファイルの 2 行目を、その版の手順のうち当て終えた数にする。何も書かない
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: int | None
+      description: 当て終えた手順の数。版のファイルが無い、2 行目が無い、0 以上の整数として読めないときは `None`（その版の手順をまだ当てていないものとして扱う）
+    process: |-
+      1. `read_workspace_version` と同じ順で版のファイルを選ぶ（どちらも無ければ `None`）
+      2. 2 行目を 0 以上の整数として読めればその数、読めなければ `None` を返す（3 行目より後は読まない）
+    unit_tests:
+      - name: test_read_applied_steps
+        case: 正常
+        summary: 2 行目の数を返す
+        condition: '`.mindstella/mindstella-version.ini` が `v0.14.0\n3\n`'
+        mock: なし
+        expected: '`3`'
+      - name: test_read_applied_steps_when_missing
+        case: 正常
+        summary: 数を読めなければ None
+        condition: '`parametrize`: 版のファイルが無い / `v0.14.0\n`（1 行だけ）/ 2 行目が `x` / 2 行目が `-1`'
+        mock: なし
+        expected: '`None`'

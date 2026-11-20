@@ -28,13 +28,13 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
     summary: '`update_settings` の `settings` に渡せるキー'
-    value: ("summary", "description", "links", "history_limit", "display", "transcription", "mdmark")
+    value: ("summary", "description", "links", "history_limit", "display", "transcription", "mdmark", "confirm_on_comment")
   - name: REMOVABLE_KEYS
     title: null で消せる設定のキー
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
     summary: 値が `null` のときに消してよい任意のキー
-    value: ("description", "links", "history_limit", "display", "transcription")
+    value: ("description", "links", "history_limit", "display", "transcription", "confirm_on_comment")
   - name: REMOVED_KEYS
     title: 削除した設定のキー
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
@@ -90,6 +90,18 @@ functions:
         mock: なし
         expected: '`ArgumentError`（`argument` が `settings`、メッセージに `playbooks` / `goal` / `phases`・`categories`）'
         exception: 削除したキー
+      - name: test_validate_settings_input_confirm_on_comment
+        case: 正常
+        summary: コメントの送信で確認済みにするかを書き換え・消せる
+        condition: '`parametrize`: `{"confirm_on_comment": false}` / `{"confirm_on_comment": null}`'
+        mock: なし
+        expected: 例外を送らない（`settings.schema.json` の `confirm_on_comment` は真偽値）
+      - name: test_validate_settings_input_confirm_on_comment_invalid
+        case: 異常
+        summary: 真偽値でない confirm_on_comment は断る
+        condition: '`{"confirm_on_comment": "yes"}`'
+        mock: なし
+        expected: '`SchemaMismatchError`（行が `config.yaml: confirm_on_comment` で始まる）'
   - name: merge_settings
     title: 設定の置き換え
     kind: 関数

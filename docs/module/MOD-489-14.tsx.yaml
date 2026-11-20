@@ -56,3 +56,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `thread-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   修正の入力の音声入力: '書き換えている行を `{id, body, error}` で持ち、初めの値は `voiceEditingOf("thread")` の ID にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread, target}`、開く画面は `thread`）を使い、`ThreadPost` へ `editBody` と音声の props・イベントを渡す。返信の入力の `useVoiceInput` とは別の `key` で、同時に 1 つだけ録音する。単体テストに `test_thread_view_when_edit_voice` を足す'
+  書き込みの幅: 書き込みの並び（`ol`）は列を `grid-cols-[minmax(0,1fr)]` にし、並びが書き込みの中の幅の広い表・コードブロックに合わせて広がらないようにする（#619）。書き込みの `article` にも `min-w-0` を付ける（モジュール構成『thread-post』）。単体テストに `test_thread_view_when_wide_table` を足し、並びがそのクラスを持つことを確かめる

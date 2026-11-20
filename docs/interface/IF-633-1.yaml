@@ -222,7 +222,7 @@ status_codes:
     condition: '`id` の項目が記録に無い'
     notes: 何も書かない
   - code: '422'
-    condition: 種類ごとの YAML か `history.yaml` がスキーマに合わないか YAML として読めない
+    condition: 種類ごとの YAML がスキーマに合わないか YAML として読めない、または `history.yaml` が YAML として読めないか `items` が辞書でない
     notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
   - code: '500'
     condition: '`history.yaml` を書けない'

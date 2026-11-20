@@ -166,6 +166,8 @@ items:
     summary: "部品設計『資料のエクスポートのメニュー.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-100.tsx.yaml
     summary: "部品設計『取り下げの札.tsx』の props・イベント・状態を持つ"
+  - page: MOD-633-1.tsx.yaml
+    summary: "部品設計『確認済みの切り替え.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-62.tsx.yaml
     summary: "部品設計『本文の形式の札.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-86.tsx.yaml
@@ -278,6 +280,8 @@ items:
     summary: "画面の絞り込みの条件を URL と端末の保存領域で持つ（制約「保存した絞り込みの条件」）"
   - page: MOD-489-130.ts.yaml
     summary: "記録に保存待ちの編集を重ねた索引を読む"
+  - page: MOD-633-2.ts.yaml
+    summary: "項目の確認済みの付け外しを送り、応答を待つ間は押した後の値を返す"
   - page: MOD-489-131.ts.yaml
     summary: "一覧の画面の編集の入口を組む"
   - page: MOD-489-133.ts.yaml
