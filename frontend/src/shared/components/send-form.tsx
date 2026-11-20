@@ -1,4 +1,4 @@
-// コメントの入力。詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン
+// コメントの入力。詳細パネル・詳細の全画面の下端と、コメントの一覧の新規スレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン
 import { useEffect, useId, useRef, useState, type CSSProperties, type FocusEvent, type ReactNode, type RefObject, type SyntheticEvent, type KeyboardEvent } from "react";
 
 import { Icon } from "@/shared/components/icon";
@@ -238,7 +238,7 @@ const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status:
       <>
         <Icon name="alert" className="text-st-review" />
         <span className="grid gap-1">
-          <span>レビューに追加できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから追加してください。</span>
+          <span>レビューに追加できませんでした。サーバーが止まっています。起動スクリプトで再起動し、示された新しい URL で開いてから追加してください。</span>
           <Button variant="ghost" size="icon" className="-ml-1 size-6 justify-self-start" aria-label="本文をコピー" title="本文をコピー" onClick={onCopy}>
             <Icon name="copy" />
           </Button>
@@ -268,7 +268,7 @@ const describedByOf = (folded: boolean, locId: string | null, messageId: string)
   return locId === null ? messageId : `${locId} ${messageId}`;
 };
 
-/** 見出しの行（「{ID} へのコメント」・書きかけの印・開閉のボタン） */
+/** 見出しの行（「{ID} へのコメント」・下書きの印・開閉のボタン） */
 const FormHead = ({ target, fieldId, bodyId, open, hasDraft, onToggleOpen }: { target: string; fieldId: string; bodyId: string; open: boolean; hasDraft: boolean; onToggleOpen?: (open: boolean) => void }) => {
   const toggleLabel = open ? "コメントの入力を閉じる" : "コメントの入力を開く";
   const name = (
@@ -288,7 +288,7 @@ const FormHead = ({ target, fieldId, bodyId, open, hasDraft, onToggleOpen }: { t
       {!open && hasDraft ? (
         <span className="flex shrink-0 items-center gap-1 text-small text-muted-foreground">
           <Icon name="edit" />
-          書きかけ
+          下書き
         </span>
       ) : null}
       <Button variant="ghost" size="icon" className="ml-auto size-6 shrink-0" aria-expanded={open} aria-controls={bodyId} aria-label={toggleLabel} title={toggleLabel} onClick={() => onToggleOpen?.(!open)}>
@@ -303,7 +303,7 @@ const LocationChip = ({ loc, id, onClearLoc }: { loc: Location; id: string; onCl
   <div id={id} className="grid gap-1 rounded-control bg-muted p-2">
     <div className="flex items-center gap-1">
       <span className="flex-1 text-small font-medium">{locationLabel(loc)}</span>
-      <Button variant="ghost" size="icon" aria-label="箇所を外す" title="箇所を外す" onClick={onClearLoc}>
+      <Button variant="ghost" size="icon" aria-label="箇所を解除" title="箇所を解除" onClick={onClearLoc}>
         <Icon name="x" />
       </Button>
     </div>

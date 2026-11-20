@@ -1,4 +1,4 @@
-// 一覧の画面の枠。表示形式の切り替え・項目の追加・消した項目の帯・絞り込みのドロワーと、表の状態を持つ
+// 一覧の画面の枠。表示形式の切り替え・項目の追加・削除した項目の帯・絞り込みのドロワーと、表の状態を持つ
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -138,9 +138,9 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       <div className="flex items-center gap-2">
         {views === null ? null : <ViewSwitch views={views} current={view} onChange={setView} />}
         {edit === null ? null : (
-          <Button variant="outline" aria-label={`${KIND_LABEL[kind]}の項目を追加`} title="項目を追加" className="ml-auto" onClick={edit.onAdd}>
+          <Button variant="outline" aria-label={`${KIND_LABEL[kind]}の項目を追加`} title="項目追加" className="ml-auto" onClick={edit.onAdd}>
             <Icon name="plus" />
-            <span className="max-sm:sr-only">項目を追加</span>
+            <span className="max-sm:sr-only">項目追加</span>
           </Button>
         )}
       </div>

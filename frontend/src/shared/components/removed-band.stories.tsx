@@ -1,4 +1,4 @@
-// 消した項目の帯のストーリー（部品設計『消した項目の帯.tsx』の状態）
+// 削除した項目の帯のストーリー（部品設計『削除した項目の帯.tsx』の状態）
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { RemovedBand } from "@/shared/components/removed-band";
@@ -13,7 +13,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** 1 件。見出し「消した項目」と件数 1 の右に、消した印・ID・タイトルを 1 つ並べる */
+/** 1 件。見出し「削除した項目」と件数 1 の右に、消した印・ID・タイトルを 1 つ並べる */
 export const One: Story = { args: { items: [{ id: "N-6", title: "ゴールを後から変える・足す・無しで始める" }] } };
 
 /** 3 件で長いタイトルを含む。項目を横に並べて折り返し、タイトルは途中で切らずに折り返す */

@@ -1,6 +1,6 @@
 """ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。
 
-画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・設定の既定の書き換え・設定の再読み込みを受け付ける。
+画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・下書き・まとめて送る・スレッドの状態の書き換え・設定の既定の書き換え・設定の再読み込みを受け付ける。
 まとめて送った後は Claude Code へ入力する。
 """
 
@@ -141,7 +141,7 @@ SEND_NOW_PATH = "/api/comments/send-now"
 # config.yaml に transcription.action が無いときの文字起こし後の挙動
 DEFAULT_TRANSCRIPTION_ACTION = "review"
 
-# レビュー中のコメント・まとめて送る・書きかけのパス
+# レビュー中のコメント・まとめて送る・下書きのパス
 COMMENTS_PATH = "/api/comments"
 SEND_PATH = "/api/comments/send"
 DRAFTS_PATH = "/api/drafts"
@@ -507,7 +507,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     def do_PUT(self) -> None:
-        """書きかけを保つ・設定の既定を書き換える・確認済みを付け外しする要求を受け付けの関数へ渡す。"""
+        """下書きを保つ・設定の既定を書き換える・確認済みを付け外しする要求を受け付けの関数へ渡す。"""
         path = self._checked_path()
         if path == DRAFTS_PATH:
             self._write(_saved_draft, HTTPStatus.NO_CONTENT)
@@ -1058,7 +1058,7 @@ def _detected_duplicates(root: Path) -> tuple[str, ...]:
 
 
 def comments_response(root: Path) -> Response:
-    """レビュー中のコメントと書きかけをその場で読んだ JSON を返す。"""
+    """レビュー中のコメントと下書きをその場で読んだ JSON を返す。"""
     try:
         data = list_review(load_workspace(root))
     except (SchemaMismatchError, WorkspaceNotFoundError) as error:
@@ -1302,7 +1302,7 @@ def _updated_body(comment: ReviewComment) -> dict[str, Any]:
 
 
 def _saved_draft(root: Path, data: dict[str, Any]) -> None:
-    """書きかけを保つ（応答の本文は持たない）。"""
+    """下書きを保つ（応答の本文は持たない）。"""
     save_draft(root, data)
 
 

@@ -8,7 +8,7 @@ import { cn } from "@/shared/lib/cn";
 export type ThreadRowProps = {
   /** 送ったスレッド。`pending` とどちらか片方 */
   thread?: Thread | null;
-  /** まだ送っていない新しいスレッドの最初の書き込み */
+  /** まだ送っていない新規スレッドの最初の書き込み */
   pending?: ReviewItem | null;
   hasPendingReply?: boolean;
   activeTag?: string | null;

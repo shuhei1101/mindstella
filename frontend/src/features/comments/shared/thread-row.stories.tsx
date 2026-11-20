@@ -26,7 +26,7 @@ type Story = StoryObj<typeof meta>;
 /** オープンで AI が返信した。1 行目に状態の札「オープン」と要約（2 行まで）、2 行目に向けた項目の ID・最後の書き手「AI」・最後の書き込みの日時、行の下にタグ */
 export const Replied: Story = { args: { thread: {"id": "TH-1", "status": "open", "tags": ["画面"], "summary": "D-12 の失敗時の扱いの相談。案 B（写しから戻す）で決まった", "target": "D-12", "posts": [{"id": "P-1", "author": "user", "body": "D-12 は案 B にしたい。失敗したら写しから戻せるなら十分", "created": "2026-10-12T01:20:00+00:00", "seen": true}, {"id": "P-2", "author": "ai", "body": "D-12 を案 B（写しから戻す）で決定にしました。", "created": "2026-10-12T01:24:00+00:00", "seen": true}], "events": [], "loc": null} } };
 
-/** レビュー中の返信を持つ。2 行目の末尾に破線の枠・鉛筆の印・「レビュー中」の印 */
+/** レビュー中の返信を持つ。2 行目の末尾に破線の枠・鉛筆のアイコン・「レビュー中」の印 */
 export const PendingReply: Story = { args: { thread: {"id": "TH-1", "status": "open", "tags": ["画面"], "summary": "D-12 の失敗時の扱いの相談。案 B（写しから戻す）で決まった", "target": "D-12", "posts": [{"id": "P-3", "author": "user", "body": "D-12 は案 B にしたい", "created": "2026-10-12T01:20:00+00:00", "seen": true}, {"id": "P-4", "author": "ai", "body": "D-12 を案 B で決定にしました。", "created": "2026-10-12T01:24:00+00:00", "seen": true}], "events": [], "loc": null}, hasPendingReply: true } };
 
 /** AI が立てたスレッド（利用者の返事待ち）。最後の書き手は「AI」 */
@@ -35,10 +35,10 @@ export const Asking: Story = { args: { thread: {"id": "TH-2", "status": "open", 
 /** 要約がまだ無く、最後の書き手が利用者。題は最初の書き込みの 1 行目を太さを落として出し、書き手は「あなた」 */
 export const NoSummary: Story = { args: { thread: {"id": "TH-3", "status": "open", "tags": ["資料"], "summary": null, "target": "A-1", "posts": [{"id": "P-6", "author": "user", "body": "A-1 の背景の節が長いので、3 行にまとめてほしい。経緯は会話ログへのリンクで足りる", "created": "2026-10-12T05:01:00+00:00", "seen": true}], "events": [], "loc": null} } };
 
-/** まだ送っていない、項目へ向けた新しいスレッド。状態の札の代わりに鉛筆の印と「レビュー中」の札、行の枠を破線にする。題は最初の書き込みの 1 行目、書き手は「あなた」、日時は溜めた日時。タグは出さない */
+/** まだ送っていない、項目へ向けた新規スレッド。状態の札の代わりに鉛筆のアイコンと「レビュー中」の札、行の枠を破線にする。題は最初の書き込みの 1 行目、書き手は「あなた」、日時は溜めた日時。タグは出さない */
 export const PendingNewToItem: Story = { args: { pending: {"id": "C-41", "target": "D-5", "thread": null, "body": "写しは git のコミットで取るほうが戻しやすいと思う", "created": "2026-10-12T05:10:00+00:00", "loc": null} } };
 
-/** まだ送っていない、項目を指さない新しいスレッド。2 行目に ID を出さない */
+/** まだ送っていない、項目を指さない新規スレッド。2 行目に ID を出さない */
 export const PendingNewFree: Story = { args: { pending: {"id": "C-42", "target": null, "thread": null, "body": "移し替えの手順の名前は版の番号だけでよい？", "created": "2026-10-12T05:12:00+00:00", "loc": null} } };
 
 /** クローズ。状態の札をチェックの印と「クローズ」にし、薄い文字で出す。利用者と AI のどちらがクローズにしても同じ見た目 */

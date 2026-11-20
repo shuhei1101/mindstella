@@ -167,7 +167,7 @@ export const ManyMarks: Story = {
       body: bodyOf([
         markdown(
           Array.from({ length: 30 }, (_, at) => [
-            block({ op: at % 2 === 0 ? "add" : "del", text: `${at % 2 === 0 ? "足した" : "消した"}段落 ${at + 1}` }),
+            block({ op: at % 2 === 0 ? "add" : "del", text: `${at % 2 === 0 ? "追加した" : "削除した"}段落 ${at + 1}` }),
             plain(at * 2 + 1),
             plain(at * 2 + 2),
           ]).flat(),

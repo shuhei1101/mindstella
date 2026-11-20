@@ -92,10 +92,10 @@ export type HistoryEntry = {
   body_diff?: BodyDiffHunk[];
 };
 
-/** 選んだ時点で消した項目 1 件 */
+/** 選んだ時点で削除した項目 1 件 */
 export type RemovedItem = {
   id: string;
-  /** 消した項目の種類（サーバーの種類の名前） */
+  /** 削除した項目の種類（サーバーの種類の名前） */
   kind: "decision" | "task" | "research" | "doc" | "term" | "note" | "log";
   /** 消したときのタイトル */
   title: string;
@@ -111,7 +111,7 @@ export type ChangeSet = {
   until_seq: number;
   added: string[];
   changed: string[];
-  /** 消した項目。何も消していないまとまりは持たない */
+  /** 削除した項目。何も消していないまとまりは持たない */
   removed?: RemovedItem[];
   /** まとめた変更の書いた元（`ai`・`user`・`external`）。このキーを入れる前のまとまりは持たない */
   by?: "ai" | "user" | "external";

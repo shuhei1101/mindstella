@@ -17,14 +17,14 @@ namespace MindmapPreview {
     fromSeq: number;
     /** この時点の終わりの `seq`。null は今まで（`since`・`pending`） */
     untilSeq: number | null;
-    /** 消した項目（ID → 消した項目）。まとまり・`pending` の `removed` を合わせたもの */
+    /** 削除した項目（ID → 削除した項目）。まとまり・`pending` の `removed` を合わせたもの */
     removed: Map<string, RemovedItem>;
   };
 
-  /** 選んだ時点で消した項目 1 件 */
+  /** 選んだ時点で削除した項目 1 件 */
   export type RemovedItem = {
     id: string;
-    /** 消した項目の種類（サーバーの種類の名前） */
+    /** 削除した項目の種類（サーバーの種類の名前） */
     kind: "decision" | "task" | "research" | "doc" | "term" | "note" | "log";
     /** 消したときのタイトル */
     title: string;
@@ -77,13 +77,13 @@ namespace MindmapPreview {
     after: InlinePart[];
   };
 
-  /** 図の差分。今の版の図で色を付ける要素と、消したものの名前 */
+  /** 図の差分。今の版の図で色を付ける要素と、削除したものの名前 */
   export type DiagramDiff = {
     /** 足したノード・辺の要素（sequenceDiagram はメッセージの文字の要素） */
     added: Element[];
     /** 文字が変わったノード・辺の要素 */
     changed: Element[];
-    /** 前にだけあるノード・辺の文字（「消したもの」に並べる） */
+    /** 前にだけあるノード・辺の文字（「削除したもの」に並べる） */
     removed: string[];
   };
 
@@ -106,7 +106,7 @@ namespace MindmapPreview {
     "stateDiagram-v2",
   ];
 
-  /** 消した項目の種類（`RemovedItem.kind`）から、その項目を出す画面の種類を引く */
+  /** 削除した項目の種類（`RemovedItem.kind`）から、その項目を出す画面の種類を引く */
   export const REMOVED_KIND_TAB: Record<RemovedItem["kind"], Kind> = {
     decision: "decisions",
     task: "tasks",
@@ -142,7 +142,7 @@ namespace MindmapPreview {
   }): DiffPoint {
     // `removed` を持たないまとまりは、何も足さない
     const removed = new Map(groups.flatMap((group) => group.removed ?? []).map((item) => [item.id, item]));
-    // 合わせた範囲で足して消した項目は、消した項目としてだけ出す
+    // 合わせた範囲で足して削除した項目は、削除した項目としてだけ出す
     const added = new Set(groups.flatMap((group) => group.added).filter((id) => !removed.has(id)));
     // 足した項目は、変えても変更の印にしない
     const changed = new Set(
@@ -151,7 +151,7 @@ namespace MindmapPreview {
     return { sel, name, sub, added, changed, fromSeq, untilSeq, removed };
   }
 
-  /** 選んだ時点で消した項目のうち、その画面の種類のものを ID の順に返す。時点が null のときは空 */
+  /** 選んだ時点で削除した項目のうち、その画面の種類のものを ID の順に返す。時点が null のときは空 */
   export function removedOf({ point, kind }: { point: DiffPoint | null; kind: Kind }): RemovedItem[] {
     if (point === null) return [];
     return [...point.removed.values()]
@@ -570,7 +570,7 @@ namespace MindmapPreview {
     return flavors[type] ?? null;
   }
 
-  /** 図のノード 1 つ・辺 1 本の、突き合わせの材料。`name` は消したものの一覧に出す名前（無ければ `text`） */
+  /** 図のノード 1 つ・辺 1 本の、突き合わせの材料。`name` は削除したものの一覧に出す名前（無ければ `text`） */
   type DiagramPart = { key: string; text: string; name?: string; element: Element; box?: DOMRect };
 
   /** 前の版の材料。色を付ける要素は今の版だけが持つ */
@@ -684,7 +684,7 @@ namespace MindmapPreview {
     return { nodes, edges: keyedEdges };
   }
 
-  /** 辺の鍵 `{元}>{先}#{番号}` を、消したものの一覧に出す名前にする */
+  /** 辺の鍵 `{元}>{先}#{番号}` を、削除したものの一覧に出す名前にする */
   function edgeName(edge: PreviousPart): string {
     const name = edge.name ?? edge.text;
     return name !== "" ? name : edge.key.replace(/#\d+$/, "").replace(">", " → ");
@@ -697,7 +697,7 @@ namespace MindmapPreview {
     return compareDiagrams({ flavor, previous: extractDiagram(beforeSvg, flavor), current: extractDiagram(afterSvg, flavor) });
   }
 
-  /** 前後の版のノード・辺の材料を鍵で突き合わせて、足した・変えた・消したものに分ける。並びの突き合わせを打ち切ったときは null */
+  /** 前後の版のノード・辺の材料を鍵で突き合わせて、足した・変えた・削除したものに分ける。並びの突き合わせを打ち切ったときは null */
   function compareDiagrams({
     flavor,
     previous,
@@ -788,7 +788,7 @@ namespace MindmapPreview {
   /** 解析した結果から取り出したノードと辺。辺は SVG の辺の `data-id` と同じ値の `id` を持つ */
   type ParsedParts = { nodes: Map<string, PreviousPart>; edges: (PreviousPart & { id: string })[] };
 
-  /** 記法を mermaid で解析して、flowchart のノードと辺の鍵・文字（と消したものに出す名前）を取り出す。flowchart でないときは null */
+  /** 記法を mermaid で解析して、flowchart のノードと辺の鍵・文字（と削除したものに出す名前）を取り出す。flowchart でないときは null */
   async function parseFlowchart(source: string): Promise<ParsedParts | null> {
     const parser = mermaid as unknown as { mermaidAPI: { getDiagramFromText: (text: string) => Promise<ParsedFlowchart> } };
     const parsed = await parser.mermaidAPI.getDiagramFromText(source);
@@ -820,7 +820,7 @@ namespace MindmapPreview {
       previous = await parseFlowchart(beforeSource);
       parsedNow = await parseFlowchart(afterSource);
     } catch {
-      // 解析できない記法（書きかけ）と、版を上げて形が変わった `mermaidAPI`: 前の版を描いて突き合わせる側へ倒す
+      // 解析できない記法（下書き）と、版を上げて形が変わった `mermaidAPI`: 前の版を描いて突き合わせる側へ倒す
       return null;
     }
     if (previous === null || parsedNow === null) return null;

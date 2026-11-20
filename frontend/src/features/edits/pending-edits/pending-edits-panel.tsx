@@ -46,7 +46,7 @@ const rowText = (edit: PendingEdit): RowText => {
   const key = edit.key ?? "";
   switch (edit.op) {
     case "item-add":
-      return { what: "項目を追加", before: null, after: flat((edit.value as { title?: string } | null)?.title) };
+      return { what: "項目追加", before: null, after: flat((edit.value as { title?: string } | null)?.title) };
     case "item-remove":
       return { what: "項目を削除", before: null, after: null };
     case "setting":
@@ -170,7 +170,7 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
               <Icon name="offline" className="size-4" />
               サーバーにつながらないため、保存できませんでした。
             </p>
-            <p className="m-0">保存待ちの編集は残っています。サーバーを立ち上げ直してから、もう一度保存してください。</p>
+            <p className="m-0">保存待ちの編集は残っています。サーバーを再起動してから、もう一度保存してください。</p>
           </div>
         ) : null}
         {edits.length === 0 ? <p className="text-small text-muted-foreground">保存待ちの編集はありません。</p> : null}

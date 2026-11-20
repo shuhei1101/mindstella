@@ -27,7 +27,7 @@ export type DiagramViewerProps = {
   source?: string | null;
   /** 差分の表示の間、その図の前の版の記法 */
   beforeSource?: string | null;
-  /** 詳細パネルの図の凡例と「消したもの」の HTML（プレビューが組み立てる） */
+  /** 詳細パネルの図の凡例と「削除したもの」の HTML（プレビューが組み立てる） */
   notes?: string | null;
   /** 色を付けない種類の図に枠を付けるか */
   framed?: boolean;

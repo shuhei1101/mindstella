@@ -19,7 +19,7 @@ type Story = StoryObj<typeof meta>;
 export const Empty: Story = { args: { thread: "TH-2" } };
 
 /** 入力中。入力欄に印の色の輪。「レビューに追加」を押せる */
-export const Typing: Story = { args: { thread: "TH-2", body: "起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい" } };
+export const Typing: Story = { args: { thread: "TH-2", body: "起票してよい。題は「バージョンの範囲から当てる手順を返すコマンド」に縮めてほしい" } };
 
 /** 溜めている。入力欄を読み取りだけにし、「レビューに追加」を押せなくする。回る印と「レビューに追加しています」 */
 export const Saving: Story = { args: { thread: "TH-2", body: "起票してよい", status: "saving" } };
@@ -27,7 +27,7 @@ export const Saving: Story = { args: { thread: "TH-2", body: "起票してよい
 /** 溜めた。入力欄を空にし、「レビューに追加しました（レビュー中 3 件）。」を出す。入力を始めたら消す */
 export const Saved: Story = { args: { thread: "TH-2", status: "saved", count: 3 } };
 
-/** サーバーに届かなかった。本文を残し、印のアイコンと「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」を出す（自動で消さない） */
+/** サーバーに届かなかった。本文を残し、印のアイコンと「レビューに追加できませんでした。サーバーが止まっています。再起動してから追加してください。」を出す（自動で消さない） */
 export const FailedUnreachable: Story = { args: { thread: "TH-2", body: "起票してよい", status: "failed" } };
 
 /** サーバーが溜めなかった理由を返した。本文を残し、「レビューに追加できませんでした。{理由}」を出す */

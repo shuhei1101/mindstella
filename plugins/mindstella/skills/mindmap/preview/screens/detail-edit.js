@@ -542,7 +542,7 @@ var MindmapPreview;
                 ],
             }));
         }
-        // 書きかけの案（項目の案に同じ記号が載ったものは描かない）
+        // 下書きの案（項目の案に同じ記号が載ったものは描かない）
         const drafts = props.optionDrafts.filter((draft) => !options.some((option) => option.key === draft.key));
         for (const draft of drafts) {
             const area = MindmapPreview.h({
@@ -556,7 +556,7 @@ var MindmapPreview;
                 },
             });
             area.value = draft.content;
-            // 打つたびに書きかけを知らせ、空でない中身で離れたら溜める
+            // 打つたびに下書きを知らせ、空でない中身で離れたら溜める
             area.addEventListener("input", () => on.draft({ key: draft.key, content: area.value }));
             area.addEventListener("change", () => {
                 if (area.value.trim() === "")
@@ -579,10 +579,10 @@ var MindmapPreview;
         const add = MindmapPreview.h({
             tag: "button",
             attrs: { class: "btn pe-opt-add", type: "button", disabled: removing },
-            children: [MindmapPreview.icon("plus"), "案を追加"],
+            children: [MindmapPreview.icon("plus"), "案追加"],
         });
         add.addEventListener("click", () => {
-            // 次の記号（今ある案と、書きかけの案の記号の次）の空の書きかけを置く。描くのは使う側が状態から描き直したとき
+            // 次の記号（今ある案と、下書きの案の記号の次）の空の下書きを置く。描くのは使う側が状態から描き直したとき
             const symbols = [...options.map((option) => option.key), ...drafts.map((draft) => draft.key)];
             const next = String.fromCharCode(Math.max(64, ...symbols.map((symbol) => symbol.charCodeAt(0))) + 1);
             on.draft({ key: next, content: "" });

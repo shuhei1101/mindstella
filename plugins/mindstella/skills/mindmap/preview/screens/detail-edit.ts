@@ -32,7 +32,7 @@ namespace MindmapPreview {
     usedTags: string[];
     /** 本文の今の値（保存待ちの編集を当てたもの。本文を持たない項目は渡さない） */
     body?: string;
-    /** まだ溜めていない書きかけの案（`EditState.optionDrafts`）。案の後ろに並べて描く */
+    /** まだ溜めていない下書きの案（`EditState.optionDrafts`）。案の後ろに並べて描く */
     optionDrafts: OptionDraft[];
     /** 記録の索引（関係の入力で、入れた ID かタイトルを項目に当てる。渡さなければ入れた値をそのまま追加する） */
     index?: RecordIndex;
@@ -40,12 +40,12 @@ namespace MindmapPreview {
       change: (input: EditInput) => void;
       remove: () => void;
       cancelRemove: () => void;
-      /** 書きかけの案を置く・書き換える */
+      /** 下書きの案を置く・書き換える */
       draft: (draft: OptionDraft) => void;
     };
   };
 
-  /** 「案を追加」で置いた、まだ溜めていない書きかけの案の記号と中身 */
+  /** 「案を追加」で置いた、まだ溜めていない下書きの案の記号と中身 */
   export type OptionDraft = { key: string; content: string };
 
   /** 種類ごとに編集の表示へ並べるキー（読む表示と同じ順） */
@@ -639,7 +639,7 @@ namespace MindmapPreview {
         }),
       );
     }
-    // 書きかけの案（項目の案に同じ記号が載ったものは描かない）
+    // 下書きの案（項目の案に同じ記号が載ったものは描かない）
     const drafts = props.optionDrafts.filter((draft) => !options.some((option) => option.key === draft.key));
     for (const draft of drafts) {
       const area = h({
@@ -653,7 +653,7 @@ namespace MindmapPreview {
         },
       });
       area.value = draft.content;
-      // 打つたびに書きかけを知らせ、空でない中身で離れたら溜める
+      // 打つたびに下書きを知らせ、空でない中身で離れたら溜める
       area.addEventListener("input", () => on.draft({ key: draft.key, content: area.value }));
       area.addEventListener("change", () => {
         if (area.value.trim() === "") return;
@@ -677,10 +677,10 @@ namespace MindmapPreview {
     const add = h({
       tag: "button",
       attrs: { class: "btn pe-opt-add", type: "button", disabled: removing },
-      children: [icon("plus"), "案を追加"],
+      children: [icon("plus"), "案追加"],
     });
     add.addEventListener("click", () => {
-      // 次の記号（今ある案と、書きかけの案の記号の次）の空の書きかけを置く。描くのは使う側が状態から描き直したとき
+      // 次の記号（今ある案と、下書きの案の記号の次）の空の下書きを置く。描くのは使う側が状態から描き直したとき
       const symbols = [...options.map((option) => option.key), ...drafts.map((draft) => draft.key)];
       const next = String.fromCharCode(Math.max(64, ...symbols.map((symbol) => symbol.charCodeAt(0))) + 1);
       on.draft({ key: next, content: "" });

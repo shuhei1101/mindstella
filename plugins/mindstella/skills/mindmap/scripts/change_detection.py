@@ -127,7 +127,7 @@ class ItemDiff:
     added: list[tuple[Kind, dict[str, Any]]]
     # 変えた項目（種類・前の項目・今の項目・前の本文・今の本文）
     changed: list[tuple[Kind, dict[str, Any], dict[str, Any], str | None, str | None]]
-    # 消した項目（種類・前の項目）
+    # 削除した項目（種類・前の項目）
     removed: list[tuple[Kind, dict[str, Any]]]
 
     def is_empty(self) -> bool:

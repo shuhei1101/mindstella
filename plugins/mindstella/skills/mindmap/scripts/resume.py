@@ -78,7 +78,7 @@ def _expression_of(when: str) -> str:
 def _changes_after(
     workspace: Workspace, record: Changes, read_seq: int | None
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """前回参照した時点より後に足した・変えた項目と、後で消した項目を返す（時点が無ければどちらも空）。"""
+    """前回参照した時点より後に足した・変えた項目と、後で削除した項目を返す（時点が無ければどちらも空）。"""
     if read_seq is None:
         return [], []
     rows = load_item_history(workspace.root)

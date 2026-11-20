@@ -1,5 +1,5 @@
 "use strict";
-// サーバーの配信とのやり取り。記録の取得・レビュー中のコメントと書きかけ・まとめて送る・スレッド・書き換えの知らせの購読。
+// サーバーの配信とのやり取り。記録の取得・レビュー中のコメントと下書き・まとめて送る・スレッド・書き換えの知らせの購読。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 配信のパス（画面が開いた URL からの相対パス） */
@@ -73,7 +73,7 @@ var MindmapPreview;
         return callApi("PUT", MindmapPreview.API_PATHS.configDisplay, display, fetchFn);
     }
     MindmapPreview.putDisplay = putDisplay;
-    /** コメント・書きかけの API を 1 回呼ぶ。届かないときと、断られたときを分ける */
+    /** コメント・下書きの API を 1 回呼ぶ。届かないときと、断られたときを分ける */
     async function callApi(method, path, body = null, fetchFn = window.fetch.bind(window)) {
         let response;
         try {
@@ -110,7 +110,7 @@ var MindmapPreview;
         };
     }
     MindmapPreview.callApi = callApi;
-    /** コメント・書きかけの API の 6 つの呼び出しを束ねて返す */
+    /** コメント・下書きの API の 6 つの呼び出しを束ねて返す */
     function commentApi(fetchFn = window.fetch.bind(window)) {
         return {
             read: () => callApi("GET", MindmapPreview.API_PATHS.comments, null, fetchFn),

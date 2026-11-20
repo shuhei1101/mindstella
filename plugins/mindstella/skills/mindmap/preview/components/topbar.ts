@@ -11,7 +11,7 @@ namespace MindmapPreview {
     icon: IconName;
     /** その種類の項目の件数（概要は持たない） */
     count?: number;
-    /** 差分の表示の間、その種類に新規・変更・消した項目があるか。真のとき、件数を残したまま右上に点を重ねる */
+    /** 差分の表示の間、その種類に新規・変更・削除した項目があるか。真のとき、件数を残したまま右上に点を重ねる */
     marked?: boolean;
   };
 
@@ -138,7 +138,7 @@ namespace MindmapPreview {
           ? h({
             tag: "span",
             attrs: { class: "df-dot" },
-            children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["新規・変更・消した項目があります"] })],
+            children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["新規・変更・削除した項目があります"] })],
           })
           : null,
       ],

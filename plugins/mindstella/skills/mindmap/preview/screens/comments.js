@@ -39,7 +39,7 @@ var MindmapPreview;
         return { open, closed: tagged.length - open, all: tagged.length };
     }
     MindmapPreview.threadCounts = threadCounts;
-    /** レビュー中の書き込みのうち、一覧の先頭に出す新しいスレッドの最初の書き込み（クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
+    /** レビュー中の書き込みのうち、一覧の先頭に出す新規スレッドの最初の書き込み（クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
     function pendingThreads(items, filter, tag, target) {
         if (filter === "closed" || tag !== null)
             return [];
@@ -66,10 +66,10 @@ var MindmapPreview;
     function outcomeContent({ result, checkedCount }) {
         if (result === null) {
             // チェックが 0 件
-            return checkedCount === 0 ? [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: ["送る書き込みにチェックを付けてください。"] })] : null;
+            return checkedCount === 0 ? [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: ["送信する書き込みにチェックを付けてください。"] })] : null;
         }
         if (result.kind === "sending") {
-            return [MindmapPreview.h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), MindmapPreview.h({ tag: "span", children: ["送っています"] })];
+            return [MindmapPreview.h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), MindmapPreview.h({ tag: "span", children: ["送信しています"] })];
         }
         if (result.kind === "sent") {
             const time = result.at === undefined ? "" : MindmapPreview.formatJst(result.at).slice(-5);
@@ -81,15 +81,15 @@ var MindmapPreview;
                     MindmapPreview.h({
                         tag: "span",
                         children: [
-                            `${count} 件を送りましたが、Claude Code には入力できませんでした（${time}）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。`,
+                            `${count} 件を送信しましたが、Claude Code には入力できませんでした（${time}）。送信した内容は保存されていて、次に話し合いを始めたときに取り込まれます。`,
                         ],
                     }),
                 ];
             }
-            return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: [`${count} 件を送り、Claude Code に入力しました（${time}）。`] })];
+            return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: [`${count} 件を送信し、Claude Code に入力しました（${time}）。`] })];
         }
         if (result.kind === "stale") {
-            return [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: [`送れませんでした。送れない書き込みが ${result.count ?? 0} 件あります。`] })];
+            return [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: [`送信できませんでした。送信できない書き込みが ${result.count ?? 0} 件あります。`] })];
         }
         const detail = result.detail ?? null;
         return [
@@ -98,13 +98,13 @@ var MindmapPreview;
                 tag: "span",
                 children: [
                     detail === null
-                        ? "送れませんでした。サーバーが止まっています。立ち上げ直してから送ってください。"
-                        : `送れませんでした。${detail}`,
+                        ? "送信できませんでした。サーバーが止まっています。再起動してから送信してください。"
+                        : `送信できませんでした。${detail}`,
                 ],
             }),
         ];
     }
-    /** レビュー中の書き込みの読み上げの名前の頭（返信は「{スレッドの ID} への返信」、新しいスレッドは「{向けた項目の ID} へのコメント」） */
+    /** レビュー中の書き込みの読み上げの名前の頭（返信は「{スレッドの ID} への返信」、新規スレッドは「{向けた項目の ID} へのコメント」） */
     function reviewLabel(item) {
         // 詳細パネルへ渡す行には `thread` を持たないものもある
         if (item.thread !== null && item.thread !== undefined)
@@ -186,7 +186,7 @@ var MindmapPreview;
                     if (field.value.trim() === "") {
                         field.setAttribute("aria-invalid", "true");
                         message.setAttribute("role", "alert");
-                        message.replaceChildren(MindmapPreview.icon("alert"), "コメントを入れてから直してください。");
+                        message.replaceChildren(MindmapPreview.icon("alert"), "コメントを入れてから修正してください。");
                         field.focus();
                         return;
                     }
@@ -211,7 +211,7 @@ var MindmapPreview;
         return form;
     }
     MindmapPreview.reviewEditForm = reviewEditForm;
-    /** 行の右上に置く、鉛筆の印の「修正」とごみ箱の印の「削除」（コメントの一覧と詳細パネルが使う） */
+    /** 行の右上に置く、鉛筆のアイコンの「修正」とごみ箱のアイコンの「削除」（コメントの一覧と詳細パネルが使う） */
     function reviewRowActions({ item, focus, on, }) {
         const label = reviewLabel(item);
         return MindmapPreview.h({
@@ -262,15 +262,15 @@ var MindmapPreview;
         });
     }
     MindmapPreview.removedReviewRow = removedReviewRow;
-    /** 行の頭（返信は返信先のスレッドの状態の札と題、新しいスレッドは向けた項目） */
+    /** 行の頭（返信は返信先のスレッドの状態の札と題、新規スレッドは向けた項目） */
     function rowHead(item, props) {
         const thread = item.thread === null ? undefined : props.threads.find((entry) => entry.id === item.thread);
-        // 新しいスレッド: 向けた項目
+        // 新規スレッド: 向けた項目
         if (item.thread === null) {
             return MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "row-head" },
-                children: [MindmapPreview.h({ tag: "span", attrs: { class: "row-kind" }, children: ["新しいスレッド"] }), targetCell(item, props)],
+                children: [MindmapPreview.h({ tag: "span", attrs: { class: "row-kind" }, children: ["新規スレッド"] }), targetCell(item, props)],
             });
         }
         // 返信: 返信先のスレッド（読めていなければ ID だけ）
@@ -294,7 +294,7 @@ var MindmapPreview;
             ],
         });
     }
-    /** 「スレッドを開く」の入口（新しいスレッドの行は、まだ送っていないそのスレッドを開く。クローズのスレッドへの返信の行は、そのスレッドを開く） */
+    /** 「スレッドを開く」の入口（新規スレッドの行は、まだ送っていないそのスレッドを開く。クローズのスレッドへの返信の行は、そのスレッドを開く） */
     function openThreadButton({ item, id, pending, className }, props) {
         return MindmapPreview.h({
             tag: "button",
@@ -373,12 +373,12 @@ var MindmapPreview;
                                 attrs: { class: "row-stale row-blocked" },
                                 children: [
                                     MindmapPreview.icon("alert"),
-                                    MindmapPreview.h({ tag: "span", children: ["クローズのスレッドへの返信は送れません。オープンに戻すと送れます。"] }),
+                                    MindmapPreview.h({ tag: "span", children: ["クローズのスレッドへの返信は送信できません。オープンに戻すと送信できます。"] }),
                                     openThreadButton({ item, id: item.thread, pending: false, className: "btn ghost" }, props),
                                 ],
                             })
                             : null,
-                        // 新しいスレッド: 開閉のボタンと、まだ送っていないそのスレッドを開く入口
+                        // 新規スレッド: 開閉のボタンと、まだ送っていないそのスレッドを開く入口
                         item.thread === null
                             ? MindmapPreview.h({
                                 tag: "div",
@@ -401,7 +401,7 @@ var MindmapPreview;
                                         ? MindmapPreview.h({
                                             tag: "button",
                                             attrs: { class: "btn ghost", type: "button", "data-focus": `unloc:${item.id}`, onclick: () => props.on.unloc(item.id) },
-                                            children: ["箇所を外す"],
+                                            children: ["箇所を解除"],
                                         })
                                         : null,
                                 ],
@@ -491,9 +491,9 @@ var MindmapPreview;
     }
     /** スレッドを読めなかった理由の文言 */
     function threadsErrorText(error) {
-        return `スレッドを読めませんでした。${error.detail ?? "サーバーが止まっています。立ち上げ直してから開いてください。"}`;
+        return `スレッドを読めませんでした。${error.detail ?? "サーバーが止まっています。再起動してから開いてください。"}`;
     }
-    /** 一覧の下端の、新しいスレッドを立てる入口と入力 */
+    /** 一覧の下端の、新規スレッドを立てる入口と入力 */
     function newThreadBox(props) {
         if (!props.composing) {
             return MindmapPreview.h({
@@ -503,7 +503,7 @@ var MindmapPreview;
                     MindmapPreview.h({
                         tag: "button",
                         attrs: { class: "btn", type: "button", "data-focus": "compose", onclick: () => props.on.compose(true) },
-                        children: [MindmapPreview.icon("plus"), "新しいスレッド"],
+                        children: [MindmapPreview.icon("plus"), "新規スレッド"],
                     }),
                 ],
             });
@@ -516,10 +516,10 @@ var MindmapPreview;
                     tag: "div",
                     attrs: { class: "talk-new-head" },
                     children: [
-                        MindmapPreview.h({ tag: "span", attrs: { class: "send-label" }, children: [props.target === null ? "新しいスレッド" : `${props.target} への新しいスレッド`] }),
+                        MindmapPreview.h({ tag: "span", attrs: { class: "send-label" }, children: [props.target === null ? "新規スレッド" : `${props.target} への新規スレッド`] }),
                         MindmapPreview.h({
                             tag: "button",
-                            attrs: { class: "icon-btn", type: "button", "aria-label": "新しいスレッドの入力を閉じる", "data-focus": "compose-close", onclick: () => props.on.compose(false) },
+                            attrs: { class: "icon-btn", type: "button", "aria-label": "新規スレッドの入力を閉じる", "data-focus": "compose-close", onclick: () => props.on.compose(false) },
                             children: [MindmapPreview.icon("x")],
                         }),
                     ],
@@ -551,7 +551,7 @@ var MindmapPreview;
             ],
         });
     }
-    /** スレッドの一覧（絞り込みの帯・行・下端の新しいスレッド）を返す */
+    /** スレッドの一覧（絞り込みの帯・行・下端の新規スレッド）を返す */
     function threadListView(props) {
         const { threads, items, filter, tag, target, on } = props;
         const counts = threadCounts(threads, tag, target);
@@ -607,7 +607,7 @@ var MindmapPreview;
                 tag: "div",
                 attrs: { class: "comments-body" },
                 children: [
-                    // 読めなかった理由は、並べる行の上に出す（まだ送っていない新しいスレッドは並べる）
+                    // 読めなかった理由は、並べる行の上に出す（まだ送っていない新規スレッドは並べる）
                     props.threadsError === null
                         ? null
                         : MindmapPreview.h({ tag: "p", attrs: { class: "send-msg failed", role: "alert" }, children: [MindmapPreview.icon("alert"), threadsErrorText(props.threadsError)] }),
@@ -749,7 +749,7 @@ var MindmapPreview;
         return MindmapPreview.h({
             tag: "p",
             attrs: { class: "send-msg failed th-action-msg", role: "alert" },
-            children: [MindmapPreview.icon("alert"), `${head}${detail ?? "サーバーが止まっています。立ち上げ直してから押してください。"}`],
+            children: [MindmapPreview.icon("alert"), `${head}${detail ?? "サーバーが止まっています。再起動してから押してください。"}`],
         });
     }
     /** レビュー中の書き込みの `li`（スレッドの中のレビュー中の書き込み） */
@@ -778,7 +778,7 @@ var MindmapPreview;
             },
         });
     }
-    /** まだ送っていない新しいスレッド（最初の書き込みをレビュー中の形で出し、状態を変えると返信の入力を出さない） */
+    /** まだ送っていない新規スレッド（最初の書き込みをレビュー中の形で出し、状態を変えると返信の入力を出さない） */
     function pendingThreadView(commentId, props) {
         const item = props.items.find((entry) => entry.id === commentId);
         const gone = props.removed.find((entry) => entry.id === commentId);
@@ -814,11 +814,11 @@ var MindmapPreview;
             MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "comments-free" },
-                children: [MindmapPreview.h({ tag: "p", attrs: { class: "th-closed-note" }, children: [MindmapPreview.icon("edit"), "まだ送っていないスレッドです。"] })],
+                children: [MindmapPreview.h({ tag: "p", attrs: { class: "th-closed-note" }, children: [MindmapPreview.icon("edit"), "まだ送信していないスレッドです。"] })],
             }),
         ];
     }
-    /** スレッド 1 件（見出し・書き込みの並び・下端）を返す。まだ送っていない新しいスレッドも開く */
+    /** スレッド 1 件（見出し・書き込みの並び・下端）を返す。まだ送っていない新規スレッドも開く */
     function threadView(props) {
         const { opened } = props;
         if (opened !== null && opened.pending)
@@ -919,7 +919,7 @@ var MindmapPreview;
                                 disabled: checkedCount === 0 || sending,
                                 onclick: () => on.send(),
                             },
-                            children: [MindmapPreview.icon("send"), `まとめて送る（${checkedCount} 件）`],
+                            children: [MindmapPreview.icon("send"), `まとめて送信（${checkedCount} 件）`],
                         }),
                     MindmapPreview.h({ tag: "p", attrs: { class: `send-msg${result === null ? "" : ` ${result.kind}`}`, role: "status" }, children: message ?? [] }),
                 ],

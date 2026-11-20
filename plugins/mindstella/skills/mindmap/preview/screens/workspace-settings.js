@@ -23,13 +23,13 @@ var MindmapPreview;
     const TRANSCRIPTION_ACTIONS = [
         { value: "review", label: "レビュー中に追加する" },
         { value: "insert", label: "入力欄へ挿入する" },
-        { value: "send", label: "送信する" },
+        { value: "send", label: "送信" },
     ];
     /** 用語集のプリセットの「サービスの既定」（プリセットを指定しない） */
     const SERVICE_DEFAULT_PRESET = "サービスの既定";
     /** 用語集のプリセットの候補を読めないときの、理由ごとの文 */
     const PRESET_UNAVAILABLE_TEXT = {
-        stopped: "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。",
+        stopped: "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を再度開いてください。",
         unsupported: "文字起こしのサービスが音声の受け付けに対応していないため、候補を取得できません。",
     };
     /** 設定のキーの入力欄の名前 */

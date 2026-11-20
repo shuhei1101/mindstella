@@ -52,10 +52,10 @@ namespace MindmapPreview {
         type: "button",
         "data-kind": kind,
         "aria-label": `${KIND_LABEL[kind]}の項目を追加`,
-        title: "項目を追加",
+        title: "項目追加",
         onclick: () => onAdd(),
       },
-      children: [icon("plus"), h({ tag: "span", attrs: { class: "lbl" }, children: ["項目を追加"] })],
+      children: [icon("plus"), h({ tag: "span", attrs: { class: "lbl" }, children: ["項目追加"] })],
     });
   }
 
@@ -64,7 +64,7 @@ namespace MindmapPreview {
     return item.title === "" ? "（タイトル未入力）" : item.title;
   }
 
-  /** 追加する項目のカード（ボード・資料のカード）。ID の場所に「ID は保存で決まる」を置く破線の枠 */
+  /** 追加する項目のカード（ボード・資料のカード）。ID の場所に「ID は保存時に決定」を置く破線の枠 */
   export function addedCard({
     item,
     mark,
@@ -90,7 +90,7 @@ namespace MindmapPreview {
         h({
           tag: doc ? "span" : "div",
           attrs: { class: "c-meta" },
-          children: [h({ tag: "span", attrs: { class: "pe-noid" }, children: ["ID は保存で決まる"] }), pendingEditMark({ kind: mark })],
+          children: [h({ tag: "span", attrs: { class: "pe-noid" }, children: ["ID は保存時に決定"] }), pendingEditMark({ kind: mark })],
         }),
       ],
     });

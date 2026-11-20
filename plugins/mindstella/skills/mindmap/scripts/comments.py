@@ -1,4 +1,4 @@
-"""レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。鍵は呼ぶ側が取る。"""
+"""レビュー中のコメント（`comments.yaml`）と下書き（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。鍵は呼ぶ側が取る。"""
 
 from __future__ import annotations
 
@@ -55,10 +55,10 @@ logger = logging.getLogger(__name__)
 # ワークスペースのレビュー中のコメントのファイル名（無ければ 0 件）
 COMMENTS_FILE = "comments.yaml"
 
-# ワークスペースの書きかけのファイル名（無ければ 0 件）
+# ワークスペースの下書きのファイル名（無ければ 0 件）
 DRAFTS_FILE = "drafts.yaml"
 
-# `SCHEMA_DIR` の下のレビュー中のコメントと書きかけのスキーマのファイル名
+# `SCHEMA_DIR` の下のレビュー中のコメントと下書きのスキーマのファイル名
 COMMENTS_SCHEMA = "comments.schema.json"
 DRAFTS_SCHEMA = "drafts.schema.json"
 
@@ -82,7 +82,7 @@ class ReviewComment:
     body: str
     # 溜めた日時
     created: str
-    # 返信先のスレッドの ID（新しいスレッドの最初の書き込みは None で、キーを書かない。持つときは target・loc を持たない）
+    # 返信先のスレッドの ID（新規スレッドの最初の書き込みは None で、キーを書かない。持つときは target・loc を持たない）
     thread: str | None = None
 
 
@@ -122,7 +122,7 @@ class ReviewCommentView:
     loc: dict[str, Any] | None
     body: str
     created: str
-    # 返信先のスレッドの ID（新しいスレッドの最初の書き込みは None）
+    # 返信先のスレッドの ID（新規スレッドの最初の書き込みは None）
     thread: str | None
 
 
@@ -147,7 +147,7 @@ def load_comments(root: Path) -> CommentFile:
 
 
 def load_drafts(root: Path) -> list[Draft]:
-    """`drafts.yaml` を読み、スキーマと突き合わせて書きかけの並びにする。"""
+    """`drafts.yaml` を読み、スキーマと突き合わせて下書きの並びにする。"""
     value = read_validated(records_root(root) / DRAFTS_FILE, DRAFTS_SCHEMA)
     # ファイルが無い
     if value is None:
@@ -165,7 +165,7 @@ def load_drafts(root: Path) -> list[Draft]:
 
 
 def list_review(workspace: Workspace) -> dict[str, Any]:
-    """レビュー中のコメントに向けた項目のタイトルを付け、書きかけと合わせて読み取りの形にする。"""
+    """レビュー中のコメントに向けた項目のタイトルを付け、下書きと合わせて読み取りの形にする。"""
     views = [
         ReviewCommentView(
             id=comment.id,
@@ -244,14 +244,14 @@ def add_comment(
         )
     items = sorted([*current.items, comment], key=_number_of)
     _write_comments(root, seq, items)
-    # 新しく溜めたときは、同じ向けた先の書きかけを消す
+    # 新しく溜めたときは、同じ向けた先の下書きを消す
     if comment_id is None:
         _remove_draft(root, target, loc, thread)
     return comment, len(items)
 
 
 def update_comment(root: Path, comment_id: str, data: dict[str, Any]) -> ReviewComment:
-    """レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す。"""
+    """レビュー中のコメント 1 件の本文を書き換えるか、箇所を解除する。"""
     has_body, has_loc = "body" in data, "loc" in data
     # 書き換えるものが無い
     if not has_body and not has_loc:
@@ -294,7 +294,7 @@ def delete_comment(root: Path, comment_id: str) -> tuple[ReviewComment, int]:
 
 
 def save_draft(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> None:
-    """向けた先（`target` と `loc` の組か、`thread`）の書きかけを上書きする。空の本文なら消す。"""
+    """向けた先（`target` と `loc` の組か、`thread`）の下書きを上書きする。空の本文なら消す。"""
     body = data.get("body")
     # 本文が無いか、文字列でないか、上限を超える
     if not isinstance(body, str) or len(body) > MAX_BODY_CHARS:
@@ -372,7 +372,7 @@ def send_comments(
         # レビュー中を書けなかった: 足したスレッドを書き戻し、どちらも前のままにする
         _restore_file(threads_path, previous)
         raise
-    # 送った返信のスレッドの書きかけは消す
+    # 送った返信のスレッドの下書きは消す
     for comment in chosen:
         if comment.thread is not None:
             _remove_draft(root, None, None, comment.thread)
@@ -582,7 +582,7 @@ def _comment_dict(comment: ReviewComment) -> dict[str, Any]:
 
 
 def _draft_dict(draft: Draft) -> dict[str, Any]:
-    """書きかけを YAML に書く辞書にする（持たない `target`・`loc`・`thread` は書かない）。"""
+    """下書きを YAML に書く辞書にする（持たない `target`・`loc`・`thread` は書かない）。"""
     result: dict[str, Any] = {}
     if draft.target is not None:
         result["target"] = draft.target
@@ -604,7 +604,7 @@ def _write_comments(root: Path, seq: int, items: list[ReviewComment]) -> None:
 
 
 def _write_drafts(root: Path, drafts: list[Draft]) -> None:
-    """書きかけの並びを `drafts.yaml` に書く。"""
+    """下書きの並びを `drafts.yaml` に書く。"""
     _write_yaml(
         records_root(root) / DRAFTS_FILE, {"items": [_draft_dict(draft) for draft in drafts]}
     )
@@ -624,18 +624,18 @@ def _confirm_targets(root: Path, workspace: Workspace, targets: list[str | None]
 def _remove_draft(
     root: Path, target: str | None, loc: Location | None, thread: str | None
 ) -> None:
-    """同じ向けた先の書きかけがあれば消す。消せなくても溜めたコメントは残す。"""
+    """同じ向けた先の下書きがあれば消す。消せなくても溜めたコメントは残す。"""
     try:
         drafts = load_drafts(root)
         kept = [
             draft for draft in drafts if (draft.target, draft.loc, draft.thread) != (target, loc, thread)
         ]
-        # 消す書きかけが無い
+        # 消す下書きが無い
         if len(kept) == len(drafts):
             return
         _write_drafts(root, kept)
     except (WriteFailedError, SchemaMismatchError) as error:
-        logger.warning("書きかけを消せなかった: %s", error)
+        logger.warning("下書きを消せなかった: %s", error)
 
 
 def _restore_file(path: Path, previous: bytes | None) -> None:

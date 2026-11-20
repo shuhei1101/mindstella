@@ -128,9 +128,9 @@ var MindmapPreview;
             tag: "div",
             attrs: { class: "df-legend" },
             children: [
-                MindmapPreview.h({ tag: "span", attrs: { class: "df-lg df-lg-add" }, children: [MindmapPreview.h({ tag: "i", attrs: { "aria-hidden": "true" } }), "足した"] }),
+                MindmapPreview.h({ tag: "span", attrs: { class: "df-lg df-lg-add" }, children: [MindmapPreview.h({ tag: "i", attrs: { "aria-hidden": "true" } }), "追加した"] }),
                 MindmapPreview.h({ tag: "span", attrs: { class: "df-lg df-lg-chg" }, children: [MindmapPreview.h({ tag: "i", attrs: { "aria-hidden": "true" } }), "変わった"] }),
-                removedOnly ? MindmapPreview.h({ tag: "span", attrs: { class: "muted" }, children: ["消した箇所は原文の差分で見られます"] }) : null,
+                removedOnly ? MindmapPreview.h({ tag: "span", attrs: { class: "muted" }, children: ["削除した箇所は原文の差分で見られます"] }) : null,
             ],
         });
     }

@@ -41,8 +41,8 @@ namespace MindmapPreview {
   /** 開閉のボタンの文言・矢印・読み上げの名前を、開いているかに合わせる */
   function setToggle({ more, open, label }: { more: HTMLButtonElement; open: boolean; label: string }): void {
     more.setAttribute("aria-expanded", String(open));
-    more.setAttribute("aria-label", open ? `${label}の本文を折りたたむ` : `${label}の続きを読む`);
-    more.replaceChildren(icon("chev"), h({ tag: "span", children: [open ? "折りたたむ" : "続きを読む"] }));
+    more.setAttribute("aria-label", open ? `${label}の本文を折りたたむ` : `${label}の続きを表示`);
+    more.replaceChildren(icon("chev"), h({ tag: "span", children: [open ? "折りたたむ" : "続きを表示"] }));
   }
 
   /** 全文が畳む行の数を超えるか */

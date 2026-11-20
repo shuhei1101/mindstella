@@ -72,7 +72,7 @@ export const GetRecordsResponse = zod.looseObject({
 
 
 /**
- * @summary レビュー中のコメントと書きかけを返す
+ * @summary レビュー中のコメントと下書きを返す
  */
 export const GetCommentsResponse = zod.looseObject({
   "items": zod.array(zod.looseObject({
@@ -193,7 +193,7 @@ export const GetThreadsResponse = zod.looseObject({
 
 
 /**
- * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す
+ * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を解除
  */
 export const UpdateCommentParams = zod.object({
   "id": zod.string()
@@ -260,7 +260,7 @@ export const SendCommentsResponse = zod.looseObject({
 
 
 /**
- * @summary コメントの入力欄の書きかけを向けた先ごとに保つ
+ * @summary コメントの入力欄の下書きを向けた先ごとに保つ
  */
 export const SaveDraftBody = zod.object({
   "target": zod.string().nullish(),

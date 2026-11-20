@@ -131,7 +131,7 @@ class ServeFailedError(MindmapError):
 
 
 class CommentInvalidError(MindmapError):
-    """コメント・書きかけ・まとめて送るの要求のキーが無い・型が違う、本文が空白だけか上限を超える、箇所の形が崩れている。メッセージは `{キーのパス}: {理由}`。"""
+    """コメント・下書き・まとめて送るの要求のキーが無い・型が違う、本文が空白だけか上限を超える、箇所の形が崩れている。メッセージは `{キーのパス}: {理由}`。"""
 
 
 class CommentNotFoundError(MindmapError):

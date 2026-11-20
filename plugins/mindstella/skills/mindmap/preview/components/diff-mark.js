@@ -1,9 +1,9 @@
 "use strict";
-// 差分の印。差分の表示の間、選んだ時点で足した項目に新規（太い +）、変えた項目に変更（塗った ●）、消した項目に消した（太い −）の印を出す。
+// 差分の印。差分の表示の間、選んだ時点で足した項目に新規（太い +）、変えた項目に変更（塗った ●）、削除した項目に消した（太い −）の印を出す。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 種類 → 画面に出す名前 */
-    const DIFF_LABEL = { new: "新規", changed: "変更", removed: "消した" };
+    const DIFF_LABEL = { new: "新規", changed: "変更", removed: "削除した" };
     /** 種類 → 記号 */
     const DIFF_GLYPH = { new: "plus", changed: "changed", removed: "minus" };
     /** 種類 → 色の class */

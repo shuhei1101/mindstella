@@ -6,7 +6,7 @@ var MindmapPreview;
     const DATA_ELEMENT_ID = "mindmap-data";
     /** 端末の保存領域のキー */
     MindmapPreview.PREFS_KEY = "mindmap-preview";
-    /** 入力が止まってから書きかけを保つまでの待ち（ミリ秒）。打つたびに書かず、打ち終えた直後に閉じても失うのがこの待ちの分だけで済む長さ */
+    /** 入力が止まってから下書きを保つまでの待ち（ミリ秒）。打つたびに書かず、打ち終えた直後に閉じても失うのがこの待ちの分だけで済む長さ */
     MindmapPreview.DRAFT_SAVE_DELAY_MS = 500;
     /** 画面の下に「ワークスペースの既定が変わりました。」を出しておくミリ秒 */
     MindmapPreview.NOTICE_MS = 6000;
@@ -322,7 +322,7 @@ var MindmapPreview;
     MindmapPreview.resolveSince = resolveSince;
     /** 変更履歴のモーダルに、差分を出さない行と、まだまとめていない変更・前回開いてから・まとまりの行を新しい順に並べる */
     function historyPoints({ changes, since }) {
-        /** その時点で足した・変えた・消した項目の数（合わせた範囲で足して消した項目は、消した項目として 1 件に数える） */
+        /** その時点で足した・変えた・削除した項目の数（合わせた範囲で足して削除した項目は、削除した項目として 1 件に数える） */
         const countOf = (sel) => {
             const point = MindmapPreview.resolveDiffPoint(changes, sel, since);
             return point === null ? 0 : point.added.size + point.changed.size + point.removed.size;
@@ -642,7 +642,7 @@ var MindmapPreview;
                     label: tabLabel(key),
                     icon: TAB_ICON[key],
                     count: key === "overview" ? undefined : data[key].length,
-                    // 差分の表示の間、新規・変更・消した項目を持つ種類のタブに点を重ねる
+                    // 差分の表示の間、新規・変更・削除した項目を持つ種類のタブに点を重ねる
                     marked: key !== "overview" &&
                         ((marks !== undefined && data[key].some((item) => marks[item.id] !== undefined)) ||
                             MindmapPreview.removedOf({ point, kind: key }).length > 0),
@@ -1293,9 +1293,9 @@ var MindmapPreview;
             Object.assign(commentsNow, next);
             MindmapPreview.refreshCommentMarks({ root: main, counts: commentsNow });
         };
-        /** 書きかけを保つ待ちのタイマー（入力欄のキー → タイマー） */
+        /** 下書きを保つ待ちのタイマー（入力欄のキー → タイマー） */
         const draftTimers = new Map();
-        /** 読んだレビュー中を状態に入れる。初めて読んだコメントはチェックした状態で入れ、最初の読み込みだけ書きかけの箇所を入力に添える */
+        /** 読んだレビュー中を状態に入れる。初めて読んだコメントはチェックした状態で入れ、最初の読み込みだけ下書きの箇所を入力に添える */
         const applyReview = (review, first) => {
             comment.review = review;
             syncCommentMarks();
@@ -1313,7 +1313,7 @@ var MindmapPreview;
                 }
             }
         };
-        /** レビュー中のコメントと書きかけを読み直す。届かないときは前の写しのまま */
+        /** レビュー中のコメントと下書きを読み直す。届かないときは前の写しのまま */
         const loadReview = async (first = false) => {
             const result = await api.read();
             if (result.ok && result.data !== null)
@@ -1373,7 +1373,7 @@ var MindmapPreview;
             }
             comment.threadsError = { detail: result.ok ? null : result.detail };
         };
-        /** 向けた先の入力欄の状態。無ければ、同じ向けた先の書きかけの本文で作る */
+        /** 向けた先の入力欄の状態。無ければ、同じ向けた先の下書きの本文で作る */
         const formStateOf = (target, loc, thread = null) => {
             const key = formKey(target, loc, thread);
             let state = comment.forms.get(key);
@@ -1412,7 +1412,7 @@ var MindmapPreview;
             while (wave.childElementCount > voice.levels.length)
                 wave.firstElementChild?.remove();
         };
-        /** 描き直した後の、録っていた入力の入力欄（返信・新しいスレッド・項目の詳細の全画面か詳細パネルの下端を、向けた先で選ぶ） */
+        /** 描き直した後の、録っていた入力の入力欄（返信・新規スレッド・項目の詳細の全画面か詳細パネルの下端を、向けた先で選ぶ） */
         const voiceField = (state) => {
             if (state.thread !== null)
                 return document.querySelector(".comments-panel form.reply textarea");
@@ -1468,7 +1468,7 @@ var MindmapPreview;
             voice.ticket += 1;
             renderTop();
         };
-        /** 今の画面に出ている入力の `formKey`（詳細の下端・新しいスレッド・開いているスレッドの返信） */
+        /** 今の画面に出ている入力の `formKey`（詳細の下端・新規スレッド・開いているスレッドの返信） */
         const shownFormKeys = () => {
             const keys = new Set();
             const detailForm = document.querySelector("aside.panel form.send .send-body, dialog.full form.send .send-body");
@@ -1516,7 +1516,7 @@ var MindmapPreview;
         const voiceLabelOf = (state) => {
             if (state.thread !== null)
                 return `${state.thread} への返信`;
-            return state.target === null ? "新しいスレッド" : `${state.target} へのコメント`;
+            return state.target === null ? "新規スレッド" : `${state.target} へのコメント`;
         };
         /** 入力を今の状態で描き直す（詳細の下端は入力だけ、コメントの一覧の入力はパネルごと） */
         const redrawVoiceForm = (state, focus) => {
@@ -1696,7 +1696,7 @@ var MindmapPreview;
                         Object.assign(state, { body: outcome.body, status: statusOf[outcome.kind], detail: outcome.detail, entered: outcome.entered, count: outcome.count ?? null });
                         const delivered = outcome.kind === "sent" || outcome.kind === "reviewed";
                         if (delivered) {
-                            // 溜めた・送った: 書きかけを消し、箇所を添えた入力は箇所を外す
+                            // 溜めた・送った: 下書きを消し、箇所を添えた入力は箇所を解除
                             saveDraftNow(state);
                             if (state.loc !== null && state.target !== null)
                                 comment.pendingLoc.delete(state.target);
@@ -1705,7 +1705,7 @@ var MindmapPreview;
                             scheduleDraft(state);
                         }
                         else {
-                            // 入力が画面に無い: 結果の中身を書きかけに保つ
+                            // 入力が画面に無い: 結果の中身を下書きに保つ
                             saveDraftNow(state);
                         }
                         if (!shown && (outcome.kind === "failed" || outcome.kind === "unavailable"))
@@ -1965,7 +1965,7 @@ var MindmapPreview;
             voice.release = null;
             lockVoice(voice.ticket);
         });
-        /** 書きかけをすぐ保つ（空なら消える）。届かないときは何も出さない */
+        /** 下書きをすぐ保つ（空なら消える）。届かないときは何も出さない */
         const saveDraftNow = (state) => {
             const key = formKey(state.target, state.loc, state.thread);
             window.clearTimeout(draftTimers.get(key));
@@ -1977,13 +1977,13 @@ var MindmapPreview;
                 body: state.body,
             });
         };
-        /** 入力が止まってから書きかけを保つ */
+        /** 入力が止まってから下書きを保つ */
         const scheduleDraft = (state) => {
             const key = formKey(state.target, state.loc, state.thread);
             window.clearTimeout(draftTimers.get(key));
             draftTimers.set(key, window.setTimeout(() => saveDraftNow(state), MindmapPreview.DRAFT_SAVE_DELAY_MS));
         };
-        /** 待っている書きかけを全て、待たずに保つ（パネル・一覧を閉じるときと項目を移るとき） */
+        /** 待っている下書きを全て、待たずに保つ（パネル・一覧を閉じるときと項目を移るとき） */
         const flushDrafts = () => {
             for (const key of [...draftTimers.keys()]) {
                 const state = comment.forms.get(key);
@@ -2003,12 +2003,12 @@ var MindmapPreview;
         };
         /** 入力欄を、今の状態で差し替える（`focus` が true なら入力欄へ、`submit` なら「レビューに追加」へフォーカスを移す）。別の項目へ移っていたら状態だけ持っておく */
         const redrawForm = ({ target, focus }) => {
-            // 項目で絞っているコメントの一覧の新しいスレッドから溜めた・書いた: パネルも描き直し、フォーカスはパネルの入力へ移す
+            // 項目で絞っているコメントの一覧の新規スレッドから溜めた・書いた: パネルも描き直し、フォーカスはパネルの入力へ移す
             const fromPanel = target !== null && comment.listOpen && comment.composing && comment.target === target
                 && document.activeElement?.closest(".comments-panel") != null;
             let field = null;
             if (target === null || fromPanel) {
-                // 項目を指さない入力（新しいスレッド）と、項目で絞っている間の新しいスレッドはパネルの一部なので、パネルを描き直す
+                // 項目を指さない入力（新規スレッド）と、項目で絞っている間の新規スレッドはパネルの一部なので、パネルを描き直す
                 renderComments();
                 field = document.querySelector(".comments-panel .talk-new form.send textarea");
             }
@@ -2034,13 +2034,13 @@ var MindmapPreview;
             field?.focus();
             field?.setSelectionRange(field.value.length, field.value.length);
         };
-        /** 箇所を外す。書きかけは箇所を持たない向けた先へ移す */
+        /** 箇所を解除する。下書きは箇所を持たない向けた先へ移す */
         const unquote = (state) => {
             const { target } = state;
             if (target === null || state.loc === null)
                 return;
             const plain = formStateOf(target, null);
-            // 箇所を持つ書きかけを消し、本文を箇所を持たない向けた先へ移す
+            // 箇所を持つ下書きを消し、本文を箇所を持たない向けた先へ移す
             const moved = state.body;
             saveDraftNow({ ...state, body: "" });
             comment.forms.delete(formKey(target, state.loc));
@@ -2066,7 +2066,7 @@ var MindmapPreview;
                 entered: state.entered ?? false,
                 collapsed: false,
                 open: target === null || inPanel || prefs.commentFormClosed !== true,
-                ...(target === null ? { label: "新しいスレッド" } : {}),
+                ...(target === null ? { label: "新規スレッド" } : {}),
                 on: {
                     ...voiceHandlers(state),
                     input: (body) => {
@@ -2083,7 +2083,7 @@ var MindmapPreview;
                     copy: (body) => void navigator.clipboard?.writeText(body),
                     focus: () => undefined,
                     blur: () => undefined,
-                    // 開閉を端末に残し、下端の入力を描き直して開閉のボタンへフォーカスを戻す（書きかけはそのまま残す）
+                    // 開閉を端末に残し、下端の入力を描き直して開閉のボタンへフォーカスを戻す（下書きはそのまま残す）
                     toggle: (open) => {
                         prefs.commentFormClosed = open ? null : true;
                         display.storageOk = persist();
@@ -2104,7 +2104,7 @@ var MindmapPreview;
                 redrawForm({ target: state.target, focus: true });
                 return;
             }
-            // 溜める前に、この向けた先の書きかけを保つ待ちを止める（応答を待つ間にタイマーが切れて、消えた書きかけを書き戻さないため）
+            // 溜める前に、この向けた先の下書きを保つ待ちを止める（応答を待つ間にタイマーが切れて、消えた下書きを書き戻さないため）
             window.clearTimeout(draftTimers.get(formKey(state.target, state.loc)));
             draftTimers.delete(formKey(state.target, state.loc));
             Object.assign(state, { status: "saving", detail: null });
@@ -2117,7 +2117,7 @@ var MindmapPreview;
             if (!result.ok || result.data === null) {
                 // 断られた・届かない: 本文を残す
                 Object.assign(state, { status: "failed", detail: result.ok ? null : result.detail });
-                // 止めた待ちを戻す（本文を残したまま閉じても、書きかけは保つ）
+                // 止めた待ちを戻す（本文を残したまま閉じても、下書きは保つ）
                 scheduleDraft(state);
                 redrawForm({ target: state.target, focus: true });
                 return;
@@ -2130,7 +2130,7 @@ var MindmapPreview;
             }
             const shown = formStateOf(state.target, null);
             Object.assign(shown, { status: "saved", count: added.count, detail: null });
-            // 箇所を持たない入力を溜めたときだけ本文を空にする（箇所を持つ入力を溜めたときは、別の向けた先の書きかけを残す）
+            // 箇所を持たない入力を溜めたときだけ本文を空にする（箇所を持つ入力を溜めたときは、別の向けた先の下書きを残す）
             if (state.loc === null)
                 shown.body = "";
             knownIds.add(added.id);
@@ -2140,10 +2140,10 @@ var MindmapPreview;
             redrawForm({ target: state.target, focus: addedFocus() === "submit" ? "submit" : true });
         };
         // ===== コメントの一覧 =====
-        /** 開いているスレッドの返信の入力の引数（書きかけの本文を含む） */
+        /** 開いているスレッドの返信の入力の引数（下書きの本文を含む） */
         const replyState = () => {
             const opened = comment.openedThread;
-            // スレッドを開いていない・まだ送っていない新しいスレッド: 返信の入力は出さない
+            // スレッドを開いていない・まだ送っていない新規スレッド: 返信の入力は出さない
             if (opened === null || opened.pending)
                 return { body: "", status: "idle", count: null, detail: null };
             const state = formStateOf(null, null, opened.id);
@@ -2178,7 +2178,7 @@ var MindmapPreview;
             captureTyped();
             const active = document.activeElement;
             const focusKey = active instanceof HTMLElement && current?.contains(active) === true ? (active.dataset["focus"] ?? null) : null;
-            // 入力欄（新しいスレッド・返信・理由）に打っている途中なら、選択も保つ
+            // 入力欄（新規スレッド・返信・理由）に打っている途中なら、選択も保つ
             const typing = active instanceof HTMLTextAreaElement && active.closest(".comments-panel form.send, .comments-panel form.th-reason") !== null
                 ? active
                 : null;
@@ -2327,7 +2327,7 @@ var MindmapPreview;
             renderComments();
             markOpenedSeen();
         };
-        /** スレッドの返信の書きかけを、待たずに保つ */
+        /** スレッドの返信の下書きを、待たずに保つ */
         const flushReplyDraft = () => {
             const opened = comment.openedThread;
             if (opened === null || opened.pending)
@@ -2358,7 +2358,7 @@ var MindmapPreview;
             }
             if (comment.view === "review") {
                 const opened = comment.openedThread;
-                // 開く前に見ていた、まだ送っていない新しいスレッドが、送るか消すかで無くなっていたら一覧へ戻る
+                // 開く前に見ていた、まだ送っていない新規スレッドが、送るか消すかで無くなっていたら一覧へ戻る
                 const gone = comment.reviewFrom === "thread" &&
                     opened !== null &&
                     opened.pending &&
@@ -2404,7 +2404,7 @@ var MindmapPreview;
         const saveReply = async (threadId, body) => {
             const state = formStateOf(null, null, threadId);
             state.body = body;
-            // 溜める前に、この返信の書きかけを保つ待ちを止める（応答を待つ間にタイマーが切れて、消えた書きかけを書き戻さないため）
+            // 溜める前に、この返信の下書きを保つ待ちを止める（応答を待つ間にタイマーが切れて、消えた下書きを書き戻さないため）
             window.clearTimeout(draftTimers.get(formKey(null, null, threadId)));
             draftTimers.delete(formKey(null, null, threadId));
             Object.assign(state, { status: "saving", detail: null });
@@ -2428,7 +2428,7 @@ var MindmapPreview;
             else
                 field?.focus();
         };
-        /** 返信の入力の中身が変わった。書きかけを保つ待ちを入れ、溜めた・失敗の結果は消す */
+        /** 返信の入力の中身が変わった。下書きを保つ待ちを入れ、溜めた・失敗の結果は消す */
         const typeReply = (body) => {
             const opened = comment.openedThread;
             if (opened === null || opened.pending)
@@ -2454,7 +2454,7 @@ var MindmapPreview;
             target: comment.target,
             opened: comment.openedThread,
             composing: comment.composing,
-            // 項目で絞っている間の新しいスレッドは、その項目への箇所を持たない入力（詳細パネルの下端の入力と書きかけを共有する）
+            // 項目で絞っている間の新規スレッドは、その項目への箇所を持たない入力（詳細パネルの下端の入力と下書きを共有する）
             free: formProps(comment.target, comment.target !== null),
             reply: replyState(),
             reason: comment.reason,
@@ -2501,7 +2501,7 @@ var MindmapPreview;
                 compose: (open) => {
                     comment.composing = open;
                     renderComments();
-                    // 出したときは入力欄へ、畳んだときは「新しいスレッド」へフォーカスを移す
+                    // 出したときは入力欄へ、畳んだときは「新規スレッド」へフォーカスを移す
                     const target = open ? ".comments-panel .talk-new form.send textarea" : '.comments-panel [data-focus="compose"]';
                     document.querySelector(target)?.focus();
                 },
@@ -2549,7 +2549,7 @@ var MindmapPreview;
             const result = await api.update(id, { body });
             if (!result.ok) {
                 // 断られた・届かない: 入力を残して理由を出す
-                editError = result.detail ?? "サーバーが止まっています。立ち上げ直してから直してください。";
+                editError = result.detail ?? "サーバーが止まっています。再起動してから修正してください。";
                 editBody = body;
                 refreshComments();
                 toDetail(`edit:${id}`);
@@ -3011,7 +3011,7 @@ var MindmapPreview;
                 display.confirm = {
                     busy: false,
                     error: result.detail === null
-                        ? "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。"
+                        ? "保存できませんでした。サーバーが止まっています。起動スクリプトで再起動し、示された新しい URL で開いてから保存してください。"
                         : `保存できませんでした。${result.detail}`,
                 };
                 renderConfirm();
@@ -3194,11 +3194,11 @@ var MindmapPreview;
             rebuildIndex();
             redrawEdit();
         };
-        /** 書きかけの案を持つ編集の表示（`editing`。仮の ID が振られる前の追加の入力は `NEW_ID_PREFIX`） */
+        /** 下書きの案を持つ編集の表示（`editing`。仮の ID が振られる前の追加の入力は `NEW_ID_PREFIX`） */
         const draftView = () => editState.editing ?? (editState.adding !== null ? MindmapPreview.NEW_ID_PREFIX : null);
-        /** 書きかけの案を最後に描いた編集の表示。変わっていたら書きかけを空にする */
+        /** 下書きの案を最後に描いた編集の表示。変わっていたら下書きを空にする */
         let draftsShownFor = null;
-        /** 向け先の書きかけの案。`editing` が変わった（差分の表示に移った・保存できたときを含む）ら、先に書きかけを空にする */
+        /** 向け先の下書きの案。`editing` が変わった（差分の表示に移った・保存できたときを含む）ら、先に下書きを空にする */
         const draftsOf = (target) => {
             const view = draftView();
             if (view !== draftsShownFor) {
@@ -3207,7 +3207,7 @@ var MindmapPreview;
             }
             return editState.optionDrafts.get(target) ?? [];
         };
-        /** 書きかけの案を置く・書き換える。置いたときだけ描き直し、その案の中身の入力欄へフォーカスを移す（打つたびには描き直さない） */
+        /** 下書きの案を置く・書き換える。置いたときだけ描き直し、その案の中身の入力欄へフォーカスを移す（打つたびには描き直さない） */
         const putDraft = (target, draft) => {
             const drafts = editState.optionDrafts.get(target) ?? [];
             const found = drafts.find((other) => other.key === draft.key);
@@ -3219,7 +3219,7 @@ var MindmapPreview;
             redrawEdit();
             document.getElementById(`pe-${MindmapPreview.safeId(target)}-opt-${draft.key}`)?.focus();
         };
-        /** その記号の案を溜められた: 書きかけから外す */
+        /** その記号の案を溜められた: 下書きから外す */
         const dropDraft = (target, key) => {
             const rest = (editState.optionDrafts.get(target) ?? []).filter((draft) => draft.key !== key);
             if (rest.length === 0)
@@ -3439,13 +3439,13 @@ var MindmapPreview;
                         return;
                     editState.editing = added.target;
                     editState.adding = null;
-                    // 仮の ID が振られた: 振られる前の書きかけの案を仮の ID へ移す（書きかけは空にしない）
+                    // 仮の ID が振られた: 振られる前の下書きの案を仮の ID へ移す（下書きは空にしない）
                     const drafts = editState.optionDrafts.get(MindmapPreview.NEW_ID_PREFIX);
                     editState.optionDrafts.delete(MindmapPreview.NEW_ID_PREFIX);
                     if (drafts !== undefined)
                         editState.optionDrafts.set(added.target, drafts);
                     draftsShownFor = added.target;
-                    // 溜めた案と同じ記号の書きかけは外す
+                    // 溜めた案と同じ記号の下書きは外す
                     for (const option of next["options"] ?? [])
                         dropDraft(added.target, option.key);
                 },
@@ -3975,7 +3975,7 @@ var MindmapPreview;
         addEventListener("popstate", onLocationChange);
         addEventListener("hashchange", onLocationChange);
         // ===== 最初の描き =====
-        // サーバーの配信では、レビュー中のコメントと書きかけを読んでおく（コメントのボタンの件数と入力に使う）
+        // サーバーの配信では、レビュー中のコメントと下書きを読んでおく（コメントのボタンの件数と入力に使う）
         if (serverMode) {
             await loadReview(true);
             await loadThreads();

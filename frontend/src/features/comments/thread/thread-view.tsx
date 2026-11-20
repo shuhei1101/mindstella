@@ -20,7 +20,7 @@ import { voiceEditingOf } from "@/shared/stores/voice-store";
 import { useFocusAfterAddTarget } from "@/shared/stores/prefs-store";
 
 export type ThreadViewProps = {
-  /** 開くスレッドの ID（まだ送っていない新しいスレッドはコメントの ID） */
+  /** 開くスレッドの ID（まだ送っていない新規スレッドはコメントの ID） */
   id: string;
   data: CommentData;
   onBack: () => void;
@@ -189,7 +189,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
                 setEditing(null);
               },
               onError: (error) => {
-                setEditing({ id: target, body, error: detailOf(error) ?? "サーバーが止まっています。立ち上げ直してから直してください。" });
+                setEditing({ id: target, body, error: detailOf(error) ?? "サーバーが止まっています。再起動してから修正してください。" });
               },
             },
           );
@@ -240,7 +240,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
           {reason.failed ? (
             <p role="alert" className="m-0 flex items-start gap-1 text-small text-destructive">
               <Icon name="alert" />
-              <span>{`${closed ? "オープンに戻せませんでした。" : "クローズにできませんでした。"}${reason.detail ?? "サーバーが止まっています。立ち上げ直してから押してください。"}`}</span>
+              <span>{`${closed ? "オープンに戻せませんでした。" : "クローズにできませんでした。"}${reason.detail ?? "サーバーが止まっています。再起動してから押してください。"}`}</span>
             </p>
           ) : null}
           <div className="flex justify-end gap-1.5">
@@ -312,7 +312,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
       {thread === null ? (
         <p className="m-0 flex items-center gap-1 border-t border-border p-3 text-small text-muted-foreground">
           <Icon name="edit" />
-          まだ送っていないスレッドです。
+          まだ送信していないスレッドです。
         </p>
       ) : closed ? (
         <p className="m-0 flex items-center gap-1 border-t border-border p-3 text-small text-muted-foreground">

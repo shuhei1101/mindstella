@@ -1,4 +1,4 @@
-// レビュー中の書き込み（画面設計『レビュー中の書き込み.tsx』）。新しいスレッドの最初の書き込みとスレッドへの返信を溜めた順に並べ、チェックしたものだけをまとめて送る
+// レビュー中の書き込み（画面設計『レビュー中の書き込み.tsx』）。新規スレッドの最初の書き込みとスレッドへの返信を溜めた順に並べ、チェックしたものだけをまとめて送る
 import { useState } from "react";
 
 import { ReviewEditForm } from "@/features/comments/shared/review-edit-form";
@@ -36,7 +36,7 @@ const OutcomeText = ({ outcome }: { outcome: SendOutcome }) => {
     return (
       <>
         <Icon name="alert" className="text-st-review" />
-        <span>送る書き込みにチェックを付けてください。</span>
+        <span>送信する書き込みにチェックを付けてください。</span>
       </>
     );
   }
@@ -44,7 +44,7 @@ const OutcomeText = ({ outcome }: { outcome: SendOutcome }) => {
     return (
       <>
         <Icon name="spin" className="animate-spin" />
-        <span>送っています</span>
+        <span>送信しています</span>
       </>
     );
   }
@@ -53,12 +53,12 @@ const OutcomeText = ({ outcome }: { outcome: SendOutcome }) => {
     return outcome.entered ? (
       <>
         <Icon name="check" />
-        <span>{`${String(outcome.count)} 件を送り、Claude Code に入力しました（${time}）。`}</span>
+        <span>{`${String(outcome.count)} 件を送信し、Claude Code に入力しました（${time}）。`}</span>
       </>
     ) : (
       <>
         <Icon name="alert" />
-        <span>{`${String(outcome.count)} 件を送りましたが、Claude Code には入力できませんでした（${time}）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。`}</span>
+        <span>{`${String(outcome.count)} 件を送信しましたが、Claude Code には入力できませんでした（${time}）。送信した内容は保存されていて、次に話し合いを始めたときに取り込まれます。`}</span>
       </>
     );
   }
@@ -66,14 +66,14 @@ const OutcomeText = ({ outcome }: { outcome: SendOutcome }) => {
     return (
       <>
         <Icon name="alert" />
-        <span>{`送れませんでした。送れない書き込みが ${String(outcome.count)} 件あります。`}</span>
+        <span>{`送信できませんでした。送信できない書き込みが ${String(outcome.count)} 件あります。`}</span>
       </>
     );
   }
   return (
     <>
       <Icon name="alert" />
-      <span>{outcome.detail === null ? "送れませんでした。サーバーが止まっています。立ち上げ直してから送ってください。" : `送れませんでした。${outcome.detail}`}</span>
+      <span>{outcome.detail === null ? "送信できませんでした。サーバーが止まっています。再起動してから送信してください。" : `送信できませんでした。${outcome.detail}`}</span>
     </>
   );
 };
@@ -190,7 +190,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
             <span className="flex-1 text-small">{`${String(checked.length)} / ${String(sendable.length)} 件`}</span>
             <Button disabled={send.isPending} onClick={sendChecked}>
               <Icon name="comment" />
-              {`まとめて送る（${String(checked.length)} 件）`}
+              {`まとめて送信（${String(checked.length)} 件）`}
             </Button>
           </div>
           {outcome === null ? null : (
@@ -226,8 +226,8 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
               return (
                 <li key={item.id} data-comment={item.id} data-highlight={highlight !== null && (item.thread === highlight || item.id === highlight) ? "" : undefined} className={cn("grid gap-1 rounded-card border p-2", staleReason === undefined ? "border-border" : "border-st-review", highlight !== null && (item.thread === highlight || item.id === highlight) && "bg-accent")}>
                   <div className="flex items-center gap-2 text-small">
-                    <Checkbox aria-label={item.thread === null ? `${item.target ?? "項目を指さない"}${item.target === null ? "コメントを送る" : " へのコメントを送る"}` : `${item.thread} への返信を送る`} checked={!blocked && !unchecked.has(item.id)} disabled={blocked} onChange={() => { toggle(item.id); }} />
-                    <span data-part="kind" className="rounded-control border border-border px-1.5">{item.thread === null ? "新しいスレッド" : "返信"}</span>
+                    <Checkbox aria-label={item.thread === null ? `${item.target ?? "項目を指さない"}${item.target === null ? "コメントを送る" : " へのコメントを送信する"}` : `${item.thread} への返信を送信する`} checked={!blocked && !unchecked.has(item.id)} disabled={blocked} onChange={() => { toggle(item.id); }} />
+                    <span data-part="kind" className="rounded-control border border-border px-1.5">{item.thread === null ? "新規スレッド" : "返信"}</span>
                     {replyTo === null ? null : (
                       <button type="button" className="flex min-w-0 cursor-pointer items-center gap-1" onClick={() => { onOpenThread(replyTo.id); }}>
                         <ThreadState status={replyTo.status} />
@@ -288,7 +288,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       onVoiceBlocked={editVoice.onVoiceBlocked}
                       onCancel={() => { setEditing(null); }}
                       onSubmit={(target, body) => {
-                        update.mutate({ id: target, body }, { onSuccess: () => { setEditing(null); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。立ち上げ直してから直してください。" }); } });
+                        update.mutate({ id: target, body }, { onSuccess: () => { setEditing(null); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。再起動してから修正してください。" }); } });
                       }}
                     />
                   ) : (
@@ -311,7 +311,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                   {blocked ? (
                     <p className="m-0 flex flex-wrap items-center gap-1 text-small">
                       <Icon name="alert" />
-                      <span>クローズのスレッドへの返信は送れません。オープンに戻すと送れます。</span>
+                      <span>クローズのスレッドへの返信は送信できません。オープンに戻すと送信できます。</span>
                       <Button variant="ghost" onClick={() => { onOpenThread(item.thread ?? ""); }}>
                         スレッドを開く
                       </Button>
@@ -330,7 +330,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                           update.mutate({ id: item.id, loc: null }, { onSuccess: () => { setStale((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key !== item.id))); } });
                         }}
                       >
-                        箇所を外す
+                        箇所を解除
                       </Button>
                     </div>
                   )}

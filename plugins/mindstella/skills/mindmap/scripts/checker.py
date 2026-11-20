@@ -88,7 +88,7 @@ def find_referrers(workspace: Workspace, item_id: str) -> list[str]:
             for rule_kind, key in REF_RULES:
                 if rule_kind == kind and item_id in _refs_of(item, key):
                     lines.append(f"{spec.file}: {item.get('id')}: {key}")
-    # レビュー中のコメントと書きかけが向けている
+    # レビュー中のコメントと下書きが向けている
     lines.extend(
         f"{COMMENTS_FILE}: {comment.id}: target"
         for comment in load_comments(workspace.root).items
@@ -109,7 +109,7 @@ def find_referrers(workspace: Workspace, item_id: str) -> list[str]:
 
 
 def _removed_ids(root: Path) -> set[str]:
-    """`changes.yaml` に記録した、消した項目の ID を返す。読めない `changes.yaml` は、消した項目なしとして扱う（その問題は履歴の点検が返す）。"""
+    """`changes.yaml` に記録した、削除した項目の ID を返す。読めない `changes.yaml` は、削除した項目なしとして扱う（その問題は履歴の点検が返す）。"""
     try:
         return {removed["id"] for removed in removed_items(load_changes(root))}
     except SchemaMismatchError:
@@ -370,7 +370,7 @@ def _check_thread_targets(
     problems: list[Problem] = []
     removed_ids = _removed_ids(workspace.root)
     for thread_id, target, waiting in targets:
-        # 取り込み待ちでないスレッドが消した項目を指す: 記録として残るので拾わない
+        # 取り込み待ちでないスレッドが削除した項目を指す: 記録として残るので拾わない
         if not waiting and target in removed_ids:
             continue
         try:
@@ -415,7 +415,7 @@ def _check_history(workspace: Workspace) -> list[Problem]:
 def _missing_change_refs(workspace: Workspace, changes: Changes) -> list[Problem]:
     """まとまりと、まだまとめていない変更が指す ID のうち、項目が無いものを `broken_ref` にする。"""
     existing = {item.get("id") for kind in KINDS for item in workspace.items[kind]}
-    # 消した項目の ID は、項目が無くても参照切れにしない
+    # 削除した項目の ID は、項目が無くても参照切れにしない
     existing.update(removed["id"] for removed in removed_items(changes))
     groups = [
         *(

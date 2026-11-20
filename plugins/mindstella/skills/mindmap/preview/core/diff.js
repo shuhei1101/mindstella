@@ -17,7 +17,7 @@ var MindmapPreview;
         "erDiagram",
         "stateDiagram-v2",
     ];
-    /** 消した項目の種類（`RemovedItem.kind`）から、その項目を出す画面の種類を引く */
+    /** 削除した項目の種類（`RemovedItem.kind`）から、その項目を出す画面の種類を引く */
     MindmapPreview.REMOVED_KIND_TAB = {
         decision: "decisions",
         task: "tasks",
@@ -36,13 +36,13 @@ var MindmapPreview;
     function buildPoint({ sel, name, sub, groups, fromSeq, untilSeq, }) {
         // `removed` を持たないまとまりは、何も足さない
         const removed = new Map(groups.flatMap((group) => group.removed ?? []).map((item) => [item.id, item]));
-        // 合わせた範囲で足して消した項目は、消した項目としてだけ出す
+        // 合わせた範囲で足して削除した項目は、削除した項目としてだけ出す
         const added = new Set(groups.flatMap((group) => group.added).filter((id) => !removed.has(id)));
         // 足した項目は、変えても変更の印にしない
         const changed = new Set(groups.flatMap((group) => group.changed).filter((id) => !added.has(id) && !removed.has(id)));
         return { sel, name, sub, added, changed, fromSeq, untilSeq, removed };
     }
-    /** 選んだ時点で消した項目のうち、その画面の種類のものを ID の順に返す。時点が null のときは空 */
+    /** 選んだ時点で削除した項目のうち、その画面の種類のものを ID の順に返す。時点が null のときは空 */
     function removedOf({ point, kind }) {
         if (point === null)
             return [];
@@ -542,7 +542,7 @@ var MindmapPreview;
                 nodes.set(node.key, node);
         return { nodes, edges: keyedEdges };
     }
-    /** 辺の鍵 `{元}>{先}#{番号}` を、消したものの一覧に出す名前にする */
+    /** 辺の鍵 `{元}>{先}#{番号}` を、削除したものの一覧に出す名前にする */
     function edgeName(edge) {
         const name = edge.name ?? edge.text;
         return name !== "" ? name : edge.key.replace(/#\d+$/, "").replace(">", " → ");
@@ -555,7 +555,7 @@ var MindmapPreview;
         return compareDiagrams({ flavor, previous: extractDiagram(beforeSvg, flavor), current: extractDiagram(afterSvg, flavor) });
     }
     MindmapPreview.diffDiagram = diffDiagram;
-    /** 前後の版のノード・辺の材料を鍵で突き合わせて、足した・変えた・消したものに分ける。並びの突き合わせを打ち切ったときは null */
+    /** 前後の版のノード・辺の材料を鍵で突き合わせて、足した・変えた・削除したものに分ける。並びの突き合わせを打ち切ったときは null */
     function compareDiagrams({ flavor, previous, current, }) {
         const result = { added: [], changed: [], removed: [] };
         for (const [key, node] of current.nodes) {
@@ -635,7 +635,7 @@ var MindmapPreview;
         decoder.innerHTML = shown;
         return normalized(decoder.value.replace(/\bfa[bsrl]?:fa-[\w-]+/g, ""));
     }
-    /** 記法を mermaid で解析して、flowchart のノードと辺の鍵・文字（と消したものに出す名前）を取り出す。flowchart でないときは null */
+    /** 記法を mermaid で解析して、flowchart のノードと辺の鍵・文字（と削除したものに出す名前）を取り出す。flowchart でないときは null */
     async function parseFlowchart(source) {
         const parser = mermaid;
         const parsed = await parser.mermaidAPI.getDiagramFromText(source);
@@ -669,7 +669,7 @@ var MindmapPreview;
             parsedNow = await parseFlowchart(afterSource);
         }
         catch {
-            // 解析できない記法（書きかけ）と、版を上げて形が変わった `mermaidAPI`: 前の版を描いて突き合わせる側へ倒す
+            // 解析できない記法（下書き）と、版を上げて形が変わった `mermaidAPI`: 前の版を描いて突き合わせる側へ倒す
             return null;
         }
         if (previous === null || parsedNow === null)

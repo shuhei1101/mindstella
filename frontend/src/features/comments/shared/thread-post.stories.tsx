@@ -78,7 +78,7 @@ export const PendingEditingInserted: Story = { args: { pending: {"id": "C-43", "
 export const PendingEditingVoiceDisabled: Story = { args: { pending: {"id": "C-43", "thread": "TH-1", "target": null, "body": "確認: でよい", "created": "2026-10-12T05:14:00+00:00", "loc": null}, editing: true, voice: "disabled", voiceReason: "ほかの入力欄で音声入力中のため、音声で入力できません。" } };
 
 /** 書き換えを保てなかった。入力を残し、印のアイコンと理由を出す */
-export const PendingEditFailed: Story = { args: { pending: {"id": "C-43", "thread": "TH-1", "target": null, "body": "了解。T-14 は今週中に書いてほしい", "created": "2026-10-12T05:14:00+00:00", "loc": null}, editing: true, editError: "サーバーが止まっています。立ち上げ直してから直してください。" } };
+export const PendingEditFailed: Story = { args: { pending: {"id": "C-43", "thread": "TH-1", "target": null, "body": "了解。T-14 は今週中に書いてほしい", "created": "2026-10-12T05:14:00+00:00", "loc": null}, editing: true, editError: "サーバーが止まっています。再起動してから修正してください。" } };
 
 /** 幅 390px。利用者と AI の寄せは保ち、寄せの余白を 32px から 16px に詰める。条件はコメントの一覧のほかの行と同じく画面の幅（720px 以下）で持つ */
 export const Narrow: Story = { args: { post: {"id": "TH-4-4", "author": "ai", "body": "T-6 の点検の結果を、版ごとの一覧にした資料 A-9 を足しました。操作の種類は D-15 で決めた 5 つに揃えています。", "created": "2026-10-12T00:41:00+00:00"}, titles: lookup({"T-6": "移し替えの手順の YAML を点検する", "A-9": "#50 スキルの手順を直す", "D-15": "手順の YAML で使える操作の種類"}) } };
@@ -101,11 +101,11 @@ export const MarkdownPost: Story = { args: { post: {"id": "TH-1-1", "author": "a
 /** レビュー中の返信の Markdown。破線の枠の中で「起票してよい」を太字（`strong`）で描き、`**` は出ない */
 export const PendingMarkdown: Story = { args: { pending: {"id": "C-45", "thread": "TH-1", "target": null, "body": "**起票してよい**", "created": "2026-10-12T05:30:00+00:00", "loc": null} } };
 
-/** 改行で 8 行のレビュー中の返信。行の高さの 5 行分までを出し、本文の下の行に下向きの印と「続きを読む」を出す */
+/** 改行で 8 行のレビュー中の返信。行の高さの 5 行分までを出し、本文の下の行に下向きの印と「続きを表示」を出す */
 export const PendingFolded: Story = { args: { pending: {"id": "C-61", "thread": "TH-1", "target": null, "body": "挙げてもらった点に、優先する順を付けました。\n1. 概要のタイルの並びが毎回変わる\n2. 検討事項の表で列の幅が狭い\n3. タスクのボードで完了の列が長い\n4. 資料のカードの日付が読みにくい\n5. 用語集の別名の列が狭い\n6. 詳細パネルの本文の図が小さい\n7. 変更履歴の時点の並びが分かりにくい", "created": "2026-11-04T05:10:00+00:00", "loc": null} } };
 
 /** 開いたレビュー中の返信。全文を出し、本文の下の行に上向きの印と「折りたたむ」を出す（`aria-expanded="true"`） */
 export const PendingOpened: Story = { args: { pending: {"id": "C-61", "thread": "TH-1", "target": null, "body": "挙げてもらった点に、優先する順を付けました。\n1. 概要のタイルの並びが毎回変わる\n2. 検討事項の表で列の幅が狭い\n3. タスクのボードで完了の列が長い\n4. 資料のカードの日付が読みにくい\n5. 用語集の別名の列が狭い\n6. 詳細パネルの本文の図が小さい\n7. 変更履歴の時点の並びが分かりにくい", "created": "2026-11-04T05:10:00+00:00", "loc": null}, open: true } };
 
-/** 改行で 8 行の AI の書き込み。送った書き込みは畳まず全文を出し、「続きを読む」を出さない */
+/** 改行で 8 行の AI の書き込み。送った書き込みは畳まず全文を出し、「続きを表示」を出さない */
 export const LongAiPost: Story = { args: { post: {"id": "TH-1-2", "author": "ai", "body": "見直して気になった点を挙げます。\n1. 概要のタイルの並びが毎回変わる\n2. 検討事項の表で列の幅が狭い\n3. タスクのボードで完了の列が長い\n4. 資料のカードの日付が読みにくい\n5. 用語集の別名の列が狭い\n6. 詳細パネルの本文の図が小さい\n7. 変更履歴の時点の並びが分かりにくい", "created": "2026-11-04T01:24:00+00:00"} } };

@@ -25,7 +25,7 @@ from inject_session import PROC_DIR, process_started_at
 logger = logging.getLogger(__name__)
 
 # `{count}` に件数を入れて貼る 1 行。`[mindstella]` は `session` が利用者の発言と見分ける印
-INPUT_TEMPLATE = "[mindstella] ユーザーからのコメントが {count} 件届きました。読み直してください。"
+INPUT_TEMPLATE = "[mindstella] ユーザーからのコメントが {count} 件届きました。再読み込みしてください。"
 
 # 貼り付けの鍵を取ってから、生きているかの確かめと tmux の 3 つのコマンドを打ち切るまでの秒数
 PASTE_DEADLINE_SEC = 0.5

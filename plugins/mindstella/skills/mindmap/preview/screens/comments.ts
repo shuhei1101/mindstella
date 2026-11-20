@@ -1,7 +1,7 @@
 // コメントの一覧。見ている画面に重ねて左から出すパネルで、スレッドの一覧・スレッド 1 件・レビュー中の書き込みの 3 つの画面を切り替える。
 
 namespace MindmapPreview {
-  /** レビュー中の書き込み 1 件（新しいスレッドの最初の書き込みか、スレッドへの返信） */
+  /** レビュー中の書き込み 1 件（新規スレッドの最初の書き込みか、スレッドへの返信） */
   export type ReviewItem = ReviewState["items"][number];
 
   /** まとめて送った結果 */
@@ -23,7 +23,7 @@ namespace MindmapPreview {
   /** パネルの中に出す画面 */
   export type PanelView = "list" | "thread" | "review";
 
-  /** 開いているスレッド（`pending` が真なら `id` はまだ送っていない新しいスレッドのコメントの ID） */
+  /** 開いているスレッド（`pending` が真なら `id` はまだ送っていない新規スレッドのコメントの ID） */
   export type OpenedThread = { id: string; pending: boolean };
 
   /** 返信の入力の状態 */
@@ -45,7 +45,7 @@ namespace MindmapPreview {
     view: PanelView;
     /** ピン止めしているか（入口の `Prefs.commentsPinned`） */
     pinned: boolean;
-    /** レビュー中の書き込み（新しいスレッドと返信） */
+    /** レビュー中の書き込み（新規スレッドと返信） */
     items: ReviewItem[];
     /** パネルを開いている間に消した書き込み（元の場所に「元に戻す」を出す） */
     removed: ReviewItem[];
@@ -61,9 +61,9 @@ namespace MindmapPreview {
     target: string | null;
     /** 開いているスレッド */
     opened: OpenedThread | null;
-    /** 新しいスレッドの入力を出しているか */
+    /** 新規スレッドの入力を出しているか */
     composing: boolean;
-    /** 新しいスレッドの入力の引数（`target: null`・`label: "新しいスレッド"`） */
+    /** 新規スレッドの入力の引数（`target: null`・`label: "新規スレッド"`） */
     free: SendFormProps;
     /** 開いているスレッドの返信の入力の引数 */
     reply: ReplyState;
@@ -88,7 +88,7 @@ namespace MindmapPreview {
     selected: string | null;
     /** スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID（そのスレッドの書き込みの行を示す） */
     reviewFocus: string | null;
-    /** 項目のタイトル（記録から消えていれば null。押せない ID だけを出し、箇所を外すを出さない） */
+    /** 項目のタイトル（記録から消えていれば null。押せない ID だけを出し、箇所を解除を出さない） */
     titleOf: (id: string) => string | null;
     /** まとまりの説明（記録の `changes.sets` に無ければ null。あるまとまりを指す本文の `[文言](#diff=...)` を、まとまりのリンクにする） */
     changeSetOf: (id: string) => string | null;
@@ -109,9 +109,9 @@ namespace MindmapPreview {
       clearTag: () => void;
       /** 項目の絞り込みを外す */
       clearTarget: () => void;
-      /** 新しいスレッドの入力を出す（真）／畳む（偽） */
+      /** 新規スレッドの入力を出す（真）／畳む（偽） */
       compose: (open: boolean) => void;
-      /** スレッドを開く（まだ送っていない新しいスレッドはコメントの ID と `pending: true`） */
+      /** スレッドを開く（まだ送っていない新規スレッドはコメントの ID と `pending: true`） */
       openThread: (id: string, pending: boolean) => void;
       /** 項目を開く（本文の中の ID・スレッドの向けた項目。向けた項目の箇所があれば渡す） */
       openId: (id: string, loc?: Location) => void;
@@ -163,7 +163,7 @@ namespace MindmapPreview {
 
   /** 詳細パネルが行の修正・削除・元に戻すのために受け取る引数（コールバックはコメントの一覧と同じ形） */
   export type ReviewEditProps = {
-    /** その項目へのコメントのうち、消したもの（元の場所に「元に戻す」を出す） */
+    /** その項目へのコメントのうち、削除したもの（元の場所に「元に戻す」を出す） */
     removed: ReviewItem[];
     /** 本文を書き換えているコメントの ID（一覧と詳細パネルで 1 つ） */
     editing: string | null;
@@ -224,7 +224,7 @@ namespace MindmapPreview {
     return { open, closed: tagged.length - open, all: tagged.length };
   }
 
-  /** レビュー中の書き込みのうち、一覧の先頭に出す新しいスレッドの最初の書き込み（クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
+  /** レビュー中の書き込みのうち、一覧の先頭に出す新規スレッドの最初の書き込み（クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
   export function pendingThreads(items: ReviewItem[], filter: ThreadFilter, tag: string | null, target: string | null): ReviewItem[] {
     if (filter === "closed" || tag !== null) return [];
     return items.filter((item) => item.thread === null && (target === null || item.target === target));
@@ -249,10 +249,10 @@ namespace MindmapPreview {
   function outcomeContent({ result, checkedCount }: { result: SendOutcome | null; checkedCount: number }): Child[] | null {
     if (result === null) {
       // チェックが 0 件
-      return checkedCount === 0 ? [icon("alert"), h({ tag: "span", children: ["送る書き込みにチェックを付けてください。"] })] : null;
+      return checkedCount === 0 ? [icon("alert"), h({ tag: "span", children: ["送信する書き込みにチェックを付けてください。"] })] : null;
     }
     if (result.kind === "sending") {
-      return [h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), h({ tag: "span", children: ["送っています"] })];
+      return [h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), h({ tag: "span", children: ["送信しています"] })];
     }
     if (result.kind === "sent") {
       const time = result.at === undefined ? "" : formatJst(result.at).slice(-5);
@@ -264,15 +264,15 @@ namespace MindmapPreview {
           h({
             tag: "span",
             children: [
-              `${count} 件を送りましたが、Claude Code には入力できませんでした（${time}）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。`,
+              `${count} 件を送信しましたが、Claude Code には入力できませんでした（${time}）。送信した内容は保存されていて、次に話し合いを始めたときに取り込まれます。`,
             ],
           }),
         ];
       }
-      return [icon("check"), h({ tag: "span", children: [`${count} 件を送り、Claude Code に入力しました（${time}）。`] })];
+      return [icon("check"), h({ tag: "span", children: [`${count} 件を送信し、Claude Code に入力しました（${time}）。`] })];
     }
     if (result.kind === "stale") {
-      return [icon("alert"), h({ tag: "span", children: [`送れませんでした。送れない書き込みが ${result.count ?? 0} 件あります。`] })];
+      return [icon("alert"), h({ tag: "span", children: [`送信できませんでした。送信できない書き込みが ${result.count ?? 0} 件あります。`] })];
     }
     const detail = result.detail ?? null;
     return [
@@ -281,14 +281,14 @@ namespace MindmapPreview {
         tag: "span",
         children: [
           detail === null
-            ? "送れませんでした。サーバーが止まっています。立ち上げ直してから送ってください。"
-            : `送れませんでした。${detail}`,
+            ? "送信できませんでした。サーバーが止まっています。再起動してから送信してください。"
+            : `送信できませんでした。${detail}`,
         ],
       }),
     ];
   }
 
-  /** レビュー中の書き込みの読み上げの名前の頭（返信は「{スレッドの ID} への返信」、新しいスレッドは「{向けた項目の ID} へのコメント」） */
+  /** レビュー中の書き込みの読み上げの名前の頭（返信は「{スレッドの ID} への返信」、新規スレッドは「{向けた項目の ID} へのコメント」） */
   export function reviewLabel(item: ReviewItem): string {
     // 詳細パネルへ渡す行には `thread` を持たないものもある
     if (item.thread !== null && item.thread !== undefined) return `${item.thread} への返信`;
@@ -384,7 +384,7 @@ namespace MindmapPreview {
           if (field.value.trim() === "") {
             field.setAttribute("aria-invalid", "true");
             message.setAttribute("role", "alert");
-            message.replaceChildren(icon("alert"), "コメントを入れてから直してください。");
+            message.replaceChildren(icon("alert"), "コメントを入れてから修正してください。");
             field.focus();
             return;
           }
@@ -410,7 +410,7 @@ namespace MindmapPreview {
     return form;
   }
 
-  /** 行の右上に置く、鉛筆の印の「修正」とごみ箱の印の「削除」（コメントの一覧と詳細パネルが使う） */
+  /** 行の右上に置く、鉛筆のアイコンの「修正」とごみ箱のアイコンの「削除」（コメントの一覧と詳細パネルが使う） */
   export function reviewRowActions({
     item,
     focus,
@@ -477,15 +477,15 @@ namespace MindmapPreview {
     });
   }
 
-  /** 行の頭（返信は返信先のスレッドの状態の札と題、新しいスレッドは向けた項目） */
+  /** 行の頭（返信は返信先のスレッドの状態の札と題、新規スレッドは向けた項目） */
   function rowHead(item: ReviewItem, props: CommentsPanelProps): HTMLElement {
     const thread = item.thread === null ? undefined : props.threads.find((entry) => entry.id === item.thread);
-    // 新しいスレッド: 向けた項目
+    // 新規スレッド: 向けた項目
     if (item.thread === null) {
       return h({
         tag: "div",
         attrs: { class: "row-head" },
-        children: [h({ tag: "span", attrs: { class: "row-kind" }, children: ["新しいスレッド"] }), targetCell(item, props)],
+        children: [h({ tag: "span", attrs: { class: "row-kind" }, children: ["新規スレッド"] }), targetCell(item, props)],
       });
     }
     // 返信: 返信先のスレッド（読めていなければ ID だけ）
@@ -510,7 +510,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** 「スレッドを開く」の入口（新しいスレッドの行は、まだ送っていないそのスレッドを開く。クローズのスレッドへの返信の行は、そのスレッドを開く） */
+  /** 「スレッドを開く」の入口（新規スレッドの行は、まだ送っていないそのスレッドを開く。クローズのスレッドへの返信の行は、そのスレッドを開く） */
   function openThreadButton({ item, id, pending, className }: { item: ReviewItem; id: string; pending: boolean; className: string }, props: CommentsPanelProps): HTMLElement {
     return h({
       tag: "button",
@@ -590,12 +590,12 @@ namespace MindmapPreview {
                 attrs: { class: "row-stale row-blocked" },
                 children: [
                   icon("alert"),
-                  h({ tag: "span", children: ["クローズのスレッドへの返信は送れません。オープンに戻すと送れます。"] }),
+                  h({ tag: "span", children: ["クローズのスレッドへの返信は送信できません。オープンに戻すと送信できます。"] }),
                   openThreadButton({ item, id: item.thread, pending: false, className: "btn ghost" }, props),
                 ],
               })
               : null,
-            // 新しいスレッド: 開閉のボタンと、まだ送っていないそのスレッドを開く入口
+            // 新規スレッド: 開閉のボタンと、まだ送っていないそのスレッドを開く入口
             item.thread === null
               ? h({
                 tag: "div",
@@ -618,7 +618,7 @@ namespace MindmapPreview {
                     ? h({
                       tag: "button",
                       attrs: { class: "btn ghost", type: "button", "data-focus": `unloc:${item.id}`, onclick: () => props.on.unloc(item.id) },
-                      children: ["箇所を外す"],
+                      children: ["箇所を解除"],
                     })
                     : null,
                 ],
@@ -722,10 +722,10 @@ namespace MindmapPreview {
 
   /** スレッドを読めなかった理由の文言 */
   function threadsErrorText(error: { detail: string | null }): string {
-    return `スレッドを読めませんでした。${error.detail ?? "サーバーが止まっています。立ち上げ直してから開いてください。"}`;
+    return `スレッドを読めませんでした。${error.detail ?? "サーバーが止まっています。再起動してから開いてください。"}`;
   }
 
-  /** 一覧の下端の、新しいスレッドを立てる入口と入力 */
+  /** 一覧の下端の、新規スレッドを立てる入口と入力 */
   function newThreadBox(props: CommentsPanelProps): HTMLElement {
     if (!props.composing) {
       return h({
@@ -735,7 +735,7 @@ namespace MindmapPreview {
           h({
             tag: "button",
             attrs: { class: "btn", type: "button", "data-focus": "compose", onclick: () => props.on.compose(true) },
-            children: [icon("plus"), "新しいスレッド"],
+            children: [icon("plus"), "新規スレッド"],
           }),
         ],
       });
@@ -748,10 +748,10 @@ namespace MindmapPreview {
           tag: "div",
           attrs: { class: "talk-new-head" },
           children: [
-            h({ tag: "span", attrs: { class: "send-label" }, children: [props.target === null ? "新しいスレッド" : `${props.target} への新しいスレッド`] }),
+            h({ tag: "span", attrs: { class: "send-label" }, children: [props.target === null ? "新規スレッド" : `${props.target} への新規スレッド`] }),
             h({
               tag: "button",
-              attrs: { class: "icon-btn", type: "button", "aria-label": "新しいスレッドの入力を閉じる", "data-focus": "compose-close", onclick: () => props.on.compose(false) },
+              attrs: { class: "icon-btn", type: "button", "aria-label": "新規スレッドの入力を閉じる", "data-focus": "compose-close", onclick: () => props.on.compose(false) },
               children: [icon("x")],
             }),
           ],
@@ -785,7 +785,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** スレッドの一覧（絞り込みの帯・行・下端の新しいスレッド）を返す */
+  /** スレッドの一覧（絞り込みの帯・行・下端の新規スレッド）を返す */
   export function threadListView(props: CommentsPanelProps): HTMLElement[] {
     const { threads, items, filter, tag, target, on } = props;
     const counts = threadCounts(threads, tag, target);
@@ -843,7 +843,7 @@ namespace MindmapPreview {
         tag: "div",
         attrs: { class: "comments-body" },
         children: [
-          // 読めなかった理由は、並べる行の上に出す（まだ送っていない新しいスレッドは並べる）
+          // 読めなかった理由は、並べる行の上に出す（まだ送っていない新規スレッドは並べる）
           props.threadsError === null
             ? null
             : h({ tag: "p", attrs: { class: "send-msg failed", role: "alert" }, children: [icon("alert"), threadsErrorText(props.threadsError)] }),
@@ -1006,7 +1006,7 @@ namespace MindmapPreview {
     return h({
       tag: "p",
       attrs: { class: "send-msg failed th-action-msg", role: "alert" },
-      children: [icon("alert"), `${head}${detail ?? "サーバーが止まっています。立ち上げ直してから押してください。"}`],
+      children: [icon("alert"), `${head}${detail ?? "サーバーが止まっています。再起動してから押してください。"}`],
     });
   }
 
@@ -1037,7 +1037,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** まだ送っていない新しいスレッド（最初の書き込みをレビュー中の形で出し、状態を変えると返信の入力を出さない） */
+  /** まだ送っていない新規スレッド（最初の書き込みをレビュー中の形で出し、状態を変えると返信の入力を出さない） */
   function pendingThreadView(commentId: string, props: CommentsPanelProps): HTMLElement[] {
     const item = props.items.find((entry) => entry.id === commentId);
     const gone = props.removed.find((entry) => entry.id === commentId);
@@ -1073,12 +1073,12 @@ namespace MindmapPreview {
       h({
         tag: "div",
         attrs: { class: "comments-free" },
-        children: [h({ tag: "p", attrs: { class: "th-closed-note" }, children: [icon("edit"), "まだ送っていないスレッドです。"] })],
+        children: [h({ tag: "p", attrs: { class: "th-closed-note" }, children: [icon("edit"), "まだ送信していないスレッドです。"] })],
       }),
     ];
   }
 
-  /** スレッド 1 件（見出し・書き込みの並び・下端）を返す。まだ送っていない新しいスレッドも開く */
+  /** スレッド 1 件（見出し・書き込みの並び・下端）を返す。まだ送っていない新規スレッドも開く */
   export function threadView(props: CommentsPanelProps): HTMLElement[] {
     const { opened } = props;
     if (opened !== null && opened.pending) return pendingThreadView(opened.id, props);
@@ -1179,7 +1179,7 @@ namespace MindmapPreview {
                 disabled: checkedCount === 0 || sending,
                 onclick: () => on.send(),
               },
-              children: [icon("send"), `まとめて送る（${checkedCount} 件）`],
+              children: [icon("send"), `まとめて送信（${checkedCount} 件）`],
             }),
           h({ tag: "p", attrs: { class: `send-msg${result === null ? "" : ` ${result.kind}`}`, role: "status" }, children: message ?? [] }),
         ],

@@ -6,7 +6,7 @@ import { cn } from "@/shared/lib/cn";
 /** 書き手の呼び名 */
 export const AUTHOR_LABELS = { user: "あなた", ai: "AI" } as const;
 
-/** 状態の札の種類（レビュー中は、まだ送っていない新しいスレッド） */
+/** 状態の札の種類（レビュー中は、まだ送っていない新規スレッド） */
 export type ThreadStateKind = Thread["status"] | "pending";
 
 /** 状態の札の印と文言 */

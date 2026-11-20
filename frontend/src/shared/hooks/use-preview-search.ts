@@ -21,7 +21,7 @@ declare module "@tanstack/react-router" {
 /** search の変更 */
 type Patch = Partial<PreviewSearch>;
 
-/** 音声入力の入力欄の画面（詳細パネル・詳細の全画面の項目か、コメントの一覧のスレッドか新しいスレッド） */
+/** 音声入力の入力欄の画面（詳細パネル・詳細の全画面の項目か、コメントの一覧のスレッドか新規スレッド） */
 export type VoiceTarget = { item: string; full: boolean } | { thread: string | null } | { review: true };
 
 /** search と操作 */

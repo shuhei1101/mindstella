@@ -896,7 +896,7 @@ def _remove_items(staged: Staged, edits: list[PendingEdit]) -> tuple[Staged, lis
 
 
 def _remove_staged(staged: Staged, item_id: str) -> Staged:
-    """1 項目をメモリの上の並びと本文から消し、消した項目をまだまとめていない変更に記録する。"""
+    """1 項目をメモリの上の並びと本文から消し、削除した項目をまだまとめていない変更に記録する。"""
     workspace = replace(staged.workspace, items=staged.items)
     ref = find_item(workspace, item_id)
     record, seq = advance_seq(staged.changes)
