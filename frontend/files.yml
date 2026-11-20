@@ -870,6 +870,16 @@ files:
   related:
   - to: MOD-489-64
     type: implements
+- path: src/shared/components/confirmed-toggle.stories.tsx
+  name: 確認済みの切り替えのストーリー
+  description: 確認済みの切り替えのストーリー。
+  tags:
+  - tool:react
+- path: src/shared/components/confirmed-toggle.tsx
+  name: 確認済みの切り替え
+  description: 確認済みの切り替え。
+  tags:
+  - tool:react
 - path: src/shared/components/diff-mark.stories.tsx
   name: 差分の印のストーリー
   description: 差分の印のストーリー。
