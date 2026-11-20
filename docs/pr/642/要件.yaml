@@ -157,3 +157,6 @@ scope_out:
   - item: 結合テスト test_error_when_host_not_local の fail（作成を断った後にも GET /settings/sources が届く）
     reason: develop（642fb1e4）でも同じく fail する既存の不具合で、要望に含まれない
     plan: '#575'
+  - item: 結合テスト test_normal_when_body_table_and_sections（表の ID の列がピン止めされない）・test_normal_when_real_project_index（実物の project-index がスキーマのファイルを見つけられない）の fail
+    reason: develop（642fb1e4）でも同じく fail する既存の不具合で、要望に含まれない
+    plan: '#643'
