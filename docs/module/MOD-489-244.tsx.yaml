@@ -25,7 +25,6 @@ components:
         required: true
         description: ドロワーを閉じる
     refs:
-      - SCR-489-35#
       - IF-489-70#
     unit_tests:
       - name: test_graph_screen
