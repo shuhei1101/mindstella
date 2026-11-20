@@ -63,4 +63,21 @@
      ;;
    *)
      echo "start か stop を渡してください: $ACTION"
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/44713 → mindstella-3
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/46255 → mindstella
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/46441 → mindstella-2
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/50797 → mindstella
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/51059 → mindstella
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/51457 → mindstella
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/56992 → mindstella-2
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/57330 → mindstella
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/57728 → mindstella-3
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/57920 → mindstella-5
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/58218 → mindstella-8
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/58250 → mindstella-7
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/58392 → mindstella
+古い控え: /home/shuhei2441/.local/state/mindstella-gw-hook/58524 → mindstella-4
+常駐サーバーの停止: changed
+古い控えの取り下げ: changed
 フックの書き換え: changed
+常駐サーバーの起動: changed
