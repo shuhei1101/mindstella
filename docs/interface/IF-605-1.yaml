@@ -16,10 +16,10 @@ constraints:
     constraint: 待ち受けを始める前に ID の一覧の再作成 → 状態の照合。再作成した ID の一覧のワークスペースも照合する。エージェントフローの配信元の確認は待ち受けを始めた後に行う
     notes: 資料 A-119 の「常駐サーバーが起動した」の行で、待ち受けの前に要るのは ID の一覧（MCP と API がワークスペースを扱う前提）と状態の照合だけ。ID の一覧がある普段の起動は、待ち受けの前に project-index を呼ばない
   - item: 配信元の行の取得
-    constraint: project-index の `GET /settings/sources` で取得する。ID の一覧の再作成（`workspaces.yaml` が無いときだけ、待ち受けの前に 1 回）とエージェントフローの配信元の確認（待ち受けの後に 1 回）で別々に呼ぶ。応答の行のキーは camelCase（`outsideRead`）。行の `config` は文字列か文字列の並びで、並びのときは先頭の要素を行の `config` として扱う（『ワークスペースの作成』と同じ）
+    constraint: project-index の `GET /settings/sources` で取得する。ID の一覧の再作成（`workspaces.yaml` が無いときだけ、待ち受けの前に 1 回）とエージェントフローの配信元の確認（待ち受けの後に 1 回）と、ID の一覧のワークスペースの配り始め（待ち受けの後に 1 回。インターフェース定義『プレビューの配信』の制約「配るワークスペース」）で別々に呼ぶ。応答の行のキーは camelCase（`outsideRead`）。行の `config` は文字列か文字列の並びで、並びのときは先頭の要素を行の `config` として扱う（『ワークスペースの作成』と同じ）
     notes: 端末の設定のファイルを直接参照しない（行の書き込みも読み取りも project-index の API で行う。D-300）
   - item: project-index の失敗
-    constraint: 待ち受けの前の `GET` が失敗した（つながらない・200 以外・上限で打ち切った）ときは ID の一覧の再作成を飛ばし、待ち受けの後の `GET`・`PATCH` が失敗したときはエージェントフローの配信元の確認を飛ばす。どちらも飛ばした処理と失敗の理由をログに 1 行記録する。状態の照合は行う。409 の再送信のほかは、次の起動まで再試行しない
+    constraint: 待ち受けの前の `GET` が失敗した（つながらない・200 以外・上限で打ち切った）ときは ID の一覧の再作成を飛ばし、待ち受けの後の `GET`・`PATCH` が失敗したときはエージェントフローの配信元の確認を飛ばし、配り始めの `GET` が失敗したときは配り始めを飛ばす（`preview_url` で配れる）。どちらも飛ばした処理と失敗の理由をログに 1 行記録する。状態の照合は行う。409 の再送信のほかは、次の起動まで再試行しない
   - item: 待ち受けの前の `GET` の上限
     constraint: 5 秒。外側の『常駐サーバーの起動の確認』が待ち受けを待つ上限 10 秒に、内側の待ち（SDK を読み込んで待ち受けるまでの約 1 秒 + この `GET`）と余裕（内側の待ちの合計の 50%）を収める（(1 + 5) × 1.5 = 9 ≤ 10）。待ち受けるまでの時間は WSL での目安で、結合テストで測る
     notes: 外側の上限は『常駐サーバーの起動の確認』の制約「起動を待つ上限」。導き方は規約『資源の値の決め方』の「入れ子の待ち」
@@ -68,7 +68,7 @@ flows:
     expected:
       - 待ち受けを始めたときには、B の `session.json` の `status` が `crashed`、A の `status` が `stopped` のまま
       - Webhook の Mock が、止まった理由が異常終了の B の要求を 1 件だけ受けている
-      - project-index の Mock が受けた `GET /settings/sources` が、『停止の通知』が B の行を引く 1 件と待ち受けの後の確認の 1 件の 2 件だけで（ID の一覧があるので再作成の GET は無い）、`PATCH` を受けていない
+      - project-index の Mock が受けた `GET /settings/sources` が、『停止の通知』が B の行を引く 1 件と、待ち受けの後の確認の 1 件と、配り始めの 1 件の 3 件だけで（ID の一覧があるので再作成の GET は無い）、`PATCH` を受けていない
       - '`workspaces.yaml` が起動の前と同じ'
     test: test_normal
     notes:
@@ -101,7 +101,7 @@ flows:
       - '`workspaces.yaml` の `ids` が端末の設定の並び順の A・B・C で、ワークスペースでない行と `mindstella-agent-flows` を含まない'
       - B の `session.json` の `status` が `crashed`
       - '`GET /workspaces` が A・B を返却する（C はクローズ済み）'
-      - project-index の Mock が `GET /settings/sources` を 2 件受けている（待ち受けの前の再作成と、待ち受けの後の確認。Webhook を指定しないので『停止の通知』は行を引かない）
+      - project-index の Mock が `GET /settings/sources` を 3 件受けている（待ち受けの前の再作成と、待ち受けの後の確認と、配り始め。Webhook を指定しないので『停止の通知』は行を引かない）
     test: test_normal_when_ids_missing
   - name: 正常系（プラグインを更新した後）
     summary: mindstella-agent-flows の行の config を今のプラグインのパスへ書き換える

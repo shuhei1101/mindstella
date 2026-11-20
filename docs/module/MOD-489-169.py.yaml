@@ -189,7 +189,8 @@ classes:
         process: |-
           1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない・フックを呼ばない）
           2. ワークスペースの ID を引く（『変更の検知』の `workspace_id_of`）
-             - `_by_id` に別のフォルダがある場合、ID と配っているフォルダを持った `WorkspaceIdConflictError` を送出する（配らない・フックを呼ばない）
+             - `_by_id` に別のフォルダがあり、そのフォルダに同じ ID の記録（`.mindstella/config.yaml`）が残っている場合、ID と配っているフォルダを持った `WorkspaceIdConflictError` を送出する（配らない・フックを呼ばない）
+             - `_by_id` に別のフォルダがあり、そのフォルダに同じ ID の記録が無い（フォルダを移した）場合、前のフォルダの配信の文脈と変更の検知を台帳から除外して手元に取り、続ける。手元の変更の検知の `ChangeDetector.stop` と終了時のフック（`_external.stop_hook` があれば、`_port`・前のフォルダの名前・画面のパス）は、`_guard` を放してから呼ぶ
           3. `config.yaml` を検査する（設定の検査。`check_settings`）
              - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送出する（配らない）
           4. 読んだ設定を初めの値に、`root`・ID・`_port`・`_write_lock`・`_external.allowed_hosts`・`_input_targets`・`_transcriber` で `ServeContext` を作り、`_servers` と `_by_id` に入れる
@@ -223,6 +224,12 @@ classes:
             mock: '`run_hook`（受け取った引数を記録する）'
             expected: '`WorkspaceIdConflictError`（メッセージに ID と A のパス）で、台帳は A だけ、`run_hook` は A の 1 回だけ'
             exception: ワークスペースの ID の重なり
+          - name: test_start_when_folder_moved
+            case: 正常
+            summary: 配っているフォルダを移した先を配ると、前のフォルダの配信をやめて移した先を配る
+            condition: '`external=ExternalAccess(start_hook=("start",), stop_hook=("stop",))` の台帳で作成済みのワークスペース A を `start` し、A のフォルダを別のパスへ改名してから、改名した先を `start` する'
+            mock: '`run_hook`（受け取った引数を記録する）・`ChangeDetector`'
+            expected: 2 回目が `(url, True)` で URL が 1 回目と同じ。`context_of(ID)` の `root` が改名した先で、前のフォルダの変更の検知の `stop` が呼ばれ、`run_hook` が A の起動・前のフォルダの終了・改名した先の起動の順に 3 回
       - name: context_of
         title: 配信の文脈を引く
         kind: メソッド
