@@ -13,9 +13,9 @@ items:
   - page: CMP-489-48.tsx.yaml
     summary: "React のプレビューの表。今の表と同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-31.ts.yaml
-    summary: "差分の表示の間、足した項目に新規（+）、変えた項目に変更（●）、消した項目に消した（−）の印"
+    summary: "差分の表示の間、追加した項目に新規（+）、変えた項目に変更（●）、削除した項目に削除した（−）の記号"
   - page: CMP-489-32.tsx.yaml
-    summary: "React のプレビューの差分の印。今の差分の印と同じ引数・イベント・状態を props で持つ"
+    summary: "React のプレビューの差分のマーカー。今の差分のマーカーと同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-25.ts.yaml
     summary: "差分の表示で比べる時点を選ぶモーダル"
   - page: CMP-489-26.tsx.yaml
@@ -29,7 +29,7 @@ items:
   - page: CMP-489-8.tsx.yaml
     summary: "React のプレビューのコメントの入力。今のコメントの入力と同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-57.ts.yaml
-    summary: "本文の文章か項目の値を選んだときに、選んだ範囲の始まりの上に出す、印だけの丸い入口"
+    summary: "本文の文章か項目の値を選んだときに、選んだ範囲の始まりの上に出す、マーカーだけの丸い入口"
   - page: CMP-489-58.tsx.yaml
     summary: "React のプレビューの選んだ箇所のコメントの入口。今の選んだ箇所のコメントの入口と同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-49.ts.yaml
@@ -47,11 +47,11 @@ items:
   - page: CMP-489-9.ts.yaml
     summary: "レビュー中のコメントを書いた項目に出す、吹き出しと件数の小さなピル"
   - page: CMP-489-10.tsx.yaml
-    summary: "React のプレビューのコメントの印。今のコメントの印と同じ引数・イベント・状態を props で持つ"
+    summary: "React のプレビューのコメントのマーカー。今のコメントのマーカーと同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-43.ts.yaml
-    summary: "差分の表示の間、選んだ時点で消した項目を一覧の上に消した印・ID・タイトルで並べる帯"
+    summary: "差分の表示の間、選んだ時点で削除した項目を一覧の上に削除したマーカー・ID・タイトルで並べる帯"
   - page: CMP-489-44.tsx.yaml
-    summary: "React のプレビューの消した項目の帯。今の消した項目の帯と同じ引数・イベント・状態を props で持つ"
+    summary: "React のプレビューの削除した項目の帯。今の削除した項目の帯と同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-23.ts.yaml
     summary: "取り下げた調査・資料・用語集・メモ・会話ログのタイトルの右に置く、枠付きの × と「取り下げ」の札"
   - page: CMP-489-24.tsx.yaml
@@ -67,15 +67,15 @@ items:
   - page: CMP-489-4.tsx.yaml
     summary: "React のプレビューのHTMLの本文の枠。今のHTMLの本文の枠と同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-1.ts.yaml
-    summary: "HTML の本文と埋め込んだ HTML の範囲の差分を、描いた結果の印と原文の差分で切り替えて見せる"
+    summary: "HTML の本文と埋め込んだ HTML の範囲の差分を、描いた結果のマーカーと原文の差分で切り替えて見せる"
   - page: CMP-489-2.tsx.yaml
     summary: "React のプレビューのHTMLの本文の差分。今のHTMLの本文の差分と同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-35.ts.yaml
-    summary: "本文の印に一致した用語・資料・調査を、種類ごとの見出しと区切り線で印の上に並べるツールチップ"
+    summary: "本文のマーカーに一致した用語・資料・調査を、種類ごとの見出しと区切り線でマーカーの上に並べるツールチップ"
   - page: CMP-489-36.tsx.yaml
-    summary: "React のプレビューの本文の印のツールチップ。今の本文の印のツールチップと同じ引数・イベント・状態を props で持つ"
+    summary: "React のプレビューの本文のマーカーのツールチップ。今の本文のマーカーのツールチップと同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-13.ts.yaml
-    summary: "スレッドの一覧の 1 行。状態の札・題・向けた項目・最後の書き手と日時・レビュー中の印・タグ"
+    summary: "スレッドの一覧の 1 行。状態の札・タイトル・向けた項目・最後の書き手と日時・レビュー中のマーカー・タグ"
   - page: CMP-489-14.tsx.yaml
     summary: "React のプレビューのスレッドの行。今のスレッドの行と同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-11.ts.yaml
@@ -87,7 +87,7 @@ items:
   - page: CMP-489-56.tsx.yaml
     summary: "React のプレビューの返信の入力。今の返信の入力と同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-29.ts.yaml
-    summary: "差分の表示の間、詳細の本文のスクロールバーの外側に変わった箇所の印を並べ、押す・ドラッグで本文を送る縦の帯"
+    summary: "差分の表示の間、詳細の本文のスクロールバーの外側に変わった箇所のマーカーを並べ、押す・ドラッグで本文をスクロールする縦の帯"
   - page: CMP-489-30.tsx.yaml
     summary: "React のプレビューの差分のミニマップ。今の差分のミニマップと同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-37.ts.yaml
@@ -99,15 +99,15 @@ items:
   - page: CMP-489-28.tsx.yaml
     summary: "React のプレビューの左右に並べた本文の差分。今の左右に並べた本文の差分と同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-21.ts.yaml
-    summary: "保存待ちの編集がある項目・キー・案に、破線の枠に重ねた紙の印と「保存待ち」「保存で削除」「書き込めない」を出す札"
+    summary: "保存待ちの編集がある項目・キー・案に、破線の枠に重ねた紙のアイコンと「保存待ち」「保存で削除」「書き込めない」を出す札"
   - page: CMP-489-22.tsx.yaml
-    summary: "React のプレビューの保存待ちの印。今の保存待ちの印と同じ引数・イベント・状態を props で持つ"
+    summary: "React のプレビューの保存待ちのマーカー。今の保存待ちのマーカーと同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-5.ts.yaml
     summary: "描いた Markdown の本文に、セクションの折りたたみ、コードブロックの札とコピー、Alert の囲みを当てる"
   - page: CMP-489-6.tsx.yaml
     summary: "React のプレビューのMarkdownの本文。今のMarkdownの本文と同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-41.ts.yaml
-    summary: "レビュー中の書き込みの本文を見た目の 5 行までに畳み、超えるときだけ「続きを読む」「折りたたむ」を出す"
+    summary: "レビュー中の書き込みの本文を見た目の 5 行までに畳み、超えるときだけ「続きを表示」「折りたたむ」を出す"
   - page: CMP-489-42.tsx.yaml
     summary: "React のプレビューの本文の折りたたみ。今の本文の折りたたみと同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-53.ts.yaml
