@@ -62,3 +62,5 @@ functions:
 refs:
   - IF-489-52#
   - MOD-489-164#
+test_files:
+  - tests/unit/scripts/test_remove_preview_port.py
