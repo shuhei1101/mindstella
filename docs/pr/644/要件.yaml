@@ -1,0 +1,80 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: サーバーが配るプレビューを開くと React の画面が開く。今の画面と、React の画面を別の場所で並べて配る形をやめ、示す URL を React の画面の URL にする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: changed
+    detail: 配る書き出しの 1 枚の HTML を React の画面で作り、ネットにつながらない端末で開いても React の画面で記録を読める
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-10.yaml
+    impact: following
+    detail: 外から開くプレビューも React の画面になることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-2.yaml
+    impact: following
+    detail: README に書くプレビューの URL が React の画面の URL になることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: following
+    detail: 外部のアプリが受け取る画面の URL が React の画面の URL になることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: following
+    detail: 開いた画面・項目・選んだ時点を残す URL が React の画面の URL になることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-39.yaml
+    impact: run_only
+    detail: 資料を書き出す操作が React の画面だけになっても同じ結果になる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-9.yaml
+    impact: run_only
+    detail: 開発の依存（今の Storybook）を外しても、利用者の入れ方でプラグインを入れて起動できる
+    depends_on: []
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 画面の説明・URL・操作を React の画面に合わせる
+    status: todo
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: プレビューの URL・配る書き出しの説明を React の画面に合わせる
+    status: todo
+  - page: docs/guide/セットアップ手順-プレビューを外から見る.md
+    new: false
+    change: 外から開く URL のパスを React の画面に合わせる
+    status: todo
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    new: false
+    change: 示されるプレビューの URL の例を React の画面に合わせる
+    status: todo
+  - page: docs/test-procedure/TP-489-1.yaml
+    new: false
+    change: 今の Storybook（`.storybook/`）とそのテスト・今の画面の tsc のビルドのコマンドを削除する
+    status: todo
+  - page: plugins/mindstella/skills/mindmap/preview/licenses/README.md
+    new: false
+    change: 配る書き出しに含めるライブラリとライセンスの表示を React のビルドに合わせる
+    status: todo
+scope_out:
+  - item: E2E（`tests/e2e/`）を React の画面に合わせる
+    reason: 0.x の間は E2E を合わせないと決めている（D-297 A。計画の行の概要に記載済み）
+    plan: none
+  - item: 今の画面のモック（`docs/mock/`）の削除
+    reason: モックは各作業 PR で合意した案の記録で、画面の実装・テストから参照しない。要望に削除が無い（含めるかはレビューで確定する）
+    plan: none
+  - item: React の Storybook の設定フォルダ（`.storybook-react/`）を `.storybook/` へ改名する
+    reason: 要望は今の設定の削除だけで、改名しても振る舞いは変わらない（含めるかはレビューで確定する）
+    plan: none
