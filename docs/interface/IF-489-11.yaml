@@ -2,7 +2,7 @@ id: IF-489-11
 title: "スレッドの読み取り"
 entry:
   kind: endpoint
-  value: GET /api/threads
+  value: GET /w/{workspace}/api/threads
 flows:
   - name: 正常系
     summary: 全てのスレッドを書き込みと状態の記録ごと返し、AI の既読は変えない
@@ -15,7 +15,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/threads
+        participant IF as GET /w/{workspace}/api/threads
         participant WS as ワークスペース
 
         クライアント->>IF: GET
@@ -40,7 +40,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/threads
+        participant IF as GET /w/{workspace}/api/threads
 
         クライアント->>IF: GET
         IF-->>クライアント: 200、JSON（threads は空）
@@ -60,7 +60,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/threads
+        participant IF as GET /w/{workspace}/api/threads
 
         クライアント->>IF: GET
         IF-->>クライアント: 422

@@ -2,7 +2,7 @@ id: IF-489-41
 title: 文字起こしの可否
 entry:
   kind: endpoint
-  value: GET /api/transcription
+  value: GET /w/{workspace}/api/transcription
 flows:
   - name: 正常系
     summary: 文字起こしのサービスに届き、使えることと用語集のプリセットの候補を返す
@@ -11,7 +11,7 @@ flows:
         description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `done` と「案 A にする」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送信する'
       - name: make_workspace
         description: '`config.yaml` の `transcription` が `{action: send, preset: 開発}` のワークスペース'
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  participant WS as ワークスペース\n  \n  クライアント->>IF: GET\n  IF-->>WS: config.yaml の transcription を読む\n  IF->>TR: 用語集のプリセットの一覧を読む\n  TR-->>IF: presets\n  IF-->>クライアント: 200、JSON（available・reason・presets・action・preset）\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /w/{workspace}/api/transcription\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  participant WS as ワークスペース\n  \n  クライアント->>IF: GET\n  IF-->>WS: config.yaml の transcription を読む\n  IF->>TR: 用語集のプリセットの一覧を読む\n  TR-->>IF: presets\n  IF-->>クライアント: 200、JSON（available・reason・presets・action・preset）\n```"
     expected:
       - ステータスが 200 で、`available` が `true`、`reason` が `null`
       - '`presets` が `["一般", "開発"]`'
@@ -24,7 +24,7 @@ flows:
         description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `done` と「案 A にする」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送信する'
       - name: make_workspace
         description: '`config.yaml` が `transcription` を持たないワークスペース'
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  \n  クライアント->>IF: GET\n  IF-->>クライアント: 200、action=review・preset=null\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /w/{workspace}/api/transcription\n  \n  クライアント->>IF: GET\n  IF-->>クライアント: 200、action=review・preset=null\n```"
     expected:
       - ステータスが 200 で、`action` が `review`、`preset` が `null`
     test: test_normal_when_not_configured
@@ -35,7 +35,7 @@ flows:
         description: 偽のサーバーを立てず、`MINDSTELLA_TRANSCRIBER_URL` に誰も待ち受けていないポートの URL を入れて常駐サーバーを立てる。`preview_url` を呼び、返った URL へ HTTP のクライアントで送信する
       - name: make_workspace
         description: 作成を済ませたワークスペース
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  participant TR as 文字起こしのサービス（止まっている）\n  \n  クライアント->>IF: GET\n  IF->>TR: 用語集のプリセットの一覧を読む\n  TR--xIF: つながらない\n  IF-->>クライアント: 200、available=false・reason=stopped・presets=[]\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /w/{workspace}/api/transcription\n  participant TR as 文字起こしのサービス（止まっている）\n  \n  クライアント->>IF: GET\n  IF->>TR: 用語集のプリセットの一覧を読む\n  TR--xIF: つながらない\n  IF-->>クライアント: 200、available=false・reason=stopped・presets=[]\n```"
     expected:
       - ステータスが 200 で、`available` が `false`、`reason` が `stopped`、`presets` が空
       - '`detail` が「文字起こしのサービスが起動していないため、音声で入力できません。」で、`voice-paste` を含まない'
@@ -47,7 +47,7 @@ flows:
         description: '`/web/` の下の全てに 404 を返す偽のサーバーを立て、`MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて常駐サーバーを立てる。`preview_url` を呼び、返った URL へ HTTP のクライアントで送信する'
       - name: make_workspace
         description: 作成を済ませたワークスペース
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: GET\n  IF->>TR: 用語集のプリセットの一覧を読む\n  TR-->>IF: 音声を受け付けるエンドポイントが無い\n  IF-->>クライアント: 200、available=false・reason=unsupported\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /w/{workspace}/api/transcription\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: GET\n  IF->>TR: 用語集のプリセットの一覧を読む\n  TR-->>IF: 音声を受け付けるエンドポイントが無い\n  IF-->>クライアント: 200、available=false・reason=unsupported\n```"
     expected:
       - ステータスが 200 で、`available` が `false`、`reason` が `unsupported`、`presets` が空
       - '`detail` が「文字起こしのサービスが音声の受け付けに対応していないため、音声で入力できません。」'

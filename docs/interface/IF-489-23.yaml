@@ -2,7 +2,7 @@ id: IF-489-23
 title: "レビュー中のコメントの読み取り"
 entry:
   kind: endpoint
-  value: GET /api/comments
+  value: GET /w/{workspace}/api/comments
 flows:
   - name: 正常系
     summary: レビュー中のコメントを溜めた順に、下書きと一緒に返す
@@ -15,10 +15,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/comments
+        participant IF as GET /w/{workspace}/api/comments
         participant WS as ワークスペース
 
-        クライアント->>IF: GET /api/comments
+        クライアント->>IF: GET /w/{workspace}/api/comments
         IF-->>WS: comments.yaml・drafts.yaml・項目を読む
         IF-->>クライアント: 200、JSON（items・drafts）
       ```
@@ -39,9 +39,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/comments
+        participant IF as GET /w/{workspace}/api/comments
 
-        クライアント->>IF: GET /api/comments
+        クライアント->>IF: GET /w/{workspace}/api/comments
         IF-->>クライアント: 200、items と drafts が空
       ```
     expected:
@@ -59,10 +59,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/comments
+        participant IF as GET /w/{workspace}/api/comments
         participant WS as ワークスペース
 
-        クライアント->>IF: GET /api/comments
+        クライアント->>IF: GET /w/{workspace}/api/comments
         IF-->>WS: comments.yaml を読む
         IF->>IF: スキーマと突き合わせて合わない
         IF-->>クライアント: 422

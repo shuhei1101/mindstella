@@ -2,7 +2,7 @@ id: IF-489-51
 title: "記録の取得"
 entry:
   kind: endpoint
-  value: GET /api/records
+  value: GET /w/{workspace}/api/records
 flows:
   - name: 正常系
     summary: 全ての種類と本文と導いた値を返す
@@ -15,10 +15,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/records
+        participant IF as GET /w/{workspace}/api/records
         participant WS as ワークスペース
 
-        クライアント->>IF: GET /api/records
+        クライアント->>IF: GET /w/{workspace}/api/records
         IF-->>WS: 全ての YAML と docs/ を読む
         IF-->>クライアント: 200、JSON
       ```
@@ -39,13 +39,13 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/records
+        participant IF as GET /w/{workspace}/api/records
         participant T as add（MCP のツール）
 
-        クライアント->>IF: GET /api/records
+        クライアント->>IF: GET /w/{workspace}/api/records
         IF-->>クライアント: D-1 だけ
         クライアント->>T: add workspace kind decision（D-2）
-        クライアント->>IF: GET /api/records
+        クライアント->>IF: GET /w/{workspace}/api/records
         IF-->>クライアント: D-1・D-2
       ```
     expected:
@@ -63,10 +63,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/records
+        participant IF as GET /w/{workspace}/api/records
         participant WS as ワークスペース
 
-        クライアント->>IF: GET /api/records
+        クライアント->>IF: GET /w/{workspace}/api/records
         IF-->>WS: 全ての YAML と changes.yaml と docs/ を読む
         IF-->>クライアント: 200、JSON
       ```
@@ -87,10 +87,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/records
+        participant IF as GET /w/{workspace}/api/records
         participant WS as ワークスペース
 
-        クライアント->>IF: GET /api/records
+        クライアント->>IF: GET /w/{workspace}/api/records
         IF-->>WS: 全ての YAML を読む
         IF->>IF: スキーマと突き合わせて合わない
         IF-->>クライアント: 422
@@ -110,10 +110,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/records
+        participant IF as GET /w/{workspace}/api/records
         participant WS as ワークスペース
 
-        クライアント->>IF: GET /api/records
+        クライアント->>IF: GET /w/{workspace}/api/records
         IF-->>WS: 全ての YAML を読む
         IF->>IF: config.yaml だけが合わない
         IF-->>クライアント: 200、最後に通った設定と合わない箇所
@@ -135,10 +135,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/records
+        participant IF as GET /w/{workspace}/api/records
         participant WS as ワークスペース
 
-        クライアント->>IF: GET /api/records
+        クライアント->>IF: GET /w/{workspace}/api/records
         IF-->>WS: 全ての YAML と docs/ を読む
         IF->>IF: HTML の本文に行のマーカーを追加する
         IF-->>クライアント: 200、JSON
@@ -161,10 +161,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/records
+        participant IF as GET /w/{workspace}/api/records
         participant GH as GitHub の API
 
-        クライアント->>IF: GET /api/records
+        クライアント->>IF: GET /w/{workspace}/api/records
         IF-->>GH: develop の先頭の commit の SHA
         IF-->>クライアント: 200、JSON
       ```

@@ -2,7 +2,7 @@ id: IF-489-22
 title: "レビュー中のコメントの書き換え"
 entry:
   kind: endpoint
-  value: PATCH /api/comments/{id}
+  value: PATCH /w/{workspace}/api/comments/{id}
 flows:
   - name: 正常系
     summary: 本文を書き換え、並びとほかのキーは変えない
@@ -11,15 +11,15 @@ flows:
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）・C-2 を持つワークスペース
-        notes: '`PATCH /api/comments/C-1` に `{body: 案 A に決める}`'
+        notes: '`PATCH /w/{workspace}/api/comments/C-1` に `{body: 案 A に決める}`'
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/comments/{id}
+        participant IF as PATCH /w/{workspace}/api/comments/{id}
         participant WS as ワークスペース
 
-        クライアント->>IF: PATCH /api/comments/C-1 {body}
+        クライアント->>IF: PATCH /w/{workspace}/api/comments/C-1 {body}
         IF->>WS: comments.yaml の C-1 を書き換える
         IF-->>クライアント: 200
       ```
@@ -39,10 +39,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/comments/{id}
+        participant IF as PATCH /w/{workspace}/api/comments/{id}
         participant WS as ワークスペース
 
-        クライアント->>IF: PATCH /api/comments/C-1 {loc: null}
+        クライアント->>IF: PATCH /w/{workspace}/api/comments/C-1 {loc: null}
         IF->>WS: C-1 の loc を削除する
         IF-->>クライアント: 200
       ```
@@ -62,9 +62,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/comments/{id}
+        participant IF as PATCH /w/{workspace}/api/comments/{id}
 
-        クライアント->>IF: PATCH /api/comments/C-1 {body: 空白}
+        クライアント->>IF: PATCH /w/{workspace}/api/comments/C-1 {body: 空白}
         IF-->>クライアント: 400
       ```
     expected:
@@ -83,7 +83,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/comments/{id}
+        participant IF as PATCH /w/{workspace}/api/comments/{id}
 
         クライアント->>IF: PATCH（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -99,14 +99,14 @@ flows:
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: レビュー中のコメント C-1 だけを持つワークスペース
-        notes: '`PATCH /api/comments/C-9`'
+        notes: '`PATCH /w/{workspace}/api/comments/C-9`'
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/comments/{id}
+        participant IF as PATCH /w/{workspace}/api/comments/{id}
 
-        クライアント->>IF: PATCH /api/comments/C-9
+        クライアント->>IF: PATCH /w/{workspace}/api/comments/C-9
         IF-->>クライアント: 404
       ```
     expected:

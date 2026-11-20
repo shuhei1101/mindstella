@@ -2,7 +2,7 @@ id: IF-489-31
 title: "保存待ちの編集をまとめて保存"
 entry:
   kind: endpoint
-  value: POST /api/edits/save
+  value: POST /w/{workspace}/api/edits/save
 flows:
   - name: 正常系
     summary: 検討事項のキー・案・採用の編集を当て、編集した人を利用者にして 1 つのまとまりにする
@@ -16,7 +16,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits/save
+        participant IF as POST /w/{workspace}/api/edits/save
         participant WS as ワークスペース
 
         クライアント->>IF: POST
@@ -44,7 +44,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits/save
+        participant IF as POST /w/{workspace}/api/edits/save
         participant WS as ワークスペース
 
         クライアント->>IF: POST
@@ -70,7 +70,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits/save
+        participant IF as POST /w/{workspace}/api/edits/save
         participant WS as ワークスペース
 
         クライアント->>IF: POST
@@ -95,7 +95,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits/save
+        participant IF as POST /w/{workspace}/api/edits/save
 
         クライアント->>IF: POST
         IF-->>クライアント: 400
@@ -116,7 +116,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits/save
+        participant IF as POST /w/{workspace}/api/edits/save
 
         クライアント->>IF: POST（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -137,7 +137,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits/save
+        participant IF as POST /w/{workspace}/api/edits/save
         participant WS as ワークスペース
 
         クライアント->>IF: POST
@@ -161,7 +161,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits/save
+        participant IF as POST /w/{workspace}/api/edits/save
 
         クライアント->>IF: POST
         IF->>IF: D-2 が D-1 を指している
@@ -182,7 +182,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits/save
+        participant IF as POST /w/{workspace}/api/edits/save
 
         クライアント->>IF: POST
         IF->>IF: メモリの上で当てて確かめる
@@ -203,7 +203,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits/save
+        participant IF as POST /w/{workspace}/api/edits/save
         participant WS as ワークスペース
 
         クライアント->>IF: POST

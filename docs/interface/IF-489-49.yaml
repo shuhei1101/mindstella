@@ -2,7 +2,7 @@ id: IF-489-49
 title: "画面からのスレッドの既読"
 entry:
   kind: endpoint
-  value: POST /api/threads/{id}/seen
+  value: POST /w/{workspace}/api/threads/{id}/seen
 flows:
   - name: 正常系
     summary: AI の未読の返信を利用者の既読にし、ほかのキーは変えない
@@ -16,7 +16,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/threads/TH-1/seen
+        participant IF as POST /w/{workspace}/api/threads/TH-1/seen
         participant WS as ワークスペース
 
         クライアント->>IF: POST
@@ -39,7 +39,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/threads/TH-1/seen
+        participant IF as POST /w/{workspace}/api/threads/TH-1/seen
 
         クライアント->>IF: POST
         IF-->>クライアント: 200、JSON（seen は空）
@@ -60,7 +60,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/threads/TH-1/seen
+        participant IF as POST /w/{workspace}/api/threads/TH-1/seen
         participant WS as ワークスペース
 
         クライアント->>IF: POST
@@ -83,7 +83,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/threads/TH-1/seen
+        participant IF as POST /w/{workspace}/api/threads/TH-1/seen
 
         クライアント->>IF: POST（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -103,7 +103,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/threads/TH-9/seen
+        participant IF as POST /w/{workspace}/api/threads/TH-9/seen
 
         クライアント->>IF: POST
         IF-->>クライアント: 404
@@ -123,7 +123,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/threads/TH-1/seen
+        participant IF as POST /w/{workspace}/api/threads/TH-1/seen
 
         クライアント->>IF: POST
         IF-->>クライアント: 422
@@ -144,7 +144,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/threads/TH-1/seen
+        participant IF as POST /w/{workspace}/api/threads/TH-1/seen
         participant WS as ワークスペース
 
         クライアント->>IF: POST
@@ -182,7 +182,7 @@ request:
     example: TH-1
 request_example: |-
   ```
-  POST /api/threads/TH-1/seen
+  POST /w/{workspace}/api/threads/TH-1/seen
   ```
 response:
   - name: id

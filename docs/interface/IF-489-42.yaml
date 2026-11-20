@@ -2,7 +2,7 @@ id: IF-489-42
 title: "下書きの保存"
 entry:
   kind: endpoint
-  value: PUT /api/drafts
+  value: PUT /w/{workspace}/api/drafts
 flows:
   - name: 正常系
     summary: 向けた先ごとに下書きを保ち、同じ向けた先は上書きする
@@ -16,7 +16,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/drafts
+        participant IF as PUT /w/{workspace}/api/drafts
         participant WS as ワークスペース
 
         クライアント->>IF: PUT {target: D-1, body: 案 B}
@@ -42,7 +42,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/drafts
+        participant IF as PUT /w/{workspace}/api/drafts
         participant WS as ワークスペース
 
         クライアント->>IF: PUT {target: D-1, body: 空}
@@ -65,7 +65,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/drafts
+        participant IF as PUT /w/{workspace}/api/drafts
 
         クライアント->>IF: PUT（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -86,7 +86,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/drafts
+        participant IF as PUT /w/{workspace}/api/drafts
 
         クライアント->>IF: PUT {target: D-99}
         IF-->>クライアント: 404
@@ -107,7 +107,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/drafts
+        participant IF as PUT /w/{workspace}/api/drafts
         participant WS as ワークスペース
 
         クライアント->>IF: PUT {thread: TH-1, body}
@@ -119,7 +119,7 @@ flows:
     expected:
       - どちらもステータスが 204
       - '`drafts.yaml` に `thread: TH-1` と `thread: TH-2` の 2 件があり、どちらも `target`・`loc` を持たない'
-      - '`GET /api/comments` の `drafts` に 2 件が `thread` つきで返る'
+      - '`GET /w/{workspace}/api/comments` の `drafts` に 2 件が `thread` つきで返る'
     test: test_normal_when_thread
 lead: コメントの入力欄の下書きを、向けた先（項目と箇所の組）ごとに `drafts.yaml` へ保つ。空の本文を受けたらその下書きを削除する。パネルを閉じても・再読み込みしても・起動スクリプトで再起動しても、『レビュー中のコメントの読み取り』で戻せる。
 idempotent: true

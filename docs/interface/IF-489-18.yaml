@@ -2,7 +2,7 @@ id: IF-489-18
 title: プレビューの配信
 entry:
   kind: endpoint
-  value: GET /mindstella.html
+  value: GET /w/{workspace}/mindstella.html
 flows:
   - name: 正常系
     summary: 雛形に CSS と JavaScript を差し込んだ画面を返す
@@ -15,9 +15,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /mindstella.html
+        participant IF as GET /w/{workspace}/mindstella.html
 
-        クライアント->>IF: GET /mindstella.html（Host: 127.0.0.1:{ポート}）
+        クライアント->>IF: GET /w/{workspace}/mindstella.html（Host: 127.0.0.1:{ポート}）
         IF-->>クライアント: 200、HTML
       ```
     expected:
@@ -39,10 +39,10 @@ flows:
         participant IF as 配信
 
         クライアント->>IF: GET /
-        IF-->>クライアント: 302、Location: /mindstella.html
+        IF-->>クライアント: 302、Location: /w/{workspace}/mindstella.html
       ```
     expected:
-      - ステータスが 302 で、`Location` が `/mindstella.html`
+      - ステータスが 302 で、`Location` が `/w/{workspace}/mindstella.html`
     test: test_normal_when_root
   - name: 異常系（接続先が違う・403）
     summary: Host が端末の中の名前でなければ画面を返さない
@@ -56,9 +56,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /mindstella.html
+        participant IF as GET /w/{workspace}/mindstella.html
 
-        クライアント->>IF: GET /mindstella.html（Host: attacker.example）
+        クライアント->>IF: GET /w/{workspace}/mindstella.html（Host: attacker.example）
         IF-->>クライアント: 403
       ```
     expected:
@@ -98,11 +98,11 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /mindstella.html
+        participant IF as GET /w/{workspace}/mindstella.html
 
-        クライアント->>IF: GET /mindstella.html（Host: preview.example.test）
+        クライアント->>IF: GET /w/{workspace}/mindstella.html（Host: preview.example.test）
         IF-->>クライアント: 200、HTML
-        クライアント->>IF: GET /mindstella.html（Host: PREVIEW.example.test:8443）
+        クライアント->>IF: GET /w/{workspace}/mindstella.html（Host: PREVIEW.example.test:8443）
         IF-->>クライアント: 200、HTML
       ```
     expected:
@@ -122,13 +122,13 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /mindstella.html
+        participant IF as GET /w/{workspace}/mindstella.html
         participant GH as GitHub の API
 
-        クライアント->>IF: GET /mindstella.html
+        クライアント->>IF: GET /w/{workspace}/mindstella.html
         IF-->>GH: develop の先頭の commit の SHA
         IF-->>クライアント: 200、SHA の URL で mdmark を読み込む HTML
-        クライアント->>IF: GET /mindstella.html
+        クライアント->>IF: GET /w/{workspace}/mindstella.html
         IF-->>クライアント: 200、同じ HTML（問い合わせない）
       ```
     expected:
@@ -148,10 +148,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /mindstella.html
+        participant IF as GET /w/{workspace}/mindstella.html
         participant GH as GitHub の API
 
-        クライアント->>IF: GET /mindstella.html
+        クライアント->>IF: GET /w/{workspace}/mindstella.html
         IF-->>GH: develop の先頭の commit の SHA（届かない）
         IF-->>クライアント: 200、develop の URL で mdmark を読み込む HTML
       ```
@@ -171,9 +171,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /mindstella.html
+        participant IF as GET /w/{workspace}/mindstella.html
 
-        クライアント->>IF: GET /mindstella.html
+        クライアント->>IF: GET /w/{workspace}/mindstella.html
         IF-->>クライアント: 200、タグの URL で mdmark を読み込む HTML
       ```
     expected:
@@ -196,7 +196,7 @@ flows:
         participant GH as GitHub
         participant JD as jsDelivr
 
-        ユーザー->>IF: GET /mindstella.html
+        ユーザー->>IF: GET /w/{workspace}/mindstella.html
         IF->>GH: develop の先頭の commit を問い合わせる
         GH-->>IF: SHA
         IF->>JD: その SHA の dist/index.js
@@ -207,7 +207,7 @@ flows:
       - 返した HTML の mdmark の CSS と JavaScript の URL が `mdmark@develop/dist/` を含む
       - 常駐サーバーの標準エラーに、jsDelivr が配らない旨の 1 行がある
     test: test_normal_when_dist_not_served
-lead: '`preview_url` が立てた配信が、プレビューの画面（雛形に CSS と JavaScript を差し込んだ HTML）を `/mindstella.html` で返す。`/` は `/mindstella.html` へ再送信する。記録は画面が『記録の取得』で読む。'
+lead: '`preview_url` が立てた配信が、プレビューの画面（雛形に CSS と JavaScript を差し込んだ HTML）を `/w/{workspace}/mindstella.html` で返す。`/` は `/w/{workspace}/mindstella.html` へ再送信する。記録は画面が『記録の取得』で読む。'
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
@@ -231,12 +231,12 @@ status_codes:
     condition: 画面を返せた
   - code: '302'
     condition: '`/` を開いた'
-    notes: '`Location: /mindstella.html`'
+    notes: '`Location: /w/{workspace}/mindstella.html`'
   - code: '403'
     condition: '`Host` が制約「接続先の確認」に合わない'
     notes: 本文は返さない
   - code: '404'
-    condition: '`/`・`/mindstella.html`・`/spa`（`/spa/{path}` を含む。『SPAの配信』）・`/api/records`・`/api/events`・`/api/comments`（`/api/comments/{id}`・`/api/comments/send` を含む）・`/api/drafts`・`/api/config/display`・`/api/config/reload` 以外のパス'
+    condition: '`/`・`/w/{workspace}/mindstella.html`・`/w/{workspace}/spa`（`/w/{workspace}/spa/{path}` を含む。『SPAの配信』）・`/w/{workspace}/api/records`・`/w/{workspace}/api/events`・`/w/{workspace}/api/comments`（`/w/{workspace}/api/comments/{id}`・`/w/{workspace}/api/comments/send` を含む）・`/w/{workspace}/api/drafts`・`/w/{workspace}/api/config/display`・`/w/{workspace}/api/config/reload` 以外のパス'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 待ち受け

@@ -1,9 +1,9 @@
 id: IF-587-1
 title: ワークスペースのファイルの配信
-lead: '`preview_url` が立てた配信が、ワークスペースの直下のファイルのフォルダ `files/` のファイルを `/files/` の下で返す。画面は資料の本文の `../files/{名前}` をこのパスへ解決して、動画・音声を再生し、画像を表示する。'
+lead: '`preview_url` が立てた配信が、ワークスペースの直下のファイルのフォルダ `files/` のファイルを `/w/{workspace}/files/` の下で返す。画面は資料の本文の `../files/{名前}` をこのパスへ解決して、動画・音声を再生し、画像を表示する。'
 entry:
   kind: endpoint
-  value: GET /files/{path}
+  value: GET /w/{workspace}/files/{path}
 flows:
   - name: 正常系
     summary: ファイルのフォルダのファイルを、拡張子に合う Content-Type で返す
@@ -19,11 +19,11 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /files/{path}
+        participant IF as GET /w/{workspace}/files/{path}
 
-        クライアント->>IF: GET /files/clip.mp4
+        クライアント->>IF: GET /w/{workspace}/files/clip.mp4
         IF-->>クライアント: 200、mp4 の中身
-        クライアント->>IF: GET /files/img/shot.png
+        クライアント->>IF: GET /w/{workspace}/files/img/shot.png
         IF-->>クライアント: 200、png の中身
       ```
     expected:
@@ -44,9 +44,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /files/{path}
+        participant IF as GET /w/{workspace}/files/{path}
 
-        クライアント->>IF: GET /files/clip.mp4（Range: bytes=100-199）
+        クライアント->>IF: GET /w/{workspace}/files/clip.mp4（Range: bytes=100-199）
         IF-->>クライアント: 206、100〜199 バイト目
       ```
     expected:
@@ -68,9 +68,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /files/{path}
+        participant IF as GET /w/{workspace}/files/{path}
 
-        クライアント->>IF: GET /files/clip.mp4（Range: bytes=1000-）
+        クライアント->>IF: GET /w/{workspace}/files/clip.mp4（Range: bytes=1000-）
         IF-->>クライアント: 416
       ```
     expected:
@@ -85,14 +85,14 @@ flows:
         description: 作成を済ませたワークスペース
       - name: フォルダの外を指すパス
         description: '`files/outside` をワークスペースの外のファイルへのシンボリックリンクにする'
-        notes: '`/files/missing.mp4`・`/files/../.mindstella/decisions.yaml`（`..` を正規化せずに送信する）・`/files/%2e%2e/.mindstella/decisions.yaml`・`/files/outside`・`/files/`（フォルダそのもの）を GET する'
+        notes: '`/w/{workspace}/files/missing.mp4`・`/w/{workspace}/files/../.mindstella/decisions.yaml`（`..` を正規化せずに送信する）・`/w/{workspace}/files/%2e%2e/.mindstella/decisions.yaml`・`/w/{workspace}/files/outside`・`/w/{workspace}/files/`（フォルダそのもの）を GET する'
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /files/{path}
+        participant IF as GET /w/{workspace}/files/{path}
 
-        クライアント->>IF: GET /files/../.mindstella/decisions.yaml
+        クライアント->>IF: GET /w/{workspace}/files/../.mindstella/decisions.yaml
         IF-->>クライアント: 404、problem+json
       ```
     expected:
@@ -113,9 +113,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /files/{path}
+        participant IF as GET /w/{workspace}/files/{path}
 
-        クライアント->>IF: GET /files/clip.mp4（Host: attacker.example）
+        クライアント->>IF: GET /w/{workspace}/files/clip.mp4（Host: attacker.example）
         IF-->>クライアント: 403
       ```
     expected:
@@ -131,7 +131,7 @@ request:
     type: str
     required: true
     location: path
-    description: '`/files/` より後ろのパス。直下のファイルのフォルダ `files/` からの相対パスで、パーセントエンコードを戻してから解決する'
+    description: '`/w/{workspace}/files/` より後ろのパス。直下のファイルのフォルダ `files/` からの相対パスで、パーセントエンコードを戻してから解決する'
     constraints: 解決した先がファイルのフォルダの配下の通常のファイルでないときは 404
   - name: Range
     type: str
@@ -186,7 +186,7 @@ constraints:
     constraint: 『プレビューのURL』が立てた配信と同じ待ち受けで、新しいポートを開かない
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 接続先の確認
-    constraint: 『プレビューの配信』の制約「接続先の確認」と同じ確かめを、`/files/` の下の全てのパスに当てる
+    constraint: 『プレビューの配信』の制約「接続先の確認」と同じ確かめを、`/w/{workspace}/files/` の下の全てのパスに当てる
   - item: フォルダの外部にあるファイル
     constraint: シンボリックリンクをたどって解決した後に、ファイルのフォルダの配下にあることを確かめる。フォルダの中の一覧は返さない
   - item: 大きなファイル
@@ -196,7 +196,7 @@ constraints:
   - item: 通信
     constraint: 配信は外へ通信しない
   - item: 直接開いたファイルのスクリプト
-    constraint: '`/files/` の全ての応答に `Content-Security-Policy: sandbox` を付け、配置した SVG・HTML をブラウザで直接開いても、プレビューのオリジンでスクリプトを動かさない'
+    constraint: '`/w/{workspace}/files/` の全ての応答に `Content-Security-Policy: sandbox` を付け、配置した SVG・HTML をブラウザで直接開いても、プレビューのオリジンでスクリプトを動かさない'
 refs:
   - IF-489-18#
   - IF-489-3#

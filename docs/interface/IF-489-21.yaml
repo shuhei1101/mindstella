@@ -2,7 +2,7 @@ id: IF-489-21
 title: "レビュー中のコメントの削除"
 entry:
   kind: endpoint
-  value: DELETE /api/comments/{id}
+  value: DELETE /w/{workspace}/api/comments/{id}
 flows:
   - name: 正常系
     summary: 1 件を削除し、元に戻すための中身を返す
@@ -15,10 +15,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as DELETE /api/comments/{id}
+        participant IF as DELETE /w/{workspace}/api/comments/{id}
         participant WS as ワークスペース
 
-        クライアント->>IF: DELETE /api/comments/C-2
+        クライアント->>IF: DELETE /w/{workspace}/api/comments/C-2
         IF->>WS: comments.yaml から C-2 を削除する
         IF-->>クライアント: 200、削除した中身
       ```
@@ -38,7 +38,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as DELETE /api/comments/{id}
+        participant IF as DELETE /w/{workspace}/api/comments/{id}
 
         クライアント->>IF: DELETE（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -54,14 +54,14 @@ flows:
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: レビュー中のコメント C-1 だけを持つワークスペース
-        notes: '`DELETE /api/comments/C-9`'
+        notes: '`DELETE /w/{workspace}/api/comments/C-9`'
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as DELETE /api/comments/{id}
+        participant IF as DELETE /w/{workspace}/api/comments/{id}
 
-        クライアント->>IF: DELETE /api/comments/C-9
+        クライアント->>IF: DELETE /w/{workspace}/api/comments/C-9
         IF-->>クライアント: 404
       ```
     expected:

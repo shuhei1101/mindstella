@@ -2,7 +2,7 @@ id: IF-489-53
 title: "設定の再読み込み"
 entry:
   kind: endpoint
-  value: POST /api/config/reload
+  value: POST /w/{workspace}/api/config/reload
 flows:
   - name: 正常系
     summary: 手で修正した `config.yaml` が検査に通れば、新しい設定を使い知らせる
@@ -15,18 +15,18 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/config/reload
+        participant IF as POST /w/{workspace}/api/config/reload
         participant WS as ワークスペース
 
-        クライアント->>IF: POST /api/config/reload
+        クライアント->>IF: POST /w/{workspace}/api/config/reload
         IF-->>WS: config.yaml を読む
         IF->>IF: スキーマと突き合わせる（通る）
         IF-->>クライアント: 200、settings
       ```
     expected:
       - ステータスが 200 で、`settings.display.visible_kinds` が `[decisions, tasks]`
-      - '`GET /api/records` の `settings.display.visible_kinds` が `[decisions, tasks]`'
-      - '`GET /api/events` に書き換えの通知が届く'
+      - '`GET /w/{workspace}/api/records` の `settings.display.visible_kinds` が `[decisions, tasks]`'
+      - '`GET /w/{workspace}/api/events` に書き換えの通知が届く'
     test: test_normal
   - name: 異常系（検査に通らない・422）
     summary: 崩れた `config.yaml` では、最後に通った設定のまま違う箇所を返す
@@ -39,10 +39,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/config/reload
+        participant IF as POST /w/{workspace}/api/config/reload
         participant WS as ワークスペース
 
-        クライアント->>IF: POST /api/config/reload
+        クライアント->>IF: POST /w/{workspace}/api/config/reload
         IF-->>WS: config.yaml を読む
         IF->>IF: スキーマと突き合わせて合わない
         IF-->>クライアント: 422
@@ -50,7 +50,7 @@ flows:
     expected:
       - ステータスが 422、`Content-Type` が `application/problem+json`
       - '`detail` に `config.yaml: display.visible_kinds` で始まる行がある'
-      - '`GET /api/records` の `settings.display.visible_kinds` が `[decisions]` のまま'
+      - '`GET /w/{workspace}/api/records` の `settings.display.visible_kinds` が `[decisions]` のまま'
       - '`config.yaml` の中身が、手で崩したまま（サーバーが書き換えていない）'
     test: test_error_when_check_fails
 lead: 利用者が `config.yaml` を手で修正した後に呼び、`config.yaml` をスキーマと突き合わせた結果を返す。通れば配信の「最後に検査に通った設定」を差し替えて開いている画面へ知らせ、通らなければ前の設定のまま違う箇所を返す。

@@ -2,24 +2,24 @@ id: IF-489-44
 title: "書き換えの通知"
 entry:
   kind: endpoint
-  value: GET /api/events
+  value: GET /w/{workspace}/api/events
 flows:
   - name: 正常系
     summary: ツールで書き換えると changed を知らせる
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/api/events` へ HTTP のクライアントでつなぐ）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/w/{workspace}/api/events` へ HTTP のクライアントでつなぐ）
       - name: make_workspace
         description: 案 A を持つ検討事項 D-1 を持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/events
+        participant IF as GET /w/{workspace}/api/events
         participant T as edit_option（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: GET /api/events
+        クライアント->>IF: GET /w/{workspace}/api/events
         IF-->>クライアント: 200（つないだまま）
         クライアント->>T: edit_option workspace D-1（案 B を追加する）
         T->>WS: decisions.yaml を書く
@@ -34,17 +34,17 @@ flows:
     summary: 同じワークスペースを別の MCP サーバーのツールで書き換えても知らせる
     setup:
       - name: Mock
-        description: なし（同じワークスペースに MCP サーバーを 2 つ立て、1 つ目の配信の `/api/events` へつなぎ、2 つ目のツールで書く）
+        description: なし（同じワークスペースに MCP サーバーを 2 つ立て、1 つ目の配信の `/w/{workspace}/api/events` へつなぎ、2 つ目のツールで書く）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/events（1 つ目）
+        participant IF as GET /w/{workspace}/api/events（1 つ目）
         participant T as edit_option（2 つ目の MCP のツール）
 
-        クライアント->>IF: GET /api/events
+        クライアント->>IF: GET /w/{workspace}/api/events
         クライアント->>T: edit_option workspace D-1（案 B を追加する）
         IF-->>クライアント: event: changed
       ```
@@ -55,16 +55,16 @@ flows:
     summary: 書き換えが無ければ changed を送信しない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/api/events` へ HTTP のクライアントでつなぐ）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/w/{workspace}/api/events` へ HTTP のクライアントでつなぐ）
       - name: make_workspace
         description: 作成を済ませたワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/events
+        participant IF as GET /w/{workspace}/api/events
 
-        クライアント->>IF: GET /api/events
+        クライアント->>IF: GET /w/{workspace}/api/events
         IF->>IF: 書き換えのマーカーが変わらない
       ```
     expected:
@@ -74,7 +74,7 @@ flows:
     summary: YAML を書き換えずに HTML の本文のファイルだけが変わっても知らせる
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/api/events` へ HTTP のクライアントでつなぐ）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/w/{workspace}/api/events` へ HTTP のクライアントでつなぐ）
       - name: make_workspace
         description: 本文を HTML（`docs/A-1.html`）で持つ資料 A-1 を持つワークスペース
         notes: つないだ後に `docs/A-1.html` の中身を直接書き換える（`docs.yaml` は書き換えない）
@@ -82,10 +82,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/events
+        participant IF as GET /w/{workspace}/api/events
         participant WS as ワークスペース
 
-        クライアント->>IF: GET /api/events
+        クライアント->>IF: GET /w/{workspace}/api/events
         クライアント->>WS: docs/A-1.html を書き換える
         IF-->>クライアント: event: changed
       ```
@@ -96,7 +96,7 @@ flows:
     summary: 同じ ID の項目が 2 件になると duplicate_ids を知らせる
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/api/events` へ HTTP のクライアントでつなぐ）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/w/{workspace}/api/events` へ HTTP のクライアントでつなぐ）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
         notes: つないだ後に、ID が D-1 の検討事項をもう 1 件 `decisions.yaml` へ直接書く
@@ -104,10 +104,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/events
+        participant IF as GET /w/{workspace}/api/events
         participant WS as ワークスペース
 
-        クライアント->>IF: GET /api/events
+        クライアント->>IF: GET /w/{workspace}/api/events
         クライアント->>WS: ID が D-1 の検討事項をもう 1 件書く
         IF-->>クライアント: event: changed
         IF-->>クライアント: event: duplicate_ids

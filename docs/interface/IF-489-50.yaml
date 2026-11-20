@@ -2,7 +2,7 @@ id: IF-489-50
 title: "画面からのスレッドの状態の書き換え"
 entry:
   kind: endpoint
-  value: PATCH /api/threads/{id}
+  value: PATCH /w/{workspace}/api/threads/{id}
 flows:
   - name: 正常系
     summary: 利用者が理由つきでクローズにし、書き手・理由・日時を残す
@@ -16,7 +16,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/threads/TH-1
+        participant IF as PATCH /w/{workspace}/api/threads/TH-1
         participant WS as ワークスペース
 
         クライアント->>IF: PATCH {status: closed, reason}
@@ -40,7 +40,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/threads/TH-1
+        participant IF as PATCH /w/{workspace}/api/threads/TH-1
 
         クライアント->>IF: PATCH {status: open}
         IF-->>クライアント: 200
@@ -61,7 +61,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/threads/TH-1
+        participant IF as PATCH /w/{workspace}/api/threads/TH-1
 
         クライアント->>IF: PATCH {reason}
         IF-->>クライアント: 400
@@ -82,7 +82,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/threads/TH-1
+        participant IF as PATCH /w/{workspace}/api/threads/TH-1
 
         クライアント->>IF: PATCH（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -102,7 +102,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/threads/TH-9
+        participant IF as PATCH /w/{workspace}/api/threads/TH-9
 
         クライアント->>IF: PATCH {status: closed}
         IF-->>クライアント: 404
@@ -122,7 +122,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/threads/TH-1
+        participant IF as PATCH /w/{workspace}/api/threads/TH-1
 
         クライアント->>IF: PATCH（application/x-www-form-urlencoded）
         IF-->>クライアント: 415
@@ -142,7 +142,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/threads/TH-1
+        participant IF as PATCH /w/{workspace}/api/threads/TH-1
 
         クライアント->>IF: PATCH {status: closed}
         IF-->>クライアント: 422
@@ -163,7 +163,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PATCH /api/threads/TH-1
+        participant IF as PATCH /w/{workspace}/api/threads/TH-1
         participant WS as ワークスペース
 
         クライアント->>IF: PATCH {status: closed}

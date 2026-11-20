@@ -151,7 +151,7 @@ flows:
     summary: 画面の保存が書いた変更を二重に記録しない
     setup:
       - name: Mock
-        description: なし（常駐サーバーを立て、配信の `POST /api/edits/save` を呼ぶ）
+        description: なし（常駐サーバーを立て、配信の `POST /w/{workspace}/api/edits/save` を呼ぶ）
       - name: make_workspace
         description: 作成を済ませ、検討事項 D-1 を持ち、D-1 の回答を修正する保存待ちの編集を持つワークスペース
     flow: |-
@@ -196,7 +196,7 @@ flows:
     summary: 同じ ID の項目が 2 件になったら、画面とペインへ 1 回知らせる
     setup:
       - name: Mock
-        description: なし（常駐サーバーを立てて `/api/events` へつなぐ。ペインへの貼り付けは、テストが立てた tmux のペインの中身を `capture-pane` で読む）
+        description: なし（常駐サーバーを立てて `/w/{workspace}/api/events` へつなぐ。ペインへの貼り付けは、テストが立てた tmux のペインの中身を `capture-pane` で読む）
       - name: make_workspace
         description: 作成を済ませ、検討事項 D-1 を持ち、MindStella のセッションを持つワークスペース
     flow: |-
@@ -215,7 +215,7 @@ flows:
         IF->>IF: 重なった ID の集まりが変わらないので知らせない
       ```
     expected:
-      - '`/api/events` に `event: duplicate_ids` が 1 回だけ届き、`data` が `["D-1"]`'
+      - '`/w/{workspace}/api/events` に `event: duplicate_ids` が 1 回だけ届き、`data` が `["D-1"]`'
       - 'ペインに `[mindstella] 同じ ID の項目が 2 件あります: D-1` で始まる行が 1 回だけある'
     test: test_normal_when_duplicate_ids
   - name: 正常系（保持する回数を超える）

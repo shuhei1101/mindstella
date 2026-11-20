@@ -2,7 +2,7 @@ id: IF-489-34
 title: "前回開いた日時"
 entry:
   kind: endpoint
-  value: POST /api/opened
+  value: POST /w/{workspace}/api/opened
 flows:
   - name: 正常系
     summary: 前回開いた日時と連番を返し、今の値に書き換える
@@ -18,14 +18,14 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/opened
+        participant IF as POST /w/{workspace}/api/opened
         participant WS as ワークスペース
 
-        クライアント->>IF: POST /api/opened
+        クライアント->>IF: POST /w/{workspace}/api/opened
         IF-->>WS: changes.yaml を読む
         IF->>WS: .mindstella-opened を書く
         IF-->>クライアント: 200（previous: null）
-        クライアント->>IF: POST /api/opened
+        クライアント->>IF: POST /w/{workspace}/api/opened
         IF-->>WS: .mindstella-opened と changes.yaml を読む
         IF->>WS: .mindstella-opened を書く
         IF-->>クライアント: 200（previous: 1 回目の opened）
@@ -50,10 +50,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/opened
+        participant IF as POST /w/{workspace}/api/opened
         participant WS as ワークスペース
 
-        クライアント->>IF: POST /api/opened
+        クライアント->>IF: POST /w/{workspace}/api/opened
         IF->>WS: 一時ファイルを書けない
         IF-->>クライアント: 500
       ```
@@ -73,10 +73,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/opened
+        participant IF as POST /w/{workspace}/api/opened
         participant WS as ワークスペース
 
-        クライアント->>IF: POST /api/opened
+        クライアント->>IF: POST /w/{workspace}/api/opened
         IF-->>WS: .mindstella-opened（日時だけ）と changes.yaml を読む
         IF->>WS: .mindstella-opened を書く
         IF-->>クライアント: 200（previous: null）
@@ -98,10 +98,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/opened
+        participant IF as POST /w/{workspace}/api/opened
         participant WS as ワークスペース
 
-        クライアント->>IF: POST /api/opened
+        クライアント->>IF: POST /w/{workspace}/api/opened
         IF-->>WS: changes.yaml を読む（スキーマに合わない）
         IF-->>クライアント: 422
       ```
