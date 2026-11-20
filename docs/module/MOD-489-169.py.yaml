@@ -616,7 +616,7 @@ constants:
     title: 待ち受けのアドレス
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
-    summary: 非機能要件の「待ち受けの範囲」。ポートは `config.yaml` の `preview.port` があればそれ、無ければ 0 で OS に選ばせる
+    summary: 非機能要件の「待ち受けの範囲」。画面の URL は、このアドレスと常駐サーバーのポート（`MINDSTELLA_PORT`）と `page_path` で組み立てる
     value: '"127.0.0.1"'
   - name: POLL_INTERVAL_SEC
     title: 書き換えを見る間隔
