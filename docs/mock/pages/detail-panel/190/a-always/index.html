@@ -17,14 +17,14 @@
   <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
   <!-- この PR で変える部品のスタイル（レビュー中のコメントの行の操作）と、モック専用の操作列 -->
   <link rel="stylesheet" href="../../../../refs/190/assets/style.css">
-  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <!-- 描画のライブラリ: 雛形と同じバージョンを固定して読み、integrity でファイルの中身を確かめる -->
   <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
 </head>
-<!-- data-initial: ハッシュが無いときに開く状態（レビュー中のコメントを 3 件持つ D-48）。data-actions: 「直す」「削除」の見え方（always = A 常に出す / reveal = B 行に乗せた・フォーカスしたときに出す / text = C 本文の下の文字のボタン） -->
+<!-- data-initial: ハッシュが無いときに開く状態（レビュー中のコメントを 3 件持つ D-48）。data-actions: 「修正」「削除」の見え方（always = A 常に出す / reveal = B 行に乗せた・フォーカスしたときに出す / text = C 本文の下の文字のボタン） -->
 <body data-initial="tab=decisions&amp;id=D-48" data-actions="always">
   <!-- モック専用の操作列: 同じ階層の案・見本の状態・画面の切り替え・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
   <div class="mockbar" role="group" aria-label="モックの操作">
@@ -33,10 +33,10 @@
     <a href="../c-text/index.html">案C 本文の下の文字</a>
     <span class="label">見本:</span>
     <a href="./" data-state>通常</a>
-    <a href="?state=editing" data-state>直している</a>
-    <a href="?state=blank" data-state>空白で直す</a>
-    <a href="?state=failed&amp;fail=edit" data-state>直せなかった</a>
-    <a href="?state=removed" data-state>消した</a>
+    <a href="?state=editing" data-state>修正している</a>
+    <a href="?state=blank" data-state>空白で修正する</a>
+    <a href="?state=failed&amp;fail=edit" data-state>修正できなかった</a>
+    <a href="?state=removed" data-state>削除した</a>
     <span class="label">画面:</span>
     <a href="../../../detail-full/190/a-always/index.html">詳細の全画面</a>
     <span class="spacer"></span>

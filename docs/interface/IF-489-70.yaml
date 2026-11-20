@@ -28,7 +28,7 @@ flows:
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
         notes: 開いた後に MCP の `add` で検討事項を 1 件追加する
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 描き直した概要\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 再描画した概要\n```"
     expected:
       - 追加してから 2 秒以内に、タブの帯の検討事項の件数が 1 増える
       - URL とスクロールの位置が変わらない
@@ -96,7 +96,7 @@ flows:
       - name: make_workspace
         description: 検討事項 D-1（決定済み）・D-2（要見直し）・D-3（要見直し）を持つワークスペース
         notes: '`/spa/?tab=decisions&view=table&f.status=要見直し&sort=-id` で開き、チップを外して再読み込みする'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: f.status=要見直し&sort=-id を付けて開く\n  IF-->>ユーザー: D-3・D-2 の順の表と条件のチップ\n  ユーザー->>IF: チップを外す\n  IF-->>ユーザー: 全ての行の表\n  ユーザー->>IF: 読み込み直す\n  IF-->>ユーザー: 全ての行の表\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: f.status=要見直し&sort=-id を付けて開く\n  IF-->>ユーザー: D-3・D-2 の順の表と条件のチップ\n  ユーザー->>IF: チップを外す\n  IF-->>ユーザー: 全ての行の表\n  ユーザー->>IF: 再読み込みする\n  IF-->>ユーザー: 全ての行の表\n```"
     expected:
       - 開いたとき、表の行が D-3・D-2 の順で、D-1 の行が無く、表の上に状態「要見直し」のチップがある
       - チップを外した後、URL に `f.status` が無く、履歴の数が変わらない
@@ -109,7 +109,7 @@ flows:
       - name: make_workspace
         description: まとまり V-1（D-1 を追加した）と V-2（D-1 の本文を変え、D-2 を追加し、D-3 を削除した）を持つワークスペース
         notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-2` で開き、トップバーの変更履歴で V-1 を選ぶ'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: diff=V-2 を付けて開く\n  IF-->>SV: POST /api/opened\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 差分の印と消した項目の帯の付いた表と、本文の差分の詳細\n  ユーザー->>IF: 変更履歴で V-1 を選ぶ\n  IF-->>ユーザー: V-1 からの差分の表示\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: diff=V-2 を付けて開く\n  IF-->>SV: POST /api/opened\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 差分のマーカーと削除した項目の帯の付いた表と、本文の差分の詳細\n  ユーザー->>IF: 変更履歴で V-1 を選ぶ\n  IF-->>ユーザー: V-1 からの差分の表示\n```"
     expected:
       - 表の D-1 の行に変更のマーカー、D-2 の行に新規のマーカーがあり、表の上の削除した項目の帯に D-3 がある
       - 詳細パネルの本文に、追加した行と削除した行の差分の色分けがある
@@ -123,7 +123,7 @@ flows:
       - name: make_workspace
         description: まとまり V-1 を持つワークスペース
         notes: '`/spa/?tab=decisions&diff=V-99` で開く'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=decisions&diff=V-99 を開く\n  IF-->>ユーザー: 差分の印の無い検討事項\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=decisions&diff=V-99 を開く\n  IF-->>ユーザー: 差分のマーカーの無い検討事項\n```"
     expected:
       - 差分のマーカーと削除した項目の帯が無い
       - URL の search params に `diff` が無い
@@ -135,7 +135,7 @@ flows:
       - name: make_workspace
         description: まとまり V-1 を持ち、前回開いた日時の連番が V-1 の `until_seq` のワークスペース
         notes: 開いた後に MCP の `add` で D-2 を追加し、`commit` でまとまり V-2 にしてから、変更履歴で「前回開いてから」を選ぶ
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions を開く\n  IF-->>SV: POST /api/opened\n  SV-->>IF: previous\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  ユーザー->>IF: 変更履歴で「前回開いてから」を選ぶ\n  IF-->>ユーザー: D-2 に新規の印\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions を開く\n  IF-->>SV: POST /api/opened\n  SV-->>IF: previous\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  ユーザー->>IF: 変更履歴で「前回開いてから」を選ぶ\n  IF-->>ユーザー: D-2 に新規のマーカー\n```"
     expected:
       - D-2 に新規のマーカーがあり、D-1 にマーカーが無い
       - URL の `diff` が `since`
@@ -176,7 +176,7 @@ flows:
       - name: make_workspace
         description: 未決定の検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
         notes: '`/spa/?tab=decisions&id=D-1` で開く'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 「編集する」を押し、答えを書いて入力欄を離れる\n  IF->>SV: POST /api/edits {op: set, target: D-1, key: answer, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 答えとカードに保存待ちの印、トップバーに件数 1\n  ユーザー->>IF: トップバーの保存待ちのボタンを押し、まとめて保存する\n  IF->>SV: POST /api/edits/save\n  SV-->>IF: 200\n  IF-->>ユーザー: 保存した旨と、D-1 の新しい答え\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 「編集する」を押し、回答を書いて入力欄を離れる\n  IF->>SV: POST /api/edits {op: set, target: D-1, key: answer, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 回答とカードに保存待ちのマーカー、トップバーに件数 1\n  ユーザー->>IF: トップバーの保存待ちのボタンを押し、まとめて保存する\n  IF->>SV: POST /api/edits/save\n  SV-->>IF: 200\n  IF-->>ユーザー: 保存した旨と、D-1 の新しい回答\n```"
     expected:
       - 溜めた後、D-1 の回答のキーとボードの D-1 のカードに保存待ちのマーカーがあり、トップバーの件数が 1
       - 保存待ちのパネルを開いた後、URL に `panel=pending` があり、履歴の数が変わらない
@@ -190,7 +190,7 @@ flows:
       - name: make_workspace
         description: タスク T-1 と、どの項目からも指されていないメモ N-1 を持ち、`edits.yaml` を持たないワークスペース
         notes: '`/spa/?tab=tasks` で開き、追加の入力でタスク「画面を作る」を追加し、続けて `/spa/?tab=notes&id=N-1` で N-1 の削除を溜め、保存待ちのパネルで N-1 の削除を取り消す'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 追加の入力にタイトルを書いて足す\n  IF->>SV: POST /api/edits {op: item-add, key: tasks, value}\n  SV-->>IF: 201、target は new-1\n  IF-->>ユーザー: ボードに ID の無い保存待ちのカード\n  ユーザー->>IF: N-1 の詳細で削除を押す\n  IF->>SV: POST /api/edits {op: item-remove, target: N-1}\n  SV-->>IF: 201\n  ユーザー->>IF: 保存待ちのパネルで N-1 の削除を取り消す\n  IF->>SV: DELETE /api/edits/E-2\n  SV-->>IF: 200\n  IF-->>ユーザー: 足す項目だけの保存待ち\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 追加の入力にタイトルを書いて追加する\n  IF->>SV: POST /api/edits {op: item-add, key: tasks, value}\n  SV-->>IF: 201、target は new-1\n  IF-->>ユーザー: ボードに ID の無い保存待ちのカード\n  ユーザー->>IF: N-1 の詳細で削除を押す\n  IF->>SV: POST /api/edits {op: item-remove, target: N-1}\n  SV-->>IF: 201\n  ユーザー->>IF: 保存待ちのパネルで N-1 の削除を取り消す\n  IF->>SV: DELETE /api/edits/E-2\n  SV-->>IF: 200\n  IF-->>ユーザー: 追加する項目だけの保存待ち\n```"
     expected:
       - 追加した後、タスクのボードに「画面を作る」の ID の無いカードが保存待ちのマーカーつきであり、`tasks.yaml` は T-1 だけ
       - 削除を溜めた後、表の N-1 の行に「保存で削除」のマーカーがある
@@ -203,7 +203,7 @@ flows:
       - name: make_workspace
         description: 題名が「話し合い」のワークスペース
         notes: '`/spa/?tab=settings` で開き、題名を「画面の編集」に書き換えて入力欄を離れる'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=settings を開く\n  IF-->>ユーザー: 設定の画面\n  ユーザー->>IF: 題名を書き換えて入力欄を離れる\n  IF->>SV: POST /api/edits {op: setting, target: settings, key: summary, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 題名に保存待ちの印、トップバーに件数 1\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=settings を開く\n  IF-->>ユーザー: 設定の画面\n  ユーザー->>IF: 題名を書き換えて入力欄を離れる\n  IF->>SV: POST /api/edits {op: setting, target: settings, key: summary, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 題名に保存待ちのマーカー、トップバーに件数 1\n```"
     expected:
       - 設定の画面に今の題名「話し合い」が出ている
       - 書き換えた後、題名の欄に保存待ちのマーカーがあり、`config.yaml` の題名が「話し合い」のまま
@@ -230,7 +230,7 @@ flows:
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
         notes: '`config.yaml` の `preview.port` に、テストの中で空きポートを 1 つ取って閉じた番号を書く。開いた後に `server_stop` で常駐サーバーを止め、再起動して同じワークスペースで `preview_url` を呼ぶ'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV--xIF: 書き換えの通知が切れる\n  IF-->>ユーザー: 接続が切れた表示\n  IF-->>SV: つなぎ直す\n  SV-->>IF: 記録\n  IF-->>ユーザー: 接続が切れた表示を消す\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV--xIF: 書き換えの通知が切れる\n  IF-->>ユーザー: 接続が切れた表示\n  IF-->>SV: 再接続する\n  SV-->>IF: 記録\n  IF-->>ユーザー: 接続が切れた表示を削除する\n```"
     expected:
       - 止めた後、トップバーに接続が切れたことの表示が出る
       - 止めた後も、前に読んだ記録の概要のタイルが残っている

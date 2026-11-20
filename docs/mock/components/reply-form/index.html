@@ -25,9 +25,9 @@
     body { display: block; height: auto; overflow: auto; }
     /* カタログの本文の幅と余白 */
     main.content { display: block; max-width: var(--content-max); margin: 0 auto; padding: 28px var(--page-pad) 64px; overflow: visible; }
-    /* カタログの節: 状態ごとの案を縦に並べる */
+    /* カタログのセクション: 状態ごとの案を縦に並べる */
     .cat-sec { margin-top: 32px; }
-    /* カタログの節の見出し */
+    /* カタログのセクションの見出し */
     .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
     /* 状態の説明 */
     .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
@@ -60,18 +60,18 @@
     </section>
     <section class="cat-sec">
       <h2>入力中</h2>
-      <p>入力欄に印の色の輪。ボタンを押せる。Ctrl+Enter でも溜める（変換の確定の Enter では溜めない）。Esc は入力から外れるだけで、一覧へは戻らない。</p>
-      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-2">返信</label><div class="send-line"><textarea id="rf-2" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-2-msg" maxlength="10000" class="is-focus">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-2-msg" role="status"></p></form></div>
+      <p>入力欄にマーカーの色の輪。ボタンを押せる。Ctrl+Enter でも溜める（変換の確定の Enter では溜めない）。Esc は入力から外れるだけで、一覧へは戻らない。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-2">返信</label><div class="send-line"><textarea id="rf-2" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-2-msg" maxlength="10000" class="is-focus">起票してよい。タイトルは「バージョンの範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-2-msg" role="status"></p></form></div>
     </section>
     <section class="cat-sec">
       <h2>溜めるボタンのフォーカス</h2>
-      <p>Tab で入力欄の次に届き、印の色の輪とツールチップを出す。</p>
-      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-3">返信</label><div class="send-line"><textarea id="rf-3" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-3-msg" maxlength="10000">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit is-focus" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-3-msg" role="status"></p></form></div>
+      <p>Tab で入力欄の次に届き、マーカーの色の輪とツールチップを出す。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-3">返信</label><div class="send-line"><textarea id="rf-3" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-3-msg" maxlength="10000">起票してよい。タイトルは「バージョンの範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit is-focus" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-3-msg" role="status"></p></form></div>
     </section>
     <section class="cat-sec">
       <h2>溜めている</h2>
-      <p>入力欄を読み取りだけにし、ボタンを押せなくする。入力欄の下に回る印と「レビューに追加しています」。</p>
-      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-4">返信</label><div class="send-line"><textarea id="rf-4" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-4-msg" maxlength="10000" readonly>起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled data-saving><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg saving" id="rf-4-msg" role="status"><span class="spinner" aria-hidden="true"></span><span>レビューに追加しています</span></p></form></div>
+      <p>入力欄を読み取りだけにし、ボタンを押せなくする。入力欄の下に回るマーカーと「レビューに追加しています」。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-4">返信</label><div class="send-line"><textarea id="rf-4" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-4-msg" maxlength="10000" readonly>起票してよい。タイトルは「バージョンの範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled data-saving><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg saving" id="rf-4-msg" role="status"><span class="spinner" aria-hidden="true"></span><span>レビューに追加しています</span></p></form></div>
     </section>
     <section class="cat-sec">
       <h2>レビューに追加した</h2>
@@ -80,55 +80,55 @@
     </section>
     <section class="cat-sec">
       <h2>レビューに追加できなかった（サーバーにつながらない）</h2>
-      <p>入力を残し、入力欄の下に理由と直し方を出す（自動で消さない）。</p>
-      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-6">返信</label><div class="send-line"><textarea id="rf-6" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-6-msg" maxlength="10000">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg failed" id="rf-6-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。</span></p></form></div>
+      <p>入力を残し、入力欄の下に理由と修正方法を出す（自動で削除しない）。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-6">返信</label><div class="send-line"><textarea id="rf-6" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-6-msg" maxlength="10000">起票してよい。タイトルは「バージョンの範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg failed" id="rf-6-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>レビューに追加できませんでした。サーバーが止まっています。再起動してから追加してください。</span></p></form></div>
     </section>
     <section class="cat-sec">
       <h2>レビューに追加できなかった（サーバーが理由を返した）</h2>
       <p>入力を残し、入力欄の下に理由を出す。</p>
-      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-6d">返信</label><div class="send-line"><textarea id="rf-6d" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-6d-msg" maxlength="10000">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg failed" id="rf-6d-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>レビューに追加できませんでした。スレッド TH-5 はクローズです</span></p></form></div>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-6d">返信</label><div class="send-line"><textarea id="rf-6d" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-6d-msg" maxlength="10000">起票してよい。タイトルは「バージョンの範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg failed" id="rf-6d-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>レビューに追加できませんでした。スレッド TH-5 はクローズです</span></p></form></div>
     </section>
     <section class="cat-sec">
       <h2>長文（ボタンの縦の位置: 案 A・推奨）</h2>
       <p>入力欄は 8 行まで広がり、それより長いと中でスクロールする。ボタンは入力欄の下端に合わせる。</p>
-      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-7">返信</label><div class="send-line"><textarea id="rf-7" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-7-msg" maxlength="10000">1 行目: 版ごとに当てる操作を確かめる
-2 行目: 版ごとに当てる操作を確かめる
-3 行目: 版ごとに当てる操作を確かめる
-4 行目: 版ごとに当てる操作を確かめる
-5 行目: 版ごとに当てる操作を確かめる
-6 行目: 版ごとに当てる操作を確かめる
-7 行目: 版ごとに当てる操作を確かめる
-8 行目: 版ごとに当てる操作を確かめる
-9 行目: 版ごとに当てる操作を確かめる
-10 行目: 版ごとに当てる操作を確かめる
-11 行目: 版ごとに当てる操作を確かめる
-12 行目: 版ごとに当てる操作を確かめる</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-7-msg" role="status"></p></form></div>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-7">返信</label><div class="send-line"><textarea id="rf-7" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-7-msg" maxlength="10000">1 行目: バージョンごとに当てる操作を確かめる
+2 行目: バージョンごとに当てる操作を確かめる
+3 行目: バージョンごとに当てる操作を確かめる
+4 行目: バージョンごとに当てる操作を確かめる
+5 行目: バージョンごとに当てる操作を確かめる
+6 行目: バージョンごとに当てる操作を確かめる
+7 行目: バージョンごとに当てる操作を確かめる
+8 行目: バージョンごとに当てる操作を確かめる
+9 行目: バージョンごとに当てる操作を確かめる
+10 行目: バージョンごとに当てる操作を確かめる
+11 行目: バージョンごとに当てる操作を確かめる
+12 行目: バージョンごとに当てる操作を確かめる</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-7-msg" role="status"></p></form></div>
     </section>
     <section class="cat-sec">
       <h2>長文（ボタンの縦の位置: 案 B）</h2>
       <p>ボタンを入力欄の上端に合わせた案。</p>
-      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-7b">返信</label><div class="send-line top"><textarea id="rf-7b" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-7b-msg" maxlength="10000">1 行目: 版ごとに当てる操作を確かめる
-2 行目: 版ごとに当てる操作を確かめる
-3 行目: 版ごとに当てる操作を確かめる
-4 行目: 版ごとに当てる操作を確かめる
-5 行目: 版ごとに当てる操作を確かめる
-6 行目: 版ごとに当てる操作を確かめる
-7 行目: 版ごとに当てる操作を確かめる
-8 行目: 版ごとに当てる操作を確かめる
-9 行目: 版ごとに当てる操作を確かめる
-10 行目: 版ごとに当てる操作を確かめる
-11 行目: 版ごとに当てる操作を確かめる
-12 行目: 版ごとに当てる操作を確かめる</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-7b-msg" role="status"></p></form></div>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-7b">返信</label><div class="send-line top"><textarea id="rf-7b" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-7b-msg" maxlength="10000">1 行目: バージョンごとに当てる操作を確かめる
+2 行目: バージョンごとに当てる操作を確かめる
+3 行目: バージョンごとに当てる操作を確かめる
+4 行目: バージョンごとに当てる操作を確かめる
+5 行目: バージョンごとに当てる操作を確かめる
+6 行目: バージョンごとに当てる操作を確かめる
+7 行目: バージョンごとに当てる操作を確かめる
+8 行目: バージョンごとに当てる操作を確かめる
+9 行目: バージョンごとに当てる操作を確かめる
+10 行目: バージョンごとに当てる操作を確かめる
+11 行目: バージョンごとに当てる操作を確かめる
+12 行目: バージョンごとに当てる操作を確かめる</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-7b-msg" role="status"></p></form></div>
     </section>
     <section class="cat-sec">
       <h2>開閉のボタン（置く入力の案 B）</h2>
       <p>返信の入力にも、ラベル「返信」の行の右端に開閉のボタンを置いた案。閉じたときは「返信」の 1 行だけを出す。</p>
-      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><div class="send-head"><label class="send-label" for="rf-b">返信</label><button class="icon-btn send-toggle" type="button" aria-expanded="true" aria-controls="rf-b-body" aria-label="返信の入力を閉じる" title="返信の入力を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="send-body" id="rf-b-body"><div class="send-line"><textarea id="rf-b" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-b-msg" maxlength="10000">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-b-msg" role="status"></p></div></form></div>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><div class="send-head"><label class="send-label" for="rf-b">返信</label><button class="icon-btn send-toggle" type="button" aria-expanded="true" aria-controls="rf-b-body" aria-label="返信の入力を閉じる" title="返信の入力を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="send-body" id="rf-b-body"><div class="send-line"><textarea id="rf-b" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-b-msg" maxlength="10000">起票してよい。タイトルは「バージョンの範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-b-msg" role="status"></p></div></form></div>
     </section>
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
       <p>部品の幅によらず入力欄とボタンを 1 行に並べ、結果は入力欄の下に幅いっぱいで出す。</p>
-      <div class="stage narrow"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-8">返信</label><div class="send-line"><textarea id="rf-8" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-8-msg" maxlength="10000">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg failed" id="rf-8-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。</span></p></form></div>
+      <div class="stage narrow"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-8">返信</label><div class="send-line"><textarea id="rf-8" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-8-msg" maxlength="10000">起票してよい。タイトルは「バージョンの範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg failed" id="rf-8-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>レビューに追加できませんでした。サーバーが止まっています。再起動してから追加してください。</span></p></form></div>
     </section>
     <section class="cat-sec">
       <h2>最も狭い幅（320px）</h2>
@@ -151,8 +151,8 @@
       <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="vi-19i">返信</label><div class="send-line"><textarea id="vi-19i" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="vi-19i-msg" class="is-focus">案 A にする</textarea><button class="icon-btn send-mic" type="button" aria-label="音声で入力" title="音声で入力"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg></button><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg sent" id="vi-19i-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>文字起こしの結果を挿入しました。</span></p></form></div>
     </section>
     <section class="cat-sec">
-      <h2>音声: 送信した（設定で文字起こし後の挙動に「送信する」を選んだとき）</h2>
-      <p>返信をその 1 件だけ送信し、スレッドの末尾に足す。</p>
+      <h2>音声: 送信した（設定で文字起こし後の挙動に「送信」を選んだとき）</h2>
+      <p>返信をその 1 件だけ送信し、スレッドの末尾に追加する。</p>
       <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="vi-21">返信</label><div class="send-line"><textarea id="vi-21" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="vi-21-msg"></textarea><button class="icon-btn send-mic" type="button" aria-label="音声で入力" title="音声で入力"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg></button><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg sent" id="vi-21-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>送信し、Claude Code へ入力しました。</span></p></form></div>
     </section>
     <section class="cat-sec">

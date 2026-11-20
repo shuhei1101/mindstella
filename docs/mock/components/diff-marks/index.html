@@ -16,9 +16,9 @@
   <link rel="stylesheet" href="../../refs/71/assets/style.css">
   <link rel="stylesheet" href="../../refs/79/assets/style.css">
   <style>
-    /* カタログの節: 状態ごとの案を縦に並べる */
+    /* カタログのセクション: 状態ごとの案を縦に並べる */
     .cat-sec { margin-top: 32px; }
-    /* カタログの節の見出し */
+    /* カタログのセクションの見出し */
     .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
     /* 状態の説明 */
     .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
@@ -63,17 +63,17 @@
       <div class="stage"><header class="topbar"><span class="brand-name">mindmap</span><span class="spacer"></span>
         <div class="row-items"><button class="hist-btn" type="button" aria-pressed="false" aria-haspopup="dialog" aria-label="変更履歴"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button><span class="df-chip"><span class="df-chip-t"><span class="sr-only">差分の時点: </span>前回開いてから</span><button type="button" aria-label="差分の表示をやめる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></div></header></div>
       <div class="stage" style="margin-top: 8px;"><header class="topbar"><span class="brand-name">mindmap</span><span class="spacer"></span>
-        <div class="row-items"><button class="hist-btn" type="button" aria-pressed="false" aria-haspopup="dialog" aria-label="変更履歴"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button><span class="df-chip"><span class="df-chip-t"><span class="sr-only">差分の時点: </span>steps の一覧と取り込みの流れを直す</span><button type="button" aria-label="差分の表示をやめる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></div></header></div>
+        <div class="row-items"><button class="hist-btn" type="button" aria-pressed="false" aria-haspopup="dialog" aria-label="変更履歴"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button><span class="df-chip"><span class="df-chip-t"><span class="sr-only">差分の時点: </span>steps の一覧と取り込みの流れを修正する</span><button type="button" aria-label="差分の表示をやめる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></div></header></div>
     </section>
     <section class="cat-sec">
       <h2>差分の表示の間（抜ける操作の案 B）</h2>
-      <p>札を出さず、変更履歴を押した見た目にする。押し直すと抜ける。どの時点かはトップバーからは読めない。</p>
+      <p>札を出さず、変更履歴を押した見た目にする。再度押すと抜ける。どの時点かはトップバーからは読めない。</p>
       <div class="stage"><header class="topbar"><span class="brand-name">mindmap</span><span class="spacer"></span>
         <div class="row-items"><button class="hist-btn" type="button" aria-pressed="true" aria-haspopup="dialog" aria-label="変更履歴"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button></div></header></div>
     </section>
     <section class="cat-sec">
       <h2>狭い幅（390px）・差分の表示の間（案 A）</h2>
-      <p>変更履歴は印だけにし、札は短く省略する。名前は読み上げに残す。</p>
+      <p>変更履歴はマーカーだけにし、札は短く省略する。名前は読み上げに残す。</p>
       <div class="stage narrow"><header class="topbar"><span class="brand-name">mindmap</span><span class="spacer"></span><button class="search-trigger" type="button" aria-label="すべての項目を検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="label">すべての項目を検索</span></button><button class="hist-btn" type="button" aria-pressed="false" aria-haspopup="dialog" aria-label="変更履歴"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button><span class="df-chip"><span class="df-chip-t"><span class="sr-only">差分の時点: </span>前回開いてから</span><button type="button" aria-label="差分の表示をやめる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></header></div>
     </section>
 
@@ -84,7 +84,7 @@
       <div class="stage"><div style="position: static; display: flex; flex-direction: column; width: min(520px, 100%); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-pop);">
         <div class="hist-head"><h3 style="margin: 0; font-size: var(--fs-h2);">変更履歴</h3><button class="icon-btn" type="button" aria-label="変更履歴を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
         <ul class="hist-list">
-          <li><button type="button" class="hist-item" aria-current="false"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">差分を出さない（今の内容）</span><span class="hist-sub">印と差分を出さずに今の内容だけを読む</span></span></button></li>
+          <li><button type="button" class="hist-item" aria-current="false"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">差分を出さない（今の内容）</span><span class="hist-sub">マーカーと差分を出さずに今の内容だけを読む</span></span></button></li>
           <li><button type="button" class="hist-item" aria-current="false"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">まだまとめていない変更</span><span class="hist-sub">commit 前の書き換え</span></span><span class="hist-n mono">1 件</span></button></li>
           <li><button type="button" class="hist-item" aria-current="true"><span class="hist-check" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span class="hist-main"><span class="hist-name">前回開いてから</span><span class="hist-sub">10/04 13:05 より後</span></span><span class="hist-n mono">7 件</span></button></li>
           <li><button type="button" class="hist-item is-hover" aria-current="false"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">フェーズの切り方を見直しに戻す</span><span class="hist-sub">10/04 14:45</span></span><span class="hist-n mono">2 件</span></button></li>
@@ -92,22 +92,22 @@
         </ul></div></div>
     </section>
 
-    <!-- タブの印 -->
+    <!-- タブのマーカー -->
     <section class="cat-sec">
-      <h2>タブの印（差分の表示の間）</h2>
-      <p>件数は残し、新規・変更の項目を持つタブの印の右上に点を重ねる。タブの幅は変えない。</p>
+      <h2>タブのマーカー（差分の表示の間）</h2>
+      <p>件数は残し、新規・変更の項目を持つタブのマーカーの右上に点を重ねる。タブの幅は変えない。</p>
       <div class="stage"><nav class="tabbar" aria-label="項目の種類（差分の表示の間）"><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>概要</a><a class="tab" href="#" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m9 12 2 2 4-4"/></svg>検討事項<span class="count">37</span><span class="df-dot" title="新規・変更の項目があります"><span class="sr-only">新規・変更の項目があります</span></span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>タスク<span class="count">8</span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/></svg>資料<span class="count">5</span><span class="df-dot" title="新規・変更の項目があります"><span class="sr-only">新規・変更の項目があります</span></span></a></nav></div>
     </section>
     <section class="cat-sec">
-      <h2>タブの印（差分の表示が切り）</h2>
-      <p>印を出さず、件数だけにする。</p>
+      <h2>タブのマーカー（差分の表示が切り）</h2>
+      <p>マーカーを出さず、件数だけにする。</p>
       <div class="stage"><nav class="tabbar" aria-label="項目の種類（差分の表示が切り）"><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>概要</a><a class="tab" href="#" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m9 12 2 2 4-4"/></svg>検討事項<span class="count">37</span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>タスク<span class="count">8</span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/></svg>資料<span class="count">5</span></a></nav></div>
     </section>
 
-    <!-- 新規・変更の印 -->
+    <!-- 新規・変更のマーカー -->
     <section class="cat-sec">
-      <h2>新規・変更の印（一覧）</h2>
-      <p>表・ボード・カード・概要のタイルでは文言を付けず印だけにする（変更は ●、新規は +）。名前は読み上げに残す。</p>
+      <h2>新規・変更のマーカー（一覧）</h2>
+      <p>表・ボード・カード・概要のタイルでは文言を付けずマーカーだけにする（変更は ●、新規は +）。名前は読み上げに残す。</p>
       <div class="stage"><div class="row-items">
         <span class="df-mark df-new" title="新規"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="sr-only">新規</span></span>
         <span class="df-mark df-chg" title="変更"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/></svg><span class="sr-only">変更</span></span>
@@ -116,7 +116,7 @@
       </div></div>
     </section>
     <section class="cat-sec">
-      <h2>新規の印（詳細パネルの題の横）</h2>
+      <h2>新規のマーカー（詳細パネルのタイトルの横）</h2>
       <p>詳細パネルでは文言つきの札のまま置く。</p>
       <div class="stage panelish"><h2 class="d-title" style="margin: 0;">差分の時点の選び方<span class="df-badge df-new"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>新規</span></h2></div>
     </section>
@@ -127,7 +127,7 @@
       <p>選んだ時点の名前と日時を出す。時点は変更履歴のモーダルで画面全体に選ぶので、項目ごとの選ぶ欄は持たない。</p>
       <div class="stage panelish">
         <div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>前回開いてから</span><span class="df-when">10/04 13:05 より後</span></div>
-        <div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>仕様書の段取りを直す</span><span class="df-when">10/04 14:40</span></div>
+        <div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>仕様書の段取りを修正する</span><span class="df-when">10/04 14:40</span></div>
         <div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>まだまとめていない変更</span><span class="df-when">commit 前の書き換え</span></div>
       </div>
     </section>
@@ -146,24 +146,24 @@
     <!-- 本文の差分 -->
     <section class="cat-sec">
       <h2>本文の差分（段落・表の行）</h2>
-      <p>Markdown を描いたまま、足した塊に +、消した塊に − と取り消し線を付ける。表は行ごとに付ける。</p>
+      <p>Markdown を描いたまま、追加した塊に +、削除した塊に − と取り消し線を付ける。表は行ごとに付ける。</p>
       <div class="stage panelish"><div class="md">
-        <del class="df-blk"><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">消した: </span><p>システム開発のフェーズの並び。</p></del>
-        <ins class="df-blk"><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">足した: </span><p>システム開発のフェーズの並び。モジュール構成をフェーズに含めるかを見直している。</p></ins>
+        <del class="df-blk"><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除した: </span><p>システム開発のフェーズの並び。</p></del>
+        <ins class="df-blk"><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">追加した: </span><p>システム開発のフェーズの並び。モジュール構成をフェーズに含めるかを見直している。</p></ins>
         <table><thead><tr><th>フェーズ</th><th>決めること</th></tr></thead><tbody>
           <tr><td>要件</td><td>できること（ユースケース）・品質の目標・運用</td></tr>
-          <tr class="df-row df-del"><td><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">消した: </span>構成</td><td>サブシステム・外部システム・ライブラリ・データの置き場所</td></tr>
-          <tr class="df-row df-add"><td><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">足した: </span>構成</td><td>サブシステム・外部システム・ライブラリ・データの置き場所・主な処理の流れ</td></tr>
+          <tr class="df-row df-del"><td><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除した: </span>構成</td><td>サブシステム・外部システム・ライブラリ・データの置き場所</td></tr>
+          <tr class="df-row df-add"><td><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">追加した: </span>構成</td><td>サブシステム・外部システム・ライブラリ・データの置き場所・主な処理の流れ</td></tr>
         </tbody></table>
-        <p>変えていない段落には印を付けない。</p>
+        <p>変えていない段落にはマーカーを付けない。</p>
       </div></div>
     </section>
 
-    <!-- 図の凡例と消したもの -->
+    <!-- 図の凡例と削除したもの -->
     <section class="cat-sec">
-      <h2>図の凡例と消したものの一覧（色を付ける 5 種類）</h2>
-      <p>足したノード・辺は太い実線、変わったノード・辺は太い破線。消したノード・辺は図の外に一覧で出す。</p>
-      <div class="stage panelish"><figcaption class="df-notes"><div class="df-legend"><span class="df-lg df-lg-add"><i aria-hidden="true"></i>足した</span><span class="df-lg df-lg-chg"><i aria-hidden="true"></i>変わった</span></div><div class="df-removed"><span class="df-removed-t">消したもの</span><ul><li><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">消した: </span>モジュール構成（M）</li><li><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">消した: </span>インターフェース → モジュール構成</li></ul></div></figcaption></div>
+      <h2>図の凡例と削除したものの一覧（色を付ける 5 種類）</h2>
+      <p>追加したノード・辺は太い実線、変わったノード・辺は太い破線。削除したノード・辺は図の外に一覧で出す。</p>
+      <div class="stage panelish"><figcaption class="df-notes"><div class="df-legend"><span class="df-lg df-lg-add"><i aria-hidden="true"></i>追加した</span><span class="df-lg df-lg-chg"><i aria-hidden="true"></i>変わった</span></div><div class="df-removed"><span class="df-removed-t">削除したもの</span><ul><li><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除した: </span>モジュール構成（M）</li><li><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除した: </span>インターフェース → モジュール構成</li></ul></div></figcaption></div>
     </section>
     <section class="cat-sec">
       <h2>色を付けない種類の変わった図（gantt など）</h2>
@@ -174,19 +174,19 @@
     <!-- Raw の差分 -->
     <section class="cat-sec">
       <h2>Raw の差分</h2>
-      <p>記法の行ごとに、足した行に +、消した行に − と取り消し線を付ける。</p>
-      <div class="stage panelish"><pre class="dg-raw df-raw"><span class="df-line df-same"><span class="df-sign" aria-hidden="true"> </span>gantt</span><span class="df-line df-del"><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">消した: </span>    決めたことを書き写す :a2, after a1, 3d</span><span class="df-line df-add"><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">足した: </span>    決めたことを書き写す :a2, after a1, 5d</span><span class="df-line df-same"><span class="df-sign" aria-hidden="true"> </span>    受け取る人に見せる :a3, after a2, 1d</span></pre></div>
+      <p>記法の行ごとに、追加した行に +、削除した行に − と取り消し線を付ける。</p>
+      <div class="stage panelish"><pre class="dg-raw df-raw"><span class="df-line df-same"><span class="df-sign" aria-hidden="true"> </span>gantt</span><span class="df-line df-del"><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除した: </span>    決めたことを書き写す :a2, after a1, 3d</span><span class="df-line df-add"><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">追加した: </span>    決めたことを書き写す :a2, after a1, 5d</span><span class="df-line df-same"><span class="df-sign" aria-hidden="true"> </span>    受け取る人に見せる :a3, after a2, 1d</span></pre></div>
     </section>
 
-    <!-- 前の版を組み立てられない -->
+    <!-- 前のバージョンを組み立てられない -->
     <section class="cat-sec">
-      <h2>本文の前の版を組み立てられない</h2>
-      <p>本文の節の頭に出し、今の本文をそのまま描く。キーの差分は本文と関係なく出す。</p>
+      <h2>本文の前のバージョンを組み立てられない</h2>
+      <p>本文のセクションの頭に出し、今の本文をそのまま描く。キーの差分は本文と関係なく出す。</p>
       <div class="stage panelish"><p class="df-note" role="note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。</span></p></div>
     </section>
     <section class="cat-sec">
       <h2>前後を組み立てられない古いまとまり</h2>
-      <p>保持する回数を超えて変更履歴が消えた項目は、一覧に印だけ付け、詳細パネルの冒頭にその旨を出して今の内容を描く。</p>
+      <p>保持する回数を超えて変更履歴が消えた項目は、一覧にマーカーだけ付け、詳細パネルの冒頭にその旨を出して今の内容を描く。</p>
       <div class="stage panelish"><div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>フェーズの切り方を決める</span><span class="df-when">10/03 18:02</span></div><p class="df-note" role="note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。</span></p></div>
     </section>
   </main>

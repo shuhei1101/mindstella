@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <!-- トークン・今のプレビューのスタイル・この PR で追加するスタイル・カタログの見た目 -->
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
   <link rel="stylesheet" href="../../refs/235/assets/style.css">
@@ -25,16 +25,16 @@
     <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / review-row</nav>
     <h1>レビュー中の書き込みの行</h1>
 
-    <!-- 新しいスレッド（項目へ向けたもの） -->
+    <!-- 新規スレッド（項目へ向けたもの） -->
     <section class="cat-sec">
-      <h2>新しいスレッド（項目へ向けたもの）</h2>
-      <p>行の頭に「新しいスレッド」の札と向けた項目。向けた項目を押すと詳細パネルを、本文の下の「スレッドを開く」を押すとそのスレッドを開く。右上に修正と削除。</p>
+      <h2>新規スレッド（項目へ向けたもの）</h2>
+      <p>行の頭に「新規スレッド」の札と向けた項目。向けた項目を押すと詳細パネルを、本文の下の「スレッドを開く」を押すとそのスレッドを開く。右上に修正と削除。</p>
       <div class="stage" id="s-new-item"></div>
     </section>
 
-    <!-- 新しいスレッド（項目を指さない） -->
+    <!-- 新規スレッド（項目を指さない） -->
     <section class="cat-sec">
-      <h2>新しいスレッド（項目を指さない）</h2>
+      <h2>新規スレッド（項目を指さない）</h2>
       <p>向けた項目の代わりに「項目を指さない」を出す。</p>
       <div class="stage" id="s-new-free"></div>
     </section>
@@ -42,28 +42,28 @@
     <!-- 返信 -->
     <section class="cat-sec">
       <h2>返信</h2>
-      <p>行の頭に「返信」と、返信先のスレッドの状態の札と題。押すと返信先のスレッドを開く。</p>
+      <p>行の頭に「返信」と、返信先のスレッドの状態の札とタイトル。押すと返信先のスレッドを開く。</p>
       <div class="stage" id="s-reply"></div>
     </section>
 
     <!-- クローズのスレッドへの返信 -->
     <section class="cat-sec">
       <h2>クローズのスレッドへの返信</h2>
-      <p>チェックできず、まとめて送る対象に入らない。送れない理由と、「オープンに戻す」へ移る入口（スレッドを開く）を出す。</p>
+      <p>チェックできず、まとめて送信する対象に入らない。送信できない理由と、「オープンに戻す」へ移る入口（スレッドを開く）を出す。</p>
       <div class="stage" id="s-blocked"></div>
     </section>
 
     <!-- チェックを外した行 -->
     <section class="cat-sec">
       <h2>チェックを外した行</h2>
-      <p>チェックした行だけをまとめて送る。</p>
+      <p>チェックした行だけをまとめて送信する。</p>
       <div class="stage" id="s-unchecked"></div>
     </section>
 
-    <!-- 修正している・消した -->
+    <!-- 修正している・削除した -->
     <section class="cat-sec">
-      <h2>修正している・消した</h2>
-      <p>上が修正の入力、下が消した後（元の場所に「元に戻す」）。</p>
+      <h2>修正している・削除した</h2>
+      <p>上が修正の入力、下が削除した後（元の場所に「元に戻す」）。</p>
       <div class="stage" id="s-editing"></div>
     </section>
 
@@ -77,7 +77,7 @@
     <!-- 狭い幅（390px） -->
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
-      <p>幅 720px 以下で開くと、修正と削除は行の右上に重ね、行の頭は札の行と、2 行で省く題の行に分ける。</p>
+      <p>幅 720px 以下で開くと、修正と削除は行の右上に重ね、行の頭は札の行と、2 行で省くタイトルの行に分ける。</p>
       <div class="stage narrow" id="s-narrow"></div>
     </section>
   </main>

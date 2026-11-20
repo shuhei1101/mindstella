@@ -19,7 +19,7 @@ vars:
   changed:
     type: array
     required: true
-    description: 前回参照した後に足した・変えた項目
+    description: 前回参照した後に追加した・変えた項目
     example: [{id: D-1, kind: decisions, title: 保存の方式, updated_by: user}]
     items:
       type: object
@@ -37,7 +37,7 @@ vars:
   removed:
     type: array
     required: true
-    description: 前回参照した後に消した項目
+    description: 前回参照した後に削除した項目
     example: []
     items:
       type: object
@@ -139,7 +139,7 @@ parts:
     texts:
       - lang: ja
         text: |-
-          前回参照した後に足した・変えた項目:
+          前回参照した後に追加した・変えた項目:
           {% for item in changed -%}
           - {{ item.id }} {{ item.title }}（{{ item.updated_by }}）
           {% endfor %}
@@ -148,7 +148,7 @@ parts:
     texts:
       - lang: ja
         text: |-
-          前回参照した後に消した項目:
+          前回参照した後に削除した項目:
           {% for item in removed -%}
           - {{ item.id }} {{ item.title }}
           {% endfor %}
@@ -157,7 +157,7 @@ parts:
     texts:
       - lang: ja
         text: |-
-          ほかに、変えた項目が {{ changed_more }} 件、消した項目が {{ removed_more }} 件あります。残りと前の値は changes_since_read で取得できます。
+          ほかに、変えた項目が {{ changed_more }} 件、削除した項目が {{ removed_more }} 件あります。残りと前の値は changes_since_read で取得できます。
   - id: needs-review
     when: "{{ needs_review | length > 0 }}"
     texts:
@@ -181,7 +181,7 @@ parts:
     texts:
       - lang: ja
         text: |-
-          ワークスペースを今の版へ移し替えました。利用者にはまだ知らせていません。
+          ワークスペースを今のバージョンへ移し替えました。利用者にはまだ知らせていません。
           {% for entry in migration.not_carried -%}
           - 移せなかった値: {{ entry.item }} {{ entry.key }}: {{ entry.value }}
           {% endfor %}{% for entry in migration.provisional -%}

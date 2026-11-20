@@ -22,9 +22,9 @@
   <!-- 「レビューに追加した後のフォーカス」の分 -->
   <link rel="stylesheet" href="../../refs/608/assets/style.css">
   <style>
-    /* カタログの節: 状態ごとの案を縦に並べる */
+    /* カタログのセクション: 状態ごとの案を縦に並べる */
     .cat-sec { margin-top: 32px; }
-    /* カタログの節の見出し */
+    /* カタログのセクションの見出し */
     .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
     /* 状態の説明 */
     .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
@@ -42,7 +42,7 @@
     .stage dialog.confirm.narrow { width: 288px; }
     /* 状態を見せるための見本のクラス */
     .is-hover { background: var(--hover) !important; }
-    /* ホバーの見本の件数: 本物のホバーと同じく 1 段濃くする */
+    /* ホバーの見本の件数: 本物のホバーと同じく 1 段階濃くする */
     .is-hover .n { color: var(--text-2); }
     .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
   </style>
@@ -69,14 +69,14 @@
       const PANELS = [
         ["開いた直後（ワークスペースの既定のまま）", "上書きが無い。既定に戻すとワークスペースの既定にするのボタンを出さず、そのことを文言で示す。", {}],
         ["この端末で変えている（推奨の案 A）", "上書きを持つ項目を並べ、既定に戻すで 3 項目の上書きを外す。ワークスペースの既定にするは線で区切った下に置く。", { defShown: without("notes"), overrides: ["表示する種類", "ライト / ダーク", "表の列（調査）"] }],
-        ["表示する種類を一部外した", "すべてのチェックを途中の印にし、選んだ数を出す。概要は常に出す行にする。", { shown: without("terms", "logs"), overrides: ["表示する種類"] }],
+        ["表示する種類を一部外した", "すべてのチェックを途中のマーカーにし、選んだ数を出す。概要は常に出す行にする。", { shown: without("terms", "logs"), overrides: ["表示する種類"] }],
         ["保存した直後", "今の選びが既定と同じになり、ボタンの代わりにそのことと保存した知らせを出す。", { shown: without("logs"), defShown: without("logs"), overrides: ["表示する種類"], msg: { kind: "ok", text: "ワークスペースの既定にしました（10/05 14:20）。" } }],
         ["他の人が保存した既定が届いた", "上書きを持たない項目に新しい既定を当て、パネルにも知らせを残す（画面の下の知らせは消える）。", { shown: without("logs"), defShown: without("logs"), msg: { kind: "info", text: "ワークスペースの既定が変わりました（10/05 14:22）。" } }],
         ["端末に保存できない", "選んだ表示は当てるが、開いている間だけであることを先頭に出す。", { nostore: true, shown: without("logs"), overrides: ["表示する種類"] }],
         ["配る書き出し", "表示する種類はその端末の上書きとして変えられる。ワークスペースの既定にするは出さない。", { save: "none", shown: without("logs"), overrides: ["表示する種類"] }],
         ["案 B: ライト / ダークもパネルに置く", "トップバーの切り替えと同じ選びを、端末に合わせるを含む 3 つのセグメントで並べる。", { showTheme: true, theme: "dark", overrides: ["ライト / ダーク"] }],
         ["案 B: ワークスペースの既定を別の区画で選ぶ", "この端末の区画とワークスペースの既定の区画を分け、既定は保存するまで画面に当てない。", { save: "sections", ws: { shown: without("logs") } }],
-        ["ホバー・キーボードのフォーカス", "種類の行のホバーは面の色、フォーカスは印の色の輪。", { hover: true }],
+        ["ホバー・キーボードのフォーカス", "種類の行のホバーは面の色、フォーカスはマーカーの色の輪。", { hover: true }],
         ["狭い幅（390px）", "画面の幅いっぱいに出す。行の高さと押せる的は変えない。", { narrow: true, overrides: ["表示する種類"], shown: without("notes") }],
         ["差分のミニマップを表示しない", "表示する種類の下の区画「詳細に表示するもの」のチェックを外すと、その場で詳細からミニマップを外し、この端末で変えている項目に並べる。既定に戻すで表示するに戻る。ワークスペースの既定には保存しない。", { minimap: false, overrides: ["差分のミニマップ"] }],
         ["差分のミニマップ: 呼び名の案 B", "「変わった箇所のミニマップ」。差分という言葉を使わない。", { minimapLabel: "変わった箇所のミニマップ" }],
@@ -91,9 +91,9 @@
       ];
       const CONFIRMS = [
         ["確かめ（表示する種類を変える）", "今の既定と保存する値を並べる。最初のフォーカスは取り消すに置く。", { from: { shown: without("notes") }, to: { shown: new Set(ALL) } }],
-        ["保存している途中", "閉じられないようにし、保存するボタンに待つ印を出す。", { from: { shown: new Set(ALL) }, to: { shown: without("logs") }, busy: true }],
-        ["保存できなかった（フォルダに書き込めない）", "モーダルの中に理由と直し方を出し、もう一度保存できる。config.yaml と画面の表示は保存の前のまま。", { from: { shown: new Set(ALL) }, to: { shown: without("logs") }, error: "保存できませんでした。ワークスペースのフォルダに書き込めません（読み取り専用）。フォルダに書き込めるようにしてから、もう一度保存してください。" }],
-        ["保存できなかった（サーバーが止まっている）", "コメントを送れなかったときと同じ直し方を出す。", { from: { shown: new Set(ALL) }, to: { shown: without("logs") }, error: "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。" }],
+        ["保存している途中", "閉じられないようにし、保存するボタンに待つマーカーを出す。", { from: { shown: new Set(ALL) }, to: { shown: without("logs") }, busy: true }],
+        ["保存できなかった（フォルダに書き込めない）", "モーダルの中に理由と修正方法を出し、もう一度保存できる。config.yaml と画面の表示は保存の前のまま。", { from: { shown: new Set(ALL) }, to: { shown: without("logs") }, error: "保存できませんでした。ワークスペースのフォルダに書き込めません（読み取り専用）。フォルダに書き込めるようにしてから、もう一度保存してください。" }],
+        ["保存できなかった（サーバーが止まっている）", "コメントを送信できなかったときと同じ修正方法を出す。", { from: { shown: new Set(ALL) }, to: { shown: without("logs") }, error: "保存できませんでした。サーバーが止まっています。起動スクリプトで再起動し、示された新しい URL で開いてから保存してください。" }],
         ["狭い幅（320px）・外した種類が多い", "値は折り返す。", { from: { shown: new Set(ALL) }, to: { shown: new Set(["logs"]) }, narrow: true }],
       ];
       const sec = (h, p, inner) => `<section class="cat-sec"><h2>${h}</h2><p>${p}</p><div class="stage">${inner}</div></section>`;
@@ -106,13 +106,13 @@
         html += sec(h, p, `<dialog open class="confirm sconfirm${c.narrow ? " narrow" : ""}" aria-label="${h}">${S.confirmHtml(c).replace('id="sc-h"', "")}</dialog>`);
       });
       document.getElementById("catalog").innerHTML = html;
-      // 詳細に表示するものの区画（差分のミニマップと、本文の表とセクションの見せ方の 4 つ）を、表示する種類の区画の下（置き場所の案 B は上）に足す
+      // 詳細に表示するものの区画（差分のミニマップと、本文の表とセクションの見せ方の 4 つ）を、表示する種類の区画の下（置き場所の案 B は上）に追加する
       PANELS.forEach(([, , o], i) => {
         const m = { ...base, ...o };
         document.querySelector(`[data-demo="${i}"] .st-kinds`).closest("fieldset").insertAdjacentHTML(m.minimapAt,
           `<fieldset class="st-sec"><legend>詳細に表示するもの</legend><ul class="st-kinds"><li><label><input type="checkbox" data-act="sminimap" ${m.minimap ? "checked" : ""}><span class="st-k-label">${m.minimapLabel}</span></label></li>${[["pin", "表の列の固定"], ["head", "表の見出しの固定"], ["stripes", "表のしま模様"], ["fold", "セクションの折りたたみ"]].map(([key, label]) => `<li><label><input type="checkbox" ${m.md[key] ? "checked" : ""}><span class="st-k-label">${label}</span></label></li>`).join("")}</ul></fieldset>`);
       });
-      // コメントの入力の区画（「レビューに追加」の後のフォーカス）を、詳細に表示するものの区画の下（置き場所の案 B はその区画の末尾）に足す
+      // コメントの入力の区画（「レビューに追加」の後のフォーカス）を、詳細に表示するものの区画の下（置き場所の案 B はその区画の末尾）に追加する
       const FOCUS_WORDS = {
         a: { label: "レビューに追加した後のフォーカス", opts: [["auto", "自動"], ["input", "入力欄へ戻す"], ["none", "戻さない"]], sub: { fine: "この端末では入力欄へ戻します", coarse: "この端末では戻しません" }, hint: "自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。" },
         b: { label: "追加した後に入力欄へ戻る", opts: [["auto", "自動（スマホでは戻らない）"], ["input", "戻る"], ["none", "戻らない"]], sub: { fine: "この端末では戻ります", coarse: "この端末では戻りません" }, hint: "戻らないときは、ソフトウェアキーボードを閉じたまま資料を読めます。" },

@@ -143,7 +143,7 @@ files:
     type: implements
 - path: src/routes/index.tsx
   name: 概要のルート
-  description: search を検証し、決めた値以外の search は URL から外して開き直す。概要のルートの search の検証を変更するときに読む。
+  description: search を検証し、決めた値以外の search は URL から外して再度開く。概要のルートの search の検証を変更するときに読む。
   tags:
   - tool:tanstack-router
   - topic:url
@@ -183,7 +183,7 @@ files:
     type: tests
 - path: src/shared/adapters/events-client.ts
   name: 書き換えの知らせへの接続
-  description: 書き換えの知らせ（インターフェース定義『書き換えの知らせ』）へつなぎ、記録の query を読み直す。書き換えの知らせを受けたときの読み直しを変更するときに読む。
+  description: 書き換えの知らせ（インターフェース定義『書き換えの知らせ』）へつなぎ、記録の query を再読み込みする。書き換えの知らせを受けたときの再読み込みを変更するときに読む。
   tags:
   - tool:tanstack-query
   - topic:sse
@@ -223,8 +223,8 @@ files:
   - to: CMP-540-2
     type: implements
 - path: src/shared/components/icon.tsx
-  name: React のアイコンと状態の印
-  description: 24px の枠に描いた線のアイコンと、状態の 10px の印（今の画面の `core/dom.ts` と同じ絵）。アイコンや状態の印の絵を追加・変更するときに読む。
+  name: React のアイコンと状態のマーカー
+  description: 24px の枠に描いた線のアイコンと、状態の 10px のマーカー（今の画面の `core/dom.ts` と同じ絵）。アイコンや状態のマーカーの絵を追加・変更するときに読む。
   tags:
   - tool:react
   - tool:svg
@@ -288,7 +288,7 @@ files:
     type: tests
 - path: src/shared/core/app-error.ts
   name: 配信の応答のエラー
-  description: 失敗した応答から、画面に detail を出すエラーを作る。失敗した応答から作るエラーの形を変更するときに読む。
+  description: 失敗した応答から、画面に detail を出すエラーを作る。失敗した応答から作るエラーの構造を変更するときに読む。
   tags:
   - topic:エラー
   related:
@@ -393,7 +393,7 @@ files:
     type: implements
 - path: src/shared/styles/index.css
   name: React のプレビューのスタイル
-  description: Tailwind を読み、標準のパレットを消して、tokens.css のトークンを割り当てる。React のプレビューの共通のスタイルを変更するときに読む。
+  description: Tailwind を読み、標準のパレットを削除して、tokens.css のトークンを割り当てる。React のプレビューの共通のスタイルを変更するときに読む。
   tags:
   - tool:css
   - tool:tailwind-css
@@ -413,7 +413,7 @@ files:
     type: implements
 - path: src/testing/fake-event-source.ts
   name: テスト用の EventSource
-  description: 'テスト用の EventSource: テストから open・changed・error を送る。書き換えの知らせを送るテストの補助を変更するときに読む。'
+  description: 'テスト用の EventSource: テストから open・changed・error を送信する。書き換えの知らせを送信するテストの補助を変更するときに読む。'
   tags:
   - tool:vitest
   - topic:sse
@@ -509,8 +509,8 @@ files:
   - to: MOD-489-170
     type: tests
 - path: src/features/detail/detail-panel/components/body-view.tsx
-  name: 本文の節
-  description: 本文の節。
+  name: 本文のセクション
+  description: 本文のセクション。
   tags:
   - tool:react
   related:
@@ -557,8 +557,8 @@ files:
   - to: MOD-489-29
     type: implements
 - path: src/features/detail/detail-panel/components/related-list.tsx
-  name: 関係する項目の節
-  description: 関係する項目の節。
+  name: 関係する項目のセクション
+  description: 関係する項目のセクション。
   tags:
   - tool:react
   related:
@@ -797,16 +797,16 @@ files:
   - to: MOD-489-63
     type: implements
 - path: src/shared/components/comment-mark.stories.tsx
-  name: コメントの印のストーリー
-  description: コメントの印のストーリー。
+  name: コメントのマーカーのストーリー
+  description: コメントのマーカーのストーリー。
   tags:
   - tool:react
   related:
   - to: MOD-489-170
     type: implements
 - path: src/shared/components/comment-mark.tsx
-  name: コメントの印
-  description: コメントの印。
+  name: コメントのマーカー
+  description: コメントのマーカー。
   tags:
   - tool:react
   related:
@@ -831,16 +831,16 @@ files:
   tags:
   - tool:react
 - path: src/shared/components/diff-mark.stories.tsx
-  name: 差分の印のストーリー
-  description: 差分の印のストーリー。
+  name: 差分のマーカーのストーリー
+  description: 差分のマーカーのストーリー。
   tags:
   - tool:react
   related:
   - to: MOD-489-170
     type: implements
 - path: src/shared/components/diff-mark.tsx
-  name: 差分の印
-  description: 差分の印。
+  name: 差分のマーカー
+  description: 差分のマーカー。
   tags:
   - tool:react
   related:
@@ -1031,32 +1031,32 @@ files:
   - to: MOD-489-77
     type: implements
 - path: src/shared/components/pending-mark.stories.tsx
-  name: 保存待ちの印のストーリー
-  description: 保存待ちの印のストーリー。
+  name: 保存待ちのマーカーのストーリー
+  description: 保存待ちのマーカーのストーリー。
   tags:
   - tool:react
   related:
   - to: MOD-489-170
     type: implements
 - path: src/shared/components/pending-mark.tsx
-  name: 保存待ちの印
-  description: 保存待ちの印。
+  name: 保存待ちのマーカー
+  description: 保存待ちのマーカー。
   tags:
   - tool:react
   related:
   - to: MOD-489-78
     type: implements
 - path: src/shared/components/removed-band.stories.tsx
-  name: 消した項目の帯のストーリー
-  description: 消した項目の帯のストーリー。
+  name: 削除した項目の帯のストーリー
+  description: 削除した項目の帯のストーリー。
   tags:
   - tool:react
   related:
   - to: MOD-489-170
     type: implements
 - path: src/shared/components/removed-band.tsx
-  name: 消した項目の帯
-  description: 消した項目の帯。
+  name: 削除した項目の帯
+  description: 削除した項目の帯。
   tags:
   - tool:react
   related:
@@ -1119,8 +1119,8 @@ files:
   - to: MOD-489-86
     type: implements
 - path: src/shared/components/term-tip.tsx
-  name: 本文の印のツールチップ
-  description: 本文の印のツールチップ。
+  name: 本文のマーカーのツールチップ
+  description: 本文のマーカーのツールチップ。
   tags:
   - tool:react
   related:
@@ -1279,8 +1279,8 @@ files:
   - to: MOD-489-107
     type: implements
 - path: src/shared/core/dom-parts.ts
-  name: mdmark が描いた本文の中へ足す要素の組み立て
-  description: mdmark が描いた本文の中へ足す要素の組み立て。
+  name: mdmark が描いた本文の中へ追加する要素の組み立て
+  description: mdmark が描いた本文の中へ追加する要素の組み立て。
   tags:
   - tool:react
   related:
@@ -1295,8 +1295,8 @@ files:
   - to: MOD-489-170
     type: tests
 - path: src/shared/core/edits.ts
-  name: 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちの印の種類
-  description: 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちの印の種類。
+  name: 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちのマーカーの種類
+  description: 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちのマーカーの種類。
   tags:
   - tool:react
   related:
@@ -1439,8 +1439,8 @@ files:
   - to: MOD-489-170
     type: tests
 - path: src/shared/hooks/use-diff-view.ts
-  name: 差分の表示の時点と、項目ごとの印を返す
-  description: 差分の表示の時点と、項目ごとの印を返す。
+  name: 差分の表示の時点と、項目ごとのマーカーを返す
+  description: 差分の表示の時点と、項目ごとのマーカーを返す。
   tags:
   - tool:react
   related:
@@ -1575,16 +1575,16 @@ files:
   - to: MOD-489-170
     type: implements
 - path: src/features/detail/detail-panel/components/item-add-panel.tsx
-  name: 画面から項目を足すパネル
-  description: 画面から項目を足すパネル。
+  name: 画面から項目を追加するパネル
+  description: 画面から項目を追加するパネル。
   tags:
   - tool:react
   related:
   - to: MOD-489-27
     type: implements
 - path: src/features/detail/detail-panel/components/item-add-panel.test.tsx
-  name: 画面から項目を足すパネルの単体テスト
-  description: 画面から項目を足すパネルの単体テスト。
+  name: 画面から項目を追加するパネルの単体テスト
+  description: 画面から項目を追加するパネルの単体テスト。
   tags:
   - tool:react
 - path: src/shared/components/blocked-note.tsx
@@ -1601,8 +1601,8 @@ files:
   tags:
   - tool:react
 - path: src/shared/stores/edit-session-store.ts
-  name: 画面の編集の間の状態（足す画面・書き込めない編集・保存の通知）
-  description: 画面の編集の間の状態（足す画面・書き込めない編集・保存の通知）。
+  name: 画面の編集の間の状態（追加する画面・書き込めない編集・保存の通知）
+  description: 画面の編集の間の状態（追加する画面・書き込めない編集・保存の通知）。
   tags:
   - tool:react
   related:

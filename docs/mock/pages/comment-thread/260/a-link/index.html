@@ -15,9 +15,9 @@
   <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <!-- 今のプレビューのスタイル -->
   <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
-  <!-- この PR で足す書き込みのまとまりのリンクのスタイルと、モック専用の操作列 -->
+  <!-- この PR で追加する書き込みのまとまりのリンクのスタイルと、モック専用の操作列 -->
   <link rel="stylesheet" href="../../../../refs/260/assets/style.css">
-  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <!-- 描画のライブラリ: 雛形と同じバージョンを固定して読み、integrity でファイルの中身を確かめる -->
   <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
@@ -36,7 +36,7 @@
     <a href="#" data-set="open=TH-1&amp;theme=dark">同じ（ダーク）</a>
     <a href="#" data-set="open=TH-2">長い文言・ほかの引数を持つリンク</a>
     <span class="label">操作:</span>
-    <!-- data-mock-act: mock.js がサーバーの代わりに記録を書き換え、書き換えの知らせを送る -->
+    <!-- data-mock-act: mock.js がサーバーの代わりに記録を書き換え、書き換えの知らせを送信する -->
     <button type="button" data-mock-act="ai-thread">AI がまとまりのリンクを書いてスレッドを立てる</button>
     <span class="label">画面:</span>
     <a href="../../../comment-review/260/a-link/index.html?view=review">レビュー中を確かめる画面</a>

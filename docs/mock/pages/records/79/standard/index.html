@@ -14,18 +14,18 @@
   <!-- トークン: 採用したデザインスタイル（dev-swiss-cards）の値 -->
   <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../../../refs/65/assets/style.css">
-  <!-- 回答・意見の送信と、サーバーにつながらないときの表示で足すスタイル -->
+  <!-- 回答・意見の送信と、サーバーにつながらないときの表示で追加するスタイル -->
   <link rel="stylesheet" href="../../../../refs/71/assets/style.css">
-  <!-- 前回からの差分の表示で足すスタイル -->
+  <!-- 前回からの差分の表示で追加するスタイル -->
   <link rel="stylesheet" href="../../../../refs/79/assets/style.css">
-  <!-- Markdown の描画と無害化、マップの配置の計算: 版を固定し、integrity でファイルの中身を確かめる -->
+  <!-- Markdown の描画と無害化、マップの配置の計算: バージョンを固定し、integrity でファイルの中身を確かめる -->
   <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
   <script src="../../../../refs/52/assets/data.js" defer></script>
-  <!-- 見本のデータに、項目ごとの変更履歴と、前回開いた後に足された項目を足すもの -->
+  <!-- 見本のデータに、項目ごとの変更履歴と、前回開いた後に追加された項目を追加するもの -->
   <script src="../../../../refs/79/assets/history.js" defer></script>
-  <!-- 71 のスクリプトに、前回からの差分の表示を足したもの -->
+  <!-- 71 のスクリプトに、前回からの差分の表示を追加したもの -->
   <script src="../../../../refs/79/assets/app.js" defer></script>
 </head>
 <!-- data-screen: 描く画面。data-pages: pages/ への相対パス。data-initial: ハッシュが無いときに開く状態（mockdiff は選んだ時点で開く。1 は「前回開いてから」）。data-send: 回答・意見の入力の置き方 -->
@@ -111,7 +111,7 @@
     <div class="v-canvas"><div class="v-stage"></div></div>
     <!-- Raw: 図の代わりに記法を出す。差分の表示で図が変わっていれば行ごとの差分 -->
     <pre class="dg-raw v-raw" hidden></pre>
-    <!-- 差分の表示の凡例と消したものの一覧 -->
+    <!-- 差分の表示の凡例と削除したものの一覧 -->
     <div class="df-notes v-notes" hidden></div>
   </dialog>
 

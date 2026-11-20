@@ -5,7 +5,7 @@
   <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>コメントの印 | mindstella 部品のモック</title>
+  <title>コメントのマーカー | mindstella 部品のモック</title>
   <!-- 文字: デザイン方針の Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,9 +17,9 @@
   <link rel="stylesheet" href="../../refs/78/assets/style.css">
   <link rel="stylesheet" href="../../refs/121/assets/style.css">
   <style>
-    /* カタログの節: 状態ごとの案を縦に並べる */
+    /* カタログのセクション: 状態ごとの案を縦に並べる */
     .cat-sec { margin-top: 32px; }
-    /* カタログの節の見出し */
+    /* カタログのセクションの見出し */
     .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
     /* 状態の説明 */
     .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
@@ -31,7 +31,7 @@
     .stage .card { width: 280px; margin: 0; }
     /* 狭い幅の台の中のカード: 台の幅いっぱい */
     .stage.narrow .card { width: 100%; margin-bottom: 10px; }
-    /* 印だけを並べる見本の行 */
+    /* マーカーだけを並べる見本の行 */
     .row { display: flex; align-items: center; gap: 12px; font-size: var(--fs-small); color: var(--text-2); }
     /* 状態を見せるための見本のクラス */
     .is-hover { border-color: var(--accent) !important; }
@@ -43,7 +43,7 @@
   <main class="content">
     <!-- パンくず -->
     <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / comment-mark</nav>
-    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">コメントの印</h1>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">コメントのマーカー</h1>
 
     <!-- 件数ごと: data-n の件数で、下のスクリプトが吹き出しと数字と読み上げの名前を入れる -->
     <section class="cat-sec">
@@ -52,10 +52,10 @@
       <div class="stage"><div class="row">1 件<span class="cmk" data-n="1"></span></div><div class="row">3 件<span class="cmk" data-n="3"></span></div><div class="row">12 件<span class="cmk" data-n="12"></span></div><div class="row">128 件<span class="cmk" data-n="128"></span></div><div class="row">0 件（出さない）</div></div>
     </section>
 
-    <!-- 差分の印と並べる: 画面ごとの置き場所 -->
+    <!-- 差分のマーカーと並べる: 画面ごとの置き場所 -->
     <section class="cat-sec">
-      <h2>差分の印と同じ項目に並んだとき</h2>
-      <p>差分の印（新規の +・変更の ●）は並びの頭、コメントの印は右端に置き、互いとタイトルを隠さない。カードはメタ情報の並びの右端、表はタイトルの右に続ける。</p>
+      <h2>差分のマーカーと同じ項目に並んだとき</h2>
+      <p>差分のマーカー（新規の +・変更の ●）は並びの頭、コメントのマーカーは右端に置き、互いとタイトルを隠さない。カードはメタ情報の並びの右端、表はタイトルの右に続ける。</p>
       <div class="stage">
         <button type="button" class="card"><div class="c-ttl">デザインスタイル</div><div class="c-meta"><span class="df-mark df-chg" data-df="chg"></span><span class="mono">D-022</span><span>デザイン · 構成</span><span>影響度 中</span><span class="cmk" data-n="2"></span></div></button>
         <button type="button" class="card"><div class="c-ttl">プレビューのモックを作る（モダン）</div><div class="c-meta"><span class="df-mark df-new" data-df="new"></span><span class="mono">T-002</span><span>作業</span><span>プレビュー</span><span class="cmk" data-n="3"></span></div></button>
@@ -63,10 +63,10 @@
       </div>
     </section>
 
-    <!-- 押したときの状態: 印は押せず、カード全体の押下で詳細パネルを開く -->
+    <!-- 押したときの状態: マーカーは押せず、カード全体の押下で詳細パネルを開く -->
     <section class="cat-sec">
       <h2>ホバー・キーボードのフォーカス・詳細を開いている</h2>
-      <p>印だけを押す操作は持たない。カード・行の状態の表し方は今のまま変えず、印は状態で色を変えない。</p>
+      <p>マーカーだけを押す操作は持たない。カード・行の状態の表し方は今のまま変えず、マーカーは状態で色を変えない。</p>
       <div class="stage">
         <button type="button" class="card is-hover"><div class="c-ttl">デザインスタイル</div><div class="c-meta"><span class="mono">D-022</span><span>デザイン · 構成</span><span class="cmk" data-n="2"></span></div></button>
         <button type="button" class="card is-focus"><div class="c-ttl">デザインスタイル</div><div class="c-meta"><span class="mono">D-022</span><span>デザイン · 構成</span><span class="cmk" data-n="2"></span></div></button>
@@ -86,7 +86,7 @@
     <!-- 狭い幅: 390px -->
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
-      <p>カードは幅いっぱいでも印を右端に置き、メタ情報が 2 行に折れても印はタイトルに重ならない。表はタイトルの右に続け、収まらなければ次の行へ送る。</p>
+      <p>カードは幅いっぱいでもマーカーを右端に置き、メタ情報が 2 行に折れてもマーカーはタイトルに重ならない。表はタイトルの右に続け、収まらなければ次の行へ送信する。</p>
       <div class="stage narrow">
         <button type="button" class="card"><div class="c-ttl">システム開発のフェーズの切り方</div><div class="c-meta"><span class="df-mark df-chg" data-df="chg"></span><span class="mono">D-005</span><span>分け方 · 構成</span><span>影響度 大</span><span class="cmk" data-n="12"></span></div></button>
         <button type="button" class="card"><div class="c-ttl">プレビューの資料の画面で、状態の列のボードに切り替えたときにカードへ出す項目の覚え書き</div><div class="c-meta"><span class="df-mark df-new" data-df="new"></span><span class="mono">A-004</span><span>進め方 · 構成</span><span class="cmk" data-n="128"></span></div></button>
@@ -94,7 +94,7 @@
       </div>
     </section>
   </main>
-  <!-- 見本の印の中身: data-n の件数から吹き出し・数字・読み上げの名前を、data-df から差分の記号と名前を入れる（画面のモックの app.js と同じ形） -->
+  <!-- 見本のマーカーの中身: data-n の件数から吹き出し・数字・読み上げの名前を、data-df から差分の記号と名前を入れる（画面のモックの app.js と同じ構造） -->
   <script>
     const bubble = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/></svg>';
     const DF = { new: ['<path d="M12 5v14M5 12h14"/>', "新規"], chg: ['<circle cx="12" cy="12" r="5"/>', "変更"] };

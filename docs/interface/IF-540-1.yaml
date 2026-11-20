@@ -26,7 +26,7 @@ request:
     required: false
     default: '1'
     location: argument
-    description: 続けて取る ID の数。1 回の `write_docs` で同じ種類の項目を複数足すときに使う
+    description: 続けて取る ID の数。1 回の `write_docs` で同じ種類の項目を複数追加するときに使う
     constraints: 1〜50
 response:
   - name: ids
