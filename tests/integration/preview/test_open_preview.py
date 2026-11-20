@@ -1765,7 +1765,7 @@ def test_normal_when_diff_minimap_hidden(
     assert checkbox.is_checked() is False
     assert "差分のミニマップ" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
     assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
+    assert "表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
     # 実行（既定に戻す）
     page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
     page.wait_for_selector(f"{PANEL_SCOPE} .df-map .df-map-m")
