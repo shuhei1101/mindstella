@@ -1047,7 +1047,9 @@ def _remember_valid(root: Path, written: list[tuple[Path, str]]) -> None:
         _VALIDATION_CACHE[(str(root), path.name)] = (_digest(text.encode("utf-8")), ())
 
 
-def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:
+def create_workspace(
+    root: Path, settings: dict[str, Any], *, version: str, applied: int
+) -> list[str]:
     """設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイルを作り、直下に `docs/` を作って README を書く。"""
     root = root.resolve()
     records = records_root(root)
@@ -1094,7 +1096,7 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
             (records / spec.file).write_text(dump_yaml({"items": []}), encoding="utf-8")
             created.append(records / spec.file)
             files.append(f"{RECORD_DIR}/{spec.file}")
-        (records / VERSION_FILE).write_text(f"{version}\n", encoding="utf-8")
+        (records / VERSION_FILE).write_text(f"{version}\n{applied}\n", encoding="utf-8")
         created.append(records / VERSION_FILE)
         files.append(f"{RECORD_DIR}/{VERSION_FILE}")
         # 記録を project-index で配信する設定と、設定が指すスキーマの複製

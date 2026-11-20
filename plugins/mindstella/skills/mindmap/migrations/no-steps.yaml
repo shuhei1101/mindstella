@@ -10,3 +10,6 @@
 - schema: terms.schema.json
   sha256: b1206e20345aeca378168819a32aa050d6267e25b8dd8029da929585816c504b
   reason: aliases の説明に、プレビューは本文の語がこれに一致するとタイトルと同じ印とツールチップを出すことを足した。形は変わらない
+- schema: settings.schema.json
+  sha256: b2ff98285811479bb6ab9ac471d001a9ce04ce05995fca286b581ce1a9feaa84
+  reason: 任意のキー confirm_on_comment（真偽値。無ければ true）を足した。今の設定はそのまま読める

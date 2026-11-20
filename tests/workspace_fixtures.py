@@ -30,6 +30,7 @@ from typing import Any
 import pytest
 import yaml
 from mcp import ClientSession
+from server_watchdog import spawn as spawn_watchdog
 from mcp.client.streamable_http import streamable_http_client
 
 # このファイルから見たリポジトリの直下（tests の 1 つ上）
@@ -94,7 +95,7 @@ DEFAULT_TIMESTAMP = "2026-10-01T00:00:00+00:00"
 
 # 項目の履歴のファイル（ER 図『項目の履歴』）と、項目に持たずそこへ移すキー
 HISTORY_FILE = "history.yaml"
-HISTORY_KEYS = ("created", "updated", "updated_by", "seq", "added_seq", "history", "history_dropped_seq")
+HISTORY_KEYS = ("created", "updated", "updated_by", "seq", "added_seq", "history", "history_dropped_seq", "confirmed")
 
 # ID の頭の文字 → 書き込む YAML のファイル名（並びは D・T・R・A・G・N・L）
 KIND_FILES = {
@@ -353,6 +354,8 @@ class McpServer:
             env={**env, PORT_ENV: str(self.port)},
             cwd=cwd,
         )
+        # pytest が後片付けの前に終わっても常駐サーバーが残らないよう、見張りを起動する
+        spawn_watchdog(self.process.pid)
         # 出力のパイプは満杯になるとサーバーの書き込みが止まるので、別のスレッドで読み続ける
         self._output_lines: deque[str] = deque(maxlen=STDERR_KEEP_LINES)
         self._output_reader = threading.Thread(target=self._drain_output, daemon=True)

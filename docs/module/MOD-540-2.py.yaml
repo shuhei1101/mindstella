@@ -423,7 +423,7 @@ functions:
     process: |-
       1. 項目の履歴と記録を読む（『変更履歴』の `load_item_history`・`load_changes`）。書いた元が違う変更が入っていれば先にまとめる（`flush_pending`）
       2. 追加ごとに、通し番号を振り（`advance_seq`）、`created`・`updated`・`updated_by`・`seq`・`added_seq` の行を作り、`pending.added` に足す（`note_pending`、`by` は書いた元）
-      3. 変更ごとに、1 回分を作り（`make_entry`、`by` は書いた元）、あれば通し番号を振って行の `seq`・`updated`・`updated_by` を書き換え、行に積み（`history_limit`、`stack_history`。`read_seq` は 1. の `load_changes` が入れた前回参照した時点）、保持する回数が 0 より大きければ `pending.changed` に足す
+      3. 変更ごとに、1 回分を作り（`make_entry`、`by` は書いた元）、あれば通し番号を振って行の `seq`・`updated`・`updated_by` を書き換えて `confirmed` を除き（`unconfirm`）、行に積み（`history_limit`、`stack_history`。`read_seq` は 1. の `load_changes` が入れた前回参照した時点）、保持する回数が 0 より大きければ `pending.changed` に足す
       4. 削除ごとに、通し番号を振り、`pending.removed` に足して（`note_removed`）、行を消す
       5. `history.yaml` と `changes.yaml` を一時ファイルに書いてから `os.replace` で置き換える（`OSError` は一時ファイルを消して `WriteFailedError`）
     exceptions:
@@ -449,6 +449,12 @@ functions:
         condition: 保持する回数 1、`read_point.json` の `read_seq` 4、`changes.yaml` の前のバージョンの `read_seq` 1。D-1 が `seq` 5・3 の回を持ち、外で書き換える
         mock: なし（`state_root` は `tmp_path`）
         expected: D-1 の `history` が今回・`seq` 5 の 2 回で、`history_dropped_seq` が 3
+      - name: test_record_diff_unconfirms
+        case: 正常
+        summary: 変えた項目の確認済みを除く
+        condition: '`history.yaml` の D-1・D-2 の行が `confirmed: true` を持ち、D-1 だけを変えた違いを「`external`」で記録する'
+        mock: '`now`'
+        expected: 'D-1 の行が `confirmed` を持たず、D-2 の行は `confirmed: true` を持つ'
   - name: find_duplicate_ids
     title: 重なった ID を求める
     kind: 関数

@@ -12,7 +12,7 @@ import yaml
 import history
 import read_point
 import store
-from errors import SchemaMismatchError
+from errors import ArgumentError, ItemNotFoundError, SchemaMismatchError
 from fixture_types import MakeItem, MakeWorkspace
 from workspace_fixtures import RECORD_DIR
 
@@ -857,3 +857,158 @@ def test_last_updated(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
     # 検証
     assert latest == NOW
     assert missing is None
+
+
+# ===== 確認済み =====
+
+
+def _history_rows(root: Path) -> dict[str, Any]:
+    """`history.yaml` の `items` を読む（無ければ空の辞書）。"""
+    path = root / RECORD_DIR / history.HISTORY_FILE
+    if not path.is_file():
+        return {}
+    return yaml.safe_load(path.read_text(encoding="utf-8"))["items"]
+
+
+def _drop_row(root: Path, item_id: str) -> None:
+    """`history.yaml` から 1 行を消す。"""
+    path = root / RECORD_DIR / history.HISTORY_FILE
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["items"].pop(item_id)
+    path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+
+
+@pytest.mark.parametrize("by", ["ai", "external"])
+def test_unconfirm(by: str) -> None:
+    """AI・外部の書き換えは確認済みを除く（正常系）。"""
+    # 準備
+    row: Any = {"confirmed": True, "updated": NOW}
+    # 実行
+    result = history.unconfirm(row, by)  # type: ignore[arg-type]
+    # 検証
+    assert result == {"updated": NOW}
+    assert row == {"confirmed": True, "updated": NOW}
+
+
+def test_unconfirm_when_user() -> None:
+    """画面からの保存は確認済みを残す（正常系）。"""
+    # 準備
+    row: Any = {"confirmed": True}
+    # 実行
+    result = history.unconfirm(row, "user")
+    # 検証
+    assert result == {"confirmed": True}
+
+
+def test_set_confirmed(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """確認済みにして解除する（正常系）。"""
+    # 準備
+    entries = [{"seq": 2, "at": NOW, "by": "ai", "before": {"answer": None}}]
+    root = make_workspace(make_item("D-1", updated=NOW, seq=2, history=entries))
+    before_row = dict(_history_rows(root)["D-1"])
+    changes_path = root / RECORD_DIR / "changes.yaml"
+    changes_before = changes_path.read_bytes() if changes_path.exists() else None
+    # 実行
+    first = history.set_confirmed(root, "D-1", {"confirmed": True})
+    after_first = _history_rows(root)["D-1"]
+    second = history.set_confirmed(root, "D-1", {"confirmed": False})
+    after_second = _history_rows(root)["D-1"]
+    # 検証
+    assert first == {"id": "D-1", "confirmed": True}
+    assert after_first == {**before_row, "confirmed": True}
+    assert second == {"id": "D-1", "confirmed": False}
+    assert after_second == before_row
+    assert (changes_path.read_bytes() if changes_path.exists() else None) == changes_before
+
+
+def test_set_confirmed_when_no_row(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """行が無い項目は confirmed だけの行を作り、解除で行ごと除く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("D-2"))
+    _drop_row(root, "D-1")
+    # 実行
+    history.set_confirmed(root, "D-1", {"confirmed": True})
+    after_first = _history_rows(root).get("D-1")
+    history.set_confirmed(root, "D-1", {"confirmed": False})
+    after_second = _history_rows(root)
+    # 検証
+    assert after_first == {"confirmed": True}
+    assert "D-1" not in after_second
+    assert "D-2" in after_second
+
+
+def test_set_confirmed_when_unchanged(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """既にその状態なら書かない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", confirmed=True))
+    path = root / RECORD_DIR / history.HISTORY_FILE
+    stamp = path.stat().st_mtime_ns
+    content = path.read_bytes()
+    time.sleep(0.01)
+    # 実行
+    result = history.set_confirmed(root, "D-1", {"confirmed": True})
+    # 検証
+    assert result == {"id": "D-1", "confirmed": True}
+    assert path.stat().st_mtime_ns == stamp
+    assert path.read_bytes() == content
+
+
+@pytest.mark.parametrize("data", [{"confirmed": "yes"}, {}])
+def test_set_confirmed_when_invalid(
+    make_workspace: MakeWorkspace, make_item: MakeItem, data: dict[str, Any]
+) -> None:
+    """真偽値でない confirmed は断る（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    content = (root / RECORD_DIR / history.HISTORY_FILE).read_bytes()
+    # 実行・検証
+    with pytest.raises(ArgumentError):
+        history.set_confirmed(root, "D-1", data)
+    assert (root / RECORD_DIR / history.HISTORY_FILE).read_bytes() == content
+
+
+def test_set_confirmed_when_item_not_found(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """記録に無い項目は断る（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    content = (root / RECORD_DIR / history.HISTORY_FILE).read_bytes()
+    # 実行・検証
+    with pytest.raises(ItemNotFoundError):
+        history.set_confirmed(root, "D-9", {"confirmed": True})
+    assert (root / RECORD_DIR / history.HISTORY_FILE).read_bytes() == content
+
+
+def test_confirm_items(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """未確認の項目だけを確認済みにする（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", updated=NOW), make_item("D-2", confirmed=True), make_item("R-1")
+    )
+    _drop_row(root, "R-1")
+    before_d1 = dict(_history_rows(root)["D-1"])
+    # 実行
+    confirmed = history.confirm_items(root, ["D-1", "D-2", "R-1", "D-1", "D-9"])
+    rows = _history_rows(root)
+    # 検証
+    assert confirmed == ["D-1", "R-1"]
+    assert rows["D-1"] == {**before_d1, "confirmed": True}
+    assert rows["R-1"] == {"confirmed": True}
+    assert rows["D-2"]["confirmed"] is True
+
+
+def test_confirm_items_when_nothing(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """確認済みにする項目が無ければ書かない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-2", confirmed=True))
+    path = root / RECORD_DIR / history.HISTORY_FILE
+    stamp = path.stat().st_mtime_ns
+    time.sleep(0.01)
+    # 実行
+    empty = history.confirm_items(root, [])
+    already = history.confirm_items(root, ["D-2"])
+    # 検証
+    assert empty == []
+    assert already == []
+    assert path.stat().st_mtime_ns == stamp

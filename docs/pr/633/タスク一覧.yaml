@@ -1,0 +1,79 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリのため
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:25.306030+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書がそろっているため
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:25.306030+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めの依頼ではないため
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:25.306030+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 未検証の技術に依存する要件が無いため
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:25.306030+00:00'
+  - process: 複合ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T03:01:27.206317+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: デザイン方針 docs/design-policy.mark.md があり、見た目の方向を変えないため
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:25.306030+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の追加・削除と画面遷移の変更が無いため
+    updated_by: planner
+    updated_at: '2026-11-20T02:52:25.306030+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T03:15:11.716867+00:00'
+  - process: モック作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T04:40:11.094878+00:00'
+  - process: データ設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T04:43:10.295444+00:00'
+  - process: インターフェース定義設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:34:34.295221+00:00'
+  - process: 部品設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:54:51.675253+00:00'
+  - process: 画面設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T06:00:11.080265+00:00'
+  - process: モジュール構成設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T06:27:24.860457+00:00'
+  - process: ドキュメント修正
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T06:33:21.113291+00:00'
+  - process: 単体テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T06:47:05.894579+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T07:28:35.539384+00:00'
+  - process: 結合テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T08:22:18.616755+00:00'

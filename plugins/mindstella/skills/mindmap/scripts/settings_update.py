@@ -33,10 +33,11 @@ EDITABLE_KEYS = (
     "display",
     "transcription",
     "mdmark",
+    "confirm_on_comment",
 )
 
 # 値が `null` のときに消してよい任意のキー
-REMOVABLE_KEYS = ("description", "links", "history_limit", "display", "transcription")
+REMOVABLE_KEYS = ("description", "links", "history_limit", "display", "transcription", "confirm_on_comment")
 
 # 渡すと引数の誤りにする、削除した設定のキー
 REMOVED_KEYS = ("goal", "phases", "playbooks", "targets", "target_label", "categories")

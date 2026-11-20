@@ -1,0 +1,248 @@
+id: IF-633-1
+title: 確認済みの付け外し
+entry:
+  kind: endpoint
+  value: PUT /api/items/{id}/confirmed
+flows:
+  - name: 正常系（確認済みにして解除する）
+    summary: 確認済みにし、解除するとキーを消す。項目の中身・更新日時・変更履歴は変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち、`history.yaml` に D-1 の行（`confirmed` を持たない）を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/items/D-1/confirmed
+        participant WS as ワークスペース
+
+        クライアント->>IF: PUT（confirmed: true）
+        IF->>WS: history.yaml の D-1 の行に confirmed: true を書く
+        IF-->>クライアント: 200、JSON（confirmed: true）
+        クライアント->>IF: PUT（confirmed: false）
+        IF->>WS: history.yaml の D-1 の行の confirmed を消す
+        IF-->>クライアント: 200、JSON（confirmed: false）
+      ```
+    expected:
+      - '1 回目の応答が 200 で `confirmed` が `true`、`history.yaml` の D-1 の行が `confirmed: true` を持つ'
+      - 2 回目の応答が 200 で `confirmed` が `false`、`history.yaml` の D-1 の行が `confirmed` を持たない
+      - D-1 の `updated`・`updated_by`・`seq`・`history` と、`decisions.yaml`・`changes.yaml` が送る前と同じ
+    test: test_normal
+  - name: 正常系（行が無い項目）
+    summary: 行が無い項目は confirmed だけの行を作り、解除すると行ごと消す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち、`history.yaml` に D-1 の行を持たないワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/items/D-1/confirmed
+        participant WS as ワークスペース
+
+        クライアント->>IF: PUT（confirmed: true）
+        IF->>WS: history.yaml に confirmed だけを持つ D-1 の行を作る
+        IF-->>クライアント: 200
+        クライアント->>IF: PUT（confirmed: false）
+        IF->>WS: D-1 の行を消す
+        IF-->>クライアント: 200
+      ```
+    expected:
+      - '1 回目の後、`history.yaml` の D-1 の行が `confirmed: true` だけを持つ'
+      - 2 回目の後、`history.yaml` が D-1 の行を持たない
+    test: test_normal_when_no_history_row
+  - name: 正常系（既にその状態）
+    summary: 既にその状態なら書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '`history.yaml` の D-1 の行が `confirmed: true` を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/items/D-1/confirmed
+
+        クライアント->>IF: PUT（confirmed: true）
+        IF-->>クライアント: 200、JSON（confirmed: true）
+      ```
+    expected:
+      - ステータスが 200 で `confirmed` が `true`
+      - '`history.yaml` の更新日時と中身が送る前と同じ'
+    test: test_normal_when_unchanged
+  - name: 異常系（送り元が違う・403）
+    summary: 別のサイトのページからの書き換えは受けない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/items/D-1/confirmed
+
+        クライアント->>IF: PUT（Origin: attacker.example）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403
+      - '`history.yaml` の中身が送る前と同じ'
+    test: test_error_when_origin_mismatch
+  - name: 異常系（項目が無い・404）
+    summary: 記録に無い項目は書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 だけを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/items/D-9/confirmed
+
+        クライアント->>IF: PUT（confirmed: true）
+        IF-->>クライアント: 404
+      ```
+    expected:
+      - ステータスが 404 で、`detail` に `D-9` がある
+      - '`history.yaml` の中身が送る前と同じ'
+    test: test_error_when_item_not_found
+  - name: 異常系（本文が合わない・400）
+    summary: confirmed が真偽値でない本文は受けない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '本文は `{"confirmed": "yes"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/items/D-1/confirmed
+
+        クライアント->>IF: PUT（confirmed: "yes"）
+        IF-->>クライアント: 400
+      ```
+    expected:
+      - ステータスが 400 で、`detail` に `confirmed` がある
+      - '`history.yaml` の中身が送る前と同じ'
+    test: test_error_when_body_invalid
+  - name: 異常系（書き込めない・500）
+    summary: 書き込めないワークスペースでは前の状態を残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/items/D-1/confirmed
+        participant WS as ワークスペース
+
+        クライアント->>IF: PUT（confirmed: true）
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: 500
+      ```
+    expected:
+      - ステータスが 500 で、`detail` が書けなかったパスを含み、トレースバックを含まない
+      - '`history.yaml` の中身が送る前と同じ'
+    test: test_error_when_write_fails
+lead: 利用者が画面で項目を確認済みにする・確認済みを解除する。`history.yaml` のその項目の行の `confirmed` だけを書き換え、項目の中身・更新日時・変更履歴は変えない。
+idempotent: true
+side_effects: '`history.yaml` のその項目の行の `confirmed` を書く・消す（行が無ければ `confirmed` だけの行を作り、`confirmed` だけの行の解除は行ごと消す。既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
+callers:
+  - IF-489-71#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの
+  - name: Origin
+    type: str
+    required: false
+    default: なし（確かめない）
+    location: header
+    description: ブラウザが付ける送り元
+    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: 項目の ID
+    example: D-1
+  - name: confirmed
+    type: bool
+    required: true
+    location: body
+    description: '`true` で確認済みにし、`false` で解除する'
+    example: 'true'
+request_example: |-
+  ```
+  PUT /api/items/D-1/confirmed
+  Content-Type: application/json
+
+  {"confirmed": true}
+  ```
+response:
+  - name: id
+    type: str
+    description: 項目の ID
+  - name: confirmed
+    type: bool
+    description: 書き換えた後の確認済み
+response_example: |-
+  ```json
+  {"id": "D-1", "confirmed": true}
+  ```
+status_codes:
+  - code: '200'
+    condition: 書き換えたか、既にその状態だった
+  - code: '400'
+    condition: 本文が JSON でないか、`confirmed` が真偽値でない
+    notes: 何も書かない
+  - code: '403'
+    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
+    notes: 何も書かない
+  - code: '404'
+    condition: '`id` の項目が記録に無い'
+    notes: 何も書かない
+  - code: '422'
+    condition: 種類ごとの YAML がスキーマに合わないか YAML として読めない、または `history.yaml` が YAML として読めないか `items` が辞書でない
+    notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
+  - code: '500'
+    condition: '`history.yaml` を書けない'
+    notes: '`detail` に書けなかったパスと理由。前の `history.yaml` を残す'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 送り元の確かめ
+    constraint: '`Host` は『プレビューの配信』と同じ。`Content-Type` を `application/json` に限り、`Origin` が付いていれば『プレビューの配信』の制約「送り元の確かめ」で確かめる'
+  - item: 本文の上限
+    constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
+  - item: 変えないもの
+    constraint: 種類ごとの YAML と本文、`history.yaml` のその行の `confirmed` 以外のキー、`changes.yaml`。変更の検知の記録・変更履歴・前回読んだ時点からの変更に出さない
+  - item: 同時の書き込み
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
+  - item: 画面への反映
+    constraint: 書いたら『書き換えの知らせ』が `history.yaml` の書き換えとして知らせる（この受け口は知らせを自分で送らない）
+  - item: 待ち受け
+    constraint: '`127.0.0.1` だけ'
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+refs:
+  - ER-489-1#tables[history.yaml]
+  - SC-489-46#
+test_file: tests/integration/server/test_item_confirmed.py

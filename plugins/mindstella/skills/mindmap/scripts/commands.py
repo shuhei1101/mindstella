@@ -37,12 +37,14 @@ from history import (
     load_item_history,
     make_entry,
     note_pending,
+    unconfirm,
     pending_view,
     removed_items,
     stack_history,
 )
 from ids import reserve_ids
 from kinds import BODY_REF_PREFIX, EDITOR, KINDS, RECORD_DIR, Kind, records_root, workspace_path
+from migrator import count_steps
 from read_point import save_read_seq
 from readme import README_FILE, write_readme
 from settings_update import update_settings
@@ -101,6 +103,7 @@ RESERVED_KEYS = (
     "history_dropped_seq",
     "seq",
     "added_seq",
+    "confirmed",
 )
 
 # `item` で本文の Markdown を渡すキー（YAML には残さない）
@@ -216,7 +219,8 @@ def switch_adopted(item: dict[str, Any], key: str) -> tuple[dict[str, Any], str 
 
 def run_init(root: Path, settings: dict[str, Any]) -> dict[str, Any]:
     """`settings` でワークスペースを作る。"""
-    files = create_workspace(root, settings, version=str(read_plugin_version()))
+    version = read_plugin_version()
+    files = create_workspace(root, settings, version=str(version), applied=count_steps(version))
     return {"workspace": str(root.resolve()), "files": files}
 
 
@@ -364,11 +368,14 @@ def stage_update(
     changes = {key: value for key, value in item.items() if key not in BODY_INPUT_KEYS}
     merged, changed = merge_changes(ref.item, changes)
     timestamp = now()
-    row: ItemHistory = {
-        **staged.history.get(item_id, {}),
-        "updated": timestamp,
-        "updated_by": cast(Any, editor),
-    }
+    row: ItemHistory = unconfirm(
+        {
+            **staged.history.get(item_id, {}),
+            "updated": timestamp,
+            "updated_by": cast(Any, editor),
+        },
+        cast(Any, editor),
+    )
     body = _body_write(item_id, item)
     previous_name = ref.item.get("body")
     bodies = dict(staged.bodies)
@@ -456,7 +463,9 @@ def _adopt_once(root: Path, item_id: str, key: str, now: NowFn) -> tuple[str | N
         raise ItemNotFoundError(f"検討事項がありません: {item_id}")
     switched, previous = switch_adopted(ref.item, key)
     previous_status = ref.item["status"]
-    row: ItemHistory = {**rows.get(item_id, {}), "updated": timestamp, "updated_by": EDITOR}
+    row: ItemHistory = unconfirm(
+        {**rows.get(item_id, {}), "updated": timestamp, "updated_by": EDITOR}, EDITOR
+    )
     # 本文は変えないので、前後の本文は同じ（読まない）
     row, noted = _stack_changes(
         workspace,

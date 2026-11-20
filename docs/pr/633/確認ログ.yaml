@@ -1,0 +1,37 @@
+confirmations:
+  - topic: エディタで直接編集した項目も未確認に戻すか
+    decision: 画面から保存した変更以外は全て未確認に戻す（MindStella のセッション・通常の Claude Code のセッション・エディタでの直接の編集。推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638092598
+  - topic: 確認済みのボタンの置き場所と文言
+    decision: 詳細の見出しだけに配置する（推奨案 A）。文言は未確認・確認済みとも「確認済み」にし、チェックと色で状態を示す（ユーザーの返信で修正）
+    decided_by: reply
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638526634
+  - topic: 確認済みを記録する場所
+    decision: history.yaml の項目の行に items.{ID}.confirmed として持つ（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: b05ae92ae72e82ebdd626bc9e8bdaaa834ab4a14
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638613688
+  - topic: 「コメントの送信で確認済みにする」設定の置き場所
+    decision: ワークスペースの設定 config.yaml に confirm_on_comment（既定 true）として持つ（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: b05ae92ae72e82ebdd626bc9e8bdaaa834ab4a14
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638614311
+  - topic: バージョンのファイルに「当て終えた手順の数」を追加するか
+    decision: mindstella-version.ini の 2 行目に当て終えた手順の数を記録し、2 行目が無いワークスペースはそのバージョンの手順を全て当て直す（推奨案 A）。実装で、当て直すのをバージョンが v0.14.0 以上のときに限った（それより前の手順は当て直すと失敗するため。254e2c45。reviewer は確認し直しを不要と判断）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: d7ed8e0c
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638948694
+  - topic: 確認済みに関する画面の文言
+    decision: 設定のチェックボックス「コメントの送信で確認済みにする」、ヒント「オンのとき、コメントを送信した項目を確認済みにします。」、失敗のトースト「確認済みを書き換えられませんでした。」（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: e922e712
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4639059996

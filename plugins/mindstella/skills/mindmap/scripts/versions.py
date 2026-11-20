@@ -18,6 +18,9 @@ PLUGIN_VERSION_FILE = Path(__file__).resolve().parents[3] / "version.ini"
 # 版の文字列全体に当てる正規表現
 VERSION_PATTERN = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
 
+# 版のファイルで、当て終えた手順の数を持つ行の番号
+APPLIED_LINE_NUMBER = 2
+
 
 @dataclass(frozen=True, slots=True, order=True)
 class Version:
@@ -74,11 +77,30 @@ def read_plugin_version(*, path: Path = PLUGIN_VERSION_FILE) -> Version:
     return parse_release_version(_first_line(path))
 
 
-def write_workspace_version(root: Path, version: Version) -> None:
-    """`.mindstella/mindstella-version.ini` に版を 1 行で書く。"""
+def read_applied_steps(root: Path) -> int | None:
+    """版のファイルの 2 行目を、その版の手順のうち当て終えた数にする。読めなければ None（その版の手順をまだ当てていない）。"""
+    path = records_root(root) / VERSION_FILE
+    # 記録のフォルダに無い: v0.6.0 より前の置き場所（直下）を読む
+    if not path.exists():
+        path = root / VERSION_FILE
+    if not path.exists():
+        return None
+    lines = path.read_text(encoding="utf-8").splitlines()
+    # 2 行目が無い（2 行目を書く前の形）
+    if len(lines) < APPLIED_LINE_NUMBER:
+        return None
+    text = lines[APPLIED_LINE_NUMBER - 1].strip()
+    # 0 以上の整数でない
+    if not text.isdecimal():
+        return None
+    return int(text)
+
+
+def write_workspace_version(root: Path, version: Version, *, applied: int) -> None:
+    """`.mindstella/mindstella-version.ini` の 1 行目に版、2 行目に当て終えた手順の数を書く。"""
     target = records_root(root) / VERSION_FILE
     try:
-        temp = write_temp(target, f"{version}\n")
+        temp = write_temp(target, f"{version}\n{applied}\n")
     except OSError as error:
         raise write_failed(target, error) from error
     try:

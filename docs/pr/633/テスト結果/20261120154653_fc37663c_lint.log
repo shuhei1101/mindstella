@@ -1,0 +1,35 @@
+# 単体テスト作成の lint（テストコード）。use-item-confirmed.test.tsx の ESLint の違反は、実装（use-item-confirmed.ts）が無いため型を解決できないことによるもの
+$ ruff check tests/unit/scripts tests/workspace_fixtures.py
+All checks passed!
+
+$ npx eslint {変えたテストファイル 5 つ}
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/frontend/src/shared/hooks/use-item-confirmed.test.tsx
+  20:72  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  20:72  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  23:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  23:15  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  23:15  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  23:30  error  Unsafe member access .toggle on a type that cannot be resolved                                                                                                      @typescript-eslint/no-unsafe-member-access
+  25:47  error  Unsafe member access .saving on a type that cannot be resolved                                                                                                      @typescript-eslint/no-unsafe-member-access
+  26:27  error  Unsafe member access .confirmed on a type that cannot be resolved                                                                                                   @typescript-eslint/no-unsafe-member-access
+  27:47  error  Unsafe member access .saving on a type that cannot be resolved                                                                                                      @typescript-eslint/no-unsafe-member-access
+  29:27  error  Unsafe member access .error on a type that cannot be resolved                                                                                                       @typescript-eslint/no-unsafe-member-access
+  36:59  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  36:59  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  38:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  38:15  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  38:15  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  38:30  error  Unsafe member access .toggle on a type that cannot be resolved                                                                                                      @typescript-eslint/no-unsafe-member-access
+  40:47  error  Unsafe member access .error on a type that cannot be resolved                                                                                                       @typescript-eslint/no-unsafe-member-access
+  41:27  error  Unsafe member access .error on a type that cannot be resolved                                                                                                       @typescript-eslint/no-unsafe-member-access
+  42:27  error  Unsafe member access .error on a type that cannot be resolved                                                                                                       @typescript-eslint/no-unsafe-member-access
+  43:27  error  Unsafe member access .confirmed on a type that cannot be resolved                                                                                                   @typescript-eslint/no-unsafe-member-access
+  45:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  45:15  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  45:15  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  45:30  error  Unsafe member access .toggle on a type that cannot be resolved                                                                                                      @typescript-eslint/no-unsafe-member-access
+  46:47  error  Unsafe member access .error on a type that cannot be resolved                                                                                                       @typescript-eslint/no-unsafe-member-access
+
+✖ 25 problems (25 errors, 0 warnings)
+

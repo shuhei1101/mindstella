@@ -62,7 +62,7 @@ from files_serve import (
     resolve_file,
     write_file,
 )
-from history import head_until_seq, load_changes, touch_opened
+from history import head_until_seq, load_changes, set_confirmed, touch_opened
 from kinds import BODY_REF_PREFIX, KINDS, SETTINGS_FILE, body_root, records_root
 from locations import location_to_dict
 from mdmark_ref import resolve_ref
@@ -151,6 +151,10 @@ THREADS_PATH = "/api/threads"
 
 # スレッド 1 件の利用者の既読にする口（`/api/threads/{id}/seen`）の、`{id}` の後ろ
 SEEN_SUFFIX = "/seen"
+
+# 確認済みの付け外しのパスの頭（PUT `/api/items/{id}/confirmed`）と末尾
+ITEMS_PATH = "/api/items"
+CONFIRMED_SUFFIX = "/confirmed"
 
 # 保存待ちの編集の読み取り・追加と、1 件の取り消し（`/api/edits/{id}`）のパス
 EDITS_PATH = "/api/edits"
@@ -503,12 +507,14 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     def do_PUT(self) -> None:
-        """書きかけを保つ・設定の既定を書き換える要求を受け付けの関数へ渡す。"""
+        """書きかけを保つ・設定の既定を書き換える・確認済みを付け外しする要求を受け付けの関数へ渡す。"""
         path = self._checked_path()
         if path == DRAFTS_PATH:
             self._write(_saved_draft, HTTPStatus.NO_CONTENT)
         elif path == CONFIG_DISPLAY_PATH:
             self._write(update_display, HTTPStatus.OK)
+        elif (item_id := _confirmed_item_id_of(path)) is not None:
+            self._write(lambda root, data: set_confirmed(root, item_id, data), HTTPStatus.OK)
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
@@ -1327,6 +1333,16 @@ def _edit_id_of(path: str | None) -> str | None:
         return None
     edit_id = unquote(path.removeprefix(prefix))
     return edit_id if edit_id and "/" not in edit_id else None
+
+
+def _confirmed_item_id_of(path: str | None) -> str | None:
+    """`/api/items/{id}/confirmed` のパスから項目の ID を取り出す（`id` は `/` を含まない）。"""
+    prefix = f"{ITEMS_PATH}/"
+    # 別のパス
+    if path is None or not path.startswith(prefix) or not path.endswith(CONFIRMED_SUFFIX):
+        return None
+    item_id = unquote(path.removeprefix(prefix).removesuffix(CONFIRMED_SUFFIX))
+    return item_id if item_id and "/" not in item_id else None
 
 
 def _seen_thread_id_of(path: str | None) -> str | None:

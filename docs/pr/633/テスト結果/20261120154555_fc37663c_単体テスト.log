@@ -1,0 +1,126 @@
+# 単体テスト作成の Red（実装の前）
+# 実装の前から pass するテスト: frontend/src/shared/components/confirmed-toggle.test.tsx の 3 件（ConfirmedToggle はモック作成で frontend/src/shared/components/confirmed-toggle.tsx に入れた。commit 37d40b75）、test_stage_update_unconfirms[user-True]（画面からの保存は行をそのまま持つ既存の振る舞い。commands.py の stage_update）、test_send_comments_confirms_targets[False-None]（送信で確認済みにしない既存の振る舞い）、test_validate_settings_input_confirm_on_comment_invalid（EDITABLE_KEYS に無いキーを SchemaMismatchError にする既存の振る舞い。settings_update.py の validate_settings_input）、test_plan_migration_when_steps_added_to_same_version[applied_all]（版が同じなら手順を集めない既存の振る舞い。migrator.py の plan_migration）
+
+$ pytest tests/unit/scripts/test_history.py tests/unit/scripts/test_commands.py tests/unit/scripts/test_change_detection.py tests/unit/scripts/test_comments.py tests/unit/scripts/test_settings_update.py tests/unit/scripts/test_versions.py tests/unit/scripts/test_migrator.py tests/unit/scripts/test_store.py
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:945: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:960: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:976: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:988: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:1003: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:1740: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:1771: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:1786: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:1819: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:1851: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:1851: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:1868: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:1893: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+E   TypeError: create_workspace() got an unexpected keyword argument 'applied'
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_store.py:1893: TypeError: create_workspace() got an unexpected keyword argument 'applied'
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_history.py::test_unconfirm[ai] - AttributeErro...
+FAILED tests/unit/scripts/test_history.py::test_unconfirm[external] - Attribu...
+FAILED tests/unit/scripts/test_history.py::test_unconfirm_when_user - Attribu...
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed - AttributeErro...
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed_when_no_row - A...
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed_when_unchanged
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed_when_invalid[data0]
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed_when_invalid[data1]
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed_when_item_not_found
+FAILED tests/unit/scripts/test_history.py::test_confirm_items - AttributeErro...
+FAILED tests/unit/scripts/test_history.py::test_confirm_items_when_nothing - ...
+FAILED tests/unit/scripts/test_commands.py::test_stage_update_unconfirms[ai-None]
+FAILED tests/unit/scripts/test_change_detection.py::test_record_diff_unconfirms
+FAILED tests/unit/scripts/test_comments.py::test_send_comments_confirms_targets[None-True]
+FAILED tests/unit/scripts/test_comments.py::test_send_comments_confirms_targets[True-True]
+FAILED tests/unit/scripts/test_comments.py::test_send_now_confirms_target - K...
+FAILED tests/unit/scripts/test_comments.py::test_confirm_targets_when_write_fails
+FAILED tests/unit/scripts/test_settings_update.py::test_validate_settings_input_confirm_on_comment[false]
+FAILED tests/unit/scripts/test_settings_update.py::test_validate_settings_input_confirm_on_comment[null]
+FAILED tests/unit/scripts/test_versions.py::test_write_workspace_version - Ty...
+FAILED tests/unit/scripts/test_versions.py::test_write_workspace_version_when_write_fails
+FAILED tests/unit/scripts/test_versions.py::test_read_applied_steps - Attribu...
+FAILED tests/unit/scripts/test_versions.py::test_read_applied_steps_when_missing[missing]
+FAILED tests/unit/scripts/test_versions.py::test_read_applied_steps_when_missing[one_line]
+FAILED tests/unit/scripts/test_versions.py::test_read_applied_steps_when_missing[not_number]
+FAILED tests/unit/scripts/test_versions.py::test_read_applied_steps_when_missing[negative]
+FAILED tests/unit/scripts/test_migrator.py::test_plan_migration_when_steps_added_to_same_version[applied_one]
+FAILED tests/unit/scripts/test_migrator.py::test_plan_migration_when_steps_added_to_same_version[no_second_line]
+FAILED tests/unit/scripts/test_migrator.py::test_plan_migration_when_older_with_applied
+FAILED tests/unit/scripts/test_migrator.py::test_count_steps[counts0-3] - Att...
+FAILED tests/unit/scripts/test_migrator.py::test_count_steps[counts1-0] - Att...
+FAILED tests/unit/scripts/test_migrator.py::test_record_version_writes_applied
+FAILED tests/unit/scripts/test_store.py::test_create_workspace - TypeError: c...
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_exists[record_config]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_exists[top_config_yaml]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_exists[legacy_mindmap_yaml]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_root_folder_exists[docs]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_root_folder_exists[files]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_settings_invalid
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_write_fails
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_user_readme_exists
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_readme_write_fails
+FAILED tests/unit/scripts/test_store.py::test_sync_source_schemas - TypeError...
+FAILED tests/unit/scripts/test_store.py::test_sync_source_schemas_when_same
+FAILED tests/unit/scripts/test_store.py::test_sync_source_schemas_when_write_fails
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates - TypeError: cr...
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates_when_present[present]
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates_when_present[no-config]
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates_when_write_fails
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates_when_unreadable[unreadable]
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates_when_unreadable[not-list]
+51 failed, 426 passed in 2.34s
+
+$ npx vitest run frontend/src/shared/components/confirmed-toggle.test.tsx frontend/src/shared/hooks/use-item-confirmed.test.tsx frontend/src/shared/components/post-body.test.tsx frontend/src/features/comments/thread/thread-view.test.tsx frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx
+ × frontend/src/shared/components/post-body.test.tsx > PostBody > post_body_when_wide_table 42ms
+ ✓ frontend/src/shared/components/confirmed-toggle.test.tsx > ConfirmedToggle > confirmed_toggle 191ms
+ ✓ frontend/src/shared/components/confirmed-toggle.test.tsx > ConfirmedToggle > confirmed_toggle_when_confirmed 16ms
+ ✓ frontend/src/shared/components/confirmed-toggle.test.tsx > ConfirmedToggle > confirmed_toggle_when_saving 28ms
+[MSW] Error: intercepted a request without a matching request handler:
+[MSW] Error: intercepted a request without a matching request handler:
+[MSW] Error: intercepted a request without a matching request handler:
+[MSW] Error: intercepted a request without a matching request handler:
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view 219ms
+ × frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_wide_table 53ms
+[MSW] Error: intercepted a request without a matching request handler:
+ ✓ frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx > WorkspaceSettingsScreen > workspace_settings_screen 352ms
+[MSW] Error: intercepted a request without a matching request handler:
+[MSW] Error: intercepted a request without a matching request handler:
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_seen_failed 531ms
+[MSW] Error: intercepted a request without a matching request handler:
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_close 151ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_close_focus 172ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_voice 156ms
+[MSW] Error: intercepted a request without a matching request handler:
+ × frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx > WorkspaceSettingsScreen > workspace_settings_screen_when_confirm_on_comment 1011ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_voice_reviewed 143ms
+[MSW] Error: intercepted a request without a matching request handler:
+ ✓ frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx > WorkspaceSettingsScreen > workspace_settings_screen_when_transcription 137ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_focus_after_add (input) 128ms
+ ✓ frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx > WorkspaceSettingsScreen > workspace_settings_screen_when_transcription_chosen_in_a_row 101ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_focus_after_add (submit) 109ms
+ ✓ frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx > WorkspaceSettingsScreen > workspace_settings_screen_when_transcription_choice_outdated 185ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView の修正の音声入力 > thread_view_when_edit_voice 167ms
+ FAIL  frontend/src/shared/hooks/use-item-confirmed.test.tsx [ frontend/src/shared/hooks/use-item-confirmed.test.tsx ]
+Error: Failed to resolve import "@/shared/hooks/use-item-confirmed" from "frontend/src/shared/hooks/use-item-confirmed.test.tsx". Does the file exist?
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/shared/components/post-body.test.tsx > PostBody > post_body_when_wide_table
+Error: [2mexpect([22m[31melement[39m[2m).toHaveClass([22m[32m[32m"post-table-scroll"[32m[39m[2m)[22m
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_wide_table
+Error: [2mexpect([22m[31melement[39m[2m).toHaveClass([22m[32m[32m"grid-cols-[minmax(0,1fr)]"[32m[39m[2m)[22m
+ FAIL  frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx > WorkspaceSettingsScreen > workspace_settings_screen_when_confirm_on_comment
+TestingLibraryElementError: Unable to find role="checkbox" and name "コメントの送信で確認済みにする"
+ Test Files  4 failed | 1 passed (5)
+      Tests  3 failed | 16 passed (19)

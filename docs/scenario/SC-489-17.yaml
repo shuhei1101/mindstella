@@ -348,6 +348,37 @@ scenarios:
       - 直下の `docs/memo.md` とワークスペースの全てのファイルの中身が、呼ぶ前と同じである
       - ワークスペースが配信されていない
     test: test_error_when_root_docs_exists
+  - name: 正常シナリオ（同じバージョンに後から追加した手順を実行する）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。常駐サーバーと project-index を起動し、MindStella の API のワークスペースの作成を 2 回と、MindStella の MCP の `check` を呼ぶ
+      - name: 後から追加した手順を実行していないワークスペース
+        description: '`.mindstella/mindstella-version.ini` がプラグインと同じバージョンで、そのバージョンの手順のうち本文の Markdown を mdmark の文書の拡張子へ改名する手順を実行していない（検討事項 D-1 が `body: docs/D-1.md` を持ち、記録の読み込みがスキーマに合わない）ワークスペース'
+        notes: YAML と本文を直接書いて作る。手順を追加する前にそのバージョンを記録したワークスペースに当たる
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CL as 外部のアプリ（起動のコマンド）
+        participant SV as 常駐サーバー
+        participant WS as ワークスペース
+
+        CL->>SV: ワークスペースを作成する
+        SV->>WS: バージョンのファイルを読む（プラグインと同じ）
+        SV->>SV: そのバージョンの手順のうち、実行していない手順を集める
+        SV->>WS: 写しを取り、本文を .mark.md へ改名して項目の body を書き換える
+        SV-->>CL: ワークスペースの ID と画面の URL
+        CL->>SV: check
+        SV-->>CL: 問題 0 件
+        CL->>SV: もう一度ワークスペースを作成する
+        SV->>SV: 実行していない手順が無い
+        SV-->>CL: ワークスペースの ID と画面の URL
+      ```
+    expected:
+      - D-1 の `body` が `../docs/D-1.mark.md` で、直下の `docs/D-1.mark.md` の中身が移し替える前の `D-1.md` と同じである
+      - project-index の `search_docs` で D-1 がヒットし、スキーマに合わない旨の警告が無い
+      - '`check` が問題を 0 件で返す'
+      - 2 回目の作成では写しが取られず、ワークスペースの全てのファイルの中身が 1 回目の後と同じである
+    test: test_normal_when_step_added_to_same_version
 lead: 常駐サーバーが、ワークスペースを読み込むときに記録のバージョンとプラグインのバージョンを比べ、古ければバージョンごとの手順を順に適用して移し替え、スキーマの複製をプラグインのスキーマにそろえてから配信する単一ユースケース。
 issue: 43
 primary_actor: 常駐サーバー

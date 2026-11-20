@@ -14,6 +14,8 @@ import yaml
 
 import builder
 import commands
+import migrator
+from versions import parse_release_version
 import errors
 import history
 import read_point
@@ -325,9 +327,12 @@ def test_run_init(tmp_path: Path, valid_settings: dict[str, Any], scripts_dir: P
     assert payload["workspace"] == str(root)
     assert len(payload["files"]) == 13
     assert "README.md" in payload["files"]
+    version = plugin_version.splitlines()[0]
+    steps = len(list((scripts_dir.parent / "migrations" / version).glob("steps.yaml")))
+    applied = len(migrator.load_steps(parse_release_version(version))) if steps else 0
     assert (root / RECORD_DIR / "mindstella-version.ini").read_text(
         encoding="utf-8"
-    ) == f"{plugin_version.splitlines()[0]}\n"
+    ) == f"{version}\n{applied}\n"
 
 
 def test_stage_add(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -468,6 +473,22 @@ def test_stage_update_when_user_editor(make_workspace: MakeWorkspace, make_item:
     row = new_staged.history["D-1"]
     assert row["updated_by"] == "user"
     assert row["history"][0]["by"] == "user"
+
+
+@pytest.mark.parametrize(("editor", "expected"), [("ai", None), ("user", True)])
+def test_stage_update_unconfirms(
+    make_workspace: MakeWorkspace, make_item: MakeItem, editor: str, expected: bool | None
+) -> None:
+    """AI の書き換えは確認済みを除き、画面からの保存は残す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", confirmed=True))
+    staged = _make_staged(root, 3)
+    # 実行
+    new_staged, _ = commands.stage_update(
+        staged, "D-1", {"answer": "a"}, now=_fixed_now, editor=editor
+    )
+    # 検証
+    assert new_staged.history["D-1"].get("confirmed") is expected
 
 
 def test_stage_update_when_main_false(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

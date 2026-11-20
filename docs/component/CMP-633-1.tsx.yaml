@@ -1,0 +1,48 @@
+title: 確認済みの切り替え
+lead: 詳細パネルの見出しに配置し、項目を確認済みにするか解除するボタン。文言は「確認済み」のまま、チェックと色で状態を示す。
+implementation: frontend/src/shared/components/confirmed-toggle.tsx#ConfirmedToggle
+story: Shared/ConfirmedToggle
+test_file: tests/integration/storybook_react/test_confirmed_toggle_stories.py
+args:
+  - name: confirmed
+    type: 真偽値
+    required: true
+    description: 項目が確認済みか。真ならチェックの入ったアイコンと完了の色（`st-done` の枠線と文字）、偽なら空のチェックと通常の枠線で出す
+  - name: saving
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 付け外しの書き込みの応答を待っている間か。真の間は押せない
+events:
+  - name: Toggle
+    when: ボタンを押したとき
+    description: 使用する側が `confirmed` の逆の値で確認済みの付け外し（IF-633-1）を呼ぶ。応答を待つ間は `saving` を真にし、失敗したら元の値に戻し、見出しの下に書き換えられなかった旨を出す（画面設計『詳細パネル』）
+states:
+  - name: Unconfirmed
+    description: 未確認。空のチェックと「確認済み」
+    args:
+      - name: confirmed
+        value: 'false'
+  - name: Confirmed
+    description: 確認済み。チェックの入ったアイコンと「確認済み」を完了の色で出す
+    args:
+      - name: confirmed
+        value: 'true'
+  - name: Saving
+    description: 書き込みの応答を待っている間。押せない
+    args:
+      - name: confirmed
+        value: 'false'
+      - name: saving
+        value: 'true'
+  - name: InDetailHeader
+    description: 詳細パネルの見出しでの並び。種類と ID の後、「編集する」の前に配置する。幅 480px 以下では文言を隠してアイコンだけにする
+    args:
+      - name: confirmed
+        value: 'false'
+accessibility:
+  - '`aria-pressed` で確認済みかを伝える'
+  - '`title` を未確認では「確認済みにする」、確認済みでは「確認済みを解除する」にし、押したときの動作を伝える'
+  - 幅 480px 以下では文言を `sr-only` で残し、アイコンだけの表示でも読み上げ名を「確認済み」に保つ
+  - 色だけに頼らず、チェックの有無でも状態を見分けられる
+id: CMP-633-1

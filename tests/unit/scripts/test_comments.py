@@ -1014,3 +1014,79 @@ def test_send_now_when_conflict(
     with pytest.raises(CommentConflictError, match=message):
         comments.send_now(root, data, now=_unexpected_now)
     assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
+
+
+# ===== 送った項目の確認済み =====
+
+
+def _history_rows(root: Path) -> dict[str, Any]:
+    """`history.yaml` の `items` を読む（無ければ空の辞書）。"""
+    path = root / RECORD_DIR / "history.yaml"
+    if not path.is_file():
+        return {}
+    return yaml.safe_load(path.read_text(encoding="utf-8"))["items"]
+
+
+@pytest.mark.parametrize(("confirm_on_comment", "expected"), [(None, True), (True, True), (False, None)])
+def test_send_comments_confirms_targets(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_comments: WriteComments,
+    write_threads: WriteThreads,
+    valid_settings: dict[str, Any],
+    confirm_on_comment: bool | None,
+    expected: bool | None,
+) -> None:
+    """送ったコメントが向いた項目を確認済みにする（正常系）。"""
+    # 準備
+    settings = dict(valid_settings)
+    if confirm_on_comment is not None:
+        settings["confirm_on_comment"] = confirm_on_comment
+    root = make_workspace(make_item("D-1"), make_item("R-1"), settings=settings)
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1"), target="R-1"))
+    no_target = make_comment("C-3")
+    del no_target["target"]
+    write_comments(root, make_comment("C-1"), _reply_comment("C-2", "TH-1"), no_target)
+    # 実行
+    comments.send_comments(root, {"ids": ["C-1", "C-2", "C-3"]}, now=_fixed_now)
+    # 検証
+    rows = _history_rows(root)
+    assert rows["D-1"].get("confirmed") is expected
+    assert rows["R-1"].get("confirmed") is expected
+
+
+def test_send_now_confirms_target(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """すぐ送った書き込みが向いた項目を確認済みにする（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    # 実行
+    comments.send_now(root, {"target": "D-1", "body": "a"}, now=_fixed_now)
+    # 検証
+    assert _history_rows(root)["D-1"]["confirmed"] is True
+
+
+def test_confirm_targets_when_write_fails(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """確認済みを書けなくても送ったままにする（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    workspace = store.load_workspace(root)
+
+    def _fail(root_arg: Path, item_ids: list[str]) -> list[str]:
+        raise WriteFailedError("書き込めませんでした: history.yaml（テスト）")
+
+    monkeypatch.setattr(comments, "confirm_items", _fail)
+    # 実行
+    with caplog.at_level("WARNING"):
+        comments._confirm_targets(root, workspace, ["D-1", None])
+    # 検証
+    assert len([record for record in caplog.records if record.levelname == "WARNING"]) == 1

@@ -1,4 +1,4 @@
-// 書き込みの本文。段落の中の改行を強制改行にして Markdown として描き、項目の ID をその項目を開くボタン、記録にあるまとまりを指すリンクをまとまりのリンクにする。mdmark を読めないときは本文を文字のまま改行を保って出す
+// 書き込みの本文。段落の中の改行を強制改行にして Markdown として描き、表は幅に収まらないときにその中だけ横にスクロールさせ、項目の ID をその項目を開くボタン、記録にあるまとまりを指すリンクをまとまりのリンクにする。mdmark を読めないときは本文を文字のまま改行を保って出す
 import { useEffect, useRef } from "react";
 
 import { useLibrary } from "@/shared/adapters/libraries";
@@ -34,6 +34,7 @@ export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, id, cla
     // 図は描き終えるのを待たずに出し、`html` のコードブロックは枠に置き換える
     if (diagrams !== "loading") void renderDiagrams(rendered);
     drawHtmlBlocks(rendered);
+    wrapTables(rendered);
     decorateMarkdown({ root: rendered, fold: false });
     linkChangeSets({ root: rendered, changeSets, onChangeSet: (set) => onOpenChangeSet?.(set) });
     buttonizeItemIds({ root: rendered, titles, onOpen: (item) => onOpenItem?.(item) });
@@ -49,5 +50,15 @@ export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, id, cla
       </p>
     );
   }
-  return <div id={id} ref={host} data-part="body" className={className} />;
+  return <div id={id} ref={host} data-part="body" className={cn("min-w-0", className)} />;
+};
+
+/** 表を、幅に収まらないときにその中だけ横にスクロールする入れ物で包む */
+const wrapTables = (root: HTMLElement): void => {
+  for (const table of root.querySelectorAll("table")) {
+    const scroller = document.createElement("div");
+    scroller.className = "post-table-scroll max-w-full overflow-x-auto";
+    table.replaceWith(scroller);
+    scroller.append(table);
+  }
 };

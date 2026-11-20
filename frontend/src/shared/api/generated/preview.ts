@@ -27,6 +27,8 @@ import type {
   CommentPatchReply,
   CommentReply,
   Comments,
+  ConfirmedInput,
+  ConfirmedReply,
   DisplayInput,
   DisplayReply,
   DraftInput,
@@ -1845,6 +1847,152 @@ export function useSetThreadStatus<TData = Awaited<ReturnType<typeof setThreadSt
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getSetThreadStatusQueryOptions(id,threadStatusInput,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type setItemConfirmedResponse200 = {
+  data: ConfirmedReply
+  status: 200
+}
+
+export type setItemConfirmedResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type setItemConfirmedResponse404 = {
+  data: Problem
+  status: 404
+}
+
+export type setItemConfirmedResponseSuccess = (setItemConfirmedResponse200) & {
+  headers: Headers;
+};
+export type setItemConfirmedResponseError = (setItemConfirmedResponse400 | setItemConfirmedResponse404) & {
+  headers: Headers;
+};
+
+export type setItemConfirmedResponse = (setItemConfirmedResponseSuccess | setItemConfirmedResponseError)
+
+export const getSetItemConfirmedUrl = (id: string,) => {
+
+
+
+
+  return `/api/items/${id}/confirmed`
+}
+
+/**
+ * @summary 利用者が項目を確認済みにするか、確認済みを解除する
+ */
+export const setItemConfirmed = async (id: string,
+    confirmedInput: ConfirmedInput, options?: Parameters<typeof apiClient>[1]): Promise<setItemConfirmedResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<setItemConfirmedResponse>(getSetItemConfirmedUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(confirmedInput)
+  }
+);}
+
+
+
+
+
+export const getSetItemConfirmedQueryKey = (id: string,
+    confirmedInput?: ConfirmedInput,) => {
+    return [
+    'PUT', `/api/items/${id}/confirmed`, confirmedInput
+    ] as const;
+    }
+
+
+export const getSetItemConfirmedQueryOptions = <TData = Awaited<ReturnType<typeof setItemConfirmed>>, TError = Problem>(id: string,
+    confirmedInput: ConfirmedInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setItemConfirmed>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSetItemConfirmedQueryKey(id,confirmedInput);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof setItemConfirmed>>> = ({ signal }) => setItemConfirmed(id,confirmedInput, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof setItemConfirmed>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SetItemConfirmedQueryResult = NonNullable<Awaited<ReturnType<typeof setItemConfirmed>>>
+export type SetItemConfirmedQueryError = Problem
+
+
+export function useSetItemConfirmed<TData = Awaited<ReturnType<typeof setItemConfirmed>>, TError = Problem>(
+ id: string,
+    confirmedInput: ConfirmedInput, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof setItemConfirmed>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof setItemConfirmed>>,
+          TError,
+          Awaited<ReturnType<typeof setItemConfirmed>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSetItemConfirmed<TData = Awaited<ReturnType<typeof setItemConfirmed>>, TError = Problem>(
+ id: string,
+    confirmedInput: ConfirmedInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setItemConfirmed>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof setItemConfirmed>>,
+          TError,
+          Awaited<ReturnType<typeof setItemConfirmed>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSetItemConfirmed<TData = Awaited<ReturnType<typeof setItemConfirmed>>, TError = Problem>(
+ id: string,
+    confirmedInput: ConfirmedInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setItemConfirmed>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 利用者が項目を確認済みにするか、確認済みを解除する
+ */
+
+export function useSetItemConfirmed<TData = Awaited<ReturnType<typeof setItemConfirmed>>, TError = Problem>(
+ id: string,
+    confirmedInput: ConfirmedInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setItemConfirmed>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSetItemConfirmedQueryOptions(id,confirmedInput,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

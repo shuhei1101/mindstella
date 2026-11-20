@@ -584,6 +584,8 @@ constraints:
   - item: MindStella のセッションが無いとき
     constraint: '宛先が生きていないとき、ワークスペースの MindStella のセッションが `crashed`（`running` でも落ちていれば `crashed` にする）でクローズ待ちでもクローズ済みでもなければ、『MindStella のセッションの起動し直し』を契機 `comment` で呼び、準備ができたら新しいペインへ同じ文字列を入力して `restarted` を真にする。起動し直しに失敗したときと、クローズ待ち・クローズ済みのときは `entered: false` にし、コメントはスレッドに残す。起動し直しを待つ間も書き換えの鍵とワークスペースのロックを持たない'
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
+  - item: 確認済みにする項目
+    constraint: '`config.yaml` の `confirm_on_comment` が `true`（無ければ `true`）のとき、送った書き込みを向けた項目（新しいスレッドの `target`、返信は返信先のスレッドの `target`）を、同じ鍵の中で `history.yaml` の `confirmed: true` にする（行が無ければ `confirmed` だけの行を作る）。項目に紐づかない書き込みと、記録に無い項目は変えない。`updated`・`seq`・変更履歴は変えない'
 refs:
   - ER-489-1#
   - SC-489-3#

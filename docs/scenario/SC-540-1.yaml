@@ -10,7 +10,7 @@ stakeholders:
 trigger: 配信しているワークスペースの記録のファイル（種類ごとの YAML と `docs/` の本文）が書き換わる
 preconditions:
   - ワークスペースが作成済みで、常駐サーバーが配信している
-success_guarantee: 書き換えた項目の変更履歴・更新日・編集した人・通し番号が記録され、MindStella のセッションの応答の途中の変更はそのセッションのまだまとめていない変更に、それ以外は外部の変更のまとまりに入る。
+success_guarantee: 書き換えた項目の変更履歴・更新日・編集した人・通し番号が記録され、MindStella のセッションの応答の途中の変更はそのセッションのまだまとめていない変更に、それ以外は外部の変更のまとまりに入る。書き換えた項目が確認済みなら、未確認に戻る（利用者が画面から保存した変更を除く）。
 minimal_guarantee: Git の操作（checkout・merge）による書き換えは記録しない。MindStella の MCP と画面の書き込みを二重に記録しない。
 scenarios:
   - name: 正常シナリオ（外部の変更をまとめる）
@@ -267,6 +267,60 @@ scenarios:
       - どの項目の追加・変更・削除も、変更履歴と `changes.yaml` に記録されない
       - '`changes.yaml` の `sets` と `pending` が配置の前と同じで、ワークスペースの Git の状態（HEAD・インデックス）も配置の前と同じ'
     test: test_normal_when_files_folder_written
+  - name: 正常シナリオ（書き換えで確認済みを解除する）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませ、どれも確認済みの検討事項 D-1・D-2・D-3 を持ち、`commit` を済ませたワークスペース
+      - name: MindStella のセッション
+        description: 状態に登録し、応答の始まり（UserPromptSubmit）を記録した MindStella のセッション
+      - name: 通常のセッション
+        description: 状態に登録していない `session_id` で project-index の `write_docs` を呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant MS as Claude Code（MindStella のセッション）
+        participant CC as Claude Code（通常のセッション）
+        participant PI as project-index
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+
+        MS->>PI: D-1 の答えを直す
+        PI->>WS: decisions.yaml に書く
+        CD->>WS: 書き換えを見つけ、D-1 を未確認に戻す
+        CC->>PI: D-3 の答えを直す
+        PI->>WS: decisions.yaml に書く
+        CD->>WS: 書き換えを見つけ、D-3 を未確認に戻す
+      ```
+    expected:
+      - MindStella のセッションが書き換えた D-1 と、通常のセッションが書き換えた D-3 が未確認である
+      - 書き換えていない D-2 が確認済みのままである
+    test: test_normal_when_rewrite_clears_confirmed
+  - name: 正常シナリオ（画面から保存した変更では確認済みを解除しない）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、配信の HTTP を呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、確認済みの検討事項 D-1 を持つワークスペース
+      - name: 保存待ちの編集
+        description: D-1 の答えを直す保存待ちの編集
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant BR as ブラウザ
+        participant SV as 配信
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+
+        BR->>SV: 保存待ちの編集をまとめて保存する
+        SV->>WS: decisions.yaml に書き、変更履歴と利用者のまとまりを自分で記録する
+        CD->>WS: 書き換えを見つける
+        CD->>CD: 配信が記録した書き込みなので、確認済みを変えない
+      ```
+    expected:
+      - D-1 が確認済みのままで、D-1 の答えが保存した値である
+    test: test_normal_when_preview_write_keeps_confirmed
 notes:
   読んでいない回: AI が最後に読んだ時点より後の回は、保持する回数を超えても消さない。読んだ時点の記録が無いワークスペースでは、超えた古い回を消す。保持する回数が 0 のときは積まない
   自動で commit する契機: 書き換えが止んでから待つ時間は、インターフェース定義設計で規約『資源の値の決め方』から導く

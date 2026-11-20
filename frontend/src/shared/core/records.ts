@@ -148,6 +148,8 @@ export type Item = {
   updated: string;
   /** 最後に項目を足した・値を変えた人（`ai`・`user`・`external`）。このキーを入れる前に書いた項目は持たない */
   updated_by?: "ai" | "user" | "external";
+  /** 確認済みなら真（`history.yaml` の行の `confirmed`）。無ければ未確認 */
+  confirmed?: boolean;
   status?: string;
   lead?: string;
   answer?: string;

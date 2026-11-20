@@ -568,7 +568,8 @@ functions:
          - `WriteFailedError` の場合、控えた `threads.yaml` を書き戻し（無かったときは消す）、同じ例外を送る
       6. 送った返信のスレッドの書きかけがあれば消して書く
          - `WriteFailedError` の場合、`[WARNING]` 書きかけを消せなかった（パス・理由）を出して送ったまま返す
-      7. 送った日時と、コメント・スレッド・書き込みの ID の組を返す
+      7. 送ったコメントが向いた項目を確認済みにする（`_confirm_targets`。新しいスレッドはコメントの `target`、返信は返信先のスレッドの `target`）
+      8. 送った日時と、コメント・スレッド・書き込みの ID の組を返す
          - `[INFO]` コメントを送った（件数・スレッドの ID）
     exceptions:
       - name: CommentInvalidError
@@ -624,6 +625,12 @@ functions:
         mock: '`os.replace`'
         expected: '`WriteFailedError`。`threads.yaml`・`comments.yaml` が呼ぶ前と同じ'
         exception: 置き換えで OSError
+      - name: test_send_comments_confirms_targets
+        case: 正常
+        summary: 送ったコメントが向いた項目を確認済みにする
+        condition: '`parametrize`: `config.yaml` の `confirm_on_comment` が無い / `true` / `false`。D-1 への新しいスレッドのコメントと、R-1 を向いたスレッドへの返信と、項目を指さないコメントを送る'
+        mock: '`now`'
+        expected: '無い・`true` は `history.yaml` の D-1・R-1 の行が `confirmed: true` を持つ。`false` はどちらも持たない'
   - name: send_now
     title: すぐ送る
     kind: 関数
@@ -657,7 +664,8 @@ functions:
       2. ワークスペースとスレッドを読み（`load_workspace`、`load_threads`）、まとめて送るときと同じ理由で向けた先を確かめる（`_stale_reason` を、コメントでなく向けた先の組で受けるように分けたもの）
          - 理由がある場合、その理由をメッセージにした `CommentConflictError` を送る（`stale` は空）
       3. `comment` を `None` にした `UserPostInput` 1 件でスレッドへ足す（`append_user_posts`。`loc` は `location_to_dict`）
-      4. 送った日時と、足した `SentPost` を返す
+      4. 送った書き込みが向いた項目を確認済みにする（`_confirm_targets`。`target` か、`thread` ならそのスレッドの `target`）
+      5. 送った日時と、足した `SentPost` を返す
          - `[INFO]` 書き込みをすぐ送った（スレッドの ID）
     exceptions:
       - name: CommentInvalidError
@@ -697,6 +705,12 @@ functions:
         mock: なし
         expected: '`CommentConflictError`（メッセージに `D-9` / `クローズ` / `TH-9` / 行数）。`threads.yaml` が呼ぶ前と同じ'
         exception: 送れない向けた先
+      - name: test_send_now_confirms_target
+        case: 正常
+        summary: すぐ送った書き込みが向いた項目を確認済みにする
+        condition: '`confirm_on_comment` が無いワークスペースで `{"target": "D-1", "body": "a"}` を送る'
+        mock: '`now`'
+        expected: '`history.yaml` の D-1 の行が `confirmed: true` を持つ'
   - name: _parse_comment_input
     title: コメントの入力の確かめ
     kind: 関数
@@ -767,3 +781,41 @@ functions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
         message: '書き込めませんでした: {パス}（{理由}）'
+  - name: _confirm_targets
+    title: 送った項目の確認済み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを送る
+    scope: internal
+    side_effects: '`history.yaml` を置き換える（`confirm_items`）'
+    summary: 設定の `confirm_on_comment` が真のとき、送った書き込みが向いた項目を確認済みにする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: 送る前に読んだワークスペース（設定を読む）
+      - name: targets
+        type: list[str | None]
+        required: true
+        passing: positional
+        description: 送った書き込みごとの向いた項目の ID（項目を指さない書き込みは `None`）
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. `workspace.settings` の `confirm_on_comment`（無ければ `True`）が偽なら何もしない
+      2. `None` を除いた ID を `confirm_items` で確認済みにする
+         - `WriteFailedError` の場合、`[WARNING]` 確認済みにできなかった（パス・理由）を出して続ける（送った書き込みは戻さない）
+    unit_tests:
+      - name: test_confirm_targets_when_write_fails
+        case: 正常
+        summary: 確認済みを書けなくても送ったままにする
+        condition: '`confirm_items` が `WriteFailedError` を送る'
+        mock: '`confirm_items`'
+        expected: 例外を送らず、`WARNING` のログを 1 件出す

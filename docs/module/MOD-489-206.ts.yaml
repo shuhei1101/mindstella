@@ -489,3 +489,4 @@ components:
         expected: '`onChange` が 740 で 1 回だけ呼ばれる。新しい区切りの `aria-valuenow` と `--panel-w` が 740 で、フレームを進めても外した区切りが `--panel-w` を書き換えない'
 notes:
   修正の入力の音声入力: レビュー中のコメントの行で `reviewEditForm` を描くとき、使う側（app.ts）が渡す修正の入力の音声（`comment.edit.voice`）と `on.voiceStart`・`on.voiceCancel`・`on.voiceDone`・`on.voiceBlocked` をそのまま渡す。配る書き出しでは `voice` を渡さない
+  最も狭い幅の見出し: '`style.css` の `@media (max-width: 480px)` で、`.panel-head` の `gap` を 4px・左の余白を 10px にし、`.panel-kind-label` を見出しのタイトルの出し入れによらず見た目から外す（読み上げには残す。今の `:has(.panel-title.is-shown)` の条件を外す）。幅 320px で戻る・種類と ID・編集する・コメントの一覧・戻る・進む・全画面表示が表示幅に収まる（#625。結合テストの `test_fit_smallest` が確かめる）'

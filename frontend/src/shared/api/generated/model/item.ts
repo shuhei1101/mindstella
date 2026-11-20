@@ -9,5 +9,6 @@ export interface Item {
   id: string;
   title: string;
   status?: string;
+  confirmed?: boolean;
   [key: string]: unknown;
  }

@@ -38,6 +38,7 @@ from history import (
     note_pending,
     note_removed,
     stack_history,
+    unconfirm,
 )
 from inject_session import process_started_at
 from kinds import (
@@ -497,12 +498,12 @@ def record_diff(
         if entry is None:
             continue
         changes, seq = advance_seq(changes)
-        row: dict[str, Any] = {
-            **rows.get(after_item["id"], {}),
-            "updated": at,
-            "updated_by": writer,
-            "seq": seq,
-        }
+        row: dict[str, Any] = dict(
+            unconfirm(
+                {**rows.get(after_item["id"], {}), "updated": at, "updated_by": writer, "seq": seq},
+                writer,
+            )
+        )
         rows[after_item["id"]] = stack_history(row, entry, limit, read_seq=read_seq)  # type: ignore[assignment]
         if limit > 0:
             changes = note_pending(changes, after_item["id"], "changed", by=writer)

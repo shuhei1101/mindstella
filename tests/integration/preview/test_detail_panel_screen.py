@@ -4486,7 +4486,7 @@ def test_head_title_kind_label_when_narrow(
     width: int,
     label_hidden: bool,
 ) -> None:
-    """幅 480px 以下でタイトルを出している間は種類の名前を見た目から外して読み上げには残し、481px 以上では外さない（正常系）。"""
+    """幅 480px 以下ではタイトルの出し入れによらず種類の名前を見た目から外して読み上げには残し、481px 以上では外さない（正常系）。"""
     # 準備
     url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.mark.md": LONG_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
@@ -4502,8 +4502,8 @@ def test_head_title_kind_label_when_narrow(
         kind_label,
     )
     # 検証
-    # タイトルを出す前は、どの幅でも種類の名前が見える
-    assert before > VISUALLY_HIDDEN_SIZE_PX
+    # タイトルを出す前も、480px 以下だけ見た目から外れる
+    assert (before == VISUALLY_HIDDEN_SIZE_PX) == label_hidden
     # 読み上げには残す（文字は DOM に残る）
     assert after["text"].strip() == "資料"
     # 480px 以下だけ見た目から外れる

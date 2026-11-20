@@ -95,6 +95,10 @@
         }
       }
     },
+    "confirm_on_comment": {
+      "type": "boolean",
+      "description": "コメントをまとめて送る・すぐ送るときに、送ったコメントが向いた項目を確認済み（`history.yaml` の `confirmed`）にするか。無ければ `true`。`update_settings` と、プレビューの設定の画面が書く"
+    },
     "transcription": {
       "type": "object",
       "description": "コメント・返信の入力の音声入力の設定。どの文字起こしのサービスを使うかは持たない（常駐サーバーの環境変数 `MINDSTELLA_TRANSCRIBER`）。`update_settings` と、プレビューの設定の画面が書く",
