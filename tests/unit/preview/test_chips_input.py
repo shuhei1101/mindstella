@@ -59,7 +59,7 @@ def test_chips_input(preview_page: Page, load_preview_scripts: LoadPreviewScript
     # 実行
     _add(preview_page, "性能")
     _add(preview_page, "UI")
-    preview_page.get_by_role("button", name="UI を外す", exact=True).click()
+    preview_page.get_by_role("button", name="UI を解除", exact=True).click()
     # 検証
     assert _calls(preview_page) == [[["UI", "性能"], None], [["性能"], "UI"]]
 
@@ -110,7 +110,7 @@ def test_chips_input_when_disabled(
         disabled=True,
     )
     toggle = preview_page.get_by_role("button", name="画面 を主題", exact=True)
-    remove = preview_page.get_by_role("button", name="画面 を外す", exact=True)
+    remove = preview_page.get_by_role("button", name="画面 を解除", exact=True)
     # 実行
     toggle.click(force=True)
     remove.click(force=True)

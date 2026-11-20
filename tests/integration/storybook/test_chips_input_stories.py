@@ -84,8 +84,8 @@ def test_default(open_story: OpenStory) -> None:
     page = open_story("preview-chipsinput--default")
     # 検証
     assert page.evaluate(CHIPS_SCRIPT) == [
-        {"name": "D-1", "mono": True, "main": False, "toggle": None, "remove": "D-1 を外す"},
-        {"name": "T-3", "mono": True, "main": False, "toggle": None, "remove": "T-3 を外す"},
+        {"name": "D-1", "mono": True, "main": False, "toggle": None, "remove": "D-1 を解除"},
+        {"name": "T-3", "mono": True, "main": False, "toggle": None, "remove": "T-3 を解除"},
     ]
     assert page.evaluate(FIELD_SCRIPT) == {
         "label": "関係を追加",
@@ -107,21 +107,21 @@ def test_main_toggle(open_story: OpenStory) -> None:
             "mono": False,
             "main": True,
             "toggle": {"label": "画面 を主題", "pressed": "true", "title": "主題を解除"},
-            "remove": "画面 を外す",
+            "remove": "画面 を解除",
         },
         {
             "name": "記録の形",
             "mono": False,
             "main": False,
             "toggle": {"label": "記録の形 を主題", "pressed": "false", "title": "主題にする"},
-            "remove": "記録の形 を外す",
+            "remove": "記録の形 を解除",
         },
         {
             "name": "通知",
             "mono": False,
             "main": False,
             "toggle": {"label": "通知 を主題", "pressed": "false", "title": "主題にする"},
-            "remove": "通知 を外す",
+            "remove": "通知 を解除",
         },
     ]
     assert page.evaluate(FIELD_SCRIPT) == {
@@ -162,7 +162,7 @@ def test_main_toggle_when_added_and_removed(open_story: OpenStory) -> None:
     # 実行
     page.get_by_role("combobox", name="タグを追加").fill("タスク")
     page.get_by_role("combobox", name="タグを追加").press("Enter")
-    page.get_by_role("button", name="通知 を外す").click()
+    page.get_by_role("button", name="通知 を解除").click()
     # 検証
     chips = page.evaluate(CHIPS_SCRIPT)
     assert [chip["name"] for chip in chips] == ["画面", "記録の形", "タスク"]

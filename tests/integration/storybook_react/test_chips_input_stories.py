@@ -31,13 +31,13 @@ def test_state_renders(open_story: OpenStory, page_errors: list[str], state: str
 
 
 def test_default(open_story: OpenStory) -> None:
-    """参照の ID を等幅の文字のチップで並べ、主題のトグルを持たない。外すボタンは「{値} を外す」（正常系）。"""
+    """参照の ID を等幅の文字のチップで並べ、主題のトグルを持たない。外すボタンは「{値} を解除」（正常系）。"""
     # 準備・実行
     page = open_story("shared-chipsinput--default")
     group = page.get_by_role("group", name="依存先")
-    chip = group.locator("span", has=page.get_by_role("button", name="D-1 を外す")).first
+    chip = group.locator("span", has=page.get_by_role("button", name="D-1 を解除")).first
     # 検証
-    expect(page.get_by_role("button", name="T-3 を外す")).to_be_visible()
+    expect(page.get_by_role("button", name="T-3 を解除")).to_be_visible()
     assert group.get_by_role("button", name="を主題").count() == 0
     assert "mono" in chip.evaluate("e => getComputedStyle(e).fontFamily").lower()
     expect(page.get_by_role("combobox", name="依存先を追加")).to_have_attribute(
@@ -72,7 +72,7 @@ def test_main_toggle_disabled(open_story: OpenStory) -> None:
     page = open_story("shared-chipsinput--main-toggle-disabled")
     # 検証
     expect(page.get_by_role("combobox", name="タグを追加")).to_be_disabled()
-    expect(page.get_by_role("button", name="画面 を外す")).to_be_disabled()
+    expect(page.get_by_role("button", name="画面 を解除")).to_be_disabled()
     expect(page.get_by_role("button", name="画面 を主題")).to_be_disabled()
 
 
@@ -103,5 +103,5 @@ def test_error(open_story: OpenStory) -> None:
     expect(field).to_have_value("D-99")
     error = page.locator(f"#{field.get_attribute('aria-describedby')}")
     expect(error).to_have_text("入力の誤り: D-99 が見つかりません。ID を確認してください。")
-    assert page.get_by_role("button", name="D-99 を外す").count() == 0
-    expect(page.get_by_role("button", name="D-1 を外す")).to_be_visible()
+    assert page.get_by_role("button", name="D-99 を解除").count() == 0
+    expect(page.get_by_role("button", name="D-1 を解除")).to_be_visible()
