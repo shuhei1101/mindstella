@@ -69,7 +69,7 @@ describe("ThreadView", () => {
     // 検証
     const post = await screen.findByText("どちらにしますか");
     const list = post.closest("ol");
-    expect(list).toHaveClass("grid-cols-[minmax(0,1fr)]");
+    expect(list).toHaveClass("grid-cols-1");
     expect(post.closest("article")).toHaveClass("min-w-0");
   });
 
