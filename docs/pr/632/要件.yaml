@@ -137,3 +137,12 @@ scope_out:
   - item: トップバーの部品のモック（docs/mock/components/topbar/frame.html）が duplicate-id-notice.js を読み込まず、スクリプトのエラーが出る
     reason: 部品のモックがエラーなく描けることに外れるが、この PR は frame.html を変えておらず、要望に含まれない
     plan: '#634'
+  - item: v0.14.0 の変換のスクリプト markdown_bodies_to_mark_md.py・move_bodies_to_root.py の行が plugins/mindstella/files.yml に無い
+    reason: 規約『ドキュメントのオンデマンド取得』の files.yml の行の修正に外れるが、この PR より前の PR で追加したスクリプトで、要望に含まれない
+    plan: '#636'
+  - item: プレビューの文字のほとんどが Inter で描かれる（detect_screen_issues の overused-font）
+    reason: 文字のトークンの見直しで、この PR は文字のトークンを変えておらず、要望に含まれない
+    plan: '#637'
+  - item: SPA のボードで、幅 390px のとき 1 枚目のカードが横に送る枠の左端に接する（detect_screen_issues の edge-flush-cards）
+    reason: この PR はボードの部品を変えておらず、要望に含まれない
+    plan: '#638'
