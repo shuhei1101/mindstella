@@ -1023,7 +1023,7 @@ functions:
       - name: test_run_readme_when_serving
         case: 正常
         summary: 配っていればその URL を書く
-        condition: 作成済みのワークスペース。偽の台帳の `url_of` が `http://127.0.0.1:1/mindstella.html` を返す
+        condition: 作成済みのワークスペース。偽の台帳の `url_of` が `http://127.0.0.1:8784/w/mindstella-x-1/mindstella.html` を返す
         mock: '`previews`'
         expected: '`preview_url` がその URL で、`README.md` がその URL を含む'
       - name: test_run_readme_when_user_file
