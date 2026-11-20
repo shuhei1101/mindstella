@@ -17,7 +17,6 @@ from fixture_types import (
     WriteComments,
     WriteThreads,
 )
-from workspace_fixtures import RECORD_DIR
 from record_helpers import ai_update
 
 
