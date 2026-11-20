@@ -47,7 +47,6 @@ SCRIPT_FILES = (
     "core/router.js",
     "core/api.js",
     "core/edits.js",
-    "core/lock.js",
     "core/voice.js",
     "core/refresh-hold.js",
     "components/view-switch.js",
@@ -93,8 +92,6 @@ SCRIPT_FILES = (
     "screens/settings.js",
     "screens/search.js",
     "screens/diagram-viewer.js",
-    "graph/looks.js",
-    "graph/graph.js",
     "app.js",
 )
 
@@ -232,18 +229,6 @@ VENDOR_LIBRARIES = (
         bundled_license_file=None,
         repository="https://github.com/markedjs/marked",
         tag="v{version}",
-    ),
-    VendorLibrary(
-        package="elkjs",
-        name="elkjs",
-        notice="(c) Kiel University and others",
-        license="EPL-2.0",
-        license_path="LICENSE.md",
-        license_file=None,
-        bundled_license_path=None,
-        bundled_license_file=None,
-        repository="https://github.com/kieler/elkjs",
-        tag="{version}",
     ),
     VendorLibrary(
         package="mermaid",

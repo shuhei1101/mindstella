@@ -44,7 +44,7 @@ class ItemNotFoundError(MindmapError):
 
 
 class SettingsInvalidError(MindmapError):
-    """既定の書き換えの要求の本文に `network_look`・`visible_kinds` が無い・値が合わない。メッセージは `{キー}: {理由}`。"""
+    """既定の書き換えの要求の本文に `visible_kinds` が無い・値が合わない、またはほかのキーがある。メッセージは `{キー}: {理由}`。"""
 
 
 class OptionNotFoundError(MindmapError):
