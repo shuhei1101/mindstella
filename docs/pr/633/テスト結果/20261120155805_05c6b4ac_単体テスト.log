@@ -1,0 +1,134 @@
+# 単体テスト作成の Red（実装の前。レビューの指摘で足した test_plan_migration_when_older_without_applied と test_update_settings_when_confirm_on_comment_invalid を含む）
+# 実装の前から pass するテスト: 20261120154555_fc37663c_単体テスト.log の先頭のとおり。加えて test_plan_migration_when_older_without_applied（2 行目を読まない今の plan_migration は、ワークスペースの版の手順を集めない。migrator.py の plan_migration）、test_update_settings_when_confirm_on_comment_invalid（EDITABLE_KEYS に無いキーを SchemaMismatchError にする今の振る舞い。settings_update.py の validate_settings_input）、test_migrate_when_same ほか 3 件（版が同じなら何も当てない今の振る舞い）
+
+$ pytest tests/unit/scripts/test_history.py tests/unit/scripts/test_commands.py tests/unit/scripts/test_change_detection.py tests/unit/scripts/test_comments.py tests/unit/scripts/test_settings_update.py tests/unit/scripts/test_versions.py tests/unit/scripts/test_migrator.py tests/unit/scripts/test_store.py
+PASSED tests/unit/scripts/test_store.py::test_save_batch_when_previous_batch_rejected
+PASSED tests/unit/scripts/test_store.py::test_save_batch_when_schema_mismatch
+PASSED tests/unit/scripts/test_store.py::test_save_batch_when_replace_fails
+PASSED tests/unit/scripts/test_store.py::test_save_batch_removes_bodies
+PASSED tests/unit/scripts/test_store.py::test_save_batch_when_body_removal_fails
+PASSED tests/unit/scripts/test_store.py::test_save_batch_with_settings_and_edits[written]
+PASSED tests/unit/scripts/test_store.py::test_save_batch_with_settings_and_edits[edits_replace_fails]
+PASSED tests/unit/scripts/test_store.py::test_read_body
+PASSED tests/unit/scripts/test_store.py::test_read_body_when_missing
+PASSED tests/unit/scripts/test_store.py::test_read_body_when_outside[records_dir]
+PASSED tests/unit/scripts/test_store.py::test_read_body_when_outside[parent]
+PASSED tests/unit/scripts/test_store.py::test_read_body_when_outside[records_docs]
+PASSED tests/unit/scripts/test_store.py::test_dump_yaml
+PASSED tests/unit/scripts/test_store.py::test_format_path[nested]
+PASSED tests/unit/scripts/test_store.py::test_format_path[empty]
+PASSED tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[top_level_list]
+PASSED tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[extra_key]
+PASSED tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[string_element]
+PASSED tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[yaml_unreadable]
+PASSED tests/unit/scripts/test_store.py::test_save_change_when_item_value_fixed
+PASSED tests/unit/scripts/test_store.py::test_write_temp_when_mode[copy_from_target]
+PASSED tests/unit/scripts/test_store.py::test_write_temp_when_mode[from_umask]
+PASSED tests/unit/scripts/test_store.py::test_workspace_lock
+PASSED tests/unit/scripts/test_store.py::test_workspace_lock_when_raises
+PASSED tests/unit/scripts/test_store.py::test_workspace_lock_when_folder_missing
+PASSED tests/unit/scripts/test_store.py::test_workspace_lock_when_not_workspace[empty_folder]
+PASSED tests/unit/scripts/test_store.py::test_workspace_lock_when_not_workspace[missing_folder]
+PASSED tests/unit/scripts/test_store.py::test_workspace_lock_when_require_given[require_migratable]
+PASSED tests/unit/scripts/test_store.py::test_workspace_lock_when_require_given[default]
+PASSED tests/unit/scripts/test_store.py::test_require_workspace
+PASSED tests/unit/scripts/test_store.py::test_require_workspace_when_missing[empty_folder]
+PASSED tests/unit/scripts/test_store.py::test_require_workspace_when_missing[legacy_settings_only]
+PASSED tests/unit/scripts/test_store.py::test_require_workspace_when_missing[top_config_only]
+PASSED tests/unit/scripts/test_store.py::test_check_settings
+PASSED tests/unit/scripts/test_store.py::test_check_settings_when_invalid[unknown_look]
+PASSED tests/unit/scripts/test_store.py::test_check_settings_when_invalid[duplicate_kinds]
+PASSED tests/unit/scripts/test_store.py::test_check_settings_when_invalid[broken_yaml]
+PASSED tests/unit/scripts/test_store.py::test_check_decision_rules[undecided_with_options]
+PASSED tests/unit/scripts/test_store.py::test_check_decision_rules[decided_with_adopted]
+PASSED tests/unit/scripts/test_store.py::test_check_decision_rules[review_with_adopted]
+PASSED tests/unit/scripts/test_store.py::test_check_decision_rules[optional_statuses_without_options]
+PASSED tests/unit/scripts/test_store.py::test_check_decision_rules_when_mismatch
+PASSED tests/unit/scripts/test_store.py::test_check_decision_rules_when_malformed
+PASSED tests/unit/scripts/test_store.py::test_build_mismatch_error_when_decision_state[written]
+PASSED tests/unit/scripts/test_store.py::test_build_mismatch_error_when_decision_state[not_written]
+PASSED tests/unit/scripts/test_store.py::test_written_ids
+PASSED tests/unit/scripts/test_store.py::test_validate_workspace_when_decision_state
+PASSED tests/unit/scripts/test_store.py::test_validate_workspace_when_aliases[with_aliases_and_description]
+PASSED tests/unit/scripts/test_store.py::test_validate_workspace_when_aliases[without_aliases_and_description]
+PASSED tests/unit/scripts/test_store.py::test_validate_workspace_when_aliases[empty_alias]
+PASSED tests/unit/scripts/test_store.py::test_validate_workspace_when_duplicated_tag
+PASSED tests/unit/scripts/test_store.py::test_save_change_when_decision_state[other_item_mismatch]
+PASSED tests/unit/scripts/test_store.py::test_save_change_when_decision_state[written_item_mismatch]
+PASSED tests/unit/scripts/test_store.py::test_save_batch_when_decision_state[other_item_mismatch]
+PASSED tests/unit/scripts/test_store.py::test_save_batch_when_decision_state[written_item_mismatch]
+PASSED tests/unit/scripts/test_store.py::test_is_legacy_problem_when_decision_state[no_written_ids]
+PASSED tests/unit/scripts/test_store.py::test_is_legacy_problem_when_decision_state[written]
+PASSED tests/unit/scripts/test_store.py::test_is_legacy_problem_when_decision_state[other_written]
+PASSED tests/unit/scripts/test_store.py::test_is_legacy_problem_when_string_tag[other_item]
+PASSED tests/unit/scripts/test_store.py::test_is_legacy_problem_when_string_tag[written_item]
+PASSED tests/unit/scripts/test_store.py::test_is_legacy_problem_when_legacy_item_form[other_item]
+PASSED tests/unit/scripts/test_store.py::test_is_legacy_problem_when_legacy_item_form[written_item]
+PASSED tests/unit/scripts/test_store.py::test_save_change_when_changed_by_other
+PASSED tests/unit/scripts/test_store.py::test_save_batch_when_changed_by_other
+PASSED tests/unit/scripts/test_store.py::test_build_source_config
+FAILED tests/unit/scripts/test_history.py::test_unconfirm[ai] - AttributeErro...
+FAILED tests/unit/scripts/test_history.py::test_unconfirm[external] - Attribu...
+FAILED tests/unit/scripts/test_history.py::test_unconfirm_when_user - Attribu...
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed - AttributeErro...
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed_when_no_row - A...
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed_when_unchanged
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed_when_invalid[data0]
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed_when_invalid[data1]
+FAILED tests/unit/scripts/test_history.py::test_set_confirmed_when_item_not_found
+FAILED tests/unit/scripts/test_history.py::test_confirm_items - AttributeErro...
+FAILED tests/unit/scripts/test_history.py::test_confirm_items_when_nothing - ...
+FAILED tests/unit/scripts/test_commands.py::test_run_init - AssertionError: a...
+FAILED tests/unit/scripts/test_commands.py::test_stage_update_unconfirms[ai-None]
+FAILED tests/unit/scripts/test_change_detection.py::test_record_diff_unconfirms
+FAILED tests/unit/scripts/test_comments.py::test_send_comments_confirms_targets[None-True]
+FAILED tests/unit/scripts/test_comments.py::test_send_comments_confirms_targets[True-True]
+FAILED tests/unit/scripts/test_comments.py::test_send_now_confirms_target - K...
+FAILED tests/unit/scripts/test_comments.py::test_confirm_targets_when_write_fails
+FAILED tests/unit/scripts/test_settings_update.py::test_validate_settings_input_confirm_on_comment[false]
+FAILED tests/unit/scripts/test_settings_update.py::test_validate_settings_input_confirm_on_comment[null]
+FAILED tests/unit/scripts/test_versions.py::test_write_workspace_version - Ty...
+FAILED tests/unit/scripts/test_versions.py::test_write_workspace_version_when_write_fails
+FAILED tests/unit/scripts/test_versions.py::test_read_applied_steps - Attribu...
+FAILED tests/unit/scripts/test_versions.py::test_read_applied_steps_when_missing[missing]
+FAILED tests/unit/scripts/test_versions.py::test_read_applied_steps_when_missing[one_line]
+FAILED tests/unit/scripts/test_versions.py::test_read_applied_steps_when_missing[not_number]
+FAILED tests/unit/scripts/test_versions.py::test_read_applied_steps_when_missing[negative]
+FAILED tests/unit/scripts/test_migrator.py::test_migrate_when_same_with_stale_schema
+FAILED tests/unit/scripts/test_migrator.py::test_migrate_when_same_without_write_dates
+FAILED tests/unit/scripts/test_migrator.py::test_plan_migration_when_steps_added_to_same_version[applied_one]
+FAILED tests/unit/scripts/test_migrator.py::test_plan_migration_when_steps_added_to_same_version[no_second_line]
+FAILED tests/unit/scripts/test_migrator.py::test_plan_migration_when_older_with_applied
+FAILED tests/unit/scripts/test_migrator.py::test_count_steps[counts0-3] - Att...
+FAILED tests/unit/scripts/test_migrator.py::test_count_steps[counts1-0] - Att...
+FAILED tests/unit/scripts/test_migrator.py::test_record_version_writes_applied
+FAILED tests/unit/scripts/test_store.py::test_create_workspace - TypeError: c...
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_exists[record_config]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_exists[top_config_yaml]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_exists[legacy_mindmap_yaml]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_root_folder_exists[docs]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_root_folder_exists[files]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_settings_invalid
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_write_fails
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_user_readme_exists
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_readme_write_fails
+FAILED tests/unit/scripts/test_store.py::test_sync_source_schemas - TypeError...
+FAILED tests/unit/scripts/test_store.py::test_sync_source_schemas_when_same
+FAILED tests/unit/scripts/test_store.py::test_sync_source_schemas_when_write_fails
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates - TypeError: cr...
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates_when_present[present]
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates_when_present[no-config]
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates_when_write_fails
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates_when_unreadable[unreadable]
+FAILED tests/unit/scripts/test_store.py::test_add_write_dates_when_unreadable[not-list]
+54 failed, 424 passed in 2.41s
+
+## 足した 2 件（実装の前）
+$ pytest tests/unit/scripts/test_migrator.py::test_plan_migration_when_older_without_applied tests/unit/scripts/test_settings_update.py::test_update_settings_when_confirm_on_comment_invalid
+..                                                                       [100%]
+2 passed in 0.14s
+
+## 足した 2 件（2 行目が無ければその版の手順を全て当て直す、修正の前の設計の実装を当てた状態。UNTRACKED_STEPS_FROM が無い）
+$ pytest tests/unit/scripts/test_migrator.py::test_plan_migration_when_older_without_applied tests/unit/scripts/test_settings_update.py::test_update_settings_when_confirm_on_comment_invalid
+/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-item-confirmed-mark-and-small-fixes/tests/unit/scripts/test_migrator.py:787: AssertionError: assert [('v0.13.0', ...'v0.14.0', 1)] == [('v0.14.0', 1)]
+1 failed, 1 passed in 0.09s
