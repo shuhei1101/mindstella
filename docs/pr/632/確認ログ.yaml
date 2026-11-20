@@ -11,3 +11,9 @@ confirmations:
     approver: shuhei1101
     commit: 0ce887e5
     thread: https://github.com/shuhei1101/mindstella/pull/632#discussion_r4638252343
+  - topic: config.yaml の display から network_look を削除するか
+    decision: network_look を削除し、既存のワークスペースからも移し替えで削除する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: d6fb9b97
+    thread: https://github.com/shuhei1101/mindstella/pull/632#discussion_r4638296813
