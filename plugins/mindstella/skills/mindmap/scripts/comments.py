@@ -349,7 +349,7 @@ def send_comments(
     ]
     # 向けた項目が消えた・箇所が合わない・返信先が無いかクローズのコメントがある
     if stale:
-        raise CommentConflictError(f"送れない書き込みが {len(stale)} 件あります", stale=stale)
+        raise CommentConflictError(f"送信できない書き込みが {len(stale)} 件あります", stale=stale)
 
     threads_path = records_root(root) / THREADS_FILE
     previous = threads_path.read_bytes() if threads_path.exists() else None

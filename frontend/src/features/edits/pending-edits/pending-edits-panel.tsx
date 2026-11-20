@@ -228,7 +228,7 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
         })}
       </div>
       <div className="flex flex-col gap-1 border-t border-border-soft p-2">
-        {edits.length === 0 ? null : <p className="m-0 text-xs text-muted-foreground">{`${String(edits.length)} 件${removals > 0 ? `（うち削除 ${String(removals)} 件）` : ""}をワークスペースに書きます`}</p>}
+        {edits.length === 0 ? null : <p className="m-0 text-xs text-muted-foreground">{`${String(edits.length)} 件${removals > 0 ? `（うち削除 ${String(removals)} 件）` : ""}をワークスペースに書き込みます`}</p>}
         <Button
           disabled={save.isPending || edits.length === 0}
           aria-busy={save.isPending || undefined}

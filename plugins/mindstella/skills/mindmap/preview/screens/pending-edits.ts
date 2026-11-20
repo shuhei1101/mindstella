@@ -343,7 +343,7 @@ namespace MindmapPreview {
               : h({
                   tag: "p",
                   attrs: { class: "pe-foot-sum" },
-                  children: [`${edits.length} 件${removals > 0 ? `（うち削除 ${removals} 件）` : ""}をワークスペースに書きます`],
+                  children: [`${edits.length} 件${removals > 0 ? `（うち削除 ${removals} 件）` : ""}をワークスペースに書き込みます`],
                 }),
             h({
               tag: "button",

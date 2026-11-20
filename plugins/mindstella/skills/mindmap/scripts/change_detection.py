@@ -80,7 +80,7 @@ SNAPSHOT_DIR = "snapshot"
 
 # ペインへ貼り付ける、重なった ID の文の形（`{entries}` に `{ID}（{ファイル名}）` を `、` でつないで入れる）
 DUPLICATE_MESSAGE = (
-    "[mindstella] 同じ ID の項目が 2 件あります: {entries}。片方の ID を next_id で振り直してください"
+    "[mindstella] 同じ ID の項目が 2 件あります: {entries}。片方の ID を next_id で再採番してください"
 )
 
 # 重なった ID の文で、ID を並べる区切り

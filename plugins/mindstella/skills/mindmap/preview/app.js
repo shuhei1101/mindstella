@@ -418,7 +418,7 @@ var MindmapPreview;
                 }
                 const message = result.reason === "invalid" && result.detail !== null
                     ? result.detail
-                    : "サーバーにつながりません。起動スクリプトで立ち上げ直し、示された新しい URL で開いてください。";
+                    : "サーバーにつながりません。起動スクリプトで再起動し、示された新しい URL で開いてください。";
                 holder.replaceChildren(MindmapPreview.topbar({
                     title: "mindstella",
                     tabs: [],

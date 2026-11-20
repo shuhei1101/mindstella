@@ -48,7 +48,7 @@ const ReplyResult = ({ status, count, detail }: { status: ReplyStatus; count: nu
     return (
       <>
         <Icon name="alert" className="text-st-review" />
-        <span>{`レビューに追加できませんでした。${detail ?? "サーバーが止まっています。立ち上げ直してから追加してください。"}`}</span>
+        <span>{`レビューに追加できませんでした。${detail ?? "サーバーが止まっています。再起動してから追加してください。"}`}</span>
       </>
     );
   }
