@@ -1,0 +1,26 @@
+# lint（単体テスト作成）: 違反は全て、まだ無い実装 frontend/src/shared/core/workspace-path.ts の import によるもの（型検査の TS2307 と、その型を解決できないことによる ESLint の no-unsafe-*）
+
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+frontend/src/shared/core/workspace-path.test.ts(3,45): error TS2307: Cannot find module '@/shared/core/workspace-path' or its corresponding type declarations.
+exit=2
+
+$ npm run lint
+
+> lint
+> eslint
+
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-single-port-preview/frontend/src/shared/core/workspace-path.test.ts
+  14:11  error  Unsafe assignment of an error typed value         @typescript-eslint/no-unsafe-assignment
+  14:20  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  28:11  error  Unsafe assignment of an error typed value         @typescript-eslint/no-unsafe-assignment
+  28:20  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+
+✖ 4 problems (4 errors, 0 warnings)
+
+exit=1
