@@ -17,6 +17,7 @@ from preview_fixture_types import WritePreview, WriteReviewPreview
 from preview_embedded_files_helpers import EMBEDDED_FILES_BODY, put_embedded_files
 from preview_spa_helpers import open_spa, spa_url, watch_console
 from workspace_fixtures import (
+    PORT_ENV,
     RECORD_DIR,
     CallTool,
     MakeComment,
@@ -229,14 +230,14 @@ def test_error_when_records_invalid(
 def test_error_when_server_stopped(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    valid_settings: dict[str, Any],
     start_server: StartServer,
     page: Page,
 ) -> None:
     """書き換えの知らせが切れたら、トップバーに接続が切れたことを出し、立ち上がり直すとつなぎ直す（異常系）。"""
-    # 準備（常駐サーバーがポートを掴んだ後に、配信のポートを選ぶ）
-    server = start_server()
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "preview": {"port": free_port()}})
+    # 準備（再起動も同じポートで待ち受けるよう、常駐サーバーのポートを決めて渡す）
+    port_env = {PORT_ENV: str(free_port())}
+    server = start_server(extra_env=port_env)
+    root = make_workspace(make_item("D-1"))
     served = server.call("preview_url", workspace=str(root))
     assert served.data is not None
     open_spa(page, served.data["url"])
@@ -246,7 +247,7 @@ def test_error_when_server_stopped(
     server.wait_exit()
     page.wait_for_selector(CONNECTION, timeout=UPDATE_TIMEOUT_MS)
     stopped_tile = page.inner_text("#tile-open")
-    restarted = start_server().call("preview_url", workspace=str(root))
+    restarted = start_server(extra_env=port_env).call("preview_url", workspace=str(root))
     page.wait_for_selector(CONNECTION, state="detached", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert "D-1の題" in stopped_tile
@@ -704,12 +705,12 @@ def test_error_when_comment_body_empty(page: Page, write_review_preview: WriteRe
 
 
 def test_error_when_comment_server_unreachable(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any], start_server: StartServer, page: Page
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer, page: Page
 ) -> None:
     """サーバーが止まった後に溜めると、本文を残して届かなかった理由を出す（異常系）。"""
-    # 準備（常駐サーバーがポートを掴んだ後に、配信のポートを選ぶ）
+    # 準備
     server = start_server()
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "preview": {"port": free_port()}})
+    root = make_workspace(make_item("D-1"))
     served = server.call("preview_url", workspace=str(root))
     assert served.data is not None
     errors = watch_console(page)
