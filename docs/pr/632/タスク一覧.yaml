@@ -35,8 +35,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T03:15:31.552422+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
     note: SC-489-7・SC-489-24 の削除と、ネットワーク・マップ・見た目を含む単一 UC の追随
+    updated_by: planner
+    updated_at: '2026-11-20T03:23:21.213690+00:00'
   - process: モック作成
     status: todo
     note: 変わるトップバー・検討事項・表示の設定のモックと、ネットワーク・マップだけのモックの削除
