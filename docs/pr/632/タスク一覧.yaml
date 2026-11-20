@@ -45,8 +45,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T03:52:34.029461+00:00'
   - process: データ設計
-    status: todo
+    status: done
     note: config.yaml の display から network_look を外す（ER 図・settings.schema.json）
+    updated_by: planner
+    updated_at: '2026-11-20T03:53:33.165833+00:00'
   - process: インターフェース定義設計
     status: todo
   - process: 部品設計
