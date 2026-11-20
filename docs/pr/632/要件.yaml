@@ -17,7 +17,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-15.yaml
     impact: changed
-    detail: ワークスペースの既定として保存するものから見た目を外し、表示する種類だけにする
+    detail: ワークスペースの既定として保存するものから見た目を外し、表示する種類だけにする。表示する種類を上書きしている別の利用者の画面は、既定を保存しても変わらないことを確かめるシナリオを足す
     depends_on:
       - docs/scenario/SC-489-31.yaml
   - kind: single
