@@ -777,19 +777,20 @@ def test_normal_when_duplicate_ids(
 
 
 def test_normal_when_embedded_files(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page) -> None:
-    """本文の ../files/{名前} を配信の /files/{名前} に解決して、動画・画像を描く（正常系）。"""
+    """本文の ../files/{名前} を配信の /w/{workspace}/files/{名前} に解決して、動画・画像を描く（正常系）。"""
     # 準備
     root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": EMBEDDED_FILES_BODY})
     put_embedded_files(root)
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
+    workspace_base = urlsplit(served.data["url"]).path.rsplit("/", 1)[0]
     # 実行
     open_spa(page, served.data["url"], "?tab=docs&id=A-1")
     panel = page.get_by_role("complementary", name="詳細")
     video = panel.locator("video")
     image = panel.locator("img")
-    expect(video).to_have_attribute("src", "/files/clip.mp4", timeout=UPDATE_TIMEOUT_MS)
-    expect(image).to_have_attribute("src", "/files/shot.png")
+    expect(video).to_have_attribute("src", f"{workspace_base}/files/clip.mp4", timeout=UPDATE_TIMEOUT_MS)
+    expect(image).to_have_attribute("src", f"{workspace_base}/files/shot.png")
     # 検証
     expect(video).to_have_js_property("error", None)
     page.wait_for_function("(v) => v.readyState >= 1", arg=video.element_handle(), timeout=UPDATE_TIMEOUT_MS)
