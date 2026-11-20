@@ -29,3 +29,9 @@ confirmations:
     approver: shuhei1101
     commit: d7ed8e0c
     thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638948694
+  - topic: 確認済みに関する画面の文言
+    decision: 設定のチェックボックス「コメントの送信で確認済みにする」、ヒント「オンのとき、コメントを送信した項目を確認済みにします。」、失敗のトースト「確認済みを書き換えられませんでした。」（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: e922e712
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4639059996
