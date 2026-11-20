@@ -34,7 +34,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T23:34:49.772008+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T23:59:06.410173+00:00'
   - process: モック作成
     status: skipped
     reason: 新しい画面・見た目を足さない（React の画面は Storybook で合意済み）
