@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 画面に出す文言の置き換え先（58 件）と当てた規則
+    decision: 一覧と規則のとおりに承認する（推奨案 A）。見えるボタンは「する」と「を」を省き、読み上げの名前・title は「を」を残し、「続きを表示」は例外とする
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 7a83c04eaf546c216eeea5ed6d6dc8efeb1ca6cc
+    thread: https://github.com/shuhei1101/mindstella/pull/640#discussion_r4641859491
