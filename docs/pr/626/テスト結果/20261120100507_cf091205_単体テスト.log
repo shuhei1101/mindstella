@@ -1,0 +1,2732 @@
+$ python3 -m pytest tests/unit/scripts -q -n 8 -p no:cacheprovider --basetemp=/tmp/pt626-c
+（全件実行 pytest tests/unit のうち、変更に関係する tests/unit/scripts を実行。/tmp/pytest-of-* が別の利用者の持ち物のため --basetemp を指定し、-n 8 で並列に実行。fail と error は、直下の docs/・files/ の扱い・スキーマの body の pattern・kinds.body_root・kinds.workspace_path・errors.RootFolderExistsError・move_bodies_to_root.py の実装が無いことによる）
+
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [  4%]
+............................F.........F................................. [  8%]
+........................F.................F.F.......................F... [ 12%]
+......................FF......F...............F......................... [ 17%]
+..........F.........F..F................................................ [ 21%]
+................F....................................................... [ 25%]
+...........F..F....F.F..............F.FFF............F.....FF........... [ 29%]
+.....FF.......EEEE.....................................F....F........... [ 34%]
+.F...................................................................... [ 38%]
+..........................s............................................. [ 42%]
+.................................................F......FF.............. [ 46%]
+.......................................................................E [ 51%]
+....................F..F.F.............................................. [ 55%]
+......................................................F................. [ 59%]
+........................................................................ [ 63%]
+........................................................................ [ 68%]
+........................................................................ [ 72%]
+...F...............F....F.FF...FFFF....F.........F...................... [ 76%]
+......F....F...F.....F..F...F........................................... [ 80%]
+........................................................................ [ 85%]
+........................................................................ [ 89%]
+......................................................................F. [ 93%]
+F....................................................................... [ 97%]
+...................................                                      [100%]
+==================================== ERRORS ====================================
+_____________ ERROR at setup of test_migrate_when_already_current ______________
+[gw4] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def move_bodies_to_root(scripts_dir: Path) -> ModuleType:
+        """版のフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_move_bodies_to_root", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_move_bodies_to_root.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x73b0b483ff50>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+______ ERROR at setup of test_migrate_when_root_folder_exists[root-docs] _______
+[gw4] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def move_bodies_to_root(scripts_dir: Path) -> ModuleType:
+        """版のフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_move_bodies_to_root", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_move_bodies_to_root.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x73b0b4723ce0>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+_ ERROR at setup of test_migrate_when_root_folder_exists[root-files-without-records-files] _
+[gw4] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def move_bodies_to_root(scripts_dir: Path) -> ModuleType:
+        """版のフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_move_bodies_to_root", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_move_bodies_to_root.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x73b0b4713e30>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+________________ ERROR at setup of test_migrate_without_bodies _________________
+[gw4] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def move_bodies_to_root(scripts_dir: Path) -> ModuleType:
+        """版のフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_move_bodies_to_root", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_move_bodies_to_root.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x73b0b47123c0>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+________________________ ERROR at setup of test_migrate ________________________
+[gw7] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def move_bodies_to_root(scripts_dir: Path) -> ModuleType:
+        """版のフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_move_bodies_to_root", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_move_bodies_to_root.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7b51f54d05f0>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/chore-workspace-docs-at-root/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+=================================== FAILURES ===================================
+____________ test_add_comment_when_location_and_no_target[location] ____________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11e1b7e0>
+make_item = <function make_item.<locals>._make at 0x734f11e1b240>
+data = {'target': 'A-1', 'loc': {'kind': 'body', 'start': 2, 'end': 2, 'text': '言い換えたい文'}, 'body': 'ここは言い換える'}
+expected_target = 'A-1'
+expected_loc = {'kind': 'body', 'start': 2, 'end': 2, 'text': '言い換えたい文'}
+
+    @pytest.mark.parametrize(
+        ("data", "expected_target", "expected_loc"),
+        [
+            pytest.param(
+                {"target": "A-1", "loc": LINE2_LOC, "body": "ここは言い換える"},
+                "A-1",
+                LINE2_LOC,
+                id="location",
+            ),
+            pytest.param({"body": "全体に目を通した"}, None, None, id="no_target"),
+        ],
+    )
+    def test_add_comment_when_location_and_no_target(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        data: dict[str, Any],
+        expected_target: str | None,
+        expected_loc: dict[str, Any] | None,
+    ) -> None:
+        """箇所を持つコメントと項目を指さないコメントを溜める（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
+        # 実行
+>       comment, _count = comments.add_comment(root, data, now=_fixed_now)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_comments.py:278: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = PosixPath('/tmp/pt626-c/popen-gw6/test_add_comment_when_location0/workspace')
+data = {'target': 'A-1', 'loc': {'kind': 'body', 'start': 2, 'end': 2, 'text': '言い換えたい文'}, 'body': 'ここは言い換える'}
+now = <function _fixed_now at 0x734f12465da0>
+
+    def add_comment(
+        root: Path, data: dict[str, Any], now: NowFn = now_utc
+    ) -> tuple[ReviewComment, int]:
+        """向けた先（項目と箇所か、返信先のスレッド）と本文を確かめ、レビュー中のコメントを 1 件足す。`id` を渡されたら消したコメントを同じ ID で戻す。"""
+        target, loc, thread, body, comment_id, created = _parse_comment_input(data)
+        workspace = load_workspace(root)
+        # 向けた項目が無ければ ItemNotFoundError が上がる
+        item = None if target is None else find_item(workspace, target).item
+        if loc is not None and item is not None:
+            reason = check_location(workspace, item, loc)
+            # 箇所が今の項目に合わない
+            if reason is not None:
+>               raise CommentConflictError(reason)
+E               errors.CommentConflictError: A-1 は本文を持ちません
+
+plugins/mindstella/skills/mindmap/scripts/comments.py:204: CommentConflictError
+________________ test_send_now_when_conflict[loc-out-of-range] _________________
+[gw5] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x726feef9bc40>
+make_item = <function make_item.<locals>._make at 0x726fef0de5c0>
+make_thread = <function make_thread.<locals>._make at 0x726feefe82c0>
+write_threads = <function write_threads.<locals>._write at 0x726feefe8360>
+data = {'target': 'A-1', 'loc': {'kind': 'body', 'start': 5, 'end': 5, 'text': 'x'}, 'body': 'x'}
+message = '3 行'
+
+    @pytest.mark.parametrize(
+        ("data", "message"),
+        [
+            pytest.param({"target": "D-9", "body": "x"}, "D-9", id="missing-item"),
+            pytest.param({"thread": "TH-1", "body": "x"}, "クローズ", id="closed-thread"),
+            pytest.param({"thread": "TH-9", "body": "x"}, "TH-9", id="missing-thread"),
+            pytest.param(
+                {
+                    "target": "A-1",
+                    "loc": {"kind": "body", "start": 5, "end": 5, "text": "x"},
+                    "body": "x",
+                },
+                "3 行",
+                id="loc-out-of-range",
+            ),
+        ],
+    )
+    def test_send_now_when_conflict(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        make_thread: MakeThread,
+        write_threads: WriteThreads,
+        data: dict[str, Any],
+        message: str,
+    ) -> None:
+        """向けた先が無いか送れない（異常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
+        write_threads(root, make_thread("TH-1", status="closed"))
+        before = (root / RECORD_DIR / "threads.yaml").read_bytes()
+        # 実行・検証
+>       with pytest.raises(CommentConflictError, match=message):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: '3 行'
+E         Actual message: 'A-1 は本文を持ちません'
+
+tests/unit/scripts/test_comments.py:1014: AssertionError
+______________________ test_stage_add_when_note_has_body _______________________
+[gw4] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x73b0b4690220>
+
+    def test_stage_add_when_note_has_body(make_workspace: MakeWorkspace) -> None:
+        """メモにも本文を付ける（正常系）。"""
+        # 準備
+        staged = _make_staged(make_workspace(), 0)
+        item = {"title": "t", "content": "c", "body_markdown": "b"}
+        # 実行
+        new_staged, _ = commands.stage_add(staged, "note", item, now=_fixed_now)
+        # 検証
+        assert new_staged.items["note"][0]["id"] == "N-1"
+>       assert new_staged.items["note"][0]["body"] == "../docs/N-1.mark.md"
+E       AssertionError: assert 'docs/N-1.mark.md' == '../docs/N-1.mark.md'
+E         
+E         - ../docs/N-1.mark.md
+E         ? ---
+E         + docs/N-1.mark.md
+
+tests/unit/scripts/test_commands.py:365: AssertionError
+_____________________________ test_check_workspace _____________________________
+[gw1] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7924dba5de40>
+make_item = <function make_item.<locals>._make at 0x7924dba5d940>
+
+    def test_check_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """整ったワークスペースは問題 0 件（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", body="../docs/D-1.mark.md"),
+            make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]),
+            bodies={"D-1.mark.md": "本文\n"},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        problems = checker.check_workspace(workspace)
+        # 検証
+>       assert problems == []
+E       assert [Problem(kind...D-1.mark.md')] == []
+E         
+E         Left contains 2 more items, first extra item: Problem(kind='schema', file='.mindstella/decisions.yaml', id='D-1', key='items[0].body', detail="'../docs/D-1.mark.md' does not match '^docs/[^/\\\\\\\\]+\\\\.mark\\\\.md$'")
+E         Use -v to get more diff
+
+tests/unit/scripts/test_checker.py:43: AssertionError
+____________________ test_stage_add_when_doc_has_html_body _____________________
+[gw4] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x73b0b46bb100>
+
+    def test_stage_add_when_doc_has_html_body(make_workspace: MakeWorkspace) -> None:
+        """資料の HTML の本文を `../docs/{ID}.html` の書き込みにする（正常系）。"""
+        # 準備
+        staged = _make_staged(make_workspace(), 0)
+        item = {"title": "t", "kind": "モック", "status": "下書き", "body_html": "<p>a</p>"}
+        # 実行
+        new_staged, result = commands.stage_add(staged, "doc", item, now=_fixed_now)
+        # 検証
+        added = new_staged.items["doc"][0]
+        assert added["id"] == "A-1"
+>       assert added["body"] == "../docs/A-1.html"
+E       AssertionError: assert 'docs/A-1.html' == '../docs/A-1.html'
+E         
+E         - ../docs/A-1.html
+E         ? ---
+E         + docs/A-1.html
+
+tests/unit/scripts/test_commands.py:379: AssertionError
+______________________ test_check_workspace_when_problems ______________________
+[gw1] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7924dbaa67a0>
+make_item = <function make_item.<locals>._make at 0x7924dbaa62a0>
+
+    def test_check_workspace_when_problems(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """4 種類の問題をまとめて返す（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", related=[{"to": "D-9", "type": "depends_on"}]),
+            make_item("D-2", status="完了"),
+            make_item("R-1", body="../docs/R-1.mark.md"),
+            bodies={"X-1.mark.md": "どこからも指されない本文\n"},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        problems = checker.check_workspace(workspace)
+        # 検証
+>       assert _keys(problems) == {
+            ("broken_ref", ".mindstella/decisions.yaml", "D-1", "related[0].to"),
+            ("schema", ".mindstella/decisions.yaml", "D-2", "items[1].status"),
+            ("orphan_body", "docs/X-1.mark.md", None, None),
+            ("missing_body", ".mindstella/research.yaml", "R-1", "items[0].body"),
+        }
+E       AssertionError: assert {('broken_ref...ems[0].body')} == {('broken_ref...s[1].status')}
+E         
+E         Extra items in the left set:
+E         ('schema', '.mindstella/research.yaml', 'R-1', 'items[0].body')
+E         Extra items in the right set:
+E         ('orphan_body', 'docs/X-1.mark.md', None, None)
+E         Use -v to get more diff
+
+tests/unit/scripts/test_checker.py:77: AssertionError
+__________________ test_stage_update_when_body_format_changed __________________
+[gw4] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x73b0b46bb4c0>
+make_item = <function make_item.<locals>._make at 0x73b0b46bb240>
+
+    def test_stage_update_when_body_format_changed(
+        make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """形式を替えると前の形式の本文を消す書き込みにし、前の body を変更履歴に積む（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("A-1", body="../docs/A-1.mark.md"), bodies={"A-1.mark.md": "a\nb\n"})
+        staged = _make_staged(root, 3)
+        # 実行（Markdown から HTML へ）
+        to_html, to_html_result = commands.stage_update(
+            staged, "A-1", {"body_html": "<p>a</p>\n"}, now=_fixed_now
+        )
+        # 検証
+        html_item = to_html.items["doc"][0]
+>       assert html_item["body"] == "../docs/A-1.html"
+E       AssertionError: assert 'docs/A-1.html' == '../docs/A-1.html'
+E         
+E         - ../docs/A-1.html
+E         ? ---
+E         + docs/A-1.html
+
+tests/unit/scripts/test_commands.py:515: AssertionError
+______________________________ test_check_bodies _______________________________
+[gw1] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7924dbaa6de0>
+make_item = <function make_item.<locals>._make at 0x7924dbaa74c0>
+
+    def test_check_bodies(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """本文が無い項目と指されない本文を拾う（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("R-1", body="../docs/R-1.mark.md"),
+            make_item("D-1", body="../docs/D-1.mark.md"),
+            bodies={"D-1.mark.md": "本文\n", "X-1.mark.md": "どこからも指されない本文\n"},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        problems = checker._check_bodies(workspace)
+        # 検証
+>       assert _keys(problems) == {
+            ("missing_body", "research.yaml", "R-1", "items[0].body"),
+            ("orphan_body", "../docs/X-1.mark.md", None, None),
+        }
+E       AssertionError: assert {('missing_bo...ems[0].body')} == {('missing_bo..., None, None)}
+E         
+E         Extra items in the left set:
+E         ('missing_body', 'decisions.yaml', 'D-1', 'items[0].body')
+E         Extra items in the right set:
+E         ('orphan_body', '../docs/X-1.mark.md', None, None)
+E         Use -v to get more diff
+
+tests/unit/scripts/test_checker.py:165: AssertionError
+_________________________ test_check_bodies_when_html __________________________
+[gw1] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7924dbaa7ba0>
+make_item = <function make_item.<locals>._make at 0x7924dbaa7920>
+
+    def test_check_bodies_when_html(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """HTML の本文も本文のずれの対象にする（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1", body="../docs/A-1.html"),
+            make_item("A-2", body="../docs/A-2.html"),
+            bodies={"A-2.html": "<p>本文</p>\n", "A-9.html": "<p>どこからも指されない本文</p>\n"},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        problems = checker._check_bodies(workspace)
+        # 検証
+>       assert _keys(problems) == {
+            ("missing_body", "docs.yaml", "A-1", "items[0].body"),
+            ("orphan_body", "../docs/A-9.html", None, None),
+        }
+E       AssertionError: assert {('missing_bo...ems[1].body')} == {('missing_bo..., None, None)}
+E         
+E         Extra items in the left set:
+E         ('missing_body', 'docs.yaml', 'A-2', 'items[1].body')
+E         Extra items in the right set:
+E         ('orphan_body', '../docs/A-9.html', None, None)
+E         Use -v to get more diff
+
+tests/unit/scripts/test_checker.py:183: AssertionError
+______________________________ test_send_comments ______________________________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11cc0cc0>
+make_item = <function make_item.<locals>._make at 0x734f11c782c0>
+make_comment = <function make_comment.<locals>._make at 0x734f11c78720>
+write_comments = <function write_comments.<locals>._write at 0x734f11c78400>
+
+    def test_send_comments(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        make_comment: MakeComment,
+        write_comments: WriteComments,
+    ) -> None:
+        """チェックしたものだけを溜めた順に送り、新しいスレッドを立てる（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.mark.md": A_BODY})
+        no_target = make_comment("C-3")
+        del no_target["target"]
+        write_comments(
+            root,
+            make_comment("C-1"),
+            make_comment("C-2", target="A-1", loc=LINE2_LOC),
+            no_target,
+        )
+        decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
+        docs_before = (root / RECORD_DIR / "docs.yaml").read_bytes()
+        # 実行
+>       sent, sent_comments = comments.send_comments(root, {"ids": ["C-2", "C-1"]}, now=_fixed_now)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_comments.py:706: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = PosixPath('/tmp/pt626-c/popen-gw6/test_send_comments0/workspace')
+data = {'ids': ['C-2', 'C-1']}, now = <function _fixed_now at 0x734f12465da0>
+
+    def send_comments(
+        root: Path, data: dict[str, Any], now: NowFn = now_utc
+    ) -> tuple[str, list[SentPost]]:
+        """渡した ID のコメントを全て確かめてからスレッドへ足し、レビュー中から外す。1 件でも合わなければ何も書き換えない。"""
+        ids = data.get("ids")
+        # ids が 1 件以上の文字列の配列でない、または重なりがある
+        if not isinstance(ids, list) or not ids or not all(isinstance(entry, str) for entry in ids):
+            raise CommentInvalidError("ids: 1 件以上の文字列の配列で渡してください")
+        if len(set(ids)) != len(ids):
+            raise CommentInvalidError("ids: 重ならないように渡してください")
+    
+        current = load_comments(root)
+        known = {comment.id for comment in current.items}
+        missing = [comment_id for comment_id in ids if comment_id not in known]
+        # レビュー中に無い ID がある
+        if missing:
+            raise CommentNotFoundError(f"コメントがありません: {'、'.join(missing)}")
+        chosen = [comment for comment in current.items if comment.id in set(ids)]
+    
+        workspace = load_workspace(root)
+        threads = load_threads(root)
+        # 同じコメントの書き込みが既にあるものは確かめない（足さずに外すだけ）
+        sent_already = {post.comment for thread in threads for post in thread.posts}
+        stale = [
+            (comment.id, reason)
+            for comment in chosen
+            if comment.id not in sent_already
+            and (reason := _stale_reason(workspace, threads, comment)) is not None
+        ]
+        # 向けた項目が消えた・箇所が合わない・返信先が無いかクローズのコメントがある
+        if stale:
+>           raise CommentConflictError(f"送れない書き込みが {len(stale)} 件あります", stale=stale)
+E           errors.CommentConflictError: 送れない書き込みが 1 件あります
+
+plugins/mindstella/skills/mindmap/scripts/comments.py:351: CommentConflictError
+__________________________ test_collect_preview_data ___________________________
+[gw0] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x76829fc4ad40>
+make_item = <function make_item.<locals>._make at 0x76829fc4afc0>
+
+    def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """種類ごとのキーと、指された本文だけを集める（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1", body="../docs/A-1.mark.md"),
+            make_item("R-1", body="../docs/R-1.mark.md"),
+            bodies={"A-1.mark.md": "資料の本文\n", "X-1.mark.md": "どこからも指されない本文\n"},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
+        # 検証
+        assert set(data) == {
+            "settings",
+            "decisions",
+            "tasks",
+            "research",
+            "docs",
+            "terms",
+            "notes",
+            "logs",
+            "bodies",
+            "marked_bodies",
+            "changes",
+            "derived",
+            "built_at",
+            "settings_problem",
+            "mdmark_ref",
+        }
+        assert data["mdmark_ref"] == "develop"
+>       assert data["bodies"] == {"../docs/A-1.mark.md": "資料の本文\n"}
+E       AssertionError: assert {} == {'../docs/A-1...d': '資料の本文\n'}
+E         
+E         Right contains 1 more item:
+E         {'../docs/A-1.mark.md': '資料の本文\n'}
+E         Use -v to get more diff
+
+tests/unit/scripts/test_builder.py:171: AssertionError
+____________________ test_check_history_when_body_rewritten ____________________
+[gw1] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7924dbb4c900>
+make_item = <function make_item.<locals>._make at 0x7924dbb4c400>
+
+    def test_check_history_when_body_rewritten(
+        make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """手で書き換えた本文に当たらない変更履歴を拾う（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", body="../docs/D-1.mark.md"), bodies={"D-1.mark.md": "元の 1 行目\n元の 2 行目\n"}
+        )
+        ai_update(root, "D-1", {"body_markdown": "新しい 1 行目\n新しい 2 行目\n"})
+        (root / "docs" / "D-1.mark.md").write_text(
+            "手で書いた 1 行目\n手で書いた 2 行目\n", encoding="utf-8"
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        problems = checker._check_history(workspace)
+        # 検証
+>       assert [(problem.kind, problem.id, problem.key) for problem in problems] == [
+            ("stale_history", "D-1", "history[0].body_diff")
+        ]
+E       AssertionError: assert [] == [('stale_hist...].body_diff')]
+E         
+E         Right contains one more item: ('stale_history', 'D-1', 'history[0].body_diff')
+E         Use -v to get more diff
+
+tests/unit/scripts/test_checker.py:326: AssertionError
+___________________ test_collect_preview_data_with_html_body ___________________
+[gw0] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x76829fab3e20>
+make_item = <function make_item.<locals>._make at 0x76829fab3560>
+
+    def test_collect_preview_data_with_html_body(
+        make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """HTML の本文は原文を bodies に、行の印つきを marked_bodies に入れる（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1", body="../docs/A-1.mark.md"),
+            make_item("A-2", body="../docs/A-2.html"),
+            bodies={"A-1.mark.md": "資料の本文\n", "A-2.html": "<p>a</p>"},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
+        # 検証
+>       assert data["bodies"] == {"../docs/A-1.mark.md": "資料の本文\n", "../docs/A-2.html": "<p>a</p>"}
+E       AssertionError: assert {} == {'../docs/A-1...': '<p>a</p>'}
+E         
+E         Right contains 2 more items:
+E         {'../docs/A-1.mark.md': '資料の本文\n', '../docs/A-2.html': '<p>a</p>'}
+E         Use -v to get more diff
+
+tests/unit/scripts/test_builder.py:190: AssertionError
+__________________________ test_check_embedded_files ___________________________
+[gw1] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7924dbb4db20>
+make_item = <function make_item.<locals>._make at 0x7924dbb4e700>
+
+    def test_check_embedded_files(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """無いファイルだけを拾う（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1", body="../docs/A-1.mark.md"),
+            bodies={
+                "A-1.mark.md": (
+                    "![a](../files/clip.mp4)\n\n"
+                    "![b](../files/missing.mp4)\n\n"
+                    "![c](../files/sub/x%20y.png#t=1)\n"
+                )
+            },
+        )
+        files = root / "files"
+        (files / "sub").mkdir(parents=True)
+        (files / "clip.mp4").write_bytes(b"mp4")
+        (files / "sub" / "x y.png").write_bytes(b"png")
+        workspace = store.load_workspace(root)
+        # 実行
+        problems = checker._check_embedded_files(workspace)
+        # 検証
+>       assert problems == [
+            store.Problem(
+                kind="missing_file",
+                file="../docs/A-1.mark.md",
+                id="A-1",
+                key=None,
+                detail="../files/missing.mp4",
+            )
+        ]
+E       AssertionError: assert [] == [Problem(kind...missing.mp4')]
+E         
+E         Right contains one more item: Problem(kind='missing_file', file='../docs/A-1.mark.md', id='A-1', key=None, detail='../files/missing.mp4')
+E         Use -v to get more diff
+
+tests/unit/scripts/test_checker.py:511: AssertionError
+______________________ test_check_location[list_and_bold] ______________________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11d4a2a0>
+make_item = <function make_item.<locals>._make at 0x734f11d4a3e0>
+item_id = 'A-1', body = '1 行目\n- **言い換えたい**文\n3 行目\n'
+location = Location(kind='body', start=2, end=2, key=None, text='言い換えたい文')
+
+    @pytest.mark.parametrize(
+        ("item_id", "body", "location"),
+        [
+            pytest.param(
+                "A-1",
+                "1 行目\n- **言い換えたい**文\n3 行目\n",
+                _body_location(2, 2, "言い換えたい文"),
+                id="list_and_bold",
+            ),
+            pytest.param(
+                "A-1",
+                "1 行目\n前半の文\n後半の文\n",
+                _body_location(2, 3, "前半の文\n後半の文"),
+                id="soft_break",
+            ),
+            pytest.param(
+                "A-1",
+                "| 名前 | 説明 |\n| --- | --- |\n| A | 内容 |\n",
+                _body_location(3, 3, "A 内容"),
+                id="table_row",
+            ),
+            pytest.param("A-1", "[資料](https://x)\n", _body_location(1, 1, "資料"), id="link"),
+            pytest.param(
+                "A-1",
+                "詳しくは [規約](https://e.x) を読む。\n",
+                _body_location(1, 1, "詳しくは規約を読む"),
+                id="link_in_sentence",
+            ),
+            pytest.param(
+                "A-1",
+                "図は ![構成](a.png) のとおり。\n",
+                _body_location(1, 1, "図は のとおり"),
+                id="image_in_sentence",
+            ),
+            pytest.param("A-1", "A &amp; B\n", _body_location(1, 1, "&"), id="character_reference"),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="options[B].cons", text="数が多いと長い"),
+                id="option_value",
+            ),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="title", text="D-1の題"),
+                id="title_value",
+            ),
+        ],
+    )
+    def test_check_location(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        item_id: str,
+        body: str,
+        location: locations.Location,
+    ) -> None:
+        """書式の記号を外して合う箇所を通す（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", options=OPTIONS), make_item("A-1"), bodies={"A-1.mark.md": body}
+        )
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, item_id).item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+>       assert result is None
+E       AssertionError: assert 'A-1 は本文を持ちません' is None
+
+tests/unit/scripts/test_locations.py:152: AssertionError
+________________________________ test_body_root ________________________________
+[gw7] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+tmp_path = PosixPath('/tmp/pt626-c/popen-gw7/test_body_root0')
+
+    def test_body_root(tmp_path: Path) -> None:
+        """直下の docs を返す（正常系）。"""
+        # 実行
+>       body_dir = kinds.body_root(tmp_path)
+                   ^^^^^^^^^^^^^^^
+E       AttributeError: module 'kinds' has no attribute 'body_root'
+
+tests/unit/scripts/test_kinds.py:57: AttributeError
+_______________________ test_check_location[soft_break] ________________________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11d4a700>
+make_item = <function make_item.<locals>._make at 0x734f11d4b2e0>
+item_id = 'A-1', body = '1 行目\n前半の文\n後半の文\n'
+location = Location(kind='body', start=2, end=3, key=None, text='前半の文\n後半の文')
+
+    @pytest.mark.parametrize(
+        ("item_id", "body", "location"),
+        [
+            pytest.param(
+                "A-1",
+                "1 行目\n- **言い換えたい**文\n3 行目\n",
+                _body_location(2, 2, "言い換えたい文"),
+                id="list_and_bold",
+            ),
+            pytest.param(
+                "A-1",
+                "1 行目\n前半の文\n後半の文\n",
+                _body_location(2, 3, "前半の文\n後半の文"),
+                id="soft_break",
+            ),
+            pytest.param(
+                "A-1",
+                "| 名前 | 説明 |\n| --- | --- |\n| A | 内容 |\n",
+                _body_location(3, 3, "A 内容"),
+                id="table_row",
+            ),
+            pytest.param("A-1", "[資料](https://x)\n", _body_location(1, 1, "資料"), id="link"),
+            pytest.param(
+                "A-1",
+                "詳しくは [規約](https://e.x) を読む。\n",
+                _body_location(1, 1, "詳しくは規約を読む"),
+                id="link_in_sentence",
+            ),
+            pytest.param(
+                "A-1",
+                "図は ![構成](a.png) のとおり。\n",
+                _body_location(1, 1, "図は のとおり"),
+                id="image_in_sentence",
+            ),
+            pytest.param("A-1", "A &amp; B\n", _body_location(1, 1, "&"), id="character_reference"),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="options[B].cons", text="数が多いと長い"),
+                id="option_value",
+            ),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="title", text="D-1の題"),
+                id="title_value",
+            ),
+        ],
+    )
+    def test_check_location(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        item_id: str,
+        body: str,
+        location: locations.Location,
+    ) -> None:
+        """書式の記号を外して合う箇所を通す（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", options=OPTIONS), make_item("A-1"), bodies={"A-1.mark.md": body}
+        )
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, item_id).item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+>       assert result is None
+E       AssertionError: assert 'A-1 は本文を持ちません' is None
+
+tests/unit/scripts/test_locations.py:152: AssertionError
+_______________________ test_workspace_path[record_file] _______________________
+[gw7] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+name = 'decisions.yaml', expected = '.mindstella/decisions.yaml'
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            pytest.param("decisions.yaml", ".mindstella/decisions.yaml", id="record_file"),
+            pytest.param("../docs/D-1.mark.md", "docs/D-1.mark.md", id="body"),
+        ],
+    )
+    def test_workspace_path(name: str, expected: str) -> None:
+        """記録のファイルと本文を直下からのパスにする（正常系）。"""
+        # 実行
+>       path = kinds.workspace_path(name)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'kinds' has no attribute 'workspace_path'
+
+tests/unit/scripts/test_kinds.py:74: AttributeError
+__________________________ test_workspace_path[body] ___________________________
+[gw7] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+name = '../docs/D-1.mark.md', expected = 'docs/D-1.mark.md'
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            pytest.param("decisions.yaml", ".mindstella/decisions.yaml", id="record_file"),
+            pytest.param("../docs/D-1.mark.md", "docs/D-1.mark.md", id="body"),
+        ],
+    )
+    def test_workspace_path(name: str, expected: str) -> None:
+        """記録のファイルと本文を直下からのパスにする（正常系）。"""
+        # 実行
+>       path = kinds.workspace_path(name)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'kinds' has no attribute 'workspace_path'
+
+tests/unit/scripts/test_kinds.py:74: AttributeError
+________________________ test_check_location[table_row] ________________________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11d49da0>
+make_item = <function make_item.<locals>._make at 0x734f11d4ba60>
+item_id = 'A-1', body = '| 名前 | 説明 |\n| --- | --- |\n| A | 内容 |\n'
+location = Location(kind='body', start=3, end=3, key=None, text='A 内容')
+
+    @pytest.mark.parametrize(
+        ("item_id", "body", "location"),
+        [
+            pytest.param(
+                "A-1",
+                "1 行目\n- **言い換えたい**文\n3 行目\n",
+                _body_location(2, 2, "言い換えたい文"),
+                id="list_and_bold",
+            ),
+            pytest.param(
+                "A-1",
+                "1 行目\n前半の文\n後半の文\n",
+                _body_location(2, 3, "前半の文\n後半の文"),
+                id="soft_break",
+            ),
+            pytest.param(
+                "A-1",
+                "| 名前 | 説明 |\n| --- | --- |\n| A | 内容 |\n",
+                _body_location(3, 3, "A 内容"),
+                id="table_row",
+            ),
+            pytest.param("A-1", "[資料](https://x)\n", _body_location(1, 1, "資料"), id="link"),
+            pytest.param(
+                "A-1",
+                "詳しくは [規約](https://e.x) を読む。\n",
+                _body_location(1, 1, "詳しくは規約を読む"),
+                id="link_in_sentence",
+            ),
+            pytest.param(
+                "A-1",
+                "図は ![構成](a.png) のとおり。\n",
+                _body_location(1, 1, "図は のとおり"),
+                id="image_in_sentence",
+            ),
+            pytest.param("A-1", "A &amp; B\n", _body_location(1, 1, "&"), id="character_reference"),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="options[B].cons", text="数が多いと長い"),
+                id="option_value",
+            ),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="title", text="D-1の題"),
+                id="title_value",
+            ),
+        ],
+    )
+    def test_check_location(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        item_id: str,
+        body: str,
+        location: locations.Location,
+    ) -> None:
+        """書式の記号を外して合う箇所を通す（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", options=OPTIONS), make_item("A-1"), bodies={"A-1.mark.md": body}
+        )
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, item_id).item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+>       assert result is None
+E       AssertionError: assert 'A-1 は本文を持ちません' is None
+
+tests/unit/scripts/test_locations.py:152: AssertionError
+__________________________ test_check_location[link] ___________________________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11d4b4c0>
+make_item = <function make_item.<locals>._make at 0x734f11cec400>
+item_id = 'A-1', body = '[資料](https://x)\n'
+location = Location(kind='body', start=1, end=1, key=None, text='資料')
+
+    @pytest.mark.parametrize(
+        ("item_id", "body", "location"),
+        [
+            pytest.param(
+                "A-1",
+                "1 行目\n- **言い換えたい**文\n3 行目\n",
+                _body_location(2, 2, "言い換えたい文"),
+                id="list_and_bold",
+            ),
+            pytest.param(
+                "A-1",
+                "1 行目\n前半の文\n後半の文\n",
+                _body_location(2, 3, "前半の文\n後半の文"),
+                id="soft_break",
+            ),
+            pytest.param(
+                "A-1",
+                "| 名前 | 説明 |\n| --- | --- |\n| A | 内容 |\n",
+                _body_location(3, 3, "A 内容"),
+                id="table_row",
+            ),
+            pytest.param("A-1", "[資料](https://x)\n", _body_location(1, 1, "資料"), id="link"),
+            pytest.param(
+                "A-1",
+                "詳しくは [規約](https://e.x) を読む。\n",
+                _body_location(1, 1, "詳しくは規約を読む"),
+                id="link_in_sentence",
+            ),
+            pytest.param(
+                "A-1",
+                "図は ![構成](a.png) のとおり。\n",
+                _body_location(1, 1, "図は のとおり"),
+                id="image_in_sentence",
+            ),
+            pytest.param("A-1", "A &amp; B\n", _body_location(1, 1, "&"), id="character_reference"),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="options[B].cons", text="数が多いと長い"),
+                id="option_value",
+            ),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="title", text="D-1の題"),
+                id="title_value",
+            ),
+        ],
+    )
+    def test_check_location(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        item_id: str,
+        body: str,
+        location: locations.Location,
+    ) -> None:
+        """書式の記号を外して合う箇所を通す（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", options=OPTIONS), make_item("A-1"), bodies={"A-1.mark.md": body}
+        )
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, item_id).item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+>       assert result is None
+E       AssertionError: assert 'A-1 は本文を持ちません' is None
+
+tests/unit/scripts/test_locations.py:152: AssertionError
+____________________ test_check_location[link_in_sentence] _____________________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11cec0e0>
+make_item = <function make_item.<locals>._make at 0x734f11cecd60>
+item_id = 'A-1', body = '詳しくは [規約](https://e.x) を読む。\n'
+location = Location(kind='body', start=1, end=1, key=None, text='詳しくは規約を読む')
+
+    @pytest.mark.parametrize(
+        ("item_id", "body", "location"),
+        [
+            pytest.param(
+                "A-1",
+                "1 行目\n- **言い換えたい**文\n3 行目\n",
+                _body_location(2, 2, "言い換えたい文"),
+                id="list_and_bold",
+            ),
+            pytest.param(
+                "A-1",
+                "1 行目\n前半の文\n後半の文\n",
+                _body_location(2, 3, "前半の文\n後半の文"),
+                id="soft_break",
+            ),
+            pytest.param(
+                "A-1",
+                "| 名前 | 説明 |\n| --- | --- |\n| A | 内容 |\n",
+                _body_location(3, 3, "A 内容"),
+                id="table_row",
+            ),
+            pytest.param("A-1", "[資料](https://x)\n", _body_location(1, 1, "資料"), id="link"),
+            pytest.param(
+                "A-1",
+                "詳しくは [規約](https://e.x) を読む。\n",
+                _body_location(1, 1, "詳しくは規約を読む"),
+                id="link_in_sentence",
+            ),
+            pytest.param(
+                "A-1",
+                "図は ![構成](a.png) のとおり。\n",
+                _body_location(1, 1, "図は のとおり"),
+                id="image_in_sentence",
+            ),
+            pytest.param("A-1", "A &amp; B\n", _body_location(1, 1, "&"), id="character_reference"),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="options[B].cons", text="数が多いと長い"),
+                id="option_value",
+            ),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="title", text="D-1の題"),
+                id="title_value",
+            ),
+        ],
+    )
+    def test_check_location(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        item_id: str,
+        body: str,
+        location: locations.Location,
+    ) -> None:
+        """書式の記号を外して合う箇所を通す（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", options=OPTIONS), make_item("A-1"), bodies={"A-1.mark.md": body}
+        )
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, item_id).item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+>       assert result is None
+E       AssertionError: assert 'A-1 は本文を持ちません' is None
+
+tests/unit/scripts/test_locations.py:152: AssertionError
+_____________________________ test_export_preview ______________________________
+[gw0] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x76829fb15b20>
+make_item = <function make_item.<locals>._make at 0x76829fb15c60>
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x76829fb15da0>
+export_preview_dir = PosixPath('/tmp/pt626-c/popen-gw0/test_export_preview0/preview')
+tmp_path = PosixPath('/tmp/pt626-c/popen-gw0/test_export_preview0')
+
+    def test_export_preview(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        snapshot_tree: SnapshotTree,
+        export_preview_dir: Path,
+        tmp_path: Path,
+    ) -> None:
+        """記録と取ったライブラリとライセンスの表示を持つ HTML を out に書き、ワークスペースは触らない（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1"),
+            make_item("A-1", body="../docs/A-1.mark.md"),
+            bodies={"A-1.mark.md": "本文 </script>\n"},
+        )
+        workspace = store.load_workspace(root)
+        before = snapshot_tree(root)
+        out = tmp_path / "配る.html"
+        fetch, _calls = make_fetch(_export_responses())
+        # 実行
+>       path = builder.export_preview(
+            workspace, out=out, built_at=BUILT_AT, preview_dir=export_preview_dir, fetch=fetch
+        )
+
+tests/unit/scripts/test_builder.py:496: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+workspace = Workspace(root=PosixPath('/tmp/pt626-c/popen-gw0/test_export_preview0/workspace'), raw={'config.yaml': {'summary': '要件...い)', 'docs.yaml': '59f93afa9e7bc2c39848a54c6af6448c', 'terms.yaml': '(無い)', 'notes.yaml': '(無い)', 'logs.yaml': '(無い)'})
+out = PosixPath('/tmp/pt626-c/popen-gw0/test_export_preview0/配る.html')
+built_at = '2026-10-02T08:00:00+00:00'
+preview_dir = PosixPath('/tmp/pt626-c/popen-gw0/test_export_preview0/preview')
+fetch = <function make_fetch.<locals>._fetch at 0x76829fb15ee0>
+resolve = <function resolve_ref at 0x7682a071e3e0>
+
+    def export_preview(
+        workspace: Workspace,
+        *,
+        out: Path,
+        built_at: str,
+        preview_dir: Path = PREVIEW_DIR,
+        fetch: FetchFn = fetch_url,
+        resolve: Callable[[str | None], str] = resolve_ref,
+    ) -> Path:
+        """検証してから、描画のライブラリとライセンスの表示を中に持つ雛形にデータを埋め込み、`out` を置き換える。"""
+        # 問題があるときは取らず、書かない（前の out を残す）
+        problems = store.validate_workspace(workspace)
+        if problems:
+>           raise store.build_mismatch_error(problems, workspace)
+E           errors.SchemaMismatchError: スキーマに合いません
+
+plugins/mindstella/skills/mindmap/scripts/builder.py:699: SchemaMismatchError
+____________________ test_check_location[image_in_sentence] ____________________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11cecb80>
+make_item = <function make_item.<locals>._make at 0x734f11ced800>
+item_id = 'A-1', body = '図は ![構成](a.png) のとおり。\n'
+location = Location(kind='body', start=1, end=1, key=None, text='図は のとおり')
+
+    @pytest.mark.parametrize(
+        ("item_id", "body", "location"),
+        [
+            pytest.param(
+                "A-1",
+                "1 行目\n- **言い換えたい**文\n3 行目\n",
+                _body_location(2, 2, "言い換えたい文"),
+                id="list_and_bold",
+            ),
+            pytest.param(
+                "A-1",
+                "1 行目\n前半の文\n後半の文\n",
+                _body_location(2, 3, "前半の文\n後半の文"),
+                id="soft_break",
+            ),
+            pytest.param(
+                "A-1",
+                "| 名前 | 説明 |\n| --- | --- |\n| A | 内容 |\n",
+                _body_location(3, 3, "A 内容"),
+                id="table_row",
+            ),
+            pytest.param("A-1", "[資料](https://x)\n", _body_location(1, 1, "資料"), id="link"),
+            pytest.param(
+                "A-1",
+                "詳しくは [規約](https://e.x) を読む。\n",
+                _body_location(1, 1, "詳しくは規約を読む"),
+                id="link_in_sentence",
+            ),
+            pytest.param(
+                "A-1",
+                "図は ![構成](a.png) のとおり。\n",
+                _body_location(1, 1, "図は のとおり"),
+                id="image_in_sentence",
+            ),
+            pytest.param("A-1", "A &amp; B\n", _body_location(1, 1, "&"), id="character_reference"),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="options[B].cons", text="数が多いと長い"),
+                id="option_value",
+            ),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="title", text="D-1の題"),
+                id="title_value",
+            ),
+        ],
+    )
+    def test_check_location(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        item_id: str,
+        body: str,
+        location: locations.Location,
+    ) -> None:
+        """書式の記号を外して合う箇所を通す（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", options=OPTIONS), make_item("A-1"), bodies={"A-1.mark.md": body}
+        )
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, item_id).item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+>       assert result is None
+E       AssertionError: assert 'A-1 は本文を持ちません' is None
+
+tests/unit/scripts/test_locations.py:152: AssertionError
+___________________ test_check_location[character_reference] ___________________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11ced120>
+make_item = <function make_item.<locals>._make at 0x734f11cee160>
+item_id = 'A-1', body = 'A &amp; B\n'
+location = Location(kind='body', start=1, end=1, key=None, text='&')
+
+    @pytest.mark.parametrize(
+        ("item_id", "body", "location"),
+        [
+            pytest.param(
+                "A-1",
+                "1 行目\n- **言い換えたい**文\n3 行目\n",
+                _body_location(2, 2, "言い換えたい文"),
+                id="list_and_bold",
+            ),
+            pytest.param(
+                "A-1",
+                "1 行目\n前半の文\n後半の文\n",
+                _body_location(2, 3, "前半の文\n後半の文"),
+                id="soft_break",
+            ),
+            pytest.param(
+                "A-1",
+                "| 名前 | 説明 |\n| --- | --- |\n| A | 内容 |\n",
+                _body_location(3, 3, "A 内容"),
+                id="table_row",
+            ),
+            pytest.param("A-1", "[資料](https://x)\n", _body_location(1, 1, "資料"), id="link"),
+            pytest.param(
+                "A-1",
+                "詳しくは [規約](https://e.x) を読む。\n",
+                _body_location(1, 1, "詳しくは規約を読む"),
+                id="link_in_sentence",
+            ),
+            pytest.param(
+                "A-1",
+                "図は ![構成](a.png) のとおり。\n",
+                _body_location(1, 1, "図は のとおり"),
+                id="image_in_sentence",
+            ),
+            pytest.param("A-1", "A &amp; B\n", _body_location(1, 1, "&"), id="character_reference"),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="options[B].cons", text="数が多いと長い"),
+                id="option_value",
+            ),
+            pytest.param(
+                "D-1",
+                "",
+                locations.Location(kind="value", key="title", text="D-1の題"),
+                id="title_value",
+            ),
+        ],
+    )
+    def test_check_location(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        item_id: str,
+        body: str,
+        location: locations.Location,
+    ) -> None:
+        """書式の記号を外して合う箇所を通す（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", options=OPTIONS), make_item("A-1"), bodies={"A-1.mark.md": body}
+        )
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, item_id).item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+>       assert result is None
+E       AssertionError: assert 'A-1 は本文を持ちません' is None
+
+tests/unit/scripts/test_locations.py:152: AssertionError
+________________ test_check_location_when_stale[past_last_line] ________________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11cedee0>
+make_item = <function make_item.<locals>._make at 0x734f11cee700>
+item_id = 'A-1', bodies = {'A-1.mark.md': '1 行目\n2 行目\n3 行目'}
+location = Location(kind='body', start=1, end=5, key=None, text='1 行目')
+expected_in_reason = '3 行'
+
+    @pytest.mark.parametrize(
+        ("item_id", "bodies", "location", "expected_in_reason"),
+        [
+            pytest.param(
+                "A-1",
+                {"A-1.mark.md": "1 行目\n2 行目\n3 行目"},
+                _body_location(1, 5, "1 行目"),
+                "3 行",
+                id="past_last_line",
+            ),
+            pytest.param(
+                "A-1",
+                {"A-1.mark.md": "1 行目\n2 行目\n3 行目"},
+                _body_location(1, 1, "存在しない文"),
+                "1〜1 行目",
+                id="text_missing",
+            ),
+            pytest.param(
+                "D-1",
+                None,
+                _body_location(1, 1, "文"),
+                "本文を持ちません",
+                id="no_body",
+            ),
+            pytest.param(
+                "D-1",
+                None,
+                locations.Location(kind="value", key="options[Z].cons", text="文"),
+                "options[Z].cons",
+                id="key_missing",
+            ),
+        ],
+    )
+    def test_check_location_when_stale(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        item_id: str,
+        bodies: dict[str, str] | None,
+        location: locations.Location,
+        expected_in_reason: str,
+    ) -> None:
+        """合わない箇所は理由を返す（正常系）。"""
+        # 準備
+        root = make_workspace(make_item(item_id, options=OPTIONS), bodies=bodies)
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, item_id).item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+        assert result is not None
+>       assert expected_in_reason in result
+E       AssertionError: assert '3 行' in 'A-1 は本文を持ちません'
+
+tests/unit/scripts/test_locations.py:205: AssertionError
+_________________ test_check_location_when_stale[text_missing] _________________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11cee7a0>
+make_item = <function make_item.<locals>._make at 0x734f11ceec00>
+item_id = 'A-1', bodies = {'A-1.mark.md': '1 行目\n2 行目\n3 行目'}
+location = Location(kind='body', start=1, end=1, key=None, text='存在しない文')
+expected_in_reason = '1〜1 行目'
+
+    @pytest.mark.parametrize(
+        ("item_id", "bodies", "location", "expected_in_reason"),
+        [
+            pytest.param(
+                "A-1",
+                {"A-1.mark.md": "1 行目\n2 行目\n3 行目"},
+                _body_location(1, 5, "1 行目"),
+                "3 行",
+                id="past_last_line",
+            ),
+            pytest.param(
+                "A-1",
+                {"A-1.mark.md": "1 行目\n2 行目\n3 行目"},
+                _body_location(1, 1, "存在しない文"),
+                "1〜1 行目",
+                id="text_missing",
+            ),
+            pytest.param(
+                "D-1",
+                None,
+                _body_location(1, 1, "文"),
+                "本文を持ちません",
+                id="no_body",
+            ),
+            pytest.param(
+                "D-1",
+                None,
+                locations.Location(kind="value", key="options[Z].cons", text="文"),
+                "options[Z].cons",
+                id="key_missing",
+            ),
+        ],
+    )
+    def test_check_location_when_stale(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        item_id: str,
+        bodies: dict[str, str] | None,
+        location: locations.Location,
+        expected_in_reason: str,
+    ) -> None:
+        """合わない箇所は理由を返す（正常系）。"""
+        # 準備
+        root = make_workspace(make_item(item_id, options=OPTIONS), bodies=bodies)
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, item_id).item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+        assert result is not None
+>       assert expected_in_reason in result
+E       AssertionError: assert '1〜1 行目' in 'A-1 は本文を持ちません'
+
+tests/unit/scripts/test_locations.py:205: AssertionError
+______________ test_check_location_when_html_body[rendered_text] _______________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11cecd60>
+make_item = <function make_item.<locals>._make at 0x734f11cef2e0>
+location = Location(kind='body', start=4, end=4, key=None, text='言い換えたい文')
+matches = True, expected_in_reason = ''
+
+    @pytest.mark.parametrize(
+        ("location", "matches", "expected_in_reason"),
+        [
+            pytest.param(_body_location(4, 4, "言い換えたい文"), True, "", id="rendered_text"),
+            pytest.param(_body_location(1, 1, "color"), False, "1〜1 行目", id="hidden_style"),
+            pytest.param(_body_location(4, 4, "書き直した文"), False, "4〜4 行目", id="text_missing"),
+        ],
+    )
+    def test_check_location_when_html_body(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        location: locations.Location,
+        matches: bool,
+        expected_in_reason: str,
+    ) -> None:
+        """HTML の本文はタグを外した描いた文と照らす（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, "A-1").item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+>       assert (result is None) is matches
+E       AssertionError: assert ('A-1 は本文を持ちません' is None) is True
+
+tests/unit/scripts/test_locations.py:235: AssertionError
+_______________ test_check_location_when_html_body[hidden_style] _______________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11cef560>
+make_item = <function make_item.<locals>._make at 0x734f11cefd80>
+location = Location(kind='body', start=1, end=1, key=None, text='color')
+matches = False, expected_in_reason = '1〜1 行目'
+
+    @pytest.mark.parametrize(
+        ("location", "matches", "expected_in_reason"),
+        [
+            pytest.param(_body_location(4, 4, "言い換えたい文"), True, "", id="rendered_text"),
+            pytest.param(_body_location(1, 1, "color"), False, "1〜1 行目", id="hidden_style"),
+            pytest.param(_body_location(4, 4, "書き直した文"), False, "4〜4 行目", id="text_missing"),
+        ],
+    )
+    def test_check_location_when_html_body(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        location: locations.Location,
+        matches: bool,
+        expected_in_reason: str,
+    ) -> None:
+        """HTML の本文はタグを外した描いた文と照らす（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, "A-1").item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+        assert (result is None) is matches
+>       assert expected_in_reason in (result or "")
+E       AssertionError: assert '1〜1 行目' in (('A-1 は本文を持ちません'))
+
+tests/unit/scripts/test_locations.py:236: AssertionError
+_______________ test_check_location_when_html_body[text_missing] _______________
+[gw6] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x734f11ceede0>
+make_item = <function make_item.<locals>._make at 0x734f11d10360>
+location = Location(kind='body', start=4, end=4, key=None, text='書き直した文')
+matches = False, expected_in_reason = '4〜4 行目'
+
+    @pytest.mark.parametrize(
+        ("location", "matches", "expected_in_reason"),
+        [
+            pytest.param(_body_location(4, 4, "言い換えたい文"), True, "", id="rendered_text"),
+            pytest.param(_body_location(1, 1, "color"), False, "1〜1 行目", id="hidden_style"),
+            pytest.param(_body_location(4, 4, "書き直した文"), False, "4〜4 行目", id="text_missing"),
+        ],
+    )
+    def test_check_location_when_html_body(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        location: locations.Location,
+        matches: bool,
+        expected_in_reason: str,
+    ) -> None:
+        """HTML の本文はタグを外した描いた文と照らす（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
+        workspace = store.load_workspace(root)
+        item = store.find_item(workspace, "A-1").item
+        # 実行
+        result = locations.check_location(workspace, item, location)
+        # 検証
+        assert (result is None) is matches
+>       assert expected_in_reason in (result or "")
+E       AssertionError: assert '4〜4 行目' in (('A-1 は本文を持ちません'))
+
+tests/unit/scripts/test_locations.py:236: AssertionError
+______________________ test_workspace_signature[add_body] ______________________
+[gw5] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x726feee811c0>
+make_item = <function make_item.<locals>._make at 0x726feee814e0>
+file_name = 'docs/D-1.mark.md', text = '本文\n', changes = True
+
+    @pytest.mark.parametrize(
+        ("file_name", "text", "changes"),
+        [
+            pytest.param(".mindstella/decisions.yaml", "items: []\n", True, id="rewrite_yaml"),
+            pytest.param("docs/D-1.mark.md", "本文\n", True, id="add_body"),
+            pytest.param(".mindstella/threads.yaml", "items: []\n", True, id="add_threads"),
+            pytest.param(".mindstella/comments.yaml", "seq: 0\nitems: []\n", False, id="add_comments"),
+            pytest.param(".mindstella/drafts.yaml", "items: []\n", False, id="add_drafts"),
+            pytest.param(".mindstella/.mindstella.lock", "", False, id="add_lock_file"),
+        ],
+    )
+    def test_workspace_signature(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        file_name: str,
+        text: str,
+        changes: bool,
+    ) -> None:
+        """書き換え・足す・消すで印が変わり、ロックのファイルでは変わらない（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        before = serve.workspace_signature(root)
+        # 実行
+        (root / file_name).write_text(text, encoding="utf-8")
+        after = serve.workspace_signature(root)
+        # 検証
+>       assert (after != before) is changes
+E       AssertionError: assert ('changes.yaml:-|config.yaml:1795136718124197591:68|decisions.yaml:1795136718124197591:97|docs.yaml:-|edits.yaml:-|logs.yaml:-|notes.yaml:-|research.yaml:-|tasks.yaml:-|terms.yaml:-|threads.yaml:-' != 'changes.yaml:-|config.yaml:1795136718124197591:68|decisions.yaml:1795136718124197591:97|docs.yaml:-|edits.yaml:-|logs.yaml:-|notes.yaml:-|research.yaml:-|tasks.yaml:-|terms.yaml:-|threads.yaml:-') is True
+
+tests/unit/scripts/test_serve.py:908: AssertionError
+__________ test_workspace_signature_with_html_body[rewrite_html_body] __________
+[gw5] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x726feee83880>
+make_item = <function make_item.<locals>._make at 0x726feee83c40>
+file_name = 'A-1.html'
+
+    @pytest.mark.parametrize(
+        "file_name",
+        [
+            pytest.param("A-1.html", id="rewrite_html_body"),
+            pytest.param("A-2.html", id="add_html_body"),
+        ],
+    )
+    def test_workspace_signature_with_html_body(
+        make_workspace: MakeWorkspace, make_item: MakeItem, file_name: str
+    ) -> None:
+        """HTML の本文の書き換えでも印が変わる（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": "<p>前</p>\n"})
+        before = serve.workspace_signature(root)
+        target = root / "docs" / file_name
+        # 実行
+        target.write_text("<p>書き換えた後の本文</p>\n", encoding="utf-8")
+        after = serve.workspace_signature(root)
+        # 検証
+>       assert after != before
+E       AssertionError: assert 'changes.yaml:-|config.yaml:1795136718172217983:68|decisions.yaml:-|docs.yaml:1795136718172217983:93|edits.yaml:-|logs.yaml:-|notes.yaml:-|research.yaml:-|tasks.yaml:-|terms.yaml:-|threads.yaml:-' != 'changes.yaml:-|config.yaml:1795136718172217983:68|decisions.yaml:-|docs.yaml:1795136718172217983:93|edits.yaml:-|logs.yaml:-|notes.yaml:-|research.yaml:-|tasks.yaml:-|terms.yaml:-|threads.yaml:-'
+
+tests/unit/scripts/test_serve.py:960: AssertionError
+____________ test_workspace_signature_with_html_body[add_html_body] ____________
+[gw5] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x726feedd40e0>
+make_item = <function make_item.<locals>._make at 0x726feedd4220>
+file_name = 'A-2.html'
+
+    @pytest.mark.parametrize(
+        "file_name",
+        [
+            pytest.param("A-1.html", id="rewrite_html_body"),
+            pytest.param("A-2.html", id="add_html_body"),
+        ],
+    )
+    def test_workspace_signature_with_html_body(
+        make_workspace: MakeWorkspace, make_item: MakeItem, file_name: str
+    ) -> None:
+        """HTML の本文の書き換えでも印が変わる（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": "<p>前</p>\n"})
+        before = serve.workspace_signature(root)
+        target = root / "docs" / file_name
+        # 実行
+        target.write_text("<p>書き換えた後の本文</p>\n", encoding="utf-8")
+        after = serve.workspace_signature(root)
+        # 検証
+>       assert after != before
+E       AssertionError: assert 'changes.yaml:-|config.yaml:1795136718202776412:68|decisions.yaml:-|docs.yaml:1795136718202776412:93|edits.yaml:-|logs.yaml:-|notes.yaml:-|research.yaml:-|tasks.yaml:-|terms.yaml:-|threads.yaml:-' != 'changes.yaml:-|config.yaml:1795136718202776412:68|decisions.yaml:-|docs.yaml:1795136718202776412:93|edits.yaml:-|logs.yaml:-|notes.yaml:-|research.yaml:-|tasks.yaml:-|terms.yaml:-|threads.yaml:-'
+
+tests/unit/scripts/test_serve.py:960: AssertionError
+_____________________________ test_rebase_snapshot _____________________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+tmp_path = PosixPath('/tmp/pt626-c/popen-gw2/test_rebase_snapshot0')
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f28080e0>
+make_item = <function make_item.<locals>._make at 0x7c52f28087c0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c52f29c25d0>
+
+    def test_rebase_snapshot(
+        tmp_path: Path,
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """移し替えの後に検知を始めても記録しない（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1", body="../docs/D-1.md"), bodies={"D-1.md": "本文\n"})
+        state_dir = tmp_path / "state"
+        snapshot_dir = _snapshot_dir(state_dir, root)
+        (snapshot_dir / "docs").mkdir(parents=True)
+        (snapshot_dir / "decisions.yaml").write_text(
+            (_records(root) / "decisions.yaml").read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        (snapshot_dir / "docs" / "D-1.md").write_text("本文\n", encoding="utf-8")
+        _rename_body(root, make_item)
+        history_before = _read(root, "history.yaml")
+        changes_before = _read(root, "changes.yaml")
+        # 実行
+        change_detection.rebase_snapshot(root, state_dir)
+        _started(root, state_dir, monkeypatch)
+        # 検証
+>       assert (snapshot_dir / "docs" / "D-1.mark.md").read_text(encoding="utf-8") == "本文\n"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_change_detection.py:351: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/tmp/pt626-c/popen-gw2/test_rebase_snapshot0/state/workspaces/mindstella-workspace-2c5040/snapshot/docs/D-1.mark.md')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pt626-c/popen-gw2/test_rebase_snapshot0/state/workspaces/mindstella-workspace-2c5040/snapshot/docs/D-1.mark.md'
+
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/pathlib.py:1013: FileNotFoundError
+______________________________ test_take_snapshot ______________________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f2846480>
+make_item = <function make_item.<locals>._make at 0x7c52f28465c0>
+
+    def test_take_snapshot(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """種類の YAML と本文を読み、読めないファイルは前回の中身で埋める（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", body="../docs/D-1.mark.md"),
+            bodies={"D-1.mark.md": "本文\n"},
+            raw_files={"notes.yaml": "items: [\n"},
+        )
+        previous = _snapshot({"notes.yaml": "items: []\n"})
+        # 実行
+        snapshot, unreadable = change_detection.take_snapshot(root, previous=previous, run=_not_work_tree)
+        # 検証
+>       assert sorted(snapshot.files) == ["decisions.yaml", "docs/D-1.mark.md", "notes.yaml"]
+E       AssertionError: assert ['decisions.y... 'notes.yaml'] == ['decisions.y... 'notes.yaml']
+E         
+E         At index 1 diff: 'notes.yaml' != 'docs/D-1.mark.md'
+E         Right contains one more item: 'notes.yaml'
+E         Use -v to get more diff
+
+tests/unit/scripts/test_change_detection.py:391: AssertionError
+_____________________________ test_diff_snapshots ______________________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_item = <function make_item.<locals>._make at 0x7c52f2846660>
+
+    def test_diff_snapshots(make_item: MakeItem) -> None:
+        """追加・変更・削除と、本文だけの変更を見分ける（正常系）。"""
+        # 準備
+        d1_before = make_item("D-1", answer="前の答え")
+        d1_after = make_item("D-1", answer="今の答え")
+        d2 = make_item("D-2", body="../docs/D-2.md")
+        d3 = make_item("D-3")
+        d4 = make_item("D-4")
+        before = _snapshot(
+            {
+                "decisions.yaml": yaml.safe_dump({"items": [d1_before, d2, d3]}, allow_unicode=True),
+                "docs/D-2.md": "前の本文\n",
+            }
+        )
+        after = _snapshot(
+            {
+                "decisions.yaml": yaml.safe_dump({"items": [d1_after, d2, d4]}, allow_unicode=True),
+                "docs/D-2.md": "今の本文\n",
+            }
+        )
+        # 実行
+        diff = change_detection.diff_snapshots(before, after)
+        # 検証
+>       assert diff == ItemDiff(
+            added=[("decision", d4)],
+            changed=[
+                ("decision", d1_before, d1_after, None, None),
+                ("decision", d2, d2, "前の本文\n", "今の本文\n"),
+            ],
+            removed=[("decision", d3)],
+        )
+E       AssertionError: assert ItemDiff(adde...': 'D-3の題'})]) == ItemDiff(adde...': '案 A'}]})])
+E         
+E         Omitting 2 identical items, use -vv to show
+E         Differing attributes:
+E         ['changed']
+E         
+E         Drill down into differing attribute changed:
+E           changed: [('decision', {'answer': '前の答え', 'id': 'D-1', 'options': [{'content': '案 A', 'key': 'A'}], 'status': '未決定', 'title': 'D-1の題'}, {'answer': '今の答え', 'id': 'D-1', 'options': [{'content': '案 A', 'key': 'A'}], 'status': '未決定', 'title': 'D-1の題'}, None, None)] != [('decision', {'id': 'D-1', 'title': 'D-1の題', 'status': '未決定', 'options': [{'key': 'A', 'content': '案 A'}], 'answer': '前の答え'}, {'id': 'D-1', 'title': 'D-1の題', 'status': '未決定', 'options': [{'...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/unit/scripts/test_change_detection.py:421: AssertionError
+________________________________ test_send_file ________________________________
+[gw5] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x726feed48540>
+make_item = <function make_item.<locals>._make at 0x726feed48ae0>
+
+    def test_send_file(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """ファイルの全体と範囲を返却する（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        data = bytes(range(250)) * 4
+        files = root / "files"
+        files.mkdir()
+        (files / "clip.mp4").write_bytes(data)
+        preview = serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
+        try:
+            port = _port_of(preview.url)
+            # 実行
+            whole = _get_raw(port, "/files/clip.mp4")
+            part = _get_raw(port, "/files/clip.mp4", {"Range": "bytes=100-199"})
+        finally:
+            preview.stop()
+        # 検証
+>       assert whole[0] == 200
+E       assert 404 == 200
+
+tests/unit/scripts/test_serve.py:2178: AssertionError
+_______________________________ test_save_change _______________________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f15919e0>
+make_item = <function make_item.<locals>._make at 0x7c52f1591d00>
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x7c52f1591ee0>
+
+    def test_save_change(make_workspace, make_item, snapshot_tree) -> None:
+        """項目の並びと本文を書き、一時ファイルを残さない（正常系）。"""
+        # 準備
+        root = make_workspace()
+        workspace = store.load_workspace(root)
+        item = make_item("D-1", body="../docs/D-1.mark.md")
+        change = store.Change(
+            kind="decision",
+            items=[item],
+            body=store.BodyWrite(name="../docs/D-1.mark.md", text="## 経緯\n"),
+        )
+        # 実行
+>       store.save_change(workspace, change)
+
+tests/unit/scripts/test_store.py:486: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+workspace = Workspace(root=PosixPath('/tmp/pt626-c/popen-gw2/test_save_change0/workspace'), raw={'config.yaml': {'summary': '要件出しの...'(無い)', 'research.yaml': '(無い)', 'docs.yaml': '(無い)', 'terms.yaml': '(無い)', 'notes.yaml': '(無い)', 'logs.yaml': '(無い)'})
+change = Change(kind='decision', items=[{'id': 'D-1', 'title': 'D-1の題', 'status': '未決定', 'options': [{'key': 'A', 'content': '案...body': '../docs/D-1.mark.md'}], body=BodyWrite(name='../docs/D-1.mark.md', text='## 経緯\n'), history=None, changes=None)
+
+    def save_change(workspace: Workspace, change: Change) -> dict[str, str | None]:
+        """1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。
+    
+        書いた種類の YAML と本文（記録のフォルダからのパス）→ 書いた中身を返す（変更の検知に渡す）。
+        """
+        spec = KINDS[change.kind]
+        # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
+        if _loses_content_on_rewrite(workspace, change.kind):
+            current = [p for p in validate_workspace(workspace) if p.file == spec.file]
+            raise build_mismatch_error(current, workspace)
+        # 変更を当てた後のワークスペース全体を検証する
+        changed_raw = {**workspace.raw, spec.file: {"items": change.items}}
+        changed = replace(workspace, raw=changed_raw)
+        problems = validate_workspace(changed, unchanged=[f for f in workspace.raw if f != spec.file])
+        if problems:
+            written_ids = _written_ids(workspace.items[change.kind], change.items)
+>           raise build_mismatch_error(problems, changed, written_ids=written_ids)
+E           errors.SchemaMismatchError: スキーマに合いません
+
+plugins/mindstella/skills/mindmap/scripts/store.py:692: SchemaMismatchError
+____________________ test_save_change_when_schema_mismatch _____________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f14685e0>
+make_item = <function make_item.<locals>._make at 0x7c52f14689a0>
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x7c52f1468cc0>
+
+    def test_save_change_when_schema_mismatch(make_workspace, make_item, snapshot_tree) -> None:
+        """スキーマに合わない変更は書かない（異常系）。"""
+        # 準備
+        root = make_workspace()
+        workspace = store.load_workspace(root)
+        before = snapshot_tree(root)
+        change = store.Change(
+            kind="decision",
+            items=[make_item("D-1", body="../docs/D-1.mark.md", status="完了")],
+            body=store.BodyWrite(name="../docs/D-1.mark.md", text="本文\n"),
+        )
+        # 実行・検証
+        with pytest.raises(SchemaMismatchError) as exc_info:
+            store.save_change(workspace, change)
+>       assert exc_info.value.lines[0].startswith("decisions.yaml: items[0].status:")
+E       assert False
+E        +  where False = <built-in method startswith of str object at 0x7c52f2a12310>('decisions.yaml: items[0].status:')
+E        +    where <built-in method startswith of str object at 0x7c52f2a12310> = "decisions.yaml: items[0].body: '../docs/D-1.mark.md' does not match '^docs/[^/\\\\\\\\]+\\\\.mark\\\\.md$'".startswith
+
+tests/unit/scripts/test_store.py:508: AssertionError
+____________________ test_save_change_when_temp_write_fails ____________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f146b240>
+make_item = <function make_item.<locals>._make at 0x7c52f146b6a0>
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x7c52f146b9c0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c52f28a6300>
+
+    def test_save_change_when_temp_write_fails(
+        make_workspace, make_item, snapshot_tree, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """一時ファイルを書けなければ何も置き換えない（異常系）。"""
+        # 準備
+        root = make_workspace()
+        workspace = store.load_workspace(root)
+        before = snapshot_tree(root)
+        change = store.Change(
+            kind="decision",
+            items=[make_item("D-1", body="../docs/D-1.mark.md")],
+            body=store.BodyWrite(name="../docs/D-1.mark.md", text="本文\n"),
+        )
+        # store モジュールの参照を、本文の一時ファイルだけ書けないものに差し替える
+        monkeypatch.setattr(store, "_write_temp", _fail_body_temp(store._write_temp))
+        # 実行・検証
+        with pytest.raises(WriteFailedError):
+>           store.save_change(workspace, change)
+
+tests/unit/scripts/test_store.py:529: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+workspace = Workspace(root=PosixPath('/tmp/pt626-c/popen-gw2/test_save_change_when_temp_wri0/workspace'), raw={'config.yaml': {'su...'(無い)', 'research.yaml': '(無い)', 'docs.yaml': '(無い)', 'terms.yaml': '(無い)', 'notes.yaml': '(無い)', 'logs.yaml': '(無い)'})
+change = Change(kind='decision', items=[{'id': 'D-1', 'title': 'D-1の題', 'status': '未決定', 'options': [{'key': 'A', 'content': '案..., 'body': '../docs/D-1.mark.md'}], body=BodyWrite(name='../docs/D-1.mark.md', text='本文\n'), history=None, changes=None)
+
+    def save_change(workspace: Workspace, change: Change) -> dict[str, str | None]:
+        """1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。
+    
+        書いた種類の YAML と本文（記録のフォルダからのパス）→ 書いた中身を返す（変更の検知に渡す）。
+        """
+        spec = KINDS[change.kind]
+        # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
+        if _loses_content_on_rewrite(workspace, change.kind):
+            current = [p for p in validate_workspace(workspace) if p.file == spec.file]
+            raise build_mismatch_error(current, workspace)
+        # 変更を当てた後のワークスペース全体を検証する
+        changed_raw = {**workspace.raw, spec.file: {"items": change.items}}
+        changed = replace(workspace, raw=changed_raw)
+        problems = validate_workspace(changed, unchanged=[f for f in workspace.raw if f != spec.file])
+        if problems:
+            written_ids = _written_ids(workspace.items[change.kind], change.items)
+>           raise build_mismatch_error(problems, changed, written_ids=written_ids)
+E           errors.SchemaMismatchError: スキーマに合いません
+
+plugins/mindstella/skills/mindmap/scripts/store.py:692: SchemaMismatchError
+_________ test_save_change_when_yaml_replace_fails_with_previous_body __________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f146b100>
+make_item = <function make_item.<locals>._make at 0x7c52f146b2e0>
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x7c52f146be20>
+failing_replace = <function failing_replace.<locals>._build at 0x7c52f146b1a0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c52f157efc0>
+
+    def test_save_change_when_yaml_replace_fails_with_previous_body(
+        make_workspace,
+        make_item,
+        snapshot_tree,
+        failing_replace,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """YAML の置き換えに失敗したら前の本文に戻す（異常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1", body="../docs/D-1.mark.md"), bodies={"D-1.mark.md": "前の本文\n"})
+        workspace = store.load_workspace(root)
+        before = snapshot_tree(root)
+        change = store.Change(
+            kind="decision",
+            items=[make_item("D-1", body="../docs/D-1.mark.md", answer="a")],
+            body=store.BodyWrite(name="../docs/D-1.mark.md", text="新しい本文\n"),
+        )
+        # store モジュールの参照を、decisions.yaml への置き換えだけ失敗するものに差し替える
+        monkeypatch.setattr(store.os, "replace", failing_replace("decisions.yaml"))
+        # 実行・検証
+        with pytest.raises(WriteFailedError, match=r"decisions\.yaml"):
+>           store.save_change(workspace, change)
+
+tests/unit/scripts/test_store.py:555: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+workspace = Workspace(root=PosixPath('/tmp/pt626-c/popen-gw2/test_save_change_when_yaml_rep0/workspace'), raw={'config.yaml': {'su...'(無い)', 'research.yaml': '(無い)', 'docs.yaml': '(無い)', 'terms.yaml': '(無い)', 'notes.yaml': '(無い)', 'logs.yaml': '(無い)'})
+change = Change(kind='decision', items=[{'id': 'D-1', 'title': 'D-1の題', 'status': '未決定', 'options': [{'key': 'A', 'content': '案.../D-1.mark.md', 'answer': 'a'}], body=BodyWrite(name='../docs/D-1.mark.md', text='新しい本文\n'), history=None, changes=None)
+
+    def save_change(workspace: Workspace, change: Change) -> dict[str, str | None]:
+        """1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。
+    
+        書いた種類の YAML と本文（記録のフォルダからのパス）→ 書いた中身を返す（変更の検知に渡す）。
+        """
+        spec = KINDS[change.kind]
+        # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
+        if _loses_content_on_rewrite(workspace, change.kind):
+            current = [p for p in validate_workspace(workspace) if p.file == spec.file]
+            raise build_mismatch_error(current, workspace)
+        # 変更を当てた後のワークスペース全体を検証する
+        changed_raw = {**workspace.raw, spec.file: {"items": change.items}}
+        changed = replace(workspace, raw=changed_raw)
+        problems = validate_workspace(changed, unchanged=[f for f in workspace.raw if f != spec.file])
+        if problems:
+            written_ids = _written_ids(workspace.items[change.kind], change.items)
+>           raise build_mismatch_error(problems, changed, written_ids=written_ids)
+E           errors.SchemaMismatchError: スキーマに合いません
+
+plugins/mindstella/skills/mindmap/scripts/store.py:692: SchemaMismatchError
+____________________________ test_create_workspace _____________________________
+[gw3] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+tmp_path = PosixPath('/tmp/pt626-c/popen-gw3/test_create_workspace0')
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'links': []}
+
+    def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> None:
+        """まだ無いフォルダにワークスペースを作る（正常系）。"""
+        # 準備
+        root = tmp_path / "ws"
+        # 実行
+        files = store.create_workspace(root, valid_settings, version="v0.3.0")
+        # 検証
+        assert len(files) == 13
+>       assert set(files) == {
+            "README.md",
+            ".mindstella/config.yaml",
+            ".mindstella/decisions.yaml",
+            ".mindstella/tasks.yaml",
+            ".mindstella/research.yaml",
+            ".mindstella/docs.yaml",
+            ".mindstella/terms.yaml",
+            ".mindstella/notes.yaml",
+            ".mindstella/logs.yaml",
+            ".mindstella/mindstella-version.ini",
+            ".mindstella/dev-docs.yaml",
+            ".mindstella/schemas/",
+            "docs/",
+        }
+E       AssertionError: assert {'.mindstella...gs.yaml', ...} == {'.mindstella...ion.ini', ...}
+E         
+E         Extra items in the left set:
+E         '.mindstella/docs/'
+E         Extra items in the right set:
+E         'docs/'
+E         Use -v to get more diff
+
+tests/unit/scripts/test_store.py:857: AssertionError
+________ test_save_change_when_yaml_replace_fails_without_previous_body ________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f146bce0>
+make_item = <function make_item.<locals>._make at 0x7c52f146b560>
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x7c52f146a660>
+failing_replace = <function failing_replace.<locals>._build at 0x7c52f146b380>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c52f157f1d0>
+
+    def test_save_change_when_yaml_replace_fails_without_previous_body(
+        make_workspace,
+        make_item,
+        snapshot_tree,
+        failing_replace,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """YAML の置き換えに失敗したら新しく書いた本文を消す（異常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        workspace = store.load_workspace(root)
+        before = snapshot_tree(root)
+        change = store.Change(
+            kind="decision",
+            items=[make_item("D-1", body="../docs/D-1.mark.md")],
+            body=store.BodyWrite(name="../docs/D-1.mark.md", text="新しい本文\n"),
+        )
+        # store モジュールの参照を、decisions.yaml への置き換えだけ失敗するものに差し替える
+        monkeypatch.setattr(store.os, "replace", failing_replace("decisions.yaml"))
+        # 実行・検証
+        with pytest.raises(WriteFailedError):
+>           store.save_change(workspace, change)
+
+tests/unit/scripts/test_store.py:581: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+workspace = Workspace(root=PosixPath('/tmp/pt626-c/popen-gw2/test_save_change_when_yaml_rep1/workspace'), raw={'config.yaml': {'su...'(無い)', 'research.yaml': '(無い)', 'docs.yaml': '(無い)', 'terms.yaml': '(無い)', 'notes.yaml': '(無い)', 'logs.yaml': '(無い)'})
+change = Change(kind='decision', items=[{'id': 'D-1', 'title': 'D-1の題', 'status': '未決定', 'options': [{'key': 'A', 'content': '案...body': '../docs/D-1.mark.md'}], body=BodyWrite(name='../docs/D-1.mark.md', text='新しい本文\n'), history=None, changes=None)
+
+    def save_change(workspace: Workspace, change: Change) -> dict[str, str | None]:
+        """1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。
+    
+        書いた種類の YAML と本文（記録のフォルダからのパス）→ 書いた中身を返す（変更の検知に渡す）。
+        """
+        spec = KINDS[change.kind]
+        # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
+        if _loses_content_on_rewrite(workspace, change.kind):
+            current = [p for p in validate_workspace(workspace) if p.file == spec.file]
+            raise build_mismatch_error(current, workspace)
+        # 変更を当てた後のワークスペース全体を検証する
+        changed_raw = {**workspace.raw, spec.file: {"items": change.items}}
+        changed = replace(workspace, raw=changed_raw)
+        problems = validate_workspace(changed, unchanged=[f for f in workspace.raw if f != spec.file])
+        if problems:
+            written_ids = _written_ids(workspace.items[change.kind], change.items)
+>           raise build_mismatch_error(problems, changed, written_ids=written_ids)
+E           errors.SchemaMismatchError: スキーマに合いません
+
+plugins/mindstella/skills/mindmap/scripts/store.py:692: SchemaMismatchError
+_____________ test_create_workspace_when_root_folder_exists[docs] ______________
+[gw3] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+tmp_path = PosixPath('/tmp/pt626-c/popen-gw3/test_create_workspace_when_roo0')
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x7c33e0809da0>
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'links': []}
+folder = 'docs', file_name = 'memo.md'
+
+    @pytest.mark.parametrize(
+        ("folder", "file_name"),
+        [
+            pytest.param("docs", "memo.md", id="docs"),
+            pytest.param("files", "memo.png", id="files"),
+        ],
+    )
+    def test_create_workspace_when_root_folder_exists(
+        tmp_path: Path,
+        snapshot_tree: SnapshotTree,
+        valid_settings: dict[str, Any],
+        folder: str,
+        file_name: str,
+    ) -> None:
+        """直下に利用者の docs/ か files/ があるフォルダには作らない（異常系）。"""
+        # 準備
+        root = tmp_path / "ws"
+        (root / folder).mkdir(parents=True)
+        (root / folder / file_name).write_text("利用者のファイル\n", encoding="utf-8")
+        before = snapshot_tree(root)
+        # 実行・検証
+>       with pytest.raises(errors.RootFolderExistsError, match=rf"{folder}/"):
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'errors' has no attribute 'RootFolderExistsError'
+
+tests/unit/scripts/test_store.py:944: AttributeError
+_____________ test_create_workspace_when_root_folder_exists[files] _____________
+[gw3] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+tmp_path = PosixPath('/tmp/pt626-c/popen-gw3/test_create_workspace_when_roo1')
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x7c33e080bf60>
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'links': []}
+folder = 'files', file_name = 'memo.png'
+
+    @pytest.mark.parametrize(
+        ("folder", "file_name"),
+        [
+            pytest.param("docs", "memo.md", id="docs"),
+            pytest.param("files", "memo.png", id="files"),
+        ],
+    )
+    def test_create_workspace_when_root_folder_exists(
+        tmp_path: Path,
+        snapshot_tree: SnapshotTree,
+        valid_settings: dict[str, Any],
+        folder: str,
+        file_name: str,
+    ) -> None:
+        """直下に利用者の docs/ か files/ があるフォルダには作らない（異常系）。"""
+        # 準備
+        root = tmp_path / "ws"
+        (root / folder).mkdir(parents=True)
+        (root / folder / file_name).write_text("利用者のファイル\n", encoding="utf-8")
+        before = snapshot_tree(root)
+        # 実行・検証
+>       with pytest.raises(errors.RootFolderExistsError, match=rf"{folder}/"):
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'errors' has no attribute 'RootFolderExistsError'
+
+tests/unit/scripts/test_store.py:944: AttributeError
+_________________ test_save_change_when_changes_replace_fails __________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f146a340>
+make_item = <function make_item.<locals>._make at 0x7c52f146a8e0>
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x7c52f146ae80>
+failing_replace = <function failing_replace.<locals>._build at 0x7c52f146b600>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c52f155b290>
+
+    def test_save_change_when_changes_replace_fails(
+        make_workspace,
+        make_item,
+        snapshot_tree,
+        failing_replace,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """まとまりの置き換えに失敗したら項目と本文を戻す（異常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1", body="../docs/D-1.mark.md"), bodies={"D-1.mark.md": "前の本文\n"})
+        workspace = store.load_workspace(root)
+        before = snapshot_tree(root)
+        change = store.Change(
+            kind="decision",
+            items=[make_item("D-1", body="../docs/D-1.mark.md", answer="a")],
+            body=store.BodyWrite(name="../docs/D-1.mark.md", text="新しい本文\n"),
+            changes={"last_seq": 1, "sets": [], "pending": {"added": [], "changed": ["D-1"]}},
+        )
+        # store モジュールの参照を、changes.yaml への置き換えだけ失敗するものに差し替える
+        monkeypatch.setattr(store.os, "replace", failing_replace("changes.yaml"))
+        # 実行・検証
+        with pytest.raises(WriteFailedError, match=r"changes\.yaml"):
+>           store.save_change(workspace, change)
+
+tests/unit/scripts/test_store.py:609: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+workspace = Workspace(root=PosixPath('/tmp/pt626-c/popen-gw2/test_save_change_when_changes_0/workspace'), raw={'config.yaml': {'su...'(無い)', 'research.yaml': '(無い)', 'docs.yaml': '(無い)', 'terms.yaml': '(無い)', 'notes.yaml': '(無い)', 'logs.yaml': '(無い)'})
+change = Change(kind='decision', items=[{'id': 'D-1', 'title': 'D-1の題', 'status': '未決定', 'options': [{'key': 'A', 'content': '案....md', text='新しい本文\n'), history=None, changes={'last_seq': 1, 'sets': [], 'pending': {'added': [], 'changed': ['D-1']}})
+
+    def save_change(workspace: Workspace, change: Change) -> dict[str, str | None]:
+        """1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。
+    
+        書いた種類の YAML と本文（記録のフォルダからのパス）→ 書いた中身を返す（変更の検知に渡す）。
+        """
+        spec = KINDS[change.kind]
+        # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
+        if _loses_content_on_rewrite(workspace, change.kind):
+            current = [p for p in validate_workspace(workspace) if p.file == spec.file]
+            raise build_mismatch_error(current, workspace)
+        # 変更を当てた後のワークスペース全体を検証する
+        changed_raw = {**workspace.raw, spec.file: {"items": change.items}}
+        changed = replace(workspace, raw=changed_raw)
+        problems = validate_workspace(changed, unchanged=[f for f in workspace.raw if f != spec.file])
+        if problems:
+            written_ids = _written_ids(workspace.items[change.kind], change.items)
+>           raise build_mismatch_error(problems, changed, written_ids=written_ids)
+E           errors.SchemaMismatchError: スキーマに合いません
+
+plugins/mindstella/skills/mindmap/scripts/store.py:692: SchemaMismatchError
+_______________________________ test_save_batch ________________________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f146a840>
+make_item = <function make_item.<locals>._make at 0x7c52f146aa20>
+
+    def test_save_batch(make_workspace, make_item) -> None:
+        """複数の種類と本文とまとまりを書き、一時ファイルを残さない（正常系）。"""
+        # 準備
+        root = make_workspace()
+        workspace = store.load_workspace(root)
+        decision = make_item("D-1", body="../docs/D-1.mark.md")
+        task = make_item("T-1")
+        changes = {"last_seq": 2, "sets": [], "pending": {"added": ["D-1", "T-1"], "changed": []}}
+        change = store.BatchChange(
+            items={"decision": [decision], "task": [task]},
+            bodies=[store.BodyWrite(name="../docs/D-1.mark.md", text="## 経緯\n")],
+            changes=changes,
+        )
+        # 実行
+>       store.save_batch(workspace, change)
+
+tests/unit/scripts/test_store.py:628: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+workspace = Workspace(root=PosixPath('/tmp/pt626-c/popen-gw2/test_save_batch0/workspace'), raw={'config.yaml': {'summary': '要件出しのス...'(無い)', 'research.yaml': '(無い)', 'docs.yaml': '(無い)', 'terms.yaml': '(無い)', 'notes.yaml': '(無い)', 'logs.yaml': '(無い)'})
+change = BatchChange(items={'decision': [{'id': 'D-1', 'title': 'D-1の題', 'status': '未決定', 'options': [{'key': 'A', 'content': '...: [], 'pending': {'added': ['D-1', 'T-1'], 'changed': []}}, removed_bodies=[], settings=None, threads=None, edits=None)
+
+    def save_batch(workspace: Workspace, change: BatchChange) -> dict[str, str | None]:
+        """複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。
+    
+        書いた種類の YAML と本文（記録のフォルダからのパス）→ 書いた中身（消した本文は None）を返す（変更の検知に渡す）。
+        """
+        kinds = [kind for kind in KINDS if kind in change.items]
+        # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
+        for kind in kinds:
+            if _loses_content_on_rewrite(workspace, kind):
+                file_name = KINDS[kind].file
+                current = [p for p in validate_workspace(workspace) if p.file == file_name]
+                raise build_mismatch_error(current, workspace)
+        # 変更を当てた後のワークスペース全体を検証する
+        changed_raw = {
+            **workspace.raw,
+            **{KINDS[kind].file: {"items": change.items[kind]} for kind in kinds},
+        }
+        # 設定も一緒に書くときは、新しい設定で検証する
+        if change.settings is not None:
+            changed_raw[SETTINGS_FILE] = change.settings
+        changed = replace(workspace, raw=changed_raw)
+        replaced_files = {KINDS[kind].file for kind in kinds}
+        if change.settings is not None:
+            replaced_files.add(SETTINGS_FILE)
+        problems = validate_workspace(
+            changed, unchanged=[f for f in workspace.raw if f not in replaced_files]
+        )
+        if problems:
+            written_ids = frozenset().union(
+                *(_written_ids(workspace.items[kind], change.items[kind]) for kind in kinds)
+            )
+>           raise build_mismatch_error(problems, changed, written_ids=written_ids)
+E           errors.SchemaMismatchError: スキーマに合いません
+
+plugins/mindstella/skills/mindmap/scripts/store.py:809: SchemaMismatchError
+______________________ test_save_batch_when_replace_fails ______________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f14dc0e0>
+make_item = <function make_item.<locals>._make at 0x7c52f14dc540>
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x7c52f14dc4a0>
+failing_replace = <function failing_replace.<locals>._build at 0x7c52f14dc400>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c52f155bf50>
+
+    def test_save_batch_when_replace_fails(
+        make_workspace,
+        make_item,
+        snapshot_tree,
+        failing_replace,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """途中の置き換えに失敗したら、置き換えたファイルを戻す（異常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("D-1", body="../docs/D-1.mark.md"),
+            make_item("T-1"),
+            bodies={"D-1.mark.md": "前の本文\n"},
+        )
+        workspace = store.load_workspace(root)
+        before = snapshot_tree(root)
+        change = store.BatchChange(
+            items={
+                "decision": [make_item("D-1", body="../docs/D-1.mark.md", answer="a")],
+                "task": [make_item("T-1", result="r")],
+            },
+            bodies=[store.BodyWrite(name="../docs/D-1.mark.md", text="新しい本文\n")],
+        )
+        # store モジュールの参照を、tasks.yaml への置き換えだけ失敗するものに差し替える
+        monkeypatch.setattr(store.os, "replace", failing_replace("tasks.yaml"))
+        # 実行・検証
+        with pytest.raises(WriteFailedError, match=r"tasks\.yaml"):
+>           store.save_batch(workspace, change)
+
+tests/unit/scripts/test_store.py:731: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+workspace = Workspace(root=PosixPath('/tmp/pt626-c/popen-gw2/test_save_batch_when_replace_f0/workspace'), raw={'config.yaml': {'su...b4fb1', 'research.yaml': '(無い)', 'docs.yaml': '(無い)', 'terms.yaml': '(無い)', 'notes.yaml': '(無い)', 'logs.yaml': '(無い)'})
+change = BatchChange(items={'decision': [{'id': 'D-1', 'title': 'D-1の題', 'status': '未決定', 'options': [{'key': 'A', 'content': '...D-1.mark.md', text='新しい本文\n')], history=None, changes=None, removed_bodies=[], settings=None, threads=None, edits=None)
+
+    def save_batch(workspace: Workspace, change: BatchChange) -> dict[str, str | None]:
+        """複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。
+    
+        書いた種類の YAML と本文（記録のフォルダからのパス）→ 書いた中身（消した本文は None）を返す（変更の検知に渡す）。
+        """
+        kinds = [kind for kind in KINDS if kind in change.items]
+        # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
+        for kind in kinds:
+            if _loses_content_on_rewrite(workspace, kind):
+                file_name = KINDS[kind].file
+                current = [p for p in validate_workspace(workspace) if p.file == file_name]
+                raise build_mismatch_error(current, workspace)
+        # 変更を当てた後のワークスペース全体を検証する
+        changed_raw = {
+            **workspace.raw,
+            **{KINDS[kind].file: {"items": change.items[kind]} for kind in kinds},
+        }
+        # 設定も一緒に書くときは、新しい設定で検証する
+        if change.settings is not None:
+            changed_raw[SETTINGS_FILE] = change.settings
+        changed = replace(workspace, raw=changed_raw)
+        replaced_files = {KINDS[kind].file for kind in kinds}
+        if change.settings is not None:
+            replaced_files.add(SETTINGS_FILE)
+        problems = validate_workspace(
+            changed, unchanged=[f for f in workspace.raw if f not in replaced_files]
+        )
+        if problems:
+            written_ids = frozenset().union(
+                *(_written_ids(workspace.items[kind], change.items[kind]) for kind in kinds)
+            )
+>           raise build_mismatch_error(problems, changed, written_ids=written_ids)
+E           errors.SchemaMismatchError: スキーマに合いません
+
+plugins/mindstella/skills/mindmap/scripts/store.py:809: SchemaMismatchError
+________________________________ test_read_body ________________________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f14ddf80>
+
+    def test_read_body(make_workspace) -> None:
+        """ある本文を読む（正常系）。"""
+        # 準備
+        workspace = store.load_workspace(make_workspace(bodies={"D-1.mark.md": "本文\n"}))
+        # 実行
+        text = store.read_body(workspace, "../docs/D-1.mark.md")
+        # 検証
+>       assert text == "本文\n"
+E       AssertionError: assert None == '本文\n'
+
+tests/unit/scripts/test_store.py:1015: AssertionError
+__________________ test_read_body_when_outside[records_docs] ___________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c52f14dcc20>
+name = 'docs/D-1.mark.md'
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            pytest.param("config.yaml", id="records_dir"),
+            pytest.param("../docs/../.mindstella/config.yaml", id="parent"),
+            pytest.param("docs/D-1.mark.md", id="records_docs"),
+        ],
+    )
+    def test_read_body_when_outside(make_workspace, name: str) -> None:
+        """直下の docs/ の外を指す名前は読まない（正常系）。"""
+        # 準備
+        root = make_workspace()
+        (root / RECORD_DIR / "docs").mkdir()
+        (root / RECORD_DIR / "docs" / "D-1.mark.md").write_text("記録のフォルダの本文\n", encoding="utf-8")
+        workspace = store.load_workspace(root)
+        # 実行
+        text = store.read_body(workspace, name)
+        # 検証
+>       assert text is None
+E       AssertionError: assert '記録のフォルダの本文\n' is None
+
+tests/unit/scripts/test_store.py:1046: AssertionError
+______ test_validate_workspace_when_aliases[with_aliases_and_description] ______
+[gw3] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c33df24fec0>
+make_item = <function make_item.<locals>._make at 0x7c33df24fe20>
+docs_extra = {'aliases': ['特殊効果'], 'description': '演出の説明'}
+research_extra = {'aliases': ['特殊効果'], 'description': '調査の説明'}, expected = []
+
+    @pytest.mark.parametrize(
+        ("docs_extra", "research_extra", "expected"),
+        [
+            pytest.param(
+                {"aliases": ["特殊効果"], "description": "演出の説明"},
+                {"aliases": ["特殊効果"], "description": "調査の説明"},
+                [],
+                id="with_aliases_and_description",
+            ),
+            pytest.param({}, {}, [], id="without_aliases_and_description"),
+            pytest.param(
+                {"aliases": ["特殊効果", ""]},
+                {},
+                [("docs.yaml", "items[0].aliases[1]")],
+                id="empty_alias",
+            ),
+        ],
+    )
+    def test_validate_workspace_when_aliases(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        docs_extra: dict[str, Any],
+        research_extra: dict[str, Any],
+        expected: list[tuple[str, str]],
+    ) -> None:
+        """資料・調査の `aliases`・`description` を受け、空の語を拾う（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1", body="../docs/A-1.mark.md", **docs_extra), make_item("R-1", **research_extra)
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        problems = store.validate_workspace(workspace)
+        # 検証
+>       assert [(problem.file, problem.key) for problem in problems] == expected
+E       AssertionError: assert [('docs.yaml'...ems[0].body')] == []
+E         
+E         Left contains one more item: ('docs.yaml', 'items[0].body')
+E         Use -v to get more diff
+
+tests/unit/scripts/test_store.py:1514: AssertionError
+____ test_validate_workspace_when_aliases[without_aliases_and_description] _____
+[gw3] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c33df25d8a0>
+make_item = <function make_item.<locals>._make at 0x7c33df25d440>
+docs_extra = {}, research_extra = {}, expected = []
+
+    @pytest.mark.parametrize(
+        ("docs_extra", "research_extra", "expected"),
+        [
+            pytest.param(
+                {"aliases": ["特殊効果"], "description": "演出の説明"},
+                {"aliases": ["特殊効果"], "description": "調査の説明"},
+                [],
+                id="with_aliases_and_description",
+            ),
+            pytest.param({}, {}, [], id="without_aliases_and_description"),
+            pytest.param(
+                {"aliases": ["特殊効果", ""]},
+                {},
+                [("docs.yaml", "items[0].aliases[1]")],
+                id="empty_alias",
+            ),
+        ],
+    )
+    def test_validate_workspace_when_aliases(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        docs_extra: dict[str, Any],
+        research_extra: dict[str, Any],
+        expected: list[tuple[str, str]],
+    ) -> None:
+        """資料・調査の `aliases`・`description` を受け、空の語を拾う（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1", body="../docs/A-1.mark.md", **docs_extra), make_item("R-1", **research_extra)
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        problems = store.validate_workspace(workspace)
+        # 検証
+>       assert [(problem.file, problem.key) for problem in problems] == expected
+E       AssertionError: assert [('docs.yaml'...ems[0].body')] == []
+E         
+E         Left contains one more item: ('docs.yaml', 'items[0].body')
+E         Use -v to get more diff
+
+tests/unit/scripts/test_store.py:1514: AssertionError
+______________ test_validate_workspace_when_aliases[empty_alias] _______________
+[gw3] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+make_workspace = <function make_workspace.<locals>._make at 0x7c33df25d940>
+make_item = <function make_item.<locals>._make at 0x7c33df25dda0>
+docs_extra = {'aliases': ['特殊効果', '']}, research_extra = {}
+expected = [('docs.yaml', 'items[0].aliases[1]')]
+
+    @pytest.mark.parametrize(
+        ("docs_extra", "research_extra", "expected"),
+        [
+            pytest.param(
+                {"aliases": ["特殊効果"], "description": "演出の説明"},
+                {"aliases": ["特殊効果"], "description": "調査の説明"},
+                [],
+                id="with_aliases_and_description",
+            ),
+            pytest.param({}, {}, [], id="without_aliases_and_description"),
+            pytest.param(
+                {"aliases": ["特殊効果", ""]},
+                {},
+                [("docs.yaml", "items[0].aliases[1]")],
+                id="empty_alias",
+            ),
+        ],
+    )
+    def test_validate_workspace_when_aliases(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        docs_extra: dict[str, Any],
+        research_extra: dict[str, Any],
+        expected: list[tuple[str, str]],
+    ) -> None:
+        """資料・調査の `aliases`・`description` を受け、空の語を拾う（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1", body="../docs/A-1.mark.md", **docs_extra), make_item("R-1", **research_extra)
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        problems = store.validate_workspace(workspace)
+        # 検証
+>       assert [(problem.file, problem.key) for problem in problems] == expected
+E       AssertionError: assert [('docs.yaml'...ems[0].body')] == [('docs.yaml'....aliases[1]')]
+E         
+E         Left contains one more item: ('docs.yaml', 'items[0].body')
+E         Use -v to get more diff
+
+tests/unit/scripts/test_store.py:1514: AssertionError
+___________________________ test_build_source_config ___________________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+    def test_build_source_config() -> None:
+        """種類ごとの 7 つの行と関連の種類を持つ（正常系）。"""
+        # 実行
+        config = store.build_source_config("mindstella-a-123456", "a")
+        # 検証
+        assert len(config["documents"]) == 7
+        decisions = next(row for row in config["documents"] if row["id"] == "decisions")
+>       assert config["paths_base"] == ".."
+               ^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'paths_base'
+
+tests/unit/scripts/test_store.py:1727: KeyError
+________________ test_create_workspace_root_folder_exists[docs] ________________
+[gw7] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+folder_name = 'docs', file_name = 'memo.md'
+allowed = PosixPath('/tmp/pt626-c/popen-gw7/test_create_workspace_root_fol0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7b51eff3af60>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt626-c/popen-gw7/test_create_workspace_root_fol0/state'...ff3aff0>, plugin_root=PosixPath('/tmp/pt626-c/popen-gw7/test_create_workspace_root_fol0/plugin'), tmux=None, proc=None)
+
+    @pytest.mark.parametrize(
+        ("folder_name", "file_name"),
+        [pytest.param("docs", "memo.md", id="docs"), pytest.param("files", "memo.png", id="files")],
+    )
+    def test_create_workspace_root_folder_exists(
+        folder_name: str,
+        file_name: str,
+        allowed: Path,
+        fake_pi: FakeProjectIndex,
+        ctx: SimpleNamespace,
+    ) -> None:
+        """記録が無く直下に docs/ か files/ があれば 409 で、何も書かない（異常系）。"""
+        # 準備
+        folder = allowed / "家計簿"
+        (folder / folder_name).mkdir(parents=True)
+        (folder / folder_name / file_name).write_text("利用者のファイル\n", encoding="utf-8")
+        # 実行・検証
+>       with pytest.raises(ApiError) as caught:
+             ^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ApiError
+
+tests/unit/scripts/test_workspaces.py:507: Failed
+_______________ test_create_workspace_root_folder_exists[files] ________________
+[gw3] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+
+folder_name = 'files', file_name = 'memo.png'
+allowed = PosixPath('/tmp/pt626-c/popen-gw3/test_create_workspace_root_fol0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x7c33e083aff0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt626-c/popen-gw3/test_create_workspace_root_fol0/state'...f1d6150>, plugin_root=PosixPath('/tmp/pt626-c/popen-gw3/test_create_workspace_root_fol0/plugin'), tmux=None, proc=None)
+
+    @pytest.mark.parametrize(
+        ("folder_name", "file_name"),
+        [pytest.param("docs", "memo.md", id="docs"), pytest.param("files", "memo.png", id="files")],
+    )
+    def test_create_workspace_root_folder_exists(
+        folder_name: str,
+        file_name: str,
+        allowed: Path,
+        fake_pi: FakeProjectIndex,
+        ctx: SimpleNamespace,
+    ) -> None:
+        """記録が無く直下に docs/ か files/ があれば 409 で、何も書かない（異常系）。"""
+        # 準備
+        folder = allowed / "家計簿"
+        (folder / folder_name).mkdir(parents=True)
+        (folder / folder_name / file_name).write_text("利用者のファイル\n", encoding="utf-8")
+        # 実行・検証
+>       with pytest.raises(ApiError) as caught:
+             ^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ApiError
+
+tests/unit/scripts/test_workspaces.py:507: Failed
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_comments.py::test_add_comment_when_location_and_no_target[location]
+FAILED tests/unit/scripts/test_comments.py::test_send_now_when_conflict[loc-out-of-range]
+FAILED tests/unit/scripts/test_commands.py::test_stage_add_when_note_has_body
+FAILED tests/unit/scripts/test_checker.py::test_check_workspace - assert [Pro...
+FAILED tests/unit/scripts/test_commands.py::test_stage_add_when_doc_has_html_body
+FAILED tests/unit/scripts/test_checker.py::test_check_workspace_when_problems
+FAILED tests/unit/scripts/test_commands.py::test_stage_update_when_body_format_changed
+FAILED tests/unit/scripts/test_checker.py::test_check_bodies - AssertionError...
+FAILED tests/unit/scripts/test_checker.py::test_check_bodies_when_html - Asse...
+FAILED tests/unit/scripts/test_comments.py::test_send_comments - errors.Comme...
+FAILED tests/unit/scripts/test_builder.py::test_collect_preview_data - Assert...
+FAILED tests/unit/scripts/test_checker.py::test_check_history_when_body_rewritten
+FAILED tests/unit/scripts/test_builder.py::test_collect_preview_data_with_html_body
+FAILED tests/unit/scripts/test_checker.py::test_check_embedded_files - Assert...
+FAILED tests/unit/scripts/test_locations.py::test_check_location[list_and_bold]
+FAILED tests/unit/scripts/test_kinds.py::test_body_root - AttributeError: mod...
+FAILED tests/unit/scripts/test_locations.py::test_check_location[soft_break]
+FAILED tests/unit/scripts/test_kinds.py::test_workspace_path[record_file] - A...
+FAILED tests/unit/scripts/test_kinds.py::test_workspace_path[body] - Attribut...
+FAILED tests/unit/scripts/test_locations.py::test_check_location[table_row]
+FAILED tests/unit/scripts/test_locations.py::test_check_location[link] - Asse...
+FAILED tests/unit/scripts/test_locations.py::test_check_location[link_in_sentence]
+FAILED tests/unit/scripts/test_builder.py::test_export_preview - errors.Schem...
+FAILED tests/unit/scripts/test_locations.py::test_check_location[image_in_sentence]
+FAILED tests/unit/scripts/test_locations.py::test_check_location[character_reference]
+FAILED tests/unit/scripts/test_locations.py::test_check_location_when_stale[past_last_line]
+FAILED tests/unit/scripts/test_locations.py::test_check_location_when_stale[text_missing]
+FAILED tests/unit/scripts/test_locations.py::test_check_location_when_html_body[rendered_text]
+FAILED tests/unit/scripts/test_locations.py::test_check_location_when_html_body[hidden_style]
+FAILED tests/unit/scripts/test_locations.py::test_check_location_when_html_body[text_missing]
+FAILED tests/unit/scripts/test_serve.py::test_workspace_signature[add_body]
+FAILED tests/unit/scripts/test_serve.py::test_workspace_signature_with_html_body[rewrite_html_body]
+FAILED tests/unit/scripts/test_serve.py::test_workspace_signature_with_html_body[add_html_body]
+FAILED tests/unit/scripts/test_change_detection.py::test_rebase_snapshot - Fi...
+FAILED tests/unit/scripts/test_change_detection.py::test_take_snapshot - Asse...
+FAILED tests/unit/scripts/test_change_detection.py::test_diff_snapshots - Ass...
+FAILED tests/unit/scripts/test_serve.py::test_send_file - assert 404 == 200
+FAILED tests/unit/scripts/test_store.py::test_save_change - errors.SchemaMism...
+FAILED tests/unit/scripts/test_store.py::test_save_change_when_schema_mismatch
+FAILED tests/unit/scripts/test_store.py::test_save_change_when_temp_write_fails
+FAILED tests/unit/scripts/test_store.py::test_save_change_when_yaml_replace_fails_with_previous_body
+FAILED tests/unit/scripts/test_store.py::test_create_workspace - AssertionErr...
+FAILED tests/unit/scripts/test_store.py::test_save_change_when_yaml_replace_fails_without_previous_body
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_root_folder_exists[docs]
+FAILED tests/unit/scripts/test_store.py::test_create_workspace_when_root_folder_exists[files]
+FAILED tests/unit/scripts/test_store.py::test_save_change_when_changes_replace_fails
+FAILED tests/unit/scripts/test_store.py::test_save_batch - errors.SchemaMisma...
+FAILED tests/unit/scripts/test_store.py::test_save_batch_when_replace_fails
+FAILED tests/unit/scripts/test_store.py::test_read_body - AssertionError: ass...
+FAILED tests/unit/scripts/test_store.py::test_read_body_when_outside[records_docs]
+FAILED tests/unit/scripts/test_store.py::test_validate_workspace_when_aliases[with_aliases_and_description]
+FAILED tests/unit/scripts/test_store.py::test_validate_workspace_when_aliases[without_aliases_and_description]
+FAILED tests/unit/scripts/test_store.py::test_validate_workspace_when_aliases[empty_alias]
+FAILED tests/unit/scripts/test_store.py::test_build_source_config - KeyError:...
+FAILED tests/unit/scripts/test_workspaces.py::test_create_workspace_root_folder_exists[docs]
+FAILED tests/unit/scripts/test_workspaces.py::test_create_workspace_root_folder_exists[files]
+ERROR tests/unit/scripts/test_move_bodies_to_root.py::test_migrate_when_already_current
+ERROR tests/unit/scripts/test_move_bodies_to_root.py::test_migrate_when_root_folder_exists[root-docs]
+ERROR tests/unit/scripts/test_move_bodies_to_root.py::test_migrate_when_root_folder_exists[root-files-without-records-files]
+ERROR tests/unit/scripts/test_move_bodies_to_root.py::test_migrate_without_bodies
+ERROR tests/unit/scripts/test_move_bodies_to_root.py::test_migrate - FileNotF...
+56 failed, 1629 passed, 1 skipped, 5 warnings, 5 errors in 18.55s
