@@ -799,6 +799,23 @@ elements:
     visible_when: 行の修正を押した行
     action_ref: IF-489-58#
     status: planned
+  - name: 確認済み
+    kind: button
+    component: CMP-633-1#
+    args:
+      - name: confirmed
+        value: 記録の取得のその項目の confirmed（付け外しの応答を待つ間は押した後の値）
+      - name: saving
+        value: 付け外しの応答を待っている間 true
+    position: 見出し > 種類と ID・見出しのタイトルの右・編集するの左
+    description: 押すと、開いている項目を確認済みにするか解除する。押した直後に押した後の状態で描き、応答を待つ間は押せなくする。200 ならそのままにし、200 以外か届かないときは押す前の状態に戻して、トーストで「確認済みを書き換えられませんでした。」と `detail`（届かないときは「サーバーが止まっています。立ち上げ直してから押してください。」）を通知する。書き換えの通知で記録を取得し直したときは、取得した confirmed で描き直す（AI の書き込みで未確認に戻ったときを含む）。幅 640px 未満はアイコンだけにし、幅 320px でも見出しのボタンを表示幅の中に収める
+    visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
+    source: 記録の取得のその項目の confirmed
+    target: 確認済みの付け外し.confirmed
+    action_ref: IF-633-1#
+    status: planned
+    introduced:
+      pr: 633
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 notes:
   取り下げのモック: 取り下げの札と取り下げた理由の見本は `docs/mock/pages/detail-panel/179/standard/index.html`
