@@ -406,6 +406,48 @@ def test_stop_workspace(
     assert second.resolve() in detected_registry._detectors
 
 
+def test_start_when_folder_moved(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """配っているフォルダを移した先を配ると、前のフォルダの配信をやめて移した先を同じ URL で配る（正常系）。"""
+    # 準備
+    calls = _record_hook_calls(monkeypatch)
+    monkeypatch.setattr(serve, "ChangeDetector", FakeDetector)
+    registry = serve.PreviewRegistry(
+        threading.Lock(),
+        port=PORT,
+        external=serve.ExternalAccess(start_hook=("start",), stop_hook=("stop",)),
+        state_root=tmp_path / "state",
+    )
+    first = make_workspace(make_item("D-1"), name="first")
+    config_path = first / RECORD_DIR / "config.yaml"
+    write_yaml(config_path, {**yaml.safe_load(config_path.read_text(encoding="utf-8")), "id": "mindstella-first-3f2a9c"})
+    first_url, _started = registry.start(first)
+    detector = registry._detectors[first.resolve()]
+    moved = tmp_path / "moved"
+    first.rename(moved)
+    page = _page_path_of(moved)
+    try:
+        # 実行
+        result = registry.start(moved)
+        # 検証
+        assert result == (first_url, True)
+        context = registry.context_of("mindstella-first-3f2a9c")
+        assert context is not None
+        assert context.root == moved.resolve()
+        assert detector.stopped is True
+        assert calls == [
+            (("start",), PORT, "first", page),
+            (("stop",), PORT, "first", page),
+            (("start",), PORT, "moved", page),
+        ]
+    finally:
+        registry.stop_all()
+
+
 def test_stop_workspace_when_not_served(
     detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
