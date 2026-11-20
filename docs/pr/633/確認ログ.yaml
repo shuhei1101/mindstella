@@ -23,3 +23,9 @@ confirmations:
     approver: shuhei1101
     commit: b05ae92ae72e82ebdd626bc9e8bdaaa834ab4a14
     thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638614311
+  - topic: バージョンのファイルに「当て終えた手順の数」を追加するか
+    decision: mindstella-version.ini の 2 行目に当て終えた手順の数を記録し、2 行目が無いワークスペースはそのバージョンの手順を全て当て直す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: d7ed8e0c
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638948694
