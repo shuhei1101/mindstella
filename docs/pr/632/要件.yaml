@@ -85,31 +85,45 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 「ネットワークを辿る」「検討事項のマップを辿る」と、タブの帯のネットワーク・表示形式のマップ・見た目の選択・ロックの記載を削除する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
   - page: docs/guide/コマンド.mark.md
     new: false
     change: 設定の更新・既定の書き換えの `display` から `network_look` を削除する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: '`config.yaml` の `display.network_look` の行と、表示する種類の説明のネットワークを削除する'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
     change: ブラウザに持つ表示の好みと組み込みの既定から、ネットワークの見た目を削除する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
   - page: docs/guide/動作環境.mark.md
     new: false
     change: マップの幅の基準とネットワークで扱う項目の数の行を削除する（WSL のネットワークの記載は残す）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
   - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
     new: false
     change: 次のバージョンの手順で設定の `display.network_look` が削除されることを、版ごとの変更に加える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
   - page: docs/design-policy.mark.md
     new: false
     change: ネットワーク（3D）の地とマップの枝の線の記載を削除する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
 scope_out:
   - item: 差分のミニマップ
     reason: 名前に「マップ」を含むが別の機能で、残すと決まっている（D-569）
