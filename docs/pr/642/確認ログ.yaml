@@ -1,0 +1,13 @@
+confirmations:
+  - topic: ワークスペースの config.yaml の preview.port の扱い
+    decision: キーを削除し、既存のワークスペースの値は移し替えで削除する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: b016b7592263ef72da9f9308b63b86a913c0fadd
+    thread: https://github.com/shuhei1101/mindstella/pull/642#discussion_r4646234567
+  - topic: 配信のフックの引数
+    decision: 常駐サーバーのポート・ワークスペースの名前・画面のパスの 3 つにし、利用者のスクリプトを反映作業で書き換える（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: b016b7592263ef72da9f9308b63b86a913c0fadd
+    thread: https://github.com/shuhei1101/mindstella/pull/642#discussion_r4646235799
