@@ -94,7 +94,7 @@ DEFAULT_TIMESTAMP = "2026-10-01T00:00:00+00:00"
 
 # 項目の履歴のファイル（ER 図『項目の履歴』）と、項目に持たずそこへ移すキー
 HISTORY_FILE = "history.yaml"
-HISTORY_KEYS = ("created", "updated", "updated_by", "seq", "added_seq", "history", "history_dropped_seq")
+HISTORY_KEYS = ("created", "updated", "updated_by", "seq", "added_seq", "history", "history_dropped_seq", "confirmed")
 
 # ID の頭の文字 → 書き込む YAML のファイル名（並びは D・T・R・A・G・N・L）
 KIND_FILES = {

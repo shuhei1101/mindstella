@@ -186,7 +186,7 @@ def test_plan_migration_when_same(
 ) -> None:
     """版が同じなら手順は空（正常系）。"""
     # 準備
-    root = make_workspace(raw_files={VERSION_FILE: "v0.3.0\n"})
+    root = make_workspace(raw_files={VERSION_FILE: "v0.3.0\n3\n"})
     patch_plugin_version("v0.3.0")
     # 実行
     report = migrator.plan_migration(root)
@@ -713,3 +713,90 @@ def test_migrate_when_same_without_write_dates(
     assert report.source_files == [".mindstella/dev-docs.yaml"]
     assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == f"{V0140}\n"
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
+
+
+# 何もしない手順 1 つ（計画と数えるだけに使う）
+NOOP_STEP = "  - op: set_default\n    file: .mindstella/config.yaml\n    each_item: false\n    key: summary\n    ask: 話し合いの題名\n"
+
+
+def _versioned_migrations(base: Path, counts: dict[str, int]) -> Path:
+    """版ごとに渡した数の手順を持つ手順の置き場所を base の下に作って返す。"""
+    for version, count in counts.items():
+        folder = base / "migrations" / version
+        (folder / "scripts").mkdir(parents=True)
+        (folder / STEPS_FILE).write_text("steps:\n" + NOOP_STEP * count, encoding="utf-8")
+    return base / "migrations"
+
+
+@pytest.mark.parametrize(
+    ("version_text", "expected"),
+    [
+        pytest.param("v0.2.0\n1\n", [2, 3], id="applied_one"),
+        pytest.param("v0.2.0\n", [1, 2, 3], id="no_second_line"),
+        pytest.param("v0.2.0\n3\n", [], id="applied_all"),
+    ],
+)
+def test_plan_migration_when_steps_added_to_same_version(
+    make_workspace: MakeWorkspace,
+    patch_plugin_version: PatchPluginVersion,
+    tmp_path: Path,
+    version_text: str,
+    expected: list[int],
+) -> None:
+    """同じ版に後から足した手順を集める（正常系）。"""
+    # 準備
+    root = make_workspace(raw_files={VERSION_FILE: version_text})
+    patch_plugin_version("v0.2.0")
+    migrations = _versioned_migrations(tmp_path / "steps", {"v0.2.0": 3})
+    # 実行
+    report = migrator.plan_migration(root, migrations_dir=migrations)
+    # 検証
+    assert [(str(step.version), step.index) for step in report.steps] == [
+        ("v0.2.0", index) for index in expected
+    ]
+
+
+def test_plan_migration_when_older_with_applied(
+    make_workspace: MakeWorkspace, patch_plugin_version: PatchPluginVersion, tmp_path: Path
+) -> None:
+    """古い版の残りの手順の後に、後の版の手順を並べる（正常系）。"""
+    # 準備
+    root = make_workspace(raw_files={VERSION_FILE: "v0.1.0\n1\n"})
+    patch_plugin_version("v0.2.0")
+    migrations = _versioned_migrations(tmp_path / "steps", {"v0.1.0": 2, "v0.2.0": 1})
+    # 実行
+    report = migrator.plan_migration(root, migrations_dir=migrations)
+    # 検証
+    assert [(str(step.version), step.index) for step in report.steps] == [
+        ("v0.1.0", 2),
+        ("v0.2.0", 1),
+    ]
+
+
+@pytest.mark.parametrize(("counts", "expected"), [({"v0.2.0": 3}, 3), ({}, 0)])
+def test_count_steps(tmp_path: Path, counts: dict[str, int], expected: int) -> None:
+    """手順の数を返す（正常系）。"""
+    # 準備
+    migrations = _versioned_migrations(tmp_path / "steps", counts)
+    migrations.mkdir(parents=True, exist_ok=True)
+    # 実行
+    count = migrator.count_steps(Version(0, 2, 0), migrations_dir=migrations)
+    # 検証
+    assert count == expected
+
+
+def test_record_version_writes_applied(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """版のフォルダの手順の数を 2 行目に書く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    expected = migrator.count_steps(Version(0, 14, 0))
+    missing = make_workspace(make_item("D-1"), name="missing")
+    # 実行
+    migrator.record_version(root, to_version=Version(0, 14, 0))
+    migrator.record_version(missing, to_version=Version(99, 0, 0))
+    # 検証
+    lines = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()
+    assert lines == ["v0.14.0", str(expected)]
+    assert expected == 3
+    missing_lines = (missing / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()
+    assert missing_lines == ["v99.0.0", "0"]

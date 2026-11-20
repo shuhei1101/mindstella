@@ -60,6 +60,19 @@ describe("ThreadView", () => {
     await waitFor(() => expect(calls).toBe(1));
   });
 
+  // 書き込みの並びをパネルの幅より広げない（正常系）
+  test("thread_view_when_wide_table", async () => {
+    // 準備
+    server.use(http.get("/api/threads", () => HttpResponse.json(unseen)), http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: ["TH-1-1"] })));
+    // 実行
+    renderRoute("/spa/?panel=comments&thread=TH-1");
+    // 検証
+    const post = await screen.findByText("どちらにしますか");
+    const list = post.closest("ol");
+    expect(list).toHaveClass("grid-cols-[minmax(0,1fr)]");
+    expect(post.closest("article")).toHaveClass("min-w-0");
+  });
+
   // 失敗した後に呼び直さない（異常系）
   test("thread_view_when_seen_failed", async () => {
     // 準備

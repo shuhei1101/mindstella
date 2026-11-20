@@ -851,7 +851,7 @@ def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> Non
     # 準備
     root = tmp_path / "ws"
     # 実行
-    files = store.create_workspace(root, valid_settings, version="v0.3.0")
+    files = store.create_workspace(root, valid_settings, version="v0.3.0", applied=2)
     # 検証
     assert len(files) == 13
     assert set(files) == {
@@ -871,7 +871,7 @@ def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> Non
     }
     records = root / RECORD_DIR
     assert yaml.safe_load((records / "config.yaml").read_text(encoding="utf-8")) == valid_settings
-    assert (records / "mindstella-version.ini").read_text(encoding="utf-8") == "v0.3.0\n"
+    assert (records / "mindstella-version.ini").read_text(encoding="utf-8") == "v0.3.0\n2\n"
     # 直下には記録のフォルダと空の本文のフォルダと、自動で書いた印で始まる README だけが並ぶ
     assert sorted(path.name for path in root.iterdir()) == [".mindstella", "README.md", "docs"]
     assert list((root / "docs").iterdir()) == []
@@ -913,7 +913,7 @@ def test_create_workspace_when_exists(
     entries_before = sorted(path.name for path in root.iterdir())
     # 実行・検証
     with pytest.raises(WorkspaceExistsError, match=re.escape(str(root))) as exc_info:
-        store.create_workspace(root, valid_settings, version="v0.3.0")
+        store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     assert snapshot_tree(root) == before
     assert sorted(path.name for path in root.iterdir()) == entries_before
     # 直下の前の版の設定ファイルには、移し替えの案内を続ける
@@ -942,7 +942,7 @@ def test_create_workspace_when_root_folder_exists(
     before = snapshot_tree(root)
     # 実行・検証
     with pytest.raises(errors.RootFolderExistsError, match=rf"{folder}/"):
-        store.create_workspace(root, valid_settings, version="v0.3.0")
+        store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     assert snapshot_tree(root) == before
     assert not (root / RECORD_DIR).exists()
     assert not (root / "README.md").exists()
@@ -957,7 +957,7 @@ def test_create_workspace_when_settings_invalid(
     del valid_settings["summary"]
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as exc_info:
-        store.create_workspace(root, valid_settings, version="v0.3.0")
+        store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     assert "config.yaml" in str(exc_info.value.lines)
     assert "summary" in str(exc_info.value.lines)
     assert not root.exists()
@@ -973,7 +973,7 @@ def test_create_workspace_when_write_fails(
     failing_write_text("logs.yaml")
     # 実行・検証
     with pytest.raises(WriteFailedError):
-        store.create_workspace(root, valid_settings, version="v0.3.0")
+        store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     assert not root.exists()
 
 
@@ -985,7 +985,7 @@ def test_create_workspace_when_user_readme_exists(
     (tmp_path / "README.md").write_text("# 家計簿アプリの話し合い\n", encoding="utf-8")
     before = (tmp_path / "README.md").read_bytes()
     # 実行
-    files = store.create_workspace(tmp_path, valid_settings, version="v0.3.0")
+    files = store.create_workspace(tmp_path, valid_settings, version="v0.3.0", applied=0)
     # 検証
     assert "README.md" not in files
     assert (tmp_path / RECORD_DIR / "config.yaml").is_file()
@@ -1000,7 +1000,7 @@ def test_create_workspace_when_readme_write_fails(
     (tmp_path / "README.md").mkdir()
     # 実行・検証
     with pytest.raises(WriteFailedError):
-        store.create_workspace(tmp_path, valid_settings, version="v0.3.0")
+        store.create_workspace(tmp_path, valid_settings, version="v0.3.0", applied=0)
     assert not (tmp_path / RECORD_DIR).exists()
     assert (tmp_path / "README.md").is_dir()
 
@@ -1737,7 +1737,7 @@ def test_sync_source_schemas(tmp_path: Path, valid_settings: dict[str, Any]) -> 
     """違うファイルと無いファイルだけを書き直し、複製の側にだけあるファイルを残す（正常系）。"""
     # 準備
     root = tmp_path / "ws"
-    store.create_workspace(root, valid_settings, version="v0.3.0")
+    store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     copies = root / ".mindstella" / "schemas"
     (copies / "docs.schema.json").write_text("{}\n", encoding="utf-8")
     (copies / "terms.schema.json").unlink()
@@ -1768,7 +1768,7 @@ def test_sync_source_schemas_when_same(
     """全て同じなら何も書かない（正常系）。"""
     # 準備
     root = tmp_path / "ws"
-    store.create_workspace(root, valid_settings, version="v0.3.0")
+    store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     before = snapshot_tree(root)
     # 実行
     written = store.sync_source_schemas(root)
@@ -1783,7 +1783,7 @@ def test_sync_source_schemas_when_write_fails(
     """置き換えられなければ送る（異常系）。"""
     # 準備
     root = tmp_path / "ws"
-    store.create_workspace(root, valid_settings, version="v0.3.0")
+    store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     copies = root / ".mindstella" / "schemas"
     (copies / "docs.schema.json").write_text("{}\n", encoding="utf-8")
 
@@ -1816,7 +1816,7 @@ def test_add_write_dates(tmp_path: Path, valid_settings: dict[str, Any]) -> None
     """write_dates を持たない種類の行だけに false を足し、利用者が書いた値を残す（正常系）。"""
     # 準備
     root = tmp_path / "ws"
-    store.create_workspace(root, valid_settings, version="v0.3.0")
+    store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     path = _strip_write_dates(root, {"terms": True})
     before = yaml.safe_load(path.read_text(encoding="utf-8"))
     # 実行
@@ -1848,7 +1848,7 @@ def test_add_write_dates_when_present(
     """全ての行が持つか設定が無ければ書かない（正常系）。"""
     # 準備
     root = tmp_path / "ws"
-    store.create_workspace(root, valid_settings, version="v0.3.0")
+    store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     if remove_config:
         (root / ".mindstella" / "dev-docs.yaml").unlink()
     before = snapshot_tree(root)
@@ -1865,7 +1865,7 @@ def test_add_write_dates_when_write_fails(
     """置き換えられなければ送る（異常系）。"""
     # 準備
     root = tmp_path / "ws"
-    store.create_workspace(root, valid_settings, version="v0.3.0")
+    store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     path = _strip_write_dates(root)
     before = path.read_bytes()
 
@@ -1890,7 +1890,7 @@ def test_add_write_dates_when_unreadable(tmp_path: Path, valid_settings: dict[st
     """読めない設定・documents が並びでない設定には書かない（正常系）。"""
     # 準備
     root = tmp_path / "ws"
-    store.create_workspace(root, valid_settings, version="v0.3.0")
+    store.create_workspace(root, valid_settings, version="v0.3.0", applied=0)
     path = root / ".mindstella" / "dev-docs.yaml"
     path.write_text(text, encoding="utf-8")
     # 実行

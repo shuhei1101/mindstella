@@ -125,13 +125,13 @@ def test_read_plugin_version(tmp_path: Path) -> None:
 
 
 def test_write_workspace_version(tmp_path: Path) -> None:
-    """版を 1 行で書く（正常系）。"""
+    """版と当て終えた手順の数を 2 行で書く（正常系）。"""
     # 準備
     (tmp_path / RECORD_DIR).mkdir()
     # 実行
-    versions.write_workspace_version(tmp_path, Version(0, 3, 0))
+    versions.write_workspace_version(tmp_path, Version(0, 3, 0), applied=3)
     # 検証
-    assert (tmp_path / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == "v0.3.0\n"
+    assert (tmp_path / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == "v0.3.0\n3\n"
 
 
 def test_write_workspace_version_when_write_fails(
@@ -144,6 +144,38 @@ def test_write_workspace_version_when_write_fails(
     monkeypatch.setattr(versions.os, "replace", failing_replace(VERSION_FILE))
     # 実行・検証
     with pytest.raises(WriteFailedError):
-        versions.write_workspace_version(tmp_path, Version(0, 3, 0))
+        versions.write_workspace_version(tmp_path, Version(0, 3, 0), applied=0)
     assert not (tmp_path / RECORD_DIR / VERSION_FILE).exists()
     assert list(tmp_path.rglob("*.tmp")) == []
+
+
+def test_read_applied_steps(tmp_path: Path) -> None:
+    """2 行目の数を返す（正常系）。"""
+    # 準備
+    (tmp_path / RECORD_DIR).mkdir()
+    (tmp_path / RECORD_DIR / VERSION_FILE).write_text("v0.14.0\n3\n", encoding="utf-8")
+    # 実行
+    applied = versions.read_applied_steps(tmp_path)
+    # 検証
+    assert applied == 3
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(None, id="missing"),
+        pytest.param("v0.14.0\n", id="one_line"),
+        pytest.param("v0.14.0\nx\n", id="not_number"),
+        pytest.param("v0.14.0\n-1\n", id="negative"),
+    ],
+)
+def test_read_applied_steps_when_missing(tmp_path: Path, text: str | None) -> None:
+    """数を読めなければ None（正常系）。"""
+    # 準備
+    (tmp_path / RECORD_DIR).mkdir()
+    if text is not None:
+        (tmp_path / RECORD_DIR / VERSION_FILE).write_text(text, encoding="utf-8")
+    # 実行
+    applied = versions.read_applied_steps(tmp_path)
+    # 検証
+    assert applied is None
