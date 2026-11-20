@@ -125,14 +125,14 @@ functions:
            - `[ERROR]` MINDSTELLA_PORT の値が誤り（値。1〜65535 の整数を渡す案内）
          - `PortInUseError` を捕まえた場合、1 を返す
            - `[ERROR]` ポートが使われている（ポート。`MINDSTELLA_PORT` で別のポートを渡す案内）
-      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）と、ホームの設定（`home_settings.load_home_settings(home_settings.home_settings_path(environ))`。`InvalidSettingsError` を捕まえた場合、取ったソケットを閉じて `[ERROR]` ホームの設定の誤り（ファイルのパスとキー。設定『サーバー』の許す値の案内）を書き 1 を返す）と、文字起こしのインターフェース（`load_transcriber(environ)`。モジュール構成『文字起こしの引き当て』）を渡した配信の台帳（`PreviewRegistry`）を作る
+      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）と、ホームの設定（`home_settings.load_home_settings(home_settings.home_settings_path(environ))`。`InvalidSettingsError` を捕まえた場合、取ったソケットを閉じて `[ERROR]` ホームの設定の誤り（ファイルのパスとキー。設定『サーバー』の許す値の案内）を書き 1 を返す）と、文字起こしのインターフェース（`load_transcriber(environ)`。モジュール構成『文字起こしの引き当て』）と、待ち受けのポート（`port=port`）を渡した配信の台帳（`PreviewRegistry`）を作る
          - `InvalidTranscriberError` を捕まえた場合、取ったソケットを閉じて 1 を返す
            - `[ERROR]` 文字起こしの環境変数の値が誤り（環境変数の名前と値。設定『サーバー』の許す値の案内）
       4. 起動した日時（UTC）・プラグインのフォルダ（`PLUGIN_VERSION_FILE.parent`）・プラグインのバージョン（`str(read_plugin_version())`）を控え、それらと台帳から状態を作る関数（`build_status`）を作る
       5. サーバーを組み立て（`build`。`status` に 4 の関数、`request_stop` に HTTP のサーバーの `should_exit` を真にする関数を渡す）、`streamable_http_app(streamable_http_path=MCP_PATH, host=LISTEN_HOST)` のアプリを `make_server` に渡す
-      6. 待ち受けの前の照合をし（`startup.reconcile_before_listen(context)`）、落ちたことの見回り（`sessions.start_crash_watch`）と利用枠の見回り（`usage_watch.start_usage_watch`）とエージェントフローの配信元の確認のスレッド（`startup.start_agent_flows_check(context)`）を始めてから、2 のソケットで動かす（`run(sockets=[ソケット])`）。SIGTERM・SIGINT のハンドラーは uvicorn が置き、受けると `should_exit` を真にする。uvicorn は終わり終えてから受けたシグナルを元のハンドラーへ再送信するので、動かす前に SIGTERM のハンドラーを `SystemExit(0)` を投げる関数にし、7 の後で元に戻す
+      6. 待ち受けの前の照合をし（`startup.reconcile_before_listen(context)`）、落ちたことの見回り（`sessions.start_crash_watch`）と利用枠の見回り（`usage_watch.start_usage_watch`）とエージェントフローの配信元の確認のスレッド（`startup.start_agent_flows_check(context)`）と ID の一覧のワークスペースを配り始めるスレッド（`startup.start_serve_registered(context)`）を始めてから、2 のソケットで動かす（`run(sockets=[ソケット])`）。SIGTERM・SIGINT のハンドラーは uvicorn が置き、受けると `should_exit` を真にする。uvicorn は終わり終えてから受けたシグナルを元のハンドラーへ再送信するので、動かす前に SIGTERM のハンドラーを `SystemExit(0)` を投げる関数にし、7 の後で元に戻す
          - `[INFO]` 常駐サーバーが待ち受けを始めた（ポート、バージョン、PID）
-      7. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`。終了時のフックもここで呼ぶ）
+      7. `run` が戻ったら（例外で戻ったときも）、全てのワークスペースを配るのをやめる（`PreviewRegistry.stop_all`。終了時のフックもここで呼ぶ）
          - `[INFO]` 常駐サーバーを終えた
       8. 0 を返す
     unit_tests:
@@ -319,7 +319,7 @@ functions:
         summary: 台帳の配信を並べた状態
         condition: 作成済みのワークスペース 2 つを `start` した台帳
         mock: なし（本物の待ち受け。後で `stop_all`）
-        expected: '`name` が `mindstella`、`pid` が `os.getpid()`、`previews` がワークスペースの絶対パスの昇順で、それぞれ `start` が返した URL のポート'
+        expected: '`name` が `mindstella`、`pid` が `os.getpid()`、`previews` がワークスペースの絶対パスの昇順で、それぞれ `start` が返した URL'
   - name: run_server_stop
     title: server_stop の処理
     kind: 関数
@@ -399,7 +399,7 @@ functions:
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
          - ワークスペースを書き換えるツール（`init`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`new_thread`・`reply`・`set_thread_status`・`update_thread`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
          - `thread` は `lock_root` を渡さず、既読を書くときだけ鍵を取れるよう、`run_thread` に `lock=lambda: workspace_lock(root, write_lock)` を渡す（インターフェース定義『スレッドの取得』の同時の呼び出し）
-      3. `@server.custom_route(STATUS_PATH, methods=["GET"])` で、`status()` を `JSONResponse` で返す入口を登録する
+      3. `@server.custom_route(STATUS_PATH, methods=["GET"])` で、`status()` を `JSONResponse` で返す入口を登録する。続けて、`{PREVIEW_PREFIX}/{workspace}` と `{PREVIEW_PREFIX}/{workspace}/{rest:path}` を GET・POST・PUT・PATCH・DELETE で `PreviewEndpoint(previews)` に登録する（`custom_route`。モジュール構成『配信』）
       4. サーバーを返す
     unit_tests:
       - name: test_build_server
@@ -476,6 +476,12 @@ functions:
         condition: '`flow` と `remove_flow: true` を両方渡す'
         mock: 同上
         expected: '`is_error` が真で、本文に `remove_flow` があり、`workspaces.update_workspace` が呼ばれていない'
+      - name: test_build_server_when_preview_route
+        case: 正常
+        summary: 配信の経路を MCP と同じ待ち受けに登録する
+        condition: 作成済みのワークスペースを `start` した `PreviewRegistry(port=8784)` で組み立て、`streamable_http_app` のアプリを `TestClient` で呼ぶ。`/w/{ID}/mindstella.html` と `/_admin/status` を GET する
+        mock: なし（`TestClient`。`Host` は `127.0.0.1:8784`）
+        expected: どちらも 200 で、画面は HTML、状態は JSON
   - name: call_tool
     title: ツールの呼び出し
     kind: 関数
