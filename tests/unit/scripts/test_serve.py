@@ -309,6 +309,8 @@ def test_start_when_id_conflicts(
     calls = _record_hook_calls(monkeypatch)
     registry = make_registry(serve.ExternalAccess(start_hook=("hook",)))
     first = make_workspace(make_item("D-1"), name="first")
+    config_path = first / RECORD_DIR / "config.yaml"
+    write_yaml(config_path, {**yaml.safe_load(config_path.read_text(encoding="utf-8")), "id": "mindstella-first-3f2a9c"})
     registry.start(first)
     copied = tmp_path / "copied"
     shutil.copytree(first, copied)
