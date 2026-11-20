@@ -22,6 +22,7 @@ from errors import (
     ThreadNotFoundError,
     WriteFailedError,
 )
+from history import confirm_items
 from kinds import records_root
 from locations import Location, check_location, location_to_dict, parse_location
 from store import (
@@ -375,6 +376,15 @@ def send_comments(
     for comment in chosen:
         if comment.thread is not None:
             _remove_draft(root, None, None, comment.thread)
+    thread_targets = {thread.id: thread.target for thread in threads}
+    _confirm_targets(
+        root,
+        workspace,
+        [
+            comment.target if comment.thread is None else thread_targets.get(comment.thread)
+            for comment in chosen
+        ],
+    )
     logger.info(
         "コメントを送った: %d 件 %s", len(sent_posts), sorted({entry.thread for entry in sent_posts})
     )
@@ -388,7 +398,8 @@ def send_now(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> tuple[st
     target, loc, thread = _parse_destination(data)
     # 今送れる向けた先か（まとめて送るときと同じ理由）
     workspace = load_workspace(root)
-    reason = _destination_reason(workspace, load_threads(root), target, loc, thread)
+    threads = load_threads(root)
+    reason = _destination_reason(workspace, threads, target, loc, thread)
     if reason is not None:
         raise CommentConflictError(reason)
     sent, posts = append_user_posts(
@@ -404,6 +415,8 @@ def send_now(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> tuple[st
         ],
         now=now,
     )
+    thread_target = next((entry.target for entry in threads if entry.id == thread), None)
+    _confirm_targets(root, workspace, [target if thread is None else thread_target])
     logger.info("書き込みをすぐ送った: %s", posts[0].thread)
     return sent, posts[0]
 
@@ -595,6 +608,17 @@ def _write_drafts(root: Path, drafts: list[Draft]) -> None:
     _write_yaml(
         records_root(root) / DRAFTS_FILE, {"items": [_draft_dict(draft) for draft in drafts]}
     )
+
+
+def _confirm_targets(root: Path, workspace: Workspace, targets: list[str | None]) -> None:
+    """設定の `confirm_on_comment`（無ければ真）が真なら、送った書き込みが向いた項目を確認済みにする。書けなくても送信は戻さない。"""
+    # 設定がオフ: 確認済みにしない
+    if not workspace.settings.get("confirm_on_comment", True):
+        return
+    try:
+        confirm_items(root, [target for target in targets if target is not None])
+    except WriteFailedError as error:
+        logger.warning("確認済みにできなかった: %s", error)
 
 
 def _remove_draft(

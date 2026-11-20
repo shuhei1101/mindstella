@@ -39,6 +39,7 @@ from versions import (
     Version,
     compare_versions,
     parse_release_version,
+    read_applied_steps,
     read_plugin_version,
     read_workspace_version,
     write_workspace_version,
@@ -64,6 +65,9 @@ RESTORE_FAILED_LINE = "写しから戻せませんでした。写しは {ref} �
 
 # `values` のキーのパスの区切り
 KEY_PATH_SEPARATOR = "."
+
+# 版のファイルが 2 行目を持たないとき、この版以上ならその版の手順を全て当て直し、より前なら当て直さない（2 行目を書く前に同じ版へ後から手順を足したのは v0.14.0 だけ。`migrations/v0.14.0/` の版の番号を変えるときは一緒に直す）
+UNTRACKED_STEPS_FROM = Version(0, 14, 0)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -123,6 +127,14 @@ def list_versions(*, migrations_dir: Path = MIGRATIONS_DIR) -> list[Version]:
     return sorted(found)
 
 
+def count_steps(version: Version, *, migrations_dir: Path = MIGRATIONS_DIR) -> int:
+    """1 つの版の移し替えの手順の数を返す。版のフォルダか `steps.yaml` が無ければ 0。"""
+    # 手順の無い版
+    if not (migrations_dir / str(version) / STEPS_FILE).is_file():
+        return 0
+    return len(load_steps(version, migrations_dir=migrations_dir))
+
+
 def load_steps(version: Version, *, migrations_dir: Path = MIGRATIONS_DIR) -> list[MigrationStep]:
     """1 つの版の `steps.yaml` を読み、スキーマと突き合わせて手順に並べる。"""
     folder = migrations_dir / str(version)
@@ -166,6 +178,17 @@ def plan_migration(
     lower = from_version if from_version is not None else workspace_version
     upper = to_version if to_version is not None else plugin_version
     steps: list[MigrationStep] = []
+    # ワークスペースの版で埋めた: その版に後から足した手順（当て終えた数より後ろ）を先に並べる
+    if from_version is None and lower is not None and lower <= upper and lower in list_versions(
+        migrations_dir=migrations_dir
+    ):
+        applied = read_applied_steps(root)
+        # 当て終えた数が無い: v0.14.0 以上はその版の手順を全て当て直し、より前は当て終えたものとして扱う
+        if applied is None:
+            applied = 0 if lower >= UNTRACKED_STEPS_FROM else len(
+                load_steps(lower, migrations_dir=migrations_dir)
+            )
+        steps.extend(load_steps(lower, migrations_dir=migrations_dir)[applied:])
     for version in list_versions(migrations_dir=migrations_dir):
         # lower より後で upper 以下の版（lower が None なら全て）
         if (lower is None or version > lower) and version <= upper:
@@ -302,7 +325,7 @@ def record_version(root: Path, *, to_version: Version | None = None) -> Version:
     problems = validate_workspace(load_workspace(root))
     if problems:
         raise build_mismatch_error(problems)
-    write_workspace_version(root, target)
+    write_workspace_version(root, target, applied=count_steps(target))
     return target
 
 

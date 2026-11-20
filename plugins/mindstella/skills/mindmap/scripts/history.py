@@ -10,10 +10,10 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict, cast
 
 import yaml
-from errors import ItemNotFoundError, SchemaMismatchError
+from errors import ArgumentError, ItemNotFoundError, SchemaMismatchError
 from jsonschema import Draft202012Validator
 from kinds import HISTORY_FILE, KINDS, Kind, records_root
 from store import (
@@ -21,8 +21,10 @@ from store import (
     SCHEMA_DIR,
     WHOLE_PATH,
     Workspace,
+    dump_yaml,
     find_item,
     format_path,
+    load_workspace,
     load_yaml_text,
     read_body,
     remove_files,
@@ -52,6 +54,7 @@ __all__ = [
     "apply_body_diff",
     "changes_since",
     "commit_pending",
+    "confirm_items",
     "diff_body",
     "flush_pending",
     "head_until_seq",
@@ -64,8 +67,10 @@ __all__ = [
     "note_removed",
     "pending_view",
     "removed_items",
+    "set_confirmed",
     "stack_history",
     "touch_opened",
+    "unconfirm",
     "values_at_read",
 ]
 
@@ -176,7 +181,7 @@ class Pending(TypedDict):
 
 
 class ItemHistory(TypedDict, total=False):
-    """`history.yaml` の `items` の 1 行（項目の ID → 行）。"""
+    """`history.yaml` の `items` の 1 行（項目の ID → 行）。確認済みの付け外しが作った行は `confirmed` だけを持つ（全てのキーが任意）。"""
 
     created: str
     updated: str
@@ -190,6 +195,8 @@ class ItemHistory(TypedDict, total=False):
     history: list[HistoryEntry]
     # 消した変更履歴の通し番号の最大
     history_dropped_seq: int
+    # 確認済み（真のときだけ持つ）
+    confirmed: bool
 
 
 class OpenedPoint(TypedDict):
@@ -642,6 +649,69 @@ def touch_opened(root: Path, opened: OpenedPoint) -> OpenedPoint | None:
         remove_files([temp])
         raise write_failed(path, error) from error
     return previous
+
+
+def unconfirm(row: ItemHistory, by: Writer) -> ItemHistory:
+    """画面から保存した変更以外で項目を書き換えたときに、行の `confirmed` を除いた新しい行を返す。"""
+    # 画面からの保存: 確認済みを残す
+    if by == "user":
+        return row
+    return cast(ItemHistory, {key: value for key, value in row.items() if key != "confirmed"})
+
+
+def set_confirmed(root: Path, item_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    """`history.yaml` のその項目の行の `confirmed` だけを書き換え、`{id, confirmed}` を返す（鍵は呼ぶ側が取る）。"""
+    confirmed = data.get("confirmed")
+    # 真偽値でない
+    if not isinstance(confirmed, bool):
+        raise ArgumentError("confirmed", "true か false で渡してください")
+    # 記録に無い項目は ItemNotFoundError
+    find_item(load_workspace(root), item_id)
+    rows = dict(load_item_history(root))
+    current = rows.get(item_id)
+    base = {key: value for key, value in (current or {}).items() if key != "confirmed"}
+    updated: dict[str, Any] | None = {**base, "confirmed": True} if confirmed else (base or None)
+    # 既にその状態: 書かない
+    if updated == current:
+        return {"id": item_id, "confirmed": confirmed}
+    if updated is None:
+        rows.pop(item_id, None)
+    else:
+        rows[item_id] = cast(ItemHistory, updated)
+    _write_rows(root, rows)
+    return {"id": item_id, "confirmed": confirmed}
+
+
+def confirm_items(root: Path, item_ids: list[str]) -> list[str]:
+    """渡した ID の項目のうち、記録にあって未確認のものを確認済みにし、確認済みにした ID を渡した順に返す（鍵は呼ぶ側が取る）。"""
+    workspace = load_workspace(root)
+    existing = [item_id for item_id, _ in _existing_items(workspace, list(dict.fromkeys(item_ids)))]
+    rows = dict(load_item_history(root))
+    confirmed: list[str] = []
+    for item_id in existing:
+        row = rows.get(item_id, {})
+        # 既に確認済み
+        if row.get("confirmed"):
+            continue
+        rows[item_id] = cast(ItemHistory, {**row, "confirmed": True})
+        confirmed.append(item_id)
+    if confirmed:
+        _write_rows(root, rows)
+    return confirmed
+
+
+def _write_rows(root: Path, rows: dict[str, ItemHistory]) -> None:
+    """`history.yaml` を一時ファイルに書いてから置き換える（書けなければ前の中身を残して WriteFailedError）。"""
+    path = records_root(root) / HISTORY_FILE
+    try:
+        temp = write_temp(path, dump_yaml({"items": rows}))
+    except OSError as error:
+        raise write_failed(path, error) from error
+    try:
+        os.replace(temp, path)
+    except OSError as error:
+        remove_files([temp])
+        raise write_failed(path, error) from error
 
 
 def _existing_items(workspace: Workspace, ids: list[str]) -> list[tuple[str, dict[str, Any]]]:
