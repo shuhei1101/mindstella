@@ -16,7 +16,7 @@ args:
 events:
   - name: Toggle
     when: ボタンを押したとき
-    description: 使用する側が `confirmed` の逆の値で確認済みの付け外し（IF-633-1）を呼ぶ。応答を待つ間は `saving` を真にし、失敗したら元の値に戻してトーストで通知する
+    description: 使用する側が `confirmed` の逆の値で確認済みの付け外し（IF-633-1）を呼ぶ。応答を待つ間は `saving` を真にし、失敗したら元の値に戻し、見出しの下に書き換えられなかった旨を出す（画面設計『詳細パネル』）
 states:
   - name: Unconfirmed
     description: 未確認。空のチェックと「確認済み」
