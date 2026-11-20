@@ -5,9 +5,10 @@ import { useEffect } from "react";
 
 import type { createAppRouter } from "@/app/router";
 import { connectEvents } from "@/shared/adapters/events-client";
+import { isEmbedded } from "@/shared/core/embedded";
 
 export const App = ({ queryClient, router }: { queryClient: QueryClient; router: ReturnType<typeof createAppRouter> }) => {
-  useEffect(() => connectEvents(queryClient), [queryClient]);
+  useEffect(() => (isEmbedded() ? undefined : connectEvents(queryClient)), [queryClient]);
   return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

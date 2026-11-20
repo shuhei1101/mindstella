@@ -5,3 +5,6 @@ node_modules/
 storybook-static/
 *.local.*
 storybook-react-static/
+poc/vendor/
+poc/dist-export/
+poc/out/

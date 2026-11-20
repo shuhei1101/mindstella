@@ -66,6 +66,12 @@ const notify = (): void => {
 const loadScript = (name: keyof typeof LIBRARIES): Promise<unknown> =>
   new Promise((resolve, reject) => {
     const { url, integrity, global } = LIBRARIES[name];
+    // 配る書き出しは配布ファイルの中身を script 要素で持ち、グローバルが既にある
+    const present: unknown = Reflect.get(window, global);
+    if (present !== undefined) {
+      resolve(present);
+      return;
+    }
     const script = document.createElement("script");
     script.src = url;
     script.integrity = integrity;
@@ -80,7 +86,37 @@ const loadScript = (name: keyof typeof LIBRARIES): Promise<unknown> =>
   });
 
 /** 設定のバージョンの mdmark の CSS を link で読み、JavaScript を `integrity` なしで読む */
+/** 中身の文字を Blob の URL にして import() する */
+const importText = async (text: string): Promise<unknown> => {
+  const url = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+  try {
+    return await importModule(url);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+};
+
+/** mdmark の部品の名前 */
+const MDMARK_PART_NAMES = ["map", "view", "comments"] as const;
+
+/** 配る書き出しが mdmark の本体と部品の中身を持つ要素の ID の頭 */
+const MDMARK_EMBEDDED_ID = "mindmap-mdmark";
+
+/** 配る書き出しの、中身を持つ mdmark を読み、部品の読み込みを中身へ差し替える */
+const loadEmbeddedMdmark = async (embedded: Element): Promise<unknown> => {
+  const loaded = (await importText(embedded.textContent ?? "")) as { setPartModuleLoader?: (name: string, load: () => Promise<unknown>) => void };
+  for (const name of MDMARK_PART_NAMES) {
+    const part = document.getElementById(`${MDMARK_EMBEDDED_ID}-${name}`);
+    if (part === null || loaded.setPartModuleLoader === undefined) continue;
+    const text = part.textContent ?? "";
+    loaded.setPartModuleLoader(name, () => importText(text));
+  }
+  return loaded;
+};
+
 const loadMdmark = async (): Promise<unknown> => {
+  const embedded = document.getElementById(MDMARK_EMBEDDED_ID);
+  if (embedded !== null) return await loadEmbeddedMdmark(embedded);
   const { js, css } = mdmarkUrls();
   if (document.querySelector(`link[href="${css}"]`) === null) {
     const link = document.createElement("link");

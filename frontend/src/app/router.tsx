@@ -1,16 +1,17 @@
 // 生成したルートのツリーで、SPA を配るパスの頭（インターフェース定義『SPAの配信』）を付けたルーターを作る
 import type { QueryClient } from "@tanstack/react-query";
-import { createRouter } from "@tanstack/react-router";
+import { createHashHistory, createRouter } from "@tanstack/react-router";
 
 import { routeTree } from "@/route-tree.gen";
 import { parseSearchString, stringifySearchString } from "@/shared/core/preview-search";
 import { workspacePath } from "@/shared/core/workspace-path";
+import { isEmbedded } from "@/shared/core/embedded";
 
 /** ルーターの頭のうち、ワークスペースのパスの頭より後ろ */
 export const ROUTER_BASEPATH = "/spa";
 
 export const createAppRouter = (queryClient: QueryClient) =>
-  createRouter({ routeTree, basepath: `${workspacePath()}${ROUTER_BASEPATH}`, context: { queryClient }, parseSearch: parseSearchString, stringifySearch: stringifySearchString });
+  createRouter({ routeTree, ...(isEmbedded() ? { history: createHashHistory(), basepath: "/" } : { basepath: `${workspacePath()}${ROUTER_BASEPATH}` }), context: { queryClient }, parseSearch: parseSearchString, stringifySearch: stringifySearchString });
 
 declare module "@tanstack/react-router" {
   // 宣言のマージで TanStack Router の型を登録するには interface が要る
