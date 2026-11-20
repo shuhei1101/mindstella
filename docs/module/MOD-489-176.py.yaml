@@ -444,7 +444,7 @@ functions:
     process: |-
       1. ワークスペースを確かめる（`require_workspace`）
       2. `diff` を渡した場合、まとまりを読み（`load_changes`。`SchemaMismatchError` はそのまま上がる）、`sets` に `id` が `diff` のまとまりが無ければ `ArgumentError`（`diff`、`記録に無いまとまりです: {diff}`）を送出する（台帳の `start` を呼ばない）
-      3. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`。立てる前の検査の `SchemaMismatchError` はそのまま上がる）
+      3. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`。立てる前の検査の `SchemaMismatchError` と、ID の重なりの `WorkspaceIdConflictError` はそのまま上がる）
       4. この呼び出しで立てたときだけ、直下の README をハッシュの無い URL つきで書き直す（README の書き込み。`write_readme(root, preview_url=url)`）
          - `WriteFailedError` が起きた場合、再送出せずに続ける
            - `[WARNING]` README を書けなかった（パス、理由）
@@ -456,13 +456,15 @@ functions:
         condition: まだ配っていないワークスペースの `config.yaml` がスキーマに合わない（`PreviewRegistry.start` から伝わる）。`diff` を渡したときは、`changes.yaml` がスキーマに合わないか YAML として読めない（`load_changes` から伝わる）
       - name: ArgumentError
         condition: '`diff` が `changes.yaml` の `sets` に無い'
+      - name: WorkspaceIdConflictError
+        condition: ワークスペースの ID が配っている別のフォルダと同じ（`PreviewRegistry.start` から伝わる。README を書き直さない）
     unit_tests:
       - name: test_run_preview_url
         case: 正常
         summary: 台帳の結果を返す
-        condition: 作成済みのワークスペース。`previews` は `start` が `("http://127.0.0.1:1/mindstella.html", True)` を返す偽の台帳
+        condition: 作成済みのワークスペース。`previews` は `start` が `("http://127.0.0.1:1/w/mindstella-x-1/mindstella.html", True)` を返す偽の台帳
         mock: '`previews`'
-        expected: '`{url: http://127.0.0.1:1/mindstella.html, workspace: {絶対パス}, started: true}`'
+        expected: '`{url: http://127.0.0.1:1/w/mindstella-x-1/mindstella.html, workspace: {絶対パス}, started: true}`'
       - name: test_run_preview_url_when_not_workspace
         case: 異常
         summary: ワークスペースでなければ配信を立てない

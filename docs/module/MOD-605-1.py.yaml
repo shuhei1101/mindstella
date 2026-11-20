@@ -241,7 +241,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/startup.py
     usecase: 常駐サーバーの起動
     scope: public
-    summary: 状態のワークスペースの ID の一覧のワークスペースのフォルダを project-index の配信元の行から引き、配信の台帳で配り始める（インターフェース定義『プレビューの配信』の制約「配るワークスペース」）。どれに失敗しても例外を送出しない
+    summary: 状態のワークスペースの ID の一覧のワークスペースのフォルダを project-index の配信元の行から引き、配信の台帳で配り始めて直下の README を書き直す（インターフェース定義『プレビューの配信』の制約「配るワークスペース」）。どれに失敗しても例外を送出しない
     args:
       - name: ctx
         type: ServerContext
@@ -256,17 +256,22 @@ functions:
       2. project-index の端末の設定を 1 回問い合わせ、ID ごとに配信元の行を引いてフォルダを求める（`workspaces.workspace_folder`。行が無い ID は飛ばす）
          - 問い合わせられない場合、`None` を返す
            - `[WARNING]` 登録済みのワークスペースを配り始められない（理由。`preview_url` で配れる案内）
-      3. 求めたフォルダを ID の一覧の順に配信の台帳で配り始め、配り始めた数を返す（`PreviewRegistry.serve_registered`）
+      3. 求めたフォルダを ID の一覧の順に配信の台帳で配り始める（`PreviewRegistry.start`）
+         - `MindmapError`（`WorkspaceNotFoundError`・`SchemaMismatchError`・`WorkspaceIdConflictError`）の場合、そのワークスペースを飛ばして続ける
+           - `[WARNING]` ワークスペースを配れない（ワークスペース、理由）
+         - 配り始めた（`start` が真を返した）場合、直下の README をその URL で書き直す（`readme.write_readme(root, preview_url=url)`。`run_preview_url` と同じ。`WriteFailedError` は `[WARNING]` に残して続ける）
+      4. 配り始めた数を返す
          - `[INFO]` 登録済みのワークスペースを配り始めた（数）
     callees:
-      - MOD-489-169#classes[PreviewRegistry].methods[serve_registered]
+      - MOD-489-169#classes[PreviewRegistry].methods[start]
+      - MOD-489-153#
     unit_tests:
       - name: test_serve_registered
         case: 正常
         summary: ID の一覧のワークスペースを配り始める
-        condition: 状態の ID の一覧に A・B、project-index の Mock の配信元の行に A だけを置く
-        mock: project-index（端末の設定を返す偽のサーバー）・`PreviewRegistry.serve_registered`（受け取ったフォルダを記録する）
-        expected: '`serve_registered` が A のフォルダだけを受け取り、その戻り値を返す'
+        condition: 状態の ID の一覧に A・B・C、project-index の Mock の配信元の行に A・C を置く。A は自動で書いたマーカーを持つ前のポートの URL の README を持ち、C は `config.yaml` をスキーマに合わなくしたワークスペース
+        mock: project-index（端末の設定を返す偽のサーバー）
+        expected: '1 を返し、A だけを配る（`url_of`）。A の README のプレビューのセクションが `url_of` の URL になり、標準エラーに C の `[WARNING]` の行がある'
       - name: test_serve_registered_when_project_index_down
         case: 異常
         summary: project-index に問い合わせられなければ配らずに終える

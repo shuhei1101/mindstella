@@ -223,31 +223,6 @@ classes:
             mock: '`run_hook`（受け取った引数を記録する）'
             expected: '`WorkspaceIdConflictError`（メッセージに ID と A のパス）で、台帳は A だけ、`run_hook` は A の 1 回だけ'
             exception: ワークスペースの ID の重なり
-      - name: serve_registered
-        title: 登録済みのワークスペースを配り始める
-        kind: メソッド
-        summary: 渡したワークスペースを順に配り始め、配れなかったワークスペースは標準エラーに記録して続ける（常駐サーバーの起動時に ID の一覧のワークスペースを配る。インターフェース定義『プレビューの配信』の制約「配るワークスペース」）
-        args:
-          - name: roots
-            type: list[Path]
-            required: true
-            passing: positional
-            description: 配るワークスペースの絶対パス
-        returns:
-          type: int
-          description: この呼び出しで配り始めた数
-        process: |-
-          1. `roots` の順に `start` を呼ぶ
-             - `MindmapError`（`WorkspaceNotFoundError`・`SchemaMismatchError`・`WorkspaceIdConflictError`）の場合、そのワークスペースを飛ばして続ける
-               - `[WARNING]` ワークスペースを配れない（ワークスペース、理由）
-          2. `start` が `True` を返した数を返す
-        unit_tests:
-          - name: test_serve_registered
-            case: 正常
-            summary: 配れるワークスペースだけ配り、配れないもので止まらない
-            condition: 作成済みのワークスペース A・`config.yaml` をスキーマに合わなくした B・存在しないフォルダ C の順に渡す
-            mock: なし（後で `stop_all`）
-            expected: 1 を返し、A の `url_of` が URL、B・C は `None`。標準エラーに B と C の記録がある
       - name: context_of
         title: 配信の文脈を引く
         kind: メソッド
