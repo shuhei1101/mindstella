@@ -373,7 +373,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: 項目へコメントする
     kind: コンポーネント
-    summary: 行の本文をその場で書き換える入力欄（`maxlength` 10000）と「キャンセル」「修正」の `form` を返す。「修正」で中身が空白だけなら送信せず「コメントを入れてから修正してください。」を出して入力欄を `aria-invalid="true"` にし、それ以外は `on.saveEdit` を呼ぶ。理由は `role="alert"` とマーカーのアイコンで出す。入力欄の Ctrl+Enter（macOS は Cmd+Enter。`isComposing` の間は除く）は `preventDefault` して `form.requestSubmit()` を呼び、「修正」と同じ処理を通す。入力欄は `aria-keyshortcuts="Control+Enter"`、「修正」は `title`「修正（Ctrl+Enter）」を持つ。入力欄の Esc は `preventDefault` と `stopPropagation` をしてから `on.cancelEdit` を呼ぶ（詳細の全画面の `dialog` の `cancel` を起こさない）。入力欄の `data-focus` は `{focus}edit:{ID}`。描いた後に入力欄へフォーカスを移すのは使う側。コメントの一覧と詳細パネルが使う。`voice` を受けたときは「キャンセル」の左に `send-form.ts` の `voiceButtons`・`voiceWave` を置き、録音中は「キャンセル」「修正」とマイクの位置を × と ✓ に切り替え、入力欄の下に経過の時間と結果（`voiceStatus`・`voiceDetail`）を出す（部品設計『スレッドの書き込み』の音声の引数）。マイク・×・✓ は `on.voiceStart`・`on.voiceCancel`・`on.voiceDone`（入力欄の中身）・`on.voiceBlocked` を呼ぶ
+    summary: 行の本文をその場で書き換える入力欄（`maxlength` 10000）と「キャンセル」「修正」の `form` を返す。「修正」で中身が空白だけなら送信せず「コメントを入れてから直してください。」を出して入力欄を `aria-invalid="true"` にし、それ以外は `on.saveEdit` を呼ぶ。理由は `role="alert"` とマーカーのアイコンで出す。入力欄の Ctrl+Enter（macOS は Cmd+Enter。`isComposing` の間は除く）は `preventDefault` して `form.requestSubmit()` を呼び、「修正」と同じ処理を通す。入力欄は `aria-keyshortcuts="Control+Enter"`、「修正」は `title`「修正（Ctrl+Enter）」を持つ。入力欄の Esc は `preventDefault` と `stopPropagation` をしてから `on.cancelEdit` を呼ぶ（詳細の全画面の `dialog` の `cancel` を起こさない）。入力欄の `data-focus` は `{focus}edit:{ID}`。描いた後に入力欄へフォーカスを移すのは使う側。コメントの一覧と詳細パネルが使う。`voice` を受けたときは「キャンセル」の左に `send-form.ts` の `voiceButtons`・`voiceWave` を置き、録音中は「キャンセル」「修正」とマイクの位置を × と ✓ に切り替え、入力欄の下に経過の時間と結果（`voiceStatus`・`voiceDetail`）を出す（部品設計『スレッドの書き込み』の音声の引数）。マイク・×・✓ は `on.voiceStart`・`on.voiceCancel`・`on.voiceDone`（入力欄の中身）・`on.voiceBlocked` を呼ぶ
     props:
       - name: item
         type: ReviewItem
@@ -409,15 +409,15 @@ components:
       - name: test_review_edit_form_when_blank_or_error
         case: 異常
         summary: 空白だけは送信せず、修正できなかった理由と中身を出す
-        condition: '`parametrize`: 中身を空白だけにして「修正」を押す / `body: "案 A に決める"`・`error: "サーバーが止まっています。立ち再起動してから修正してください。"` で描く'
+        condition: '`parametrize`: 中身を空白だけにして「修正」を押す / `body: "案 A に決める"`・`error: "サーバーが止まっています。立ち上げ直してから直してください。"` で描く'
         mock: '`on.saveEdit`'
-        expected: '`on.saveEdit` が呼ばれず「コメントを入れてから修正してください。」が `role="alert"` の要素に出て入力欄が `aria-invalid="true"` / 入力欄の中身が「案 A に決める」で、理由が `role="alert"` の要素に出る'
+        expected: '`on.saveEdit` が呼ばれず「コメントを入れてから直してください。」が `role="alert"` の要素に出て入力欄が `aria-invalid="true"` / 入力欄の中身が「案 A に決める」で、理由が `role="alert"` の要素に出る'
       - name: test_review_edit_form_ctrl_enter
         case: 正常
         summary: Ctrl+Enter で「修正」と同じ処理を通し、変換中は通さない
         condition: '`parametrize`: 中身を「案 A に決める」にして Ctrl+Enter / Cmd+Enter（`metaKey`）/ 空白だけで Ctrl+Enter / `isComposing` の Ctrl+Enter'
         mock: '`on.saveEdit`'
-        expected: 入力欄が `aria-keyshortcuts="Control+Enter"`、「修正」の `title` が「修正（Ctrl+Enter）」。`on.saveEdit` が C-1 と「案 A に決める」で 1 回で `keydown` の `defaultPrevented` が真 / 同じ / `on.saveEdit` が呼ばれず「コメントを入れてから修正してください。」が `role="alert"` の要素に出る / `on.saveEdit` が呼ばれない
+        expected: 入力欄が `aria-keyshortcuts="Control+Enter"`、「修正」の `title` が「修正（Ctrl+Enter）」。`on.saveEdit` が C-1 と「案 A に決める」で 1 回で `keydown` の `defaultPrevented` が真 / 同じ / `on.saveEdit` が呼ばれず「コメントを入れてから直してください。」が `role="alert"` の要素に出る / `on.saveEdit` が呼ばれない
       - name: test_review_edit_form_voice
         case: 正常
         summary: マイクのボタンと録音中の切り替え
@@ -479,7 +479,7 @@ components:
         summary: 0 件の文言と、読めない理由
         condition: '`parametrize`: スレッドが無い / `filter: closed`・`tag: 起票` で該当が無い / `threadsError: {detail: null}` / `threadsError: {detail: 理由}`'
         mock: なし
-        expected: 「オープンのスレッドはありません。」/ 「タグ「起票」のクローズのスレッドはありません。」/ `role="alert"` で「スレッドを読めませんでした。サーバーが止まっています。立ち再起動してから開いてください。」/ 「スレッドを読めませんでした。{理由}」
+        expected: 「オープンのスレッドはありません。」/ 「タグ「起票」のクローズのスレッドはありません。」/ `role="alert"` で「スレッドを読めませんでした。サーバーが止まっています。立ち上げ直してから開いてください。」/ 「スレッドを読めませんでした。{理由}」
       - name: test_thread_list_view_when_composing
         case: 正常
         summary: 新しいスレッドの入口と入力を切り替える
@@ -489,9 +489,9 @@ components:
       - name: test_thread_list_view_when_target
         case: 正常
         summary: 項目で絞るとチップを出し、その項目のスレッドと新しいスレッドだけを並べる
-        condition: オープンの TH-1（D-1 へ向けた）・TH-2（D-2 へ向けた）とクローズの TH-5（D-1 へ向けた）、レビュー中に C-41（D-1 への新しいスレッド）・C-42（項目を指さない新しいスレッド）。`filter` は `open`、`target` は `D-1`、`titleOf` は D-1 に「質問」を返す
+        condition: オープンの TH-1（D-1 へ向けた）・TH-2（D-2 へ向けた）とクローズの TH-5（D-1 へ向けた）、レビュー中に C-41（D-1 への新しいスレッド）・C-42（項目を指さない新しいスレッド）。`filter` は `open`、`target` は `D-1`、`titleOf` は D-1 に「問い」を返す
         mock: '`on.clearTarget`'
-        expected: 絞り込みが「オープン 1」「クローズ 1」「すべて 2」。チップに `D-1` と「質問」があり件数が無い。行が C-41・TH-1 の順。×（読み上げの名前「項目「D-1」の絞り込みを外す」、`data-focus` が `clear-target`）を押すと `on.clearTarget` が 1 回
+        expected: 絞り込みが「オープン 1」「クローズ 1」「すべて 2」。チップに `D-1` と「問い」があり件数が無い。行が C-41・TH-1 の順。×（読み上げの名前「項目「D-1」の絞り込みを外す」、`data-focus` が `clear-target`）を押すと `on.clearTarget` が 1 回
       - name: test_thread_list_view_when_target_and_tag
         case: 正常
         summary: 項目とタグで絞った件数と空の状態の文言
@@ -509,7 +509,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: スレッドで話す
     kind: 画面
-    summary: 画面設計『スレッド』を描く。見出し（一覧へ戻る・状態を変える・理由の入力・状態を変えられなかった理由・状態の札とタイトル・向けた項目・タグ）、書き込みの並び（`threadTimeline` の後にレビュー中の返信と削除した返信をコメントの連番の順。`threadPost`・`removedReviewRow`。レビュー中の書き込みには `open` を `expanded` にあるかで、`on.fold` を `commentsPanel` の `on.fold` で渡す）、下端（オープンは `replyForm`、クローズは「クローズにしたスレッドです。」）を持つ。`opened.pending` が真のときは、そのレビュー中の書き込み（削除していれば削除した行）から組み立て、状態の札を「レビュー中」にして「状態を変える」と返信の入力を出さず、下端に「まだ送信していないスレッドです。」を出す。理由の入力欄は `maxlength` 400 で、Ctrl+Enter で確定、Esc で閉じる（`stopPropagation`）。`data-focus` は戻るが `back`、状態を変えるが `status`、理由が `reason`・`reason-cancel`・`reason-ok`、向けた項目が `target`
+    summary: 画面設計『スレッド』を描く。見出し（一覧へ戻る・状態を変える・理由の入力・状態を変えられなかった理由・状態の札とタイトル・向けた項目・タグ）、書き込みの並び（`threadTimeline` の後にレビュー中の返信と削除した返信をコメントの連番の順。`threadPost`・`removedReviewRow`。レビュー中の書き込みには `open` を `expanded` にあるかで、`on.fold` を `commentsPanel` の `on.fold` で渡す）、下端（オープンは `replyForm`、クローズは「クローズにしたスレッドです。」）を持つ。`opened.pending` が真のときは、そのレビュー中の書き込み（削除していれば削除した行）から組み立て、状態の札を「レビュー中」にして「状態を変える」と返信の入力を出さず、下端に「まだ送っていないスレッドです。」を出す。理由の入力欄は `maxlength` 400 で、Ctrl+Enter で確定、Esc で閉じる（`stopPropagation`）。`data-focus` は戻るが `back`、状態を変えるが `status`、理由が `reason`・`reason-cancel`・`reason-ok`、向けた項目が `target`
     props:
       - name: props
         type: CommentsPanelProps
@@ -527,13 +527,13 @@ components:
         summary: クローズと、まだ送信していない新しいスレッドは返信の入力を出さない
         condition: '`parametrize`: クローズの TH-5 / `opened: {id: C-41, pending: true}`'
         mock: なし
-        expected: 「オープンに戻す」と「クローズにしたスレッドです。」で返信の入力が無い / 状態の札が「レビュー中」で「状態を変える」も返信の入力も無く、「まだ送信していないスレッドです。」と最初の書き込み（「D-5 へのコメントを修正」「D-5 へのコメントを削除」）がある
+        expected: 「オープンに戻す」と「クローズにしたスレッドです。」で返信の入力が無い / 状態の札が「レビュー中」で「状態を変える」も返信の入力も無く、「まだ送っていないスレッドです。」と最初の書き込み（「D-5 へのコメントを修正」「D-5 へのコメントを削除」）がある
       - name: test_thread_view_when_reason
         case: 正常
         summary: 理由の入力と、変えられなかった理由
         condition: 'オープンの TH-1。`parametrize`: `reason.open` が真 / `status: saving` / `status: failed`・`detail: null` / `status: failed`・`detail: 理由`'
         mock: '`on.setStatus`・`on.reasonOpen`'
-        expected: ラベル「理由（任意）」の入力欄（`maxlength` 400）と「キャンセル」「クローズにする」があり見出しの「クローズにする」が無い。確定で `on.setStatus` が `closed` と入力欄の中身で 1 回、Esc で `on.reasonOpen` が偽で 1 回 / 入力欄が `readonly` で確定が `disabled` / `role="alert"` で「クローズにできませんでした。サーバーが止まっています。立ち再起動してから押してください。」/ 「クローズにできませんでした。{理由}」。後の 2 つは理由の入力が開いたまま
+        expected: ラベル「理由（任意）」の入力欄（`maxlength` 400）と「キャンセル」「クローズにする」があり見出しの「クローズにする」が無い。確定で `on.setStatus` が `closed` と入力欄の中身で 1 回、Esc で `on.reasonOpen` が偽で 1 回 / 入力欄が `readonly` で確定が `disabled` / `role="alert"` で「クローズにできませんでした。サーバーが止まっています。立ち上げ直してから押してください。」/ 「クローズにできませんでした。{理由}」。後の 2 つは理由の入力が開いたまま
       - name: test_thread_view_when_target
         case: 正常
         summary: 向けた項目とタグ
@@ -543,7 +543,7 @@ components:
       - name: test_thread_view_when_change_set_link
         case: 正常
         summary: 書き込みのまとまりのリンクを使う側へ知らせる
-        condition: TH-1 を開き、AI の書き込みが `[D-1 を修正した](#diff=V-1)`。`changeSetOf` は V-1 を引く
+        condition: TH-1 を開き、AI の書き込みが `[D-1 を直した](#diff=V-1)`。`changeSetOf` は V-1 を引く
         mock: '`on.changeSet`'
         expected: リンクを押すと `on.changeSet` が `V-1` で 1 回、`on.back` は呼ばれない
   - name: reviewView
@@ -563,13 +563,13 @@ components:
         summary: 送信する帯と、新しいスレッド・返信の行を描く
         condition: C-1（D-1 への新しいスレッド）・C-2（消えた D-9、箇所が合わない）・C-3（項目を指さない新しいスレッド）・C-5（オープンの TH-1 への返信）、C-1・C-3 をチェック、削除した C-4
         mock: '`on.openThread`'
-        expected: 見出し「レビュー中の書き込み」と件数 4、「2 / 4 件」と「まとめて送信（2 件）」、すべて選ぶが `indeterminate`。C-2 の行に理由（`role="alert"`）があり「箇所を外す」が無い。C-3 の行の頭が「新しいスレッド」の札だけで（`.row-target` が無い）、「スレッドを開く」がある。C-5 の頭が「返信」と TH-1 の状態の札・タイトルで、押すと `on.openThread` が 1 回。C-4 の場所に「元に戻す」
+        expected: 見出し「レビュー中の書き込み」と件数 4、「2 / 4 件」と「まとめて送る（2 件）」、すべて選ぶが `indeterminate`。C-2 の行に理由（`role="alert"`）があり「箇所を外す」が無い。C-3 の行の頭が「新しいスレッド」の札だけで（`.row-target` が無い）、「スレッドを開く」がある。C-5 の頭が「返信」と TH-1 の状態の札・タイトルで、押すと `on.openThread` が 1 回。C-4 の場所に「元に戻す」
       - name: test_review_view_when_blocked
         case: 正常
         summary: クローズのスレッドへの返信は選べず、送信する件数に入らない
         condition: C-1（新しいスレッド）・C-44（クローズの TH-5 への返信）、どちらも `checked` にある
         mock: '`on.openThread`'
-        expected: C-44 のチェックが `disabled` で外れている。「1 / 1 件」と「まとめて送信（1 件）」。C-44 の行に「クローズのスレッドへの返信は送れません。オープンに戻すと送れます。」と「スレッドを開く」（押すと `on.openThread` が TH-5 で 1 回）
+        expected: C-44 のチェックが `disabled` で外れている。「1 / 1 件」と「まとめて送る（1 件）」。C-44 の行に「クローズのスレッドへの返信は送れません。オープンに戻すと送れます。」と「スレッドを開く」（押すと `on.openThread` が TH-5 で 1 回）
       - name: test_review_view_when_empty
         case: 正常
         summary: 0 件は空の状態だけ
@@ -581,7 +581,7 @@ components:
         summary: チェック 0 件と送信している間は送信できない
         condition: '`parametrize`: チェックが 0 件 / `result.kind` が `sending`'
         mock: '`on.send`'
-        expected: まとめて送信するが `disabled` で、押しても `on.send` が呼ばれない。前者は「送信する書き込みにチェックを付けてください。」
+        expected: まとめて送信するが `disabled` で、押しても `on.send` が呼ばれない。前者は「送る書き込みにチェックを付けてください。」
       - name: test_review_view_when_editing_in_detail
         case: 正常
         summary: 詳細パネルで書き換えている行は、本文だけで描く
@@ -593,11 +593,11 @@ components:
         summary: 送信できた結果を Claude Code へ入力したかで出し分ける
         condition: "C-1 をチェックし、`result` を `{kind: 'sent', count: 2, at: '2026-10-10T03:04:00+00:00', entered}` で描く。`parametrize`: `entered` が `true` / `false`"
         mock: なし
-        expected: 送信した結果（`role="status"`）が、前者は確かめのマーカーと「2 件を送信し、Claude Code に入力しました（12:04）。」、後者は注意のマーカーと「2 件を送りましたが、Claude Code には入力できませんでした（12:04）。送信した内容は保存されていて、次に話し合いを始めたときに取り込まれます。」
+        expected: 送信した結果（`role="status"`）が、前者は確かめのマーカーと「2 件を送り、Claude Code に入力しました（12:04）。」、後者は注意のマーカーと「2 件を送りましたが、Claude Code には入力できませんでした（12:04）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。」
       - name: test_review_view_when_change_set_link
         case: 正常
         summary: 行の本文のまとまりのリンクと、文字のままの項目の ID
-        condition: レビュー中に本文 `[A-14 の書き直し](#diff=V-6) で削除した行は戻して。T-14 にも関わる` の返信 1 件。`titleOf` は T-14、`changeSetOf` は V-6 を引く
+        condition: レビュー中に本文 `[A-14 の書き直し](#diff=V-6) で消した行は戻して。T-14 にも関わる` の返信 1 件。`titleOf` は T-14、`changeSetOf` は V-6 を引く
         mock: '`on.changeSet`・`on.openId`'
         expected: 行の `p.review-body` に `a.setlink` が 1 つで、T-14 は文字のまま（`button` が無い）。リンクを押すと `on.changeSet` が `V-6` で 1 回、`on.openThread` は呼ばれない
       - name: test_review_view_when_folded

@@ -26,7 +26,7 @@ flows:
     expected:
       - ステータスが 200 で、`settings.display.visible_kinds` が `[decisions, tasks]`
       - '`GET /api/records` の `settings.display.visible_kinds` が `[decisions, tasks]`'
-      - '`GET /api/events` に書き換えの知らせが届く'
+      - '`GET /api/events` に書き換えの通知が届く'
     test: test_normal
   - name: 異常系（検査に通らない・422）
     summary: 崩れた `config.yaml` では、最後に通った設定のまま違う箇所を返す
@@ -55,7 +55,7 @@ flows:
     test: test_error_when_check_fails
 lead: 利用者が `config.yaml` を手で修正した後に呼び、`config.yaml` をスキーマと突き合わせた結果を返す。通れば配信の「最後に検査に通った設定」を差し替えて開いている画面へ知らせ、通らなければ前の設定のまま違う箇所を返す。
 idempotent: true
-side_effects: ワークスペースには書かない。検査に通れば、配信が持つ最後に検査に通った設定を差し替え、書き換えの知らせを送信する
+side_effects: ワークスペースには書かない。検査に通れば、配信が持つ最後に検査に通った設定を差し替え、書き換えの通知を送信する
 permissions: '`Host` と `Origin` を確かめる（`Origin` が無い HTTP のクライアントからの要求は通す）'
 callers:
   - SC-489-35#

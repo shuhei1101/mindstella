@@ -68,7 +68,7 @@ flows:
     expected:
       - ステータスが 422 で、`detail` に `edits.yaml` と `op` がある
     test: test_error_when_schema_mismatch
-lead: プレビューが開いたときと書き換えの知らせを受けたときに、保存待ちの編集（`edits.yaml`）をその場で読んで返す。画面はこれでバッジ・トップバーの件数・保存待ちのパネルを描く。
+lead: プレビューが開いたときと書き換えの通知を受けたときに、保存待ちの編集（`edits.yaml`）をその場で読んで返す。画面はこれでバッジ・トップバーの件数・保存待ちのパネルを描く。
 idempotent: true
 side_effects: なし（読むだけ）
 callers:

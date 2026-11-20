@@ -227,7 +227,7 @@ request:
     required: false
     default: なし
     location: argument
-    description: '`add-account` で必須。そのアカウントの Claude Code の設定のフォルダ。絶対パスに修正して登録する'
+    description: '`add-account` で必須。そのアカウントの Claude Code の設定のフォルダ。絶対パスに変更して登録する'
     example: ~/.claude-sub1
   - name: HOME
     type: str

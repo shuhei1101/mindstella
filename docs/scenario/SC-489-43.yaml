@@ -4,14 +4,14 @@ scenarios:
   - name: 正常シナリオ
     setup:
       - name: Mock
-        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドを読む・記録の使い分けの `next_id` と project-index の `write_docs`・`commit`・`reply`・`set_thread_status`・`update_thread`・`new_thread` を、決めた引数で順に再生する
+        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドの取得・記録の使い分けの `next_id` と project-index の `write_docs`・`commit`・`reply`・`set_thread_status`・`update_thread`・`new_thread` を、決めた引数で順に再生する
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 作成済みのワークスペース
         description: 項目に紐づかない利用者の書き込み 1 件だけを持つオープンのスレッド TH-1 を持つ
         notes: 書き込みの本文は `ログインはメールとパスワードにする。SSO をいつ入れるかは決めていない`。AI の未読で、取り込んでいない。記録の使い分けでは決定済みの検討事項 D-1・案 A・B と推奨のマーカー A を持つ未決定の検討事項 D-2・会話ログを 1 回で書き込む
       - name: 入力された文字列
-        description: 単一ユースケース『コメントを選んで送信する』でサーバーが MindStella のセッションへ入力した `[mindstella] ユーザーからのコメントが 1 件届きました。再読み込みしてください。`
+        description: 単一ユースケース『コメントを選んで送信する』でサーバーが MindStella のセッションへ入力した `[mindstella] ユーザーからのコメントが 1 件届きました。読み直してください。`
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -23,7 +23,7 @@ scenarios:
         SV->>CC: 「ユーザーからのコメントが 1 件届きました」を入力する
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: TH-1
-        CC->>SV: スレッドを読む
+        CC->>SV: スレッドの取得
         SV-->>CC: 項目に紐づかない書き込み
         CC->>SV: next_id
         CC->>PI: write_docs（D-1・D-2・会話ログ）
@@ -68,7 +68,7 @@ scenarios:
   - name: 正常シナリオ（検討事項への回答）
     setup:
       - name: Mock
-        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドを読む・`adopt`・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・`set_thread_status`・`update_thread`・`new_thread`・`threads` を、決めた引数で順に再生する
+        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドの取得・`adopt`・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・`set_thread_status`・`update_thread`・`new_thread`・`threads` を、決めた引数で順に再生する
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 作成済みのワークスペース
@@ -84,7 +84,7 @@ scenarios:
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: TH-2
-        CC->>SV: スレッドを読む
+        CC->>SV: スレッドの取得
         SV-->>CC: D-2 への「A にする」
         CC->>SV: adopt D-2 A
         CC->>PI: write_docs（会話ログ）
@@ -105,7 +105,7 @@ scenarios:
   - name: 正常シナリオ（検討事項への回答と箇所への意見）
     setup:
       - name: Mock
-        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドを読む・`adopt`・`next_id` と project-index の `write_docs`・`commit`・`reply`・`set_thread_status`・`update_thread`・`new_thread` を、決めた引数で順に再生する
+        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドの取得・`adopt`・`next_id` と project-index の `write_docs`・`commit`・`reply`・`set_thread_status`・`update_thread`・`new_thread` を、決めた引数で順に再生する
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 作成済みのワークスペース
@@ -121,13 +121,13 @@ scenarios:
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: 2 件
-        CC->>SV: 1 件目のスレッドを読む
+        CC->>SV: 1 件目のスレッドの取得
         SV-->>CC: D-1 への「案 A にする」
         CC->>SV: adopt D-1 A
         CC->>PI: write_docs（会話ログ）
         CC->>SV: commit
         CC->>SV: 1 件目をクローズにする・取り込み済みにする（返信しない）
-        CC->>SV: 2 件目のスレッドを読む
+        CC->>SV: 2 件目のスレッドの取得
         SV-->>CC: A-1 の 2 行目への「ここは言い換える」
         CC->>PI: write_docs（A-1 の本文の書き換えと会話ログ）
         CC->>SV: commit
@@ -137,7 +137,7 @@ scenarios:
         SV->>WS: 書く
       ```
     expected:
-      - スレッドを読むと、D-1 への書き込みと、A-1 への書き込みの箇所（本文の 2 行目と選んだ文）が返る
+      - スレッドの取得と、D-1 への書き込みと、A-1 への書き込みの箇所（本文の 2 行目と選んだ文）が返る
       - D-1 の採用する案が A で決定済みで、1 件目のスレッドに AI の書き込みが無く、クローズで取り込み済みである
       - A-1 の本文の 2 行目が言い換えられ、2 件目のスレッドに A-1 の ID と差分のリンクを持つ AI の返信があり、クローズで取り込み済みである
       - 会話ログに、D-1 への書き込みの本文と、A-1 の本文の 2 行目と選んだ文を添えた書き込みの本文がある
@@ -148,7 +148,7 @@ scenarios:
   - name: 正常シナリオ（報告だけのスレッド）
     setup:
       - name: Mock
-        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドを読む・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・`set_thread_status`・`update_thread` を、決めた引数で順に再生する
+        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドの取得・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・`set_thread_status`・`update_thread` を、決めた引数で順に再生する
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 作成済みのワークスペース
@@ -164,7 +164,7 @@ scenarios:
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: D-1 へのスレッド
-        CC->>SV: スレッドを読む
+        CC->>SV: スレッドの取得
         SV-->>CC: 利用者の「了解」
         CC->>PI: write_docs（会話ログ）
         CC->>SV: commit
@@ -181,7 +181,7 @@ scenarios:
   - name: 正常シナリオ（利用者がクローズにしたスレッドの書き込みを取り込む）
     setup:
       - name: Mock
-        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドを読む・`adopt`・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・`update_thread`・`new_thread` を、決めた引数で順に再生する
+        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドの取得・`adopt`・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・`update_thread`・`new_thread` を、決めた引数で順に再生する
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 作成済みのワークスペース
@@ -197,7 +197,7 @@ scenarios:
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: クローズの D-1 へのスレッド
-        CC->>SV: スレッドを読む
+        CC->>SV: スレッドの取得
         SV-->>CC: 利用者の「B にする」
         CC->>SV: adopt D-1 B
         CC->>PI: write_docs（会話ログ）
@@ -215,12 +215,12 @@ scenarios:
   - name: 正常シナリオ（クローズのスレッドをオープンに戻して返信する）
     setup:
       - name: Mock
-        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドを読む・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・オープンへの戻し・`reply`・`set_thread_status`・`update_thread` を、決めた引数で順に再生する
+        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドの取得・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・オープンへの戻し・`reply`・`set_thread_status`・`update_thread` を、決めた引数で順に再生する
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 作成済みのワークスペース
         description: 決定済みの検討事項 D-2 と、D-2 を指す利用者の `バージョンはどこに書く？` だけを持つスレッド 1 件を持つ
-        notes: 利用者の書き込みは未読で、取り込んでいない。利用者が送信した後にクローズにしている。再生では、理由 `質問に回答する` でオープンに戻してから返信し、理由 `回答した` でクローズにする
+        notes: 利用者の書き込みは未読で、取り込んでいない。利用者が送信した後にクローズにしている。再生では、理由 `質問に答える` でオープンに戻してから返信し、理由 `回答した` でクローズにする
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -231,7 +231,7 @@ scenarios:
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: クローズの D-2 へのスレッド
-        CC->>SV: スレッドを読む
+        CC->>SV: スレッドの取得
         SV-->>CC: 利用者の「バージョンはどこに書く？」
         CC->>PI: write_docs（会話ログ）
         CC->>SV: commit
@@ -241,14 +241,14 @@ scenarios:
         SV->>WS: 状態の記録に書き手（AI）・理由・日時を残す
       ```
     expected:
-      - スレッドの状態の記録に、AI がオープンに戻した記録（理由 `質問に回答する`）とクローズにした記録（理由 `回答した`）が順に残る
+      - スレッドの状態の記録に、AI がオープンに戻した記録（理由 `質問に答える`）とクローズにした記録（理由 `回答した`）が順に残る
       - スレッドの最後の書き込みが D-2 の ID を含む AI の返信である
       - 利用者の書き込みが取り込み済みで、取り込み待ちのスレッドの一覧が 0 件を返す
     test: test_normal_when_reopen_to_reply
   - name: 正常シナリオ（往復が 5 回を超えたスレッドを分ける）
     setup:
       - name: Mock
-        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドを読む・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・`new_thread`・`set_thread_status`・`update_thread` を、決めた引数で順に再生する
+        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・スレッドの取得・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・`new_thread`・`set_thread_status`・`update_thread` を、決めた引数で順に再生する
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 作成済みのワークスペース
@@ -264,7 +264,7 @@ scenarios:
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: TH-1
-        CC->>SV: スレッドを読む
+        CC->>SV: スレッドの取得
         SV-->>CC: 利用者の 6 回目の質問
         CC->>PI: write_docs（会話ログ）
         CC->>SV: commit
@@ -280,12 +280,12 @@ scenarios:
   - name: 異常シナリオ（取り込み済みにする前にクローズにする）
     setup:
       - name: Mock
-        description: モデルを呼ばない。MindStella の MCP サーバーを立て、工程から外れて取り込み済みにする前にクローズにする呼び出しを含め、取り込み待ちのスレッドの一覧・スレッドを読む・スレッドのクローズ・取り込み済みにする・スレッドのクローズを、決めた引数で順に再生する
+        description: モデルを呼ばない。MindStella の MCP サーバーを立て、工程から外れて取り込み済みにする前にクローズにする呼び出しを含め、取り込み待ちのスレッドの一覧・スレッドの取得・スレッドのクローズ・取り込み済みにする・スレッドのクローズを、決めた引数で順に再生する
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 作成済みのワークスペース
         description: 利用者の `全体に目を通した`（TH-1-1）だけを持つオープンのスレッド TH-1 を持つ
-        notes: 利用者の書き込みは未読で、取り込んでいない。再生では、取り込み済みにせずに理由 `報告だけ` でクローズにし、拒まれた後に取り込み済みにしてからクローズにし修正する
+        notes: 利用者の書き込みは未読で、取り込んでいない。再生では、取り込み済みにせずに理由 `報告だけ` でクローズにし、拒まれた後に取り込み済みにしてからクローズにし直す
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -295,7 +295,7 @@ scenarios:
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: TH-1
-        CC->>SV: スレッドを読む
+        CC->>SV: スレッドの取得
         SV-->>CC: 利用者の「全体に目を通した」
         CC->>SV: スレッドをクローズにする（理由つき）
         SV-->>CC: エラー（取り込み待ちの書き込み）
@@ -324,7 +324,7 @@ frequency: 利用者が画面からコメントを送信するたびに 1 回と
 priority: 高
 notes:
   E2E の範囲: モデルを呼ばず、エージェントフローの工程が連ねるツールの呼び出しを再生する。書き込みの本文から何を記録するか・返信するかクローズにするか・返信に何を書くかというモデルの判断は確かめない
-  取り込む対象: 取り込むのは取り込み待ちのスレッド（AI が取り込んでいない利用者の書き込みを持つスレッド）で、オープンでもクローズでも拾う。利用者が書き込みを送信してからクローズにしても、その書き込みを取り込む。既読かどうかでは決めないので、MindStella のセッションを再起動して全ての書き込みが未読に戻っても、取り込み済みの書き込みを取り込み修正しない
+  取り込む対象: 取り込むのは取り込み待ちのスレッド（AI が取り込んでいない利用者の書き込みを持つスレッド）で、オープンでもクローズでも拾う。利用者が書き込みを送信してからクローズにしても、その書き込みを取り込む。既読かどうかでは決めないので、MindStella のセッションを再起動して全ての書き込みが未読に戻っても、取り込み済みの書き込みを取り込み直さない
   入力された文字列の再読み込み: サーバーが入力するのは `[mindstella]` で始まる件数だけの 1 行で、スレッドの ID も本文も含まない。取り込み待ちのスレッドの一覧を読み、一覧にあるスレッドだけを記録する
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を追加する
   返信とクローズ: スレッド 1 件ごとに、記録に反映して commit した後、利用者の質問・依頼に回答するときか記録を変えたことを伝えるときは返信し（検討事項への回答だけのスレッドには返信しない）、返信が要らずクローズにもしないときは取り込み済みにする。話が済んだ（質問・依頼に回答した・検討事項への回答を反映した・報告だけ・別のスレッドや検討事項に移った）スレッドはクローズにして取り込み済みにする。利用者が未読の AI の書き込みがあってもクローズにできる。記録に反映していない利用者の書き込みがあるスレッドは、サーバーがクローズを拒む

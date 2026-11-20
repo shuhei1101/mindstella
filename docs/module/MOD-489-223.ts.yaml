@@ -64,7 +64,7 @@ components:
         type: '{name, sub} | null'
         required: false
         default: 'null'
-        description: 選んだ時点。あるとき「変更履歴」の右に札と × を出す（部品設計『トップバー』の `diffPoint`）。`tabs[].marked` でタブに点を重ね、読み上げに「新規・変更・削除した項目があります」を残す
+        description: 選んだ時点。あるとき「変更履歴」の右に札と × を出す（部品設計『トップバー』の `diffPoint`）。`tabs[].marked` でタブに点を重ね、読み上げに「新規・変更・消した項目があります」を残す
       - name: onHistory
         type: () => void
         required: false

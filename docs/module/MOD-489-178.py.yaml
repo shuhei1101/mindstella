@@ -52,7 +52,7 @@ functions:
       description: 解釈したバージョン
     process: |-
       1. 前後の空白を落とし、`VERSION_PATTERN` に全体が当たるかを見る（`fullmatch`）
-         - 当たらない場合、`ValueError` を送信する
+         - 当たらない場合、`ValueError` を送出する
       2. 3 つの整数で `Version` を作って返す
     exceptions:
       - name: ValueError
@@ -204,7 +204,7 @@ functions:
       description: なし
     process: |-
       1. `f"{version}\n{applied}\n"` を一時ファイルに書き（`write_temp`）、`os.replace` で `records_root(root) / VERSION_FILE` に置き換える
-         - `OSError` が起きた場合、一時ファイルを削除して `WriteFailedError` を送信する
+         - `OSError` が起きた場合、一時ファイルを削除して `WriteFailedError` を送出する
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
@@ -219,7 +219,7 @@ functions:
       - name: test_write_workspace_version_when_write_fails
         case: 異常
         summary: 置き換えられなければ送信する
-        condition: '`os.replace` を `OSError` を送信する関数に差し替える'
+        condition: '`os.replace` を `OSError` を送出する関数に差し替える'
         mock: '`os.replace`（`versions` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`mindstella-version.ini` と `.tmp` のファイルが無い'
         exception: 置き換えで OSError

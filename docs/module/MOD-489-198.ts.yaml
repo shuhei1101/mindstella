@@ -200,7 +200,7 @@ functions:
     process: |-
       1. mermaid が読めていない場合、各入れ物に知らせ（`libraryNotice({names: ["mermaid"], what: "図"})`）と原文を入れる
       2. 初めて描くときに `mermaid.initialize({startOnLoad: false, securityLevel: "strict", theme: "base"})` を呼ぶ
-         - テーマが変わって初期化し修正したときは、覚えた SVG を捨てる
+         - テーマが変わって再初期化したときは、覚えた SVG を捨てる
       3. 入れ物ごとに `mermaid.render` した SVG を入れる
          - 描けなかった場合、その入れ物に「この図は表示できませんでした。原文を表示します。」と原文を入れる（ほかの図は続ける）
          - 直前の呼び出しで描いた同じ記法の SVG を覚えていれば、`mermaid.render` を呼ばずにそれを写す。写すときは新しい図の ID を振り、SVG の中の元の ID（後ろに数字が続かないもの）を全て新しい ID に置き換える（同じ図が文書に 2 つあっても ID と参照が重ならない）
@@ -440,7 +440,7 @@ functions:
       - name: test_link_body_when_term_aliases
         case: 正常
         summary: 用語の別名にもマーカーを付け、用語 2 件以上の一致はリンクを持つツールチップへ回す
-        condition: '用語 G-1「移し替え」（別名「マイグレーション」「移し替え」「 」）・G-2「バージョンの更新」（別名「移し替え」）、取り下げた用語 G-3「旧名」（別名「古い呼び方」）の索引。本文の段落「マイグレーションと移し替えと古い呼び方」。`parametrize`: `selfId` が A-1 / G-1'
+        condition: '用語 G-1「移し替え」（別名「マイグレーション」「移し替え」「 」）・G-2「版の更新」（別名「移し替え」）、取り下げた用語 G-3「旧名」（別名「古い呼び方」）の索引。本文の段落「マイグレーションと移し替えと古い呼び方」。`parametrize`: `selfId` が A-1 / G-1'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 「マイグレーション」のマーカーの `data-ids` が `G-1` で `aria-describedby` を持ち、押すと `onOpen` に G-1。「移し替え」が `G-1 G-2` で `aria-details` を持ち、押しても `onOpen` が呼ばれない。「古い呼び方」が `G-3`。空白だけの別名にはマーカーが無い / 「マイグレーション」にはマーカーが無く、「移し替え」が `G-2` で `aria-describedby` を持つ
       - name: test_link_body_when_normalized
@@ -555,7 +555,7 @@ functions:
     usecase: 項目の詳細を読む
     kind: 関数
     scope: public
-    summary: HTML の本文の枠の中のリンクの `href` から、新しいタブで開く・本文の中の場所まで送信する・何もしないのどれかを決める（部品『HTMLの本文の枠』が押下を受けたときに使う）
+    summary: HTML の本文の枠の中のリンクの `href` から、新しいタブで開く・本文の中の場所までスクロールする・何もしないのどれかを決める（部品『HTMLの本文の枠』が押下を受けたときに使う）
     status: implemented
     introduced:
       pr: 243

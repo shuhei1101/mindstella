@@ -271,16 +271,16 @@ functions:
       - name: test_fetch_records_when_failed
         case: 正常
         summary: 届かない・422 を分ける
-        condition: '`parametrize`: `fetchFn` が `TypeError` を送信する / 422・`{"detail": "理由"}` を返す'
+        condition: '`parametrize`: `fetchFn` が `TypeError` を送出する / 422・`{"detail": "理由"}` を返す'
         mock: '`fetchFn`'
         expected: "`{ok: false, reason: 'unreachable', detail: null}` / `{ok: false, reason: 'invalid', detail: '理由'}`"
   - name: subscribeEvents
-    title: 書き換えの知らせの購読
+    title: 書き換えの通知の購読
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
     usecase: プレビューを開く
     scope: public
-    summary: '`GET /api/events` に `EventSource` でつなぎ、`changed`・`duplicate_ids` と接続の状態の変化を知らせる。つなぎ修正は `EventSource` に任せる'
+    summary: '`GET /api/events` に `EventSource` でつなぎ、`changed`・`duplicate_ids` と接続の状態の変化を知らせる。再接続は `EventSource` に任せる'
     args:
       - name: onChanged
         type: () => void
@@ -399,7 +399,7 @@ functions:
       - name: test_call_api_when_failed
         case: 正常
         summary: 断られた・届かないを分ける
-        condition: '`parametrize`: 409・`{"detail": "…", "stale": [{"id": "C-2", "reason": "…"}]}` / 500・本文が JSON でない / `fetchFn` が `TypeError` を送信する'
+        condition: '`parametrize`: 409・`{"detail": "…", "stale": [{"id": "C-2", "reason": "…"}]}` / 500・本文が JSON でない / `fetchFn` が `TypeError` を送出する'
         mock: '`fetchFn`'
         expected: "`{ok: false, status: 409, stale: [C-2]}` / `{ok: false, status: 500, detail: 'Internal Server Error'}` / `{ok: false, status: null, detail: null}`"
   - name: commentApi
@@ -580,6 +580,6 @@ functions:
       - name: test_voice_api_when_unavailable
         case: 正常
         summary: 503 の理由と届かないを分ける
-        condition: '`parametrize`: `transcribe` に 503・`{"detail": "…", "reason": "unsupported"}` / `fetchFn` が `TypeError` を送信する'
+        condition: '`parametrize`: `transcribe` に 503・`{"detail": "…", "reason": "unsupported"}` / `fetchFn` が `TypeError` を送出する'
         mock: '`fetchFn`'
         expected: '`{ok: false, status: 503, reason: unsupported}` / `{ok: false, status: null, detail: null}`'

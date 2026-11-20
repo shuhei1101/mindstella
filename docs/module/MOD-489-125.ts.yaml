@@ -22,7 +22,7 @@ functions:
     title: 再読み込み
     kind: 関数
     usecase: SPAを開く
-    summary: 書き換えの知らせと編集の後に 4 つの query を再読み込みする
+    summary: 書き換えの通知と編集の後に 4 つの query を再読み込みする
     args:
       - name: queryClient
         type: QueryClient

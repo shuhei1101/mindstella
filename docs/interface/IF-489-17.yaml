@@ -101,7 +101,7 @@ flows:
     summary: 待ち受けを立てられないとエラーで終わる
     setup:
       - name: Mock
-        description: 待ち受けを立てる処理を、OSError を送信する偽に差し替える
+        description: 待ち受けを立てる処理を、OSError を送出する偽に差し替える
       - name: make_workspace
         description: 作成を済ませたワークスペース
     flow: |-

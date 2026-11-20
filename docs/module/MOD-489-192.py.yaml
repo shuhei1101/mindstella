@@ -173,12 +173,12 @@ functions:
       2. 確かめるポートを読む（`environ` の `MINDSTELLA_PORT`。無いか空なら `DEFAULT_PORT`）
          - 1〜65535 の整数でなければ、`[mindstella] エラー: MINDSTELLA_PORT の値 {値} は誤りです。1〜65535 の整数を渡してください` を出して失敗の終了コードを返す
       3. `fetch(port)` で状態を読む
-         - 状態が返った場合、`version` とプラグインのバージョン（`read_installed_version(PLUGIN_ROOT)`）を比べる。同じなら何も出さずに 0 を返す。違えば、`[mindstella] 常駐サーバーのバージョン {待ち受けているバージョン} と、インストールしたプラグインのバージョン {今のバージョン} が違います` と、`server_stop` で止めてから Claude Code を立ち再起動する手順の行を出して 0 を返す（再起動しない）
+         - 状態が返った場合、`version` とプラグインのバージョン（`read_installed_version(PLUGIN_ROOT)`）を比べる。同じなら何も出さずに 0 を返す。違えば、`[mindstella] 常駐サーバーのバージョン {待ち受けている版} と、インストールしたプラグインのバージョン {今の版} が違います` と、`server_stop` で止めてから Claude Code を再起動する手順の行を出して 0 を返す（再起動しない）
       4. 依存を確かめる（`run_check_env`。仮想環境は `environ` の `MINDSTELLA_VENV`、無いか空なら `default_venv_dir()`）
          - `VenvNotFoundError`・`PythonVersionError`・`DependencyMissingError` を捕まえた場合、`[mindstella] エラー: 仮想環境の依存がそろっていません（{足りない配布名を・でつないだもの}）` と、`report` の `install` があればそのコマンドの行（無ければ Python 3.12 以上を入れてから仮想環境を作る案内の行）を出して、失敗の終了コードを返す
       5. `log_file` の今の大きさを控え（無ければ 0）、`start(python_path, environ=environ, log_file=log_file)` で起動する
       6. 待ち受けるまで待つ（`wait_until_ready`）
-         - 待ち受けた場合、`--hook` なら `[mindstella] 常駐サーバーを起動しました（ポート {port}）` と `/mcp` で mindstella につなぎ修正する案内を出し、無ければ同じ 1 行目だけを出す。0 を返す
+         - 待ち受けた場合、`--hook` なら `[mindstella] 常駐サーバーを起動しました（ポート {port}）` と `/mcp` で mindstella に再接続する案内を出し、無ければ同じ 1 行目だけを出す。0 を返す
          - `PortInUseError` を捕まえた場合、`[mindstella] エラー: ポート {port} は別のプロセスが使っています` と、`MINDSTELLA_PORT` で別のポートを渡す案内の行を出して、失敗の終了コードを返す
          - `ServerExitedError` を捕まえた場合、`[mindstella] エラー: 常駐サーバーが起動直後に終わりました（終了コード {n}）` と記録の末尾の行と `log_file` のパスを出して、失敗の終了コードを返す
          - `ServerStartTimeoutError` を捕まえた場合、`[mindstella] エラー: 常駐サーバーが {START_TIMEOUT_SEC} 秒以内に応答しません` と、`log_file` を見る案内の行を出して、失敗の終了コードを返す
@@ -198,14 +198,14 @@ functions:
     unit_tests:
       - name: test_main
         case: 正常
-        summary: 落ちていれば起動し、つなぎ修正する案内を出す
-        condition: '`["--hook"]`。`fetch` は 1 回目つながらない、2 回目以降 `{name: mindstella, version: 今のバージョン, plugin_root: このフォルダ}` を返す。`systemctl` は 0 を返す。`run_check_env` はそろっている結果を返す'
+        summary: 落ちていれば起動し、再接続する案内を出す
+        condition: '`["--hook"]`。`fetch` は 1 回目つながらない、2 回目以降 `{name: mindstella, version: 今の版, plugin_root: このフォルダ}` を返す。`systemctl` は 0 を返す。`run_check_env` はそろっている結果を返す'
         mock: '`fetch`・`systemctl`・`run_check_env`・`time.sleep`・ユニットのフォルダ（`XDG_CONFIG_HOME`）'
         expected: 0 を返し、ユニットのファイルが書かれ、`systemctl` が `show-environment`・`daemon-reload`・`start mindstella.service` の順で呼ばれ、`stdout` に `ポート 8784` と `/mcp` がある
       - name: test_main_when_running
         case: 正常
         summary: 同じバージョンが待ち受けていれば何もしない
-        condition: '`["--hook"]`。`fetch` が `{name: mindstella, version: 今のバージョン}` を返す'
+        condition: '`["--hook"]`。`fetch` が `{name: mindstella, version: 今の版}` を返す'
         mock: '`fetch`・`start`'
         expected: 0 を返し、`start` が呼ばれず、`stdout` が空
       - name: test_main_when_outdated
@@ -447,7 +447,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: '`GET /_admin/status` に応答するまで `START_POLL_SEC` ごとに確かめ、`systemctl --user is-active mindstella.service` が `failed`・`activating` なら ServerExitedError、上限を過ぎたら ServerStartTimeoutError を送信する'
+    summary: '`GET /_admin/status` に応答するまで `START_POLL_SEC` ごとに確かめ、`systemctl --user is-active mindstella.service` が `failed`・`activating` なら ServerExitedError、上限を過ぎたら ServerStartTimeoutError を送出する'
     args:
       - name: port
         type: int
@@ -493,10 +493,10 @@ functions:
       description: 待ち受けた常駐サーバーの状態
     process: |-
       1. 上限を `clock() + START_TIMEOUT_SEC` にし、上限まで次を繰り返す
-         - `process.poll()` が終了コードを返した場合、`fetch(port)` をもう 1 回呼び、状態が返ればそれを返す（同時に起動した別の `ensure_server.py` の常駐サーバーが先に待ち受けた）。状態が返らず、`127.0.0.1` のそのポートへつながれば `PortInUseError(port)`、つながらなければ記録のファイルの `log_offset` より後ろの末尾 `LOG_TAIL_LINES` 行を持った `ServerExitedError` を送信する
+         - `process.poll()` が終了コードを返した場合、`fetch(port)` をもう 1 回呼び、状態が返ればそれを返す（同時に起動した別の `ensure_server.py` の常駐サーバーが先に待ち受けた）。状態が返らず、`127.0.0.1` のそのポートへつながれば `PortInUseError(port)`、つながらなければ記録のファイルの `log_offset` より後ろの末尾 `LOG_TAIL_LINES` 行を持った `ServerExitedError` を送出する
          - `fetch(port)` が状態を返せば、それを返す
          - `START_POLL_SEC` 待つ
-      2. 上限を過ぎたら `ServerStartTimeoutError` を送信する
+      2. 上限を過ぎたら `ServerStartTimeoutError` を送出する
     exceptions:
       - name: PortInUseError
         condition: プロセスが終わり、`fetch` が状態を返さず、ポートに別のプロセスがつながる

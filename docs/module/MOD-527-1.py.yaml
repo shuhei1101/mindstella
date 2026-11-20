@@ -39,7 +39,7 @@ functions:
       type: list[str]
       description: 変えたファイル（ワークスペースからの相対パス。改名した本文は改名後のパス。何も変えなければ空）
     process: |-
-      1. `.mindstella/docs/` の直下の `*.md` のうち名前が `MARK_SUFFIX` で終わらないファイルを名前の順に集める。どれかの改名先 `{名前}.mark.md` が既にあれば、何も書かずに `RuntimeError` を送信する
+      1. `.mindstella/docs/` の直下の `*.md` のうち名前が `MARK_SUFFIX` で終わらないファイルを名前の順に集める。どれかの改名先 `{名前}.mark.md` が既にあれば、何も書かずに `RuntimeError` を送出する
       2. `KIND_FILES` の各ファイルの `items[]` の `body` と、`HISTORY_FILE` の各項目の行の `history[].before.body` のうち、`docs/{名前}.md` で `MARK_SUFFIX` で終わらない値を `docs/{名前}.mark.md` に置き換える（キーの並び・`updated`・変更履歴の並びは変えない）
       3. 1 で集めたファイルを `os.replace` で改名し、2 で書き換えた YAML だけを一時ファイルに書いてから置き換え、変えたファイルを返す。改名するファイルも書き換える値も無ければ何も書かない
     exceptions:

@@ -150,7 +150,7 @@ flows:
     test: test_error_when_write_fails
 lead: ワークスペースの直下の `README.md` を、このフォルダの起動・接続のコマンド、記録のエージェントフローの案内、配っているプレビューの URL の一覧に書き直す。利用者が書いた `README.md` は書き換えない。
 idempotent: true
-side_effects: ワークスペースの直下の `README.md` だけを書く（無いか、1 行目が自動で書いたマーカーのとき）。`.mindstella/` は書かず、変更履歴と書き換えの知らせの対象にもしない
+side_effects: ワークスペースの直下の `README.md` だけを書く（無いか、1 行目が自動で書いたマーカーのとき）。`.mindstella/` は書かず、変更履歴と書き換えの通知の対象にもしない
 callers:
   - IF-565-1#
 request:
@@ -223,7 +223,7 @@ constraints:
 
       **接続:**
 
-      起動中の MindStella のセッションにつなぎ修正します。
+      起動中の MindStella のセッションに再接続します。
 
       ```bash
       tmux attach-session -t ={セッションの名前}

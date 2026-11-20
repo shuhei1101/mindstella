@@ -344,7 +344,7 @@ functions:
         description: 子プロセスを起動する関数
     returns:
       type: dict | None
-      description: '`{python: バージョン, packages: {配布名: バージョン | None}}`。起動できないか、終了コードが 0 でないか、出力を JSON として読めなければ `None`'
+      description: '`{python: 版, packages: {配布名: 版 | None}}`。起動できないか、終了コードが 0 でないか、出力を JSON として読めなければ `None`'
     process: |-
       1. `[str(python_path), "-c", PROBE_SCRIPT]` を配列のまま渡して起動する（シェルを通さない。標準出力を受け取る）
       2. 終了コードが 0 なら標準出力を JSON として読んで返し、それ以外（`OSError` を含む）は `None` を返す
@@ -358,6 +358,6 @@ functions:
       - name: test_probe_venv_when_failed
         case: 異常
         summary: 起動できないか出力が読めなければ None
-        condition: '`parametrize`: `run` が `OSError` を送信する / 終了コード 1 を返す / 標準出力 `x` を返す'
+        condition: '`parametrize`: `run` が `OSError` を送出する / 終了コード 1 を返す / 標準出力 `x` を返す'
         mock: '`run`'
         expected: '`None`'

@@ -63,7 +63,7 @@ components:
         type: string | null
         required: false
         default: 'null'
-        description: サーバーが返した理由。`failed` で `null` なら届かなかったとして立ち再起動の案内と本文のコピーのボタン（アイコンだけ。`aria-label`・`title`「本文をコピー」）を出す
+        description: サーバーが返した理由。`failed` で `null` なら届かなかったとして再起動の案内と本文のコピーのボタン（アイコンだけ。`aria-label`・`title`「本文をコピー」）を出す
       - name: collapsed
         type: boolean
         required: false
@@ -107,7 +107,7 @@ components:
         type: boolean
         required: false
         default: 'true'
-        description: 開いているか（`target` があるときだけ使う）。偽なら `.send-body` に `hidden` を付け、見出しの行だけを出す。`body` が空白だけでなければ見出しの右に書きかけのマーカー（`edit` のアイコンと「下書き」）を出す
+        description: 開いているか（`target` があるときだけ使う）。偽なら `.send-body` に `hidden` を付け、見出しの行だけを出す。`body` が空白だけでなければ見出しの右に書きかけのマーカー（`edit` のアイコンと「書きかけ」）を出す
     unit_tests:
       - name: test_send_form
         case: 正常
@@ -144,4 +144,4 @@ components:
         summary: 開閉のボタンと閉じた状態
         condition: '`parametrize`: `target: D-022`・`open: true` / `open: false` / `open: false`・`body: 案 A にする` / `target: null`。開閉のボタンを押す'
         mock: '`on.toggle`'
-        expected: ボタンの `aria-expanded` が `true` で `aria-label` が「コメントの入力を閉じる」、押すと `on.toggle` が `false` で 1 回 / `aria-expanded` が `false` で「コメントの入力を開く」、`.send-body` が `hidden` で書きかけのマーカーが無い、押すと `on.toggle` が `true` で 1 回 / 書きかけのマーカー「下書き」がある / 開閉のボタンが無い。どれも `aria-controls` が同じ部品の `.send-body` の `id` を指す
+        expected: ボタンの `aria-expanded` が `true` で `aria-label` が「コメントの入力を閉じる」、押すと `on.toggle` が `false` で 1 回 / `aria-expanded` が `false` で「コメントの入力を開く」、`.send-body` が `hidden` で書きかけのマーカーが無い、押すと `on.toggle` が `true` で 1 回 / 書きかけのマーカー「書きかけ」がある / 開閉のボタンが無い。どれも `aria-controls` が同じ部品の `.send-body` の `id` を指す

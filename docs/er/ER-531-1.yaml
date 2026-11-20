@@ -130,7 +130,7 @@ tables:
         title: クローズ待ちか
         type: boolean
         not_null: true
-        description: API で停止を受けたとき・ワークスペースをクローズしたとき真。作成・再度開くことで偽
+        description: API で停止を受けたとき・ワークスペースをクローズしたとき真。作成・再オープンで偽
       - name: started_at
         title: 起動した日時
         type: string

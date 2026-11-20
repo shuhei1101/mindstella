@@ -224,7 +224,7 @@ scenarios:
       ```
     expected:
       - オープンのスレッドが 2 件ある
-      - 会話の記録に user のメッセージが 1 件だけ増え、その中身が `[mindstella] ユーザーからのコメントが 2 件届きました。再読み込みしてください。` である
+      - 会話の記録に user のメッセージが 1 件だけ増え、その中身が `[mindstella] ユーザーからのコメントが 2 件届きました。読み直してください。` である
       - 送信した結果に、Claude Code へ入力したことが出る
       - 2 件のスレッドとも取り込み待ちのままである（取り込み済みにするのは Claude Code が記録した後）
     test: test_normal_when_entered_to_claude_code

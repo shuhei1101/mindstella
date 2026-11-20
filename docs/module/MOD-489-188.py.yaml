@@ -137,9 +137,9 @@ functions:
         description: 項目の ID
     returns:
       type: Kind | None
-      description: 種類。`{頭の文字}-{正の整数}` の形式でないか、頭の文字がどの種類にも当たらなければ `None`
+      description: 種類。`{頭の文字}-{正の整数}` の構造でないか、頭の文字がどの種類にも当たらなければ `None`
     process: |-
-      1. `{英大文字}-{数字}` の形式かを確かめる
+      1. `{英大文字}-{数字}` の構造かを確かめる
          - 構造が合わない場合、`None` を返す
       2. 頭の文字が `prefix` に一致する種類を `KINDS` から引いて返す（無ければ `None`）
     unit_tests:

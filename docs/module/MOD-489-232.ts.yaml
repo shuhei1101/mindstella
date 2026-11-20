@@ -31,7 +31,7 @@ components:
     kind: 画面
     container: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
     usecase: ワークスペースの既定を変える
-    summary: 画面の下に「ワークスペースの既定が変わりました。」を `role="status"` で出し、`NOTICE_MS` 経ったら自分を削除する。続けて呼ばれたら前の知らせを削除して再表示する
+    summary: 画面の下に「ワークスペースの既定が変わりました。」を `role="status"` で出し、`NOTICE_MS` 経ったら自分を削除する。続けて呼ばれたら前の知らせを削除して再出する
     props:
       - name: durationMs
         type: number

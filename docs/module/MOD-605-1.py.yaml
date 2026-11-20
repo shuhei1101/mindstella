@@ -57,19 +57,19 @@ functions:
         summary: ID の一覧が読めなければ照合を飛ばして戻る
         condition: 一時フォルダの `workspaces.yaml` が YAML として読めない
         mock: なし（一時フォルダ）
-        expected: 例外を送出しずに戻り、`ERROR` の記録が 1 件ある。`workspaces.yaml` が書き換わっていない
+        expected: 例外を送出せずに戻り、`ERROR` の記録が 1 件ある。`workspaces.yaml` が書き換わっていない
       - name: test_reconcile_before_listen_when_rebuild_fails
         case: 正常
         summary: 再作成が失敗しても照合して戻る
-        condition: '`rebuild_ids_if_missing` が `OSError` を送信する。`sessions.watch_crashes_once` を呼ばれた回数を数える関数に差し替える'
+        condition: '`rebuild_ids_if_missing` が `OSError` を送出する。`sessions.watch_crashes_once` を呼ばれた回数を数える関数に差し替える'
         mock: '`rebuild_ids_if_missing`・`sessions.watch_crashes_once`（monkeypatch）'
-        expected: 例外を送出しずに戻り、`watch_crashes_once` が 1 回呼ばれ、`ERROR` の記録が 1 件ある
+        expected: 例外を送出せずに戻り、`watch_crashes_once` が 1 回呼ばれ、`ERROR` の記録が 1 件ある
       - name: test_reconcile_before_listen_when_watch_fails
         case: 正常
         summary: 照合が想定外の例外で失敗しても戻る
-        condition: '`sessions.watch_crashes_once` が `PermissionError` を送信する'
+        condition: '`sessions.watch_crashes_once` が `PermissionError` を送出する'
         mock: '`rebuild_ids_if_missing`・`sessions.watch_crashes_once`（monkeypatch）'
-        expected: 例外を送出しずに戻り、`ERROR` の記録が 1 件ある
+        expected: 例外を送出せずに戻り、`ERROR` の記録が 1 件ある
   - name: rebuild_ids_if_missing
     title: ID の一覧の再作成
     kind: 関数
@@ -117,7 +117,7 @@ functions:
       - name: test_rebuild_ids_if_missing_when_project_index_fails
         case: 正常
         summary: project-index に失敗したら作らない
-        condition: '`workspaces.yaml` が無い。`get_settings` が `ProjectIndexError` を送信する'
+        condition: '`workspaces.yaml` が無い。`get_settings` が `ProjectIndexError` を送出する'
         mock: '`project_index.get_settings`（monkeypatch）'
         expected: '`None` を返し、`workspaces.yaml` が無い。`WARNING` の記録が 1 件ある'
   - name: workspace_ids
@@ -201,7 +201,7 @@ functions:
       - name: test_check_agent_flows_source_when_project_index_fails
         case: 正常
         summary: project-index に失敗しても例外を送出しない
-        condition: '`parametrize`: `get_settings` が `ProjectIndexError` を送信する / `patch_source` が `ProjectIndexError` を送信する'
+        condition: '`parametrize`: `get_settings` が `ProjectIndexError` を送出する / `patch_source` が `ProjectIndexError` を送出する'
         mock: '`project_index.get_settings`・`project_index.patch_source`（monkeypatch）'
         expected: 偽を返し、`WARNING` の記録が 1 件ある
       - name: test_check_agent_flows_source_when_config_list

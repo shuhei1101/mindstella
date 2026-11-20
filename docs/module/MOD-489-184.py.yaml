@@ -22,8 +22,8 @@ functions:
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
       1. `.mindstella/submissions.yaml` が無い場合、何も書かず空を返す
-      2. `.mindstella/threads.yaml` が既にある場合、`threads.yaml が既にあります` の `ValueError` を送信する（手順の当て方が `StepFailedError` にする）
-      3. `yaml.safe_load` で送信を読む。一番上が辞書でないか `items` が配列でない場合、`submissions.yaml の構造が崩れています` の `ValueError` を送信する（次の `delete` で失わないため、飛ばさない）
+      2. `.mindstella/threads.yaml` が既にある場合、`threads.yaml が既にあります` の `ValueError` を送出する（手順の当て方が `StepFailedError` にする）
+      3. `yaml.safe_load` で送信を読む。一番上が辞書でないか `items` が配列でない場合、`submissions.yaml の形が崩れています` の `ValueError` を送出する（次の `delete` で失わないため、飛ばさない）
       4. 送信を連番の小さい順に並べ、1 件ごとに `TH-{1 からの連番}`・`tags: []`・`summary: null`・`target`・`loc`（持つときだけ）のスレッドにする。最初の書き込みは `{ID}-1`・`author: user`・`body`・`created`（送信の `sent`）・`read: false`・`seen: true`・`taken`（送信の `taken`）。送信の `comment` は引き継がない
          - `taken` を持つ送信は `status: closed` にし、`events` を `[{kind: closed, author: ai, reason: null, created: {taken}}]` にする
          - `taken` を持たない送信は `status: open`・`events: []` にする

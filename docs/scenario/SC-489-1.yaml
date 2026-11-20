@@ -1,5 +1,5 @@
 id: SC-489-1
-title: "AIがスレッドを立てる"
+title: "AIがスレッドの作成"
 scenarios:
   - name: 正常シナリオ（検討事項と回答の通知）
     setup:
@@ -50,7 +50,7 @@ scenarios:
         participant CC as MindStella のセッション
 
         CC->>SV: 通知のスレッドを作成する
-        SV-->>P: 書き換えの知らせ
+        SV-->>P: 書き換えの通知
         P->>SV: 記録を再読み込みする
         P-->>U: スレッドの一覧に AI のスレッドの行を追加する
       ```

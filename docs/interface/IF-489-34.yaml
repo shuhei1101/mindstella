@@ -155,11 +155,11 @@ status_codes:
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 呼ぶ時
-    constraint: 画面がタブで最初に記録を読む前に 1 度だけ。同じタブで再読み込みしたときと、書き換えの知らせで再読み込みするときは呼ばない（『プレビューを開く』）
+    constraint: 画面がタブで最初に記録を読む前に 1 度だけ。同じタブで再読み込みしたときと、書き換えの通知で再読み込みするときは呼ばない（『プレビューを開く』）
   - item: 配置場所
     constraint: ワークスペースの直下の `.mindstella-opened`（1 行目が日時、2 行目が連番）。配信のポートは立てるたびに変わり、端末の保存領域はポートごとに分かれるため、ワークスペースの中に置く
   - item: 書き換えの通知・点検
-    constraint: '`.mindstella-opened` は書き換えの知らせの見るファイル・点検・移し替えの対象にしない'
+    constraint: '`.mindstella-opened` は書き換えの通知の見るファイル・点検・移し替えの対象にしない'
   - item: 記載方法
     constraint: 一時ファイルに書いてから `os.replace` で置き換える。記録のロックは取らない（同時に開いたタブどうしは、後に書いた方が残る）
   - item: 接続先の確認

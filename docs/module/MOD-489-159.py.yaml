@@ -95,9 +95,9 @@ functions:
       description: 選んだ実装
     process: |-
       1. `TRANSCRIBER_ENV` の値を読む（前後の空白を除く。無いか空なら `DEFAULT_TRANSCRIBER`）
-         - `TRANSCRIBER_FACTORIES` に無い場合、`InvalidTranscriberError` を送信する
+         - `TRANSCRIBER_FACTORIES` に無い場合、`InvalidTranscriberError` を送出する
       2. `TRANSCRIBER_URL_ENV` の値を読む（前後の空白を除く。無いか空なら `DEFAULT_TRANSCRIBER_URL`）
-         - `URL_PATTERN` に合わないか、ポートが 1〜65535 でない場合、`InvalidTranscriberError` を送信する
+         - `URL_PATTERN` に合わないか、ポートが 1〜65535 でない場合、`InvalidTranscriberError` を送出する
       3. 末尾の `/` を外した URL で、`TRANSCRIBER_FACTORIES` の関数を呼んで返す
     exceptions:
       - name: InvalidTranscriberError

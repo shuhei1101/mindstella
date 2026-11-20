@@ -70,7 +70,7 @@ stakeholders:
 trigger: 利用者が `config.yaml` を手で修正し、設定の再読み込みのエンドポイントを呼ぶ
 preconditions:
   - サーバーがプレビューを配っている
-success_guarantee: 検査に通ったときは、開いている画面のうち上書きを持たない項目が、再度開かずに修正した既定になる。
+success_guarantee: 検査に通ったときは、開いている画面のうち上書きを持たない項目が、再度開かずに変更した既定になる。
 minimal_guarantee: 検査に通らないときは、配信が最後に検査に通った設定のまま動き続け、違う箇所（キーと理由）を返す。サーバーは `config.yaml` を書き換えない。
 frequency: 利用者が `config.yaml` を手で修正したとき
 priority: 低

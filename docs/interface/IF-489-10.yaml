@@ -35,7 +35,7 @@ flows:
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 利用者が質問を送信してからクローズにしたスレッド TH-1 を持つワークスペース
-        notes: '`status` は `open`、`reason` は `質問に回答する`'
+        notes: '`status` は `open`、`reason` は `質問に答える`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -46,7 +46,7 @@ flows:
         IF-->>クライアント: JSON（status open・changed true）
       ```
     expected:
-      - 'TH-1 の `status` が `open` で、`events` の末尾が `kind: reopened`・`author: ai`・`reason: 質問に回答する`'
+      - 'TH-1 の `status` が `open` で、`events` の末尾が `kind: reopened`・`author: ai`・`reason: 質問に答える`'
       - 続けて『スレッドへの返信』を呼ぶと返信が追加できる
     test: test_normal_when_reopen
   - name: 正常系（既にその状態）
@@ -223,7 +223,7 @@ flows:
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 利用者の質問（取り込んでいない）と AI の返信（利用者の未読）を持ち、利用者がクローズにしたスレッド TH-1 を持つワークスペース
-        notes: '`status` は `open`、`reason` は `質問に回答する`'
+        notes: '`status` は `open`、`reason` は `質問に答える`'
     flow: |-
       ```mermaid
       sequenceDiagram

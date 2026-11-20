@@ -252,7 +252,7 @@ constraints:
   - item: 読み込むファイル
     constraint: 書き出した HTML は外のファイルも URL も指さない（`script`・`link`・`img` に `src`・`href` を持たない）。文字は端末の文字で描く
   - item: 閲覧のみ
-    constraint: 画面の JavaScript はサーバーが配るものと同じものを差し込む。記録を埋め込みのデータから読み、コメントのボタン・一覧・入力・選んだ箇所の入口と書き換えの知らせの購読を出さない
+    constraint: 画面の JavaScript はサーバーが配るものと同じものを差し込む。記録を埋め込みのデータから読み、コメントのボタン・一覧・入力・選んだ箇所の入口と書き換えの通知の購読を出さない
   - item: 通信
     constraint: ツールは、雛形の描画のライブラリの `<script src>` の URL（jsDelivr、バージョンを固定）と、『プレビューの配信』の制約「mdmark の ref の解決」の ref の mdmark の配布ファイル（`dist/index.css`・`dist/index.js`・部品）の URL と、ライブラリのライセンスの本文の URL（同じバージョン。mdmark は `dist/THIRD_PARTY_LICENSES.txt`。mdmark の MIT の本文はプラグインの `preview/licenses/mdmark-LICENSE.txt` から読む）を取るときと、その ref を解決するために GitHub の API へ問い合わせるときだけ通信する。mdmark 以外の取った配布ファイルは雛形の `integrity`（sha384）と突き合わせ、合わなければ書き出さない。mdmark は突き合わせない。書き出した HTML は通信しない。ただし、HTML の本文が外の画像・CSS を指すときは、描くときにブラウザがその URL を読みに行き、ネットにつながらない端末では読めないまま描く（ツールは本文の中身を書き換えない）
   - item: 待ちの上限

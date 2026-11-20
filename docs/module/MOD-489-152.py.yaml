@@ -10,8 +10,8 @@ directory: |-
       template.html   プレビューの雛形（CSS・JavaScript・データの差し込み位置と、描画のライブラリ・文字の読み込み。読み込みは EXTERNAL_START と EXTERNAL_END の間に置く。mdmark は MDMARK_SLOT のマーカー）
       tokens.css・style.css・*.ts（と tsc が生成した *.js）  画面の中身（モジュール構成『プレビュー』）
       licenses/
-        README.md  mermaid-bundled.txt を集め修正する手順（使うコマンドと写すもの）と、mdmark-LICENSE.txt を置いている理由
-        mermaid-bundled.txt  mermaid.min.js が中に束ねた依存（mermaid の本番の依存を node_modules から辿った全てのパッケージ）ごとの、名前・バージョンと LICENSE の写。mermaid のバージョンを上げたら集め修正する
+        README.md  mermaid-bundled.txt を再収集する手順（使うコマンドと写すもの）と、mdmark-LICENSE.txt を置いている理由
+        mermaid-bundled.txt  mermaid.min.js が中に束ねた依存（mermaid の本番の依存を node_modules から辿った全てのパッケージ）ごとの、名前・バージョンと LICENSE の写。mermaid のバージョンを上げたら再収集する
         mdmark-LICENSE.txt  mdmark の MIT の本文（v0.7.0 のリポジトリに LICENSE が無いため置く。mdmark のバージョンを上げたら見直す）
     scripts/
       builder.py      雛形の組み立て・記録の収集・埋め込みと、配る書き出し
@@ -331,7 +331,7 @@ functions:
       description: 埋め込んだ HTML
     process: |-
       1. 雛形に `DATA_ELEMENT` がちょうど 1 つあるか確かめる
-         - 1 つでない場合、`ValueError` を送信する（同梱の雛形の誤り）
+         - 1 つでない場合、`ValueError` を送出する（同梱の雛形の誤り）
       2. データを `json.dumps(ensure_ascii=False)` し、エスケープして（`escape_for_script`）要素の中身に入れる
     exceptions:
       - name: ValueError
@@ -412,9 +412,9 @@ functions:
     process: |-
       1. `template.html` と、`STYLE_FILES`・`SCRIPT_FILES` を並びの順に UTF-8 で読む
       2. CSS に `</style`、JavaScript に `</script` が無いことを確かめる（大文字・小文字を区別しない）
-         - ある場合、`ValueError` を送信する（同梱の雛形の誤り）
+         - ある場合、`ValueError` を送出する（同梱の雛形の誤り）
       3. `STYLE_SLOT`・`SCRIPT_SLOT` がそれぞれちょうど 1 つあることを確かめる
-         - 1 つでない場合、`ValueError` を送信する
+         - 1 つでない場合、`ValueError` を送出する
       4. CSS を改行でつないで `STYLE_SLOT` の中身に、JavaScript を改行でつないで `SCRIPT_SLOT` の中身に入れる
       5. `MDMARK_SLOT` がちょうど 1 つあることを確かめ（1 つでなければ `ValueError`）、`mdmark_dist_url(mdmark_ref, …)` の `index.css` を `href` に持ち `crossorigin="anonymous"` を付けた `<link rel="stylesheet">` と、`MDMARK_CONFIG_OPEN` + `{"js": index.js の URL, "map": mdmark_settings の map}`（`escape_for_script`）+ `</script>` に置き換える。`integrity` は付けない
     exceptions:
@@ -492,7 +492,7 @@ functions:
     process: |-
       1. 一時ファイルに書く（一時ファイルへの書き込み。`write_temp`）
       2. `os.replace` で `path` を置き換える
-         - 1・2 で `OSError` が起きた場合、残った一時ファイルを削除して `WriteFailedError` を送信する（`write_failed`。親のフォルダが無いときもここに入り、フォルダは作らない）
+         - 1・2 で `OSError` が起きた場合、残った一時ファイルを削除して `WriteFailedError` を送出する（`write_failed`。親のフォルダが無いときもここに入り、フォルダは作らない）
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（一時ファイルを削除した後）
@@ -558,7 +558,7 @@ functions:
       description: 書き出した `out`
     process: |-
       1. ワークスペースを検証する（ワークスペースの検証。`validate_workspace`）
-         - 問題がある場合、`SchemaMismatchError` を送信する（取らず、書かない）
+         - 問題がある場合、`SchemaMismatchError` を送出する（取らず、書かない）
       2. ワークスペースの設定の `mdmark` で配る書き出しの雛形を組み立て、データを集めて埋め込む（`assemble_standalone_template`、`collect_preview_data`、`embed_data`）
          - 取れない場合、`DownloadFailedError` がそのまま上がる（書かない）
       3. `out` を置き換える（`replace_file`）
@@ -588,7 +588,7 @@ functions:
         case: 異常
         summary: 取れなければ前の out を残す
         condition: 前の `out` を置く
-        mock: '`fetch`（`DownloadFailedError` を送信する関数）'
+        mock: '`fetch`（`DownloadFailedError` を送出する関数）'
         expected: '`DownloadFailedError`。`out` が呼ぶ前と同じ'
         exception: 取れないか integrity と合わない
       - name: test_export_preview_when_out_dir_missing
@@ -654,10 +654,10 @@ functions:
       description: '`<script src>` の並びの順'
     process: |-
       1. `EXTERNAL_START`・`EXTERNAL_END` がそれぞれちょうど 1 つあり、`EXTERNAL_START` が前にあることを確かめる
-         - そうでない場合、`ValueError` を送信する（同梱の雛形の誤り）
+         - そうでない場合、`ValueError` を送出する（同梱の雛形の誤り）
       2. 間の `src` を持つ `<script>` 要素から `src` と `integrity` を読む（`html.parser.HTMLParser`）
       3. `src` を `https://cdn.jsdelivr.net/npm/{package}@{version}/{path}` の形式で分ける
-         - `integrity` が無いか、`src` がこの形式でない場合、`ValueError` を送信する
+         - `integrity` が無いか、`src` がこの形式でない場合、`ValueError` を送出する
     exceptions:
       - name: ValueError
         condition: 外の読み込みのマーカーが 1 つずつでないか順が逆、または `<script src>` が `integrity` を持たないか jsDelivr のバージョンを固定した URL でない
@@ -708,7 +708,7 @@ functions:
       description: 本文
     process: |-
       1. `urllib.request.urlopen(url, timeout=timeout)` で取る（環境変数のプロキシに従う）
-         - `URLError`・`OSError`（`TimeoutError` を含む）か、200 以外が返った場合、`DownloadFailedError` を送信する（再取得しない）
+         - `URLError`・`OSError`（`TimeoutError` を含む）か、200 以外が返った場合、`DownloadFailedError` を送出する（再取得しない）
       2. 本文を全て読んで返す
     exceptions:
       - name: DownloadFailedError
@@ -771,12 +771,12 @@ functions:
     process: |-
       1. `mdmark_settings` と `mdmark_ref` で雛形を組み立て、外の読み込みを読む（`assemble_template`、`list_external_scripts`）。mdmark は `mdmark_dist_url` で `mdmark_ref` の `index.css`・`index.js`・`MDMARK_PART_FILES` の URL にする
       2. mdmark（`MDMARK_PACKAGE`）と外の読み込みごとに、`package` が同じ `VendorLibrary` を引く
-         - 無い場合、`ValueError` を送信する（同梱の誤り）
+         - 無い場合、`ValueError` を送出する（同梱の誤り）
       3. mdmark の CSS・JavaScript・部品と、外の読み込みごとの配布ファイルを取り（`fetch`）、外の読み込みだけ sha384 を Base64 にした `sha384-{値}` がそれぞれの `integrity` と同じことを確かめる（mdmark は確かめない）
-         - 違う場合、`DownloadFailedError` を送信する
+         - 違う場合、`DownloadFailedError` を送出する
       4. ライブラリごとに、ライセンスの本文を、`license_path` があれば取り（mdmark は `mdmark_dist_url`、外の読み込みは `CDN_PACKAGE_URL` にバージョンを入れた URL）、無ければ `license_file` を雛形のフォルダから読む。束ねた依存のライセンスは、`bundled_license_path` があれば同じく取り（mdmark は `mdmark_dist_url` に `bundled_license_path` の `dist/` の後ろを渡す）、`bundled_license_file` があれば雛形のフォルダから読む
       5. 取った・読んだ中身を UTF-8 で読み、JavaScript・配布ファイル・ライセンスの本文・束ねた依存のライセンスが `</script` と `<script` を、CSS が `</style` を含まないことを確かめる（大文字・小文字を区別しない。`<!--` の後の `<script` は script 要素を閉じさせなくする）
-         - 含む場合、`ValueError` を送信する（取った中身の誤り）
+         - 含む場合、`ValueError` を送出する（取った中身の誤り）
       6. `EXTERNAL_START` から `EXTERNAL_END` まで（両方を含む。mdmark の `<link>` と読み込みの設定の要素も消える）を、`MDMARK_CSS_OPEN` + CSS + `</style>`、`MDMARK_OPEN` + JavaScript + `</script>`、部品ごとの `<script type="text/plain" id="mindmap-mdmark-{部品の名前}">` + 中身 + `</script>`、`MDMARK_CONFIG_OPEN` + `{"map": 設定の mdmark.map}` + `</script>`、外の読み込みごとの `<script>{配布ファイルの中身}</script>` を並びの順につないだものと、`LICENSES_OPEN` + ライセンスの表示（mdmark、外の読み込みの順。`format_licenses`）+ `</script>` に置き換える
     exceptions:
       - name: ValueError
@@ -878,8 +878,8 @@ functions:
       1. ワークスペースを読み、検証する（`load_workspace`、`validate_workspace`）
          - `config.yaml` が無い場合、`WorkspaceNotFoundError` がそのまま上がる
       2. 問題を `file` が `config.yaml` のものとそれ以外に分ける
-         - それ以外の問題がある場合、問題ごとの行を持った `SchemaMismatchError` を送信する（`legacy` は `is_legacy_problem`）
-         - `config.yaml` の問題があり、`last_settings` が `None` の場合、同じく `SchemaMismatchError` を送信する
+         - それ以外の問題がある場合、問題ごとの行を持った `SchemaMismatchError` を送出する（`legacy` は `is_legacy_problem`）
+         - `config.yaml` の問題があり、`last_settings` が `None` の場合、同じく `SchemaMismatchError` を送出する
          - `config.yaml` の問題があり、`last_settings` がある場合、ワークスペースの `settings` を `last_settings` に差し替え（`dataclasses.replace`）、問題ごとの行を `settings_problem` にする
       3. まとめる設定（差し替えたときは `last_settings`）の `mdmark.version` を、`resolve` で ref にする
       4. 読んだ日時と `settings_problem` と ref を付けてまとめる（`collect_preview_data`）
@@ -911,7 +911,7 @@ function_types:
     title: URL の中身を取る関数
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
-    summary: URL を受けて本文のバイト列を返す。取れなければ `DownloadFailedError` を送信する（`type FetchFn = Callable[[str], bytes]`）
+    summary: URL を受けて本文のバイト列を返す。取れなければ `DownloadFailedError` を送出する（`type FetchFn = Callable[[str], bytes]`）
     args:
       - name: url
         type: str

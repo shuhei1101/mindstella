@@ -17,7 +17,7 @@ components:
       - name: anchor
         type: HTMLElement
         required: true
-        description: 本文のマーカーの要素。置き場所は `anchor.getBoundingClientRect()` で決め、フォーカスの戻し先にする。「本文のマーカーの次の要素」は、`anchor` を含む本文（`anchor.closest(".md")`）の中のフォーカスできる要素の並びで `anchor` の次に当たるもの（無ければ `anchor`）
+        description: 本文のマーカーの要素。置き場所は `anchor.getBoundingClientRect()` で決め、フォーカスの戻し先にする。「本文の印の次の要素」は、`anchor` を含む本文（`anchor.closest(".md")`）の中のフォーカスできる要素の並びで `anchor` の次に当たるもの（無ければ `anchor`）
       - name: pinned
         type: boolean
         required: false

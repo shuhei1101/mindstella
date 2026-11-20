@@ -289,7 +289,7 @@ functions:
         mock: なし
         expected: '`[/a]` / `[]` / `[]`'
   - name: reload_sources
-    title: 全ての配信元を読み修正させる
+    title: 全ての配信元を読み直させる
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/project_index.py
     usecase: 外部のアプリから起動する
@@ -312,7 +312,7 @@ functions:
       3. `PUT /settings/sources` に `expectedVersion` と `sources` を送信する
          - 200 の場合、戻る
          - 1 回目が 409 の場合、1 から再取得して再送信する
-         - それ以外の場合、`ProjectIndexError` を送信する
+         - それ以外の場合、`ProjectIndexError` を送出する
     exceptions:
       - name: ProjectIndexError
         condition: 200 のほか、409 が 2 回、または端末の設定のファイルが読めない・`sources` が並びでない
@@ -441,4 +441,4 @@ notes:
     | イベント名 | 水準 | いつ | 属性 |
     | --- | --- | --- | --- |
     | `mindstella.project_index.version_conflict` | WARN | `add_source`・`patch_source` が内容のバージョンの不一致の 409 を受けて `version` を再取得した | 配信元の ID |
-    | `mindstella.project_index.request_failed` | WARN | `ProjectIndexError` を送信する（呼び出し元が 502 にするときは呼び出し元が ERROR を書くので、ここでは段階を残すだけ） | メソッド・パス・ステータス・理由 |
+    | `mindstella.project_index.request_failed` | WARN | `ProjectIndexError` を送出する（呼び出し元が 502 にするときは呼び出し元が ERROR を書くので、ここでは段階を残すだけ） | メソッド・パス・ステータス・理由 |

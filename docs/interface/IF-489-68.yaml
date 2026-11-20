@@ -109,7 +109,7 @@ constraints:
     notes: 'Claude Code は、ローカルのパスからインストールするとプラグインのフォルダの外を指すシンボリックリンクを飛ばす（公式ドキュメント『Host and maintain a marketplace』の Share files within a marketplace with symlinks）。Windows の clone ではリンクが本文を持たないファイルになる'
   - item: プラグインのバージョンのファイル
     constraint: '`plugins/mindstella/version.ini` の 1 行目にプラグインのバージョン（`v{メジャー}.{マイナー}.{パッチ}`）を書く。スクリプトがワークスペースのバージョンと比べるために読む。リポジトリの直下の `version.ini` のバージョンより小さくしない'
-    notes: ワークスペースの構造を変える PR が `migrations/{次のバージョン}/` を追加するときに、同じ PR でそのバージョンへ上げる。今のワークスペースがそのまま読める形式の変更（スキーマを広げるだけなど）は、手順とバージョンを追加せず、`migrations/no-steps.yaml` に変えたスキーマのファイル名・変えた後の中身の SHA-256・理由の行を追加する。リリースでは tester がリポジトリの直下の `version.ini` を上げるときに、形式を変えなかったスプリントでも同じバージョンへ揃える。マニフェストの `version` には写さない（制約「バージョン」）
+    notes: ワークスペースの構造を変える PR が `migrations/{次の版}/` を追加するときに、同じ PR でそのバージョンへ上げる。今のワークスペースがそのまま読める形式の変更（スキーマを広げるだけなど）は、手順とバージョンを追加せず、`migrations/no-steps.yaml` に変えたスキーマのファイル名・変えた後の中身の SHA-256・理由の行を追加する。リリースでは tester がリポジトリの直下の `version.ini` を上げるときに、形式を変えなかったスプリントでも同じバージョンへ揃える。マニフェストの `version` には写さない（制約「バージョン」）
   - item: 接続の設定
     constraint: '`.mcp.json` の `mcpServers.mindstella` に `"type": "http"` と `"url": "http://127.0.0.1:${MINDSTELLA_PORT:-8784}/mcp"` だけを書く。`alwaysLoad` は付けない。`plugin.json` の `mcpServers` には書かない'
     notes: 規約『MCP サーバー作成ルール』の `registration-07`〜`10`。Claude Code の中のツールの名前は `mcp__plugin_mindstella_mindstella__{ツール}` になる

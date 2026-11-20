@@ -21,7 +21,7 @@ functions:
       type: list[str]
       description: 変えたファイル（ワークスペースからの相対パス。種類の順。変えなければ空）
     process: |-
-      1. `.mindstella/` の種類ごとの YAML（`KINDS` のファイル）を、あるものだけ `yaml.safe_load` で読む。一番上が辞書でないか `items` が並びでなければ `{ファイル} の形式が崩れています` の `ValueError` を送信する
+      1. `.mindstella/` の種類ごとの YAML（`KINDS` のファイル）を、あるものだけ `yaml.safe_load` で読む。一番上が辞書でないか `items` が並びでなければ `{ファイル} の形が崩れています` の `ValueError` を送出する
       2. 各項目の `tags` が並びなら、要素を頭から見て、文字列は `{name: {文字列}}` にし、名前を NFKC と小文字にそろえて前の要素と同じなら外す（辞書の要素はそのまま。名前を取れない要素はそのまま残す）
          - 並びが変わらない項目は触らない。`updated`・`history` は変えない
       3. 変わった項目があるファイルだけ、キーの並びを保って読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える

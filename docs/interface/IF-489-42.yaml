@@ -121,7 +121,7 @@ flows:
       - '`drafts.yaml` に `thread: TH-1` と `thread: TH-2` の 2 件があり、どちらも `target`・`loc` を持たない'
       - '`GET /api/comments` の `drafts` に 2 件が `thread` つきで返る'
     test: test_normal_when_thread
-lead: コメントの入力欄の書きかけを、向けた先（項目と箇所の組）ごとに `drafts.yaml` へ保つ。空の本文を受けたらその書きかけを削除する。パネルを閉じても・再読み込みしても・起動スクリプトで立ち再起動しても、『レビュー中のコメントの読み取り』で戻せる。
+lead: コメントの入力欄の書きかけを、向けた先（項目と箇所の組）ごとに `drafts.yaml` へ保つ。空の本文を受けたらその書きかけを削除する。パネルを閉じても・再読み込みしても・起動スクリプトで再起動しても、『レビュー中のコメントの読み取り』で戻せる。
 idempotent: true
 side_effects: '`drafts.yaml` のその向けた先の 1 件を書き換えるか削除する（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:

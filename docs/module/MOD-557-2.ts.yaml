@@ -38,7 +38,7 @@ functions:
         description: 見張る文書・音声入力（録音・文字起こし中）があるか・再描画・保留が変わったときの知らせ
     returns:
       type: '{request: () => void, release: () => void, stale: () => boolean, dispose: () => void}'
-      description: '`request` は書き換えの通知・つなぎ修正で呼ぶ、`release` は音声入力が終わったときに呼ぶ、`stale` は保留しているか、`dispose` は見張りをやめる'
+      description: '`request` は書き換えの通知・再接続で呼ぶ、`release` は音声入力が終わったときに呼ぶ、`stale` は保留しているか、`dispose` は見張りをやめる'
     process: |-
       1. `focusin`・`focusout`（移り先が文字を入力する欄なら離れたとみなさない）で入力中かを持ち、離れたら `release` を呼ぶ
       2. `request`: 入力中でも音声入力中でもなければ `reload` を呼ぶ。そうでなければ、保留していなかったときはフォーカスのある要素の画面の上の位置を控え、保留を立てて `onStaleChange(true)` を呼び、描いた後に控えた位置と今の位置の差の分だけスクロールする祖先を送信する

@@ -78,7 +78,7 @@ data_models:
       - name: reports
         type: list[str]
         default: '[]'
-        description: 当てた手順が返した報告の行（`{バージョン} #{番号}: {行}`。出力の `steps[]` の該当の手順の `report` に入れる）
+        description: 当てた手順が返した報告の行（`{版} #{番号}: {行}`。出力の `steps[]` の該当の手順の `report` に入れる）
       - name: provisional
         type: list[dict[str, str]]
         default: '[]'
@@ -108,7 +108,7 @@ constants:
     title: 当て終えた数を持たないバージョンの手順を再適用するバージョンの下限
     container: plugins/mindstella/skills/mindmap/scripts/migrator.py
     usecase: 記録の形式の移行
-    summary: バージョンのファイルが 2 行目を持たないとき、この版以上ならそのバージョンの手順を全て再適用し、より前なら再適用しない（2 行目を書く前に同じバージョンへ後から手順を追加したのは v0.14.0 だけ。`migrations/v0.14.0/` のバージョンの番号を変えるときは一緒に修正する）
+    summary: バージョンのファイルが 2 行目を持たないとき、この版以上ならそのバージョンの手順を全て再適用し、より前なら再適用しない（2 行目を書く前に同じバージョンへ後から手順を追加したのは v0.14.0 だけ。`migrations/v0.14.0/` のバージョンの番号を変えるときは一緒に変更する）
     value: Version(0, 14, 0)
 functions:
   - name: list_versions
@@ -321,9 +321,9 @@ functions:
          - 手順が空の場合、コピーを取らずにそのまま返す
       2. コピーを取る（`take_backup`。バージョンは `to`）
       3. 手順を並びの順に当てる（`apply_step`）
-         - `StepError` が起きた場合、コピーから戻し（`restore_backup`）、`StepFailedError`（`{バージョン} の手順 {番号}（{操作}）: {理由}`）を送信する
-         - 戻すことにも失敗した場合（`OSError`・git の終了コードが 0 でない）、`StepFailedError` の `lines` に `コピーから戻せませんでした。コピーは {backup.ref} にあります` を続ける
-      4. 当てた後のワークスペースで、各 `set_default` の `file` をその手順より後の `rename_file` で改めた先の名前に読み替えて（`renamed_file`）値が要るキーを集め修正し、手順とコピーを添えて返す
+         - `StepError` が起きた場合、コピーから戻し（`restore_backup`）、`StepFailedError`（`{版} の手順 {番号}（{操作}）: {理由}`）を送信する
+         - 戻すことにも失敗した場合（`OSError`・git の終了コードが 0 でない）、`StepFailedError` の `lines` に `写しから戻せませんでした。写しは {backup.ref} にあります` を続ける
+      4. 当てた後のワークスペースで、各 `set_default` の `file` をその手順より後の `rename_file` で改めた先の名前に読み替えて（`renamed_file`）値が要るキーを再収集し、手順とコピーを添えて返す
     exceptions:
       - name: WorkspaceNewerError
         condition: ワークスペースのバージョンがプラグインのバージョンより新しい
@@ -362,7 +362,7 @@ functions:
       - name: test_apply_migration_when_restore_fails
         case: 異常
         summary: 戻せなかったときはコピーの場所を添える
-        condition: '`docs.yaml` が `items: [` のワークスペース。`restore_backup` を `OSError` を送信する関数に差し替える'
+        condition: '`docs.yaml` が `items: [` のワークスペース。`restore_backup` を `OSError` を送出する関数に差し替える'
         mock: '`read_plugin_version`（`v0.3.0`）・`restore_backup`（`migrator` モジュールの参照を monkeypatch）'
         expected: '`StepFailedError` の `lines` にコピーのフォルダの絶対パスがある'
         exception: 手順も戻しも失敗した
@@ -404,7 +404,7 @@ functions:
       1. 移し替えられるワークスペースかを確かめる（`require_migratable`）
       2. ファイルごとに YAML を読み、キーのパスを `.` で辿って値を置く（途中の辞書が無ければ作る）
       3. 書き換えたファイルを一時ファイルに書いてから置き換える（`dump_yaml`・`write_temp`・`os.replace`）
-         - `OSError` の場合、一時ファイルを削除して `WriteFailedError` を送信する
+         - `OSError` の場合、一時ファイルを削除して `WriteFailedError` を送出する
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`config.yaml` も `mindmap.yaml` も無い'
@@ -420,7 +420,7 @@ functions:
       - name: test_set_values_when_write_fails
         case: 異常
         summary: 置き換えられなければ送信する
-        condition: '`os.replace` を `OSError` を送信する関数に差し替える'
+        condition: '`os.replace` を `OSError` を送出する関数に差し替える'
         mock: '`os.replace`（`migrator` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`config.yaml` が呼ぶ前と同じで `.tmp` のファイルが無い'
         exception: 置き換えで OSError
@@ -448,9 +448,9 @@ functions:
       type: Version
       description: 書いたバージョン
     process: |-
-      1. ワークスペースのバージョンが `to` より新しければ `WorkspaceNewerError` を送信する
+      1. ワークスペースのバージョンが `to` より新しければ `WorkspaceNewerError` を送出する
       2. ワークスペースを読み、検証する（`load_workspace`・`validate_workspace`）
-         - 問題がある場合、`SchemaMismatchError` を送信する（`build_mismatch_error`。バージョンのファイルを書かない）
+         - 問題がある場合、`SchemaMismatchError` を送出する（`build_mismatch_error`。バージョンのファイルを書かない）
       3. バージョンと、そのバージョンのフォルダの手順の数（`count_steps`）を書く（`write_workspace_version` の `applied`）
     exceptions:
       - name: WorkspaceNewerError
@@ -501,7 +501,7 @@ functions:
       description: あれば何も返さない
     process: |-
       1. `records_root(root) / SETTINGS_FILE`、`root / SETTINGS_FILE`、`root / LEGACY_SETTINGS_FILE` のどれかがファイルなら戻る
-      2. どれも無ければ `WorkspaceNotFoundError` を送信する
+      2. どれも無ければ `WorkspaceNotFoundError` を送出する
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`.mindstella/config.yaml` も、直下の `config.yaml`・`mindmap.yaml` も無い'

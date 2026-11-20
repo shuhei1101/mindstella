@@ -5,7 +5,7 @@ test_file: tests/e2e/単一ユースケース/test_workspace_settings_update.py
 primary_actor: 外部のアプリ（aituber など）
 stakeholders:
   - name: 外部のアプリ
-    interest: 作った後のワークスペースの進め方の文書・追加の MCP・プラグインを指定し修正し、反映する時期を自分で決められる。作成の応答が追加の MCP・プラグインを記録しなかったと示したときに指定し修正できる
+    interest: 作った後のワークスペースの進め方の文書・追加の MCP・プラグインを再指定し、反映する時期を自分で決められる。作成の応答が追加の MCP・プラグインを記録しなかったと示したときに再指定できる
   - name: 利用者
     interest: 話し合いの途中で MindStella のセッションが書き換えで止まらず、読めない指定で今の設定が壊れない
 trigger: 外部のアプリが MindStella の API に、ワークスペースの設定の書き換え（`PATCH /workspaces/{id}`）を依頼する
@@ -212,7 +212,7 @@ scenarios:
         WSM->>WSM: プラグインのフォルダを読めるか確認する
         WSM->>WSM: 状態のフォルダのプラグインだけを書き換え、追加の MCP の記録は残す
         API-->>APP: 書き換えた後の設定
-        APP->>API: 再度開くことを依頼する（POST /workspaces/{id}/reopen）
+        APP->>API: 再オープンを依頼する（POST /workspaces/{id}/reopen）
         API-->>APP: 再度開いた
         APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
         API->>MGR: 作成を依頼する

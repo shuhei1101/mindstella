@@ -58,7 +58,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
       - name: make_workspace
-        description: 検討事項 D-1 を追加して `commit`（説明「追加」）し、D-1 の `answer` を修正して変更の検知が変更履歴を積んだワークスペース
+        description: 検討事項 D-1 を追加して `commit`（説明「足す」）し、D-1 の `answer` を修正して変更の検知が変更履歴を積んだワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -73,7 +73,7 @@ flows:
     expected:
       - ステータスが 200
       - '`decisions` の D-1 が `history` を 1 回分持ち、`history.yaml` の D-1 の行と同じ'
-      - '`changes.sets` が「追加」の 1 つで、`added` が `[D-1]`'
+      - '`changes.sets` が「足す」の 1 つで、`added` が `[D-1]`'
       - '`changes.pending.changed` が `[D-1]`'
     test: test_normal_when_history
   - name: 異常系（YAML がスキーマに合わない・422）
@@ -173,7 +173,7 @@ flows:
       - '`mdmark_ref` が `0123456789abcdef0123456789abcdef01234567`'
       - '`settings.mdmark.version` が `latest` のまま'
     test: test_normal_when_mdmark_ref
-lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの知らせを受けたときに読む。
+lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの通知を受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
 callers:

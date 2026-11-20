@@ -161,7 +161,7 @@ flows:
         description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
       - name: summary
         description: 一言の説明
-        notes: '`重複した N-2 を削除する`'
+        notes: '`重複した N-2 を消す`'
     flow: |-
       ```mermaid
       sequenceDiagram

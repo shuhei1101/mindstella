@@ -11,7 +11,7 @@ flows:
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
       - name: make_workspace
         description: '未決定の検討事項 D-1（案 A・B、タグ `{name: 画面}`）を持ち、まだまとめていない変更が無いワークスペース'
-        notes: '保存待ちの編集は E-1（`answer`）・E-2（`tags` を `[{name: 画面}, {name: 記録の構造, main: true}]`）・E-3（案 C の追加）・E-4（採用する案を C）'
+        notes: '保存待ちの編集は E-1（`answer`）・E-2（`tags` を `[{name: 画面}, {name: 記録の形, main: true}]`）・E-3（案 C の追加）・E-4（採用する案を C）'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -292,7 +292,7 @@ constraints:
   - item: 書き込む順と戻し方
     constraint: 項目の YAML・本文・`config.yaml` → `history.yaml` → `changes.yaml` → `edits.yaml`（編集を空にし、`seq`・`new_seq` はそのまま）の順に書く。途中で書けなければ、書いたファイルを前の中身に書き戻して（前に無かったファイルは削除して） 500 を返す
   - item: 書き換えの通知
-    constraint: 書いた後、今の書き換えの知らせ（『書き換えの通知』）で開いている画面へ知らせる
+    constraint: 書いた後、今の書き換えの通知（『書き換えの通知』）で開いている画面へ知らせる
   - item: 送信元の確認
     constraint: 『コメントをまとめて送信する』と同じ
   - item: 同時の書き込み

@@ -228,7 +228,7 @@ functions:
       - name: test_send_webhook_when_unreachable
         case: 正常
         summary: 接続できない・上限を過ぎたときは偽で例外を出さない
-        condition: '`parametrize`: `URLError` / `TimeoutError` を送信する偽の `opener`。`caplog`'
+        condition: '`parametrize`: `URLError` / `TimeoutError` を送出する偽の `opener`。`caplog`'
         mock: '`opener`'
         expected: 偽。記録に URL を含まない
   - name: mark_written

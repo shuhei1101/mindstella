@@ -21,7 +21,7 @@ functions:
       type: list[str]
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
-      1. `yaml.safe_load` で `.mindstella/config.yaml` を読む。一番上が辞書でなければ `config.yaml の構造が崩れています` の `ValueError` を送信する
+      1. `yaml.safe_load` で `.mindstella/config.yaml` を読む。一番上が辞書でなければ `config.yaml の形が崩れています` の `ValueError` を送出する
       2. `.mindstella/` の種類ごとの YAML（`KINDS` のファイル）と `threads.yaml` を読めるものだけ読み、`items` の各要素の `tags` のうち空でない文字列を集める（無いファイル・構造の合わない要素は飛ばす）
       3. 今の `tags` に無い名前だけを `{name}` で追加し、全体を名前の順に並べる（今の要素の `summary` は残す）
          - 追加する名前が無く、並びも変わらない場合（タグを使っていない、または既に当てた）、何も書かず空を返す

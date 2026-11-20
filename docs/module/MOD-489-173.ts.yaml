@@ -92,7 +92,7 @@ data_models:
         description: 文字が変わったノード・辺の要素
       - name: removed
         type: string[]
-        description: 前にだけあるノード・辺の文字（「削除したもの」に並べる）
+        description: 前にだけあるノード・辺の文字（「消したもの」に並べる）
   - name: RemovedItem
     title: 削除した項目
     container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
@@ -499,9 +499,9 @@ functions:
       - name: test_diff_diagram_from_source_when_removed_label_marked
         case: 正常
         summary: 削除したノードの名前は、画面に出る文字にそろえる
-        condition: Markdown のラベル（`` "`**削除する** 方`" ``）と `<br>` のラベルのノードを削除した前後
+        condition: Markdown のラベル（`` "`**消す** 方`" ``）と `<br>` のラベルのノードを削除した前後
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '`removed` が `削除する 方` と `<br>` を空白にした文字'
+        expected: '`removed` が `消す 方` と `<br>` を空白にした文字'
       - name: test_diff_diagram_from_source_when_type_not_flowchart
         case: 正常
         summary: flowchart でない種類は null
@@ -542,7 +542,7 @@ functions:
       type: RemovedItem[]
       description: その種類の削除した項目。`point` が `null` のときは空
     process: |-
-      1. `point.removed` のうち、`REMOVED_KIND_TAB[削除した項目の kind]` が引数の `kind` と等しいものを取り出す
+      1. `point.removed` のうち、`REMOVED_KIND_TAB[消した項目の kind]` が引数の `kind` と等しいものを取り出す
       2. `compareIds` で ID の順に並べる
     unit_tests:
       - name: test_removed_of

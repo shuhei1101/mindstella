@@ -84,7 +84,7 @@ functions:
         summary: 持たない・断られたときは何もしない
         condition: '`parametrize`: `navigator.wakeLock` が無い / `request` が `NotAllowedError` で断る'
         mock: '`vi.stubGlobal`'
-        expected: 例外を送出しず、返った関数を呼んでも何も起きない
+        expected: 例外を送出せず、返った関数を呼んでも何も起きない
     container: frontend/src/shared/core/voice.ts
   - name: micSupported
     title: マイクを使えるか

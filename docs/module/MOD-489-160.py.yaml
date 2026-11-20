@@ -21,7 +21,7 @@ constants:
     title: ロックを試す間隔
     container: plugins/mindstella/skills/mindmap/scripts/reset_unread.py
     usecase: スレッドで話す
-    summary: 取れなかったロックを再試行する間隔の秒数（上限の中で 40 回試せ、待ちが会話の始まりに感じられない長さ）
+    summary: 取れなかったロックを再試する間隔の秒数（上限の中で 40 回試せ、待ちが会話の始まりに感じられない長さ）
     value: '0.05'
 functions:
   - name: find_workspaces

@@ -111,7 +111,7 @@ constraints:
   - item: 起動中の MindStella のセッション
     constraint: 何もしない。反映は外部のアプリが依頼する『MindStella のセッションの再起動』か、次の『MindStella のセッションの作成』で行う（起動のたびに `config.yaml` の `flow` と `launch.json` を読む。D-324）
   - item: 同時の依頼
-    constraint: ワークスペースごとの鍵を、ID の一覧の確かめから `launch.json` を書き終えるまで持つ（『MindStella のセッションの作成』『MindStella のセッションの再起動』『ワークスペースのクローズ』『ワークスペースの再度開くこと』『ワークスペースの削除』と同じ鍵）。`config.yaml` の書き込みは、MCP のツールと同じくワークスペースのロックファイルも取る
+    constraint: ワークスペースごとの鍵を、ID の一覧の確かめから `launch.json` を書き終えるまで持つ（『MindStella のセッションの作成』『MindStella のセッションの再起動』『ワークスペースのクローズ』『ワークスペースの再オープン』『ワークスペースの削除』と同じ鍵）。`config.yaml` の書き込みは、MCP のツールと同じくワークスペースのロックファイルも取る
   - item: MCP のツール
     constraint: '`update_workspace` は `workspace_id`・`settings`・`flow`・`mcp_config`・`plugin_dirs`・`remove_flow`（真偽。既定は偽）を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す。エラーは `エラー: {detail}`（『MCP サーバーの起動』のエラーの構造）。MCP の SDK は省いた引数に既定値を入れて渡すため、ツールは `null` の引数を指定しなかったものとして本文に入れず、進め方の文書を外すときは `remove_flow: true` を本文の `flow: null` にする。`remove_flow` と `flow` を同時に指定すると引数の誤り（本文の 400 と同じ `stage: body`）'
 flows:

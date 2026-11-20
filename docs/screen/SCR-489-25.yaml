@@ -16,7 +16,7 @@ elements:
       - name: connection
         value: 概要と同じ
       - name: duplicateIds
-        value: 書き換えの知らせの duplicate_ids の ID と、記録の取得の項目の種類の名前（閉じた後は、集まりが変わるまで []）
+        value: 書き換えの通知の duplicate_ids の ID と、記録の取得の項目の種類の名前（閉じた後は、集まりが変わるまで []）
       - name: read_at
         value: 概要と同じ
       - name: diffPoint
@@ -24,7 +24,7 @@ elements:
       - name: comments
         value: サーバーの配信では true、配る書き出しでは false
       - name: comment_count
-        value: レビュー中のコメントの読み取り.items の件数（溜める・削除する・元に戻す・まとめて送信の後に再描画する）
+        value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
       - name: comments_open
         value: コメントの一覧を開いているか
       - name: settings_open
@@ -48,7 +48,7 @@ elements:
       - name: voice
         value: 画面で 1 つの音声入力の状態（SPAを開く・プレビューを開く.音声の入力）。録音・文字起こし中だけ渡し、`label` は録音を始めた入力欄の名前。配る書き出しでは渡さない
       - name: voiceNotice
-        value: 録音を破棄した（行き先の項目・スレッドが記録から無くなった）か、入力欄が画面に無い間に文字起こし・レビュー中への追加・送信が失敗したときの理由。× か「入力欄を開く」で削除する
+        value: 録音を破棄した（行き先の項目・スレッドが記録から無くなった）か、入力欄が画面に無い間に文字起こし・レビュー中への追加・送信が失敗したときの理由。× か「入力欄を開く」で消す
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 表
@@ -58,13 +58,13 @@ elements:
       - name: kind
         value: プレビューを開く.tab
       - name: columns
-        value: '調査: ID・タイトル・質問・結論・タグ（絞れる） / 用語集: ID・用語・意味・別名・使わない表記・タグ（絞れる） / メモ: ID・タイトル・内容・タグ（絞れる）・関連 / 会話ログ: ID・日付・タイトル・更新した項目・タグ（絞れる）'
+        value: '調査: ID・タイトル・問い・結論・タグ（絞れる） / 用語集: ID・用語・意味・別名・使わない表記・タグ（絞れる） / メモ: ID・タイトル・内容・タグ（絞れる）・関連 / 会話ログ: ID・日付・タイトル・更新した項目・タグ（絞れる）'
       - name: rows
         value: プレビューを開く.mindmap-data.{research・terms・notes・logs}
       - name: filters
         value: 絞り込みのドロワーの selected
       - name: marks
-        value: 差分の表示の間、選んだ時点で追加した・変えた項目（記録の取得.changes）
+        value: 差分の表示の間、選んだ時点で足した・変えた項目（記録の取得.changes）
       - name: comments
         value: サーバーにつながって開いたとき、項目の ID → その項目を指すレビュー中のコメントの件数（レビュー中のコメントの読み取り.items[].target）
     description: その種類の表。表示形式の切り替えは出さない。表の上に、値の条件と列の文字の条件（`{列}に「{文字}」を含む`）のチップを並べる。列の見出しには絞り込みのボタンを置かない。取り下げた項目（`withdrawn` が真）の行は、差分の表示によらずタイトルの右に取り下げの札を置き、行の文字を薄くする（部品設計『表』の `rows`）
@@ -91,14 +91,14 @@ elements:
     kind: region
     description: トップバーとタブの帯の下の、窓の高さに収めた領域。ページ全体は縦にも横にもスクロールさせず、トップバーとタブの帯は常に見えたままにする。表は幅 721px 以上でこの領域の高さいっぱいに広げ、中で縦・横にスクロールする。それより狭い幅では、この領域ごと縦にスクロールする
     visible_when: 常時
-  - name: 削除した項目の帯
+  - name: 消した項目の帯
     kind: list
     component: CMP-489-43#
     args:
       - name: items
-        value: 選んだ時点で削除した項目（記録の取得.changes の removed）のうち、種類がこの画面の種類（research・term・note・log）のものの id・title を ID の順に並べたもの。合わせた範囲で追加して削除した項目も含む
+        value: 選んだ時点で消した項目（記録の取得.changes の removed）のうち、種類がこの画面の種類（research・term・note・log）のものの id・title を ID の順に並べたもの。合わせた範囲で足して消した項目も含む
     position: 表の上
-    description: 選んだ時点で削除したその種類の項目を並べる。絞り込みの条件によらず全て出す。項目は押せず、詳細パネルを開かない
+    description: 選んだ時点で消したその種類の項目を並べる。絞り込みの条件によらず全て出す。項目は押せず、詳細パネルを開かない
     io: 表示
     source: 記録の取得.changes
     visible_when: 差分の表示の間で、選んだ時点でその種類の項目を 1 件以上消したとき
@@ -106,14 +106,14 @@ elements:
   - name: 項目を追加
     kind: button
     position: 表の上の帯 > 列の表示の左
-    description: 開いているタブの種類（調査・用語集・メモ・会話ログ）の項目を追加する入力を、詳細パネルと同じ置き方で開く（開いていた詳細パネルは閉じる）。タイトルを書いて入力欄を離れたときに `item-add` を 1 件溜め、残りのキーは、返った仮の ID で同じ `item-add` の `value` を書き換えて溜める（1 件のまま）。幅 480px 以下は「＋」のマーカーだけにし、文字を読み上げに残す
+    description: 開いているタブの種類（調査・用語集・メモ・会話ログ）の項目を追加する入力を、詳細パネルと同じ置き方で開く（開いていた詳細パネルは閉じる）。タイトルを書いて入力欄を離れたときに `item-add` を 1 件溜め、残りのキーは、返った仮の ID で同じ `item-add` の `value` を書き換えて溜める（1 件のまま）。幅 480px 以下は「＋」の印だけにし、文字を読み上げに残す
     label: 項目を追加
     visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
     action_ref: SCR-489-31#elements[編集の表示]
     status: planned
     introduced:
       pr: 325
-  - name: 一覧の保存待ちのマーカー
+  - name: 一覧の保存待ちの印
     kind: label
     component: CMP-489-21#
     args:
@@ -121,8 +121,8 @@ elements:
         value: その項目の削除を溜めていれば remove、直前の保存で書き込めなかった編集を持てば blocked、それ以外は pending
       - name: compact
         value: 'false'
-    position: 表の行のタイトルの後ろ（レビュー中のコメントのマーカーの左）
-    description: 保存待ちの編集がある項目にマーカーを付け、削除を溜めた項目はタイトルに取り消し線を引く。保存待ちが変わるたびに再設定する
+    position: 表の行のタイトルの後ろ（レビュー中のコメントの印の左）
+    description: 保存待ちの編集がある項目に印を付け、削除を溜めた項目はタイトルに取り消し線を引く。保存待ちが変わるたびに付け直す
     io: 表示
     visible_when: その項目に保存待ちの編集が 1 件以上あり、差分の表示をしていない
     source: 保存待ちの編集の読み取り.items（target がその項目のもの）
@@ -132,7 +132,7 @@ elements:
   - name: 追加する項目
     kind: list
     position: 表の先頭
-    description: 溜めた `item-add` の項目を、表の先頭の行に出す。ID は保存で決まるため出さず、ID の列に「—」を置き、タイトルが空なら「（タイトル未入力）」と出す。保存待ちのマーカー（直前の保存で書き込めなかったときは blocked、それ以外は pending）を付け、押すと追加する入力を再度開く
+    description: 溜めた `item-add` の項目を、表の先頭の行に出す。ID は保存で決まるため出さず、ID の列に「—」を置き、タイトルが空なら「（タイトル未入力）」と出す。保存待ちの印（直前の保存で書き込めなかったときは blocked、それ以外は pending）を付け、押すと追加する入力を開き直す
     io: 表示
     visible_when: 開いているタブの種類の `item-add` が保存待ちにあり、差分の表示をしていない
     source: 保存待ちの編集の読み取り.items（op が item-add で key が開いているタブの種類）
@@ -144,5 +144,5 @@ lead: 調査・用語集・メモ・会話ログを表だけで見る画面。�
 mock: docs/mock/pages/records/223/a-above-table/index.html
 test_file: tests/integration/preview/test_records_screen.py
 notes:
-  コメントのマーカーのモック: コメントのマーカーの見本は `docs/mock/pages/records/121/standard/index.html`
-  削除した項目と取り下げのモック: 削除した項目の帯と取り下げの札の見本は `docs/mock/pages/records/179/b-band/index.html`
+  コメントの印のモック: コメントの印の見本は `docs/mock/pages/records/121/standard/index.html`
+  消した項目と取り下げのモック: 消した項目の帯と取り下げの札の見本は `docs/mock/pages/records/179/b-band/index.html`

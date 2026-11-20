@@ -57,7 +57,7 @@ scenarios:
         RS-->>CC: 登録済みの alias と環境変数
         CC->>RS: 変える環境変数だけを渡して登録する
         RS->>SH: 登録の範囲を書き直す
-        CC-->>U: 常駐サーバーを立ち再起動すると新しい値が効くことを案内する
+        CC-->>U: 常駐サーバーを再起動すると新しい値が効くことを案内する
       ```
     expected:
       - 新しく開いた bash で `MINDSTELLA_ALLOWED_HOSTS` が `b.example.com`、`MINDSTELLA_VENV` が `~/venvs/mindstella` のまま

@@ -1,12 +1,12 @@
 id: MOD-489-169
 title: サーバー / 配信 / serve.py
-lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送信する・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送信するを受け付ける。まとめて送信した後とすぐ送信した後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。
+lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの通知を返し、レビュー中のコメント・書きかけ・まとめて送信する・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送信するを受け付ける。まとめて送信した後とすぐ送信した後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。
 test_files:
   - tests/unit/scripts/test_serve.py
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    serve.py   配信の台帳・待ち受け・要求の振り分け・画面と記録・書き換えの知らせ・コメントの受け付け・最後に検査に通った設定と再読み込み・文字起こしの受け付け
+    serve.py   配信の台帳・待ち受け・要求の振り分け・画面と記録・書き換えの通知・コメントの受け付け・最後に検査に通った設定と再読み込み・文字起こしの受け付け
   ```
 diagrams:
   - name: 全体
@@ -159,7 +159,7 @@ classes:
         process: |-
           1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない・フックを呼ばない）
           2. `config.yaml` を検査する（設定の検査。`check_settings`）
-             - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送信する（配信を立てない）
+             - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送出する（配信を立てない）
           3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` と `_input_targets` と `_transcriber` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
           4. そのワークスペースの変更の検知を始める（『変更の検知』の `ChangeDetector.start`。書き換えの鍵と入力の宛先を渡す）
              - `[INFO]` 配信を立てた（ワークスペース、URL）
@@ -175,7 +175,7 @@ classes:
           - name: test_start_when_settings_invalid
             case: 異常
             summary: config.yaml が合わなければ配信を立てず、修正すれば立てる
-            condition: '`display.visible_kinds` を `[rainbow]` にしたワークスペースで 2 回 `start` し、`[decisions]` に修正してもう 1 回 `start` する'
+            condition: '`display.visible_kinds` を `[rainbow]` にしたワークスペースで 2 回 `start` し、`[decisions]` に変更してもう 1 回 `start` する'
             mock: なし（本物の待ち受け。後で `stop_all`）
             expected: '1・2 回目は `SchemaMismatchError`（`lines` に `config.yaml: display.visible_kinds` で始まる行）で台帳が空。3 回目は `(url, True)`'
           - name: test_start_when_port_fixed
@@ -358,7 +358,7 @@ classes:
         returns:
           type: None
           description: '-'
-        process: 1. `httpd.shutdown()` と `httpd.server_close()` を呼ぶ（つながっている書き換えの知らせは、書き込みが失敗して終わる）
+        process: 1. `httpd.shutdown()` と `httpd.server_close()` を呼ぶ（つながっている書き換えの通知は、書き込みが失敗して終わる）
   - name: PreviewHandler
     title: 要求のハンドラー
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -440,7 +440,7 @@ classes:
       - name: do_PUT
         title: PUT の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/api/drafts` を書きかけを保つ受け付けへ、`/api/config/display` を設定の既定の書き換えへ、`/api/items/{id}/confirmed` を確認済みの付け外しへ渡す'
+        summary: '`Host` を確かめ、`/api/drafts` を書きかけを保つ受け付けへ、`/api/config/display` を設定の既定の書き換えへ、`/api/items/{id}/confirmed` を確認済みの設定と解除へ渡す'
         returns:
           type: None
           description: '-'
@@ -705,8 +705,8 @@ constants:
   - name: ITEMS_PATH
     title: 項目のパス
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
-    usecase: 確認済みの付け外し
-    summary: PUT `/api/items/{id}/confirmed`（確認済みの付け外し）の頭
+    usecase: 確認済みの設定と解除
+    summary: PUT `/api/items/{id}/confirmed`（確認済みの設定と解除）の頭
     value: '"/api/items"'
 functions:
   - name: start_preview_server
@@ -716,7 +716,7 @@ functions:
     usecase: プレビューを開く
     scope: public
     summary: '`LISTEN_HOST` の渡したポート（0 なら空きポート）で待ち受け、デーモンのスレッドで動かし始める'
-    side_effects: ソケットを開き、スレッドを立てる
+    side_effects: ソケットを開き、スレッドの作成
     args:
       - name: root
         type: Path
@@ -762,7 +762,7 @@ functions:
       description: 立てた配信
     process: |-
       1. `ThreadingHTTPServer((LISTEN_HOST, port), PreviewHandler)` を作り、`daemon_threads` を真にする
-         - `OSError` が起きた場合、`ServeFailedError` を送信する
+         - `OSError` が起きた場合、`ServeFailedError` を送出する
       2. 割り当てられたポート・`SettingsHolder(settings)`・`allowed_hosts`・`input_targets`・`transcriber` で `ServeContext` を作り、待ち受けの `context` に持たせる
       3. `serve_forever` をデーモンのスレッドで動かし、`http://127.0.0.1:{ポート}{PAGE_PATH}` とポートを持つ `PreviewServer` を返す
     exceptions:
@@ -779,7 +779,7 @@ functions:
       - name: test_start_preview_server_when_bind_fails
         case: 異常
         summary: 待ち受けを立てられなければ ServeFailedError
-        condition: '`ThreadingHTTPServer` を `OSError` を送信する関数に差し替える'
+        condition: '`ThreadingHTTPServer` を `OSError` を送出する関数に差し替える'
         mock: '`ThreadingHTTPServer`（`serve` モジュールの参照を monkeypatch）'
         expected: '`ServeFailedError`'
         exception: 待ち受けを立てられない
@@ -994,7 +994,7 @@ functions:
       - name: test_records_response_when_workspace_removed
         case: 正常
         summary: config.yaml が無くなったら 422
-        condition: '`read` が `WorkspaceNotFoundError` を送信する'
+        condition: '`read` が `WorkspaceNotFoundError` を送出する'
         mock: '`read`'
         expected: '422'
       - name: test_records_response_when_settings_changed
@@ -1048,7 +1048,7 @@ functions:
         mock: なし
         expected: 追加する前と後でマーカーが違う
   - name: stream_events
-    title: 書き換えの知らせ
+    title: 書き換えの通知
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
@@ -1086,26 +1086,26 @@ functions:
         description: 書き換えのマーカーを作る関数
     returns:
       type: None
-      description: '`write` が `BrokenPipeError`・`ConnectionResetError` を送信したら戻る'
+      description: '`write` が `BrokenPipeError`・`ConnectionResetError` を送出したら戻る'
     process: |-
       1. 今のマーカーを控え、最後に書いた時刻を今にする
       2. つながっている間、繰り返す
          - `POLL_INTERVAL_SEC` 待ち、マーカーを再作成する
-         - マーカーが前と違う場合、`event: changed` と `data: {マーカー}` の知らせを書き、控えと時刻を更める
+         - マーカーが前と違う場合、`event: changed` と `data: {印}` の知らせを書き、控えと時刻を更める
          - 変更の検知の重なった ID の集まりが前に書いたものと違う場合（『変更の検知』の `ChangeDetector.duplicate_ids`）、`event: duplicate_ids` と `data: {ID の JSON の配列}` を書く
          - そうでなく、最後に書いてから `KEEPALIVE_SEC` 以上経った場合、`: keepalive` を書く
-      3. `write` が `BrokenPipeError`・`ConnectionResetError` を送信したら戻る（画面が閉じた）
+      3. `write` が `BrokenPipeError`・`ConnectionResetError` を送出したら戻る（画面が閉じた）
     unit_tests:
       - name: test_stream_events
         case: 正常
         summary: マーカーが変わったときだけ changed を書く
-        condition: '`signature` が `a` → `a` → `b` → `b` → `c` を返し、2 回目の `write`（`c` への `changed`）が `BrokenPipeError` を送信する。`sleep` は待たない。`clock` は 0.25 ずつ進む'
+        condition: '`signature` が `a` → `a` → `b` → `b` → `c` を返し、2 回目の `write`（`c` への `changed`）が `BrokenPipeError` を送出する。`sleep` は待たない。`clock` は 0.25 ずつ進む'
         mock: '`signature`・`sleep`・`clock`・`write`'
         expected: '書いたものが `event: changed\ndata: b\n\n` の 1 つだけで、戻る'
       - name: test_stream_events_when_idle
         case: 正常
         summary: 変わらないまま 15 秒経つと保つための行を書く
-        condition: '`signature` は常に `a`。`clock` は 1 回ごとに 5 秒進む。2 回目の `write` が `ConnectionResetError` を送信する'
+        condition: '`signature` は常に `a`。`clock` は 1 回ごとに 5 秒進む。2 回目の `write` が `ConnectionResetError` を送出する'
         mock: '`signature`・`sleep`・`clock`・`write`'
         expected: '1 回目に書いたものが `: keepalive\n\n` で、戻る'
   - name: comments_response
@@ -1184,7 +1184,7 @@ functions:
         required: false
         default: None
         passing: keyword
-        description: 書き換えの鍵を外した後、`handle` が返した本文を受けて応答の本文を返す処理（まとめて送信の Claude Code への入力）。`handle` が `MindmapError` を送信したときは呼ばない
+        description: 書き換えの鍵を外した後、`handle` が返した本文を受けて応答の本文を返す処理（まとめて送信の Claude Code への入力）。`handle` が `MindmapError` を送出したときは呼ばない
     returns:
       type: Response
       description: 成功の応答か、問題の応答
@@ -1213,7 +1213,7 @@ functions:
       - name: test_write_response_when_after
         case: 正常
         summary: 鍵を外した後に after を呼び、その結果を返す
-        condition: '`handle` は `{"ok": true}` を返す。`after` は呼ばれたときに書き換えの鍵が取れるか（`write_lock.acquire(blocking=False)`）を控え、`{**body, "entered": true}` を返す。`parametrize`: `handle` が成功 / `handle` が `CommentConflictError` を送信する'
+        condition: '`handle` は `{"ok": true}` を返す。`after` は呼ばれたときに書き換えの鍵が取れるか（`write_lock.acquire(blocking=False)`）を控え、`{**body, "entered": true}` を返す。`parametrize`: `handle` が成功 / `handle` が `CommentConflictError` を送出する'
         mock: '`handle`・`after`'
         expected: '前者は 201 で本文 `{"ok": true, "entered": true}`、`after` の中で鍵が取れた。後者は 409 で `after` が呼ばれない'
       - name: test_write_response_when_status_returned
@@ -1272,7 +1272,7 @@ functions:
         type: MindmapError
         required: true
         passing: positional
-        description: 処理が送信した例外
+        description: 処理が送出した例外
     returns:
       type: Response
       description: 問題の応答
@@ -1345,7 +1345,7 @@ functions:
       - name: test_opened_response_when_write_fails
         case: 異常
         summary: 書けなければ 500
-        condition: '`touch_opened` を `WriteFailedError` を送信する関数に差し替える'
+        condition: '`touch_opened` を `WriteFailedError` を送出する関数に差し替える'
         mock: '`touch_opened`（`serve` モジュールの参照を monkeypatch）'
         expected: ステータスが 500、`Content-Type` が `application/problem+json`
         exception: 書き込めない
@@ -1375,7 +1375,7 @@ functions:
       2. `config.yaml` を検査する（`check_settings`。書き換えの鍵は取らない）
          - `WorkspaceNotFoundError` の場合、422 を返す（`error_response`）
          - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を改行でつないだ `detail` の 422 を返す（最後に通った設定はそのまま）
-      3. 読んだ設定に差し替えて回数を進め（`SettingsHolder.reload`。書き換えのマーカーが変わり、書き換えの知らせが届く）、200 で `{settings}` を返す
+      3. 読んだ設定に差し替えて回数を進め（`SettingsHolder.reload`。書き換えのマーカーが変わり、書き換えの通知が届く）、200 で `{settings}` を返す
     unit_tests:
       - name: test_reload_response
         case: 正常
@@ -1731,7 +1731,7 @@ functions:
       1. `Origin` が合わなければ 403 を返す（`check_origin`）
       2. 書き換えの鍵を取って（`workspace_lock`）`save_edits` を呼ぶ
          - `MindmapError` の場合、`error_response` の応答を返す
-      3. 200 で本文を返す（書き換えの知らせは `stream_events` が書き換えのマーカーの変化で送信する）
+      3. 200 で本文を返す（書き換えの通知は `stream_events` が書き換えのマーカーの変化で送信する）
     unit_tests:
       - name: test_edits_save_response
         case: 正常
@@ -1835,7 +1835,7 @@ functions:
       - name: test_transcription_response_when_unavailable
         case: 正常
         summary: 使えないときも 200 で理由を返し、設定が無ければ既定
-        condition: '`transcription` を持たないワークスペース。`presets()` が `TranscriberStoppedError` を送信する偽の実装'
+        condition: '`transcription` を持たないワークスペース。`presets()` が `TranscriberStoppedError` を送出する偽の実装'
         mock: 偽の実装
         expected: '200 で `available: false`・`reason: stopped`・`presets: []`・`action: review`・`preset: null`。本文に `voice-paste` を含まない'
       - name: test_transcription_response_when_rejected
@@ -1905,7 +1905,7 @@ functions:
       - name: test_transcribe_response_when_transcriber_failed
         case: 異常
         summary: 文字起こしの失敗の種類をステータスに分ける
-        condition: '`parametrize`: `transcribe` が `TranscriberStoppedError` / `TranscriberUnsupportedError` / `TranscriptionFailedError("busy")` / `TranscriptionTimeoutError` を送信する / `context.transcriber` が `None`'
+        condition: '`parametrize`: `transcribe` が `TranscriberStoppedError` / `TranscriberUnsupportedError` / `TranscriptionFailedError("busy")` / `TranscriptionTimeoutError` を送出する / `context.transcriber` が `None`'
         mock: 偽の実装
         expected: '503・`reason: stopped` / 503・`reason: unsupported` / 502（`detail` が `FAILED_DETAIL` で `busy` を含まない）/ 504 / 503・`reason: stopped`'
         exception: 文字起こしの失敗

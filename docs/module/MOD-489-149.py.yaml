@@ -190,7 +190,7 @@ functions:
     process: |-
       1. ファイルが無ければ空を返す
       2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`THREADS_SCHEMA` と突き合わせる
-         - 読めないか合わない場合、合わない箇所ごとの `threads.yaml: {キーのパス}: {理由}` を持った `SchemaMismatchError` を送信する
+         - 読めないか合わない場合、合わない箇所ごとの `threads.yaml: {キーのパス}: {理由}` を持った `SchemaMismatchError` を送出する
       3. `items` の要素を `Thread`（`posts` は `Post`、`events` は `ThreadEvent`）にして返す
     exceptions:
       - name: SchemaMismatchError
@@ -239,7 +239,7 @@ functions:
       description: '-'
     process: |-
       1. `{"items": [...]}` を `dump_yaml` し、一時ファイルに書いて（`write_temp`）`os.replace` で置き換える。`None` の `target`・`loc`・`comment` と、AI の書き込みの `taken` はキーを書かない。`summary`・`reason` と利用者の書き込みの `taken` は `None` を `null` で書く
-         - `OSError` の場合、一時ファイルを削除して `WriteFailedError` を送信する（前の `threads.yaml` は残る）
+         - `OSError` の場合、一時ファイルを削除して `WriteFailedError` を送出する（前の `threads.yaml` は残る）
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
@@ -254,7 +254,7 @@ functions:
       - name: test_write_threads_when_write_fails
         case: 異常
         summary: 置き換えに失敗したら前のスレッドを残す
-        condition: TH-1 を持つワークスペース。`os.replace` を `OSError` を送信する関数に差し替える
+        condition: TH-1 を持つワークスペース。`os.replace` を `OSError` を送出する関数に差し替える
         mock: '`os.replace`（`threads` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`threads.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: 置き換えで OSError
@@ -322,7 +322,7 @@ functions:
       type: list[dict[str, Any]]
       description: '`{id, status, tags, summary, head, target, target_title, last_author, last_at, posts, unread, awaiting}` の行'
     process: |-
-      1. スレッドを読む（`load_threads`）
+      1. スレッドの取得（`load_threads`）
       2. 渡した条件を全て満たすものを残す（`status` が `None` なら `awaiting` で決めた状態。取り込み待ちは `awaiting_posts` が 1 件以上）
       3. 最後の書き込みの日時の新しい順、同じ日時は ID の連番の大きい順に並べる
       4. 行にする。`head` は最初の書き込みの本文の改行を空白にした先頭 `HEAD_CHARS` 文字、`target_title` は `target` の項目の `title`（`target` が `None` か項目が無ければ `None`。`find_item` の `ItemNotFoundError` は `None` にする）、`posts`・`unread`・`awaiting` は件数
@@ -355,7 +355,7 @@ functions:
         mock: なし
         expected: '`[TH-10, TH-2]` / `[]` / `target` が D-9 で `target_title` が `None`'
   - name: view_thread
-    title: スレッドを読む構造
+    title: スレッドの取得構造
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/threads.py
     usecase: スレッドで話す
@@ -396,9 +396,9 @@ functions:
       - name: test_view_thread_when_target
         case: 正常
         summary: 向けた項目のタイトルを、その種類の YAML だけから引く
-        condition: '`target` が D-1 の TH-1。`parametrize`: タイトル `質問` の D-1 を持つ `decisions.yaml` / D-1 を持たない `decisions.yaml` / YAML として読み込めない `docs.yaml` を並べ、タイトル `質問` の D-1 を持つ `decisions.yaml`'
+        condition: '`target` が D-1 の TH-1。`parametrize`: タイトル `問い` の D-1 を持つ `decisions.yaml` / D-1 を持たない `decisions.yaml` / YAML として読み込めない `docs.yaml` を並べ、タイトル `問い` の D-1 を持つ `decisions.yaml`'
         mock: なし
-        expected: '`target_title` が `質問` / `None` / `質問`'
+        expected: '`target_title` が `問い` / `None` / `問い`'
       - name: test_view_thread
         case: 正常
         summary: 未読だけか全部かを選ぶ
@@ -461,10 +461,10 @@ functions:
         mock: なし
         expected: '`threads.yaml` の更新日時が呼ぶ前と同じ'
   - name: create_thread
-    title: スレッドを立てる
+    title: スレッドの作成
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/threads.py
-    usecase: AIがスレッドを立てる
+    usecase: AIがスレッドの作成
     scope: public
     summary: AI の書き込みを最初の 1 件にしたオープンのスレッドを追加する（鍵は呼ぶ側が取る）
     side_effects: '`threads.yaml` を置き換える（無ければ作る）'
@@ -594,7 +594,7 @@ functions:
     process: |-
       1. `body`・`summary` を確かめる（`_check_text`）
       2. スレッドを読み、ID で引く（無ければ `ThreadNotFoundError`）
-         - `status` が `closed` の場合、`ThreadClosedError` を送信する
+         - `status` が `closed` の場合、`ThreadClosedError` を送出する
       3. `take` が真なら取り込み済みにする（`_take_read`。追加する書き込みと同じ日時）
       4. `{ID}-{書き込みの件数 + 1}`・`author: ai`・`read: True`・`seen: False` の書き込みを末尾に追加し、`summary` を置き換えて書く（`_write_threads`）
          - `[INFO]` 返信した（スレッドの ID・書き込みの ID・取り込み済みにした件数）
@@ -854,7 +854,7 @@ functions:
       type: tuple[str, list[SentPost]]
       description: 送信した日時と、`posts` と同じ並びの追加したか既にあった書き込み
     process: |-
-      1. スレッドを読む（`load_threads`）
+      1. スレッドの取得（`load_threads`）
       2. 書き込みごとに、同じ `comment` を持つ書き込みが既にあればそのスレッドと書き込みの ID を使う（`comment` が `None` の書き込みは比べない）
          - `[WARNING]` 既に送信していたコメント（コメントの ID・書き込みの ID）
       3. 無ければ追加する。追加する書き込みは `author: user`・`body`・`created`（この呼び出しで 1 つの日時）・`read: False`・`seen: True`・`taken: None`・`comment`（`None` ならキーを書かない）
@@ -896,7 +896,7 @@ functions:
       - name: test_append_user_posts_when_write_fails
         case: 異常
         summary: 置き換えに失敗したら前のスレッドを残す
-        condition: TH-1 を持つワークスペース、C-1。`os.replace` を `OSError` を送信する関数に差し替える
+        condition: TH-1 を持つワークスペース、C-1。`os.replace` を `OSError` を送出する関数に差し替える
         mock: '`os.replace`（`threads` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`threads.yaml` が呼ぶ前と同じ'
         exception: 置き換えで OSError
@@ -1152,7 +1152,7 @@ functions:
     process: |-
       1. 取り込み待ちの書き込み（`awaiting_posts`）と、`author` が `ai` で `seen` が偽の書き込みを、書いた順に集める
          - どちらも無い場合、何もしない
-      2. `ThreadCloseRejectedError` を送信する。`lines` は当たった条件ごとに次の順で 1 行ずつ持つ
+      2. `ThreadCloseRejectedError` を送出する。`lines` は当たった条件ごとに次の順で 1 行ずつ持つ
          - 取り込み待ち: `取り込み待ち: {書き込みの ID を「、」でつないだもの}: update_thread（take: true）で取り込み済みにしてからクローズにしてください`
          - 利用者が未読: `利用者が未読: {書き込みの ID を「、」でつないだもの}: 利用者が読むまでオープンのまま待ってください`
     exceptions:

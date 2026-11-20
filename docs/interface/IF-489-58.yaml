@@ -14,7 +14,7 @@ flows:
       - name: 音声
         description: テストの中で書き出した短い webm/opus
         notes: '`Content-Type: audio/webm`'
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声（audio/webm）\n  IF->>IF: 大きさと構造を確かめ、config.yaml の preset を読む\n  IF->>TR: 音声と用語集のプリセットを渡して文字起こしを依頼し、結果が出るまで待つ\n  TR-->>IF: 起こした文字\n  IF-->>クライアント: 200、JSON（text）\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声（audio/webm）\n  IF->>IF: 大きさと形を確かめ、config.yaml の preset を読む\n  IF->>TR: 音声と用語集のプリセットを渡して文字起こしを依頼し、結果が出るまで待つ\n  TR-->>IF: 起こした文字\n  IF-->>クライアント: 200、JSON（text）\n```"
     expected:
       - ステータスが 200 で、`text` が「案 A にする」
       - 偽のサーバーが受けた依頼の音声が送信した音声と同じで、用語集のプリセットが `開発`
@@ -50,7 +50,7 @@ flows:
         description: '`/web/` の下の全てに 404 を返す偽のサーバーを立て、`MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて常駐サーバーを立てる。`preview_url` を呼び、返った URL へ HTTP のクライアントで送信する'
       - name: make_workspace
         description: 作成を済ませたワークスペース
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼する\n  TR-->>IF: 音声を受け付けるエンドポイントが無い\n  IF-->>クライアント: 503（reason=unsupported）\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼する\n  TR-->>IF: 音声を受け付ける口が無い\n  IF-->>クライアント: 503（reason=unsupported）\n```"
     expected:
       - ステータスが 503 で、`reason` が `unsupported`
     test: test_error_when_service_unsupported

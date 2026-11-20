@@ -93,7 +93,7 @@ functions:
         passing: keyword
         description: 帯の高さ（px）
     process: |-
-      1. 最小の長さを `max(MINIMAP_MARK_FLOOR_PX, min(MINIMAP_MARK_MIN_PX, floor(length / マーカーの数) - MINIMAP_MARK_GAP_PX))` にする
+      1. 最小の長さを `max(MINIMAP_MARK_FLOOR_PX, min(MINIMAP_MARK_MIN_PX, floor(length / 印の数) - MINIMAP_MARK_GAP_PX))` にする
       2. 前から順に、長さを `max(最小, size / total × length)`、始まりを `max(top / total × length, 直前の終わり + MINIMAP_MARK_GAP_PX)` にする
       3. 後ろから順に、帯の終わり（次のマーカーの始まりから `MINIMAP_MARK_GAP_PX` 手前）を出たマーカーを前へ詰め、始まりを 0 未満にしない
     returns:
@@ -112,7 +112,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
     usecase: 前回からの差分を見る
     kind: コンポーネント
-    summary: 部品設計『差分のミニマップ』。本文のスクロール領域（`.panel-body`）を `div.panel-scroll` で包んで返し、`shown` が真ならその右に帯（`div.df-map`、`role="toolbar"`）を並べる。マーカーは `minimapTargets` で集め `minimapLayout` で置き、マーカーが無ければ帯を隠して枠に `has-map` を付けない。本文とその子の高さ（`ResizeObserver`）・中身（`MutationObserver`）・HTML の本文の枠の `load` が変わったら、次のコマで 1 回だけ置き修正する。本文の `scroll` では見えている範囲の面だけを動かす。マーカーの `click` はその箇所の上端を高さの `MINIMAP_JUMP_RATIO` の位置まで送り（`prefers-reduced-motion` でなければ `smooth`）、枠の外の箇所に `df-map-hit` を `MINIMAP_HIT_MS` の間付ける。帯の `click`（マーカーの上でもドラッグの直後でもなく、面を出しているとき）は押した位置へ面の中央を合わせる。`pointerdown` / `pointermove` / `pointerup` / `pointercancel` でマウスの左ボタンのドラッグを受け、`PRESS_SLOP_PX` より動いたところで `setPointerCapture` して帯に `is-dragging`、`body` に `df-map-dragging` を付ける。`pointermove` で左ボタンを押していなければドラッグを終える。上下の矢印・Home / End でマーカーの間を移り、移ったマーカーだけ `tabindex="0"` にする。どの操作も URL のハッシュと履歴を変えない
+    summary: 部品設計『差分のミニマップ』。本文のスクロール領域（`.panel-body`）を `div.panel-scroll` で包んで返し、`shown` が真ならその右に帯（`div.df-map`、`role="toolbar"`）を並べる。マーカーは `minimapTargets` で集め `minimapLayout` で置き、マーカーが無ければ帯を隠して枠に `has-map` を付けない。本文とその子の高さ（`ResizeObserver`）・中身（`MutationObserver`）・HTML の本文の枠の `load` が変わったら、次のコマで 1 回だけ再配置する。本文の `scroll` では見えている範囲の面だけを動かす。マーカーの `click` はその箇所の上端を高さの `MINIMAP_JUMP_RATIO` の位置までスクロールし（`prefers-reduced-motion` でなければ `smooth`）、枠の外の箇所に `df-map-hit` を `MINIMAP_HIT_MS` の間付ける。帯の `click`（マーカーの上でもドラッグの直後でもなく、面を出しているとき）は押した位置へ面の中央を合わせる。`pointerdown` / `pointermove` / `pointerup` / `pointercancel` でマウスの左ボタンのドラッグを受け、`PRESS_SLOP_PX` より動いたところで `setPointerCapture` して帯に `is-dragging`、`body` に `df-map-dragging` を付ける。`pointermove` で左ボタンを押していなければドラッグを終える。上下の矢印・Home / End でマーカーの間を移り、移ったマーカーだけ `tabindex="0"` にする。どの操作も URL のハッシュと履歴を変えない
     props:
       - name: body
         required: true
@@ -127,7 +127,7 @@ components:
         summary: マーカーのある本文で帯とマーカーを出し、出さないときは本文だけを包む
         case: 正常
         condition: '`parametrize`: 追加した塊と削除した行を持つ本文で `shown: true` / 同じ本文で `shown: false` / 差分のマーカーの無い本文で `shown: true`'
-        expected: 枠の子が本文と帯で、帯にマーカーのボタンが 2 つ（読み上げの名前「追加した箇所（1 / 2）」「削除した箇所（2 / 2）」、先頭だけ `tabindex="0"`）/ 枠の子が本文だけ / 帯が `hidden` で枠に `has-map` が無い
+        expected: 枠の子が本文と帯で、帯にマーカーのボタンが 2 つ（読み上げの名前「足した箇所（1 / 2）」「消した箇所（2 / 2）」、先頭だけ `tabindex="0"`）/ 枠の子が本文だけ / 帯が `hidden` で枠に `has-map` が無い
         mock: なし（DOM を作って見る）
       - name: test_diff_minimap_frame_when_keys
         summary: 矢印・Home / End でマーカーの間を移り、ハッシュを変えない

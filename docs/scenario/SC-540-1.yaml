@@ -240,7 +240,7 @@ scenarios:
     expected:
       - 2 回修正した後、D-1 が変更履歴を 2 回分持ち、`history_dropped_seq` を持たない
       - 前回読んだ時点からの変更が、D-1 の回答と理由の両方を前の値つきで返す
-      - 3 回目に修正した後、D-1 の変更履歴が 3 回目の 1 回分だけで、`history_dropped_seq` が削除した回の最も大きい連番である
+      - 3 回目に変更した後、D-1 の変更履歴が 3 回目の 1 回分だけで、`history_dropped_seq` が削除した回の最も大きい連番である
     test: test_normal_when_unread_history_kept
   - name: 正常シナリオ（ファイルのフォルダの書き換え）
     setup:

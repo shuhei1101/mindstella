@@ -1,5 +1,5 @@
 id: IF-601-1
-title: ワークスペースの再度開くこと
+title: ワークスペースの再オープン
 entry:
   kind: endpoint
   value: POST `/workspaces/{id}/reopen`
@@ -48,7 +48,7 @@ constraints:
   - item: クローズ待ち
     constraint: 配信元の行を戻した後（クローズしていないときはすぐに）、セッションの管理に状態の `close_pending` を偽にするよう依頼する
   - item: 取り込み待ちのコメント
-    constraint: 再度開くことは MindStella のセッションを起動しない。クローズ待ちの間に届いてスレッドに残ったコメントは、再度開くことの後も取り込み待ちのままにする
+    constraint: 再オープンは MindStella のセッションを起動しない。クローズ待ちの間に届いてスレッドに残ったコメントは、再オープンの後も取り込み待ちのままにする
   - item: 同時の依頼
     constraint: ワークスペースごとの鍵を、配信元の行の参照からクローズ待ちを解くまで持つ（『ワークスペースのクローズ』『MindStella のセッションの作成』『ワークスペースの削除』と同じ鍵）
   - item: MCP のツール

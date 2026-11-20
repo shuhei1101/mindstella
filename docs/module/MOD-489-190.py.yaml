@@ -72,7 +72,7 @@ classes:
     title: 手順が失敗した
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 記録の形式の移行
-    summary: '移し替えの手順が失敗し、コピーから戻した。メッセージは `{バージョン} の手順 {番号}（{操作}）: {理由}`'
+    summary: '移し替えの手順が失敗し、コピーから戻した。メッセージは `{版} の手順 {番号}（{操作}）: {理由}`'
     kind: クラス
     inherits: MindmapError
   - name: StepsInvalidError
@@ -150,7 +150,7 @@ classes:
     title: 最後の案
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 検討事項の案の編集
-    summary: '案を必須にする状態の検討事項の最後の案を削除しようとした。メッセージは `{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を追加してください`'
+    summary: '案を必須にする状態の検討事項の最後の案を削除しようとした。メッセージは `{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください`'
     kind: クラス
     inherits: MindmapError
   - name: ItemReferencedError

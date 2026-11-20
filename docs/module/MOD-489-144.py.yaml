@@ -458,7 +458,7 @@ functions:
         summary: 件数を入れた 1 行
         condition: '`count=3`'
         mock: なし
-        expected: '`[mindstella] ユーザーからのコメントが 3 件届きました。再読み込みしてください。`'
+        expected: '`[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。`'
   - name: snapshot_sizes
     title: 会話の記録の大きさの控え
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py

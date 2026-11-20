@@ -495,7 +495,7 @@ functions:
         condition: '`running` でペインが無い'
         mock: '`TmuxRunner`・`notify.notify_stopped`'
         expected: '`(200, {status: stopped})`、`notify_stopped` が `crashed` で 1 回だけ呼ばれる'
-    description: '別のスレッドの本体は例外で包む。例外（tmux のコマンドの失敗・commit の失敗・`session.json` の書き込みの失敗）を捕まえたら `logger.exception` で `mindstella.session.stop_failed` を書き、`is_alive` で判定して `status` を `running`（生きている）か `crashed`（落ちた）に戻し、`last_error` に段階と理由を入れる。`close_pending` は真のまま残す（外部のアプリは停止を依頼し修正できる）。停止の通知: 別のスレッドが停止済みを記録したとき、同じ鍵の中で読んだ書き換える前の `status` が `stopping`・`stopped`・`crashed` なら `notify_stopped` を `force` で `stop_requested` か `force_stopped` で呼ぶ。例外の後に `crashed` に戻したときは `stop_failed` で呼び、`running` に戻したときは呼ばない。落ちていて 200 を返す経路は、`is_alive` の `on_crashed` だけが呼ぶ'
+    description: '別のスレッドの本体は例外で包む。例外（tmux のコマンドの失敗・commit の失敗・`session.json` の書き込みの失敗）を捕まえたら `logger.exception` で `mindstella.session.stop_failed` を書き、`is_alive` で判定して `status` を `running`（生きている）か `crashed`（落ちた）に戻し、`last_error` に段階と理由を入れる。`close_pending` は真のまま残す（外部のアプリは停止を再依頼できる）。停止の通知: 別のスレッドが停止済みを記録したとき、同じ鍵の中で読んだ書き換える前の `status` が `stopping`・`stopped`・`crashed` なら `notify_stopped` を `force` で `stop_requested` か `force_stopped` で呼ぶ。例外の後に `crashed` に戻したときは `stop_failed` で呼び、`running` に戻したときは呼ばない。落ちていて 200 を返す経路は、`is_alive` の `on_crashed` だけが呼ぶ'
   - name: record_event
     title: フックの出来事を記録する
     kind: 関数

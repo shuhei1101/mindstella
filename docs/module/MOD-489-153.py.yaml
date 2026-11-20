@@ -155,7 +155,7 @@ functions:
     process: |-
       1. `root / README_FILE` がファイルで、1 行目が `README_MARK` でなければ `False` を返す（読めない文字コードのファイルと、読み取りで `OSError` が起きるファイルも利用者のものとして扱う）
       2. 中身を組み立て（README の組み立て。`render_readme`）、同じフォルダの一時ファイルに書いて `os.replace` で置き換え、`True` を返す
-         - `OSError` が起きた場合、一時ファイルを削除して `WriteFailedError` を送信する
+         - `OSError` が起きた場合、一時ファイルを削除して `WriteFailedError` を送出する
     exceptions:
       - name: WriteFailedError
         condition: '`README.md` を書けない（同じ名前のフォルダがある・権限が無い など）'

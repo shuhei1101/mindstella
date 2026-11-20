@@ -19,19 +19,19 @@ components:
       - name: test_workspace_settings_screen_when_transcription
         case: 正常
         summary: 音声入力のまとまり
-        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で既定の「レビュー中に追加する」から「送信」を選ぶ / `{available: false, reason: stopped}`'
+        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で既定の「レビュー中に追加する」から「送信する」を選ぶ / `{available: false, reason: stopped}`'
         mock: MSW
-        expected: '`POST /api/edits` が `{op: setting, key: transcription, value: {action: send, preset: null}}` で呼ばれる / プリセットのセレクトが押せず「文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を再度開いてください。」'
+        expected: '`POST /api/edits` が `{op: setting, key: transcription, value: {action: send, preset: null}}` で呼ばれる / プリセットのセレクトが押せず「文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。」'
       - name: test_workspace_settings_screen_when_transcription_chosen_in_a_row
         case: 正常
         summary: 挙動とプリセットを続けて選ぶ
-        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で、「送信」を選んだ直後（記録を再取得する前）にプリセットの「一般」を選ぶ'
+        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で、「送信する」を選んだ直後（記録を再取得する前）にプリセットの「一般」を選ぶ'
         mock: MSW
         expected: '2 回目の `POST /api/edits` が `{op: setting, key: transcription, value: {action: send, preset: 一般}}` で呼ばれる'
       - name: test_workspace_settings_screen_when_transcription_choice_outdated
         case: 正常
         summary: 保存待ちの編集が変わった後の選択
-        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で「送信」を選び、保存待ちの `transcription` を取り消して記録の `settings.transcription` が `{action: review}` に戻った後に、プリセットの「一般」を選ぶ'
+        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で「送信する」を選び、保存待ちの `transcription` を取り消して記録の `settings.transcription` が `{action: review}` に戻った後に、プリセットの「一般」を選ぶ'
         mock: MSW
         expected: '最後の `POST /api/edits` が `{op: setting, key: transcription, value: {action: review, preset: 一般}}` で呼ばれる'
     state:

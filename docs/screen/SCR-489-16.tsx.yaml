@@ -13,14 +13,14 @@ elements:
       - name: points[].name
         value: 差分を出さない（今の内容）・まだまとめていない変更・前回開いてから・sets[].summary
       - name: points[].sub
-        value: マーカーと差分を出さずに今の内容だけを読む・AI がまだ区切っていない書き換え・{前回開いた日時} より後・sets[].at（JST の MM/DD HH:mm）
+        value: 印と差分を出さずに今の内容だけを読む・AI がまだ区切っていない書き換え・{前回開いた日時} より後・sets[].at（JST の MM/DD HH:mm）
       - name: points[].external
         value: sets[].by が external のまとまりで真（名前の横に「外部の変更」の札。名前は sets[].summary の「ほかのセッションの書き込み」）
       - name: points[].count
-        value: その時点の added・changed・removed の数。合わせた範囲で追加して削除した項目は、削除した項目として 1 件に数える（差分を出さない行は渡さない）
+        value: その時点の added・changed・removed の数。合わせた範囲で足して消した項目は、消した項目として 1 件に数える（差分を出さない行は渡さない）
       - name: current
         value: SPAを開く.diff（無ければ空文字列）
-    description: 時点を新しい順に並べる。行を押すとモーダルを閉じ、どの画面もその時点の差分の表示で再描画する。「差分を出さない（今の内容）」は差分の表示をやめる
+    description: 時点を新しい順に並べる。行を押すとモーダルを閉じ、どの画面もその時点の差分の表示で描き直す。「差分を出さない（今の内容）」は差分の表示をやめる
     io: 入力
     source: 記録の取得.changes、前回開いた日時.previous（`null` のときは前回開いた日時.opened）
     visible_when: 常時
@@ -30,7 +30,7 @@ elements:
     visible_when: 常時
 lead: 差分の表示で比べる時点を選ぶモーダル。トップバーの「変更履歴」で開く。
 notes:
-  削除した項目を含む件数のモック: 削除した項目を含む時点の件数の見本は `docs/mock/pages/decisions/179/b-band/index.html` の変更履歴のモーダル
+  消した項目を含む件数のモック: 消した項目を含む時点の件数の見本は `docs/mock/pages/decisions/179/b-band/index.html` の変更履歴のモーダル
 test_file: tests/integration/preview/test_spa_history_screen.py
 refs:
   - SCR-489-15#

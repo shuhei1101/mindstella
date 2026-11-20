@@ -68,7 +68,7 @@ functions:
       1. オブジェクトで、`kind` が `body` か `value` かを確かめる
       2. `body` なら `start`・`end` が 1 以上の整数（真偽値でない）で `start <= end` か、`value` なら `key` が空でない文字列かを確かめる
       3. `text` が文字列で、前後の空白を除いて 1〜`MAX_BODY_CHARS` 文字かを確かめる
-         - どれかに合わない場合、`loc.{キー}: {理由}` の `CommentInvalidError` を送信する
+         - どれかに合わない場合、`loc.{キー}: {理由}` の `CommentInvalidError` を送出する
     exceptions:
       - name: CommentInvalidError
         condition: オブジェクトでない、`kind` が違う、`kind` に合うキーが無いか型が違う、`start > end`、`text` が空白だけか上限を超える

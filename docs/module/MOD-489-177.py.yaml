@@ -145,7 +145,7 @@ functions:
       - name: test_main_when_server_raises
         case: 正常
         summary: HTTP のサーバーが例外で戻っても配信を止める
-        condition: '`test_main` と同じで、`run` が `RuntimeError` を送信する'
+        condition: '`test_main` と同じで、`run` が `RuntimeError` を送出する'
         mock: '`build`・`make_server`'
         expected: '`RuntimeError` が伝わり、`previews.stop_all` が呼ばれている'
       - name: test_main_when_external_access_set
@@ -394,7 +394,7 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数と、全てのツールに共通の `session: dict[str, Any] | None = None` を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）。`MCPServer` の `instructions` に `INSTRUCTIONS` を渡す
          - `MINDSTELLA_SESSION_TOOLS` のツールは、ツールの処理を呼ぶ前に MindStella のセッションかを確かめ（`require_mindstella_session`）、違えば `error_result` を返す。ツールの処理が成功したら、同じ鍵の中でツールの名前・ワークスペースの ID（`workspaces.workspace_id_of`）・結果を渡して書き込みのマーカーを付ける（『作業の完了の通知』の `mark_written`）
-         - `workspace` を受ける関数は、`session` を読み（`parse_session`）、`workspace` を絶対パスにし（`resolve_workspace`）、セッションがあればそのワークスペースの宛先を書き換えてから（`previews.remember_session`）、ツールの処理を呼ぶ。`resolve_workspace` が `ArgumentError` を送信した場合、ツールの処理を呼ばずにエラーの結果を返す（`error_result`）。`out` も同じセッションで絶対パスにする（`argument="out"`）
+         - `workspace` を受ける関数は、`session` を読み（`parse_session`）、`workspace` を絶対パスにし（`resolve_workspace`）、セッションがあればそのワークスペースの宛先を書き換えてから（`previews.remember_session`）、ツールの処理を呼ぶ。`resolve_workspace` が `ArgumentError` を送出した場合、ツールの処理を呼ばずにエラーの結果を返す（`error_result`）。`out` も同じセッションで絶対パスにする（`argument="out"`）
          - `server_status` は `call_tool(status)`、`server_stop` は `call_tool(lambda: run_server_stop(previews, request_stop=request_stop))` にする（`session` は受けても使わない）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
          - ワークスペースを書き換えるツール（`init`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`new_thread`・`reply`・`set_thread_status`・`update_thread`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
@@ -539,7 +539,7 @@ functions:
       - name: test_call_tool_when_mindmap_error
         case: 正常
         summary: MindmapError はツールのエラー
-        condition: '`handler` が `WorkspaceNotFoundError` を送信する'
+        condition: '`handler` が `WorkspaceNotFoundError` を送出する'
         mock: なし
         expected: '`is_error` が真で、本文が `エラー: ` で始まる'
       - name: test_call_tool_when_unexpected_error
@@ -587,9 +587,9 @@ functions:
       - name: test_ok_result
         case: 正常
         summary: 日本語をエスケープしない本文と構造化の結果
-        condition: '`{"title": "質問"}`'
+        condition: '`{"title": "問い"}`'
         mock: なし
-        expected: '`structured_content` がその辞書、本文が `{"title": "質問"}`'
+        expected: '`structured_content` がその辞書、本文が `{"title": "問い"}`'
   - name: error_result
     title: エラーの結果
     kind: 関数
@@ -602,7 +602,7 @@ functions:
         type: MindmapError
         required: true
         passing: positional
-        description: 送信された例外
+        description: 送出された例外
     returns:
       type: CallToolResult
       description: '`is_error` が真で、本文がエラーの行を改行でつないだ文字列 1 つ'
@@ -619,7 +619,7 @@ functions:
         expected: '`is_error` が真で、本文の 1 行目が `エラー: ` で始まり 2 行目がその行'
       - name: test_error_result_when_legacy_format
         case: 正常
-        summary: 前のバージョンの形式には再度開くことを案内する
+        summary: 前のバージョンの形式には再オープンを案内する
         condition: '`legacy=True` の `SchemaMismatchError`'
         mock: なし
         expected: 本文の最後の行が `LEGACY_HINT`

@@ -166,7 +166,7 @@ functions:
     process: |-
       1. ファイルが無ければ空を返す
       2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`COMMENTS_SCHEMA` と突き合わせる
-         - 読めないか合わない場合、`comments.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送信する
+         - 読めないか合わない場合、`comments.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送出する
       3. `items` を連番の小さい順の `ReviewComment` にして返す（`loc` は `parse_location`）
     exceptions:
       - name: SchemaMismatchError
@@ -210,7 +210,7 @@ functions:
     process: |-
       1. ファイルが無ければ空を返す
       2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`DRAFTS_SCHEMA` と突き合わせる
-         - 読めないか合わない場合、`drafts.yaml: {キーのパス}: {理由}` の `SchemaMismatchError` を送信する
+         - 読めないか合わない場合、`drafts.yaml: {キーのパス}: {理由}` の `SchemaMismatchError` を送出する
       3. `items` を `Draft` にして返す
     exceptions:
       - name: SchemaMismatchError
@@ -286,12 +286,12 @@ functions:
       1. 入力を確かめる（`_parse_comment_input`）
       2. ワークスペースを読み（`load_workspace`）、`target` があれば項目を引く（`find_item`）
       3. `loc` があれば今の項目に合うかを確かめる（`check_location`）
-         - 合わなければ、その理由の `CommentConflictError` を送信する
+         - 合わなければ、その理由の `CommentConflictError` を送出する
       4. `thread` があればスレッドを読み（`load_threads`）、ID で引く
-         - 無ければ `ThreadNotFoundError` を送信する
-         - クローズなら `スレッド {ID} はクローズです` の `CommentConflictError` を送信する（元に戻すときも同じ）
+         - 無ければ `ThreadNotFoundError` を送出する
+         - クローズなら `スレッド {ID} はクローズです` の `CommentConflictError` を送出する（元に戻すときも同じ）
       5. コメントを読む（`load_comments`）
-         - `id` がある場合、その ID が今の `items` にあるか連番が `seq` を超えれば `CommentConflictError` を送信する。渡された ID と `created` で戻し、`seq` は変えない
+         - `id` がある場合、その ID が今の `items` にあるか連番が `seq` を超えれば `CommentConflictError` を送出する。渡された ID と `created` で戻し、`seq` は変えない
          - `id` が無ければ `C-{seq + 1}` と今の日時で追加し、`seq` を 1 上げる
       6. 連番の小さい順に並べた `{seq, items}` を書く（`_write_yaml`。`None` の `target`・`loc`・`thread` はキーを書かない）
       7. 新しく溜めたとき、同じ向けた先（`target` と `loc` の組か、`thread`）の書きかけがあれば削除して書く
@@ -340,7 +340,7 @@ functions:
       - name: test_add_comment_when_write_fails
         case: 異常
         summary: 置き換えに失敗したら前のコメントを残す
-        condition: C-1 を持つワークスペース。`os.replace` を `OSError` を送信する関数に差し替える
+        condition: C-1 を持つワークスペース。`os.replace` を `OSError` を送出する関数に差し替える
         mock: '`os.replace`（`comments` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`comments.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: 置き換えで OSError
@@ -558,11 +558,11 @@ functions:
       description: 送信した日時と、溜めた順の送信したコメント・スレッド・書き込みの ID（モジュール構成『スレッド』の `SentPost`）
     process: |-
       1. `ids` が 1 件以上の文字列の配列で重なりが無いかを確かめる（合わなければ `ids: {理由}` の `CommentInvalidError`）
-      2. コメントを読み、無い ID があればその全てを持った `CommentNotFoundError` を送信する
+      2. コメントを読み、無い ID があればその全てを持った `CommentNotFoundError` を送出する
       3. ワークスペースとスレッドを読み（`load_workspace`、`load_threads`）、渡したコメントを溜めた順に確かめる。同じ `comment` を持つ書き込みが既にあるコメントは確かめない（二重に送信しないため、追加せずに外すだけ）
          - 新しいスレッドの分は、向けた項目が無ければ `{target} がありません`、箇所が合わなければ `check_location` の理由を控える
          - 返信の分は、返信先のスレッドが無ければ `スレッド {ID} がありません`、クローズなら `スレッド {ID} はクローズです` を控える
-         - 控えが 1 件でもあれば、全てを `stale` に持った `CommentConflictError` を送信する
+         - 控えが 1 件でもあれば、全てを `stale` に持った `CommentConflictError` を送出する
       4. 前の `threads.yaml` の中身（無ければ無いこと）を控え、スレッドへ追加する（`UserPostInput` にして `append_user_posts`。`loc` は `location_to_dict`）
       5. 送信したコメントを除いた `{seq, items}` を書く（`_write_yaml`）
          - `WriteFailedError` の場合、控えた `threads.yaml` を書き戻し（無かったときは削除する）、同じ例外を送出する
@@ -588,7 +588,7 @@ functions:
     unit_tests:
       - name: test_send_comments
         case: 正常
-        summary: チェックしたものだけを溜めた順に送信し、新しいスレッドを立てる
+        summary: チェックしたものだけを溜めた順に送信し、新しいスレッドの作成
         condition: 'D-1・A-1、C-1（D-1）・C-2（A-1 の本文の 2 行目）・C-3（項目を指さない）。`{ids: [C-2, C-1]}`'
         mock: '`now`'
         expected: '`items` が C-1 → TH-1・TH-1-1、C-2 → TH-2・TH-2-1。`threads.yaml` がオープンの TH-1（D-1）・TH-2（A-1・`loc` あり）で書き込みが `comment` を持ち、`comments.yaml` が C-3 だけ'
@@ -621,7 +621,7 @@ functions:
       - name: test_send_comments_when_comments_write_fails
         case: 異常
         summary: レビュー中を書けなければスレッドを書き戻す
-        condition: TH-1 と C-1 を持つワークスペース。`comments.yaml` への `os.replace` だけ `OSError` を送信するように差し替える
+        condition: TH-1 と C-1 を持つワークスペース。`comments.yaml` への `os.replace` だけ `OSError` を送出するように差し替える
         mock: '`os.replace`'
         expected: '`WriteFailedError`。`threads.yaml`・`comments.yaml` が呼ぶ前と同じ'
         exception: 置き換えで OSError
@@ -662,7 +662,7 @@ functions:
     process: |-
       1. 本文と向けた先の構造を、溜めるときと同じく確かめる（`_validate_body`・`_parse_destination`。合わなければ `{キー}: {理由}` の `CommentInvalidError`）
       2. ワークスペースとスレッドを読み（`load_workspace`、`load_threads`）、まとめて送信するときと同じ理由で向けた先を確かめる（`_stale_reason` を、コメントでなく向けた先の組で受けるように分けたもの）
-         - 理由がある場合、その理由をメッセージにした `CommentConflictError` を送信する（`stale` は空）
+         - 理由がある場合、その理由をメッセージにした `CommentConflictError` を送出する（`stale` は空）
       3. `comment` を `None` にした `UserPostInput` 1 件でスレッドへ追加する（`append_user_posts`。`loc` は `location_to_dict`）
       4. 送信した書き込みが向いた項目を確認済みにする（`_confirm_targets`。`target` か、`thread` ならそのスレッドの `target`）
       5. 送信した日時と、追加した `SentPost` を返す
@@ -732,8 +732,8 @@ functions:
       2. `target` があれば文字列かを確かめる
       3. `loc` があれば `target` もあるかを確かめ、`parse_location` を当てる
       4. `thread` があれば文字列で、`target`・`loc` を一緒に渡していないかを確かめる
-      5. `id` があれば `C-{数字}` の形式で `created` もあるかを、`created` があれば `id` もあるかを確かめる
-         - 合わない場合、`{キー}: {理由}` の `CommentInvalidError` を送信する
+      5. `id` があれば `C-{数字}` の構造で `created` もあるかを、`created` があれば `id` もあるかを確かめる
+         - 合わない場合、`{キー}: {理由}` の `CommentInvalidError` を送出する
     exceptions:
       - name: CommentInvalidError
         condition: '`body` が無い・文字列でない・空白だけ・上限を超える、`target` が文字列でない、`loc` だけで `target` が無い、`loc` の形式が崩れている、`thread` が文字列でないか `target`・`loc` と一緒に渡した、`id` と `created` の組みが合わない'
@@ -776,7 +776,7 @@ functions:
       description: '-'
     process: |-
       1. `dump_yaml` した文を一時ファイルに書いて（`write_temp`）`os.replace` で置き換える
-         - `OSError` の場合、一時ファイルを削除して `WriteFailedError` を送信する（`write_failed`）
+         - `OSError` の場合、一時ファイルを削除して `WriteFailedError` を送出する（`write_failed`）
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
@@ -816,6 +816,6 @@ functions:
       - name: test_confirm_targets_when_write_fails
         case: 正常
         summary: 確認済みを書けなくても送信したままにする
-        condition: '`confirm_items` が `WriteFailedError` を送信する'
+        condition: '`confirm_items` が `WriteFailedError` を送出する'
         mock: '`confirm_items`'
-        expected: 例外を送出しず、`WARNING` のログを 1 件出す
+        expected: 例外を送出せず、`WARNING` のログを 1 件出す

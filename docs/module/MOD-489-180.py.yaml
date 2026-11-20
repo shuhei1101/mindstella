@@ -54,7 +54,7 @@ functions:
          - 変更が無くてコミットしなかった場合、今の `HEAD` をコピーにする
          - コミットが失敗した場合（作者の名前が無い等）、`git reset -q -- .` でステージを戻して 4 へ進む
       4. `root` の隣の `{root.name}.before-{version}`（既にあれば末尾に `-{YYYYmmddHHMMSS}`）へ `shutil.copytree` で複製し、絶対パスで `Backup(kind="copy")` を返す
-         - `OSError` の場合、作りかけの複製を削除して `WriteFailedError` を送信する
+         - `OSError` の場合、作りかけの複製を削除して `WriteFailedError` を送出する
     exceptions:
       - name: WriteFailedError
         condition: 複製に失敗した

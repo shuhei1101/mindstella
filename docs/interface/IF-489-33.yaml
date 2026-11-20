@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: タイトル `質問 A` と 3 行の本文を持つ検討事項 D-1 を追加してこのツールを 1 回呼び、D-1 のタイトルを `質問 B` に、続けてタイトルを `質問 C` にし本文の 2 行目を修正し、タスク T-1 を追加して、変更の検知がそれぞれを記録したワークスペース（保持する回数は既定の 5）
+        description: タイトル `問い A` と 3 行の本文を持つ検討事項 D-1 を追加してこのツールを 1 回呼び、D-1 のタイトルを `問い B` に、続けてタイトルを `問い C` にし本文の 2 行目を修正し、タスク T-1 を追加して、変更の検知がそれぞれを記録したワークスペース（保持する回数は既定の 5）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -29,7 +29,7 @@ flows:
     expected:
       - ツールのエラーにならない
       - 1 回目の `had_read_point` が真で、`added` が T-1 の 1 件
-      - '1 回目の `changed` が D-1 の 1 件で、`before` が `{title: 質問 A}`'
+      - '1 回目の `changed` が D-1 の 1 件で、`before` が `{title: 問い A}`'
       - D-1 の `body_diff` を今の本文に当てると読んだ時点の本文になり、1 行目・3 行目を含まない
       - 1 回目の後、状態のフォルダの `read_point.json` の `read_seq` が `last_seq` と同じで `until_seq` とも同じ
       - 2 回目の `added`・`changed` が空

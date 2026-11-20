@@ -6,7 +6,7 @@ functions:
     title: 文字起こしの可否
     kind: フック
     usecase: 音声でコメントする
-    summary: '`GET /api/transcription` の query。マイクのボタンを描く画面と設定の画面が開いたときに読み、押せないマイクのボタンを押したときと設定の画面を開いたときに再読み込みする（書き換えの知らせでは再読み込みしない）'
+    summary: '`GET /api/transcription` の query。マイクのボタンを描く画面と設定の画面が開いたときに読み、押せないマイクのボタンを押したときと設定の画面を開いたときに再読み込みする（書き換えの通知では再読み込みしない）'
     returns:
       type: UseQueryResult<TranscriptionStatus>
       description: query
@@ -48,10 +48,10 @@ functions:
         expected: '`voice` が `disabled` で `voiceReason` が `VOICE_TEXT.noMicrophone` / `voice` が `disabled` で `voiceReason` がその `detail`'
       - name: test_use_voice_input_when_unmounted
         case: 正常
-        summary: 部品が外れても録音を続け、付き修正したら結果を受け取る
-        condition: 録音中に unmount して ✓ の後の結果を `results` に入れてから、同じ `key` で mount し修正する / ほかの `key` で録音中に呼ぶ
+        summary: 部品が外れても録音を続け、付き直したら結果を受け取る
+        condition: 録音中に unmount して ✓ の後の結果を `results` に入れてから、同じ `key` で mount し直す / ほかの `key` で録音中に呼ぶ
         mock: MSW と `vi.stubGlobal`
-        expected: 録音の `cancel` が呼ばれず、mount し修正すると `status` が `reviewed` / `voice` が `disabled` で `voiceReason` が `VOICE_TEXT.busy`
+        expected: 録音の `cancel` が呼ばれず、mount し直すと `status` が `reviewed` / `voice` が `disabled` で `voiceReason` が `VOICE_TEXT.busy`
       - name: test_use_voice_input_levels
         case: 正常
         summary: 録音中の音量を `levels` に持ち、終えたら空にする

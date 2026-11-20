@@ -142,7 +142,7 @@ classes:
           3. 書いた元を見分け（`classify_writer`）、違いを求める（`diff_snapshots`）
              - 違いが無い、または書いた元が `git` の場合、前回の中身を置き換えるだけにする
              - それ以外の場合、記録して（`record_diff`）、前回の中身を置き換え、`snapshot/` に書く（`save_snapshot`）。書いた元が `external` なら `_external_since` を今にする
-             - 記録で `WriteFailedError` が起きた場合、前回の中身を置き換えずにログに残す（次の回で記録し修正する）
+             - 記録で `WriteFailedError` が起きた場合、前回の中身を置き換えずにログに残す（次の回で再記録する）
                - `[ERROR]` `[change-detection] {ワークスペースの ID} write_failed: {パス}`
              - 重なった ID を求め（`find_duplicate_ids`）、前に知らせたものと違えば `_duplicates` を置き換え、ペインへ貼り付ける（`paste_duplicates`）
           4. `_external_since` から `EXTERNAL_COMMIT_DELAY_SEC` が過ぎていれば、鍵とロックを取って外部の変更をまとめ（『変更履歴』の `flush_pending` を `ai` で呼ぶのと同じく、`pending.by` が `external` のときだけ `commit_pending` で説明 `EXTERNAL_SUMMARY`・`by: external`）、`_external_since` を `None` にする

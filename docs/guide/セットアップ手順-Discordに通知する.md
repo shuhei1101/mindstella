@@ -71,6 +71,6 @@ MindStella のセッションに、スレッドへ返信する作業を 1 つ依
 
 ## 通知をやめる
 
-[起動スクリプトを登録する](./セットアップ手順-起動スクリプトを登録する.md)で `MINDSTELLA_DISCORD_WEBHOOK_FILE` の登録を解除し、常駐サーバーを立ち再起動する。
-systemd の drop-in（`~/.config/systemd/user/mindstella.service.d/` の下のファイル）で `MINDSTELLA_DISCORD_WEBHOOK_FILE` を設定したときは、そのファイルを削除して `systemctl --user daemon-reload` を実行してから立ち再起動する。
-立ち再起動せずにやめるときは、ファイルを削除するか 1 行目を空にする（ファイルは送信のたびに参照される）。
+[起動スクリプトを登録する](./セットアップ手順-起動スクリプトを登録する.md)で `MINDSTELLA_DISCORD_WEBHOOK_FILE` の登録を解除し、常駐サーバーを再起動する。
+systemd の drop-in（`~/.config/systemd/user/mindstella.service.d/` の下のファイル）で `MINDSTELLA_DISCORD_WEBHOOK_FILE` を設定したときは、そのファイルを削除して `systemctl --user daemon-reload` を実行してから再起動する。
+再起動せずにやめるときは、ファイルを削除するか 1 行目を空にする（ファイルは送信のたびに参照される）。

@@ -84,7 +84,7 @@ functions:
       - name: test_mark_lines_when_end_line
         case: 正常
         summary: 要素が閉じる行のマーカーを追加する
-        condition: '`parametrize`: 3 行にまたがる `<section>\n<h2>見出し</h2>\nセクションの文\n</section>` / 閉じタグを省いた `<ul>\n<li>a\n<li>b\n</ul>` / 空要素 `<p>a<br>\nb</p>` / 閉じタグの無い `<div>\n<p>a`'
+        condition: '`parametrize`: 3 行にまたがる `<section>\n<h2>見出し</h2>\n節の文\n</section>` / 閉じタグを省いた `<ul>\n<li>a\n<li>b\n</ul>` / 空要素 `<p>a<br>\nb</p>` / 閉じタグの無い `<div>\n<p>a`'
         mock: なし
         expected: 終わりの行が、順に `<section>` は 4・`<h2>` は 2 / 両方の `<li>` が 4（`</ul>` の行）/ `<br>` は 1・`<p>` は 2 / `<div>`・`<p>` が 2（原文の最後の行）
   - name: text_of_lines

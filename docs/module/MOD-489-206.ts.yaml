@@ -294,7 +294,7 @@ components:
       - name: test_detail_panel_when_head_title_on_scroll
         case: 正常
         summary: 本文の先頭のタイトルが本文のスクロール領域の上へ出ている間だけ、見出しのタイトルを出す
-        condition: 本文がパネルの高さの 3 倍以上あり、タイトルが見出しの帯に収まらない長さの資料 A-1 を開き、本文の頭 → 本文のスクロール領域を下端まで送信する → 頭へ戻す の順に見出しのタイトルを読む。本文の頭と下端で、見出しのボタン（`.panel-head .icon-btn`）の幅も測る
+        condition: 本文がパネルの高さの 3 倍以上あり、タイトルが見出しの帯に収まらない長さの資料 A-1 を開き、本文の頭 → 本文のスクロール領域を下端までスクロールする → 頭へ戻す の順に見出しのタイトルを読む。本文の頭と下端で、見出しのボタン（`.panel-head .icon-btn`）の幅も測る
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`.panel-title` は A-1 のタイトルの文字と同じ `title` を持ち、`aria-hidden` が `true`。本文の頭では `is-shown` が無く `visibility` が `hidden`、送信した後は `is-shown` があり、頭へ戻すと `is-shown` が外れる。本文の頭でも下端でも、見出しのボタンの幅はどれも `--control-h`（32px）のまま縮まない'
       - name: test_detail_panel_when_head_title_rerender
@@ -306,7 +306,7 @@ components:
       - name: test_detail_panel_when_head_title_full
         case: 正常
         summary: 全画面でも、本文を送信したときだけ見出しのタイトルを出す
-        condition: '`full: true` で本文の長い A-1 を開き、モーダルの本文のスクロール領域を下端まで送信する'
+        condition: '`full: true` で本文の長い A-1 を開き、モーダルの本文のスクロール領域を下端までスクロールする'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 送信する前は `.panel-title` に `is-shown` が無く、送信した後は `dialog` の中の `.panel-title` に `is-shown` がある。送信する前も送信した後も、見出しのボタン（`.panel-head .icon-btn`）の幅はどれも `--control-h`（32px）のまま
       - name: test_detail_panel_when_term_aliases_tip
@@ -329,7 +329,7 @@ components:
         expected: どのケースも `span.df-kv` の中に `span.df-word` が無く、前の値・今の値（前に無かったキーは今の値だけ）は今までどおり `del.df-was`・`ins.df-now` で並ぶ
       - name: test_detail_panel_when_diff_key_words_body_too_large
         case: 正常
-        summary: 本文の行の差分を打ち切ったときは、キーの値の語の差分にも時間を追加修正しない
+        summary: 本文の行の差分を打ち切ったときは、キーの値の語の差分にも時間を再足しない
         condition: '`lead` を `要件は来週までに決める。` → `要件は今週までに決める。` にし、本文の行の差分が打ち切られる D-1 を `diff` つきで開く（`Diff.diffLines` が `undefined` を返し、その間に `performance.now()` が `LINE_DIFF_TIMEOUT_MS` より進むよう包む）'
         mock: 描画のライブラリの配信元（`page.route`）・`Diff.diffLines` と `performance.now()` を包む
         expected: 本文の頭に「本文の差分を計算しきれない旨」が出て、`data-key` が `lead` の要素の `del.df-was`・`ins.df-now` は今までどおり並び、`span.df-word` を持たない
@@ -440,7 +440,7 @@ components:
     kind: コンポーネント
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
-    summary: 画面設計『詳細パネル』の要素「幅の区切り」を描き（`role="separator"`・`aria-orientation="vertical"`・`aria-label="詳細パネルの幅"`・`tabindex="0"`）、`panelWidthMax`・`clampPanelWidth` で収めた幅を `document.documentElement` の `--panel-w` と `aria-valuemin` / `aria-valuemax` / `aria-valuenow` に当てる。ポインターを押すとフォーカスを移して `setPointerCapture` し、動かすたびに押した位置からの差で持っている幅を変え（左へ動かすと広げる）、`requestAnimationFrame` で予約した 1 回で当てる（予約済みなら予約し修正しない）。終わりは、押したときに `document` へ付けた `lostpointercapture` のリスナーで、押したときの `pointerId` に絞って受ける（離した・中断したときは区切りから泡立って届き、区切りが文書から外れたときは `document` に直接届く）。終わりではリスナーを外し、予約を取り消して、区切りが文書に残っていれば最後の幅を当て、押したときから幅が変わっていれば `onChange` を 1 回呼ぶ。ドラッグ中の幅はモジュールの変数に持ち、ドラッグ中に作られた区切り（記録の書き換えで詳細パネルを再描画したとき）は、`stored` の代わりにその幅から始める。←・→ は `PANEL_WIDTH.step` ずつ、Home は下限、End は上限にし、押すたびに当てて `onChange` を呼ぶ。描いたときと窓の幅が変わるたびに、最後に変えた幅（変えていなければ `stored`、それも無ければ `PANEL_WIDTH.default`）を今の上限に収めて再適用する（収めても `onChange` は呼ばない）。窓の幅の受け取りは、区切りが文書から外れたら外す。下限・上限で止まっている間は、その向きだけのカーソル（`w-resize` / `e-resize`）にする
+    summary: 画面設計『詳細パネル』の要素「幅の区切り」を描き（`role="separator"`・`aria-orientation="vertical"`・`aria-label="詳細パネルの幅"`・`tabindex="0"`）、`panelWidthMax`・`clampPanelWidth` で収めた幅を `document.documentElement` の `--panel-w` と `aria-valuemin` / `aria-valuemax` / `aria-valuenow` に当てる。ポインターを押すとフォーカスを移して `setPointerCapture` し、動かすたびに押した位置からの差で持っている幅を変え（左へ動かすと広げる）、`requestAnimationFrame` で予約した 1 回で当てる（予約済みなら再予約しない）。終わりは、押したときに `document` へ付けた `lostpointercapture` のリスナーで、押したときの `pointerId` に絞って受ける（離した・中断したときは区切りから泡立って届き、区切りが文書から外れたときは `document` に直接届く）。終わりではリスナーを外し、予約を取り消して、区切りが文書に残っていれば最後の幅を当て、押したときから幅が変わっていれば `onChange` を 1 回呼ぶ。ドラッグ中の幅はモジュールの変数に持ち、ドラッグ中に作られた区切り（記録の書き換えで詳細パネルを再描画したとき）は、`stored` の代わりにその幅から始める。←・→ は `PANEL_WIDTH.step` ずつ、Home は下限、End は上限にし、押すたびに当てて `onChange` を呼ぶ。描いたときと窓の幅が変わるたびに、最後に変えた幅（変えていなければ `stored`、それも無ければ `PANEL_WIDTH.default`）を今の上限に収めて再適用する（収めても `onChange` は呼ばない）。窓の幅の受け取りは、区切りが文書から外れたら外す。下限・上限で止まっている間は、その向きだけのカーソル（`w-resize` / `e-resize`）にする
     props:
       - name: stored
         type: number | null

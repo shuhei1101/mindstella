@@ -190,7 +190,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませ、検討事項 D-1 を 1 件追加したワークスペース
       - name: 書き込む操作
-        description: 正しい検討事項を追加する → D-1 の状態を、決めた状態の名前に無い値に修正する、の 2 つを 1 回の `write_docs` で渡す
+        description: 正しい検討事項を追加する → D-1 の状態を、決めた状態の名前に無い値に変更する、の 2 つを 1 回の `write_docs` で渡す
         notes: 状態 `完了`（タスクの状態で、検討事項には無い）
     flow: |-
       ```mermaid
@@ -217,7 +217,7 @@ scenarios:
         description: 作成を済ませた、項目を持たないワークスペース
       - name: 本文
         description: タスク T-1・用語 G-1・メモ N-1 にそれぞれ渡す 2 行の本文の Markdown と、N-1 の 2 行目を書き換える `text_edits`
-        notes: 'T-1 の本文 `経緯: 会話で持ち越した\n終わり方: 検証の結果を残す`。N-1 は 2 行目を `補足: 書き直した` に修正する'
+        notes: 'T-1 の本文 `経緯: 会話で持ち越した\n終わり方: 検証の結果を残す`。N-1 は 2 行目を `補足: 書き直した` に変更する'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -296,7 +296,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませ、案 A・B を持つ未決定の検討事項 D-1 を追加したワークスペース
       - name: 書き込み
-        description: D-1 を採用した案を持たないまま決定済みに修正する更新と、案 A を採用にしたまま未決定で追加する追加
+        description: D-1 を採用した案を持たないまま決定済みに変更する更新と、案 A を採用にしたまま未決定で追加する追加
         notes: 2 回に分けて呼ぶ
     flow: |-
       ```mermaid
@@ -304,7 +304,7 @@ scenarios:
         participant CC as MindStella のセッション
         participant PI as project-index
 
-        CC->>PI: D-1 を、採用した案を持たないまま決定済みに修正する
+        CC->>PI: D-1 を、採用した案を持たないまま決定済みに変更する
         PI->>PI: スキーマと突き合わせて、決定済みが採用した案を持たない
         PI-->>CC: 違反
         CC->>PI: 案 A を採用にした未決定の検討事項を書き込む

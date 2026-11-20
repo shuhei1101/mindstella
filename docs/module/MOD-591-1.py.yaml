@@ -100,7 +100,7 @@ data_models:
             case: 異常
             summary: 問い合わせられないときは前の SHA か develop を返し、失敗も保持する
             condition: '`parametrize`: 前に問い合わせた SHA が無い / ある（期限切れ後に失敗）。失敗の直後にもう一度呼ぶ'
-            mock: '`fetch`（`RefLookupError` を送信する）、`monotonic`、`caplog`'
+            mock: '`fetch`（`RefLookupError` を送出する）、`monotonic`、`caplog`'
             expected: '`develop` / 前の SHA が返り、警告の行が 1 行で、直後の呼び出しでは `fetch` を呼ばない'
           - name: test_resolve_retry_at
             case: 異常
@@ -112,7 +112,7 @@ data_models:
             case: 異常
             summary: 問い合わせた別の SHA を jsDelivr が配らなければ、前の SHA か develop を返し、失敗も保持する
             condition: '`parametrize`: 前に問い合わせた SHA が無い / ある（期限切れ後に別の SHA）。直後にもう一度呼ぶ'
-            mock: '`fetch`、`check`（別の SHA に `RefLookupError` を送信する）、`monotonic`、`caplog`'
+            mock: '`fetch`、`check`（別の SHA に `RefLookupError` を送出する）、`monotonic`、`caplog`'
             expected: '`develop` / 前の SHA が返り、警告の行が 1 行で、直後の呼び出しでは `fetch` を呼ばない'
           - name: test_resolve_same_sha_not_checked
             case: 正常
@@ -207,7 +207,7 @@ functions:
       1. `GITHUB_API_BASE_URL` を分け、スキームが `https` なら `http.client.HTTPSConnection`、`http` なら `HTTPConnection` を `timeout=CONNECT_TIMEOUT_SEC` で作って接続する
       2. 接続したソケットの待ちを `READ_TIMEOUT_SEC` にして、`Accept: application/vnd.github.sha`・`User-Agent: mindstella` で GET する
       3. 応答が 200 で、本文を UTF-8 で読み前後の空白を除いたものが `COMMIT_SHA` に合えば返す
-         - 403・429 の場合、`Retry-After`（秒）があれば今の時刻 + その秒、無ければ `X-RateLimit-Reset`（UNIX 時刻）を `retry_at` にして `RefLookupError` を送信する
+         - 403・429 の場合、`Retry-After`（秒）があれば今の時刻 + その秒、無ければ `X-RateLimit-Reset`（UNIX 時刻）を `retry_at` にして `RefLookupError` を送出する
          - それ以外のステータス・構造の合わない本文の場合、`RefLookupError`（`retry_at` は `None`）を送信する
       4. 接続・読み取りの `OSError`（待ちの上限を含む）と `http.client.HTTPException` は `RefLookupError`（`retry_at` は `None`）にして送信する。接続は必ず閉じる
     exceptions:
@@ -271,7 +271,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
     usecase: プレビューを開く
     scope: public
-    summary: 'jsDelivr の `{JSDELIVR_BASE_URL}/gh/{MDMARK_REPO}@{ref}/dist/index.js` を画面と同じ GET に `Range: bytes=0-0` を付けて要求し、200 か 206 でなければ `RefLookupError` を送信する（外との境界のアダプター）'
+    summary: 'jsDelivr の `{JSDELIVR_BASE_URL}/gh/{MDMARK_REPO}@{ref}/dist/index.js` を画面と同じ GET に `Range: bytes=0-0` を付けて要求し、200 か 206 でなければ `RefLookupError` を送出する（外との境界のアダプター）'
     args:
       - name: ref
         type: str
@@ -289,10 +289,10 @@ functions:
     unit_tests:
       - name: test_check_dist_served
         case: 正常
-        summary: '200 と 206 なら例外を送出しず、SHA の `dist/index.js` を `Range: bytes=0-0` の GET で要求する'
+        summary: '200 と 206 なら例外を送出せず、SHA の `dist/index.js` を `Range: bytes=0-0` の GET で要求する'
         condition: '`parametrize`: 200 / 206。`JSDELIVR_BASE_URL` をそのステータスを返す偽のサーバーに向ける'
         mock: 偽のサーバー
-        expected: 例外を送出しず、偽のサーバーが受けた要求が GET で `Range` が `bytes=0-0`、パスが `/gh/shuhei1101/mdmark@{SHA}/dist/index.js`
+        expected: 例外を送出せず、偽のサーバーが受けた要求が GET で `Range` が `bytes=0-0`、パスが `/gh/shuhei1101/mdmark@{SHA}/dist/index.js`
       - name: test_check_dist_served_when_not_served
         case: 異常
         summary: 403 は `retry_at` の無い例外にする

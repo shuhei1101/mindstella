@@ -172,7 +172,7 @@ stores:
       - name: subscribeVoice
         title: 状態の購読
         kind: メソッド
-        summary: React の外（書き換えの知らせへの接続）から、状態が変わるたびに呼ぶ関数を登録する。ストアは公開しない
+        summary: React の外（書き換えの通知への接続）から、状態が変わるたびに呼ぶ関数を登録する。ストアは公開しない
         args:
           - name: listener
             type: () => void

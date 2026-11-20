@@ -5,7 +5,7 @@ entry:
   value: Claude Code の `SessionStart` のフック（新しい会話・再開・`/clear`・圧縮のたび）が、プラグインの `hooks/hooks.json` から `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py --hook` を呼ぶ。起動スクリプトは `--hook` を付けずに呼ぶ
 flows:
   - name: 正常系
-    summary: 常駐サーバーが落ちていれば起動し、待ち受けを確かめて、つなぎ修正する案内を出す
+    summary: 常駐サーバーが落ちていれば起動し、待ち受けを確かめて、再接続する案内を出す
     setup:
       - name: Mock
         description: Claude Code の代わりに、フックの入力の JSON を標準入力に渡してスクリプトを起動する
@@ -28,12 +28,12 @@ flows:
         IF->>SV: systemctl --user start mindstella.service
         IF-->>SV: GET /_admin/status（待ち受けるまで）
         SV-->>IF: name mindstella
-        IF-->>CC: つなぎ修正する案内、終了コード 0
+        IF-->>CC: 再接続する案内、終了コード 0
       ```
     expected:
       - 終了コードが 0
       - '`MINDSTELLA_PORT` の `GET /_admin/status` が `name` に `mindstella` を返す'
-      - 標準出力に、mindstella の常駐サーバーを起動したことと、`/mcp` で mindstella につなぎ修正する案内がある
+      - 標準出力に、mindstella の常駐サーバーを起動したことと、`/mcp` で mindstella に再接続する案内がある
       - スクリプトが終わった後も常駐サーバーのプロセスが残る
       - ユニットのファイル（`XDG_CONFIG_HOME` の `systemd/user/mindstella.service`）が、仮想環境の Python と `installPath` のフォルダの `server.py` を `ExecStart` に持ち、Mock の `systemctl` が `--user daemon-reload` と `--user start mindstella.service` を受けている
     test: test_normal
@@ -271,8 +271,8 @@ constraints:
     notes: 'mcp の SDK と PyYAML を読み込んで待ち受けるまでの時間（`MCPServer` の起動。WSL で 1 秒前後）に余裕を持たせた値。会話の始まりを待たせるのは起動したときだけ'
   - item: 標準出力
     constraint: '`--hook` で、起動した・古いコードのまま動いている・起動できないときだけ書く（会話の文脈に入る）。既に同じバージョンと同じフォルダが待ち受けていれば何も書かない'
-  - item: つなぎ修正する案内
-    constraint: 起動したときは、Claude Code が会話の始まりに常駐サーバーへつなげず mindstella のツールを持たないことがあるため、`/mcp` で mindstella につなぎ修正する案内を出す
+  - item: 再接続する案内
+    constraint: 起動したときは、Claude Code が会話の始まりに常駐サーバーへつなげず mindstella のツールを持たないことがあるため、`/mcp` で mindstella に再接続する案内を出す
   - item: 再起動（--restart）
     constraint: 待ち受けているかを確かめず、ユニットのファイルを書き直し（このスクリプトのプラグインのフォルダと、呼び出し元の環境の `Environment=`）、`daemon-reload` してから `systemctl --user restart mindstella.service` を呼ぶ。その後は「起動を待つ上限」と同じに待つ
     notes: 起動のコマンドは `installPath` の `ensure_server.py` を `--restart` で呼ぶので、古いコードの常駐サーバーは、比べる値（`installPath` の末尾のフォルダ名）と同じフォルダのコードに替わる

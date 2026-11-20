@@ -5,7 +5,7 @@ entry:
   value: POST `/workspaces`
 lead: 許可するフォルダの下に、ワークスペースの記録を作るか残っている記録を開き、project-index の配信元に登録して、ワークスペースの ID と画面の URL を返す。MindStella の MCP の `create_workspace` も同じ処理を呼ぶ。
 idempotent: true
-side_effects: 記録が無いフォルダには `.mindstella/` に既定の設定（ワークスペースの ID・進め方の文書）と空の記録と、記録を project-index の配信元として配る設定（`dev-docs.yaml`・`schemas/`）を書き（『ワークスペースの作成』と同じ書き方）、直下に本文のフォルダ `docs/` を作って `README.md` を書く。状態のフォルダに追加の MCP・プラグインを記録し、project-index の配信元の行を追加し、状態のフォルダのワークスペースの ID の一覧に追加する。記録が既にあるフォルダは、記録のバージョンが古ければ『記録の形式の移行』で移し替えてから開き、それ以外はスキーマの複製（『記録の形式の移行』の制約『スキーマの複製』）のほかは書き換えない。スキーマの複製を書き直したときは、project-index にその配信元を読み修正させる。そのワークスペースのプレビューの配信を立てる
+side_effects: 記録が無いフォルダには `.mindstella/` に既定の設定（ワークスペースの ID・進め方の文書）と空の記録と、記録を project-index の配信元として配る設定（`dev-docs.yaml`・`schemas/`）を書き（『ワークスペースの作成』と同じ書き方）、直下に本文のフォルダ `docs/` を作って `README.md` を書く。状態のフォルダに追加の MCP・プラグインを記録し、project-index の配信元の行を追加し、状態のフォルダのワークスペースの ID の一覧に追加する。記録が既にあるフォルダは、記録のバージョンが古ければ『記録の形式の移行』で移し替えてから開き、それ以外はスキーマの複製（『記録の形式の移行』の制約『スキーマの複製』）のほかは書き換えない。スキーマの複製を書き直したときは、project-index にその配信元を読み直させる。そのワークスペースのプレビューの配信を立てる
 request:
   - name: folder
     type: str
@@ -114,7 +114,7 @@ constraints:
     constraint: 'project-index の HTTP の読み取り API で 3 段階に確かめる。(1) `GET /settings/sources` の `flow.source` の行の `scope.read` に、ワークスペースのフォルダが当たる（当たらなければ 422・理由 `scope`）。(2) `GET /sources/{flow.source}/docs` の一覧から、`id` が `flow.doc` の文書のパスを引く（無ければ 422・理由 `missing`。配信元が無ければ 404 の `missing: source`）。(3) `GET /sources/{flow.source}/docs/{パス}?id={flow.doc}` が 200 を返す（404 なら 422・理由 `missing`）'
     notes: 常駐サーバーは文書の MCP（`search_docs`）を呼ばない
   - item: 記録の形式の移行
-    constraint: '記録があるフォルダは、開く前に『記録の形式の移行』を当てる。利用者に確認せずに移し替え、移せなかった値は応答の `migration.not_carried` に載せる（D-288。PR #565 の確認ログ）。利用者への知らせは、MindStella のセッションが起動と再開のエージェントフローで通知のスレッドにする。移行の結果の `source_files` が 1 件以上で、配信元の行が既にあり、この依頼で行を変更しない（『既に記録があるフォルダ』の `PATCH` を送信しない）ときは、`GET /settings/sources` で `version` と `settingsPath` を引き、`settingsPath` の端末の設定の `sources` の行を書き換えずにそのまま、`expectedVersion` とともに `PUT /settings/sources` に送信して、全ての配信元を読み修正させる（project-index の『端末の設定の保存』は全ての行を再読み込みする。『端末の設定の配信元の 1 行の変更』は値が変わらない行の配信元を使い回すので、再読み込みされない。`GET` の応答の行は状態を含む camelCase の構造で、端末の設定の行と構造が違うので送信しない）。`source_files` が 1 件以上になるのはプラグインを上げた後にそのワークスペースを初めて開くときだけなので、全ての配信元の再読み込みもそのときだけになる。行を追加する、または行を変更する `PATCH` を送信するときは、それで再読み込みされるので重ねて送信しない。409（バージョンが古い）なら 1 回だけ再取得して再送信し、それでも通らないときと project-index がそのほかの失敗を返したときは 502（`stage: source`）'
+    constraint: '記録があるフォルダは、開く前に『記録の形式の移行』を当てる。利用者に確認せずに移し替え、移せなかった値は応答の `migration.not_carried` に載せる（D-288。PR #565 の確認ログ）。利用者への知らせは、MindStella のセッションが起動と再開のエージェントフローで通知のスレッドにする。移行の結果の `source_files` が 1 件以上で、配信元の行が既にあり、この依頼で行を変更しない（『既に記録があるフォルダ』の `PATCH` を送信しない）ときは、`GET /settings/sources` で `version` と `settingsPath` を引き、`settingsPath` の端末の設定の `sources` の行を書き換えずにそのまま、`expectedVersion` とともに `PUT /settings/sources` に送信して、全ての配信元を読み直させる（project-index の『端末の設定の保存』は全ての行を再読み込みする。『端末の設定の配信元の 1 行の変更』は値が変わらない行の配信元を使い回すので、再読み込みされない。`GET` の応答の行は状態を含む camelCase の構造で、端末の設定の行と構造が違うので送信しない）。`source_files` が 1 件以上になるのはプラグインを上げた後にそのワークスペースを初めて開くときだけなので、全ての配信元の再読み込みもそのときだけになる。行を追加する、または行を変更する `PATCH` を送信するときは、それで再読み込みされるので重ねて送信しない。409（バージョンが古い）なら 1 回だけ再取得して再送信し、それでも通らないときと project-index がそのほかの失敗を返したときは 502（`stage: source`）'
   - item: エージェントフローの配信元
     constraint: 配信元の行を追加した後に、project-index に配信元 `mindstella-agent-flows` の行が無ければ、『エージェントフローの参照』の制約「配信元の登録」のとおり追加する。同じ `id` の行がある（409）ときは追加せずに続ける。失敗してもワークスペースの作成は止めず、常駐サーバーのログに 1 行書く
   - item: project-index のバージョン
@@ -381,7 +381,7 @@ flows:
       - project-index の Mock が行の変更も追加も受けておらず、両方のフォルダの記録が変わっていない
     test: test_error_when_duplicate_id
   - name: 正常系（スキーマの複製を書き直した記録を開く）
-    summary: 今のバージョンの記録のスキーマの複製を書き直し、端末の設定の行をそのまま送信する PUT で project-index に配信元を読み修正させる
+    summary: 今のバージョンの記録のスキーマの複製を書き直し、端末の設定の行をそのまま送信する PUT で project-index に配信元を読み直させる
     setup:
       - name: Mock
         description: 'project-index の Mock（テストが空きポートで立て、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。`GET /settings/sources` が一時ファイルの `settingsPath` とそのワークスペースの行（`outside_read: true`）を返し、`POST`・`PATCH`・`DELETE /settings/sources` の依頼を記録する。一時ファイルの `mindstella.allowed_dirs` はテストの一時フォルダ）'
@@ -408,7 +408,7 @@ flows:
       - 'project-index の Mock が、`expectedVersion` と一時ファイルの端末の設定の `sources` と同じ行を持つ `PUT /settings/sources` を 1 回受け、`POST`・`PATCH` を受けていない'
     test: test_normal_when_schema_copy_rewritten
   - name: 正常系（実際の project-index で記録を書き込み・検索する）
-    summary: 作った Git 管理外のワークスペースを実際の project-index で配信し、記録の作成・更新、本文を持たない項目の検索・更新、スキーマの複製を更新前に戻した後の再度開くことを通す
+    summary: 作った Git 管理外のワークスペースを実際の project-index で配信し、記録の作成・更新、本文を持たない項目の検索・更新、スキーマの複製を更新前に戻した後の再オープンを通す
     setup:
       - name: Mock
         description: なし（実際の project-index をテストごとの一時フォルダの端末の設定と空きポートで起動し、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。準備はエージェントフローの参照の結合テストと同じで、project-index のクローンが無ければ skip する）

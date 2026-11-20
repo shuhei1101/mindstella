@@ -43,12 +43,12 @@ classes:
           description: プリセットの名前（返った並び）
         process: |-
           1. `GET {base_url}{PRESETS_PATH}` を送信する（`_request`）
-             - 届かない場合、`TranscriberStoppedError` を送信する
+             - 届かない場合、`TranscriberStoppedError` を送出する
           2. ステータスで分ける
-             - 404 の場合、`TranscriberUnsupportedError` を送信する（Linux で動いている）
-             - 200 以外の場合、`TranscriberStoppedError` を送信する
+             - 404 の場合、`TranscriberUnsupportedError` を送出する（Linux で動いている）
+             - 200 以外の場合、`TranscriberStoppedError` を送出する
                - `[WARNING]` 文字起こしのサービスがプリセットの一覧に {ステータス} を返した
-          3. 本文の `presets` が文字列の配列でなければ `TranscriberStoppedError` を送信する
+          3. 本文の `presets` が文字列の配列でなければ `TranscriberStoppedError` を送出する
              - `[WARNING]` 文字起こしのサービスのプリセットの一覧の構造が違う
           4. `presets` を返す
         exceptions:
@@ -68,7 +68,7 @@ classes:
           - name: test_presets_when_unavailable
             case: 異常
             summary: 届かない・エンドポイントが無い・崩れた応答を分ける
-            condition: '`parametrize`: `opener` が `URLError(ConnectionRefusedError())` / `TimeoutError` を送信する / 404 / 500 / 200・`{"presets": "一般"}` を返す'
+            condition: '`parametrize`: `opener` が `URLError(ConnectionRefusedError())` / `TimeoutError` を送出する / 404 / 500 / 200・`{"presets": "一般"}` を返す'
             mock: '`opener`'
             expected: '`TranscriberStoppedError` / `TranscriberStoppedError` / `TranscriberUnsupportedError` / `TranscriberStoppedError` / `TranscriberStoppedError`'
             exception: TranscriberStoppedError・TranscriberUnsupportedError
@@ -97,22 +97,22 @@ classes:
           description: '`done` の `text`（無いか文字列でなければ空文字）'
         process: |-
           1. 音声とプリセットを multipart にし（`_multipart`）、`POST {base_url}{JOBS_PATH}` を送信する（`_request`。再試行しない）
-             - 届かない場合、`TranscriberStoppedError` を送信する
+             - 届かない場合、`TranscriberStoppedError` を送出する
           2. ステータスで分ける
-             - 404 の場合、`TranscriberUnsupportedError` を送信する
-             - 202 以外の場合、`TranscriptionFailedError` を送信する（本文の `detail` があればメッセージに入れる）
-             - 202 で本文の `job_id` が文字列でない場合、`TranscriptionFailedError` を送信する
+             - 404 の場合、`TranscriberUnsupportedError` を送出する
+             - 202 以外の場合、`TranscriptionFailedError` を送出する（本文の `detail` があればメッセージに入れる）
+             - 202 で本文の `job_id` が文字列でない場合、`TranscriptionFailedError` を送出する
           3. 最後に進んだ時刻（`clock()`）と、最後の `state`・`progress` を控え、終わるまで繰り返す
              - `sleep(POLL_INTERVAL_SEC)` の後、`GET {base_url}{JOBS_PATH}/{job_id}` を送信する
                - 1 回の要求が `REQUEST_TIMEOUT_SEC` を超えた場合、待ちを続ける
-               - 接続を断られた場合、`TranscriberStoppedError` を送信する
-               - 404 の場合、`TranscriptionFailedError` を送信する（ジョブが無い）
+               - 接続を断られた場合、`TranscriberStoppedError` を送出する
+               - 404 の場合、`TranscriptionFailedError` を送出する（ジョブが無い）
                - 200 以外の場合、待ちを続ける
                  - `[WARNING]` 文字起こしのサービスがジョブの状態に {ステータス} を返した
              - `state` が `done` なら `text` を返す
-             - `state` が `failed` なら `TranscriptionFailedError` を送信する（`error` をメッセージに入れる）
+             - `state` が `failed` なら `TranscriptionFailedError` を送出する（`error` をメッセージに入れる）
              - `state`・`progress` が控えと違えば、控えと最後に進んだ時刻を書き換える
-             - 最後に進んだ時刻から `WAIT_LIMIT_SEC` を超えたら、`TranscriptionTimeoutError` を送信する
+             - 最後に進んだ時刻から `WAIT_LIMIT_SEC` を超えたら、`TranscriptionTimeoutError` を送出する
           4. どの失敗も、送信する前に `[WARNING]` 文字起こしに失敗した（理由）を記録する。音声の中身は記録しない
         exceptions:
           - name: TranscriberStoppedError
@@ -214,7 +214,7 @@ classes:
           - name: test_request_when_http_error
             case: 正常
             summary: 4xx・5xx もステータスと本文で返す
-            condition: '`opener` が 400・`{"detail": "x"}` の `HTTPError` を送信する'
+            condition: '`opener` が 400・`{"detail": "x"}` の `HTTPError` を送出する'
             mock: '`opener`'
             expected: '`(400, {"detail": "x"})`'
           - name: test_request

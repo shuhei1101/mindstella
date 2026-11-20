@@ -68,7 +68,7 @@ flows:
     expected:
       - ステータスが 422 で、`detail` に `threads.yaml` がある
     test: test_error_when_schema_mismatch
-lead: スレッドを全て、書き込みと状態の記録ごとその場で読んで返す。プレビューの画面がスレッドの一覧とスレッド 1 件を描くときと、書き換えの知らせを受けたときに読む。AI の既読は変えない。
+lead: スレッドを全て、書き込みと状態の記録ごとその場で読んで返す。プレビューの画面がスレッドの一覧とスレッド 1 件を描くときと、書き換えの通知を受けたときに読む。AI の既読は変えない。
 idempotent: true
 side_effects: なし（読むだけ）
 callers:

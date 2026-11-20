@@ -143,7 +143,7 @@ flows:
         description: 作成を済ませたワークスペース
       - name: settings
         description: '`summary` と削除したキー `playbooks` を渡す'
-        notes: '`{"summary": "タイトル", "playbooks": ["壁打ち"]}`'
+        notes: '`{"summary": "題", "playbooks": ["壁打ち"]}`'
     flow: |-
       ```mermaid
       sequenceDiagram

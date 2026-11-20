@@ -58,7 +58,7 @@ endpoints:
   - name: PUT /settings/sources
     method: PUT
     path: /settings/sources
-    summary: '本文は `{"expectedVersion": 必須, "sources": [端末の設定の行]}`。端末の設定の `sources` を丸ごと置き換え、全ての配信元を再読み込みする（project-index の『端末の設定の保存』）。『ワークスペースの作成』が、スキーマの複製を書き直した後に、端末の設定のファイルの行をそのまま送信して配信元を読み修正させる（`PATCH` は値が変わらない行を再読み込みしない）'
+    summary: '本文は `{"expectedVersion": 必須, "sources": [端末の設定の行]}`。端末の設定の `sources` を丸ごと置き換え、全ての配信元を再読み込みする（project-index の『端末の設定の保存』）。『ワークスペースの作成』が、スキーマの複製を書き直した後に、端末の設定のファイルの行をそのまま送信して配信元を読み直させる（`PATCH` は値が変わらない行を再読み込みしない）'
     status_codes:
       - code: '200'
         condition: 保存して再読み込みした

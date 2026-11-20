@@ -3,7 +3,7 @@ title: SPAを開く
 entry:
   kind: screen
   value: サーバーの配信の `/spa/`（画面は『SPAの配信』が返し、ソースは `frontend/`）
-  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みと書きかけ、項目ごとのコメントのマーカー）・`GET /api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /api/threads`（スレッドと利用者の未読）・`POST /api/opened`（前回開いた日時）・`POST /api/edits`・`DELETE /api/edits/{id}`・`POST /api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送信する）・`PATCH /api/threads/{id}`（クローズとオープンへの戻し）・`POST /api/threads/{id}/seen`（利用者の既読）・`PUT /api/config/display`（ワークスペースの既定の書き換え）・`GET /api/transcription`（文字起こしの可否と設定）・`POST /api/transcriptions`（音声の文字起こし）・`POST /api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの通知）・`GET /api/comments`（レビュー中の書き込みと書きかけ、項目ごとのコメントのマーカー）・`GET /api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /api/threads`（スレッドと利用者の未読）・`POST /api/opened`（前回開いた日時）・`POST /api/edits`・`DELETE /api/edits/{id}`・`POST /api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送信する）・`PATCH /api/threads/{id}`（クローズとオープンへの戻し）・`POST /api/threads/{id}/seen`（利用者の既読）・`PUT /api/config/display`（ワークスペースの既定の書き換え）・`GET /api/transcription`（文字起こしの可否と設定）・`POST /api/transcriptions`（音声の文字起こし）・`POST /api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
 flows:
   - name: 正常系
     summary: '`/spa/` を開くと、記録を読んでトップバーと概要を描く'
@@ -20,7 +20,7 @@ flows:
       - URL が `/spa/`（search params が付かない）
       - ブラウザのコンソールにエラーが出ていない
     test: test_normal
-  - name: 正常系（書き換えの知らせ）
+  - name: 正常系（書き換えの通知）
     summary: ツールで記録を書き換えると、再度開かずに概要を再描画する
     setup:
       - name: Mock
@@ -28,7 +28,7 @@ flows:
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
         notes: 開いた後に MCP の `add` で検討事項を 1 件追加する
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 再描画した概要\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 描き直した概要\n```"
     expected:
       - 追加してから 2 秒以内に、タブの帯の検討事項の件数が 1 増える
       - URL とスクロールの位置が変わらない
@@ -96,7 +96,7 @@ flows:
       - name: make_workspace
         description: 検討事項 D-1（決定済み）・D-2（要見直し）・D-3（要見直し）を持つワークスペース
         notes: '`/spa/?tab=decisions&view=table&f.status=要見直し&sort=-id` で開き、チップを外して再読み込みする'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: f.status=要見直し&sort=-id を付けて開く\n  IF-->>ユーザー: D-3・D-2 の順の表と条件のチップ\n  ユーザー->>IF: チップを外す\n  IF-->>ユーザー: 全ての行の表\n  ユーザー->>IF: 再読み込みする\n  IF-->>ユーザー: 全ての行の表\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: f.status=要見直し&sort=-id を付けて開く\n  IF-->>ユーザー: D-3・D-2 の順の表と条件のチップ\n  ユーザー->>IF: チップを外す\n  IF-->>ユーザー: 全ての行の表\n  ユーザー->>IF: 読み込み直す\n  IF-->>ユーザー: 全ての行の表\n```"
     expected:
       - 開いたとき、表の行が D-3・D-2 の順で、D-1 の行が無く、表の上に状態「要見直し」のチップがある
       - チップを外した後、URL に `f.status` が無く、履歴の数が変わらない
@@ -109,7 +109,7 @@ flows:
       - name: make_workspace
         description: まとまり V-1（D-1 を追加した）と V-2（D-1 の本文を変え、D-2 を追加し、D-3 を削除した）を持つワークスペース
         notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-2` で開き、トップバーの変更履歴で V-1 を選ぶ'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: diff=V-2 を付けて開く\n  IF-->>SV: POST /api/opened\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 差分のマーカーと削除した項目の帯の付いた表と、本文の差分の詳細\n  ユーザー->>IF: 変更履歴で V-1 を選ぶ\n  IF-->>ユーザー: V-1 からの差分の表示\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: diff=V-2 を付けて開く\n  IF-->>SV: POST /api/opened\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 差分の印と消した項目の帯の付いた表と、本文の差分の詳細\n  ユーザー->>IF: 変更履歴で V-1 を選ぶ\n  IF-->>ユーザー: V-1 からの差分の表示\n```"
     expected:
       - 表の D-1 の行に変更のマーカー、D-2 の行に新規のマーカーがあり、表の上の削除した項目の帯に D-3 がある
       - 詳細パネルの本文に、追加した行と削除した行の差分の色分けがある
@@ -123,7 +123,7 @@ flows:
       - name: make_workspace
         description: まとまり V-1 を持つワークスペース
         notes: '`/spa/?tab=decisions&diff=V-99` で開く'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=decisions&diff=V-99 を開く\n  IF-->>ユーザー: 差分のマーカーの無い検討事項\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=decisions&diff=V-99 を開く\n  IF-->>ユーザー: 差分の印の無い検討事項\n```"
     expected:
       - 差分のマーカーと削除した項目の帯が無い
       - URL の search params に `diff` が無い
@@ -135,7 +135,7 @@ flows:
       - name: make_workspace
         description: まとまり V-1 を持ち、前回開いた日時の連番が V-1 の `until_seq` のワークスペース
         notes: 開いた後に MCP の `add` で D-2 を追加し、`commit` でまとまり V-2 にしてから、変更履歴で「前回開いてから」を選ぶ
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions を開く\n  IF-->>SV: POST /api/opened\n  SV-->>IF: previous\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  ユーザー->>IF: 変更履歴で「前回開いてから」を選ぶ\n  IF-->>ユーザー: D-2 に新規のマーカー\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions を開く\n  IF-->>SV: POST /api/opened\n  SV-->>IF: previous\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  ユーザー->>IF: 変更履歴で「前回開いてから」を選ぶ\n  IF-->>ユーザー: D-2 に新規の印\n```"
     expected:
       - D-2 に新規のマーカーがあり、D-1 にマーカーが無い
       - URL の `diff` が `since`
@@ -176,7 +176,7 @@ flows:
       - name: make_workspace
         description: 未決定の検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
         notes: '`/spa/?tab=decisions&id=D-1` で開く'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 「編集する」を押し、回答を書いて入力欄を離れる\n  IF->>SV: POST /api/edits {op: set, target: D-1, key: answer, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 回答とカードに保存待ちのマーカー、トップバーに件数 1\n  ユーザー->>IF: トップバーの保存待ちのボタンを押し、まとめて保存する\n  IF->>SV: POST /api/edits/save\n  SV-->>IF: 200\n  IF-->>ユーザー: 保存した旨と、D-1 の新しい回答\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 「編集する」を押し、答えを書いて入力欄を離れる\n  IF->>SV: POST /api/edits {op: set, target: D-1, key: answer, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 答えとカードに保存待ちの印、トップバーに件数 1\n  ユーザー->>IF: トップバーの保存待ちのボタンを押し、まとめて保存する\n  IF->>SV: POST /api/edits/save\n  SV-->>IF: 200\n  IF-->>ユーザー: 保存した旨と、D-1 の新しい答え\n```"
     expected:
       - 溜めた後、D-1 の回答のキーとボードの D-1 のカードに保存待ちのマーカーがあり、トップバーの件数が 1
       - 保存待ちのパネルを開いた後、URL に `panel=pending` があり、履歴の数が変わらない
@@ -190,7 +190,7 @@ flows:
       - name: make_workspace
         description: タスク T-1 と、どの項目からも指されていないメモ N-1 を持ち、`edits.yaml` を持たないワークスペース
         notes: '`/spa/?tab=tasks` で開き、追加の入力でタスク「画面を作る」を追加し、続けて `/spa/?tab=notes&id=N-1` で N-1 の削除を溜め、保存待ちのパネルで N-1 の削除を取り消す'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 追加の入力にタイトルを書いて追加する\n  IF->>SV: POST /api/edits {op: item-add, key: tasks, value}\n  SV-->>IF: 201、target は new-1\n  IF-->>ユーザー: ボードに ID の無い保存待ちのカード\n  ユーザー->>IF: N-1 の詳細で削除を押す\n  IF->>SV: POST /api/edits {op: item-remove, target: N-1}\n  SV-->>IF: 201\n  ユーザー->>IF: 保存待ちのパネルで N-1 の削除を取り消す\n  IF->>SV: DELETE /api/edits/E-2\n  SV-->>IF: 200\n  IF-->>ユーザー: 追加する項目だけの保存待ち\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 追加の入力にタイトルを書いて足す\n  IF->>SV: POST /api/edits {op: item-add, key: tasks, value}\n  SV-->>IF: 201、target は new-1\n  IF-->>ユーザー: ボードに ID の無い保存待ちのカード\n  ユーザー->>IF: N-1 の詳細で削除を押す\n  IF->>SV: POST /api/edits {op: item-remove, target: N-1}\n  SV-->>IF: 201\n  ユーザー->>IF: 保存待ちのパネルで N-1 の削除を取り消す\n  IF->>SV: DELETE /api/edits/E-2\n  SV-->>IF: 200\n  IF-->>ユーザー: 足す項目だけの保存待ち\n```"
     expected:
       - 追加した後、タスクのボードに「画面を作る」の ID の無いカードが保存待ちのマーカーつきであり、`tasks.yaml` は T-1 だけ
       - 削除を溜めた後、表の N-1 の行に「保存で削除」のマーカーがある
@@ -203,7 +203,7 @@ flows:
       - name: make_workspace
         description: 題名が「話し合い」のワークスペース
         notes: '`/spa/?tab=settings` で開き、題名を「画面の編集」に書き換えて入力欄を離れる'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=settings を開く\n  IF-->>ユーザー: 設定の画面\n  ユーザー->>IF: 題名を書き換えて入力欄を離れる\n  IF->>SV: POST /api/edits {op: setting, target: settings, key: summary, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 題名に保存待ちのマーカー、トップバーに件数 1\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=settings を開く\n  IF-->>ユーザー: 設定の画面\n  ユーザー->>IF: 題名を書き換えて入力欄を離れる\n  IF->>SV: POST /api/edits {op: setting, target: settings, key: summary, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 題名に保存待ちの印、トップバーに件数 1\n```"
     expected:
       - 設定の画面に今の題名「話し合い」が出ている
       - 書き換えた後、題名の欄に保存待ちのマーカーがあり、`config.yaml` の題名が「話し合い」のまま
@@ -223,18 +223,18 @@ flows:
       - ブラウザのコンソールに未処理の例外が出ていない
     test: test_error_when_records_invalid
   - name: 異常系（サーバーが止まった）
-    summary: 書き換えの知らせが切れたら、トップバーに接続が切れたことを出し、立ち再起動するとつなぎ修正する
+    summary: 書き換えの通知が切れたら、トップバーに接続が切れたことを出し、再起動すると再接続する
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
-        notes: '`config.yaml` の `preview.port` に、テストの中で空きポートを 1 つ取って閉じた番号を書く。開いた後に `server_stop` で常駐サーバーを止め、立ち再起動して同じワークスペースで `preview_url` を呼ぶ'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV--xIF: 書き換えの知らせが切れる\n  IF-->>ユーザー: 接続が切れた表示\n  IF-->>SV: つなぎ修正する\n  SV-->>IF: 記録\n  IF-->>ユーザー: 接続が切れた表示を削除する\n```"
+        notes: '`config.yaml` の `preview.port` に、テストの中で空きポートを 1 つ取って閉じた番号を書く。開いた後に `server_stop` で常駐サーバーを止め、再起動して同じワークスペースで `preview_url` を呼ぶ'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV--xIF: 書き換えの通知が切れる\n  IF-->>ユーザー: 接続が切れた表示\n  IF-->>SV: つなぎ直す\n  SV-->>IF: 記録\n  IF-->>ユーザー: 接続が切れた表示を消す\n```"
     expected:
       - 止めた後、トップバーに接続が切れたことの表示が出る
       - 止めた後も、前に読んだ記録の概要のタイルが残っている
-      - 立ち再起動した後、表示が消えて概要が描かれている
+      - 再起動した後、表示が消えて概要が描かれている
     test: test_error_when_server_stopped
   - name: 異常系（描画のライブラリが読めない）
     summary: 描画のライブラリの配信元に届かないと、使う箇所にライブラリの名前を出し、表は使える
@@ -549,7 +549,7 @@ flows:
       - ボタンを押した後、URL の search params が `tab=decisions&id=D-1&panel=comments&ttarget=D-1` で、一覧に C-1 と TH-1 だけが出て、履歴の数が変わらない
       - × を押した後、URL から `ttarget` が外れ、一覧に C-1・TH-1・TH-2 が出て、履歴の数が変わらない
     test: test_normal_when_comment_target_filtered
-lead: 利用者がサーバーの配信の `/spa/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの知らせを受けると記録を再読み込みして再描画する。
+lead: 利用者がサーバーの配信の `/spa/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの通知を受けると記録を再読み込みして再描画する。
 callers:
   - SC-489-12#
 request:
@@ -704,12 +704,12 @@ constraints:
   - item: 本文の無害化
     constraint: 『プレビューを開く』の制約「本文の無害化」と同じ
   - item: 画面への反映の時間
-    constraint: 書き換えの知らせを受けてから 2 秒以内に再描画する（入力中に保留したときは、保留を解いてから 2 秒以内）
+    constraint: 書き換えの通知を受けてから 2 秒以内に再描画する（入力中に保留したときは、保留を解いてから 2 秒以内）
     decided_by: NFR-489-1#requirements[画面への反映の時間]
   - item: 再描画
     constraint: '`changed` を受けたら `GET /api/records`・`GET /api/comments`・`GET /api/edits`・`GET /api/threads` を再読み込みする。開いている画面・URL の search params・表の列の表示・本文のスクロールの位置・編集とコメントの入力欄の書きかけ・レビュー中の書き込みのチェックを保ったまま再描画し、履歴に積まない。開いていた項目が記録から消えたら詳細を閉じ、URL から `id`・`full`・`h` を外す。開いていたスレッドが無くなったら（まだ送信していない新しいスレッドを送信したか削除したときを含む）スレッドの一覧を出し、URL から `thread` を外す。再読み込みが 422 なら前に読んだ記録で描き続ける。入力中は制約「入力中の再読み込みの保留」に従う。再読み込みで入力欄を再作成せず、入力中の値とカーソルの位置を書き換えない'
   - item: 接続の状態
-    constraint: 書き換えの知らせが切れている間は、前に読んだ記録で描き続け、トップバーに接続が切れたことを出す。つなぎ修正は `EventSource` に任せる
+    constraint: 書き換えの通知が切れている間は、前に読んだ記録で描き続け、トップバーに接続が切れたことを出す。再接続は `EventSource` に任せる
   - item: URL の状態
     constraint: 画面で見ているものに影響する状態（リクエストの表の全て）は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する。既定の値は書かない
   - item: 履歴
@@ -725,11 +725,11 @@ constraints:
   - item: 前のバージョンの組み立て
     constraint: 『プレビューを開く』の制約「前のバージョンの組み立て」と同じ
   - item: 差分の表示と書き換え
-    constraint: 差分の表示に入る・抜ける・時点を再選択するだけでは記録を再読み込みしない。画面・項目を移っても `diff` を保つ。書き換えの知らせで再読み込みしたときは同じ時点の差分の表示のまま再描画し、選んだまとまりが記録から消えたか、`pending` を選んでいてまだまとめていない変更が空になったら、差分の表示をやめて URL から `diff` を外す
+    constraint: 差分の表示に入る・抜ける・時点を再選択するだけでは記録を再読み込みしない。画面・項目を移っても `diff` を保つ。書き換えの通知で再読み込みしたときは同じ時点の差分の表示のまま再描画し、選んだまとまりが記録から消えたか、`pending` を選んでいてまだまとめていない変更が空になったら、差分の表示をやめて URL から `diff` を外す
   - item: 編集の読み込みと書き込み
     constraint: 『プレビューを開く』の制約「編集の読み込みと書き込み」のサーバーの配信の振る舞いと同じ（入力欄を離れたときに `POST /api/edits`、取り消しは `DELETE /api/edits/{id}`、保存は `POST /api/edits/save`。保存の 409 は `blocked` を行ごとの書き込めない理由として出し、届かないときは保存待ちの編集を残す。差分の表示中は編集の操作・保存待ちのマーカー・件数を出さず、保存待ちのパネルを閉じる）。送信している間はそのボタンを押せなくし、二重に送信しない
   - item: コメントの読み込みと書き込み
-    constraint: 『プレビューを開く』の制約「コメントの読み込みと書き込み」と同じ（溜める・修正する・削除する・元に戻す・まとめて送信する・書きかけの保存の送信先と、送信できなかったときに本文を残して理由を出す振る舞い）
+    constraint: 『プレビューを開く』の制約「コメントの読み込みと書き込み」と同じ（溜める・修正する・削除する・元に戻す・まとめて送信する・下書きの保存の送信先と、送信できなかったときに本文を残して理由を出す振る舞い）
   - item: 選んだ箇所の対応づけ
     constraint: 『プレビューを開く』の制約「選んだ箇所の対応づけ」と同じ。箇所の値は今の画面と同じ（『レビュー中のコメントの追加』の request `loc`）
   - item: レビュー中のコメントの並び
@@ -739,13 +739,13 @@ constraints:
   - item: 書き込みのまとまりのリンク
     constraint: 『プレビューを開く』の制約「書き込みのまとまりのリンク」と同じ。押したときは `diff` だけを置き換え、ほかの search params は保つ
   - item: 表示の設定
-    constraint: 表示する種類・差分のミニマップ・本文の表とセクションの見せ方・「レビューに追加」の後のフォーカスの個人の上書きは、選んだときに端末の保存領域に書いてその場で画面に当て、サーバーへは送信しない。開いている画面の種類を外したときは概要へ移り、URL を置き換える。ワークスペースの既定は、既定の保存の確かめで「保存する」を押したときに `PUT /api/config/display` で書く。書き換えの知らせで再読み込みした記録の既定が変わったときは、上書きを持たない項目に新しい既定を当てる
+    constraint: 表示する種類・差分のミニマップ・本文の表とセクションの見せ方・「レビューに追加」の後のフォーカスの個人の上書きは、選んだときに端末の保存領域に書いてその場で画面に当て、サーバーへは送信しない。開いている画面の種類を外したときは概要へ移り、URL を置き換える。ワークスペースの既定は、既定の保存の確かめで「保存する」を押したときに `PUT /api/config/display` で書く。書き換えの通知で再読み込みした記録の既定が変わったときは、上書きを持たない項目に新しい既定を当てる
   - item: 設定の画面の起点
     constraint: 設定の画面は `tab=settings` で開く。入口は表示の設定のパネルの「設定を編集する」で、押すとパネルを閉じて設定の画面へ移り、履歴に積む
   - item: 音声の入力
-    constraint: '開いたときに `GET /api/transcription` を読み、コメントの入力・返信の入力・レビュー中の書き込みの修正の入力のマイクのボタンを置く。応答を待たずに入力を描き、`available` が `false` か、ブラウザが `navigator.mediaDevices.getUserMedia` を持たないときは、マイクのボタンを押せない見た目にしてフォーカスは受けたまま（`aria-disabled`）、理由（`detail`、マイクを使えないときは画面が持つ文）をツールチップと押したときの結果の行に出す。サービスが使えないために押せないマイクのボタンを押したときは `GET /api/transcription` を再読み込みし、使えるようになっていれば押せる状態に戻す（録音は利用者がもう一度押して始める）。押すと `getUserMedia({audio: true})` と `MediaRecorder` で録り、マイクと「レビューに追加」の位置を × の「キャンセル」と ✓ の「文字起こし」に切り替える。録音中は、入力欄の中身とカーソルの位置を残したまま入力欄を隠してキーボードの入力を受け付けず、同じ場所に、`AnalyserNode` で取ったマイクの音量を縦の棒で描く波形（読み上げない）を出す。録音を終えたら（キャンセル・✓・失敗）波形を削除して入力欄に戻す。キャンセルは録音を捨ててマイクを解放する。✓ は録音を止め、`POST /api/transcriptions` へ録った状態の `Content-Type` で送信し、返った文字を入力欄のカーソルの位置へ挿入する。`action`（無ければ `review`）が `review` なら挿入した全文を「レビューに追加」と同じく `POST /api/comments` へ送信してレビュー中に溜め、溜められたら入力欄を空にする（溜められなければ全文を入力欄に残して理由を結果の行に出す）。`send` なら挿入した全文を `POST /api/comments/send-now`（コメントの入力は `target`・`loc`、返信の入力は `thread`）へ送信し、送信できたら入力欄を空にする。`insert` なら送信せず、利用者が「レビューに追加」を押すとキーボードで入力した書き込みと同じくレビュー中に溜める。失敗（許可の拒否・503・502・504・413・届かない）は、入力欄の文字を残して理由を結果の行に出し、503 のときはマイクのボタンを押せなくする。録音は画面で同時に 1 つだけにし、録音・文字起こし中はほかの入力欄のマイクのボタンを押せない見た目（`aria-disabled`）にして理由をツールチップと押したときの結果の行に出す（キーボードの入力は受け付ける）。録音中に入力欄が画面から消えても（ほかの項目・スレッド・タブへ移る、パネル・全画面・入力を閉じる）録音を続け、トップバーのコメントのボタンの左隣に音声入力中の表示を出す。表示を押すと録音を始めた入力欄の画面（詳細パネル・詳細の全画面・コメントの一覧・スレッド）を開き、波形と × ・ ✓ を再表示して ✓ にフォーカスを移す。入力欄が画面に無い間に文字起こし・レビュー中への追加・送信が終わったときは、結果を入力欄の書きかけ（`body`）へ反映し（`insert` と失敗のときは挿入した全文。カーソルは挿入した文字の後ろ）、失敗のときはトップバーの下の帯に理由と「入力欄を開く」のボタンを出す（成功のときは何も出さない）。「入力欄を開く」は音声入力中の表示と同じく入力欄の画面を開いてフォーカスを移し、帯を閉じる。録音中に行き先の項目・スレッドが記録から無くなったら録音を捨ててマイクを解放し、トップバーの下の帯に理由を出す。録音の開始で `navigator.wakeLock.request("screen")` を求め、録音を終えたら（✓・キャンセル・失敗・捨てた）解放する。録音中に画面が見えるようになったとき（`visibilitychange`）解放されていれば再計算し、求められないときは何も出さずに録音を続ける。レビュー中の書き込みの修正の入力（レビュー中の書き込みの画面・スレッドのレビュー中の返信・詳細パネルと詳細の全画面のレビュー中のコメント）では、マイクと「修正」「キャンセル」の位置を × と ✓ に切り替え、`action` によらず返った文字を修正の入力欄のカーソルの位置へ挿入するだけにし、`POST /api/comments`・`POST /api/comments/send-now` を呼ばない（「修正」で `PATCH /api/comments/{id}` へ送信するまでレビュー中の書き込みを変えない）。挿入した後は、`focus_after_add` によらずフォーカスを修正の入力欄へ戻し、カーソルを挿入した文字の後ろに置く（修正の入力欄が画面に無い間に終わったときはフォーカスを動かさない）。修正の入力の × は録音だけを捨て、修正の入力を開いたままにする。音声入力中の表示と「入力欄を開く」は、録音を始めた画面を開いてその書き込みを修正の入力のまま出し、✓ にフォーカスを移す。修正の入力欄が画面に無い間に文字起こしが終わったときは、書きかけへ反映せず、挿入した全文をページを開いている間だけ画面の中に持ち、その書き込みの修正の入力を開いたときに入力欄へ入れる（失敗のときは、元の本文のまま、帯に理由と「入力欄を開く」を出す）。録音中・文字起こし中にその書き込みをレビュー中から削除・送信したときは、録音と結果を捨ててマイクを解放し、トップバーの下の帯に理由を出す。削除した書き込みを「元に戻す」で戻しても、結果は入れない'
+    constraint: '開いたときに `GET /api/transcription` を読み、コメントの入力・返信の入力・レビュー中の書き込みの修正の入力のマイクのボタンを置く。応答を待たずに入力を描き、`available` が `false` か、ブラウザが `navigator.mediaDevices.getUserMedia` を持たないときは、マイクのボタンを押せない見た目にしてフォーカスは受けたまま（`aria-disabled`）、理由（`detail`、マイクを使えないときは画面が持つ文）をツールチップと押したときの結果の行に出す。サービスが使えないために押せないマイクのボタンを押したときは `GET /api/transcription` を再読み込みし、使えるようになっていれば押せる状態に戻す（録音は利用者がもう一度押して始める）。押すと `getUserMedia({audio: true})` と `MediaRecorder` で録り、マイクと「レビューに追加」の位置を × の「キャンセル」と ✓ の「文字起こし」に切り替える。録音中は、入力欄の中身とカーソルの位置を残したまま入力欄を隠してキーボードの入力を受け付けず、同じ場所に、`AnalyserNode` で取ったマイクの音量を縦の棒で描く波形（読み上げない）を出す。録音を終えたら（キャンセル・✓・失敗）波形を削除して入力欄に戻す。キャンセルは録音を捨ててマイクを解放する。✓ は録音を止め、`POST /api/transcriptions` へ録った状態の `Content-Type` で送信し、返った文字を入力欄のカーソルの位置へ挿入する。`action`（無ければ `review`）が `review` なら挿入した全文を「レビューに追加」と同じく `POST /api/comments` へ送信してレビュー中に溜め、溜められたら入力欄を空にする（溜められなければ全文を入力欄に残して理由を結果の行に出す）。`send` なら挿入した全文を `POST /api/comments/send-now`（コメントの入力は `target`・`loc`、返信の入力は `thread`）へ送信し、送信できたら入力欄を空にする。`insert` なら送信せず、利用者が「レビューに追加」を押すとキーボードで入力した書き込みと同じくレビュー中に溜める。失敗（許可の拒否・503・502・504・413・届かない）は、入力欄の文字を残して理由を結果の行に出し、503 のときはマイクのボタンを押せなくする。録音は画面で同時に 1 つだけにし、録音・文字起こし中はほかの入力欄のマイクのボタンを押せない見た目（`aria-disabled`）にして理由をツールチップと押したときの結果の行に出す（キーボードの入力は受け付ける）。録音中に入力欄が画面から消えても（ほかの項目・スレッド・タブへ移る、パネル・全画面・入力を閉じる）録音を続け、トップバーのコメントのボタンの左隣に音声入力中の表示を出す。表示を押すと録音を始めた入力欄の画面（詳細パネル・詳細の全画面・コメントの一覧・スレッド）を開き、波形と × ・ ✓ を再出して ✓ にフォーカスを移す。入力欄が画面に無い間に文字起こし・レビュー中への追加・送信が終わったときは、結果を入力欄の書きかけ（`body`）へ反映し（`insert` と失敗のときは挿入した全文。カーソルは挿入した文字の後ろ）、失敗のときはトップバーの下の帯に理由と「入力欄を開く」のボタンを出す（成功のときは何も出さない）。「入力欄を開く」は音声入力中の表示と同じく入力欄の画面を開いてフォーカスを移し、帯を閉じる。録音中に行き先の項目・スレッドが記録から無くなったら録音を捨ててマイクを解放し、トップバーの下の帯に理由を出す。録音の開始で `navigator.wakeLock.request("screen")` を求め、録音を終えたら（✓・キャンセル・失敗・捨てた）解放する。録音中に画面が見えるようになったとき（`visibilitychange`）解放されていれば再計算し、求められないときは何も出さずに録音を続ける。レビュー中の書き込みの修正の入力（レビュー中の書き込みの画面・スレッドのレビュー中の返信・詳細パネルと詳細の全画面のレビュー中のコメント）では、マイクと「修正」「キャンセル」の位置を × と ✓ に切り替え、`action` によらず返った文字を修正の入力欄のカーソルの位置へ挿入するだけにし、`POST /api/comments`・`POST /api/comments/send-now` を呼ばない（「修正」で `PATCH /api/comments/{id}` へ送信するまでレビュー中の書き込みを変えない）。挿入した後は、`focus_after_add` によらずフォーカスを修正の入力欄へ戻し、カーソルを挿入した文字の後ろに置く（修正の入力欄が画面に無い間に終わったときはフォーカスを動かさない）。修正の入力の × は録音だけを捨て、修正の入力を開いたままにする。音声入力中の表示と「入力欄を開く」は、録音を始めた画面を開いてその書き込みを修正の入力のまま出し、✓ にフォーカスを移す。修正の入力欄が画面に無い間に文字起こしが終わったときは、書きかけへ反映せず、挿入した全文をページを開いている間だけ画面の中に持ち、その書き込みの修正の入力を開いたときに入力欄へ入れる（失敗のときは、元の本文のまま、帯に理由と「入力欄を開く」を出す）。録音中・文字起こし中にその書き込みをレビュー中から削除・送信したときは、録音と結果を捨ててマイクを解放し、トップバーの下の帯に理由を出す。削除した書き込みを「元に戻す」で戻しても、結果は入れない'
   - item: 入力中の再読み込みの保留
-    constraint: 文字を入力する欄（文字の `input`・`textarea`・`contenteditable`）にフォーカスがある間と、音声入力の録音を始めてから文字起こしの結果が入るまでの間（制約「音声の入力」の録音・文字起こし中）は、`changed` とつなぎ修正（`open`）を受けても画面に反映する再読み込みをせず、再読み込みを保留したことだけを持つ。音声入力の間に `changed` とつなぎ修正を受けたときは、録音の行き先が記録にあるかだけを確かめるために `GET /api/records`（行き先がスレッドなら `GET /api/threads`、レビュー中の書き込みの修正なら `GET /api/comments`）を読み、画面には反映しない。行き先が無ければ制約「音声の入力」のとおり録音を捨てる。保留の間はトップバーの下に帯で「更新があります。入力欄から離れると反映します。」を出す（押せない表示）。フォーカスが入力する欄から外れ、音声入力もしていないときに、保留していた再読み込みを 1 回だけ行い、帯を削除する。入力する欄から別の入力する欄へフォーカスを移したときは再読み込みしない。帯を出す・削除するときは、帯の高さの分だけ本文のスクロールの位置をずらし、入力欄の画面の上の位置を変えない。保留の間も、接続の状態と重なった ID（`duplicate_ids`）は受けて出す。自分の書き込み（編集・コメントの追加・書きかけ）の応答で再描画するものは保留しない
+    constraint: 文字を入力する欄（文字の `input`・`textarea`・`contenteditable`）にフォーカスがある間と、音声入力の録音を始めてから文字起こしの結果が入るまでの間（制約「音声の入力」の録音・文字起こし中）は、`changed` と再接続（`open`）を受けても画面に反映する再読み込みをせず、再読み込みを保留したことだけを持つ。音声入力の間に `changed` と再接続を受けたときは、録音の行き先が記録にあるかだけを確かめるために `GET /api/records`（行き先がスレッドなら `GET /api/threads`、レビュー中の書き込みの修正なら `GET /api/comments`）を読み、画面には反映しない。行き先が無ければ制約「音声の入力」のとおり録音を捨てる。保留の間はトップバーの下に帯で「更新があります。入力欄から離れると反映します。」を出す（押せない表示）。フォーカスが入力する欄から外れ、音声入力もしていないときに、保留していた再読み込みを 1 回だけ行い、帯を削除する。入力する欄から別の入力する欄へフォーカスを移したときは再読み込みしない。帯を出す・削除するときは、帯の高さの分だけ本文のスクロールの位置をずらし、入力欄の画面の上の位置を変えない。保留の間も、接続の状態と重なった ID（`duplicate_ids`）は受けて出す。自分の書き込み（編集・コメントの追加・書きかけ）の応答で再描画するものは保留しない
   - item: 本文のファイルのパス
     constraint: 『プレビューを開く』の制約「本文のファイルのパス」と同じ。React の画面は `/spa/` で開くが、解決の基準は同じ `/docs/` にし、`/files/{名前}` を指す
   - item: 「レビューに追加」の後のフォーカス

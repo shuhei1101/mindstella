@@ -154,7 +154,7 @@ functions:
       4. `show` 以外は、書く中身を組み立てて（登録があれば `registration.json`・`render_shell`・`add_rc_block`、`None` なら 2 つのファイルを削除 `remove_rc_block`）まとめて書く（`write_files`）
       5. その後の登録を `build_report` で組み立て、`show` のときは `in_tmux`（`environ` の `TMUX` が空でないか）を追加して、標準出力に JSON（`ensure_ascii=False`）で出し、 0 を返す
          - `NotWritableError`・`UnsupportedShellError`・`UnknownAccountError` を捕まえた場合、`error` と（前の 2 つは）`manual_lines` を持った JSON を出して 1 を返す。`manual_lines` はマーカーの範囲の中に `render_shell` の行をそのまま入れたもの（`remove` のときは持たせない）
-         - `read_registration` が `json.JSONDecodeError` を送信した場合、何も書かずに `error` に「{registration.json のパス} を読めません」を入れた JSON を出して 1 を返す
+         - `read_registration` が `json.JSONDecodeError` を送出した場合、何も書かずに `error` に「{registration.json のパス} を読めません」を入れた JSON を出して 1 を返す
     exceptions:
       - name: NotWritableError
         condition: 設定ファイルか登録の置き場所に書き込めない（捕まえて 1）
@@ -268,7 +268,7 @@ functions:
       description: bash は `~/.bashrc`（`system` が `Darwin` なら `~/.bash_profile`・`~/.bash_login`・`~/.profile` のうち最初にあるもの、どれも無ければ `~/.bash_profile`）、zsh は `~/.zshrc`
     process: |-
       1. `SHELL` の末尾の名前を取り、上のとおりに分ける
-         - どちらでもない場合、`UnsupportedShellError` を送信する
+         - どちらでもない場合、`UnsupportedShellError` を送出する
     exceptions:
       - name: UnsupportedShellError
         condition: '`SHELL` の末尾の名前が `bash`・`zsh` でない'
@@ -398,7 +398,7 @@ functions:
       type: Registration
       description: そのアカウントを除いたコピー
     process: |-
-      1. `registration` が `None` か、`accounts` に `name` が無ければ `UnknownAccountError` を送信する
+      1. `registration` が `None` か、`accounts` に `name` が無ければ `UnknownAccountError` を送出する
       2. そのアカウントを除いたコピーを返す
     exceptions:
       - name: UnknownAccountError
@@ -522,7 +522,7 @@ functions:
     process: |-
       1. 書く先が既にあるシンボリックリンクなら、`os.path.realpath` で解いたリンク先を書く先にする（リンクはそのまま残し、リンク先の中身を書き換える）
       2. 全ての書く先について、あればそのファイルと親のフォルダ、無ければあるところまでの親のフォルダに書き込めるかを `os.access` で確かめる
-         - 書き込めないものがあれば、何も書かずに `NotWritableError` を送信する
+         - 書き込めないものがあれば、何も書かずに `NotWritableError` を送出する
       3. 中身のある書く先は、書く先と同じフォルダの一時ファイルに書いてから `os.replace` で置き換える（既にあれば元のファイルの権限を写す）。`None` のファイルはあれば削除する
          - 途中で `OSError` が起きたら、書きかけの一時ファイルを削除してから `NotWritableError` にして送信する（`raise ... from`）
     exceptions:

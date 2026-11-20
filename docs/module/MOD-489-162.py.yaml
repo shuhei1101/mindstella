@@ -186,7 +186,7 @@ functions:
       type: list[Problem]
       description: 問題の並び（ファイルが無ければ空）
     process: |-
-      1. スレッドを読む（スレッドの読み込み。`load_threads`）
+      1. スレッドの取得（スレッドの読み込み。`load_threads`）
          - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` は `threads.yaml`、`id` は `null`）にし、読める範囲のスレッドの向けた項目（`raw_thread_targets`）を 2 と同じく確かめた問題を後ろに追加して返す
       2. `target` を持つスレッドの（ID・`target`・取り込み待ちか）を、向けた項目の点検（`_check_thread_targets`）にかける
     unit_tests:

@@ -4,7 +4,7 @@ components:
   - name: ConfirmedToggle
     title: 確認済みの切り替え
     kind: コンポーネント
-    usecase: 確認済みの付け外し
+    usecase: 確認済みの設定と解除
     summary: 部品設計『確認済みの切り替え.tsx』の props・イベント・状態を持つ
     refs:
       - CMP-633-1#

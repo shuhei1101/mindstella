@@ -1,6 +1,6 @@
 id: MOD-489-126
 title: プレビュー / use-comments
-lead: レビュー中の書き込みを溜める・書き換える・削除する・まとめて送信する mutation と、書きかけの保存。
+lead: レビュー中の書き込みを溜める・書き換える・削除する・まとめて送信する mutation と、下書きの保存。
 functions:
   - name: useAddComment
     title: 書き込みを溜める
@@ -91,7 +91,7 @@ functions:
         expected: 応答の直後に `session` が nullで `notice` が `discarded`
     container: frontend/src/shared/hooks/use-comments.ts
   - name: useSaveDraft
-    title: 書きかけの保存
+    title: 下書きの保存
     kind: フック
     usecase: 項目へコメントする
     summary: 入力が止まって 500ms 経ったとき（今の画面の `DRAFT_SAVE_DELAY_MS` と同じ）と、入力欄を離れたときに `PUT /api/drafts` を呼ぶ関数を返す。向けた先ごとに待ちを分ける。溜めたときは、その向けた先の予約した保存を取り消す（サーバーが溜めた向けた先の書きかけを削除するため）

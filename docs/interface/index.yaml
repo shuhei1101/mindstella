@@ -11,7 +11,7 @@ items:
   - page: IF-489-71.yaml
     summary: "URL のハッシュが指す画面と項目を、サーバーから読んだ記録で開き、書き換えで再描画し、回答・意見を送信する"
   - page: IF-489-70.yaml
-    summary: "React のプレビューを `/spa/` で開き、記録を読んで search params が指す画面を描き、書き換えの知らせで再描画する"
+    summary: "React のプレビューを `/spa/` で開き、記録を読んで search params が指す画面を描き、書き換えの通知で再描画する"
   - page: IF-489-56.yaml
     summary: "bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ。server のサブコマンドで常駐サーバーを確かめ・止め・再起動し、register のサブコマンドで起動スクリプトを登録する"
   - page: IF-489-27.yaml
@@ -111,7 +111,7 @@ items:
   - page: IF-489-14.yaml
     summary: "thread: スレッド 1 件の書き込みを返し、返した書き込みを AI の既読にする"
   - page: IF-489-13.yaml
-    summary: "new_thread: AI が返事を求めるスレッドを立てる"
+    summary: "new_thread: AI が返事を求めるスレッドの作成"
   - page: IF-489-12.yaml
     summary: "reply: スレッドへ返信し、要約を書き直して読んだ書き込みを取り込み済みにする"
   - page: IF-489-10.yaml

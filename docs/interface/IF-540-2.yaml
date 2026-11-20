@@ -60,7 +60,7 @@ constraints:
   - item: 重なった ID
     constraint: '比べた後、見るファイルの全ての種類の YAML で同じ `id` を持つ項目が 2 件以上あれば、重なった ID とする。重なった ID の集まりが前回と変わったときだけ、開いている画面へ `event: duplicate_ids`（『書き換えの通知』）で知らせ、そのワークスペースの MindStella のセッションのペインへ 1 回貼り付ける（『ClaudeCodeへの貼り付け』と同じ貼り付け方）。重なった項目の記録は通常どおり行う'
   - item: 貼り付ける文
-    constraint: '`[mindstella] 同じ ID の項目が 2 件あります: {ID}（{ファイル名}）。片方の ID を next_id で再採番してください`。ID が複数あれば `、` でつなぐ'
+    constraint: '`[mindstella] 同じ ID の項目が 2 件あります: {ID}（{ファイル名}）。片方の ID を next_id で振り直してください`。ID が複数あれば `、` でつなぐ'
   - item: MindStella のセッションが無いとき
     constraint: 貼り付けずに画面へだけ知らせる
   - item: ファイルのフォルダ
@@ -93,7 +93,7 @@ flows:
         IF->>WS: pending を外部の変更のまとまりにする
       ```
     expected:
-      - D-1 が変更履歴を 1 回分持ち、`before` に修正する前の回答、`by` が `external`
+      - D-1 が変更履歴を 1 回分持ち、`before` に変更する前の回答、`by` が `external`
       - '`history.yaml` の D-1 の `updated_by` が `external`'
       - '`decisions.yaml` の中身が、クライアントが書いた後のまま（検知が書き換えない）'
       - '`changes.yaml` の `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」・`changed: [D-1]` で、`pending` が空'

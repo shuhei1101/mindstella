@@ -20,7 +20,7 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: POST {ids: [C-2, C-1]}
-        IF-->>WS: コメント・項目・本文・スレッドを読む
+        IF-->>WS: コメント・項目・本文・スレッドの取得
         IF->>IF: 向けた項目と箇所を確かめる
         IF->>WS: threads.yaml にスレッドを 2 件追加する
         IF->>WS: comments.yaml から C-1・C-2 を削除する
@@ -197,7 +197,7 @@ flows:
       ```
     expected:
       - ステータスが 201 で、`entered` が `true`
-      - 会話の記録に user の行が 1 件だけ増え、その本文が `[mindstella] ユーザーからのコメントが 3 件届きました。再読み込みしてください。` である
+      - 会話の記録に user の行が 1 件だけ増え、その本文が `[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。` である
       - '`threads.yaml` の TH-1〜TH-3 の最初の書き込みがどれも `taken: null`（取り込み済みにするのは Claude Code が記録した後）'
       - 応答が送信してから 0.5 秒以内に返る
     test: test_normal_when_entered_to_claude_code
@@ -443,7 +443,7 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: POST {ids: [C-1, C-2]}
-        IF-->>WS: コメントとスレッドを読む
+        IF-->>WS: コメントとスレッドの取得
         IF->>IF: C-1 の向けたスレッドがクローズ
         IF-->>クライアント: 409（stale: C-1）
       ```
@@ -540,7 +540,7 @@ status_codes:
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。409 だけ `stale` を追加する
 constraints:
   - item: 書き込む中身
-    constraint: '返信先（`thread`）を持たない書き込みは 1 件ごとにスレッドを立てる（`id` は `TH-{連番}`。連番の最大 + 1 から順に・`status: open`・`tags: []`・`summary: null`・`target` と `loc`（あれば）・`events: []`）。返信先を持つ書き込みはそのスレッドの末尾に追加する。追加する書き込みは `author: user`・`body`・`created`（送信した日時）・`read: false`・`taken: null`・`comment`（元のコメントの ID）。ER 図『ワークスペース』の `threads.yaml`'
+    constraint: '返信先（`thread`）を持たない書き込みは 1 件ごとにスレッドの作成（`id` は `TH-{連番}`。連番の最大 + 1 から順に・`status: open`・`tags: []`・`summary: null`・`target` と `loc`（あれば）・`events: []`）。返信先を持つ書き込みはそのスレッドの末尾に追加する。追加する書き込みは `author: user`・`body`・`created`（送信した日時）・`read: false`・`taken: null`・`comment`（元のコメントの ID）。ER 図『ワークスペース』の `threads.yaml`'
   - item: 全てか何もなしか
     constraint: 全ての ID・向けた項目・箇所を確かめてから書く。1 件でも 404・409 に当たれば、どのコメントも送信せずレビュー中に残す（単一ユースケース『コメントを選んで送信する』の補足）
   - item: 箇所の確認
@@ -566,7 +566,7 @@ constraints:
   - item: 入力の時点
     constraint: '`threads.yaml` と `comments.yaml` を書き終え、書き換えの鍵とワークスペースのロックを外してから入力する。鍵を持ったまま tmux と会話の記録を待たない。同じペイン（`session.tmux` のソケットと `session.tmux_pane` の組）への入力と確かめは、ペインごとの入力の鍵で順に行い、同じペインへ同時に送信された 2 回の入力を重ねない。生きているかの確かめと tmux の 3 つのコマンドは、名前の付いたバッファを共有するため、プロセスの中の 1 本の貼り付けの鍵で順に行う。貼り付けの鍵は届いたかの確かめの間は持たず、別のペインへの送信は前の送信が届いたかの確かめを待たない'
   - item: 入力する文字列
-    constraint: '`[mindstella] ユーザーからのコメントが {追加した件数} 件届きました。再読み込みしてください。` の 1 行だけを入力する（新しいスレッドと返信を合わせた件数）。スレッドの ID・向けた項目・箇所・本文は入れない'
+    constraint: '`[mindstella] ユーザーからのコメントが {足した件数} 件届きました。読み直してください。` の 1 行だけを入力する（新しいスレッドと返信を合わせた件数）。スレッドの ID・向けた項目・箇所・本文は入れない'
     notes: 'ユーザーが決めた文面（PR #201 の確認ログ）。`[mindstella]` は `session` が利用者の発言と見分けるマーカーで、Claude Code は取り込み待ちのスレッドの一覧で中身を読む（インターフェース定義『話し合いの進行』の制約「送信の取り込み」）'
   - item: 入力のやり方
     constraint: 文字列を `tmux -S {ソケット} load-buffer -b {名前の付いたバッファ} -` へ標準入力で渡し、`tmux -S {ソケット} paste-buffer -p -d -b {同じバッファ} -t {session.tmux_pane}` でブラケットペーストとして貼り、待たずに `tmux -S {ソケット} send-keys -t {session.tmux_pane} Enter` で確定する。ペインの状態（打ちかけ・選択の表示）は見ない

@@ -234,7 +234,7 @@ functions:
       type: dict[str, Any]
       description: '`{workspace, files}`'
     process: |-
-      1. プラグインのバージョンを読み（`read_plugin_version`）、ワークスペースを作る（ワークスペースの作成。`create_workspace(version=str(バージョン), applied=count_steps(バージョン))`）
+      1. プラグインのバージョンを読み（`read_plugin_version`）、ワークスペースを作る（ワークスペースの作成。`create_workspace(version=str(版), applied=count_steps(版))`）
     unit_tests:
       - name: test_run_init
         case: 正常
@@ -276,11 +276,11 @@ functions:
       description: '`{id, adopted, previous, status, previous_status}`（`status` は `決定済み`、`previous_status` は切り替える前の状態）'
     process: |-
       1. ワークスペース・まとまり・項目の履歴を読み、項目を引く（`load_workspace`、`load_changes`、`load_item_history`、`find_item`）
-         - 種類が `decision` でない場合、`ItemNotFoundError` を送信する
+         - 種類が `decision` でない場合、`ItemNotFoundError` を送出する
       2. 採用を切り替え（`switch_adopted`）、履歴の行の `updated` を今の日時、`updated_by` を `EDITOR` にし、`unconfirm` で `confirmed` を除く
       3. 変更履歴と連番を `stage_update` の 3. と同じく付ける（本文は変えないので `before_body` と `after_body` は同じ。`by` は `EDITOR`）
       4. 差し替えた並び・履歴・まとまりを書き込む（`save_change`。まとまりの `pending.by` が `external` なら、先に外部の変更のまとまりにする（`flush_pending`））
-         - `ConcurrentWriteError` の場合（project-index が間に書いた）、1. から再読み込みして 1 回だけ再適用する。2 回目も同じなら `ConcurrentWriteError` を送信する
+         - `ConcurrentWriteError` の場合（project-index が間に書いた）、1. から再読み込みして 1 回だけ再適用する。2 回目も同じなら `ConcurrentWriteError` を送出する
       5. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（『変更の検知』の `accept_own_write`）
     exceptions:
       - name: ConcurrentWriteError
@@ -293,13 +293,13 @@ functions:
       - name: test_run_adopt_when_concurrent_write
         case: 正常
         summary: 1 回目の書き込みでほかが書いていれば、再読み込みして再適用する
-        condition: '1 回目の `save_change` だけ `ConcurrentWriteError` を送信し、その間に D-1 の `answer` を書き換えておく'
+        condition: '1 回目の `save_change` だけ `ConcurrentWriteError` を送出し、その間に D-1 の `answer` を書き換えておく'
         mock: '`save_change`（1 回目だけ送信する）'
         expected: 2 回目で書き、書き換えた `answer` が残る
       - name: test_run_adopt_when_concurrent_write_twice
         case: 異常
         summary: 2 回続けてほかが書いていればエラー
-        condition: '`save_change` が 2 回とも `ConcurrentWriteError` を送信する'
+        condition: '`save_change` が 2 回とも `ConcurrentWriteError` を送出する'
         mock: '`save_change`'
         expected: '`ConcurrentWriteError`'
         exception: 再適用してもほかが書いた
@@ -340,7 +340,7 @@ functions:
       description: '`{ok, problems}`'
     process: |-
       1. ワークスペースを読み、点検する（`load_workspace`、`check_workspace`）
-      2. 前のバージョンの形式の問題（`is_legacy_problem`。`written_ids` は渡さないので、`decision_state` の問題は全て当たる）は、`detail` に続けて `（起動スクリプトでワークスペースを再度開くと今の形式に移せます）` を追加する
+      2. 前のバージョンの形式の問題（`is_legacy_problem`。`written_ids` は渡さないので、`decision_state` の問題は全て当たる）は、`detail` に続けて `（起動スクリプトでワークスペースを開き直すと今の形式に移せます）` を追加する
       3. 問題が無ければ `ok: true`、あれば `ok: false` を返す
     unit_tests:
       - name: test_run_check
@@ -357,16 +357,16 @@ functions:
         expected: '`ok: false`・`problems` が 1 件（例外を送出しない）'
       - name: test_run_check_when_legacy_format
         case: 正常
-        summary: 前のバージョンの形式の問題に再度開くことを案内する
+        summary: 前のバージョンの形式の問題に再オープンを案内する
         condition: 'A-1（`done: true`）を YAML で直接書いたワークスペース'
         mock: なし
-        expected: '`ok: false`。A-1 の問題の `detail` が `（起動スクリプトでワークスペースを再度開くと今の形式に移せます）` で終わる'
+        expected: '`ok: false`。A-1 の問題の `detail` が `（起動スクリプトでワークスペースを開き直すと今の形式に移せます）` で終わる'
       - name: test_run_check_when_decision_state
         case: 正常
-        summary: 案と状態の合わない検討事項に再度開くことを案内する
+        summary: 案と状態の合わない検討事項に再オープンを案内する
         condition: 案を持たない未決定の D-1 を直接書いたワークスペース
         mock: なし
-        expected: '`ok` が偽で、`kind: decision_state`・`file: .mindstella/decisions.yaml`・`key: items[0].options` の問題の `detail` が再度開くことの案内を含む'
+        expected: '`ok` が偽で、`kind: decision_state`・`file: .mindstella/decisions.yaml`・`key: items[0].options` の問題の `detail` が再オープンの案内を含む'
   - name: run_export
     title: export の処理
     kind: 関数
@@ -571,9 +571,9 @@ functions:
       - name: test_run_commit
         case: 正常
         summary: まだまとめていない変更をまとめる
-        condition: D-1 を追加した直後。`summary` 「  追加する 」
+        condition: D-1 を追加した直後。`summary` 「  足す 」
         mock: '`now`'
-        expected: '`id` が `V-1`・`summary` が「追加」・`added` が `[D-1]`。`changes.yaml` の `pending` が空'
+        expected: '`id` が `V-1`・`summary` が「足す」・`added` が `[D-1]`。`changes.yaml` の `pending` が空'
       - name: test_run_commit_when_external_pending
         case: 正常
         summary: 外部の変更を先に外部のまとまりにし、自分のまとまりは追加しない
@@ -917,7 +917,7 @@ functions:
       2. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
       3. 案の書き換えを当て（`apply_option_edit`）、その `options` を `item` にして更新を当てる（`stage_update`。`options` は `RESERVED_KEYS` に無いのでそのまま渡せる）
       4. 書き込む（`save_batch`。履歴も書く）。`changed` は `stage_update` の `changed` が `options` を含むか
-         - `ConcurrentWriteError` の場合、2. から再読み込みして 1 回だけ再適用する。2 回目も同じなら `ConcurrentWriteError` を送信する
+         - `ConcurrentWriteError` の場合、2. から再読み込みして 1 回だけ再適用する。2 回目も同じなら `ConcurrentWriteError` を送出する
       5. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（`accept_own_write`）
     exceptions:
       - name: ConcurrentWriteError
@@ -930,13 +930,13 @@ functions:
       - name: test_run_edit_option_when_concurrent_write
         case: 正常
         summary: 1 回目の書き込みでほかが書いていれば、再読み込みして再適用する
-        condition: '1 回目の `save_batch` だけ `ConcurrentWriteError` を送信し、その間に D-1 の `answer` を書き換えておく'
+        condition: '1 回目の `save_batch` だけ `ConcurrentWriteError` を送出し、その間に D-1 の `answer` を書き換えておく'
         mock: '`save_batch`（1 回目だけ送信する）'
         expected: 2 回目で書き、書き換えた `answer` が残る
       - name: test_run_edit_option_when_concurrent_write_twice
         case: 異常
         summary: 2 回続けてほかが書いていればエラー
-        condition: '`save_batch` が 2 回とも `ConcurrentWriteError` を送信する'
+        condition: '`save_batch` が 2 回とも `ConcurrentWriteError` を送出する'
         mock: '`save_batch`'
         expected: '`ConcurrentWriteError`'
         exception: 再適用してもほかが書いた
@@ -1160,7 +1160,7 @@ functions:
     title: new_thread の処理
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
-    usecase: AIがスレッドを立てる
+    usecase: AIがスレッドの作成
     scope: public
     summary: AI のスレッドを立て、出力の構造にする
     args:
@@ -1199,7 +1199,7 @@ functions:
       type: dict[str, Any]
       description: '`{id, post, created}`'
     process: |-
-      1. ワークスペースを読み、スレッドを立てる（`load_workspace`、`create_thread`）
+      1. ワークスペースを読み、スレッドの作成（`load_workspace`、`create_thread`）
     unit_tests: []
   - name: run_reply
     title: reply の処理

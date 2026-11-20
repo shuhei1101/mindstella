@@ -40,7 +40,7 @@ functions:
     process: |-
       1. ワークスペースの ID を引き（`workspace_id_of`）、`state.workspace_dir(state_root, ID) / READ_POINT_FILE` を読む
       2. ファイルが無ければ `None` を返す
-      3. JSON として読めないか `read_seq` が 0 以上の整数でない場合、`read_point.json: read_seq: {理由}` の行を持った `SchemaMismatchError` を送信する
+      3. JSON として読めないか `read_seq` が 0 以上の整数でない場合、`read_point.json: read_seq: {理由}` の行を持った `SchemaMismatchError` を送出する
     exceptions:
       - name: SchemaMismatchError
         condition: '`read_point.json` が壊れている'
@@ -93,7 +93,7 @@ functions:
       description: なし
     process: |-
       1. `workspaces/{ID}/` を作り、同じフォルダの一時ファイルに書いて `os.replace` で置き換える
-      2. 書けない場合、一時ファイルを削除して `WriteFailedError` を送信する（前の `read_point.json` はそのまま）
+      2. 書けない場合、一時ファイルを削除して `WriteFailedError` を送出する（前の `read_point.json` はそのまま）
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えに失敗した
@@ -134,7 +134,7 @@ functions:
       type: int
       description: 書き換えた後の `read_seq`
     process: |-
-      1. `until_seq` が 0 未満か、まとまりの `last_seq`（『変更履歴』の `load_changes`）より大きければ `ArgumentError` を送信する
+      1. `until_seq` が 0 未満か、まとまりの `last_seq`（『変更履歴』の `load_changes`）より大きければ `ArgumentError` を送出する
       2. 今の時点を読み（`load_read_seq`）、無いか `until_seq` より小さければ `until_seq` を書く（`save_read_seq`）
       3. 移し替えの報告を削除する（`clear_migration_report`）
       4. 書き換えた後の時点を返す

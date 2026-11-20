@@ -19,16 +19,16 @@ states:
     description: 項目のタグ。主題のタグ 1 つ（トグルが押した状態の二重丸）と、主題でないタグ 2 つ（押していない状態の輪）
     args:
       - name: values
-        value: '[{"name": "画面", "main": true}, {"name": "記録の構造"}, {"name": "通知"}]'
+        value: '[{"name": "画面", "main": true}, {"name": "記録の形"}, {"name": "通知"}]'
       - name: mainToggle
         value: 'true'
       - name: suggestions
-        value: '["画面", "記録の構造", "通知", "タスク"]'
+        value: '["画面", "記録の形", "通知", "タスク"]'
   - name: MainToggleDisabled
     description: 削除を溜めた項目のタグ。入力欄・外すボタン・主題のトグルを押せない
     args:
       - name: values
-        value: '[{"name": "画面", "main": true}, {"name": "記録の構造"}]'
+        value: '[{"name": "画面", "main": true}, {"name": "記録の形"}]'
       - name: mainToggle
         value: 'true'
       - name: disabled
@@ -80,7 +80,7 @@ args:
     type: 関数
     required: false
     default: なし（入れた値をそのまま追加する）
-    description: '追加する前に入れた値を受け取り、`{error: 誤りの文}` か `{value: 追加する値}` を返す関数。`value` を返したときは入れた値の代わりにその値を追加する（ID への置き換えなど）。`error` を返したときは追加せず、入れた値を入力欄に残して、入力欄の直下に「入力の誤り: {誤りの文}」を出し、入力欄に `aria-invalid="true"` と、その文を指す `aria-describedby` を付ける。入力を書き換えると誤りの文を削除する'
+    description: '追加する前に入れた値を受け取り、`{error: 誤りの文}` か `{value: 追加する値}` を返す関数。`value` を返したときは入れた値の代わりにその値を追加する（ID への置き換えなど）。`error` を返したときは追加せず、入れた値を入力欄に残して、入力欄の直下に「入力の誤り: {誤りの文}」を出し、入力欄に `aria-invalid="true"` と、その文を指す `aria-describedby` を付ける。入力を書き換えると誤りの文を消す'
     status: planned
 events:
   - name: change
@@ -96,7 +96,7 @@ accessibility:
   - 主題のトグルの押せる範囲は縦横 24px にする
   - トグルを押した後も、同じタグのトグルにフォーカスを残す
   - チップを外すボタンの読み上げ名は「{値} を外す」
-  - 主題は色だけに頼らず、二重丸と輪の形状で見分ける
+  - 主題は色だけに頼らず、二重丸と輪の形で見分ける
 status: planned
 introduced:
   pr: 385

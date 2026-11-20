@@ -5,7 +5,7 @@ entry:
   value: '`new_thread`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__new_thread`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
-    summary: AI の質問を最初の書き込みにしてオープンのスレッドを立てる
+    summary: AI の質問を最初の書き込みにしてオープンのスレッドの作成
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -159,7 +159,7 @@ flows:
       - 'ツールのエラーになり、本文が `エラー: MindStella のセッションだけが呼べます: new_thread`'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_not_mindstella_session
-lead: AI から利用者へ返事を求めるスレッドを立てる。最初の書き込みは AI の本文で、要約とタグを一緒に書く。
+lead: AI から利用者へ返事を求めるスレッドの作成。最初の書き込みは AI の本文で、要約とタグを一緒に書く。
 idempotent: false
 side_effects: '`threads.yaml` にオープンのスレッドを 1 件追加する（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
@@ -252,7 +252,7 @@ constraints:
   - item: 書き込む中身
     constraint: '`id`（`TH-{連番}`。連番の最大 + 1）・`status: open`・`tags`・`summary`・`target`（あれば）・`posts`（`author: ai`・`read: true` の 1 件）・`events: []`。ER 図『ワークスペース』の `threads.yaml`'
   - item: 取り込み待ち
-    constraint: AI の書き込みだけのスレッドは取り込み待ちにならない（単一ユースケース『AIがスレッドを立てる』）
+    constraint: AI の書き込みだけのスレッドは取り込み待ちにならない（単一ユースケース『AIがスレッドの作成』）
   - item: 同時の呼び出し
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からのまとめて送信すると重なっても ID が重ならない
   - item: タグ
