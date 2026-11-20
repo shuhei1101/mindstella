@@ -207,7 +207,33 @@ scenarios:
       - エラーの本文に、合わない mdmark のバージョンのキーがある
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_mdmark_version_invalid
-lead: MindStella のセッションが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・関連する場所・保持する回数・表示の既定・文字起こしの設定・画面が読み込む mdmark のバージョン）を書き換える単一ユースケース。
+  - name: 正常シナリオ（コメントの送信で確認済みにしない設定にする）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が `confirm_on_comment` を持たない（既定のオン）ワークスペース
+      - name: 書き換える設定
+        description: コメントの送信で確認済みにするかを `false` にする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: コメントの送信で確認済みにするか（false）を渡す
+        SV->>WS: config.yaml を読む
+        SV->>SV: 渡したキーを置き換え、スキーマと突き合わせる
+        SV->>WS: config.yaml を書く
+        SV-->>CC: 書き換えた後の設定
+      ```
+    expected:
+      - '`config.yaml` の `confirm_on_comment` が `false` である'
+      - '`summary`・`display`・`transcription` が呼ぶ前と同じである'
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_confirm_on_comment_changed
+lead: MindStella のセッションが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・関連する場所・保持する回数・表示の既定・文字起こしの設定・コメントの送信で確認済みにするか・画面が読み込む mdmark のバージョン）を書き換える単一ユースケース。
 issue: 44
 primary_actor: MindStella のセッション
 stakeholders:

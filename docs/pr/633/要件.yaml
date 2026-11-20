@@ -41,8 +41,8 @@ use_cases:
       - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-489-36.yaml
-    impact: none
-    detail: コメントの送信で確認済みにするかの設定の配置先はデータ設計で決める。ワークスペースの設定に決まったら、この行を changed に戻して設定を書き換えるシナリオを追加する（#188）
+    impact: changed
+    detail: MindStella のセッションが、コメントの送信で確認済みにするかのワークスペースの設定（既定はオン）を書き換える（#188。配置先は確認ログで決定）
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single

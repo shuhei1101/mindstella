@@ -11,3 +11,15 @@ confirmations:
     approver: shuhei1101
     commit:
     thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638526634
+  - topic: 確認済みを記録する場所
+    decision: history.yaml の項目の行に items.{ID}.confirmed として持つ（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: b05ae92ae72e82ebdd626bc9e8bdaaa834ab4a14
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638613688
+  - topic: 「コメントの送信で確認済みにする」設定の置き場所
+    decision: ワークスペースの設定 config.yaml に confirm_on_comment（既定 true）として持つ（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: b05ae92ae72e82ebdd626bc9e8bdaaa834ab4a14
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638614311
