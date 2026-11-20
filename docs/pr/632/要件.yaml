@@ -146,3 +146,12 @@ scope_out:
   - item: SPA のボードで、幅 390px のとき 1 枚目のカードが横に送る枠の左端に接する（detect_screen_issues の edge-flush-cards）
     reason: この PR はボードの部品を変えておらず、要望に含まれない
     plan: '#638'
+  - item: 埋め込んだ HTML のチャートの結合テスト（test_normal_when_embedded_html・test_embedded_chart）が develop でも fail する
+    reason: mdmark の図の右上のパネルの変更への追従で、この PR は埋め込んだ HTML を変えておらず、要望に含まれない
+    plan: '#610'
+  - item: 結合テスト test_detail_panel_screen.py::test_fit_smallest が develop でも fail する
+    reason: 詳細パネルの全画面のボタンが表示幅の外に出る既存の不具合で、要望に含まれない
+    plan: '#625'
+  - item: 結合テスト test_diff_minimap_when_empty_area_pressed・test_diff_body_layout_switch が間欠的に fail する
+    reason: 画面の位置・フォーカスで判定する既存の不安定なテストで、要望に含まれない
+    plan: '#553'
