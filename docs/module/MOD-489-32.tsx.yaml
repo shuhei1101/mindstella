@@ -46,6 +46,12 @@ components:
         condition: サーバーの配信で search が `id=D-1&panel=comments&thread=TH-1&tstatus=all` のとき、読み上げの名前「D-1 のコメントの一覧を開く」のボタンを押す
         mock: MSW
         expected: search が `id=D-1&panel=comments&tstatus=all&ttarget=D-1`（`thread` が外れる）で、履歴の数が変わらない。全画面（`full=1`）ではボタンが無い
+      - name: test_detail_panel_when_width_saved
+        case: 正常
+        summary: ワークスペースごとのキーに残した幅で開く
+        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/spa/` にし、`sessionStorage` の `mindmap-panel-width:mindstella-x-1` に 880、`mindmap-panel-width` に 1000 を置いて `id=D-1` を開く'
+        mock: MSW
+        expected: 詳細パネルの幅が 880px（読み書きのキーは `workspaceKey(PANEL_WIDTH_KEY)`）
     container: frontend/src/features/detail/detail-panel/detail-panel.tsx
 notes:
   単体テスト: 同じフォルダの `detail-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）

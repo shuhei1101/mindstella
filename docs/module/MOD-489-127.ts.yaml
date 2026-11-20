@@ -6,7 +6,7 @@ functions:
     title: 差分の表示
     kind: フック
     usecase: 前回からの差分を見る
-    summary: search の `diff` と端末の保存領域の時点から `DiffPoint` を解決し、`POST /api/opened` の時点を `sessionStorage` に持つ
+    summary: search の `diff` と端末の保存領域の時点から `DiffPoint` を解決し、`POST /w/{workspace}/api/opened` の時点を `sessionStorage` のキー `workspaceKey(OPENED_SESSION_KEY)` に持つ
     returns:
       type: DiffView
       description: 時点・マーカー・削除した項目
@@ -28,7 +28,7 @@ functions:
         summary: 同じタブで再呼び出ししない
         condition: '`sessionStorage` に時点がある'
         mock: MSW
-        expected: '`POST /api/opened` が呼ばれない'
+        expected: '`POST /w/{workspace}/api/opened` が呼ばれない'
     container: frontend/src/shared/hooks/use-diff-view.ts
 notes:
   単体テスト: 同じフォルダの `use-diff-view.test.ts` に置く（knowledge の規約『フォルダ構成』）

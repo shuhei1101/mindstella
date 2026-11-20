@@ -1,6 +1,6 @@
 id: MOD-489-140
 title: プレビュー / prefs-store
-lead: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）。
+lead: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」。キーは `workspaceKey` で末尾に `:{workspace}` を付ける）。
 functions:
   - name: readPrefs
     title: 保存領域の読み取り
@@ -44,12 +44,18 @@ functions:
         condition: '`theme`・`kinds`・`commentsPinned` を持つ保存領域に `diffSel` を書く'
         mock: '`localStorage`'
         expected: 3 つの項目が残り、`diffSel` が書かれる
+      - name: test_write_prefs_when_workspace_path
+        case: 正常
+        summary: ワークスペースごとのキーに書く
+        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/spa/` にし、`diffSel` を書く'
+        mock: '`localStorage`'
+        expected: '`mindmap-preview:mindstella-x-1` に `diffSel` が書かれ、`mindmap-preview` が無い'
     container: frontend/src/shared/stores/prefs-store.ts
   - name: readBodyScrolls
     title: 本文のスクロール位置の読み取り
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 詳細の本文をスクロールした位置を、項目の ID ごとに sessionStorage のキー `mindmap-body-scroll` から読む
+    summary: 詳細の本文をスクロールした位置を、項目の ID ごとに sessionStorage のキー `workspaceKey(BODY_SCROLL_KEY)`（`mindmap-body-scroll`。サーバーの配信では末尾に `:{workspace}`）から読む
     args: []
     returns:
       type: Record<string, number>

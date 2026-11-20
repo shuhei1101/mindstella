@@ -6,7 +6,7 @@ constants:
     title: 書き換えの通知のパス
     container: frontend/src/shared/adapters/events-client.ts
     usecase: SPAを開く
-    summary: インターフェース定義『書き換えの通知』
+    summary: インターフェース定義『書き換えの通知』のパスのうち、ワークスペースのパスの頭より後ろ
     value: '"/api/events"'
 functions:
   - name: connectEvents
@@ -14,7 +14,7 @@ functions:
     kind: 関数
     container: frontend/src/shared/adapters/events-client.ts
     usecase: SPAを開く
-    summary: '`EVENTS_URL` へ EventSource でつなぎ、`changed` と再接続（`open`）で記録の query の再読み込みを反映の依頼（`requestRefresh`）に渡し、入力中・音声入力中は保留して離れたときに再読み込みし、`duplicate_ids` で重なった ID のストアを書き換え、接続の状態を書き換える。再接続は EventSource に任せる'
+    summary: '開いた画面のワークスペースのパスの頭を付けた `EVENTS_URL`（`workspacePath() + EVENTS_URL`）へ EventSource でつなぎ、`changed` と再接続（`open`）で記録の query の再読み込みを反映の依頼（`requestRefresh`）に渡し、入力中・音声入力中は保留して離れたときに再読み込みし、`duplicate_ids` で重なった ID のストアを書き換え、接続の状態を書き換える。再接続は EventSource に任せる'
     args:
       - name: queryClient
         type: QueryClient
@@ -23,7 +23,7 @@ functions:
     returns:
       type: () => void
       description: 接続を閉じる関数
-    process: '1. EventSource を `EVENTS_URL` で作る
+    process: '1. EventSource を `workspacePath() + EVENTS_URL` で作る
 
       2. 文字の入力欄のフォーカスを見張る（`watchTextFocus`）。反映の保留（`useRefreshHoldStore.subscribe`）と音声入力（`subscribeVoice`）が変わるたびに、保留の解除（`releaseRefresh`）に 4 つの query の再読み込み（`invalidatePreview`）を渡す
 
@@ -67,6 +67,8 @@ functions:
         condition: T-1 へ録音中に、MSW の `GET /api/records` が T-1 の無い記録を返す状態で `changed` を送信する
         mock: EventSource（偽物）・MSW
         expected: '`changed` を受けた時点では記録の query は invalidate されず、`discardVoice` で録音が捨てられ、音声入力の知らせが discarded。録音が終わった後に保留の解除で記録の query が 1 回だけ invalidate される'
+    callees:
+      - MOD-642-1#functions[workspacePath]
   - name: checkVoiceDestination
     title: 録音の行き先の確かめ
     kind: 関数

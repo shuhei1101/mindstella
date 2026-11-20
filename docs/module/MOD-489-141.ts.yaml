@@ -6,7 +6,7 @@ constants:
     title: 端末の保存領域のキー
     container: frontend/src/shared/stores/theme-store.ts
     usecase: 共通
-    summary: 今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す
+    summary: 今の画面と同じキー（読み書きは `workspaceKey(PREFS_KEY)` で、サーバーの配信では末尾に `:{workspace}` が付く）。値の JSON の `theme` だけを読み書きし、他のキーは残す
     value: '"mindmap-preview"'
 stores:
   - name: useThemeStore
@@ -39,6 +39,12 @@ stores:
             condition: '`PREFS_KEY` に `{theme: ''light'', columns: {...}}` を置いて dark を渡す'
             mock: なし（jsdom の localStorage）
             expected: '`PREFS_KEY` が `{theme: ''dark'', columns: {...}}`、`dataset.theme` が dark'
+          - name: test_set_theme_when_workspace_path
+            case: 正常
+            summary: ワークスペースごとのキーに残す
+            condition: "`history.replaceState` で `location` のパスを `/w/mindstella-x-1/spa/` にし、`mindmap-preview` に `{theme: 'light'}` を置いて dark を渡す"
+            mock: なし（jsdom の localStorage）
+            expected: "`mindmap-preview:mindstella-x-1` が `{theme: 'dark'}` で、`mindmap-preview` が `{theme: 'light'}` のまま"
       - name: clearTheme
         title: テーマの上書きを外す
         kind: メソッド

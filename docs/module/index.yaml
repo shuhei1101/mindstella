@@ -98,6 +98,8 @@ items:
     summary: "子のルートを描く外枠。描画中のエラーは ErrorBoundary で受ける"
   - page: MOD-489-55.tsx.yaml
     summary: "SPA のルート（`/`）。search の検証と先読みをして `PreviewShell` を描く"
+  - page: MOD-642-1.ts.yaml
+    summary: "開いた画面の URL のパスから、配っているワークスペースのパスの頭と、端末の保存領域のキーを求める。"
   - page: MOD-489-56.ts.yaml
     summary: "orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる"
   - page: MOD-489-57.ts.yaml
