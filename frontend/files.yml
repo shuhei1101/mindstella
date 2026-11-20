@@ -1587,6 +1587,14 @@ files:
   description: 画面から項目を追加するパネルの単体テスト。
   tags:
   - tool:react
+- path: src/shared/components/blocked-note.test.tsx
+  name: 書き込めない理由と指している項目の注記の単体テスト
+  description: 書き込めない理由と指している項目の注記の単体テスト。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-59
+    type: tests
 - path: src/shared/components/blocked-note.tsx
   name: 書き込めない理由と指している項目の注記
   description: 書き込めない理由と指している項目の注記。

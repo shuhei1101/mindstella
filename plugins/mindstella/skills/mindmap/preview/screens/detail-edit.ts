@@ -235,7 +235,7 @@ namespace MindmapPreview {
       return h({
         tag: "p",
         attrs: { class: "pe-blocked-note" },
-        children: [icon("alert"), `溜めた後の ${when}に AI がこの項目を書き換えたため、書き込めません。取り消してから入れ直してください。`],
+        children: [icon("alert"), `溜めた後の ${when}に AI がこの項目を書き換えたため、書き込めません。取り消してから再入力してください。`],
       });
     }
     if (blocked.reason === "referenced" && blocked.refs.length > 0) {
