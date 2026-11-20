@@ -6,23 +6,15 @@ states:
   - name: Default
     description: 開いた直後（ワークスペースの既定のまま）。「既定に戻す」と「ワークスペースの既定にする」を出さず、そのことを文言で示す
     args:
-      - name: look
-        value: deep
-      - name: defaultLook
-        value: deep
       - name: overrides
         value: '[]'
   - name: Overridden
-    description: この端末で変えている。上書きを持つ 5 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く
+    description: この端末で変えている。上書きを持つ 4 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く
     args:
-      - name: look
-        value: dust
-      - name: defaultLook
-        value: starlight
       - name: defaultKinds
         value: メモを除いた 6 種類
       - name: overrides
-        value: '["ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）", "絞り込み（タスク）"]'
+        value: '["表示する種類", "ライト / ダーク", "表の列（調査）", "絞り込み（タスク）"]'
   - name: SomeKindsHidden
     description: 用語集と会話ログを外した。「すべて」を途中の印にし、`5/7` を出す
     args:
@@ -33,21 +25,21 @@ states:
   - name: Saved
     description: 既定にした直後。今の選びが既定と同じになり、ボタンの代わりにそのことと保存した知らせを出す
     args:
-      - name: look
-        value: glow
-      - name: defaultLook
-        value: glow
+      - name: visibleKinds
+        value: 会話ログを除いた 6 種類
+      - name: defaultKinds
+        value: 会話ログを除いた 6 種類
       - name: overrides
-        value: '["ネットワークの見た目"]'
+        value: '["表示する種類"]'
       - name: message
         value: '{"kind": "ok", "text": "ワークスペースの既定にしました（10/05 14:20）。"}'
   - name: DefaultsArrived
     description: 他の人が保存した既定が届いた。上書きを持たない項目に新しい既定が当たり、パネルに知らせを残す
     args:
-      - name: look
-        value: starlight
-      - name: defaultLook
-        value: starlight
+      - name: visibleKinds
+        value: 会話ログを除いた 6 種類
+      - name: defaultKinds
+        value: 会話ログを除いた 6 種類
       - name: message
         value: '{"kind": "info", "text": "ワークスペースの既定が変わりました（10/05 14:22）。"}'
   - name: NoStorage
@@ -55,49 +47,47 @@ states:
     args:
       - name: storageAvailable
         value: 'false'
-      - name: look
-        value: glow
+      - name: visibleKinds
+        value: 会話ログを除いた 6 種類
       - name: overrides
-        value: '["ネットワークの見た目"]'
+        value: '["表示する種類"]'
   - name: Export
     description: 配る書き出し。表示する種類は変えられ、「ワークスペースの既定にする」は出さない
     args:
       - name: canSave
         value: 'false'
-      - name: look
-        value: glow
+      - name: visibleKinds
+        value: 会話ログを除いた 6 種類
       - name: overrides
-        value: '["ネットワークの見た目"]'
+        value: '["表示する種類"]'
   - name: Narrow
     description: 幅 390px。画面の幅いっぱいに出し、行の高さと押せる的は変えない
     args:
-      - name: look
-        value: dust
-      - name: defaultLook
-        value: starlight
+      - name: visibleKinds
+        value: メモを除いた 6 種類
       - name: overrides
-        value: '["ネットワークの見た目", "表示する種類"]'
+        value: '["表示する種類"]'
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
   - name: MinimapHidden
-    description: 差分のミニマップだけを表示しないにした。「詳細に表示するもの」のチェックを外し、変えている項目に「差分のミニマップ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す
+    description: 差分のミニマップだけを表示しないにした。「詳細に表示するもの」のチェックを外し、変えている項目に「差分のミニマップ」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す
     args:
       - name: minimap
         value: 'false'
       - name: overrides
         value: '["差分のミニマップ"]'
   - name: BodyDiffLayoutOverridden
-    description: 詳細で本文の差分を左右に並べるを選んだ。変えている項目に「本文の差分の並べ方」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す
+    description: 詳細で本文の差分を左右に並べるを選んだ。変えている項目に「本文の差分の並べ方」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す
     args:
       - name: overrides
         value: '["本文の差分の並べ方"]'
   - name: ReviewOrderOverridden
-    description: 詳細のレビュー中のコメントの並びを古い順にした。変えている項目に「コメントの並び」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す
+    description: 詳細のレビュー中のコメントの並びを古い順にした。変えている項目に「コメントの並び」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す
     args:
       - name: overrides
         value: '["コメントの並び"]'
   - name: BodyViewOverridden
-    description: セクションの折りたたみをオフにした。「詳細に表示するもの」のチェックを切り替え、変えている項目に「セクションの折りたたみ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す
+    description: セクションの折りたたみをオフにした。「詳細に表示するもの」のチェックを切り替え、変えている項目に「セクションの折りたたみ」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す
     args:
       - name: bodyView
         value: '{"fold": false}'
@@ -109,33 +99,23 @@ states:
       - name: pointerCoarse
         value: 'true'
   - name: FocusAfterAddOverridden
-    description: 「レビューに追加」の後のフォーカスを「戻さない」にした。変えている項目に「レビューに追加した後のフォーカス」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す
+    description: 「レビューに追加」の後のフォーカスを「戻さない」にした。変えている項目に「レビューに追加した後のフォーカス」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す
     args:
       - name: focusAfterAdd
         value: none
       - name: overrides
         value: '["レビューに追加した後のフォーカス"]'
-lead: トップバーの「表示の設定」で左から出すパネルの中身。表示する種類と、区画「詳細に表示するもの」の差分のミニマップとセクションの折りたたみを選ばせ、この端末で変えている項目と「既定に戻す」、線で区切った下に「ワークスペースの既定にする」を出す。ネットワークの見た目はネットワークのドロップダウンで選び、このパネルでは選ばないが、変えている項目・既定に戻す・既定にするの対象には含める。差分のミニマップ・セクションの折りたたみと、詳細で選んだ本文の差分の並べ方は変えている項目・既定に戻すの対象にだけ含める。枠と開閉はコメントの一覧と同じ左のパネルを使う。
+lead: トップバーの「表示の設定」で左から出すパネルの中身。表示する種類と、区画「詳細に表示するもの」の差分のミニマップとセクションの折りたたみを選ばせ、この端末で変えている項目と「既定に戻す」、線で区切った下に「ワークスペースの既定にする」を出す。差分のミニマップ・セクションの折りたたみと、詳細で選んだ本文の差分の並べ方は変えている項目・既定に戻すの対象にだけ含める。枠と開閉はコメントの一覧と同じ左のパネルを使う。
 args:
-  - name: look
-    type: 列挙
-    required: true
-    choices: glow・starlight・constellation・deep・dust
-    description: 今当てているネットワークの見た目。パネルには出さず、`defaultLook` と比べて「ワークスペースの既定にする」を出すかを決め、既定の保存の確かめへ渡す
-  - name: defaultLook
-    type: 列挙
-    required: true
-    choices: glow・starlight・constellation・deep・dust
-    description: ワークスペースの既定の見た目（`config.yaml` の `display.network_look`。無ければ `deep`）。`look` と比べるために受け取り、パネルには出さない
   - name: visibleKinds
     type: 配列
     required: true
     choices: decisions・tasks・research・docs・terms・notes・logs の重複しない並び
-    description: 今当てている表示する種類。先頭に「すべて」のチェック（一部だけのときは途中の印と `{数}/7`）、7 つの種類のチェックを並べ、概要とネットワークは「常に表示」の行で出す
+    description: 今当てている表示する種類。先頭に「すべて」のチェック（一部だけのときは途中の印と `{数}/7`）、7 つの種類のチェックを並べ、概要は「常に表示」の行で出す
   - name: defaultKinds
     type: 配列
     required: true
-    description: ワークスペースの既定の表示する種類（`config.yaml` の `display.visible_kinds`。無ければ全ての種類）。`look`・`visibleKinds` と比べて「ワークスペースの既定にする」を出すかを決める
+    description: ワークスペースの既定の表示する種類（`config.yaml` の `display.visible_kinds`。無ければ全ての種類）。`visibleKinds` と比べて「ワークスペースの既定にする」を出すかを決める
   - name: counts
     type: オブジェクト
     required: true
@@ -143,12 +123,12 @@ args:
   - name: overrides
     type: 配列
     required: true
-    description: この端末で変えている項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類}）」・「絞り込み（{画面}）」・「差分のミニマップ」・「セクションの折りたたみ」・「本文の差分の並べ方」・「コメントの並び」）。あるときは「この端末で変えている項目」に「・」でつないで並べ、「既定に戻す」を出す。空のときは「ワークスペースの既定のまま表示しています。」を出し、ボタンを出さない
+    description: この端末で変えている項目の名前（「表示する種類」・「ライト / ダーク」・「表の列（{種類}）」・「絞り込み（{画面}）」・「差分のミニマップ」・「セクションの折りたたみ」・「本文の差分の並べ方」・「コメントの並び」）。あるときは「この端末で変えている項目」に「・」でつないで並べ、「既定に戻す」を出す。空のときは「ワークスペースの既定のまま表示しています。」を出し、ボタンを出さない
   - name: canSave
     type: 真偽値
     required: false
     default: 'true'
-    description: 「ワークスペースの既定にする」を置くか。配る書き出しでは false。true で `look`・`visibleKinds` が既定と同じときは、ボタンの代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す（差分のミニマップだけを変えていても同じ）
+    description: 「ワークスペースの既定にする」を置くか。配る書き出しでは false。true で `visibleKinds` が既定と同じときは、ボタンの代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す（差分のミニマップだけを変えていても同じ）
   - name: message
     type: オブジェクト
     required: false
@@ -190,7 +170,7 @@ events:
     description: 使う側が個人の上書きとして残し、タブの帯を描き直す。開いている画面の種類を外したときは概要へ移し、履歴は置き換える
   - name: 既定に戻す
     when: 「既定に戻す」を押したとき
-    description: 使う側が個人の上書き（見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・セクションの折りたたみ・本文の差分の並べ方・レビュー中のコメントの並び）を全て外し、ワークスペースの既定と画面の既定の条件で描き直す。フォーカスを「ワークスペースの既定のまま表示しています。」の文に移す
+    description: 使う側が個人の上書き（表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・セクションの折りたたみ・本文の差分の並べ方・レビュー中のコメントの並び）を全て外し、ワークスペースの既定と画面の既定の条件で描き直す。フォーカスを「ワークスペースの既定のまま表示しています。」の文に移す
     value: '`onReset()`'
   - name: ワークスペースの既定にする
     when: 「ワークスペースの既定にする」を押したとき
