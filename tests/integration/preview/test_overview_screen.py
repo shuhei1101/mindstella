@@ -313,7 +313,7 @@ def test_diff_marks(
 def test_diff_marks_when_removed(
     write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """差分の表示の間、消した項目を持つ種類のタブに点を付ける。消した項目はタイルに並べない（正常系）。"""
+    """差分の表示の間、削除した項目を持つ種類のタブに点を付ける。削除した項目はタイルに並べない（正常系）。"""
     # 準備・実行
     url, _ = write_removed_preview()
     preselect_diff(page, "V-2")

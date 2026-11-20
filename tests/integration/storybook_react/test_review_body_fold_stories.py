@@ -69,7 +69,7 @@ def test_short(open_story: OpenStory) -> None:
 
 
 def test_folded_lines(open_story: OpenStory) -> None:
-    """改行で 8 行の本文。行の高さの 5 行分までを出してはみ出しを隠し、下向きの印と「続きを読む」を出す（正常系）。"""
+    """改行で 8 行の本文。行の高さの 5 行分までを出してはみ出しを隠し、下向きの印と「続きを表示」を出す（正常系）。"""
     # 準備・実行
     page = open_story("shared-reviewbodyfold--folded-lines")
     _wait_measured(page, hidden=False)
@@ -78,25 +78,25 @@ def test_folded_lines(open_story: OpenStory) -> None:
     assert page.eval_on_selector(BODY, "e => e.hasAttribute('data-folded')") is True
     assert page.evaluate(CLAMP_SCRIPT) == {"clamp": "none", "overflow": "hidden"}
     assert page.evaluate(SHOWS_ALL_SCRIPT) is False
-    assert page.inner_text(MORE) == "続きを読む"
+    assert page.inner_text(MORE) == "続きを表示"
     assert page.get_attribute(MORE, "aria-expanded") == "false"
     assert page.get_attribute(MORE, "aria-controls") == "review-body-C-51"
-    assert page.get_attribute(MORE, "aria-label") == "項目を指さないコメントの続きを読む"
+    assert page.get_attribute(MORE, "aria-label") == "項目を指さないコメントの続きを表示"
     assert page.evaluate(ARROW_ANGLE_SCRIPT) == 90
     # 畳んだ部分も DOM に残る（読み上げは飛ばさない）
     assert "変更履歴の時点の並びが分かりにくい" in page.eval_on_selector(BODY, "e => e.textContent")
 
 
 def test_folded_wrap(open_story: OpenStory) -> None:
-    """改行の無い長文。折り返した後の見た目の行で 5 行を超えるので畳まれ、「続きを読む」を出す（正常系）。"""
+    """改行の無い長文。折り返した後の見た目の行で 5 行を超えるので畳まれ、「続きを表示」を出す（正常系）。"""
     # 準備・実行
     page = open_story("shared-reviewbodyfold--folded-wrap")
     _wait_measured(page, hidden=False)
     # 検証
     assert _lines(page) == FOLD_LINES
     assert page.eval_on_selector(BODY, "e => e.hasAttribute('data-folded')") is True
-    assert page.inner_text(MORE) == "続きを読む"
-    assert page.get_attribute(MORE, "aria-label") == "A-14 へのコメントの続きを読む"
+    assert page.inner_text(MORE) == "続きを表示"
+    assert page.get_attribute(MORE, "aria-label") == "A-14 へのコメントの続きを表示"
 
 
 def test_opened(open_story: OpenStory) -> None:
@@ -115,7 +115,7 @@ def test_opened(open_story: OpenStory) -> None:
 
 
 def test_narrow(open_story: OpenStory) -> None:
-    """台の幅 390px。幅が狭くても見た目の 5 行で畳み、「続きを読む」の文字をボタンの中で折り返さない（正常系）。"""
+    """台の幅 390px。幅が狭くても見た目の 5 行で畳み、「続きを表示」の文字をボタンの中で折り返さない（正常系）。"""
     # 準備
     page = open_story("shared-reviewbodyfold--narrow")
     page.set_viewport_size(NARROW_SIZE)

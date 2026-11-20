@@ -177,7 +177,7 @@ def test_toggle_all(served_review: tuple[str, Path], open_preview: OpenPreview) 
     assert page.eval_on_selector_all(row_checks, "cs => cs.map(c => c.checked)") == [False] * 3
     page.get_by_label("すべて選ぶ").check()
     assert page.eval_on_selector_all(row_checks, "cs => cs.map(c => c.checked)") == [True] * 3
-    page.get_by_label("項目を指さないコメントを送る").uncheck()
+    page.get_by_label("項目を指さないコメントを送信する").uncheck()
     assert page.eval_on_selector(CHECK_ALL, "c => [c.checked, c.indeterminate]") == [False, True]
 
 
@@ -202,9 +202,9 @@ def test_send(
     url, root = served_review
     page = open_preview(url)
     open_review(page)
-    page.get_by_label("項目を指さないコメントを送る").uncheck()
+    page.get_by_label("項目を指さないコメントを送信する").uncheck()
     send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
-    assert send.inner_text() == "まとめて送る（2 件）"
+    assert send.inner_text() == "まとめて送信（2 件）"
     # 実行
     send.click()
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=UPDATE_TIMEOUT_MS)
@@ -212,7 +212,7 @@ def test_send(
     assert page.get_attribute(BAND_RESULT, "role") == "status"
     # tmux の外で立てたサーバーなので、入力できなかったと出す
     assert page.inner_text(BAND_RESULT).startswith(
-        "2 件を送りましたが、Claude Code には入力できませんでした（"
+        "2 件を送信しましたが、Claude Code には入力できませんでした（"
     )
     assert page.inner_text(BAND_RESULT).endswith(
         "送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。"
@@ -256,14 +256,14 @@ def test_send_when_entered(
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert page.get_attribute(BAND_RESULT, "role") == "status"
-    assert page.inner_text(BAND_RESULT).startswith("1 件を送り、Claude Code に入力しました（")
+    assert page.inner_text(BAND_RESULT).startswith("1 件を送信し、Claude Code に入力しました（")
     assert len(pane.lines()) == 1
 
 
 def test_send_when_sending(
     served_review: tuple[str, Path], open_preview: OpenPreview, page: Page
 ) -> None:
-    """送っている間は回る印と「送っています」を出し、まとめて送るを押せなくする（正常系）。"""
+    """送っている間は回る印と「送信しています」を出し、まとめて送るを押せなくする（正常系）。"""
     # 準備
     url, _ = served_review
     held: list[Route] = []
@@ -275,7 +275,7 @@ def test_send_when_sending(
     send.click()
     page.wait_for_selector(f"{BAND_RESULT}.sending")
     # 検証
-    assert page.inner_text(BAND_RESULT) == "送っています"
+    assert page.inner_text(BAND_RESULT) == "送信しています"
     assert page.locator(f"{BAND_RESULT} .spinner").count() == 1
     assert send.is_disabled()
     held[0].continue_()
@@ -303,9 +303,9 @@ def test_send_when_nothing_checked(
     page.get_by_label("すべて選ぶ").uncheck()
     # 検証
     send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
-    assert send.inner_text() == "まとめて送る（0 件）"
+    assert send.inner_text() == "まとめて送信（0 件）"
     assert send.is_disabled()
-    assert page.inner_text(BAND_RESULT) == "送る書き込みにチェックを付けてください。"
+    assert page.inner_text(BAND_RESULT) == "送信する書き込みにチェックを付けてください。"
     assert posts == []
 
 
@@ -338,7 +338,7 @@ def test_send_when_stale(
     page.wait_for_selector(f"{BAND_RESULT}.stale", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert (
-        page.inner_text(BAND_RESULT) == "送れませんでした。送れない書き込みが 1 件あります。"
+        page.inner_text(BAND_RESULT) == "送信できませんでした。送信できない書き込みが 1 件あります。"
     )
     assert page.get_attribute(f"{_row('C-2')} .row-stale", "role") == "alert"
     assert "選んだ文が A-1 の" in page.inner_text(f"{_row('C-2')} .row-stale")
@@ -364,7 +364,7 @@ def test_send_when_unreachable(
     # 検証
     assert (
         page.inner_text(BAND_RESULT)
-        == "送れませんでした。サーバーが止まっています。立ち上げ直してから送ってください。"
+        == "送信できませんでした。サーバーが止まっています。再起動してから送信してください。"
     )
     assert page.locator(f"{BAND_RESULT} svg.icon").count() == 1
 
@@ -385,7 +385,7 @@ def test_send_when_server_refuses(
     page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.failed", timeout=UPDATE_TIMEOUT_MS)
     # 検証
-    assert page.inner_text(BAND_RESULT) == "送れませんでした。threads.yaml を書けません"
+    assert page.inner_text(BAND_RESULT) == "送信できませんでした。threads.yaml を書けません"
 
 
 def test_rows_order(
@@ -424,9 +424,9 @@ def test_row_check(served_review: tuple[str, Path], open_preview: OpenPreview) -
         f"{COMMENTS_PANEL} input.row-check",
         "cs => cs.map(c => [c.getAttribute('aria-label'), c.checked])",
     ) == [
-        ["D-1 へのコメントを送る", True],
-        ["A-1 へのコメントを送る", True],
-        ["項目を指さないコメントを送る", True],
+        ["D-1 へのコメントを送信する", True],
+        ["A-1 へのコメントを送信する", True],
+        ["項目を指さないコメントを送信する", True],
     ]
     assert page.inner_text(BAND_COUNT) == "3 / 3 件"
 
@@ -457,14 +457,14 @@ def test_row_target(served_review: tuple[str, Path], open_preview: OpenPreview) 
 def test_row_target_when_not_pointing(
     served_review: tuple[str, Path], open_preview: OpenPreview
 ) -> None:
-    """項目を指さないコメントは、向けた項目を何も出さず、行の頭を「新しいスレッド」の札だけにする（正常系）。"""
+    """項目を指さないコメントは、向けた項目を何も出さず、行の頭を「新規スレッド」の札だけにする（正常系）。"""
     # 準備
     url, _ = served_review
     page = open_preview(url)
     # 実行
     open_review(page)
     # 検証
-    assert page.inner_text(f"{_row('C-3')} .row-head") == "新しいスレッド"
+    assert page.inner_text(f"{_row('C-3')} .row-head") == "新規スレッド"
     assert page.locator(f"{_row('C-3')} .row-target").count() == 0
     assert "項目を指さない" not in page.inner_text(_row("C-3"))
 
@@ -475,7 +475,7 @@ def test_row_target_when_gone(
     make_item: MakeItem,
     make_comment: MakeComment,
 ) -> None:
-    """項目が消えたコメントは、押せない ID だけを出し、理由を出すまで箇所を外すを出さない（正常系）。"""
+    """項目が消えたコメントは、押せない ID だけを出し、理由を出すまで箇所を解除を出さない（正常系）。"""
     # 準備
     url, _ = write_review_preview(
         make_item("D-1"), comments=(make_comment("C-1", target="D-9", body="消えた項目へ"),)
@@ -615,7 +615,7 @@ def test_edit_when_shortcut_and_body_empty(
     # 実行
     page.press(field, "Control+Enter")
     # 検証
-    assert page.inner_text(f"{_row('C-1')} form.row-edit .send-msg") == "コメントを入れてから直してください。"
+    assert page.inner_text(f"{_row('C-1')} form.row-edit .send-msg") == "コメントを入れてから修正してください。"
     assert patches == []
     assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
 
@@ -652,7 +652,7 @@ def test_edit_when_body_empty(
     # 実行
     page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     # 検証
-    assert page.inner_text(f"{_row('C-1')} form.row-edit .send-msg") == "コメントを入れてから直してください。"
+    assert page.inner_text(f"{_row('C-1')} form.row-edit .send-msg") == "コメントを入れてから修正してください。"
     assert patches == []
     assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
 
@@ -900,7 +900,7 @@ def test_stale_reason_and_detach(
     make_item: MakeItem,
     make_comment: MakeComment,
 ) -> None:
-    """箇所が合わない理由の行で「箇所を外す」を押すと、項目へのコメントにして理由と箇所を消す（正常系）。"""
+    """箇所が合わない理由の行で「箇所を解除」を押すと、項目へのコメントにして理由と箇所を消す（正常系）。"""
     # 準備
     url, root = write_review_preview(
         make_item("A-1"),
@@ -919,7 +919,7 @@ def test_stale_reason_and_detach(
     page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{_row('C-1')} .row-stale", timeout=UPDATE_TIMEOUT_MS)
     # 実行
-    page.get_by_role("button", name="箇所を外す").click()
+    page.get_by_role("button", name="箇所を解除").click()
     page.wait_for_function(
         "!document.querySelector(\"li[data-comment='C-1'] .row-stale\")", timeout=UPDATE_TIMEOUT_MS
     )
@@ -934,7 +934,7 @@ def test_stale_reason_when_target_gone(
     make_item: MakeItem,
     make_comment: MakeComment,
 ) -> None:
-    """項目が消えたコメントの理由の行には、箇所を外すを出さない（正常系）。"""
+    """項目が消えたコメントの理由の行には、箇所を解除を出さない（正常系）。"""
     # 準備
     url, _ = write_review_preview(
         make_item("D-1"),
@@ -954,7 +954,7 @@ def test_stale_reason_when_target_gone(
     page.wait_for_selector(f"{_row('C-1')} .row-stale", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert page.inner_text(f"{_row('C-1')} .row-stale span") == "D-9 がありません"
-    assert page.get_by_role("button", name="箇所を外す").count() == 0
+    assert page.get_by_role("button", name="箇所を解除").count() == 0
 
 
 def test_empty(
@@ -1001,7 +1001,7 @@ def served_replies(
     make_post: MakePost,
     make_thread: MakeThread,
 ) -> tuple[str, Path]:
-    """オープンの TH-1 への返信 C-1・クローズの TH-2 への返信 C-2・D-1 への新しいスレッド C-3 を持つワークスペースの配信の URL とフォルダを返す。"""
+    """オープンの TH-1 への返信 C-1・クローズの TH-2 への返信 C-2・D-1 への新規スレッド C-3 を持つワークスペースの配信の URL とフォルダを返す。"""
     return write_review_preview(
         make_item("D-1"),
         threads=(
@@ -1034,8 +1034,8 @@ def test_row_reply(served_replies: tuple[str, Path], open_preview: OpenPreview) 
     # 検証
     assert page.inner_text(f"{_row('C-1')} .row-kind") == "返信"
     assert page.inner_text(f"{_row('C-1')} .row-target") == "オープン\n起票の確認"
-    assert page.inner_text(f"{_row('C-3')} .row-kind") == "新しいスレッド"
-    assert page.get_attribute(f"{_row('C-1')} input.row-check", "aria-label") == "TH-1 への返信を送る"
+    assert page.inner_text(f"{_row('C-3')} .row-kind") == "新規スレッド"
+    assert page.get_attribute(f"{_row('C-1')} input.row-check", "aria-label") == "TH-1 への返信を送信する"
     assert page.locator(f"{_row('C-1')}").get_by_role("button", name="TH-1 への返信を修正").count() == 1
     assert page.locator(f"{_row('C-1')}").get_by_role("button", name="TH-1 への返信を削除").count() == 1
     # 実行
@@ -1059,7 +1059,7 @@ def test_row_blocked(served_replies: tuple[str, Path], open_preview: OpenPreview
     assert page.inner_text(BAND_COUNT) == "2 / 2 件"
     assert (
         page.inner_text(f"{_row('C-2')} .row-blocked span")
-        == "クローズのスレッドへの返信は送れません。オープンに戻すと送れます。"
+        == "クローズのスレッドへの返信は送信できません。オープンに戻すと送信できます。"
     )
     # 実行（そのスレッドを開く）
     page.locator(f"{_row('C-2')} .row-blocked").get_by_role("button", name="スレッドを開く").click()
@@ -1070,7 +1070,7 @@ def test_row_blocked(served_replies: tuple[str, Path], open_preview: OpenPreview
 
 
 def test_row_open_thread(served_replies: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """新しいスレッドの行の「スレッドを開く」で、まだ送っていないそのスレッドを開く（正常系）。"""
+    """新規スレッドの行の「スレッドを開く」で、まだ送っていないそのスレッドを開く（正常系）。"""
     # 準備
     url, _ = served_replies
     page = open_preview(url)
@@ -1080,7 +1080,7 @@ def test_row_open_thread(served_replies: tuple[str, Path], open_preview: OpenPre
     page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
     # 検証
     assert page.inner_text(f"{COMMENTS_PANEL} .th-heading") == "レビュー中\n案 A にする"
-    assert page.inner_text(f"{COMMENTS_PANEL} .th-closed-note") == "まだ送っていないスレッドです。"
+    assert page.inner_text(f"{COMMENTS_PANEL} .th-closed-note") == "まだ送信していないスレッドです。"
 
 
 def test_send_when_reply(
@@ -1095,7 +1095,7 @@ def test_send_when_reply(
     page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=UPDATE_TIMEOUT_MS)
     # 検証
-    assert page.inner_text(BAND_RESULT).startswith("2 件を送りましたが、Claude Code には入力できませんでした（")
+    assert page.inner_text(BAND_RESULT).startswith("2 件を送信しましたが、Claude Code には入力できませんでした（")
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} .comments-list li", "rows => rows.map(r => r.dataset.comment)"
     ) == ["C-2"]
@@ -1166,7 +1166,7 @@ MORE_TEXT_RECTS_SCRIPT = "(selector) => document.querySelector(selector).getClie
 
 
 def _more(comment_id: str) -> str:
-    """行の開閉のボタン（「続きを読む」「折りたたむ」）の選択子を返す。"""
+    """行の開閉のボタン（「続きを表示」「折りたたむ」）の選択子を返す。"""
     return f"{_row(comment_id)} button.review-more"
 
 
@@ -1188,7 +1188,7 @@ def served_long(
     make_post: MakePost,
     make_thread: MakeThread,
 ) -> tuple[str, Path]:
-    """8 行の項目を指さない新しいスレッド C-1・8 行の返信 C-2・2 行の返信 C-3・2 行の D-1 への新しいスレッド C-4 を持つワークスペースの配信の URL とフォルダを返す。"""
+    """8 行の項目を指さない新規スレッド C-1・8 行の返信 C-2・2 行の返信 C-3・2 行の D-1 への新規スレッド C-4 を持つワークスペースの配信の URL とフォルダを返す。"""
     return write_review_preview(
         make_item("D-1"),
         threads=(
@@ -1208,7 +1208,7 @@ def served_long(
 
 
 def test_row_more(served_long: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """折り返した後の見た目の行で 5 行を超える本文は 5 行までに畳み、新しいスレッドの行では「スレッドを開く」と同じ行の先に、下向きの印の「続きを読む」を出す（正常系）。"""
+    """折り返した後の見た目の行で 5 行を超える本文は 5 行までに畳み、新規スレッドの行では「スレッドを開く」と同じ行の先に、下向きの印の「続きを表示」を出す（正常系）。"""
     # 準備
     url, _ = served_long
     page = open_preview(url)
@@ -1217,20 +1217,20 @@ def test_row_more(served_long: tuple[str, Path], open_preview: OpenPreview) -> N
     _wait_more(page, "C-1")
     # 検証
     more = _more("C-1")
-    assert page.inner_text(more) == "続きを読む"
+    assert page.inner_text(more) == "続きを表示"
     assert page.get_attribute(more, "aria-expanded") == "false"
-    assert page.get_attribute(more, "aria-label") == "項目を指さないコメントの続きを読む"
+    assert page.get_attribute(more, "aria-label") == "項目を指さないコメントの続きを表示"
     assert page.get_attribute(more, "aria-controls") == "review-body-C-1"
     assert page.eval_on_selector(f"{_row('C-1')} .review-body", "e => e.classList.contains('folded')") is True
     assert _body_lines(page, "C-1") == FOLD_LINES
     assert page.eval_on_selector_all(
         f"{_row('C-1')} .row-thread-open > button", "buttons => buttons.map(b => b.textContent.trim())"
-    ) == ["続きを読む", "スレッドを開く"]
+    ) == ["続きを表示", "スレッドを開く"]
     assert page.locator(f"{more} svg.icon").count() == 1
 
 
 def test_row_more_when_toggled(served_long: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """「続きを読む」で全文を開いて「折りたたむ」（上向きの印）に変え、もう一度押すと 5 行に畳み直す。ハッシュも履歴も変えない（正常系）。"""
+    """「続きを表示」で全文を開いて「折りたたむ」（上向きの印）に変え、もう一度押すと 5 行に畳み直す。ハッシュも履歴も変えない（正常系）。"""
     # 準備
     url, _ = served_long
     page = open_preview(url)
@@ -1250,7 +1250,7 @@ def test_row_more_when_toggled(served_long: tuple[str, Path], open_preview: Open
     # 実行（畳み直す）
     page.click(more)
     # 検証
-    assert page.inner_text(more) == "続きを読む"
+    assert page.inner_text(more) == "続きを表示"
     assert page.get_attribute(more, "aria-expanded") == "false"
     assert _body_lines(page, "C-1") == FOLD_LINES
     assert page.evaluate("location.hash") == hash_before
@@ -1266,11 +1266,11 @@ def test_row_more_when_reply(served_long: tuple[str, Path], open_preview: OpenPr
     open_review(page)
     _wait_more(page, "C-2")
     # 検証
-    assert page.inner_text(_more("C-2")) == "続きを読む"
-    assert page.get_attribute(_more("C-2"), "aria-label") == "TH-1 への返信の続きを読む"
+    assert page.inner_text(_more("C-2")) == "続きを表示"
+    assert page.get_attribute(_more("C-2"), "aria-label") == "TH-1 への返信の続きを表示"
     assert page.eval_on_selector_all(
         f"{_row('C-2')} .review-more-row > *", "nodes => nodes.map(n => n.textContent.trim())"
-    ) == ["続きを読む"]
+    ) == ["続きを表示"]
     assert page.locator(f"{_row('C-2')} .row-thread-open").count() == 0
     assert page.get_by_role("button", name="スレッドを開く").count() == 2
     assert _body_lines(page, "C-2") == FOLD_LINES
@@ -1290,7 +1290,7 @@ def test_row_more_when_short(served_long: tuple[str, Path], open_preview: OpenPr
         assert _body_lines(page, comment_id) == len(SHORT_BODY.splitlines())
     # 返信の行は、ボタンだけの行ごと見えない
     assert page.is_visible(f"{_row('C-3')} .review-more-row") is False
-    # 新しいスレッドの行は「スレッドを開く」だけを見せる
+    # 新規スレッドの行は「スレッドを開く」だけを見せる
     assert page.eval_on_selector_all(
         f"{_row('C-4')} .row-thread-open > button:not([hidden])", "buttons => buttons.map(b => b.textContent.trim())"
     ) == ["スレッドを開く"]
@@ -1339,12 +1339,12 @@ def test_row_body_when_redrawn(served_long: tuple[str, Path], open_preview: Open
     reopen_review(page)
     _wait_more(page, "C-1")
     # 検証
-    assert page.inner_text(_more("C-1")) == "続きを読む"
+    assert page.inner_text(_more("C-1")) == "続きを表示"
     assert _body_lines(page, "C-1") == FOLD_LINES
 
 
 def test_row_more_when_narrow(served_long: tuple[str, Path], open_preview: OpenPreview, page: Page) -> None:
-    """幅 390px でも見た目の 5 行で畳み、「続きを読む」の文字をボタンの中で折り返さない（正常系）。"""
+    """幅 390px でも見た目の 5 行で畳み、「続きを表示」の文字をボタンの中で折り返さない（正常系）。"""
     # 準備
     url, _ = served_long
     page.set_viewport_size(PHONE_VIEWPORT)

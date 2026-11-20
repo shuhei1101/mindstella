@@ -1,4 +1,4 @@
-"""部品設計『消した項目の帯』の状態（ストーリー）の結合テスト。"""
+"""部品設計『削除した項目の帯』の状態（ストーリー）の結合テスト。"""
 
 from __future__ import annotations
 
@@ -23,18 +23,18 @@ WRAP_SIZE = {"width": 640, "height": 600}
 
 
 def test_one(open_story: OpenStory) -> None:
-    """1 件。見出し「消した項目」と件数 1 の右に、消した印・ID・タイトルを 1 つ並べる（正常系）。"""
+    """1 件。見出し「削除した項目」と件数 1 の右に、消した印・ID・タイトルを 1 つ並べる（正常系）。"""
     # 準備・実行
     page = open_story("preview-removedband--one")
     # 検証
     band = page.locator("section.rm-band")
-    assert band.get_attribute("aria-label") == "この時点で消した項目"
+    assert band.get_attribute("aria-label") == "この時点で削除した項目"
     heading = band.locator("h2.rm-band-t")
-    assert heading.inner_text().split("\n")[0] == "消した項目"
+    assert heading.inner_text().split("\n")[0] == "削除した項目"
     assert heading.locator(".n").inner_text() == "1"
     item = band.locator("ul.rm-list > li.rm-item")
     assert item.count() == 1
-    assert item.locator(".df-mark.df-del").get_attribute("title") == "消した"
+    assert item.locator(".df-mark.df-del").get_attribute("title") == "削除した"
     assert item.locator(".mono").inner_text() == "N-6"
     assert item.locator(".rm-ttl").inner_text() == "ゴールを後から変える・足す・無しで始める"
     # 項目は押せる要素にしない

@@ -145,15 +145,15 @@ def test_comment_mark_visible(page: Page, write_commented_preview: WriteReviewPr
 
 
 def test_removed_band_visible(page: Page, write_removed_preview: WriteReviewPreview) -> None:
-    """選んだ時点で資料を消したときだけ消した項目の帯を出す（正常系）。"""
+    """選んだ時点で資料を消したときだけ削除した項目の帯を出す（正常系）。"""
     # 準備
     url, _ = write_removed_preview()
     open_spa(page, url, "?tab=docs&diff=V-1")
-    expect(page.get_by_role("region", name="この時点で消した項目")).to_have_count(0)
+    expect(page.get_by_role("region", name="この時点で削除した項目")).to_have_count(0)
     # 実行
     open_spa(page, url, "?tab=docs&diff=V-2")
     # 検証
-    expect(page.get_by_role("region", name="この時点で消した項目").get_by_role("listitem")).to_contain_text(["A-3"])
+    expect(page.get_by_role("region", name="この時点で削除した項目").get_by_role("listitem")).to_contain_text(["A-3"])
 
 
 @pytest.mark.parametrize("view", ["cards", "board"])
@@ -182,7 +182,7 @@ def test_add_button_label(page: Page, write_preview: WritePreview, make_item: Ma
     # 準備・実行
     open_spa(page, write_preview(make_item("A-1")), "?tab=docs")
     # 検証
-    expect(page.get_by_role("button", name="資料の項目を追加")).to_have_text("項目を追加")
+    expect(page.get_by_role("button", name="資料の項目を追加")).to_have_text("項目追加")
 
 
 def test_add_button_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:

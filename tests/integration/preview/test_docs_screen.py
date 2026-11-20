@@ -916,7 +916,7 @@ def test_add_button(
     # 検証
     button = page.locator(ADD_BUTTON)
     assert button.count() == 1
-    assert button.inner_text().strip() == "項目を追加"
+    assert button.inner_text().strip() == "項目追加"
     assert button.get_attribute("aria-label") == "資料の項目を追加"
     bar = page.locator(".toolbar").bounding_box()
     box = button.bounding_box()
@@ -942,7 +942,7 @@ def test_add_button_narrow(
     label = button.locator(".lbl").bounding_box()
     assert label is None or label["width"] <= 1
     assert button.locator("svg.icon").is_visible()
-    assert button.get_attribute("title") == "項目を追加"
+    assert button.get_attribute("title") == "項目追加"
     assert page.get_by_role("button", name="資料の項目を追加").count() == 1
 
 
@@ -1053,7 +1053,7 @@ def test_added_items_cards(
     make_edit: MakeEdit,
     open_preview: OpenPreview,
 ) -> None:
-    """カードは、カードの一覧の先頭に破線の枠で出す。ID の場所に「ID は保存で決まる」を置き、タイトルが空なら「（タイトル未入力）」と出す（正常系）。"""
+    """カードは、カードの一覧の先頭に破線の枠で出す。ID の場所に「ID は保存時に決定」を置き、タイトルが空なら「（タイトル未入力）」と出す（正常系）。"""
     # 準備
     url, _ = write_edit_preview(
         make_item("A-1", title="今ある項目"),
@@ -1071,7 +1071,7 @@ def test_added_items_cards(
     ) == ["new-1", "new-2", "A-1"]
     added = page.locator(".doc-card[data-new-id='new-1']")
     assert added.evaluate("e => getComputedStyle(e).borderTopStyle") == "dashed"
-    assert added.locator(".pe-noid").inner_text() == "ID は保存で決まる"
+    assert added.locator(".pe-noid").inner_text() == "ID は保存時に決定"
     assert added.locator(".c-ttl").inner_text() == "足す項目"
     assert added.locator(".pm.pm-pending").count() == 1
     assert page.locator(".doc-card[data-new-id='new-2'] .c-ttl").inner_text() == "（タイトル未入力）"
@@ -1083,7 +1083,7 @@ def test_added_items_board(
     make_edit: MakeEdit,
     open_preview: OpenPreview,
 ) -> None:
-    """ボードは、溜めた状態の列（無ければ「下書き」）の先頭に破線の枠で出す。ID の場所に「ID は保存で決まる」を置き、タイトルが空なら「（タイトル未入力）」と出す（正常系）。"""
+    """ボードは、溜めた状態の列（無ければ「下書き」）の先頭に破線の枠で出す。ID の場所に「ID は保存時に決定」を置き、タイトルが空なら「（タイトル未入力）」と出す（正常系）。"""
     # 準備
     url, _ = write_edit_preview(
         make_item("A-1", title="今ある項目", status="確認中"),
@@ -1103,7 +1103,7 @@ def test_added_items_board(
     ) == [["下書き", ["new-2", "A-2"]], ["確認中", ["new-1", "A-1"]]]
     added = page.locator(".card[data-new-id='new-1']")
     assert added.evaluate("e => getComputedStyle(e).borderTopStyle") == "dashed"
-    assert added.locator(".pe-noid").inner_text() == "ID は保存で決まる"
+    assert added.locator(".pe-noid").inner_text() == "ID は保存時に決定"
     assert added.locator(".c-ttl").inner_text() == "足す項目"
     assert added.locator(".pm.pm-pending").count() == 1
     assert page.locator(".card[data-new-id='new-2'] .c-ttl").inner_text() == "（タイトル未入力）"

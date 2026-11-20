@@ -156,7 +156,7 @@ def test_diff_marks(
     assert_topbar_history(page)
 
 
-# 種類の画面ごとの、取り下げていない項目・取り下げた項目・消した項目の ID
+# 種類の画面ごとの、取り下げていない項目・取り下げた項目・削除した項目の ID
 RECORD_IDS = {
     "research": ("R-1", "R-2", "R-3"),
     "terms": ("G-1", "G-2", "G-3"),
@@ -187,7 +187,7 @@ def test_removed_band(
 def test_removed_band_when_filtered(
     write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """文字の条件で表の行が 0 件になっても、消した項目は絞り込まず帯に出す（正常系）。"""
+    """文字の条件で表の行が 0 件になっても、削除した項目は絞り込まず帯に出す（正常系）。"""
     # 準備・実行
     url, _ = write_removed_preview()
     preselect_diff(page, "V-2")
@@ -564,7 +564,7 @@ def test_add_button(
     # 検証
     button = page.locator(ADD_BUTTON)
     assert button.count() == 1
-    assert button.inner_text().strip() == "項目を追加"
+    assert button.inner_text().strip() == "項目追加"
     assert button.get_attribute("aria-label") == "メモの項目を追加"
     box = button.bounding_box()
     columns = page.locator(".table-toolbar .cols-btn-table").bounding_box()
@@ -587,7 +587,7 @@ def test_add_button_narrow(
     label = button.locator(".lbl").bounding_box()
     assert label is None or label["width"] <= 1
     assert button.locator("svg.icon").is_visible()
-    assert button.get_attribute("title") == "項目を追加"
+    assert button.get_attribute("title") == "項目追加"
     assert page.get_by_role("button", name="メモの項目を追加").count() == 1
 
 

@@ -106,7 +106,7 @@ def test_unreachable_notice_visible(page: Page, write_edit_preview: WriteReviewP
     alert = panel.get_by_role("alert")
     # 検証
     expect(alert).to_contain_text("サーバーにつながらないため、保存できませんでした。")
-    expect(alert).to_contain_text("保存待ちの編集は残っています。サーバーを立ち上げ直してから、もう一度保存してください。")
+    expect(alert).to_contain_text("保存待ちの編集は残っています。サーバーを再起動してから、もう一度保存してください。")
     expect(panel.locator("li[id^='pe-row-']")).to_have_count(3)
 
 
@@ -136,11 +136,11 @@ def test_empty_visible(page: Page, write_edit_preview: WriteReviewPreview, make_
 
 
 def test_count_label(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
-    """保存する件数は「{n} 件（うち削除 {m} 件）をワークスペースに書きます」（正常系）。"""
+    """保存する件数は「{n} 件（うち削除 {m} 件）をワークスペースに書き込みます」（正常系）。"""
     # 準備・実行
     _open(page, write_edit_preview, make_item, make_edit)
     # 検証
-    expect(_panel(page).get_by_text("3 件（うち削除 1 件）をワークスペースに書きます")).to_be_visible()
+    expect(_panel(page).get_by_text("3 件（うち削除 1 件）をワークスペースに書き込みます")).to_be_visible()
 
 
 def test_count_visible(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
@@ -148,7 +148,7 @@ def test_count_visible(page: Page, write_edit_preview: WriteReviewPreview, make_
     # 準備・実行（1 件を溜めたパネルを開き、取り消して 0 件にする）
     _open_emptied(page, write_edit_preview, make_item, make_edit)
     # 検証
-    expect(_panel(page).get_by_text("をワークスペースに書きます")).to_have_count(0)
+    expect(_panel(page).get_by_text("をワークスペースに書き込みます")).to_have_count(0)
 
 
 def test_save_label(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:

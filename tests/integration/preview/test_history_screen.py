@@ -83,7 +83,7 @@ def test_list_when_no_pending(
 def test_list_when_removed(
     write_removed_preview: WriteReviewPreview, open_preview: OpenPreview
 ) -> None:
-    """時点の件数に消した項目も数える。消した項目だけのまだまとめていない変更の行も出し、合わせた範囲で足して消した項目は消した項目として 1 件に数える（正常系）。"""
+    """時点の件数に削除した項目も数える。削除した項目だけのまだまとめていない変更の行も出し、合わせた範囲で足して削除した項目は削除した項目として 1 件に数える（正常系）。"""
     # 準備
     url, _ = write_removed_preview()
     page = open_preview(url, "#tab=decisions&view=table")
@@ -94,14 +94,14 @@ def test_list_when_removed(
     assert [row["sel"] for row in rows] == ["", "pending", "since", "V-2", "V-1"]
     # まだまとめていない変更: タスクを 1 件消しただけ
     # V-2: 7 件を消した。V-1: 2 件を足して（検討事項とメモ）5 件を取り下げた
-    # 前回開いてから: 3 つを合わせる。足して後で消した D-4 は消した項目として 1 件に数え、消した 8 件・足した 1 件（N-4）・取り下げた 5 件の 14 件
+    # 前回開いてから: 3 つを合わせる。足して後で消した D-4 は削除した項目として 1 件に数え、消した 8 件・足した 1 件（N-4）・取り下げた 5 件の 14 件
     assert [row["n"] for row in rows] == [None, "1 件", "14 件", "7 件", "7 件"]
 
 
 def test_pick_when_removed(
     write_removed_preview: WriteReviewPreview, open_preview: OpenPreview
 ) -> None:
-    """消した項目を持つ時点を選ぶと、モーダルを閉じ、どの画面もその時点で消した項目の帯を付けて描き直す（正常系）。"""
+    """削除した項目を持つ時点を選ぶと、モーダルを閉じ、どの画面もその時点で削除した項目の帯を付けて描き直す（正常系）。"""
     # 準備
     url, _ = write_removed_preview()
     page = open_preview(url, "#tab=decisions&view=table")

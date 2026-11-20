@@ -91,15 +91,15 @@ def test_region_visible(page: Page, write_preview: WritePreview, make_item: Make
 
 @pytest.mark.parametrize(("tab", "label", "prefix"), RECORD_TABS)
 def test_removed_band_visible(page: Page, write_removed_preview: WriteReviewPreview, tab: str, label: str, prefix: str) -> None:
-    """選んだ時点でその種類の項目を消したときだけ消した項目の帯を出す（正常系）。"""
+    """選んだ時点でその種類の項目を消したときだけ削除した項目の帯を出す（正常系）。"""
     # 準備
     url, _ = write_removed_preview()
     open_spa(page, url, f"?tab={tab}&diff=V-1")
-    expect(page.get_by_role("region", name="この時点で消した項目")).to_have_count(0)
+    expect(page.get_by_role("region", name="この時点で削除した項目")).to_have_count(0)
     # 実行
     open_spa(page, url, f"?tab={tab}&diff=V-2")
     # 検証
-    expect(page.get_by_role("region", name="この時点で消した項目").get_by_role("listitem")).to_contain_text([f"{prefix}-3"])
+    expect(page.get_by_role("region", name="この時点で削除した項目").get_by_role("listitem")).to_contain_text([f"{prefix}-3"])
 
 
 def test_add_button_label(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
@@ -107,7 +107,7 @@ def test_add_button_label(page: Page, write_preview: WritePreview, make_item: Ma
     # 準備・実行
     open_spa(page, write_preview(make_item("G-1")), "?tab=terms")
     # 検証
-    expect(page.get_by_role("button", name="用語集の項目を追加")).to_have_text("項目を追加")
+    expect(page.get_by_role("button", name="用語集の項目を追加")).to_have_text("項目追加")
 
 
 def test_add_button_visible(page: Page, write_removed_preview: WriteReviewPreview) -> None:

@@ -139,7 +139,7 @@ def test_with_body_location(open_story: OpenStory) -> None:
     assert page.inner_text("form label") == "A-005 へのコメント"
     assert page.inner_text("[id$='-loc'] span") == "本文 3 行目"
     assert page.inner_text("[id$='-loc'] blockquote") == "受け取る人へ渡す形"
-    assert page.get_by_role("button", name="箇所を外す").count() == 1
+    assert page.get_by_role("button", name="箇所を解除").count() == 1
     # 添えた箇所は入力欄の説明として、結果の前に指す
     loc_id = page.get_attribute("[id$='-loc']", "id")
     message_id = page.get_attribute("form [role=status]", "id")
@@ -327,7 +327,7 @@ def test_closed(open_story: OpenStory) -> None:
     assert toggle.get_attribute("aria-expanded") == "false"
     assert toggle.get_attribute("title") == "コメントの入力を開く"
     assert "D-022 へのコメント" in page.inner_text("form")
-    assert "書きかけ" not in page.inner_text("form")
+    assert "下書き" not in page.inner_text("form")
     assert not page.locator("textarea").is_visible()
     assert not page.locator('button[aria-label="レビューに追加"]').is_visible()
     body = page.locator(f"#{toggle.get_attribute('aria-controls')}")
@@ -336,11 +336,11 @@ def test_closed(open_story: OpenStory) -> None:
 
 
 def test_closed_with_draft(open_story: OpenStory) -> None:
-    """書きかけを残して閉じた。「{ID} へのコメント」の右に鉛筆の印と「書きかけ」を出す（正常系）。"""
+    """下書きを残して閉じた。「{ID} へのコメント」の右に鉛筆のアイコンと「下書き」を出す（正常系）。"""
     # 準備・実行
     page = open_story("shared-sendform--closed-with-draft")
     # 検証
-    assert "書きかけ" in page.inner_text("form")
+    assert "下書き" in page.inner_text("form")
     toggle = page.get_by_role("button", name="コメントの入力を開く")
     assert toggle.get_attribute("aria-expanded") == "false"
     assert not page.locator("textarea").is_visible()

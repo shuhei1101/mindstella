@@ -193,7 +193,7 @@ def test_save_fails_when_offline(
     page.wait_for_selector(ERROR_ALERT, timeout=SAVE_TIMEOUT_MS)
     # 検証
     assert page.inner_text(ERROR_ALERT) == (
-        "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、"
+        "保存できませんでした。サーバーが止まっています。起動スクリプトで再起動し、"
         "示された新しい URL で開いてから保存してください。"
     )
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before

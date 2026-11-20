@@ -287,7 +287,7 @@ def test_diff_off_by_chip(
 def test_tab_marks(
     write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """差分の表示の間、新規・変更・消した項目を持つ種類のタブにだけ点を付け、件数は残す（正常系）。"""
+    """差分の表示の間、新規・変更・削除した項目を持つ種類のタブにだけ点を付け、件数は残す（正常系）。"""
     # 準備・実行
     url, _ = write_history_preview()
     preselect_diff(page, "pending")
@@ -299,13 +299,13 @@ def test_tab_marks(
     )
     assert dotted == ["decisions", "tasks", "notes"]
     assert page.inner_text('nav.tabbar a[data-tab="tasks"] .count') == "1"
-    assert page.inner_text(".df-dot .sr-only") == "新規・変更・消した項目があります"
+    assert page.inner_text(".df-dot .sr-only") == "新規・変更・削除した項目があります"
 
 
 def test_tab_marks_when_only_removed(
     write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """選んだ時点で新規・変更の項目が無く、消した項目だけを持つ種類のタブにも点を付け、消した項目を含めた件数にしない（正常系）。"""
+    """選んだ時点で新規・変更の項目が無く、削除した項目だけを持つ種類のタブにも点を付け、削除した項目を含めた件数にしない（正常系）。"""
     # 準備・実行
     url, _ = write_removed_preview()
     preselect_diff(page, "pending")
@@ -316,7 +316,7 @@ def test_tab_marks_when_only_removed(
         "nav.tabbar a.tab:has(.df-dot)", "tabs => tabs.map(t => t.dataset.tab)"
     )
     assert dotted == ["tasks"]
-    assert page.locator('nav.tabbar a[data-tab="tasks"] .df-dot .sr-only').inner_text() == "新規・変更・消した項目があります"
+    assert page.locator('nav.tabbar a[data-tab="tasks"] .df-dot .sr-only').inner_text() == "新規・変更・削除した項目があります"
     # タブの件数は今ある項目の数（消した T-2 は含めない）
     assert page.inner_text('nav.tabbar a[data-tab="tasks"] .count') == "1"
 
@@ -324,7 +324,7 @@ def test_tab_marks_when_only_removed(
 def test_tab_marks_when_removed_and_changed(
     write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """消した項目だけの種類（検討事項）にも、消した項目を持たない種類（タスク）を除いて点を付ける（正常系）。"""
+    """削除した項目だけの種類（検討事項）にも、削除した項目を持たない種類（タスク）を除いて点を付ける（正常系）。"""
     # 準備・実行
     url, _ = write_removed_preview()
     preselect_diff(page, "V-2")

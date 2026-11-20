@@ -467,7 +467,7 @@ def test_status_unreachable(served_thread: tuple[str, Path], open_preview: OpenP
     page.wait_for_selector(ACTION_MSG, timeout=UPDATE_TIMEOUT_MS)
     assert (
         page.inner_text(ACTION_MSG)
-        == "オープンに戻せませんでした。サーバーが止まっています。立ち上げ直してから押してください。"
+        == "オープンに戻せませんでした。サーバーが止まっています。再起動してから押してください。"
     )
 
 
@@ -542,7 +542,7 @@ def test_reply_draft(
     make_thread: MakeThread,
     make_draft: MakeDraft,
 ) -> None:
-    """スレッドごとの書きかけを入力欄に戻し、入力が止まったときに thread ごとに保つ（正常系）。"""
+    """スレッドごとの下書きを入力欄に戻し、入力が止まったときに thread ごとに保つ（正常系）。"""
     # 準備
     url, root = write_review_preview(
         make_item("D-1"),
@@ -550,26 +550,26 @@ def test_reply_draft(
             make_thread("TH-1", make_post("TH-1-1", author="ai"), summary="一つ目"),
             make_thread("TH-2", make_post("TH-2-1", author="ai"), summary="二つ目"),
         ),
-        drafts=(free_comment(make_draft(thread="TH-2", body="二つ目の書きかけ")),),
+        drafts=(free_comment(make_draft(thread="TH-2", body="二つ目の下書き")),),
     )
     page = open_preview(url)
     open_thread(page, "TH-1")
     assert page.input_value(REPLY_TEXTAREA) == ""
     # 実行（入力が止まる）
-    page.fill(REPLY_TEXTAREA, "一つ目の書きかけ")
+    page.fill(REPLY_TEXTAREA, "一つ目の下書き")
     page.wait_for_timeout(DRAFT_WAIT_MS)
     # 検証
     drafts = read_workspace_yaml(root, "drafts.yaml")["items"]
     assert sorted((draft["thread"], draft["body"]) for draft in drafts) == [
-        ("TH-1", "一つ目の書きかけ"),
-        ("TH-2", "二つ目の書きかけ"),
+        ("TH-1", "一つ目の下書き"),
+        ("TH-2", "二つ目の下書き"),
     ]
     # 実行（一覧を経て別のスレッドへ）
     page.get_by_role("button", name="一覧へ戻る").click()
     page.click(f"{thread_row('TH-2')} button.th-open")
     page.wait_for_selector(REPLY_TEXTAREA)
     # 検証
-    assert page.input_value(REPLY_TEXTAREA) == "二つ目の書きかけ"
+    assert page.input_value(REPLY_TEXTAREA) == "二つ目の下書き"
 
 
 def test_closed(served_thread: tuple[str, Path], open_preview: OpenPreview) -> None:
@@ -593,7 +593,7 @@ def test_pending_thread(
     make_item: MakeItem,
     make_comment: MakeComment,
 ) -> None:
-    """まだ送っていない新しいスレッドは、最初の書き込みをレビュー中の形で出し、状態を変えるボタンと返信の入力を出さず、知らせを出す（正常系）。"""
+    """まだ送っていない新規スレッドは、最初の書き込みをレビュー中の形で出し、状態を変えるボタンと返信の入力を出さず、知らせを出す（正常系）。"""
     # 準備
     url, _ = write_review_preview(
         make_item("D-1", title="最初の問い"),
@@ -609,7 +609,7 @@ def test_pending_thread(
     assert page.inner_text(TARGET) == "D-1\n最初の問い"
     assert page.locator(STATUS_BUTTON).count() == 0
     assert page.locator(REPLY_FORM).count() == 0
-    assert page.inner_text(CLOSED_NOTE) == "まだ送っていないスレッドです。"
+    assert page.inner_text(CLOSED_NOTE) == "まだ送信していないスレッドです。"
     assert page.locator(f"{POSTS}[data-comment='C-1'].pending").count() == 1
 
 
@@ -727,7 +727,7 @@ def served_unseen_thread(
     make_post: MakePost,
     make_thread: MakeThread,
 ) -> tuple[str, Path]:
-    """AI の返信が利用者の未読のオープンの TH-1（レビュー中の返信 C-1 つき）・全て既読の TH-2・D-1 へのまだ送っていない新しいスレッド C-2 を持つワークスペースの配信の URL とフォルダを返す。"""
+    """AI の返信が利用者の未読のオープンの TH-1（レビュー中の返信 C-1 つき）・全て既読の TH-2・D-1 へのまだ送っていない新規スレッド C-2 を持つワークスペースの配信の URL とフォルダを返す。"""
     return write_review_preview(
         make_item("D-1", title="最初の問い"),
         threads=(
@@ -813,7 +813,7 @@ def test_seen_when_opened_from_review(
 def test_seen_when_opened_pending_thread(
     served_unseen_thread: tuple[str, Path], open_preview: OpenPreview, page: Page
 ) -> None:
-    """まだ送っていない新しいスレッドの画面を出すときは、既読にする要求を送らない（正常系）。"""
+    """まだ送っていない新規スレッドの画面を出すときは、既読にする要求を送らない（正常系）。"""
     # 準備
     url, _ = served_unseen_thread
     requested = _record_seen_requests(page)
@@ -925,7 +925,7 @@ def served_long_thread(
 
 
 def test_pending_post_folded(served_long_thread: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """レビュー中の書き込みの本文は 5 行を超えると畳み、本文の下に「続きを読む」だけの行を出す。5 行以下と送った書き込みは畳まない（正常系）。"""
+    """レビュー中の書き込みの本文は 5 行を超えると畳み、本文の下に「続きを表示」だけの行を出す。5 行以下と送った書き込みは畳まない（正常系）。"""
     # 準備
     url, _ = served_long_thread
     page = open_preview(url)
@@ -936,8 +936,8 @@ def test_pending_post_folded(served_long_thread: tuple[str, Path], open_preview:
     assert page.eval_on_selector(
         f"{COMMENTS_PANEL} li[data-comment='C-1'] .post-body", "e => e.classList.contains('folded')"
     ) is True
-    assert page.inner_text(_post_more("C-1")) == "続きを読む"
-    assert page.get_attribute(_post_more("C-1"), "aria-label") == "TH-1 への返信の続きを読む"
+    assert page.inner_text(_post_more("C-1")) == "続きを表示"
+    assert page.get_attribute(_post_more("C-1"), "aria-label") == "TH-1 への返信の続きを表示"
     assert page.is_visible(f"{COMMENTS_PANEL} li[data-comment='C-2'] .review-more-row") is False
     assert page.locator(f"{COMMENTS_PANEL} ol.posts > li.post.ai button.review-more").count() == 0
     assert page.eval_on_selector(
@@ -946,7 +946,7 @@ def test_pending_post_folded(served_long_thread: tuple[str, Path], open_preview:
 
 
 def test_pending_post_more(served_long_thread: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """「続きを読む」で全文を開いて「折りたたむ」に変え、一覧へ戻ってスレッドを開き直しても開いたまま。ハッシュは変えない（正常系）。"""
+    """「続きを表示」で全文を開いて「折りたたむ」に変え、一覧へ戻ってスレッドを開き直しても開いたまま。ハッシュは変えない（正常系）。"""
     # 準備
     url, _ = served_long_thread
     page = open_preview(url)

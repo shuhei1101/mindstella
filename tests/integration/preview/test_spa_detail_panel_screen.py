@@ -455,7 +455,7 @@ def test_row_edit_when_empty(page: Page, comment_preview: tuple[str, Path]) -> N
     _panel(page).get_by_role("textbox", name="D-1 へのコメントの本文").fill("  ")
     _panel(page).locator("li[data-comment='C-2']").get_by_role("button", name="修正", exact=True).click()
     # 検証
-    expect(_panel(page).get_by_role("alert")).to_have_text("コメントを入れてから直してください。")
+    expect(_panel(page).get_by_role("alert")).to_have_text("コメントを入れてから修正してください。")
 
 
 def test_row_remove_and_undo(page: Page, comment_preview: tuple[str, Path]) -> None:
@@ -487,12 +487,12 @@ def test_row_body(page: Page, comment_preview: tuple[str, Path]) -> None:
 
 
 def test_row_more(page: Page, comment_preview: tuple[str, Path]) -> None:
-    """5 行を超える行の本文は畳んで「続きを読む」を出し、押すと開く（正常系）。"""
+    """5 行を超える行の本文は畳んで「続きを表示」を出し、押すと開く（正常系）。"""
     # 準備
     url, _ = comment_preview
     open_spa(page, url, "?tab=decisions&id=D-1")
     # 実行
-    _panel(page).get_by_role("button", name="D-1 へのコメントの続きを読む").click()
+    _panel(page).get_by_role("button", name="D-1 へのコメントの続きを表示").click()
     # 検証
     expect(_panel(page).get_by_role("button", name="D-1 へのコメントの本文を折りたたむ")).to_have_text("折りたたむ")
 
@@ -1498,7 +1498,7 @@ def test_confirmed_toggle_when_unreachable(page: Page, write_edit_preview: Write
     toggle.click()
     # 検証
     alert = panel.get_by_role("alert")
-    expect(alert).to_have_text("確認済みを書き換えられませんでした。サーバーが止まっています。立ち上げ直してから押してください。")
+    expect(alert).to_have_text("確認済みを書き換えられませんでした。サーバーが止まっています。再起動してから押してください。")
     expect(toggle).to_have_attribute("aria-pressed", "false")
     # 実行（別の項目を開く）
     page.goto(page.url.replace("id=D-1", "id=D-2"))

@@ -84,10 +84,10 @@ def test_kinds(open_story: OpenStory) -> None:
     # 検証（文書の順に、キー 2 つ・足した塊・消した塊・消してすぐ足した塊）
     assert [mark["kind"] for mark in marks] == ["df-add", "df-chg", "df-add", "df-del", "df-chg"]
     assert [mark["label"] for mark in marks] == [
-        "足した箇所（1 / 5）",
+        "追加した箇所（1 / 5）",
         "変わった箇所（2 / 5）",
-        "足した箇所（3 / 5）",
-        "消した箇所（4 / 5）",
+        "追加した箇所（3 / 5）",
+        "削除した箇所（4 / 5）",
         "変わった箇所（5 / 5）",
     ]
     # 色だけでなく形で分ける
@@ -112,7 +112,7 @@ def test_single_mark(open_story: OpenStory) -> None:
     page = _open(open_story, "single-mark")
     marks = _marks(page)
     # 検証
-    assert [mark["label"] for mark in marks] == ["足した箇所（1 / 1）"]
+    assert [mark["label"] for mark in marks] == ["追加した箇所（1 / 1）"]
     assert abs(marks[0]["height"] - MARK_MIN_PX) <= TOLERANCE_PX
     assert page.locator(".df-map").is_visible()
 
@@ -211,7 +211,7 @@ def test_side_by_side(open_story: OpenStory) -> None:
     marks = _marks(page)
     # 検証（向かい合う箇所は変わった 1 つ。右だけの足した塊は足した。高さの順）
     assert [mark["kind"] for mark in marks] == ["df-chg", "df-add"]
-    assert [mark["label"] for mark in marks] == ["変わった箇所（1 / 2）", "足した箇所（2 / 2）"]
+    assert [mark["label"] for mark in marks] == ["変わった箇所（1 / 2）", "追加した箇所（2 / 2）"]
     tops = [mark["top"] for mark in marks]
     assert tops == sorted(tops)
     # 検証（変わったは斜めの縞、足したは塗りつぶし）

@@ -176,7 +176,7 @@ def test_pending_edit_failed(open_story: OpenStory) -> None:
     assert page.get_attribute(f"{POST} .send-msg", "role") == "alert"
     assert (
         page.inner_text(f"{POST} .send-msg")
-        == "サーバーが止まっています。立ち上げ直してから直してください。"
+        == "サーバーが止まっています。再起動してから修正してください。"
     )
     assert page.locator(f"{POST} .send-msg svg.icon").count() == 1
     assert page.input_value(f"{POST} form.row-edit textarea") != ""
@@ -331,7 +331,7 @@ FOLD_STATE_SCRIPT = """(post) => {
 
 
 def test_pending_folded(open_story: OpenStory) -> None:
-    """改行で 8 行のレビュー中の返信。行の高さの 5 行分までを出し、本文の下の行に下向きの印と「続きを読む」を出す（正常系）。"""
+    """改行で 8 行のレビュー中の返信。行の高さの 5 行分までを出し、本文の下の行に下向きの印と「続きを表示」を出す（正常系）。"""
     # 準備
     page = open_story("preview-threadpost--pending-folded")
     _wait_more_measured(page)
@@ -341,8 +341,8 @@ def test_pending_folded(open_story: OpenStory) -> None:
     # 検証
     assert before == {
         "folded": True,
-        "text": "続きを読む",
-        "label": "TH-1 への返信の続きを読む",
+        "text": "続きを表示",
+        "label": "TH-1 への返信の続きを表示",
         "expanded": "false",
         "inRow": True,
     }
@@ -368,7 +368,7 @@ def test_pending_opened(open_story: OpenStory) -> None:
 
 
 def test_long_ai_post(open_story: OpenStory) -> None:
-    """改行で 8 行の AI の書き込み。送った書き込みは畳まず全文を出し、「続きを読む」を出さない（正常系）。"""
+    """改行で 8 行の AI の書き込み。送った書き込みは畳まず全文を出し、「続きを表示」を出さない（正常系）。"""
     # 準備・実行
     page = open_story("preview-threadpost--long-ai-post")
     page.wait_for_selector(f"{POST} .post-body ol")

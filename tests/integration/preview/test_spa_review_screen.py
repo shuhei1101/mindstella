@@ -48,7 +48,7 @@ def review_preview(
     make_post: MakePost,
     make_thread: MakeThread,
 ) -> tuple[str, Path]:
-    """レビュー中の書き込み（D-1 への箇所つきの新しいスレッド C-41・TH-1 への返信 C-43・クローズの TH-5 への返信 C-44・項目を指さない長い C-45）を持つワークスペースの配信の URL とフォルダを返す。"""
+    """レビュー中の書き込み（D-1 への箇所つきの新規スレッド C-41・TH-1 への返信 C-43・クローズの TH-5 への返信 C-44・項目を指さない長い C-45）を持つワークスペースの配信の URL とフォルダを返す。"""
     return write_review_preview(
         make_item("D-1", title="最初の問い", body="../docs/D-1.mark.md"),
         threads=(
@@ -133,7 +133,7 @@ def test_selected_count(page: Page, review_preview: tuple[str, Path]) -> None:
     _row(page, "C-43").get_by_role("checkbox").click()
     # 検証
     expect(_panel(page)).to_contain_text("2 / 3 件")
-    expect(_panel(page).get_by_role("button", name="まとめて送る（2 件）")).to_be_visible()
+    expect(_panel(page).get_by_role("button", name="まとめて送信（2 件）")).to_be_visible()
 
 
 def test_send(page: Page, review_preview: tuple[str, Path]) -> None:
@@ -142,7 +142,7 @@ def test_send(page: Page, review_preview: tuple[str, Path]) -> None:
     _, root = review_preview
     _open(page, review_preview)
     # 実行
-    _panel(page).get_by_role("button", name="まとめて送る（3 件）").click()
+    _panel(page).get_by_role("button", name="まとめて送信（3 件）").click()
     # 検証
     expect(_panel(page).get_by_role("status").filter(has_text="3 件を送り")).to_be_visible()
     expect(_panel(page).locator("li[data-comment]")).to_have_count(1)
@@ -156,9 +156,9 @@ def test_send_result_when_none_checked(page: Page, review_preview: tuple[str, Pa
     _open(page, review_preview)
     _panel(page).get_by_role("checkbox", name="すべて選ぶ").click()
     # 実行
-    _panel(page).get_by_role("button", name="まとめて送る（0 件）").click()
+    _panel(page).get_by_role("button", name="まとめて送信（0 件）").click()
     # 検証
-    expect(_panel(page).get_by_role("status").filter(has_text="送る書き込みにチェックを付けてください。")).to_be_visible()
+    expect(_panel(page).get_by_role("status").filter(has_text="送信する書き込みにチェックを付けてください。")).to_be_visible()
 
 
 def test_send_result_when_unreachable(page: Page, review_preview: tuple[str, Path]) -> None:
@@ -167,9 +167,9 @@ def test_send_result_when_unreachable(page: Page, review_preview: tuple[str, Pat
     _open(page, review_preview)
     page.route("**/api/comments/send", lambda route: route.abort())
     # 実行
-    _panel(page).get_by_role("button", name="まとめて送る（3 件）").click()
+    _panel(page).get_by_role("button", name="まとめて送信（3 件）").click()
     # 検証
-    expect(_panel(page).get_by_role("status").filter(has_text="送れませんでした。サーバーが止まっています。立ち上げ直してから送ってください。")).to_be_visible()
+    expect(_panel(page).get_by_role("status").filter(has_text="送信できませんでした。サーバーが止まっています。再起動してから送信してください。")).to_be_visible()
     expect(_panel(page).locator("li[data-comment]")).to_have_count(4)
 
 
@@ -188,23 +188,23 @@ def test_row_checkbox(page: Page, review_preview: tuple[str, Path]) -> None:
     # 準備・実行
     _open(page, review_preview)
     # 検証
-    expect(_row(page, "C-41").get_by_role("checkbox", name="D-1 へのコメントを送る")).to_be_checked()
-    expect(_row(page, "C-43").get_by_role("checkbox", name="TH-1 への返信を送る")).to_be_checked()
-    expect(_row(page, "C-44").get_by_role("checkbox", name="TH-5 への返信を送る")).to_be_disabled()
-    expect(_row(page, "C-45").get_by_role("checkbox", name="項目を指さないコメントを送る")).to_be_checked()
+    expect(_row(page, "C-41").get_by_role("checkbox", name="D-1 へのコメントを送信する")).to_be_checked()
+    expect(_row(page, "C-43").get_by_role("checkbox", name="TH-1 への返信を送信する")).to_be_checked()
+    expect(_row(page, "C-44").get_by_role("checkbox", name="TH-5 への返信を送信する")).to_be_disabled()
+    expect(_row(page, "C-45").get_by_role("checkbox", name="項目を指さないコメントを送信する")).to_be_checked()
 
 
 def test_row_kind(page: Page, review_preview: tuple[str, Path]) -> None:
-    """行の頭に「新しいスレッド」か「返信」の札を出す（正常系）。"""
+    """行の頭に「新規スレッド」か「返信」の札を出す（正常系）。"""
     # 準備・実行
     _open(page, review_preview)
     # 検証
-    expect(_row(page, "C-41").locator("[data-part=kind]")).to_have_text("新しいスレッド")
+    expect(_row(page, "C-41").locator("[data-part=kind]")).to_have_text("新規スレッド")
     expect(_row(page, "C-43").locator("[data-part=kind]")).to_have_text("返信")
 
 
 def test_row_target(page: Page, review_preview: tuple[str, Path]) -> None:
-    """新しいスレッドの向けた項目を押すと、画面を開いたまま右にその項目の詳細パネルを開く（正常系）。"""
+    """新規スレッドの向けた項目を押すと、画面を開いたまま右にその項目の詳細パネルを開く（正常系）。"""
     # 準備
     _open(page, review_preview)
     # 実行
@@ -227,14 +227,14 @@ def test_reply_thread(page: Page, review_preview: tuple[str, Path]) -> None:
 
 
 def test_open_thread(page: Page, review_preview: tuple[str, Path]) -> None:
-    """新しいスレッドの行の「スレッドを開く」で、まだ送っていない新しいスレッドの画面を開く（正常系）。"""
+    """新規スレッドの行の「スレッドを開く」で、まだ送っていない新規スレッドの画面を開く（正常系）。"""
     # 準備
     _open(page, review_preview)
     # 実行
     _row(page, "C-41").get_by_role("button", name="スレッドを開く").click()
     # 検証
     page.wait_for_url("**thread=C-41**")
-    expect(_panel(page)).to_contain_text("まだ送っていないスレッドです。")
+    expect(_panel(page)).to_contain_text("まだ送信していないスレッドです。")
 
 
 def test_row_location(page: Page, review_preview: tuple[str, Path]) -> None:
@@ -285,7 +285,7 @@ def test_edit_when_empty(page: Page, review_preview: tuple[str, Path]) -> None:
     _row(page, "C-43").get_by_role("textbox", name="TH-1 への返信の本文").fill("  ")
     _row(page, "C-43").get_by_role("button", name="修正", exact=True).click()
     # 検証
-    expect(_row(page, "C-43").get_by_role("alert")).to_have_text("コメントを入れてから直してください。")
+    expect(_row(page, "C-43").get_by_role("alert")).to_have_text("コメントを入れてから修正してください。")
 
 
 def test_edit_when_cancel(page: Page, review_preview: tuple[str, Path]) -> None:
@@ -323,13 +323,13 @@ def test_blocked_reason(page: Page, review_preview: tuple[str, Path]) -> None:
     # 準備・実行
     _open(page, review_preview)
     # 検証
-    expect(_row(page, "C-44")).to_contain_text("クローズのスレッドへの返信は送れません。オープンに戻すと送れます。")
+    expect(_row(page, "C-44")).to_contain_text("クローズのスレッドへの返信は送信できません。オープンに戻すと送信できます。")
     _row(page, "C-44").get_by_role("button", name="スレッドを開く").click()
     page.wait_for_url("**thread=TH-5**")
 
 
 def test_stale(page: Page, review_preview: tuple[str, Path]) -> None:
-    """まとめて送るが 409 のとき、`stale` の行に理由を `role="alert"` で出して枠を要見直しの赤にし、「箇所を外す」で箇所を外す（異常系）。"""
+    """まとめて送るが 409 のとき、`stale` の行に理由を `role="alert"` で出して枠を要見直しの赤にし、「箇所を解除」で箇所を解除（異常系）。"""
     # 準備
     _, root = review_preview
     _open(page, review_preview)
@@ -341,14 +341,14 @@ def test_stale(page: Page, review_preview: tuple[str, Path]) -> None:
 
     page.route("**/api/comments/send", _refuse)
     # 実行
-    _panel(page).get_by_role("button", name="まとめて送る（3 件）").click()
+    _panel(page).get_by_role("button", name="まとめて送信（3 件）").click()
     # 検証
     expect(_row(page, "C-41").get_by_role("alert")).to_have_text("選んだ文が本文の 3 行目にありません")
-    expect(_panel(page).get_by_role("status").filter(has_text="送れませんでした。送れない書き込みが 1 件あります。")).to_be_visible()
+    expect(_panel(page).get_by_role("status").filter(has_text="送信できませんでした。送信できない書き込みが 1 件あります。")).to_be_visible()
     review_color = page.evaluate(REVIEW_COLOR_JS)
     assert _row(page, "C-41").evaluate("e => getComputedStyle(e).borderTopColor") == review_color
     # 実行
-    _row(page, "C-41").get_by_role("button", name="箇所を外す").click()
+    _row(page, "C-41").get_by_role("button", name="箇所を解除").click()
     # 検証
     expect(_row(page, "C-41").get_by_role("alert")).to_have_count(0)
     expect(_row(page, "C-41").locator("[data-part=loc]")).to_have_count(0)
@@ -364,14 +364,14 @@ def test_empty(page: Page, write_review_preview: WriteReviewPreview, make_item: 
     open_spa(page, url, "?tab=decisions&panel=comments&review=1")
     # 検証
     expect(_panel(page)).to_contain_text("レビュー中の書き込みはありません。")
-    expect(_panel(page).get_by_role("button", name="まとめて送る（0 件）")).to_have_count(0)
+    expect(_panel(page).get_by_role("button", name="まとめて送信（0 件）")).to_have_count(0)
 
 
 def test_more(page: Page, review_preview: tuple[str, Path]) -> None:
-    """5 行を超える本文は畳んで「続きを読む」を出し、押すと開く（正常系）。"""
+    """5 行を超える本文は畳んで「続きを表示」を出し、押すと開く（正常系）。"""
     # 準備
     _open(page, review_preview)
-    more = _row(page, "C-45").get_by_role("button", name="項目を指さないコメントの続きを読む")
+    more = _row(page, "C-45").get_by_role("button", name="項目を指さないコメントの続きを表示")
     # 実行
     more.click()
     # 検証

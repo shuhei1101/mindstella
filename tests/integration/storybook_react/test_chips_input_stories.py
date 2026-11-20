@@ -46,7 +46,7 @@ def test_default(open_story: OpenStory) -> None:
 
 
 def test_main_toggle(open_story: OpenStory) -> None:
-    """項目のタグ。主題のタグのトグルは押した状態（`title` は「主題を外す」）、ほかは押していない状態（「主題にする」）で、押せる範囲は 24px（正常系）。"""
+    """項目のタグ。主題のタグのトグルは押した状態（`title` は「主題を解除」）、ほかは押していない状態（「主題にする」）で、押せる範囲は 24px（正常系）。"""
     # 準備・実行
     page = open_story("shared-chipsinput--main-toggle")
     main = page.get_by_role("button", name="画面 を主題")
@@ -54,7 +54,7 @@ def test_main_toggle(open_story: OpenStory) -> None:
     box = main.bounding_box()
     # 検証
     expect(main).to_have_attribute("aria-pressed", "true")
-    expect(main).to_have_attribute("title", "主題を外す")
+    expect(main).to_have_attribute("title", "主題を解除")
     expect(other).to_have_attribute("aria-pressed", "false")
     expect(other).to_have_attribute("title", "主題にする")
     assert main.locator("svg").inner_html() != other.locator("svg").inner_html()

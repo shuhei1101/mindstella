@@ -1,4 +1,4 @@
-"""部品設計『消した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト。"""
+"""部品設計『削除した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト。"""
 
 from __future__ import annotations
 
@@ -26,13 +26,13 @@ def test_state_renders(open_story: OpenStory, page_errors: list[str], state: str
 
 
 def test_one(open_story: OpenStory) -> None:
-    """1 件。見出し「消した項目」と件数 1、消した印・ID・タイトルを並べ、帯を「この時点で消した項目」と読み上げる（正常系）。"""
+    """1 件。見出し「削除した項目」と件数 1、消した印・ID・タイトルを並べ、帯を「この時点で削除した項目」と読み上げる（正常系）。"""
     # 準備・実行
     page = open_story("shared-removedband--one")
-    band = page.get_by_role("region", name="この時点で消した項目")
+    band = page.get_by_role("region", name="この時点で削除した項目")
     items = band.get_by_role("listitem")
     # 検証
-    expect(band.get_by_role("heading")).to_have_text("消した項目1")
+    expect(band.get_by_role("heading")).to_have_text("削除した項目1")
     expect(items).to_have_count(1)
     expect(items.first).to_contain_text("N-6")
     expect(items.first).to_contain_text("ゴールを後から変える・足す・無しで始める")

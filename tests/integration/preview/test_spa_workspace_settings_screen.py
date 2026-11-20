@@ -145,7 +145,7 @@ def test_transcription(
     expect(preset.locator("option")).to_have_text(["サービスの既定", "一般", "開発"])
     expect(page.locator(PRESET_HINT)).to_have_text("文字起こしの補正に使用する用語集です。候補は文字起こしのサービスから取得します。")
     # 実行（文字起こし後の挙動）
-    page.get_by_role("radio", name="送信する").check()
+    page.get_by_role("radio", name="送信").check()
     # 検証
     wait_edits_match(page, TRANSCRIPTION_EDIT_MATCH_JS, {"action": "send", "preset": "開発"})
     # 実行（用語集のプリセット）
@@ -173,7 +173,7 @@ def test_transcription_when_service_stopped(
     expect(preset).to_be_disabled()
     assert preset.locator("option").all_inner_texts() == ["開発"]
     expect(page.locator(PRESET_HINT)).to_have_text(
-        "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。"
+        "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を再度開いてください。"
     )
     expect(page.get_by_role("radio", name="入力欄へ挿入する")).to_be_enabled()
 

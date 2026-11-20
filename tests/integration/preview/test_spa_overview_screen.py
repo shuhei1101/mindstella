@@ -473,7 +473,7 @@ def test_diff_marks_not_shown(write_sample_preview: WriteSamplePreview, page: Pa
     open_spa(page, url)
     # 検証
     assert page.locator('header button[aria-label="差分の表示をやめる"]').count() == 0
-    assert page.locator(f"{TABBAR} .sr-only:text-is('新規・変更・消した項目があります')").count() == 0
+    assert page.locator(f"{TABBAR} .sr-only:text-is('新規・変更・削除した項目があります')").count() == 0
 
 
 @pytest.mark.parametrize("color_scheme", [pytest.param("light", id="light"), pytest.param("dark", id="dark")])

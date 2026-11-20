@@ -106,7 +106,7 @@ def test_main_toggle(open_story: OpenStory) -> None:
             "name": "画面",
             "mono": False,
             "main": True,
-            "toggle": {"label": "画面 を主題", "pressed": "true", "title": "主題を外す"},
+            "toggle": {"label": "画面 を主題", "pressed": "true", "title": "主題を解除"},
             "remove": "画面 を外す",
         },
         {
@@ -146,7 +146,7 @@ def test_main_toggle_when_toggled(open_story: OpenStory) -> None:
     assert page.evaluate(FOCUS_SCRIPT) == {"className": "pe-chip-main", "index": "1"}
     assert page.get_by_role("button", name="画面 を主題").get_attribute("aria-pressed") == "true"
     assert page.get_by_role("button", name="記録の形 を主題").get_attribute("aria-pressed") == "true"
-    assert page.get_by_role("button", name="記録の形 を主題").get_attribute("title") == "主題を外す"
+    assert page.get_by_role("button", name="記録の形 を主題").get_attribute("title") == "主題を解除"
     # 実行
     page.get_by_role("button", name="画面 を主題").press("Enter")
     # 検証

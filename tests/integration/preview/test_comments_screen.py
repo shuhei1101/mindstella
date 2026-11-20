@@ -62,7 +62,7 @@ SEGMENTS = f"{COMMENTS_PANEL} .talk-filter button"
 TAG_CHIP = f"{COMMENTS_PANEL} .talk-chips"
 EMPTY = f"{COMMENTS_PANEL} .comments-empty"
 
-# 一覧の下端の新しいスレッドの入口と入力
+# 一覧の下端の新規スレッドの入口と入力
 COMPOSE_BUTTON = f"{COMMENTS_PANEL} .talk-new button[data-focus='compose']"
 COMPOSE_CLOSE = f"{COMMENTS_PANEL} button[data-focus='compose-close']"
 COMPOSE_TEXTAREA = f"{COMMENTS_PANEL} .talk-new form.send textarea"
@@ -76,7 +76,7 @@ def served_threads(
     make_post: MakePost,
     make_thread: MakeThread,
 ) -> tuple[str, Path]:
-    """D-1・D-2 と、スレッド TH-1（オープン・D-1・タグ 画面）・TH-2（オープン・最後が利用者）・TH-5（クローズ・タグ 画面）と、レビュー中の C-41（新しいスレッド）・C-43（TH-1 への返信）を持つワークスペースの配信の URL とフォルダを返す。"""
+    """D-1・D-2 と、スレッド TH-1（オープン・D-1・タグ 画面）・TH-2（オープン・最後が利用者）・TH-5（クローズ・タグ 画面）と、レビュー中の C-41（新規スレッド）・C-43（TH-1 への返信）を持つワークスペースの配信の URL とフォルダを返す。"""
     return write_review_preview(
         make_item("D-1", title="最初の問い"),
         make_item("D-2"),
@@ -405,7 +405,7 @@ def test_filter(served_threads: tuple[str, Path], open_preview: OpenPreview) -> 
 
 
 def test_tag_filter(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """行のタグを押すとそのタグで絞ってチップと件数を出し、まだ送っていない新しいスレッドは並べず、外すで戻す（正常系）。"""
+    """行のタグを押すとそのタグで絞ってチップと件数を出し、まだ送っていない新規スレッドは並べず、外すで戻す（正常系）。"""
     # 準備
     url, _ = served_threads
     page = open_preview(url)
@@ -442,7 +442,7 @@ def test_tag_filter_when_pressed_again(
 
 
 def test_rows(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """まだ送っていない新しいスレッドを先頭に、最後の書き込みの新しい順に並べ、状態・題・向けた項目・最後の書き手・レビュー中の印を出す（正常系）。"""
+    """まだ送っていない新規スレッドを先頭に、最後の書き込みの新しい順に並べ、状態・題・向けた項目・最後の書き手・レビュー中の印を出す（正常系）。"""
     # 準備
     url, _ = served_threads
     page = open_preview(url)
@@ -468,7 +468,7 @@ def test_rows(served_threads: tuple[str, Path], open_preview: OpenPreview) -> No
 
 
 def test_rows_when_open(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """行を押すと、パネルの中をそのスレッドの画面に切り替える。まだ送っていない新しいスレッドも開く（履歴に積まない）（正常系）。"""
+    """行を押すと、パネルの中をそのスレッドの画面に切り替える。まだ送っていない新規スレッドも開く（履歴に積まない）（正常系）。"""
     # 準備
     url, _ = served_threads
     page = open_preview(url)
@@ -480,7 +480,7 @@ def test_rows_when_open(served_threads: tuple[str, Path], open_preview: OpenPrev
     assert page.inner_text(f"{COMMENTS_PANEL} .th-heading") == "オープン\n二つ目の要約"
     page.get_by_role("button", name="一覧へ戻る").click()
     page.wait_for_selector(f"{COMMENTS_PANEL} .talk-filter")
-    # 実行・検証（まだ送っていない新しいスレッド）
+    # 実行・検証（まだ送っていない新規スレッド）
     page.click(f"{thread_row('new:C-41')} button.th-open")
     page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
     assert page.inner_text(f"{COMMENTS_PANEL} .th-heading") == "レビュー中\n写しは git で取る"
@@ -522,7 +522,7 @@ def test_empty_when_tag(served_threads: tuple[str, Path], open_preview: OpenPrev
 def test_unreachable(
     served_threads: tuple[str, Path], open_preview: OpenPreview, page: Page
 ) -> None:
-    """スレッドを読めなかったときは理由を出し、まだ送っていない新しいスレッドは並べる。次に読めたら消す（異常系）。"""
+    """スレッドを読めなかったときは理由を出し、まだ送っていない新規スレッドは並べる。次に読めたら消す（異常系）。"""
     # 準備
     url, _ = served_threads
     page.route("**/api/threads", lambda route: route.abort())
@@ -533,7 +533,7 @@ def test_unreachable(
     page.wait_for_selector(f"{COMMENTS_PANEL} [role='alert']", timeout=UPDATE_TIMEOUT_MS)
     assert (
         page.inner_text(f"{COMMENTS_PANEL} [role='alert']")
-        == "スレッドを読めませんでした。サーバーが止まっています。立ち上げ直してから開いてください。"
+        == "スレッドを読めませんでした。サーバーが止まっています。再起動してから開いてください。"
     )
     assert page.locator(f"{COMMENTS_PANEL} svg.icon").count() >= 1
     assert page.locator(f"{thread_row('new:C-41')}").count() == 1
@@ -564,7 +564,7 @@ def test_unreachable_when_invalid(
 
 
 def test_compose(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """「新しいスレッド」で入力を出して入力欄へフォーカスを移し、溜めるとまだ送っていない新しいスレッドとして先頭に足して、件数を描き直す。この画面に留まる（正常系）。"""
+    """「新規スレッド」で入力を出して入力欄へフォーカスを移し、溜めるとまだ送っていない新規スレッドとして先頭に足して、件数を描き直す。この画面に留まる（正常系）。"""
     # 準備
     url, root = served_threads
     page = open_preview(url)
@@ -573,7 +573,7 @@ def test_compose(served_threads: tuple[str, Path], open_preview: OpenPreview) ->
     page.click(COMPOSE_BUTTON)
     page.wait_for_selector(COMPOSE_TEXTAREA)
     # 検証（入力）
-    assert page.get_attribute(COMPOSE_TEXTAREA, "aria-label") == "新しいスレッド"
+    assert page.get_attribute(COMPOSE_TEXTAREA, "aria-label") == "新規スレッド"
     wait_until_focused(page, COMPOSE_TEXTAREA)
     # 実行（溜める）
     page.fill(COMPOSE_TEXTAREA, "全体への相談")
@@ -581,7 +581,7 @@ def test_compose(served_threads: tuple[str, Path], open_preview: OpenPreview) ->
     page.wait_for_selector(thread_row("new:C-44"), timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert page.inner_text(f"{thread_row('new:C-44')} .th-title") == "全体への相談"
-    # まだ送っていない新しいスレッドは溜めた順に、送ったスレッドより前に並ぶ
+    # まだ送っていない新規スレッドは溜めた順に、送ったスレッドより前に並ぶ
     assert page.eval_on_selector_all(
         THREAD_ROWS, "rows => rows.map(r => r.querySelector('.th-state').textContent)"
     ) == ["レビュー中", "レビュー中", "オープン", "オープン"]
@@ -596,7 +596,7 @@ def test_compose(served_threads: tuple[str, Path], open_preview: OpenPreview) ->
 
 
 def test_compose_when_closed(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """× で入力を畳んで「新しいスレッド」に戻し、書きかけは残す（正常系）。"""
+    """× で入力を畳んで「新規スレッド」に戻し、下書きは残す（正常系）。"""
     # 準備
     url, _ = served_threads
     page = open_preview(url)
@@ -604,7 +604,7 @@ def test_compose_when_closed(served_threads: tuple[str, Path], open_preview: Ope
     page.click(COMPOSE_BUTTON)
     page.fill(COMPOSE_TEXTAREA, "あとで書く")
     # 実行
-    page.get_by_role("button", name="新しいスレッドの入力を閉じる").click()
+    page.get_by_role("button", name="新規スレッドの入力を閉じる").click()
     # 検証
     page.wait_for_selector(COMPOSE_BUTTON)
     assert page.locator(COMPOSE_TEXTAREA).count() == 0
@@ -901,7 +901,7 @@ def test_voice_input_when_service_stopped(
     start_voice_preview: _StartVoicePreview,
     unreachable_transcriber_url: str,
 ) -> None:
-    """新しいスレッドの入力で、文字起こしのサービスが起動していないときはマイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
+    """新規スレッドの入力で、文字起こしのサービスが起動していないときはマイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
     # 準備
     url, _ = start_voice_preview(unreachable_transcriber_url, make_item("D-1"))
     page = open_preview(url, "#tab=decisions&view=table")
@@ -920,7 +920,7 @@ def test_voice_input_focus_when_cancelled(
     start_fake_transcriber: Any,
     start_voice_preview: _StartVoicePreview,
 ) -> None:
-    """詳細パネルを開いたまま新しいスレッドの入力で録音してキャンセルすると、詳細パネルではなく新しいスレッドの入力欄へフォーカスと録音前の範囲を戻す（正常系）。"""
+    """詳細パネルを開いたまま新規スレッドの入力で録音してキャンセルすると、詳細パネルではなく新規スレッドの入力欄へフォーカスと録音前の範囲を戻す（正常系）。"""
     # 準備
     fake = start_fake_transcriber("done")
     url, _ = start_voice_preview(fake.url, make_item("D-1"))
@@ -955,7 +955,7 @@ COMPOSE_HEADING = f"{COMMENTS_PANEL} .talk-new .send-label"
 
 
 def test_target_filter(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """詳細パネルのボタンでその項目で絞った一覧を開き、絞っている間の新しいスレッドはその項目へ向けて溜めて一覧に並べる。チップの × と、一覧を閉じて開き直すと絞らない（正常系）。"""
+    """詳細パネルのボタンでその項目で絞った一覧を開き、絞っている間の新規スレッドはその項目へ向けて溜めて一覧に並べる。チップの × と、一覧を閉じて開き直すと絞らない（正常系）。"""
     # 準備
     url, root = served_threads
     page = open_preview(url, DETAIL_HASH)
@@ -963,16 +963,16 @@ def test_target_filter(served_threads: tuple[str, Path], open_preview: OpenPrevi
     # 実行（詳細パネルのボタンで開く）
     page.click(ITEM_COMMENTS_BUTTON)
     page.wait_for_selector(f"{COMMENTS_PANEL}.open")
-    # 検証（D-1 へ向けたスレッドだけ。D-2 への新しいスレッド C-41 は出ない）
+    # 検証（D-1 へ向けたスレッドだけ。D-2 への新規スレッド C-41 は出ない）
     assert page.inner_text(f"{TARGET_CHIP} .mono") == "D-1"
     assert page.inner_text(f"{TARGET_CHIP} .t") == "最初の問い"
     assert page.eval_on_selector_all(THREAD_ROWS, "rows => rows.map(r => r.querySelector('button').dataset.focus)") == [
         "thread:TH-1"
     ]
-    # 実行（絞っている間の新しいスレッド）
+    # 実行（絞っている間の新規スレッド）
     page.click(COMPOSE_BUTTON)
     page.wait_for_selector(COMPOSE_TEXTAREA)
-    assert page.inner_text(COMPOSE_HEADING) == "D-1 への新しいスレッド"
+    assert page.inner_text(COMPOSE_HEADING) == "D-1 への新規スレッド"
     page.fill(COMPOSE_TEXTAREA, "D-1 の進め方")
     page.locator(f"{COMMENTS_PANEL} .talk-new").get_by_role("button", name="レビューに追加").click()
     page.wait_for_selector(thread_row("new:C-44"), timeout=UPDATE_TIMEOUT_MS)
