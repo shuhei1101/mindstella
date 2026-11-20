@@ -65,8 +65,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T11:08:39.756581+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
     note: 要素の名前・説明と、画面の文言を持つ要素の単語
+    updated_by: planner
+    updated_at: '2026-11-20T11:34:54.073109+00:00'
   - process: ドキュメント修正
     status: todo
     note: 公開ドキュメント・シナリオ・ER・設定・外部ライブラリ・外部 API・非機能要件・アーキテクチャ図・テスト手順・エージェントフロー・プロンプト・files.yml・モック（components・pages）。ファイル名・見出しを変えたら参照も修正する
