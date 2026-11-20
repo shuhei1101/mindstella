@@ -1,0 +1,403 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-1.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-10.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-14.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-15.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-16.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-19.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-2.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-20.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-21.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-23.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-25.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-26.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-27.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-29.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-30.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-32.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-33.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-35.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-36.yaml
+    impact: none
+    detail: 対応表の単語を含まない。修正した画面の名称を参照していれば合わせる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-39.yaml
+    impact: none
+    detail: 対応表の単語を含まない。修正した画面の名称を参照していれば合わせる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-41.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-42.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-44.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-47.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-48.yaml
+    impact: none
+    detail: 対応表の単語を含まない。修正した画面の名称を参照していれば合わせる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-51.yaml
+    impact: none
+    detail: 対応表の単語を含まない。修正した画面の名称を参照していれば合わせる
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-6.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-9.yaml
+    impact: none
+    detail: 対応表の単語を含まない。修正した画面の名称を参照していれば合わせる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-2.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-568-1.yaml
+    impact: none
+    detail: 対応表の単語を含まない。修正した画面の名称を参照していれば合わせる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-582-1.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-587-1.yaml
+    impact: none
+    detail: 対応表の単語を含まない。修正した画面の名称を参照していれば合わせる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-597-1.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-601-1.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-604-1.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-605-1.yaml
+    impact: changed
+    detail: タイトル・手順の記述の単語を対応表に合わせて修正する（振る舞いは変えない）
+    depends_on: []
+docs:
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: 見出し・表の列名・項目名とメッセージの単語を対応表に合わせて修正し、文章の冗長表現と話し言葉を修正する
+    status: todo
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 画面の名称・ボタン・見出しの単語を画面設計の置き換え先に合わせて修正し、文章の冗長表現と話し言葉を修正する
+    status: todo
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: 見出し・表の列名・キーの説明の単語を対応表に合わせて修正する（キーの名前は変えない）
+    status: todo
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正し、文章の冗長表現と話し言葉を修正する
+    status: todo
+  - page: docs/guide/コアコンセプト-話し合いの進め方.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正し、文章の冗長表現と話し言葉を修正する
+    status: todo
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
+    new: false
+    change: ファイル名とタイトルの「版」を「バージョン」に改名し、このページへのリンクと参照（目次・files.yml・ほかのページ）を修正する。本文の単語も対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-プレビューを外から見る.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-Discordに通知する.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-スクリプトの依存を入れる.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/セットアップ手順-プラグインをインストールする.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/話し合い-セットアップから始める.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/動作環境.mark.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/使い方.md
+    new: false
+    change: 目次の単語を対応表に合わせて修正する
+    status: todo
+  - page: docs/guide/index.yaml
+    new: false
+    change: 目次の summary の単語を対応表に合わせて修正し、改名したページの行を修正する。README.md は生成し直す
+    status: todo
+  - page: docs/guide/files.yml
+    new: false
+    change: description の単語を対応表に合わせて修正し、改名したページの行を修正する
+    status: todo
+  - page: docs/design-policy.mark.md
+    new: false
+    change: 見出し・表の単語を対応表に合わせて修正する
+    status: todo
+  - page: plugins/mindstella/files.yml
+    new: false
+    change: description の単語を対応表に合わせて修正する
+    status: todo
+  - page: frontend/files.yml
+    new: false
+    change: description の単語を対応表に合わせて修正する
+    status: todo
+  - page: tests/files.yml
+    new: false
+    change: description の単語を対応表に合わせて修正する
+    status: todo
+  - page: README.md
+    new: false
+    change: 単語を対応表に合わせて修正する
+    status: todo
+  - page: CLAUDE.md
+    new: false
+    change: 単語を対応表に合わせて修正する
+    status: todo
+scope_out:
+  - item: マージ済みの過去の PR ドキュメント（docs/pr/ の 640 以外）
+    reason: マージ済みで今後参照しない作業の記録のため。Issue が対処する側の判断に任せている
+    plan: none
+  - item: 過去の作業 PR のモックのコピー（docs/mock/refs/）
+    reason: 過去の作業 PR の時点の画面の記録で、今の画面の UI 文言ではないため
+    plan: none
+  - item: 変更履歴（docs/guide/変更履歴.md）の既存のバージョンの行
+    reason: リリースした時点の記録のため。この作業 PR のリリースで追加する行は対応表に合わせる
+    plan: none
+  - item: コードの識別子・Enum の値・定数・記録のキー・CSS のクラス・data-* の値
+    reason: Issue の対象外（英語のまま）。変えると記録の形式と呼び出しの互換性が壊れる
+    plan: none
+  - item: 外部の文書から原文のまま載せている引用
+    reason: Issue の対象外
+    plan: none
+  - item: references/文章の書き方.md の「造語を作らない」の行の修正（Issue の決定 D-4）
+    reason: 対象のファイルが develop に無い（skills の再構成で削除済み）。同じ文面はリポジトリのどこにも無い
+    plan: none
+  - item: コードのコメント・docstring・テストの関数名と説明の単語
+    reason: Issue の対象（文書と UI 文言）に挙がっていない。判定フローチャート『用語の選び方』はコードのコメントも対象にするため判断が分かれる。今の判断は、この作業 PR に含めず別の Issue にする（今回の変更がマージされなくても同じ内容で成り立つ）。レビューで確定する
+    plan: to_file
