@@ -15,7 +15,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T23:34:49.772008+00:00'
   - process: PoC 検証
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T23:55:16.313891+00:00'
   - process: 複合ユースケース設計
     status: skipped
     reason: 複合ユースケースの流れ（単一ユースケースのつながり）は変わらない
