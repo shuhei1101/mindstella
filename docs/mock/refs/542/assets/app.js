@@ -6309,7 +6309,8 @@ var MindmapPreview;
                     : MindmapPreview.h({
                         tag: "p",
                         attrs: { class: "st-same", tabindex: "-1", "data-focus": "same" },
-                        children: ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+                        // 542: 見た目の既定を除いた文言にする
+                        children: ["表示する種類は、ワークスペースの既定と同じです。"],
                     }),
             ],
         });
