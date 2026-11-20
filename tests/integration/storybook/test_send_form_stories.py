@@ -220,7 +220,7 @@ def test_failed_unreachable(open_story: OpenStory) -> None:
     assert page.input_value("textarea") == "案 A にする"
     message = page.inner_text(".send-msg")
     assert "レビューに追加できませんでした。サーバーが止まっています。" in message
-    assert "起動スクリプトで立ち上げ直し" in message
+    assert "起動スクリプトで再起動し" in message
     assert "示された新しい URL で開いてから追加してください。" in message
     copy = page.get_by_role("button", name="本文をコピー")
     assert copy.count() == 1

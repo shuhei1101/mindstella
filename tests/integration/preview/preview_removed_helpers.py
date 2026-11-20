@@ -166,16 +166,16 @@ def removed_band_items(page: Page) -> list[tuple[str, str]]:
 def assert_removed_band(page: Page, expected: list[tuple[str, str]]) -> None:
     """消した項目の帯が 1 つだけあり、読み上げ名と件数の見出しを持ち、expected を並びのまま出して、項目が押せない（押しても詳細を開かない）ことを確かめる。"""
     assert page.locator(BAND).count() == 1
-    assert page.get_attribute(BAND, "aria-label") == "この時点で消した項目"
+    assert page.get_attribute(BAND, "aria-label") == "この時点で削除した項目"
     heading = page.locator(f"{BAND} h2.rm-band-t")
-    assert heading.inner_text().split("\n")[0] == "消した項目"
+    assert heading.inner_text().split("\n")[0] == "削除した項目"
     assert heading.locator(".n").inner_text() == str(len(expected))
     assert removed_band_items(page) == expected
     # 項目の頭の印は消した（−）で、読み上げにも「消した」を残す
     marks = page.locator(f"{BAND_ITEM} > .df-mark.df-del")
     assert marks.count() == len(expected)
-    assert marks.first.get_attribute("title") == "消した"
-    assert marks.first.locator(".sr-only").inner_text() == "消した"
+    assert marks.first.get_attribute("title") == "削除した"
+    assert marks.first.locator(".sr-only").inner_text() == "削除した"
     # 項目は ul の li で、ボタン・リンク・キーボードの移動先を持たない
     assert page.locator(f"{BAND} ul.rm-list").count() == 1
     assert page.locator(f"{BAND} :is(button, a, [tabindex])").count() == 0

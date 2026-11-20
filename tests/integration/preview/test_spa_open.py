@@ -519,10 +519,10 @@ def test_normal_when_comment_sent(page: Page, write_review_preview: WriteReviewP
     page.wait_for_url("**review=1**")
     # 検証
     assert _history_length(page) == before
-    # 実行（まとめて送る）
+    # 実行（まとめて送信）
     page.get_by_role("dialog", name="コメント").get_by_role("button", name="まとめて送信（1 件）").click()
     # 検証
-    expect(page.get_by_role("dialog", name="コメント").get_by_role("status").filter(has_text="1 件を送り")).to_be_visible()
+    expect(page.get_by_role("dialog", name="コメント").get_by_role("status").filter(has_text="1 件を送信し")).to_be_visible()
     expect(page.locator(COMMENTS_BUTTON)).to_have_attribute("aria-label", "コメント（レビュー中 0 件）")
     awaiting = call_tool("threads", workspace=str(root), awaiting=True)
     assert awaiting.data is not None
@@ -728,7 +728,7 @@ def test_error_when_comment_server_unreachable(
 
 
 def test_error_when_comment_send_stale(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment, call_tool: CallTool) -> None:
-    """まとめて送るの 409 では、箇所が合わない書き込みの行に理由を出し、どれも送らない（異常系）。"""
+    """まとめて送信の 409 では、箇所が合わない書き込みの行に理由を出し、どれも送らない（異常系）。"""
     # 準備
     url, root = write_review_preview(
         make_item("A-1", title="手引き"),
@@ -739,7 +739,7 @@ def test_error_when_comment_send_stale(page: Page, write_review_preview: WriteRe
     open_spa(page, url, "?panel=comments&review=1")
     panel = page.get_by_role("dialog", name="コメント")
     expect(panel.locator("li[data-comment='C-1']")).to_be_visible()
-    # 実行（A-1 の本文を 1 行にしてから、まとめて送る）
+    # 実行（A-1 の本文を 1 行にしてから、まとめて送信）
     updated = write_tool(call_tool, "update", workspace=str(root), id="A-1", item={"body_markdown": "一行だけ\n"})
     assert updated.is_error is False, updated.text
     panel.get_by_role("button", name="まとめて送信（1 件）").click()

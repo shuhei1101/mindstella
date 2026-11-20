@@ -203,7 +203,7 @@ def test_send(
     page = open_preview(url)
     open_review(page)
     page.get_by_label("項目を指さないコメントを送信する").uncheck()
-    send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
+    send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送信")
     assert send.inner_text() == "まとめて送信（2 件）"
     # 実行
     send.click()
@@ -215,7 +215,7 @@ def test_send(
         "2 件を送信しましたが、Claude Code には入力できませんでした（"
     )
     assert page.inner_text(BAND_RESULT).endswith(
-        "送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。"
+        "送信した内容は保存されていて、次に話し合いを始めたときに取り込まれます。"
     )
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} .comments-list li", "rows => rows.map(r => r.dataset.comment)"
@@ -250,7 +250,7 @@ def test_send_when_entered(
     assert opened.data is not None
     page = open_preview(str(opened.data["url"]))
     open_review(page)
-    send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
+    send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送信")
     # 実行
     send.click()
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=UPDATE_TIMEOUT_MS)
@@ -263,14 +263,14 @@ def test_send_when_entered(
 def test_send_when_sending(
     served_review: tuple[str, Path], open_preview: OpenPreview, page: Page
 ) -> None:
-    """送っている間は回る印と「送信しています」を出し、まとめて送るを押せなくする（正常系）。"""
+    """送っている間は回る印と「送信しています」を出し、まとめて送信を押せなくする（正常系）。"""
     # 準備
     url, _ = served_review
     held: list[Route] = []
     page.route("**/api/comments/send", lambda route: held.append(route))
     open_preview(url)
     open_review(page)
-    send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
+    send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送信")
     # 実行
     send.click()
     page.wait_for_selector(f"{BAND_RESULT}.sending")
@@ -285,7 +285,7 @@ def test_send_when_sending(
 def test_send_when_nothing_checked(
     served_review: tuple[str, Path], open_preview: OpenPreview, page: Page
 ) -> None:
-    """チェックが 0 件のときは、まとめて送るを押せず、チェックを付けるよう出す（異常系）。"""
+    """チェックが 0 件のときは、まとめて送信を押せず、チェックを付けるよう出す（異常系）。"""
     # 準備
     url, _ = served_review
     posts: list[str] = []
@@ -302,7 +302,7 @@ def test_send_when_nothing_checked(
     # 実行
     page.get_by_label("すべて選ぶ").uncheck()
     # 検証
-    send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
+    send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送信")
     assert send.inner_text() == "まとめて送信（0 件）"
     assert send.is_disabled()
     assert page.inner_text(BAND_RESULT) == "送信する書き込みにチェックを付けてください。"
@@ -334,7 +334,7 @@ def test_send_when_stale(
     page = open_preview(url)
     open_review(page)
     # 実行
-    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
+    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送信").click()
     page.wait_for_selector(f"{BAND_RESULT}.stale", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert (
@@ -359,7 +359,7 @@ def test_send_when_unreachable(
     open_preview(url)
     open_review(page)
     # 実行
-    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
+    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送信").click()
     page.wait_for_selector(f"{BAND_RESULT}.failed", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert (
@@ -382,7 +382,7 @@ def test_send_when_server_refuses(
     open_preview(url)
     open_review(page)
     # 実行
-    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
+    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送信").click()
     page.wait_for_selector(f"{BAND_RESULT}.failed", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert page.inner_text(BAND_RESULT) == "送信できませんでした。threads.yaml を書けません"
@@ -916,7 +916,7 @@ def test_stale_reason_and_detach(
     )
     page = open_preview(url)
     open_review(page)
-    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
+    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送信").click()
     page.wait_for_selector(f"{_row('C-1')} .row-stale", timeout=UPDATE_TIMEOUT_MS)
     # 実行
     page.get_by_role("button", name="箇所を解除").click()
@@ -950,7 +950,7 @@ def test_stale_reason_when_target_gone(
     page = open_preview(url)
     open_review(page)
     # 実行
-    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
+    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送信").click()
     page.wait_for_selector(f"{_row('C-1')} .row-stale", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert page.inner_text(f"{_row('C-1')} .row-stale span") == "D-9 がありません"
@@ -1092,7 +1092,7 @@ def test_send_when_reply(
     page = open_preview(url)
     open_review(page)
     # 実行
-    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
+    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送信").click()
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert page.inner_text(BAND_RESULT).startswith("2 件を送信しましたが、Claude Code には入力できませんでした（")
@@ -1130,7 +1130,7 @@ def test_row_selected_from_thread(
 
 
 def test_fit_smallest(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """レビュー中の書き込みの画面は、幅 320px で横にスクロールせず、パネルと「まとめて送る」が表示幅の中にある（正常系）。"""
+    """レビュー中の書き込みの画面は、幅 320px で横にスクロールせず、パネルと「まとめて送信」が表示幅の中にある（正常系）。"""
     # 準備
     url, _ = served_review
     page = open_preview(url, "#tab=decisions&view=table")
@@ -1140,7 +1140,7 @@ def test_fit_smallest(served_review: tuple[str, Path], open_preview: OpenPreview
     # 検証
     assert_fits_smallest(
         page,
-        (COMMENTS_PANEL, f"{COMMENTS_PANEL} button:has-text('まとめて送る')"),
+        (COMMENTS_PANEL, f"{COMMENTS_PANEL} button:has-text('まとめて送信')"),
         scope=COMMENTS_PANEL,
     )
 
@@ -1442,7 +1442,7 @@ def test_edit_voice_input_when_sent(
     start_fake_transcriber: Callable[..., Any],
     start_voice_preview: StartVoicePreview,
 ) -> None:
-    """修正の入力で録音中にその書き込みをまとめて送ると、読み直しを待たずに録音を捨て、トップバーの音声入力中の表示を消して捨てたことを知らせる（異常系）。"""
+    """修正の入力で録音中にその書き込みをまとめて送信と、読み直しを待たずに録音を捨て、トップバーの音声入力中の表示を消して捨てたことを知らせる（異常系）。"""
     # 準備
     fake = start_fake_transcriber("done")
     url, root = start_voice_preview(fake.url, make_item("D-1"))
@@ -1455,7 +1455,7 @@ def test_edit_voice_input_when_sent(
     start_recording(page.locator(f"{_row('C-1')} form.row-edit"))
     expect(page.get_by_role("button", name=re.compile("^音声入力中（D-1 へのコメントの修正）"))).to_be_visible()
     # 実行
-    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name=re.compile("^まとめて送る")).click()
+    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name=re.compile("^まとめて送信")).click()
     # 検証
     expect(page.get_by_text("C-1 が削除されたため、録音を破棄しました。")).to_be_visible(timeout=UPDATE_TIMEOUT_MS)
     expect(page.get_by_role("button", name=re.compile("^音声入力中"))).to_have_count(0)

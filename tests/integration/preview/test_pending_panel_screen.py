@@ -263,7 +263,7 @@ def test_undo(
     assert [edit["id"] for edit in read_edits_file(root)["items"]] == ["E-2", "E-3", "E-4"]
     assert page.inner_text(f"{PENDING_PANEL} h2").replace("\n", " ") == "保存待ち 3 件"
     # 実行（最後の行）
-    page.get_by_role("button", name="タスクを追加 の項目を追加の編集を取り消す").click()
+    page.get_by_role("button", name="タスクを追加 の項目追加の編集を取り消す").click()
     expect(page.locator("#pe-row-E-4")).to_have_count(0)
     # 検証（最後の行）
     assert page.evaluate("document.activeElement.getAttribute('aria-label')") == (

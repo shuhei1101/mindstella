@@ -28,7 +28,7 @@ from .http_helpers import HttpResult, http_request, post_json
 from .thread_helpers import read_threads, threads_path
 from workspace_fixtures import RECORD_DIR, StartServer
 
-# まとめて送るのパス
+# まとめて送信のパス
 SEND_PATH = "/api/comments/send"
 
 # 資料 A-1 の本文

@@ -1317,7 +1317,7 @@ def test_review_comments(
         ["案 C のデメリット", "表の密度が下がる", "ここは別の言い方にしたい"],
         [None, None, "案 A にする"],
     ]
-    # 行ごとの「修正」「削除」（読み上げの名前と `title`）。チェックは持たない（まとめて送るは一覧で行う）
+    # 行ごとの「修正」「削除」（読み上げの名前と `title`）。チェックは持たない（まとめて送信は一覧で行う）
     assert page.eval_on_selector_all(
         "aside.panel .d-review li",
         "rows => rows.map(r => [...r.querySelectorAll('.row-actions button')].map(b => [b.getAttribute('aria-label'), b.title]))",

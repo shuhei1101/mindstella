@@ -137,14 +137,14 @@ def test_selected_count(page: Page, review_preview: tuple[str, Path]) -> None:
 
 
 def test_send(page: Page, review_preview: tuple[str, Path]) -> None:
-    """まとめて送ると送った行を外し、送った結果を `role="status"` で出す（正常系）。"""
+    """まとめて送信と送った行を外し、送った結果を `role="status"` で出す（正常系）。"""
     # 準備
     _, root = review_preview
     _open(page, review_preview)
     # 実行
     _panel(page).get_by_role("button", name="まとめて送信（3 件）").click()
     # 検証
-    expect(_panel(page).get_by_role("status").filter(has_text="3 件を送り")).to_be_visible()
+    expect(_panel(page).get_by_role("status").filter(has_text="3 件を送信し")).to_be_visible()
     expect(_panel(page).locator("li[data-comment]")).to_have_count(1)
     expect(_row(page, "C-44")).to_be_visible()
     assert [item["id"] for item in read_workspace_yaml(root, "comments.yaml")["items"]] == ["C-44"]
@@ -329,14 +329,14 @@ def test_blocked_reason(page: Page, review_preview: tuple[str, Path]) -> None:
 
 
 def test_stale(page: Page, review_preview: tuple[str, Path]) -> None:
-    """まとめて送るが 409 のとき、`stale` の行に理由を `role="alert"` で出して枠を要見直しの赤にし、「箇所を解除」で箇所を解除（異常系）。"""
+    """まとめて送信が 409 のとき、`stale` の行に理由を `role="alert"` で出して枠を要見直しの赤にし、「箇所を解除」で箇所を解除（異常系）。"""
     # 準備
     _, root = review_preview
     _open(page, review_preview)
     body = {"type": "about:blank", "title": "Conflict", "status": 409, "detail": "x", "stale": [{"id": "C-41", "reason": "選んだ文が本文の 3 行目にありません"}]}
 
     def _refuse(route: Route) -> None:
-        """まとめて送るを 409 で断る。"""
+        """まとめて送信を 409 で断る。"""
         route.fulfill(status=409, content_type="application/problem+json", body=json.dumps(body))
 
     page.route("**/api/comments/send", _refuse)

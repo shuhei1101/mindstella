@@ -227,7 +227,7 @@ DIFF_SETTLE_MS = 10_000
 # 溜めたコメントを受け付けるパス
 COMMENTS_PATH = "/api/comments"
 
-# コメントの一覧の送る帯の「まとめて送る」
+# コメントの一覧の送る帯の「まとめて送信」
 LIST_SEND_BUTTON = f"{COMMENTS_PANEL} .send-band button.btn.primary"
 
 
@@ -617,7 +617,7 @@ def test_normal_when_sent(
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
     assert page.inner_text("aside.panel .d-review .review-body") == "ここは言い換える"
     assert page.inner_text("aside.panel .d-review .review-loc-name") == "本文 2 行目"
-    # 実行（コメントのボタンから一覧を開き、まとめて送る）
+    # 実行（コメントのボタンから一覧を開き、まとめて送信）
     page.focus(COMMENTS_BUTTON)
     page.keyboard.press("Enter")
     page.wait_for_selector(f"{COMMENTS_PANEL}.open")

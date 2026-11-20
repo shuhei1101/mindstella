@@ -36,7 +36,7 @@ def test_one(open_story: OpenStory) -> None:
     expect(items).to_have_count(1)
     expect(items.first).to_contain_text("N-6")
     expect(items.first).to_contain_text("ゴールを後から変える・足す・無しで始める")
-    expect(items.first.locator("[title=消した]")).to_have_count(1)
+    expect(items.first.locator("[title=削除した]")).to_have_count(1)
     # 検証（項目はボタン・リンクにしない）
     assert band.locator("button, a").count() == 0
 

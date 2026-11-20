@@ -139,7 +139,7 @@ def test_transcription(
     # 検証（今の値と候補）
     expect(page.get_by_role("group", name="音声入力")).to_be_visible()
     expect(page.get_by_role("radio", name="レビュー中に追加する")).to_be_checked()
-    radios = page.get_by_role("radio", name=re.compile("^(レビュー中に追加する|入力欄へ挿入する|送信する)$"))
+    radios = page.get_by_role("radio", name=re.compile("^(レビュー中に追加する|入力欄へ挿入する|送信)$"))
     assert [radios.nth(i).get_attribute("value") for i in range(radios.count())] == ["review", "insert", "send"]
     expect(preset).to_have_value("開発")
     expect(preset.locator("option")).to_have_text(["サービスの既定", "一般", "開発"])
