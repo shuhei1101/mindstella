@@ -226,7 +226,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
               return (
                 <li key={item.id} data-comment={item.id} data-highlight={highlight !== null && (item.thread === highlight || item.id === highlight) ? "" : undefined} className={cn("grid gap-1 rounded-card border p-2", staleReason === undefined ? "border-border" : "border-st-review", highlight !== null && (item.thread === highlight || item.id === highlight) && "bg-accent")}>
                   <div className="flex items-center gap-2 text-small">
-                    <Checkbox aria-label={item.thread === null ? `${item.target ?? "項目を指さない"}${item.target === null ? "コメントを送る" : " へのコメントを送信する"}` : `${item.thread} への返信を送信する`} checked={!blocked && !unchecked.has(item.id)} disabled={blocked} onChange={() => { toggle(item.id); }} />
+                    <Checkbox aria-label={item.thread === null ? `${item.target ?? "項目を指さない"}${item.target === null ? "コメントを送信する" : " へのコメントを送信する"}` : `${item.thread} への返信を送信する`} checked={!blocked && !unchecked.has(item.id)} disabled={blocked} onChange={() => { toggle(item.id); }} />
                     <span data-part="kind" className="rounded-control border border-border px-1.5">{item.thread === null ? "新規スレッド" : "返信"}</span>
                     {replyTo === null ? null : (
                       <button type="button" className="flex min-w-0 cursor-pointer items-center gap-1" onClick={() => { onOpenThread(replyTo.id); }}>

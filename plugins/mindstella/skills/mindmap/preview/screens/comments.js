@@ -336,7 +336,7 @@ var MindmapPreview;
                         class: "row-check",
                         checked: !blocked && props.checked.has(item.id),
                         disabled: blocked,
-                        "aria-label": `${label}を送る`,
+                        "aria-label": `${label}を送信する`,
                         "data-focus": `check:${item.id}`,
                         onchange: (event) => props.on.check(item.id, event.target.checked),
                     },
