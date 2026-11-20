@@ -105,7 +105,7 @@ var MindmapPreview;
                         attrs: {
                             class: "pe-chip-x",
                             type: "button",
-                            "aria-label": `${entry.name} を外す`,
+                            "aria-label": `${entry.name} を解除`,
                             disabled,
                             onclick: () => {
                                 current = current.filter((_, position) => position !== index);

@@ -72,7 +72,7 @@ export const ChipsInput = ({ controlId, name, hint = "", values, suggestions = n
           <button
             type="button"
             disabled={disabled}
-            aria-label={`${entry.name} を外す`}
+            aria-label={`${entry.name} を解除`}
             className="cursor-pointer"
             onClick={() => {
               onChange(output(current.filter((_, position) => position !== index)), entry.name);
