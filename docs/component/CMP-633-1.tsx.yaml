@@ -36,13 +36,13 @@ states:
       - name: saving
         value: 'true'
   - name: InDetailHeader
-    description: 詳細パネルの見出しでの並び。種類と ID の後、「編集する」の前に配置する。幅 640px 未満では文言を隠してアイコンだけにする
+    description: 詳細パネルの見出しでの並び。種類と ID の後、「編集する」の前に配置する。幅 480px 以下では文言を隠してアイコンだけにする
     args:
       - name: confirmed
         value: 'false'
 accessibility:
   - '`aria-pressed` で確認済みかを伝える'
   - '`title` を未確認では「確認済みにする」、確認済みでは「確認済みを解除する」にし、押したときの動作を伝える'
-  - 幅 640px 未満では文言を `sr-only` で残し、アイコンだけの表示でも読み上げ名を「確認済み」に保つ
+  - 幅 480px 以下では文言を `sr-only` で残し、アイコンだけの表示でも読み上げ名を「確認済み」に保つ
   - 色だけに頼らず、チェックの有無でも状態を見分けられる
 id: CMP-633-1

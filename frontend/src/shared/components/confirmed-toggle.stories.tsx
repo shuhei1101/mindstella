@@ -24,7 +24,7 @@ export const Confirmed: Story = { args: { confirmed: true } };
 /** 書き込みの応答を待っている間。押せない */
 export const Saving: Story = { args: { confirmed: false, saving: true } };
 
-/** 詳細の見出しでの並び。種類と ID の後、編集するの前に置く。幅 640px 未満ではアイコンだけになる */
+/** 詳細の見出しでの並び。種類と ID の後、編集するの前に置く。幅 480px 以下ではアイコンだけになる */
 export const InDetailHeader: Story = {
   args: { confirmed: false },
   render: (args) => (
