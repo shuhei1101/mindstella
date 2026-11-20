@@ -148,3 +148,12 @@ scope_out:
   - item: 作業の完了・停止の通知の URL を外部に公開した URL にする
     reason: 要望に含まれない。この作業 PR では、通知に載せるローカルの URL を常駐サーバーの入口の URL に合わせるだけ
     plan: '#617'
+  - item: 結合テスト test_embedded_html_in_full・test_normal_when_embedded_html・test_embedded_chart の fail（mdmark の図の右上のパネルに追従していない）
+    reason: develop（642fb1e4）でも同じく fail する既存の不具合で、要望（1 つのポートでの配信）に含まれない
+    plan: '#610'
+  - item: 結合テスト test_diff_body_layout_switch の fail（document.activeElement の data-layout が None）
+    reason: develop（642fb1e4）でも毎回 fail する既存の不具合で、要望に含まれない
+    plan: '#553'
+  - item: 結合テスト test_error_when_host_not_local の fail（作成を断った後にも GET /settings/sources が届く）
+    reason: develop（642fb1e4）でも同じく fail する既存の不具合で、要望に含まれない
+    plan: '#575'
