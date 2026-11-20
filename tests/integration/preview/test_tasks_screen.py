@@ -274,7 +274,7 @@ def test_diff_marks_when_table(
     # 検証
     assert page.locator('table.grid tbody tr[data-id="T-1"] .row-open + .df-mark.df-new').count() == 1
     # 印の無い時点では付かない
-    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: null}))")
+    page.evaluate("localStorage.setItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''), JSON.stringify({diffSel: null}))")
     page.goto("about:blank")
     open_preview(url, "#tab=tasks&view=table")
     page.wait_for_selector("table.grid tbody tr")

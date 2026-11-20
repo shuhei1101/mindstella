@@ -17,14 +17,14 @@ _PREFS_KEY = "mindmap-preview"
 
 # 個人の上書きのうち、画面（記録の表は種類）ごとの絞り込みの条件を読む
 _READ_FILTERS_SCRIPT = (
-    f"JSON.parse(localStorage.getItem('{_PREFS_KEY}') ?? 'null')?.filters ?? null"
+    f"JSON.parse(localStorage.getItem('{_PREFS_KEY}' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? 'null')?.filters ?? null"
 )
 
 # 個人の上書きの絞り込みの条件だけを、渡した値に置き換えて残す（ほかの上書きは変えない）
 _SEED_FILTERS_SCRIPT = f"""filters => {{
-    const prefs = JSON.parse(localStorage.getItem('{_PREFS_KEY}') ?? '{{}}');
+    const prefs = JSON.parse(localStorage.getItem('{_PREFS_KEY}' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? '{{}}');
     prefs.filters = filters;
-    localStorage.setItem('{_PREFS_KEY}', JSON.stringify(prefs));
+    localStorage.setItem('{_PREFS_KEY}' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''), JSON.stringify(prefs));
 }}"""
 
 

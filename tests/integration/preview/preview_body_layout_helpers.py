@@ -156,7 +156,7 @@ def seed_side_layout(page: Page, sel: str | None = None) -> None:
     value = json.dumps({"bodyLayout": "side", "diffSel": sel})
     page.add_init_script(
         "try { if (!sessionStorage.getItem('mindmap-seeded')) {"
-        f" localStorage.setItem('mindmap-preview', {json.dumps(value)});"
+        f" localStorage.setItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''), {json.dumps(value)});"
         " sessionStorage.setItem('mindmap-seeded', '1'); } } catch (e) {}"
     )
 

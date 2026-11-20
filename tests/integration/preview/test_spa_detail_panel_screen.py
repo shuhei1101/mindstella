@@ -111,7 +111,7 @@ def test_restores_body_scroll(page: Page, write_preview: WritePreview, make_item
     open_spa(page, url, "?tab=decisions&id=D-1")
     page.get_by_text("段落 199").wait_for()
     page.locator("aside .panel-body").evaluate(f"(element) => {{ element.scrollTop = {SCROLLED_TOP}; }}")
-    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll') !== null")
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) !== null")
     page.goto(page.url.replace("id=D-1", "id=D-2"))
     page.get_by_role("complementary", name="詳細").wait_for()
     page.goto(page.url.replace("id=D-2", "id=D-1"))
@@ -353,7 +353,7 @@ def test_comment_input_when_toggle_open(page: Page, comment_preview: tuple[str, 
     # 検証
     expect(_panel(page).get_by_role("button", name="コメントの入力を開く")).to_have_attribute("aria-expanded", "false")
     expect(_panel(page).get_by_role("textbox", name="D-2 へのコメント")).to_have_count(0)
-    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').commentFormClosed") is True
+    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? '{}').commentFormClosed") is True
     # 実行（D-1 の本文を選んで入口を押す）
     open_spa(page, url, "?tab=decisions&id=D-1")
     expect(_panel(page).locator(".md [data-line-start='5']")).to_have_text("二つ目の段落")
@@ -361,7 +361,7 @@ def test_comment_input_when_toggle_open(page: Page, comment_preview: tuple[str, 
     page.get_by_role("button", name="選んだ箇所にコメント").click()
     # 検証
     expect(_panel(page).get_by_role("textbox", name="D-1 へのコメント")).to_be_focused()
-    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').commentFormClosed ?? null") is None
+    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? '{}').commentFormClosed ?? null") is None
 
 
 def test_review_comments(page: Page, comment_preview: tuple[str, Path]) -> None:
@@ -396,7 +396,7 @@ def test_review_order(page: Page, comment_preview: tuple[str, Path]) -> None:
     toggle = _panel(page).get_by_role("button", name="コメントの並び: 古い順")
     expect(toggle).to_be_focused()
     assert _comments(page).evaluate_all("rows => rows.map(r => r.dataset.comment)") == ["C-1", "C-2", "C-3"]
-    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').reviewOrder") == "oldest"
+    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? '{}').reviewOrder") == "oldest"
 
 
 def test_selection_comment(page: Page, comment_preview: tuple[str, Path]) -> None:
@@ -1123,7 +1123,7 @@ def test_resizer_initial_value(page: Page, spa_preview: str) -> None:
     separator = page.get_by_role("separator", name="詳細パネルの幅")
     expect(separator).to_have_attribute("aria-valuenow", "640")
     # 実行
-    page.evaluate("sessionStorage.setItem('mindmap-panel-width', '700')")
+    page.evaluate("sessionStorage.setItem('mindmap-panel-width' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''), '700')")
     page.reload()
     # 検証
     expect(separator).to_have_attribute("aria-valuenow", "700")
@@ -1144,7 +1144,7 @@ def test_resizer_action(page: Page, spa_preview: str) -> None:
     # 検証
     assert wider > 640
     assert int(separator.get_attribute("aria-valuenow") or "0") < 640
-    assert page.evaluate("sessionStorage.getItem('mindmap-panel-width')") == separator.get_attribute("aria-valuenow")
+    assert page.evaluate("sessionStorage.getItem('mindmap-panel-width' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))") == separator.get_attribute("aria-valuenow")
 
 
 def test_export_label(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:

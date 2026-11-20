@@ -76,7 +76,7 @@ def open_pending(page: Page) -> None:
 # 前の待ちの読み取りが後から届いても今の待ちの結果と取り違えないよう、結果に待ちごとの token を添えて比べる
 EDITS_MATCH_JS = """({{token, arg}}) => {{
   const match = {match};
-  fetch(location.pathname.match(/^\/w\/[^/]+\//)[0] + 'api/edits').then(r => r.json()).then(d => {{ window.editsMatch = {{token, found: match(d.items, arg)}}; }});
+  fetch(location.pathname.split('/').slice(0, 3).join('/') + '/api/edits').then(r => r.json()).then(d => {{ window.editsMatch = {{token, found: match(d.items, arg)}}; }});
   return window.editsMatch?.token === token && window.editsMatch.found;
 }}"""
 

@@ -164,7 +164,7 @@ def test_topbar_theme(write_sample_preview: WriteSamplePreview, page: Page) -> N
     page.wait_for_selector("#tile-open")
     # 検証
     assert page.evaluate("document.documentElement.dataset.theme") == "dark"
-    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview')).theme") == "dark"
+    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))).theme") == "dark"
     assert page.locator('header button[aria-label="ライトに切り替え"]').count() == 1
 
 
@@ -389,7 +389,7 @@ def test_kinds_override(
     page.goto(url)
     open_settings(page)
     page.locator(LEGACY_KIND_CHECKBOX, has_text=toggled).locator("input").click()
-    page.wait_for_function("JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').kinds !== undefined")
+    page.wait_for_function("JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? '{}').kinds !== undefined")
     # 実行
     open_spa(page, url)
     # 検証

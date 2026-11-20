@@ -278,7 +278,7 @@ def test_normal_when_filter(page: Page, spa_preview: str) -> None:
     """`f.{列}` の条件で開き、端末に残す（正常系）。"""
     open_spa(page, spa_preview, "?tab=decisions&view=table&f.status=%E4%BF%9D%E7%95%99")
     expect(page.get_by_role("cell", name="画面の幅")).to_be_visible()
-    assert "保留" in page.evaluate("localStorage.getItem('mindmap-preview')")
+    assert "保留" in page.evaluate("localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))")
 
 
 def test_normal_when_diff(page: Page, write_history_preview: WriteReviewPreview) -> None:
@@ -301,7 +301,7 @@ def test_normal_when_since(page: Page, write_history_preview: WriteReviewPreview
     calls: list[str] = []
     page.on("request", lambda request: calls.append(request.url) if request.url.endswith("/api/opened") else None)
     open_spa(page, url, "?tab=decisions&diff=since")
-    page.wait_for_function("sessionStorage.getItem('mindmap-preview-opened') !== null")
+    page.wait_for_function("sessionStorage.getItem('mindmap-preview-opened' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) !== null")
     open_spa(page, url, "?tab=tasks&diff=since")
     page.wait_for_load_state("networkidle")
     assert len(calls) == 1
@@ -606,7 +606,7 @@ def test_normal_when_display_settings(page: Page, write_review_preview: WriteRev
     expect(page.get_by_role("navigation", name="項目の種類").get_by_role("link", name="メモ")).to_have_count(0)
     page.wait_for_function("() => !location.search.includes('tab=')")
     assert _history_length(page) == before
-    prefs = json.loads(page.evaluate(f"localStorage.getItem('{PREFS_KEY}')"))
+    prefs = json.loads(page.evaluate(f"localStorage.getItem('{PREFS_KEY}' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))"))
     assert "notes" not in prefs["kinds"]
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
     # 実行（ワークスペースの既定にする）

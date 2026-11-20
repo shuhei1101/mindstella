@@ -22,7 +22,7 @@ ROW = f"{DIALOG} .hist-item"
 REDRAW_TIMEOUT_MS = 10_000
 
 # 端末の保存領域に残した選んだ時点を読む
-SAVED_SEL_JS = "JSON.parse(localStorage.getItem('mindmap-preview') || '{}').diffSel ?? null"
+SAVED_SEL_JS = "JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) || '{}').diffSel ?? null"
 
 # モーダルの行の時点の識別子・名前・件数を上から読む
 ROWS_JS = """() => [...document.querySelectorAll('dialog.hist .hist-item')].map(row => ({

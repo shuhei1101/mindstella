@@ -202,7 +202,7 @@ def preselect_diff(page: Page, sel: str | None) -> None:
     """ページを開く前に、端末の保存領域へ選んだ時点を入れる（開いたときから差分の表示にする）。"""
     value = json.dumps({"diffSel": sel})
     page.add_init_script(
-        f"try {{ if (!sessionStorage.getItem('mindmap-seeded')) {{ localStorage.setItem('mindmap-preview', {json.dumps(value)}); sessionStorage.setItem('mindmap-seeded', '1'); }} }} catch (e) {{}}"
+        f"try {{ if (!sessionStorage.getItem('mindmap-seeded')) {{ localStorage.setItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''), {json.dumps(value)}); sessionStorage.setItem('mindmap-seeded', '1'); }} }} catch (e) {{}}"
     )
 
 

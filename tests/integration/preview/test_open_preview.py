@@ -219,7 +219,7 @@ DIFF_CHIP_TITLE = ".df-chip-t"
 DIFF_OFF_NAME = "差分の表示をやめる"
 
 # 端末の保存領域に残した選んだ時点を読む
-SAVED_DIFF_JS = "JSON.parse(localStorage.getItem('mindmap-preview') || '{}').diffSel ?? null"
+SAVED_DIFF_JS = "JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) || '{}').diffSel ?? null"
 
 # 時点を指すハッシュの書き換えと再描画を待つ上限ミリ秒
 DIFF_SETTLE_MS = 10_000

@@ -30,7 +30,7 @@ def _open(page: Page, url: str, search: str = "") -> Page:
 
 def _prefs(page: Page) -> dict[str, object]:
     """端末の保存領域の値を返す。"""
-    return json.loads(page.evaluate(f"localStorage.getItem('{PREFS_KEY}') ?? '{{}}'"))
+    return json.loads(page.evaluate(f"localStorage.getItem('{PREFS_KEY}' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? '{{}}'"))
 
 
 def test_heading(page: Page, spa_preview: str) -> None:
