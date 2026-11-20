@@ -149,7 +149,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませたワークスペース
+        description: 常駐サーバーの ID の一覧に無いワークスペース（『ワークスペースの作成』を通さずに `.mindstella/config.yaml` を置いたフォルダ）
       - name: 起動時のフック
         description: '`MINDSTELLA_PREVIEW_START_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ追記するコマンド'
         notes: '`preview_url` を 2 回呼ぶ'
@@ -176,7 +176,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を追加して `commit` し、まとまり V-1 を持つワークスペース。ツールを呼ぶ常駐サーバーでは、このワークスペースの配信を起動していない
+        description: 検討事項 D-1 を追加して `commit` し、まとまり V-1 を持つワークスペース。常駐サーバーの ID の一覧に無く、ツールを呼ぶ常駐サーバーではこのワークスペースの配信を起動していない
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -202,7 +202,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を追加して `commit` し、まとまり V-1 だけを持つワークスペース。ツールを呼ぶ常駐サーバーでは、このワークスペースの配信を起動していない
+        description: 検討事項 D-1 を追加して `commit` し、まとまり V-1 だけを持つワークスペース。常駐サーバーの ID の一覧に無く、ツールを呼ぶ常駐サーバーではこのワークスペースの配信を起動していない
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -264,9 +264,33 @@ flows:
       - 'エラーの本文が `エラー: 引数の誤り: diff:` で始まり、`V-99` を含む'
       - 1 回目の `url` を GET すると 200 が返る（配信は止まらない）
     test: test_error_when_diff_not_found_while_serving
-lead: ワークスペースのプレビューを配る URL を返す。このプロセスでまだ配っていなければ、そのワークスペースを常駐サーバーのポートで配り始める（配信を立てる）。
+  - name: 異常系（ワークスペースの ID が重なる・WorkspaceIdConflictError）
+    summary: 配っている別のフォルダと ID が同じフォルダを指すと、配らずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース A と、A のフォルダを丸ごとコピーしたフォルダ B（`config.yaml` の `id` が A と同じ）
+        notes: A で `preview_url` を呼んでから B で呼ぶ。起動時のフックに、受け取った引数をテストの一時フォルダのファイルへ追記するコマンドを渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as preview_url（MCP のツール）
+
+        クライアント->>IF: preview_url A
+        IF-->>クライアント: JSON（url）
+        クライアント->>IF: preview_url B
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - B の呼び出しがツールのエラーになり、本文に重なった ID と A のフォルダの絶対パスがある
+      - A の `url` を GET すると、A の記録の画面が返る
+      - B の直下の `README.md` が呼ぶ前と同じで、フックの追記するファイルに B の行が無い
+    test: test_error_when_workspace_id_conflicts
+lead: ワークスペースのプレビューを配る URL を返す。まだ配っていないワークスペース（常駐サーバーの ID の一覧に無いフォルダか、設定が検査に通らず配っていなかったワークスペース）は、常駐サーバーのポートで配り始める（配信を立てる）。
 idempotent: true
-side_effects: 初めて呼んだワークスペースについて、このプロセスの中に配信（『プレビューの配信』『記録の取得』『書き換えの通知』・『設定の既定の書き換え』・『設定の再読み込み』と、レビュー中のコメント・下書き・まとめて送信の受け付け）を立てる。配信を立てたときは、直下の `README.md` を『README の書き出し』と同じ判定・書き方で書き直す。`.mindstella/` には書かない
+side_effects: まだ配っていないワークスペース（『プレビューの配信』の制約「配るワークスペース」）について、このプロセスの中に配信（『プレビューの配信』『記録の取得』『書き換えの通知』・『設定の既定の書き換え』・『設定の再読み込み』と、レビュー中のコメント・下書き・まとめて送信の受け付け）を立てる。配信を立てたときは、直下の `README.md` を『README の書き出し』と同じ判定・書き方で書き直す。`.mindstella/` には書かない
 callers:
   - IF-565-1#
 request:
@@ -294,7 +318,7 @@ response:
     description: 配っているワークスペースの絶対パス
   - name: started
     type: bool
-    description: この呼び出しで配信を立てたか。既に配っていたら偽
+    description: この呼び出しで配信を立てたか。既に配っていたら偽（常駐サーバーの起動時から配っている ID の一覧のワークスペースは、初めて呼んでも偽）
 exceptions:
   - name: なし（正常終了）
     condition: 配信の URL を返せた
@@ -308,6 +332,9 @@ exceptions:
   - name: 引数の誤り
     condition: '`diff` が `changes.yaml` の `sets` に無い'
     notes: ツールのエラー。エラーの本文に渡した ID。まだ配っていなければ配信を立てない
+  - name: WorkspaceIdConflictError
+    condition: '`workspace` のワークスペースの ID が、配っている別のフォルダの ID と同じ'
+    notes: ツールのエラー。エラーの本文に重なった ID と、既に配っているフォルダの絶対パス。配信を立てず、起動時のフックを呼ばず、`README.md` を書き直さない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
   - item: 結果の構造
@@ -318,7 +345,7 @@ constraints:
     constraint: '常駐サーバーが `127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で待ち受ける経路で配る。ワークスペースごとにポートを開かない'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 配信の数
-    constraint: 1 つのプロセスの中で、ワークスペース（絶対パス）ごとに 1 つ。同じワークスペースで再呼び出しすると同じ URL を返す。ワークスペースの ID が同じ別のフォルダは配らず、既に配っているフォルダを変えない
+    constraint: 1 つのプロセスの中で、ワークスペース（絶対パス）ごとに 1 つ。同じワークスペースで再呼び出しすると同じ URL を返す。ワークスペースの ID が配っている別のフォルダと同じフォルダ（フォルダをコピーした・別の場所へクローンした）は配らず、WorkspaceIdConflictError を返す。既に配っているフォルダを変えない
   - item: 配信を止める時
     constraint: 常駐サーバーのプロセスが終わるとき（『MCP サーバーの起動』の終わり方。『常駐サーバーの停止』を含む）。ワークスペースを削除したとき（『ワークスペースの削除』。そのワークスペースだけ）。ツールを呼んだセッションが終わっても、ワークスペースをクローズしても止めない。止めたワークスペースの画面のパスは 404 を返す
   - item: 起動時の検査
@@ -326,12 +353,14 @@ constraints:
   - item: README の更新
     constraint: 配信を立てた呼び出し（`started` が真）だけ、配信を立てた後に『README の書き出し』の制約「README の中身」「埋める値」「書き込むかの判定」「記載方法」で直下の `README.md` を書き直す。書けなくても配信は止めず、標準エラーに記録して URL を返す
   - item: 起動時のフック
-    constraint: '配信を立てた呼び出し（`started` が真）だけ、配信を立てた直後に `MINDSTELLA_PREVIEW_START_HOOK` のコマンドを、末尾に常駐サーバーのポート・ワークスペースのフォルダの名前・画面のパス（`/w/{workspace}/mindstella.html`）を引数で追加して呼ぶ（『設定: サーバー』）。コマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない。立てられない（コマンドが見つからない・引数を分けられない）ときは標準エラーに記録し、配信は止めずに URL を返す'
+    constraint: 'ワークスペースを配り始めたとき（この呼び出しで `started` が真のときと、『プレビューの配信』の制約「配るワークスペース」の常駐サーバーの起動時・ワークスペースの作成時）だけ、配り始めた直後に `MINDSTELLA_PREVIEW_START_HOOK` のコマンドを、末尾に常駐サーバーのポート・ワークスペースのフォルダの名前・画面のパス（`/w/{workspace}/mindstella.html`）を引数で追加して呼ぶ（『設定: サーバー』）。コマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない。立てられない（コマンドが見つからない・引数を分けられない）ときは標準エラーに記録し、配信は止めずに URL を返す'
     decided_by: IF-489-1#constraints[終わり方]
   - item: まとまりを指す URL
     constraint: '`diff` は呼び出しのたびに（既に配っているワークスペースでも）`changes.yaml` を読んで `sets` にあるかを確かめる。あれば、配信の URL の末尾に `#diff={ID}` を付けて返す。まだ配っていなければ、配信を立てる前に確かめる。直下の `README.md` にはハッシュを付けない配信の URL を書く'
   - item: 画面のパス
     constraint: 画面と画面が呼ぶ全ての経路は `/w/{workspace}/` を先頭に持つ（『プレビューの配信』の制約「ワークスペースの区別」）。`{workspace}` はワークスペースの ID（`config.yaml` の `id`。無ければ『ワークスペースの作成』と同じ振り方でフォルダから振る）をパーセントエンコードしたもの
+  - item: フローのワークスペース
+    constraint: このインターフェース定義のフローの `make_workspace` は、ことわりが無い限り『ワークスペースの作成』を通さずに `.mindstella/config.yaml` を置いたフォルダ（常駐サーバーの ID の一覧に無く、`preview_url` が配り始める）。「作成を済ませた」とことわるワークスペースも同じで、「作成を済ませたワークスペース A」のように ID の一覧にあることを前提にするフローだけ、『ワークスペースの作成』で作る（異常系「ワークスペースの ID が重なる」の A）
 refs:
   - IF-489-18#
 test_file: tests/integration/server/test_preview_url.py
