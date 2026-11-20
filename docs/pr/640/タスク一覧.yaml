@@ -75,11 +75,15 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T11:49:33.412135+00:00'
   - process: 単体テスト作成
-    status: todo
+    status: done
     note: 修正した UI 文言・メッセージを照合する単体テストの期待値
+    updated_by: planner
+    updated_at: '2026-11-20T12:11:52.716837+00:00'
   - process: 実装
-    status: todo
+    status: done
     note: React の画面・今の画面（.ts と生成した .js）・サーバーのメッセージ・起動スクリプト
+    updated_by: planner
+    updated_at: '2026-11-20T12:37:39.958545+00:00'
   - process: 結合テスト作成
     status: todo
     note: 修正した UI 文言・メッセージを照合する結合テストの期待値
