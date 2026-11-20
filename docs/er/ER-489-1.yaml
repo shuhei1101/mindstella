@@ -618,16 +618,16 @@ tables:
       - name: items.{ID}.created
         title: 作成日時
         type: string
-        not_null: true
+        not_null: false
         auto: 作成日時
-        description: UTC のタイムゾーン付き ISO 8601。項目を足したときに変更の検知が書く
+        description: UTC のタイムゾーン付き ISO 8601。項目を足したときに変更の検知が書く。`confirmed` だけを持つ行は持たない
         example: '2026-10-02T08:00:00+00:00'
       - name: items.{ID}.updated
         title: 更新日時
         type: string
-        not_null: true
+        not_null: false
         auto: 更新日時
-        description: UTC のタイムゾーン付き ISO 8601。項目を足した・値を変えたときに書く
+        description: UTC のタイムゾーン付き ISO 8601。項目を足した・値を変えたときに書く。`confirmed` だけを持つ行は持たない
       - name: items.{ID}.updated_by
         title: 編集した人
         type: string
@@ -659,7 +659,7 @@ tables:
         title: 確認済み
         type: boolean
         default: 'false'
-        description: 利用者がその項目を確認したか。『確認済みの付け外し』が `true`・`false` を書き、コメントをまとめて送る・すぐ送るが、設定の `confirm_on_comment` が `true` のとき書き込みを向けた項目に `true` を書く。画面の保存以外で `updated` を書き換える書き込み（`updated_by` が `ai` か `external`）が `false` に戻す。無ければ未確認として扱い、`false` に戻すときはキーごと消す。変更履歴（`history`）の `before` には入れず、付け外しで `updated`・`seq` は変えない
+        description: 利用者がその項目を確認したか。『確認済みの付け外し』が `true`・`false` を書き、コメントをまとめて送る・すぐ送るが、設定の `confirm_on_comment` が `true` のとき書き込みを向けた項目に `true` を書く。画面の保存以外で `updated` を書き換える書き込み（`updated_by` が `ai` か `external`）が `false` に戻す。無ければ未確認として扱い、`false` に戻すときはキーごと消す。行が無い項目を確認済みにするときは、`confirmed` だけを持つ行を作り、その行の `confirmed` を消すときは行ごと消す。変更履歴（`history`）の `before` には入れず、付け外しで `updated`・`seq` は変えない
         example: 'true'
   - name: changes.yaml
     title: 書き換えのまとまり
