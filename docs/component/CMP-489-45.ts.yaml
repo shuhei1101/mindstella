@@ -14,8 +14,6 @@ states:
     description: 今の条件では 0 件になる値がある。その値は文字と件数を薄くし、選べるまま残す
   - name: LongTag
     description: 長いタグ。値の文字を折り返し、件数の列を押し出さない
-  - name: KeywordHits
-    description: 検討事項のマップでキーワードに一致した項目がある。一致した件数を件数の左に印の色で出す
   - name: NoMatch
     description: 該当なし。見出しの右は「8 件中 0 件」、下端のボタンは「0 件を表示」
     args:
@@ -43,7 +41,7 @@ args:
   - name: groups[].key
     type: 文字列
     required: true
-    description: 条件の識別子（表の列の `key`。ネットワークの種類は `type`）。URL のハッシュの `f.{列}` と同じ値
+    description: 条件の識別子（表の列の `key`）。URL のハッシュの `f.{列}` と同じ値
     status: implemented
   - name: groups[].label
     type: 文字列
@@ -53,7 +51,7 @@ args:
   - name: groups[].values
     type: オブジェクトの配列
     required: true
-    description: 選べる値の並び（`value`・`count`、マップでは `hit` も）。並びは状態などの決まった順、ほかは五十音の順。`count` は、その条件以外の条件で絞った項目のうち、その値を持つ件数。0 件の値も並べ、文字を薄くする。`hit` はマップのキーワードに一致した件数で、1 以上のときだけ件数の左に出す
+    description: 選べる値の並び（`value`・`count`）。並びは状態などの決まった順、ほかは五十音の順。`count` は、その条件以外の条件で絞った項目のうち、その値を持つ件数。0 件の値も並べ、文字を薄くする
     status: implemented
   - name: groups[].mark
     type: 列挙

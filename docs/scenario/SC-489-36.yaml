@@ -60,9 +60,9 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませ、`config.yaml` が見た目の既定と表示する種類の既定を持たないワークスペース
+        description: 作成を済ませ、`config.yaml` が表示する種類の既定を持たないワークスペース
       - name: 書き換える設定
-        description: ネットワークの見た目の既定を `starlight` にし、表示する種類の既定から会話ログを外す
+        description: 表示する種類の既定から会話ログを外す
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -70,14 +70,14 @@ scenarios:
         participant SV as サーバー
         participant WS as ワークスペース
 
-        CC->>SV: 見た目の既定と表示する種類の既定を渡す
+        CC->>SV: 表示する種類の既定を渡す
         SV->>WS: config.yaml を読む
         SV->>SV: 渡したキーを置き換え、スキーマと突き合わせる
         SV->>WS: config.yaml を書く
         SV-->>CC: 書き換えた後の設定
       ```
     expected:
-      - '`config.yaml` の見た目の既定が `starlight` で、表示する種類の既定が会話ログを除いた種類である'
+      - '`config.yaml` の表示する種類の既定が会話ログを除いた種類である'
       - '`summary`・`history_limit` が呼ぶ前と同じである'
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_display_defaults_changed

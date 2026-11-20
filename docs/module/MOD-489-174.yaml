@@ -36,7 +36,7 @@ directory: |
       chips-input.ts        チップの入力（部品設計『チップの入力』）
     screens/
       overview.ts         概要
-      decisions.ts        検討事項（ボード・マップ・表）
+      decisions.ts        検討事項（ボード・表）
       tasks.ts            タスク（ボード・表）
       docs.ts             資料（カード・ボード・表）
       records.ts          調査・用語集・メモ・会話ログ（表）
@@ -48,9 +48,6 @@ directory: |
       settings.ts         表示の設定（左から出すパネル）と既定の保存の確かめ・既定が変わった知らせ
       search.ts           全体の検索
       diagram-viewer.ts   図の拡大
-    graph/
-      looks.ts            ネットワークの 5 つの見た目の描き方と、一度だけ焼く絵（光の玉・光条・深宇宙の空）
-      graph.ts            ネットワーク（3D）。玉と線の配置・視点・押下とロック・名前と印の重ね描き
   ```
 
   `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py`・`test_diff_minimap.py`・`test_body_diff_layout_switch.py`・`test_side_by_side_body_diff.py`・`test_markdown_body.py`・`test_review_body_fold.py`・`test_tag_list.py`・`test_chips_input.py` に置く。

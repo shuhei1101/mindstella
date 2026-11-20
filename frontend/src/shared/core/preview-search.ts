@@ -5,17 +5,16 @@ import { bodyFormatOf, type Kind, type RecordIndex } from "@/shared/core/records
 
 /** 画面が持つ表示形式 */
 const VIEWS_OF_TAB: Record<string, readonly string[]> = {
-  decisions: ["board", "map", "table"],
+  decisions: ["board", "table"],
   tasks: ["board", "table"],
   docs: ["cards", "board", "table"],
-  graph: [],
 };
 
 const F_PREFIX = "f.";
 
 export const PreviewSearchSchema = z.object({
-  tab: z.enum(["overview", "decisions", "tasks", "research", "docs", "terms", "notes", "logs", "graph", "settings"]).optional().catch(undefined),
-  view: z.enum(["map", "board", "cards", "table"]).optional().catch(undefined),
+  tab: z.enum(["overview", "decisions", "tasks", "research", "docs", "terms", "notes", "logs", "settings"]).optional().catch(undefined),
+  view: z.enum(["board", "cards", "table"]).optional().catch(undefined),
   id: z.string().regex(/^[DTRAGNL]-\d+$/).optional().catch(undefined),
   full: z.enum(["1"]).optional().catch(undefined),
   h: z.string().optional().catch(undefined),
@@ -99,7 +98,7 @@ const diffExists = (diff: string, index: RecordIndex): boolean => {
 export const normalizeSearch = (search: PreviewSearch, context: SearchContext): PreviewSearch => {
   const { index, pendingCount, visibleKinds, diffActive, sortColumns, threadIds, threadTags } = context;
   const next: PreviewSearch = { ...search };
-  const hidden = next.tab !== undefined && next.tab !== "overview" && next.tab !== "settings" && next.tab !== "graph" && !visibleKinds.includes(next.tab);
+  const hidden = next.tab !== undefined && next.tab !== "overview" && next.tab !== "settings" && !visibleKinds.includes(next.tab);
   if (hidden || (next.tab === "settings" && diffActive)) delete next.tab;
   if (next.view !== undefined && !(VIEWS_OF_TAB[next.tab ?? ""] ?? ["table"]).includes(next.view)) delete next.view;
   const entry = next.id === undefined ? undefined : index.byId.get(next.id);

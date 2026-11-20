@@ -122,27 +122,6 @@ export const LongTag: Story = {
   },
 };
 
-/** 検討事項のマップでキーワードに一致した項目がある。一致した件数を件数の左に印の色で出す */
-export const KeywordHits: Story = {
-  args: {
-    groups: [
-      {
-        key: "status",
-        label: "状態",
-        mark: "status",
-        values: [
-          { value: "要見直し", count: 3, hit: 1 },
-          { value: "未決定", count: 5, hit: 2 },
-          { value: "保留", count: 4, hit: 0 },
-        ],
-      },
-    ],
-    selected: { status: ["要見直し", "未決定", "保留"] },
-    total: 12,
-    shown: 12,
-  },
-};
-
 /** 該当なし。見出しの右は「8 件中 0 件」、下端のボタンは「0 件を表示」 */
 export const NoMatch: Story = {
   args: { selected: { kind: ["作業"], status: ["未着手"] }, shown: 0 },

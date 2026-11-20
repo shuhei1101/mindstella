@@ -2052,11 +2052,10 @@ namespace MindmapPreview {
   /** 詳細パネルの幅の決まり（px）。既定の幅・ドラッグで変えられる下限・上限を決める残す幅（本文を寄せる幅は本文に、重ねる幅は左に）・矢印キー 1 回の刻み・幅を変えられる表示の幅の下限・本文を寄せる表示の幅の下限（`style.css` の境目と同じ値） */
   export const PANEL_WIDTH = { default: 640, min: 480, keepBody: 400, keepLeft: 160, step: 16, resizableFrom: 901, sideFrom: 1100 } as const;
 
-  /** 表示の幅と、本文を寄せるかから、詳細パネルの幅の上限を返す */
-  export function panelWidthMax({ viewport, mapView }: { viewport: number; mapView: boolean }): number {
-    // 本文を寄せる幅（マップは幅を変えられる幅ならいつも寄せる）は本文に残す幅、重ねる幅は左に残す幅を、表示の幅から引く
-    const aligned = viewport >= PANEL_WIDTH.sideFrom || (mapView && viewport >= PANEL_WIDTH.resizableFrom);
-    return viewport - (aligned ? PANEL_WIDTH.keepBody : PANEL_WIDTH.keepLeft);
+  /** 表示の幅から、詳細パネルの幅の上限を返す */
+  export function panelWidthMax({ viewport }: { viewport: number }): number {
+    // 本文を寄せる幅は本文に残す幅、重ねる幅は左に残す幅を、表示の幅から引く
+    return viewport - (viewport >= PANEL_WIDTH.sideFrom ? PANEL_WIDTH.keepBody : PANEL_WIDTH.keepLeft);
   }
 
   /** 詳細パネルの幅を下限以上・上限以下に収め、整数に丸めて返す */
@@ -2068,7 +2067,7 @@ namespace MindmapPreview {
   let draggingPanelWidth: number | null = null;
 
   /** 詳細パネルの左端に置く幅の区切り。ドラッグと矢印キーで幅を変え、ドラッグを終えたときとキーで変えたときに `onChange` で知らせる */
-  export function panelResizer({ stored, mapView, onChange }: { stored: number | null; mapView: () => boolean; onChange: (width: number) => void }): HTMLElement {
+  export function panelResizer({ stored, onChange }: { stored: number | null; onChange: (width: number) => void }): HTMLElement {
     const separator = h({
       tag: "div",
       attrs: { class: "panel-resizer", role: "separator", tabindex: "0", "aria-orientation": "vertical", "aria-label": "詳細パネルの幅", "aria-valuemin": PANEL_WIDTH.min },
@@ -2077,7 +2076,7 @@ namespace MindmapPreview {
     let wanted = draggingPanelWidth ?? stored ?? PANEL_WIDTH.default;
     // 画面へ当てている幅
     let shown = wanted;
-    const maxWidth = (): number => panelWidthMax({ viewport: innerWidth, mapView: mapView() });
+    const maxWidth = (): number => panelWidthMax({ viewport: innerWidth });
     /** 持っている幅を今の上限に収めて画面へ当てる（詳細パネルの幅と本文の寄せは `--panel-w` を読む）。当てた幅を返す */
     const apply = (): number => {
       const max = maxWidth();

@@ -1,6 +1,6 @@
 id: MOD-489-58
 title: プレビュー / libraries
-lead: 描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」）。
+lead: 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」）。
 constants:
   - name: LIBRARIES
     title: 描画のライブラリの一覧

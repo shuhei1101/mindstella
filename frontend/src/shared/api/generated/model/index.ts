@@ -31,7 +31,6 @@ export * from './itemList';
 export * from './kind';
 export * from './loc';
 export * from './locKind';
-export * from './networkLook';
 export * from './openedPoint';
 export * from './openedReply';
 export * from './post';

@@ -52,7 +52,7 @@
   /* 検索で当たった語の地 */
   --yellow-200: #fde68a;
   --yellow-900: #5c4a12;
-  /* ネットワークの種類の色（ライト / ダーク） */
+  /* 項目の種類の色（ライト / ダーク） */
   --kind-dec-light: #3f8f7c;
   --kind-dec-dark: #7ee0c3;
   --kind-task-light: #5b7fc9;
@@ -134,14 +134,6 @@
   --k-term: var(--kind-term-light);
   --k-note: var(--kind-note-light);
   --k-log: var(--kind-log-light);
-  /* ネットワークの地: 紙のような明るい地にざらつき */
-  --g-label: #2a2f36;
-  --g-line: rgba(30, 60, 55, .3);
-  --g-dot: #2f8a74;
-  --g-bg: #f1f1ee;
-  --g-bg-center: #fbfbf9;
-  --g-grain: rgba(60, 50, 30, .06);
-  --g-glow: rgba(255, 255, 255, 0);
 }
 
 /* ===== セマンティック: ダーク ===== */
@@ -188,14 +180,6 @@
     --k-term: var(--kind-term-dark);
     --k-note: var(--kind-note-dark);
     --k-log: var(--kind-log-dark);
-    /* ネットワークの地: 墨色に淡い光のにじみ */
-    --g-label: #e3e6ea;
-    --g-line: rgba(190, 230, 220, .3);
-    --g-dot: #a0f0d7;
-    --g-bg: #141417;
-    --g-bg-center: #1e1f24;
-    --g-grain: rgba(0, 0, 0, 0);
-    --g-glow: rgba(120, 220, 200, .10);
   }
 }
 /* ダークに固定したとき */
@@ -240,13 +224,6 @@
   --k-term: var(--kind-term-dark);
   --k-note: var(--kind-note-dark);
   --k-log: var(--kind-log-dark);
-  --g-label: #e3e6ea;
-  --g-line: rgba(190, 230, 220, .3);
-  --g-dot: #a0f0d7;
-  --g-bg: #141417;
-  --g-bg-center: #1e1f24;
-  --g-grain: rgba(0, 0, 0, 0);
-  --g-glow: rgba(120, 220, 200, .10);
 }
 /* ライトに固定したとき */
 :root[data-theme="light"] { color-scheme: light; }

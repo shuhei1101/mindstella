@@ -190,13 +190,8 @@ export type Settings = {
   mdmark?: MdmarkSettings;
 };
 
-/** ネットワークの見た目の値 */
-export type NetworkLook = "glow" | "starlight" | "constellation" | "deep" | "dust";
-
 /** ワークスペースの表示の既定（`config.yaml` の `display`） */
 export type DisplayDefaults = {
-  /** ネットワークの見た目。無ければ `deep` */
-  network_look?: NetworkLook;
   /** 表示する種類。無ければ全ての種類 */
   visible_kinds?: Kind[];
 };

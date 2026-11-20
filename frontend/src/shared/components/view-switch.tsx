@@ -3,9 +3,9 @@ import { Icon, type IconName } from "@/shared/components/icon";
 import { cn } from "@/shared/lib/cn";
 
 /** 表示形式 */
-export type View = "map" | "board" | "cards" | "table";
+export type View = "board" | "cards" | "table";
 
-const VIEW_ICON: Record<View, IconName> = { map: "map", board: "board", cards: "cards", table: "table" };
+const VIEW_ICON: Record<View, IconName> = { board: "board", cards: "cards", table: "table" };
 
 export type ViewSwitchProps = {
   views: { key: View; label: string }[];

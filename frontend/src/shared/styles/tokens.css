@@ -55,7 +55,7 @@
   --radius: 4px;
   --control-h: 32px;
   --target-min: 24px;
-  /* 項目の種類の色（ネットワークの玉。今の画面の tokens.css と同じ値） */
+  /* 項目の種類の色（種類の点。今の画面の tokens.css と同じ値） */
   --kind-dec-light: #3f8f7c;
   --kind-dec-dark: #7ee0c3;
   --kind-task-light: #5b7fc9;
@@ -113,7 +113,7 @@
   /* トップバーの上の失敗と未読の点（明暗どちらでも暗い帯の上で読める色） */
   --topbar-danger: var(--red-300);
   --topbar-unread: var(--teal-400);
-  /* ネットワークの玉・名前・線・流れる点 */
+  /* 項目の種類の色（種類の点） */
   --k-dec: var(--kind-dec-light);
   --k-task: var(--kind-task-light);
   --k-res: var(--kind-res-light);
@@ -121,9 +121,6 @@
   --k-term: var(--kind-term-light);
   --k-note: var(--kind-note-light);
   --k-log: var(--kind-log-light);
-  --g-label: #2a2f36;
-  --g-line: rgba(30, 60, 55, .3);
-  --g-dot: #2f8a74;
 }
 
 /* ===== セマンティック: ダーク ===== */
@@ -171,9 +168,6 @@
     --k-term: var(--kind-term-dark);
     --k-note: var(--kind-note-dark);
     --k-log: var(--kind-log-dark);
-    --g-label: #e3e6ea;
-    --g-line: rgba(190, 230, 220, .3);
-    --g-dot: #a0f0d7;
   }
 }
 
@@ -222,9 +216,6 @@
   --k-term: var(--kind-term-dark);
   --k-note: var(--kind-note-dark);
   --k-log: var(--kind-log-dark);
-  --g-label: #e3e6ea;
-  --g-line: rgba(190, 230, 220, .3);
-  --g-dot: #a0f0d7;
 }
 
 /* ライトに固定したとき */

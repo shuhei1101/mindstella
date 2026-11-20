@@ -79,7 +79,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませ、`config.yaml` の `display.network_look` を `rainbow` に直接書き換えたワークスペース
+        description: 作成を済ませ、`config.yaml` の `display.visible_kinds` を `[rainbow]` に直接書き換えたワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -94,7 +94,7 @@ flows:
       ```
     expected:
       - ツールのエラーになる
-      - 'エラーの本文に `config.yaml: display.network_look: ` で始まり、選べる値を含む行がある'
+      - 'エラーの本文に `config.yaml: display.visible_kinds` で始まり、選べる値を含む行がある'
       - 同じワークスペースでもう一度呼ぶと、配信を立てずに同じエラーになる（配信が立っていない）
     test: test_error_when_config_invalid
   - name: 異常系（待ち受けを立てられない・ServeFailedError）

@@ -37,19 +37,19 @@ def test_normal(
     serve_preview: Callable[[Path], str],
     open_events: Callable[[str], EventStream],
 ) -> None:
-    """見た目の既定と表示する種類の既定を書き、ほかのキーを残す（正常系）。"""
+    """表示する種類の既定を書き、ほかのキーを残す（正常系）。"""
     # 準備
     root = make_workspace()
     before = _read_settings(root)
     url = serve_preview(root)
     stream = open_events(url)
     # 実行
-    result = _put(url, {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS})
+    result = _put(url, {"visible_kinds": KINDS_WITHOUT_TERMS})
     # 検証
     assert result.status == 200
-    assert result.json()["display"]["network_look"] == "glow"
+    assert result.json()["display"]["visible_kinds"] == KINDS_WITHOUT_TERMS
     after = _read_settings(root)
-    assert after["display"] == {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS}
+    assert after["display"] == {"visible_kinds": KINDS_WITHOUT_TERMS}
     assert {key: value for key, value in after.items() if key != "display"} == before
     assert stream.wait_for_changed(CHANGED_WITHIN_SEC) is True
 
@@ -57,18 +57,18 @@ def test_normal(
 def test_error_when_value_invalid(
     make_workspace: MakeWorkspace, serve_preview: Callable[[Path], str]
 ) -> None:
-    """選べない見た目は書かない（異常系）。"""
+    """選べない種類は書かない（異常系）。"""
     # 準備
     root = make_workspace()
     url = serve_preview(root)
     before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
-    result = _put(url, {"network_look": "rainbow", "visible_kinds": KINDS_WITHOUT_TERMS})
+    result = _put(url, {"visible_kinds": ["decisions", "rainbow"]})
     # 検証
     assert result.status == 400
     detail = result.json()["detail"]
-    assert "network_look" in detail
-    assert "glow" in detail
+    assert "visible_kinds" in detail
+    assert "decisions" in detail
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == before
 
 
@@ -83,7 +83,7 @@ def test_error_when_origin_mismatch(
     # 実行
     result = _put(
         url,
-        {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS},
+        {"visible_kinds": KINDS_WITHOUT_TERMS},
         Origin="https://attacker.example",
     )
     # 検証
@@ -103,7 +103,7 @@ def test_error_when_write_fails(
     before = (root / RECORD_DIR / "config.yaml").read_bytes()
     lock_dirs(root / RECORD_DIR)
     # 実行
-    result = _put(url, {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS})
+    result = _put(url, {"visible_kinds": KINDS_WITHOUT_TERMS})
     # 検証
     assert result.status == 500
     detail = result.json()["detail"]
@@ -111,3 +111,21 @@ def test_error_when_write_fails(
     assert "Traceback" not in detail
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == before
     assert http_request(url, "/api/records").status == 200
+
+
+def test_error_when_removed_key_sent(
+    make_workspace: MakeWorkspace, serve_preview: Callable[[Path], str]
+) -> None:
+    """削除したネットワークの見た目の既定を送ると、書かずに知らないキーを返す（異常系）。"""
+    # 準備
+    root = make_workspace()
+    url = serve_preview(root)
+    before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    # 実行
+    result = _put(url, {"network_look": "glow", "visible_kinds": ["decisions"]})
+    # 検証
+    assert result.status == 400
+    detail = result.json()["detail"]
+    assert "network_look" in detail
+    assert "知らないキー" in detail
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == before

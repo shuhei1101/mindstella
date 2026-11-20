@@ -16,7 +16,6 @@ URL のハッシュに `h={見出し}` を足すと、詳細の本文のその�
 | [tasks](../../pages/tasks/126/standard/index.html) | タスクのボード。帯の下の領域の中で縦・横にスクロールする |
 | [docs](../../pages/docs/126/standard/index.html) | 資料のカード・ボード・表 |
 | [overview](../../pages/overview/126/standard/index.html) | 概要のタイル |
-| [graph](../../pages/graph/126/standard/index.html) | つながり |
 | [detail-panel](../../pages/detail-panel/126/standard/index.html) | 詳細パネルの本文の見出しのリンク・用語の印とツールチップ・項目の ID のリンク |
 | [detail-full](../../pages/detail-full/126/standard/index.html) | 詳細の全画面の大きさと本文の幅、全画面表示のボタン |
 

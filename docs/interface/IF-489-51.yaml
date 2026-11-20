@@ -105,7 +105,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
       - name: make_workspace
-        description: '`config.yaml` の `display.network_look` を `starlight` にしたワークスペース。`preview_url` を呼んだ後に `display.network_look` を `rainbow` に直接書き換える'
+        description: '`config.yaml` の `display.visible_kinds` を `[decisions]` にしたワークスペース。`preview_url` を呼んだ後に `display.visible_kinds` を `[rainbow]` に直接書き換える'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -120,8 +120,8 @@ flows:
       ```
     expected:
       - ステータスが 200
-      - '`settings.display.network_look` が `starlight`'
-      - '`settings_problem` に `config.yaml: display.network_look: ` で始まる行がある'
+      - '`settings.display.visible_kinds` が `[decisions]`'
+      - '`settings_problem` に `config.yaml: display.visible_kinds` で始まる行がある'
     test: test_normal_when_config_invalid
   - name: 正常系（HTML の本文がある）
     summary: HTML の本文は原文を `bodies` に、行の印を足したものを `marked_bodies` に返す
@@ -188,7 +188,7 @@ request:
 response:
   - name: settings
     type: dict
-    description: '`config.yaml` の中身。`display`（見た目の既定・表示する種類の既定）と `mdmark`（画面が読み込む mdmark のバージョンと map の種類）を含む。`config.yaml` がスキーマに合わないときは、配信が持つ最後に検査に通った設定'
+    description: '`config.yaml` の中身。`display`（表示する種類の既定）と `mdmark`（画面が読み込む mdmark のバージョンと map の種類）を含む。`config.yaml` がスキーマに合わないときは、配信が持つ最後に検査に通った設定'
   - name: decisions / tasks / research / docs / terms / notes / logs
     type: list[dict]
     description: 種類ごとの YAML の `items` の中身に、`history.yaml` のその項目の行のキー（`created`・`updated`・`updated_by`・`seq`・`added_seq`・`history`・`history_dropped_seq`）を足したもの（キー名はファイル名から `.yaml` を落としたもの）。行が無い項目はキーを足さない

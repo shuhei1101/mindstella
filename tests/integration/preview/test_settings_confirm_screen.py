@@ -14,7 +14,6 @@ from preview_settings_helpers import (
     SETTINGS_PANEL,
     open_settings,
     panel_text,
-    pick_look,
     read_config,
     read_prefs,
     tab_keys,
@@ -41,12 +40,11 @@ def _open_changed(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> tuple[Page, Path]:
-    """見た目（ネットワークのドロップダウン）を星屑・用語集（表示の設定のパネル）を外した選びにして表示の設定を開いたページと、ワークスペースのフォルダを返す。"""
+    """用語集を外した選びにして表示の設定を開いたページと、ワークスペースのフォルダを返す。"""
     url, root = write_review_preview(
         make_item("D-1"), make_item("G-1"), make_item("N-1"), settings=valid_settings
     )
-    page = open_preview(url, "#tab=graph")
-    pick_look(page, "dust")
+    page = open_preview(url, "#tab=decisions&view=table")
     open_settings(page)
     toggle_kind(page, "用語集")
     page.wait_for_selector(SAVE_DEFAULT_BUTTON)
@@ -59,7 +57,7 @@ def test_open(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """「ワークスペースの既定にする」で開き、今の既定と保存する値を並べる。最初のフォーカスは「取り消す」。変えない項目には札を付ける（正常系）。"""
+    """「ワークスペースの既定にする」で開き、今の既定と保存する値を並べる。最初のフォーカスは「取り消す」（正常系）。"""
     # 準備
     page, _ = _open_changed(write_review_preview, make_item, valid_settings, open_preview)
     # 実行
@@ -68,36 +66,12 @@ def test_open(
     # 検証
     assert page.inner_text(f"{CONFIRM} h2") == "ワークスペースの既定を書き換えますか"
     rows = page.locator(f"{CONFIRM} .sc-row").all_inner_texts()
-    assert len(rows) == 2
-    assert "深宇宙" in rows[0]
-    assert "星屑" in rows[0]
-    assert "すべて表示" in rows[1]
-    assert "用語集を表示しない" in rows[1]
+    assert len(rows) == 1
+    assert "すべて表示" in rows[0]
+    assert "用語集を表示しない" in rows[0]
+    assert "変えない" not in rows[0]
     assert page.evaluate("document.activeElement.textContent.trim()") == "取り消す"
     assert page.get_attribute(SAVE_DEFAULT_BUTTON, "aria-haspopup") == "dialog"
-
-
-def test_unchanged_item(
-    write_review_preview: WriteReviewPreview,
-    make_item: MakeItem,
-    valid_settings: dict[str, Any],
-    open_preview: OpenPreview,
-) -> None:
-    """表示する種類を変えないときは、その行に今の値と「変えない」の札を出す（正常系）。"""
-    # 準備
-    url, _ = write_review_preview(make_item("D-1"), settings=valid_settings)
-    page = open_preview(url, "#tab=graph")
-    pick_look(page, "glow")
-    open_settings(page)
-    # 実行
-    page.click(SAVE_DEFAULT_BUTTON)
-    page.wait_for_selector(CONFIRM_OPEN)
-    # 検証
-    rows = page.locator(f"{CONFIRM} .sc-row").all_inner_texts()
-    assert "グロウ" in rows[0]
-    assert "変えない" not in rows[0]
-    assert "すべて表示" in rows[1]
-    assert "変えない" in rows[1]
 
 
 def test_save(
@@ -119,13 +93,12 @@ def test_save(
     # 検証
     config = read_config(root)
     assert config["display"] == {
-        "network_look": "dust",
         "visible_kinds": ["decisions", "tasks", "research", "docs", "notes", "logs"],
     }
     assert {key: value for key, value in config.items() if key != "display"} == config_before
     assert "ワークスペースの既定にしました（" in panel_text(page)
     # 今の選びが既定と同じになり、ボタンの代わりにその旨を出す
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
+    assert "表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
     assert read_prefs(page) == prefs_before
     page.wait_for_timeout(1500)
     assert page.locator(".stoast").count() == 0
@@ -199,7 +172,7 @@ def test_save_fails(
     page.unroute(PUT_PATTERN)
     page.get_by_role("button", name="保存する").click()
     page.wait_for_selector(CONFIRM, state="detached", timeout=SAVE_TIMEOUT_MS)
-    assert read_config(root)["display"]["network_look"] == "dust"
+    assert read_config(root)["display"]["visible_kinds"] == ["decisions", "tasks", "research", "docs", "notes", "logs"]
 
 
 def test_save_fails_when_offline(
@@ -256,7 +229,7 @@ def test_busy(
     # 保留を解くと保存が終わる
     held[0].continue_()
     page.wait_for_selector(CONFIRM, state="detached", timeout=SAVE_TIMEOUT_MS)
-    assert read_config(root)["display"]["network_look"] == "dust"
+    assert read_config(root)["display"]["visible_kinds"] == ["decisions", "tasks", "research", "docs", "notes", "logs"]
 
 
 def test_fit_smallest(

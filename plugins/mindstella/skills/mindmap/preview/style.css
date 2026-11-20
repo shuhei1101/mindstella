@@ -71,9 +71,8 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .panel-body:focus-visible { outline-offset: -2px; }
 .icon-btn { display: inline-grid; place-items: center; width: var(--control-h); height: var(--control-h); border: 1px solid transparent; background: none; border-radius: var(--radius); color: var(--text-2); }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
-/* 幅 1100px 以上（マップは 901px 以上）は、詳細パネルの分だけ本文を寄せる（それより狭いと重ねる）。左右の余白は中央に寄せる分をやめて `--page-pad` に戻す */
+/* 幅 1100px 以上は、詳細パネルの分だけ本文を寄せる（それより狭いと重ねる）。左右の余白は中央に寄せる分をやめて `--page-pad` に戻す */
 @media (min-width: 1100px) { body.panel-open .content { max-width: none; margin-right: var(--panel-w); padding-inline: var(--page-pad); } }
-@media (min-width: 901px) { body.panel-open .content.map-view { max-width: none; margin-right: var(--panel-w); padding-inline: var(--page-pad); } }
 
 /* ===== 部品 ===== */
 .btn { display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
@@ -201,31 +200,6 @@ th:hover .th-tool.pin, th:focus-within .th-tool.pin, .th-tool.pin[aria-pressed="
 .card .c-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; color: var(--text-2); font-size: var(--fs-xs); }
 .card .c-for { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-soft); font-size: var(--fs-xs); color: var(--text-2); }
 
-/* ===== マップ ===== */
-/* 表示するものが無いとき: 枠の中央に空の旨を出す（押しても邪魔にならない） */
-.map-empty { position: absolute; left: 0; right: 0; top: 40%; z-index: 1; margin: 0; text-align: center; pointer-events: none; }
-.map-wrap { position: relative; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
-  background-image: radial-gradient(var(--border-soft) 1px, transparent 1px); background-size: 20px 20px; }
-.map-sizer { position: relative; }
-.map-canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-.zoom { position: sticky; left: calc(100% - 190px); bottom: 12px; display: inline-flex; align-items: center; gap: 2px; padding: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); }
-.zoom .icon-btn { font-size: 16px; width: 30px; height: 30px; }
-.zoom .btn { height: 30px; }
-.zoom .btn[aria-pressed="true"] { color: var(--accent); font-weight: 600; }
-.map-canvas svg.edges { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
-.edge-tree { fill: none; stroke: var(--accent); stroke-width: 1.5; opacity: .55; }
-.edge-dep { fill: none; stroke: var(--text-3); stroke-width: 1.25; stroke-dasharray: 4 4; opacity: .55; }
-.edge-dep.hot { stroke: var(--accent); opacity: 1; stroke-width: 1.75; }
-.map-node { position: absolute; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: var(--radius); font-size: var(--fs-small); white-space: nowrap; overflow: hidden; }
-.map-node .lbl { overflow: hidden; text-overflow: ellipsis; }
-.n-root { background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 15px; white-space: normal; line-height: 1.35; padding: 6px 12px; }
-button.n-item { flex-direction: column; align-items: stretch; justify-content: center; gap: 1px; padding: 0 10px; background: var(--surface); border: 1px solid var(--border); color: var(--text); text-align: left; cursor: pointer; }
-button.n-item:hover { border-color: var(--accent); }
-button.n-item.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
-button.n-item.off { color: var(--text-3); border-style: dashed; }
-.n-item .r1 { display: flex; align-items: center; gap: 7px; font-weight: 600; min-width: 0; }
-.n-item .r2 { display: flex; gap: 8px; color: var(--text-3); font-size: var(--fs-xs); padding-left: 17px; }
-.map-outline { display: none; }
 .motion-btn[hidden] { display: none; }
 
 /* ===== 詳細パネルの中身 ===== */
@@ -394,9 +368,6 @@ dialog.search::backdrop { background: var(--scrim); }
   .search-trigger .label, .search-trigger kbd, .brand-sub { display: none; }
   .table-wrap [data-pri="4"], .table-wrap [data-pri="5"] { display: none; }
   .panel-close-x { display: none; }
-  /* 狭い幅のマップは、マップと倍率の操作を隠し、字下げした縦の一覧にする */
-  .map-view-root .map-frame, .map-view-root .zoom { display: none; }
-  .map-outline { display: block; }
 }
 @media (min-width: 901px) { .panel-back { display: none; } }
 @media (max-width: 720px) {
@@ -415,13 +386,6 @@ dialog.search::backdrop { background: var(--scrim); }
   .toolbar .grow { max-width: none; flex-basis: 100%; }
   .board { grid-template-columns: 1fr; }
 }
-.map-outline ul { list-style: none; margin: 0; padding: 0; }
-.map-outline ul ul { margin-left: 9px; padding-left: 14px; border-left: 1px solid var(--accent-line); }
-.map-outline li { padding: 3px 0; }
-.map-outline .o-t { font-weight: 700; font-size: 16px; margin-top: 8px; }
-.map-outline .o-c { font-weight: 700; margin-top: 6px; }
-.map-outline .o-s { color: var(--text-2); font-size: var(--fs-xs); margin-top: 4px; }
-.map-outline button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 0; border: 0; background: none; text-align: left; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 /* 格子の中身が表の幅に引っぱられて、狭い幅ではみ出さないようにする */
 .ov-grid > *, .ov-hero > * { min-width: 0; }
@@ -461,24 +425,10 @@ dialog.search::backdrop { background: var(--scrim); }
 @media (max-width: 1100px) { .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); } .t-goal { grid-row: auto; } .t-next { grid-column: 1 / -1; } }
 @media (max-width: 720px) { .bento { grid-template-columns: 1fr; } .t-next, .t-cat { grid-column: auto; } .hero h1 { font-size: 28px; } .cat-rows { grid-template-columns: 1fr; } .tile { padding: 20px; } .next-list .nl-ttl { font-size: 17px; } }
 
-/* ===== マップの操作 ===== */
-.edge-dep { opacity: .45; }
-.map-wrap { cursor: grab; }
-.map-wrap.dragging { cursor: grabbing; user-select: none; }
-.map-wrap button { cursor: pointer; }
 /* 広い幅のボードは列を固定幅で横に並べ、はみ出たら横にスクロールする（狭い幅は列を縦に 1 列に積む） */
 @media (min-width: 721px) { .board { grid-template-columns: repeat(var(--cols), 290px); } }
 
 /* ===== フォーカスの見せ方 ===== */
-/* マップ: フォーカスした節の根までの枝と依存の線を強調し、ほかを薄くする */
-.map-node, .edge-tree, .edge-dep { transition: opacity .12s, stroke .12s; }
-.map-canvas.focusing .map-node:not(.rel) { opacity: .28; }
-.map-canvas.focusing .edge-tree:not(.rel), .map-canvas.focusing .edge-dep:not(.rel) { opacity: .12; }
-.map-canvas.focusing .edge-tree.rel { opacity: 1; stroke-width: 2.25; }
-.map-canvas.focusing .edge-dep.rel { opacity: 1; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; }
-.map-canvas.focusing .n-stage.rel { color: var(--text); border-color: var(--accent); border-style: solid; }
-button.n-item:hover, button.n-item:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); outline: none; }
-button.n-item.sel { border-color: var(--accent); border-width: 2px; box-shadow: 0 0 0 4px var(--accent-weak); }
 /* 表: 行のどこかにフォーカスがあるときは行ごと示し、選択中の行は背景で示す */
 table.grid tbody tr:focus-within td { background: var(--row-selected); }
 table.grid tbody tr.selected td { box-shadow: inset 0 1px 0 var(--accent-line), inset 0 -1px 0 var(--accent-line); }
@@ -504,10 +454,6 @@ table.grid tbody tr.selected td { box-shadow: inset 0 1px 0 var(--accent-line), 
 .mini button .go { color: var(--text-3); }
 .mini button:hover, .mini button:focus-visible { background: var(--surface-2); }
 .go svg.icon { width: 16px; height: 16px; }
-
-/* ===== マップの枠と拡大率（拡大率のボタンはスクロールの外に置く） ===== */
-.map-frame { position: relative; }
-.map-frame .zoom { position: absolute; left: auto; right: 14px; bottom: 14px; }
 
 /* ===== 詳細パネルの幅を変える区切り ===== */
 
@@ -557,13 +503,7 @@ body.is-panel-resizing:has(.panel-resizer[data-edge="max"]) { cursor: e-resize; 
 /* 詳細を開いている資料のカード: 枠の全体と面の色で示す */
 .board-col .doc-card.selected { border-color: var(--accent); background: var(--row-selected); }
 
-/* ===== マップ: 選んだ項目の依存の線を流す ===== */
-.map-canvas.focusing .edge-dep.rel { animation: dep-flow 1s linear infinite; }
-@keyframes dep-flow { to { stroke-dashoffset: -18; } }
-.map-canvas.focusing .edge-dep.rel { animation-duration: 2s; }
-.flow-dot { fill: var(--accent); }
-
-/* ===== ネットワーク（3D） ===== */
+/* ===== 種類の点（絞り込みのドロワーの値） ===== */
 .kdot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
 /* ===== 図: ツールバー（拡大・原文・コピー）と拡大表示 ===== */
@@ -589,26 +529,11 @@ dialog.viewer.dragging .v-canvas { cursor: grabbing; }
 /* 広い幅のボード: 背景をつかんで横に動かせることを示す（狭い幅は横に送らないので示さない） */
 @media (min-width: 721px) { .board { cursor: grab; } .board.dragging { cursor: grabbing; user-select: none; } }
 
-/* ===== ネットワークの地: ライトは紙のような明るい地、ダークは深い灰色。どちらにも細かなざらつき ===== */
-.map-frame.space { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border-soft);
-  background-color: var(--g-bg);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"), radial-gradient(ellipse at 50% 45%, var(--g-bg-center) 0%, var(--g-bg) 70%); }
-.g3-wrap { display: block; width: 100%; cursor: grab; touch-action: none; }
-
 /* ===== 詳細パネル: ゆっくりすべり込む。本文の寄せは同時に切り替える ===== */
 .panel { transform: translateX(102%); visibility: hidden; transition: transform .45s cubic-bezier(.22, .8, .24, 1), visibility 0s linear .45s; }
 .panel.open { transform: none; visibility: visible; transition: transform .45s cubic-bezier(.22, .8, .24, 1); }
 
-/* ===== ネットワークの入口: タブの帯の右端に、ほかのタブと分けて置く ===== */
-.tab-gap { flex: 1; min-width: 16px; }
-.tab-special { gap: 6px; margin: 6px 0; height: calc(var(--tab-h) - 12px); padding: 0 14px; border: 1px solid var(--border); border-radius: var(--radius); }
-.tab-special svg.icon { color: var(--accent); }
-.tab-special[aria-selected="true"], .tab-special[aria-current="page"] { border-color: var(--accent); background: var(--accent-weak); border-bottom-width: 1px; }
-
 .d-title { margin-top: 10px; }
-
-/* ダークのネットワークの地: 墨色に淡い光のにじみ */
-:root[data-theme="dark"] .map-frame.space { background-image: radial-gradient(40% 50% at 50% 45%, var(--g-glow), transparent 70%), radial-gradient(ellipse at 50% 50%, var(--g-bg-center) 0%, var(--g-bg) 75%); }
 
 /* 表示形式の切り替えは、どのタブでも同じ幅・同じ位置にする（切り替えでちらつかないように） */
 .segment button { min-width: 92px; justify-content: center; }
@@ -623,13 +548,6 @@ dialog.viewer.dragging .v-canvas { cursor: grabbing; }
 
 /* ===== 表示形式の切り替え: どのタブでも同じ幅・同じ位置 ===== */
 .segment button { width: var(--view-switch-item-width, 96px); min-width: 0; }
-
-/* ===== マップのキーワード: 名前に含む項目を黄色で強調し、ドロワーの値に一致した件数を付ける ===== */
-.map-node.hit { background: var(--hit); }
-/* 当たった件数のバッジ（絞り込みのドロワーの値） */
-.fd-opt .hit-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--radius); background: var(--hit); color: var(--text); font: 600 11px var(--font-mono); }
-/* マップのキーワードの入力 */
-.map-q { min-width: 200px; }
 
 /* ===== 読めなかったライブラリ ===== */
 .lib-error { display: grid; gap: 6px; padding: 16px; border: 1px solid var(--st-review); border-radius: var(--radius); background: var(--surface); color: var(--text); }
@@ -656,12 +574,9 @@ dialog.full .panel-head { flex: none; }
 
 /* 保留のタイルの「すべて表示」: 検討事項とタスクの 2 つを並べる */
 .t-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
-/* 拡大・縮小・全体を表示: マップの枠の外の右下に固定する */
-.map-frame .zoom { position: static; width: fit-content; margin: 8px 0 0 auto; box-shadow: none; }
 
 /* 詳細パネルを並べるときは、パンくずも本文と同じだけ寄せる */
 @media (min-width: 1100px) { body.panel-open .crumbs-bar { max-width: none; margin-right: var(--panel-w); } }
-@media (min-width: 901px) { body.panel-open:has(.content.map-view) .crumbs-bar { max-width: none; margin-right: var(--panel-w); } }
 
 /* 表の該当なし: 行のセルの中で、表の枠の幅だけを左に留める（ピン留めや横に送っても見える） */
 table.grid td.no-match-cell { padding: 0; }
@@ -1120,10 +1035,6 @@ dialog.hist::backdrop { background: var(--scrim); }
 .df-mark.df-chg svg.icon { fill: currentColor; }
 /* 表の行の印: タイトルの右に置く */
 .row-open + .df-mark { margin-left: 8px; }
-/* マップの節の印: 2 行目の頭に小さく置く */
-.n-item .r2 .df-mark { width: 14px; height: 14px; }
-/* マップの節の印の記号 */
-.n-item .r2 .df-mark svg.icon { width: 9px; height: 9px; }
 
 /* ===== 消した印・消した項目の帯 ===== */
 
@@ -1149,8 +1060,6 @@ dialog.hist::backdrop { background: var(--scrim); }
 .rm-item .mono { flex: none; color: var(--text-2); white-space: nowrap; }
 /* 消したときのタイトル: 長いものは途中で切らずに折り返す */
 .rm-ttl { color: var(--text-2); overflow-wrap: anywhere; }
-/* マップ: 道具の行とマップの枠の間に置く */
-.map-view-root > .rm-band { margin-bottom: 10px; }
 
 /* ===== 取り下げの札 ===== */
 
@@ -1191,18 +1100,8 @@ table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var
 .card .c-meta { align-items: center; }
 /* カードの印: メタ情報の並びの右端に寄せる */
 .card .c-meta .cmk { margin-left: auto; }
-/* マップの節の 2 行目: 印と文字の高さを揃える */
-.n-item .r2 { align-items: center; }
-/* マップの節の印: 2 行目の右端に寄せ、節の高さに収まる大きさにする */
-.n-item .r2 .cmk { height: 16px; margin-left: auto; }
 /* 表の行の印: タイトルと差分の印の右に続ける（収まらなければ次の行へ送る） */
 .row-open ~ .cmk-place .cmk { margin-left: 8px; }
-/* 字下げの一覧の行の印: タイトルの右に続け、縮めない */
-.map-outline button .cmk { flex: none; }
-/* ネットワークの印を重ねる層: キャンバスと同じ大きさで重ね、押下はキャンバスへ通す。重なり順は層の中に閉じる */
-.g3-marks { position: absolute; inset: 0; z-index: 0; isolation: isolate; overflow: hidden; pointer-events: none; }
-/* 名前の横に付く印: 位置は描くたびにスクリプトが transform で動かす */
-.cmk.cmk-float { position: absolute; top: 0; left: 0; }
 
 /* ===== 詳細パネルの差分 ===== */
 
@@ -1425,7 +1324,7 @@ dialog.confirm h2 { margin: 0 0 8px; font-size: var(--fs-h2); }
 .st-kinds .n { color: var(--text-3); font-size: var(--fs-small); }
 /* まとめて選ぶ行: 見出し行と同じ面 */
 .st-all { background: var(--thead-bg); border-radius: var(--radius) var(--radius) 0 0; }
-/* 常に出す行（概要・ネットワーク）: 押せないことを、チェックの箱を持たない形と文言で示す */
+/* 常に出す行（概要）: 押せないことを、チェックの箱を持たない形と文言で示す */
 .st-always { color: var(--text-2); }
 /* 常に出す行のチェックの位置: チェックの箱と同じ幅を取り、印だけを置く */
 .st-always-box { display: inline-grid; flex: none; place-items: center; width: 13px; }
@@ -1607,14 +1506,6 @@ dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-ri
 
 /* ===== 画面の作り: ページを窓の高さに収め、帯の下の領域の中でスクロールする ===== */
 
-/* ネットワークの画面: 領域の高さいっぱいに広げる（低すぎる窓では領域ごとスクロールする） */
-.content > .screen.graph { flex: 1 1 0; min-height: 360px; }
-/* ネットワークの枠: 残りの高さを持つ */
-.screen.graph .map-frame { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-/* ネットワークの描く領域: 枠の高さいっぱいに広げる */
-.screen .g3-wrap { flex: 1 1 0; height: auto; min-height: 0; }
-/* マップの入れ物の道具の行・チップ: 縮めない */
-.map-view-root > * { flex-shrink: 0; }
 /* 表・ボードを 2 列以上で並べる幅: 画面を領域の高さいっぱいに広げ、中の枠で縦・横にスクロールする（低すぎる窓では領域ごとスクロールする） */
 @media (min-width: 721px) {
   .content > .screen:is(:has(.table-wrap), :has(> .board)) { flex: 1 1 0; min-height: 360px; }
@@ -1624,18 +1515,6 @@ dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-ri
   .screen .table-wrap { flex: 0 1 auto; min-height: 0; }
   /* ボード: 残りの高さを持ち、中で縦・横にスクロールする。列は最も長い列の高さまで伸ばし、カードの少ない列の見出しも留める */
   .screen > .board { flex: 1 1 0; min-height: 0; overflow: auto; align-items: stretch; margin-bottom: 0; padding-top: 0; }
-}
-/* マップを描く幅: 画面を領域の高さいっぱいに広げ、マップの描く領域の中で縦・横にスクロールする */
-@media (min-width: 901px) {
-  .content > .screen:has(.map-wrap) { flex: 1 1 0; min-height: 360px; }
-  /* マップの入れ物: 残りの高さを持つ */
-  .map-view-root { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-  /* マップの枠: 残りの高さを持つ */
-  .map-view-root > .map-frame { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-  /* マップの描く領域: 枠の高さいっぱいに広げる */
-  .screen .map-wrap { flex: 1 1 0; height: auto; min-height: 0; }
-  /* マップの拡大の道具: 描く領域の右下に重ねる */
-  .map-view-root > .zoom { position: relative; left: auto; bottom: auto; z-index: 2; align-self: flex-end; margin: -50px 14px 14px 0; }
 }
 
 /* ===== 全体の検索 ===== */
@@ -1730,27 +1609,6 @@ body:has(dialog.full[open]) .content { overflow: hidden; }
 /* 狭い幅の全画面: 余白を 8px にする */
 @media (max-width: 720px) { dialog.full { width: calc(100vw - 16px); height: calc(100dvh - 16px); } }
 
-/* ネットワークの見た目の選び: キャンバスの右上に重ねる、アイコンの無いドロップダウン。高さはほかの操作部品と揃える */
-.look-pick { position: absolute; top: 12px; right: 12px; z-index: 2; }
-/* 見た目の選びの本体: どの見た目の地の上でも読めるよう、面の色で塗る */
-.look-pick select { height: var(--control-h); padding: 0 28px 0 10px; border: 1px solid var(--border); border-radius: var(--radius); background-color: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); cursor: pointer; }
-.look-pick select:hover { border-color: var(--text-3); }
-.look-pick select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* 検討事項のマップの鍵: 節の右上の内側に置く。ふだんは隠す */
-button.n-item .lk { position: absolute; top: 3px; right: 4px; display: none; color: var(--text-3); }
-/* 鍵の大きさ: 節の名前の文字より小さくする */
-button.n-item .lk svg.icon { width: 12px; height: 12px; }
-/* 開いた鍵: ロックしていない間、詳細を開いている節にカーソルを乗せたときだけ出す */
-.map-canvas:not(.has-lock) button.n-item.sel:hover .lk { display: inline-flex; }
-/* 閉じた鍵: ロックした節にいつも出す */
-button.n-item.locked .lk { display: inline-flex; color: var(--accent); }
-/* ロックした節の枠: 詳細を開いている節と同じ色で、ロックしていることを示す */
-button.n-item.locked { border-color: var(--accent); }
-/* 鍵を出す節の 1 行目: 名前が鍵の下に入らないよう、右を空ける（2 行目の右端のコメントの印は動かさない） */
-button.n-item.sel .r1, button.n-item.locked .r1 { padding-right: 10px; }
-/* ロック中に詳細を開いた節: 強調の外でも薄くしない */
-.map-canvas.focusing button.n-item.sel { opacity: 1; }
 /* 表示の設定の種類の行のホバー: 面の色が濃くなる分、件数の文字を 1 段濃くして読めるようにする */
 .st-kinds label:hover .n { color: var(--text-2); }
 
@@ -2132,7 +1990,7 @@ body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map
 .pm.pm-remove { border-color: var(--text-2); color: var(--text-2); }
 /* 書き込めなかった編集の印: 失敗の赤の実線の枠と警告の印 */
 .pm.pm-blocked { border-style: solid; border-color: var(--st-review); color: var(--st-review); }
-/* 印だけの保存待ちの印（キー・案の見出し・マップの節・詳細パネルの見出し） */
+/* 印だけの保存待ちの印（キー・案の見出し・詳細パネルの見出し） */
 .pm.pm-compact { width: 20px; height: 18px; padding: 0; justify-content: center; }
 /* 詳細の見出し・項目名の後ろに置く印の間隔 */
 :is(dt, h3, b, .o-head, .pe-label-row, .panel-head) > .pm { margin-left: 6px; }
@@ -2140,10 +1998,8 @@ body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map
 .c-meta > .pm { align-self: center; }
 /* 表のタイトルの後ろの印 */
 .row-open + .pm, td > .pm { margin-left: 8px; }
-/* マップの節の印: 2 行目の高さに収める */
-button.n-item .r2 > .pm { height: 14px; width: 16px; }
 /* 削除の編集のある項目: タイトルに取り消し線を引き、文字を控えめにする */
-:is(.card, tr, button.n-item).pe-removing :is(.c-ttl, .row-open, .lbl) { text-decoration: line-through; color: var(--text-3); }
+:is(.card, tr).pe-removing :is(.c-ttl, .row-open) { text-decoration: line-through; color: var(--text-3); }
 /* 追加する項目の ID の代わり */
 .pe-noid { color: var(--text-3); font-size: var(--fs-xs); }
 /* 追加する項目のカード: 破線の枠で、まだ無い項目だと示す */

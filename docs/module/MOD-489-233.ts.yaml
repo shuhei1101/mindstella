@@ -35,4 +35,25 @@ components:
       - name: texts
         type: '{key, label, value}[]'
         required: false
-        description: 文字の欄。画面は表の列を `textColumns` に通して組み、`value` は `selected` の `~{列}` の文字。画面は `drawerGroups` に文字の条件で絞った行を渡し、値の件数をその行で数える。省くと文字の欄を出さない（ネットワーク）
+        description: 文字の欄。画面は表の列を `textColumns` に通して組み、`value` は `selected` の `~{列}` の文字。画面は `drawerGroups` に文字の条件で絞った行を渡し、値の件数をその行で数える。省くと文字の欄を出さない
+constants:
+  - name: KIND_COLOR_VAR
+    title: 種類の色のトークン
+    container: plugins/mindstella/skills/mindmap/preview/components/filter-drawer.ts
+    usecase: 項目を表で絞り込む
+    summary: 項目の種類 → 色のトークン。`mark` が `kind` の条件で、値の左に置く種類の点の色に使う
+    entries:
+      - key: decisions
+        value: --k-dec
+      - key: tasks
+        value: --k-task
+      - key: research
+        value: --k-res
+      - key: docs
+        value: --k-doc
+      - key: terms
+        value: --k-term
+      - key: notes
+        value: --k-note
+      - key: logs
+        value: --k-log

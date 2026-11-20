@@ -5,7 +5,7 @@ items:
   - page: CMP-489-20.tsx.yaml
     summary: "React のプレビューのトップバー。今のトップバーと同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-51.ts.yaml
-    summary: "マップ・ボード・カード・表を切り替えるセグメント"
+    summary: "ボード・カード・表を切り替えるセグメント"
   - page: CMP-489-52.tsx.yaml
     summary: "React のプレビューの表示形式の切り替え。今の表示形式の切り替えと同じ引数・イベント・状態を props で持つ"
   - page: CMP-489-47.ts.yaml

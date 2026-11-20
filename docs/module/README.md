@@ -15,9 +15,6 @@
 | [プレビュー / list-tile](./MOD-489-40.tsx.yaml) | 未読の AI の書き込み・未決定・要見直し・確認中の資料に共通の、件数と行と「すべて表示」 |
 | [プレビュー / overview-screen](./MOD-489-43.tsx.yaml) | 画面設計『概要.tsx』のトップバーとタイルを描く。記録が読めないときは detail の行を出す |
 | [プレビュー / decisions-screen](./MOD-489-18.tsx.yaml) | 画面設計『検討事項.tsx』の要素と操作を描く |
-| [プレビュー / map-layout](./MOD-489-19.ts.yaml) | マップの木を elkjs へ渡す形に組み、配置の結果を節と枝にする |
-| [プレビュー / decision-map](./MOD-489-16.tsx.yaml) | 根の下に検討事項を平らに並べた木を描き、節のロックと拡大・縮小を持つ |
-| [プレビュー / decision-outline](./MOD-489-17.tsx.yaml) | 幅 900px 以下のマップ |
 | [プレビュー / decision-board](./MOD-489-15.tsx.yaml) | 状態ごとの列に検討事項のカードを並べる |
 | [プレビュー / tasks-screen](./MOD-489-53.tsx.yaml) | 画面設計『タスク.tsx』の要素と操作を描く |
 | [プレビュー / task-board](./MOD-489-52.tsx.yaml) | 状態ごとの列にタスクのカードを並べる |
@@ -62,7 +59,7 @@
 | [プレビュー / index](./MOD-489-55.tsx.yaml) | SPA のルート（`/`）。search の検証と先読みをして `PreviewShell` を描く |
 | [プレビュー / api-client](./MOD-489-56.ts.yaml) | orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる |
 | [プレビュー / events-client](./MOD-489-57.ts.yaml) | インターフェース定義『書き換えの知らせ』 |
-| [プレビュー / libraries](./MOD-489-58.ts.yaml) | 描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」） |
+| [プレビュー / libraries](./MOD-489-58.ts.yaml) | 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」） |
 | [プレビュー / icon](./MOD-489-74.tsx.yaml) | 24px の枠に描いた線のアイコンと、状態の 10px の印 |
 | [プレビュー / topbar](./MOD-489-88.tsx.yaml) | 部品設計『トップバー.tsx』の props・イベント・状態を持つ |
 | [プレビュー / duplicate-id-notice](./MOD-540-8.tsx.yaml) | 部品設計『重なった ID の通知.tsx』の props・イベント・状態を持つ。 |
@@ -124,7 +121,6 @@
 | [プレビュー / list-rows](./MOD-489-115.ts.yaml) | 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て |
 | [プレビュー / format](./MOD-489-111.ts.yaml) | 日時と値の文字の組み立て |
 | [プレビュー / dom-parts](./MOD-489-108.ts.yaml) | mdmark が描いた本文の中へ足す要素の組み立て |
-| [プレビュー / lock](./MOD-489-116.ts.yaml) | 注目の起点のロックの判定と鍵の震え |
 | [プレビュー / comments](./MOD-489-104.ts.yaml) | コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` の DOM に触らない関数と同じ振る舞い） |
 | [プレビュー / display](./MOD-489-106.ts.yaml) | 表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い） |
 | [プレビュー / post-links](./MOD-489-119.ts.yaml) | 書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける |
@@ -135,7 +131,7 @@
 | [プレビュー / voice-store](./MOD-489-254.ts.yaml) | 画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」） |
 | [プレビュー / refresh-hold-store](./MOD-557-1.ts.yaml) | 入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の読み直しの保留」） |
 | [プレビュー / theme-store](./MOD-489-141.ts.yaml) | 今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す |
-| [プレビュー / prefs-store](./MOD-489-140.ts.yaml) | 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」） |
+| [プレビュー / prefs-store](./MOD-489-140.ts.yaml) | 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」） |
 | [プレビュー / edit-session-store](./MOD-489-138.ts.yaml) | 開いている追加の入力と、直前の保存で書き込めなかった編集 |
 | [プレビュー / display-notice-store](./MOD-489-137.ts.yaml) | 表示の設定の知らせ（ワークスペースの既定が変わった知らせと、表示の設定のパネルの `message`） |
 | [プレビュー / location-highlight-store](./MOD-489-139.ts.yaml) | コメントの一覧（レビュー中の書き込みの行・スレッドの向けた項目）から開いた項目の中で示す箇所 |
@@ -161,6 +157,7 @@
 | [サーバー / 移行 / remove_discussion_keys.py](./MOD-565-3.py.yaml) | サーバー / 移行 / remove_discussion_keys.py |
 | [サーバー / 移行 / markdown_bodies_to_mark_md.py](./MOD-527-1.py.yaml) | サーバー / 移行 / markdown_bodies_to_mark_md.py |
 | [サーバー / 移行 / move_bodies_to_root.py](./MOD-626-1.py.yaml) | サーバー / 移行 / move_bodies_to_root.py |
+| [サーバー / 移行 / remove_network_look.py](./MOD-542-1.py.yaml) | サーバー / 移行 / remove_network_look.py |
 | [サーバー / 移行 / answer_to_adopted_option.py](./MOD-489-183.py.yaml) | サーバー / 移行 / answer_to_adopted_option.py |
 | [サーバー / 移行 / submissions_to_threads.py](./MOD-489-184.py.yaml) | サーバー / 移行 / submissions_to_threads.py |
 | [サーバー / 移行 / refs_to_related.py](./MOD-540-3.py.yaml) | サーバー / 移行 / v0.13.0 の参照のキーを種類つきの関連へ移す移し替え |
@@ -203,13 +200,10 @@
 | [プレビュー / 基盤 / dom.ts](./MOD-489-199.ts.yaml) | プレビュー / 基盤 / dom.ts |
 | [プレビュー / 基盤 / edits.ts](./MOD-489-202.ts.yaml) | プレビュー / 基盤 / edits.ts |
 | [プレビュー / 基盤 / libs.ts](./MOD-489-198.ts.yaml) | プレビュー / 基盤 / libs.ts |
-| [プレビュー / 基盤 / lock.ts](./MOD-489-200.ts.yaml) | プレビュー / 基盤 / lock.ts |
 | [プレビュー / 基盤 / records.ts](./MOD-489-194.ts.yaml) | プレビュー / 基盤 / records.ts |
 | [プレビュー / 基盤 / router.ts](./MOD-489-195.ts.yaml) | プレビュー / 基盤 / router.ts |
 | [プレビュー / 基盤 / voice.ts](./MOD-489-197.ts.yaml) | プレビュー / 基盤 / voice.ts |
 | [プレビュー / 基盤 / refresh-hold.ts](./MOD-557-2.ts.yaml) | プレビュー / 基盤 / refresh-hold.ts |
-| [プレビュー / 画面と部品 / graph.ts](./MOD-489-213.ts.yaml) | プレビュー / 画面と部品 / graph.ts |
-| [プレビュー / 画面と部品 / looks.ts](./MOD-489-216.ts.yaml) | プレビュー / 画面と部品 / looks.ts |
 | [プレビュー / 画面と部品 / comments.ts](./MOD-489-218.ts.yaml) | プレビュー / 画面と部品 / comments.ts |
 | [プレビュー / 画面と部品 / decisions.ts](./MOD-489-212.ts.yaml) | プレビュー / 画面と部品 / decisions.ts |
 | [プレビュー / 画面と部品 / detail-edit.ts](./MOD-489-221.ts.yaml) | プレビュー / 画面と部品 / detail-edit.ts |
@@ -269,16 +263,8 @@
 | [サーバー / 読み書きと検証](./MOD-489-167.yaml) | ワークスペースの YAML と本文を読み書きし、JSON Schema と突き合わせる。ほかの全てのモジュールがここに依存し、ここはほかに依存しない。 |
 | [サーバー / 起動](./MOD-489-168.yaml) | 起動スクリプト（`bin/mindstella`）と SessionStart のフックが呼ぶ Python の部分。仮想環境の依存を確かめ、インストールしたプラグインのフォルダ・セッションの名前を作り、常駐サーバーが待ち受けているかを確かめて落ちていれば起動する。tmux と Claude Code の起動は起動スクリプト（bash）が持つ。 |
 | [プラグイン / エージェントフロー](./MOD-565-4.yaml) | プラグインに同梱する記録のエージェントフローと、SessionStart の注入文の雛形の置き場所。スキル（setup・session・upgrade）と `references/`・`playbooks/` は置かない。 |
-| [プレビュー / graph-screen](./MOD-489-244.tsx.yaml) | 画面設計『ネットワーク.tsx』の要素と操作を描く |
-| [プレビュー / graph-canvas](./MOD-489-245.tsx.yaml) | 3D のキャンバスと重ねる層を描き、毎コマの描画を GraphRenderer に任せる |
-| [プレビュー / graph-renderer](./MOD-489-246.ts.yaml) | 今の画面の graph.ts の視点・操作・毎コマの描画を、React に依存しない描画として移す |
-| [プレビュー / graph-model](./MOD-489-247.ts.yaml) | ネットワークの玉と線、描く項目、絞る条件を求める |
-| [プレビュー / looks](./MOD-489-248.ts.yaml) | ネットワークの 5 つの見た目の描き方 |
-| [プレビュー / graph-store](./MOD-489-249.ts.yaml) | ネットワークのロックを、画面を離れても残るようにページの間だけ持つ |
-| [プレビュー / look-select](./MOD-489-250.tsx.yaml) | ネットワークの見た目のドロップダウン |
 | [プレビュー / search-dialog](./MOD-489-251.tsx.yaml) | 画面設計『全体の検索.tsx』の要素と操作を描く |
 | [プレビュー / use-search-shortcut](./MOD-489-252.ts.yaml) | Ctrl+K（macOS は Cmd+K）で全体の検索を開く |
-| [プレビュー / decisions-store](./MOD-489-253.ts.yaml) | 検討事項のマップのロックを、タブを移っても残るようにページの間だけ持つ |
 | [プレビュー / React](./MOD-489-170.yaml) | React のプレビューのファイルの並び・つながり・置き場所の決まり。各ファイルの設計書は `モジュール構成/frontend/` の下に置く。 |
 | [プレビュー / 基盤](./MOD-489-172.yaml) | 画面が共通で使う土台。記録の索引と画面に出す値の計算、描画のライブラリの呼び出しと読めないときの知らせ、URL のハッシュと履歴、コメント・返信の入力の録音を持つ。 |
 | [プレビュー / 画面と部品](./MOD-489-174.yaml) | 部品（表・トップバー・表示形式の切り替え）と画面。どれも「引数を受けて要素を返す関数」で、操作は引数のコールバックで入口に知らせる。 |

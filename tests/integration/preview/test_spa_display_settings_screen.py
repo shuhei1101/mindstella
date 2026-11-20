@@ -122,7 +122,7 @@ def test_defaults_changed_notice(page: Page, spa_preview: str) -> None:
     _open(page, spa_preview)
     origin = page.evaluate("location.origin")
     # 実行（他の人の保存として、既定の書き換えを直に送る）
-    response = page.request.put(f"{origin}/api/config/display", data={"network_look": "dust", "visible_kinds": ["decisions", "tasks"]})
+    response = page.request.put(f"{origin}/api/config/display", data={"visible_kinds": ["decisions", "tasks"]})
     # 検証
     assert response.status == 200
     notice = page.get_by_role("status").filter(has_text="ワークスペースの既定が変わりました。")

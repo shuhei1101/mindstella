@@ -3,20 +3,13 @@ title: 既定の保存の確かめ
 implementation: frontend/src/features/settings/display-settings/components/settings-confirm.tsx#SettingsConfirm
 story: Settings/SettingsConfirm
 states:
-  - name: BothChanged
-    description: 2 つの項目を変える。今の既定と保存する値を矢印で並べる。最初のフォーカスは取り消す
+  - name: KindsChanged
+    description: 表示する種類を変える。今の既定と保存する値を矢印で並べる。最初のフォーカスは取り消す
     args:
       - name: from
-        value: '{"look": "starlight", "visible_kinds": "メモを除いた 6 種類"}'
+        value: '{"visible_kinds": "メモを除いた 6 種類"}'
       - name: to
-        value: '{"look": "dust", "visible_kinds": "全ての種類"}'
-  - name: OneUnchanged
-    description: 表示する種類を変えない。今の値に「変えない」の札を付ける
-    args:
-      - name: from
-        value: '{"look": "deep", "visible_kinds": "全ての種類"}'
-      - name: to
-        value: '{"look": "glow", "visible_kinds": "全ての種類"}'
+        value: '{"visible_kinds": "全ての種類"}'
   - name: Busy
     description: 保存している途中。ボタンを押せなくし、保存するボタンに待つ印を出す
     args:
@@ -36,19 +29,19 @@ states:
     description: 幅 320pxで外した種類が多い。値を折り返す
     args:
       - name: to
-        value: '{"look": "constellation", "visible_kinds": ["logs"]}'
+        value: '{"visible_kinds": ["logs"]}'
     notes:
       見せ方: Storybook の画面幅を 320px にして見せる
-lead: 表示の設定の「ワークスペースの既定にする」で開くモーダル。見出し「ワークスペースの既定を書き換えますか」の下に、ネットワークの見た目と表示する種類の今の既定と保存する値を並べ、取り消すと保存するを出す。
+lead: 表示の設定の「ワークスペースの既定にする」で開くモーダル。見出し「ワークスペースの既定を書き換えますか」の下に、表示する種類の今の既定と保存する値を並べ、取り消すと保存するを出す。
 args:
   - name: from
     type: オブジェクト
     required: true
-    description: 今のワークスペースの既定（`look`・`visible_kinds`）
+    description: 今のワークスペースの既定（`visible_kinds`）
   - name: to
     type: オブジェクト
     required: true
-    description: 保存する値（表示の設定で今当てている `look`・`visible_kinds`）。項目ごとに、変える項目は「{今の既定} → {保存する値}」、変えない項目は今の値と「変えない」の札を出す。表示する種類は「すべて表示」か「{外した種類}を表示しない」で書く
+    description: 保存する値（表示の設定で今当てている `visible_kinds`）。「{今の既定} → {保存する値}」で出す。表示する種類は「すべて表示」か「{外した種類}を表示しない」で書く
   - name: busy
     type: 真偽値
     required: false

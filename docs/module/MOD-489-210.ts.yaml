@@ -84,4 +84,4 @@ components:
         type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
         required: false
         default: 'null'
-        description: '`decisionsScreen` の `edit` と同じ（マップは無い）'
+        description: '`decisionsScreen` の `edit` と同じ'

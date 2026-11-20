@@ -6,11 +6,6 @@ import { cn } from "@/shared/lib/cn";
 /** アイコンの名前 → SVG の中身 */
 const ICONS = {
   spin: <path d="M12 3a9 9 0 1 0 9 9"/>,
-  map: (
-    <>
-      <circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 12h3l4-5M11.5 12l4 5"/>
-    </>
-  ),
   board: (
     <>
       <rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="11" rx="1"/><rect x="17" y="4" width="4" height="7" rx="1"/>
@@ -199,11 +194,6 @@ const ICONS = {
   alert: (
     <>
       <path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/>
-    </>
-  ),
-  network: (
-    <>
-      <path d="M4 18.5 10 13.5l5 3M10 13.5 7.5 6.5M15 16.5l3.2-6.6" strokeWidth="1.15"/><circle cx="4" cy="18.5" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="13.5" r="2.2" fill="currentColor" stroke="none"/><circle cx="15" cy="16.5" r="1.8" fill="currentColor" stroke="none"/><circle cx="7.5" cy="6.5" r="1.8" fill="currentColor" stroke="none"/><path d="m19 1.8 1.05 3.15L23.2 6l-3.15 1.05L19 10.2l-1.05-3.15L14.8 6l3.15-1.05Z" fill="currentColor" stroke="none"/>
     </>
   ),
   flag: (

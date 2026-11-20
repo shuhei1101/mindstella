@@ -20,8 +20,8 @@ const meta = {
     return stage;
   },
   args: {
-    from: { look: "deep", kinds: ALL_KINDS },
-    to: { look: "glow", kinds: ALL_KINDS },
+    from: { kinds: KINDS_WITHOUT_NOTES },
+    to: { kinds: ALL_KINDS },
     on: { save: fn(), cancel: fn() },
   },
 } satisfies Meta<MindmapPreview.SettingsConfirmProps>;
@@ -30,16 +30,8 @@ export default meta;
 
 type Story = StoryObj<MindmapPreview.SettingsConfirmProps>;
 
-/** 2 つの項目を変える。今の既定と保存する値を矢印で並べる。最初のフォーカスは取り消す */
-export const BothChanged: Story = {
-  args: {
-    from: { look: "starlight", kinds: KINDS_WITHOUT_NOTES },
-    to: { look: "dust", kinds: ALL_KINDS },
-  },
-};
-
-/** 表示する種類を変えない。今の値に「変えない」の札を付ける */
-export const OneUnchanged: Story = {};
+/** 表示する種類を変える。今の既定と保存する値を矢印で並べる。最初のフォーカスは取り消す */
+export const KindsChanged: Story = {};
 
 /** 保存している途中。ボタンを押せなくし、保存するボタンに待つ印を出す */
 export const Busy: Story = { args: { busy: true } };
@@ -62,7 +54,7 @@ export const ErrorOffline: Story = {
 
 /** 幅 320px で外した種類が多い。値を折り返す */
 export const Narrow: Story = {
-  args: { to: { look: "constellation", kinds: new Set(["logs"]) } },
+  args: { to: { kinds: new Set(["logs"]) } },
   parameters: {
     viewport: {
       options: { narrow: { name: "幅 320px", styles: { width: "320px", height: "720px" } } },

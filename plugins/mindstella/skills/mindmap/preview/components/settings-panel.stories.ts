@@ -9,6 +9,9 @@ const ALL_KINDS = new Set(["decisions", "tasks", "research", "docs", "terms", "n
 /** メモを除いた 6 種類 */
 const KINDS_WITHOUT_NOTES = new Set(["decisions", "tasks", "research", "docs", "terms", "logs"]);
 
+/** 会話ログを除いた 6 種類 */
+const KINDS_WITHOUT_LOGS = new Set(["decisions", "tasks", "research", "docs", "terms", "notes"]);
+
 /** 種類ごとの件数 */
 const COUNTS = { decisions: 12, tasks: 8, research: 3, docs: 5, terms: 9, notes: 4, logs: 20 };
 
@@ -21,8 +24,6 @@ const meta = {
     return drawer;
   },
   args: {
-    look: "deep",
-    defaultLook: "deep",
     kinds: ALL_KINDS,
     defaultKinds: ALL_KINDS,
     counts: COUNTS,
@@ -39,13 +40,11 @@ type Story = StoryObj<MindmapPreview.SettingsPanelProps>;
 /** 開いた直後（ワークスペースの既定のまま）。「既定に戻す」と「ワークスペースの既定にする」を出さず、そのことを文言で示す */
 export const Default: Story = {};
 
-/** この端末で変えている。上書きを持つ 5 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く */
+/** この端末で変えている。上書きを持つ 4 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く */
 export const Overridden: Story = {
   args: {
-    look: "dust",
-    defaultLook: "starlight",
     defaultKinds: KINDS_WITHOUT_NOTES,
-    overrides: ["ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）", "絞り込み（タスク）"],
+    overrides: ["表示する種類", "ライト / ダーク", "表の列（調査）", "絞り込み（タスク）"],
   },
 };
 
@@ -60,9 +59,9 @@ export const SomeKindsHidden: Story = {
 /** 既定にした直後。今の選びが既定と同じになり、ボタンの代わりにそのことと保存した知らせを出す */
 export const Saved: Story = {
   args: {
-    look: "glow",
-    defaultLook: "glow",
-    overrides: ["ネットワークの見た目"],
+    kinds: KINDS_WITHOUT_LOGS,
+    defaultKinds: KINDS_WITHOUT_LOGS,
+    overrides: ["表示する種類"],
     message: { kind: "ok", text: "ワークスペースの既定にしました（10/05 14:20）。" },
   },
 };
@@ -70,25 +69,25 @@ export const Saved: Story = {
 /** 他の人が保存した既定が届いた。上書きを持たない項目に新しい既定が当たり、パネルに知らせを残す */
 export const DefaultsArrived: Story = {
   args: {
-    look: "starlight",
-    defaultLook: "starlight",
+    kinds: KINDS_WITHOUT_LOGS,
+    defaultKinds: KINDS_WITHOUT_LOGS,
     message: { kind: "info", text: "ワークスペースの既定が変わりました（10/05 14:22）。" },
   },
 };
 
 /** 端末の保存領域に書けない。選んだ表示は当てるが、開いている間だけであることを先頭に出す */
 export const NoStorage: Story = {
-  args: { storageOk: false, look: "glow", overrides: ["ネットワークの見た目"] },
+  args: { storageOk: false, kinds: KINDS_WITHOUT_LOGS, overrides: ["表示する種類"] },
 };
 
-/** 配る書き出し。見た目・表示する種類は変えられ、「ワークスペースの既定にする」は出さない */
+/** 配る書き出し。表示する種類は変えられ、「ワークスペースの既定にする」は出さない */
 export const Export: Story = {
-  args: { canSave: false, look: "glow", overrides: ["ネットワークの見た目"] },
+  args: { canSave: false, kinds: KINDS_WITHOUT_LOGS, overrides: ["表示する種類"] },
 };
 
 /** 幅 390px。画面の幅いっぱいに出し、行の高さと押せる的は変えない */
 export const Narrow: Story = {
-  args: { look: "dust", defaultLook: "starlight", overrides: ["ネットワークの見た目", "表示する種類"] },
+  args: { kinds: KINDS_WITHOUT_NOTES, overrides: ["表示する種類"] },
   parameters: {
     viewport: {
       options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },

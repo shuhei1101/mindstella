@@ -14,12 +14,6 @@ items:
     summary: "画面設計『概要.tsx』のトップバーとタイルを描く。記録が読めないときは detail の行を出す"
   - page: MOD-489-18.tsx.yaml
     summary: "画面設計『検討事項.tsx』の要素と操作を描く"
-  - page: MOD-489-19.ts.yaml
-    summary: "マップの木を elkjs へ渡す形に組み、配置の結果を節と枝にする"
-  - page: MOD-489-16.tsx.yaml
-    summary: "根の下に検討事項を平らに並べた木を描き、節のロックと拡大・縮小を持つ"
-  - page: MOD-489-17.tsx.yaml
-    summary: "幅 900px 以下のマップ"
   - page: MOD-489-15.tsx.yaml
     summary: "状態ごとの列に検討事項のカードを並べる"
   - page: MOD-489-53.tsx.yaml
@@ -109,7 +103,7 @@ items:
   - page: MOD-489-57.ts.yaml
     summary: "インターフェース定義『書き換えの知らせ』"
   - page: MOD-489-58.ts.yaml
-    summary: "描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」）"
+    summary: "描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」）"
   - page: MOD-489-74.tsx.yaml
     summary: "24px の枠に描いた線のアイコンと、状態の 10px の印"
   - page: MOD-489-88.tsx.yaml
@@ -232,8 +226,6 @@ items:
     summary: "日時と値の文字の組み立て"
   - page: MOD-489-108.ts.yaml
     summary: "mdmark が描いた本文の中へ足す要素の組み立て"
-  - page: MOD-489-116.ts.yaml
-    summary: "注目の起点のロックの判定と鍵の震え"
   - page: MOD-489-104.ts.yaml
     summary: "コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` の DOM に触らない関数と同じ振る舞い）"
   - page: MOD-489-106.ts.yaml
@@ -255,7 +247,7 @@ items:
   - page: MOD-489-141.ts.yaml
     summary: "今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す"
   - page: MOD-489-140.ts.yaml
-    summary: "表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）"
+    summary: "表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）"
   - page: MOD-489-138.ts.yaml
     summary: "開いている追加の入力と、直前の保存で書き込めなかった編集"
   - page: MOD-489-137.ts.yaml
@@ -306,6 +298,8 @@ items:
     summary: "サーバー / 移行 / markdown_bodies_to_mark_md.py"
   - page: MOD-626-1.py.yaml
     summary: "サーバー / 移行 / move_bodies_to_root.py"
+  - page: MOD-542-1.py.yaml
+    summary: "サーバー / 移行 / remove_network_look.py"
   - page: MOD-489-183.py.yaml
     summary: "サーバー / 移行 / answer_to_adopted_option.py"
   - page: MOD-489-184.py.yaml
@@ -390,8 +384,6 @@ items:
     summary: "プレビュー / 基盤 / edits.ts"
   - page: MOD-489-198.ts.yaml
     summary: "プレビュー / 基盤 / libs.ts"
-  - page: MOD-489-200.ts.yaml
-    summary: "プレビュー / 基盤 / lock.ts"
   - page: MOD-489-194.ts.yaml
     summary: "プレビュー / 基盤 / records.ts"
   - page: MOD-489-195.ts.yaml
@@ -400,10 +392,6 @@ items:
     summary: "プレビュー / 基盤 / voice.ts"
   - page: MOD-557-2.ts.yaml
     summary: "プレビュー / 基盤 / refresh-hold.ts"
-  - page: MOD-489-213.ts.yaml
-    summary: "プレビュー / 画面と部品 / graph.ts"
-  - page: MOD-489-216.ts.yaml
-    summary: "プレビュー / 画面と部品 / looks.ts"
   - page: MOD-489-218.ts.yaml
     summary: "プレビュー / 画面と部品 / comments.ts"
   - page: MOD-489-212.ts.yaml
@@ -522,26 +510,10 @@ items:
     summary: "起動スクリプト（`bin/mindstella`）と SessionStart のフックが呼ぶ Python の部分。仮想環境の依存を確かめ、インストールしたプラグインのフォルダ・セッションの名前を作り、常駐サーバーが待ち受けているかを確かめて落ちていれば起動する。tmux と Claude Code の起動は起動スクリプト（bash）が持つ。"
   - page: MOD-565-4.yaml
     summary: "プラグインに同梱する記録のエージェントフローと、SessionStart の注入文の雛形の置き場所。スキル（setup・session・upgrade）と `references/`・`playbooks/` は置かない。"
-  - page: MOD-489-244.tsx.yaml
-    summary: "画面設計『ネットワーク.tsx』の要素と操作を描く"
-  - page: MOD-489-245.tsx.yaml
-    summary: "3D のキャンバスと重ねる層を描き、毎コマの描画を GraphRenderer に任せる"
-  - page: MOD-489-246.ts.yaml
-    summary: "今の画面の graph.ts の視点・操作・毎コマの描画を、React に依存しない描画として移す"
-  - page: MOD-489-247.ts.yaml
-    summary: "ネットワークの玉と線、描く項目、絞る条件を求める"
-  - page: MOD-489-248.ts.yaml
-    summary: "ネットワークの 5 つの見た目の描き方"
-  - page: MOD-489-249.ts.yaml
-    summary: "ネットワークのロックを、画面を離れても残るようにページの間だけ持つ"
-  - page: MOD-489-250.tsx.yaml
-    summary: "ネットワークの見た目のドロップダウン"
   - page: MOD-489-251.tsx.yaml
     summary: "画面設計『全体の検索.tsx』の要素と操作を描く"
   - page: MOD-489-252.ts.yaml
     summary: "Ctrl+K（macOS は Cmd+K）で全体の検索を開く"
-  - page: MOD-489-253.ts.yaml
-    summary: "検討事項のマップのロックを、タブを移っても残るようにページの間だけ持つ"
   - page: MOD-489-170.yaml
     summary: "React のプレビューのファイルの並び・つながり・置き場所の決まり。各ファイルの設計書は `モジュール構成/frontend/` の下に置く。"
   - page: MOD-489-172.yaml

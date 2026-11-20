@@ -175,9 +175,9 @@ classes:
           - name: test_start_when_settings_invalid
             case: 異常
             summary: config.yaml が合わなければ配信を立てず、直せば立てる
-            condition: '`display.network_look` を `rainbow` にしたワークスペースで 2 回 `start` し、`deep` に直してもう 1 回 `start` する'
+            condition: '`display.visible_kinds` を `[rainbow]` にしたワークスペースで 2 回 `start` し、`[decisions]` に直してもう 1 回 `start` する'
             mock: なし（本物の待ち受け。後で `stop_all`）
-            expected: '1・2 回目は `SchemaMismatchError`（`lines` に `config.yaml: display.network_look: ` で始まる行）で台帳が空。3 回目は `(url, True)`'
+            expected: '1・2 回目は `SchemaMismatchError`（`lines` に `config.yaml: display.visible_kinds` で始まる行）で台帳が空。3 回目は `(url, True)`'
           - name: test_start_when_port_fixed
             case: 正常
             summary: preview.port のポートで立てる
@@ -993,9 +993,9 @@ functions:
       - name: test_records_response_when_settings_changed
         case: 正常
         summary: 通った設定は控え、崩れた設定では控えた設定で返す
-        condition: '`display.network_look: starlight` の設定で作った文脈。`config.yaml` を `dust` にして 1 回、`rainbow` にして 1 回呼ぶ'
+        condition: '`display.visible_kinds: [decisions]` の設定で作った文脈。`config.yaml` を `[tasks]` にして 1 回、`[rainbow]` にして 1 回呼ぶ'
         mock: なし
-        expected: '1 回目は 200 で `settings.display.network_look` が `dust`、`settings_problem` が `null`。控えが `dust` になる。2 回目は 200 で `dust` のまま、`settings_problem` に `config.yaml: display.network_look: ` で始まる行'
+        expected: '1 回目は 200 で `settings.display.visible_kinds` が `[tasks]`、`settings_problem` が `null`。控えが `[tasks]` になる。2 回目は 200 で `[tasks]` のまま、`settings_problem` に `config.yaml: display.visible_kinds` で始まる行'
   - name: workspace_signature
     title: 書き換えの印
     kind: 関数
@@ -1373,9 +1373,9 @@ functions:
       - name: test_reload_response
         case: 正常
         summary: 通れば差し替え、通らなければ前の設定のまま違う箇所を返す
-        condition: '`display.network_look: starlight` の設定で作った文脈。`parametrize`: `config.yaml` を `dust` にして `Origin` 無し / `rainbow` にして `Origin` 無し / `dust` にして `Origin: https://attacker.example`'
+        condition: '`display.visible_kinds: [decisions]` の設定で作った文脈。`parametrize`: `config.yaml` を `[tasks]` にして `Origin` 無し / `[rainbow]` にして `Origin` 無し / `[tasks]` にして `Origin: https://attacker.example`'
         mock: なし
-        expected: '200 で `settings.display.network_look` が `dust`、控えが `dust` で `revision` が 1 / 422 で `detail` に `config.yaml: display.network_look: `、控えが `starlight` で `revision` が 0 / 403 で控えが `starlight`。どれも `config.yaml` を書き換えていない'
+        expected: '200 で `settings.display.visible_kinds` が `[tasks]`、控えが `[tasks]` で `revision` が 1 / 422 で `detail` に `config.yaml: display.visible_kinds`、控えが `[decisions]` で `revision` が 0 / 403 で控えが `[decisions]`。どれも `config.yaml` を書き換えていない'
   - name: host_part
     title: ホスト名の部分
     kind: 関数

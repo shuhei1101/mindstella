@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 
 import { connectEvents } from "@/shared/adapters/events-client";
 import { useRefreshHoldStore } from "@/shared/stores/refresh-hold-store";
@@ -27,11 +27,6 @@ const enableVoice = (): void => {
   installFakeWakeLock();
   server.use(http.get("/api/transcription", () => HttpResponse.json({ available: true, reason: null, detail: null, presets: [], action: "review", preset: null })));
 };
-
-// キャンバスは jsdom で描けないため、ネットワークの描画を差し替える
-vi.mock("@/features/graph/graph/components/graph-canvas", () => ({
-  GraphCanvas: () => <canvas id="graph-canvas" aria-label="ネットワーク" />,
-}));
 
 describe("PreviewShell", () => {
   // tab の画面を描く（正常系）
@@ -72,7 +67,7 @@ describe("PreviewShell", () => {
   // 記録に合わない値を外す（正常系）
   test("preview_shell_when_search_mismatched", async () => {
     // 実行
-    renderRoute("/spa/?tab=tasks&view=map&id=T-99");
+    renderRoute("/spa/?tab=tasks&view=cards&id=T-99");
     // 検証
     await waitFor(() => expect(window.location.search).toBe("?tab=tasks"));
   });
@@ -95,16 +90,17 @@ describe("PreviewShell", () => {
     expect(await screen.findByRole("dialog", { name: "表示の設定" })).toBeInTheDocument();
   });
 
-  // ネットワークの入口で SPA の中のネットワークを開く（正常系）
-  test("preview_shell_when_graph", async () => {
-    // 準備
-    renderRoute("/spa/?tab=decisions&id=D-1");
+  // 削除したネットワーク・検討事項のマップを指す URL は概要・ボードで開く（正常系）
+  test.each([
+    { name: "graph", url: "/spa/?tab=graph", search: "" },
+    { name: "map", url: "/spa/?tab=decisions&view=map", search: "?tab=decisions" },
+  ])("preview_shell_when_removed_view ($name)", async ({ url, search }) => {
     // 実行
-    await userEvent.click(await screen.findByRole("link", { name: /ネットワーク/ }));
+    renderRoute(url);
     // 検証
-    expect(await screen.findByLabelText("ネットワーク")).toBeInTheDocument();
-    await waitFor(() => expect(window.location.search).toBe("?tab=graph&id=D-1"));
-    expect(window.location.pathname).toBe("/spa/");
+    await waitFor(() => expect(window.location.search).toBe(search));
+    expect(screen.queryByRole("link", { name: /ネットワーク/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "マップ" })).not.toBeInTheDocument();
   });
 
   // 検索の結果から項目を開く（正常系）

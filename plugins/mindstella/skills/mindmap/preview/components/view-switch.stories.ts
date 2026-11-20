@@ -13,15 +13,14 @@ export default meta;
 
 type Story = StoryObj<MindmapPreview.ViewSwitchProps>;
 
-/** 検討事項（マップ・ボード・表）でマップを選んでいる */
+/** 検討事項（ボード・表）でボードを選んでいる */
 export const Decisions: Story = {
   args: {
     views: [
-      { key: "map", label: "マップ" },
       { key: "board", label: "ボード" },
       { key: "table", label: "表" },
     ],
-    current: "map",
+    current: "board",
   },
 };
 

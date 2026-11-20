@@ -13,7 +13,6 @@
 | [tasks](../../pages/tasks/121/standard/index.html) | タスクのボード・表 |
 | [docs](../../pages/docs/121/standard/index.html) | 資料のカード・ボード・表 |
 | [records](../../pages/records/121/standard/index.html) | 調査・メモの表 |
-| [graph](../../pages/graph/121/standard/index.html) | つながり |
 
 | 部品 | 中身 |
 | --- | --- |

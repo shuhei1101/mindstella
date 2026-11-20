@@ -36,8 +36,6 @@ COUNTS = {
 PANEL_SCRIPT = """(args) => {
     const calls = [];
     const props = {
-        look: args.look,
-        defaultLook: args.defaultLook,
         kinds: new Set(args.kinds),
         defaultKinds: new Set(args.defaultKinds),
         counts: args.counts,
@@ -106,7 +104,7 @@ PANEL_SCRIPT = """(args) => {
         },
         detailChecks,
         alwaysShownCheckboxes: checkboxes.filter((box) =>
-            ["概要", "ネットワーク"].some((name) => rowText(box).includes(name))
+            rowText(box).includes("概要")
         ).length,
         allBoxIndeterminate: findCheckbox("すべて")?.indeterminate ?? null,
     };
@@ -122,8 +120,6 @@ PANEL_SCRIPT = """(args) => {
 def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
     """表示の設定の中身を作って見た目と操作の結果を返す。引数は overrides で上書きする。"""
     args: dict[str, Any] = {
-        "look": "deep",
-        "defaultLook": "deep",
         "kinds": ALL_KINDS,
         "defaultKinds": ALL_KINDS,
         "counts": COUNTS,
@@ -149,40 +145,36 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
             ["既定に戻す", "ワークスペースの既定にする"],
             [
                 "ワークスペースの既定のまま表示しています。",
-                "見た目と表示する種類は、ワークスペースの既定と同じです。",
+                "表示する種類は、ワークスペースの既定と同じです。",
             ],
             id="no_override_same_as_default",
         ),
         pytest.param(
             {
-                "look": "dust",
-                "defaultLook": "starlight",
-                "defaultKinds": KINDS_WITHOUT_NOTES,
-                "overrides": ["ネットワークの見た目", "表示する種類"],
+                "kinds": KINDS_WITHOUT_NOTES,
+                "overrides": ["表示する種類", "ライト / ダーク"],
             },
             ["既定に戻す", "ワークスペースの既定にする"],
             [],
-            ["この端末で変えている項目", "ネットワークの見た目・表示する種類"],
+            ["この端末で変えている項目", "表示する種類・ライト / ダーク"],
             id="overridden",
         ),
         pytest.param(
             {
-                "look": "dust",
-                "defaultLook": "starlight",
-                "defaultKinds": KINDS_WITHOUT_NOTES,
-                "overrides": ["ネットワークの見た目", "表示する種類"],
+                "kinds": KINDS_WITHOUT_NOTES,
+                "overrides": ["表示する種類", "ライト / ダーク"],
                 "canSave": False,
             },
             ["既定に戻す"],
             ["ワークスペースの既定にする"],
-            ["ネットワークの見た目・表示する種類"],
+            ["表示する種類・ライト / ダーク"],
             id="export_cannot_save",
         ),
         pytest.param(
             {"overrides": ["ライト / ダーク"]},
             ["既定に戻す"],
             ["ワークスペースの既定にする"],
-            ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+            ["表示する種類は、ワークスペースの既定と同じです。"],
             id="override_same_as_default",
         ),
     ],
@@ -230,6 +222,8 @@ def test_settings_panel_when_kinds_changed(
     assert observed["checkboxCount"] == 8
     assert observed["alwaysShownCheckboxes"] == 0
     assert "常に表示" in observed["text"]
+    # 削除したネットワークの行は無い
+    assert "ネットワーク" not in observed["text"]
 
 
 @pytest.mark.parametrize(
@@ -248,7 +242,7 @@ def test_settings_panel_when_kinds_changed(
             False,
             ["minimap", True],
             ["既定に戻す"],
-            ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+            ["表示する種類は、ワークスペースの既定と同じです。"],
             id="hidden",
         ),
     ],
@@ -295,7 +289,7 @@ def test_settings_panel_when_minimap(
             [("差分のミニマップ", True), ("セクションの折りたたみ", False)],
             ["bodyView", {"key": "fold", "value": True}],
             ["既定に戻す"],
-            ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+            ["表示する種類は、ワークスペースの既定と同じです。"],
             id="overridden_press_fold",
         ),
     ],
@@ -350,7 +344,7 @@ FOCUS_DESCRIPTION = "自動は、マウスで操作する端末では入力欄�
             "この端末では戻しません",
             ["focusAfterAdd", "auto"],
             ["既定に戻す"],
-            ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+            ["表示する種類は、ワークスペースの既定と同じです。"],
             id="none_coarse_press_auto",
         ),
     ],

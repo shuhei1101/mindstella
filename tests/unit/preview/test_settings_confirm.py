@@ -12,6 +12,9 @@ from .fixture_types import LoadPreviewScripts
 # 表示する種類の全て
 ALL_KINDS = ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"]
 
+# メモを除いた 6 種類
+WITHOUT_NOTES = [kind for kind in ALL_KINDS if kind != "notes"]
+
 # 保存できなかった理由
 ERROR_TEXT = "保存できませんでした。ワークスペースのフォルダに書き込めません（読み取り専用）。"
 
@@ -19,8 +22,8 @@ ERROR_TEXT = "保存できませんでした。ワークスペースのフォル
 CONFIRM_SCRIPT = """(args) => {
     window.confirmCalls = {save: 0, cancel: 0};
     const props = {
-        from: {look: args.from.look, kinds: new Set(args.from.kinds)},
-        to: {look: args.to.look, kinds: new Set(args.to.kinds)},
+        from: {kinds: new Set(args.from.kinds)},
+        to: {kinds: new Set(args.to.kinds)},
         busy: args.busy,
         error: args.error,
         on: {
@@ -55,20 +58,20 @@ CONFIRM_SCRIPT = """(args) => {
     [
         pytest.param(
             {
-                "from": {"look": "deep", "kinds": ALL_KINDS},
-                "to": {"look": "glow", "kinds": ALL_KINDS},
+                "from": {"kinds": WITHOUT_NOTES},
+                "to": {"kinds": ALL_KINDS},
             },
-            ["ワークスペースの既定を書き換えますか", "深宇宙", "グロウ", "すべて表示", "変えない"],
+            ["ワークスペースの既定を書き換えますか", "メモを表示しない", "すべて表示"],
             "取り消す",
             False,
             [],
             1,
-            id="look_changed",
+            id="kinds_changed",
         ),
         pytest.param(
             {
-                "from": {"look": "deep", "kinds": ALL_KINDS},
-                "to": {"look": "glow", "kinds": ALL_KINDS},
+                "from": {"kinds": WITHOUT_NOTES},
+                "to": {"kinds": ALL_KINDS},
                 "busy": True,
             },
             ["保存しています"],
@@ -80,8 +83,8 @@ CONFIRM_SCRIPT = """(args) => {
         ),
         pytest.param(
             {
-                "from": {"look": "deep", "kinds": ALL_KINDS},
-                "to": {"look": "glow", "kinds": ALL_KINDS},
+                "from": {"kinds": WITHOUT_NOTES},
+                "to": {"kinds": ALL_KINDS},
                 "error": ERROR_TEXT,
             },
             ["保存する"],
@@ -103,7 +106,7 @@ def test_settings_confirm(
     expected_alerts: list[str],
     expected_cancel_calls: int,
 ) -> None:
-    """変える項目と変えない項目、保存している間と失敗を描き分ける（正常系）。"""
+    """表示する種類の今の既定と保存する値、保存している間と失敗を描き分ける（正常系）。"""
     # 準備
     load_preview_scripts()
     arguments: dict[str, Any] = {"busy": False, "error": None, **args}

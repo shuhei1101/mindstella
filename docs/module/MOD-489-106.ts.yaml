@@ -2,27 +2,6 @@ id: MOD-489-106
 title: プレビュー / display
 lead: 表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い）。
 functions:
-  - name: lookLabel
-    title: 見た目の名前
-    kind: 関数
-    usecase: 表示の設定を変える
-    summary: ネットワークの見た目の識別子から画面に出す名前を返す
-    args:
-      - name: look
-        type: NetworkLook
-        required: true
-        description: 見た目
-    returns:
-      type: string
-      description: 名前
-    unit_tests:
-      - name: test_look_label
-        case: 正常
-        summary: 名前を返す
-        condition: '`deep`'
-        mock: なし
-        expected: 今の画面と同じ名前
-    container: frontend/src/shared/core/display.ts
   - name: kindsText
     title: 表示する種類の文
     kind: 関数
@@ -73,7 +52,7 @@ functions:
     title: 既定に戻した上書き
     kind: 関数
     usecase: 表示の設定を変える
-    summary: 見た目・表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並び・「レビューに追加」の後のフォーカスを外す。`diffSel`・`commentsPinned`・`commentFormClosed` と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて描き直す
+    summary: 表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並び・「レビューに追加」の後のフォーカスを外す。`diffSel`・`commentsPinned`・`commentFormClosed` と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて描き直す
     args:
       - name: prefs
         type: Record<string, unknown>
@@ -86,7 +65,7 @@ functions:
       - name: test_reset_prefs
         case: 正常
         summary: 残す項目
-        condition: '`look`・`theme`・`diffSel`・`commentsPinned`・知らない項目'
+        condition: '`kinds`・`theme`・`diffSel`・`commentsPinned`・知らない項目'
         mock: なし
         expected: '`diffSel`・`commentsPinned`・知らない項目だけが残り、`theme` が残らない'
     container: frontend/src/shared/core/display.ts
@@ -94,14 +73,14 @@ functions:
     title: ワークスペースの既定
     kind: 関数
     usecase: ワークスペースの既定を変える
-    summary: 記録の `settings.display` から既定の見た目（無ければ `deep`）と表示する種類（無ければ全ての種類）を返す
+    summary: 記録の `settings.display` から既定の表示する種類（無ければ全ての種類）を返す
     args:
       - name: display
         type: SettingsDisplay | undefined
         required: true
         description: 記録の `settings.display`
     returns:
-      type: '{ look: NetworkLook; kinds: Kind[] }'
+      type: '{ kinds: Kind[] }'
       description: 既定
     unit_tests:
       - name: test_display_defaults_when_missing
@@ -109,7 +88,7 @@ functions:
         summary: 既定が無い
         condition: '`undefined`'
         mock: なし
-        expected: '`deep` と全ての種類'
+        expected: 全ての種類
     container: frontend/src/shared/core/display.ts
   - name: focusAfterAddTarget
     title: 「レビューに追加」の後のフォーカスの移動先

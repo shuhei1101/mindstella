@@ -49,7 +49,6 @@ LIBRARY_DESIGN_DIR = REPO_ROOT / "docs" / "library"
 LIBRARY_DESIGN_IDS = {
     "mdmark": "LIB-489-13",
     "mermaid": "LIB-489-14",
-    "elkjs": "LIB-489-5",
     "marked": "LIB-489-11",
     "jsdiff": "LIB-489-8",
 }

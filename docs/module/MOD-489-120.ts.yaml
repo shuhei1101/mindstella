@@ -10,10 +10,10 @@ data_models:
     properties:
       - name: tab
         type: PreviewTab | undefined
-        description: 開く画面（`graph` はネットワーク）
+        description: 開く画面。削除したネットワークの `graph` は決めた値以外として落とす
       - name: view
-        type: '''map'' | ''board'' | ''cards'' | ''table'' | undefined'
-        description: 表示形式
+        type: '''board'' | ''cards'' | ''table'' | undefined'
+        description: 表示形式。削除した検討事項のマップの `map` は決めた値以外として落とす
       - name: id
         type: string | undefined
         description: 開いている項目
@@ -84,6 +84,12 @@ functions:
         condition: '`{tab: ''unknown'', full: ''true''}`'
         mock: なし
         expected: '`tab`・`full` が `undefined`'
+      - name: test_parse_preview_search_when_removed_view
+        case: 正常
+        summary: 削除したネットワーク・検討事項のマップを指す値は落とす
+        condition: '`parametrize`: `{tab: ''graph''}` / `{tab: ''decisions'', view: ''map''}`'
+        mock: なし
+        expected: '`tab` が `undefined` / `tab` が `decisions` で `view` が `undefined`'
     container: frontend/src/shared/core/preview-search.ts
   - name: parseSearchString
     title: URL の search の文字列の読み取り
@@ -110,7 +116,7 @@ functions:
     title: 記録に合わせた search
     kind: 関数
     usecase: SPAを開く
-    summary: 表示しない種類の `tab`（`graph` は外さない）、差分の表示中の `settings`・`panel=pending`、画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、本文が HTML の資料の `h`、表に無い `sort`、0 件の `panel=pending` を外す。`panel` が `comments` でないときの `thread`・`review`・`tstatus`・`ttag`・`ttarget`、スレッドにもまだ送っていない新しいスレッドにも無い `thread`、どのスレッドにも無い `ttag`、記録に無い項目の `ttarget` を外す。`search` が無いときと前後の空白を除いて空のときの `q` を外す。本文に無い見出しは本文を描いた後に決まるため、部品『BodyView』が外す
+    summary: 表示しない種類の `tab`、差分の表示中の `settings`・`panel=pending`、画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、本文が HTML の資料の `h`、表に無い `sort`、0 件の `panel=pending` を外す。`panel` が `comments` でないときの `thread`・`review`・`tstatus`・`ttag`・`ttarget`、スレッドにもまだ送っていない新しいスレッドにも無い `thread`、どのスレッドにも無い `ttag`、記録に無い項目の `ttarget` を外す。`search` が無いときと前後の空白を除いて空のときの `q` を外す。本文に無い見出しは本文を描いた後に決まるため、部品『BodyView』が外す
     args:
       - name: search
         type: PreviewSearch
@@ -127,7 +133,7 @@ functions:
       - name: test_normalize_search_when_view_mismatched
         case: 正常
         summary: 画面が持たない形式
-        condition: '`{tab: ''tasks'', view: ''map''}`'
+        condition: '`{tab: ''tasks'', view: ''cards''}`'
         mock: なし
         expected: '`view` が無い'
       - name: test_normalize_search_when_item_missing
@@ -196,12 +202,6 @@ functions:
         condition: '`{panel: ''comments'', ttag: ''無いタグ''}`'
         mock: なし
         expected: '`ttag` が無い'
-      - name: test_normalize_search_when_graph
-        case: 正常
-        summary: ネットワークは表示する種類によらず開き、表示形式を持たない
-        condition: '`{tab: ''graph'', view: ''table''}` と `visibleKinds` が decisions だけ'
-        mock: なし
-        expected: '`tab` が `graph` で `view` が無い'
       - name: test_normalize_search_when_query_without_search
         case: 正常
         summary: 検索を開いていない言葉

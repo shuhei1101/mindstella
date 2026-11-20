@@ -1,35 +1,11 @@
-// 表示の設定の中身。表示する種類と差分のミニマップと本文の表とセクションの見せ方と「レビューに追加」の後のフォーカスを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
+// 表示の設定の中身。表示する種類と差分のミニマップと本文の表とセクションの見せ方と「レビューに追加」の後のフォーカスを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。
 
 namespace MindmapPreview {
-  /** ネットワークの見た目 1 つ（値・画面に出す名前・短い説明） */
-  export type NetworkLookOption = { key: NetworkLook; label: string; note: string };
-
-  /** 選べるネットワークの見た目 */
-  export const NETWORK_LOOKS: readonly NetworkLookOption[] = [
-    { key: "glow", label: "グロウ", note: "玉と流れる光に、やわらかい光のにじみ" },
-    { key: "starlight", label: "星の光", note: "白い芯と色の光。明るい星に十字の光条" },
-    { key: "constellation", label: "星図", note: "回転に合わせて回る天球の経緯線" },
-    { key: "deep", label: "深宇宙", note: "星空と星雲の地に、光のにじむ星" },
-    { key: "dust", label: "星屑", note: "色を抜いた細かな点と細い線" },
-  ];
-
-  /** ワークスペースの既定も個人の上書きも無いときの見た目 */
-  export const BUILTIN_LOOK: NetworkLook = "deep";
-
-  /** 見た目の値 → 画面に出す名前 */
-  export function lookLabel(look: string): string {
-    return NETWORK_LOOKS.find((option) => option.key === look)?.label ?? look;
-  }
-
   /** パネルの下端に残す知らせ（`ok` は既定にした、`info` は既定が変わった） */
   export type SettingsMessage = { kind: "ok" | "info"; text: string };
 
   /** 表示の設定の中身の引数 */
   export type SettingsPanelProps = {
-    /** 今当てているネットワークの見た目（パネルには出さず、`defaultLook` と比べる） */
-    look: string;
-    /** ワークスペースの既定の見た目（パネルには出さず、`look` と比べる） */
-    defaultLook: string;
     /** 今当てている表示する種類 */
     kinds: Set<string>;
     /** ワークスペースの既定の表示する種類 */
@@ -121,7 +97,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** 概要・ネットワークの行（常に出す。チェックの箱を持たない） */
+  /** 概要の行（常に出す。チェックの箱を持たない） */
   function alwaysRow({ iconName, label }: { iconName: IconName; label: string }): HTMLElement {
     return h({
       tag: "li",
@@ -135,7 +111,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** 表示する種類の選び（先頭にまとめて選ぶチェック、概要とネットワークは常に出す行） */
+  /** 表示する種類の選び（先頭にまとめて選ぶチェック、概要は常に出す行） */
   function kindsField({ kinds, counts, on }: SettingsPanelProps): HTMLElement {
     const shownCount = KIND_KEYS.filter((kind) => kinds.has(kind)).length;
     const allBox = h({
@@ -205,7 +181,6 @@ namespace MindmapPreview {
                 ],
               }),
             ),
-            alwaysRow({ iconName: "network", label: "ネットワーク" }),
           ],
         }),
       ],
@@ -352,8 +327,8 @@ namespace MindmapPreview {
   }
 
   /** 「ワークスペースの既定にする」。選びが既定と同じときはボタンの代わりにその旨を出す */
-  function saveBlock({ look, defaultLook, kinds, defaultKinds, on }: SettingsPanelProps): HTMLElement {
-    const differs = look !== defaultLook || !sameSet(kinds, defaultKinds);
+  function saveBlock({ kinds, defaultKinds, on }: SettingsPanelProps): HTMLElement {
+    const differs = !sameSet(kinds, defaultKinds);
     return h({
       tag: "div",
       attrs: { class: "st-save" },
@@ -373,7 +348,7 @@ namespace MindmapPreview {
           : h({
             tag: "p",
             attrs: { class: "st-same", tabindex: "-1", "data-focus": "same" },
-            children: ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+            children: ["表示する種類は、ワークスペースの既定と同じです。"],
           }),
       ],
     });

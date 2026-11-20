@@ -50,17 +50,6 @@ describe("OverviewScreen", () => {
     expect(window.location.search).toContain("view=table");
   });
 
-  // ネットワークは今の画面へ（正常系）
-  test("overview_screen_when_network", async () => {
-    // 準備
-    renderRoute("/spa/");
-    // 実行
-    await userEvent.click(await screen.findByRole("link", { name: /ネットワーク/ }));
-    // 検証
-    await waitFor(() => expect(window.location.search).toBe("?tab=graph"));
-    expect(window.location.pathname).toBe("/spa/");
-  });
-
   // 未読の行はスレッドへ（正常系）
   test("overview_screen_when_unread", async () => {
     // 準備

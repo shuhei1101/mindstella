@@ -20,7 +20,7 @@ functions:
         type: '{key, get}[]'
         required: true
         passing: keyword
-        description: 条件の定義（表の列か、ネットワークの `graphConditions`）
+        description: 条件の定義（表の列）
       - name: filters
         type: Record<string, string[]>
         required: true
@@ -130,23 +130,18 @@ functions:
         type: '{key, label, get, filterable?, order?}[]'
         required: true
         passing: keyword
-        description: 条件の定義（`filterable` が真の表の列か、`graphConditions`）
+        description: 条件の定義（`filterable` が真の表の列）
       - name: filters
         type: Record<string, string[]>
         required: true
         passing: keyword
         description: 絞り込み
-      - name: hit
-        type: (row) => boolean
-        required: false
-        passing: keyword
-        description: キーワードに一致した行か（検討事項のマップだけが渡す）
     returns:
       type: FilterGroup[]
       description: 条件の並び。キーが `kind`・`type`・`status`・`tags` の条件をこの順で先に置き、残りは元の順。値を 1 つも持たない条件は含めない。`FilterGroup` は部品設計『絞り込み』の `groups[]`（`key`・`label`・`values`・`mark`）
     process: |-
       1. 条件ごとに、全ての行が持つ値を集め（配列の値は要素ごと）、`order` を持つ条件はその順、ほかは値の順に並べる
-      2. 値ごとの `count` は `filterCounts`（少ない値は 0）、`hit` を渡されたときはその条件以外の条件で絞った行のうちキーワードに一致した件数も数える
+      2. 値ごとの `count` は `filterCounts`（少ない値は 0）
       3. `status` の条件に `mark: status`、`type` の条件に `mark: kind` を付ける
     unit_tests:
       - name: test_drawer_groups
@@ -161,12 +156,6 @@ functions:
         condition: どの行もタグを持たない
         mock: なし
         expected: タグの条件が無い
-      - name: test_drawer_groups_when_hit
-        case: 正常
-        summary: キーワードに一致した件数を添える
-        condition: 状態の条件は `order`（未決定・保留）を持つ。D-1（未決定・一致）・D-2（未決定）・D-3（保留）。`hit` は D-1 だけ真
-        mock: なし
-        expected: '状態の未決定が `count: 2`・`hit: 1`、保留が `hit: 0`'
   - name: activeConditionCount
     title: 絞っている条件の数
     kind: 関数
@@ -263,7 +252,7 @@ functions:
         type: '{key, get}[]'
         required: true
         passing: keyword
-        description: 条件の定義（`filterRows` と同じ。表の列か、ネットワークの `graphConditions`）
+        description: 条件の定義（`filterRows` と同じ。表の列）
       - name: saved
         type: Record<string, string[]>
         required: true
@@ -355,7 +344,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: '選んでいる値を 1 つずつ `{列}: {値}` のチップに、文字の条件（`~{列}`）を `{列}に「{文字}」を含む` のチップ（英数字で終わる列名の後は空白を挟む）にし、× と「すべて解除」で条件の解除を知らせる行を返す。表と、表以外の表示形式（マップ・ボード・カード・ネットワーク）のツールバーの下で同じものを使う。条件が無いときは中身の無い行を返す'
+    summary: '選んでいる値を 1 つずつ `{列}: {値}` のチップに、文字の条件（`~{列}`）を `{列}に「{文字}」を含む` のチップ（英数字で終わる列名の後は空白を挟む）にし、× と「すべて解除」で条件の解除を知らせる行を返す。表と、表以外の表示形式（ボード・カード）のツールバーの下で同じものを使う。条件が無いときは中身の無い行を返す'
     props:
       - name: filters
         type: Record<string, string[]>

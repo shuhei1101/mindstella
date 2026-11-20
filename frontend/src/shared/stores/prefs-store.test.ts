@@ -34,11 +34,11 @@ describe("writePrefs", () => {
   // 知らない項目を残す（正常系）
   test("write_prefs", () => {
     // 準備
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ theme: "dark", look: "glow", commentsPinned: true }));
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ theme: "dark", kinds: ["decisions"], commentsPinned: true }));
     // 実行
     writePrefs({ diffSel: "V-1" });
     // 検証
-    expect(JSON.parse(localStorage.getItem(PREFS_KEY) as string)).toEqual({ theme: "dark", look: "glow", commentsPinned: true, diffSel: "V-1" });
+    expect(JSON.parse(localStorage.getItem(PREFS_KEY) as string)).toEqual({ theme: "dark", kinds: ["decisions"], commentsPinned: true, diffSel: "V-1" });
   });
 });
 

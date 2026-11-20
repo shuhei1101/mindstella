@@ -11,7 +11,7 @@ from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_removed_helpers import REMOVED_IN_V2_BY_TAB
 from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread
 
-# タブの帯に並ぶ画面の並び（ネットワークは右端）
+# タブの帯に並ぶ画面の並び
 TAB_KEYS = [
     "overview",
     "decisions",
@@ -21,7 +21,6 @@ TAB_KEYS = [
     "terms",
     "notes",
     "logs",
-    "graph",
 ]
 
 
@@ -53,7 +52,6 @@ def test_tabs(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevie
         "terms": "1",
         "notes": "1",
         "logs": "1",
-        "graph": None,
     }
     assert page.evaluate("history.length") == history_length + 1
     page.go_back()
@@ -100,7 +98,6 @@ def test_theme_is_kept(write_sample_preview: WriteSamplePreview, open_preview: O
         pytest.param("#tab=tasks", id="tasks"),
         pytest.param("#tab=docs", id="docs"),
         pytest.param("#tab=notes", id="records"),
-        pytest.param("#tab=graph", id="graph"),
     ],
 )
 def test_comments_button(
@@ -135,14 +132,13 @@ def test_comments_button(
     assert button.get_attribute("aria-expanded") == "false"
 
 
-# どの画面でもトップバーが同じ未読の点を出すことを確かめる画面のハッシュ（概要・検討事項・タスク・資料・記録の表・ネットワーク）
+# どの画面でもトップバーが同じ未読の点を出すことを確かめる画面のハッシュ（概要・検討事項・タスク・資料・記録の表）
 UNREAD_SCREEN_HASHES = [
     pytest.param("#tab=overview", id="overview"),
     pytest.param("#tab=decisions&view=table", id="decisions"),
     pytest.param("#tab=tasks", id="tasks"),
     pytest.param("#tab=docs", id="docs"),
     pytest.param("#tab=notes", id="records"),
-    pytest.param("#tab=graph", id="graph"),
 ]
 
 # 未読の点を重ねたコメントのボタンの読み上げの名前
@@ -236,7 +232,6 @@ def test_comments_button_when_zero(
         pytest.param("#tab=tasks", id="tasks"),
         pytest.param("#tab=docs", id="docs"),
         pytest.param("#tab=notes", id="notes"),
-        pytest.param("#tab=graph", id="graph"),
     ],
 )
 def test_history_button_on_every_screen(
@@ -346,7 +341,7 @@ def test_tab_marks_when_removed_and_changed(
 def test_filter_button_on_item_screens(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, tab: str
 ) -> None:
-    """項目を並べる画面（検討事項・タスク・調査・資料・用語集・メモ・会話ログ・ネットワーク）に絞り込みのボタンを置く（正常系）。"""
+    """項目を並べる画面（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）に絞り込みのボタンを置く（正常系）。"""
     # 準備・実行
     url = write_sample_preview()
     page = open_preview(url, f"#tab={tab}")

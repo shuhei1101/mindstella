@@ -39,33 +39,29 @@ def test_default(open_story: OpenStory) -> None:
     # 準備・実行
     page = _open(open_story, "default")
     # 検証
-    # 見た目はネットワークのドロップダウンで選ぶので、パネルには選びを出さない
-    assert page.locator(f"{PANEL} [data-part=look]").count() == 0
     assert page.locator(f"{PANEL} input[type=radio]:not([name=focus-after-add])").count() == 0
     assert _buttons(page) == []
     text = page.inner_text(PANEL)
     assert "ワークスペースの既定のまま表示しています。" in text
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in text
-    # 概要とネットワークは、チェックの箱を持たない常に表示の行
-    assert page.locator("li[data-part=always]").count() == 2
+    assert "表示する種類は、ワークスペースの既定と同じです。" in text
+    # 概要は、チェックの箱を持たない常に表示の行
+    assert page.locator("li[data-part=always]").count() == 1
     assert page.locator("li[data-part=always] input").count() == 0
     assert page.locator("li[data-part=all] input").evaluate("box => box.checked") is True
     assert page.inner_text("li[data-part=all] [data-part=count]") == "7/7"
 
 
 def test_overridden(open_story: OpenStory) -> None:
-    """この端末で変えている。上書きを持つ 5 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く（正常系）。"""
+    """この端末で変えている。上書きを持つ 4 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く（正常系）。"""
     # 準備・実行
     page = _open(open_story, "overridden")
     # 検証
     over = page.inner_text(f"{PANEL} [data-part=over]")
     assert "この端末で変えている項目" in over
     assert (
-        "ネットワークの見た目・表示する種類・ライト / ダーク・表の列（調査）・絞り込み（タスク）" in over
+        "表示する種類・ライト / ダーク・表の列（調査）・絞り込み（タスク）" in over
     )
     assert _buttons(page) == ["既定に戻す", "ワークスペースの既定にする"]
-    # 見た目を上書きしていても、パネルには見た目の選びを出さない
-    assert page.locator(f"{PANEL} [data-part=look]").count() == 0
     assert page.get_attribute(f"{PANEL} [data-part=save] button", "aria-haspopup") == "dialog"
     # 保存のボタンは、線で区切った下に置く
     assert (
@@ -91,7 +87,7 @@ def test_saved(open_story: OpenStory) -> None:
     # 準備・実行
     page = _open(open_story, "saved")
     # 検証
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} [data-part=save]")
+    assert "表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} [data-part=save]")
     assert _buttons(page) == ["既定に戻す"]
     message = page.locator(f"{PANEL} [data-part=message]")
     assert message.get_attribute("role") == "status"
@@ -107,7 +103,6 @@ def test_defaults_arrived(open_story: OpenStory) -> None:
     message = page.locator(f"{PANEL} [data-part=message]")
     assert message.inner_text() == "ワークスペースの既定が変わりました（10/05 14:22）。"
     assert message.get_attribute("data-kind") == "info"
-    assert page.locator(f"{PANEL} [data-part=look]").count() == 0
     assert _buttons(page) == []
 
 
@@ -129,13 +124,12 @@ def test_no_storage(open_story: OpenStory) -> None:
 
 
 def test_export(open_story: OpenStory) -> None:
-    """配る書き出し。見た目・表示する種類は変えられ、「ワークスペースの既定にする」は出さない（正常系）。"""
+    """配る書き出し。表示する種類は変えられ、「ワークスペースの既定にする」は出さない（正常系）。"""
     # 準備・実行
     page = _open(open_story, "export")
     # 検証
     assert _buttons(page) == ["既定に戻す"]
     assert page.locator(f"{PANEL} [data-part=save]").count() == 0
-    assert page.locator(f"{PANEL} [data-part=look]").count() == 0
     assert page.locator(f"{PANEL} {KINDS_SECTION} input").count() == 8
 
 
@@ -158,7 +152,7 @@ def test_narrow(open_story: OpenStory) -> None:
 
 
 def test_minimap_hidden(open_story: OpenStory) -> None:
-    """差分のミニマップだけを表示しないにした。「詳細に表示するもの」のチェックを外し、変えている項目に「差分のミニマップ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
+    """差分のミニマップだけを表示しないにした。「詳細に表示するもの」のチェックを外し、変えている項目に「差分のミニマップ」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
     # 準備・実行
     page = _open(open_story, "minimap-hidden")
     # 検証（区画「詳細に表示するもの」の中の「差分のミニマップ」のチェックが外れている）
@@ -172,13 +166,13 @@ def test_minimap_hidden(open_story: OpenStory) -> None:
     assert _buttons(page) == ["既定に戻す"]
     # 検証（保存のボタンの代わりに、既定と同じ旨を出す）
     assert page.locator(f"{PANEL} [data-part=save] button").count() == 0
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} [data-part=save]")
+    assert "表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} [data-part=save]")
     # 検証（表示する種類は既定のまま）
     assert page.inner_text("li[data-part=all] [data-part=count]") == "7/7"
 
 
 def test_body_diff_layout_overridden(open_story: OpenStory) -> None:
-    """詳細で本文の差分を左右に並べるを選んだ。変えている項目に「本文の差分の並べ方」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
+    """詳細で本文の差分を左右に並べるを選んだ。変えている項目に「本文の差分の並べ方」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
     # 準備・実行
     page = _open(open_story, "body-diff-layout-overridden")
     # 検証（変えている項目と「既定に戻す」）
@@ -187,13 +181,13 @@ def test_body_diff_layout_overridden(open_story: OpenStory) -> None:
     assert _buttons(page) == ["既定に戻す"]
     # 検証（保存のボタンの代わりに、既定と同じ旨を出す）
     assert page.locator(f"{PANEL} [data-part=save] button").count() == 0
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} [data-part=save]")
+    assert "表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} [data-part=save]")
     # 検証（表示する種類は既定のまま）
     assert page.inner_text("li[data-part=all] [data-part=count]") == "7/7"
 
 
 def test_body_view_overridden(open_story: OpenStory) -> None:
-    """セクションの折りたたみをオフにした。「詳細に表示するもの」のチェックを切り替え、変えている項目に「セクションの折りたたみ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
+    """セクションの折りたたみをオフにした。「詳細に表示するもの」のチェックを切り替え、変えている項目に「セクションの折りたたみ」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
     # 準備・実行
     page = _open(open_story, "body-view-overridden")
     section = page.locator(f"{PANEL} fieldset", has_text="詳細に表示するもの")
@@ -210,7 +204,7 @@ def test_body_view_overridden(open_story: OpenStory) -> None:
     assert _buttons(page) == ["既定に戻す"]
     # 検証（保存のボタンの代わりに、既定と同じ旨を出す）
     assert page.locator(f"{PANEL} [data-part=save] button").count() == 0
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} [data-part=save]")
+    assert "表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} [data-part=save]")
     # 検証（表示する種類は既定のまま）
     assert page.inner_text("li[data-part=all] [data-part=count]") == "7/7"
 
@@ -244,4 +238,4 @@ def test_focus_after_add_overridden(open_story: OpenStory) -> None:
     assert "この端末では入力欄へ戻します" in group.inner_text()
     assert _buttons(page) == ["既定に戻す"]
     assert "レビューに追加した後のフォーカス" in page.inner_text(f"{PANEL} [data-part=over] > span:last-child")
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(PANEL)
+    assert "表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(PANEL)
