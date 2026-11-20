@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe("ReviewView", () => {
-  // まとめて送る（正常系）
+  // まとめて送信（正常系）
   test("review_view", async () => {
     // 準備
     const bodies: unknown[] = [];
@@ -35,7 +35,7 @@ describe("ReviewView", () => {
     );
     renderRoute("/spa/?panel=comments&review=1");
     // 実行
-    await userEvent.click(await screen.findByRole("button", { name: /まとめて送る（2 件）/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /まとめて送信（2 件）/ }));
     // 検証
     await waitFor(() => expect(bodies).toEqual([{ ids: ["C-1", "C-2"] }]));
   });
@@ -58,7 +58,7 @@ describe("ReviewView", () => {
     await userEvent.click(await screen.findByRole("button", { name: /まとめて送る/ }));
     // 検証
     expect(await screen.findByRole("alert")).toHaveTextContent("本文の 3 行目がありません");
-    expect(screen.getByRole("button", { name: "箇所を外す" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "箇所を解除" })).toBeInTheDocument();
   });
 });
 

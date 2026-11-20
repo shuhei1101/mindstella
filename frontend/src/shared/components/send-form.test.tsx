@@ -48,7 +48,7 @@ describe("SendForm", () => {
     // 検証
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("button", { name: "レビューに追加" })).toBeNull();
-    expect(screen.getByText("書きかけ")).toBeInTheDocument();
+    expect(screen.getByText("下書き")).toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(onToggleOpen).toHaveBeenCalledWith(true);
   });

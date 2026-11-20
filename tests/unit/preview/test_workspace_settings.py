@@ -98,7 +98,7 @@ def test_workspace_settings_when_transcription(
     load_preview_scripts()
     legends = preview_page.evaluate(MOUNT_SCRIPT, {"data": data, "transcription": transcription})
     # 実行
-    preview_page.get_by_label("送信する", exact=True).check()
+    preview_page.get_by_label("送信", exact=True).check()
     preset = preview_page.get_by_label("用語集のプリセット", exact=True)
     observed = preview_page.evaluate(
         """({select}) => {
@@ -122,7 +122,7 @@ def test_workspace_settings_when_transcription(
     assert legends[-1] == "音声入力"
     assert preview_page.evaluate(
         """() => [...document.querySelectorAll('input[name$="action"]')].map((input) => input.labels[0].textContent.trim())"""
-    ) == ["レビュー中に追加する", "入力欄へ挿入する", "送信する"]
+    ) == ["レビュー中に追加する", "入力欄へ挿入する", "送信"]
     assert preset.count() == 1
     assert observed["calls"] == expected_calls
     assert observed["options"] == expected_options

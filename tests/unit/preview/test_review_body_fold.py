@@ -22,12 +22,12 @@ EIGHT_LINES = "\n".join(f"{number} 行目の気づき" for number in range(1, 9)
 WRAPPING_BODY = (
     "A-14 の手引きは、差分の表示を初めて使う人が最初に読む資料なので、"
     "冒頭で「何と何を比べているのか」を一文で言い切ってから、"
-    "選んだ時点の決め方、足した・変えた・消した項目の印の読み方、"
+    "選んだ時点の決め方、足した・変えた・削除した項目の印の読み方、"
     "本文の差分の並べ方の切り替え、図の差分の見方の順に並べると読みやすい。"
     "今は印の説明が先に来ていて、何を比べているかが分かる前に細かい話に入っている。"
     "手引きの冒頭に、比べる二つの時点の決め方の例を一つ置いておくと、"
     "初めて開いた人でも迷わずに読み進められるはずだと考えている。"
-    "あわせて、足した・変えた・消した項目を示す印の凡例も、"
+    "あわせて、足した・変えた・削除した項目を示す印の凡例も、"
     "説明の前ではなく後ろにまとめて置いたほうが、本文の流れを切らずに済む。"
 )
 
@@ -84,7 +84,7 @@ def _fold(
 
 # 畳んだ本文で開閉のボタンが示すもの
 FOLDED_BUTTON = {
-    "moreText": "続きを読む",
+    "moreText": "続きを表示",
     "expanded": "false",
     "controls": "review-body-C-51",
     "focus": "more:C-51",
@@ -148,15 +148,15 @@ def test_review_body_fold_when_toggle(
     # 検証
     before, opened, closed = observed["steps"]
     assert before["folded"] is True
-    assert before["label"] == "項目を指さないコメントの続きを読む"
+    assert before["label"] == "項目を指さないコメントの続きを表示"
     assert opened["folded"] is False
     assert opened["moreText"] == "折りたたむ"
     assert opened["expanded"] == "true"
     assert opened["label"] == "項目を指さないコメントの本文を折りたたむ"
     assert closed["folded"] is True
-    assert closed["moreText"] == "続きを読む"
+    assert closed["moreText"] == "続きを表示"
     assert closed["expanded"] == "false"
-    assert closed["label"] == "項目を指さないコメントの続きを読む"
+    assert closed["label"] == "項目を指さないコメントの続きを表示"
     assert observed["calls"] == [["toggle", "C-51", True], ["toggle", "C-51", False]]
 
 

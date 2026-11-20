@@ -20,7 +20,7 @@ SINCE_SUB = "10/02 09:00 より後"
 # V-1 を過ぎて V-2 を過ぎる前に開いた「前回開いてから」の始まり
 SINCE = {"at": SINCE_AT, "seq": 1}
 
-# 消した項目を持つまとまりの日時（V-1 より後・「前回開いてから」の始まりより前）
+# 削除した項目を持つまとまりの日時（V-1 より後・「前回開いてから」の始まりより前）
 REMOVED_SET_AT = "2026-10-01T18:00:00+00:00"
 
 # 変更履歴の 1 回分に入れる日時
@@ -40,7 +40,7 @@ TABLE_HEADER_LINES = ["| 列 A | 列 B |", "| --- | --- |"]
 TABLE_THREE_ROWS = "\n".join([*TABLE_HEADER_LINES, "| 1 | 2 |", "| 3 | 4 |", "| 5 | 6 |", ""])
 TABLE_WITHOUT_SECOND_ROW = "\n".join([*TABLE_HEADER_LINES, "| 1 | 2 |", "| 5 | 6 |", ""])
 
-# 図の差分を確かめる前後の記法（足したもの・文字を変えたもの・消したものが 1 つずつ）
+# 図の差分を確かめる前後の記法（足したもの・文字を変えたもの・削除したものが 1 つずつ）
 FLOWCHART_BEFORE = "flowchart TD\n  A[開始]\n  B_1[処理]\n  C[終了]\n"
 FLOWCHART_AFTER = "flowchart TD\n  A[開始]\n  B_1[処理を変えた]\n  D[追加]\n"
 SEQUENCE_BEFORE = (
@@ -146,7 +146,7 @@ GRAPH_AFTER = "graph LR\n  A[一] --> B[二を変えた]\n"
 REMOVED_LABELS_BEFORE = 'flowchart TD\n  A[残す]\n  B["`**消す** 方`"]\n  C["上段<br>下段"]\n'
 REMOVED_LABELS_AFTER = "flowchart TD\n  A[残す]\n"
 
-# 書きかけで解析できない flowchart（`A -->` で終わる）
+# 下書きで解析できない flowchart（`A -->` で終わる）
 UNFINISHED_FLOWCHART = "flowchart TD\n  A[開始] -->\n"
 
 # 前の版が flowchart でない組（今の版は flowchart）の前後
@@ -392,7 +392,7 @@ def test_resolve_diff_point_when_seq_ahead(
     assert result == {"added": [], "changed": [], "removed": [], "fromSeq": 2}
 
 
-# 消した項目を持つ記録の `changes`（新しい順）。V-1 と V-3 は `removed` を持たない
+# 削除した項目を持つ記録の `changes`（新しい順）。V-1 と V-3 は `removed` を持たない
 REMOVED_CHANGES = {
     "last_seq": 4,
     "sets": [
@@ -464,7 +464,7 @@ def test_resolve_diff_point_when_removed(
     sel: str,
     expected: dict[str, Any],
 ) -> None:
-    """消した項目を持ち、合わせた範囲で足して消した項目は新規にしない（正常系）。"""
+    """削除した項目を持ち、合わせた範囲で足して削除した項目は新規にしない（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行
@@ -486,7 +486,7 @@ def test_resolve_diff_point_when_removed(
 def test_resolve_diff_point_when_pending_removed_only(
     preview_page: Page, load_preview_scripts: LoadPreviewScripts
 ) -> None:
-    """消した項目だけのまだまとめていない変更も時点になる（正常系）。"""
+    """削除した項目だけのまだまとめていない変更も時点になる（正常系）。"""
     # 準備
     load_preview_scripts()
     changes = {
@@ -556,13 +556,13 @@ def test_removed_of(
     point: dict[str, Any] | None,
     expected_ids: list[str],
 ) -> None:
-    """画面の種類の消した項目だけを ID の順に返す（正常系）。"""
+    """画面の種類の削除した項目だけを ID の順に返す（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行
     ids = preview_page.evaluate(
         """({kind, point}) => {
-            // 時点は、消した項目を渡した並びのまま持つ Map として組む
+            // 時点は、削除した項目を渡した並びのまま持つ Map として組む
             const diffPoint =
                 point === null
                     ? null
@@ -1098,7 +1098,7 @@ def test_diff_diagram(
     changed: str,
     removed: str,
 ) -> None:
-    """5 種類で足した・変えた・消したものを取りこぼさない（正常系）。"""
+    """5 種類で足した・変えた・削除したものを取りこぼさない（正常系）。"""
     # 準備
     load_preview_scripts()
     load_library("mermaid")

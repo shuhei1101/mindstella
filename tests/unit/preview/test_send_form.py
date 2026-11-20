@@ -154,7 +154,7 @@ LOCATION_SCRIPT = """(props) => {
     document.body.append(form);
     const textarea = form.querySelector("textarea");
     const buttons = [...form.querySelectorAll("button")];
-    const unquote = buttons.find((button) => button.getAttribute("aria-label") === "箇所を外す");
+    const unquote = buttons.find((button) => button.getAttribute("aria-label") === "箇所を解除");
     if (unquote !== undefined) unquote.click();
     return {
         text: form.textContent,
@@ -285,7 +285,7 @@ OPEN_SCRIPT = """(props) => {
         label: toggle === null ? null : toggle.getAttribute("aria-label"),
         controlsBody: toggle !== null && body !== null && toggle.getAttribute("aria-controls") === body.id,
         bodyHidden: body === null ? null : body.hidden,
-        hasDraftMark: form.querySelector(".send-head")?.textContent.includes("書きかけ") ?? false,
+        hasDraftMark: form.querySelector(".send-head")?.textContent.includes("下書き") ?? false,
         toggled,
     };
 }"""

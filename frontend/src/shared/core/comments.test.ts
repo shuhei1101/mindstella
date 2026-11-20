@@ -99,7 +99,7 @@ describe("threadCounts（項目）", () => {
 });
 
 describe("pendingThreads（項目）", () => {
-  // 項目で絞ると、その項目への新しいスレッドだけを出す（正常系）
+  // 項目で絞ると、その項目への新規スレッドだけを出す（正常系）
   test.each([
     { filter: "open" as const, tag: null, expected: ["C-41"] },
     { filter: "closed" as const, tag: null, expected: [] },

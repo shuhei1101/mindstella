@@ -1,4 +1,4 @@
-"""core/api.ts（サーバーの配信とのやり取り：記録の取得・レビュー中のコメント・書きかけ・まとめて送る・書き換えの知らせ）の単体テスト。"""
+"""core/api.ts（サーバーの配信とのやり取り：記録の取得・レビュー中のコメント・下書き・まとめて送る・書き換えの知らせ）の単体テスト。"""
 
 from __future__ import annotations
 
@@ -326,7 +326,7 @@ def test_comment_api_when_thread(
     expected_method: str,
     expected_path: str,
 ) -> None:
-    """返信と返信の書きかけは thread を本文に持つ（正常系）。"""
+    """返信と返信の下書きは thread を本文に持つ（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行

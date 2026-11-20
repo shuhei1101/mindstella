@@ -39,7 +39,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** 文字起こしの応答を差し替え、レビュー中への追加・すぐ送る・書きかけの保存の本文を控える */
+/** 文字起こしの応答を差し替え、レビュー中への追加・すぐ送る・下書きの保存の本文を控える */
 const stubVoiceApi = (options: { transcribe?: () => Response | Promise<Response>; comments?: number; drafts?: number } = {}) => {
   const added: unknown[] = [];
   const sent: unknown[] = [];
@@ -125,7 +125,7 @@ describe("finishVoice", () => {
     }
   });
 
-  // 入力欄が画面に無い間に終わったら書きかけへ当て、失敗だけ知らせる（正常系）
+  // 入力欄が画面に無い間に終わったら下書きへ当て、失敗だけ知らせる（正常系）
   test("finish_voice_when_unmounted", async () => {
     // 準備
     installFakeMedia();
@@ -157,7 +157,7 @@ describe("finishVoice", () => {
     expect(readVoiceState().notice).toEqual({ kind: "failed", text: VOICE_TEXT.awayReviewFailed("D-1 へのコメント"), key: "D-1#" });
   });
 
-  // 文字起こし中に行き先が無くなって録音を捨てたら、溜めず・書きかけも知らせも当てない（正常系）
+  // 文字起こし中に行き先が無くなって録音を捨てたら、溜めず・下書きも知らせも当てない（正常系）
   test("finish_voice_when_discarded", async () => {
     // 準備
     installFakeMedia();
@@ -281,7 +281,7 @@ describe("subscribeVoice", () => {
 });
 
 describe("finishVoice の修正の入力", () => {
-  // 修正の入力は挿入だけにし、画面に無い間も書きかけへ当てない（正常系）
+  // 修正の入力は挿入だけにし、画面に無い間も下書きへ当てない（正常系）
   test("finish_voice_when_review", async () => {
     // 準備
     installFakeMedia();

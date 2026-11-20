@@ -204,8 +204,8 @@ TARGETS_SCRIPT = """async (html) => {
                 "role": "toolbar",
                 "label": "変わった箇所",
                 "buttons": [
-                    {"name": "足した箇所（1 / 2）", "tabStop": True},
-                    {"name": "消した箇所（2 / 2）", "tabStop": False},
+                    {"name": "追加した箇所（1 / 2）", "tabStop": True},
+                    {"name": "削除した箇所（2 / 2）", "tabStop": False},
                 ],
             },
             id="shown_with_marks",

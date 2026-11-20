@@ -22,7 +22,7 @@ describe("DecisionsScreen", () => {
     expect(await screen.findByRole("cell", { name: "D-1の題" })).toBeInTheDocument();
   });
 
-  // 消した項目の帯（正常系）
+  // 削除した項目の帯（正常系）
   test("decisions_screen_when_diff", async () => {
     // 準備
     stubRecords({ changes: { last_seq: 2, sets: [{ id: "V-2", at: "2026-11-02T00:00:00+00:00", summary: "2 回目", until_seq: 2, added: [], changed: [], removed: [{ id: "D-9", kind: "decision", title: "消した検討事項" }] }], pending: { added: [], changed: [] } } });

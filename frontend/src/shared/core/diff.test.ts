@@ -8,7 +8,7 @@ import type { Changes, Item } from "@/shared/core/records";
 const changes: Changes = {
   last_seq: 3,
   sets: [
-    { id: "V-2", at: "2026-11-02T00:00:00+00:00", summary: "2 回目", until_seq: 3, added: ["D-2"], changed: ["D-1"], removed: [{ id: "D-3", kind: "decision", title: "消した" }, { id: "T-1", kind: "task", title: "消したタスク" }] },
+    { id: "V-2", at: "2026-11-02T00:00:00+00:00", summary: "2 回目", until_seq: 3, added: ["D-2"], changed: ["D-1"], removed: [{ id: "D-3", kind: "decision", title: "削除した" }, { id: "T-1", kind: "task", title: "消したタスク" }] },
     { id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "1 回目", until_seq: 1, added: ["D-1"], changed: [] },
   ],
   pending: { added: [], changed: [] },

@@ -12,8 +12,8 @@ from .fixture_types import LoadPreviewScripts, MakeData, MakeItem
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 800
 
-# 消した項目の帯の読み上げ名
-REMOVED_BAND_NAME = "この時点で消した項目"
+# 削除した項目の帯の読み上げ名
+REMOVED_BAND_NAME = "この時点で削除した項目"
 
 
 @pytest.mark.parametrize(

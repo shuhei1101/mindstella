@@ -50,7 +50,7 @@ describe("WorkspaceSettingsScreen", () => {
     const radios = await screen.findAllByRole("radio", { name: /レビュー中に追加する|入力欄へ挿入する|送信する/ });
     expect(radios.map((radio) => radio.getAttribute("value"))).toEqual(["review", "insert", "send"]);
     expect(screen.getByRole("radio", { name: "レビュー中に追加する" })).toBeChecked();
-    await userEvent.click(screen.getByRole("radio", { name: "送信する" }));
+    await userEvent.click(screen.getByRole("radio", { name: "送信" }));
     await waitFor(() => expect(posted).toHaveBeenCalledWith({ op: "setting", target: "settings", key: "transcription", value: { action: "send", preset: null } }));
     unmount();
     server.use(http.get("/api/transcription", () => HttpResponse.json({ available: false, reason: "stopped", detail: "x", presets: [], action: "send", preset: null })));
@@ -58,7 +58,7 @@ describe("WorkspaceSettingsScreen", () => {
     const select = await screen.findByRole("combobox", { name: "用語集のプリセット" });
     // 検証
     await waitFor(() => expect(select).toBeDisabled());
-    expect(screen.getByText("文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。")).toBeInTheDocument();
+    expect(screen.getByText("文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を再度開いてください。")).toBeInTheDocument();
   });
 
   // 挙動とプリセットを続けて選ぶ（正常系）
@@ -73,7 +73,7 @@ describe("WorkspaceSettingsScreen", () => {
     const select = await screen.findByRole("combobox", { name: "用語集のプリセット" });
     await waitFor(() => expect(select).toBeEnabled());
     // 実行
-    await userEvent.click(screen.getByRole("radio", { name: "送信する" }));
+    await userEvent.click(screen.getByRole("radio", { name: "送信" }));
     await userEvent.selectOptions(select, "一般");
     // 検証
     await waitFor(() => expect(posted).toHaveBeenCalledTimes(2));
@@ -97,7 +97,7 @@ describe("WorkspaceSettingsScreen", () => {
     renderRoute("/spa/?tab=settings");
     const select = await screen.findByRole("combobox", { name: "用語集のプリセット" });
     await waitFor(() => expect(select).toBeEnabled());
-    await userEvent.click(screen.getByRole("radio", { name: "送信する" }));
+    await userEvent.click(screen.getByRole("radio", { name: "送信" }));
     // 文字起こし後の挙動の名前の右に保存待ちの印が付くまで待つ
     const actionField = () => document.querySelector('[data-key="transcription"]');
     await waitFor(() => expect(actionField()).toHaveTextContent("保存待ち"));

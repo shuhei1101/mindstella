@@ -85,10 +85,10 @@ def test_chips_input_when_main_toggle(
     _add(preview_page, "保存")
     # 検証
     assert initial_data["pressed"] == "true"
-    assert initial_data["title"] == "主題を外す"
+    assert initial_data["title"] == "主題を解除"
     assert initial_screen["pressed"] == "false"
     assert initial_screen["title"] == "主題にする"
-    assert after_first == {"pressed": "true", "title": "主題を外す", "focused": True}
+    assert after_first == {"pressed": "true", "title": "主題を解除", "focused": True}
     assert after_second == {"pressed": "false", "title": "主題にする", "focused": True}
     assert _calls(preview_page) == [
         [[{"name": "画面", "main": True}, {"name": "データ", "main": True}], None],

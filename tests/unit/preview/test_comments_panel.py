@@ -34,8 +34,8 @@ REPLY_C5 = make_review_item("C-5", target=None, target_title=None, thread="TH-1"
 # クローズのスレッド TH-5 への返信
 REPLY_C44 = make_review_item("C-44", target=None, target_title=None, thread="TH-5", body="閉じた後の返信")
 
-# まだ送っていない新しいスレッド（D-5 へ）
-NEW_C41 = make_review_item("C-41", target="D-5", target_title=None, body="新しいスレッドの本文")
+# まだ送っていない新規スレッド（D-5 へ）
+NEW_C41 = make_review_item("C-41", target="D-5", target_title=None, body="新規スレッドの本文")
 
 # スレッド（オープン 2 件とクローズ 1 件。最後の書き込みの日時が 01:00・02:00・03:00）
 THREAD_1 = make_thread(
@@ -80,7 +80,7 @@ RUN_SCRIPT = """async (args) => {
         view: "list", items: [], removed: [], threads: [], threadsError: null, filter: "open",
         tag: null, target: null, opened: null, composing: false, pinned: false,
         free: {
-            target: null, body: "", status: "idle", label: "新しいスレッド", collapsed: false,
+            target: null, body: "", status: "idle", label: "新規スレッド", collapsed: false,
             on: {input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop},
         },
         reply: {body: "", status: "idle", count: null, detail: null},
@@ -228,7 +228,7 @@ def _threads_by_focus(observed: dict[str, Any]) -> list[str]:
             [{"click": {"label": "レビュー中の書き込みを確かめる（3 件）"}}],
             True,
             ["review"],
-            "新しいスレッド",
+            "新規スレッド",
             id="list",
         ),
         pytest.param(
@@ -320,7 +320,7 @@ def test_comments_panel_when_pin(
 
 
 def test_thread_list_view(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
-    """絞り込みの件数と、まだ送っていない新しいスレッドを先頭にした行（正常系）。"""
+    """絞り込みの件数と、まだ送っていない新規スレッドを先頭にした行（正常系）。"""
     # 準備
     load_preview_scripts()
     props = {
@@ -355,7 +355,7 @@ def test_thread_list_view(preview_page: Page, load_preview_scripts: LoadPreviewS
 def test_thread_list_view_when_tag(
     preview_page: Page, load_preview_scripts: LoadPreviewScripts
 ) -> None:
-    """タグで絞るとチップと件数を出し、まだ送っていない新しいスレッドを出さない（正常系）。"""
+    """タグで絞るとチップと件数を出し、まだ送っていない新規スレッドを出さない（正常系）。"""
     # 準備
     load_preview_scripts()
     props = {
@@ -381,7 +381,7 @@ TARGET_THREADS = [
 
 
 def test_thread_list_view_when_target(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
-    """項目で絞るとチップを出し、その項目のスレッドと新しいスレッドだけを並べる（正常系）。"""
+    """項目で絞るとチップを出し、その項目のスレッドと新規スレッドだけを並べる（正常系）。"""
     # 準備
     load_preview_scripts()
     props = {
@@ -463,7 +463,7 @@ def test_thread_list_view_when_target_and_tag(
         ),
         pytest.param(
             {"threadsError": {"detail": None}},
-            "スレッドを読めませんでした。サーバーが止まっています。立ち上げ直してから開いてください。",
+            "スレッドを読めませんでした。サーバーが止まっています。再起動してから開いてください。",
             True,
             id="unreachable",
         ),
@@ -495,9 +495,9 @@ def test_thread_list_view_when_empty_or_failed(
 @pytest.mark.parametrize(
     ("composing", "click", "expected_calls"),
     [
-        pytest.param(False, {"exact": "新しいスレッド"}, [["compose", True]], id="closed"),
+        pytest.param(False, {"exact": "新規スレッド"}, [["compose", True]], id="closed"),
         pytest.param(
-            True, {"label": "新しいスレッドの入力を閉じる"}, [["compose", False]], id="composing"
+            True, {"label": "新規スレッドの入力を閉じる"}, [["compose", False]], id="composing"
         ),
     ],
 )
@@ -508,7 +508,7 @@ def test_thread_list_view_when_composing(
     click: dict[str, str],
     expected_calls: list[list[Any]],
 ) -> None:
-    """新しいスレッドの入口と入力を切り替える（正常系）。"""
+    """新規スレッドの入口と入力を切り替える（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行
@@ -520,11 +520,11 @@ def test_thread_list_view_when_composing(
     )
     # 検証
     assert observed["calls"] == expected_calls
-    assert any(field["ariaLabel"] == "新しいスレッド" for field in observed["fields"]) is composing
+    assert any(field["ariaLabel"] == "新規スレッド" for field in observed["fields"]) is composing
 
 
 def test_thread_list_view_when_target_composing(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
-    """項目で絞っている間の新しいスレッドの入力の見出し（正常系）。"""
+    """項目で絞っている間の新規スレッドの入力の見出し（正常系）。"""
     # 準備
     load_preview_scripts()
     props = {
@@ -544,8 +544,8 @@ def test_thread_list_view_when_target_composing(preview_page: Page, load_preview
     # 検証
     assert preview_page.evaluate(
         "() => document.querySelector('.talk-new .send-label').textContent"
-    ) == "D-1 への新しいスレッド"
-    assert "D-1 への新しいスレッド" in observed["text"]
+    ) == "D-1 への新規スレッド"
+    assert "D-1 への新規スレッド" in observed["text"]
 
 
 # --- スレッド ---------------------------------------------------------------
@@ -610,7 +610,7 @@ def test_thread_view(preview_page: Page, load_preview_scripts: LoadPreviewScript
         pytest.param(
             {"items": [NEW_C41], "opened": {"id": "C-41", "pending": True}},
             ["D-5 へのコメントを修正", "D-5 へのコメントを削除"],
-            ["レビュー中", "まだ送っていないスレッドです。"],
+            ["レビュー中", "まだ送信していないスレッドです。"],
             False,
             id="pending",
         ),
@@ -624,7 +624,7 @@ def test_thread_view_when_closed_or_pending(
     expected_texts: list[str],
     expect_reply_field: bool,
 ) -> None:
-    """クローズと、まだ送っていない新しいスレッドは返信の入力を出さない（正常系）。"""
+    """クローズと、まだ送っていない新規スレッドは返信の入力を出さない（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行
@@ -696,7 +696,7 @@ REASON_FIELD = 'textarea[maxlength="400"]'
             [],
             {
                 "fieldPresent": True,
-                "alert": "クローズにできませんでした。サーバーが止まっています。立ち上げ直してから押してください。",
+                "alert": "クローズにできませんでした。サーバーが止まっています。再起動してから押してください。",
             },
             [],
             [],
@@ -800,7 +800,7 @@ def _row(observed: dict[str, Any], comment_id: str) -> dict[str, Any]:
 
 
 def test_review_view(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
-    """送る帯と、新しいスレッド・返信の行を描く（正常系）。"""
+    """送る帯と、新規スレッド・返信の行を描く（正常系）。"""
     # 準備
     load_preview_scripts()
     props = {
@@ -817,15 +817,15 @@ def test_review_view(preview_page: Page, load_preview_scripts: LoadPreviewScript
     assert "レビュー中の書き込み" in observed["text"]
     assert "2 / 4 件" in observed["text"]
     send = next(button for button in observed["buttons"] if button["text"].startswith("まとめて送る"))
-    assert send["text"] == "まとめて送る（2 件）"
+    assert send["text"] == "まとめて送信（2 件）"
     select_all = next(
         field for field in observed["fields"] if field["type"] == "checkbox" and field["indeterminate"]
     )
     assert select_all["indeterminate"] is True
     assert [STALE_REASON in alert for alert in _row(observed, "C-2")["alerts"]] == [True]
-    assert "箇所を外す" not in [button["text"] for button in _row(observed, "C-2")["buttons"]]
-    # 項目を指さない新しいスレッドの行の頭は、「新しいスレッド」の札だけ
-    assert _row(observed, "C-3")["kinds"] == ["新しいスレッド"]
+    assert "箇所を解除" not in [button["text"] for button in _row(observed, "C-2")["buttons"]]
+    # 項目を指さない新規スレッドの行の頭は、「新規スレッド」の札だけ
+    assert _row(observed, "C-3")["kinds"] == ["新規スレッド"]
     assert _row(observed, "C-3")["targets"] == 0
     assert "項目を指さない" not in _row(observed, "C-3")["text"]
     assert "スレッドを開く" in [button["text"] for button in _row(observed, "C-3")["buttons"]]
@@ -855,8 +855,8 @@ def test_review_view_when_blocked(
     blocked = _row(observed, "C-44")
     assert blocked["checkbox"] == {"checked": False, "disabled": True}
     assert "1 / 1 件" in observed["text"]
-    assert "まとめて送る（1 件）" in [button["text"] for button in observed["buttons"]]
-    assert "クローズのスレッドへの返信は送れません。オープンに戻すと送れます。" in blocked["text"]
+    assert "まとめて送信（1 件）" in [button["text"] for button in observed["buttons"]]
+    assert "クローズのスレッドへの返信は送信できません。オープンに戻すと送信できます。" in blocked["text"]
     assert _call_names(observed) == ["openThread"]
     assert "TH-5" in json.dumps(observed["calls"])
 
@@ -877,7 +877,7 @@ def test_review_view_when_empty(
 @pytest.mark.parametrize(
     ("checked", "result", "expected_text"),
     [
-        pytest.param([], None, "送る書き込みにチェックを付けてください。", id="nothing_checked"),
+        pytest.param([], None, "送信する書き込みにチェックを付けてください。", id="nothing_checked"),
         pytest.param(["C-1"], {"kind": "sending"}, "", id="sending"),
     ],
 )
@@ -926,10 +926,10 @@ def test_review_view_when_editing_in_detail(
 @pytest.mark.parametrize(
     ("entered", "expected_text"),
     [
-        pytest.param(True, "2 件を送り、Claude Code に入力しました（12:04）。", id="entered"),
+        pytest.param(True, "2 件を送信し、Claude Code に入力しました（12:04）。", id="entered"),
         pytest.param(
             False,
-            "2 件を送りましたが、Claude Code には入力できませんでした（12:04）。"
+            "2 件を送信しましたが、Claude Code には入力できませんでした（12:04）。"
             "送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。",
             id="not_entered",
         ),
@@ -981,7 +981,7 @@ def test_review_view_when_change_set_link(
 # 改行で 8 行の本文
 EIGHT_LINES = "\n".join(f"{number} 行目の気づき" for number in range(1, 9))
 
-# 項目を指さない新しいスレッド・TH-1 への 8 行の返信・TH-1 への 2 行の返信
+# 項目を指さない新規スレッド・TH-1 への 8 行の返信・TH-1 への 2 行の返信
 FOLD_C51 = make_review_item("C-51", target=None, target_title=None, body=EIGHT_LINES)
 FOLD_C52 = make_review_item("C-52", target=None, target_title=None, thread="TH-1", body=EIGHT_LINES)
 FOLD_C53 = make_review_item("C-53", target=None, target_title=None, thread="TH-1", body="2 行の\n返信")
@@ -1031,7 +1031,7 @@ NO_MORE = {
                     "inThreadOpen": True,
                     "beforeOpen": True,
                 },
-                "C-52": {**NO_MORE, "visible": True, "wrapperVisible": True, "wrapperText": "続きを読む"},
+                "C-52": {**NO_MORE, "visible": True, "wrapperVisible": True, "wrapperText": "続きを表示"},
                 "C-53": NO_MORE,
             },
             [["fold", "C-51", True]],
@@ -1042,7 +1042,7 @@ NO_MORE = {
             [],
             {
                 "C-51": {**NO_MORE, "hasEditField": True, "hasBody": False},
-                "C-52": {**NO_MORE, "visible": True, "wrapperVisible": True, "wrapperText": "続きを読む"},
+                "C-52": {**NO_MORE, "visible": True, "wrapperVisible": True, "wrapperText": "続きを表示"},
                 "C-53": NO_MORE,
             },
             [],
@@ -1238,7 +1238,7 @@ def test_pending_threads_when_target(
     tag: str | None,
     expected: list[str],
 ) -> None:
-    """項目で絞ると、その項目への新しいスレッドだけを出す（正常系）。"""
+    """項目で絞ると、その項目への新規スレッドだけを出す（正常系）。"""
     # 準備
     load_preview_scripts()
     items = [
@@ -1594,17 +1594,17 @@ def test_review_edit_form_voice(
             "   ",
             "save",
             "   ",
-            "コメントを入れてから直してください。",
+            "コメントを入れてから修正してください。",
             "true",
             id="blank_only",
         ),
         pytest.param(
             "案 A に決める",
-            "サーバーが止まっています。立ち上げ直してから直してください。",
+            "サーバーが止まっています。再起動してから修正してください。",
             None,
             "none",
             "案 A に決める",
-            "サーバーが止まっています。立ち上げ直してから直してください。",
+            "サーバーが止まっています。再起動してから修正してください。",
             None,
             id="save_failed",
         ),
@@ -1706,7 +1706,7 @@ EDIT_FORM_KEYS_SCRIPT = (
             False,
             False,
             {"saved": []},
-            "コメントを入れてから直してください。",
+            "コメントを入れてから修正してください。",
             id="blank_only",
         ),
         pytest.param("案 A に決める", True, False, True, {"saved": []}, "", id="composing"),
