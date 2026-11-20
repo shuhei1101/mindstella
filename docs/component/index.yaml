@@ -56,6 +56,8 @@ items:
     summary: "取り下げた調査・資料・用語集・メモ・会話ログのタイトルの右に置く、枠付きの × と「取り下げ」の札"
   - page: CMP-489-24.tsx.yaml
     summary: "React のプレビューの取り下げの札。今の取り下げの札と同じ引数・イベント・状態を props で持つ"
+  - page: CMP-633-1.tsx.yaml
+    summary: "React の詳細パネルの見出しに配置する、項目を確認済みにするか解除するボタン"
   - page: CMP-489-39.ts.yaml
     summary: "資料の種類の右に置く、本文の形式を `MD` / `HTML` で示す札"
   - page: CMP-489-40.tsx.yaml
