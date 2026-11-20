@@ -453,6 +453,183 @@ classes:
           type: int
           description: 回数
         process: 1. `_guard` を取り、`_revision` を返す
+  - name: PreviewEndpoint
+    title: 要求のハンドラー
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    role: ライブラリが要求するクラス
+    summary: 常駐サーバーの経路 `{PREVIEW_PREFIX}/{workspace}` と `{PREVIEW_PREFIX}/{workspace}/{rest:path}` に登録する Starlette のエンドポイント（`async def __call__(request) -> starlette.responses.Response`）。ワークスペースの ID で配信の文脈を引き、メソッドと `rest` で処理の関数へ振り分け、返った応答を Starlette の応答にする。振り分けた先の処理は今の関数（`*_response`・`write_response`）で持ち、このクラスは要求と応答の読み書きだけを持つ。同期の処理の関数は `starlette.concurrency.run_in_threadpool` で呼ぶ
+    kind: クラス
+    properties:
+      - name: _registry
+        type: PreviewRegistry
+        access: 内部 (_)
+        description: 配信の台帳（配信の文脈を引く）
+    methods:
+      - name: __call__
+        title: 要求の振り分け
+        kind: メソッド
+        summary: ワークスペースの ID で配信の文脈を引き、`Host` を確かめて、メソッドと `rest` で処理の関数へ振り分ける
+        args:
+          - name: request
+            type: starlette.requests.Request
+            required: true
+            passing: positional
+            description: 受けた要求（パスの値 `workspace`・`rest` を持つ。`rest` が無い経路は空の文字列）
+        returns:
+          type: starlette.responses.Response
+          description: 応答
+        process: |-
+          1. `request.path_params["workspace"]` で配信の文脈を引く（`PreviewRegistry.context_of`。Starlette がパーセントエンコードを戻す）
+             - `None` の場合、404 を返す（`problem_response`。`detail` は「配っていないワークスペースです」）
+          2. `Host` が合わなければ 403 を返す（`check_host`。文脈の `port` と `allowed_hosts` を渡す）
+          3. `rest` の前に `/` を付けたパス（`rest` が無い経路は `""`）とメソッドで分ける（クエリは見ない）。パスごとの処理は前の待ち受けの振り分けと同じで、次だけが違う
+             - パスが `""`（`/w/{workspace}`）の場合、`/w/{workspace}/` へ 302 で再送信する
+             - `GET /` の場合、`302`・`Location: {PREVIEW_PREFIX}/{workspace}{PAGE_PATH}` で再送信する（パスは受けたままのパーセントエンコードで組み立てる）
+             - `GET /spa` の場合、`{PREVIEW_PREFIX}/{workspace}/spa/` へ 302 で再送信する
+             - `GET /files/...` の場合、`_send_file` へ渡す
+             - `GET /api/events` の場合、`_stream` へ渡す
+             - `POST /api/transcriptions` の場合、`_transcribe` へ渡す
+             - 本文を読む処理は、`Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば読まずに 400 を返し、`await request.body()` で読む
+             - それ以外のパスは 404 を返す
+          4. 処理の関数を `run_in_threadpool` で呼び、返った `Response` を `starlette.responses.Response(content=body, status_code=status, media_type=content_type)` にして `Cache-Control: no-store` を付けて返す
+        unit_tests:
+          - name: test_endpoint
+            case: 正常
+            summary: 配っているワークスペースの画面と記録を返す
+            condition: 作成済みのワークスペースを `start` した台帳で、経路を登録した Starlette のアプリを `TestClient` で呼ぶ。`/w/{ID}/mindstella.html`・`/w/{ID}/api/records` を GET する
+            mock: なし（`TestClient`。`Host` は `127.0.0.1:{port}`）
+            expected: 'どちらも 200、`Cache-Control: no-store`。記録はそのワークスペースのもの'
+          - name: test_endpoint_when_redirect
+            case: 正常
+            summary: ワークスペースの先頭と /spa を再送信する
+            condition: '同じアプリで、再送信を辿らずに `/w/{ID}`・`/w/{ID}/`・`/w/{ID}/spa` を GET する。`parametrize`: ASCII の ID / 日本語を含む ID'
+            mock: なし（`TestClient`）
+            expected: 302 で、`Location` がそれぞれ `/w/{ID}/`・`/w/{ID}/mindstella.html`・`/w/{ID}/spa/`（ID はパーセントエンコード）
+          - name: test_endpoint_when_workspace_not_served
+            case: 異常
+            summary: 配っていない ID は 404 で、ほかのワークスペースの記録を返さない
+            condition: A だけ `start` した台帳で、配っていない ID の `/w/{ID}/api/records` を GET する
+            mock: なし（`TestClient`）
+            expected: 404、`application/problem+json`、本文に A の記録が無い
+          - name: test_endpoint_when_host_mismatch
+            case: 異常
+            summary: Host が合わなければ 403
+            condition: '`Host: attacker.example:{port}` で `/w/{ID}/mindstella.html` を GET する'
+            mock: なし（`TestClient`）
+            expected: 403、本文に HTML が無い
+          - name: test_endpoint_when_two_workspaces
+            case: 正常
+            summary: 2 つのワークスペースへの書き込みが別々に入る
+            condition: A・B を `start` し、`POST /w/{A の ID}/api/comments` でコメントを溜めてから、両方の `GET /api/comments` を呼ぶ
+            mock: なし（`TestClient`）
+            expected: A の応答に溜めたコメントがあり、B の応答は空
+      - name: _send_file
+        title: ファイルの応答
+        kind: メソッド
+        container: plugins/mindstella/skills/mindmap/scripts/serve.py
+        usecase: 動画などのファイルを配置して資料に埋め込む
+        scope: internal
+        summary: ワークスペースのファイルを解決し、200・206・416 のヘッダーと本文を分けて返す `StreamingResponse` を作る。解決できなければ 404
+        args:
+          - name: context
+            type: ServeContext
+            required: true
+            passing: positional
+            description: 配信の文脈（ワークスペースの直下 `root` を使用する）
+          - name: sub_path
+            type: str
+            required: true
+            passing: positional
+            description: '`/files/` より後ろのパス（URL エンコードのまま。`request.url.path` から切り出す）'
+          - name: range_header
+            type: str | None
+            required: true
+            passing: positional
+            description: '`Range` の値'
+        returns:
+          type: starlette.responses.Response
+          description: ファイルの応答か 404
+        process: |-
+          1. 直下の `{root}/{FILES_DIR}` と `sub_path` でファイルを解決する（ファイルの解決）
+             - None の場合、404 を返す（`problem_response`。`detail` は「ファイルがありません」で、パスを含めない。`FILE_SECURITY_HEADERS` を付ける）
+          2. `Range` の値で計画を決める（ファイルの応答の計画）
+             - `OSError` の場合、同じ 404 を返す
+          3. 計画のステータス・`Content-Type`・`Content-Length`（計画の長さ）・計画のヘッダーで `StreamingResponse` を作り、本文はファイルの書き出しをスレッドで分けて読むイテレーターにする（`iterate_in_threadpool`。`Cache-Control: no-store` は付けない）
+             - ブラウザが接続を切った場合、Starlette が書き出しをやめる（ほかの要求に影響しない）
+        unit_tests:
+          - name: test_send_file
+            case: 正常
+            summary: ファイルの全体と範囲を返す
+            condition: 一時ワークスペースに 1000 バイトの直下の `files/clip.mp4` を置き、`start` して `/w/{ID}/files/clip.mp4` を `Range` 無しと `bytes=100-199` で GET する
+            mock: なし（`TestClient`）
+            expected: '200 で全体、206 で 100〜199 バイト目。どちらも `Cache-Control: no-cache`・`Content-Security-Policy: sandbox`'
+          - name: test_send_file_when_missing
+            case: 正常
+            summary: 解決できなければ 404
+            condition: 同じワークスペースで `/w/{ID}/files/missing.mp4` と `/w/{ID}/files/../.mindstella/config.yaml`
+            mock: なし（`TestClient`）
+            expected: 'どちらも 404 の問題の応答で、本文に `config.yaml` の中身が無い。`Content-Security-Policy: sandbox`・`X-Content-Type-Options: nosniff` を持つ'
+      - name: _stream
+        title: 書き換えの通知の応答
+        kind: メソッド
+        scope: internal
+        summary: '`200`・`text/event-stream`・`Cache-Control: no-store` の `StreamingResponse` で、画面が閉じるまで書き換えを知らせ続ける'
+        args:
+          - name: request
+            type: starlette.requests.Request
+            required: true
+            passing: positional
+            description: 受けた要求（切断を確かめる）
+          - name: context
+            type: ServeContext
+            required: true
+            passing: positional
+            description: 配信の文脈
+        returns:
+          type: starlette.responses.StreamingResponse
+          description: 書き換えの通知
+        process: |-
+          1. 別のスレッドで `stream_events` を動かし、書き出す片を `asyncio.Queue` へ渡す（`loop.call_soon_threadsafe`。書き換えのマーカーは `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの）
+          2. 応答のイテレーターはキューの片を順に返す
+          3. 画面が閉じた（`await request.is_disconnected()` が真、またはイテレーターが閉じられた）ら、切断の印を立てて終える。スレッドの書き出しは印を見て `BrokenPipeError` を送出し、`stream_events` を終える
+        unit_tests:
+          - name: test_stream
+            case: 正常
+            summary: 書き換えを知らせ、切断でスレッドを終える
+            condition: '`start` したワークスペースの `/w/{ID}/api/events` を `TestClient.stream` で開き、記録を書き換えてから閉じる'
+            mock: '`POLL_INTERVAL_SEC` を短くする'
+            expected: '`changed` の知らせを受け取り、閉じた後に `stream_events` のスレッドが終わる'
+      - name: _transcribe
+        title: 文字起こしの受け付け
+        kind: メソッド
+        scope: internal
+        summary: 音声の本文を上限まで読み、文字起こしを呼ぶ（前の待ち受けの `POST /api/transcriptions` と同じ）
+        args:
+          - name: request
+            type: starlette.requests.Request
+            required: true
+            passing: positional
+            description: 受けた要求
+          - name: context
+            type: ServeContext
+            required: true
+            passing: positional
+            description: 配信の文脈
+        returns:
+          type: starlette.responses.Response
+          description: 文字起こしの結果か 413
+        process: |-
+          1. `Content-Length` があれば `MAX_AUDIO_BYTES` と比べ、超えれば読まずに 413 を返す
+          2. `request.stream()` を読みながら数え、`MAX_AUDIO_BYTES` を超えた時点で読むのをやめて 413 を返す
+          3. 読んだ本文で `transcribe_response` を `run_in_threadpool` で呼ぶ
+        unit_tests:
+          - name: test_transcribe_when_too_large
+            case: 異常
+            summary: 上限を超える音声は 413
+            condition: '`Content-Length` を付けずに `MAX_AUDIO_BYTES` + 1 バイトを `/w/{ID}/api/transcriptions` へ送信する'
+            mock: 文字起こしのインターフェース（呼ばれたかを記録する）
+            expected: 413 で、文字起こしが呼ばれていない
 constants:
   - name: LISTEN_HOST
     title: 待ち受けのアドレス
