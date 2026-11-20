@@ -69,15 +69,21 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 項目を確認済みにする・外す操作と、AI が書き換えると未確認に戻ること、コメントを送ると確認済みになることを追加する（#188）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T06:33:05.161079+00:00'
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: 確認済みを持つキーと、コメントを送ったら確認済みにするかの設定のキーを追加する（#188）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T06:33:05.161079+00:00'
   - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
     new: false
     change: 同じバージョンに後から追加した移し替えの手順も実行されることに合わせて、移し替えが当たる条件の記載を修正する（#628。記載が条件に触れていなければ変更なしで閉じる）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T06:33:05.161079+00:00'
 scope_out:
   - item: 今の画面（plugins/mindstella/skills/mindmap/preview）への確認済みのマーカーと、コメントの一覧の書き込みの折り返し
     reason: '今の画面は #371 で削除するため、React の画面だけを対象にする（#619 の受付判断と同じ扱い）。#625 は今の画面の結合テストの fail のため対象に含める'
