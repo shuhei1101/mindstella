@@ -875,6 +875,14 @@ files:
   description: 確認済みの切り替えのストーリー。
   tags:
   - tool:react
+- path: src/shared/components/confirmed-toggle.test.tsx
+  name: 確認済みの切り替えの単体テスト
+  description: 確認済みの切り替えの単体テスト。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-633-1
+    type: tests
 - path: src/shared/components/confirmed-toggle.tsx
   name: 確認済みの切り替え
   description: 確認済みの切り替え。
@@ -1511,6 +1519,22 @@ files:
   - tool:react
   related:
   - to: MOD-489-128
+    type: implements
+- path: src/shared/hooks/use-item-confirmed.test.tsx
+  name: 確認済みの付け外しの単体テスト
+  description: 確認済みの付け外しの単体テスト。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-633-2
+    type: tests
+- path: src/shared/hooks/use-item-confirmed.ts
+  name: 項目の確認済みの付け外し
+  description: 項目の確認済みの付け外し。応答を待つ間は押した後の値を返し、失敗したら記録の値に戻して文を返す。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-633-2
     type: implements
 - path: src/shared/hooks/use-preview-search.test.tsx
   name: import { act, waitFor } from @testing-library/react;

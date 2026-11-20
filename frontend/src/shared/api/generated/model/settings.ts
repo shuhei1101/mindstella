@@ -12,5 +12,6 @@ export interface Settings {
   description?: string;
   display?: SettingsDisplay;
   transcription?: SettingsTranscription;
+  confirm_on_comment?: boolean;
   [key: string]: unknown;
  }

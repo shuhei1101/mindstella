@@ -29,6 +29,8 @@ import type {
   CommentPatchReply,
   CommentReply,
   Comments,
+  ConfirmedInput,
+  ConfirmedReply,
   DisplayInput,
   DisplayReply,
   DraftInput,
@@ -54,7 +56,7 @@ import type {
 } from './model';
 
 
-export const getGetRecordsResponseMock = (overrideResponse: Partial<Extract<Records, object>> = {}): Records => ({settings: {summary: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), display: faker.helpers.arrayElement([{network_look: faker.helpers.arrayElement([faker.helpers.arrayElement(Object.values(NetworkLook)), undefined]), visible_kinds: faker.helpers.arrayElement([faker.helpers.arrayElements(Object.values(Kind)), undefined])}, undefined]), transcription: faker.helpers.arrayElement([{action: faker.helpers.arrayElement([faker.helpers.arrayElement(['review','send','insert'] as const), undefined]), preset: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])}, undefined])}, decisions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), tasks: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), research: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), docs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), terms: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), notes: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), logs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), derived: {ready: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))}, built_at: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+export const getGetRecordsResponseMock = (overrideResponse: Partial<Extract<Records, object>> = {}): Records => ({settings: {summary: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), display: faker.helpers.arrayElement([{network_look: faker.helpers.arrayElement([faker.helpers.arrayElement(Object.values(NetworkLook)), undefined]), visible_kinds: faker.helpers.arrayElement([faker.helpers.arrayElements(Object.values(Kind)), undefined])}, undefined]), transcription: faker.helpers.arrayElement([{action: faker.helpers.arrayElement([faker.helpers.arrayElement(['review','send','insert'] as const), undefined]), preset: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])}, undefined]), confirm_on_comment: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])}, decisions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), confirmed: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), tasks: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), confirmed: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), research: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), confirmed: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), docs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), confirmed: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), terms: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), confirmed: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), notes: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), confirmed: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), logs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), confirmed: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), derived: {ready: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))}, built_at: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getGetCommentsResponseMock = (overrideResponse: Partial<Extract<Comments, object>> = {}): Comments => ({items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}})})), ...overrideResponse})
 
@@ -85,6 +87,8 @@ export const getRemoveCommentResponseMock = (overrideResponse: Partial<Extract<R
 export const getSendCommentsResponseMock = (overrideResponse: Partial<Extract<SendReply, object>> = {}): SendReply => ({sent: faker.string.alpha({length: {min: 10, max: 20}}), items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({comment: faker.string.alpha({length: {min: 10, max: 20}}), thread: faker.string.alpha({length: {min: 10, max: 20}}), post: faker.string.alpha({length: {min: 10, max: 20}})})), entered: faker.datatype.boolean(), ...overrideResponse})
 
 export const getSetThreadStatusResponseMock = (overrideResponse: Partial<Extract<ThreadStatusReply, object>> = {}): ThreadStatusReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','closed'] as const), changed: faker.datatype.boolean(), ...overrideResponse})
+
+export const getSetItemConfirmedResponseMock = (overrideResponse: Partial<Extract<ConfirmedReply, object>> = {}): ConfirmedReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), confirmed: faker.datatype.boolean(), ...overrideResponse})
 
 export const getMarkThreadSeenResponseMock = (overrideResponse: Partial<Extract<SeenReply, object>> = {}): SeenReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), seen: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
@@ -263,6 +267,18 @@ export const getSetThreadStatusMockHandler = (overrideResponse?: ThreadStatusRep
   }, options)
 }
 
+export const getSetItemConfirmedMockHandler = (overrideResponse?: ConfirmedReply | ((info: Parameters<HttpResponseResolver<{ id: string }, ConfirmedInput>>[0]) => Promise<ConfirmedReply> | ConfirmedReply), options?: RequestHandlerOptions) => {
+  return http.put<{ id: string }, ConfirmedInput>('*/api/items/:id/confirmed', async (info: Parameters<HttpResponseResolver<{ id: string }, ConfirmedInput>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getSetItemConfirmedResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getMarkThreadSeenMockHandler = (overrideResponse?: SeenReply | ((info: Parameters<HttpResponseResolver<{ id: string }>>[0]) => Promise<SeenReply> | SeenReply), options?: RequestHandlerOptions) => {
   return http.post<{ id: string }>('*/api/threads/:id/seen', async (info: Parameters<HttpResponseResolver<{ id: string }>>[0]) => {
 
@@ -337,6 +353,7 @@ export const getMindstellaPreviewMock = () => [
   getSendCommentsMockHandler(),
   getSaveDraftMockHandler(),
   getSetThreadStatusMockHandler(),
+  getSetItemConfirmedMockHandler(),
   getMarkThreadSeenMockHandler(),
   getPutConfigDisplayMockHandler(),
   getGetTranscriptionMockHandler(),

@@ -20,42 +20,50 @@ export const GetRecordsResponse = zod.looseObject({
   "transcription": zod.object({
   "action": zod.enum(['review', 'send', 'insert']).optional(),
   "preset": zod.string().nullish()
-}).optional()
+}).optional(),
+  "confirm_on_comment": zod.boolean().optional()
 }),
   "decisions": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional()
+  "status": zod.string().optional(),
+  "confirmed": zod.boolean().optional()
 })),
   "tasks": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional()
+  "status": zod.string().optional(),
+  "confirmed": zod.boolean().optional()
 })),
   "research": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional()
+  "status": zod.string().optional(),
+  "confirmed": zod.boolean().optional()
 })),
   "docs": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional()
+  "status": zod.string().optional(),
+  "confirmed": zod.boolean().optional()
 })),
   "terms": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional()
+  "status": zod.string().optional(),
+  "confirmed": zod.boolean().optional()
 })),
   "notes": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional()
+  "status": zod.string().optional(),
+  "confirmed": zod.boolean().optional()
 })),
   "logs": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional()
+  "status": zod.string().optional(),
+  "confirmed": zod.boolean().optional()
 })),
   "derived": zod.object({
   "ready": zod.array(zod.string()).describe('前提が全て決着した未決定の検討事項の ID（連番の順）')
@@ -287,6 +295,23 @@ export const SetThreadStatusResponse = zod.object({
   "id": zod.string(),
   "status": zod.enum(['open', 'closed']),
   "changed": zod.boolean()
+})
+
+
+/**
+ * @summary 利用者が項目を確認済みにするか、確認済みを解除する
+ */
+export const SetItemConfirmedParams = zod.object({
+  "id": zod.string()
+})
+
+export const SetItemConfirmedBody = zod.object({
+  "confirmed": zod.boolean()
+})
+
+export const SetItemConfirmedResponse = zod.object({
+  "id": zod.string(),
+  "confirmed": zod.boolean()
 })
 
 

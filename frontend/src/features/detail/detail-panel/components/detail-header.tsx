@@ -1,11 +1,13 @@
-// 詳細の見出し（種類と ID・戻る・進む・編集・エクスポート・コメントの一覧・全画面・閉じる）
+// 詳細の見出し（種類と ID・確認済み・戻る・進む・編集・エクスポート・コメントの一覧・全画面・閉じる）と、確認済みを書き換えられなかった旨
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
+import { ConfirmedToggle } from "@/shared/components/confirmed-toggle";
 import { DocExportControl } from "@/shared/components/doc-export-menu";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
 import type { PendingMarkKind } from "@/shared/core/edits";
 import { cn } from "@/shared/lib/cn";
+import { useItemConfirmed } from "@/shared/hooks/use-item-confirmed";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { bodyFormatOf, KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 
@@ -26,47 +28,57 @@ export type DetailHeaderProps = {
 
 export const DetailHeader = ({ item, kind, index, full, editable, editing, pending, showTitle, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
   const { canBack, canForward, openItemComments } = usePreviewSearch();
+  const confirmed = useItemConfirmed(item.id, item.confirmed === true);
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
   const editLabel = editing ? "編集を終える" : "編集する";
   const fullLabel = full ? "元の大きさに戻す" : "全画面表示";
   return (
-    <div className="flex items-center gap-1 border-b border-border-soft p-2">
-      <span className="text-xs text-muted-foreground">
-        <span className="max-sm:hidden">{KIND_LABEL[kind]} </span>
-        <span className="font-mono">{item.id}</span>
-      </span>
-      {kind === "docs" && format !== null ? <BodyFormatBadge format={format} /> : null}
-      {pending === null ? null : <PendingMark kind={pending} compact />}
-      {/* 隠している間も場所は取ったままにし、種類と ID を動かさない */}
-      <span aria-hidden="true" title={item.title} className={cn("min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none", !showTitle && "opacity-0")}>
-        {item.title}
-      </span>
-      {editable ? (
-        <Button variant="outline" aria-pressed={editing} title={editLabel} onClick={onToggleEdit}>
-          <Icon name="edit" />
-          <span>{editLabel}</span>
+    <div className="border-b border-border-soft">
+      <div className="flex items-center gap-1 p-2">
+        <span className="text-xs text-muted-foreground">
+          <span className="max-sm:hidden">{KIND_LABEL[kind]} </span>
+          <span className="font-mono">{item.id}</span>
+        </span>
+        {kind === "docs" && format !== null ? <BodyFormatBadge format={format} /> : null}
+        {pending === null ? null : <PendingMark kind={pending} compact />}
+        {/* 隠している間も場所は取ったままにし、種類と ID を動かさない */}
+        <span aria-hidden="true" title={item.title} className={cn("min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none", !showTitle && "opacity-0")}>
+          {item.title}
+        </span>
+        {editable ? <ConfirmedToggle confirmed={confirmed.confirmed} saving={confirmed.saving} onToggle={confirmed.toggle} /> : null}
+        {editable ? (
+          <Button variant="outline" aria-pressed={editing} title={editLabel} onClick={onToggleEdit}>
+            <Icon name="edit" />
+            <span>{editLabel}</span>
+          </Button>
+        ) : null}
+        {source === undefined ? null : <DocExportControl item={item} source={source} index={index} />}
+        {full ? null : (
+          <Button variant="ghost" size="icon" aria-label={`${item.id} のコメントの一覧を開く`} title="この項目のコメントの一覧" onClick={() => { openItemComments(item.id); }}>
+            <Icon name="comment" />
+          </Button>
+        )}
+        <Button variant="ghost" size="icon" aria-label="前の項目へ戻る" title="前の項目へ戻る" disabled={!canBack} onClick={() => { window.history.back(); }}>
+          ←
         </Button>
-      ) : null}
-      {source === undefined ? null : <DocExportControl item={item} source={source} index={index} />}
-      {full ? null : (
-        <Button variant="ghost" size="icon" aria-label={`${item.id} のコメントの一覧を開く`} title="この項目のコメントの一覧" onClick={() => { openItemComments(item.id); }}>
-          <Icon name="comment" />
+        <Button variant="ghost" size="icon" aria-label="次の項目へ進む" title="次の項目へ進む" disabled={!canForward} onClick={() => { window.history.forward(); }}>
+          →
         </Button>
-      )}
-      <Button variant="ghost" size="icon" aria-label="前の項目へ戻る" title="前の項目へ戻る" disabled={!canBack} onClick={() => { window.history.back(); }}>
-        ←
-      </Button>
-      <Button variant="ghost" size="icon" aria-label="次の項目へ進む" title="次の項目へ進む" disabled={!canForward} onClick={() => { window.history.forward(); }}>
-        →
-      </Button>
-      <Button variant="ghost" size="icon" aria-label={fullLabel} title={fullLabel} onClick={onToggleFull}>
-        <Icon name={full ? "shrink" : "expand"} />
-      </Button>
-      {full ? null : (
-        <Button variant="ghost" size="icon" aria-label="詳細を閉じる" onClick={onClose}>
-          <Icon name="x" />
+        <Button variant="ghost" size="icon" aria-label={fullLabel} title={fullLabel} onClick={onToggleFull}>
+          <Icon name={full ? "shrink" : "expand"} />
         </Button>
+        {full ? null : (
+          <Button variant="ghost" size="icon" aria-label="詳細を閉じる" onClick={onClose}>
+            <Icon name="x" />
+          </Button>
+        )}
+      </div>
+      {confirmed.error === null ? null : (
+        <p role="alert" className="m-0 flex items-center gap-1 px-2 pb-2 text-small text-destructive">
+          <Icon name="alert" className="size-3" />
+          {confirmed.error}
+        </p>
       )}
     </div>
   );

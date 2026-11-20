@@ -272,7 +272,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
           </span>
         )}
       </div>
-      <ol className="m-0 grid min-h-0 flex-1 list-none content-start gap-2 overflow-y-auto p-3">
+      <ol className="m-0 grid min-h-0 flex-1 list-none grid-cols-1 content-start gap-2 overflow-y-auto p-3">
         {thread === null
           ? pendingNew === null
             ? null

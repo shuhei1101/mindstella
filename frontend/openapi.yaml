@@ -315,6 +315,40 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /api/items/{id}/confirmed:
+    put:
+      operationId: setItemConfirmed
+      summary: 利用者が項目を確認済みにするか、確認済みを解除する
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmedInput"
+      responses:
+        "200":
+          description: 書き換えた後の確認済み
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfirmedReply"
+        "400":
+          description: 合わない値
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: 項目が無い
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /api/threads/{id}/seen:
     post:
       operationId: markThreadSeen
@@ -585,6 +619,17 @@ components:
         id: { type: string }
         status: { type: string, enum: [open, closed] }
         changed: { type: boolean }
+    ConfirmedInput:
+      type: object
+      required: [confirmed]
+      properties:
+        confirmed: { type: boolean }
+    ConfirmedReply:
+      type: object
+      required: [id, confirmed]
+      properties:
+        id: { type: string }
+        confirmed: { type: boolean }
     SeenReply:
       type: object
       required: [id, seen]
@@ -752,6 +797,7 @@ components:
         id: { type: string }
         title: { type: string }
         status: { type: string }
+        confirmed: { type: boolean }
       additionalProperties: true
     Settings:
       type: object
@@ -771,6 +817,7 @@ components:
           properties:
             action: { type: string, enum: [review, send, insert] }
             preset: { type: [string, "null"] }
+        confirm_on_comment: { type: boolean }
       additionalProperties: true
     Kind:
       type: string
