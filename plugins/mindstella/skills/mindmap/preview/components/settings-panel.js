@@ -1,22 +1,7 @@
 "use strict";
-// 表示の設定の中身。表示する種類と差分のミニマップと本文の表とセクションの見せ方と「レビューに追加」の後のフォーカスを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
+// 表示の設定の中身。表示する種類と差分のミニマップと本文の表とセクションの見せ方と「レビューに追加」の後のフォーカスを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。
 var MindmapPreview;
 (function (MindmapPreview) {
-    /** 選べるネットワークの見た目 */
-    MindmapPreview.NETWORK_LOOKS = [
-        { key: "glow", label: "グロウ", note: "玉と流れる光に、やわらかい光のにじみ" },
-        { key: "starlight", label: "星の光", note: "白い芯と色の光。明るい星に十字の光条" },
-        { key: "constellation", label: "星図", note: "回転に合わせて回る天球の経緯線" },
-        { key: "deep", label: "深宇宙", note: "星空と星雲の地に、光のにじむ星" },
-        { key: "dust", label: "星屑", note: "色を抜いた細かな点と細い線" },
-    ];
-    /** ワークスペースの既定も個人の上書きも無いときの見た目 */
-    MindmapPreview.BUILTIN_LOOK = "deep";
-    /** 見た目の値 → 画面に出す名前 */
-    function lookLabel(look) {
-        return MindmapPreview.NETWORK_LOOKS.find((option) => option.key === look)?.label ?? look;
-    }
-    MindmapPreview.lookLabel = lookLabel;
     /** 差分のミニマップの呼び名（表示の設定の切り替えと「この端末で変えている項目」に出す名前） */
     MindmapPreview.MINIMAP_LABEL = "差分のミニマップ";
     /** 「レビューに追加」の後のフォーカスの呼び名（表示の設定のラジオの凡例と「この端末で変えている項目」に出す名前） */
@@ -56,7 +41,7 @@ var MindmapPreview;
             ],
         });
     }
-    /** 概要・ネットワークの行（常に出す。チェックの箱を持たない） */
+    /** 概要の行（常に出す。チェックの箱を持たない） */
     function alwaysRow({ iconName, label }) {
         return MindmapPreview.h({
             tag: "li",
@@ -69,7 +54,7 @@ var MindmapPreview;
             ],
         });
     }
-    /** 表示する種類の選び（先頭にまとめて選ぶチェック、概要とネットワークは常に出す行） */
+    /** 表示する種類の選び（先頭にまとめて選ぶチェック、概要は常に出す行） */
     function kindsField({ kinds, counts, on }) {
         const shownCount = MindmapPreview.KIND_KEYS.filter((kind) => kinds.has(kind)).length;
         const allBox = MindmapPreview.h({
@@ -139,7 +124,6 @@ var MindmapPreview;
                                 }),
                             ],
                         })),
-                        alwaysRow({ iconName: "network", label: "ネットワーク" }),
                     ],
                 }),
             ],
@@ -277,8 +261,8 @@ var MindmapPreview;
         });
     }
     /** 「ワークスペースの既定にする」。選びが既定と同じときはボタンの代わりにその旨を出す */
-    function saveBlock({ look, defaultLook, kinds, defaultKinds, on }) {
-        const differs = look !== defaultLook || !sameSet(kinds, defaultKinds);
+    function saveBlock({ kinds, defaultKinds, on }) {
+        const differs = !sameSet(kinds, defaultKinds);
         return MindmapPreview.h({
             tag: "div",
             attrs: { class: "st-save" },
@@ -298,7 +282,7 @@ var MindmapPreview;
                     : MindmapPreview.h({
                         tag: "p",
                         attrs: { class: "st-same", tabindex: "-1", "data-focus": "same" },
-                        children: ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+                        children: ["表示する種類は、ワークスペースの既定と同じです。"],
                     }),
             ],
         });

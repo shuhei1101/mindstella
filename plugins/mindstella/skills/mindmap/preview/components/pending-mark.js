@@ -21,7 +21,7 @@ var MindmapPreview;
         });
     }
     MindmapPreview.pendingEditMark = pendingEditMark;
-    /** 項目の保存待ちの印（無ければ null）。カードと表の行は文字つき、マップの節は印だけ */
+    /** 項目の保存待ちの印（無ければ null）。カードと表の行は文字つき、`compact` は印だけ */
     function editMarkOf({ edit, id, compact = false, }) {
         const kind = edit?.marks[id];
         return kind === undefined ? null : pendingEditMark({ kind, compact });

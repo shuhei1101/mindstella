@@ -36,9 +36,6 @@ export type ListContext = {
   onOpen: (id: string) => void;
   onOpenAdded: (id: string) => void;
   selectedId: string | undefined;
-  /** マップのタイトルで強調するキーワード */
-  keyword: string;
-  onKeyword: (keyword: string) => void;
   /** 表（並べ替え・列の表示・固定は URL と端末の保存領域で持つ） */
   table: ReactNode;
 };
@@ -64,7 +61,6 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const startAdd = useEditSessionStore((state) => state.startAdd);
   const openAdded = useEditSessionStore((state) => state.openAdded);
   const closeAdd = useEditSessionStore((state) => state.closeAdd);
-  const [keyword, setKeyword] = useState("");
   const [saved, setSaved] = useState(() => readPrefs().columns?.[kind]);
   const onAdd = useCallback(() => {
     closeItem();
@@ -150,10 +146,10 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       </div>
       {view === "table" ? null : <FilterChips filters={filters} labels={labels} onFilter={setFilters} />}
       <RemovedBand items={removedOf({ point, kind })} />
-      {view === "table" || content === undefined ? table : content({ index, view, shown: filtered as unknown as Item[], filters, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, keyword, onKeyword: setKeyword, table })}
+      {view === "table" || content === undefined ? table : content({ index, view, shown: filtered as unknown as Item[], filters, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, table })}
       {drawerOpen ? (
         <FilterDrawer
-          groups={drawerGroups({ rows, columns: list, conditions: asColumns(conditions), filters, hit: view === "map" && keyword !== "" ? (row) => String(row["title"]).toLowerCase().includes(keyword.toLowerCase()) : undefined })}
+          groups={drawerGroups({ rows, columns: list, conditions: asColumns(conditions), filters })}
           selected={filters}
           total={rows.length}
           shown={filtered.length}

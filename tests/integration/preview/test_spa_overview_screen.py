@@ -121,7 +121,7 @@ def test_topbar(write_sample_preview: WriteSamplePreview, page: Page) -> None:
     # 検証
     assert page.get_attribute("header span[title]", "title") == "要件出しのスキル mindmap を設計する"
     tabs = page.eval_on_selector_all(f"{TABBAR} a", "links => links.map(a => a.dataset.tab)")
-    assert tabs == ["overview", "decisions", "tasks", "research", "docs", "terms", "notes", "logs", "graph"]
+    assert tabs == ["overview", "decisions", "tasks", "research", "docs", "terms", "notes", "logs"]
     counts = page.eval_on_selector_all(
         f"{TABBAR} a[data-tab] > span", "spans => spans.map(s => s.closest('a').dataset.tab + ':' + s.textContent)"
     )
@@ -138,18 +138,6 @@ def test_topbar_tab_opens_screen(write_sample_preview: WriteSamplePreview, page:
     page.click(f'{TABBAR} a[data-tab="tasks"]')
     # 検証
     assert _spa_search(page) == {"tab": "tasks"}
-
-
-def test_topbar_network_opens_graph(write_sample_preview: WriteSamplePreview, page: Page) -> None:
-    """タブの帯の右端のネットワークの入口を押すと、SPA の中のネットワークを開く（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    open_spa(page, url)
-    # 実行
-    page.click(f'{TABBAR} a[data-tab="graph"]')
-    # 検証
-    assert _spa_search(page) == {"tab": "graph"}
-    assert urlsplit(page.url).path == "/spa/"
 
 
 def test_topbar_search_opens_dialog(write_sample_preview: WriteSamplePreview, page: Page) -> None:
@@ -365,21 +353,20 @@ def test_hidden_kinds_keep_tiles(
     assert page.locator(f'{TABBAR} a[data-tab="decisions"]').count() == 0
 
 
-
 @pytest.mark.parametrize(
     ("visible_kinds", "toggled", "tabs", "open_show_all"),
     [
         pytest.param(
             None,
             "検討事項",
-            ["overview", "tasks", "research", "docs", "terms", "notes", "logs", "graph"],
+            ["overview", "tasks", "research", "docs", "terms", "notes", "logs"],
             0,
             id="override_hides",
         ),
         pytest.param(
             KINDS_WITHOUT_DECISIONS_TASKS_DOCS,
             "検討事項",
-            ["overview", "decisions", "research", "terms", "notes", "logs", "graph"],
+            ["overview", "decisions", "research", "terms", "notes", "logs"],
             1,
             id="override_wins_over_default",
         ),

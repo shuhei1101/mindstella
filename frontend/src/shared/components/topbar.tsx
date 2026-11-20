@@ -12,8 +12,8 @@ import type { Theme } from "@/shared/stores/theme-store";
 /** タブの帯の画面の識別子（URL の search params の `tab` と同じ値） */
 export type TabKey = "overview" | "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs";
 
-/** 開いている画面（ネットワークを含む） */
-export type TopbarCurrent = TabKey | "graph" | "settings";
+/** 開いている画面（ワークスペースの設定を含む） */
+export type TopbarCurrent = TabKey | "settings";
 
 /** タブの帯に並べる 1 つの画面 */
 export type TopbarTab = {
@@ -146,12 +146,10 @@ const TabLink = ({
   tab,
   current,
   onNavigate,
-  special = false,
 }: {
   tab: { key: TopbarCurrent; label: string; icon: IconName; count?: number | undefined; marked?: boolean | undefined };
   current: TopbarCurrent;
   onNavigate: ((key: TopbarCurrent) => void) | undefined;
-  special?: boolean;
 }) => {
   const selected = tab.key === current;
   const handleClick = (event: MouseEvent<HTMLAnchorElement>): void => {
@@ -167,11 +165,9 @@ const TabLink = ({
       className={cn(
         "relative flex h-11 items-center gap-2 border-b-2 border-transparent px-2.5 whitespace-nowrap text-muted-foreground no-underline hover:text-foreground",
         selected && "border-mark font-semibold text-foreground",
-        special && "my-1.5 h-8 gap-1.5 rounded-control border border-border px-3.5",
-        special && selected && "border-mark bg-mark-weak",
       )}
     >
-      <Icon name={tab.icon} className={cn(special && "text-mark")} />
+      <Icon name={tab.icon} />
       {tab.label}
       {tab.count === undefined ? null : <span className="mono text-tab-count font-normal text-subtle-foreground">{tab.count}</span>}
       {tab.marked === true ? (
@@ -524,14 +520,12 @@ const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChang
   );
 };
 
-/** 画面を移るタブの帯（右端にネットワークの入口） */
+/** 画面を移るタブの帯 */
 const TabBar = ({ tabs, current, onNavigate }: { tabs: TopbarTab[]; current: TopbarCurrent; onNavigate: ((key: TopbarCurrent) => void) | undefined }) => (
   <nav aria-label="項目の種類" className="relative z-25 no-scrollbar flex gap-1 overflow-x-auto border-b border-border bg-card px-5">
     {tabs.map((tab) => (
       <TabLink key={tab.key} tab={tab} current={current} onNavigate={onNavigate} />
     ))}
-    <span className="min-w-4 flex-1" />
-    <TabLink tab={{ key: "graph", label: "ネットワーク", icon: "network" }} current={current} onNavigate={onNavigate} special />
   </nav>
 );
 

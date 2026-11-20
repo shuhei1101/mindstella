@@ -145,7 +145,6 @@ from preview_minimap_helpers import (
     press_empty_area,
     scroll_top,
 )
-from preview_network_helpers import ball_at, canvas_center
 from preview_panel_width_helpers import (
     PANEL as WIDTH_PANEL,
     RESIZER,
@@ -199,9 +198,6 @@ HOLD_CHECK_MS = 3_000
 
 # 書き換えてから画面に出るまでの上限秒数（非機能要件『画面への反映の時間』）
 REFLECT_LIMIT_SEC = 2.0
-
-# タブを移ったネットワークで、選んだ項目の玉が中心へ寄り終わるまで待つミリ秒
-TAB_MOVE_SETTLE_MS = 5_000
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
 SELECTION_SETTLE_MS = 400
@@ -324,27 +320,25 @@ def test_normal_when_filter_in_hash(
 def test_normal_when_tab_moved_with_item(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
-    """詳細パネルに項目を開いたままタブの帯でネットワークへ移ると、その項目を選んだネットワークを開く。戻ると検討事項と詳細パネルに戻る（正常系）。"""
+    """詳細パネルに項目を開いたままタブの帯で別の画面へ移ると、その項目の詳細パネルを開いたまま移る。戻ると検討事項と詳細パネルに戻る（正常系）。"""
     # 準備
-    url = write_preview(make_item("D-1"), make_item("D-3"))
+    url = write_preview(make_item("D-1"), make_item("D-3"), make_item("T-1"))
     page = open_preview(url, "#tab=decisions&id=D-3")
     page.wait_for_selector("aside.panel.open")
-    # 実行（タブの帯のネットワークを押す）
-    page.click('nav.tabbar a[data-tab="graph"]')
-    page.wait_for_selector("#graph-canvas")
-    page.wait_for_timeout(TAB_MOVE_SETTLE_MS)
+    # 実行（タブの帯のタスクを押す）
+    page.click('nav.tabbar a[data-tab="tasks"]')
+    page.wait_for_function("location.hash.startsWith('#tab=tasks')")
     moved_hash = page.evaluate("location.hash")
+    moved_current = page.get_attribute('nav.tabbar a[data-tab="tasks"]', "aria-current")
     moved_panel = page.inner_text("aside.panel .d-title")
-    selected_at_center = ball_at(page, *canvas_center(page))
     # 実行（ブラウザの戻る）
     page.go_back()
-    page.wait_for_selector("#decision-map, table.grid, .board")
+    page.wait_for_function("location.hash.startsWith('#tab=decisions')")
+    page.wait_for_selector("aside.panel.open")
     # 検証
-    assert moved_hash == "#tab=graph&id=D-3"
-    assert page.get_attribute('nav.tabbar a[data-tab="graph"]', "aria-current") is None
+    assert moved_hash == "#tab=tasks&id=D-3"
+    assert moved_current == "page"
     assert moved_panel == "D-3の題"
-    # 選んだ項目の玉が中心へ寄る
-    assert selected_at_center is True
     assert page.evaluate("location.hash") == "#tab=decisions&id=D-3"
     assert page.get_attribute('nav.tabbar a[data-tab="decisions"]', "aria-current") == "page"
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
@@ -373,7 +367,7 @@ def test_normal_when_exported_offline(
     page: Any,
     tmp_path: Path,
 ) -> None:
-    """描画のライブラリを中に持つ配る書き出しは、通信が無くても本文・図・マップを描く（正常系）。"""
+    """描画のライブラリを中に持つ配る書き出しは、通信が無くても本文・図を描く（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-3", status="要見直し", body="../docs/D-3.mark.md"), bodies={"D-3.mark.md": BODY_WITH_DIAGRAM}
@@ -391,12 +385,12 @@ def test_normal_when_exported_offline(
 
     page.route(_is_not_file_url, _block)
     # 実行
-    open_preview(out.as_uri(), "#tab=decisions&view=map&id=D-3")
+    open_preview(out.as_uri(), "#tab=decisions&id=D-3")
     page.wait_for_selector("aside.panel.open .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     # 検証
     assert blocked == []
     assert page.locator('[role="alert"]').count() == 0
-    assert page.locator('#decision-map button[data-node="D-3"]').count() == 1
+    assert page.locator("aside.panel .md:not(.md-value).mdmark").count() == 1
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
     assert page.locator("aside.panel .md:not(.md-value) h4").count() == 1
     assert page.locator("aside.panel .mermaid svg").count() == 1
@@ -482,12 +476,10 @@ def test_error_when_library_unavailable(
     )
     page.route(LIBRARY_HOST_PATTERN, lambda route: route.abort())
     # 実行
-    open_preview(url, "#tab=decisions&view=map&id=D-3")
+    open_preview(url, "#tab=decisions&id=D-3")
     page.wait_for_selector("aside.panel.open .md:not(.md-value) .lib-error")
-    # 検証
-    map_notice = page.inner_text("main .lib-error[role=alert]")
-    assert "読み込めなかったライブラリ: elkjs" in map_notice
-    assert "通信を確認して、ページを再読み込みしてください。" in map_notice
+    # 検証（ボードは描画のライブラリを使わずに描かれる）
+    assert page.locator('.board button.card[data-id="D-3"]').count() == 1
     body_notice = page.inner_text("aside.panel .md:not(.md-value) .lib-error[role=alert]")
     assert "読み込めなかったライブラリ" in body_notice
     for name in ("mdmark", "mermaid"):
@@ -495,8 +487,6 @@ def test_error_when_library_unavailable(
     assert "marked" not in body_notice
     assert "DOMPurify" not in body_notice
     assert "本文の段落" in page.inner_text("aside.panel .md-raw")
-    # 配置できない案内は、表への切り替えを促す
-    assert "表示形式を「表」に切り替えると、検討事項を表示できます。" in page.inner_text("main")
     # 表示形式を表に切り替えると、D-3 の行がある
     page.click('.segment button[data-view="table"]')
     page.wait_for_selector("table.grid tbody tr")
@@ -805,69 +795,6 @@ def test_normal_when_comment_removed_and_sent(
     # 検証（送った後）
     assert marks_of(page) == {}
     assert page.locator(".board [data-comment-target]:not(:empty)").count() == 0
-
-
-# マップの拡大の倍率と、枠のスクロールの位置を返す
-MAP_VIEW_SCRIPT = """() => ({
-    transform: document.getElementById('decision-map').style.transform,
-    left: document.querySelector('.map-wrap').scrollLeft,
-    top: document.querySelector('.map-wrap').scrollTop,
-})"""
-
-# マップの描きが落ち着くまで待つミリ秒
-MAP_SETTLE_MS = 800
-
-
-def test_normal_when_comment_added_on_map(
-    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
-) -> None:
-    """マップを開いたままコメントを溜めても、節点の印だけが描き替わり、マップの拡大と位置は変わらない（正常系）。"""
-    # 準備
-    url, _ = write_commented_preview()
-    open_preview(url, "#tab=decisions&view=map&id=D-4")
-    page.wait_for_selector("aside.panel.open")
-    page.wait_for_selector("#decision-map .map-node.n-item")
-    page.wait_for_timeout(MAP_SETTLE_MS)
-    page.evaluate(_card_marker_script('#decision-map .map-node[data-node="D-2"]'))
-    before = page.evaluate(MAP_VIEW_SCRIPT)
-    # 実行
-    page.fill(SEND_TEXTAREA, "期日を決める")
-    page.click(SEND_BUTTON)
-    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
-    page.wait_for_function(
-        "document.querySelector('#decision-map .map-node[data-node=\"D-4\"] .cmk') !== null",
-        timeout=MARK_TIMEOUT_MS,
-    )
-    page.wait_for_timeout(MAP_SETTLE_MS)
-    # 検証
-    assert marks_of(page, "#decision-map") == {**SCREEN_MARKS["decisions"], "D-4": "1"}
-    assert page.get_attribute('#decision-map .map-node[data-node="D-2"]', "data-kept") == "yes"
-    assert page.evaluate(MAP_VIEW_SCRIPT) == before
-
-
-def test_normal_when_comment_added_on_graph(
-    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
-) -> None:
-    """ネットワークを開いたままコメントを溜めると、キャンバスを作り直さず、次のコマから新しい件数の印を出す（正常系）。"""
-    # 準備
-    url, _ = write_commented_preview()
-    open_preview(url, "#tab=graph&id=D-2")
-    page.wait_for_selector("aside.panel.open")
-    shown_mark = (
-        "[...document.querySelectorAll('.g3-marks .cmk')]"
-        ".filter(m => m.style.visibility !== 'hidden')"
-        ".map(m => m.querySelector('.cmk-n').textContent)"
-    )
-    page.wait_for_function(f"{shown_mark}.includes('2')", timeout=MARK_TIMEOUT_MS)
-    page.evaluate("document.getElementById('graph-canvas').dataset.kept = 'yes'")
-    # 実行（選んでいる D-2 に 1 件足すと、印の件数が 2 から 3 になる）
-    page.fill(SEND_TEXTAREA, "期日を決める")
-    page.click(SEND_BUTTON)
-    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
-    # 検証
-    page.wait_for_function(f"{shown_mark}.includes('3')", timeout=MARK_TIMEOUT_MS)
-    assert page.evaluate(f"{shown_mark}.includes('2')") is False
-    assert page.get_attribute("#graph-canvas", "data-kept") == "yes"
 
 
 # 見出し「保存先」「決め方」「決め方」の間に、窓に収まらない数の段落を置いた本文
@@ -1838,7 +1765,7 @@ def test_normal_when_diff_minimap_hidden(
     assert checkbox.is_checked() is False
     assert "差分のミニマップ" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
     assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
+    assert "表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
     # 実行（既定に戻す）
     page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
     page.wait_for_selector(f"{PANEL_SCOPE} .df-map .df-map-m")

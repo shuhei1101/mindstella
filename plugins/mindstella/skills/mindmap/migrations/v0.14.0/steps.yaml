@@ -8,3 +8,6 @@ steps:
   - op: call
     script: move_bodies_to_root
     destructive: true
+  - op: call
+    script: remove_network_look
+    destructive: true

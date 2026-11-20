@@ -14,7 +14,6 @@ from .fixture_types import LoadPreviewScripts, MakeData, MakeItem
 DEFAULT_PREFS = {
     "theme": None,
     "columns": {},
-    "look": None,
     "kinds": None,
     "diffSel": None,
     "filters": {},
@@ -175,14 +174,14 @@ def test_read_embedded_data_when_missing(
         pytest.param("{", DEFAULT_PREFS, id="broken_json"),
         pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
         pytest.param(
-            '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+            '{"kinds": ["decisions", "graph"]}',
             DEFAULT_PREFS,
-            id="unknown_look_and_kinds",
+            id="unknown_kinds",
         ),
         pytest.param(
             '{"look": "dust", "kinds": ["tasks"]}',
-            {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
-            id="look_and_kinds",
+            {**DEFAULT_PREFS, "kinds": ["tasks"]},
+            id="legacy_look_ignored",
         ),
         pytest.param(
             '{"filters": {"tasks": {"status": ["未着手"]}}}',
@@ -407,7 +406,6 @@ def test_load_prefs_when_comment_form_closed(
 SAVED_PREFS = {
     "theme": "dark",
     "columns": {"decisions": {"hidden": ["tags"], "pinTo": "id"}},
-    "look": "dust",
     "kinds": ["tasks"],
     "diffSel": None,
     "filters": {"tasks": TASKS_FILTERS},
@@ -529,27 +527,16 @@ def test_form_key_when_thread(
     ("prefs", "display", "expected"),
     [
         pytest.param(
-            {"theme": None, "columns": {}, "look": None, "kinds": None, "filters": {}},
+            {"theme": None, "columns": {}, "kinds": None, "filters": {}},
             None,
-            {
-                "look": "deep",
-                "kinds": ALL_KINDS,
-                "defaultLook": "deep",
-                "defaultKinds": ALL_KINDS,
-                "overrides": [],
-            },
+            {"kinds": ALL_KINDS, "defaultKinds": ALL_KINDS, "overrides": []},
             id="no_override_no_default",
         ),
         pytest.param(
-            {"theme": None, "columns": {}, "look": None, "kinds": None, "filters": {}},
+            {"theme": None, "columns": {}, "kinds": None, "filters": {}},
+            {"visible_kinds": ["decisions", "docs", "logs", "research", "tasks", "terms"]},
             {
-                "network_look": "starlight",
-                "visible_kinds": ["decisions", "docs", "logs", "research", "tasks", "terms"],
-            },
-            {
-                "look": "starlight",
                 "kinds": ["decisions", "docs", "logs", "research", "tasks", "terms"],
-                "defaultLook": "starlight",
                 "defaultKinds": ["decisions", "docs", "logs", "research", "tasks", "terms"],
                 "overrides": [],
             },
@@ -559,39 +546,26 @@ def test_form_key_when_thread(
             {
                 "theme": "dark",
                 "columns": RESEARCH_COLUMNS,
-                "look": "dust",
-                "kinds": None,
+                "kinds": ALL_KINDS,
                 "filters": {},
             },
+            {"visible_kinds": ["decisions", "docs", "logs", "research", "tasks", "terms"]},
             {
-                "network_look": "starlight",
-                "visible_kinds": ["decisions", "docs", "logs", "research", "tasks", "terms"],
-            },
-            {
-                "look": "dust",
-                "kinds": ["decisions", "docs", "logs", "research", "tasks", "terms"],
-                "defaultLook": "starlight",
+                "kinds": ALL_KINDS,
                 "defaultKinds": ["decisions", "docs", "logs", "research", "tasks", "terms"],
-                "overrides": ["ネットワークの見た目", "ライト / ダーク", "表の列（調査）"],
+                "overrides": ["表示する種類", "ライト / ダーク", "表の列（調査）"],
             },
-            id="override_look_theme_columns",
+            id="override_kinds_theme_columns",
         ),
         pytest.param(
             {
                 "theme": None,
                 "columns": {},
-                "look": None,
                 "kinds": None,
                 "filters": {"tasks": TASKS_FILTERS, "decisions": DECISIONS_DEFAULT_FILTERS},
             },
             None,
-            {
-                "look": "deep",
-                "kinds": ALL_KINDS,
-                "defaultLook": "deep",
-                "defaultKinds": ALL_KINDS,
-                "overrides": ["絞り込み（タスク）"],
-            },
+            {"kinds": ALL_KINDS, "defaultKinds": ALL_KINDS, "overrides": ["絞り込み（タスク）"]},
             id="override_filters",
         ),
     ],
@@ -611,9 +585,7 @@ def test_resolve_display(
         """({prefs, display}) => {
             const result = MindmapPreview.resolveDisplay(prefs, display ?? undefined);
             return {
-                look: result.look,
                 kinds: [...result.kinds].sort(),
-                defaultLook: result.defaultLook,
                 defaultKinds: [...result.defaultKinds].sort(),
                 overrides: result.overrides,
             };
@@ -658,7 +630,6 @@ def test_resolve_display_when_minimap(
         """(prefs) => {
             const result = MindmapPreview.resolveDisplay(prefs, undefined);
             return {
-                look: result.look,
                 kinds: [...result.kinds].sort(),
                 minimap: result.minimap,
                 overrides: result.overrides,
@@ -666,8 +637,8 @@ def test_resolve_display_when_minimap(
         }""",
         prefs,
     )
-    # 検証（見た目と表示する種類は既定のまま）
-    assert resolved == {"look": "deep", "kinds": ALL_KINDS, **expected}
+    # 検証（表示する種類は既定のまま）
+    assert resolved == {"kinds": ALL_KINDS, **expected}
 
 
 @pytest.mark.parametrize(
@@ -803,7 +774,6 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
     prefs = {
         "theme": "dark",
         "columns": RESEARCH_COLUMNS,
-        "look": "dust",
         "kinds": ["tasks"],
         "diffSel": "since",
         "filters": {"tasks": TASKS_FILTERS},
@@ -823,7 +793,6 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
     assert result["cleared"] == {
         "theme": None,
         "columns": {},
-        "look": None,
         "kinds": None,
         "diffSel": "since",
         "filters": {},

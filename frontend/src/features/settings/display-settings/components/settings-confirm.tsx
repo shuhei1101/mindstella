@@ -1,12 +1,11 @@
 // 既定の保存の確かめの中身（部品設計『既定の保存の確かめ.tsx』）。今の既定と保存する値を並べ、「取り消す」「保存する」を置く
-import type { NetworkLook } from "@/shared/api/generated/model";
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
-import { kindsText, lookLabel } from "@/shared/core/display";
+import { kindsText } from "@/shared/core/display";
 import type { Kind } from "@/shared/core/records";
 
-/** 並べる値（見た目と表示する種類） */
-export type DisplayValue = { look: NetworkLook; visibleKinds: readonly Kind[] };
+/** 並べる値（表示する種類） */
+export type DisplayValue = { visibleKinds: readonly Kind[] };
 
 export type SettingsConfirmProps = {
   from: DisplayValue;
@@ -49,7 +48,6 @@ export const SettingsConfirm = ({ from, to, busy, error, onSave, onCancel }: Set
     <div className="grid gap-3">
       <p className="m-0 text-small">このワークスペースを開く全員の既定が変わります。表示の設定を自分で変えている人には、変えた項目は当たりません。</p>
       <dl className="m-0 grid gap-2">
-        <ConfirmRow label="ネットワークの見た目" from={lookLabel(from.look)} to={lookLabel(to.look)} />
         <ConfirmRow label="表示する種類" from={kindsText(new Set(from.visibleKinds))} to={kindsText(new Set(to.visibleKinds))} />
       </dl>
       {error === null ? null : (

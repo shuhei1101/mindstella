@@ -116,8 +116,6 @@ notes:
 
     | トップバーのタブ（`onNavigate(key)`） | SPA の `?tab={key}` |
 
-    | トップバーのネットワークの入口（`onNavigate(''graph'')`） | SPA の `?tab=graph` |
-
     | トップバーの変更履歴・保存待ち・コメント・表示の設定（`onOpenHistory`・`onTogglePending`・`onToggleComments`・`onToggleSettings`） | SPA の中で開く |
 
     | トップバーの検索（`onOpenSearch`） | SPA の全体の検索（`?search=1`） |

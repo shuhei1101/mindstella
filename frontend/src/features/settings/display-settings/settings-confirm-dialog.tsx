@@ -22,7 +22,7 @@ export const SettingsConfirmDialog = ({ open, onOpenChange, from, to, onSaved }:
   const handleSave = (): void => {
     setError(null);
     save.mutate(
-      { network_look: to.look, visible_kinds: [...to.visibleKinds] },
+      { visible_kinds: [...to.visibleKinds] },
       {
         onSuccess: () => {
           onSaved(new Date().toISOString());

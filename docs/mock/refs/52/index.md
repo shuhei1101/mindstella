@@ -12,7 +12,6 @@
 | [tasks](../../pages/tasks/52/standard/index.html) | ボードの空の列「タスクはありません。」 |
 | [docs](../../pages/docs/52/standard/index.html) | 資料の絞り込みのチップの「解除」、ボードの空の列 |
 | [records](../../pages/records/52/standard/index.html) | 調査・用語集・メモ・会話ログの表の絞り込みのチップの「解除」 |
-| [graph](../../pages/graph/52/standard/index.html) | 項目を 1 つも表示しないときの「表示する項目はありません。」 |
 | [detail-panel](../../pages/detail-panel/52/standard/index.html) | 関係の見出し「参照元」、履歴の矢印「前の項目へ戻る」「次の項目へ進む」、全画面表示のボタン（押していない） |
 | [detail-full](../../pages/detail-full/52/standard/index.html) | 全画面表示のボタン（押されている） |
 | [search](../../pages/search/52/standard/index.html) | 入力欄の名前「検索キーワード」と、入力前の案内「ID・タイトル・本文で、すべての項目を検索します。」 |

@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
       - name: make_workspace
-        description: 作成を済ませたワークスペース。`preview_url` を呼んだ後に `config.yaml` の `display.network_look` を `dust` に直接書き換える
+        description: 作成を済ませたワークスペース。`preview_url` を呼んだ後に `config.yaml` の `display.visible_kinds` を `[decisions, tasks]` に直接書き換える
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -24,8 +24,8 @@ flows:
         IF-->>クライアント: 200、settings
       ```
     expected:
-      - ステータスが 200 で、`settings.display.network_look` が `dust`
-      - '`GET /api/records` の `settings.display.network_look` が `dust`'
+      - ステータスが 200 で、`settings.display.visible_kinds` が `[decisions, tasks]`
+      - '`GET /api/records` の `settings.display.visible_kinds` が `[decisions, tasks]`'
       - '`GET /api/events` に書き換えの知らせが届く'
     test: test_normal
   - name: 異常系（検査に通らない・422）
@@ -34,7 +34,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
       - name: make_workspace
-        description: '`config.yaml` の `display.network_look` を `starlight` にしたワークスペース。`preview_url` を呼んだ後に `display.network_look` を `rainbow` に直接書き換える'
+        description: '`config.yaml` の `display.visible_kinds` を `[decisions]` にしたワークスペース。`preview_url` を呼んだ後に `display.visible_kinds` を `[rainbow]` に直接書き換える'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -49,8 +49,8 @@ flows:
       ```
     expected:
       - ステータスが 422、`Content-Type` が `application/problem+json`
-      - '`detail` に `config.yaml: display.network_look: ` で始まる行がある'
-      - '`GET /api/records` の `settings.display.network_look` が `starlight` のまま'
+      - '`detail` に `config.yaml: display.visible_kinds` で始まる行がある'
+      - '`GET /api/records` の `settings.display.visible_kinds` が `[decisions]` のまま'
       - '`config.yaml` の中身が、手で崩したまま（サーバーが書き換えていない）'
     test: test_error_when_check_fails
 lead: 利用者が `config.yaml` を手で直した後に呼び、`config.yaml` をスキーマと突き合わせた結果を返す。通れば配信の「最後に検査に通った設定」を差し替えて開いている画面へ知らせ、通らなければ前の設定のまま違う箇所を返す。

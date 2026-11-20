@@ -1288,19 +1288,19 @@ def test_require_workspace_when_missing(
 def test_check_settings(make_workspace: MakeWorkspace, valid_settings: dict[str, Any]) -> None:
     """合う設定は問題 0 件で、display も読む（正常系）。"""
     # 準備
-    display = {"network_look": "starlight", "visible_kinds": ["decisions"]}
+    display = {"visible_kinds": ["decisions"]}
     root = make_workspace(settings={**valid_settings, "display": display})
     # 実行
     settings, problems = store.check_settings(root)
     # 検証
-    assert settings["display"]["network_look"] == "starlight"
+    assert settings["display"]["visible_kinds"] == ["decisions"]
     assert problems == []
 
 
 @pytest.mark.parametrize(
     ("display", "raw_files", "expected_key"),
     [
-        pytest.param({"network_look": "rainbow"}, {}, "display.network_look", id="unknown_look"),
+        pytest.param({"network_look": "glow"}, {}, "display", id="removed_key"),
         pytest.param(
             {"visible_kinds": ["decisions", "decisions"]},
             {},

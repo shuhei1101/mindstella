@@ -29,7 +29,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** 項目の保存待ちの印（無ければ null）。カードと表の行は文字つき、マップの節は印だけ */
+  /** 項目の保存待ちの印（無ければ null）。カードと表の行は文字つき、`compact` は印だけ */
   export function editMarkOf({
     edit,
     id,

@@ -67,7 +67,6 @@ UNREACHABLE_PROXY_ENV = {
 # 中に持つライブラリごとの、表示に出るライセンスの名前と著作権の表示（雛形の URL のパッケージ名 → 表示）
 EXPECTED_LICENSES = {
     "marked": ("marked", "MIT", "Copyright (c) 2018+, MarkedJS"),
-    "elkjs": ("elkjs", "EPL-2.0", "(c) Kiel University and others"),
     "mermaid": ("mermaid", "MIT", "Copyright (c) 2014 - 2022 Knut Sveidqvist"),
     "diff": ("jsdiff", "BSD-3-Clause", "Copyright (c) 2009-2015, Kevin Decker"),
 }
@@ -83,9 +82,6 @@ EXPECTED_MDMARK_LICENSE = ("mdmark", "MIT", "Copyright (c) 2026 shuhei1101")
 
 # mdmark の配布物が中に束ねた依存のライセンスの本文の先頭の行（`THIRD_PARTY_LICENSES.txt` の最初の依存）
 MDMARK_BUNDLED_LICENSES_HEAD = "dayjs 1.11.23 (MIT)"
-
-# elkjs のソースコードの入手先（リポジトリ）
-ELKJS_REPOSITORY = "https://github.com/kieler/elkjs"
 
 
 class _ExternalReferences(HTMLParser):
@@ -192,8 +188,6 @@ def test_normal(
     assert mdmark_notice in licenses
     assert f"License: {mdmark_license}" in licenses
     assert MDMARK_BUNDLED_LICENSES_HEAD in licenses
-    # elkjs は、ソースコードの入手先（リポジトリと版のタグの URL）を持つ
-    assert f"{ELKJS_REPOSITORY}/tree/{versions['elkjs']}" in licenses
     # ワークスペースは書き換えない
     assert snapshot_tree(root) == before
 

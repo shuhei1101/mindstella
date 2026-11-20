@@ -6,8 +6,6 @@ import { SettingsPanel } from "@/features/settings/display-settings/components/s
 import { KIND_KEYS } from "@/shared/core/records";
 
 const base = {
-  look: "deep" as const,
-  defaultLook: "deep" as const,
   visibleKinds: [...KIND_KEYS],
   defaultKinds: [...KIND_KEYS],
   counts: {},
@@ -46,7 +44,7 @@ describe("SettingsPanel", () => {
     render(<SettingsPanel {...base} />);
     // 検証
     expect(screen.queryByRole("button", { name: "ワークスペースの既定にする" })).not.toBeInTheDocument();
-    expect(screen.getByText("見た目と表示する種類は、ワークスペースの既定と同じです。")).toBeInTheDocument();
+    expect(screen.getByText("表示する種類は、ワークスペースの既定と同じです。")).toBeInTheDocument();
   });
 
   // 「レビューに追加した後のフォーカス」のラジオ（正常系）

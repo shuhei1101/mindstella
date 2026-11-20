@@ -226,11 +226,11 @@ def test_update_settings_when_display(make_workspace: MakeWorkspace) -> None:
     # 準備
     root = make_workspace(settings={"summary": "題名", "links": [], "history_limit": 3})
     before = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
-    display = {"network_look": "starlight", "visible_kinds": KINDS_WITHOUT_LOGS}
+    display = {"visible_kinds": KINDS_WITHOUT_LOGS}
     # 実行
     first = settings_update.update_settings(root, {"display": display})
     after_first = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
-    second = settings_update.update_settings(root, {"display": {"network_look": "glow"}})
+    second = settings_update.update_settings(root, {"display": {}})
     after_second = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     # 検証
     assert first["changed"] == ["display"]
@@ -238,7 +238,7 @@ def test_update_settings_when_display(make_workspace: MakeWorkspace) -> None:
     assert after_first["display"] == display
     assert {key: value for key, value in after_first.items() if key != "display"} == before
     assert second["changed"] == ["display"]
-    assert after_second["display"] == {"network_look": "glow"}
+    assert after_second["display"] == {}
 
 
 def test_update_display(make_workspace: MakeWorkspace) -> None:
@@ -246,7 +246,7 @@ def test_update_display(make_workspace: MakeWorkspace) -> None:
     # 準備
     root = make_workspace()
     before = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
-    body = {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS}
+    body = {"visible_kinds": KINDS_WITHOUT_TERMS}
     # 実行
     result = settings_update.update_display(root, body)
     # 検証
@@ -262,23 +262,23 @@ def test_update_display(make_workspace: MakeWorkspace) -> None:
     ("body", "words"),
     [
         pytest.param(
-            {"network_look": "rainbow", "visible_kinds": KINDS_WITHOUT_TERMS},
-            ["network_look", "glow"],
-            id="unknown_look",
+            {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS},
+            ["network_look: 知らないキーです"],
+            id="removed_key",
         ),
-        pytest.param({"visible_kinds": KINDS_WITHOUT_TERMS}, ["network_look"], id="no_look"),
+        pytest.param({}, ["visible_kinds"], id="no_kinds"),
         pytest.param(
-            {"network_look": "glow", "visible_kinds": ["decisions", "decisions"]},
+            {"visible_kinds": ["decisions", "decisions"]},
             ["visible_kinds"],
             id="duplicate_kinds",
         ),
         pytest.param(
-            {"network_look": "glow", "visible_kinds": ["graph"]},
-            ["visible_kinds"],
+            {"visible_kinds": ["graph"]},
+            ["visible_kinds", "decisions"],
             id="unknown_kind",
         ),
         pytest.param(
-            {"network_look": "glow", "visible_kinds": "decisions"},
+            {"visible_kinds": "decisions"},
             ["visible_kinds"],
             id="kinds_string",
         ),
@@ -306,7 +306,7 @@ def test_update_display_when_settings_broken(
     broken = {key: value for key, value in valid_settings.items() if key != "summary"}
     root = make_workspace(settings=broken)
     before = (root / RECORD_DIR / "config.yaml").read_bytes()
-    body = {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS}
+    body = {"visible_kinds": KINDS_WITHOUT_TERMS}
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as raised:
         settings_update.update_display(root, body)

@@ -1,0 +1,157 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-7.yaml
+    impact: removed
+    detail: ネットワークを辿るユースケースを削除する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-24.yaml
+    impact: removed
+    detail: 検討事項をマップで辿るユースケースを削除する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: changed
+    detail: 表示の設定からネットワークの見た目を外し、表示する種類だけを端末ごとに変えて既定に戻す流れにする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-15.yaml
+    impact: changed
+    detail: ワークスペースの既定として保存するものから見た目を外し、表示する種類だけにする。表示する種類を上書きしている別の利用者の画面は、既定を保存しても変わらないことを確かめるシナリオを足す
+    depends_on:
+      - docs/scenario/SC-489-31.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-35.yaml
+    impact: changed
+    detail: 設定の再読み込みの例を、見た目の既定から表示する種類の既定へ置き換える
+    depends_on:
+      - docs/scenario/SC-489-31.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-36.yaml
+    impact: changed
+    detail: 設定の更新で書き換える表示の既定から見た目を外す
+    depends_on:
+      - docs/scenario/SC-489-31.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: changed
+    detail: 配る書き出しで確かめる画面からネットワークと検討事項のマップと見た目の既定を外す
+    depends_on:
+      - docs/scenario/SC-489-7.yaml
+      - docs/scenario/SC-489-24.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-47.yaml
+    impact: changed
+    detail: コメントの印を確かめる画面からネットワークと検討事項のマップを外す
+    depends_on:
+      - docs/scenario/SC-489-7.yaml
+      - docs/scenario/SC-489-24.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-48.yaml
+    impact: changed
+    detail: 全体の検索を開く例を、検討事項のマップのキーワード欄からほかの画面の入力欄へ置き換える
+    depends_on:
+      - docs/scenario/SC-489-24.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: run_only
+    detail: 詳細パネルからネットワークへ移る操作を削除するため、詳細を読む流れが壊れていないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: run_only
+    detail: 依存（elkjs）を外したとき、資料の本文の図の描画が壊れていないかを確かめる
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: changed
+    detail: プレビューで記録を読み返す流れから、ネットワークで項目を辿る段を外す
+    depends_on:
+      - docs/scenario/SC-489-7.yaml
+  - kind: composite
+    scenario: docs/scenario/SC-489-51.yaml
+    impact: changed
+    detail: 人ごとに分ける表示の好みから見た目を外し、表示する種類だけで上書きと既定の保存を確かめる
+    depends_on:
+      - docs/scenario/SC-489-31.yaml
+      - docs/scenario/SC-489-15.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: 設定がスキーマに合わないときの例を、見た目の既定から表示する種類の既定へ置き換える
+    depends_on:
+      - docs/scenario/SC-489-31.yaml
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 「ネットワークを辿る」「検討事項のマップを辿る」と、タブの帯のネットワーク・表示形式のマップ・見た目の選択・ロックの記載を削除する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: 設定の更新・既定の書き換えの `display` から `network_look` を削除する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: '`config.yaml` の `display.network_look` の行と、表示する種類の説明のネットワークを削除する'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: ブラウザに持つ表示の好みと組み込みの既定から、ネットワークの見た目を削除する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
+  - page: docs/guide/動作環境.mark.md
+    new: false
+    change: マップの幅の基準とネットワークで扱う項目の数の行を削除する（WSL のネットワークの記載は残す）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
+  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
+    new: false
+    change: 次のバージョンの手順で設定の `display.network_look` が削除されることを、版ごとの変更に加える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
+  - page: docs/design-policy.mark.md
+    new: false
+    change: ネットワーク（3D）の地とマップの枝の線の記載を削除する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T05:38:38.730848+00:00'
+scope_out:
+  - item: 差分のミニマップ
+    reason: 名前に「マップ」を含むが別の機能で、残すと決まっている（D-569）
+    plan: none
+  - item: ほかの画面の過去の Issue ごとのモック（docs/mock/pages/{画面}/{Issue 番号}/）に写る、タブの帯のネットワーク・表示形式のマップ
+    reason: その Issue で合意した時点の記録で、今の画面の保守の対象ではない。ネットワーク・マップだけのモック（docs/mock/pages/graph/ 等）と、今の画面の部品のモック（docs/mock/components/）は削除・修正する。含めるかはモック作成のレビューで確定する
+    plan: none
+  - item: 公開ドキュメントの変更履歴の過去の行と、過去の PR ドキュメント（docs/pr/）のネットワーク・マップの記載
+    reason: その時点の変更の記録で、書き換えると履歴が変わる
+    plan: none
+  - item: トップバーの部品のモック（docs/mock/components/topbar/frame.html）が duplicate-id-notice.js を読み込まず、スクリプトのエラーが出る
+    reason: 部品のモックがエラーなく描けることに外れるが、この PR は frame.html を変えておらず、要望に含まれない
+    plan: '#634'
+  - item: v0.14.0 の変換のスクリプト markdown_bodies_to_mark_md.py・move_bodies_to_root.py の行が plugins/mindstella/files.yml に無い
+    reason: 規約『ドキュメントのオンデマンド取得』の files.yml の行の修正に外れるが、この PR より前の PR で追加したスクリプトで、要望に含まれない
+    plan: '#636'
+  - item: プレビューの文字のほとんどが Inter で描かれる（detect_screen_issues の overused-font）
+    reason: 文字のトークンの見直しで、この PR は文字のトークンを変えておらず、要望に含まれない
+    plan: '#637'
+  - item: SPA のボードで、幅 390px のとき 1 枚目のカードが横に送る枠の左端に接する（detect_screen_issues の edge-flush-cards）
+    reason: この PR はボードの部品を変えておらず、要望に含まれない
+    plan: '#638'
+  - item: 埋め込んだ HTML のチャートの結合テスト（test_normal_when_embedded_html・test_embedded_chart）が develop でも fail する
+    reason: mdmark の図の右上のパネルの変更への追従で、この PR は埋め込んだ HTML を変えておらず、要望に含まれない
+    plan: '#610'
+  - item: 結合テスト test_detail_panel_screen.py::test_fit_smallest が develop でも fail する
+    reason: 詳細パネルの全画面のボタンが表示幅の外に出る既存の不具合で、要望に含まれない
+    plan: '#625'
+  - item: 結合テスト test_diff_minimap_when_empty_area_pressed・test_diff_body_layout_switch が間欠的に fail する
+    reason: 画面の位置・フォーカスで判定する既存の不安定なテストで、要望に含まれない
+    plan: '#553'

@@ -1,4 +1,4 @@
-"""画面設計『表示の設定』（左から出すパネル。表示する種類・既定に戻す・既定が変わった知らせ。見た目はネットワークのドロップダウンで選ぶ）の結合テスト。"""
+"""画面設計『表示の設定』（左から出すパネル。表示する種類・既定に戻す・既定が変わった知らせ）の結合テスト。"""
 
 from __future__ import annotations
 
@@ -27,13 +27,11 @@ from preview_settings_helpers import (
     CONFIRM,
     CONFIRM_OPEN,
     DEFAULT_KINDS,
-    LOOK_SELECT,
     SETTINGS_BUTTON,
     SETTINGS_PANEL,
     SETTINGS_PANEL_OPEN,
     open_settings,
     panel_text,
-    pick_look,
     read_config,
     read_prefs,
     tab_keys,
@@ -124,7 +122,7 @@ def test_open_and_close(
     assert opened["expanded"] == "true"
     assert opened["history"] == history_length
     assert "ワークスペースの既定のまま表示しています。" in opened["text"]
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in opened["text"]
+    assert "表示する種類は、ワークスペースの既定と同じです。" in opened["text"]
     assert opened["buttons"] == ["設定を編集する"]
     assert focus_after_esc == "settings"
     assert focus_after_close == "settings"
@@ -153,47 +151,13 @@ def test_close_by_scrim(
     assert scrim_visible(page) is False
 
 
-def test_look_override(
-    write_review_preview: WriteReviewPreview,
-    make_item: MakeItem,
-    valid_settings: dict[str, Any],
-    open_preview: OpenPreview,
-) -> None:
-    """見た目はネットワークのドロップダウンで選び、その場でネットワークに当たり、個人の上書きとして端末に残る。パネルは見た目を選ばせず、変えている項目に出す。config.yaml は書き換えない（正常系）。"""
-    # 準備
-    url, root = _preview(write_review_preview, make_item, valid_settings)
-    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
-    page = open_preview(url, "#tab=graph")
-    initial_look = page.get_attribute(".screen.graph", "data-look")
-    # 実行
-    pick_look(page, "dust")
-    open_settings(page)
-    # 検証
-    assert initial_look == "deep"
-    assert page.get_attribute(".screen.graph", "data-look") == "dust"
-    prefs = read_prefs(page)
-    assert prefs is not None
-    assert prefs["look"] == "dust"
-    assert "この端末で変えている項目" in panel_text(page)
-    assert "ネットワークの見た目" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
-    # パネルには見た目の選びを置かない
-    assert page.locator(f"{SETTINGS_PANEL} .st-look").count() == 0
-    assert page.locator(f"{SETTINGS_PANEL} input[type=radio]:not([name=focus-after-add])").count() == 0
-    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
-    # 開き直しても、個人の上書きを使う
-    page.reload()
-    page.wait_for_selector(".screen.graph", timeout=RENDER_TIMEOUT_MS)
-    assert page.get_attribute(".screen.graph", "data-look") == "dust"
-    assert page.eval_on_selector(LOOK_SELECT, "select => select.value") == "dust"
-
-
 def test_kinds_override(
     write_review_preview: WriteReviewPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """表示する種類を外すと、その種類のタブをトップバーから外す。概要とネットワークは常に出す（正常系）。"""
+    """表示する種類を外すと、その種類のタブをトップバーから外す。概要は常に出す（正常系）。"""
     # 準備
     url, _ = _preview(write_review_preview, make_item, valid_settings)
     page = open_preview(url)
@@ -202,7 +166,7 @@ def test_kinds_override(
     # 実行
     toggle_kind(page, "用語集")
     toggle_kind(page, "会話ログ")
-    page.wait_for_function("document.querySelectorAll('nav.tabbar a').length === 7")
+    page.wait_for_function("document.querySelectorAll('nav.tabbar a').length === 6")
     # 検証
     assert "常に表示" in all_kinds_text
     assert tab_keys(page) == [
@@ -212,18 +176,17 @@ def test_kinds_override(
         "research",
         "docs",
         "notes",
-        "graph",
     ]
     prefs = read_prefs(page)
     assert prefs is not None
     assert prefs["kinds"] == KINDS_WITHOUT_TERMS_LOGS
     assert "5/7" in panel_text(page)
-    # 概要とネットワークの行はチェックの箱を持たない
+    # 概要の行はチェックの箱を持たない
     assert page.locator(f"{SETTINGS_PANEL} .st-always input").count() == 0
     # 「すべて」で全ての種類に戻す
     page.locator(f"{SETTINGS_PANEL} .st-all input").click()
-    page.wait_for_function("document.querySelectorAll('nav.tabbar a').length === 9")
-    assert tab_keys(page)[1:-1] == DEFAULT_KINDS
+    page.wait_for_function("document.querySelectorAll('nav.tabbar a').length === 8")
+    assert tab_keys(page)[1:] == DEFAULT_KINDS
 
 
 def test_kinds_override_moves_to_overview(
@@ -257,12 +220,11 @@ def test_reset(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列の上書きを全て外し、ワークスペースの既定の表示に戻す（正常系）。"""
+    """「既定に戻す」で、表示する種類・ライト / ダーク・表の列の上書きを全て外し、ワークスペースの既定の表示に戻す（正常系）。"""
     # 準備
     url, root = _preview(write_review_preview, make_item, valid_settings)
     config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
-    page = open_preview(url, "#tab=graph")
-    pick_look(page, "glow")
+    page = open_preview(url, "#tab=decisions&view=table")
     page.evaluate("document.documentElement.dataset.theme = 'light'")
     page.click("header.topbar .top-btn")
     open_settings(page)
@@ -271,21 +233,17 @@ def test_reset(
     overridden_text = page.inner_text(f"{SETTINGS_PANEL} .st-over")
     # 実行
     page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
-    page.wait_for_function("document.querySelectorAll('nav.tabbar a').length === 9")
+    page.wait_for_function("document.querySelectorAll('nav.tabbar a').length === 8")
     # 検証
-    assert "ネットワークの見た目" in overridden_text
     assert "表示する種類" in overridden_text
     assert "ライト / ダーク" in overridden_text
     prefs = read_prefs(page)
     assert prefs is not None
-    assert prefs["look"] is None
     assert prefs["kinds"] is None
     assert prefs["theme"] is None
     assert prefs["columns"] == {}
     assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
     assert page.evaluate("document.activeElement?.dataset.focus ?? null") == "over"
-    # 見た目もワークスペースの既定（深宇宙）に戻る
-    assert page.get_attribute(".screen.graph", "data-look") == "deep"
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
@@ -295,20 +253,18 @@ def test_workspace_default(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """上書きが無い項目には config.yaml の既定を使い、ドロップダウンの既定の見た目の選択肢に「（既定）」を添える。上書きが無ければ既定のままの旨を出す（正常系）。"""
+    """上書きが無い項目には config.yaml の既定を使う。上書きが無ければ既定のままの旨を出す（正常系）。"""
     # 準備
     url, _ = _preview(
         write_review_preview,
         make_item,
         valid_settings,
-        network_look="starlight",
         visible_kinds=KINDS_WITHOUT_TERMS_LOGS,
     )
     # 実行
-    page = open_preview(url, "#tab=graph")
+    page = open_preview(url)
     open_settings(page)
     # 検証
-    assert page.get_attribute(".screen.graph", "data-look") == "starlight"
     assert tab_keys(page) == [
         "overview",
         "decisions",
@@ -316,26 +272,11 @@ def test_workspace_default(
         "research",
         "docs",
         "notes",
-        "graph",
     ]
-    options = page.eval_on_selector_all(
-        f"{LOOK_SELECT} option", "items => items.map(o => [o.value, o.textContent])"
-    )
-    assert options == [
-        ["glow", "グロウ"],
-        ["starlight", "星の光（既定）"],
-        ["constellation", "星図"],
-        ["deep", "深宇宙"],
-        ["dust", "星屑"],
-    ]
-    assert page.eval_on_selector(LOOK_SELECT, "select => select.value") == "starlight"
-    # パネルは見た目の選びを持たない
-    assert page.locator(f"{SETTINGS_PANEL} .st-look").count() == 0
     assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
     assert read_prefs(page) is None or read_prefs(page) == {
         "theme": None,
         "columns": {},
-        "look": None,
         "kinds": None,
         "diffSel": None,
     }
@@ -523,26 +464,23 @@ def test_defaults_changed_by_other(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """他の人が既定を書き換えると、上書きを持たない項目だけに新しい既定を当て、画面の下に知らせを出して、パネルにも時刻つきで残す（正常系）。"""
+    """他の人が既定を書き換えると、上書きを持たない項目に新しい既定を当て、画面の下に知らせを出して、パネルにも時刻つきで残す（正常系）。"""
     # 準備
     url, root = _preview(write_review_preview, make_item, valid_settings)
-    page = open_preview(url, "#tab=graph")
-    # 見た目を個人の上書きにしておく（新しい既定が当たらない項目）
-    pick_look(page, "dust")
+    page = open_preview(url, "#tab=decisions&view=table")
     open_settings(page)
     # 実行（別のブラウザの代わりに、配信の既定の書き換えを直接呼ぶ）
     response = page.request.put(
         f"{url.rsplit('/', 1)[0]}/api/config/display",
-        data={"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS_LOGS},
+        data={"visible_kinds": KINDS_WITHOUT_TERMS_LOGS},
     )
     # 検証
     assert response.status == 200
     page.wait_for_selector(".stoast.show", timeout=RENDER_TIMEOUT_MS)
     assert page.get_attribute(".stoast", "role") == "status"
     assert page.inner_text(".stoast") == "ワークスペースの既定が変わりました。"
-    page.wait_for_function("document.querySelectorAll('nav.tabbar a').length === 7")
-    # 上書きを持つ見た目はそのまま、上書きを持たない表示する種類だけが新しい既定になる
-    assert page.get_attribute(".screen.graph", "data-look") == "dust"
+    page.wait_for_function("document.querySelectorAll('nav.tabbar a').length === 6")
+    # 上書きを持たない表示する種類が新しい既定になる
     assert tab_keys(page) == [
         "overview",
         "decisions",
@@ -550,10 +488,9 @@ def test_defaults_changed_by_other(
         "research",
         "docs",
         "notes",
-        "graph",
     ]
     assert "ワークスペースの既定が変わりました（" in panel_text(page)
-    assert read_config(root)["display"]["network_look"] == "glow"
+    assert read_config(root)["display"]["visible_kinds"] == KINDS_WITHOUT_TERMS_LOGS
     # 知らせは 6 秒で消える
     page.wait_for_selector(".stoast", state="detached", timeout=NOTICE_GONE_MS)
 
@@ -751,10 +688,10 @@ def test_reset_when_body_diff_layout(
     history_length = page.evaluate("history.length")
     # 実行
     open_settings(page)
-    # 検証（見た目と表示する種類は既定のままなので、ボタンの代わりにその旨を出す）
+    # 検証（表示する種類は既定のままなので、ボタンの代わりにその旨を出す）
     assert BODY_LAYOUT_LABEL in page.inner_text(f"{SETTINGS_PANEL} .st-over")
     assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
+    assert "表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
     prefs = read_prefs(page)
     assert prefs is not None
     assert prefs["bodyLayout"] == "side"
@@ -785,15 +722,15 @@ def test_save_default_when_body_diff_layout(
     # 実行
     page.click(SAVE_DEFAULT_BUTTON)
     page.wait_for_selector(CONFIRM_OPEN)
-    # 検証（確かめに並ぶのは見た目と表示する種類の 2 行だけ）
-    assert len(page.locator(f"{CONFIRM} .sc-row").all_inner_texts()) == 2
+    # 検証（確かめに並ぶのは表示する種類の 1 行だけ）
+    assert len(page.locator(f"{CONFIRM} .sc-row").all_inner_texts()) == 1
     assert BODY_LAYOUT_LABEL not in page.inner_text(CONFIRM)
     # 実行
     page.get_by_role("button", name="保存する").click()
     page.wait_for_selector(CONFIRM, state="detached", timeout=BODY_LAYOUT_TOGGLE_MS)
     # 検証
     display = read_config(root)["display"]
-    assert sorted(display) == ["network_look", "visible_kinds"]
+    assert sorted(display) == ["visible_kinds"]
     prefs = read_prefs(page)
     assert prefs is not None
     assert prefs["bodyLayout"] == "side"
@@ -830,10 +767,10 @@ def test_reset_when_review_order(
     history_length = page.evaluate("history.length")
     # 実行
     open_settings(page)
-    # 検証（見た目と表示する種類は既定のままなので、ボタンの代わりにその旨を出す）
+    # 検証（表示する種類は既定のままなので、ボタンの代わりにその旨を出す）
     assert REVIEW_ORDER_LABEL in page.inner_text(f"{SETTINGS_PANEL} .st-over")
     assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
-    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
+    assert "表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
     # 実行（既定に戻す）
     page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
     page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '新しい順'")
@@ -850,7 +787,7 @@ def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: Op
     """表示の設定は、幅 320px で横にスクロールせず、パネルと閉じるボタンが表示幅の中にある（正常系）。"""
     # 準備
     url = write_sample_preview()
-    page = open_preview(url, "#tab=graph")
+    page = open_preview(url, "#tab=decisions&view=table")
     set_smallest(page)
     # 実行
     open_settings(page)
@@ -1066,15 +1003,15 @@ def test_save_default_when_body_view(
     # 実行
     page.click(SAVE_DEFAULT_BUTTON)
     page.wait_for_selector(CONFIRM_OPEN)
-    # 検証（確かめに並ぶのは見た目と表示する種類の 2 行だけ）
-    assert len(page.locator(f"{CONFIRM} .sc-row").all_inner_texts()) == 2
+    # 検証（確かめに並ぶのは表示する種類の 1 行だけ）
+    assert len(page.locator(f"{CONFIRM} .sc-row").all_inner_texts()) == 1
     assert "折りたたみ" not in page.inner_text(CONFIRM)
     # 実行
     page.get_by_role("button", name="保存する").click()
     page.wait_for_selector(CONFIRM, state="detached", timeout=BODY_VIEW_TOGGLE_MS)
     # 検証
     display = read_config(root)["display"]
-    assert sorted(display) == ["network_look", "visible_kinds"]
+    assert sorted(display) == ["visible_kinds"]
     prefs = read_prefs(page)
     assert prefs is not None
     assert prefs["sectionFold"] is False

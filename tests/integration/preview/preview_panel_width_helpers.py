@@ -38,7 +38,7 @@ STEP_PX = 16
 # 本文を寄せる幅（1100px 以上）に収まる画面の大きさ
 PANEL_VIEWPORT = {"width": 1280, "height": 800}
 
-# パネルのすべり込みと本文の寄せの動き（終わりのある動き）が終わるまで待つ。マップなど終わりのない動きは待たない
+# パネルのすべり込みと本文の寄せの動き（終わりのある動き）が終わるまで待つ。終わりのない動きは待たない
 _SETTLED_JS = """async () => {
     await document.fonts.ready;
     const finite = document.getAnimations().filter((animation) => animation.effect.getComputedTiming().iterations !== Infinity);

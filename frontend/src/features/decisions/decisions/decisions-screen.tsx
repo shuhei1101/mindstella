@@ -1,15 +1,12 @@
-// 検討事項の画面（画面設計『検討事項.tsx』）。ボード（既定）・マップ・表で見る
-import { DecisionMap } from "@/features/decisions/decisions/components/decision-map";
+// 検討事項の画面（画面設計『検討事項.tsx』）。ボード（既定）・表で見る
 import { addedCards, Board, boardColumns, ItemCard } from "@/shared/components/board";
 import { commonColumns, IdLinks } from "@/shared/components/list-columns";
 import { ListScreen } from "@/shared/components/list-screen";
 import type { TableColumn } from "@/shared/components/table";
 import { DECISION_STATUSES, type Item, type RecordIndex, refsOf, titleOf } from "@/shared/core/records";
-import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 
 const VIEWS = [
   { key: "board", label: "ボード" },
-  { key: "map", label: "マップ" },
   { key: "table", label: "表" },
 ] as const;
 
@@ -29,7 +26,6 @@ const decisionColumns = (index: RecordIndex, onOpen: (id: string) => void): Tabl
 export type DecisionsScreenProps = { drawerOpen: boolean; onCloseDrawer: () => void };
 
 export const DecisionsScreen = ({ drawerOpen, onCloseDrawer }: DecisionsScreenProps) => {
-  const { closeItem } = usePreviewSearch();
   return (
     <ListScreen
       kind="decisions"
@@ -37,18 +33,14 @@ export const DecisionsScreen = ({ drawerOpen, onCloseDrawer }: DecisionsScreenPr
       columnsOf={decisionColumns}
       drawerOpen={drawerOpen}
       onCloseDrawer={onCloseDrawer}
-      content={({ index, view, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, keyword, onKeyword }) =>
-        view === "map" ? (
-          <DecisionMap items={shown} settings={index.data.settings} selectedId={selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onClear={closeItem} keyword={keyword} onKeyword={onKeyword} />
-        ) : (
-          <Board
-            columns={boardColumns({ items: shown, statuses: DECISION_STATUSES, statusFilter: filters["status"] ?? [] })}
-            emptyText="検討事項はありません。"
-            added={addedCards(edit, DECISION_STATUSES, onOpenAdded)}
-            card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[]} links={refsOf(item, "depends_on")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} />}
-          />
-        )
-      }
+      content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId }) => (
+        <Board
+          columns={boardColumns({ items: shown, statuses: DECISION_STATUSES, statusFilter: filters["status"] ?? [] })}
+          emptyText="検討事項はありません。"
+          added={addedCards(edit, DECISION_STATUSES, onOpenAdded)}
+          card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[]} links={refsOf(item, "depends_on")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} />}
+        />
+      )}
     />
   );
 };

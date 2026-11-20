@@ -1,5 +1,4 @@
 // 表示の設定の中身（部品設計『表示の設定.tsx』）。表示する種類と差分のミニマップと本文の表とセクションの見せ方と「レビューに追加」の後のフォーカスを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す
-import type { NetworkLook } from "@/shared/api/generated/model";
 import { useId } from "react";
 
 import { Icon, type IconName } from "@/shared/components/icon";
@@ -23,8 +22,6 @@ const FOCUS_AFTER_ADD_OPTIONS = [
 ] as const satisfies readonly { key: FocusAfterAdd; label: string }[];
 
 export type SettingsPanelProps = {
-  look: NetworkLook;
-  defaultLook: NetworkLook;
   visibleKinds: readonly Kind[];
   defaultKinds: readonly Kind[];
   counts: Partial<Record<Kind, number>>;
@@ -67,11 +64,11 @@ const AlwaysRow = ({ icon, label }: { icon: IconName; label: string }) => (
 );
 
 export const SettingsPanel = (props: SettingsPanelProps) => {
-  const { look, defaultLook, visibleKinds, defaultKinds, counts, overrides, canSave, message, storageAvailable, minimap, bodyView, focusAfterAdd, pointerCoarse, onKindsChange, onReset, onSaveDefault, onMinimapChange, onBodyViewChange, onFocusAfterAddChange, onWorkspace } = props;
+  const { visibleKinds, defaultKinds, counts, overrides, canSave, message, storageAvailable, minimap, bodyView, focusAfterAdd, pointerCoarse, onKindsChange, onReset, onSaveDefault, onMinimapChange, onBodyViewChange, onFocusAfterAddChange, onWorkspace } = props;
   const focusHintId = useId();
   const shown = KIND_KEYS.filter((kind) => visibleKinds.includes(kind));
   const allShown = shown.length === KIND_KEYS.length;
-  const differs = look !== defaultLook || !sameKinds(visibleKinds, defaultKinds);
+  const differs = !sameKinds(visibleKinds, defaultKinds);
   const toggleKind = (kind: Kind): void => {
     onKindsChange(KIND_KEYS.filter((one) => (one === kind ? !visibleKinds.includes(one) : visibleKinds.includes(one))));
   };
@@ -106,7 +103,6 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
               </label>
             </li>
           ))}
-          <AlwaysRow icon="network" label="ネットワーク" />
         </ul>
       </fieldset>
       <fieldset className="m-0 grid gap-1 border-0 p-0">
@@ -172,7 +168,7 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
               ワークスペースの既定にする
             </Button>
           ) : (
-            <p className="m-0 text-small text-muted-foreground">見た目と表示する種類は、ワークスペースの既定と同じです。</p>
+            <p className="m-0 text-small text-muted-foreground">表示する種類は、ワークスペースの既定と同じです。</p>
           )}
         </div>
       ) : null}

@@ -10,10 +10,10 @@ data_models:
     summary: URL のハッシュが指す画面・表示形式・項目・絞り込み・差分の時点（インターフェース定義『プレビューを開く』のリクエスト）
     properties:
       - name: tab
-        type: "'overview' | 'decisions' | 'tasks' | 'research' | 'docs' | 'terms' | 'notes' | 'logs' | 'graph'"
+        type: "'overview' | 'decisions' | 'tasks' | 'research' | 'docs' | 'terms' | 'notes' | 'logs'"
         description: 画面
       - name: view
-        type: "'map' | 'board' | 'cards' | 'table'"
+        type: "'board' | 'cards' | 'table'"
         description: 表示形式
       - name: id
         type: string | null
@@ -52,7 +52,7 @@ constants:
     summary: '`tab` → 切り替えられる `view` の並び'
     entries:
       - key: decisions
-        value: '["board", "map", "table"]'
+        value: '["board", "table"]'
       - key: tasks
         value: '["board", "table"]'
       - key: docs
@@ -83,7 +83,7 @@ functions:
       description: 画面の場所
     process: |-
       1. `#` の後ろを `URLSearchParams` で読む
-      2. `tab` が画面の値でなければ `overview`、`view` が `VIEWS_OF` に無ければ `DEFAULT_VIEW`
+      2. `tab` が画面の値でなければ `overview`（削除したネットワークの `graph` も含む）、`view` が `VIEWS_OF` に無ければ `DEFAULT_VIEW`（削除した検討事項のマップの `map` も含む）
       3. `id` が記録に無ければ `null`。`full` は `id` があり `1` のときだけ真。`heading` は `id` があるときの `h`（空なら `null`）
       4. `f.` で始まるキーを `filters` に入れる。`f.~{列}` は文字の条件で、値を分けず 1 つの配列にする。それ以外は値を `|` で分ける
       5. `diff` は値をそのまま入れる（空か無ければ `null`）
@@ -91,9 +91,9 @@ functions:
       - name: test_parse_hash
         case: 正常
         summary: 既定と誤った値を扱う
-        condition: '`parametrize`: 空 / `#tab=decisions&view=table&id=D-1&f.status=要見直し|保留` / `#tab=nope&view=cards` / `#tab=decisions&id=D-99&full=1` / `#tab=tasks&view=map` / `#tab=docs&view=board` / `#tab=docs&id=A-1&h=決め方-1` / `#tab=docs&h=決め方` / `#tab=terms&f.~title=a|b`'
+        condition: '`parametrize`: 空 / `#tab=decisions&view=table&id=D-1&f.status=要見直し|保留` / `#tab=nope&view=cards` / `#tab=decisions&id=D-99&full=1` / `#tab=tasks&view=map` / `#tab=docs&view=board` / `#tab=graph` / `#tab=decisions&view=map` / `#tab=docs&id=A-1&h=決め方-1` / `#tab=docs&h=決め方` / `#tab=terms&f.~title=a|b`'
         mock: なし
-        expected: 'overview・table・null / decisions・table・D-1・`{status: [要見直し, 保留]}` / overview・table / decisions・board・null・full 偽 / tasks・board / docs・board / docs・A-1・`heading` が `決め方-1` / `id` が `null` で `heading` も `null` / `{"~title": ["a|b"]}`'
+        expected: 'overview・table・null / decisions・table・D-1・`{status: [要見直し, 保留]}` / overview・table / decisions・board・null・full 偽 / tasks・board / docs・board / overview・table / decisions・board / docs・A-1・`heading` が `決め方-1` / `id` が `null` で `heading` も `null` / `{"~title": ["a|b"]}`'
       - name: test_parse_hash_diff
         case: 正常
         summary: 差分の時点を読む
@@ -120,9 +120,9 @@ functions:
       - name: test_to_hash
         case: 正常
         summary: 既定の値を書かない
-        condition: '`parametrize`: 概要の既定 / 検討事項の表で D-1 を全画面、`filters` あり / 検討事項のボード / 検討事項のマップ'
+        condition: '`parametrize`: 概要の既定 / 検討事項の表で D-1 を全画面、`filters` あり / 検討事項のボード / 検討事項の表'
         mock: なし
-        expected: 空 / `#tab=decisions&view=table&id=D-1&full=1`（`f.` を含まない） / `#tab=decisions`（既定の `board` は書かない） / `#tab=decisions&view=map`
+        expected: 空 / `#tab=decisions&view=table&id=D-1&full=1`（`f.` を含まない） / `#tab=decisions`（既定の `board` は書かない） / `#tab=decisions&view=table`
       - name: test_to_hash_heading
         case: 正常
         summary: 見出しを `h` に書く

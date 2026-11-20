@@ -140,8 +140,8 @@ def test_open_by_ctrl_k_when_typing(
     """入力欄で文字を入れている間も `Ctrl+K` で開く。開いている間にもう一度押すと、言葉を選び直す（正常系）。"""
     # 準備
     url = write_sample_preview()
-    page = open_preview(url, "#tab=decisions&view=map")
-    page.fill("input[aria-label='タイトルで強調するキーワード']", "題")
+    page = open_preview(url, "#tab=decisions&id=D-3")
+    page.fill("aside.panel form.send textarea", "題")
     # 実行・検証（入力中に開く）
     page.keyboard.press("Control+K")
     page.wait_for_selector(f"{DIALOG}[open]")

@@ -14,7 +14,6 @@ export const GetRecordsResponse = zod.looseObject({
   "summary": zod.string(),
   "description": zod.string().optional(),
   "display": zod.object({
-  "network_look": zod.enum(['glow', 'starlight', 'constellation', 'deep', 'dust']).optional(),
   "visible_kinds": zod.array(zod.enum(['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs'])).optional()
 }).optional(),
   "transcription": zod.object({
@@ -332,13 +331,11 @@ export const MarkThreadSeenResponse = zod.object({
  * @summary 見た目の既定と表示する種類の既定を config.yaml に書く
  */
 export const PutConfigDisplayBody = zod.object({
-  "network_look": zod.enum(['glow', 'starlight', 'constellation', 'deep', 'dust']),
   "visible_kinds": zod.array(zod.enum(['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs']))
 })
 
 export const PutConfigDisplayResponse = zod.object({
   "display": zod.object({
-  "network_look": zod.enum(['glow', 'starlight', 'constellation', 'deep', 'dust']),
   "visible_kinds": zod.array(zod.enum(['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs']))
 })
 })

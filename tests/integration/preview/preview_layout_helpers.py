@@ -8,7 +8,6 @@ from playwright.sync_api import Page
 
 __all__ = [
     "BOUNDARY_HEIGHT",
-    "MAP_BOUNDARY_WIDTHS",
     "NARROW_VIEWPORT",
     "TABLE_BOARD_BOUNDARY_WIDTHS",
     "WIDE_VIEWPORT",
@@ -18,7 +17,7 @@ __all__ = [
     "region_metrics",
 ]
 
-# 表・ボード・マップを領域の高さいっぱいに広げる幅（721px 以上・901px 以上）の窓と、それより狭い窓
+# 表・ボードを領域の高さいっぱいに広げる幅（721px 以上）の窓と、それより狭い窓
 WIDE_VIEWPORT = {"width": 1280, "height": 720}
 NARROW_VIEWPORT = {"width": 600, "height": 720}
 
@@ -52,9 +51,8 @@ _REGION_SCRIPT = """(selector) => {
     };
 }"""
 
-# 表・ボードを領域の高さいっぱいに広げる境（721px 以上）と、マップの境（901px 以上）の前後の幅（px）と、広げるか
+# 表・ボードを領域の高さいっぱいに広げる境（721px 以上）の前後の幅（px）と、広げるか
 TABLE_BOARD_BOUNDARY_WIDTHS = [(720, False), (721, True)]
-MAP_BOUNDARY_WIDTHS = [(900, False), (901, True)]
 
 # 窓の高さ（px）。項目を多く並べた画面が収まらない高さにする
 BOUNDARY_HEIGHT = 720

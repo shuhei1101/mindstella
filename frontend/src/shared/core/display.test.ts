@@ -1,14 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import { displayDefaults, focusAfterAddTarget, kindsText, lookLabel, overrideNames, resetPrefs } from "@/shared/core/display";
+import { displayDefaults, focusAfterAddTarget, kindsText, overrideNames, resetPrefs } from "@/shared/core/display";
 import { KIND_KEYS } from "@/shared/core/records";
-
-describe("lookLabel", () => {
-  // 名前を返す（正常系）
-  test("look_label", () => {
-    expect(lookLabel("deep")).toBe("深宇宙");
-  });
-});
 
 describe("kindsText", () => {
   // 外した種類（正常系）
@@ -45,7 +38,6 @@ describe("resetPrefs", () => {
   test("reset_prefs", () => {
     // 準備
     const prefs = {
-      look: "dust",
       theme: "dark",
       kinds: ["decisions"],
       focusAfterAdd: "none",
@@ -59,7 +51,6 @@ describe("resetPrefs", () => {
     expect(result["diffSel"]).toBe("V-1");
     expect(result["commentsPinned"]).toBe(true);
     expect(result["unknownKey"]).toBe(1);
-    expect(result["look"] ?? null).toBeNull();
     expect(result["theme"] ?? null).toBeNull();
     expect(result["kinds"] ?? null).toBeNull();
     expect(result["focusAfterAdd"] ?? null).toBeNull();
@@ -69,7 +60,7 @@ describe("resetPrefs", () => {
 describe("displayDefaults", () => {
   // 既定が無い（正常系）
   test("display_defaults_when_missing", () => {
-    expect(displayDefaults(undefined)).toEqual({ look: "deep", kinds: [...KIND_KEYS] });
+    expect(displayDefaults(undefined)).toEqual({ kinds: [...KIND_KEYS] });
   });
 });
 

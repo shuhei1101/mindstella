@@ -1,5 +1,5 @@
 "use strict";
-// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯（右端にネットワークの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯を出す。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 件数の表示を揺らさない上限 */
@@ -14,11 +14,11 @@ var MindmapPreview;
         return holder.content.firstElementChild;
     }
     /** 画面を移るリンク（ハッシュのリンクにして、押したときは使う側が移る） */
-    function tabLink({ key, label, icon: iconName, count, marked = false }, current, onNavigate, extraClass = "") {
+    function tabLink({ key, label, icon: iconName, count, marked = false }, current, onNavigate) {
         return MindmapPreview.h({
             tag: "a",
             attrs: {
-                class: `tab ${extraClass}`.trim(),
+                class: "tab",
                 href: `#${key === "overview" ? "" : `tab=${key}`}`,
                 "data-tab": key,
                 "aria-current": key === current ? "page" : null,
@@ -330,8 +330,6 @@ var MindmapPreview;
             attrs: { class: "tabbar", "aria-label": "項目の種類" },
             children: [
                 ...tabs.map((tab) => tabLink(tab, current, onNavigate)),
-                MindmapPreview.h({ tag: "span", attrs: { class: "tab-gap" } }),
-                tabLink({ key: "graph", label: "ネットワーク", icon: "network" }, current, onNavigate, "tab-special"),
             ],
         });
         const duplicates = MindmapPreview.duplicateIdNotice({

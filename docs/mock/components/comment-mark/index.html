@@ -31,22 +31,8 @@
     .stage .card { width: 280px; margin: 0; }
     /* 狭い幅の台の中のカード: 台の幅いっぱい */
     .stage.narrow .card { width: 100%; margin-bottom: 10px; }
-    /* マップの節点の見本: マップの中と同じく位置を持たせず、幅と高さだけを与える */
-    .stage .map-node { position: relative; width: 268px; height: 48px; }
-    /* 字下げの一覧の見本 */
-    .stage .map-outline { display: block; width: 100%; }
     /* 印だけを並べる見本の行 */
     .row { display: flex; align-items: center; gap: 12px; font-size: var(--fs-small); color: var(--text-2); }
-    /* つながりの見本の台: つながりの画面と同じ地 */
-    .space-demo { position: relative; width: 320px; height: 180px; }
-    /* つながりの見本の玉 */
-    .ball { position: absolute; border-radius: 50%; }
-    /* つながりの見本の玉の名前 */
-    .ball-name { position: absolute; transform: translate(-50%, -100%); color: var(--g-label); font: 500 var(--fs-xs) "JetBrains Mono", "Noto Sans JP", monospace; white-space: nowrap; }
-    /* つながりの見本の名前の横の印: 名前の右端に続け、縦は名前の中央に揃える */
-    .ball-name .cmk { position: absolute; left: 100%; top: 50%; margin-left: 4px; transform: translateY(-50%); font-size: var(--fs-xs); }
-    /* つながりの見本の案 C の遠いときの点 */
-    .ball-dot { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--g-label); }
     /* 状態を見せるための見本のクラス */
     .is-hover { border-color: var(--accent) !important; }
     /* キーボードのフォーカスの見本 */
@@ -69,13 +55,10 @@
     <!-- 差分の印と並べる: 画面ごとの置き場所 -->
     <section class="cat-sec">
       <h2>差分の印と同じ項目に並んだとき</h2>
-      <p>差分の印（新規の +・変更の ●）は並びの頭、コメントの印は右端に置き、互いとタイトルを隠さない。カードはメタ情報の並びの右端、マップの節点は 2 行目の右端、字下げの一覧と表はタイトルの右に続ける。</p>
+      <p>差分の印（新規の +・変更の ●）は並びの頭、コメントの印は右端に置き、互いとタイトルを隠さない。カードはメタ情報の並びの右端、表はタイトルの右に続ける。</p>
       <div class="stage">
         <button type="button" class="card"><div class="c-ttl">デザインスタイル</div><div class="c-meta"><span class="df-mark df-chg" data-df="chg"></span><span class="mono">D-022</span><span>デザイン · 構成</span><span>影響度 中</span><span class="cmk" data-n="2"></span></div></button>
         <button type="button" class="card"><div class="c-ttl">プレビューのモックを作る（モダン）</div><div class="c-meta"><span class="df-mark df-new" data-df="new"></span><span class="mono">T-002</span><span>作業</span><span>プレビュー</span><span class="cmk" data-n="3"></span></div></button>
-        <button type="button" class="map-node n-item"><span class="r1"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.6" fill="none" stroke="var(--st-open)" stroke-width="1.6"/></svg><span class="lbl">デザインスタイル</span></span><span class="r2"><span class="df-mark df-chg" data-df="chg"></span><span class="mono">D-022</span><span>未決定</span><span>影響度 中</span><span class="cmk" data-n="2"></span></span></button>
-        <button type="button" class="map-node n-item"><span class="r1"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 .8 9.2 5 5 9.2.8 5Z" fill="var(--st-review)"/></svg><span class="lbl">システム開発のフェーズの切り方</span></span><span class="r2"><span class="df-mark df-chg" data-df="chg"></span><span class="mono">D-005</span><span>要見直し</span><span>影響度 大</span><span class="cmk" data-n="12"></span></span></button>
-        <nav class="map-outline" aria-label="字下げの一覧の見本"><ul><li><button type="button"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 .8 9.2 5 5 9.2.8 5Z" fill="var(--st-review)"/></svg><span class="o-ttl">システム開発のフェーズの切り方</span><span class="df-mark df-chg" data-df="chg"></span><span class="cmk" data-n="1"></span></button></li><li><button type="button"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.6" fill="none" stroke="var(--st-open)" stroke-width="1.6"/></svg><span class="o-ttl">システム開発の進め方ガイドの中身</span><span class="df-mark df-new" data-df="new"></span></button></li></ul></nav>
         <div class="table-wrap" style="width: 100%;"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">状態</th></tr></thead><tbody><tr><td class="nowrap"><span class="mono">D-005</span></td><td><span class="row-title"><button type="button" class="row-open">システム開発のフェーズの切り方</button><span class="df-mark df-chg" data-df="chg"></span><span class="cmk" data-n="1"></span></span></td><td class="nowrap">要見直し</td></tr><tr><td class="nowrap"><span class="mono">D-026</span></td><td><span class="row-title"><button type="button" class="row-open">資料作り・壁打ちの進め方ガイド</button><span class="cmk" data-n="1"></span></span></td><td class="nowrap">未整理</td></tr></tbody></table></div>
       </div>
     </section>
@@ -83,7 +66,7 @@
     <!-- 押したときの状態: 印は押せず、カード全体の押下で詳細パネルを開く -->
     <section class="cat-sec">
       <h2>ホバー・キーボードのフォーカス・詳細を開いている</h2>
-      <p>印だけを押す操作は持たない。カード・行・節点の状態の表し方は今のまま変えず、印は状態で色を変えない。</p>
+      <p>印だけを押す操作は持たない。カード・行の状態の表し方は今のまま変えず、印は状態で色を変えない。</p>
       <div class="stage">
         <button type="button" class="card is-hover"><div class="c-ttl">デザインスタイル</div><div class="c-meta"><span class="mono">D-022</span><span>デザイン · 構成</span><span class="cmk" data-n="2"></span></div></button>
         <button type="button" class="card is-focus"><div class="c-ttl">デザインスタイル</div><div class="c-meta"><span class="mono">D-022</span><span>デザイン · 構成</span><span class="cmk" data-n="2"></span></div></button>
@@ -91,24 +74,12 @@
       </div>
     </section>
 
-    <!-- つながり: 玉と名前の見本（実際は 3D のキャンバスに描き、名前の横の印だけを HTML で重ねる） -->
-    <section class="cat-sec">
-      <h2>つながりの玉</h2>
-      <p>どの案も、印は玉の上に出る名前の右に置き、名前を隠さない。名前と印が描く枠に収まりきらないとき（画面の端にかかる玉）は名前の横の印を出さない（案 C はその玉に遠いときと同じ点を打つ）。案 A は名前が読める大きさ（文字 8px 以上）に近づいたときだけ出す。案 B は玉を指したときと選んだときだけ出す。案 C は案 A に加えて、遠いときは玉の右上の縁に件数を持たない小さな点を打つ。</p>
-      <div class="stage">
-        <div class="map-frame space space-demo" aria-label="遠いとき（案 C の点。案 A・B は何も出さない）"><span class="ball" style="left: 100px; top: 92px; width: 12px; height: 12px; background: var(--k-task);"></span><span class="ball-dot" style="left: 109px; top: 90px;"></span><span class="ball-name" style="left: 106px; top: 88px; font-size: 11px; opacity: .55;">プレビューのモックを作る</span><span class="ball" style="left: 210px; top: 120px; width: 8px; height: 8px; background: var(--k-dec);"></span><span class="ball-name" style="left: 214px; top: 116px; font-size: 11px; opacity: .55;">steps の本文</span></div>
-        <div class="map-frame space space-demo" aria-label="近づいたとき（案 A・C）"><span class="ball" style="left: 80px; top: 92px; width: 28px; height: 28px; background: var(--k-task);"></span><span class="ball-name" style="left: 94px; top: 88px; font-size: 14px;">プレビューのモックを作る<span class="cmk" data-n="3"></span></span><span class="ball" style="left: 220px; top: 140px; width: 18px; height: 18px; background: var(--k-dec);"></span><span class="ball-name" style="left: 229px; top: 136px; font-size: 14px;">steps の本文</span></div>
-        <div class="map-frame space space-demo" aria-label="玉を指したとき・選んだとき（案 B。案 A・C も近づいていれば同じ）"><span class="ball" style="left: 100px; top: 92px; width: 22px; height: 22px; background: var(--k-task); box-shadow: 0 0 0 4px transparent, 0 0 0 5.5px var(--accent);"></span><span class="ball-name" style="left: 111px; top: 86px; font-weight: 600; color: var(--accent);">プレビューのモックを作る<span class="cmk" data-n="3"></span></span><span class="ball" style="left: 220px; top: 140px; width: 14px; height: 14px; background: var(--k-dec);"></span><span class="ball-name" style="left: 227px; top: 136px;">steps の本文</span></div>
-      </div>
-    </section>
-
-    <!-- 案 B: 角のバッジ。カードは外側の角、節点は切れないよう内側の角に重ねる -->
+    <!-- 案 B: 角のバッジ。カードは外側の角に重ねる -->
     <section class="cat-sec" data-cmshape="b">
       <h2>案 B: 右上の角に件数の丸いバッジ</h2>
-      <p>カードの幅は取らないが、節点ではタイトルに重なり、字下げの一覧・表・つながりでは重ねる角が決まらない。</p>
+      <p>カードの幅は取らないが、表では重ねる角が決まらない。</p>
       <div class="stage">
         <button type="button" class="card"><div class="c-ttl">デザインスタイル</div><div class="c-meta"><span class="df-mark df-chg" data-df="chg"></span><span class="mono">D-022</span><span>デザイン · 構成</span><span class="cmk" data-n="2"></span></div></button>
-        <button type="button" class="map-node n-item"><span class="r1"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 .8 9.2 5 5 9.2.8 5Z" fill="var(--st-review)"/></svg><span class="lbl">システム開発のフェーズの切り方を見直す</span></span><span class="r2"><span class="df-mark df-chg" data-df="chg"></span><span class="mono">D-005</span><span>要見直し</span><span>影響度 大</span><span class="cmk" data-n="12"></span></span></button>
       </div>
     </section>
 

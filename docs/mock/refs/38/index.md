@@ -6,4 +6,3 @@
 | 画面 | 中身 |
 | --- | --- |
 | [decisions](../../pages/decisions/38/index.md) | 検討事項 |
-| [graph](../../pages/graph/38/index.md) | つながり |

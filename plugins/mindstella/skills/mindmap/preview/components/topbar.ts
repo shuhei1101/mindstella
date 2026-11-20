@@ -1,4 +1,4 @@
-// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯（右端にネットワークの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯を出す。
 
 namespace MindmapPreview {
   /** ライト / ダーク */
@@ -27,13 +27,13 @@ namespace MindmapPreview {
   export type TopbarProps = {
     /** 話し合いの題名（`config.yaml` の `summary`）。1 行で末尾を省略し、全文を `title` 属性に持たせる */
     title: string;
-    /** タブの帯に並べる画面（概要と、表示する種類。ネットワークは含めない） */
+    /** タブの帯に並べる画面（概要と、表示する種類） */
     tabs: TopbarTab[];
     /** 開いている画面 */
     current: Tab;
     /** 今のライト / ダーク */
     theme: Theme;
-    /** タブかネットワークの入口を押したとき（開いている詳細パネルは閉じない） */
+    /** タブを押したとき（開いている詳細パネルは閉じない） */
     onNavigate: (key: Tab) => void;
     /** 検索の入口を押したとき（`/` キーは使う側が受ける） */
     onSearch: () => void;
@@ -116,12 +116,11 @@ namespace MindmapPreview {
     { key, label, icon: iconName, count, marked = false }: TopbarTab,
     current: Tab,
     onNavigate: (key: Tab) => void,
-    extraClass = "",
   ): HTMLElement {
     return h({
       tag: "a",
       attrs: {
-        class: `tab ${extraClass}`.trim(),
+        class: "tab",
         href: `#${key === "overview" ? "" : `tab=${key}`}`,
         "data-tab": key,
         "aria-current": key === current ? "page" : null,
@@ -491,8 +490,6 @@ namespace MindmapPreview {
       attrs: { class: "tabbar", "aria-label": "項目の種類" },
       children: [
         ...tabs.map((tab) => tabLink(tab, current, onNavigate)),
-        h({ tag: "span", attrs: { class: "tab-gap" } }),
-        tabLink({ key: "graph", label: "ネットワーク", icon: "network" }, current, onNavigate, "tab-special"),
       ],
     });
     const duplicates = duplicateIdNotice({

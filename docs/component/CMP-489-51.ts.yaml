@@ -1,6 +1,6 @@
 id: CMP-489-51
 title: 表示形式の切り替え
-lead: 1 つの画面の表示形式（マップ・ボード・カード・表）を切り替えるセグメント。形式ごとに同じ幅のボタンを並べ、選んでいる形式を押された見た目にする。
+lead: 1 つの画面の表示形式（ボード・カード・表）を切り替えるセグメント。形式ごとに同じ幅のボタンを並べ、選んでいる形式を押された見た目にする。
 implementation: plugins/mindstella/skills/mindmap/preview/components/view-switch.ts#MindmapPreview.viewSwitch
 story: Preview/ViewSwitch
 test_file: tests/integration/storybook/test_view_switch_stories.py
@@ -12,12 +12,12 @@ args:
   - name: views[].key
     type: 列挙
     required: true
-    choices: map・board・cards・table
+    choices: board・cards・table
     description: 表示形式の識別子。URL のハッシュの `view` と同じ値
   - name: views[].label
     type: 文字列
     required: true
-    description: ボタンの文字（マップ・ボード・カード・表）
+    description: ボタンの文字（ボード・カード・表）
   - name: current
     type: 列挙
     required: true
@@ -35,12 +35,12 @@ css_properties:
     description: ボタン 1 つの幅。どのタブでも同じ幅にして、切り替えで周りの枠を動かさない
 states:
   - name: Decisions
-    description: 検討事項（マップ・ボード・表）でマップを選んでいる
+    description: 検討事項（ボード・表）でボードを選んでいる
     args:
       - name: views
-        value: '[{"key": "map", "label": "マップ"}, {"key": "board", "label": "ボード"}, {"key": "table", "label": "表"}]'
+        value: '[{"key": "board", "label": "ボード"}, {"key": "table", "label": "表"}]'
       - name: current
-        value: map
+        value: board
   - name: Tasks
     description: タスク（ボード・表）で表を選んでいる。形式の数が違っても 1 つの幅と左端の位置が同じ
     args:

@@ -1085,6 +1085,7 @@ def test_normal_when_markdown_bodies_renamed(
         ("v0.14.0", 1, "call", True),
         ("v0.14.0", 2, "call", True),
         ("v0.14.0", 3, "call", True),
+        ("v0.14.0", 4, "call", True),
     ]
     decision = _read_decisions(root)[0]
     assert decision["body"] == "../docs/D-1.mark.md"
@@ -1252,3 +1253,48 @@ def test_error_when_root_docs_exists(
     assert "改名" in result.text
     assert snapshot_tree(root) == before
     assert _read_version(root) == "v0.13.0"
+
+
+@pytest.mark.parametrize(
+    ("display", "expected_display"),
+    [
+        pytest.param({"network_look": "starlight"}, None, id="display_emptied"),
+        pytest.param(
+            {"network_look": "glow", "visible_kinds": ["decisions", "tasks"]},
+            {"visible_kinds": ["decisions", "tasks"]},
+            id="kinds_kept",
+        ),
+    ],
+)
+def test_normal_when_network_look_removed(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    snapshot_tree: SnapshotTree,
+    display: dict[str, Any],
+    expected_display: dict[str, Any] | None,
+) -> None:
+    """v0.14.0 の手順で、config.yaml の display から network_look を消し、空になった display も消す（正常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "display": display}, legacy_bodies=True)
+    records = root / RECORD_DIR
+    (records / VERSION_FILE).write_text("v0.13.0\n", encoding="utf-8")
+    # 実行
+    result = _migrate(root)
+    # 検証
+    assert result.error is None, result.text
+    assert result.data is not None
+    settings = yaml.safe_load((records / SETTINGS).read_text(encoding="utf-8"))
+    assert {key: value for key, value in settings.items() if key != "display"} == valid_settings
+    assert settings.get("display") == expected_display
+    v0_14_steps = [step for step in result.data["steps"] if step["version"] == "v0.14.0"]
+    assert (v0_14_steps[3]["index"], v0_14_steps[3]["op"], v0_14_steps[3]["destructive"]) == (
+        4,
+        "call",
+        True,
+    )
+    assert _read_version(root) == PLUGIN_VERSION
+    # もう一度当てても、ワークスペースが変わらない
+    after = snapshot_tree(root)
+    again = _migrate(root)
+    assert again.error is None, again.text
+    assert snapshot_tree(root) == after

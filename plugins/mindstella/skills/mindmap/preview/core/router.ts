@@ -1,7 +1,7 @@
 // URL のハッシュの読み書きと履歴。画面・表示形式・開いている項目・全画面・絞り込みを、`URLSearchParams` の形で持つ。
 
 namespace MindmapPreview {
-  /** 画面（タブとネットワーク） */
+  /** 画面（タブ） */
   export type Tab =
     | "overview"
     | "decisions"
@@ -10,10 +10,9 @@ namespace MindmapPreview {
     | "docs"
     | "terms"
     | "notes"
-    | "logs"
-    | "graph";
+    | "logs";
 
-  /** タブの帯に並べる画面（ネットワークは帯の右端に別に置く） */
+  /** タブの帯に並べる画面 */
   export const TAB_KEYS: readonly Tab[] = [
     "overview",
     "decisions",
@@ -26,7 +25,7 @@ namespace MindmapPreview {
   ];
 
   /** 表示形式 */
-  export type View = "map" | "board" | "cards" | "table";
+  export type View = "board" | "cards" | "table";
 
   /** 画面の場所（URL のハッシュが指すもの） */
   export type Route = {
@@ -53,7 +52,7 @@ namespace MindmapPreview {
 
   /** 画面が持つ表示形式（書いていない画面は表だけ） */
   export const VIEWS_OF: Partial<Record<Tab, View[]>> = {
-    decisions: ["board", "map", "table"],
+    decisions: ["board", "table"],
     tasks: ["board", "table"],
     docs: ["cards", "board", "table"],
   };
@@ -76,7 +75,7 @@ namespace MindmapPreview {
     const params = new URLSearchParams(hash.replace(/^#/, ""));
     const requestedTab = params.get("tab");
     const tab = (
-      [...TAB_KEYS, "graph"].includes(requestedTab as Tab) ? requestedTab : "overview"
+      TAB_KEYS.includes(requestedTab as Tab) ? requestedTab : "overview"
     ) as Tab;
     const requestedView = params.get("view");
     const view = (

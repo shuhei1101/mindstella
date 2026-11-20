@@ -116,7 +116,7 @@ scenarios:
       - name: Mock
         description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、手順が連ねるプレビューの URL の取得を再生する
       - name: 設定を手で崩したワークスペース
-        description: '`config.yaml` の見た目の既定を、選べる値に無い `rainbow` にしたワークスペース'
+        description: '`config.yaml` の表示する種類の既定に、選べる値に無い `rainbow` を加えたワークスペース'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -133,7 +133,7 @@ scenarios:
         CC-->>U: 違う箇所を示し、config.yaml を直すよう案内する
       ```
     expected:
-      - プレビューの URL の取得がエラーを返し、本文に見た目の既定のキーと、選べる値が `glow`・`starlight`・`constellation`・`deep`・`dust` である理由がある
+      - プレビューの URL の取得がエラーを返し、本文に表示する種類の既定のキーと、選べる値が `decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs` である理由がある
       - 配信の待ち受けが立っていない
       - '`config.yaml` の中身が、呼ぶ前と同じである'
     test: test_error_when_config_invalid

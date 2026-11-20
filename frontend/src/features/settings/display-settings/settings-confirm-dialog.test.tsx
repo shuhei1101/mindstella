@@ -25,14 +25,14 @@ describe("SettingsConfirmDialog", () => {
     server.use(
       http.put("/api/config/display", async ({ request }) => {
         bodies.push(await request.json());
-        return HttpResponse.json({ display: { network_look: "deep", visible_kinds: ["decisions", "tasks"] } });
+        return HttpResponse.json({ display: { visible_kinds: ["decisions", "tasks"] } });
       }),
     );
     const dialog = await openConfirm();
     // 実行
     await userEvent.click(screen.getByRole("button", { name: "保存する" }));
     // 検証
-    await waitFor(() => expect(bodies).toEqual([{ network_look: "deep", visible_kinds: ["decisions", "tasks"] }]));
+    await waitFor(() => expect(bodies).toEqual([{ visible_kinds: ["decisions", "tasks"] }]));
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
   });
 

@@ -16,7 +16,6 @@ __all__ = [
     "animated_properties",
     "board_edges",
     "board_layout",
-    "map_item_id_font_size",
     "pin_id_column",
     "row_backgrounds",
     "table_cell_backgrounds",
@@ -129,8 +128,3 @@ def animated_properties(page: Page, selector: str) -> list[str]:
     return page.evaluate(_ANIMATED_PROPERTIES_SCRIPT, selector)
 
 
-def map_item_id_font_size(page: Page) -> float:
-    """マップの項目の 2 行目の ID の計算後の文字の大きさ（px）を返す。"""
-    return page.evaluate(
-        "parseFloat(getComputedStyle(document.querySelector('#decision-map .n-item .r2 .mono')).fontSize)"
-    )

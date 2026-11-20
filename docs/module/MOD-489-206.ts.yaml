@@ -28,18 +28,13 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 表示の幅と、本文を寄せるかから、詳細パネルの幅の上限を返す。本文を寄せる幅（`PANEL_WIDTH.sideFrom` 以上、マップは `PANEL_WIDTH.resizableFrom` 以上）では表示の幅 − `keepBody`、それ以外は表示の幅 − `keepLeft`
+    summary: 表示の幅から、詳細パネルの幅の上限を返す。本文を寄せる幅（`PANEL_WIDTH.sideFrom` 以上）では表示の幅 − `keepBody`、それ以外は表示の幅 − `keepLeft`
     args:
       - name: viewport
         type: number
         required: true
         passing: keyword
         description: 表示の幅（px）
-      - name: mapView
-        type: boolean
-        required: true
-        passing: keyword
-        description: 検討事項のマップを出しているか
     returns:
       type: number
       description: 上限（px）
@@ -47,9 +42,9 @@ functions:
       - name: test_panel_width_max
         case: 正常
         summary: 本文を寄せる幅は本文に残す幅、重ねる幅は左に残す幅で上限を決める
-        condition: '`parametrize`: 1280・マップ以外 / 1100・マップ以外 / 1099・マップ以外 / 1000・マップ以外 / 1000・マップ / 901・マップ'
+        condition: '`parametrize`: 1280 / 1100 / 1099 / 1000'
         mock: なし
-        expected: 880 / 700 / 939 / 840 / 600 / 501
+        expected: 880 / 700 / 939 / 840
   - name: clampPanelWidth
     title: 詳細パネルの幅を収める
     kind: 関数
@@ -451,10 +446,6 @@ components:
         type: number | null
         required: true
         description: そのタブで変えた幅（入口の `readPanelWidth`）
-      - name: mapView
-        type: () => boolean
-        required: true
-        description: 今、検討事項のマップを出しているか
       - name: onChange
         type: '(width: number) => void'
         required: true
@@ -463,7 +454,7 @@ components:
       - name: test_panel_resizer
         case: 正常
         summary: 残した幅を上限に収めて当て、ドラッグで幅を変えて知らせる
-        condition: '表示の幅 1280、マップ以外。`parametrize`: `stored` が `null` / 768 / 1000'
+        condition: '表示の幅 1280。`parametrize`: `stored` が `null` / 768 / 1000'
         mock: '`onChange`（受けた幅を並べる関数）'
         expected: '`--panel-w` と `aria-valuenow` が 640 / 768 / 880、`aria-valuemin` が 480、`aria-valuemax` が 880 で、どれも `onChange` を呼ばない。続けて 100px 左へ動かすと、次のフレームで幅が 740 / 868 / 880（上限で止まる）になり、離すまで `onChange` を呼ばない。離すと `onChange` がその幅で 1 回だけ呼ばれる'
       - name: test_panel_resizer_keys

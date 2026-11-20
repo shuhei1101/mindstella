@@ -1,0 +1,422 @@
+# 結合テスト（バック、TL-3）
+$ pytest tests/integration/server/test_config_display.py tests/integration/server/test_update_settings.py tests/integration/server/test_config_reload.py tests/integration/server/test_records.py tests/integration/server/test_preview_url.py tests/integration/server/test_migrate.py tests/integration/server/test_export.py
+2026-11-20 16:28:44 JST
+commit 87d7e73cfdc29c86662024114082f6360206f06b
+........................................................................ [ 97%]
+..                                                                       [100%]
+74 passed in 156.32s (0:02:36)
+exit=0
+
+# 結合テスト（フロント、TL-4）
+$ pytest tests/integration/preview/test_open_preview.py tests/integration/preview/test_search_screen.py tests/integration/preview/test_decisions_screen.py tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_topbar_screen.py tests/integration/preview/test_overview_screen.py tests/integration/preview/test_settings_screen.py tests/integration/preview/test_settings_confirm_screen.py tests/integration/preview/test_spa_open.py tests/integration/preview/test_spa_overview_screen.py tests/integration/preview/test_spa_decisions_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/preview/test_spa_display_settings_screen.py tests/integration/preview/test_spa_settings_confirm_screen.py tests/integration/storybook/test_view_switch_stories.py tests/integration/storybook/test_topbar_stories.py tests/integration/storybook/test_settings_panel_stories.py tests/integration/storybook/test_settings_confirm_stories.py tests/integration/storybook/test_filter_drawer_stories.py tests/integration/storybook/test_thread_post_stories.py tests/integration/storybook/test_review_body_fold_stories.py tests/integration/storybook_react/test_view_switch_stories.py tests/integration/storybook_react/test_topbar_stories.py tests/integration/storybook_react/test_settings_panel_stories.py tests/integration/storybook_react/test_settings_confirm_stories.py tests/integration/storybook_react/test_filter_drawer_stories.py tests/integration/storybook_react/test_thread_post_stories.py tests/integration/storybook_react/test_review_body_fold_stories.py
+2026-11-20 16:31:07 JST
+....................................F............F...................... [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 15%]
+........................................................................ [ 20%]
+....F.F...........F..................................F.................. [ 25%]
+........................................................................ [ 30%]
+........................................................................ [ 36%]
+........................................................................ [ 41%]
+........................................................................ [ 46%]
+........................................................................ [ 51%]
+........................................................................ [ 56%]
+........................................................................ [ 61%]
+........................................................................ [ 67%]
+........................................................................ [ 72%]
+........................................................................ [ 77%]
+........................................................................ [ 82%]
+........................................................................ [ 87%]
+........................................................................ [ 92%]
+........................................................................ [ 97%]
+............................                                             [100%]
+=================================== FAILURES ===================================
+________________ test_normal_when_diff_minimap_hidden[chromium] ________________
+
+write_minimap_preview = <function write_minimap_preview.<locals>._write at 0x74e4d3aea200>
+open_preview = <function open_preview.<locals>._open at 0x74e4d3ad7060>
+page = <Page url='http://127.0.0.1:45285/mindstella.html#tab=docs&id=A-1&diff=V-1'>
+
+    def test_normal_when_diff_minimap_hidden(
+        write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """端末の保存領域に差分のミニマップを表示しない上書きがあると、ミニマップを出さず、表示の設定で変えている項目に並び、既定に戻すと出る（正常系）。"""
+        # 準備
+        url, _ = write_minimap_preview()
+        hide_minimap_in_storage(page)
+        page.set_viewport_size({"width": 1280, "height": 800})
+        # 実行
+        open_preview(url, MINIMAP_HASH)
+        page.wait_for_selector(f"{PANEL_SCOPE}.open .md ins.df-blk")
+        # 検証（本文の差分の印はあり、ミニマップは無い）
+        assert page.locator(f"{PANEL_SCOPE} .md del.df-blk").count() == 1
+        assert page.locator(f"{PANEL_SCOPE} .df-map").count() == 0
+        # 実行（表示の設定を開く）
+        open_settings(page)
+        # 検証
+        checkbox = page.locator(f"{SETTINGS_PANEL} fieldset", has_text="詳細に表示するもの").get_by_role(
+            "checkbox", name="差分のミニマップ"
+        )
+        assert checkbox.is_checked() is False
+        assert "差分のミニマップ" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+        assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
+>       assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
+E       AssertionError: assert '見た目と表示する種類は、ワークスペースの既定と同じです。' in '表示の設定\n表示する種類\nすべて\n7/7\n概要\n常に表示\n検討事項\n0\nタスク\n0\n調査\n0\n資料\n2\n用語集\n0\nメモ\n0\n会話ログ\n0\n詳細に表示するもの\n差分のミニマップ\nセクションの...欄へ戻す\n戻さない\n\n自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。\n\nこの端末で変えている項目\n差分のミニマップ\n\n既定に戻す\n\n表示する種類は、ワークスペースの既定と同じです。'
+E        +  where '表示の設定\n表示する種類\nすべて\n7/7\n概要\n常に表示\n検討事項\n0\nタスク\n0\n調査\n0\n資料\n2\n用語集\n0\nメモ\n0\n会話ログ\n0\n詳細に表示するもの\n差分のミニマップ\nセクションの...欄へ戻す\n戻さない\n\n自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。\n\nこの端末で変えている項目\n差分のミニマップ\n\n既定に戻す\n\n表示する種類は、ワークスペースの既定と同じです。' = panel_text(<Page url='http://127.0.0.1:45285/mindstella.html#tab=docs&id=A-1&diff=V-1'>)
+
+tests/integration/preview/test_open_preview.py:1768: AssertionError
+___________________ test_normal_when_embedded_html[chromium] ___________________
+
+write_preview = <function write_preview.<locals>._write at 0x74e4d565f600>
+open_preview = <function open_preview.<locals>._open at 0x74e4d565c860>
+make_item = <function make_item.<locals>._make at 0x74e4d56d7880>
+page = <Page url='http://127.0.0.1:46209/mindstella.html#tab=docs&id=A-1'>
+
+    def test_normal_when_embedded_html(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+    ) -> None:
+        """Markdown の本文に埋め込んだ HTML を本文の中に描き、チャートを動かし、部品の今の値を JSON でコピーする（正常系）。"""
+        # 準備
+        page.context.grant_permissions(CLIPBOARD_PERMISSIONS)
+        url = write_preview(
+            make_item("A-1", title="埋め込む資料"),
+            make_item("A-2"),
+            make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
+            bodies={"A-1.mark.md": EMBEDDED_BODY},
+        )
+        open_preview(url, "#tab=docs&id=A-1")
+        page.wait_for_selector(CHART, timeout=DIAGRAM_TIMEOUT_MS)
+        chart = page.locator(CHART).first
+        # 実行（範囲のボタンを押す）
+        page.get_by_role("button", name="実行", exact=True).click()
+        # 検証（範囲は枠に入れず本文の要素として描かれ、スクリプトとイベントの属性は動かない）
+        assert page.locator("aside.panel .md > .mdmark-html").count() == 1
+        assert page.locator("aside.panel iframe").count() == 0
+        assert page.locator(f"{RANGE} script, {RANGE} [onclick]").count() == 0
+        assert page.evaluate("[window.__script, window.__onclick]") == [None, None]
+        # 実行（拡大して、ドラッグする）
+        fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+>       chart.locator(ZOOM_IN).click()
+
+tests/integration/preview/test_open_preview.py:2310: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/sync_api/_generated.py:18032: in click
+    self._sync(
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_locator.py:165: in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:594: in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x74e4d639a240>
+cb = <function Channel.send.<locals>.<lambda> at 0x74e4d56d79c0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+E           Call log:
+E             - waiting for locator("aside.panel .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"in\"]")
+E               - locator resolved to <button type="button" data-tool="in" aria-label="拡大" class="mdmark-diagram-tool">…</button>
+E             - attempting click action
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E               - waiting 20ms
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E                 - waiting 100ms
+E               58 × waiting for element to be visible, enabled and stable
+E                  - element is not visible
+E                - retrying click action
+E                  - waiting 500ms
+
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+_____________ test_diff_minimap_when_empty_area_pressed[chromium] ______________
+
+write_minimap_preview = <function write_minimap_preview.<locals>._write at 0x74e4d376e200>
+open_preview = <function open_preview.<locals>._open at 0x74e4d40b91c0>
+page = <Page url='http://127.0.0.1:46311/mindstella.html#tab=docs&id=A-1&diff=V-1'>
+
+    def test_diff_minimap_when_empty_area_pressed(
+        write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """印の無い所を押すと、押した位置に見えている範囲の面の中央が来るまで本文をすぐ送り、履歴にもハッシュにも触れない（正常系）。"""
+        # 準備
+        _open_minimap_panel(write_minimap_preview, open_preview, page)
+        history_length = page.evaluate("history.length")
+        hash_before = page.evaluate("location.hash")
+        box = page.locator(f"{PANEL_SCOPE} .df-map").bounding_box()
+        assert box is not None
+        # 実行（帯の中ほどを押す）
+        pressed_y = press_empty_area(page, PANEL_SCOPE, offset_y=box["height"] / 2)
+        # 検証（押した位置に、見えている範囲の面の中央が来る）
+        metrics = map_metrics(page, PANEL_SCOPE)
+>       assert metrics["viewTop"] + metrics["viewHeight"] / 2 == pytest.approx(
+            pressed_y, abs=MINIMAP_TOLERANCE_PX
+        )
+E       assert 223.75 == 424 ± 2
+E         
+E         comparison failed
+E         Obtained: 223.75
+E         Expected: 424 ± 2
+
+tests/integration/preview/test_detail_panel_screen.py:4701: AssertionError
+____________________ test_diff_body_layout_switch[chromium] ____________________
+
+write_body_layout_preview = <function write_body_layout_preview.<locals>._write at 0x74e4d4973420>
+open_preview = <function open_preview.<locals>._open at 0x74e4d5d499e0>
+page = <Page url='http://127.0.0.1:45501/mindstella.html#tab=docs&id=A-1&diff=V-2'>
+
+    def test_diff_body_layout_switch(
+        write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """差分の表示の間、本文が変わった資料の本文の差分の頭に「インライン」「左右に並べる」の切り替えを出し、押すとその場で描き直し、履歴に積まず URL のハッシュも変えず、押したボタンにフォーカスを保つ（正常系）。"""
+        # 準備
+        url, _ = write_body_layout_preview()
+        _open_side_panel(page, open_preview, url)
+        page.wait_for_selector(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}")
+        history_length = page.evaluate("history.length")
+        hash_before = page.evaluate("location.hash")
+        # 検証（読み上げの名前の付いたボタンの組で、「インライン」を押した状態。本文の差分の印より前にある）
+        assert page.get_attribute(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}", "role") == "group"
+        assert page.get_attribute(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}", "aria-label") == LAYOUT_GROUP_NAME
+        assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]
+        assert page.evaluate(
+            """() => !!(document.querySelector('aside.panel .sbs-switch').compareDocumentPosition(
+                document.querySelector('aside.panel .md:not(.md-value) ins.df-blk')) & Node.DOCUMENT_POSITION_FOLLOWING)"""
+        )
+        # 実行（「左右に並べる」を押す）
+        page.get_by_role("button", name=SIDE_NAME).click()
+        open_side_by_side(page, LAYOUT_PANEL)
+        # 検証（押した状態が移り、押したボタンにフォーカスが残る。履歴もハッシュも変わらない）
+        assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["false", "true"]
+        assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "side"
+        assert page.evaluate("history.length") == history_length
+        assert page.evaluate("location.hash") == hash_before
+        # 実行（「インライン」を押す）
+        page.get_by_role("button", name=INLINE_NAME).click()
+        page.wait_for_selector(f"{LAYOUT_PANEL} .sbs", state="detached")
+        # 検証（インラインに戻り、フォーカスは押したボタンに残る）
+        assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]
+>       assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "inline"
+E       assert None == 'inline'
+E        +  where None = evaluate("document.activeElement?.getAttribute('data-layout')")
+E        +    where evaluate = <Page url='http://127.0.0.1:45501/mindstella.html#tab=docs&id=A-1&diff=V-2'>.evaluate
+
+tests/integration/preview/test_detail_panel_screen.py:4788: AssertionError
+_________________________ test_fit_smallest[chromium] __________________________
+
+write_sample_preview = <function write_sample_preview.<locals>._write at 0x74e4d61368e0>
+open_preview = <function open_preview.<locals>._open at 0x74e4d5d4bba0>
+
+    def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+        """詳細パネルは、幅 320px で横にスクロールせず、本文の表・図・コードブロックのほかにあふれる区画が無く、閉じる・全画面のボタンが表示幅の中にある（正常系）。"""
+        # 準備
+        url = write_sample_preview()
+        page = open_preview(url, "#tab=decisions&view=table&id=D-3")
+        page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+        # 実行
+        set_smallest(page)
+        # 検証
+>       assert_fits_smallest(page, ("aside.panel", 'aside.panel button[data-act="close"]', 'aside.panel button[data-act="full"]'), scope="aside.panel")
+
+tests/integration/preview/test_detail_panel_screen.py:5071: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+page = <Page url='http://127.0.0.1:44693/mindstella.html#tab=decisions&view=table&id=D-3'>
+controls = ('aside.panel', 'aside.panel button[data-act="close"]', 'aside.panel button[data-act="full"]')
+scope = 'aside.panel'
+
+    def assert_fits_smallest(page: Page, controls: tuple[str, ...] = (), scope: str = "body") -> None:
+        """ページが横にスクロールせず、`scope` の中の区画がはみ出さず、操作の要素が表示幅の中にあることを確かめる。"""
+        report = fit_report(page, controls, scope)
+        assert report["pageOverflow"] == 0, f"ページが横に {report['pageOverflow']}px あふれる"
+        assert report["overflowing"] == [], f"横にあふれる区画: {report['overflowing']}"
+>       assert report["outside"] == [], f"表示幅の外にある操作: {report['outside']}"
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: 表示幅の外にある操作: ['aside.panel button[data-act="full"]: 表示幅の外']
+
+tests/integration/preview/preview_fit_helpers.py:115: AssertionError
+________________________ test_embedded_chart[chromium] _________________________
+
+write_preview = <function write_preview.<locals>._write at 0x74e4d5d44860>
+open_preview = <function open_preview.<locals>._open at 0x74e4d3ae98a0>
+make_item = <function make_item.<locals>._make at 0x74e4d3ae9a80>
+
+    def test_embedded_chart(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+    ) -> None:
+        """チャートは拡大・縮小のボタンとキーで倍率を変え、拡大した後はドラッグで位置を変える。図の拡大の画面は開かず、履歴に積まない（正常系）。"""
+        # 準備
+        page = _open_embedded(write_preview, open_preview, make_item)
+        chart = page.locator(CHART).first
+        history_length = page.evaluate("history.length")
+    
+        def _fit() -> int:
+            """チャートの倍率（%）を返す。"""
+            return int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    
+        initial = _fit()
+        # 検証（全体が収まる倍率では、縮小は押せず、動かすボタンは隠れている）
+>       expect(chart.locator('button[data-tool="out"]')).to_be_disabled()
+E       AssertionError: Locator expected to be disabled
+E       Actual value: enabled 
+E       Call log:
+E         - Expect "to_be_disabled" locator("aside.panel .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"out\"]") with timeout 5000ms
+E         - waiting for locator("aside.panel .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"out\"]")
+E           14 × locator resolved to <button type="button" data-tool="out" aria-label="縮小" class="mdmark-diagram-tool">…</button>
+E              - unexpected value "enabled"
+E       
+E       Aria snapshot:
+E       - banner:
+E         - text: mindstella 要件出しのスキル mindmap を設計する
+E         - button "すべての項目を検索": Ctrl+K
+E         - button "変更履歴"
+E         - button "表示の設定"
+E         - button "絞り込み"
+E         - button "コメント（レビュー中 0 件）": "0"
+E         - button "ダークに切り替え"
+E       - navigation "項目の種類":
+E         - link "概要":
+E           - /url: "#"
+E         - link "検討事項 0":
+E           - /url: "#tab=decisions"
+E         - link "タスク 0":
+E           - /url: "#tab=tasks"
+E         - link "調査 0":
+E           - /url: "#tab=research"
+E         - link "資料 2":
+E           - /url: "#tab=docs"
+E         - link "用語集 1":
+E           - /url: "#tab=terms"
+E         - link "メモ 0":
+E           - /url: "#tab=notes"
+E         - link "会話ログ 0":
+E           - /url: "#tab=logs"
+E       - main:
+E         - heading "資料" [level=1]
+E         - group "表示形式":
+E           - button "カード" [pressed]
+E           - button "ボード"
+E           - button "表"
+E         - button "資料の項目を追加": 項目を追加
+E         - button "図 MD 埋め込む資料 A-1 下書き"
+E         - button "図 MD A-2の題 A-2 下書き"
+E       - complementary "詳細":
+E         - separator "詳細パネルの幅"
+E         - text: 資料 A-1 MD
+E         - button "編集する"
+E         - button "エクスポート"
+E         - button "A-1 のコメントの一覧を開く"
+E         - button "前の項目へ戻る" [disabled]: ←
+E         - button "次の項目へ進む" [disabled]: →
+E         - button "全画面表示"
+E         - button "詳細を閉じる"
+E         - region "詳細の本文":
+E           - text: 下書き
+E           - heading "埋め込む資料" [level=2]
+E           - term: 種類
+E           - definition: 図
+E           - term: 更新日
+E           - definition: 2026-10-01T00:00:00+00:00
+E           - heading "本文" [level=3]
+E           - paragraph: 範囲の外の文
+E           - paragraph:
+E             - text: ﾋﾟｰｸ時の
+E             - link "応答時間":
+E               - /url: "#tab=docs&id=G-1"
+E             - text: と
+E             - link "A-2":
+E               - /url: "#tab=docs&id=A-2"
+E           - 'figure "件数 範囲: 10 月・更新日: 2026-10-27"':
+E             - text: "件数 範囲: 10 月・更新日:"
+E             - time: 2026-10-27
+E             - toolbar "「件数」の表示":
+E               - button "倍率 100%。全体が収まる倍率に戻す": 100%
+E               - button "表示の操作を開く"
+E             - 'group "件数 範囲: 10 月・更新日: 2026-10-27"':
+E               - 'img "件数。自動返信: メール 10・電話 20"': 0 5 10 15 20 件 メール 電話 窓口
+E             - list "凡例":
+E               - listitem: 自動返信
+E           - group "リクエスト数の見積もり":
+E             - paragraph: リクエスト数の見積もり
+E             - text: リクエスト数
+E             - status: "5"
+E             - slider "リクエスト数": "5"
+E             - button "今の値をコピー"
+E             - 'figure "応答時間 範囲: ピーク時・更新日: 2026-10-27"':
+E               - text: "応答時間 範囲: ピーク時・更新日:"
+E               - time: 2026-10-27
+E               - toolbar "「応答時間」の表示":
+E                 - button "倍率 100%。全体が収まる倍率に戻す": 100%
+E                 - button "表示の操作を開く"
+E               - 'group "応答時間 範囲: ピーク時・更新日: 2026-10-27"':
+E                 - 'img "応答時間。今の値（5）: 50・55。既定の値（5）: 50・55"': 0 50 100 ミリ秒 0 1 経過
+E               - list "凡例":
+E                 - listitem: 今の値（5）
+E                 - listitem: 既定の値（5）
+E           - button "実行"
+E           - paragraph: 後ろの文
+E           - heading "レビュー中のコメント0" [level=3]
+E           - paragraph: レビュー中のコメントはありません。
+E         - text: A-1 へのコメント
+E         - button "コメントの入力を閉じる" [expanded]
+E         - textbox "A-1 へのコメント"
+E         - button "音声で入力"
+E         - button "レビューに追加"
+
+tests/integration/preview/test_detail_panel_screen.py:6200: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_diff_minimap_hidden[chromium]
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_body_layout_switch[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_fit_smallest[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+6 failed, 1390 passed in 2278.11s (0:37:58)
+exit=1
+
+# 直した結合テストと、全件の中で fail した不安定なテストの流し直し（commit 9fc534a0fdb962d7083922212e614d08d4bb5e57）
+$ pytest tests/integration/preview/test_open_preview.py::test_normal_when_diff_minimap_hidden tests/integration/preview/test_detail_panel_screen.py::test_diff_body_layout_switch
+..                                                                       [100%]
+2 passed in 17.91s
+
+# base ブランチ（develop 78097637b4ff2db9149191afcf05cd7181d4212f）で、残りの fail 4 件を同じコマンドで流した結果（#553・#610・#625 の既存の不具合）
+$ pytest tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed tests/integration/preview/test_detail_panel_screen.py::test_fit_smallest tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart
+tests/integration/preview/test_detail_panel_screen.py:6205: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_fit_smallest[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+3 failed, 1 passed in 54.27s
+
+# test_diff_minimap_when_empty_area_pressed を作業ブランチで単独で流した結果（commit 3b61390bc45256e6246a2944810087bfe574a605。3 回）
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed
+.                                                                        [100%]
+1 passed in 8.62s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed
+.                                                                        [100%]
+1 passed in 8.27s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_minimap_when_empty_area_pressed
+.                                                                        [100%]
+1 passed in 10.36s
+（3b61390b は 9fc534a0 から docs/pr/632/ だけを変えた commit で、テストと実装は同じ）

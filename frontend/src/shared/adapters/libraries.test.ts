@@ -28,11 +28,11 @@ describe("loadLibrary", () => {
   // 1 度だけ読む（正常系）
   test("load_library", async () => {
     // 準備
-    vi.stubGlobal("ELK", class {});
+    vi.stubGlobal("marked", {});
     const append = fireOn(true);
     // 実行
-    await loadLibrary("elkjs");
-    await loadLibrary("elkjs");
+    await loadLibrary("marked");
+    await loadLibrary("marked");
     // 検証
     expect(append).toHaveBeenCalledTimes(1);
   });
@@ -42,7 +42,7 @@ describe("loadLibrary", () => {
     // 準備
     fireOn(false);
     // 実行・検証
-    await expect(loadLibrary("elkjs")).resolves.toBeNull();
+    await expect(loadLibrary("marked")).resolves.toBeNull();
   });
 });
 

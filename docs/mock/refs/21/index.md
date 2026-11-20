@@ -12,7 +12,6 @@
 | [tasks](../../pages/tasks/21/standard/index.html) | タスク |
 | [docs](../../pages/docs/21/standard/index.html) | 資料 |
 | [records](../../pages/records/21/standard/index.html) | 調査・用語集・メモ・会話ログ |
-| [graph](../../pages/graph/21/standard/index.html) | つながり |
 | [detail-panel](../../pages/detail-panel/21/standard/index.html) | 詳細パネル |
 | [detail-full](../../pages/detail-full/21/standard/index.html) | 詳細の全画面 |
 | [search](../../pages/search/21/standard/index.html) | 全体の検索 |

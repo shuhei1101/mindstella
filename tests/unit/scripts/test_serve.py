@@ -244,17 +244,18 @@ def test_start_when_settings_invalid(
 ) -> None:
     """config.yaml が合わなければ配信を立てず、直せば立てる（異常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "display": {"network_look": "rainbow"}})
+    root = make_workspace(settings={**valid_settings, "display": {"visible_kinds": ["rainbow"]}})
     # 実行（合わない間は 2 回とも立てず、直した後の 1 回で立てる）
     first_lines = _start_expecting_mismatch(registry, root)
     second_lines = _start_expecting_mismatch(registry, root)
     write_yaml(
-        root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"network_look": "deep"}}
+        root / RECORD_DIR / "config.yaml",
+        {**valid_settings, "display": {"visible_kinds": ["decisions"]}},
     )
     url, started = registry.start(root)
     # 検証
-    assert first_lines[0].startswith("config.yaml: display.network_look: ")
-    assert second_lines[0].startswith("config.yaml: display.network_look: ")
+    assert first_lines[0].startswith("config.yaml: display.visible_kinds")
+    assert second_lines[0].startswith("config.yaml: display.visible_kinds")
     assert started is True
     assert url.endswith("/mindstella.html")
 
@@ -855,28 +856,29 @@ def test_records_response_when_settings_changed(
     """通った設定は控え、崩れた設定では控えた設定で返す（正常系）。"""
     # 準備
     root = make_workspace()
-    context = _context(root, {**valid_settings, "display": {"network_look": "starlight"}})
+    context = _context(root, {**valid_settings, "display": {"visible_kinds": ["decisions"]}})
     # 実行（通る設定と崩れた設定を、この順に読む）
     write_yaml(
-        root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"network_look": "dust"}}
+        root / RECORD_DIR / "config.yaml",
+        {**valid_settings, "display": {"visible_kinds": ["tasks"]}},
     )
     first = serve.records_response(context)
-    held_after_first = context.settings.current()["display"]["network_look"]
+    held_after_first = context.settings.current()["display"]["visible_kinds"]
     write_yaml(
         root / RECORD_DIR / "config.yaml",
-        {**valid_settings, "display": {"network_look": "rainbow"}},
+        {**valid_settings, "display": {"visible_kinds": ["rainbow"]}},
     )
     second = serve.records_response(context)
     # 検証
     first_payload = json.loads(first.body)
     second_payload = json.loads(second.body)
     assert first.status == 200
-    assert first_payload["settings"]["display"]["network_look"] == "dust"
+    assert first_payload["settings"]["display"]["visible_kinds"] == ["tasks"]
     assert first_payload["settings_problem"] is None
-    assert held_after_first == "dust"
+    assert held_after_first == ["tasks"]
     assert second.status == 200
-    assert second_payload["settings"]["display"]["network_look"] == "dust"
-    assert second_payload["settings_problem"][0].startswith("config.yaml: display.network_look: ")
+    assert second_payload["settings"]["display"]["visible_kinds"] == ["tasks"]
+    assert second_payload["settings_problem"][0].startswith("config.yaml: display.visible_kinds")
 
 
 @pytest.mark.parametrize(
@@ -1734,7 +1736,7 @@ def test_edits_save_response(
     [
         pytest.param(lambda: CommentInvalidError("body: 空です"), 400, None, id="invalid"),
         pytest.param(
-            lambda: errors.SettingsInvalidError("network_look: 選べません"),
+            lambda: errors.SettingsInvalidError("visible_kinds: 選べません"),
             400,
             None,
             id="settings_invalid",
@@ -1859,50 +1861,57 @@ def test_settings_holder() -> None:
 
 @pytest.mark.parametrize(
     (
-        "network_look",
+        "visible_kinds",
         "origin",
         "expected_status",
-        "expected_look",
+        "expected_kinds",
         "expected_held",
         "expected_revision",
         "expected_detail",
     ),
     [
-        pytest.param("dust", None, 200, "dust", "dust", 1, "", id="passes"),
+        pytest.param(["tasks"], None, 200, ["tasks"], ["tasks"], 1, "", id="passes"),
         pytest.param(
-            "rainbow",
+            ["rainbow"],
             None,
             422,
             None,
-            "starlight",
+            ["decisions"],
             0,
-            "config.yaml: display.network_look: ",
+            "config.yaml: display.visible_kinds",
             id="schema_mismatch",
         ),
         pytest.param(
-            "dust", "https://attacker.example", 403, None, "starlight", 0, "", id="other_origin"
+            ["tasks"],
+            "https://attacker.example",
+            403,
+            None,
+            ["decisions"],
+            0,
+            "",
+            id="other_origin",
         ),
     ],
 )
 def test_reload_response(
     make_workspace: MakeWorkspace,
     valid_settings: dict[str, Any],
-    network_look: str,
+    visible_kinds: list[str],
     origin: str | None,
     expected_status: int,
-    expected_look: str | None,
-    expected_held: str,
+    expected_kinds: list[str] | None,
+    expected_held: list[str],
     expected_revision: int,
     expected_detail: str,
 ) -> None:
     """通れば差し替え、通らなければ前の設定のまま違う箇所を返す（正常系）。"""
     # 準備
     root = make_workspace()
-    context = _context(root, {**valid_settings, "display": {"network_look": "starlight"}})
+    context = _context(root, {**valid_settings, "display": {"visible_kinds": ["decisions"]}})
     # 手で直した config.yaml
     write_yaml(
         root / RECORD_DIR / "config.yaml",
-        {**valid_settings, "display": {"network_look": network_look}},
+        {**valid_settings, "display": {"visible_kinds": visible_kinds}},
     )
     before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
@@ -1910,9 +1919,9 @@ def test_reload_response(
     # 検証
     payload = json.loads(response.body)
     assert response.status == expected_status
-    assert payload.get("settings", {}).get("display", {}).get("network_look") == expected_look
+    assert payload.get("settings", {}).get("display", {}).get("visible_kinds") == expected_kinds
     assert expected_detail in payload.get("detail", "")
-    assert context.settings.current()["display"]["network_look"] == expected_held
+    assert context.settings.current()["display"]["visible_kinds"] == expected_held
     assert context.settings.revision() == expected_revision
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == before
 

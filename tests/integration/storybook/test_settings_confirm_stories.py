@@ -32,43 +32,26 @@ def _focused(page: Page) -> str:
     return page.evaluate("document.activeElement?.textContent?.trim() ?? ''")
 
 
-def test_both_changed(open_story: OpenStory) -> None:
-    """2 つの項目を変える。今の既定と保存する値を矢印で並べる。最初のフォーカスは取り消す（正常系）。"""
+def test_kinds_changed(open_story: OpenStory) -> None:
+    """表示する種類を変える。今の既定と保存する値を矢印で並べる。最初のフォーカスは取り消す（正常系）。"""
     # 準備・実行
-    page = _open(open_story, "both-changed")
+    page = _open(open_story, "kinds-changed")
     # 検証
     labelled = page.get_attribute(DIALOG, "aria-labelledby")
     assert page.inner_text(f"#{labelled}") == "ワークスペースの既定を書き換えますか"
     rows = _rows(page)
-    assert "ネットワークの見た目" in rows[0]
-    assert "星の光" in rows[0]
-    assert "星屑" in rows[0]
-    assert "メモを表示しない" in rows[1]
-    assert "すべて表示" in rows[1]
+    assert len(rows) == 1
+    assert "メモを表示しない" in rows[0]
+    assert "すべて表示" in rows[0]
     assert "変えない" not in page.inner_text(DIALOG)
-    assert page.locator(f"{DIALOG} .sc-row svg.icon").count() == 2
+    assert page.locator(f"{DIALOG} .sc-row svg.icon").count() == 1
     # 変える項目は、今の既定と保存する値を読み上げにだけ残す
     assert page.locator(f"{DIALOG} .sc-row .sr-only").all_text_contents() == [
-        "今の既定 ",
-        "保存する値 ",
         "今の既定 ",
         "保存する値 ",
     ]
     assert _focused(page) == "取り消す"
     assert page.evaluate(f"document.querySelector('{DIALOG}').matches(':modal')") is True
-
-
-def test_one_unchanged(open_story: OpenStory) -> None:
-    """表示する種類を変えない。今の値に「変えない」の札を付ける（正常系）。"""
-    # 準備・実行
-    page = _open(open_story, "one-unchanged")
-    # 検証
-    rows = _rows(page)
-    assert "深宇宙" in rows[0]
-    assert "グロウ" in rows[0]
-    assert "変えない" not in rows[0]
-    assert "すべて表示" in rows[1]
-    assert "変えない" in rows[1]
 
 
 def test_busy(open_story: OpenStory) -> None:
@@ -120,7 +103,7 @@ def test_narrow(open_story: OpenStory) -> None:
     assert box is not None
     assert box["x"] >= 0
     assert box["x"] + box["width"] <= NARROW_SIZE["width"]
-    assert "メモ" in page.inner_text(f"{DIALOG} .sc-row >> nth=1")
+    assert "メモ" in page.inner_text(f"{DIALOG} .sc-row >> nth=0")
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )

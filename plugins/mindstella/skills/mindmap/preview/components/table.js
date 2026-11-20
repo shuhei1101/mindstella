@@ -96,8 +96,8 @@ var MindmapPreview;
         return Object.fromEntries(Object.entries(filters).filter(([name]) => name !== key));
     }
     MindmapPreview.withoutKey = withoutKey;
-    /** 絞り込みのドロワーに並べる条件と、条件ごとの値・件数を組む（キーワードに一致した件数を `hit` で添えられる） */
-    function drawerGroups({ rows, columns, filters, hit, }) {
+    /** 絞り込みのドロワーに並べる条件と、条件ごとの値・件数を組む */
+    function drawerGroups({ rows, columns, filters, }) {
         const rank = (key) => {
             const position = LEADING_CONDITION_KEYS.indexOf(key);
             return position < 0 ? LEADING_CONDITION_KEYS.length : position;
@@ -109,18 +109,10 @@ var MindmapPreview;
             // 値を 1 つも持たない条件は並べない
             if (counts.length === 0)
                 continue;
-            // キーワードに一致した件数は、その条件以外の条件で絞った行で数える
-            const others = hit === undefined ? [] : filterRows({ rows, columns, filters: withoutKey(filters, column.key) });
             groups.push({
                 key: column.key,
                 label: column.label,
-                values: counts.map(({ value, count }) => hit === undefined
-                    ? { value, count }
-                    : {
-                        value,
-                        count,
-                        hit: others.filter((row) => hit(row) && valuesOf(column, row).includes(value)).length,
-                    }),
+                values: counts.map(({ value, count }) => ({ value, count })),
                 ...(column.key === "status" ? { mark: "status" } : {}),
                 ...(column.key === "type" ? { mark: "kind" } : {}),
             });

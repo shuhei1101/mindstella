@@ -25,7 +25,7 @@ catalogs:
         purpose: 厳しい型検査（6.0 からの既定）
       - name: skipLibCheck
         kind: 設定
-        purpose: elkjs の同梱の型にある誤り（TS2536）で止まらないようにする
+        purpose: React の側（`frontend/tsconfig.json`）と今の画面のストーリーの型検査（`.storybook/tsconfig.json`）で、依存の型（@storybook/react・vitest・@rolldown/plugin-babel など）にある誤りで止まらないようにする。今の画面の `tsconfig.json` は持たない（elkjs を外した後は依存の型に誤りが無い）
       - name: types
         kind: 設定
         purpose: 自動で読む @types を空にする（6.0 からの既定）
@@ -53,11 +53,11 @@ selection:
   consequences: React の側の型情報つきの lint（typescript-eslint。peer は `<6.1.0`）に合わせ、今の画面も React の側も 6.0.3 に揃える（#429 の PoC 検証で、今の画面の生成物に差分が出ないことを確かめた）
 install: |-
   ```bash
-  npm install --save-dev --save-exact typescript@6.0.3 marked@18.0.14 dompurify@3.4.16 elkjs@0.12.0 mermaid@12.1.0 type-fest@4.41.0
+  npm install --save-dev --save-exact typescript@6.0.3 marked@18.0.14 dompurify@3.4.16 mermaid@12.1.0 type-fest@4.41.0
   npx tsc -p .
   ```
 
-  `tsconfig.json` はリポジトリの直下に置き、`strict: true`・`skipLibCheck: true`・`types: []`・`lib: ["es2022", "dom", "dom.iterable"]`・`rootDir` を持つ。`outDir` は持たず、`.js` を `.ts` と同じ階層に出す。
+  `tsconfig.json` はリポジトリの直下に置き、`strict: true`・`types: []`・`lib: ["es2022", "dom", "dom.iterable"]`・`rootDir` を持つ。`outDir` は持たず、`.js` を `.ts` と同じ階層に出す。
   描画のライブラリは型だけを使う（実行時は雛形が jsDelivr から読む）。`type-fest` は mermaid の型が import するため入れる。
 limitations:
   - item: モジュールの扱い

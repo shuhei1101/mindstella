@@ -42,10 +42,6 @@ var MindmapPreview;
     function tabLabel(key) {
         return key === "overview" ? "概要" : MindmapPreview.KIND_LABEL[key];
     }
-    /** 画面の名前（ネットワークは種類のタブに無いので、ここで持つ） */
-    function screenName(tab) {
-        return tab === "graph" ? "ネットワーク" : tabLabel(tab);
-    }
     /** `mindmap-data` の要素の中身を `JSON.parse` して返す。中身が空なら（サーバーの配信）null */
     function readEmbeddedData(doc) {
         const text = doc.getElementById(DATA_ELEMENT_ID)?.textContent;
@@ -68,7 +64,6 @@ var MindmapPreview;
         return {
             theme: null,
             columns: {},
-            look: null,
             kinds: null,
             diffSel: null,
             filters: {},
@@ -81,8 +76,8 @@ var MindmapPreview;
             focusAfterAdd: null,
         };
     }
-    /** 前の版が残した、今は読まない本文の表の見せ方の上書きの項目 */
-    const LEGACY_PREF_KEYS = ["tablePin", "tableHead", "tableStripes"];
+    /** 前の版が残した、今は読まない上書きの項目（本文の表の見せ方・削除したネットワークの見た目） */
+    const LEGACY_PREF_KEYS = ["tablePin", "tableHead", "tableStripes", "look"];
     /** 端末の保存領域から設定を読む。読めないときは既定を返す */
     function loadPrefs(storage) {
         try {
@@ -90,13 +85,10 @@ var MindmapPreview;
             if (saved === null)
                 return defaultPrefs();
             const parsed = { ...defaultPrefs(), ...JSON.parse(saved) };
-            // 前の版が残した本文の表の見せ方の上書きは読まない
+            // 前の版が残した、今は読まない上書きは読まない
             for (const key of LEGACY_PREF_KEYS)
                 delete parsed[key];
-            // 選べない値の見た目・種類は、その項目だけワークスペースの既定に従う
-            const looks = MindmapPreview.NETWORK_LOOKS.map((option) => option.key);
-            if (!looks.includes(parsed.look))
-                parsed.look = null;
+            // 選べない値の種類は、その項目だけワークスペースの既定に従う
             const kinds = MindmapPreview.KIND_KEYS;
             if (!Array.isArray(parsed.kinds) || !parsed.kinds.every((kind) => kinds.includes(kind)))
                 parsed.kinds = null;
@@ -148,9 +140,9 @@ var MindmapPreview;
             .sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)));
         return normal(a) === normal(b);
     }
-    /** 絞り込みの条件を端末に残す画面（種類のタブとネットワーク。概要は絞り込みを持たない。読み込み順によらないよう、呼ばれたときに作る） */
+    /** 絞り込みの条件を端末に残す画面（種類のタブ。概要は絞り込みを持たない。読み込み順によらないよう、呼ばれたときに作る） */
     function filterTabs() {
-        return [...MindmapPreview.KIND_KEYS, "graph"];
+        return [...MindmapPreview.KIND_KEYS];
     }
     /** 設定を端末の保存領域に残し、書けたかを返す。保存領域が例外を送るときは偽を返す（開いている間だけ設定を保つ） */
     function savePrefs({ storage, prefs }) {
@@ -165,15 +157,13 @@ var MindmapPreview;
     MindmapPreview.savePrefs = savePrefs;
     /** 項目ごとに、個人の上書きがあればそれを、無ければワークスペースの既定を、それも無ければ組み込みの既定を使う */
     function resolveDisplay(prefs, display) {
-        const defaultLook = display?.network_look ?? MindmapPreview.BUILTIN_LOOK;
         const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
-        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文のセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスの順に並べる（条件が画面の既定と同じ画面は並べない）
+        // 上書きを持つ項目の名前を、種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文のセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスの順に並べる（条件が画面の既定と同じ画面は並べない）
         const overrides = [
-            ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
             ...(prefs.kinds === null ? [] : ["表示する種類"]),
             ...(prefs.theme === null ? [] : ["ライト / ダーク"]),
             ...MindmapPreview.KIND_KEYS.filter((kind) => prefs.columns[kind] !== undefined).map((kind) => `表の列（${MindmapPreview.KIND_LABEL[kind]}）`),
-            ...filterTabs().filter((tab) => prefs.filters[tab] !== undefined && !sameFilters(prefs.filters[tab], MindmapPreview.initialFilters(tab, {}, null))).map((tab) => `絞り込み（${screenName(tab)}）`),
+            ...filterTabs().filter((tab) => prefs.filters[tab] !== undefined && !sameFilters(prefs.filters[tab], MindmapPreview.initialFilters(tab, {}, null))).map((tab) => `絞り込み（${tabLabel(tab)}）`),
             ...(prefs.minimap === false ? [MindmapPreview.MINIMAP_LABEL] : []),
             ...(prefs.sectionFold === false ? [MindmapPreview.BODY_VIEW_LABELS.fold] : []),
             ...(prefs.bodyLayout === "side" ? [MindmapPreview.BODY_LAYOUT_LABEL] : []),
@@ -181,9 +171,7 @@ var MindmapPreview;
             ...(prefs.focusAfterAdd === "input" || prefs.focusAfterAdd === "none" ? [MindmapPreview.FOCUS_AFTER_ADD_LABEL] : []),
         ];
         return {
-            look: prefs.look ?? defaultLook,
             kinds: prefs.kinds === null ? defaultKinds : new Set(prefs.kinds),
-            defaultLook,
             defaultKinds,
             overrides,
             // 上書きが false のときだけ表示しない
@@ -197,12 +185,11 @@ var MindmapPreview;
         };
     }
     MindmapPreview.resolveDisplay = resolveDisplay;
-    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文のセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスを外した設定を返す（`diffSel`・`commentsPinned`・`commentFormClosed` は残し、渡した設定は変えない） */
+    /** 「既定に戻す」で、表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文のセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスを外した設定を返す（`diffSel`・`commentsPinned`・`commentFormClosed` は残し、渡した設定は変えない） */
     function clearOverrides(prefs) {
         return {
             ...prefs,
             theme: null,
-            look: null,
             kinds: null,
             columns: {},
             filters: {},
@@ -227,7 +214,7 @@ var MindmapPreview;
     const BODY_VIEW_PREF = { fold: "sectionFold" };
     /** 表示の既定が同じか（無いキーは同じ無しとして比べる） */
     function sameDisplay(a, b) {
-        const key = (display) => JSON.stringify([display?.network_look ?? null, display?.visible_kinds ?? null]);
+        const key = (display) => JSON.stringify(display?.visible_kinds ?? null);
         return key(a) === key(b);
     }
     /** 端末の保存領域（開けない環境では、何も返さない保存領域） */
@@ -504,7 +491,7 @@ var MindmapPreview;
         let resolved = resolveDisplay(prefs, data.settings.display);
         const display = { open: false, confirm: null, message: null, savedDisplay: null, storageOk: true };
         /** 表示しない種類のタブを指す route は、概要へ置き換える（`id` は残し、詳細パネルは開く） */
-        const visibleRoute = (next) => next.tab === "overview" || next.tab === "graph" || resolved.kinds.has(next.tab)
+        const visibleRoute = (next) => next.tab === "overview" || resolved.kinds.has(next.tab)
             ? next
             : { ...next, tab: "overview", view: MindmapPreview.defaultView("overview"), filters: {} };
         // 差分の表示: そのタブの「前回開いてから」の始まりと、選んだ時点（持たない・記録に無いときは差分を出さない）
@@ -530,7 +517,6 @@ var MindmapPreview;
         /** 詳細パネルがもう画面に入れた見出し（同じ項目・同じ見出しでは、描き直しのたびに本文のスクロールを戻さない） */
         let shownHeading = null;
         const filterState = { byTab: {}, drawerOpen: false };
-        const lockState = { graph: null, map: null };
         const stack = { front: "detail" };
         const editState = {
             edits: [],
@@ -593,11 +579,10 @@ var MindmapPreview;
         const go = (next, push) => {
             leaveEditViews();
             const screenChanged = next.tab !== route.tab || next.view !== route.view || Object.keys(next.filters).length > 0;
-            const idChanged = next.id !== route.id;
             // 差分の時点は、画面・項目を移っても引き継ぐ
             route = { ...next, diff: route.diff };
             MindmapPreview.navigate({ route: { ...route, filters: {} }, push });
-            render({ screen: screenChanged || (route.tab === "decisions" && route.view === "map" && idChanged) });
+            render({ screen: screenChanged });
         };
         /** 項目を開く。パネル・全画面の中の移動は履歴に積み、見てきた項目を行き来できるようにする */
         const openItem = (id, inPanel) => {
@@ -617,13 +602,13 @@ var MindmapPreview;
                 MindmapPreview.navigate({ route: { ...route, filters: {} }, push: false, trail: { items, position: trail?.position ?? 0 } });
                 route = next;
                 MindmapPreview.navigate({ route: next, push: true, trail: { items, position: items.length - 1 } });
-                render({ screen: route.tab === "decisions" && route.view === "map" });
+                render({ screen: false });
                 return;
             }
             route = next;
             // 狭い幅では詳細を別画面として積み、戻る操作で一覧へ戻す
             MindmapPreview.navigate({ route: next, push: isNarrow(), trail: { items: [id], position: 0 } });
-            render({ screen: route.tab === "decisions" && route.view === "map" });
+            render({ screen: false });
         };
         /** 詳細パネルを閉じる */
         const closeDetail = () => {
@@ -634,7 +619,7 @@ var MindmapPreview;
             }
             route = { ...route, id: null, full: false, filters: {}, heading: null };
             MindmapPreview.navigate({ route, push: false });
-            render({ screen: route.tab === "decisions" && route.view === "map" });
+            render({ screen: false });
             reopenPendingPanel();
         };
         /** 項目を、その種類の画面で開く（画面を移るので履歴に積む） */
@@ -645,42 +630,6 @@ var MindmapPreview;
             // 表示しない種類の項目は、概要の上の詳細パネルで開く
             const tab = resolved.kinds.has(kind) ? kind : "overview";
             go({ tab, view: MindmapPreview.defaultView(tab), id, full: false, filters: {}, heading: null, diff: route.diff }, tab !== route.tab);
-        };
-        // ===== ロック =====
-        /** 効いているロック。画面ごとの `LockState` の項目が、その画面の絞り込みの条件を通る（描いている）ときだけその ID、通らないときは null（`LockState` は残し、条件を戻して描かれたらまたロック中に戻る） */
-        const effectiveLock = (key) => {
-            const id = lockState[key];
-            if (id === null)
-                return null;
-            const shown = key === "graph"
-                ? MindmapPreview.shownGraphIds({ index, filters: filterState.byTab["graph"] ?? {} })
-                : MindmapPreview.shownDecisionIds({ index, filters: filterState.byTab["decisions"] ?? {} });
-            return shown.has(id) ? id : null;
-        };
-        /** 玉か節（余白なら null）を押した、または `L` キーを押した。`lockTap` で判定し、`lock`・`unlock` のときだけ `LockState` を変えて画面に反映する。`open` は詳細を切り替え、`blank` は詳細を閉じて全体の表示へ戻し、`shake` は何も変えない（画面が鍵を震わせる） */
-        const lockPress = ({ key, pressed }) => {
-            const result = MindmapPreview.lockTap({ locked: effectiveLock(key), pressed, open: route.id });
-            if (result.action === "lock" || result.action === "unlock") {
-                lockState[key] = result.locked;
-                // ネットワークは視点を保ったまま中心と強調を寄せ、マップは詳細パネルをそのままに描き直す
-                if (key === "graph")
-                    MindmapPreview.setGraphLock(effectiveLock("graph"));
-                else
-                    redrawKeepingState();
-            }
-            else if (result.action === "open" && pressed !== null) {
-                openItem(pressed, false);
-            }
-            else if (result.action === "blank" && route.id !== null) {
-                closeDetail();
-            }
-            return result.action;
-        };
-        /** ネットワークの見た目のドロップダウンで選んだ値を個人の上書きに残す（ネットワークは作り直さず、次のコマから当てる） */
-        const changeLook = (value) => {
-            prefs.look = value;
-            changePrefs({ redrawMain: false });
-            MindmapPreview.setGraphLook(resolved.look);
         };
         // ===== 描く =====
         /** トップバーとタブの帯 */
@@ -786,8 +735,7 @@ var MindmapPreview;
                     return MindmapPreview.decisionsScreen({
                         index,
                         route,
-                        on: { ...on, clear: closeDetail, lock: (id) => lockPress({ key: "map", pressed: id }) },
-                        lockedId: effectiveLock("map"),
+                        on,
                         filters,
                         drawerOpen,
                         marks,
@@ -799,24 +747,6 @@ var MindmapPreview;
                     return MindmapPreview.tasksScreen({ index, route, on, filters, drawerOpen, marks, comments, removed, edit: screenEdit("tasks") });
                 case "docs":
                     return MindmapPreview.docsScreen({ index, route, on, filters, drawerOpen, marks, comments, removed, edit: screenEdit("docs") });
-                case "graph":
-                    return MindmapPreview.graphScreen({
-                        index,
-                        on: {
-                            open: on.open,
-                            filter: changeFilters,
-                            closeDrawer,
-                            lock: (id) => lockPress({ key: "graph", pressed: id }),
-                            look: changeLook,
-                        },
-                        filters,
-                        drawerOpen,
-                        selectedId: route.id,
-                        lockedId: effectiveLock("graph"),
-                        look: resolved.look,
-                        defaultLook: resolved.defaultLook,
-                        comments,
-                    });
                 default:
                     return MindmapPreview.recordsScreen({
                         index,
@@ -833,13 +763,10 @@ var MindmapPreview;
         };
         /** 本文の領域を描く。画面（タブ・表示形式）が変わったときだけ描き直す */
         const renderMain = () => {
-            main.classList.toggle("map-view", route.tab === "decisions" && route.view === "map");
             // 概要は題名が h1。それ以外の画面は、画面の名前を見えない h1 にする（見出しで画面を探せるように）
             main.replaceChildren(...(route.tab === "overview"
                 ? []
-                : [MindmapPreview.h({ tag: "h1", attrs: { class: "sr-only" }, children: [screenName(route.tab)] })]), screenElement());
-            if (route.tab === "graph")
-                MindmapPreview.selectGraphItem(route.id);
+                : [MindmapPreview.h({ tag: "h1", attrs: { class: "sr-only" }, children: [tabLabel(route.tab)] })]), screenElement());
         };
         /** 画面の絞り込みの条件の定義と行（残した条件を今の記録で刈り込むのに使う）。概要は絞り込みを持たないので null */
         const filterSource = (tab) => {
@@ -847,8 +774,6 @@ var MindmapPreview;
             switch (tab) {
                 case "overview":
                     return null;
-                case "graph":
-                    return { rows: [...index.byId].map(([id, entry]) => ({ id, ...entry })), columns: MindmapPreview.graphConditions() };
                 case "decisions":
                     return { rows: index.data.decisions, columns: MindmapPreview.decisionColumns({ index, open }) };
                 case "tasks":
@@ -986,7 +911,6 @@ var MindmapPreview;
                     ? null
                     : MindmapPreview.panelResizer({
                         stored: readPanelWidth(session),
-                        mapView: () => route.tab === "decisions" && route.view === "map",
                         onChange: (width) => writePanelWidth({ session, width }),
                     }),
                 on: {
@@ -1105,7 +1029,7 @@ var MindmapPreview;
             prepareFilters();
             renderTop();
             if (screen) {
-                const wide = document.querySelector(".table-wrap, .map-wrap, .board");
+                const wide = document.querySelector(".table-wrap, .board");
                 const keep = wide === null ? 0 : wide.scrollTop;
                 renderMain();
                 void keep;
@@ -1113,8 +1037,6 @@ var MindmapPreview;
             renderDetail();
             renderPending();
             renderWorkspace();
-            if (route.tab === "graph")
-                MindmapPreview.selectGraphItem(route.id);
             // 作り直した本文にも、開いているパネルの下の部品を止める
             scheduleInert();
         };
@@ -1370,7 +1292,6 @@ var MindmapPreview;
                 delete commentsNow[key];
             Object.assign(commentsNow, next);
             MindmapPreview.refreshCommentMarks({ root: main, counts: commentsNow });
-            MindmapPreview.setGraphComments(commentsNow);
         };
         /** 書きかけを保つ待ちのタイマー（入力欄のキー → タイマー） */
         const draftTimers = new Map();
@@ -2937,8 +2858,6 @@ var MindmapPreview;
         };
         /** 表示の設定の中身の引数 */
         const settingsProps = () => ({
-            look: resolved.look,
-            defaultLook: resolved.defaultLook,
             kinds: resolved.kinds,
             defaultKinds: resolved.defaultKinds,
             counts: Object.fromEntries(MindmapPreview.KIND_KEYS.map((kind) => [kind, data[kind].length])),
@@ -2972,7 +2891,7 @@ var MindmapPreview;
                     changePrefs({ redrawMain: false });
                 },
                 reset: () => {
-                    // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・「レビューに追加」の後のフォーカスを全て外し、ワークスペースの既定の表示に戻す
+                    // 表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・「レビューに追加」の後のフォーカスを全て外し、ワークスペースの既定の表示に戻す
                     Object.assign(prefs, clearOverrides(prefs));
                     MindmapPreview.clearTablePrefs();
                     // 開いている画面は、画面の既定の条件で開き直す
@@ -3058,8 +2977,8 @@ var MindmapPreview;
             if (display.confirm === null)
                 return;
             const dialog = MindmapPreview.settingsConfirm({
-                from: { look: resolved.defaultLook, kinds: resolved.defaultKinds },
-                to: { look: resolved.look, kinds: resolved.kinds },
+                from: { kinds: resolved.defaultKinds },
+                to: { kinds: resolved.kinds },
                 busy: display.confirm.busy,
                 error: display.confirm.error,
                 on: { save: () => void saveDefault(), cancel: closeConfirm },
@@ -3078,14 +2997,13 @@ var MindmapPreview;
             renderConfirm();
             document.querySelector('.settings-drawer [data-focus="save"]')?.focus();
         };
-        /** 今当てている見た目と表示する種類を、ワークスペースの既定として保存する */
+        /** 今当てている表示する種類を、ワークスペースの既定として保存する */
         const saveDefault = async () => {
             if (display.confirm === null)
                 return;
             display.confirm = { busy: true, error: null };
             renderConfirm();
             const result = await MindmapPreview.putDisplay({
-                network_look: resolved.look,
                 visible_kinds: MindmapPreview.KIND_KEYS.filter((kind) => resolved.kinds.has(kind)),
             });
             if (!result.ok) {
@@ -3100,7 +3018,7 @@ var MindmapPreview;
                 return;
             }
             // 書けた: 返った既定を記録に入れ、個人の上書きはそのまま残す
-            const saved = result.data?.display ?? { network_look: resolved.look, visible_kinds: MindmapPreview.KIND_KEYS.filter((kind) => resolved.kinds.has(kind)) };
+            const saved = result.data?.display ?? { visible_kinds: MindmapPreview.KIND_KEYS.filter((kind) => resolved.kinds.has(kind)) };
             serverData = { ...serverData, settings: { ...serverData.settings, display: saved } };
             rebuildIndex();
             display.savedDisplay = saved;
@@ -3218,8 +3136,8 @@ var MindmapPreview;
         const failureText = (result) => result.status === null
             ? "サーバーにつながらないため、溜められませんでした。"
             : `溜められませんでした。${result.detail ?? ""}`;
-        /** 編集を溜めた後の描き直し（入力中の欄・スクロールの位置を保つ。ネットワークは作り直さない） */
-        const redrawEdit = () => preserving(() => render({ screen: route.tab !== "graph" }));
+        /** 編集を溜めた後の描き直し（入力中の欄・スクロールの位置を保つ。） */
+        const redrawEdit = () => preserving(() => render({ screen: true }));
         /** 編集 1 件を溜める。溜められたら保存待ちの編集を読み直して描き直し、断られた・届かないときは入力を残して理由を持つ。溜められたときは返った結果を返す */
         const submitEdit = async ({ payload, error, after, }) => {
             const errorKey = `${error.target}:${error.key}`;
@@ -3910,11 +3828,6 @@ var MindmapPreview;
             const previousDisplay = serverData.settings.display;
             serverData = result.data;
             rebuildIndex();
-            // ロックした項目が無くなっていれば、ロックを外す
-            if (lockState.graph !== null && !index.byId.has(lockState.graph))
-                lockState.graph = null;
-            if (lockState.map !== null && index.byId.get(lockState.map)?.kind !== "decisions")
-                lockState.map = null;
             // 表示の既定が変わった: 上書きを持たない項目に新しい既定を当て、知らせる（自分が既定にした直後の知らせは出さない）
             if (display.savedDisplay !== null && sameDisplay(display.savedDisplay, data.settings.display)) {
                 display.savedDisplay = null;
@@ -3970,21 +3883,6 @@ var MindmapPreview;
             }
         };
         document.addEventListener("keydown", (event) => {
-            // L: ネットワークで、詳細を開いている項目をもう一度押したのと同じ規則でロックを付け外しする。修飾キーがあるとき・変換中・入力欄にフォーカスがあるとき・重ねる面を開いているときは受けない
-            if (event.key.toLowerCase() === "l" &&
-                !event.ctrlKey &&
-                !event.altKey &&
-                !event.metaKey &&
-                !event.isComposing &&
-                !MindmapPreview.isTyping(document.activeElement) &&
-                document.querySelector("dialog[open]") === null &&
-                document.querySelector(":popover-open") === null &&
-                matchMedia(MindmapPreview.LOCK_QUERY).matches &&
-                route.tab === "graph" &&
-                route.id !== null) {
-                if (lockPress({ key: "graph", pressed: route.id }) === "shake")
-                    MindmapPreview.shakeGraphKey();
-            }
             // Ctrl+K（macOS は Cmd+K）で全体の検索を開く。入力欄に入力中でも開き、開いているときは検索の言葉を選び直す
             if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
                 event.preventDefault();
@@ -4066,8 +3964,7 @@ var MindmapPreview;
             const screen = next.tab !== route.tab ||
                 next.view !== route.view ||
                 next.diff !== route.diff ||
-                Object.keys(next.filters).length > 0 ||
-                (next.tab === "decisions" && next.view === "map" && next.id !== route.id);
+                Object.keys(next.filters).length > 0;
             route = next;
             render({ screen });
             reopenPendingPanel();

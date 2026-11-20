@@ -33,13 +33,13 @@ _BOXES_JS = """(group) => [...group.querySelectorAll('button')].map((b) => ({
 
 
 def test_decisions(open_story: OpenStory) -> None:
-    """検討事項（マップ・ボード・表）でマップを選んでいる。組を「表示形式」と読み上げ、選んでいる形式を `aria-pressed` で伝える（正常系）。"""
+    """検討事項（ボード・表）でボードを選んでいる。組を「表示形式」と読み上げ、選んでいる形式を `aria-pressed` で伝える（正常系）。"""
     # 準備・実行
     page = open_story("shared-viewswitch--decisions")
     group = page.get_by_role("group", name="表示形式")
     # 検証
-    expect(group.get_by_role("button")).to_have_text(["マップ", "ボード", "表"])
-    expect(group.get_by_role("button", name="マップ")).to_have_attribute("aria-pressed", "true")
+    expect(group.get_by_role("button")).to_have_text(["ボード", "表"])
+    expect(group.get_by_role("button", name="ボード")).to_have_attribute("aria-pressed", "true")
     assert group.locator("button[aria-pressed=true]").count() == 1
 
 

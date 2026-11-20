@@ -504,6 +504,9 @@ def test_renamed_file(file_name: str, later_steps: list[Any], expected: str) -> 
 # migrate を確かめる手順の版
 V0140 = "v0.14.0"
 
+# プラグインが持つ v0.14.0 の手順を全て当て終えたワークスペースの版のファイル
+V0140_APPLIED_ALL = f"{V0140}\n{migrator.count_steps(Version(0, 14, 0))}\n"
+
 # 題名に仮の値を入れる v0.14.0 の手順
 SUMMARY_STEPS = (
     "steps:\n"
@@ -583,7 +586,7 @@ def test_migrate_when_same(
 ) -> None:
     """版が同じなら何も書かない（正常系）。"""
     # 準備
-    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n3\n"})
+    root = make_workspace(raw_files={VERSION_FILE: V0140_APPLIED_ALL})
     # 作成で置かれる、プラグインと同じ中身のスキーマの複製を持たせる
     _place_schema_copies(root, None)
     patch_plugin_version(V0140)
@@ -655,7 +658,7 @@ def test_migrate_when_same_with_stale_schema(
 ) -> None:
     """版が同じでも、中身が違うスキーマの複製を書き直して返す（正常系）。"""
     # 準備
-    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n3\n"})
+    root = make_workspace(raw_files={VERSION_FILE: V0140_APPLIED_ALL})
     copies = _place_schema_copies(root, "docs.schema.json")
     patch_plugin_version(V0140)
     config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
@@ -668,7 +671,7 @@ def test_migrate_when_same_with_stale_schema(
     assert (copies / "docs.schema.json").read_bytes() == (
         store.SCHEMA_DIR / "docs.schema.json"
     ).read_bytes()
-    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == f"{V0140}\n3\n"
+    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == V0140_APPLIED_ALL
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
@@ -699,7 +702,7 @@ def test_migrate_when_same_without_write_dates(
 ) -> None:
     """版が同じでも、配信の設定の write_dates を持たない行に false を足す（正常系）。"""
     # 準備
-    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n3\n"})
+    root = make_workspace(raw_files={VERSION_FILE: V0140_APPLIED_ALL})
     _place_schema_copies(root, None)
     config = store.build_source_config("mindstella-a-123456", "a")
     for row in config["documents"]:
@@ -711,7 +714,7 @@ def test_migrate_when_same_without_write_dates(
     report = migrator.migrate(root)
     # 検証
     assert report.source_files == [".mindstella/dev-docs.yaml"]
-    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == f"{V0140}\n3\n"
+    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == V0140_APPLIED_ALL
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
@@ -811,6 +814,6 @@ def test_record_version_writes_applied(make_workspace: MakeWorkspace, make_item:
     # 検証
     lines = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()
     assert lines == ["v0.14.0", str(expected)]
-    assert expected == 3
+    assert expected == 4
     missing_lines = (missing / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()
     assert missing_lines == ["v99.0.0", "0"]

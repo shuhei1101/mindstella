@@ -1,11 +1,10 @@
-// 描画のライブラリ（mdmark・marked・elkjs・mermaid）と差分のライブラリ（jsdiff）の読み込み・有無と呼び出し、選んだ範囲から箇所を求める処理。読めなかったときは名前を出し、代わりの読み込みはしない。
+// 描画のライブラリ（mdmark・marked・mermaid）と差分のライブラリ（jsdiff）の読み込み・有無と呼び出し、選んだ範囲から箇所を求める処理。読めなかったときは名前を出し、代わりの読み込みはしない。
 
 namespace MindmapPreview {
   /** 描画のライブラリの名前 → 読めたときに置かれるグローバルの名前 */
   export const LIBRARIES = {
     mdmark: "mdmark",
     marked: "marked",
-    elkjs: "ELK",
     mermaid: "mermaid",
     jsdiff: "Diff",
   } as const;

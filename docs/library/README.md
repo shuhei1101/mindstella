@@ -12,7 +12,6 @@
 | [PyYAML](./LIB-489-1.yaml) | ワークスペースの YAML を読み書きする |
 | [jsonschema](./LIB-489-9.yaml) | ワークスペースの YAML を JSON Schema で検証する |
 | [marked](./LIB-489-11.yaml) | プレビューで本文の差分の塊を Markdown の token ごとに分ける |
-| [elkjs](./LIB-489-5.yaml) | プレビューの検討事項のマップの配置を計算する |
 | [mermaid](./LIB-489-14.yaml) | プレビューで本文の図を SVG に描く |
 | [storybook](./LIB-489-21.yaml) | プレビューの部品を状態ごとのストーリーで見る（開発用） |
 | [playwright](./LIB-489-17.yaml) | プレビューのテストでブラウザを動かす（pytest-playwright。開発用） |

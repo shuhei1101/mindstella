@@ -45,7 +45,6 @@ export const DisplaySettingsPanel = () => {
     heading.current?.focus();
   }, []);
   const defaults = displayDefaults(rawIndex?.data.settings.display);
-  const look = prefs.look ?? defaults.look;
   const visibleKinds = KIND_KEYS.filter((kind) => visible.has(kind));
   const themeOverride = (readPrefs() as Record<string, unknown>)["theme"];
   const counts = Object.fromEntries(KIND_KEYS.map((kind) => [kind, rawIndex?.data[kind].length ?? 0])) as Record<Kind, number>;
@@ -79,8 +78,6 @@ export const DisplaySettingsPanel = () => {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           <SettingsPanel
-            look={look}
-            defaultLook={defaults.look}
             visibleKinds={visibleKinds}
             defaultKinds={defaults.kinds}
             counts={counts}
@@ -115,8 +112,8 @@ export const DisplaySettingsPanel = () => {
       <SettingsConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
-        from={{ look: defaults.look, visibleKinds: defaults.kinds }}
-        to={{ look, visibleKinds }}
+        from={{ visibleKinds: defaults.kinds }}
+        to={{ visibleKinds }}
         onSaved={markDisplaySaved}
       />
     </>

@@ -1,4 +1,4 @@
-// 描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から読む。mdmark は『記録の取得』の `mdmark_ref` から `integrity` なしで、それ以外は `integrity` で確かめて読む（インターフェース定義『SPAを開く』の制約「描画のライブラリ」）
+// 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元と版から読む。mdmark は『記録の取得』の `mdmark_ref` から `integrity` なしで、それ以外は `integrity` で確かめて読む（インターフェース定義『SPAを開く』の制約「描画のライブラリ」）
 import { useSyncExternalStore } from "react";
 
 /** jsDelivr の mdmark の `dist/` の URL の形（`{ref}` に『記録の取得』の `mdmark_ref`。受ける前は `develop`） */
@@ -40,7 +40,6 @@ let importModule: ImportModule = importByUrl;
 /** script 要素で読むライブラリの URL・integrity と、読めたときに置かれるグローバルの名前 */
 export const LIBRARIES = {
   marked: { url: "https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js", integrity: "sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo", global: "marked" },
-  elkjs: { url: "https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js", integrity: "sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2", global: "ELK" },
   mermaid: { url: "https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js", integrity: "sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4", global: "mermaid" },
   jsdiff: { url: "https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js", integrity: "sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1", global: "Diff" },
 } as const;

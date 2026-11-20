@@ -8,18 +8,15 @@ import { KIND_KEYS } from "@/shared/core/records";
 const meta = {
   title: "Settings/SettingsConfirm",
   component: SettingsConfirm,
-  args: { from: { look: "starlight", visibleKinds: KIND_KEYS.filter((kind) => kind !== "notes") }, to: { look: "dust", visibleKinds: [...KIND_KEYS] }, busy: false, error: null, onSave: fn(), onCancel: fn() },
+  args: { from: { visibleKinds: KIND_KEYS.filter((kind) => kind !== "notes") }, to: { visibleKinds: [...KIND_KEYS] }, busy: false, error: null, onSave: fn(), onCancel: fn() },
 } satisfies Meta<typeof SettingsConfirm>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** 2 つの項目を変える。今の既定と保存する値を矢印で並べる。最初のフォーカスは取り消す */
-export const BothChanged: Story = { args: { from: {"look": "starlight", "visibleKinds": ["decisions", "tasks", "research", "docs", "terms", "logs"]}, to: {"look": "dust", "visibleKinds": ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"]} } };
-
-/** 表示する種類を変えない。今の値に「変えない」の札を付ける */
-export const OneUnchanged: Story = { args: { from: {"look": "deep", "visibleKinds": ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"]}, to: {"look": "glow", "visibleKinds": ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"]} } };
+/** 表示する種類を変える。今の既定と保存する値を矢印で並べる。最初のフォーカスは取り消す */
+export const KindsChanged: Story = { args: { from: {"visibleKinds": ["decisions", "tasks", "research", "docs", "terms", "logs"]}, to: {"visibleKinds": ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"]} } };
 
 /** 保存している途中。ボタンを押せなくし、保存するボタンに待つ印を出す */
 export const Busy: Story = { args: { busy: true } };
@@ -31,4 +28,4 @@ export const ErrorReadOnly: Story = { args: { error: "保存できませんで�
 export const ErrorOffline: Story = { args: { error: "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。" } };
 
 /** 幅 320pxで外した種類が多い。値を折り返す */
-export const Narrow: Story = { args: { to: {"look": "constellation", "visibleKinds": ["logs"]} } };
+export const Narrow: Story = { args: { to: {"visibleKinds": ["logs"]} } };

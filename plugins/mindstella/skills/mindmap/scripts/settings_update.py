@@ -46,8 +46,8 @@ REMOVED_KEYS = ("goal", "phases", "playbooks", "targets", "target_label", "categ
 MDMARK_KEY = "mdmark"
 MDMARK_EDITABLE_KEYS = ("version",)
 
-# 表示の既定の書き換えの本文に必須のキー
-DISPLAY_KEYS = ("network_look", "visible_kinds")
+# 表示の既定の書き換えの本文に必須のキー（これ以外のキーは受け付けない）
+DISPLAY_KEYS = ("visible_kinds",)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -136,12 +136,16 @@ def update_settings(root: Path, settings: dict[str, Any]) -> dict[str, Any]:
 
 
 def update_display(root: Path, body: dict[str, Any]) -> dict[str, Any]:
-    """要求の本文の `network_look`・`visible_kinds` で `config.yaml` の `display` だけを丸ごと置き換える。"""
-    # 本文に 2 つのキーがあるか
+    """要求の本文の `visible_kinds` で `config.yaml` の `display` だけを丸ごと置き換える。"""
+    # 本文に必須のキーがあるか
     for key in DISPLAY_KEYS:
         if key not in body:
             raise SettingsInvalidError(f"{key}: 渡してください")
-    # 2 つのキーだけにした値を、設定のスキーマの display と突き合わせる
+    # 決めたキーのほか（削除した network_look を含む）は受け付けない
+    unknown = [key for key in body if key not in DISPLAY_KEYS]
+    if unknown:
+        raise SettingsInvalidError("、".join(f"{key}: 知らないキーです" for key in unknown))
+    # 本文の値を、設定のスキーマの display と突き合わせる
     display = {key: body[key] for key in DISPLAY_KEYS}
     found = sorted(
         load_display_validator().iter_errors(display), key=lambda error: list(error.absolute_path)

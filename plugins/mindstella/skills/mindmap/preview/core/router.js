@@ -2,7 +2,7 @@
 // URL のハッシュの読み書きと履歴。画面・表示形式・開いている項目・全画面・絞り込みを、`URLSearchParams` の形で持つ。
 var MindmapPreview;
 (function (MindmapPreview) {
-    /** タブの帯に並べる画面（ネットワークは帯の右端に別に置く） */
+    /** タブの帯に並べる画面 */
     MindmapPreview.TAB_KEYS = [
         "overview",
         "decisions",
@@ -21,7 +21,7 @@ var MindmapPreview;
     };
     /** 画面が持つ表示形式（書いていない画面は表だけ） */
     MindmapPreview.VIEWS_OF = {
-        decisions: ["board", "map", "table"],
+        decisions: ["board", "table"],
         tasks: ["board", "table"],
         docs: ["cards", "board", "table"],
     };
@@ -39,7 +39,7 @@ var MindmapPreview;
     function parseHash({ hash, index }) {
         const params = new URLSearchParams(hash.replace(/^#/, ""));
         const requestedTab = params.get("tab");
-        const tab = ([...MindmapPreview.TAB_KEYS, "graph"].includes(requestedTab) ? requestedTab : "overview");
+        const tab = (MindmapPreview.TAB_KEYS.includes(requestedTab) ? requestedTab : "overview");
         const requestedView = params.get("view");
         const view = (viewsOf(tab).includes(requestedView) ? requestedView : defaultView(tab));
         // 記録に無い ID は開かない

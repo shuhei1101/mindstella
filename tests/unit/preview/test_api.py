@@ -508,7 +508,7 @@ def test_edit_api_when_blocked(
 
 
 # 保存する表示の既定
-DISPLAY = {"network_look": "glow", "visible_kinds": ["decisions"]}
+DISPLAY = {"visible_kinds": ["decisions"]}
 
 
 @pytest.mark.parametrize(
