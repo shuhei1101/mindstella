@@ -16,7 +16,6 @@ from .fixture_types import (
     WriteThreads,
 )
 from .history_helpers import DECISION_ITEM, add_item, commit, remove_item, update_item
-from workspace_fixtures import RECORD_DIR
 
 
 def _problem_keys(problems: list[dict[str, Any]]) -> set[tuple[str, str, str | None, str | None]]:

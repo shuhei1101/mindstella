@@ -252,6 +252,29 @@ def test_error_when_folder_not_allowed(session_world: SessionWorld) -> None:
     assert world.pi.changes() == []
 
 
+def test_error_when_root_docs_exists(session_world: SessionWorld) -> None:
+    """記録が無く直下に利用者の docs/ か files/ があれば 409 を返し、何も書かない（異常系）。"""
+    world = session_world
+    world.start()
+    for folder_name, file_name in (("docs", "memo.md"), ("files", "memo.png")):
+        # 準備
+        folder = world.folder(f"家計簿-{folder_name}")
+        (folder / folder_name).mkdir(parents=True)
+        user_file = folder / folder_name / file_name
+        user_file.write_text("利用者のファイル\n", encoding="utf-8")
+        # 実行
+        status, body = world.api("POST", "/workspaces", {"folder": str(folder)})
+        # 検証
+        assert (status, body["stage"]) == (409, "root_folder"), body
+        assert f"{folder_name}/" in body["detail"]
+        assert "改名" in body["detail"]
+        assert not (folder / ".mindstella").exists()
+        assert not (folder / "README.md").exists()
+        assert not (world.state_root / "workspaces").exists()
+        assert world.pi.changes() == []
+        assert user_file.read_text(encoding="utf-8") == "利用者のファイル\n"
+
+
 def test_error_when_options_invalid(session_world: SessionWorld) -> None:
     """読めない mcp_config・plugin_dirs・flow は 422 を返し、何も書かない（異常系）。"""
     # 準備
@@ -313,7 +336,9 @@ def test_normal_when_schema_copy_rewritten(session_world: SessionWorld) -> None:
     world = session_world
     world.start()
     world.create_workspace()
-    (world.folder() / ".mindstella" / "schemas" / "docs.schema.json").write_text("{}\n", encoding="utf-8")
+    (world.folder() / ".mindstella" / "schemas" / "docs.schema.json").write_text(
+        "{}\n", encoding="utf-8"
+    )
     plugin_schema = PLUGIN_DIR / "skills" / "mindmap" / "schemas" / "docs.schema.json"
     settings_rows = yaml.safe_load(world.pi.settings_path.read_text(encoding="utf-8"))["sources"]
     world.pi.requests.clear()
@@ -321,9 +346,13 @@ def test_normal_when_schema_copy_rewritten(session_world: SessionWorld) -> None:
     status, body = world.api("POST", "/workspaces", {"folder": str(world.folder())})
     # 検証
     assert status == 200, body
-    assert (world.folder() / ".mindstella" / "schemas" / "docs.schema.json").read_bytes() == plugin_schema.read_bytes()
+    assert (
+        world.folder() / ".mindstella" / "schemas" / "docs.schema.json"
+    ).read_bytes() == plugin_schema.read_bytes()
     puts = [request for request in world.pi.requests if request[0] == "PUT"]
-    assert [(path, request["sources"]) for _method, path, request in puts] == [("/settings/sources", settings_rows)]
+    assert [(path, request["sources"]) for _method, path, request in puts] == [
+        ("/settings/sources", settings_rows)
+    ]
     assert "expectedVersion" in puts[0][2]
     assert world.pi.changes() == []
 
@@ -365,7 +394,9 @@ def test_normal_when_real_project_index(agent_flow_world: AgentFlowWorld) -> Non
     source = body["id"]
     records = folder / ".mindstella"
     (records / "terms.yaml").write_text(
-        yaml.safe_dump({"items": [{"id": "G-1", "title": "用語", "meaning": "意味"}]}, allow_unicode=True),
+        yaml.safe_dump(
+            {"items": [{"id": "G-1", "title": "用語", "meaning": "意味"}]}, allow_unicode=True
+        ),
         encoding="utf-8",
     )
     # 実行（不具合 1: 検討事項の作成と更新）
@@ -375,12 +406,23 @@ def test_normal_when_real_project_index(agent_flow_world: AgentFlowWorld) -> Non
         "write_docs",
         source=source,
         operations=[
-            {"op": "create", "kind": "decisions", "id": "D-1", "data": {"title": "確認", "status": "未整理"}},
+            {
+                "op": "create",
+                "kind": "decisions",
+                "id": "D-1",
+                "data": {"title": "確認", "status": "未整理"},
+            },
             {
                 "op": "create",
                 "kind": "docs",
                 "id": "A-1",
-                "data": {"title": "資料", "kind": "文書", "status": "下書き", "body": "../docs/A-1.mark.md", "@body": "本文"},
+                "data": {
+                    "title": "資料",
+                    "kind": "文書",
+                    "status": "下書き",
+                    "body": "../docs/A-1.mark.md",
+                    "@body": "本文",
+                },
             },
         ],
     )
@@ -397,7 +439,12 @@ def test_normal_when_real_project_index(agent_flow_world: AgentFlowWorld) -> Non
         "write_docs",
         source=source,
         operations=[
-            {"op": "update", "id": "D-1", "expected_version": decision["items"][0]["values"]["version"], "set": {"status": "未決定"}}
+            {
+                "op": "update",
+                "id": "D-1",
+                "expected_version": decision["items"][0]["values"]["version"],
+                "set": {"status": "未決定"},
+            }
         ],
     )
     # 実行（不具合 3: 本文を持たない G-1 の検索と更新）
@@ -413,23 +460,47 @@ def test_normal_when_real_project_index(agent_flow_world: AgentFlowWorld) -> Non
         folder,
         "write_docs",
         source=source,
-        operations=[{"op": "update", "id": "G-1", "expected_version": term["items"][0]["values"]["version"], "set": {"meaning": "意味 2"}}],
+        operations=[
+            {
+                "op": "update",
+                "id": "G-1",
+                "expected_version": term["items"][0]["values"]["version"],
+                "set": {"meaning": "意味 2"},
+            }
+        ],
     )
     # 実行（不具合 2: スキーマの複製を更新前に戻して開き直す）
     (records / "schemas" / "docs.schema.json").write_text(
         json.dumps(
             {
                 "type": "object",
-                "properties": {"items": {"type": "array", "items": {"type": "object", "required": ["deliverable"]}}},
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {"type": "object", "required": ["deliverable"]},
+                    }
+                },
             }
         ),
         encoding="utf-8",
     )
     # 古いスキーマを project-index に読み込ませる
     _reload_pi(world)
-    stale = _call(world, folder, "search_docs", source=source, filter={"field": "id", "op": "eq", "values": ["A-1"]})
+    stale = _call(
+        world,
+        folder,
+        "search_docs",
+        source=source,
+        filter={"field": "id", "op": "eq", "values": ["A-1"]},
+    )
     reopened_status, reopened = world.api("POST", "/workspaces", {"folder": str(folder)})
-    doc = _call(world, folder, "search_docs", source=source, filter={"field": "id", "op": "eq", "values": ["A-1"]})
+    doc = _call(
+        world,
+        folder,
+        "search_docs",
+        source=source,
+        filter={"field": "id", "op": "eq", "values": ["A-1"]},
+    )
     # 検証
     items = yaml.safe_load((records / "decisions.yaml").read_text(encoding="utf-8"))["items"]
     assert [(item["id"], item["status"]) for item in items] == [("D-1", "未決定")]

@@ -667,7 +667,7 @@ flows:
       - name: Mock
         description: なし（関数 `migrate` を直接呼ぶ）
       - name: make_workspace
-        description: 'バージョン v0.13.0 で、検討事項 D-1（`body: docs/D-1.mark.md`。`history.yaml` の D-1 の変更履歴に `before.body: docs/D-1.md` の回を持つ）・資料 A-1（`body: docs/A-1.html`）と、`.mindstella/docs/` にそれぞれの本文、`.mindstella/files/clip.mp4`、`.mindstella/release/A-1.mark.md`、今のバージョンより前の配信の設定（`paths_base` を持たず、`paths` が `[{種類}.yaml]`）を持つワークスペース。直下には `docs/`・`files/` が無い'
+        description: 'バージョン v0.13.0 で、検討事項 D-1（`body: docs/D-1.mark.md`。`history.yaml` の D-1 の変更履歴に `before.body: docs/D-1.html` の回を持つ）・資料 A-1（`body: docs/A-1.html`）と、`.mindstella/docs/` にそれぞれの本文、`.mindstella/files/clip.mp4`、`.mindstella/release/A-1.mark.md`、今のバージョンより前の配信の設定（`paths_base` を持たず、`paths` が `[{種類}.yaml]`）を持つワークスペース。直下には `docs/`・`files/` が無い'
         notes: YAML と本文を直接書いて作る
     flow: |-
       ```mermaid
@@ -686,7 +686,7 @@ flows:
       - 例外にならない
       - 直下の `docs/D-1.mark.md`・`docs/A-1.html`・`files/clip.mp4` の中身が、呼ぶ前の `.mindstella/docs/`・`.mindstella/files/` の同じ名前のファイルと同じ
       - '`.mindstella/` に `docs/`・`files/`・`release/` が無い'
-      - D-1 の `body` が `../docs/D-1.mark.md`、A-1 の `body` が `../docs/A-1.html` で、`history.yaml` の D-1 の変更履歴の `before.body` が `../docs/D-1.md`。変更履歴の並びと項目の `updated` が呼ぶ前と同じ
+      - D-1 の `body` が `../docs/D-1.mark.md`、A-1 の `body` が `../docs/A-1.html` で、`history.yaml` の D-1 の変更履歴の `before.body` が `../docs/D-1.html`。変更履歴の並びと項目の `updated` が呼ぶ前と同じ
       - '`.mindstella/dev-docs.yaml` が `paths_base: ..` を持ち、種類の 7 つの行の `paths` が `[.mindstella/{種類}.yaml]` で、ほかのキーの値が呼ぶ前と同じ'
       - A-1 の本文の `../files/clip.mp4` が書き換わっていない
       - 同じ呼び出しをもう一度当てても、ワークスペースが変わらない
