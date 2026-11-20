@@ -278,107 +278,189 @@ docs:
   - page: docs/guide/コマンド.mark.md
     new: false
     change: 見出し・表の列名・項目名とメッセージの単語を対応表に合わせて修正し、文章の冗長表現と話し言葉を修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 画面の名称・ボタン・見出しの単語を画面設計の置き換え先に合わせて修正し、文章の冗長表現と話し言葉を修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: 見出し・表の列名・キーの説明の単語を対応表に合わせて修正する（キーの名前は変えない）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正し、文章の冗長表現と話し言葉を修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/コアコンセプト-話し合いの進め方.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正し、文章の冗長表現と話し言葉を修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/エージェントフロー.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
     new: false
     change: ファイル名とタイトルの「版」を「バージョン」に改名し、このページへのリンクと参照（目次・files.yml・ほかのページ）を修正する。本文の単語も対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/セットアップ手順-プレビューを外から見る.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/セットアップ手順-Discordに通知する.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/セットアップ手順-スクリプトの依存を入れる.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/セットアップ手順-プラグインをインストールする.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/話し合い-続きを再開する.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/話し合い-セットアップから始める.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/動作環境.mark.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/使い方.md
     new: false
     change: 目次の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/index.yaml
     new: false
     change: 目次の summary の単語を対応表に合わせて修正し、改名したページの行を修正する。README.md は生成し直す
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/guide/files.yml
     new: false
     change: description の単語を対応表に合わせて修正し、改名したページの行を修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: docs/design-policy.mark.md
     new: false
     change: 見出し・表の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: plugins/mindstella/files.yml
     new: false
     change: description の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: frontend/files.yml
     new: false
     change: description の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: tests/files.yml
     new: false
     change: description の単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: README.md
     new: false
     change: 単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
   - page: CLAUDE.md
     new: false
     change: 単語を対応表に合わせて修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
+  - page: plugins/mindstella/agent-flows/record.yaml
+    new: false
+    change: 記録の使い分けのエージェントフローの単語を対応表に合わせて修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
+  - page: plugins/mindstella/agent-flows/on-comment.yaml
+    new: false
+    change: コメントの取り込みのエージェントフローの単語を対応表に合わせて修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
+  - page: plugins/mindstella/agent-flows/startup.yaml
+    new: false
+    change: 起動と再開のエージェントフローの単語を対応表に合わせて修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
+  - page: plugins/mindstella/content/prompts/session-start.yaml
+    new: false
+    change: セッション開始の注入文の単語を対応表に合わせて修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
+  - page: plugins/mindstella/skills/mindmap/README.md
+    new: false
+    change: スキルの共通の説明の単語を対応表に合わせて修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T11:49:13.060343+00:00'
 scope_out:
   - item: マージ済みの過去の PR ドキュメント（docs/pr/ の 640 以外）
     reason: マージ済みで今後参照しない作業の記録のため。Issue が対処する側の判断に任せている
