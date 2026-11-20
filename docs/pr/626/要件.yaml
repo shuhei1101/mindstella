@@ -70,23 +70,33 @@ docs:
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: ファイル構成の docs/・files/ を直下へ移し、body の値の基点の説明を修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:05.389860+00:00'
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
     change: 本文のフォルダがワークスペースの直下にあることを記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:05.389860+00:00'
   - page: docs/guide/コマンド.mark.md
     new: false
     change: 点検・記録の取得の .mindstella/docs/ を直下の docs/ に修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:05.389860+00:00'
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 本文と埋め込むファイルの配置先を直下の docs/・files/ に修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:05.389860+00:00'
   - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
     new: false
     change: 次のバージョンの移し替えで本文と埋め込むファイルを直下へ移し、release/ を削除することと、直下に同じ名前のフォルダがあるときの対処を記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:05.389860+00:00'
 scope_out:
   - item: 記録の YAML（config.yaml・種類ごとの YAML・history.yaml など）を直下へ出すこと
     reason: 要望は本文のフォルダだけで、記録は .mindstella/ にまとめる今の取り決めを保つ

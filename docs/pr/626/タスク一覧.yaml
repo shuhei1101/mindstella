@@ -66,8 +66,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-20T00:51:36.202319+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: 公開ドキュメント（ワークスペースの書式・コアコンセプト-ワークスペース・コマンド・プレビューを見る・セットアップ手順-ワークスペースを今の版へ移し替える）の本文と release/ の配置先
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:11.268742+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
