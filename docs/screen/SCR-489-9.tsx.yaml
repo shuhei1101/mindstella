@@ -131,7 +131,7 @@ elements:
   - name: 本文の書き換え
     kind: form
     position: 書き込みの行 > 本文
-    description: 本文の入力欄と「キャンセル」「修正」。「修正」と入力欄の Ctrl+Enter（macOS は Cmd+Enter。変換の確定の Enter を除く）で `PATCH /api/comments/{id}` へ `body` を送信し、200 なら本文に戻す。空白だけは送信せず「コメントを入れてから修正してください。」、届かない・エラーのときは入力を残して理由を出す。「キャンセル」と Esc で書き換えを捨てる。入力欄は `aria-keyshortcuts` に Ctrl+Enter を持ち、「修正」の `title` は「修正（Ctrl+Enter）」。書き換えている行は、スレッドの画面と詳細パネルの書き換えと合わせて 1 行で、一方で書き換えを始めると他方の書き換えを捨てる
+    description: 本文の入力欄と「キャンセル」「修正」。「修正」と入力欄の Ctrl+Enter（macOS は Cmd+Enter。変換の確定の Enter を除く）で `PATCH /w/{workspace}/api/comments/{id}` へ `body` を送信し、200 なら本文に戻す。空白だけは送信せず「コメントを入れてから修正してください。」、届かない・エラーのときは入力を残して理由を出す。「キャンセル」と Esc で書き換えを捨てる。入力欄は `aria-keyshortcuts` に Ctrl+Enter を持ち、「修正」の `title` は「修正（Ctrl+Enter）」。書き換えている行は、スレッドの画面と詳細パネルの書き換えと合わせて 1 行で、一方で書き換えを始めると他方の書き換えを捨てる
     io: 入力
     visible_when: 修正を押した行
     max_length: 10000
@@ -140,7 +140,7 @@ elements:
   - name: 削除
     kind: button
     position: 書き込みの行 > 操作
-    description: '`DELETE /api/comments/{id}` で削除し、行を「コメントを削除しました。」と「元に戻す」に置き換える。確認のモーダルは挟まない。読み上げの名前は「修正」と同じ言い方で「…を削除」、`title` は「削除」'
+    description: '`DELETE /w/{workspace}/api/comments/{id}` で削除し、行を「コメントを削除しました。」と「元に戻す」に置き換える。確認のモーダルは挟まない。読み上げの名前は「修正」と同じ言い方で「…を削除」、`title` は「削除」'
     label: （ごみ箱のアイコン）
     action_ref: IF-489-21#
     status: planned
@@ -171,7 +171,7 @@ elements:
   - name: 箇所を外す
     kind: button
     position: 書き込みの行 > 箇所が合わない理由
-    description: '`PATCH /api/comments/{id}` へ `loc: null` を送信し、項目への書き込みにする。200 なら理由と行の箇所を削除する'
+    description: '`PATCH /w/{workspace}/api/comments/{id}` へ `loc: null` を送信し、項目への書き込みにする。200 なら理由と行の箇所を削除する'
     label: 箇所を解除
     visible_when: 箇所が合わない理由を出していて、書き込みが箇所を持ち、向けた項目が記録にある
     action_ref: IF-489-22#

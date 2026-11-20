@@ -34,7 +34,7 @@ elements:
       - name: open
         value: 端末の保存領域に覚えたコメントの入力の開閉（覚えていなければ開く）
       - name: voice
-        value: 文字起こしの可否（GET /api/transcription）の available と、ブラウザが navigator.mediaDevices.getUserMedia を持つか、録音・文字起こしの進み（画面で 1 つの音声入力の状態）から決める。使えないときと、ほかの入力欄で録音・文字起こし中のときは disabled
+        value: 文字起こしの可否（GET /w/{workspace}/api/transcription）の available と、ブラウザが navigator.mediaDevices.getUserMedia を持つか、録音・文字起こしの進み（画面で 1 つの音声入力の状態）から決める。使えないときと、ほかの入力欄で録音・文字起こし中のときは disabled
       - name: voiceReason
         value: 文字起こしの可否.detail（ブラウザがマイクを使えないときは画面が持つ文「このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。」、ほかの入力欄で音声入力中のときは「ほかの入力欄で音声入力中のため、音声で入力できません。」）
       - name: elapsed
@@ -42,7 +42,7 @@ elements:
       - name: levels
         value: 録音中のマイクの音量（画面が AnalyserNode で一定の間隔ごとに取って追加する）
       - name: entered
-        value: 書き込みをすぐ送信する（POST /api/comments/send-now）の entered
+        value: 書き込みをすぐ送信する（POST /w/{workspace}/api/comments/send-now）の entered
     position: 詳細の中身 > 下端
     description: 詳細パネルと同じ部品をモーダルの下端に留め、本文だけをスクロールする。図の拡大を開いている間は拡大の下に隠れる。開閉は詳細パネルと同じく端末の保存領域に覚えた開閉で出す。溜めた後のフォーカスも詳細パネルと同じ
     io: 入力
