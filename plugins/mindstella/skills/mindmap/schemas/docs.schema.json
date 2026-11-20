@@ -72,8 +72,8 @@
         },
         "body": {
           "type": "string",
-          "description": "本文のパス（記録のフォルダからの相対）。Markdown は `docs/{ID}.mark.md`、HTML は `docs/{ID}.html`",
-          "pattern": "^docs/[^/\\\\]+\\.(mark\\.md|html)$"
+          "description": "本文のパス（記録のフォルダからの相対）。Markdown は `../docs/{ID}.mark.md`、HTML は `../docs/{ID}.html`",
+          "pattern": "^\\.\\./docs/[^/\\\\]+\\.(mark\\.md|html)$"
         },
         "withdrawn": {
           "type": "boolean",

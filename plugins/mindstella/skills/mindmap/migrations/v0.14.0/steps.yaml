@@ -5,3 +5,6 @@ steps:
   - op: call
     script: markdown_bodies_to_mark_md
     destructive: true
+  - op: call
+    script: move_bodies_to_root
+    destructive: true

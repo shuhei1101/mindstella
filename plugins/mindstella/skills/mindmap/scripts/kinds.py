@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import posixpath
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,7 +10,7 @@ from typing import Literal
 
 type Kind = Literal["decision", "task", "research", "doc", "term", "note", "log"]
 
-# ワークスペースの直下に置く、設定・YAML・本文・リリース・版・ロックなど全ての記録をまとめるフォルダ名
+# ワークスペースの直下に置く、設定・YAML・版・ロックなど、本文と埋め込むファイルのほかの記録をまとめるフォルダ名
 RECORD_DIR = ".mindstella"
 
 # 項目ごとの作成日時・更新日時・編集した人・通し番号・変更履歴を持つファイルの名前（`records_root` の下）
@@ -24,8 +25,11 @@ SETTINGS_FILE = "config.yaml"
 # v0.6.0 より前の版の設定のファイル名（直下にあってもワークスペースとしては扱わず、移し替えが見分ける）
 LEGACY_SETTINGS_FILE = "mindmap.yaml"
 
-# 本文の Markdown を置くフォルダ名（`records_root` の下）
+# 本文の Markdown と HTML を置くフォルダ名（ワークスペースの直下。`body_root`）
 BODY_DIR = "docs"
+
+# 項目の `body` の値の頭（記録のフォルダから直下の本文のフォルダを指す）
+BODY_REF_PREFIX = f"../{BODY_DIR}/"
 
 # `{英大文字}-{正の整数}` の形の ID
 ID_PATTERN = re.compile(r"^([A-Z])-([1-9][0-9]*)$")
@@ -126,3 +130,13 @@ def id_number(item_id: str) -> int:
 def records_root(root: Path) -> Path:
     """ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す。フォルダは作らない。"""
     return root / RECORD_DIR
+
+
+def body_root(root: Path) -> Path:
+    """ワークスペースのフォルダから本文のフォルダ（`root / BODY_DIR`）を返す。フォルダは作らない。"""
+    return root / BODY_DIR
+
+
+def workspace_path(name: str) -> str:
+    """記録のフォルダからの相対パスを、ワークスペースの直下からの相対パスにする。"""
+    return posixpath.normpath(f"{RECORD_DIR}/{name}")

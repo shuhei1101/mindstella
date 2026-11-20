@@ -63,7 +63,7 @@ from files_serve import (
     write_file,
 )
 from history import head_until_seq, load_changes, touch_opened
-from kinds import BODY_DIR, KINDS, SETTINGS_FILE, records_root
+from kinds import BODY_REF_PREFIX, KINDS, SETTINGS_FILE, body_root, records_root
 from locations import location_to_dict
 from mdmark_ref import resolve_ref
 from settings_update import update_display
@@ -661,7 +661,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
 
     def _send_file(self, context: ServeContext, sub_path: str) -> None:
         """ワークスペースのファイルを解決し、200・206・416 のヘッダーを書いて本文を分けて書き出す。解決できなければ 404。"""
-        path = resolve_file(records_root(context.root) / FILES_DIR, sub_path)
+        path = resolve_file(context.root / FILES_DIR, sub_path)
         # フォルダの外部・無い・フォルダは、パスを含めずに 404 にする
         if path is None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"), FILE_SECURITY_HEADERS)
@@ -987,12 +987,12 @@ def workspace_signature(root: Path) -> str:
         CHANGES_FILE,
         EDITS_FILE,
     ]
-    # 本文の Markdown と HTML（`.mindstella/docs/` の直下）も見る
+    # 本文の Markdown と HTML（直下の `docs/` の直下）も、記録のフォルダからの名前で見る
     records = records_root(root)
-    body_dir = records / BODY_DIR
+    body_dir = body_root(root)
     if body_dir.is_dir():
         names.extend(
-            f"{BODY_DIR}/{path.name}"
+            f"{BODY_REF_PREFIX}{path.name}"
             for pattern in ("*.md", "*.html")
             for path in body_dir.glob(pattern)
         )

@@ -21,6 +21,7 @@ import yaml
 from errors import (
     ConcurrentWriteError,
     ItemNotFoundError,
+    RootFolderExistsError,
     SchemaMismatchError,
     WorkspaceExistsError,
     WorkspaceNotFoundError,
@@ -35,9 +36,12 @@ from kinds import (
     RECORD_DIR,
     SETTINGS_FILE,
     Kind,
+    body_root,
     kind_of_id,
     records_root,
+    workspace_path,
 )
+from files_serve import FILES_DIR
 from readme import README_FILE, write_readme
 from referencing import Registry
 from referencing.jsonschema import DRAFT202012
@@ -92,6 +96,9 @@ SOURCE_CONFIG_FILE = "dev-docs.yaml"
 
 # 配信の設定が指すスキーマの複製のフォルダの名前（`records_root` の下）
 SOURCE_SCHEMA_DIR = "schemas"
+
+# 配信の設定の `paths_base`（設定のファイルのフォルダからワークスペースの直下を指し、直下の本文を配信元の基準に入れる）
+SOURCE_PATHS_BASE = ".."
 
 # `related[].type` に使える種類
 RELATED_TYPES = ("depends_on", "parent", "for", "see_also")
@@ -185,9 +192,9 @@ class ItemRef:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BodyWrite:
-    """`docs/` に書く 1 つの本文。"""
+    """直下の `docs/` に書く 1 つの本文。"""
 
-    # 項目の `body` の値（記録のフォルダからのパス。`docs/{ID}.mark.md`、資料の HTML の本文は `docs/{ID}.html`）
+    # 項目の `body` の値（記録のフォルダからのパス。`../docs/{ID}.mark.md`、資料の HTML の本文は `../docs/{ID}.html`）
     name: str
     # 本文（Markdown か HTML）
     text: str
@@ -771,7 +778,8 @@ def save_change(workspace: Workspace, change: Change) -> dict[str, str | None]:
     _remember_valid(workspace.root, [(yaml_path, yaml_text)])
     written: dict[str, str | None] = {spec.file: yaml_text}
     if change.body is not None:
-        written[change.body.name] = change.body.text
+        # 本文は変更の検知の前回の中身と同じく、直下からのパス（`docs/{ファイル名}`）で返す
+        written[workspace_path(change.body.name)] = change.body.text
     return written
 
 
@@ -884,13 +892,23 @@ def save_batch(workspace: Workspace, change: BatchChange) -> dict[str, str | Non
     )
     kind_files = {KINDS[kind].file for kind in kinds}
     written: dict[str, str | None] = {
-        path.relative_to(records).as_posix(): text
+        _written_name(records, path): text
         for path, text in targets
         if path.name in kind_files or path.parent.name == BODY_DIR
     }
     for path in removed_done:
-        written[path.relative_to(records).as_posix()] = None
+        written[_written_name(records, path)] = None
     return written
+
+
+def _written_name(records: Path, path: Path) -> str:
+    """書き込んだファイルを、変更の検知の前回の中身のキー（種類の YAML は記録のフォルダから、本文は直下から）にする。"""
+    # 本文のフォルダのファイルか
+    if path.parent.name == BODY_DIR:
+        # 本文: 直下からのパス
+        return f"{BODY_DIR}/{path.name}"
+    # 種類の YAML: 記録のフォルダからのパス
+    return path.relative_to(records).as_posix()
 
 
 def body_path_of(records: Path, name: str) -> Path:
@@ -929,7 +947,7 @@ def build_source_config(workspace_id: str, summary: str) -> dict[str, Any]:
             {
                 "id": document_id,
                 "title": title,
-                "paths": [spec.file],
+                "paths": [f"{RECORD_DIR}/{spec.file}"],
                 "schema": f"{SOURCE_SCHEMA_DIR}/{spec.schema}",
                 "records": "items",
                 "body_file": "body",
@@ -943,6 +961,7 @@ def build_source_config(workspace_id: str, summary: str) -> dict[str, Any]:
         "name": workspace_id,
         "description": summary,
         "related": {"types": list(RELATED_TYPES)},
+        "paths_base": SOURCE_PATHS_BASE,
         "documents": documents,
     }
 
@@ -1029,7 +1048,7 @@ def _remember_valid(root: Path, written: list[tuple[Path, str]]) -> None:
 
 
 def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:
-    """設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/` を作り、直下に README を書く。"""
+    """設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイルを作り、直下に `docs/` を作って README を書く。"""
     root = root.resolve()
     records = records_root(root)
     if (records / SETTINGS_FILE).exists():
@@ -1040,6 +1059,12 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
             f"既にワークスペースがあります: {root}",
             [UPGRADE_HINT.replace("{root}", str(root))],
         )
+    # 直下に本文か埋め込むファイルのフォルダと同じ名前のフォルダがあれば、利用者のファイルと混ぜずに止める
+    for folder_name in (BODY_DIR, FILES_DIR):
+        if (root / folder_name).exists():
+            raise RootFolderExistsError(
+                f"直下に {folder_name}/ が既にあります: {root}（本文・埋め込むファイルのフォルダと同じ名前のため、改名してから作り直してください）"
+            )
 
     # 設定と空の 7 種類で検証する（問題があればフォルダも作らない）
     raw: dict[str, Any] = {SETTINGS_FILE: settings}
@@ -1063,8 +1088,8 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
         records.mkdir(parents=True, exist_ok=True)
         if top_missing is not None:
             created.append(top_missing)
-        _make_dir(records / BODY_DIR, created)
-        files.append(f"{RECORD_DIR}/{BODY_DIR}/")
+        _make_dir(body_root(root), created)
+        files.append(f"{BODY_DIR}/")
         for spec in KINDS.values():
             (records / spec.file).write_text(dump_yaml({"items": []}), encoding="utf-8")
             created.append(records / spec.file)
@@ -1115,11 +1140,11 @@ RELEASE_SUFFIXES = (".md", ".html")
 
 
 def read_body(workspace: Workspace, name: str) -> str | None:
-    """項目の `body` が指す本文を読む。ファイルが無いか、パスが `docs/` の外を指すときは None を返す。"""
+    """項目の `body` が指す本文を読む。ファイルが無いか、パスが直下の `docs/` の外を指すときは None を返す。"""
     records = records_root(workspace.root)
-    body_dir = (records / BODY_DIR).resolve()
+    body_dir = body_root(workspace.root).resolve()
     path = body_path_of(records, name).resolve()
-    # docs/ の外を指す名前は読まない
+    # 直下の docs/ の外を指す名前は読まない
     if not path.is_relative_to(body_dir):
         return None
     if not path.is_file():

@@ -167,8 +167,8 @@
         },
         "body": {
           "type": "string",
-          "description": "本文の Markdown のパス（記録のフォルダからの相対。`docs/{ID}.mark.md`）",
-          "pattern": "^docs/[^/\\\\]+\\.mark\\.md$"
+          "description": "本文の Markdown のパス（記録のフォルダからの相対。`../docs/{ID}.mark.md`）",
+          "pattern": "^\\.\\./docs/[^/\\\\]+\\.mark\\.md$"
         },
         "sources": {
           "type": "array",

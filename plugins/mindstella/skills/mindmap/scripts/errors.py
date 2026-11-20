@@ -25,6 +25,10 @@ class WorkspaceExistsError(MindmapError):
     """`.mindstella/config.yaml` か、直下の `config.yaml`・`mindmap.yaml`（前の版の設定ファイル）が既にあるフォルダに作ろうとした。直下の前の版の設定ファイルでは、`lines` に移し替えの案内を持つ。"""
 
 
+class RootFolderExistsError(MindmapError):
+    """記録の無いフォルダの直下に、本文か埋め込むファイルのフォルダと同じ名前のフォルダ（`docs/`・`files/`）が既にある。"""
+
+
 class SchemaMismatchError(MindmapError):
     """書き込もうとした・書き出そうとした・読もうとしたワークスペースがスキーマに合わない。"""
 

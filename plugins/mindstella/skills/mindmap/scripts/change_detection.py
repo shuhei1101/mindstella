@@ -40,7 +40,17 @@ from history import (
     stack_history,
 )
 from inject_session import process_started_at
-from kinds import BODY_DIR, KINDS, SETTINGS_FILE, Kind, kind_of_id, records_root
+from kinds import (
+    BODY_DIR,
+    BODY_REF_PREFIX,
+    KINDS,
+    SETTINGS_FILE,
+    Kind,
+    body_root,
+    kind_of_id,
+    records_root,
+    workspace_path,
+)
 from state import read_session, workspace_dir
 from store import (
     CHANGES_FILE,
@@ -324,7 +334,7 @@ def signature_of(root: Path) -> str:
     """見るファイルの名前・更新日時（ナノ秒）・大きさをつないだ、書き換えの印を返す。"""
     records = records_root(root)
     parts: list[str] = []
-    for name in _watched_names(records):
+    for name in _watched_names(root):
         try:
             stat = (records / name).stat()
         except OSError:
@@ -357,7 +367,8 @@ def take_snapshot(
                 files[name] = previous.files[name]
             continue
         files[name] = text
-    body_dir = records / BODY_DIR
+    # 本文は直下の docs/ から読み、直下からのパス（`docs/{ファイル名}`）の名前で入れる
+    body_dir = body_root(root)
     if body_dir.is_dir():
         for pattern in BODY_PATTERNS:
             for path in sorted(body_dir.glob(pattern)):
@@ -573,13 +584,13 @@ def save_snapshot(folder: Path, snapshot: Snapshot) -> None:
         target.write_text(text, encoding="utf-8")
 
 
-def _watched_names(records: Path) -> list[str]:
-    """見るファイルの名前（種類の YAML と、`docs/` の直下の本文）を返す。"""
+def _watched_names(root: Path) -> list[str]:
+    """見るファイルの記録のフォルダからの名前（種類の YAML と、直下の `docs/` の直下の本文）を返す。"""
     names = list(WATCHED_FILES)
-    body_dir = records / BODY_DIR
+    body_dir = body_root(root)
     if body_dir.is_dir():
         names.extend(
-            f"{BODY_DIR}/{path.name}"
+            f"{BODY_REF_PREFIX}{path.name}"
             for pattern in BODY_PATTERNS
             for path in sorted(body_dir.glob(pattern))
         )
@@ -610,7 +621,8 @@ def _first_by_id(text: str | None) -> dict[str, dict[str, Any]]:
 def _body_text(snapshot: Snapshot, item: dict[str, Any]) -> str | None:
     """項目の body が指す本文の中身を返す（body を持たないか本文が無ければ None）。"""
     name = item.get("body")
-    return snapshot.files.get(name) if isinstance(name, str) else None
+    # 前回の中身は本文を直下からのパスの名前で持つ
+    return snapshot.files.get(workspace_path(name)) if isinstance(name, str) else None
 
 
 def _git_output(
