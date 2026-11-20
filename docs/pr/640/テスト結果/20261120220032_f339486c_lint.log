@@ -1,0 +1,10 @@
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+
+> lint
+> eslint
+
+exit=0
