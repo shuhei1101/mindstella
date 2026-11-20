@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 from pathlib import Path
 
-from workspace_fixtures import RECORD_DIR
 
 # 1 秒の VP9 の動画（mp4 の入れ物。Chromium がプロプライエタリのコーデック無しで再生できる）
 CLIP_MP4 = base64.b64decode(
@@ -56,7 +55,7 @@ MEDIA_READY_JS = (
 
 def put_embedded_files(root: Path) -> None:
     """ワークスペースのファイルのフォルダに、動画 `clip.mp4` と画像 `shot.png` を配置する。"""
-    files = root / RECORD_DIR / "files"
+    files = root / "files"
     files.mkdir(parents=True, exist_ok=True)
     (files / "clip.mp4").write_bytes(CLIP_MP4)
     (files / "shot.png").write_bytes(SHOT_PNG)

@@ -320,9 +320,9 @@ def test_accept_own_write(
 
 def _rename_body(root: Path, make_item: MakeItem) -> None:
     """D-1 の本文を `docs/D-1.mark.md` へ移し替える（『記録の形式の移行』の書き換えの代わり）。"""
-    docs = _records(root) / "docs"
+    docs = root / "docs"
     (docs / "D-1.md").rename(docs / "D-1.mark.md")
-    _write_items(root, "decisions.yaml", make_item("D-1", body="docs/D-1.mark.md"))
+    _write_items(root, "decisions.yaml", make_item("D-1", body="../docs/D-1.mark.md"))
 
 
 def test_rebase_snapshot(
@@ -333,7 +333,7 @@ def test_rebase_snapshot(
 ) -> None:
     """移し替えの後に検知を始めても記録しない（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", body="docs/D-1.md"), bodies={"D-1.md": "本文\n"})
+    root = make_workspace(make_item("D-1", body="../docs/D-1.md"), bodies={"D-1.md": "本文\n"})
     state_dir = tmp_path / "state"
     snapshot_dir = _snapshot_dir(state_dir, root)
     (snapshot_dir / "docs").mkdir(parents=True)
@@ -362,7 +362,7 @@ def test_rebase_snapshot_when_detecting(
 ) -> None:
     """動いている検知の前回の中身も置き換える（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", body="docs/D-1.md"), bodies={"D-1.md": "本文\n"})
+    root = make_workspace(make_item("D-1", body="../docs/D-1.md"), bodies={"D-1.md": "本文\n"})
     state_dir = tmp_path / "state"
     detector = _started(root, state_dir, monkeypatch)
     _rename_body(root, make_item)
@@ -380,7 +380,7 @@ def test_take_snapshot(make_workspace: MakeWorkspace, make_item: MakeItem) -> No
     """種類の YAML と本文を読み、読めないファイルは前回の中身で埋める（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="docs/D-1.mark.md"),
+        make_item("D-1", body="../docs/D-1.mark.md"),
         bodies={"D-1.mark.md": "本文\n"},
         raw_files={"notes.yaml": "items: [\n"},
     )
@@ -400,7 +400,7 @@ def test_diff_snapshots(make_item: MakeItem) -> None:
     # 準備
     d1_before = make_item("D-1", answer="前の答え")
     d1_after = make_item("D-1", answer="今の答え")
-    d2 = make_item("D-2", body="docs/D-2.md")
+    d2 = make_item("D-2", body="../docs/D-2.md")
     d3 = make_item("D-3")
     d4 = make_item("D-4")
     before = _snapshot(

@@ -540,7 +540,7 @@ def make_item() -> MakeItem:
         item.update(copy.deepcopy(KIND_DEFAULTS[item_id[0]]))
         # 資料は本文が必須なので、ID に揃えた本文のパス（YAML からの相対パス）を既定にする
         if item_id[0] == "A":
-            item["body"] = f"docs/{item_id}.mark.md"
+            item["body"] = f"../docs/{item_id}.mark.md"
         item.update(overrides)
         return item
 
@@ -764,6 +764,7 @@ def make_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> MakeWorksp
         settings_file: str = "config.yaml",
         top: bool = False,
         with_history: bool = True,
+        legacy_bodies: bool = False,
     ) -> Path:
         """項目のある種類の YAML だけを置いたワークスペースを作り、そのフォルダを返す。
 
@@ -773,10 +774,14 @@ def make_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> MakeWorksp
         項目に渡した履歴のキー（HISTORY_KEYS）は項目から外して `history.yaml` に書き、作成日時・
         更新日時の無い項目には既定の日時を入れる。with_history を偽にすると、履歴のキーを項目に
         残したまま `history.yaml` を置かない（v0.13.0 より前の形式）。
+        本文は直下の `docs/` に置く。legacy_bodies か top を真にすると、v0.14.0 より前の形式として
+        記録を置くフォルダの下の `docs/` に置く。
         """
         root = tmp_path / name
         base = root if top else root / RECORD_DIR
-        (base / "docs").mkdir(parents=True)
+        body_dir = base / "docs" if top or legacy_bodies else root / "docs"
+        base.mkdir(parents=True)
+        body_dir.mkdir(parents=True, exist_ok=True)
         write_yaml(base / settings_file, valid_settings if settings is None else settings)
         if with_history:
             items, item_history = split_history(items)
@@ -794,7 +799,7 @@ def make_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> MakeWorksp
         for file_name, text in (raw_files or {}).items():
             (base / file_name).write_text(text, encoding="utf-8")
         for body_name, text in (bodies or {}).items():
-            (base / "docs" / body_name).write_text(text, encoding="utf-8")
+            (body_dir / body_name).write_text(text, encoding="utf-8")
         return root
 
     return _make

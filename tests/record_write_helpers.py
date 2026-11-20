@@ -38,7 +38,7 @@ def write_items(
     """項目を足す・直す・消す書き換えを 1 回で書き、変更の検知が記録し終えるまで待って、足した項目の ID を返す。
 
     add は (種類, 項目) の並び、update は ID → 重ねるキー、remove は消す ID の並び。項目の
-    `body_markdown`・`body_html` は `docs/{ID}.mark.md`・`docs/{ID}.html` に書き、項目の `body` にそのパスを入れる。
+    `body_markdown`・`body_html` は直下の `docs/{ID}.mark.md`・`docs/{ID}.html` に書き、項目の `body` にそのパスを入れる。
     """
     new_ids = [_next_id(call_tool, workspace, kind) for kind, _ in add]
 
@@ -130,7 +130,7 @@ def _with_body(item: dict[str, Any], records: Path, texts: dict[Path, str | None
         # 本文の原文を渡していない: 本文はそのまま
         if text is None:
             continue
-        body = f"docs/{result['id']}{suffix}"
+        body = f"../docs/{result['id']}{suffix}"
         result["body"] = body
         texts[records / body] = text
     return result

@@ -30,7 +30,7 @@ scenarios:
       - D-1・A-1・R-1 が、削除するキー（`phase`・`target`・`category`・`attrs`・`weight`・`deliverable`・`angles`・`confidence`）を持たない
       - 'D-1 がタグ `topic:認証`・`topic:方式` を持ち、D-1 の本文の末尾の表に `優先度: 高` がある'
       - R-1 の本文の末尾の表に、観点 `費用`・`運用` と確かさ `中` がある
-      - '`.mindstella/release/` が移し替える前と同じ中身で残っている'
+      - '`.mindstella/release/` が無い'
       - 既存の項目の ID が変わらず、project-index の `search_docs` で D-1 がヒットする
       - '`check` が問題を 0 件で返す'
       - '`.mindstella/schemas/` の各ファイルの中身が、プラグインの `skills/mindmap/schemas/` の同じ名前のファイルと同じである'
@@ -127,8 +127,8 @@ scenarios:
       - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインのバージョンである'
       - '`docs.yaml` の A-1 が `status: 完成`、A-2 が `status: 下書き` で、どちらも `done` を持たない'
       - '`config.yaml` の `summary` が `要件出し` で、`field`・`playbooks` を持たない'
-      - ワークスペースに `mindmap.yaml` が無く、種類ごとの YAML・`docs/` が `.mindstella/` の下にあり、直下に残っていない
-      - 資料 A-1・A-2 の本文が、移し替える前と同じ中身で `.mindstella/docs/` にある
+      - ワークスペースに `mindmap.yaml` が無く、種類ごとの YAML が `.mindstella/` の下にあり直下に無く、`docs/` が直下にある
+      - 資料 A-1・A-2 の本文が、移し替える前と同じ中身で直下の `docs/` にある
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_unversioned_format
   - name: 正常シナリオ（利用者の判断が要る補正が残る）
@@ -269,15 +269,85 @@ scenarios:
         SV-->>CL: 問題 0 件
       ```
     expected:
-      - D-1 の `body` が `docs/D-1.mark.md`、A-1 の `body` が `docs/A-1.mark.md` で、`.mindstella/docs/` の `D-1.mark.md`・`A-1.mark.md` の中身が移し替える前の `D-1.md`・`A-1.md` と同じである
-      - '`.mindstella/docs/` に `D-1.md`・`A-1.md` が残らない'
-      - A-2 の `body` と `A-2.html` の中身が、移し替える前と同じである
+      - D-1 の `body` が `../docs/D-1.mark.md`、A-1 の `body` が `../docs/A-1.mark.md` で、直下の `docs/` の `D-1.mark.md`・`A-1.mark.md` の中身が移し替える前の `D-1.md`・`A-1.md` と同じである
+      - '直下の `docs/` に `D-1.md`・`A-1.md` が残らない'
+      - A-2 の `body` が `../docs/A-2.html` で、`A-2.html` の中身が移し替える前と同じである
       - 既存の項目の ID が変わらず、project-index の `search_docs` で D-1 の本文がヒットする
       - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインのバージョンで、ワークスペースが配信されている'
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_markdown_bodies_renamed
     notes:
       改名先が既にあるとき: 改名先の `.mark.md` が既にあるときは手順が失敗し、写しから戻す。履歴（`history.yaml`）の `before.body` の改名前のパスも改名後のパスに書き換える（『記録の形式の移行』の v0.14.0 の手順）
+  - name: 正常シナリオ（本文と埋め込むファイルを直下へ移す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。常駐サーバーと project-index を起動し、MindStella の API のワークスペースの作成と、MindStella の MCP の `check` を呼ぶ
+      - name: 本文を .mindstella/ に持つワークスペース
+        description: '`.mindstella/mindstella-version.ini` がこの移し替えの手順を持つバージョンより前で、検討事項 D-1 が `body: docs/D-1.mark.md`、資料 A-1 が `body: docs/A-1.mark.md` を持ち、`.mindstella/docs/` にそれぞれの本文、`.mindstella/files/clip.mp4`、`.mindstella/release/A-1.mark.md` を持つワークスペース。直下には `docs/`・`files/` が無い'
+        notes: 'YAML と本文を直接書いて作る。A-1 の本文は `![動画](../files/clip.mp4)` を持つ。D-1 の変更履歴（`history.yaml`）に `before.body: docs/D-1.md` の回を 1 件持つ'
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant CL as 外部のアプリ（起動のコマンド）
+        participant SV as 常駐サーバー
+        participant WS as ワークスペース
+
+        CL->>SV: ワークスペースを作成する
+        SV->>WS: 写しを取る
+        SV->>WS: .mindstella/docs/ と .mindstella/files/ を直下へ移し、項目と変更履歴の body を書き換える
+        SV->>WS: .mindstella/release/ を削除する
+        SV->>WS: 配信の設定を直下の docs/ を指すように書き換える
+        SV->>WS: 点検し、バージョンのファイルを書き換える
+        SV-->>CL: ワークスペースの ID と画面の URL
+        CL->>SV: check
+        SV-->>CL: 問題 0 件
+      ```
+
+      <!-- /map -->
+    expected:
+      - 直下の `docs/` に `D-1.mark.md`・`A-1.mark.md` があり、中身が移し替える前の `.mindstella/docs/` の本文と同じである
+      - 直下の `files/clip.mp4` の中身が、移し替える前の `.mindstella/files/clip.mp4` と同じである
+      - '`.mindstella/` に `docs/`・`files/`・`release/` が無い'
+      - D-1 の `body` が `../docs/D-1.mark.md`、A-1 の `body` が `../docs/A-1.mark.md` で、D-1 の変更履歴の `before.body` が `../docs/D-1.md` である
+      - A-1 の本文の `../files/clip.mp4` が書き換わっていない
+      - project-index の `search_docs` で、D-1 が移し替える前と同じ本文でヒットする
+      - 移し替えの後に、どの項目も変更履歴の回が増えていない
+      - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインのバージョンで、ワークスペースが配信されている'
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_bodies_moved_to_root
+    notes:
+      移し替えと変更の検知: 本文の移動を項目の変更として記録しない。移し替えを適用したら変更の検知の前回の中身を作り直す（『変更の検知』の `rebase_snapshot`）
+  - name: 異常シナリオ（直下に docs/ が既にある）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。常駐サーバーと project-index を起動し、MindStella の API のワークスペースの作成を呼ぶ
+      - name: 直下に利用者の docs/ を持つワークスペース
+        description: 正常シナリオ（本文と埋め込むファイルを直下へ移す）と同じワークスペースに、利用者が作った `docs/memo.md` を直下に持つワークスペース
+        notes: '`files/` が既にあるときも同じ振る舞いにする'
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant CL as 外部のアプリ（起動のコマンド）
+        participant SV as 常駐サーバー
+        participant WS as ワークスペース
+
+        CL->>SV: ワークスペースを作成する
+        SV->>WS: 写しを取る
+        SV->>WS: 直下に docs/ が既にあることを確認し、手順を止める
+        SV->>WS: 写しから戻す
+        SV-->>CL: エラー（失敗したバージョン・手順と、直下の docs/ を改名する案内）
+      ```
+
+      <!-- /map -->
+    expected:
+      - ワークスペースの作成がエラーを返し、応答に失敗したバージョン・手順と、直下に `docs/` が既にあるため改名してから開き直す案内がある
+      - 直下の `docs/memo.md` とワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+      - ワークスペースが配信されていない
+    test: test_error_when_root_docs_exists
 lead: 常駐サーバーが、ワークスペースを読み込むときに記録のバージョンとプラグインのバージョンを比べ、古ければバージョンごとの手順を順に適用して移し替え、スキーマの複製をプラグインのスキーマにそろえてから配信する単一ユースケース。
 issue: 43
 primary_actor: 常駐サーバー
@@ -296,5 +366,5 @@ notes:
   E2E の範囲: E2E はモデルを呼ばず、常駐サーバーにワークスペースの作成を依頼して、移し替えたワークスペースの状態と応答を確かめる
   対応テストファイル: '`tests/e2e/単一ユースケース/test_workspace_upgrade.py`。E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` へ移す'
   値が要る補正: 移し替えは利用者に確かめずに手順を適用する。利用者の判断が要る補正（案を持たない未決定の検討事項・案と状態の合わない検討事項など）は移し替えでは行わず、点検が問題として返し、MindStella のセッションが記録の使い分けで検討事項に挙げる。値が要るキー（題名など）は、フォルダの名前を仮の値として入れる
-  削除するキーの値の残し方: 対象・カテゴリーの値は、その名前のタグ（`topic:{値}`）として項目に足す。属性（`attrs`）・調査の観点（`angles`）と確かさ（`confidence`）は、本文の末尾の表として残す。フェーズ・重み・納品物の印・プレイブック・ゴールは残さずに削除する。`.mindstella/release/` は削除せずに残す
+  削除するキーの値の残し方: 対象・カテゴリーの値は、その名前のタグ（`topic:{値}`）として項目に足す。属性（`attrs`）・調査の観点（`angles`）と確かさ（`confidence`）は、本文の末尾の表として残す。フェーズ・重み・納品物の印・プレイブック・ゴールは残さずに削除する。`.mindstella/release/` は、本文を直下へ移す手順で削除する
 test_file: tests/e2e/単一ユースケース/test_workspace_upgrade.py

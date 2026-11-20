@@ -983,7 +983,7 @@ def test_html_body(
     """全画面にも HTML の本文を枠で描き、枠の中の文を選んだ入口と箇所はモーダルの中に出す（正常系）。"""
     # 準備
     url, _ = write_review_preview(
-        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
+        make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
     )
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open]")
@@ -1005,7 +1005,7 @@ def test_html_body_entry_position_when_mouse(
     """全画面の枠の中をマウスで選んでも、入口は選んだ文の近くに出る（正常系）。"""
     # 準備
     url, _ = write_review_preview(
-        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
+        make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
     )
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open]")
@@ -1028,7 +1028,7 @@ def test_html_body_entry_when_switched_from_panel(
     """詳細パネルから全画面に切り替えた後に枠の中の文を選ぶと、入口を全画面の中に 1 つ出す（正常系）。"""
     # 準備（詳細パネルで開き、文書に aside.panel が残る状態で全画面に切り替える）
     url, _ = write_review_preview(
-        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
+        make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
     )
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel")
@@ -1233,7 +1233,7 @@ def test_body_wrap_when_long_words_and_tables(
 ) -> None:
     """全画面でも、本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は mdmark の表のスクロールの区画の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
+    url = write_preview(make_item("A-1", body="../docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.set_viewport_size({"width": width, "height": 800})
     page.wait_for_selector("dialog.full .mdmark-table .mdmark-table-scroll")
@@ -1262,7 +1262,7 @@ def test_body_table_scroll_by_keyboard(
 ) -> None:
     """全画面でも、列の多い mdmark の表はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れる（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
+    url = write_preview(make_item("A-1", body="../docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.set_viewport_size({"width": width, "height": 800})
     table = page.locator("dialog.full .mdmark-table .mdmark-table-scroll > table").first

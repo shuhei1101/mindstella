@@ -436,7 +436,7 @@ def test_adopted_section(
             answer="種類ごとに分ける",
             reason="探しやすい",
             options=ADOPTED_OPTIONS,
-            body="docs/D-1.mark.md",
+            body="../docs/D-1.mark.md",
         ),
         bodies={"D-1.mark.md": "## 経緯\n\n本文の段落\n"},
     )
@@ -543,7 +543,7 @@ def test_body_markdown_when_line_break_in_paragraph(
     """本文の段落の中の 1 つの改行は、改行にせず 1 つの段落に結合したままにする（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("D-1", status="未決定", body="docs/D-1.mark.md"),
+        make_item("D-1", status="未決定", body="../docs/D-1.mark.md"),
         bodies={"D-1.mark.md": f"{LINE_BREAK_VALUE}\n"},
     )
     # 実行
@@ -642,7 +642,7 @@ def test_content_when_body_in_other_kinds(
     """タスク・用語集・メモの本文も、ほかの種類と同じ本文の節に出す（正常系）。"""
     # 準備
     url = write_preview(
-        make_item(item_id, body=f"docs/{item_id}.mark.md"),
+        make_item(item_id, body=f"../docs/{item_id}.mark.md"),
         bodies={f"{item_id}.mark.md": "## 経緯\n\n会話で持ち越した\n"},
     )
     # 実行
@@ -2413,7 +2413,7 @@ def test_body_scroll_restored(
     block_web_fonts(page)
     url = write_preview(
         make_item("D-1"),
-        make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}], body="docs/D-2.mark.md"),
+        make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}], body="../docs/D-2.mark.md"),
         bodies={"D-2.mark.md": LONG_BODY},
     )
     page = open_preview(url, "#tab=decisions&view=table&id=D-2")
@@ -2461,7 +2461,7 @@ def test_body_scroll_when_heading(
     """位置を残した項目でも、見出しを示して開くときは残した位置ではなく見出しを出す（正常系）。"""
     # 準備
     block_web_fonts(page)
-    url = write_preview(make_item("D-1"), make_item("D-2", body="docs/D-2.mark.md"), bodies={"D-2.mark.md": TAIL_HEADING_BODY})
+    url = write_preview(make_item("D-1"), make_item("D-2", body="../docs/D-2.mark.md"), bodies={"D-2.mark.md": TAIL_HEADING_BODY})
     page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     page.wait_for_selector(f"{PANEL_BODY} .md")
     page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
@@ -2493,7 +2493,7 @@ def test_body_scroll_when_comment_location(
             "D-3",
             status="要見直し",
             options=[{"key": "A", "content": "表で見せる", "pros": "並べやすい", "adopted": True}],
-            body="docs/D-3.mark.md",
+            body="../docs/D-3.mark.md",
         ),
         bodies={"D-3.mark.md": LONG_BODY},
         comments=(
@@ -4149,7 +4149,7 @@ def test_format_badge(
     """資料の見出しに本文の形式の札（HTML / MD）を置き、資料以外には置かない（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("A-1", body="docs/A-1.html"),
+        make_item("A-1", body="../docs/A-1.html"),
         make_item("A-2"),
         make_item("D-1"),
         bodies={"A-1.html": HTML_BODY, "A-2.mark.md": "資料の本文\n"},
@@ -4171,7 +4171,7 @@ def test_html_body(
 ) -> None:
     """本文が HTML の資料は、本文を枠で描き、枠の高さを中身に合わせる（正常系）。"""
     # 準備・実行
-    url, _ = write_review_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
+    url, _ = write_review_preview(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     # 検証
@@ -4245,7 +4245,7 @@ def test_selection_entry_when_html_body(
 ) -> None:
     """枠の中の文を選ぶと入口を出し、押すと元の HTML の行の箇所を添える。選びを外すと入口を閉じる（正常系）。"""
     # 準備
-    url, _ = write_review_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
+    url, _ = write_review_preview(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     # 実行（選ぶ）
@@ -4274,7 +4274,7 @@ def test_highlight_location_when_html_body(
     """コメントの一覧の行から開くと、枠の中でその行を含む最も内側の要素を示す（正常系）。"""
     # 準備
     url, _ = write_review_preview(
-        make_item("A-1", body="docs/A-1.html"),
+        make_item("A-1", body="../docs/A-1.html"),
         bodies={"A-1.html": HTML_BODY},
         comments=(
             make_comment(
@@ -5021,7 +5021,7 @@ def test_body_wrap_when_long_words_and_tables(
 ) -> None:
     """本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は mdmark の表のスクロールの区画の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
+    url = write_preview(make_item("A-1", body="../docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.set_viewport_size({"width": width, "height": 800})
     page.wait_for_selector("aside.panel .mdmark-table .mdmark-table-scroll")
@@ -5050,7 +5050,7 @@ def test_body_table_scroll_by_keyboard(
 ) -> None:
     """列の多い mdmark の表はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れる（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
+    url = write_preview(make_item("A-1", body="../docs/A-1.mark.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.mark.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.set_viewport_size({"width": width, "height": 800})
     table = page.locator("aside.panel .mdmark-table .mdmark-table-scroll > table").first
@@ -6001,7 +6001,7 @@ def test_export_entry(
     # 準備
     url = write_preview(
         make_item("A-1", title="Markdown の資料"),
-        make_item("A-2", body="docs/A-2.html"),
+        make_item("A-2", body="../docs/A-2.html"),
         make_item("D-1"),
         bodies={"A-1.mark.md": MARKDOWN_EXPORT_BODY, "A-2.html": "<p>HTML の本文</p>"},
     )

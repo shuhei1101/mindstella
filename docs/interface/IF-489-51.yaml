@@ -194,7 +194,7 @@ response:
     description: 種類ごとの YAML の `items` の中身に、`history.yaml` のその項目の行のキー（`created`・`updated`・`updated_by`・`seq`・`added_seq`・`history`・`history_dropped_seq`）を足したもの（キー名はファイル名から `.yaml` を落としたもの）。行が無い項目はキーを足さない
   - name: bodies
     type: dict[str, str]
-    description: '`docs/` のファイル名 → 本文の原文（項目の `body` が指すものだけ。キーは `body` の値（Markdown は `docs/{ID}.mark.md`、HTML は `docs/{ID}.html`）で、どちらも書いたまま）。画面はキーの拡張子で形式を決め、差分・検索・前の版の組み立てには原文を使う'
+    description: '`docs/` のファイル名 → 本文の原文（項目の `body` が指すものだけ。キーは `body` の値（Markdown は `../docs/{ID}.mark.md`、HTML は `../docs/{ID}.html`）で、どちらも書いたまま）。画面はキーの拡張子で形式を決め、差分・検索・前の版の組み立てには原文を使う'
   - name: built_at
     type: str
     description: 読んだ日時（UTC のタイムゾーン付き ISO 8601）。画面はつながらないときに「{日時} に読んだ記録」と出す

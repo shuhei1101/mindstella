@@ -142,8 +142,8 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
     """種類ごとのキーと、指された本文だけを集める（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="docs/A-1.mark.md"),
-        make_item("R-1", body="docs/R-1.mark.md"),
+        make_item("A-1", body="../docs/A-1.mark.md"),
+        make_item("R-1", body="../docs/R-1.mark.md"),
         bodies={"A-1.mark.md": "資料の本文\n", "X-1.mark.md": "どこからも指されない本文\n"},
     )
     workspace = store.load_workspace(root)
@@ -168,7 +168,7 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
         "mdmark_ref",
     }
     assert data["mdmark_ref"] == "develop"
-    assert data["bodies"] == {"docs/A-1.mark.md": "資料の本文\n"}
+    assert data["bodies"] == {"../docs/A-1.mark.md": "資料の本文\n"}
     assert data["marked_bodies"] == {}
     assert data["settings_problem"] is None
 
@@ -179,16 +179,16 @@ def test_collect_preview_data_with_html_body(
     """HTML の本文は原文を bodies に、行の印つきを marked_bodies に入れる（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="docs/A-1.mark.md"),
-        make_item("A-2", body="docs/A-2.html"),
+        make_item("A-1", body="../docs/A-1.mark.md"),
+        make_item("A-2", body="../docs/A-2.html"),
         bodies={"A-1.mark.md": "資料の本文\n", "A-2.html": "<p>a</p>"},
     )
     workspace = store.load_workspace(root)
     # 実行
     data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
     # 検証
-    assert data["bodies"] == {"docs/A-1.mark.md": "資料の本文\n", "docs/A-2.html": "<p>a</p>"}
-    assert data["marked_bodies"] == {"docs/A-2.html": '<p data-line="1" data-line-end="1">a</p>'}
+    assert data["bodies"] == {"../docs/A-1.mark.md": "資料の本文\n", "../docs/A-2.html": "<p>a</p>"}
+    assert data["marked_bodies"] == {"../docs/A-2.html": '<p data-line="1" data-line-end="1">a</p>'}
 
 
 def test_collect_preview_data_with_changes(
@@ -485,7 +485,7 @@ def test_export_preview(
     # 準備
     root = make_workspace(
         make_item("D-1"),
-        make_item("A-1", body="docs/A-1.mark.md"),
+        make_item("A-1", body="../docs/A-1.mark.md"),
         bodies={"A-1.mark.md": "本文 </script>\n"},
     )
     workspace = store.load_workspace(root)
@@ -503,7 +503,7 @@ def test_export_preview(
     assert data["decisions"] == [
         {**make_item("D-1"), "created": DEFAULT_TIMESTAMP, "updated": DEFAULT_TIMESTAMP}
     ]
-    assert data["bodies"] == {"docs/A-1.mark.md": "本文 </script>\n"}
+    assert data["bodies"] == {"../docs/A-1.mark.md": "本文 </script>\n"}
     assert "src=" not in html
     assert "href=" not in html
     assert builder.LICENSES_OPEN in html

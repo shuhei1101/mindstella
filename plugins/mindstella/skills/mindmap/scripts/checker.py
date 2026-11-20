@@ -18,7 +18,7 @@ from history import (
     load_item_history,
     removed_items,
 )
-from kinds import BODY_DIR, KINDS, RECORD_DIR, kind_of_id, records_root
+from kinds import BODY_REF_PREFIX, KINDS, body_root, kind_of_id, workspace_path
 from store import (
     Problem,
     Workspace,
@@ -71,9 +71,9 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
         *_check_comments(workspace),
         *_check_history(workspace),
     ]
-    # ファイル名の順に並べ（sorted は安定なので、同じファイルの中は拾った順を保つ）、ワークスペースからの相対パスにする
-    ordered = sorted(problems, key=lambda problem: problem.file)
-    return [replace(problem, file=f"{RECORD_DIR}/{problem.file}") for problem in ordered]
+    # ワークスペースからの相対パスにしてから、その順に並べる（sorted は安定なので、同じファイルの中は拾った順を保つ）
+    relative = [replace(problem, file=workspace_path(problem.file)) for problem in problems]
+    return sorted(relative, key=lambda problem: problem.file)
 
 
 def find_referrers(workspace: Workspace, item_id: str) -> list[str]:
@@ -197,7 +197,7 @@ def _check_bodies(workspace: Workspace) -> list[Problem]:
                 continue
             # 前の版の形（docs/ の無いファイル名）はスキーマの問題として拾うので、本文の有無は見ない
             if "/" not in body:
-                referenced.add(f"{BODY_DIR}/{body}")
+                referenced.add(f"{BODY_REF_PREFIX}{body}")
                 continue
             referenced.add(body)
             # body が指す本文のファイルが無い
@@ -211,15 +211,15 @@ def _check_bodies(workspace: Workspace) -> list[Problem]:
                         detail=f"本文がありません: {body}",
                     )
                 )
-    body_dir = records_root(workspace.root) / BODY_DIR
+    body_dir = body_root(workspace.root)
     # どの項目の body にも無い本文は、どこからも指されていない
     paths = [*body_dir.glob("*.md"), *body_dir.glob("*.html")] if body_dir.is_dir() else []
     for path in sorted(paths):
-        if f"{BODY_DIR}/{path.name}" not in referenced:
+        if f"{BODY_REF_PREFIX}{path.name}" not in referenced:
             problems.append(
                 Problem(
                     kind="orphan_body",
-                    file=f"{BODY_DIR}/{path.name}",
+                    file=f"{BODY_REF_PREFIX}{path.name}",
                     id=None,
                     key=None,
                     detail="どの項目の body からも指されていません",
@@ -271,7 +271,7 @@ def _check_comments(workspace: Workspace) -> list[Problem]:
 def _check_embedded_files(workspace: Workspace) -> list[Problem]:
     """Markdown の本文が画像の記法で指すワークスペースの中のファイルが無いものを `missing_file` にする。"""
     problems: list[Problem] = []
-    body_dir = records_root(workspace.root) / BODY_DIR
+    body_dir = body_root(workspace.root)
     for kind in KINDS:
         for item in workspace.items[kind]:
             body = item.get("body")

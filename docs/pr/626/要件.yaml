@@ -1,0 +1,109 @@
+use_cases:
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: run_only
+    detail: 話し合いの進め方は変わらないが、本文の配置先が変わるため通しで壊れていないかを確認する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-14.yaml
+    impact: changed
+    detail: 新規作成するワークスペースの本文のフォルダを直下の docs/ にし、配信の設定がそこを指す。直下に docs/・files/ が既にあれば作成を断る
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: 既存のワークスペースの本文と埋め込むファイルを直下へ移し、release/ を削除する。直下に同じ名前のフォルダがあるときの扱いを加える
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-587-1.yaml
+    impact: changed
+    detail: 資料に埋め込むファイルの配置先を直下の files/ にする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-16.yaml
+    impact: following
+    detail: 点検が直下の docs/ の本文とのずれを洗い出す
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: following
+    detail: 記録を足す・書き換えるときの本文の配置先を直下の docs/ にする
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-30.yaml
+    impact: following
+    detail: 記録の使い分けの案内する本文の配置先を直下の docs/ にする
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: following
+    detail: 変更の検知が直下の docs/ の本文の書き換えを履歴に残す
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-33.yaml
+    impact: following
+    detail: 記録の検索が直下の docs/ の本文を項目の本文として返す
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-32.yaml
+    impact: following
+    detail: 項目を消すときに直下の docs/ の本文も消す
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: run_only
+    detail: 画面が本文を今までどおり描くかを確認する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: following
+    detail: 前回からの差分を見るときに手で書き換える本文を直下の docs/ にする
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
+docs:
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: ファイル構成の docs/・files/ を直下へ移し、body の値の基点の説明を修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:05.389860+00:00'
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: 本文のフォルダがワークスペースの直下にあることを記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:05.389860+00:00'
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: 点検・記録の取得の .mindstella/docs/ を直下の docs/ に修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:05.389860+00:00'
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 本文と埋め込むファイルの配置先を直下の docs/・files/ に修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:05.389860+00:00'
+  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.mark.md
+    new: false
+    change: 次のバージョンの移し替えで本文と埋め込むファイルを直下へ移し、release/ を削除することと、直下に同じ名前のフォルダがあるときの対処を記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T00:56:05.389860+00:00'
+scope_out:
+  - item: 記録の YAML（config.yaml・種類ごとの YAML・history.yaml など）を直下へ出すこと
+    reason: 要望は本文のフォルダだけで、記録は .mindstella/ にまとめる今の取り決めを保つ
+    plan: none
+  - item: 過去のバージョン（v0.6.0・v0.13.0・v0.14.0）の移し替えの手順と期待値
+    reason: 過去のバージョンの構造への変換で、今回の手順はその後に当てる
+    plan: none
+  - item: 資料の書き出し・配る書き出しを mdmark の書き出しに合わせること
+    reason: 要望に含まれない
+    plan: '#589'

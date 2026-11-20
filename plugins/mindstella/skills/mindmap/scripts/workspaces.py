@@ -25,6 +25,7 @@ import threads
 from errors import (
     ApiError,
     MindmapError,
+    RootFolderExistsError,
     SchemaMismatchError,
     StepFailedError,
     WorkspaceNewerError,
@@ -200,7 +201,11 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
                 if flow is not None:
                     check_flow(ctx.pi_port, flow, folder)
                 readme_existed = (folder / README_FILE).exists()
-                commands.run_init(folder, _default_settings(workspace_id, folder, flow))
+                try:
+                    commands.run_init(folder, _default_settings(workspace_id, folder, flow))
+                except RootFolderExistsError as error:
+                    # 直下に利用者の docs/・files/ がある: 何も作らずに 409 にする
+                    raise ApiError(409, "root_folder", str(error)) from error
             recorded = state.read_launch(ctx.state_root, workspace_id) is None
             if recorded:
                 state.write_launch(ctx.state_root, workspace_id, options)

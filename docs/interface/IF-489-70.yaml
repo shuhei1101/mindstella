@@ -525,7 +525,7 @@ flows:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 本文を Markdown で持つ資料 A-1
-        notes: 本文に `![動画](../files/clip.mp4)`・`![画面](../files/shot.png)` を持ち、両方を `.mindstella/files/` に配置する
+        notes: 本文に `![動画](../files/clip.mp4)`・`![画面](../files/shot.png)` を持ち、両方を直下の `files/` に配置する
     flow: |-
       ```mermaid
       sequenceDiagram

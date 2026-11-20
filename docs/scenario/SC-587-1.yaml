@@ -1,6 +1,6 @@
 id: SC-587-1
 title: 動画などのファイルを配置して資料に埋め込む
-lead: MindStella のセッションか利用者が、動画・音声・画像のファイルをワークスペースのファイルのフォルダ `.mindstella/files/` に配置し、資料の本文に mdmark の `![キャプション](../files/{名前})` で埋め込み、利用者がサーバーが配るプレビューの詳細パネルで動画・音声を再生し、画像を確認する単一ユースケース。
+lead: MindStella のセッションか利用者が、動画・音声・画像のファイルをワークスペースの直下のファイルのフォルダ `files/` に配置し、資料の本文に mdmark の `![キャプション](../files/{名前})` で埋め込み、利用者がサーバーが配るプレビューの詳細パネルで動画・音声を再生し、画像を確認する単一ユースケース。
 issue: 519
 test_file: tests/e2e/単一ユースケース/test_embed_files.py
 primary_actor: MindStella のセッション
@@ -24,7 +24,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: ファイル
         description: 数秒の mp4 の動画・mp3 の音声・png の画像
-        notes: '`.mindstella/files/clip.mp4`・`.mindstella/files/voice.mp3`・`.mindstella/files/shot.png` に、フローの中で配置する'
+        notes: '`files/clip.mp4`・`files/voice.mp3`・`files/shot.png` に、フローの中で配置する'
       - name: 記録
         description: 本文を Markdown で持つ資料 A-1
         notes: 本文に `![完成した動画](../files/clip.mp4)`・`![読み上げ](../files/voice.mp3)`・`![画面](../files/shot.png)` を持つ。本文の記載と `commit` を済ませておく
@@ -64,7 +64,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 本文を Markdown で持つ資料 A-1
-        notes: 本文に段落と `![完成した動画](../files/missing.mp4)` を持ち、`.mindstella/files/missing.mp4` は配置しない
+        notes: 本文に段落と `![完成した動画](../files/missing.mp4)` を持ち、`files/missing.mp4` は配置しない
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
@@ -91,7 +91,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: フォルダの外のファイル
         description: ワークスペースの記録の `decisions.yaml` と、ワークスペースの外のファイル
-        notes: '`.mindstella/files/outside` を、ワークスペースの外のファイルへのシンボリックリンクにする'
+        notes: '`files/outside` を、ワークスペースの外のファイルへのシンボリックリンクにする'
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
@@ -109,7 +109,7 @@ scenarios:
       - どちらの要求も 404 が返り、本文にファイルの中身を含まない
     test: test_error_when_outside_files_folder
 notes:
-  パスの書き方: 資料（`.mindstella/docs/`）からの相対パス `../files/{名前}` で記載し、mdmark の書き出し・点検と画面で同じパスが通るようにする。ファイルのフォルダの下にフォルダを作ってよい
+  パスの書き方: 資料（ワークスペースの直下の `docs/`）からの相対パス `../files/{名前}` で記載し、mdmark の書き出し・点検と画面で同じパスが通るようにする。ファイルのフォルダの下にフォルダを作ってよい
   E2E の範囲: 今の画面で確認する。React の画面の本文の描画は同じ解決を使用し、React の画面の結合テストが確認する
   HTML の本文: 本文を HTML で持つ資料は、`<img>`・`<video>` の `src` を本文の HTML のまま描き、`../files/{名前}` の解決をしない
   Git 管理外のワークスペース: mindstella はワークスペースの Git を操作しない（記録の YAML と同じ）。ワークスペースが Git のリポジトリの中にあっても Git 管理外でも、ファイルの配置・配信・再生・点検は同じに動く

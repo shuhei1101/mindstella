@@ -42,7 +42,7 @@ from history import (
     stack_history,
 )
 from ids import reserve_ids
-from kinds import BODY_DIR, EDITOR, KINDS, RECORD_DIR, Kind, records_root
+from kinds import BODY_REF_PREFIX, EDITOR, KINDS, RECORD_DIR, Kind, records_root, workspace_path
 from read_point import save_read_seq
 from readme import README_FILE, write_readme
 from settings_update import update_settings
@@ -340,8 +340,8 @@ def stage_add(
     )
     result = {
         "id": item_id,
-        "file": f"{RECORD_DIR}/{KINDS[kind].file}",
-        "body": f"{RECORD_DIR}/{body.name}" if body is not None else None,
+        "file": workspace_path(KINDS[kind].file),
+        "body": workspace_path(body.name) if body is not None else None,
     }
     return new_staged, result
 
@@ -822,13 +822,13 @@ def _write_changes(root: Path, record: Changes) -> None:
 
 
 def _body_write(item_id: str, item: dict[str, Any]) -> BodyWrite | None:
-    """`item` の `body_markdown` を `docs/{ID}.mark.md`、`body_html` を `docs/{ID}.html` に書く本文にする。"""
+    """`item` の `body_markdown` を `../docs/{ID}.mark.md`、`body_html` を `../docs/{ID}.html` に書く本文にする。"""
     markdown = item.get(BODY_INPUT_KEY)
     html = item.get(HTML_BODY_INPUT_KEY)
     if markdown is not None:
-        return BodyWrite(name=f"{BODY_DIR}/{item_id}.mark.md", text=str(markdown))
+        return BodyWrite(name=f"{BODY_REF_PREFIX}{item_id}.mark.md", text=str(markdown))
     if html is not None:
-        return BodyWrite(name=f"{BODY_DIR}/{item_id}.html", text=str(html))
+        return BodyWrite(name=f"{BODY_REF_PREFIX}{item_id}.html", text=str(html))
     # 本文を渡していない
     return None
 

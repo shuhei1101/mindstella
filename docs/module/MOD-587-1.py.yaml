@@ -40,7 +40,7 @@ constants:
     title: ファイルのフォルダの名前
     container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
     usecase: 動画などのファイルを配置して資料に埋め込む
-    summary: 記録のフォルダ `.mindstella/` の中のファイルのフォルダの名前（ER 図『ワークスペース』の `files/`）。点検（checker.py）もこの定数を使う
+    summary: ワークスペースの直下のファイルのフォルダの名前（ER 図『ワークスペース』の `files/`）。点検（checker.py）もこの定数を使う
     value: '"files"'
   - name: FILES_PATH
     title: ファイルの配信のパス
@@ -124,7 +124,7 @@ functions:
         type: Path
         required: true
         passing: positional
-        description: ファイルのフォルダ（`{ワークスペース}/.mindstella/{FILES_DIR}`。無くてもよい）
+        description: ファイルのフォルダ（`{ワークスペース}/{FILES_DIR}`。無くてもよい）
       - name: sub_path
         type: str
         required: true

@@ -20,7 +20,7 @@ data_models:
     properties:
       - name: files
         type: dict[str, str]
-        description: 記録のフォルダからのパス（`decisions.yaml`・`docs/D-1.mark.md` など）→ 中身
+        description: ファイルの名前（種類の YAML は記録のフォルダからの `decisions.yaml` など、本文は直下からの `docs/D-1.mark.md` など）→ 中身
       - name: git_head
         type: str | None
         description: '`git rev-parse HEAD`（Git の作業ツリーでなければ `None`）'
@@ -237,7 +237,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
     usecase: 書き込みを履歴に残す
     scope: public
-    summary: 見るファイル（`WATCHED_KINDS` の YAML と `docs/` の直下の本文）の今の中身と Git の位置を読む
+    summary: 見るファイル（`WATCHED_KINDS` の YAML とワークスペースの直下の `docs/` の直下の本文）の今の中身と Git の位置を読む
     args:
       - name: root
         type: Path
@@ -261,13 +261,13 @@ functions:
       description: 今の中身と、読めなかったファイル
     process: |-
       1. 種類ごとの YAML を UTF-8 で読み、YAML として読めて `items` が配列なら `files` に入れる。読めなければ読めなかったファイルに足し、`previous` があればその中身を入れる
-      2. `docs/` の直下の `*.md`・`*.html` を読んで `files` に入れる
+      2. 直下の `docs/`（`body_root`）の直下の `*.md`・`*.html` を読んで、`f"{BODY_DIR}/{ファイル名}"` の名前で `files` に入れる。書き換えの印（`signature_of`）も同じフォルダの本文を見る
       3. ワークスペースが Git の作業ツリーなら `git rev-parse HEAD` と `git symbolic-ref -q HEAD` を読む（失敗したら `None`）
     unit_tests:
       - name: test_take_snapshot
         case: 正常
         summary: 種類の YAML と本文を読み、読めないファイルは前回の中身で埋める
-        condition: D-1（本文 `docs/D-1.mark.md`）を持ち、`notes.yaml` が読めない中身のワークスペースと、`notes.yaml` を持つ前回の中身
+        condition: 'D-1（`body: ../docs/D-1.mark.md`。直下の `docs/D-1.mark.md`）を持ち、`notes.yaml` が読めない中身のワークスペースと、`notes.yaml` を持つ前回の中身'
         mock: '`run`（Git の作業ツリーでない）'
         expected: '`files` に `decisions.yaml`・`docs/D-1.mark.md` と前回の `notes.yaml`、読めなかったファイルが `[notes.yaml]`、`git_head` が `None`'
   - name: diff_snapshots
@@ -294,7 +294,7 @@ functions:
     process: |-
       1. `KINDS` の順に、前回と今の `items` を `id` で突き合わせる（同じ ID が 2 件以上あれば最初の 1 件で比べる）
          - 今にだけある ID は追加、前回にだけある ID は削除にする
-         - 両方にある ID は、キーか、`body` が指す本文の中身が違えば変更にする
+         - 両方にある ID は、キーか、`body` が指す本文の中身が違えば変更にする（本文は `files` の `workspace_path(body)` の名前で引く）
     unit_tests:
       - name: test_diff_snapshots
         case: 正常

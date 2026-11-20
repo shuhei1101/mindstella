@@ -1,0 +1,25 @@
+confirmations:
+  - topic: 項目の body の値の基点
+    decision: '値を .mindstella/ からの ../docs/{ID}.mark.md にし、配信の設定に paths_base: .. を加える（推奨案 B）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/626#discussion_r4634201728
+  - topic: 資料に埋め込むファイルのフォルダ files/ の配置先
+    decision: files/ も直下へ移す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/626#discussion_r4634202340
+  - topic: 既存のワークスペースの .mindstella/release/ の扱い
+    decision: 移し替えで削除する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/626#discussion_r4634202926
+  - topic: 直下に docs/ か files/ が既にあるときの移し替えと作成
+    decision: 移し替えを止めてバックアップから戻し、ワークスペースを開かない。作成もエラーにして何も作らない（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/626#discussion_r4634203966

@@ -17,7 +17,6 @@ from fixture_types import (
     WriteComments,
     WriteThreads,
 )
-from workspace_fixtures import RECORD_DIR
 from record_helpers import ai_update
 
 
@@ -32,7 +31,7 @@ def test_check_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     """整ったワークスペースは問題 0 件（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="docs/D-1.mark.md"),
+        make_item("D-1", body="../docs/D-1.mark.md"),
         make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]),
         bodies={"D-1.mark.md": "本文\n"},
     )
@@ -67,7 +66,7 @@ def test_check_workspace_when_problems(make_workspace: MakeWorkspace, make_item:
     root = make_workspace(
         make_item("D-1", related=[{"to": "D-9", "type": "depends_on"}]),
         make_item("D-2", status="完了"),
-        make_item("R-1", body="docs/R-1.mark.md"),
+        make_item("R-1", body="../docs/R-1.mark.md"),
         bodies={"X-1.mark.md": "どこからも指されない本文\n"},
     )
     workspace = store.load_workspace(root)
@@ -77,14 +76,14 @@ def test_check_workspace_when_problems(make_workspace: MakeWorkspace, make_item:
     assert _keys(problems) == {
         ("broken_ref", ".mindstella/decisions.yaml", "D-1", "related[0].to"),
         ("schema", ".mindstella/decisions.yaml", "D-2", "items[1].status"),
-        ("orphan_body", ".mindstella/docs/X-1.mark.md", None, None),
+        ("orphan_body", "docs/X-1.mark.md", None, None),
         ("missing_body", ".mindstella/research.yaml", "R-1", "items[0].body"),
     }
     assert [problem.file for problem in problems] == [
         ".mindstella/decisions.yaml",
         ".mindstella/decisions.yaml",
-        ".mindstella/docs/X-1.mark.md",
         ".mindstella/research.yaml",
+        "docs/X-1.mark.md",
     ]
 
 
@@ -154,8 +153,8 @@ def test_check_bodies(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
     """本文が無い項目と指されない本文を拾う（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("R-1", body="docs/R-1.mark.md"),
-        make_item("D-1", body="docs/D-1.mark.md"),
+        make_item("R-1", body="../docs/R-1.mark.md"),
+        make_item("D-1", body="../docs/D-1.mark.md"),
         bodies={"D-1.mark.md": "本文\n", "X-1.mark.md": "どこからも指されない本文\n"},
     )
     workspace = store.load_workspace(root)
@@ -164,7 +163,7 @@ def test_check_bodies(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
     # 検証
     assert _keys(problems) == {
         ("missing_body", "research.yaml", "R-1", "items[0].body"),
-        ("orphan_body", "docs/X-1.mark.md", None, None),
+        ("orphan_body", "../docs/X-1.mark.md", None, None),
     }
 
 
@@ -172,8 +171,8 @@ def test_check_bodies_when_html(make_workspace: MakeWorkspace, make_item: MakeIt
     """HTML の本文も本文のずれの対象にする（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="docs/A-1.html"),
-        make_item("A-2", body="docs/A-2.html"),
+        make_item("A-1", body="../docs/A-1.html"),
+        make_item("A-2", body="../docs/A-2.html"),
         bodies={"A-2.html": "<p>本文</p>\n", "A-9.html": "<p>どこからも指されない本文</p>\n"},
     )
     workspace = store.load_workspace(root)
@@ -182,7 +181,7 @@ def test_check_bodies_when_html(make_workspace: MakeWorkspace, make_item: MakeIt
     # 検証
     assert _keys(problems) == {
         ("missing_body", "docs.yaml", "A-1", "items[0].body"),
-        ("orphan_body", "docs/A-9.html", None, None),
+        ("orphan_body", "../docs/A-9.html", None, None),
     }
 
 
@@ -313,10 +312,10 @@ def test_check_history_when_body_rewritten(
     """手で書き換えた本文に当たらない変更履歴を拾う（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="docs/D-1.mark.md"), bodies={"D-1.mark.md": "元の 1 行目\n元の 2 行目\n"}
+        make_item("D-1", body="../docs/D-1.mark.md"), bodies={"D-1.mark.md": "元の 1 行目\n元の 2 行目\n"}
     )
     ai_update(root, "D-1", {"body_markdown": "新しい 1 行目\n新しい 2 行目\n"})
-    (root / RECORD_DIR / "docs" / "D-1.mark.md").write_text(
+    (root / "docs" / "D-1.mark.md").write_text(
         "手で書いた 1 行目\n手で書いた 2 行目\n", encoding="utf-8"
     )
     workspace = store.load_workspace(root)
@@ -491,7 +490,7 @@ def test_check_embedded_files(make_workspace: MakeWorkspace, make_item: MakeItem
     """無いファイルだけを拾う（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="docs/A-1.mark.md"),
+        make_item("A-1", body="../docs/A-1.mark.md"),
         bodies={
             "A-1.mark.md": (
                 "![a](../files/clip.mp4)\n\n"
@@ -500,7 +499,7 @@ def test_check_embedded_files(make_workspace: MakeWorkspace, make_item: MakeItem
             )
         },
     )
-    files = root / RECORD_DIR / "files"
+    files = root / "files"
     (files / "sub").mkdir(parents=True)
     (files / "clip.mp4").write_bytes(b"mp4")
     (files / "sub" / "x y.png").write_bytes(b"png")
@@ -511,7 +510,7 @@ def test_check_embedded_files(make_workspace: MakeWorkspace, make_item: MakeItem
     assert problems == [
         store.Problem(
             kind="missing_file",
-            file="docs/A-1.mark.md",
+            file="../docs/A-1.mark.md",
             id="A-1",
             key=None,
             detail="../files/missing.mp4",
@@ -525,8 +524,8 @@ def test_check_embedded_files_when_html_or_missing_body(
     """HTML の本文と無い本文は確かめない（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="docs/A-1.html"),
-        make_item("A-2", body="docs/A-2.mark.md"),
+        make_item("A-1", body="../docs/A-1.html"),
+        make_item("A-2", body="../docs/A-2.mark.md"),
         bodies={"A-1.html": '<img src="../files/missing.png">\n'},
     )
     workspace = store.load_workspace(root)

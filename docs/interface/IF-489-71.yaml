@@ -1429,7 +1429,7 @@ flows:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 本文を Markdown で持つ資料 A-1
-        notes: 本文に `![動画](../files/clip.mp4)`・`![画面](../files/shot.png)`・インラインコードの `![x](../files/x.png)` を持ち、`.mindstella/files/clip.mp4`・`.mindstella/files/shot.png` を配置する
+        notes: 本文に `![動画](../files/clip.mp4)`・`![画面](../files/shot.png)`・インラインコードの `![x](../files/x.png)` を持ち、直下の `files/clip.mp4`・`files/shot.png` を配置する
     flow: |-
       ```mermaid
       sequenceDiagram

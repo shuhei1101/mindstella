@@ -253,7 +253,7 @@ def test_normal(
     # 準備
     url = write_preview(
         make_item("D-1"),
-        make_item("D-3", status="要見直し", body="docs/D-3.mark.md"),
+        make_item("D-3", status="要見直し", body="../docs/D-3.mark.md"),
         bodies={"D-3.mark.md": BODY_WITH_DIAGRAM},
     )
     hash_text = "#tab=decisions&view=table&id=D-3"
@@ -376,7 +376,7 @@ def test_normal_when_exported_offline(
     """描画のライブラリを中に持つ配る書き出しは、通信が無くても本文・図・マップを描く（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-3", status="要見直し", body="docs/D-3.mark.md"), bodies={"D-3.mark.md": BODY_WITH_DIAGRAM}
+        make_item("D-3", status="要見直し", body="../docs/D-3.mark.md"), bodies={"D-3.mark.md": BODY_WITH_DIAGRAM}
     )
     out = tmp_path / "配る.html"
     result = call_tool("export", workspace=str(root), out=str(out))
@@ -478,7 +478,7 @@ def test_error_when_library_unavailable(
     """描画のライブラリの配信元に届かないと、使う箇所に読み込めなかったライブラリの名前を出す（異常系）。"""
     # 準備
     url = write_preview(
-        make_item("D-3", status="要見直し", body="docs/D-3.mark.md"), bodies={"D-3.mark.md": BODY_WITH_DIAGRAM}
+        make_item("D-3", status="要見直し", body="../docs/D-3.mark.md"), bodies={"D-3.mark.md": BODY_WITH_DIAGRAM}
     )
     page.route(LIBRARY_HOST_PATTERN, lambda route: route.abort())
     # 実行
@@ -1015,7 +1015,7 @@ def test_normal_when_html_body(
     """HTML の本文をスクリプトを動かさない枠に描き、本文の CSS を画面へ漏らさない（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("A-1", body="docs/A-1.html"),
+        make_item("A-1", body="../docs/A-1.html"),
         make_item("A-2"),
         bodies={"A-1.html": LEAKING_HTML_BODY, "A-2.mark.md": "資料の本文\n"},
     )
@@ -1052,7 +1052,7 @@ def test_normal_when_html_body_commented(
     """枠の中で選んだ文を元の HTML の行の範囲にして、箇所を添えたコメントを溜める（正常系）。"""
     # 準備
     url, root = write_review_preview(
-        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": COMMENT_HTML_BODY}
+        make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": COMMENT_HTML_BODY}
     )
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
@@ -1209,7 +1209,7 @@ def test_normal_when_html_body_line_edge_cases(
     """入れ子の複数行の開きタグの後・`<br>` の後・`<pre>` の中の文を選んでも、元の HTML の行にして箇所を添える（正常系）。"""
     # 準備
     url, root = write_review_preview(
-        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": LINE_EDGE_HTML_BODY}
+        make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": LINE_EDGE_HTML_BODY}
     )
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
@@ -1278,7 +1278,7 @@ def test_normal_when_html_body_link(
         ("blank", f'href="{link_target}/blank" target="_blank"', "別のタブを指すリンク"),
         ("mail", 'href="mailto:a@example.com"', "メールのリンク"),
     )
-    url = write_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": body})
+    url = write_preview(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": body})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     frame = frame_of(page, BODY_FRAME)
@@ -1342,7 +1342,7 @@ def test_normal_when_html_body_anchor_link(
         + '<h2 id="使い方">使い方の見出し</h2>\n'
         + spacer
     )
-    url = write_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": body})
+    url = write_preview(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": body})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     frame = frame_of(page, BODY_FRAME)
@@ -1380,7 +1380,7 @@ def test_normal_when_html_body_link_not_opened(
         ("script", 'href="javascript:parent.__mark=1"', "javascript のリンク"),
         ("data", 'href="data:text/html,x"', "data のリンク"),
     )
-    url = write_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": body})
+    url = write_preview(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": body})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     frame = frame_of(page, BODY_FRAME)
@@ -1408,7 +1408,7 @@ def test_normal_when_html_body_link_text_selected(
     """リンクの文をなぞって選んだ直後の押下では開かず、選んだ後にリンクにフォーカスして Enter を押すと開く（正常系）。"""
     # 準備
     body = f'<p>前の文 <a id="link" href="{link_target}/selected">リンクの文</a> 後の文</p>\n'
-    url, _ = write_review_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": body})
+    url, _ = write_review_preview(make_item("A-1", body="../docs/A-1.html"), bodies={"A-1.html": body})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     frame = frame_of(page, BODY_FRAME)

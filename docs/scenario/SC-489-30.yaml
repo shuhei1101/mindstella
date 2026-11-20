@@ -98,7 +98,7 @@ scenarios:
     expected:
       - '資料 A-1 が `kind: 図` と `related: [{to: D-1, type: see_also}]` を持つ'
       - 資料 A-1 が渡したエイリアス（`画面遷移`・`遷移図`）と説明を持つ
-      - '`.mindstella/docs/` に A-1 の本文の Markdown がある'
+      - '`docs/` に A-1 の本文の Markdown がある'
       - '`check` が YAML と Markdown のずれを 0 件で返す'
     test: test_normal_when_diagram_kept_as_doc
   - name: 正常シナリオ（脱線した質問）
@@ -123,7 +123,7 @@ scenarios:
     expected:
       - 用語集 G-1 が `meaning` を持つ
       - メモ N-1 がタグ `topic:脱線` を持つ
-      - メモ N-1 が本文を持ち、`.mindstella/docs/` にその Markdown がある
+      - メモ N-1 が本文を持ち、`docs/` にその Markdown がある
       - タスクが 0 件のままである
     test: test_normal_when_off_topic_question
   - name: 正常シナリオ（タスクの成果を資料にする）
@@ -151,7 +151,7 @@ scenarios:
       ```
     expected:
       - T-1 が完了で、`related` に A-1 を持つ
-      - '資料 A-1 が `deliverable` を持たず、`.mindstella/docs/` に本文がある'
+      - '資料 A-1 が `deliverable` を持たず、`docs/` に本文がある'
       - '`config.yaml` が呼ぶ前と同じである'
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_task_output_kept_as_doc
@@ -238,7 +238,7 @@ scenarios:
       ```
     expected:
       - '資料 A-1 が `kind: モック` と `related: [{to: D-1, type: see_also}]` を持ち、本文が HTML の形式である'
-      - '`.mindstella/docs/` に A-1 の本文の HTML がある'
+      - '`docs/` に A-1 の本文の HTML がある'
       - '`check` が YAML と本文のずれを 0 件で返す'
     test: test_normal_when_visual_doc_kept_as_html
   - name: 正常シナリオ（言い方の違うタグを使い回す）

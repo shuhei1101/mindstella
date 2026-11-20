@@ -32,7 +32,7 @@ scenarios:
     expected:
       - '`delete_docs` が N-2 を消した結果を返す'
       - '`.mindstella/notes.yaml` に N-2 が無く、N-1 は消す前のまま残る'
-      - '`.mindstella/docs/` に N-2 の本文の Markdown が無い'
+      - '`docs/` に N-2 の本文の Markdown が無い'
       - '`pending` が、消した項目として N-2 の ID・種類 `note`・消したときのタイトルを返す'
       - '`commit` の後、増えたまとまりが消した項目に N-2 を持ち、`pending` が空を返す'
       - 消した後に `next_id` が返すメモの ID が N-3 である

@@ -71,6 +71,7 @@ def _legacy_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> Pat
         make_item("R-1", angles=["費用", "運用"], confidence="中"),
         settings=LEGACY_SETTINGS,
         bodies={"D-1.md": "# 背景\n\n本文\n", "A-1.md": "資料の本文\n"},
+        legacy_bodies=True,
     )
 
 
@@ -111,7 +112,7 @@ def test_migrate_when_tag_exists(
     # 準備
     root = make_workspace(
         make_item("D-1", tags=[{"name": "topic:認証"}], target="認証"), settings=LEGACY_SETTINGS
-    )
+    , legacy_bodies=True)
     # 実行
     remove_discussion_keys.migrate(root)
     # 検証
@@ -158,6 +159,7 @@ def test_migrate_when_cell_has_special_chars(
         make_item(item_id, attrs=attrs, body=f"docs/{body_name}"),
         settings=LEGACY_SETTINGS,
         bodies={body_name: "本文\n"},
+        legacy_bodies=True,
     )
     # 実行
     remove_discussion_keys.migrate(root)

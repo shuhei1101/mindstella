@@ -20,6 +20,7 @@ from jsonschema import Draft202012Validator
 
 import migrator
 import store
+import errors
 from errors import (
     ConcurrentWriteError,
     ItemNotFoundError,
@@ -475,18 +476,18 @@ def test_save_change(make_workspace, make_item, snapshot_tree) -> None:
     # 準備
     root = make_workspace()
     workspace = store.load_workspace(root)
-    item = make_item("D-1", body="docs/D-1.mark.md")
+    item = make_item("D-1", body="../docs/D-1.mark.md")
     change = store.Change(
         kind="decision",
         items=[item],
-        body=store.BodyWrite(name="docs/D-1.mark.md", text="## 経緯\n"),
+        body=store.BodyWrite(name="../docs/D-1.mark.md", text="## 経緯\n"),
     )
     # 実行
     store.save_change(workspace, change)
     # 検証
     saved = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))
     assert saved == {"items": [item]}
-    assert (root / RECORD_DIR / "docs" / "D-1.mark.md").read_text(encoding="utf-8") == "## 経緯\n"
+    assert (root / "docs" / "D-1.mark.md").read_text(encoding="utf-8") == "## 経緯\n"
     assert list(root.rglob("*.tmp")) == []
 
 
@@ -498,8 +499,8 @@ def test_save_change_when_schema_mismatch(make_workspace, make_item, snapshot_tr
     before = snapshot_tree(root)
     change = store.Change(
         kind="decision",
-        items=[make_item("D-1", body="docs/D-1.mark.md", status="完了")],
-        body=store.BodyWrite(name="docs/D-1.mark.md", text="本文\n"),
+        items=[make_item("D-1", body="../docs/D-1.mark.md", status="完了")],
+        body=store.BodyWrite(name="../docs/D-1.mark.md", text="本文\n"),
     )
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as exc_info:
@@ -518,8 +519,8 @@ def test_save_change_when_temp_write_fails(
     before = snapshot_tree(root)
     change = store.Change(
         kind="decision",
-        items=[make_item("D-1", body="docs/D-1.mark.md")],
-        body=store.BodyWrite(name="docs/D-1.mark.md", text="本文\n"),
+        items=[make_item("D-1", body="../docs/D-1.mark.md")],
+        body=store.BodyWrite(name="../docs/D-1.mark.md", text="本文\n"),
     )
     # store モジュールの参照を、本文の一時ファイルだけ書けないものに差し替える
     monkeypatch.setattr(store, "_write_temp", _fail_body_temp(store._write_temp))
@@ -539,13 +540,13 @@ def test_save_change_when_yaml_replace_fails_with_previous_body(
 ) -> None:
     """YAML の置き換えに失敗したら前の本文に戻す（異常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", body="docs/D-1.mark.md"), bodies={"D-1.mark.md": "前の本文\n"})
+    root = make_workspace(make_item("D-1", body="../docs/D-1.mark.md"), bodies={"D-1.mark.md": "前の本文\n"})
     workspace = store.load_workspace(root)
     before = snapshot_tree(root)
     change = store.Change(
         kind="decision",
-        items=[make_item("D-1", body="docs/D-1.mark.md", answer="a")],
-        body=store.BodyWrite(name="docs/D-1.mark.md", text="新しい本文\n"),
+        items=[make_item("D-1", body="../docs/D-1.mark.md", answer="a")],
+        body=store.BodyWrite(name="../docs/D-1.mark.md", text="新しい本文\n"),
     )
     # store モジュールの参照を、decisions.yaml への置き換えだけ失敗するものに差し替える
     monkeypatch.setattr(store.os, "replace", failing_replace("decisions.yaml"))
@@ -570,15 +571,15 @@ def test_save_change_when_yaml_replace_fails_without_previous_body(
     before = snapshot_tree(root)
     change = store.Change(
         kind="decision",
-        items=[make_item("D-1", body="docs/D-1.mark.md")],
-        body=store.BodyWrite(name="docs/D-1.mark.md", text="新しい本文\n"),
+        items=[make_item("D-1", body="../docs/D-1.mark.md")],
+        body=store.BodyWrite(name="../docs/D-1.mark.md", text="新しい本文\n"),
     )
     # store モジュールの参照を、decisions.yaml への置き換えだけ失敗するものに差し替える
     monkeypatch.setattr(store.os, "replace", failing_replace("decisions.yaml"))
     # 実行・検証
     with pytest.raises(WriteFailedError):
         store.save_change(workspace, change)
-    assert not (root / RECORD_DIR / "docs" / "D-1.mark.md").exists()
+    assert not (root / "docs" / "D-1.mark.md").exists()
     assert snapshot_tree(root) == before
     assert list(root.rglob("*.tmp")) == []
 
@@ -592,13 +593,13 @@ def test_save_change_when_changes_replace_fails(
 ) -> None:
     """まとまりの置き換えに失敗したら項目と本文を戻す（異常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", body="docs/D-1.mark.md"), bodies={"D-1.mark.md": "前の本文\n"})
+    root = make_workspace(make_item("D-1", body="../docs/D-1.mark.md"), bodies={"D-1.mark.md": "前の本文\n"})
     workspace = store.load_workspace(root)
     before = snapshot_tree(root)
     change = store.Change(
         kind="decision",
-        items=[make_item("D-1", body="docs/D-1.mark.md", answer="a")],
-        body=store.BodyWrite(name="docs/D-1.mark.md", text="新しい本文\n"),
+        items=[make_item("D-1", body="../docs/D-1.mark.md", answer="a")],
+        body=store.BodyWrite(name="../docs/D-1.mark.md", text="新しい本文\n"),
         changes={"last_seq": 1, "sets": [], "pending": {"added": [], "changed": ["D-1"]}},
     )
     # store モジュールの参照を、changes.yaml への置き換えだけ失敗するものに差し替える
@@ -615,12 +616,12 @@ def test_save_batch(make_workspace, make_item) -> None:
     # 準備
     root = make_workspace()
     workspace = store.load_workspace(root)
-    decision = make_item("D-1", body="docs/D-1.mark.md")
+    decision = make_item("D-1", body="../docs/D-1.mark.md")
     task = make_item("T-1")
     changes = {"last_seq": 2, "sets": [], "pending": {"added": ["D-1", "T-1"], "changed": []}}
     change = store.BatchChange(
         items={"decision": [decision], "task": [task]},
-        bodies=[store.BodyWrite(name="docs/D-1.mark.md", text="## 経緯\n")],
+        bodies=[store.BodyWrite(name="../docs/D-1.mark.md", text="## 経緯\n")],
         changes=changes,
     )
     # 実行
@@ -631,7 +632,7 @@ def test_save_batch(make_workspace, make_item) -> None:
         "items": [decision]
     }
     assert yaml.safe_load((records / "tasks.yaml").read_text(encoding="utf-8")) == {"items": [task]}
-    assert (records / "docs" / "D-1.mark.md").read_text(encoding="utf-8") == "## 経緯\n"
+    assert (records.parent / "docs" / "D-1.mark.md").read_text(encoding="utf-8") == "## 経緯\n"
     assert yaml.safe_load((records / "changes.yaml").read_text(encoding="utf-8")) == changes
     assert list(root.rglob("*.tmp")) == []
 
@@ -710,7 +711,7 @@ def test_save_batch_when_replace_fails(
     """途中の置き換えに失敗したら、置き換えたファイルを戻す（異常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="docs/D-1.mark.md"),
+        make_item("D-1", body="../docs/D-1.mark.md"),
         make_item("T-1"),
         bodies={"D-1.mark.md": "前の本文\n"},
     )
@@ -718,10 +719,10 @@ def test_save_batch_when_replace_fails(
     before = snapshot_tree(root)
     change = store.BatchChange(
         items={
-            "decision": [make_item("D-1", body="docs/D-1.mark.md", answer="a")],
+            "decision": [make_item("D-1", body="../docs/D-1.mark.md", answer="a")],
             "task": [make_item("T-1", result="r")],
         },
-        bodies=[store.BodyWrite(name="docs/D-1.mark.md", text="新しい本文\n")],
+        bodies=[store.BodyWrite(name="../docs/D-1.mark.md", text="新しい本文\n")],
     )
     # store モジュールの参照を、tasks.yaml への置き換えだけ失敗するものに差し替える
     monkeypatch.setattr(store.os, "replace", failing_replace("tasks.yaml"))
@@ -737,11 +738,11 @@ def test_save_batch_removes_bodies(make_workspace, make_item) -> None:
     # 準備
     root = make_workspace(
         make_item("N-1"),
-        make_item("N-2", body="docs/N-2.mark.md"),
+        make_item("N-2", body="../docs/N-2.mark.md"),
         bodies={"N-2.mark.md": "消す本文\n"},
     )
     workspace = store.load_workspace(root)
-    change = store.BatchChange(items={"note": [make_item("N-1")]}, removed_bodies=["docs/N-2.mark.md"])
+    change = store.BatchChange(items={"note": [make_item("N-1")]}, removed_bodies=["../docs/N-2.mark.md"])
     # 実行
     store.save_batch(workspace, change)
     # 検証
@@ -749,7 +750,7 @@ def test_save_batch_removes_bodies(make_workspace, make_item) -> None:
     assert yaml.safe_load((records / "notes.yaml").read_text(encoding="utf-8")) == {
         "items": [make_item("N-1")]
     }
-    assert not (records / "docs" / "N-2.mark.md").exists()
+    assert not (records.parent / "docs" / "N-2.mark.md").exists()
 
 
 def test_save_batch_when_body_removal_fails(
@@ -760,7 +761,7 @@ def test_save_batch_when_body_removal_fails(
     changes = {"last_seq": 2, "sets": [], "pending": {"added": [], "changed": []}}
     root = make_workspace(
         make_item("N-1"),
-        make_item("N-2", body="docs/N-2.mark.md"),
+        make_item("N-2", body="../docs/N-2.mark.md"),
         bodies={"N-2.mark.md": "消す本文\n"},
         raw_files={"changes.yaml": yaml.safe_dump(changes, sort_keys=False)},
     )
@@ -774,7 +775,7 @@ def test_save_batch_when_body_removal_fails(
             "sets": [],
             "pending": {"added": [], "changed": [], "removed": [removed]},
         },
-        removed_bodies=["docs/N-2.mark.md"],
+        removed_bodies=["../docs/N-2.mark.md"],
     )
     failing_unlink("N-2.mark.md")
     # 実行・検証
@@ -866,13 +867,15 @@ def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> Non
         ".mindstella/mindstella-version.ini",
         ".mindstella/dev-docs.yaml",
         ".mindstella/schemas/",
-        ".mindstella/docs/",
+        "docs/",
     }
     records = root / RECORD_DIR
     assert yaml.safe_load((records / "config.yaml").read_text(encoding="utf-8")) == valid_settings
     assert (records / "mindstella-version.ini").read_text(encoding="utf-8") == "v0.3.0\n"
-    # 直下には記録のフォルダと、自動で書いた印で始まる README だけが並ぶ
-    assert sorted(path.name for path in root.iterdir()) == [".mindstella", "README.md"]
+    # 直下には記録のフォルダと空の本文のフォルダと、自動で書いた印で始まる README だけが並ぶ
+    assert sorted(path.name for path in root.iterdir()) == [".mindstella", "README.md", "docs"]
+    assert list((root / "docs").iterdir()) == []
+    assert not (records / "docs").exists()
     first_line = (root / "README.md").read_text(encoding="utf-8").splitlines()[0]
     assert first_line == "<!-- mindstella:readme -->"
 
@@ -915,6 +918,34 @@ def test_create_workspace_when_exists(
     assert sorted(path.name for path in root.iterdir()) == entries_before
     # 直下の前の版の設定ファイルには、移し替えの案内を続ける
     assert (store.UPGRADE_HINT.replace("{root}", str(root)) in exc_info.value.lines) is expects_hint
+
+
+@pytest.mark.parametrize(
+    ("folder", "file_name"),
+    [
+        pytest.param("docs", "memo.md", id="docs"),
+        pytest.param("files", "memo.png", id="files"),
+    ],
+)
+def test_create_workspace_when_root_folder_exists(
+    tmp_path: Path,
+    snapshot_tree: SnapshotTree,
+    valid_settings: dict[str, Any],
+    folder: str,
+    file_name: str,
+) -> None:
+    """直下に利用者の docs/ か files/ があるフォルダには作らない（異常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    (root / folder).mkdir(parents=True)
+    (root / folder / file_name).write_text("利用者のファイル\n", encoding="utf-8")
+    before = snapshot_tree(root)
+    # 実行・検証
+    with pytest.raises(errors.RootFolderExistsError, match=rf"{folder}/"):
+        store.create_workspace(root, valid_settings, version="v0.3.0")
+    assert snapshot_tree(root) == before
+    assert not (root / RECORD_DIR).exists()
+    assert not (root / "README.md").exists()
 
 
 def test_create_workspace_when_settings_invalid(
@@ -979,7 +1010,7 @@ def test_read_body(make_workspace) -> None:
     # 準備
     workspace = store.load_workspace(make_workspace(bodies={"D-1.mark.md": "本文\n"}))
     # 実行
-    text = store.read_body(workspace, "docs/D-1.mark.md")
+    text = store.read_body(workspace, "../docs/D-1.mark.md")
     # 検証
     assert text == "本文\n"
 
@@ -989,7 +1020,7 @@ def test_read_body_when_missing(make_workspace) -> None:
     # 準備
     workspace = store.load_workspace(make_workspace())
     # 実行
-    text = store.read_body(workspace, "docs/D-9.mark.md")
+    text = store.read_body(workspace, "../docs/D-9.mark.md")
     # 検証
     assert text is None
 
@@ -998,13 +1029,17 @@ def test_read_body_when_missing(make_workspace) -> None:
     "name",
     [
         pytest.param("config.yaml", id="records_dir"),
-        pytest.param("docs/../config.yaml", id="parent"),
+        pytest.param("../docs/../.mindstella/config.yaml", id="parent"),
+        pytest.param("docs/D-1.mark.md", id="records_docs"),
     ],
 )
 def test_read_body_when_outside(make_workspace, name: str) -> None:
-    """docs/ の外を指す名前は読まない（正常系）。"""
+    """直下の docs/ の外を指す名前は読まない（正常系）。"""
     # 準備
-    workspace = store.load_workspace(make_workspace())
+    root = make_workspace()
+    (root / RECORD_DIR / "docs").mkdir()
+    (root / RECORD_DIR / "docs" / "D-1.mark.md").write_text("記録のフォルダの本文\n", encoding="utf-8")
+    workspace = store.load_workspace(root)
     # 実行
     text = store.read_body(workspace, name)
     # 検証
@@ -1470,7 +1505,7 @@ def test_validate_workspace_when_aliases(
     """資料・調査の `aliases`・`description` を受け、空の語を拾う（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="docs/A-1.mark.md", **docs_extra), make_item("R-1", **research_extra)
+        make_item("A-1", body="../docs/A-1.mark.md", **docs_extra), make_item("R-1", **research_extra)
     )
     workspace = store.load_workspace(root)
     # 実行
@@ -1689,7 +1724,8 @@ def test_build_source_config() -> None:
     # 検証
     assert len(config["documents"]) == 7
     decisions = next(row for row in config["documents"] if row["id"] == "decisions")
-    assert decisions["paths"] == ["decisions.yaml"]
+    assert config["paths_base"] == ".."
+    assert decisions["paths"] == [".mindstella/decisions.yaml"]
     assert decisions["records"] == "items"
     assert decisions["body_file"] == "body"
     assert decisions["write_dates"] is False

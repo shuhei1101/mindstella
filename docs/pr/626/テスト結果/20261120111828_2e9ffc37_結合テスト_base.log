@@ -1,0 +1,775 @@
+$ cd /home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check
+$ python -m pytest tests/integration/server/test_launch.py tests/integration/server/test_create_workspace.py::test_error_when_folder_not_allowed tests/integration/server/test_create_workspace.py::test_error_when_host_not_local tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart tests/integration/preview/test_detail_panel_screen.py::test_fit_smallest tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html -q -n 6 -rfE -p no:cacheprovider --basetemp=/tmp/pt626r
+
+bringing up nodes...
+bringing up nodes...
+
+...FFF.FFFFFFFFFFFFFFFF                                                  [100%]
+=================================== FAILURES ===================================
+________________________ test_normal_when_server_status ________________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw2/test_normal_when_server_status0'), tools_dir=P...normal_when_server_status0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw2/test_normal_when_server_status0/state'))
+
+    def test_normal_when_server_status(world: LaunchWorld) -> None:
+        """server status で常駐サーバーの状態を出す（正常系）。"""
+        # 準備
+>       assert world.launch(FOLDER).returncode == 0
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw2/test_normal_when_server_status0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
+E        +    where CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw2/test_normal_when_server_status0/venv/bin/python" -m pip install "mcp>=2.3.0"\n') = launch('allowed/家計簿アプリ')
+E        +      where launch = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw2/test_normal_when_server_status0'), tools_dir=P...normal_when_server_status0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw2/test_normal_when_server_status0/state')).launch
+
+tests/integration/server/test_launch.py:273: AssertionError
+_______________________ test_normal_when_session_exists ________________________
+[gw0] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw0/test_normal_when_session_exist0'), tools_dir=P...normal_when_session_exist0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw0/test_normal_when_session_exist0/state'))
+
+    def test_normal_when_session_exists(world: LaunchWorld) -> None:
+        """同じフォルダの MindStella のセッションが動いていれば、立てずにそのペインへつなぐ（正常系）。"""
+        # 準備
+        first = world.launch(FOLDER)
+>       assert first.returncode == 0, first.stderr
+E       AssertionError: [mindstella] エラー: 依存が足りません
+E         ライブラリが足りません: mcp（2.3.0 以上）
+E         "/tmp/pt626r/popen-gw0/test_normal_when_session_exist0/venv/bin/python" -m pip install "mcp>=2.3.0"
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw0/test_normal_when_session_exist0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
+
+tests/integration/server/test_launch.py:212: AssertionError
+_________________________________ test_normal __________________________________
+[gw1] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw1/test_normal0'), tools_dir=PosixPath('/tmp/pt62...PosixPath('/tmp/pt626r/popen-gw1/test_normal0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw1/test_normal0/state'))
+
+    def test_normal(world: LaunchWorld) -> None:
+        """常駐サーバーが落ちていれば起動し、ワークスペースと MindStella のセッションを作ってつなぐコマンドを出す（正常系）。"""
+        # 準備
+        config_dir = world.sandbox.root / ".claude-sub2"
+        config_dir.mkdir()
+        # 実行
+        result = world.launch(FOLDER, extra_env={"CLAUDE_CONFIG_DIR": str(config_dir)})
+        # 検証
+>       assert result.returncode == 0, result.stderr
+E       AssertionError: [mindstella] エラー: 依存が足りません
+E         ライブラリが足りません: mcp（2.3.0 以上）
+E         "/tmp/pt626r/popen-gw1/test_normal0/venv/bin/python" -m pip install "mcp>=2.3.0"
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds...足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw1/test_normal0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
+
+tests/integration/server/test_launch.py:177: AssertionError
+_______________________ test_normal_when_server_restart ________________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw2/test_normal_when_server_restar0'), tools_dir=P...normal_when_server_restar0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw2/test_normal_when_server_restar0/state'))
+
+    def test_normal_when_server_restart(world: LaunchWorld) -> None:
+        """server restart でユニットを書き直して起動し直し、server stop で止める（正常系）。"""
+        # 準備
+>       assert world.launch(FOLDER).returncode == 0
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw2/test_normal_when_server_restar0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
+E        +    where CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw2/test_normal_when_server_restar0/venv/bin/python" -m pip install "mcp>=2.3.0"\n') = launch('allowed/家計簿アプリ')
+E        +      where launch = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw2/test_normal_when_server_restar0'), tools_dir=P...normal_when_server_restar0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw2/test_normal_when_server_restar0/state')).launch
+
+tests/integration/server/test_launch.py:289: AssertionError
+________________________ test_normal_when_options_given ________________________
+[gw0] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw0/test_normal_when_options_given0'), tools_dir=P...normal_when_options_given0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw0/test_normal_when_options_given0/state'))
+
+    def test_normal_when_options_given(world: LaunchWorld) -> None:
+        """進め方の文書・追加の MCP・プラグインを『ワークスペースの作成』へ渡す（正常系）。"""
+        # 準備
+        root = world.sandbox.root
+        world.pi.rows["aituber"] = {
+            "id": "aituber",
+            "config": ["/repo/aituber/project-index.yaml"],
+            "scope": {"read": [f"{root / ALLOWED}/**"]},
+            "outsideRead": True,
+        }
+        world.pi.docs["aituber"] = [{"id": "flow-1", "path": "docs/flow-1.yaml"}]
+        mcp_config = {"mcpServers": {"aituber": {"command": "aituber-mcp"}}}
+        (root / "mcp.json").write_text(json.dumps(mcp_config), encoding="utf-8")
+        plugins = []
+        for name in ("p1", "p2"):
+            (root / name / ".claude-plugin").mkdir(parents=True)
+            (root / name / ".claude-plugin" / "plugin.json").write_text(
+                '{"name": "x"}', encoding="utf-8"
+            )
+            plugins.append(str(root / name))
+        # 実行
+        result = world.launch(
+            FOLDER,
+            "--flow",
+            "aituber#flow-1",
+            "--mcp-config",
+            "mcp.json",
+            "--plugin-dir",
+            "p1",
+            "--plugin-dir",
+            "p2",
+        )
+        # 検証
+>       assert result.returncode == 0, result.stderr
+E       AssertionError: [mindstella] エラー: 依存が足りません
+E         ライブラリが足りません: mcp（2.3.0 以上）
+E         "/tmp/pt626r/popen-gw0/test_normal_when_options_given0/venv/bin/python" -m pip install "mcp>=2.3.0"
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw0/test_normal_when_options_given0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
+
+tests/integration/server/test_launch.py:256: AssertionError
+_____________________ test_error_when_plugin_not_installed _____________________
+[gw4] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw4/test_error_when_plugin_not_ins0'), tools_dir=P...error_when_plugin_not_ins0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw4/test_error_when_plugin_not_ins0/state'))
+
+    def test_error_when_plugin_not_installed(world: LaunchWorld) -> None:
+        """プラグインがインストールされていなければ、インストールの案内を出して 1（異常系）。"""
+        # 準備
+        world.write_claude([])
+        # 実行
+        result = world.launch(FOLDER)
+        # 検証
+        assert result.returncode == 1
+>       assert "mindstella@mindstella" in result.stderr
+E       assert 'mindstella@mindstella' in '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw4/test_error_when_plugin_not_ins0/venv/bin/python" -m pip install "mcp>=2.3.0"\n'
+E        +  where '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw4/test_error_when_plugin_not_ins0/venv/bin/python" -m pip install "mcp>=2.3.0"\n' = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw4/test_error_when_plugin_not_ins0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').stderr
+
+tests/integration/server/test_launch.py:353: AssertionError
+______________________ test_normal_when_external_settings ______________________
+[gw5] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw5/test_normal_when_external_sett0'), tools_dir=P...normal_when_external_sett0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw5/test_normal_when_external_sett0/state'))
+
+    def test_normal_when_external_settings(world: LaunchWorld) -> None:
+        """外から見る設定は常駐サーバーへ渡し、MindStella のセッションの claude には足さない（正常系）。"""
+        # 実行
+        result = world.launch(FOLDER, extra_env={ALLOWED_HOSTS_ENV: ALLOWED_HOST})
+        # 検証
+>       assert result.returncode == 0, result.stderr
+E       AssertionError: [mindstella] エラー: 依存が足りません
+E         ライブラリが足りません: mcp（2.3.0 以上）
+E         "/tmp/pt626r/popen-gw5/test_normal_when_external_sett0/venv/bin/python" -m pip install "mcp>=2.3.0"
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw5/test_normal_when_external_sett0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
+
+tests/integration/server/test_launch.py:373: AssertionError
+_______________________ test_normal_when_plugin_upgraded _______________________
+[gw1] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw1/test_normal_when_plugin_upgrad0'), tools_dir=P...normal_when_plugin_upgrad0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw1/test_normal_when_plugin_upgrad0/state'))
+tmp_path = PosixPath('/tmp/pt626r/popen-gw1/test_normal_when_plugin_upgrad0')
+
+    def test_normal_when_plugin_upgraded(world: LaunchWorld, tmp_path: Path) -> None:
+        """古い版の起動のコマンドを叩いても、インストールした今の版の常駐サーバーを起動する（正常系）。"""
+        # 準備
+        old_dir = copy_plugin(tmp_path / "plugin-old")
+        new_dir = copy_plugin(tmp_path / "plugin-new")
+        world.write_claude([{"id": "mindstella@mindstella", "installPath": str(new_dir)}])
+        # 実行
+        result = world.launch(FOLDER, script=old_dir / "bin" / "mindstella")
+        # 検証
+>       assert result.returncode == 0, result.stderr
+E       AssertionError: [mindstella] エラー: 依存が足りません
+E         ライブラリが足りません: mcp（2.3.0 以上）
+E         "/tmp/pt626r/popen-gw1/test_normal_when_plugin_upgrad0/venv/bin/python" -m pip install "mcp>=2.3.0"
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/tmp/pt626r/popen-gw1/test_normal_when_plugin_upgrad0/plugin-old/bin/mindstella', 'allowed/家計簿... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw1/test_normal_when_plugin_upgrad0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
+
+tests/integration/server/test_launch.py:202: AssertionError
+_______________________ test_normal_when_another_account _______________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw2/test_normal_when_another_accou0'), tools_dir=P...normal_when_another_accou0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw2/test_normal_when_another_accou0/state'))
+
+    def test_normal_when_another_account(world: LaunchWorld) -> None:
+        """claude-balancer が無ければ、CLAUDE_CONFIG_DIR のアカウントで MindStella のセッションを起動する（正常系）。"""
+        # 準備
+        world.sandbox.remove_tool("claude-balancer")
+        config_dir = world.sandbox.root / ".claude-sub1"
+        config_dir.mkdir()
+        # 実行
+        result = world.launch(FOLDER, extra_env={"CLAUDE_CONFIG_DIR": str(config_dir)})
+        # 検証
+>       assert result.returncode == 0, result.stderr
+E       AssertionError: [mindstella] エラー: 依存が足りません
+E         ライブラリが足りません: mcp（2.3.0 以上）
+E         "/tmp/pt626r/popen-gw2/test_normal_when_another_accou0/venv/bin/python" -m pip install "mcp>=2.3.0"
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw2/test_normal_when_another_accou0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
+
+tests/integration/server/test_launch.py:478: AssertionError
+______________________ test_error_when_server_start_fails ______________________
+[gw4] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw4/test_error_when_server_start_f0'), tools_dir=P...error_when_server_start_f0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw4/test_error_when_server_start_f0/state'))
+serve_fake_status = <function serve_fake_status.<locals>._serve at 0x7d0bf4acd260>
+
+    def test_error_when_server_start_fails(
+        world: LaunchWorld, serve_fake_status: ServeFakeStatus
+    ) -> None:
+        """ポートを別のプロセスが使っていれば、起動せずに案内を出して 1（異常系）。"""
+        # 準備
+        serve_fake_status(world.sandbox.port, 404, None)
+        # 実行
+        result = world.launch(FOLDER)
+        # 検証
+        assert result.returncode == 1
+>       assert str(world.sandbox.port) in result.stderr
+E       assert '22002' in '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw4/test_error_when_server_start_f0/venv/bin/python" -m pip install "mcp>=2.3.0"\n'
+E        +  where '22002' = str(22002)
+E        +    where 22002 = LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw4/test_error_when_server_start_f0'), tools_dir=PosixPath('/tmp/pt626...='mindstella-test-46544-mstns158kxi', tmux_tmpdir=PosixPath('/tmp/mstns158kxi'), real_tmux='/usr/bin/tmux', port=22002).port
+E        +      where LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw4/test_error_when_server_start_f0'), tools_dir=PosixPath('/tmp/pt626...='mindstella-test-46544-mstns158kxi', tmux_tmpdir=PosixPath('/tmp/mstns158kxi'), real_tmux='/usr/bin/tmux', port=22002) = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw4/test_error_when_server_start_f0'), tools_dir=P...error_when_server_start_f0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw4/test_error_when_server_start_f0/state')).sandbox
+E        +  and   '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw4/test_error_when_server_start_f0/venv/bin/python" -m pip install "mcp>=2.3.0"\n' = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw4/test_error_when_server_start_f0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').stderr
+
+tests/integration/server/test_launch.py:462: AssertionError
+______________________ test_error_when_workspace_rejected ______________________
+[gw0] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw0/test_error_when_workspace_reje0'), tools_dir=P...error_when_workspace_reje0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw0/test_error_when_workspace_reje0/state'))
+
+    def test_error_when_workspace_rejected(world: LaunchWorld) -> None:
+        """ワークスペースを作れなければ、detail を出して 1 を返し、MindStella のセッションを作らない（異常系）。"""
+        # 実行
+        result = world.launch("outside/家計簿アプリ")
+        # 検証
+        assert result.returncode == 1
+>       assert "許可するフォルダの外です" in result.stderr
+E       assert '許可するフォルダの外です' in '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw0/test_error_when_workspace_reje0/venv/bin/python" -m pip install "mcp>=2.3.0"\n'
+E        +  where '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw0/test_error_when_workspace_reje0/venv/bin/python" -m pip install "mcp>=2.3.0"\n' = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw0/test_error_when_workspace_reje0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').stderr
+
+tests/integration/server/test_launch.py:488: AssertionError
+_____________________ test_error_when_session_not_created ______________________
+[gw1] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw1/test_error_when_session_not_cr0'), tools_dir=P...error_when_session_not_cr0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw1/test_error_when_session_not_cr0/state'))
+
+    def test_error_when_session_not_created(world: LaunchWorld) -> None:
+        """MindStella のセッションを作れなければ、detail と画面の URL を出して 1（異常系）。"""
+        # 準備
+        (world.sandbox.record_dir / "claude-balancer-exit").write_text("125", encoding="utf-8")
+        # 実行
+        result = world.launch(FOLDER)
+        # 検証
+        assert result.returncode == 1
+>       assert "借りられるアカウントがありません" in result.stderr
+E       assert '借りられるアカウントがありません' in '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw1/test_error_when_session_not_cr0/venv/bin/python" -m pip install "mcp>=2.3.0"\n'
+E        +  where '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw1/test_error_when_session_not_cr0/venv/bin/python" -m pip install "mcp>=2.3.0"\n' = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw1/test_error_when_session_not_cr0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').stderr
+
+tests/integration/server/test_launch.py:501: AssertionError
+_______________________ test_normal_when_server_outdated _______________________
+[gw3] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+world = LaunchWorld(sandbox=LaunchSandbox(root=PosixPath('/tmp/pt626r/popen-gw3/test_normal_when_server_outdat0'), tools_dir=P...normal_when_server_outdat0/venv'), state_home=PosixPath('/tmp/pt626r/popen-gw3/test_normal_when_server_outdat0/state'))
+
+    def test_normal_when_server_outdated(world: LaunchWorld) -> None:
+        """古いコードの常駐サーバーが待ち受けていれば、起動し直さずに違いと手順を出し、作成へ進む（正常系）。"""
+        # 準備
+        outdated = _OutdatedServer(world.sandbox.port)
+        try:
+            # 実行
+            result = world.launch(FOLDER)
+            # 検証
+>           assert result.returncode == 0, result.stderr
+E           AssertionError: [mindstella] エラー: 依存が足りません
+E             ライブラリが足りません: mcp（2.3.0 以上）
+E             "/tmp/pt626r/popen-gw3/test_normal_when_server_outdat0/venv/bin/python" -m pip install "mcp>=2.3.0"
+E             
+E           assert 1 == 0
+E            +  where 1 = CompletedProcess(args=['/home/shuhei2441/repo/mindstella/.claude/worktrees/base-626-check/plugins/mindstella/bin/minds... mcp（2.3.0 以上）\n"/tmp/pt626r/popen-gw3/test_normal_when_server_outdat0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
+
+tests/integration/server/test_launch.py:442: AssertionError
+______________________ test_error_when_folder_not_allowed ______________________
+[gw5] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+session_world = SessionWorld(root=PosixPath('/tmp/pt626r/popen-gw5/test_error_when_folder_not_all0'), allowed=PosixPath('/tmp/pt626r/p...eProjectIndex object at 0x70a71d6c6180>, servers=[<workspace_fixtures.McpServer object at 0x70a71d6adee0>], port=22502)
+
+    def test_error_when_folder_not_allowed(session_world: SessionWorld) -> None:
+        """許可するフォルダの外は 403 を返し、何も書かない（異常系）。"""
+        # 準備
+        world = session_world
+        world.start()
+        folder = world.root / "outside" / "家計簿"
+        # 実行
+        status, body = world.api("POST", "/workspaces", {"folder": str(folder)})
+        # 検証
+        assert (status, body["stage"]) == (403, "folder"), body
+        assert not (folder / ".mindstella").exists()
+>       assert not world.state_root.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/pt626r/popen-gw5/test_error_when_folder_not_all0/state/mindstella').exists
+E        +      where PosixPath('/tmp/pt626r/popen-gw5/test_error_when_folder_not_all0/state/mindstella') = SessionWorld(root=PosixPath('/tmp/pt626r/popen-gw5/test_error_when_folder_not_all0'), allowed=PosixPath('/tmp/pt626r/p...eProjectIndex object at 0x70a71d6c6180>, servers=[<workspace_fixtures.McpServer object at 0x70a71d6adee0>], port=22502).state_root
+
+tests/integration/server/test_create_workspace.py:251: AssertionError
+________________________ test_error_when_host_not_local ________________________
+[gw3] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+self = SessionWorld(root=PosixPath('/tmp/pt626r/popen-gw3/test_error_when_host_not_local0'), allowed=PosixPath('/tmp/pt626r/p...eProjectIndex object at 0x79e240cd4830>, servers=[<workspace_fixtures.McpServer object at 0x79e2403082f0>], port=21503)
+method = 'POST', path = '/workspaces'
+body = {'folder': '/tmp/pt626r/popen-gw3/test_error_when_host_not_local0/allowed/家計簿'}
+host = 'example.test', origin = None
+
+    def api(
+        self,
+        method: str,
+        path: str,
+        body: Any = None,
+        *,
+        host: str | None = None,
+        origin: str | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        """MindStella の API を呼び、ステータスと JSON の本文を返す。"""
+        headers = {"Content-Type": "application/json", "Host": host or f"127.0.0.1:{self.port}"}
+        if origin is not None:
+            headers["Origin"] = origin
+        request = urllib.request.Request(
+            f"http://{LISTEN_HOST}:{self.port}{urllib.parse.quote(path, safe='/?=&')}",
+            data=None if body is None else json.dumps(body).encode("utf-8"),
+            method=method,
+            headers=headers,
+        )
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+>           with opener.open(request, timeout=HTTP_TIMEOUT_SEC) as response:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/session_fixtures.py:406: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/urllib/request.py:521: in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/urllib/request.py:630: in http_response
+    response = self.parent.error(
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/urllib/request.py:559: in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/urllib/request.py:492: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPDefaultErrorHandler object at 0x79e240309ca0>
+req = <urllib.request.Request object at 0x79e24025cad0>
+fp = <http.client.HTTPResponse object at 0x79e240308520>, code = 403
+msg = 'Forbidden', hdrs = <http.client.HTTPMessage object at 0x79e2403d7ce0>
+
+    def http_error_default(self, req, fp, code, msg, hdrs):
+>       raise HTTPError(req.full_url, code, msg, hdrs, fp)
+E       urllib.error.HTTPError: HTTP Error 403: Forbidden
+
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/urllib/request.py:639: HTTPError
+
+During handling of the above exception, another exception occurred:
+
+session_world = SessionWorld(root=PosixPath('/tmp/pt626r/popen-gw3/test_error_when_host_not_local0'), allowed=PosixPath('/tmp/pt626r/p...eProjectIndex object at 0x79e240cd4830>, servers=[<workspace_fixtures.McpServer object at 0x79e2403082f0>], port=21503)
+
+    def test_error_when_host_not_local(session_world: SessionWorld) -> None:
+        """Host が端末の中の値でなければ 403（異常系）。"""
+        # 準備
+        world = session_world
+        world.start({"MINDSTELLA_ALLOWED_HOSTS": "example.test"})
+        # 実行
+>       status, body = world.api(
+            "POST", "/workspaces", {"folder": str(world.folder())}, host="example.test"
+        )
+
+tests/integration/server/test_create_workspace.py:301: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/session_fixtures.py:409: in api
+    return error.code, json.loads(error.read() or b"{}")
+                                  ^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/tempfile.py:499: in func_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/http/client.py:500: in read
+    s = self._safe_read(self.length)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/http/client.py:648: in _safe_read
+    data = self.fp.read(cursize)
+           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <socket.SocketIO object at 0x79e2403c7970>
+b = <memory at 0x79e240970c40>
+
+    def readinto(self, b):
+        """Read up to len(b) bytes into the writable buffer *b* and return
+        the number of bytes read.  If the socket is non-blocking and no bytes
+        are available, None is returned.
+    
+        If *b* is non-empty, a 0 return value indicates that the connection
+        was shutdown at the other end.
+        """
+        self._checkClosed()
+        self._checkReadable()
+        if self._timeout_occurred:
+            raise OSError("cannot read from timed out object")
+        while True:
+            try:
+>               return self._sock.recv_into(b)
+                       ^^^^^^^^^^^^^^^^^^^^^^^
+E               ConnectionResetError: [Errno 104] Connection reset by peer
+
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/socket.py:720: ConnectionResetError
+_________________________ test_fit_smallest[chromium] __________________________
+[gw0] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+write_sample_preview = <function write_sample_preview.<locals>._write at 0x7582e29f02c0>
+open_preview = <function open_preview.<locals>._open at 0x7582e29f18a0>
+
+    def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+        """詳細パネルは、幅 320px で横にスクロールせず、本文の表・図・コードブロックのほかにあふれる区画が無く、閉じる・全画面のボタンが表示幅の中にある（正常系）。"""
+        # 準備
+        url = write_sample_preview()
+        page = open_preview(url, "#tab=decisions&view=table&id=D-3")
+        page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+        # 実行
+        set_smallest(page)
+        # 検証
+>       assert_fits_smallest(page, ("aside.panel", 'aside.panel button[data-act="close"]', 'aside.panel button[data-act="full"]'), scope="aside.panel")
+
+tests/integration/preview/test_detail_panel_screen.py:5075: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+page = <Page url='http://127.0.0.1:46295/mindstella.html#tab=decisions&view=table&id=D-3'>
+controls = ('aside.panel', 'aside.panel button[data-act="close"]', 'aside.panel button[data-act="full"]')
+scope = 'aside.panel'
+
+    def assert_fits_smallest(page: Page, controls: tuple[str, ...] = (), scope: str = "body") -> None:
+        """ページが横にスクロールせず、`scope` の中の区画がはみ出さず、操作の要素が表示幅の中にあることを確かめる。"""
+        report = fit_report(page, controls, scope)
+        assert report["pageOverflow"] == 0, f"ページが横に {report['pageOverflow']}px あふれる"
+        assert report["overflowing"] == [], f"横にあふれる区画: {report['overflowing']}"
+>       assert report["outside"] == [], f"表示幅の外にある操作: {report['outside']}"
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: 表示幅の外にある操作: ['aside.panel button[data-act="full"]: 表示幅の外']
+
+tests/integration/preview/preview_fit_helpers.py:117: AssertionError
+________________________ test_embedded_chart[chromium] _________________________
+[gw2] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+write_preview = <function write_preview.<locals>._write at 0x73b3f10139c0>
+open_preview = <function open_preview.<locals>._open at 0x73b3f1013f60>
+make_item = <function make_item.<locals>._make at 0x73b3f10656c0>
+
+    def test_embedded_chart(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+    ) -> None:
+        """チャートは拡大・縮小のボタンとキーで倍率を変え、拡大した後はドラッグで位置を変える。図の拡大の画面は開かず、履歴に積まない（正常系）。"""
+        # 準備
+        page = _open_embedded(write_preview, open_preview, make_item)
+        chart = page.locator(CHART).first
+        history_length = page.evaluate("history.length")
+    
+        def _fit() -> int:
+            """チャートの倍率（%）を返す。"""
+            return int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    
+        initial = _fit()
+        # 検証（全体が収まる倍率では、縮小は押せず、動かすボタンは隠れている）
+>       expect(chart.locator('button[data-tool="out"]')).to_be_disabled()
+E       AssertionError: Locator expected to be disabled
+E       Actual value: enabled 
+E       Call log:
+E         - Expect "to_be_disabled" with timeout 5000ms
+E         - waiting for locator("aside.panel .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"out\"]")
+E           14 × locator resolved to <button type="button" data-tool="out" aria-label="縮小" class="mdmark-diagram-tool">…</button>
+E              - unexpected value "enabled"
+E       
+E       Aria snapshot:
+E       - banner:
+E         - text: mindstella 要件出しのスキル mindmap を設計する
+E         - button "すべての項目を検索": Ctrl+K
+E         - button "変更履歴"
+E         - button "表示の設定"
+E         - button "絞り込み"
+E         - button "コメント（レビュー中 0 件）": "0"
+E         - button "ダークに切り替え"
+E       - navigation "項目の種類":
+E         - link "概要":
+E           - /url: "#"
+E         - link "検討事項 0":
+E           - /url: "#tab=decisions"
+E         - link "タスク 0":
+E           - /url: "#tab=tasks"
+E         - link "調査 0":
+E           - /url: "#tab=research"
+E         - link "資料 2":
+E           - /url: "#tab=docs"
+E         - link "用語集 1":
+E           - /url: "#tab=terms"
+E         - link "メモ 0":
+E           - /url: "#tab=notes"
+E         - link "会話ログ 0":
+E           - /url: "#tab=logs"
+E         - link "ネットワーク":
+E           - /url: "#tab=graph"
+E       - main:
+E         - heading "資料" [level=1]
+E         - group "表示形式":
+E           - button "カード" [pressed]
+E           - button "ボード"
+E           - button "表"
+E         - button "資料の項目を追加": 項目を追加
+E         - button "図 MD 埋め込む資料 A-1 下書き"
+E         - button "図 MD A-2の題 A-2 下書き"
+E       - complementary "詳細":
+E         - separator "詳細パネルの幅"
+E         - text: 資料 A-1 MD
+E         - button "編集する"
+E         - button "エクスポート"
+E         - button "A-1 のコメントの一覧を開く"
+E         - button "前の項目へ戻る" [disabled]: ←
+E         - button "次の項目へ進む" [disabled]: →
+E         - button "全画面表示"
+E         - button "詳細を閉じる"
+E         - region "詳細の本文":
+E           - text: 下書き
+E           - heading "埋め込む資料" [level=2]
+E           - term: 種類
+E           - definition: 図
+E           - term: 更新日
+E           - definition: 2026-10-01T00:00:00+00:00
+E           - heading "本文" [level=3]
+E           - paragraph: 範囲の外の文
+E           - paragraph:
+E             - text: ﾋﾟｰｸ時の
+E             - link "応答時間":
+E               - /url: "#tab=docs&id=G-1"
+E             - text: と
+E             - link "A-2":
+E               - /url: "#tab=docs&id=A-2"
+E           - 'figure "件数 範囲: 10 月・更新日: 2026-10-27"':
+E             - text: "件数 範囲: 10 月・更新日:"
+E             - time: 2026-10-27
+E             - toolbar "「件数」の表示":
+E               - button "倍率 100%。全体が収まる倍率に戻す": 100%
+E               - button "表示の操作を開く"
+E             - 'group "件数 範囲: 10 月・更新日: 2026-10-27"':
+E               - 'img "件数。自動返信: メール 10・電話 20"': 0 5 10 15 20 件 メール 電話 窓口
+E             - list "凡例":
+E               - listitem: 自動返信
+E           - group "リクエスト数の見積もり":
+E             - paragraph: リクエスト数の見積もり
+E             - text: リクエスト数
+E             - status: "5"
+E             - slider "リクエスト数": "5"
+E             - button "今の値をコピー"
+E             - 'figure "応答時間 範囲: ピーク時・更新日: 2026-10-27"':
+E               - text: "応答時間 範囲: ピーク時・更新日:"
+E               - time: 2026-10-27
+E               - toolbar "「応答時間」の表示":
+E                 - button "倍率 100%。全体が収まる倍率に戻す": 100%
+E                 - button "表示の操作を開く"
+E               - 'group "応答時間 範囲: ピーク時・更新日: 2026-10-27"':
+E                 - 'img "応答時間。今の値（5）: 50・55。既定の値（5）: 50・55"': 0 50 100 ミリ秒 0 1 経過
+E               - list "凡例":
+E                 - listitem: 今の値（5）
+E                 - listitem: 既定の値（5）
+E           - button "実行"
+E           - paragraph: 後ろの文
+E           - heading "レビュー中のコメント0" [level=3]
+E           - paragraph: レビュー中のコメントはありません。
+E         - text: A-1 へのコメント
+E         - button "コメントの入力を閉じる" [expanded]
+E         - textbox "A-1 へのコメント"
+E         - button "音声で入力"
+E         - button "レビューに追加"
+
+tests/integration/preview/test_detail_panel_screen.py:6205: AssertionError
+___________________ test_normal_when_embedded_html[chromium] ___________________
+[gw1] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+write_preview = <function write_preview.<locals>._write at 0x7501b521f4c0>
+open_preview = <function open_preview.<locals>._open at 0x7501b528d6c0>
+make_item = <function make_item.<locals>._make at 0x7501b528d8a0>
+page = <Page url='http://127.0.0.1:45889/mindstella.html#tab=docs&id=A-1'>
+
+    def test_normal_when_embedded_html(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+    ) -> None:
+        """Markdown の本文に埋め込んだ HTML を本文の中に描き、チャートを動かし、部品の今の値を JSON でコピーする（正常系）。"""
+        # 準備
+        page.context.grant_permissions(CLIPBOARD_PERMISSIONS)
+        url = write_preview(
+            make_item("A-1", title="埋め込む資料"),
+            make_item("A-2"),
+            make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
+            bodies={"A-1.mark.md": EMBEDDED_BODY},
+        )
+        open_preview(url, "#tab=docs&id=A-1")
+        page.wait_for_selector(CHART, timeout=DIAGRAM_TIMEOUT_MS)
+        chart = page.locator(CHART).first
+        # 実行（範囲のボタンを押す）
+        page.get_by_role("button", name="実行", exact=True).click()
+        # 検証（範囲は枠に入れず本文の要素として描かれ、スクリプトとイベントの属性は動かない）
+        assert page.locator("aside.panel .md > .mdmark-html").count() == 1
+        assert page.locator("aside.panel iframe").count() == 0
+        assert page.locator(f"{RANGE} script, {RANGE} [onclick]").count() == 0
+        assert page.evaluate("[window.__script, window.__onclick]") == [None, None]
+        # 実行（拡大して、ドラッグする）
+        fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+>       chart.locator(ZOOM_IN).click()
+
+tests/integration/preview/test_open_preview.py:2383: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:17876: in click
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_locator.py:165: in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:593: in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7501b680c770>
+cb = <function Channel.send.<locals>.<lambda> at 0x7501b528c860>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+E           Call log:
+E             - waiting for locator("aside.panel .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"in\"]")
+E               - locator resolved to <button type="button" data-tool="in" aria-label="拡大" class="mdmark-diagram-tool">…</button>
+E             - attempting click action
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E               - waiting 20ms
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E                 - waiting 100ms
+E               58 × waiting for element to be visible, enabled and stable
+E                  - element is not visible
+E                - retrying click action
+E                  - waiting 500ms
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+_____________________ test_embedded_html_in_full[chromium] _____________________
+[gw4] linux -- Python 3.12.13 /home/shuhei2441/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+
+write_preview = <function write_preview.<locals>._write at 0x7d0bf2a9a0c0>
+open_preview = <function open_preview.<locals>._open at 0x7d0bf2a1d6c0>
+make_item = <function make_item.<locals>._make at 0x7d0bf2a1d9e0>
+page = <Page url='http://127.0.0.1:46197/mindstella.html#tab=docs&id=A-1&full=1'>
+
+    def test_embedded_html_in_full(
+        write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+    ) -> None:
+        """全画面でも埋め込んだ HTML を本文の要素として描き、本文の幅いっぱいに広げ、チャートの倍率を変えられる（正常系）。"""
+        # 準備
+        url = write_preview(
+            make_item("A-1", title="埋め込む資料"), make_item("A-2"), bodies={"A-1.mark.md": EMBEDDED_BODY}
+        )
+        open_preview(url, "#tab=docs&id=A-1")
+        page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)
+        panel_width = page.locator(RANGE).bounding_box()["width"]  # type: ignore[index]
+        # 実行
+        _open_full(page)
+        full_chart = "dialog.full .md .mdmark-html figure.mdmark-diagram"
+        page.wait_for_selector(full_chart, timeout=EMBED_TIMEOUT_MS)
+        range_box = page.locator("dialog.full .md > .mdmark-html").bounding_box()
+        chart = page.locator(full_chart).first
+        fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+>       chart.locator(ZOOM_IN).click()
+
+tests/integration/preview/test_detail_full_screen.py:1443: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:17876: in click
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_locator.py:165: in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:593: in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7d0bf42cf590>
+cb = <function Channel.send.<locals>.<lambda> at 0x7d0bf2a9b6a0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+E           Call log:
+E             - waiting for locator("dialog.full .md .mdmark-html figure.mdmark-diagram").first.locator("button[data-tool=\"in\"]")
+E               - locator resolved to <button type="button" data-tool="in" aria-label="拡大" class="mdmark-diagram-tool">…</button>
+E             - attempting click action
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E               - waiting 20ms
+E               2 × waiting for element to be visible, enabled and stable
+E                 - element is not visible
+E               - retrying click action
+E                 - waiting 100ms
+E               58 × waiting for element to be visible, enabled and stable
+E                  - element is not visible
+E                - retrying click action
+E                  - waiting 500ms
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+=========================== short test summary info ============================
+FAILED tests/integration/server/test_launch.py::test_normal_when_server_status
+FAILED tests/integration/server/test_launch.py::test_normal_when_session_exists
+FAILED tests/integration/server/test_launch.py::test_normal - AssertionError:...
+FAILED tests/integration/server/test_launch.py::test_normal_when_server_restart
+FAILED tests/integration/server/test_launch.py::test_normal_when_options_given
+FAILED tests/integration/server/test_launch.py::test_error_when_plugin_not_installed
+FAILED tests/integration/server/test_launch.py::test_normal_when_external_settings
+FAILED tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded
+FAILED tests/integration/server/test_launch.py::test_normal_when_another_account
+FAILED tests/integration/server/test_launch.py::test_error_when_server_start_fails
+FAILED tests/integration/server/test_launch.py::test_error_when_workspace_rejected
+FAILED tests/integration/server/test_launch.py::test_error_when_session_not_created
+FAILED tests/integration/server/test_launch.py::test_normal_when_server_outdated
+FAILED tests/integration/server/test_create_workspace.py::test_error_when_folder_not_allowed
+FAILED tests/integration/server/test_create_workspace.py::test_error_when_host_not_local
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_fit_smallest[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium]
+FAILED tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium]
+19 failed, 4 passed in 43.08s

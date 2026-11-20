@@ -181,7 +181,7 @@ functions:
       description: ステータス（201 か 200）と応答（`id`・`url`・`result`・`launch_options_recorded`・`migration`）
     exceptions:
       - name: ApiError
-        condition: '400・403・409（`stage: version`。`WorkspaceNewerError`）・422（`stage: migration` は `StepFailedError`・`SchemaMismatchError`）・502'
+        condition: '400・403・409（`stage: version`。`WorkspaceNewerError`。`stage: root_folder`。`run_init` の `RootFolderExistsError`）・422（`stage: migration` は `StepFailedError`・`SchemaMismatchError`）・502'
     unit_tests:
       - name: test_create_workspace
         case: 正常
@@ -293,6 +293,12 @@ functions:
         condition: '`test_create_workspace_schema_reloaded` と同じフォルダで、`reload_sources` が `ProjectIndexError`'
         mock: 同上
         expected: '`ApiError`（502、`stage: source`）。記録は消さない'
+      - name: test_create_workspace_root_folder_exists
+        case: 異常
+        summary: 記録が無く直下に docs/ か files/ があれば 409
+        condition: '`parametrize`: 許可するフォルダの下で `docs/memo.md` だけを持つフォルダ / `files/memo.png` だけを持つフォルダ'
+        mock: '`project_index.add_source`・`check_flow`'
+        expected: 'どちらも `ApiError`（409、`stage: root_folder`、`detail` にあるフォルダの名前）。`.mindstella/`・直下の `README.md`・`launch.json` が無く、`add_source` が呼ばれず、`ids` に無い'
   - name: close_workspace
     title: ワークスペースをクローズにする
     kind: 関数

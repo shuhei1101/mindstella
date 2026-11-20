@@ -233,3 +233,10 @@ classes:
       - name: extra
         type: dict
         description: 拡張のメンバー（`session`・`pane` など）
+  - name: RootFolderExistsError
+    title: 直下に本文のフォルダと同じ名前のフォルダがある
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: ワークスペースの作成
+    summary: '記録の無いフォルダの直下に `docs/` か `files/` が既にある。メッセージにあるフォルダの名前と、改名してから作り直す案内。ワークスペースの管理は 409（`stage: root_folder`）にする'
+    kind: クラス
+    inherits: MindmapError

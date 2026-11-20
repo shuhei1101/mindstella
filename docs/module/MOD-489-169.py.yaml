@@ -486,7 +486,7 @@ classes:
           type: None
           description: '-'
         process: |-
-          1. `{root}/.mindstella/{FILES_DIR}` と `sub_path` でファイルを解決する（ファイルの解決）
+          1. 直下の `{root}/{FILES_DIR}` と `sub_path` でファイルを解決する（ファイルの解決）
              - None の場合、404 を返す（`problem_response`。`detail` は「ファイルがありません」で、パスを含めない。`_reply` に `FILE_SECURITY_HEADERS` を加えて書く）
           2. `Range` の値で計画を決める（ファイルの応答の計画）
              - `OSError` の場合、同じ 404 を返す
@@ -497,13 +497,13 @@ classes:
           - name: test_send_file
             case: 正常
             summary: ファイルの全体と範囲を返す
-            condition: 一時ワークスペースに 1000 バイトの `.mindstella/files/clip.mp4` を置き、配信を立てて `Range` 無しと `bytes=100-199` で GET する
+            condition: 一時ワークスペースに 1000 バイトの直下の `files/clip.mp4` を置き、配信を立てて `Range` 無しと `bytes=100-199` で GET する
             mock: なし（一時ディレクトリ・`127.0.0.1` の空きポート）
             expected: '200 で全体、206 で 100〜199 バイト目。どちらも `Cache-Control: no-cache`・`Content-Security-Policy: sandbox`'
           - name: test_send_file_when_missing
             case: 正常
             summary: 解決できなければ 404
-            condition: 同じ配信で `/files/missing.mp4` と `/files/../config.yaml`
+            condition: 同じ配信で `/files/missing.mp4` と `/files/../.mindstella/config.yaml`
             mock: なし（一時ディレクトリ）
             expected: 'どちらも 404 の問題の応答で、本文に `config.yaml` の中身が無い。`Content-Security-Policy: sandbox`・`X-Content-Type-Options: nosniff` を持つ'
   - name: SettingsHolder
@@ -1013,13 +1013,13 @@ functions:
       type: str
       description: 書き換えの印。どれかのファイルが変わる・足される・消されると変わる
     process: |-
-      1. `records_root(root)` の下の `config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`history.yaml`・`edits.yaml`・`docs/` の直下の `*.md`・`*.html` を名前の順に並べる（`.mindstella-opened`・`comments.yaml`・`drafts.yaml` は見ない）
+      1. `records_root(root)` の下の `config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`history.yaml`・`edits.yaml` と、直下の `docs/`（`body_root(root)`）の直下の `*.md`・`*.html` を名前の順に並べる（本文は直下からのパスで更新日時と大きさを読む）（`.mindstella-opened`・`comments.yaml`・`drafts.yaml` は見ない）
       2. ファイルごとに `{名前}:{st_mtime_ns}:{st_size}` を作り（無いファイルは `{名前}:-`）、`|` でつなぐ
     unit_tests:
       - name: test_workspace_signature
         case: 正常
         summary: 書き換え・足す・消すで印が変わる
-        condition: '作成済みのワークスペース。`parametrize`: `.mindstella/decisions.yaml` を書き換える / `.mindstella/docs/D-1.mark.md` を足す / `.mindstella/threads.yaml` を足す / `.mindstella/.mindstella.lock` を足す / `.mindstella/comments.yaml` を足す / `.mindstella/drafts.yaml` を足す'
+        condition: '作成済みのワークスペース。`parametrize`: `.mindstella/decisions.yaml` を書き換える / 直下の `docs/D-1.mark.md` を足す / `.mindstella/threads.yaml` を足す / `.mindstella/.mindstella.lock` を足す / `.mindstella/comments.yaml` を足す / `.mindstella/drafts.yaml` を足す'
         mock: なし
         expected: 前の 3 つは印が変わり、`.mindstella.lock`・`comments.yaml`・`drafts.yaml` は変わらない
       - name: test_workspace_signature_with_changes

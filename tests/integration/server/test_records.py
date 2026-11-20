@@ -36,7 +36,7 @@ def test_normal(
     """全ての種類と本文と導いた値を返す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="docs/D-1.mark.md"),
+        make_item("D-1", body="../docs/D-1.mark.md"),
         make_item("T-1"),
         make_item("R-1"),
         make_item("A-1"),
@@ -52,14 +52,14 @@ def test_normal(
     assert result.status == 200
     records = result.json()
     assert records["settings"] == valid_settings
-    assert records["decisions"] == [_stamped(make_item("D-1", body="docs/D-1.mark.md"))]
+    assert records["decisions"] == [_stamped(make_item("D-1", body="../docs/D-1.mark.md"))]
     assert records["tasks"] == [_stamped(make_item("T-1"))]
     assert records["research"] == [_stamped(make_item("R-1"))]
     assert records["docs"] == [_stamped(make_item("A-1"))]
     assert records["terms"] == [_stamped(make_item("G-1"))]
     assert records["notes"] == [_stamped(make_item("N-1"))]
     assert records["logs"] == [_stamped(make_item("L-1"))]
-    assert records["bodies"]["docs/D-1.mark.md"] == DECISION_BODY
+    assert records["bodies"]["../docs/D-1.mark.md"] == DECISION_BODY
     # 前提を持たない未決定の D-1 は着手できる。次の候補・ゴール・進捗は返さない
     assert records["derived"] == {"ready": ["D-1"]}
 
@@ -172,7 +172,7 @@ def test_normal_when_html_body(
     )
     root = make_workspace(
         make_item("A-1"),
-        make_item("A-2", body="docs/A-2.html"),
+        make_item("A-2", body="../docs/A-2.html"),
         bodies={"A-1.mark.md": markdown_body, "A-2.html": html_body},
     )
     url = serve_preview(root)
@@ -181,10 +181,10 @@ def test_normal_when_html_body(
     # 検証
     assert result.status == 200
     records = result.json()
-    assert records["bodies"]["docs/A-1.mark.md"] == markdown_body
-    assert records["bodies"]["docs/A-2.html"] == html_body
-    assert list(records["marked_bodies"]) == ["docs/A-2.html"]
-    marked = records["marked_bodies"]["docs/A-2.html"]
+    assert records["bodies"]["../docs/A-1.mark.md"] == markdown_body
+    assert records["bodies"]["../docs/A-2.html"] == html_body
+    assert list(records["marked_bodies"]) == ["../docs/A-2.html"]
+    marked = records["marked_bodies"]["../docs/A-2.html"]
     # 複数行にまたがる開きタグの印は、中身が始まる行（開きタグが閉じる行）と、閉じタグが始まる行
     assert '<p data-line="4" data-line-end="4"' in marked
     # `<style>` の中には行の印を足さない
