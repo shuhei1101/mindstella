@@ -120,3 +120,6 @@ scope_out:
   - item: 公開ドキュメントの変更履歴の過去の行と、過去の PR ドキュメント（docs/pr/）のネットワーク・マップの記載
     reason: その時点の変更の記録で、書き換えると履歴が変わる
     plan: none
+  - item: トップバーの部品のモック（docs/mock/components/topbar/frame.html）が duplicate-id-notice.js を読み込まず、スクリプトのエラーが出る
+    reason: 部品のモックがエラーなく描けることに外れるが、この PR は frame.html を変えておらず、要望に含まれない
+    plan: '#634'
