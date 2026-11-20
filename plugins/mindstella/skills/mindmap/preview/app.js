@@ -217,10 +217,20 @@ var MindmapPreview;
         const key = (display) => JSON.stringify(display?.visible_kinds ?? null);
         return key(a) === key(b);
     }
-    /** 端末の保存領域（開けない環境では、何も返さない保存領域） */
+    /** 端末の保存領域。キーは workspaceKey で読み替える（サーバーの配信では末尾にワークスペースの ID が付く）。開けない環境では、何も返さない保存領域 */
     function openStorage(kind) {
         try {
-            return window[kind];
+            const storage = window[kind];
+            return {
+                get length() {
+                    return storage.length;
+                },
+                clear: () => storage.clear(),
+                getItem: (key) => storage.getItem(MindmapPreview.workspaceKey(key)),
+                key: (index) => storage.key(index),
+                removeItem: (key) => storage.removeItem(MindmapPreview.workspaceKey(key)),
+                setItem: (key, value) => storage.setItem(MindmapPreview.workspaceKey(key), value),
+            };
         }
         catch {
             return {
@@ -236,6 +246,7 @@ var MindmapPreview;
             };
         }
     }
+    MindmapPreview.openStorage = openStorage;
     /** そのタブで変えた詳細パネルの幅を読む。正の整数でなければ、残っていないものとして扱う（既定の幅で開く） */
     function readPanelWidth(session) {
         let saved;

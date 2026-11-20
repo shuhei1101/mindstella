@@ -937,7 +937,7 @@ def test_body_view_override(
     # 実行（チェックを既定と違う側にする）
     _body_view_checkbox(page, label).click()
     page.wait_for_function(
-        "([key, value]) => JSON.parse(localStorage.getItem('mindmap-preview'))[key] === value",
+        "([key, value]) => JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')))[key] === value",
         arg=[key, value],
         timeout=BODY_VIEW_TOGGLE_MS,
     )
@@ -948,7 +948,7 @@ def test_body_view_override(
     # 実行（チェックを戻す）
     _body_view_checkbox(page, label).click()
     page.wait_for_function(
-        "(key) => JSON.parse(localStorage.getItem('mindmap-preview'))[key] === null",
+        "(key) => JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')))[key] === null",
         arg=key,
         timeout=BODY_VIEW_TOGGLE_MS,
     )

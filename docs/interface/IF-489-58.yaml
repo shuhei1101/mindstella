@@ -2,7 +2,7 @@ id: IF-489-58
 title: 音声の文字起こし
 entry:
   kind: endpoint
-  value: POST /api/transcriptions
+  value: POST /w/{workspace}/api/transcriptions
 flows:
   - name: 正常系
     summary: 録音した音声を文字起こしのサービスへ渡し、終わるまで待って起こした文字を返す
@@ -14,7 +14,7 @@ flows:
       - name: 音声
         description: テストの中で書き出した短い webm/opus
         notes: '`Content-Type: audio/webm`'
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声（audio/webm）\n  IF->>IF: 大きさと構造を確かめ、config.yaml の preset を読む\n  IF->>TR: 音声と用語集のプリセットを渡して文字起こしを依頼し、結果が出るまで待つ\n  TR-->>IF: 起こした文字\n  IF-->>クライアント: 200、JSON（text）\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声（audio/webm）\n  IF->>IF: 大きさと構造を確かめ、config.yaml の preset を読む\n  IF->>TR: 音声と用語集のプリセットを渡して文字起こしを依頼し、結果が出るまで待つ\n  TR-->>IF: 起こした文字\n  IF-->>クライアント: 200、JSON（text）\n```"
     expected:
       - ステータスが 200 で、`text` が「案 A にする」
       - 偽のサーバーが受けた依頼の音声が送信した音声と同じで、用語集のプリセットが `開発`
@@ -27,7 +27,7 @@ flows:
         description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `done` と「案 A にする」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送信する'
       - name: make_workspace
         description: '`config.yaml` が `transcription` を持たないワークスペース'
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 音声だけを渡して依頼し、結果が出るまで待つ\n  TR-->>IF: 起こした文字\n  IF-->>クライアント: 200\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 音声だけを渡して依頼し、結果が出るまで待つ\n  TR-->>IF: 起こした文字\n  IF-->>クライアント: 200\n```"
     expected:
       - ステータスが 200
       - 偽のサーバーが受けた依頼が用語集のプリセットを持たない
@@ -39,7 +39,7 @@ flows:
         description: 偽のサーバーを立てず、`MINDSTELLA_TRANSCRIBER_URL` に誰も待ち受けていないポートの URL を入れて常駐サーバーを立てる。`preview_url` を呼び、返った URL へ HTTP のクライアントで送信する
       - name: make_workspace
         description: 作成を済ませたワークスペース
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（止まっている）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼する\n  TR--xIF: つながらない\n  IF-->>クライアント: 503（reason=stopped）\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/transcriptions\n  participant TR as 文字起こしのサービス（止まっている）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼する\n  TR--xIF: つながらない\n  IF-->>クライアント: 503（reason=stopped）\n```"
     expected:
       - ステータスが 503 で、`reason` が `stopped`、`detail` が「文字起こしのサービスが起動していないため、音声で入力できません。」
     test: test_error_when_service_stopped
@@ -50,7 +50,7 @@ flows:
         description: '`/web/` の下の全てに 404 を返す偽のサーバーを立て、`MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて常駐サーバーを立てる。`preview_url` を呼び、返った URL へ HTTP のクライアントで送信する'
       - name: make_workspace
         description: 作成を済ませたワークスペース
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼する\n  TR-->>IF: 音声を受け付けるエンドポイントが無い\n  IF-->>クライアント: 503（reason=unsupported）\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼する\n  TR-->>IF: 音声を受け付けるエンドポイントが無い\n  IF-->>クライアント: 503（reason=unsupported）\n```"
     expected:
       - ステータスが 503 で、`reason` が `unsupported`
     test: test_error_when_service_unsupported
@@ -61,7 +61,7 @@ flows:
         description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `failed` と理由「文字起こしワーカー無応答」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送信する'
       - name: make_workspace
         description: 作成を済ませたワークスペース
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼し、結果が出るまで待つ\n  TR-->>IF: 失敗した\n  IF-->>クライアント: 502\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼し、結果が出るまで待つ\n  TR-->>IF: 失敗した\n  IF-->>クライアント: 502\n```"
     expected:
       - ステータスが 502 で、`detail` が「文字起こしできませんでした。もう一度お試しください。」
       - サービスが返した失敗の理由は標準エラーにだけ記録し、応答に含めない
@@ -73,7 +73,7 @@ flows:
         description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で いつまでも `running` と同じ `progress` を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送信する。文字起こしの待ちの上限を 1 秒に差し替える'
       - name: make_workspace
         description: 作成を済ませたワークスペース
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼し、結果が出るまで待つ\n  TR-->>IF: 待ちの上限まで進まない\n  IF-->>クライアント: 504\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼し、結果が出るまで待つ\n  TR-->>IF: 待ちの上限まで進まない\n  IF-->>クライアント: 504\n```"
     expected:
       - ステータスが 504 で、`detail` が「文字起こしできませんでした。もう一度お試しください。」
     test: test_error_when_transcription_timeout
@@ -86,7 +86,7 @@ flows:
         description: 作成を済ませたワークスペース
       - name: 要求
         description: 本文が空の要求と、本文が 1,001 バイトの要求の 2 通り
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  \n  クライアント->>IF: POST 空・上限を超える音声\n  IF-->>クライアント: 400・413\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/transcriptions\n  \n  クライアント->>IF: POST 空・上限を超える音声\n  IF-->>クライアント: 400・413\n```"
     expected:
       - 空の本文は 400、上限を超える本文は 413 で、偽のサーバーが依頼を受けていない
     test: test_error_when_audio_empty_or_too_large

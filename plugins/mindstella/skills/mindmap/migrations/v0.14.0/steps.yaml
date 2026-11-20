@@ -11,3 +11,6 @@ steps:
   - op: call
     script: remove_network_look
     destructive: true
+  - op: call
+    script: remove_preview_port
+    destructive: true

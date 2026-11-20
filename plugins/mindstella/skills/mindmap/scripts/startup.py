@@ -1,4 +1,4 @@
-"""常駐サーバーの起動時の照合。待ち受けの前に ID の一覧を作り直して状態を照合し、待ち受けと並行してエージェントフローの配信元の行を確かめる。"""
+"""常駐サーバーの起動時の照合。待ち受けの前に ID の一覧を作り直して状態を照合し、待ち受けと並行してエージェントフローの配信元の行を確かめ、ID の一覧のワークスペースを配り始める。"""
 
 from __future__ import annotations
 
@@ -11,8 +11,10 @@ import yaml
 import project_index
 import sessions
 import state
+from errors import MindmapError, WriteFailedError
 from project_index import ProjectIndexError
-from workspaces import AGENT_FLOWS_CONFIG, AGENT_FLOWS_SOURCE, PLUGIN_DIR
+from readme import write_readme
+from workspaces import AGENT_FLOWS_CONFIG, AGENT_FLOWS_SOURCE, PLUGIN_DIR, workspace_folder
 
 logger = logging.getLogger("mindstella.startup")
 
@@ -25,6 +27,9 @@ WORKSPACE_CONFIG_SUFFIX = "/.mindstella/dev-docs.yaml"
 
 # エージェントフローの配信元の行を確かめるスレッドの名前
 AGENT_FLOWS_THREAD_NAME = "mindstella-agent-flows-check"
+
+# ID の一覧のワークスペースを配り始めるスレッドの名前
+SERVE_REGISTERED_THREAD_NAME = "mindstella-serve-registered"
 
 
 def reconcile_before_listen(ctx: Any) -> None:
@@ -130,6 +135,55 @@ def start_agent_flows_check(ctx: Any) -> threading.Thread:
     """check_agent_flows_source を 1 回だけ呼ぶ daemon のスレッドを始めて返す。"""
     thread = threading.Thread(
         target=check_agent_flows_source, args=(ctx,), name=AGENT_FLOWS_THREAD_NAME, daemon=True
+    )
+    thread.start()
+    return thread
+
+
+def serve_registered(ctx: Any) -> int | None:
+    """状態の ID の一覧のワークスペースを配信の台帳で配り始め、直下の README を書き直す。配り始めた数を返す。
+
+    project-index に問い合わせられなければ None を返す。どれに失敗しても例外を送出しない。
+    """
+    ids = state.read_ids(ctx.state_root)
+    try:
+        settings = project_index.get_settings(ctx.pi_port)
+    except ProjectIndexError as error:
+        logger.warning(
+            "mindstella.startup.serve_registered_skipped",
+            extra={"status": error.status, "reason": f"{error.detail}（preview_url で配れる）"},
+        )
+        return None
+    started_count = 0
+    for workspace_id in ids:
+        row = _find_row(settings, workspace_id)
+        # 配信元の行が無い ID は飛ばす
+        if row is None:
+            continue
+        root = workspace_folder(row)
+        try:
+            url, started = ctx.previews.start(root)
+        except (MindmapError, OSError) as error:
+            logger.warning(
+                "ワークスペースを配れない: %s %s（%s）", workspace_id, root, error
+            )
+            continue
+        if not started:
+            continue
+        started_count += 1
+        # 配り始めたときは、run_preview_url と同じく README のプレビューの節をその URL にする
+        try:
+            write_readme(root, preview_url=url)
+        except WriteFailedError as error:
+            logger.warning("README を書けなかった: %s（%s）", root, error)
+    logger.info("mindstella.startup.serve_registered", extra={"count": started_count})
+    return started_count
+
+
+def start_serve_registered(ctx: Any) -> threading.Thread:
+    """serve_registered を 1 回だけ呼ぶ daemon のスレッドを始めて返す（待ち受けを始めるのを待たせない）。"""
+    thread = threading.Thread(
+        target=serve_registered, args=(ctx,), name=SERVE_REGISTERED_THREAD_NAME, daemon=True
     )
     thread.start()
     return thread

@@ -2,7 +2,7 @@ id: IF-489-28
 title: "保存待ちの編集の取り消し"
 entry:
   kind: endpoint
-  value: DELETE /api/edits/{id}
+  value: DELETE /w/{workspace}/api/edits/{id}
 flows:
   - name: 正常系
     summary: 保存待ちの編集 1 件を外し、残りの件数を返す
@@ -16,10 +16,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as DELETE /api/edits/{id}
+        participant IF as DELETE /w/{workspace}/api/edits/{id}
         participant WS as ワークスペース
 
-        クライアント->>IF: DELETE /api/edits/E-2
+        クライアント->>IF: DELETE /w/{workspace}/api/edits/E-2
         IF-->>WS: edits.yaml を読む
         IF->>WS: edits.yaml から E-2 を外す
         IF-->>クライアント: 200、JSON（removed・count）
@@ -41,10 +41,10 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as DELETE /api/edits/{id}
+        participant IF as DELETE /w/{workspace}/api/edits/{id}
         participant WS as ワークスペース
 
-        クライアント->>IF: DELETE /api/edits/E-1
+        クライアント->>IF: DELETE /w/{workspace}/api/edits/E-1
         IF->>WS: edits.yaml から E-1 と E-2 を外す
         IF-->>クライアント: 200
       ```
@@ -64,9 +64,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as DELETE /api/edits/{id}
+        participant IF as DELETE /w/{workspace}/api/edits/{id}
 
-        クライアント->>IF: DELETE /api/edits/E-1（Origin: attacker.example）
+        クライアント->>IF: DELETE /w/{workspace}/api/edits/E-1（Origin: attacker.example）
         IF-->>クライアント: 403
       ```
     expected:
@@ -85,9 +85,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as DELETE /api/edits/{id}
+        participant IF as DELETE /w/{workspace}/api/edits/{id}
 
-        クライアント->>IF: DELETE /api/edits/E-9
+        クライアント->>IF: DELETE /w/{workspace}/api/edits/E-9
         IF-->>クライアント: 404
       ```
     expected:

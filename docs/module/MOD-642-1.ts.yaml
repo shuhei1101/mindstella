@@ -1,0 +1,67 @@
+id: MOD-642-1
+title: プレビュー / workspace-path
+lead: 開いた画面の URL のパスから、配っているワークスペースのパスの頭と、端末の保存領域のキーを求める（インターフェース定義『プレビューの URL』の制約「画面のパス」、『プレビューを開く』の制約「端末の保存領域」）。
+constants:
+  - name: WORKSPACE_PATH_PATTERN
+    title: ワークスペースのパスの頭のパターン
+    container: frontend/src/shared/core/workspace-path.ts
+    usecase: 共通
+    summary: パスの先頭の `/w/{workspace}`（`{workspace}` は `/` を含まない 1 つ以上の文字）
+    value: /^\/w\/([^/]+)/
+functions:
+  - name: workspacePath
+    title: ワークスペースのパスの頭
+    kind: 関数
+    container: frontend/src/shared/core/workspace-path.ts
+    usecase: 共通
+    scope: public
+    summary: パスの先頭が `WORKSPACE_PATH_PATTERN` に該当すれば該当した `/w/{workspace}`（パーセントエンコードのまま）を、該当しなければ空文字を返す。API・書き換えの通知・ルーター・ファイルの基準のパスの頭に付ける
+    args:
+      - name: pathname
+        type: string
+        required: false
+        default: location.pathname
+        passing: positional
+        description: 開いた画面の URL のパス
+    returns:
+      type: string
+      description: '`/w/{workspace}` か空文字'
+    unit_tests:
+      - name: test_workspace_path
+        case: 正常
+        summary: パスの頭を返す
+        condition: '`parametrize`: `/w/mindstella-x-1/spa/` / `/w/a%20b/mindstella.html` / `/spa/` / `/`'
+        mock: なし
+        expected: '`/w/mindstella-x-1` / `/w/a%20b` / 空文字 / 空文字'
+  - name: workspaceKey
+    title: 端末の保存領域のキー
+    kind: 関数
+    container: frontend/src/shared/core/workspace-path.ts
+    usecase: 共通
+    scope: public
+    summary: パスの先頭が `WORKSPACE_PATH_PATTERN` に該当すれば `{key}:{workspace}`（`{workspace}` は `decodeURIComponent` で戻した ID）を、該当しなければ `key` をそのまま返す。`localStorage`・`sessionStorage` を読み書きする全ての箇所がキーに使う
+    args:
+      - name: key
+        type: string
+        required: true
+        passing: positional
+        description: 今の画面と同じキー（`mindmap-preview` など）
+      - name: pathname
+        type: string
+        required: false
+        default: location.pathname
+        passing: positional
+        description: 開いた画面の URL のパス
+    returns:
+      type: string
+      description: ワークスペースの ID を末尾に付けたキーか、`key`
+    unit_tests:
+      - name: test_workspace_key
+        case: 正常
+        summary: ワークスペースの ID を末尾に付ける
+        condition: '`key` は `mindmap-preview`。`parametrize`: `/w/mindstella-x-1/spa/` / `/w/a%20b/spa/` / `/spa/`'
+        mock: なし
+        expected: '`mindmap-preview:mindstella-x-1` / `mindmap-preview:a b` / `mindmap-preview`'
+notes:
+  単体テスト: 同じフォルダの `workspace-path.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  今の画面: 今の画面は namespace の連結で import できないため、同じ振る舞いを今の画面の『基盤 / api.ts』に持つ

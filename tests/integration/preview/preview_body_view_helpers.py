@@ -103,7 +103,7 @@ def seed_body_view(page: Page, prefs: dict[str, Any]) -> None:
     value = json.dumps(prefs)
     page.add_init_script(
         "try { if (!sessionStorage.getItem('mindmap-seeded')) {"
-        f" localStorage.setItem('mindmap-preview', {json.dumps(value)});"
+        f" localStorage.setItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''), {json.dumps(value)});"
         " sessionStorage.setItem('mindmap-seeded', '1'); } } catch (e) {}"
     )
 

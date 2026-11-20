@@ -88,7 +88,7 @@ functions:
     container: frontend/src/shared/core/body-links.ts
     usecase: 動画などのファイルを配置して資料に埋め込む
     scope: public
-    summary: 今の画面の『基盤』の `resolveFileSources` と同じ処理。`mountMarkdown` が mdmark の `mount` の直後に呼ぶ（基準のパスは同じ `/docs/`。React の画面を `/spa/` の下で開いても `/files/{名前}` を指す）
+    summary: 今の画面の『基盤』の `resolveFileSources` と同じ処理。`mountMarkdown` が mdmark の `mount` の直後に呼ぶ（基準のパスは同じ `workspacePath() + FILE_BASE_PATH`。React の画面を `/w/{workspace}/spa/` の下で開いても `/w/{workspace}/files/{名前}` を指す）
     side_effects: '`root` の中の要素の `src`・`poster` を書き換える'
     args:
       - name: root
@@ -103,8 +103,10 @@ functions:
       - name: test_resolve_file_sources
         case: 正常
         summary: 相対パスだけを配信のパスにする
-        condition: 今の画面の同名のテストと同じ要素で、`location` を `http://127.0.0.1:8000/spa/decisions` にする
+        condition: 今の画面の同名のテストと同じ要素で、`location` を `http://127.0.0.1:8784/w/mindstella-x-1/spa/` にする
         mock: なし（jsdom）
-        expected: 今の画面の同名のテストと同じ（`/spa/` の下でも `/files/a.png`）
+        expected: 今の画面の同名のテストと同じ（`/w/mindstella-x-1/files/a.png` など）
+    callees:
+      - MOD-642-1#functions[workspacePath]
 notes:
   単体テスト: 同じフォルダの `body-links.test.ts` に置く（knowledge の規約『フォルダ構成』）

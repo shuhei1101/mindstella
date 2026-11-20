@@ -2,7 +2,7 @@ id: IF-633-1
 title: 確認済みの設定と解除
 entry:
   kind: endpoint
-  value: PUT /api/items/{id}/confirmed
+  value: PUT /w/{workspace}/api/items/{id}/confirmed
 flows:
   - name: 正常系（確認済みにして解除する）
     summary: 確認済みにし、解除するとキーを削除する。項目の中身・更新日時・変更履歴は変えない
@@ -15,7 +15,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/items/D-1/confirmed
+        participant IF as PUT /w/{workspace}/api/items/D-1/confirmed
         participant WS as ワークスペース
 
         クライアント->>IF: PUT（confirmed: true）
@@ -41,7 +41,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/items/D-1/confirmed
+        participant IF as PUT /w/{workspace}/api/items/D-1/confirmed
         participant WS as ワークスペース
 
         クライアント->>IF: PUT（confirmed: true）
@@ -66,7 +66,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/items/D-1/confirmed
+        participant IF as PUT /w/{workspace}/api/items/D-1/confirmed
 
         クライアント->>IF: PUT（confirmed: true）
         IF-->>クライアント: 200、JSON（confirmed: true）
@@ -87,7 +87,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/items/D-1/confirmed
+        participant IF as PUT /w/{workspace}/api/items/D-1/confirmed
 
         クライアント->>IF: PUT（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -107,7 +107,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/items/D-9/confirmed
+        participant IF as PUT /w/{workspace}/api/items/D-9/confirmed
 
         クライアント->>IF: PUT（confirmed: true）
         IF-->>クライアント: 404
@@ -128,7 +128,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/items/D-1/confirmed
+        participant IF as PUT /w/{workspace}/api/items/D-1/confirmed
 
         クライアント->>IF: PUT（confirmed: "yes"）
         IF-->>クライアント: 400
@@ -149,7 +149,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/items/D-1/confirmed
+        participant IF as PUT /w/{workspace}/api/items/D-1/confirmed
         participant WS as ワークスペース
 
         クライアント->>IF: PUT（confirmed: true）
@@ -193,7 +193,7 @@ request:
     example: 'true'
 request_example: |-
   ```
-  PUT /api/items/D-1/confirmed
+  PUT /w/{workspace}/api/items/D-1/confirmed
   Content-Type: application/json
 
   {"confirmed": true}

@@ -149,7 +149,7 @@ def test_topbar_search_opens_dialog(write_sample_preview: WriteSamplePreview, pa
     page.get_by_role("button", name="すべての項目を検索").click()
     # 検証
     expect(page.get_by_role("dialog", name="すべての項目を検索")).to_be_visible()
-    assert page.evaluate("location.pathname + location.search") == "/spa/?search=1"
+    assert page.evaluate("location.pathname + location.search") == f"{urlsplit(url).path.rsplit('/', 1)[0]}/spa/?search=1"
 
 
 def test_topbar_theme(write_sample_preview: WriteSamplePreview, page: Page) -> None:
@@ -164,7 +164,7 @@ def test_topbar_theme(write_sample_preview: WriteSamplePreview, page: Page) -> N
     page.wait_for_selector("#tile-open")
     # 検証
     assert page.evaluate("document.documentElement.dataset.theme") == "dark"
-    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview')).theme") == "dark"
+    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))).theme") == "dark"
     assert page.locator('header button[aria-label="ライトに切り替え"]').count() == 1
 
 
@@ -389,7 +389,7 @@ def test_kinds_override(
     page.goto(url)
     open_settings(page)
     page.locator(LEGACY_KIND_CHECKBOX, has_text=toggled).locator("input").click()
-    page.wait_for_function("JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').kinds !== undefined")
+    page.wait_for_function("JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? '{}').kinds !== undefined")
     # 実行
     open_spa(page, url)
     # 検証

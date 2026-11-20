@@ -5,7 +5,7 @@ entry:
   value: '`server_stop`'
 flows:
   - name: 正常系
-    summary: 止めた配信を返してから、配信ごとに終了時のフックを呼び、全ての配信を止めて常駐サーバーを終える
+    summary: 配っていたワークスペースを返してから、ワークスペースごとに終了時のフックを呼び、待ち受けを止めて常駐サーバーを終える
     setup:
       - name: Mock
         description: なし（テストを動かす Python で常駐サーバーを子プロセスとして起動し、MCP のクライアントでつなぐ）
@@ -23,18 +23,18 @@ flows:
 
         クライアント->>IF: server_stop
         IF-->>クライアント: stopping・previews
-        IF->>HK: 配信ごとに {コマンド} {ポート} {フォルダの名前}（待たない）
-        IF->>P: 全て止める
+        IF->>HK: ワークスペースごとに {コマンド} {ポート} {フォルダの名前} {画面のパス}（待たない）
+        IF->>P: 待ち受けを止める
         IF->>IF: プロセスを終える
       ```
     expected:
-      - 結果の `stopping` が真で、`previews` にフォルダ A と B の配信のポートがある
-      - 常駐サーバーのプロセスが 5 秒以内に終わり、`MINDSTELLA_PORT` と配信のポートで待ち受けていない
-      - フックの追記するファイルに 2 行あり、それぞれの配信のポートとワークスペースのフォルダの名前が並ぶ
+      - 結果の `stopping` が真で、`previews` にフォルダ A と B の画面の URL がある
+      - 常駐サーバーのプロセスが 5 秒以内に終わり、`MINDSTELLA_PORT` で待ち受けていない
+      - フックの追記するファイルに 2 行あり、それぞれに常駐サーバーのポート・ワークスペースのフォルダの名前・画面のパスが並ぶ
     test: test_normal
-lead: 常駐サーバーを止める。配信ごとに終了時のフックを呼び、全ての配信を止めて、プロセスを終える。
+lead: 常駐サーバーを止める。配っているワークスペースごとに終了時のフックを呼び、待ち受けを止めて、プロセスを終える。
 idempotent: false
-side_effects: 結果を返した後に、『MCP サーバーの起動』の終わり方で終わる（終了時のフックを呼び、全ての配信を止め、プロセスを終える）。並行する全てのセッションから mindstella のツールが使えなくなる
+side_effects: 結果を返した後に、『MCP サーバーの起動』の終わり方で終わる（終了時のフックを呼び、待ち受けを止め、プロセスを終える）。並行する全てのセッションから mindstella のツールが使えなくなる
 request:
   - name: session
     type: object | None
@@ -49,9 +49,9 @@ response:
   - name: previews[].workspace
     type: str
     description: 止める配信のワークスペースの絶対パス
-  - name: previews[].port
+  - name: previews[].url
     type: int
-    description: 止める配信のポート
+    description: そのワークスペースの画面の URL（『プレビューの URL』の `url`）
 exceptions:
   - name: なし（正常終了）
     condition: 止め始めた

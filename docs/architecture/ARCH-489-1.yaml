@@ -134,13 +134,13 @@ subsystems:
     scope: preview
     role: サーバーが配るワークスペースの記録を読み返し、詳細パネルから項目ごとに回答・意見を送信する画面。配る書き出しは記録を中に持つ見るだけの 1 枚の HTML
     runtime: TypeScript（今の画面は tsc が生成した JavaScript、React の画面（SPA）は Vite と React Compiler でビルドした JavaScript をブラウザで動かす）
-    runs_on: 利用者の端末のブラウザ（サーバーの配信の URL で開く。React の画面は同じ配信の `/spa/` で開く。配る書き出しはファイルとして開く）
+    runs_on: 利用者の端末のブラウザ（常駐サーバーのポートの `/w/{workspace}/mindstella.html` で開く。React の画面は同じワークスペースの `/w/{workspace}/spa/` で開く。配る書き出しはファイルとして開く）
     status: implemented
   - name: サーバー
     scope: server
     role: 端末に 1 つの常駐のプロセスで、MCP のツール（ID の採番・案の書き換えと採用・点検・配る書き出し・スレッドと書き換えのまとまり・送信の取り込み・常駐サーバーの状態と停止）と、記録の書き換えを履歴に残す変更の検知と、プレビューの配信・送信の受け付けと、MindStella の API（ワークスペースの作成・クローズ、MindStella のセッションの作成・一覧・停止）を持つ。MindStella のセッションは tmux のペインの中で起動する。起動のコマンドは、MindStella の API でワークスペースと MindStella のセッションを作ってそのペインへつなぐ。並行する複数のセッションが 1 つの常駐サーバーを共有し、複数のワークスペースを扱う
     runtime: Python 3（起動スクリプトは bash）
-    runs_on: 利用者の端末（systemd --user のユニット `mindstella.service` として、SessionStart のフックか起動のコマンドが落ちていれば起動する常駐サーバー。`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で待ち受ける。配信は `127.0.0.1` の空きポートか、`config.yaml` の `preview.port` で固定したポート。状態は `${XDG_STATE_HOME:-~/.local/state}/mindstella/`）
+    runs_on: 利用者の端末（systemd --user のユニット `mindstella.service` として、SessionStart のフックか起動のコマンドが落ちていれば起動する常駐サーバー。`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で待ち受ける。全てのワークスペースの画面も同じポートの `/w/{workspace}` の下で配る。状態は `${XDG_STATE_HOME:-~/.local/state}/mindstella/`）
     status: implemented
 external_systems:
   - name: Claude Code

@@ -14,7 +14,7 @@ elements:
       - name: theme
         value: 個人の上書き（端末の保存領域）の値（無ければ OS の設定）
       - name: connection
-        value: サーバーの配信で、`GET /api/events` のつながりが切れている間と `GET /api/records` に届かないときは offline、それ以外と配る書き出しは online（プレビューを開く.接続の状態）
+        value: サーバーの配信で、`GET /w/{workspace}/api/events` のつながりが切れている間と `GET /w/{workspace}/api/records` に届かないときは offline、それ以外と配る書き出しは online（プレビューを開く.接続の状態）
       - name: duplicateIds
         value: 書き換えの通知の duplicate_ids の ID と、記録の取得の項目の種類の名前（閉じた後は、集まりが変わるまで []）
       - name: read_at

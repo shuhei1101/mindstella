@@ -145,7 +145,7 @@ def hide_minimap_in_storage(page: Page) -> None:
     """ページを開く前に、端末の保存領域へ差分のミニマップを表示しない上書きを入れる。"""
     page.add_init_script(
         "try { if (!sessionStorage.getItem('mindmap-seeded')) {"
-        " localStorage.setItem('mindmap-preview', JSON.stringify({ minimap: false }));"
+        " localStorage.setItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''), JSON.stringify({ minimap: false }));"
         " sessionStorage.setItem('mindmap-seeded', '1'); } } catch (e) {}"
     )
 

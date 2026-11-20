@@ -2,7 +2,7 @@ id: IF-489-45
 title: 書き込みをすぐ送信する
 entry:
   kind: endpoint
-  value: POST /api/comments/send-now
+  value: POST /w/{workspace}/api/comments/send-now
 flows:
   - name: 正常系
     summary: 項目へのコメント 1 件を溜めずにオープンのスレッドの最初の書き込みにし、レビュー中の書き込みは残す
@@ -12,7 +12,7 @@ flows:
       - name: make_workspace
         description: 検討事項 D-1 と、D-1 へのレビュー中のコメント C-1（「案 B も見たい」）を持ち、`threads.yaml` を持たないワークスペース
         notes: '本文は `{"target": "D-1", "body": "案 A にする"}`'
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant WS as ワークスペース\n  \n  クライアント->>IF: POST {target: D-1, body}\n  IF-->>WS: 項目・スレッドの取得\n  IF->>IF: 向けた項目を確かめる\n  IF->>WS: threads.yaml にスレッドを 1 件追加する\n  IF-->>クライアント: 201、JSON（sent・thread・post・entered）\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/comments/send-now\n  participant WS as ワークスペース\n  \n  クライアント->>IF: POST {target: D-1, body}\n  IF-->>WS: 項目・スレッドの取得\n  IF->>IF: 向けた項目を確かめる\n  IF->>WS: threads.yaml にスレッドを 1 件追加する\n  IF-->>クライアント: 201、JSON（sent・thread・post・entered）\n```"
     expected:
       - ステータスが 201 で、`thread` が TH-1、`post` が TH-1-1、`entered` が `false`（tmux の外のため）
       - '`threads.yaml` の TH-1 が `status: open`・`target: D-1` で、最初の書き込みが `author: user`・`body: 案 A にする`・`read: false`・`taken: null`・`seen: true` で、`comment` のキーを持たない'
@@ -26,7 +26,7 @@ flows:
       - name: make_workspace
         description: AI の返信で終わるオープンのスレッド TH-1 と、TH-1 へのレビュー中の返信 C-1 を持つワークスペース
         notes: '本文は `{"thread": "TH-1", "body": "案 A にする"}`'
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant WS as ワークスペース\n  \n  クライアント->>IF: POST {thread: TH-1, body}\n  IF->>WS: TH-1 の末尾に書き込みを追加する\n  IF-->>クライアント: 201\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/comments/send-now\n  participant WS as ワークスペース\n  \n  クライアント->>IF: POST {thread: TH-1, body}\n  IF->>WS: TH-1 の末尾に書き込みを追加する\n  IF-->>クライアント: 201\n```"
     expected:
       - ステータスが 201 で、`thread` が TH-1
       - TH-1 の末尾に利用者の「案 A にする」が追加され、`comments.yaml` に C-1 が残る
@@ -38,7 +38,7 @@ flows:
         description: 『コメントをまとめて送信する』の `正常系（Claude Code へ入力する）` と同じ偽のコマンドと tmux
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant TM as tmux\n  \n  クライアント->>IF: POST {target: D-1, body}\n  IF->>TM: 「ユーザーからのコメントが 1 件届きました」を貼って確定する\n  IF-->>クライアント: 201、entered=true\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/comments/send-now\n  participant TM as tmux\n  \n  クライアント->>IF: POST {target: D-1, body}\n  IF->>TM: 「ユーザーからのコメントが 1 件届きました」を貼って確定する\n  IF-->>クライアント: 201、entered=true\n```"
     expected:
       - 会話の記録に `[mindstella] ユーザーからのコメントが 1 件届きました。再読み込みしてください。` が 1 件だけ入る
       - '`entered` が `true`'
@@ -51,7 +51,7 @@ flows:
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
         notes: '本文は `{"target": "D-1", "body": "  "}`'
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  \n  クライアント->>IF: POST 空の本文\n  IF-->>クライアント: 400\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/comments/send-now\n  \n  クライアント->>IF: POST 空の本文\n  IF-->>クライアント: 400\n```"
     expected:
       - ステータスが 400 で、`threads.yaml` を作っていない
     test: test_error_when_body_empty
@@ -63,7 +63,7 @@ flows:
       - name: make_workspace
         description: クローズのスレッド TH-1 を持ち、項目 D-9 を持たないワークスペース
         notes: '本文は `{"target": "D-9", "body": "案 A にする"}` と `{"thread": "TH-1", "body": "了解"}` の 2 通り'
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  \n  クライアント->>IF: POST 無い項目・クローズのスレッド\n  IF-->>クライアント: 409\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /w/{workspace}/api/comments/send-now\n  \n  クライアント->>IF: POST 無い項目・クローズのスレッド\n  IF-->>クライアント: 409\n```"
     expected:
       - どちらもステータスが 409 で、`threads.yaml` の中身が送信する前と同じ
     test: test_error_when_target_stale

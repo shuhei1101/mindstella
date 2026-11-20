@@ -264,11 +264,6 @@ tables:
         type: object
         description: 任意。コメント・返信の入力の音声入力の設定。`action`（文字起こし後の挙動。`review` は入力欄へ挿入した全文をレビュー中に溜めて送信しない。`send` は入力欄へ挿入した全文をその 1 件だけで Claude Code へ送信し、`insert` は入力欄のカーソルの位置に挿入して送信しない。無ければ `review`）と `preset`（文字起こしのサービスへ渡す用語集のプリセットの名前。1 文字以上の文字列か `null`。無いか `null` ならサービスの既定）を持つ。どのサービスを使うかは持たない（常駐サーバーの環境変数 `MINDSTELLA_TRANSCRIBER`）。`update_settings` と設定の画面が書く
         example: '{action: insert, preset: 開発}'
-      - name: preview
-        title: プレビューの配信
-        type: object
-        description: 任意。`port`（配信が `127.0.0.1` で待ち受けるポート。1〜65535 の整数。無ければ OS が選んだ空きポート）を持つ。外の入口（トンネル・リバースプロキシ）にポートを 1 回だけ登録するときに書く。配信を立てるときだけ読み、『設定の再読み込み』では待ち受けを変えない（Claude Code を再度開いて再作成すると効く）
-        example: '{port: 47800}'
       - name: mdmark
         title: 画面が読み込む mdmark
         type: object

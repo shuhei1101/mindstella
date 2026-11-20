@@ -3,6 +3,7 @@
 import { getLibrary, libraryState, mdmarkMapConfig } from "@/shared/adapters/libraries";
 import { h, markupIcon } from "@/shared/core/dom-parts";
 import type { Location, RecordIndex } from "@/shared/core/records";
+import { workspacePath } from "@/shared/core/workspace-path";
 
 /** 読み込んだ mdmark の、ここで使う口 */
 type Mdmark = {
@@ -92,7 +93,7 @@ const SOURCE_LINE_ATTR = "data-source-line";
 /** mdmark が描いた、埋め込んだ HTML の範囲の要素の class */
 export const EMBEDDED_HTML_CLASS = "mdmark-html";
 
-/** 本文のファイルのパスを解決する基準（資料のフォルダを表す配信のパス。`../files/{名前}` は `/files/{名前}` になる） */
+/** 本文のファイルのパスを解決する基準（資料のフォルダを表す配信のパスのうち、ワークスペースのパスの頭より後ろ。`../files/{名前}` は `/w/{workspace}/files/{名前}` になる） */
 export const FILE_BASE_PATH = "/docs/";
 
 /** 本文の中でファイルを指す要素と属性 */
@@ -146,9 +147,9 @@ const convertSourceLines = ({ root, source }: { root: HTMLElement; source: strin
   }
 };
 
-/** mdmark が描いた本文の `img`・`video`・`audio`・`source` の相対パスを、`FILE_BASE_PATH` を基準に解決した配信のパスに置き換える（埋め込んだ HTML の範囲の中は除く） */
+/** mdmark が描いた本文の `img`・`video`・`audio`・`source` の相対パスを、ワークスペースのパスの頭を付けた `FILE_BASE_PATH` を基準に解決した配信のパスに置き換える（埋め込んだ HTML の範囲の中は除く） */
 export const resolveFileSources = (root: HTMLElement): void => {
-  const base = `${location.origin}${FILE_BASE_PATH}`;
+  const base = `${location.origin}${workspacePath()}${FILE_BASE_PATH}`;
   for (const { selector, attr } of FILE_SOURCE_SELECTORS) {
     for (const element of root.querySelectorAll(selector)) {
       if (element.closest(`.${EMBEDDED_HTML_CLASS}`) !== null) continue;

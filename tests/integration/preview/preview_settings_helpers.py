@@ -39,7 +39,7 @@ CONFIRM_OPEN = "dialog.sconfirm[open]"
 DEFAULT_KINDS = ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"]
 
 # 端末の保存領域の個人の上書きを読む
-_PREFS_SCRIPT = "JSON.parse(localStorage.getItem('mindmap-preview') ?? 'null')"
+_PREFS_SCRIPT = "JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? 'null')"
 
 # タブの帯に並ぶ画面の並びを読む
 _TABS_SCRIPT = "[...document.querySelectorAll('nav.tabbar a')].map((a) => a.dataset.tab)"

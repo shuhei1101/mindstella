@@ -86,12 +86,12 @@ def test_normal(session_world: SessionWorld, webhook: FakeWebhook) -> None:
     assert _status(world, dead_id) == "crashed", server.stderr_text()
     assert _status(world, stopped_id) == "stopped"
     wait_until(lambda: webhook.requests)
-    wait_until(lambda: len(_requests(world, "GET")) >= 2)
+    wait_until(lambda: len(_requests(world, "GET")) >= 3)
     time.sleep(SETTLE_SEC)
     assert len(webhook.requests) == 1
     assert "異常終了" in str(webhook.requests[0]["body"]["content"])
-    # 停止の通知が B の行を引く 1 件と、待ち受けの後の確認の 1 件（作り直しの GET は無い）
-    assert len(_requests(world, "GET")) == 2
+    # 停止の通知が B の行を引く 1 件と、待ち受けの後の確認の 1 件と、配り始めの 1 件（作り直しの GET は無い）
+    assert len(_requests(world, "GET")) == 3
     assert _requests(world, "PATCH") == []
     assert _ids_file(world).read_text(encoding="utf-8") == ids_before
 
@@ -122,9 +122,10 @@ def test_normal_when_ids_missing(session_world: SessionWorld) -> None:
     status, body = world.api("GET", "/workspaces")
     assert status == 200
     assert [entry["id"] for entry in body["workspaces"]] == [first_id, dead_id]
-    wait_until(lambda: len(_requests(world, "GET")) >= 2)
+    # 待ち受けの前の作り直しと、待ち受けの後の確認と、配り始めの 3 件
+    wait_until(lambda: len(_requests(world, "GET")) >= 3)
     time.sleep(SETTLE_SEC)
-    assert len(_requests(world, "GET")) == 2
+    assert len(_requests(world, "GET")) == 3
 
 
 def test_normal_when_plugin_updated(session_world: SessionWorld) -> None:

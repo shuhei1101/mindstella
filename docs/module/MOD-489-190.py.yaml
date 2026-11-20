@@ -93,13 +93,6 @@ classes:
       - name: argument
         type: str
         description: 誤った引数の名前
-  - name: ServeFailedError
-    title: 配信を立てられない
-    container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: プレビューを開く
-    summary: プレビューの配信の待ち受けを立てられない（`OSError`）。メッセージに理由（`raise ... from` で元の例外をつなぐ）
-    kind: クラス
-    inherits: MindmapError
   - name: CommentInvalidError
     title: コメントの中身の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
@@ -238,5 +231,12 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: ワークスペースの作成
     summary: '記録の無いフォルダの直下に `docs/` か `files/` が既にある。メッセージにあるフォルダの名前と、改名してから再作成する案内。ワークスペースの管理は 409（`stage: root_folder`）にする'
+    kind: クラス
+    inherits: MindmapError
+  - name: WorkspaceIdConflictError
+    title: ワークスペースの ID の重なり
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: プレビューを開く
+    summary: '配ろうとしたワークスペースの ID が、配っている別のフォルダの ID と同じ（フォルダをコピーした・別の場所へクローンした）。メッセージは `ワークスペースの ID が配っている別のフォルダと重なります: {ID}（{配っているフォルダの絶対パス}）`'
     kind: クラス
     inherits: MindmapError

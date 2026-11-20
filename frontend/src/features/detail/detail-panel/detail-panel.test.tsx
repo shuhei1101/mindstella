@@ -56,6 +56,21 @@ describe("DetailPanel", () => {
     sessionStorage.clear();
   });
 
+  // ワークスペースごとのキーに残した幅で開く（正常系）
+  test("detail_panel_when_width_saved", async () => {
+    // 準備
+    stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
+    sessionStorage.setItem("mindmap-panel-width:mindstella-x-1", "880");
+    sessionStorage.setItem("mindmap-panel-width", "1000");
+    // 実行
+    renderRoute("/w/mindstella-x-1/spa/?tab=decisions&id=D-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    // 検証
+    expect(panel.style.width).toBe("880px");
+    sessionStorage.clear();
+    window.history.replaceState(null, "", "/");
+  });
+
   // 編集の表示（正常系）
   test("detail_panel_when_editing", async () => {
     // 準備

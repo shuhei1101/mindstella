@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from urllib.parse import urlsplit
 
 from workspace_fixtures import plugin_version, read_server_status
 
@@ -12,13 +11,8 @@ from .fixture_types import MakeWorkspace, StartServer
 SERVER_NAME = "mindstella"
 
 
-def _port(url: str) -> int | None:
-    """URL のポートを返す。"""
-    return urlsplit(url).port
-
-
 def test_normal(make_workspace: MakeWorkspace, start_server: StartServer) -> None:
-    """待ち受けのポート・バージョン・配信しているワークスペースごとのポートを返す（正常系）。"""
+    """待ち受けのポート・バージョン・配信しているワークスペースごとの画面の URL を返す（正常系）。"""
     # 準備
     first = make_workspace(name="a")
     second = make_workspace(name="b")
@@ -38,8 +32,8 @@ def test_normal(make_workspace: MakeWorkspace, start_server: StartServer) -> Non
         server.process.pid,
     )
     assert status["previews"] == [
-        {"workspace": str(first), "port": _port(first_url)},
-        {"workspace": str(second), "port": _port(second_url)},
+        {"workspace": str(first), "url": first_url},
+        {"workspace": str(second), "url": second_url},
     ]
     assert read_server_status(server.port) == status
 

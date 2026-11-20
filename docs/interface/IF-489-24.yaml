@@ -2,7 +2,7 @@ id: IF-489-24
 title: "レビュー中のコメントの追加"
 entry:
   kind: endpoint
-  value: POST /api/comments
+  value: POST /w/{workspace}/api/comments
 flows:
   - name: 正常系
     summary: 項目へのコメントを溜め、その向けた先の下書きを削除する
@@ -16,7 +16,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
         participant WS as ワークスペース
 
         クライアント->>IF: POST {target: D-1, body: 案 A にする}
@@ -43,7 +43,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
         participant WS as ワークスペース
 
         クライアント->>IF: POST {target: A-1, loc: 本文の 2 行目, body}
@@ -68,7 +68,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
         participant WS as ワークスペース
 
         クライアント->>IF: POST {body: 全体に目を通した}
@@ -91,7 +91,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
         participant WS as ワークスペース
 
         クライアント->>IF: POST {id: C-2, created, target: D-1, body}
@@ -114,7 +114,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
 
         クライアント->>IF: POST {target: D-1, body: 空白}
         IF-->>クライアント: 400
@@ -135,7 +135,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
 
         クライアント->>IF: POST（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -156,7 +156,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
 
         クライアント->>IF: POST {target: D-99}
         IF-->>クライアント: 404
@@ -177,7 +177,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
         participant WS as ワークスペース
 
         クライアント->>IF: POST {target: A-1, loc}
@@ -201,7 +201,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
 
         クライアント->>IF: POST（application/x-www-form-urlencoded）
         IF-->>クライアント: 415
@@ -222,7 +222,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
         participant WS as ワークスペース
 
         クライアント->>IF: POST {target: D-1, body}
@@ -245,7 +245,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
 
         クライアント->>IF: POST（Host: preview.example.test、Origin: https://preview.example.test）
         IF-->>クライアント: 201
@@ -266,7 +266,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
         participant WS as ワークスペース
 
         クライアント->>IF: POST {target: A-1, loc: 本文の 4 行目, body}
@@ -292,7 +292,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
         participant WS as ワークスペース
 
         クライアント->>IF: POST {thread: TH-1, body}
@@ -318,7 +318,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments
+        participant IF as POST /w/{workspace}/api/comments
 
         クライアント->>IF: POST {thread: TH-1, body}
         IF-->>クライアント: 409

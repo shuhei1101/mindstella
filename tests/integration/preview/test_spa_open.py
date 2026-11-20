@@ -8,14 +8,16 @@ import re
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 
 from playwright.sync_api import Page, Route, expect
 from preview_fixture_types import WritePreview, WriteReviewPreview
 from preview_embedded_files_helpers import EMBEDDED_FILES_BODY, put_embedded_files
-from preview_spa_helpers import SPA_ROOT_PATH, open_spa, watch_console
+from preview_spa_helpers import open_spa, spa_url, watch_console
 from workspace_fixtures import (
+    PORT_ENV,
     RECORD_DIR,
     CallTool,
     MakeComment,
@@ -91,7 +93,7 @@ def test_normal(
     assert page.get_attribute('header button[aria-label^="コメント"]', "aria-label") == (
         "コメント（未読あり・レビュー中 2 件）"
     )
-    assert page.evaluate("location.pathname + location.search") == SPA_ROOT_PATH
+    assert page.evaluate("location.pathname + location.search") == urlsplit(spa_url(url)).path
     assert console.messages == []
     assert console.exceptions == []
 
@@ -228,14 +230,14 @@ def test_error_when_records_invalid(
 def test_error_when_server_stopped(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    valid_settings: dict[str, Any],
     start_server: StartServer,
     page: Page,
 ) -> None:
     """書き換えの知らせが切れたら、トップバーに接続が切れたことを出し、立ち上がり直すとつなぎ直す（異常系）。"""
-    # 準備（常駐サーバーがポートを掴んだ後に、配信のポートを選ぶ）
-    server = start_server()
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "preview": {"port": free_port()}})
+    # 準備（再起動も同じポートで待ち受けるよう、常駐サーバーのポートを決めて渡す）
+    port_env = {PORT_ENV: str(free_port())}
+    server = start_server(extra_env=port_env)
+    root = make_workspace(make_item("D-1"))
     served = server.call("preview_url", workspace=str(root))
     assert served.data is not None
     open_spa(page, served.data["url"])
@@ -245,7 +247,7 @@ def test_error_when_server_stopped(
     server.wait_exit()
     page.wait_for_selector(CONNECTION, timeout=UPDATE_TIMEOUT_MS)
     stopped_tile = page.inner_text("#tile-open")
-    restarted = start_server().call("preview_url", workspace=str(root))
+    restarted = start_server(extra_env=port_env).call("preview_url", workspace=str(root))
     page.wait_for_selector(CONNECTION, state="detached", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert "D-1の題" in stopped_tile
@@ -277,7 +279,7 @@ def test_normal_when_filter(page: Page, spa_preview: str) -> None:
     """`f.{列}` の条件で開き、端末に残す（正常系）。"""
     open_spa(page, spa_preview, "?tab=decisions&view=table&f.status=%E4%BF%9D%E7%95%99")
     expect(page.get_by_role("cell", name="画面の幅")).to_be_visible()
-    assert "保留" in page.evaluate("localStorage.getItem('mindmap-preview')")
+    assert "保留" in page.evaluate("localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))")
 
 
 def test_normal_when_diff(page: Page, write_history_preview: WriteReviewPreview) -> None:
@@ -300,7 +302,7 @@ def test_normal_when_since(page: Page, write_history_preview: WriteReviewPreview
     calls: list[str] = []
     page.on("request", lambda request: calls.append(request.url) if request.url.endswith("/api/opened") else None)
     open_spa(page, url, "?tab=decisions&diff=since")
-    page.wait_for_function("sessionStorage.getItem('mindmap-preview-opened') !== null")
+    page.wait_for_function("sessionStorage.getItem('mindmap-preview-opened' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) !== null")
     open_spa(page, url, "?tab=tasks&diff=since")
     page.wait_for_load_state("networkidle")
     assert len(calls) == 1
@@ -605,7 +607,7 @@ def test_normal_when_display_settings(page: Page, write_review_preview: WriteRev
     expect(page.get_by_role("navigation", name="項目の種類").get_by_role("link", name="メモ")).to_have_count(0)
     page.wait_for_function("() => !location.search.includes('tab=')")
     assert _history_length(page) == before
-    prefs = json.loads(page.evaluate(f"localStorage.getItem('{PREFS_KEY}')"))
+    prefs = json.loads(page.evaluate(f"localStorage.getItem('{PREFS_KEY}' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))"))
     assert "notes" not in prefs["kinds"]
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
     # 実行（ワークスペースの既定にする）
@@ -703,12 +705,12 @@ def test_error_when_comment_body_empty(page: Page, write_review_preview: WriteRe
 
 
 def test_error_when_comment_server_unreachable(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any], start_server: StartServer, page: Page
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer, page: Page
 ) -> None:
     """サーバーが止まった後に溜めると、本文を残して届かなかった理由を出す（異常系）。"""
-    # 準備（常駐サーバーがポートを掴んだ後に、配信のポートを選ぶ）
+    # 準備
     server = start_server()
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "preview": {"port": free_port()}})
+    root = make_workspace(make_item("D-1"))
     served = server.call("preview_url", workspace=str(root))
     assert served.data is not None
     errors = watch_console(page)
@@ -776,19 +778,20 @@ def test_normal_when_duplicate_ids(
 
 
 def test_normal_when_embedded_files(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page) -> None:
-    """本文の ../files/{名前} を配信の /files/{名前} に解決して、動画・画像を描く（正常系）。"""
+    """本文の ../files/{名前} を配信の /w/{workspace}/files/{名前} に解決して、動画・画像を描く（正常系）。"""
     # 準備
     root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": EMBEDDED_FILES_BODY})
     put_embedded_files(root)
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
+    workspace_base = urlsplit(served.data["url"]).path.rsplit("/", 1)[0]
     # 実行
     open_spa(page, served.data["url"], "?tab=docs&id=A-1")
     panel = page.get_by_role("complementary", name="詳細")
     video = panel.locator("video")
     image = panel.locator("img")
-    expect(video).to_have_attribute("src", "/files/clip.mp4", timeout=UPDATE_TIMEOUT_MS)
-    expect(image).to_have_attribute("src", "/files/shot.png")
+    expect(video).to_have_attribute("src", f"{workspace_base}/files/clip.mp4", timeout=UPDATE_TIMEOUT_MS)
+    expect(image).to_have_attribute("src", f"{workspace_base}/files/shot.png")
     # 検証
     expect(video).to_have_js_property("error", None)
     page.wait_for_function("(v) => v.readyState >= 1", arg=video.element_handle(), timeout=UPDATE_TIMEOUT_MS)

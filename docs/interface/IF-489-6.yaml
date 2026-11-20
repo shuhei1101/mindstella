@@ -2,7 +2,7 @@ id: IF-489-6
 title: "コメントをまとめて送信する"
 entry:
   kind: endpoint
-  value: POST /api/comments/send
+  value: POST /w/{workspace}/api/comments/send
 flows:
   - name: 正常系
     summary: チェックしたコメントだけをスレッドへ移し、残りはレビュー中に残す
@@ -16,7 +16,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant WS as ワークスペース
 
         クライアント->>IF: POST {ids: [C-2, C-1]}
@@ -45,7 +45,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
 
         クライアント->>IF: POST {ids: []}
         IF-->>クライアント: 400
@@ -66,7 +66,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
 
         クライアント->>IF: POST（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -87,7 +87,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
 
         クライアント->>IF: POST {ids: [C-1, C-9]}
         IF-->>クライアント: 404
@@ -108,7 +108,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant WS as ワークスペース
 
         クライアント->>IF: POST {ids: [C-1, C-2]}
@@ -133,7 +133,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
 
         クライアント->>IF: POST（application/x-www-form-urlencoded）
         IF-->>クライアント: 415
@@ -154,7 +154,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant WS as ワークスペース
 
         クライアント->>IF: POST {ids: [C-1]}
@@ -180,7 +180,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant WS as ワークスペース
         participant TM as tmux
         participant CC as Claude Code（偽のコマンド）
@@ -215,7 +215,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant TM as tmux
         participant CC as Claude Code（偽のコマンド）
         participant JL as 会話の記録
@@ -244,7 +244,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant WS as ワークスペース
         participant TM as tmux
         participant JL as 会話の記録
@@ -275,7 +275,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant TM as tmux
         participant JL as 会話の記録
 
@@ -305,7 +305,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant TM as tmux
         participant JL as 会話の記録
 
@@ -337,7 +337,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant WS as ワークスペース
         participant TM as tmux
 
@@ -364,7 +364,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant 画面
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant ST as 状態のフォルダ
         participant P as MindStella のセッションのペイン
 
@@ -391,7 +391,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant WS as ワークスペース
 
         クライアント->>IF: POST {ids: [C-1]}
@@ -415,7 +415,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant WS as ワークスペース
 
         クライアント->>IF: POST {ids: [C-1]}
@@ -439,7 +439,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/comments/send
+        participant IF as POST /w/{workspace}/api/comments/send
         participant WS as ワークスペース
 
         クライアント->>IF: POST {ids: [C-1, C-2]}

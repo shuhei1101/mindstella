@@ -1,0 +1,162 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: プレビューを、ワークスペースごとの配信ではなく常駐サーバーの 1 つの入口で開く。ワークスペースを開き直しても画面の場所が変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-10.yaml
+    impact: changed
+    detail: 外から見るときに、ワークスペースごとのポートを固定して外の入口へつなぐのではなく、常駐サーバーの 1 つの入口を外の入口へつなぐ
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-20.yaml
+    impact: changed
+    detail: 常駐サーバーの状態に出す配信中のワークスペースが、ワークスペースごとのポートではなく画面の場所を持つ
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-41.yaml
+    impact: run_only
+    detail: 起動のコマンドは画面の URL を常駐サーバーの API から受け取って示すためシナリオの記述は変わらないが、示す URL が変わるため壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: run_only
+    detail: 音声でのコメントは画面からの送信の行き先が変わるため、壊していないかを確かめる
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: run_only
+    detail: 記録しながら画面で読み返す流れで、画面の開き方が変わるため壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-2.yaml
+    impact: changed
+    detail: README に書くプレビューの URL が、常駐サーバーのポートのワークスペースごとの画面の URL になる
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-587-1.yaml
+    impact: run_only
+    detail: 資料に埋め込んだファイルを開く場所にワークスペースの区別が加わるため、ほかのワークスペースのファイルが届かないこととあわせて壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-568-1.yaml
+    impact: run_only
+    detail: 作業の完了の通知に載せるプレビューの URL が変わるため、壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: run_only
+    detail: 停止の通知に載せるプレビューの URL が変わるため、壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: run_only
+    detail: 画面から書き込む経路の場所が変わるため、履歴に残るかを壊していないか確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: run_only
+    detail: 外部のアプリへ返却する画面の URL が変わるため、壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-597-1.yaml
+    impact: run_only
+    detail: ワークスペースの状態が返却する画面の URL が変わるため、壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-601-1.yaml
+    impact: run_only
+    detail: 再度開いたワークスペースの画面の URL と、削除したときに配るのをやめる振る舞いが 1 つのポートの作りでも壊れていないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-604-1.yaml
+    impact: run_only
+    detail: 設定の書き換えが返却する画面の URL が変わるため、壊していないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-605-1.yaml
+    impact: run_only
+    detail: 常駐サーバーの起動時に、作成済みのワークスペースを配り始めて起動時のフックを呼ぶようになるため、起動の流れを壊していないかを確かめる
+    depends_on: []
+docs:
+  - page: docs/architecture/ARCH-489-1.yaml
+    new: false
+    change: サーバーの runs_on・プレビューの runs_on の配信の待ち受け（空きポート・`preview.port`）を、常駐サーバーの 1 つのポートで全てのワークスペースを配る記述にする
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/nonfunctional/NFR-489-1.yaml
+    new: false
+    change: 待ち受けの決定値から配信ごとのポート（空きポート・`preview.port`）を外し、`MINDSTELLA_PORT` の 1 つにする
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 画面の URL とポートの説明を、常駐サーバーの 1 つのポートでワークスペースごとの場所を開く説明にする
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/セットアップ手順-プレビューを外から見る.md
+    new: false
+    change: ワークスペースごとに `preview.port` を固定して外の入口へつなぐ手順を、常駐サーバーのポートを 1 つつなぐ手順にする。配信の起動・終了のフックの呼ばれ方も合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: '`config.yaml` の `preview.port` の行を、データ設計で決めた扱い（削除か保持）に合わせる'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: '`preview_url`・`readme`・起動のコマンド・常駐サーバーの状態が返す画面の URL とポートの説明を、常駐サーバーの入口の URL に合わせる'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/動作環境.mark.md
+    new: false
+    change: 通信の行の待ち受けの説明を、常駐サーバーの 1 つのポートに合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
+    change: 許可するホスト名と配信のフックの説明を、常駐サーバーの画面の経路とワークスペースを配り始める・やめるときの呼び方に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    change: 配信のフックの説明を、ワークスペースを配り始める・やめるときの呼び方に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    change: README を書き直す時点を、プレビューを配り始めたとき（常駐サーバーの起動時を含む）に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-20T19:40:37.879548+00:00'
+scope_out:
+  - item: 今の画面と雛形の削除・配る書き出しの React への付け替え
+    reason: '要望は配信の作りの切り替えで、今の画面は呼び出しのパスだけを合わせる（#538 の後ろに #371 を回す計画の判断）'
+    plan: '#371'
+  - item: 常駐サーバーを起動し直した後に外部への公開を登録し直すフックの追加
+    reason: 要望に含まれない。この作業 PR では、既にある配信の起動・終了のフックの呼ばれ方を 1 つのポートに合わせるだけ
+    plan: '#600'
+  - item: 作業の完了・停止の通知の URL を外部に公開した URL にする
+    reason: 要望に含まれない。この作業 PR では、通知に載せるローカルの URL を常駐サーバーの入口の URL に合わせるだけ
+    plan: '#617'
+  - item: 結合テスト test_embedded_html_in_full・test_normal_when_embedded_html・test_embedded_chart の fail（mdmark の図の右上のパネルに追従していない）
+    reason: develop（642fb1e4）でも同じく fail する既存の不具合で、要望（1 つのポートでの配信）に含まれない
+    plan: '#610'
+  - item: 結合テスト test_diff_body_layout_switch の fail（document.activeElement の data-layout が None）
+    reason: develop（642fb1e4）でも毎回 fail する既存の不具合で、要望に含まれない
+    plan: '#553'
+  - item: 結合テスト test_error_when_host_not_local の fail（作成を断った後にも GET /settings/sources が届く）
+    reason: develop（642fb1e4）でも同じく fail する既存の不具合で、要望に含まれない
+    plan: '#575'
+  - item: 結合テスト test_normal_when_body_table_and_sections（表の ID の列がピン止めされない）・test_normal_when_real_project_index（実物の project-index がスキーマのファイルを見つけられない）の fail
+    reason: develop（642fb1e4）でも同じく fail する既存の不具合で、要望に含まれない
+    plan: '#643'

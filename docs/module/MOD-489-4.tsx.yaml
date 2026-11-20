@@ -1,12 +1,12 @@
 id: MOD-489-4
 title: プレビュー / router
-lead: SPA を配るパスの頭（インターフェース定義『SPAの配信』）。
+lead: SPA を配るパスのうち、ワークスペースのパスの頭より後ろ（インターフェース定義『SPAの配信』）。
 constants:
   - name: ROUTER_BASEPATH
     title: ルーターの頭
     container: frontend/src/app/router.tsx
     usecase: 共通
-    summary: SPA を配るパスの頭（インターフェース定義『SPAの配信』）
+    summary: SPA を配るパスのうち、ワークスペースのパスの頭より後ろ（インターフェース定義『SPAの配信』）
     value: '"/spa"'
 functions:
   - name: createAppRouter
@@ -14,7 +14,7 @@ functions:
     kind: 関数
     container: frontend/src/app/router.tsx
     usecase: 共通
-    summary: 生成したルートのツリーで、`ROUTER_BASEPATH` を頭にしたルーターを作る
+    summary: 生成したルートのツリーで、開いた画面のワークスペースのパスの頭と `ROUTER_BASEPATH` をつないだパス（`workspacePath() + ROUTER_BASEPATH`）を頭にしたルーターを作る
     args:
       - name: queryClient
         type: QueryClient
@@ -27,8 +27,10 @@ functions:
       - name: test_create_app_router
         case: 正常
         summary: basepath と context を持つ
-        condition: QueryClient を渡す
+        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/spa/` にし、QueryClient を渡す'
         mock: なし
-        expected: '`options.basepath` が `/spa`、`options.context.queryClient` が渡した QueryClient'
+        expected: '`options.basepath` が `/w/mindstella-x-1/spa`、`options.context.queryClient` が渡した QueryClient'
+    callees:
+      - MOD-642-1#functions[workspacePath]
 notes:
   単体テスト: 同じフォルダの `router.test.tsx` に置く（knowledge の規約『フォルダ構成』）

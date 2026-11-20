@@ -44,7 +44,7 @@ from errors import (
     NotMindStellaSessionError,
     SchemaMismatchError,
 )
-from serve import LISTEN_HOST, PreviewRegistry, load_external_access
+from serve import LISTEN_HOST, PREVIEW_PREFIX, PreviewEndpoint, PreviewRegistry, load_external_access
 from store import LEGACY_HINT, require_workspace, workspace_lock
 from transcriber_registry import InvalidTranscriberError, load_transcriber
 from versions import PLUGIN_VERSION_FILE, read_plugin_version
@@ -136,6 +136,10 @@ type WorkspaceIdArg = Annotated[
     str, Field(description="ワークスペースの ID（create_workspace が返す id）")
 ]
 
+
+# 配信の経路で受けるメソッド
+PREVIEW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+
 logger = logging.getLogger(__name__)
 
 
@@ -222,6 +226,7 @@ def main(
     state_root = state.state_root(source)
     previews = PreviewRegistry(
         write_lock,
+        port=port,
         external=load_external_access(source),
         transcriber=transcriber,
         input_targets=InputTargets(
@@ -276,6 +281,8 @@ def main(
     usage_watch.start_usage_watch(context, stop_watch)
     # 待ち受けと並行して、エージェントフローの配信元の行を今のプラグインへ向け直す
     startup.start_agent_flows_check(context)
+    # 待ち受けと並行して、ID の一覧のワークスペースを配り始める
+    startup.start_serve_registered(context)
     logger.info(
         "常駐サーバーが待ち受けを始めた（ポート %s、バージョン %s、PID %s）",
         port,
@@ -938,7 +945,7 @@ def build_server(
 
     @server.tool(
         name="server_stop",
-        description="常駐サーバーを止める。配信ごとに終了時のフックを呼び、全ての配信を止めて、プロセスを終える",
+        description="常駐サーバーを止める。配っているワークスペースごとに終了時のフックを呼び、プロセスを終える",
     )
     def server_stop(session: SessionArg = None) -> CallToolResult:
         return call_tool(
@@ -949,6 +956,11 @@ def build_server(
     for route in api.build_routes(context):
         methods = sorted((route.methods or set()) - {"HEAD"})
         server.custom_route(route.path, methods=methods)(route.endpoint)
+
+    # 全てのワークスペースの画面と、画面が呼ぶ経路を、MCP と同じ待ち受けに足す
+    endpoint = PreviewEndpoint(previews)
+    for path in (f"{PREVIEW_PREFIX}/{{workspace}}", f"{PREVIEW_PREFIX}/{{workspace}}/{{rest:path}}"):
+        server.custom_route(path, methods=PREVIEW_METHODS)(endpoint.__call__)
 
     @server.custom_route(STATUS_PATH, methods=["GET"])
     async def admin_status(request: Request) -> JSONResponse:

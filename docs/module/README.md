@@ -57,6 +57,7 @@
 | [プレビュー / thread-view](./MOD-489-14.tsx.yaml) | 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする |
 | [プレビュー / __root](./MOD-489-54.tsx.yaml) | 子のルートを描く外枠。描画中のエラーは ErrorBoundary で受ける |
 | [プレビュー / index](./MOD-489-55.tsx.yaml) | SPA のルート（`/`）。search の検証と先読みをして `PreviewShell` を描く |
+| [プレビュー / workspace-path](./MOD-642-1.ts.yaml) | 開いた画面の URL のパスから、配っているワークスペースのパスの頭と、端末の保存領域のキーを求める。 |
 | [プレビュー / api-client](./MOD-489-56.ts.yaml) | orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる |
 | [プレビュー / events-client](./MOD-489-57.ts.yaml) | インターフェース定義『書き換えの通知』 |
 | [プレビュー / libraries](./MOD-489-58.ts.yaml) | 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」） |
@@ -160,6 +161,7 @@
 | [サーバー / 移行 / markdown_bodies_to_mark_md.py](./MOD-527-1.py.yaml) | サーバー / 移行 / markdown_bodies_to_mark_md.py |
 | [サーバー / 移行 / move_bodies_to_root.py](./MOD-626-1.py.yaml) | サーバー / 移行 / move_bodies_to_root.py |
 | [サーバー / 移行 / remove_network_look.py](./MOD-542-1.py.yaml) | サーバー / 移行 / remove_network_look.py |
+| [サーバー / 移行 / remove_preview_port.py](./MOD-642-2.py.yaml) | サーバー / 移行 / remove_preview_port.py |
 | [サーバー / 移行 / answer_to_adopted_option.py](./MOD-489-183.py.yaml) | サーバー / 移行 / answer_to_adopted_option.py |
 | [サーバー / 移行 / submissions_to_threads.py](./MOD-489-184.py.yaml) | サーバー / 移行 / submissions_to_threads.py |
 | [サーバー / 移行 / refs_to_related.py](./MOD-540-3.py.yaml) | サーバー / 移行 / v0.13.0 の参照のキーを種類つきの関連へ移す移し替え |
@@ -248,7 +250,7 @@
 | [サーバー / 移行 / migrator.py](./MOD-489-179.py.yaml) | サーバー / 移行 / migrator.py |
 | [サーバー / ワークスペースの README / readme.py](./MOD-489-153.py.yaml) | ワークスペースの直下の `README.md`（起動・接続のコマンド、スキルの呼び方、プレビューの URL の一覧）を組み立てて書く。`init`・`readme`・`preview_url` の 3 つのツールが同じ関数で書く。 |
 | [サーバー / 未読へ戻す / reset_unread.py](./MOD-489-160.py.yaml) | Claude Code の `SessionStart` のフックが呼ぶスクリプト。作業フォルダとその直下のワークスペースを探し、ロックを取ってスレッドの書き込みを未読に戻す。スレッドと読み書きと検証に依存する。単体テストは `tests/unit/scripts/test_reset_unread.py` に置く。 |
-| [サーバー / 配信 / serve.py](./MOD-489-169.py.yaml) | ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの通知を返し、レビュー中のコメント・下書き・まとめて送信する・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送信するを受け付ける。まとめて送信した後とすぐ送信した後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。 |
+| [サーバー / 配信 / serve.py](./MOD-489-169.py.yaml) | 常駐サーバーの待ち受けの `/w/{workspace}` の下で、全てのワークスペースのプレビューを配る。画面・記録・スレッド・書き換えの通知を返し、レビュー中のコメント・下書き・まとめて送信する・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送信するを受け付ける。まとめて送信した後とすぐ送信した後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。 |
 | [サーバー / エントリーポイント / server.py](./MOD-489-177.py.yaml) | サーバー / 入口 / server.py |
 | [サーバー / 設定の更新 / settings_update.py](./MOD-489-166.py.yaml) | `update_settings` の引数を確かめ、設定のキーを置き換えて `config.yaml` を書く。削除したキー（ゴール・フェーズ・プレイブック・対象・カテゴリー）を渡すと、何も書かずに引数の誤りにする。読み書きと検証だけに依存する。 |
 | [サーバー / 読み込みと書き込みと検証 / store.py](./MOD-489-189.py.yaml) | サーバー / 読み書きと検証 / store.py |

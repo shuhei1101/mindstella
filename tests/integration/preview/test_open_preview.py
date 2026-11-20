@@ -219,7 +219,7 @@ DIFF_CHIP_TITLE = ".df-chip-t"
 DIFF_OFF_NAME = "差分の表示をやめる"
 
 # 端末の保存領域に残した選んだ時点を読む
-SAVED_DIFF_JS = "JSON.parse(localStorage.getItem('mindmap-preview') || '{}').diffSel ?? null"
+SAVED_DIFF_JS = "JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) || '{}').diffSel ?? null"
 
 # 時点を指すハッシュの書き換えと再描画を待つ上限ミリ秒
 DIFF_SETTLE_MS = 10_000
@@ -2576,19 +2576,20 @@ def test_normal_when_embedded_files(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """本文の ../files/{名前} を配信の /files/{名前} に解決して、動画・画像を描く（正常系）。"""
+    """本文の ../files/{名前} を配信の /w/{workspace}/files/{名前} に解決して、動画・画像を描く（正常系）。"""
     # 準備
     root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": EMBEDDED_FILES_BODY})
     put_embedded_files(root)
     url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    workspace_base = urlsplit(url).path.rsplit("/", 1)[0]
     before = snapshot_tree(root)
     # 実行
     open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector(BODY_VIDEO, state="attached", timeout=DIAGRAM_TIMEOUT_MS)
     page.wait_for_function(MEDIA_READY_JS, arg=[BODY_VIDEO, BODY_IMAGE], timeout=UPDATE_TIMEOUT_MS)
     # 検証
-    assert page.get_attribute(BODY_VIDEO, "src") == "/files/clip.mp4"
-    assert page.get_attribute(BODY_IMAGE, "src") == "/files/shot.png"
+    assert page.get_attribute(BODY_VIDEO, "src") == f"{workspace_base}/files/clip.mp4"
+    assert page.get_attribute(BODY_IMAGE, "src") == f"{workspace_base}/files/shot.png"
     assert page.inner_text(BODY_CODE) == "![x](../files/x.png)"
     # 開いた日時のファイルは画面を開くと書き換わるため、記録の YAML と本文だけを比べる
     after = snapshot_tree(root)

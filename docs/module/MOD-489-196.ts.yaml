@@ -209,7 +209,7 @@ constants:
     title: 配信のパス
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
     usecase: プレビューを開く
-    summary: 画面が開いた URL からの相対パス
+    summary: 画面が開いた URL からの相対パス（`/w/{workspace}/mindstella.html` から解決して `/w/{workspace}/api/...` になる）
     entries:
       - key: records
         value: '"api/records"'
@@ -583,3 +583,56 @@ functions:
         condition: '`parametrize`: `transcribe` に 503・`{"detail": "…", "reason": "unsupported"}` / `fetchFn` が `TypeError` を送出する'
         mock: '`fetchFn`'
         expected: '`{ok: false, status: 503, reason: unsupported}` / `{ok: false, status: null, detail: null}`'
+  - name: workspacePath
+    title: ワークスペースのパスの頭
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 共通
+    scope: public
+    summary: React の画面の『workspace-path』の `workspacePath` と同じ処理（パスの先頭が `/w/{workspace}` に該当すればその部分を、該当しなければ空文字を返す）
+    args:
+      - name: pathname
+        type: string
+        required: false
+        default: location.pathname
+        passing: positional
+        description: 開いた画面の URL のパス
+    returns:
+      type: string
+      description: '`/w/{workspace}` か空文字'
+    unit_tests:
+      - name: test_workspace_path
+        case: 正常
+        summary: パスの頭を返す
+        condition: '`parametrize`: `/w/mindstella-x-1/mindstella.html` / `/w/a%20b/mindstella.html` / `/C:/x/export.html`'
+        mock: なし
+        expected: '`/w/mindstella-x-1` / `/w/a%20b` / 空文字'
+  - name: workspaceKey
+    title: 端末の保存領域のキー
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 共通
+    scope: public
+    summary: React の画面の『workspace-path』の `workspaceKey` と同じ処理（パスの先頭が `/w/{workspace}` に該当すれば `{key}:{workspace}`、該当しなければ `key`。配る書き出しは該当しないためキーを変えない）
+    args:
+      - name: key
+        type: string
+        required: true
+        passing: positional
+        description: 端末の保存領域のキー（`PREFS_KEY` など）
+      - name: pathname
+        type: string
+        required: false
+        default: location.pathname
+        passing: positional
+        description: 開いた画面の URL のパス
+    returns:
+      type: string
+      description: ワークスペースの ID を末尾に付けたキーか、`key`
+    unit_tests:
+      - name: test_workspace_key
+        case: 正常
+        summary: ワークスペースの ID を末尾に付ける
+        condition: '`key` は `mindmap-preview`。`parametrize`: `/w/mindstella-x-1/mindstella.html` / `/w/a%20b/mindstella.html` / `/C:/x/export.html`'
+        mock: なし
+        expected: '`mindmap-preview:mindstella-x-1` / `mindmap-preview:a b` / `mindmap-preview`'

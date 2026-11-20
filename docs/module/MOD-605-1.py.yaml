@@ -1,5 +1,5 @@
 title: サーバー / エントリーポイント / startup.py
-lead: 常駐サーバーの起動時の照合（IF-605-1）を受け持つ。待ち受けの前に ID の一覧の再作成と状態の照合を行い、待ち受けと並行するスレッドでエージェントフローの配信元の行を確認する。
+lead: 常駐サーバーの起動時の照合（IF-605-1）を受け持つ。待ち受けの前に ID の一覧の再作成と状態の照合を行い、待ち受けと並行するスレッドでエージェントフローの配信元の行を確認し、ID の一覧のワークスペースを配り始める。
 constants:
   - name: STARTUP_GET_TIMEOUT_SEC
     title: 待ち受けの前の GET の上限
@@ -234,6 +234,74 @@ functions:
         summary: daemon のスレッドで 1 回呼ぶ
         condition: '`check_agent_flows_source` を呼ばれた回数を数える関数に差し替え、返ったスレッドを `join` する'
         mock: '`check_agent_flows_source`（monkeypatch）'
+        expected: スレッドが `daemon` で、1 回呼ばれている
+  - name: serve_registered
+    title: ID の一覧のワークスペースを配り始める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/startup.py
+    usecase: 常駐サーバーの起動
+    scope: public
+    summary: 状態のワークスペースの ID の一覧のワークスペースのフォルダを project-index の配信元の行から引き、配信の台帳で配り始めて直下の README を書き直す（インターフェース定義『プレビューの配信』の制約「配るワークスペース」）。どれに失敗しても例外を送出しない
+    args:
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 常駐サーバーの文脈（`state_root`・`pi_port`・`previews` を使用する）
+    returns:
+      type: int | None
+      description: 配り始めた数。project-index に問い合わせられなければ `None`
+    process: |-
+      1. 状態の ID の一覧を読む（`state.read_ids`）
+      2. project-index の端末の設定を 1 回問い合わせ、ID ごとに配信元の行を引いてフォルダを求める（`workspaces.workspace_folder`。行が無い ID は飛ばす）
+         - 問い合わせられない場合、`None` を返す
+           - `[WARNING]` 登録済みのワークスペースを配り始められない（理由。`preview_url` で配れる案内）
+      3. 求めたフォルダを ID の一覧の順に配信の台帳で配り始める（`PreviewRegistry.start`）
+         - `MindmapError`（`WorkspaceNotFoundError`・`SchemaMismatchError`・`WorkspaceIdConflictError`）の場合、そのワークスペースを飛ばして続ける
+           - `[WARNING]` ワークスペースを配れない（ワークスペース、理由）
+         - 配り始めた（`start` が真を返した）場合、直下の README をその URL で書き直す（`readme.write_readme(root, preview_url=url)`。`run_preview_url` と同じ。`WriteFailedError` は `[WARNING]` に残して続ける）
+      4. 配り始めた数を返す
+         - `[INFO]` 登録済みのワークスペースを配り始めた（数）
+    callees:
+      - MOD-489-169#classes[PreviewRegistry].methods[start]
+      - MOD-489-153#
+    unit_tests:
+      - name: test_serve_registered
+        case: 正常
+        summary: ID の一覧のワークスペースを配り始める
+        condition: 状態の ID の一覧に A・B・C、project-index の Mock の配信元の行に A・C を置く。A は自動で書いたマーカーを持つ前のポートの URL の README を持ち、C は `config.yaml` をスキーマに合わなくしたワークスペース
+        mock: project-index（端末の設定を返す偽のサーバー）
+        expected: '1 を返し、A だけを配る（`url_of`）。A の README のプレビューのセクションが `url_of` の URL になり、標準エラーに C の `[WARNING]` の行がある'
+      - name: test_serve_registered_when_project_index_down
+        case: 異常
+        summary: project-index に問い合わせられなければ配らずに終える
+        condition: project-index のポートを誰も待ち受けない空きポートにする
+        mock: なし
+        expected: '`None` を返し、例外を送出しない。標準エラーに `[WARNING]` の行がある'
+  - name: start_serve_registered
+    title: ID の一覧のワークスペースの配り始めを始める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/startup.py
+    usecase: 常駐サーバーの起動
+    scope: public
+    summary: '`serve_registered` を 1 回だけ呼ぶ `daemon` のスレッドを始めて返す（待ち受けを始めるのを待たせない）'
+    args:
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 常駐サーバーの文脈
+    returns:
+      type: threading.Thread
+      description: 始めたスレッド（名前 `mindstella-serve-registered`）
+    callees:
+      - MOD-605-1#functions[serve_registered]
+    unit_tests:
+      - name: test_start_serve_registered
+        case: 正常
+        summary: daemon のスレッドで 1 回呼ぶ
+        condition: '`serve_registered` を呼ばれた回数を数える関数に差し替え、返ったスレッドを `join` する'
+        mock: '`serve_registered`（monkeypatch）'
         expected: スレッドが `daemon` で、1 回呼ばれている
 refs:
   - IF-605-1#

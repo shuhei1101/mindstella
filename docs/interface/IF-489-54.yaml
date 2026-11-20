@@ -2,7 +2,7 @@ id: IF-489-54
 title: "設定の既定の書き換え"
 entry:
   kind: endpoint
-  value: PUT /api/config/display
+  value: PUT /w/{workspace}/api/config/display
 flows:
   - name: 正常系
     summary: 表示する種類の既定を書き、ほかのキーを残す
@@ -15,7 +15,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/config/display
+        participant IF as PUT /w/{workspace}/api/config/display
         participant WS as ワークスペース
 
         クライアント->>IF: PUT（visible_kinds: 用語集を除く 6 種類）
@@ -28,7 +28,7 @@ flows:
       - ステータスが 200 で、`display.visible_kinds` が `terms` を除いた 6 種類
       - '`config.yaml` の `display.visible_kinds` が `terms` を除いた 6 種類'
       - '`config.yaml` のほかのキーが呼ぶ前と同じ'
-      - '`GET /api/events` に書き換えの通知が届く'
+      - '`GET /w/{workspace}/api/events` に書き換えの通知が届く'
     test: test_normal
   - name: 異常系（値が合わない・400）
     summary: 選べない種類は書かない
@@ -42,7 +42,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/config/display
+        participant IF as PUT /w/{workspace}/api/config/display
 
         クライアント->>IF: PUT（visible_kinds: [decisions, rainbow]）
         IF-->>クライアント: 400
@@ -64,7 +64,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/config/display
+        participant IF as PUT /w/{workspace}/api/config/display
 
         クライアント->>IF: PUT（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -84,7 +84,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/config/display
+        participant IF as PUT /w/{workspace}/api/config/display
         participant WS as ワークスペース
 
         クライアント->>IF: PUT（visible_kinds: 用語集を除く 6 種類）
@@ -108,7 +108,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as PUT /api/config/display
+        participant IF as PUT /w/{workspace}/api/config/display
 
         クライアント->>IF: PUT（network_look: glow、visible_kinds: [decisions]）
         IF-->>クライアント: 400

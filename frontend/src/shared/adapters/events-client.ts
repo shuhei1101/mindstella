@@ -4,6 +4,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { getComments, getRecords, getThreads } from "@/shared/api/generated/preview";
 import { AppError } from "@/shared/core/app-error";
 import type { ReviewItem, Thread } from "@/shared/core/comments";
+import { workspacePath } from "@/shared/core/workspace-path";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
 import { voiceDestinationExists } from "@/shared/core/voice";
 import { invalidatePreview } from "@/shared/hooks/preview-queries";
@@ -12,7 +13,7 @@ import { useDuplicateIdsStore } from "@/shared/stores/duplicate-ids-store";
 import { releaseRefresh, requestRefresh, useRefreshHoldStore, watchTextFocus } from "@/shared/stores/refresh-hold-store";
 import { discardVoice, readVoiceState, subscribeVoice } from "@/shared/stores/voice-store";
 
-/** 書き換えの知らせのパス */
+/** 書き換えの知らせのパスのうち、ワークスペースのパスの頭より後ろ */
 export const EVENTS_URL = "/api/events";
 
 /** 音声入力の間に書き換えを受けたとき、記録・スレッド・レビュー中のコメントを query のキャッシュに入れずに読み、録音の行き先が無ければ録音を捨てる */
@@ -49,7 +50,7 @@ const parseDuplicateIds = (data: unknown): string[] | null => {
 
 /** `EVENTS_URL` へつなぎ、`changed` とつなぎ直しで記録の query の読み直しを反映の依頼に渡し（入力中・音声入力中は保留して離れたときに読み直す）、`duplicate_ids` で重なった ID を、接続の状態を書き換える。つなぎ直しは EventSource に任せ、閉じる関数を返す */
 export const connectEvents = (queryClient: QueryClient): (() => void) => {
-  const source = new EventSource(EVENTS_URL);
+  const source = new EventSource(`${workspacePath()}${EVENTS_URL}`);
   const { setConnection } = useConnectionStore.getState();
   const refresh = (): void => {
     void invalidatePreview(queryClient);

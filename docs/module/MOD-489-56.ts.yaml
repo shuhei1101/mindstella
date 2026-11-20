@@ -1,6 +1,6 @@
 id: MOD-489-56
 title: プレビュー / api-client
-lead: orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる。
+lead: orval の mutator。開いた画面のワークスペースのパスの頭を付けて fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる。
 functions:
   - name: apiClient
     title: API の呼び出し
@@ -8,7 +8,7 @@ functions:
     container: frontend/src/shared/adapters/api-client.ts
     usecase: 共通
     is_async: true
-    summary: orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる
+    summary: orval の mutator。生成した関数が組んだ `/api/...` の URL の前に、開いた画面のワークスペースのパスの頭（`workspacePath()`）を付けて fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる
     args:
       - name: url
         type: string
@@ -37,5 +37,13 @@ functions:
         condition: MSW で 422 と problem+json
         mock: MSW
         expected: '`AppError`（`statusCode` 422）を投げる'
+      - name: test_api_client_when_workspace_path
+        case: 正常
+        summary: ワークスペースのパスの頭を付けて呼ぶ
+        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/spa/` にし、`/api/records` を渡す'
+        mock: MSW（`/w/mindstella-x-1/api/records` に 200 を返す）
+        expected: '`/w/mindstella-x-1/api/records` が呼ばれ、`status` が 200'
+    callees:
+      - MOD-642-1#functions[workspacePath]
 notes:
   単体テスト: 同じフォルダの `api-client.test.ts` に置く（knowledge の規約『フォルダ構成』）

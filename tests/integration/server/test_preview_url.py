@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
-import socket
-import textwrap
+import re
+import shutil
 import time
 from pathlib import Path
 from typing import Any
@@ -12,48 +12,31 @@ from urllib.parse import urlsplit
 
 from external_access_helpers import (
     HOOK_SETTLE_SEC,
-    free_port,
     read_hook_lines,
     read_settled_hook_lines,
     recording_hook,
 )
-from workspace_fixtures import SERVER_SCRIPT
+from workspace_fixtures import RECORD_DIR
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree, StartServer
 from .history_helpers import DECISION_ITEM, add_item, commit
 from .http_helpers import http_request
 from .readme_helpers import section_of
 
-# 待ち受けを立てる処理を、OSError を送る偽に差し替えてからサーバーを動かすスクリプトの中身
-FAILING_LISTEN_SCRIPT = textwrap.dedent(
-    """\
-    import sys
-
-    sys.path.insert(0, {scripts_dir!r})
-    import serve
-
-
-    class FailingHttpServer:
-        def __init__(self, *args, **kwargs):
-            raise OSError("待ち受けを立てられません（テスト）")
-
-
-    serve.ThreadingHTTPServer = FailingHttpServer
-    import server
-
-    sys.exit(server.main())
-    """
-)
-
 # 利用者の README の更新日時として置く、十分に古い日時（ナノ秒）
 OLD_MTIME_NS = 1_000_000_000 * 1_000_000_000
 
-# 起動時のフックを渡す環境変数
+# 起動時のフックと終了時のフックを渡す環境変数
 START_HOOK_ENV = "MINDSTELLA_PREVIEW_START_HOOK"
+STOP_HOOK_ENV = "MINDSTELLA_PREVIEW_STOP_HOOK"
 
-# 配信の URL の頭と、画面のパス
+# 配信の URL の頭と、画面のパス（ワークスペースの経路の下）と、URL のパスの形
 URL_PREFIX = "http://127.0.0.1:"
 PAGE_PATH = "/mindstella.html"
+WORKSPACE_PAGE_PATH = re.compile(r"/w/mindstella-[^/]+/mindstella\.html")
+
+# 2 つのフォルダが重ねて持つワークスペースの ID
+CONFLICT_ID = "mindstella-話し合いA-0a1b2c"
 
 # 記録にあるまとまりと、記録に無いまとまり
 KNOWN_SET_ID = "V-1"
@@ -70,7 +53,7 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     assert result.is_error is False
     assert result.data is not None
     assert result.data["url"].startswith(URL_PREFIX)
-    assert result.data["url"].endswith(PAGE_PATH)
+    assert WORKSPACE_PAGE_PATH.fullmatch(urlsplit(result.data["url"]).path)
     assert result.data["started"] is True
     assert http_request(result.data["url"], PAGE_PATH).status == 200
     assert not (root / "preview.html").exists()
@@ -154,84 +137,13 @@ def test_error_when_config_invalid(
     assert "config.yaml: display.visible_kinds" in again.text
 
 
-def test_error_when_serve_fails(
-    tmp_path: Path,
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    start_server: StartServer,
-) -> None:
-    """待ち受けを立てられないと、エラーで終わる（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    wrapper = tmp_path / "failing_listen_server.py"
-    wrapper.write_text(
-        FAILING_LISTEN_SCRIPT.format(scripts_dir=str(SERVER_SCRIPT.parent)), encoding="utf-8"
-    )
-    failing_server = start_server(script=wrapper)
-    # 実行
-    result = failing_server.call("preview_url", workspace=str(root))
-    # 検証
-    assert result.is_error is True
-    assert result.text.startswith("エラー: ")
-    assert "Traceback" not in result.text
-
-
-def test_normal_when_port_fixed(
-    make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
-    start_server: StartServer,
-) -> None:
-    """config.yaml の preview.port のポートで配信を立てる（正常系）。"""
-    # 準備
-    port = free_port()
-    root = make_workspace(settings={**valid_settings, "preview": {"port": port}})
-    server = start_server()
-    # 実行
-    result = server.call("preview_url", workspace=str(root))
-    # 検証
-    assert result.is_error is False
-    assert result.data is not None
-    assert result.data["url"] == f"{URL_PREFIX}{port}{PAGE_PATH}"
-    assert http_request(result.data["url"], PAGE_PATH).status == 200
-
-
-def test_error_when_port_in_use(
-    tmp_path: Path,
-    make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
-    start_server: StartServer,
-) -> None:
-    """preview.port のポートを別のプロセスが使っていると、配信を立てずフックも呼ばずに終わる（異常系）。"""
-    # 準備
-    record = tmp_path / "start-hook.txt"
-    server = start_server(extra_env={START_HOOK_ENV: recording_hook(record)})
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupier:
-        occupier.bind(("127.0.0.1", 0))
-        occupier.listen()
-        port = int(occupier.getsockname()[1])
-        root = make_workspace(settings={**valid_settings, "preview": {"port": port}})
-        # 実行
-        result = server.call("preview_url", workspace=str(root))
-        # 検証
-        assert result.is_error is True
-        assert result.text.startswith("エラー: ")
-        assert str(port) in result.text
-        assert "Traceback" not in result.text
-        # 先に待ち受けていたソケットが、そのままつながる
-        with socket.create_connection(("127.0.0.1", port), timeout=1):
-            pass
-    # フックが呼ばれるなら届くはずの間だけ待ち、記録が作られていないことを確かめる
-    time.sleep(HOOK_SETTLE_SEC)
-    assert not record.exists()
-
-
 def test_normal_when_start_hook_set(
     tmp_path: Path,
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     start_server: StartServer,
 ) -> None:
-    """配信を立てたときだけ、起動時のフックをポートとワークスペースの名前を足して呼ぶ（正常系）。"""
+    """配信を立てたときだけ、起動時のフックをポート・ワークスペースの名前・画面のパスを足して呼ぶ（正常系）。"""
     # 準備
     record = tmp_path / "start-hook.txt"
     root = make_workspace(make_item("D-1"), name="家計簿")
@@ -243,9 +155,9 @@ def test_normal_when_start_hook_set(
     assert first.data is not None
     assert second.data is not None
     assert (first.data["started"], second.data["started"]) == (True, False)
-    port = urlsplit(first.data["url"]).port
-    assert read_hook_lines(record) == [f"{port} 家計簿"]
-    assert read_settled_hook_lines(record) == [f"{port} 家計簿"]
+    parts = urlsplit(first.data["url"])
+    assert read_hook_lines(record) == [f"{parts.port} 家計簿 {parts.path}"]
+    assert read_settled_hook_lines(record) == [f"{parts.port} 家計簿 {parts.path}"]
     # 存在しないコマンドをフックにしても、ツールのエラーにならず url を返す
     missing_server = start_server(extra_env={START_HOOK_ENV: "mindstella-no-such-command"})
     other_root = make_workspace(make_item("D-1"), name="別の話し合い")
@@ -349,3 +261,91 @@ def test_error_when_diff_not_found_while_serving(
     assert UNKNOWN_SET_ID in result.text
     # 配信は止まらない
     assert http_request(first.data["url"], PAGE_PATH).status == 200
+
+
+def test_error_when_workspace_id_conflicts(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    start_server: StartServer,
+) -> None:
+    """配っている別のフォルダと ID が同じフォルダを指すと、配らずに終わる（異常系）。"""
+    # 準備（B は config.yaml の id を持つ A のフォルダを丸ごと写し、記録の題だけを変える）
+    record = tmp_path / "start-hook.txt"
+    folder_a = make_workspace(
+        make_item("D-1", title="A の検討事項"),
+        settings={**valid_settings, "id": CONFLICT_ID},
+        name="話し合いA",
+    )
+    server = start_server(extra_env={START_HOOK_ENV: recording_hook(record)})
+    served_a = server.call("preview_url", workspace=str(folder_a))
+    assert served_a.data is not None, served_a.text
+    folder_b = tmp_path / "話し合いB"
+    shutil.copytree(folder_a, folder_b)
+    decisions_b = folder_b / RECORD_DIR / "decisions.yaml"
+    decisions_b.write_text(
+        decisions_b.read_text(encoding="utf-8").replace("A の検討事項", "B の検討事項"),
+        encoding="utf-8",
+    )
+    readme_b = (folder_b / "README.md").read_bytes()
+    # 実行
+    result = server.call("preview_url", workspace=str(folder_b))
+    # 検証
+    assert result.is_error is True
+    assert CONFLICT_ID in result.text
+    assert str(folder_a.resolve()) in result.text
+    records = http_request(served_a.data["url"], "/api/records")
+    assert records.status == 200
+    assert [item["title"] for item in records.json()["decisions"]] == ["A の検討事項"]
+    assert (folder_b / "README.md").read_bytes() == readme_b
+    # フックが呼ばれるなら届くはずの間だけ待ち、B の行が無いことを確かめる
+    time.sleep(HOOK_SETTLE_SEC)
+    assert all("話し合いB" not in line for line in read_hook_lines(record))
+
+
+def test_normal_when_folder_moved(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    start_server: StartServer,
+) -> None:
+    """配っているフォルダを移した先を指すと、前のフォルダの配信をやめて移した先を同じ URL で配る（正常系）。"""
+    # 準備
+    start_record = tmp_path / "start-hook.txt"
+    stop_record = tmp_path / "stop-hook.txt"
+    folder_a = make_workspace(
+        make_item("D-1", title="移す前の検討事項"),
+        settings={**valid_settings, "id": CONFLICT_ID},
+        name="話し合いA",
+    )
+    server = start_server(
+        extra_env={
+            START_HOOK_ENV: recording_hook(start_record),
+            STOP_HOOK_ENV: recording_hook(stop_record),
+        }
+    )
+    first = server.call("preview_url", workspace=str(folder_a))
+    assert first.data is not None, first.text
+    moved = tmp_path / "移した先"
+    folder_a.rename(moved)
+    decisions = moved / RECORD_DIR / "decisions.yaml"
+    decisions.write_text(
+        decisions.read_text(encoding="utf-8").replace("移す前の検討事項", "移した先の検討事項"),
+        encoding="utf-8",
+    )
+    # 実行
+    result = server.call("preview_url", workspace=str(moved))
+    # 検証
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    assert (result.data["url"], result.data["started"]) == (first.data["url"], True)
+    records = http_request(result.data["url"], "/api/records")
+    assert [item["title"] for item in records.json()["decisions"]] == ["移した先の検討事項"]
+    parts = urlsplit(result.data["url"])
+    assert read_settled_hook_lines(stop_record) == [f"{parts.port} 話し合いA {parts.path}"]
+    assert read_settled_hook_lines(start_record) == [
+        f"{parts.port} 話し合いA {parts.path}",
+        f"{parts.port} 移した先 {parts.path}",
+    ]

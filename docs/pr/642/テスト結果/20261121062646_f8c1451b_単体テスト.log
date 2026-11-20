@@ -1,0 +1,67 @@
+$ ../.venv-642/bin/python -m pytest tests/unit/scripts/test_serve.py -q -p no:cacheprovider -k folder_moved
+# 設計書の修正（23d22322）で足した単体テスト test_start_when_folder_moved の Red。fail は PreviewRegistry.start にフォルダを移した場合の分岐が無いことによる
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________________________ test_start_when_folder_moved _________________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/.pytest-642/base-u2/test_start_when_folder_moved0')
+make_workspace = <function make_workspace.<locals>._make at 0x7b676e470360>
+make_item = <function make_item.<locals>._make at 0x7b676e470180>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b676e4beab0>
+
+    def test_start_when_folder_moved(
+        tmp_path: Path,
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """配っているフォルダを移した先を配ると、前のフォルダの配信をやめて移した先を同じ URL で配る（正常系）。"""
+        # 準備
+        calls = _record_hook_calls(monkeypatch)
+        monkeypatch.setattr(serve, "ChangeDetector", FakeDetector)
+        registry = serve.PreviewRegistry(
+            threading.Lock(),
+            port=PORT,
+            external=serve.ExternalAccess(start_hook=("start",), stop_hook=("stop",)),
+            state_root=tmp_path / "state",
+        )
+        first = make_workspace(make_item("D-1"), name="first")
+        config_path = first / RECORD_DIR / "config.yaml"
+        write_yaml(config_path, {**yaml.safe_load(config_path.read_text(encoding="utf-8")), "id": "mindstella-first-3f2a9c"})
+        first_url, _started = registry.start(first)
+        detector = registry._detectors[first.resolve()]
+        moved = tmp_path / "moved"
+        first.rename(moved)
+        page = _page_path_of(moved)
+        try:
+            # 実行
+>           result = registry.start(moved)
+                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_serve.py:435: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <serve.PreviewRegistry object at 0x7b676e4ac0b0>
+root = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/.pytest-642/base-u2/test_start_when_folder_moved0/moved')
+
+    def start(self, root: Path) -> tuple[str, bool]:
+        """そのワークスペースを配り始め、画面の URL と今配り始めたかを返す。配っていればその URL を返す。"""
+        key = root.resolve()
+        with self._guard:
+            existing = self._servers.get(key)
+            # 配っている: その URL を返す（検査しない・フックを呼ばない）
+            if existing is not None:
+                return self._url(existing.workspace_id), False
+            workspace_id = workspace_id_of(key)
+            served = self._by_id.get(workspace_id)
+            # 同じ ID の別のフォルダを配っている: 配らない
+            if served is not None:
+>               raise WorkspaceIdConflictError(
+                    f"ワークスペースの ID が配っている別のフォルダと重なります: {workspace_id}（{served}）"
+                )
+E               errors.WorkspaceIdConflictError: ワークスペースの ID が配っている別のフォルダと重なります: mindstella-first-3f2a9c（/home/shuhei2441/repo/mindstella/.claude/worktrees/.pytest-642/base-u2/test_start_when_folder_moved0/first）
+
+plugins/mindstella/skills/mindmap/scripts/serve.py:330: WorkspaceIdConflictError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_serve.py::test_start_when_folder_moved - error...
+1 failed, 152 deselected in 0.22s

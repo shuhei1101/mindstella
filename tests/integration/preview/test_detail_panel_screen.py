@@ -1137,7 +1137,7 @@ def test_comment_input_when_server_refuses(
 
 
 # 端末の保存領域に残したコメントの入力の開閉を読む
-COMMENT_FORM_CLOSED_JS = "JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').commentFormClosed ?? null"
+COMMENT_FORM_CLOSED_JS = "JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? '{}').commentFormClosed ?? null"
 
 
 def test_comment_input_when_toggle_open(
@@ -2415,7 +2415,7 @@ def test_body_scroll_restored(
     page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     page.wait_for_selector(f"{PANEL_BODY} .md")
     page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
-    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-2\":900') === true")
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))?.includes('\"D-2\":900') === true")
     # 実行（前提の D-1 へ移る。押す操作で本文を送らないよう、要素の click を呼ぶ）
     page.eval_on_selector("aside.panel .d-sec:has(h3:text-is('前提')) button.idlink", "b => b.click()")
     page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
@@ -2461,7 +2461,7 @@ def test_body_scroll_when_heading(
     page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     page.wait_for_selector(f"{PANEL_BODY} .md")
     page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
-    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-2\":900') === true")
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))?.includes('\"D-2\":900') === true")
     page.evaluate("location.hash = '#tab=decisions&view=table&id=D-1'")
     page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
     # 実行
@@ -2504,7 +2504,7 @@ def test_body_scroll_when_comment_location(
     page = open_preview(url, "#tab=decisions&view=table&id=D-3")
     page.wait_for_selector(f"{PANEL_BODY} .md")
     page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
-    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-3\":900') === true")
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))?.includes('\"D-3\":900') === true")
     open_review(page)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
@@ -5935,7 +5935,7 @@ def test_panel_resizer_kept_in_tab(
     # 検証
     assert state["panelWidth"] == 720
     assert state["separator"]["now"] == "720"
-    assert page.evaluate(f"sessionStorage.getItem('{PANEL_WIDTH_KEY}')") == "720"
+    assert page.evaluate(f"sessionStorage.getItem('{PANEL_WIDTH_KEY}' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))") == "720"
 
 
 # 「エクスポート」の入口が、見出しの中で編集するの右・全画面表示の左にあるかを DOM の順で調べる

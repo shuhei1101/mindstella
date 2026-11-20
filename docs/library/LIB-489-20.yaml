@@ -15,6 +15,24 @@ catalogs:
       - name: starlette.testclient.TestClient
         kind: クラス
         purpose: 単体テストで `streamable_http_app()` のアプリへ HTTP を送信する
+      - name: starlette.routing.Route
+        kind: クラス
+        purpose: '`/w/{workspace}` と `/w/{workspace}/{rest:path}` を配信の経路（`PreviewEndpoint`）に登録する（`MCPServer.custom_route` が作る）'
+      - name: starlette.responses.StreamingResponse
+        kind: クラス
+        purpose: 書き換えの通知（Server-Sent Events）とワークスペースのファイルを分けて返す
+      - name: starlette.responses.RedirectResponse
+        kind: クラス
+        purpose: '`/w/{workspace}`・`/w/{workspace}/`・`/w/{workspace}/spa` を 302 で再送信する'
+      - name: starlette.concurrency.run_in_threadpool
+        kind: 関数
+        purpose: 同期の処理の関数（`*_response`・`write_response`）をスレッドで呼ぶ
+      - name: starlette.concurrency.iterate_in_threadpool
+        kind: 関数
+        purpose: ファイルの書き出しのイテレーターをスレッドで回す
+      - name: Request.stream / Request.is_disconnected
+        kind: メソッド
+        purpose: 音声の本文を数えながら読む・画面が閉じたかを確かめる
 lead: Python の ASGI のウェブフレームワーク。
 purl: pkg:pypi/starlette
 supplier: Encode
@@ -25,8 +43,8 @@ used_in:
 upstream: Kludex/starlette
 verification:
   state: 済
-  date: '2026-11-02'
-  detail: 1.7.0 で、`MCPServer.custom_route` に載せた `GET /_admin/status` の入口が返す `JSONResponse` が、`streamable_http_app` の同じアプリから `server_status` と同じ JSON で返った
+  date: '2026-11-21'
+  detail: 1.7.0 で、`MCPServer.custom_route` に載せた `GET /_admin/status` の入口が返す `JSONResponse` が、`streamable_http_app` の同じアプリから `server_status` と同じ JSON で返った。1.10.0 で、クラスのインスタンスの `__call__`（束縛したメソッド）を `Route` に渡すと要求を受けて応答を返す関数として扱われ、`/w/{workspace}/` は `rest` が空文字、`/w/{workspace}` は `rest` が無い、`/files/%2E%2E/a` は `rest` が `files/../a` で届いた。`run_in_threadpool` の処理は AnyIO のワーカーのスレッドで動き、`iterate_in_threadpool` のイテレーターを渡した `StreamingResponse` が全ての片を返し、`Content-Length` の無い本文を `request.stream()` で数え切れた
 license: BSD-3-Clause（商用利用可）
 official_url: https://www.starlette.io/
 docs_url: https://www.starlette.io/responses/

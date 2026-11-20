@@ -2,7 +2,7 @@ id: IF-489-30
 title: "保存待ちの編集の追加"
 entry:
   kind: endpoint
-  value: POST /api/edits
+  value: POST /w/{workspace}/api/edits
 flows:
   - name: 正常系
     summary: 項目のキーの編集を溜め、項目は書き換えない
@@ -16,7 +16,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: set, target: D-1, key: answer, value}
@@ -42,7 +42,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: set, target: D-1, key: answer, value: 案 B}
@@ -65,7 +65,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: set, target: T-1, key: status, value: 未着手}
@@ -89,7 +89,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: item-add, key: tasks, value}
@@ -116,7 +116,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: item-remove, target: N-1}
@@ -140,7 +140,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: setting, target: settings, key: summary, value}
@@ -164,7 +164,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
 
         クライアント->>IF: POST {key: updated_by}
         IF-->>クライアント: 400
@@ -187,7 +187,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
 
         クライアント->>IF: POST（Origin: attacker.example）
         IF-->>クライアント: 403
@@ -208,7 +208,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
 
         クライアント->>IF: POST {op: set, target: D-99}
         IF-->>クライアント: 404
@@ -229,7 +229,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
 
         クライアント->>IF: POST {op: set, target: N-1, key: title}
         IF-->>クライアント: 409
@@ -250,7 +250,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
 
         クライアント->>IF: POST（application/x-www-form-urlencoded）
         IF-->>クライアント: 415
@@ -271,7 +271,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: option-add, target: D-1, key: C, value}
@@ -299,7 +299,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: item-add, key: decisions, value}
@@ -327,7 +327,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: item-add, key: decisions, value に記号 A が 2 つの options}
@@ -350,7 +350,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as POST /api/edits
+        participant IF as POST /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: set, target: D-1, key: tags, value は主題を 画面 に移した並び}

@@ -2,7 +2,7 @@ id: IF-489-29
 title: "保存待ちの編集の読み取り"
 entry:
   kind: endpoint
-  value: GET /api/edits
+  value: GET /w/{workspace}/api/edits
 flows:
   - name: 正常系
     summary: 溜めた順に保存待ちの編集を返す
@@ -15,7 +15,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/edits
+        participant IF as GET /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: GET
@@ -38,7 +38,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/edits
+        participant IF as GET /w/{workspace}/api/edits
 
         クライアント->>IF: GET
         IF-->>クライアント: 200、JSON（items: []・count: 0）
@@ -58,7 +58,7 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /api/edits
+        participant IF as GET /w/{workspace}/api/edits
         participant WS as ワークスペース
 
         クライアント->>IF: GET

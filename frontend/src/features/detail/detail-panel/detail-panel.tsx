@@ -23,6 +23,7 @@ import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
 import { tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
 import { applyHighlight } from "@/shared/core/term-tips";
+import { workspaceKey } from "@/shared/core/workspace-path";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
@@ -321,7 +322,7 @@ const KeyLead = ({ name, value, keys }: { name: string; value: string | undefine
 const PANEL_WIDTH_KEY = "mindmap-panel-width";
 
 const readPanelWidth = (): number => {
-  const saved = sessionStorage.getItem(PANEL_WIDTH_KEY);
+  const saved = sessionStorage.getItem(workspaceKey(PANEL_WIDTH_KEY));
   return saved !== null && /^[1-9]\d*$/.test(saved) ? Number(saved) : PANEL_WIDTH.default;
 };
 
@@ -335,7 +336,7 @@ export const DetailPanel = ({ id, index }: DetailPanelProps) => {
         width={width}
         onChange={(next) => {
           setWidth(next);
-          sessionStorage.setItem(PANEL_WIDTH_KEY, String(next));
+          sessionStorage.setItem(workspaceKey(PANEL_WIDTH_KEY), String(next));
         }}
       />
       <DetailContent key={id} id={id} index={index} full={false} />

@@ -1,0 +1,14 @@
+配信のフックのスクリプトの追従:
+  説明: 常駐サーバーを起動する環境の MINDSTELLA_PREVIEW_START_HOOK・MINDSTELLA_PREVIEW_STOP_HOOK が呼ぶ利用者のスクリプト（~/.local/bin/mindstella-gw-hook）を、この作業 PR で決めた配信のフックの呼ばれ方（常駐サーバーのポート・名前・画面のパスの 4 つの引数）に合わせて書き換え、shuhdev-gateway へ公開する先を画面のパスにする。呼び方の切り替えの間に公開の登録を取り残さないよう、常駐サーバーを止める（動いている版のフックで取り下げる）→ ポートごとの古い控え（~/.local/state/mindstella-gw-hook/{ポート}）が指す gw の登録を取り下げる → フックを置き換える（同じフォルダへ mindstella-gw-hook.bak-{日時} の名前で控えを取る）→ 常駐サーバーを起動する（起動時に登録済みのワークスペースを新しいフックで公開する）の順で行う。実行の間は画面の外部の公開が止まる
+  タグ: [設定の書き換え]
+  実行者: tester
+  時期: master へ入った後
+  回数: 1 回限り
+  可逆: true
+  疎通確認: 配信のフックのスクリプトの追従/疎通確認.sh
+  実行: 配信のフックのスクリプトの追従/実行.sh
+  確認: 配信のフックのスクリプトの追従/確認.sh
+  切り戻し: 配信のフックのスクリプトの追従/切り戻し.sh
+  失敗時: 既定の対処を 1 回、2 回連続で失敗したら依頼元へ返す
+  確認方法: ~/.local/bin/mindstella-gw-hook が 4 つの引数を受けて gw add に画面のパスを渡す内容で、~/.local/state/mindstella-gw-hook/ にポートの数字だけの名前の控えが無く、gw ls に TITLE が Mindstella で PATH が /w/ で始まる行があり、PATH が /mindstella.html の行が無い
+  状態: skipped

@@ -20,7 +20,7 @@ elements:
   - name: 理由の入力
     kind: form
     position: 見出し > 上の行の下
-    description: ラベル「理由（任意）」の入力欄と「キャンセル」・確定（「クローズにする」か「オープンに戻す」）。出したら入力欄へフォーカスを移す。確定と入力欄の Ctrl+Enter で `PATCH /api/threads/{id}` へ変えた後の `status` と `reason`（空白だけは理由なし）を 1 回で送信する。利用者の状態の変更は溜めずにその場で書く。200 なら理由の入力を閉じ、スレッドを再読み込みして状態の札・状態の記録・下端を再描画し、「状態を変える」へフォーカスを戻す（この画面に留まる）。書き換えている間は入力欄を読み取りだけにし確定を押せなくする。「キャンセル」と入力欄の Esc で理由の入力を閉じ、「状態を変える」へフォーカスを戻す（一覧へは戻らない）
+    description: ラベル「理由（任意）」の入力欄と「キャンセル」・確定（「クローズにする」か「オープンに戻す」）。出したら入力欄へフォーカスを移す。確定と入力欄の Ctrl+Enter で `PATCH /w/{workspace}/api/threads/{id}` へ変えた後の `status` と `reason`（空白だけは理由なし）を 1 回で送信する。利用者の状態の変更は溜めずにその場で書く。200 なら理由の入力を閉じ、スレッドを再読み込みして状態の札・状態の記録・下端を再描画し、「状態を変える」へフォーカスを戻す（この画面に留まる）。書き換えている間は入力欄を読み取りだけにし確定を押せなくする。「キャンセル」と入力欄の Esc で理由の入力を閉じ、「状態を変える」へフォーカスを戻す（一覧へは戻らない）
     label: 理由（任意）
     io: 入力
     type: 文字列
@@ -76,7 +76,7 @@ elements:
       - name: editing
         value: そのレビュー中の書き込みをこの画面で書き換えているとき true
       - name: editError
-        value: レビュー中のコメントの書き換え（PATCH /api/comments/{id}）の失敗の理由
+        value: レビュー中のコメントの書き換え（PATCH /w/{workspace}/api/comments/{id}）の失敗の理由
       - name: changeSets
         value: 記録の取得.changes.sets のまとまりの ID と説明
       - name: open
@@ -117,13 +117,13 @@ elements:
       - name: body
         value: レビュー中のコメントの読み取り.drafts のうち、同じ thread の下書き（入力中は画面が持ち、一覧との行き来・再描画をまたいで保つ）
       - name: status
-        value: レビュー中のコメントの追加（POST /api/comments）の結果。音声入力では、既定の挙動でレビュー中のコメントの追加をした結果（reviewed）・書き込みをすぐ送信するの結果（sent）・入力欄へ挿入した（inserted）・録音と文字起こしと送信の失敗（voice-failed）
+        value: レビュー中のコメントの追加（POST /w/{workspace}/api/comments）の結果。音声入力では、既定の挙動でレビュー中のコメントの追加をした結果（reviewed）・書き込みをすぐ送信するの結果（sent）・入力欄へ挿入した（inserted）・録音と文字起こしと送信の失敗（voice-failed）
       - name: count
         value: レビュー中のコメントの追加.count
       - name: detail
         value: レビュー中のコメントの追加のエラーの detail（届かなかったときはなし）
       - name: voice
-        value: 文字起こしの可否（GET /api/transcription）の available と、ブラウザが navigator.mediaDevices.getUserMedia を持つか、録音・文字起こしの進み（画面で 1 つの音声入力の状態）から決める。使えないときと、ほかの入力欄で録音・文字起こし中のときは disabled
+        value: 文字起こしの可否（GET /w/{workspace}/api/transcription）の available と、ブラウザが navigator.mediaDevices.getUserMedia を持つか、録音・文字起こしの進み（画面で 1 つの音声入力の状態）から決める。使えないときと、ほかの入力欄で録音・文字起こし中のときは disabled
       - name: voiceReason
         value: 文字起こしの可否.detail（ブラウザがマイクを使えないときは画面が持つ文「このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。」、ほかの入力欄で音声入力中のときは「ほかの入力欄で音声入力中のため、音声で入力できません。」）
       - name: elapsed
@@ -131,9 +131,9 @@ elements:
       - name: levels
         value: 録音中のマイクの音量（画面が AnalyserNode で一定の間隔ごとに取って追加する）
       - name: entered
-        value: 書き込みをすぐ送信する（POST /api/comments/send-now）の entered
+        value: 書き込みをすぐ送信する（POST /w/{workspace}/api/comments/send-now）の entered
     position: 下端
-    description: スレッドの下端に留め、本文と線で区切る。「溜める」で `POST /api/comments` へ `thread` と `body` を送信し、201 なら入力欄を空にして、溜めた返信を書き込みの並びの末尾に追加し、コメントのボタンと「レビュー中」の入口の件数を再描画する（この画面に留まる）。溜めた後のフォーカスは『プレビューを開く』の制約「「レビューに追加」の後のフォーカス」に従い、入力欄か「レビューに追加」のボタンへ移す。下書きは入力が止まったときと、一覧へ戻る・レビュー中の書き込みの画面を開く・パネルを閉じるときに『下書きの保存』へ `thread` ごとに送信する
+    description: スレッドの下端に留め、本文と線で区切る。「溜める」で `POST /w/{workspace}/api/comments` へ `thread` と `body` を送信し、201 なら入力欄を空にして、溜めた返信を書き込みの並びの末尾に追加し、コメントのボタンと「レビュー中」の入口の件数を再描画する（この画面に留まる）。溜めた後のフォーカスは『プレビューを開く』の制約「「レビューに追加」の後のフォーカス」に従い、入力欄か「レビューに追加」のボタンへ移す。下書きは入力が止まったときと、一覧へ戻る・レビュー中の書き込みの画面を開く・パネルを閉じるときに『下書きの保存』へ `thread` ごとに送信する
     io: 入力
     visible_when: オープンのスレッド
     target: レビュー中のコメントの追加.thread・body

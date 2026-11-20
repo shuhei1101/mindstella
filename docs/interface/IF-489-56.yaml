@@ -150,7 +150,7 @@ flows:
       ```
     expected:
       - 終了コードが 0
-      - 標準出力に、待ち受けのポート・バージョン・`plugin_root`・配信しているワークスペースのポートがある
+      - 標準出力に、待ち受けのポート・バージョン・`plugin_root`・配信しているワークスペースの画面の URL がある
     test: test_normal_when_server_status
   - name: 正常系（常駐サーバーの停止と再起動）
     summary: '`server stop` は `systemctl --user stop` を呼ぶ。`server restart` は `installPath` の `ensure_server.py --restart` を呼ぶ'
@@ -510,19 +510,19 @@ request:
     type: str
     required: false
     default: なし（常駐サーバーへ渡さない）
-    description: '環境変数。プレビューの配信が受ける外のホスト名（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
+    description: '環境変数。常駐サーバーが画面の要求で受ける外のホスト名（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
     status: implemented
   - name: MINDSTELLA_PREVIEW_START_HOOK
     type: str
     required: false
     default: なし（常駐サーバーへ渡さない）
-    description: '環境変数。配信を立てたときのフック（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
+    description: '環境変数。ワークスペースを配り始めたときのフック（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
     status: implemented
   - name: MINDSTELLA_PREVIEW_STOP_HOOK
     type: str
     required: false
     default: なし（常駐サーバーへ渡さない）
-    description: '環境変数。配信を止めるときのフック（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
+    description: '環境変数。ワークスペースを配るのをやめるときのフック（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
     status: implemented
   - name: MINDSTELLA_TRANSCRIBER
     type: str

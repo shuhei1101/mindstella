@@ -1,11 +1,15 @@
 import { http, HttpResponse } from "msw";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 
 import { apiClient } from "@/shared/adapters/api-client";
 import { AppError } from "@/shared/core/app-error";
 import { server } from "@/testing/msw/server";
 
 describe("apiClient", () => {
+  afterEach(() => {
+    history.replaceState(null, "", "/");
+  });
+
   // 成功の本文を返す（正常系）
   test("api_client", async () => {
     // 準備
@@ -27,5 +31,17 @@ describe("apiClient", () => {
     );
     // 実行・検証
     await expect(apiClient("/api/example")).rejects.toMatchObject({ constructor: AppError, statusCode: 422, message: "合わない" });
+  });
+
+  // ワークスペースのパスの頭を付けて呼ぶ（正常系）
+  test("api_client_when_workspace_path", async () => {
+    // 準備
+    history.replaceState(null, "", "/w/mindstella-x-1/spa/");
+    server.use(http.get("/w/mindstella-x-1/api/records", () => HttpResponse.json({ value: 2 })));
+    // 実行
+    const response = await apiClient<{ data: { value: number }; status: number }>("/api/records");
+    // 検証
+    expect(response.data).toEqual({ value: 2 });
+    expect(response.status).toBe(200);
   });
 });

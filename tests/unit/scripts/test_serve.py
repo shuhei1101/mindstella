@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import contextlib
-import http.client
 import json
 import os
-import socket
+import shutil
 import sys
 import threading
 import time
-import urllib.request
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
@@ -18,6 +16,9 @@ from urllib.parse import urlparse
 
 import pytest
 import yaml
+from starlette.applications import Starlette
+from starlette.routing import Route
+from starlette.testclient import TestClient
 
 import builder
 import change_detection
@@ -36,7 +37,6 @@ from errors import (
     ItemNotFoundError,
     MindmapError,
     SchemaMismatchError,
-    ServeFailedError,
     WorkspaceNotFoundError,
     WriteFailedError,
 )
@@ -72,10 +72,14 @@ SECOND_OPENED = "2026-10-04T14:45:00+00:00"
 OLD_MTIME_SEC = 1_000_000_000
 
 
+# 経路を登録するメソッド（常駐サーバーの server.py と同じ）
+PREVIEW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+
+
 @pytest.fixture
 def registry() -> Iterator[serve.PreviewRegistry]:
-    """配信の台帳を作り、使い終わったら立てた配信を全て止める。"""
-    created = serve.PreviewRegistry(threading.Lock())
+    """常駐サーバーのポートを PORT にした配信の台帳を作り、使い終わったら全てのワークスペースを配るのをやめる。"""
+    created = serve.PreviewRegistry(threading.Lock(), port=PORT)
     yield created
     created.stop_all()
 
@@ -87,7 +91,7 @@ def make_registry() -> Iterator[Callable[[serve.ExternalAccess], serve.PreviewRe
 
     def _make(external: serve.ExternalAccess) -> serve.PreviewRegistry:
         """external を渡した台帳を作って控える。"""
-        registry = serve.PreviewRegistry(threading.Lock(), external=external)
+        registry = serve.PreviewRegistry(threading.Lock(), port=PORT, external=external)
         created.append(registry)
         return registry
 
@@ -96,37 +100,52 @@ def make_registry() -> Iterator[Callable[[serve.ExternalAccess], serve.PreviewRe
         registry.stop_all()
 
 
-def _free_port() -> int:
-    """127.0.0.1 の空きポートを 1 つ取って閉じ、その番号を返す。"""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-        probe.bind(("127.0.0.1", 0))
-        return int(probe.getsockname()[1])
+def _preview_app(registry: serve.PreviewRegistry) -> Starlette:
+    """常駐サーバーと同じく、/w/{workspace} と /w/{workspace}/{rest} を PreviewEndpoint に登録したアプリを作る。"""
+    endpoint = serve.PreviewEndpoint(registry)
+    return Starlette(
+        routes=[
+            Route(f"{serve.PREVIEW_PREFIX}/{{workspace}}", endpoint.__call__, methods=PREVIEW_METHODS),
+            Route(
+                f"{serve.PREVIEW_PREFIX}/{{workspace}}/{{rest:path}}",
+                endpoint.__call__,
+                methods=PREVIEW_METHODS,
+            ),
+        ]
+    )
 
 
-def _record_hook_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[tuple[str, ...], int, str]]:
+def _client(registry: serve.PreviewRegistry) -> TestClient:
+    """経路を登録したアプリを、Host が 127.0.0.1:{PORT} になる TestClient で呼べるようにする。"""
+    return TestClient(_preview_app(registry), base_url=f"http://127.0.0.1:{PORT}")
+
+
+def _path_of(url: str) -> str:
+    """画面の URL からパスだけを取り出す。"""
+    return urlparse(url).path
+
+
+def _base_of(url: str) -> str:
+    """画面の URL から、ワークスペースのパスの頭（/w/{workspace}）を取り出す。"""
+    return _path_of(url).removesuffix(serve.PAGE_PATH)
+
+
+def _record_hook_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[tuple[str, ...], int, str, str]]:
     """serve.run_hook を、呼ばれた引数を控えて真を返す関数に差し替え、控える入れ物を返す。"""
-    calls: list[tuple[tuple[str, ...], int, str]] = []
+    calls: list[tuple[tuple[str, ...], int, str, str]] = []
 
-    def _run_hook(command: tuple[str, ...], port: int, name: str) -> bool:
+    def _run_hook(command: tuple[str, ...], port: int, name: str, path: str) -> bool:
         """フックを立てずに、渡された引数だけを控える。"""
-        calls.append((command, port, name))
+        calls.append((command, port, name, path))
         return True
 
     monkeypatch.setattr(serve, "run_hook", _run_hook)
     return calls
 
 
-def _port_of(url: str) -> int:
-    """配信の URL から待ち受けのポートを取り出す。"""
-    port = urlparse(url).port
-    assert port is not None
-    return port
-
-
-def _get_status(url: str) -> int:
-    """URL に GET して、ステータスコードを返す。"""
-    with urllib.request.urlopen(url, timeout=HTTP_TIMEOUT_SEC) as response:
-        return response.status
+def _page_path_of(root: Path) -> str:
+    """ワークスペースの画面のパス（/w/{ID}/mindstella.html）を返す。"""
+    return serve.page_path(change_detection.workspace_id_of(root))
 
 
 def _context(root: Path, settings: dict[str, Any] | None = None) -> serve.ServeContext:
@@ -157,7 +176,7 @@ def _failing_touch_opened(*args: Any, **kwargs: Any) -> Any:
 def test_start(
     registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
-    """同じワークスペースは同じ URL、別なら別の URL（正常系）。"""
+    """同じワークスペースは同じ URL、別なら別の URL。どれも常駐サーバーのポートの /w/{ID} の下（正常系）。"""
     # 準備
     first = make_workspace(make_item("D-1"), name="first")
     second = make_workspace(make_item("D-1"), name="second")
@@ -168,17 +187,15 @@ def test_start(
     # 検証
     assert (started1, started_again, started2) == (True, False, True)
     assert again_url1 == url1
-    assert _port_of(url1) != _port_of(url2)
-    assert url1.startswith("http://127.0.0.1:")
-    assert url2.startswith("http://127.0.0.1:")
-    assert url1.endswith("/mindstella.html")
-    assert url2.endswith("/mindstella.html")
+    assert url1 == f"http://127.0.0.1:{PORT}{_page_path_of(first)}"
+    assert url2 == f"http://127.0.0.1:{PORT}{_page_path_of(second)}"
+    assert url1 != url2
 
 
 def test_url_of(
     registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
-    """立てたワークスペースだけ URL を返す（正常系）。"""
+    """配っているワークスペースだけ URL を返す（正常系）。"""
     # 準備
     first = make_workspace(make_item("D-1"), name="first")
     second = make_workspace(make_item("D-1"), name="second")
@@ -189,7 +206,7 @@ def test_url_of(
     # 検証
     assert first_url == url
     assert second_url is None
-    # url_of は配信を立てないので、台帳の配信は 1 つのまま
+    # url_of は配り始めないので、台帳は 1 つのまま
     assert len(registry._servers) == 1
 
 
@@ -204,7 +221,7 @@ def _start_named(
     for name in names:
         root = make_workspace(make_item("D-1"), name=name)
         url, _started = registry.start(root)
-        started[name] = {"workspace": str(root.resolve()), "port": _port_of(url)}
+        started[name] = {"workspace": str(root.resolve()), "url": url}
     return started
 
 
@@ -222,7 +239,7 @@ def test_listing(
     started_names: list[str],
     expected_names: list[str],
 ) -> None:
-    """ワークスペースの昇順に並べる（正常系）。"""
+    """ワークスペースの昇順に、画面の URL と並べる（正常系）。"""
     # 準備
     started = _start_named(registry, make_workspace, make_item, started_names)
     expected = [started[name] for name in expected_names]
@@ -242,12 +259,13 @@ def _start_expecting_mismatch(registry: serve.PreviewRegistry, root: Path) -> li
 def test_start_when_settings_invalid(
     registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
 ) -> None:
-    """config.yaml が合わなければ配信を立てず、直せば立てる（異常系）。"""
+    """config.yaml が合わなければ配らず、直せば配る（異常系）。"""
     # 準備
     root = make_workspace(settings={**valid_settings, "display": {"visible_kinds": ["rainbow"]}})
-    # 実行（合わない間は 2 回とも立てず、直した後の 1 回で立てる）
+    # 実行（合わない間は 2 回とも配らず、直した後の 1 回で配る）
     first_lines = _start_expecting_mismatch(registry, root)
     second_lines = _start_expecting_mismatch(registry, root)
+    servers_while_invalid = dict(registry._servers)
     write_yaml(
         root / RECORD_DIR / "config.yaml",
         {**valid_settings, "display": {"visible_kinds": ["decisions"]}},
@@ -256,22 +274,9 @@ def test_start_when_settings_invalid(
     # 検証
     assert first_lines[0].startswith("config.yaml: display.visible_kinds")
     assert second_lines[0].startswith("config.yaml: display.visible_kinds")
+    assert servers_while_invalid == {}
     assert started is True
     assert url.endswith("/mindstella.html")
-
-
-def test_start_when_port_fixed(
-    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
-) -> None:
-    """preview.port のポートで立てる（正常系）。"""
-    # 準備
-    port = _free_port()
-    root = make_workspace(settings={**valid_settings, "preview": {"port": port}})
-    # 実行
-    url, started = registry.start(root)
-    # 検証
-    assert started is True
-    assert url == f"http://127.0.0.1:{port}/mindstella.html"
 
 
 def test_start_when_start_hook_set(
@@ -280,52 +285,77 @@ def test_start_when_start_hook_set(
     make_item: MakeItem,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """立てたときだけ起動時のフックを呼ぶ（正常系）。"""
+    """配り始めたときだけ、常駐サーバーのポート・名前・画面のパスで起動時のフックを呼ぶ（正常系）。"""
     # 準備
     calls = _record_hook_calls(monkeypatch)
     registry = make_registry(serve.ExternalAccess(start_hook=("hook",)))
     root = make_workspace(make_item("D-1"), name="家計簿")
-    # 実行（2 回目は立て済みなので呼ばれない）
-    url, _started = registry.start(root)
+    # 実行（2 回目は配っているので呼ばれない）
+    registry.start(root)
     registry.start(root)
     # 検証
-    assert calls == [(("hook",), _port_of(url), "家計簿")]
+    assert calls == [(("hook",), PORT, "家計簿", _page_path_of(root))]
 
 
-def test_start_when_port_in_use(
+def test_start_when_id_conflicts(
     make_registry: Callable[[serve.ExternalAccess], serve.PreviewRegistry],
     make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
+    make_item: MakeItem,
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """preview.port が使われていれば ServeFailedError でフックを呼ばない（異常系）。"""
+    """ID が配っている別のフォルダと同じなら WorkspaceIdConflictError で配らず、フックも呼ばない（異常系）。"""
     # 準備
     calls = _record_hook_calls(monkeypatch)
     registry = make_registry(serve.ExternalAccess(start_hook=("hook",)))
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupier:
-        occupier.bind(("127.0.0.1", 0))
-        occupier.listen()
-        port = int(occupier.getsockname()[1])
-        root = make_workspace(settings={**valid_settings, "preview": {"port": port}})
-        # 実行・検証
-        with pytest.raises(ServeFailedError):
-            registry.start(root)
-    assert registry._servers == {}
-    assert calls == []
+    first = make_workspace(make_item("D-1"), name="first")
+    config_path = first / RECORD_DIR / "config.yaml"
+    write_yaml(config_path, {**yaml.safe_load(config_path.read_text(encoding="utf-8")), "id": "mindstella-first-3f2a9c"})
+    registry.start(first)
+    copied = tmp_path / "copied"
+    shutil.copytree(first, copied)
+    workspace_id = change_detection.workspace_id_of(first)
+    # 実行・検証
+    with pytest.raises(errors.WorkspaceIdConflictError) as raised:
+        registry.start(copied)
+    assert workspace_id in str(raised.value)
+    assert str(first.resolve()) in str(raised.value)
+    assert list(registry._servers) == [first.resolve()]
+    assert calls == [(("hook",), PORT, "first", _page_path_of(first))]
+
+
+def test_context_of(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """配っている ID はその文脈、配っていない ID は None（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    registry.start(root)
+    # 実行
+    found = registry.context_of(change_detection.workspace_id_of(root))
+    missing = registry.context_of("mindstella-x-000000")
+    # 検証
+    assert found is not None
+    assert found.root == root.resolve()
+    assert missing is None
 
 
 def test_stop_all(
     registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
-    """止めた配信にはつながらない（正常系）。"""
+    """やめた後はどのワークスペースも引けない（正常系）。"""
     # 準備
-    url, _started = registry.start(make_workspace(make_item("D-1")))
+    first = make_workspace(make_item("D-1"), name="first")
+    second = make_workspace(make_item("D-1"), name="second")
+    registry.start(first)
+    registry.start(second)
     # 実行
     registry.stop_all()
     # 検証
-    connection = http.client.HTTPConnection("127.0.0.1", _port_of(url), timeout=HTTP_TIMEOUT_SEC)
-    with pytest.raises(ConnectionRefusedError):
-        connection.request("GET", "/")
+    assert registry.url_of(first) is None
+    assert registry.url_of(second) is None
+    assert registry.context_of(change_detection.workspace_id_of(first)) is None
+    assert registry.listing() == []
 
 
 class FakeDetector:
@@ -350,7 +380,7 @@ def detected_registry(
 ) -> Iterator[serve.PreviewRegistry]:
     """変更の検知を偽物にした、状態のフォルダつきの配信の台帳。"""
     monkeypatch.setattr(serve, "ChangeDetector", FakeDetector)
-    created = serve.PreviewRegistry(threading.Lock(), state_root=tmp_path / "state")
+    created = serve.PreviewRegistry(threading.Lock(), port=PORT, state_root=tmp_path / "state")
     yield created
     created.stop_all()
 
@@ -358,26 +388,70 @@ def detected_registry(
 def test_stop_workspace(
     detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
-    """一致する配信と変更の検知だけ止める（正常系）。"""
+    """一致するワークスペースと変更の検知だけやめる（正常系）。"""
     # 準備
     first = make_workspace(make_item("D-1"), name="a")
     second = make_workspace(make_item("D-1"), name="b")
     detected_registry.start(first)
     detected_registry.start(second)
     detector = detected_registry._detectors[first.resolve()]
+    first_id = change_detection.workspace_id_of(first)
     # 実行
-    detected_registry.stop_workspace(change_detection.workspace_id_of(first))
+    detected_registry.stop_workspace(first_id)
     # 検証
     assert detected_registry.url_of(first) is None
+    assert detected_registry.context_of(first_id) is None
     assert detector.stopped is True
     assert detected_registry.url_of(second) is not None
     assert second.resolve() in detected_registry._detectors
 
 
+def test_start_when_folder_moved(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """配っているフォルダを移した先を配ると、前のフォルダの配信をやめて移した先を同じ URL で配る（正常系）。"""
+    # 準備
+    calls = _record_hook_calls(monkeypatch)
+    monkeypatch.setattr(serve, "ChangeDetector", FakeDetector)
+    registry = serve.PreviewRegistry(
+        threading.Lock(),
+        port=PORT,
+        external=serve.ExternalAccess(start_hook=("start",), stop_hook=("stop",)),
+        state_root=tmp_path / "state",
+    )
+    first = make_workspace(make_item("D-1"), name="first")
+    config_path = first / RECORD_DIR / "config.yaml"
+    write_yaml(config_path, {**yaml.safe_load(config_path.read_text(encoding="utf-8")), "id": "mindstella-first-3f2a9c"})
+    first_url, _started = registry.start(first)
+    detector = registry._detectors[first.resolve()]
+    moved = tmp_path / "moved"
+    first.rename(moved)
+    page = _page_path_of(moved)
+    try:
+        # 実行
+        result = registry.start(moved)
+        # 検証
+        assert result == (first_url, True)
+        context = registry.context_of("mindstella-first-3f2a9c")
+        assert context is not None
+        assert context.root == moved.resolve()
+        assert detector.stopped is True
+        assert calls == [
+            (("start",), PORT, "first", page),
+            (("stop",), PORT, "first", page),
+            (("start",), PORT, "moved", page),
+        ]
+    finally:
+        registry.stop_all()
+
+
 def test_stop_workspace_when_not_served(
     detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
-    """配信していない ID なら何も変えない（正常系）。"""
+    """配っていない ID なら何も変えない（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     url, _started = detected_registry.start(root)
@@ -387,28 +461,10 @@ def test_stop_workspace_when_not_served(
     assert detected_registry.url_of(root) == url
 
 
-def test_stop_workspace_when_other_settings_broken(
-    detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
-) -> None:
-    """ほかのワークスペースの設定が壊れていても、一致する配信を止める（正常系）。"""
-    # 準備
-    first = make_workspace(make_item("D-1"), name="a")
-    second = make_workspace(make_item("D-1"), name="b")
-    detected_registry.start(first)
-    detected_registry.start(second)
-    workspace_id = change_detection.workspace_id_of(first)
-    (second / ".mindstella" / "config.yaml").write_text("id: [壊れた\n", encoding="utf-8")
-    # 実行
-    detected_registry.stop_workspace(workspace_id)
-    # 検証
-    assert detected_registry.url_of(first) is None
-    assert detected_registry.url_of(second) is not None
-
-
 def test_stop_workspace_then_start(
     detected_registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
-    """止めた後の start で配信と変更の検知を新しく始める（正常系）。"""
+    """やめた後の start で配信と変更の検知を新しく始める（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     detected_registry.start(root)
@@ -420,42 +476,63 @@ def test_stop_workspace_then_start(
     assert root.resolve() in detected_registry._detectors
 
 
+def test_stop_workspace_when_stop_hook_set(
+    make_registry: Callable[[serve.ExternalAccess], serve.PreviewRegistry],
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """やめたワークスペースについて 1 回だけ終了時のフックを呼ぶ（正常系）。"""
+    # 準備
+    calls = _record_hook_calls(monkeypatch)
+    registry = make_registry(serve.ExternalAccess(stop_hook=("hook",)))
+    root = make_workspace(make_item("D-1"), name="家計簿")
+    registry.start(root)
+    # 実行
+    registry.stop_workspace(change_detection.workspace_id_of(root))
+    # 検証
+    assert calls == [(("hook",), PORT, "家計簿", _page_path_of(root))]
+
+
 def test_stop_all_when_stop_hook_set(
     make_registry: Callable[[serve.ExternalAccess], serve.PreviewRegistry],
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """配信ごとに 1 回だけ終了時のフックを呼ぶ（正常系）。"""
+    """配っているワークスペースごとに 1 回だけ終了時のフックを呼ぶ（正常系）。"""
     # 準備
     calls = _record_hook_calls(monkeypatch)
     registry = make_registry(serve.ExternalAccess(stop_hook=("hook",)))
-    url1, _started1 = registry.start(make_workspace(make_item("D-1"), name="first"))
-    url2, _started2 = registry.start(make_workspace(make_item("D-1"), name="second"))
+    first = make_workspace(make_item("D-1"), name="first")
+    second = make_workspace(make_item("D-1"), name="second")
+    registry.start(first)
+    registry.start(second)
     # 実行（2 回目は台帳が空なので何もしない）
     registry.stop_all()
     registry.stop_all()
     # 検証
     assert sorted(calls, key=lambda call: call[2]) == [
-        (("hook",), _port_of(url1), "first"),
-        (("hook",), _port_of(url2), "second"),
+        (("hook",), PORT, "first", _page_path_of(first)),
+        (("hook",), PORT, "second", _page_path_of(second)),
     ]
 
 
 def test_stop_all_when_reentered(
     make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """止めている途中に同じスレッドから呼ばれても止まらず、フックを重ねて呼ばない（正常系）。"""
+    """やめている途中に同じスレッドから呼ばれても止まらず、フックを重ねて呼ばない（正常系）。"""
     # 準備（鍵が戻らない実装でも後片付けで止まらないよう、後片付けの fixture を使わずテスト自身で止める）
     registry = serve.PreviewRegistry(
-        threading.Lock(), external=serve.ExternalAccess(stop_hook=("hook",))
+        threading.Lock(), port=PORT, external=serve.ExternalAccess(stop_hook=("hook",))
     )
-    url, _started = registry.start(make_workspace(make_item("D-1")))
-    calls: list[tuple[tuple[str, ...], int, str]] = []
+    root = make_workspace(make_item("D-1"))
+    registry.start(root)
+    calls: list[tuple[tuple[str, ...], int, str, str]] = []
 
-    def _run_hook(command: tuple[str, ...], port: int, name: str) -> bool:
+    def _run_hook(command: tuple[str, ...], port: int, name: str, path: str) -> bool:
         """引数を控え、フックの中から同じ台帳の stop_all を呼び直す。"""
-        calls.append((command, port, name))
+        calls.append((command, port, name, path))
         registry.stop_all()
         return True
 
@@ -467,50 +544,7 @@ def test_stop_all_when_reentered(
     # 検証
     assert not runner.is_alive()
     assert len(calls) == 1
-    connection = http.client.HTTPConnection("127.0.0.1", _port_of(url), timeout=HTTP_TIMEOUT_SEC)
-    with pytest.raises(ConnectionRefusedError):
-        connection.request("GET", "/")
-
-
-def test_start_preview_server(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """127.0.0.1 だけで待ち受ける（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    # 実行
-    preview = serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
-    try:
-        # 検証
-        host, port = preview.httpd.server_address[:2]
-        assert host == "127.0.0.1"
-        assert port != 0
-        assert preview.url.endswith("/mindstella.html")
-        assert _get_status(preview.url) == 200
-        # `/` は送り直しを辿らずに、画面のパスへ送り直す 302
-        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=HTTP_TIMEOUT_SEC)
-        connection.request("GET", "/")
-        redirect = connection.getresponse()
-        assert redirect.status == 302
-        assert redirect.getheader("Location") == "/mindstella.html"
-        connection.close()
-    finally:
-        preview.stop()
-
-
-def test_start_preview_server_when_bind_fails(
-    monkeypatch: pytest.MonkeyPatch, make_workspace: MakeWorkspace, make_item: MakeItem
-) -> None:
-    """待ち受けを立てられなければ ServeFailedError（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-
-    def _fail(*args: Any, **kwargs: Any) -> None:
-        """待ち受けのソケットを開けないことにする。"""
-        raise OSError("ポートが取れません")
-
-    monkeypatch.setattr(serve, "ThreadingHTTPServer", _fail)
-    # 実行・検証
-    with pytest.raises(ServeFailedError):
-        serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
+    assert registry.url_of(root) is None
 
 
 @pytest.mark.parametrize(
@@ -642,7 +676,7 @@ def _read_when_written(path: Path) -> str:
 
 
 def test_run_hook(tmp_path: Path) -> None:
-    """末尾にポートと名前を足して立てる（正常系）。"""
+    """末尾にポート・名前・画面のパスを足して立てる（正常系）。"""
     # 準備
     written = tmp_path / "written.txt"
     command = (
@@ -653,18 +687,39 @@ def test_run_hook(tmp_path: Path) -> None:
         str(written),
     )
     # 実行
-    started = serve.run_hook(command, 47800, "家計簿")
+    started = serve.run_hook(command, 8784, "家計簿", "/w/mindstella-x-1/mindstella.html")
     # 検証（終わりは待たないので、書かれるのを待つ）
     assert started is True
-    assert _read_when_written(written) == "47800 家計簿"
+    assert _read_when_written(written) == "8784 家計簿 /w/mindstella-x-1/mindstella.html"
 
 
 def test_run_hook_when_command_missing() -> None:
     """コマンドが無ければ偽で例外を送らない（異常系）。"""
     # 実行
-    started = serve.run_hook(("mindstella-no-such-command",), 47800, "家計簿")
+    started = serve.run_hook(
+        ("mindstella-no-such-command",), 8784, "家計簿", "/w/mindstella-x-1/mindstella.html"
+    )
     # 検証
     assert started is False
+
+
+@pytest.mark.parametrize(
+    ("workspace_id", "expected"),
+    [
+        pytest.param("mindstella-notes-3f2a9c", "/w/mindstella-notes-3f2a9c/mindstella.html", id="ascii"),
+        pytest.param(
+            "mindstella-家計簿-3f2a9c",
+            "/w/mindstella-%E5%AE%B6%E8%A8%88%E7%B0%BF-3f2a9c/mindstella.html",
+            id="japanese",
+        ),
+    ],
+)
+def test_page_path(workspace_id: str, expected: str) -> None:
+    """ID をパーセントエンコードして /w/{ID}/mindstella.html にする（正常系）。"""
+    # 実行
+    result = serve.page_path(workspace_id)
+    # 検証
+    assert result == expected
 
 
 def test_problem_response() -> None:
@@ -1304,10 +1359,9 @@ def test_threads_response(
     url, _started = registry.start(root)
     # 実行
     response = serve.threads_response(root)
-    with urllib.request.urlopen(
-        f"http://127.0.0.1:{_port_of(url)}/api/threads", timeout=HTTP_TIMEOUT_SEC
-    ) as served:
-        cache_control = served.headers["Cache-Control"]
+    with _client(registry) as client:
+        served = client.get(f"{_base_of(url)}/api/threads")
+    cache_control = served.headers["Cache-Control"]
     # 検証
     assert response.status == 200
     assert response.content_type == "application/json; charset=utf-8"
@@ -1435,13 +1489,11 @@ def test_seen_response(
     url, _started = registry.start(served)
     # 実行
     response = serve.seen_response(_context(direct), "TH-1", origin=None)
-    request = urllib.request.Request(
-        f"http://127.0.0.1:{_port_of(url)}/api/threads/TH-1/seen", method="POST"
-    )
-    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as over_http:
-        cache_control = over_http.headers["Cache-Control"]
-        http_status = over_http.status
-        http_payload = json.loads(over_http.read())
+    with _client(registry) as client:
+        over_http = client.post(f"{_base_of(url)}/api/threads/TH-1/seen")
+    cache_control = over_http.headers["Cache-Control"]
+    http_status = over_http.status_code
+    http_payload = over_http.json()
     # 検証
     assert response.status == 200
     assert response.content_type == "application/json; charset=utf-8"
@@ -1982,15 +2034,14 @@ def test_transcription_response(
         make_item("D-1"), settings=_with_transcription(valid_settings, action="send", preset="開発")
     )
     fake = _FakeTranscriber(presets=["一般", "開発"])
-    registry = serve.PreviewRegistry(threading.Lock(), transcriber=fake)
+    registry = serve.PreviewRegistry(threading.Lock(), port=PORT, transcriber=fake)
     url, _started = registry.start(root)
     # 実行
     response = serve.transcription_response(_voice_context(root, fake), origin=None)
     try:
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{_port_of(url)}/api/transcription", timeout=HTTP_TIMEOUT_SEC
-        ) as over_http:
-            cache_control = over_http.headers["Cache-Control"]
+        with _client(registry) as client:
+            over_http = client.get(f"{_base_of(url)}/api/transcription")
+        cache_control = over_http.headers["Cache-Control"]
     finally:
         registry.stop_all()
     # 検証
@@ -2156,18 +2207,9 @@ def test_transcribe_response_when_rejected(
     assert fake.transcribe_calls == []
 
 
-def _get_raw(port: int, path: str, headers: dict[str, str] | None = None) -> tuple[int, dict[str, str], bytes]:
-    """パスを正規化せずに GET し、ステータス・ヘッダー・本文を返却する。"""
-    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=HTTP_TIMEOUT_SEC)
-    try:
-        connection.request("GET", path, headers=headers or {})
-        response = connection.getresponse()
-        return response.status, dict(response.getheaders()), response.read()
-    finally:
-        connection.close()
-
-
-def test_send_file(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+def test_send_file(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
     """ファイルの全体と範囲を返却する（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
@@ -2175,46 +2217,226 @@ def test_send_file(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     files = root / "files"
     files.mkdir()
     (files / "clip.mp4").write_bytes(data)
-    preview = serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
-    try:
-        port = _port_of(preview.url)
-        # 実行
-        whole = _get_raw(port, "/files/clip.mp4")
-        part = _get_raw(port, "/files/clip.mp4", {"Range": "bytes=100-199"})
-    finally:
-        preview.stop()
+    url, _started = registry.start(root)
+    # 実行
+    with _client(registry) as client:
+        whole = client.get(f"{_base_of(url)}/files/clip.mp4")
+        part = client.get(f"{_base_of(url)}/files/clip.mp4", headers={"Range": "bytes=100-199"})
     # 検証
-    assert whole[0] == 200
-    assert whole[2] == data
-    assert whole[1]["Content-Type"] == "video/mp4"
-    assert whole[1]["Cache-Control"] == "no-cache"
-    assert whole[1]["Content-Security-Policy"] == "sandbox"
-    assert part[0] == 206
-    assert part[2] == data[100:200]
-    assert part[1]["Content-Range"] == "bytes 100-199/1000"
-    assert part[1]["Cache-Control"] == "no-cache"
-    assert part[1]["Content-Security-Policy"] == "sandbox"
+    assert whole.status_code == 200
+    assert whole.content == data
+    assert whole.headers["Content-Type"] == "video/mp4"
+    assert whole.headers["Cache-Control"] == "no-cache"
+    assert whole.headers["Content-Security-Policy"] == "sandbox"
+    assert part.status_code == 206
+    assert part.content == data[100:200]
+    assert part.headers["Content-Range"] == "bytes 100-199/1000"
+    assert part.headers["Cache-Control"] == "no-cache"
+    assert part.headers["Content-Security-Policy"] == "sandbox"
 
 
-def test_send_file_when_missing(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """解決できなければ 404（正常系）。"""
+def test_send_file_when_large(
+    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """書き出しの単位より大きいファイルは、最初の片を返した時点で残りを読んでいない（正常系）。"""
+    # 準備（書き出しの単位を小さくし、最初の片を受けた後にファイルの後ろを書き換える）
+    monkeypatch.setattr(serve, "FILE_WRITE_CHUNK", 4)
+    root = make_workspace(make_item("D-1"))
+    files = root / "files"
+    files.mkdir()
+    path = files / "clip.mp4"
+    path.write_bytes(b"aaaabbbbcccc")
+    plan = serve.plan_file(path, None)
+    # 実行
+    chunks = serve._file_chunks(plan)
+    first = next(chunks)
+    path.write_bytes(b"aaaaXXXXYYYY")
+    rest = list(chunks)
+    # 検証（後ろの片は、最初の片を返した後の中身）
+    assert first == b"aaaa"
+    assert rest == [b"XXXX", b"YYYY"]
+
+
+def test_send_file_when_missing(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """解決できなければ 404 で、外のファイルの中身を返さない（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     (root / "files").mkdir()
     config = (root / RECORD_DIR / "config.yaml").read_bytes()
-    preview = serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
-    try:
-        port = _port_of(preview.url)
-        # 実行
-        missing = _get_raw(port, "/files/missing.mp4")
-        outside = _get_raw(port, "/files/../.mindstella/config.yaml")
-    finally:
-        preview.stop()
+    url, _started = registry.start(root)
+    # 実行（.. を正規化させずに送る）
+    with _client(registry) as client:
+        missing = client.get(f"{_base_of(url)}/files/missing.mp4")
+        outside = client.get(f"{_base_of(url)}/files/%2E%2E/.mindstella/config.yaml")
     # 検証
-    assert missing[0] == 404
-    assert missing[1]["Content-Type"] == serve.PROBLEM_TYPE
-    assert missing[1]["Content-Security-Policy"] == "sandbox"
-    assert missing[1]["X-Content-Type-Options"] == "nosniff"
-    assert outside[0] == 404
-    assert outside[1]["Content-Type"] == serve.PROBLEM_TYPE
-    assert config not in outside[2]
+    assert missing.status_code == 404
+    assert missing.headers["Content-Type"] == serve.PROBLEM_TYPE
+    assert missing.headers["Content-Security-Policy"] == "sandbox"
+    assert missing.headers["X-Content-Type-Options"] == "nosniff"
+    assert outside.status_code == 404
+    assert outside.headers["Content-Type"] == serve.PROBLEM_TYPE
+    assert config not in outside.content
+
+
+def test_endpoint(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """/w/{ID} の下で画面と記録を返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", title="配った問い"))
+    url, _started = registry.start(root)
+    # 実行
+    with _client(registry) as client:
+        page = client.get(_path_of(url))
+        records = client.get(f"{_base_of(url)}/api/records")
+    # 検証
+    assert page.status_code == 200
+    assert page.headers["Cache-Control"] == "no-store"
+    assert "text/html" in page.headers["Content-Type"]
+    assert records.status_code == 200
+    assert records.headers["Cache-Control"] == "no-store"
+    assert "配った問い" in records.text
+
+
+@pytest.mark.parametrize("name", [pytest.param("notes", id="ascii"), pytest.param("家計簿", id="japanese")])
+def test_endpoint_when_redirect(
+    registry: serve.PreviewRegistry,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    name: str,
+) -> None:
+    """/w/{ID}・/w/{ID}/・/w/{ID}/spa を再送信する（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), name=name)
+    url, _started = registry.start(root)
+    base = _base_of(url)
+    # 実行
+    with _client(registry) as client:
+        bare = client.get(base, follow_redirects=False)
+        slash = client.get(f"{base}/", follow_redirects=False)
+        spa = client.get(f"{base}/spa", follow_redirects=False)
+    # 検証
+    assert (bare.status_code, bare.headers["Location"]) == (302, f"{base}/")
+    assert (slash.status_code, slash.headers["Location"]) == (302, f"{base}{serve.PAGE_PATH}")
+    assert (spa.status_code, spa.headers["Location"]) == (302, f"{base}/spa/")
+
+
+def test_endpoint_when_workspace_not_served(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """配っていない ID は 404 で、ほかのワークスペースの記録を返さない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", title="配った問い"))
+    registry.start(root)
+    # 実行
+    with _client(registry) as client:
+        response = client.get(f"{serve.PREVIEW_PREFIX}/mindstella-x-000000/api/records")
+    # 検証
+    assert response.status_code == 404
+    assert response.headers["Content-Type"] == serve.PROBLEM_TYPE
+    assert "配った問い" not in response.text
+
+
+def test_endpoint_when_host_mismatch(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """Host が合わなければ 403 で、画面を返さない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    url, _started = registry.start(root)
+    # 実行
+    with _client(registry) as client:
+        response = client.get(_path_of(url), headers={"Host": f"attacker.example:{PORT}"})
+    # 検証
+    assert response.status_code == 403
+    assert "<html" not in response.text.lower()
+
+
+def test_endpoint_when_two_workspaces(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """溜めたコメントは送ったワークスペースだけに入る（正常系）。"""
+    # 準備
+    first = make_workspace(make_item("D-1"), name="first")
+    second = make_workspace(make_item("D-1"), name="second")
+    url1, _started1 = registry.start(first)
+    url2, _started2 = registry.start(second)
+    body = _post_body(target="D-1", body="A へのコメント")
+    # 実行
+    with _client(registry) as client:
+        posted = client.post(
+            f"{_base_of(url1)}/api/comments",
+            content=body,
+            headers={"Content-Type": "application/json"},
+        )
+        first_comments = client.get(f"{_base_of(url1)}/api/comments").json()
+        second_comments = client.get(f"{_base_of(url2)}/api/comments").json()
+    # 検証
+    assert posted.status_code == 201
+    assert "A へのコメント" in json.dumps(first_comments, ensure_ascii=False)
+    assert "A へのコメント" not in json.dumps(second_comments, ensure_ascii=False)
+
+
+def test_stream(
+    registry: serve.PreviewRegistry,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """書き換えると changed を送り、閉じたら知らせのスレッドが終わる（正常系）。"""
+    # 準備
+    monkeypatch.setattr(serve, "POLL_INTERVAL_SEC", 0.05)
+    root = make_workspace(make_item("D-1"))
+    url, _started = registry.start(root)
+    before = set(threading.enumerate())
+    received = ""
+    # 実行
+    with _client(registry) as client, client.stream("GET", f"{_base_of(url)}/api/events") as stream:
+        ai_update(root, "D-1", {"title": "書き換えた問い"})
+        for chunk in stream.iter_text():
+            received += chunk
+            if "changed" in received:
+                break
+    # 検証（閉じた後、知らせのために足したスレッドが上限秒数のうちに全て終わる）
+    deadline = time.monotonic() + HTTP_TIMEOUT_SEC
+    added = set(threading.enumerate()) - before
+    while added and time.monotonic() < deadline:
+        time.sleep(0.05)
+        added = set(threading.enumerate()) - before
+    assert "changed" in received
+    assert added == set()
+
+
+def test_transcribe_when_too_large(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """Content-Length の無い上限超えの音声は 413 で、文字起こしを呼ばない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    fake = _FakeTranscriber(presets=[])
+    registry = serve.PreviewRegistry(threading.Lock(), port=PORT, transcriber=fake)
+    url, _started = registry.start(root)
+
+    def _chunks() -> Iterator[bytes]:
+        """長さを明かさずに、上限を 1 バイト超える音声を分けて渡す。"""
+        remaining = serve.MAX_AUDIO_BYTES + 1
+        while remaining > 0:
+            size = min(remaining, 1 << 20)
+            remaining -= size
+            yield b"\0" * size
+
+    # 実行
+    try:
+        with _client(registry) as client:
+            response = client.post(
+                f"{_base_of(url)}/api/transcriptions",
+                content=_chunks(),
+                headers={"Content-Type": "audio/webm"},
+            )
+    finally:
+        registry.stop_all()
+    # 検証
+    assert response.status_code == 413
+    assert fake.transcribe_calls == []

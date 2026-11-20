@@ -77,13 +77,13 @@ _PANEL_STATE_JS = """() => {
 def seed_panel_width(page: Page, width: int) -> None:
     """ページを開く前に、そのタブの保存領域へ変えた詳細パネルの幅を入れる。"""
     page.add_init_script(
-        f"try {{ sessionStorage.setItem('{PANEL_WIDTH_KEY}', '{width}'); }} catch (e) {{}}"
+        f"try {{ sessionStorage.setItem('{PANEL_WIDTH_KEY}' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''), '{width}'); }} catch (e) {{}}"
     )
 
 
 def read_stored_width(page: Page) -> str | None:
     """そのタブの保存領域に残した詳細パネルの幅を、文字列のまま読む。"""
-    return page.evaluate(f"sessionStorage.getItem('{PANEL_WIDTH_KEY}')")
+    return page.evaluate(f"sessionStorage.getItem('{PANEL_WIDTH_KEY}' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))")
 
 
 def panel_state(page: Page) -> dict[str, Any]:

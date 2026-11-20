@@ -76,7 +76,7 @@ describe("resolveFileSources", () => {
   // 相対パスだけを配信のパスにする（正常系）
   test("resolve_file_sources", () => {
     // 準備
-    window.history.pushState({}, "", "/spa/decisions");
+    window.history.pushState({}, "", "/w/mindstella-x-1/spa/");
     const root = document.createElement("div");
     root.innerHTML = [
       '<p><img id="a" src="../files/a.png"></p>',
@@ -101,10 +101,10 @@ describe("resolveFileSources", () => {
       r: attr("r", "src"),
       h: attr("h", "src"),
     }).toEqual({
-      a: "/files/a.png",
-      b: "/files/b.mp4#t=2",
-      poster: "/files/p.png",
-      c: "/files/c.mp3",
+      a: "/w/mindstella-x-1/files/a.png",
+      b: "/w/mindstella-x-1/files/b.mp4#t=2",
+      poster: "/w/mindstella-x-1/files/p.png",
+      c: "/w/mindstella-x-1/files/c.mp3",
       u: "https://example.com/u.png",
       d: "data:image/png;base64,AA",
       r: "/r.png",

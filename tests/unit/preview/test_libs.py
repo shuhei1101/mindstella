@@ -2155,9 +2155,10 @@ def test_resolve_file_sources(preview_page: Page, load_preview_scripts: LoadPrev
     """相対パスだけを配信のパスにする（正常系）。"""
     # 準備
     load_preview_scripts()
-    # 実行
+    # 実行（サーバーの配信と同じく /w/{workspace}/mindstella.html で開いたことにする）
     result = preview_page.evaluate(
         """(html) => {
+            history.replaceState(null, "", "/w/mindstella-x-1/mindstella.html");
             const root = document.createElement("div");
             root.innerHTML = html;
             MindmapPreview.resolveFileSources(root);
@@ -2177,10 +2178,10 @@ def test_resolve_file_sources(preview_page: Page, load_preview_scripts: LoadPrev
     )
     # 検証
     assert result == {
-        "a": "/files/a.png",
-        "b": "/files/b.mp4#t=2",
-        "poster": "/files/p.png",
-        "c": "/files/c.mp3",
+        "a": "/w/mindstella-x-1/files/a.png",
+        "b": "/w/mindstella-x-1/files/b.mp4#t=2",
+        "poster": "/w/mindstella-x-1/files/p.png",
+        "c": "/w/mindstella-x-1/files/c.mp3",
         "u": "https://example.com/u.png",
         "d": "data:image/png;base64,AA",
         "r": "/r.png",

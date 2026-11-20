@@ -965,6 +965,31 @@ functions:
         mock: なし
         expected: '`input` / `submit` / `input` / `submit`'
     container: plugins/mindstella/skills/mindmap/preview/app.ts
+  - name: openStorage
+    title: 端末の保存領域を開く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 共通
+    scope: internal
+    summary: '`localStorage`・`sessionStorage` を、キーを `workspaceKey` で読み替える保存領域として開く（`PREFS_KEY`・`SINCE_KEY`・`PANEL_WIDTH_KEY`・`BODY_SCROLL_KEY` は、サーバーの配信では末尾に `:{workspace}` が付く。インターフェース定義『プレビューを開く』の制約「端末の保存領域」）。開けない環境では、何も返さず書き込みで例外を送出する保存領域を返す'
+    args:
+      - name: kind
+        type: "'localStorage' | 'sessionStorage'"
+        required: true
+        passing: positional
+        description: 開く保存領域
+    returns:
+      type: Storage
+      description: '`getItem`・`setItem`・`removeItem` が `workspaceKey(key)` を使う保存領域'
+    callees:
+      - MOD-489-196#functions[workspaceKey]
+    unit_tests:
+      - name: test_open_storage_when_workspace_path
+        case: 正常
+        summary: ワークスペースごとのキーで読み書きする
+        condition: "`location` のパスを `/w/mindstella-x-1/mindstella.html` にして `openStorage('localStorage')` に `PREFS_KEY` を書き、`/w/other/mindstella.html` にして読む"
+        mock: なし（jsdom の localStorage）
+        expected: '`localStorage` の `mindmap-preview:mindstella-x-1` に書かれ、`/w/other/` では `null` を読む'
 notes:
   入力中の再読み込みの保留: サーバーの配信では、`start` が呼ぶ `run` で再描画の保留（`createRefreshHold`。`isVoiceActive` は `comment.voice.phase` が `idle` でないこと、`reload` は記録の再読み込みし、`onStaleChange` はトップバーの `stale` を書き換えて `renderTop`）を作る。書き換えの通知（`onChanged`）と再接続したときの再読み込みは `request` を呼び、音声入力があれば続けて `checkVoiceDestination` を呼んで、ID が返り、その時点でも `comment.voice` が同じ行き先で録音・文字起こし中なら録音を捨て（`abandonVoice`）、知らせを discarded にしてトップバーを再描画する（`renderTop`）。音声入力が終わったとき（文字起こしの結果が入った・キャンセル・失敗・捨てた）は `release` を呼ぶ。配る書き出しでは作らない
   スレッドの再読み込み: |-

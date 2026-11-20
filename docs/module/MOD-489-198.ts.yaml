@@ -43,7 +43,7 @@ constants:
     title: 本文のファイルのパスを解決する基準
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 動画などのファイルを配置して資料に埋め込む
-    summary: 資料のフォルダを表す配信のパス。`../files/{名前}` はここから解決して `/files/{名前}` になる
+    summary: 資料のフォルダを表す配信のパスのうち、ワークスペースのパスの頭より後ろ。`../files/{名前}` はここから解決して `/w/{workspace}/files/{名前}` になる
     value: '"/docs/"'
 functions:
   - name: missingLibraries
@@ -720,7 +720,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 動画などのファイルを配置して資料に埋め込む
     scope: public
-    summary: mdmark が描いた本文の `img`・`video`・`audio`・`source` の相対パスを、`FILE_BASE_PATH` を基準に解決した配信のパスに置き換える（`mountMarkdown` が mdmark の `mount` の直後に呼ぶ）
+    summary: mdmark が描いた本文の `img`・`video`・`audio`・`source` の相対パスを、ワークスペースのパスの頭を付けた `FILE_BASE_PATH` を基準に解決した配信のパスに置き換える（`mountMarkdown` が mdmark の `mount` の直後に呼ぶ）
     side_effects: '`root` の中の要素の `src`・`poster` を書き換える'
     args:
       - name: root
@@ -734,11 +734,13 @@ functions:
     process: |-
       1. `root` の中の `img[src]`・`video[src]`・`video[poster]`・`audio[src]`・`source[src]` を集める（埋め込んだ HTML の範囲 `.mdmark-html` の中は除く）
       2. 属性の元の値ごとに、スキームを持つ（`https:`・`data:`・`blob:` 等）値、`/` で始まる値、`#` だけの値を飛ばす
-      3. 残った値を `new URL(値, location.origin + FILE_BASE_PATH)` で解決し、`pathname + search + hash` を属性へ書く（`../files/clip.mp4` は `/files/clip.mp4`）
+      3. 残った値を `new URL(値, location.origin + workspacePath() + FILE_BASE_PATH)` で解決し、`pathname + search + hash` を属性へ書く（`/w/x/mindstella.html` で開いたとき `../files/clip.mp4` は `/w/x/files/clip.mp4`）
     unit_tests:
       - name: test_resolve_file_sources
         case: 正常
         summary: 相対パスだけを配信のパスにする
         condition: '`img src="../files/a.png"`・`video src="../files/b.mp4#t=2" poster="../files/p.png"`・`audio src="../files/c.mp3"`・`img src="https://example.com/u.png"`・`img src="data:image/png;base64,AA"`・`img src="/r.png"`・`.mdmark-html` の中の `img src="../files/h.png"` を持つ要素'
-        mock: なし（jsdom、`location.origin` は `http://127.0.0.1:8000`）
-        expected: '`/files/a.png`・`/files/b.mp4#t=2`・`/files/p.png`・`/files/c.mp3` になり、ほかの 4 つは元の値のまま'
+        mock: なし（jsdom、`location` は `http://127.0.0.1:8784/w/mindstella-x-1/mindstella.html`）
+        expected: '`/w/mindstella-x-1/files/a.png`・`/w/mindstella-x-1/files/b.mp4#t=2`・`/w/mindstella-x-1/files/p.png`・`/w/mindstella-x-1/files/c.mp3` になり、ほかの 4 つは元の値のまま'
+    callees:
+      - MOD-489-196#functions[workspacePath]

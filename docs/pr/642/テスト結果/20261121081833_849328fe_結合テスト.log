@@ -1,0 +1,73 @@
+# 結合テスト（tests/integration/server/・tests/integration/preview/。計画書『サーバー』の結合テストの実行範囲の表の範囲）
+# サーバーは 9adccb31 で実行（その後の commit は tests/integration/preview/ だけを変えた）。画面は b144d78e で全件を実行し、その後に直したテストを 849328fe で流し直した
+
+## tests/integration/server/
+$ pytest tests/integration/server
+E         - path: documents[5].schema
+E           rule: 'スキーマのファイルが無い: schemas/notes.schema.json'
+E         - path: documents[6].schema
+E           rule: 'スキーマのファイルが無い: schemas/logs.schema.json'
+E       assert True is False
+E        +  where True = ToolResult(is_error=True, text="SourceNotServedError: mindstella-kakeibo-7fc932 は配信していません（documents[0].schema: スキーマのファ... schemas/notes.schema.json'\n- path: documents[6].schema\n  rule: 'スキーマのファイルが無い: schemas/logs.schema.json'", data=None).is_error
+tests/integration/server/test_create_workspace.py:367: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/server/test_create_workspace.py::test_error_when_host_not_local
+FAILED tests/integration/server/test_create_workspace.py::test_normal_when_real_project_index
+2 failed, 518 passed, 2 skipped in 1146.17s (0:19:06)
+exit=1
+
+# develop（642fb1e4）の worktree で同じテストを流した結果
+$ pytest tests/integration/server/test_create_workspace.py::test_error_when_host_not_local tests/integration/server/test_create_workspace.py::test_normal_when_real_project_index
+/home/shuhei2441/repo/mindstella/.claude/worktrees/develop-base-642/tests/integration/server/test_create_workspace.py:332: AssertionError: assert [('GET', '/se...urces', None)] == []
+/home/shuhei2441/repo/mindstella/.claude/worktrees/develop-base-642/tests/integration/server/test_create_workspace.py:367: AssertionError: SourceNotServedError: mindstella-kakeibo-de5476 は配信していません（documents[0].schema: スキーマのファイルが無い: schemas/decisions.schema.json; documents[1].schema: スキーマのファイルが無い: schemas/tasks.schema.json; documents[2].schema: スキーマのファイルが無い: schemas/research.schema.json; documents[3].schema: スキーマのファイルが無い: schemas/docs.schema.json; documents[4].schema: スキーマのファイルが無い: schemas/terms.schema.json; documents[5].schema: スキーマのファイルが無い: schemas/notes.schema.json; documents[6].schema: スキーマのファイルが無い: schemas/logs.schema.json）
+FAILED tests/integration/server/test_create_workspace.py::test_error_when_host_not_local
+FAILED tests/integration/server/test_create_workspace.py::test_normal_when_real_project_index
+2 failed in 3.55s
+
+## tests/integration/preview/
+$ pytest tests/integration/preview
+tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium] FAILED [ 11%]
+tests/integration/preview/test_detail_panel_screen.py::test_diff_body_layout_switch[chromium] FAILED [ 24%]
+tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium] FAILED [ 27%]
+tests/integration/preview/test_open_preview.py::test_normal_when_body_table_and_sections[chromium] FAILED [ 38%]
+tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium] FAILED [ 38%]
+tests/integration/preview/test_open_preview.py::test_normal_when_embedded_files[chromium] FAILED [ 39%]
+tests/integration/preview/test_spa_open.py::test_error_when_server_stopped[chromium] FAILED [ 67%]
+tests/integration/preview/test_spa_open.py::test_error_when_comment_server_unreachable[chromium] FAILED [ 69%]
+tests/integration/preview/test_spa_open.py::test_normal_when_embedded_files[chromium] FAILED [ 69%]
+================= 9 failed, 1304 passed in 2648.61s (0:44:08) ==================
+
+## 全件の実行の後に直したテストの流し直し（849328fe）
+$ pytest tests/integration/preview/test_open_preview.py::test_normal_when_embedded_files tests/integration/preview/test_spa_open.py::test_normal_when_embedded_files tests/integration/preview/test_spa_open.py::test_error_when_server_stopped tests/integration/preview/test_spa_open.py::test_error_when_comment_server_unreachable tests/integration/preview/test_detail_panel_screen.py::test_diff_body_layout_switch
+tests/integration/preview/test_detail_panel_screen.py::test_diff_body_layout_switch[chromium] FAILED [100%]
+
+=================================== FAILURES ===================================
+____________________ test_diff_body_layout_switch[chromium] ____________________
+tests/integration/preview/test_detail_panel_screen.py:4788: in test_diff_body_layout_switch
+    assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "inline"
+E   assert None == 'inline'
+E    +  where None = evaluate("document.activeElement?.getAttribute('data-layout')")
+E    +    where evaluate = <Page url='http://127.0.0.1:20010/w/mindstella-workspace-d6e01e/mindstella.html#tab=docs&id=A-1&diff=V-2'>.evaluate
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_body_layout_switch[chromium]
+========================= 1 failed, 4 passed in 46.00s =========================
+
+# develop（642fb1e4）の worktree で同じテストを流した結果
+$ pytest tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart tests/integration/preview/test_open_preview.py::test_normal_when_body_table_and_sections tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html
+FAILED tests/integration/preview/test_detail_full_screen.py::test_embedded_html_in_full[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_embedded_chart[chromium]
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_body_table_and_sections[chromium]
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_embedded_html[chromium]
+4 failed in 89.02s (0:01:29)
+
+## test_diff_body_layout_switch を 3 回ずつ流した結果（この PR と develop の 642fb1e4）
+PR 1: 1 failed in 8.46s
+PR 2: 1 failed in 8.49s
+PR 3: 1 failed in 8.48s
+develop 1: 1 failed in 9.13s
+develop 2: 1 failed in 9.16s
+develop 3: 1 failed in 8.78s
+
+## まとめ
+- この PR の変更による fail は無い
+- 残る fail はどれも develop（642fb1e4）でも同じく fail する: tests/integration/server/test_create_workspace.py の test_error_when_host_not_local・test_normal_when_real_project_index、tests/integration/preview/ の test_embedded_html_in_full・test_embedded_chart・test_normal_when_body_table_and_sections・test_normal_when_embedded_html・test_diff_body_layout_switch

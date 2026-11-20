@@ -80,7 +80,7 @@ elements:
       - name: body
         value: レビュー中のコメントの読み取り.drafts のうち target も thread も持たない下書き
       - name: status
-        value: レビュー中のコメントの追加（POST /api/comments）の結果。音声入力では、既定の挙動でレビュー中のコメントの追加をした結果（reviewed）・書き込みをすぐ送信するの結果（sent）・入力欄へ挿入した（inserted）・録音と文字起こしと送信の失敗（voice-failed）
+        value: レビュー中のコメントの追加（POST /w/{workspace}/api/comments）の結果。音声入力では、既定の挙動でレビュー中のコメントの追加をした結果（reviewed）・書き込みをすぐ送信するの結果（sent）・入力欄へ挿入した（inserted）・録音と文字起こしと送信の失敗（voice-failed）
       - name: count
         value: レビュー中のコメントの追加.count
       - name: detail
@@ -90,7 +90,7 @@ elements:
       - name: label
         value: 新規スレッド
       - name: voice
-        value: 文字起こしの可否（GET /api/transcription）の available と、ブラウザが navigator.mediaDevices.getUserMedia を持つか、録音・文字起こしの進み（画面で 1 つの音声入力の状態）から決める。使えないときと、ほかの入力欄で録音・文字起こし中のときは disabled
+        value: 文字起こしの可否（GET /w/{workspace}/api/transcription）の available と、ブラウザが navigator.mediaDevices.getUserMedia を持つか、録音・文字起こしの進み（画面で 1 つの音声入力の状態）から決める。使えないときと、ほかの入力欄で録音・文字起こし中のときは disabled
       - name: voiceReason
         value: 文字起こしの可否.detail（ブラウザがマイクを使えないときは画面が持つ文「このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。」、ほかの入力欄で音声入力中のときは「ほかの入力欄で音声入力中のため、音声で入力できません。」）
       - name: elapsed
@@ -98,7 +98,7 @@ elements:
       - name: levels
         value: 録音中のマイクの音量（画面が AnalyserNode で一定の間隔ごとに取って追加する）
       - name: entered
-        value: 書き込みをすぐ送信する（POST /api/comments/send-now）の entered
+        value: 書き込みをすぐ送信する（POST /w/{workspace}/api/comments/send-now）の entered
     position: 下端
     description: 見出し「新規スレッド」の下に、項目を指さない新規スレッドの最初の書き込みを溜める入力を出す（`target` を渡さない）。項目で絞っている間は、見出しを「{ID} への新規スレッド」にし、絞っている項目への箇所を持たない書き込みを溜める（`target` にその項目の ID。下書きは詳細パネルの下端のその項目への入力と同じ drafts を使う）。入口のボタンの文言は「新規スレッド」のまま。溜めたら入力欄を空にし、まだ送信していない新規スレッドとして一覧の先頭に追加し、コメントのボタンと「レビュー中」の入口の件数を再描画する（この画面に留まる）。溜めた後のフォーカスは『プレビューを開く』の制約「「レビューに追加」の後のフォーカス」に従い、入力欄か「レビューに追加」のボタンへ移す
     io: 入力

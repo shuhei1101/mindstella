@@ -280,7 +280,7 @@ def test_diff_off_by_chip(
     page.wait_for_selector(".df-chip", state="detached")
     assert page.locator("nav.tabbar .df-dot").count() == 0
     assert page.locator("table.grid .df-mark").count() == 0
-    saved = page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview')).diffSel ?? null")
+    saved = page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))).diffSel ?? null")
     assert saved is None
 
 

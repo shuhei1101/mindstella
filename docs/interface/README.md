@@ -39,27 +39,27 @@
 | [ワークスペースの点検](./IF-489-26.yaml) | check: スキーマ違反・参照切れ・本文のずれを洗い出す |
 | [記録の形式の移行](./IF-489-52.yaml) | migrate: 起動のときにワークスペースのバージョンとプラグインのバージョンを比べ、バージョンごとの手順を当ててバージョンを書き換える |
 | [配る書き出し](./IF-489-57.yaml) | export: 描画のライブラリまで中に持つ見るだけの 1 枚の HTML を書き出す |
-| [プレビューの URL](./IF-489-17.yaml) | preview_url: ワークスペースを 127.0.0.1 の空きポートで配り、URL を返す |
-| [プレビューの配信](./IF-489-18.yaml) | GET /mindstella.html: プレビューの画面を返す（/ はここへリダイレクトする） |
-| [SPAの配信](./IF-489-3.yaml) | GET /spa/{path}: React のプレビュー（SPA）の index.html と出力の静的なファイルを返す（出力に無いパスは index.html） |
-| [記録の取得](./IF-489-51.yaml) | GET /api/records: ワークスペースの記録をその場で読んで返す |
-| [書き換えの通知](./IF-489-44.yaml) | GET /api/events: 書き換えを Server-Sent Events で知らせる |
+| [プレビューの URL](./IF-489-17.yaml) | preview_url: ワークスペースを常駐サーバーのポートで配り、URL を返す |
+| [プレビューの配信](./IF-489-18.yaml) | GET /w/{workspace}/mindstella.html: プレビューの画面を返す（/w/{workspace}/ はここへリダイレクトする） |
+| [SPAの配信](./IF-489-3.yaml) | GET /w/{workspace}/spa/{path}: React のプレビュー（SPA）の index.html と出力の静的なファイルを返す（出力に無いパスは index.html） |
+| [記録の取得](./IF-489-51.yaml) | GET /w/{workspace}/api/records: ワークスペースの記録をその場で読んで返す |
+| [書き換えの通知](./IF-489-44.yaml) | GET /w/{workspace}/api/events: 書き換えを Server-Sent Events で知らせる |
 | [ID の採番](./IF-540-1.yaml) | next_id: 項目を書き込む前に種類ごとの次の ID を返し、予約して並行して取った ID と重ねない |
 | [変更の検知](./IF-540-2.yaml) | 変更の検知: 記録の書き換えを前回の中身と比べて履歴と連番に記録し、外部の変更を自動でまとまりにし、重なった ID を知らせる |
 | [書き換えのまとまり](./IF-489-43.yaml) | commit: まだまとめていない書き換えを説明つきのまとまりにする |
 | [まだまとめていない変更](./IF-489-4.yaml) | pending: 最後のまとまりより後に追加した・変えた項目を返す |
-| [前回開いた日時](./IF-489-34.yaml) | POST /api/opened: 前回プレビューを開いた日時を返し、今の日時に書き換える |
+| [前回開いた日時](./IF-489-34.yaml) | POST /w/{workspace}/api/opened: 前回プレビューを開いた日時を返し、今の日時に書き換える |
 | [設定の更新](./IF-489-55.yaml) | update_settings: 設定のキーを置き換える |
-| [レビュー中のコメントの読み取り](./IF-489-23.yaml) | GET /api/comments: レビュー中のコメントと下書きをその場で読んで返す |
-| [レビュー中のコメントの追加](./IF-489-24.yaml) | POST /api/comments: 項目・選んだ箇所へのコメントか項目に紐づかないコメントをレビュー中に溜める |
-| [レビュー中のコメントの書き換え](./IF-489-22.yaml) | PATCH /api/comments/{id}: レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す |
-| [レビュー中のコメントの削除](./IF-489-21.yaml) | DELETE /api/comments/{id}: レビュー中のコメント 1 件を削除し、元に戻すための中身を返す |
-| [下書きの保存](./IF-489-42.yaml) | PUT /api/drafts: コメントの入力欄の下書きを向けた先ごとに保つ |
-| [コメントをまとめて送信する](./IF-489-6.yaml) | POST /api/comments/send: チェックしたレビュー中の書き込みをスレッドへ移す |
+| [レビュー中のコメントの読み取り](./IF-489-23.yaml) | GET /w/{workspace}/api/comments: レビュー中のコメントと下書きをその場で読んで返す |
+| [レビュー中のコメントの追加](./IF-489-24.yaml) | POST /w/{workspace}/api/comments: 項目・選んだ箇所へのコメントか項目に紐づかないコメントをレビュー中に溜める |
+| [レビュー中のコメントの書き換え](./IF-489-22.yaml) | PATCH /w/{workspace}/api/comments/{id}: レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す |
+| [レビュー中のコメントの削除](./IF-489-21.yaml) | DELETE /w/{workspace}/api/comments/{id}: レビュー中のコメント 1 件を削除し、元に戻すための中身を返す |
+| [下書きの保存](./IF-489-42.yaml) | PUT /w/{workspace}/api/drafts: コメントの入力欄の下書きを向けた先ごとに保つ |
+| [コメントをまとめて送信する](./IF-489-6.yaml) | POST /w/{workspace}/api/comments/send: チェックしたレビュー中の書き込みをスレッドへ移す |
 | [案の書き換え](./IF-489-47.yaml) | edit_option: 検討事項の案を記号で指して 1 つ追加する・修正する・削除する |
 | [前回読んだ時点からの変更](./IF-489-33.yaml) | changes_since_read: AI が前回読んだ時点より後に追加した・変えた項目を返し、読んだ時点を進める |
-| [設定の既定の書き換え](./IF-489-54.yaml) | PUT /api/config/display: 見た目の既定と表示する種類の既定を config.yaml に書く |
-| [設定の再読み込み](./IF-489-53.yaml) | POST /api/config/reload: 手で修正した config.yaml を検査し、通れば配信の設定を差し替える |
+| [設定の既定の書き換え](./IF-489-54.yaml) | PUT /w/{workspace}/api/config/display: 見た目の既定と表示する種類の既定を config.yaml に書く |
+| [設定の再読み込み](./IF-489-53.yaml) | POST /w/{workspace}/api/config/reload: 手で修正した config.yaml を検査し、通れば配信の設定を差し替える |
 | [README の書き出し](./IF-489-2.yaml) | readme: 直下の README.md を起動・接続・エージェントフローの案内・プレビューの一覧に書き直す |
 | [スレッドの一覧](./IF-489-8.yaml) | threads: スレッドを状態・タグ・未読・取り込み待ちで絞り、キーだけを返す |
 | [スレッドの取得](./IF-489-14.yaml) | thread: スレッド 1 件の書き込みを返し、返した書き込みを AI の既読にする |
@@ -67,17 +67,17 @@
 | [スレッドへの返信](./IF-489-12.yaml) | reply: スレッドへ返信し、要約を書き直して読んだ書き込みを取り込み済みにする |
 | [スレッドの状態の書き換え](./IF-489-10.yaml) | set_thread_status: AI がスレッドをクローズにするかオープンに戻す |
 | [スレッドの書き換え](./IF-489-9.yaml) | update_thread: 要約とタグを書き換え、読んだ書き込みを取り込み済みにする |
-| [スレッドの読み取り](./IF-489-11.yaml) | GET /api/threads: スレッドを全て、書き込みと状態の記録ごとその場で読んで返す |
-| [画面からのスレッドの状態の書き換え](./IF-489-50.yaml) | PATCH /api/threads/{id}: 利用者がスレッドをクローズにするかオープンに戻す |
+| [スレッドの読み取り](./IF-489-11.yaml) | GET /w/{workspace}/api/threads: スレッドを全て、書き込みと状態の記録ごとその場で読んで返す |
+| [画面からのスレッドの状態の書き換え](./IF-489-50.yaml) | PATCH /w/{workspace}/api/threads/{id}: 利用者がスレッドをクローズにするかオープンに戻す |
 | [未読へ戻す](./IF-489-46.yaml) | reset_unread.py: 会話を始めるたびにスレッドの書き込みを AI の未読に戻す |
-| [画面からのスレッドの既読](./IF-489-49.yaml) | POST /api/threads/{id}/seen: 利用者が開いたスレッドの未読の書き込みを利用者の既読にする |
-| [保存待ちの編集の読み取り](./IF-489-29.yaml) | GET /api/edits: 保存待ちの編集をその場で読んで返す |
-| [保存待ちの編集の追加](./IF-489-30.yaml) | POST /api/edits: 項目と設定の編集 1 件を保存待ちに溜める（同じキーは書き換える） |
-| [保存待ちの編集の取り消し](./IF-489-28.yaml) | DELETE /api/edits/{id}: 保存待ちの編集 1 件を外す |
-| [保存待ちの編集をまとめて保存](./IF-489-31.yaml) | POST /api/edits/save: 保存待ちの編集を 1 回で当て、利用者の書き換えのまとまりにする |
-| [文字起こしの可否](./IF-489-41.yaml) | GET /api/transcription: 文字起こしを使えるかと理由、用語集のプリセットの候補、ワークスペースの文字起こしの設定を返す |
-| [音声の文字起こし](./IF-489-58.yaml) | POST /api/transcriptions: 録音した音声を文字起こしのサービスへ渡し、終わるまで待って起こした文字を返す |
-| [書き込みをすぐ送信する](./IF-489-45.yaml) | POST /api/comments/send-now: 入力欄の全文 1 件を、溜めずにスレッドへ送信して Claude Code へ入力する |
+| [画面からのスレッドの既読](./IF-489-49.yaml) | POST /w/{workspace}/api/threads/{id}/seen: 利用者が開いたスレッドの未読の書き込みを利用者の既読にする |
+| [保存待ちの編集の読み取り](./IF-489-29.yaml) | GET /w/{workspace}/api/edits: 保存待ちの編集をその場で読んで返す |
+| [保存待ちの編集の追加](./IF-489-30.yaml) | POST /w/{workspace}/api/edits: 項目と設定の編集 1 件を保存待ちに溜める（同じキーは書き換える） |
+| [保存待ちの編集の取り消し](./IF-489-28.yaml) | DELETE /w/{workspace}/api/edits/{id}: 保存待ちの編集 1 件を外す |
+| [保存待ちの編集をまとめて保存](./IF-489-31.yaml) | POST /w/{workspace}/api/edits/save: 保存待ちの編集を 1 回で当て、利用者の書き換えのまとまりにする |
+| [文字起こしの可否](./IF-489-41.yaml) | GET /w/{workspace}/api/transcription: 文字起こしを使えるかと理由、用語集のプリセットの候補、ワークスペースの文字起こしの設定を返す |
+| [音声の文字起こし](./IF-489-58.yaml) | POST /w/{workspace}/api/transcriptions: 録音した音声を文字起こしのサービスへ渡し、終わるまで待って起こした文字を返す |
+| [書き込みをすぐ送信する](./IF-489-45.yaml) | POST /w/{workspace}/api/comments/send-now: 入力欄の全文 1 件を、溜めずにスレッドへ送信して Claude Code へ入力する |
 | [作業の完了の通知](./IF-568-1.yaml) | 応答の間に AI が書き込んだとき、応答の終わりに Discord へ作業の完了を通知する |
 | [停止の通知](./IF-570-1.yaml) | MindStella のセッションが止まったことを記録したとき、Discord へ止まったことと理由を通知する |
 | [MindStella のセッションの再起動](./IF-582-1.yaml) | MindStella のセッションを、同じ ID のまま止めて再起動する（API・利用上限・圧縮・落ちた後のコメント） |

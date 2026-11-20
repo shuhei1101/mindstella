@@ -11,7 +11,7 @@ const OUT_DIR = fileURLToPath(new URL("./plugins/mindstella/skills/mindmap/previ
 
 export default defineConfig({
   root: FRONTEND_DIR,
-  base: "/spa/",
+  base: "./",
   plugins: [
     tanstackRouter({
       target: "react",

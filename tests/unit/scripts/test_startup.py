@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import socket
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -10,9 +12,12 @@ from typing import Any
 import pytest
 
 import project_index
+import readme
+import serve
 import startup
 import state
 import workspaces
+from fixture_types import MakeItem, MakeWorkspace
 from project_index import ProjectIndexError
 
 # 記録を見分けるロガーの名前
@@ -329,6 +334,102 @@ def test_start_agent_flows_check(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ctx = _context(tmp_path)
     # 実行
     thread = startup.start_agent_flows_check(ctx)
+    thread.join(timeout=5)
+    # 検証
+    assert thread.daemon is True
+    assert called == [ctx]
+
+
+def _served_registry() -> serve.PreviewRegistry:
+    """常駐サーバーのポートを 8784 にした配信の台帳を作る。"""
+    return serve.PreviewRegistry(threading.Lock(), port=8784)
+
+
+def test_serve_registered(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """ID の一覧のうち配信元の行があるワークスペースを配り、配れないものを飛ばして README を書き直す（正常系）。"""
+    # 準備
+    first = make_workspace(make_item("D-1"), name="first")
+    broken = make_workspace(
+        settings={**valid_settings, "display": {"visible_kinds": ["rainbow"]}}, name="broken"
+    )
+    readme.write_readme(first, preview_url="http://127.0.0.1:47800/mindstella.html")
+    first_id = workspaces.workspace_id_of(first)
+    broken_id = workspaces.workspace_id_of(broken)
+    state_root = tmp_path / "state"
+    state.create_ids_if_missing(state_root, [first_id, WORKSPACE_B, broken_id])
+
+    def fake_get_settings(port: int, **kwargs: object) -> dict[str, Any]:
+        """A と C（broken）の行だけを返す。"""
+        return {
+            "version": "v1",
+            "sources": [
+                _row(first_id, str(first / ".mindstella" / "dev-docs.yaml")),
+                _row(broken_id, str(broken / ".mindstella" / "dev-docs.yaml")),
+            ],
+        }
+
+    monkeypatch.setattr(project_index, "get_settings", fake_get_settings)
+    previews = _served_registry()
+    ctx = SimpleNamespace(state_root=state_root, pi_port=1, previews=previews)
+    caplog.set_level(logging.INFO)
+    # 実行
+    try:
+        result = startup.serve_registered(ctx)
+        first_url = previews.url_of(first)
+        broken_url = previews.url_of(broken)
+    finally:
+        previews.stop_all()
+    # 検証
+    assert result == 1
+    assert first_url is not None
+    assert broken_url is None
+    readme_text = (first / readme.README_FILE).read_text(encoding="utf-8")
+    assert first_url in readme_text
+    assert "47800" not in readme_text
+    warnings = [r.getMessage() for r in _errors(caplog, logging.WARNING)]
+    assert any(broken_id in message or str(broken) in message for message in warnings)
+
+
+def test_serve_registered_when_project_index_down(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """project-index に問い合わせられなければ配らずに None を返す（異常系）。"""
+    # 準備
+    state_root = tmp_path / "state"
+    state.create_ids_if_missing(state_root, [WORKSPACE_A])
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        free_port = int(probe.getsockname()[1])
+    previews = _served_registry()
+    ctx = SimpleNamespace(state_root=state_root, pi_port=free_port, previews=previews)
+    caplog.set_level(logging.INFO)
+    # 実行
+    try:
+        result = startup.serve_registered(ctx)
+        served = previews.listing()
+    finally:
+        previews.stop_all()
+    # 検証
+    assert result is None
+    assert served == []
+    assert len(_errors(caplog, logging.WARNING)) == 1
+
+
+def test_start_serve_registered(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """daemon のスレッドで 1 回呼ぶ（正常系）。"""
+    # 準備
+    called: list[object] = []
+    monkeypatch.setattr(startup, "serve_registered", lambda ctx: called.append(ctx) or 0, raising=False)
+    ctx = _context(tmp_path)
+    # 実行
+    thread = startup.start_serve_registered(ctx)
     thread.join(timeout=5)
     # 検証
     assert thread.daemon is True
