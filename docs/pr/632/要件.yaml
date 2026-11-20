@@ -75,6 +75,12 @@ use_cases:
     depends_on:
       - docs/scenario/SC-489-31.yaml
       - docs/scenario/SC-489-15.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: 設定がスキーマに合わないときの例を、見た目の既定から表示する種類の既定へ置き換える
+    depends_on:
+      - docs/scenario/SC-489-31.yaml
 docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
