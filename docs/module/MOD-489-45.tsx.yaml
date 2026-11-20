@@ -1,12 +1,12 @@
 id: MOD-489-45
 title: プレビュー / settings-confirm
-lead: 部品設計『既定の保存の確かめ.tsx』の props・イベント・状態を持つ。
+lead: 部品設計『既定の保存の確認.tsx』の props・イベント・状態を持つ。
 components:
   - name: SettingsConfirm
     title: 既定の保存の確かめ
     kind: コンポーネント
     usecase: ワークスペースの既定を変える
-    summary: 部品設計『既定の保存の確かめ.tsx』の props・イベント・状態を持つ
+    summary: 部品設計『既定の保存の確認.tsx』の props・イベント・状態を持つ
     refs:
       - CMP-489-34#
     unit_tests:

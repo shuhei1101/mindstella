@@ -65,13 +65,13 @@ items:
   - page: MOD-489-50.ts.yaml
     summary: "設定の画面の入力の Zod スキーマ"
   - page: MOD-489-45.tsx.yaml
-    summary: "部品設計『既定の保存の確かめ.tsx』の props・イベント・状態を持つ"
+    summary: "部品設計『既定の保存の確認.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-46.tsx.yaml
     summary: "部品設計『表示の設定.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-47.tsx.yaml
     summary: "画面設計『表示の設定.tsx』の要素と操作を描く。上書きを端末の保存領域に書き、既定にするで確かめのモーダルを開く"
   - page: MOD-489-48.tsx.yaml
-    summary: "画面設計『既定の保存の確かめ.tsx』の要素と操作を描く。shadcn/ui の Dialog に部品『既定の保存の確認』を置き、`open`・`onOpenChange` は親が持つ"
+    summary: "画面設計『既定の保存の確認.tsx』の要素と操作を描く。shadcn/ui の Dialog に部品『既定の保存の確認』を置き、`open`・`onOpenChange` は親が持つ"
   - page: MOD-489-49.ts.yaml
     summary: "ワークスペースの既定の書き換えの mutation"
   - page: MOD-489-5.tsx.yaml
@@ -187,7 +187,7 @@ items:
   - page: MOD-489-81.tsx.yaml
     summary: "部品設計『本文の折りたたみ.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-82.tsx.yaml
-    summary: "部品設計『選んだ箇所のコメントの入口.tsx』の props・イベント・状態を持つ"
+    summary: "部品設計『選んだ箇所のコメントの起点.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-83.tsx.yaml
     summary: "部品設計『コメントの入力.tsx』の props・イベント・状態を持つ"
   - page: MOD-489-79.tsx.yaml

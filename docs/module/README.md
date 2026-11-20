@@ -40,10 +40,10 @@
 | [プレビュー / pending-edits-panel](./MOD-489-37.tsx.yaml) | 画面設計『保存待ちのパネル.tsx』の要素と操作を描く |
 | [プレビュー / workspace-settings-screen](./MOD-489-51.tsx.yaml) | 画面設計『設定の画面.tsx』の要素と操作を描く |
 | [プレビュー / form](./MOD-489-50.ts.yaml) | 設定の画面の入力の Zod スキーマ |
-| [プレビュー / settings-confirm](./MOD-489-45.tsx.yaml) | 部品設計『既定の保存の確かめ.tsx』の props・イベント・状態を持つ |
+| [プレビュー / settings-confirm](./MOD-489-45.tsx.yaml) | 部品設計『既定の保存の確認.tsx』の props・イベント・状態を持つ |
 | [プレビュー / settings-panel](./MOD-489-46.tsx.yaml) | 部品設計『表示の設定.tsx』の props・イベント・状態を持つ |
 | [プレビュー / display-settings-panel](./MOD-489-47.tsx.yaml) | 画面設計『表示の設定.tsx』の要素と操作を描く。上書きを端末の保存領域に書き、既定にするで確かめのモーダルを開く |
-| [プレビュー / settings-confirm-dialog](./MOD-489-48.tsx.yaml) | 画面設計『既定の保存の確かめ.tsx』の要素と操作を描く。shadcn/ui の Dialog に部品『既定の保存の確認』を置き、`open`・`onOpenChange` は親が持つ |
+| [プレビュー / settings-confirm-dialog](./MOD-489-48.tsx.yaml) | 画面設計『既定の保存の確認.tsx』の要素と操作を描く。shadcn/ui の Dialog に部品『既定の保存の確認』を置き、`open`・`onOpenChange` は親が持つ |
 | [プレビュー / use-save-display-default](./MOD-489-49.ts.yaml) | ワークスペースの既定の書き換えの mutation |
 | [プレビュー / comments-panel](./MOD-489-5.tsx.yaml) | 画面設計『コメントの一覧.tsx』の要素と操作を描く。search の `thread`・`review` でスレッド・レビュー中の書き込みの画面に切り替え、`tstatus`・`ttag` で絞る |
 | [プレビュー / review-view](./MOD-489-6.tsx.yaml) | 画面設計『レビュー中の書き込み.tsx』の要素と操作を描く。チェックの状態は画面が持つ |
@@ -101,7 +101,7 @@
 | [プレビュー / list-screen](./MOD-489-76.tsx.yaml) | 一覧の画面の枠（表示形式の切り替え・項目の追加・削除した項目の帯・絞り込みのドロワーと表の状態） |
 | [プレビュー / blocked-note](./MOD-489-59.tsx.yaml) | 書き込めない理由の表示 |
 | [プレビュー / review-body-fold](./MOD-489-81.tsx.yaml) | 部品設計『本文の折りたたみ.tsx』の props・イベント・状態を持つ |
-| [プレビュー / selection-comment](./MOD-489-82.tsx.yaml) | 部品設計『選んだ箇所のコメントの入口.tsx』の props・イベント・状態を持つ |
+| [プレビュー / selection-comment](./MOD-489-82.tsx.yaml) | 部品設計『選んだ箇所のコメントの起点.tsx』の props・イベント・状態を持つ |
 | [プレビュー / send-form](./MOD-489-83.tsx.yaml) | 部品設計『コメントの入力.tsx』の props・イベント・状態を持つ |
 | [プレビュー / post-body](./MOD-489-79.tsx.yaml) | 書き込みの本文を Markdown として描く |
 | [プレビュー / app-error](./MOD-489-101.ts.yaml) | 失敗した応答から作るエラー。`detail` を画面に出す |
