@@ -1,0 +1,121 @@
+# 単体テスト（Red）: 単体テスト作成の工程（テストコードの末尾の commit 12330f3f）
+
+## 単体テスト（バック）
+$ pytest tests/unit
+（実行環境: ~/.venvs/mindstella-dev の Python。/tmp/pytest-of-shuhei2441 が別ユーザーの持ち物で一時フォルダを作れなかったため、TMPDIR=/tmp/t632/tmp を指定して実行した）
+
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-dark] - Asser...
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-side]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-oldest]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-fold_off]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-true]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-true]
+FAILED tests/unit/preview/test_app.py::test_save_prefs[chromium-working_storage]
+FAILED tests/unit/preview/test_app.py::test_resolve_display[chromium-no_override_no_default]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_minimap[chromium-no_override]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_body_layout[chromium-no_override]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_review_order[chromium-no_override]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_body_view[chromium-no_override]
+FAILED tests/unit/preview/test_app.py::test_clear_overrides[chromium] - Asser...
+FAILED tests/unit/preview/test_detail.py::test_panel_resizer[chromium-default]
+FAILED tests/unit/preview/test_detail.py::test_panel_resizer_keys[chromium]
+FAILED tests/unit/preview/test_detail.py::test_panel_resizer_when_window_resized[chromium]
+FAILED tests/unit/preview/test_detail.py::test_panel_resizer_when_moved_within_frame[chromium]
+FAILED tests/unit/preview/test_detail.py::test_panel_resizer_when_released_without_moving[chromium]
+FAILED tests/unit/preview/test_detail.py::test_panel_resizer_when_removed_while_dragging[chromium]
+FAILED tests/unit/preview/test_settings_panel.py::test_settings_panel_when_kinds_changed[chromium]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-broken_json]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-true]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-inline]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-newest]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-same_as_default]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_resolve_display[chromium-workspace_default]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_minimap[chromium-minimap_hidden]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_body_layout[chromium-side]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_review_order[chromium-oldest]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_body_view[chromium-fold_off]
+FAILED tests/unit/preview/test_detail.py::test_panel_resizer[chromium-stored]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-storage_throws]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-not_string]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-not_string]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_resolve_display[chromium-override_kinds_theme_columns]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_minimap[chromium-theme_and_minimap_hidden]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_body_layout[chromium-minimap_hidden_and_side]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_review_order[chromium-side_and_oldest]
+FAILED tests/unit/preview/test_app.py::test_resolve_display_when_body_view[chromium-between_minimap_and_body_layout]
+FAILED tests/unit/preview/test_detail.py::test_panel_resizer[chromium-stored_above_max]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-unknown_kinds]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-previous_version_table_overrides]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_resolve_display[chromium-override_filters]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-legacy_look_ignored]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-filters] - As...
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-invalid_filters]
+FAILED tests/unit/preview/test_router.py::test_parse_hash[chromium-removed_graph]
+FAILED tests/unit/preview/test_router.py::test_parse_hash[chromium-removed_map]
+FAILED tests/unit/scripts/test_settings_update.py::test_update_display - erro...
+FAILED tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[removed_key]
+FAILED tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[no_kinds]
+FAILED tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[duplicate_kinds]
+FAILED tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[unknown_kind]
+FAILED tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[kinds_string]
+FAILED tests/unit/scripts/test_settings_update.py::test_update_display_when_settings_broken
+FAILED tests/unit/scripts/test_store.py::test_check_settings_when_invalid[removed_key]
+ERROR tests/unit/scripts/test_remove_network_look.py::test_migrate[display_emptied]
+ERROR tests/unit/scripts/test_remove_network_look.py::test_migrate[kinds_kept]
+ERROR tests/unit/scripts/test_remove_network_look.py::test_migrate_when_already_current[already_migrated]
+ERROR tests/unit/scripts/test_remove_network_look.py::test_migrate_when_already_current[without_display]
+ERROR tests/unit/scripts/test_remove_network_look.py::test_migrate_when_already_current[without_config]
+ERROR tests/unit/scripts/test_remove_network_look.py::test_migrate_when_unreadable
+= 68 failed, 2505 passed, 1 skipped, 5 warnings, 6 errors in 412.73s (0:06:52) =
+exit=1
+
+## 単体テスト（フロント）
+$ pytest tests/unit/preview && npx vitest run
+（pytest tests/unit/preview は上の pytest tests/unit に含まれる。npx vitest run の結果を次に示す）
+
+     × parse_preview_search_when_removed_view (graph) 3ms
+     × parse_preview_search_when_removed_view (map) 1ms
+     × preview_shell_when_removed_view (graph) 1040ms
+     × preview_shell_when_removed_view (map) 1063ms
+     × display_defaults_when_missing 13ms
+     × settings_panel_when_same_as_default 134ms
+     × settings_confirm_dialog 2206ms
+     × settings_confirm 310ms
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_removed_view (graph)
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_removed_view (map)
+ FAIL  frontend/src/shared/core/display.test.ts > displayDefaults > display_defaults_when_missing
+ FAIL  frontend/src/shared/core/preview-search.test.ts > parsePreviewSearch > parse_preview_search_when_removed_view (graph)
+ FAIL  frontend/src/shared/core/preview-search.test.ts > parsePreviewSearch > parse_preview_search_when_removed_view (map)
+ FAIL  frontend/src/features/settings/display-settings/settings-confirm-dialog.test.tsx > SettingsConfirmDialog > settings_confirm_dialog
+ FAIL  frontend/src/features/settings/display-settings/components/settings-confirm.test.tsx > SettingsConfirm > settings_confirm
+ FAIL  frontend/src/features/settings/display-settings/components/settings-panel.test.tsx > SettingsPanel > settings_panel_when_same_as_default
+ Test Files  6 failed | 69 passed (75)
+      Tests  8 failed | 320 passed (328)
+exit=1
+
+## fail の理由（どれも実装が無いことによる）
+- tests/unit/scripts/test_remove_network_look.py: migrations/v0.14.0/scripts/remove_network_look.py がまだ無い（FileNotFoundError）
+- tests/unit/scripts/test_settings_update.py の update_display: 今の実装が network_look を必須にし、ほかのキーを黙って捨てる
+- tests/unit/scripts/test_store.py の removed_key: 今の settings.schema.json の display が network_look を許す
+- tests/unit/preview/test_app.py: 今の app.ts の Prefs・resolveDisplay・clearOverrides が look を持つ
+- tests/unit/preview/test_detail.py の panel_resizer: 今の panelResizer が mapView を呼ぶ
+- tests/unit/preview/test_router.py の removed_graph・removed_map: 今の router.ts が graph・map を有効な値として扱う
+- tests/unit/preview/test_settings_panel.py の kinds_changed: 今の表示の設定がネットワークの常に表示の行を出す
+- frontend の 8 件: 今の preview-search.ts・display.ts・設定の部品が graph・map・look・network_look を持つ
+
+## 実装の前から pass したテスト（作業ブランチに既にある振る舞い）
+- 値を visible_kinds に置き換えた serve.py・builder.py・store.py の設定のテスト（test_start_when_settings_invalid・test_records_response_when_settings_changed・test_reload_response・test_read_records_when_settings_invalid・test_check_settings ほか）: display.visible_kinds の検査は既に plugins/mindstella/skills/mindmap/schemas/settings.schema.json にあり、テストより前の commit（develop の時点）から持つ
+- test_panel_width_max・test_decisions_screen_when_removed・test_put_display・test_settings_confirm（旧プレビュー）と、React の libraries・prefs-store・display-notice-store などの値の置き換え: 渡さなくなった引数・値を今の実装が使わずに同じ結果を返す（develop の時点から持つ振る舞い）
