@@ -75,6 +75,11 @@ use_cases:
     impact: run_only
     detail: 設定の書き換えが返却する画面の URL が変わるため、壊していないかを確かめる
     depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-605-1.yaml
+    impact: run_only
+    detail: 常駐サーバーの起動時に、作成済みのワークスペースを配り始めて起動時のフックを呼ぶようになるため、起動の流れを壊していないかを確かめる
+    depends_on: []
 docs:
   - page: docs/architecture/ARCH-489-1.yaml
     new: false
