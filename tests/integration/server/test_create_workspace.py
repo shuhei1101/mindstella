@@ -11,7 +11,7 @@ import yaml
 from launch_fixtures import PLUGIN_DIR
 from session_fixtures import SessionWorld
 
-from tests.integration.plugin.test_agent_flows import AgentFlowWorld, agent_flow_world  # noqa: F401
+from ..plugin.test_agent_flows import AgentFlowWorld, agent_flow_world  # noqa: F401
 
 # 進め方の文書
 FLOW = {"source": "aituber", "doc": "flow-script"}
