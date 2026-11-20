@@ -15,10 +15,10 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** 未確認。空のチェックと「確認済みにする」 */
+/** 未確認。空のチェックと「確認済み」 */
 export const Unconfirmed: Story = {};
 
-/** 確認済み。チェックと「確認済み」を完了の色で出し、押すと解除する */
+/** 確認済み。チェックの入った「確認済み」を完了の色で出し、押すと解除する */
 export const Confirmed: Story = { args: { confirmed: true } };
 
 /** 書き込みの応答を待っている間。押せない */

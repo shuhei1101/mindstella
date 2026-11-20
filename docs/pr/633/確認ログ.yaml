@@ -5,3 +5,9 @@ confirmations:
     approver: shuhei1101
     commit:
     thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638092598
+  - topic: 確認済みのボタンの置き場所と文言
+    decision: 詳細の見出しだけに配置する（推奨案 A）。文言は未確認・確認済みとも「確認済み」にし、チェックと色で状態を示す（ユーザーの返信で修正）
+    decided_by: reply
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/633#discussion_r4638526634
