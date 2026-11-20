@@ -182,7 +182,7 @@ def run_server_status(
     print(f"配信: {len(previews)} 件", file=stdout)
     for preview in previews:
         if isinstance(preview, dict):
-            print(f"  {preview.get('workspace')} ポート {preview.get('port')}", file=stdout)
+            print(f"  {preview.get('workspace')} {preview.get('url')}", file=stdout)
     return 0
 
 
