@@ -243,7 +243,9 @@ def _create_current_workspace(tmp_path: Path, valid_settings: dict[str, Any]) ->
     records = root / RECORD_DIR
     (records / "docs").mkdir(parents=True)
     write_yaml(records / "config.yaml", valid_settings)
-    (records / VERSION_FILE).write_text(f"{PLUGIN_VERSION}\n", encoding="utf-8")
+    # 作成と同じく、2 行目にその版の手順を当て終えた数を置く
+    steps = yaml.safe_load((MIGRATIONS_DIR / PLUGIN_VERSION / "steps.yaml").read_text(encoding="utf-8"))["steps"]
+    (records / VERSION_FILE).write_text(f"{PLUGIN_VERSION}\n{len(steps)}\n", encoding="utf-8")
     # 作成で置かれる、プラグインと同じ中身のスキーマの複製
     copies = records / "schemas"
     copies.mkdir()
@@ -289,6 +291,9 @@ SOURCE_SCHEMAS = (
 
 # プラグインのスキーマの置き場所
 PLUGIN_SCHEMA_DIR = SCRIPTS_DIR.parent / "schemas"
+
+# 移し替えの手順の置き場所
+MIGRATIONS_DIR = SCRIPTS_DIR.parent / "migrations"
 
 
 def _read_version(root: Path) -> str:

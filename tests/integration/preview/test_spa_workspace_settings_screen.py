@@ -188,7 +188,8 @@ def test_confirm_on_comment(page: Page, spa_preview: str) -> None:
     expect(checkbox).to_be_checked()
     expect(checkbox).to_have_accessible_description("オンのとき、コメントを送信した項目を確認済みにします。")
     # 実行
-    checkbox.uncheck()
+    checkbox.click()
     # 検証
     wait_saved_edit(page, "confirm_on_comment", False, op="setting")
+    expect(checkbox).not_to_be_checked()
 
