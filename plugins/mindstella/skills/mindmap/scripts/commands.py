@@ -43,8 +43,9 @@ from history import (
     stack_history,
 )
 from ids import reserve_ids
-from kinds import BODY_REF_PREFIX, EDITOR, KINDS, RECORD_DIR, Kind, records_root, workspace_path
+from kinds import BODY_REF_PREFIX, EDITOR, KINDS, RECORD_DIR, SETTINGS_FILE, Kind, records_root, workspace_path
 from migrator import count_steps
+from presets import PRESETS_KEY, preset_counts
 from read_point import save_read_seq
 from readme import README_FILE, write_readme
 from settings_update import update_settings
@@ -607,7 +608,7 @@ def run_pending(root: Path) -> dict[str, Any]:
 
 
 def run_check(root: Path) -> dict[str, Any]:
-    """点検して、問題の有無と問題の並びを返す。前の版の形式の問題には開き直しを案内する。"""
+    """点検して、問題の有無・問題の並び・警告の並びを返却する。前の版の形式の問題には開き直しを案内する。"""
     workspace = load_workspace(root)
     problems = check_workspace(workspace)
     rows = []
@@ -619,7 +620,27 @@ def run_check(root: Path) -> dict[str, Any]:
         if is_legacy_problem(relative, workspace):
             row["detail"] += MIGRATE_HINT
         rows.append(row)
-    return {"ok": not problems, "problems": rows}
+    return {"ok": not problems, "problems": rows, "warnings": _empty_preset_warnings(workspace)}
+
+
+def _empty_preset_warnings(workspace: Workspace) -> list[dict[str, str]]:
+    """どの項目にも該当しないプリセットごとの `empty_preset` の警告を、`presets` の順に返却する。"""
+    counts = preset_counts(workspace)
+    presets = workspace.settings.get(PRESETS_KEY)
+    warnings: list[dict[str, str]] = []
+    for index, entry in enumerate(presets if isinstance(presets, list) else []):
+        name = entry.get("name") if isinstance(entry, dict) else None
+        # 件数が 0 のプリセットだけ（構造の崩れたプリセットは数えず、スキーマの問題として返却する）
+        if isinstance(name, str) and counts.get(name) == 0:
+            warnings.append(
+                {
+                    "kind": "empty_preset",
+                    "file": f"{RECORD_DIR}/{SETTINGS_FILE}",
+                    "key": f"{PRESETS_KEY}[{index}]",
+                    "detail": f"{name}: どの項目にも該当しません",
+                }
+            )
+    return warnings
 
 
 def run_export(root: Path, out: Path, now: NowFn = now_utc) -> dict[str, Any]:

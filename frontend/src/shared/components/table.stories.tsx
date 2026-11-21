@@ -122,3 +122,20 @@ export const TextFiltered: Story = {
     filters: { "~title": ["移し"], "~id": ["G-"] },
   },
 };
+
+/** タグの列を持つ列の定義 */
+const taggedColumns: TableColumn[] = [...columns, { key: "tags", label: "タグ", filterable: true }];
+
+/** タグを持つ行 */
+const taggedRows: Row[] = [
+  { id: "D-1", title: "プレビューの画面の分け方", conf: "高", status: "決定済み", tags: ["画面"] },
+  { id: "D-2", title: "ネットワークで扱う項目の数の上限", conf: "中", status: "未決定", tags: ["保存"] },
+  { id: "D-3", title: "資料の状態の値", conf: "高", status: "要見直し", tags: ["画面", "保存"] },
+  { id: "D-4", title: "デザインスタイルの選び方", conf: "低", status: "保留", tags: [] },
+];
+
+/** タグ「画面」と「保存」をどれかを含むで絞っている。どちらかのタグを持つ行を出し、チップは「タグ（どれかを含む）: {名前}」 */
+export const TagMatchAny: Story = { args: { columns: taggedColumns, rows: taggedRows, filters: { tags: ["画面", "保存"] }, tagMatch: "any" } };
+
+/** タグの列のタグを押せる。タグを押すと `onSelectTag` だけが呼ばれ、行のタイトルを押したときだけ詳細を開く */
+export const SelectableTags: Story = { args: { columns: taggedColumns, rows: taggedRows, onSelectTag: fn() } };

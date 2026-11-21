@@ -16,6 +16,8 @@ STATES = (
     "shared-filterdrawer--no-match",
     "shared-filterdrawer--narrow",
     "shared-filterdrawer--text-conditions",
+    "shared-filterdrawer--tag-match-all",
+    "shared-filterdrawer--tag-match-any",
 )
 
 # ドロワーの幅（px）。コメントの一覧と同じ
@@ -133,3 +135,21 @@ def test_text_conditions(open_story: OpenStory) -> None:
     expect(dialog).to_contain_text("6 件中 1 件")
     # 検証（初めて開くときは先頭の文字の欄へフォーカスを移す）
     expect(dialog.get_by_label("ID")).to_be_focused()
+
+
+@pytest.mark.parametrize(
+    ("state", "checked"),
+    [
+        pytest.param("shared-filterdrawer--tag-match-all", "all", id="all"),
+        pytest.param("shared-filterdrawer--tag-match-any", "any", id="any"),
+    ],
+)
+def test_tag_match(open_story: OpenStory, state: str, checked: str) -> None:
+    """タグの条件の下に組み合わせ方のラジオボタンを出し、選んだ方を選択済みにする（正常系）。"""
+    # 準備・実行
+    page = open_story(state)
+    group = page.get_by_role("group", name="タグの組み合わせ方")
+    # 検証
+    expect(group.get_by_role("radio", name="すべて含む")).to_be_attached()
+    expect(group.get_by_role("radio", name="どれかを含む")).to_be_attached()
+    expect(group.locator(f"input[data-tag-match='{checked}']")).to_be_checked()

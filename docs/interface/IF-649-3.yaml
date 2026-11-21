@@ -1,0 +1,141 @@
+id: IF-649-3
+title: プリセットの削除
+entry:
+  kind: mcp_tool
+  value: '`delete_preset`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__delete_preset`）。結果とエラーの返却方法は『MCP サーバーの起動』'
+lead: 名前で指したプリセットを設定の `presets` から削除する。
+test_file: tests/integration/server/test_delete_preset.py
+idempotent: false
+side_effects: '`config.yaml` の `presets` を書き換える。種類ごとの YAML と本文は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: name
+    type: str
+    required: true
+    location: argument
+    description: 削除するプリセットの名前
+    constraints: NFKC と大文字小文字をそろえて照合する
+response:
+  - name: deleted
+    type: dict
+    description: 削除したプリセット（`name`・`description`・`filter`）。間違えたときに `create_preset` で戻せる
+  - name: remaining
+    type: int
+    description: 削除した後のプリセットの数
+  - name: files
+    type: list[str]
+    description: 書き換えた YAML（`.mindstella/config.yaml`）
+exceptions:
+  - name: なし（正常終了）
+    condition: 削除できた
+    notes: 結果を返却する
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: PresetNotFoundError
+    condition: '`name` に該当するプリセットが無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: WriteFailedError
+    condition: 一時ファイルの書き込みか置き換えに失敗した
+    notes: ツールのエラー。`config.yaml` は前の中身のまま
+error_format: 『プリセットの更新』と同じ。
+constraints:
+  - item: 結果の構造
+    constraint: 『プリセットの作成』と同じ
+  - item: エラーの返却方法
+    constraint: 『プリセットの作成』と同じ
+  - item: 書き換えるキー
+    constraint: '`presets` から該当したプリセットだけを除き、ほかのプリセットの並びとキーは今の値を保つ。最後の 1 件を削除したら `presets` のキーごと除く'
+  - item: 書き換えの通知
+    constraint: 書き終えたら、開いているプレビューへ通知し、『記録の取得』の保持した応答を捨てる
+flows:
+  - name: 正常系
+    summary: プリセットを削除し、ほかのプリセットの並びを保つ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` に「画面の設計」・「通知」・「保存」を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as delete_preset（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: delete_preset（通知）
+        IF->>WS: config.yaml の presets から除く
+        IF-->>クライアント: deleted、remaining: 2
+      ```
+    expected:
+      - ツールのエラーにならず、`deleted` が「通知」、`remaining` が 2
+      - '`presets` の並びが「画面の設計」・「保存」'
+    test: test_normal
+  - name: 正常系（最後の 1 件を削除する）
+    summary: 最後の 1 件を削除すると `presets` のキーごと除く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` に「画面の設計」だけを持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as delete_preset（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: delete_preset（画面の設計）
+        IF->>WS: config.yaml から presets を除く
+        IF-->>クライアント: remaining: 0
+      ```
+    expected:
+      - '`remaining` が 0'
+      - '`config.yaml` に `presets` のキーが無く、ほかのキーは呼ぶ前と同じ'
+    test: test_normal_when_last
+  - name: 異常系（プリセットが無い・PresetNotFoundError）
+    summary: 該当するプリセットが無い名前を拒む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` に「画面の設計」を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as delete_preset（MCP のツール）
+
+        クライアント->>IF: delete_preset（通知）
+        IF-->>クライアント: ツールのエラー（PresetNotFoundError）
+      ```
+    expected:
+      - ツールのエラーで、本文に「通知」と今ある「画面の設計」がある
+      - '`config.yaml` が呼ぶ前と同じ'
+    test: test_error_when_preset_not_found
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: '`.mindstella/config.yaml` が無いフォルダを指すと、何も書き込まずに終わる'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: '`.mindstella/` を持たないフォルダ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as delete_preset（MCP のツール）
+
+        クライアント->>IF: delete_preset（空のフォルダ）
+        IF-->>クライアント: ツールのエラー（WorkspaceNotFoundError）
+      ```
+    expected:
+      - ツールのエラーで、フォルダに `.mindstella/config.yaml` が無い旨がある
+      - フォルダにファイルが増えていない
+    test: test_error_when_workspace_not_found

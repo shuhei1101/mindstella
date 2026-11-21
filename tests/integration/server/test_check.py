@@ -15,6 +15,7 @@ from .fixture_types import (
     StartServer,
     WriteThreads,
 )
+from .preset_helpers import eq, tags, with_presets
 from .history_helpers import DECISION_ITEM, add_item, commit, remove_item, update_item
 
 
@@ -37,7 +38,7 @@ def test_normal_when_clean(
     result = call_tool("check", workspace=str(root))
     # 検証
     assert result.is_error is False
-    assert result.data == {"ok": True, "problems": []}
+    assert result.data == {"ok": True, "problems": [], "warnings": []}
 
 
 def test_normal_when_problems_found(
@@ -185,7 +186,7 @@ def test_normal_when_removed_item_in_change_set(
     result = call_tool("check", workspace=str(root))
     # 検証
     assert result.is_error is False
-    assert result.data == {"ok": True, "problems": []}
+    assert result.data == {"ok": True, "problems": [], "warnings": []}
 
 
 def test_normal_when_html_body_problems_found(
@@ -299,3 +300,29 @@ def test_normal_when_embedded_file_missing(
         }
     ]
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_preset_matches_nothing(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any], call_tool: CallTool
+) -> None:
+    """どの項目にも該当しないプリセットを警告に返し、ok を偽にしない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", tags=tags("画面")),
+        bodies={"A-1.mark.md": "資料の本文\n"},
+        settings=with_presets(
+            valid_settings,
+            {"name": "画面の設計", "filter": eq("画面")},
+            {"name": "古い分類", "filter": eq("廃止したタグ")},
+        ),
+    )
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert (result.data["ok"], result.data["problems"]) == (True, [])
+    assert len(result.data["warnings"]) == 1
+    warning = result.data["warnings"][0]
+    assert (warning["kind"], warning["file"], warning["key"]) == ("empty_preset", ".mindstella/config.yaml", "presets[1]")
+    assert warning["detail"].startswith("古い分類:")

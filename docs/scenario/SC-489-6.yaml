@@ -89,6 +89,32 @@ scenarios:
       - ボードの中を縦と横にスクロールでき、横にスクロールすると中止の列が画面に入る
       - T-40 を押すと、T-40 の詳細パネルが開く
     test: test_normal_when_overflowing
+  - name: 正常シナリオ（カードのタグを押す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 'タスク T-1（状態: 未着手・タグ: 保存）、T-2（状態: 進行中・タグ: 保存）、T-3（状態: 完了・タグ: 通知）'
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: タスクのタブを開き、T-1 のカードのタグ「保存」を押す
+        P-->>U: 「保存」を持つタスクだけのボード
+        U->>P: T-1 のカードのタグ以外の所を押す
+        P-->>U: T-1 の詳細パネル
+      ```
+    expected:
+      - タグ「保存」を押すと、ボードに T-1・T-2 のカードがあり、T-3 が無く、T-1 の詳細パネルは開かない
+      - 絞り込みのボタンに件数のバッジが付き、ドロワーのタグの「保存」が選ばれている
+      - カードのタグ以外の所を押すと、T-1 の詳細パネルが開く
+    test: test_normal_when_tag_pressed
 lead: 利用者が、タスクを状態ごとの列のボードで見て、絞り込みのボタンのドロワーで絞り、カードから詳細を開く単一ユースケース。表への切り替えを含む。
 issue: 5
 primary_actor: 利用者

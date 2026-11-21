@@ -3,7 +3,6 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, test, vi } from "vitest";
 
 import { OPENED_SESSION_KEY, useDiffView } from "@/shared/hooks/use-diff-view";
-import { PREFS_KEY } from "@/shared/stores/theme-store";
 import { RECORDS } from "@/testing/msw/handlers";
 import { server } from "@/testing/msw/server";
 import { renderPreviewHook } from "@/testing/render";
@@ -36,11 +35,11 @@ describe("useDiffView", () => {
     await waitFor(() => expect(result.current.point?.sel).toBe("V-2"));
   });
 
-  // 端末の時点を URL に書く（正常系）
+  // そのタブの時点を URL に書く（正常系）
   test("use_diff_view_when_saved", async () => {
     // 準備
     withChanges();
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ diffSel: "V-1" }));
+    sessionStorage.setItem("mindmap-filters", JSON.stringify({ diffSel: "V-1" }));
     // 実行
     const { router } = await renderPreviewHook("/?tab=decisions", useDiffView);
     // 検証

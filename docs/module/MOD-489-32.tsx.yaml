@@ -6,7 +6,7 @@ components:
     title: 詳細パネル
     kind: 画面
     usecase: 項目の詳細を読む
-    summary: 画面設計『詳細パネル.tsx』の要素と操作を描く
+    summary: 画面設計『詳細パネル.tsx』の要素と操作を描く。差分の表示をしていないときはタグの行の部品『タグの並び』に `onSelect` を渡し、押したタグを後ろの画面の `useScreenFilters` の `addTag`（後ろの画面が概要のときは項目の種類を添える）へ渡す
     refs:
       - SCR-489-32#
     unit_tests:

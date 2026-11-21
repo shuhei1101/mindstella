@@ -39,7 +39,12 @@ export type PreviewSearchApi = {
   setView: (view: PreviewSearch["view"]) => void;
   setFull: (full: boolean) => void;
   setHeading: (h: string | undefined) => void;
-  setFilters: (f: Record<string, string>) => void;
+  /** 絞り込みの条件を書き換える（置き換える）。`tagmatch` を指定すると組み合わせ方も同じ移動で書き換える */
+  setFilters: (f: Record<string, string>, options?: { tagmatch: PreviewSearch["tagmatch"] }) => void;
+  /** 絞り込みの条件を変えて履歴に積む */
+  pushFilters: (f: Record<string, string>) => void;
+  /** タグの組み合わせ方を書き換える（置き換える）。`all` は `tagmatch` を外す */
+  setTagMatch: (tagmatch: PreviewSearch["tagmatch"]) => void;
   setSort: (sort: string | undefined) => void;
   setDiff: (diff: string | undefined) => void;
   /** 左のパネルを開閉する（置き換える）。コメントの一覧でないときは `thread`・`review`・`tstatus`・`ttag`・`ttarget` を外す */
@@ -87,7 +92,7 @@ export const usePreviewSearch = (): PreviewSearchApi => {
       void navigate({ search: (previous) => ({ ...previous, id: undefined, full: undefined, h: undefined }), replace: true, state: (previous) => ({ ...previous, trail: EMPTY_TRAIL }) });
     },
     setTab: (tab) => {
-      apply({ tab, view: undefined, f: {}, sort: undefined }, false);
+      apply({ tab, view: undefined, f: {}, sort: undefined, tagmatch: undefined }, false);
     },
     setView: (view) => {
       apply({ view }, true);
@@ -98,8 +103,14 @@ export const usePreviewSearch = (): PreviewSearchApi => {
     setHeading: (h) => {
       apply({ h }, true);
     },
-    setFilters: (f) => {
-      apply({ f }, true);
+    setFilters: (f, options) => {
+      apply(options === undefined ? { f } : { f, tagmatch: options.tagmatch }, true);
+    },
+    pushFilters: (f) => {
+      apply({ f }, false);
+    },
+    setTagMatch: (tagmatch) => {
+      apply({ tagmatch }, true);
     },
     setSort: (sort) => {
       apply({ sort }, true);

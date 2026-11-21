@@ -1,0 +1,170 @@
+id: MOD-649-3
+title: サーバー / プリセット / presets.py
+lead: 絞り込みのプリセットのタグの式の検証・項目への当てはめと件数の計算と、`config.yaml` の `presets` の作成・更新・削除。読み書きと検証だけに依存する。
+functions:
+  - name: validate_preset_filter
+    title: タグの式の検証
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/presets.py
+    usecase: 絞り込みのプリセットを作る
+    summary: 'タグの式が規約『フィルター・照合条件の構造』のとおりか（`and`・`or`・`not` の束と、キーが `field`・`op`・`values`・`match` の条件。`field` は `tags`、`op` は `eq`・`ne`。入れ子は 3 レイヤーまで。空の束を持たない）を確かめ、合わない箇所の `{キーのパス}: {理由}` を返す'
+    args:
+      - name: expr
+        type: dict[str, Any]
+        required: true
+        description: タグの式
+    returns:
+      type: list[str]
+      description: 合わない箇所の行。合えば空
+    unit_tests:
+      - name: test_validate_preset_filter
+        case: 正常
+        summary: 3 レイヤーの式
+        condition: '`{and: [{or: [{not: {field: tags, op: eq, values: [a]}}]}]}`'
+        mock: なし
+        expected: 空
+      - name: test_validate_preset_filter_when_invalid
+        case: 異常
+        summary: 空の束・4 レイヤー・受け付けないキー
+        condition: '`parametrize`: `{and: []}` / 4 レイヤーの入れ子 / `case_sensitive` を持つ条件 / `op: contains`'
+        mock: なし
+        expected: それぞれのキーのパスと理由（空の束・入れ子の深さ・受け付けないキー・受け付けない比べ方）の 1 行
+  - name: matches_preset
+    title: 項目へのタグの式の当てはめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/presets.py
+    usecase: 絞り込みのプリセットを作る
+    summary: 項目のタグの名前が式に合うかを返す。`eq` は `match` が `any` のとき値のどれか、`all` のとき全てを持つ（タグを持たない項目は合わない）。`ne` は値のどれも持たない（タグを持たない項目も合う）。タグの名前は NFKC と大文字小文字をそろえて比べる
+    args:
+      - name: tags
+        type: list[str]
+        required: true
+        description: 項目のタグの名前
+      - name: expr
+        type: dict[str, Any]
+        required: true
+        description: 検証を通ったタグの式
+    returns:
+      type: bool
+      description: 合うか
+    unit_tests:
+      - name: test_matches_preset
+        case: 正常
+        summary: eq と ne の組み合わせ
+        condition: '`parametrize`: タグ 画面 と `{and: [eq 画面, ne 廃止]}` / タグ 画面・廃止 と同じ式 / タグ無し と ne 廃止 / タグ無し と eq 画面 / タグ 画面 と eq 画面・保存 の match all'
+        mock: なし
+        expected: true / false / true / false / false
+  - name: preset_counts
+    title: プリセットごとの件数
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/presets.py
+    usecase: 絞り込みのプリセットを作る
+    summary: 設定の `presets` ごとに、全ての種類の項目のうち式に合う数を返す（インターフェース定義『記録の取得』の制約「プリセットの件数」）
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        description: 読んだワークスペース
+    returns:
+      type: dict[str, int]
+      description: プリセットの名前 → 件数。プリセットが無ければ空
+    unit_tests:
+      - name: test_preset_counts
+        case: 正常
+        summary: 種類をまたいで数える
+        condition: 資料 A-1（画面）・A-2（画面・廃止）・検討事項 D-1（画面）と、プリセット「画面の設計」（画面を持ち廃止を持たない）・「古い分類」（廃止したタグを持つ）
+        mock: なし
+        expected: '`{画面の設計: 2, 古い分類: 0}`'
+  - name: create_preset
+    title: プリセットの作成
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/presets.py
+    usecase: 絞り込みのプリセットを作る
+    summary: インターフェース定義『プリセットの作成』。名前・式を検証し、名前の重なりを確かめてから `presets` の末尾に追加して `config.yaml` を書き、書いた後のワークスペースで件数を数えて返す
+    args:
+      - name: root
+        type: Path
+        required: true
+        description: ワークスペースのフォルダ
+      - name: name
+        type: str
+        required: true
+        description: プリセットの名前
+      - name: description
+        type: str | None
+        required: false
+        default: None
+        description: 説明
+      - name: expr
+        type: dict[str, Any]
+        required: true
+        description: タグの式
+    returns:
+      type: dict[str, Any]
+      description: '`preset`・`count`・`warnings`・`files`'
+    unit_tests:
+      - name: test_create_preset_when_name_taken
+        case: 異常
+        summary: 全角半角・大文字小文字だけ違う名前
+        condition: 「UI の設計」を持つワークスペースに「ｕｉ の設計」
+        mock: なし
+        expected: '`PresetNameTakenError` で、`config.yaml` が呼ぶ前と同じ'
+  - name: update_preset
+    title: プリセットの更新
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/presets.py
+    usecase: 絞り込みのプリセットを作る
+    summary: インターフェース定義『プリセットの更新』。指定したキーだけを置き換え、`position` で並びを移す。中身が変わらなければ書かずに `files` を空で返す
+    args:
+      - name: root
+        type: Path
+        required: true
+        description: ワークスペースのフォルダ
+      - name: name
+        type: str
+        required: true
+        description: 今の名前
+      - name: changes
+        type: PresetChanges
+        required: true
+        description: '`new_name`・`description`・`expr`・`position` のうち指定したもの'
+    returns:
+      type: dict[str, Any]
+      description: '`preset`・`position`・`count`・`warnings`・`files`'
+    unit_tests:
+      - name: test_update_preset_when_move
+        case: 正常
+        summary: 並びを移す
+        condition: '「画面の設計」・「通知」の「通知」を `position: 1` へ'
+        mock: なし
+        expected: 並びが「通知」・「画面の設計」
+  - name: delete_preset
+    title: プリセットの削除
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/presets.py
+    usecase: 絞り込みのプリセットを作る
+    summary: インターフェース定義『プリセットの削除』。該当したプリセットを除き、最後の 1 件なら `presets` のキーごと除く
+    args:
+      - name: root
+        type: Path
+        required: true
+        description: ワークスペースのフォルダ
+      - name: name
+        type: str
+        required: true
+        description: 削除する名前
+    returns:
+      type: dict[str, Any]
+      description: '`deleted`・`remaining`・`files`'
+    unit_tests:
+      - name: test_delete_preset_when_last
+        case: 正常
+        summary: 最後の 1 件
+        condition: 「画面の設計」だけを持つ
+        mock: なし
+        expected: '`config.yaml` に `presets` が無い'
+notes:
+  単体テスト: '`tests/unit/scripts/test_presets.py` に置く'
+  書き込み: '`config.yaml` の書き込みは `settings_update.py` と同じ読み書きの関数（`safe_dump(allow_unicode=True, sort_keys=False)` と一時ファイルの `os.replace`）を使う'
+test_files:
+  - tests/unit/scripts/test_presets.py

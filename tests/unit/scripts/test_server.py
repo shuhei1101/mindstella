@@ -41,6 +41,9 @@ from workspaces import workspace_id_of
 EXPECTED_TOOL_NAMES = (
     "next_id",
     "update_settings",
+    "create_preset",
+    "update_preset",
+    "delete_preset",
     "adopt",
     "edit_option",
     "changes_since_read",

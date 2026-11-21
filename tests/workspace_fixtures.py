@@ -269,7 +269,7 @@ class McpClient:
         listed = self._request(lambda session: session.list_tools())
         return [{"name": tool.name, "inputSchema": tool.input_schema} for tool in listed.tools]
 
-    def call(self, name: str, **arguments: Any) -> ToolResult:
+    def call(self, name: str, /, **arguments: Any) -> ToolResult:
         """ツールを呼び、結果の本文・エラーかどうか・構造化の結果を返す。"""
         result = self._request(lambda session: session.call_tool(name, arguments))
         text = "".join(part.text for part in result.content if part.type == "text")
@@ -396,7 +396,7 @@ class McpServer:
         """最初につないだクライアントでツールの一覧を返す。"""
         return self.client.list_tools()
 
-    def call(self, name: str, **arguments: Any) -> ToolResult:
+    def call(self, name: str, /, **arguments: Any) -> ToolResult:
         """最初につないだクライアントでツールを呼ぶ。
 
         MindStella のセッションに限るツールを `session` を渡さずに呼んだときは、ワークスペースの

@@ -1,0 +1,140 @@
+id: MOD-649-1
+title: プレビュー / screen-state-store
+lead: 画面ごとの絞り込みの条件・タグの組み合わせ方・変更履歴で選んだ時点と、一覧のスクロール位置を、そのタブの `sessionStorage` で読み書きする（制約「保存した絞り込みの条件」「スクロール位置の復元」。キーは `workspaceKey` で末尾に `:{workspace}` を付ける）。
+data_models:
+  - name: ScreenState
+    title: 画面の一時的な状態
+    container: frontend/src/shared/stores/screen-state-store.ts
+    usecase: 項目を表で絞り込む
+    role: DTO
+    summary: '`mindmap-filters` のキーに持つ JSON の値'
+    properties:
+      - name: filters
+        type: Record<string, Filters>
+        description: 画面（記録の表は種類）ごとの絞り込みの条件
+      - name: tagMatch
+        type: Record<string, TagMatch>
+        description: 画面ごとのタグの組み合わせ方。持たない画面は `all`
+      - name: diffSel
+        type: string | null
+        description: 変更履歴で選んだ時点
+functions:
+  - name: readScreenState
+    title: 画面の一時的な状態の読み取り
+    kind: 関数
+    container: frontend/src/shared/stores/screen-state-store.ts
+    usecase: 項目を表で絞り込む
+    summary: "`sessionStorage` の `workspaceKey('mindmap-filters')` の JSON を読み、読めない項目は持たないものとして扱う。保存領域を使えない環境では、開いている間だけメモリに持つ値を返す"
+    args: []
+    returns:
+      type: ScreenState
+      description: 画面の一時的な状態
+    unit_tests:
+      - name: test_read_screen_state_when_invalid
+        case: 異常
+        summary: 読めない JSON
+        condition: 壊れた JSON と、`tagMatch` に `all`・`any` 以外の値
+        mock: なし
+        expected: 空の状態と、その画面の `tagMatch` を持たない状態
+  - name: writeScreenState
+    title: 画面の一時的な状態の書き込み
+    kind: 関数
+    container: frontend/src/shared/stores/screen-state-store.ts
+    usecase: 項目を表で絞り込む
+    summary: 変えた項目だけを書き、ほかの項目を残して購読へ知らせる。配る書き出し（`isEmbedded()` が真）では `filters`・`tagMatch`・`diffSel` を保存領域に書かず、開いている間だけメモリに持つ（制約「端末の保存領域」の「配る書き出しは絞り込みの条件を保存しない」）
+    args:
+      - name: patch
+        type: Partial<ScreenState>
+        required: true
+        description: 変える項目
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_write_screen_state
+        case: 正常
+        summary: そのタブの保存領域に書き、端末の保存領域に書かない
+        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/` にし、`filters` を書く'
+        mock: なし
+        expected: '`sessionStorage` の `mindmap-filters:mindstella-x-1` に書かれ、`localStorage` は変わらない'
+      - name: test_write_screen_state_when_embedded
+        case: 正常
+        summary: 配る書き出しでは保存領域に書かない
+        condition: '`document.body` に記録の `mindmap-data` の要素を配置し、`filters` を書く'
+        mock: なし
+        expected: '`sessionStorage` に書かれず、`readScreenState` は書いた `filters` を返す'
+  - name: useScreenState
+    title: 画面の一時的な状態の購読
+    kind: フック
+    container: frontend/src/shared/stores/screen-state-store.ts
+    usecase: 項目を表で絞り込む
+    summary: '`useSyncExternalStore` で購読し、`writeScreenState` の書き換えを描画へ反映する'
+    args: []
+    returns:
+      type: ScreenState
+      description: 画面の一時的な状態
+  - name: dropLegacyScreenState
+    title: 端末の保存領域に残った条件の削除
+    kind: 関数
+    container: frontend/src/shared/stores/screen-state-store.ts
+    usecase: 項目を表で絞り込む
+    summary: 端末の保存領域（`mindmap-preview`）に残った `filters`・`diffSel` を参照せずに削除し、ほかの項目を残す。プレビューを開いたときに 1 度呼ぶ
+    args: []
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_drop_legacy_screen_state
+        case: 正常
+        summary: 残った条件だけを削除する
+        condition: '`localStorage` の `mindmap-preview` に `filters`・`diffSel`・`theme`・`columns`'
+        mock: なし
+        expected: '`filters`・`diffSel` が無く、`theme`・`columns` が残り、`sessionStorage` に条件を写さない'
+  - name: readListScroll
+    title: 一覧のスクロール位置の読み取り
+    kind: 関数
+    container: frontend/src/shared/stores/screen-state-store.ts
+    usecase: 項目を表で絞り込む
+    summary: "`sessionStorage` の `workspaceKey('mindmap-list-scroll')` から、`{画面}:{表示形式}` のキーの縦・横の位置を読む"
+    args:
+      - name: key
+        type: string
+        required: true
+        description: '`{画面}:{表示形式}`（記録の表は `{種類}:table`）'
+    returns:
+      type: '{ top: number; left: number } | null'
+      description: 位置。無い・読めないときは null
+    unit_tests:
+      - name: test_read_list_scroll_when_broken
+        case: 異常
+        summary: 壊れた値は読まない
+        condition: 負の数・文字・読めない JSON
+        mock: なし
+        expected: 'null'
+  - name: writeListScroll
+    title: 一覧のスクロール位置の書き込み
+    kind: 関数
+    container: frontend/src/shared/stores/screen-state-store.ts
+    usecase: 項目を表で絞り込む
+    summary: '`{画面}:{表示形式}` のキーの縦・横の位置を残し、ほかのキーの位置を残す。書けない保存領域では何もしない'
+    args:
+      - name: key
+        type: string
+        required: true
+        description: '`{画面}:{表示形式}`'
+      - name: position
+        type: '{ top: number; left: number }'
+        required: true
+        description: 縦・横の位置
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_write_list_scroll
+        case: 正常
+        summary: キーごとに残す
+        condition: '`tasks:board` と `decisions:table` の位置を書く'
+        mock: なし
+        expected: それぞれの位置を読める
+notes:
+  単体テスト: 同じフォルダの `screen-state-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

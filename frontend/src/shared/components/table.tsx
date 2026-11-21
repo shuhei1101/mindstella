@@ -1,22 +1,23 @@
 // 項目の一覧の表（部品設計『表.tsx』）。TanStack Table と shadcn の data-table のガイドで組む。並べ替えと絞り込みの状態は使う側が URL から渡す
 import { toText } from "@/shared/core/format";
 import { columnVisibilityFeature, tableFeatures, useTable, type ColumnDef } from "@tanstack/react-table";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefCallback } from "react";
 
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
 import { CommentMark } from "@/shared/components/comment-mark";
 import { FilterChips } from "@/shared/components/filter-chips";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
+import { TagList } from "@/shared/components/tag-list";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/shared/components/ui/popover";
 import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from "@/shared/components/ui/table";
 import type { PendingMarkKind } from "@/shared/core/edits";
-import type { Filters } from "@/shared/core/filters";
+import { TAG_FILTER_KEY, type Filters, type TagMatch } from "@/shared/core/filters";
 import { filterRows, sortRows, type ListColumn } from "@/shared/core/list-rows";
-import { KIND_LABEL, type Kind } from "@/shared/core/records";
+import { KIND_LABEL, type Kind, type Tag } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
 
 /** 表の行 */
@@ -59,6 +60,12 @@ export type TableProps = {
   /** 追加する項目（先頭の行に置く） */
   addedRows?: Row[];
   onOpenAdded?: (id: string) => void;
+  /** タグの組み合わせ方 */
+  tagMatch?: TagMatch;
+  /** 渡すとタグの列のタグを押せるようにし、押したタグを絞り込みに加える */
+  onSelectTag?: (name: string) => void;
+  /** 表のスクロール領域に付ける ref（スクロール位置の復元） */
+  scrollRef?: RefCallback<HTMLElement>;
 };
 
 /** 追加する項目のタイトル（まだ書いていなければ「（タイトル未入力）」） */
@@ -77,12 +84,12 @@ const sortOf = (sort: TableProps["sort"], key: string): "ascending" | "descendin
   return sort.dir === "asc" ? "ascending" : "descending";
 };
 
-export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, addedRows = [], onOpenAdded, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem }: TableProps) => {
+export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, addedRows = [], onOpenAdded, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem, tagMatch = "all", onSelectTag, scrollRef }: TableProps) => {
   const hidden = hiddenColumns ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
   const defs: ColumnDef<typeof features, Row>[] = columns.map((column) => ({ id: column.key, accessorFn: (row: Row) => cellText(column.get === undefined ? row[column.key] : column.get(row)), header: column.label }));
   // 条件に合う行を、並べ替えの向きで並べる
   const listColumns: ListColumn<Row>[] = columns.map((column) => ({ key: column.key, label: column.label, get: column.get ?? ((row: Row) => row[column.key]), ...(column.order === undefined ? {} : { order: column.order }) }));
-  const shownRows = sortRows({ rows: filterRows({ rows, columns: listColumns, filters }), columns: listColumns, sort: sort === null || sort === undefined ? undefined : `${sort.dir === "desc" ? "-" : ""}${sort.key}` });
+  const shownRows = sortRows({ rows: filterRows({ rows, columns: listColumns, filters, tagMatch }), columns: listColumns, sort: sort === null || sort === undefined ? undefined : `${sort.dir === "desc" ? "-" : ""}${sort.key}` });
   const table = useTable({ features, columns: defs, data: shownRows, state: { columnVisibility: Object.fromEntries(hidden.map((key) => [key, false])) }, getRowId: (row) => row.id });
   const visible = columns.filter((column) => !hidden.includes(column.key));
   const pinIndex = pinTo === null ? -1 : visible.findIndex((column) => column.key === pinTo);
@@ -109,13 +116,29 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
       observer.disconnect();
     };
   }, []);
+  /** 表の枠の要素を控え、スクロール位置の復元の ref にも渡す */
+  const attachWrap = (node: HTMLDivElement | null): void => {
+    wrap.current = node;
+    scrollRef?.(node);
+  };
+  /** タグを押せるときの、タグの列のセル */
+  const selectableTags = (column: TableColumn, row: Row): ReactNode => {
+    if (onSelectTag === undefined || column.key !== TAG_FILTER_KEY) return null;
+    const value = column.get === undefined ? row[column.key] : column.get(row);
+    const tags = Array.isArray(value) ? value.filter((entry): entry is Tag | string => typeof entry === "string" || (typeof entry === "object" && entry !== null && "name" in entry)) : [];
+    return (
+      <span className="inline-flex flex-wrap gap-x-1 gap-y-1.5">
+        <TagList values={tags} onSelect={onSelectTag} />
+      </span>
+    );
+  };
   /** 固定する列のセルの位置と、固定した列の境の影 */
   const pinStyle = (position: number): { className: string | false; style: { left: number } | undefined } =>
     position > pinIndex ? { className: false, style: undefined } : { className: cn("sticky", position === pinIndex && "shadow-pin-edge"), style: { left: pinLefts[position] ?? 0 } };
   return (
     <div data-kind={kind} className="flex min-h-0 flex-col gap-3">
       <div className="flex items-start gap-2">
-        <FilterChips filters={filters} labels={labels} onFilter={onFilter} />
+        <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={onFilter} />
         <Popover>
           <PopoverTrigger render={<Button variant="outline" aria-label="列の表示" className="ml-auto flex-none" />}>
             <Icon name="cols" />
@@ -141,7 +164,7 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
           </PopoverContent>
         </Popover>
       </div>
-      <div ref={wrap} className="min-h-0 overflow-auto rounded-control border border-border-soft">
+      <div ref={attachWrap} className="min-h-0 overflow-auto rounded-control border border-border-soft">
         <TableRoot>
           <TableHeader>
             <tr ref={head}>
@@ -195,7 +218,7 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
             {table.getRowModel().rows.map(({ original: row }) => (
               <TableRow key={row.id} data-id={row.id} className={cn(row["withdrawn"] === true && "text-muted-foreground")}>
                 {visible.map((column, position) => {
-                  const content = column.cell?.(row) ?? cellText(column.get === undefined ? row[column.key] : column.get(row));
+                  const content = selectableTags(column, row) ?? column.cell?.(row) ?? cellText(column.get === undefined ? row[column.key] : column.get(row));
                   const kindMark = marks?.[row.id];
                   const pendingMark = pendingMarks?.[row.id];
                   const count = comments?.[row.id] ?? 0;

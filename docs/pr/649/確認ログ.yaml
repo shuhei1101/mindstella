@@ -1,0 +1,31 @@
+confirmations:
+  - topic: 絞り込みの条件と変更履歴で選んだ時点の保持先
+    decision: URL とブラウザのタブの保存領域（sessionStorage）に持ち、端末の保存領域（localStorage）には残さない。残った条件と選んだ時点は参照せずに削除する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 7a4b37ff62feacb9a9f080d00619b1555cd4ed7f
+    thread: https://github.com/shuhei1101/mindstella/pull/649#discussion_r4650973281
+  - topic: タグの絞り込みの組み合わせ方（AND / OR）の見た目と文言
+    decision: '絞り込みのドロワーのタグの条件の見出しの下に「すべて含む / どれかを含む」を配置し、既定は「すべて含む」。「どれかを含む」でタグを 2 つ以上選ぶとチップを「タグ（どれかを含む）: {名前}」にする。既に絞り込みにあるタグを押しても条件は変えない（推奨案 A）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: c5ef50412d3595363dfdbcda30d335e1f62d0571
+    thread: https://github.com/shuhei1101/mindstella/pull/649#discussion_r4651063129
+  - topic: タグを押して絞り込みに加える見た目と振る舞い
+    decision: 表・ボード・カード・詳細パネルのタグを押せるようにし、押すと詳細を開かずにその画面の絞り込みに加える。タグの見た目は今の大きさのまま押せる範囲だけを上下に広げ、ボードのカードにもタグを並べる（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: c5ef50412d3595363dfdbcda30d335e1f62d0571
+    thread: https://github.com/shuhei1101/mindstella/pull/649#discussion_r4651063959
+  - topic: プリセットを AI が自動で作る工程とガイド
+    decision: エージェントフロー『記録』のタグを付ける工程の後に、新しいタグを付けたとき・タグを付けた項目が増えたときにプリセットを作る・見直す工程を追加し、作る・直す・作らない目安を本文に記載する
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 78c79608
+    thread: https://github.com/shuhei1101/mindstella/pull/649#discussion_r4651079366
+  - topic: 絞り込みのプリセットの保存先と構造
+    decision: 設定 `config.yaml` の `presets` に、`name`・`description`・`filter`（タグの式）の並びで持つ。該当する件数は保存しない（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: c3782b13e1905afd8f57fa7cc77a0874846d2176
+    thread: https://github.com/shuhei1101/mindstella/pull/649#discussion_r4651106824

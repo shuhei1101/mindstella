@@ -1,0 +1,9 @@
+# lint（TL-7）
+
+回した commit: f42567fb
+ESLint は worktree の直下の追跡外のフォルダ（tmp/・storybook-react-static/。git の ignore の対象）を外して回した
+$ ruff check plugins tests ; npm run typecheck ; npx eslint --ignore-pattern "tmp/**" --ignore-pattern "storybook-react-static/**"
+All checks passed!
+ruff exit 0
+tsc exit 0
+eslint exit 0

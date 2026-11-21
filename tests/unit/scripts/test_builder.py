@@ -139,6 +139,7 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
         "marked_bodies",
         "changes",
         "derived",
+        "preset_counts",
         "built_at",
         "settings_problem",
         "mdmark_ref",

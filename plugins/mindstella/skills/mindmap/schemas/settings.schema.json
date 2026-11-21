@@ -138,6 +138,125 @@
           "description": "map の図の種類。mdmark の設定の `map` と同じ形の `kinds`・`lines`。画面が `mount` の `config.map` に指定する"
         }
       }
+    },
+    "presets": {
+      "type": "array",
+      "description": "絞り込みのプリセットの並び。プリセットの作成・更新・削除のツールが書く",
+      "items": {
+        "type": "object",
+        "description": "プリセット 1 件",
+        "required": [
+          "name",
+          "filter"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": "名前。プリセットの間で重ならない（NFKC と大文字小文字をそろえて比べる）"
+          },
+          "description": {
+            "type": "string",
+            "description": "何を開くプリセットかを 1 文で"
+          },
+          "filter": {
+            "$ref": "#/$defs/preset_filter"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "preset_filter": {
+      "description": "タグの式。条件か `and`・`or`・`not` の束（入れ子の深さと空の束は presets.py が確かめる）",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/preset_condition"
+        },
+        {
+          "type": "object",
+          "required": [
+            "and"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "and": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/preset_filter"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "or"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "or": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/preset_filter"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/preset_filter"
+            }
+          }
+        }
+      ]
+    },
+    "preset_condition": {
+      "type": "object",
+      "description": "タグの条件 1 件",
+      "required": [
+        "field",
+        "op",
+        "values"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "const": "tags",
+          "description": "比べる項目。タグだけ"
+        },
+        "op": {
+          "enum": [
+            "eq",
+            "ne"
+          ],
+          "description": "`eq` は選んだタグを持つ、`ne` は選んだタグをどれも持たない"
+        },
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "選んだタグ"
+        },
+        "match": {
+          "enum": [
+            "any",
+            "all"
+          ],
+          "description": "`eq` で、選んだタグのどれか（`any`。既定）か全て（`all`）を持つか"
+        }
+      }
     }
   }
 }

@@ -1222,7 +1222,7 @@ def test_tags_visible(page: Page, write_preview: WritePreview, make_item: MakeIt
     # 準備
     url = write_preview(make_item("D-1", tags=[{"name": "画面", "main": True}]), make_item("D-2", tags=[]))
     open_spa(page, url, "?tab=decisions&id=D-1")
-    expect(_panel(page).locator("[title=主題]")).to_contain_text("画面")
+    expect(_panel(page).get_by_role("button", name="タグ「画面」で絞り込む（主題）")).to_be_visible()
     # 実行
     open_spa(page, url, "?tab=decisions&id=D-2")
     # 検証
@@ -1506,3 +1506,46 @@ def test_confirmed_toggle_when_unreachable(page: Page, write_edit_preview: Write
     expect(panel.get_by_role("button", name="確認済み")).to_be_visible()
     expect(panel.get_by_role("alert")).to_have_count(0)
 
+
+
+def _tags(*names: str) -> list[dict[str, str]]:
+    """タグの名前の並びを項目の `tags` にする。"""
+    return [{"name": name} for name in names]
+
+
+def test_tag_press(page: Page, write_preview: WritePreview, make_item: _MakeItem) -> None:
+    """詳細パネルのタグを押すと、パネルを開いたまま後ろの画面の f.tags に加える（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", title="記録の形", status="未決定", tags=_tags("画面")),
+        make_item("D-2", title="画面の幅", status="未決定", tags=_tags("保存")),
+    )
+    open_spa(page, url, "?tab=decisions&view=board&id=D-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    # 実行
+    panel.get_by_role("button", name="タグ「画面」で絞り込む").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"f\.tags=%E7%94%BB%E9%9D%A2"))
+    expect(page.locator("[data-card='D-2']")).to_have_count(0)
+    expect(panel).to_be_visible()
+
+
+def test_tag_press_from_overview(page: Page, write_preview: WritePreview, make_item: _MakeItem) -> None:
+    """後ろの画面が概要のときは、その項目の種類の画面へ移ってタグで絞る（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", title="記録の形", status="未決定", tags=_tags("画面")))
+    open_spa(page, url, "?id=D-1")
+    # 実行
+    page.get_by_role("complementary", name="詳細").get_by_role("button", name="タグ「画面」で絞り込む").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"tab=decisions"))
+    expect(page).to_have_url(re.compile(r"f\.tags=%E7%94%BB%E9%9D%A2"))
+
+
+def test_tags_not_selectable_in_diff(page: Page, write_history_preview: WriteReviewPreview) -> None:
+    """差分の表示の間は、詳細パネルのタグを押せない（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    open_spa(page, url, "?tab=tasks&id=T-1&diff=V-1")
+    # 検証
+    expect(page.get_by_role("complementary", name="詳細").locator("button[data-tag]")).to_have_count(0)

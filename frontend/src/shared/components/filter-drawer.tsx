@@ -14,6 +14,11 @@ export type FilterValue = { value: string; count: number };
 /** 条件 1 つ */
 export type FilterGroup = { key: string; label: string; values: FilterValue[]; mark?: "status" | "kind" };
 
+/** タグの組み合わせ方。`all` は選んだタグを全て持つ項目、`any` はどれかを持つ項目を残す */
+export type TagMatch = "all" | "any";
+
+const TAG_MATCH_BUTTON: Record<TagMatch, string> = { all: "すべて含む", any: "どれかを含む" };
+
 /** 文字の欄を打ち終えるまで待つミリ秒 */
 const TEXT_DELAY_MS = 250;
 
@@ -24,6 +29,8 @@ export type FilterDrawerProps = {
   shown: number;
   narrow?: boolean;
   texts?: { key: string; label: string; value: string }[];
+  tagMatch?: TagMatch;
+  onTagMatchChange?: (match: TagMatch) => void;
   onToggleValue: (key: string, value: string) => void;
   onClearGroup: (key: string) => void;
   onClearAll: () => void;
@@ -31,7 +38,7 @@ export type FilterDrawerProps = {
   onTextChange: (key: string, text: string) => void;
 };
 
-export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, texts = [], onToggleValue, onClearGroup, onClearAll, onClose, onTextChange }: FilterDrawerProps) => {
+export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, texts = [], tagMatch = "all", onTagMatchChange, onToggleValue, onClearGroup, onClearAll, onClose, onTextChange }: FilterDrawerProps) => {
   const timer = useRef(0);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -103,6 +110,30 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
                 <Button variant="ghost" aria-label={`${group.label}の条件を解除`} onClick={() => { onClearGroup(group.key); }}>
                   解除
                 </Button>
+              ) : null}
+              {group.key === "tags" && onTagMatchChange !== undefined ? (
+                <fieldset className="mt-1 inline-flex rounded-control border border-border bg-card p-0.5">
+                  <legend className="sr-only">タグの組み合わせ方</legend>
+                  {(["all", "any"] as const).map((value) => (
+                    <label
+                      key={value}
+                      className={cn("flex h-7 cursor-pointer items-center rounded-control px-2 text-small hover:bg-accent has-focus-visible:outline-2 has-focus-visible:outline-ring", tagMatch === value && "bg-mark-weak font-medium hover:bg-mark-weak")}
+                    >
+                      <input
+                        type="radio"
+                        name="tag-match"
+                        value={value}
+                        data-tag-match={value}
+                        checked={tagMatch === value}
+                        className="sr-only"
+                        onChange={() => {
+                          onTagMatchChange(value);
+                        }}
+                      />
+                      {TAG_MATCH_BUTTON[value]}
+                    </label>
+                  ))}
+                </fieldset>
               ) : null}
               <ul>
                 {group.values.map(({ value, count }) => (

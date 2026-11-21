@@ -56,6 +56,9 @@ data_models:
       - name: ttarget
         type: string | undefined
         description: スレッドの一覧を絞る項目の ID
+      - name: tagmatch
+        type: "'any' | undefined"
+        description: '`f.tags` のタグの組み合わせ方。無いときは全てを含む'
     container: frontend/src/shared/core/preview-search.ts
 functions:
   - name: parsePreviewSearch
@@ -116,7 +119,7 @@ functions:
     title: 記録に合わせた search
     kind: 関数
     usecase: プレビューを開く
-    summary: 表示しない種類の `tab`、差分の表示中の `settings`・`panel=pending`、画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、本文が HTML の資料の `h`、表に無い `sort`、0 件の `panel=pending` を外す。`panel` が `comments` でないときの `thread`・`review`・`tstatus`・`ttag`・`ttarget`、スレッドにもまだ送信していない新規スレッドにも無い `thread`、どのスレッドにも無い `ttag`、記録に無い項目の `ttarget` を外す。`search` が無いときと前後の空白を除いて空のときの `q` を外す。本文に無い見出しは本文を描いた後に決まるため、部品『BodyView』が外す
+    summary: 表示しない種類の `tab`、差分の表示中の `settings`・`panel=pending`、画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、本文が HTML の資料の `h`、表に無い `sort`、`f.tags` の無い `tagmatch`、0 件の `panel=pending` を外す。`panel` が `comments` でないときの `thread`・`review`・`tstatus`・`ttag`・`ttarget`、スレッドにもまだ送信していない新規スレッドにも無い `thread`、どのスレッドにも無い `ttag`、記録に無い項目の `ttarget` を外す。`search` が無いときと前後の空白を除いて空のときの `q` を外す。本文に無い見出しは本文を描いた後に決まるため、部品『BodyView』が外す
     args:
       - name: search
         type: PreviewSearch
@@ -220,6 +223,12 @@ functions:
         condition: "`parametrize`: `{panel: 'comments', ttarget: 'D-99'}` / `{tab: 'decisions', ttarget: 'D-1'}` / `{panel: 'comments', ttarget: 'D-1'}`（D-1 は記録にある）"
         mock: なし
         expected: '`ttarget` が無く `panel` が残る / `ttarget` が無い / `ttarget` が `D-1` のまま'
+      - name: test_normalize_search_when_tagmatch_without_tags
+        case: 正常
+        summary: タグの条件が無い組み合わせ方
+        condition: "`{tab: 'tasks', tagmatch: 'any'}`"
+        mock: なし
+        expected: '`tagmatch` が無い'
     container: frontend/src/shared/core/preview-search.ts
 notes:
   単体テスト: 同じフォルダの `preview-search.test.ts` に置く（knowledge の規約『フォルダ構成』）

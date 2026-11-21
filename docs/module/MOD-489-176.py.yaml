@@ -328,7 +328,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: ワークスペースの点検
     scope: public
-    summary: 点検して、問題の有無と問題の並びを返す（問題があってもツールのエラーにしない）
+    summary: 点検して、問題の有無と問題の並びと警告の並びを返す（問題があってもツールのエラーにしない）。警告は `presets.preset_counts` が 0 のプリセットごとの `empty_preset`（インターフェース定義『ワークスペースの点検』）で、`ok` を変えない
     args:
       - name: root
         type: Path

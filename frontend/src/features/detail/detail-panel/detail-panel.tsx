@@ -21,13 +21,14 @@ import { HTML_BODY_ATTR } from "@/shared/core/body-render";
 import { buildVersions, type DiffPoint, type VersionPair } from "@/shared/core/diff";
 import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/core/edits";
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
-import { tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
+import { kindOfId, tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
 import { applyHighlight } from "@/shared/core/term-tips";
 import { workspaceKey } from "@/shared/core/workspace-path";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
+import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
@@ -79,7 +80,7 @@ const Labelled = ({ label, name, value, keys }: { label: string; name: string; v
   );
 };
 
-const Meta = ({ item, keys }: { item: Item; keys: KeyDiffs | null }) => {
+const Meta = ({ item, keys, onSelectTag }: { item: Item; keys: KeyDiffs | null; onSelectTag?: ((name: string) => void) | undefined }) => {
   const rows: [string, string, string | undefined][] = [
     ["種類", "kind", item.kind],
     ["日付", "date", item.date],
@@ -101,7 +102,7 @@ const Meta = ({ item, keys }: { item: Item; keys: KeyDiffs | null }) => {
       {(item.tags ?? []).length > 0 || tagsChanged ? (
         <div className="contents">
           <dt className="text-muted-foreground">タグ</dt>
-          <dd className="flex flex-wrap gap-1">{tagsChanged ? <KeyDiff was={tagNames(keys?.left["tags"] as Tag[] | undefined).join("、")} now={tagNames(keys?.right["tags"] as Tag[] | undefined).join("、")} /> : <TagList values={item.tags} />}</dd>
+          <dd className="flex flex-wrap gap-1">{tagsChanged ? <KeyDiff was={tagNames(keys?.left["tags"] as Tag[] | undefined).join("、")} now={tagNames(keys?.right["tags"] as Tag[] | undefined).join("、")} /> : <TagList values={item.tags} onSelect={onSelectTag} />}</dd>
         </div>
       ) : null}
     </dl>
@@ -121,6 +122,11 @@ export type DetailContentProps = { id: string; index: RecordIndex; full: boolean
 export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
   const { search, openItem, closeItem, setFull, setHeading, setDiff } = usePreviewSearch();
   const { point } = useDiffView();
+  // 押したタグを後ろの画面の絞り込みに加える（後ろの画面が概要なら項目の種類の画面へ移る）
+  const { addTag } = useScreenFilters(search.tab ?? "overview");
+  const selectTag = (name: string): void => {
+    addTag(name, kindOfId(id) ?? undefined);
+  };
   const { edits } = useRecords();
   const add = useAddEdit();
   const cancel = useCancelEdit();
@@ -284,7 +290,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
               {diff?.kind === "new" ? <DiffMark kind="new" labeled /> : null}
               {item.withdrawn === true ? <WithdrawnBadge large /> : null}
             </h2>
-            <Meta item={item} keys={keys} />
+            <Meta item={item} keys={keys} onSelectTag={point === null && !full ? selectTag : undefined} />
             {kind === "decisions" || kind === "tasks" ? null : <Labelled label="取り下げた理由" name="reason" value={item.reason} keys={keys} />}
             {byKind[kind]}
             {(item.links ?? []).length > 0 ? (

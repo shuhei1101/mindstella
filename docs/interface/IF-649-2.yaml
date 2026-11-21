@@ -1,0 +1,245 @@
+id: IF-649-2
+title: プリセットの更新
+entry:
+  kind: mcp_tool
+  value: '`update_preset`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__update_preset`）。結果とエラーの返却方法は『MCP サーバーの起動』'
+lead: 名前で指したプリセットの名前・説明・タグの式・並び順のうち指定したものを置き換え、該当する項目の件数を返却する。
+test_file: tests/integration/server/test_update_preset.py
+idempotent: true
+side_effects: '`config.yaml` の `presets` を書き換える。種類ごとの YAML と本文は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: name
+    type: str
+    required: true
+    location: argument
+    description: 書き換えるプリセットの今の名前
+    constraints: NFKC と大文字小文字をそろえて照合する
+  - name: new_name
+    type: str | None
+    required: false
+    default: なし（名前を変えない）
+    location: argument
+    description: 変更後の名前
+    constraints: 1 字以上 40 字以内。ほかのプリセットの名前と、NFKC と大文字小文字をそろえて重ならない
+  - name: description
+    type: str | None
+    required: false
+    default: なし（説明を変えない）
+    location: argument
+    description: 変更後の説明。空の文字列で説明を削除する
+  - name: filter
+    type: dict | None
+    required: false
+    default: なし（式を変えない）
+    location: argument
+    description: 変更後のタグの式
+    constraints: 『プリセットの作成』の `filter` と同じ
+  - name: position
+    type: int | None
+    required: false
+    default: なし（並びを変えない）
+    location: argument
+    description: 移す先の並び順（1 始まり）
+    constraints: 1 以上。プリセットの数を超える値は末尾として扱う
+response:
+  - name: preset
+    type: dict
+    description: 書き換えた後のプリセット（`name`・`description`・`filter`）
+  - name: position
+    type: int
+    description: 書き換えた後の並び順（1 始まり）
+  - name: count
+    type: int
+    description: そのプリセットに該当する、全ての種類の項目の数
+  - name: warnings
+    type: list[str]
+    description: '`count` が 0 のとき、どの項目にも該当しない旨の 1 行。それ以外は空'
+  - name: files
+    type: list[str]
+    description: 書き換えた YAML（`.mindstella/config.yaml`）。中身が変わらなかったときは空
+exceptions:
+  - name: なし（正常終了）
+    condition: 書き換えた。指定した値が今の値と同じときも含む
+    notes: 結果を返却する
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: PresetNotFoundError
+    condition: '`name` に該当するプリセットが無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: SchemaMismatchError
+    condition: '`filter` か `new_name` が『プリセットの作成』と同じ決まりに合わない。または `position` が 1 未満'
+    notes: ツールのエラー。何も書き込まない
+  - name: PresetNameTakenError
+    condition: '`new_name` がほかのプリセットの名前と重なる'
+    notes: ツールのエラー。何も書き込まない
+  - name: WriteFailedError
+    condition: 一時ファイルの書き込みか置き換えに失敗した
+    notes: ツールのエラー。`config.yaml` は前の中身のまま
+  - name: 引数の誤り
+    condition: '`new_name`・`description`・`filter`・`position` のどれも指定しない'
+    notes: ツールのエラー。何も書き込まない
+error_format: 『プリセットの作成』と同じ。該当するプリセットが無いときは、指定した名前と今あるプリセットの名前の並びを出す。
+constraints:
+  - item: 結果の構造
+    constraint: 『プリセットの作成』と同じ
+  - item: エラーの返却方法
+    constraint: 『プリセットの作成』と同じ
+  - item: 件数の数え方
+    constraint: 『記録の取得』の制約「プリセットの件数」と同じ。書き込んだ後のワークスペースで数える
+  - item: 書き換えるキー
+    constraint: '`presets` の該当したプリセットと並びだけを書き換え、ほかのプリセットとキーは今の値を保つ。指定しないキーはそのプリセットの今の値を保つ'
+  - item: 書き換えの通知
+    constraint: 中身が変わったときだけ、開いているプレビューへ通知し、『記録の取得』の保持した応答を捨てる
+flows:
+  - name: 正常系
+    summary: タグの式を置き換え、名前と説明と並びを保つ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '資料 A-1（タグ: 画面）・A-2（タグ: 画面・廃止）を持ち、`presets` に「画面の設計」（画面を持つ）・「通知」を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_preset（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_preset（画面の設計、画面を持ち廃止を持たない）
+        IF->>WS: config.yaml の presets を書き換える
+        IF-->>クライアント: preset、position: 1、count: 1
+      ```
+    expected:
+      - ツールのエラーにならず、`count` が 2 から 1（A-1）になり、`position` が 1
+      - 「画面の設計」の説明と「通知」は呼ぶ前と同じ
+    test: test_normal
+  - name: 正常系（名前と並びを変える）
+    summary: 名前を変え、並びの先頭へ移す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` に「画面の設計」・「通知」を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_preset（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_preset（通知、new_name: 通知の設計、position: 1）
+        IF->>WS: config.yaml の presets を書き換える
+        IF-->>クライアント: preset、position: 1
+      ```
+    expected:
+      - '`presets` の並びが「通知の設計」・「画面の設計」'
+      - 「通知の設計」の式は呼ぶ前の「通知」と同じ
+    test: test_normal_when_rename_and_move
+  - name: 正常系（同じ値を指定する）
+    summary: 今と同じ値を指定すると、書き込まずに同じ結果を返却する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` に「画面の設計」を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_preset（MCP のツール）
+
+        クライアント->>IF: update_preset（画面の設計、今と同じ式）
+        IF-->>クライアント: preset、files: []
+      ```
+    expected:
+      - ツールのエラーにならず、`files` が空
+      - '`config.yaml` の更新時刻が呼ぶ前と同じ'
+    test: test_normal_when_unchanged
+  - name: 異常系（プリセットが無い・PresetNotFoundError）
+    summary: 該当するプリセットが無い名前を拒む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` に「画面の設計」を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_preset（MCP のツール）
+
+        クライアント->>IF: update_preset（通知）
+        IF-->>クライアント: ツールのエラー（PresetNotFoundError）
+      ```
+    expected:
+      - ツールのエラーで、本文に「通知」と今ある「画面の設計」がある
+      - '`config.yaml` が呼ぶ前と同じ'
+    test: test_error_when_preset_not_found
+  - name: 異常系（名前が重なる・PresetNameTakenError）
+    summary: ほかのプリセットと重なる変更後の名前を拒む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` に「画面の設計」・「通知」を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_preset（MCP のツール）
+
+        クライアント->>IF: update_preset（通知、new_name: 画面の設計）
+        IF-->>クライアント: ツールのエラー（PresetNameTakenError）
+      ```
+    expected:
+      - ツールのエラーで、本文に重なった名前「画面の設計」がある
+      - '`config.yaml` が呼ぶ前と同じ'
+    test: test_error_when_name_taken
+  - name: 異常系（式が合わない・SchemaMismatchError）
+    summary: 空の束を持つ式を拒む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` に「画面の設計」を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_preset（MCP のツール）
+
+        クライアント->>IF: update_preset（画面の設計、filter: {or: []}）
+        IF-->>クライアント: ツールのエラー（SchemaMismatchError）
+      ```
+    expected:
+      - 'ツールのエラーで、本文に `filter.or: 空の束` がある'
+      - '`config.yaml` が呼ぶ前と同じ'
+    test: test_error_when_filter_invalid
+  - name: 異常系（何も指定しない・引数の誤り）
+    summary: 書き換える値を 1 つも指定しないと拒む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` に「画面の設計」を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_preset（MCP のツール）
+
+        クライアント->>IF: update_preset（画面の設計だけ）
+        IF-->>クライアント: ツールのエラー（引数の誤り）
+      ```
+    expected:
+      - ツールのエラーで、書き換える値が無い旨がある
+      - '`config.yaml` が呼ぶ前と同じ'
+    test: test_error_when_nothing_given

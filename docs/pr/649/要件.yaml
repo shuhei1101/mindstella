@@ -1,0 +1,110 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: changed
+    detail: 絞り込みでタグを AND と OR のどちらで絞るかを選べる（既定は AND）。表のタグを押すとそのタグが絞り込みに加わる。ほかの画面へ移って戻ったとき、離れたときの表のスクロール位置から表示する（#187・#452）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-6.yaml
+    impact: following
+    detail: ボードのカードのタグを押すと、カードの詳細を開かずにそのタグが絞り込みに加わる（#187）
+    depends_on:
+      - docs/scenario/SC-489-49.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 詳細パネルのタグを押すとそのタグが絞り込みに加わる。関係する項目へ移ってブラウザの戻る・進むで戻ったとき、一覧と詳細パネルのスクロール位置から表示する（#187・#452）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: Windows 側のドライブのワークスペースでも画面が短い時間で開き、記録が変わっていないときは読み直さない（#547）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-649-1.yaml
+    impact: new
+    detail: AI が、利用者の見やすい単位でタグの式（AND・OR・NOT の入れ子）の絞り込みのプリセットを名前・説明・並び順つきで作成・更新・削除し、当たる項目の件数を確かめる（#360）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-16.yaml
+    impact: changed
+    detail: 保存したタグがどの記録にも付いていない（0 件に当たる）プリセットを警告する（#360）
+    depends_on:
+      - docs/scenario/SC-649-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: following
+    detail: 配る書き出しにプリセットと当たる件数が載る（#360）
+    depends_on:
+      - docs/scenario/SC-649-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: following
+    detail: 既定に戻す対象から、絞り込みの条件が外れる（絞り込みを端末の保存領域に持たなくなるため。#452）
+    depends_on:
+      - docs/scenario/SC-489-49.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: following
+    detail: まとまりのリンクを押した後、変更履歴で選んだ時点をブラウザのタブの保存領域に残す（#452）
+    depends_on:
+      - docs/scenario/SC-489-49.yaml
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: タグを押して絞り込みに加える操作と、タグの AND / OR の選び方を追加する。画面を移って戻ったときにスクロール位置・絞り込みが戻ることを書く
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: 絞り込みのプリセットを作成・更新・削除する MCP のツールと、check の 0 件に当たるプリセットの警告を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: プリセットの保存先のファイルとキー（名前・説明・タグの式・並び順）を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: ワークスペースが絞り込みのプリセットを持つことを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: AI がプリセットを作る工程を追加したことを反映する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
+  - page: plugins/mindstella/agent-flows/record.yaml
+    new: false
+    change: 「話題のタグを付ける」「既存の記録にもタグを付ける」の後に、新しいタグを付けたとき・タグを付けた項目が増えたときに絞り込みのプリセットを作る・見直す工程を追加し、作る・直す・作らない目安と名前・説明・並び順の付け方を本文に記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
+scope_out:
+  - item: プリセットを画面の一覧の上に並べて押すだけで開くこと、0 件に当たるプリセットの一覧の印、タグの式と状態・種類など今の絞り込みの組み合わせ
+    reason: '#360 の本文で #361 へ分けた範囲'
+    plan: '#361'
+  - item: 画面の今の絞り込みをプリセットとして保存すること
+    reason: '#360 の本文で #362 へ分けた範囲'
+    plan: '#362'
+  - item: 詳細パネルの戻る・進むで、一覧・ボード・マップから開いた項目の順をたどること
+    reason: '#452 の要望に含まれない（スクロール位置以外の履歴のたどり方）'
+    plan: '#148'
+  - item: 本文を項目を開いたときに取得して最初の応答を減らすこと、ワークスペースを Linux 側のファイルシステムへ移すこと
+    reason: '#547 の「見送った案」。本文の取得は、記録の保持・圧縮・ETag の後に要るかを判断すると本文が定めている'
+    plan: none
+  - item: 資料を開くたびの画面での全記録の再計算・再描画
+    reason: 画面の描画の重さで、サーバーの記録の取得（#547）とは別の事象
+    plan: '#627'
+  - item: 画面の初期化が外部スクリプトの読み込みを待つこと
+    reason: '#547 が関係として挙げる別の事象'
+    plan: '#548'
+  - item: 絞り込みのドロワーでの絞り込みと並べ替えの変更を履歴に追加すること（IF-489-70 の制約「履歴」）
+    reason: 規約『入力と文言』の「履歴に追加する単位」から外れているが、今回の要望（タグを押して絞り込む・スクロール位置の復元）に含まれない
+    plan: '#650'

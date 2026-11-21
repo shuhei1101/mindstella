@@ -2,20 +2,30 @@
 
 from __future__ import annotations
 
+import gzip
+import http.client
+import json
 import re
 from collections.abc import Callable
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
+
+import yaml
 
 from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR, write_yaml
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace, StartMdmarkRefServer
 from .history_helpers import DECISION_ITEM, add_item, commit, read_history, read_items, update_item
-from .http_helpers import http_request
+from .http_helpers import HTTP_TIMEOUT_SEC, EventStream, http_request, workspace_path
+from .preset_helpers import eq, ne, tags, with_presets
 from .mdmark_ref_helpers import FAKE_HEAD_SHA, fake_github, fake_jsdelivr
 from .transcriber_helpers import bind_closed_port
 from record_write_helpers import write_tool
+
+# 書き換えの知らせを待つ上限秒数
+CHANGED_WITHIN_SEC = 10
 
 # 検討事項 D-1 の本文
 DECISION_BODY = "## 経緯\n\n種類ごとに分ける案を考えた。\n"
@@ -308,3 +318,100 @@ def test_normal_when_dist_not_served(
     assert result.json()["mdmark_ref"] == "develop"
     warnings = [line for line in server.stderr_text().splitlines() if "jsDelivr が配らない" in line]
     assert len(warnings) == 1, server.stderr_text()
+
+
+def _raw_get(url: str, headers: dict[str, str]) -> tuple[int, dict[str, str], bytes]:
+    """記録の取得を圧縮したまま 1 回読み、ステータス・ヘッダー（小文字）・本文の bytes を返す。"""
+    parts = urlsplit(url)
+    connection = http.client.HTTPConnection(parts.hostname, parts.port, timeout=HTTP_TIMEOUT_SEC)
+    try:
+        connection.request("GET", workspace_path(url, "/api/records"), headers=headers)
+        response = connection.getresponse()
+        body = response.read()
+        return response.status, {name.lower(): value for name, value in response.getheaders()}, body
+    finally:
+        connection.close()
+
+
+def test_normal_when_revalidated(
+    make_workspace: MakeWorkspace, make_item: MakeItem, serve_preview: Callable[[Path], str]
+) -> None:
+    """圧縮して返し、同じ ETag の再検証には 304 を返し、保持した応答を使う（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", body="../docs/D-1.mark.md"), bodies={"D-1.mark.md": DECISION_BODY})
+    url = serve_preview(root)
+    # 実行
+    first_status, first_headers, first_body = _raw_get(url, {"Accept-Encoding": "gzip"})
+    second_status, second_headers, second_body = _raw_get(
+        url, {"Accept-Encoding": "gzip", "If-None-Match": first_headers["etag"]}
+    )
+    body_path = root / "docs" / "D-1.mark.md"
+    body_path.chmod(0)
+    try:
+        third_status, _, third_body = _raw_get(url, {})
+    finally:
+        body_path.chmod(0o644)
+    # 検証
+    assert first_status == HTTPStatus.OK
+    assert first_headers["content-encoding"] == "gzip"
+    assert first_headers["vary"] == "Accept-Encoding"
+    assert first_headers["cache-control"] == "no-cache"
+    first = json.loads(gzip.decompress(first_body))
+    assert first["bodies"]["../docs/D-1.mark.md"] == DECISION_BODY
+    assert second_status == HTTPStatus.NOT_MODIFIED
+    assert second_body == b""
+    assert second_headers["etag"] == first_headers["etag"]
+    assert third_status == HTTPStatus.OK
+    third = json.loads(third_body)
+    assert third["bodies"] == first["bodies"]
+    assert third["built_at"] == first["built_at"]
+
+
+def test_normal_when_cache_invalidated(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    serve_preview: Callable[[Path], str],
+    open_events: Callable[[str], EventStream],
+) -> None:
+    """ワークスペースを書き換えると保持した応答を捨て、次の要求で ETag の違う応答を返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    url = serve_preview(root)
+    _, first_headers, _ = _raw_get(url, {})
+    stream = open_events(url)
+    decisions = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))
+    decisions["items"].append(make_item("D-2"))
+    write_yaml(root / RECORD_DIR / "decisions.yaml", decisions)
+    assert stream.wait_for_changed(CHANGED_WITHIN_SEC) is True
+    # 実行
+    status, headers, body = _raw_get(url, {"If-None-Match": first_headers["etag"]})
+    # 検証
+    assert status == HTTPStatus.OK
+    assert [item["id"] for item in json.loads(body)["decisions"]] == ["D-1", "D-2"]
+    assert headers["etag"] != first_headers["etag"]
+
+
+def test_normal_when_presets(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """設定のプリセットと、種類をまたいだプリセットごとの件数を返す（正常系）。"""
+    # 準備
+    presets = [
+        {"name": "画面の設計", "filter": {"and": [eq("画面"), ne("廃止")]}},
+        {"name": "古い分類", "filter": eq("廃止したタグ")},
+    ]
+    root = make_workspace(
+        make_item("A-1", tags=tags("画面")),
+        make_item("A-2", tags=tags("画面", "廃止")),
+        make_item("D-1", tags=tags("画面")),
+        settings=with_presets(valid_settings, *presets),
+    )
+    url = serve_preview(root)
+    # 実行
+    records = http_request(url, "/api/records").json()
+    # 検証
+    assert records["settings"]["presets"] == presets
+    assert records["preset_counts"] == {"画面の設計": 2, "古い分類": 0}

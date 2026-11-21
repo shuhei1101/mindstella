@@ -17,6 +17,15 @@ describe("matchesFilters", () => {
   test("matches_filters_when_not_match", () => {
     expect(matchesFilters({ status: "完了" }, { status: ["保留"] })).toBe(false);
   });
+
+  // タグの組み合わせ方（正常系）
+  test.each([
+    { tags: ["画面"], tagMatch: "all" as const, expected: false },
+    { tags: ["画面"], tagMatch: "any" as const, expected: true },
+    { tags: ["画面", "保存"], tagMatch: "all" as const, expected: true },
+  ])("matches_filters_when_tag_match $tagMatch $tags", ({ tags, tagMatch, expected }) => {
+    expect(matchesFilters({ tags }, { tags: ["画面", "保存"] }, tagMatch)).toBe(expected);
+  });
 });
 
 describe("defaultFilters", () => {

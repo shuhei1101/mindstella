@@ -744,6 +744,15 @@ files:
   related:
   - to: MOD-565-1
     type: implements
+- path: skills/mindmap/scripts/presets.py
+  name: 絞り込みのプリセット
+  description: 絞り込みのプリセットのタグの式の検証・項目への当てはめと件数の計算と、config.yaml の presets の作成・更新・削除。プリセットの式や作成・更新・削除を変更するときに参照する。
+  tags:
+  - topic:プリセット
+  - topic:設定
+  related:
+  - to: MOD-649-3
+    type: implements
 - path: skills/mindmap/scripts/readme.py
   name: ワークスペースの README の書き出し
   description: ワークスペースの直下の `README.md`（起動・接続のコマンド、エージェントフローの案内、プレビューの URL）の組み立てと書き込み。ワークスペースの直下の README.md の中身を変更するときに読む。

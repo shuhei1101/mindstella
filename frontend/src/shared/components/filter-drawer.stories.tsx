@@ -142,3 +142,13 @@ export const TextConditions: Story = {
     shown: 1,
   },
 };
+
+/** タスクでタグ「プレビュー」と「サーバー」を選び、組み合わせ方は既定の「すべて含む」。タグの条件の見出しの下に「すべて含む / どれかを含む」の切り替えを出し、「すべて含む」が押された状態 */
+export const TagMatchAll: Story = {
+  args: { selected: { tags: ["プレビュー", "サーバー"] }, shown: 2, tagMatch: "all", onTagMatchChange: fn() },
+};
+
+/** 組み合わせ方を「どれかを含む」に切り替えた。見出しの右の件数がどちらかのタグを持つ 6 件になる */
+export const TagMatchAny: Story = {
+  args: { selected: { tags: ["プレビュー", "サーバー"] }, shown: 6, tagMatch: "any", onTagMatchChange: fn() },
+};

@@ -1403,3 +1403,72 @@ files:
   - tool:storybook
   - topic:ストーリー
   - topic:結合テスト
+- path: unit/scripts/test_presets.py
+  name: 絞り込みのプリセットの単体テスト
+  description: presets.py（タグの式の検証・当てはめ・件数と、プリセットの作成・更新・削除）の単体テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:pytest
+  - topic:プリセット
+  - topic:単体テスト
+  related:
+  - to: MOD-649-3
+    type: tests
+- path: integration/server/preset_helpers.py
+  name: プリセットのツールの結合テストの補助
+  description: プリセットのツールの結合テストが共有するタグ・式・設定の組み立てと config.yaml の参照。テストの準備を確認・修正するときに参照する。
+  tags:
+  - tool:pytest
+  - topic:プリセット
+  - topic:結合テスト
+- path: integration/server/test_create_preset.py
+  name: プリセットの作成の結合テスト
+  description: create_preset（プリセットの作成）の結合テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:pytest
+  - topic:プリセット
+  - topic:結合テスト
+  related:
+  - to: IF-649-1
+    type: tests
+- path: integration/server/test_update_preset.py
+  name: プリセットの更新の結合テスト
+  description: update_preset（プリセットの更新）の結合テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:pytest
+  - topic:プリセット
+  - topic:結合テスト
+  related:
+  - to: IF-649-2
+    type: tests
+- path: integration/server/test_delete_preset.py
+  name: プリセットの削除の結合テスト
+  description: delete_preset（プリセットの削除）の結合テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:pytest
+  - topic:プリセット
+  - topic:結合テスト
+  related:
+  - to: IF-649-3
+    type: tests
+- path: integration/storybook_react/test_item_card_stories.py
+  name: 部品設計『項目のカード.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『項目のカード.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+  related:
+  - to: CMP-649-1
+    type: tests
+- path: integration/storybook_react/test_filter_chips_stories.py
+  name: 部品設計『絞り込みの条件のチップ.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『絞り込みの条件のチップ.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+  related:
+  - to: CMP-649-2
+    type: tests

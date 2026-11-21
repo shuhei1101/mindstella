@@ -360,7 +360,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     scope: public
-    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る。`workspaces`（`include_closed`）・`workspace`（`workspace_id`）・`create_workspace`・`create_session`・`sessions`・`stop_session`・`restart_session`・`close_workspace`・`reopen_workspace`・`delete_workspace`・`update_workspace`（`workspace_id`・`settings`・`flow`・`mcp_config`・`plugin_dirs`・`remove_flow`。`null` でない引数だけを本文にして渡す。SDK が省いた引数に既定値を入れるため `flow` の未指定と `null` を区別できず、`remove_flow` が真のときだけ本文を `flow: null` にする。`remove_flow` と `flow` を同時に指定したら `ApiError`（400、`stage: body`））は `ServerContext` を受け、ワークスペースの管理・セッションの管理の同じ関数を呼ぶ'
+    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る。プリセットのツール `create_preset`・`update_preset`・`delete_preset` は `presets.py` の同じ名前の関数を書き換えの鍵の中で呼ぶ。ワークスペースを書き換えるツールは、書き込んだ後に配信の台帳の `discard_records` で保持した記録の応答を捨てる。`workspaces`（`include_closed`）・`workspace`（`workspace_id`）・`create_workspace`・`create_session`・`sessions`・`stop_session`・`restart_session`・`close_workspace`・`reopen_workspace`・`delete_workspace`・`update_workspace`（`workspace_id`・`settings`・`flow`・`mcp_config`・`plugin_dirs`・`remove_flow`。`null` でない引数だけを本文にして渡す。SDK が省いた引数に既定値を入れるため `flow` の未指定と `null` を区別できず、`remove_flow` が真のときだけ本文を `flow: null` にする。`remove_flow` と `flow` を同時に指定したら `ApiError`（400、`stage: body`））は `ServerContext` を受け、ワークスペースの管理・セッションの管理の同じ関数を呼ぶ'
     args:
       - name: previews
         type: PreviewRegistry

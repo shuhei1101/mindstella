@@ -217,7 +217,7 @@ tables:
   - name: config.yaml
     title: 設定
     datastore: YAML
-    summary: ワークスペースの ID・進め方の文書・題名・話し合いの概要・関連する場所・変更履歴を保持する回数・表示の既定・コメントの送信で確認済みにするか・プレビューの配信のポート
+    summary: ワークスペースの ID・進め方の文書・題名・話し合いの概要・関連する場所・変更履歴を保持する回数・表示の既定・コメントの送信で確認済みにするか・絞り込みのプリセット・プレビューの配信のポート
     scale: 1 件
     access: 全件
     columns:
@@ -275,6 +275,11 @@ tables:
         default: 'true'
         description: 任意。`true` なら、コメントをまとめて送信する・すぐ送信するで書き込みを向けた項目を確認済みにする。無ければ `true` として扱う。`update_settings` と設定の画面が書く
         example: 'false'
+      - name: presets
+        title: 絞り込みのプリセット
+        type: array
+        description: '任意。タグの式に名前を付けた絞り込みのプリセットの並び。要素は `name`（名前。プリセットの間で重ならない 1 字以上 40 字以内。NFKC と大文字小文字をそろえて比べる）・`description`（任意。何を開くプリセットかを 1 文で）・`filter`（タグの式。knowledge の規約『フィルター・照合条件の構造』の条件か `and`・`or`・`not` の束。条件のキーは `field`・`op`・`values`・`match` に限り（`case_sensitive` は持たない。タグは常に NFKC と大文字小文字をそろえて比べる）、`field` は `tags`、`op` は `eq`・`ne`、`values` は 1 つ以上のタグ、`match` は `any`（既定）か `all`。`eq` は `match: any` で選んだタグのどれかを持つ項目、`all` で全てを持つ項目に該当し、タグの無い項目は該当しない。`ne` は選んだタグをどれも持たない項目に該当し、タグの無い項目も含める（`match` を持たない）。最上位の束を 1 レイヤーとして 3 レイヤーまで。空の束は持たない）を持ち、並び順は配列の順。該当する件数は保存せず、記録の取得・点検・プリセットのツールがそのつど数える。プリセットの作成・更新・削除の MCP のツールが記載し、利用者は `config.yaml` を修正して書き換えられる'
+        example: "[{name: 画面の設計, description: 画面の設計の資料だけを開く, filter: {and: [{field: tags, op: eq, values: [画面]}, {field: tags, op: ne, values: [廃止]}]}}]"
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
     datastore: JSON

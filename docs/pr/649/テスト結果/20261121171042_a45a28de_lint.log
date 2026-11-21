@@ -1,0 +1,11 @@
+# lint（TL-7。レビューの指摘の修正の後）
+
+回した commit: a45a28de
+$ ruff check plugins tests
+All checks passed!
+$ npm run typecheck
+(出力なし・終了コード 0)
+$ npm run lint
+worktree の直下の追跡外のフォルダ tmp/storybook-review/（Storybook のビルドの出力。git の ignore の対象）の違反 13 件・警告 19 件が出た。追跡しているファイルの違反は無い。追跡外のフォルダを外した結果:
+$ npx eslint --ignore-pattern 'tmp/**'
+(出力なし・終了コード 0)

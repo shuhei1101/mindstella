@@ -1,0 +1,118 @@
+id: SC-649-1
+title: 絞り込みのプリセットを作る
+lead: MindStella のセッションが、利用者の見やすい単位でタグの式の絞り込みのプリセットを作成・更新・削除し、プリセットに該当する項目の件数を確認する単一ユースケース。
+issue: 360
+primary_actor: MindStella のセッション
+stakeholders:
+  - name: 利用者
+    interest: 毎回タグで絞り込まずに、要る資料だけをプリセットで開ける
+trigger: MindStella のセッションが、記録に新しいタグを付けたときか、タグを付けた項目が増えたとき（エージェントフロー『記録』の工程）。利用者が頼まなくても作る
+preconditions:
+  - ワークスペースが作成済みで、タグを付けた記録がある
+success_guarantee: プリセットがワークスペースに保存され、作成・更新のたびにそのプリセットに該当する項目の件数が返る。記録の取得と配る書き出しにプリセットが載る。
+minimal_guarantee: 式が不正なプリセットと、名前が重なるプリセットは保存しない。プリセットの操作は項目の YAML と本文を書き換えない。
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: '資料 A-1（タグ: 画面）、A-2（タグ: 画面・廃止）、A-3（タグ: データ）、A-4（タグ無し）'
+        notes: '作成する式は `{and: [{field: tags, op: eq, values: [画面]}, {field: tags, op: ne, values: [廃止]}]}`、更新する式は `{and: [{field: tags, op: eq, values: [画面, データ]}, {field: tags, op: ne, values: [廃止]}]}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: プリセットを作成する（名前「画面の設計」・タグ「画面」を持ち「廃止」を持たない）
+        SV->>WS: プリセットを保存する
+        SV-->>CC: 作成したプリセットと該当する件数 1
+        CC->>SV: プリセットを更新する（タグ「画面」か「データ」を持ち「廃止」を持たない）
+        SV->>WS: プリセットを保存する
+        SV-->>CC: 更新したプリセットと該当する件数 2
+        CC->>SV: プリセットを削除する
+        SV->>WS: プリセットを削除する
+        SV-->>CC: 削除した旨
+      ```
+    expected:
+      - 作成の結果に、プリセット「画面の設計」と該当する件数 1 がある
+      - 作成した後の記録の取得に、プリセット「画面の設計」と、名前・説明・タグの式・並び順・該当する件数 1 がある
+      - 更新の結果に、該当する件数 2（A-1・A-3）がある
+      - 削除した後の記録の取得に、プリセット「画面の設計」が無い
+      - どの操作の後も、項目の YAML と `docs/` の本文の中身が操作の前と同じ
+      - タグの無い A-4 は、`ne` の条件には該当するが `eq` の条件に該当しないため、どちらの件数にも数えない
+    test: test_normal
+  - name: 正常シナリオ（0 件に該当する）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: '資料 A-1（タグ: 画面）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: プリセットを作成する（タグ「通知」を持つ）
+        SV->>WS: プリセットを保存する
+        SV-->>CC: 作成したプリセットと該当する件数 0 と警告
+      ```
+    expected:
+      - 作成がツールのエラーにならず、結果に該当する件数 0 がある
+      - 結果に、どの項目にも該当しない旨の警告がある
+    test: test_normal_when_no_match
+  - name: 異常シナリオ（式が不正）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 不正な式
+        description: 空の `and` の束を持つ式と、入れ子が 4 レイヤーの式
+        notes: 最上位の束を 1 レイヤーとして数える
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+
+        CC->>SV: 不正な式でプリセットを作成する
+        SV-->>CC: 式のどこが不正かを示すエラー
+      ```
+    expected:
+      - どちらの作成もツールのエラーを返し、空の束か入れ子の深さのどちらが不正かが出力にある
+      - プリセットが保存されていない
+    test: test_error_when_invalid_expression
+  - name: 異常シナリオ（名前が重なる）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: プリセット
+        description: プリセット「画面の設計」
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+
+        CC->>SV: 名前「画面の設計」でプリセットを作成する
+        SV-->>CC: 名前が重なる旨のエラー
+      ```
+    expected:
+      - 作成がツールのエラーを返し、名前が重なる旨が出力にある
+      - プリセット「画面の設計」は作成の前のまま
+    test: test_error_when_name_duplicated
+notes:
+  タグの式: knowledge の規約『フィルター・照合条件の構造』の `and`・`or`・`not` の束と、項目のタグを比べる条件で持つ。タグは NFKC と大文字小文字をそろえて比べる
+  画面: 'プリセットを画面の一覧の上に並べて開くのは #361、画面の今の絞り込みから保存するのは #362 が受け持つ'
+test_file: tests/e2e/単一ユースケース/test_filter_preset.py

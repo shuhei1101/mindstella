@@ -1,12 +1,12 @@
 id: MOD-489-132
 title: プレビュー / use-screen-filters
-lead: 画面の絞り込みの条件を URL と端末の保存領域で持つ（制約「保存した絞り込みの条件」）。
+lead: 画面の絞り込みの条件を URL とそのタブの保存領域で持つ（制約「保存した絞り込みの条件」）。
 functions:
   - name: useScreenFilters
     title: 画面の絞り込みの条件
     kind: フック
     usecase: 項目を表で絞り込む
-    summary: URL の `f.{列}`、保存した条件、既定の条件の順に当て、変えたら URL と保存領域に書く
+    summary: URL の `f.{列}`、そのタブの保存領域（`useScreenState`）の条件、既定の条件の順に当て、変えたら URL と保存領域に書く。保存した条件を URL に戻すのは画面へ入ったときだけで、同じ画面で戻る・進むで URL の条件が無くなったときはその画面の保存した条件を外して既定の条件に戻す。戻すときは、条件と組み合わせ方を 1 回の移動（`setFilters` の `tagmatch`）で書く。タグの組み合わせ方は URL の `tagmatch`、保存領域、`all` の順に当てる。`addTag` はタグを `f.tags` に加えて履歴に 1 つ積み（既にあれば何もしない）、画面が絞り込みを持たない（概要）ときはその項目の種類の画面へ移って加える
     args:
       - name: tab
         type: PreviewTab
@@ -14,7 +14,7 @@ functions:
         description: 画面
     returns:
       type: ScreenFilters
-      description: 条件と操作
+      description: 条件・タグの組み合わせ方と、`setFilters`・`setTagMatch`・`addTag`
     unit_tests:
       - name: test_use_screen_filters
         case: 正常
@@ -34,6 +34,36 @@ functions:
         condition: どちらも無い検討事項
         mock: ルーターのメモリの履歴
         expected: 状態の 4 値
+      - name: test_use_screen_filters_when_tag_match
+        case: 正常
+        summary: タグの組み合わせ方を URL と保存領域に書く
+        condition: "`setTagMatch('any')` の後に `setTagMatch('all')`"
+        mock: ルーターのメモリの履歴
+        expected: 1 回目は URL に `tagmatch=any`、2 回目は URL に `tagmatch` が無く、どちらも保存領域の値が同じ
+      - name: test_use_screen_filters_when_add_tag
+        case: 正常
+        summary: タグを加えて履歴に 1 つ積む
+        condition: "`f.tags=保存` の画面で `addTag('画面')` の後に `addTag('画面')`"
+        mock: ルーターのメモリの履歴
+        expected: '`f.tags` が `保存|画面` で、履歴が 1 つだけ増える'
+      - name: test_use_screen_filters_when_overview
+        case: 正常
+        summary: 概要から加えるとその種類の画面へ移る
+        condition: 概要で `addTag('画面', 'tasks')`
+        mock: ルーターのメモリの履歴
+        expected: '`tab=tasks` と `f.tags=画面` に移り、履歴が 1 つ増える'
+      - name: test_use_screen_filters_when_saved_tag_match
+        case: 正常
+        summary: 保存した条件と「どれかを含む」を URL に書く
+        condition: 'URL に `f` が無く、保存領域に `tags: [画面, 保存]` と `tagMatch: any`'
+        mock: ルーターのメモリの履歴
+        expected: URL に `f.tags=画面|保存` と `tagmatch=any` の両方が入り、組み合わせ方が `any`
+      - name: test_use_screen_filters_when_back
+        case: 正常
+        summary: 同じ画面で戻ると、保存した条件を戻さず外す
+        condition: "`addTag('画面')` の後に履歴を 1 つ戻る"
+        mock: ルーターのメモリの履歴
+        expected: URL に `f` が無く、保存領域にその画面の条件が無く、条件が空
     container: frontend/src/shared/hooks/use-screen-filters.ts
 notes:
   単体テスト: 同じフォルダの `use-screen-filters.test.ts` に置く（knowledge の規約『フォルダ構成』）

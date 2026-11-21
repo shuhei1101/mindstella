@@ -33,12 +33,13 @@ export const DecisionsScreen = ({ drawerOpen, onCloseDrawer }: DecisionsScreenPr
       columnsOf={decisionColumns}
       drawerOpen={drawerOpen}
       onCloseDrawer={onCloseDrawer}
-      content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId }) => (
+      content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef }) => (
         <Board
+        scrollRef={scrollRef}
           columns={boardColumns({ items: shown, statuses: DECISION_STATUSES, statusFilter: filters["status"] ?? [] })}
           emptyText="検討事項はありません。"
           added={addedCards(edit, DECISION_STATUSES, onOpenAdded)}
-          card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[]} links={refsOf(item, "depends_on")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} />}
+          card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[]} links={refsOf(item, "depends_on")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />}
         />
       )}
     />

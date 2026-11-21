@@ -6,7 +6,7 @@ functions:
     title: 差分の表示
     kind: フック
     usecase: 前回からの差分を見る
-    summary: search の `diff` と端末の保存領域の時点から `DiffPoint` を解決し、`POST /w/{workspace}/api/opened` の時点を `sessionStorage` のキー `workspaceKey(OPENED_SESSION_KEY)` に持つ
+    summary: search の `diff` とそのタブの保存領域（`useScreenState` の `diffSel`）の時点から `DiffPoint` を解決し、`POST /w/{workspace}/api/opened` の時点を `sessionStorage` のキー `workspaceKey(OPENED_SESSION_KEY)` に持つ
     returns:
       type: DiffView
       description: 時点・マーカー・削除した項目
@@ -19,8 +19,8 @@ functions:
         expected: V-2 の時点
       - name: test_use_diff_view_when_saved
         case: 正常
-        summary: 端末の時点を URL に書く
-        condition: URL に無く端末に `V-1`
+        summary: そのタブの時点を URL に書く
+        condition: URL に無くそのタブの保存領域に `V-1`
         mock: MSW
         expected: '`setDiff(''V-1'')` が呼ばれる'
       - name: test_use_diff_view_when_opened_stored

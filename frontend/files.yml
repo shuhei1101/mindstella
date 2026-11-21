@@ -732,6 +732,14 @@ files:
   related:
   - to: MOD-489-58
     type: implements
+- path: src/shared/components/board.stories.tsx
+  name: 項目のカードのストーリー
+  description: 項目のカードのストーリー。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-60
+    type: implements
 - path: src/shared/components/board.tsx
   name: 状態ごとの列にカードを並べたボードと、項目のカード
   description: 状態ごとの列にカードを並べたボードと、項目のカード。
@@ -897,6 +905,14 @@ files:
 - path: src/shared/components/filter-chips.tsx
   name: 絞り込みの条件のチップ
   description: 絞り込みの条件のチップ。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-69
+    type: implements
+- path: src/shared/components/filter-chips.stories.tsx
+  name: 絞り込みの条件のチップのストーリー
+  description: 絞り込みの条件のチップのストーリー。
   tags:
   - tool:react
   related:
@@ -1688,4 +1704,42 @@ files:
   - tool:vitest
   related:
   - to: MOD-489-170
+    type: implements
+- path: src/shared/stores/screen-state-store.test.ts
+  name: 画面の一時的な状態の保存先の単体テスト
+  description: screen-state-store（絞り込みの条件・タグの組み合わせ方・選んだ時点・一覧のスクロール位置の sessionStorage への読み書き）の単体テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-649-1
+    type: tests
+- path: src/shared/hooks/use-list-scroll.test.ts
+  name: 一覧のスクロール位置の復元の単体テスト
+  description: use-list-scroll（一覧のスクロール位置を残して戻す）の単体テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-649-2
+    type: tests
+- path: src/shared/stores/screen-state-store.ts
+  name: 画面の一時的な状態の保存先
+  description: 画面ごとの絞り込みの条件・タグの組み合わせ方・変更履歴で選んだ時点と一覧のスクロール位置を、そのタブの sessionStorage で読み書きする。保存先やキーを変えるときに参照する。
+  tags:
+  - tool:react
+  - topic:保存
+  related:
+  - to: MOD-649-1
+    type: implements
+- path: src/shared/hooks/use-list-scroll.ts
+  name: 一覧のスクロール位置の復元
+  description: 一覧のスクロール領域の位置を残し、画面へ戻ったときに描画の後に戻す。スクロール位置の復元を変えるときに参照する。
+  tags:
+  - tool:react
+  - topic:スクロール
+  related:
+  - to: MOD-649-2
     type: implements

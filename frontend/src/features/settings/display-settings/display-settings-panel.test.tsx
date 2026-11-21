@@ -25,14 +25,14 @@ describe("DisplaySettingsPanel", () => {
   // 既定に戻す（正常系）
   test("display_settings_panel_when_reset", async () => {
     // 準備
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ kinds: ["decisions"], theme: "dark", diffSel: "V-1" }));
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ kinds: ["decisions"], theme: "dark", commentsPinned: true }));
     renderRoute("/?panel=display");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "既定に戻す" }));
     // 検証
     expect(stored()["kinds"] ?? null).toBeNull();
     expect(stored()["theme"] ?? null).toBeNull();
-    expect(stored()["diffSel"]).toBe("V-1");
+    expect(stored()["commentsPinned"]).toBe(true);
   });
 
   // 「レビューに追加」の後のフォーカスを変えて自動に戻す（正常系）

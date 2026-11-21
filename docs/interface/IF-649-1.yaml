@@ -1,0 +1,186 @@
+id: IF-649-1
+title: プリセットの作成
+entry:
+  kind: mcp_tool
+  value: '`create_preset`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__create_preset`）。結果とエラーの返却方法は『MCP サーバーの起動』'
+lead: タグの式に名前を付けた絞り込みのプリセットを、設定の `presets` の末尾に追加し、該当する項目の件数を返却する。
+test_file: tests/integration/server/test_create_preset.py
+idempotent: false
+side_effects: '`config.yaml` の `presets` を書き換える。種類ごとの YAML と本文は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: name
+    type: str
+    required: true
+    location: argument
+    description: プリセットの名前
+    constraints: 1 字以上 40 字以内。既にあるプリセットの名前と、NFKC と大文字小文字をそろえて重ならない
+  - name: description
+    type: str | None
+    required: false
+    default: なし（説明を持たない）
+    location: argument
+    description: 何を開くプリセットかを 1 文で
+  - name: filter
+    type: dict
+    required: true
+    location: argument
+    description: タグの式
+    constraints: ER 図『ワークスペース』の `config.yaml` の `presets` の列の `filter`（条件のキーは `field`・`op`・`values`・`match`。入れ子は 3 レイヤーまで。空の束は持たない）
+    example: '{"and": [{"field": "tags", "op": "eq", "values": ["画面"]}, {"field": "tags", "op": "ne", "values": ["廃止"]}]}'
+response:
+  - name: preset
+    type: dict
+    description: 保存したプリセット（`name`・`description`・`filter`）
+  - name: count
+    type: int
+    description: そのプリセットに該当する、全ての種類の項目の数
+  - name: warnings
+    type: list[str]
+    description: '`count` が 0 のとき、どの項目にも該当しない旨の 1 行。それ以外は空'
+  - name: files
+    type: list[str]
+    description: 書き換えた YAML（`.mindstella/config.yaml`）
+exceptions:
+  - name: なし（正常終了）
+    condition: 追加できた。該当する件数が 0 のときも含む
+    notes: 結果を返却する
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: SchemaMismatchError
+    condition: '`filter` が空の束・4 レイヤー以上の入れ子・受け付けないキーや `op` を持つ。または `name` が空か 40 字を超える'
+    notes: ツールのエラー。何も書き込まない
+  - name: PresetNameTakenError
+    condition: '`name` が既にあるプリセットの名前と重なる'
+    notes: ツールのエラー。何も書き込まない
+  - name: WriteFailedError
+    condition: 一時ファイルの書き込みか置き換えに失敗した
+    notes: ツールのエラー。`config.yaml` は前の中身のまま
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。式が合わないときは、合わない箇所ごとに `{キーのパス}: {理由}`（`filter.and[0]: 空の束` など）の行を続ける。名前が重なるときは重なった名前を出す。'
+constraints:
+  - item: 結果の構造
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返却方法
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 件数の数え方
+    constraint: 『記録の取得』の制約「プリセットの件数」と同じ。書き込んだ後のワークスペースで数える
+  - item: 書き換えるキー
+    constraint: '`presets` だけを書き換え、ほかのキーは今の値と並びを保つ。追加したプリセットは末尾に配置する'
+  - item: 書き換えの通知
+    constraint: 書き終えたら、ほかの書き換えるツールと同じく開いているプレビューへ通知し、『記録の取得』の保持した応答を捨てる
+flows:
+  - name: 正常系
+    summary: プリセットを追加し、該当する件数を返却する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '資料 A-1（タグ: 画面）・A-2（タグ: 画面・廃止）・A-3（タグ無し）を持ち、`presets` を持たないワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as create_preset（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: create_preset（画面の設計、画面を持ち廃止を持たない）
+        IF->>WS: config.yaml の presets に追加する
+        IF-->>クライアント: preset、count: 1
+      ```
+    expected:
+      - ツールのエラーにならず、`count` が 1（A-1）、`warnings` が空
+      - '`config.yaml` の `presets` が「画面の設計」の 1 件で、ほかのキーは呼ぶ前と同じ'
+      - 種類ごとの YAML と `docs/` は呼ぶ前と同じ
+    test: test_normal
+  - name: 正常系（0 件に該当する）
+    summary: どの項目にも該当しないプリセットも保存し、警告を添える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '資料 A-1（タグ: 画面）を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as create_preset（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: create_preset（通知を持つ）
+        IF->>WS: config.yaml の presets に追加する
+        IF-->>クライアント: count: 0、warnings
+      ```
+    expected:
+      - ツールのエラーにならず、`count` が 0
+      - '`warnings` にどの項目にも該当しない旨の 1 行がある'
+      - '`config.yaml` の `presets` にそのプリセットがある'
+    test: test_normal_when_no_match
+  - name: 異常系（式が合わない・SchemaMismatchError）
+    summary: 空の束・4 レイヤーの入れ子・受け付けないキーを拒み、何も書き込まない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` を持たないワークスペース'
+        notes: '`parametrize`: `{and: []}` / `{and: [{or: [{not: {and: [{field: tags, op: eq, values: [a]}]}}]}]}`（4 レイヤー）/ `case_sensitive` を持つ条件'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as create_preset（MCP のツール）
+
+        クライアント->>IF: create_preset（合わない式）
+        IF-->>クライアント: ツールのエラー（SchemaMismatchError）
+      ```
+    expected:
+      - ツールのエラーで、本文に合わないキーのパスと理由（空の束・入れ子の深さ・受け付けないキー）がある
+      - '`config.yaml` が呼ぶ前と同じ'
+    test: test_error_when_filter_invalid
+  - name: 異常系（名前が重なる・PresetNameTakenError）
+    summary: 全角半角・大文字小文字だけ違う名前も重なりとして拒む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`presets` に「UI の設計」を持つワークスペース'
+        notes: 名前「ｕｉ の設計」（全角の小文字）で呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as create_preset（MCP のツール）
+
+        クライアント->>IF: create_preset（ｕｉ の設計）
+        IF-->>クライアント: ツールのエラー（PresetNameTakenError）
+      ```
+    expected:
+      - ツールのエラーで、本文に重なった名前「UI の設計」がある
+      - '`config.yaml` が呼ぶ前と同じ'
+    test: test_error_when_name_taken
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: '`.mindstella/config.yaml` が無いフォルダを指すと、何も書き込まずに終わる'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: '`.mindstella/` を持たないフォルダ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as create_preset（MCP のツール）
+
+        クライアント->>IF: create_preset（空のフォルダ）
+        IF-->>クライアント: ツールのエラー（WorkspaceNotFoundError）
+      ```
+    expected:
+      - ツールのエラーで、フォルダに `.mindstella/config.yaml` が無い旨がある
+      - フォルダにファイルが増えていない
+    test: test_error_when_workspace_not_found

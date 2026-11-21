@@ -1,0 +1,28 @@
+# 単体テスト（全 pass）
+
+回した commit: 6ebe8d39（実装の末尾。以降の 7349e98b は設計書だけの変更）
+
+## バック（TL-1）
+テストを動かす Python は requirements-dev.txt の pytest・PyYAML・jsonschema・mcp・httpx・Jinja2 を入れた一時の仮想環境。/tmp/pytest-of-{user} が別の利用者の持ち物のため --basetemp を指定した
+$ pytest tests/unit -q -p no:cacheprovider --basetemp=...
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+....................                                                     [100%]
+=============================== warnings summary ===============================
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1747 passed, 1 skipped, 5 warnings in 28.96s
+pytest exit 0
+
+## フロント（TL-2）
+$ npx vitest run
+ Test Files  83 passed (83)
+      Tests  379 passed (379)
+vitest exit 0
+
+## テストの期待値を変えたもの
+- tests/unit/scripts/test_serve.py の test_records_response_when_settings_changed: 記録の応答を保持するため、2 回目の前に records_cache.discard() を呼ぶ（モジュール構成『serve.py』の unit_tests の condition に合わせた）
+- tests/unit/scripts/test_serve.py の test_endpoint: 記録の応答の Cache-Control を no-cache にした（インターフェース定義『記録の取得』の制約「本文の構造」）
+- tests/unit/scripts/test_serve.py の FakeDetector: 変更の検知の on_changed を受ける
+- tests/unit/scripts/test_builder.py・test_commands.py・test_server.py: preset_counts・warnings・プリセットのツールの名前を期待値に加えた
+- frontend/src/features/settings/display-settings/display-settings-panel.test.tsx: 外枠が開いた時点で前のバージョンの diffSel を削除するため、既定に戻しても残る項目を commentsPinned で確かめる

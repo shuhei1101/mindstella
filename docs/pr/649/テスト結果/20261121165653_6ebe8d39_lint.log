@@ -1,0 +1,9 @@
+# lint（TL-7）
+
+回した commit: 6ebe8d39
+$ ruff check plugins tests
+All checks passed!
+$ npm run typecheck
+(出力なし・終了コード 0)
+$ npm run lint
+(出力なし・終了コード 0)

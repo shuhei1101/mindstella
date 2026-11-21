@@ -5,6 +5,12 @@ import type { PreviewTab } from "@/shared/core/preview-search";
 /** 列の `key` → 選んだ値の配列。`~{列}` は文字の条件 */
 export type Filters = Record<string, string[]>;
 
+/** タグの組み合わせ方。`all` は選んだタグを全て持つ行、`any` はどれかを持つ行 */
+export type TagMatch = "all" | "any";
+
+/** タグの列の `key` */
+export const TAG_FILTER_KEY = "tags";
+
 /** 文字の条件のキーの頭 */
 export const TEXT_FILTER_PREFIX = "~";
 
@@ -19,8 +25,8 @@ const toStrings = (value: unknown): string[] => {
   return value === undefined || value === null ? [] : [toText(value)];
 };
 
-/** 条件に行が合うかを返す（条件の中はどれか、条件の間は全て。`~{列}` は文字の条件） */
-export const matchesFilters = (row: Record<string, unknown>, filters: Filters): boolean =>
+/** 条件に行が合うかを返す（条件の中はどれか、条件の間は全て。`tags` は `all` のとき全てを持つ行。`~{列}` は文字の条件） */
+export const matchesFilters = (row: Record<string, unknown>, filters: Filters, tagMatch: TagMatch = "all"): boolean =>
   Object.entries(filters).every(([key, values]) => {
     if (values.length === 0) return true;
     if (key.startsWith(TEXT_FILTER_PREFIX)) {
@@ -28,6 +34,8 @@ export const matchesFilters = (row: Record<string, unknown>, filters: Filters): 
       return values.every((value) => texts.some((text) => text.includes(value.toLowerCase())));
     }
     const cells = toStrings(row[key]);
+    // タグを全て持つ行だけ
+    if (key === TAG_FILTER_KEY && tagMatch === "all") return values.every((value) => cells.includes(value));
     return values.some((value) => cells.includes(value));
   });
 

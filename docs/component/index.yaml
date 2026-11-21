@@ -6,6 +6,10 @@ items:
     summary: "1 つの画面の表示形式（ボード・カード・表）を切り替えるセグメント"
   - page: CMP-489-48.tsx.yaml
     summary: "項目の一覧の表"
+  - page: CMP-649-2.tsx.yaml
+    summary: "項目の一覧の上に、今の絞り込みの条件を値ごとのチップで並べる"
+  - page: CMP-649-1.tsx.yaml
+    summary: "ボードの列に並べる項目 1 件のカード"
   - page: CMP-489-32.tsx.yaml
     summary: "差分の表示の間、選んだ時点で追加した項目に新規（太い +）、変えた項目に変更（塗った ●）、削除した項目に削除した（太い −）の記号を出す"
   - page: CMP-489-26.tsx.yaml

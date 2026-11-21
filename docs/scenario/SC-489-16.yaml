@@ -219,6 +219,35 @@ scenarios:
       - 出力に、`../files/clip.mp4` と絶対 URL の画像が無い
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_embedded_file_missing
+  - name: 正常シナリオ（0 件に当たるプリセットがある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: '資料 A-1（タグ: 画面）と A-2（タグ: データ）'
+      - name: プリセット
+        description: タグ「画面」に当たるプリセット「画面の設計」と、どの記録にも付いていないタグ「廃止したタグ」に当たるプリセット「古い分類」
+        notes: プリセットの保存先のファイルを直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: 全ての YAML を読む
+        SV->>SV: プリセットごとに当たる項目を数える
+        SV-->>CC: 0 件に当たるプリセットの警告
+      ```
+    expected:
+      - 点検のツールがツールのエラーにせず、警告を返す
+      - 出力に、プリセット「古い分類」がどの項目にも当たらない旨と、そのタグの式がある
+      - 出力に、プリセット「画面の設計」が無い
+      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+    test: test_normal_when_preset_matches_nothing
 lead: MindStella のセッションが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: MindStella のセッション

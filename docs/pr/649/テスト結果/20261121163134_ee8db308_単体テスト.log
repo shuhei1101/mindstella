@@ -1,0 +1,260 @@
+# 単体テスト（Red）
+
+回した commit: ee8db308（テストコードの末尾）
+
+## フロント（TL-2）
+$ npx vitest run frontend/src/shared/stores/screen-state-store.test.ts frontend/src/shared/hooks/use-list-scroll.test.ts frontend/src/shared/hooks/use-screen-filters.test.tsx frontend/src/shared/core/filters.test.ts frontend/src/shared/core/preview-search.test.ts frontend/src/app/router.test.tsx frontend/src/shared/hooks/use-diff-view.test.tsx frontend/src/shared/stores/prefs-store.test.ts
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-state-tag-filter-preset-records-speed
+
+ ❯ frontend/src/shared/core/filters.test.ts (9 tests | 1 failed) 21ms
+   ❯ matchesFilters (6)
+     × matches_filters_when_tag_match all [ '画面' ] 8ms
+ ❯ frontend/src/shared/hooks/use-list-scroll.test.ts (0 test)
+ ❯ frontend/src/shared/hooks/use-screen-filters.test.tsx (0 test)
+ ❯ frontend/src/shared/stores/screen-state-store.test.ts (0 test)
+ ❯ frontend/src/shared/core/preview-search.test.ts (23 tests | 1 failed) 23ms
+   ❯ normalizeSearch (18)
+     × normalize_search_when_tagmatch_without_tags 3ms
+ ❯ frontend/src/app/router.test.tsx (3 tests | 1 failed) 22ms
+   ❯ createAppRouter (3)
+     × create_app_router_when_scroll_restoration 3ms
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/shared/hooks/use-diff-view.test.tsx (3 tests | 1 failed) 1220ms
+   ❯ useDiffView (3)
+     × use_diff_view_when_saved 1064ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/hooks/use-list-scroll.test.ts [ frontend/src/shared/hooks/use-list-scroll.test.ts ]
+Error: Failed to resolve import "@/shared/hooks/use-list-scroll" from "frontend/src/shared/hooks/use-list-scroll.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-state-tag-filter-preset-records-speed/frontend/src/shared/hooks/use-list-scroll.test.ts:4:30
+  1  |  import { renderHook } from "@testing-library/react";
+  2  |  import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+  3  |  import { useListScroll } from "@/shared/hooks/use-list-scroll";
+     |                                 ^
+  4  |  beforeEach(() => {
+  5  |  	vi.stubGlobal("requestAnimationFrame", (callback) => {
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  frontend/src/shared/hooks/use-screen-filters.test.tsx [ frontend/src/shared/hooks/use-screen-filters.test.tsx ]
+Error: Failed to resolve import "@/shared/stores/screen-state-store" from "frontend/src/shared/hooks/use-screen-filters.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-state-tag-filter-preset-records-speed/frontend/src/shared/hooks/use-screen-filters.test.tsx:5:32
+  2  |  import { afterEach, describe, expect, test } from "vitest";
+  3  |  import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
+  4  |  import { readScreenState } from "@/shared/stores/screen-state-store";
+     |                                   ^
+  5  |  import { renderPreviewHook } from "@/testing/render";
+  6  |  afterEach(() => {
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  frontend/src/shared/stores/screen-state-store.test.ts [ frontend/src/shared/stores/screen-state-store.test.ts ]
+Error: Failed to resolve import "@/shared/stores/screen-state-store" from "frontend/src/shared/stores/screen-state-store.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-state-tag-filter-preset-records-speed/frontend/src/shared/stores/screen-state-store.test.ts:4:106
+  1  |  import { afterEach, describe, expect, test } from "vitest";
+  2  |  import { resetEmbeddedDataForTest } from "@/shared/core/embedded";
+  3  |  ... readScreenState, writeListScroll, writeScreenState } from "@/shared/stores/screen-state-store";
+     |                                                                 ^
+  4  |  import { PREFS_KEY } from "@/shared/stores/theme-store";
+  5  |  afterEach(() => {
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/app/router.test.tsx > createAppRouter > create_app_router_when_scroll_restoration
+AssertionError: expected undefined to be true // Object.is equality
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ frontend/src/app/router.test.tsx:50:46
+     48|     const router = createAppRouter(new QueryClient());
+     49|     // 検証
+     50|     expect(router.options.scrollRestoration).toBe(true);
+       |                                              ^
+     51|   });
+     52| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  frontend/src/shared/core/filters.test.ts > matchesFilters > matches_filters_when_tag_match all [ '画面' ]
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ frontend/src/shared/core/filters.test.ts:27:72
+     25|     { tags: ["画面", "保存"], tagMatch: "all" as const, expected: true },
+     26|   ])("matches_filters_when_tag_match $tagMatch $tags", ({ tags, tagMat…
+     27|     expect(matchesFilters({ tags }, { tags: ["画面", "保存"] }, tagMatch))…
+       |                                                                        ^
+     28|   });
+     29| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  frontend/src/shared/core/preview-search.test.ts > normalizeSearch > normalize_search_when_tagmatch_without_tags
+AssertionError: expected 'any' to be undefined
+
+- Expected:
+undefined
+
++ Received:
+"any"
+
+ ❯ frontend/src/shared/core/preview-search.test.ts:161:92
+    159|   // タグの条件が無い組み合わせ方（正常系）
+    160|   test("normalize_search_when_tagmatch_without_tags", () => {
+    161|     expect(normalizeSearch(search({ tab: "tasks", tagmatch: "any" }), …
+       |                                                                                            ^
+    162|   });
+    163|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  frontend/src/shared/hooks/use-diff-view.test.tsx > useDiffView > use_diff_view_when_saved
+AssertionError: expected { tab: 'decisions' } to match object { diff: 'V-1' }
+(1 matching property omitted from actual)
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-theme[39m=[32m"light"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div />[39m
+  [36m</body>[39m
+[36m</html>[39m
+
+- Expected
++ Received
+
+  {
+-   "diff": "V-1",
++   "tab": "decisions",
+  }
+
+ ❯ frontend/src/shared/hooks/use-diff-view.test.tsx:46:62
+     44|     const { router } = await renderPreviewHook("/?tab=decisions", useD…
+     45|     // 検証
+     46|     await waitFor(() => expect(router.state.location.search).toMatchOb…
+       |                                                              ^
+     47|   });
+     48|
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  7 failed | 1 passed (8)
+      Tests  4 failed | 43 passed (47)
+   Start at  16:28:53
+   Duration  3.01s (environment 59%, tests 14%, setup 9%, import 9%, transform 9%, worker 1%)
+
+
+## バック（TL-1）
+テストを動かす Python は requirements-dev.txt のうち pytest・PyYAML・jsonschema・mcp・httpx・Jinja2 を入れた一時の仮想環境。/tmp/pytest-of-{user} が別の利用者の持ち物のため --basetemp を指定した
+$ pytest -q -p no:cacheprovider --basetemp=... tests/unit/scripts/test_presets.py
+
+==================================== ERRORS ====================================
+_____________ ERROR collecting tests/unit/scripts/test_presets.py ______________
+ImportError while importing test module '/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-state-tag-filter-preset-records-speed/tests/unit/scripts/test_presets.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../../../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_presets.py:11: in <module>
+    import presets
+E   ModuleNotFoundError: No module named 'presets'
+=========================== short test summary info ============================
+ERROR tests/unit/scripts/test_presets.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.07s
+
+$ pytest -q -p no:cacheprovider --basetemp=... tests/unit/scripts/test_serve.py -k records
+.FF...                                                                   [100%]
+=================================== FAILURES ===================================
+______________________________ test_records_cache ______________________________
+
+    def test_records_cache() -> None:
+        """保持した応答を返し、捨てると作り直す（正常系）。"""
+        # 準備
+        calls: list[int] = []
+    
+        def _build() -> dict[str, Any]:
+            """呼ばれた回数を数えて同じ記録を返す。"""
+            calls.append(1)
+            return {"decisions": [{"id": "D-1"}]}
+    
+>       cache = serve.RecordsCache()
+                ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'serve' has no attribute 'RecordsCache'
+
+tests/unit/scripts/test_serve.py:831: AttributeError
+___________________ test_records_response_when_not_modified ____________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x704a13a19b20>
+make_item = <function make_item.<locals>._make at 0x704a13a19c60>
+
+    def test_records_response_when_not_modified(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """弱い比較で 304（正常系）。"""
+        # 準備
+        context = _context(make_workspace(make_item("D-1")))
+        first = serve.records_response(context)
+>       etag = first.headers["ETag"]
+               ^^^^^^^^^^^^^
+E       AttributeError: 'Response' object has no attribute 'headers'
+
+tests/unit/scripts/test_serve.py:848: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  mdmark_ref:mdmark_ref.py:115 mdmark の ref を問い合わせられないため develop を使います: 単体テストでは問い合わせない
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_serve.py::test_records_cache - AttributeError:...
+FAILED tests/unit/scripts/test_serve.py::test_records_response_when_not_modified
+2 failed, 4 passed, 145 deselected in 0.18s
+
+## fail の理由
+- 実装が無いことによる fail だけ: screen-state-store・use-list-scroll が無い / ScreenFilters の tagMatch・addTag が無い / matchesFilters の tagMatch が無い / normalizeSearch が tagmatch を外さない / scrollRestoration が無い / diffSel を sessionStorage から読まない / presets.py が無い / serve.RecordsCache と records_response の if_none_match・headers が無い
+
+## 実装の前から pass したテスト
+- filters.test.ts の matches_filters_when_tag_match any [画面] と all [画面, 保存]: 今の matchesFilters（frontend/src/shared/core/filters.ts）が同じ条件の中をどれかで絞るため、any と、全てを持つ行は今も合う（7a2e75f7 より前から）
+- prefs-store.test.ts の write_prefs・write_prefs_when_workspace_path: minimap を書く振る舞いは今の writePrefs（frontend/src/shared/stores/prefs-store.ts）にある（7a2e75f7 より前から）

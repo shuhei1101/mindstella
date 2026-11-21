@@ -31,12 +31,13 @@ export const TasksScreen = ({ drawerOpen, onCloseDrawer }: TasksScreenProps) => 
     columnsOf={taskColumns}
     drawerOpen={drawerOpen}
     onCloseDrawer={onCloseDrawer}
-    content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId }) => (
+    content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef }) => (
       <Board
+        scrollRef={scrollRef}
         columns={boardColumns({ items: shown, statuses: TASK_STATUSES, statusFilter: filters["status"] ?? [] })}
         emptyText="タスクはありません。"
         added={addedCards(edit, TASK_STATUSES, onOpenAdded)}
-        card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[item.kind]} links={refsOf(item, "for")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} />}
+        card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[item.kind]} links={refsOf(item, "for")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />}
       />
     )}
   />

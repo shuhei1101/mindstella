@@ -344,7 +344,7 @@ constraints:
   - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 書き換えられるキー
-    constraint: '`settings` の制約に並べたキー（`summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment`・`mdmark`）。`display`（表示する種類の既定）と `transcription`（文字起こし後の挙動・用語集のプリセット）は丸ごと置き換える'
+    constraint: '`settings` の制約に並べたキー（`summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment`・`mdmark`）。`display`（表示する種類の既定）と `transcription`（文字起こし後の挙動・用語集のプリセット）は丸ごと置き換える。`presets` は受け付けず、[プリセットの作成](id:IF-649-1)・[プリセットの更新](id:IF-649-2)・[プリセットの削除](id:IF-649-3) が書き換える'
   - item: 検証の範囲
     constraint: 書き換えた後の `config.yaml` をスキーマと突き合わせる。参照先の ID があるかは確かめない（点検が持つ）
   - item: YAML の記載方法

@@ -6,7 +6,7 @@ functions:
     title: 絞り込みの判定
     kind: 関数
     usecase: 項目を表で絞り込む
-    summary: 絞り込みの条件（`Filters`）に行が合うかを返す（条件の中はどれか、条件の間は全て。`~{列}` は文字の条件）
+    summary: 絞り込みの条件（`Filters`）に行が合うかを返す（条件の中はどれか、条件の間は全て。`tags` はタグの組み合わせ方が `all` のとき選んだタグを全て持つ行。`~{列}` は文字の条件）
     args:
       - name: row
         type: Record<string, unknown>
@@ -16,6 +16,11 @@ functions:
         type: Filters
         required: true
         description: 条件
+      - name: tagMatch
+        type: TagMatch
+        required: false
+        default: all
+        description: タグの組み合わせ方
     returns:
       type: boolean
       description: 合うか
@@ -38,6 +43,12 @@ functions:
         condition: '`{status: [''保留'']}` と状態が完了の行'
         mock: なし
         expected: 'false'
+      - name: test_matches_filters_when_tag_match
+        case: 正常
+        summary: タグの組み合わせ方
+        condition: "`parametrize`: `{tags: ['画面', '保存']}` と タグが 画面 だけの行で `all` / 同じ行で `any` / 両方を持つ行で `all`"
+        mock: なし
+        expected: '`false` / `true` / `true`'
     container: frontend/src/shared/core/filters.ts
   - name: defaultFilters
     title: 画面の既定の条件

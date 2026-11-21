@@ -37,6 +37,7 @@ import { useDuplicateIdsStore, useShownDuplicateIds } from "@/shared/stores/dupl
 import { clearDisplayNotice, displayChanged, sameDisplay, useDisplayNoticeAt } from "@/shared/stores/display-notice-store";
 import { writePrefs } from "@/shared/stores/prefs-store";
 import { restoreAnchor, useStale } from "@/shared/stores/refresh-hold-store";
+import { dropLegacyScreenState, writeScreenState } from "@/shared/stores/screen-state-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
 import { discardVoice, dismissVoiceNotice, useVoiceNotice, useVoiceSession, voiceTargetOf, type VoiceDestination } from "@/shared/stores/voice-store";
 
@@ -118,6 +119,11 @@ const useVoiceTopbar = ({ exists, openVoiceInput }: { exists: ((destination: Voi
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const PreviewShell = () => {
+  // 最初の描画の前に、端末の保存領域に残った絞り込みの条件と選んだ時点を 1 度だけ削除する
+  useState(() => {
+    dropLegacyScreenState();
+    return true;
+  });
   const { search, setTab, openItem, openList, setDiff, setPanel, replaceSearch, setSearch, openFromSearch, openVoiceInput } = usePreviewSearch();
   const records = useQuery(recordsQuery());
   const comments = useQuery(commentsQuery());
@@ -251,7 +257,7 @@ export const PreviewShell = () => {
         onThemeChange={setTheme}
         onOpenHistory={() => { setHistoryOpen(true); }}
         onClearDiff={() => {
-          writePrefs({ diffSel: null });
+          writeScreenState({ diffSel: null });
           setDiff(undefined);
         }}
         onToggleComments={() => { setPanel(search.panel === "comments" ? undefined : "comments"); }}
@@ -321,7 +327,7 @@ export const PreviewShell = () => {
           since={since ?? { at: rawIndex.data.built_at, seq: rawIndex.data.changes.sets[0]?.until_seq ?? 0 }}
           point={point}
           onSelect={(sel) => {
-            writePrefs({ diffSel: sel === "" ? null : sel });
+            writeScreenState({ diffSel: sel === "" ? null : sel });
             setDiff(sel === "" ? undefined : sel);
             setHistoryOpen(false);
           }}

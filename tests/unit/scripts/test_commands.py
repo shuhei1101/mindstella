@@ -859,7 +859,7 @@ def test_run_check(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     # 実行
     payload = commands.run_check(root)
     # 検証
-    assert payload == {"ok": True, "problems": []}
+    assert payload == {"ok": True, "problems": [], "warnings": []}
 
 
 def test_run_check_when_problems(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

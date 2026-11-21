@@ -7,7 +7,7 @@ import re
 import pytest
 from playwright.sync_api import Page, ViewportSize, expect
 from preview_edit_helpers import edit_edits, edit_items
-from preview_fixture_types import WriteReviewPreview, WriteSamplePreview
+from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_spa_helpers import AXE_SCRIPT, open_spa
 from workspace_fixtures import MakeEdit, MakeItem
 
@@ -108,11 +108,11 @@ def test_diff_mark_visible(page: Page, write_history_preview: WriteReviewPreview
     # 準備
     url, _ = write_history_preview()
     open_spa(page, url, "?tab=decisions&view=board&f.status=決定済み|未決定")
-    expect(page.locator("[data-id='D-2'] [title=新規]")).to_have_count(0)
+    expect(page.locator("[data-card='D-2'] [title=新規]")).to_have_count(0)
     # 実行
     open_spa(page, url, "?tab=decisions&view=board&f.status=決定済み|未決定&diff=V-1")
     # 検証
-    expect(page.locator("[data-id='D-2'] [title=新規]").first).to_be_visible()
+    expect(page.locator("[data-card='D-2'] [title=新規]").first).to_be_visible()
 
 
 def test_drawer_visible(page: Page, spa_preview: str) -> None:
@@ -154,8 +154,8 @@ def test_comment_mark_visible(page: Page, write_commented_preview: WriteReviewPr
     url, _ = write_commented_preview()
     open_spa(page, url, "?tab=decisions&view=board")
     # 検証
-    expect(page.locator("[data-id='D-2'] [title='コメント 2 件']").first).to_be_visible()
-    expect(page.locator("[data-id='D-4'] [title^='コメント']")).to_have_count(0)
+    expect(page.locator("[data-card='D-2'] [title='コメント 2 件']").first).to_be_visible()
+    expect(page.locator("[data-card='D-4'] [title^='コメント']")).to_have_count(0)
 
 
 SHAKE_EARLY_MS = 120
@@ -200,8 +200,8 @@ def test_pending_mark_visible(page: Page, write_edit_preview: WriteReviewPreview
     url, _ = write_edit_preview(*edit_items(make_item, "D"), make_item("D-4", title="触らない項目"), edits=edit_edits(make_edit, "D"))
     open_spa(page, url, f"?tab=decisions&view={view}")
     # 検証
-    expect(page.locator("[data-id='D-1'] :text('保存待ち')").first).to_be_visible()
-    expect(page.locator("[data-id='D-4'] :text('保存')")).to_have_count(0)
+    expect(page.locator("[data-card='D-1'] :text('保存待ち'), tr[data-id='D-1'] :text('保存待ち')").first).to_be_visible()
+    expect(page.locator("[data-card='D-4'] :text('保存'), tr[data-id='D-4'] :text('保存')")).to_have_count(0)
 
 
 def test_added_items_visible(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
@@ -214,3 +214,24 @@ def test_added_items_visible(page: Page, write_edit_preview: WriteReviewPreview,
     open_spa(page, url, "?tab=decisions&view=board")
     # 検証
     expect(page.locator("[data-new-id]")).to_contain_text("足す問い")
+
+
+def _tags(*names: str) -> list[dict[str, str]]:
+    """タグの名前の並びを項目の `tags` にする。"""
+    return [{"name": name} for name in names]
+
+
+def test_board_tag_press(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """ボードのカードのタグを押すと詳細を開かずに f.tags に加える（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", title="記録の形", status="未決定", tags=_tags("画面")),
+        make_item("D-2", title="画面の幅", status="未決定", tags=_tags("保存")),
+    )
+    open_spa(page, url, "?tab=decisions&view=board")
+    # 実行
+    page.locator("[data-card='D-1']").get_by_role("button", name="タグ「画面」で絞り込む").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"f\.tags=%E7%94%BB%E9%9D%A2"))
+    expect(page.locator("[data-card='D-2']")).to_have_count(0)
+    expect(page.get_by_role("complementary", name="詳細")).to_have_count(0)

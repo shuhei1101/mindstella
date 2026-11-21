@@ -36,9 +36,9 @@ describe("writePrefs", () => {
     // 準備
     localStorage.setItem(PREFS_KEY, JSON.stringify({ theme: "dark", kinds: ["decisions"], commentsPinned: true }));
     // 実行
-    writePrefs({ diffSel: "V-1" });
+    writePrefs({ minimap: false });
     // 検証
-    expect(JSON.parse(localStorage.getItem(PREFS_KEY) as string)).toEqual({ theme: "dark", kinds: ["decisions"], commentsPinned: true, diffSel: "V-1" });
+    expect(JSON.parse(localStorage.getItem(PREFS_KEY) as string)).toEqual({ theme: "dark", kinds: ["decisions"], commentsPinned: true, minimap: false });
   });
 
   // ワークスペースごとのキーに書く（正常系）
@@ -47,9 +47,9 @@ describe("writePrefs", () => {
     localStorage.clear();
     history.replaceState(null, "", "/w/mindstella-x-1/");
     // 実行
-    writePrefs({ diffSel: "V-1" });
+    writePrefs({ minimap: false });
     // 検証
-    expect(JSON.parse(localStorage.getItem(`${PREFS_KEY}:mindstella-x-1`) as string)).toEqual({ diffSel: "V-1" });
+    expect(JSON.parse(localStorage.getItem(`${PREFS_KEY}:mindstella-x-1`) as string)).toEqual({ minimap: false });
     expect(localStorage.getItem(PREFS_KEY)).toBeNull();
   });
 
