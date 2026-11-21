@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 絞り込みの条件と変更履歴で選んだ時点の保持先
+    decision: URL とブラウザのタブの保存領域（sessionStorage）に持ち、端末の保存領域（localStorage）には残さない。残った条件と選んだ時点は参照せずに削除する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 7a4b37ff62feacb9a9f080d00619b1555cd4ed7f
+    thread: https://github.com/shuhei1101/mindstella/pull/649#discussion_r4650973281
