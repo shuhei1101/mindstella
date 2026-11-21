@@ -1,10 +1,10 @@
-// React のプレビューの部品のストーリー（@storybook/react-vite）。今の画面の .storybook/ とは別に動かす
+// React のプレビューの部品のストーリー（@storybook/react-vite）
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import type { StorybookConfig } from "@storybook/react-vite";
 
-import { MDMARK_REF_META, resolveMdmarkRef } from "../.storybook/mdmark-ref.js";
+import { MDMARK_REF_META, resolveMdmarkRef } from "./mdmark-ref.js";
 
 // SPA の HTML（文字の読み込みを 1 か所に保つため、ここから取り出す）
 const INDEX_HTML = fileURLToPath(new URL("../frontend/index.html", import.meta.url));

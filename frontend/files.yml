@@ -1312,6 +1312,15 @@ files:
   related:
   - to: MOD-644-1
     type: tests
+- path: src/shared/core/embedded.ts
+  name: 配る書き出しの埋め込みの記録
+  description: 配る書き出しの 1 枚の HTML が持つ埋め込みの記録を読み、API の応答の代わりに返す。配る書き出しで開いたときの振る舞いを変更するときに読む。
+  tags:
+  - tool:react
+  - topic:書き出し
+  related:
+  - to: MOD-644-1
+    type: implements
 - path: src/shared/core/filters.test.ts
   name: import { describe, expect, test } from vitest;
   description: import { describe, expect, test } from vitest;。
