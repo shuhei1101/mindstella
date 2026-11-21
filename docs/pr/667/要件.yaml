@@ -44,19 +44,27 @@ docs:
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
     change: '#488: タイトル直下の 1 行を docs/guide/index.yaml の summary と同じ文言にする'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: docs/guide/コアコンセプト-話し合いの進め方.md
     new: false
     change: '#488: 同上'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: docs/guide/話し合い-セットアップから始める.md
     new: false
     change: '#488: 同上'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: docs/guide/話し合い-続きを再開する.md
     new: false
     change: '#488: 同上'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: '#488: 同上。#347・#147 で変わる差分・印刷・項目の ID のツールチップの操作の記載も合わせる'
@@ -64,34 +72,50 @@ docs:
   - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
     new: false
     change: '#488: タイトル直下の 1 行を docs/guide/index.yaml の summary と同じ文言にする'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: docs/guide/セットアップ手順-スクリプトの依存を入れる.md
     new: false
     change: '#488: 同上'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: docs/guide/エージェントフロー.md
     new: false
     change: '#488: 同上'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: docs/guide/コマンド.mark.md
     new: false
     change: '#488: 同上'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: '#488: 同上'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: plugins/mindstella/files.yml
     new: false
     change: '#636: v0.14.0 の変換のスクリプト markdown_bodies_to_mark_md.py・move_bodies_to_root.py の行（name・description・tags・related の implements）を追加する'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: docs/mock/components/topbar/frame.html
     new: false
     change: '#634: components/topbar.js を読み込むモック 15 件（このファイルと docs/mock/pages/*/325/*/index.html の 14 件）を、要件.mark.md の未確定で決まった案で修正する（推奨は削除。削除する場合は docs/mock/ の目次と files.yml の行も削除する）'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
   - page: docs/mock/components/body-diff-layout/index.html
     change: '#347: 削除した部品『本文の差分の並べ方の切り替え』の部品のモックを削除し、docs/mock/components/index.md と files.yml の行も削除する'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
 scope_out:
   - item: '#548: 図を持たない本文を開いたときも mermaid を読み始める点'
     reason: '#548 の受付の判断で、本文の問題（初期化が mermaid を待つ）に含まれないとして扱わないと決めた'

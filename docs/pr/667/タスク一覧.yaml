@@ -82,8 +82,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-21T14:21:35.786526+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: '#488（docs/guide/ のページのタイトル直下の 1 行）と #636（plugins/mindstella/files.yml の v0.14.0 の変換のスクリプト 2 本の行）'
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:46.638518+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
