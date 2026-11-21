@@ -18,6 +18,9 @@ STATES = (
     "shared-filterdrawer--text-conditions",
     "shared-filterdrawer--tag-match-all",
     "shared-filterdrawer--tag-match-any",
+    "shared-filterdrawer--presets",
+    "shared-filterdrawer--preset-applied",
+    "shared-filterdrawer--tag-detail",
 )
 
 # ドロワーの幅（px）。コメントの一覧と同じ
@@ -153,3 +156,37 @@ def test_tag_match(open_story: OpenStory, state: str, checked: str) -> None:
     expect(group.get_by_role("radio", name="すべて含む")).to_be_attached()
     expect(group.get_by_role("radio", name="どれかを含む")).to_be_attached()
     expect(group.locator(f"input[data-tag-match='{checked}']")).to_be_checked()
+
+
+def test_presets(open_story: OpenStory) -> None:
+    """値の条件より上にプリセットを件数つきで並べ、0 件のプリセットにも「0 件」を出して選択できるまま残す（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-filterdrawer--presets").get_by_role("dialog", name="絞り込み")
+    # 検証
+    expect(dialog.locator("legend").first).to_have_text("プリセット")
+    expect(dialog.get_by_role("button", name="画面の設計 2 件")).to_have_attribute("aria-pressed", "false")
+    empty = dialog.get_by_role("button", name="通知 0 件")
+    expect(empty).to_be_enabled()
+    expect(empty).to_have_attribute("aria-pressed", "false")
+
+
+def test_preset_applied(open_story: OpenStory) -> None:
+    """今のタグの条件と同じプリセットを選択済みの見た目にする（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-filterdrawer--preset-applied").get_by_role("dialog", name="絞り込み")
+    # 検証
+    expect(dialog.get_by_role("button", name="廃止する画面 1 件")).to_have_attribute("aria-pressed", "true")
+    expect(dialog.get_by_role("button", name="画面の設計 2 件")).to_have_attribute("aria-pressed", "false")
+
+
+def test_tag_detail(open_story: OpenStory) -> None:
+    """簡易で表せない式は詳細の表示にし、簡易を選択できなくし、タグのチェックボックスと組み合わせ方の切り替えを出さない（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-filterdrawer--tag-detail").get_by_role("dialog", name="絞り込み")
+    # 検証
+    expect(dialog.get_by_role("radio", name="詳細")).to_be_checked()
+    expect(dialog.get_by_role("radio", name="簡易")).to_be_disabled()
+    assert dialog.get_by_role("checkbox", name="プレビュー").count() == 0
+    assert dialog.get_by_role("radio", name="すべて含む").count() == 0
+    expect(dialog.get_by_role("combobox", name="条件の組み合わせ")).to_have_value("and")
+

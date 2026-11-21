@@ -11,6 +11,7 @@ from .storybook_react_fixture_types import OpenStory
 STATES = (
     "shared-filterchips--tag-match-all",
     "shared-filterchips--tag-match-any",
+    "shared-filterchips--tag-expr",
 )
 
 
@@ -43,3 +44,14 @@ def test_tag_match_any(open_story: OpenStory) -> None:
     expect(page.get_by_text("タグ（どれかを含む）: 保存", exact=True)).to_be_visible()
     expect(page.get_by_role("button", name="タグ（どれかを含む）: 画面 の条件を解除")).to_be_visible()
     expect(page.get_by_text("状態: 未着手", exact=True)).to_be_visible()
+
+
+def test_tag_expr(open_story: OpenStory) -> None:
+    """簡易で表せないタグの条件は、先頭に式を文にしたチップを出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-filterchips--tag-expr")
+    # 検証
+    chips = page.get_by_role("button", name="の条件を解除")
+    expect(chips.first).to_have_accessible_name("タグ: 「画面」を含む かつ 「廃止」を含まない の条件を解除")
+    expect(page.get_by_text("状態: 未着手", exact=True)).to_be_visible()
+
