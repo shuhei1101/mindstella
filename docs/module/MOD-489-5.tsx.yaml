@@ -6,7 +6,7 @@ components:
     title: コメントの一覧
     kind: 画面
     usecase: スレッドで話す
-    summary: 画面設計『コメントの一覧.tsx』の要素と操作を描く。search の `thread`・`review` でスレッド・レビュー中の書き込みの画面に切り替え、`tstatus`・`ttag`・`ttarget` で絞る。`ttarget` のときは向けた項目がその項目のスレッドとその項目へのまだ送信していない新規スレッドだけを並べ、項目の絞り込みのチップ（× で `ttarget` を外し履歴に積まない）を出す。絞り込みと件数は `visibleThreads`・`threadCounts`・`pendingThreads`（`MOD-489-104`）に `target` を渡して求め、タグのチップの分母（`tag` を `null` にした `visibleThreads`）にも同じ `target` を渡す。新規スレッドの入力で溜めたら、`SendForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら「レビューに追加」へ、`input` なら入力欄へフォーカスを移す
+    summary: '画面設計『コメントの一覧.tsx』の要素と操作を描く。パネルとグレーアウトは `position: fixed` で、上端を CSS 変数 `--topbar-height`（無ければ 0）、下端を画面の下端にする（幅によらず同じ）。search の `thread`・`review` でスレッド・レビュー中の書き込みの画面に切り替え、`tstatus`・`ttag`・`ttarget` で絞る。`ttarget` のときは向けた項目がその項目のスレッドとその項目へのまだ送信していない新規スレッドだけを並べ、項目の絞り込みのチップ（× で `ttarget` を外し履歴に積まない）を出す。絞り込みと件数は `visibleThreads`・`threadCounts`・`pendingThreads`（`MOD-489-104`）に `target` を渡して求め、タグのチップの分母（`tag` を `null` にした `visibleThreads`）にも同じ `target` を渡す。新規スレッドの入力で溜めたら、`SendForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら「レビューに追加」へ、`input` なら入力欄へフォーカスを移す'
     refs:
       - SCR-489-2#
     unit_tests:
