@@ -90,7 +90,7 @@ files:
     type: implements
 - path: src/app/font-candidates.stories.tsx
   name: 文字のトークンの書体の候補のストーリー
-  description: 候補ごとに Google Fonts を参照し、見本の文と概要の画面を描いて書体を見比べる。文字のトークンの書体を選び直すときに読む。
+  description: 候補ごとに Google Fonts を参照し、見本の文と決定事項の画面（ボード・表）を描いて書体を見比べる。文字のトークンの書体を選び直すときに読む。
   tags:
   - tool:react
   - tool:storybook
