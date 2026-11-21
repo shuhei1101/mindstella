@@ -99,15 +99,16 @@ export const ItemCard = ({ index, item, meta, links, selected, marks, comments, 
   return (
     // カードの中にタグのボタンを置くため、外枠は div にし、タイトルのボタンの ::after をカード全体へ広げる
     <div data-card={item.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-2 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && "border-mark-line bg-row-selected", pending === "remove" && "opacity-60")}>
-      <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} className={cn("cursor-pointer text-left text-small font-medium outline-none after:absolute after:inset-0 after:rounded-card", pick !== undefined && "pr-6")} onClick={() => { onOpen(item.id); }}>
+      <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} className={cn("cursor-pointer text-left text-small font-medium outline-none after:absolute after:inset-0 after:rounded-card", pick !== undefined && "pr-7")} onClick={() => { onOpen(item.id); }}>
         {item.title}
       </button>
       {pick === undefined ? null : (
+        // カード全体を覆うタイトルのボタンと重なるため、チェックボックスの押せる範囲を 24px 四方にする
         <Checkbox
           aria-label={pick.label}
           checked={pick.checked}
           disabled={pick.disabled}
-          className="absolute top-2 right-2 z-10 cursor-pointer disabled:cursor-default"
+          className="absolute top-1 right-1 z-10 size-6 cursor-pointer disabled:cursor-default"
           onChange={(event) => {
             pick.onChange(event.target.checked);
           }}
