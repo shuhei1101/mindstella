@@ -202,6 +202,17 @@ def test_full_label(page: Page, spa_preview: str) -> None:
     expect(_panel(page).get_by_role("button", name="全画面表示")).to_be_visible()
 
 
+def test_full_hidden_when_narrow(page: Page, spa_preview: str) -> None:
+    """幅 768px 未満では、全画面表示のボタンを出さない（正常系）。"""
+    # 準備
+    page.set_viewport_size({"width": 390, "height": 844})
+    # 実行
+    open_spa(page, spa_preview, "?tab=decisions&id=D-1")
+    # 検証
+    expect(_panel(page).get_by_role("button", name="詳細を閉じる")).to_be_visible()
+    expect(_panel(page).get_by_role("button", name="全画面表示")).to_be_hidden()
+
+
 def test_options_visible(page: Page, spa_preview: str) -> None:
     """案の節は案を持つ検討事項にだけ出す（正常系）。"""
     # 準備
@@ -704,6 +715,22 @@ def test_id_link_visible(page: Page, write_preview: WritePreview, make_item: Mak
     assert panel.locator(".md a.idref").evaluate_all("links => links.map((a) => a.dataset.id)") == ["D-3"]
 
 
+def test_id_link_tooltip_action(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """項目の ID のリンクに乗せると、その項目のタイトルと ID、種類を持つツールチップを出し、リンクの `aria-describedby` で指す（正常系）。"""
+    # 準備
+    panel = _linked(page, write_preview, make_item)
+    link = panel.locator(".md a.idref").first
+    tip = page.locator("[popover]:popover-open")
+    # 実行
+    link.hover()
+    # 検証
+    expect(tip).to_have_attribute("role", "tooltip")
+    expect(tip.locator(".tt-head")).to_contain_text("D-3")
+    expect(tip.locator(".tt-meta")).to_contain_text("検討事項")
+    expect(link).to_have_attribute("aria-describedby", "term-tip")
+    assert link.get_attribute("title") is None
+
+
 def test_lead_visible(page: Page, write_sample_preview: WriteSamplePreview) -> None:
     """背景は `lead` を持つ検討事項にだけ出す（正常系）。"""
     # 準備
@@ -958,28 +985,31 @@ def test_minimap_visible(page: Page, write_minimap_preview: WriteReviewPreview) 
     expect(panel.get_by_role("toolbar", name="変わった箇所")).to_be_visible()
 
 
-def test_layout_switch_visible(page: Page, write_body_layout_preview: WriteReviewPreview) -> None:
-    """差分の表示の間で本文が変わったときは、本文の差分の並べ方の切り替えを出し、差分の表示でないときは出さない（正常系）。"""
+def test_body_diff_view_switch_visible(page: Page, write_body_layout_preview: WriteReviewPreview) -> None:
+    """差分の表示の間で Markdown の本文が変わったときは、本文の差分の見せ方の切り替えを「描いた結果」で出し、差分の表示でないときは出さない（正常系）。"""
     # 準備
     url, _ = write_body_layout_preview()
     open_spa(page, url, "?tab=docs&id=A-1")
-    expect(_panel(page).get_by_role("group", name="本文の差分の並べ方")).to_have_count(0)
+    expect(_panel(page).get_by_role("group", name="本文の差分の見せ方")).to_have_count(0)
     # 実行
     panel = _diff(page, url, "V-2", item="A-1", tab="docs")
     # 検証
-    expect(panel.get_by_role("group", name="本文の差分の並べ方")).to_be_visible()
+    group = panel.get_by_role("group", name="本文の差分の見せ方")
+    expect(group).to_be_visible()
+    expect(group.get_by_role("button", name="描いた結果")).to_have_attribute("aria-pressed", "true")
+    expect(panel.locator('.md .mdmark-diff-block[data-kind="del"]').first).to_be_attached()
 
 
-def test_side_by_side_visible(page: Page, write_body_layout_preview: WriteReviewPreview) -> None:
-    """並べ方を「左右に並べる」にすると、左に選んだ時点・右に今の本文を並べる（正常系）。"""
+def test_body_diff_source_action(page: Page, write_body_layout_preview: WriteReviewPreview) -> None:
+    """「原文の差分」を押すと、mdmark の行の差分を開き、差分のミニマップを出さない（正常系）。"""
     # 準備
     url, _ = write_body_layout_preview()
     panel = _diff(page, url, "V-2", item="A-1", tab="docs")
     # 実行
-    panel.get_by_role("button", name="左右に並べる").click()
+    panel.get_by_role("button", name="原文の差分").click()
     # 検証
-    expect(panel.get_by_role("region", name="選んだ時点の本文")).to_be_visible()
-    expect(panel.get_by_role("region", name="今の本文")).to_be_visible()
+    expect(panel.locator(".mdmark-diff-line").first).to_be_visible()
+    expect(panel.get_by_role("toolbar", name="変わった箇所")).to_have_count(0)
 
 
 def test_edit_label(page: Page, spa_preview: str) -> None:
