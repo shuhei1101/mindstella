@@ -6,7 +6,7 @@ components:
     title: 資料のカード
     kind: コンポーネント
     usecase: 資料を読む
-    summary: 資料を連番の順にカードで並べる
+    summary: 資料を連番の順にカードで並べる。カードの外枠は `div[data-card]`、タイトルは `button[data-id]` でその `::after` をカード全体へ広げ、タグは部品『タグの並び』を `onSelect`（`onSelectTag`）つきで前面に並べる。カードの並びのスクロール領域に `useListScroll` の ref を付ける
     container: frontend/src/features/docs/docs/components/doc-cards.tsx
 notes:
   単体テスト: 同じフォルダの `doc-cards.test.tsx` に置く（knowledge の規約『フォルダ構成』）

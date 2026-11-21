@@ -6,7 +6,7 @@ functions:
     title: 一覧の行の絞り込み
     kind: 関数
     usecase: 項目を表で絞り込む
-    summary: 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て
+    summary: 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て。タグの列は `tagMatch` が `all` のとき選んだタグを全て持つ行、`any` のときどれかを持つ行を残し、ドロワーのタグの件数も同じ組み合わせ方で数える
     args: []
     returns:
       type: unknown
