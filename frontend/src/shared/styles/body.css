@@ -247,6 +247,7 @@ text.df-t-chg { font-weight: 700 !important; }
 .term-tip .tt-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-weight: 700; }
 .term-tip .tt-head .mono { color: var(--subtle-foreground); font-weight: 400; font-size: var(--fs-xs); }
 .term-tip .tt-body { display: block; color: var(--muted-foreground); }
+.term-tip .tt-meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .term-tip { box-sizing: border-box; max-height: min(360px, calc(100vh - 16px)); overflow-y: auto; overscroll-behavior: contain; }
 .term-tip.is-multi { width: min(380px, calc(100vw - 16px)); max-width: none; padding: 0; }
 .term-tip .tt-group { padding: 8px 10px 4px; }

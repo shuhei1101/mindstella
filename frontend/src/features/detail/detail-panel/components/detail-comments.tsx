@@ -12,7 +12,7 @@ import { Button } from "@/shared/components/ui/button";
 import { AppError } from "@/shared/core/app-error";
 import { selectionLocation } from "@/shared/core/body-links";
 import { commentNumber, reviewLabel, type Draft, type ReviewItem } from "@/shared/core/comments";
-import { locationLabel, type Location } from "@/shared/core/records";
+import { locationLabel, type Location, type RecordIndex } from "@/shared/core/records";
 import { commentsQuery } from "@/shared/hooks/preview-queries";
 import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from "@/shared/hooks/use-comments";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
@@ -32,6 +32,8 @@ export type DetailReviewCommentsProps = {
   /** 本文の中の項目の ID・まとまりの説明 */
   titles: (id: string) => string | null;
   changeSets: (id: string) => string | null;
+  /** 記録の索引（本文の項目の ID のツールチップ） */
+  index: RecordIndex;
   onOpenItem: (id: string) => void;
   onOpenChangeSet: (id: string) => void;
 };
@@ -194,7 +196,7 @@ export const DetailComments = ({ id, scroller }: DetailCommentsProps) => {
   );
 };
 
-export const DetailReviewComments = ({ id, titles, changeSets, onOpenItem, onOpenChangeSet }: DetailReviewCommentsProps) => {
+export const DetailReviewComments = ({ id, titles, changeSets, index, onOpenItem, onOpenChangeSet }: DetailReviewCommentsProps) => {
   const comments = useQuery(commentsQuery());
   const body = comments.data?.status === 200 ? (comments.data.data as { items?: ReviewItem[] }) : undefined;
   const items = (body?.items ?? NO_ITEMS).filter((item) => item.target === id && item.thread === null);
@@ -311,7 +313,7 @@ export const DetailReviewComments = ({ id, titles, changeSets, onOpenItem, onOpe
                       }}
                     />
                   ) : (
-                    <ReviewBodyFold id={item.id} label={label} body={item.body} titles={titles} changeSets={changeSets} focus="detail-" open={opened[item.id] ?? false} onToggle={(target, open) => { setOpened((current) => ({ ...current, [target]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
+                    <ReviewBodyFold id={item.id} label={label} body={item.body} titles={titles} index={index} changeSets={changeSets} focus="detail-" open={opened[item.id] ?? false} onToggle={(target, open) => { setOpened((current) => ({ ...current, [target]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
                       {(content, toggle) => (
                         <>
                           {content}

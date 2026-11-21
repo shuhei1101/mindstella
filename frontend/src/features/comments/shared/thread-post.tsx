@@ -9,6 +9,7 @@ import { Button } from "@/shared/components/ui/button";
 import { reviewLabel, type ReviewItem, type ThreadEvent, type ThreadPostData } from "@/shared/core/comments";
 import { formatJst } from "@/shared/core/format";
 import type { LookupTitle } from "@/shared/core/post-links";
+import type { RecordIndex } from "@/shared/core/records";
 import type { VoiceStatus } from "@/shared/hooks/use-voice-input";
 import { cn } from "@/shared/lib/cn";
 
@@ -18,6 +19,8 @@ export type ThreadPostProps = Pick<VoiceProps, "voice" | "voiceReason" | "elapse
   pending?: ReviewItem | null;
   titles?: LookupTitle;
   changeSets?: LookupTitle;
+  /** 記録の索引（本文の項目の ID のツールチップ） */
+  index?: RecordIndex | null;
   editing?: boolean;
   editError?: string | null;
   editBody?: string | null;
@@ -63,6 +66,7 @@ export const ThreadPost = ({
   pending = null,
   titles,
   changeSets,
+  index = null,
   editing = false,
   editError = null,
   editBody = null,
@@ -127,7 +131,7 @@ export const ThreadPost = ({
             onVoiceBlocked={onEditVoiceBlocked}
           />
         ) : (
-          <ReviewBodyFold id={pending.id} label={label} body={pending.body} titles={titles} changeSets={changeSets} open={open} onToggle={onToggle} onOpenChangeSet={onOpenChangeSet} onOpenItem={onOpenItem}>
+          <ReviewBodyFold id={pending.id} label={label} body={pending.body} titles={titles} index={index} changeSets={changeSets} open={open} onToggle={onToggle} onOpenChangeSet={onOpenChangeSet} onOpenItem={onOpenItem}>
             {(content, toggle) => (
               <>
                 {content}
@@ -152,7 +156,7 @@ export const ThreadPost = ({
           {formatJst(post.created)}
         </time>
       </div>
-      <PostBody body={post.body} titles={titles} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
+      <PostBody body={post.body} titles={titles} index={index} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
     </article>
   );
 };

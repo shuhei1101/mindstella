@@ -79,7 +79,7 @@ const OutcomeText = ({ outcome }: { outcome: SendOutcome }) => {
 };
 
 export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, onOpenChangeSet }: ReviewViewProps) => {
-  const { items, threads, titles, changeSets } = data;
+  const { items, threads, titles, changeSets, index } = data;
   const sorted = [...items].sort((a, b) => commentNumber(a.id) - commentNumber(b.id));
   const sendable = sorted.filter((item) => !isBlockedReply({ item, threads }));
   // チェックを外した書き込み（開いたときと新しく溜めた書き込みはチェックした状態で入る）
@@ -292,7 +292,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       }}
                     />
                   ) : (
-                    <ReviewBodyFold id={item.id} label={label} body={item.body} changeSets={changeSets} open={opened[item.id] ?? false} onToggle={(id, open) => { setOpened((current) => ({ ...current, [id]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
+                    <ReviewBodyFold id={item.id} label={label} body={item.body} titles={titles} index={index} changeSets={changeSets} open={opened[item.id] ?? false} onToggle={(id, open) => { setOpened((current) => ({ ...current, [id]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
                       {(content, toggleButton) => (
                         <>
                           {content}

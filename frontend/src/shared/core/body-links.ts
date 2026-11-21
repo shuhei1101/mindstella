@@ -716,6 +716,7 @@ export const linkBody = ({
         class: "idref",
         href: hashWith({ id, heading: null }),
         "data-id": id,
+        "aria-describedby": TERM_TIP_ID,
         onclick: (event: Event) => {
           event.preventDefault();
           onOpen(id);

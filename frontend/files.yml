@@ -294,6 +294,14 @@ files:
   related:
   - to: MOD-489-101
     type: implements
+- path: src/shared/core/status-marks.ts
+  name: 状態のマーカーの形状
+  description: 状態ごとのマーカーの SVG の中身と、React の外で組む本文のツールチップに置く SVG の要素を返す関数。状態のマーカーの形状を変えるときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-170
+    type: implements
 - path: src/shared/lib/cn.test.ts
   name: クラス名の結合の単体テスト
   description: クラス名の結合の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
@@ -1614,11 +1622,6 @@ files:
   related:
   - to: MOD-489-59
     type: implements
-- path: src/shared/components/item-id-tip.stories.tsx
-  name: 項目の ID のツールチップのモックのストーリー
-  description: 本文の項目の ID のリンクに出すツールチップ（タイトルと ID、種類と状態）のモックのストーリー。項目の ID のツールチップの外観を確認・変更するときに読む。
-  tags:
-  - tool:react
 - path: src/shared/components/term-tip.stories.tsx
   name: 本文のマーカーのツールチップのストーリー
   description: 本文のマーカーのツールチップのストーリー。
