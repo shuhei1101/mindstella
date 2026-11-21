@@ -16,6 +16,4 @@ A-2 は V-6 で本文が変わっておらず、A-17 は前の版を組み立て
 | [detail-full](../../pages/detail-full/261/index.md) | 詳細の全画面の同じ切り替えと、左右に並べた本文 |
 | [settings-panel](../../pages/settings-panel/261/index.md) | 「この端末で変えている項目」の「本文の差分の並べ方」と「既定に戻す」 |
 
-| 部品 | 中身 |
-| --- | --- |
-| [body-diff-layout](../../components/body-diff-layout/index.html) | 本文の差分の並べ方（切り替えの選んでいる状態・ホバーとフォーカス・HTML の本文での並び・左右に並べた本文・消した箇条書きの項目・原文の差分を左右に並べる・本文の幅が足りないとき） |
+部品のモック（body-diff-layout）は、本文の差分を左右に並べる表示を使わなくなったため、#667 で削除した。
