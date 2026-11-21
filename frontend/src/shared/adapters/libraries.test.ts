@@ -28,8 +28,14 @@ describe("loadLibrary", () => {
   // 1 度だけ読む（正常系）
   test("load_library", async () => {
     // 準備
-    vi.stubGlobal("marked", {});
-    const append = fireOn(true);
+    // script が読めたときにグローバルが置かれる
+    const append = vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
+      queueMicrotask(() => {
+        vi.stubGlobal("marked", {});
+        node.dispatchEvent(new Event("load"));
+      });
+      return node;
+    });
     // 実行
     await loadLibrary("marked");
     await loadLibrary("marked");
