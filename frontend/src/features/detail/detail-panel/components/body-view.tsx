@@ -1,12 +1,12 @@
 // 本文の節。mdmark が描いた本文に見出しのリンク・本文のマーカー・図を当て、差分の表示の間は mdmark の差分と図の差分で描く（React の外の DOM を `useEffect` の中で組む）
 import { useCallback } from "react";
 
-import { useLibrary } from "@/shared/adapters/libraries";
+import { getLibrary, useLibrary } from "@/shared/adapters/libraries";
 import { BodyDiffViewSwitch, type BodyDiffView } from "@/shared/components/body-diff-view-switch";
 import { DomHost } from "@/shared/components/dom-host";
 import { DIAGRAM_SOURCE_ATTR, libraryNotice, linkBody, linkHeadings, renderDiagrams, renderMarkdown } from "@/shared/core/body-links";
 import { BEFORE_SOURCE_ATTR, decorateDiagrams, drawHtmlBlocks, headingShift, HTML_BODY_ATTR, lowerHeadings, noteBox, replaceChangedRanges, withoutLineMarks } from "@/shared/core/body-render";
-import type { VersionPair } from "@/shared/core/diff";
+import { diffLineParts, type JsDiff, type VersionPair } from "@/shared/core/diff";
 import { h } from "@/shared/core/dom-parts";
 import { htmlBodyDiff } from "@/shared/core/html-body-diff";
 import { htmlFrameElement } from "@/shared/core/html-frame";
@@ -72,10 +72,13 @@ export const BodyView = ({ label, item, id, index, source, versions, view, viewN
       return { node: wrapper };
     }
     // 選んだ時点から変わった本文は、「描いた結果」を比較元の Markdown の色分け、「原文の差分」を取り出し元の行の差分で描く
-    const options = base === null ? {} : view === "source" ? { diffSource: { docId: item.id, before: base, after: source } } : { base };
+    // 行の差分を計算しきれない書き換えは、差分を出さずに今の本文を描く
+    const tooLarge = base !== null && jsdiff === "ready" && diffLineParts(base, source, getLibrary("jsdiff") as JsDiff) === null;
+    if (tooLarge) notes.push(noteBox(NOTE_BODY_TOO_LARGE));
+    const options = base === null || tooLarge ? {} : view === "source" ? { diffSource: { docId: item.id, before: base, after: source } } : { base };
     const root = renderMarkdown(source, options);
     lowerHeadings({ root, shift: headingShift({ roots: [root] }) });
-    if (base !== null && view === "rendered" && jsdiff === "ready") replaceChangedRanges({ root, before: base, after: source });
+    if (base !== null && !tooLarge && view === "rendered" && jsdiff === "ready") replaceChangedRanges({ root, before: base, after: source });
     if (source !== current) withoutLineMarks(root);
     const link = (target: HTMLElement, text: string): void => {
       linkHeadings({
@@ -94,7 +97,7 @@ export const BodyView = ({ label, item, id, index, source, versions, view, viewN
     decorateMarkdown({ root, display, fold: !changed });
     attachTermTips({ root, index, onOpen });
     const drawn = renderDiagrams(root);
-    if (base !== null && view === "rendered" && jsdiff === "ready") void drawn.then(() => { decorateDiagrams({ root, before: base }); });
+    if (base !== null && !tooLarge && view === "rendered" && jsdiff === "ready") void drawn.then(() => { decorateDiagrams({ root, before: base }); });
     const onDiagramTool = (event: Event): void => {
       const button = (event.target as Element).closest<HTMLElement>("[data-act]");
       const figure = button?.closest<HTMLElement>(".diagram");
