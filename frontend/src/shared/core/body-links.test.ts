@@ -13,12 +13,13 @@ const CODE_BLOCK_HTML = [
   '<div class="mdmark-map"><pre><code class="language-mermaid">flowchart TB</code></pre></div>',
 ].join("");
 // mdmark の `mount` が投げる例外（null なら投げずに描く）
-const mount = vi.hoisted(() => ({ error: null as Error | null }));
+const mount = vi.hoisted(() => ({ error: null as Error | null, options: [] as Record<string, unknown>[] }));
 vi.mock("@/shared/adapters/libraries", () => ({
   libraryState: () => "ready",
   mdmarkMapConfig: () => undefined,
   getLibrary: () => ({
-    mount: (root: HTMLElement) => {
+    mount: (root: HTMLElement, options: Record<string, unknown>) => {
+      mount.options.push(options);
       if (mount.error !== null) throw mount.error;
       root.innerHTML = CODE_BLOCK_HTML;
     },
@@ -88,6 +89,39 @@ describe("renderMarkdown", () => {
     // 検証
     expect(root.textContent).toContain("mdmark");
     expect(root.querySelector("pre.md-raw")?.textContent).toBe("# 見出し\n\n<!-- map -->");
+  });
+
+  // 比較元の Markdown を渡す（正常系）
+  test("render_markdown_when_base", () => {
+    // 準備
+    mount.options.length = 0;
+    // 実行
+    renderMarkdown("今の段落", { base: "前の段落" });
+    // 検証
+    const options = mount.options.at(-1) as { baseMarkdown?: string; config: { features: Record<string, boolean> } };
+    expect(options.baseMarkdown).toBe("前の段落");
+    expect(options.config.features["print"]).toBe(true);
+  });
+
+  // 取り出し元を渡す（正常系）
+  test("render_markdown_when_diff_source", async () => {
+    // 準備
+    mount.options.length = 0;
+    // 実行
+    renderMarkdown("今の段落", { diffSource: { docId: "D-1", before: "前の段落", after: "今の段落" } });
+    // 検証
+    type Revision = { id: string };
+    const options = mount.options.at(-1) as {
+      docId?: string;
+      diffMode?: string;
+      diffSource: { revisions: (docId: string) => Promise<Revision[]>; content: (input: { docId: string; revisionId: string }) => Promise<string> };
+    };
+    expect(options.docId).toBe("D-1");
+    expect(options.diffMode).toBe("open");
+    const revisions = await options.diffSource.revisions("D-1");
+    expect(revisions).toHaveLength(2);
+    const contents = await Promise.all(revisions.map(({ id }) => options.diffSource.content({ docId: "D-1", revisionId: id })));
+    expect(contents.toSorted()).toEqual(["今の段落", "前の段落"].toSorted());
   });
 });
 
