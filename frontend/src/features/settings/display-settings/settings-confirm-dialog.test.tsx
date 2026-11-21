@@ -12,7 +12,7 @@ afterEach(() => {
 
 const openConfirm = async () => {
   localStorage.setItem("mindmap-preview", JSON.stringify({ kinds: ["decisions", "tasks"] }));
-  renderRoute("/spa/?panel=display");
+  renderRoute("/?panel=display");
   await userEvent.click(await screen.findByRole("button", { name: "ワークスペースの既定にする" }));
   return screen.findByRole("dialog", { name: /既定/ });
 };

@@ -18,7 +18,7 @@ from errors import WriteFailedError
 OLD_BODY = "古い中身"
 
 # プレビューを配っているときの URL
-SERVING_URL = "http://127.0.0.1:43817/mindstella.html"
+SERVING_URL = "http://127.0.0.1:43817/w/mindstella-x-1/"
 
 # コマンドの節の見出し・短い説明・bash のコードブロックの 3 つ組
 COMMAND_PATTERN = re.compile(r"\*\*(.+?):\*\*\n\n(.+?)\n\n```bash\n(.+?)\n```")
@@ -134,7 +134,7 @@ def test_write_readme_when_generated(tmp_path: Path) -> None:
     (tmp_path / "README.md").write_text(
         f"<!-- mindstella:readme -->\n{OLD_BODY}\n", encoding="utf-8"
     )
-    url = "http://127.0.0.1:1/mindstella.html"
+    url = "http://127.0.0.1:1/w/mindstella-x-1/"
     # 実行
     written = readme.write_readme(tmp_path, preview_url=url, plugin_dir=Path("/p"))
     # 検証

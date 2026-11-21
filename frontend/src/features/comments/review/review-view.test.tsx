@@ -33,7 +33,7 @@ describe("ReviewView", () => {
         return HttpResponse.json({ sent: "2026-11-01T00:02:00+00:00", items: [], entered: true }, { status: 201 });
       }),
     );
-    renderRoute("/spa/?panel=comments&review=1");
+    renderRoute("/?panel=comments&review=1");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: /まとめて送信（2 件）/ }));
     // 検証
@@ -53,7 +53,7 @@ describe("ReviewView", () => {
         ),
       ),
     );
-    renderRoute("/spa/?panel=comments&review=1");
+    renderRoute("/?panel=comments&review=1");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: /まとめて送信/ }));
     // 検証
@@ -78,7 +78,7 @@ describe("ReviewView の修正の音声入力", () => {
         return HttpResponse.json({ sent: "t", thread: "TH-1", post: "TH-1-1", entered: true }, { status: 201 });
       }),
     );
-    renderRoute("/spa/?panel=comments&review=1");
+    renderRoute("/?panel=comments&review=1");
     const [start] = await screen.findAllByRole("button", { name: "D-1 へのコメントを修正" });
     if (start === undefined) throw new Error("修正のボタンが無い");
     await userEvent.click(start);

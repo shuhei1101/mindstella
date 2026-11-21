@@ -21,7 +21,7 @@ OTHER_PLUGIN: dict[str, Any] = {"id": "other@market", "installPath": "/o/1.0.0"}
 MINDSTELLA_PLUGIN: dict[str, Any] = {"id": "mindstella@mindstella", "installPath": "/p/0.0.2"}
 
 # 画面の URL
-PREVIEW_URL = "http://127.0.0.1:9100/mindstella.html"
+PREVIEW_URL = "http://127.0.0.1:9100/w/mindstella-x-1/"
 
 # ワークスペースの作成の応答
 CREATED: dict[str, Any] = {

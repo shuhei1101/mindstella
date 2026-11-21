@@ -76,7 +76,7 @@ describe("resolveFileSources", () => {
   // 相対パスだけを配信のパスにする（正常系）
   test("resolve_file_sources", () => {
     // 準備
-    window.history.pushState({}, "", "/w/mindstella-x-1/spa/");
+    window.history.pushState({}, "", "/w/mindstella-x-1/");
     const root = document.createElement("div");
     root.innerHTML = [
       '<p><img id="a" src="../files/a.png"></p>',

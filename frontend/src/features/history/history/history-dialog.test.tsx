@@ -10,7 +10,7 @@ describe("HistoryScreen", () => {
   test("history_screen", async () => {
     // 準備
     stubRecords({ changes: { last_seq: 1, sets: [{ id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "1 回目", until_seq: 1, added: ["D-1"], changed: [] }], pending: { added: [], changed: [] } } });
-    renderRoute("/spa/?tab=decisions");
+    renderRoute("/?tab=decisions");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "変更履歴" }));
     await userEvent.click(await screen.findByRole("button", { name: /1 回目/ }));
@@ -22,7 +22,7 @@ describe("HistoryScreen", () => {
   test("history_screen_when_external_set", async () => {
     // 準備
     stubRecords({ changes: { last_seq: 1, sets: [{ id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "ほかのセッションの書き込み", until_seq: 1, added: [], changed: ["D-1"], by: "external" }], pending: { added: [], changed: [] } } });
-    renderRoute("/spa/?tab=decisions");
+    renderRoute("/?tab=decisions");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "変更履歴" }));
     // 検証

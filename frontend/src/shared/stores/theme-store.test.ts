@@ -17,7 +17,7 @@ describe("useThemeStore.setTheme", () => {
   // ワークスペースごとのキーに残す（正常系）
   test("set_theme_when_workspace_path", () => {
     // 準備
-    history.replaceState(null, "", "/w/mindstella-x-1/spa/");
+    history.replaceState(null, "", "/w/mindstella-x-1/");
     localStorage.setItem(PREFS_KEY, JSON.stringify({ theme: "light" }));
     // 実行
     useThemeStore.getState().setTheme("dark");

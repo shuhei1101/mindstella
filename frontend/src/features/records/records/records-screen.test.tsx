@@ -10,7 +10,7 @@ describe("RecordsScreen", () => {
     // 準備
     stubRecords({ terms: [{ id: "G-1", title: "用語の題", meaning: "意味" }] });
     // 実行
-    renderRoute("/spa/?tab=terms");
+    renderRoute("/?tab=terms");
     // 検証
     expect(await screen.findByRole("cell", { name: "用語の題" })).toBeInTheDocument();
   });

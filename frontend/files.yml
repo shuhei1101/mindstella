@@ -1302,6 +1302,16 @@ files:
   related:
   - to: MOD-489-109
     type: implements
+- path: src/shared/core/embedded.test.ts
+  name: 配る書き出しの埋め込みの記録の読み取りの単体テスト
+  description: embedded.ts（埋め込みの記録の読み取り・配る書き出しで開いているか・埋め込みからの応答）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-644-1
+    type: tests
 - path: src/shared/core/filters.test.ts
   name: import { describe, expect, test } from vitest;
   description: import { describe, expect, test } from vitest;。

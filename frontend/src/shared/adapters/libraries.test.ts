@@ -89,4 +89,36 @@ describe("loadLibrary (mdmark)", () => {
     expect(link.href).toBe(`${MDMARK_CDN}@v0.13.0/dist/index.css`);
     expect(link.getAttribute("integrity")).toBeNull();
   });
+
+  // 配る書き出しは HTML が中に持つ配布ファイルを読む（正常系）
+  test("load_library_when_embedded", async () => {
+    // 準備
+    const marked = { parse: () => "" };
+    vi.stubGlobal("marked", marked);
+    for (const [id, text] of [
+      ["mindmap-mdmark", "export const version = () => 'v';"],
+      ["mindmap-mdmark-map", "export const map = 1;"],
+    ]) {
+      const element = document.createElement("script");
+      element.type = "text/plain";
+      element.id = id as string;
+      element.textContent = text as string;
+      document.body.append(element);
+    }
+    // jsdom は Blob の URL を持たないため、URL を返すだけの実装を置く
+    Object.assign(URL, { createObjectURL: vi.fn(() => "blob:mdmark"), revokeObjectURL: vi.fn() });
+    const append = vi.spyOn(document.head, "appendChild");
+    const setPartModuleLoader = vi.fn();
+    const importModule = vi.fn().mockResolvedValue({ setPartModuleLoader });
+    setMdmarkImportForTest(importModule);
+    // 実行
+    const loadedMarked = await loadLibrary("marked");
+    await loadLibrary("mdmark");
+    // 検証
+    expect(loadedMarked).toBe(marked);
+    expect(append).not.toHaveBeenCalled();
+    expect(String(importModule.mock.calls[0]?.[0])).toMatch(/^blob:/);
+    expect(setPartModuleLoader).toHaveBeenCalledWith("map", expect.any(Function));
+    document.body.replaceChildren();
+  });
 });

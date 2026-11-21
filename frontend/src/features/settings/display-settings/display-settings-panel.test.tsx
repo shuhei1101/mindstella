@@ -15,7 +15,7 @@ describe("DisplaySettingsPanel", () => {
   // 種類を外す（正常系）
   test("display_settings_panel", async () => {
     // 準備
-    renderRoute("/spa/?panel=display");
+    renderRoute("/?panel=display");
     // 実行
     await userEvent.click(await screen.findByRole("checkbox", { name: /メモ/ }));
     // 検証
@@ -26,7 +26,7 @@ describe("DisplaySettingsPanel", () => {
   test("display_settings_panel_when_reset", async () => {
     // 準備
     localStorage.setItem(PREFS_KEY, JSON.stringify({ kinds: ["decisions"], theme: "dark", diffSel: "V-1" }));
-    renderRoute("/spa/?panel=display");
+    renderRoute("/?panel=display");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "既定に戻す" }));
     // 検証
@@ -38,7 +38,7 @@ describe("DisplaySettingsPanel", () => {
   // 「レビューに追加」の後のフォーカスを変えて自動に戻す（正常系）
   test("display_settings_panel_when_focus_after_add", async () => {
     // 準備
-    renderRoute("/spa/?panel=display");
+    renderRoute("/?panel=display");
     const group = await screen.findByRole("group", { name: "レビューに追加した後のフォーカス" });
     // 実行
     await userEvent.click(within(group).getByRole("radio", { name: "入力欄へ戻す" }));

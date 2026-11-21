@@ -54,7 +54,7 @@ describe("ThreadView", () => {
       }),
     );
     // 実行
-    renderRoute("/spa/?panel=comments&thread=TH-1");
+    renderRoute("/?panel=comments&thread=TH-1");
     // 検証
     await screen.findByText("どちらにしますか");
     await waitFor(() => expect(calls).toBe(1));
@@ -65,7 +65,7 @@ describe("ThreadView", () => {
     // 準備
     server.use(http.get("/api/threads", () => HttpResponse.json(unseen)), http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: ["TH-1-1"] })));
     // 実行
-    renderRoute("/spa/?panel=comments&thread=TH-1");
+    renderRoute("/?panel=comments&thread=TH-1");
     // 検証
     const post = await screen.findByText("どちらにしますか");
     const list = post.closest("ol");
@@ -84,7 +84,7 @@ describe("ThreadView", () => {
         return HttpResponse.json({ type: "about:blank", title: "Internal Server Error", status: 500, detail: "書けません" }, { status: 500, headers: { "Content-Type": "application/problem+json" } });
       }),
     );
-    renderRoute("/spa/?panel=comments&thread=TH-1");
+    renderRoute("/?panel=comments&thread=TH-1");
     await screen.findByText("どちらにしますか");
     await waitFor(() => expect(calls).toBe(1));
     // 実行
@@ -109,7 +109,7 @@ describe("ThreadView", () => {
         return HttpResponse.json({ id: "TH-1", status: "closed", changed: true });
       }),
     );
-    renderRoute("/spa/?panel=comments&thread=TH-1");
+    renderRoute("/?panel=comments&thread=TH-1");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "クローズにする" }));
     await userEvent.type(screen.getByRole("textbox", { name: "理由（任意）" }), "決まった");
@@ -136,7 +136,7 @@ describe("ThreadView", () => {
         return HttpResponse.json({ id: "TH-1", status: "closed", changed: true });
       }),
     );
-    renderRoute("/spa/?panel=comments&thread=TH-1");
+    renderRoute("/?panel=comments&thread=TH-1");
     await userEvent.click(await screen.findByRole("button", { name: "クローズにする" }));
     await userEvent.type(screen.getByRole("textbox", { name: "理由（任意）" }), "決まった");
     // 実行
@@ -167,7 +167,7 @@ describe("ThreadView", () => {
         return HttpResponse.json({ sent: "2026-11-09T00:00:00+00:00", thread: "TH-1", post: "TH-1-2", entered: true }, { status: 201 });
       }),
     );
-    renderRoute("/spa/?panel=comments&thread=TH-1");
+    renderRoute("/?panel=comments&thread=TH-1");
     await screen.findByText("どちらにしますか");
     const readsBefore = threadReads;
     // 実行
@@ -195,7 +195,7 @@ describe("ThreadView", () => {
         return HttpResponse.json({ id: "C-1", created: "2026-11-14T00:00:00+00:00", count: 1 }, { status: 201 });
       }),
     );
-    renderRoute("/spa/?panel=comments&thread=TH-1");
+    renderRoute("/?panel=comments&thread=TH-1");
     await screen.findByText("どちらにしますか");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "音声で入力" }));
@@ -218,7 +218,7 @@ describe("ThreadView", () => {
       http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: [] })),
       http.post("/api/comments", () => HttpResponse.json({ id: "C-1", created: "2026-11-01T00:00:00+00:00", count: 1 }, { status: 201 })),
     );
-    renderRoute("/spa/?panel=comments&thread=TH-1");
+    renderRoute("/?panel=comments&thread=TH-1");
     await screen.findByText("どちらにしますか");
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     // 実行（入力欄へ戻すかを確かめるときはボタンを押し、戻さないかを確かめるときは入力欄で Ctrl+Enter を押す）
@@ -249,7 +249,7 @@ describe("ThreadView の修正の音声入力", () => {
         return HttpResponse.json({ sent: "2026-11-09T00:00:00+00:00", thread: "TH-1", post: "TH-1-2", entered: true }, { status: 201 });
       }),
     );
-    renderRoute("/spa/?panel=comments&thread=TH-1");
+    renderRoute("/?panel=comments&thread=TH-1");
     await userEvent.click(await screen.findByRole("button", { name: "TH-1 への返信を修正" }));
     const edit = (await screen.findByRole("textbox", { name: "TH-1 への返信の本文" })).closest("form");
     if (edit === null) throw new Error("修正の入力が無い");

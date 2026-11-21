@@ -34,7 +34,7 @@ FLOW = {"source": "aituber", "doc": "flow-1"}
 MCP_CONFIG = {"mcpServers": {"aituber": {"command": "aituber-mcp"}}}
 
 # 配信の URL
-PREVIEW_URL = "http://127.0.0.1:9100/mindstella.html"
+PREVIEW_URL = "http://127.0.0.1:9100/w/mindstella-x-1/"
 
 
 class FakePreviews:
