@@ -1,0 +1,261 @@
+$ npx vitest run frontend/src/app/preview-shell.test.tsx frontend/src/features/detail/detail-panel
+
+# Red: fail の 3 件（preview_shell_when_topbar_height・detail_panel_when_comments・detail_comments_when_outside_scroller）は、--topbar-height の書き込みと入力欄を本文のスクロール領域の外へ出す実装が無いことによる
+# 実装の前から pass したテスト: detail_review_comments_when_remove・detail_review_comments_when_order は、削除・元に戻す・並びの切り替えの振る舞いが frontend/src/features/detail/detail-panel/components/detail-comments.tsx（099c6118 で追加）に既にあるため。この PR では一覧を DetailReviewComments へ移す回帰の確認になる
+
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/bug-frontend-comments-panel-below-topbar-and-detail-input-bottom
+
+stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_outside_scroller
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_comments
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx (7 tests | 1 failed) 1749ms
+   ❯ DetailPanel (7)
+     × detail_panel_when_comments 90ms
+ ❯ frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx (11 tests | 1 failed) 2859ms
+   ❯ DetailComments (8)
+     × detail_comments_when_outside_scroller 81ms
+ ❯ frontend/src/app/preview-shell.test.tsx (19 tests | 1 failed) 3859ms
+   ❯ PreviewShell (19)
+     × preview_shell_when_topbar_height 1051ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_topbar_height
+AssertionError: expected '' to be '52px' // Object.is equality
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+  style=""
+>
+  <head />
+  <body
+    style=""
+  >
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-label="すべての項目を検索"
+              class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+                <path
+                  d="m20 20-3.5-3.5"
+                />
+              </svg>
+              <span
+                class="max-lg:hidden"
+              >
+                すべての項目を検索
+              </span>
+              <kbd
+                class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+              >
+                Ctrl+K
+              </kbd>
+            </button>
+            <button
+              aria-haspopup="dialog"
+              aria-label="変更履歴"
+              class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                />
+                <path
+                  d="M3 3v5h5"
+                />
+                <path
+                  d="M12 7v5l3 2"
+                />
+              </svg>
+              <span
+                class="max-xl:hidden"
+              >
+                変更履歴
+              </span>
+            </button>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-expanded="false"
+              aria-label="表示の設定"
+              class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"
+              tabindex="0"
+              type="button"
+            >
+           ...
+
+- Expected
++ Received
+
+- 52px
+
+ ❯ frontend/src/app/preview-shell.test.tsx:137:48
+    135|     resize(52);
+    136|     // 検証
+    137|     await waitFor(() => expect(topbarHeight()).toBe("52px"));
+       |                                                ^
+    138|     // 実行
+    139|     resize(96);
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_comments
+Error: expect(element).not.toContainElement(element)
+
+<div
+  aria-label="詳細の本文"
+  class="panel-body"
+  role="region"
+  tabindex="0"
+/> contains: <textarea
+  aria-describedby="_r_a_-msg"
+  aria-keyshortcuts="Control+Enter"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_a_"
+  name="body"
+  rows="1"
+/>
+        
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx:95:26
+     93|     const input = await within(panel).findByRole("textbox", { name: /D…
+     94|     const scroller = within(panel).getByRole("region", { name: "詳細の本文"…
+     95|     expect(scroller).not.toContainElement(input);
+       |                          ^
+     96|     expect(scroller).toContainElement(within(panel).getByRole("heading…
+     97|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_outside_scroller
+Error: expect(element).not.toContainElement(element)
+
+<div
+  aria-label="詳細の本文"
+  class="panel-body"
+  role="region"
+  tabindex="0"
+/> contains: <textarea
+  aria-describedby="_r_6_-msg"
+  aria-keyshortcuts="Control+Enter"
+  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+  id="_r_6_"
+  name="body"
+  rows="1"
+/>
+        
+ ❯ frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx:81:70
+     79|     select(await within(panel).findByText("二行目"));
+     80|     // 検証
+     81|     expect(within(panel).getByRole("region", { name: "詳細の本文" })).not.t…
+       |                                                                      ^
+     82|     expect(await screen.findByRole("button", { name: "選んだ箇所にコメント" })).…
+     83|     // 実行（入力欄の中の文字を選ぶ）
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  3 failed | 2 passed (5)
+      Tests  3 failed | 38 passed (41)
+   Start at  20:01:05
+   Duration  6.69s (tests 44%, transform 26%, environment 17%, import 10%, setup 3%)
+
