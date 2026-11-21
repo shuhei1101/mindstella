@@ -1,0 +1,13 @@
+confirmations:
+  - topic: '#654 の「固定するのは入力欄だけ」の解釈'
+    decision: 入力欄だけを詳細パネル（詳細の全画面を含む）の 1 番下に固定し、レビュー中のコメントは本文の最後に置いて本文と一緒にスクロールさせる（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 47e7730d2371c3363549c111b1b40db887e8ecd5
+    thread: https://github.com/shuhei1101/mindstella/pull/661#discussion_r4652081235
+  - topic: 保存待ちのパネル・表示の設定のパネル・絞り込みのドロワーをこの PR に含めるか
+    decision: この PR で 3 つともトップバーの下に出るように修正する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 47e7730d2371c3363549c111b1b40db887e8ecd5
+    thread: https://github.com/shuhei1101/mindstella/pull/661#discussion_r4652081496
