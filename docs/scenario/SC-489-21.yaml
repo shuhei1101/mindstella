@@ -28,8 +28,8 @@ scenarios:
         participant PI as project-index
         participant WS as ワークスペース
 
-        CC->>SV: D-1 の採用する案を B に切り替える（誰が決めたかは利用者）
-        SV->>SV: 案 A を外し案 B を採用にして、誰が決めたかを利用者にしてスキーマと突き合わせる
+        CC->>SV: D-1 の採用する案を B に切り替える
+        SV->>SV: 案 A を外し案 B を採用にして、スキーマと突き合わせる
         SV->>WS: decisions.yaml に書く
         SV-->>CC: 切り替えた案
         CC->>PI: D-1 を参照している項目を、関連を逆向きにたどる
@@ -44,7 +44,6 @@ scenarios:
       - 影響の一覧の各項目に、D-1 からたどった経路（直接か、どの項目を経たか）がある
       - D-1 が変更履歴を 1 回分持ち、切り替える前の案の採否（案 A が採用）が入っている
       - D-1 の `updated_by` が `ai` で、その変更履歴の回が書き換えた人 `ai` を持つ
-      - D-1 の誰が決めたかが利用者である（利用者の回答で切り替えたため）
     test: test_normal
   - name: 異常シナリオ（存在しない案を指す）
     setup:
@@ -102,32 +101,6 @@ scenarios:
       - D-2 が決定済みで、案 A だけが採用である
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_undecided_adopted
-  - name: 正常シナリオ（AI が決めた細部の案を採用する）
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: make_workspace
-        description: 作成を済ませたワークスペース
-      - name: 検討事項 D-1
-        description: 案 A・B を持ち、A に推奨のマーカーを持つ未決定の細部の検討事項（再送の回数）
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant CC as MindStella のセッション
-        participant SV as MindStella の MCP
-        participant WS as ワークスペース
-
-        CC->>SV: D-1 の採用する案を A にする（誰が決めたかは AI）
-        SV->>SV: 案 A を採用にし、状態を決定済みにして、誰が決めたかを AI にしてスキーマと突き合わせる
-        SV->>WS: decisions.yaml に書く
-        SV-->>CC: 採用した案と、変えた状態と誰が決めたか
-      ```
-    expected:
-      - D-1 が決定済みで、案 A だけが採用である
-      - D-1 の誰が決めたかが AI である
-      - D-1 の変更履歴の回に、切り替える前の状態 `未決定` が入っている
-      - ワークスペースの全ての YAML がスキーマに合う
-    test: test_normal_when_ai_decides
 lead: MindStella のセッションが、利用者の回答で検討事項の採用する案を MindStella の MCP で切り替え、project-index で関連をたどって影響を受ける項目を洗い出す単一ユースケース。
 issue: 3
 primary_actor: MindStella のセッション
@@ -137,7 +110,7 @@ stakeholders:
 trigger: 利用者が、決めた検討事項の別の案を採ると言う
 preconditions:
   - ワークスペースに、案を 2 つ以上持つ検討事項がある
-success_guarantee: 採用する案がちょうど 1 つになり、その検討事項に直接・間接に依存する項目と、それを進めるタスクが洗い出される。採用した検討事項は決定済みになり、誰が決めたか（利用者の回答なら利用者、AI が決めた細部なら AI）が残る。
+success_guarantee: 採用する案がちょうど 1 つになり、その検討事項に直接・間接に依存する項目と、それを進めるタスクが洗い出される。採用した検討事項は決定済みになる。
 minimal_guarantee: 存在しない案を指したときは、どのファイルも書き換えない。
 test_file: tests/e2e/単一ユースケース/test_option_adopt.py
 notes:

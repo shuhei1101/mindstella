@@ -308,49 +308,6 @@ scenarios:
       - 取り込み済みにした後のクローズは成功し、スレッドの状態がクローズで、クローズにした書き手が AI・理由が `報告だけ` である
       - 取り込み待ちのスレッドの一覧が 0 件を返す
     test: test_error_when_closed_before_take
-  - name: 正常シナリオ（まとめて決めた回答）
-    setup:
-      - name: Mock
-        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる前回読んだ時点からの変更（`changes_since_read`）・関連のたどり（`trace_related`）・取り込み待ちのスレッドの一覧・`next_id` と project-index の `write_docs`（会話ログ）・`commit`・`new_thread`・`threads`・`set_thread_status` を、決めた引数で順に再生する
-      - name: 依存が揃った環境
-        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
-      - name: 作成済みのワークスペース
-        description: 利用者が単一ユースケース『検討事項をまとめて決める』で推奨の案に決めた検討事項 D-2（案 A を採用）・D-3（案 B を採用）と、D-2 を `for` の種類の `related` で指す作業 T-1 と、前の回に作成したオープンの通知のスレッド TH-1 を持ち、取り込み待ちのスレッドを持たない
-        notes: D-2・D-3 は決定済みで、誰が決めたかが利用者。前回読んだ時点より後に変わった項目は D-2・D-3 だけ
-      - name: 入力された文字列
-        description: 単一ユースケース『検討事項をまとめて決める』でサーバーが MindStella のセッションへ入力した、まとめて決めた検討事項の ID と件数を持つ 1 行
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant SV as MindStella の MCP
-        participant CC as MindStella のセッション
-        participant PI as project-index の MCP
-        participant WS as ワークスペース
-
-        SV->>CC: まとめて決めた検討事項の ID と件数を入力する
-        CC->>SV: 前回読んだ時点からの変更
-        SV-->>CC: D-2・D-3（採用した案と誰が決めたか）
-        CC->>PI: trace_related（D-2・D-3 を参照している項目）
-        PI-->>CC: T-1
-        CC->>SV: 取り込み待ちのスレッドの一覧
-        SV-->>CC: 0 件
-        CC->>SV: next_id
-        CC->>PI: write_docs（会話ログ）
-        CC->>SV: commit
-        CC->>SV: 新規スレッドを作成する（反映した回答と影響する T-1 の通知）
-        CC->>SV: オープンのスレッドの一覧
-        CC->>SV: 前の回の通知のスレッド TH-1 をクローズにする
-        SV->>WS: 書く
-      ```
-    expected:
-      - D-2・D-3 の採用した案と誰が決めたか（利用者）が、取り込みの前のままである
-      - 会話ログに、まとめて決めた検討事項の ID がある
-      - 新しい通知のスレッドが、反映した回答（D-2 と案 A・D-3 と案 B）と影響する T-1 を表で持ち、利用者に返信を求めない
-      - 前の回の通知のスレッド TH-1 がクローズで、新しい通知のスレッドはオープンである
-      - 取り込み待ちのスレッドの一覧が 0 件を返す
-    notes:
-      通知の経路: 要件の `未確定`（まとめて決めた回答を AI へ通知する経路）の推奨 A（画面が記録へ書き込み、件数を入力する）で記載している。インターフェース定義設計で B（スレッドの書き込みとして送信する）に決定したら、取り込み待ちのスレッドを読んで `adopt` で採用を書き込む流れに書き換える
-    test: test_normal_when_bulk_decided
 lead: 'MindStella のセッションが、コメントの取り込みのエージェントフロー（`mindstella/on-comment`）に従い、取り込み待ちのスレッド（AI が取り込んでいない利用者の書き込みを持つスレッド。オープンでもクローズでも）を 1 件ずつ読んで記録に反映し、commit してから返信か取り込み済みにしてクローズにし、最後に追加した検討事項と反映した回答を新規スレッド 1 件で通知する単一ユースケース。'
 issue: 67
 primary_actor: MindStella のセッション
