@@ -89,9 +89,9 @@ const Host = ({ before, after, view: initial }: Args) => {
     };
   }, [status, view, before, after]);
   return (
-    <div className="flex max-w-3xl flex-col gap-3 p-4">
+    <div className="flex max-w-3xl flex-col items-start gap-3 p-4">
       <ViewSwitch view={view} onChange={setView} />
-      <div ref={host} />
+      <div ref={host} className="self-stretch" />
     </div>
   );
 };

@@ -23,7 +23,8 @@ const ItemIdTipBody = ({ item: target, kind }: { item: Item; kind: Kind }) => (
       {target.title}
       <span className="mono">{target.id}</span>
     </span>
-    <span ref={withClass("tt-body")} className="flex items-center gap-1.5">
+    <span ref={withClass("tt-body")}>
+      <span className="inline-flex items-center gap-1.5">
       {KIND_LABEL[kind]}
       {target.status === undefined ? null : (
         <>
@@ -33,6 +34,7 @@ const ItemIdTipBody = ({ item: target, kind }: { item: Item; kind: Kind }) => (
         </>
       )}
       {target.withdrawn === true ? <span>・取り下げ</span> : null}
+      </span>
     </span>
   </>
 );
