@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- 正規表現の捕捉と描いた直後の要素を指す */
 // 本文の差分の描画。mdmark が描いた React の外の DOM に手を入れる
 import { getLibrary } from "@/shared/adapters/libraries";
 import { CODE_BLOCK_ATTRS, DIAGRAM_SOURCE_ATTR, EMBEDDED_HTML_CLASS, HTML_BLOCK_CLASS, LINE_ATTR, renderDiagramSvg, renderMarkdown } from "@/shared/core/body-links";
