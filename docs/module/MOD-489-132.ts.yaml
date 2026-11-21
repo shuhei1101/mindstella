@@ -6,7 +6,7 @@ functions:
     title: 画面の絞り込みの条件
     kind: フック
     usecase: 項目を表で絞り込む
-    summary: URL の `f.{列}`、そのタブの保存領域（`useScreenState`）の条件、既定の条件の順に当て、変えたら URL と保存領域に書く。保存した条件を URL に書き戻すときは、条件と組み合わせ方を 1 回の移動（`setFilters` の `tagmatch`）で書く。タグの組み合わせ方は URL の `tagmatch`、保存領域、`all` の順に当てる。`addTag` はタグを `f.tags` に加えて履歴に 1 つ積み（既にあれば何もしない）、画面が絞り込みを持たない（概要）ときはその項目の種類の画面へ移って加える
+    summary: URL の `f.{列}`、そのタブの保存領域（`useScreenState`）の条件、既定の条件の順に当て、変えたら URL と保存領域に書く。保存した条件を URL に戻すのは画面へ入ったときだけで、同じ画面で戻る・進むで URL の条件が無くなったときはその画面の保存した条件を外して既定の条件に戻す。戻すときは、条件と組み合わせ方を 1 回の移動（`setFilters` の `tagmatch`）で書く。タグの組み合わせ方は URL の `tagmatch`、保存領域、`all` の順に当てる。`addTag` はタグを `f.tags` に加えて履歴に 1 つ積み（既にあれば何もしない）、画面が絞り込みを持たない（概要）ときはその項目の種類の画面へ移って加える
     args:
       - name: tab
         type: PreviewTab
@@ -58,6 +58,12 @@ functions:
         condition: 'URL に `f` が無く、保存領域に `tags: [画面, 保存]` と `tagMatch: any`'
         mock: ルーターのメモリの履歴
         expected: URL に `f.tags=画面|保存` と `tagmatch=any` の両方が入り、組み合わせ方が `any`
+      - name: test_use_screen_filters_when_back
+        case: 正常
+        summary: 同じ画面で戻ると、保存した条件を戻さず外す
+        condition: "`addTag('画面')` の後に履歴を 1 つ戻る"
+        mock: ルーターのメモリの履歴
+        expected: URL に `f` が無く、保存領域にその画面の条件が無く、条件が空
     container: frontend/src/shared/hooks/use-screen-filters.ts
 notes:
   単体テスト: 同じフォルダの `use-screen-filters.test.ts` に置く（knowledge の規約『フォルダ構成』）
