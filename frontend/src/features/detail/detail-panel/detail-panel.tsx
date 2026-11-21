@@ -1,11 +1,11 @@
 // 詳細パネル（画面設計『詳細パネル.tsx』）。項目 1 件の中身を本文の右に出し、差分の表示の間は前後の差分を出す
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/components/detail-editor";
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
 import { DetailResizer, PANEL_WIDTH } from "@/features/detail/detail-panel/components/detail-resizer";
 import { BodyView, type BodyLayout } from "@/features/detail/detail-panel/components/body-view";
-import { DetailComments } from "@/features/detail/detail-panel/components/detail-comments";
+import { DetailComments, DetailReviewComments } from "@/features/detail/detail-panel/components/detail-comments";
 import { DiffDeadlineContext, KeyDiff, keyDiffs, nextDiffDeadline, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
 import { OptionList } from "@/features/detail/detail-panel/components/option-list";
 import { RelatedList } from "@/features/detail/detail-panel/components/related-list";
@@ -141,6 +141,8 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const prefs = usePrefs();
   // 本文の先頭のタイトルが、本文のスクロール領域の上へ外れているか
   const [titleElement, setTitleElement] = useState<HTMLElement | null>(null);
+  // 本文のスクロール領域（下端のコメントの入力が、選んだ箇所の入口を出すかを確かめる）
+  const bodyScroller = useCallback(() => titleElement?.closest(".panel-body") ?? null, [titleElement]);
   const [titleOut, setTitleOut] = useState(false);
   useEffect(() => {
     const scroller = titleElement?.closest(".panel-body") ?? null;
@@ -310,11 +312,12 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
             {relation("参照元", related.referencedBy)}
             {embedded ? null : (
-              <DetailComments id={id} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
+              <DetailReviewComments id={id} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
             )}
           </div>
         )}
       </DiffMinimap>
+      {embedded || editing ? null : <DetailComments id={id} scroller={bodyScroller} />}
       {diagram === null ? null : <DiagramViewer {...diagram} onClose={() => { setDiagram(null); }} />}
     </DiffDeadlineContext.Provider>
   );

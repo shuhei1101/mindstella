@@ -133,6 +133,23 @@ export const PreviewShell = () => {
   const theme = useThemeStore((state) => state.theme);
   const setTheme = useThemeStore((state) => state.setTheme);
   const connection = useConnectionStore((state) => state.connection);
+  // トップバーを包む要素の高さを測り、左のパネル・絞り込みのドロワーの上端の CSS 変数に書く
+  const topbarFrame = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const frame = topbarFrame.current;
+    if (frame === null) return undefined;
+    const root = document.documentElement;
+    const write = (): void => {
+      root.style.setProperty("--topbar-height", `${String(frame.getBoundingClientRect().height)}px`);
+    };
+    write();
+    const observer = new ResizeObserver(write);
+    observer.observe(frame);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--topbar-height");
+    };
+  }, []);
   const adding = useEditSessionStore((state) => state.adding);
   const openAdded = useEditSessionStore((state) => state.openAdded);
   const closeAdd = useEditSessionStore((state) => state.closeAdd);
@@ -227,44 +244,46 @@ export const PreviewShell = () => {
   };
   return (
     <div className="flex h-dvh flex-col">
-      <Topbar
-        title={data?.settings.summary ?? ""}
-        tabs={tabs}
-        current={tab}
-        theme={theme}
-        connection={connection === "offline" || !reachable ? "offline" : "online"}
-        readAt={data?.built_at ?? null}
-        diffPoint={point === null ? null : { name: point.name, sub: point.sub }}
-        comments={!embedded}
-        commentCount={comments.data?.status === 200 ? comments.data.data.items.length : 0}
-        commentsOpen={search.panel === "comments"}
-        commentsUnread={threadList !== null && anyOpenUnseen(threadList)}
-        settingsOpen={search.panel === "display"}
-        filter={listTab}
-        filterCount={Object.keys(search.f).length}
-        filterOpen={drawerOpen}
-        pending={!diffActive && !embedded}
-        pendingCount={pendingCount}
-        pendingOpen={search.panel === "pending"}
-        pendingBlocked={blocked.length > 0}
-        {...(embedded ? {} : voiceTopbar)}
-        stale={stale}
-        duplicateIds={duplicateIds}
-        onOpenDuplicate={openItem}
-        onCloseDuplicate={() => { useDuplicateIdsStore.getState().dismiss(); }}
-        onNavigate={setTab}
-        onOpenSearch={() => { setSearch({ search: "1" }); }}
-        onThemeChange={setTheme}
-        onOpenHistory={() => { setHistoryOpen(true); }}
-        onClearDiff={() => {
-          writeScreenState({ diffSel: null });
-          setDiff(undefined);
-        }}
-        onToggleComments={() => { setPanel(search.panel === "comments" ? undefined : "comments"); }}
-        onToggleSettings={() => { setPanel(search.panel === "display" ? undefined : "display"); }}
-        onToggleFilter={() => { setDrawerOpen(!drawerOpen); }}
-        onTogglePending={() => { setPanel(search.panel === "pending" ? undefined : "pending"); }}
-      />
+      <div ref={topbarFrame}>
+        <Topbar
+          title={data?.settings.summary ?? ""}
+          tabs={tabs}
+          current={tab}
+          theme={theme}
+          connection={connection === "offline" || !reachable ? "offline" : "online"}
+          readAt={data?.built_at ?? null}
+          diffPoint={point === null ? null : { name: point.name, sub: point.sub }}
+          comments={!embedded}
+          commentCount={comments.data?.status === 200 ? comments.data.data.items.length : 0}
+          commentsOpen={search.panel === "comments"}
+          commentsUnread={threadList !== null && anyOpenUnseen(threadList)}
+          settingsOpen={search.panel === "display"}
+          filter={listTab}
+          filterCount={Object.keys(search.f).length}
+          filterOpen={drawerOpen}
+          pending={!diffActive && !embedded}
+          pendingCount={pendingCount}
+          pendingOpen={search.panel === "pending"}
+          pendingBlocked={blocked.length > 0}
+          {...(embedded ? {} : voiceTopbar)}
+          stale={stale}
+          duplicateIds={duplicateIds}
+          onOpenDuplicate={openItem}
+          onCloseDuplicate={() => { useDuplicateIdsStore.getState().dismiss(); }}
+          onNavigate={setTab}
+          onOpenSearch={() => { setSearch({ search: "1" }); }}
+          onThemeChange={setTheme}
+          onOpenHistory={() => { setHistoryOpen(true); }}
+          onClearDiff={() => {
+            writeScreenState({ diffSel: null });
+            setDiff(undefined);
+          }}
+          onToggleComments={() => { setPanel(search.panel === "comments" ? undefined : "comments"); }}
+          onToggleSettings={() => { setPanel(search.panel === "display" ? undefined : "display"); }}
+          onToggleFilter={() => { setDrawerOpen(!drawerOpen); }}
+          onTogglePending={() => { setPanel(search.panel === "pending" ? undefined : "pending"); }}
+        />
+      </div>
       <div className="flex min-h-0 flex-1">
         {data === undefined && records.error instanceof AppError ? (
           <main id="main" className="min-h-0 flex-1 overflow-y-auto">

@@ -60,7 +60,7 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
           onClose();
         }
       }}
-      className={cn("fixed inset-y-0 left-0 z-30 flex w-105 max-w-full flex-col border-r border-border bg-card", narrow && "w-full")}
+      className={cn("fixed top-below-topbar bottom-0 left-0 z-30 flex w-105 max-w-full flex-col border-r border-border bg-card", narrow && "w-full")}
     >
       <div className="flex items-center gap-2 border-b border-border-soft p-2">
         <p id="drawer-title" className="font-medium">
