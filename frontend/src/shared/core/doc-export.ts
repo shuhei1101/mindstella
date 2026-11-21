@@ -1,4 +1,4 @@
-// 資料のエクスポート。mdmark の CSS と JavaScript・用語の索引・本文を 1 枚の HTML にまとめる組み立てと、埋め込んだ HTML を除いた Markdown の組み立てと、ブラウザへのダウンロード（今の画面の `core/doc-export.ts` と同じ振る舞い）
+// 資料のエクスポート。mdmark の CSS と JavaScript・用語の索引・本文を 1 枚の HTML にまとめる組み立てと、埋め込んだ HTML を除いた Markdown の組み立てと、ブラウザへのダウンロード
 import { mdmarkUrls } from "@/shared/adapters/libraries";
 import { MDMARK_PARAM_COPY_LABEL, embeddedHtmlRanges } from "@/shared/core/body-links";
 import { h } from "@/shared/core/dom-parts";

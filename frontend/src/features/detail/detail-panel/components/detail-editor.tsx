@@ -144,7 +144,7 @@ const Field = ({ label, controlId, required, mark, children }: { label: string; 
   </div>
 );
 
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const DetailEditor = ({ kind, item, marks, blocked, removing, removedOptions, referrers, usedTags, body, index, onChange, onRemove, onCancelRemove }: DetailEditorProps) => {
   const adding = item.id.startsWith(NEW_ID_PREFIX);
   const [titleEmpty, setTitleEmpty] = useState(false);
@@ -152,7 +152,7 @@ export const DetailEditor = ({ kind, item, marks, blocked, removing, removedOpti
   const keys = adding ? EDITABLE_KEYS[kind].filter((entry) => ADD_KEYS[kind].includes(entry.key)) : EDITABLE_KEYS[kind];
   const record = item as unknown as Record<string, unknown>;
   const set = (name: string, value: unknown): void => { onChange({ op: "set", key: name, value }); };
-  // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
   const field = (name: string, input: Input) => {
     const controlId = `pe-${item.id.replace(/[^A-Za-z0-9]/g, "")}-${name}`;
     const value = name === "body" ? (body ?? "") : record[name];

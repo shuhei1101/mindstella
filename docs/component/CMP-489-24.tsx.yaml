@@ -23,5 +23,4 @@ accessibility:
   - × のマーカーは `aria-hidden` にし、「取り下げ」の文字で伝える
   - 色だけに頼らず、枠と文言で状態の札と削除したマーカーから見分ける
 test_file: tests/integration/storybook_react/test_withdrawn_badge_stories.py
-refs:
-  - CMP-489-23#
+refs: []

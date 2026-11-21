@@ -10,7 +10,7 @@ describe("OverviewScreen", () => {
   // 記録でタイルを描く（正常系）
   test("overview_screen", async () => {
     // 実行
-    renderRoute("/spa/");
+    renderRoute("/");
     // 検証
     expect(await screen.findByRole("heading", { level: 1, name: "要件出しのスキル mindmap を設計する" })).toBeInTheDocument();
     expect(document.querySelector("#tile-unread")).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe("OverviewScreen", () => {
       ),
     );
     // 実行
-    renderRoute("/spa/");
+    renderRoute("/");
     // 検証
     expect(await screen.findByText("decisions.yaml: D-1.status: 決めた値ではありません")).toBeInTheDocument();
     expect(document.querySelector("#tile-open")).not.toBeInTheDocument();
@@ -40,7 +40,7 @@ describe("OverviewScreen", () => {
   // すべて表示は SPA の一覧へ（正常系）
   test("overview_screen_when_show_all", async () => {
     // 準備
-    renderRoute("/spa/");
+    renderRoute("/");
     const review = await screen.findByRole("region", { name: "要見直し" });
     // 実行
     await userEvent.click(within(review).getByRole("button", { name: /すべて表示/ }));
@@ -72,7 +72,7 @@ describe("OverviewScreen", () => {
         }),
       ),
     );
-    renderRoute("/spa/");
+    renderRoute("/");
     const unread = await screen.findByRole("region", { name: "未読の AI の書き込み" });
     // 実行
     await userEvent.click(await within(unread).findByRole("button", { name: /TH-1/ }));

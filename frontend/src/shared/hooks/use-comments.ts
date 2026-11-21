@@ -7,7 +7,7 @@ import type { CommentInput, DraftInput, RemovedComment, SendReply } from "@/shar
 import { commentsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { discardReviewVoice } from "@/shared/stores/voice-store";
 
-/** 入力が止まってから下書きを保存するまでのミリ秒（今の画面の `DRAFT_SAVE_DELAY_MS` と同じ） */
+/** 入力が止まってから下書きを保存するまでのミリ秒 */
 const DRAFT_SAVE_DELAY_MS = 500;
 
 /** 下書きの向けた先のキー（項目・箇所・スレッドの組） */
@@ -16,7 +16,7 @@ const draftKey = ({ target, loc, thread }: Pick<DraftInput, "target" | "loc" | "
 /** 向けた先ごとの、予約した下書きの保存 */
 const draftTimers = new Map<string, number>();
 
-/** 下書きを送る。保てなかったときは画面に出さない（今の画面と同じ。入力欄の中身は残り、次の入力か溜めたときに送り直す） */
+/** 下書きを送る。保てなかったときは画面に出さない（入力欄の中身は残り、次の入力か溜めたときに送り直す） */
 const sendDraft = (draft: DraftInput): void => {
   saveDraft(draft).catch(() => undefined);
 };

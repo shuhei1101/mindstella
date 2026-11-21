@@ -1,6 +1,6 @@
 id: MOD-489-102
 title: プレビュー / body-links
-lead: 描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）。
+lead: 描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理。
 functions:
   - name: linkHeadings
     title: 見出しのリンク
@@ -60,7 +60,7 @@ functions:
     title: 本文を描く
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 本文の Markdown を mdmark で描いた要素にする。処理は今の画面の『基盤』の `renderMarkdown` と同じ（処理 6 のコードブロックの `pre` のフォーカスの属性と、`options.table` による表の機能の指定を含む）。`config.features` は今の画面の `MDMARK_FEATURES` と同じ値（`options.table` が偽でなければ `table` だけオン）、`config.map` は『libraries』の `mdmarkMapConfig()`
+    summary: 本文の Markdown を mdmark で描いた要素にする。（処理 6 のコードブロックの `pre` のフォーカスの属性と、`options.table` による表の機能の指定を含む）。`config.features` は `MDMARK_FEATURES` の値（`options.table` が偽でなければ `table` だけオン）、`config.map` は『libraries』の `mdmarkMapConfig()`
     args:
       - name: source
         type: string
@@ -73,7 +73,7 @@ functions:
         description: '`table` は mdmark の表の機能をオンで指定するか（省くと真。スレッドの書き込みでは偽）'
     returns:
       type: HTMLElement
-      description: 描いた本文（class `mdmark`）。mdmark が読めないときは、`libraryNotice` と原文の `pre` を持つ要素
+      description: 描いた本文（class `mdmark`）。mdmark が読めないときと、mdmark の `mount` が例外を投げたとき（部品の読み込みを差し替えられないタグの mdmark を中に持つ配る書き出しで map の範囲を描いたときなど）は、例外を投げずに `libraryNotice`（mdmark）と原文の `pre` を持つ要素
     unit_tests:
       - name: test_render_markdown_when_code_block
         case: 正常
@@ -81,6 +81,12 @@ functions:
         condition: mdmark の `mount` を、mdmark と同じ属性を持つ言語指定 `json` のコードブロックと言語指定の無いコードブロック・属性を持たない字下げのコードブロック・mermaid のコードブロック・`.mdmark-html` の中の `pre`・`.mdmark-map` の中の mermaid のコードブロックを描く代わりのものにする
         mock: 描画のライブラリ（`@/shared/adapters/libraries`）
         expected: '範囲の外の 3 つのコードブロックの `pre` が `tabindex="0"` を持ち、`aria-label` は順に `コード: json`・`コード`・`コード`。`role` は持たない。図の入れ物の `pre.dg-raw` と範囲の中の `pre` は `tabindex` を持たない。`.mdmark-map` の中の mermaid のコードブロックは図の入れ物にならない'
+      - name: test_render_markdown_when_mount_failed
+        case: 異常
+        summary: 描けない本文を原文にする
+        condition: mdmark は読めているが `mount` が例外を投げる
+        mock: 描画のライブラリ（`@/shared/adapters/libraries`）
+        expected: 例外を投げず、mdmark の名前を持つ知らせと、原文をそのまま持つ `pre.md-raw` を返す
     container: frontend/src/shared/core/body-links.ts
   - name: resolveFileSources
     title: 本文のファイルのパスの解決
@@ -88,7 +94,7 @@ functions:
     container: frontend/src/shared/core/body-links.ts
     usecase: 動画などのファイルを配置して資料に埋め込む
     scope: public
-    summary: 今の画面の『基盤』の `resolveFileSources` と同じ処理。`mountMarkdown` が mdmark の `mount` の直後に呼ぶ（基準のパスは同じ `workspacePath() + FILE_BASE_PATH`。React の画面を `/w/{workspace}/spa/` の下で開いても `/w/{workspace}/files/{名前}` を指す）
+    summary: 本文の相対パスのファイルの参照を配信のパスにする。`mountMarkdown` が mdmark の `mount` の直後に呼ぶ（基準のパスは同じ `workspacePath() + FILE_BASE_PATH`。`/w/{workspace}/files/{名前}` を指す）
     side_effects: '`root` の中の要素の `src`・`poster` を書き換える'
     args:
       - name: root
@@ -103,9 +109,9 @@ functions:
       - name: test_resolve_file_sources
         case: 正常
         summary: 相対パスだけを配信のパスにする
-        condition: 今の画面の同名のテストと同じ要素で、`location` を `http://127.0.0.1:8784/w/mindstella-x-1/spa/` にする
+        condition: 相対パス・絶対パス・`data:` の `src` を持つ要素で、`location` を `http://127.0.0.1:8784/w/mindstella-x-1/` にする
         mock: なし（jsdom）
-        expected: 今の画面の同名のテストと同じ（`/w/mindstella-x-1/files/a.png` など）
+        expected: 相対パスだけが `/w/mindstella-x-1/files/a.png` などになる
     callees:
       - MOD-642-1#functions[workspacePath]
 notes:

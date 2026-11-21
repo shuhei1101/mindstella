@@ -1,4 +1,4 @@
-// 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちの印の種類（今の画面の `core/edits.ts` と同じ振る舞い）
+// 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちの印の種類
 import { KIND_KEYS, type Item, type Kind, type MindmapData, type Option } from "@/shared/core/records";
 
 /** 『保存待ちの編集の読み取り』の `items[]` の 1 件 */
@@ -45,7 +45,7 @@ const optionOf = (key: string, value: unknown): Option => {
 };
 
 /** 記録の写しに保存待ちの編集を溜めた順に当て、画面に出す値を返す（元の記録は変えない） */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const applyEdits = (data: MindmapData, edits: readonly PendingEdit[]): MindmapData => {
   const applied = structuredClone(data);
   const find = (id: string): Item | undefined => {

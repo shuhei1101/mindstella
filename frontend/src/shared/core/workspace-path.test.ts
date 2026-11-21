@@ -5,9 +5,9 @@ import { workspaceKey, workspacePath } from "@/shared/core/workspace-path";
 describe("workspacePath", () => {
   // パスの頭を返す（正常系）
   test.each([
-    ["/w/mindstella-x-1/spa/", "/w/mindstella-x-1"],
-    ["/w/a%20b/mindstella.html", "/w/a%20b"],
-    ["/spa/", ""],
+    ["/w/mindstella-x-1/", "/w/mindstella-x-1"],
+    ["/w/a%20b/assets/index.js", "/w/a%20b"],
+    ["/files/a.png", ""],
     ["/", ""],
   ])("workspace_path %s", (pathname, expected) => {
     // 実行
@@ -20,9 +20,9 @@ describe("workspacePath", () => {
 describe("workspaceKey", () => {
   // ワークスペースの ID を末尾に付ける（正常系）
   test.each([
-    ["/w/mindstella-x-1/spa/", "mindmap-preview:mindstella-x-1"],
-    ["/w/a%20b/spa/", "mindmap-preview:a b"],
-    ["/spa/", "mindmap-preview"],
+    ["/w/mindstella-x-1/", "mindmap-preview:mindstella-x-1"],
+    ["/w/a%20b/", "mindmap-preview:a b"],
+    ["/", "mindmap-preview"],
   ])("workspace_key %s", (pathname, expected) => {
     // 実行
     const result = workspaceKey("mindmap-preview", pathname);

@@ -1,0 +1,38 @@
+id: LIB-644-1
+title: vite-plugin-singlefile
+kind: ライブラリ
+version:
+  current: 2.3.4
+  latest: 2.3.4
+  checked_on: '2026-11-21'
+  source: package.json
+  pinning: 2.3.4 に固定する（`^` を付けない）
+catalogs:
+  - name: 使うもの
+    version: 2.3.4
+    entries:
+      - name: viteSingleFile()
+        kind: Vite のプラグイン
+        purpose: 書き出し用のビルド（vite.export.config.ts）で、JavaScript・CSS を HTML の中へ入れて 1 枚の HTML にする
+lead: Vite のビルドの JavaScript・CSS を HTML の中に入れて 1 枚の HTML にする Vite のプラグイン。
+purl: pkg:npm/vite-plugin-singlefile
+dependency_scope: 開発のみ
+adoption: 採用
+used_in:
+  - vite.export.config.ts
+upstream: richardtallent/vite-plugin-singlefile
+verification:
+  state: 済
+  date: '2026-11-21'
+  detail: PoC PR #645 で vite 8.3.2 に加え、React の画面を 1 枚の HTML（1.01 MB）にして、`file://` で外部への要求を止めて Chromium・Firefox で開けることを確かめた
+license: MIT（開発用だけで配る物に入らない）
+official_url: https://github.com/richardtallent/vite-plugin-singlefile
+docs_url: https://github.com/richardtallent/vite-plugin-singlefile#readme
+install: '```bash
+
+  npm install --save-dev --save-exact vite-plugin-singlefile@2.3.4
+
+  ```'
+limitations:
+  - item: 動的 import
+    content: 動的 import で分けたチャンクは 1 枚に入らないため、画面のソースで動的 import によるコードの分割をしない（URL の `import()` は対象外）

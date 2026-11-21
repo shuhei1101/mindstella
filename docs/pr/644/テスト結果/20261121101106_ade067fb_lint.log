@@ -1,0 +1,13 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+frontend/src/app/app.test.tsx(7,42): error TS2307: Cannot find module '@/shared/core/embedded' or its corresponding type declarations.
+frontend/src/app/router.test.tsx(5,42): error TS2307: Cannot find module '@/shared/core/embedded' or its corresponding type declarations.
+frontend/src/shared/adapters/api-client.test.ts(6,42): error TS2307: Cannot find module '@/shared/core/embedded' or its corresponding type declarations.
+frontend/src/shared/core/embedded.test.ts(3,90): error TS2307: Cannot find module '@/shared/core/embedded' or its corresponding type declarations.
+exit=2
+
+型検査の違反は、実装の無い frontend/src/shared/core/embedded.ts を読み込めないことだけ（単体テスト作成では残してよい違反）。ruff は違反なし

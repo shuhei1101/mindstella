@@ -1,6 +1,6 @@
 """プレビューの結合テストの共通 fixture。
 
-MCP サーバーが `preview_url` で配る URL を開き、ハッシュで画面を指す。
+MCP サーバーが `preview_url` で配る URL を開き、search で画面を指す。
 描画のライブラリと文字は、配信元（jsDelivr・Google Fonts）から読む。
 """
 
@@ -12,22 +12,15 @@ from typing import Any
 
 import pytest
 from integration.browser_tab_helpers import link_target  # noqa: F401
-from playwright.sync_api import Page
 from preview_body_layout_helpers import (
     build_body_layout_workspace,
     build_html_body_layout_workspace,
-    build_linked_body_layout_workspace,
 )
-from preview_body_view_helpers import build_body_view_workspace
 from preview_comment_helpers import free_comment
 from preview_history_helpers import build_history_workspace
-from preview_markdown_post_helpers import MARKDOWN_POST_BODY, MARKDOWN_REPLY_BODY
 from preview_minimap_helpers import build_minimap_workspace
-from preview_post_link_helpers import REPLY_BODY, THREAD_POST_BODY, build_post_link_workspace
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
-    MAIN_SELECTOR,
-    OpenPreview,
     StartVoicePreview,
     WritePreview,
     WriteReviewPreview,
@@ -145,22 +138,6 @@ def write_review_preview(
 
 
 @pytest.fixture
-def served_review_rows(
-    write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment
-) -> tuple[str, Path]:
-    """D-1 へのコメント 2 件（C-1・C-2）と D-2 へのコメント 1 件（C-3）を持つワークスペースの配信の URL とフォルダを返す。"""
-    return write_review_preview(
-        make_item("D-1"),
-        make_item("D-2"),
-        comments=(
-            make_comment("C-1", target="D-1", body="案 A にする"),
-            make_comment("C-2", target="D-1", body="案 B も見たい"),
-            make_comment("C-3", target="D-2", body="別の項目へのコメント"),
-        ),
-    )
-
-
-@pytest.fixture
 def write_history_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WriteReviewPreview:
     """変更履歴つきのワークスペース（まとまり V-1・V-2 とまとめていない変更）を作り、配信の URL とフォルダを返す関数を返す。"""
 
@@ -195,23 +172,6 @@ def write_minimap_preview(
 
 
 @pytest.fixture
-def write_body_view_preview(
-    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
-) -> WriteReviewPreview:
-    """8 列の表と見出し「比較」「まとめ」を持つ資料 A-4 を書き換えて `commit`（V-1）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
-
-    def _write() -> tuple[str, Path]:
-        """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
-        root = build_body_view_workspace(make_workspace, make_item, call_tool)
-        result = call_tool("preview_url", workspace=str(root))
-        assert result.is_error is False, result.text
-        assert result.data is not None
-        return str(result.data["url"]), root
-
-    return _write
-
-
-@pytest.fixture
 def write_body_layout_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WriteReviewPreview:
     """段落 3 つの Markdown の本文を持つ資料 A-1 と検討事項 D-1 を書き換えて `commit`（V-2）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
 
@@ -233,89 +193,6 @@ def write_html_body_layout_preview(make_workspace: MakeWorkspace, call_tool: Cal
     def _write() -> tuple[str, Path]:
         """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
         root = build_html_body_layout_workspace(make_workspace, call_tool)
-        result = call_tool("preview_url", workspace=str(root))
-        assert result.is_error is False, result.text
-        assert result.data is not None
-        return str(result.data["url"]), root
-
-    return _write
-
-
-@pytest.fixture
-def write_linked_body_layout_preview(
-    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
-) -> WriteReviewPreview:
-    """見出し・用語・項目の ID・図を持つ資料 A-1 を書き換えて `commit`（V-1）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
-
-    def _write() -> tuple[str, Path]:
-        """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
-        root = build_linked_body_layout_workspace(make_workspace, make_item, call_tool)
-        result = call_tool("preview_url", workspace=str(root))
-        assert result.is_error is False, result.text
-        assert result.data is not None
-        return str(result.data["url"]), root
-
-    return _write
-
-
-@pytest.fixture
-def write_post_link_preview(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_post: MakePost,
-    make_thread: MakeThread,
-    make_comment: MakeComment,
-    write_threads: WriteThreads,
-    write_comments: WriteComments,
-    call_tool: CallTool,
-) -> WriteReviewPreview:
-    """まとまり V-1・V-2 と、まとまりのリンクを持つ AI の書き込みのスレッド TH-1 と、TH-1 へのレビュー中の返信 C-1 を持つワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
-
-    def _write() -> tuple[str, Path]:
-        """実際のツールで履歴を積んだワークスペースにスレッドと返信を足して配信を立てる。"""
-        root = build_post_link_workspace(make_workspace, make_item, call_tool)
-        write_threads(
-            root,
-            make_thread(
-                "TH-1",
-                make_post("TH-1-1", author="ai", body=THREAD_POST_BODY, created="2026-10-12T01:00:00+00:00"),
-                summary="まとまりのリンク",
-            ),
-        )
-        write_comments(root, free_comment(make_comment("C-1", body=REPLY_BODY, thread="TH-1")))
-        result = call_tool("preview_url", workspace=str(root))
-        assert result.is_error is False, result.text
-        assert result.data is not None
-        return str(result.data["url"]), root
-
-    return _write
-
-
-@pytest.fixture
-def write_markdown_post_preview(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_post: MakePost,
-    make_thread: MakeThread,
-    make_comment: MakeComment,
-    write_threads: WriteThreads,
-    write_comments: WriteComments,
-    call_tool: CallTool,
-) -> WriteReviewPreview:
-    """検討事項 D-1 と、Markdown を書いた AI の書き込みのオープンのスレッド TH-1 と、TH-1 へのレビュー中の返信 C-1 を持つワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
-
-    def _write() -> tuple[str, Path]:
-        """ワークスペースにスレッドと返信を足して配信を立てる。"""
-        root = make_workspace(make_item("D-1", title="描画のライブラリ"))
-        write_threads(
-            root,
-            make_thread(
-                "TH-1",
-                make_post("TH-1-1", author="ai", body=MARKDOWN_POST_BODY, created="2026-10-12T01:00:00+00:00"),
-                summary="Markdown の書き込み",
-            ),
-        )
-        write_comments(root, free_comment(make_comment("C-1", body=MARKDOWN_REPLY_BODY, thread="TH-1")))
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None
@@ -455,19 +332,6 @@ def write_commented_preview(
         )
 
     return _write
-
-
-@pytest.fixture
-def open_preview(page: Page) -> OpenPreview:
-    """配信の URL をハッシュ付きで開き、画面が描き終わるまで待つ関数を返す。"""
-
-    def _open(url: str, hash_text: str = "") -> Page:
-        """配信の URL にハッシュを付けて開き、本文の領域に中身が入るのを待つ。"""
-        page.goto(f"{url}{hash_text}")
-        page.wait_for_selector(f"{MAIN_SELECTOR} > *", state="attached", timeout=RENDER_TIMEOUT_MS)
-        return page
-
-    return _open
 
 
 @pytest.fixture

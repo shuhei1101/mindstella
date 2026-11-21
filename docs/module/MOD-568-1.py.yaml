@@ -155,9 +155,9 @@ functions:
       - name: test_build_content
         case: 正常
         summary: 名前と完了と URL の 2 行
-        condition: '`build_content("家計簿", "http://127.0.0.1:8784/w/mindstella-x-1/mindstella.html")`'
+        condition: '`build_content("家計簿", "http://127.0.0.1:8784/w/mindstella-x-1/")`'
         mock: なし
-        expected: '`家計簿: 作業が完了しました\nhttp://127.0.0.1:8784/w/mindstella-x-1/mindstella.html`'
+        expected: '`家計簿: 作業が完了しました\nhttp://127.0.0.1:8784/w/mindstella-x-1/`'
       - name: test_build_content_when_no_url
         case: 正常
         summary: URL が無いときは 1 行
@@ -337,7 +337,7 @@ functions:
       - name: test_notify_if_written
         case: 正常
         summary: マーカーがあれば 1 回送信して解除する
-        condition: '`mark_written("reply", "ws", {})` の後。`describe` は `("家計簿", "http://127.0.0.1:8784/w/mindstella-x-1/mindstella.html")`、`environ` は URL を書いた一時ファイルを指す。返ったスレッドを `join` する'
+        condition: '`mark_written("reply", "ws", {})` の後。`describe` は `("家計簿", "http://127.0.0.1:8784/w/mindstella-x-1/")`、`environ` は URL を書いた一時ファイルを指す。返ったスレッドを `join` する'
         mock: '`send`'
         expected: '`send` が URL と `build_content` の本文で 1 回呼ばれ、`MARKERS.take("ws")` が偽'
       - name: test_notify_if_written_when_not_marked
@@ -385,9 +385,9 @@ functions:
       - name: test_build_stopped_content
         case: 正常
         summary: 止まった理由ごとの文言と URL の 2 行
-        condition: '`parametrize`: 全ての `StopReason` と `STOP_REASON_TEXTS` の文言。URL は `http://127.0.0.1:8784/w/mindstella-x-1/mindstella.html`'
+        condition: '`parametrize`: 全ての `StopReason` と `STOP_REASON_TEXTS` の文言。URL は `http://127.0.0.1:8784/w/mindstella-x-1/`'
         mock: なし
-        expected: '`家計簿: 停止しました（{文言}）\nhttp://127.0.0.1:8784/w/mindstella-x-1/mindstella.html`'
+        expected: '`家計簿: 停止しました（{文言}）\nhttp://127.0.0.1:8784/w/mindstella-x-1/`'
       - name: test_build_stopped_content_when_no_url
         case: 正常
         summary: URL が無いときは 1 行
@@ -447,7 +447,7 @@ functions:
       - name: test_notify_stopped
         case: 正常
         summary: 1 回送信する
-        condition: '`reason` が `stop_requested`。`describe` は `("家計簿", "http://127.0.0.1:8784/w/mindstella-x-1/mindstella.html")`、`environ` は URL を書いた一時ファイルを指す。返ったスレッドを `join` する'
+        condition: '`reason` が `stop_requested`。`describe` は `("家計簿", "http://127.0.0.1:8784/w/mindstella-x-1/")`、`environ` は URL を書いた一時ファイルを指す。返ったスレッドを `join` する'
         mock: '`send`'
         expected: '`send` が URL と `build_stopped_content("家計簿", "stop_requested", ...)` の本文で 1 回呼ばれる'
       - name: test_notify_stopped_when_not_configured

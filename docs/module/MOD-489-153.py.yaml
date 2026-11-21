@@ -114,7 +114,7 @@ functions:
       - name: test_render_readme_when_serving
         case: 正常
         summary: 配っているときは URL を書く
-        condition: '`preview_url="http://127.0.0.1:8784/w/mindstella-x-1/mindstella.html"`'
+        condition: '`preview_url="http://127.0.0.1:8784/w/mindstella-x-1/"`'
         mock: なし
         expected: プレビューのセクションにその URL があり、`PREVIEW_HINT` が無い
       - name: test_render_readme_when_path_has_space
@@ -170,7 +170,7 @@ functions:
       - name: test_write_readme_when_generated
         case: 正常
         summary: マーカーで始まる README は書き直す
-        condition: '`README_MARK` と `古い中身` の 2 行の `README.md`。`preview_url="http://127.0.0.1:8784/w/mindstella-x-1/mindstella.html"`'
+        condition: '`README_MARK` と `古い中身` の 2 行の `README.md`。`preview_url="http://127.0.0.1:8784/w/mindstella-x-1/"`'
         mock: なし
         expected: '`True`。`README.md` が `古い中身` を含まず、その URL を含む'
       - name: test_write_readme_when_user_file

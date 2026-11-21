@@ -7,7 +7,7 @@ components:
     kind: コンポーネント
     container: frontend/src/app/app.tsx
     usecase: 共通
-    summary: QueryClientProvider と RouterProvider を組み、書き換えの通知へつなぐ（書き換えの通知への接続）
+    summary: QueryClientProvider と RouterProvider を組み、書き換えの通知へつなぐ（書き換えの通知への接続）。配る書き出し（`isEmbedded()` が真）は書き換えの通知へつながない
     props:
       - name: queryClient
         type: QueryClient
@@ -24,5 +24,11 @@ components:
         condition: MSW で `GET /api/records` を返す
         mock: MSW（`GET /api/records`）・EventSource（偽物）
         expected: 概要の画面が描かれ、EventSource が `/api/events` へつながる
+      - name: test_app_when_embedded
+        case: 正常
+        summary: 配る書き出しは書き換えの通知へつながない
+        condition: 記録の `mindmap-data` の要素を配置する
+        mock: EventSource（偽物。作られた回数を数える）
+        expected: 概要の画面が描かれ、EventSource が作られない
 notes:
   単体テスト: 同じフォルダの `app.test.tsx` に置く（knowledge の規約『フォルダ構成』）

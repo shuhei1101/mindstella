@@ -17,5 +17,5 @@
     "noEmit": true,
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "../.storybook-react", "../vite.config.ts", "../vitest.config.ts", "../orval.config.ts"]
+  "include": ["src", "../.storybook-react", "../vite.config.ts", "../vite.export.config.ts", "../vitest.config.ts", "../orval.config.ts"]
 }

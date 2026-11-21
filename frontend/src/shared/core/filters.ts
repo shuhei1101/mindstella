@@ -1,4 +1,4 @@
-// 画面ごとの絞り込みの条件（今の画面の `Filters` と同じ形）の計算
+// 画面ごとの絞り込みの条件の計算
 import { toText } from "@/shared/core/format";
 import type { PreviewTab } from "@/shared/core/preview-search";
 

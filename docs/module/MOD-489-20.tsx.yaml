@@ -21,7 +21,7 @@ components:
         summary: 下端にコメント
         condition: サーバーの配信で項目を開く
         mock: MSW
-        expected: 下端に部品『DetailComments』があり、今の画面を開くリンクが無い
+        expected: 下端に部品『DetailComments』があり
     container: frontend/src/features/detail/detail-fullscreen/detail-fullscreen.tsx
 notes:
   単体テスト: 同じフォルダの `detail-fullscreen.test.tsx` に置く（knowledge の規約『フォルダ構成』）

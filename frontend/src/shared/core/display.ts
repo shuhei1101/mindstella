@@ -1,4 +1,4 @@
-// 表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` と、`app.ts` の既定に戻すと同じ振る舞い）
+// 表示の設定の計算
 import type { SettingsDisplay } from "@/shared/api/generated/model";
 import { defaultFilters, type Filters } from "@/shared/core/filters";
 import type { PreviewTab } from "@/shared/core/preview-search";

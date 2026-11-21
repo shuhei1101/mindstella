@@ -39,7 +39,7 @@ describe("CommentsPanel", () => {
     // 準備
     server.use(http.get("/api/threads", () => HttpResponse.json({ threads: [thread("TH-1", "open", "一つ目"), thread("TH-2", "open", "二つ目"), thread("TH-3", "closed", "三つ目")] })));
     // 実行
-    renderRoute("/spa/?panel=comments");
+    renderRoute("/?panel=comments");
     // 検証
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     await waitFor(() => expect(within(panel).getAllByRole("listitem")).toHaveLength(2));
@@ -57,7 +57,7 @@ describe("CommentsPanel", () => {
         return HttpResponse.json({ id: "C-3", created: "2026-11-01T00:00:00+00:00", count: 3 }, { status: 201 });
       }),
     );
-    renderRoute("/spa/?panel=comments");
+    renderRoute("/?panel=comments");
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     // 実行
     await userEvent.click(within(panel).getByRole("button", { name: "新規スレッド" }));
@@ -78,7 +78,7 @@ describe("CommentsPanel", () => {
       return 0;
     });
     server.use(transcription, http.get("/api/threads", () => HttpResponse.json({ threads: [thread("TH-1", "open", "一つ目"), thread("TH-2", "open", "二つ目")] })));
-    renderRoute("/spa/?panel=comments&thread=TH-2");
+    renderRoute("/?panel=comments&thread=TH-2");
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     // 実行
     await userEvent.click(await within(panel).findByRole("button", { name: "一覧へ戻る" }));
@@ -92,7 +92,7 @@ describe("CommentsPanel", () => {
   test("comments_panel_when_back_without_row", async () => {
     // 準備（絞り込みはオープンのまま、クローズのスレッドを開く）
     server.use(transcription, http.get("/api/threads", () => HttpResponse.json({ threads: [thread("TH-1", "open", "一つ目"), thread("TH-2", "closed", "二つ目")] })));
-    renderRoute("/spa/?panel=comments&thread=TH-2");
+    renderRoute("/?panel=comments&thread=TH-2");
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     await userEvent.click(await within(panel).findByRole("button", { name: "一覧へ戻る" }));
     await within(panel).findByRole("group", { name: "スレッドの状態で絞る" });
@@ -109,7 +109,7 @@ describe("CommentsPanel", () => {
     // 準備
     server.use(http.get("/api/threads", () => HttpResponse.json({ type: "about:blank", title: "Internal Server Error", status: 500, detail: "読めません" }, { status: 500, headers: { "Content-Type": "application/problem+json" } })));
     // 実行
-    renderRoute("/spa/?panel=comments");
+    renderRoute("/?panel=comments");
     // 検証
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     expect(await within(panel).findByRole("alert")).toHaveTextContent("スレッドを読めませんでした。");
@@ -125,7 +125,7 @@ describe("CommentsPanel", () => {
         HttpResponse.json({ items: [{ id: "C-41", target: "D-1", loc: null, thread: null, body: "D-1 への新規スレッド", created: "2026-11-01T00:00:00+00:00" }], drafts: [] }),
       ),
     );
-    renderRoute("/spa/?panel=comments&ttarget=D-1");
+    renderRoute("/?panel=comments&ttarget=D-1");
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     const before = window.history.length;
     // 実行
@@ -150,7 +150,7 @@ describe("CommentsPanel", () => {
         return HttpResponse.json({ id: "C-3", created: "2026-11-01T00:00:00+00:00", count: 3 }, { status: 201 });
       }),
     );
-    renderRoute("/spa/?panel=comments&ttarget=D-1");
+    renderRoute("/?panel=comments&ttarget=D-1");
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     // 実行
     await userEvent.click(within(panel).getByRole("button", { name: "新規スレッド" }));
@@ -171,7 +171,7 @@ describe("CommentsPanel", () => {
     // 準備
     focusTarget.current = target;
     server.use(http.post("/api/comments", () => HttpResponse.json({ id: "C-3", created: "2026-11-01T00:00:00+00:00", count: 3 }, { status: 201 })));
-    renderRoute("/spa/?panel=comments");
+    renderRoute("/?panel=comments");
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     // 実行（入力欄へ戻すかを確かめるときはボタンを押し、戻さないかを確かめるときは入力欄で Ctrl+Enter を押す）
     await userEvent.click(within(panel).getByRole("button", { name: "新規スレッド" }));

@@ -12,11 +12,14 @@ const CODE_BLOCK_HTML = [
   '<div class="mdmark-html"><pre><code>範囲の中のコード</code></pre></div>',
   '<div class="mdmark-map"><pre><code class="language-mermaid">flowchart TB</code></pre></div>',
 ].join("");
+// mdmark の `mount` が投げる例外（null なら投げずに描く）
+const mount = vi.hoisted(() => ({ error: null as Error | null }));
 vi.mock("@/shared/adapters/libraries", () => ({
   libraryState: () => "ready",
   mdmarkMapConfig: () => undefined,
   getLibrary: () => ({
     mount: (root: HTMLElement) => {
+      if (mount.error !== null) throw mount.error;
       root.innerHTML = CODE_BLOCK_HTML;
     },
   }),
@@ -70,13 +73,29 @@ describe("renderMarkdown", () => {
     expect(root.querySelectorAll(".mdmark-map .diagram").length).toBe(0);
     expect(root.querySelectorAll(".mdmark-map code.language-mermaid").length).toBe(1);
   });
+
+  // mount が例外を投げても投げ返さず、mdmark の知らせと原文を返す（異常系）
+  test("render_markdown_when_mount_failed", () => {
+    // 準備
+    mount.error = new TypeError("Failed to construct 'URL': Invalid URL");
+    // 実行
+    let root: HTMLElement;
+    try {
+      root = renderMarkdown("# 見出し\n\n<!-- map -->");
+    } finally {
+      mount.error = null;
+    }
+    // 検証
+    expect(root.textContent).toContain("mdmark");
+    expect(root.querySelector("pre.md-raw")?.textContent).toBe("# 見出し\n\n<!-- map -->");
+  });
 });
 
 describe("resolveFileSources", () => {
   // 相対パスだけを配信のパスにする（正常系）
   test("resolve_file_sources", () => {
     // 準備
-    window.history.pushState({}, "", "/w/mindstella-x-1/spa/");
+    window.history.pushState({}, "", "/w/mindstella-x-1/");
     const root = document.createElement("div");
     root.innerHTML = [
       '<p><img id="a" src="../files/a.png"></p>',

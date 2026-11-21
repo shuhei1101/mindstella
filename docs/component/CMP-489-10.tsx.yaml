@@ -30,5 +30,4 @@ accessibility:
   - 押す操作を持たず、フォーカスも受けない。置いたカード・行・節点を押すと詳細パネルが開く
   - 置いたカード・行・節点がホバー・フォーカス・選んでいる状態になっても、マーカーの色は変えない
 test_file: tests/integration/storybook_react/test_comment_mark_stories.py
-refs:
-  - CMP-489-9#
+refs: []

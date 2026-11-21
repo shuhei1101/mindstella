@@ -1,0 +1,103 @@
+# 単体テスト作成の Red（テストコードの末尾の commit: ade067fb）
+
+## 単体テスト（バック）
+$ TMPDIR=~/.cache/mindstella/tmp-644 pytest tests/unit
+（/tmp/pytest-of-shuhei2441 の持ち主が違う環境のため、TMPDIR だけを自分のフォルダにした）
+E       AttributeError: module 'builder' has no attribute 'EXPORT_HTML_FILE'
+E       AttributeError: module 'builder' has no attribute 'EXPORT_HTML_FILE'
+E       AttributeError: module 'builder' has no attribute 'EXPORT_HTML_FILE'
+E       AttributeError: module 'builder' has no attribute 'EXPORT_HTML_FILE'
+E       AttributeError: module 'builder' has no attribute 'EXPORT_HTML_FILE'
+E           AttributeError: module 'builder' has no attribute 'load_libraries'
+E           AttributeError: module 'builder' has no attribute 'LIBRARIES_FILE'
+E           AttributeError: module 'builder' has no attribute 'LIBRARIES_FILE'
+E           AttributeError: module 'builder' has no attribute 'LIBRARIES_FILE'
+E       AttributeError: module 'builder' has no attribute 'load_libraries'
+E       AttributeError: module 'builder' has no attribute 'EXPORT_HTML_FILE'
+E       AttributeError: module 'builder' has no attribute 'EXPORT_HTML_FILE'
+E       AttributeError: module 'builder' has no attribute 'EXPORT_HTML_FILE'
+E       AttributeError: module 'builder' has no attribute 'EXPORT_HTML_FILE'
+E       AttributeError: module 'builder' has no attribute 'EXPORT_HTML_FILE'
+E       AssertionError: assert 'http://127.0...x-1/#diff=V-1' == 'http://127.0...x-1/?diff=V-1'
+E         
+E         - http://127.0.0.1:1/w/mindstella-x-1/?diff=V-1
+E         ?                                     ^
+E         + http://127.0.0.1:1/w/mindstella-x-1/#diff=V-1
+E         ?                                     ^
+E       AssertionError: assert False
+E        +  where False = <built-in method endswith of str object at 0x74f53414a100>('/')
+E        +    where <built-in method endswith of str object at 0x74f53414a100> = 'http://127.0.0.1:5000/w/mindstella-workspace-96f993/mindstella.html'.endswith
+E       AssertionError: assert '/w/mindstell...ndstella.html' == '/w/mindstella-notes-3f2a9c/'
+E         
+E         - /w/mindstella-notes-3f2a9c/
+E         + /w/mindstella-notes-3f2a9c/mindstella.html
+E         ?                            +++++++++++++++
+E       AssertionError: assert '/w/mindstell...ndstella.html' == '/w/mindstell...B0%BF-3f2a9c/'
+E         
+E         Skipping 38 identical leading characters in diff, use -v to show
+E         - %BF-3f2a9c/
+E         + %BF-3f2a9c/mindstella.html
+E       assert <HTTPStatus.OK: 200> == 404
+E        +  where <HTTPStatus.OK: 200> = Response(status=<HTTPStatus.OK: 200>, content_type='text/html; charset=utf-8', body=b'<div id="root"></div>', location=None).status
+E       assert <HTTPStatus.OK: 200> == 404
+E        +  where <HTTPStatus.OK: 200> = Response(status=<HTTPStatus.OK: 200>, content_type='text/html; charset=utf-8', body=b'<div id="root"></div>', location=None).status
+E       assert <HTTPStatus.OK: 200> == 404
+E        +  where <HTTPStatus.OK: 200> = Response(status=<HTTPStatus.OK: 200>, content_type='text/html; charset=utf-8', body=b'<div id="root"></div>', location=None).status
+E       KeyError: 'Location'
+E       KeyError: 'Location'
+FAILED tests/unit/scripts/test_builder.py::test_load_libraries - AttributeErr...
+FAILED tests/unit/scripts/test_builder.py::test_load_libraries_when_invalid[missing]
+FAILED tests/unit/scripts/test_builder.py::test_load_libraries_when_invalid[not_list]
+FAILED tests/unit/scripts/test_builder.py::test_load_libraries_when_invalid[integrity_missing]
+FAILED tests/unit/scripts/test_builder.py::test_load_libraries_when_invalid[version_missing]
+FAILED tests/unit/scripts/test_builder.py::test_libraries_match_vendor_libraries
+FAILED tests/unit/scripts/test_builder.py::test_assemble_export_html - Attrib...
+FAILED tests/unit/scripts/test_builder.py::test_assemble_export_html_when_invalid[body_missing]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_export_html_when_invalid[integrity_mismatch]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_export_html_when_invalid[closing_tag]
+FAILED tests/unit/scripts/test_commands.py::test_run_export - AttributeError:...
+FAILED tests/unit/scripts/test_commands.py::test_run_preview_url_when_diff_given
+FAILED tests/unit/scripts/test_serve.py::test_start_when_settings_invalid - A...
+FAILED tests/unit/scripts/test_serve.py::test_page_path[ascii] - AssertionErr...
+FAILED tests/unit/scripts/test_serve.py::test_page_path[japanese] - Assertion...
+FAILED tests/unit/scripts/test_serve.py::test_spa_response_when_outside[missing]
+FAILED tests/unit/scripts/test_serve.py::test_spa_response_when_outside[dot]
+FAILED tests/unit/scripts/test_serve.py::test_spa_response_when_outside[encoded]
+FAILED tests/unit/scripts/test_serve.py::test_endpoint_when_redirect[ascii]
+FAILED tests/unit/scripts/test_serve.py::test_endpoint_when_redirect[japanese]
+ERROR tests/unit/scripts/test_builder.py::test_export_preview - AttributeErro...
+ERROR tests/unit/scripts/test_builder.py::test_export_preview_when_schema_mismatch
+ERROR tests/unit/scripts/test_builder.py::test_export_preview_when_download_fails
+ERROR tests/unit/scripts/test_builder.py::test_export_preview_when_out_dir_missing
+====== 20 failed, 1707 passed, 1 skipped, 5 warnings, 4 errors in 29.35s =======
+
+fail・error は全て実装が無いことによる: builder の EXPORT_HTML_FILE・LIBRARIES_FILE・load_libraries・assemble_export_html が無い / serve の PAGE_PATH がまだ /mindstella.html で、前の画面のパスを再送信せず、spa_response が出力に無いパスに index.html を返す / commands の preview_url がまだ #diff= を付ける
+
+実装の前から pass したテストのうち、この作業で条件を変えたもの:
+- test_spa_response・test_spa_response_when_unknown_suffix・test_spa_response_when_index_missing: serve.py の spa_response（753f970e で入った）が / で index.html を、出力のファイルを拡張子の型で返し、index.html が無ければ 500 を返す
+- test_run_hook・test_run_hook_when_command_missing: serve.py の run_hook（2f979548 で入った）は画面のパスを引数のまま渡す
+
+## 単体テスト（フロント）
+$ npx vitest run
+     × detail_panel_when_width_saved 1007ms
+     × load_library_when_embedded 5009ms
+ FAIL  frontend/src/app/app.test.tsx [ frontend/src/app/app.test.tsx ]
+Error: Failed to resolve import "@/shared/core/embedded" from "frontend/src/app/app.test.tsx". Does the file exist?
+ FAIL  frontend/src/app/router.test.tsx [ frontend/src/app/router.test.tsx ]
+Error: Failed to resolve import "@/shared/core/embedded" from "frontend/src/app/router.test.tsx". Does the file exist?
+ FAIL  frontend/src/shared/adapters/api-client.test.ts [ frontend/src/shared/adapters/api-client.test.ts ]
+Error: Failed to resolve import "@/shared/core/embedded" from "frontend/src/shared/adapters/api-client.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/core/embedded.test.ts [ frontend/src/shared/core/embedded.test.ts ]
+Error: Failed to resolve import "@/shared/core/embedded" from "frontend/src/shared/core/embedded.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/adapters/libraries.test.ts > loadLibrary (mdmark) > load_library_when_embedded
+Error: Test timed out in 5000ms.
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_width_saved
+TestingLibraryElementError: Unable to find role="complementary" and name `/詳細/`
+ Test Files  6 failed | 75 passed (81)
+      Tests  2 failed | 343 passed (345)
+
+fail は全て実装が無いことによる: frontend/src/shared/core/embedded.ts が無い（embedded・router・app・api-client のテストのファイル）/ loadLibrary が配る書き出しの中身を読まず script 要素を足して待ち続ける / createAppRouter の basepath がまだ {workspacePath()}/spa で /w/mindstella-x-1/ が Not Found になる
+
+実装の前から pass したテストのうち、この作業で条件を変えたもの:
+- workspace-path.test.ts: workspacePath・workspaceKey（#642 で入った）はパスの頭の /w/{workspace} だけを見る
+- prefs-store・theme-store・body-links のテストの location を /w/mindstella-x-1/ にしたもの: workspaceKey・workspacePath（#642）がパスの頭だけを見る

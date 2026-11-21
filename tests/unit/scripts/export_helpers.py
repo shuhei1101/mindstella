@@ -1,16 +1,17 @@
-"""配る書き出しの単体テストが共有する、外の読み込みを持つ雛形・取る中身・ライブラリの組み立て。"""
+"""配る書き出しの単体テストが共有する、書き出し用のビルドのフォルダ・取る中身・ライブラリの組み立て。"""
 
 from __future__ import annotations
 
 import base64
 import hashlib
+import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import builder
 
-# 外の読み込みの版（雛形の <script src> と、取るライセンスの本文の URL に入る）
+# 描画のライブラリの版（libraries.json の version と、取るライセンスの本文の URL に入る）
 EXTERNAL_VERSION = "1.0.0"
 
 # 外の読み込み 1 つ（パッケージ名・配布ファイルの中身）
@@ -54,18 +55,39 @@ def integrity_of(content: bytes) -> str:
     return f"sha384-{digest}"
 
 
-def external_template(scripts: list[Script]) -> str:
-    """外の読み込みの印の間に、mdmark の差し込み口と、パッケージごとの `<script src integrity>` を置いた雛形を返す。"""
-    module_part = builder.MDMARK_SLOT
-    tags = "".join(
-        f'<script src="{dist_url(package)}" integrity="{integrity_of(content)}"'
-        ' crossorigin="anonymous" defer></script>'
-        for package, content in scripts
-    )
+def export_html(body: str = "") -> str:
+    """書き出し用のビルドの HTML（Google Fonts の `<link>` と、`body` を中に持つ最後の `</body>`）を返す。"""
     return (
-        f"{builder.STYLE_SLOT}{builder.EXTERNAL_START}{module_part}{tags}{builder.EXTERNAL_END}"
-        f"{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
+        '<!doctype html><html><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter">'
+        f'</head><body><div id="root"></div><script type="module">/* app */</script>{body}</body></html>'
     )
+
+
+def libraries_json(scripts: list[Script]) -> str:
+    """パッケージごとの `package`・`version`・`url`・`integrity`・`global` を並べた libraries.json の中身を返す。"""
+    rows = [
+        {
+            "package": package,
+            "version": EXTERNAL_VERSION,
+            "url": dist_url(package),
+            "integrity": integrity_of(content),
+            "global": package,
+        }
+        for package, content in scripts
+    ]
+    return json.dumps(rows, ensure_ascii=False)
+
+
+def write_export_preview_dir(
+    folder: Path, scripts: list[Script], html: str | None = None, frontend_licenses: str = "React の依存"
+) -> None:
+    """プレビューのフォルダに export/index.html・libraries.json・export/licenses.md・licenses/mdmark-LICENSE.txt を書く。"""
+    (folder / "export").mkdir(parents=True, exist_ok=True)
+    (folder / "licenses").mkdir(parents=True, exist_ok=True)
+    (folder / builder.EXPORT_HTML_FILE).write_text(html if html is not None else export_html(), encoding="utf-8")
+    (folder / builder.LIBRARIES_FILE).write_text(libraries_json(scripts), encoding="utf-8")
+    (folder / builder.FRONTEND_LICENSES_FILE).write_text(frontend_licenses, encoding="utf-8")
+    (folder / "licenses" / "mdmark-LICENSE.txt").write_text("MIT の本文", encoding="utf-8")
 
 
 def make_responses(
@@ -117,13 +139,3 @@ def make_library(package: str, **overrides: Any) -> builder.VendorLibrary:
     }
     values.update(overrides)
     return builder.VendorLibrary(**values)
-
-
-def write_preview_dir(folder: Path, template: str) -> None:
-    """雛形のフォルダに template.html と、STYLE_FILES・SCRIPT_FILES の名前のファイルを書く。"""
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / "template.html").write_text(template, encoding="utf-8")
-    for name in (*builder.STYLE_FILES, *builder.SCRIPT_FILES):
-        path = folder / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(f"/* {name} */", encoding="utf-8")

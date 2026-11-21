@@ -71,7 +71,7 @@ files:
     type: tests
 - path: src/app/router.tsx
   name: React のプレビューのルーター
-  description: 生成したルートのツリーで、SPA を配るパスの頭（インターフェース定義『SPAの配信』）を付けたルーターを作る。ルーターの組み立てや SPA を配るパスの頭を変更するときに読む。
+  description: 生成したルートのツリーで、SPA を配るパスの頭（インターフェース定義『プレビューの配信』）を付けたルーターを作る。ルーターの組み立てや SPA を配るパスの頭を変更するときに読む。
   tags:
   - tool:tanstack-router
   - topic:ルーティング
@@ -224,7 +224,7 @@ files:
     type: implements
 - path: src/shared/components/icon.tsx
   name: React のアイコンと状態のマーカー
-  description: 24px の枠に描いた線のアイコンと、状態の 10px のマーカー（今の画面の `core/dom.ts` と同じ絵）。アイコンや状態のマーカーの絵を追加・変更するときに読む。
+  description: 24px の枠に描いた線のアイコンと、状態の 10px のマーカー。アイコンや状態のマーカーの絵を追加・変更するときに読む。
   tags:
   - tool:react
   - tool:svg
@@ -364,7 +364,7 @@ files:
     type: tests
 - path: src/shared/stores/theme-store.ts
   name: ライト / ダークのストア
-  description: ライト / ダークを、今の画面と同じ端末の保存領域のキーで読み書きする。テーマの保存と切り替えを変更するときに読む。
+  description: ライト / ダークを、端末の保存領域のキーで読み書きする。テーマの保存と切り替えを変更するときに読む。
   tags:
   - tool:zustand
   - topic:ダークモード
@@ -1302,6 +1302,25 @@ files:
   related:
   - to: MOD-489-109
     type: implements
+- path: src/shared/core/embedded.test.ts
+  name: 配る書き出しの埋め込みの記録の読み取りの単体テスト
+  description: embedded.ts（埋め込みの記録の読み取り・配る書き出しで開いているか・埋め込みからの応答）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-644-1
+    type: tests
+- path: src/shared/core/embedded.ts
+  name: 配る書き出しの埋め込みの記録
+  description: 配る書き出しの 1 枚の HTML が持つ埋め込みの記録を読み、API の応答の代わりに返す。配る書き出しで開いたときの振る舞いを変更するときに読む。
+  tags:
+  - tool:react
+  - topic:書き出し
+  related:
+  - to: MOD-644-1
+    type: implements
 - path: src/shared/core/filters.test.ts
   name: import { describe, expect, test } from vitest;
   description: import { describe, expect, test } from vitest;。
@@ -1543,8 +1562,8 @@ files:
   - to: MOD-489-170
     type: tests
 - path: src/shared/stores/prefs-store.ts
-  name: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localSt
-  description: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localSt。
+  name: 表示の個人の上書きのストア
+  description: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止めを、端末の保存領域の `mindmap-preview` のキーで読み書きする。個人の表示の上書きを変更するときに読む。
   tags:
   - tool:react
   related:

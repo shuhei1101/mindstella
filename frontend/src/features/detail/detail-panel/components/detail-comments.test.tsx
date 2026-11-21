@@ -43,7 +43,7 @@ describe("DetailComments", () => {
         return HttpResponse.json({ id: "C-1", created: "2026-11-01T00:00:00+00:00", count: 1 }, { status: 201 });
       }),
     );
-    renderRoute("/spa/?tab=docs&id=A-1");
+    renderRoute("/?tab=docs&id=A-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     const line = await within(panel).findByText("二行目");
     // 実行
@@ -75,7 +75,7 @@ describe("DetailComments", () => {
         }),
       ),
     );
-    renderRoute("/spa/?tab=docs&id=A-1");
+    renderRoute("/?tab=docs&id=A-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     // 実行
     await userEvent.click(await within(panel).findByRole("button", { name: "コメントの並び: 新しい順" }));
@@ -94,10 +94,10 @@ describe("DetailComments", () => {
       bodies: { "docs/A-1.md": '<p data-line-start="1">一行目</p><p data-line-start="3">二行目</p>', "docs/A-2.md": "本文" },
     });
     server.use(http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })));
-    renderRoute("/spa/?tab=docs&id=A-1");
+    renderRoute("/?tab=docs&id=A-1");
     // 履歴を進めて別の項目を開く（ルーターは popstate で URL を読み直す）
     const open = (id: string): void => {
-      window.history.pushState(null, "", `/spa/?tab=docs&id=${id}`);
+      window.history.pushState(null, "", `/?tab=docs&id=${id}`);
       window.dispatchEvent(new PopStateEvent("popstate"));
     };
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
@@ -142,7 +142,7 @@ describe("DetailComments", () => {
         return HttpResponse.json({ sent: "2026-11-09T00:00:00+00:00", thread: "TH-1", post: "TH-1-1", entered: true }, { status: 201 });
       }),
     );
-    renderRoute("/spa/?tab=decisions&id=D-1");
+    renderRoute("/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     // 実行
     await userEvent.click(await within(panel).findByRole("button", { name: "音声で入力" }));
@@ -176,12 +176,12 @@ describe("DetailComments", () => {
         return HttpResponse.json({ id: "C-1", created: "2026-11-14T00:00:00+00:00", count: 1 }, { status: 201 });
       }),
     );
-    const view = renderRoute("/spa/?tab=decisions&id=D-1");
+    const view = renderRoute("/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     await userEvent.click(await within(panel).findByRole("button", { name: "音声で入力" }));
     // 実行
     view.unmount();
-    renderRoute("/spa/?tab=decisions&id=D-2");
+    renderRoute("/?tab=decisions&id=D-2");
     const other = await screen.findByRole("complementary", { name: /詳細/ });
     const otherMic = await within(other).findByRole("button", { name: "音声で入力" });
     const otherDisabled = otherMic.getAttribute("aria-disabled");
@@ -207,7 +207,7 @@ describe("DetailComments", () => {
     stubRecords({ docs: [doc], bodies: { "docs/A-1.md": "本文" } });
     server.use(http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })));
     server.use(http.post("/api/comments", () => HttpResponse.json({ id: "C-1", created: "2026-11-01T00:00:00+00:00", count: 1 }, { status: 201 })));
-    renderRoute("/spa/?tab=docs&id=A-1");
+    renderRoute("/?tab=docs&id=A-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     const field = await within(panel).findByRole("textbox", { name: /A-1 へのコメント/ });
     // 実行（入力欄へ戻すかを確かめるときはボタンを押し、戻さないかを確かめるときは入力欄で Ctrl+Enter を押す）
@@ -242,7 +242,7 @@ describe("DetailComments の修正の音声入力", () => {
         return HttpResponse.json({ sent: "2026-11-09T00:00:00+00:00", thread: "TH-1", post: "TH-1-1", entered: true }, { status: 201 });
       }),
     );
-    renderRoute("/spa/?tab=decisions&id=D-1");
+    renderRoute("/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     await userEvent.click(await within(panel).findByRole("button", { name: "D-1 へのコメントを修正" }));
     const edit = (await within(panel).findByRole("textbox", { name: "D-1 へのコメントの本文" })).closest("form");

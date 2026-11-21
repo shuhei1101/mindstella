@@ -1,0 +1,4 @@
+$ pytest tests/integration/server/test_records.py -q -rfEs  # commit cc474c8b
+..........                                                               [100%]
+10 passed in 32.56s
+exit=0

@@ -33,5 +33,4 @@ notes:
   幅 320px のモック: 幅 389px 以下で「本文へ戻る」をマーカーだけにする見本は `docs/mock/pages/diagram-viewer/289/a-icon-back/index.html`
 test_file: tests/integration/preview/test_spa_diagram_viewer_screen.py
 refs:
-  - SCR-489-13#
   - IF-489-70#

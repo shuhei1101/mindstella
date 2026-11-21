@@ -98,5 +98,4 @@ accessibility:
 notes:
   モック: '`docs/mock/components/main-tag/index.html` の「編集のタグの入力」「トグルのホバー・キーボードのフォーカス」「長いタグ・狭い幅」（採用は案 A: 二重丸）'
 test_file: tests/integration/storybook_react/test_chips_input_stories.py
-refs:
-  - CMP-489-17#
+refs: []

@@ -1,4 +1,4 @@
-// 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て（今の画面の `components/table.ts` と同じ振る舞い）
+// 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て
 import { toText } from "@/shared/core/format";
 import { TEXT_FILTER_PREFIX, withoutKey, type Filters } from "@/shared/core/filters";
 

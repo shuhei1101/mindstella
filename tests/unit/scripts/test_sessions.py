@@ -182,7 +182,7 @@ def ctx(
     monkeypatch.setattr(
         commands, "run_pending", lambda _root: {"added": [], "changed": [], "removed": []}
     )
-    previews = SimpleNamespace(start=lambda _root: ("http://127.0.0.1:9100/mindstella.html", False))
+    previews = SimpleNamespace(start=lambda _root: ("http://127.0.0.1:9100/w/mindstella-x-1/", False))
     return SimpleNamespace(
         port=8784,
         pi_port=8786,
@@ -376,7 +376,7 @@ def test_create_session(ctx: SimpleNamespace, clock: FakeClock) -> None:
     assert status == 201
     assert re.fullmatch(r"S-[0-9a-f]{12}", body["session"])
     assert body["pane"] == PANE
-    assert body["url"] == "http://127.0.0.1:9100/mindstella.html"
+    assert body["url"] == "http://127.0.0.1:9100/w/mindstella-x-1/"
     assert body["account"] == "/c"
     names = [call[0] for call in ctx.tmux.calls if call[0] != "display-message"]
     assert names == [
@@ -969,7 +969,7 @@ def test_record_event_when_session_ended(
 def test_notify_stopped(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
     """ワークスペースの名前と画面の URL を添えて通知を呼ぶ（正常系）。"""
     # 準備
-    ctx.previews.url_of = lambda _folder: "http://127.0.0.1:9100/mindstella.html"
+    ctx.previews.url_of = lambda _folder: "http://127.0.0.1:9100/w/mindstella-x-1/"
     received: list[tuple[str, str, Callable[[], Any]]] = []
     monkeypatch.setattr(
         notify,
@@ -985,7 +985,7 @@ def test_notify_stopped(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -
     assert len(received) == 1
     workspace_id, reason, describe = received[0]
     assert (workspace_id, reason) == (WORKSPACE_ID, "crashed")
-    assert describe() == ("家計簿", "http://127.0.0.1:9100/mindstella.html")
+    assert describe() == ("家計簿", "http://127.0.0.1:9100/w/mindstella-x-1/")
 
 
 def test_resume_status(ctx: SimpleNamespace, folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -21,7 +21,7 @@ WEBHOOK_URL = "https://example.invalid/api/webhooks/1/secret-token"
 WORKSPACE_ID = "ws"
 
 # テストの画面の URL
-PAGE_URL = "http://127.0.0.1:47800/mindstella.html"
+PAGE_URL = "http://127.0.0.1:47800/w/mindstella-x-1/"
 
 
 @pytest.fixture(autouse=True)
@@ -187,7 +187,7 @@ def test_build_content() -> None:
     # 実行
     result = notify.build_content("家計簿", PAGE_URL)
     # 検証
-    assert result == "家計簿: 作業が完了しました\nhttp://127.0.0.1:47800/mindstella.html"
+    assert result == "家計簿: 作業が完了しました\nhttp://127.0.0.1:47800/w/mindstella-x-1/"
 
 
 def test_build_content_when_no_url() -> None:
@@ -206,7 +206,7 @@ def test_build_content_when_too_long() -> None:
     result = notify.build_content(name, PAGE_URL)
     # 検証
     assert len(result) <= 2000
-    assert result.endswith("…: 作業が完了しました\nhttp://127.0.0.1:47800/mindstella.html")
+    assert result.endswith("…: 作業が完了しました\nhttp://127.0.0.1:47800/w/mindstella-x-1/")
     assert result.startswith("あ")
 
 
@@ -312,7 +312,7 @@ def test_notify_if_written(webhook_file: Path, markers: notify.WriteMarkers) -> 
     # 実行
     thread = notify.notify_if_written(
         WORKSPACE_ID,
-        _recording_describe(described, ("家計簿", "http://127.0.0.1:1/mindstella.html")),
+        _recording_describe(described, ("家計簿", "http://127.0.0.1:1/w/mindstella-x-1/")),
         environ={"MINDSTELLA_DISCORD_WEBHOOK_FILE": str(webhook_file)},
         send=_recording_send(sent),
     )
@@ -320,7 +320,7 @@ def test_notify_if_written(webhook_file: Path, markers: notify.WriteMarkers) -> 
     thread.join(timeout=5)
     # 検証
     assert thread.daemon is True
-    assert sent == [(WEBHOOK_URL, "家計簿: 作業が完了しました\nhttp://127.0.0.1:1/mindstella.html")]
+    assert sent == [(WEBHOOK_URL, "家計簿: 作業が完了しました\nhttp://127.0.0.1:1/w/mindstella-x-1/")]
     assert markers.take(WORKSPACE_ID) is False
 
 
@@ -379,7 +379,7 @@ def test_build_stopped_content(reason: notify.StopReason, text: str) -> None:
     # 実行
     result = notify.build_stopped_content("家計簿", reason, PAGE_URL)
     # 検証
-    assert result == f"家計簿: 停止しました（{text}）\nhttp://127.0.0.1:47800/mindstella.html"
+    assert result == f"家計簿: 停止しました（{text}）\nhttp://127.0.0.1:47800/w/mindstella-x-1/"
 
 
 def test_build_stopped_content_when_no_url() -> None:
@@ -398,7 +398,7 @@ def test_build_stopped_content_when_too_long() -> None:
     result = notify.build_stopped_content(name, "stop_requested", PAGE_URL)
     # 検証
     assert len(result) <= 2000
-    assert result.endswith("…: 停止しました（停止の依頼）\nhttp://127.0.0.1:47800/mindstella.html")
+    assert result.endswith("…: 停止しました（停止の依頼）\nhttp://127.0.0.1:47800/w/mindstella-x-1/")
     assert result.startswith("あ")
 
 
@@ -411,7 +411,7 @@ def test_notify_stopped(webhook_file: Path) -> None:
     thread = notify.notify_stopped(
         WORKSPACE_ID,
         "stop_requested",
-        _recording_describe(described, ("家計簿", "http://127.0.0.1:1/mindstella.html")),
+        _recording_describe(described, ("家計簿", "http://127.0.0.1:1/w/mindstella-x-1/")),
         environ={"MINDSTELLA_DISCORD_WEBHOOK_FILE": str(webhook_file)},
         send=_recording_send(sent),
     )
@@ -420,7 +420,7 @@ def test_notify_stopped(webhook_file: Path) -> None:
     # 検証
     assert thread.daemon is True
     assert sent == [
-        (WEBHOOK_URL, "家計簿: 停止しました（停止の依頼）\nhttp://127.0.0.1:1/mindstella.html")
+        (WEBHOOK_URL, "家計簿: 停止しました（停止の依頼）\nhttp://127.0.0.1:1/w/mindstella-x-1/")
     ]
 
 

@@ -1,4 +1,4 @@
-// 差分の表示の計算。変更履歴で選んだ時点から印を付ける項目を決め、項目の `history` から前の版を組み立て、本文・記法の行と図の要素を比べる。DOM は描かない（今の画面の `core/diff.ts` と同じ振る舞い）
+// 差分の表示の計算。変更履歴で選んだ時点から印を付ける項目を決め、項目の `history` から前の版を組み立て、本文・記法の行と図の要素を比べる。DOM は描かない
 import type * as JsDiffModule from "diff";
 import type { Token } from "marked";
 
@@ -631,7 +631,7 @@ const edgeEnds = (dataId: string, nodeKeys: Set<string>): string => {
 };
 
 /** 1 枚の SVG から、ノードと辺の材料を取り出す。同じ端点の辺は出てきた順の番号で分ける */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 const extractDiagram = (root: SVGElement, flavor: DiagramFlavor): DiagramParts<DiagramPart> => {
   const prefix = root.id;
   const nodeList: DiagramPart[] = [];
@@ -713,7 +713,7 @@ const compareDiagrams = ({
   flavor: DiagramFlavor;
   previous: DiagramParts<PreviousPart>;
   current: DiagramParts<DiagramPart>;
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 }): DiagramDiff | null => {
   const result: DiagramDiff = { added: [], changed: [], removed: [] };
   for (const [key, node] of current.nodes) {
@@ -883,7 +883,7 @@ export const pairEmbeddedHtml = ({ before, after }: { before: string; after: str
 };
 
 /** 描いた前後の範囲の直下の要素（`outerHTML`）を並びで比べ、今の要素ごとに足した・変わったのマーカーを返す。変えていない要素は null。比べるのを打ち切ったら null */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const childMarks = ({ before, after, jsdiff }: { before: string[]; after: string[]; jsdiff: JsDiff }): ("added" | "changed" | null)[] | null => {
   const parts = jsdiff.diffArrays(before, after, { timeout: ARRAY_DIFF_TIMEOUT_MS });
   // 打ち切り

@@ -31,6 +31,7 @@ import { useRecords } from "@/shared/hooks/use-records";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
+import { isEmbedded } from "@/shared/core/embedded";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
 
@@ -116,7 +117,7 @@ const bodyDisplayOf = (): BodyDisplay => {
 export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string };
 
 /** 見出しと本文。パネルと全画面が共通で使う */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
   const { search, openItem, closeItem, setFull, setHeading, setDiff } = usePreviewSearch();
   const { point } = useDiffView();
@@ -243,7 +244,9 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
     ),
     logs: body("要約"),
   };
-  const canEdit = point === null;
+  // 差分の表示の間と配る書き出しは編集・確認済みを出さない
+  const embedded = isEmbedded();
+  const canEdit = point === null && !embedded;
   const marks: Record<string, PendingMarkKind> = {};
   const blockedIds = new Set(blockedEdits.map((entry) => entry.id));
   const blockedByKey: Record<string, BlockedEdit> = {};
@@ -259,7 +262,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const change = ({ op, key, value }: EditChange): void => { add.mutate({ op, target: id, key, value }); };
   return (
     <DiffDeadlineContext.Provider value={deadline}>
-      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
+      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
           <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
@@ -300,7 +303,9 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             ) : null}
             {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
             {relation("参照元", related.referencedBy)}
-            <DetailComments id={id} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
+            {embedded ? null : (
+              <DetailComments id={id} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
+            )}
           </div>
         )}
       </DiffMinimap>
@@ -318,7 +323,7 @@ const KeyLead = ({ name, value, keys }: { name: string; value: string | undefine
   );
 };
 
-/** そのタブで変えた幅を残す sessionStorage のキー（今の画面と同じ） */
+/** そのタブで変えた幅を残す sessionStorage のキー */
 const PANEL_WIDTH_KEY = "mindmap-panel-width";
 
 const readPanelWidth = (): number => {

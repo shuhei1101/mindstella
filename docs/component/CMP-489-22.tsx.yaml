@@ -64,7 +64,6 @@ accessibility:
 refs:
   - CMP-489-32#
   - CMP-489-10#
-  - CMP-489-21#
 notes:
   モック: '`docs/mock/components/pending-mark/index.html`（モック作成で合意。確認ログの「モックへの合意」）'
 test_file: tests/integration/storybook_react/test_pending_mark_stories.py

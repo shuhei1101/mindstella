@@ -1,0 +1,23 @@
+[
+  {
+    "package": "marked",
+    "version": "18.0.14",
+    "url": "https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js",
+    "integrity": "sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo",
+    "global": "marked"
+  },
+  {
+    "package": "mermaid",
+    "version": "12.1.0",
+    "url": "https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js",
+    "integrity": "sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4",
+    "global": "mermaid"
+  },
+  {
+    "package": "diff",
+    "version": "9.0.0",
+    "url": "https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js",
+    "integrity": "sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1",
+    "global": "Diff"
+  }
+]

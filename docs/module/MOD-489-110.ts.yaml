@@ -6,7 +6,7 @@ functions:
     title: 絞り込みの判定
     kind: 関数
     usecase: 項目を表で絞り込む
-    summary: 今の画面の `Filters` の条件に行が合うかを返す（条件の中はどれか、条件の間は全て。`~{列}` は文字の条件）
+    summary: 絞り込みの条件（`Filters`）に行が合うかを返す（条件の中はどれか、条件の間は全て。`~{列}` は文字の条件）
     args:
       - name: row
         type: Record<string, unknown>

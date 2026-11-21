@@ -3,14 +3,14 @@
 @import "./tokens.css";
 @import "./body.css";
 
-/* ダーク: data-theme が dark のとき（今の画面と同じく、明示したダークだけに当てる） */
+/* ダーク: data-theme が dark のとき（明示したダークだけに当てる） */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
   --color-*: initial;
   /* 本文の幅の上限 */
   --container-content: 82.5rem;
-  /* 画面幅の区切り（今の画面の区切りと同じ。max-* はその幅未満） */
+  /* 画面幅の区切り（max-* はその幅未満） */
   --breakpoint-*: initial;
   --breakpoint-2xs: 361px;
   --breakpoint-xs: 390px;
@@ -154,20 +154,20 @@
   grid-template-columns: 8.5em 1fr 3.2em;
 }
 
-/* コメントと返信の入力欄の高さ（1 行から 8 行。超えたら入力欄の中を送る。今の画面の `.send textarea` と同じ） */
+/* コメントと返信の入力欄の高さ（1 行から 8 行。超えたら入力欄の中を送る） */
 @utility field-send {
   min-block-size: calc(1lh + 16px);
   max-block-size: calc(8lh + 16px);
 }
 
-/* コメントと返信の「レビューに追加」のボタン: 1 行の入力欄と同じ高さの正方形（今の画面の `.send-submit` と同じ） */
+/* コメントと返信の「レビューに追加」のボタン: 1 行の入力欄と同じ高さの正方形 */
 @utility size-send {
   inline-size: calc(1lh + 18px);
   block-size: calc(1lh + 18px);
   line-height: 1.5;
 }
 
-/* 録音中に入力欄の場所へ出す波形: 1 行の入力欄と同じ大きさ・枠・角丸。棒の本数で幅を広げず、新しい棒を右端に足して古い棒を左で切る（今の画面の `.send-wave` と同じ） */
+/* 録音中に入力欄の場所へ出す波形: 1 行の入力欄と同じ大きさ・枠・角丸。棒の本数で幅を広げず、新しい棒を右端に足して古い棒を左で切る */
 @utility wave-send {
   flex: 1 1 0;
   min-inline-size: 0;
@@ -188,7 +188,7 @@
   }
 }
 
-/* 波形の棒: 音量（--lv は 0〜1）に合わせて伸ばし、録音中の丸と同じ色にする（今の画面の `.send-wave i` と同じ） */
+/* 波形の棒: 音量（--lv は 0〜1）に合わせて伸ばし、録音中の丸と同じ色にする */
 @utility wave-bar {
   flex: none;
   inline-size: 3px;
@@ -198,7 +198,7 @@
   border-radius: 1px;
 }
 
-/* レビュー中の書き込みの書き換えの入力欄の高さ（2 行から 10 行。今の画面の `.row-edit textarea` と同じ） */
+/* レビュー中の書き込みの書き換えの入力欄の高さ（2 行から 10 行） */
 @utility field-edit {
   min-block-size: calc(2lh + 16px);
   max-block-size: calc(10lh + 16px);

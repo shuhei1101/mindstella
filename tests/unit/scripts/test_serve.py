@@ -20,7 +20,6 @@ from starlette.applications import Starlette
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-import builder
 import change_detection
 import errors
 import serve
@@ -40,7 +39,6 @@ from errors import (
     WorkspaceNotFoundError,
     WriteFailedError,
 )
-from export_helpers import write_preview_dir
 from fixture_types import (
     MakeComment,
     MakeEdit,
@@ -54,9 +52,6 @@ from fixture_types import (
 )
 from workspace_fixtures import RECORD_DIR, write_yaml
 from record_helpers import ai_update
-
-# index_response の雛形（差し込み口と、記録の入る空の要素）
-SMALL_TEMPLATE = f"{builder.STYLE_SLOT}{builder.MDMARK_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
 
 # 配信のテストで使う待ち受けのポート（check_host・check_origin の比較用。実際には待ち受けない）
 PORT = 5000
@@ -144,7 +139,7 @@ def _record_hook_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[tuple[str,
 
 
 def _page_path_of(root: Path) -> str:
-    """ワークスペースの画面のパス（/w/{ID}/mindstella.html）を返す。"""
+    """ワークスペースの画面のパス（/w/{ID}/）を返す。"""
     return serve.page_path(change_detection.workspace_id_of(root))
 
 
@@ -276,7 +271,7 @@ def test_start_when_settings_invalid(
     assert second_lines[0].startswith("config.yaml: display.visible_kinds")
     assert servers_while_invalid == {}
     assert started is True
-    assert url.endswith("/mindstella.html")
+    assert url.endswith("/")
 
 
 def test_start_when_start_hook_set(
@@ -687,17 +682,17 @@ def test_run_hook(tmp_path: Path) -> None:
         str(written),
     )
     # 実行
-    started = serve.run_hook(command, 8784, "家計簿", "/w/mindstella-x-1/mindstella.html")
+    started = serve.run_hook(command, 8784, "家計簿", "/w/mindstella-x-1/")
     # 検証（終わりは待たないので、書かれるのを待つ）
     assert started is True
-    assert _read_when_written(written) == "8784 家計簿 /w/mindstella-x-1/mindstella.html"
+    assert _read_when_written(written) == "8784 家計簿 /w/mindstella-x-1/"
 
 
 def test_run_hook_when_command_missing() -> None:
     """コマンドが無ければ偽で例外を送らない（異常系）。"""
     # 実行
     started = serve.run_hook(
-        ("mindstella-no-such-command",), 8784, "家計簿", "/w/mindstella-x-1/mindstella.html"
+        ("mindstella-no-such-command",), 8784, "家計簿", "/w/mindstella-x-1/"
     )
     # 検証
     assert started is False
@@ -706,16 +701,16 @@ def test_run_hook_when_command_missing() -> None:
 @pytest.mark.parametrize(
     ("workspace_id", "expected"),
     [
-        pytest.param("mindstella-notes-3f2a9c", "/w/mindstella-notes-3f2a9c/mindstella.html", id="ascii"),
+        pytest.param("mindstella-notes-3f2a9c", "/w/mindstella-notes-3f2a9c/", id="ascii"),
         pytest.param(
             "mindstella-家計簿-3f2a9c",
-            "/w/mindstella-%E5%AE%B6%E8%A8%88%E7%B0%BF-3f2a9c/mindstella.html",
+            "/w/mindstella-%E5%AE%B6%E8%A8%88%E7%B0%BF-3f2a9c/",
             id="japanese",
         ),
     ],
 )
 def test_page_path(workspace_id: str, expected: str) -> None:
-    """ID をパーセントエンコードして /w/{ID}/mindstella.html にする（正常系）。"""
+    """日本語を含む ID をパーセントエンコードする（正常系）。"""
     # 実行
     result = serve.page_path(workspace_id)
     # 検証
@@ -736,58 +731,6 @@ def test_problem_response() -> None:
     }
 
 
-def test_index_response(tmp_path: Path) -> None:
-    """差し込んだ雛形を返し、記録は空のまま（正常系）。"""
-    # 準備
-    preview_dir = tmp_path / "preview"
-    write_preview_dir(preview_dir, SMALL_TEMPLATE)
-    # 実行
-    response = serve.index_response(preview_dir, mdmark_settings={"version": "v0.13.0"})
-    # 検証
-    body = response.body.decode("utf-8")
-    assert response.status == 200
-    assert response.content_type == "text/html; charset=utf-8"
-    assert builder.DATA_ELEMENT in body
-    assert all(f"/* {name} */" in body for name in builder.STYLE_FILES)
-    assert "mdmark@v0.13.0/dist/index.js" in body
-
-
-def test_index_response_when_latest(tmp_path: Path) -> None:
-    """latest は resolve が返した ref で mdmark を読み込む（正常系）。"""
-    # 準備
-    preview_dir = tmp_path / "preview"
-    write_preview_dir(preview_dir, SMALL_TEMPLATE)
-    resolved: list[str | None] = []
-
-    def _resolve(version: str | None) -> str:
-        resolved.append(version)
-        return "0123456789abcdef0123456789abcdef01234567"
-
-    # 実行
-    response = serve.index_response(
-        preview_dir, mdmark_settings={"version": "latest"}, resolve=_resolve
-    )
-    # 検証
-    body = response.body.decode("utf-8")
-    assert response.status == 200
-    assert resolved == ["latest"]
-    assert "mdmark@0123456789abcdef0123456789abcdef01234567/dist/index.css" in body
-    assert "mdmark@0123456789abcdef0123456789abcdef01234567/dist/index.js" in body
-
-
-def test_index_response_when_template_invalid(tmp_path: Path) -> None:
-    """雛形の誤りは 500（正常系）。"""
-    # 準備
-    preview_dir = tmp_path / "preview"
-    write_preview_dir(preview_dir, SMALL_TEMPLATE)
-    (preview_dir / builder.SCRIPT_FILES[-1]).write_text("</script>", encoding="utf-8")
-    # 実行
-    response = serve.index_response(preview_dir, mdmark_settings={})
-    # 検証
-    assert response.status == 500
-    assert response.content_type == "application/problem+json; charset=utf-8"
-
-
 def _write_spa_dir(spa_dir: Path) -> None:
     """SPA の出力のフォルダに index.html と assets/app.js を置く。"""
     (spa_dir / "assets").mkdir(parents=True)
@@ -796,49 +739,46 @@ def _write_spa_dir(spa_dir: Path) -> None:
 
 
 def test_spa_response(tmp_path: Path) -> None:
-    """出力のファイルを返す（正常系）。"""
+    """index.html と出力のファイルを返す（正常系）。"""
     # 準備
     spa_dir = tmp_path / "spa"
     _write_spa_dir(spa_dir)
     # 実行
-    response = serve.spa_response(spa_dir, "/assets/app.js")
+    page = serve.spa_response(spa_dir, "/")
+    asset = serve.spa_response(spa_dir, "/assets/app.js")
     # 検証
-    assert response.status == 200
-    assert response.content_type == "text/javascript; charset=utf-8"
-    assert response.body == b"console.log('app');"
+    assert (page.status, page.content_type, page.body) == (
+        200,
+        "text/html; charset=utf-8",
+        b'<div id="root"></div>',
+    )
+    assert (asset.status, asset.content_type, asset.body) == (
+        200,
+        "text/javascript; charset=utf-8",
+        b"console.log('app');",
+    )
 
 
 @pytest.mark.parametrize(
     "sub_path",
-    [pytest.param("/decisions", id="route"), pytest.param("/", id="root")],
-)
-def test_spa_response_when_client_route(tmp_path: Path, sub_path: str) -> None:
-    """出力に無いパスは index.html（正常系）。"""
-    # 準備
-    spa_dir = tmp_path / "spa"
-    _write_spa_dir(spa_dir)
-    # 実行
-    response = serve.spa_response(spa_dir, sub_path)
-    # 検証
-    assert response.status == 200
-    assert response.content_type == "text/html; charset=utf-8"
-    assert response.body == b'<div id="root"></div>'
-
-
-@pytest.mark.parametrize(
-    "sub_path",
-    [pytest.param("/../secret.txt", id="dot"), pytest.param("/%2e%2e/secret.txt", id="encoded")],
+    [
+        pytest.param("/assets/missing.js", id="missing"),
+        pytest.param("/assets/../../secret.txt", id="dot"),
+        pytest.param("/assets/%2e%2e/%2e%2e/secret.txt", id="encoded"),
+    ],
 )
 def test_spa_response_when_outside(tmp_path: Path, sub_path: str) -> None:
-    """出力の外を指すパスは index.html（正常系）。"""
+    """出力に無い・外を指すパスは 404（異常系）。"""
     # 準備
     spa_dir = tmp_path / "spa"
     _write_spa_dir(spa_dir)
-    (tmp_path / "secret.txt").write_text("secret", encoding="utf-8")
+    (tmp_path / "secret.txt").write_text("出力の外の中身", encoding="utf-8")
     # 実行
     response = serve.spa_response(spa_dir, sub_path)
     # 検証
-    assert response.body == b'<div id="root"></div>'
+    assert response.status == 404
+    assert response.content_type == "application/problem+json; charset=utf-8"
+    assert "出力の外の中身".encode() not in response.body
 
 
 def test_spa_response_when_unknown_suffix(tmp_path: Path) -> None:
@@ -855,7 +795,7 @@ def test_spa_response_when_unknown_suffix(tmp_path: Path) -> None:
 
 
 def test_spa_response_when_index_missing(tmp_path: Path) -> None:
-    """index.html が無いと 500（正常系）。"""
+    """index.html が無いと 500（異常系）。"""
     # 準備
     spa_dir = tmp_path / "spa"
     spa_dir.mkdir()
@@ -2307,7 +2247,7 @@ def test_endpoint_when_redirect(
     make_item: MakeItem,
     name: str,
 ) -> None:
-    """/w/{ID}・/w/{ID}/・/w/{ID}/spa を再送信する（正常系）。"""
+    """ワークスペースの先頭と前の画面の URL を、search を残して再送信する（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"), name=name)
     url, _started = registry.start(root)
@@ -2315,12 +2255,12 @@ def test_endpoint_when_redirect(
     # 実行
     with _client(registry) as client:
         bare = client.get(base, follow_redirects=False)
-        slash = client.get(f"{base}/", follow_redirects=False)
-        spa = client.get(f"{base}/spa", follow_redirects=False)
+        old_page = client.get(f"{base}/mindstella.html", follow_redirects=False)
+        old_spa = client.get(f"{base}/spa/?tab=decisions&id=D-1", follow_redirects=False)
     # 検証
     assert (bare.status_code, bare.headers["Location"]) == (302, f"{base}/")
-    assert (slash.status_code, slash.headers["Location"]) == (302, f"{base}{serve.PAGE_PATH}")
-    assert (spa.status_code, spa.headers["Location"]) == (302, f"{base}/spa/")
+    assert (old_page.status_code, old_page.headers["Location"]) == (302, f"{base}/")
+    assert (old_spa.status_code, old_spa.headers["Location"]) == (302, f"{base}/?tab=decisions&id=D-1")
 
 
 def test_endpoint_when_workspace_not_served(

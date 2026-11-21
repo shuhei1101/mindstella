@@ -1,11 +1,11 @@
-// ライト / ダーク。今の画面と同じ端末の保存領域のキーの `theme` だけを読み書きし、他のキーは残す
+// ライト / ダーク。端末の保存領域のキーの `theme` だけを読み書きし、他のキーは残す
 import { create } from "zustand";
 
 import { workspaceKey } from "@/shared/core/workspace-path";
 
 export type Theme = "light" | "dark";
 
-/** 端末の保存領域のキー（今の画面と同じ。読み書きは workspaceKey で末尾にワークスペースの ID を付ける） */
+/** 端末の保存領域のキー（読み書きは workspaceKey で末尾にワークスペースの ID を付ける） */
 export const PREFS_KEY = "mindmap-preview";
 
 /** 保存領域の値の JSON（読めなければ空） */

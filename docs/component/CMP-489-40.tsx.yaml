@@ -31,5 +31,4 @@ accessibility:
 notes:
   モック: '`docs/mock/components/body-format-badge/`（種類の右に置く案 A を採用）'
 test_file: tests/integration/storybook_react/test_body_format_badge_stories.py
-refs:
-  - CMP-489-39#
+refs: []

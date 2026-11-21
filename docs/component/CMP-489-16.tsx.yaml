@@ -42,5 +42,4 @@ accessibility:
 notes:
   モック: '`docs/mock/components/main-tag/index.html`（採用は案 A: 二重丸）'
 test_file: tests/integration/storybook_react/test_tag_list_stories.py
-refs:
-  - CMP-489-15#
+refs: []

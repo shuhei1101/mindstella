@@ -20,15 +20,18 @@ from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
 
 # このファイルから見たリポジトリの直下（tests/integration/server の 3 つ上）
 REPO_ROOT_PARENT_DEPTH = 3
-TEMPLATE_PATH = (
+PREVIEW_DIR = (
     Path(__file__).resolve().parents[REPO_ROOT_PARENT_DEPTH]
     / "plugins"
     / "mindstella"
     / "skills"
     / "mindmap"
     / "preview"
-    / "template.html"
 )
+
+# 書き出し用のビルドと、描画のライブラリの一覧
+EXPORT_HTML_PATH = PREVIEW_DIR / "export" / "index.html"
+LIBRARIES_PATH = PREVIEW_DIR / "libraries.json"
 
 # 埋め込み先・ライセンスの表示の要素の開きタグ
 DATA_ELEMENT_OPEN = '<script type="application/json" id="mindmap-data">'
@@ -36,14 +39,15 @@ LICENSES_ELEMENT_OPEN = '<script type="text/plain" id="mindmap-licenses">'
 MDMARK_ELEMENT_OPEN = '<script type="text/plain" id="mindmap-mdmark">'
 MDMARK_CSS_ELEMENT_OPEN = '<style id="mindmap-mdmark-css">'
 
-# 配る書き出しの mdmark の読み込みの設定の要素の開きタグ
-MDMARK_CONFIG_ELEMENT_OPEN = '<script type="application/json" id="mindmap-mdmark-config">'
-
 # 配る書き出しが中身を持つ mdmark の部品の名前
 MDMARK_PARTS = ("map", "view", "comments")
 
-# 配る書き出しが雛形に足す `</script>` を持つ要素の数（mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示）
-MDMARK_ADDED_ELEMENTS = 6
+# 配る書き出しが書き出し用のビルドに足す `</script>` を持つ要素の数（mdmark の JavaScript・部品の 3 つ・描画のライブラリの 3 つ・記録・ライセンスの表示）
+EXPORT_ADDED_ELEMENTS = 9
+
+# ライセンスの表示の、React の画面が中に持つライブラリの見出しと、その中にあるライブラリの例
+FRONTEND_LICENSES_HEADING = "React の画面が中に持つライブラリ"
+FRONTEND_LICENSE_EXAMPLE = "## react - "
 
 # 設定の mdmark のバージョンが無いとき（latest）に読む mdmark の ref（develop の先頭の commit の SHA。問い合わせられなければ develop）
 MDMARK_LATEST_REF = re.compile(r"mdmark (?:[0-9a-f]{40}|develop)\n")
@@ -64,7 +68,7 @@ UNREACHABLE_PROXY_ENV = {
     "https_proxy": "http://127.0.0.1:9",
 }
 
-# 中に持つライブラリごとの、表示に出るライセンスの名前と著作権の表示（雛形の URL のパッケージ名 → 表示）
+# 中に持つライブラリごとの、表示に出るライセンスの名前と著作権の表示（libraries.json のパッケージ名 → 表示）
 EXPECTED_LICENSES = {
     "marked": ("marked", "MIT", "Copyright (c) 2018+, MarkedJS"),
     "mermaid": ("mermaid", "MIT", "Copyright (c) 2014 - 2022 Knut Sveidqvist"),
@@ -77,7 +81,7 @@ COMMITTED_CHANGES = (
     "  until_seq: 0\n  added: [D-1]\n  changed: []\npending:\n  added: []\n  changed: []\n"
 )
 
-# mdmark の表示に出るライセンスの名前と著作権の表示（mdmark は ES モジュールで、雛形の import map の URL から版を読む）
+# mdmark の表示に出るライセンスの名前と著作権の表示
 EXPECTED_MDMARK_LICENSE = ("mdmark", "MIT", "Copyright (c) 2026 shuhei1101")
 
 # mdmark の配布物が中に束ねた依存のライセンスの本文の先頭の行（`THIRD_PARTY_LICENSES.txt` の最初の依存）
@@ -113,10 +117,15 @@ def _read_element(html: str, open_tag: str) -> str:
     return html.split(open_tag, 1)[1].split("</script>", 1)[0]
 
 
-def _template_versions() -> dict[str, str]:
-    """雛形の描画のライブラリの `<script src>` から、パッケージ名 → 版を読む。"""
-    template = TEMPLATE_PATH.read_text(encoding="utf-8")
-    return dict(re.findall(r'src="https://cdn\.jsdelivr\.net/npm/([^@"]+)@([^/"]+)/', template))
+def _library_versions() -> dict[str, str]:
+    """描画のライブラリの一覧から、パッケージ名 → バージョンを読む。"""
+    rows = json.loads(LIBRARIES_PATH.read_text(encoding="utf-8"))
+    return {row["package"]: row["version"] for row in rows}
+
+
+def _build_closes() -> int:
+    """書き出し用のビルドの中の `</script>` の数を返す。"""
+    return EXPORT_HTML_PATH.read_text(encoding="utf-8").count("</script>")
 
 
 def test_normal(
@@ -164,19 +173,17 @@ def test_normal(
     references.feed(html)
     assert references.found == []
     assert references.import_maps == 0
-    # 本文の </script> で要素が閉じていない（雛形の閉じタグの数に、mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示の要素の 6 つを足した数）
-    template_closes = TEMPLATE_PATH.read_text(encoding="utf-8").count("</script>")
-    assert html.count("</script>") == template_closes + MDMARK_ADDED_ELEMENTS
-    # mdmark の JavaScript と部品の要素が中身を持ち、読み込みの設定の要素が map を持つ
+    # 本文の </script> で要素が閉じていない（書き出し用のビルドの閉じタグの数に、足した要素の 9 つを足した数）
+    assert html.count("</script>") == _build_closes() + EXPORT_ADDED_ELEMENTS
+    # mdmark の JavaScript と部品の要素が中身を持つ
     assert _read_element(html, MDMARK_ELEMENT_OPEN) != ""
     for part in MDMARK_PARTS:
         assert _read_element(html, f'<script type="text/plain" id="mindmap-mdmark-{part}">') != ""
-    assert json.loads(_read_element(html, MDMARK_CONFIG_ELEMENT_OPEN)) == {"map": {}}
     # mdmark の CSS が id を持つ `<style>` の中身になる
     assert html.split(MDMARK_CSS_ELEMENT_OPEN, 1)[1].split("</style>", 1)[0] != ""
     # ライセンスの表示に、ライブラリごとの名前・版・著作権の表示・ライセンスの名前がある
     licenses = _read_element(html, LICENSES_ELEMENT_OPEN)
-    versions = _template_versions()
+    versions = _library_versions()
     for package, (name, license_name, notice) in EXPECTED_LICENSES.items():
         assert f"{name} {versions[package]}" in licenses
         assert notice in licenses
@@ -188,6 +195,9 @@ def test_normal(
     assert mdmark_notice in licenses
     assert f"License: {mdmark_license}" in licenses
     assert MDMARK_BUNDLED_LICENSES_HEAD in licenses
+    # React の画面が中に束ねたライブラリのライセンスが、見出しの後に続く
+    assert FRONTEND_LICENSES_HEADING in licenses
+    assert FRONTEND_LICENSE_EXAMPLE in licenses.split(FRONTEND_LICENSES_HEADING, 1)[1]
     # ワークスペースは書き換えない
     assert snapshot_tree(root) == before
 
@@ -216,8 +226,7 @@ def test_normal_when_html_body(
     records = http_request(serve_preview(root), "/api/records").json()
     assert data["marked_bodies"]["../docs/A-1.html"] == records["marked_bodies"]["../docs/A-1.html"]
     # 本文の `</script>` で埋め込みの要素が閉じていない
-    template_closes = TEMPLATE_PATH.read_text(encoding="utf-8").count("</script>")
-    assert html.count("</script>") == template_closes + MDMARK_ADDED_ELEMENTS
+    assert html.count("</script>") == _build_closes() + EXPORT_ADDED_ELEMENTS
 
 
 def test_error_when_out_not_html(

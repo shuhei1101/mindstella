@@ -72,7 +72,7 @@ lead: コメントの一覧から、レビュー中のコメント 1 件を削�
 idempotent: false
 side_effects: '`comments.yaml` からそのコメントを削除する（`seq` は変えない）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

@@ -72,7 +72,7 @@ lead: スレッドを全て、書き込みと状態の記録ごとその場で�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

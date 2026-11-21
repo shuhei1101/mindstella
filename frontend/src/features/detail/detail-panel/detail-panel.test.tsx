@@ -23,7 +23,7 @@ describe("DetailPanel", () => {
     // 準備
     stubRecords({ decisions: [decision, { id: "D-2", title: "D-2の題", status: "未決定", related: [{ to: "D-1", type: "depends_on" }] }], bodies: { "docs/D-1.md": "本文の文" } });
     // 実行
-    renderRoute("/spa/?tab=decisions&id=D-1");
+    renderRoute("/?tab=decisions&id=D-1");
     // 検証
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     expect(panel).toHaveTextContent("D-1の題");
@@ -37,7 +37,7 @@ describe("DetailPanel", () => {
     // 準備
     stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "今の行\n" }, changes });
     // 実行
-    renderRoute("/spa/?tab=decisions&id=D-1&diff=V-2");
+    renderRoute("/?tab=decisions&id=D-1&diff=V-2");
     // 検証
     expect(await screen.findByText(/前の行/)).toBeInTheDocument();
   });
@@ -48,7 +48,7 @@ describe("DetailPanel", () => {
     stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
     sessionStorage.setItem("mindmap-body-scroll", '{"D-1":80}');
     // 実行
-    renderRoute("/spa/?tab=decisions&id=D-1");
+    renderRoute("/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     const body = panel.querySelector<HTMLElement>(".panel-body");
     // 検証
@@ -63,7 +63,7 @@ describe("DetailPanel", () => {
     sessionStorage.setItem("mindmap-panel-width:mindstella-x-1", "880");
     sessionStorage.setItem("mindmap-panel-width", "1000");
     // 実行
-    renderRoute("/w/mindstella-x-1/spa/?tab=decisions&id=D-1");
+    renderRoute("/w/mindstella-x-1/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     // 検証
     expect(panel.style.width).toBe("880px");
@@ -75,7 +75,7 @@ describe("DetailPanel", () => {
   test("detail_panel_when_editing", async () => {
     // 準備
     stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
-    renderRoute("/spa/?tab=decisions&id=D-1");
+    renderRoute("/?tab=decisions&id=D-1");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "編集する" }));
     // 検証
@@ -87,17 +87,16 @@ describe("DetailPanel", () => {
     // 準備
     stubRecords({ decisions: [decision], changes });
     // 実行
-    renderRoute("/spa/?tab=decisions&id=D-1");
+    renderRoute("/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     // 検証
     expect(await within(panel).findByRole("textbox", { name: /D-1 へのコメント/ })).toBeInTheDocument();
-    expect(within(panel).queryByRole("link", { name: "今の画面でコメントする" })).not.toBeInTheDocument();
   });
   // 見出しのコメントの一覧のボタンで、その項目で絞ったコメントの一覧を開く（正常系）
   test("detail_panel_when_comments_button", async () => {
     // 準備
     stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
-    const { unmount } = renderRoute("/spa/?id=D-1&panel=comments&thread=TH-1&tstatus=all");
+    const { unmount } = renderRoute("/?id=D-1&panel=comments&thread=TH-1&tstatus=all");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     const before = window.history.length;
     // 実行
@@ -110,7 +109,7 @@ describe("DetailPanel", () => {
     expect(window.history.length).toBe(before);
     // 全画面にはボタンが無い
     unmount();
-    renderRoute("/spa/?id=D-1&full=1");
+    renderRoute("/?id=D-1&full=1");
     await waitFor(() => expect(document.body).toHaveTextContent("D-1の題"));
     expect(screen.queryByRole("button", { name: "D-1 のコメントの一覧を開く" })).toBeNull();
   });

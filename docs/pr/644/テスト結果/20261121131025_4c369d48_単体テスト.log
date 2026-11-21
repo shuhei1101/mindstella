@@ -1,0 +1,17 @@
+$ npx vitest run  # commit 4c369d48
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  81 passed (81)
+      Tests  363 passed (363)
+   Start at  13:10:25
+   Duration  19.89s (environment 43%, tests 28%, import 15%, setup 8%, transform 5%, worker 1%)
+
+Environment  jsdom was created 81 times · 53.87s total, 43% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit=0

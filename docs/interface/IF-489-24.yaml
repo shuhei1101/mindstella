@@ -331,7 +331,7 @@ lead: 詳細パネル・詳細の全画面・コメントの一覧の入力か�
 idempotent: false
 side_effects: '`comments.yaml` に 1 件追加（無ければ作る）、同じ向けた先（`target` と `loc`）の下書きを `drafts.yaml` から削除する。どちらも一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

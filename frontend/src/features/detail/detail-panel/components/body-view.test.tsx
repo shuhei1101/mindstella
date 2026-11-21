@@ -17,7 +17,7 @@ describe("BodyView", () => {
     Element.prototype.scrollIntoView = scroll;
     Element.prototype.getClientRects = () => [{}] as unknown as DOMRectList;
     // 実行
-    renderRoute("/spa/?tab=decisions&id=D-1&h=%E6%B1%BA%E3%82%81%E6%96%B9");
+    renderRoute("/?tab=decisions&id=D-1&h=%E6%B1%BA%E3%82%81%E6%96%B9");
     // 検証
     expect(await screen.findByRole("heading", { name: /決め方/ })).toBeInTheDocument();
     await waitFor(() => expect(scroll).toHaveBeenCalled());
@@ -28,7 +28,7 @@ describe("BodyView", () => {
     // 準備
     record();
     // 実行
-    renderRoute("/spa/?tab=decisions&id=D-1&h=%E7%84%A1%E3%81%84");
+    renderRoute("/?tab=decisions&id=D-1&h=%E7%84%A1%E3%81%84");
     // 検証
     await waitFor(() => expect(window.location.search).not.toContain("h="));
   });

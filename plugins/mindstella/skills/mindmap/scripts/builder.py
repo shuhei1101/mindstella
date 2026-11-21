@@ -1,4 +1,4 @@
-"""ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に差し込み、配る書き出しを書く。"""
+"""ワークスペースの記録を 1 つの JSON にまとめ、書き出し用のビルドに差し込んで配る書き出しを書く。"""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ import re
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from html.parser import HTMLParser
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any, cast
@@ -28,80 +27,25 @@ from store import NowFn, Workspace, now_utc
 # このファイルから見た `skills/mindmap/preview/`
 PREVIEW_DIR = Path(__file__).resolve().parent.parent / "preview"
 
-# 雛形のフォルダの中の雛形の HTML
-TEMPLATE_FILE = "template.html"
+# プレビューのフォルダからの相対パス。React の画面の JS・CSS を中に持つ 1 枚の HTML
+EXPORT_HTML_FILE = "export/index.html"
 
-# 雛形がちょうど 1 つ持つ、中身が空の埋め込み先の要素
-DATA_ELEMENT = '<script type="application/json" id="mindmap-data"></script>'
+# プレビューのフォルダからの相対パス。描画のライブラリごとの package・version・url・integrity・global を並べた JSON の配列
+LIBRARIES_FILE = "libraries.json"
 
-# 差し込む CSS（雛形のフォルダからの相対パス。並びの順につなぐ）
-STYLE_FILES = ("tokens.css", "style.css")
+# プレビューのフォルダからの相対パス。書き出し用のビルドのときに生成し、ライセンスの表示の最後に続ける
+FRONTEND_LICENSES_FILE = "export/licenses.md"
 
-# 差し込む JavaScript（tsc が `.ts` から生成した `.js`。並びの順につなぎ、起動する `app.js` が最後）
-SCRIPT_FILES = (
-    "core/dom.js",
-    "core/records.js",
-    "core/libs.js",
-    "core/doc-export.js",
-    "core/diff.js",
-    "core/router.js",
-    "core/api.js",
-    "core/edits.js",
-    "core/voice.js",
-    "core/refresh-hold.js",
-    "components/view-switch.js",
-    "components/duplicate-id-notice.js",
-    "components/topbar.js",
-    "components/diff-mark.js",
-    "components/removed-band.js",
-    "components/withdrawn-badge.js",
-    "components/comment-mark.js",
-    "components/tag-list.js",
-    "components/chips-input.js",
-    "components/history-dialog.js",
-    "components/table.js",
-    "components/filter-drawer.js",
-    "components/send-form.js",
-    "components/reply-form.js",
-    "components/thread-row.js",
-    "components/thread-post.js",
-    "components/review-body-fold.js",
-    "components/selection-comment.js",
-    "components/term-tip.js",
-    "components/settings-panel.js",
-    "components/settings-confirm.js",
-    "components/body-format-badge.js",
-    "components/html-body-frame.js",
-    "components/html-body-diff.js",
-    "components/markdown-body.js",
-    "components/doc-export-menu.js",
-    "components/body-diff-layout-switch.js",
-    "components/side-by-side-body-diff.js",
-    "components/diff-minimap.js",
-    "components/pending-mark.js",
-    "screens/overview.js",
-    "screens/decisions.js",
-    "screens/tasks.js",
-    "screens/docs.js",
-    "screens/records.js",
-    "screens/detail-edit.js",
-    "screens/detail.js",
-    "screens/comments.js",
-    "screens/pending-edits.js",
-    "screens/workspace-settings.js",
-    "screens/settings.js",
-    "screens/search.js",
-    "screens/diagram-viewer.js",
-    "app.js",
-)
+# 配る書き出しに置く、記録の JSON を中身に持つ要素の開きタグ（閉じタグは `</script>`）
+DATA_OPEN = '<script type="application/json" id="mindmap-data">'
 
-# `template.html` がちょうど 1 つ持つ、CSS を入れる空の要素
-STYLE_SLOT = '<style id="mindmap-style"></style>'
+# 書き出し用のビルドの HTML から外す、Google Fonts の `<link>`
+FONT_LINK = re.compile(r"<link[^>]*fonts\.(?:googleapis|gstatic)\.com[^>]*>\s*")
 
-# `template.html` がちょうど 1 つ持つ、JavaScript を入れる空の要素（埋め込み先より後ろ）
-SCRIPT_SLOT = '<script id="mindmap-app"></script>'
+# 書き出し用のビルドの HTML の最後のこのタグの前に差し込む（ビルドの JavaScript が文字列の `</body>` を持つため最後のものを使う）
+BODY_CLOSE = "</body>"
 
-# 埋め込み先・差し込み口の要素を閉じるタグ
+# 差し込む要素を閉じるタグ
 CLOSE_TAG = "</script>"
 STYLE_CLOSE_TAG = "</style>"
 
@@ -114,10 +58,6 @@ CDN_PACKAGE_URL = "https://cdn.jsdelivr.net/npm/{package}@{version}/{path}"
 # jsDelivr の、タグを固定した GitHub のリポジトリの中のファイルの URL の形（mdmark の配布物と同梱物のライセンスを取るのに使う）
 CDN_REPO_URL = "https://cdn.jsdelivr.net/gh/{package}@{version}/{path}"
 
-# `template.html` がちょうど 1 つ持つ、外の読み込み（mdmark の差し込み口・描画のライブラリの `<script src>` と文字の `<link>`）の前後に置くコメント
-EXTERNAL_START = "<!-- mindmap-external:start -->"
-EXTERNAL_END = "<!-- mindmap-external:end -->"
-
 # 配る書き出しに置く、ライセンスの表示を中身に持つ要素の開きタグ（画面には出ない）
 LICENSES_OPEN = '<script type="text/plain" id="mindmap-licenses">'
 
@@ -126,12 +66,6 @@ MDMARK_OPEN = '<script type="text/plain" id="mindmap-mdmark">'
 
 # 配る書き出しに置く、mdmark の CSS を中身に持つ要素の開きタグ（閉じタグは `</style>`）。画面の JavaScript が資料の HTML のエクスポートでこの中身を使う
 MDMARK_CSS_OPEN = '<style id="mindmap-mdmark-css">'
-
-# 雛形の外の読み込みの間に 1 つだけ置く、mdmark の読み込みの差し込み口
-MDMARK_SLOT = "<!-- mindmap-mdmark -->"
-
-# 画面が mdmark の JavaScript の URL と `mount` に指定する `map` を読む JSON の要素の開きタグ（閉じタグは `</script>`）
-MDMARK_CONFIG_OPEN = '<script type="application/json" id="mindmap-mdmark-config">'
 
 # `CDN_REPO_URL` の `package` に入れる mdmark のリポジトリ
 MDMARK_PACKAGE = MDMARK_REPO
@@ -142,11 +76,6 @@ MDMARK_PART_FILES = ("map.js", "view.js", "comments.js")
 # 配る書き出しに置く、mdmark の部品を中身に持つ要素の開きタグ（`{name}` に部品の名前）
 MDMARK_PART_OPEN = '<script type="text/plain" id="mindmap-mdmark-{name}">'
 
-# 雛形の外の読み込みの `src`（jsDelivr の版を固定した URL）を、パッケージ名・版・ファイルに分ける
-_EXTERNAL_SRC = re.compile(
-    r"^https://cdn\.jsdelivr\.net/npm/(?P<package>(?:@[^/@]+/)?[^/@]+)@(?P<version>[^/]+)/.+$"
-)
-
 # 差し込む中身が、script 要素を閉じる・開くタグを含むかを見る文字列（小文字で比べる）
 _SCRIPT_TAGS = ("</script", "<script")
 
@@ -156,9 +85,9 @@ _STYLE_TAGS = ("</style",)
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class VendorLibrary:
-    """雛形の描画のライブラリ 1 つの、ライセンスの表示に使う値。"""
+    """描画のライブラリ 1 つの、ライセンスの表示に使う値。"""
 
-    # 雛形の外の読み込みの URL のパッケージ名と結ぶ（npm はパッケージ名、GitHub は `{owner}/{repo}`）
+    # libraries.json の package と mdmark のリポジトリと結ぶ（npm はパッケージ名、GitHub は `{owner}/{repo}`）
     package: str
     # 表示する名前
     name: str
@@ -168,11 +97,11 @@ class VendorLibrary:
     license: str
     # パッケージの中のライセンスの本文のファイル。取らずに `license_file` から読むライブラリは None
     license_path: str | None
-    # ライセンスの本文を取らずに読む、雛形のフォルダからの相対パス。`license_path` が None のライブラリだけが持つ
+    # ライセンスの本文を取らずに読む、プレビューのフォルダからの相対パス。`license_path` が None のライブラリだけが持つ
     license_file: str | None
     # 配布物が中に束ねた依存のライセンスを並べた、パッケージの中のファイル（取る）。`bundled_license_file` と両方は持たない。無ければ None
     bundled_license_path: str | None
-    # 配布ファイルが中に束ねた依存のライセンスを並べたファイル（雛形のフォルダからの相対パス）。無ければ None
+    # 配布ファイルが中に束ねた依存のライセンスを並べたファイル（プレビューのフォルダからの相対パス）。無ければ None
     bundled_license_file: str | None
     # ソースコードのリポジトリの URL
     repository: str
@@ -182,7 +111,7 @@ class VendorLibrary:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ExternalScript:
-    """雛形の外の読み込みの `<script src integrity>` 1 つ。"""
+    """libraries.json の描画のライブラリ 1 つ。"""
 
     url: str
     # `sha384-{Base64}`
@@ -204,7 +133,7 @@ class LicenseBlock:
     bundled_text: str | None
 
 
-# 配る書き出しに入れるライブラリ（`package` で mdmark と雛形の外の読み込みと結ぶ。版・URL・integrity は設定と雛形が持つ）
+# 配る書き出しに入れるライブラリ（`package` で mdmark と libraries.json の行と結ぶ。版・URL・integrity は設定と libraries.json が持つ）
 VENDOR_LIBRARIES = (
     VendorLibrary(
         package="shuhei1101/mdmark",
@@ -365,58 +294,9 @@ def escape_for_script(json_text: str) -> str:
     return json_text.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
 
 
-def embed_data(template: str, data: dict[str, Any]) -> str:
-    """雛形の `DATA_ELEMENT` の中身にデータの JSON を入れた HTML を返す。"""
-    count = template.count(DATA_ELEMENT)
-    # 同梱の雛形の誤り: 埋め込み先が 1 つだけでない
-    if count != 1:
-        raise ValueError(f"雛形に埋め込み先が 1 つだけありません（{count} 個）")
-    json_text = escape_for_script(json.dumps(data, ensure_ascii=False))
-    opened = DATA_ELEMENT.removesuffix(CLOSE_TAG)
-    return template.replace(DATA_ELEMENT, f"{opened}{json_text}{CLOSE_TAG}")
-
-
 def mdmark_dist_url(ref: str, path: str) -> str:
     """解決した mdmark の ref の、jsDelivr の `dist/{path}` の URL を返す。"""
     return CDN_REPO_URL.format(package=MDMARK_PACKAGE, version=ref, path=f"dist/{path}")
-
-
-def assemble_template(
-    *,
-    mdmark_settings: dict[str, Any] | None = None,
-    mdmark_ref: str,
-    preview_dir: Path = PREVIEW_DIR,
-) -> str:
-    """`template.html` に CSS・JavaScript と、解決した ref の mdmark の読み込みを差し込んだ HTML を返す（`DATA_ELEMENT` は空のまま）。"""
-    template = (preview_dir / TEMPLATE_FILE).read_text(encoding="utf-8")
-    styles = [(name, (preview_dir / name).read_text(encoding="utf-8")) for name in STYLE_FILES]
-    scripts = [(name, (preview_dir / name).read_text(encoding="utf-8")) for name in SCRIPT_FILES]
-    # 同梱の雛形の誤り: 差し込む中身が、差し込み先の要素を閉じてしまう
-    for files, close_tag in ((styles, STYLE_CLOSE_TAG), (scripts, CLOSE_TAG)):
-        for name, text in files:
-            if close_tag.removesuffix(">") in text.lower():
-                raise ValueError(f"雛形の {name} が {close_tag.removesuffix('>')} を含みます")
-    # 同梱の雛形の誤り: 差し込み口が 1 つだけでない
-    for slot in (STYLE_SLOT, SCRIPT_SLOT, MDMARK_SLOT):
-        count = template.count(slot)
-        if count != 1:
-            raise ValueError(f"雛形に差し込み口 {slot} が 1 つだけありません（{count} 個）")
-    css = "\n".join(text for _, text in styles)
-    js = "\n".join(text for _, text in scripts)
-    template = template.replace(STYLE_SLOT, f'<style id="mindmap-style">{css}{STYLE_CLOSE_TAG}')
-    template = template.replace(SCRIPT_SLOT, f'<script id="mindmap-app">{js}{CLOSE_TAG}')
-    return template.replace(MDMARK_SLOT, _mdmark_loading(mdmark_settings or {}, mdmark_ref))
-
-
-def _mdmark_loading(mdmark_settings: dict[str, Any], ref: str) -> str:
-    """ref の mdmark の CSS の `<link>` と、JavaScript の URL と `map` を持つ読み込みの設定の要素を返す。"""
-    css_url = mdmark_dist_url(ref, "index.css")
-    config = {"js": mdmark_dist_url(ref, "index.js"), "map": mdmark_settings.get("map") or {}}
-    config_text = escape_for_script(json.dumps(config, ensure_ascii=False))
-    return (
-        f'<link rel="stylesheet" href="{css_url}" crossorigin="anonymous">'
-        f"{MDMARK_CONFIG_OPEN}{config_text}{CLOSE_TAG}"
-    )
 
 
 def derive_preview_values(workspace: Workspace) -> dict[str, Any]:
@@ -448,59 +328,6 @@ def fetch_url(url: str, timeout: float = FETCH_TIMEOUT_SEC) -> bytes:
     return body
 
 
-class _ExternalScriptParser(HTMLParser):
-    """外の読み込みの範囲の `<script src integrity>` を、並びの順に集める。"""
-
-    def __init__(self) -> None:
-        """集めた `src` と `integrity` の並びを空で持つ。"""
-        super().__init__()
-        # (src, integrity) の並び
-        self.found: list[tuple[str, str | None]] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        """src を持つ script の開きタグの src と integrity を控える。"""
-        if tag != "script":
-            return
-        values = dict(attrs)
-        # src を持たない script（読み込みの設定など中身を持つもの）は外の読み込みの script ではない
-        if values.get("src") is not None:
-            self.found.append((values["src"] or "", values.get("integrity")))
-
-
-def _external_range(template: str) -> str:
-    """雛形の外の読み込みの印の間（印を含む）を返す。印が 1 つずつでないか順が逆なら ValueError にする。"""
-    start = template.find(EXTERNAL_START)
-    end = template.find(EXTERNAL_END)
-    # 同梱の雛形の誤り: 印が 1 つずつでないか、順が逆
-    if template.count(EXTERNAL_START) != 1 or template.count(EXTERNAL_END) != 1 or start > end:
-        raise ValueError("雛形に外の読み込みの印が 1 つずつありません")
-    return template[start:end]
-
-
-def list_external_scripts(template: str) -> list[ExternalScript]:
-    """雛形の外の読み込みの印の間の `<script src integrity>` を、並びの順に返す（`src` を持たない `<script>` と `<link>` は読まない）。"""
-    parser = _ExternalScriptParser()
-    parser.feed(_external_range(template))
-    parser.close()
-    scripts: list[ExternalScript] = []
-    for src, integrity in parser.found:
-        matched = _EXTERNAL_SRC.match(src)
-        # 同梱の雛形の誤り: integrity が無いか、版を固定した jsDelivr の URL でない
-        if integrity is None or matched is None:
-            raise ValueError(
-                f"雛形の外の読み込みが版を固定した jsDelivr の URL と integrity を持ちません: {src}"
-            )
-        scripts.append(
-            ExternalScript(
-                url=src,
-                integrity=integrity,
-                package=matched["package"],
-                version=matched["version"],
-            )
-        )
-    return scripts
-
-
 def _fetch_checked(*, fetch: FetchFn, url: str, integrity: str) -> bytes:
     """URL の中身を取り、sha384 を Base64 にした `sha384-{値}` が integrity と同じことを確かめて返す。違えば DownloadFailedError にする。"""
     content = fetch(url)
@@ -513,18 +340,18 @@ def _fetch_checked(*, fetch: FetchFn, url: str, integrity: str) -> bytes:
 def _license_texts(
     *, library: VendorLibrary, base_url: str, version: str, preview_dir: Path, fetch: FetchFn
 ) -> tuple[str, str, str | None, str | None]:
-    """ライブラリのライセンスの本文と束ねた依存のライセンスを、取るか雛形のフォルダから読んで返す（本文・本文の出どころ・束ねた依存・その出どころ）。
+    """ライブラリのライセンスの本文と束ねた依存のライセンスを、取るかプレビューのフォルダから読んで返す（本文・本文の出どころ・束ねた依存・その出どころ）。
 
-    出どころは、取ったなら URL、読んだなら雛形のフォルダからの相対パス（無害化の確かめのメッセージに使う）。
+    出どころは、取ったなら URL、読んだならプレビューのフォルダからの相対パス（無害化の確かめのメッセージに使う）。
     """
-    # ライセンスの本文: 取る（license_path）か、雛形のフォルダから読む（license_file）か
+    # ライセンスの本文: 取る（license_path）か、プレビューのフォルダから読む（license_file）か
     if library.license_path is not None:
         license_source = base_url.format(package=library.package, version=version, path=library.license_path)
         license_text = fetch(license_source).decode("utf-8")
     else:
         license_source = library.license_file or ""
         license_text = (preview_dir / license_source).read_text(encoding="utf-8")
-    # 束ねた依存のライセンス: 取る（bundled_license_path）か、雛形のフォルダから読む（bundled_license_file）か
+    # 束ねた依存のライセンス: 取る（bundled_license_path）か、プレビューのフォルダから読む（bundled_license_file）か
     bundled_source: str | None
     if library.bundled_license_path is not None:
         bundled_source = base_url.format(package=library.package, version=version, path=library.bundled_license_path)
@@ -536,100 +363,6 @@ def _license_texts(
         bundled_source = None
         bundled_text = None
     return license_text, license_source, bundled_text, bundled_source
-
-
-def assemble_standalone_template(
-    *,
-    preview_dir: Path = PREVIEW_DIR,
-    libraries: tuple[VendorLibrary, ...] = VENDOR_LIBRARIES,
-    fetch: FetchFn = fetch_url,
-    mdmark_settings: dict[str, Any] | None = None,
-    mdmark_ref: str,
-) -> str:
-    """`assemble_template` の外の読み込みを、取った mdmark の CSS・JavaScript・部品、描画のライブラリの `<script>` とライセンスの表示の要素に置き換える。"""
-    settings = mdmark_settings or {}
-    template = assemble_template(mdmark_settings=settings, mdmark_ref=mdmark_ref, preview_dir=preview_dir)
-    scripts = list_external_scripts(template)
-    # 取る前に、mdmark と外の読み込みごとのライセンスの表示の材料（VendorLibrary）を引く
-    by_package = {library.package: library for library in libraries}
-    for package in (MDMARK_PACKAGE, *(script.package for script in scripts)):
-        if package not in by_package:
-            raise ValueError(f"ライセンスの表示が無い外の読み込み: {package}")
-
-    # mdmark は解決した ref の配布ファイルを取る（integrity は確かめない）
-    mdmark_files: list[tuple[str, str]] = []
-    for name in ("index.css", "index.js", *MDMARK_PART_FILES):
-        url = mdmark_dist_url(mdmark_ref, name)
-        text = fetch(url).decode("utf-8")
-        # 取った中身が script 要素を閉じる・開くタグ（CSS は style 要素を閉じるタグ）を含むと、埋め込んだ要素が壊れる
-        _reject_tags(source=url, text=text, tags=_STYLE_TAGS if name.endswith(".css") else _SCRIPT_TAGS)
-        mdmark_files.append((name, text))
-    blocks: list[LicenseBlock] = []
-    license_text, license_source, bundled_text, bundled_source = _license_texts(
-        library=by_package[MDMARK_PACKAGE],
-        base_url=CDN_REPO_URL,
-        version=mdmark_ref,
-        preview_dir=preview_dir,
-        fetch=fetch,
-    )
-    for source, text in ((license_source, license_text), (bundled_source, bundled_text)):
-        _reject_tags(source=source, text=text, tags=_SCRIPT_TAGS)
-    blocks.append(
-        LicenseBlock(
-            library=by_package[MDMARK_PACKAGE],
-            version=mdmark_ref,
-            license_text=license_text,
-            bundled_text=bundled_text,
-        )
-    )
-
-    script_elements: list[str] = []
-    for script in scripts:
-        library = by_package[script.package]
-        dist_text = _fetch_checked(fetch=fetch, url=script.url, integrity=script.integrity).decode("utf-8")
-        license_text, license_source, bundled_text, bundled_source = _license_texts(
-            library=library,
-            base_url=CDN_PACKAGE_URL,
-            version=script.version,
-            preview_dir=preview_dir,
-            fetch=fetch,
-        )
-        for source, text in (
-            (script.url, dist_text),
-            (license_source, license_text),
-            (bundled_source, bundled_text),
-        ):
-            _reject_tags(source=source, text=text, tags=_SCRIPT_TAGS)
-        script_elements.append(f"<script>{dist_text}{CLOSE_TAG}")
-        blocks.append(
-            LicenseBlock(
-                library=library,
-                version=script.version,
-                license_text=license_text,
-                bundled_text=bundled_text,
-            )
-        )
-
-    # 印から印まで（両方を含む。mdmark の `<link>` と読み込みの設定の要素も消える）を、取った中身とライセンスの表示に置き換える
-    start = template.index(EXTERNAL_START)
-    end = template.index(EXTERNAL_END) + len(EXTERNAL_END)
-    contents = dict(mdmark_files)
-    parts = "".join(
-        f"{MDMARK_PART_OPEN.format(name=Path(name).stem)}{contents[name]}{CLOSE_TAG}"
-        for name in MDMARK_PART_FILES
-    )
-    config_text = escape_for_script(json.dumps({"map": settings.get("map") or {}}, ensure_ascii=False))
-    licenses = f"{LICENSES_OPEN}{format_licenses(blocks)}{CLOSE_TAG}"
-    return (
-        template[:start]
-        + f"{MDMARK_CSS_OPEN}{contents['index.css']}{STYLE_CLOSE_TAG}"
-        + f"{MDMARK_OPEN}{contents['index.js']}{CLOSE_TAG}"
-        + parts
-        + f"{MDMARK_CONFIG_OPEN}{config_text}{CLOSE_TAG}"
-        + "".join(script_elements)
-        + licenses
-        + template[end:]
-    )
 
 
 def _reject_tags(*, source: str | None, text: str | None, tags: tuple[str, ...]) -> None:
@@ -668,6 +401,102 @@ def format_licenses(blocks: list[LicenseBlock]) -> str:
     return "\n\n".join(texts)
 
 
+def load_libraries(*, preview_dir: Path = PREVIEW_DIR) -> list[ExternalScript]:
+    """`LIBRARIES_FILE` を読み、並びの順に `ExternalScript` にして返す。"""
+    path = preview_dir / LIBRARIES_FILE
+    try:
+        rows = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise ValueError(f"描画のライブラリの一覧が読めません: {error}") from error
+    # 同梱の一覧の誤り: 配列でない
+    if not isinstance(rows, list):
+        raise ValueError("描画のライブラリの一覧が読めません: 配列ではありません")
+    scripts: list[ExternalScript] = []
+    for row in cast("list[Any]", rows):
+        values = {key: row.get(key) if isinstance(row, dict) else None for key in ("package", "version", "url", "integrity")}
+        missing = [key for key, value in values.items() if not isinstance(value, str)]
+        # 同梱の一覧の誤り: 必要なキーが無い
+        if missing:
+            raise ValueError(f"描画のライブラリの一覧が読めません: {', '.join(missing)} がありません（{row}）")
+        prefix = CDN_PACKAGE_URL.format(package=values["package"], version=values["version"], path="")
+        # 同梱の一覧の誤り: バージョンを固定した jsDelivr の URL でない
+        if not values["url"].startswith(prefix):
+            raise ValueError(f"描画のライブラリの一覧が読めません: バージョンを固定した URL ではありません（{values['url']}）")
+        scripts.append(ExternalScript(**values))
+    return scripts
+
+
+def assemble_export_html(
+    data: dict[str, Any],
+    *,
+    preview_dir: Path = PREVIEW_DIR,
+    libraries: tuple[VendorLibrary, ...] = VENDOR_LIBRARIES,
+    fetch: FetchFn = fetch_url,
+    mdmark_ref: str,
+) -> str:
+    """書き出し用のビルドに、取った mdmark・描画のライブラリ・記録・ライセンスの表示を差し込んだ HTML を返す。"""
+    html = FONT_LINK.sub("", (preview_dir / EXPORT_HTML_FILE).read_text(encoding="utf-8"))
+    position = html.rfind(BODY_CLOSE)
+    # 同梱のビルドの誤り: 差し込む位置が無い
+    if position < 0:
+        raise ValueError("書き出し用のビルドに </body> がありません")
+    scripts = load_libraries(preview_dir=preview_dir)
+    # 取る前に、mdmark とライブラリごとのライセンスの表示の材料（VendorLibrary）を引く
+    by_package = {library.package: library for library in libraries}
+    for package in (MDMARK_PACKAGE, *(script.package for script in scripts)):
+        if package not in by_package:
+            raise ValueError(f"ライセンスの表示が無い描画のライブラリ: {package}")
+
+    # mdmark は解決した ref の配布ファイルを取る（integrity は確かめない）
+    mdmark_files: dict[str, str] = {}
+    for name in ("index.css", "index.js", *MDMARK_PART_FILES):
+        url = mdmark_dist_url(mdmark_ref, name)
+        text = fetch(url).decode("utf-8")
+        # 取った中身が script 要素を閉じる・開くタグ（CSS は style 要素を閉じるタグ）を含むと、埋め込んだ要素が壊れる
+        _reject_tags(source=url, text=text, tags=_STYLE_TAGS if name.endswith(".css") else _SCRIPT_TAGS)
+        mdmark_files[name] = text
+    blocks = [_license_block(by_package[MDMARK_PACKAGE], CDN_REPO_URL, mdmark_ref, preview_dir, fetch)]
+
+    script_elements: list[str] = []
+    for script in scripts:
+        dist_text = _fetch_checked(fetch=fetch, url=script.url, integrity=script.integrity).decode("utf-8")
+        _reject_tags(source=script.url, text=dist_text, tags=_SCRIPT_TAGS)
+        script_elements.append(f"<script>{dist_text}{CLOSE_TAG}")
+        blocks.append(_license_block(by_package[script.package], CDN_PACKAGE_URL, script.version, preview_dir, fetch))
+
+    frontend_licenses = (preview_dir / FRONTEND_LICENSES_FILE).read_text(encoding="utf-8")
+    _reject_tags(source=FRONTEND_LICENSES_FILE, text=frontend_licenses, tags=_SCRIPT_TAGS)
+    licenses = (
+        f"{format_licenses(blocks)}\n\nReact の画面が中に持つライブラリ\n\n{frontend_licenses.rstrip()}\n"
+    )
+    parts = "".join(
+        f"{MDMARK_PART_OPEN.format(name=Path(name).stem)}{mdmark_files[name]}{CLOSE_TAG}"
+        for name in MDMARK_PART_FILES
+    )
+    json_text = escape_for_script(json.dumps(data, ensure_ascii=False))
+    inserted = (
+        f"{MDMARK_CSS_OPEN}{mdmark_files['index.css']}{STYLE_CLOSE_TAG}"
+        f"{MDMARK_OPEN}{mdmark_files['index.js']}{CLOSE_TAG}"
+        f"{parts}"
+        + "".join(script_elements)
+        + f"{DATA_OPEN}{json_text}{CLOSE_TAG}"
+        f"{LICENSES_OPEN}{licenses}{CLOSE_TAG}"
+    )
+    return html[:position] + inserted + html[position:]
+
+
+def _license_block(
+    library: VendorLibrary, base_url: str, version: str, preview_dir: Path, fetch: FetchFn
+) -> LicenseBlock:
+    """ライブラリのライセンスの本文と束ねた依存のライセンスを取るか読み、タグを含まないことを確かめて返す。"""
+    license_text, license_source, bundled_text, bundled_source = _license_texts(
+        library=library, base_url=base_url, version=version, preview_dir=preview_dir, fetch=fetch
+    )
+    for source, text in ((license_source, license_text), (bundled_source, bundled_text)):
+        _reject_tags(source=source, text=text, tags=_SCRIPT_TAGS)
+    return LicenseBlock(library=library, version=version, license_text=license_text, bundled_text=bundled_text)
+
+
 def export_preview(
     workspace: Workspace,
     *,
@@ -677,7 +506,7 @@ def export_preview(
     fetch: FetchFn = fetch_url,
     resolve: Callable[[str | None], str] = resolve_ref,
 ) -> Path:
-    """検証してから、描画のライブラリとライセンスの表示を中に持つ雛形にデータを埋め込み、`out` を置き換える。"""
+    """検証してから、書き出し用のビルドに描画のライブラリ・ライセンスの表示・記録を差し込み、`out` を置き換える。"""
     # 問題があるときは取らず、書かない（前の out を残す）
     problems = store.validate_workspace(workspace)
     if problems:
@@ -685,12 +514,7 @@ def export_preview(
 
     # 取れないときは DownloadFailedError がそのまま上がる（書かない）
     ref = resolve(_mdmark_version(workspace.settings))
-    template = assemble_standalone_template(
-        preview_dir=preview_dir,
-        fetch=fetch,
-        mdmark_settings=workspace.settings.get("mdmark") or {},
-        mdmark_ref=ref,
-    )
     data = collect_preview_data(workspace, built_at=built_at, mdmark_ref=ref)
-    replace_file(out, embed_data(template, data))
+    html = assemble_export_html(data, preview_dir=preview_dir, fetch=fetch, mdmark_ref=ref)
+    replace_file(out, html)
     return out

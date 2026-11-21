@@ -1,17 +1,17 @@
 id: MOD-489-124
 title: プレビュー / voice
-lead: コメント・返信の入力の録音と、カーソルの位置への挿入（今の画面の `core/voice.ts` と同じ振る舞い）。
+lead: コメント・返信の入力の録音と、カーソルの位置への挿入。
 constants:
   - name: VOICE_MIME_TYPES
     title: 録音の構造の候補
     usecase: 音声でコメントする
-    summary: '`MediaRecorder.isTypeSupported` が真の最初の形式で録る（今の画面と同じ並び）'
+    summary: '`MediaRecorder.isTypeSupported` が真の最初の形式で録る'
     value: "['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4']"
     container: frontend/src/shared/core/voice.ts
   - name: VOICE_TEXT
     title: 画面が持つ音声入力の文
     usecase: 音声でコメントする
-    summary: サーバーが返さない理由の文（今の画面の `VOICE_TEXT` と同じ文）
+    summary: サーバーが返さない理由の文
     entries:
       - key: noMicrophone
         value: このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。
@@ -106,7 +106,7 @@ functions:
     title: 録音を始める
     kind: 関数
     usecase: 音声でコメントする
-    summary: マイクの許可を得て録音を始め、`stop`（音声の `Blob` を返す）・`cancel` を持つ録音を返す。録音中は `AudioContext` の `AnalyserNode`（`fftSize` 2048）で `WAVE_SAMPLE_MS` ごとに 0〜1 の音量を取って引数 `onLevel` を呼ぶ（今の画面の `startRecording` と同じ求め方）。`stop`・`cancel` はどちらも音量を取るのをやめて `AudioContext` を閉じ、マイクのトラックを全て止める。許可の拒否は `reason` が `denied`、それ以外は `no-microphone` の `RecordingError` で断る
+    summary: マイクの許可を得て録音を始め、`stop`（音声の `Blob` を返す）・`cancel` を持つ録音を返す。録音中は `AudioContext` の `AnalyserNode`（`fftSize` 2048）で `WAVE_SAMPLE_MS` ごとに 0〜1 の音量を取って引数 `onLevel` を呼ぶ。`stop`・`cancel` はどちらも音量を取るのをやめて `AudioContext` を閉じ、マイクのトラックを全て止める。許可の拒否は `reason` が `denied`、それ以外は `no-microphone` の `RecordingError` で断る
     returns:
       type: Promise<Recording>
       description: 録音中の 1 回分

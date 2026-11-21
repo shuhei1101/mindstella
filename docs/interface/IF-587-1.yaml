@@ -124,7 +124,6 @@ flows:
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - IF-489-71#
   - IF-489-70#
 request:
   - name: path
@@ -199,6 +198,5 @@ constraints:
     constraint: '`/w/{workspace}/files/` の全ての応答に `Content-Security-Policy: sandbox` を付け、配置した SVG・HTML をブラウザで直接開いても、プレビューのオリジンでスクリプトを動かさない'
 refs:
   - IF-489-18#
-  - IF-489-3#
   - IF-489-17#
 test_file: tests/integration/server/test_files_serve.py

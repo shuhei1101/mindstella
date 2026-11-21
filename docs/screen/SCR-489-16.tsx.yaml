@@ -19,7 +19,7 @@ elements:
       - name: points[].count
         value: その時点の added・changed・removed の数。合わせた範囲で追加して削除した項目は、削除した項目として 1 件に数える（差分を出さない行は渡さない）
       - name: current
-        value: SPAを開く.diff（無ければ空文字列）
+        value: プレビューを開く.diff（無ければ空文字列）
     description: 時点を新しい順に並べる。行を押すとモーダルを閉じ、どの画面もその時点の差分の表示で再描画する。「差分を出さない（今の内容）」は差分の表示をやめる
     io: 入力
     source: 記録の取得.changes、前回開いた日時.previous（`null` のときは前回開いた日時.opened）
@@ -33,5 +33,4 @@ notes:
   削除した項目を含む件数のモック: 削除した項目を含む時点の件数の見本は `docs/mock/pages/decisions/179/b-band/index.html` の変更履歴のモーダル
 test_file: tests/integration/preview/test_spa_history_screen.py
 refs:
-  - SCR-489-15#
   - IF-489-70#

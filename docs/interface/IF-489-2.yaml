@@ -170,7 +170,7 @@ response:
   - name: preview_url
     type: str | None
     description: README に書いたプレビューの URL。このプロセスがワークスペースを配っていなければ `null`
-    example: http://127.0.0.1:43817/mindstella.html
+    example: http://127.0.0.1:43817/w/mindstella-notes-3f2a9c/
 exceptions:
   - name: なし（正常終了）
     condition: 書いた、または利用者が書いた `README.md` があって書かなかった

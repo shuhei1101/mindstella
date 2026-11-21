@@ -12,7 +12,7 @@ describe("WorkspaceSettingsScreen", () => {
     // 準備
     const posted = vi.fn<(body: unknown) => Response>(() => HttpResponse.json({ id: "E-1", target: "settings", count: 1 }, { status: 201 }));
     server.use(http.post("/api/edits", async ({ request }) => posted(await request.json())));
-    renderRoute("/spa/?tab=settings");
+    renderRoute("/?tab=settings");
     const title = await screen.findByRole("textbox", { name: "題名" });
     // 実行
     await userEvent.clear(title);
@@ -27,7 +27,7 @@ describe("WorkspaceSettingsScreen", () => {
     // 準備
     const posted = vi.fn<(body: unknown) => Response>(() => HttpResponse.json({ id: "E-1", target: "settings", count: 1 }, { status: 201 }));
     server.use(http.post("/api/edits", async ({ request }) => posted(await request.json())));
-    renderRoute("/spa/?tab=settings");
+    renderRoute("/?tab=settings");
     const checkbox = await screen.findByRole("checkbox", { name: "コメントの送信で確認済みにする" });
     expect(checkbox).toBeChecked();
     expect(screen.getByText("オンのとき、コメントを送信した項目を確認済みにします。")).toBeInTheDocument();
@@ -45,7 +45,7 @@ describe("WorkspaceSettingsScreen", () => {
       http.post("/api/edits", async ({ request }) => posted(await request.json())),
       http.get("/api/transcription", () => HttpResponse.json({ available: true, reason: null, detail: null, presets: ["一般", "開発"], action: "send", preset: null })),
     );
-    const { unmount } = renderRoute("/spa/?tab=settings");
+    const { unmount } = renderRoute("/?tab=settings");
     // 実行
     const radios = await screen.findAllByRole("radio", { name: /レビュー中に追加する|入力欄へ挿入する|送信/ });
     expect(radios.map((radio) => radio.getAttribute("value"))).toEqual(["review", "insert", "send"]);
@@ -54,7 +54,7 @@ describe("WorkspaceSettingsScreen", () => {
     await waitFor(() => expect(posted).toHaveBeenCalledWith({ op: "setting", target: "settings", key: "transcription", value: { action: "send", preset: null } }));
     unmount();
     server.use(http.get("/api/transcription", () => HttpResponse.json({ available: false, reason: "stopped", detail: "x", presets: [], action: "send", preset: null })));
-    renderRoute("/spa/?tab=settings");
+    renderRoute("/?tab=settings");
     const select = await screen.findByRole("combobox", { name: "用語集のプリセット" });
     // 検証
     await waitFor(() => expect(select).toBeDisabled());
@@ -69,7 +69,7 @@ describe("WorkspaceSettingsScreen", () => {
       http.post("/api/edits", async ({ request }) => posted(await request.json())),
       http.get("/api/transcription", () => HttpResponse.json(AVAILABLE_TRANSCRIPTION)),
     );
-    renderRoute("/spa/?tab=settings");
+    renderRoute("/?tab=settings");
     const select = await screen.findByRole("combobox", { name: "用語集のプリセット" });
     await waitFor(() => expect(select).toBeEnabled());
     // 実行
@@ -94,7 +94,7 @@ describe("WorkspaceSettingsScreen", () => {
       http.get("/api/edits", () => HttpResponse.json({ items, count: items.length })),
       http.get("/api/transcription", () => HttpResponse.json(AVAILABLE_TRANSCRIPTION)),
     );
-    renderRoute("/spa/?tab=settings");
+    renderRoute("/?tab=settings");
     const select = await screen.findByRole("combobox", { name: "用語集のプリセット" });
     await waitFor(() => expect(select).toBeEnabled());
     await userEvent.click(screen.getByRole("radio", { name: "送信" }));

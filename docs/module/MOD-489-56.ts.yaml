@@ -1,6 +1,6 @@
 id: MOD-489-56
 title: プレビュー / api-client
-lead: orval の mutator。開いた画面のワークスペースのパスの頭を付けて fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる。
+lead: orval の mutator。サーバーの配信は開いた画面のワークスペースのパスの頭を付けて fetch で呼び、配る書き出しは埋め込みの記録から応答を作る。成功は本文と status を返し、失敗は AppError を投げる。
 functions:
   - name: apiClient
     title: API の呼び出し
@@ -8,7 +8,7 @@ functions:
     container: frontend/src/shared/adapters/api-client.ts
     usecase: 共通
     is_async: true
-    summary: orval の mutator。生成した関数が組んだ `/api/...` の URL の前に、開いた画面のワークスペースのパスの頭（`workspacePath()`）を付けて fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる
+    summary: orval の mutator。配る書き出し（`isEmbedded()` が真）は `embeddedResponse` の応答を返し、作れない要求は AppError（404）を投げる。サーバーの配信は `/api/...` の URL の前に開いた画面のワークスペースのパスの頭（`workspacePath()`）を付けて fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる
     args:
       - name: url
         type: string
@@ -24,6 +24,8 @@ functions:
     exceptions:
       - name: AppError
         condition: ステータスが 2xx でない
+      - name: AppError
+        condition: 配る書き出しで、埋め込みから応答を作れない要求（書き込み・記録のほかの読み取り）。`statusCode` は 404
     unit_tests:
       - name: test_api_client
         case: 正常
@@ -40,10 +42,18 @@ functions:
       - name: test_api_client_when_workspace_path
         case: 正常
         summary: ワークスペースのパスの頭を付けて呼ぶ
-        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/spa/` にし、`/api/records` を渡す'
+        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/` にし、`/api/records` を指定する'
         mock: MSW（`/w/mindstella-x-1/api/records` に 200 を返す）
         expected: '`/w/mindstella-x-1/api/records` が呼ばれ、`status` が 200'
+      - name: test_api_client_when_embedded
+        case: 正常
+        summary: 配る書き出しは埋め込みから応答を作り fetch を呼ばない
+        condition: 記録の `mindmap-data` の要素を配置し、`GET /api/records` と `POST /api/comments` を指定する
+        mock: fetch（呼ばれた回数を数える）
+        expected: '`GET /api/records` は `data` が記録で `status` が 200、`POST /api/comments` は `AppError`（`statusCode` 404）を投げる。fetch は呼ばれない'
     callees:
       - MOD-642-1#functions[workspacePath]
+      - MOD-644-1#functions[isEmbedded]
+      - MOD-644-1#functions[embeddedResponse]
 notes:
   単体テスト: 同じフォルダの `api-client.test.ts` に置く（knowledge の規約『フォルダ構成』）

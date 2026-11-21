@@ -644,8 +644,8 @@ def run_preview_url(root: Path, previews: PreviewRegistry, *, diff: str | None =
         except WriteFailedError as error:
             # README を書けなくても配信は止めず、URL を返す
             logger.warning("README を書けなかった: %s", error)
-    # README には時点を持たない URL を書き、返す URL にだけハッシュを付ける
-    return {"url": url if diff is None else f"{url}#diff={diff}", "workspace": str(root), "started": started}
+    # README には時点を持たない URL を書き、返す URL にだけ search の diff を付ける
+    return {"url": url if diff is None else f"{url}?diff={diff}", "workspace": str(root), "started": started}
 
 
 def run_readme(root: Path, previews: PreviewRegistry) -> dict[str, Any]:

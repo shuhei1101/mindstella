@@ -55,7 +55,7 @@
   --radius: 4px;
   --control-h: 32px;
   --target-min: 24px;
-  /* 項目の種類の色（種類の点。今の画面の tokens.css と同じ値） */
+  /* 項目の種類の色（種類の点） */
   --kind-dec-light: #3f8f7c;
   --kind-dec-dark: #7ee0c3;
   --kind-task-light: #5b7fc9;

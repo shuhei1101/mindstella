@@ -178,7 +178,7 @@ lead: 利用者が画面でスレッドをクローズにするかオープン�
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件追加する（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

@@ -1,34 +1,34 @@
 id: IF-489-70
-title: SPAを開く
+title: プレビューを開く
 entry:
   kind: screen
-  value: サーバーの配信の `/w/{workspace}/spa/`（画面は『SPAの配信』が返し、ソースは `frontend/`）
+  value: サーバーの配信の `/w/{workspace}/`（画面は『プレビューの配信』が返し、ソースは `frontend/`）
   api: '`GET /w/{workspace}/api/records`（記録）・`GET /w/{workspace}/api/events`（書き換えの通知）・`GET /w/{workspace}/api/comments`（レビュー中の書き込みと下書き、項目ごとのコメントのマーカー）・`GET /w/{workspace}/api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /w/{workspace}/api/threads`（スレッドと利用者の未読）・`POST /w/{workspace}/api/opened`（前回開いた日時）・`POST /w/{workspace}/api/edits`・`DELETE /w/{workspace}/api/edits/{id}`・`POST /w/{workspace}/api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /w/{workspace}/api/comments`・`PATCH`/`DELETE /w/{workspace}/api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /w/{workspace}/api/drafts`（下書き）・`POST /w/{workspace}/api/comments/send`（まとめて送信する）・`PATCH /w/{workspace}/api/threads/{id}`（クローズとオープンへの戻し）・`POST /w/{workspace}/api/threads/{id}/seen`（利用者の既読）・`PUT /w/{workspace}/api/config/display`（ワークスペースの既定の書き換え）・`GET /w/{workspace}/api/transcription`（文字起こしの可否と設定）・`POST /w/{workspace}/api/transcriptions`（音声の文字起こし）・`POST /w/{workspace}/api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
 flows:
   - name: 正常系
-    summary: '`/w/{workspace}/spa/` を開くと、記録を読んでトップバーと概要を描く'
+    summary: '`/w/{workspace}/` を開くと、記録を読んでトップバーと概要を描く'
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1・D-2 とタスク T-1、利用者の未読の書き込みを持つオープンのスレッド 1 件と、レビュー中のコメント 2 件を持つワークスペース
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/spa/ を開く\n  IF-->>SV: GET /w/{workspace}/api/records\n  SV-->>IF: 記録\n  IF-->>SV: GET /w/{workspace}/api/events につなぐ\n  IF-->>ユーザー: トップバーと概要\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/ を開く\n  IF-->>SV: GET /w/{workspace}/api/records\n  SV-->>IF: 記録\n  IF-->>SV: GET /w/{workspace}/api/events につなぐ\n  IF-->>ユーザー: トップバーと概要\n```"
     expected:
       - トップバーに話し合いの題名があり、タブの帯で概要が選ばれている
       - 概要のタイルが記録の値で描かれている
       - トップバーのコメントのボタンに件数 2 と未読の点がある
-      - URL が `/w/{workspace}/spa/`（search params が付かない）
+      - URL が `/w/{workspace}/`（search params が付かない）
       - ブラウザのコンソールにエラーが出ていない
     test: test_normal
   - name: 正常系（書き換えの通知）
     summary: ツールで記録を書き換えると、再度開かずに概要を再描画する
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
         notes: 開いた後に MCP の `add` で検討事項を 1 件追加する
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/spa/ を開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /w/{workspace}/api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 再描画した概要\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/ を開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /w/{workspace}/api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 再描画した概要\n```"
     expected:
       - 追加してから 2 秒以内に、タブの帯の検討事項の件数が 1 増える
       - URL とスクロールの位置が変わらない
@@ -37,11 +37,11 @@ flows:
     summary: '`tab` が決めた値でなければ概要を開き、URL から外す'
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=unknown` で開く'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /w/{workspace}/spa/?tab=unknown を開く\n  IF-->>ユーザー: 概要\n```"
+        notes: '`/w/{workspace}/?tab=unknown` で開く'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /w/{workspace}/?tab=unknown を開く\n  IF-->>ユーザー: 概要\n```"
     expected:
       - タブの帯で概要が選ばれている
       - URL の search params に `tab` が無い
@@ -51,11 +51,11 @@ flows:
     setup:
       - &id001
         name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1（決定済み）・D-2（要見直し）と、タスク T-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&view=table` で開き、続けてタブの帯でタスクへ移る'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/spa/?tab=decisions&view=table を開く\n  IF-->>SV: GET /w/{workspace}/api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項の表\n  ユーザー->>IF: タブの帯でタスクを押す\n  IF-->>ユーザー: タスクのボード\n```"
+        notes: '`/w/{workspace}/?tab=decisions&view=table` で開き、続けてタブの帯でタスクへ移る'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/?tab=decisions&view=table を開く\n  IF-->>SV: GET /w/{workspace}/api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項の表\n  ユーザー->>IF: タブの帯でタスクを押す\n  IF-->>ユーザー: タスクのボード\n```"
     expected:
       - タブの帯で検討事項が選ばれ、表示形式の切り替えで表が選ばれている
       - 表に D-1・D-2 の行がある
@@ -69,8 +69,8 @@ flows:
       - *id001
       - name: make_workspace
         description: 本文に見出し「決め方」を持つ検討事項 D-1 と、タスク T-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&id=D-1&h=決め方` で開き、全画面のボタンを押す'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/spa/?tab=decisions&id=D-1&h=決め方 を開く\n  IF-->>SV: GET /w/{workspace}/api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項のボードと D-1 の詳細パネル\n  ユーザー->>IF: 全画面のボタンを押す\n  IF-->>ユーザー: D-1 の詳細の全画面\n```"
+        notes: '`/w/{workspace}/?tab=decisions&id=D-1&h=決め方` で開き、全画面のボタンを押す'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/?tab=decisions&id=D-1&h=決め方 を開く\n  IF-->>SV: GET /w/{workspace}/api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項のボードと D-1 の詳細パネル\n  ユーザー->>IF: 全画面のボタンを押す\n  IF-->>ユーザー: D-1 の詳細の全画面\n```"
     expected:
       - 詳細パネルに D-1 のタイトルと、mdmark で描いた本文がある
       - 本文の見出し「決め方」が詳細パネルの本文の区画に入っている
@@ -83,8 +83,8 @@ flows:
       - *id001
       - name: make_workspace
         description: タスク T-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=tasks&view=map&id=T-99&h=無い見出し&sort=unknown` で開く'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /w/{workspace}/spa/?tab=tasks&view=map&id=T-99&h=無い見出し&sort=unknown を開く\n  IF-->>ユーザー: タスクのボード\n```"
+        notes: '`/w/{workspace}/?tab=tasks&view=map&id=T-99&h=無い見出し&sort=unknown` で開く'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /w/{workspace}/?tab=tasks&view=map&id=T-99&h=無い見出し&sort=unknown を開く\n  IF-->>ユーザー: タスクのボード\n```"
     expected:
       - タスクがボードで開き、詳細パネルが開いていない
       - URL の search params が `tab=tasks` だけ
@@ -95,7 +95,7 @@ flows:
       - *id001
       - name: make_workspace
         description: 検討事項 D-1（決定済み）・D-2（要見直し）・D-3（要見直し）を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&view=table&f.status=要見直し&sort=-id` で開き、チップを外して再読み込みする'
+        notes: '`/w/{workspace}/?tab=decisions&view=table&f.status=要見直し&sort=-id` で開き、チップを外して再読み込みする'
     flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: f.status=要見直し&sort=-id を付けて開く\n  IF-->>ユーザー: D-3・D-2 の順の表と条件のチップ\n  ユーザー->>IF: チップを外す\n  IF-->>ユーザー: 全ての行の表\n  ユーザー->>IF: 再読み込みする\n  IF-->>ユーザー: 全ての行の表\n```"
     expected:
       - 開いたとき、表の行が D-3・D-2 の順で、D-1 の行が無く、表の上に状態「要見直し」のチップがある
@@ -108,7 +108,7 @@ flows:
       - *id001
       - name: make_workspace
         description: まとまり V-1（D-1 を追加した）と V-2（D-1 の本文を変え、D-2 を追加し、D-3 を削除した）を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&view=table&id=D-1&diff=V-2` で開き、トップバーの変更履歴で V-1 を選ぶ'
+        notes: '`/w/{workspace}/?tab=decisions&view=table&id=D-1&diff=V-2` で開き、トップバーの変更履歴で V-1 を選ぶ'
     flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: diff=V-2 を付けて開く\n  IF-->>SV: POST /w/{workspace}/api/opened\n  IF-->>SV: GET /w/{workspace}/api/records\n  IF-->>ユーザー: 差分のマーカーと削除した項目の帯の付いた表と、本文の差分の詳細\n  ユーザー->>IF: 変更履歴で V-1 を選ぶ\n  IF-->>ユーザー: V-1 からの差分の表示\n```"
     expected:
       - 表の D-1 の行に変更のマーカー、D-2 の行に新規のマーカーがあり、表の上の削除した項目の帯に D-3 がある
@@ -122,8 +122,8 @@ flows:
       - *id001
       - name: make_workspace
         description: まとまり V-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&diff=V-99` で開く'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /w/{workspace}/spa/?tab=decisions&diff=V-99 を開く\n  IF-->>ユーザー: 差分のマーカーの無い検討事項\n```"
+        notes: '`/w/{workspace}/?tab=decisions&diff=V-99` で開く'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /w/{workspace}/?tab=decisions&diff=V-99 を開く\n  IF-->>ユーザー: 差分のマーカーの無い検討事項\n```"
     expected:
       - 差分のマーカーと削除した項目の帯が無い
       - URL の search params に `diff` が無い
@@ -135,7 +135,7 @@ flows:
       - name: make_workspace
         description: まとまり V-1 を持ち、前回開いた日時の連番が V-1 の `until_seq` のワークスペース
         notes: 開いた後に MCP の `add` で D-2 を追加し、`commit` でまとまり V-2 にしてから、変更履歴で「前回開いてから」を選ぶ
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/spa/?tab=decisions を開く\n  IF-->>SV: POST /w/{workspace}/api/opened\n  SV-->>IF: previous\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /w/{workspace}/api/records\n  ユーザー->>IF: 変更履歴で「前回開いてから」を選ぶ\n  IF-->>ユーザー: D-2 に新規のマーカー\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/?tab=decisions を開く\n  IF-->>SV: POST /w/{workspace}/api/opened\n  SV-->>IF: previous\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /w/{workspace}/api/records\n  ユーザー->>IF: 変更履歴で「前回開いてから」を選ぶ\n  IF-->>ユーザー: D-2 に新規のマーカー\n```"
     expected:
       - D-2 に新規のマーカーがあり、D-1 にマーカーが無い
       - URL の `diff` が `since`
@@ -147,7 +147,7 @@ flows:
       - *id001
       - name: make_workspace
         description: 検討事項 D-1・D-2 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&view=table&id=D-1&f.status=未決定` で開き、MCP の `update` で D-1 のタイトルを変え、続けて `remove` で D-1 を削除する'
+        notes: '`/w/{workspace}/?tab=decisions&view=table&id=D-1&f.status=未決定` で開き、MCP の `update` で D-1 のタイトルを変え、続けて `remove` で D-1 を削除する'
     flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 詳細と絞り込みを付けて開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /w/{workspace}/api/records\n  IF-->>ユーザー: 新しいタイトルの詳細\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /w/{workspace}/api/records\n  IF-->>ユーザー: 詳細を閉じた表\n```"
     expected:
       - タイトルを変えた後 2 秒以内に、詳細パネルと表の D-1 が新しいタイトルになり、URL が変わらない
@@ -159,7 +159,7 @@ flows:
       - *id001
       - name: make_workspace
         description: タイトル「画面の分け方」の検討事項 D-1 と、タスク T-1 と、D-1 を追加したまとまり V-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=tasks&diff=V-1` で開き、`Ctrl+K` を押して「画面」と入力し、結果の D-1 を押す'
+        notes: '`/w/{workspace}/?tab=tasks&diff=V-1` で開き、`Ctrl+K` を押して「画面」と入力し、結果の D-1 を押す'
     flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: Ctrl+K を押す\n  IF-->>ユーザー: 全体の検索\n  ユーザー->>IF: 「画面」と入力する\n  IF-->>ユーザー: D-1 を含む検索の結果\n  ユーザー->>IF: D-1 を押す\n  IF-->>ユーザー: 検討事項と D-1 の詳細パネル\n```"
     expected:
       - '`Ctrl+K` を押した後、URL に `search=1` があり、履歴の数が変わらず、検索の言葉にフォーカスがある'
@@ -172,10 +172,10 @@ flows:
     setup:
       - &id002
         name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 未決定の検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&id=D-1` で開く'
+        notes: '`/w/{workspace}/?tab=decisions&id=D-1` で開く'
     flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 「編集する」を押し、回答を書いて入力欄を離れる\n  IF->>SV: POST /w/{workspace}/api/edits {op: set, target: D-1, key: answer, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 回答とカードに保存待ちのマーカー、トップバーに件数 1\n  ユーザー->>IF: トップバーの保存待ちのボタンを押し、まとめて保存する\n  IF->>SV: POST /w/{workspace}/api/edits/save\n  SV-->>IF: 200\n  IF-->>ユーザー: 保存した旨と、D-1 の新しい回答\n```"
     expected:
       - 溜めた後、D-1 の回答のキーとボードの D-1 のカードに保存待ちのマーカーがあり、トップバーの件数が 1
@@ -189,7 +189,7 @@ flows:
       - *id002
       - name: make_workspace
         description: タスク T-1 と、どの項目からも指されていないメモ N-1 を持ち、`edits.yaml` を持たないワークスペース
-        notes: '`/w/{workspace}/spa/?tab=tasks` で開き、追加の入力でタスク「画面を作る」を追加し、続けて `/w/{workspace}/spa/?tab=notes&id=N-1` で N-1 の削除を溜め、保存待ちのパネルで N-1 の削除を取り消す'
+        notes: '`/w/{workspace}/?tab=tasks` で開き、追加の入力でタスク「画面を作る」を追加し、続けて `/w/{workspace}/?tab=notes&id=N-1` で N-1 の削除を溜め、保存待ちのパネルで N-1 の削除を取り消す'
     flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 追加の入力にタイトルを書いて追加する\n  IF->>SV: POST /w/{workspace}/api/edits {op: item-add, key: tasks, value}\n  SV-->>IF: 201、target は new-1\n  IF-->>ユーザー: ボードに ID の無い保存待ちのカード\n  ユーザー->>IF: N-1 の詳細で削除を押す\n  IF->>SV: POST /w/{workspace}/api/edits {op: item-remove, target: N-1}\n  SV-->>IF: 201\n  ユーザー->>IF: 保存待ちのパネルで N-1 の削除を取り消す\n  IF->>SV: DELETE /w/{workspace}/api/edits/E-2\n  SV-->>IF: 200\n  IF-->>ユーザー: 追加する項目だけの保存待ち\n```"
     expected:
       - 追加した後、タスクのボードに「画面を作る」の ID の無いカードが保存待ちのマーカーつきであり、`tasks.yaml` は T-1 だけ
@@ -202,8 +202,8 @@ flows:
       - *id002
       - name: make_workspace
         description: 題名が「話し合い」のワークスペース
-        notes: '`/w/{workspace}/spa/?tab=settings` で開き、題名を「画面の編集」に書き換えて入力欄を離れる'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/spa/?tab=settings を開く\n  IF-->>ユーザー: 設定の画面\n  ユーザー->>IF: 題名を書き換えて入力欄を離れる\n  IF->>SV: POST /w/{workspace}/api/edits {op: setting, target: settings, key: summary, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 題名に保存待ちのマーカー、トップバーに件数 1\n```"
+        notes: '`/w/{workspace}/?tab=settings` で開き、題名を「画面の編集」に書き換えて入力欄を離れる'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/?tab=settings を開く\n  IF-->>ユーザー: 設定の画面\n  ユーザー->>IF: 題名を書き換えて入力欄を離れる\n  IF->>SV: POST /w/{workspace}/api/edits {op: setting, target: settings, key: summary, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 題名に保存待ちのマーカー、トップバーに件数 1\n```"
     expected:
       - 設定の画面に今の題名「話し合い」が出ている
       - 書き換えた後、題名の欄に保存待ちのマーカーがあり、`config.yaml` の題名が「話し合い」のまま
@@ -213,10 +213,10 @@ flows:
     summary: 記録がスキーマに合わず読めないとき、読めなかった箇所を画面に出す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1 を持ち、`decisions.yaml` の D-1 の `status` を決めた値以外に書き換えたワークスペース
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/spa/ を開く\n  IF-->>SV: GET /w/{workspace}/api/records\n  SV-->>IF: 422（detail に合わない箇所の行）\n  IF-->>ユーザー: 読めなかった箇所の表示\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/ を開く\n  IF-->>SV: GET /w/{workspace}/api/records\n  SV-->>IF: 422（detail に合わない箇所の行）\n  IF-->>ユーザー: 読めなかった箇所の表示\n```"
     expected:
       - 本文の区画に、記録を読めなかったことと `detail` の行が出る
       - タイルが描かれていない
@@ -226,11 +226,11 @@ flows:
     summary: 書き換えの通知が切れたら、トップバーに接続が切れたことを出し、再起動すると再接続する
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
         notes: '常駐サーバーは、テストの中で空きポートを 1 つ取って閉じた番号を `MINDSTELLA_PORT` に渡して起動する（再起動も同じ番号）。開いた後に `server_stop` で常駐サーバーを止め、再起動して同じワークスペースで `preview_url` を呼ぶ'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/spa/ を開く\n  SV--xIF: 書き換えの通知が切れる\n  IF-->>ユーザー: 接続が切れた表示\n  IF-->>SV: 再接続する\n  SV-->>IF: 記録\n  IF-->>ユーザー: 接続が切れた表示を削除する\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/ を開く\n  SV--xIF: 書き換えの通知が切れる\n  IF-->>ユーザー: 接続が切れた表示\n  IF-->>SV: 再接続する\n  SV-->>IF: 記録\n  IF-->>ユーザー: 接続が切れた表示を削除する\n```"
     expected:
       - 止めた後、トップバーに接続が切れたことの表示が出る
       - 止めた後も、前に読んだ記録の概要のタイルが残っている
@@ -242,7 +242,7 @@ flows:
       - *id001
       - name: make_workspace
         description: 本文に Mermaid の図を持つ検討事項 D-1 を持つワークスペース
-        notes: 描画のライブラリの配信元へのリクエストをブラウザで止めてから `/w/{workspace}/spa/?tab=decisions&view=table&id=D-1` で開く
+        notes: 描画のライブラリの配信元へのリクエストをブラウザで止めてから `/w/{workspace}/?tab=decisions&view=table&id=D-1` で開く
     flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 開く\n  IF--xIF: 描画のライブラリが読めない\n  IF-->>ユーザー: 表と、原文の本文と、読めなかったライブラリの名前\n```"
     expected:
       - 表に D-1 の行がある
@@ -255,7 +255,7 @@ flows:
       - *id002
       - name: make_workspace
         description: 検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `answer`）を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&panel=pending` で開き、MCP の `update` で D-1 の `title` を書き換えてから、まとめて保存するを押す'
+        notes: '`/w/{workspace}/?tab=decisions&panel=pending` で開き、MCP の `update` で D-1 の `title` を書き換えてから、まとめて保存するを押す'
     flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: まとめて保存するを押す\n  IF->>SV: POST /w/{workspace}/api/edits/save\n  SV-->>IF: 409、blocked は E-1（changed）\n  IF-->>ユーザー: E-1 の行に書き込めない理由\n```"
     expected:
       - 保存待ちのパネルの E-1 の行に、溜めた後に書き換わった旨の理由がある
@@ -266,10 +266,10 @@ flows:
     summary: 詳細の本文の文を選んで箇所を添えたコメントを溜め、コメントの一覧のレビュー中の書き込みからまとめて送信する
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 本文が 3 行の資料 A-1 を持ち、`comments.yaml` を持たないワークスペース
-        notes: '`/w/{workspace}/spa/?tab=docs&id=A-1` で開き、本文の 2 行目の文を選んで入口からコメントを溜め、トップバーのコメントのボタン・「レビュー中」の順に押してまとめて送信する'
+        notes: '`/w/{workspace}/?tab=docs&id=A-1` で開き、本文の 2 行目の文を選んで入口からコメントを溜め、トップバーのコメントのボタン・「レビュー中」の順に押してまとめて送信する'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -297,10 +297,10 @@ flows:
     summary: '`thread` が指すスレッドを開いて既読にし、返信を溜め、理由を添えてクローズにする'
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 利用者の未読の AI の書き込みを持つオープンのスレッド TH-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?panel=comments&thread=TH-1` で開き、返信を溜めてから、理由「決まった」を添えてクローズにし、一覧へ戻る'
+        notes: '`/w/{workspace}/?panel=comments&thread=TH-1` で開き、返信を溜めてから、理由「決まった」を添えてクローズにし、一覧へ戻る'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -328,10 +328,10 @@ flows:
     summary: コメントの入力欄の下書きをサーバーに保ち、再読み込みすると同じ入力欄に戻す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1 を持ち、`comments.yaml` を持たないワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&id=D-1` で開き、詳細パネルのコメントの入力欄に書いて入力を止めてから、再読み込みする'
+        notes: '`/w/{workspace}/?tab=decisions&id=D-1` で開き、詳細パネルのコメントの入力欄に書いて入力を止めてから、再読み込みする'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -354,10 +354,10 @@ flows:
     summary: 表示の設定のパネルで表示する種類を個人の上書きとして変え、既定の保存の確かめを経てワークスペースの既定にする
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1 とメモ N-1 を持ち、`config.yaml` に `display` を持たないワークスペース
-        notes: '`/w/{workspace}/spa/?tab=notes&panel=display` で開き、表示する種類からメモを外し、「ワークスペースの既定にする」から確かめのモーダルで保存し、続けて「設定を編集する」を押す'
+        notes: '`/w/{workspace}/?tab=notes&panel=display` で開き、表示する種類からメモを外し、「ワークスペースの既定にする」から確かめのモーダルで保存し、続けて「設定を編集する」を押す'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -385,10 +385,10 @@ flows:
     summary: 無いスレッド・無いタグ・無い項目を指す値と、コメントの一覧を開いていないときのコメントの値を外して開く
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: タグ「画面」を持つオープンのスレッド TH-1 と検討事項 D-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?panel=comments&thread=TH-99&ttag=無いタグ&ttarget=D-99` で開き、続けて `/w/{workspace}/spa/?tab=decisions&thread=TH-1&review=1&ttarget=D-1` で開く'
+        notes: '`/w/{workspace}/?panel=comments&thread=TH-99&ttag=無いタグ&ttarget=D-99` で開き、続けて `/w/{workspace}/?tab=decisions&thread=TH-1&review=1&ttarget=D-1` で開く'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -408,10 +408,10 @@ flows:
     summary: 空白だけの本文は溜めずに理由を出す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1 を持ち、`comments.yaml` を持たないワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&id=D-1` で開き、コメントの入力欄に空白だけを書いて溜める'
+        notes: '`/w/{workspace}/?tab=decisions&id=D-1` で開き、コメントの入力欄に空白だけを書いて溜める'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -429,10 +429,10 @@ flows:
     summary: サーバーが止まった後に溜めると、本文を残して届かなかった理由を出す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&id=D-1` で開き、`server_stop` で常駐サーバーを止めてから、コメントの入力欄に書いて溜める'
+        notes: '`/w/{workspace}/?tab=decisions&id=D-1` で開き、`server_stop` で常駐サーバーを止めてから、コメントの入力欄に書いて溜める'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -453,10 +453,10 @@ flows:
     summary: まとめて送信の 409 では、箇所が合わない書き込みの行に理由を出し、どれも送信しない
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 本文が 3 行の資料 A-1 と、A-1 の本文の 3 行目を指すレビュー中のコメント C-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?panel=comments&review=1` で開き、MCP の `update` で A-1 の本文を 1 行にしてから、まとめて送信を押す'
+        notes: '`/w/{workspace}/?panel=comments&review=1` で開き、MCP の `update` で A-1 の本文を 1 行にしてから、まとめて送信を押す'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -478,7 +478,7 @@ flows:
     summary: 入力する欄にフォーカスがある間は再読み込みせず「更新があります」を出し、フォーカスが外れたら 1 回だけ再読み込みする
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/?tab=decisions&view=table&id=D-1` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/?tab=decisions&view=table&id=D-1` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
         notes: 開いた後に、詳細パネルのコメントの入力に「途中まで」と入れてフォーカスを置いたまま、MCP の `add` で検討事項を 1 件追加する
@@ -506,7 +506,7 @@ flows:
     summary: 本文の ../files/{名前} を配信の /w/{workspace}/files/{名前} に解決して、動画・画像を描く
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立て、サーバーが配る `/w/{workspace}/spa/` を実際のブラウザで開く。描画のライブラリは CDN から読む）
+        description: なし（MCP サーバーを立て、サーバーが配る `/w/{workspace}/` を実際のブラウザで開く。描画のライブラリは CDN から読む）
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 記録
@@ -519,7 +519,7 @@ flows:
         participant IF as React のプレビュー
         participant SV as 配信
 
-        ユーザー->>IF: /w/{workspace}/spa/ で A-1 の詳細パネルを開く
+        ユーザー->>IF: /w/{workspace}/ で A-1 の詳細パネルを開く
         IF-->>SV: GET /w/{workspace}/files/clip.mp4・GET /w/{workspace}/files/shot.png
         IF-->>ユーザー: 再生バーを持つ動画と画像を描いた本文
       ```
@@ -530,10 +530,10 @@ flows:
     summary: 詳細パネルのボタンで、開いている項目で絞ったスレッドの一覧を開き、項目の絞り込みを外す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/spa/` を実際のブラウザで開く）
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 検討事項 D-1・D-2 と、D-1 へ向けたオープンのスレッド TH-1・D-2 へ向けたオープンのスレッド TH-2・D-1 へのまだ送信していない新規スレッド C-1 を持つワークスペース
-        notes: '`/w/{workspace}/spa/?tab=decisions&id=D-1` で開く'
+        notes: '`/w/{workspace}/?tab=decisions&id=D-1` で開く'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -549,7 +549,59 @@ flows:
       - ボタンを押した後、URL の search params が `tab=decisions&id=D-1&panel=comments&ttarget=D-1` で、一覧に C-1 と TH-1 だけが出て、履歴の数が変わらない
       - × を押した後、URL から `ttarget` が外れ、一覧に C-1・TH-1・TH-2 が出て、履歴の数が変わらない
     test: test_normal_when_comment_target_filtered
-lead: 利用者がサーバーの配信の `/w/{workspace}/spa/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの通知を受けると記録を再読み込みして再描画する。
+  - name: 正常系（配る書き出しを通信なしで開く）
+    summary: 『配る書き出し』の HTML を `file://` で開くと、外部への要求をせずに、中に持つ記録・描画のライブラリで概要と詳細の本文・図を描く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `export` で書き出した HTML を実際のブラウザで `file://` で開く）
+      - name: make_workspace
+        description: 本文に見出しと Mermaid の図と map の範囲（`<!-- map -->` の中の flowchart）を持つ資料 A-1 を持つワークスペース
+        notes: '`file:` 以外への要求を全てブラウザで止めて数えてから、書き出した HTML を開き、続けて `#/?tab=docs&id=A-1` へ移る'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー（配る書き出し）
+
+        ユーザー->>IF: file:// で開く
+        IF->>IF: mindmap-data の記録を読む
+        IF-->>ユーザー: 概要
+        ユーザー->>IF: #/?tab=docs&id=A-1 へ移る
+        IF->>IF: 中に持つ mdmark・mermaid で本文と図を描く
+        IF-->>ユーザー: 詳細パネルの本文と図
+      ```
+    expected:
+      - 開いた直後に概要のタイルが描かれている
+      - 詳細パネルに A-1 の本文の見出しと Mermaid の図の SVG があり、map の図の描画の領域にノードの名前の要素があって map の範囲の原文が画面に無い（中に持つ部品 `map` で描いた）
+      - 止めた要求が 0 件
+      - ブラウザのコンソールにエラーが出ていない
+    test: test_normal_when_exported_offline
+  - name: 正常系（配る書き出しで書き込む操作を出さない）
+    summary: 配る書き出しは、項目の追加・編集・確認済み・コメント・保存待ち・ワークスペースの既定にするの操作を出さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `export` で書き出した HTML を実際のブラウザで `file://` で開く）
+      - name: make_workspace
+        description: タスク T-1 を持つワークスペース
+        notes: 書き出した HTML を `#/?tab=tasks&id=T-1` で開き、トップバーの表示の設定を開く
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー（配る書き出し）
+
+        ユーザー->>IF: file:// で #/?tab=tasks&id=T-1 を開く
+        IF-->>ユーザー: タスクの一覧と T-1 の詳細パネル
+        ユーザー->>IF: 表示の設定を開く
+        IF-->>ユーザー: 表示の設定のパネル
+      ```
+    expected:
+      - トップバーにコメントと保存待ちのボタンが無い
+      - タスクの項目を追加するボタンが無い
+      - 詳細パネルに編集する・確認済み・コメントの一覧のボタンと入力欄が無い
+      - 表示の設定のパネルにワークスペースの既定にするのボタンが無い
+    test: test_normal_when_exported_read_only
+lead: 利用者がサーバーの配信の `/w/{workspace}/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの通知を受けると記録を再読み込みして再描画する。
 callers:
   - SC-489-12#
 request:
@@ -588,7 +640,7 @@ request:
     default: なし（本文の頭で開く）
     location: query
     description: 詳細の本文の、開いたときに画面に入れる見出し
-    constraints: 構造は『プレビューを開く』のハッシュの引数 `h` と同じ。`id` があるときだけ効く。本文に無い見出しと、本文が HTML の資料のときは本文の頭で開き、URL から外す
+    constraints: 見出しの文言の空白を `-` にした状態。同じ文言の見出しが 2 つ以上あるときは、本文の頭から 2 つ目が `-1`、3 つ目が `-2` を続ける。`id` があるときだけ効く。本文に無い見出しと、本文が HTML の資料のときは本文の頭で開き、URL から外す
     example: 決め方
   - name: diff
     type: "'since' | 'pending' | str"
@@ -604,7 +656,7 @@ request:
     default: なし（その画面の保存した条件、無ければ画面の既定の条件で絞る）
     location: query
     description: 開いている画面を、その列の値で絞る。どの表示形式でも絞り込みのドロワーの条件として効く。概要の「すべて表示」・表のセル・絞り込みのドロワーとチップが書く
-    constraints: 構造は『プレビューを開く』のハッシュの引数 `f.{列}` と同じ（複数の値は `|`、`~{列}` は文字の条件）。絞り込みを変えるたびに書き直す
+    constraints: 複数の値は `|` でつなぐ。列が `~{列}` のときは文字の条件で、その列の値に文字を含む行に絞る（大文字・小文字を区別せず、文字の中の `|` で分けない）。絞り込みを変えるたびに書き直す
     example: f.status=要見直し
   - name: sort
     type: str
@@ -687,7 +739,7 @@ request:
     default: なし（入口を出さない）
     location: body
     description: 詳細パネル・詳細の全画面で、本文の文か項目の値を選んだ範囲。本文は元の Markdown か HTML の行の範囲に、値はキーのパスに対応づけて箇所にする
-    constraints: 『プレビューを開く』の request「選んだ範囲」と同じ
+    constraints: 本文と値の外・空の選択・Markdown の中の `html` のコードブロックを描いた枠の中の選択・差分の表示の間の HTML の本文の中の選択では入口を出さない
   - name: ttarget
     type: str
     required: false
@@ -700,9 +752,9 @@ constraints:
   - item: 通信
     constraint: サーバーの配信（同じオリジンの `/w/{workspace}/api/`）と、描画のライブラリと Google Fonts の文字の配信元だけへ通信する。記録を外へ送信しない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
   - item: 描画のライブラリ
-    constraint: mermaid・marked・jsdiff は、今の画面と同じ配信元とバージョンから、`integrity` で中身を確かめて読む。mdmark は、『記録の取得』の `mdmark_ref` の jsDelivr の URL（`gh/shuhei1101/mdmark@{mdmark_ref}/dist/`。`mdmark_ref` を受ける前は `develop`）から、`integrity` を付けずに `crossorigin="anonymous"` で読む。ES モジュールのため、CSS を link 要素で読み、JavaScript を `import()` で読む。`mount` の `config` には、`features`（画面と重なる機能のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・mermaid の描画も含める。表の機能 `table` は、詳細・詳細の全画面・本文の差分の本文でオンにし、スレッドの書き込みでオフにする）と、`settings.mdmark.map` を `map` として指定する。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える
+    constraint: mermaid・marked・jsdiff は、プラグインの `preview/libraries.json`（ライブラリごとの jsDelivr のバージョンを固定した URL・`integrity`（sha384）・置かれるグローバルの名前。画面と『配る書き出し』が共有する唯一の持ち主）の URL から、`integrity` で中身を確かめて読む。mdmark は、『記録の取得』の `mdmark_ref` の jsDelivr の URL（`gh/shuhei1101/mdmark@{mdmark_ref}/dist/`。`mdmark_ref` を受ける前は `develop`）から、`integrity` を付けずに `crossorigin="anonymous"` で読む。ES モジュールのため、CSS を link 要素で読み、JavaScript を `import()` で読む。`mount` の `config` には、`features`（画面と重なる機能のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・mermaid の描画も含める。表の機能 `table` は、詳細・詳細の全画面・本文の差分の本文でオンにし、スレッドの書き込みでオフにする）と、`settings.mdmark.map` を `map` として指定する。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える
   - item: 本文の無害化
-    constraint: 『プレビューを開く』の制約「本文の無害化」と同じ
+    constraint: 本文とスレッドの書き込みの Markdown は、mdmark が HTML に描くときに無害化した結果を差し込む。図はスクリプトを動かさない安全の設定で描く。HTML の本文は、記録の `marked_bodies` を `sandbox="allow-same-origin"`（`allow-scripts` を付けない）の iframe の `srcdoc` に描き、本文のスクリプトを動かさず、本文の CSS を枠の外へ漏らさない。枠の高さは `ResizeObserver` で描いた中身に合わせる。Markdown の中の言語指定 `html` のコードブロックも、コードではなく同じ枠に描く（行のマーカーは付けない）。Markdown の中の `<!-- html -->` 〜 `<!-- /html -->` の範囲（埋め込んだ HTML）は、枠に入れず mdmark の HTML の埋め込みの機能で本文の中に描き、範囲に書いたスクリプトとイベントの属性は無害化で外す
   - item: 画面への反映の時間
     constraint: 書き換えの通知を受けてから 2 秒以内に再描画する（入力中に保留したときは、保留を解いてから 2 秒以内）
     decided_by: NFR-489-1#requirements[画面への反映の時間]
@@ -717,27 +769,27 @@ constraints:
   - item: 画面の移動と項目
     constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`sort` を外す。全体の検索の結果から項目を開くときは、その項目の種類の画面（表示しない種類の項目は概要）へ移り、`id` をその項目にして、`diff` と左のパネル（`panel`・`thread`・`review`・`tstatus`・`ttag`・`ttarget`）を残し、`view`・`full`・`h`・`f.{列}`・`sort`・`search`・`q` を外す。開いた項目の種類の画面が今の画面と同じときも、同じく `view` を外して既定の表示形式で詳細パネルを開く
   - item: 保存した絞り込みの条件
-    constraint: 画面ごとの絞り込みの条件を、今の画面と同じ端末の保存領域のキーに、条件を変えるたびに書く。URL に `f.{列}` が無い画面を開くときは保存した条件を当てて URL に書き、`f.{列}` があれば URL の条件で開いて保存した条件を書き換える。保存した値が今の記録に無ければ、その値を外して描く
+    constraint: 画面ごとの絞り込みの条件を、制約「端末の保存領域」のキーに、条件を変えるたびに書く。URL に `f.{列}` が無い画面を開くときは保存した条件を当てて URL に書き、`f.{列}` があれば URL の条件で開いて保存した条件を書き換える。保存した値が今の記録に無ければ、その値を外して描く
   - item: 端末の保存領域
-    constraint: ライト / ダーク・表ごとの表示する列とピン留め・変更履歴で選んだ時点・差分のミニマップ・本文の差分の並べ方・本文の表とセクションの見せ方・画面ごとの絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並び・「レビューに追加」の後のフォーカスは、今の画面と同じ `localStorage` のキーと値の形式で読み書きし、知らない項目を削除しない。詳細パネルの幅は今の画面と同じ `sessionStorage` のキーに持つ。詳細パネル・詳細の全画面の本文のスクロール位置は、今の画面と同じ `sessionStorage` のキー（`mindmap-body-scroll`）に項目の ID ごとに持ち、項目を開いたときにその位置へ戻す。`h` の見出しへ送信するときは戻さない。キーの末尾には今の画面と同じく `:{workspace}` を付けてワークスペースごとに分ける（『プレビューを開く』の制約「端末の保存領域」）
+    constraint: ライト / ダークと、表ごとの表示する列・ピン留め、変更履歴で選んだ時点、差分のミニマップを表示する・しない、本文の差分の並べ方、セクションの折りたたみ、レビュー中のコメントの並び、「レビューに追加」の後のフォーカスを `localStorage` の 1 つのキーに持つ。サーバーの配信では、画面ごとの絞り込みの条件（値の選び・列の文字）も同じキーに持ち、条件を変えるたびに書く。配る書き出しは絞り込みの条件を保存しない。保存できない環境では開いている間だけ保つ。詳細パネルの幅（区切りのドラッグかキーで変えた幅）は、そのタブの `sessionStorage` の 1 つのキーに持ち、種類で分けない。配る書き出しも同じ。保存できない環境では既定の幅で開く。サーバーの配信では全てのワークスペースを同じオリジンで配るため、`localStorage`・`sessionStorage` のキーの末尾に `:{workspace}`（『プレビューの URL』の制約「画面のパス」）を付けてワークスペースごとに分ける（配る書き出しは付けない）。詳細パネル・詳細の全画面の本文のスクロール位置は、`sessionStorage` のキー（`mindmap-body-scroll`）に項目の ID ごとに持ち、項目を開いたときにその位置へ戻す。`h` の見出しへ送信するときは戻さない。表の見せ方とセクションの見せ方・表示する種類・コメントの一覧のピン止めの上書きも同じ `localStorage` のキーに持ち、知らない項目を削除しない
   - item: 「前回開いてから」の範囲
-    constraint: 『プレビューを開く』の制約「「前回開いてから」の範囲」のサーバーの配信の決め方と同じ。`sessionStorage` のキーも今の画面と同じにし、同じタブで今の画面と SPA を行き来しても `POST /w/{workspace}/api/opened` を再呼び出ししない
+    constraint: サーバーの配信では、タブで最初に記録を読む前に `POST /w/{workspace}/api/opened` を 1 度呼び、`previous`（日時と連番）をそのタブの範囲の始まりにする（`sessionStorage` に持ち、同じタブで再読み込みしても再呼び出ししない）。`previous` が `null` のときは `opened`（タブを開いた時点）にし、呼べなかったときはタブを開いた日時と、読んだ記録の先頭のまとまりの `until_seq` にする。始まりの連番が読んだ記録の先頭のまとまりの `until_seq` より大きいとき（ワークスペースを戻した・再作成した）も、タブを開いた時点にする。配る書き出しは `localStorage` に前回開いた日時と、書き出した記録の先頭のまとまりの `until_seq` を持ち、同じ決め方にする（連番を持たない前のバージョンの値は前回開いた時点なしとして扱う）。範囲に入るのは、`until_seq` が始まりの連番より大きいまとまりと、まだまとめていない変更。日時は比べず、`{日時} より後` の表示にだけ使う
   - item: 前のバージョンの組み立て
-    constraint: 『プレビューを開く』の制約「前のバージョンの組み立て」と同じ
+    constraint: 項目の `history` を新しいものから順に、選んだ時点の最初の `seq` まで当てる（キーは `before` で戻し、本文は `body_diff` で戻す）。選んだ時点の範囲の中の回が 1 つでも保持する回数を超えて消えていれば（範囲の要素が無いか、項目の `history_dropped_seq` が範囲の始まりの `seq` より大きい）、マーカーだけ付けて詳細パネルにその旨を出す。`body_diff` の `now` が今の本文に当たらなければ、本文は今の内容を描いて差分を出せない旨を出し、キーの差分は出す。`update_settings` が付け替えた `phase` は変更履歴に無いため、前のバージョンでも今の値で出す
   - item: 差分の表示と書き換え
     constraint: 差分の表示に入る・抜ける・時点を再選択するだけでは記録を再読み込みしない。画面・項目を移っても `diff` を保つ。書き換えの通知で再読み込みしたときは同じ時点の差分の表示のまま再描画し、選んだまとまりが記録から消えたか、`pending` を選んでいてまだまとめていない変更が空になったら、差分の表示をやめて URL から `diff` を外す
   - item: 編集の読み込みと書き込み
-    constraint: 『プレビューを開く』の制約「編集の読み込みと書き込み」のサーバーの配信の振る舞いと同じ（入力欄を離れたときに `POST /w/{workspace}/api/edits`、取り消しは `DELETE /w/{workspace}/api/edits/{id}`、保存は `POST /w/{workspace}/api/edits/save`。保存の 409 は `blocked` を行ごとの書き込めない理由として出し、届かないときは保存待ちの編集を残す。差分の表示中は編集の操作・保存待ちのマーカー・件数を出さず、保存待ちのパネルを閉じる）。送信している間はそのボタンを押せなくし、二重に送信しない
+    constraint: 開いたときと書き換えの通知を受けたときに `GET /w/{workspace}/api/edits` を読み、保存待ちの編集を記録に重ねて描く（追加する項目は ID を持たないカード・行として一覧へ差し込む）。編集の表示の入力欄を離れたとき（選ぶ・チェックは選んだとき）にそのキーの編集を `POST /w/{workspace}/api/edits` へ、取り消しを `DELETE /w/{workspace}/api/edits/{id}` へ、保存を `POST /w/{workspace}/api/edits/save` へ送信する。空のタイトルは送信せずに入力の誤りを出す。保存が 409 のときは `blocked` を行ごとに書き込めない理由として出し、届かないときは保存待ちの編集を残して保存できなかった旨を出す。差分の表示中は編集の操作・バッジ・件数を出さず、保存待ちのパネルを閉じる。配る書き出しはどの API も呼ばず、編集の操作を出さない（入力欄を離れたときに `POST /w/{workspace}/api/edits`、取り消しは `DELETE /w/{workspace}/api/edits/{id}`、保存は `POST /w/{workspace}/api/edits/save`。保存の 409 は `blocked` を行ごとの書き込めない理由として出し、届かないときは保存待ちの編集を残す。差分の表示中は編集の操作・保存待ちのマーカー・件数を出さず、保存待ちのパネルを閉じる）。送信している間はそのボタンを押せなくし、二重に送信しない
   - item: コメントの読み込みと書き込み
-    constraint: 『プレビューを開く』の制約「コメントの読み込みと書き込み」と同じ（溜める・修正する・削除する・元に戻す・まとめて送信する・下書きの保存の送信先と、送信できなかったときに本文を残して理由を出す振る舞い）
+    constraint: '開いたときに `GET /w/{workspace}/api/comments` を読み、コメントのボタンの件数・コメントの一覧・詳細の一番下のレビュー中のコメント・入力欄の下書きを描く。溜める・修正する・削除する・元に戻す・まとめて送信はそれぞれの API へ `Content-Type: application/json` で送信し、送信している間はそのボタンを押せなくする。空白だけの本文は送信せずに理由を出す。届かない・エラーのときは本文を残して理由（届いたときは `detail`、409 のまとめて送信は `stale` を行ごとに）を出す。下書きは入力が止まったときと入力欄を閉じるときに `PUT /w/{workspace}/api/drafts` へ送信する。一覧のチェックは画面だけが持ち、溜めたコメントはチェックした状態で入る（溜める・修正する・削除する・元に戻す・まとめて送信する・下書きの保存の送信先と、送信できなかったときに本文を残して理由を出す振る舞い）'
   - item: 選んだ箇所の対応づけ
-    constraint: 『プレビューを開く』の制約「選んだ箇所の対応づけ」と同じ。箇所の値は今の画面と同じ（『レビュー中のコメントの追加』の request `loc`）
+    constraint: '本文は、mdmark が描いたブロックの `data-source-line`（0 始まりのブロックの開始行）を元の行のマーカー（1 始まり。フェンスのコードは中身の最初の行）に読み替え、選択の端から元の Markdown の行の範囲を求める（PoC #80 の方式。読み替えは PR #342 の PoC 結果）。HTML の本文は、親の画面が iframe の文書に `pointerup`・`selectionchange` の受け手を追加し、選択の端ごとに、文書の順で端より前にある `data-line` を持つ要素のうち最も後のものの行に、その要素の開きタグの直後から端までの文とコメントの中の改行の数を追加して元の HTML の行を求める（`<br>` は数えない。`<pre>`・`<textarea>`・`<listing>` の開きタグの直後の改行は文書から落ちるため、その要素から数えるときは原文にその改行があれば 1 を追加する）。入口の位置は iframe の中の選択の矩形に iframe の位置を追加する。値は描いた要素にキーのパスを持たせる。選んだ文は描いた文のまま送信する。箇所の値は『レビュー中のコメントの追加』の request `loc`'
   - item: レビュー中のコメントの並び
-    constraint: 『プレビューを開く』の制約「レビュー中のコメントの並び」と同じ
+    constraint: '詳細パネル・詳細の全画面のレビュー中のコメントは、コメントの ID の番号で並べ、既定は新しい順（番号の大きい順）にする。削除した行（「元に戻す」）も同じ並びの中の元の場所に置く。行が 2 件以上のときだけ、見出し「レビュー中のコメント」の行の右に、今の並び（「新しい順」「古い順」）と矢印を出す 1 つのボタンを置き、押すたびに並びを入れ替えて個人の上書き `review_order` に残す（古い順は `oldest`、新しい順は上書きを外す）。ボタンの読み上げの名前は「コメントの並び: {今の並び}」にする。並びを変えても URL の search paramsは変えず、ボタンにフォーカスを残す。表示の設定の「この端末で変えている項目」には「コメントの並び」と出す'
   - item: スレッドの読み込みと書き込み
-    constraint: 『プレビューを開く』の制約「スレッドの読み込みと書き込み」と同じ（開いたスレッドの利用者の既読、返信、クローズとオープンへの戻し）
+    constraint: "コメントの一覧を開いたときと、書き換えの通知を受けたときに `GET /w/{workspace}/api/threads` を読み、スレッドの一覧と開いているスレッドを再描画する（入力欄の下書き・開いているスレッド・一覧の絞り込みを保つ）。一覧の状態・タグの絞り込みは画面が持つ。返信は `POST /w/{workspace}/api/comments` に `thread` を渡してレビュー中に溜め、クローズとオープンへの戻しは理由を添えて `PATCH /w/{workspace}/api/threads/{id}` へ送信する。開いているスレッドの状態が知らせで変わったら、変わる前の状態で開いた理由の入力を閉じる\nトップバーの未読のマーカーのため、サーバーの配信ではコメントの一覧を閉じていても、画面を開いたときと書き換えの通知を受けたときに `GET /w/{workspace}/api/threads` を読む。スレッドの画面を出すたびに（一覧の行・レビュー中の書き込みのどちらから開いても、開いている間の再描画でも）、そのスレッドに `seen: false` の書き込みがあれば `POST /w/{workspace}/api/threads/{id}/seen` を呼ぶ。呼ぶと同時に、画面が持つスレッドのコピーのその書き込みを既読にしてトップバーのマーカーを再描画し、応答を待たずに画面を出す（応答や書き換えの通知より先に一覧へ戻っても、そのスレッドの行とトップバーに未読のマーカーを出さない）。失敗しても画面には出さず、`GET /w/{workspace}/api/threads` を再読み込みしてコピーをサーバーの値に戻す。この再読み込みの後もそのスレッドを開いたままなら同じスレッドへ再呼び出しせず、次に開いたときに再呼び出しする（開いたスレッドの利用者の既読、返信、クローズとオープンへの戻し）"
   - item: 書き込みのまとまりのリンク
-    constraint: 『プレビューを開く』の制約「書き込みのまとまりのリンク」と同じ。押したときは `diff` だけを置き換え、ほかの search params は保つ
+    constraint: スレッドの画面の書き込み（利用者・AI の書き込みとレビュー中の書き込み）と、レビュー中を確かめる画面の行の本文の中の `[文言](#...)` のうち、`#` の後ろを `URLSearchParams` で読んだ `diff` の値が記録にあるまとまりの ID のものを、`文言` だけを出すまとまりのリンクとして描く。読むのは `diff` だけで、他の引数（`tab`・`id` ほか）は無視する。`文言` の中の項目の ID は項目を開くボタンにしない。記録に無いまとまりの ID・`since`・`pending`・空の値を指すもの、`diff` の引数を持たない `[文言](#...)` は、リンクにせず `文言` だけを出す。`#` で始まらないリンクは、詳細の本文と同じく描く。押すと、変更履歴でそのまとまりを選んだときと同じく、開いている画面・項目のまま差分の表示を切り替え、端末の保存領域と search params の `diff` を書き換え、ほかの search params は保つ（履歴に積まない）。コメントの一覧と開いているスレッド・レビュー中を確かめる画面は閉じない。見た目は詳細の本文のまとまりのリンクと同じにする
   - item: 表示の設定
     constraint: 表示する種類・差分のミニマップ・本文の表とセクションの見せ方・「レビューに追加」の後のフォーカスの個人の上書きは、選んだときに端末の保存領域に書いてその場で画面に当て、サーバーへは送信しない。開いている画面の種類を外したときは概要へ移り、URL を置き換える。ワークスペースの既定は、既定の保存の確かめで「保存する」を押したときに `PUT /w/{workspace}/api/config/display` で書く。書き換えの通知で再読み込みした記録の既定が変わったときは、上書きを持たない項目に新しい既定を当てる
   - item: 設定の画面の起点
@@ -747,18 +799,38 @@ constraints:
   - item: 入力中の再読み込みの保留
     constraint: 文字を入力する欄（文字の `input`・`textarea`・`contenteditable`）にフォーカスがある間と、音声入力の録音を始めてから文字起こしの結果が入るまでの間（制約「音声の入力」の録音・文字起こし中）は、`changed` と再接続（`open`）を受けても画面に反映する再読み込みをせず、再読み込みを保留したことだけを持つ。音声入力の間に `changed` と再接続を受けたときは、録音の行き先が記録にあるかだけを確かめるために `GET /w/{workspace}/api/records`（行き先がスレッドなら `GET /w/{workspace}/api/threads`、レビュー中の書き込みの修正なら `GET /w/{workspace}/api/comments`）を読み、画面には反映しない。行き先が無ければ制約「音声の入力」のとおり録音を捨てる。保留の間はトップバーの下に帯で「更新があります。入力欄から離れると反映します。」を出す（押せない表示）。フォーカスが入力する欄から外れ、音声入力もしていないときに、保留していた再読み込みを 1 回だけ行い、帯を削除する。入力する欄から別の入力する欄へフォーカスを移したときは再読み込みしない。帯を出す・削除するときは、帯の高さの分だけ本文のスクロールの位置をずらし、入力欄の画面の上の位置を変えない。保留の間も、接続の状態と重なった ID（`duplicate_ids`）は受けて出す。自分の書き込み（編集・コメントの追加・下書き）の応答で再描画するものは保留しない
   - item: 本文のファイルのパス
-    constraint: 『プレビューを開く』の制約「本文のファイルのパス」と同じ。React の画面は `/w/{workspace}/spa/` で開くが、解決の基準は同じ `/w/{workspace}/docs/` にし、`/w/{workspace}/files/{名前}` を指す
+    constraint: Markdown の本文とスレッドの書き込みを mdmark で描いた直後に、描いた `img`・`video`・`audio`・`source` の `src` と `video` の `poster` の相対パスを、資料のフォルダを表す `/w/{workspace}/docs/` を基準に解決した配信のパスに置き換える（`../files/clip.mp4` は `/w/{workspace}/files/clip.mp4`。ファイルは『ワークスペースのファイルの配信』が返す）。絶対 URL・`data:`・`/` で始まるパスと、埋め込んだ HTML の範囲の中は置き換えない（コードブロックとインラインコードの中は要素にならないため触れない）。HTML の本文と配る書き出しは置き換えない。動画・音声の再生バーとキャプションは mdmark の部品『動画と音声』が描き、読み込めないときも本文のほかの部分は描く。React の画面は `/w/{workspace}/` で開くが、解決の基準は同じ `/w/{workspace}/docs/` にし、`/w/{workspace}/files/{名前}` を指す
   - item: 「レビューに追加」の後のフォーカス
-    constraint: 『プレビューを開く』の制約「「レビューに追加」の後のフォーカス」と同じ（個人の上書きのキーと値も今の画面と同じ）
+    constraint: 'コメントの入力（詳細パネル・詳細の全画面・コメントの一覧の新規スレッド）と返信の入力で、「レビューに追加」・入力欄の Ctrl+Enter（macOS は Cmd+Enter）・音声入力の確定（`review`・`send`）で溜めた・送信できた後のフォーカスを、個人の上書き `focus_after_add` で決める。`input` は入力欄へ戻してカーソルを末尾に置き、`none` はその入力の「レビューに追加」のボタン（音声入力の確定の後は ✓ の位置に戻した「レビューに追加」のボタン）に置く。上書きが無いとき（自動）は、`matchMedia("(pointer: coarse)")` に当たる端末では `none`、それ以外は `input` と同じにする。空白だけで溜めなかったとき・溜められなかった・送信できなかったときと、音声入力の `insert` の後は、設定によらず入力欄へ戻す。入力欄が画面に無い間に終わった音声入力はフォーカスを動かさない。表示の設定のパネルの区画「詳細に表示するもの」の下に区画「コメントの入力」を置き、ラジオのグループ「レビューに追加した後のフォーカス」（「自動」「入力欄へ戻す」「戻さない」）を並べる。自動の下に今の端末での振る舞い（「この端末では入力欄へ戻します」「この端末では戻しません」）を出し、区画の下の説明をグループの `aria-describedby` で指す。選んだらその場で端末の保存領域に書き（自動は上書きを外す）、サーバーへは送信しない。「この端末で変えている項目」には「レビューに追加した後のフォーカス」と出し、「既定に戻す」で外し、「ワークスペースの既定にする」の対象には含めない。配る書き出しはコメント・返信の入力を持たないため、この区画を出さない'
+  - item: HTML の本文の中のリンク
+    constraint: 親の画面が枠の文書に `click`・`auxclick` の受け手を追加し、押された要素から最も近い `href` を持つ `a`（SVG の `a` を含む）・`area` の押下を受けて、既定の動作を止める（枠の中では移らない。`target` の有無、Ctrl・Shift・Meta つき、中ボタン、Enter によらない）。`href` の属性の値が `#` で始まるリンクは、`#` の後ろを `decodeURIComponent` で戻した `id` を持つ枠の中の要素まで本文のスクロール領域をスクロールし、その要素が無ければ何もしない（URL の search paramsは変えず、履歴に積まない）。それ以外は、`href` の属性の値がそれだけで絶対の URL として読め、スキームが `http:`・`https:`・`mailto:` のリンクだけを、親の画面の `window.open` に `_blank` と `noopener,noreferrer` を渡して開く。相対の URL とほかのスキーム（`javascript:`・`data:`・`file:` ほか）のリンクは開かない。ポインターを押してから離すまでの間に枠の中の選択が変わり、`click` の時点で選択が空でないときは、開かず送信しない（リンクの文をなぞって選んだ直後）。キーボードからの `click`（`detail` が 0）は選択の有無によらず扱う。枠に描く全ての場所（HTML の本文・`html` のコードブロック・HTML の本文の差分の描いた結果・配る書き出し）で同じ
+  - item: 本文の表とセクションの見せ方
+    constraint: 表は mdmark の表の機能（`features.table`）で描き、列の幅と折り返し・表の中の横スクロール・ピン止め（複数の列を含む）・並べ替えを mdmark に任せる。本文の区画を縦にスクロールしたときに表の見出し行を区画の上端に留めることはしない（外部ライブラリ『mdmark』の制限「表の見出し行の固定」。mdmark の `mount` で描いた表は見出し行を留めず、スクロールする区画の中で留める位置もブラウザで変わる。mdmark の対応は shuhei1101/mdmark#683）。画面の CSS は、mdmark の使い方『テーマを上書きする』の CSS 変数のほかに、mdmark が描いた表・差分・図・囲みの見た目と動きを上書きする規則を持たない。`.mdmark` の `--mdmark-color-bg` を透明にする箇所と `:root` には、`--mdmark-color-bg-opaque` を周りの面の色で指定する。セクションの折りたたみがオンのとき、本文で使っている上位 2 つの階層の見出しの頭に開閉の矢印（24px）のボタンを置き、開いた状態で描く。畳んだ中身は `hidden="until-found"` にし、ページ内の検索・リンク・search params の `h` で飛んだときは開く。見出しの文言は選んでコメントできるまま残す。コードブロックの言語の札とコピーのボタンは `pre` の外に置き、選んだ箇所の行のマーカーをずらさない。Alert の囲みの見出しは「補足」「ヒント」「重要」「警告」「注意」。配る書き出しにも同じスタイルが当たる
+  - item: 埋め込んだ HTML と部品
+    constraint: '範囲の中の図・チャート（`<mdmark-chart>`）と操作できる部品（`<mdmark-param>` ほか）は mdmark の部品で描く。チャートは拡大・縮小のボタンとドラッグで倍率と表示の位置を変え、図の拡大の画面は開かない。チャート以外の要素には拡大・縮小のボタンを付けない。今の値をコピーするボタンは、文言を「今の値をコピー」にし、部品の今の値を `{"{キー}": {"name": ..., "value": ...}}` の JSON にしてクリップボードへ書き込む。範囲の中の文にも、範囲の外の本文と同じく用語・資料・調査のマーカーとツールチップ、項目の ID のリンク（押すとその項目へ移り履歴に積む）を付ける。用語・エイリアスの一致は mdmark の一致の機能に任せ、全角半角・英字の大文字小文字・前後の空白の違いを揃えて比べる'
+  - item: HTML の本文の差分
+    constraint: 前のバージョンの本文と今の本文の原文を行ごとに比べ、今の本文で追加した行と、削除した行と入れ替えた行（変えた行）を求める（空行だけを追加した行は入れない）。描いた結果では、その行を含む最も内側の `data-line` を持つ要素に「追加した」か「変わった」のマーカーを付ける。行を含む要素は `data-line` ≦ 行 ≦ `data-line-end` の要素で、最も内側はそのうち文書の順で最後のもの（コメントの一覧から開いたときに示す要素も同じ）。削除しただけの箇所は描いた結果に出せないため、原文の差分で見られる旨を添える。前のバージョンの本文が Markdown（形式を替えた）のときは、原文の差分だけを出す
+  - item: 埋め込んだ HTML の差分
+    constraint: Markdown の本文の埋め込んだ HTML の範囲は、範囲ごとに前のバージョンと今の範囲の原文を行ごとに比べる。既定は原文の差分（削除した行・追加した行と変えた文字の色分け）で出し、「描いた結果（変更前）」では選んだ時点の範囲を描いた結果、「描いた結果（変更後）」では今の範囲を描いた上で、範囲の直下の要素ごとに、追加した要素と変えた要素にマーカーを付ける。見せ方の切り替えは履歴に積まず、search params を変えない。範囲の外の Markdown は本文の差分のまま出す。本文が HTML の資料の差分（「HTML の本文の差分」の制約）は変えない
+  - item: 資料のエクスポート
+    constraint: 入口は、本文が Markdown の資料の詳細パネル・詳細の全画面にだけ置き、配る書き出しにも置く。「HTML でエクスポート」は、描画のライブラリの配信元から採用バージョンの mdmark の CSS と JavaScript を `integrity` で確かめて読み（配る書き出しは中に持つ CSS と JavaScript を使う）、記録の用語・資料・調査の索引と資料の本文と合わせて 1 枚の HTML を組み立てる。ほかの項目へのリンクは移らなくてよい。「Markdown でエクスポート」は、警告の「エクスポート」を押してから、本文の Markdown から埋め込んだ HTML の範囲を除いた Markdown を組み立てる。どちらも `Blob` を `download` を持つ `a` 要素でダウンロードさせ、サーバーの API を呼ばず、記録・URL の search params・履歴を変えない。メニューの開閉と警告への切り替えも履歴に積まない。mdmark を読めないときはダウンロードせず、メニューの中に理由を出し、「再試行」で再読み込みする
+  - item: 本文の差分の並べ方
+    constraint: 切り替えは、詳細パネル・詳細の全画面で本文を選んだ時点から変えた項目にだけ出す（前後を組み立てられない・本文の差分を出せない・計算しきれない・差分のライブラリを読めないときは出さない）。本文の幅が 560px に満たないときは切り替えを出さず、`body_diff_layout` が `side` でもインラインで出す。左右に並べるときは、行の差分の変えていない・削除した・追加した塊を左右に対応づけ、片側にしか無い塊の向かいに同じ高さの空きを置く。削除したマーカーは左、追加したマーカーは右だけに付け、図の差分の色付けは右の図にだけ付ける。HTML の本文は、「描いた結果」では前後を描いた結果、「原文の差分」では原文の行を左右に並べる。選んだ箇所のコメントの入口は右の列でだけ出す。左右の列は読み上げの名前（「選んだ時点の本文」「今の本文」）を持ち、列の頭に「選んだ時点」「今」を出す。並べ方を切り替えても URL の search paramsは変えない。「左右に並べる」を押すと個人の上書き `body_diff_layout` に `side` を残し、「インライン」を押すと上書きを外す
+  - item: 本文のリンクの href
+    constraint: '本文の見出しの # のリンクと、用語・資料・調査のマーカーと項目の ID のリンクの `href` は、今の search params の `id`・`h` を置き換えた URL（サーバーの配信は `/w/{workspace}/?{search}`、配る書き出しは `#/?{search}`）にする。押したときは既定の動作を止めて画面の中で移り、履歴に積む。リンクをコピーして開いた・新しいタブで開いたときも、同じ画面・項目・見出しで開く'
+  - item: 配る書き出しで開く
+    constraint: 配る書き出し（『配る書き出し』の HTML を `file://` で開いたとき）は、記録を `mindmap-data` の要素の JSON から読み（レビュー中のコメント・保存待ちの編集・スレッドは空として扱う）、書き換えの通知に接続しない。search params はハッシュの `#/?{search}` に持つ。描画のライブラリは HTML が中に持つ配布ファイルから読み、mdmark は `mindmap-mdmark` の中身を Blob の URL で `import()` した後に、部品（`map`・`view`・`comments`）の読み込みを `mindmap-mdmark-{部品}` の中身へ差し替える。項目の追加・編集・削除、回答・コメントの送信、設定の保存、「ワークスペースの既定にする」の操作は出さない。外部への要求をしない
+  - item: 本文のまとまりのリンク
+    constraint: 詳細パネル・詳細の全画面の Markdown の本文（差分の表示の間に描く本文を含む）で、`href` の属性の値が `#` で始まり、`#` の後ろを `URLSearchParams` で読んだ結果が `diff` の引数を持つリンク（`[文言](#diff=V-2)`）を、まとまりのリンクとする。読むのは `diff` だけで、他の引数（`tab`・`id` ほか）は無視する。押すと既定の動作を止め、`diff` の値が記録にあるまとまりの ID のときだけ、変更履歴でそのまとまりを選んだときと同じく、開いている画面・項目・全画面のまま差分の表示を切り替え、端末の保存領域と search params の `diff` を書き換える（履歴に積まない）。記録に無いまとまりの ID・`since`・`pending`・空の値のときは何もしない（差分の表示も search params も変えず、見出しのリンクとしても扱わない）。`diff` の引数を持たない `#` のリンクは、見出しのリンク（`h`）として扱う。サーバーの配信と配る書き出しで同じ。HTML の本文の枠の中のリンクは対象外（制約『HTML の本文の中のリンク』）
 refs:
-  - IF-489-3#
+  - IF-489-18#
   - IF-489-51#
   - IF-489-44#
   - IF-489-34#
   - IF-489-23#
   - IF-489-29#
   - IF-489-11#
-  - IF-489-71#
+  - IF-489-70#
   - LIB-489-13#
   - LIB-489-14#
   - LIB-489-11#

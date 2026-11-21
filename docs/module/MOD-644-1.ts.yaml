@@ -1,0 +1,92 @@
+id: MOD-644-1
+title: プレビュー / embedded
+lead: 配る書き出しの 1 枚の HTML が持つ埋め込みの記録を読み、API の応答の代わりに返却する（インターフェース定義『プレビューを開く』の制約「配る書き出しで開く」）。
+constants:
+  - name: EMBEDDED_DATA_ID
+    title: 記録の要素の ID
+    container: frontend/src/shared/core/embedded.ts
+    usecase: 配る書き出し
+    summary: 記録の JSON を中身に持つ要素の ID（『配る書き出し』の `mindmap-data`）
+    value: '"mindmap-data"'
+  - name: EMPTY_RESPONSES
+    title: 記録のほかの読み取りの空の応答
+    container: frontend/src/shared/core/embedded.ts
+    usecase: 配る書き出し
+    summary: 配る書き出しで、記録のほかに先読みする query（レビュー中のコメント・保存待ちの編集・スレッド）のパスごとの空の応答。`satisfies Record<string, unknown>`
+    value: '{ "/api/comments": { items: [] }, "/api/edits": { items: [] }, "/api/threads": { threads: [] } }'
+functions:
+  - name: readEmbeddedData
+    title: 埋め込みの記録の読み取り
+    kind: 関数
+    container: frontend/src/shared/core/embedded.ts
+    usecase: 配る書き出し
+    summary: '`EMBEDDED_DATA_ID` の要素の中身を JSON として読んで返却する。要素が無いか中身が空なら `null`。1 度参照した結果を記録する'
+    returns:
+      type: unknown
+      description: 記録（『記録の取得』のレスポンスと同じ構造）か `null`
+    exceptions:
+      - name: SyntaxError
+        condition: 中身が JSON として読めない（書き出しの誤り。握りつぶさない）
+    unit_tests:
+      - name: test_read_embedded_data
+        case: 正常
+        summary: 要素の中身の JSON を返す
+        condition: '`document.body` に `<script type="application/json" id="mindmap-data">{"settings":{}}</script>` を配置する'
+        mock: なし（jsdom）
+        expected: '`{ settings: {} }` を返す'
+      - name: test_read_embedded_data_when_missing
+        case: 正常
+        summary: 要素が無いか空なら null
+        condition: '`parametrize`: 要素が無い / 中身が空白だけ'
+        mock: なし（jsdom）
+        expected: '`null` を返す'
+  - name: isEmbedded
+    title: 配る書き出しで開いているか
+    kind: 関数
+    container: frontend/src/shared/core/embedded.ts
+    usecase: 配る書き出し
+    summary: '`readEmbeddedData` が `null` でなければ真を返却する。ルーター・API の呼び出し・書き換えの通知・描画のライブラリの読み込みが分かれ目に使う'
+    returns:
+      type: boolean
+      description: 配る書き出しで開いているか
+    callees:
+      - MOD-644-1#functions[readEmbeddedData]
+    unit_tests:
+      - name: test_is_embedded
+        case: 正常
+        summary: 埋め込みの記録の有無で分かれる
+        condition: '`parametrize`: 記録の要素がある / 無い'
+        mock: なし（jsdom）
+        expected: 真 / 偽
+  - name: embeddedResponse
+    title: 埋め込みからの応答
+    kind: 関数
+    container: frontend/src/shared/core/embedded.ts
+    usecase: 配る書き出し
+    summary: 配る書き出しで、GET の `/api/records` に埋め込みの記録を、`EMPTY_RESPONSES` のパスに空の応答を、orval が期待する `{data, status, headers}` にして返却する。ほかの要求は `null`
+    args:
+      - name: request
+        type: '{ url: string; method: string }'
+        required: true
+        description: 生成した関数が組んだ URL（search を含みうる）とメソッド
+    returns:
+      type: '{ data: unknown; status: number; headers: Headers } | null'
+      description: 応答か、埋め込みから作れない要求なら `null`
+    callees:
+      - MOD-644-1#functions[readEmbeddedData]
+    unit_tests:
+      - name: test_embedded_response
+        case: 正常
+        summary: 記録と空の応答を返す
+        condition: 記録の要素を配置し、`GET /api/records`・`GET /api/threads?x=1` を指定する
+        mock: なし（jsdom）
+        expected: '`/api/records` は `data` が記録で `status` が 200、`/api/threads` は `data` が `{ threads: [] }`'
+      - name: test_embedded_response_when_not_supported
+        case: 正常
+        summary: 書き込みとほかのパスは null
+        condition: '`parametrize`: `POST /api/comments` / `GET /api/transcription`'
+        mock: なし（jsdom）
+        expected: '`null` を返す'
+notes:
+  使用する側: '`isEmbedded` で分かれるのは、モジュール構成『プレビュー / router』の `createAppRouter`（ハッシュの履歴）・『プレビュー / api-client』の `apiClient`（埋め込みの応答）・『プレビュー / app』の `App`（書き換えの通知に接続しない）・『プレビュー / libraries』の `loadLibrary`（中身を持つ配布ファイルを読む）'
+  単体テスト: 同じフォルダの `embedded.test.ts` に置く（knowledge の規約『フォルダ構成』）。記録した結果を削除する関数をテストのために持つ

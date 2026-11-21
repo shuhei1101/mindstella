@@ -5,7 +5,7 @@ items:
   - page: MOD-489-3.ts.yaml
     summary: "knowledge の規約『QueryClient』の defaultOptions"
   - page: MOD-489-4.tsx.yaml
-    summary: "SPA を配るパスの頭（インターフェース定義『SPAの配信』）"
+    summary: "SPA を配るパスの頭（インターフェース定義『プレビューの配信』）"
   - page: MOD-489-2.tsx.yaml
     summary: "`tab` の画面と、詳細・変更履歴・保存待ちのパネルを重ねて描く SPA の外枠"
   - page: MOD-489-40.tsx.yaml
@@ -100,12 +100,14 @@ items:
     summary: "SPA のルート（`/`）。search の検証と先読みをして `PreviewShell` を描く"
   - page: MOD-642-1.ts.yaml
     summary: "開いた画面の URL のパスから、配っているワークスペースのパスの頭と、端末の保存領域のキーを求める。"
+  - page: MOD-644-1.ts.yaml
+    summary: "配る書き出しの埋め込みの記録を読み、API の応答の代わりに返却する"
   - page: MOD-489-56.ts.yaml
     summary: "orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる"
   - page: MOD-489-57.ts.yaml
     summary: "インターフェース定義『書き換えの通知』"
   - page: MOD-489-58.ts.yaml
-    summary: "描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」）"
+    summary: "描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、`preview/libraries.json` の配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」）"
   - page: MOD-489-74.tsx.yaml
     summary: "24px の枠に描いた線のアイコンと、状態の 10px のマーカー"
   - page: MOD-489-88.tsx.yaml
@@ -197,19 +199,19 @@ items:
   - page: MOD-489-101.ts.yaml
     summary: "失敗した応答から作るエラー。`detail` を画面に出す"
   - page: MOD-489-120.ts.yaml
-    summary: "SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理"
+    summary: "SPA の search params（インターフェース定義『プレビューを開く』の request）の Zod スキーマと、記録に合わない値を外す処理"
   - page: MOD-489-121.ts.yaml
-    summary: "記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い）"
+    summary: "記録の型・索引・関係する項目"
   - page: MOD-489-110.ts.yaml
     summary: "画面ごとの絞り込みの条件を行に当てる計算"
   - page: MOD-489-105.ts.yaml
-    summary: "差分の表示の計算（今の画面の `core/diff.ts` と同じ振る舞い"
+    summary: "差分の表示の計算（DOM に触らない）"
   - page: MOD-489-109.ts.yaml
-    summary: "保存待ちの編集を記録に重ねる計算（今の画面の `core/edits.ts` と同じ振る舞い）"
+    summary: "保存待ちの編集を記録に重ねる計算"
   - page: MOD-489-107.ts.yaml
-    summary: "資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い）"
+    summary: "資料のエクスポートの HTML と Markdown の組み立て"
   - page: MOD-489-102.ts.yaml
-    summary: "描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）"
+    summary: "描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理"
   - page: MOD-489-117.ts.yaml
     summary: "描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し）"
   - page: MOD-489-118.ts.yaml
@@ -231,27 +233,27 @@ items:
   - page: MOD-489-108.ts.yaml
     summary: "mdmark が描いた本文の中へ追加する要素の組み立て"
   - page: MOD-489-104.ts.yaml
-    summary: "コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` の DOM に触らない関数と同じ振る舞い）"
+    summary: "コメントの一覧・スレッド・レビュー中の書き込みの計算（DOM に触らない）"
   - page: MOD-489-106.ts.yaml
-    summary: "表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い）"
+    summary: "表示の設定の計算（DOM に触らない）"
   - page: MOD-489-119.ts.yaml
     summary: "書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける"
   - page: MOD-489-124.ts.yaml
-    summary: "コメント・返信の入力の録音と、カーソルの位置への挿入（今の画面の `core/voice.ts` と同じ振る舞い）"
+    summary: "コメント・返信の入力の録音と、カーソルの位置への挿入"
   - page: MOD-489-135.ts.yaml
     summary: "clsx と tailwind-merge でクラス名を 1 つにする"
   - page: MOD-489-136.ts.yaml
-    summary: "書き換えの通知がつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」）"
+    summary: "書き換えの通知がつながっているか（インターフェース定義『プレビューを開く』の制約「接続の状態」）"
   - page: MOD-540-9.ts.yaml
     summary: "変更の検知が知らせた重なった ID と、利用者が閉じた集まり。"
   - page: MOD-489-254.ts.yaml
-    summary: "画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」）"
+    summary: "画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『プレビューを開く』の制約「音声の入力」）"
   - page: MOD-557-1.ts.yaml
-    summary: "入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の再読み込みの保留」）"
+    summary: "入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『プレビューを開く』の制約「入力中の再読み込みの保留」）"
   - page: MOD-489-141.ts.yaml
-    summary: "今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す"
+    summary: "`mindmap-preview` のキーで、値の JSON の `theme` だけを読み書きし、他のキーは残す"
   - page: MOD-489-140.ts.yaml
-    summary: "表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）"
+    summary: "表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、`localStorage` の `mindmap-preview` のキーで読み書きする（制約「端末の保存領域」）"
   - page: MOD-489-138.ts.yaml
     summary: "開いている追加の入力と、直前の保存で書き込めなかった編集"
   - page: MOD-489-137.ts.yaml
@@ -292,10 +294,6 @@ items:
     summary: "サーバー / 移行 / tags_to_objects.py"
   - page: MOD-550-1.py.yaml
     summary: "サーバー / 移行 / mdmark_documents.py"
-  - page: MOD-550-2.js.yaml
-    summary: "プレビュー / Storybook / main.js"
-  - page: MOD-591-2.js.yaml
-    summary: プレビュー / Storybook / mdmark-ref.js
   - page: MOD-489-182.py.yaml
     summary: "サーバー / 移行 / field_to_playbooks.py"
   - page: MOD-565-3.py.yaml
@@ -324,108 +322,6 @@ items:
     summary: "サーバー / ID の採番 / ids.py"
   - page: MOD-540-2.py.yaml
     summary: "サーバー / 変更の検知 / change_detection.py"
-  - page: MOD-489-171.ts.yaml
-    summary: "プレビューを開いたときに記録を読み（配る書き出しは埋め込みから、サーバーの配信は『記録の取得』から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの通知・コメントの読み書き・端末の保存領域につなぐ。"
-  - page: MOD-489-205.ts.yaml
-    summary: "プレビュー / 画面と部品 / body-diff-layout-switch.ts"
-  - page: MOD-489-243.ts.yaml
-    summary: "プレビュー / 画面と部品 / chips-input.ts"
-  - page: MOD-540-7.ts.yaml
-    summary: "プレビュー / 画面と部品 / duplicate-id-notice.ts"
-  - page: MOD-489-215.ts.yaml
-    summary: "プレビュー / 画面と部品 / comment-mark.ts"
-  - page: MOD-489-229.ts.yaml
-    summary: "プレビュー / 画面と部品 / diff-mark.ts"
-  - page: MOD-489-203.ts.yaml
-    summary: "プレビュー / 画面と部品 / diff-minimap.ts"
-  - page: MOD-489-241.ts.yaml
-    summary: "プレビュー / 画面と部品 / doc-export-menu.ts"
-  - page: MOD-489-233.ts.yaml
-    summary: "プレビュー / 画面と部品 / filter-drawer.ts"
-  - page: MOD-489-230.ts.yaml
-    summary: "プレビュー / 画面と部品 / history-dialog.ts"
-  - page: MOD-489-207.ts.yaml
-    summary: "プレビュー / 画面と部品 / markdown-body.ts"
-  - page: MOD-489-240.ts.yaml
-    summary: "プレビュー / 画面と部品 / pending-mark.ts"
-  - page: MOD-489-234.ts.yaml
-    summary: "プレビュー / 画面と部品 / removed-band.ts"
-  - page: MOD-489-237.ts.yaml
-    summary: "プレビュー / 画面と部品 / reply-form.ts"
-  - page: MOD-489-208.ts.yaml
-    summary: "プレビュー / 画面と部品 / review-body-fold.ts"
-  - page: MOD-489-228.ts.yaml
-    summary: "プレビュー / 画面と部品 / selection-comment.ts"
-  - page: MOD-489-214.ts.yaml
-    summary: "プレビュー / 画面と部品 / send-form.ts"
-  - page: MOD-489-231.ts.yaml
-    summary: "プレビュー / 画面と部品 / settings-confirm.ts"
-  - page: MOD-489-204.ts.yaml
-    summary: "プレビュー / 画面と部品 / settings-panel.ts"
-  - page: MOD-489-239.ts.yaml
-    summary: "プレビュー / 画面と部品 / side-by-side-body-diff.ts"
-  - page: MOD-489-209.ts.yaml
-    summary: "プレビュー / 画面と部品 / table.ts"
-  - page: MOD-489-242.ts.yaml
-    summary: "プレビュー / 画面と部品 / tag-list.ts"
-  - page: MOD-489-236.ts.yaml
-    summary: "プレビュー / 画面と部品 / term-tip.ts"
-  - page: MOD-489-238.ts.yaml
-    summary: "プレビュー / 画面と部品 / thread-post.ts"
-  - page: MOD-489-217.ts.yaml
-    summary: "プレビュー / 画面と部品 / thread-row.ts"
-  - page: MOD-489-223.ts.yaml
-    summary: "プレビュー / 画面と部品 / topbar.ts"
-  - page: MOD-489-222.ts.yaml
-    summary: "プレビュー / 画面と部品 / view-switch.ts"
-  - page: MOD-489-235.ts.yaml
-    summary: "プレビュー / 画面と部品 / withdrawn-badge.ts"
-  - page: MOD-489-196.ts.yaml
-    summary: "プレビュー / 基盤 / api.ts"
-  - page: MOD-489-173.ts.yaml
-    summary: "差分の表示の計算。変更履歴で選んだ時点からマーカーを付ける項目を決め、項目の `history` から前のバージョンを組み立て、本文・記法の行と図の要素を比べる。DOM には触らず、描くのは画面が持つ。"
-  - page: MOD-489-201.ts.yaml
-    summary: "プレビュー / 基盤 / doc-export.ts"
-  - page: MOD-489-199.ts.yaml
-    summary: "プレビュー / 基盤 / dom.ts"
-  - page: MOD-489-202.ts.yaml
-    summary: "プレビュー / 基盤 / edits.ts"
-  - page: MOD-489-198.ts.yaml
-    summary: "プレビュー / 基盤 / libs.ts"
-  - page: MOD-489-194.ts.yaml
-    summary: "プレビュー / 基盤 / records.ts"
-  - page: MOD-489-195.ts.yaml
-    summary: "プレビュー / 基盤 / router.ts"
-  - page: MOD-489-197.ts.yaml
-    summary: "プレビュー / 基盤 / voice.ts"
-  - page: MOD-557-2.ts.yaml
-    summary: "プレビュー / 基盤 / refresh-hold.ts"
-  - page: MOD-489-218.ts.yaml
-    summary: "プレビュー / 画面と部品 / comments.ts"
-  - page: MOD-489-212.ts.yaml
-    summary: "プレビュー / 画面と部品 / decisions.ts"
-  - page: MOD-489-221.ts.yaml
-    summary: "プレビュー / 画面と部品 / detail-edit.ts"
-  - page: MOD-489-206.ts.yaml
-    summary: "プレビュー / 画面と部品 / detail.ts"
-  - page: MOD-489-227.ts.yaml
-    summary: "プレビュー / 画面と部品 / diagram-viewer.ts"
-  - page: MOD-489-211.ts.yaml
-    summary: "プレビュー / 画面と部品 / docs.ts"
-  - page: MOD-489-224.ts.yaml
-    summary: "プレビュー / 画面と部品 / overview.ts"
-  - page: MOD-489-219.ts.yaml
-    summary: "プレビュー / 画面と部品 / pending-edits.ts"
-  - page: MOD-489-225.ts.yaml
-    summary: "プレビュー / 画面と部品 / records.ts"
-  - page: MOD-489-226.ts.yaml
-    summary: "プレビュー / 画面と部品 / search.ts"
-  - page: MOD-489-232.ts.yaml
-    summary: "プレビュー / 画面と部品 / settings.ts"
-  - page: MOD-489-210.ts.yaml
-    summary: "プレビュー / 画面と部品 / tasks.ts"
-  - page: MOD-489-220.ts.yaml
-    summary: "プレビュー / 画面と部品 / workspace-settings.ts"
   - page: MOD-489-180.py.yaml
     summary: "サーバー / 移行 / backup.py"
   - page: MOD-489-152.py.yaml
@@ -524,10 +420,6 @@ items:
     summary: "Ctrl+K（macOS は Cmd+K）で全体の検索を開く"
   - page: MOD-489-170.yaml
     summary: "React のプレビューのファイルの並び・つながり・置き場所の決まり。各ファイルの設計書は `モジュール構成/frontend/` の下に置く。"
-  - page: MOD-489-172.yaml
-    summary: "画面が共通で使う土台。記録の索引と画面に出す値の計算、描画のライブラリの呼び出しと読めないときの知らせ、URL のハッシュと履歴、コメント・返信の入力の録音を持つ。"
-  - page: MOD-489-174.yaml
-    summary: "部品（表・トップバー・表示形式の切り替え）と画面。どれも「引数を受けて要素を返す関数」で、操作は引数のコールバックで入口に知らせる。"
   - page: MOD-568-1.py.yaml
     summary: サーバー / 作業の完了の通知 / notify.py
   - page: MOD-616-1.py.yaml

@@ -6,7 +6,7 @@ import pytest
 
 from playwright.sync_api import Page
 from .storybook_react_fixture_types import OpenStory
-from integration.storybook.storybook_frame_helpers import frame_of, wait_frame_rendered
+from integration.storybook_react.storybook_frame_helpers import frame_of, wait_frame_rendered
 
 # 部品が描き終わったとみなす要素（描画のライブラリを読んでから描く部品は、読み終わるまで待つ）
 READY = "#storybook-root > div > *"

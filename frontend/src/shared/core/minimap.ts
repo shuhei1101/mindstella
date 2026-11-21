@@ -1,4 +1,4 @@
-// 差分のミニマップの計算と操作（今の画面の `components/diff-minimap.ts` と同じ振る舞い）
+// 差分のミニマップの計算と操作
 import { NO_VALUE, PRESS_SLOP_PX } from "@/shared/core/format";
 import { h } from "@/shared/core/dom-parts";
 
@@ -91,7 +91,7 @@ const minimapKindOf = (element: Element): MinimapKind => {
 };
 
 /** 本文のスクロール領域の中の差分の印を、文書の順にミニマップの印にまとめて返す */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const minimapTargets = (body: HTMLElement): MinimapTarget[] => {
   const found: MinimapTarget[] = [];
   for (const element of body.querySelectorAll(MINIMAP_TARGET_SELECTOR)) {

@@ -1,0 +1,167 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: サーバーが配るプレビューを開くと React の画面が開く。今の画面と、React の画面を別の場所で並べて配る形をやめ、示す URL を React の画面の URL にする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: changed
+    detail: 配る書き出しの 1 枚の HTML を React の画面で作り、ネットにつながらない端末で開いても React の画面で記録を読める
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-10.yaml
+    impact: following
+    detail: 外から開くプレビューも React の画面になることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-2.yaml
+    impact: following
+    detail: README に書くプレビューの URL が React の画面の URL になることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: following
+    detail: 外部のアプリが受け取る画面の URL が React の画面の URL になることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: following
+    detail: 開いた画面・項目・選んだ時点を残す URL が React の画面の URL になることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-39.yaml
+    impact: run_only
+    detail: 資料を書き出す操作が React の画面だけになっても同じ結果になる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-9.yaml
+    impact: run_only
+    detail: 開発の依存（今の Storybook）を外しても、利用者の入れ方でプラグインを入れて起動できる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: following
+    detail: 選んだ時点・開いた項目を残す場所が React の画面の URL の search params になることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-25.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-48.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: following
+    detail: 同上
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-587-1.yaml
+    impact: following
+    detail: 動画・音声・画像を確認する画面が React の画面だけになることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: following
+    detail: マイクのボタンを置く画面が React の画面だけになることに追随する
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 画面の説明・URL・操作を React の画面に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T00:54:48.918304+00:00'
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: プレビューの URL・配る書き出しの説明を React の画面に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T00:54:48.918304+00:00'
+  - page: docs/guide/セットアップ手順-プレビューを外から見る.md
+    new: false
+    change: 外から開く URL のパスを React の画面に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T00:54:48.918304+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    new: false
+    change: 示されるプレビューの URL の例を React の画面に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T00:54:48.918304+00:00'
+  - page: docs/test-procedure/TP-489-1.yaml
+    new: false
+    change: 今の Storybook（`.storybook/`）とそのテスト・今の画面の tsc のビルドのコマンドを削除する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T00:54:48.918304+00:00'
+  - page: plugins/mindstella/skills/mindmap/preview/licenses/README.md
+    new: false
+    change: 配る書き出しに含めるライブラリとライセンスの表示を React のビルドに合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T00:54:48.918304+00:00'
+  - page: docs/architecture/ARCH-489-1.yaml
+    new: false
+    change: '`runs_on` の `/w/{workspace}/mindstella.html`・`/w/{workspace}/spa/` を `/w/{workspace}/` にし、プレビューのサブシステムの説明から今の画面を削除する'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T00:54:48.918304+00:00'
+scope_out:
+  - item: E2E（`tests/e2e/`）を React の画面に合わせる
+    reason: 0.x の間は E2E を合わせないと決めている（D-297 A。計画の行の概要に記載済み）
+    plan: none
+  - item: 今の画面のモック（`docs/mock/`）の削除
+    reason: モックは各作業 PR で合意した案の記録で、画面の実装・テストから参照しない。要望に削除が無い（含めるかはレビューで確定する）
+    plan: none
+  - item: React の Storybook の設定フォルダ（`.storybook-react/`）を `.storybook/` へ改名する
+    reason: 要望は今の設定の削除だけで、改名しても振る舞いは変わらない（含めるかはレビューで確定する）
+    plan: none
+  - item: 資料の画面のカードの見出しが h1 の次に h3 で、見出しの順序を飛ばしている（axe heading-order）
+    reason: 見出しの順序の規約から外れているが、この PR で変えていない箇所で、要望に含まれない
+    plan: '#646'
+  - item: 結合テスト `tests/integration/server/test_create_workspace.py::test_error_when_host_not_local` が develop（07766d1f）でも fail する（ホストの検査より前に `/settings/sources` を読みに行く）
+    reason: この PR で変えていない作成の流れの不具合で、要望に含まれない。同じテストの fail を扱う既存の Issue がある
+    plan: '#575'
+  - item: 部品のストーリーの結合テスト 5 件（`test_diff_mark_stories.py::test_removed`・`test_markdown_body_stories.py` の `test_mdmark_table`・`test_pinned_columns`・`test_opaque_background`・`test_table_in_diff`）が develop（07766d1f）でも fail する
+    reason: テストの期待値が部品設計 CMP-489-32 の文言と mdmark の表の既定のピン止めに合っていない不具合で、この PR で変えていない箇所。要望に含まれない
+    plan: '#647'

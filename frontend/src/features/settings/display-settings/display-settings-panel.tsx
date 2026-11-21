@@ -6,6 +6,7 @@ import { SettingsConfirmDialog } from "@/features/settings/display-settings/sett
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { displayDefaults, overrideNames, resetPrefs } from "@/shared/core/display";
+import { isEmbedded } from "@/shared/core/embedded";
 import type { BodyView } from "@/shared/core/markdown-decorate";
 import { KIND_KEYS, type Kind } from "@/shared/core/records";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
@@ -32,6 +33,8 @@ const storageWorks = (): boolean => {
 
 export const DisplaySettingsPanel = () => {
   const { setPanel, openList } = usePreviewSearch();
+  // 配る書き出しは「ワークスペースの既定にする」と「設定を編集する」を出さない
+  const embedded = isEmbedded();
   const { rawIndex } = useRecords();
   const prefs = usePrefs();
   const pointerCoarse = usePointerCoarse();
@@ -82,7 +85,7 @@ export const DisplaySettingsPanel = () => {
             defaultKinds={defaults.kinds}
             counts={counts}
             overrides={overrideNames({ prefs, theme: themeOverride === "light" || themeOverride === "dark" ? themeOverride : null })}
-            canSave
+            canSave={!embedded}
             message={message}
             storageAvailable={storageWorks()}
             minimap={prefs.minimap !== false}
@@ -102,7 +105,7 @@ export const DisplaySettingsPanel = () => {
             onBodyViewChange={(key, value) => {
               writePrefs({ [BODY_VIEW_PREFS[key]]: value ? null : value });
             }}
-            onWorkspace={() => {
+            onWorkspace={embedded ? undefined : () => {
               // 設定の画面は本文の区画を置き換えるので、パネルを閉じて移る（履歴に積む）
               openList("settings", {});
             }}

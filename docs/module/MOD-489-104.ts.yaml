@@ -1,6 +1,6 @@
 id: MOD-489-104
 title: プレビュー / comments
-lead: コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` の DOM に触らない関数と同じ振る舞い）。
+lead: コメントの一覧・スレッド・レビュー中の書き込みの計算（DOM に触らない）。
 functions:
   - name: commentNumber
     title: コメントの ID の番号

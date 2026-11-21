@@ -119,7 +119,7 @@ lead: 配信しているワークスペースのファイルが書き換わっ�
 idempotent: true
 side_effects: なし（読むだけ。接続ごとにワークスペースのファイルの更新日時を見続ける）
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

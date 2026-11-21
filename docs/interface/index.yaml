@@ -8,10 +8,8 @@ items:
     summary: "agent-flows/: MindStella のセッションが project-index で引く起動・コメントの取り込み・記録のエージェントフロー"
   - page: IF-489-67.yaml
     summary: "mindstella register: 起動スクリプトを呼ぶ mindstella・mindstella-{名前} と環境変数を、ログインシェルの設定に登録・読み返し・外す"
-  - page: IF-489-71.yaml
-    summary: "URL のハッシュが指す画面と項目を、サーバーから読んだ記録で開き、書き換えで再描画し、回答・意見を送信する"
   - page: IF-489-70.yaml
-    summary: "React のプレビューを `/spa/` で開き、記録を読んで search params が指す画面を描き、書き換えの通知で再描画する"
+    summary: "プレビューを開き、記録を読んで search params が指す画面を描き、書き換えの通知で再描画する（配る書き出しは埋め込みの記録で開く）"
   - page: IF-489-56.yaml
     summary: "bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ。server のサブコマンドで常駐サーバーを確かめ・止め・再起動し、register のサブコマンドで起動スクリプトを登録する"
   - page: IF-489-27.yaml
@@ -65,9 +63,7 @@ items:
   - page: IF-489-17.yaml
     summary: "preview_url: ワークスペースを常駐サーバーのポートで配り、URL を返す"
   - page: IF-489-18.yaml
-    summary: "GET /w/{workspace}/mindstella.html: プレビューの画面を返す（/w/{workspace}/ はここへリダイレクトする）"
-  - page: IF-489-3.yaml
-    summary: "GET /w/{workspace}/spa/{path}: React のプレビュー（SPA）の index.html と出力の静的なファイルを返す（出力に無いパスは index.html）"
+    summary: "GET /w/{workspace}/: プレビューの画面（React の画面の index.html）と出力の静的なファイルを返す（前の画面の URL はここへリダイレクトする）"
   - page: IF-489-51.yaml
     summary: "GET /w/{workspace}/api/records: ワークスペースの記録をその場で読んで返す"
   - page: IF-489-44.yaml

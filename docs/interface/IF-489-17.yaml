@@ -26,7 +26,7 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`url` が `http://127.0.0.1:` で始まって `/w/{workspace}/mindstella.html` で終わり、`started` が真'
+      - '`url` が `http://127.0.0.1:` で始まって `/w/{workspace}/` で終わり、`started` が真'
       - '`url` を GET すると 200 が返る'
       - ワークスペースに `preview.html` が無い
       - 直下の `README.md` のプレビューのセクションに `url` がある
@@ -150,7 +150,7 @@ flows:
       - '`MINDSTELLA_PREVIEW_START_HOOK` を存在しないコマンドにしても、ツールのエラーにならず `url` を返す'
     test: test_normal_when_start_hook_set
   - name: 正常系（まとまりを指す）
-    summary: diff を渡すと、そのまとまりの差分を開くハッシュを付けた URL を返す
+    summary: diff を渡すと、そのまとまりの差分を開く search を付けた URL を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -167,13 +167,13 @@ flows:
         クライアント->>IF: preview_url workspace diff=V-1
         IF->>WS: changes.yaml を読み、sets に V-1 がある
         IF->>P: このワークスペースを常駐サーバーのポートで配り始める
-        IF-->>クライアント: JSON（#diff=V-1 を付けた url・started: true）
+        IF-->>クライアント: JSON（?diff=V-1 を付けた url・started: true）
       ```
     expected:
       - ツールのエラーにならない
-      - '`url` が `http://127.0.0.1:` で始まり `/w/{workspace}/mindstella.html#diff=V-1` で終わる'
-      - 直下の `README.md` のプレビューのセクションの URL がハッシュを持たない
-      - 同じワークスペースで `diff` を渡さずに再呼び出しすると、ハッシュの無い同じポートの `url` が返り、`started` が偽
+      - '`url` が `http://127.0.0.1:` で始まり `/w/{workspace}/?diff=V-1` で終わる'
+      - 直下の `README.md` のプレビューのセクションの URL が search を持たない
+      - 同じワークスペースで `diff` を渡さずに再呼び出しすると、search の無い同じポートの `url` が返り、`started` が偽
     test: test_normal_when_diff_given
   - name: 異常系（記録に無いまとまり・引数の誤り）
     summary: changes.yaml に無いまとまりを diff に渡すと、配信を立てずに終わる
@@ -199,7 +199,7 @@ flows:
       - 同じワークスペースで `diff` を渡さずに呼ぶと `started` が真（配信が立っていなかった）
     test: test_error_when_diff_not_found
   - name: 正常系（配っている間にまとまりを指す）
-    summary: 既に配っているワークスペースで diff を渡すと、同じポートでハッシュを付けた URL を返す
+    summary: 既に配っているワークスペースで diff を渡すと、同じポートで search を付けた URL を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -214,11 +214,11 @@ flows:
 
         クライアント->>IF: preview_url workspace diff=V-1
         IF->>WS: changes.yaml を読み、sets に V-1 がある
-        IF-->>クライアント: JSON（同じポートで #diff=V-1 を付けた url・started: false）
+        IF-->>クライアント: JSON（同じポートで ?diff=V-1 を付けた url・started: false）
       ```
     expected:
       - ツールのエラーにならない
-      - '`url` が 1 回目の `url` の末尾に `#diff=V-1` を付けたもので、`started` が偽'
+      - '`url` が 1 回目の `url` の末尾に `?diff=V-1` を付けたもので、`started` が偽'
     test: test_normal_when_diff_given_while_serving
   - name: 異常系（配っている間に記録に無いまとまり・引数の誤り）
     summary: 既に配っているワークスペースでも、changes.yaml に無いまとまりを diff に渡すとツールのエラーになる
@@ -309,7 +309,7 @@ request:
   - name: diff
     type: str | None
     required: false
-    default: なし（`url` にハッシュを付けない）
+    default: なし（`url` に search を付けない）
     location: argument
     description: '`url` で差分を開くまとまりの ID（`V-{番号}`。`commit` が返した `id`）'
     constraints: '`changes.yaml` の `sets` にある ID。`since`・`pending` は受けない'
@@ -317,8 +317,8 @@ request:
 response:
   - name: url
     type: str
-    description: 配信の画面の URL（`http://127.0.0.1:{常駐サーバーのポート}/w/{workspace}/mindstella.html`。`{workspace}` は制約「画面のパス」）。`diff` を渡したときは、末尾にハッシュ `#diff={ID}` を付ける（インターフェース定義『プレビューを開く』の `diff`）
-    example: http://127.0.0.1:8784/w/mindstella-notes-3f2a9c/mindstella.html
+    description: 配信の画面の URL（`http://127.0.0.1:{常駐サーバーのポート}/w/{workspace}/`。`{workspace}` は制約「画面のパス」）。`diff` を渡したときは、末尾に search の `?diff={ID}` を付ける（インターフェース定義『プレビューを開く』の `diff`）
+    example: http://127.0.0.1:8784/w/mindstella-notes-3f2a9c/
   - name: workspace
     type: str
     description: 配っているワークスペースの絶対パス
@@ -359,10 +359,10 @@ constraints:
   - item: README の更新
     constraint: 配信を立てた呼び出し（`started` が真）だけ、配信を立てた後に『README の書き出し』の制約「README の中身」「埋める値」「書き込むかの判定」「記載方法」で直下の `README.md` を書き直す。書けなくても配信は止めず、標準エラーに記録して URL を返す
   - item: 起動時のフック
-    constraint: 'ワークスペースを配り始めたとき（この呼び出しで `started` が真のときと、『プレビューの配信』の制約「配るワークスペース」の常駐サーバーの起動時・ワークスペースの作成時）だけ、配り始めた直後に `MINDSTELLA_PREVIEW_START_HOOK` のコマンドを、末尾に常駐サーバーのポート・ワークスペースのフォルダの名前・画面のパス（`/w/{workspace}/mindstella.html`）を引数で追加して呼ぶ（『設定: サーバー』）。コマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない。立てられない（コマンドが見つからない・引数を分けられない）ときは標準エラーに記録し、配信は止めずに URL を返す'
+    constraint: 'ワークスペースを配り始めたとき（この呼び出しで `started` が真のときと、『プレビューの配信』の制約「配るワークスペース」の常駐サーバーの起動時・ワークスペースの作成時）だけ、配り始めた直後に `MINDSTELLA_PREVIEW_START_HOOK` のコマンドを、末尾に常駐サーバーのポート・ワークスペースのフォルダの名前・画面のパス（`/w/{workspace}/`）を引数で追加して呼ぶ（『設定: サーバー』）。コマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない。立てられない（コマンドが見つからない・引数を分けられない）ときは標準エラーに記録し、配信は止めずに URL を返す'
     decided_by: IF-489-1#constraints[終わり方]
   - item: まとまりを指す URL
-    constraint: '`diff` は呼び出しのたびに（既に配っているワークスペースでも）`changes.yaml` を読んで `sets` にあるかを確かめる。あれば、配信の URL の末尾に `#diff={ID}` を付けて返す。まだ配っていなければ、配信を立てる前に確かめる。直下の `README.md` にはハッシュを付けない配信の URL を書く'
+    constraint: '`diff` は呼び出しのたびに（既に配っているワークスペースでも）`changes.yaml` を読んで `sets` にあるかを確かめる。あれば、配信の URL の末尾に `?diff={ID}` を付けて返す。まだ配っていなければ、配信を立てる前に確かめる。直下の `README.md` にはsearch を付けない配信の URL を書く'
   - item: 画面のパス
     constraint: 画面と画面が呼ぶ全ての経路は `/w/{workspace}/` を先頭に持つ（『プレビューの配信』の制約「ワークスペースの区別」）。`{workspace}` はワークスペースの ID（`config.yaml` の `id`。無ければ『ワークスペースの作成』と同じ振り方でフォルダから振る）をパーセントエンコードしたもの
   - item: フローのワークスペース

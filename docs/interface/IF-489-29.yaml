@@ -72,7 +72,7 @@ lead: プレビューが開いたときと書き換えの通知を受けたと�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

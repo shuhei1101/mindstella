@@ -1,12 +1,13 @@
 # 配る書き出しのライセンスのファイル
 
 ライブラリのライセンスの本文のうち、リポジトリに置くものを入れるフォルダ。
+React の画面の書き出し用のビルドが中に持つライブラリのライセンスは、ここに置かず、`npm run build-export` が `preview/export/licenses.md` に書く。
 
 ## mermaid-bundled.txt の集め直し
 
 `mermaid-bundled.txt` は、`mermaid.min.js` が中に束ねた依存の、名前・版・ライセンスの名前と LICENSE・NOTICE の写し。
 配る書き出し（`export`）がライセンスの表示に入れる。
-mermaid の版（`package.json` と `template.html` の `<script src>`）を上げたら、次の手順で集め直す。
+mermaid の版（`package.json` と `preview/libraries.json` の `version`）を上げたら、次の手順で集め直す。
 
 ### 手順
 

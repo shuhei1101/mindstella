@@ -1,0 +1,42 @@
+$ npx vitest run  # commit 2629d37d
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/shared/core/body-links.test.ts (5 tests | 1 failed) 69ms
+   ❯ renderMarkdown (2)
+     × render_markdown_when_mount_failed 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/core/body-links.test.ts > renderMarkdown > render_markdown_when_mount_failed
+TypeError: Failed to construct 'URL': Invalid URL
+ ❯ frontend/src/shared/core/body-links.test.ts:80:19
+     78|   test("render_markdown_when_mount_failed", () => {
+     79|     // 準備
+     80|     mount.error = new TypeError("Failed to construct 'URL': Invalid UR…
+       |                   ^
+     81|     // 実行
+     82|     let root: HTMLElement;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 80 passed (81)
+      Tests  1 failed | 362 passed (363)
+   Start at  13:34:55
+   Duration  17.76s (environment 42%, tests 27%, import 14%, transform 9%, setup 8%)
+
+Environment  jsdom was created 81 times · 47.04s total, 42% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit=1

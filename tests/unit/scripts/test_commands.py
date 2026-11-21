@@ -29,11 +29,10 @@ from errors import (
     WorkspaceNotFoundError,
 )
 from export_helpers import (
-    external_template,
     make_fetch,
     make_responses,
     mdmark_url,
-    write_preview_dir,
+    write_export_preview_dir,
 )
 from fixture_types import (
     MakeItem,
@@ -137,7 +136,7 @@ class _FakeRegistry:
     def start(self, root: Path) -> tuple[str, bool]:
         """渡されたワークスペースを控えて、決めた URL と今立てたことを返す。"""
         self.started.append(root)
-        return "http://127.0.0.1:1/mindstella.html", True
+        return "http://127.0.0.1:1/w/mindstella-x-1/", True
 
 
 class _SequenceRegistry:
@@ -904,21 +903,19 @@ def test_run_check_when_decision_state(make_workspace: MakeWorkspace, make_item:
 
 
 def _patch_export_offline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """配る書き出しを、通信せず小さな雛形と取る中身を差し込んだものに差し替える。"""
+    """配る書き出しを、通信せず小さな書き出し用のビルドと取る中身を差し込んだものに差し替える。"""
     # 差し替える前の本物を控える
     real_export = builder.export_preview
     scripts = [("marked", b"/* marked */")]
     preview_dir = tmp_path / "preview"
-    write_preview_dir(preview_dir, external_template(scripts))
-    # mdmark のライセンスは雛形のフォルダのファイルから読み、束ねた依存のライセンスは取る
-    (preview_dir / "licenses").mkdir()
-    (preview_dir / "licenses" / "mdmark-LICENSE.txt").write_text("MIT の本文", encoding="utf-8")
+    # mdmark のライセンスはプレビューのフォルダのファイルから読み、束ねた依存のライセンスは取る
+    write_export_preview_dir(preview_dir, scripts)
     responses = make_responses(scripts, mdmark=(b"/* mdmark */", b".mdmark{}"))
     responses[mdmark_url("THIRD_PARTY_LICENSES.txt")] = "束ねた本文".encode()
     fetch, _calls = make_fetch(responses)
 
     def _export_offline(workspace: Any, **kwargs: Any) -> Path:
-        """雛形のフォルダと取る関数だけを差し替えて、本物の書き出しを呼ぶ。"""
+        """プレビューのフォルダと取る関数だけを差し替えて、本物の書き出しを呼ぶ。"""
         return real_export(workspace, **{**kwargs, "preview_dir": preview_dir, "fetch": fetch})
 
     # 書き出しのモジュールの関数と、ツールの処理が名前で取り込んだ関数の両方を差し替える
@@ -963,7 +960,7 @@ def test_run_preview_url(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     payload = commands.run_preview_url(root, previews=previews)
     # 検証
     assert payload == {
-        "url": "http://127.0.0.1:1/mindstella.html",
+        "url": "http://127.0.0.1:1/w/mindstella-x-1/",
         "workspace": str(root),
         "started": True,
     }
@@ -996,7 +993,7 @@ def test_run_preview_url_when_started(make_workspace: MakeWorkspace, make_item: 
     """立てたときだけ README に URL を書く（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    url = "http://127.0.0.1:1/mindstella.html"
+    url = "http://127.0.0.1:1/w/mindstella-x-1/"
     previews = _SequenceRegistry((url, True), (url, False))
     # 実行（1 回目は立てる。README を消してから、立っている配信を引くだけの 2 回目を呼ぶ）
     commands.run_preview_url(root, previews=previews)
@@ -1015,7 +1012,7 @@ def test_run_preview_url_when_readme_write_fails(
     # 準備
     root = make_workspace(make_item("D-1"))
     (root / "README.md").mkdir()
-    previews = _SequenceRegistry(("http://127.0.0.1:1/mindstella.html", True))
+    previews = _SequenceRegistry(("http://127.0.0.1:1/w/mindstella-x-1/", True))
     # 実行
     with caplog.at_level(logging.WARNING):
         payload = commands.run_preview_url(root, previews=previews)
@@ -1035,20 +1032,20 @@ def _make_workspace_with_set(make_workspace: MakeWorkspace, make_item: MakeItem)
 
 
 def test_run_preview_url_when_diff_given(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """まとまりを指す URL を返し、README にはハッシュを書かない（正常系）。"""
+    """まとまりを指す URL を返し、README には search を書かない（正常系）。"""
     # 準備
     root = _make_workspace_with_set(make_workspace, make_item)
-    url = "http://127.0.0.1:1/mindstella.html"
+    url = "http://127.0.0.1:1/w/mindstella-x-1/"
     previews = _SequenceRegistry((url, True), (url, False))
     # 実行（1 回目は立てて README を書く。2 回目は立っている配信を引く）
     first = commands.run_preview_url(root, previews=previews, diff="V-1")
     written_after_first = (root / "README.md").read_text(encoding="utf-8")
     second = commands.run_preview_url(root, previews=previews, diff="V-1")
     # 検証
-    assert first["url"] == f"{url}#diff=V-1"
-    assert second["url"] == f"{url}#diff=V-1"
+    assert first["url"] == f"{url}?diff=V-1"
+    assert second["url"] == f"{url}?diff=V-1"
     assert url in written_after_first
-    assert "#diff=" not in written_after_first
+    assert "?diff=" not in written_after_first
 
 
 def test_run_preview_url_when_diff_not_found(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1093,7 +1090,7 @@ def test_run_readme_when_serving(make_workspace: MakeWorkspace) -> None:
     """配っていればその URL を書く（正常系）。"""
     # 準備
     root = make_workspace()
-    url = "http://127.0.0.1:1/mindstella.html"
+    url = "http://127.0.0.1:1/w/mindstella-x-1/"
     previews = _UrlRegistry(url)
     # 実行
     payload = commands.run_readme(root, previews=previews)

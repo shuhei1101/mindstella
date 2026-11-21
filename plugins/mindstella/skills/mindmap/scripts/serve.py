@@ -25,7 +25,7 @@ from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 from starlette.responses import StreamingResponse
 
-from builder import PREVIEW_DIR, assemble_template, read_records
+from builder import PREVIEW_DIR, read_records
 from change_detection import ChangeDetector, detector_of, workspace_id_of
 from claude_input import InputTargets, Session
 from comments import (
@@ -70,7 +70,6 @@ from files_serve import (
 from history import head_until_seq, load_changes, set_confirmed, touch_opened
 from kinds import BODY_REF_PREFIX, KINDS, SETTINGS_FILE, body_root, records_root
 from locations import location_to_dict
-from mdmark_ref import resolve_ref
 from settings_update import update_display
 from store import (
     CHANGES_FILE,
@@ -171,14 +170,19 @@ EVENTS_PATH = "/api/events"
 # 前回開いた日時のパス
 OPENED_PATH = "/api/opened"
 
-# 配信が画面を返すパス（ワークスペースのパスの頭より後ろ）。`/w/{workspace}/` はここへ送り直し、画面の URL はこのパスで終わる
-PAGE_PATH = "/mindstella.html"
+# 配信が画面を返すパス（ワークスペースのパスの頭より後ろ）。画面の URL はこのパスで終わる
+PAGE_PATH = "/"
+
+# 前の画面の URL のパス（`/w/{workspace}` より後ろ）。このパスと、`/spa/` で始まるパスは search を残して `PAGE_PATH` へ再送信する
+OLD_PAGE_PATHS = ("/mindstella.html", "/spa")
+
+# 画面のビルドの出力の資産を返すパスの頭
+ASSETS_PATH = "/assets"
 
 # 全てのワークスペースの画面と、画面が呼ぶ経路の頭（`/w/{workspace}`）
 PREVIEW_PREFIX = "/w"
 
-# React のプレビュー（SPA）を配るパスの頭と、プレビューのフォルダの中の出力のフォルダの名前
-SPA_PATH = "/spa"
+# プレビューのフォルダの中の、画面のビルドの出力のフォルダの名前
 SPA_DIR = "spa"
 
 # 設定の既定の書き換えと、設定の再読み込みのパス
@@ -459,7 +463,7 @@ def _has_record_of(folder: Path, workspace_id: str) -> bool:
 
 
 def page_path(workspace_id: str) -> str:
-    """ワークスペースの画面のパス（`/w/{パーセントエンコードした ID}/mindstella.html`）を返す。"""
+    """ワークスペースの画面のパス（`/w/{パーセントエンコードした ID}/`）を返す。"""
     return f"{PREVIEW_PREFIX}/{quote(workspace_id, safe='')}{PAGE_PATH}"
 
 
@@ -488,7 +492,7 @@ class PreviewEndpoint:
         rest = request.path_params.get("rest")
         # `/w/{workspace}`: 末尾に `/` を付けて送り直す
         if rest is None:
-            return _to_starlette(redirect_response(f"{base}/"))
+            return _to_starlette(redirect_response(_with_search(f"{base}{PAGE_PATH}", request)))
         path = f"/{rest}"
         handlers = {
             "GET": self._get,
@@ -503,22 +507,13 @@ class PreviewEndpoint:
         return await handler(request, context, path, base)
 
     async def _get(self, request: Request, context: ServeContext, path: str, base: str) -> StarletteResponse:
-        """画面・SPA・ファイル・記録・書き換えの通知・コメント・スレッド・編集・文字起こしの可否へ振り分ける。"""
+        """画面・資産・ファイル・記録・書き換えの通知・コメント・スレッド・編集・文字起こしの可否へ振り分ける。"""
         origin = request.headers.get("origin")
-        if path == "/":
-            return _to_starlette(redirect_response(f"{base}{PAGE_PATH}"))
-        if path == PAGE_PATH:
-            return await _call(
-                lambda: index_response(
-                    context.preview_dir, mdmark_settings=context.settings.current().get("mdmark") or {}
-                )
-            )
-        if path == SPA_PATH:
-            return _to_starlette(redirect_response(f"{base}{SPA_PATH}/"))
-        if path.startswith(f"{SPA_PATH}/"):
-            return await _call(
-                lambda: spa_response(context.preview_dir / SPA_DIR, path.removeprefix(SPA_PATH))
-            )
+        if path == PAGE_PATH or path.startswith(f"{ASSETS_PATH}/"):
+            return await _call(lambda: spa_response(context.preview_dir / SPA_DIR, path))
+        # 前の画面の URL: search を残して画面へ送り直す
+        if path in OLD_PAGE_PATHS or path.startswith(f"{OLD_PAGE_PATHS[1]}/"):
+            return _to_starlette(redirect_response(_with_search(f"{base}{PAGE_PATH}", request)))
         if path.startswith(FILES_PATH):
             return await self._send_file(context, path.removeprefix(FILES_PATH), request.headers.get("range"))
         if path == EVENTS_PATH:
@@ -885,41 +880,31 @@ def problem_response(status: int, detail: str) -> Response:
     )
 
 
+def _with_search(location: str, request: Request) -> str:
+    """要求に search があれば `?{search}` を付けた location を返す。"""
+    query = request.url.query
+    return f"{location}?{query}" if query else location
+
+
 def redirect_response(location: str) -> Response:
     """本文を持たない 302 で、location へ送り直す応答を作る。"""
     return Response(status=HTTPStatus.FOUND, content_type=HTML_TYPE, body=b"", location=location)
 
 
 def spa_response(spa_dir: Path, sub_path: str) -> Response:
-    """SPA の出力のファイルを返す。出力に無いパスと出力の外を指すパスは `index.html` を返す。"""
+    """画面のビルドの出力のファイルを返す。`/` は `index.html`、出力に無いパスと出力の外を指すパスは 404。"""
     base = spa_dir.resolve()
-    target = (base / unquote(sub_path).lstrip("/")).resolve()
-    if not target.is_relative_to(base) or not target.is_file():
+    if sub_path == PAGE_PATH:
         target = base / "index.html"
         if not target.is_file():
-            return problem_response(
-                HTTPStatus.INTERNAL_SERVER_ERROR, f"SPA の出力がありません（{spa_dir}）"
-            )
+            logger.error("画面のビルドの出力がありません: %s", spa_dir)
+            return problem_response(HTTPStatus.INTERNAL_SERVER_ERROR, f"画面のビルドの出力がありません（{spa_dir}）")
+    else:
+        target = (base / unquote(sub_path).lstrip("/")).resolve()
+        if not target.is_relative_to(base) or not target.is_file():
+            return problem_response(HTTPStatus.NOT_FOUND, f"ファイルがありません: {sub_path}")
     content_type = SPA_TYPES.get(target.suffix, "application/octet-stream")
     return Response(status=HTTPStatus.OK, content_type=content_type, body=target.read_bytes())
-
-
-def index_response(
-    preview_dir: Path,
-    *,
-    mdmark_settings: dict[str, Any],
-    resolve: Callable[[str | None], str] = resolve_ref,
-) -> Response:
-    """雛形に CSS と JavaScript と、設定の mdmark のバージョンを解決した ref の mdmark の読み込みを差し込んだ画面を返す（記録は埋め込まない）。"""
-    version = mdmark_settings.get("version")
-    ref = resolve(version if isinstance(version, str) else None)
-    try:
-        html = assemble_template(mdmark_settings=mdmark_settings, mdmark_ref=ref, preview_dir=preview_dir)
-    except (ValueError, OSError) as error:
-        # 同梱の雛形の誤り（差し込み口の数・閉じタグ・欠けたファイル）
-        logger.error("同梱の雛形の誤り: %s", error)  # noqa: TRY400
-        return problem_response(HTTPStatus.INTERNAL_SERVER_ERROR, f"同梱の雛形の誤り: {error}")
-    return Response(status=HTTPStatus.OK, content_type=HTML_TYPE, body=html.encode("utf-8"))
 
 
 def records_response(

@@ -74,5 +74,4 @@ accessibility:
   - 行はボタンにし、キーボードで移って選べる
   - 「外部の変更」の札は行のボタンの読み上げ名に含める（名前に続けて読む）
 test_file: tests/integration/storybook_react/test_history_dialog_stories.py
-refs:
-  - CMP-489-25#
+refs: []

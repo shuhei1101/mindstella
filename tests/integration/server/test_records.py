@@ -14,6 +14,7 @@ from .fixture_types import CallTool, MakeItem, MakeWorkspace, StartMdmarkRefServ
 from .history_helpers import DECISION_ITEM, add_item, commit, read_history, read_items, update_item
 from .http_helpers import http_request
 from .mdmark_ref_helpers import FAKE_HEAD_SHA, fake_github, fake_jsdelivr
+from .transcriber_helpers import bind_closed_port
 from record_write_helpers import write_tool
 
 # 検討事項 D-1 の本文
@@ -220,3 +221,90 @@ def test_normal_when_mdmark_ref(
     records = result.json()
     assert records["mdmark_ref"] == FAKE_HEAD_SHA
     assert records["settings"]["mdmark"]["version"] == "latest"
+
+
+# 設定の mdmark のバージョンに指すタグ
+MDMARK_TAG = "v0.13.0"
+
+
+def _records(server: Any, root: Path) -> Any:
+    """ワークスペースを配って `/api/records` を GET した結果を返す。"""
+    served = server.call("preview_url", workspace=str(root))
+    assert served.is_error is False, served.text
+    assert served.data is not None
+    return http_request(str(served.data["url"]), "/api/records")
+
+
+def test_normal_when_github_unreachable(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    start_mdmark_ref_server: StartMdmarkRefServer,
+) -> None:
+    """develop の先頭の commit を問い合わせられないときは、`develop` を mdmark_ref に返す（正常系）。"""
+    # 準備
+    held = bind_closed_port()
+    jsdelivr = fake_jsdelivr()
+    jsdelivr.start()
+    try:
+        server = start_mdmark_ref_server(f"http://127.0.0.1:{held.getsockname()[1]}", jsdelivr.base_url)
+        root = make_workspace(settings={**valid_settings, "mdmark": {"version": "latest"}})
+        # 実行
+        result = _records(server, root)
+    finally:
+        held.close()
+        jsdelivr.stop()
+    # 検証
+    assert result.status == HTTPStatus.OK
+    assert result.json()["mdmark_ref"] == "develop"
+    warnings = [line for line in server.stderr_text().splitlines() if "mdmark の ref を問い合わせられない" in line]
+    assert len(warnings) == 1, server.stderr_text()
+
+
+def test_normal_when_mdmark_version_tag(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    start_mdmark_ref_server: StartMdmarkRefServer,
+) -> None:
+    """設定の mdmark のバージョンがタグのときは、GitHub に問い合わせずにタグを mdmark_ref に返す（正常系）。"""
+    # 準備
+    github = fake_github()
+    jsdelivr = fake_jsdelivr()
+    github.start()
+    jsdelivr.start()
+    try:
+        server = start_mdmark_ref_server(github.base_url, jsdelivr.base_url)
+        root = make_workspace(settings={**valid_settings, "mdmark": {"version": MDMARK_TAG}})
+        # 実行
+        result = _records(server, root)
+    finally:
+        github.stop()
+        jsdelivr.stop()
+    # 検証
+    assert result.status == HTTPStatus.OK
+    assert result.json()["mdmark_ref"] == MDMARK_TAG
+    assert github.paths == []
+
+
+def test_normal_when_dist_not_served(
+    make_workspace: MakeWorkspace,
+    start_mdmark_ref_server: StartMdmarkRefServer,
+) -> None:
+    """問い合わせた commit を jsDelivr が配らないときは、`develop` を mdmark_ref に返す（正常系）。"""
+    # 準備
+    github = fake_github()
+    jsdelivr = fake_jsdelivr(HTTPStatus.FORBIDDEN)
+    github.start()
+    jsdelivr.start()
+    try:
+        server = start_mdmark_ref_server(github.base_url, jsdelivr.base_url)
+        root = make_workspace()
+        # 実行
+        result = _records(server, root)
+    finally:
+        github.stop()
+        jsdelivr.stop()
+    # 検証
+    assert result.status == HTTPStatus.OK
+    assert result.json()["mdmark_ref"] == "develop"
+    warnings = [line for line in server.stderr_text().splitlines() if "jsDelivr が配らない" in line]
+    assert len(warnings) == 1, server.stderr_text()

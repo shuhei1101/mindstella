@@ -201,5 +201,4 @@ accessibility:
   - セクションの折りたたみは同じ `fieldset` の中のチェックボックスにし、読み上げの名前は「セクションの折りたたみ」
   - 「レビューに追加」の後のフォーカスは凡例「コメントの入力」の `fieldset` の中に、凡例「レビューに追加した後のフォーカス」の `fieldset` のラジオで置く。「自動」の下の今の端末での振る舞いは選択肢の名前に含め、区画の下の説明「自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。」をグループの `aria-describedby` で指す
 test_file: tests/integration/storybook_react/test_settings_panel_stories.py
-refs:
-  - CMP-489-49#
+refs: []

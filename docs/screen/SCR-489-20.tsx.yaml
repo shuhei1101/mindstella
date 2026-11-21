@@ -47,7 +47,7 @@ elements:
       - name: pendingBlocked
         value: 概要と同じ
       - name: voice
-        value: 画面で 1 つの音声入力の状態（SPAを開く・プレビューを開く.音声の入力）。録音・文字起こし中だけ渡し、`label` は録音を始めた入力欄の名前。配る書き出しでは渡さない
+        value: 画面で 1 つの音声入力の状態（プレビューを開く.音声の入力）。録音・文字起こし中だけ渡し、`label` は録音を始めた入力欄の名前。配る書き出しでは渡さない
       - name: voiceNotice
         value: 録音を破棄した（行き先の項目・スレッドが記録から無くなった）か、入力欄が画面に無い間に文字起こし・レビュー中への追加・送信が失敗したときの理由。× か「入力欄を開く」で削除する
     description: 全ての画面で共通の帯
@@ -59,7 +59,7 @@ elements:
       - name: views
         value: ボード・表
       - name: current
-        value: SPAを開く.view（既定 board。削除したマップの `map` はボード）
+        value: プレビューを開く.view（既定 board。削除したマップの `map` はボード）
     position: ツールバーの左端
     description: 表示形式を切り替える
     visible_when: 常時
@@ -109,7 +109,7 @@ elements:
     description: トップバーの絞り込みのボタンで開閉する。値の条件より上に、文字で絞れる列（値を選ぶ条件にしない、数でない列）の「文字を含む」の欄を並べる（部品設計『絞り込み』の `texts`）。ボード・表で 1 つの条件を共有し、表示形式を切り替えても保つ。開いている間、トップバーとタブの帯とドロワー以外をコメントの一覧と同じくグレーアウトして `inert` にし（右側の結果は透けて見える）、グレーアウトした所を押すと閉じる。コメントの一覧とは同時に開かない（どちらかを開くと他方を閉じる）。条件を変えると、開いたままボード・表を再描画する。幅 900px 以下で詳細パネルを開いたまま開いたときは詳細パネルの前に出し、Esc はドロワーを先に閉じる。閉じると開く前の詳細パネルが見える
     io: 入力
     visible_when: トップバーの絞り込みのボタンを押したとき
-    initial_value: 状態で要見直し・未決定・未整理・保留を選んだ状態。サーバーの配信でこの画面の残した条件があれば既定に代えてその条件（今の記録に無い値は外す）。URL の search params に `f.{列}` があるときはその条件で開き、残した条件をその条件に書き換える（『SPAを開く』の制約「保存した絞り込みの条件」）
+    initial_value: 状態で要見直し・未決定・未整理・保留を選んだ状態。サーバーの配信でこの画面の残した条件があれば既定に代えてその条件（今の記録に無い値は外す）。URL の search params に `f.{列}` があるときはその条件で開き、残した条件をその条件に書き換える（『プレビューを開く』の制約「保存した絞り込みの条件」）
     args:
       - name: groups
         value: 状態（status。マーカーは status）・タグ（tags）・着手可否（ready）。検討事項は種類（`kind`）を持たないので種類の条件を出さない
@@ -152,7 +152,7 @@ elements:
     description: 検討事項の項目を追加する入力を、詳細パネルと同じ置き方で開く（開いていた詳細パネルは閉じる）。タイトルを書いて入力欄を離れたときに `item-add` を 1 件溜め、残りのキーと案は、返った仮の ID で同じ `item-add` の `value` を書き換えて溜める（1 件のまま）。幅 480px 以下は「＋」の記号だけにし、文字を読み上げに残す
     label: 項目追加
     visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
-    action_ref: SCR-489-31#elements[編集の表示]
+    action_ref: SCR-489-32#elements[編集の表示]
     status: planned
     introduced:
       pr: 325
@@ -177,7 +177,7 @@ elements:
     io: 表示
     visible_when: 開いている種類の `item-add` が保存待ちにあり、差分の表示をしていない
     source: 保存待ちの編集の読み取り.items（op が item-add で key が開いている種類）
-    action_ref: SCR-489-31#elements[編集の表示]
+    action_ref: SCR-489-32#elements[編集の表示]
     status: planned
     introduced:
       pr: 325
@@ -187,5 +187,4 @@ notes:
   削除した項目のモック: 削除した項目の帯の見本は `docs/mock/pages/decisions/179/b-band/index.html`
 test_file: tests/integration/preview/test_spa_decisions_screen.py
 refs:
-  - SCR-489-19#
   - IF-489-70#

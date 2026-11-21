@@ -1,4 +1,4 @@
-// 描いた Markdown の本文の見せ方（今の画面の `components/markdown-body.ts` と同じ振る舞い）。mdmark が描いた React の外の DOM に手を入れる。表は mdmark の表の機能のまま描き、見せ方を当てない
+// 描いた Markdown の本文の見せ方。mdmark が描いた React の外の DOM に手を入れる。表は mdmark の表の機能のまま描き、見せ方を当てない
 import { EMBEDDED_HTML_CLASS } from "@/shared/core/body-links";
 import { h, markupIcon, type MarkupIconName } from "@/shared/core/dom-parts";
 

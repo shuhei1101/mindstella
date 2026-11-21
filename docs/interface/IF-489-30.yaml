@@ -369,7 +369,7 @@ lead: 詳細パネル・詳細の全画面・設定の画面・種類ごとの�
 idempotent: false
 side_effects: '`edits.yaml` に編集を 1 件追加するか書き換えるか外し（無ければ作る）、一時ファイルから `os.replace` で置き換える。項目の YAML・本文・`config.yaml`・`changes.yaml` は書き換えない'
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

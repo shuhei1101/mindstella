@@ -72,7 +72,7 @@ TOOL_NAMES = [
 EXIT_WAIT_SEC = 30
 
 # プレビューの画面のパス
-PREVIEW_PAGE = "/mindstella.html"
+PREVIEW_PAGE = "/"
 
 # 終了時のフックを渡す環境変数
 STOP_HOOK_ENV = "MINDSTELLA_PREVIEW_STOP_HOOK"

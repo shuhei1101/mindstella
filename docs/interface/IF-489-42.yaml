@@ -125,7 +125,7 @@ lead: コメントの入力欄の下書きを、向けた先（項目と箇所�
 idempotent: true
 side_effects: '`drafts.yaml` のその向けた先の 1 件を書き換えるか削除する（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

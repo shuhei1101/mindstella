@@ -9,7 +9,6 @@ import pytest
 from playwright.sync_api import Page, expect
 from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
-from preview_settings_helpers import open_settings
 from preview_spa_helpers import open_spa, wcag_violations
 from workspace_fixtures import ADOPTED_OPTIONS, MakeEdit, MakeItem, MakePost, MakeThread
 
@@ -28,8 +27,12 @@ TABBAR = 'nav[aria-label="項目の種類"]'
 # 検討事項・タスク・資料を表示しない種類の既定
 KINDS_WITHOUT_DECISIONS_TASKS_DOCS = ["research", "terms", "notes", "logs"]
 
-# 今の画面の表示の設定で、表示する種類を付け外しする（チェックの箱は種類の名前の行に置く）
-LEGACY_KIND_CHECKBOX = "aside.settings-drawer .st-kinds label"
+# 端末の保存領域（`mindmap-preview:{workspace}`）の表示する種類の上書きを書く
+SAVE_KINDS_SCRIPT = """(kinds) => {
+    const key = `mindmap-preview:${decodeURIComponent(location.pathname.split("/")[2])}`;
+    const saved = JSON.parse(localStorage.getItem(key) ?? "{}");
+    localStorage.setItem(key, JSON.stringify({ ...saved, kinds }));
+}"""
 
 # 窓・本文の区画のスクロールの大きさと、本文を一番下まで送った後のトップバーとタブの帯の位置を読む
 REGION_JS = """() => {
@@ -48,7 +51,7 @@ REGION_JS = """() => {
 
 def _spa_search(page: Page) -> dict[str, str]:
     """React の画面へ移るのを待ち、URL の search の引数を返す。"""
-    page.wait_for_url("**/spa/?*tab=*", timeout=NAVIGATE_TIMEOUT_MS)
+    page.wait_for_url("**/w/*/?*tab=*", timeout=NAVIGATE_TIMEOUT_MS)
     return dict(parse_qsl(urlsplit(page.url).query))
 
 
@@ -149,7 +152,7 @@ def test_topbar_search_opens_dialog(write_sample_preview: WriteSamplePreview, pa
     page.get_by_role("button", name="すべての項目を検索").click()
     # 検証
     expect(page.get_by_role("dialog", name="すべての項目を検索")).to_be_visible()
-    assert page.evaluate("location.pathname + location.search") == f"{urlsplit(url).path.rsplit('/', 1)[0]}/spa/?search=1"
+    assert page.evaluate("location.pathname + location.search") == f"{urlsplit(url).path.rsplit('/', 1)[0]}/?search=1"
 
 
 def test_topbar_theme(write_sample_preview: WriteSamplePreview, page: Page) -> None:
@@ -354,18 +357,18 @@ def test_hidden_kinds_keep_tiles(
 
 
 @pytest.mark.parametrize(
-    ("visible_kinds", "toggled", "tabs", "open_show_all"),
+    ("visible_kinds", "kinds", "tabs", "open_show_all"),
     [
         pytest.param(
             None,
-            "検討事項",
+            ["tasks", "research", "docs", "terms", "notes", "logs"],
             ["overview", "tasks", "research", "docs", "terms", "notes", "logs"],
             0,
             id="override_hides",
         ),
         pytest.param(
             KINDS_WITHOUT_DECISIONS_TASKS_DOCS,
-            "検討事項",
+            ["decisions", "research", "terms", "notes", "logs"],
             ["overview", "decisions", "research", "terms", "notes", "logs"],
             1,
             id="override_wins_over_default",
@@ -378,18 +381,16 @@ def test_kinds_override(
     sample_settings: dict[str, Any],
     page: Page,
     visible_kinds: list[str] | None,
-    toggled: str,
+    kinds: list[str],
     tabs: list[str],
     open_show_all: int,
 ) -> None:
-    """今の画面の表示の設定で保存した端末の上書きを読み、タブとタイルの「すべて表示」をワークスペースの既定より優先して上書きの種類に従わせる（正常系）。"""
+    """端末に保存した表示する種類の上書きを読み、タブとタイルの「すべて表示」をワークスペースの既定より優先して上書きの種類に従わせる（正常系）。"""
     # 準備
     settings = sample_settings if visible_kinds is None else {**sample_settings, "display": {"visible_kinds": visible_kinds}}
     url = write_preview(*sample_items, settings=settings)
     page.goto(url)
-    open_settings(page)
-    page.locator(LEGACY_KIND_CHECKBOX, has_text=toggled).locator("input").click()
-    page.wait_for_function("JSON.parse(localStorage.getItem('mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) ?? '{}').kinds !== undefined")
+    page.evaluate(SAVE_KINDS_SCRIPT, kinds)
     # 実行
     open_spa(page, url)
     # 検証

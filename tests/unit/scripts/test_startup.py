@@ -359,7 +359,7 @@ def test_serve_registered(
     broken = make_workspace(
         settings={**valid_settings, "display": {"visible_kinds": ["rainbow"]}}, name="broken"
     )
-    readme.write_readme(first, preview_url="http://127.0.0.1:47800/mindstella.html")
+    readme.write_readme(first, preview_url="http://127.0.0.1:47800/w/mindstella-x-1/")
     first_id = workspaces.workspace_id_of(first)
     broken_id = workspaces.workspace_id_of(broken)
     state_root = tmp_path / "state"

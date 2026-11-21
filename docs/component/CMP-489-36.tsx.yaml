@@ -61,5 +61,4 @@ accessibility:
   - リンクのフォーカスはマーカーの色の輪で、ホバーと見分ける
   - マーカーからツールチップへポインターを動かす間（150 ミリ秒）は閉じない
 test_file: tests/integration/storybook_react/test_term_tip_stories.py
-refs:
-  - CMP-489-35#
+refs: []

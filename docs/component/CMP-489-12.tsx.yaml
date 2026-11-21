@@ -328,5 +328,4 @@ uses:
     how: mdmark で描いた書き込みの本文に `tables`・`fold` を false にして当てる
   - component: CMP-489-42#
     how: '`pending` の書き換えていない本文を描いて畳み、開閉のボタンを本文の下の行に置く'
-refs:
-  - CMP-489-11#
+refs: []

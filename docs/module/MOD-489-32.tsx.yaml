@@ -39,7 +39,7 @@ components:
         summary: 下端にコメント
         condition: サーバーの配信で項目を開く
         mock: MSW
-        expected: 下端に部品『DetailComments』があり、今の画面を開くリンクが無い
+        expected: 下端に部品『DetailComments』があり
       - name: test_detail_panel_when_comments_button
         case: 正常
         summary: 見出しのコメントの一覧のボタンで、その項目で絞ったコメントの一覧を開く
@@ -49,7 +49,7 @@ components:
       - name: test_detail_panel_when_width_saved
         case: 正常
         summary: ワークスペースごとのキーに残した幅で開く
-        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/spa/` にし、`sessionStorage` の `mindmap-panel-width:mindstella-x-1` に 880、`mindmap-panel-width` に 1000 を置いて `id=D-1` を開く'
+        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/` にし、`sessionStorage` の `mindmap-panel-width:mindstella-x-1` に 880、`mindmap-panel-width` に 1000 を置いて `id=D-1` を開く'
         mock: MSW
         expected: 詳細パネルの幅が 880px（読み書きのキーは `workspaceKey(PANEL_WIDTH_KEY)`）
     container: frontend/src/features/detail/detail-panel/detail-panel.tsx

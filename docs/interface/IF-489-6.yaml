@@ -455,7 +455,7 @@ lead: コメントの一覧でチェックしたレビュー中の書き込み�
 idempotent: false
 side_effects: '`threads.yaml` に新規スレッドと返信の書き込みを追加（無ければ作る）、`comments.yaml` からその書き込みを削除する。どちらも一時ファイルから `os.replace` で置き換え、`threads.yaml` を先に書く。ほかのファイルは書き換えない。書き終えた後、送信先のペインがあれば、tmux の `load-buffer`・`paste-buffer`・`send-keys` で Claude Code のペインへ文字列を入力する（入力は取り消さない）'
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

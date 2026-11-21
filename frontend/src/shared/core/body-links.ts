@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
-// 描いた本文の加工（行の印・図と HTML の入れ物・見出しと本文の印・選んだ範囲の箇所・図の描画）。今の画面の `core/libs.ts` と同じ振る舞い
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- 正規表現の捕捉と描いた直後の要素を指す */
+// 描いた本文の加工（行の印・図と HTML の入れ物・見出しと本文の印・選んだ範囲の箇所・図の描画）
 import { getLibrary, libraryState, mdmarkMapConfig } from "@/shared/adapters/libraries";
 import { h, markupIcon } from "@/shared/core/dom-parts";
 import type { Location, RecordIndex } from "@/shared/core/records";
@@ -443,18 +443,23 @@ export const renderMarkdown = (source: string, options: { table?: boolean } = {}
   const root = h({ tag: "div", attrs: { class: "md" } });
   const missing = missingLibraries(["mdmark"]);
   const hasDiagram = source.includes("```mermaid");
-  // mdmark が読めていない: 知らせと原文を出す
+  /** 知らせと原文を出す */
+  const raw = (names: string[]): HTMLElement => {
+    root.replaceChildren(libraryNotice({ names, what: "本文" }), h({ tag: "pre", attrs: { class: "md-raw" }, children: [source] }));
+    return root;
+  };
+  // mdmark が読めていない
   if (missing.length > 0) {
     const names: string[] = [...missing];
     if (hasDiagram && missingLibraries(["mermaid"]).length > 0) names.push("mermaid");
-    root.append(
-      libraryNotice({ names, what: "本文" }),
-      h({ tag: "pre", attrs: { class: "md-raw" }, children: [source] }),
-    );
-    return root;
+    return raw(names);
   }
-  // mdmark は描くときに無害化する（記録は利用者のもの）
-  mountMarkdown({ root, markdown: source, table: options.table !== false });
+  // mdmark は描くときに無害化する（記録は利用者のもの）。`mount` が例外を投げたとき（部品を差し替えられないタグの mdmark で map を描いたときなど）は、読めていないときと同じにする
+  try {
+    mountMarkdown({ root, markdown: source, table: options.table !== false });
+  } catch {
+    return raw(["mdmark"]);
+  }
   convertSourceLines({ root, source });
   // 埋め込んだ HTML の範囲は `data-source-line` を持たないので、本文の中の n 番目の範囲に、n 番目の範囲の印の行を持たせる（範囲の中の要素には行の印を付けない）
   const ranges = embeddedHtmlRanges(source);
@@ -629,7 +634,7 @@ export const linkBody = ({
   selfId: string;
   onOpen: (id: string) => void;
   source: string;
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 }): void => {
   // 語 → 一致した項目の ID（用語 → 資料 → 調査の順）。項目自身・取り下げた資料と調査・空の語は当てない
   const byWord = new Map<string, string[]>();

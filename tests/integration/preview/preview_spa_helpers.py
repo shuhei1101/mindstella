@@ -1,6 +1,6 @@
 """React のプレビュー（SPA）を開く結合テストの共通の関数。
 
-`preview_url` が返した URL のワークスペースの経路の `spa/` を開き、本文の区画に中身が入るまで待つ。
+`preview_url` が返した URL のワークスペースの経路 `/w/{ワークスペース}/` を開き、本文の区画に中身が入るまで待つ。
 """
 
 from __future__ import annotations
@@ -10,9 +10,6 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from playwright.sync_api import ConsoleMessage, Error, Page
-
-# SPA の入口の、ワークスペースの経路（`/w/{workspace}/`）からのパス
-SPA_ROOT_PATH = "spa/"
 
 # 本文の区画の中身（タイルか、記録を読めなかった表示）
 SPA_CONTENT_SELECTOR = "main#main > div > *"
@@ -41,10 +38,10 @@ class ConsoleErrors:
 
 
 def spa_url(preview_url: str, search: str = "") -> str:
-    """`preview_url` が返した URL のワークスペースの経路の `spa/` に search を付けた URL を返す。"""
+    """`preview_url` が返した URL のワークスペースの経路 `/w/{ワークスペース}/` に search を付けた URL を返す。"""
     parts = urlsplit(preview_url)
     workspace_base = parts.path.rsplit("/", 1)[0]
-    return f"{parts.scheme}://{parts.netloc}{workspace_base}/{SPA_ROOT_PATH}{search}"
+    return f"{parts.scheme}://{parts.netloc}{workspace_base}/{search}"
 
 
 def watch_console(page: Page) -> ConsoleErrors:

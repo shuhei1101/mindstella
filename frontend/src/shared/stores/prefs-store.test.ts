@@ -13,7 +13,7 @@ describe("readPrefs", () => {
     expect(readPrefs()).toEqual({});
   });
 
-  // 今の画面が書いた JSON を読める（正常系）
+  // 前のバージョンの項目を含む JSON を読める（正常系）
   test("read_prefs_when_legacy_written", () => {
     // 準備
     const legacy = {
@@ -45,7 +45,7 @@ describe("writePrefs", () => {
   test("write_prefs_when_workspace_path", () => {
     // 準備
     localStorage.clear();
-    history.replaceState(null, "", "/w/mindstella-x-1/spa/");
+    history.replaceState(null, "", "/w/mindstella-x-1/");
     // 実行
     writePrefs({ diffSel: "V-1" });
     // 検証

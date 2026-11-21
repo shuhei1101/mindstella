@@ -1,5 +1,7 @@
-// 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元と版から読む。mdmark は『記録の取得』の `mdmark_ref` から `integrity` なしで、それ以外は `integrity` で確かめて読む（インターフェース定義『SPAを開く』の制約「描画のライブラリ」）
+// 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を読む。mdmark は『記録の取得』の `mdmark_ref` から `integrity` なしで、それ以外はプラグインの libraries.json の URL から `integrity` で確かめて読む。配る書き出しは HTML が中に持つ配布ファイルを読む
 import { useSyncExternalStore } from "react";
+
+import libraryRows from "../../../../plugins/mindstella/skills/mindmap/preview/libraries.json";
 
 /** jsDelivr の mdmark の `dist/` の URL の形（`{ref}` に『記録の取得』の `mdmark_ref`。受ける前は `develop`） */
 export const MDMARK_CDN_BASE = "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist";
@@ -37,15 +39,22 @@ type ImportModule = (url: string) => Promise<unknown>;
 const importByUrl: ImportModule = (url) => import(/* @vite-ignore */ url) as Promise<unknown>;
 let importModule: ImportModule = importByUrl;
 
-/** script 要素で読むライブラリの URL・integrity と、読めたときに置かれるグローバルの名前 */
-export const LIBRARIES = {
-  marked: { url: "https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js", integrity: "sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo", global: "marked" },
-  mermaid: { url: "https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js", integrity: "sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4", global: "mermaid" },
-  jsdiff: { url: "https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js", integrity: "sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1", global: "Diff" },
-} as const;
+/** script 要素で読むライブラリの名前 */
+type ScriptLibraryName = "marked" | "mermaid" | "jsdiff";
+
+/** libraries.json の package と、画面が引くライブラリの名前の対応 */
+const PACKAGE_NAMES = { marked: "marked", mermaid: "mermaid", diff: "jsdiff" } as const satisfies Record<string, ScriptLibraryName>;
+
+/** libraries.json の 1 行 */
+type LibraryRow = { package: string; url: string; integrity: string; global: string };
+
+/** script 要素で読むライブラリの URL・integrity と、読めたときに置かれるグローバルの名前（プラグインの libraries.json を名前で引ける形にしたもの） */
+export const LIBRARIES = Object.fromEntries(
+  (libraryRows as LibraryRow[]).map((row) => [PACKAGE_NAMES[row.package as keyof typeof PACKAGE_NAMES], { url: row.url, integrity: row.integrity, global: row.global }]),
+) as Record<ScriptLibraryName, { url: string; integrity: string; global: string }>;
 
 /** ライブラリの名前 */
-export type LibraryName = keyof typeof LIBRARIES | "mdmark";
+export type LibraryName = ScriptLibraryName | "mdmark";
 
 /** 読み込みの状態 */
 export type LibraryStatus = "loading" | "ready" | "failed";
@@ -62,10 +71,15 @@ const notify = (): void => {
   for (const listener of listeners) listener();
 };
 
-/** script 要素で読み、置かれたグローバルを返す */
-const loadScript = (name: keyof typeof LIBRARIES): Promise<unknown> =>
+/** script 要素で読み、置かれたグローバルを返す。グローバルが既にあれば（配る書き出しの中身を持つ script 要素が置いたもの）それを返す */
+const loadScript = (name: ScriptLibraryName): Promise<unknown> =>
   new Promise((resolve, reject) => {
     const { url, integrity, global } = LIBRARIES[name];
+    const present: unknown = Reflect.get(window, global);
+    if (present !== undefined) {
+      resolve(present);
+      return;
+    }
     const script = document.createElement("script");
     script.src = url;
     script.integrity = integrity;
@@ -79,8 +93,38 @@ const loadScript = (name: keyof typeof LIBRARIES): Promise<unknown> =>
     document.head.appendChild(script);
   });
 
-/** 設定のバージョンの mdmark の CSS を link で読み、JavaScript を `integrity` なしで読む */
+/** 配る書き出しが mdmark の本体と部品の中身を持つ要素の ID の頭（部品は `-{部品の名前}` を付ける） */
+const MDMARK_EMBEDDED_ID = "mindmap-mdmark";
+
+/** mdmark の部品の名前 */
+const MDMARK_PART_NAMES = ["map", "view", "comments"] as const;
+
+/** 中身の文字を Blob の URL にして import() する */
+const importText = async (text: string): Promise<unknown> => {
+  const url = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+  try {
+    return await importModule(url);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+};
+
+/** 配る書き出しの、中身を持つ mdmark を読み、部品の読み込みを中身へ差し替える */
+const loadEmbeddedMdmark = async (embedded: Element): Promise<unknown> => {
+  const library = (await importText(embedded.textContent ?? "")) as { setPartModuleLoader?: (name: string, load: () => Promise<unknown>) => void };
+  for (const name of MDMARK_PART_NAMES) {
+    const part = document.getElementById(`${MDMARK_EMBEDDED_ID}-${name}`);
+    if (part === null || library.setPartModuleLoader === undefined) continue;
+    const text = part.textContent ?? "";
+    library.setPartModuleLoader(name, () => importText(text));
+  }
+  return library;
+};
+
+/** 設定のバージョンの mdmark の CSS を link で読み、JavaScript を `integrity` なしで読む。配る書き出しは中身を持つ mdmark を読む */
 const loadMdmark = async (): Promise<unknown> => {
+  const embedded = document.getElementById(MDMARK_EMBEDDED_ID);
+  if (embedded !== null) return await loadEmbeddedMdmark(embedded);
   const { js, css } = mdmarkUrls();
   if (document.querySelector(`link[href="${css}"]`) === null) {
     const link = document.createElement("link");

@@ -71,7 +71,6 @@ lead: 文字起こし後の挙動が `send` のときに、コメント・返信
 idempotent: false
 side_effects: '`threads.yaml` に新規スレッドか返信の書き込みを 1 件追加する（無ければ作る。一時ファイルから `os.replace` で置き換える）。`comments.yaml` とほかのファイルは書き換えない。書き終えた後、送信先のペインがあれば『コメントをまとめて送信する』と同じやり方で Claude Code のペインへ文字列を入力する'
 callers:
-  - IF-489-71#
   - IF-489-70#
 request:
   - name: Host

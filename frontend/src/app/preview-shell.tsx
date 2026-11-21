@@ -22,6 +22,7 @@ import { Topbar, type TabKey, type TopbarTab } from "@/shared/components/topbar"
 import { AppError } from "@/shared/core/app-error";
 import { anyOpenUnseen, type ReviewItem, type Thread } from "@/shared/core/comments";
 import { SETTINGS_TARGET } from "@/shared/core/edits";
+import { isEmbedded } from "@/shared/core/embedded";
 import { normalizeSearch } from "@/shared/core/preview-search";
 import { KIND_KEYS, KIND_LABEL, kindOfId, type Kind } from "@/shared/core/records";
 import { voiceDestinationExists } from "@/shared/core/voice";
@@ -48,7 +49,7 @@ const isRecordKind = (tab: string): tab is RecordKind => ["research", "terms", "
 /** 保存の通知を出しておくミリ秒 */
 const SAVED_NOTICE_MS = 5000;
 
-/** 「ワークスペースの既定が変わりました。」を出しておくミリ秒（今の画面の `NOTICE_MS` と同じ） */
+/** 「ワークスペースの既定が変わりました。」を出しておくミリ秒 */
 const DISPLAY_NOTICE_MS = 6000;
 
 const RecordsError = ({ error }: { error: Error }) => (
@@ -115,7 +116,7 @@ const useVoiceTopbar = ({ exists, openVoiceInput }: { exists: ((destination: Voi
   };
 };
 
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const PreviewShell = () => {
   const { search, setTab, openItem, openList, setDiff, setPanel, replaceSearch, setSearch, openFromSearch, openVoiceInput } = usePreviewSearch();
   const records = useQuery(recordsQuery());
@@ -164,6 +165,8 @@ export const PreviewShell = () => {
   const visible = useVisibleKinds();
   const pendingCount = edits.length;
   const diffActive = point !== null;
+  // 配る書き出しは書き込む操作（コメント・保存待ち・音声入力）を出さない
+  const embedded = isEmbedded();
   // 開いたときに確かめ終えたか（開いている間に取り消して保存待ちが 0 件になっても、保存待ちのパネルは開いたまま空の状態を出す）
   const opened = useRef(false);
   const threadList = threads.data?.status === 200 ? (threads.data.data.threads as unknown as Thread[]) : null;
@@ -226,7 +229,7 @@ export const PreviewShell = () => {
         connection={connection === "offline" || !reachable ? "offline" : "online"}
         readAt={data?.built_at ?? null}
         diffPoint={point === null ? null : { name: point.name, sub: point.sub }}
-        comments
+        comments={!embedded}
         commentCount={comments.data?.status === 200 ? comments.data.data.items.length : 0}
         commentsOpen={search.panel === "comments"}
         commentsUnread={threadList !== null && anyOpenUnseen(threadList)}
@@ -234,11 +237,11 @@ export const PreviewShell = () => {
         filter={listTab}
         filterCount={Object.keys(search.f).length}
         filterOpen={drawerOpen}
-        pending={!diffActive}
+        pending={!diffActive && !embedded}
         pendingCount={pendingCount}
         pendingOpen={search.panel === "pending"}
         pendingBlocked={blocked.length > 0}
-        {...voiceTopbar}
+        {...(embedded ? {} : voiceTopbar)}
         stale={stale}
         duplicateIds={duplicateIds}
         onOpenDuplicate={openItem}

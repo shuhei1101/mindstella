@@ -76,8 +76,8 @@ purl: pkg:github/shuhei1101/mdmark@v0.8.0
 dependency_scope: 必須
 adoption: 採用
 used_in:
-  - plugins/mindstella/skills/mindmap/preview/template.html
-  - .storybook/main.js
+  - plugins/mindstella/skills/mindmap/preview/libraries.json
+  - .storybook-react/mdmark-ref.js
   - plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/mdmark_documents.py
   - plugins/mindstella/skills/mindmap/scripts/builder.py
   - frontend/src/shared/adapters/libraries.ts

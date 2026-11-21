@@ -56,7 +56,6 @@ lead: コメント・返信の入力とレビュー中の書き込みの修正�
 idempotent: true
 side_effects: なし（文字起こしのサービスに用語集のプリセットの一覧を 1 回尋ね、`config.yaml` を読むだけ）
 callers:
-  - IF-489-71#
   - IF-489-70#
 request:
   - name: Host

@@ -61,7 +61,7 @@ endpoints:
         notes: 標準ライブラリの既定の値（`Python-urllib/{バージョン}`）では `403` が返る。mindstella は `DiscordBot (https://github.com/shuhei1101/mindstella, 1.0)` で送信する
     request_example: |-
       ```json
-      {"content": "家計簿の話し合い: 作業が完了しました\nhttp://127.0.0.1:47800/mindstella.html"}
+      {"content": "家計簿の話し合い: 作業が完了しました\nhttp://127.0.0.1:47800/w/mindstella-x-1/"}
       ```
     response:
       - name: メッセージのオブジェクト

@@ -125,7 +125,7 @@ def test_open_item(page: Page, spa_preview: str) -> None:
     page.keyboard.press("ArrowDown")
     page.keyboard.press("Enter")
     # 検証
-    page.wait_for_url("**/spa/?tab=tasks&id=T-1")
+    page.wait_for_url("**/w/*/?tab=tasks&id=T-1")
     expect(_dialog(page)).to_be_hidden()
     expect(page.get_by_role("complementary", name="詳細")).to_contain_text("画面を作る")
 
@@ -140,7 +140,7 @@ def test_close(page: Page, spa_preview: str) -> None:
     # 実行
     page.get_by_role("button", name="検索を閉じる").click()
     # 検証
-    page.wait_for_url("**/spa/?tab=tasks")
+    page.wait_for_url("**/w/*/?tab=tasks")
     expect(_dialog(page)).to_be_hidden()
     expect(page.get_by_role("button", name="すべての項目を検索")).to_be_focused()
 
@@ -153,7 +153,7 @@ def test_close_when_escape(page: Page, spa_preview: str) -> None:
     # 実行
     page.keyboard.press("Escape")
     # 検証
-    page.wait_for_url("**/spa/?tab=tasks")
+    page.wait_for_url("**/w/*/?tab=tasks")
     expect(_dialog(page)).to_be_hidden()
 
 

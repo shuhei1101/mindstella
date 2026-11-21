@@ -1,6 +1,6 @@
 id: MOD-489-109
 title: プレビュー / edits
-lead: 保存待ちの編集を記録に重ねる計算（今の画面の `core/edits.ts` と同じ振る舞い）。
+lead: 保存待ちの編集を記録に重ねる計算。
 functions:
   - name: applyEdits
     title: 編集の重ね合わせ

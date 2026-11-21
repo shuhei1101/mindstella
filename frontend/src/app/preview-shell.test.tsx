@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test } from "vitest";
 
 import { connectEvents } from "@/shared/adapters/events-client";
+import { resetEmbeddedDataForTest } from "@/shared/core/embedded";
 import { useRefreshHoldStore } from "@/shared/stores/refresh-hold-store";
 import { resetVoiceStore } from "@/shared/stores/voice-store";
 import { FakeEventSource } from "@/testing/fake-event-source";
@@ -15,6 +16,8 @@ import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
 
 afterEach(() => {
+  document.body.querySelector("#mindmap-data")?.remove();
+  resetEmbeddedDataForTest();
   useRefreshHoldStore.setState({ focused: false, pending: false, heldElement: null, anchor: null });
   resetVoiceStore();
   removeFakeMedia();
@@ -32,7 +35,7 @@ describe("PreviewShell", () => {
   // tab の画面を描く（正常系）
   test("preview_shell", async () => {
     // 実行
-    renderRoute("/spa/?tab=tasks");
+    renderRoute("/?tab=tasks");
     // 検証
     expect(await screen.findByRole("group", { name: "表示形式" })).toBeInTheDocument();
     expect(await screen.findByText("T-1の題")).toBeInTheDocument();
@@ -41,7 +44,7 @@ describe("PreviewShell", () => {
   // id で詳細パネルを重ねる（正常系）
   test("preview_shell_when_item", async () => {
     // 実行
-    renderRoute("/spa/?tab=tasks&id=T-1");
+    renderRoute("/?tab=tasks&id=T-1");
     // 検証
     expect(await screen.findByRole("complementary", { name: /詳細/ })).toBeInTheDocument();
   });
@@ -49,7 +52,7 @@ describe("PreviewShell", () => {
   // full で全画面にする（正常系）
   test("preview_shell_when_full", async () => {
     // 実行
-    renderRoute("/spa/?tab=tasks&id=T-1&full=1");
+    renderRoute("/?tab=tasks&id=T-1&full=1");
     // 検証
     expect(await screen.findByRole("dialog", { name: /T-1の題/ })).toBeInTheDocument();
     expect(screen.queryByRole("complementary", { name: /詳細/ })).not.toBeInTheDocument();
@@ -58,7 +61,7 @@ describe("PreviewShell", () => {
   // 設定の画面を開く（正常系）
   test("preview_shell_when_settings", async () => {
     // 実行
-    renderRoute("/spa/?tab=settings");
+    renderRoute("/?tab=settings");
     // 検証
     expect(await screen.findByRole("heading", { name: "設定", level: 1 })).toBeInTheDocument();
     expect(screen.queryByRole("link", { current: "page" })).not.toBeInTheDocument();
@@ -67,14 +70,14 @@ describe("PreviewShell", () => {
   // 記録に合わない値を外す（正常系）
   test("preview_shell_when_search_mismatched", async () => {
     // 実行
-    renderRoute("/spa/?tab=tasks&view=cards&id=T-99");
+    renderRoute("/?tab=tasks&view=cards&id=T-99");
     // 検証
     await waitFor(() => expect(window.location.search).toBe("?tab=tasks"));
   });
   // コメントの一覧を開く（正常系）
   test("preview_shell_when_comments", async () => {
     // 準備
-    renderRoute("/spa/?tab=tasks");
+    renderRoute("/?tab=tasks");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: /コメント/ }));
     // 検証
@@ -85,15 +88,15 @@ describe("PreviewShell", () => {
   // 表示の設定を開く（正常系）
   test("preview_shell_when_display", async () => {
     // 実行
-    renderRoute("/spa/?panel=display");
+    renderRoute("/?panel=display");
     // 検証
     expect(await screen.findByRole("dialog", { name: "表示の設定" })).toBeInTheDocument();
   });
 
   // 削除したネットワーク・検討事項のマップを指す URL は概要・ボードで開く（正常系）
   test.each([
-    { name: "graph", url: "/spa/?tab=graph", search: "" },
-    { name: "map", url: "/spa/?tab=decisions&view=map", search: "?tab=decisions" },
+    { name: "graph", url: "/?tab=graph", search: "" },
+    { name: "map", url: "/?tab=decisions&view=map", search: "?tab=decisions" },
   ])("preview_shell_when_removed_view ($name)", async ({ url, search }) => {
     // 実行
     renderRoute(url);
@@ -107,7 +110,7 @@ describe("PreviewShell", () => {
   test("preview_shell_when_search", async () => {
     // 準備
     stubRecords({ changes: { last_seq: 1, sets: [{ id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "", until_seq: 1, added: ["D-1"], changed: [], removed: [] }], pending: { added: [], changed: [] } } });
-    renderRoute("/spa/?tab=tasks&search=1&q=D-1%E3%81%AE%E9%A1%8C&diff=V-1");
+    renderRoute("/?tab=tasks&search=1&q=D-1%E3%81%AE%E9%A1%8C&diff=V-1");
     const before = window.history.length;
     // 実行
     await userEvent.click(await screen.findByRole("option", { name: /D-1の題/ }));
@@ -120,7 +123,7 @@ describe("PreviewShell", () => {
   // 同じ画面の項目は履歴に積まずに詳細パネルを開く（正常系）
   test("preview_shell_when_search_same_tab", async () => {
     // 準備
-    renderRoute("/spa/?tab=decisions&view=table&search=1&q=D-1%E3%81%AE%E9%A1%8C");
+    renderRoute("/?tab=decisions&view=table&search=1&q=D-1%E3%81%AE%E9%A1%8C");
     const before = window.history.length;
     // 実行
     await userEvent.click(await screen.findByRole("option", { name: /D-1の題/ }));
@@ -133,7 +136,7 @@ describe("PreviewShell", () => {
   test("preview_shell_when_search_hidden_kind", async () => {
     // 準備
     stubRecords({ settings: { ...RECORDS.settings, display: { visible_kinds: ["decisions", "tasks"] } }, notes: [{ id: "N-1", title: "N-1のメモ" }] });
-    renderRoute("/spa/?tab=tasks&search=1&q=N-1%E3%81%AE%E3%83%A1%E3%83%A2");
+    renderRoute("/?tab=tasks&search=1&q=N-1%E3%81%AE%E3%83%A1%E3%83%A2");
     // 実行
     await userEvent.click(await screen.findByRole("option", { name: /N-1のメモ/ }));
     // 検証
@@ -145,7 +148,7 @@ describe("PreviewShell", () => {
   test("preview_shell_when_voice", async () => {
     // 準備
     enableVoice();
-    renderRoute("/spa/?tab=tasks&id=T-1");
+    renderRoute("/?tab=tasks&id=T-1");
     await userEvent.click(await screen.findByRole("button", { name: "音声で入力" }));
     // 実行
     await userEvent.click(screen.getByRole("button", { name: /^コメント（/ }));
@@ -162,7 +165,7 @@ describe("PreviewShell", () => {
   test("preview_shell_when_voice_target_removed", async () => {
     // 準備
     enableVoice();
-    const view = renderRoute("/spa/?tab=tasks&id=T-1");
+    const view = renderRoute("/?tab=tasks&id=T-1");
     await userEvent.click(await screen.findByRole("button", { name: "音声で入力" }));
     await screen.findByRole("button", { name: /^音声入力中（T-1 へのコメント）/ });
     stubRecords({ tasks: [] });
@@ -178,7 +181,7 @@ describe("PreviewShell", () => {
     enableVoice();
     const items = [{ id: "C-1", thread: null, target: "T-1", target_title: "T-1の題", loc: null, body: "確認: ", created: "2026-11-01T00:01:00+00:00" }];
     server.use(http.get("/api/comments", () => HttpResponse.json({ items, drafts: [] })));
-    const view = renderRoute("/spa/?panel=comments&review=1");
+    const view = renderRoute("/?panel=comments&review=1");
     await userEvent.click(await screen.findByRole("button", { name: "T-1 へのコメントを修正" }));
     const edit = (await screen.findByRole("textbox", { name: "T-1 へのコメントの本文" })).closest("form");
     if (edit === null) throw new Error("修正の入力が無い");
@@ -201,7 +204,7 @@ describe("PreviewShell", () => {
   // 入力中に書き換わったら帯を出し、離れたら反映する（正常系）
   test("preview_shell_when_records_changed_while_typing", async () => {
     // 準備
-    const view = renderRoute("/spa/?tab=tasks&id=T-1");
+    const view = renderRoute("/?tab=tasks&id=T-1");
     const close = connectEvents(view.queryClient);
     const input = await screen.findByRole("textbox", { name: /T-1 へのコメント/ });
     await userEvent.type(input, "途中まで");
@@ -223,7 +226,7 @@ describe("PreviewShell", () => {
   // 読み直しで入力欄を作り直さない（正常系）
   test("preview_shell_when_records_changed", async () => {
     // 準備
-    const view = renderRoute("/spa/?tab=tasks&id=T-1");
+    const view = renderRoute("/?tab=tasks&id=T-1");
     const close = connectEvents(view.queryClient);
     const input = await screen.findByRole("textbox", { name: /T-1 へのコメント/ });
     await userEvent.type(input, "途中まで");
@@ -237,5 +240,29 @@ describe("PreviewShell", () => {
     expect(after).toBe(input);
     expect(after).toHaveValue("途中まで");
     close();
+  });
+
+  // 配る書き出しは書き込む操作を出さない（正常系）
+  test("preview_shell_when_embedded", async () => {
+    // 準備
+    const data = document.createElement("script");
+    data.type = "application/json";
+    data.id = "mindmap-data";
+    data.textContent = JSON.stringify(RECORDS);
+    document.body.append(data);
+    // 実行
+    renderRoute("/x/export.html#/?tab=tasks&id=T-1&panel=display");
+    // 検証
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    expect(await screen.findByText("表示する種類")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^コメント/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^保存待ち/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "タスクの項目を追加" })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: "編集する" })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: /確認済み/ })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("textbox")).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: "T-1 のコメントの一覧を開く" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "ワークスペースの既定にする" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "設定を編集する" })).not.toBeInTheDocument();
   });
 });
