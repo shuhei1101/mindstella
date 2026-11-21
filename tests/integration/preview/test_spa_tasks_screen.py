@@ -13,11 +13,25 @@ from workspace_fixtures import MakeEdit, MakeItem
 # スクロールできるだけの数のタスク
 MANY_TASKS = 60
 
+# 保存領域の表のスクロール位置が、表の今の位置と同じになったか
+SAVED_SCROLL_JS = """(selector) => {
+    const top = document.querySelector(selector)?.scrollTop;
+    return top > 0 && Object.entries(sessionStorage).some(
+        ([name, value]) => name.startsWith('mindmap-list-scroll') && JSON.parse(value)['tasks:table']?.top === top
+    );
+}"""
+
+# 表のスクロール領域で見出しの下に最初に見えている行の ID
+FIRST_VISIBLE_ROW_JS = """(selector) => {
+    const area = document.querySelector(selector);
+    if (area === null) return null;
+    const head = area.querySelector('thead')?.getBoundingClientRect().bottom ?? area.getBoundingClientRect().top;
+    const row = [...area.querySelectorAll('tbody tr[data-id]')].find((tr) => tr.getBoundingClientRect().bottom > head + 1);
+    return row?.dataset.id ?? null;
+}"""
+
 # 表のスクロール領域
 TABLE_SCROLL_SELECTOR = "[data-kind='tasks'] .overflow-auto"
-
-# スクロールの位置が保存領域に書かれるまで待つミリ秒
-SCROLL_SAVE_WAIT_MS = 200
 
 
 def test_board_columns(page: Page, spa_preview: str) -> None:
@@ -285,20 +299,21 @@ def test_filters_kept_in_tab(page: Page, write_preview: WritePreview, make_item:
 
 
 def test_table_scroll_restored(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
-    """表をスクロールしてほかの画面へ移り、戻ると離れたときの位置へ戻す（正常系）。"""
+    """表をスクロールしてほかの画面へ移り、戻ると離れたときに見えていた行の位置へ戻す（正常系）。"""
     # 準備
     url = write_preview(*(make_item(f"T-{number}", title=f"タスク {number}", status="未着手") for number in range(1, MANY_TASKS + 1)))
     page.set_viewport_size({"width": 1280, "height": 600})
     open_spa(page, url, "?tab=tasks&view=table")
     area = page.locator(TABLE_SCROLL_SELECTOR)
-    before = area.evaluate("(node) => { node.scrollTop = 300; node.dispatchEvent(new Event('scroll')); return node.scrollTop; }")
-    page.wait_for_timeout(SCROLL_SAVE_WAIT_MS)
+    area.evaluate("(node) => { node.scrollTop = 300; node.dispatchEvent(new Event('scroll')); }")
+    page.wait_for_function(SAVED_SCROLL_JS, arg=TABLE_SCROLL_SELECTOR)
+    left_row = page.evaluate(FIRST_VISIBLE_ROW_JS, TABLE_SCROLL_SELECTOR)
     # 実行
     page.get_by_role("link", name="検討事項").click()
     page.go_back()
     # 検証
-    assert before > 0
+    assert left_row not in (None, "T-1")
     expect(page.locator("tbody tr[data-id='T-1']")).to_be_attached()
     page.wait_for_function(
-        "([selector, top]) => document.querySelector(selector)?.scrollTop === top", arg=[TABLE_SCROLL_SELECTOR, before]
+        f"([selector, row]) => ({FIRST_VISIBLE_ROW_JS})(selector) === row", arg=[TABLE_SCROLL_SELECTOR, left_row]
     )
