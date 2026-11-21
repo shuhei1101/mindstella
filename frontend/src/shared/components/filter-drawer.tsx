@@ -33,12 +33,12 @@ export type FilterDrawerProps = {
   texts?: { key: string; label: string; value: string }[];
   tagMatch?: TagMatch;
   onTagMatchChange?: (match: TagMatch) => void;
-  /** 選べるプリセット。選ぶとプリセットのタグでタグの条件を置き換える */
+  /** 選択できるプリセット。選択するとプリセットのタグの式でタグの条件を置き換える */
   presets?: PresetChoice[];
   onApplyPreset?: (name: string) => void;
   /** 今のタグの条件の式。条件が無ければ null */
   tagExpr?: PresetFilter | null;
-  /** タグの条件を式で置き換える。渡すとタグの条件を式で書ける */
+  /** タグの条件を式で置き換える。指定するとタグの条件を詳細で指定できる */
   onTagExprChange?: (expr: PresetFilter | null) => void;
   onToggleValue: (key: string, value: string) => void;
   onClearGroup: (key: string) => void;
@@ -56,7 +56,7 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
       window.clearTimeout(timer.current);
     };
   }, []);
-  // チェックで表せない式はタグの条件を式で書く表示にする
+  // 簡易で表せない式は、タグの条件を詳細の表示にする
   const complex = tagExpr !== null && simpleTagsOf(tagExpr) === null;
   const [writing, setWriting] = useState(complex);
   const exprMode = complex || writing;
@@ -179,8 +179,8 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
               ) : null}
               {group.key === "tags" && onTagExprChange !== undefined ? (
                 <fieldset className="mt-1 ml-1 inline-flex rounded-control border border-border bg-card p-0.5">
-                  <legend className="sr-only">タグの条件の書き方</legend>
-                  {([["check", "チェックで選ぶ"], ["expr", "式で書く"]] as const).map(([value, label]) => (
+                  <legend className="sr-only">タグの条件の指定方法</legend>
+                  {([["check", "簡易"], ["expr", "詳細"]] as const).map(([value, label]) => (
                     <label
                       key={value}
                       className={cn("flex h-7 cursor-pointer items-center rounded-control px-2 text-small hover:bg-accent has-focus-visible:outline-2 has-focus-visible:outline-ring", (value === "expr") === exprMode && "bg-mark-weak font-medium hover:bg-mark-weak", value === "check" && complex && "cursor-not-allowed text-muted-foreground")}

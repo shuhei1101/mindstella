@@ -109,7 +109,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const list = asColumns(columns);
   // 追加する項目は絞り込みに関わらず先頭に置く
   const rows = index.data[kind].filter((item) => !item.id.startsWith(NEW_ID_PREFIX)) as unknown as Row[];
-  // チェックで表せないタグの式は、チェックの条件の代わりに式で絞る
+  // 簡易で表せないタグの式は、簡易の条件の代わりに式で絞る
   const complexExpr = tagExpr !== null && simpleTagsOf(tagExpr) === null ? tagExpr : null;
   const filtered = filterRows({ rows, columns: list, filters, tagMatch }).filter((row) => complexExpr === null || matchesTagExpr(tagNames((row as unknown as Item).tags), complexExpr));
   const exprChip = complexExpr === null ? {} : { tagExprText: describeTagExpr(complexExpr), onClearTagExpr: () => { setTagExpr(null); } };

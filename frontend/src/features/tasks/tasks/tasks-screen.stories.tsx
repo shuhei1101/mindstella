@@ -1,4 +1,4 @@
-// タスクの画面のストーリー。絞り込みのドロワーでプリセットを選び、タグの条件（チェック・式）に入れる前後を並べる
+// タスクの画面のストーリー。絞り込みのドロワーでプリセットを選択し、タグの条件（簡易・詳細）に入れる前後を並べる
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse } from "msw";
 import { expect, userEvent, within } from "storybook/test";
@@ -36,7 +36,7 @@ type Story = StoryObj<typeof meta>;
 /** ドロワーの先頭にプリセットを件数つきで並べる。該当が 0 件の「通知」は破線の枠線で出す */
 export const DrawerPresets: Story = {};
 
-/** ドロワーで「廃止する画面」を選んだ。チェックで表せる式なので、タグのチェックに「画面」「廃止」が入り、組み合わせ方が「すべて含む」になる */
+/** ドロワーで「廃止する画面」を選択した。簡易で表せる式のため、タグのチェックに「画面」「廃止」が入り、組み合わせが「すべて含む」になる */
 export const DrawerPresetApplied: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -45,7 +45,7 @@ export const DrawerPresetApplied: Story = {
   },
 };
 
-/** ドロワーで除外を含む「画面の設計」を選んだ。タグの条件が式で書く表示になり、式を続けて直せる */
+/** ドロワーで除外を含む「画面の設計」を選択した。タグの条件が詳細の表示になり、続けて編集できる */
 export const DrawerExprPresetApplied: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -54,19 +54,19 @@ export const DrawerExprPresetApplied: Story = {
   },
 };
 
-/** 「式で書く」に切り替え、プリセットを選ばずにタグの式を組む */
+/** 「詳細」に切り替え、プリセットを使用せずにタグの条件を組む */
 export const DrawerExprWriting: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("radio", { name: "式で書く" }));
+    await userEvent.click(await canvas.findByRole("radio", { name: "詳細" }));
   },
 };
 
-/** チェックで表せるプリセットを選んでドロワーを閉じた後の一覧。条件のチップは今のタグの絞り込みと同じ表示になる */
+/** 簡易で表せるプリセットを選択してドロワーを閉じた後の一覧。条件のチップは今のタグの絞り込みと同じ表示になる */
 export const AfterPresetApplied: Story = { args: { path: `/?tab=tasks&f.tags=${encodeURIComponent("画面|廃止")}`, screen: WithoutDrawer } };
 
-/** 除外を含む式で絞った後の一覧。条件のチップに式を文で出す */
+/** 除外を含む詳細の条件で絞った後の一覧。条件のチップに条件を文で出す */
 export const AfterExprPresetApplied: Story = { args: { path: `/?tab=tasks&tx=${encodeURIComponent(JSON.stringify(EXPR))}`, screen: WithoutDrawer } };
 
-/** 幅 390px のドロワー（除外を含む式を選んだ） */
+/** 幅 390px のドロワー（除外を含む詳細の条件を選択した） */
 export const DrawerExprNarrow: Story = { ...NARROW, args: { path: `/?tab=tasks&tx=${encodeURIComponent(JSON.stringify(EXPR))}` } };

@@ -20,7 +20,7 @@ export type ScreenFilters = {
   addTag: (tag: string, kindTab?: PreviewTab) => void;
   /** 今のタグの条件の式。条件が無ければ null */
   tagExpr: PresetFilter | null;
-  /** タグの条件を式で置き換える（ほかの条件は残す）。1 つの「含む」の条件はチェックの条件として持つ。null で解除する */
+  /** タグの条件を式で置き換える（ほかの条件は残す）。1 つの「含む」の条件は簡易の条件として持つ。null で解除する */
   setTagExpr: (expr: PresetFilter | null) => void;
 };
 

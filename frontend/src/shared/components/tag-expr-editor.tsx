@@ -1,11 +1,11 @@
-// タグの式の編集。条件（含む・含まない）と束（すべて満たす・どれかを満たす・満たさない）を入れ子で組む
+// タグの条件の詳細の編集。条件（含む・含まない）と束（すべて一致・いずれか一致・一致しない）を入れ子で組む
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Select } from "@/shared/components/ui/select";
 import { MAX_TAG_EXPR_LAYERS, type PresetCondition, type PresetFilter } from "@/shared/core/presets";
 import { cn } from "@/shared/lib/cn";
 
-/** 選べるタグ 1 つ */
+/** 選択できるタグ 1 つ */
 export type TagChoice = { value: string; count: number };
 
 export type TagExprEditorProps = {
@@ -16,7 +16,7 @@ export type TagExprEditorProps = {
 
 type BundleKind = "and" | "or" | "not";
 
-const BUNDLE_LABEL = { and: "すべて満たす", or: "どれかを満たす", not: "満たさない" } as const satisfies Record<BundleKind, string>;
+const BUNDLE_LABEL = { and: "すべて一致", or: "いずれか一致", not: "一致しない" } as const satisfies Record<BundleKind, string>;
 
 const BUNDLE_KINDS: readonly BundleKind[] = ["and", "or", "not"];
 
@@ -54,7 +54,7 @@ const ConditionRow = ({ node, tags, onChange, onRemove }: RowProps & { node: Pre
   <div className="flex flex-col gap-1 rounded-control border border-border-soft p-1.5">
     <div className="flex items-center gap-1">
       <Select
-        aria-label="タグの比べ方"
+        aria-label="タグの比較方法"
         className="w-auto"
         value={node.op}
         onChange={(event) => {
@@ -66,7 +66,7 @@ const ConditionRow = ({ node, tags, onChange, onRemove }: RowProps & { node: Pre
       </Select>
       {node.op === "eq" && node.values.length > 1 ? (
         <Select
-          aria-label="選んだタグの組み合わせ方"
+          aria-label="選択したタグの組み合わせ"
           className="w-auto"
           value={node.match ?? "any"}
           onChange={(event) => {
@@ -74,11 +74,11 @@ const ConditionRow = ({ node, tags, onChange, onRemove }: RowProps & { node: Pre
           }}
         >
           <option value="all">すべて</option>
-          <option value="any">どれか</option>
+          <option value="any">いずれか</option>
         </Select>
       ) : null}
       {onRemove === null ? null : (
-        <Button variant="ghost" size="icon" aria-label="条件を削除" className="ml-auto" onClick={onRemove}>
+        <Button variant="ghost" size="icon" aria-label="条件削除" className="ml-auto" onClick={onRemove}>
           <Icon name="x" />
         </Button>
       )}
@@ -124,7 +124,7 @@ const Node = ({ node, tags, layer, onChange, onRemove }: RowProps & { node: Pres
     <div className={cn("flex flex-col gap-1.5", layer > 1 && "rounded-control border border-border p-1.5")}>
       <div className="flex items-center gap-1">
         <Select
-          aria-label="条件の組み合わせ方"
+          aria-label="条件の組み合わせ"
           className="w-auto"
           value={kind}
           onChange={(event) => {
@@ -139,7 +139,7 @@ const Node = ({ node, tags, layer, onChange, onRemove }: RowProps & { node: Pres
           ))}
         </Select>
         {onRemove === null ? null : (
-          <Button variant="ghost" size="icon" aria-label="グループを削除" className="ml-auto" onClick={onRemove}>
+          <Button variant="ghost" size="icon" aria-label="グループ削除" className="ml-auto" onClick={onRemove}>
             <Icon name="x" />
           </Button>
         )}

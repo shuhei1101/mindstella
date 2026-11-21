@@ -1,7 +1,7 @@
 // タグの式（絞り込みのプリセットと画面のタグの条件）の適用・表示・プリセットの並びの計算
 import type { TagMatch } from "@/shared/core/filters";
 
-/** タグを比べる条件。`ne` は選んだタグをどれも持たない、`eq` は `match` が `all` なら全て、それ以外はどれかを持つ */
+/** タグを比べる条件。`ne` は選択したタグをどれも持たない、`eq` は `match` が `all` なら全て、それ以外はどれかを持つ */
 export type PresetCondition = { field: "tags"; op: "eq" | "ne"; values: string[]; match?: "any" | "all" };
 
 /** タグの式の束 */
@@ -26,7 +26,7 @@ const matchesNode = (names: ReadonlySet<string>, node: PresetFilter): boolean =>
   const values = node.values.map(normalizeTag);
   // 値の無い条件は絞らない
   if (values.length === 0) return true;
-  // タグの無い項目も、選んだタグをどれも持たないので合う
+  // タグの無い項目も、選択したタグをどれも持たないので合う
   if (node.op === "ne") return values.every((value) => !names.has(value));
   if (node.match === "all") return values.every((value) => names.has(value));
   return values.some((value) => names.has(value));
@@ -68,7 +68,7 @@ export const simpleTagsOf = (filter: PresetFilter): { tags: string[]; match: Tag
 const describeNode = (node: PresetFilter): string => {
   if ("and" in node) return node.and.map((child) => wrap(child)).join(" かつ ");
   if ("or" in node) return node.or.map((child) => wrap(child)).join(" または ");
-  if ("not" in node) return `（${describeNode(node.not)}）でない`;
+  if ("not" in node) return `（${describeNode(node.not)}）以外`;
   const joint = node.match === "all" ? "と" : "か";
   const names = node.values.map((value) => `「${value}」`).join(joint);
   return node.op === "ne" ? `${names}を含まない` : `${names}を含む`;
