@@ -73,7 +73,7 @@ functions:
         description: '`table` は mdmark の表の機能をオンで指定するか（省くと真。スレッドの書き込みでは偽）'
     returns:
       type: HTMLElement
-      description: 描いた本文（class `mdmark`）。mdmark が読めないときは、`libraryNotice` と原文の `pre` を持つ要素
+      description: 描いた本文（class `mdmark`）。mdmark が読めないときと、mdmark の `mount` が例外を投げたとき（部品の読み込みを差し替えられないタグの mdmark を中に持つ配る書き出しで map の範囲を描いたときなど）は、例外を投げずに `libraryNotice`（mdmark）と原文の `pre` を持つ要素
     unit_tests:
       - name: test_render_markdown_when_code_block
         case: 正常
@@ -81,6 +81,12 @@ functions:
         condition: mdmark の `mount` を、mdmark と同じ属性を持つ言語指定 `json` のコードブロックと言語指定の無いコードブロック・属性を持たない字下げのコードブロック・mermaid のコードブロック・`.mdmark-html` の中の `pre`・`.mdmark-map` の中の mermaid のコードブロックを描く代わりのものにする
         mock: 描画のライブラリ（`@/shared/adapters/libraries`）
         expected: '範囲の外の 3 つのコードブロックの `pre` が `tabindex="0"` を持ち、`aria-label` は順に `コード: json`・`コード`・`コード`。`role` は持たない。図の入れ物の `pre.dg-raw` と範囲の中の `pre` は `tabindex` を持たない。`.mdmark-map` の中の mermaid のコードブロックは図の入れ物にならない'
+      - name: test_render_markdown_when_mount_failed
+        case: 異常
+        summary: 描けない本文を原文にする
+        condition: mdmark は読めているが `mount` が例外を投げる
+        mock: 描画のライブラリ（`@/shared/adapters/libraries`）
+        expected: 例外を投げず、mdmark の名前を持つ知らせと、原文をそのまま持つ `pre.md-raw` を返す
     container: frontend/src/shared/core/body-links.ts
   - name: resolveFileSources
     title: 本文のファイルのパスの解決
