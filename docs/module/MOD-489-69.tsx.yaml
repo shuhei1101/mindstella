@@ -7,4 +7,11 @@ components:
     kind: コンポーネント
     usecase: 項目を表で絞り込む
     summary: 部品設計『絞り込みの条件のチップ.tsx』の props・イベント・状態を持つ
+    unit_tests:
+      - name: test_filter_chips_when_tag_expr
+        case: 正常
+        summary: タグの条件の式のチップ
+        condition: '`tagExprText` と `onClearTagExpr` を渡し、先頭のチップの × を押す'
+        mock: なし
+        expected: '先頭に「タグ: {文}」のチップがあり、`onClearTagExpr` が呼ばれる'
     container: frontend/src/shared/components/filter-chips.tsx

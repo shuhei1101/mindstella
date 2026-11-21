@@ -1748,6 +1748,9 @@ files:
   description: タグの式（プリセットと画面のタグの条件）を項目のタグに適用し、条件のチップの文にし、ドロワーに並べるプリセットの件数を数える。タグの式の扱いを変更するときに参照する。
   tags:
   - tool:react
+  related:
+  - to: MOD-659-1
+    type: implements
 - path: src/features/tasks/tasks/tasks-screen.stories.tsx
   name: タスクの画面のストーリー
   description: タスクの画面の、絞り込みのドロワーでプリセットを選びタグの条件（チェック・式）に入れる前後のストーリー。プリセットとタグの式の状態を確認・追加するときに参照する。
@@ -1773,6 +1776,9 @@ files:
   description: 条件（含む・含まない）と束（すべて満たす・どれかを満たす・満たさない）を入れ子で組み、タグの式を編集する部品。タグの式の編集の見た目や操作を変更するときに参照する。
   tags:
   - tool:react
+  related:
+  - to: MOD-659-2
+    type: implements
 - path: src/shared/components/tag-expr-editor.stories.tsx
   name: タグの式の編集のストーリー
   description: タグの式の編集の状態ごとのストーリー。タグの式の編集の状態を確認・追加するときに参照する。

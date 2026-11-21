@@ -6,7 +6,7 @@ functions:
     title: search の読み書き
     kind: フック
     usecase: プレビューを開く
-    summary: '`getRouteApi` の search と、`openItem`（積む）・`closeItem`・`setView`・`setFilters`・`setSort`・`setDiff`・`setPanel`・`setComments`（コメントの一覧の `thread`・`review`・`tstatus`・`ttag`・`ttarget`）・`openItemComments`（詳細パネルのコメントの一覧のボタン。`panel=comments`・`ttarget={ID}` にして `thread`・`review` を外し、コメントの一覧を開いたままなら `tstatus`・`ttag` を残す）・`setSearch`（全体の検索の `search`・`q`）（置き換える）と、`openFromSearch`（全体の検索の結果の項目を開く。画面が今と違えば積み、同じなら置き換える。`diff` と左のパネルを残す。外枠の単体テストが確かめる）を返す。見てきた項目の履歴は `history.state.trail` に残し、`canBack`・`canForward` を返す'
+    summary: '`getRouteApi` の search と、`openItem`（積む）・`closeItem`・`setView`・`setFilters`・`setTagCondition`（`f`・`tagmatch`・`tx` を 1 回の移動で書く）・`setSort`・`setDiff`・`setPanel`・`setComments`（コメントの一覧の `thread`・`review`・`tstatus`・`ttag`・`ttarget`）・`openItemComments`（詳細パネルのコメントの一覧のボタン。`panel=comments`・`ttarget={ID}` にして `thread`・`review` を外し、コメントの一覧を開いたままなら `tstatus`・`ttag` を残す）・`setSearch`（全体の検索の `search`・`q`）（置き換える）と、`openFromSearch`（全体の検索の結果の項目を開く。画面が今と違えば積み、同じなら置き換える。`diff` と左のパネルを残す。外枠の単体テストが確かめる）を返す。見てきた項目の履歴は `history.state.trail` に残し、`canBack`・`canForward` を返す'
     returns:
       type: PreviewSearchApi
       description: search と操作
@@ -28,7 +28,13 @@ functions:
         summary: 画面の移動
         condition: '`setTab(''tasks'')`'
         mock: ルーターのメモリの履歴
-        expected: '`id`・`diff` が残り、`view`・`f.{列}`・`sort` が外れる'
+        expected: '`id`・`diff` が残り、`view`・`f.{列}`・`tagmatch`・`tx`・`sort` が外れる'
+      - name: test_use_preview_search_when_set_tag_condition
+        case: 正常
+        summary: タグの条件をまとめて置き換える
+        condition: "`f.tags=画面` の画面で `setTagCondition({f: {status: '未着手'}, tagmatch: undefined, tx: '{...}'})`"
+        mock: ルーターのメモリの履歴
+        expected: 履歴の数が同じで、`f.tags` が無く `f.status=未着手` と `tx` がある
       - name: test_use_preview_search_when_set_comments
         case: 正常
         summary: コメントの一覧の中の移動は置き換える

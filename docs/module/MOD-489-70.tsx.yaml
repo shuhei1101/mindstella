@@ -16,6 +16,18 @@ components:
         condition: チェックボックスを押す
         mock: なし
         expected: '`onToggleValue` が key と値で呼ばれる'
+      - name: test_filter_drawer_when_preset
+        case: 正常
+        summary: プリセットを選ぶ
+        condition: '`presets` に 0 件の「通知」を含む 2 件を渡し、「画面の設計」のボタンを押す'
+        mock: なし
+        expected: '`onApplyPreset` が「画面の設計」で呼ばれ、「通知」のボタンに「0 件」の文字があり `aria-pressed` が偽'
+      - name: test_filter_drawer_when_tag_detail
+        case: 正常
+        summary: 簡易で表せない式は詳細で出す
+        condition: '`tagExpr` に「画面」を含み「廃止」を含まない式を渡す'
+        mock: なし
+        expected: 指定方法の「詳細」が選ばれ「簡易」が無効で、タグのチェックボックスの代わりにタグの条件の詳細がある
     container: frontend/src/shared/components/filter-drawer.tsx
 notes:
   単体テスト: 同じフォルダの `filter-drawer.test.tsx` に置く（knowledge の規約『フォルダ構成』）
