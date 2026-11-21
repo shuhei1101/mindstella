@@ -50,9 +50,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-21T12:10:55.797272+00:00'
   - process: インターフェース定義設計
-    status: todo
+    status: done
     updated_by: planner
-    updated_at: '2026-11-21T12:53:24.227284+00:00'
+    updated_at: '2026-11-21T13:51:34.835409+00:00'
     note: IF-489-70（プレビューを開く）の制約『本文の差分の並べ方』を削除し、『端末の保存領域』から本文の差分の並べ方を外す（左右に並べる表示の削除。確認ログ）。サーバーの API と記録の取得は変えない
   - process: エージェント・MCP サーバー設計
     status: skipped
