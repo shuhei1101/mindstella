@@ -1727,3 +1727,44 @@ files:
   related:
   - to: MOD-649-2
     type: implements
+- path: src/shared/core/presets.ts
+  name: 絞り込みのプリセットの計算
+  description: タグの式（プリセットと画面のタグの条件）を項目のタグに適用し、条件のチップの文にし、ドロワーに並べるプリセットの件数を数える。タグの式の扱いを変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-659-1
+    type: implements
+- path: src/features/tasks/tasks/tasks-screen.stories.tsx
+  name: タスクの画面のストーリー
+  description: タスクの画面の、絞り込みのドロワーでプリセットを選びタグの条件（チェック・式）に入れる前後のストーリー。プリセットとタグの式の状態を確認・追加するときに参照する。
+  tags:
+  - tool:react
+- path: src/testing/msw/browser.ts
+  name: Storybook の MSW の worker
+  description: Storybook で共有する MSW の worker。ストーリーごとに応答を差し替えるときに参照する。
+  tags:
+  - tool:react
+- path: src/testing/msw/story-records.ts
+  name: 画面のストーリーの記録
+  description: 画面のストーリーが MSW で返却する記録。画面のストーリーのデータを変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/testing/story-router.tsx
+  name: 画面のストーリーのルーター
+  description: 画面のストーリーを URL の search を持つメモリの履歴のルーターで描く。画面のストーリーの開き方を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/tag-expr-editor.tsx
+  name: タグの式の編集
+  description: 条件（含む・含まない）と束（すべて満たす・どれかを満たす・満たさない）を入れ子で組み、タグの式を編集する部品。タグの式の編集の見た目や操作を変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-659-2
+    type: implements
+- path: src/shared/components/tag-expr-editor.stories.tsx
+  name: タグの式の編集のストーリー
+  description: タグの式の編集の状態ごとのストーリー。タグの式の編集の状態を確認・追加するときに参照する。
+  tags:
+  - tool:react

@@ -1,0 +1,183 @@
+id: MOD-659-1
+title: プレビュー / presets
+lead: タグの式（絞り込みのプリセットと画面のタグの条件）の読み取り・項目への当てはめ・文への変換と、ドロワーに並べるプリセットの組み立て。
+data_models:
+  - name: PresetFilter
+    title: タグの式
+    usecase: 項目を表で絞り込む
+    role: 型
+    summary: タグの式。条件（`field`・`op`（`eq`・`ne`）・`values`・`match`）か、`and`・`or`・`not` の束。『記録の取得』の `settings.presets[].filter` と同じ構造
+    properties:
+      - name: field
+        type: "'tags'"
+        description: 比べる項目
+      - name: op
+        type: "'eq' | 'ne'"
+        description: '`eq` は選択したタグを持つ、`ne` はどれも持たない'
+      - name: values
+        type: string[]
+        description: タグ
+      - name: match
+        type: "'any' | 'all' | undefined"
+        description: '`eq` の組み合わせ。`all` は全て、それ以外はどれか'
+    container: frontend/src/shared/core/presets.ts
+constants:
+  - name: MAX_TAG_EXPR_LAYERS
+    title: タグの式の入れ子の上限
+    container: frontend/src/shared/core/presets.ts
+    summary: タグの式の束の入れ子の深さの上限（最上位の束を 1 レイヤーとする）。knowledge の規約『フィルター・照合条件の構造』の入れ子の深さに合わせ、部品『タグの条件の詳細』が「グループ追加」を出すかの判定に使う
+    value: '3'
+    usecase: 項目を表で絞り込む
+functions:
+  - name: parseTagExpr
+    title: URL のタグの式の読み取り
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: URL の `tx` の JSON を読み、式の構造に合えば式、JSON として読めないか構造に合わなければ null を返す
+    args:
+      - name: text
+        type: string
+        required: true
+        description: '`tx` の値'
+    returns:
+      type: PresetFilter | null
+      description: 式
+    unit_tests:
+      - name: test_parse_tag_expr
+        case: 正常
+        summary: 束を持つ式を読む
+        condition: '`and` の束に `eq` と `ne` の条件を持つ JSON'
+        mock: なし
+        expected: 同じ構造の式
+      - name: test_parse_tag_expr_when_invalid
+        case: 異常
+        summary: 読めない値
+        condition: '`parametrize`: JSON でない文字列 / `op` が `gt` の条件 / `values` に数を持つ条件'
+        mock: なし
+        expected: 'null'
+    container: frontend/src/shared/core/presets.ts
+  - name: matchesTagExpr
+    title: タグの式の判定
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: 項目のタグが式に合うかを返す。タグは NFKC と小文字にそろえて比べる。値の無い条件は絞らない。`ne` はタグの無い項目にも合う
+    args:
+      - name: tags
+        type: readonly string[]
+        required: true
+        description: 項目のタグの名前
+      - name: filter
+        type: PresetFilter
+        required: true
+        description: 式
+    returns:
+      type: boolean
+      description: 合えば真
+    unit_tests:
+      - name: test_matches_tag_expr
+        case: 正常
+        summary: 含むと含まないの組み合わせ
+        condition: '「画面」を含み「廃止」を含まない式と、`parametrize`: [画面] / [画面, 廃止] / []'
+        mock: なし
+        expected: 真 / 偽 / 偽
+      - name: test_matches_tag_expr_when_nested
+        case: 正常
+        summary: 入れ子の束と表記の揺れ
+        condition: '「保存」を含む、または「画面」と「廃止」を全て含む式と、`parametrize`: [保存] / [ｶﾞﾒﾝ]（「画面」と別の語） / [画面, 廃止]'
+        mock: なし
+        expected: 真 / 偽 / 真
+    container: frontend/src/shared/core/presets.ts
+  - name: simpleTagsOf
+    title: 簡易で表せる式の読み取り
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: 式が 1 つの「含む」の条件なら、タグの並びと組み合わせ方（`match` が `all` なら `all`、それ以外は `any`）を返し、それ以外は null を返す
+    args:
+      - name: filter
+        type: PresetFilter
+        required: true
+        description: 式
+    returns:
+      type: '{ tags: string[]; match: TagMatch } | null'
+      description: タグと組み合わせ方
+    unit_tests:
+      - name: test_simple_tags_of
+        case: 正常
+        summary: 簡易で表せる式と表せない式
+        condition: '`parametrize`: 「画面」「廃止」を全て含む条件 / `ne` の条件 / `and` の束'
+        mock: なし
+        expected: '`{tags: [画面, 廃止], match: all}` / null / null'
+    container: frontend/src/shared/core/presets.ts
+  - name: tagExprOf
+    title: 簡易の条件からの式
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: 'タグの並びと組み合わせ方から、1 つの「含む」の条件の式を作る（`all` のときだけ `match: all` を付ける）。`use-screen-filters` が `f.tags`・`tagmatch` から今のタグの条件の式を作るときに使う'
+    args:
+      - name: tags
+        type: '{ tags: readonly string[]; match: TagMatch }'
+        required: true
+        description: タグの並びと組み合わせ方
+    returns:
+      type: PresetCondition
+      description: 1 つの「含む」の条件
+    unit_tests:
+      - name: test_tag_expr_of
+        case: 正常
+        summary: 組み合わせ方ごとの条件
+        condition: '`parametrize`: `{tags: [画面, 廃止], match: all}` / `{tags: [画面], match: any}`'
+        mock: なし
+        expected: '`match: all` を持つ「含む」の条件 / `match` を持たない「含む」の条件'
+    container: frontend/src/shared/core/presets.ts
+  - name: describeTagExpr
+    title: タグの式の文
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: 式を条件のチップに出す文にする。条件は「「{タグ}」を含む / を含まない」（複数のタグは `all` なら「と」、それ以外は「か」でつなぐ）、`and` は「かつ」、`or` は「または」でつなぎ、入れ子の束は括弧で囲み、`not` は「（…）以外」にする
+    args:
+      - name: filter
+        type: PresetFilter
+        required: true
+        description: 式
+    returns:
+      type: string
+      description: 文
+    unit_tests:
+      - name: test_describe_tag_expr
+        case: 正常
+        summary: 束と否定の文
+        condition: '`parametrize`: 「画面」を含み「廃止」を含まない式 / `not` で「通知」を含む条件を包んだ式'
+        mock: なし
+        expected: '「「画面」を含む かつ 「廃止」を含まない」 / 「（「通知」を含む）以外」'
+    container: frontend/src/shared/core/presets.ts
+  - name: presetChoicesOf
+    title: ドロワーに並べるプリセット
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: 設定のプリセットを並び順のまま、画面の項目のうち式に合う件数（`matchesTagExpr`）と、今のタグの条件の式がプリセットの式と同じか（`applied`）を添えて返す
+    args:
+      - name: presets
+        type: readonly Preset[]
+        required: true
+        description: 記録の取得の `settings.presets`
+      - name: rowTags
+        type: readonly (readonly string[])[]
+        required: true
+        description: 画面の項目ごとのタグの名前
+      - name: current
+        type: PresetFilter | null
+        required: true
+        description: 今のタグの条件の式
+    returns:
+      type: PresetChoice[]
+      description: プリセットの名前・説明・件数・`applied`
+    unit_tests:
+      - name: test_preset_choices_of
+        case: 正常
+        summary: 件数と選択済み
+        condition: プリセット「画面の設計」「通知」と 4 件の項目、今の式が「画面の設計」と同じ
+        mock: なし
+        expected: '「画面の設計」は件数が合う項目の数で `applied` が真、「通知」は 0 件で `applied` が偽'
+    container: frontend/src/shared/core/presets.ts
+notes:
+  単体テスト: 同じフォルダの `presets.test.ts` に置く（knowledge の規約『フォルダ構成』）

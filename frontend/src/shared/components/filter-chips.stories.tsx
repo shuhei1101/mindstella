@@ -23,3 +23,8 @@ export const TagMatchAll: Story = {
 export const TagMatchAny: Story = {
   args: { filters: { status: ["未着手"], tags: ["保存", "画面"] }, tagMatch: "any" },
 };
+
+/** 簡易で表せないタグの条件で絞った。先頭に式を文にしたチップと、状態のチップを並べる */
+export const TagExpr: Story = {
+  args: { filters: { status: ["未着手"] }, tagExprText: "「画面」を含む かつ 「廃止」を含まない", onClearTagExpr: fn() },
+};

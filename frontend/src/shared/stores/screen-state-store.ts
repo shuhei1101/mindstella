@@ -19,6 +19,8 @@ const LEGACY_KEYS = ["filters", "diffSel"] as const;
 export type ScreenState = {
   filters?: Record<string, Filters>;
   tagMatch?: Record<string, TagMatch>;
+  /** 画面 → 簡易で表せないタグの条件の式（URL の `tx` と同じ JSON） */
+  tagExpr?: Record<string, string>;
   diffSel?: string | null;
 };
 
@@ -43,6 +45,9 @@ const sanitize = (value: unknown): ScreenState => {
   }
   if (isRecord(value["tagMatch"])) {
     state.tagMatch = Object.fromEntries(Object.entries(value["tagMatch"]).filter((entry): entry is [string, TagMatch] => entry[1] === "all" || entry[1] === "any"));
+  }
+  if (isRecord(value["tagExpr"])) {
+    state.tagExpr = Object.fromEntries(Object.entries(value["tagExpr"]).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
   }
   if (typeof value["diffSel"] === "string" || value["diffSel"] === null) state.diffSel = value["diffSel"];
   return state;

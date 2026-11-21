@@ -2,6 +2,7 @@
 import { z } from "zod";
 
 import { bodyFormatOf, type Kind, type RecordIndex } from "@/shared/core/records";
+import { parseTagExpr } from "@/shared/core/presets";
 
 /** 画面が持つ表示形式 */
 const VIEWS_OF_TAB: Record<string, readonly string[]> = {
@@ -29,6 +30,8 @@ export const PreviewSearchSchema = z.object({
   search: z.enum(["1"]).optional().catch(undefined),
   q: z.string().optional().catch(undefined),
   tagmatch: z.enum(["any"]).optional().catch(undefined),
+  /** チェックで表せないタグの式（JSON） */
+  tx: z.string().optional().catch(undefined),
   f: z.record(z.string(), z.string()).catch({}),
 });
 
@@ -127,5 +130,7 @@ export const normalizeSearch = (search: PreviewSearch, context: SearchContext): 
   if (next.search === undefined || next.q?.trim() === "") delete next.q;
   // タグの条件が無い: 組み合わせ方を外す
   if (next.f["tags"] === undefined) delete next.tagmatch;
+  // タグの式として読めない値は外す
+  if (next.tx !== undefined && parseTagExpr(next.tx) === null) delete next.tx;
   return next;
 };

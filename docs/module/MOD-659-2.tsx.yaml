@@ -1,0 +1,27 @@
+id: MOD-659-2
+title: プレビュー / tag-expr-editor
+lead: 部品設計『タグの条件の詳細』の props・イベント・状態を持つ。
+components:
+  - name: TagExprEditor
+    title: タグの条件の詳細
+    kind: コンポーネント
+    usecase: 項目を表で絞り込む
+    summary: 部品設計『タグの条件の詳細』の props・イベント・状態を持つ。束は `select` で「すべて一致・いずれか一致・一致しない」を切り替え（`switchBundle`。「一致しない」へは子が 2 つ以上なら `and` に包み、戻すときは包んだ `and` の子を展開する）、子を入れ子で並べる（3 レイヤー目では「グループ追加」を出さない）。条件のタグは部品『チップの入力』（`ChipsInput`）に候補と、候補に無いタグを断る `validate` を渡す
+    refs:
+      - CMP-659-1#
+    unit_tests:
+      - name: test_tag_expr_editor_when_not
+        case: 正常
+        summary: 「一致しない」への切り替えで条件を残す
+        condition: 3 つの条件を持つ「すべて一致」を「一致しない」に切り替え、続けて「すべて一致」に戻す
+        mock: なし
+        expected: 1 回目の `onChange` が `not` の子に 3 つの条件を持つ `and` を渡し、2 回目が 3 つの条件を持つ `and` を渡す
+      - name: test_tag_expr_editor_when_unknown_tag
+        case: 異常
+        summary: 候補に無いタグ
+        condition: タグの入力欄に候補に無いタグを入れて Enter を押す
+        mock: なし
+        expected: '`onChange` が呼ばれず、入力欄の直下に「該当するタグはありません」が出る'
+    container: frontend/src/shared/components/tag-expr-editor.tsx
+notes:
+  単体テスト: 同じフォルダの `tag-expr-editor.test.tsx` に置く（knowledge の規約『フォルダ構成』）

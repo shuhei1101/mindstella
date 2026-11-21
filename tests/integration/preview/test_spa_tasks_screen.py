@@ -317,3 +317,47 @@ def test_table_scroll_restored(page: Page, write_preview: WritePreview, make_ite
     page.wait_for_function(
         f"([selector, row]) => ({FIRST_VISIBLE_ROW_JS})(selector) === row", arg=[TABLE_SCROLL_SELECTOR, left_row]
     )
+
+
+# 単一ユースケース『項目を表で絞り込む』の『プリセットで開く』のプリセット
+_PRESETS = [
+    {"name": "画面の設計", "filter": {"and": [{"field": "tags", "op": "eq", "values": ["画面"]}, {"field": "tags", "op": "ne", "values": ["廃止"]}]}},
+    {"name": "廃止する画面", "filter": {"field": "tags", "op": "eq", "values": ["画面", "廃止"], "match": "all"}},
+    {"name": "通知", "filter": {"field": "tags", "op": "eq", "values": ["通知"]}},
+]
+
+
+def test_drawer_presets(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """ドロワーでプリセットを選ぶと、簡易で表せる式は簡易に、表せない式は詳細に入り、状態の条件は残る（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("T-1", title="一覧の画面を作る", status="未着手", tags=_tags("画面")),
+        make_item("T-2", title="廃止した画面を削除する", status="未着手", tags=_tags("画面", "廃止")),
+        make_item("T-3", title="詳細パネルを作る", status="完了", tags=_tags("画面")),
+        make_item("T-4", title="保存の形式を調べる", status="未着手", tags=_tags("データ")),
+        settings={"summary": "絞り込みのプリセット", "links": [], "presets": _PRESETS},
+    )
+    open_spa(page, url, "?tab=tasks&f.status=%E6%9C%AA%E7%9D%80%E6%89%8B")
+    page.get_by_role("button", name="絞り込み").click()
+    dialog = page.get_by_role("dialog", name="絞り込み")
+    # 検証（0 件のプリセットも選択できるまま並ぶ）
+    expect(dialog.get_by_role("button", name="通知 0 件")).to_be_enabled()
+    # 実行
+    dialog.get_by_role("button", name=re.compile("廃止する画面")).click()
+    # 検証（簡易で表せる式）
+    expect(page).to_have_url(re.compile(r"f\.tags=%E7%94%BB%E9%9D%A2(%7C|\|)%E5%BB%83%E6%AD%A2"))
+    expect(page.locator("[data-card]")).to_have_count(1)
+    expect(dialog.get_by_role("button", name=re.compile("廃止する画面"))).to_have_attribute("aria-pressed", "true")
+    # 実行
+    dialog.get_by_role("button", name=re.compile("画面の設計")).click()
+    # 検証（簡易で表せない式）
+    expect(page).to_have_url(re.compile(r"tx="))
+    expect(dialog.get_by_role("radio", name="詳細")).to_be_checked()
+    expect(page.locator("[data-card]")).to_have_count(1)
+    expect(page.get_by_text("T-1", exact=True).first).to_be_visible()
+    # 実行
+    dialog.get_by_role("button", name="絞り込みを閉じる").click()
+    page.reload()
+    # 検証（再読み込みしても同じ条件で、式のチップを出す）
+    expect(page.locator("[data-card]")).to_have_count(1)
+    expect(page.get_by_role("button", name="タグ: 「画面」を含む かつ 「廃止」を含まない の条件を解除")).to_be_visible()

@@ -1,0 +1,45 @@
+id: CMP-659-1
+title: タグの条件の詳細
+lead: 絞り込みのドロワーのタグの条件の詳細で、タグの条件（含む・含まない）と束（すべて一致・いずれか一致・一致しない）を入れ子で組んでタグの式を編集する。条件のタグは、選択したタグだけをチップで出し、残りは候補つきの入力欄から追加する。
+implementation: frontend/src/shared/components/tag-expr-editor.tsx#TagExprEditor
+story: Shared/TagExprEditor
+args:
+  - name: expr
+    type: オブジェクト
+    required: true
+    description: 編集するタグの式（『記録の取得』の `settings.presets[].filter` と同じ構造）。最上位が条件のときは「すべて一致」の束に入れて出す
+  - name: tags
+    type: オブジェクトの配列
+    required: true
+    description: 選択できるタグ（`value`・`count`）。条件のタグの入力欄の候補にし、候補に無いタグは追加しない
+events:
+  - name: 式の変更
+    when: 比較方法・組み合わせ・タグの追加と解除・条件とグループの追加と削除をしたとき
+    value: '`onChange(expr)`（引数は変えた後の式）'
+    description: 使う側が式を受けて画面を再描画する。「一致しない」に切り替えるときは、子が 2 つ以上なら「すべて一致」の束に包んで 1 つの子にし、戻すときはその束の子を展開する（条件を消さない）
+states:
+  - name: Empty
+    description: 条件が 1 つで、タグを選択していない。入力欄だけを出す
+    args:
+      - name: expr
+        value: '{"and": [{"field": "tags", "op": "eq", "values": []}]}'
+  - name: IncludeExclude
+    description: 「画面」を含み「廃止」を含まない。条件ごとに比較方法の選択とタグのチップと入力欄を出す
+    args:
+      - name: expr
+        value: '{"and": [{"field": "tags", "op": "eq", "values": ["画面"]}, {"field": "tags", "op": "ne", "values": ["廃止"]}]}'
+  - name: Nested
+    description: グループを入れ子にした式。入れ子のグループは枠線で囲み、左の線で子を字下げする。3 レイヤー目では「グループ追加」を出さない
+    args:
+      - name: expr
+        value: '{"or": [{"field": "tags", "op": "eq", "values": ["保存"]}, {"and": [{"field": "tags", "op": "eq", "values": ["画面", "廃止"], "match": "all"}]}]}'
+  - name: ManyTags
+    description: 選択できるタグが 50 件。選択したタグだけをチップで出し、残りは入力欄の候補から追加する
+accessibility:
+  - 比較方法・組み合わせ・選択したタグの組み合わせは `select` にし、読み上げ名を「タグの比較方法」「条件の組み合わせ」「選択したタグの組み合わせ」にする
+  - 削除のボタンに「条件削除」「グループ削除」の読み上げ名を付ける
+  - タグの入力欄は部品設計『値を並べるキーの入力』と同じく、チップの × に「{タグ} を解除」の読み上げ名を付け、候補に無いタグを入れたら入力欄の直下に「該当するタグはありません」を出す
+refs:
+  - CMP-489-18#
+  - CMP-489-46#
+test_file: tests/integration/storybook_react/test_tag_expr_editor_stories.py

@@ -13,9 +13,10 @@ import { ViewSwitch, type View } from "@/shared/components/view-switch";
 import { removedOf } from "@/shared/core/diff";
 import { NEW_ID_PREFIX, type ScreenEdit } from "@/shared/core/edits";
 import { isEmbedded } from "@/shared/core/embedded";
-import { TEXT_FILTER_PREFIX, withoutKey, type Filters, type TagMatch } from "@/shared/core/filters";
+import { TAG_FILTER_KEY, TEXT_FILTER_PREFIX, withoutKey, type Filters, type TagMatch } from "@/shared/core/filters";
 import { drawerGroups, filterRows, nextSort, sortRows, type ListColumn } from "@/shared/core/list-rows";
-import { KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
+import { describeTagExpr, matchesTagExpr, presetChoicesOf, simpleTagsOf } from "@/shared/core/presets";
+import { KIND_LABEL, tagNames, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 import { commentsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useListScroll } from "@/shared/hooks/use-list-scroll";
@@ -63,7 +64,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const { search, openItem, closeItem, setSort, setView } = usePreviewSearch();
   const { index } = useRecords();
   const { point } = useDiffView();
-  const { filters, tagMatch, setFilters, setTagMatch, addTag } = useScreenFilters(kind);
+  const { filters, tagMatch, setFilters, setTagMatch, addTag, tagExpr, setTagExpr } = useScreenFilters(kind);
   const view = search.view ?? views?.[0]?.key ?? "table";
   // 一覧のスクロール位置は画面と表示形式ごとに残し、記録を読み終えて行を描いたら戻す
   const scrollRef = useListScroll(`${kind}:${view}`, index !== null);
@@ -104,10 +105,14 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   }, [search.sort, columnKeys?.join()]);
   if (index === null) return null;
   const columns = columnsOf(index, openItem);
+  const presets = index.data.settings.presets ?? [];
   const list = asColumns(columns);
   // 追加する項目は絞り込みに関わらず先頭に置く
   const rows = index.data[kind].filter((item) => !item.id.startsWith(NEW_ID_PREFIX)) as unknown as Row[];
-  const filtered = filterRows({ rows, columns: list, filters, tagMatch });
+  // 簡易で表せないタグの式は、簡易の条件の代わりに式で絞る
+  const complexExpr = tagExpr !== null && simpleTagsOf(tagExpr) === null ? tagExpr : null;
+  const filtered = filterRows({ rows, columns: list, filters, tagMatch }).filter((row) => complexExpr === null || matchesTagExpr(tagNames((row as unknown as Item).tags), complexExpr));
+  const exprChip = complexExpr === null ? {} : { tagExprText: describeTagExpr(complexExpr), onClearTagExpr: () => { setTagExpr(null); } };
   const sorted = sortRows({ rows: filtered, columns: list, sort: search.sort });
   const marks: DiffMarks | undefined = point === null ? undefined : Object.fromEntries([...[...point.added].map((id) => [id, "new"] as const), ...[...point.changed].map((id) => [id, "changed"] as const)]);
   const hidden = saved?.hidden ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
@@ -146,6 +151,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       tagMatch={tagMatch}
       onSelectTag={onSelectTag}
       scrollRef={view === "table" ? scrollRef : undefined}
+      {...exprChip}
     />
   );
   const conditions = columns.filter((column) => column.filterable === true);
@@ -160,7 +166,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
           </Button>
         )}
       </div>
-      {view === "table" ? null : <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={setFilters} />}
+      {view === "table" ? null : <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={setFilters} {...exprChip} />}
       <RemovedBand items={removedOf({ point, kind })} />
       {view === "table" || content === undefined ? table : content({ index, view, shown: filtered as unknown as Item[], filters, tagMatch, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, onSelectTag, scrollRef, table })}
       {drawerOpen ? (
@@ -171,14 +177,27 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
           shown={filtered.length}
           tagMatch={tagMatch}
           onTagMatchChange={setTagMatch}
+          presets={presetChoicesOf({ presets, rowTags: rows.map((row) => tagNames((row as unknown as Item).tags)), current: tagExpr })}
+          onApplyPreset={(name) => {
+            const preset = presets.find((one) => one.name === name);
+            if (preset !== undefined) setTagExpr(preset.filter);
+          }}
+          tagExpr={tagExpr}
+          onTagExprChange={setTagExpr}
           texts={columns.filter((column) => column.filterable !== true && column.key !== "id").map((column) => ({ key: column.key, label: column.label, value: filters[`${TEXT_FILTER_PREFIX}${column.key}`]?.[0] ?? "" }))}
           onToggleValue={(key, value) => {
             const current = filters[key] ?? [];
             const next = current.includes(value) ? current.filter((candidate) => candidate !== value) : [...current, value];
             setFilters(next.length === 0 ? withoutKey(filters, key) : { ...filters, [key]: next });
           }}
-          onClearGroup={(key) => { setFilters(withoutKey(filters, key)); }}
-          onClearAll={() => { setFilters({}); }}
+          onClearGroup={(key) => {
+            if (key === TAG_FILTER_KEY) setTagExpr(null);
+            else setFilters(withoutKey(filters, key));
+          }}
+          onClearAll={() => {
+            setTagExpr(null);
+            setFilters({});
+          }}
           onClose={onCloseDrawer}
           onTextChange={(key, text) => {
             const name = `${TEXT_FILTER_PREFIX}${key}`;

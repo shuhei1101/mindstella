@@ -1,5 +1,7 @@
 // 記録の型・索引・関係する項目
 import type { MdmarkSettings } from "@/shared/adapters/libraries";
+import type { Preset } from "@/shared/core/presets";
+
 export type Location = { kind: "body" | "value"; start?: number; end?: number; key?: string; text: string };
 
 /** 項目の種類（`mindmap-data` のキー） */
@@ -190,6 +192,8 @@ export type Settings = {
   display?: DisplayDefaults;
   /** 画面が読み込む mdmark のバージョンと map の図の種類。無い設定もある */
   mdmark?: MdmarkSettings;
+  /** 絞り込みのプリセットの並び。無い設定もある */
+  presets?: Preset[];
 };
 
 /** ワークスペースの表示の既定（`config.yaml` の `display`） */

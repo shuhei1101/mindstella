@@ -64,6 +64,9 @@ export type TableProps = {
   tagMatch?: TagMatch;
   /** 渡すとタグの列のタグを押せるようにし、押したタグを絞り込みに加える */
   onSelectTag?: (name: string) => void;
+  /** チェックで表せないタグの式の文と、その解除 */
+  tagExprText?: string;
+  onClearTagExpr?: () => void;
   /** 表のスクロール領域に付ける ref（スクロール位置の復元） */
   scrollRef?: RefCallback<HTMLElement>;
 };
@@ -84,7 +87,7 @@ const sortOf = (sort: TableProps["sort"], key: string): "ascending" | "descendin
   return sort.dir === "asc" ? "ascending" : "descending";
 };
 
-export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, addedRows = [], onOpenAdded, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem, tagMatch = "all", onSelectTag, scrollRef }: TableProps) => {
+export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, addedRows = [], onOpenAdded, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem, tagMatch = "all", onSelectTag, scrollRef, tagExprText, onClearTagExpr }: TableProps) => {
   const hidden = hiddenColumns ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
   const defs: ColumnDef<typeof features, Row>[] = columns.map((column) => ({ id: column.key, accessorFn: (row: Row) => cellText(column.get === undefined ? row[column.key] : column.get(row)), header: column.label }));
   // 条件に合う行を、並べ替えの向きで並べる
@@ -138,7 +141,7 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
   return (
     <div data-kind={kind} className="flex min-h-0 flex-col gap-3">
       <div className="flex items-start gap-2">
-        <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={onFilter} />
+        <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={onFilter} {...(tagExprText === undefined || onClearTagExpr === undefined ? {} : { tagExprText, onClearTagExpr })} />
         <Popover>
           <PopoverTrigger render={<Button variant="outline" aria-label="列の表示" className="ml-auto flex-none" />}>
             <Icon name="cols" />

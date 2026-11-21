@@ -1,0 +1,94 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-21T09:22:52.004774+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書が揃っている既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-21T09:22:52.004774+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではない
+    updated_by: planner
+    updated_at: '2026-11-21T09:22:52.004774+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: ドロワーのプリセット・タグの条件の式と AI の進め方の変更は、既存の絞り込みの計算・プリセットのタグの式・エージェントフローの組み合わせで、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-21T09:22:52.004774+00:00'
+  - process: 複合ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:31:51.252504+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: docs/design-policy.mark.md があり、見た目の方向を変えない（モック要否 Q4 YES）
+    updated_by: planner
+    updated_at: '2026-11-21T09:22:52.004774+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の追加・削除・遷移の変更が無く、既存の一覧の画面・スレッドに要素を加える（モック要否 Q2 NO）
+    updated_by: planner
+    updated_at: '2026-11-21T09:22:52.004774+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:36:22.518950+00:00'
+  - process: モック作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:30:44.281465+00:00'
+  - process: データ設計
+    status: skipped
+    reason: '誰が決めたかの記録を範囲から外し、永続化する項目の変更が無い。プリセットのタグの式は #360 で設計済みで、画面のタグの条件の式は URL とタブの保存領域に持つ画面の状態で、インターフェース定義『プレビューを開く』で扱う'
+    updated_by: planner
+    updated_at: '2026-11-21T15:38:54.200025+00:00'
+  - process: インターフェース定義設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:39:34.552501+00:00'
+  - process: エージェント・MCP サーバー設計
+    status: skipped
+    reason: エージェントと MCP サーバーを新設しない。既存の MCP のツールの引数の変更はインターフェース定義設計、AI の手順の変更は既存のエージェントフロー（判定フローチャート『機能を呼ぶインターフェースの選び方』でエージェントフロー）で扱う
+    updated_by: planner
+    updated_at: '2026-11-21T09:22:52.004774+00:00'
+  - process: エージェントフロー・LLM 呼び出し設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:45:17.179617+00:00'
+  - process: 精度評価設計
+    status: skipped
+    reason: 変わるのは Claude Code のエージェント（MindStella のセッション）の手順で、精度評価をせず E2E・結合テストでは Mock にする（判定フローチャート『精度評価をするか』Q2 YES）
+    updated_by: planner
+    updated_at: '2026-11-21T09:22:52.004774+00:00'
+  - process: 部品設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:52:56.707348+00:00'
+  - process: 画面設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:52:56.707348+00:00'
+  - process: モジュール構成設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:59:46.088639+00:00'
+  - process: ドキュメント修正
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T16:04:15.954576+00:00'
+  - process: 単体テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T16:15:36.793217+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T16:15:36.793217+00:00'
+  - process: 結合テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T18:28:55.358324+00:00'

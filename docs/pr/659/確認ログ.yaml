@@ -1,0 +1,13 @@
+confirmations:
+  - topic: 話し合い「何でも会話」の CLAUDE.md の暫定の行（1 件のスレッドに ID を並べて通知する）の扱い
+    decision: 'A: この PR では触らずに残す'
+    decided_by: user
+    approver: shuhei1101
+    commit: d7ff4866
+    thread: https://github.com/shuhei1101/mindstella/pull/659#discussion_r4653319467
+  - topic: 絞り込みのドロワーのプリセットとタグの条件（簡易 / 詳細）の画面で設計へ進むか
+    decision: 'A: この画面で進める'
+    decided_by: 推奨案で確定
+    approver: shuhei1101
+    commit: 856aaa43
+    thread: https://github.com/shuhei1101/mindstella/pull/659#discussion_r4653379628

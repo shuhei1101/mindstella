@@ -434,3 +434,7 @@ items:
     summary: "サーバー / 入口 / startup.py"
   - page: MOD-591-1.py.yaml
     summary: サーバー / ビルド / mdmark_ref.py
+  - page: MOD-659-1.ts.yaml
+    summary: プレビュー / presets
+  - page: MOD-659-2.tsx.yaml
+    summary: プレビュー / tag-expr-editor

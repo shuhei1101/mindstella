@@ -23,6 +23,7 @@ STATES = (
     "shared-table--withdrawn",
     "shared-table--tag-match-any",
     "shared-table--selectable-tags",
+    "shared-table--tag-expr",
 )
 
 # 位置の比べで許す差（px）
@@ -244,3 +245,12 @@ def test_selectable_tags(open_story: OpenStory) -> None:
     expect(row.get_by_role("button", name="タグ「保存」で絞り込む")).to_be_visible()
     expect(row.locator("button[data-id='D-3']")).to_have_text("資料の状態の値")
     assert page.locator("button button").count() == 0
+
+
+def test_tag_expr(open_story: OpenStory) -> None:
+    """簡易で表せないタグの条件で絞った行を受けると、チップの先頭に式を文にしたチップを出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-table--tag-expr")
+    # 検証
+    expect(page.get_by_role("button", name="タグ: 「画面」を含む かつ 「廃止」を含まない の条件を解除")).to_be_visible()
+

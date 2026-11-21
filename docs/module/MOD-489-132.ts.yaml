@@ -6,7 +6,7 @@ functions:
     title: 画面の絞り込みの条件
     kind: フック
     usecase: 項目を表で絞り込む
-    summary: URL の `f.{列}`、そのタブの保存領域（`useScreenState`）の条件、既定の条件の順に当て、変えたら URL と保存領域に書く。保存した条件を URL に戻すのは画面へ入ったときだけで、同じ画面で戻る・進むで URL の条件が無くなったときはその画面の保存した条件を外して既定の条件に戻す。戻すときは、条件と組み合わせ方を 1 回の移動（`setFilters` の `tagmatch`）で書く。タグの組み合わせ方は URL の `tagmatch`、保存領域、`all` の順に当てる。`addTag` はタグを `f.tags` に加えて履歴に 1 つ積み（既にあれば何もしない）、画面が絞り込みを持たない（概要）ときはその項目の種類の画面へ移って加える
+    summary: URL の `f.{列}`、そのタブの保存領域（`useScreenState`）の条件、既定の条件の順に当て、変えたら URL と保存領域に書く。保存した条件を URL に戻すのは画面へ入ったときだけで、同じ画面で戻る・進むで URL の条件が無くなったときはその画面の保存した条件を外して既定の条件に戻す。戻すときは、条件と組み合わせ方を 1 回の移動（`setFilters` の `tagmatch`）で書く。タグの組み合わせ方は URL の `tagmatch`、保存領域、`all` の順に当てる。`addTag` はタグを `f.tags` に加えて履歴に 1 つ積み（既にあれば何もしない）、画面が絞り込みを持たない（概要）ときはその項目の種類の画面へ移って加える。`tx` で絞っているときは、今の式と押したタグの「含む」の条件を `and` の束でまとめて `tx` に書く（制約「タグを押して絞り込む」）。`tagExpr` は URL の `tx`（`parseTagExpr`）、無ければ `f.tags`・`tagmatch` から作った式、タグの条件が無ければ null。`setTagExpr` は 1 つの「含む」の条件に収まる式を `f.tags`・`tagmatch`、それ以外を `tx` に `setTagCondition` で 1 回の移動で書き、保存領域にも書く（null は解除）
     args:
       - name: tab
         type: PreviewTab
@@ -14,7 +14,7 @@ functions:
         description: 画面
     returns:
       type: ScreenFilters
-      description: 条件・タグの組み合わせ方と、`setFilters`・`setTagMatch`・`addTag`
+      description: 条件・タグの組み合わせ方・タグの条件の式と、`setFilters`・`setTagMatch`・`addTag`・`setTagExpr`
     unit_tests:
       - name: test_use_screen_filters
         case: 正常
@@ -58,6 +58,24 @@ functions:
         condition: 'URL に `f` が無く、保存領域に `tags: [画面, 保存]` と `tagMatch: any`'
         mock: ルーターのメモリの履歴
         expected: URL に `f.tags=画面|保存` と `tagmatch=any` の両方が入り、組み合わせ方が `any`
+      - name: test_use_screen_filters_when_set_tag_expr
+        case: 正常
+        summary: 簡易で表せる式と表せない式を書き分ける
+        condition: "`setTagExpr` に「画面」と「廃止」をすべて含む式を渡した後に、「画面」を含み「廃止」を含まない式を渡す"
+        mock: ルーターのメモリの履歴
+        expected: 1 回目は `f.tags=画面|廃止` で `tx` が無く、2 回目は `f.tags` が無く `tx` があり、`tagExpr` が渡した式と同じ
+      - name: test_use_screen_filters_when_add_tag_to_expr
+        case: 正常
+        summary: 式で絞っているときにタグを加える
+        condition: "`tx` が「画面」を含み「廃止」を含まない式の画面で `addTag('保存')`"
+        mock: ルーターのメモリの履歴
+        expected: '`tx` の最上位の `and` の子に「保存」を含む条件が加わり、`f.tags` が無く、履歴が 1 つ増える'
+      - name: test_use_screen_filters_when_add_same_tag_to_expr
+        case: 正常
+        summary: 式に同じタグの「含む」があるときはタグを加えない
+        condition: "`tx` の最上位の `and` の子に「画面」だけを含む条件がある画面で `addTag('画面')`"
+        mock: ルーターのメモリの履歴
+        expected: '`tx` が変わらず、履歴が増えない'
       - name: test_use_screen_filters_when_back
         case: 正常
         summary: 同じ画面で戻ると、保存した条件を戻さず外す

@@ -1,0 +1,76 @@
+use_cases:
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: changed
+    detail: 利用者の回答が要る検討事項を挙げて決めていく流れに、方針はスレッドで聞き細部は AI が決めて報告だけにする進め方を加える（#484・D-361 A）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-30.yaml
+    impact: changed
+    detail: AI が利用者に聞くことを、方針（選択肢を作る前に論点と AI の理解をスレッドで聞き、合ってから検討事項にする）と細部（AI が決めてスレッドで報告だけにする）に分ける（#484・D-361 A）
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: changed
+    detail: 絞り込みのドロワーでプリセットを選ぶと、そのプリセットのタグの式が今のタグの条件に入り、状態・種類などほかの条件は残る。タグの条件をプリセットと同じ式で書ける。該当する件数が 0 のプリセットにマーカーを出す（#361）
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-6.yaml
+    impact: following
+    detail: タスクの絞り込みのドロワーでプリセットを選べることに追随する（#361）
+    depends_on:
+      - docs/scenario/SC-489-49.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: following
+    detail: 資料の絞り込みのドロワーでプリセットを選べることに追随する（#361）
+    depends_on:
+      - docs/scenario/SC-489-49.yaml
+  - kind: single
+    scenario: docs/scenario/SC-649-1.yaml
+    impact: following
+    detail: AI が作ったプリセットを画面の絞り込みのドロワーで選べることに、成功の保証と補足の記述を追随する（#361）
+    depends_on:
+      - docs/scenario/SC-489-49.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-1.yaml
+    impact: changed
+    detail: AI が細部を決めて記録したことを、通知のスレッドで報告する書き込みを加える（#484・D-361 A）
+    depends_on: docs/scenario/SC-489-30.yaml
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 絞り込みのドロワーでプリセットを選んで開く操作と、タグの条件を式で書く操作を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T16:04:14.307350+00:00'
+  - page: docs/guide/コアコンセプト-話し合いの進め方.md
+    new: false
+    change: 方針は選択肢を作る前にスレッドで聞き、細部は AI が決めてスレッドで報告だけにする進め方を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T16:04:14.307350+00:00'
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: 記録の使い分けのエージェントフローの変更（方針と細部の分け方）に追随する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T16:04:14.307350+00:00'
+scope_out:
+  - item: 画面の今の絞り込みを、名前付きのプリセットとして保存する操作
+    reason: '#361 の本文が後続として分けている。この作業 PR は AI が作ったプリセットを並べて開くだけを持つ'
+    plan: '#362'
+  - item: カードが 0 枚のボードの横スクロールの領域にキーボードで届かないこと（axe `scrollable-region-focusable`、`frontend/src/shared/components/board.tsx` の `Board`）
+    reason: スクロールできる領域はキーボードで操作できる、という axe の規則から外れている。origin/develop にもある事象で、今回の要望に含まれない
+    plan: '#664'
+  - item: 未決定の検討事項を複数選び、推奨の案でまとめて決める画面の操作
+    reason: 利用者が不要と回答した（https://github.com/shuhei1101/mindstella/pull/659#discussion_r4652925094）
+    plan: none
+  - item: 検討事項を誰が決めたか（利用者・AI）の記録と、一覧の列・絞り込みの条件・カードの表示
+    reason: 利用者が不要と回答した（https://github.com/shuhei1101/mindstella/pull/659#discussion_r4652919851）
+    plan: none
+  - item: AI の通知のスレッドに検討事項を並べ、そこからまとめて回答すること
+    reason: 利用者が不要と回答した（https://github.com/shuhei1101/mindstella/pull/659#discussion_r4652919851）
+    plan: none
