@@ -31,7 +31,7 @@ from preview_edit_helpers import edit_edits, edit_items
 from preview_embed_helpers import EMBEDDED_BODY, build_embedded_diff_workspace
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import mismatch_body_diff
-from preview_spa_helpers import open_spa
+from preview_spa_helpers import assert_bottom_aligned, open_spa
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace, WriteComments
 from record_write_helpers import write_tool
 
@@ -1549,3 +1549,46 @@ def test_tags_not_selectable_in_diff(page: Page, write_history_preview: WriteRev
     open_spa(page, url, "?tab=tasks&id=T-1&diff=V-1")
     # 検証
     expect(page.get_by_role("complementary", name="詳細").locator("button[data-tag]")).to_have_count(0)
+
+# ─── コメントの入力の位置 ───
+
+
+@pytest.mark.parametrize(
+    ("size", "item"),
+    [
+        pytest.param({"width": 1280, "height": 800}, "D-1", id="wide-long"),
+        pytest.param({"width": 1280, "height": 800}, "D-2", id="wide-short"),
+        pytest.param({"width": 390, "height": 844}, "D-1", id="phone-long"),
+        pytest.param({"width": 390, "height": 844}, "D-2", id="phone-short"),
+    ],
+)
+def test_comment_input_at_bottom(page: Page, comment_preview: tuple[str, Path], size: dict[str, int], item: str) -> None:
+    """コメントの入力は本文の長さによらず、詳細パネルの下端に間を空けずに出す（正常系）。"""
+    # 準備
+    url, _ = comment_preview
+    page.set_viewport_size(size)
+    # 実行
+    open_spa(page, url, f"?tab=decisions&id={item}")
+    # 検証
+    form = _panel(page).locator(f"form[data-id='{item}']")
+    expect(form).to_be_visible()
+    assert_bottom_aligned(form, _panel(page))
+
+
+def test_review_comments_scroll_with_body(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """レビュー中のコメントは本文のスクロール領域の中で本文と一緒にスクロールし、コメントの入力は下端に留まる（正常系）。"""
+    # 準備
+    url, _ = comment_preview
+    page.set_viewport_size({"width": 390, "height": 844})
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    region = _panel(page).get_by_role("region", name="詳細の本文")
+    form = _panel(page).locator("form[data-id='D-1']")
+    expect(region.get_by_role("heading", name="レビュー中のコメント")).to_be_attached()
+    expect(region.locator("form[data-id='D-1']")).to_have_count(0)
+    before = form.bounding_box()
+    # 実行
+    region.evaluate("element => element.scrollTo({ top: element.scrollHeight })")
+    # 検証
+    expect(_comments(page).first).to_be_in_viewport()
+    assert form.bounding_box() == before
+    assert_bottom_aligned(form, _panel(page))

@@ -11,7 +11,9 @@ from workspace_fixtures import MakeItem as _MakeItem
 import re
 
 from playwright.sync_api import Page, expect
-from preview_spa_helpers import open_spa
+from preview_spa_helpers import assert_bottom_aligned, open_spa
+
+import pytest
 
 
 def test_opens_and_returns(page: Page, spa_preview: str) -> None:
@@ -48,3 +50,19 @@ def test_voice_input_when_service_stopped(
     open_spa(page, url, "?tab=decisions&id=D-1&full=1")
     # 検証
     assert_mic_blocked_after_click(page.locator("[role=dialog] form[data-id='D-1']"), "[role=status]")
+
+@pytest.mark.parametrize(
+    "size",
+    [pytest.param({"width": 1280, "height": 800}, id="wide"), pytest.param({"width": 390, "height": 844}, id="phone")],
+)
+def test_comment_input_at_bottom(page: Page, spa_preview: str, size: dict[str, int]) -> None:
+    """全画面のコメントの入力は、モーダルの下端に間を空けずに出す（正常系）。"""
+    # 準備
+    page.set_viewport_size(size)
+    # 実行
+    open_spa(page, spa_preview, "?tab=decisions&id=D-1&full=1")
+    # 検証
+    dialog = page.get_by_role("dialog", name="記録の形")
+    form = dialog.locator("form[data-id='D-1']")
+    expect(form).to_be_visible()
+    assert_bottom_aligned(form, dialog)
