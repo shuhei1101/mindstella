@@ -1,0 +1,40 @@
+id: MOD-649-2
+title: プレビュー / use-list-scroll
+lead: 一覧（表・ボード・カード）のスクロール領域の位置を残し、画面へ戻ったときに描画の後に戻す（制約「スクロール位置の復元」）。
+functions:
+  - name: useListScroll
+    title: 一覧のスクロール位置の復元
+    kind: フック
+    container: frontend/src/shared/hooks/use-list-scroll.ts
+    usecase: 画面を移って戻る
+    summary: 返した ref の要素のスクロールを `requestAnimationFrame` で間引いて `writeListScroll` に残し、`key` が変わったときと行が描けたとき（`ready` が真になったとき）に `readListScroll` の位置へ 1 度だけ戻す。記録の再読み込みの再描画では戻さない
+    args:
+      - name: key
+        type: string
+        required: true
+        description: '`{画面}:{表示形式}`'
+      - name: ready
+        type: boolean
+        required: true
+        description: 行を描き終えたか（記録を読み終えて行が 1 つ以上ある、か該当なしを出した）
+    returns:
+      type: RefCallback<HTMLElement>
+      description: スクロール領域の要素に付ける ref
+    unit_tests:
+      - name: test_use_list_scroll
+        case: 正常
+        summary: 離れる前の位置へ戻す
+        condition: '`tasks:board` で縦 400 までスクロールしてアンマウントし、同じキーで再びマウントして `ready` を真にする'
+        mock: '`requestAnimationFrame`'
+        expected: 要素の `scrollTop` が 400
+      - name: test_use_list_scroll_when_rerendered
+        case: 正常
+        summary: 再描画では位置を変えない
+        condition: 位置を戻した後に縦 120 までスクロールし、同じキーと `ready` のまま再描画する
+        mock: '`requestAnimationFrame`'
+        expected: '`scrollTop` が 120 のまま'
+    callees:
+      - MOD-649-1#functions[readListScroll]
+      - MOD-649-1#functions[writeListScroll]
+notes:
+  単体テスト: 同じフォルダの `use-list-scroll.test.ts` に置く（knowledge の規約『フォルダ構成』）

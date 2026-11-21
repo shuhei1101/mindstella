@@ -7,7 +7,7 @@ functions:
     kind: 関数
     container: frontend/src/app/router.tsx
     usecase: 共通
-    summary: 生成したルートのツリーでルーターを作る。配る書き出し（`isEmbedded()` が真）はハッシュの履歴（`createHashHistory`）と頭 `/`、サーバーの配信は開いた画面のワークスペースのパスの頭（`workspacePath()`）を頭にする
+    summary: 生成したルートのツリーでルーターを作る。配る書き出し（`isEmbedded()` が真）はハッシュの履歴（`createHashHistory`）と頭 `/`、サーバーの配信は開いた画面のワークスペースのパスの頭（`workspacePath()`）を頭にする。`scrollRestoration` を有効にし、ページ全体のスクロール位置を履歴の項目ごとに戻す
     args:
       - name: queryClient
         type: QueryClient
@@ -29,6 +29,12 @@ functions:
         condition: '`document.body` に記録の `mindmap-data` の要素を配置し、`location.hash` を `#/?tab=docs` にする'
         mock: なし
         expected: '`options.basepath` が `/`、ルーターの `history` がハッシュの履歴で、現在の search の `tab` が `docs`'
+      - name: test_create_app_router_when_scroll_restoration
+        case: 正常
+        summary: スクロール位置の復元を有効にする
+        condition: QueryClient を指定する
+        mock: なし
+        expected: '`options.scrollRestoration` が `true`'
     callees:
       - MOD-642-1#functions[workspacePath]
       - MOD-644-1#functions[isEmbedded]
