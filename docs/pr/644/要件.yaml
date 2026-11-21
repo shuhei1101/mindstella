@@ -159,3 +159,9 @@ scope_out:
   - item: 資料の画面のカードの見出しが h1 の次に h3 で、見出しの順序を飛ばしている（axe heading-order）
     reason: 見出しの順序の規約から外れているが、この PR で変えていない箇所で、要望に含まれない
     plan: '#646'
+  - item: 結合テスト `tests/integration/server/test_create_workspace.py::test_error_when_host_not_local` が develop（07766d1f）でも fail する（ホストの検査より前に `/settings/sources` を読みに行く）
+    reason: この PR で変えていない作成の流れの不具合で、要望に含まれない。同じテストの fail を扱う既存の Issue がある
+    plan: '#575'
+  - item: 部品のストーリーの結合テスト 5 件（`test_diff_mark_stories.py::test_removed`・`test_markdown_body_stories.py` の `test_mdmark_table`・`test_pinned_columns`・`test_opaque_background`・`test_table_in_diff`）が develop（07766d1f）でも fail する
+    reason: テストの期待値が部品設計 CMP-489-32 の文言と mdmark の表の既定のピン止めに合っていない不具合で、この PR で変えていない箇所。要望に含まれない
+    plan: '#647'
