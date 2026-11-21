@@ -15,7 +15,7 @@ const TAGS: TagChoice[] = [
 const Editable = ({ initial }: { initial: PresetFilter }) => {
   const [expr, setExpr] = useState(initial);
   return (
-    <div className="w-96">
+    <div className="w-96 max-w-full">
       <TagExprEditor expr={expr} tags={TAGS} onChange={setExpr} />
     </div>
   );
