@@ -772,13 +772,13 @@ def test_spa_response_when_outside(tmp_path: Path, sub_path: str) -> None:
     # 準備
     spa_dir = tmp_path / "spa"
     _write_spa_dir(spa_dir)
-    (tmp_path / "secret.txt").write_text("secret", encoding="utf-8")
+    (tmp_path / "secret.txt").write_text("出力の外の中身", encoding="utf-8")
     # 実行
     response = serve.spa_response(spa_dir, sub_path)
     # 検証
     assert response.status == 404
     assert response.content_type == "application/problem+json; charset=utf-8"
-    assert b"secret" not in response.body
+    assert "出力の外の中身".encode() not in response.body
 
 
 def test_spa_response_when_unknown_suffix(tmp_path: Path) -> None:
