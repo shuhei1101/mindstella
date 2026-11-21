@@ -27,7 +27,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-40.yaml
     impact: run_only
-    detail: 資料のカードの見出しのレベルとボードの余白が変わる。シナリオの記述は変わらない
+    detail: 資料のカードの見出しのレベルとボードの余白が変わり、カード表示の列の数が画面の領域の幅で切り替わる。シナリオの記述は変わらない
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-5.yaml
@@ -79,16 +79,14 @@ docs:
     new: false
     change: '#636: v0.14.0 の変換のスクリプト markdown_bodies_to_mark_md.py・move_bodies_to_root.py の行（name・description・tags・related の implements）を追加する'
     status: todo
+  - page: docs/mock/components/topbar/frame.html
+    new: false
+    change: '#634: components/topbar.js を読み込むモック 15 件（このファイルと docs/mock/pages/*/325/*/index.html の 14 件）を、要件.mark.md の未確定で決まった案で修正する（推奨は削除。削除する場合は docs/mock/ の目次と files.yml の行も削除する）'
+    status: todo
 scope_out:
-  - item: '#634: topbar.js を読み込むモック 15 件（docs/mock/components/topbar/frame.html と docs/mock/pages/*/325/*/index.html）のスクリプトのエラー'
-    reason: '今の判断（レビューで確定する）: #644 で、モックが読み込む今の画面のスクリプト（core/dom.js・components/topbar.js・components/duplicate-id-notice.js ほか）が plugins/mindstella/skills/mindmap/preview/ から削除された。#634 の修正（duplicate-id-notice.js の読み込みを 1 行追加する）は読み込む先が無く成り立たず、モックを描けるようにするには今の画面のモックを削除するか React のストーリーへ置き換える別の判断が要る。#634 はこの作業 PR では修正せず、今の画面のモックの扱いを新しい Issue にする'
-    plan: to_file
   - item: '#548: 図を持たない本文を開いたときも mermaid を読み始める点'
     reason: '#548 の受付の判断で、本文の問題（初期化が mermaid を待つ）に含まれないとして扱わないと決めた'
     plan: none
   - item: '#647 の本文にある test_markdown_body_stories.py の 4 件の fail'
     reason: '#647 の受付の判断で #639 へ移した（はみ出す表の既定の決定に合わせる）'
     plan: '#639'
-  - item: '#662: サイドパネルを広げたときに幅が変わるほかの画面（検討事項・タスク・資料の一覧）の max-md: の切り替え'
-    reason: '今の判断（レビューで確定する）: #662 の終了の条件は概要のページだけで、本文はほかの画面を「確認する」一案として挙げる。設計でほかの画面に同じ事象があるかを確認し、あればこの作業 PR に含めるかを決める'
-    plan: to_file
