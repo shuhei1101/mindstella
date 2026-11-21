@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test } from "vitest";
 
 import { connectEvents } from "@/shared/adapters/events-client";
+import { resetEmbeddedDataForTest } from "@/shared/core/embedded";
 import { useRefreshHoldStore } from "@/shared/stores/refresh-hold-store";
 import { resetVoiceStore } from "@/shared/stores/voice-store";
 import { FakeEventSource } from "@/testing/fake-event-source";
@@ -15,6 +16,8 @@ import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
 
 afterEach(() => {
+  document.body.querySelector("#mindmap-data")?.remove();
+  resetEmbeddedDataForTest();
   useRefreshHoldStore.setState({ focused: false, pending: false, heldElement: null, anchor: null });
   resetVoiceStore();
   removeFakeMedia();
@@ -237,5 +240,28 @@ describe("PreviewShell", () => {
     expect(after).toBe(input);
     expect(after).toHaveValue("途中まで");
     close();
+  });
+
+  // 配る書き出しは書き込む操作を出さない（正常系）
+  test("preview_shell_when_embedded", async () => {
+    // 準備
+    const data = document.createElement("script");
+    data.type = "application/json";
+    data.id = "mindmap-data";
+    data.textContent = JSON.stringify(RECORDS);
+    document.body.append(data);
+    // 実行
+    renderRoute("/x/export.html#/?tab=tasks&id=T-1&panel=display");
+    // 検証
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    expect(await screen.findByText("表示する種類")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^コメント/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^保存待ち/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "タスクの項目を追加" })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: "編集する" })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: /確認済み/ })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "ワークスペースの既定にする" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "設定を編集する" })).not.toBeInTheDocument();
   });
 });
