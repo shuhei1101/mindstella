@@ -38,11 +38,11 @@ export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen,
         {doc.kind}
         {format === null ? null : <BodyFormatBadge format={format} />}
       </span>
-      <h3 className="m-0 text-small font-medium">
+      <h2 className="m-0 text-small font-medium">
         <button type="button" data-id={doc.id} aria-current={selected ? "true" : undefined} className="cursor-pointer text-left outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(doc.id); }}>
           {doc.title}
         </button>
-      </h3>
+      </h2>
       {doc.withdrawn === true ? <WithdrawnBadge /> : null}
       <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
         {mark === undefined ? null : <DiffMark kind={mark} />}

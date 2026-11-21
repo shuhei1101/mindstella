@@ -184,7 +184,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
         </Button>
       ) : null}
       <Button variant="ghost" size="icon" aria-pressed={pinned} aria-label={pinned ? "ピン止めを外す（外側を押したら閉じる）" : "ピン止めする（外側を押しても閉じない）"} title={pinned ? "ピン止めを外す" : "ピン止めする"} onClick={() => { writePrefs({ commentsPinned: pinned ? null : true }); }}>
-        <Icon name="lock" className={cn(!pinned && "-rotate-45", pinned && "text-primary")} />
+        <Icon name={pinned ? "lock" : "unlock"} className={cn(pinned && "text-primary")} />
       </Button>
       <Button variant="ghost" size="icon" aria-label="コメントの一覧を閉じる" onClick={close}>
         <Icon name="x" />
