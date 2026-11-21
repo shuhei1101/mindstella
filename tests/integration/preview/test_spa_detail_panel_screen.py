@@ -542,12 +542,12 @@ def test_key_diff_visible(page: Page, write_history_preview: WriteReviewPreview)
 
 
 def test_body_diff_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:
-    """差分の表示の間、Markdown の本文が変わったときは足した部分と消した部分に印を付ける（正常系）。"""
+    """差分の表示の間、Markdown の本文が変わったときは追加・削除したブロックを mdmark の差分のブロックで出す（正常系）。"""
     # 準備・実行
     url, _ = write_history_preview()
     panel = _diff(page, url, "V-2")
     # 検証
-    expect(panel.locator(".md ins.df-blk").first).to_be_visible()
+    expect(panel.locator(".md .mdmark-diff-block").first).to_be_visible()
 
 
 def test_diagram_diff_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:
@@ -606,7 +606,7 @@ def test_body_unavailable_visible(page: Page, write_history_preview: WriteReview
     # 準備・実行
     url, _ = write_history_preview()
     panel = _diff(page, url, "V-2")
-    panel.locator(".md ins.df-blk").first.wait_for()
+    panel.locator(".md .mdmark-diff-block").first.wait_for()
     # 検証
     expect(panel.get_by_text("本文の差分を出せません。")).to_have_count(0)
 
@@ -631,7 +631,7 @@ def test_body_too_large_visible(page: Page, write_history_preview: WriteReviewPr
     # 準備・実行
     url, _ = write_history_preview()
     panel = _diff(page, url, "V-2")
-    panel.locator(".md ins.df-blk").first.wait_for()
+    panel.locator(".md .mdmark-diff-block").first.wait_for()
     # 検証
     expect(panel.get_by_text("差分を計算しきれませんでした。")).to_have_count(0)
 
@@ -652,7 +652,7 @@ def test_library_note_visible(page: Page, write_history_preview: WriteReviewPrev
     # 準備・実行
     url, _ = write_history_preview()
     panel = _diff(page, url, "V-2")
-    panel.locator(".md ins.df-blk").first.wait_for()
+    panel.locator(".md .mdmark-diff-block").first.wait_for()
     # 検証
     expect(panel.get_by_text("読み込めなかったライブラリ: jsdiff")).to_have_count(0)
 
