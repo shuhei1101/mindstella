@@ -337,9 +337,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:起動
-  related:
-  - to: MOD-489-171
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/body-diff-layout-switch.stories.ts
   name: 本文の差分の並べ方の切り替えのストーリー
   description: 部品『本文の差分の並べ方の切り替え』の状態ごとの Storybook のストーリー。本文の差分の並べ方の切り替えの状態を追加・変更するときに読む。
@@ -357,9 +355,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-205
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/body-format-badge.stories.ts
   name: 本文の形式の札のストーリー
   description: 部品『本文の形式の札』の状態ごとの Storybook のストーリー。本文の形式の札の状態を追加・変更するときに読む。
@@ -377,9 +373,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-174
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/chips-input.stories.ts
   name: チップの入力のストーリー
   description: 部品『チップの入力』の状態ごとの Storybook のストーリー。チップの入力の状態を追加・変更するときに読む。
@@ -397,9 +391,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-243
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/comment-mark.stories.ts
   name: コメントのマーカーのストーリー
   description: 部品『コメントのマーカー』の状態ごとの Storybook のストーリー。コメントのマーカーの状態を追加・変更するときに読む。
@@ -417,9 +409,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-215
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/diff-mark.stories.ts
   name: 差分のマーカーのストーリー
   description: 部品『差分のマーカー』の状態ごとの Storybook のストーリー。差分のマーカーの状態を追加・変更するときに読む。
@@ -437,9 +427,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-229
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/diff-minimap.stories.ts
   name: 差分のミニマップのストーリー
   description: 部品『差分のミニマップ』の状態ごとの Storybook のストーリー。差分のミニマップの状態を追加・変更するときに読む。
@@ -457,9 +445,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-203
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/doc-export-menu.stories.ts
   name: 資料のエクスポートのメニューのストーリー
   description: 部品『資料のエクスポートのメニュー』の状態ごとの Storybook のストーリー。資料のエクスポートのメニューの状態を追加・変更するときに読む。
@@ -477,9 +463,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-241
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/duplicate-id-notice.stories.ts
   name: 重なった ID の通知のストーリー
   description: 部品『重なった ID の通知』の状態ごとの Storybook のストーリー。重なった ID の通知の状態を追加・変更するときに読む。
@@ -498,9 +482,7 @@ files:
   - topic:プレビュー
   - topic:部品
   - topic:通知
-  related:
-  - to: MOD-540-7
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/filter-drawer.stories.ts
   name: 絞り込みのドロワーのストーリー
   description: 部品『絞り込みのドロワー』の状態ごとの Storybook のストーリー。絞り込みのドロワーの状態を追加・変更するときに読む。
@@ -518,9 +500,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-233
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/history-dialog.stories.ts
   name: 変更履歴のモーダルのストーリー
   description: 部品『変更履歴のモーダル』の状態ごとの Storybook のストーリー。変更履歴のモーダルの状態を追加・変更するときに読む。
@@ -538,9 +518,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-230
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/html-body-diff.stories.ts
   name: HTML の本文の差分のストーリー
   description: 部品『HTML の本文の差分』の状態ごとの Storybook のストーリー。HTML の本文の差分の状態を追加・変更するときに読む。
@@ -558,9 +536,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-174
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/html-body-frame.stories.ts
   name: HTML の本文の枠のストーリー
   description: 部品『HTML の本文の枠』の状態ごとの Storybook のストーリー。HTML の本文の枠の状態を追加・変更するときに読む。
@@ -578,9 +554,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-174
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/markdown-body.stories.ts
   name: Markdown の本文の見せ方のストーリー
   description: 部品『Markdown の本文の見せ方』の状態ごとの Storybook のストーリー。Markdown の本文の見せ方の状態を追加・変更するときに読む。
@@ -598,9 +572,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-207
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/pending-mark.stories.ts
   name: 保存待ちのマーカーのストーリー
   description: 部品『保存待ちのマーカー』の状態ごとの Storybook のストーリー。保存待ちのマーカーの状態を追加・変更するときに読む。
@@ -618,9 +590,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-240
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/removed-band.stories.ts
   name: 削除した項目の帯のストーリー
   description: 部品『削除した項目の帯』の状態ごとの Storybook のストーリー。削除した項目の帯の状態を追加・変更するときに読む。
@@ -638,9 +608,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-234
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/reply-form.stories.ts
   name: 返信の入力のストーリー
   description: 部品『返信の入力』の状態ごとの Storybook のストーリー。返信の入力の状態を追加・変更するときに読む。
@@ -658,9 +626,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-237
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/review-body-fold.stories.ts
   name: レビュー中の書き込みの本文の折りたたみのストーリー
   description: 部品『レビュー中の書き込みの本文の折りたたみ』の状態ごとの Storybook のストーリー。レビュー中の書き込みの本文の折りたたみの状態を追加・変更するときに読む。
@@ -678,9 +644,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-208
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/selection-comment.stories.ts
   name: 選んだ箇所のコメントの入口のストーリー
   description: 部品『選んだ箇所のコメントの入口』の状態ごとの Storybook のストーリー。選んだ箇所のコメントの入口の状態を追加・変更するときに読む。
@@ -698,9 +662,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-228
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/send-form.stories.ts
   name: コメントの入力のストーリー
   description: 部品『コメントの入力』の状態ごとの Storybook のストーリー。コメントの入力の状態を追加・変更するときに読む。
@@ -718,9 +680,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-214
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/settings-confirm.stories.ts
   name: 既定の保存の確かめのストーリー
   description: 部品『既定の保存の確かめ』の状態ごとの Storybook のストーリー。既定の保存の確かめの状態を追加・変更するときに読む。
@@ -738,9 +698,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-231
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/settings-panel.stories.ts
   name: 表示の設定の中身のストーリー
   description: 部品『表示の設定の中身』の状態ごとの Storybook のストーリー。表示の設定の中身の状態を追加・変更するときに読む。
@@ -758,9 +716,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-204
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/side-by-side-body-diff.stories.ts
   name: 左右に並べた本文の差分のストーリー
   description: 部品『左右に並べた本文の差分』の状態ごとの Storybook のストーリー。左右に並べた本文の差分の状態を追加・変更するときに読む。
@@ -778,9 +734,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-239
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/table.stories.ts
   name: 表のストーリー
   description: 部品『表』の状態ごとの Storybook のストーリー。表の状態を追加・変更するときに読む。
@@ -798,9 +752,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-209
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/tag-list.stories.ts
   name: タグの並びのストーリー
   description: 部品『タグの並び』の状態ごとの Storybook のストーリー。タグの並びの状態を追加・変更するときに読む。
@@ -818,9 +770,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-242
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/term-tip.stories.ts
   name: 本文のマーカーのツールチップのストーリー
   description: 部品『本文のマーカーのツールチップ』の状態ごとの Storybook のストーリー。本文のマーカーのツールチップの状態を追加・変更するときに読む。
@@ -838,9 +788,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-236
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/thread-post.stories.ts
   name: スレッドの書き込みのストーリー
   description: 部品『スレッドの書き込み』の状態ごとの Storybook のストーリー。スレッドの書き込みの状態を追加・変更するときに読む。
@@ -858,9 +806,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-238
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/thread-row.stories.ts
   name: スレッドの行のストーリー
   description: 部品『スレッドの行』の状態ごとの Storybook のストーリー。スレッドの行の状態を追加・変更するときに読む。
@@ -878,9 +824,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-217
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/topbar.stories.ts
   name: トップバーのストーリー
   description: 部品『トップバー』の状態ごとの Storybook のストーリー。トップバーの状態を追加・変更するときに読む。
@@ -898,9 +842,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-223
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/view-switch.stories.ts
   name: 表示形式の切り替えのストーリー
   description: 部品『表示形式の切り替え』の状態ごとの Storybook のストーリー。表示形式の切り替えの状態を追加・変更するときに読む。
@@ -918,9 +860,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-222
-    type: implements
+  related: []
 - path: skills/mindmap/preview/components/withdrawn-badge.stories.ts
   name: 取り下げの札のストーリー
   description: 部品『取り下げの札』の状態ごとの Storybook のストーリー。取り下げの札の状態を追加・変更するときに読む。
@@ -938,9 +878,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:部品
-  related:
-  - to: MOD-489-235
-    type: implements
+  related: []
 - path: skills/mindmap/preview/core/api.ts
   name: サーバーの配信とのやり取り
   description: 記録の取得・レビュー中のコメントと下書き・まとめて送信する・スレッド・書き換えの知らせの購読。プレビューが呼ぶ配信の API を追加・変更するときに読む。
@@ -948,9 +886,7 @@ files:
   - tool:typescript
   - topic:api
   - topic:プレビュー
-  related:
-  - to: MOD-489-196
-    type: implements
+  related: []
 - path: skills/mindmap/preview/core/diff.ts
   name: 差分の表示の計算
   description: 変更履歴で選んだ時点からマーカーを付ける項目を決め、項目の `history` から前のバージョンを組み立て、本文・記法の行と図の要素を比べる。差分のマーカーや前のバージョンの組み立てを変更するときに読む。
@@ -958,9 +894,7 @@ files:
   - tool:jsdiff
   - tool:typescript
   - topic:差分
-  related:
-  - to: MOD-489-173
-    type: implements
+  related: []
 - path: skills/mindmap/preview/core/doc-export.ts
   name: 資料のエクスポートの組み立て
   description: mdmark の CSS と JavaScript・用語の索引・本文を 1 枚の HTML にまとめる組み立てと、埋め込んだ HTML を除いた Markdown の組み立てと、ブラウザへのダウンロード。資料を HTML や Markdown で書き出す処理を変更するときに読む。
@@ -969,9 +903,7 @@ files:
   - tool:typescript
   - topic:エクスポート
   - topic:資料
-  related:
-  - to: MOD-489-201
-    type: implements
+  related: []
 - path: skills/mindmap/preview/core/dom.ts
   name: 画面の要素の組み立て
   description: 画面が共通で使う要素の組み立てと、アイコン・状態のマーカー。画面が共通で使う要素・アイコン・状態のマーカーを変更するときに読む。
@@ -979,27 +911,21 @@ files:
   - tool:typescript
   - topic:dom
   - topic:アイコン
-  related:
-  - to: MOD-489-199
-    type: implements
+  related: []
 - path: skills/mindmap/preview/core/edits.ts
   name: 保存待ちの編集の表示の値
   description: 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちのマーカーの種類。保存待ちの編集を当てた表示やマーカーの種類を変更するときに読む。
   tags:
   - tool:typescript
   - topic:編集
-  related:
-  - to: MOD-489-202
-    type: implements
+  related: []
 - path: skills/mindmap/preview/core/globals.d.ts
   name: 描画のライブラリの型
   description: npm の同じバージョンの型を割り当てる。雛形が CDN から読むライブラリの型を追加・変更するときに読む。
   tags:
   - tool:typescript
   - topic:型
-  related:
-  - to: MOD-489-172
-    type: implements
+  related: []
 - path: skills/mindmap/preview/core/libs.ts
   name: 描画のライブラリの読み込み
   description: 読めなかったときは名前を出し、代わりの読み込みはしない。mdmark・marked・elkjs・mermaid・jsdiff の呼び出しを変更するときに読む。
@@ -1008,9 +934,7 @@ files:
   - tool:mermaid
   - tool:typescript
   - topic:ライブラリ
-  related:
-  - to: MOD-489-198
-    type: implements
+  related: []
 - path: skills/mindmap/preview/core/records.ts
   name: 記録の索引と検索
   description: 次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使い、画面で再計算しない。項目の索引・関係する項目・検索の求め方を変更するときに読む。
@@ -1018,9 +942,7 @@ files:
   - tool:typescript
   - topic:検索
   - topic:記録
-  related:
-  - to: MOD-489-194
-    type: implements
+  related: []
 - path: skills/mindmap/preview/core/router.ts
   name: URL のハッシュと履歴
   description: 画面・表示形式・開いている項目・全画面・絞り込みを、`URLSearchParams` の形式で持つ。URL のハッシュで持つ画面の状態を追加・変更するときに読む。
@@ -1028,9 +950,7 @@ files:
   - tool:typescript
   - topic:url
   - topic:ルーティング
-  related:
-  - to: MOD-489-195
-    type: implements
+  related: []
 - path: skills/mindmap/preview/licenses/README.md
   name: 配る書き出しのライセンスのフォルダの説明
   description: ライブラリのライセンスの本文のうち、リポジトリに置くものを入れるフォルダ。配る書き出しに入れるライブラリのライセンスを追加・変更するときに読む。
@@ -1047,9 +967,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-218
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/decisions.ts
   name: 検討事項の画面
   description: マップ（既定）・ボード・表で見る。検討事項の画面の表示や操作を変更するときに読む。
@@ -1057,9 +975,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-212
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/detail-edit.ts
   name: 詳細の編集の表示
   description: キーごとの入力と、検討事項の案の入力、項目の削除。詳細の編集の表示の表示や操作を変更するときに読む。
@@ -1067,9 +983,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-221
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/detail.ts
   name: 詳細パネルと詳細の全画面
   description: 項目 1 件の中身（案・本文・図・関係する項目）を出す。詳細パネルと詳細の全画面の表示や操作を変更するときに読む。
@@ -1077,9 +991,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-206
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/diagram-viewer.ts
   name: 図の拡大
   description: ホイールで拡大・縮小し、背景のドラッグで動かす。図の拡大の表示や操作を変更するときに読む。
@@ -1087,9 +999,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-227
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/docs.ts
   name: 資料の画面
   description: カード（既定）・ボード・表で見る。資料の画面の表示や操作を変更するときに読む。
@@ -1097,9 +1007,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-211
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/overview.ts
   name: 概要の画面
   description: 次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスク・カテゴリー別の進捗のタイルを並べる。概要の画面の表示や操作を変更するときに読む。
@@ -1107,9 +1015,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-224
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/pending-edits.ts
   name: 保存待ちのパネル
   description: 保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、まとめて保存する。保存待ちのパネルの表示や操作を変更するときに読む。
@@ -1117,9 +1023,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-219
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/records.ts
   name: 記録の表の画面
   description: 種類ごとの列を持つ表だけを出す。記録の表の画面の表示や操作を変更するときに読む。
@@ -1127,9 +1031,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-225
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/search.ts
   name: 全体の検索
   description: ID・タイトル・本文で、全種類の項目を探すモーダル。全体の検索の表示や操作を変更するときに読む。
@@ -1137,9 +1039,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-226
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/settings.ts
   name: 表示の設定のパネル
   description: 見ている画面に重ねて左から出すパネルに表示の設定の中身を入れ、既定が変わったときは画面の下に知らせを出す。表示の設定のパネルの表示や操作を変更するときに読む。
@@ -1147,9 +1047,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-232
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/tasks.ts
   name: タスクの画面
   description: ボード（既定）と表で見る。タスクの画面の表示や操作を変更するときに読む。
@@ -1157,9 +1055,7 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-210
-    type: implements
+  related: []
 - path: skills/mindmap/preview/screens/workspace-settings.ts
   name: 設定の画面
   description: ワークスペースの設定を、キーごとの入力で書き換える別の画面。設定の画面の表示や操作を変更するときに読む。
@@ -1167,18 +1063,14 @@ files:
   - tool:typescript
   - topic:プレビュー
   - topic:画面
-  related:
-  - to: MOD-489-220
-    type: implements
+  related: []
 - path: skills/mindmap/preview/style.css
   name: プレビューのスタイル
   description: '開発者ツール × スイス: 無彩色の骨格に、マーカーの 1 色（枝の線と選択）だけを置く。プレビューの画面と部品の見た目を変更するときに読む。'
   tags:
   - tool:css
   - topic:スタイル
-  related:
-  - to: MOD-489-171
-    type: implements
+  related: []
 - path: skills/mindmap/preview/template.html
   name: プレビューの雛形
   description: プレビューの HTML の骨組みで、描画のライブラリの読み込みと記録を差し込む場所を持つ。プレビューの HTML の骨組みや読み込むライブラリを変更するときに読む。
@@ -1189,17 +1081,13 @@ files:
   related:
   - to: MOD-489-152
     type: implements
-  - to: MOD-489-171
-    type: implements
 - path: skills/mindmap/preview/tokens.css
   name: プレビューのデザイントークン
   description: 'プレビューのデザイントークン（デザインスタイル: 開発者ツール × スイス、見本 dev-swiss-cards）。色・余白・文字などのデザイン値を変更するときに読む。'
   tags:
   - tool:css
   - topic:デザイントークン
-  related:
-  - to: MOD-489-171
-    type: implements
+  related: []
 - path: skills/mindmap/schemas/changes.schema.json
   name: 変更履歴のスキーマ
   description: ワークスペースの変更履歴の YAML の形式を決める JSON Schema。変更履歴の YAML のキーを追加・変更するときに読む。
