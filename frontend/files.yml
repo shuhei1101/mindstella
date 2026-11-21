@@ -1705,3 +1705,23 @@ files:
   related:
   - to: MOD-489-170
     type: implements
+- path: src/shared/stores/screen-state-store.test.ts
+  name: 画面の一時的な状態の保存先の単体テスト
+  description: screen-state-store（絞り込みの条件・タグの組み合わせ方・選んだ時点・一覧のスクロール位置の sessionStorage への読み書き）の単体テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-649-1
+    type: tests
+- path: src/shared/hooks/use-list-scroll.test.ts
+  name: 一覧のスクロール位置の復元の単体テスト
+  description: use-list-scroll（一覧のスクロール位置を残して戻す）の単体テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-649-2
+    type: tests

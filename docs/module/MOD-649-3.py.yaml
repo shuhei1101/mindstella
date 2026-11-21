@@ -166,3 +166,5 @@ functions:
 notes:
   単体テスト: '`tests/unit/scripts/test_presets.py` に置く'
   書き込み: '`config.yaml` の書き込みは `settings_update.py` と同じ読み書きの関数（`safe_dump(allow_unicode=True, sort_keys=False)` と一時ファイルの `os.replace`）を使う'
+test_files:
+  - tests/unit/scripts/test_presets.py
