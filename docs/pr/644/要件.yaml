@@ -128,6 +128,10 @@ docs:
     new: false
     change: 配る書き出しに含めるライブラリとライセンスの表示を React のビルドに合わせる
     status: todo
+  - page: docs/architecture/ARCH-489-1.yaml
+    new: false
+    change: '`runs_on` の `/w/{workspace}/mindstella.html`・`/w/{workspace}/spa/` を `/w/{workspace}/` にし、プレビューのサブシステムの説明から今の画面を削除する'
+    status: todo
 scope_out:
   - item: E2E（`tests/e2e/`）を React の画面に合わせる
     reason: 0.x の間は E2E を合わせないと決めている（D-297 A。計画の行の概要に記載済み）
