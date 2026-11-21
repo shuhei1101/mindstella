@@ -70,6 +70,12 @@ functions:
         condition: "`tx` が「画面」を含み「廃止」を含まない式の画面で `addTag('保存')`"
         mock: ルーターのメモリの履歴
         expected: '`tx` の最上位の `and` の子に「保存」を含む条件が加わり、`f.tags` が無く、履歴が 1 つ増える'
+      - name: test_use_screen_filters_when_add_same_tag_to_expr
+        case: 正常
+        summary: 式に同じタグの「含む」があるときはタグを加えない
+        condition: "`tx` の最上位の `and` の子に「画面」だけを含む条件がある画面で `addTag('画面')`"
+        mock: ルーターのメモリの履歴
+        expected: '`tx` が変わらず、履歴が増えない'
       - name: test_use_screen_filters_when_back
         case: 正常
         summary: 同じ画面で戻ると、保存した条件を戻さず外す

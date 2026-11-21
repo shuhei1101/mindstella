@@ -21,6 +21,13 @@ data_models:
         type: "'any' | 'all' | undefined"
         description: '`eq` の組み合わせ。`all` は全て、それ以外はどれか'
     container: frontend/src/shared/core/presets.ts
+constants:
+  - name: MAX_TAG_EXPR_LAYERS
+    title: タグの式の入れ子の上限
+    container: frontend/src/shared/core/presets.ts
+    summary: タグの式の束の入れ子の深さの上限（最上位の束を 1 レイヤーとする）。knowledge の規約『フィルター・照合条件の構造』の入れ子の深さに合わせ、部品『タグの条件の詳細』が「グループ追加」を出すかの判定に使う
+    value: '3'
+    usecase: 項目を表で絞り込む
 functions:
   - name: parseTagExpr
     title: URL のタグの式の読み取り
@@ -84,7 +91,7 @@ functions:
     title: 簡易で表せる式の読み取り
     kind: 関数
     usecase: 項目を表で絞り込む
-    summary: 式が 1 つの「含む」の条件なら、タグの並びと組み合わせ方（`match` が `all` なら `all`、それ以外は `any`）を返し、それ以外は null を返す。`tagExprOf` は逆に、タグの並びと組み合わせ方から 1 つの「含む」の条件を作る
+    summary: 式が 1 つの「含む」の条件なら、タグの並びと組み合わせ方（`match` が `all` なら `all`、それ以外は `any`）を返し、それ以外は null を返す
     args:
       - name: filter
         type: PresetFilter
@@ -100,6 +107,27 @@ functions:
         condition: '`parametrize`: 「画面」「廃止」を全て含む条件 / `ne` の条件 / `and` の束'
         mock: なし
         expected: '`{tags: [画面, 廃止], match: all}` / null / null'
+    container: frontend/src/shared/core/presets.ts
+  - name: tagExprOf
+    title: 簡易の条件からの式
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: 'タグの並びと組み合わせ方から、1 つの「含む」の条件の式を作る（`all` のときだけ `match: all` を付ける）。`use-screen-filters` が `f.tags`・`tagmatch` から今のタグの条件の式を作るときに使う'
+    args:
+      - name: tags
+        type: '{ tags: readonly string[]; match: TagMatch }'
+        required: true
+        description: タグの並びと組み合わせ方
+    returns:
+      type: PresetCondition
+      description: 1 つの「含む」の条件
+    unit_tests:
+      - name: test_tag_expr_of
+        case: 正常
+        summary: 組み合わせ方ごとの条件
+        condition: '`parametrize`: `{tags: [画面, 廃止], match: all}` / `{tags: [画面], match: any}`'
+        mock: なし
+        expected: '`match: all` を持つ「含む」の条件 / `match` を持たない「含む」の条件'
     container: frontend/src/shared/core/presets.ts
   - name: describeTagExpr
     title: タグの式の文
