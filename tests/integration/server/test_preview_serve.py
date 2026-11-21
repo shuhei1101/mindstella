@@ -1,48 +1,51 @@
-"""プレビューの配信（GET /）の結合テスト。"""
+"""プレビューの配信（GET /w/{workspace}/）の結合テスト。"""
 
 from __future__ import annotations
 
-import json
 import re
-from collections.abc import Callable, Iterator
+import textwrap
+from collections.abc import Callable
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any
 from urllib.parse import quote, urlsplit
 
-import pytest
-
 from session_fixtures import SessionWorld
+from workspace_fixtures import SERVER_SCRIPT
 
-from .fixture_types import MakeItem, MakeWorkspace, McpServer, StartMdmarkRefServer, StartServer
+from .fixture_types import MakeItem, MakeWorkspace, StartServer
 from .http_helpers import http_request
-from .mdmark_ref_helpers import FAKE_HEAD_SHA, FakeMdmarkSource, fake_github, fake_jsdelivr
-from .transcriber_helpers import bind_closed_port
 
 # 許可するホスト名を渡す環境変数と、許可するホスト名
 ALLOWED_HOSTS_ENV = "MINDSTELLA_ALLOWED_HOSTS"
 ALLOWED_HOST = "preview.example.test"
 
-# 画面のパス
-PAGE_PATH = "/mindstella.html"
+# 画面のパス（ワークスペースの経路より後ろ）
+PAGE_PATH = "/"
 
 # どのワークスペースにも当たらない ID
 UNKNOWN_WORKSPACE_ID = "mindstella-unknown-000000"
 
-# 画面が読み込む mdmark の配布物の URL の頭（`{ref}/dist/{ファイル}` が続く）
-MDMARK_DIST_BASE = "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@"
-
-# 画面の mdmark の CSS の link 要素の href と、読み込みの設定の要素の中身を取る正規表現
-MDMARK_CSS_HREF = re.compile(r'<link rel="stylesheet" href="([^"]+/dist/index\.css)"')
-MDMARK_CONFIG = re.compile(
-    r'<script type="application/json" id="mindmap-mdmark-config">(.*?)</script>', re.S
-)
-
-# 雛形の mdmark のタグの例
-MDMARK_TAG = "v0.13.0"
-
 # 画面の本文に出てはいけない `config.yaml` の中身の目印（設定の題名）
 SETTINGS_MARK = "要件出しのスキル mindmap を設計する"
+
+# 画面の本文が読む JavaScript と CSS の相対の参照（`./assets/`）
+SCRIPT_SRC_PATTERN = re.compile(r'<script type="module"[^>]*src="\./(assets/[^"]+\.js)"')
+STYLESHEET_HREF_PATTERN = re.compile(r'<link rel="stylesheet"[^>]*href="\./(assets/[^"]+\.css)"')
+
+# 配信が読む画面のビルドの出力のフォルダを差し替えて常駐サーバーを起動するスクリプト
+MISSING_SPA_SERVER_SCRIPT = textwrap.dedent(
+    """\
+    import sys
+
+    sys.path.insert(0, {scripts_dir!r})
+    import serve
+
+    serve.SPA_DIR = {spa_dir!r}
+    import server
+
+    sys.exit(server.main())
+    """
+)
 
 
 def _port(url: str) -> int:
@@ -52,85 +55,82 @@ def _port(url: str) -> int:
     return port
 
 
-def _mdmark_urls(html: str) -> tuple[str, str]:
-    """画面の mdmark の CSS の link 要素の href と、読み込みの設定の JavaScript の URL を返す。"""
-    css = MDMARK_CSS_HREF.search(html)
-    config = MDMARK_CONFIG.search(html)
-    assert css is not None and config is not None, html[:500]
-    return css.group(1), json.loads(config.group(1))["js"]
-
-
-def _open_page(server: McpServer, root: Path) -> str:
-    """server で root の配信を立て、画面を 1 回 GET して本文を返す。"""
-    served = server.call("preview_url", workspace=str(root))
-    assert served.is_error is False, served.text
-    assert served.data is not None
-    url = str(served.data["url"])
-    result = http_request(url, PAGE_PATH, headers={"Host": f"127.0.0.1:{_port(url)}"})
-    assert result.status == HTTPStatus.OK
-    return result.text
-
-
-@pytest.fixture
-def start_fake_source() -> Iterator[Callable[[FakeMdmarkSource], FakeMdmarkSource]]:
-    """偽の GitHub・jsDelivr を立てる関数を返し、テストの後で全て止める。"""
-    started: list[FakeMdmarkSource] = []
-
-    def _start(source: FakeMdmarkSource) -> FakeMdmarkSource:
-        source.start()
-        started.append(source)
-        return source
-
-    yield _start
-    for source in started:
-        source.stop()
+def _asset_path(pattern: re.Pattern[str], html: str) -> str:
+    """画面の本文から、パターンに当たる静的なファイルの相対の参照をワークスペースの経路の下のパスにして返す。"""
+    match = pattern.search(html)
+    assert match is not None, html[:500]
+    return f"/{match.group(1)}"
 
 
 def test_normal(
     make_workspace: MakeWorkspace, make_item: MakeItem, serve_preview: Callable[[Path], str]
 ) -> None:
-    """雛形に CSS と JavaScript を差し込んだ画面を返す（正常系）。"""
+    """`/w/{workspace}/` で React の画面の `index.html` を返す（正常系）。"""
     # 準備
     url = serve_preview(make_workspace(make_item("D-1")))
     # 実行
     result = http_request(url, PAGE_PATH, headers={"Host": f"127.0.0.1:{_port(url)}"})
     # 検証
-    assert result.status == 200
+    assert result.status == HTTPStatus.OK
     assert result.headers["content-type"] == "text/html; charset=utf-8"
     assert result.headers["cache-control"] == "no-store"
-    # 画面の CSS と JavaScript が差し込まれ（空の要素のまま残っていない）、記録の埋め込み先は空のまま
-    assert '<style id="mindmap-style">' in result.text
-    assert '<style id="mindmap-style"></style>' not in result.text
-    assert '<script id="mindmap-app">' in result.text
-    assert '<script id="mindmap-app"></script>' not in result.text
-    assert '<script type="application/json" id="mindmap-data"></script>' in result.text
+    assert 'id="root"' in result.text
+    assert SCRIPT_SRC_PATTERN.search(result.text) is not None
 
 
-def test_normal_when_root(
+def test_normal_when_asset(
     make_workspace: MakeWorkspace, make_item: MakeItem, serve_preview: Callable[[Path], str]
 ) -> None:
-    """`/` は画面のパスへ送り直す（正常系）。"""
+    """ビルドの出力の静的なファイルを拡張子に合う Content-Type で返す（正常系）。"""
     # 準備
     url = serve_preview(make_workspace(make_item("D-1")))
-    # 実行（送り直しは辿らずに、1 回だけ GET する）
-    result = http_request(url, "/")
+    html = http_request(url, PAGE_PATH).text
+    # 実行
+    script = http_request(url, _asset_path(SCRIPT_SRC_PATTERN, html))
+    stylesheet = http_request(url, _asset_path(STYLESHEET_HREF_PATTERN, html))
     # 検証
-    assert result.status == 302
-    assert result.headers["location"] == urlsplit(url).path
-    assert result.text == ""
+    assert script.status == HTTPStatus.OK
+    assert script.headers["content-type"] == "text/javascript; charset=utf-8"
+    assert stylesheet.status == HTTPStatus.OK
+    assert stylesheet.headers["content-type"] == "text/css; charset=utf-8"
+
+
+def test_normal_when_old_path(
+    make_workspace: MakeWorkspace, make_item: MakeItem, serve_preview: Callable[[Path], str]
+) -> None:
+    """前の画面の URL は、search を残して `/w/{workspace}/` へ再送信する（正常系）。"""
+    # 準備
+    url = serve_preview(make_workspace(make_item("D-1")))
+    base = urlsplit(url).path.rstrip("/")
+    # 実行（再送信は辿らずに、1 回ずつ GET する）
+    bare = http_request(url, base)
+    old_page = http_request(url, "/mindstella.html")
+    old_spa = http_request(url, "/spa/?tab=decisions&id=D-1")
+    # 検証
+    assert (bare.status, bare.headers["location"]) == (HTTPStatus.FOUND, f"{base}/")
+    assert (old_page.status, old_page.headers["location"]) == (HTTPStatus.FOUND, f"{base}/")
+    assert (old_spa.status, old_spa.headers["location"]) == (
+        HTTPStatus.FOUND,
+        f"{base}/?tab=decisions&id=D-1",
+    )
 
 
 def test_error_when_host_mismatch(
     make_workspace: MakeWorkspace, make_item: MakeItem, serve_preview: Callable[[Path], str]
 ) -> None:
-    """Host が端末の中の名前でなければ、画面を返さない（異常系）。"""
+    """Host が端末の中の名前でなければ画面を返さない（異常系）。"""
     # 準備
     url = serve_preview(make_workspace(make_item("D-1")))
+    script_path = _asset_path(SCRIPT_SRC_PATTERN, http_request(url, PAGE_PATH).text)
+    host = {"Host": f"attacker.example:{_port(url)}"}
     # 実行
-    result = http_request(url, PAGE_PATH, headers={"Host": f"attacker.example:{_port(url)}"})
+    page = http_request(url, PAGE_PATH, headers=host)
+    script = http_request(url, script_path, headers=host)
     # 検証
-    assert result.status == 403
-    assert "<html" not in result.text.lower()
+    assert page.status == HTTPStatus.FORBIDDEN
+    assert "<html" not in page.text.lower()
+    assert script.status == HTTPStatus.FORBIDDEN
+    assert "import" not in script.text
 
 
 def test_error_when_path_unknown(
@@ -139,11 +139,13 @@ def test_error_when_path_unknown(
     """決めたパス以外は 404 を返す（異常系）。"""
     # 準備
     url = serve_preview(make_workspace(make_item("D-1")))
-    # 実行
-    result = http_request(url, "/config.yaml")
+    # 実行（`..` を正規化せずに送る）
+    unknown = http_request(url, "/config.yaml")
+    outside = http_request(url, "/assets/../config.yaml")
     # 検証
-    assert result.status == 404
-    assert SETTINGS_MARK not in result.text
+    for result in (unknown, outside):
+        assert result.status == HTTPStatus.NOT_FOUND
+        assert SETTINGS_MARK not in result.text
 
 
 def test_normal_when_host_allowed(
@@ -160,107 +162,10 @@ def test_normal_when_host_allowed(
     other = http_request(url, PAGE_PATH, headers={"Host": "other.example.test"})
     # 検証
     for result in (plain, with_port):
-        assert result.status == 200
+        assert result.status == HTTPStatus.OK
         assert result.headers["content-type"] == "text/html; charset=utf-8"
-    assert other.status == 403
+    assert other.status == HTTPStatus.FORBIDDEN
     assert "<html" not in other.text.lower()
-
-
-def test_normal_when_latest_resolved(
-    make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
-    start_mdmark_ref_server: StartMdmarkRefServer,
-    start_fake_source: Callable[[FakeMdmarkSource], FakeMdmarkSource],
-) -> None:
-    """latest を GitHub に問い合わせた develop の先頭の commit にし、保持している間は問い合わせ直さない（正常系）。"""
-    # 準備
-    github = start_fake_source(fake_github())
-    jsdelivr = start_fake_source(fake_jsdelivr())
-    server = start_mdmark_ref_server(github.base_url, jsdelivr.base_url)
-    root = make_workspace(settings={**valid_settings, "mdmark": {"version": "latest"}})
-    # 実行
-    first = _open_page(server, root)
-    second = _open_page(server, root)
-    # 検証
-    expected = (
-        f"{MDMARK_DIST_BASE}{FAKE_HEAD_SHA}/dist/index.css",
-        f"{MDMARK_DIST_BASE}{FAKE_HEAD_SHA}/dist/index.js",
-    )
-    assert _mdmark_urls(first) == expected
-    assert _mdmark_urls(second) == expected
-    assert len(github.paths) == 1
-
-
-def test_normal_when_github_unreachable(
-    make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
-    start_mdmark_ref_server: StartMdmarkRefServer,
-    start_fake_source: Callable[[FakeMdmarkSource], FakeMdmarkSource],
-) -> None:
-    """GitHub に届かないときは develop の URL で mdmark を読み込む画面を返す（正常系）。"""
-    # 準備
-    held = bind_closed_port()
-    jsdelivr = start_fake_source(fake_jsdelivr())
-    server = start_mdmark_ref_server(f"http://127.0.0.1:{held.getsockname()[1]}", jsdelivr.base_url)
-    root = make_workspace(settings={**valid_settings, "mdmark": {"version": "latest"}})
-    # 実行
-    try:
-        html = _open_page(server, root)
-    finally:
-        held.close()
-    # 検証
-    css_url, _ = _mdmark_urls(html)
-    assert css_url == f"{MDMARK_DIST_BASE}develop/dist/index.css"
-    warnings = [
-        line
-        for line in server.stderr_text().splitlines()
-        if "mdmark の ref を問い合わせられない" in line
-    ]
-    assert len(warnings) == 1, server.stderr_text()
-    assert jsdelivr.paths == []
-
-
-def test_normal_when_version_tag(
-    make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
-    start_mdmark_ref_server: StartMdmarkRefServer,
-    start_fake_source: Callable[[FakeMdmarkSource], FakeMdmarkSource],
-) -> None:
-    """設定がタグのときは GitHub に問い合わせずにタグの URL で読み込む（正常系）。"""
-    # 準備
-    github = start_fake_source(fake_github())
-    jsdelivr = start_fake_source(fake_jsdelivr())
-    server = start_mdmark_ref_server(github.base_url, jsdelivr.base_url)
-    root = make_workspace(settings={**valid_settings, "mdmark": {"version": MDMARK_TAG}})
-    # 実行
-    html = _open_page(server, root)
-    # 検証
-    css_url, _ = _mdmark_urls(html)
-    assert css_url == f"{MDMARK_DIST_BASE}{MDMARK_TAG}/dist/index.css"
-    assert github.paths == []
-    assert jsdelivr.paths == []
-
-
-def test_normal_when_dist_not_served(
-    make_workspace: MakeWorkspace,
-    start_mdmark_ref_server: StartMdmarkRefServer,
-    start_fake_source: Callable[[FakeMdmarkSource], FakeMdmarkSource],
-) -> None:
-    """問い合わせた commit を jsDelivr が配らないときは develop で読み込む（正常系）。"""
-    # 準備
-    github = start_fake_source(fake_github())
-    jsdelivr = start_fake_source(fake_jsdelivr(HTTPStatus.FORBIDDEN))
-    server = start_mdmark_ref_server(github.base_url, jsdelivr.base_url)
-    root = make_workspace()
-    # 実行
-    html = _open_page(server, root)
-    # 検証
-    css_url, js_url = _mdmark_urls(html)
-    assert css_url == f"{MDMARK_DIST_BASE}develop/dist/index.css"
-    assert js_url == f"{MDMARK_DIST_BASE}develop/dist/index.js"
-    assert jsdelivr.paths == [f"/gh/shuhei1101/mdmark@{FAKE_HEAD_SHA}/dist/index.js"]
-    warnings = [line for line in server.stderr_text().splitlines() if "jsDelivr が配らない" in line]
-    assert len(warnings) == 1, server.stderr_text()
 
 
 def test_error_when_workspace_not_served(session_world: SessionWorld) -> None:
@@ -284,7 +189,34 @@ def test_error_when_workspace_not_served(session_world: SessionWorld) -> None:
     ]
     # 検証
     for result in results:
-        assert result.status == 404
+        assert result.status == HTTPStatus.NOT_FOUND
         assert result.headers["content-type"].startswith("application/problem+json")
         assert '"decisions"' not in result.text
-    assert http_request(origin, f"{path_a}{PAGE_PATH}").status == 200
+    assert http_request(origin, f"{path_a}{PAGE_PATH}").status == HTTPStatus.OK
+
+
+def test_error_when_index_missing(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    start_server: StartServer,
+) -> None:
+    """ビルドの出力のフォルダに `index.html` が無いとき、画面を返さない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    empty_spa_dir = tmp_path / "spa-empty"
+    empty_spa_dir.mkdir()
+    wrapper = tmp_path / "missing_spa_server.py"
+    wrapper.write_text(
+        MISSING_SPA_SERVER_SCRIPT.format(
+            scripts_dir=str(SERVER_SCRIPT.parent), spa_dir=str(empty_spa_dir)
+        ),
+        encoding="utf-8",
+    )
+    server = start_server(script=wrapper)
+    url = server.call("preview_url", workspace=str(root)).data["url"]
+    # 実行
+    result = http_request(url, PAGE_PATH)
+    # 検証
+    assert result.status == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert result.headers["content-type"].startswith("application/problem+json")

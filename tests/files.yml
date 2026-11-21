@@ -65,27 +65,6 @@ files:
   - tool:pytest
   - topic:ヘルパー
   - topic:結合テスト
-- path: integration/preview/preview_added_mark_helpers.py
-  name: 本文の差分の追加したマーカーの結合テストの補助
-  description: 本文の差分の追加したマーカー（追加した色の面と +）の結合テストが共有する、ワークスペースの作り方と線の測り方。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ヘルパー
-  - topic:ワークスペース
-  - topic:差分
-  - topic:本文
-  - topic:結合テスト
-- path: integration/preview/preview_alias_helpers.py
-  name: 資料・調査のエイリアスの本文のマーカーとツールチップの結合テストの補助
-  description: 資料・調査のエイリアスの本文のマーカーとツールチップの結合テストが共通で使う、記録・本文・選び方。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ヘルパー
-  - topic:本文
-  - topic:結合テスト
-  - topic:資料
 - path: integration/preview/preview_body_layout_helpers.py
   name: 本文の差分の並べ方の結合テストの補助
   description: 本文の差分の並べ方の結合テストが共有する、ワークスペースの作り方と値、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
@@ -116,26 +95,6 @@ files:
   - topic:ヘルパー
   - topic:本文
   - topic:結合テスト
-- path: integration/preview/preview_body_view_helpers.py
-  name: Markdown の本文の見せ方の結合テストの補助
-  description: Markdown の本文の見せ方（表の列の固定・見出しの固定・しま模様・セクションの折りたたみ）の結合テストが共有する、ワークスペースの作り方と値、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:markdown
-  - topic:ヘルパー
-  - topic:ワークスペース
-  - topic:本文
-  - topic:結合テスト
-- path: integration/preview/preview_body_wrap_helpers.py
-  name: 本文の長い URL・インラインコード・表の見せ方の結合テストの補助
-  description: 詳細パネルと詳細の全画面の、本文の長い URL・インラインコード・表の見せ方の結合テストが共有する本文と測り方。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ヘルパー
-  - topic:本文
-  - topic:結合テスト
 - path: integration/preview/preview_comment_helpers.py
   name: コメントの画面の結合テストの補助
   description: コメントの画面の結合テストが共有する値と、選択・記録の読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
@@ -143,16 +102,6 @@ files:
   - tool:playwright
   - tool:pytest
   - topic:コメント
-  - topic:ヘルパー
-  - topic:結合テスト
-- path: integration/preview/preview_drawer_helpers.py
-  name: 絞り込みのドロワーの結合テストの補助
-  description: 絞り込みのドロワーの結合テストが共有する操作と値（トップバーの絞り込みのボタン・件数のバッジ・ドロワー）。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:トップバー
-  - topic:フィルター
   - topic:ヘルパー
   - topic:結合テスト
 - path: integration/preview/preview_edit_helpers.py
@@ -183,15 +132,6 @@ files:
   - topic:ヘルパー
   - topic:結合テスト
   - topic:資料
-- path: integration/preview/preview_fit_helpers.py
-  name: 幅 320px で見切れないことの結合テストの補助
-  description: 幅 320px で、トップバー以外の画面が横にスクロールせず見切れないことを確かめる結合テストが共有する操作と値。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:トップバー
-  - topic:ヘルパー
-  - topic:結合テスト
 - path: integration/preview/preview_fixture_types.py
   name: プレビューの結合テストの fixture の型と共有の値
   description: conftest の fixture が返す関数の型と、テストが共有する値（テストの引数の注釈・期待値に使う）。テストの準備や共有の操作を追加・変更するときに読む。
@@ -219,54 +159,6 @@ files:
   - topic:履歴
   - topic:差分
   - topic:結合テスト
-- path: integration/preview/preview_html_body_helpers.py
-  name: HTML の本文の画面の結合テストの補助
-  description: HTML の本文の画面の結合テストが共有する値と、枠の中の選択・測りの関数。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:html
-  - topic:ヘルパー
-  - topic:本文
-  - topic:結合テスト
-- path: integration/preview/preview_html_link_helpers.py
-  name: HTML の本文の枠の中のリンクを押す結合テストの補助
-  description: HTML の本文の枠の中のリンクを押す結合テストが共有する、本文の組み立てと枠の中の場所の読み取り。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:html
-  - topic:ヘルパー
-  - topic:本文
-  - topic:結合テスト
-- path: integration/preview/preview_layout_helpers.py
-  name: 画面の領域の結合テストの補助
-  description: 画面の領域（窓の高さに収め、帯の下の領域の中でスクロールする作り）の結合テストが共有する操作と値。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ヘルパー
-  - topic:結合テスト
-- path: integration/preview/preview_mark_helpers.py
-  name: コメントのマーカーの結合テストの補助
-  description: コメントのマーカーの結合テストが共有する値と、画面のマーカーを読む関数。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:コメント
-  - topic:ヘルパー
-  - topic:結合テスト
-- path: integration/preview/preview_markdown_post_helpers.py
-  name: スレッドの書き込みの Markdown の結合テストの補助
-  description: スレッドの書き込みの Markdown の結合テストが共有する、AI の書き込みとレビュー中の返信の本文。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:markdown
-  - topic:スレッド
-  - topic:ヘルパー
-  - topic:本文
-  - topic:結合テスト
 - path: integration/preview/preview_minimap_helpers.py
   name: 差分のミニマップの結合テストの補助
   description: 差分のミニマップの結合テストが共有する、ワークスペースの作り方と値、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
@@ -277,24 +169,6 @@ files:
   - topic:ワークスペース
   - topic:差分
   - topic:結合テスト
-- path: integration/preview/preview_panel_width_helpers.py
-  name: 詳細パネルの幅の区切りの結合テストの補助
-  description: 詳細パネルの幅の区切りの結合テストが共有する、保存領域のキーと値、画面の幅、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ヘルパー
-  - topic:結合テスト
-- path: integration/preview/preview_post_link_helpers.py
-  name: 書き込みのまとまりのリンクの結合テストの補助
-  description: 書き込みのまとまりのリンクの結合テストが共有する、スレッドとレビュー中の返信にリンクを持つワークスペースの作り方と値。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:スレッド
-  - topic:ヘルパー
-  - topic:ワークスペース
-  - topic:結合テスト
 - path: integration/preview/preview_removed_helpers.py
   name: 削除した項目の帯・取り下げの札の結合テストの補助
   description: 削除した項目の帯・取り下げの札の結合テストが共有する、削除した項目と取り下げた項目を持つワークスペースの作り方と値。テストの準備や共有の操作を追加・変更するときに読む。
@@ -304,35 +178,6 @@ files:
   - topic:ヘルパー
   - topic:ワークスペース
   - topic:結合テスト
-- path: integration/preview/preview_saved_filter_helpers.py
-  name: サーバーの配信で端末に残した絞り込みの条件の結合テストの補助
-  description: サーバーの配信で端末に残した絞り込みの条件の結合テストが共有する操作と読み取り。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:フィルター
-  - topic:ヘルパー
-  - topic:結合テスト
-- path: integration/preview/preview_scrim_helpers.py
-  name: 左のパネルのグレーアウトの結合テストの補助
-  description: 左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定・保存待ち）のグレーアウトの結合テストが共有する操作と値。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:コメント
-  - topic:フィルター
-  - topic:ヘルパー
-  - topic:結合テスト
-  - topic:設定
-- path: integration/preview/preview_settings_helpers.py
-  name: 表示の設定の画面の結合テストの補助
-  description: 表示の設定の画面の結合テストが共有する値と、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ヘルパー
-  - topic:結合テスト
-  - topic:設定
 - path: integration/preview/preview_spa_helpers.py
   name: React のプレビューを開く結合テストの補助
   description: React のプレビュー（SPA）を開く結合テストの共通の関数。テストの準備や共有の操作を追加・変更するときに読む。
@@ -342,151 +187,6 @@ files:
   - topic:プレビュー
   - topic:ヘルパー
   - topic:結合テスト
-- path: integration/preview/preview_stack_helpers.py
-  name: 詳細パネルと左のパネルの重なりの結合テストの補助
-  description: 幅 900px 以下の、詳細パネルと左のパネル（表示の設定・コメントの一覧・絞り込みのドロワー）の重なりの結合テストが共有する操作と値。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:コメント
-  - topic:フィルター
-  - topic:ヘルパー
-  - topic:結合テスト
-  - topic:設定
-- path: integration/preview/preview_style_checks.py
-  name: 計算後のスタイルで見た目を測るテストの補助
-  description: プレビューの見た目（余白・面の色・文字の大きさ・動き）を、計算後のスタイルで測る関数と、テストが共有する値。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:プレビュー
-  - topic:ヘルパー
-  - topic:結合テスト
-- path: integration/preview/preview_word_diff_helpers.py
-  name: 語の面の結合テストの補助
-  description: 語の面（変えた行の中の変わった語の濃い面）の結合テストが共有する、ワークスペースの作り方と色の測り方。テストの準備や共有の操作を追加・変更するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ヘルパー
-  - topic:ワークスペース
-  - topic:結合テスト
-- path: integration/preview/test_comments_screen.py
-  name: 画面設計『コメントの一覧』の結合テスト
-  description: 画面設計『コメントの一覧』（スレッドの一覧）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:コメント
-  - topic:スレッド
-  - topic:結合テスト
-- path: integration/preview/test_decisions_screen.py
-  name: 画面設計『検討事項』の結合テスト
-  description: マップは項目 ID `decision-map`）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:検討事項
-  - topic:結合テスト
-- path: integration/preview/test_detail_full_screen.py
-  name: 画面設計『詳細の全画面』と『図の拡大』の結合テスト
-  description: 画面設計『詳細の全画面』と『図の拡大』（全画面の中身の切り替え）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/preview/test_detail_panel_screen.py
-  name: 画面設計『詳細パネル』の結合テスト
-  description: 画面設計『詳細パネル』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/preview/test_diagram_viewer_screen.py
-  name: 画面設計『図の拡大』の結合テスト
-  description: 画面設計『図の拡大』（詳細パネルからのモーダル）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/preview/test_docs_screen.py
-  name: 画面設計『資料』の結合テスト
-  description: 画面設計『資料』（カード・ボード・表）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:結合テスト
-  - topic:資料
-- path: integration/preview/test_history_screen.py
-  name: 画面設計『変更履歴』の結合テスト
-  description: 画面設計『変更履歴』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:履歴
-  - topic:結合テスト
-- path: integration/preview/test_open_preview.py
-  name: プレビューを開くの結合テスト
-  description: プレビューを開く（サーバーが配る URL と、`export` が書き出した配る書き出しを開く）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:プレビュー
-  - topic:結合テスト
-- path: integration/preview/test_overview_screen.py
-  name: 画面設計『概要』の結合テスト
-  description: 画面設計『概要』（タイルの項目 ID で要素を引く）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:概要
-  - topic:結合テスト
-- path: integration/preview/test_pending_panel_screen.py
-  name: 画面設計『保存待ちのパネル』の結合テスト
-  description: 画面設計『保存待ちのパネル』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/preview/test_records_screen.py
-  name: 画面設計『記録の表』の結合テスト
-  description: 画面設計『記録の表』（調査・用語集・メモ・会話ログ）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/preview/test_review_screen.py
-  name: 画面設計『レビュー中の書き込み』の結合テスト
-  description: 画面設計『レビュー中の書き込み』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/preview/test_search_screen.py
-  name: 画面設計『全体の検索』の結合テスト
-  description: 画面設計『全体の検索』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:検索
-  - topic:結合テスト
-- path: integration/preview/test_settings_confirm_screen.py
-  name: 画面設計『既定の保存の確かめ』の結合テスト
-  description: 画面設計『既定の保存の確かめ』（ワークスペースの既定として保存する前のモーダル）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ワークスペース
-  - topic:結合テスト
-- path: integration/preview/test_settings_screen.py
-  name: 画面設計『表示の設定』の結合テスト
-  description: 表示する種類・既定に戻す・既定が変わった知らせ。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:ネットワーク
-  - topic:結合テスト
-  - topic:設定
 - path: integration/preview/test_spa_open.py
   name: インターフェース定義『プレビューを開く』の結合テスト
   description: インターフェース定義『プレビューを開く』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -503,38 +203,6 @@ files:
   - topic:プレビュー
   - topic:概要
   - topic:結合テスト
-- path: integration/preview/test_tasks_screen.py
-  name: 画面設計『タスク』の結合テスト
-  description: 画面設計『タスク』（ボード・表）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:タスク
-  - topic:結合テスト
-- path: integration/preview/test_thread_screen.py
-  name: 画面設計『スレッド』の結合テスト
-  description: 画面設計『スレッド』（スレッド 1 件の画面）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:スレッド
-  - topic:結合テスト
-- path: integration/preview/test_topbar_screen.py
-  name: 画面設計の「トップバー」の要素の結合テスト
-  description: 全ての画面で共通のトップバーとタブの帯（画面設計の「トップバー」の要素）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:トップバー
-  - topic:結合テスト
-- path: integration/preview/test_workspace_settings_screen.py
-  name: 画面設計『設定の画面』の結合テスト
-  description: 画面設計『設定の画面』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:playwright
-  - tool:pytest
-  - topic:結合テスト
-  - topic:設定
 - path: integration/server/conftest.py
   name: サーバーの結合テストの共通の fixture
   description: サーバーの結合テストの共通 fixture（ワークスペースと MCP サーバーの起動は tests/workspace_fixtures.py）。テストの準備や共有の操作を追加・変更するときに読む。
@@ -802,8 +470,8 @@ files:
   - tool:pytest
   - topic:結合テスト
 - path: integration/server/test_preview_serve.py
-  name: GET /の結合テスト
-  description: プレビューの配信（GET /）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: プレビューの配信の結合テスト
+  description: プレビューの配信（GET /w/{workspace}/ と静的なファイル・前の画面の URL の再送信）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
   - tool:pytest
@@ -891,13 +559,6 @@ files:
   - tool:pytest
   - topic:スレッド
   - topic:結合テスト
-- path: integration/server/test_spa_serve.py
-  name: React のプレビューの配信の結合テスト
-  description: React のプレビュー（SPA）の配信（GET /spa/{path}）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:プレビュー
-  - topic:結合テスト
 - path: integration/server/test_thread.py
   name: スレッドを読むの結合テスト
   description: thread（スレッドを読む）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -954,6 +615,17 @@ files:
   - tool:pytest
   - topic:スレッド
   - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/storybook_react/storybook_frame_helpers.py
+  name: HTML の本文の枠を描く部品のストーリーの結合テストの補助
+  description: HTML の本文の枠を描く部品のストーリーの結合テストが共有する、枠の中を読む関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:html
+  - topic:ストーリー
+  - topic:ヘルパー
+  - topic:本文
   - topic:結合テスト
 - path: integration/storybook_react/conftest.py
   name: React の Storybook のストーリーの結合テストの共通の fixture

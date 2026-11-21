@@ -32,8 +32,8 @@ STOP_HOOK_ENV = "MINDSTELLA_PREVIEW_STOP_HOOK"
 
 # 配信の URL の頭と、画面のパス（ワークスペースの経路の下）と、URL のパスの形
 URL_PREFIX = "http://127.0.0.1:"
-PAGE_PATH = "/mindstella.html"
-WORKSPACE_PAGE_PATH = re.compile(r"/w/mindstella-[^/]+/mindstella\.html")
+PAGE_PATH = "/"
+WORKSPACE_PAGE_PATH = re.compile(r"/w/mindstella-[^/]+/")
 
 # 2 つのフォルダが重ねて持つワークスペースの ID
 CONFLICT_ID = "mindstella-話し合いA-0a1b2c"
@@ -189,7 +189,7 @@ def _make_workspace_with_set_unserved(
 def test_normal_when_diff_given(
     make_workspace: MakeWorkspace, call_tool: CallTool, start_server: StartServer
 ) -> None:
-    """diff を渡すと、そのまとまりの差分を開くハッシュを付けた URL を返す（正常系）。"""
+    """diff を渡すと、そのまとまりの差分を開く search を付けた URL を返す（正常系）。"""
     # 準備
     root = _make_workspace_with_set_unserved(make_workspace, start_server)
     # 実行
@@ -198,15 +198,15 @@ def test_normal_when_diff_given(
     assert result.is_error is False
     assert result.data is not None
     assert result.data["url"].startswith(URL_PREFIX)
-    assert result.data["url"].endswith(f"{PAGE_PATH}#diff={KNOWN_SET_ID}")
+    assert result.data["url"].endswith(f"{PAGE_PATH}?diff={KNOWN_SET_ID}")
     assert result.data["started"] is True
-    # 直下の README のプレビューの節の URL はハッシュを持たない
+    # 直下の README のプレビューの節の URL は search を持たない
     readme_text = (root / "README.md").read_text(encoding="utf-8")
-    assert "#diff=" not in section_of(readme_text, "## プレビュー")
-    # diff を渡さずに呼び直すと、ハッシュの無い同じポートの URL が返る
+    assert "?diff=" not in section_of(readme_text, "## プレビュー")
+    # diff を渡さずに呼び直すと、search の無い同じポートの URL が返る
     again = call_tool("preview_url", workspace=str(root))
     assert again.data is not None
-    assert again.data["url"] == result.data["url"].split("#")[0]
+    assert again.data["url"] == result.data["url"].split("?")[0]
     assert again.data["started"] is False
 
 
@@ -231,7 +231,7 @@ def test_error_when_diff_not_found(
 def test_normal_when_diff_given_while_serving(
     make_workspace: MakeWorkspace, call_tool: CallTool
 ) -> None:
-    """既に配っているワークスペースで diff を渡すと、同じポートでハッシュを付けた URL を返す（正常系）。"""
+    """既に配っているワークスペースで diff を渡すと、同じポートで search を付けた URL を返す（正常系）。"""
     # 準備
     root = _make_workspace_with_set(make_workspace, call_tool)
     first = call_tool("preview_url", workspace=str(root))
@@ -241,7 +241,7 @@ def test_normal_when_diff_given_while_serving(
     # 検証
     assert result.is_error is False
     assert result.data is not None
-    assert result.data["url"] == f"{first.data['url']}#diff={KNOWN_SET_ID}"
+    assert result.data["url"] == f"{first.data['url']}?diff={KNOWN_SET_ID}"
     assert result.data["started"] is False
 
 

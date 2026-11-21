@@ -73,7 +73,7 @@ def test_normal(
     make_post: MakePost,
     page: Page,
 ) -> None:
-    """`/spa/` を開くと、記録を読んでトップバーと概要を描く（正常系）。"""
+    """`/w/{ワークスペース}/` を開くと、記録を読んでトップバーと概要を描く（正常系）。"""
     # 準備
     url, _root = write_review_preview(
         make_item("D-1"),
@@ -272,7 +272,7 @@ def test_normal_when_item(page: Page, spa_preview: str) -> None:
 def test_normal_when_search_mismatched(page: Page, spa_preview: str) -> None:
     """記録・画面に合わない値を外す（正常系）。"""
     open_spa(page, spa_preview, "?tab=tasks&view=map&id=T-99")
-    page.wait_for_url("**/spa/?tab=tasks")
+    page.wait_for_url("**/w/*/?tab=tasks")
 
 
 def test_normal_when_filter(page: Page, spa_preview: str) -> None:
@@ -362,11 +362,11 @@ def test_normal_when_search(make_workspace: MakeWorkspace, call_tool: CallTool, 
     hits = page.get_by_role("listbox", name="検索の結果").inner_text()
     # 実行（D-1 を押す）
     page.get_by_role("option").filter(has_text="D-1").click()
-    page.wait_for_url("**/spa/?tab=decisions*")
+    page.wait_for_url("**/w/*/?tab=decisions*")
     chosen = (page.evaluate("location.search"), _history_length(page))
     # 実行（ブラウザで戻る）
     page.go_back()
-    page.wait_for_url("**/spa/?tab=tasks*")
+    page.wait_for_url("**/w/*/?tab=tasks*")
     back = page.evaluate("decodeURIComponent(location.search)")
     # 検証
     assert opened == ("?tab=tasks&diff=V-1&search=1", before)

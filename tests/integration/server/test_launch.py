@@ -412,7 +412,7 @@ class _OutdatedServer:
                         201,
                         {
                             "id": "mindstella-家計簿アプリ-000000",
-                            "url": "http://127.0.0.1:1/mindstella.html",
+                            "url": "http://127.0.0.1:1/w/mindstella-x-1/",
                         },
                     )
                 else:
