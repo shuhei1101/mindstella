@@ -60,8 +60,21 @@ SCROLLABLE_HEIGHT = 360
 # 配る書き出しの図が描き終わるまで待つ上限ミリ秒
 DIAGRAM_TIMEOUT_MS = 20_000
 
-# 配る書き出しが中に持つ mdmark のタグ（jsDelivr の develop は、パッケージの大きさの上限で一部の配布ファイルを返さないことがある）
-EXPORT_MDMARK_VERSION = "v0.14.0"
+# 配る書き出しで開く資料の本文（mermaid の図と、部品 map が描く map の範囲を持つ）
+EXPORT_BODY = BODY_WITH_DIAGRAM + """
+<!-- map -->
+
+```mermaid
+flowchart LR
+  X[構成の左] --> Y[構成の右]
+```
+
+<!-- /map -->
+"""
+
+# map の図の描画の領域のノードの名前の要素
+MAP_NODE_NAMES = ".mdmark-map .mdmark-diagram-stage .mdmark-diagram-node-name"
+
 
 # 足す検討事項
 NEW_DECISION = {
@@ -812,14 +825,11 @@ def _export_url(call_tool: CallTool, root: Path, out: Path) -> str:
 
 
 def test_normal_when_exported_offline(
-    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, valid_settings: dict[str, Any], page: Page, tmp_path: Path
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page, tmp_path: Path
 ) -> None:
-    """配る書き出しを `file://` で開くと、外部への要求をせずに概要と詳細の本文・図を描く（正常系）。"""
+    """配る書き出しを `file://` で開くと、外部への要求をせずに概要と詳細の本文・mermaid と map の図を描く（正常系）。"""
     # 準備
-    settings = {**valid_settings, "mdmark": {"version": EXPORT_MDMARK_VERSION}}
-    root = make_workspace(
-        make_item("A-1", status="下書き", body="../docs/A-1.mark.md"), settings=settings, bodies={"A-1.mark.md": BODY_WITH_DIAGRAM}
-    )
+    root = make_workspace(make_item("A-1", status="下書き", body="../docs/A-1.mark.md"), bodies={"A-1.mark.md": EXPORT_BODY})
     url = _export_url(call_tool, root, tmp_path / "配る.html")
     blocked: list[str] = []
 
@@ -835,20 +845,23 @@ def test_normal_when_exported_offline(
     page.wait_for_selector("#tile-open", timeout=SPA_RENDER_TIMEOUT_MS)
     page.goto(f"{url}#/?tab=docs&id=A-1")
     panel = page.get_by_role("complementary", name="詳細")
-    panel.locator(".mermaid svg").wait_for(timeout=DIAGRAM_TIMEOUT_MS)
+    panel.locator(".mermaid svg").first.wait_for(timeout=DIAGRAM_TIMEOUT_MS)
+    panel.locator(MAP_NODE_NAMES).first.wait_for(timeout=DIAGRAM_TIMEOUT_MS)
     # 検証
     expect(panel.get_by_role("heading", name="流れ")).to_be_visible()
+    expect(panel.locator(MAP_NODE_NAMES, has_text="構成の左")).to_have_count(1)
+    assert "X[構成の左]" not in page.inner_text("body")
     assert blocked == []
     assert console.messages == []
     assert console.exceptions == []
 
 
 def test_normal_when_exported_read_only(
-    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, valid_settings: dict[str, Any], page: Page, tmp_path: Path
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page, tmp_path: Path
 ) -> None:
     """配る書き出しは、項目の追加・編集・確認済み・コメント・保存待ち・ワークスペースの既定にするの操作を出さない（正常系）。"""
     # 準備
-    root = make_workspace(make_item("T-1", status="進行中"), settings={**valid_settings, "mdmark": {"version": EXPORT_MDMARK_VERSION}})
+    root = make_workspace(make_item("T-1", status="進行中"))
     url = _export_url(call_tool, root, tmp_path / "配る.html")
     # 実行
     page.goto(f"{url}#/?tab=tasks&id=T-1")
