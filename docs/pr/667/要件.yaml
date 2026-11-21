@@ -68,7 +68,9 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: '#488: 同上。#347・#147 で変わる差分・印刷・項目の ID のツールチップの操作の記載も合わせる'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:22:07.579470+00:00'
   - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
     new: false
     change: '#488: タイトル直下の 1 行を docs/guide/index.yaml の summary と同じ文言にする'
