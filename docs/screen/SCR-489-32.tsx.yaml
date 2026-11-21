@@ -819,7 +819,7 @@ notes:
   埋め込んだ HTML とエクスポートのモック: '埋め込んだ HTML・チャート・操作できる部品・エクスポートの入口・埋め込んだ HTML の差分の見本は `docs/mock/pages/detail-panel/348/a-embedded-html/index.html`、エクスポートのメニューは `docs/mock/pages/doc-export-menu/348/a-in-menu/index.html`（採用した案 A。確認ログ: docs/pr/348/確認ログ.md）'
   レビュー中のコメントの並びのモック: レビュー中のコメントの並びの切り替えの見本は `docs/mock/pages/detail-panel/396/b-toggle/index.html`（採用した案 B。確認ログは `docs/pr/396/確認ログ.md`）
   主題のタグのモック: 'タグの主題のマーカーと、タグの入力の主題のトグルの見本は `docs/mock/pages/detail-panel/385/a-ring/index.html`（採用した案 A。確認ログ: docs/pr/385/確認ログ.md）'
-  本文の差分の見せ方のモック: '本文の差分の見せ方の切り替え・「描いた結果」「原文の差分」の見本はストーリー `Shared/MarkdownBodyDiff`、項目の ID のツールチップの見本はストーリー `Shared/ItemIdTip`（作業 PR #667 でユーザーが合意）'
+  本文の差分の見せ方のモック: '本文の差分の見せ方の切り替え・「描いた結果」「原文の差分」の見本はストーリー `Shared/MarkdownBody` の `DiffRendered`・`DiffSource`、項目の ID のツールチップの見本はストーリー `Shared/TermTip` の `ItemId`・`ItemIdWithoutStatus`・`ItemIdWithdrawn`（作業 PR #667 でユーザーが合意したモックと同じ状態）'
 test_file: tests/integration/preview/test_spa_detail_panel_screen.py
 refs:
   - IF-489-70#

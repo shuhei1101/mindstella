@@ -37,6 +37,6 @@ refs:
   - IF-489-70#
   - CMP-489-6#
 notes:
-  モック: ストーリー `Shared/MarkdownBodyDiff`（`frontend/src/shared/components/markdown-body-diff.stories.tsx`）
+  モック: 'ストーリー `Shared/MarkdownBody` の `DiffRendered`・`DiffSource`（作業 PR #667 でユーザーが合意したモックと同じ状態）'
   文言: HTML の本文の差分（部品設計『HTMLの本文の差分』）の切り替えと同じ「描いた結果」「原文の差分」
 test_file: tests/integration/storybook_react/test_body_diff_view_switch_stories.py
