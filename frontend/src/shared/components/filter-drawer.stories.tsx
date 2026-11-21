@@ -152,3 +152,38 @@ export const TagMatchAll: Story = {
 export const TagMatchAny: Story = {
   args: { selected: { tags: ["プレビュー", "サーバー"] }, shown: 6, tagMatch: "any", onTagMatchChange: fn() },
 };
+
+/** プリセットを 4 件渡した。値の条件より上にプリセットを並べ、件数が 0 の「通知」は破線の枠線と薄い文字で出す */
+export const Presets: Story = {
+  args: {
+    presets: [
+      { name: "画面の設計", count: 2, applied: false },
+      { name: "廃止する画面", count: 1, applied: false },
+      { name: "保存の仕組み", count: 1, applied: false },
+      { name: "通知", count: 0, applied: false },
+    ],
+    onApplyPreset: fn(),
+  },
+};
+
+/** 今のタグの条件が「廃止する画面」と同じ。そのプリセットのボタンを選択済みの見た目にする */
+export const PresetApplied: Story = {
+  args: {
+    selected: { tags: ["プレビュー", "サーバー"] },
+    presets: [
+      { name: "画面の設計", count: 2, applied: false },
+      { name: "廃止する画面", count: 1, applied: true },
+    ],
+    onApplyPreset: fn(),
+  },
+};
+
+/** タグの条件が簡易で表せない式。指定方法を「詳細」にし、簡易を選択できなくする */
+export const TagDetail: Story = {
+  args: {
+    shown: 3,
+    tagExpr: { and: [{ field: "tags", op: "eq", values: ["プレビュー"] }, { field: "tags", op: "ne", values: ["サーバー"] }] },
+    onTagExprChange: fn(),
+    onTagMatchChange: fn(),
+  },
+};

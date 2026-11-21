@@ -139,3 +139,6 @@ export const TagMatchAny: Story = { args: { columns: taggedColumns, rows: tagged
 
 /** タグの列のタグを押せる。タグを押すと `onSelectTag` だけが呼ばれ、行のタイトルを押したときだけ詳細を開く */
 export const SelectableTags: Story = { args: { columns: taggedColumns, rows: taggedRows, onSelectTag: fn() } };
+
+/** 簡易で表せないタグの条件で絞った行を受けた。チップの先頭に式を文にしたチップを出す */
+export const TagExpr: Story = { args: { tagExprText: "「画面」を含む かつ 「廃止」を含まない", onClearTagExpr: fn() } };
