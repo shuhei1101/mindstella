@@ -261,6 +261,7 @@ describe("PreviewShell", () => {
     expect(within(panel).queryByRole("button", { name: "編集する" })).not.toBeInTheDocument();
     expect(within(panel).queryByRole("button", { name: /確認済み/ })).not.toBeInTheDocument();
     expect(within(panel).queryByRole("textbox")).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: "T-1 のコメントの一覧を開く" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "ワークスペースの既定にする" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "設定を編集する" })).not.toBeInTheDocument();
   });
