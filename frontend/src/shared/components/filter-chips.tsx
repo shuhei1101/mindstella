@@ -3,16 +3,7 @@ import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { TEXT_FILTER_PREFIX, withoutKey, type Filters } from "@/shared/core/filters";
 
-export type FilterChipsProps = {
-  filters: Filters;
-  labels: Record<string, string>;
-  tagMatch?: "all" | "any";
-  onFilter: (filters: Filters) => void;
-  /** 選んでいるプリセットの名前。チップの先頭に「プリセット: {名前}」を出す */
-  preset?: string | null;
-  /** プリセットのチップの × と「すべて解除」で呼ぶ */
-  onClearPreset?: () => void;
-};
+export type FilterChipsProps = { filters: Filters; labels: Record<string, string>; tagMatch?: "all" | "any"; onFilter: (filters: Filters) => void };
 
 const Chip = ({ text, onClear }: { text: string; onClear: () => void }) => (
   <span className="inline-flex items-center gap-1 rounded-full bg-mark-weak px-2 text-xs">
@@ -23,7 +14,7 @@ const Chip = ({ text, onClear }: { text: string; onClear: () => void }) => (
   </span>
 );
 
-export const FilterChips = ({ filters, labels, tagMatch = "all", onFilter, preset = null, onClearPreset }: FilterChipsProps) => {
+export const FilterChips = ({ filters, labels, tagMatch = "all", onFilter }: FilterChipsProps) => {
   const chips = Object.entries(filters).flatMap(([key, values]) => {
     if (key.startsWith(TEXT_FILTER_PREFIX)) {
       const name = labels[key.slice(TEXT_FILTER_PREFIX.length)] ?? key.slice(TEXT_FILTER_PREFIX.length);
@@ -38,18 +29,11 @@ export const FilterChips = ({ filters, labels, tagMatch = "all", onFilter, prese
   });
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {preset === null ? null : <Chip text={`プリセット: ${preset}`} onClear={() => { onClearPreset?.(); }} />}
       {chips.map((chip) => (
         <Chip key={chip.id} text={chip.text} onClear={() => { onFilter(chip.next); }} />
       ))}
-      {chips.length > 0 || preset !== null ? (
-        <Button
-          variant="ghost"
-          onClick={() => {
-            onFilter({});
-            onClearPreset?.();
-          }}
-        >
+      {chips.length > 0 ? (
+        <Button variant="ghost" onClick={() => { onFilter({}); }}>
           すべて解除
         </Button>
       ) : null}

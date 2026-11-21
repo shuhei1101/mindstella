@@ -62,9 +62,6 @@ export type TableProps = {
   onOpenAdded?: (id: string) => void;
   /** タグの組み合わせ方 */
   tagMatch?: TagMatch;
-  /** 選んでいるプリセットの名前。条件のチップの先頭に出す */
-  preset?: string | null;
-  onClearPreset?: () => void;
   /** 渡すとタグの列のタグを押せるようにし、押したタグを絞り込みに加える */
   onSelectTag?: (name: string) => void;
   /** 表のスクロール領域に付ける ref（スクロール位置の復元） */
@@ -87,7 +84,7 @@ const sortOf = (sort: TableProps["sort"], key: string): "ascending" | "descendin
   return sort.dir === "asc" ? "ascending" : "descending";
 };
 
-export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, addedRows = [], onOpenAdded, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem, tagMatch = "all", onSelectTag, scrollRef, preset = null, onClearPreset }: TableProps) => {
+export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, addedRows = [], onOpenAdded, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem, tagMatch = "all", onSelectTag, scrollRef }: TableProps) => {
   const hidden = hiddenColumns ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
   const defs: ColumnDef<typeof features, Row>[] = columns.map((column) => ({ id: column.key, accessorFn: (row: Row) => cellText(column.get === undefined ? row[column.key] : column.get(row)), header: column.label }));
   // 条件に合う行を、並べ替えの向きで並べる
@@ -141,7 +138,7 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
   return (
     <div data-kind={kind} className="flex min-h-0 flex-col gap-3">
       <div className="flex items-start gap-2">
-        <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={onFilter} preset={preset} onClearPreset={onClearPreset} />
+        <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={onFilter} />
         <Popover>
           <PopoverTrigger render={<Button variant="outline" aria-label="列の表示" className="ml-auto flex-none" />}>
             <Icon name="cols" />

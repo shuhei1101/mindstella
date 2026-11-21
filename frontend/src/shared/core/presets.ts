@@ -1,4 +1,5 @@
-// 絞り込みのプリセットのタグの式を、項目のタグに適用する計算
+// 絞り込みのプリセットのタグの式を、絞り込みのドロワーのタグの条件と組み合わせ方に置き換える計算
+import type { TagMatch } from "@/shared/core/filters";
 
 /** タグを比べる条件。`ne` は選んだタグをどれも持たない、`eq` は `match` が `all` なら全て、それ以外はどれかを持つ */
 export type PresetCondition = { field: "tags"; op: "eq" | "ne"; values: string[]; match?: "any" | "all" };
@@ -9,26 +10,30 @@ export type PresetFilter = PresetCondition | { and: PresetFilter[] } | { or: Pre
 /** 設定の `presets` の 1 件 */
 export type Preset = { name: string; description?: string; filter: PresetFilter };
 
-/** タグを NFKC と小文字にそろえる */
-const normalizeTag = (tag: string): string => tag.normalize("NFKC").toLowerCase();
+/** プリセットを選んだときにタグの条件へ入れるタグと組み合わせ方 */
+export type PresetTags = { tags: string[]; match: TagMatch };
 
-const matchesNode = (names: ReadonlySet<string>, node: PresetFilter): boolean => {
-  if ("and" in node) return node.and.every((child) => matchesNode(names, child));
-  if ("or" in node) return node.or.some((child) => matchesNode(names, child));
-  if ("not" in node) return !matchesNode(names, node.not);
-  const values = node.values.map(normalizeTag);
-  // タグの無い項目も、選んだタグをどれも持たないので合う
-  if (node.op === "ne") return values.every((value) => !names.has(value));
-  if (node.match === "all") return values.every((value) => names.has(value));
-  return values.some((value) => names.has(value));
+/** タグの式を、タグの条件で表せるタグと組み合わせ方にする。表せない式（`ne`・束）は null */
+export const presetTagsOf = (filter: PresetFilter): PresetTags | null => {
+  if ("and" in filter || "or" in filter || "not" in filter || filter.op !== "eq") return null;
+  return { tags: filter.values, match: filter.match === "all" ? "all" : "any" };
 };
 
-/** 項目のタグの名前がタグの式に合うかを返却する */
-export const matchesPreset = (tags: readonly string[], filter: PresetFilter): boolean => matchesNode(new Set(tags.map(normalizeTag)), filter);
+/** ドロワーに並べるプリセット 1 件。`applied` は今のタグの条件がそのプリセットと同じ */
+export type PresetChoice = { name: string; description?: string; count: number; applied: boolean };
 
-/** 一覧の上に並べるプリセット 1 件 */
-export type PresetChoice = { name: string; description?: string; count: number };
+const matches = (tags: readonly string[], { tags: wanted, match }: PresetTags): boolean =>
+  match === "all" ? wanted.every((tag) => tags.includes(tag)) : wanted.some((tag) => tags.includes(tag));
 
-/** 設定のプリセットを並び順のまま、記録の取得の件数を添えて返却する */
-export const presetChoicesOf = ({ presets, counts }: { presets: readonly Preset[]; counts: Readonly<Record<string, number>> }): PresetChoice[] =>
-  presets.map((preset) => ({ name: preset.name, ...(preset.description === undefined ? {} : { description: preset.description }), count: counts[preset.name] ?? 0 }));
+/** 並び順を問わず同じタグの集まりか */
+const sameTags = (left: readonly string[], right: readonly string[]): boolean => left.length === right.length && left.every((tag) => right.includes(tag));
+
+/** 設定のプリセットのうちタグの条件で表せるものを並び順のまま、画面の項目のうち合う件数と、今のタグの条件と同じかを添えて返却する */
+export const presetChoicesOf = ({ presets, rowTags, tags, tagMatch }: { presets: readonly Preset[]; rowTags: readonly (readonly string[])[]; tags: readonly string[]; tagMatch: TagMatch }): PresetChoice[] =>
+  presets.flatMap((preset) => {
+    const wanted = presetTagsOf(preset.filter);
+    if (wanted === null) return [];
+    // タグが 1 つなら組み合わせ方は問わない
+    const applied = sameTags(tags, wanted.tags) && (wanted.tags.length < 2 || tagMatch === wanted.match);
+    return [{ name: preset.name, ...(preset.description === undefined ? {} : { description: preset.description }), count: rowTags.filter((one) => matches(one, wanted)).length, applied }];
+  });

@@ -1,7 +1,7 @@
 // タスクの画面（画面設計『タスク.tsx』）。ボード（既定）と表で見る
 import { addedCards, Board, boardColumns, ItemCard } from "@/shared/components/board";
 import { commonColumns, IdLinks } from "@/shared/components/list-columns";
-import { ListScreen, type PresetPlacement } from "@/shared/components/list-screen";
+import { ListScreen } from "@/shared/components/list-screen";
 import type { TableColumn } from "@/shared/components/table";
 import { type Item, type RecordIndex, refsOf, TASK_STATUSES, titleOf } from "@/shared/core/records";
 
@@ -22,11 +22,10 @@ const taskColumns = (index: RecordIndex, onOpen: (id: string) => void): TableCol
   ];
 };
 
-export type TasksScreenProps = { drawerOpen: boolean; onCloseDrawer: () => void; presetPlacement?: PresetPlacement };
+export type TasksScreenProps = { drawerOpen: boolean; onCloseDrawer: () => void };
 
-export const TasksScreen = ({ drawerOpen, onCloseDrawer, presetPlacement }: TasksScreenProps) => (
+export const TasksScreen = ({ drawerOpen, onCloseDrawer }: TasksScreenProps) => (
   <ListScreen
-    presetPlacement={presetPlacement}
     kind="tasks"
     views={[...VIEWS]}
     columnsOf={taskColumns}

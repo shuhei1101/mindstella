@@ -6,6 +6,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
 import type { Filters } from "@/shared/core/filters";
+import type { PresetChoice } from "@/shared/core/presets";
 import { cn } from "@/shared/lib/cn";
 
 /** 条件の値 */
@@ -31,6 +32,9 @@ export type FilterDrawerProps = {
   texts?: { key: string; label: string; value: string }[];
   tagMatch?: TagMatch;
   onTagMatchChange?: (match: TagMatch) => void;
+  /** 選べるプリセット。選ぶとプリセットのタグでタグの条件を置き換える */
+  presets?: PresetChoice[];
+  onApplyPreset?: (name: string) => void;
   onToggleValue: (key: string, value: string) => void;
   onClearGroup: (key: string) => void;
   onClearAll: () => void;
@@ -38,7 +42,7 @@ export type FilterDrawerProps = {
   onTextChange: (key: string, text: string) => void;
 };
 
-export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, texts = [], tagMatch = "all", onTagMatchChange, onToggleValue, onClearGroup, onClearAll, onClose, onTextChange }: FilterDrawerProps) => {
+export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, texts = [], tagMatch = "all", onTagMatchChange, presets = [], onApplyPreset, onToggleValue, onClearGroup, onClearAll, onClose, onTextChange }: FilterDrawerProps) => {
   const timer = useRef(0);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -74,6 +78,35 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-2">
+        {presets.length > 0 && onApplyPreset !== undefined ? (
+          <fieldset className="mb-2">
+            <legend className="text-small font-medium">プリセット</legend>
+            <ul className="mt-1 flex flex-wrap gap-1">
+              {presets.map((preset) => (
+                <li key={preset.name}>
+                  <button
+                    type="button"
+                    aria-pressed={preset.applied}
+                    title={preset.description}
+                    className={cn(
+                      "flex h-8 items-center gap-1.5 rounded-control border border-border bg-card px-2.5 text-small hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
+                      preset.count === 0 && "border-dashed text-muted-foreground",
+                      preset.applied && "border-mark-line bg-mark-weak font-medium hover:bg-mark-weak",
+                    )}
+                    onClick={() => {
+                      onApplyPreset(preset.name);
+                    }}
+                  >
+                    {preset.name}
+                    <span className="text-xs text-muted-foreground">
+                      <span className="font-mono">{preset.count}</span> 件
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        ) : null}
         {texts.length > 0 ? (
           <fieldset className="mb-2">
             <legend className="text-small font-medium">文字を含む</legend>

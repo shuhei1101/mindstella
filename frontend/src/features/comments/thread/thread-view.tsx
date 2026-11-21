@@ -4,7 +4,6 @@ import { flushSync } from "react-dom";
 
 import { ReplyForm, type ReplyStatus } from "@/features/comments/shared/reply-form";
 import { ThreadPost } from "@/features/comments/shared/thread-post";
-import { NoticeDecisions } from "@/features/comments/thread/components/notice-decisions";
 import { ThreadState } from "@/features/comments/shared/thread-state";
 import type { CommentData } from "@/features/comments/shared/use-comment-data";
 import { useMarkThreadSeen, useSetThreadStatus } from "@/features/comments/shared/use-threads";
@@ -15,7 +14,6 @@ import { Input } from "@/shared/components/ui/input";
 import { AppError } from "@/shared/core/app-error";
 import { commentNumber, hasUnseen, reviewLabel, threadTimeline, threadTitle, type ReviewItem } from "@/shared/core/comments";
 import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from "@/shared/hooks/use-comments";
-import { useRecords } from "@/shared/hooks/use-records";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { showLocation } from "@/shared/stores/location-highlight-store";
 import { voiceEditingOf } from "@/shared/stores/voice-store";
@@ -39,7 +37,6 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   const thread = threads.find((one) => one.id === id) ?? null;
   const pendingNew = thread === null ? (items.find((item) => item.id === id && item.thread === null) ?? null) : null;
   const replies = items.filter((item) => item.thread === id);
-  const { index } = useRecords();
   const markSeen = useMarkThreadSeen();
   const setStatus = useSetThreadStatus();
   const addComment = useAddComment();
@@ -280,11 +277,9 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
           ? pendingNew === null
             ? null
             : pendingPost(pendingNew)
-          : threadTimeline(thread).map((entry, position) => ("post" in entry ? (
-            <li key={entry.post.id} className="flex flex-col gap-2">
+          : threadTimeline(thread).map((entry) => ("post" in entry ? (
+            <li key={entry.post.id}>
               <ThreadPost post={entry.post} titles={titles} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
-              {/* AI が作成した通知のスレッドの最初の書き込みに、並べた検討事項を選んで決める一覧を添える */}
-              {position === 0 && entry.post.author === "ai" && index !== null ? <NoticeDecisions index={index} body={entry.post.body} /> : null}
             </li>
           ) : (
             <li key={`${entry.event.kind}-${entry.event.created}`}>

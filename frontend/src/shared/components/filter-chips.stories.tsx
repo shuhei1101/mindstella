@@ -23,13 +23,3 @@ export const TagMatchAll: Story = {
 export const TagMatchAny: Story = {
   args: { filters: { status: ["未着手"], tags: ["保存", "画面"] }, tagMatch: "any" },
 };
-
-/** プリセット「画面の設計」と状態で絞っている。プリセットのチップを先頭に出し、× と「すべて解除」で `onClearPreset` を呼ぶ */
-export const WithPreset: Story = {
-  args: { filters: { status: ["未着手"] }, preset: "画面の設計", onClearPreset: fn() },
-};
-
-/** プリセットだけで絞っている */
-export const PresetOnly: Story = {
-  args: { filters: {}, preset: "画面の設計", onClearPreset: fn() },
-};

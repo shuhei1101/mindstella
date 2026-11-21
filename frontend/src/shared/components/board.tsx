@@ -7,7 +7,6 @@ import { StatusMark } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { addedTitle } from "@/shared/components/table";
 import { TagList } from "@/shared/components/tag-list";
-import { Checkbox } from "@/shared/components/ui/checkbox";
 import type { PendingMarkKind, ScreenEdit } from "@/shared/core/edits";
 import { compareIds, titleOf, type Item, type RecordIndex } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
@@ -85,35 +84,18 @@ export type ItemCardProps = {
   onOpen: (id: string) => void;
   /** 渡すとタグを並べ、押したタグを絞り込みに加える */
   onSelectTag?: (name: string) => void;
-  /** 渡すとカードの右上に選ぶチェックボックスを置く */
-  pick?: CardPick;
 };
 
-/** カードを選ぶチェックボックスの状態と、選んだ・解除したときに呼ぶ関数 */
-export type CardPick = { checked: boolean; disabled: boolean; label: string; onChange: (checked: boolean) => void };
-
-export const ItemCard = ({ index, item, meta, links, selected, marks, comments, edit, onOpen, onSelectTag, pick }: ItemCardProps) => {
+export const ItemCard = ({ index, item, meta, links, selected, marks, comments, edit, onOpen, onSelectTag }: ItemCardProps) => {
   const mark = marks?.[item.id];
   const pending = edit?.marks[item.id];
   const count = comments[item.id] ?? 0;
   return (
     // カードの中にタグのボタンを置くため、外枠は div にし、タイトルのボタンの ::after をカード全体へ広げる
     <div data-card={item.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-2 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && "border-mark-line bg-row-selected", pending === "remove" && "opacity-60")}>
-      <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} className={cn("cursor-pointer text-left text-small font-medium outline-none after:absolute after:inset-0 after:rounded-card", pick !== undefined && "pr-7")} onClick={() => { onOpen(item.id); }}>
+      <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} className="cursor-pointer text-left text-small font-medium outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(item.id); }}>
         {item.title}
       </button>
-      {pick === undefined ? null : (
-        // カード全体を覆うタイトルのボタンと重なるため、チェックボックスの押せる範囲を 24px 四方にする
-        <Checkbox
-          aria-label={pick.label}
-          checked={pick.checked}
-          disabled={pick.disabled}
-          className="absolute top-1 right-1 z-10 size-6 cursor-pointer disabled:cursor-default"
-          onChange={(event) => {
-            pick.onChange(event.target.checked);
-          }}
-        />
-      )}
       <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
         {mark === undefined ? null : <DiffMark kind={mark} />}
         <span className="font-mono">{item.id}</span>

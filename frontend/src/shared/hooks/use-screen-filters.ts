@@ -17,6 +17,8 @@ export type ScreenFilters = {
   setTagMatch: (tagMatch: TagMatch) => void;
   /** タグを条件に加えて履歴に積む（既にあれば何もしない）。絞り込みを持たない画面では `kindTab` の画面へ移って加える */
   addTag: (tag: string, kindTab?: PreviewTab) => void;
+  /** タグの条件と組み合わせ方を置き換える（ほかの条件は残す） */
+  replaceTags: (tags: string[], tagMatch: TagMatch) => void;
 };
 
 export const useScreenFilters = (tab: PreviewTab): ScreenFilters => {
@@ -75,6 +77,11 @@ export const useScreenFilters = (tab: PreviewTab): ScreenFilters => {
       const tags = filters[TAG_FILTER_KEY] ?? [];
       if (tags.includes(tag)) return;
       pushFilters(filtersToSearch({ ...filters, [TAG_FILTER_KEY]: [...tags, tag] }));
+    },
+    replaceTags: (tags, match) => {
+      const next = { ...filters, [TAG_FILTER_KEY]: tags };
+      writeScreenState({ filters: { ...readScreenState().filters, [tab]: next }, tagMatch: { ...readScreenState().tagMatch, [tab]: match } });
+      writeSearch(filtersToSearch(next), { tagmatch: match === "any" ? "any" : undefined });
     },
   };
 };

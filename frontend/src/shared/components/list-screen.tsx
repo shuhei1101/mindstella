@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode, type RefCall
 import type { DiffMarks } from "@/shared/components/diff-mark";
 import { FilterChips } from "@/shared/components/filter-chips";
 import { FilterDrawer } from "@/shared/components/filter-drawer";
-import { PresetBar } from "@/shared/components/preset-bar";
 import { Icon } from "@/shared/components/icon";
 import { RemovedBand } from "@/shared/components/removed-band";
 import { Table, type Row, type TableColumn } from "@/shared/components/table";
@@ -14,9 +13,9 @@ import { ViewSwitch, type View } from "@/shared/components/view-switch";
 import { removedOf } from "@/shared/core/diff";
 import { NEW_ID_PREFIX, type ScreenEdit } from "@/shared/core/edits";
 import { isEmbedded } from "@/shared/core/embedded";
-import { TEXT_FILTER_PREFIX, withoutKey, type Filters, type TagMatch } from "@/shared/core/filters";
+import { TAG_FILTER_KEY, TEXT_FILTER_PREFIX, withoutKey, type Filters, type TagMatch } from "@/shared/core/filters";
 import { drawerGroups, filterRows, nextSort, sortRows, type ListColumn } from "@/shared/core/list-rows";
-import { matchesPreset, presetChoicesOf } from "@/shared/core/presets";
+import { presetChoicesOf, presetTagsOf } from "@/shared/core/presets";
 import { KIND_LABEL, tagNames, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 import { commentsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
@@ -57,20 +56,15 @@ export type ListScreenProps = {
   onCloseDrawer: () => void;
   /** 表の他の表示形式の中身 */
   content?: (context: ListContext) => ReactNode;
-  /** プリセットの並びの置き場所。`below` は表示形式の切り替えの下、`inline` は同じ行の右 */
-  presetPlacement?: PresetPlacement;
 };
-
-/** プリセットの並びの置き場所 */
-export type PresetPlacement = "below" | "inline";
 
 const asColumns = (columns: TableColumn[]): ListColumn<Row>[] => columns.map((column) => ({ key: column.key, label: column.label, get: column.get ?? ((row) => row[column.key]), ...(column.order === undefined ? {} : { order: column.order }) }));
 
-export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, content, presetPlacement = "below" }: ListScreenProps) => {
-  const { search, openItem, closeItem, setSort, setView, setPreset } = usePreviewSearch();
+export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, content }: ListScreenProps) => {
+  const { search, openItem, closeItem, setSort, setView } = usePreviewSearch();
   const { index } = useRecords();
   const { point } = useDiffView();
-  const { filters, tagMatch, setFilters, setTagMatch, addTag } = useScreenFilters(kind);
+  const { filters, tagMatch, setFilters, setTagMatch, addTag, replaceTags } = useScreenFilters(kind);
   const view = search.view ?? views?.[0]?.key ?? "table";
   // 一覧のスクロール位置は画面と表示形式ごとに残し、記録を読み終えて行を描いたら戻す
   const scrollRef = useListScroll(`${kind}:${view}`, index !== null);
@@ -111,18 +105,12 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   }, [search.sort, columnKeys?.join()]);
   if (index === null) return null;
   const columns = columnsOf(index, openItem);
+  const presets = index.data.settings.presets ?? [];
   const list = asColumns(columns);
   // 追加する項目は絞り込みに関わらず先頭に置く
   const rows = index.data[kind].filter((item) => !item.id.startsWith(NEW_ID_PREFIX)) as unknown as Row[];
-  // 選んだプリセットのタグの式と、今の絞り込みの条件を両方満たす行
-  const presets = index.data.settings.presets ?? [];
-  const preset = presets.find((one) => one.name === search.preset) ?? null;
-  const inPreset = preset === null ? rows : rows.filter((row) => matchesPreset(tagNames((row as unknown as Item).tags), preset.filter));
-  const filtered = filterRows({ rows: inPreset, columns: list, filters, tagMatch });
+  const filtered = filterRows({ rows, columns: list, filters, tagMatch });
   const sorted = sortRows({ rows: filtered, columns: list, sort: search.sort });
-  const clearPreset = (): void => {
-    setPreset(undefined);
-  };
   const marks: DiffMarks | undefined = point === null ? undefined : Object.fromEntries([...[...point.added].map((id) => [id, "new"] as const), ...[...point.changed].map((id) => [id, "changed"] as const)]);
   const hidden = saved?.hidden ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
   const pinTo = saved?.pinTo ?? null;
@@ -160,25 +148,13 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       tagMatch={tagMatch}
       onSelectTag={onSelectTag}
       scrollRef={view === "table" ? scrollRef : undefined}
-      preset={preset?.name ?? null}
-      onClearPreset={clearPreset}
     />
   );
   const conditions = columns.filter((column) => column.filterable === true);
-  const presetBar = (
-    <PresetBar
-      presets={presetChoicesOf({ presets, counts: index.data.preset_counts ?? {} })}
-      selected={preset?.name ?? null}
-      onSelect={(name) => {
-        setPreset(name ?? undefined);
-      }}
-    />
-  );
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2">
         {views === null ? null : <ViewSwitch views={views} current={view} onChange={setView} />}
-        {presetPlacement === "inline" ? presetBar : null}
         {edit === null ? null : (
           <Button variant="outline" aria-label={`${KIND_LABEL[kind]}の項目を追加`} title="項目追加" className="ml-auto" onClick={edit.onAdd}>
             <Icon name="plus" />
@@ -186,18 +162,23 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
           </Button>
         )}
       </div>
-      {presetPlacement === "below" ? presetBar : null}
-      {view === "table" ? null : <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={setFilters} preset={preset?.name ?? null} onClearPreset={clearPreset} />}
+      {view === "table" ? null : <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={setFilters} />}
       <RemovedBand items={removedOf({ point, kind })} />
       {view === "table" || content === undefined ? table : content({ index, view, shown: filtered as unknown as Item[], filters, tagMatch, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, onSelectTag, scrollRef, table })}
       {drawerOpen ? (
         <FilterDrawer
-          groups={drawerGroups({ rows: inPreset, columns: list, conditions: asColumns(conditions), filters, tagMatch })}
+          groups={drawerGroups({ rows, columns: list, conditions: asColumns(conditions), filters, tagMatch })}
           selected={filters}
-          total={inPreset.length}
+          total={rows.length}
           shown={filtered.length}
           tagMatch={tagMatch}
           onTagMatchChange={setTagMatch}
+          presets={presetChoicesOf({ presets, rowTags: rows.map((row) => tagNames((row as unknown as Item).tags)), tags: filters[TAG_FILTER_KEY] ?? [], tagMatch })}
+          onApplyPreset={(name) => {
+            const preset = presets.find((one) => one.name === name);
+            const wanted = preset === undefined ? null : presetTagsOf(preset.filter);
+            if (wanted !== null) replaceTags(wanted.tags, wanted.match);
+          }}
           texts={columns.filter((column) => column.filterable !== true && column.key !== "id").map((column) => ({ key: column.key, label: column.label, value: filters[`${TEXT_FILTER_PREFIX}${column.key}`]?.[0] ?? "" }))}
           onToggleValue={(key, value) => {
             const current = filters[key] ?? [];

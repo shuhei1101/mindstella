@@ -2,84 +2,44 @@ use_cases:
   - kind: composite
     scenario: docs/scenario/SC-489-52.yaml
     impact: changed
-    detail: 利用者の回答が要る検討事項を挙げて決めていく流れに、方針はスレッドで聞き細部は AI が決めて「AI が決定」と記録する進め方（D-361 A）と、推奨どおりでよい検討事項を 1 回の操作でまとめて決め AI へ 1 回で知らせる流れを加える（#484）
+    detail: 利用者の回答が要る検討事項を挙げて決めていく流れに、方針はスレッドで聞き細部は AI が決めて報告だけにする進め方を加える（#484・D-361 A）
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-30.yaml
     impact: changed
-    detail: AI が利用者に聞くことを、方針（選択肢を作る前に論点と AI の理解をスレッドで聞き、合ってから検討事項にする）と細部（AI が決めて誰が決めたかを AI として記録し報告だけにする）に分ける。ワークスペースの外へ書き込む前の合意・項目の削除の合意（元に戻せないもの）もスレッドで聞き、検討事項にしない（`notes.利用者に聞くこと` と『正常シナリオ（利用者に聞くこと）』）。方針をスレッドで聞くシナリオと細部を AI が決めるシナリオを追加する（#484・D-361 A）
-    depends_on:
-      - docs/scenario/SC-489-52.yaml
-  - kind: single
-    scenario: docs/scenario/SC-489-1.yaml
-    impact: changed
-    detail: AI が同じ回に挙げた検討事項と AI が決めた検討事項を 1 件の通知のスレッドに並べ、そのスレッドから並んだ検討事項にまとめて回答できるようにする（#484・TH-834）
-    depends_on:
-      - docs/scenario/SC-489-52.yaml
-  - kind: single
-    scenario: docs/scenario/SC-489-43.yaml
-    impact: changed
-    detail: 利用者がまとめて決めた回答を、スレッドでの回答と同じく 1 回の通知として取り込み、影響する項目を洗い出すシナリオを追加する（#484）
-    depends_on:
-      - docs/scenario/SC-489-52.yaml
-  - kind: single
-    scenario: docs/scenario/SC-489-21.yaml
-    impact: changed
-    detail: 採用する案を切り替えるときに、誰が決めたか（利用者・AI）を一緒に記録する（#484）
+    detail: AI が利用者に聞くことを、方針（選択肢を作る前に論点と AI の理解をスレッドで聞き、合ってから検討事項にする）と細部（AI が決めてスレッドで報告だけにする）に分ける（#484・D-361 A）
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-489-34.yaml
     impact: changed
-    detail: AI が細部を決めて検討事項を記録するとき、誰が決めたかを AI として残す（#484）
+    detail: AI が細部を決めて検討事項を記録するとき、スレッドで報告する（#484）
     depends_on:
       - docs/scenario/SC-489-30.yaml
   - kind: single
     scenario: docs/scenario/SC-489-49.yaml
     impact: changed
-    detail: 検討事項の一覧で誰が決めたかの条件で「AI」の検討事項を絞り込めるシナリオを追加し（#484）、一覧の上に並べたプリセットを押すとそのプリセットのタグの式と今の状態・種類などの絞り込みを組み合わせて開け、該当する件数が 0 のプリセットにマーカーを出す（#361）
+    detail: 絞り込みのドロワーでプリセットを選ぶと、そのプリセットのタグと組み合わせ方が今のタグの条件に入り、状態・種類などほかの条件は残る。該当する件数が 0 のプリセットにマーカーを出す（#361）
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
-    scenario: docs/scenario/SC-489-5.yaml
-    impact: following
-    detail: 通知のスレッドからまとめて回答できるようになることに、スレッドで話す流れの記述を追随する（#484）
-    depends_on:
-      - docs/scenario/SC-489-1.yaml
-  - kind: single
     scenario: docs/scenario/SC-489-6.yaml
     impact: following
-    detail: タスクのボードの上にプリセットを並べ、押して開けることに追随する（#361）
+    detail: タスクの絞り込みのドロワーでプリセットを選べることに追随する（#361）
     depends_on:
       - docs/scenario/SC-489-49.yaml
   - kind: single
     scenario: docs/scenario/SC-489-40.yaml
     impact: following
-    detail: 資料のカード・ボードの上にプリセットを並べ、押して開けることに追随する（#361）
+    detail: 資料の絞り込みのドロワーでプリセットを選べることに追随する（#361）
     depends_on:
       - docs/scenario/SC-489-49.yaml
   - kind: single
     scenario: docs/scenario/SC-649-1.yaml
     impact: following
-    detail: AI が作ったプリセットが画面の一覧の上に並ぶことに、成功の保証と補足の記述を追随する（#361）
+    detail: AI が作ったプリセットを画面の絞り込みのドロワーで選べることに、成功の保証と補足の記述を追随する（#361）
     depends_on:
       - docs/scenario/SC-489-49.yaml
-  - kind: single
-    scenario: docs/scenario/SC-489-28.yaml
-    impact: run_only
-    detail: 検討事項をまとめて決める操作が、画面からの保存と同じ書き込みの経路を通るため、保存待ちとまとめて保存する流れが壊れていないかを確かめる（#484）
-    depends_on: []
-  - kind: single
-    scenario: docs/scenario/SC-489-25.yaml
-    impact: run_only
-    detail: まとめて決めた検討事項が未決定のタイルの件数から外れることを確かめる（#484）
-    depends_on: []
-  - kind: single
-    scenario: docs/scenario/SC-659-1.yaml
-    impact: new
-    detail: 利用者が、検討事項の一覧か通知のスレッドで未決定の検討事項を複数選び、1 回の操作でそれぞれ推奨の案に決め、AI へ 1 回で通知する（#484）
-    depends_on:
-      - docs/scenario/SC-489-52.yaml
 docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
@@ -102,15 +62,18 @@ docs:
     change: 記録の使い分け・コメントの取り込みのエージェントフローの変更（方針と細部の分け方・まとめて決めた回答の取り込み）に追随する
     status: todo
 scope_out:
-  - item: 検討事項の詳細で案のカードを押して、利用者が案を 1 件ずつ選ぶ操作
-    reason: '#484 の本文が「個別に案を選ぶ操作は #363」と分けている。この作業 PR は推奨の案でまとめて決める操作だけを持つ'
-    plan: '#363'
   - item: 画面の今の絞り込みを、名前付きのプリセットとして保存する操作
     reason: '#361 の本文が後続として分けている。この作業 PR は AI が作ったプリセットを並べて開くだけを持つ'
     plan: '#362'
-  - item: この変更より前に決定済みになった検討事項へ、誰が決めたかを後から埋めること
-    reason: 既存の記録には誰が決めたかの根拠が無く、埋めると推測の値になる。既存の記録はキーを持たないまま読める形にする。含めるかはデータ設計のレビューで確定する
-    plan: none
   - item: カードが 0 枚のボードの横スクロールの領域にキーボードで届かないこと（axe `scrollable-region-focusable`、`frontend/src/shared/components/board.tsx` の `Board`）
     reason: スクロールできる領域はキーボードで操作できる、という axe の規則から外れている。origin/develop にもある事象で、今回の要望に含まれない
     plan: '#664'
+  - item: 未決定の検討事項を複数選び、推奨の案でまとめて決める画面の操作
+    reason: 利用者が不要と回答した（https://github.com/shuhei1101/mindstella/pull/659#discussion_r4652925094）
+    plan: none
+  - item: 検討事項を誰が決めたか（利用者・AI）の記録と、一覧の列・絞り込みの条件・カードの表示
+    reason: 利用者が不要と回答した（https://github.com/shuhei1101/mindstella/pull/659#discussion_r4652919851）
+    plan: none
+  - item: AI の通知のスレッドに検討事項を並べ、そこからまとめて回答すること
+    reason: 利用者が不要と回答した（https://github.com/shuhei1101/mindstella/pull/659#discussion_r4652919851）
+    plan: none
