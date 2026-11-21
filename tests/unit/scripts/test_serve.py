@@ -818,6 +818,41 @@ def test_records_response(make_workspace: MakeWorkspace, make_item: MakeItem) ->
     assert json.loads(response.body)["decisions"][0]["id"] == "D-1"
 
 
+def test_records_cache() -> None:
+    """保持した応答を返し、捨てると作り直す（正常系）。"""
+    # 準備
+    calls: list[int] = []
+
+    def _build() -> dict[str, Any]:
+        """呼ばれた回数を数えて同じ記録を返す。"""
+        calls.append(1)
+        return {"decisions": [{"id": "D-1"}]}
+
+    cache = serve.RecordsCache()
+    # 実行
+    first = cache.get_or_build(_build)
+    second = cache.get_or_build(_build)
+    cache.discard()
+    third = cache.get_or_build(_build)
+    # 検証
+    assert len(calls) == 2
+    assert first.etag == second.etag == third.etag
+    assert first.etag.startswith('W/"')
+
+
+def test_records_response_when_not_modified(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """弱い比較で 304（正常系）。"""
+    # 準備
+    context = _context(make_workspace(make_item("D-1")))
+    first = serve.records_response(context)
+    etag = first.headers["ETag"]
+    # 実行
+    response = serve.records_response(context, if_none_match=etag.removeprefix("W/"))
+    # 検証
+    assert response.status == 304
+    assert response.body == b""
+
+
 def test_records_response_when_schema_mismatch(tmp_path: Path) -> None:
     """スキーマに合わなければ 422（正常系）。"""
 

@@ -156,6 +156,11 @@ describe("normalizeSearch", () => {
     expect(result.h).toBeUndefined();
   });
 
+  // タグの条件が無い組み合わせ方（正常系）
+  test("normalize_search_when_tagmatch_without_tags", () => {
+    expect(normalizeSearch(search({ tab: "tasks", tagmatch: "any" }), context()).tagmatch).toBeUndefined();
+  });
+
   // 検索を開いていない言葉（正常系）
   test("normalize_search_when_query_without_search", () => {
     expect(normalizeSearch(search({ q: "画面" }), context()).q).toBeUndefined();

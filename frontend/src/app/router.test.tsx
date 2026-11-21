@@ -41,4 +41,12 @@ describe("createAppRouter", () => {
     expect(router.history.location.search).toBe("?tab=docs");
     expect(window.location.pathname).toBe("/x/export.html");
   });
+
+  // スクロール位置の復元を有効にする（正常系）
+  test("create_app_router_when_scroll_restoration", () => {
+    // 実行
+    const router = createAppRouter(new QueryClient());
+    // 検証
+    expect(router.options.scrollRestoration).toBe(true);
+  });
 });
