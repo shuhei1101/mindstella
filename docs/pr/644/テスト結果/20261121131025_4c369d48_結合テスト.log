@@ -1,0 +1,219 @@
+$ pytest tests/integration/preview tests/integration/storybook_react tests/integration/server/test_export.py -q -rfEs  # commit 4c369d48
+........................................................................ [  6%]
+........................................................................ [ 13%]
+........................................................................ [ 20%]
+........................................................................ [ 27%]
+........................................................................ [ 34%]
+......................F................................................. [ 40%]
+..........FFF.........F................................................. [ 47%]
+........................................................................ [ 54%]
+........................................................................ [ 61%]
+........................................................................ [ 68%]
+........................................................................ [ 75%]
+........................................................................ [ 81%]
+........................................................................ [ 88%]
+........................................................................ [ 95%]
+................................................                         [100%]
+=================================== FAILURES ===================================
+____________________________ test_removed[chromium] ____________________________
+
+open_story = <function open_story.<locals>._open at 0x73a2a0c4e7a0>
+
+    def test_removed(open_story: OpenStory) -> None:
+        """消したは、新規・変更と違う記号と色で、同じ大きさ。読み上げと `title` に「消した」を持つ（正常系）。"""
+        # 準備
+        new = _mark(open_story, "new")
+        changed = _mark(open_story, "changed")
+        # 実行
+        page = open_story("shared-diffmark--removed")
+        mark = page.locator("#storybook-root > span")
+        removed = mark.evaluate(_MARK_JS)
+        # 検証
+>       expect(mark).to_have_attribute("title", "消した")
+E       AssertionError: Locator expected to have attribute '消した'
+E       Actual value: 削除した 
+E       Call log:
+E         - Expect "to_have_attribute" locator("#storybook-root > span") with timeout 5000ms
+E         - waiting for locator("#storybook-root > span")
+E           14 × locator resolved to <span title="削除した" class="inline-flex text-destructive">…</span>
+E              - unexpected value "削除した"
+E       
+E       Aria snapshot:
+E       - text: 削除した
+
+tests/integration/storybook_react/test_diff_mark_stories.py:94: AssertionError
+_________________________ test_mdmark_table[chromium] __________________________
+
+open_story = <function open_story.<locals>._open at 0x73a2a81b20c0>
+
+    def test_mdmark_table(open_story: OpenStory) -> None:
+        """8 列の表を mdmark の表で描く。並べ替え・ピン止め・列の幅の変更のボタンは mdmark のまま。はみ出すため先頭の列が左端に留まり、表の中だけが横にスクロールする。画面の CSS の見せ方は無い（正常系）。"""
+        # 準備・実行
+        page = _open(open_story, "mdmark-table")
+        table = page.evaluate(_TABLE_JS)
+        pressed = _pin_pressed(page)
+        # 検証（mdmark の表の部品で描き、列ごとのピン止めと列の幅の変更、並べ替えのボタンを持つ）
+        assert page.locator(".mdmark .mdmark-table").count() == 1
+        assert len(pressed) == 8
+        assert page.locator(".mdmark .mdmark-table .mdmark-col-resize").count() == 8
+        assert page.locator(".mdmark .mdmark-table button.mdmark-sort").count() >= 1
+        # 検証（はみ出すので先頭の列だけが最初からピン止めされる）
+>       assert pressed["「ID」の列をピン止め"] == "true"
+E       AssertionError: assert 'false' == 'true'
+E         
+E         - true
+E         + false
+
+tests/integration/storybook_react/test_markdown_body_stories.py:69: AssertionError
+________________________ test_pinned_columns[chromium] _________________________
+
+open_story = <function open_story.<locals>._open at 0x73a2a829aac0>
+
+    def test_pinned_columns(open_story: OpenStory) -> None:
+        """「名前」のピン止めのボタンを押して右へスクロールした。ID と名前の 2 列が左端に留まり、状態の列は留まらない（正常系）。"""
+        # 準備・実行
+        page = _open(open_story, "pinned-columns")
+        table = page.evaluate(_TABLE_JS)
+        pressed = _pin_pressed(page)
+        # 検証（ID と名前のピン止めのボタンが押された状態）
+>       assert [label for label, value in pressed.items() if value == "true"] == ["「ID」の列をピン止め", "「名前」の列をピン止め"]
+E       AssertionError: assert ['「名前」の列をピン止め'] == ['「ID」の列をピン止め', '「名前」の列をピン止め']
+E         
+E         At index 0 diff: '「名前」の列をピン止め' != '「ID」の列をピン止め'
+E         Right contains one more item: '「名前」の列をピン止め'
+E         Use -v to get more diff
+
+tests/integration/storybook_react/test_markdown_body_stories.py:86: AssertionError
+_______________________ test_opaque_background[chromium] _______________________
+
+open_story = <function open_story.<locals>._open at 0x73a2a149ef20>
+
+    def test_opaque_background(open_story: OpenStory) -> None:
+        """本文の背景は透明で、ピン止めした列は周りの面の色（`--card` を指定した `--mdmark-color-bg-opaque`）で塗られる（正常系）。"""
+        # 準備・実行
+        page = _open(open_story, "opaque-background")
+>       colors = page.evaluate(
+            """() => {
+                const md = document.querySelector('.mdmark');
+                const probe = document.createElement('div');
+                probe.style.backgroundColor = 'var(--card)';
+                md.appendChild(probe);
+                const surface = getComputedStyle(probe).backgroundColor;
+                probe.remove();
+                return {
+                    md: getComputedStyle(md).backgroundColor,
+                    pinned: getComputedStyle(document.querySelector('.mdmark td.is-pinned-col')).backgroundColor,
+                    surface,
+                };
+            }"""
+        )
+
+tests/integration/storybook_react/test_markdown_body_stories.py:102: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../../.cache/mindstella/unit-venv-644/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+../../../../../.cache/mindstella/unit-venv-644/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.cache/mindstella/unit-venv-644/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+../../../../../.cache/mindstella/unit-venv-644/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x73a2a97b3920>
+cb = <function Channel.send.<locals>.<lambda> at 0x73a2a8417c40>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: Failed to execute 'getComputedStyle' on 'Window': parameter 1 is not of type 'Element'.
+E               at eval (eval at evaluate (:311:30), <anonymous>:10:25)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../../.cache/mindstella/unit-venv-644/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+_________________________ test_table_in_diff[chromium] _________________________
+
+open_story = <function open_story.<locals>._open at 0x73a2a8384fe0>
+
+    def test_table_in_diff(open_story: OpenStory) -> None:
+        """本文の差分の中の表。足した行・消した行の面の色と消した行の取り消し線が、ピン止めした列のセルにも付き、開閉を置かない（正常系）。"""
+        # 準備・実行
+        page = _open(open_story, "table-in-diff")
+>       cells = page.evaluate(
+            """() => {
+                const style = (selector) => {
+                    const cell = document.querySelector(selector);
+                    return [getComputedStyle(cell).backgroundColor, getComputedStyle(cell).textDecorationLine];
+                };
+                return {
+                    plain: style('.mdmark tbody tr:not(.df-row) td.is-pinned-col'),
+                    added: style('.mdmark tr.df-add td.is-pinned-col'),
+                    removed: style('.mdmark tr.df-del td.is-pinned-col'),
+                };
+            }"""
+        )
+
+tests/integration/storybook_react/test_markdown_body_stories.py:310: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../../.cache/mindstella/unit-venv-644/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+../../../../../.cache/mindstella/unit-venv-644/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.cache/mindstella/unit-venv-644/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+../../../../../.cache/mindstella/unit-venv-644/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x73a2a97b3920>
+cb = <function Channel.send.<locals>.<lambda> at 0x73a2a837fba0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: Failed to execute 'getComputedStyle' on 'Window': parameter 1 is not of type 'Element'.
+E               at style (eval at evaluate (:311:30), <anonymous>:4:25)
+E               at eval (eval at evaluate (:311:30), <anonymous>:7:24)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../../.cache/mindstella/unit-venv-644/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+=========================== short test summary info ============================
+FAILED tests/integration/storybook_react/test_diff_mark_stories.py::test_removed[chromium]
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_mdmark_table[chromium]
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_pinned_columns[chromium]
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_opaque_background[chromium]
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_table_in_diff[chromium]
+5 failed, 1051 passed in 1195.45s (0:19:55)
+exit=1
