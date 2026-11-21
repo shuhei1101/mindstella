@@ -71,6 +71,11 @@ describe("parseSearchString", () => {
 });
 
 describe("normalizeSearch", () => {
+  // タグの式として読めない tx（正常系）
+  test.each([["{"], ['{"field":"tags","op":"gt","values":[]}']])("normalize_search_when_tx_invalid %s", (tx) => {
+    expect(normalizeSearch(search({ tab: "tasks", tx }), context()).tx).toBeUndefined();
+  });
+
   // 画面が持たない形式（正常系）
   test("normalize_search_when_view_mismatched", () => {
     expect(normalizeSearch(search({ tab: "tasks", view: "cards" }), context()).view).toBeUndefined();

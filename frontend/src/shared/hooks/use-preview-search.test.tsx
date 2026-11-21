@@ -41,6 +41,32 @@ describe("usePreviewSearch", () => {
     expect(result.current.search.view).toBeUndefined();
     expect(result.current.search.sort).toBeUndefined();
   });
+
+  // 画面の移動でタグの条件を外す（正常系）
+  test("use_preview_search_when_change_tab_with_tag_condition", async () => {
+    // 準備
+    const { result } = await renderPreviewHook(`/?tab=decisions&tagmatch=any&tx=${encodeURIComponent('{"field":"tags","op":"ne","values":["廃止"]}')}`, usePreviewSearch);
+    // 実行
+    act(() => result.current.setTab("tasks"));
+    // 検証
+    await waitFor(() => expect(result.current.search.tab).toBe("tasks"));
+    expect(result.current.search.tagmatch).toBeUndefined();
+    expect(result.current.search.tx).toBeUndefined();
+  });
+
+  // タグの条件をまとめて置き換える（正常系）
+  test("use_preview_search_when_set_tag_condition", async () => {
+    // 準備
+    const { result, router } = await renderPreviewHook("/?tab=tasks&f.tags=%E7%94%BB%E9%9D%A2", usePreviewSearch);
+    const before = router.history.length;
+    const tx = '{"field":"tags","op":"ne","values":["廃止"]}';
+    // 実行
+    act(() => result.current.setTagCondition({ f: { status: "未着手" }, tagmatch: undefined, tx }));
+    // 検証
+    await waitFor(() => expect(result.current.search.tx).toBe(tx));
+    expect(result.current.search.f).toEqual({ status: "未着手" });
+    expect(router.history.length).toBe(before);
+  });
   // コメントの一覧の中の移動は置き換える（正常系）
   test("use_preview_search_when_set_comments", async () => {
     // 準備

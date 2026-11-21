@@ -1,9 +1,12 @@
 import { act, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 
+import type { PresetFilter } from "@/shared/core/presets";
 import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
 import { readScreenState } from "@/shared/stores/screen-state-store";
 import { renderPreviewHook } from "@/testing/render";
+
+const INCLUDE_EXCLUDE = { and: [{ field: "tags", op: "eq", values: ["画面"] }, { field: "tags", op: "ne", values: ["廃止"] }] } satisfies PresetFilter;
 
 afterEach(() => {
   sessionStorage.clear();
@@ -117,4 +120,57 @@ describe("useScreenFilters", () => {
     await waitFor(() => expect(router.state.location.search).toMatchObject({ tab: "tasks", f: { tags: "画面" } }));
     expect(router.history.length).toBe(before + 1);
   });
+
+  // 簡易で表せる式と表せない式を書き分ける（正常系）
+  test("use_screen_filters_when_set_tag_expr", async () => {
+    // 準備
+    const { result, router } = await renderPreviewHook("/?tab=tasks", () => useScreenFilters("tasks"));
+    const both: PresetFilter = { field: "tags", op: "eq", values: ["画面", "廃止"], match: "all" };
+    // 実行
+    act(() => {
+      result.current.setTagExpr(both);
+    });
+    // 検証
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ f: { tags: "画面|廃止" } }));
+    expect(router.state.location.search).not.toHaveProperty("tx");
+    // 実行
+    act(() => {
+      result.current.setTagExpr(INCLUDE_EXCLUDE);
+    });
+    // 検証
+    await waitFor(() => expect(router.state.location.search).toHaveProperty("tx"));
+    expect(router.state.location.search.f ?? {}).toEqual({});
+    expect(result.current.tagExpr).toEqual(INCLUDE_EXCLUDE);
+  });
+
+  // 式で絞っているときにタグを加える（正常系）
+  test("use_screen_filters_when_add_tag_to_expr", async () => {
+    // 準備
+    const { result, router } = await renderPreviewHook(`/?tab=tasks&tx=${encodeURIComponent(JSON.stringify(INCLUDE_EXCLUDE))}`, () => useScreenFilters("tasks"));
+    const before = router.history.length;
+    // 実行
+    act(() => {
+      result.current.addTag("保存");
+    });
+    // 検証
+    await waitFor(() => expect(result.current.tagExpr).toEqual({ and: [...INCLUDE_EXCLUDE.and, { field: "tags", op: "eq", values: ["保存"] }] }));
+    expect(router.state.location.search.f ?? {}).toEqual({});
+    expect(router.history.length).toBe(before + 1);
+  });
+
+  // 式に同じタグの「含む」があるときはタグを加えない（正常系）
+  test("use_screen_filters_when_add_same_tag_to_expr", async () => {
+    // 準備
+    const tx = JSON.stringify(INCLUDE_EXCLUDE);
+    const { result, router } = await renderPreviewHook(`/?tab=tasks&tx=${encodeURIComponent(tx)}`, () => useScreenFilters("tasks"));
+    const before = router.history.length;
+    // 実行
+    act(() => {
+      result.current.addTag("画面");
+    });
+    // 検証
+    expect(router.state.location.search.tx).toBe(tx);
+    expect(router.history.length).toBe(before);
+  });
 });
+
