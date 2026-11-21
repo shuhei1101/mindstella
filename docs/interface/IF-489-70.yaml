@@ -555,7 +555,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `export` で書き出した HTML を実際のブラウザで `file://` で開く）
       - name: make_workspace
-        description: 本文に見出しと Mermaid の図を持つ資料 A-1 を持つワークスペース
+        description: 本文に見出しと Mermaid の図と map の範囲（`<!-- map -->` の中の flowchart）を持つ資料 A-1 を持つワークスペース
         notes: '`file:` 以外への要求を全てブラウザで止めて数えてから、書き出した HTML を開き、続けて `#/?tab=docs&id=A-1` へ移る'
     flow: |-
       ```mermaid
@@ -572,7 +572,7 @@ flows:
       ```
     expected:
       - 開いた直後に概要のタイルが描かれている
-      - 詳細パネルに A-1 の本文の見出しと、図の SVG がある
+      - 詳細パネルに A-1 の本文の見出しと Mermaid の図の SVG があり、map の図の描画の領域にノードの名前の要素があって map の範囲の原文が画面に無い（中に持つ部品 `map` で描いた）
       - 止めた要求が 0 件
       - ブラウザのコンソールにエラーが出ていない
     test: test_normal_when_exported_offline
