@@ -29,6 +29,8 @@ export const PreviewSearchSchema = z.object({
   search: z.enum(["1"]).optional().catch(undefined),
   q: z.string().optional().catch(undefined),
   tagmatch: z.enum(["any"]).optional().catch(undefined),
+  /** チェックで表せないタグの式（JSON） */
+  tx: z.string().optional().catch(undefined),
   f: z.record(z.string(), z.string()).catch({}),
 });
 

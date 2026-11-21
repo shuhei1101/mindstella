@@ -1,12 +1,13 @@
 // 絞り込みのドロワー（部品設計『絞り込み.tsx』）。列ごとの文字の欄と、条件ごとに値を件数つきのチェックボックスで並べる
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Icon, StatusMark } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
 import type { Filters } from "@/shared/core/filters";
-import type { PresetChoice } from "@/shared/core/presets";
+import { TagExprEditor } from "@/shared/components/tag-expr-editor";
+import { simpleTagsOf, type PresetChoice, type PresetFilter } from "@/shared/core/presets";
 import { cn } from "@/shared/lib/cn";
 
 /** 条件の値 */
@@ -35,6 +36,10 @@ export type FilterDrawerProps = {
   /** 選べるプリセット。選ぶとプリセットのタグでタグの条件を置き換える */
   presets?: PresetChoice[];
   onApplyPreset?: (name: string) => void;
+  /** 今のタグの条件の式。条件が無ければ null */
+  tagExpr?: PresetFilter | null;
+  /** タグの条件を式で置き換える。渡すとタグの条件を式で書ける */
+  onTagExprChange?: (expr: PresetFilter | null) => void;
   onToggleValue: (key: string, value: string) => void;
   onClearGroup: (key: string) => void;
   onClearAll: () => void;
@@ -42,7 +47,7 @@ export type FilterDrawerProps = {
   onTextChange: (key: string, text: string) => void;
 };
 
-export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, texts = [], tagMatch = "all", onTagMatchChange, presets = [], onApplyPreset, onToggleValue, onClearGroup, onClearAll, onClose, onTextChange }: FilterDrawerProps) => {
+export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, texts = [], tagMatch = "all", onTagMatchChange, presets = [], onApplyPreset, tagExpr = null, onTagExprChange, onToggleValue, onClearGroup, onClearAll, onClose, onTextChange }: FilterDrawerProps) => {
   const timer = useRef(0);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -51,7 +56,11 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
       window.clearTimeout(timer.current);
     };
   }, []);
-  const filtering = Object.values(selected).some((values) => values.length > 0);
+  // チェックで表せない式はタグの条件を式で書く表示にする
+  const complex = tagExpr !== null && simpleTagsOf(tagExpr) === null;
+  const [writing, setWriting] = useState(complex);
+  const exprMode = complex || writing;
+  const filtering = Object.values(selected).some((values) => values.length > 0) || complex;
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- ドロワーが Esc を受ける
     <div
@@ -144,7 +153,7 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
                   解除
                 </Button>
               ) : null}
-              {group.key === "tags" && onTagMatchChange !== undefined ? (
+              {group.key === "tags" && onTagMatchChange !== undefined && !exprMode ? (
                 <fieldset className="mt-1 inline-flex rounded-control border border-border bg-card p-0.5">
                   <legend className="sr-only">タグの組み合わせ方</legend>
                   {(["all", "any"] as const).map((value) => (
@@ -168,6 +177,35 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
                   ))}
                 </fieldset>
               ) : null}
+              {group.key === "tags" && onTagExprChange !== undefined ? (
+                <fieldset className="mt-1 ml-1 inline-flex rounded-control border border-border bg-card p-0.5">
+                  <legend className="sr-only">タグの条件の書き方</legend>
+                  {([["check", "チェックで選ぶ"], ["expr", "式で書く"]] as const).map(([value, label]) => (
+                    <label
+                      key={value}
+                      className={cn("flex h-7 cursor-pointer items-center rounded-control px-2 text-small hover:bg-accent has-focus-visible:outline-2 has-focus-visible:outline-ring", (value === "expr") === exprMode && "bg-mark-weak font-medium hover:bg-mark-weak", value === "check" && complex && "cursor-not-allowed text-muted-foreground")}
+                    >
+                      <input
+                        type="radio"
+                        name="tag-mode"
+                        value={value}
+                        checked={(value === "expr") === exprMode}
+                        disabled={value === "check" && complex}
+                        className="sr-only"
+                        onChange={() => {
+                          setWriting(value === "expr");
+                        }}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </fieldset>
+              ) : null}
+              {group.key === "tags" && onTagExprChange !== undefined && exprMode ? (
+                <div className="mt-1">
+                  <TagExprEditor expr={tagExpr ?? { and: [{ field: "tags", op: "eq", values: [] }] }} tags={group.values} onChange={onTagExprChange} />
+                </div>
+              ) : (
               <ul>
                 {group.values.map(({ value, count }) => (
                   <li key={value}>
@@ -180,6 +218,7 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
                   </li>
                 ))}
               </ul>
+              )}
             </fieldset>
           );
         })}

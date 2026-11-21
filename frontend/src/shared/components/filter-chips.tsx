@@ -3,7 +3,15 @@ import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { TEXT_FILTER_PREFIX, withoutKey, type Filters } from "@/shared/core/filters";
 
-export type FilterChipsProps = { filters: Filters; labels: Record<string, string>; tagMatch?: "all" | "any"; onFilter: (filters: Filters) => void };
+export type FilterChipsProps = {
+  filters: Filters;
+  labels: Record<string, string>;
+  tagMatch?: "all" | "any";
+  onFilter: (filters: Filters) => void;
+  /** チェックで表せないタグの式の文。無ければ出さない */
+  tagExprText?: string;
+  onClearTagExpr?: () => void;
+};
 
 const Chip = ({ text, onClear }: { text: string; onClear: () => void }) => (
   <span className="inline-flex items-center gap-1 rounded-full bg-mark-weak px-2 text-xs">
@@ -14,7 +22,7 @@ const Chip = ({ text, onClear }: { text: string; onClear: () => void }) => (
   </span>
 );
 
-export const FilterChips = ({ filters, labels, tagMatch = "all", onFilter }: FilterChipsProps) => {
+export const FilterChips = ({ filters, labels, tagMatch = "all", onFilter, tagExprText, onClearTagExpr }: FilterChipsProps) => {
   const chips = Object.entries(filters).flatMap(([key, values]) => {
     if (key.startsWith(TEXT_FILTER_PREFIX)) {
       const name = labels[key.slice(TEXT_FILTER_PREFIX.length)] ?? key.slice(TEXT_FILTER_PREFIX.length);
@@ -27,13 +35,21 @@ export const FilterChips = ({ filters, labels, tagMatch = "all", onFilter }: Fil
       return { id: `${key}:${value}`, text: `${label}: ${value}`, next: rest.length === 0 ? withoutKey(filters, key) : { ...filters, [key]: rest } };
     });
   });
+  const exprChip = tagExprText !== undefined && onClearTagExpr !== undefined;
   return (
     <div className="flex flex-wrap items-center gap-1">
+      {exprChip ? <Chip text={`${labels["tags"] ?? "タグ"}: ${tagExprText}`} onClear={onClearTagExpr} /> : null}
       {chips.map((chip) => (
         <Chip key={chip.id} text={chip.text} onClear={() => { onFilter(chip.next); }} />
       ))}
-      {chips.length > 0 ? (
-        <Button variant="ghost" onClick={() => { onFilter({}); }}>
+      {chips.length > 0 || exprChip ? (
+        <Button
+          variant="ghost"
+          onClick={() => {
+            onClearTagExpr?.();
+            onFilter({});
+          }}
+        >
           すべて解除
         </Button>
       ) : null}
