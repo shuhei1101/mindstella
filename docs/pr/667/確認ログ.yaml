@@ -1,0 +1,19 @@
+confirmations:
+  - topic: '#347 の終了の条件を縮めてよいか'
+    decision: 案 A を基に、左右に並べる表示は使用しないため mindstella 側に残さず削除する。左右に並べる表示は mdmark へ機能の依頼だけを起票し、この作業 PR には含めない。ほかの mdmark に無い見せ方（描いた本文の上のミニマップ・HTML の本文の差分・図のノードの色付け）は mindstella 側に残し、終了の条件を縮める
+    decided_by: reply
+    approver: shuhei1101
+    commit: 204df9fc
+    thread: https://github.com/shuhei1101/mindstella/pull/667#discussion_r4652531449
+  - topic: 描いた本文の差分で、書き換えた段落の前の文と変わった単語を出さなくなってよいか
+    decision: mdmark の色分けにし、変わった単語は「原文の差分」で確認する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 204df9fc
+    thread: https://github.com/shuhei1101/mindstella/pull/667#discussion_r4652465571
+  - topic: '#634 の今の画面のモック 15 件をどう扱うか'
+    decision: 今の画面のモック 15 件を削除する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 204df9fc
+    thread: https://github.com/shuhei1101/mindstella/pull/667#discussion_r4652465902

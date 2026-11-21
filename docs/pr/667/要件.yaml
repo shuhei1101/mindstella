@@ -2,7 +2,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-18.yaml
     impact: changed
-    detail: 本文の差分を mdmark の差分で見る。差分の見せ方（インライン・左右に並べる・ミニマップ・HTML の本文）の記載を mdmark の機能に合わせる
+    detail: 本文の差分を mdmark の色分けと「原文の差分」で見る。使用しない左右に並べる表示のシナリオを削除する
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-46.yaml
@@ -34,6 +34,12 @@ use_cases:
     impact: run_only
     detail: コメントの一覧のピン止めの解除の状態のアイコンが変わる。シナリオの記述は変わらない
     depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: changed
+    detail: 表示の設定の端末の上書きから、削除する本文の差分の並べ方を外す
+    depends_on:
+      - docs/scenario/SC-489-18.yaml
 docs:
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
@@ -90,3 +96,6 @@ scope_out:
   - item: '#647 の本文にある test_markdown_body_stories.py の 4 件の fail'
     reason: '#647 の受付の判断で #639 へ移した（はみ出す表の既定の決定に合わせる）'
     plan: '#639'
+  - item: '#347: mdmark の差分に左右に並べる見せ方を追加する'
+    reason: ユーザーが mdmark への依頼だけを指示し、この作業 PR には含めないと決めた（確認ログ）
+    plan: shuhei1101/mdmark#783
