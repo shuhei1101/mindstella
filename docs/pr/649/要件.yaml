@@ -53,27 +53,39 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: タグを押して絞り込みに加える操作と、タグの AND / OR の選び方を追加する。画面を移って戻ったときにスクロール位置・絞り込みが戻ることを書く
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
   - page: docs/guide/コマンド.mark.md
     new: false
     change: 絞り込みのプリセットを作成・更新・削除する MCP のツールと、check の 0 件に当たるプリセットの警告を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: プリセットの保存先のファイルとキー（名前・説明・タグの式・並び順）を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
     change: ワークスペースが絞り込みのプリセットを持つことを追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
   - page: docs/guide/エージェントフロー.md
     new: false
     change: AI がプリセットを作る工程を追加したことを反映する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
   - page: plugins/mindstella/agent-flows/record.yaml
     new: false
     change: 「話題のタグを付ける」「既存の記録にもタグを付ける」の後に、新しいタグを付けたとき・タグを付けた項目が増えたときに絞り込みのプリセットを作る・見直す工程を追加し、作る・直す・作らない目安と名前・説明・並び順の付け方を本文に記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T07:15:37.985655+00:00'
 scope_out:
   - item: プリセットを画面の一覧の上に並べて押すだけで開くこと、0 件に当たるプリセットの一覧の印、タグの式と状態・種類など今の絞り込みの組み合わせ
     reason: '#360 の本文で #361 へ分けた範囲'
