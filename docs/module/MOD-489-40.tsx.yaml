@@ -7,6 +7,6 @@ components:
     kind: コンポーネント
     container: frontend/src/features/overview/overview/components/list-tile.tsx
     usecase: 概要を見る
-    summary: 未読の AI の書き込み・未決定・要見直し・確認中の資料に共通の、件数と行と「すべて表示」
+    summary: 未読の AI の書き込み・未決定・要見直し・確認中の資料に共通の、件数と行と「すべて表示」。文字の大きさと余白は『overview-screen』の領域のコンテナクエリで切り替える
 notes:
   単体テスト: 同じフォルダの `list-tile.test.tsx` に置く（knowledge の規約『フォルダ構成』）

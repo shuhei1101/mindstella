@@ -1091,9 +1091,7 @@ files:
   description: 左右に並べた本文の差分。
   tags:
   - tool:react
-  related:
-  - to: MOD-489-84
-    type: implements
+  related: []
 - path: src/shared/components/table.stories.tsx
   name: 表のストーリー
   description: 表のストーリー。
@@ -1438,9 +1436,7 @@ files:
   description: 左右に並べた本文の差分。
   tags:
   - tool:react
-  related:
-  - to: MOD-489-122
-    type: implements
+  related: []
 - path: src/shared/core/term-tips.ts
   name: '* eslint-disable @typescript-eslint/no-non-null-assertion --'
   description: '* eslint-disable @typescript-eslint/no-non-null-assertion --。'

@@ -82,8 +82,7 @@
 | [プレビュー / removed-band](./MOD-489-80.tsx.yaml) | 部品設計『削除した項目の帯.tsx』の props・イベント・状態を持つ |
 | [プレビュー / history-dialog](./MOD-489-71.tsx.yaml) | 部品設計『変更履歴.tsx』の props・イベント・状態を持つ |
 | [プレビュー / diff-minimap](./MOD-489-66.tsx.yaml) | 部品設計『差分のミニマップ.tsx』の props・イベント・状態を持つ |
-| [プレビュー / body-diff-layout-switch](./MOD-489-61.tsx.yaml) | 部品設計『本文の差分の並べ方の切り替え.tsx』の props・イベント・状態を持つ |
-| [プレビュー / side-by-side-body-diff](./MOD-489-84.tsx.yaml) | 部品設計『左右に並べた本文の差分.tsx』の props・イベント・状態を持つ |
+| [プレビュー / body-diff-view-switch](./MOD-489-61.tsx.yaml) | 部品設計『本文の差分の見せ方の切り替え.tsx』の props・イベント・状態を持つ |
 | [プレビュー / html-body-diff](./MOD-489-72.tsx.yaml) | 部品設計『HTMLの本文の差分.tsx』の props・イベント・状態を持つ |
 | [プレビュー / html-body-frame](./MOD-489-73.tsx.yaml) | 部品設計『HTMLの本文の枠.tsx』の props・イベント・状態を持つ |
 | [プレビュー / markdown-body](./MOD-489-77.tsx.yaml) | 部品設計『Markdownの本文.tsx』の props・イベント・状態を持つ |
@@ -116,8 +115,7 @@
 | [プレビュー / body-links](./MOD-489-102.ts.yaml) | 描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理 |
 | [プレビュー / markdown-decorate](./MOD-489-117.ts.yaml) | 描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し） |
 | [プレビュー / minimap](./MOD-489-118.ts.yaml) | 差分のミニマップのマーカーの計算と操作 |
-| [プレビュー / body-render](./MOD-489-103.ts.yaml) | 本文の差分の描画（追加した・削除した塊・語の面・図の差分） |
-| [プレビュー / side-by-side](./MOD-489-122.ts.yaml) | 左右に並べた本文の差分の組み立て |
+| [プレビュー / body-render](./MOD-489-103.ts.yaml) | 本文の差分の図の色付けと、行の差分の描画 |
 | [プレビュー / html-body-diff](./MOD-489-112.ts.yaml) | HTML の本文の差分の組み立て |
 | [プレビュー / html-frame](./MOD-489-113.ts.yaml) | スクリプトを動かさない HTML の本文の枠の組み立て |
 | [プレビュー / term-tips](./MOD-489-123.ts.yaml) | 本文のマーカーのツールチップと、見出しへの送り・示す箇所 |
@@ -134,7 +132,7 @@
 | [プレビュー / voice-store](./MOD-489-254.ts.yaml) | 画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」） |
 | [プレビュー / refresh-hold-store](./MOD-557-1.ts.yaml) | 入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の再読み込みの保留」） |
 | [プレビュー / theme-store](./MOD-489-141.ts.yaml) | `mindmap-preview` のキーで、値の JSON の `theme` だけを読み書きし、他のキーは残す |
-| [プレビュー / prefs-store](./MOD-489-140.ts.yaml) | 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、`localStorage` の `mindmap-preview` のキーで読み書きする（制約「端末の保存領域」） |
+| [プレビュー / prefs-store](./MOD-489-140.ts.yaml) | 表の列・ピン留め・差分のミニマップ・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、`localStorage` の `mindmap-preview` のキーで読み書きする（制約「端末の保存領域」） |
 | [プレビュー / edit-session-store](./MOD-489-138.ts.yaml) | 開いている追加の入力と、直前の保存で書き込めなかった編集 |
 | [プレビュー / display-notice-store](./MOD-489-137.ts.yaml) | 表示の設定の知らせ（ワークスペースの既定が変わった知らせと、表示の設定のパネルの `message`） |
 | [プレビュー / location-highlight-store](./MOD-489-139.ts.yaml) | コメントの一覧（レビュー中の書き込みの行・スレッドの向けた項目）から開いた項目の中で示す箇所 |

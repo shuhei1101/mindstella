@@ -6,7 +6,7 @@ components:
     title: 本文の表示
     kind: コンポーネント
     usecase: 項目の詳細を読む
-    summary: 本文の形式と差分の表示に応じて描く部品を選び、描いた後に `h` の見出しへ送信する。本文に無い見出しは本文の頭で開き、URL から `h` を外す
+    summary: 本文の形式と差分の表示に応じて描く部品を選び、描いた後に `h` の見出しへ送信する。Markdown の本文の差分は `BodyDiffViewSwitch` で選んだ見せ方で描く。「描いた結果」は `renderMarkdown` に選んだ時点の本文を `base` で渡し、描いた後に図の差分（`decorateDiagrams`）を付け、差分のミニマップの目印を mdmark の差分のブロックから取る。「原文の差分」は選んだ時点と今の本文を `diffSource` で渡し、差分のミニマップを出さない。「原文の差分」を押し直すと描き直し、mdmark の「変更表示」で閉じた行の差分を開き直す。本文に無い見出しは本文の頭で開き、URL から `h` を外す
     container: frontend/src/features/detail/detail-panel/components/body-view.tsx
     unit_tests:
       - name: test_body_view_when_heading
@@ -21,5 +21,23 @@ components:
         condition: '`h=無い見出し`'
         mock: mdmark の `mount`
         expected: 本文の頭で開き、URL から `h` が外れる
+      - name: test_body_view_when_diff_rendered
+        case: 正常
+        summary: 描いた結果は比較元の Markdown で描く
+        condition: 差分の表示で、選んだ時点の本文と今の本文が違う
+        mock: mdmark の `mount`
+        expected: '`mount` に今の本文と、選んだ時点の本文の `baseMarkdown` が渡る'
+      - name: test_body_view_when_diff_source
+        case: 正常
+        summary: 原文の差分は取り出し元で描く
+        condition: 差分の表示で「原文の差分」を押す
+        mock: mdmark の `mount`
+        expected: '`mount` に `diffMode: "open"` と、選んだ時点と今の 2 つのリビジョンを返す `diffSource` が渡り、差分のミニマップが無い'
+      - name: test_body_view_when_diff_source_pressed_again
+        case: 正常
+        summary: 原文の差分を押し直すと描き直す
+        condition: 「原文の差分」を押した後に、もう一度「原文の差分」を押す
+        mock: mdmark の `mount`
+        expected: '`mount` が 2 回呼ばれる'
 notes:
   単体テスト: 同じフォルダの `body-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）

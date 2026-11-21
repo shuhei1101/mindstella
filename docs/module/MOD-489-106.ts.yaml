@@ -52,7 +52,7 @@ functions:
     title: 既定に戻した上書き
     kind: 関数
     usecase: 表示の設定を変える
-    summary: 表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並び・「レビューに追加」の後のフォーカスを外す。`diffSel`・`commentsPinned`・`commentFormClosed` と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて再描画する
+    summary: 表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・コメントの並び・「レビューに追加」の後のフォーカスを外す。`diffSel`・`commentsPinned`・`commentFormClosed` と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて再描画する
     args:
       - name: prefs
         type: Record<string, unknown>
