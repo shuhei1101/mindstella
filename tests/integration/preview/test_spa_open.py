@@ -13,9 +13,9 @@ from urllib.parse import urlsplit
 import yaml
 
 from playwright.sync_api import Page, Route, expect
-from preview_fixture_types import WritePreview, WriteReviewPreview
+from preview_fixture_types import BODY_WITH_DIAGRAM, WritePreview, WriteReviewPreview
 from preview_embedded_files_helpers import EMBEDDED_FILES_BODY, put_embedded_files
-from preview_spa_helpers import open_spa, spa_url, watch_console
+from preview_spa_helpers import SPA_CONTENT_SELECTOR, SPA_RENDER_TIMEOUT_MS, open_spa, spa_url, watch_console
 from workspace_fixtures import (
     PORT_ENV,
     RECORD_DIR,
@@ -56,6 +56,12 @@ SCROLL_TO_MIDDLE_SCRIPT = """() => {
 
 # 本文の区画が縦にスクロールする窓の高さ
 SCROLLABLE_HEIGHT = 360
+
+# 配る書き出しの図が描き終わるまで待つ上限ミリ秒
+DIAGRAM_TIMEOUT_MS = 20_000
+
+# 配る書き出しが中に持つ mdmark のタグ（jsDelivr の develop は、パッケージの大きさの上限で一部の配布ファイルを返さないことがある）
+EXPORT_MDMARK_VERSION = "v0.14.0"
 
 # 足す検討事項
 NEW_DECISION = {
@@ -796,3 +802,69 @@ def test_normal_when_embedded_files(make_workspace: MakeWorkspace, make_item: Ma
     expect(video).to_have_js_property("error", None)
     page.wait_for_function("(v) => v.readyState >= 1", arg=video.element_handle(), timeout=UPDATE_TIMEOUT_MS)
     page.wait_for_function("(i) => i.complete && i.naturalWidth > 0", arg=image.element_handle(), timeout=UPDATE_TIMEOUT_MS)
+
+
+def _export_url(call_tool: CallTool, root: Path, out: Path) -> str:
+    """ワークスペースを `out` へ書き出し、書き出した HTML の `file://` の URL を返す。"""
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    return out.as_uri()
+
+
+def test_normal_when_exported_offline(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, valid_settings: dict[str, Any], page: Page, tmp_path: Path
+) -> None:
+    """配る書き出しを `file://` で開くと、外部への要求をせずに概要と詳細の本文・図を描く（正常系）。"""
+    # 準備
+    settings = {**valid_settings, "mdmark": {"version": EXPORT_MDMARK_VERSION}}
+    root = make_workspace(
+        make_item("A-1", status="下書き", body="../docs/A-1.mark.md"), settings=settings, bodies={"A-1.mark.md": BODY_WITH_DIAGRAM}
+    )
+    url = _export_url(call_tool, root, tmp_path / "配る.html")
+    blocked: list[str] = []
+
+    def _block(route: Route) -> None:
+        """`file:` 以外への要求を数えて失敗させる。"""
+        blocked.append(route.request.url)
+        route.abort()
+
+    page.route(lambda request_url: not request_url.startswith("file:"), _block)
+    console = watch_console(page)
+    # 実行
+    page.goto(url)
+    page.wait_for_selector("#tile-open", timeout=SPA_RENDER_TIMEOUT_MS)
+    page.goto(f"{url}#/?tab=docs&id=A-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    panel.locator(".mermaid svg").wait_for(timeout=DIAGRAM_TIMEOUT_MS)
+    # 検証
+    expect(panel.get_by_role("heading", name="流れ")).to_be_visible()
+    assert blocked == []
+    assert console.messages == []
+    assert console.exceptions == []
+
+
+def test_normal_when_exported_read_only(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, valid_settings: dict[str, Any], page: Page, tmp_path: Path
+) -> None:
+    """配る書き出しは、項目の追加・編集・確認済み・コメント・保存待ち・ワークスペースの既定にするの操作を出さない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("T-1", status="進行中"), settings={**valid_settings, "mdmark": {"version": EXPORT_MDMARK_VERSION}})
+    url = _export_url(call_tool, root, tmp_path / "配る.html")
+    # 実行
+    page.goto(f"{url}#/?tab=tasks&id=T-1")
+    page.wait_for_selector(SPA_CONTENT_SELECTOR, state="attached", timeout=SPA_RENDER_TIMEOUT_MS)
+    panel = page.get_by_role("complementary", name="詳細")
+    expect(panel).to_be_visible()
+    header = page.locator("header")
+    page.get_by_role("button", name="表示の設定").click()
+    settings = page.get_by_role("dialog", name="表示の設定")
+    expect(settings).to_be_visible()
+    # 検証
+    expect(header.get_by_role("button", name=re.compile(r"^コメント"))).to_have_count(0)
+    expect(header.get_by_role("button", name=re.compile(r"^保存待ち"))).to_have_count(0)
+    expect(page.get_by_role("button", name="タスクの項目を追加")).to_have_count(0)
+    expect(panel.get_by_role("button", name="編集する")).to_have_count(0)
+    expect(panel.get_by_role("button", name=re.compile("確認済み"))).to_have_count(0)
+    expect(panel.get_by_role("button", name="T-1 のコメントの一覧を開く")).to_have_count(0)
+    expect(panel.get_by_role("textbox")).to_have_count(0)
+    expect(settings.get_by_role("button", name="ワークスペースの既定にする")).to_have_count(0)
