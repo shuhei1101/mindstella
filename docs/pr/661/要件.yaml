@@ -39,3 +39,6 @@ scope_out:
   - item: 絞り込みのドロワーを開いている間のグレーアウトと inert（filter-drawer.tsx・list-screen.tsx）
     reason: 画面設計『検討事項』の要素「絞り込みのドロワー」とシナリオ SC-489-49 はグレーアウトすると記載するが、実装にグレーアウトが無い（reviewer の対象外の逸脱の報告）。今回の要望はパネル・ドロワーの上端で、グレーアウトを足すことを含まない
     plan: '#665'
+  - item: 資料の一覧のカードの見出しの段が飛ぶ（doc-cards.tsx の h3。axe heading-order）
+    reason: 見出しの段を飛ばさない決まり（axe heading-order）から外れている（reviewer の対象外の逸脱の報告）。今回の要望に含まれない。同じ内容の open の Issue がある
+    plan: '#646'
