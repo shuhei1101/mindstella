@@ -207,3 +207,41 @@ export const TableInDiff: Story = {
     rows[2]?.classList.add("df-row", "df-del");
   },
 };
+
+/** 選んだ時点の本文（段落 3 つと箇条書き） */
+const DIFF_BEFORE = [
+  "# 保存先の決め方",
+  "",
+  "記録はワークスペースのフォルダに配置する。",
+  "",
+  "保存先は話し合いを始めるときに一度だけ決め、途中では変えない。",
+  "",
+  "保存した記録は、保持する回数を超えたものから削除する。",
+  "",
+  "- 記録の YAML",
+  "- 本文の Markdown",
+  "",
+].join("\n");
+
+/** 今の本文（1 つ目の段落の単語を書き換え、3 つ目の段落を削除し、箇条書きに 1 行追加した） */
+const DIFF_AFTER = [
+  "# 保存先の決め方",
+  "",
+  "記録はワークスペースのフォルダにまとめて配置する。",
+  "",
+  "保存先は話し合いを始めるときに一度だけ決め、途中では変えない。",
+  "",
+  "- 記録の YAML",
+  "- 本文の Markdown",
+  "- 添付したファイル",
+  "",
+].join("\n");
+
+/** 差分の表示で「描いた結果」。書き換えた段落と追加した箇条書きの項目は追加の色と左の余白の `+`、削除した段落は削除の色と `−` で変更前の位置に出る。書き換えた段落の前の文と変わった単語は出さない */
+export const DiffRendered: Story = { args: { source: DIFF_AFTER, base: DIFF_BEFORE, fold: false } };
+
+/** 差分の表示で「原文の差分」。mdmark の「変更表示」を押した状態で、前と後のリビジョンの欄に「選んだ時点」「今」が入り、書き換えた行の変わった単語だけが濃い色になる */
+export const DiffSource: Story = { args: { source: DIFF_AFTER, base: DIFF_BEFORE, diffView: "source", fold: false } };
+
+/** 差分の表示で、選んだ時点から変わっていない本文。色を付けずに今の本文だけを出す */
+export const DiffUnchanged: Story = { args: { source: DIFF_AFTER, base: DIFF_AFTER, fold: false } };

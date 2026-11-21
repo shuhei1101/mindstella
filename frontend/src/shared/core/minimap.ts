@@ -50,14 +50,13 @@ const MINIMAP_KIND_NAME: Record<MinimapKind, string> = {
   chg: "変わった箇所",
 };
 
-/** 印にする要素（キーの差分の行・本文の足した / 消した塊・箇条書きの足した項目・表の行・図の差分の枠・Raw の行・埋め込んだ HTML の範囲の差分） */
+/** mdmark が比較元の Markdown の色分けで付ける差分のブロック */
+const MDMARK_DIFF_BLOCK = ".mdmark-diff-block";
+
+/** 印にする要素（キーの差分の行・mdmark の差分のブロック・図の差分の枠・Raw の行・埋め込んだ HTML の範囲の差分） */
 const MINIMAP_TARGET_SELECTOR = [
   ".df-kv",
-  ".md ins.df-blk",
-  ".md del.df-blk",
-  ".md li.df-li-add",
-  ".md tr.df-add",
-  ".md tr.df-del",
+  `.md ${MDMARK_DIFF_BLOCK}`,
   ".diagram.df-changed",
   ".diagram.df-frame",
   ".df-raw .df-line.df-add",
@@ -87,7 +86,7 @@ const isNewKey = (row: Element): boolean => {
 const minimapKindOf = (element: Element): MinimapKind => {
   if (element.matches(".diagram, .html-diff-range")) return "chg";
   if (element.matches(".df-kv")) return isNewKey(element) ? "add" : "chg";
-  return element.matches("del, .df-del") ? "del" : "add";
+  return element.matches('.df-del, [data-kind="del"]') ? "del" : "add";
 };
 
 /** 本文のスクロール領域の中の差分の印を、文書の順にミニマップの印にまとめて返す */
@@ -103,7 +102,7 @@ export const minimapTargets = (body: HTMLElement): MinimapTarget[] => {
     const kind = minimapKindOf(element);
     const previous = found.at(-1);
     const follows = previous !== undefined && previous.frame === null && previous.last.nextElementSibling === element;
-    if (previous !== undefined && follows && previous.kind === "del" && kind === "add" && element.matches(".df-blk") && previous.last.matches(".df-blk")) {
+    if (previous !== undefined && follows && previous.kind === "del" && kind === "add" && element.matches(MDMARK_DIFF_BLOCK) && previous.last.matches(MDMARK_DIFF_BLOCK)) {
       // 消した塊のすぐ後ろの足した塊: 書き換えた箇所
       previous.kind = "chg";
       previous.last = element;
@@ -112,22 +111,6 @@ export const minimapTargets = (body: HTMLElement): MinimapTarget[] => {
       previous.last = element;
     } else {
       found.push({ kind, first: element, last: element, frame: null });
-    }
-  }
-  // 左右に並べた本文の印は列ごとに文書の順に並ぶので、高さの順に並べ直し、向かい合う消した塊と足した塊を「変わった」1 つにする
-  if (body.querySelector(".sbs") !== null) {
-    const topOf = (target: MinimapTarget): number => target.first.getBoundingClientRect().top;
-    found.sort((a, b) => topOf(a) - topOf(b));
-    for (let position = found.length - 1; position > 0; position -= 1) {
-      const upper = found[position - 1];
-      const lower = found[position];
-      if (upper === undefined || lower === undefined) continue;
-      const kinds = [upper.kind, lower.kind].sort().join();
-      // 上の印の下端より上で始まる、もう片側の印
-      if (kinds === "add,del" && topOf(lower) < upper.last.getBoundingClientRect().bottom) {
-        upper.kind = "chg";
-        found.splice(position, 1);
-      }
     }
   }
   // HTML の本文の枠の中の印

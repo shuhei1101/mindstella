@@ -748,17 +748,17 @@ files:
   related:
   - to: MOD-489-60
     type: implements
-- path: src/shared/components/body-diff-layout-switch.stories.tsx
-  name: 本文の差分の並べ方の切り替えのストーリー
-  description: 本文の差分の並べ方の切り替えのストーリー。
+- path: src/shared/components/body-diff-view-switch.stories.tsx
+  name: 本文の差分の見せ方の切り替えのストーリー
+  description: 本文の差分の見せ方の切り替えのストーリー。
   tags:
   - tool:react
   related:
   - to: MOD-489-170
     type: implements
-- path: src/shared/components/body-diff-layout-switch.tsx
-  name: 本文の差分の並べ方の切り替え
-  description: 本文の差分の並べ方の切り替え。
+- path: src/shared/components/body-diff-view-switch.tsx
+  name: 本文の差分の見せ方の切り替え
+  description: 本文の差分の見せ方の切り替え。
   tags:
   - tool:react
   related:
@@ -1078,20 +1078,6 @@ files:
   related:
   - to: MOD-489-80
     type: implements
-- path: src/shared/components/side-by-side-body-diff.stories.tsx
-  name: 左右に並べた本文の差分のストーリー
-  description: 左右に並べた本文の差分のストーリー。
-  tags:
-  - tool:react
-  related:
-  - to: MOD-489-170
-    type: implements
-- path: src/shared/components/side-by-side-body-diff.tsx
-  name: 左右に並べた本文の差分
-  description: 左右に並べた本文の差分。
-  tags:
-  - tool:react
-  related: []
 - path: src/shared/components/table.stories.tsx
   name: 表のストーリー
   description: 表のストーリー。
@@ -1431,12 +1417,6 @@ files:
   related:
   - to: MOD-489-121
     type: implements
-- path: src/shared/core/side-by-side.ts
-  name: 左右に並べた本文の差分
-  description: 左右に並べた本文の差分。
-  tags:
-  - tool:react
-  related: []
 - path: src/shared/core/term-tips.ts
   name: '* eslint-disable @typescript-eslint/no-non-null-assertion --'
   description: '* eslint-disable @typescript-eslint/no-non-null-assertion --。'
@@ -1637,11 +1617,6 @@ files:
 - path: src/shared/components/item-id-tip.stories.tsx
   name: 項目の ID のツールチップのモックのストーリー
   description: 本文の項目の ID のリンクに出すツールチップ（タイトルと ID、種類と状態）のモックのストーリー。項目の ID のツールチップの外観を確認・変更するときに読む。
-  tags:
-  - tool:react
-- path: src/shared/components/markdown-body-diff.stories.tsx
-  name: Markdown の本文の差分のモックのストーリー
-  description: Markdown の本文の差分を mdmark の比較元の Markdown の色分けと行の差分で描き、描いた結果と原文の差分を切り替えるモックのストーリー。本文の差分の外観を確認・変更するときに読む。
   tags:
   - tool:react
 - path: src/shared/components/term-tip.stories.tsx

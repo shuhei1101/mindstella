@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- 正規表現の捕捉と描いた直後の要素を指す */
 // 本文の差分の描画。mdmark が描いた React の外の DOM に手を入れる
 import { getLibrary } from "@/shared/adapters/libraries";
-import { CODE_BLOCK_ATTRS, DIAGRAM_SOURCE_ATTR, embeddedHtmlRanges, EMBEDDED_HTML_CLASS, HTML_BLOCK_CLASS, LINE_ATTR, renderDiagramSvg, renderMarkdown, MDMARK_TABLE_CLASS } from "@/shared/core/body-links";
-import { childMarks, COLORED_DIAGRAM_TYPES, diffDiagram, diffDiagramFromSource, diffInline, diffLineParts, LINE_DIFF_TIMEOUT_MS, pairedParts, pairEmbeddedHtml, placeRemovedBlocks, type DiagramDiff, type InlineDiff, type InlinePart, type JsDiff, type LinePart, type RemovedBlock } from "@/shared/core/diff";
+import { CODE_BLOCK_ATTRS, DIAGRAM_SOURCE_ATTR, EMBEDDED_HTML_CLASS, HTML_BLOCK_CLASS, LINE_ATTR, renderDiagramSvg, renderMarkdown } from "@/shared/core/body-links";
+import { childMarks, COLORED_DIAGRAM_TYPES, diffDiagram, diffDiagramFromSource, diffInline, diffLineParts, LINE_DIFF_TIMEOUT_MS, pairedParts, pairEmbeddedHtml, type DiagramDiff, type InlineDiff, type JsDiff, type LinePart } from "@/shared/core/diff";
 import { h, markupIcon } from "@/shared/core/dom-parts";
 import { htmlBodyDiff } from "@/shared/core/html-body-diff";
 import { htmlFrameElement } from "@/shared/core/html-frame";
@@ -50,357 +50,18 @@ export const noteBox = (text: string): HTMLElement => {
 };
 
 
-/** 本文を行の並びにする（末尾の改行で出る空の最後の要素は行ではない） */
-const linesOf = (text: string): string[] => {
-  const lines = text.split("\n");
-  if (lines.at(-1) === "") lines.pop();
-  return lines;
-};
-
-/** 今の本文の行（1 始まり）のうち、差分で足した行 */
-const addedLines = ({ parts, now }: { parts: LinePart[]; now: string[] }): Set<number> => {
-  const added = new Set<number>();
-  let line = 0;
-  for (const part of parts) {
-    if (part.kind === "removed") continue;
-    for (let position = 0; position < part.lines.length; position += 1) {
-      line += 1;
-      // 空行だけの足しは段落の間の空きで、どの塊も足したことにしない
-      if (part.kind === "added" && (now[line - 1] ?? "").trim() !== "") added.add(line);
-    }
-  }
-  return added;
-};
-
-/** 今の本文の各行が属するブロックの先頭の行を求める。図のコードブロックの中は null（図の差分が示す）。それ以外のコードブロックの中は、中身の最初の行を持つブロックに属する */
-export const blockOwners = ({ now, starts }: { now: string[]; starts: number[] }): (number | null)[] => {
-  const owners: (number | null)[] = [];
-  let fence: { owner: number | null } | null = null;
-  now.forEach((text, offset) => {
-    const line = offset + 1;
-    const opening = /^\s*(`{3,}|~{3,})\s*(\S*)/.exec(text);
-    if (fence !== null) {
-      owners.push(fence.owner);
-      // 閉じるフェンス（言語を持たない行）で、コードブロックを出る
-      if (opening !== null && opening[2] === "") fence = null;
-      return;
-    }
-    if (opening !== null) {
-      fence = { owner: opening[2] === "mermaid" ? null : line + 1 };
-      owners.push(fence.owner);
-      return;
-    }
-    // 印を持つブロックのうち、この行以前で最も後ろのもの
-    owners.push(starts.filter((start) => start <= line).at(-1) ?? null);
-  });
-  return owners;
-};
-
-/** 差分の記号を頭に置いた、足した塊・消した塊の囲み */
-export const diffBlock = ({ op, children }: { op: "add" | "del"; children: Node[] }): HTMLElement => {
-  return h({
-    tag: op === "add" ? "ins" : "del",
-    attrs: { class: "df-blk" },
-    children: [...signMarks(op), ...children],
-  });
-};
-
-/** 本文の足した部分の印を、今の本文の要素に付ける（段落・見出し・コードは囲み、表の行と箇条書きの項目は行の印にする） */
-const markAddedBlocks = ({ root, parts, source }: { root: HTMLElement; parts: LinePart[]; source: string }): void => {
-  const now = linesOf(source);
-  const added = addedLines({ parts, now });
-  if (added.size === 0) return;
-  const blocks = [...root.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)];
-  const owners = blockOwners({ now, starts: blocks.map((block) => Number(block.getAttribute(LINE_ATTR))) });
-  const marked = new Set<number>();
-  for (const line of added) {
-    const owner = owners[line - 1];
-    if (owner !== null && owner !== undefined) marked.add(owner);
-  }
-  for (const block of blocks) {
-    if (!marked.has(Number(block.getAttribute(LINE_ATTR)))) continue;
-    if (block.tagName === "TR") {
-      block.classList.add("df-row", "df-add");
-      block.firstElementChild?.prepend(...signMarks("add"));
-    } else if (block.tagName === "LI") {
-      block.classList.add("df-li-add");
-      block.prepend(...signMarks("add"));
-    } else {
-      // 囲みを元の位置に置いてから、ブロックを囲みの中へ移す
-      const wrapper = diffBlock({ op: "add", children: [] });
-      block.replaceWith(wrapper);
-      wrapper.append(block);
-    }
-  }
-};
-
 /** 消した行を別に描いた要素から、行の印を外す（今の本文の行に対応づけない） */
 export const withoutLineMarks = (root: HTMLElement): HTMLElement => {
   for (const element of root.querySelectorAll(`[${LINE_ATTR}]`)) element.removeAttribute(LINE_ATTR);
   return root;
 };
 
-/** 消した行の図のコードブロックを、記法の原文だけにする（描かない） */
-const plainDiagrams = (root: HTMLElement): void => {
-  for (const figure of root.querySelectorAll("figure.diagram")) {
-    const source = figure.querySelector(`[${DIAGRAM_SOURCE_ATTR}]`)?.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "";
-    figure.replaceWith(h({ tag: "pre", attrs: { class: "dg-raw" }, children: [source] }));
-  }
-};
-
-/** 消した行のかたまりを、別に Markdown として描いた要素にする */
-const renderRemoved = (block: RemovedBlock): HTMLElement => {
-  const lines = block.tableHeader === null ? block.lines : [...block.tableHeader, ...block.lines];
-  const rendered = withoutLineMarks(renderMarkdown(lines.join("\n")));
-  plainDiagrams(rendered);
-  return rendered;
-};
-
-/** 描いた消した行のかたまりと、それが元になる `RemovedBlock` の組 */
-type RenderedRemoved = { block: RemovedBlock; rendered: HTMLElement };
-
-/** 描いた消した行のかたまりを、今の本文の差し込む場所の前（無ければ本文の最後）へ差し込む。かたまりごとに、差し込んだ語の面を付ける対象のブロックを返す */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
-const insertRemovedBlocks = ({ root, blocks }: { root: HTMLElement; blocks: RenderedRemoved[] }): HTMLElement[][] => {
-  // 差し込む前の、行の印を持つ今のブロック（差し込む要素は印を持たない）
-  const stamped = [...root.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)];
-  const lineOf = (element: Element): number => Number(element.getAttribute(LINE_ATTR));
-  const placed: HTMLElement[][] = [];
-  for (const { block, rendered } of blocks) {
-    const target = block.beforeLine === null ? undefined : stamped.find((element) => lineOf(element) >= (block.beforeLine ?? 0));
-    const previous = target === undefined ? stamped.at(-1) : stamped[stamped.indexOf(target) - 1];
-    // 表の本体の行だけ: 今の表の行の間（表の最後の後も）へ、消した行の印を付けた行として差し込む
-    if (block.tableHeader !== null) {
-      const rows = [...rendered.querySelectorAll<HTMLElement>("tbody tr")].map((row) => {
-        row.classList.add("df-row", "df-del");
-        row.firstElementChild?.prepend(...signMarks("del"));
-        return row;
-      });
-      if (target?.tagName === "TR") {
-        target.before(...rows);
-        placed.push(rows);
-        continue;
-      }
-      if (previous?.tagName === "TR") {
-        previous.after(...rows);
-        placed.push(rows);
-        continue;
-      }
-    }
-    // 囲みの中へ移す前に、語の面を付ける対象のブロックを引く
-    placed.push(wordBlocksIn(rendered));
-    const piece = diffBlock({ op: "del", children: [...rendered.childNodes] });
-    if (target === undefined) {
-      root.append(piece);
-      continue;
-    }
-    // 足した塊の囲みの中・箇条書きや表の中ではなく、その外側の前へ差し込む（表は mdmark の表の入れ物ごと外側にする）
-    const outer = target.parentElement?.matches("ins.df-blk") === true ? target.parentElement : target;
-    const container = outer.closest("ul, ol, table") ?? outer;
-    (container.closest<HTMLElement>(`.${MDMARK_TABLE_CLASS}`) ?? container).before(piece);
-  }
-  return placed;
-};
-
-/** 前の本文の図のコードブロック（開く行から閉じる行まで。1 始まり）。閉じていないコードブロックは本文の最後まで */
-const diagramFenceRanges = (lines: string[]): { open: number; close: number }[] => {
-  const ranges: { open: number; close: number }[] = [];
-  let open: number | null = null;
-  lines.forEach((text, offset) => {
-    const fence = /^\s*(`{3,}|~{3,})\s*(\S*)/.exec(text);
-    if (fence === null) return;
-    if (open === null) {
-      if (fence[2] === "mermaid") open = offset + 1;
-    } else if (fence[2] === "") {
-      ranges.push({ open, close: offset + 1 });
-      open = null;
-    }
-  });
-  if (open !== null) ranges.push({ open, close: lines.length });
-  return ranges;
-};
-
-/** 消した行のうち、図のコードブロックの一部だけを消した分を外す（図の差分が示すので、本文には消した行として差し込まない）。図を丸ごと消した分は残す */
-const withoutDiagramEdits = ({ parts, before }: { parts: LinePart[]; before: string }): LinePart[] => {
-  const ranges = diagramFenceRanges(linesOf(before));
-  if (ranges.length === 0) return parts;
-  let line = 0;
-  return parts.flatMap((part) => {
-    if (part.kind === "added") return [part];
-    const first = line + 1;
-    line += part.lines.length;
-    if (part.kind === "same") return [part];
-    const last = line;
-    // この消した部分に丸ごと入っていない図のコードブロックの行
-    const partial = ranges.filter((range) => range.open < first || range.close > last);
-    const kept = part.lines.filter((_, offset) => !partial.some((range) => first + offset >= range.open && first + offset <= range.close));
-    return kept.length === 0 ? [] : [{ kind: part.kind, lines: kept }];
-  });
-};
-
-/** 語の面を付ける対象になる、描いたブロック（段落・見出し・箇条書きの項目・表の本体の行）の選び方 */
-const WORD_BLOCK_SELECTOR = "p, h1, h2, h3, h4, h5, h6, li, tbody tr";
-
-/** 語の面を付ける対象のブロックか（ほかの対象のブロックを中に持たないもの） */
-const isWordBlock = (element: Element): boolean => {
-  return element.matches(WORD_BLOCK_SELECTOR) && element.querySelector(WORD_BLOCK_SELECTOR) === null;
-};
-
-/** 要素の中の、語の面を付ける対象のブロック（文書の順） */
-export const wordBlocksIn = (root: HTMLElement): HTMLElement[] => {
-  return [...root.querySelectorAll<HTMLElement>(WORD_BLOCK_SELECTOR)].filter(isWordBlock);
-};
-
-/** 足した部分ごとの、足した行（空行を除く）を持つ今のブロックのうち、語の面を付ける対象のもの（足した行の順） */
-const addedBlocksByPart = ({ root, parts, now }: { root: HTMLElement; parts: LinePart[]; now: string[] }): Map<number, HTMLElement[]> => {
-  const blocks = [...root.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)];
-  const owners = blockOwners({ now, starts: blocks.map((block) => Number(block.getAttribute(LINE_ATTR))) });
-  const byStart = new Map(blocks.map((block) => [Number(block.getAttribute(LINE_ATTR)), block]));
-  const found = new Map<number, HTMLElement[]>();
-  let line = 0;
-  parts.forEach((part, position) => {
-    if (part.kind === "removed") return;
-    const here: HTMLElement[] = [];
-    for (let position = 0; position < part.lines.length; position += 1) {
-      line += 1;
-      // 空行だけの足しは段落の間の空きで、どのブロックも足したことにしない
-      if (part.kind !== "added" || (now[line - 1] ?? "").trim() === "") continue;
-      const owner = owners[line - 1];
-      const block = owner === null || owner === undefined ? undefined : byStart.get(owner);
-      if (block !== undefined && isWordBlock(block) && !here.includes(block)) here.push(block);
-    }
-    if (part.kind === "added") found.set(position, here);
-  });
-  return found;
-};
-
 /** 語の面を付ける、消したブロックと足したブロックの対 */
 export type WordPair = { removed: HTMLElement; added: HTMLElement };
-
-/** 変えた行の対（`pairedParts`）ごとに、消した部分から描いたブロックと、足した部分の行を持つ今のブロックを前から順に並べ、両方の数が同じときだけ 1 つずつ対にする */
-const wordPairs = ({
-  root,
-  parts,
-  now,
-  placed,
-}: {
-  root: HTMLElement;
-  parts: LinePart[];
-  now: string[];
-  placed: HTMLElement[][];
-}): WordPair[] => {
-  // 消した部分の並びの何番目か（`placed` は消した部分の順）
-  const removedOrder = parts.flatMap((part, position) => (part.kind === "removed" ? [position] : []));
-  const addedBlocks = addedBlocksByPart({ root, parts, now });
-  return pairedParts(parts).flatMap(({ removed, added }) => {
-    const removedList = placed[removedOrder.indexOf(removed)] ?? [];
-    const addedList = addedBlocks.get(added) ?? [];
-    if (removedList.length === 0 || removedList.length !== addedList.length) return [];
-    return removedList.map((block, offset) => ({ removed: block, added: addedList[offset]! }));
-  });
-};
-
-/** 要素の中の、行の印（`signMarks` が入れる記号と読み上げの文字）と、表・リストの構造の間の整形の空白を除いた文字のノード（文書の順） */
-const wordTextNodes = (root: HTMLElement): Text[] => {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode: (node) => {
-      const parent = node.parentElement;
-      const isSign = parent?.closest(".df-sign") != null || parent?.matches(".df-sign + .sr-only") === true;
-      const isLayoutSpace = (node.textContent ?? "").trim() === "" && parent?.matches("table, thead, tbody, tr, ul, ol") === true;
-      return isSign || isLayoutSpace ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
-    },
-  });
-  const nodes: Text[] = [];
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
-  return nodes;
-};
 
 /** 変わった語の面の要素 */
 const wordMark = ({ mark, text }: { mark: "add" | "del"; text: string }): HTMLElement => {
   return h({ tag: "span", attrs: { class: `df-word df-${mark}` }, children: [text] });
-};
-
-/** 文字のノードの並びのうち、語の差分の足した・消した部分を面の要素で囲む（ノードをまたぐ部分はノードごとに囲み、ノードの外の要素は分けない） */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
-const wrapWords = ({ nodes, parts, mark }: { nodes: Text[]; parts: InlinePart[]; mark: "add" | "del" }): void => {
-  // 同じでない部分の、文字の頭からの範囲
-  const ranges: { start: number; end: number }[] = [];
-  let offset = 0;
-  for (const part of parts) {
-    if (part.kind !== "same") ranges.push({ start: offset, end: offset + part.text.length });
-    offset += part.text.length;
-  }
-  let nodeStart = 0;
-  for (const node of nodes) {
-    const text = node.data;
-    const nodeEnd = nodeStart + text.length;
-    const pieces: (string | HTMLElement)[] = [];
-    // ノードの中で、ここまでを pieces に入れた位置
-    let cursor = 0;
-    for (const range of ranges) {
-      const from = Math.max(range.start, nodeStart) - nodeStart;
-      const to = Math.min(range.end, nodeEnd) - nodeStart;
-      if (from >= to) continue;
-      if (from > cursor) pieces.push(text.slice(cursor, from));
-      pieces.push(wordMark({ mark, text: text.slice(from, to) }));
-      cursor = to;
-    }
-    nodeStart = nodeEnd;
-    if (pieces.length === 0) continue;
-    if (cursor < text.length) pieces.push(text.slice(cursor));
-    node.replaceWith(...pieces);
-  }
-};
-
-/** 対の 2 つのブロックの、行の印を除いた文字を語の単位で比べ、変わった語を濃い面で囲む。比べられなかった対には付けない */
-export const markWords = ({ pair, deadline }: { pair: WordPair; deadline: number }): void => {
-  const removedNodes = wordTextNodes(pair.removed);
-  const addedNodes = wordTextNodes(pair.added);
-  const inline = diffInlineOf(removedNodes.map((node) => node.data).join(""), addedNodes.map((node) => node.data).join(""), deadline);
-  if (inline === null) return;
-  wrapWords({ nodes: removedNodes, parts: inline.before, mark: "del" });
-  wrapWords({ nodes: addedNodes, parts: inline.after, mark: "add" });
-};
-
-/** 描いた本文の差分。`markWords` は、見出し・本文のリンクを付けた後に呼んで、変えた行の対に語の面を付ける */
-type BodyDiff = { root: HTMLElement; markWords: () => void };
-
-/** 埋め込んだ HTML の範囲の中の行の差分を、本文の行の差分から外す（範囲の差分は範囲ごとの部品が出す）。前の版の範囲の中の消した行は落とし、今の範囲の中の足した行は変えていない行にして、今の本文の行の数は変えない */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
-const withoutEmbeddedHtmlEdits = ({ parts, before, after }: { parts: LinePart[]; before: string; after: string }): LinePart[] => {
-  /** 範囲の印の行を含む、範囲の中の行（1 始まり） */
-  const linesInRanges = (source: string): Set<number> => {
-    const lines = new Set<number>();
-    for (const { open, close } of embeddedHtmlRanges(source)) for (let line = open; line <= close; line += 1) lines.add(line);
-    return lines;
-  };
-  const inBefore = linesInRanges(before);
-  const inAfter = linesInRanges(after);
-  const result: LinePart[] = [];
-  /** 同じ種類が続くときは 1 つの並びにまとめて足す */
-  const push = (kind: LinePart["kind"], line: string): void => {
-    const last = result[result.length - 1];
-    if (last?.kind === kind) last.lines.push(line);
-    else result.push({ kind, lines: [line] });
-  };
-  let beforeLine = 1;
-  let afterLine = 1;
-  for (const part of parts) {
-    for (const line of part.lines) {
-      if (part.kind === "removed") {
-        if (!inBefore.has(beforeLine)) push("removed", line);
-        beforeLine += 1;
-      } else if (part.kind === "added") {
-        push(inAfter.has(afterLine) ? "same" : "added", line);
-        afterLine += 1;
-      } else {
-        push("same", line);
-        beforeLine += 1;
-        afterLine += 1;
-      }
-    }
-  }
-  return result;
 };
 
 /** 範囲の直下の要素を並びで比べるための文字列にする（描くたびに変わる部品の連番は揃える） */
@@ -428,23 +89,6 @@ export const replaceChangedRanges = ({ root, before, after }: { root: HTMLElemen
     const diff = htmlBodyDiff({ before: pair.before, after: pair.after, marked: "", initial: "raw", heading: "埋め込んだ HTML", beforeView, afterView: element });
     placeholder.replaceWith(diff ?? element);
   }
-};
-
-/** 前後の本文を行ごとに比べ、今の本文を描いて足した部分と消した部分に印を付ける。差分を計算しきれなかったら null */
-export const renderBodyDiff = ({ before, after, deadline }: { before: string; after: string; deadline: number }): BodyDiff | null => {
-  const compared = linePartsOf(before, after);
-  if (compared === null) return null;
-  const parts = withoutDiagramEdits({ parts: withoutEmbeddedHtmlEdits({ parts: compared, before, after }), before });
-  const rendered = renderMarkdown(after);
-  const removed = placeRemovedBlocks(parts).map((block) => ({ block, rendered: renderRemoved(block) }));
-  // 今の本文と消した部分の見出しを合わせた最も上の段から、段の差を 1 つ求める
-  const shift = headingShift({ roots: [rendered, ...removed.map((piece) => piece.rendered)] });
-  lowerHeadings({ root: rendered, shift });
-  for (const piece of removed) lowerHeadings({ root: piece.rendered, shift });
-  markAddedBlocks({ root: rendered, parts, source: after });
-  const placed = insertRemovedBlocks({ root: rendered, blocks: removed });
-  const pairs = wordPairs({ root: rendered, parts, now: linesOf(after), placed });
-  return { root: rendered, markWords: () => pairs.forEach((pair) => markWords({ pair, deadline })) };
 };
 
 // ─── 図の差分 ───
@@ -678,7 +322,7 @@ export const HTML_BODY_ATTR = "data-html-body";
 export const drawHtmlBlocks = (root: HTMLElement): void => {
   for (const block of root.querySelectorAll<HTMLElement>(`.${HTML_BLOCK_CLASS}`)) {
     const source = block.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "";
-    if (block.closest(".df-blk") !== null) {
+    if (block.closest(".mdmark-diff-block") !== null) {
       block.replaceWith(h({ tag: "pre", attrs: { class: "html-block-src", ...CODE_BLOCK_ATTRS }, children: [source] }));
     } else {
       const frame = htmlFrameElement({ source, selectable: false, label: "html のコードブロック" });
