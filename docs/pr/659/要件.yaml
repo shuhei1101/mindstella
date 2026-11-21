@@ -7,7 +7,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-30.yaml
     impact: changed
-    detail: AI が利用者に聞くことを、方針（選択肢を作る前に論点と AI の理解をスレッドで聞く）と細部（AI が決めて「AI が決定」と記録し報告だけにする）に分ける（#484・D-361 A）
+    detail: AI が利用者に聞くことを、方針（選択肢を作る前に論点と AI の理解をスレッドで聞き、合ってから検討事項にする）と細部（AI が決めて誰が決めたかを AI として記録し報告だけにする）に分ける。方針をスレッドで聞くシナリオと細部を AI が決めるシナリオを追加する（#484・D-361 A）
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
@@ -19,7 +19,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-43.yaml
     impact: changed
-    detail: 利用者がまとめて決めた回答を、スレッドでの回答と同じく 1 回の知らせとして取り込み、採用に反映する（#484）
+    detail: 利用者がまとめて決めた回答を、スレッドでの回答と同じく 1 回の通知として取り込み、影響する項目を洗い出すシナリオを追加する（#484）
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
@@ -37,7 +37,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-49.yaml
     impact: changed
-    detail: 検討事項の一覧で「AI が決定」の検討事項を絞り込め（#484）、一覧の上に並べたプリセットを押すとそのプリセットのタグの式と今の状態・種類などの絞り込みを組み合わせて開け、当たる件数が 0 のプリセットにマーカーを出す（#361）
+    detail: 検討事項の一覧で誰が決めたかの条件で「AI」の検討事項を絞り込めるシナリオを追加し（#484）、一覧の上に並べたプリセットを押すとそのプリセットのタグの式と今の状態・種類などの絞り込みを組み合わせて開け、該当する件数が 0 のプリセットにマーカーを出す（#361）
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
@@ -74,6 +74,12 @@ use_cases:
     impact: run_only
     detail: まとめて決めた検討事項が未決定のタイルの件数から外れることを確かめる（#484）
     depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-659-1.yaml
+    impact: new
+    detail: 利用者が、検討事項の一覧か通知のスレッドで未決定の検討事項を複数選び、1 回の操作でそれぞれ推奨の案に決め、AI へ 1 回で通知する（#484）
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
 docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
