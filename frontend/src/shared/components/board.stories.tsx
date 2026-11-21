@@ -42,3 +42,23 @@ export const SelectableTagsSelected: Story = { args: { onSelectTag: fn(), select
 
 /** `onSelectTag` を指定しない今のカード。タグを並べない */
 export const Default: Story = {};
+
+/** 検討事項（未決定・推奨の案あり）のカードを選べる。右上のチェックボックスを押すと `pick.onChange` だけが呼ばれ、詳細は開かない */
+export const Pickable: Story = {
+  args: { item: { ...task, id: "D-1", status: "未決定" }, meta: [], pick: { checked: false, disabled: false, label: "D-1 を選ぶ", onChange: fn() } },
+};
+
+/** 選んだカード */
+export const Picked: Story = {
+  args: { item: { ...task, id: "D-1", status: "未決定" }, meta: [], pick: { checked: true, disabled: false, label: "D-1 を選ぶ", onChange: fn() } },
+};
+
+/** 推奨の案を持たない検討事項。チェックボックスを押せない */
+export const PickDisabled: Story = {
+  args: { item: { ...task, id: "D-3", status: "未決定" }, meta: ["推奨の案なし"], pick: { checked: false, disabled: true, label: "D-3 は推奨の案が無いため選べません", onChange: fn() } },
+};
+
+/** AI が決めた検討事項。メタ情報の並びに「AI が決定」を出す */
+export const DecidedByAi: Story = {
+  args: { item: { ...task, id: "D-4", status: "決定済み" }, meta: ["AI が決定"] },
+};
