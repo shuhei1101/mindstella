@@ -35,7 +35,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-21T12:10:55.797272+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    note: SC-489-18（本文の差分を mdmark の色分けと「原文の差分」に置き換え）・SC-489-46（項目の ID のツールチップ・スマホの全画面表示のボタン・印刷）
+    updated_by: planner
+    updated_at: '2026-11-21T12:19:34.751411+00:00'
   - process: モック作成
     status: todo
     note: '見た目を作り手が決める余地がある #147（項目の ID のボタンのツールチップの中身）と #347（mdmark の差分・印刷に置き換えた本文の差分）だけモックを作る'
