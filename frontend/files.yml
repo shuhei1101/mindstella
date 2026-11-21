@@ -902,6 +902,14 @@ files:
   related:
   - to: MOD-489-69
     type: implements
+- path: src/shared/components/filter-chips.stories.tsx
+  name: 絞り込みの条件のチップのストーリー
+  description: 絞り込みの条件のチップのストーリー。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-69
+    type: implements
 - path: src/shared/components/filter-drawer.stories.tsx
   name: 絞り込みのストーリー
   description: 絞り込みのストーリー。

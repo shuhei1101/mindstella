@@ -1,5 +1,6 @@
 // タグの並びのストーリー（部品設計『タグの並び.tsx』の状態）
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 
 import { TagList } from "@/shared/components/tag-list";
 
@@ -39,3 +40,6 @@ export const LongNarrow: Story = {
     </div>
   ),
 };
+
+/** 押して絞り込みに加えられるタグ。各タグはボタンで、ホバーで枠と文字を濃くし、読み上げ名は「タグ「{名前}」で絞り込む」 */
+export const Selectable: Story = { args: { values: [{ name: "画面", main: true }, { name: "記録の形" }], onSelect: fn() } };
