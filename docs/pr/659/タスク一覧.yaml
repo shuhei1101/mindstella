@@ -56,7 +56,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-21T09:22:52.004774+00:00'
   - process: エージェントフロー・LLM 呼び出し設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:45:17.179617+00:00'
   - process: 精度評価設計
     status: skipped
     reason: 変わるのは Claude Code のエージェント（MindStella のセッション）の手順で、精度評価をせず E2E・結合テストでは Mock にする（判定フローチャート『精度評価をするか』Q2 YES）
