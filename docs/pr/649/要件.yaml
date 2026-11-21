@@ -18,7 +18,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-12.yaml
     impact: changed
-    detail: Windows 側のドライブのワークスペースでも画面が短い時間で開き、記録が変わっていないときは読み直さない。画面の一時的な状態（絞り込み・開いているタブなど）を knowledge の決まりの保持先に持ち、再読み込み・戻るで戻す（#547・#452）
+    detail: Windows 側のドライブのワークスペースでも画面が短い時間で開き、記録が変わっていないときは読み直さない（#547）
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-649-1.yaml
@@ -37,6 +37,18 @@ use_cases:
     detail: 配る書き出しにプリセットと当たる件数が載る（#360）
     depends_on:
       - docs/scenario/SC-649-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: following
+    detail: 既定に戻す対象から、絞り込みの条件が外れる（絞り込みを端末の保存領域に持たなくなるため。#452）
+    depends_on:
+      - docs/scenario/SC-489-49.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: following
+    detail: まとまりのリンクを押した後、変更履歴で選んだ時点をブラウザのタブの保存領域に残す（#452）
+    depends_on:
+      - docs/scenario/SC-489-49.yaml
 docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
