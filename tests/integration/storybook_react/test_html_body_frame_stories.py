@@ -7,7 +7,7 @@ from playwright.sync_api import Page
 
 from integration.browser_tab_helpers import WINDOW_OPEN_RECORDER_JS, new_tab_after, opened_tabs
 from .storybook_react_fixture_types import OpenStory
-from integration.storybook.storybook_frame_helpers import (
+from integration.storybook_react.storybook_frame_helpers import (
     EXTERNAL_PAGE_TITLE,
     FRAME_SELECTOR,
     FRAME_SETTLE_MS,
