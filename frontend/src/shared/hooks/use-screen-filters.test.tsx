@@ -86,6 +86,24 @@ describe("useScreenFilters", () => {
     expect(router.history.length).toBe(before + 1);
   });
 
+  // 同じ画面で戻ると、保存した条件を戻さず外す（正常系）
+  test("use_screen_filters_when_back", async () => {
+    // 準備
+    const { result, router } = await renderPreviewHook("/?tab=tasks", () => useScreenFilters("tasks"));
+    act(() => {
+      result.current.addTag("画面");
+    });
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ f: { tags: "画面" } }));
+    // 実行
+    act(() => {
+      router.history.back();
+    });
+    // 検証
+    await waitFor(() => expect(router.state.location.search).toEqual({ tab: "tasks" }));
+    await waitFor(() => expect(readScreenState().filters?.["tasks"]).toBeUndefined());
+    expect(result.current.filters).toEqual({});
+  });
+
   // 概要から加えるとその種類の画面へ移る（正常系）
   test("use_screen_filters_when_overview", async () => {
     // 準備
