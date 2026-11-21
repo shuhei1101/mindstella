@@ -29,6 +29,17 @@ describe("useScreenFilters", () => {
     await waitFor(() => expect(router.state.location.search).toMatchObject({ f: { status: "保留" } }));
   });
 
+  // 保存した条件と「どれかを含む」を URL に書く（正常系）
+  test("use_screen_filters_when_saved_tag_match", async () => {
+    // 準備
+    sessionStorage.setItem("mindmap-filters", JSON.stringify({ filters: { tasks: { tags: ["画面", "保存"] } }, tagMatch: { tasks: "any" } }));
+    // 実行
+    const { result, router } = await renderPreviewHook("/?tab=tasks", () => useScreenFilters("tasks"));
+    // 検証
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ f: { tags: "画面|保存" }, tagmatch: "any" }));
+    expect(result.current.tagMatch).toBe("any");
+  });
+
   // 既定の条件（正常系）
   test("use_screen_filters_when_default", async () => {
     // 実行
