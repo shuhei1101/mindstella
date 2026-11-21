@@ -134,3 +134,6 @@ scope_out:
   - item: '#347: 差分のブロックで、追加した箇条書きの項目の `+` が行より下にずれる'
     reason: '記号は mdmark が描き、利用側から位置を変える手段が無い（画面の CSS での上書きは #591 の方針に反する）。レビューの合意（案 A）で mdmark へ起票した'
     plan: shuhei1101/mdmark#786
+  - item: tests/integration/preview/test_spa_open.py の test_normal_when_exported_offline・test_normal_when_exported_read_only が fail する（export が jsDelivr の mdmark@9d4883b5 の dist/THIRD_PARTY_LICENSES.txt を取れず 403）
+    reason: この作業 PR が変えていない配る書き出し（export）が読む mdmark の配布ファイルを配信元が返さない。対象外の不具合として記録する
+    plan: to_file
