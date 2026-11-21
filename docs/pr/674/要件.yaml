@@ -1,0 +1,65 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 図の拡大を外側を押して閉じる。差分の表示中も用語と項目の ID をリンクにする。本文のスレッドの ID からスレッドを開く。案のカードで推奨の理由を読む
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: 入力中に記録が更新されても保留を知らせるバーを出さず、入力欄から離れたら反映する。過去の差分を表示している間は変更履歴のボタンの色で分かる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: changed
+    detail: 音声入力中に記録が更新されても保留を知らせるバーを出さない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: changed
+    detail: 書き出しに使うライブラリの取得が一時的に失敗しても、取り直して書き出す
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: following
+    detail: 推奨の案を記録するときに推奨の理由を残す手順に追随する
+    depends_on: []
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: '#635: 入力中に記録が更新されたときに「更新があります」のバーが出る旨の記載を、バーを出さずに入力欄から離れたら反映する記載にする'
+    status: todo
+  - page: docs/design-policy.mark.md
+    new: false
+    change: '#637: 書体の表の見出し・本文の書体の行を、ユーザーが選んだ書体にする'
+    status: todo
+  - page: docs/architecture/ARCH-489-1.yaml
+    new: false
+    change: '#637: 外部システム Google Fonts の取得する書体（Inter）を、選んだ書体にする'
+    status: todo
+  - page: docs/nonfunctional/NFR-489-1.yaml
+    new: false
+    change: '#672: 配る書き出しの取得の取り直しの回数と間隔を、導出の元の値つきで記載する（取り直しを入れると決めた場合）'
+    status: todo
+  - page: docs/mock/components/topbar/stale.html
+    new: false
+    change: '#635: 入力中の保留のバーのモックを、バーを出さない状態にする（削除するかを含めてモック作成で決める）'
+    status: todo
+  - page: docs/mock/components/topbar/index.html
+    new: false
+    change: '#635・#184: 「更新があります」のバーを削除し、過去の差分を表示している間の変更履歴のボタンの状態を追加する'
+    status: todo
+  - page: docs/mock/components/index.md
+    new: false
+    change: '#635: トップバーのモックの行の「更新があります」の記載を修正する'
+    status: todo
+scope_out:
+  - item: 過去のモック（docs/mock/pages/*/{番号}/・docs/mock/refs/）に残る「本文へ戻る」「更新があります」・Inter の指定
+    reason: 過去の作業 PR で合意した案の記録で、今の画面の仕様ではない
+    plan: none
+  - item: 今の画面（plugins/mindstella/skills/mindmap/preview/components/topbar.ts・tokens.css）の修正
+    reason: '#644 で今の画面は削除済みで、対象のファイルが develop に無い'
+    plan: none
+  - item: 取り直しを画面が読み込む mdmark（ブラウザが jsDelivr から読む分）にも入れる
+    reason: '#672 の報告は配る書き出し（サーバーが取得する分）で、画面の読み込みは要望に含まれない'
+    plan: none
