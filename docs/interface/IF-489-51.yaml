@@ -245,6 +245,78 @@ flows:
       - '`mdmark_ref` が `develop`'
       - 常駐サーバーの標準エラーに、jsDelivr が配らない旨の 1 行がある
     test: test_normal_when_dist_not_served
+  - name: 正常系（圧縮と再検証）
+    summary: 圧縮した記録を `ETag` 付きで返し、同じ `ETag` の再検証にはワークスペースを読まずに 304 を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 本文を持つ検討事項 D-1 を持つワークスペース
+        notes: 1 回目の後に `docs/D-1.mark.md` を読めない権限にし、保持した応答を使うことを確かめる
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /w/{workspace}/api/records
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET（Accept-Encoding: gzip）
+        IF-->>WS: 全ての YAML と docs/ を読む
+        IF-->>クライアント: 200、gzip、ETag
+        クライアント->>IF: GET（If-None-Match: 受けた ETag）
+        IF-->>クライアント: 304
+        クライアント->>IF: GET（If-None-Match 無し）
+        IF-->>クライアント: 200、保持した応答
+      ```
+    expected:
+      - '1 回目が 200 で `Content-Encoding: gzip`・`Vary: Accept-Encoding`・`Cache-Control: no-cache`・`ETag` を持ち、展開した本文の `bodies` に `D-1.mark.md` がある'
+      - 2 回目が 304 で本文が空、`ETag` が 1 回目と同じ
+      - 3 回目は本文を読めなくしても 200 で、1 回目と同じ本文と `built_at` を返す
+    test: test_normal_when_revalidated
+  - name: 正常系（書き換えで作り直す）
+    summary: ワークスペースを書き換えると保持した応答を捨て、次の要求で `ETag` の違う応答を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: 1 回目の後に、ツールを通さず `decisions.yaml` へ D-2 を直接書き、『書き換えの通知』が届くまで待つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /w/{workspace}/api/records
+        participant CD as 変更の検知
+
+        クライアント->>IF: GET
+        IF-->>クライアント: 200、ETag A
+        CD->>IF: 書き換えを見つけ、保持した応答を捨てる
+        クライアント->>IF: GET（If-None-Match: A）
+        IF-->>クライアント: 200、ETag B
+      ```
+    expected:
+      - 2 回目が 200 で `decisions` に D-2 があり、`ETag` が 1 回目と違う
+    test: test_normal_when_cache_invalidated
+  - name: 正常系（プリセットの件数）
+    summary: 設定のプリセットごとに該当する項目の件数を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: '資料 A-1（タグ: 画面）・A-2（タグ: 画面・廃止）・検討事項 D-1（タグ: 画面）と、設定の `presets` に「画面の設計」（画面を持ち廃止を持たない）と「古い分類」（廃止したタグを持つ）を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /w/{workspace}/api/records
+
+        クライアント->>IF: GET
+        IF-->>クライアント: 200、settings.presets と preset_counts
+      ```
+    expected:
+      - '`settings.presets` が設定と同じ並び'
+      - '`preset_counts` が `{画面の設計: 2, 古い分類: 0}`（A-1 と D-1 を数え、種類をまたぐ）'
+    test: test_normal_when_presets
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの通知を受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
@@ -257,6 +329,16 @@ request:
     location: header
     description: ブラウザが付ける接続先
     constraints: '『プレビューの配信』の制約「接続先の確認」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
+  - name: If-None-Match
+    type: str
+    required: false
+    location: header
+    description: ブラウザが前に受けた `ETag`。再検証に使う
+  - name: Accept-Encoding
+    type: str
+    required: false
+    location: header
+    description: '`gzip` を含むと圧縮した本文を返す'
 response:
   - name: settings
     type: dict
@@ -288,6 +370,9 @@ response:
     type: str
     description: 画面が読み込む mdmark の jsDelivr の ref（『プレビューの配信』の制約「mdmark の ref の解決」）。設定の `mdmark.version` がタグならタグ、`latest` か無ければ mdmark の develop の先頭の commit の SHA（問い合わせられないときは `develop`）。React の画面はこの ref で mdmark の URL を組み立てる
     example: 0123456789abcdef0123456789abcdef01234567
+  - name: preset_counts
+    type: dict[str, int]
+    description: '設定の `presets` の名前 → そのプリセットに該当する項目の件数。プリセットが無ければ `{}`。配る書き出しにも載る。一覧に並べて 0 件の印を出すのは #361'
 response_notes: |-
   配る書き出し（`export`）は、同じ形式の JSON を `<script type="application/json" id="mindmap-data">` の中身に埋め込む。画面は埋め込みのデータがあればそれを読み、無ければこの API を読む。スレッド（`threads.yaml`）は返さない（『スレッドの読み取り』）。
 status_codes:
@@ -296,12 +381,15 @@ status_codes:
   - code: '422'
     condition: '`config.yaml` 以外のどれかの YAML がスキーマに合わないか、YAML として読めない。または `config.yaml` が無くなった'
     notes: '`detail` に合わない箇所ごとの `{ファイル名}: {キーのパス}: {理由}` を改行でつなぐ。画面は前に読んだ記録で描き続ける'
+  - code: '304'
+    condition: 要求の `If-None-Match` が今の `ETag` と一致する
+    notes: 本文を持たない。ブラウザが持つ前の応答をそのまま使う
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 読み込む時
-    constraint: 呼ばれるたびにワークスペースの YAML と本文を再読み込みする（書き出しのファイルを持たない）
+    constraint: 組み立てた応答の本文・gzip で圧縮した本文・`ETag` をワークスペースごとに常駐サーバーのメモリに保持し、保持した応答があればワークスペースの YAML と本文を読まずに返す。保持した応答は制約「作り直す契機」で捨て、次の要求で読み直して作り直す。書き出しのファイルは持たない
   - item: 本文の構造
-    constraint: '`application/json; charset=utf-8`。日本語はエスケープしない。`Cache-Control: no-store`'
+    constraint: '`application/json; charset=utf-8`。日本語はエスケープしない。`Cache-Control: no-cache`（ブラウザは毎回再検証する）と、応答の本文の SHA-256 の先頭 32 文字を二重引用符で囲んだ `ETag` を付ける。要求の `Accept-Encoding` が `gzip` を含むときは圧縮した本文を `Content-Encoding: gzip` で返し、`Vary: Accept-Encoding` を付ける'
   - item: 接続先の確認
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403 を返す。確かめは『プレビューの配信』の異常系が持つ）
   - item: 書き込み途中の読み込み
@@ -311,4 +399,13 @@ constraints:
   - item: 行のマーカー
     constraint: Python の標準ライブラリ `html.parser.HTMLParser` で原文を読み、開きタグ（空要素を含む）のタグ名の直後に ` data-line="{始まりの行}" data-line-end="{終わりの行}"` を追加する。始まりの行はその開きタグが閉じた原文の行（中身が始まる行、1 始まり）。終わりの行はその要素の閉じタグが始まる原文の行で、空要素は始まりの行と同じ。閉じタグを省いた要素は、その要素を含む要素のうち閉じタグを持つ最も内側のものの閉じタグが始まる行（無ければ原文の最後の行）。文書の外枠と描いた文を持たない要素（`html`・`head`・`body`・`meta`・`link`・`base`・`style`・`script`・`template`・`title`）には追加しない。マーカーの他は原文を変えず、行の並びも保つ
     notes: PoC（#215）で、コメントの中のタグ・`<style>` / `<script>` の中の `<` `>`・属性値の `>`・複数行の開きタグ・閉じタグを省いた `<p>` / `<li>` を含む 12 ケースで確かめた
+  - item: 作り直す契機
+    constraint: どれかが起きたら、そのワークスペースの保持した応答を捨てる。『変更の検知』がワークスペースのファイルの書き換えを見つけたとき（『書き換えの通知』を送る前）。常駐サーバーのツール・画面の保存がワークスペースのファイルを書いたとき。『設定の再読み込み』を呼んだとき。常駐サーバーを起動し直したとき（メモリが空になる）
+    notes: 要求のたびにファイルの更新時刻を確かめる方式は、`/mnt/c` でファイルの数だけ `stat` が走り数秒かかるため採らない（#547）
+  - item: 再検証
+    constraint: '要求の `If-None-Match` が今の `ETag` と一致すれば、本文の無い 304 を `ETag` と `Cache-Control: no-cache` 付きで返す。保持した応答が無いときは先に作り直してから比べる'
+  - item: 本文のファイルの解決
+    constraint: '`docs/` のフォルダの実体のパスは 1 回の読み込みで 1 回だけ解決し、項目ごとの本文はその配下のファイル名だけで開く。`body` が `docs/` の外を指すものは読まない（今の検査を残す）'
+  - item: プリセットの件数
+    constraint: '`preset_counts` は、設定の `presets` ごとに、タグの式に該当する全ての種類の項目の数。数え方は ER 図『ワークスペース』の `presets` の列の `eq`・`ne` の意味と、プリセットのツール・『ワークスペースの点検』と同じ'
 test_file: tests/integration/server/test_records.py
