@@ -136,4 +136,4 @@ scope_out:
     plan: shuhei1101/mdmark#786
   - item: tests/integration/preview/test_spa_open.py の test_normal_when_exported_offline・test_normal_when_exported_read_only が fail する（export が jsDelivr の mdmark@9d4883b5 の dist/THIRD_PARTY_LICENSES.txt を取れず 403）
     reason: この作業 PR が変えていない配る書き出し（export）が読む mdmark の配布ファイルを配信元が返さない。対象外の不具合として記録する
-    plan: to_file
+    plan: '#672'
