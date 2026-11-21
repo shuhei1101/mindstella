@@ -17,3 +17,15 @@ confirmations:
     approver: shuhei1101
     commit: c5ef50412d3595363dfdbcda30d335e1f62d0571
     thread: https://github.com/shuhei1101/mindstella/pull/649#discussion_r4651063959
+  - topic: プリセットを AI が自動で作る工程とガイド
+    decision: エージェントフロー『記録』のタグを付ける工程の後に、新しいタグを付けたとき・タグを付けた項目が増えたときにプリセットを作る・見直す工程を追加し、作る・直す・作らない目安を本文に記載する
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 78c79608
+    thread: https://github.com/shuhei1101/mindstella/pull/649#discussion_r4651079366
+  - topic: 絞り込みのプリセットの保存先と構造
+    decision: 設定 `config.yaml` の `presets` に、`name`・`description`・`filter`（タグの式）の並びで持つ。該当する件数は保存しない（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: c3782b13e1905afd8f57fa7cc77a0874846d2176
+    thread: https://github.com/shuhei1101/mindstella/pull/649#discussion_r4651106824
