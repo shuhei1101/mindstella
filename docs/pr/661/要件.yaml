@@ -1,0 +1,26 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: run_only
+    detail: コメントの一覧を開いている間、トップバーが隠れずに操作できる。シナリオの「パネルとトップバー以外をグレーアウトする」の記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-47.yaml
+    impact: run_only
+    detail: 詳細パネルのコメントの入力欄が、スマホと PC の幅でパネルの 1 番下に隙間なく出る。コメントを溜める手順は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: run_only
+    detail: レビュー中のコメントが下に留まらず、本文と一緒にスクロールして読める。詳細を読む手順は変わらない
+    depends_on: []
+scope_out:
+  - item: 保存待ちのパネル・表示の設定のパネル・絞り込みのドロワーの上端（同じ fixed inset-y-0 で、トップバーまで覆う）
+    reason: 要望はコメントのパネルだけを名指ししている。ただし画面設計は保存待ち・表示の設定を「コメントの一覧と同じ左のパネル」と書いており、コメントのパネルだけを直すと置き方がずれる。今は範囲外とし、含めるかは画面設計のレビューで確定する
+    plan: to_file
+  - item: コメントの一覧のパネルの幅をドラッグで変える
+    reason: 要望に含まれない（同じ comments-panel.tsx を触る別の要望）
+    plan: '#357'
+  - item: iPhone の幅でスレッドの横幅が PC のまま
+    reason: '#654 が関係として挙げた別の事象'
+    plan: '#585'
