@@ -43,6 +43,25 @@ steps:
       その語を `search_docs` の本文の条件に渡し、当たった既存の記録のうち同じ主題を持つものにも、同じ `write_docs` で付ける。
     calls:
       - {server: project-index, tool: search_docs}
+  - name: 絞り込みのプリセットを作る・見直す
+    when: 新しいタグを付けた、またはタグを付けた項目が増えた
+    body: |-
+      ワークスペースの `.mindstella/config.yaml` の `presets` を参照し、次の表で作る・直す・作らないを決める。利用者に頼まれなくても行う。
+
+      | 場面 | 対応 |
+      | --- | --- |
+      | 同じタグの組み合わせを持つ項目が 3 件以上になり、そのまとまり（画面・機能・関係者などの主題）を開いて話し合いそう | `create_preset` で作る |
+      | タグを改名・統合した、主題の範囲が変わった | `update_preset` で式を直す |
+      | 該当する件数が 0 になった（作成・更新の `warnings`、`check` の `empty_preset`） | 式を直す。主題が無くなったなら `delete_preset` で削除する |
+      | 該当が 1〜2 件しかない・全ての項目の大半が該当する・既にあるプリセットと結果が同じ | 作らない |
+
+      名前は開いたときに見える主題を 40 字以内の名詞句にし（「画面の設計」）、説明は何を開くかを 1 文で書く。
+      式は `and`・`or`・`not` の 3 レイヤーまでで組み、廃止したタグは `ne` で除く。
+      よく開く順に並べる（`update_preset` の `position`）。
+    calls:
+      - {server: mindstella, tool: create_preset}
+      - {server: mindstella, tool: update_preset}
+      - {server: mindstella, tool: delete_preset}
   - name: 呼び名と概要を記載する
     body: |-
       資料・調査に、タイトル以外の呼び名・略称・英語名を `aliases` に、タイトルだけで中身が分からないときは「何について書いてあるか」と「どんなときに読むか」を 1 文で `description` に書く。
