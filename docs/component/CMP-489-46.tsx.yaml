@@ -49,6 +49,23 @@ states:
         value: '6'
       - name: tagMatch
         value: any
+  - name: Presets
+    description: タスクでプリセットを 4 件渡した。値の条件より上に「プリセット」のまとまりとして、プリセットを並び順で「{名前} {件数} 件」のボタンに並べ、件数が 0 の「通知」は破線の枠線と薄い文字で出す
+    args:
+      - name: presets
+        value: '「画面の設計」2 件・「廃止する画面」1 件・「保存の仕組み」1 件・「通知」0 件。どれも `applied` は偽'
+  - name: PresetApplied
+    description: 今のタグの条件が「廃止する画面」と同じ。そのプリセットのボタンを選択済みの見た目にする
+    args:
+      - name: presets
+        value: '「廃止する画面」だけ `applied` が真'
+      - name: selected
+        value: '{"tags": ["画面", "廃止"]}'
+  - name: TagDetail
+    description: タグの条件が簡易で表せない式（「画面」を含み「廃止」を含まない）。タグの条件の指定方法の切り替えを「詳細」にし、簡易を選択できなくし、チェックボックスの代わりに部品設計『タグの条件の詳細』を出す。タグの組み合わせ方の切り替えは出さない
+    args:
+      - name: tagExpr
+        value: '{"and": [{"field": "tags", "op": "eq", "values": ["画面"]}, {"field": "tags", "op": "ne", "values": ["廃止"]}]}'
 lead: 項目を並べる画面で、列ごとに文字を入れる欄と、条件ごとに値を件数つきのチェックボックスで並べて選ぶドロワー。タブの帯の下から左に重ねるパネルで、開いている間はトップバーとタブの帯とドロワー以外をグレーアウトする。開閉はトップバーの絞り込みのボタン（部品設計『トップバー』）が持つ。
 args:
   - name: groups
@@ -100,7 +117,27 @@ args:
     choices: all・any
     description: タグの組み合わせ方。all は選んだタグを全て持つ項目、any はどれかを持つ項目に絞る。タグの条件の見出しの下に「すべて含む / どれかを含む」の切り替えを出し、今の値を押された見た目にする
     enabled_when: '`onTagMatchChange` を渡したとき'
+  - name: presets
+    type: オブジェクトの配列
+    required: false
+    default: なし（プリセットを出さない）
+    description: 選択できるプリセットの並び（`name`・`description`・`count`・`applied`）。`count` は画面の項目のうちプリセットの式に合う件数、`applied` は今のタグの条件がプリセットの式と同じか。値の条件と文字の欄より上に「プリセット」のまとまりとして並べる。0 件のプリセットは破線の枠線と薄い文字で出し、選択できるまま残す。`description` はボタンのツールチップに出す
+    enabled_when: '`onApplyPreset` を渡したとき'
+  - name: tagExpr
+    type: オブジェクト
+    required: false
+    default: なし（タグの条件の式を持たない）
+    description: 今のタグの条件の式（『記録の取得』の `settings.presets[].filter` と同じ構造）。簡易で表せない式のときは、タグの条件の指定方法を「詳細」にして簡易を選択できなくする
+    enabled_when: '`onTagExprChange` を渡したとき'
 events:
+  - name: プリセットの選択
+    when: プリセットのボタンを押したとき
+    value: '`onApplyPreset(name)`（引数はプリセットの名前）'
+    description: 使う側がタグの条件をプリセットの式で置き換え（簡易で表せる式は `selected` の `tags` と `tagMatch`、表せない式は `tagExpr`）、ほかの条件は残して画面とドロワーを再描画する。サーバーの配信では、変えた後の条件をそのタブの保存領域に残す
+  - name: タグの条件の詳細の変更
+    when: タグの条件の詳細（部品設計『タグの条件の詳細』）で式を変えたとき
+    value: '`onTagExprChange(expr)`（引数は変えた後の式。タグの条件を解除するときは `null`）'
+    description: 使う側がタグの条件を式で置き換え（1 つの「含む」の条件に収まる式は `selected` の `tags` と `tagMatch`）、画面とドロワーを再描画する。サーバーの配信では、変えた後の条件をそのタブの保存領域に残す
   - name: 値の選択
     when: 値のチェックボックスを入れた・外したとき
     value: '`onToggleValue(key, value)`（引数は key と値）'
@@ -134,7 +171,10 @@ accessibility:
   - 閉じたら絞り込みのボタンへフォーカスを戻す（コメントの一覧に切り替えて閉じたときはコメントの一覧に残す）
   - 文字の欄は「文字を含む」の `fieldset` と `legend` で組み、各欄に列の名前の `label` を付ける。初めて開くときは先頭の文字の欄へフォーカスを移す
   - タグの組み合わせ方は `fieldset` と読み上げだけの `legend`「タグの組み合わせ方」で組み、2 つの選択肢をラジオボタン（`name="tag-match"`）にする。見た目はラベルのボタンにし、フォーカスはラベルに輪郭で出す
+  - プリセットのまとまりは「プリセット」の `legend` を持つ `fieldset` で組み、プリセットをボタンにして選択済みを `aria-pressed` で伝える。0 件を枠線と色だけでなく「0 件」の文字でも伝える
+  - タグの条件の指定方法は `fieldset` と読み上げだけの `legend`「タグの条件の指定方法」で組み、「簡易」「詳細」をラジオボタン（`name="tag-mode"`）にする。簡易で表せない式のときは「簡易」を `disabled` にする
 refs:
+  - CMP-659-1#
   - CMP-489-20#
   - CMP-489-48#
 test_file: tests/integration/storybook_react/test_filter_drawer_stories.py

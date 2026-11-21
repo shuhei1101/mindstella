@@ -19,7 +19,17 @@ args:
     default: all
     choices: all・any
     description: 'タグの組み合わせ方。any でタグを 2 つ以上選んでいるとき、タグのチップを「タグ（どれかを含む）: {名前}」にする。それ以外は「タグ: {名前}」'
+  - name: tagExprText
+    type: 文字列
+    required: false
+    default: なし（タグの条件の式のチップを出さない）
+    description: '簡易で表せないタグの条件の式を文にしたもの（例: 「画面」を含む かつ 「廃止」を含まない）。チップの先頭に「タグ: {文}」のチップを 1 つ出す'
+    enabled_when: '`onClearTagExpr` を渡したとき'
 events:
+  - name: タグの条件の式の解除
+    when: タグの条件の式のチップの × を押したとき、「すべて解除」を押したとき
+    value: '`onClearTagExpr()`'
+    description: 使う側がタグの条件を解除して一覧と絞り込みのドロワーを再描画する
   - name: 絞り込み
     when: チップの × か「すべて解除」を押したとき
     value: '`onFilter(filters)`（引数は解除した後の条件）'
@@ -39,6 +49,13 @@ states:
         value: '{"status": ["未着手"], "tags": ["保存", "画面"]}'
       - name: tagMatch
         value: any
+  - name: TagExpr
+    description: '簡易で表せないタグの条件で絞った。先頭に「タグ: 「画面」を含む かつ 「廃止」を含まない」のチップと、状態のチップを並べる'
+    args:
+      - name: filters
+        value: '{"status": ["未着手"]}'
+      - name: tagExprText
+        value: '「画面」を含む かつ 「廃止」を含まない'
 accessibility:
   - 'チップの × に `{列}: {値} の条件を解除` の読み上げ名を付ける（タグの組み合わせ方が any のときは列の名前をチップと同じ「タグ（どれかを含む）」にする）'
 refs:
