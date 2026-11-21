@@ -13,7 +13,7 @@ elements:
     position: 本文のスクロール領域 > 先頭
     description: 項目の状態とタイトル。本文を送信するとスクロール領域と一緒に隠れ、代わりに見出しのタイトルが出る
     io: 表示
-    source: SPAを開く.id の項目
+    source: プレビューを開く.id の項目
   - name: 全画面表示
     kind: button
     position: 見出し
@@ -69,7 +69,7 @@ elements:
     component: CMP-489-8#
     args:
       - name: target
-        value: SPAを開く.id
+        value: プレビューを開く.id
       - name: loc
         value: 選んだ箇所のコメントの入口を押して添えた箇所（添えていなければなし）
       - name: body
@@ -101,7 +101,7 @@ elements:
     kind: label
     description: 本文の冒頭に、変更履歴で選んだ時点の名前と日時（前回開いてからは範囲の始まり）を出す
     io: 表示
-    source: SPAを開く.diffと記録の取得.changes
+    source: プレビューを開く.diffと記録の取得.changes
     visible_when: 差分の表示の間で、開いた項目がその時点で追加されたか変わったとき
   - name: 新規の札
     kind: label
@@ -278,7 +278,7 @@ elements:
     position: タイトル > 新規の札の右
     description: 取り下げた調査・資料・用語集・メモ・会話ログのタイトルの右に置く。タイトルの文字は薄くしない（薄くするのは表の行とカード）
     io: 表示
-    source: SPAを開く.id の項目の withdrawn
+    source: プレビューを開く.id の項目の withdrawn
     visible_when: 開いた項目の `withdrawn` が真のとき（差分の表示によらない）
     status: implemented
   - name: 取り下げた理由
@@ -328,7 +328,7 @@ elements:
     position: 見出し > 種類と ID の右
     description: 資料の本文の形式を示す
     io: 表示
-    source: SPAを開く.id の項目の body
+    source: プレビューを開く.id の項目の body
     visible_when: 資料で `body` を持つ
     status: implemented
     introduced:
@@ -418,14 +418,14 @@ elements:
     position: 見出し
     description: 項目の種類の名前と ID（等幅）。幅 480px 以下で見出しのタイトルを出している間は、種類の名前を見た目から外して ID だけにする（読み上げには残す）
     io: 表示
-    source: SPAを開く.id の項目
+    source: プレビューを開く.id の項目
     visible_when: 常時
   - name: 見出しのタイトル
     kind: label
     position: 見出し > 形式の札の右（形式の札が無い項目は種類と ID の右）
     description: 本文の先頭のタイトルが本文のスクロール領域の上へ外れている間だけ、項目のタイトルを出す。本文を先頭へ戻すと隠す。隠している間も場所は取ったままにし、出し入れで種類と ID を動かさない。出し入れは 0.15 秒で薄く現れる・消える（動きを減らす設定では切り替えるだけ）。見出しの帯に収まらないタイトルは 1 行で省略記号を付けて切り、戻る・進む・全画面表示・閉じるのボタンを押し出さない。乗せると全文が出る（`title`）。本文の先頭のタイトルと二重に読ませないよう読み上げから外す（`aria-hidden`）。新規・取り下げ・納品物の札は出さず、文字だけにする
     io: 表示
-    source: SPAを開く.id の項目の title
+    source: プレビューを開く.id の項目の title
     visible_when: 本文の先頭のタイトルが本文のスクロール領域の上へ外れている間
     reason: '本文を送信しても何の項目を読んでいるかが分かるようにし、開いた直後は同じタイトルを 2 度見せないため（確認ログ: docs/pr/230/確認ログ.md）'
   - name: まとまりのリンク
@@ -441,7 +441,7 @@ elements:
     component: CMP-489-30#
     args:
       - name: shown
-        value: 差分の表示の間（SPAを開く.diffがある）で、プレビューを開く.個人の上書き.diff_minimap が偽でないとき true
+        value: 差分の表示の間（プレビューを開く.diffがある）で、プレビューを開く.個人の上書き.diff_minimap が偽でないとき true
     slots:
       - name: default
         value: 本文のスクロール領域

@@ -20,7 +20,7 @@ elements:
     component: CMP-489-8#
     args:
       - name: target
-        value: SPAを開く.id
+        value: プレビューを開く.id
       - name: loc
         value: 詳細パネルと同じ
       - name: body

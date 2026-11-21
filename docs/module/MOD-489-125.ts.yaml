@@ -5,7 +5,7 @@ functions:
   - name: previewQueries
     title: 先読みする query
     kind: 関数
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: ルートの loader で先読みする query を返す
     returns:
       type: readonly QueryOptions[]
@@ -21,7 +21,7 @@ functions:
   - name: invalidatePreview
     title: 再読み込み
     kind: 関数
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 書き換えの通知と編集の後に 4 つの query を再読み込みする
     args:
       - name: queryClient

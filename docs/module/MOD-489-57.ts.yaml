@@ -5,7 +5,7 @@ constants:
   - name: EVENTS_URL
     title: 書き換えの通知のパス
     container: frontend/src/shared/adapters/events-client.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: インターフェース定義『書き換えの通知』のパスのうち、ワークスペースのパスの頭より後ろ
     value: '"/api/events"'
 functions:
@@ -13,7 +13,7 @@ functions:
     title: 書き換えの通知への接続
     kind: 関数
     container: frontend/src/shared/adapters/events-client.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: '開いた画面のワークスペースのパスの頭を付けた `EVENTS_URL`（`workspacePath() + EVENTS_URL`）へ EventSource でつなぎ、`changed` と再接続（`open`）で記録の query の再読み込みを反映の依頼（`requestRefresh`）に渡し、入力中・音声入力中は保留して離れたときに再読み込みし、`duplicate_ids` で重なった ID のストアを書き換え、接続の状態を書き換える。再接続は EventSource に任せる'
     args:
       - name: queryClient

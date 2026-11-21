@@ -17,13 +17,13 @@ elements:
       - name: theme
         value: 個人の上書き（端末の保存領域）の値（無ければ OS の設定）
       - name: connection
-        value: サーバーの配信で、`GET /w/{workspace}/api/events` のつながりが切れている間と `GET /w/{workspace}/api/records` に届かないときは offline、それ以外と配る書き出しは online（SPAを開く.接続の状態）
+        value: サーバーの配信で、`GET /w/{workspace}/api/events` のつながりが切れている間と `GET /w/{workspace}/api/records` に届かないときは offline、それ以外と配る書き出しは online（プレビューを開く.接続の状態）
       - name: duplicateIds
         value: 書き換えの通知の duplicate_ids の ID と、記録の取得の項目の種類の名前（閉じた後は、集まりが変わるまで []）
       - name: readAt
         value: 記録の取得.built_at（最後に読めた記録）
       - name: diffPoint
-        value: 変更履歴で選んだ時点の名前と日時（SPAを開く.diff。選んでいなければ渡さない）。`tabs[].marked` はその時点でマーカーの付く項目か削除した項目を持つ種類
+        value: 変更履歴で選んだ時点の名前と日時（プレビューを開く.diff。選んでいなければ渡さない）。`tabs[].marked` はその時点でマーカーの付く項目か削除した項目を持つ種類
       - name: comments
         value: サーバーの配信では true、配る書き出しでは false
       - name: commentCount
@@ -43,7 +43,7 @@ elements:
       - name: pendingBlocked
         value: 直前の保存が 409 で、保存待ちの編集の読み取り.items に `blocked` に挙がった編集が残っているとき true
       - name: voice
-        value: 画面で 1 つの音声入力の状態（SPAを開く・プレビューを開く.音声の入力）。録音・文字起こし中だけ渡し、`label` は録音を始めた入力欄の名前。配る書き出しでは渡さない
+        value: 画面で 1 つの音声入力の状態（プレビューを開く.音声の入力）。録音・文字起こし中だけ渡し、`label` は録音を始めた入力欄の名前。配る書き出しでは渡さない
       - name: voiceNotice
         value: 録音を破棄した（行き先の項目・スレッドが記録から無くなった）か、入力欄が画面に無い間に文字起こし・レビュー中への追加・送信が失敗したときの理由。× か「入力欄を開く」で削除する
     description: 全ての画面で共通の帯

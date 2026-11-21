@@ -5,7 +5,7 @@ functions:
   - name: usePreviewSearch
     title: search の読み書き
     kind: フック
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: '`getRouteApi` の search と、`openItem`（積む）・`closeItem`・`setView`・`setFilters`・`setSort`・`setDiff`・`setPanel`・`setComments`（コメントの一覧の `thread`・`review`・`tstatus`・`ttag`・`ttarget`）・`openItemComments`（詳細パネルのコメントの一覧のボタン。`panel=comments`・`ttarget={ID}` にして `thread`・`review` を外し、コメントの一覧を開いたままなら `tstatus`・`ttag` を残す）・`setSearch`（全体の検索の `search`・`q`）（置き換える）と、`openFromSearch`（全体の検索の結果の項目を開く。画面が今と違えば積み、同じなら置き換える。`diff` と左のパネルを残す。外枠の単体テストが確かめる）を返す。見てきた項目の履歴は `history.state.trail` に残し、`canBack`・`canForward` を返す'
     returns:
       type: PreviewSearchApi

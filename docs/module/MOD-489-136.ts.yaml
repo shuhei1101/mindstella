@@ -5,7 +5,7 @@ stores:
   - name: useConnectionStore
     title: 接続の状態
     container: frontend/src/shared/stores/connection-store.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 書き換えの通知がつながっているか（インターフェース定義『プレビューを開く』の制約「接続の状態」）
     state:
       - name: connection

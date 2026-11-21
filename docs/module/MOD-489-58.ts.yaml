@@ -4,12 +4,12 @@ lead: 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今�
 constants:
   - name: LIBRARIES
     title: 描画のライブラリの一覧
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 名前ごとの URL と integrity。値は今の画面の `template.html`・`core/libs.ts` と同じ
     container: frontend/src/shared/adapters/libraries.ts
   - name: MDMARK_CDN_BASE
     title: mdmark の配信元の URL
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 'jsDelivr の mdmark の `dist/` の URL の形式（`{ref}` に『記録の取得』の `mdmark_ref`。受ける前は `develop`）'
     value: '"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist"'
     container: frontend/src/shared/adapters/libraries.ts
@@ -17,7 +17,7 @@ functions:
   - name: setMdmarkSettings
     title: mdmark の設定の受け取り
     kind: 関数
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 『記録の取得』の `settings.mdmark` と `mdmark_ref` を受け取り、mdmark を読む URL（`mdmark_ref`。無ければ `develop`）と `mount` に指定する `map` を決める。読み始めた後に違う ref を受けたら、次に開いた画面から使う
     args:
       - name: settings
@@ -42,7 +42,7 @@ functions:
   - name: mdmarkUrls
     title: mdmark を読む URL
     kind: 関数
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: '`setMdmarkSettings` で決めた mdmark の JavaScript と CSS の URL を返す（ref を受けていなければ `develop`）'
     returns:
       type: '{js: string, css: string}'
@@ -60,7 +60,7 @@ functions:
   - name: loadLibrary
     title: ライブラリの読み込み
     kind: 関数
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 1 つのライブラリを 1 度だけ読み、結果を返す。読めなかったら代わりを読まない
     args:
       - name: name
@@ -93,7 +93,7 @@ functions:
   - name: useLibrary
     title: ライブラリの hook
     kind: フック
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: ライブラリの読み込みの状態（`loading`・`ready`・`failed`）を返す
     args:
       - name: name

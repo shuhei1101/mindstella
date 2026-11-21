@@ -5,7 +5,7 @@ components:
   - name: Route
     title: SPA のルート
     kind: 画面
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: '`validateSearch` に `parsePreviewSearch`、loader に `previewQueries` の先読み、component に `PreviewShell` を使う'
     container: frontend/src/routes/index.tsx
     refs:

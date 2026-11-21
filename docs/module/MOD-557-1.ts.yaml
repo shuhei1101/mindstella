@@ -4,7 +4,7 @@ stores:
   - name: useRefreshHoldStore
     title: 反映の保留
     container: frontend/src/shared/stores/refresh-hold-store.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 文字を入力する欄にフォーカスがあるか・反映を保留しているか・帯を出す・削除する直前の基準の要素の画面の上の位置を持つ
     state:
       - name: focused
@@ -29,7 +29,7 @@ functions:
     title: 文字を入力する欄か
     kind: 関数
     container: frontend/src/shared/stores/refresh-hold-store.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 要素が文字を入力する欄（文字の `input`・`textarea`・`contenteditable`）かを返す
     args:
       - name: element
@@ -54,7 +54,7 @@ functions:
     title: 文字の入力欄のフォーカスの見張り
     kind: 関数
     container: frontend/src/shared/stores/refresh-hold-store.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 文書の `focusin`・`focusout` を受けて `focused` を書き換える。入力欄から別の入力欄へ移るときは偽にしない
     args:
       - name: doc
@@ -87,7 +87,7 @@ functions:
     title: 保留する間か
     kind: 関数
     container: frontend/src/shared/stores/refresh-hold-store.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 文字を入力する欄にフォーカスがあるか、音声入力（録音・文字起こし中）があるかを返す
     returns:
       type: boolean
@@ -103,7 +103,7 @@ functions:
     title: 反映の依頼
     kind: 関数
     container: frontend/src/shared/stores/refresh-hold-store.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 保留する間なら `pending` を立てて再読み込みせず、そうでなければすぐ再読み込みする
     args:
       - name: refresh
@@ -136,7 +136,7 @@ functions:
     title: 保留の解除
     kind: 関数
     container: frontend/src/shared/stores/refresh-hold-store.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 保留していて、保留する間でなくなっていれば、`pending` を下ろして 1 回だけ再読み込みする
     args:
       - name: refresh
@@ -169,7 +169,7 @@ functions:
     title: 入力欄の位置の戻し
     kind: 関数
     container: frontend/src/shared/stores/refresh-hold-store.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: 帯を出した後と削除した後、`anchor` の要素の画面の上の位置が帯を出す・削除する直前と同じになるよう、要素をスクロールする祖先を差の分だけ送信する
     returns:
       type: void
@@ -197,7 +197,7 @@ functions:
     title: 保留しているか
     kind: フック
     container: frontend/src/shared/stores/refresh-hold-store.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: '`pending` を購読して返す（トップバーの `stale`）'
     returns:
       type: boolean
@@ -206,7 +206,7 @@ constants:
   - name: TEXT_INPUT_TYPES
     title: 文字を入力する input の type
     container: frontend/src/shared/stores/refresh-hold-store.ts
-    usecase: SPAを開く
+    usecase: プレビューを開く
     summary: '`isTextEntry` が文字を入力する欄とみなす `input` の `type`'
     value: "['text', 'search', 'email', 'url', 'tel', 'password', 'number']"
 refs:

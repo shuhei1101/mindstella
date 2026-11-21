@@ -37,7 +37,7 @@ elements:
       - name: bodyView
         value: プレビューを開く.個人の上書き の section_fold が偽なら fold を false、それ以外は既定（fold は true）
       - name: focusAfterAdd
-        value: SPAを開くの個人の上書き.focus_after_add（無ければ auto）
+        value: プレビューを開くの個人の上書き.focus_after_add（無ければ auto）
       - name: pointerCoarse
         value: 'matchMedia("(pointer: coarse)") が当たるか'
     position: 本文
