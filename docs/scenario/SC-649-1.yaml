@@ -19,7 +19,8 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 記録
-        description: '資料 A-1（タグ: 画面）、A-2（タグ: 画面・廃止）、A-3（タグ: データ）'
+        description: '資料 A-1（タグ: 画面）、A-2（タグ: 画面・廃止）、A-3（タグ: データ）、A-4（タグ無し）'
+        notes: '作成する式は `{and: [{field: tags, op: eq, values: [画面]}, {field: tags, op: ne, values: [廃止]}]}`、更新する式は `{and: [{field: tags, op: eq, values: [画面, データ]}, {field: tags, op: ne, values: [廃止]}]}`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -43,6 +44,7 @@ scenarios:
       - 更新の結果に、該当する件数 2（A-1・A-3）がある
       - 削除した後の記録の取得に、プリセット「画面の設計」が無い
       - どの操作の後も、項目の YAML と `docs/` の本文の中身が操作の前と同じ
+      - タグの無い A-4 は、`ne` の条件には該当するが `eq` の条件に該当しないため、どちらの件数にも数えない
     test: test_normal
   - name: 正常シナリオ（0 件に該当する）
     setup:
