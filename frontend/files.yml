@@ -732,6 +732,14 @@ files:
   related:
   - to: MOD-489-58
     type: implements
+- path: src/shared/components/board.stories.tsx
+  name: 項目のカードのストーリー
+  description: 項目のカードのストーリー。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-60
+    type: implements
 - path: src/shared/components/board.tsx
   name: 状態ごとの列にカードを並べたボードと、項目のカード
   description: 状態ごとの列にカードを並べたボードと、項目のカード。

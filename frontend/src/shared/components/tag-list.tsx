@@ -26,13 +26,14 @@ export const TagList = ({ values = [], onSelect }: TagListProps) => (
         );
       }
       return (
+        // 押せる範囲は見た目の上下へ 3px ずつ広げて高さ 24px にする。並べる親の行の間は 6px 以上にする
         <button
           key={name}
           type="button"
           data-tag={name}
           title={`タグ「${name}」で絞り込む`}
           aria-label={`タグ「${name}」で絞り込む${isMain ? "（主題）" : ""}`}
-          className={cn(className, "cursor-pointer hover:border-foreground hover:text-foreground")}
+          className={cn(className, "relative z-10 cursor-pointer before:absolute before:inset-x-0 before:-inset-y-0.75 hover:border-foreground hover:text-foreground")}
           onClick={(event) => {
             event.stopPropagation();
             onSelect(name);

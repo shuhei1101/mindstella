@@ -41,5 +41,12 @@ export const LongNarrow: Story = {
   ),
 };
 
-/** 押して絞り込みに加えられるタグ。各タグはボタンで、ホバーで枠と文字を濃くし、読み上げ名は「タグ「{名前}」で絞り込む」 */
-export const Selectable: Story = { args: { values: [{ name: "画面", main: true }, { name: "記録の形" }], onSelect: fn() } };
+/** 押して絞り込みに加えられるタグ。各タグはボタンで、ホバーで枠と文字を濃くし、読み上げ名は「タグ「{名前}」で絞り込む」。押せる範囲は見た目の上下へ 3px ずつ広げた高さ 24px で、幅 160px で折り返した行の間は 6px */
+export const Selectable: Story = {
+  args: { values: [{ name: "画面", main: true }, { name: "記録の形" }, { name: "絞り込み" }, { name: "スクロール位置" }], onSelect: fn() },
+  render: (args) => (
+    <div data-tags className="flex w-40 flex-wrap gap-x-1 gap-y-1.5">
+      <TagList {...args} />
+    </div>
+  ),
+};

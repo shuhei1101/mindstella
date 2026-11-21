@@ -112,22 +112,28 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
                 </Button>
               ) : null}
               {group.key === "tags" && onTagMatchChange !== undefined ? (
-                <div role="group" aria-label="タグの組み合わせ方" className="mt-1 inline-flex rounded-control border border-border bg-card p-0.5">
+                <fieldset className="mt-1 inline-flex rounded-control border border-border bg-card p-0.5">
+                  <legend className="sr-only">タグの組み合わせ方</legend>
                   {(["all", "any"] as const).map((value) => (
-                    <button
+                    <label
                       key={value}
-                      type="button"
-                      data-tag-match={value}
-                      aria-pressed={tagMatch === value}
-                      onClick={() => {
-                        if (tagMatch !== value) onTagMatchChange(value);
-                      }}
-                      className={cn("h-7 cursor-pointer rounded-control px-2 text-small hover:bg-accent", tagMatch === value && "bg-mark-weak font-medium hover:bg-mark-weak")}
+                      className={cn("flex h-7 cursor-pointer items-center rounded-control px-2 text-small hover:bg-accent has-focus-visible:outline-2 has-focus-visible:outline-ring", tagMatch === value && "bg-mark-weak font-medium hover:bg-mark-weak")}
                     >
+                      <input
+                        type="radio"
+                        name="tag-match"
+                        value={value}
+                        data-tag-match={value}
+                        checked={tagMatch === value}
+                        className="sr-only"
+                        onChange={() => {
+                          onTagMatchChange(value);
+                        }}
+                      />
                       {TAG_MATCH_BUTTON[value]}
-                    </button>
+                    </label>
                   ))}
-                </div>
+                </fieldset>
               ) : null}
               <ul>
                 {group.values.map(({ value, count }) => (
