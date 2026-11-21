@@ -1,0 +1,118 @@
+id: SC-659-1
+title: 検討事項をまとめて決める
+lead: 利用者が、サーバーが配るプレビューの検討事項の一覧か AI の通知のスレッドで、未決定の検討事項を複数選び、1 回の操作でそれぞれ推奨の案に決め、決めた結果を MindStella のセッションへ 1 回で通知する単一ユースケース。
+issue: 484
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: 推奨どおりでよい検討事項を、検討事項ごとにスレッドを作らずに 1 回の操作で決められる
+  - name: MindStella のセッション
+    interest: まとめて決めた回答を 1 回の通知で受け、検討事項ごとに取り込まずに済む
+trigger: 利用者が、検討事項の一覧か通知のスレッドで未決定の検討事項を選び、推奨の案で決定する操作をする
+preconditions:
+  - ワークスペースが作成済みで、サーバーがプレビューを配っている
+  - 推奨のマーカーを持つ未決定の検討事項がある
+success_guarantee: 選んだ検討事項がそれぞれ推奨の案だけを採用して決定済みになり、誰が決めたかが利用者になる。決めた書き換えは 1 つのまとまりになり、MindStella のセッションへの入力は 1 回だけ届く。
+minimal_guarantee: 選んだ検討事項に 1 件でも決められないもの（推奨の案が無い・未決定でない・見つからない）があれば、どの検討事項も書き換えず、MindStella のセッションへも入力せず、決められない検討事項と理由を画面に出す。
+frequency: 通知のスレッドが届くたびに 0〜1 回
+priority: 高
+scenarios:
+  - name: 正常シナリオ（一覧から決める）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。MindStella の MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。Claude Code は tmux のペインで入力を記録する Mock にする
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1（案 A・B、推奨 A）・D-2（案 A・B、推奨 B）・D-3（案 A・B、推奨なし）と、決定済みの D-4
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant WS as ワークスペース
+        participant CC as MindStella のセッション
+
+        U->>P: 検討事項の画面を開き、D-1・D-2 を選ぶ
+        P-->>U: 選んだ件数と「推奨の案で決定」を出す（D-3 は選べない）
+        U->>P: 「推奨の案で決定」を押す
+        P->>SV: まとめて決める（D-1・D-2）
+        SV->>WS: D-1 を案 A、D-2 を案 B で決定済みにし、誰が決めたかを利用者にして 1 つのまとまりで書く
+        SV->>CC: まとめて決めた検討事項の ID と件数を 1 回入力する
+        SV-->>P: 決めた検討事項
+        P-->>U: 選択を解除して一覧を再描画する
+      ```
+    expected:
+      - D-1 が案 A、D-2 が案 B だけを採用して決定済みで、どちらも誰が決めたかが利用者である
+      - D-3 は選べず、未決定のままである。決定済みの D-4 は選べない
+      - D-1・D-2 の書き換えが 1 つのまとまりに属し、編集した人が利用者である
+      - MindStella のセッションへの入力が 1 回だけで、D-1・D-2 の ID と件数 2 を持つ
+      - スレッドが増えていない
+      - 操作の後、選択が解除され、状態の既定の絞り込み（未決定など）で D-1・D-2 が一覧から外れる
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_from_list
+  - name: 正常シナリオ（通知のスレッドから決める）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。MindStella の MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。Claude Code は tmux のペインで入力を記録する Mock にする
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1（推奨 A）・D-2（推奨 B）と、AI が決めた決定済みの D-3 と、D-1・D-2・D-3 を表で並べた AI の通知のスレッド TH-1
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant CC as MindStella のセッション
+
+        U->>P: コメントの一覧で TH-1 を開く
+        P-->>U: 並んだ未決定の D-1・D-2 を選べる形で出す（D-3 は決定済みで選べない）
+        U->>P: D-1・D-2 を選び、「推奨の案で決定」を押す
+        P->>SV: まとめて決める（D-1・D-2）
+        SV->>CC: まとめて決めた検討事項の ID と件数を 1 回入力する
+        SV-->>P: 決めた検討事項
+        P-->>U: TH-1 の D-1・D-2 を決定済みの表示にする
+      ```
+    expected:
+      - D-1 が案 A、D-2 が案 B だけを採用して決定済みで、どちらも誰が決めたかが利用者である
+      - TH-1 に利用者の書き込みが増えておらず、取り込み待ちのスレッドの一覧が 0 件を返す
+      - MindStella のセッションへの入力が 1 回だけで、D-1・D-2 の ID と件数 2 を持つ
+      - 操作の後、TH-1 の表で D-1・D-2 も選べなくなる
+    test: test_normal_when_from_thread
+  - name: 異常シナリオ（決められない検討事項を含む）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。MindStella の MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。Claude Code は tmux のペインで入力を記録する Mock にする
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1（推奨 A）・D-2（推奨 B）
+        notes: D-1・D-2 を選んだ後、押す前に、AI が D-2 を案 A で決定済みに書き換える
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: D-1・D-2 を選んで「推奨の案で決定」を押す
+        P->>SV: まとめて決める（D-1・D-2）
+        SV->>SV: D-2 が未決定でない
+        SV-->>P: 決められない検討事項 D-2 と理由
+        P-->>U: D-2 と理由を出し、選択を残す
+      ```
+    expected:
+      - D-1 が未決定のままで、D-2 が AI の書き換えた案 A のままである
+      - 画面に、決められない検討事項 D-2 と、未決定でないことが出る
+      - MindStella のセッションへの入力が無い
+      - ワークスペースの全てのファイルの中身が、AI の書き換えの後と同じである
+    test: test_error_when_not_undecided
+notes:
+  通知の経路: 要件の `未確定`（まとめて決めた回答を AI へ通知する経路）の推奨 A（サーバーが記録へ書き込み、件数を Claude Code へ入力する）で記載している。インターフェース定義設計で B（スレッドの書き込みとして送信する）に決定したら、サーバーは記録を書き換えず、スレッドに送信する流れに書き換える
+  個別に案を選ぶ操作: '推奨でない案を 1 件ずつ選ぶ操作は #363 が受け持ち、このユースケースは推奨の案で決めるだけを持つ'
+  選ぶ操作と文言: 検討事項を選ぶ操作の置き場所と文言はモック作成で決める
+  E2E の範囲: モデルを呼ばず、ブラウザの操作とワークスペースの状態・Claude Code の Mock が受けた入力を確認する
+test_file: tests/e2e/単一ユースケース/test_decisions_bulk_decide.py
