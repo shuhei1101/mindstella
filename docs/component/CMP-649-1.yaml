@@ -1,0 +1,76 @@
+id: CMP-649-1
+title: 項目のカード
+lead: ボードの列に並べる項目 1 件のカード。タイトル・種類などの文字・マーカーと、押して絞り込めるタグを出し、タグ以外の所を押すと詳細を開く。
+implementation: frontend/src/shared/components/board.tsx#ItemCard
+story: Shared/ItemCard
+test_file: tests/integration/storybook_react/test_item_card_stories.py
+args:
+  - name: item
+    type: オブジェクト
+    required: true
+    description: カードにする項目（埋め込みのデータの項目そのもの）
+  - name: index
+    type: オブジェクト
+    required: true
+    description: 記録の索引。関係する項目のタイトルを引く
+  - name: meta
+    type: 配列
+    required: true
+    description: タイトルの下に並べる文字（種類・状態など）
+  - name: links
+    type: 配列
+    required: true
+    description: 関係する項目の ID
+  - name: selected
+    type: 真偽値
+    required: true
+    description: 詳細パネルで開いている項目か。真のとき枠と背景で選択中を示す
+  - name: marks
+    type: 列挙
+    required: false
+    default: なし（マーカーを出さない）
+    choices: new・changed
+    description: 差分の表示の間だけ渡され、タイトルの右に部品『差分のマーカー』を置く
+  - name: comments
+    type: オブジェクト
+    required: true
+    description: 項目の ID → レビュー中のコメントの件数。1 以上のとき部品『コメントのマーカー』を置く
+  - name: edit
+    type: 列挙
+    required: true
+    choices: add・edit・remove・null
+    description: 保存待ちの編集。null でないとき部品『保存待ちのマーカー』を置き、remove はカードを薄くする
+events:
+  - name: 詳細を開く
+    when: タグ以外のカードの所を押したとき
+    value: '`onOpen(id)`（項目の ID。`data-id`）'
+    description: 使う側が詳細パネルを開く
+  - name: タグの選択
+    when: カードのタグを押したとき（`onSelectTag` を指定したときだけタグを並べる）
+    value: '`onSelectTag(name)`（タグの名前。`data-tag`）'
+    description: 使う側がそのタグを画面の絞り込みに加える。詳細は開かない
+states:
+  - name: SelectableTags
+    description: タグを押せるカード。タグを押すと `onSelectTag` だけが呼ばれ、カードのタグ以外の所を押すと `onOpen` が呼ばれる。カードの外枠は div で、ボタンの入れ子は無い
+  - name: SelectableTagsSelected
+    description: 開いている項目のカード。タグを押せるまま、枠と背景で選択中を示す
+    args:
+      - name: selected
+        value: 'true'
+  - name: Default
+    description: '`onSelectTag` を指定しないカード。タグを並べない'
+uses:
+  - component: CMP-489-16#
+    how: 押して絞り込めるタグ
+  - component: CMP-489-32#
+    how: タイトルの右の差分のマーカー
+  - component: CMP-489-10#
+    how: コメントのマーカー
+  - component: CMP-489-22#
+    how: 保存待ちのマーカー
+accessibility:
+  - カードの外枠は `div` にし、タイトルを `button` にして、その押せる範囲をカード全体へ広げる。タグのボタンをタイトルのボタンより前面に置き、ボタンを入れ子にしない
+  - 開いている項目のタイトルに `aria-current="true"` を付ける
+  - タイトルにフォーカスがあるとき、カードの外枠に輪郭を出す
+refs:
+  - IF-489-70#

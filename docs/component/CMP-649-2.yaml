@@ -1,0 +1,45 @@
+id: CMP-649-2
+title: 絞り込みの条件のチップ
+lead: 項目の一覧の上に、今の絞り込みの条件を値ごとのチップと「すべて解除」で並べる。チップの × でその条件を解除する。
+implementation: frontend/src/shared/components/filter-chips.tsx#FilterChips
+story: Shared/FilterChips
+test_file: tests/integration/storybook_react/test_filter_chips_stories.py
+args:
+  - name: filters
+    type: オブジェクト
+    required: true
+    description: 列の `key` → 選んだ値の配列。`~{列}` は文字の条件。値ごとにチップを出し、条件が 1 つも無いときは何も出さない
+  - name: labels
+    type: オブジェクト
+    required: true
+    description: 列の `key` → チップに出す列の名前
+  - name: tagMatch
+    type: 列挙
+    required: false
+    default: all
+    choices: all・any
+    description: 'タグの組み合わせ方。any でタグを 2 つ以上選んでいるとき、タグのチップを「タグ（どれかを含む）: {名前}」にする。それ以外は「タグ: {名前}」'
+events:
+  - name: 絞り込み
+    when: チップの × か「すべて解除」を押したとき
+    value: '`onFilter(filters)`（引数は解除した後の条件）'
+    description: 使う側が条件を変えて一覧と絞り込みのドロワーを再描画する。サーバーの配信では、解除した後の条件をそのタブの保存領域に残す
+states:
+  - name: TagMatchAll
+    description: '状態とタグ 2 つで絞り、タグの組み合わせ方は既定の「すべて含む」。タグのチップは「タグ: {名前}」'
+    args:
+      - name: filters
+        value: '{"status": ["未着手"], "tags": ["保存", "画面"]}'
+      - name: tagMatch
+        value: all
+  - name: TagMatchAny
+    description: 'タグの組み合わせ方を「どれかを含む」にした。タグのチップは「タグ（どれかを含む）: {名前}」'
+    args:
+      - name: filters
+        value: '{"status": ["未着手"], "tags": ["保存", "画面"]}'
+      - name: tagMatch
+        value: any
+accessibility:
+  - 'チップの × に `{列}: {値} の条件を解除` の読み上げ名を付ける（タグの組み合わせ方が any のときは列の名前をチップと同じ「タグ（どれかを含む）」にする）'
+refs:
+  - CMP-489-48#

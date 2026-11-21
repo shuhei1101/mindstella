@@ -50,7 +50,7 @@ args:
     type: オブジェクト
     required: false
     default: なし（絞り込まない）
-    description: 列の `key` → 選んだ値の配列。絞り込みのドロワーで選んだ条件をそのまま受ける。同じ列の中はどれかに合う行、列どうしは全てに合う行を出し、値を 1 つも選んでいない列では絞らない。`~{列}` のキーは文字の条件で、その列の値に文字を含む行を出す（大文字・小文字を区別しない）
+    description: 列の `key` → 選んだ値の配列。絞り込みのドロワーで選んだ条件をそのまま受ける。同じ列の中はどれかに合う行（タグの列は `tagMatch` に従う）、列どうしは全てに合う行を出し、値を 1 つも選んでいない列では絞らない。`~{列}` のキーは文字の条件で、その列の値に文字を含む行を出す（大文字・小文字を区別しない）
   - name: pinTo
     type: 文字列
     required: false
@@ -71,6 +71,12 @@ args:
     required: false
     default: なし（マーカーを出さない）
     description: 項目の ID → レビュー中のコメントの件数（1 以上）。サーバーにつながって開いたときだけ渡され、当たる行のタイトルの右、差分のマーカーの後ろに部品『コメントのマーカー』を置く。収まらなければ次の行へ送信する
+  - name: tagMatch
+    type: 列挙
+    required: false
+    default: all
+    choices: all・any
+    description: タグの列の組み合わせ方。all は選んだタグを全て持つ行、any はどれかを持つ行を出す。チップ（部品『絞り込みの条件のチップ』）へそのまま渡す
 events:
   - name: 並べ替え
     when: 見出しの文字を押したとき
@@ -79,7 +85,7 @@ events:
   - name: 絞り込み
     when: チップの × か「すべて解除」を押したとき
     value: '`onFilter(key, values)`（引数は key と値の配列）'
-    description: 使う側が `filters` を変えて表と絞り込みのドロワーを再描画する。サーバーの配信では、外した後の条件をその画面の条件として端末の保存領域に残す（配る書き出しでは残さない）
+    description: 使う側が `filters` を変えて表と絞り込みのドロワーを再描画する。サーバーの配信では、外した後の条件をその画面の条件としてそのタブの保存領域に残す（配る書き出しでは残さない）
   - name: ピン留め
     when: 見出しのピンのボタンを押したとき
     value: '`onPin(key)`（引数は key）'
@@ -96,6 +102,10 @@ events:
     when: 行のタイトルを押したとき
     value: '`onOpenItem(id)`（引数は id）'
     description: 使う側が詳細パネルを開く
+  - name: タグの選択
+    when: タグの列のセルのタグを押したとき（`onSelectTag` を指定したときだけタグをボタンにする）
+    value: '`onSelectTag(name)`（引数はタグの名前）'
+    description: 使う側がそのタグを `filters` の `tags` に加え（既にあれば何もしない）、詳細パネルは開かない
 states:
   - name: Default
     description: 通常。並べ替えのマーカーは見出しにホバーかフォーカスしたときだけ出す。チップの行の右端に列のアイコンと「列の表示」のボタンを置き、チップの行と表の間を 12px 空ける
@@ -158,6 +168,15 @@ states:
     args:
       - name: marks
         value: '{"R-1": "changed"}'
+  - name: TagMatchAny
+    description: 'タグ「画面」と「保存」をどれかを含むで絞っている。どちらかのタグを持つ行を出し、チップは「タグ（どれかを含む）: {名前}」'
+    args:
+      - name: filters
+        value: '{"tags": ["画面", "保存"]}'
+      - name: tagMatch
+        value: any
+  - name: SelectableTags
+    description: タグの列のタグを押せる。タグを押すと `onSelectTag` だけが呼ばれ、行のタイトルを押したときだけ詳細を開く
 accessibility:
   - 並べ替え中の列の見出しに `aria-sort`（ascending・descending）を付け、ほかは `none`
   - ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列}まで固定` の読み上げ名を付ける
@@ -170,3 +189,8 @@ refs:
   - IF-489-70#
 notes:
   組み方: TanStack Table の `useReactTable` に列と行を渡し、shadcn の data-table のガイドの形式（`Table`・`TableHeader`・`TableRow`・`TableCell` の部品と、並べ替え・絞り込み・列の表示・列のピン留めの状態）で組む。並べ替えと絞り込みの状態は使う側が URL の search params から渡し、表は受け取った状態で行を並べて絞る（インターフェース定義『プレビューを開く』の `sort`・`f.{列}`）
+uses:
+  - component: CMP-649-2#
+    how: 表の上の絞り込みの条件のチップ
+  - component: CMP-489-16#
+    how: タグの列のセル

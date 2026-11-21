@@ -28,6 +28,11 @@ states:
     args:
       - name: values
         value: '[{"name": "すべての画面の絞り込みとドロワーの並び", "main": true}, {"name": "ゴールと設定"}, {"name": "タスク"}]'
+  - name: Selectable
+    description: 押して絞り込みに加えられるタグ。各タグはボタンで、ホバーで枠と文字を濃くする。押せる範囲は見た目の上下へ 3px ずつ広げた高さ 24px で、幅 160px で折り返した行の間は 6px
+    args:
+      - name: values
+        value: '[{"name": "画面", "main": true}, {"name": "記録の形"}, {"name": "絞り込み"}, {"name": "スクロール位置"}]'
 lead: 項目のタグを記録の順のまま並べる。主題のタグは枠と文字を 1 段階濃くし、名前の前に二重丸のマーカーを置く。
 args:
   - name: values
@@ -39,7 +44,13 @@ accessibility:
   - 二重丸のマーカーは `aria-hidden` にし、名前の前に読み上げだけの「主題」の文字を置く（読み上げは「主題 画面」）
   - 主題のタグに `title` で「主題」を持たせ、ポインターを重ねたときに文字で伝える
   - 色だけに頼らず、二重丸のマーカーと枠の濃さで主題のタグを見分ける
+  - '`onSelect` を渡したとき、各タグを `button` にし、読み上げ名を「タグ「{名前}」で絞り込む」にする。Enter・Space で押せる'
 notes:
   モック: '`docs/mock/components/main-tag/index.html`（採用は案 A: 二重丸）'
 test_file: tests/integration/storybook_react/test_tag_list_stories.py
 refs: []
+events:
+  - name: タグの選択
+    when: 'タグを押したとき（`onSelect` を指定したときだけタグをボタンにする。指定しないときは押せない文字として並べる）'
+    value: '`onSelect(name)`（タグの名前。`data-tag`）'
+    description: 使う側が、開いている画面の絞り込みのタグの条件にその名前を加える（既にあれば何もしない）。押した操作は外側の項目を開く操作へ届けない
