@@ -1,6 +1,5 @@
 // 差分の表示の計算。変更履歴で選んだ時点から印を付ける項目を決め、項目の `history` から前の版を組み立て、本文・記法の行と図の要素を比べる。DOM は描かない
 import type * as JsDiffModule from "diff";
-import type { Token } from "marked";
 
 import { embeddedHtmlRanges } from "@/shared/core/body-links";
 import { formatJst } from "@/shared/core/format";
@@ -9,9 +8,6 @@ import { compareIds, type BodyDiffHunk, type Changes, type HistoryEntry, type It
 
 /** 読み込んだ jsdiff */
 export type JsDiff = Pick<typeof JsDiffModule, "diffLines" | "diffWords" | "diffArrays">;
-
-/** marked の lexer */
-export type MarkedLexer = (source: string) => Token[];
 
 /** 前回開いた時点。「前回開いてから」の範囲の始まり */
 export type OpenedPoint = { at: string; seq: number };
@@ -297,150 +293,6 @@ export const diffLineParts = (before: string, after: string, jsdiff: JsDiff): Li
   }));
 };
 
-/** 本文を marked の最上位の token ごとに分けた 1 つの塊 */
-export type SideBlock = {
-  /** 塊の最初の行（1 始まり） */
-  start: number;
-  /** 塊の最後の行（1 始まり） */
-  end: number;
-  /** 塊の原文（末尾の改行を除く） */
-  raw: string;
-  /** 塊の中で、左の列は消した行、右の列は足した行のうち空行でない行の番号。空なら変えていない塊 */
-  changed: Set<number>;
-};
-
-/** 左右の列で同じ高さに揃える 1 行。片側が空ならその側は縞の空きになる */
-export type SideRow = {
-  /** 変えた行か。変えていない塊の対の行は偽 */
-  changed: boolean;
-  /** 左の列（選んだ時点）の塊 */
-  left: SideBlock[];
-  /** 右の列（今）の塊 */
-  right: SideBlock[];
-};
-
-/** 本文を、marked の最上位の token（空行の token を除く）ごとの塊に分ける。塊の変えた行は空で返す */
-const topBlocks = (source: string, lexer: MarkedLexer): SideBlock[] => {
-  const blocks: SideBlock[] = [];
-  let line = 0;
-  for (const token of lexer(source)) {
-    if (token.type !== "space") {
-      const raw = token.raw.replace(/\n+$/, "");
-      blocks.push({ start: line + 1, end: line + raw.split("\n").length, raw, changed: new Set() });
-    }
-    line += token.raw.split("\n").length - 1;
-  }
-  return blocks;
-};
-
-/** 行の差分の各行の種類（前の版・今の版の 1 始まりの行）と、変えていない行の前の版 → 今の版の行の対応 */
-type SideLineKinds = {
-  before: (LinePart["kind"] | null)[];
-  after: (LinePart["kind"] | null)[];
-  map: (number | null)[];
-};
-
-/** 行の差分から、前の版と今の版の各行の種類と、変えていない行の前の版 → 今の版の行の対応を作る */
-const sideLineKinds = (parts: LinePart[]): SideLineKinds => {
-  const before: SideLineKinds["before"] = [null];
-  const after: SideLineKinds["after"] = [null];
-  const map: SideLineKinds["map"] = [null];
-  for (const part of parts) {
-    for (let position = 0; position < part.lines.length; position += 1) {
-      if (part.kind !== "added") {
-        before.push(part.kind);
-        map.push(part.kind === "same" ? after.length : null);
-      }
-      if (part.kind !== "removed") after.push(part.kind);
-    }
-  }
-  return { before, after, map };
-};
-
-/** 塊の範囲の行のうち、その種類（消した・足した）で空行でない行を塊の変えた行に入れる */
-const markChangedLines = ({
-  blocks,
-  kinds,
-  lines,
-  kind,
-}: {
-  blocks: SideBlock[];
-  kinds: (LinePart["kind"] | null)[];
-  lines: string[];
-  kind: "removed" | "added";
-}): void => {
-  for (const block of blocks) {
-    for (let line = block.start; line <= block.end; line += 1) {
-      if (kinds[line] === kind && (lines[line - 1] ?? "").trim() !== "") block.changed.add(line);
-    }
-  }
-};
-
-/** 本文を行の並びにする（末尾の改行で出る空の最後の要素は行ではない） */
-export const linesOfText = (text: string): string[] => {
-  const lines = text.split("\n");
-  if (lines.at(-1) === "") lines.pop();
-  return lines;
-};
-
-/** 前後の Markdown の本文を塊に分け、変えていない塊を向かい合わせた左右の列の行にする。行の差分を打ち切ったら null */
-export const sideBySideRows = ({ before, after, lexer, jsdiff }: { before: string; after: string; lexer: MarkedLexer; jsdiff: JsDiff }): SideRow[] | null => {
-  const parts = diffLineParts(before, after, jsdiff);
-  if (parts === null) return null;
-  const kinds = sideLineKinds(parts);
-  const beforeBlocks = topBlocks(before, lexer);
-  const afterBlocks = topBlocks(after, lexer);
-  markChangedLines({ blocks: beforeBlocks, kinds: kinds.before, lines: linesOfText(before), kind: "removed" });
-  markChangedLines({ blocks: afterBlocks, kinds: kinds.after, lines: linesOfText(after), kind: "added" });
-  /** 前の版の x 番目の塊と対になる、今の版の from 番目以降の変えていない同じ塊の番号。無ければ -1 */
-  const anchorOf = (x: number, from: number): number => {
-    const block = beforeBlocks[x];
-    if (block === undefined || block.changed.size > 0) return -1;
-    const target = kinds.map[block.start];
-    for (let k = from; k < afterBlocks.length; k += 1) {
-      const other = afterBlocks[k];
-      if (other === undefined || target === null || target === undefined) return -1;
-      // 対応する行から始まる塊で、変えておらず原文が同じときだけ対にする
-      if (other.start === target) return other.changed.size === 0 && other.raw === block.raw ? k : -1;
-      if (other.start > target) return -1;
-    }
-    return -1;
-  };
-  const rows: SideRow[] = [];
-  let i = 0;
-  let j = 0;
-  while (i < beforeBlocks.length || j < afterBlocks.length) {
-    // 次の区切り（変えていない塊の対）を探す。無ければ末尾まで
-    let ai = beforeBlocks.length;
-    let aj = afterBlocks.length;
-    for (let x = i; x < beforeBlocks.length; x += 1) {
-      const k = anchorOf(x, j);
-      if (k >= 0) {
-        ai = x;
-        aj = k;
-        break;
-      }
-    }
-    const left = beforeBlocks.slice(i, ai);
-    const right = afterBlocks.slice(j, aj);
-    // 区切りの間の変えた塊: 数が両側で同じなら 1 つずつ、違えばまとめて 1 つの行にする
-    if (left.length === right.length) {
-      left.forEach((block, offset) => {
-        const opposite = right[offset];
-        if (opposite !== undefined) rows.push({ changed: true, left: [block], right: [opposite] });
-      });
-    } else {
-      rows.push({ changed: true, left, right });
-    }
-    const anchorLeft = beforeBlocks[ai];
-    const anchorRight = afterBlocks[aj];
-    if (anchorLeft !== undefined && anchorRight !== undefined) rows.push({ changed: false, left: [anchorLeft], right: [anchorRight] });
-    i = ai + 1;
-    j = aj + 1;
-  }
-  return rows;
-};
-
 /** HTML の本文の差分: 今の本文で足した行と変えた行（今の本文の 1 始まりの行）と、消しただけの箇所があるか */
 export type HtmlChangedLines = { added: number[]; changed: number[]; removedOnly: boolean };
 
@@ -519,44 +371,6 @@ export const diffInline = (before: string, after: string, deadline: number, jsdi
   // 同じ部分の文字が空白の違いで片側の文字とずれたとき、範囲を元の文字に当てられない
   if (joinText(inline.before) !== before || joinText(inline.after) !== after) return null;
   return inline;
-};
-
-/** 行の差分の並びから、消した行のかたまりごとに、今の本文のどの行の前へ差し込むかを返す */
-export const placeRemovedBlocks = (parts: LinePart[]): RemovedBlock[] => {
-  const blocks: RemovedBlock[] = [];
-  // 前の版の行を前から並べておく（表の見出しをさかのぼって引くため）
-  const beforeLines: string[] = [];
-  let nowCount = 0;
-  parts.forEach((part, position) => {
-    if (part.kind === "removed") {
-      const start = beforeLines.length;
-      const followsNowLine = parts.slice(position + 1).some((next) => next.kind !== "removed");
-      const tableBody =
-        part.lines.every((line) => line.startsWith("|")) && (beforeLines[start - 1] ?? "").startsWith("|");
-      blocks.push({
-        lines: part.lines,
-        // 次に来る今の本文の行（無ければ本文の最後）
-        beforeLine: followsNowLine ? nowCount + 1 : null,
-        tableHeader: tableBody ? tableHeaderOf(beforeLines, start) : null,
-      });
-      beforeLines.push(...part.lines);
-      return;
-    }
-    // 同じ・足した行は今の本文の行を、同じ行は前の版の行も数え進める
-    nowCount += part.lines.length;
-    if (part.kind === "same") beforeLines.push(...part.lines);
-  });
-  return blocks;
-};
-
-/** 前の版の `start` 行目（0 始まり）から続く表の、頭までさかのぼった見出しの行と区切りの行 */
-const tableHeaderOf = (beforeLines: string[], start: number): string[] | null => {
-  let top = start;
-  while (top > 0 && (beforeLines[top - 1] ?? "").startsWith("|")) top -= 1;
-  const header = beforeLines[top];
-  const separator = beforeLines[top + 1];
-  if (header === undefined || separator === undefined) return null;
-  return [header, separator];
 };
 
 /** 図の種類（記法の 1 行目の語）→ 突き合わせの方式 */

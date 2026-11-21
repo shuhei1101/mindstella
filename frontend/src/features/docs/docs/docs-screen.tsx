@@ -66,13 +66,16 @@ export const DocsScreen = ({ drawerOpen, onCloseDrawer }: DocsScreenProps) => (
       return shown.length === 0 && adds.length === 0 ? (
         <p className="text-small text-muted-foreground">該当する資料はありません。別の条件を試してください。</p>
       ) : (
-        <div ref={scrollRef} className="grid grid-cols-3 gap-3 overflow-auto max-xl:grid-cols-2 max-md:grid-cols-1">
+        // カードの列の数は、詳細パネルで狭くなる領域の幅で切り替える
+        <div className="@container flex min-h-0 flex-1 flex-col">
+        <div ref={scrollRef} className="grid grid-cols-3 gap-3 overflow-auto @max-7xl:grid-cols-2 @max-3xl:grid-cols-1">
           {adds.map((item) => (
             <AddedCard key={item.id} item={item} mark={edit?.marks[item.id] ?? "pending"} onOpen={onOpenAdded} />
           ))}
           {orderDocs(shown).map((doc) => (
             <DocCard key={doc.id} doc={doc} inBoard={false} selected={doc.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />
           ))}
+        </div>
         </div>
       );
     }}

@@ -52,9 +52,9 @@ const Tiles = ({ records, threads, visible }: { records: Records; threads: reado
             {records.settings.description}
           </p>
         )}
-        <h1 className="m-0 mt-1.5 text-hero/tight font-bold tracking-tight max-md:text-hero-narrow">{records.settings.summary}</h1>
+        <h1 className="m-0 mt-1.5 text-hero/tight font-bold tracking-tight @max-3xl:text-hero-narrow">{records.settings.summary}</h1>
       </header>
-      <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+      <div className="grid grid-cols-2 gap-4 @max-3xl:grid-cols-1">
         <ListTile
           tileId="tile-unread"
           headingId="h-unread"
@@ -109,8 +109,9 @@ export const OverviewScreen = () => {
   const data = records.data?.status === 200 ? records.data.data : undefined;
   const threadList = threads.data?.status === 200 ? threads.data.data.threads : [];
   return (
-    <main id="main" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pt-7 pb-16 max-md:px-4">
-      <div className="mx-auto w-full max-w-content">{data === undefined ? null : <Tiles records={data} threads={threadList} visible={visible} />}</div>
+    // タイルの並び・文字の大きさ・余白は、詳細パネルで狭くなる領域の幅で切り替える
+    <main id="main" className="@container min-h-0 flex-1 overflow-y-auto overscroll-contain pt-7 pb-16">
+      <div className="mx-auto w-full max-w-content px-8 @max-3xl:px-4">{data === undefined ? null : <Tiles records={data} threads={threadList} visible={visible} />}</div>
     </main>
   );
 };

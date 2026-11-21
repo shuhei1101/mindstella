@@ -82,7 +82,7 @@ def test_new_labeled(open_story: OpenStory) -> None:
 
 
 def test_removed(open_story: OpenStory) -> None:
-    """消したは、新規・変更と違う記号と色で、同じ大きさ。読み上げと `title` に「消した」を持つ（正常系）。"""
+    """削除したは、新規・変更と違う記号と色で、同じ大きさ。読み上げと `title` に「削除した」を持つ（正常系）。"""
     # 準備
     new = _mark(open_story, "new")
     changed = _mark(open_story, "changed")
@@ -91,7 +91,7 @@ def test_removed(open_story: OpenStory) -> None:
     mark = page.locator("#storybook-root > span")
     removed = mark.evaluate(_MARK_JS)
     # 検証
-    expect(mark).to_have_attribute("title", "消した")
+    expect(mark).to_have_attribute("title", "削除した")
     assert removed["drawing"] not in (new["drawing"], changed["drawing"])
     assert removed["color"] not in (new["color"], changed["color"])
     assert removed["width"] == new["width"] == changed["width"]

@@ -22,6 +22,26 @@ const TAG_MATCH_BUTTON: Record<TagMatch, string> = { all: "すべて含む", any
 /** 文字の欄を打ち終えるまで待つミリ秒 */
 const TEXT_DELAY_MS = 250;
 
+/** ドロワーの後ろの本文（`main` の中でドロワーを含まない要素）を操作できなくし、元に戻す関数を返す。トップバーとタブの帯は `main` の外なので操作できる */
+const inertBehind = (drawer: HTMLElement | null): (() => void) => {
+  const main = drawer?.closest("main");
+  if (drawer === null || main === null || main === undefined) return () => undefined;
+  const made: Element[] = [];
+  for (let node: Element = drawer; node !== main; ) {
+    const parent: Element | null = node.parentElement;
+    if (parent === null) break;
+    for (const sibling of parent.children) {
+      if (sibling === node || sibling.hasAttribute("inert") || sibling.hasAttribute("data-scrim")) continue;
+      sibling.setAttribute("inert", "");
+      made.push(sibling);
+    }
+    node = parent;
+  }
+  return () => {
+    for (const element of made) element.removeAttribute("inert");
+  };
+};
+
 export type FilterDrawerProps = {
   groups: FilterGroup[];
   selected: Filters;
@@ -43,13 +63,18 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     root.current?.querySelector("input")?.focus();
+    const released = inertBehind(root.current);
     return () => {
       window.clearTimeout(timer.current);
+      released();
     };
   }, []);
   const filtering = Object.values(selected).some((values) => values.length > 0);
   return (
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- ドロワーが Esc を受ける
+    <>
+    {/* 後ろの画面をトップバーとタブの帯の下からグレーアウトし、押すと閉じる */}
+    <div data-scrim aria-hidden="true" className="fixed inset-x-0 top-below-topbar bottom-0 z-20 bg-foreground/40" onClick={onClose} />
+    {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- ドロワーが Esc を受ける */}
     <div
       ref={root}
       role="dialog"
@@ -158,5 +183,6 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
         </Button>
       </div>
     </div>
+    </>
   );
 };

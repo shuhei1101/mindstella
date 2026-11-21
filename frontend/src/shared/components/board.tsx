@@ -33,7 +33,9 @@ export type BoardProps = {
 };
 
 export const Board = ({ columns, card, emptyText, added, scrollRef }: BoardProps) => (
-  <div ref={scrollRef} className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
+  // 横にスクロールする領域。カードが 0 枚でもキーボードで送れるようにする
+  // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+  <div ref={scrollRef} tabIndex={0} role="region" aria-label="ボード" className="flex min-h-0 flex-1 gap-3 overflow-x-auto px-3 pb-2">
     {columns.map(({ status, items, excluded }) => {
       const adds = added?.(status) ?? [];
       return (

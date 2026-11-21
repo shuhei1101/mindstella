@@ -6,10 +6,11 @@ import { h } from "@/shared/core/dom-parts";
 import { highlightFrameLine } from "@/shared/core/html-frame";
 import { revealHeading } from "@/shared/core/markdown-decorate";
 import { isRendered } from "@/shared/core/minimap";
-import type { Item, Location, RecordIndex } from "@/shared/core/records";
+import { KIND_LABEL, type Item, type Kind, type Location, type RecordIndex } from "@/shared/core/records";
+import { statusMarkElement } from "@/shared/core/status-marks";
 
-/** ツールチップに並べる項目（種類と項目） */
-export type TermTipEntry = { kind: (typeof MARK_KINDS)[number]; item: Item };
+/** ツールチップに並べる項目（種類と項目）。`item` は項目の ID のリンク・ボタンの 1 件で、`itemKind` にその項目の種類を持つ */
+export type TermTipEntry = { kind: (typeof MARK_KINDS)[number]; item: Item } | { kind: "item"; itemKind: Kind; item: Item };
 
 /** 本文の印のツールチップの引数 */
 export type TermTipProps = {
@@ -28,7 +29,7 @@ export type TermTipProps = {
 };
 
 /** 種類ごとの見出しの名前 */
-const KIND_LABELS: Record<TermTipEntry["kind"], string> = { terms: "用語", docs: "資料", research: "調査" };
+const KIND_LABELS: Record<(typeof MARK_KINDS)[number], string> = { terms: "用語", docs: "資料", research: "調査" };
 
 /** 印との間の空きと、画面の端から内側に収める幅（px） */
 const TIP_GAP = 6;
@@ -86,10 +87,22 @@ const groupedContent = (entries: TermTipEntry[]): HTMLElement[] => {
     );
 };
 
+/** 項目の ID のツールチップの中身。1 行目にタイトルと ID、2 行目に種類と状態のマーカー・状態名（状態を持たない種類は種類だけ、取り下げた項目は末尾に「取り下げ」） */
+const itemContent = ({ item, itemKind }: { item: Item; itemKind: Kind }): HTMLElement[] => {
+  const separator = (): HTMLElement => h({ tag: "span", attrs: { "aria-hidden": "true" }, children: ["・"] });
+  const status = item.status === undefined ? [] : [separator(), statusMarkElement(item.status), h({ tag: "span", children: [item.status] })];
+  const withdrawn = item.withdrawn === true ? [separator(), h({ tag: "span", children: ["取り下げ"] })] : [];
+  return [
+    h({ tag: "span", attrs: { class: "tt-head" }, children: [item.title, h({ tag: "span", attrs: { class: "mono" }, children: [item.id] })] }),
+    h({ tag: "span", attrs: { class: "tt-body" }, children: [h({ tag: "span", attrs: { class: "tt-meta" }, children: [KIND_LABEL[itemKind], ...status, ...withdrawn] })] }),
+  ];
+};
+
 /** ツールチップを返す。使う側が文書に入れて `showPopover()` で開く。開くと印の上に置き、上に収まらなければ下に、どちらにも収まらなければ広い側の高さに縮める */
 export const termTip = ({ entries, anchor, pinned = false, on }: TermTipProps): HTMLElement => {
-  // 用語 2 件以上か、資料・調査を含むときは、種類ごとの見出しとリンクで並べる
-  const multi = entries.length > 1 || entries.some((entry) => entry.kind !== "terms");
+  // 用語 2 件以上か、資料・調査を含むときは、種類ごとの見出しとリンクで並べる（項目の ID の 1 件はリンクを持たない）
+  const first = entries[0]!;
+  const multi = first.kind !== "item" && (entries.length > 1 || entries.some((entry) => entry.kind !== "terms"));
   const tip = h({
     tag: "div",
     attrs: {
@@ -100,7 +113,9 @@ export const termTip = ({ entries, anchor, pinned = false, on }: TermTipProps): 
       popover: "manual",
     },
   });
-  if (multi) {
+  if (first.kind === "item") {
+    tip.append(...itemContent(first));
+  } else if (multi) {
     tip.append(...groupedContent(entries));
   } else {
     // 用語 1 件だけに一致した印は、用語・ID・意味だけを出す
@@ -203,6 +218,9 @@ export const scrollToHeading = ({ root, slug }: { root: ParentNode; slug: string
   return true;
 };
 
+/** 項目の ID のリンク（本文）とボタン（スレッドの書き込み） */
+const ITEM_ID_SELECTOR = "a.idref, button.idlink";
+
 /** 本文の印のツールチップを隠すまで待つミリ秒（印からツールチップへポインターを動かす間に消さない） */
 const TIP_HIDE_DELAY_MS = 150;
 
@@ -301,12 +319,18 @@ document.addEventListener(
 export const attachTermTips = ({ root, index, onOpen }: { root: HTMLElement; index: RecordIndex; onOpen: (id: string) => void }): void => {
   /** イベントの先の印と、一致した項目（用語 → 資料 → 調査の順）。用語 2 件以上か、資料・調査を含むか */
   const markOf = (event: Event): { mark: HTMLElement; entries: TermTipEntry[]; multi: boolean } | null => {
+    // 項目の ID のリンク・ボタンは、その項目 1 件のタイトルと状態を出す
+    const idMark = (event.target as Element).closest?.<HTMLElement>(ITEM_ID_SELECTOR) ?? null;
+    if (idMark !== null) {
+      const found = index.byId.get(idMark.getAttribute("data-id") ?? idMark.textContent);
+      return found === undefined ? null : { mark: idMark, entries: [{ kind: "item", itemKind: found.kind, item: found.item }], multi: false };
+    }
     const mark = (event.target as Element).closest?.<HTMLElement>("a.term") ?? null;
     if (mark === null) return null;
     const ids = (mark.getAttribute("data-ids") ?? mark.getAttribute("data-id") ?? "").split(" ");
-    const entries = ids.flatMap((id) => {
+    const entries = ids.flatMap((id): TermTipEntry[] => {
       const found = index.byId.get(id);
-      return found === undefined ? [] : [{ kind: found.kind as TermTipEntry["kind"], item: found.item }];
+      return found === undefined ? [] : [{ kind: found.kind as (typeof MARK_KINDS)[number], item: found.item }];
     });
     return entries.length === 0 ? null : { mark, entries, multi: entries.length > 1 || entries.some((entry) => entry.kind !== "terms") };
   };

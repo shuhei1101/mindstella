@@ -208,6 +208,56 @@ def test_long_narrow(page: Page, open_story: OpenStory) -> None:
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
+# 項目の ID のツールチップの 2 行目（種類と状態）の文字と、間隔
+READ_ITEM_SCRIPT = """() => {
+  const tip = document.getElementById('term-tip');
+  const meta = tip.querySelector('.tt-meta');
+  const parts = [...meta.children].map((e) => e.getBoundingClientRect());
+  const gaps = parts.slice(1).map((r, i) => Math.round(r.left - parts[i].right));
+  return {
+    role: tip.getAttribute('role'),
+    head: tip.querySelector('.tt-head').textContent,
+    meta: meta.textContent,
+    marks: meta.querySelectorAll('svg').length,
+    links: tip.querySelectorAll('a').length,
+    gaps,
+  };
+}"""
+
+
+def test_item_id(open_story: OpenStory) -> None:
+    """本文の項目の ID。1 行目にタイトルと ID、2 行目に種類・状態のマーカー・状態名を出し、役割は tooltip でリンクを持たない（正常系）。"""
+    # 準備・実行
+    page = _open_tip(open_story, "shared-termtip--item-id")
+    # 検証
+    item: dict[str, Any] = page.evaluate(READ_ITEM_SCRIPT)
+    assert item["role"] == "tooltip"
+    assert item["head"] == "保存先の決め方D-3"
+    assert item["meta"] == "検討事項・未決定"
+    assert item["marks"] == 1
+    assert item["links"] == 0
+
+
+def test_item_id_without_status(open_story: OpenStory) -> None:
+    """状態を持たない資料の ID。2 行目は種類だけ（正常系）。"""
+    # 準備・実行
+    page = _open_tip(open_story, "shared-termtip--item-id-without-status")
+    # 検証
+    item: dict[str, Any] = page.evaluate(READ_ITEM_SCRIPT)
+    assert item["meta"] == "資料"
+    assert item["marks"] == 0
+
+
+def test_item_id_withdrawn(open_story: OpenStory) -> None:
+    """取り下げた調査の ID。2 行目の状態の後ろに「取り下げ」を、ほかと同じ間隔で並べる（正常系）。"""
+    # 準備・実行
+    page = _open_tip(open_story, "shared-termtip--item-id-withdrawn")
+    # 検証
+    item: dict[str, Any] = page.evaluate(READ_ITEM_SCRIPT)
+    assert item["meta"] == "調査・完了・取り下げ"
+    assert len(set(item["gaps"])) == 1
+
+
 # 部品設計の状態
 STATES = (
     "shared-termtip--term-only",
@@ -220,6 +270,9 @@ STATES = (
     "shared-termtip--link-focus",
     "shared-termtip--long-narrow",
     "shared-termtip--several-terms",
+    "shared-termtip--item-id",
+    "shared-termtip--item-id-without-status",
+    "shared-termtip--item-id-withdrawn",
 )
 
 

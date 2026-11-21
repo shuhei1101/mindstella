@@ -25,7 +25,7 @@ functions:
     title: 項目の ID のボタン
     kind: 関数
     usecase: スレッドで話す
-    summary: 描いた本文の文字のうち、記録にある項目の ID をその項目を開くボタンにする（コード・リンク・ボタン・図・HTML の本文の枠の中と、記録に無い ID・スレッドの ID は文字のまま）
+    summary: 描いた本文の文字のうち、記録にある項目の ID をその項目を開くボタンにする。ボタンには `title` を付けず、書き込みを描く側が `attachTermTips` で種類 `item` のツールチップを出す（コード・リンク・ボタン・図・HTML の本文の枠の中と、記録に無い ID・スレッドの ID は文字のまま）
     args:
       - name: root
         type: HTMLElement

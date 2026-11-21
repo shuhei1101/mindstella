@@ -147,3 +147,14 @@ export const LongNarrow: Story = {
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
+
+/** 本文の項目の ID（未決定の検討事項 D-3）に乗せた。1 行目にタイトルと ID、2 行目に「検討事項」・状態のマーカー・「未決定」を出し、リンクを持たない */
+export const ItemId: Story = { args: { entries: [{ kind: "item", itemKind: "decisions", item: item({ id: "D-3", title: "保存先の決め方", extra: { status: "未決定" } }) }] } };
+
+/** 状態を持たない資料の ID。2 行目は「資料」だけ */
+export const ItemIdWithoutStatus: Story = { args: { entries: [{ kind: "item", itemKind: "docs", item: item({ id: "A-4", title: "話し合いの進め方の手引き" }) }] } };
+
+/** 取り下げた調査の ID。2 行目の状態の後ろに「取り下げ」を同じ間隔で並べる */
+export const ItemIdWithdrawn: Story = {
+  args: { entries: [{ kind: "item", itemKind: "research", item: item({ id: "R-2", title: "描画の負荷の測り方", extra: { status: "完了", withdrawn: true } }) }] },
+};

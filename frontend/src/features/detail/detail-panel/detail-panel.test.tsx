@@ -39,7 +39,8 @@ describe("DetailPanel", () => {
     // 実行
     renderRoute("/?tab=decisions&id=D-1&diff=V-2");
     // 検証
-    expect(await screen.findByText(/前の行/)).toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: "本文の差分の見せ方" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "描いた結果" })).toHaveAttribute("aria-pressed", "true");
   });
 
   // 本文のスクロール位置へ戻す（正常系）

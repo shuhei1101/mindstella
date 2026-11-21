@@ -1,6 +1,6 @@
 id: MOD-489-140
 title: プレビュー / prefs-store
-lead: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、`localStorage` の `mindmap-preview` のキーで読み書きする（制約「端末の保存領域」。キーは `workspaceKey` で末尾に `:{workspace}` を付ける）。絞り込みの条件と変更履歴で選んだ時点は『screen-state-store』が持つ。
+lead: 表の列・ピン留め・差分のミニマップ・本文の見せ方・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、`localStorage` の `mindmap-preview` のキーで読み書きする（制約「端末の保存領域」。キーは `workspaceKey` で末尾に `:{workspace}` を付ける）。絞り込みの条件と変更履歴で選んだ時点は『screen-state-store』が持つ。
 functions:
   - name: readPrefs
     title: 保存領域の読み取り
@@ -20,7 +20,7 @@ functions:
       - name: test_read_prefs_when_legacy_written
         case: 正常
         summary: 前のバージョンの項目を含む JSON を読める
-        condition: '`mindmap-preview` の形式の JSON（`columns`・`filters`・`diffSel`・`minimap`・`bodyLayout`）に、前のバージョンの項目 `tablePin` を含めたもの'
+        condition: '`mindmap-preview` の形式の JSON（`columns`・`filters`・`diffSel`・`minimap`）に、前のバージョンの項目 `tablePin`・`bodyLayout` を含めたもの'
         mock: '`localStorage`'
         expected: 全ての項目を同じ値で読める
     container: frontend/src/shared/stores/prefs-store.ts
@@ -131,9 +131,6 @@ stores:
       - name: minimap
         type: false | null
         description: 差分のミニマップを表示しない上書き
-      - name: bodyLayout
-        type: '''side'' | null'
-        description: 本文の差分を左右に並べる上書き
       - name: sectionFold
         type: false | null
         description: セクションの折りたたみをオフにする上書き

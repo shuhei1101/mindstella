@@ -107,35 +107,6 @@ functions:
         mock: jsdiff の実物
         expected: 削除した塊と追加した塊
     container: frontend/src/shared/core/diff.ts
-  - name: sideBySideRows
-    title: 左右に並べる行
-    kind: 関数
-    usecase: 前回からの差分を見る
-    summary: 変えていない塊を同じ高さで向かい合わせる行を作る
-    args:
-      - name: before
-        type: string
-        required: true
-        description: 前
-      - name: after
-        type: string
-        required: true
-        description: 後
-      - name: lexer
-        type: MarkedLexer
-        required: true
-        description: marked の lexer
-    returns:
-      type: SideRow[] | null
-      description: 行
-    unit_tests:
-      - name: test_side_by_side_rows
-        case: 正常
-        summary: 変えていない塊を揃える
-        condition: 中ほどの段落を変えた本文
-        mock: marked の実物
-        expected: 変えていない塊が同じ行
-    container: frontend/src/shared/core/diff.ts
   - name: htmlChangedLines
     title: HTML の変わった行
     kind: 関数

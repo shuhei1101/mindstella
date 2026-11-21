@@ -6,7 +6,7 @@ components:
     title: ボード
     kind: コンポーネント
     usecase: タスクをボードで見る
-    summary: 状態ごとの列に `ItemCard` を並べたボード。`onSelectTag` を受けて各カードへ渡し、ボードのスクロール領域に `useListScroll` の ref を付ける
+    summary: 状態ごとの列に `ItemCard` を並べたボード。`onSelectTag` を受けて各カードへ渡し、ボードのスクロール領域に `useListScroll` の ref を付ける。横にスクロールする領域は左右に余白を持ち、`tabIndex={0}`・`aria-label="ボード"` を付けてカードが 0 枚でもキーボードでフォーカス・スクロールできる
     container: frontend/src/shared/components/board.tsx
   - name: ItemCard
     title: 項目のカード

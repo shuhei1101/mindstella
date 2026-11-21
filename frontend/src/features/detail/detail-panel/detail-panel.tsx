@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/components/detail-editor";
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
 import { DetailResizer, PANEL_WIDTH } from "@/features/detail/detail-panel/components/detail-resizer";
-import { BodyView, type BodyLayout } from "@/features/detail/detail-panel/components/body-view";
+import { BodyView } from "@/features/detail/detail-panel/components/body-view";
+import type { BodyDiffView } from "@/shared/components/body-diff-view-switch";
 import { DetailComments, DetailReviewComments } from "@/features/detail/detail-panel/components/detail-comments";
 import { DiffDeadlineContext, KeyDiff, keyDiffs, nextDiffDeadline, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
 import { OptionList } from "@/features/detail/detail-panel/components/option-list";
@@ -31,7 +32,7 @@ import { useRecords } from "@/shared/hooks/use-records";
 import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
-import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
+import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll } from "@/shared/stores/prefs-store";
 import { isEmbedded } from "@/shared/core/embedded";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
@@ -109,7 +110,7 @@ const Meta = ({ item, keys, onSelectTag }: { item: Item; keys: KeyDiffs | null; 
   );
 };
 
-/** 本文の差分の並べ方・本文の見せ方（端末の上書き） */
+/** 本文の見せ方（端末の上書き） */
 const bodyDisplayOf = (): BodyDisplay => {
   const prefs = readPrefs();
   return { fold: prefs.sectionFold !== false };
@@ -131,7 +132,9 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const add = useAddEdit();
   const cancel = useCancelEdit();
   const [editing, setEditing] = useState(false);
-  const [layout, setLayout] = useState<BodyLayout>(() => (readPrefs().bodyLayout === "side" ? "side" : "inline"));
+  // 本文の差分の見せ方。開いた項目ごとに「描いた結果」から始め、選んだ回数で押し直しを描き直す
+  const [diffView, setDiffView] = useState<{ id: string; view: BodyDiffView; nonce: number }>({ id, view: "rendered", nonce: 0 });
+  const view = diffView.id === id ? diffView.view : "rendered";
   const [diagram, setDiagram] = useState<Omit<DiagramViewerProps, "onClose"> | null>(null);
   const blockedEdits = useEditSessionStore((state) => state.blocked);
   // 語の差分の打ち切りの時刻は、描き直す項目と時点ごとに 1 つ
@@ -184,7 +187,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const source = diff?.body ?? index.data.bodies[item.body ?? ""];
   const body = (label: string) =>
     source === undefined ? null : (
-      <BodyView label={label} item={entry.item} id={id} index={index} source={source} versions={diff?.versions ?? null} layout={layout} display={display} heading={search.h} deadline={deadline} onOpen={openItem} onHeading={setHeading} onChangeSet={setDiff} onLayout={(next) => { setLayout(next); writePrefs({ bodyLayout: next === "side" ? "side" : null }); }} onDiagram={({ svg, ...figure }) => { setDiagram({ ...figure, svg: svg.outerHTML }); }} />
+      <BodyView label={label} item={entry.item} id={id} index={index} source={source} versions={diff?.versions ?? null} view={view} viewNonce={diffView.nonce} display={display} heading={search.h} onOpen={openItem} onHeading={setHeading} onChangeSet={setDiff} onView={(next) => { setDiffView((previous) => ({ id, view: next, nonce: previous.nonce + 1 })); }} onDiagram={({ svg, ...figure }) => { setDiagram({ ...figure, svg: svg.outerHTML }); }} />
     );
   const relation = (label: string, ids: readonly string[]) => <RelatedList label={label} ids={ids} index={index} onOpen={openItem} />;
   const list = (label: string, name: string, values: readonly string[] | undefined) =>
@@ -271,7 +274,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   return (
     <DiffDeadlineContext.Provider value={deadline}>
       <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
-      <DiffMinimap shown={diff !== null && prefs.minimap !== false} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
+      <DiffMinimap shown={diff !== null && prefs.minimap !== false && view !== "source"} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
           <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
         ) : (
@@ -312,7 +315,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
             {relation("参照元", related.referencedBy)}
             {embedded ? null : (
-              <DetailReviewComments id={id} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
+              <DetailReviewComments id={id} index={index} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
             )}
           </div>
         )}

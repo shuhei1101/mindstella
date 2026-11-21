@@ -6,7 +6,7 @@ functions:
     title: 本文のマーカーのツールチップ
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 本文のマーカーのツールチップと、見出しへの送り・示す箇所
+    summary: 本文のマーカーのツールチップと、見出しへの送り・示す箇所。項目の ID のリンク（`a.idref`）と書き込みの項目の ID のボタンにも、乗せる・フォーカスしたときに部品『本文のマーカーのツールチップ』の種類 `item`（タイトル・ID・種類・状態）を出し、`aria-describedby` でツールチップを指す
     args: []
     returns:
       type: unknown

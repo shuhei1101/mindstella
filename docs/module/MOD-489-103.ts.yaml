@@ -1,14 +1,40 @@
 id: MOD-489-103
 title: プレビュー / body-render
-lead: 本文の差分の描画（追加した・削除した塊・語の面・図の差分）。
+lead: 本文の差分の図の色付けと、行の差分の描画。
 functions:
-  - name: renderBodyDiff
-    title: 本文の差分の描画
+  - name: decorateDiagrams
+    title: 図の差分
     kind: 関数
     usecase: 前回からの差分を見る
-    summary: 本文の差分の描画（追加した・削除した塊・語の面・図の差分）
-    args: []
+    summary: 描いた本文の図のうち、選んだ時点の本文から変わった図のノードと線を色分けする
+    args:
+      - name: root
+        type: HTMLElement
+        required: true
+        description: 描いた本文
+      - name: before
+        type: string
+        required: true
+        description: 選んだ時点の本文
     returns:
-      type: unknown
-      description: 処理の結果
+      type: void
+      description: なし
+    container: frontend/src/shared/core/body-render.ts
+  - name: rawDiffLines
+    title: 原文の行の差分
+    kind: 関数
+    usecase: 前回からの差分を見る
+    summary: 行の差分の塊を、削除した行と追加した行の要素にする（HTML の本文の差分と図の拡大で使う）
+    args:
+      - name: parts
+        type: LinePart[]
+        required: true
+        description: 行の差分の塊
+      - name: deadline
+        type: number
+        required: true
+        description: 打ち切る時刻
+    returns:
+      type: HTMLElement[]
+      description: 行の要素
     container: frontend/src/shared/core/body-render.ts

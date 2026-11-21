@@ -1,0 +1,139 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: changed
+    detail: 本文の差分を mdmark の色分けと「原文の差分」で見る。使用しない左右に並べる表示のシナリオを削除する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 本文の項目の ID にカーソルを合わせるかフォーカスすると、その項目のタイトルと状態が出る。スマホの幅では全画面表示のボタンが出ない。本文を mdmark の印刷で印刷できる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: run_only
+    detail: ドロワーを開いている間のグレーアウトは記載済みで、記述は変わらない。グレーアウトと後ろを操作できないことを足す実装が壊しうる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-25.yaml
+    impact: run_only
+    detail: 概要の並びがページの領域の幅で 1 列に切り替わる。シナリオの記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-6.yaml
+    impact: run_only
+    detail: ボードの左右の余白とキーボードでの移動が変わる。シナリオの記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: run_only
+    detail: 資料のカードの見出しのレベルとボードの余白が変わり、カード表示の列の数が画面の領域の幅で切り替わる。シナリオの記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: run_only
+    detail: コメントの一覧のピン止めの解除の状態のアイコンが変わる。シナリオの記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: changed
+    detail: 表示の設定の端末の上書きから、削除する本文の差分の並べ方を外す
+    depends_on:
+      - docs/scenario/SC-489-18.yaml
+docs:
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: '#488: タイトル直下の 1 行を docs/guide/index.yaml の summary と同じ文言にする'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: docs/guide/コアコンセプト-話し合いの進め方.md
+    new: false
+    change: '#488: 同上'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: docs/guide/話し合い-セットアップから始める.md
+    new: false
+    change: '#488: 同上'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: '#488: 同上'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: '#488: 同上。#347・#147 で変わる差分・印刷・項目の ID のツールチップの操作の記載も合わせる'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:22:07.579470+00:00'
+  - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
+    new: false
+    change: '#488: タイトル直下の 1 行を docs/guide/index.yaml の summary と同じ文言にする'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: docs/guide/セットアップ手順-スクリプトの依存を入れる.md
+    new: false
+    change: '#488: 同上'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: '#488: 同上'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: '#488: 同上'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: '#488: 同上'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: plugins/mindstella/files.yml
+    new: false
+    change: '#636: v0.14.0 の変換のスクリプト markdown_bodies_to_mark_md.py・move_bodies_to_root.py の行（name・description・tags・related の implements）を追加する'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: docs/mock/components/topbar/frame.html
+    new: false
+    change: '#634: components/topbar.js を読み込むモック 15 件（このファイルと docs/mock/pages/*/325/*/index.html の 14 件）を、要件.mark.md の未確定で決まった案で修正する（推奨は削除。削除する場合は docs/mock/ の目次と files.yml の行も削除する）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+  - page: docs/mock/components/body-diff-layout/index.html
+    change: '#347: 削除した部品『本文の差分の並べ方の切り替え』の部品のモックを削除し、docs/mock/components/index.md と files.yml の行も削除する'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:37.566747+00:00'
+scope_out:
+  - item: '#548: 図を持たない本文を開いたときも mermaid を読み始める点'
+    reason: '#548 の受付の判断で、本文の問題（初期化が mermaid を待つ）に含まれないとして扱わないと決めた'
+    plan: none
+  - item: '#647 の本文にある test_markdown_body_stories.py の 4 件の fail'
+    reason: '#647 の受付の判断で #639 へ移した（はみ出す表の既定の決定に合わせる）'
+    plan: '#639'
+  - item: '#347: mdmark の差分に左右に並べる見せ方を追加する'
+    reason: ユーザーが mdmark への依頼だけを指示し、この作業 PR には含めないと決めた（確認ログ）
+    plan: shuhei1101/mdmark#783
+  - item: '#347: 「原文の差分」で mdmark が出す「変更表示」のボタンとリビジョンの欄を出さないようにする'
+    reason: 'ユーザーがこの作業 PR では出したまま入れると決めた（確認ログ）。mdmark への指定の追加は shuhei1101/mdmark#784、入った後に有効にするのは #668'
+    plan: '#668'
+  - item: '#347: 差分のブロックで、追加した箇条書きの項目の `+` が行より下にずれる'
+    reason: '記号は mdmark が描き、利用側から位置を変える手段が無い（画面の CSS での上書きは #591 の方針に反する）。レビューの合意（案 A）で mdmark へ起票した'
+    plan: shuhei1101/mdmark#786
+  - item: tests/integration/preview/test_spa_open.py の test_normal_when_exported_offline・test_normal_when_exported_read_only が fail する（export が jsDelivr の mdmark@9d4883b5 の dist/THIRD_PARTY_LICENSES.txt を取れず 403）
+    reason: この作業 PR が変えていない配る書き出し（export）が読む mdmark の配布ファイルを配信元が返さない。対象外の不具合として記録する
+    plan: '#672'

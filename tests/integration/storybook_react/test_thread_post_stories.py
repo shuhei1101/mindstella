@@ -41,7 +41,8 @@ def test_user_post(open_story: OpenStory) -> None:
     assert page.get_attribute(POST, "data-author") == "user"
     assert page.inner_text(f"{POST} [data-part=body]").startswith("D-12 は案 B にしたい")
     # 本文の中の記録にある ID は、その項目を開くボタンにする
-    assert page.get_attribute(f"{POST} button.idlink", "title") == "移し替えが途中で失敗したときの扱い"
+    assert page.get_attribute(f"{POST} button.idlink", "title") is None
+    assert page.get_attribute(f"{POST} button.idlink", "aria-describedby") == "term-tip"
     box = page.locator(POST).bounding_box()
     assert box is not None
     assert box["x"] + box["width"] >= page.evaluate("innerWidth") * 0.5
@@ -85,7 +86,8 @@ def test_markdown_post(open_story: OpenStory) -> None:
     assert "```" not in text
     assert "[!NOTE]" not in text
     # 検証（段落の中の D-1 は項目を開くボタン）
-    assert page.get_attribute(f"{body} > .md > p button.idlink", "title") == "描画のライブラリ"
+    assert page.get_attribute(f"{body} > .md > p button.idlink", "title") is None
+    assert page.get_attribute(f"{body} > .md > p button.idlink", "aria-describedby") == "term-tip"
     # 検証（生の HTML の `onerror` は取り除かれて動かない）
     assert page.locator(f"{body} [onerror]").count() == 0
     assert page.evaluate("window.injected !== true")
@@ -166,7 +168,8 @@ def test_pending(open_story: OpenStory) -> None:
     assert page.eval_on_selector(POST, "e => getComputedStyle(e).borderTopStyle") == "dashed"
     assert page.get_by_role("button", name="TH-1 への返信を修正").count() == 1
     assert page.get_by_role("button", name="TH-1 への返信を削除").count() == 1
-    assert page.get_attribute(f"{POST} button.idlink", "title") == "移し替えの失敗の扱いを書く"
+    assert page.get_attribute(f"{POST} button.idlink", "title") is None
+    assert page.get_attribute(f"{POST} button.idlink", "aria-describedby") == "term-tip"
 
 
 def test_pending_editing(open_story: OpenStory) -> None:
