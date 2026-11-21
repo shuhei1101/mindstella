@@ -77,7 +77,17 @@ args:
     default: all
     choices: all・any
     description: タグの列の組み合わせ方。all は選んだタグを全て持つ行、any はどれかを持つ行を出す。チップ（部品『絞り込みの条件のチップ』）へそのまま渡す
+  - name: tagExprText
+    type: 文字列
+    required: false
+    default: なし（タグの条件の式のチップを出さない）
+    description: '簡易で表せないタグの条件の式を文にしたもの。チップ（部品『絞り込みの条件のチップ』）へそのまま渡し、先頭に「タグ: {文}」のチップを出す。式に合う行は使う側が `rows` に絞って渡す'
+    enabled_when: '`onClearTagExpr` を渡したとき'
 events:
+  - name: タグの条件の式の解除
+    when: チップの、タグの条件の式のチップの × か「すべて解除」を押したとき
+    value: '`onClearTagExpr()`'
+    description: 使う側がタグの条件を解除して表と絞り込みのドロワーを再描画する
   - name: 並べ替え
     when: 見出しの文字を押したとき
     value: '`onSort(key)`（引数は key）'
@@ -175,6 +185,11 @@ states:
         value: '{"tags": ["画面", "保存"]}'
       - name: tagMatch
         value: any
+  - name: TagExpr
+    description: '簡易で表せないタグの条件（「画面」を含み「廃止」を含まない）で絞った行を受けた。チップの先頭に「タグ: 「画面」を含む かつ 「廃止」を含まない」を出す'
+    args:
+      - name: tagExprText
+        value: '「画面」を含む かつ 「廃止」を含まない'
   - name: SelectableTags
     description: タグの列のタグを押せる。タグを押すと `onSelectTag` だけが呼ばれ、行のタイトルを押したときだけ詳細を開く
 accessibility:

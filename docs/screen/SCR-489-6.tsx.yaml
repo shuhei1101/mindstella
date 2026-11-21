@@ -106,7 +106,11 @@ elements:
       - name: tagMatch
         value: プレビューを開く.tagmatch（無ければ all）
       - name: onSelectTag
-        value: そのタグを f.tags に加えて履歴に 1 つ積む（既にあれば何もしない）
+        value: そのタグを f.tags に加えて履歴に 1 つ積む（既にあれば何もしない。tx で絞っているときは『プレビューを開く』の制約「タグを押して絞り込む」のとおり tx に加える）
+      - name: tagExprText
+        value: プレビューを開く.tx があるとき、その式を文にしたもの
+      - name: onClearTagExpr
+        value: タグの条件を解除する（tx を外す）
     description: タスクの表
     visible_when: 表示形式が表
   - name: ボードの差分のマーカー
