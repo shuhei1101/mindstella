@@ -1,4 +1,4 @@
-// HTML の本文の枠（今の画面の `components/html-body-frame.ts` と同じ振る舞い）。枠の文書に手を入れる
+// HTML の本文の枠。枠の文書に手を入れる
 import { HTML_LINE_ATTR, htmlLinkAction, htmlSelectionLocation } from "@/shared/core/body-links";
 import { h } from "@/shared/core/dom-parts";
 

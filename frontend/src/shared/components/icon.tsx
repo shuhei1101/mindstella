@@ -1,4 +1,4 @@
-// 24px の枠に描いた線のアイコンと、状態の 10px の印（今の画面の `core/dom.ts` と同じ絵）
+// 24px の枠に描いた線のアイコンと、状態の 10px の印
 import type { ReactNode } from "react";
 
 import { cn } from "@/shared/lib/cn";

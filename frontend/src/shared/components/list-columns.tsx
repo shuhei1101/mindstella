@@ -1,4 +1,4 @@
-// 一覧の表の共通の列（今の画面の `commonColumns` と同じ並び）
+// 一覧の表の共通の列
 import { StatusMark } from "@/shared/components/icon";
 import type { Row, TableColumn } from "@/shared/components/table";
 import { TagList } from "@/shared/components/tag-list";

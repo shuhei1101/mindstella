@@ -1,4 +1,4 @@
-// コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` と同じ振る舞い）
+// コメントの一覧・スレッド・レビュー中の書き込みの計算
 import type { Location } from "@/shared/core/records";
 
 /** スレッドの書き込み 1 件（`GET /api/threads` の `threads[].posts[]`） */

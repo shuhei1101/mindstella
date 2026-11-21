@@ -1,4 +1,4 @@
-// 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並び・詳細のコメントの入力の開閉・「レビューに追加」の後のフォーカスを、今の画面と同じ `localStorage` のキーで読み書きする（インターフェース定義『SPAを開く』の制約「端末の保存領域」）
+// 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並び・詳細のコメントの入力の開閉・「レビューに追加」の後のフォーカスを、`localStorage` のキーで読み書きする（インターフェース定義『SPAを開く』の制約「端末の保存領域」）
 import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 
@@ -11,7 +11,7 @@ import { PREFS_KEY } from "@/shared/stores/theme-store";
 /** 種類ごとの表示する列とピン留め */
 export type TablePrefs = { hidden: string[]; pinTo: string | null };
 
-/** 移す画面が読み書きする、今の画面の `Prefs` の項目 */
+/** 画面が読み書きする `mindmap-preview` の値の項目 */
 export type Prefs = {
   columns?: Record<string, TablePrefs>;
   filters?: Record<string, Filters>;
@@ -27,7 +27,7 @@ export type Prefs = {
   focusAfterAdd?: "input" | "none" | null;
 };
 
-/** 詳細の本文をスクロールした位置を残す sessionStorage のキー（今の画面と同じ） */
+/** 詳細の本文をスクロールした位置を残す sessionStorage のキー */
 export const BODY_SCROLL_KEY = "mindmap-body-scroll";
 
 /** そのタブで詳細の本文をスクロールした位置を読む（項目の ID → 位置。0 以上の数だけを返す） */

@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
-// 描いた本文の加工（行の印・図と HTML の入れ物・見出しと本文の印・選んだ範囲の箇所・図の描画）。今の画面の `core/libs.ts` と同じ振る舞い
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- 正規表現の捕捉と描いた直後の要素を指す */
+// 描いた本文の加工（行の印・図と HTML の入れ物・見出しと本文の印・選んだ範囲の箇所・図の描画）
 import { getLibrary, libraryState, mdmarkMapConfig } from "@/shared/adapters/libraries";
 import { h, markupIcon } from "@/shared/core/dom-parts";
 import type { Location, RecordIndex } from "@/shared/core/records";
@@ -629,7 +629,7 @@ export const linkBody = ({
   selfId: string;
   onOpen: (id: string) => void;
   source: string;
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 }): void => {
   // 語 → 一致した項目の ID（用語 → 資料 → 調査の順）。項目自身・取り下げた資料と調査・空の語は当てない
   const byWord = new Map<string, string[]>();

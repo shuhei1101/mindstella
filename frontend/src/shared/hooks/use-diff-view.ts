@@ -8,7 +8,7 @@ import { useRecords } from "@/shared/hooks/use-records";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { usePrefs } from "@/shared/stores/prefs-store";
 
-/** そのタブの「前回開いてから」の始まりを残す sessionStorage のキー（今の画面と同じ） */
+/** そのタブの「前回開いてから」の始まりを残す sessionStorage のキー */
 export const OPENED_SESSION_KEY = "mindmap-preview-opened";
 
 /** 差分の表示 */

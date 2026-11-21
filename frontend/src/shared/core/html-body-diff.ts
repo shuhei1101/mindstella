@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
-// HTML の本文の差分（今の画面の `components/html-body-diff.ts` と同じ振る舞い）
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- 正規表現の捕捉と描いた直後の要素を指す */
+// HTML の本文の差分
 import { getLibrary } from "@/shared/adapters/libraries";
 import { headingShift, lowerHeadings, rawDiffLines } from "@/shared/core/body-render";
 import { renderMarkdown } from "@/shared/core/body-links";
@@ -91,7 +91,7 @@ const rawSideDiff = ({ parts }: { parts: LinePart[] }): HTMLElement => {
     }
   };
   const sameLines = (lines: string[]): HTMLElement[] => rawDiffLines({ parts: [{ kind: "same", lines }], deadline });
-  // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
   parts.forEach((part, position) => {
     if (part.kind === "same") {
       // 変わっていない長い並びは、前後の 3 行を残して件数の行にする

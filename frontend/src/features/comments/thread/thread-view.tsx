@@ -31,7 +31,7 @@ export type ThreadViewProps = {
 /** 失敗の理由（届かなければ null） */
 const detailOf = (error: unknown): string | null => (error instanceof AppError ? error.message : null);
 
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: ThreadViewProps) => {
   const { threads, items, drafts, titles, changeSets } = data;
   const thread = threads.find((one) => one.id === id) ?? null;

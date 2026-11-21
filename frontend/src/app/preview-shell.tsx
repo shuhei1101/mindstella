@@ -48,7 +48,7 @@ const isRecordKind = (tab: string): tab is RecordKind => ["research", "terms", "
 /** 保存の通知を出しておくミリ秒 */
 const SAVED_NOTICE_MS = 5000;
 
-/** 「ワークスペースの既定が変わりました。」を出しておくミリ秒（今の画面の `NOTICE_MS` と同じ） */
+/** 「ワークスペースの既定が変わりました。」を出しておくミリ秒 */
 const DISPLAY_NOTICE_MS = 6000;
 
 const RecordsError = ({ error }: { error: Error }) => (
@@ -115,7 +115,7 @@ const useVoiceTopbar = ({ exists, openVoiceInput }: { exists: ((destination: Voi
   };
 };
 
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const PreviewShell = () => {
   const { search, setTab, openItem, openList, setDiff, setPanel, replaceSearch, setSearch, openFromSearch, openVoiceInput } = usePreviewSearch();
   const records = useQuery(recordsQuery());

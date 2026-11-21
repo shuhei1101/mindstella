@@ -1,4 +1,4 @@
-// 記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い）
+// 記録の型・索引・関係する項目
 import type { MdmarkSettings } from "@/shared/adapters/libraries";
 export type Location = { kind: "body" | "value"; start?: number; end?: number; key?: string; text: string };
 
@@ -381,7 +381,7 @@ const searchableText = (item: Item, bodies: Record<string, string>): string => {
 };
 
 /** 空白で区切った語を全て含む項目を、段（完全に一致 → タイトルに一致 → ほかの所に一致）の順に返す（大文字・小文字と前後の空白を区別しない） */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const searchItems = ({ query, index }: { query: string; index: RecordIndex }): SearchHit[] => {
   const whole = query.trim().toLowerCase();
   const terms = whole.split(/\s+/).filter(Boolean);

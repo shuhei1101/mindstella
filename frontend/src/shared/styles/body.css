@@ -1,4 +1,4 @@
-/* mdmark が描いた本文と差分の DOM に当てるスタイル。React の外で作る要素なので、今の画面の style.css の規則をトークンの名前に写して持つ */
+/* mdmark が描いた本文と差分の DOM に当てるスタイル。React の外で作る要素なので、規則をトークンの名前で持つ */
 :root {
   --df-add: var(--st-done);
   --df-del: var(--st-review);
@@ -250,7 +250,7 @@ text.df-t-chg { font-weight: 700 !important; }
 .md a.term:hover, .md a.term:focus-visible { text-decoration-color: var(--mark); background: var(--mark-weak); border-radius: 2px; }
 .md a.idref { white-space: nowrap; overflow-wrap: normal; font-family: var(--font-stack-mono); font-size: .92em; color: var(--mark); text-decoration: underline; text-decoration-color: var(--mark-line); text-underline-offset: 3px; }
 .md a.idref:hover { text-decoration-color: var(--mark); }
-/* 書き込みの本文の中の項目の ID を開くボタンと、まとまりのリンク（今の画面の `.idlink`・`a.setlink` と同じ） */
+/* 書き込みの本文の中の項目の ID を開くボタンと、まとまりのリンク */
 .idlink { display: inline-flex; align-items: center; justify-content: center; min-inline-size: var(--target-min); min-block-size: var(--target-min); margin: 0 2px; padding: 0 4px; border: 1px solid var(--border-soft); border-radius: 3px; background: var(--card); color: var(--foreground); font-family: var(--font-stack-mono); font-size: 11.5px; line-height: 1; vertical-align: middle; cursor: pointer; }
 .idlink:hover { border-color: var(--mark); color: var(--mark); }
 .md a.setlink { color: var(--mark); text-decoration: underline; cursor: pointer; }

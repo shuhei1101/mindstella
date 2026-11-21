@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
-// 本文の印のツールチップ（今の画面の `components/term-tip.ts`・`screens/detail.ts` の本文の印と同じ振る舞い）
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- 正規表現の捕捉と描いた直後の要素を指す */
+// 本文の印のツールチップ
 import { HTML_BODY_ATTR } from "@/shared/core/body-render";
 import { hashWith, LINE_ATTR, MARK_KINDS, TERM_TIP_ID, VALUE_KEY_ATTR } from "@/shared/core/body-links";
 import { h } from "@/shared/core/dom-parts";

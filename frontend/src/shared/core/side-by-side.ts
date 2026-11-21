@@ -1,4 +1,4 @@
-// 左右に並べた本文の差分（今の画面の `components/side-by-side-body-diff.ts` と同じ振る舞い）
+// 左右に並べた本文の差分
 import { getLibrary } from "@/shared/adapters/libraries";
 import { DIAGRAM_SOURCE_ATTR, LINE_ATTR, renderMarkdown } from "@/shared/core/body-links";
 import { blockOwners, decorateDiagram, diffBlock, headingShift, lowerHeadings, markWords, signMarks, withoutLineMarks, wordBlocksIn, type WordPair } from "@/shared/core/body-render";
@@ -108,7 +108,7 @@ const alignSideRows = (wrapper: HTMLElement): void => {
 };
 
 /** 前後の本文を、左に選んだ時点・右に今を描いて並べる。行の差分を打ち切ったら null */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const sideBySideBodyDiff = ({ before, after, lined = true, deadline }: SideBySideBodyDiffProps): SideBySideBodyDiff | null => {
   const rows = sideBySideRows({ before, after, lexer: lexerOf(), jsdiff: jsdiffOf() });
   if (rows === null) return null;

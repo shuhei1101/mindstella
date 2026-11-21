@@ -72,7 +72,7 @@ export const flattenSearch = ({ f, ...rest }: PreviewSearch): Record<string, str
   ...Object.fromEntries(Object.entries(f).map(([key, value]) => [`${F_PREFIX}${key}`, value])),
 });
 
-/** URL の search の文字列を読む。値は全て文字列のまま扱う（今の画面のハッシュと同じ値にするため、JSON として読まない）。`f.{列}` は `f` に集め、`f` の置き換えで外せるようにする */
+/** URL の search の文字列を読む。値は全て文字列のまま扱う（JSON として読まない）。`f.{列}` は `f` に集め、`f` の置き換えで外せるようにする */
 export const parseSearchString = (text: string): Record<string, unknown> => {
   const { f, rest } = collectFilters(Object.fromEntries(new URLSearchParams(text)));
   return Object.keys(f).length === 0 ? rest : { ...rest, f };
@@ -94,7 +94,7 @@ const diffExists = (diff: string, index: RecordIndex): boolean => {
 };
 
 /** 記録・画面に合わない値を外す */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const normalizeSearch = (search: PreviewSearch, context: SearchContext): PreviewSearch => {
   const { index, pendingCount, visibleKinds, diffActive, sortColumns, threadIds, threadTags } = context;
   const next: PreviewSearch = { ...search };

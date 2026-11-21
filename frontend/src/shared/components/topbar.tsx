@@ -108,7 +108,7 @@ const formatJst = (iso: string): string => {
 /** 検索のキーの案内（macOS は ⌘K） */
 const searchKey = (): string => (/Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘K" : "Ctrl+K");
 
-/** 幅で詰め方を切り替える条件（今の画面の style.css の `:has()` の条件と同じ） */
+/** 幅で詰め方を切り替える条件 */
 type Fit = {
   offline: boolean;
   diff: boolean;

@@ -224,7 +224,7 @@ files:
     type: implements
 - path: src/shared/components/icon.tsx
   name: React のアイコンと状態のマーカー
-  description: 24px の枠に描いた線のアイコンと、状態の 10px のマーカー（今の画面の `core/dom.ts` と同じ絵）。アイコンや状態のマーカーの絵を追加・変更するときに読む。
+  description: 24px の枠に描いた線のアイコンと、状態の 10px のマーカー。アイコンや状態のマーカーの絵を追加・変更するときに読む。
   tags:
   - tool:react
   - tool:svg
@@ -364,7 +364,7 @@ files:
     type: tests
 - path: src/shared/stores/theme-store.ts
   name: ライト / ダークのストア
-  description: ライト / ダークを、今の画面と同じ端末の保存領域のキーで読み書きする。テーマの保存と切り替えを変更するときに読む。
+  description: ライト / ダークを、端末の保存領域のキーで読み書きする。テーマの保存と切り替えを変更するときに読む。
   tags:
   - tool:zustand
   - topic:ダークモード
@@ -1562,8 +1562,8 @@ files:
   - to: MOD-489-170
     type: tests
 - path: src/shared/stores/prefs-store.ts
-  name: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localSt
-  description: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localSt。
+  name: 表示の個人の上書きのストア
+  description: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止めを、端末の保存領域の `mindmap-preview` のキーで読み書きする。個人の表示の上書きを変更するときに読む。
   tags:
   - tool:react
   related:

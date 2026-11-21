@@ -116,7 +116,7 @@ const bodyDisplayOf = (): BodyDisplay => {
 export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string };
 
 /** 見出しと本文。パネルと全画面が共通で使う */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
   const { search, openItem, closeItem, setFull, setHeading, setDiff } = usePreviewSearch();
   const { point } = useDiffView();
@@ -318,7 +318,7 @@ const KeyLead = ({ name, value, keys }: { name: string; value: string | undefine
   );
 };
 
-/** そのタブで変えた幅を残す sessionStorage のキー（今の画面と同じ） */
+/** そのタブで変えた幅を残す sessionStorage のキー */
 const PANEL_WIDTH_KEY = "mindmap-panel-width";
 
 const readPanelWidth = (): number => {

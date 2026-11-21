@@ -1,4 +1,4 @@
-// スレッドの書き込みとレビュー中の書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける（今の画面の `components/thread-post.ts` と同じ振る舞い）
+// スレッドの書き込みとレビュー中の書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける
 import { HTML_BLOCK_CLASS } from "@/shared/core/body-links";
 
 /** 本文の中の項目の ID（例 D-1・T-12・A-3） */

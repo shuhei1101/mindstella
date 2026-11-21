@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
-// 本文の差分の描画（今の画面の `screens/detail.ts` の本文の差分と同じ振る舞い）。mdmark が描いた React の外の DOM に手を入れる
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- 正規表現の捕捉と描いた直後の要素を指す */
+// 本文の差分の描画。mdmark が描いた React の外の DOM に手を入れる
 import { getLibrary } from "@/shared/adapters/libraries";
 import { CODE_BLOCK_ATTRS, DIAGRAM_SOURCE_ATTR, embeddedHtmlRanges, EMBEDDED_HTML_CLASS, HTML_BLOCK_CLASS, LINE_ATTR, renderDiagramSvg, renderMarkdown, MDMARK_TABLE_CLASS } from "@/shared/core/body-links";
 import { childMarks, COLORED_DIAGRAM_TYPES, diffDiagram, diffDiagramFromSource, diffInline, diffLineParts, LINE_DIFF_TIMEOUT_MS, pairedParts, pairEmbeddedHtml, placeRemovedBlocks, type DiagramDiff, type InlineDiff, type InlinePart, type JsDiff, type LinePart, type RemovedBlock } from "@/shared/core/diff";
@@ -160,7 +160,7 @@ const renderRemoved = (block: RemovedBlock): HTMLElement => {
 type RenderedRemoved = { block: RemovedBlock; rendered: HTMLElement };
 
 /** 描いた消した行のかたまりを、今の本文の差し込む場所の前（無ければ本文の最後）へ差し込む。かたまりごとに、差し込んだ語の面を付ける対象のブロックを返す */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 const insertRemovedBlocks = ({ root, blocks }: { root: HTMLElement; blocks: RenderedRemoved[] }): HTMLElement[][] => {
   // 差し込む前の、行の印を持つ今のブロック（差し込む要素は印を持たない）
   const stamped = [...root.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)];
@@ -321,7 +321,7 @@ const wordMark = ({ mark, text }: { mark: "add" | "del"; text: string }): HTMLEl
 };
 
 /** 文字のノードの並びのうち、語の差分の足した・消した部分を面の要素で囲む（ノードをまたぐ部分はノードごとに囲み、ノードの外の要素は分けない） */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 const wrapWords = ({ nodes, parts, mark }: { nodes: Text[]; parts: InlinePart[]; mark: "add" | "del" }): void => {
   // 同じでない部分の、文字の頭からの範囲
   const ranges: { start: number; end: number }[] = [];
@@ -366,7 +366,7 @@ export const markWords = ({ pair, deadline }: { pair: WordPair; deadline: number
 type BodyDiff = { root: HTMLElement; markWords: () => void };
 
 /** 埋め込んだ HTML の範囲の中の行の差分を、本文の行の差分から外す（範囲の差分は範囲ごとの部品が出す）。前の版の範囲の中の消した行は落とし、今の範囲の中の足した行は変えていない行にして、今の本文の行の数は変えない */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 const withoutEmbeddedHtmlEdits = ({ parts, before, after }: { parts: LinePart[]; before: string; after: string }): LinePart[] => {
   /** 範囲の印の行を含む、範囲の中の行（1 始まり） */
   const linesInRanges = (source: string): Set<number> => {

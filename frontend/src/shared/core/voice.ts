@@ -1,10 +1,10 @@
-// コメント・返信の入力の録音と、カーソルの位置への挿入（今の画面の `core/voice.ts` と同じ振る舞い）
+// コメント・返信の入力の録音と、カーソルの位置への挿入
 import type { VoiceDestination } from "@/shared/stores/voice-store";
 
-/** `MediaRecorder.isTypeSupported` が真の最初の形で録る（今の画面と同じ並び） */
+/** `MediaRecorder.isTypeSupported` が真の最初の形で録る */
 export const VOICE_MIME_TYPES = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"] as const;
 
-/** サーバーが返さない理由の文（今の画面の `VOICE_TEXT` と同じ文） */
+/** サーバーが返さない理由の文 */
 export const VOICE_TEXT = {
   noMicrophone: "このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。",
   denied: "マイクを使用できませんでした。ブラウザの設定でこのページのマイクを許可してください。",
