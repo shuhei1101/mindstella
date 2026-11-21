@@ -1,0 +1,15 @@
+$ npx vitest run
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-decisions-bulk-answer-and-filter-presets
+
+
+ Test Files  86 passed (86)
+      Tests  409 passed (409)
+   Start at  01:13:44
+   Duration  24.21s (environment 44%, tests 28%, import 14%, setup 8%, transform 5%)
+
+Environment  jsdom was created 86 times · 67.58s total, 44% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+vitest exit 0
