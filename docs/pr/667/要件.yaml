@@ -1,0 +1,94 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: changed
+    detail: 本文の差分を mdmark の差分で見る。差分の見せ方（インライン・左右に並べる・ミニマップ・HTML の本文）の記載を mdmark の機能に合わせる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 本文の項目の ID にカーソルを合わせるかフォーカスすると、その項目のタイトルと状態が出る。スマホの幅では全画面表示のボタンが出ない。本文を mdmark の印刷で印刷できる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: run_only
+    detail: ドロワーを開いている間のグレーアウトは記載済みで、記述は変わらない。グレーアウトと後ろを操作できないことを足す実装が壊しうる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-25.yaml
+    impact: run_only
+    detail: 概要の並びがページの領域の幅で 1 列に切り替わる。シナリオの記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-6.yaml
+    impact: run_only
+    detail: ボードの左右の余白とキーボードでの移動が変わる。シナリオの記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: run_only
+    detail: 資料のカードの見出しのレベルとボードの余白が変わる。シナリオの記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: run_only
+    detail: コメントの一覧のピン止めの解除の状態のアイコンが変わる。シナリオの記述は変わらない
+    depends_on: []
+docs:
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: '#488: タイトル直下の 1 行を docs/guide/index.yaml の summary と同じ文言にする'
+    status: todo
+  - page: docs/guide/コアコンセプト-話し合いの進め方.md
+    new: false
+    change: '#488: 同上'
+    status: todo
+  - page: docs/guide/話し合い-セットアップから始める.md
+    new: false
+    change: '#488: 同上'
+    status: todo
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: '#488: 同上'
+    status: todo
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: '#488: 同上。#347・#147 で変わる差分・印刷・項目の ID のツールチップの操作の記載も合わせる'
+    status: todo
+  - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
+    new: false
+    change: '#488: タイトル直下の 1 行を docs/guide/index.yaml の summary と同じ文言にする'
+    status: todo
+  - page: docs/guide/セットアップ手順-スクリプトの依存を入れる.md
+    new: false
+    change: '#488: 同上'
+    status: todo
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: '#488: 同上'
+    status: todo
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: '#488: 同上'
+    status: todo
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: '#488: 同上'
+    status: todo
+  - page: plugins/mindstella/files.yml
+    new: false
+    change: '#636: v0.14.0 の変換のスクリプト markdown_bodies_to_mark_md.py・move_bodies_to_root.py の行（name・description・tags・related の implements）を追加する'
+    status: todo
+scope_out:
+  - item: '#634: topbar.js を読み込むモック 15 件（docs/mock/components/topbar/frame.html と docs/mock/pages/*/325/*/index.html）のスクリプトのエラー'
+    reason: '今の判断（レビューで確定する）: #644 で、モックが読み込む今の画面のスクリプト（core/dom.js・components/topbar.js・components/duplicate-id-notice.js ほか）が plugins/mindstella/skills/mindmap/preview/ から削除された。#634 の修正（duplicate-id-notice.js の読み込みを 1 行追加する）は読み込む先が無く成り立たず、モックを描けるようにするには今の画面のモックを削除するか React のストーリーへ置き換える別の判断が要る。#634 はこの作業 PR では修正せず、今の画面のモックの扱いを新しい Issue にする'
+    plan: to_file
+  - item: '#548: 図を持たない本文を開いたときも mermaid を読み始める点'
+    reason: '#548 の受付の判断で、本文の問題（初期化が mermaid を待つ）に含まれないとして扱わないと決めた'
+    plan: none
+  - item: '#647 の本文にある test_markdown_body_stories.py の 4 件の fail'
+    reason: '#647 の受付の判断で #639 へ移した（はみ出す表の既定の決定に合わせる）'
+    plan: '#639'
+  - item: '#662: サイドパネルを広げたときに幅が変わるほかの画面（検討事項・タスク・資料の一覧）の max-md: の切り替え'
+    reason: '今の判断（レビューで確定する）: #662 の終了の条件は概要のページだけで、本文はほかの画面を「確認する」一案として挙げる。設計でほかの画面に同じ事象があるかを確認し、あればこの作業 PR に含めるかを決める'
+    plan: to_file
