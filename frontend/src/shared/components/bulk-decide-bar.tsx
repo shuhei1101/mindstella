@@ -8,7 +8,7 @@ export type BulkDecideFailure = { id: string; reason: string };
 export type BulkDecideBarProps = {
   /** 選んだ検討事項の件数。0 で失敗も無ければ何も出さない */
   count: number;
-  /** 決定している間は真。ボタンを押せなくする */
+  /** 決定している間は真。「推奨の案で決定」を押しても呼ばず、「選択を解除」を押せなくする */
   pending?: boolean;
   /** 直前の決定で決定できなかった検討事項 */
   failures?: BulkDecideFailure[];
@@ -23,7 +23,15 @@ export const BulkDecideBar = ({ count, pending = false, failures = [], onDecide,
       <span className="text-small">
         <span className="font-mono">{count}</span> 件を選択
       </span>
-      <Button disabled={pending || count === 0} onClick={onDecide}>
+      {/* 決定中は無効の見た目にせず、文言を読める濃さのまま押しても呼ばない */}
+      <Button
+        disabled={count === 0}
+        aria-disabled={pending ? "true" : undefined}
+        aria-busy={pending ? "true" : undefined}
+        onClick={() => {
+          if (!pending) onDecide();
+        }}
+      >
         {pending ? <Icon name="spin" className="animate-spin" /> : <Icon name="check" />}
         {pending ? "決定しています" : "推奨の案で決定"}
       </Button>

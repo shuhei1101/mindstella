@@ -1,9 +1,7 @@
 // 絞り込みのプリセットの並び。一覧の上に並び順で並べ、押すとそのプリセットで絞り込み、もう一度押すと解除する
 import { Button } from "@/shared/components/ui/button";
+import type { PresetChoice } from "@/shared/core/presets";
 import { cn } from "@/shared/lib/cn";
-
-/** 並べるプリセット 1 件 */
-export type PresetChoice = { name: string; description?: string; count: number };
 
 /** プリセットを選んだ・解除したときに呼ぶ関数。解除は null */
 export type SelectPreset = (name: string | null) => void;
@@ -36,8 +34,8 @@ export const PresetBar = ({ presets, selected, onSelect }: PresetBarProps) => {
             }}
           >
             {preset.name}
-            <span className="font-mono text-xs" aria-label={`該当する項目 ${preset.count} 件`}>
-              {empty ? "0 件" : preset.count}
+            <span className="text-xs">
+              <span className="font-mono">{preset.count}</span> 件
             </span>
           </Button>
         );

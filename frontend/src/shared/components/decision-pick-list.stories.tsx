@@ -35,8 +35,14 @@ export const Picked: Story = { args: { picked: ["D-2", "D-3"] } };
 /** 決定している間。チェックボックスもボタンも押せない */
 export const Pending: Story = { args: { picked: ["D-2", "D-3"], pending: true } };
 
-/** 決定できない検討事項があった。選択を残し、理由を出す */
-export const Failed: Story = { args: { picked: ["D-2", "D-3"], failures: [{ id: "D-3", reason: "未決定ではありません（決定済み）" }] } };
+/** 決定できない検討事項があった。記録を取り直した後で D-3 は AI が決定済みにしており、選択を残して理由を出す */
+export const Failed: Story = {
+  args: {
+    rows: ROWS.map((row) => (row.id === "D-3" ? { ...row, status: "決定済み", decidedBy: "ai" } : row)),
+    picked: ["D-2", "D-3"],
+    failures: [{ id: "D-3", reason: "未決定ではありません（決定済み）" }],
+  },
+};
 
 /** まとめて決定した後。D-2・D-3 は決定済みで選べない */
 export const Decided: Story = {

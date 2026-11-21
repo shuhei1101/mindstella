@@ -1773,3 +1773,48 @@ files:
   description: 通知した検討事項の一覧の状態ごとのストーリー。通知のスレッドからまとめて決める操作の状態を確認・追加するときに参照する。
   tags:
   - tool:react
+- path: src/shared/core/presets.ts
+  name: 絞り込みのプリセットの計算
+  description: 絞り込みのプリセットのタグの式を項目のタグに適用し、一覧の上に並べるプリセットを組み立てる。プリセットの式の適用を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/hooks/use-bulk-decide.ts
+  name: 検討事項をまとめて決める操作
+  description: 選んだ検討事項を推奨の案でまとめて決め、決められなかった検討事項と理由を返却する hook。まとめて決める API の呼び方を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/features/comments/thread/components/notice-decisions.tsx
+  name: 通知のスレッドの検討事項の一覧
+  description: AI の通知の書き込みが並べた検討事項を選び、推奨の案でまとめて決める部品。通知のスレッドからまとめて決める操作を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/features/decisions/decisions/decisions-screen.stories.tsx
+  name: 検討事項の画面のストーリー
+  description: 検討事項の画面の、選んだ・決定中・決定できない・誰が決めたかで絞ったストーリー。検討事項の画面の状態を確認・追加するときに参照する。
+  tags:
+  - tool:react
+- path: src/features/tasks/tasks/tasks-screen.stories.tsx
+  name: タスクの画面のストーリー
+  description: タスクの画面の、プリセットの並びの置き場所の案ごとのストーリー。プリセットの並びの状態を確認・追加するときに参照する。
+  tags:
+  - tool:react
+- path: src/features/comments/thread/thread-view.stories.tsx
+  name: スレッドの画面のストーリー
+  description: AI の通知のスレッドに並んだ検討事項から選ぶストーリー。通知のスレッドの状態を確認・追加するときに参照する。
+  tags:
+  - tool:react
+- path: src/testing/msw/browser.ts
+  name: Storybook の MSW の worker
+  description: Storybook で共有する MSW の worker。ストーリーごとに応答を差し替えるときに参照する。
+  tags:
+  - tool:react
+- path: src/testing/msw/story-records.ts
+  name: 画面のストーリーの記録
+  description: 画面のストーリーが MSW で返却する記録とスレッド。画面のストーリーのデータを変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/testing/story-router.tsx
+  name: 画面のストーリーのルーター
+  description: 画面のストーリーを URL の search を持つメモリの履歴のルーターで描く。画面のストーリーの開き方を変更するときに参照する。
+  tags:
+  - tool:react

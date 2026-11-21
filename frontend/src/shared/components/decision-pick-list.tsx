@@ -2,9 +2,7 @@
 import { BulkDecideBar, type BulkDecideFailure } from "@/shared/components/bulk-decide-bar";
 import { StatusMark } from "@/shared/components/icon";
 import { Checkbox } from "@/shared/components/ui/checkbox";
-
-/** 誰が決めたか */
-export type DecidedBy = "user" | "ai";
+import { DECIDED_BY_LABEL, type DecidedBy } from "@/shared/core/records";
 
 /** 一覧の 1 行 */
 export type DecisionPickRow = { id: string; title: string; status: string; recommended: string | null; decidedBy: DecidedBy | null };
@@ -22,8 +20,6 @@ export type DecisionPickListProps = {
   onDecide: () => void;
   onClear: () => void;
 };
-
-const DECIDED_BY_LABEL = { user: "利用者が決定", ai: "AI が決定" } as const satisfies Record<DecidedBy, string>;
 
 /** 未決定で推奨の案を持つ行だけを選べる */
 export const isPickable = (row: DecisionPickRow): boolean => row.status === "未決定" && row.recommended !== null;

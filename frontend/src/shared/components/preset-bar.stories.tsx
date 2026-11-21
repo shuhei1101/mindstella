@@ -20,7 +20,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** 何も選んでいない。該当する件数が 0 の「通知」は破線の枠線と「0 件」で示し、押せるまま残す */
+/** 何も選んでいない。件数は「{n} 件」で出す。該当する件数が 0 の「通知」は破線の枠線で示し、押せるまま残す */
 export const Default: Story = {};
 
 /** 「画面の設計」を選んでいる。押された見た目にし、もう一度押すと `onSelect(null)` で解除する */

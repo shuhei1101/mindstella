@@ -29,6 +29,7 @@ export const PreviewSearchSchema = z.object({
   search: z.enum(["1"]).optional().catch(undefined),
   q: z.string().optional().catch(undefined),
   tagmatch: z.enum(["any"]).optional().catch(undefined),
+  preset: z.string().optional().catch(undefined),
   f: z.record(z.string(), z.string()).catch({}),
 });
 
@@ -127,5 +128,7 @@ export const normalizeSearch = (search: PreviewSearch, context: SearchContext): 
   if (next.search === undefined || next.q?.trim() === "") delete next.q;
   // タグの条件が無い: 組み合わせ方を外す
   if (next.f["tags"] === undefined) delete next.tagmatch;
+  // 設定に無いプリセットの名前は外す
+  if (next.preset !== undefined && !(index.data.settings.presets ?? []).some((preset) => preset.name === next.preset)) delete next.preset;
   return next;
 };

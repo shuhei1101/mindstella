@@ -34,7 +34,7 @@ export type PreviewSearchApi = {
   openItem: (id: string) => void;
   /** 詳細を閉じる（置き換える） */
   closeItem: () => void;
-  /** 画面を移る（履歴に積む）。`id`・`diff` を残し、`view`・`f.{列}`・`sort` を外す */
+  /** 画面を移る（履歴に積む）。`id`・`diff` を残し、`view`・`f.{列}`・`sort`・`preset` を外す */
   setTab: (tab: PreviewTab) => void;
   setView: (view: PreviewSearch["view"]) => void;
   setFull: (full: boolean) => void;
@@ -46,6 +46,8 @@ export type PreviewSearchApi = {
   /** タグの組み合わせ方を書き換える（置き換える）。`all` は `tagmatch` を外す */
   setTagMatch: (tagmatch: PreviewSearch["tagmatch"]) => void;
   setSort: (sort: string | undefined) => void;
+  /** 一覧のプリセットを選ぶ・解除する（履歴に積む） */
+  setPreset: (preset: string | undefined) => void;
   setDiff: (diff: string | undefined) => void;
   /** 左のパネルを開閉する（置き換える）。コメントの一覧でないときは `thread`・`review`・`tstatus`・`ttag`・`ttarget` を外す */
   setPanel: (panel: PreviewSearch["panel"]) => void;
@@ -92,7 +94,7 @@ export const usePreviewSearch = (): PreviewSearchApi => {
       void navigate({ search: (previous) => ({ ...previous, id: undefined, full: undefined, h: undefined }), replace: true, state: (previous) => ({ ...previous, trail: EMPTY_TRAIL }) });
     },
     setTab: (tab) => {
-      apply({ tab, view: undefined, f: {}, sort: undefined, tagmatch: undefined }, false);
+      apply({ tab, view: undefined, f: {}, sort: undefined, tagmatch: undefined, preset: undefined }, false);
     },
     setView: (view) => {
       apply({ view }, true);
@@ -114,6 +116,9 @@ export const usePreviewSearch = (): PreviewSearchApi => {
     },
     setSort: (sort) => {
       apply({ sort }, true);
+    },
+    setPreset: (preset) => {
+      apply({ preset }, false);
     },
     setDiff: (diff) => {
       apply({ diff }, true);

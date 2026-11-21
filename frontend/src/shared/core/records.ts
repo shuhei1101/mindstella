@@ -1,5 +1,7 @@
 // 記録の型・索引・関係する項目
 import type { MdmarkSettings } from "@/shared/adapters/libraries";
+import type { Preset } from "@/shared/core/presets";
+
 export type Location = { kind: "body" | "value"; start?: number; end?: number; key?: string; text: string };
 
 /** 項目の種類（`mindmap-data` のキー） */
@@ -54,6 +56,15 @@ export const TASK_STATUSES: readonly string[] = ["未着手", "進行中", "保�
 
 /** 資料の状態の並び */
 export const DOC_STATUSES: readonly string[] = ["下書き", "確認中", "完成"];
+
+/** 検討事項を誰が決めたか */
+export type DecidedBy = "user" | "ai";
+
+/** 誰が決めたかの表示の文言 */
+export const DECIDED_BY_LABEL = { user: "利用者が決定", ai: "AI が決定" } as const satisfies Record<DecidedBy, string>;
+
+/** 推奨のマーカーを持つ案の記号。無ければ null */
+export const recommendedKeyOf = (item: Pick<Item, "options">): string | null => item.options?.find((option) => option.recommended === true)?.key ?? null;
 
 /** 検討事項の案 */
 export type Option = {
@@ -150,6 +161,8 @@ export type Item = {
   updated_by?: "ai" | "user" | "external";
   /** 確認済みなら真（`history.yaml` の行の `confirmed`）。無ければ未確認 */
   confirmed?: boolean;
+  /** 検討事項を誰が決めたか。誰が決めたかを持たない検討事項もある */
+  decided_by?: DecidedBy;
   status?: string;
   lead?: string;
   answer?: string;
@@ -190,6 +203,8 @@ export type Settings = {
   display?: DisplayDefaults;
   /** 画面が読み込む mdmark のバージョンと map の図の種類。無い設定もある */
   mdmark?: MdmarkSettings;
+  /** 絞り込みのプリセットの並び。無い設定もある */
+  presets?: Preset[];
 };
 
 /** ワークスペースの表示の既定（`config.yaml` の `display`） */
@@ -218,6 +233,8 @@ export type MindmapData = Record<Kind, Item[]> & {
   settings_problem?: string[] | null;
   /** 画面が読み込む mdmark の ref（設定の mdmark のバージョンをサーバーが解決したもの）。前の版の配信は持たない */
   mdmark_ref?: string;
+  /** プリセットの名前 → 全ての種類の項目のうち式に合う件数 */
+  preset_counts?: Record<string, number>;
 };
 
 /** 記録の索引 */
