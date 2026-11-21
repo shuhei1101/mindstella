@@ -18,6 +18,8 @@ export type DetailHeaderProps = {
   full: boolean;
   editable: boolean;
   editing: boolean;
+  /** コメントの一覧のボタンを出すか（サーバーの配信で、全画面でない詳細パネルのとき） */
+  comments: boolean;
   pending: PendingMarkKind | null;
   /** 本文の先頭のタイトルがスクロール領域の上へ外れているか（外れている間だけ見出しにタイトルを出す） */
   showTitle: boolean;
@@ -26,7 +28,7 @@ export type DetailHeaderProps = {
   onClose: () => void;
 };
 
-export const DetailHeader = ({ item, kind, index, full, editable, editing, pending, showTitle, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
+export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
   const { canBack, canForward, openItemComments } = usePreviewSearch();
   const confirmed = useItemConfirmed(item.id, item.confirmed === true);
   const format = bodyFormatOf(item.body);
@@ -54,7 +56,7 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, pendi
           </Button>
         ) : null}
         {source === undefined ? null : <DocExportControl item={item} source={source} index={index} />}
-        {full ? null : (
+        {full || !comments ? null : (
           <Button variant="ghost" size="icon" aria-label={`${item.id} のコメントの一覧を開く`} title="この項目のコメントの一覧" onClick={() => { openItemComments(item.id); }}>
             <Icon name="comment" />
           </Button>
