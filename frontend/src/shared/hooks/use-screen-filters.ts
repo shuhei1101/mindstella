@@ -40,9 +40,8 @@ export const useScreenFilters = (tab: PreviewTab): ScreenFilters => {
         tagMatch: { ...current.tagMatch, [tab]: search.tagmatch ?? "all" },
       });
     } else if (saved !== undefined && Object.keys(saved).length > 0) {
-      // URL に無く保存した条件がある: URL に記載する
-      writeSearch(filtersToSearch(saved));
-      if (savedTagMatch === "any") writeTagMatch("any");
+      // URL に無く保存した条件がある: 条件と組み合わせ方を 1 回の移動で URL に記載する
+      writeSearch(filtersToSearch(saved), { tagmatch: savedTagMatch === "any" ? "any" : undefined });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- writeSearch は描画ごとに作り直される
   }, [tab, inUrl, JSON.stringify(search.f), search.tagmatch]);
