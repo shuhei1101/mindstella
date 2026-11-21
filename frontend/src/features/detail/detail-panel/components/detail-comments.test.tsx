@@ -60,29 +60,30 @@ describe("DetailComments", () => {
     expect(bodies[0]).toMatchObject({ target: "A-1", loc: { kind: "body", start: 3, end: 3 }, body: "ここを直す" });
   });
 
-  // 並びを切り替える（正常系）
-  test("detail_comments_when_order", async () => {
+  // 本文のスクロール領域の外から、選んだ箇所の入口を出す（正常系）
+  test("detail_comments_when_outside_scroller", async () => {
     // 準備
-    stubRecords({ docs: [doc], bodies: { "docs/A-1.md": "本文" } });
-    server.use(
-      http.get("/api/comments", () =>
-        HttpResponse.json({
-          items: [
-            { id: "C-1", target: "A-1", target_title: "A-1の題", loc: null, thread: null, body: "古い", created: "2026-11-01T00:00:00+00:00" },
-            { id: "C-2", target: "A-1", target_title: "A-1の題", loc: null, thread: null, body: "新しい", created: "2026-11-01T00:01:00+00:00" },
-          ],
-          drafts: [],
-        }),
-      ),
-    );
+    stubRecords({ docs: [doc], bodies: { "docs/A-1.md": '<p data-line-start="1">一行目</p><p data-line-start="3">二行目</p>' } });
+    server.use(http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [{ target: "A-1", loc: null, thread: null, body: "下書き" }] })));
     renderRoute("/?tab=docs&id=A-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
-    // 実行
-    await userEvent.click(await within(panel).findByRole("button", { name: "コメントの並び: 新しい順" }));
+    const select = (node: Node): void => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(range);
+      node.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    };
+    const input = await within(panel).findByRole("textbox", { name: /A-1 へのコメント/ });
+    // 実行（本文の 2 行目を選ぶ）
+    select(await within(panel).findByText("二行目"));
     // 検証
-    const bodiesInOrder = within(panel).getAllByText(/^(古い|新しい)$/).map((element) => element.textContent);
-    expect(bodiesInOrder).toEqual(["古い", "新しい"]);
-    expect((JSON.parse(localStorage.getItem("mindmap-preview") ?? "{}") as Record<string, unknown>)["reviewOrder"]).toBe("oldest");
+    expect(within(panel).getByRole("region", { name: "詳細の本文" })).not.toContainElement(input);
+    expect(await screen.findByRole("button", { name: "選んだ箇所にコメント" })).toBeInTheDocument();
+    // 実行（入力欄の中の文字を選ぶ）
+    select(input);
+    // 検証
+    await waitFor(() => expect(screen.queryByRole("button", { name: "選んだ箇所にコメント" })).toBeNull());
   });
 
   // 開閉を覚え、入口で開く（正常系）
@@ -220,6 +221,68 @@ describe("DetailComments", () => {
     } else {
       await waitFor(() => expect(within(panel).getByRole("textbox", { name: /A-1 へのコメント/ })).toHaveFocus());
     }
+  });
+});
+
+describe("DetailReviewComments", () => {
+  // 並びを切り替える（正常系）
+  test("detail_review_comments_when_order", async () => {
+    // 準備
+    stubRecords({ docs: [doc], bodies: { "docs/A-1.md": "本文" } });
+    server.use(
+      http.get("/api/comments", () =>
+        HttpResponse.json({
+          items: [
+            { id: "C-1", target: "A-1", target_title: "A-1の題", loc: null, thread: null, body: "古い", created: "2026-11-01T00:00:00+00:00" },
+            { id: "C-2", target: "A-1", target_title: "A-1の題", loc: null, thread: null, body: "新しい", created: "2026-11-01T00:01:00+00:00" },
+          ],
+          drafts: [],
+        }),
+      ),
+    );
+    renderRoute("/?tab=docs&id=A-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    // 実行
+    await userEvent.click(await within(panel).findByRole("button", { name: "コメントの並び: 新しい順" }));
+    // 検証
+    const bodiesInOrder = within(panel).getAllByText(/^(古い|新しい)$/).map((element) => element.textContent);
+    expect(bodiesInOrder).toEqual(["古い", "新しい"]);
+    expect((JSON.parse(localStorage.getItem("mindmap-preview") ?? "{}") as Record<string, unknown>)["reviewOrder"]).toBe("oldest");
+  });
+
+  // 削除して元に戻す（正常系）
+  test("detail_review_comments_when_remove", async () => {
+    // 準備
+    stubRecords({ docs: [doc], bodies: { "docs/A-1.md": "本文" } });
+    const item = { id: "C-1", target: "A-1", target_title: "A-1の題", loc: null, thread: null, body: "直す", created: "2026-11-01T00:00:00+00:00" };
+    let items = [item];
+    const removed: string[] = [];
+    const added: unknown[] = [];
+    server.use(
+      http.get("/api/comments", () => HttpResponse.json({ items, drafts: [] })),
+      http.delete("/api/comments/:id", ({ params }) => {
+        removed.push(String(params["id"]));
+        items = [];
+        return HttpResponse.json({ ...item, count: 0 });
+      }),
+      http.post("/api/comments", async ({ request }) => {
+        added.push(await request.json());
+        items = [item];
+        return HttpResponse.json({ id: "C-1", created: item.created, count: 1 }, { status: 201 });
+      }),
+    );
+    renderRoute("/?tab=docs&id=A-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    // 実行
+    await userEvent.click(await within(panel).findByRole("button", { name: /を削除$/ }));
+    // 検証
+    await waitFor(() => expect(removed).toEqual(["C-1"]));
+    expect(await within(panel).findByText("コメントを削除しました。")).toBeInTheDocument();
+    // 実行
+    await userEvent.click(within(panel).getByRole("button", { name: "元に戻す" }));
+    // 検証
+    await waitFor(() => expect(added).toHaveLength(1));
+    expect(added[0]).toMatchObject({ id: "C-1", body: "直す" });
   });
 });
 

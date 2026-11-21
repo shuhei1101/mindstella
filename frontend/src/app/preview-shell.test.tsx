@@ -1,7 +1,7 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { connectEvents } from "@/shared/adapters/events-client";
 import { resetEmbeddedDataForTest } from "@/shared/core/embedded";
@@ -22,6 +22,7 @@ afterEach(() => {
   resetVoiceStore();
   removeFakeMedia();
   removeFakeWakeLock();
+  vi.unstubAllGlobals();
 });
 
 /** 音声入力を使える状態にする */
@@ -91,6 +92,57 @@ describe("PreviewShell", () => {
     renderRoute("/?panel=display");
     // 検証
     expect(await screen.findByRole("dialog", { name: "表示の設定" })).toBeInTheDocument();
+  });
+
+  // トップバーの高さを CSS 変数に書く（正常系）
+  test("preview_shell_when_topbar_height", async () => {
+    // 準備（観測している要素ごとに、知らせる関数を控える）
+    const observers: { callback: ResizeObserverCallback; targets: Element[] }[] = [];
+    class FakeResizeObserver {
+      private readonly entry: { callback: ResizeObserverCallback; targets: Element[] };
+      constructor(callback: ResizeObserverCallback) {
+        this.entry = { callback, targets: [] };
+        observers.push(this.entry);
+      }
+      observe(target: Element): void {
+        this.entry.targets.push(target);
+      }
+      unobserve(): void {}
+      disconnect(): void {
+        this.entry.targets = [];
+      }
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    // トップバーを包む要素の高さを変えて知らせる
+    const resize = (height: number): void => {
+      const banner = screen.getByRole("banner");
+      for (const observer of observers) {
+        const targets = observer.targets.filter((target) => target.contains(banner));
+        if (targets.length === 0) continue;
+        const entries = targets.map((target) => {
+          vi.spyOn(target, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1280, height));
+          return { target, contentRect: new DOMRect(0, 0, 1280, height), borderBoxSize: [{ blockSize: height, inlineSize: 1280 }], contentBoxSize: [{ blockSize: height, inlineSize: 1280 }], devicePixelContentBoxSize: [] } as unknown as ResizeObserverEntry;
+        });
+        act(() => {
+          observer.callback(entries, observer as unknown as ResizeObserver);
+        });
+      }
+    };
+    const topbarHeight = (): string => document.documentElement.style.getPropertyValue("--topbar-height");
+    const { unmount } = renderRoute("/?tab=tasks");
+    await screen.findByRole("group", { name: "表示形式" });
+    // 実行
+    resize(52);
+    // 検証
+    await waitFor(() => expect(topbarHeight()).toBe("52px"));
+    // 実行
+    resize(96);
+    // 検証
+    await waitFor(() => expect(topbarHeight()).toBe("96px"));
+    // 実行
+    unmount();
+    // 検証
+    expect(topbarHeight()).toBe("");
   });
 
   // 削除したネットワーク・検討事項のマップを指す URL は概要・ボードで開く（正常系）
