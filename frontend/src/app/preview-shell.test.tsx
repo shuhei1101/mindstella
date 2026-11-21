@@ -121,7 +121,7 @@ describe("PreviewShell", () => {
         if (targets.length === 0) continue;
         const entries = targets.map((target) => {
           vi.spyOn(target, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 1280, height));
-          return { target, contentRect: new DOMRect(0, 0, 1280, height), borderBoxSize: [{ blockSize: height, inlineSize: 1280 }], contentBoxSize: [{ blockSize: height, inlineSize: 1280 }], devicePixelContentBoxSize: [] } as unknown as ResizeObserverEntry;
+          return { target, contentRect: new DOMRect(0, 0, 1280, height), borderBoxSize: [{ blockSize: height, inlineSize: 1280 }], contentBoxSize: [{ blockSize: height, inlineSize: 1280 }], devicePixelContentBoxSize: [] };
         });
         act(() => {
           observer.callback(entries, observer as unknown as ResizeObserver);
