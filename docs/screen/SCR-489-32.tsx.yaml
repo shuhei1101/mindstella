@@ -388,8 +388,6 @@ elements:
         value: 記録の取得.marked_bodies[{項目の body}]
       - name: beforeFormat
         value: 選んだ時点の `body`（history の before にあればその値）が `.md` で終われば `md`、それ以外は `html`
-      - name: layout
-        value: 並べ方の切り替えを置き、プレビューを開く.個人の上書き.body_diff_layout が side のとき side、それ以外は inline
     position: 本文の場所
     description: 差分の表示の間、HTML の本文を描いた結果の上で変わった要素にマーカーを付け、「原文の差分」で原文の行の差分に切り替える（『プレビューを開く』の制約「HTML の本文の差分」）。本文の差分を出せない・計算しきれない・差分のライブラリを読めないときは、Markdown の本文と同じ旨を出し、「HTML の本文」で今の本文をマーカーなしで描く
     io: 表示
@@ -399,9 +397,6 @@ elements:
     introduced:
       pr: 214
     action: 描いた結果の枠の中のリンクを押したときの動きは、要素「HTML の本文」と同じ
-    slots:
-      - name: layout_switch
-        value: 本文の差分の並べ方の切り替え
   - name: 説明
     kind: section
     position: 資料はタイトルの下のキーの一覧の後・エイリアスの前。調査は質問の後・結論の前

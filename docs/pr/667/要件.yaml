@@ -89,6 +89,9 @@ docs:
     new: false
     change: '#634: components/topbar.js を読み込むモック 15 件（このファイルと docs/mock/pages/*/325/*/index.html の 14 件）を、要件.mark.md の未確定で決まった案で修正する（推奨は削除。削除する場合は docs/mock/ の目次と files.yml の行も削除する）'
     status: todo
+  - page: docs/mock/components/body-diff-layout/index.html
+    change: '#347: 削除した部品『本文の差分の並べ方の切り替え』の部品のモックを削除し、docs/mock/components/index.md と files.yml の行も削除する'
+    status: todo
 scope_out:
   - item: '#548: 図を持たない本文を開いたときも mermaid を読み始める点'
     reason: '#548 の受付の判断で、本文の問題（初期化が mermaid を待つ）に含まれないとして扱わないと決めた'
