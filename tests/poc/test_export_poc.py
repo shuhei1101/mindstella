@@ -93,14 +93,18 @@ def test_export_poc(export_html: Path, engine: str) -> None:
         page.get_by_text("図を持つ資料").first.click()
         page.wait_for_function("() => location.hash.includes('id=A-1')", timeout=TIMEOUT_MS)
         page.get_by_text("資料の本文").first.wait_for(timeout=TIMEOUT_MS)
-        page.wait_for_function("() => document.querySelectorAll('svg').length >= 2", timeout=TIMEOUT_MS)
-        result["svg_count"] = page.evaluate("() => document.querySelectorAll('svg').length")
-        result["map_text"] = page.get_by_text("構成の左").count()
-        result["mermaid_text"] = page.get_by_text("入口").count()
+        # 部品（map.js）が描いた map の図と、mermaid が描いた図の svg の中にノードの文字があり、コードブロックの原文が画面に無い
+        page.wait_for_function("() => document.querySelector('.mdmark-map .mdmark-diagram-stage svg') !== null", timeout=TIMEOUT_MS)
+        page.wait_for_function("() => document.querySelector('figure.diagram .mermaid svg') !== null", timeout=TIMEOUT_MS)
+        # map は線を svg、ノードを .mdmark-diagram-node の要素で描く
+        result["map_svg_has_node"] = page.evaluate("() => [...document.querySelectorAll('.mdmark-map .mdmark-diagram-stage .mdmark-diagram-node-name')].some((e) => e.textContent.includes('構成の左'))")
+        result["mermaid_svg_has_node"] = page.evaluate("() => [...document.querySelectorAll('figure.diagram .mermaid svg')].some((s) => s.textContent.includes('入口'))")
+        result["map_raw_shown"] = page.evaluate("() => document.body.innerText.includes('X[構成の左]')")
+        result["mermaid_raw_shown"] = page.evaluate("() => document.body.innerText.includes('A[入口]')")
         hash_before = page.evaluate("() => location.hash")
         page.reload()
         page.get_by_text("資料の本文").first.wait_for(timeout=TIMEOUT_MS)
-        page.get_by_text("構成の左").first.wait_for(timeout=TIMEOUT_MS)
+        page.wait_for_function("() => document.querySelector('.mdmark-map .mdmark-diagram-stage svg') !== null", timeout=TIMEOUT_MS)
         result["hash_kept"] = page.evaluate("() => location.hash") == hash_before
         result["hash"] = hash_before
         # 埋め込みの要素が本文の </script> で閉じていない（JSON として読め、本文がそのまま入っている）
@@ -117,6 +121,8 @@ def test_export_poc(export_html: Path, engine: str) -> None:
     assert blocked == []
     assert errors == []
     assert result["hash_kept"]
-    assert result["map_text"] >= 1
-    assert result["mermaid_text"] >= 1
+    assert result["map_svg_has_node"]
+    assert result["mermaid_svg_has_node"]
+    assert not result["map_raw_shown"]
+    assert not result["mermaid_raw_shown"]
     assert result["embedded_body_intact"]
