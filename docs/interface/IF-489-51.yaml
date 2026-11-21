@@ -382,14 +382,14 @@ status_codes:
     condition: '`config.yaml` 以外のどれかの YAML がスキーマに合わないか、YAML として読めない。または `config.yaml` が無くなった'
     notes: '`detail` に合わない箇所ごとの `{ファイル名}: {キーのパス}: {理由}` を改行でつなぐ。画面は前に読んだ記録で描き続ける'
   - code: '304'
-    condition: 要求の `If-None-Match` が今の `ETag` と一致する
+    condition: 要求の `If-None-Match` が今の `ETag` と弱い比較で一致する
     notes: 本文を持たない。ブラウザが持つ前の応答をそのまま使う
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 読み込む時
     constraint: 組み立てた応答の本文・gzip で圧縮した本文・`ETag` をワークスペースごとに常駐サーバーのメモリに保持し、保持した応答があればワークスペースの YAML と本文を読まずに返す。保持した応答は制約「作り直す契機」で捨て、次の要求で読み直して作り直す。書き出しのファイルは持たない
   - item: 本文の構造
-    constraint: '`application/json; charset=utf-8`。日本語はエスケープしない。`Cache-Control: no-cache`（ブラウザは毎回再検証する）と、応答の本文の SHA-256 の先頭 32 文字を二重引用符で囲んだ `ETag` を付ける。要求の `Accept-Encoding` が `gzip` を含むときは圧縮した本文を `Content-Encoding: gzip` で返し、`Vary: Accept-Encoding` を付ける'
+    constraint: '`application/json; charset=utf-8`。日本語はエスケープしない。`Cache-Control: no-cache`（ブラウザは毎回再検証する）と、圧縮する前の応答の本文の SHA-256 の先頭 32 文字を二重引用符で囲み、`W/` を前に付けた弱い `ETag`（`W/"{32 文字}"`）を付ける。圧縮した応答と圧縮しない応答で同じ値にする。要求の `Accept-Encoding` が `gzip` を含むときは圧縮した本文を `Content-Encoding: gzip` で返し、`Vary: Accept-Encoding` を付ける'
   - item: 接続先の確認
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403 を返す。確かめは『プレビューの配信』の異常系が持つ）
   - item: 書き込み途中の読み込み
@@ -403,7 +403,7 @@ constraints:
     constraint: どれかが起きたら、そのワークスペースの保持した応答を捨てる。『変更の検知』がワークスペースのファイルの書き換えを見つけたとき（『書き換えの通知』を送る前）。常駐サーバーのツール・画面の保存がワークスペースのファイルを書いたとき。『設定の再読み込み』を呼んだとき。常駐サーバーを起動し直したとき（メモリが空になる）
     notes: 要求のたびにファイルの更新時刻を確かめる方式は、`/mnt/c` でファイルの数だけ `stat` が走り数秒かかるため採らない（#547）
   - item: 再検証
-    constraint: '要求の `If-None-Match` が今の `ETag` と一致すれば、本文の無い 304 を `ETag` と `Cache-Control: no-cache` 付きで返す。保持した応答が無いときは先に作り直してから比べる'
+    constraint: '要求の `If-None-Match` が今の `ETag` と弱い比較（両方の `W/` を除いて比べる）で一致すれば、本文の無い 304 を `ETag` と `Cache-Control: no-cache` 付きで返す。保持した応答が無いときは先に作り直してから比べる'
   - item: 本文のファイルの解決
     constraint: '`docs/` のフォルダの実体のパスは 1 回の読み込みで 1 回だけ解決し、項目ごとの本文はその配下のファイル名だけで開く。`body` が `docs/` の外を指すものは読まない（今の検査を残す）'
   - item: プリセットの件数
