@@ -19,7 +19,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-49.yaml
     impact: changed
-    detail: 絞り込みのドロワーでプリセットを選ぶと、そのプリセットのタグと組み合わせ方が今のタグの条件に入り、状態・種類などほかの条件は残る。該当する件数が 0 のプリセットにマーカーを出す（#361）
+    detail: 絞り込みのドロワーでプリセットを選ぶと、そのプリセットのタグの式が今のタグの条件に入り、状態・種類などほかの条件は残る。タグの条件をプリセットと同じ式で書ける。該当する件数が 0 のプリセットにマーカーを出す（#361）
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
@@ -40,26 +40,23 @@ use_cases:
     detail: AI が作ったプリセットを画面の絞り込みのドロワーで選べることに、成功の保証と補足の記述を追随する（#361）
     depends_on:
       - docs/scenario/SC-489-49.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-1.yaml
+    impact: changed
+    detail: AI が細部を決めて記録したことを、通知のスレッドで報告する書き込みを加える（#484・D-361 A）
+    depends_on: docs/scenario/SC-489-30.yaml
 docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
-    change: 検討事項の一覧で複数選んで推奨の案でまとめて決める操作、「AI が決定」の絞り込み、通知のスレッドからのまとめての回答、一覧の上のプリセットを押して開く操作を追加する
-    status: todo
-  - page: docs/guide/ワークスペースの書式.mark.md
-    new: false
-    change: 検討事項の誰が決めたかのキーを追加する
-    status: todo
-  - page: docs/guide/コマンド.mark.md
-    new: false
-    change: 採用する案の切り替えなど、誰が決めたかを受け付ける・返す MCP のツールの引数と結果を追随する
+    change: 絞り込みのドロワーでプリセットを選んで開く操作と、タグの条件を式で書く操作を追加する
     status: todo
   - page: docs/guide/コアコンセプト-話し合いの進め方.md
     new: false
-    change: 方針はスレッドで聞き、細部は AI が決めて「AI が決定」と記録する進め方と、推奨どおりでよい検討事項をまとめて決める回答の仕方を追加する
+    change: 方針は選択肢を作る前にスレッドで聞き、細部は AI が決めてスレッドで報告だけにする進め方を追加する
     status: todo
   - page: docs/guide/エージェントフロー.md
     new: false
-    change: 記録の使い分け・コメントの取り込みのエージェントフローの変更（方針と細部の分け方・まとめて決めた回答の取り込み）に追随する
+    change: 記録の使い分けのエージェントフローの変更（方針と細部の分け方）に追随する
     status: todo
 scope_out:
   - item: 画面の今の絞り込みを、名前付きのプリセットとして保存する操作

@@ -36,10 +36,16 @@ const childrenOf = (node: PresetFilter): PresetFilter[] => {
   return [];
 };
 
-/** 束の種類と子から束を作る。`not` は先頭の子だけを持つ */
+/** 束の種類と子から束を作る。`not` は子が 2 つ以上なら `and` に包んで 1 つの子にする */
 const bundleOf = (kind: BundleKind, children: PresetFilter[]): PresetFilter => {
-  if (kind === "not") return { not: children[0] ?? emptyCondition() };
+  if (kind === "not") return { not: children.length === 1 && children[0] !== undefined ? children[0] : { and: children.length === 0 ? [emptyCondition()] : children } };
   return kind === "and" ? { and: children } : { or: children };
+};
+
+/** 束の種類を切り替える。`not` から戻すときは、包んだ `and` の子を展開する */
+const switchBundle = (node: PresetFilter, kind: BundleKind): PresetFilter => {
+  const children = "not" in node && "and" in node.not ? node.not.and : childrenOf(node);
+  return bundleOf(kind, children);
 };
 
 type RowProps = { tags: TagChoice[]; onRemove: (() => void) | null };
@@ -123,7 +129,7 @@ const Node = ({ node, tags, layer, onChange, onRemove }: RowProps & { node: Pres
           value={kind}
           onChange={(event) => {
             const next = BUNDLE_KINDS.find((value) => value === event.target.value) ?? kind;
-            onChange(bundleOf(next, children));
+            onChange(switchBundle(node, next));
           }}
         >
           {BUNDLE_KINDS.map((value) => (
