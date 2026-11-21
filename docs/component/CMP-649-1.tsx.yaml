@@ -26,20 +26,20 @@ args:
     required: true
     description: 詳細パネルで開いている項目か。真のとき枠と背景で選択中を示す
   - name: marks
-    type: 列挙
+    type: オブジェクト
     required: false
     default: なし（マーカーを出さない）
     choices: new・changed
-    description: 差分の表示の間だけ渡され、タイトルの右に部品『差分のマーカー』を置く
+    description: 項目の ID → `new`（新規）か `changed`（変更）。差分の表示の間だけ渡され、この項目の ID の値があるときタイトルの右に部品『差分のマーカー』を置く
   - name: comments
     type: オブジェクト
     required: true
     description: 項目の ID → レビュー中のコメントの件数。1 以上のとき部品『コメントのマーカー』を置く
   - name: edit
-    type: 列挙
+    type: オブジェクト
     required: true
     choices: add・edit・remove・null
-    description: 保存待ちの編集。null でないとき部品『保存待ちのマーカー』を置き、remove はカードを薄くする
+    description: 画面の保存待ちの編集か null。`edit.marks` のこの項目の ID の値で部品『保存待ちのマーカー』を置き、値が `remove` のときはカードを薄くする。null のときはマーカーを出さない
 events:
   - name: 詳細を開く
     when: タグ以外のカードの所を押したとき
@@ -72,5 +72,6 @@ accessibility:
   - カードの外枠は `div` にし、タイトルを `button` にして、その押せる範囲をカード全体へ広げる。タグのボタンをタイトルのボタンより前面に置き、ボタンを入れ子にしない
   - 開いている項目のタイトルに `aria-current="true"` を付ける
   - タイトルにフォーカスがあるとき、カードの外枠に輪郭を出す
+  - 外枠に `data-card={ID}`、タイトルのボタンに `data-id={ID}` を付ける。タイトルの文字は `button[data-id]` で、カードの中のマーカーは `[data-card]` で引く
 refs:
   - IF-489-70#
