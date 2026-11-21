@@ -11,12 +11,6 @@ use_cases:
     depends_on:
       - docs/scenario/SC-489-52.yaml
   - kind: single
-    scenario: docs/scenario/SC-489-34.yaml
-    impact: changed
-    detail: AI が細部を決めて検討事項を記録するとき、スレッドで報告する（#484）
-    depends_on:
-      - docs/scenario/SC-489-30.yaml
-  - kind: single
     scenario: docs/scenario/SC-489-49.yaml
     impact: changed
     detail: 絞り込みのドロワーでプリセットを選ぶと、そのプリセットのタグの式が今のタグの条件に入り、状態・種類などほかの条件は残る。タグの条件をプリセットと同じ式で書ける。該当する件数が 0 のプリセットにマーカーを出す（#361）
