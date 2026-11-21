@@ -20,9 +20,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-21T09:22:52.004774+00:00'
   - process: 複合ユースケース設計
-    status: todo
+    status: done
     updated_by: planner
-    updated_at: '2026-11-21T14:13:26.781079+00:00'
+    updated_at: '2026-11-21T15:31:51.252504+00:00'
   - process: デザインスタイル選定
     status: skipped
     reason: docs/design-policy.mark.md があり、見た目の方向を変えない（モック要否 Q4 YES）
