@@ -549,6 +549,58 @@ flows:
       - ボタンを押した後、URL の search params が `tab=decisions&id=D-1&panel=comments&ttarget=D-1` で、一覧に C-1 と TH-1 だけが出て、履歴の数が変わらない
       - × を押した後、URL から `ttarget` が外れ、一覧に C-1・TH-1・TH-2 が出て、履歴の数が変わらない
     test: test_normal_when_comment_target_filtered
+  - name: 正常系（配る書き出しを通信なしで開く）
+    summary: 『配る書き出し』の HTML を `file://` で開くと、外部への要求をせずに、中に持つ記録・描画のライブラリで概要と詳細の本文・図を描く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `export` で書き出した HTML を実際のブラウザで `file://` で開く）
+      - name: make_workspace
+        description: 本文に見出しと Mermaid の図を持つ資料 A-1 を持つワークスペース
+        notes: '`file:` 以外への要求を全てブラウザで止めて数えてから、書き出した HTML を開き、続けて `#/?tab=docs&id=A-1` へ移る'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー（配る書き出し）
+
+        ユーザー->>IF: file:// で開く
+        IF->>IF: mindmap-data の記録を読む
+        IF-->>ユーザー: 概要
+        ユーザー->>IF: #/?tab=docs&id=A-1 へ移る
+        IF->>IF: 中に持つ mdmark・mermaid で本文と図を描く
+        IF-->>ユーザー: 詳細パネルの本文と図
+      ```
+    expected:
+      - 開いた直後に概要のタイルが描かれている
+      - 詳細パネルに A-1 の本文の見出しと、図の SVG がある
+      - 止めた要求が 0 件
+      - ブラウザのコンソールにエラーが出ていない
+    test: test_normal_when_exported_offline
+  - name: 正常系（配る書き出しで書き込む操作を出さない）
+    summary: 配る書き出しは、項目の追加・編集・確認済み・コメント・保存待ち・ワークスペースの既定にするの操作を出さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `export` で書き出した HTML を実際のブラウザで `file://` で開く）
+      - name: make_workspace
+        description: タスク T-1 を持つワークスペース
+        notes: 書き出した HTML を `#/?tab=tasks&id=T-1` で開き、トップバーの表示の設定を開く
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー（配る書き出し）
+
+        ユーザー->>IF: file:// で #/?tab=tasks&id=T-1 を開く
+        IF-->>ユーザー: タスクの一覧と T-1 の詳細パネル
+        ユーザー->>IF: 表示の設定を開く
+        IF-->>ユーザー: 表示の設定のパネル
+      ```
+    expected:
+      - トップバーにコメントと保存待ちのボタンが無い
+      - タスクの項目を追加するボタンが無い
+      - 詳細パネルに編集する・確認済み・コメントの一覧のボタンと入力欄が無い
+      - 表示の設定のパネルにワークスペースの既定にするのボタンが無い
+    test: test_normal_when_exported_read_only
 lead: 利用者がサーバーの配信の `/w/{workspace}/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの通知を受けると記録を再読み込みして再描画する。
 callers:
   - SC-489-12#
