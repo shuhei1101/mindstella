@@ -243,14 +243,14 @@ classes:
   - name: PresetNameTakenError
     title: プリセットの名前の重なり
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: プリセットを作る
+    usecase: 絞り込みのプリセットを作る
     summary: '名前が既にあるプリセットと NFKC と大文字小文字をそろえて重なる。メッセージは `プリセットの名前が重なります: {既にある名前}`'
     kind: クラス
     inherits: MindmapError
   - name: PresetNotFoundError
     title: プリセットが無い
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: プリセットを作る
+    usecase: 絞り込みのプリセットを作る
     summary: '名前に該当するプリセットが無い。メッセージは `プリセットがありません: {名前}（あるプリセット: {名前の並び}）`'
     kind: クラス
     inherits: MindmapError

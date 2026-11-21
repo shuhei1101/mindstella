@@ -6,7 +6,7 @@ functions:
     title: タグの式の検証
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/presets.py
-    usecase: プリセットを作る
+    usecase: 絞り込みのプリセットを作る
     summary: 'タグの式が規約『フィルター・照合条件の構造』のとおりか（`and`・`or`・`not` の束と、キーが `field`・`op`・`values`・`match` の条件。`field` は `tags`、`op` は `eq`・`ne`。入れ子は 3 レイヤーまで。空の束を持たない）を確かめ、合わない箇所の `{キーのパス}: {理由}` を返す'
     args:
       - name: expr
@@ -33,7 +33,7 @@ functions:
     title: 項目へのタグの式の当てはめ
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/presets.py
-    usecase: プリセットを作る
+    usecase: 絞り込みのプリセットを作る
     summary: 項目のタグの名前が式に合うかを返す。`eq` は `match` が `any` のとき値のどれか、`all` のとき全てを持つ（タグを持たない項目は合わない）。`ne` は値のどれも持たない（タグを持たない項目も合う）。タグの名前は NFKC と大文字小文字をそろえて比べる
     args:
       - name: tags
@@ -58,7 +58,7 @@ functions:
     title: プリセットごとの件数
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/presets.py
-    usecase: プリセットを作る
+    usecase: 絞り込みのプリセットを作る
     summary: 設定の `presets` ごとに、全ての種類の項目のうち式に合う数を返す（インターフェース定義『記録の取得』の制約「プリセットの件数」）
     args:
       - name: workspace
@@ -79,7 +79,7 @@ functions:
     title: プリセットの作成
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/presets.py
-    usecase: プリセットを作る
+    usecase: 絞り込みのプリセットを作る
     summary: インターフェース定義『プリセットの作成』。名前・式を検証し、名前の重なりを確かめてから `presets` の末尾に追加して `config.yaml` を書き、書いた後のワークスペースで件数を数えて返す
     args:
       - name: root
@@ -113,7 +113,7 @@ functions:
     title: プリセットの更新
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/presets.py
-    usecase: プリセットを作る
+    usecase: 絞り込みのプリセットを作る
     summary: インターフェース定義『プリセットの更新』。指定したキーだけを置き換え、`position` で並びを移す。中身が変わらなければ書かずに `files` を空で返す
     args:
       - name: root
@@ -142,7 +142,7 @@ functions:
     title: プリセットの削除
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/presets.py
-    usecase: プリセットを作る
+    usecase: 絞り込みのプリセットを作る
     summary: インターフェース定義『プリセットの削除』。該当したプリセットを除き、最後の 1 件なら `presets` のキーごと除く
     args:
       - name: root

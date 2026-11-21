@@ -6,7 +6,7 @@ functions:
     title: 一覧のスクロール位置の復元
     kind: フック
     container: frontend/src/shared/hooks/use-list-scroll.ts
-    usecase: 画面を移って戻る
+    usecase: 項目を表で絞り込む
     summary: 返した ref の要素のスクロールを `requestAnimationFrame` で間引いて `writeListScroll` に残し、`key` が変わったときと行が描けたとき（`ready` が真になったとき）に `readListScroll` の位置へ 1 度だけ戻す。記録の再読み込みの再描画では戻さない
     args:
       - name: key

@@ -622,14 +622,14 @@ classes:
     title: 記録の応答の保持
     kind: クラス
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
-    usecase: 記録を速く開く
+    usecase: プレビューを開く
     summary: 1 つの配信が持つ、組み立てた記録の応答の本文・gzip で圧縮した本文・弱い `ETag`（圧縮する前の本文の SHA-256 の先頭 32 文字）。要求ごとのスレッドから触るため鍵を取る。常駐サーバーの再起動では持ち越さない
     methods:
       - name: get_or_build
         title: 保持した応答の取得
         kind: メソッド
         container: plugins/mindstella/skills/mindmap/scripts/serve.py
-        usecase: 記録を速く開く
+        usecase: プレビューを開く
         summary: 保持した応答があれば返し、無ければ `build` で記録を読んで本文・圧縮した本文・`ETag` を作り、保持して返す
         args:
           - name: build
@@ -650,7 +650,7 @@ classes:
         title: 保持した応答を捨てる
         kind: メソッド
         container: plugins/mindstella/skills/mindmap/scripts/serve.py
-        usecase: 記録を速く開く
+        usecase: プレビューを開く
         summary: 変更の検知が書き換えを記録したとき・サーバーとツールが書いたとき・設定の再読み込みのときに呼ばれ、次の要求で作り直させる
         args: []
         returns:

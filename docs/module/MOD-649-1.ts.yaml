@@ -41,7 +41,7 @@ functions:
     kind: 関数
     container: frontend/src/shared/stores/screen-state-store.ts
     usecase: 項目を表で絞り込む
-    summary: 変えた項目だけを書き、ほかの項目を残して購読へ知らせる
+    summary: 変えた項目だけを書き、ほかの項目を残して購読へ知らせる。配る書き出し（`isEmbedded()` が真）では `filters`・`tagMatch`・`diffSel` を保存領域に書かず、開いている間だけメモリに持つ（制約「端末の保存領域」の「配る書き出しは絞り込みの条件を保存しない」）
     args:
       - name: patch
         type: Partial<ScreenState>
@@ -57,6 +57,12 @@ functions:
         condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/` にし、`filters` を書く'
         mock: なし
         expected: '`sessionStorage` の `mindmap-filters:mindstella-x-1` に書かれ、`localStorage` は変わらない'
+      - name: test_write_screen_state_when_embedded
+        case: 正常
+        summary: 配る書き出しでは保存領域に書かない
+        condition: '`document.body` に記録の `mindmap-data` の要素を配置し、`filters` を書く'
+        mock: なし
+        expected: '`sessionStorage` に書かれず、`readScreenState` は書いた `filters` を返す'
   - name: useScreenState
     title: 画面の一時的な状態の購読
     kind: フック
@@ -88,7 +94,7 @@ functions:
     title: 一覧のスクロール位置の読み取り
     kind: 関数
     container: frontend/src/shared/stores/screen-state-store.ts
-    usecase: 画面を移って戻る
+    usecase: 項目を表で絞り込む
     summary: "`sessionStorage` の `workspaceKey('mindmap-list-scroll')` から、`{画面}:{表示形式}` のキーの縦・横の位置を読む"
     args:
       - name: key
@@ -109,7 +115,7 @@ functions:
     title: 一覧のスクロール位置の書き込み
     kind: 関数
     container: frontend/src/shared/stores/screen-state-store.ts
-    usecase: 画面を移って戻る
+    usecase: 項目を表で絞り込む
     summary: '`{画面}:{表示形式}` のキーの縦・横の位置を残し、ほかのキーの位置を残す。書けない保存領域では何もしない'
     args:
       - name: key
