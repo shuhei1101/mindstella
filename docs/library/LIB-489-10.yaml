@@ -16,7 +16,7 @@ catalogs:
         purpose: npm ci の後に .git/hooks/ へフックを入れる
       - name: pre-commit の spa-build
         kind: 設定
-        purpose: frontend/ か vite.config.ts・package.json・package-lock.json を commit するときに npm run build を流し、preview/spa/ に未 commit の差分か追跡していないファイルが残れば止める
+        purpose: frontend/ か vite.config.ts・vite.export.config.ts・package.json・package-lock.json を commit するときに npm run build と npm run build-export を流し、preview/spa/・preview/export/ に未 commit の差分か追跡していないファイルが残れば止める
 lead: Git のフックを YAML の設定で管理して流す。
 purl: pkg:npm/lefthook
 dependency_scope: 開発のみ

@@ -5,7 +5,7 @@ directory: |-
   ```
   package.json            依存と npm scripts（dev・build・build-export・typecheck・lint・test・storybook-react・generate-api）
   vite.config.ts          root を frontend/ にし、出力を plugins/mindstella/skills/mindmap/preview/spa/ へ書く（base は相対の ./。/w/{workspace}/ の下の assets/ を読む）
-  vite.export.config.ts   vite.config.ts に vite-plugin-singlefile と rollup-plugin-license を加えた書き出し用のビルド。JS・CSS を中に持つ 1 枚の HTML を plugins/mindstella/skills/mindmap/preview/export/index.html へ、中に持つライブラリのライセンスを preview/licenses/frontend-licenses.txt へ書く（配る書き出しの元）
+  vite.export.config.ts   vite.config.ts に vite-plugin-singlefile と `build.license` を加えた書き出し用のビルド。JS・CSS を中に持つ 1 枚の HTML を plugins/mindstella/skills/mindmap/preview/export/index.html へ、中に持つライブラリのライセンスを同じフォルダの licenses.md へ書く（配る書き出しの元）
   vitest.config.ts        jsdom・setupFiles・coverage
   orval.config.ts         frontend/openapi.yaml から shared/api/generated/ へ生成する
   eslint.config.js        React の側（frontend/src）だけに当てる lint
@@ -114,4 +114,4 @@ notes:
   単体テスト: Vitest と Testing Library で、テストのファイルを対象の横に `{名前}.test.ts(x)` で置く（knowledge の規約『フォルダ構成』『Unit / Component テスト』）。単体テストの表の名前から先頭の `test_` を除いた名前を、各テストの `test` の名前にする
   features のつながり: features どうしは import しない（boundaries の向き）。画面と詳細・パネルを組むのは `app/preview-shell.tsx` で、複数の画面が使う search・query・計算は `shared/` に置く。コメントの一覧の中のスレッド・レビュー中の書き込みの画面は、同じドメインの `features/comments/` の中で一覧が組む
   入力: 画面での編集は 1 キーごとではなく入力欄を離れたときに溜めるため、React Hook Form を使わず、`useAddEdit` をイベントハンドラから呼ぶ。設定の画面の入力の検証だけ `form.ts` の Zod を使う
-  配る書き出し: 書き出し用のビルドは `vite.config.ts` と同じソースから作り、`isEmbedded()`（`shared/core/embedded.ts`）で埋め込みの記録・ハッシュの履歴・中に持つ配布ファイルへ切り替える。React の画面のソースを変えたら `npm run build` と `npm run build-export` の両方の出力を commit する
+  配る書き出し: 書き出し用のビルドは `vite.config.ts` と同じソースから作り、`isEmbedded()`（`shared/core/embedded.ts`）で埋め込みの記録・ハッシュの履歴・中に持つ配布ファイルへ切り替える。React の画面のソースを変えたら `npm run build` と `npm run build-export` の両方の出力を commit し、lefthook の pre-commit が両方の出力の未 commit の差分を検査する（外部ライブラリ『lefthook』）

@@ -10,11 +10,11 @@ directory: |-
       spa/            React の画面のビルドの出力（配信が返す。モジュール構成『プレビュー / React』）
       export/
         index.html    React の画面の書き出し用のビルドの出力（JS・CSS を中に持つ 1 枚の HTML。配る書き出しの元）
+        licenses.md   書き出し用のビルドが中に持つライブラリごとの名前・バージョン・ライセンスの本文（Vite の `build.license` が書く）
       libraries.json  描画のライブラリ（marked・mermaid・jsdiff）ごとの package・version・url・integrity・global。画面と配る書き出しが読む唯一の持ち主
       licenses/
-        README.md  mermaid-bundled.txt と frontend-licenses.txt を作り直す手順と、mdmark-LICENSE.txt を置いている理由
+        README.md  mermaid-bundled.txt を作り直す手順と、mdmark-LICENSE.txt を置いている理由
         mermaid-bundled.txt  mermaid.min.js が中に束ねた依存ごとの、名前・バージョンと LICENSE の写。mermaid のバージョンを上げたら再収集する
-        frontend-licenses.txt  React の画面の書き出し用のビルドが中に持つライブラリごとの名前・バージョン・ライセンスの本文（書き出し用のビルドのときに生成する）
         mdmark-LICENSE.txt  mdmark の MIT の本文
     scripts/
       builder.py      記録の収集と、配る書き出し
@@ -191,7 +191,7 @@ constants:
     summary: '`PREVIEW_DIR` からの相対パス。書き出し用のビルドのときに生成し、ライセンスの表示の最後に続ける'
     title: React の画面が中に持つライブラリのライセンス
     usecase: 配る書き出し
-    value: '"licenses/frontend-licenses.txt"'
+    value: '"export/licenses.md"'
   - container: plugins/mindstella/skills/mindmap/scripts/builder.py
     name: DATA_OPEN
     summary: 配る書き出しに置く、記録の JSON を中身に持つ要素の開きタグ（閉じタグは `</script>`）
@@ -455,7 +455,7 @@ functions:
       - name: test_export_preview
         case: 正常
         summary: 記録と取ったライブラリとライセンスの表示を持つ HTML を out に書き、ワークスペースは触らない
-        condition: D-1 と資料 A-1（`docs/A-1.mark.md` あり）を持つワークスペースと、`</body>` を持つ `export/index.html`・1 行の `libraries.json`・`licenses/frontend-licenses.txt` を置いたプレビューのフォルダ。`out` はワークスペースの外の `tmp_path / "配る.html"`
+        condition: D-1 と資料 A-1（`docs/A-1.mark.md` あり）を持つワークスペースと、`</body>` を持つ `export/index.html`・1 行の `libraries.json`・`export/licenses.md` を置いたプレビューのフォルダ。`out` はワークスペースの外の `tmp_path / "配る.html"`
         mock: '`fetch`（URL ごとに決めた中身を返す関数。配布ファイルの中身は `integrity` と合うもの）'
         expected: 戻り値が `out`。`out` の `mindmap-data` を JSON として読むと `decisions` に D-1、`bodies` に `A-1.mark.md`。`out` に `src=`・`href=` が無く、`mindmap-licenses` の要素がある。ワークスペースのファイルが呼ぶ前と同じ
       - name: test_export_preview_when_schema_mismatch
@@ -622,7 +622,7 @@ functions:
     usecase: 配る書き出し
     unit_tests:
       - case: 正常
-        condition: '`tmp_path` に、文字列の `</body>` を中に持つ `<script>` と Google Fonts の `<link>` と最後の `</body>` を持つ `export/index.html`、2 行の `libraries.json`、`licenses/frontend-licenses.txt`（中身 `React の依存`）。`MDMARK_PACKAGE` と 2 つのパッケージの `VendorLibrary`。記録の本文に `</script>` を含む'
+        condition: '`tmp_path` に、文字列の `</body>` を中に持つ `<script>` と Google Fonts の `<link>` と最後の `</body>` を持つ `export/index.html`、2 行の `libraries.json`、`export/licenses.md`（中身 `React の依存`）。`MDMARK_PACKAGE` と 2 つのパッケージの `VendorLibrary`。記録の本文に `</script>` を含む'
         exception: '-'
         expected: '`https://` と Google Fonts の `<link>` が無い。差し込んだ要素が最後の `</body>` の直前にあり、`<script>` の中の文字列の `</body>` は変わらない。`mindmap-data` を JSON として読むと記録と同じで本文の `</script>` で閉じていない。`mindmap-licenses` の最後に見出しの行と `React の依存` がある'
         mock: '`fetch`（URL ごとに決めた中身を返す関数。配布ファイルの中身は `integrity` と合うもの）'
