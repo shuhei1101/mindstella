@@ -159,7 +159,7 @@ lead: 利用者が画面でスレッドを開いたときに、そのスレッ�
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `posts[].seen` が `false` の書き込みを `true` にする（未読が無ければ書かない）。一時ファイルから `os.replace` で置き換える'
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

@@ -65,7 +65,7 @@ accessibility:
   - 'マーカーの箇所へ送信するとき、`prefers-reduced-motion: reduce` ではなめらかに送信せず、すぐにその位置にする'
   - ホバーは面の色、キーボードのフォーカスはマーカーの色の輪で見分ける
 refs:
-  - IF-489-71#
+  - IF-489-70#
   - CMP-489-31#
 status: implemented
 notes:

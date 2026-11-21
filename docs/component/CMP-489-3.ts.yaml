@@ -79,7 +79,7 @@ accessibility:
   - 差分のマーカーは色だけでなく、線の形状（追加した = 実線、変わった = 破線）でも分ける
   - 枠の中のリンクは、キーボードでフォーカスして Enter を押しても、押したときと同じに働く
 refs:
-  - IF-489-71#
+  - IF-489-70#
   - CMP-489-57#
 notes:
   モック: '`docs/mock/components/html-body-frame/`'

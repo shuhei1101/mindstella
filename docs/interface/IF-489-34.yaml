@@ -114,7 +114,7 @@ lead: プレビューのタブが開いたときに 1 度呼び、そのワー�
 idempotent: false
 side_effects: ワークスペースの `.mindstella-opened` を今の日時と連番で書き換える（無ければ作る）。記録（種類ごとの YAML・本文・`changes.yaml`）は書き換えない
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

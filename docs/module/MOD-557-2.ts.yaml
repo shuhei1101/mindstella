@@ -63,7 +63,7 @@ functions:
         mock: '`reload`・`onStaleChange`・`isVoiceActive`'
         expected: '`release` の後に `reload` が 1 回'
 refs:
-  - IF-489-71#
+  - IF-489-70#
 notes:
   単体テスト: '`tests/unit/preview/test_refresh_hold.py` に置く（今の画面の部品と同じく、tsc が生成した JavaScript をブラウザで読んで確かめる）'
 id: MOD-557-2

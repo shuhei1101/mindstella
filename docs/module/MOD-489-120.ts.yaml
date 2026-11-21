@@ -1,6 +1,6 @@
 id: MOD-489-120
 title: プレビュー / preview-search
-lead: SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理。
+lead: SPA の search params（インターフェース定義『プレビューを開く』の request）の Zod スキーマと、記録に合わない値を外す処理。
 data_models:
   - name: PreviewSearchSchema
     title: プレビューの search

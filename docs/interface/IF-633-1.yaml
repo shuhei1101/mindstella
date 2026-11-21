@@ -164,7 +164,7 @@ lead: 利用者が画面で項目を確認済みにする・確認済みを解�
 idempotent: true
 side_effects: '`history.yaml` のその項目の行の `confirmed` を書く・削除する（行が無ければ `confirmed` だけの行を作り、`confirmed` だけの行の解除は行ごと削除する。既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

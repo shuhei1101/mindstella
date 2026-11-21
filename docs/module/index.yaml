@@ -5,7 +5,7 @@ items:
   - page: MOD-489-3.ts.yaml
     summary: "knowledge の規約『QueryClient』の defaultOptions"
   - page: MOD-489-4.tsx.yaml
-    summary: "SPA を配るパスの頭（インターフェース定義『SPAの配信』）"
+    summary: "SPA を配るパスの頭（インターフェース定義『プレビューの配信』）"
   - page: MOD-489-2.tsx.yaml
     summary: "`tab` の画面と、詳細・変更履歴・保存待ちのパネルを重ねて描く SPA の外枠"
   - page: MOD-489-40.tsx.yaml
@@ -197,7 +197,7 @@ items:
   - page: MOD-489-101.ts.yaml
     summary: "失敗した応答から作るエラー。`detail` を画面に出す"
   - page: MOD-489-120.ts.yaml
-    summary: "SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理"
+    summary: "SPA の search params（インターフェース定義『プレビューを開く』の request）の Zod スキーマと、記録に合わない値を外す処理"
   - page: MOD-489-121.ts.yaml
     summary: "記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い）"
   - page: MOD-489-110.ts.yaml
@@ -241,13 +241,13 @@ items:
   - page: MOD-489-135.ts.yaml
     summary: "clsx と tailwind-merge でクラス名を 1 つにする"
   - page: MOD-489-136.ts.yaml
-    summary: "書き換えの通知がつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」）"
+    summary: "書き換えの通知がつながっているか（インターフェース定義『プレビューを開く』の制約「接続の状態」）"
   - page: MOD-540-9.ts.yaml
     summary: "変更の検知が知らせた重なった ID と、利用者が閉じた集まり。"
   - page: MOD-489-254.ts.yaml
-    summary: "画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」）"
+    summary: "画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『プレビューを開く』の制約「音声の入力」）"
   - page: MOD-557-1.ts.yaml
-    summary: "入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の再読み込みの保留」）"
+    summary: "入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『プレビューを開く』の制約「入力中の再読み込みの保留」）"
   - page: MOD-489-141.ts.yaml
     summary: "今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す"
   - page: MOD-489-140.ts.yaml

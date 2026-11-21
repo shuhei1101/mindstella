@@ -51,7 +51,7 @@ response:
     notes: ハッシュはフォルダのシンボリックリンクを解いた絶対パスの SHA-256 の 16 進の先頭 6 桁。フォルダ名の `.`・`:` は `-` に置き換える（『起動のコマンド』の tmux のセッションの名前と同じ規則で、tmux のセッションの名前にも使う）
   - name: url
     type: str
-    description: 画面の URL（そのワークスペースのプレビューの配信の `/w/{workspace}/mindstella.html`）。『プレビューの URL』が返す URL と同じ
+    description: 画面の URL（そのワークスペースのプレビューの配信の `/w/{workspace}/`）。『プレビューの URL』が返す URL と同じ
   - name: result
     type: Literal['created', 'opened', 'reopened', 'already_open']
     description: '`created` 記録を作った / `opened` 残っている記録を開いて登録した / `reopened` クローズしたワークスペースの配信元の行を戻した / `already_open` 既に開いている'

@@ -220,7 +220,7 @@ lead: 保存待ちのパネルの「まとめて保存する」で、`edits.yaml
 idempotent: false
 side_effects: 項目の YAML・本文・`config.yaml`・`changes.yaml` を書き換え、`edits.yaml` の編集を空にする。どれも一時ファイルから `os.replace` で置き換え、`edits.yaml` を最後に書く
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

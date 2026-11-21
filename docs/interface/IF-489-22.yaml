@@ -117,7 +117,7 @@ lead: コメントの一覧の行の中で、レビュー中のコメント 1 �
 idempotent: true
 side_effects: '`comments.yaml` のそのコメントの `body` を書き換えるか `loc` を削除する。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

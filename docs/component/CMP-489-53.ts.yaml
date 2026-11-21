@@ -77,7 +77,7 @@ accessibility:
   - 組み立てられなかった文は `role="alert"` で伝える
   - 警告とエラーは色だけでなくアイコンと文で示す
 refs:
-  - IF-489-71#
+  - IF-489-70#
   - SC-489-39#
 status: planned
 introduced:

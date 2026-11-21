@@ -154,9 +154,10 @@ flows:
     setup:
       - name: Mock
         description: GitHub の API を、develop の先頭の commit の SHA を返す偽のサーバー（空きポート）に差し替えて MCP サーバーを立て、`preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ
-        notes: 偽のサーバーは `0123456789abcdef0123456789abcdef01234567` を返す
+        notes: 偽のサーバーは `0123456789abcdef0123456789abcdef01234567` を返し、受けた要求の数を数える
       - name: make_workspace
         description: 作成を済ませ、`config.yaml` の `mdmark.version` が `latest` のワークスペース
+        notes: 続けて 2 回 GET する
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -172,12 +173,83 @@ flows:
       - ステータスが 200
       - '`mdmark_ref` が `0123456789abcdef0123456789abcdef01234567`'
       - '`settings.mdmark.version` が `latest` のまま'
+      - 2 回とも `mdmark_ref` が同じで、偽のサーバーが受けた要求が 1 回
     test: test_normal_when_mdmark_ref
+  - name: 正常系（GitHub に届かない）
+    summary: develop の先頭の commit を問い合わせられないときは、`develop` を `mdmark_ref` に返す
+    setup:
+      - name: Mock
+        description: GitHub の API を、誰も待ち受けない空きポートに差し替えて MCP サーバーを立て、`preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の `mdmark.version` が `latest` のワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /w/{workspace}/api/records
+        participant GH as GitHub の API
+
+        クライアント->>IF: GET /w/{workspace}/api/records
+        IF-->>GH: develop の先頭の commit の SHA（届かない）
+        IF-->>クライアント: 200、mdmark_ref が develop の JSON
+      ```
+    expected:
+      - ステータスが 200
+      - '`mdmark_ref` が `develop`'
+      - 常駐サーバーの標準エラーに、mdmark の develop の commit を問い合わせられなかった旨の行が 1 行ある
+    test: test_normal_when_github_unreachable
+  - name: 正常系（タグを指定）
+    summary: 設定の mdmark のバージョンがタグのときは、GitHub に問い合わせずにタグを `mdmark_ref` に返す
+    setup:
+      - name: Mock
+        description: GitHub の API を、受けた要求の数を数える偽のサーバー（空きポート）に差し替えて MCP サーバーを立て、`preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の `mdmark.version` が `v0.13.0` のワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /w/{workspace}/api/records
+
+        クライアント->>IF: GET /w/{workspace}/api/records
+        IF-->>クライアント: 200、mdmark_ref がタグの JSON
+      ```
+    expected:
+      - ステータスが 200
+      - '`mdmark_ref` が `v0.13.0`'
+      - 偽のサーバーが受けた要求が 0 回
+    test: test_normal_when_mdmark_version_tag
+  - name: 正常系（jsDelivr がまだ配らない commit）
+    summary: 問い合わせた develop の先頭の commit を jsDelivr が配らないときは、`develop` を `mdmark_ref` に返す
+    setup:
+      - name: Mock
+        description: 常駐サーバーの GitHub と jsDelivr の基点の URL を、`sitecustomize` で偽のサーバーに向ける。偽の GitHub は SHA `0123456789abcdef0123456789abcdef01234567` を返し、偽の jsDelivr はその SHA の `dist/index.js` に 403 を返す
+      - name: make_workspace
+        description: 設定の `mdmark` を持たないワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as GET /w/{workspace}/api/records
+        participant GH as GitHub
+        participant JD as jsDelivr
+
+        ユーザー->>IF: GET /w/{workspace}/api/records
+        IF->>GH: develop の先頭の commit を問い合わせる
+        GH-->>IF: SHA
+        IF->>JD: その SHA の dist/index.js
+        JD-->>IF: 403
+        IF-->>ユーザー: mdmark_ref が develop の JSON
+      ```
+    expected:
+      - '`mdmark_ref` が `develop`'
+      - 常駐サーバーの標準エラーに、jsDelivr が配らない旨の 1 行がある
+    test: test_normal_when_dist_not_served
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの通知を受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

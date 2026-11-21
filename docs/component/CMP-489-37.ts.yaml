@@ -34,7 +34,7 @@ accessibility:
   - 2 つのボタンの組（`role="group"`、読み上げの名前「本文の差分の並べ方」）で、押している方を `aria-pressed` で示す
   - ホバーは面の色、キーボードのフォーカスはマーカーの色の輪で見分ける
 refs:
-  - IF-489-71#constraints[本文の差分の並べ方]
+  - IF-489-70#constraints[本文の差分の並べ方]
 status: implemented
 notes:
   モック: '`docs/mock/components/body-diff-layout/` の「並べ方の切り替え」'

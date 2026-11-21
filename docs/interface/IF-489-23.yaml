@@ -74,7 +74,7 @@ lead: レビュー中のコメントと下書きを、その場で読んで返�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - IF-489-71#
+  - IF-489-70#
 request:
   - name: Host
     type: str

@@ -30,7 +30,7 @@ accessibility:
   - 左右の列は `section` で、読み上げの名前は「選んだ時点の本文」「今の本文」。列の頭の名前の行と縞の空きは `aria-hidden` にする
   - 追加した・削除したは、色に加えて `+` / `−` の記号で分け、削除した方には取り消し線も付ける（インラインの本文の差分と同じマーカー）
 refs:
-  - IF-489-71#constraints[本文の差分の並べ方]
+  - IF-489-70#constraints[本文の差分の並べ方]
   - CMP-489-31#
 status: implemented
 notes:

@@ -488,8 +488,8 @@ files:
   - topic:結合テスト
   - topic:設定
 - path: integration/preview/test_spa_open.py
-  name: インターフェース定義『SPAを開く』の結合テスト
-  description: インターフェース定義『SPAを開く』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  name: インターフェース定義『プレビューを開く』の結合テスト
+  description: インターフェース定義『プレビューを開く』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
   - tool:pytest

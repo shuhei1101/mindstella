@@ -719,7 +719,7 @@ constants:
     title: SPA のパスの頭
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: SPAを開く
-    summary: SPA を配るパスの頭（インターフェース定義『SPAの配信』）
+    summary: SPA を配るパスの頭（インターフェース定義『プレビューの配信』）
     value: '"/spa"'
   - name: SPA_DIR
     title: SPA の出力のフォルダ

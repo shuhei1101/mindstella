@@ -1,12 +1,12 @@
 id: MOD-489-4
 title: プレビュー / router
-lead: SPA を配るパスのうち、ワークスペースのパスの頭より後ろ（インターフェース定義『SPAの配信』）。
+lead: SPA を配るパスのうち、ワークスペースのパスの頭より後ろ（インターフェース定義『プレビューの配信』）。
 constants:
   - name: ROUTER_BASEPATH
     title: ルーターの頭
     container: frontend/src/app/router.tsx
     usecase: 共通
-    summary: SPA を配るパスのうち、ワークスペースのパスの頭より後ろ（インターフェース定義『SPAの配信』）
+    summary: SPA を配るパスのうち、ワークスペースのパスの頭より後ろ（インターフェース定義『プレビューの配信』）
     value: '"/spa"'
 functions:
   - name: createAppRouter
