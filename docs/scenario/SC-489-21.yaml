@@ -28,8 +28,8 @@ scenarios:
         participant PI as project-index
         participant WS as ワークスペース
 
-        CC->>SV: D-1 の採用する案を B に切り替える
-        SV->>SV: 案 A を外し案 B を採用にして、スキーマと突き合わせる
+        CC->>SV: D-1 の採用する案を B に切り替える（誰が決めたかは利用者）
+        SV->>SV: 案 A を外し案 B を採用にして、誰が決めたかを利用者にしてスキーマと突き合わせる
         SV->>WS: decisions.yaml に書く
         SV-->>CC: 切り替えた案
         CC->>PI: D-1 を参照している項目を、関連を逆向きにたどる
