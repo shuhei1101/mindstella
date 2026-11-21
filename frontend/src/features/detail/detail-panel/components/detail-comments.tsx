@@ -130,7 +130,7 @@ export const DetailComments = ({ id, scroller }: DetailCommentsProps) => {
     },
   });
   return (
-    <div ref={host} className="grid gap-2 border-t border-border bg-card px-6 py-2">
+    <div ref={host} className="grid gap-2 bg-card">
       <SendForm
         formRef={sendForm}
         target={id}
