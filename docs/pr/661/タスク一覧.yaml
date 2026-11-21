@@ -79,7 +79,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-21T10:41:08.188534+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T10:51:27.359168+00:00'
   - process: ドキュメント修正
     status: skipped
     reason: 公開ドキュメントに、パネルの上端や入力欄の位置の記述が無い
