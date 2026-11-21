@@ -43,15 +43,21 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 絞り込みのドロワーでプリセットを選んで開く操作と、タグの条件を式で書く操作を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T16:04:14.307350+00:00'
   - page: docs/guide/コアコンセプト-話し合いの進め方.md
     new: false
     change: 方針は選択肢を作る前にスレッドで聞き、細部は AI が決めてスレッドで報告だけにする進め方を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T16:04:14.307350+00:00'
   - page: docs/guide/エージェントフロー.md
     new: false
     change: 記録の使い分けのエージェントフローの変更（方針と細部の分け方）に追随する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T16:04:14.307350+00:00'
 scope_out:
   - item: 画面の今の絞り込みを、名前付きのプリセットとして保存する操作
     reason: '#361 の本文が後続として分けている。この作業 PR は AI が作ったプリセットを並べて開くだけを持つ'
