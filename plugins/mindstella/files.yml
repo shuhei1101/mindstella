@@ -225,6 +225,24 @@ files:
   related:
   - to: MOD-489-164
     type: implements
+- path: skills/mindmap/migrations/v0.14.0/scripts/markdown_bodies_to_mark_md.py
+  name: 本文の Markdown を .mark.md へ改名する変換
+  description: 本文の Markdown を mdmark の文書の拡張子 .mark.md へ改名し、項目の body と変更履歴の before.body を書き換える。v0.14.0 の変換を変更するときに読む。
+  tags:
+  - topic:移行
+  - topic:本文
+  related:
+  - to: MOD-527-1
+    type: implements
+- path: skills/mindmap/migrations/v0.14.0/scripts/move_bodies_to_root.py
+  name: 本文のフォルダをワークスペースの直下へ移す変換
+  description: 本文と埋め込むファイルのフォルダをワークスペースの直下へ移し、本文の参照と配信の設定を書き換えて、release/ を削除する。v0.14.0 の変換を変更するときに読む。
+  tags:
+  - topic:移行
+  - topic:本文
+  related:
+  - to: MOD-626-1
+    type: implements
 - path: skills/mindmap/migrations/v0.14.0/scripts/remove_discussion_keys.py
   name: 議論のキーを削除する変換
   description: 設定から削除するキーを削除し、項目の対象・カテゴリーをタグへ、属性・観点・確かさを本文へ移す。v0.14.0 の変換を変更するときに読む。
