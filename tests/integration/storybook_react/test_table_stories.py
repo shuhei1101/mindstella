@@ -21,6 +21,8 @@ STATES = (
     "shared-table--text-filtered",
     "shared-table--commented",
     "shared-table--withdrawn",
+    "shared-table--tag-match-any",
+    "shared-table--selectable-tags",
 )
 
 # 位置の比べで許す差（px）
@@ -220,3 +222,25 @@ def test_withdrawn(open_story: OpenStory) -> None:
     assert withdrawn.evaluate("e => getComputedStyle(e).color") != other.evaluate(
         "e => getComputedStyle(e).color"
     )
+
+
+def test_tag_match_any(open_story: OpenStory) -> None:
+    """「どれかを含む」はどちらかのタグを持つ行を出し、チップを「タグ（どれかを含む）: {名前}」にする（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-table--tag-match-any")
+    ids = page.locator("tbody tr[data-id]").evaluate_all("(rows) => rows.map((row) => row.dataset.id)")
+    # 検証
+    assert ids == ["D-1", "D-2", "D-3"]
+    expect(page.get_by_text("タグ（どれかを含む）: 画面", exact=True)).to_be_visible()
+
+
+def test_selectable_tags(open_story: OpenStory) -> None:
+    """タグの列のタグを押せるボタンにし、行のタイトルのボタンと入れ子にしない（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-table--selectable-tags")
+    row = page.locator("tbody tr[data-id='D-3']")
+    # 検証
+    expect(row.locator("button[data-tag]")).to_have_count(2)
+    expect(row.get_by_role("button", name="タグ「保存」で絞り込む")).to_be_visible()
+    expect(row.locator("button[data-id='D-3']")).to_have_text("資料の状態の値")
+    assert page.locator("button button").count() == 0

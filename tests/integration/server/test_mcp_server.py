@@ -38,6 +38,9 @@ SERVER_NAME = "mindstella"
 TOOL_NAMES = [
     "next_id",
     "update_settings",
+    "create_preset",
+    "update_preset",
+    "delete_preset",
     "adopt",
     "edit_option",
     "changes_since_read",

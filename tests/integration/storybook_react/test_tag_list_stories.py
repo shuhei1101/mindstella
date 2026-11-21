@@ -14,6 +14,7 @@ STATES = (
     "shared-taglist--no-main",
     "shared-taglist--string-tags",
     "shared-taglist--long-narrow",
+    "shared-taglist--selectable",
 )
 
 
@@ -98,3 +99,23 @@ def test_long_narrow(open_story: OpenStory) -> None:
     assert last is not None
     assert last["y"] > first["y"]
     assert first["y"] <= marker["y"] <= first["y"] + first["height"]
+
+
+def test_selectable(open_story: OpenStory) -> None:
+    """押せるタグはボタンで、読み上げ名で絞り込むことを伝え、押せる範囲を見た目の上下へ広げる（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-taglist--selectable")
+    buttons = page.locator("[data-tags] > button[data-tag]")
+    # 見た目の枠の上端・下端から 2px 外を押しても、そのタグのボタンに当たるか
+    hits = buttons.evaluate_all(
+        """(nodes) => nodes.map((node) => {
+            const box = node.getBoundingClientRect();
+            const x = box.left + box.width / 2;
+            return [box.top - 2, box.bottom + 2].every((y) => node.contains(document.elementFromPoint(x, y)));
+        })"""
+    )
+    # 検証
+    expect(buttons).to_have_count(4)
+    expect(page.get_by_role("button", name="タグ「画面」で絞り込む（主題）")).to_be_visible()
+    expect(page.get_by_role("button", name="タグ「記録の形」で絞り込む")).to_be_visible()
+    assert all(hits)
