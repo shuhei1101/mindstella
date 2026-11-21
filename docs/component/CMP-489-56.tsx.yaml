@@ -279,5 +279,4 @@ accessibility:
   - 入力が空の間の「レビューに追加」は `aria-disabled="true"` にして押しても溜めず、`disabled` にしない（溜めた後に入力欄へ戻さないとき、空になった入力の「レビューに追加」へフォーカスを移す）
 refs:
   - CMP-489-8#
-  - CMP-489-55#
 test_file: tests/integration/storybook_react/test_reply_form_stories.py

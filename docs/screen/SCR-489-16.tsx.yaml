@@ -33,5 +33,4 @@ notes:
   削除した項目を含む件数のモック: 削除した項目を含む時点の件数の見本は `docs/mock/pages/decisions/179/b-band/index.html` の変更履歴のモーダル
 test_file: tests/integration/preview/test_spa_history_screen.py
 refs:
-  - SCR-489-15#
   - IF-489-70#

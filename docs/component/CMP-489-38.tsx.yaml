@@ -35,7 +35,6 @@ accessibility:
   - ホバーは面の色、キーボードのフォーカスはマーカーの色の輪で見分ける
 refs:
   - IF-489-70#constraints[本文の差分の並べ方]
-  - CMP-489-37#
 notes:
   モック: '`docs/mock/components/body-diff-layout/` の「並べ方の切り替え」'
 test_file: tests/integration/storybook_react/test_body_diff_layout_switch_stories.py

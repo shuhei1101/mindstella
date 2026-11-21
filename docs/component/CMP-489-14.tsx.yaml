@@ -116,6 +116,5 @@ accessibility:
   - タグの札は行を開くボタンと別のボタンにし、`aria-pressed` と読み上げの名前「タグ「{タグ}」で絞る」を持つ
   - 行を開くボタンとタグの札のそれぞれに Tab で届き、フォーカスは枠の全体にマーカーの色の輪で出す
 refs:
-  - SCR-489-1#
-  - CMP-489-13#
+  - SCR-489-2#
 test_file: tests/integration/storybook_react/test_thread_row_stories.py

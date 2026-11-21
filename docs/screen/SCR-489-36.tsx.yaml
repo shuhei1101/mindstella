@@ -31,12 +31,11 @@ elements:
     io: 入力
     visible_when: 全体の検索を開いていないとき
     status: planned
-lead: React のプレビューの全体の検索。今の全体の検索と同じ要素と操作を持つモーダルで、開いているかと検索の言葉を URL の search params の `search`・`q` に持つ（インターフェース定義『プレビューを開く』）。
+lead: 全体の検索のモーダル。全種類の項目を ID・タイトル・本文で検索し、開いているかと検索の言葉を URL の search params の `search`・`q` に持つ（インターフェース定義『プレビューを開く』）。
 mock: docs/mock/pages/search/216/a-by-tier/index.html
 test_file: tests/integration/preview/test_spa_search_screen.py
 notes:
   HTML の本文のモック: HTML の本文を描いた文で当てる見本は `docs/mock/pages/search/214/standard/index.html`
   幅 320px のモック: 幅 389px 以下で入力欄を縮める見本は `docs/mock/pages/search/289/a-shrink-input/index.html`
 refs:
-  - SCR-489-12#
   - IF-489-70#

@@ -360,8 +360,6 @@ files:
   related:
   - to: MOD-489-205
     type: implements
-  - to: CMP-489-37
-    type: implements
 - path: skills/mindmap/preview/components/body-format-badge.stories.ts
   name: 本文の形式の札のストーリー
   description: 部品『本文の形式の札』の状態ごとの Storybook のストーリー。本文の形式の札の状態を追加・変更するときに読む。
@@ -381,8 +379,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-174
-    type: implements
-  - to: CMP-489-39
     type: implements
 - path: skills/mindmap/preview/components/chips-input.stories.ts
   name: チップの入力のストーリー
@@ -404,8 +400,6 @@ files:
   related:
   - to: MOD-489-243
     type: implements
-  - to: CMP-489-17
-    type: implements
 - path: skills/mindmap/preview/components/comment-mark.stories.ts
   name: コメントのマーカーのストーリー
   description: 部品『コメントのマーカー』の状態ごとの Storybook のストーリー。コメントのマーカーの状態を追加・変更するときに読む。
@@ -425,8 +419,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-215
-    type: implements
-  - to: CMP-489-9
     type: implements
 - path: skills/mindmap/preview/components/diff-mark.stories.ts
   name: 差分のマーカーのストーリー
@@ -448,8 +440,6 @@ files:
   related:
   - to: MOD-489-229
     type: implements
-  - to: CMP-489-31
-    type: implements
 - path: skills/mindmap/preview/components/diff-minimap.stories.ts
   name: 差分のミニマップのストーリー
   description: 部品『差分のミニマップ』の状態ごとの Storybook のストーリー。差分のミニマップの状態を追加・変更するときに読む。
@@ -470,8 +460,6 @@ files:
   related:
   - to: MOD-489-203
     type: implements
-  - to: CMP-489-29
-    type: implements
 - path: skills/mindmap/preview/components/doc-export-menu.stories.ts
   name: 資料のエクスポートのメニューのストーリー
   description: 部品『資料のエクスポートのメニュー』の状態ごとの Storybook のストーリー。資料のエクスポートのメニューの状態を追加・変更するときに読む。
@@ -491,8 +479,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-241
-    type: implements
-  - to: CMP-489-53
     type: implements
 - path: skills/mindmap/preview/components/duplicate-id-notice.stories.ts
   name: 重なった ID の通知のストーリー
@@ -515,8 +501,6 @@ files:
   related:
   - to: MOD-540-7
     type: implements
-  - to: CMP-540-1
-    type: implements
 - path: skills/mindmap/preview/components/filter-drawer.stories.ts
   name: 絞り込みのドロワーのストーリー
   description: 部品『絞り込みのドロワー』の状態ごとの Storybook のストーリー。絞り込みのドロワーの状態を追加・変更するときに読む。
@@ -536,8 +520,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-233
-    type: implements
-  - to: CMP-489-45
     type: implements
 - path: skills/mindmap/preview/components/history-dialog.stories.ts
   name: 変更履歴のモーダルのストーリー
@@ -559,8 +541,6 @@ files:
   related:
   - to: MOD-489-230
     type: implements
-  - to: CMP-489-25
-    type: implements
 - path: skills/mindmap/preview/components/html-body-diff.stories.ts
   name: HTML の本文の差分のストーリー
   description: 部品『HTML の本文の差分』の状態ごとの Storybook のストーリー。HTML の本文の差分の状態を追加・変更するときに読む。
@@ -580,8 +560,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-174
-    type: implements
-  - to: CMP-489-1
     type: implements
 - path: skills/mindmap/preview/components/html-body-frame.stories.ts
   name: HTML の本文の枠のストーリー
@@ -603,8 +581,6 @@ files:
   related:
   - to: MOD-489-174
     type: implements
-  - to: CMP-489-3
-    type: implements
 - path: skills/mindmap/preview/components/markdown-body.stories.ts
   name: Markdown の本文の見せ方のストーリー
   description: 部品『Markdown の本文の見せ方』の状態ごとの Storybook のストーリー。Markdown の本文の見せ方の状態を追加・変更するときに読む。
@@ -624,8 +600,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-207
-    type: implements
-  - to: CMP-489-5
     type: implements
 - path: skills/mindmap/preview/components/pending-mark.stories.ts
   name: 保存待ちのマーカーのストーリー
@@ -647,8 +621,6 @@ files:
   related:
   - to: MOD-489-240
     type: implements
-  - to: CMP-489-21
-    type: implements
 - path: skills/mindmap/preview/components/removed-band.stories.ts
   name: 削除した項目の帯のストーリー
   description: 部品『削除した項目の帯』の状態ごとの Storybook のストーリー。削除した項目の帯の状態を追加・変更するときに読む。
@@ -668,8 +640,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-234
-    type: implements
-  - to: CMP-489-43
     type: implements
 - path: skills/mindmap/preview/components/reply-form.stories.ts
   name: 返信の入力のストーリー
@@ -691,8 +661,6 @@ files:
   related:
   - to: MOD-489-237
     type: implements
-  - to: CMP-489-55
-    type: implements
 - path: skills/mindmap/preview/components/review-body-fold.stories.ts
   name: レビュー中の書き込みの本文の折りたたみのストーリー
   description: 部品『レビュー中の書き込みの本文の折りたたみ』の状態ごとの Storybook のストーリー。レビュー中の書き込みの本文の折りたたみの状態を追加・変更するときに読む。
@@ -712,8 +680,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-208
-    type: implements
-  - to: CMP-489-41
     type: implements
 - path: skills/mindmap/preview/components/selection-comment.stories.ts
   name: 選んだ箇所のコメントの入口のストーリー
@@ -735,8 +701,6 @@ files:
   related:
   - to: MOD-489-228
     type: implements
-  - to: CMP-489-57
-    type: implements
 - path: skills/mindmap/preview/components/send-form.stories.ts
   name: コメントの入力のストーリー
   description: 部品『コメントの入力』の状態ごとの Storybook のストーリー。コメントの入力の状態を追加・変更するときに読む。
@@ -756,8 +720,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-214
-    type: implements
-  - to: CMP-489-7
     type: implements
 - path: skills/mindmap/preview/components/settings-confirm.stories.ts
   name: 既定の保存の確かめのストーリー
@@ -779,8 +741,6 @@ files:
   related:
   - to: MOD-489-231
     type: implements
-  - to: CMP-489-33
-    type: implements
 - path: skills/mindmap/preview/components/settings-panel.stories.ts
   name: 表示の設定の中身のストーリー
   description: 部品『表示の設定の中身』の状態ごとの Storybook のストーリー。表示の設定の中身の状態を追加・変更するときに読む。
@@ -800,8 +760,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-204
-    type: implements
-  - to: CMP-489-49
     type: implements
 - path: skills/mindmap/preview/components/side-by-side-body-diff.stories.ts
   name: 左右に並べた本文の差分のストーリー
@@ -823,8 +781,6 @@ files:
   related:
   - to: MOD-489-239
     type: implements
-  - to: CMP-489-27
-    type: implements
 - path: skills/mindmap/preview/components/table.stories.ts
   name: 表のストーリー
   description: 部品『表』の状態ごとの Storybook のストーリー。表の状態を追加・変更するときに読む。
@@ -844,8 +800,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-209
-    type: implements
-  - to: CMP-489-47
     type: implements
 - path: skills/mindmap/preview/components/tag-list.stories.ts
   name: タグの並びのストーリー
@@ -867,8 +821,6 @@ files:
   related:
   - to: MOD-489-242
     type: implements
-  - to: CMP-489-15
-    type: implements
 - path: skills/mindmap/preview/components/term-tip.stories.ts
   name: 本文のマーカーのツールチップのストーリー
   description: 部品『本文のマーカーのツールチップ』の状態ごとの Storybook のストーリー。本文のマーカーのツールチップの状態を追加・変更するときに読む。
@@ -888,8 +840,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-236
-    type: implements
-  - to: CMP-489-35
     type: implements
 - path: skills/mindmap/preview/components/thread-post.stories.ts
   name: スレッドの書き込みのストーリー
@@ -911,8 +861,6 @@ files:
   related:
   - to: MOD-489-238
     type: implements
-  - to: CMP-489-11
-    type: implements
 - path: skills/mindmap/preview/components/thread-row.stories.ts
   name: スレッドの行のストーリー
   description: 部品『スレッドの行』の状態ごとの Storybook のストーリー。スレッドの行の状態を追加・変更するときに読む。
@@ -932,8 +880,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-217
-    type: implements
-  - to: CMP-489-13
     type: implements
 - path: skills/mindmap/preview/components/topbar.stories.ts
   name: トップバーのストーリー
@@ -955,8 +901,6 @@ files:
   related:
   - to: MOD-489-223
     type: implements
-  - to: CMP-489-19
-    type: implements
 - path: skills/mindmap/preview/components/view-switch.stories.ts
   name: 表示形式の切り替えのストーリー
   description: 部品『表示形式の切り替え』の状態ごとの Storybook のストーリー。表示形式の切り替えの状態を追加・変更するときに読む。
@@ -977,8 +921,6 @@ files:
   related:
   - to: MOD-489-222
     type: implements
-  - to: CMP-489-51
-    type: implements
 - path: skills/mindmap/preview/components/withdrawn-badge.stories.ts
   name: 取り下げの札のストーリー
   description: 部品『取り下げの札』の状態ごとの Storybook のストーリー。取り下げの札の状態を追加・変更するときに読む。
@@ -998,8 +940,6 @@ files:
   - topic:部品
   related:
   - to: MOD-489-235
-    type: implements
-  - to: CMP-489-23
     type: implements
 - path: skills/mindmap/preview/core/api.ts
   name: サーバーの配信とのやり取り
@@ -1110,12 +1050,6 @@ files:
   related:
   - to: MOD-489-218
     type: implements
-  - to: SCR-489-1
-    type: implements
-  - to: SCR-489-3
-    type: implements
-  - to: SCR-489-8
-    type: implements
 - path: skills/mindmap/preview/screens/decisions.ts
   name: 検討事項の画面
   description: マップ（既定）・ボード・表で見る。検討事項の画面の表示や操作を変更するときに読む。
@@ -1186,8 +1120,6 @@ files:
   related:
   - to: MOD-489-219
     type: implements
-  - to: SCR-489-10
-    type: implements
 - path: skills/mindmap/preview/screens/records.ts
   name: 記録の表の画面
   description: 種類ごとの列を持つ表だけを出す。記録の表の画面の表示や操作を変更するときに読む。
@@ -1218,10 +1150,6 @@ files:
   related:
   - to: MOD-489-232
     type: implements
-  - to: SCR-489-17
-    type: implements
-  - to: SCR-489-23
-    type: implements
 - path: skills/mindmap/preview/screens/tasks.ts
   name: タスクの画面
   description: ボード（既定）と表で見る。タスクの画面の表示や操作を変更するときに読む。
@@ -1241,8 +1169,6 @@ files:
   - topic:画面
   related:
   - to: MOD-489-220
-    type: implements
-  - to: SCR-489-27
     type: implements
 - path: skills/mindmap/preview/style.css
   name: プレビューのスタイル

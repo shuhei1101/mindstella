@@ -7,7 +7,7 @@ elements:
     position: 見出し > 上の行
     description: スレッドの一覧へ戻る（履歴に積まない）。一覧のスクロールと絞り込みを保ち、開いていた行へフォーカスを戻す。入力欄にフォーカスが無いときの Esc も同じ。幅 901px 以上で詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。幅 900px 以下の Esc は前に出ている側から閉じる
     label: 一覧へ戻る
-    action_ref: SCR-489-1#
+    action_ref: SCR-489-2#
     status: planned
   - name: 状態を変える
     kind: button
@@ -51,7 +51,7 @@ elements:
     io: 表示
     visible_when: スレッドが項目に向いている
     source: スレッドの読み取り.threads[].target・threads[].target_title・threads[].loc
-    action_ref: SCR-489-31#
+    action_ref: SCR-489-32#
     status: planned
   - name: タグ
     kind: label
@@ -166,5 +166,4 @@ elements:
 lead: スレッドの一覧で開いたスレッド 1 件。書き込みと状態の変更を書いた順に並べ、下端で返信を溜め、上端でクローズとオープンへの戻しをする。コメントの一覧のパネルの中で一覧と切り替え、見出しの帯・パネルの置き方・閉じ方はコメントの一覧と同じ。まだ送信していない新規スレッドもこの画面で開く。開いているスレッドは URL の search params の `thread` に持つ（インターフェース定義『プレビューを開く』）。
 test_file: tests/integration/preview/test_spa_thread_screen.py
 refs:
-  - SCR-489-3#
   - IF-489-70#

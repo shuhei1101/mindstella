@@ -41,5 +41,4 @@ accessibility:
   - 記号は `aria-hidden` にし、「新規」「変更」「削除した」を読み上げにだけ残す文字と `title` を持つ
   - 色だけに頼らず、新規・変更・削除したを記号の形状でも分ける
 test_file: tests/integration/storybook_react/test_diff_mark_stories.py
-refs:
-  - CMP-489-31#
+refs: []

@@ -58,5 +58,4 @@ notes:
   主題のタグのモック: 'タグの主題のマーカーと、タグの入力の主題のトグルの見本は `docs/mock/pages/detail-full/385/a-ring/index.html`（採用した案 A。確認ログ: docs/pr/385/確認ログ.md）'
 test_file: tests/integration/preview/test_spa_detail_fullscreen_screen.py
 refs:
-  - SCR-489-29#
   - IF-489-70#

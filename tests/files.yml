@@ -1054,9 +1054,7 @@ files:
   - tool:pytest
   - topic:結合テスト
   - topic:ストーリー
-  related:
-  - to: CMP-540-1
-    type: tests
+  related: []
 - path: integration/storybook/test_filter_drawer_stories.py
   name: 部品設計『絞り込み』の状態の結合テスト
   description: 部品設計『絞り込み』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。

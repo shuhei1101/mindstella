@@ -47,5 +47,4 @@ accessibility:
   - 押せる的は高さ 32px 以上にする
   - 名前のツールチップは、乗せている間とフォーカスしている間は出し続け、ツールチップの上へポインターを動かしても削除しない（WCAG 1.4.13）
 test_file: tests/integration/storybook_react/test_selection_comment_stories.py
-refs:
-  - CMP-489-57#
+refs: []

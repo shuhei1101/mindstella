@@ -107,5 +107,4 @@ accessibility:
 refs:
   - CMP-489-20#
   - CMP-489-48#
-  - CMP-489-45#
 test_file: tests/integration/storybook_react/test_filter_drawer_stories.py

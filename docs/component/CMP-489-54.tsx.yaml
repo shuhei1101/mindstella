@@ -81,7 +81,6 @@ accessibility:
 refs:
   - IF-489-70#
   - SC-489-39#
-  - CMP-489-53#
 notes:
   モック: '`docs/mock/components/doc-export-menu/`（採用した案 A: メニューの中で警告）'
   開き方: 入口のボタンと同じ詳細パネル・詳細の全画面のモーダルの中に、`popover="auto"` で置く。開閉は履歴に積まない。開いているときに入口のボタンをもう一度押すと閉じる

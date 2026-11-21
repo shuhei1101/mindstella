@@ -167,7 +167,6 @@ accessibility:
   - 文字の条件のチップの × に `{列}に「{文字}」を含む の条件を解除` の読み上げ名を付ける
   - 列の表示のボタンに「列の表示」の読み上げ名を付け、幅 720px 以下で文言を隠してアイコンだけにしても読み上げ名は残す
 refs:
-  - CMP-489-47#
   - IF-489-70#
 notes:
   組み方: TanStack Table の `useReactTable` に列と行を渡し、shadcn の data-table のガイドの形式（`Table`・`TableHeader`・`TableRow`・`TableCell` の部品と、並べ替え・絞り込み・列の表示・列のピン留めの状態）で組む。並べ替えと絞り込みの状態は使う側が URL の search params から渡し、表は受け取った状態で行を並べて絞る（インターフェース定義『プレビューを開く』の `sort`・`f.{列}`）

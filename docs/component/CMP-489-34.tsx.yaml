@@ -66,5 +66,4 @@ accessibility:
   - 変える項目は「今の既定」「保存する値」を読み上げにだけ残し、矢印のマーカーに頼らない
   - 保存できなかった理由は `role="alert"` で読み上げに伝える
 test_file: tests/integration/storybook_react/test_settings_confirm_stories.py
-refs:
-  - CMP-489-33#
+refs: []

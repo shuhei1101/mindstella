@@ -785,8 +785,7 @@ states:
         value: 'true'
       - name: voiceNotice
         value: '{"kind": "discarded", "text": "D-022 が削除されたため、録音を破棄しました。"}'
-refs:
-  - CMP-489-19#
+refs: []
 uses:
   - component: CMP-540-2#
     how: タブの帯の下の、重なった ID の通知の帯

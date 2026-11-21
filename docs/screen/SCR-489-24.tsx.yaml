@@ -59,7 +59,7 @@ elements:
     description: パネルを閉じて『設定の画面』を開く
     label: 設定を編集する
     visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
-    action_ref: SCR-489-27#
+    action_ref: SCR-489-28#
     status: planned
   - name: グレーアウト
     kind: backdrop
@@ -72,5 +72,4 @@ notes:
   幅 900px 以下の重なり: 詳細パネルを開いたまま開いたときは詳細パネルの前に出し、後ろになった詳細パネルの部品を `inert` にする。閉じると開く前の詳細パネルが見える
 test_file: tests/integration/preview/test_spa_display_settings_screen.py
 refs:
-  - SCR-489-23#
   - IF-489-70#

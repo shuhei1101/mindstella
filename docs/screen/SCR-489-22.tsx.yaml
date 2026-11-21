@@ -65,7 +65,7 @@ elements:
     source: 記録の取得.settings.description
   - name: タイルの項目の差分のマーカー
     kind: label
-    component: CMP-489-31#
+    component: CMP-489-32#
     args:
       - name: kind
         value: 選んだ時点で追加した項目は new、変えた項目は changed（記録の取得.changes）
@@ -98,7 +98,6 @@ elements:
     source: 記録の取得.docs
     visible_when: 常時（0 件のときは「確認中の資料はありません。」で、「すべて表示」を出さない）
 refs:
-  - SCR-489-21#
   - IF-489-70#
 notes:
   画面への移り方: '概要からの操作は、全て SPA の中で移る。
@@ -120,4 +119,4 @@ notes:
 
     | トップバーの検索（`onOpenSearch`） | SPA の全体の検索（`?search=1`） |
 
-    | トップバーのライト / ダーク（`onThemeChange`） | SPA の中で切り替え、今の画面と同じ端末の保存領域に残す |'
+    | トップバーのライト / ダーク（`onThemeChange`） | 画面の中で切り替え、端末の保存領域に残す |'

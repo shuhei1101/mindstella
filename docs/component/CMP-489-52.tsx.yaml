@@ -59,5 +59,4 @@ accessibility:
   - ボタンは `button` 要素にし、選んでいる形式を `aria-pressed="true"` で伝える
   - 全体を `role="group"` にし、`aria-label` に「表示形式」を付ける
   - ホバーは面の色、キーボードのフォーカスはマーカーの色の輪で見分ける
-refs:
-  - CMP-489-51#
+refs: []

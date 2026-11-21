@@ -130,7 +130,6 @@ accessibility:
 refs:
   - IF-489-70#
   - CMP-489-32#
-  - CMP-489-1#
 notes:
   モック: '`docs/mock/components/html-body-frame/` の「差分の表示」と `docs/mock/pages/detail-panel/214/c-marks/`（採用した案 C）、範囲の差分は `docs/mock/pages/detail-panel/348/a-embedded-html/` の差分の表示'
 test_file: tests/integration/storybook_react/test_html_body_diff_stories.py
