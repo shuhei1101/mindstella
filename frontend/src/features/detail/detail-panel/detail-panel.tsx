@@ -31,6 +31,7 @@ import { useRecords } from "@/shared/hooks/use-records";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
+import { isEmbedded } from "@/shared/core/embedded";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
 
@@ -243,7 +244,9 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
     ),
     logs: body("要約"),
   };
-  const canEdit = point === null;
+  // 差分の表示の間と配る書き出しは編集・確認済みを出さない
+  const embedded = isEmbedded();
+  const canEdit = point === null && !embedded;
   const marks: Record<string, PendingMarkKind> = {};
   const blockedIds = new Set(blockedEdits.map((entry) => entry.id));
   const blockedByKey: Record<string, BlockedEdit> = {};
@@ -300,7 +303,9 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             ) : null}
             {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
             {relation("参照元", related.referencedBy)}
-            <DetailComments id={id} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
+            {embedded ? null : (
+              <DetailComments id={id} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
+            )}
           </div>
         )}
       </DiffMinimap>

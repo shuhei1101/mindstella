@@ -12,6 +12,7 @@ import { Button } from "@/shared/components/ui/button";
 import { ViewSwitch, type View } from "@/shared/components/view-switch";
 import { removedOf } from "@/shared/core/diff";
 import { NEW_ID_PREFIX, type ScreenEdit } from "@/shared/core/edits";
+import { isEmbedded } from "@/shared/core/embedded";
 import { TEXT_FILTER_PREFIX, withoutKey, type Filters } from "@/shared/core/filters";
 import { drawerGroups, filterRows, nextSort, sortRows, type ListColumn } from "@/shared/core/list-rows";
 import { KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
@@ -74,7 +75,8 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
     closeItem();
     openAdded(kind, id);
   };
-  const edit = useScreenEdit(kind, point !== null, onAdd);
+  // 差分の表示の間と配る書き出しは項目の追加を出さない
+  const edit = useScreenEdit(kind, point !== null || isEmbedded(), onAdd);
   const counts = useMemo(() => {
     const result: Record<string, number> = {};
     for (const { target } of (comments.data?.status === 200 ? comments.data.data.items : [])) {
