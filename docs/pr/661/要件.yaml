@@ -14,6 +14,21 @@ use_cases:
     impact: run_only
     detail: レビュー中のコメントが下に留まらず、本文と一緒にスクロールして読める。詳細を読む手順は変わらない
     depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: run_only
+    detail: 保存待ちのパネルを開いている間、トップバーが隠れずに操作できる。手順は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: run_only
+    detail: 表示の設定のパネルを開いている間、トップバーが隠れずに操作できる。手順は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: run_only
+    detail: 絞り込みのドロワーを開いている間、トップバーが隠れずに操作できる。手順は変わらない
+    depends_on: []
 scope_out:
   - item: コメントの一覧のパネルの幅をドラッグで変える
     reason: 要望に含まれない（同じ comments-panel.tsx を触る別の要望）
