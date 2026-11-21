@@ -1,0 +1,24 @@
+# 結合テスト（計画書の実行範囲の表の範囲。並列数 1）
+
+回した commit: f42567fb（13dea1c9 の実装・ceb8fa3e の結合テストを含む。最後の 2 件は f42567fb のテストの修正の後に回し直した）
+Python は requirements-dev.txt の pytest・pytest-playwright・playwright・PyYAML・jsonschema・mcp・httpx・Jinja2 を入れた一時の仮想環境。部品のテストの前に npm run build-storybook-react を済ませた
+
+## TL-3
+$ pytest tests/integration/server/test_create_preset.py tests/integration/server/test_update_preset.py tests/integration/server/test_delete_preset.py tests/integration/server/test_mcp_server.py tests/integration/server/test_update_settings.py tests/integration/server/test_records.py tests/integration/server/test_export.py tests/integration/server/test_check.py tests/integration/plugin/test_agent_flows.py
+
+======================== 72 passed in 172.30s (0:02:52) ========================
+exit 0
+
+## TL-4
+$ pytest tests/integration/preview/test_spa_open.py tests/integration/preview/test_spa_display_settings_screen.py tests/integration/preview/test_spa_tasks_screen.py tests/integration/preview/test_spa_decisions_screen.py tests/integration/preview/test_spa_docs_screen.py tests/integration/preview/test_spa_records_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/storybook_react/test_tag_list_stories.py tests/integration/storybook_react/test_filter_drawer_stories.py tests/integration/storybook_react/test_table_stories.py tests/integration/storybook_react/test_item_card_stories.py tests/integration/storybook_react/test_filter_chips_stories.py
+FAILED tests/integration/preview/test_spa_open.py::test_normal_when_filter[chromium]
+FAILED tests/integration/preview/test_spa_tasks_screen.py::test_table_scroll_restored[chromium]
+================== 2 failed, 324 passed in 554.25s (0:09:14) ===================
+
+fail した 2 件の原因と修正（f42567fb）:
+- test_spa_open.py::test_normal_when_filter: 絞り込みの条件を端末の保存領域で確かめていた。設計（インターフェース定義『プレビューを開く』の制約「保存した絞り込みの条件」）どおりそのタブの保存領域で確かめる期待値に直した
+- test_spa_tasks_screen.py::test_table_scroll_restored: 戻した後にブラウザのスクロールの補正で scrollTop が数 px 動き、数値の一致では揺れた。離れたときに見えていた行で確かめる形に直した
+
+$ pytest tests/integration/preview/test_spa_open.py::test_normal_when_filter tests/integration/preview/test_spa_tasks_screen.py::test_table_scroll_restored
+============================== 2 passed in 13.51s ==============================
+exit 0
