@@ -90,7 +90,10 @@ describe("DetailPanel", () => {
     renderRoute("/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     // 検証
-    expect(await within(panel).findByRole("textbox", { name: /D-1 へのコメント/ })).toBeInTheDocument();
+    const input = await within(panel).findByRole("textbox", { name: /D-1 へのコメント/ });
+    const scroller = within(panel).getByRole("region", { name: "詳細の本文" });
+    expect(scroller).not.toContainElement(input);
+    expect(scroller).toContainElement(within(panel).getByRole("heading", { name: "レビュー中のコメント" }));
   });
   // 見出しのコメントの一覧のボタンで、その項目で絞ったコメントの一覧を開く（正常系）
   test("detail_panel_when_comments_button", async () => {

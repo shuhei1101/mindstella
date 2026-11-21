@@ -57,13 +57,13 @@ export const DisplaySettingsPanel = () => {
   };
   return (
     <>
-      <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 bg-foreground/40 max-lg:hidden" onClick={close} />
+      <div data-scrim aria-hidden="true" className="fixed inset-x-0 top-below-topbar bottom-0 z-20 bg-foreground/40 max-lg:hidden" onClick={close} />
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
       <section
         role="dialog"
         aria-modal="true"
         aria-label="表示の設定"
-        className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card max-lg:w-full"
+        className="fixed top-below-topbar bottom-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card max-lg:w-full"
         onKeyDown={(event) => {
           if (event.key === "Escape" && !confirming) {
             event.stopPropagation();

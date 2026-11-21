@@ -8,7 +8,7 @@ import pytest
 from playwright.sync_api import Page, ViewportSize, expect
 from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
-from preview_spa_helpers import AXE_SCRIPT, open_spa
+from preview_spa_helpers import AXE_SCRIPT, assert_below_topbar, open_spa
 from workspace_fixtures import MakeEdit, MakeItem
 
 # 押せる範囲と h1 の axe の規則を当て、違反を返す
@@ -235,3 +235,20 @@ def test_board_tag_press(page: Page, write_preview: WritePreview, make_item: Mak
     expect(page).to_have_url(re.compile(r"f\.tags=%E7%94%BB%E9%9D%A2"))
     expect(page.locator("[data-card='D-2']")).to_have_count(0)
     expect(page.get_by_role("complementary", name="詳細")).to_have_count(0)
+
+# ─── 絞り込みのドロワーの上端（トップバーの下） ───
+
+
+@pytest.mark.parametrize(
+    "size",
+    [pytest.param({"width": 1280, "height": 800}, id="wide"), pytest.param({"width": 390, "height": 844}, id="phone")],
+)
+def test_drawer_below_topbar(page: Page, spa_preview: str, size: dict[str, int]) -> None:
+    """絞り込みのドロワーはトップバーとタブを覆わず、その下端から画面の下端まで出す（正常系）。"""
+    # 準備
+    page.set_viewport_size(size)
+    open_spa(page, spa_preview, "?tab=decisions")
+    # 実行
+    page.get_by_role("button", name="絞り込み").click()
+    # 検証
+    assert_below_topbar(page, page.get_by_role("dialog", name="絞り込み"))

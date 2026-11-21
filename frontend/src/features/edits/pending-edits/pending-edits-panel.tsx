@@ -119,12 +119,12 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
   return (
     <>
     {/* 幅 901px 以上は後ろをグレーアウトし、押すと閉じる（押した操作は後ろの部品へ届けない） */}
-    <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 hidden bg-foreground/40 lg:block" onClick={onClose} />
+    <div data-scrim aria-hidden="true" className="fixed inset-x-0 top-below-topbar bottom-0 z-20 hidden bg-foreground/40 lg:block" onClick={onClose} />
     {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
     <aside
       id="pending-panel"
       aria-label="保存待ちの編集"
-      className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card"
+      className="fixed top-below-topbar bottom-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.stopPropagation();

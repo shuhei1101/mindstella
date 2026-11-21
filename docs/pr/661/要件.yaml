@@ -1,0 +1,44 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: run_only
+    detail: コメントの一覧を開いている間、トップバーが隠れずに操作できる。シナリオの「パネルとトップバー以外をグレーアウトする」の記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-47.yaml
+    impact: run_only
+    detail: 詳細パネルのコメントの入力欄が、スマホと PC の幅でパネルの 1 番下に隙間なく出る。コメントを溜める手順は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: run_only
+    detail: レビュー中のコメントが下に留まらず、本文と一緒にスクロールして読める。詳細を読む手順は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: run_only
+    detail: 保存待ちのパネルを開いている間、トップバーが隠れずに操作できる。手順は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: run_only
+    detail: 表示の設定のパネルを開いている間、トップバーが隠れずに操作できる。手順は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: run_only
+    detail: 絞り込みのドロワーを開いている間、トップバーが隠れずに操作できる。手順は変わらない
+    depends_on: []
+scope_out:
+  - item: コメントの一覧のパネルの幅をドラッグで変える
+    reason: 要望に含まれない（同じ comments-panel.tsx を触る別の要望）
+    plan: '#357'
+  - item: iPhone の幅でスレッドの横幅が PC のまま
+    reason: '#654 が関係として挙げた別の事象'
+    plan: '#585'
+  - item: 絞り込みのドロワーを開いている間のグレーアウトと inert（filter-drawer.tsx・list-screen.tsx）
+    reason: 画面設計『検討事項』の要素「絞り込みのドロワー」とシナリオ SC-489-49 はグレーアウトすると記載するが、実装にグレーアウトが無い（reviewer の対象外の逸脱の報告）。今回の要望はパネル・ドロワーの上端で、グレーアウトを足すことを含まない
+    plan: '#665'
+  - item: 資料の一覧のカードの見出しの段が飛ぶ（doc-cards.tsx の h3。axe heading-order）
+    reason: 見出しの段を飛ばさない決まり（axe heading-order）から外れている（reviewer の対象外の逸脱の報告）。今回の要望に含まれない。同じ内容の open の Issue がある
+    plan: '#646'

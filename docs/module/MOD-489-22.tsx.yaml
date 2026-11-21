@@ -6,7 +6,7 @@ components:
     title: 詳細のコメント
     kind: コンポーネント
     usecase: 項目へコメントする
-    summary: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを表示）、本文の選択から出す選んだ箇所のコメントの入口を描く。コメントの入力の `open` は `usePrefsStore` の `commentFormClosed` から渡し、`onToggleOpen` で書き換える。コメントを溜めたら、`SendForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら入力の「レビューに追加」へ、`input` なら入力欄へフォーカスを移す。閉じている間に選んだ箇所の入口を押したら `commentFormClosed` を `null` にしてから入力欄へフォーカスを移す
+    summary: 詳細パネル・詳細の全画面の下端のコメントの入力と、本文の選択から出す選んだ箇所のコメントの入口を描く。本文のスクロール領域の外（パネルの下端）に置かれるので、選択を判定する本文のスクロール領域の要素は props の `scroller`（要素を返す関数）から取る。コメントの入力の `open` は `usePrefsStore` の `commentFormClosed` から渡し、`onToggleOpen` で書き換える。コメントを溜めたら、`SendForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら入力の「レビューに追加」へ、`input` なら入力欄へフォーカスを移す。閉じている間に選んだ箇所の入口を押したら `commentFormClosed` を `null` にしてから入力欄へフォーカスを移す
     refs:
       - SCR-489-32#
       - SCR-489-30#
@@ -17,12 +17,6 @@ components:
         condition: 本文の 2 行目を選んで入口を押し、書いて溜める
         mock: MSW と mdmark の差し替え
         expected: '`POST /api/comments` が `loc` の 2 行目で呼ばれる'
-      - name: test_detail_comments_when_order
-        case: 正常
-        summary: 並びを切り替える
-        condition: 2 件で並びのボタンを押す
-        mock: MSW
-        expected: 古い順に並び、保存領域の `reviewOrder` が `oldest`
       - name: test_detail_comments_when_toggle_open
         case: 正常
         summary: 開閉を覚え、入口で開く
@@ -47,6 +41,34 @@ components:
         condition: '`parametrize`: `useFocusAfterAddTarget` が `input` / `submit` で本文を書いて溜める（201）。`submit` で空白だけを溜める'
         mock: MSW・`useFocusAfterAddTarget`
         expected: 入力欄にフォーカス / 「レビューに追加」にフォーカス。空白だけのときは入力欄にフォーカス
+      - name: test_detail_comments_when_outside_scroller
+        case: 正常
+        summary: 本文のスクロール領域の外から、選んだ箇所の入口を出す
+        condition: 本文のスクロール領域の兄弟に描き、`scroller` にその領域を渡して本文の 2 行目を選ぶ。続けて入力欄の中の文字を選ぶ
+        mock: MSW と mdmark の差し替え
+        expected: 選んだ箇所の入口が出る。入力欄の中の選択では出ない
+    container: frontend/src/features/detail/detail-panel/components/detail-comments.tsx
+  - name: DetailReviewComments
+    title: 詳細のレビュー中のコメント
+    kind: コンポーネント
+    usecase: 項目へコメントする
+    summary: 開いている項目へのレビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを表示）を描く。本文のスクロール領域の中の関係する項目の後に置かれ、下端に留めない（`sticky` を持たない）。修正の入力の音声入力は notes の「修正の入力の音声入力」のとおり
+    refs:
+      - SCR-489-32#
+      - SCR-489-30#
+    unit_tests:
+      - name: test_detail_review_comments_when_order
+        case: 正常
+        summary: 並びを切り替える
+        condition: 2 件で並びのボタンを押す
+        mock: MSW
+        expected: 古い順に並び、保存領域の `reviewOrder` が `oldest`
+      - name: test_detail_review_comments_when_remove
+        case: 正常
+        summary: 削除して元に戻す
+        condition: 1 件の「削除」を押し、続けて「元に戻す」を押す
+        mock: MSW
+        expected: '`DELETE /api/comments/{ID}` の後に「コメントを削除しました。」と「元に戻す」が出て、押すと `POST /api/comments` が同じ ID で呼ばれる'
     container: frontend/src/features/detail/detail-panel/components/detail-comments.tsx
 notes:
   単体テスト: 同じフォルダの `detail-comments.test.tsx` に置く（knowledge の規約『フォルダ構成』）

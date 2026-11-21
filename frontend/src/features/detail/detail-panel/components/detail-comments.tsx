@@ -1,4 +1,4 @@
-// 詳細のコメント。詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを表示）と、本文の選択から出す選んだ箇所のコメントの入口を描く
+// 詳細のコメント。詳細パネル・詳細の全画面の下端のコメントの入力と本文の選択から出す選んだ箇所のコメントの入口（DetailComments）と、本文の中のレビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを表示。DetailReviewComments）を描く
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -22,12 +22,22 @@ import { useFocusAfterAddTarget, usePrefs, writePrefs } from "@/shared/stores/pr
 export type DetailCommentsProps = {
   /** 開いている項目の ID */
   id: string;
+  /** 選択を確かめる本文のスクロール領域の要素 */
+  scroller: () => Element | null;
+};
+
+export type DetailReviewCommentsProps = {
+  /** 開いている項目の ID */
+  id: string;
   /** 本文の中の項目の ID・まとまりの説明 */
   titles: (id: string) => string | null;
   changeSets: (id: string) => string | null;
   onOpenItem: (id: string) => void;
   onOpenChangeSet: (id: string) => void;
 };
+
+/** レビュー中のコメントの一覧の要素に付ける印（その中の選択では選んだ箇所の入口を出さない） */
+const REVIEW_LIST_SELECTOR = "[data-review-comments]";
 
 /** 選んだ箇所の入口を出す位置 */
 type Entry = { anchor: { first: DOMRect; last: DOMRect }; area: { viewport: { width: number; height: number }; scroller: DOMRect }; loc: Location };
@@ -41,48 +51,39 @@ const rectsOf = (range: Range): { first: DOMRect; last: DOMRect } => {
 
 const NO_ITEMS: readonly ReviewItem[] = [];
 
-export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChangeSet }: DetailCommentsProps) => {
+export const DetailComments = ({ id, scroller }: DetailCommentsProps) => {
   const comments = useQuery(commentsQuery());
   const body = comments.data?.status === 200 ? (comments.data.data as { items?: ReviewItem[]; drafts?: Draft[] }) : undefined;
-  const items = (body?.items ?? NO_ITEMS).filter((item) => item.target === id && item.thread === null);
   const host = useRef<HTMLDivElement>(null);
   const prefs = usePrefs();
-  const order = prefs.reviewOrder === "oldest" ? "oldest" : "newest";
   const formOpen = prefs.commentFormClosed !== true;
   const add = useAddComment();
   const focusTarget = useFocusAfterAddTarget();
   // 溜めた後にフォーカスを移す、下端のコメントの入力の form
   const sendForm = useRef<HTMLFormElement>(null);
-  const update = useUpdateComment();
-  const remove = useRemoveComment();
   const saveDraft = useSaveDraft();
   const [loc, setLoc] = useState<Location | null>(null);
   const draft = (body?.drafts ?? []).find((one) => one.target === id && one.thread === null && JSON.stringify(one.loc) === JSON.stringify(loc))?.body ?? "";
   const [form, setForm] = useState<{ body: string | null; status: SendStatus; count: number | null; detail: string | null }>({ body: null, status: "idle", count: null, detail: null });
   const [entry, setEntry] = useState<Entry | null>(null);
-  const [removed, setRemoved] = useState<ReviewItem[]>([]);
-  // 書き換えている行。録音中か結果待ちの修正の入力があれば、その行を書き換えている状態で開く
-  const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(() => {
-    const voiced = voiceEditingOf("panel");
-    const item = voiced === null ? undefined : items.find((one) => one.id === voiced);
-    return item === undefined ? null : { id: item.id, body: item.body, error: null };
-  });
-  const [opened, setOpened] = useState<Record<string, boolean>>({});
 
   // 本文の選択（ブラウザの選択の API）と同期して、選んだ箇所の入口を出す
   useEffect(() => {
     const element = host.current;
     if (element === null) return undefined;
     const sync = (): void => {
-      const scroller = element.closest(".panel-body");
+      const area = scroller();
       const selection = window.getSelection();
-      if (scroller === null || selection === null || selection.rangeCount === 0 || selection.isCollapsed) {
+      if (area === null || selection === null || selection.rangeCount === 0 || selection.isCollapsed) {
         setEntry(null);
         return;
       }
       const range = selection.getRangeAt(0);
-      // 本文の外と、コメントの区画の中の選択では出さない
-      if (!scroller.contains(range.commonAncestorContainer) || element.contains(range.commonAncestorContainer)) {
+      // 本文の外と、コメントの入力・レビュー中のコメントの一覧の中の選択では出さない
+      const common = range.commonAncestorContainer;
+      const holder = common instanceof Element ? common : common.parentElement;
+      const reviewList = holder?.closest(REVIEW_LIST_SELECTOR) ?? null;
+      if (!area.contains(common) || element.contains(common) || reviewList !== null) {
         setEntry(null);
         return;
       }
@@ -91,7 +92,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
         setEntry(null);
         return;
       }
-      setEntry({ anchor: rectsOf(range), area: { viewport: { width: window.innerWidth, height: window.innerHeight }, scroller: scroller.getBoundingClientRect() }, loc: location });
+      setEntry({ anchor: rectsOf(range), area: { viewport: { width: window.innerWidth, height: window.innerHeight }, scroller: area.getBoundingClientRect() }, loc: location });
     };
     // 入口を押した操作（click）を先に通すため、離した後の確かめは次の順番に回す
     const later = (): void => {
@@ -103,14 +104,13 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
       document.removeEventListener("pointerup", later);
       document.removeEventListener("keyup", later);
     };
-  }, []);
+  }, [scroller]);
 
-  // 書き換えを描き終えてから、その行の要素へフォーカスを移す（行の修正・入力欄・元に戻す）
+  // 書き換えを描き終えてから、箇所を添えた入力欄へフォーカスを移す
   const focusAfter = (update: () => void, selector: string): void => {
     flushSync(update);
     host.current?.querySelector<HTMLElement>(selector)?.focus();
   };
-  const shown = [...items, ...removed.map((item) => ({ ...item, gone: true as const }))].sort((a, b) => (order === "newest" ? commentNumber(b.id) - commentNumber(a.id) : commentNumber(a.id) - commentNumber(b.id)));
   const text = form.body ?? draft;
   // 音声入力（録音・文字起こし・レビュー中に溜める・すぐ送る）。向けた先が変わっても録音は続ける
   const voice = useVoiceInput({
@@ -129,6 +129,96 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
       return { start: field?.selectionStart ?? text.length, end: field?.selectionEnd ?? text.length };
     },
   });
+  return (
+    <div ref={host} className="grid gap-2 bg-card">
+      <SendForm
+        formRef={sendForm}
+        target={id}
+        loc={loc}
+        body={text}
+        status={voice.status === "idle" ? form.status : voice.status}
+        count={form.count}
+        detail={voice.status === "idle" ? form.detail : voice.detail}
+        voice={voice.voice}
+        voiceReason={voice.voiceReason}
+        elapsed={voice.elapsed}
+        levels={voice.levels}
+        entered={voice.entered}
+        onVoiceStart={() => void voice.onVoiceStart()}
+        onVoiceCancel={voice.onVoiceCancel}
+        onVoiceDone={() => void voice.onVoiceDone()}
+        onVoiceBlocked={voice.onVoiceBlocked}
+        open={formOpen}
+        onToggleOpen={(next) => { writePrefs({ commentFormClosed: next ? null : true }); }}
+        onInput={(next) => {
+          voice.clearResult();
+          setForm({ body: next, status: "idle", count: null, detail: null });
+          saveDraft({ target: id, loc, thread: null, body: next });
+        }}
+        onClearLoc={() => { setLoc(null); }}
+        onCopyBody={(value) => { void navigator.clipboard.writeText(value); }}
+        onBlur={(value) => { saveDraft({ target: id, loc, thread: null, body: value }, true); }}
+        onSubmit={(target, location, value) => {
+          setForm((current) => ({ ...current, status: "saving" }));
+          add.mutate(
+            { target, loc: location, body: value },
+            {
+              onSuccess: (result) => {
+                flushSync(() => {
+                  setLoc(null);
+                  setForm({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null });
+                });
+                focusAfterAdded(sendForm.current, focusTarget);
+              },
+              onError: (error) => { setForm((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
+            },
+          );
+        }}
+      />
+      {entry === null ? null : (
+        <SelectionComment
+          anchor={entry.anchor}
+          area={entry.area}
+          onOpen={() => {
+            focusAfter(() => {
+              // 閉じていれば開いて残してから、箇所を添えた入力欄へ移る
+              if (!formOpen) writePrefs({ commentFormClosed: null });
+              setLoc(entry.loc);
+              setEntry(null);
+            }, "textarea[name=body]");
+          }}
+          onClose={() => { setEntry(null); }}
+        />
+      )}
+    </div>
+  );
+};
+
+export const DetailReviewComments = ({ id, titles, changeSets, onOpenItem, onOpenChangeSet }: DetailReviewCommentsProps) => {
+  const comments = useQuery(commentsQuery());
+  const body = comments.data?.status === 200 ? (comments.data.data as { items?: ReviewItem[] }) : undefined;
+  const items = (body?.items ?? NO_ITEMS).filter((item) => item.target === id && item.thread === null);
+  const host = useRef<HTMLDivElement>(null);
+  const prefs = usePrefs();
+  const order = prefs.reviewOrder === "oldest" ? "oldest" : "newest";
+  const add = useAddComment();
+  const update = useUpdateComment();
+  const remove = useRemoveComment();
+  const [removed, setRemoved] = useState<ReviewItem[]>([]);
+  // 書き換えている行。録音中か結果待ちの修正の入力があれば、その行を書き換えている状態で開く
+  const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(() => {
+    const voiced = voiceEditingOf("panel");
+    const item = voiced === null ? undefined : items.find((one) => one.id === voiced);
+    return item === undefined ? null : { id: item.id, body: item.body, error: null };
+  });
+  const [opened, setOpened] = useState<Record<string, boolean>>({});
+
+  // 書き換えを描き終えてから、その行の要素へフォーカスを移す（行の修正・入力欄・元に戻す）
+  const focusAfter = (update: () => void, selector: string): void => {
+    flushSync(update);
+    host.current?.querySelector<HTMLElement>(selector)?.focus();
+  };
+  const shown = [...items, ...removed.map((item) => ({ ...item, gone: true as const }))].sort((a, b) => (order === "newest" ? commentNumber(b.id) - commentNumber(a.id) : commentNumber(a.id) - commentNumber(b.id)));
   // 修正の入力の音声入力（挿入だけ）。コメントの入力とは別の入力欄で、画面で同時に 1 つだけ録音する
   const editVoice = useVoiceInput({
     key: `review:${editing?.id ?? ""}`,
@@ -146,7 +236,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
     },
   });
   return (
-    <div ref={host} className="sticky bottom-0 grid gap-2 bg-card">
+    <div ref={host} data-review-comments="" className="grid gap-2">
       {shown.length === 0 ? (
         <section className="grid gap-2 border-t border-border pt-2">
           <h3 className="m-0 text-small font-medium">レビュー中のコメント</h3>
@@ -235,65 +325,6 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
             })}
           </ul>
         </section>
-      )}
-      <SendForm
-        formRef={sendForm}
-        target={id}
-        loc={loc}
-        body={text}
-        status={voice.status === "idle" ? form.status : voice.status}
-        count={form.count}
-        detail={voice.status === "idle" ? form.detail : voice.detail}
-        voice={voice.voice}
-        voiceReason={voice.voiceReason}
-        elapsed={voice.elapsed}
-        levels={voice.levels}
-        entered={voice.entered}
-        onVoiceStart={() => void voice.onVoiceStart()}
-        onVoiceCancel={voice.onVoiceCancel}
-        onVoiceDone={() => void voice.onVoiceDone()}
-        onVoiceBlocked={voice.onVoiceBlocked}
-        open={formOpen}
-        onToggleOpen={(next) => { writePrefs({ commentFormClosed: next ? null : true }); }}
-        onInput={(next) => {
-          voice.clearResult();
-          setForm({ body: next, status: "idle", count: null, detail: null });
-          saveDraft({ target: id, loc, thread: null, body: next });
-        }}
-        onClearLoc={() => { setLoc(null); }}
-        onCopyBody={(value) => { void navigator.clipboard.writeText(value); }}
-        onBlur={(value) => { saveDraft({ target: id, loc, thread: null, body: value }, true); }}
-        onSubmit={(target, location, value) => {
-          setForm((current) => ({ ...current, status: "saving" }));
-          add.mutate(
-            { target, loc: location, body: value },
-            {
-              onSuccess: (result) => {
-                flushSync(() => {
-                  setLoc(null);
-                  setForm({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null });
-                });
-                focusAfterAdded(sendForm.current, focusTarget);
-              },
-              onError: (error) => { setForm((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
-            },
-          );
-        }}
-      />
-      {entry === null ? null : (
-        <SelectionComment
-          anchor={entry.anchor}
-          area={entry.area}
-          onOpen={() => {
-            focusAfter(() => {
-              // 閉じていれば開いて残してから、箇所を添えた入力欄へ移る
-              if (!formOpen) writePrefs({ commentFormClosed: null });
-              setLoc(entry.loc);
-              setEntry(null);
-            }, "textarea[name=body]");
-          }}
-          onClose={() => { setEntry(null); }}
-        />
       )}
     </div>
   );

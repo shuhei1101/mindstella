@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 
 from playwright.sync_api import Locator, Page, expect
-from preview_spa_helpers import open_spa
+from preview_spa_helpers import assert_below_topbar, open_spa
+
+import pytest
 
 # パネルを画面いっぱいに出す幅（これ以下）と、画面の高さ
 NARROW_SIZE = {"width": 800, "height": 700}
@@ -171,3 +173,29 @@ def test_scrim(page: Page, spa_preview: str) -> None:
     box = _panel(page).bounding_box()
     assert box is not None
     assert box["width"] == NARROW_SIZE["width"]
+
+# ─── パネルの上端（トップバーの下） ───
+
+
+@pytest.mark.parametrize(
+    "size",
+    [pytest.param({"width": 1280, "height": 800}, id="wide"), pytest.param({"width": 390, "height": 844}, id="phone")],
+)
+def test_panel_below_topbar(page: Page, spa_preview: str, size: dict[str, int]) -> None:
+    """パネルはトップバーとタブを覆わず、その下端から画面の下端まで出す（正常系）。"""
+    # 準備
+    page.set_viewport_size(size)
+    # 実行
+    _open(page, spa_preview)
+    # 検証
+    assert_below_topbar(page, _panel(page))
+
+
+def test_scrim_below_topbar(page: Page, spa_preview: str) -> None:
+    """幅 901px 以上のグレーアウトはトップバーとタブを覆わず、その下端から画面の下端まで出す（正常系）。"""
+    # 準備
+    page.set_viewport_size({"width": 1280, "height": 800})
+    # 実行
+    _open(page, spa_preview)
+    # 検証
+    assert_below_topbar(page, page.locator("[data-scrim]"))
