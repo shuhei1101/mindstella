@@ -13,6 +13,9 @@ scenarios:
         description: '`config.yaml` の表示する種類の既定から用語集を外す'
       - name: 書き出す先
         description: ワークスペースの外の一時フォルダの中のパス
+      - name: プリセット
+        description: タグ「画面」に当たるプリセット「画面の設計」
+        notes: A-1 にタグ「画面」を付ける
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -48,6 +51,7 @@ scenarios:
       - 画面に、項目の追加・編集・削除、回答・コメントの送信、設定の保存のボタンが無い
       - 書き出した HTML の中に、mdmark・marked・mermaid・jsdiff のそれぞれの名前・バージョン・著作権の表示・ライセンスの名前がある
       - 書き出した HTML の中に、mdmark が同梱するライブラリのライセンスの本文（mdmark の `dist/THIRD_PARTY_LICENSES.txt`）と、React の画面が中に束ねたライブラリごとの名前・バージョン・ライセンスの本文がある
+      - 書き出した HTML の埋め込みの記録に、プリセット「画面の設計」と、当たる件数 1 がある
     test: test_normal
   - name: 異常シナリオ（YAML がスキーマに合わない）
     setup:

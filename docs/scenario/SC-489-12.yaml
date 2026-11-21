@@ -386,6 +386,46 @@ scenarios:
     expected:
       - URL を開くと 404 が返り、D-1 が出ない
       - 削除していないほかのワークスペースの画面は、同じポートで開けて D-1 が出る
+  - name: 正常シナリオ（記録が変わっていないときは読み直さない）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、`next_id`・`write_docs` を MCP のクライアントで呼ぶ。プレビューは実際のブラウザで開く
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 と、本文を持つ資料 A-1〜A-200
+      - name: 開いている画面
+        description: 検討事項の表
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+        participant PI as project-index
+        participant WS as ワークスペース
+        participant P as プレビュー（ブラウザ）
+
+        P->>SV: 記録を取得する
+        SV->>WS: 全ての YAML と本文を読む
+        SV-->>P: 圧縮した記録と ETag
+        P->>P: 画面を再読み込みする
+        P->>SV: 記録を取得する（If-None-Match）
+        SV-->>P: 304（本文なし）
+        CC->>PI: write_docs（検討事項 D-2）
+        PI->>WS: decisions.yaml に書く
+        SV->>SV: 書き換えを見つけ、保持した記録を捨てる
+        SV-->>P: 書き換えを知らせる
+        P->>SV: 記録を取得する（If-None-Match）
+        SV->>WS: 全ての YAML と本文を読む
+        SV-->>P: 圧縮した記録と新しい ETag
+        P-->>P: 開いている画面を再描画する
+      ```
+    expected:
+      - 最初の記録の取得の応答が gzip で圧縮され、`ETag` を持ち、`Cache-Control` が再検証を求める
+      - 画面を再読み込みしたときの記録の取得が 304 を返し、画面は再読み込みの前と同じ記録を出す
+      - D-2 を書いた後の記録の取得が 200 を返し、`ETag` が前と違い、再読み込みの操作をせずに検討事項の表に D-2 が出る
+      - どの応答の後も、開いていた画面と URL の search params が変わらない
+    test: test_normal_when_records_unchanged
+    notes:
+      時間: 記録が変わっていないときの記録の取得の時間は、非機能要件で決めた値で確かめる
 lead: 'MindStella のセッションが、サーバーが配るプレビューの URL を示し、利用者がブラウザで開いて、記録を書き換えるたびに画面が再描画される単一ユースケース。記録を修正したときは、そのまとまりの差分を開くリンクを示す。'
 issue: 4
 primary_actor: 利用者
