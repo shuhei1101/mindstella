@@ -1,6 +1,6 @@
 id: MOD-489-107
 title: プレビュー / doc-export
-lead: 資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い）。
+lead: 資料のエクスポートの HTML と Markdown の組み立て。
 functions:
   - name: buildDocHtml
     title: 資料の 1 枚の HTML

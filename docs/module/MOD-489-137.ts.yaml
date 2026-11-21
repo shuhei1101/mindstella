@@ -6,7 +6,7 @@ functions:
     title: 既定の値の比較
     kind: 関数
     usecase: ワークスペースの既定を変える
-    summary: 見た目と表示する種類が、並びまで同じか（今の画面の `sameDisplay` と同じ）
+    summary: 見た目と表示する種類が、並びまで同じか
     args:
       - name: a
         type: SettingsDisplay | null | undefined

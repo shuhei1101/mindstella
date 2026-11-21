@@ -107,7 +107,7 @@ items:
   - page: MOD-489-57.ts.yaml
     summary: "インターフェース定義『書き換えの通知』"
   - page: MOD-489-58.ts.yaml
-    summary: "描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」）"
+    summary: "描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、`preview/libraries.json` の配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」）"
   - page: MOD-489-74.tsx.yaml
     summary: "24px の枠に描いた線のアイコンと、状態の 10px のマーカー"
   - page: MOD-489-88.tsx.yaml
@@ -201,17 +201,17 @@ items:
   - page: MOD-489-120.ts.yaml
     summary: "SPA の search params（インターフェース定義『プレビューを開く』の request）の Zod スキーマと、記録に合わない値を外す処理"
   - page: MOD-489-121.ts.yaml
-    summary: "記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い）"
+    summary: "記録の型・索引・関係する項目"
   - page: MOD-489-110.ts.yaml
     summary: "画面ごとの絞り込みの条件を行に当てる計算"
   - page: MOD-489-105.ts.yaml
-    summary: "差分の表示の計算（今の画面の `core/diff.ts` と同じ振る舞い"
+    summary: "差分の表示の計算（DOM に触らない）"
   - page: MOD-489-109.ts.yaml
-    summary: "保存待ちの編集を記録に重ねる計算（今の画面の `core/edits.ts` と同じ振る舞い）"
+    summary: "保存待ちの編集を記録に重ねる計算"
   - page: MOD-489-107.ts.yaml
-    summary: "資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い）"
+    summary: "資料のエクスポートの HTML と Markdown の組み立て"
   - page: MOD-489-102.ts.yaml
-    summary: "描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）"
+    summary: "描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理"
   - page: MOD-489-117.ts.yaml
     summary: "描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し）"
   - page: MOD-489-118.ts.yaml
@@ -233,13 +233,13 @@ items:
   - page: MOD-489-108.ts.yaml
     summary: "mdmark が描いた本文の中へ追加する要素の組み立て"
   - page: MOD-489-104.ts.yaml
-    summary: "コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` の DOM に触らない関数と同じ振る舞い）"
+    summary: "コメントの一覧・スレッド・レビュー中の書き込みの計算（DOM に触らない）"
   - page: MOD-489-106.ts.yaml
-    summary: "表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い）"
+    summary: "表示の設定の計算（DOM に触らない）"
   - page: MOD-489-119.ts.yaml
     summary: "書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける"
   - page: MOD-489-124.ts.yaml
-    summary: "コメント・返信の入力の録音と、カーソルの位置への挿入（今の画面の `core/voice.ts` と同じ振る舞い）"
+    summary: "コメント・返信の入力の録音と、カーソルの位置への挿入"
   - page: MOD-489-135.ts.yaml
     summary: "clsx と tailwind-merge でクラス名を 1 つにする"
   - page: MOD-489-136.ts.yaml
@@ -251,9 +251,9 @@ items:
   - page: MOD-557-1.ts.yaml
     summary: "入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『プレビューを開く』の制約「入力中の再読み込みの保留」）"
   - page: MOD-489-141.ts.yaml
-    summary: "今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す"
+    summary: "`mindmap-preview` のキーで、値の JSON の `theme` だけを読み書きし、他のキーは残す"
   - page: MOD-489-140.ts.yaml
-    summary: "表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）"
+    summary: "表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、`localStorage` の `mindmap-preview` のキーで読み書きする（制約「端末の保存領域」）"
   - page: MOD-489-138.ts.yaml
     summary: "開いている追加の入力と、直前の保存で書き込めなかった編集"
   - page: MOD-489-137.ts.yaml

@@ -1,6 +1,6 @@
 id: MOD-489-105
 title: プレビュー / diff
-lead: 差分の表示の計算（今の画面の `core/diff.ts` と同じ振る舞い。DOM に触らない）。行の比較は jsdiff、塊の分割は marked の `marked.lexer` を、呼ぶ側が読み込んで渡す。
+lead: 差分の表示の計算（DOM に触らない）。行の比較は jsdiff、塊の分割は marked の `marked.lexer` を、呼ぶ側が読み込んで渡す。
 functions:
   - name: resolveDiffPoint
     title: 時点の解決

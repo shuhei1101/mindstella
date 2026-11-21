@@ -1,6 +1,6 @@
 id: MOD-489-121
 title: プレビュー / records
-lead: 記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い）。
+lead: 記録の型・索引・関係する項目。
 functions:
   - name: buildIndex
     title: 記録の索引
@@ -27,7 +27,7 @@ functions:
     title: 関係する項目
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 前提・後続・派生元・派生した項目・関連タスク・経緯・関連・参照元を、種類つきの `related` から返す（今の画面の `relatedItems`・`refsOf` と同じ）
+    summary: 前提・後続・派生元・派生した項目・関連タスク・経緯・関連・参照元を、種類つきの `related` から返す
     args:
       - name: id
         type: string

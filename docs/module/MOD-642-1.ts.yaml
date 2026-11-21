@@ -30,7 +30,7 @@ functions:
       - name: test_workspace_path
         case: 正常
         summary: パスの頭を返す
-        condition: '`parametrize`: `/w/mindstella-x-1/spa/` / `/w/a%20b/mindstella.html` / `/spa/` / `/`'
+        condition: '`parametrize`: `/w/mindstella-x-1/` / `/w/a%20b/assets/index.js` / `/files/a.png` / `/`'
         mock: なし
         expected: '`/w/mindstella-x-1` / `/w/a%20b` / 空文字 / 空文字'
   - name: workspaceKey
@@ -45,7 +45,7 @@ functions:
         type: string
         required: true
         passing: positional
-        description: 今の画面と同じキー（`mindmap-preview` など）
+        description: 端末の保存領域のキー（`mindmap-preview` など）
       - name: pathname
         type: string
         required: false
@@ -59,9 +59,8 @@ functions:
       - name: test_workspace_key
         case: 正常
         summary: ワークスペースの ID を末尾に付ける
-        condition: '`key` は `mindmap-preview`。`parametrize`: `/w/mindstella-x-1/spa/` / `/w/a%20b/spa/` / `/spa/`'
+        condition: '`key` は `mindmap-preview`。`parametrize`: `/w/mindstella-x-1/` / `/w/a%20b/` / `/`'
         mock: なし
         expected: '`mindmap-preview:mindstella-x-1` / `mindmap-preview:a b` / `mindmap-preview`'
 notes:
   単体テスト: 同じフォルダの `workspace-path.test.ts` に置く（knowledge の規約『フォルダ構成』）
-  今の画面: 今の画面は namespace の連結で import できないため、同じ振る舞いを今の画面の『基盤 / api.ts』に持つ

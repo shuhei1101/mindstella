@@ -1,6 +1,6 @@
 id: MOD-489-102
 title: プレビュー / body-links
-lead: 描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）。
+lead: 描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理。
 functions:
   - name: linkHeadings
     title: 見出しのリンク
@@ -60,7 +60,7 @@ functions:
     title: 本文を描く
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 本文の Markdown を mdmark で描いた要素にする。処理は今の画面の『基盤』の `renderMarkdown` と同じ（処理 6 のコードブロックの `pre` のフォーカスの属性と、`options.table` による表の機能の指定を含む）。`config.features` は今の画面の `MDMARK_FEATURES` と同じ値（`options.table` が偽でなければ `table` だけオン）、`config.map` は『libraries』の `mdmarkMapConfig()`
+    summary: 本文の Markdown を mdmark で描いた要素にする。（処理 6 のコードブロックの `pre` のフォーカスの属性と、`options.table` による表の機能の指定を含む）。`config.features` は `MDMARK_FEATURES` の値（`options.table` が偽でなければ `table` だけオン）、`config.map` は『libraries』の `mdmarkMapConfig()`
     args:
       - name: source
         type: string
@@ -88,7 +88,7 @@ functions:
     container: frontend/src/shared/core/body-links.ts
     usecase: 動画などのファイルを配置して資料に埋め込む
     scope: public
-    summary: 今の画面の『基盤』の `resolveFileSources` と同じ処理。`mountMarkdown` が mdmark の `mount` の直後に呼ぶ（基準のパスは同じ `workspacePath() + FILE_BASE_PATH`。React の画面を `/w/{workspace}/spa/` の下で開いても `/w/{workspace}/files/{名前}` を指す）
+    summary: 本文の相対パスのファイルの参照を配信のパスにする。`mountMarkdown` が mdmark の `mount` の直後に呼ぶ（基準のパスは同じ `workspacePath() + FILE_BASE_PATH`。`/w/{workspace}/files/{名前}` を指す）
     side_effects: '`root` の中の要素の `src`・`poster` を書き換える'
     args:
       - name: root
@@ -103,9 +103,9 @@ functions:
       - name: test_resolve_file_sources
         case: 正常
         summary: 相対パスだけを配信のパスにする
-        condition: 今の画面の同名のテストと同じ要素で、`location` を `http://127.0.0.1:8784/w/mindstella-x-1/spa/` にする
+        condition: 相対パス・絶対パス・`data:` の `src` を持つ要素で、`location` を `http://127.0.0.1:8784/w/mindstella-x-1/` にする
         mock: なし（jsdom）
-        expected: 今の画面の同名のテストと同じ（`/w/mindstella-x-1/files/a.png` など）
+        expected: 相対パスだけが `/w/mindstella-x-1/files/a.png` などになる
     callees:
       - MOD-642-1#functions[workspacePath]
 notes:

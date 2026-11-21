@@ -1,6 +1,6 @@
 id: MOD-489-140
 title: プレビュー / prefs-store
-lead: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」。キーは `workspaceKey` で末尾に `:{workspace}` を付ける）。
+lead: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、`localStorage` の `mindmap-preview` のキーで読み書きする（制約「端末の保存領域」。キーは `workspaceKey` で末尾に `:{workspace}` を付ける）。
 functions:
   - name: readPrefs
     title: 保存領域の読み取り
@@ -19,8 +19,8 @@ functions:
         expected: 空の上書き
       - name: test_read_prefs_when_legacy_written
         case: 正常
-        summary: 今の画面が書いた JSON を読める
-        condition: 今の画面の `Prefs` の形式の JSON（`columns`・`filters`・`diffSel`・`minimap`・`bodyLayout`）に、前のバージョンの項目 `tablePin` を含めたもの
+        summary: 前のバージョンの項目を含む JSON を読める
+        condition: '`mindmap-preview` の形式の JSON（`columns`・`filters`・`diffSel`・`minimap`・`bodyLayout`）に、前のバージョンの項目 `tablePin` を含めたもの'
         mock: '`localStorage`'
         expected: 全ての項目を同じ値で読める
     container: frontend/src/shared/stores/prefs-store.ts
@@ -47,7 +47,7 @@ functions:
       - name: test_write_prefs_when_workspace_path
         case: 正常
         summary: ワークスペースごとのキーに書く
-        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/spa/` にし、`diffSel` を書く'
+        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/` にし、`diffSel` を書く'
         mock: '`localStorage`'
         expected: '`mindmap-preview:mindstella-x-1` に `diffSel` が書かれ、`mindmap-preview` が無い'
     container: frontend/src/shared/stores/prefs-store.ts
@@ -123,7 +123,7 @@ stores:
   - name: usePrefsStore
     title: 端末の保存領域
     usecase: プレビューを開く
-    summary: 今の画面の `Prefs`（`app.ts`）と同じ `mindmap-preview` のキーと値の形式の JSON のうち、移す画面が使う項目だけを読み書きし、知らない項目を削除しない
+    summary: '`mindmap-preview` のキーと値の形式の JSON のうち、移す画面が使う項目だけを読み書きし、知らない項目を削除しない'
     state:
       - name: columns
         type: Record<string, TablePrefs>
@@ -154,7 +154,7 @@ stores:
         description: レビュー中のコメントを古い順に並べる上書き
       - name: commentFormClosed
         type: true | null
-        description: 詳細のコメントの入力を閉じているか（今の画面の `Prefs.commentFormClosed`）
+        description: 詳細のコメントの入力を閉じているか
       - name: focusAfterAdd
         type: "'input' | 'none' | null"
         description: 「レビューに追加」の後のフォーカスの上書き（インターフェース定義の `focus_after_add`）。`null` は自動

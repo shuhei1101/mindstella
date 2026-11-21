@@ -1835,7 +1835,7 @@ functions:
       - name: test_run_hook
         case: 正常
         summary: 末尾にポート・名前・画面のパスを追加して起動する
-        condition: "`command=(sys.executable, \"-c\", \"import sys,pathlib; pathlib.Path(sys.argv[1]).write_text(' '.join(sys.argv[2:]))\", {一時ファイル})`、`port=8784`、`name=\"家計簿\"`、`path=\"/w/mindstella-x-1/mindstella.html\"`"
+        condition: "`command=(sys.executable, \"-c\", \"import sys,pathlib; pathlib.Path(sys.argv[1]).write_text(' '.join(sys.argv[2:]))\", {一時ファイル})`、`port=8784`、`name=\"家計簿\"`、`path=\"/w/mindstella-x-1/\"`"
         mock: なし（本物の子プロセス）
         expected: 真を返し、待つと一時ファイルの中身が `8784 家計簿 /w/mindstella-x-1/`
       - name: test_run_hook_when_command_missing

@@ -462,9 +462,9 @@ functions:
       - name: test_run_preview_url
         case: 正常
         summary: 台帳の結果を返す
-        condition: 作成済みのワークスペース。`previews` は `start` が `("http://127.0.0.1:1/w/mindstella-x-1/mindstella.html", True)` を返す偽の台帳
+        condition: 作成済みのワークスペース。`previews` は `start` が `("http://127.0.0.1:1/w/mindstella-x-1/", True)` を返す偽の台帳
         mock: '`previews`'
-        expected: '`{url: http://127.0.0.1:1/w/mindstella-x-1/mindstella.html, workspace: {絶対パス}, started: true}`'
+        expected: '`{url: http://127.0.0.1:1/w/mindstella-x-1/, workspace: {絶対パス}, started: true}`'
       - name: test_run_preview_url_when_not_workspace
         case: 異常
         summary: ワークスペースでなければ配信を立てない
@@ -1023,7 +1023,7 @@ functions:
       - name: test_run_readme_when_serving
         case: 正常
         summary: 配っていればその URL を書く
-        condition: 作成済みのワークスペース。偽の台帳の `url_of` が `http://127.0.0.1:8784/w/mindstella-x-1/mindstella.html` を返す
+        condition: 作成済みのワークスペース。偽の台帳の `url_of` が `http://127.0.0.1:8784/w/mindstella-x-1/` を返す
         mock: '`previews`'
         expected: '`preview_url` がその URL で、`README.md` がその URL を含む'
       - name: test_run_readme_when_user_file

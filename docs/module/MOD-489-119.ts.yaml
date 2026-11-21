@@ -1,6 +1,6 @@
 id: MOD-489-119
 title: プレビュー / post-links
-lead: 書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける（今の画面の `components/thread-post.ts` と同じ振る舞い）。
+lead: 書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける。
 functions:
   - name: linkChangeSets
     title: まとまりのリンク

@@ -26,7 +26,7 @@ dependency_scope: 必須
 adoption: 採用
 upstream: mermaid-js/mermaid
 used_in:
-  - plugins/mindstella/skills/mindmap/preview/template.html
+  - plugins/mindstella/skills/mindmap/preview/libraries.json
   - plugins/mindstella/skills/mindmap/scripts/builder.py
   - frontend/src/shared/adapters/libraries.ts
 verification:

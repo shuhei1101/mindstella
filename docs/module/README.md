@@ -61,7 +61,7 @@
 | [プレビュー / embedded](./MOD-644-1.ts.yaml) | 配る書き出しの埋め込みの記録を読み、API の応答の代わりに返却する |
 | [プレビュー / api-client](./MOD-489-56.ts.yaml) | orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる |
 | [プレビュー / events-client](./MOD-489-57.ts.yaml) | インターフェース定義『書き換えの通知』 |
-| [プレビュー / libraries](./MOD-489-58.ts.yaml) | 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」） |
+| [プレビュー / libraries](./MOD-489-58.ts.yaml) | 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、`preview/libraries.json` の配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」） |
 | [プレビュー / icon](./MOD-489-74.tsx.yaml) | 24px の枠に描いた線のアイコンと、状態の 10px のマーカー |
 | [プレビュー / topbar](./MOD-489-88.tsx.yaml) | 部品設計『トップバー.tsx』の props・イベント・状態を持つ |
 | [プレビュー / duplicate-id-notice](./MOD-540-8.tsx.yaml) | 部品設計『重なった ID の通知.tsx』の props・イベント・状態を持つ。 |
@@ -108,12 +108,12 @@
 | [プレビュー / post-body](./MOD-489-79.tsx.yaml) | 書き込みの本文を Markdown として描く |
 | [プレビュー / app-error](./MOD-489-101.ts.yaml) | 失敗した応答から作るエラー。`detail` を画面に出す |
 | [プレビュー / preview-search](./MOD-489-120.ts.yaml) | SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理 |
-| [プレビュー / records](./MOD-489-121.ts.yaml) | 記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い） |
+| [プレビュー / records](./MOD-489-121.ts.yaml) | 記録の型・索引・関係する項目 |
 | [プレビュー / filters](./MOD-489-110.ts.yaml) | 画面ごとの絞り込みの条件を行に当てる計算 |
-| [プレビュー / diff](./MOD-489-105.ts.yaml) | 差分の表示の計算（今の画面の `core/diff.ts` と同じ振る舞い |
-| [プレビュー / edits](./MOD-489-109.ts.yaml) | 保存待ちの編集を記録に重ねる計算（今の画面の `core/edits.ts` と同じ振る舞い） |
-| [プレビュー / doc-export](./MOD-489-107.ts.yaml) | 資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い） |
-| [プレビュー / body-links](./MOD-489-102.ts.yaml) | 描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い） |
+| [プレビュー / diff](./MOD-489-105.ts.yaml) | 差分の表示の計算（DOM に触らない） |
+| [プレビュー / edits](./MOD-489-109.ts.yaml) | 保存待ちの編集を記録に重ねる計算 |
+| [プレビュー / doc-export](./MOD-489-107.ts.yaml) | 資料のエクスポートの HTML と Markdown の組み立て |
+| [プレビュー / body-links](./MOD-489-102.ts.yaml) | 描いた本文に、見出しのリンク・本文のマーカー・項目の ID のリンクを付ける処理 |
 | [プレビュー / markdown-decorate](./MOD-489-117.ts.yaml) | 描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し） |
 | [プレビュー / minimap](./MOD-489-118.ts.yaml) | 差分のミニマップのマーカーの計算と操作 |
 | [プレビュー / body-render](./MOD-489-103.ts.yaml) | 本文の差分の描画（追加した・削除した塊・語の面・図の差分） |
@@ -124,17 +124,17 @@
 | [プレビュー / list-rows](./MOD-489-115.ts.yaml) | 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て |
 | [プレビュー / format](./MOD-489-111.ts.yaml) | 日時と値の文字の組み立て |
 | [プレビュー / dom-parts](./MOD-489-108.ts.yaml) | mdmark が描いた本文の中へ追加する要素の組み立て |
-| [プレビュー / comments](./MOD-489-104.ts.yaml) | コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` の DOM に触らない関数と同じ振る舞い） |
-| [プレビュー / display](./MOD-489-106.ts.yaml) | 表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い） |
+| [プレビュー / comments](./MOD-489-104.ts.yaml) | コメントの一覧・スレッド・レビュー中の書き込みの計算（DOM に触らない） |
+| [プレビュー / display](./MOD-489-106.ts.yaml) | 表示の設定の計算（DOM に触らない） |
 | [プレビュー / post-links](./MOD-489-119.ts.yaml) | 書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける |
-| [プレビュー / voice](./MOD-489-124.ts.yaml) | コメント・返信の入力の録音と、カーソルの位置への挿入（今の画面の `core/voice.ts` と同じ振る舞い） |
+| [プレビュー / voice](./MOD-489-124.ts.yaml) | コメント・返信の入力の録音と、カーソルの位置への挿入 |
 | [プレビュー / cn](./MOD-489-135.ts.yaml) | clsx と tailwind-merge でクラス名を 1 つにする |
 | [プレビュー / connection-store](./MOD-489-136.ts.yaml) | 書き換えの通知がつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」） |
 | [プレビュー / duplicate-ids-store](./MOD-540-9.ts.yaml) | 変更の検知が知らせた重なった ID と、利用者が閉じた集まり。 |
 | [プレビュー / voice-store](./MOD-489-254.ts.yaml) | 画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」） |
 | [プレビュー / refresh-hold-store](./MOD-557-1.ts.yaml) | 入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の再読み込みの保留」） |
-| [プレビュー / theme-store](./MOD-489-141.ts.yaml) | 今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す |
-| [プレビュー / prefs-store](./MOD-489-140.ts.yaml) | 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」） |
+| [プレビュー / theme-store](./MOD-489-141.ts.yaml) | `mindmap-preview` のキーで、値の JSON の `theme` だけを読み書きし、他のキーは残す |
+| [プレビュー / prefs-store](./MOD-489-140.ts.yaml) | 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びを、`localStorage` の `mindmap-preview` のキーで読み書きする（制約「端末の保存領域」） |
 | [プレビュー / edit-session-store](./MOD-489-138.ts.yaml) | 開いている追加の入力と、直前の保存で書き込めなかった編集 |
 | [プレビュー / display-notice-store](./MOD-489-137.ts.yaml) | 表示の設定の知らせ（ワークスペースの既定が変わった知らせと、表示の設定のパネルの `message`） |
 | [プレビュー / location-highlight-store](./MOD-489-139.ts.yaml) | コメントの一覧（レビュー中の書き込みの行・スレッドの向けた項目）から開いた項目の中で示す箇所 |

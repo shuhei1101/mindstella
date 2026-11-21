@@ -479,7 +479,7 @@ functions:
       - name: test_build_server_when_preview_route
         case: 正常
         summary: 配信の経路を MCP と同じ待ち受けに登録する
-        condition: 作成済みのワークスペースを `start` した `PreviewRegistry(port=8784)` で組み立て、`streamable_http_app` のアプリを `TestClient` で呼ぶ。`/w/{ID}/mindstella.html` と `/_admin/status` を GET する
+        condition: 作成済みのワークスペースを `start` した `PreviewRegistry(port=8784)` で組み立て、`streamable_http_app` のアプリを `TestClient` で呼ぶ。`/w/{ID}/` と `/_admin/status` を GET する
         mock: なし（`TestClient`。`Host` は `127.0.0.1:8784`）
         expected: どちらも 200 で、画面は HTML、状態は JSON
   - name: call_tool
