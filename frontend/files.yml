@@ -88,6 +88,14 @@ files:
   related:
   - to: MOD-489-40
     type: implements
+- path: src/app/font-candidates.stories.tsx
+  name: 文字のトークンの書体の候補のストーリー
+  description: 候補ごとに Google Fonts を参照し、見本の文と概要の画面を描いて書体を見比べる。文字のトークンの書体を選び直すときに読む。
+  tags:
+  - tool:react
+  - tool:storybook
+  - topic:ストーリー
+  - topic:書体
 - path: src/features/overview/overview/overview-screen.stories.tsx
   name: React の概要の画面のストーリー
   description: 記録・レビュー中のコメント・保存待ちの編集・スレッドは MSW の handler（testing/msw/handlers.ts）が返す。React の概要の画面の状態を追加・変更するときに読む。
