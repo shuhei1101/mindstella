@@ -68,3 +68,7 @@ items:
     summary: "常駐サーバーを systemd --user のユニットとして起動・停止する"
   - page: LIB-565-1.yaml
     summary: "SessionStart の注入文のプロンプトファイルを常駐サーバーで描く"
+  - page: LIB-644-1.yaml
+    summary: "書き出し用のビルドで、React の画面を JS・CSS を中に持つ 1 枚の HTML にする（開発用）"
+  - page: LIB-644-2.yaml
+    summary: "書き出し用のビルドで、中に持つ依存のライセンスの一覧を書き出す（開発用）"

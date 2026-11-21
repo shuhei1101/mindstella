@@ -58,6 +58,7 @@
 | [プレビュー / __root](./MOD-489-54.tsx.yaml) | 子のルートを描く外枠。描画中のエラーは ErrorBoundary で受ける |
 | [プレビュー / index](./MOD-489-55.tsx.yaml) | SPA のルート（`/`）。search の検証と先読みをして `PreviewShell` を描く |
 | [プレビュー / workspace-path](./MOD-642-1.ts.yaml) | 開いた画面の URL のパスから、配っているワークスペースのパスの頭と、端末の保存領域のキーを求める。 |
+| [プレビュー / embedded](./MOD-644-1.ts.yaml) | 配る書き出しの埋め込みの記録を読み、API の応答の代わりに返却する |
 | [プレビュー / api-client](./MOD-489-56.ts.yaml) | orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる |
 | [プレビュー / events-client](./MOD-489-57.ts.yaml) | インターフェース定義『書き換えの通知』 |
 | [プレビュー / libraries](./MOD-489-58.ts.yaml) | 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」） |

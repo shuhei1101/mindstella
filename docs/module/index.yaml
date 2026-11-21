@@ -100,6 +100,8 @@ items:
     summary: "SPA のルート（`/`）。search の検証と先読みをして `PreviewShell` を描く"
   - page: MOD-642-1.ts.yaml
     summary: "開いた画面の URL のパスから、配っているワークスペースのパスの頭と、端末の保存領域のキーを求める。"
+  - page: MOD-644-1.ts.yaml
+    summary: "配る書き出しの埋め込みの記録を読み、API の応答の代わりに返却する"
   - page: MOD-489-56.ts.yaml
     summary: "orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる"
   - page: MOD-489-57.ts.yaml

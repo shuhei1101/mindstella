@@ -42,5 +42,7 @@
 | [claude-balancer](./LIB-531-1.yaml) | MindStella のセッションを起動するときに、一番空いている Claude Code のアカウントを借りる |
 | [systemd](./LIB-531-2.yaml) | 常駐サーバーを systemd --user のユニットとして起動・停止する |
 | [Jinja2](./LIB-565-1.yaml) | SessionStart の注入文のプロンプトファイルを常駐サーバーで描く |
+| [vite-plugin-singlefile](./LIB-644-1.yaml) | 書き出し用のビルドで、React の画面を JS・CSS を中に持つ 1 枚の HTML にする（開発用） |
+| [rollup-plugin-license](./LIB-644-2.yaml) | 書き出し用のビルドで、中に持つ依存のライセンスの一覧を書き出す（開発用） |
 
 <!-- /table -->

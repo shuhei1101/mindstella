@@ -19,7 +19,7 @@ catalogs:
         purpose: 標準のパレットのクラスを削除する
       - name: --breakpoint-*
         kind: 設定
-        purpose: 今の画面と同じ幅の区切り（361・390・481・721・901・1101・1441px）
+        purpose: 画面の幅の区切り（361・390・481・721・901・1101・1441px）
       - name: '@utility'
         kind: 設定
         purpose: 差分の札の幅など、決まった値の小さなクラス

@@ -1,20 +1,13 @@
 id: MOD-489-4
 title: プレビュー / router
-lead: SPA を配るパスのうち、ワークスペースのパスの頭より後ろ（インターフェース定義『プレビューの配信』）。
-constants:
-  - name: ROUTER_BASEPATH
-    title: ルーターの頭
-    container: frontend/src/app/router.tsx
-    usecase: 共通
-    summary: SPA を配るパスのうち、ワークスペースのパスの頭より後ろ（インターフェース定義『プレビューの配信』）
-    value: '"/spa"'
+lead: 生成したルートのツリーでルーターを作る。サーバーの配信は開いた画面のワークスペースのパスの頭を頭にし、配る書き出しはハッシュの履歴で search を持つ（インターフェース定義『プレビューを開く』の制約「配る書き出しで開く」）。
 functions:
   - name: createAppRouter
     title: ルーターの作成
     kind: 関数
     container: frontend/src/app/router.tsx
     usecase: 共通
-    summary: 生成したルートのツリーで、開いた画面のワークスペースのパスの頭と `ROUTER_BASEPATH` をつないだパス（`workspacePath() + ROUTER_BASEPATH`）を頭にしたルーターを作る
+    summary: 生成したルートのツリーでルーターを作る。配る書き出し（`isEmbedded()` が真）はハッシュの履歴（`createHashHistory`）と頭 `/`、サーバーの配信は開いた画面のワークスペースのパスの頭（`workspacePath()`）を頭にする
     args:
       - name: queryClient
         type: QueryClient
@@ -27,10 +20,17 @@ functions:
       - name: test_create_app_router
         case: 正常
         summary: basepath と context を持つ
-        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/spa/` にし、QueryClient を渡す'
+        condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/` にし、QueryClient を指定する'
         mock: なし
-        expected: '`options.basepath` が `/w/mindstella-x-1/spa`、`options.context.queryClient` が渡した QueryClient'
+        expected: '`options.basepath` が `/w/mindstella-x-1`、`options.context.queryClient` が指定した QueryClient'
+      - name: test_create_app_router_when_embedded
+        case: 正常
+        summary: 配る書き出しはハッシュの履歴
+        condition: '`document.body` に記録の `mindmap-data` の要素を配置し、`location.hash` を `#/?tab=docs` にする'
+        mock: なし
+        expected: '`options.basepath` が `/`、ルーターの `history` がハッシュの履歴で、現在の search の `tab` が `docs`'
     callees:
       - MOD-642-1#functions[workspacePath]
+      - MOD-644-1#functions[isEmbedded]
 notes:
   単体テスト: 同じフォルダの `router.test.tsx` に置く（knowledge の規約『フォルダ構成』）

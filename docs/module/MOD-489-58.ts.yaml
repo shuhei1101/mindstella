@@ -1,11 +1,11 @@
 id: MOD-489-58
 title: プレビュー / libraries
-lead: 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を、今の画面と同じ配信元とバージョンから `integrity` で確かめて読む（制約「描画のライブラリ」）。
+lead: 描画のライブラリ（mdmark・mermaid・marked・jsdiff）を読む。mermaid・marked・jsdiff はプラグインの `preview/libraries.json` の URL から `integrity` で確かめて読み、配る書き出しは HTML が中に持つ配布ファイルを使う（インターフェース定義『プレビューを開く』の制約「描画のライブラリ」「配る書き出しで開く」）。
 constants:
   - name: LIBRARIES
     title: 描画のライブラリの一覧
     usecase: プレビューを開く
-    summary: 名前ごとの URL と integrity。値は今の画面の `template.html`・`core/libs.ts` と同じ
+    summary: 名前ごとの URL・integrity・グローバルの名前。プラグインの `preview/libraries.json` を JSON の import で読み、名前（`package` の `diff` は `jsdiff`）で引ける形にする
     container: frontend/src/shared/adapters/libraries.ts
   - name: MDMARK_CDN_BASE
     title: mdmark の配信元の URL
@@ -61,7 +61,7 @@ functions:
     title: ライブラリの読み込み
     kind: 関数
     usecase: プレビューを開く
-    summary: 1 つのライブラリを 1 度だけ読み、結果を返す。読めなかったら代わりを読まない
+    summary: 1 つのライブラリを 1 度だけ読み、結果を返す。読めなかったら代わりを読まない。配る書き出しは、mermaid・marked・jsdiff はグローバルが既にあればそれを使い、mdmark は `mindmap-mdmark` の中身を Blob の URL で `import()` した後に部品（`map`・`view`・`comments`）の読み込みを `mindmap-mdmark-{部品}` の中身へ差し替える
     args:
       - name: name
         type: LibraryName
@@ -89,7 +89,15 @@ functions:
         condition: 読み込みが失敗
         mock: script 要素の読み込み
         expected: 'null'
+      - name: test_load_library_when_embedded
+        case: 正常
+        summary: 配る書き出しは中に持つ配布ファイルを使う
+        condition: '`window.marked` を置き、`mindmap-mdmark` と `mindmap-mdmark-map` の要素を配置して `loadLibrary("marked")` と `loadLibrary("mdmark")` を呼ぶ'
+        mock: '`import()`（Blob の URL を受けて `setPartModuleLoader` を持つモジュールを返す）'
+        expected: marked は script 要素を作らずに `window.marked` を返す。mdmark は Blob の URL で `import()` され、`setPartModuleLoader` が `map` で呼ばれる
     container: frontend/src/shared/adapters/libraries.ts
+    callees:
+      - MOD-644-1#functions[isEmbedded]
   - name: useLibrary
     title: ライブラリの hook
     kind: フック
