@@ -111,3 +111,6 @@ scope_out:
   - item: この変更より前に決定済みになった検討事項へ、誰が決めたかを後から埋めること
     reason: 既存の記録には誰が決めたかの根拠が無く、埋めると推測の値になる。既存の記録はキーを持たないまま読める形にする。含めるかはデータ設計のレビューで確定する
     plan: none
+  - item: カードが 0 枚のボードの横スクロールの領域にキーボードで届かないこと（axe `scrollable-region-focusable`、`frontend/src/shared/components/board.tsx` の `Board`）
+    reason: スクロールできる領域はキーボードで操作できる、という axe の規則から外れている。origin/develop にもある事象で、今回の要望に含まれない
+    plan: '#664'
