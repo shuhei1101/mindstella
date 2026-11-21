@@ -1,0 +1,15 @@
+$ pytest tests/integration/preview/test_spa_detail_panel_screen.py
+# --basetemp=/tmp/pr661-pytest/bt3 -p no:cacheprovider を付けて流した（端末の /tmp/pytest-of-{ユーザー} の持ち主が違うため）。指摘で直したのはこのファイルだけで、ほかの 6 ファイルは前のログ（20261121204348_6d58ea7b_結合テスト.log）のまま
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/bug-frontend-comments-panel-below-topbar-and-detail-input-bottom
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 113 items
+
+tests/integration/preview/test_spa_detail_panel_screen.py .............. [ 12%]
+........................................................................ [ 76%]
+...........................                                              [100%]
+
+======================= 113 passed in 202.57s (0:03:22) ========================
