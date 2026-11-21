@@ -63,6 +63,23 @@ class LastOptionError(MindmapError):
     """`edit_option` の `remove` で、案を必須にする状態の検討事項の最後の案を指した。"""
 
 
+class PresetNameTakenError(MindmapError):
+    """名前が既にあるプリセットと NFKC と大文字小文字をそろえて重なる。"""
+
+    def __init__(self, taken: str) -> None:
+        """重なった既にある名前を持つ。"""
+        super().__init__(f"プリセットの名前が重なります: {taken}")
+
+
+class PresetNotFoundError(MindmapError):
+    """名前に該当するプリセットが無い。"""
+
+    def __init__(self, name: str, names: list[str]) -> None:
+        """指定した名前と、今あるプリセットの名前の並びを持つ。"""
+        listed = "・".join(names) if names else "なし"
+        super().__init__(f"プリセットがありません: {name}（あるプリセット: {listed}）")
+
+
 class ItemReferencedError(MindmapError):
     """消そうとした項目をほかの記録が指している。`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行を持つ。"""
 

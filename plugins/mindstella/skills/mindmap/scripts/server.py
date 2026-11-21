@@ -28,6 +28,7 @@ from starlette.responses import JSONResponse
 
 import api
 import commands
+import presets
 import notify
 import project_index
 import sessions
@@ -56,6 +57,9 @@ SERVER_NAME = "mindstella"
 TOOL_NAMES = (
     "next_id",
     "update_settings",
+    "create_preset",
+    "update_preset",
+    "delete_preset",
     "adopt",
     "edit_option",
     "changes_since_read",
@@ -440,6 +444,8 @@ def build_server(
         def run_and_mark(path: Path) -> dict[str, Any]:
             """ツールの処理を呼び、MindStella のセッションのツールが成功したら書き込みのマーカーを付ける。"""
             payload = run(path)
+            # 書いたファイルを、開いている画面の次の記録の取得で読み直させる
+            previews.discard_records(path)
             if tool is not None:
                 notify.mark_written(tool, workspaces.workspace_id_of(path), payload)
             return payload
@@ -482,6 +488,52 @@ def build_server(
         session: SessionArg = None,
     ) -> CallToolResult:
         return write(workspace, session, lambda root: commands.run_update_settings(root, settings))
+
+    @server.tool(
+        name="create_preset",
+        description="タグの式に名前を付けた絞り込みのプリセットを設定の末尾に追加し、該当する項目の件数を返す",
+    )
+    def create_preset(
+        workspace: WorkspaceArg,
+        name: Annotated[str, Field(description="プリセットの名前（1〜40 字。ほかのプリセットと重ならない）")],
+        filter: Annotated[
+            dict[str, Any],
+            Field(
+                description="タグの式。条件 {field: tags, op: eq|ne, values: [タグ], match: any|all} か and・or・not の束（3 レイヤーまで）"
+            ),
+        ],
+        description: Annotated[str | None, Field(description="何を開くプリセットかを 1 文で")] = None,
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        return write(
+            workspace,
+            session,
+            lambda root: presets.create_preset(root, name=name, description=description, expr=filter),
+        )
+
+    @server.tool(
+        name="update_preset",
+        description="名前で指したプリセットの名前・説明・タグの式・並び順のうち指定したものを置き換え、該当する項目の件数を返す",
+    )
+    def update_preset(
+        workspace: WorkspaceArg,
+        name: Annotated[str, Field(description="書き換えるプリセットの今の名前")],
+        new_name: Annotated[str | None, Field(description="変更後の名前")] = None,
+        description: Annotated[str | None, Field(description="変更後の説明。空の文字列で説明を消す")] = None,
+        filter: Annotated[dict[str, Any] | None, Field(description="変更後のタグの式")] = None,
+        position: Annotated[int | None, Field(description="移す先の並び順（1 始まり）")] = None,
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        changes = presets.PresetChanges(new_name=new_name, description=description, expr=filter, position=position)
+        return write(workspace, session, lambda root: presets.update_preset(root, name=name, changes=changes))
+
+    @server.tool(name="delete_preset", description="名前で指したプリセットを設定から消す")
+    def delete_preset(
+        workspace: WorkspaceArg,
+        name: Annotated[str, Field(description="消すプリセットの名前")],
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        return write(workspace, session, lambda root: presets.delete_preset(root, name=name))
 
     @server.tool(
         name="adopt", description="検討事項の採用する案を 1 つに切り替え、状態を決定済みにする"

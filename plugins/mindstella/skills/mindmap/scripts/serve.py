@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import asyncio
+import gzip
+import hashlib
 import json
 import logging
 import shlex
@@ -14,7 +16,7 @@ import subprocess
 import threading
 import time
 from collections.abc import AsyncIterator, Callable, Iterator, Mapping
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any, cast
@@ -208,6 +210,59 @@ REQUEST_JSON_TYPE = "application/json"
 # 書き換えの知らせの応答の `Content-Type`
 EVENT_STREAM_TYPE = "text/event-stream"
 
+# 記録の応答の `ETag` に使う、本文の SHA-256 の先頭の文字数
+ETAG_DIGEST_LENGTH = 32
+
+# 弱い `ETag` の頭
+WEAK_ETAG_PREFIX = "W/"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CachedRecords:
+    """保持した記録の応答。"""
+
+    # 圧縮する前の本文
+    body: bytes
+    # gzip で圧縮した本文
+    gzip_body: bytes
+    # 弱い `ETag`（`W/"{SHA-256 の先頭 32 文字}"`）
+    etag: str
+
+
+class RecordsCache:
+    """1 つの配信が持つ、組み立てた記録の応答。常駐サーバーの再起動では持ち越さない。"""
+
+    def __init__(self) -> None:
+        """空の保持で始める。"""
+        self._cached: CachedRecords | None = None
+        # 捨てた回数。組み立てている間に捨てられた応答を保持しないために比べる
+        self._generation = 0
+        # 要求ごとのスレッドから触るため、触る間だけ取る鍵
+        self._guard = threading.Lock()
+
+    def get_or_build(self, build: Callable[[], dict[str, Any]]) -> CachedRecords:
+        """保持した応答があれば返却し、無ければ `build` で記録を読んで作り、保持して返却する。"""
+        with self._guard:
+            cached = self._cached
+            generation = self._generation
+        # 保持した応答がある: 読まずに返却する
+        if cached is not None:
+            return cached
+        body = json.dumps(build(), ensure_ascii=False).encode("utf-8")
+        digest = hashlib.sha256(body).hexdigest()[:ETAG_DIGEST_LENGTH]
+        built = CachedRecords(body=body, gzip_body=gzip.compress(body), etag=f'{WEAK_ETAG_PREFIX}"{digest}"')
+        with self._guard:
+            # 組み立てている間に捨てられていない: 保持する（捨てられていれば古い中身のため保持しない）
+            if self._generation == generation:
+                self._cached = built
+        return built
+
+    def discard(self) -> None:
+        """保持した応答を捨て、次の要求で作り直させる。"""
+        with self._guard:
+            self._cached = None
+            self._generation += 1
+
 
 class SettingsHolder:
     """1 つの配信が持つ、最後に検査に通った `config.yaml` の中身と、再読み込みの回数。"""
@@ -263,6 +318,8 @@ class ServeContext:
     transcriber: Transcriber | None = None
     # ワークスペースの ID（画面のパスに使う）
     workspace_id: str = ""
+    # 組み立てた記録の応答
+    records_cache: RecordsCache = field(default_factory=RecordsCache)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -286,6 +343,8 @@ class Response:
     body: bytes
     # 送り直しの宛先（送り直す応答だけが持つ）
     location: str | None = None
+    # 既定（`Content-Type`・`Cache-Control: no-store`）に加える・上書きするヘッダー
+    headers: dict[str, str] = field(default_factory=dict)
 
 
 class PreviewRegistry:
@@ -364,7 +423,11 @@ class PreviewRegistry:
             # そのワークスペースの変更の検知を始める
             if self._state_root is not None:
                 detector = ChangeDetector(
-                    key, self._state_root, self._write_lock, self._input_targets
+                    key,
+                    self._state_root,
+                    self._write_lock,
+                    self._input_targets,
+                    on_changed=context.records_cache.discard,
                 )
                 detector.start()
                 self._detectors[key] = detector
@@ -415,6 +478,13 @@ class PreviewRegistry:
         with self._guard:
             servers = sorted(self._servers.items())
         return [{"workspace": str(root), "url": self._url(context.workspace_id)} for root, context in servers]
+
+    def discard_records(self, root: Path) -> None:
+        """そのワークスペースを配っていれば、保持した記録の応答を捨てる（配っていなければ何もしない）。"""
+        with self._guard:
+            context = self._servers.get(root.resolve())
+        if context is not None:
+            context.records_cache.discard()
 
     def remember_session(self, root: Path, session: Session) -> None:
         """そのワークスペースの Claude Code への入力の宛先を、ツールを呼んだセッションにする。"""
@@ -504,7 +574,11 @@ class PreviewEndpoint:
         handler = handlers.get(request.method)
         if handler is None:
             return _to_starlette(problem_response(HTTPStatus.METHOD_NOT_ALLOWED, f"メソッドを受けません: {request.method}"))
-        return await handler(request, context, path, base)
+        response = await handler(request, context, path, base)
+        # 画面の保存・書き込み: 書いたファイルを次の記録の取得で読み直させる
+        if request.method != "GET":
+            context.records_cache.discard()
+        return response
 
     async def _get(self, request: Request, context: ServeContext, path: str, base: str) -> StarletteResponse:
         """画面・資産・ファイル・記録・書き換えの通知・コメント・スレッド・編集・文字起こしの可否へ振り分ける。"""
@@ -519,7 +593,11 @@ class PreviewEndpoint:
         if path == EVENTS_PATH:
             return self._stream(request, context)
         simple = {
-            RECORDS_PATH: lambda: records_response(context),
+            RECORDS_PATH: lambda: records_response(
+                context,
+                if_none_match=request.headers.get("if-none-match"),
+                accept_encoding=request.headers.get("accept-encoding"),
+            ),
             COMMENTS_PATH: lambda: comments_response(context.root),
             THREADS_PATH: lambda: threads_response(context.root),
             EDITS_PATH: lambda: edits_response(context.root),
@@ -658,6 +736,7 @@ class PreviewEndpoint:
                     signature=lambda root: (
                         f"{workspace_signature(root)}|settings:{context.settings.revision()}"
                     ),
+                    on_changed=context.records_cache.discard,
                 )
             except (BrokenPipeError, ConnectionResetError):
                 return
@@ -777,12 +856,13 @@ async def _write(
 def _to_starlette(response: Response, extra_headers: tuple[tuple[str, str], ...] = ()) -> StarletteResponse:
     """処理の関数が返した応答を、控えさせない Starlette の応答にする（extra_headers を加える）。"""
     headers = {"Content-Type": response.content_type, "Cache-Control": "no-store"}
+    headers.update(response.headers)
     headers.update(dict(extra_headers))
     # 送り直す応答は宛先を持つ
     if response.location is not None:
         headers["Location"] = response.location
-    # 204 は本文を持たない
-    body = b"" if response.status == HTTPStatus.NO_CONTENT else response.body
+    # 204・304 は本文を持たない
+    body = b"" if response.status in (HTTPStatus.NO_CONTENT, HTTPStatus.NOT_MODIFIED) else response.body
     return StarletteResponse(content=body, status_code=response.status, headers=headers)
 
 
@@ -908,25 +988,62 @@ def spa_response(spa_dir: Path, sub_path: str) -> Response:
 
 
 def records_response(
-    context: ServeContext, read: Callable[..., dict[str, Any]] = read_records
+    context: ServeContext,
+    read: Callable[..., dict[str, Any]] = read_records,
+    *,
+    if_none_match: str | None = None,
+    accept_encoding: str | None = None,
 ) -> Response:
-    """ワークスペースをその場で読んだ記録の JSON を返す。config.yaml が検査に通れば最後に通った設定を差し替え、通らなければ最後に通った設定で返す。"""
-    try:
+    """記録の JSON を返却する。保持した応答があれば読まずに使い、`If-None-Match` が合えば 304、`gzip` を受けるなら圧縮して返却する。"""
+
+    def _build() -> dict[str, Any]:
+        """ワークスペースを読み、config.yaml が検査に通れば最後に通った設定を差し替える。"""
         data = read(context.root, last_settings=context.settings.current())
+        # config.yaml が検査に通った: 最後に通った設定として控える
+        if data.get("settings_problem") is None:
+            context.settings.accept(data["settings"])
+        return data
+
+    try:
+        cached = context.records_cache.get_or_build(_build)
     except SchemaMismatchError as error:
         # 読めない・スキーマに合わない: 合わない箇所の行を detail にする
         return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join(error.lines))
     except WorkspaceNotFoundError as error:
         # 配っている間に config.yaml が無くなった
         return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, str(error))
-    # config.yaml が検査に通った: 最後に通った設定として控える
-    if data.get("settings_problem") is None:
-        context.settings.accept(data["settings"])
-    return Response(
-        status=HTTPStatus.OK,
-        content_type=JSON_TYPE,
-        body=json.dumps(data, ensure_ascii=False).encode("utf-8"),
-    )
+    headers = {"ETag": cached.etag, "Cache-Control": "no-cache", "Vary": "Accept-Encoding"}
+    # 画面が持つ応答と同じ: 本文の無い 304
+    if if_none_match is not None and _etag_matches(if_none_match, cached.etag):
+        return Response(status=HTTPStatus.NOT_MODIFIED, content_type=JSON_TYPE, body=b"", headers=headers)
+    # gzip を受ける: 圧縮した本文を返却する
+    if _accepts_gzip(accept_encoding):
+        return Response(
+            status=HTTPStatus.OK,
+            content_type=JSON_TYPE,
+            body=cached.gzip_body,
+            headers={**headers, "Content-Encoding": "gzip"},
+        )
+    return Response(status=HTTPStatus.OK, content_type=JSON_TYPE, body=cached.body, headers=headers)
+
+
+def _etag_matches(if_none_match: str, etag: str) -> bool:
+    """`If-None-Match` のどれかが `ETag` と弱い比較（両方の `W/` を除いて比べる）で一致するかを返却する。"""
+    current = etag.removeprefix(WEAK_ETAG_PREFIX)
+    candidates = [value.strip() for value in if_none_match.split(",")]
+    return any(value == "*" or value.removeprefix(WEAK_ETAG_PREFIX) == current for value in candidates)
+
+
+def _accepts_gzip(accept_encoding: str | None) -> bool:
+    """`Accept-Encoding` が `q=0` でない `gzip` を含むかを返却する。"""
+    if accept_encoding is None:
+        return False
+    for part in accept_encoding.split(","):
+        coding, _, params = part.strip().partition(";")
+        # q=0 は受けない意味
+        if coding.strip().lower() == "gzip" and params.replace(" ", "") not in ("q=0", "q=0.0"):
+            return True
+    return False
 
 
 def opened_response(context: ServeContext, now: NowFn = now_utc) -> Response:
@@ -993,6 +1110,7 @@ def reload_response(context: ServeContext, *, origin: str | None) -> Response:
         return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join(lines))
     # 通った: 差し替えて回数を進める（書き換えの印が変わり、開いている画面へ知らせが届く）
     context.settings.reload(settings)
+    context.records_cache.discard()
     return Response(
         status=HTTPStatus.OK,
         content_type=JSON_TYPE,
@@ -1038,8 +1156,9 @@ def stream_events(
     clock: Callable[[], float] = time.monotonic,
     signature: Callable[[Path], str] = workspace_signature,
     duplicates: Callable[[Path], tuple[str, ...]] | None = None,
+    on_changed: Callable[[], None] | None = None,
 ) -> None:
-    """書き換えの印が変わったら `changed` を、重なった ID の集まりが変わったら `duplicate_ids` を、知らせが無いまま一定時間過ぎたら保つ行を書き続ける。"""
+    """書き換えの印が変わったら（知らせる前に on_changed を呼び） `changed` を、重なった ID の集まりが変わったら `duplicate_ids` を、知らせが無いまま一定時間過ぎたら保つ行を書き続ける。"""
     last_signature = signature(root)
     last_written = clock()
     last_duplicates: tuple[str, ...] = ()
@@ -1055,7 +1174,9 @@ def stream_events(
                 last_duplicates = found
                 last_written = clock()
             if current != last_signature:
-                # 印が変わった: 変わったことだけを知らせる（画面が記録を読み直す）
+                # 印が変わった: 保持した記録の応答を捨ててから、変わったことだけを知らせる（画面が記録を読み直す）
+                if on_changed is not None:
+                    on_changed()
                 write(f"event: changed\ndata: {current}\n\n".encode())
                 last_signature = current
                 last_written = clock()

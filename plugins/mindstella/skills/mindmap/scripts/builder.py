@@ -22,6 +22,7 @@ from history import load_changes, load_item_history, merge_item_history
 from html_body import mark_lines
 from kinds import KINDS, SETTINGS_FILE
 from mdmark_ref import MDMARK_REPO, resolve_ref
+from presets import preset_counts
 from store import NowFn, Workspace, now_utc
 
 # このファイルから見た `skills/mindmap/preview/`
@@ -209,7 +210,7 @@ def collect_preview_data(
     mdmark_ref: str,
     settings_problem: list[str] | None = None,
 ) -> dict[str, Any]:
-    """設定・7 種類・本文・まとまり・画面に出す値・読んだ日時・設定の問題・mdmark の ref を 1 つの辞書にまとめる（送信は含めない）。"""
+    """設定・7 種類・本文・まとまり・画面に出す値・プリセットの件数・読んだ日時・設定の問題・mdmark の ref を 1 つの辞書にまとめる（送信は含めない）。"""
     data: dict[str, Any] = {"settings": workspace.settings}
     rows = load_item_history(workspace.root)
     # 種類ごとの items を、ファイル名から `.yaml` を落としたキーで、history.yaml の行を合わせて入れる
@@ -236,6 +237,8 @@ def collect_preview_data(
     # 書き換えのまとまり（項目の `history` は項目に合わせて入っている）
     data["changes"] = load_changes(workspace.root)
     data["derived"] = derive_preview_values(workspace)
+    # プリセットごとの該当する項目の件数（保存せずそのつど数える）
+    data["preset_counts"] = preset_counts(workspace)
     data["built_at"] = built_at
     # config.yaml がスキーマに合わないときの、合わない箇所の行（合うときと配る書き出しは null）
     data["settings_problem"] = settings_problem

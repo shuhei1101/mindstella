@@ -149,12 +149,15 @@ class ChangeDetector:
         state_dir: Path,
         write_lock: threading.Lock,
         targets: InputTargets,
+        *,
+        on_changed: Callable[[], None] | None = None,
     ) -> None:
-        """ワークスペース・状態のフォルダ・ツールと共有する書き換えの鍵・入力の宛先を受け取る。"""
+        """ワークスペース・状態のフォルダ・ツールと共有する書き換えの鍵・入力の宛先と、書き換えを見つけたときに呼ぶ関数を受け取る。"""
         self._root = root.resolve()
         self._state_dir = state_dir
         self._write_lock = write_lock
         self._targets = targets
+        self._on_changed = on_changed
         self._snapshot = Snapshot(files={}, git_head=None, git_ref=None)
         self._signature = ""
         self._duplicates: tuple[str, ...] = ()
@@ -188,6 +191,9 @@ class ChangeDetector:
         if signature_of(self._root) != self._signature:
             with workspace_lock(self._root, self._write_lock):
                 self._check(writer=None)
+            # 書き換えを見つけた: 配信の保持した記録の応答を捨てさせる
+            if self._on_changed is not None:
+                self._on_changed()
         # 外部の変更を最後に記録してから時間が過ぎた: まとめる
         if self._external_since is not None and time.monotonic() - self._external_since >= self._delay:
             with workspace_lock(self._root, self._write_lock):

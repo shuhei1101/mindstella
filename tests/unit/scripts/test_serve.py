@@ -356,7 +356,7 @@ def test_stop_all(
 class FakeDetector:
     """変更の検知の代わりに、始めたことと止めたことを記録する。"""
 
-    def __init__(self, root: Path, *_args: object) -> None:
+    def __init__(self, root: Path, *_args: object, **_kwargs: object) -> None:
         """ワークスペースのフォルダを持つ。"""
         self.root = root
         self.stopped = False
@@ -898,6 +898,8 @@ def test_records_response_when_settings_changed(
         root / RECORD_DIR / "config.yaml",
         {**valid_settings, "display": {"visible_kinds": ["rainbow"]}},
     )
+    # 変更の検知が書き換えを見つけたときと同じく、保持した応答を捨てる
+    context.records_cache.discard()
     second = serve.records_response(context)
     # 検証
     first_payload = json.loads(first.body)
@@ -2271,7 +2273,7 @@ def test_endpoint(
     assert page.headers["Cache-Control"] == "no-store"
     assert "text/html" in page.headers["Content-Type"]
     assert records.status_code == 200
-    assert records.headers["Cache-Control"] == "no-store"
+    assert records.headers["Cache-Control"] == "no-cache"
     assert "配った問い" in records.text
 
 
