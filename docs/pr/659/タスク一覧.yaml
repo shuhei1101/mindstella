@@ -42,9 +42,14 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-21T15:30:44.281465+00:00'
   - process: データ設計
-    status: todo
+    status: skipped
+    reason: '誰が決めたかの記録を範囲から外し、永続化する項目の変更が無い。プリセットのタグの式は #360 で設計済みで、画面のタグの条件の式は URL とタブの保存領域に持つ画面の状態で、インターフェース定義『プレビューを開く』で扱う'
+    updated_by: planner
+    updated_at: '2026-11-21T15:38:54.200025+00:00'
   - process: インターフェース定義設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:39:34.552501+00:00'
   - process: エージェント・MCP サーバー設計
     status: skipped
     reason: エージェントと MCP サーバーを新設しない。既存の MCP のツールの引数の変更はインターフェース定義設計、AI の手順の変更は既存のエージェントフロー（判定フローチャート『機能を呼ぶインターフェースの選び方』でエージェントフロー）で扱う
