@@ -443,18 +443,23 @@ export const renderMarkdown = (source: string, options: { table?: boolean } = {}
   const root = h({ tag: "div", attrs: { class: "md" } });
   const missing = missingLibraries(["mdmark"]);
   const hasDiagram = source.includes("```mermaid");
-  // mdmark が読めていない: 知らせと原文を出す
+  /** 知らせと原文を出す */
+  const raw = (names: string[]): HTMLElement => {
+    root.replaceChildren(libraryNotice({ names, what: "本文" }), h({ tag: "pre", attrs: { class: "md-raw" }, children: [source] }));
+    return root;
+  };
+  // mdmark が読めていない
   if (missing.length > 0) {
     const names: string[] = [...missing];
     if (hasDiagram && missingLibraries(["mermaid"]).length > 0) names.push("mermaid");
-    root.append(
-      libraryNotice({ names, what: "本文" }),
-      h({ tag: "pre", attrs: { class: "md-raw" }, children: [source] }),
-    );
-    return root;
+    return raw(names);
   }
-  // mdmark は描くときに無害化する（記録は利用者のもの）
-  mountMarkdown({ root, markdown: source, table: options.table !== false });
+  // mdmark は描くときに無害化する（記録は利用者のもの）。`mount` が例外を投げたとき（部品を差し替えられないタグの mdmark で map を描いたときなど）は、読めていないときと同じにする
+  try {
+    mountMarkdown({ root, markdown: source, table: options.table !== false });
+  } catch {
+    return raw(["mdmark"]);
+  }
   convertSourceLines({ root, source });
   // 埋め込んだ HTML の範囲は `data-source-line` を持たないので、本文の中の n 番目の範囲に、n 番目の範囲の印の行を持たせる（範囲の中の要素には行の印を付けない）
   const ranges = embeddedHtmlRanges(source);
