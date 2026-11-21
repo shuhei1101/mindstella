@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 from preview_edit_helpers import edit_edits, edit_items
@@ -94,11 +96,11 @@ def test_diff_mark_visible(page: Page, write_history_preview: WriteReviewPreview
     # 準備
     url, _ = write_history_preview()
     open_spa(page, url, f"?tab=docs&view={view}")
-    expect(page.locator("[data-id='A-1'] [title=新規]")).to_have_count(0)
+    expect(page.locator("[data-card='A-1'] [title=新規]")).to_have_count(0)
     # 実行
     open_spa(page, url, f"?tab=docs&view={view}&diff=V-1")
     # 検証
-    expect(page.locator("[data-id='A-1'] [title=新規]")).to_have_count(1)
+    expect(page.locator("[data-card='A-1'] [title=新規]")).to_have_count(1)
 
 
 def test_drawer_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
@@ -140,8 +142,8 @@ def test_comment_mark_visible(page: Page, write_commented_preview: WriteReviewPr
     url, _ = write_commented_preview()
     open_spa(page, url, f"?tab=docs&view={view}")
     # 検証
-    expect(page.locator("[data-id='A-1'] [title='コメント 1 件']")).to_have_count(1)
-    expect(page.locator("[data-id='A-2'] [title='コメント 1 件']")).to_have_count(1)
+    expect(page.locator("[data-card='A-1'] [title='コメント 1 件']")).to_have_count(1)
+    expect(page.locator("[data-card='A-2'] [title='コメント 1 件']")).to_have_count(1)
 
 
 def test_removed_band_visible(page: Page, write_removed_preview: WriteReviewPreview) -> None:
@@ -163,8 +165,8 @@ def test_withdrawn_badge_visible(page: Page, write_removed_preview: WriteReviewP
     url, _ = write_removed_preview()
     open_spa(page, url, f"?tab=docs&view={view}")
     # 検証
-    expect(page.locator("[data-id='A-2']")).to_contain_text("取り下げ")
-    expect(page.locator("[data-id='A-1']")).not_to_contain_text("取り下げ")
+    expect(page.locator("[data-card='A-2']")).to_contain_text("取り下げ")
+    expect(page.locator("[data-card='A-1']")).not_to_contain_text("取り下げ")
 
 
 @pytest.mark.parametrize(("view", "body", "badge"), [("cards", "A-1.mark.md", "MD"), ("cards", "A-1.html", "HTML"), ("board", "A-1.mark.md", "MD")])
@@ -174,7 +176,7 @@ def test_format_badge_visible(page: Page, write_preview: WritePreview, make_item
     url = write_preview(make_item("A-1", body=f"../docs/{body}"), bodies={body: "本文"})
     open_spa(page, url, f"?tab=docs&view={view}")
     # 検証
-    expect(page.locator("[data-id='A-1']").get_by_text(badge, exact=True)).to_be_visible()
+    expect(page.locator("[data-card='A-1']").get_by_text(badge, exact=True)).to_be_visible()
 
 
 def test_add_button_label(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
@@ -203,9 +205,9 @@ def test_pending_mark_visible(page: Page, write_edit_preview: WriteReviewPreview
     url, _ = write_edit_preview(*edit_items(make_item, "A"), make_item("A-4", title="触らない資料"), edits=edit_edits(make_edit, "A"))
     open_spa(page, url, "?tab=docs&view=cards")
     # 検証
-    expect(page.locator("[data-id='A-1']")).to_contain_text("保存待ち")
-    expect(page.locator("[data-id='A-2']")).to_contain_text("保存で削除")
-    expect(page.locator("[data-id='A-4']")).not_to_contain_text("保存")
+    expect(page.locator("[data-card='A-1']")).to_contain_text("保存待ち")
+    expect(page.locator("[data-card='A-2']")).to_contain_text("保存で削除")
+    expect(page.locator("[data-card='A-4']")).not_to_contain_text("保存")
 
 
 def test_added_items_visible(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
@@ -226,5 +228,25 @@ def test_card_tags_visible(page: Page, write_preview: WritePreview, make_item: M
     url = write_preview(make_item("A-1", tags=[{"name": "画面", "main": True}]), make_item("A-2", tags=[]))
     open_spa(page, url, "?tab=docs&view=cards")
     # 検証
-    expect(page.locator("[data-id='A-1'] [title=主題]")).to_contain_text("画面")
-    expect(page.locator("[data-id='A-2'] [title=主題]")).to_have_count(0)
+    expect(page.locator("[data-card='A-1']").get_by_role("button", name="タグ「画面」で絞り込む（主題）")).to_be_visible()
+    expect(page.locator("[data-card='A-2'] [data-tag]")).to_have_count(0)
+
+
+def _tags(*names: str) -> list[dict[str, str]]:
+    """タグの名前の並びを項目の `tags` にする。"""
+    return [{"name": name} for name in names]
+
+
+def test_card_tag_press(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """資料のカードは外枠が div でボタンを入れ子にせず、タグを押すと詳細を開かずに f.tags に加える（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", tags=_tags("画面")), make_item("A-2", tags=_tags("保存")))
+    open_spa(page, url, "?tab=docs&view=cards")
+    expect(page.locator("div[data-card='A-1'] button[data-id='A-1']")).to_be_visible()
+    assert page.locator("button button").count() == 0
+    # 実行
+    page.locator("[data-card='A-1']").get_by_role("button", name="タグ「画面」で絞り込む").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"f\.tags=%E7%94%BB%E9%9D%A2"))
+    expect(page.locator("[data-card='A-2']")).to_have_count(0)
+    expect(page.get_by_role("complementary", name="詳細")).to_have_count(0)

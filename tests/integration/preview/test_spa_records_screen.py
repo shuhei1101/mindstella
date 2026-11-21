@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 from preview_edit_helpers import edit_edits, edit_items
@@ -144,3 +146,21 @@ def test_added_items_visible(page: Page, write_edit_preview: WriteReviewPreview,
     # 検証
     expect(page.locator("tr[data-new-id]")).to_contain_text("足す用語")
     expect(page.locator("tbody tr").first).to_have_attribute("data-new-id", "new-1")
+
+
+def _tags(*names: str) -> list[dict[str, str]]:
+    """タグの名前の並びを項目の `tags` にする。"""
+    return [{"name": name} for name in names]
+
+
+def test_table_tag_press(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """表のタグの列のタグを押すと詳細を開かずに f.tags に加える（正常系）。"""
+    # 準備
+    url = write_preview(make_item("R-1", title="調べる 1", tags=_tags("画面")), make_item("R-2", title="調べる 2", tags=_tags("保存")))
+    open_spa(page, url, "?tab=research")
+    # 実行
+    page.locator("tr[data-id='R-1']").get_by_role("button", name="タグ「画面」で絞り込む").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"f\.tags=%E7%94%BB%E9%9D%A2"))
+    expect(page.locator("tr[data-id='R-2']")).to_have_count(0)
+    expect(page.get_by_role("complementary", name="詳細")).to_have_count(0)

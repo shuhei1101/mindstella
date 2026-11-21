@@ -2,11 +2,22 @@
 
 from __future__ import annotations
 
+import re
+
 from playwright.sync_api import Page, expect
 from preview_edit_helpers import edit_edits, edit_items
-from preview_fixture_types import WriteReviewPreview
+from preview_fixture_types import WritePreview, WriteReviewPreview
 from preview_spa_helpers import open_spa
 from workspace_fixtures import MakeEdit, MakeItem
+
+# スクロールできるだけの数のタスク
+MANY_TASKS = 60
+
+# 表のスクロール領域
+TABLE_SCROLL_SELECTOR = "[data-kind='tasks'] .overflow-auto"
+
+# スクロールの位置が保存領域に書かれるまで待つミリ秒
+SCROLL_SAVE_WAIT_MS = 200
 
 
 def test_board_columns(page: Page, spa_preview: str) -> None:
@@ -99,11 +110,11 @@ def test_board_diff_mark_visible(page: Page, write_history_preview: WriteReviewP
     # 準備
     url, _ = write_history_preview()
     open_spa(page, url, "?tab=tasks&view=board")
-    expect(page.locator("[data-id='T-1'] [title=新規]")).to_have_count(0)
+    expect(page.locator("[data-card='T-1'] [title=新規]")).to_have_count(0)
     # 実行
     open_spa(page, url, "?tab=tasks&view=board&diff=V-1")
     # 検証
-    expect(page.locator("[data-id='T-1'] [title=新規]")).to_have_count(1)
+    expect(page.locator("[data-card='T-1'] [title=新規]")).to_have_count(1)
 
 
 def test_drawer_visible(page: Page, spa_preview: str) -> None:
@@ -148,8 +159,8 @@ def test_board_comment_mark_visible(page: Page, write_commented_preview: WriteRe
     url, _ = write_commented_preview()
     open_spa(page, url, "?tab=tasks&view=board")
     # 検証
-    expect(page.locator("[data-id='T-1'] [title='コメント 1 件']")).to_have_count(1)
-    expect(page.locator("[data-id='T-2'] [title^='コメント']")).to_have_count(0)
+    expect(page.locator("[data-card='T-1'] [title='コメント 1 件']")).to_have_count(1)
+    expect(page.locator("[data-card='T-2'] [title^='コメント']")).to_have_count(0)
 
 
 def test_removed_band_visible(page: Page, write_removed_preview: WriteReviewPreview) -> None:
@@ -208,3 +219,86 @@ def test_added_items_visible(page: Page, write_edit_preview: WriteReviewPreview,
     open_spa(page, url, "?tab=tasks&view=board")
     # 検証
     expect(page.locator("[data-new-id]")).to_contain_text("足す項目")
+
+
+# ─── タグの絞り込み・組み合わせ方・状態の保持 ───
+
+
+def _tags(*names: str) -> list[dict[str, str]]:
+    """タグの名前の並びを項目の `tags` にする。"""
+    return [{"name": name} for name in names]
+
+
+def test_board_tag_press(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """カードのタグを押すと詳細を開かずに f.tags に加え、履歴に 1 つ積む（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("T-1", title="画面を作る", status="進行中", tags=_tags("画面")),
+        make_item("T-2", title="保存を作る", status="進行中", tags=_tags("保存")),
+    )
+    open_spa(page, url, "?tab=tasks")
+    # 実行
+    page.locator("[data-card='T-1']").get_by_role("button", name="タグ「画面」で絞り込む").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"f\.tags=%E7%94%BB%E9%9D%A2"))
+    expect(page.locator("[data-card='T-2']")).to_have_count(0)
+    expect(page.get_by_role("complementary", name=re.compile("T-1"))).to_have_count(0)
+    page.go_back()
+    expect(page.locator("[data-card='T-2']")).to_be_visible()
+
+
+def test_drawer_tag_match(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """既定は選んだタグを全て持つタスクだけを出し、「どれかを含む」でどれかを持つタスクを出す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("T-1", title="画面を作る", status="進行中", tags=_tags("画面")),
+        make_item("T-2", title="保存を作る", status="進行中", tags=_tags("保存")),
+        make_item("T-3", title="両方を作る", status="進行中", tags=_tags("画面", "保存")),
+    )
+    open_spa(page, url, "?tab=tasks&f.tags=%E7%94%BB%E9%9D%A2|%E4%BF%9D%E5%AD%98")
+    expect(page.locator("[data-card]")).to_have_count(1)
+    # 実行
+    page.get_by_role("button", name="絞り込み").click()
+    page.get_by_role("dialog", name="絞り込み").get_by_role("group", name="タグの組み合わせ方").get_by_text("どれかを含む").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"tagmatch=any"))
+    expect(page.locator("[data-card]")).to_have_count(3)
+    expect(page.get_by_text("タグ（どれかを含む）: 画面", exact=True)).to_be_visible()
+
+
+def test_filters_kept_in_tab(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """ほかの画面から戻ると、そのタブに残した絞り込みの条件で開き、端末の保存領域には残さない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("T-1", title="画面を作る", status="進行中"),
+        make_item("T-2", title="保存を作る", status="未着手"),
+    )
+    open_spa(page, url, "?tab=tasks&f.status=%E9%80%B2%E8%A1%8C%E4%B8%AD")
+    expect(page.locator("[data-card]")).to_have_count(1)
+    # 実行
+    page.get_by_role("link", name="検討事項").click()
+    page.get_by_role("link", name="タスク").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"f\.status=%E9%80%B2%E8%A1%8C%E4%B8%AD"))
+    expect(page.locator("[data-card]")).to_have_count(1)
+    assert "filters" not in (page.evaluate("JSON.stringify(localStorage)") or "")
+
+
+def test_table_scroll_restored(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """表をスクロールしてほかの画面へ移り、戻ると離れたときの位置へ戻す（正常系）。"""
+    # 準備
+    url = write_preview(*(make_item(f"T-{number}", title=f"タスク {number}", status="未着手") for number in range(1, MANY_TASKS + 1)))
+    page.set_viewport_size({"width": 1280, "height": 600})
+    open_spa(page, url, "?tab=tasks&view=table")
+    area = page.locator(TABLE_SCROLL_SELECTOR)
+    before = area.evaluate("(node) => { node.scrollTop = 300; node.dispatchEvent(new Event('scroll')); return node.scrollTop; }")
+    page.wait_for_timeout(SCROLL_SAVE_WAIT_MS)
+    # 実行
+    page.get_by_role("link", name="検討事項").click()
+    page.go_back()
+    # 検証
+    assert before > 0
+    expect(page.locator("tbody tr[data-id='T-1']")).to_be_attached()
+    page.wait_for_function(
+        "([selector, top]) => document.querySelector(selector)?.scrollTop === top", arg=[TABLE_SCROLL_SELECTOR, before]
+    )
