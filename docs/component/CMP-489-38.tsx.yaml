@@ -1,40 +1,42 @@
 id: CMP-489-38
-title: 本文の差分の並べ方の切り替え
-implementation: frontend/src/shared/components/body-diff-layout-switch.tsx#BodyDiffLayoutSwitch
-story: Shared/BodyDiffLayoutSwitch
+title: 本文の差分の見せ方の切り替え
+implementation: frontend/src/shared/components/body-diff-view-switch.tsx#BodyDiffViewSwitch
+story: Shared/BodyDiffViewSwitch
 states:
-  - name: Inline
-    description: 既定。「インライン」を押した状態
+  - name: Rendered
+    description: 既定。「描いた結果」を押した状態
     args:
-      - name: layout
-        value: inline
-  - name: Side
-    description: 「左右に並べる」を押した状態
+      - name: view
+        value: rendered
+  - name: Source
+    description: 「原文の差分」を押した状態
     args:
-      - name: layout
-        value: side
+      - name: view
+        value: source
   - name: FocusOnOther
-    description: 「インライン」を押したまま、「左右に並べる」にキーボードのフォーカスを置いた。マーカーの色の輪を出す
+    description: 「描いた結果」を押したまま、「原文の差分」にキーボードのフォーカスを配置した。マーカーの色の輪を出す
     args:
-      - name: layout
-        value: inline
-lead: 差分の表示の間、本文の差分の頭に置く「インライン」「左右に並べる」のボタンの組
+      - name: view
+        value: rendered
+lead: 差分の表示の間、Markdown の本文の差分の頭に配置する「描いた結果」「原文の差分」のボタンの組
 args:
-  - name: layout
+  - name: view
     type: 列挙
     required: true
-    choices: inline・side
-    description: 選んでいる並べ方。`inline` は「インライン」、`side` は「左右に並べる」を押した状態で出す
+    choices: rendered・source
+    description: 選んでいる見せ方。`rendered` は「描いた結果」、`source` は「原文の差分」を押した状態で出す
 events:
-  - name: 並べ方を切り替える
-    when: 押していない方のボタンを押したとき（押している方を押しても知らせない）
-    value: '`onChange(layout)`（引数は押した方の並べ方 `inline`・`side`）'
-    description: 使う側が、`side` は個人の上書きに残し、`inline` は上書きを外して、開いている詳細パネル・詳細の全画面をその場で再描画する。本文を送信した位置と、押したボタンのフォーカスを保つ。履歴に積まず、URL の search paramsも変えない
+  - name: 見せ方を選ぶ
+    when: どちらかのボタンを押したとき（押している方を押したときも通知する）
+    value: '`onChange(view)`（引数は押した方の見せ方 `rendered`・`source`）'
+    description: 使用する側が、その見せ方で本文の差分を描き直す。mdmark の「変更表示」で行の差分を閉じた後に「原文の差分」を押すと、行の差分を開き直す。履歴に登録せず、URL の search params・個人の上書きも変えない。項目を開き直すと「描いた結果」に戻る
 accessibility:
-  - 2 つのボタンの組（`role="group"`、読み上げの名前「本文の差分の並べ方」）で、押している方を `aria-pressed` で示す
+  - 2 つのボタンの組（`role="group"`、読み上げの名前「本文の差分の見せ方」）で、押している方を `aria-pressed` で示す
   - ホバーは面の色、キーボードのフォーカスはマーカーの色の輪で見分ける
 refs:
-  - IF-489-70#constraints[本文の差分の並べ方]
+  - IF-489-70#
+  - CMP-489-6#
 notes:
-  モック: '`docs/mock/components/body-diff-layout/` の「並べ方の切り替え」'
-test_file: tests/integration/storybook_react/test_body_diff_layout_switch_stories.py
+  モック: ストーリー `Shared/MarkdownBodyDiff`（`frontend/src/shared/components/markdown-body-diff.stories.tsx`）
+  文言: HTML の本文の差分（部品設計『HTMLの本文の差分』）の切り替えと同じ「描いた結果」「原文の差分」
+test_file: tests/integration/storybook_react/test_body_diff_view_switch_stories.py

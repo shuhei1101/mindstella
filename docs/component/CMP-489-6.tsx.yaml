@@ -42,7 +42,30 @@ states:
     args:
       - name: fold
         value: 'false'
-lead: Markdown の本文を mdmark の `mount` で描き、mdmark の共通のスタイルに重ねるスタイルを当てる。表は mdmark の表の機能のまま描き、コードブロックの言語の札とコピー・GitHub の Alert の見出しのアイコンを常に当て、セクションの折りたたみを表示の設定の値で当てる。詳細パネル・詳細の全画面・本文の差分（インライン・左右に並べる）の本文で使う。
+  - name: DiffRendered
+    description: 差分の表示で「描いた結果」。書き換えた段落と追加した箇条書きの項目は追加の色と左の余白の `+`、削除した段落は削除の色と `−` で変更前の位置に出る。記号は本文の左の余白に収め、箇条書きの項目でも行の高さに揃える。書き換えた段落の前の文と変わった単語は出さない
+    args:
+      - name: base
+        value: 1 つ目の段落の単語を書き換え、3 つ目の段落を削除し、箇条書きに 1 行追加する前の本文
+      - name: fold
+        value: 'false'
+  - name: DiffSource
+    description: 差分の表示で「原文の差分」。mdmark の「変更表示」を押した状態で、前と後のリビジョンの欄に「選んだ時点」「今」が入り、書き換えた行の変わった単語だけが濃い色になる
+    args:
+      - name: base
+        value: DiffRendered と同じ
+      - name: diffView
+        value: source
+      - name: fold
+        value: 'false'
+  - name: DiffUnchanged
+    description: 差分の表示で、選んだ時点から変わっていない本文。色を付けずに今の本文だけを出す
+    args:
+      - name: base
+        value: 今と同じ本文
+      - name: fold
+        value: 'false'
+lead: Markdown の本文を mdmark の `mount` で描き、mdmark の共通のスタイルに重ねるスタイルを当てる。表は mdmark の表の機能のまま描き、コードブロックの言語の札とコピー・GitHub の Alert の見出しのアイコンを常に当て、セクションの折りたたみを表示の設定の値で当てる。差分の表示の間は、選んだ時点の本文と比べて mdmark の差分で描く（「描いた結果」は比較元の Markdown の色分け、「原文の差分」は取り出し元の行の差分）。mdmark の印刷の機能をオンにして描く。詳細パネル・詳細の全画面・本文の差分の本文で使う。
 args:
   - name: source
     type: 文字列
@@ -57,18 +80,30 @@ args:
     type: 真偽値
     required: false
     default: 'true'
-    description: セクションの開閉を置ける本文か。本文の差分（インライン・左右に並べる）では false にし、`display.fold` が true でも開閉を置かない
+    description: セクションの開閉を置ける本文か。本文の差分（`base` を指定するとき）では false にし、`display.fold` が true でも開閉を置かない
   - name: tables
     type: 真偽値
     required: false
     default: 'true'
     description: mdmark の `mount` に表の機能（`features.table`）をオンで指定するか。スレッドの書き込みでは false にし、表は mdmark の共通のスタイルのまま描く
+  - name: base
+    type: 文字列
+    required: false
+    default: なし（差分を出さず、`source` だけを描く）
+    description: '差分の表示で選んだ時点の本文。指定すると `diffView` に応じて mdmark の差分で描く。`rendered` は `mount` の比較元の Markdown（`baseMarkdown`）に指定し、追加・変更したブロックを追加の色、削除したブロックを削除の色で変更前の位置に出す。`source` は選んだ時点と今の 2 つだけを返却する取り出し元（`diffSource`）と `diffMode: "open"` で行の差分を出し、mdmark が配置する「変更表示」のボタンとリビジョンの欄はそのまま出す。`base` と `source` が同じときは色を付けずに描く'
+  - name: diffView
+    type: 列挙
+    required: false
+    default: rendered
+    choices: rendered・source
+    description: 本文の差分の見せ方。`base` を指定したときだけ使用する。使用する側が部品設計『本文の差分の見せ方の切り替え』の選択を指定する
 accessibility:
   - 表の入れ物・ピン止め・並べ替え・列の幅の変更のボタンの読み上げの名前とキーボードの操作は mdmark の表のままにし、上書きしない
   - 開閉の矢印は `button` で `aria-expanded` と `aria-controls` を持ち、読み上げの名前は「{見出し}を開閉」
   - コピーのボタンは読み上げの名前「コードをコピー」を持ち、コピーしたことを `role="status"` で伝える
   - Alert の種類は色だけでなく見出しの文言でも示す
   - 'コードブロックの `pre` は `tabindex="0"` と読み上げの名前「コード: {言語}」（言語を書かないものは「コード」）を持ち、キーボードで横にスクロールできる（フェンスのコードブロックは mdmark が付け、mdmark が付けない字下げのコードブロックには描画の関数が「コード」で付ける）'
+  - 差分の色分け・行の差分の読み上げ（「追加:」「削除:」）と、「変更表示」のボタン・リビジョンの欄の読み上げの名前とキーボードの操作は mdmark のままにし、上書きしない
 refs:
   - IF-489-70#
   - CMP-489-50#
