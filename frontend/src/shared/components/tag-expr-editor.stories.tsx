@@ -38,3 +38,16 @@ export const IncludeExclude: Story = { args: { initial: { and: [{ field: "tags",
 
 /** グループを入れ子にした式（「保存」を含む、または「画面」と「廃止」を両方含む） */
 export const Nested: Story = { args: { initial: { or: [{ field: "tags", op: "eq", values: ["保存"] }, { and: [{ field: "tags", op: "eq", values: ["画面", "廃止"], match: "all" }] }] } } };
+
+const Many = () => {
+  const tags: TagChoice[] = Array.from({ length: 50 }, (_, index) => ({ value: `タグ${String(index + 1)}`, count: index % 7 }));
+  const [expr, setExpr] = useState<PresetFilter>({ and: [{ field: "tags", op: "eq", values: ["タグ3", "タグ12"], match: "all" }, { field: "tags", op: "ne", values: ["タグ40"] }] });
+  return (
+    <div className="w-96 max-w-full">
+      <TagExprEditor expr={expr} tags={tags} onChange={setExpr} />
+    </div>
+  );
+};
+
+/** タグが 50 件あっても、選択したタグだけをチップで出し、残りは入力欄の候補から追加する */
+export const ManyTags: Story = { args: { initial: { and: [] } }, render: () => <Many /> };

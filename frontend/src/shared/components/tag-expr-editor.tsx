@@ -1,4 +1,7 @@
 // タグの条件の詳細の編集。条件（含む・含まない）と束（すべて一致・いずれか一致・一致しない）を入れ子で組む
+import { useId } from "react";
+
+import { ChipsInput } from "@/shared/components/chips-input";
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Select } from "@/shared/components/ui/select";
@@ -48,6 +51,25 @@ const switchBundle = (node: PresetFilter, kind: BundleKind): PresetFilter => {
   return bundleOf(kind, children);
 };
 
+/** 選択したタグだけをチップで出し、候補つきの入力欄でタグを追加する。候補に無いタグは追加しない */
+const TagPicker = ({ values, tags, onChange }: { values: string[]; tags: TagChoice[]; onChange: (values: string[]) => void }) => {
+  const controlId = useId();
+  const names = tags.map((tag) => tag.value);
+  return (
+    <ChipsInput
+      controlId={controlId}
+      name="タグ"
+      hint="タグを入力"
+      values={values}
+      suggestions={names.filter((name) => !values.includes(name))}
+      validate={(value) => (names.includes(value) ? { value } : { error: "該当するタグはありません" })}
+      onChange={(next) => {
+        onChange(next.map((entry) => (typeof entry === "string" ? entry : entry.name)));
+      }}
+    />
+  );
+};
+
 type RowProps = { tags: TagChoice[]; onRemove: (() => void) | null };
 
 const ConditionRow = ({ node, tags, onChange, onRemove }: RowProps & { node: PresetCondition; onChange: (node: PresetCondition) => void }) => (
@@ -83,30 +105,7 @@ const ConditionRow = ({ node, tags, onChange, onRemove }: RowProps & { node: Pre
         </Button>
       )}
     </div>
-    <ul className="flex flex-wrap gap-1" aria-label="タグ">
-      {tags.map((tag) => {
-        const chosen = node.values.includes(tag.value);
-        return (
-          <li key={tag.value}>
-            <button
-              type="button"
-              aria-pressed={chosen}
-              className={cn(
-                "flex h-7 items-center gap-1 rounded-full border border-border bg-card px-2 text-xs hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
-                chosen && "border-mark-line bg-mark-weak font-medium hover:bg-mark-weak",
-                tag.count === 0 && !chosen && "text-muted-foreground",
-              )}
-              onClick={() => {
-                onChange({ ...node, values: chosen ? node.values.filter((value) => value !== tag.value) : [...node.values, tag.value] });
-              }}
-            >
-              {tag.value}
-              <span className="font-mono text-muted-foreground">{tag.count}</span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+    <TagPicker values={node.values} tags={tags} onChange={(values) => { onChange({ ...node, values }); }} />
   </div>
 );
 
