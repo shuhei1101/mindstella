@@ -1552,20 +1552,34 @@ def test_tags_not_selectable_in_diff(page: Page, write_history_preview: WriteRev
 
 # ─── コメントの入力の位置 ───
 
+# 本文のスクロール領域があふれる長さの本文（段落を 60 個並べる）
+OVERFLOW_BODY = "\n\n".join(f"{index} 段落目の本文。詳細パネルの高さを超える長さにするための段落。" for index in range(1, 61))
+
+
+@pytest.fixture
+def long_comment_preview(write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment) -> tuple[str, Path]:
+    """本文があふれる D-3 とレビュー中のコメント C-1、本文の短い D-2 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-3", title="長い記録", status="未決定", body="../docs/D-3.mark.md"),
+        make_item("D-2", title="画面の幅", status="保留"),
+        comments=(make_comment("C-1", target="D-3", body="長い本文へのコメント"),),
+        bodies={"D-3.mark.md": OVERFLOW_BODY},
+    )
+
 
 @pytest.mark.parametrize(
     ("size", "item"),
     [
-        pytest.param({"width": 1280, "height": 800}, "D-1", id="wide-long"),
+        pytest.param({"width": 1280, "height": 800}, "D-3", id="wide-long"),
         pytest.param({"width": 1280, "height": 800}, "D-2", id="wide-short"),
-        pytest.param({"width": 390, "height": 844}, "D-1", id="phone-long"),
+        pytest.param({"width": 390, "height": 844}, "D-3", id="phone-long"),
         pytest.param({"width": 390, "height": 844}, "D-2", id="phone-short"),
     ],
 )
-def test_comment_input_at_bottom(page: Page, comment_preview: tuple[str, Path], size: dict[str, int], item: str) -> None:
+def test_comment_input_at_bottom(page: Page, long_comment_preview: tuple[str, Path], size: dict[str, int], item: str) -> None:
     """コメントの入力は本文の長さによらず、詳細パネルの下端に間を空けずに出す（正常系）。"""
     # 準備
-    url, _ = comment_preview
+    url, _ = long_comment_preview
     page.set_viewport_size(size)
     # 実行
     open_spa(page, url, f"?tab=decisions&id={item}")
@@ -1575,20 +1589,24 @@ def test_comment_input_at_bottom(page: Page, comment_preview: tuple[str, Path], 
     assert_bottom_aligned(form, _panel(page))
 
 
-def test_review_comments_scroll_with_body(page: Page, comment_preview: tuple[str, Path]) -> None:
+def test_review_comments_scroll_with_body(page: Page, long_comment_preview: tuple[str, Path]) -> None:
     """レビュー中のコメントは本文のスクロール領域の中で本文と一緒にスクロールし、コメントの入力は下端に留まる（正常系）。"""
     # 準備
-    url, _ = comment_preview
+    url, _ = long_comment_preview
     page.set_viewport_size({"width": 390, "height": 844})
-    open_spa(page, url, "?tab=decisions&id=D-1")
+    open_spa(page, url, "?tab=decisions&id=D-3")
     region = _panel(page).get_by_role("region", name="詳細の本文")
-    form = _panel(page).locator("form[data-id='D-1']")
+    form = _panel(page).locator("form[data-id='D-3']")
+    expect(region.get_by_text("60 段落目の本文", exact=False)).to_be_attached()
     expect(region.get_by_role("heading", name="レビュー中のコメント")).to_be_attached()
-    expect(region.locator("form[data-id='D-1']")).to_have_count(0)
+    expect(region.locator("form[data-id='D-3']")).to_have_count(0)
+    assert region.evaluate("element => element.scrollHeight > element.clientHeight") is True
+    expect(_comments(page).first).not_to_be_in_viewport()
     before = form.bounding_box()
     # 実行
     region.evaluate("element => element.scrollTo({ top: element.scrollHeight })")
     # 検証
     expect(_comments(page).first).to_be_in_viewport()
+    assert region.evaluate("element => element.scrollTop") > 0
     assert form.bounding_box() == before
     assert_bottom_aligned(form, _panel(page))
