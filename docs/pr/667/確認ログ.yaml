@@ -17,3 +17,21 @@ confirmations:
     approver: shuhei1101
     commit: 204df9fc
     thread: https://github.com/shuhei1101/mindstella/pull/667#discussion_r4652465902
+  - topic: 本文の項目の ID のツールチップ（#147）の見た目
+    decision: モックのとおりにする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 858a01d2
+    thread: https://github.com/shuhei1101/mindstella/pull/667#discussion_r4652621183
+  - topic: 本文の差分（#347）の見た目
+    decision: モックのとおり「描いた結果」「原文の差分」の切り替えにする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 858a01d2
+    thread: https://github.com/shuhei1101/mindstella/pull/667#discussion_r4652621643
+  - topic: 「原文の差分」で mdmark が出す「変更表示」のボタンとリビジョンの欄をどうするか
+    decision: 案 C。この作業 PR ではボタンと欄を出したまま入れる。mdmark へ出さない指定の追加を依頼し（shuhei1101/mdmark#784）、入った後に mindstella でその指定を有効にする Issue を起票する
+    decided_by: reply
+    approver: shuhei1101
+    commit: 858a01d2
+    thread: https://github.com/shuhei1101/mindstella/pull/667#discussion_r4652838040

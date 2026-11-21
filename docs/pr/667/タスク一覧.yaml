@@ -40,8 +40,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-21T12:19:34.751411+00:00'
   - process: モック作成
-    status: todo
+    status: done
     note: '見た目を作り手が決める余地がある #147（項目の ID のボタンのツールチップの中身）と #347（mdmark の差分・印刷に置き換えた本文の差分）だけモックを作る'
+    updated_by: planner
+    updated_at: '2026-11-21T13:50:16.422764+00:00'
   - process: データ設計
     status: skipped
     reason: 記録・変更履歴・設定のデータの構造を変えない
