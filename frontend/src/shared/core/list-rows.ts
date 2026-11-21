@@ -1,6 +1,6 @@
 // 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て
 import { toText } from "@/shared/core/format";
-import { TEXT_FILTER_PREFIX, withoutKey, type Filters } from "@/shared/core/filters";
+import { TAG_FILTER_KEY, TEXT_FILTER_PREFIX, withoutKey, type Filters, type TagMatch } from "@/shared/core/filters";
 
 /** 列から値を取る定義 */
 export type ListColumn<R> = {
@@ -32,8 +32,8 @@ const compareValues = <R,>(column: ListColumn<R>, a: string, b: string): number 
   return rank(a) - rank(b);
 };
 
-/** 条件ごとに合う行を返す（条件の中はどれかに当たればよく、条件の間は全てに当たる） */
-export const filterRows = <R,>({ rows, columns, filters }: { rows: readonly R[]; columns: readonly ListColumn<R>[]; filters: Filters }): R[] => {
+/** 条件ごとに合う行を返す（条件の中はどれかに当たればよく、条件の間は全てに当たる。タグは `tagMatch` が `all` のとき全てを持つ行） */
+export const filterRows = <R,>({ rows, columns, filters, tagMatch = "all" }: { rows: readonly R[]; columns: readonly ListColumn<R>[]; filters: Filters; tagMatch?: TagMatch }): R[] => {
   const active = Object.entries(filters).filter(([, values]) => values.length > 0);
   return rows.filter((row) =>
     active.every(([key, wanted]) => {
@@ -46,6 +46,8 @@ export const filterRows = <R,>({ rows, columns, filters }: { rows: readonly R[];
         const lowered = cells.map((cell) => cell.toLowerCase());
         return wanted.every((word) => lowered.some((cell) => cell.includes(word.toLowerCase())));
       }
+      // タグを全て持つ行だけ
+      if (key === TAG_FILTER_KEY && tagMatch === "all") return wanted.every((value) => cells.includes(value));
       return wanted.some((value) => cells.includes(value));
     }),
   );
@@ -78,7 +80,19 @@ export const nextSort = (sort: string | undefined, key: string): string | undefi
 };
 
 /** ドロワーの条件と、値ごとの件数を組む（件数はその条件以外の条件で絞った行で数える） */
-export const drawerGroups = <R,>({ rows, columns, conditions, filters }: { rows: readonly R[]; columns: readonly ListColumn<R>[]; conditions: readonly ListColumn<R>[]; filters: Filters }): ListGroup[] => {
+export const drawerGroups = <R,>({
+  rows,
+  columns,
+  conditions,
+  filters,
+  tagMatch = "all",
+}: {
+  rows: readonly R[];
+  columns: readonly ListColumn<R>[];
+  conditions: readonly ListColumn<R>[];
+  filters: Filters;
+  tagMatch?: TagMatch;
+}): ListGroup[] => {
   const rank = (key: string): number => {
     const position = LEADING_CONDITION_KEYS.indexOf(key);
     return position < 0 ? LEADING_CONDITION_KEYS.length : position;
@@ -88,7 +102,7 @@ export const drawerGroups = <R,>({ rows, columns, conditions, filters }: { rows:
     .flatMap((column) => {
       const counts = new Map<string, number>();
       for (const row of rows) for (const value of valuesOf(column, row)) counts.set(value, 0);
-      for (const row of filterRows({ rows, columns, filters: withoutKey(filters, column.key) })) {
+      for (const row of filterRows({ rows, columns, filters: withoutKey(filters, column.key), tagMatch })) {
         for (const value of valuesOf(column, row)) counts.set(value, (counts.get(value) ?? 0) + 1);
       }
       if (counts.size === 0) return [];

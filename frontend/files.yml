@@ -1725,3 +1725,21 @@ files:
   related:
   - to: MOD-649-2
     type: tests
+- path: src/shared/stores/screen-state-store.ts
+  name: 画面の一時的な状態の保存先
+  description: 画面ごとの絞り込みの条件・タグの組み合わせ方・変更履歴で選んだ時点と一覧のスクロール位置を、そのタブの sessionStorage で読み書きする。保存先やキーを変えるときに参照する。
+  tags:
+  - tool:react
+  - topic:保存
+  related:
+  - to: MOD-649-1
+    type: implements
+- path: src/shared/hooks/use-list-scroll.ts
+  name: 一覧のスクロール位置の復元
+  description: 一覧のスクロール領域の位置を残し、画面へ戻ったときに描画の後に戻す。スクロール位置の復元を変えるときに参照する。
+  tags:
+  - tool:react
+  - topic:スクロール
+  related:
+  - to: MOD-649-2
+    type: implements

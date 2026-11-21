@@ -12,6 +12,9 @@ class NoopResizeObserver {
 }
 globalThis.ResizeObserver ??= NoopResizeObserver;
 
+// jsdom は window.scrollTo を持たないため、ルーターのスクロール位置の復元が呼ぶ空の実装を置く
+window.scrollTo = () => undefined;
+
 beforeAll(() => {
   // handler の無い要求はテストを失敗させる
   server.listen({ onUnhandledFrame: "error" });

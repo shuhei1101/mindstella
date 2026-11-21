@@ -1,5 +1,5 @@
 // 状態ごとの列にカードを並べたボードと、項目のカード
-import type { ReactNode } from "react";
+import type { ReactNode, RefCallback } from "react";
 
 import { CommentMark } from "@/shared/components/comment-mark";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
@@ -28,10 +28,12 @@ export type BoardProps = {
   emptyText: string;
   /** 状態の列の先頭に置く追加する項目のカード */
   added?: (status: string) => ReactNode[];
+  /** ボードのスクロール領域に付ける ref（スクロール位置の復元） */
+  scrollRef?: RefCallback<HTMLElement>;
 };
 
-export const Board = ({ columns, card, emptyText, added }: BoardProps) => (
-  <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
+export const Board = ({ columns, card, emptyText, added, scrollRef }: BoardProps) => (
+  <div ref={scrollRef} className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
     {columns.map(({ status, items, excluded }) => {
       const adds = added?.(status) ?? [];
       return (

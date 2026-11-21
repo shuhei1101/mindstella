@@ -14,6 +14,8 @@ export const createAppRouter = (queryClient: QueryClient) =>
     context: { queryClient },
     parseSearch: parseSearchString,
     stringifySearch: stringifySearchString,
+    // ページ全体のスクロール位置を履歴の項目ごとに戻す
+    scrollRestoration: true,
   });
 
 declare module "@tanstack/react-router" {

@@ -73,6 +73,10 @@ data_models:
       - name: workspace_id
         type: str
         description: ワークスペースの ID（`workspace_id_of`。画面のパスの `{workspace}`）
+      - name: records_cache
+        type: RecordsCache
+        default: RecordsCache()
+        description: 組み立てた記録の応答（`field(default_factory=RecordsCache)`）
   - name: Response
     title: 応答
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -89,6 +93,10 @@ data_models:
       - name: body
         type: bytes
         description: 本文
+      - name: headers
+        type: dict[str, str]
+        default: '{}'
+        description: '既定（`Content-Type`・`Cache-Control: no-store`）に加える・上書きするヘッダー（記録の応答の `ETag`・`Cache-Control: no-cache`・`Vary`・`Content-Encoding`）'
   - name: ExternalAccess
     title: 外から見る設定
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -114,7 +122,7 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     role: 長期保持のランタイム状態
-    summary: このプロセスが配っているワークスペースを絶対パスごとに 1 つ（配信の文脈）持ち、ワークスペースの ID でも引けるようにする。待ち受けは持たず、要求は常駐サーバーの経路（`PreviewEndpoint`）が受ける。作るときにツールと共有する書き換えの鍵を位置引数で、常駐サーバーのポートと外から見る設定をキーワード引数で受け取る（`PreviewRegistry(write_lock, port=port, external=ExternalAccess())`）。ワークスペースごとの Claude Code への入力の宛先も持つ。文字起こしのインターフェースもキーワード引数 `transcriber` で受け取る（既定は `None`）。入力の宛先の台帳は、入口が状態のフォルダとワークスペースの ID の引き方（`workspaces.workspace_id_of`）を渡して作った `InputTargets` を `input_targets` で受ける（無ければ空の台帳）
+    summary: このプロセスが配っているワークスペースを絶対パスごとに 1 つ（配信の文脈）持ち、ワークスペースの ID でも引けるようにする。待ち受けは持たず、要求は常駐サーバーの経路（`PreviewEndpoint`）が受ける。作るときにツールと共有する書き換えの鍵を位置引数で、常駐サーバーのポートと外から見る設定をキーワード引数で受け取る（`PreviewRegistry(write_lock, port=port, external=ExternalAccess())`）。ワークスペースごとの Claude Code への入力の宛先も持つ。文字起こしのインターフェースもキーワード引数 `transcriber` で受け取る（既定は `None`）。入力の宛先の台帳は、入口が状態のフォルダとワークスペースの ID の引き方（`workspaces.workspace_id_of`）を渡して作った `InputTargets` を `input_targets` で受ける（無ければ空の台帳）。配っているワークスペースの保持した記録の応答を捨てる `discard_records(root)` を持ち、ツールが書き込んだ後に呼ばれる。変更の検知は `on_changed` に配信の文脈の `RecordsCache.discard` を指定して作る
     kind: クラス
     properties:
       - name: _servers
@@ -474,14 +482,14 @@ classes:
              - `POST /api/transcriptions` の場合、`_transcribe` へ渡す
              - 本文を読む処理は、`Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば読まずに 400 を返し、`await request.body()` で読む
              - それ以外のパスは 404 を返す
-          4. 処理の関数を `run_in_threadpool` で呼び、返った `Response` を `starlette.responses.Response(content=body, status_code=status, media_type=content_type)` にして `Cache-Control: no-store` を付けて返す
+          4. 処理の関数を `run_in_threadpool` で呼び、返った `Response` を `starlette.responses.Response(content=body, status_code=status, media_type=content_type)` にして `Cache-Control: no-store` を付け、`Response.headers` を重ねて返却する。GET 以外の要求の後は `context.records_cache.discard()` を呼ぶ
         unit_tests:
           - name: test_endpoint
             case: 正常
             summary: 配っているワークスペースの画面と記録を返す
             condition: 作成済みのワークスペースを `start` した台帳で、経路を登録した Starlette のアプリを `TestClient` で呼ぶ。`/w/{ID}/`・`/w/{ID}/api/records` を GET する
             mock: なし（`TestClient`。`Host` は `127.0.0.1:{port}`）
-            expected: 'どちらも 200、`Cache-Control: no-store`。記録はそのワークスペースのもの'
+            expected: 'どちらも 200。画面は `Cache-Control: no-store`、記録は `Cache-Control: no-cache` で、そのワークスペースのもの'
           - name: test_endpoint_when_redirect
             case: 正常
             summary: ワークスペースの先頭と前の画面の URL を、search を残して再送信する
@@ -932,16 +940,29 @@ functions:
         default: read_records
         passing: injected
         description: 記録を読む関数
+      - name: if_none_match
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: 要求の `If-None-Match`
+      - name: accept_encoding
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: 要求の `Accept-Encoding`
     returns:
       type: Response
-      description: 200・`application/json; charset=utf-8` の応答。読めなければ 422
+      description: '200・`application/json; charset=utf-8` の応答（`headers` に `ETag`・`Cache-Control: no-cache`・`Vary: Accept-Encoding`）か 304。読めなければ 422'
     process: |-
-      1. 記録を読む（記録の読み出し。`read_records`、`last_settings` に `SettingsHolder.current`）
+      1. `context.records_cache.get_or_build` で応答を得る。保持した応答が無ければ記録を参照する（記録の読み出し。`read_records`、`last_settings` に `SettingsHolder.current`）
          - `SchemaMismatchError` の場合、`lines` を改行でつないだ `detail` の 422 を返す
          - `WorkspaceNotFoundError` の場合、そのメッセージの 422 を返す
       2. `settings_problem` が `None` なら、読んだ `settings` を最後に検査に通った設定にする（`SettingsHolder.accept`）
       3. 種類ごとの項目に `history.yaml` の行のキーを追加する（『変更履歴』の `load_item_history`・`merge_item_history`。`bodies` のキーは項目の `body` の値）
-      4. `ensure_ascii=False` の JSON を返す
+      4. `ensure_ascii=False` の JSON を本文にし、gzip で圧縮した本文と弱い `ETag` と一緒に保持する
+      5. `if_none_match` のどれかが `ETag` と弱い比較で一致すれば（`*` を含む）本文の無い 304、`accept_encoding` が `q=0` でない `gzip` を含めば圧縮した本文を `Content-Encoding: gzip` で、それ以外は圧縮しない本文を返却する
     unit_tests:
       - name: test_records_response
         case: 正常
@@ -964,7 +985,7 @@ functions:
       - name: test_records_response_when_settings_changed
         case: 正常
         summary: 通った設定は控え、崩れた設定では控えた設定で返す
-        condition: '`display.visible_kinds: [decisions]` の設定で作った文脈。`config.yaml` を `[tasks]` にして 1 回、`[rainbow]` にして 1 回呼ぶ'
+        condition: '`display.visible_kinds: [decisions]` の設定で作った文脈。`config.yaml` を `[tasks]` にして 1 回、`[rainbow]` にして `records_cache.discard()` の後に 1 回呼ぶ'
         mock: なし
         expected: '1 回目は 200 で `settings.display.visible_kinds` が `[tasks]`、`settings_problem` が `null`。控えが `[tasks]` になる。2 回目は 200 で `[tasks]` のまま、`settings_problem` に `config.yaml: display.visible_kinds` で始まる行'
   - name: workspace_signature
@@ -1017,7 +1038,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     scope: public
-    summary: 書き換えのマーカーを `POLL_INTERVAL_SEC` ごとに再作成し、変わったら `changed` を、知らせが無いまま `KEEPALIVE_SEC` が過ぎたら保つための行を書き続ける
+    summary: 書き換えのマーカーを `POLL_INTERVAL_SEC` ごとに再作成し、変わったら `on_changed`（`_stream` は `context.records_cache.discard`）を呼んでから `changed` を、知らせが無いまま `KEEPALIVE_SEC` が過ぎたら保つための行を書き続ける
     side_effects: '`write` で書き続ける'
     args:
       - name: root
