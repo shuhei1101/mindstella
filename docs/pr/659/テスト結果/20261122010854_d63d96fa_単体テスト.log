@@ -1,0 +1,168 @@
+$ npx vitest run (追加・改修した単体テストのファイル)
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-decisions-bulk-answer-and-filter-presets
+
+ ❯ frontend/src/shared/core/preview-search.test.ts (25 tests | 2 failed) 27ms
+   ❯ normalizeSearch (20)
+     × normalize_search_when_tx_invalid { 5ms
+     × normalize_search_when_tx_invalid {"field":"tags","op":"gt","values":[]} 1ms
+stderr | frontend/src/shared/hooks/use-screen-filters.test.tsx > useScreenFilters > use_screen_filters_when_add_same_tag_to_expr
+An update to MatchesInner inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to MatchImpl inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Host inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to MatchImpl inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ❯ frontend/src/shared/hooks/use-screen-filters.test.tsx (11 tests | 2 failed) 1661ms
+   ❯ useScreenFilters (11)
+     × use_screen_filters_when_add_tag_to_expr 1064ms
+     × use_screen_filters_when_add_same_tag_to_expr 57ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/core/preview-search.test.ts > normalizeSearch > normalize_search_when_tx_invalid {
+AssertionError: expected '{' to be undefined
+
+- Expected:
+undefined
+
++ Received:
+"{"
+
+ ❯ frontend/src/shared/core/preview-search.test.ts:76:73
+     74|   // タグの式として読めない tx（正常系）
+     75|   test.each([["{"], ['{"field":"tags","op":"gt","values":[]}']])("norm…
+     76|     expect(normalizeSearch(search({ tab: "tasks", tx }), context()).tx…
+       |                                                                         ^
+     77|   });
+     78|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  frontend/src/shared/core/preview-search.test.ts > normalizeSearch > normalize_search_when_tx_invalid {"field":"tags","op":"gt","values":[]}
+AssertionError: expected '{"field":"tags","op":"gt","values":[]}' to be undefined
+
+- Expected:
+undefined
+
++ Received:
+"{\"field\":\"tags\",\"op\":\"gt\",\"values\":[]}"
+
+ ❯ frontend/src/shared/core/preview-search.test.ts:76:73
+     74|   // タグの式として読めない tx（正常系）
+     75|   test.each([["{"], ['{"field":"tags","op":"gt","values":[]}']])("norm…
+     76|     expect(normalizeSearch(search({ tab: "tasks", tx }), context()).tx…
+       |                                                                         ^
+     77|   });
+     78|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  frontend/src/shared/hooks/use-screen-filters.test.tsx > useScreenFilters > use_screen_filters_when_add_tag_to_expr
+AssertionError: expected { and: [ …(2) ] } to deeply equal { and: [ …(3) ] }
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-theme[39m=[32m"light"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div />[39m
+  [36m</body>[39m
+[36m</html>[39m
+
+- Expected
++ Received
+
+@@ -12,14 +12,7 @@
+        "op": "ne",
+        "values": [
+          "廃止",
+        ],
+      },
+-     {
+-       "field": "tags",
+-       "op": "eq",
+-       "values": [
+-         "保存",
+-       ],
+-     },
+    ],
+  }
+
+ ❯ frontend/src/shared/hooks/use-screen-filters.test.tsx:156:56
+    154|     });
+    155|     // 検証
+    156|     await waitFor(() => expect(result.current.tagExpr).toEqual({ and: …
+       |                                                        ^
+    157|     expect(router.state.location.search.f ?? {}).toEqual({});
+    158|     expect(router.history.length).toBe(before + 1);
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  frontend/src/shared/hooks/use-screen-filters.test.tsx > useScreenFilters > use_screen_filters_when_add_same_tag_to_expr
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ frontend/src/shared/hooks/use-screen-filters.test.tsx:173:35
+    171|     // 検証
+    172|     expect(router.state.location.search.tx).toBe(tx);
+    173|     expect(router.history.length).toBe(before);
+       |                                   ^
+    174|   });
+    175| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed | 5 passed (7)
+      Tests  4 failed | 61 passed (65)
+   Start at  01:08:28
+   Duration  3.27s (environment 38%, tests 30%, import 11%, setup 10%, transform 10%, worker 1%)
+
+
+## 実装の前から pass したテスト
+presets.test.ts・filter-drawer・filter-chips・tag-expr-editor・use_preview_search_when_set_tag_condition・use_preview_search_when_change_tab_with_tag_condition・use_screen_filters_when_set_tag_expr は、モック作成でこのブランチに入れたコード（frontend/src/shared/core/presets.ts・tag-expr-editor.tsx・filter-drawer.tsx・filter-chips.tsx・use-preview-search.ts・use-screen-filters.ts。commit e7ab6dbf・856aaa43・2313b33a・cd5dfc94）の振る舞いで pass する
