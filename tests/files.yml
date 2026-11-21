@@ -1472,3 +1472,14 @@ files:
   related:
   - to: CMP-649-2
     type: tests
+- path: integration/storybook_react/test_tag_expr_editor_stories.py
+  name: 部品設計『タグの条件の詳細』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『タグの条件の詳細』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに参照する。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+  related:
+  - to: CMP-659-1
+    type: tests
