@@ -72,7 +72,7 @@ describe("BodyView", () => {
     await userEvent.click(await screen.findByRole("button", { name: "原文の差分" }));
     // 検証
     await waitFor(() => expect(mount.mock.calls.some(([, options]) => options.diffMode === "open")).toBe(true));
-    const options = mount.mock.calls.findLast(([, call]) => call.diffMode === "open")?.[1];
+    const options = mount.mock.calls.filter(([, call]) => call.diffMode === "open").at(-1)?.[1];
     expect(await options?.diffSource?.revisions("D-1")).toHaveLength(2);
     expect(screen.queryByRole("toolbar", { name: "変わった箇所" })).not.toBeInTheDocument();
     mount.mockRestore();

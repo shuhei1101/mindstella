@@ -121,7 +121,7 @@ describe("renderMarkdown", () => {
     const revisions = await options.diffSource.revisions("D-1");
     expect(revisions).toHaveLength(2);
     const contents = await Promise.all(revisions.map(({ id }) => options.diffSource.content({ docId: "D-1", revisionId: id })));
-    expect(contents.toSorted()).toEqual(["今の段落", "前の段落"].toSorted());
+    expect([...contents].sort()).toEqual(["今の段落", "前の段落"].sort());
   });
 });
 
