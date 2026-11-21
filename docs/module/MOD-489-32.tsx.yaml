@@ -6,7 +6,7 @@ components:
     title: 詳細パネル
     kind: 画面
     usecase: 項目の詳細を読む
-    summary: 画面設計『詳細パネル.tsx』の要素と操作を描く。差分の表示をしていないときはタグの行の部品『タグの並び』に `onSelect` を渡し、押したタグを後ろの画面の `useScreenFilters` の `addTag`（後ろの画面が概要のときは項目の種類を添える）へ渡す
+    summary: 画面設計『詳細パネル.tsx』の要素と操作を描く。`DetailContent`（詳細の全画面も使う）は、`DetailReviewComments` を部品『差分のミニマップ』の中（本文のスクロール領域）の関係する項目の後に、`DetailComments` を差分のミニマップの後（パネルの下端）に描き、`DetailComments` の `scroller` に本文のスクロール領域の要素を返す関数を渡す。差分の表示をしていないときはタグの行の部品『タグの並び』に `onSelect` を渡し、押したタグを後ろの画面の `useScreenFilters` の `addTag`（後ろの画面が概要のときは項目の種類を添える）へ渡す
     refs:
       - SCR-489-32#
     unit_tests:
@@ -39,7 +39,7 @@ components:
         summary: 下端にコメント
         condition: サーバーの配信で項目を開く
         mock: MSW
-        expected: 下端に部品『DetailComments』があり
+        expected: 下端に部品『DetailComments』があり、本文のスクロール領域（「詳細の本文」）の外にある。「レビュー中のコメント」の見出しは本文のスクロール領域の中にある
       - name: test_detail_panel_when_comments_button
         case: 正常
         summary: 見出しのコメントの一覧のボタンで、その項目で絞ったコメントの一覧を開く

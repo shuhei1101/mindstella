@@ -1,0 +1,51 @@
+$ npm run build-storybook-react
+$ pytest tests/integration/preview/test_spa_comments_screen.py tests/integration/preview/test_spa_pending_edits_screen.py tests/integration/preview/test_spa_display_settings_screen.py tests/integration/preview/test_spa_decisions_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/preview/test_spa_detail_fullscreen_screen.py tests/integration/storybook_react/test_filter_drawer_stories.py
+# 端末の /tmp/pytest-of-{ユーザー} の持ち主が違うため、--basetemp で一時フォルダを指定して流した（-p no:cacheprovider --basetemp=/tmp/pr661-pytest/bt）
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/bug-frontend-comments-panel-below-topbar-and-detail-input-bottom
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 221 items
+
+tests/integration/preview/test_spa_comments_screen.py .................. [  8%]
+                                                                         [  8%]
+tests/integration/preview/test_spa_pending_edits_screen.py ............. [ 14%]
+......                                                                   [ 16%]
+tests/integration/preview/test_spa_display_settings_screen.py .......... [ 21%]
+..                                                                       [ 22%]
+tests/integration/preview/test_spa_decisions_screen.py ................. [ 29%]
+....                                                                     [ 31%]
+tests/integration/preview/test_spa_detail_panel_screen.py .............. [ 38%]
+........................................................................ [ 70%]
+......................                                                   [ 80%]
+tests/integration/preview/test_spa_detail_fullscreen_screen.py ....      [ 82%]
+tests/integration/storybook_react/test_filter_drawer_stories.py ........ [ 85%]
+.                                                                        [ 86%]
+tests/integration/preview/test_spa_comments_screen.py ..                 [ 87%]
+tests/integration/preview/test_spa_pending_edits_screen.py .             [ 87%]
+tests/integration/preview/test_spa_display_settings_screen.py .          [ 88%]
+tests/integration/preview/test_spa_decisions_screen.py ...               [ 89%]
+tests/integration/preview/test_spa_detail_panel_screen.py ...            [ 90%]
+tests/integration/preview/test_spa_detail_fullscreen_screen.py .         [ 91%]
+tests/integration/storybook_react/test_filter_drawer_stories.py ..       [ 92%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 92%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 93%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 93%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 94%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 94%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 95%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 95%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 95%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 96%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 96%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 97%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 97%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 98%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 98%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 99%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 99%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [100%]
+
+======================= 221 passed in 462.15s (0:07:42) ========================

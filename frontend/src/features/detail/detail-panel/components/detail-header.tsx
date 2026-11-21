@@ -67,7 +67,7 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, comme
         <Button variant="ghost" size="icon" aria-label="次の項目へ進む" title="次の項目へ進む" disabled={!canForward} onClick={() => { window.history.forward(); }}>
           →
         </Button>
-        <Button variant="ghost" size="icon" aria-label={fullLabel} title={fullLabel} onClick={onToggleFull}>
+        <Button variant="ghost" size="icon" aria-label={fullLabel} title={fullLabel} className="max-md:hidden" onClick={onToggleFull}>
           <Icon name={full ? "shrink" : "expand"} />
         </Button>
         {full ? null : (

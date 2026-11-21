@@ -5,6 +5,7 @@ import { Icon } from "@/shared/components/icon";
 import { PostBody } from "@/shared/components/post-body";
 import { Button } from "@/shared/components/ui/button";
 import type { LookupTitle } from "@/shared/core/post-links";
+import type { RecordIndex } from "@/shared/core/records";
 
 /** 畳んだときに出す、折り返した後の見た目の行の数 */
 export const REVIEW_FOLD_LINES = 5;
@@ -20,6 +21,8 @@ export type ReviewBodyFoldProps = {
   open: boolean;
   lines?: number;
   titles?: LookupTitle;
+  /** 記録の索引（本文の項目の ID のツールチップ） */
+  index?: RecordIndex | null;
   focus?: string;
   onToggle: (id: string, open: boolean) => void;
   onOpenChangeSet?: (id: string) => void;
@@ -27,7 +30,7 @@ export type ReviewBodyFoldProps = {
   children: (body: ReactNode, toggle: ReactNode | null) => ReactNode;
 };
 
-export const ReviewBodyFold = ({ id, label, body, changeSets, open, lines = REVIEW_FOLD_LINES, titles, focus = "", onToggle, onOpenChangeSet, onOpenItem, children }: ReviewBodyFoldProps) => {
+export const ReviewBodyFold = ({ id, label, body, changeSets, open, lines = REVIEW_FOLD_LINES, titles, index = null, focus = "", onToggle, onOpenChangeSet, onOpenItem, children }: ReviewBodyFoldProps) => {
   const bodyId = `review-body-${id}`;
   const box = useRef<HTMLDivElement>(null);
   const [exceeds, setExceeds] = useState(false);
@@ -50,7 +53,7 @@ export const ReviewBodyFold = ({ id, label, body, changeSets, open, lines = REVI
   const folded = exceeds && !open;
   const content = (
     <div ref={box} id={bodyId} data-folded={folded ? "" : undefined} className="overflow-hidden" style={folded ? { maxHeight: `calc(${String(lines)} * 1lh)` } : undefined}>
-      <PostBody body={body} titles={titles} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
+      <PostBody body={body} titles={titles} index={index} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
     </div>
   );
   const toggle = exceeds ? (

@@ -1,5 +1,5 @@
 // スレッドの書き込みとレビュー中の書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける
-import { HTML_BLOCK_CLASS } from "@/shared/core/body-links";
+import { HTML_BLOCK_CLASS, TERM_TIP_ID } from "@/shared/core/body-links";
 
 /** 本文の中の項目の ID（例 D-1・T-12・A-3） */
 const ITEM_ID_PATTERN = /\b[A-Z]{1,2}-\d+\b/g;
@@ -44,12 +44,12 @@ export const buttonizeItemIds = ({ root, titles, onOpen }: { root: HTMLElement; 
     const parts: (Node | string)[] = [];
     let last = 0;
     for (const match of text.matchAll(ITEM_ID_PATTERN)) {
-      const title = titles(match[0]);
-      if (title === null) continue;
+      if (titles(match[0]) === null) continue;
       const button = document.createElement("button");
       button.type = "button";
       button.className = "idlink";
-      button.title = title;
+      button.dataset["id"] = match[0];
+      button.setAttribute("aria-describedby", TERM_TIP_ID);
       button.textContent = match[0];
       button.addEventListener("click", () => {
         onOpen(match[0]);

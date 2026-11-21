@@ -31,7 +31,7 @@ export type ListTileProps = {
 };
 
 export const ListTile = ({ tileId, headingId, icon, title, rows, emptyText, onShowAll, onOpen }: ListTileProps) => (
-  <section id={tileId} aria-labelledby={headingId} className="min-w-0 rounded-control bg-card px-6.5 py-6 max-md:p-5 dark:border dark:border-border-soft">
+  <section id={tileId} aria-labelledby={headingId} className="min-w-0 rounded-control bg-card px-6.5 py-6 @max-3xl:p-5 dark:border dark:border-border-soft">
     <TileHead id={headingId} icon={icon} title={title} count={rows.length > 0 ? rows.length : null} onShowAll={onShowAll} />
     <p className="mt-1.5 mb-2.5 mono text-num/tight font-bold tracking-tight">{rows.length}</p>
     {rows.length === 0 ? (

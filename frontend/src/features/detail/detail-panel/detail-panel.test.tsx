@@ -39,7 +39,8 @@ describe("DetailPanel", () => {
     // 実行
     renderRoute("/?tab=decisions&id=D-1&diff=V-2");
     // 検証
-    expect(await screen.findByText(/前の行/)).toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: "本文の差分の見せ方" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "描いた結果" })).toHaveAttribute("aria-pressed", "true");
   });
 
   // 本文のスクロール位置へ戻す（正常系）
@@ -90,7 +91,10 @@ describe("DetailPanel", () => {
     renderRoute("/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     // 検証
-    expect(await within(panel).findByRole("textbox", { name: /D-1 へのコメント/ })).toBeInTheDocument();
+    const input = await within(panel).findByRole("textbox", { name: /D-1 へのコメント/ });
+    const scroller = within(panel).getByRole("region", { name: "詳細の本文" });
+    expect(scroller).not.toContainElement(input);
+    expect(scroller).toContainElement(within(panel).getByRole("heading", { name: "レビュー中のコメント" }));
   });
   // 見出しのコメントの一覧のボタンで、その項目で絞ったコメントの一覧を開く（正常系）
   test("detail_panel_when_comments_button", async () => {

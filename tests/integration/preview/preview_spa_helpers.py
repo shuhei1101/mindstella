@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from playwright.sync_api import ConsoleMessage, Error, Page
+from playwright.sync_api import ConsoleMessage, Error, Locator, Page
 
 # 本文の区画の中身（タイルか、記録を読めなかった表示）
 SPA_CONTENT_SELECTOR = "main#main > div > *"
@@ -75,3 +75,32 @@ def wcag_violations(page: Page) -> list[str]:
         page.add_script_tag(path=str(AXE_SCRIPT))
     violations: list[str] = page.evaluate(AXE_WCAG_JS)
     return violations
+
+
+# トップバーの下に並ぶタブの帯の読み上げの名前
+TABS_NAME = "項目の種類"
+
+# 要素の位置を比べるときに許すずれ（px。小数の丸め）
+BOX_TOLERANCE = 1
+
+
+def assert_below_topbar(page: Page, element: Locator) -> None:
+    """要素の上端がトップバーとタブの下端以上で、下端が画面の下端にあることを確かめる。"""
+    tabs = page.get_by_role("navigation", name=TABS_NAME).bounding_box()
+    box = element.bounding_box()
+    viewport = page.viewport_size
+    assert tabs is not None
+    assert box is not None
+    assert viewport is not None
+    assert box["y"] >= tabs["y"] + tabs["height"] - BOX_TOLERANCE
+    assert abs(box["y"] + box["height"] - viewport["height"]) <= BOX_TOLERANCE
+
+
+def assert_bottom_aligned(inner: Locator, outer: Locator) -> None:
+    """内側の要素の下端が外側の要素の下端と一致することを確かめる。"""
+    inner_box = inner.bounding_box()
+    outer_box = outer.bounding_box()
+    assert inner_box is not None
+    assert outer_box is not None
+    assert abs((inner_box["y"] + inner_box["height"]) - (outer_box["y"] + outer_box["height"])) <= BOX_TOLERANCE
+

@@ -45,6 +45,8 @@
 .d-sec.d-answer > h3 { margin: 0 0 2px; padding: 0; border-bottom: 0; font-size: var(--fs-xs); color: var(--muted-foreground); }
 .opt dd .md-value { line-height: 1.6; }
 .md { font-size: var(--fs-small); line-height: 1.8; }
+/* mdmark の差分のブロックの左の余白の記号（+ / −）が、本文の区画の中に見えるように空ける */
+.md:has(.mdmark-diff-block) { padding-left: 28px; }
 .md-value { font-size: inherit; line-height: 1.7; }
 .md-value > :first-child { margin-top: 0; }
 .md-value > :last-child { margin-bottom: 0; }
@@ -165,18 +167,6 @@ dialog.full .panel-body { flex: 1; max-width: none; width: 100%; margin: 0 auto;
 .d-meta dt.df-key { color: var(--foreground); font-weight: 600; }
 .df-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--df-chg); border-radius: var(--radius); background: var(--card); font-size: var(--fs-small); }
 .df-note svg.icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--df-chg); }
-/* 足した塊・消した塊: 面の色に加えて、左の余白に + / − の記号を置く */
-.md .df-blk { display: block; position: relative; margin: 6px 0; padding: 2px 10px 2px 26px; border-radius: var(--radius); text-decoration: none; }
-.md .df-blk > :is(p, ul, ol, .mdmark-table, .md-code, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
-.md ins.df-blk { background: var(--df-add-bg); }
-.md del.df-blk { background: var(--df-del-bg); color: var(--muted-foreground); }
-.md del.df-blk > :not(.df-sign) { text-decoration: line-through; }
-.md .df-blk > .df-sign { position: absolute; top: 4px; left: 9px; font-family: var(--font-stack-mono); font-weight: 700; }
-.md ins.df-blk > .df-sign { color: var(--df-add); }
-.md del.df-blk > .df-sign { color: var(--df-del); }
-.md li.df-li-add { background: var(--df-add-bg); border-radius: var(--radius); }
-.md li.df-li-add > .df-sign { display: inline-block; margin-right: 6px; color: var(--df-add); font-family: var(--font-stack-mono); font-weight: 700; text-decoration: none; }
-.md li.df-li-del { background: var(--df-del-bg); border-radius: var(--radius); color: var(--muted-foreground); text-decoration: line-through; }
 .md tr.df-add td { background: var(--df-add-bg); }
 .md tr.df-del td { background: var(--df-del-bg); color: var(--muted-foreground); text-decoration: line-through; }
 .md tr.df-row .df-sign { display: inline-block; margin-right: 6px; font-family: var(--font-stack-mono); font-weight: 700; text-decoration: none; }
@@ -259,6 +249,7 @@ text.df-t-chg { font-weight: 700 !important; }
 .term-tip .tt-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-weight: 700; }
 .term-tip .tt-head .mono { color: var(--subtle-foreground); font-weight: 400; font-size: var(--fs-xs); }
 .term-tip .tt-body { display: block; color: var(--muted-foreground); }
+.term-tip .tt-meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .term-tip { box-sizing: border-box; max-height: min(360px, calc(100vh - 16px)); overflow-y: auto; overscroll-behavior: contain; }
 .term-tip.is-multi { width: min(380px, calc(100vw - 16px)); max-width: none; padding: 0; }
 .term-tip .tt-group { padding: 8px 10px 4px; }
@@ -305,30 +296,6 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map .df-map-m { cursor: grabbing; user-select: none; }
 .df-map.is-dragging .df-map-m:hover { background: none; }
 .df-map-hit { box-shadow: 0 0 0 2px var(--hit); }
-.sbs-switch button { min-width: 0; width: auto; }
-.sbs { display: grid; gap: 6px; }
-.sbs-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 24px; color: var(--subtle-foreground); font-size: var(--fs-xs); font-weight: 600; }
-.sbs-head > span { padding-bottom: 4px; border-bottom: 1px solid var(--border-soft); }
-.sbs-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 24px; }
-.sbs-col { min-width: 0; }
-.sbs-row { display: flow-root; }
-.sbs-row > .md > :first-child { margin-top: 8px; }
-.sbs-row.sbs-gap { padding: 6px 0; border-radius: var(--radius); background: repeating-linear-gradient(135deg, var(--muted) 0 6px, transparent 6px 12px) content-box; }
-.diagram.sbs-was { outline: 1px dashed var(--df-del); outline-offset: 2px; border-radius: var(--radius); }
-.sbs-html .sbs-col > * { width: 100%; }
-.df-raw.df-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1px; background: var(--border-soft); }
-.df-raw.df-split .df-line { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--muted); }
-.df-raw.df-split .df-line.df-gap { background: repeating-linear-gradient(135deg, var(--muted) 0 6px, var(--card) 6px 12px); }
-.df-raw.df-split .df-line.df-span { grid-column: 1 / -1; }
-.sbs-fallback { display: none; }
-.html-marked > iframe.sbs-fallback { display: none; }
-.sbs-fallback[hidden] { display: none !important; }
-@container detail-body (width < 560px) {
-  .sbs, .sbs-only, .sbs-switch { display: none !important; }
-  .sbs-fallback { display: block; }
-  .html-marked > iframe.sbs-fallback { display: block; }
-  .body-diff-bar:not(:has(> :not(.sbs-switch))) { display: none; }
-}
 /* 変更後の描いた結果で足した要素 */
 .html-marked [data-df="add"] { outline: 2px solid var(--df-add); outline-offset: 2px; background-color: var(--df-add-bg); }
 .html-marked [data-df="chg"] { outline: 2px dashed var(--df-chg); outline-offset: 2px; background-color: var(--df-chg-bg); }

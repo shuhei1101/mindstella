@@ -1,0 +1,25 @@
+$ npx vitest run frontend/src/features/detail/detail-panel/components/body-view.test.tsx frontend/src/shared/core/body-links.test.ts frontend/src/shared/core/diff.test.ts
+# Red: fail は 5 件とも実装が無いことによる（renderMarkdown が base・diffSource を mount へ渡さない / BodyView に「原文の差分」の切り替えが無い）。pass は既存の振る舞いのテストだけ
+     × render_markdown_when_base 8ms
+     × render_markdown_when_diff_source 5ms
+[MSW] Error: intercepted a request without a matching request handler:
+[MSW] Error: intercepted a request without a matching request handler:
+[MSW] Error: intercepted a request without a matching request handler:
+     × body_view_when_diff_rendered 1020ms
+     × body_view_when_diff_source 1018ms
+     × body_view_when_diff_source_pressed_again 1010ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/shared/core/body-links.test.ts > renderMarkdown > render_markdown_when_base
+AssertionError: expected undefined to be '前の段落' // Object.is equality
+ FAIL  frontend/src/shared/core/body-links.test.ts > renderMarkdown > render_markdown_when_diff_source
+AssertionError: expected undefined to be 'D-1' // Object.is equality
+ FAIL  frontend/src/features/detail/detail-panel/components/body-view.test.tsx > BodyView > body_view_when_diff_rendered
+AssertionError: expected false to be true // Object.is equality
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ FAIL  frontend/src/features/detail/detail-panel/components/body-view.test.tsx > BodyView > body_view_when_diff_source
+TestingLibraryElementError: Unable to find role="button" and name "原文の差分"
+ FAIL  frontend/src/features/detail/detail-panel/components/body-view.test.tsx > BodyView > body_view_when_diff_source_pressed_again
+TestingLibraryElementError: Unable to find role="button" and name "原文の差分"
+ Test Files  2 failed | 1 passed (3)
+      Tests  5 failed | 15 passed (20)
+EXIT 1

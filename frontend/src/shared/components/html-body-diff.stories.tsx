@@ -1,9 +1,7 @@
 // HTML の本文の差分のストーリー（部品設計『HTMLの本文の差分.tsx』の状態）
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
 
 import { getLibrary, loadLibrary } from "@/shared/adapters/libraries";
-import { BodyDiffLayoutSwitch } from "@/shared/components/body-diff-layout-switch";
 import { HtmlBodyDiff, type HtmlBodyDiffProps } from "@/shared/components/html-body-diff";
 import { EMBEDDED_HTML_CLASS, renderMarkdown } from "@/shared/core/body-links";
 import { childMarks, type JsDiff } from "@/shared/core/diff";
@@ -74,7 +72,6 @@ const pressView = ({ canvas, selector, index = 0 }: { canvas: HTMLElement; selec
 const meta = {
   title: "Shared/HtmlBodyDiff",
   component: HtmlBodyDiff,
-  render: (args) => <HtmlBodyDiff {...args} {...(args.layout === "side" ? { layoutSwitch: <BodyDiffLayoutSwitch layout="side" onChange={fn()} /> } : {})} />,
   args: { before: BEFORE, after: AFTER, marked: MARKED },
 } satisfies Meta<typeof HtmlBodyDiff>;
 
@@ -97,20 +94,6 @@ export const RemovedOnly: Story = { args: { before: BEFORE, after: REMOVED, mark
 
 /** 選んだ時点の本文が Markdown。切り替えを出さず、原文の差分だけを出す */
 export const FromMarkdown: Story = { args: { before: "# 画面の流れ\n\n一つ目の段落\n", after: AFTER, marked: MARKED, beforeFormat: "md" } };
-
-/** 左右に並べた描いた結果。左に選んだ時点、右に今の本文を描き、右の変えた 2 つ目の段落にだけ「変わった」の印。切り替えの行に並べ方の組と見せ方の組を並べる */
-export const SideRendered: Story = { args: { layout: "side" } };
-
-/** 左右に並べた原文の差分。左に消した行、右に足した行を同じ高さで並べ、片側にしか無い行の向かいは縞の空き。変わっていない長い並びは両方の列にまたがる 1 行に畳む */
-export const SideRaw: Story = {
-  args: { layout: "side" },
-  play: ({ canvasElement }) => {
-    pressView({ canvas: canvasElement, selector: '.segment[aria-label="本文の差分の見せ方"] button[aria-pressed="false"]' });
-  },
-};
-
-/** 選んだ時点の本文が Markdown で、左右に並べた。左は Markdown として描き、右の今の本文には印を付けない */
-export const SideFromMarkdown: Story = { args: { before: "# 画面の流れ\n\n一つ目の段落\n", after: AFTER, marked: MARKED, beforeFormat: "md", layout: "side" } };
 
 /** 埋め込んだ HTML の範囲の差分。「埋め込んだ HTML」の名前の後に「描いた結果（変更前）」「描いた結果（変更後）」「原文の差分」を並べ、「原文の差分」を選んだ状態で開く。凡例は出さない */
 export const RangeRaw: Story = rangeStory;

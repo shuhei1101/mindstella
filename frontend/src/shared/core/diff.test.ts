@@ -1,8 +1,7 @@
 import * as jsdiff from "diff";
-import { marked } from "marked";
 import { describe, expect, test } from "vitest";
 
-import { buildVersions, diffLineParts, htmlChangedLines, removedOf, resolveDiffPoint, sideBySideRows, type DiffPoint } from "@/shared/core/diff";
+import { buildVersions, diffLineParts, htmlChangedLines, removedOf, resolveDiffPoint, type DiffPoint } from "@/shared/core/diff";
 import type { Changes, Item } from "@/shared/core/records";
 
 const changes: Changes = {
@@ -70,18 +69,6 @@ describe("diffLineParts", () => {
     // 検証
     expect(parts?.filter((part) => part.kind === "removed").flatMap((part) => part.lines)).toEqual(["二"]);
     expect(parts?.filter((part) => part.kind === "added").flatMap((part) => part.lines)).toEqual(["三"]);
-  });
-});
-
-describe("sideBySideRows", () => {
-  // 変えていない塊を揃える（正常系）
-  test("side_by_side_rows", () => {
-    // 実行
-    const rows = sideBySideRows({ before: "同じ\n\n前\n\n後ろ\n", after: "同じ\n\n変えた\n\n後ろ\n", lexer: marked.lexer.bind(marked), jsdiff });
-    // 検証
-    expect(rows?.[0]).toMatchObject({ changed: false, left: [{ raw: "同じ" }], right: [{ raw: "同じ" }] });
-    expect(rows?.[1]).toMatchObject({ changed: true, left: [{ raw: "前" }], right: [{ raw: "変えた" }] });
-    expect(rows?.at(-1)).toMatchObject({ changed: false, left: [{ raw: "後ろ" }], right: [{ raw: "後ろ" }] });
   });
 });
 

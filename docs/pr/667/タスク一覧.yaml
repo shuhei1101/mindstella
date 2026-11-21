@@ -1,0 +1,100 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書がそろっている既存の画面の修正のため対象外
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではない
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: '#347 は採用済みの mdmark が持つ差分・印刷の機能を使用し、未検証の技術機構に依存しない。mdmark が持つ機能の範囲は部品設計で外部ライブラリの設計書から確認する'
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 単一ユースケースをまたぐ流れは変わらない
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: デザイン方針（docs/design-policy.mark.md）があり、どの子 Issue も見た目の方向を変えない
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の追加・削除と画面遷移の変更が無い
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    note: SC-489-18（本文の差分を mdmark の色分けと「原文の差分」に置き換え）・SC-489-46（項目の ID のツールチップ・スマホの全画面表示のボタン・印刷）
+    updated_by: planner
+    updated_at: '2026-11-21T12:19:34.751411+00:00'
+  - process: モック作成
+    status: done
+    note: '見た目を作り手が決める余地がある #147（項目の ID のボタンのツールチップの中身）と #347（mdmark の差分・印刷に置き換えた本文の差分）だけモックを作る'
+    updated_by: planner
+    updated_at: '2026-11-21T13:50:16.422764+00:00'
+  - process: データ設計
+    status: skipped
+    reason: 記録・変更履歴・設定のデータの構造を変えない
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: インターフェース定義設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T13:51:34.835409+00:00'
+    note: IF-489-70（プレビューを開く）の制約『本文の差分の並べ方』を削除し、『端末の保存領域』から本文の差分の並べ方を外す（左右に並べる表示の削除。確認ログ）。サーバーの API と記録の取得は変えない
+  - process: エージェント・MCP サーバー設計
+    status: skipped
+    reason: エージェント・MCP サーバーの機能を足さない（判定フローチャート『機能を呼ぶインターフェースの選び方』で画面の操作のまま）
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: エージェントフロー・LLM 呼び出し設計
+    status: skipped
+    reason: LLM の呼び出しを足さない
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: 精度評価設計
+    status: skipped
+    reason: LLM の出力を評価する機能を含まない
+    updated_by: planner
+    updated_at: '2026-11-21T12:10:55.797272+00:00'
+  - process: 部品設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:07:09.418270+00:00'
+  - process: 画面設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:07:09.418270+00:00'
+  - process: モジュール構成設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T14:21:35.786526+00:00'
+  - process: ドキュメント修正
+    status: done
+    note: '#488（docs/guide/ のページのタイトル直下の 1 行）と #636（plugins/mindstella/files.yml の v0.14.0 の変換のスクリプト 2 本の行）'
+    updated_by: planner
+    updated_at: '2026-11-21T14:29:46.638518+00:00'
+  - process: 単体テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:01:05.543855+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T15:26:04.849015+00:00'
+  - process: 結合テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-21T16:10:39.422197+00:00'

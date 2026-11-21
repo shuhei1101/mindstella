@@ -33,7 +33,7 @@ const detailOf = (error: unknown): string | null => (error instanceof AppError ?
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: ThreadViewProps) => {
-  const { threads, items, drafts, titles, changeSets } = data;
+  const { threads, items, drafts, titles, changeSets, index } = data;
   const thread = threads.find((one) => one.id === id) ?? null;
   const pendingNew = thread === null ? (items.find((item) => item.id === id && item.thread === null) ?? null) : null;
   const replies = items.filter((item) => item.thread === id);
@@ -154,6 +154,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
       <ThreadPost
         pending={item}
         titles={titles}
+        index={index}
         changeSets={changeSets}
         editing={editing?.id === item.id}
         editError={editing?.id === item.id ? editing.error : null}
@@ -279,7 +280,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
             : pendingPost(pendingNew)
           : threadTimeline(thread).map((entry) => ("post" in entry ? (
             <li key={entry.post.id}>
-              <ThreadPost post={entry.post} titles={titles} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
+              <ThreadPost post={entry.post} titles={titles} index={index} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
             </li>
           ) : (
             <li key={`${entry.event.kind}-${entry.event.created}`}>

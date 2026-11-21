@@ -5,7 +5,9 @@ from __future__ import annotations
 from playwright.sync_api import Locator, Page, Route, expect
 from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WriteReviewPreview
-from preview_spa_helpers import open_spa
+from preview_spa_helpers import assert_below_topbar, open_spa
+
+import pytest
 from workspace_fixtures import MakeEdit, MakeItem
 
 # まとめて保存を断る応答の本文
@@ -237,3 +239,29 @@ def test_close_by_escape(page: Page, write_edit_preview: WriteReviewPreview, mak
     # 検証
     expect(_panel(page)).to_have_count(0)
     expect(page.get_by_role("button", name="保存待ち").first).to_contain_text("3")
+
+# ─── パネルの上端（トップバーの下） ───
+
+
+@pytest.mark.parametrize(
+    "size",
+    [pytest.param({"width": 1280, "height": 800}, id="wide"), pytest.param({"width": 390, "height": 844}, id="phone")],
+)
+def test_panel_below_topbar(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit, size: dict[str, int]) -> None:
+    """パネルはトップバーとタブを覆わず、その下端から画面の下端まで出す（正常系）。"""
+    # 準備
+    page.set_viewport_size(size)
+    # 実行
+    _open(page, write_edit_preview, make_item, make_edit)
+    # 検証
+    assert_below_topbar(page, _panel(page))
+
+
+def test_scrim_below_topbar(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
+    """幅 901px 以上のグレーアウトはトップバーとタブを覆わず、その下端から画面の下端まで出す（正常系）。"""
+    # 準備
+    page.set_viewport_size({"width": 1280, "height": 800})
+    # 実行
+    _open(page, write_edit_preview, make_item, make_edit)
+    # 検証
+    assert_below_topbar(page, page.locator("[data-scrim]"))

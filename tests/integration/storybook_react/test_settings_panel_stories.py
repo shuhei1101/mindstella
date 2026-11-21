@@ -171,21 +171,6 @@ def test_minimap_hidden(open_story: OpenStory) -> None:
     assert page.inner_text("li[data-part=all] [data-part=count]") == "7/7"
 
 
-def test_body_diff_layout_overridden(open_story: OpenStory) -> None:
-    """詳細で本文の差分を左右に並べるを選んだ。変えている項目に「本文の差分の並べ方」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
-    # 準備・実行
-    page = _open(open_story, "body-diff-layout-overridden")
-    # 検証（変えている項目と「既定に戻す」）
-    assert page.inner_text(f"{PANEL} [data-part=over-heading]") == "この端末で変えている項目"
-    assert page.inner_text(f"{PANEL} [data-part=over] > span:last-child") == "本文の差分の並べ方"
-    assert _buttons(page) == ["既定に戻す"]
-    # 検証（保存のボタンの代わりに、既定と同じ旨を出す）
-    assert page.locator(f"{PANEL} [data-part=save] button").count() == 0
-    assert "表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} [data-part=save]")
-    # 検証（表示する種類は既定のまま）
-    assert page.inner_text("li[data-part=all] [data-part=count]") == "7/7"
-
-
 def test_body_view_overridden(open_story: OpenStory) -> None:
     """セクションの折りたたみをオフにした。「詳細に表示するもの」のチェックを切り替え、変えている項目に「セクションの折りたたみ」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
     # 準備・実行

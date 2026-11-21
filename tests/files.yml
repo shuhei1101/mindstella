@@ -1243,9 +1243,9 @@ files:
   tags:
   - tool:playwright
   - topic:結合テスト
-- path: integration/storybook_react/test_body_diff_layout_switch_stories.py
-  name: 部品設計『本文の差分の並べ方の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト
-  description: 部品設計『本文の差分の並べ方の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+- path: integration/storybook_react/test_body_diff_view_switch_stories.py
+  name: 部品設計『本文の差分の見せ方の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『本文の差分の見せ方の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook
@@ -1350,14 +1350,6 @@ files:
 - path: integration/storybook_react/test_removed_band_stories.py
   name: 部品設計『削除した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト
   description: 部品設計『削除した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - tool:storybook
-  - topic:ストーリー
-  - topic:結合テスト
-- path: integration/storybook_react/test_side_by_side_body_diff_stories.py
-  name: 部品設計『左右に並べた本文の差分.tsx』の状態（React の Storybook のストーリー）の結合テスト
-  description: 部品設計『左右に並べた本文の差分.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - tool:storybook

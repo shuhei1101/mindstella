@@ -294,6 +294,14 @@ files:
   related:
   - to: MOD-489-101
     type: implements
+- path: src/shared/core/status-marks.ts
+  name: 状態のマーカーの形状
+  description: 状態ごとのマーカーの SVG の中身と、React の外で組む本文のツールチップに置く SVG の要素を返す関数。状態のマーカーの形状を変えるときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-170
+    type: implements
 - path: src/shared/lib/cn.test.ts
   name: クラス名の結合の単体テスト
   description: クラス名の結合の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
@@ -748,17 +756,17 @@ files:
   related:
   - to: MOD-489-60
     type: implements
-- path: src/shared/components/body-diff-layout-switch.stories.tsx
-  name: 本文の差分の並べ方の切り替えのストーリー
-  description: 本文の差分の並べ方の切り替えのストーリー。
+- path: src/shared/components/body-diff-view-switch.stories.tsx
+  name: 本文の差分の見せ方の切り替えのストーリー
+  description: 本文の差分の見せ方の切り替えのストーリー。
   tags:
   - tool:react
   related:
   - to: MOD-489-170
     type: implements
-- path: src/shared/components/body-diff-layout-switch.tsx
-  name: 本文の差分の並べ方の切り替え
-  description: 本文の差分の並べ方の切り替え。
+- path: src/shared/components/body-diff-view-switch.tsx
+  name: 本文の差分の見せ方の切り替え
+  description: 本文の差分の見せ方の切り替え。
   tags:
   - tool:react
   related:
@@ -1077,22 +1085,6 @@ files:
   - tool:react
   related:
   - to: MOD-489-80
-    type: implements
-- path: src/shared/components/side-by-side-body-diff.stories.tsx
-  name: 左右に並べた本文の差分のストーリー
-  description: 左右に並べた本文の差分のストーリー。
-  tags:
-  - tool:react
-  related:
-  - to: MOD-489-170
-    type: implements
-- path: src/shared/components/side-by-side-body-diff.tsx
-  name: 左右に並べた本文の差分
-  description: 左右に並べた本文の差分。
-  tags:
-  - tool:react
-  related:
-  - to: MOD-489-84
     type: implements
 - path: src/shared/components/table.stories.tsx
   name: 表のストーリー
@@ -1432,14 +1424,6 @@ files:
   - tool:react
   related:
   - to: MOD-489-121
-    type: implements
-- path: src/shared/core/side-by-side.ts
-  name: 左右に並べた本文の差分
-  description: 左右に並べた本文の差分。
-  tags:
-  - tool:react
-  related:
-  - to: MOD-489-122
     type: implements
 - path: src/shared/core/term-tips.ts
   name: '* eslint-disable @typescript-eslint/no-non-null-assertion --'

@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { AppError } from "@/shared/core/app-error";
 import type { Draft, ReviewItem, Thread } from "@/shared/core/comments";
 import type { LookupTitle } from "@/shared/core/post-links";
+import type { RecordIndex } from "@/shared/core/records";
 import { commentsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { useRecords } from "@/shared/hooks/use-records";
 
@@ -22,6 +23,8 @@ export type CommentData = {
   threadsError: { detail: string | null } | null;
   titles: LookupTitle;
   changeSets: LookupTitle;
+  /** 記録の索引（本文の項目の ID のツールチップ）。読めていなければ null */
+  index: RecordIndex | null;
 };
 
 export const useCommentData = (): CommentData => {
@@ -41,5 +44,6 @@ export const useCommentData = (): CommentData => {
     threadsError: error === null ? null : { detail: error instanceof AppError ? error.message : null },
     titles,
     changeSets,
+    index: index ?? null,
   };
 };

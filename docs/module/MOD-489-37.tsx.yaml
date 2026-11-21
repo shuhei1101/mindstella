@@ -6,7 +6,7 @@ components:
     title: 保存待ちのパネル
     kind: 画面
     usecase: 画面で項目を編集して保存する
-    summary: 画面設計『保存待ちのパネル.tsx』の要素と操作を描く
+    summary: '画面設計『保存待ちのパネル.tsx』の要素と操作を描く。パネルとグレーアウトは `position: fixed` で、上端を CSS 変数 `--topbar-height`（無ければ 0）、下端を画面の下端にする（幅によらず同じ）'
     refs:
       - SCR-489-11#
     unit_tests:

@@ -31,7 +31,7 @@ from preview_edit_helpers import edit_edits, edit_items
 from preview_embed_helpers import EMBEDDED_BODY, build_embedded_diff_workspace
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import mismatch_body_diff
-from preview_spa_helpers import open_spa
+from preview_spa_helpers import assert_bottom_aligned, open_spa
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace, WriteComments
 from record_write_helpers import write_tool
 
@@ -200,6 +200,17 @@ def test_full_label(page: Page, spa_preview: str) -> None:
     open_spa(page, spa_preview, "?tab=decisions&id=D-1")
     # 検証
     expect(_panel(page).get_by_role("button", name="全画面表示")).to_be_visible()
+
+
+def test_full_hidden_when_narrow(page: Page, spa_preview: str) -> None:
+    """幅 768px 未満では、全画面表示のボタンを出さない（正常系）。"""
+    # 準備
+    page.set_viewport_size({"width": 390, "height": 844})
+    # 実行
+    open_spa(page, spa_preview, "?tab=decisions&id=D-1")
+    # 検証
+    expect(_panel(page).get_by_role("button", name="詳細を閉じる")).to_be_visible()
+    expect(_panel(page).get_by_role("button", name="全画面表示")).to_be_hidden()
 
 
 def test_options_visible(page: Page, spa_preview: str) -> None:
@@ -531,12 +542,12 @@ def test_key_diff_visible(page: Page, write_history_preview: WriteReviewPreview)
 
 
 def test_body_diff_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:
-    """差分の表示の間、Markdown の本文が変わったときは足した部分と消した部分に印を付ける（正常系）。"""
+    """差分の表示の間、Markdown の本文が変わったときは追加・削除したブロックを mdmark の差分のブロックで出す（正常系）。"""
     # 準備・実行
     url, _ = write_history_preview()
     panel = _diff(page, url, "V-2")
     # 検証
-    expect(panel.locator(".md ins.df-blk").first).to_be_visible()
+    expect(panel.locator(".md .mdmark-diff-block").first).to_be_visible()
 
 
 def test_diagram_diff_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:
@@ -595,7 +606,7 @@ def test_body_unavailable_visible(page: Page, write_history_preview: WriteReview
     # 準備・実行
     url, _ = write_history_preview()
     panel = _diff(page, url, "V-2")
-    panel.locator(".md ins.df-blk").first.wait_for()
+    panel.locator(".md .mdmark-diff-block").first.wait_for()
     # 検証
     expect(panel.get_by_text("本文の差分を出せません。")).to_have_count(0)
 
@@ -620,7 +631,7 @@ def test_body_too_large_visible(page: Page, write_history_preview: WriteReviewPr
     # 準備・実行
     url, _ = write_history_preview()
     panel = _diff(page, url, "V-2")
-    panel.locator(".md ins.df-blk").first.wait_for()
+    panel.locator(".md .mdmark-diff-block").first.wait_for()
     # 検証
     expect(panel.get_by_text("差分を計算しきれませんでした。")).to_have_count(0)
 
@@ -641,7 +652,7 @@ def test_library_note_visible(page: Page, write_history_preview: WriteReviewPrev
     # 準備・実行
     url, _ = write_history_preview()
     panel = _diff(page, url, "V-2")
-    panel.locator(".md ins.df-blk").first.wait_for()
+    panel.locator(".md .mdmark-diff-block").first.wait_for()
     # 検証
     expect(panel.get_by_text("読み込めなかったライブラリ: jsdiff")).to_have_count(0)
 
@@ -702,6 +713,22 @@ def test_id_link_visible(page: Page, write_preview: WritePreview, make_item: Mak
     panel = _linked(page, write_preview, make_item)
     # 検証
     assert panel.locator(".md a.idref").evaluate_all("links => links.map((a) => a.dataset.id)") == ["D-3"]
+
+
+def test_id_link_tooltip_action(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """項目の ID のリンクに乗せると、その項目のタイトルと ID、種類を持つツールチップを出し、リンクの `aria-describedby` で指す（正常系）。"""
+    # 準備
+    panel = _linked(page, write_preview, make_item)
+    link = panel.locator(".md a.idref").first
+    tip = page.locator("[popover]:popover-open")
+    # 実行
+    link.hover()
+    # 検証
+    expect(tip).to_have_attribute("role", "tooltip")
+    expect(tip.locator(".tt-head")).to_contain_text("D-3")
+    expect(tip.locator(".tt-meta")).to_contain_text("検討事項")
+    expect(link).to_have_attribute("aria-describedby", "term-tip")
+    assert link.get_attribute("title") is None
 
 
 def test_lead_visible(page: Page, write_sample_preview: WriteSamplePreview) -> None:
@@ -958,28 +985,31 @@ def test_minimap_visible(page: Page, write_minimap_preview: WriteReviewPreview) 
     expect(panel.get_by_role("toolbar", name="変わった箇所")).to_be_visible()
 
 
-def test_layout_switch_visible(page: Page, write_body_layout_preview: WriteReviewPreview) -> None:
-    """差分の表示の間で本文が変わったときは、本文の差分の並べ方の切り替えを出し、差分の表示でないときは出さない（正常系）。"""
+def test_body_diff_view_switch_visible(page: Page, write_body_layout_preview: WriteReviewPreview) -> None:
+    """差分の表示の間で Markdown の本文が変わったときは、本文の差分の見せ方の切り替えを「描いた結果」で出し、差分の表示でないときは出さない（正常系）。"""
     # 準備
     url, _ = write_body_layout_preview()
     open_spa(page, url, "?tab=docs&id=A-1")
-    expect(_panel(page).get_by_role("group", name="本文の差分の並べ方")).to_have_count(0)
+    expect(_panel(page).get_by_role("group", name="本文の差分の見せ方")).to_have_count(0)
     # 実行
     panel = _diff(page, url, "V-2", item="A-1", tab="docs")
     # 検証
-    expect(panel.get_by_role("group", name="本文の差分の並べ方")).to_be_visible()
+    group = panel.get_by_role("group", name="本文の差分の見せ方")
+    expect(group).to_be_visible()
+    expect(group.get_by_role("button", name="描いた結果")).to_have_attribute("aria-pressed", "true")
+    expect(panel.locator('.md .mdmark-diff-block[data-kind="del"]').first).to_be_attached()
 
 
-def test_side_by_side_visible(page: Page, write_body_layout_preview: WriteReviewPreview) -> None:
-    """並べ方を「左右に並べる」にすると、左に選んだ時点・右に今の本文を並べる（正常系）。"""
+def test_body_diff_source_action(page: Page, write_body_layout_preview: WriteReviewPreview) -> None:
+    """「原文の差分」を押すと、mdmark の行の差分を開き、差分のミニマップを出さない（正常系）。"""
     # 準備
     url, _ = write_body_layout_preview()
     panel = _diff(page, url, "V-2", item="A-1", tab="docs")
     # 実行
-    panel.get_by_role("button", name="左右に並べる").click()
+    panel.get_by_role("button", name="原文の差分").click()
     # 検証
-    expect(panel.get_by_role("region", name="選んだ時点の本文")).to_be_visible()
-    expect(panel.get_by_role("region", name="今の本文")).to_be_visible()
+    expect(panel.locator(".mdmark-diff-line").first).to_be_visible()
+    expect(panel.get_by_role("toolbar", name="変わった箇所")).to_have_count(0)
 
 
 def test_edit_label(page: Page, spa_preview: str) -> None:
@@ -1549,3 +1579,64 @@ def test_tags_not_selectable_in_diff(page: Page, write_history_preview: WriteRev
     open_spa(page, url, "?tab=tasks&id=T-1&diff=V-1")
     # 検証
     expect(page.get_by_role("complementary", name="詳細").locator("button[data-tag]")).to_have_count(0)
+
+# ─── コメントの入力の位置 ───
+
+# 本文のスクロール領域があふれる長さの本文（段落を 60 個並べる）
+OVERFLOW_BODY = "\n\n".join(f"{index} 段落目の本文。詳細パネルの高さを超える長さにするための段落。" for index in range(1, 61))
+
+
+@pytest.fixture
+def long_comment_preview(write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment) -> tuple[str, Path]:
+    """本文があふれる D-3 とレビュー中のコメント C-1、本文の短い D-2 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-3", title="長い記録", status="未決定", body="../docs/D-3.mark.md"),
+        make_item("D-2", title="画面の幅", status="保留"),
+        comments=(make_comment("C-1", target="D-3", body="長い本文へのコメント"),),
+        bodies={"D-3.mark.md": OVERFLOW_BODY},
+    )
+
+
+@pytest.mark.parametrize(
+    ("size", "item"),
+    [
+        pytest.param({"width": 1280, "height": 800}, "D-3", id="wide-long"),
+        pytest.param({"width": 1280, "height": 800}, "D-2", id="wide-short"),
+        pytest.param({"width": 390, "height": 844}, "D-3", id="phone-long"),
+        pytest.param({"width": 390, "height": 844}, "D-2", id="phone-short"),
+    ],
+)
+def test_comment_input_at_bottom(page: Page, long_comment_preview: tuple[str, Path], size: dict[str, int], item: str) -> None:
+    """コメントの入力は本文の長さによらず、詳細パネルの下端に間を空けずに出す（正常系）。"""
+    # 準備
+    url, _ = long_comment_preview
+    page.set_viewport_size(size)
+    # 実行
+    open_spa(page, url, f"?tab=decisions&id={item}")
+    # 検証
+    form = _panel(page).locator(f"form[data-id='{item}']")
+    expect(form).to_be_visible()
+    assert_bottom_aligned(form, _panel(page))
+
+
+def test_review_comments_scroll_with_body(page: Page, long_comment_preview: tuple[str, Path]) -> None:
+    """レビュー中のコメントは本文のスクロール領域の中で本文と一緒にスクロールし、コメントの入力は下端に留まる（正常系）。"""
+    # 準備
+    url, _ = long_comment_preview
+    page.set_viewport_size({"width": 390, "height": 844})
+    open_spa(page, url, "?tab=decisions&id=D-3")
+    region = _panel(page).get_by_role("region", name="詳細の本文")
+    form = _panel(page).locator("form[data-id='D-3']")
+    expect(region.get_by_text("60 段落目の本文", exact=False)).to_be_attached()
+    expect(region.get_by_role("heading", name="レビュー中のコメント")).to_be_attached()
+    expect(region.locator("form[data-id='D-3']")).to_have_count(0)
+    assert region.evaluate("element => element.scrollHeight > element.clientHeight") is True
+    expect(_comments(page).first).not_to_be_in_viewport()
+    before = form.bounding_box()
+    # 実行
+    region.evaluate("element => element.scrollTo({ top: element.scrollHeight })")
+    # 検証
+    expect(_comments(page).first).to_be_in_viewport()
+    assert region.evaluate("element => element.scrollTop") > 0
+    assert form.bounding_box() == before
+    assert_bottom_aligned(form, _panel(page))

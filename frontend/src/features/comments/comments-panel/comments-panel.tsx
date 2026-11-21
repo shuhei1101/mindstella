@@ -184,7 +184,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
         </Button>
       ) : null}
       <Button variant="ghost" size="icon" aria-pressed={pinned} aria-label={pinned ? "ピン止めを外す（外側を押したら閉じる）" : "ピン止めする（外側を押しても閉じない）"} title={pinned ? "ピン止めを外す" : "ピン止めする"} onClick={() => { writePrefs({ commentsPinned: pinned ? null : true }); }}>
-        <Icon name="lock" className={cn(!pinned && "-rotate-45", pinned && "text-primary")} />
+        <Icon name={pinned ? "lock" : "unlock"} className={cn(pinned && "text-primary")} />
       </Button>
       <Button variant="ghost" size="icon" aria-label="コメントの一覧を閉じる" onClick={close}>
         <Icon name="x" />
@@ -261,13 +261,13 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   })();
   return (
     <>
-      {pinned ? null : <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 bg-foreground/40 max-lg:hidden" onClick={close} />}
+      {pinned ? null : <div data-scrim aria-hidden="true" className="fixed inset-x-0 top-below-topbar bottom-0 z-20 bg-foreground/40 max-lg:hidden" onClick={close} />}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
       <section
         role="dialog"
         aria-modal={!pinned}
         aria-label="コメント"
-        className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card max-lg:w-full"
+        className="fixed top-below-topbar bottom-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card max-lg:w-full"
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
           event.stopPropagation();

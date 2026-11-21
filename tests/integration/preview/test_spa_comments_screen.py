@@ -14,7 +14,9 @@ from pathlib import Path
 
 from playwright.sync_api import Locator, Page, Route, expect
 from preview_comment_helpers import read_workspace_yaml
-from preview_spa_helpers import open_spa
+from preview_spa_helpers import assert_below_topbar, open_spa
+
+import pytest
 
 # パネルを画面いっぱいに出す幅（これ以下）と、画面の高さ
 NARROW_SIZE = {"width": 800, "height": 700}
@@ -296,3 +298,44 @@ def test_target_filter(page: Page, spa_comments_preview: tuple[str, Path]) -> No
     # 検証
     expect(_rows(page)).to_have_count(4)
     assert "ttarget=" not in page.url
+
+# ─── パネルの上端（トップバーの下） ───
+
+
+@pytest.mark.parametrize(
+    "size",
+    [pytest.param({"width": 1280, "height": 800}, id="wide"), pytest.param({"width": 390, "height": 844}, id="phone")],
+)
+def test_panel_below_topbar(page: Page, spa_comments_preview: tuple[str, Path], size: dict[str, int]) -> None:
+    """パネルはトップバーとタブを覆わず、その下端から画面の下端まで出す（正常系）。"""
+    # 準備
+    page.set_viewport_size(size)
+    # 実行
+    _open(page, spa_comments_preview)
+    # 検証
+    assert_below_topbar(page, _panel(page))
+
+
+def test_scrim_below_topbar(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """幅 901px 以上のグレーアウトはトップバーとタブを覆わず、その下端から画面の下端まで出す（正常系）。"""
+    # 準備
+    page.set_viewport_size({"width": 1280, "height": 800})
+    # 実行
+    _open(page, spa_comments_preview)
+    # 検証
+    assert_below_topbar(page, page.locator("[data-scrim]"))
+
+
+@pytest.mark.parametrize(
+    "size",
+    [pytest.param({"width": 1280, "height": 800}, id="wide"), pytest.param({"width": 390, "height": 844}, id="phone")],
+)
+def test_topbar_usable_while_open(page: Page, spa_comments_preview: tuple[str, Path], size: dict[str, int]) -> None:
+    """パネルを開いている間もトップバーのコメントのボタンを押せ、押すとパネルを閉じる（正常系）。"""
+    # 準備
+    page.set_viewport_size(size)
+    _open(page, spa_comments_preview)
+    # 実行
+    page.get_by_role("banner").get_by_role("button", name=re.compile("^コメント（")).click()
+    # 検証
+    expect(_panel(page)).to_have_count(0)

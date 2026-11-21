@@ -108,6 +108,11 @@
   }
 }
 
+/* 左のパネル・絞り込みのドロワー・それらのグレーアウトの上端（トップバーの下端。外枠が測った高さ） */
+@utility top-below-topbar {
+  top: var(--topbar-height, 0px);
+}
+
 /* 差分の札の幅（名前が数文字読める下限と上限） */
 @utility chip-width {
   min-width: 5.5em;

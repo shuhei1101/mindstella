@@ -330,6 +330,51 @@ def test_table_in_diff(open_story: OpenStory) -> None:
     assert page.locator(".md button.md-fold").count() == 0
 
 
+def test_diff_rendered(open_story: OpenStory) -> None:
+    """差分の表示で「描いた結果」。書き換えた段落と追加した箇条書きの項目は追加、削除した段落は削除の差分のブロックで出し、変わった単語は出さない（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "diff-rendered")
+    page.wait_for_selector(".md .mdmark-diff-block", timeout=STORY_TIMEOUT_MS)
+    # 検証（追加と削除のブロックがあり、削除した段落は変更前の位置に出る）
+    added = page.locator('.md .mdmark-diff-block[data-kind="add"]')
+    removed = page.locator('.md .mdmark-diff-block[data-kind="del"]')
+    assert added.count() >= 2
+    assert removed.count() >= 1
+    assert "保持する回数を超えたものから削除する" in removed.first.inner_text()
+    assert page.locator(".md .mdmark-diff-word").count() == 0
+    # 検証（記号は本文の区画の中に見える）
+    sign = page.locator(".md .mdmark-diff-block-sign").first.bounding_box()
+    body = page.locator(".md").first.bounding_box()
+    assert sign is not None and body is not None
+    assert sign["x"] >= body["x"] - TOLERANCE_PX
+
+
+def test_diff_source(open_story: OpenStory) -> None:
+    """差分の表示で「原文の差分」。mdmark の行の差分を開いた状態で、リビジョンの欄に「選んだ時点」「今」が入り、書き換えた行の変わった単語を濃い色にする（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "diff-source")
+    page.wait_for_selector(".mdmark-diff-line", timeout=STORY_TIMEOUT_MS)
+    # 検証（削除した行と追加した行）
+    assert page.locator('.mdmark-diff-line[data-kind="del"]').count() >= 1
+    assert page.locator('.mdmark-diff-line[data-kind="add"]').count() >= 1
+    assert page.locator(".mdmark-diff-word").count() >= 1
+    # 検証（前と後のリビジョンの欄）
+    pickers = page.locator(".mdmark-diff-picker").all_inner_texts()
+    joined = " ".join(pickers)
+    assert "選んだ時点" in joined
+    assert "今" in joined
+
+
+def test_diff_unchanged(open_story: OpenStory) -> None:
+    """差分の表示で、選んだ時点から変わっていない本文。色を付けずに今の本文だけを出す（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "diff-unchanged")
+    # 検証
+    assert page.locator(".md .mdmark-diff-block").count() == 0
+    assert page.locator(".mdmark-diff-line").count() == 0
+    assert "まとめて配置する" in page.inner_text(".md")
+
+
 # 部品設計の状態
 STATES = (
     "mdmark-table",
@@ -345,6 +390,9 @@ STATES = (
     "in-thread-post",
     "embedded-html",
     "table-in-diff",
+    "diff-rendered",
+    "diff-source",
+    "diff-unchanged",
 )
 
 

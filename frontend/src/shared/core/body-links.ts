@@ -5,9 +5,49 @@ import { h, markupIcon } from "@/shared/core/dom-parts";
 import type { Location, RecordIndex } from "@/shared/core/records";
 import { workspacePath } from "@/shared/core/workspace-path";
 
+/** 差分の取り出し元が返すリビジョン */
+type Revision = { id: string; at: string; label: string };
+
+/** 差分の取り出し元（リビジョンの一覧と、リビジョンごとの本文） */
+type DiffSource = {
+  revisions: (docId: string) => Promise<Revision[]>;
+  content: (input: { docId: string; revisionId: string }) => Promise<string>;
+};
+
+/** mdmark の `mount` に指定する値 */
+type MountOptions = {
+  markdown: string;
+  config: { features: Record<string, boolean>; map?: Record<string, unknown> };
+  baseMarkdown?: string;
+  docId?: string;
+  diffMode?: "open";
+  diffSource?: DiffSource;
+};
+
+/** 原文の差分で比べる項目の ID と、選んだ時点と今の本文 */
+export type BodyDiffSource = { docId: string; before: string; after: string };
+
+/** 原文の差分の取り出し元が返す、選んだ時点のリビジョンの ID */
+const BEFORE_REVISION_ID = "selected";
+/** 原文の差分の取り出し元が返す、今のリビジョンの ID */
+const AFTER_REVISION_ID = "current";
+
+/** 選んだ時点と今の 2 つのリビジョンだけを新しい順に返す取り出し元 */
+const diffSourceOf = ({ before, after }: BodyDiffSource): DiffSource => {
+  const now = new Date().toISOString();
+  return {
+    revisions: () =>
+      Promise.resolve([
+        { id: AFTER_REVISION_ID, at: now, label: "今" },
+        { id: BEFORE_REVISION_ID, at: now, label: "選んだ時点" },
+      ]),
+    content: ({ revisionId }) => Promise.resolve(revisionId === BEFORE_REVISION_ID ? before : after),
+  };
+};
+
 /** 読み込んだ mdmark の、ここで使う口 */
 type Mdmark = {
-  mount: (root: HTMLElement, options: { markdown: string; config: { features: Record<string, boolean>; map?: Record<string, unknown> } }) => { update?: unknown; destroy?: () => void } | undefined;
+  mount: (root: HTMLElement, options: MountOptions) => { update?: unknown; destroy?: () => void } | undefined;
   collectMatches: (input: { index: { docs: { id: string; path: string; title: string }[]; terms: { id: string; term: string; meaning: string }[] }; documents: Record<string, string> }) => { byDocument: Record<string, { id: string; line: number; start: number; end: number }[] | undefined> };
 };
 
@@ -43,7 +83,7 @@ export const MDMARK_FEATURES: Record<string, boolean> = {
   glossary: false,
   backlinks: false,
   comments: false,
-  print: false,
+  print: true,
   anchors: false,
   sections: false,
   table: false,
@@ -163,10 +203,11 @@ export const resolveFileSources = (root: HTMLElement): void => {
 };
 
 /** 要素の中に、機能を止めた mdmark で Markdown を描く（`table` が真なら表の機能だけオンにする。描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
-const mountMarkdown = ({ root, markdown, table = false }: { root: HTMLElement; markdown: string; table?: boolean }): void => {
+const mountMarkdown = ({ root, markdown, table = false, base, diffSource }: { root: HTMLElement; markdown: string; table?: boolean; base?: string | undefined; diffSource?: BodyDiffSource | undefined }): void => {
   const map = mdmarkMapConfig();
   const features = table ? { ...MDMARK_FEATURES, table: true } : MDMARK_FEATURES;
-  mdmarkOf().mount(root, { markdown, config: { features, ...(map === undefined ? {} : { map }) } });
+  const diff = diffSource === undefined ? (base === undefined ? {} : { baseMarkdown: base }) : { docId: diffSource.docId, diffMode: "open" as const, diffSource: diffSourceOf(diffSource) };
+  mdmarkOf().mount(root, { markdown, config: { features, ...(map === undefined ? {} : { map }) }, ...diff });
   resolveFileSources(root);
   trimBreakNewlines(root);
   relabelParamCopy(root);
@@ -439,7 +480,7 @@ const focusCodeBlocks = (root: HTMLElement): void => {
 };
 
 /** 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は `table`（省くと真）のとき mdmark の表の機能で描く */
-export const renderMarkdown = (source: string, options: { table?: boolean } = {}): HTMLElement => {
+export const renderMarkdown = (source: string, options: { table?: boolean; base?: string; diffSource?: BodyDiffSource } = {}): HTMLElement => {
   const root = h({ tag: "div", attrs: { class: "md" } });
   const missing = missingLibraries(["mdmark"]);
   const hasDiagram = source.includes("```mermaid");
@@ -456,7 +497,7 @@ export const renderMarkdown = (source: string, options: { table?: boolean } = {}
   }
   // mdmark は描くときに無害化する（記録は利用者のもの）。`mount` が例外を投げたとき（部品を差し替えられないタグの mdmark で map を描いたときなど）は、読めていないときと同じにする
   try {
-    mountMarkdown({ root, markdown: source, table: options.table !== false });
+    mountMarkdown({ root, markdown: source, table: options.table !== false, base: options.base, diffSource: options.diffSource });
   } catch {
     return raw(["mdmark"]);
   }
@@ -675,6 +716,7 @@ export const linkBody = ({
         class: "idref",
         href: hashWith({ id, heading: null }),
         "data-id": id,
+        "aria-describedby": TERM_TIP_ID,
         onclick: (event: Event) => {
           event.preventDefault();
           onOpen(id);

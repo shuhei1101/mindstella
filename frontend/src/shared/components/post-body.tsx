@@ -6,12 +6,16 @@ import { renderDiagrams, renderMarkdown, withHardBreaks } from "@/shared/core/bo
 import { drawHtmlBlocks, withoutLineMarks } from "@/shared/core/body-render";
 import { decorateMarkdown } from "@/shared/core/markdown-decorate";
 import { buttonizeItemIds, linkChangeSets, type LookupTitle } from "@/shared/core/post-links";
+import type { RecordIndex } from "@/shared/core/records";
+import { attachTermTips } from "@/shared/core/term-tips";
 import { cn } from "@/shared/lib/cn";
 
 export type PostBodyProps = {
   body: string;
   titles?: LookupTitle;
   changeSets?: LookupTitle;
+  /** 記録の索引。渡すと、項目の ID のボタンに乗せる・フォーカスしたときに項目のツールチップを出す */
+  index?: RecordIndex | null;
   id?: string;
   className?: string;
   onOpenItem?: (id: string) => void;
@@ -20,7 +24,7 @@ export type PostBodyProps = {
 
 const noTitle: LookupTitle = () => null;
 
-export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, id, className, onOpenItem, onOpenChangeSet }: PostBodyProps) => {
+export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, index = null, id, className, onOpenItem, onOpenChangeSet }: PostBodyProps) => {
   const { status } = useLibrary("mdmark");
   // 図は mermaid を読み終えてから描く（読み終えたら本文を描き直す）
   const diagrams = useLibrary("mermaid").status;
@@ -38,10 +42,11 @@ export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, id, cla
     decorateMarkdown({ root: rendered, fold: false });
     linkChangeSets({ root: rendered, changeSets, onChangeSet: (set) => onOpenChangeSet?.(set) });
     buttonizeItemIds({ root: rendered, titles, onOpen: (item) => onOpenItem?.(item) });
+    if (index !== null) attachTermTips({ root: rendered, index, onOpen: (item) => onOpenItem?.(item) });
     return () => {
       root.replaceChildren();
     };
-  }, [status, diagrams, body, titles, changeSets, onOpenItem, onOpenChangeSet]);
+  }, [status, diagrams, body, titles, changeSets, index, onOpenItem, onOpenChangeSet]);
   // 読めない・読み込み中は文字のまま改行を保って出す
   if (status !== "ready") {
     return (
