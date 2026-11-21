@@ -156,3 +156,6 @@ scope_out:
   - item: React の Storybook の設定フォルダ（`.storybook-react/`）を `.storybook/` へ改名する
     reason: 要望は今の設定の削除だけで、改名しても振る舞いは変わらない（含めるかはレビューで確定する）
     plan: none
+  - item: 資料の画面のカードの見出しが h1 の次に h3 で、見出しの順序を飛ばしている（axe heading-order）
+    reason: 見出しの順序の規約から外れているが、この PR で変えていない箇所で、要望に含まれない
+    plan: '#646'

@@ -1,0 +1,14 @@
+# 単体テスト（指摘の対応の後。回したコードの commit: 5834a9b3）
+
+## 単体テスト（バック）
+$ TMPDIR=~/.cache/mindstella/tmp-644 pytest tests/unit
+（/tmp/pytest-of-shuhei2441 の持ち主が違う環境のため、TMPDIR だけを自分のフォルダにした）
+================= 1731 passed, 1 skipped, 5 warnings in 29.20s =================
+exit=0
+
+## 単体テスト（フロント）
+$ npx vitest run
+ Test Files  81 passed (81)
+      Tests  362 passed (362)
+   Duration  20.03s (environment 44%, tests 27%, import 15%, setup 9%, transform 5%)
+exit=0
