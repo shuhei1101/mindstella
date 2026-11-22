@@ -22,6 +22,26 @@ describe("Topbar", () => {
     expect(onNavigate).toHaveBeenCalledWith("decisions");
   });
 
+  // 差分の表示中は変更履歴のボタンに点と × だけを出す（正常系）
+  test("topbar_when_diff_point", async () => {
+    // 準備
+    const onClearDiff = vi.fn();
+    const { rerender } = render(
+      <Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" diffPoint={{ name: "前回開いてから", sub: "10/04 13:05 より後" }} onOpenHistory={vi.fn()} onClearDiff={onClearDiff} />,
+    );
+    // 実行
+    await userEvent.click(screen.getByRole("button", { name: "差分の表示をやめる" }));
+    // 検証
+    expect(screen.getByRole("button", { name: "変更履歴（過去の差分を表示中）" })).toBeInTheDocument();
+    expect(screen.queryByText(/前回開いてから/)).toBeNull();
+    expect(screen.queryByText(/10\/04 13:05/)).toBeNull();
+    expect(onClearDiff).toHaveBeenCalledTimes(1);
+    // 差分を出していないときは × が無い
+    rerender(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" diffPoint={null} onOpenHistory={vi.fn()} onClearDiff={onClearDiff} />);
+    expect(screen.getByRole("button", { name: "変更履歴" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "差分の表示をやめる" })).toBeNull();
+  });
+
   // offline で接続の状態を出す（正常系）
   test("topbar_when_offline", () => {
     // 実行

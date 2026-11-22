@@ -253,7 +253,7 @@ describe("PreviewShell", () => {
     expect(screen.queryByRole("button", { name: /^音声入力中/ })).toBeNull();
   });
 
-  // 入力中に書き換わったら帯を出し、離れたら反映する（正常系）
+  // 入力中に書き換わったら保留し、離れたら反映する（正常系）
   test("preview_shell_when_records_changed_while_typing", async () => {
     // 準備
     const view = renderRoute("/?tab=tasks&id=T-1");
@@ -264,13 +264,13 @@ describe("PreviewShell", () => {
     // 実行
     act(() => FakeEventSource.last?.emit("changed"));
     // 検証
-    expect(await screen.findByText("更新があります。入力欄から離れると反映します。")).toBeInTheDocument();
+    await waitFor(() => expect(FakeEventSource.last).not.toBeNull());
+    expect(screen.queryByText(/更新があります/)).toBeNull();
     expect(screen.queryByText("T-2の題")).toBeNull();
     // 実行
     await userEvent.click(screen.getByRole("group", { name: "表示形式" }));
     // 検証
     expect(await screen.findByText("T-2の題")).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByText("更新があります。入力欄から離れると反映します。")).toBeNull());
     expect(screen.getByRole("textbox", { name: /T-1 へのコメント/ })).toHaveValue("途中まで");
     close();
   });

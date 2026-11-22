@@ -7,9 +7,10 @@ import json
 import re
 import socket
 import threading
+from collections import Counter
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 import yaml
@@ -245,10 +246,35 @@ SERVED_BODY = b"abc"
 
 
 class _Handler(http.server.BaseHTTPRequestHandler):
-    """/a.js は 200 で本文を、/no-content は 204 を返し、それ以外は 404 を返す手元の HTTP サーバーの処理。"""
+    """/a.js は 200 で本文を、/no-content は 204 を返し、それ以外は 404 を返す手元の HTTP サーバーの処理。
+
+    /flaky-{状態コード} は 1 回目だけその状態コード（429 は `Retry-After: 1` を付ける）で、2 回目から 200 で本文を返す。
+    /always-403 は何回でも 403 を返す。パスごとの要求の回数を `requests` に数える。
+    """
+
+    requests: ClassVar[Counter[str]] = Counter()
 
     def do_GET(self) -> None:
         """GET を受けて、パスで 200 か 404 かを決める。"""
+        self.requests[self.path] += 1
+        if self.path.startswith("/flaky-") and self.requests[self.path] == 1:
+            # 1 回目だけ一時的な失敗を返す
+            status = int(self.path.removeprefix("/flaky-"))
+            self.send_response(status)
+            if status == 429:
+                self.send_header("Retry-After", "1")
+            self.end_headers()
+            return
+        if self.path.startswith("/flaky-"):
+            # 2 回目からは取れる
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(SERVED_BODY)
+            return
+        if self.path == "/always-403":
+            # 何回でも 403
+            self.send_error(403)
+            return
         # /a.js だけが取れる
         if self.path == "/a.js":
             self.send_response(200)
@@ -298,6 +324,7 @@ def local_server(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
     # 環境のプロキシを通さずに、手元のサーバーへ届かせる
     monkeypatch.setenv("no_proxy", "127.0.0.1")
     monkeypatch.setenv("NO_PROXY", "127.0.0.1")
+    _Handler.requests.clear()
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -317,6 +344,15 @@ def closed_url(monkeypatch: pytest.MonkeyPatch) -> str:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
     return f"http://127.0.0.1:{port}/a.js"
+
+
+@pytest.fixture
+def waits(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    """取り直しの `time.sleep` を待たずに秒数を記録する差し替えにし、`random.uniform` を上限を返す差し替えにして、記録を返す。"""
+    recorded: list[float] = []
+    monkeypatch.setattr(builder.time, "sleep", recorded.append)
+    monkeypatch.setattr(builder.random, "uniform", lambda low, high: high)
+    return recorded
 
 
 def test_replace_file(tmp_path: Path) -> None:
@@ -467,22 +503,62 @@ def test_fetch_url(local_server: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "make_url",
+    ("make_url", "expected_waits"),
     [
-        pytest.param(lambda base, closed: closed, id="closed_port"),
-        pytest.param(lambda base, closed: f"{base}/missing", id="not_found"),
-        pytest.param(lambda base, closed: f"{base}/no-content", id="no_content"),
+        pytest.param(lambda base, closed: closed, [1.0, 2.0], id="closed_port"),
+        pytest.param(lambda base, closed: f"{base}/missing", [], id="not_found"),
+        pytest.param(lambda base, closed: f"{base}/no-content", [], id="no_content"),
     ],
 )
 def test_fetch_url_when_unreachable(
-    local_server: str, closed_url: str, make_url: Callable[[str, str], str]
+    local_server: str,
+    closed_url: str,
+    waits: list[float],
+    make_url: Callable[[str, str], str],
+    expected_waits: list[float],
 ) -> None:
-    """届かないか 200 以外なら DownloadFailedError にする（異常系）。"""
+    """届かないか 200 以外なら DownloadFailedError にする。届かないときだけ取り直す（異常系）。"""
     # 準備
     url = make_url(local_server, closed_url)
     # 実行・検証
     with pytest.raises(errors.DownloadFailedError, match=re.escape(url)):
         builder.fetch_url(url)
+    # 取り直したときだけ間隔を待つ（閉じたポートは 3 回の要求、404・204 は 1 回）
+    assert waits == expected_waits
+    path = url.removeprefix(local_server)
+    if path != url:
+        assert _Handler.requests[path] == 1
+
+
+@pytest.mark.parametrize(
+    ("path", "expected_waits"),
+    [
+        pytest.param("/flaky-403", [1.0], id="forbidden"),
+        pytest.param("/flaky-429", [1.0], id="too_many_requests"),
+        pytest.param("/flaky-503", [1.0], id="service_unavailable"),
+    ],
+)
+def test_fetch_url_when_transient_failure(
+    local_server: str, waits: list[float], path: str, expected_waits: list[float]
+) -> None:
+    """一時的な失敗の後に取り直して本文を返す（正常系）。"""
+    # 実行
+    body = builder.fetch_url(f"{local_server}{path}")
+    # 検証
+    assert body == SERVED_BODY
+    assert _Handler.requests[path] == 2
+    assert waits == expected_waits
+
+
+def test_fetch_url_when_retries_exhausted(local_server: str, waits: list[float]) -> None:
+    """上限まで取れなければ DownloadFailedError にする（異常系）。"""
+    # 準備
+    url = f"{local_server}/always-403"
+    # 実行・検証
+    with pytest.raises(errors.DownloadFailedError, match=re.escape(url) + r".*403"):
+        builder.fetch_url(url)
+    assert _Handler.requests["/always-403"] == 3
+    assert waits == [1.0, 2.0]
 
 
 def test_format_licenses() -> None:

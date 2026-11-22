@@ -1792,3 +1792,11 @@ files:
   description: タグの式の編集の状態ごとのストーリー。タグの式の編集の状態を確認・追加するときに参照する。
   tags:
   - tool:react
+- path: src/shared/core/post-links.test.ts
+  name: 書き込みのリンクの単体テスト
+  description: 書き込みの本文のスレッドの ID と書き込みの ID のボタンを確かめる単体テストで、post-links を修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-119
+    type: tests
