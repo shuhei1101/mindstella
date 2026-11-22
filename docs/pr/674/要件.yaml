@@ -55,6 +55,14 @@ docs:
     new: false
     change: '#635: トップバーのモックの行の「更新があります」の記載を修正する'
     status: todo
+  - page: plugins/mindstella/skills/mindmap/schemas/decisions.schema.json
+    new: false
+    change: '#161: 案の `reason` の説明を、未決定の間は推奨する理由・決まった後は採用した・しなかった理由にする'
+    status: todo
+  - page: docs/er/ER-489-1.yaml
+    new: false
+    change: '#161: 検討事項の案の説明の `reason` に、未決定の間は推奨する理由・決まった後は採用した・しなかった理由を持つ旨を記載する'
+    status: todo
 scope_out:
   - item: 過去のモック（docs/mock/pages/*/{番号}/・docs/mock/refs/）に残る「本文へ戻る」「更新があります」・Inter の指定
     reason: 過去の作業 PR で合意した案の記録で、今の画面の仕様ではない
