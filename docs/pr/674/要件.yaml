@@ -42,7 +42,9 @@ docs:
   - page: docs/nonfunctional/NFR-489-1.yaml
     new: false
     change: '#672: 配る書き出しの取得の取り直しの回数と間隔を、導出の元の値つきで記載する（取り直しを入れると決めた場合）'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-22T03:21:10.871177+00:00'
   - page: docs/mock/components/topbar/stale.html
     new: false
     change: '#635: 入力中の保留のバーのモックを、バーを出さない状態にする（削除するかを含めてモック作成で決める）'
