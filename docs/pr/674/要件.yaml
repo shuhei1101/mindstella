@@ -28,7 +28,9 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: '#635: 入力中に記録が更新されたときに「更新があります」のバーが出る旨の記載を、バーを出さずに入力欄から離れたら反映する記載にする'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-22T04:36:59.082434+00:00'
   - page: docs/design-policy.mark.md
     new: false
     change: '#637: 書体の表の見出し・本文の書体の行を、ユーザーが選んだ書体にする'
@@ -38,33 +40,27 @@ docs:
   - page: docs/architecture/ARCH-489-1.yaml
     new: false
     change: '#637: 外部システム Google Fonts の取得する書体（Inter）を、選んだ書体にする'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-22T04:36:59.082434+00:00'
   - page: docs/nonfunctional/NFR-489-1.yaml
     new: false
     change: '#672: 配る書き出しの取得の取り直しの回数と間隔を、導出の元の値つきで記載する（取り直しを入れると決めた場合）'
     status: done
     updated_by: planner
     updated_at: '2026-11-22T03:21:10.871177+00:00'
-  - page: docs/mock/components/topbar/stale.html
-    new: false
-    change: '#635: 入力中の保留のバーのモックを、バーを出さない状態にする（削除するかを含めてモック作成で決める）'
-    status: todo
-  - page: docs/mock/components/topbar/index.html
-    new: false
-    change: '#635・#184: 「更新があります」のバーを削除し、過去の差分を表示している間の変更履歴のボタンの状態を追加する'
-    status: todo
-  - page: docs/mock/components/index.md
-    new: false
-    change: '#635: トップバーのモックの行の「更新があります」の記載を修正する'
-    status: todo
   - page: plugins/mindstella/skills/mindmap/schemas/decisions.schema.json
     new: false
     change: '#161: 案の `reason` の説明を、未決定の間は推奨する理由・決まった後は採用した・しなかった理由にする'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-22T04:36:59.082434+00:00'
   - page: docs/er/ER-489-1.yaml
     new: false
     change: '#161: 検討事項の案の説明の `reason` に、未決定の間は推奨する理由・決まった後は採用した・しなかった理由を持つ旨を記載する'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-22T04:36:59.082434+00:00'
 scope_out:
   - item: 過去のモック（docs/mock/pages/*/{番号}/・docs/mock/refs/）に残る「本文へ戻る」「更新があります」・Inter の指定
     reason: 過去の作業 PR で合意した案の記録で、今の画面の仕様ではない
@@ -74,4 +70,7 @@ scope_out:
     plan: none
   - item: 取り直しを画面が読み込む mdmark（ブラウザが jsDelivr から読む分）にも入れる
     reason: '#672 の報告は配る書き出し（サーバーが取得する分）で、画面の読み込みは要望に含まれない'
+    plan: none
+  - item: トップバーの部品のモック HTML（docs/mock/components/topbar/stale.html・index.htmlと docs/mock/components/index.md の行）の「更新があります」・差分の札
+    reason: React のリポジトリではモックは Storybook のストーリーで、今回の合意は topbar.stories.tsx にある。HTML のモックは過去の作業 PR で合意した案の記録
     plan: none
