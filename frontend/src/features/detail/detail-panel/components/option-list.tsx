@@ -1,4 +1,4 @@
-// 検討事項の案のカード（採用 / 不採用と理由、採用した案が無いときは推奨の印）。差分の表示の間は前の値と今の値を並べる
+// 検討事項の案のカード（左上の記号のアイコン、採用 / 不採用と推奨のバッジ）と、採用した案が無いときに一覧の下に出す推奨の理由。差分の表示の間は前の値と今の値を並べる
 import type { ReactNode } from "react";
 
 import { KeyDiff } from "@/features/detail/detail-panel/components/key-diff";
@@ -27,33 +27,42 @@ const resultOf = (option: Option | undefined): string | null => {
   return option.adopted === false ? "不採用" : null;
 };
 
+/** 案の記号の丸いアイコン */
+const KEY_ICON_CLASS = "grid size-6 flex-none place-items-center rounded-full bg-muted font-mono text-small font-semibold text-foreground";
+
+/** 推奨・採用・不採用のバッジ */
+const BADGE_CLASS = "inline-flex flex-none items-center gap-0.5 rounded-control border px-1.5 text-xs";
+
 export type OptionListProps = { options: readonly Option[]; previous: readonly Option[] | null; marks?: Record<string, ReactNode> };
 
 export const OptionList = ({ options, previous, marks = {} }: OptionListProps) => {
   const compare = previous !== null;
   const removed = (previous ?? []).filter((entry) => !options.some((option) => option.key === entry.key));
   const decided = options.some((option) => option.adopted === true);
+  const recommendation = decided ? undefined : options.find((option) => option.recommended === true && option.reason !== undefined && option.reason !== "");
   return (
     <div className="flex flex-col gap-2">
       {options.map((option) => {
         const before = previous?.find((entry) => entry.key === option.key);
         const result = resultOf(option);
         const recommended = option.recommended === true && !decided;
-        const rows = FIELDS.map(([label, field]) => ({ label, field, value: optionText(option[field]), was: optionText(before?.[field]) })).filter(({ value, was }) => (value !== undefined && value !== "") || (compare && was !== undefined));
+        const rows = FIELDS.filter(([, field]) => !(recommended && field === "reason"))
+          .map(([label, field]) => ({ label, field, value: optionText(option[field]), was: optionText(before?.[field]) }))
+          .filter(({ value, was }) => (value !== undefined && value !== "") || (compare && was !== undefined));
         return (
           <div key={option.key} className={cn("rounded-control border border-border-soft p-2", option.adopted === true && "border-mark-line bg-mark-weak", option.adopted === false && "opacity-70")}>
             <div className="flex items-start gap-2">
-              <span className="font-mono text-small font-semibold">{option.key}</span>
+              <span aria-label={`案 ${option.key}`} className={KEY_ICON_CLASS}>{option.key}</span>
               <div data-key={`options[${option.key}].content`} className="min-w-0 flex-1">
                 {compare && before?.content !== option.content ? <KeyDiff was={before?.content ?? null} now={option.content} /> : <ValueText value={option.content} />}
               </div>
               {recommended ? (
-                <span className="inline-flex items-center gap-0.5 rounded-control border border-mark-line px-1 text-xs text-mark">
+                <span className={cn(BADGE_CLASS, "border-mark-line text-mark")}>
                   <Icon name="star" className="size-3" />
                   推奨
                 </span>
               ) : null}
-              {compare && resultOf(before) !== result ? <KeyDiff was={resultOf(before)} now={result} plain /> : result === null ? null : <span className="text-xs">{result}</span>}
+              {compare && resultOf(before) !== result ? <KeyDiff was={resultOf(before)} now={result} plain /> : result === null ? null : <span className={cn(BADGE_CLASS, option.adopted === true ? "border-mark-line bg-mark-weak text-mark" : "border-border text-muted-foreground")}>{result}</span>}
               {marks[option.key]}
             </div>
             {rows.length > 0 ? (
@@ -78,6 +87,19 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
           </del>
         </div>
       ))}
+      {recommendation === undefined ? null : (
+        <p data-key={`options[${recommendation.key}].reason`} className="flex items-start gap-1.5 text-small">
+          <span className={cn(BADGE_CLASS, "border-mark-line text-mark")}>
+            <Icon name="star" className="size-3" />
+            推奨
+          </span>
+          <span className="font-mono font-semibold">{recommendation.key}</span>
+          <span aria-hidden="true">—</span>
+          <span className="min-w-0 flex-1">
+            <ValueText value={recommendation.reason} />
+          </span>
+        </p>
+      )}
     </div>
   );
 };

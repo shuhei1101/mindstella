@@ -596,6 +596,14 @@ files:
   related:
   - to: MOD-489-170
     type: tests
+- path: src/features/detail/detail-panel/detail-panel-screen.stories.tsx
+  name: 詳細パネルの画面のストーリー
+  description: 未決定と決定済みの検討事項の詳細パネルで、案のカードの記号のアイコン・推奨と採用のバッジ・一覧の下の推奨の理由を描く。案のカードの見た目を変更するときに読む。
+  tags:
+  - tool:react
+  - tool:storybook
+  - topic:ストーリー
+  - topic:検討事項
 - path: src/features/detail/detail-panel/detail-panel.tsx
   name: 詳細パネル
   description: 詳細パネル。
@@ -612,6 +620,14 @@ files:
   related:
   - to: MOD-489-170
     type: tests
+- path: src/features/detail/diagram-viewer/diagram-viewer-screen.stories.tsx
+  name: 図の拡大の画面のストーリー
+  description: 窓の端から余白を空けて重ね、外側を押すと閉じる図の拡大を、横長の図・記法を持つ図・狭い幅で描く。図の拡大の見た目や閉じ方を変更するときに読む。
+  tags:
+  - tool:react
+  - tool:storybook
+  - topic:ストーリー
+  - topic:図
 - path: src/features/detail/diagram-viewer/diagram-viewer.tsx
   name: 図の拡大
   description: 図の拡大。

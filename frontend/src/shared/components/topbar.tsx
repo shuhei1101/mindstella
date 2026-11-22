@@ -60,8 +60,6 @@ export type TopbarProps = {
   voice?: TopbarVoice | null;
   /** 渡さないと知らせの帯を出さない */
   voiceNotice?: TopbarVoiceNotice | null;
-  /** 真のとき、画面への反映を保留している帯を出す */
-  stale?: boolean;
   onNavigate?: (key: TopbarCurrent) => void;
   onOpenSearch?: () => void;
   onThemeChange?: (theme: Theme) => void;
@@ -197,31 +195,6 @@ const ConnectionNotice = ({ readAt }: { readAt: string | null }) => {
   );
 };
 
-/** 選んだ時点の札と、差分の表示をやめる × */
-const DiffChip = ({ point, fit, onClear }: { point: DiffPoint; fit: Fit; onClear: (() => void) | undefined }) => (
-  <span
-    className={cn(
-      "inline-flex h-8 chip-width items-center gap-0.5 rounded-control bg-topbar-fg pr-0.5 pl-2.5 text-small font-semibold text-topbar-bg",
-      "max-xl:chip-width-narrow",
-      fit.offline && "max-2xl:chip-width-narrow",
-    )}
-  >
-    <span className="truncate" title={`${point.name}（${point.sub}）`}>
-      <span className="sr-only">差分の時点: </span>
-      {point.name}
-    </span>
-    <button
-      type="button"
-      aria-label="差分の表示をやめる"
-      title="差分の表示をやめる"
-      onClick={onClear}
-      className="grid size-7 flex-none cursor-pointer place-items-center rounded-control hover:bg-topbar-chip-hover"
-    >
-      <Icon name="x" />
-    </button>
-  </span>
-);
-
 /** トップバーの帯のクラス（幅ごとの要素の間隔と左右の余白） */
 const headerClass = (fit: Fit): string =>
   cn(
@@ -300,14 +273,15 @@ const SearchButton = ({ fit, onClick }: { fit: Fit; onClick: (() => void) | unde
 );
 
 /** 「変更履歴」のボタン */
-const HistoryButton = ({ fit, onClick }: { fit: Fit; onClick: () => void }) => (
+const HistoryButton = ({ fit, active, onClick }: { fit: Fit; active: boolean; onClick: () => void }) => (
   <button
     type="button"
     aria-haspopup="dialog"
-    aria-label="変更履歴"
+    aria-label={active ? "変更履歴（過去の差分を表示中）" : "変更履歴"}
     onClick={onClick}
     className={cn(
       "inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
+      active && "border-topbar-fg bg-topbar-fg font-semibold text-topbar-bg hover:bg-topbar-fg hover:text-topbar-bg",
       "max-xl:w-8 max-xl:justify-center max-xl:p-0",
       fit.offline && "max-2xl:w-8 max-2xl:justify-center max-2xl:p-0",
       iconButtonFitClass(fit),
@@ -315,6 +289,19 @@ const HistoryButton = ({ fit, onClick }: { fit: Fit; onClick: () => void }) => (
   >
     <Icon name="history" />
     <span className={cn("max-xl:hidden", fit.offline && "max-2xl:hidden")}>変更履歴</span>
+  </button>
+);
+
+/** 差分の表示をやめる × */
+const ClearDiffButton = ({ fit, onClick }: { fit: Fit; onClick: (() => void) | undefined }) => (
+  <button
+    type="button"
+    aria-label="差分の表示をやめる"
+    title="差分の表示をやめる"
+    onClick={onClick}
+    className={cn("grid size-8 flex-none cursor-pointer place-items-center rounded-control text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg", iconButtonFitClass(fit))}
+  >
+    <Icon name="x" />
   </button>
 );
 
@@ -491,14 +478,6 @@ const VoiceNoticeBand = ({ notice, onOpen, onDismiss }: { notice: TopbarVoiceNot
   </div>
 );
 
-/** 「更新があります」の帯（押せない。閉じるボタンも持たない） */
-const StaleBand = () => (
-  <div role="status" className="flex items-center gap-2 border-b border-border bg-muted py-1 pr-1 pl-5 text-small text-foreground max-sm:pl-2.5">
-    <span aria-hidden="true" className="size-2 flex-none rounded-full bg-mark" />
-    <span className="min-w-0 flex-1 wrap-anywhere">更新があります。入力欄から離れると反映します。</span>
-  </div>
-);
-
 /** ライト / ダークの切り替え */
 const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChange: ((theme: Theme) => void) | undefined }) => {
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
@@ -562,7 +541,6 @@ export const Topbar = (props: TopbarProps) => {
     pendingBlocked = false,
     voice = null,
     voiceNotice = null,
-    stale = false,
     duplicateIds = [],
     onOpenHistory,
     onToggleSettings,
@@ -578,8 +556,8 @@ export const Topbar = (props: TopbarProps) => {
         <span className={cn("flex-1", comments && "basis-0", diffSqueezeClass(fit))} />
         {fit.offline ? <ConnectionNotice readAt={readAt} /> : null}
         <SearchButton fit={fit} onClick={props.onOpenSearch} />
-        {onOpenHistory === undefined ? null : <HistoryButton fit={fit} onClick={onOpenHistory} />}
-        {diffPoint === null ? null : <DiffChip point={diffPoint} fit={fit} onClear={props.onClearDiff} />}
+        {onOpenHistory === undefined ? null : <HistoryButton fit={fit} active={diffPoint !== null} onClick={onOpenHistory} />}
+        {diffPoint === null ? null : <ClearDiffButton fit={fit} onClick={props.onClearDiff} />}
         {comments ? <span className={cn("flex-1 basis-0", diffSqueezeClass(fit))} /> : null}
         {onToggleSettings === undefined ? null : <SettingsButton fit={fit} open={settingsOpen} onClick={onToggleSettings} />}
         {filter ? <FilterButton fit={fit} count={filterCount} open={filterOpen} onClick={props.onToggleFilter} /> : null}
@@ -593,7 +571,6 @@ export const Topbar = (props: TopbarProps) => {
         <ThemeButton fit={fit} theme={theme} onChange={props.onThemeChange} />
       </header>
       {voiceNotice === null ? null : <VoiceNoticeBand notice={voiceNotice} onOpen={props.onOpenVoice} onDismiss={props.onDismissVoiceNotice} />}
-      {stale ? <StaleBand /> : null}
       <TabBar tabs={tabs} current={current} onNavigate={props.onNavigate} />
       <DuplicateIdNotice ids={duplicateIds} onOpen={props.onOpenDuplicate} onClose={props.onCloseDuplicate} />
     </div>

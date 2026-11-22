@@ -1,9 +1,8 @@
-// 図の拡大（画面設計『図の拡大.tsx』）。ホイールで拡大・縮小し、背景のドラッグで動かす。Raw で記法を出し、差分の表示の間は詳細パネルと同じ色・凡例・行の差分を出す
+// 図の拡大（画面設計『図の拡大.tsx』）。窓の端から余白を空けて重ね、外側を押すか Esc で閉じる。ホイールで拡大・縮小し、背景のドラッグで動かす。Raw で記法を出し、差分の表示の間は詳細パネルと同じ色・凡例・行の差分を出す
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 
 import { useLibrary } from "@/shared/adapters/libraries";
 import { DomHost } from "@/shared/components/dom-host";
-import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/components/ui/dialog";
 import { rawDiffLines } from "@/shared/core/body-render";
@@ -14,7 +13,7 @@ import { cn } from "@/shared/lib/cn";
 const SCALE = { min: 0.2, max: 6, button: 1.25, wheel: 1.12, fitMax: 3 };
 
 /** 開いたときに図の周りに空ける余白（px） */
-const FIT_MARGIN = 64;
+const FIT_MARGIN = 16;
 
 /** 図の文字・ボタンの上では、ドラッグの代わりに選択とクリックを受ける */
 const NO_DRAG_SELECTOR = "button, text, foreignObject, .nodeLabel, .edgeLabel, .label";
@@ -115,7 +114,7 @@ export const DiagramViewer = ({ svg, source = null, beforeSource = null, notes =
         if (!open) onClose();
       }}
     >
-      <DialogContent className={cn("flex h-full max-w-none flex-col gap-2", framed && "df-frame")}>
+      <DialogContent className={cn("inset-6 flex size-auto max-h-none max-w-none translate-none flex-col gap-2", framed && "df-frame")}>
         <DialogTitle className="sr-only">図の拡大</DialogTitle>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" aria-label="縮小" onClick={() => { centerZoom(1 / SCALE.button); }}>
@@ -130,10 +129,6 @@ export const DiagramViewer = ({ svg, source = null, beforeSource = null, notes =
               Raw
             </Button>
           )}
-          <Button variant="ghost" aria-label="本文へ戻る" className={cn(source === null && "ml-auto")} onClick={onClose}>
-            <Icon name="back" />
-            <span className="max-xs:hidden">本文へ戻る</span>
-          </Button>
         </div>
         {/* 背景のドラッグはポインターの操作で、拡大と Raw のボタンがキーボードの手段になる */}
         { }

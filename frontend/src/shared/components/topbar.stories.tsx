@@ -84,7 +84,7 @@ export const OfflineNarrow: Story = {
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
 
-/** 変更履歴で「前回開いてから」を選んだ間。「変更履歴」の右に札と ×、検討事項・資料のタブに点 */
+/** 変更履歴で「前回開いてから」を選んだ間。「変更履歴」のボタンを塗りにして右に × だけを置き、選んだ時点の名前は出さない。検討事項・資料のタブに点 */
 export const DiffOn: Story = {
   args: {
     diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
@@ -103,7 +103,7 @@ export const DiffOn: Story = {
   },
 };
 
-/** 幅 390px のサーバーの配信で、差分の表示の間。「変更履歴」とコメントのボタンをアイコン（コメントは件数も）だけにし、札の名前の末尾を省略して、コメントのボタンと × を押し出さずに収める */
+/** 幅 390px のサーバーの配信で、差分の表示の間。「変更履歴」とコメントのボタンをアイコン（コメントは件数も）だけにし、塗りの「変更履歴」のボタンと × を押し出さずに収める */
 export const DiffOnNarrow: Story = {
   args: {
     diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
@@ -570,27 +570,6 @@ export const VoiceDiscarded: Story = { args: { comments: true, commentCount: 3, 
 
 /** 入力欄が画面に無い間に、レビュー中への追加に失敗した。帯に理由と「入力欄を開く」を出す */
 export const VoiceFailed: Story = { args: { comments: true, commentCount: 3, voiceNotice: { kind: "failed", text: "D-022 へのコメントをレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。" }, onOpenVoice: fn(), onDismissVoiceNotice: fn() } };
-
-/** 入力中に記録が書き換わり、反映を保留している。トップバーの下に「更新があります」の帯を出す */
-export const Stale: Story = { args: { stale: true } };
-
-/** 幅 390px の保留中。帯の文言を省かずに折り返す */
-export const StaleNarrow: Story = {
-  args: { stale: true },
-  parameters: {
-    layout: "fullscreen",
-    viewport: {
-      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
-    },
-  },
-  globals: { viewport: { value: "narrow", isRotated: false } },
-};
-
-/** 録音中に記録が書き換わり、反映を保留している。音声入力中の表示と帯を並べて出す */
-export const StaleVoiceRecording: Story = { args: { comments: true, commentCount: 3, stale: true, voice: { state: "recording", label: "D-022 へのコメント", elapsed: 12 }, onOpenVoice: fn() } };
-
-/** 音声入力の知らせと保留が同時にある。音声入力の知らせの帯の下に「更新があります」の帯を出す */
-export const StaleWithVoiceNotice: Story = { args: { comments: true, commentCount: 3, stale: true, voiceNotice: { kind: "discarded", text: "D-022 が削除されたため、録音を破棄しました。" }, onOpenVoice: fn(), onDismissVoiceNotice: fn() } };
 
 /** 重なった ID の通知を出している。タブの帯の下に帯を出し、本文を下げる */
 export const DuplicateIds: Story = {
