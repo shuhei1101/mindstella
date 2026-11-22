@@ -40,12 +40,13 @@ type ButtonProps = Omit<ComponentProps<typeof BaseButton>, "className"> &
 const useSpinnerShown = (pending: boolean): boolean => {
   const [shown, setShown] = useState(false);
   useEffect(() => {
-    if (!pending) {
-      setShown(false);
-      return undefined;
-    }
+    if (!pending) return undefined;
     const timer = window.setTimeout(() => { setShown(true); }, PENDING_SPINNER_DELAY_MS);
-    return () => { window.clearTimeout(timer); };
+    // 待つ間が終わったら、次に待つときに 1 秒を数え直す
+    return () => {
+      window.clearTimeout(timer);
+      setShown(false);
+    };
   }, [pending]);
   return pending && shown;
 };
