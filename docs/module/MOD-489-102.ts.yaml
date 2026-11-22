@@ -31,7 +31,7 @@ functions:
     title: 本文のマーカーと項目のリンク
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 用語・資料・調査の語にマーカーを付け、項目の ID をリンクにする。項目の ID のリンクには `title` を付けず、`attachTermTips` が種類 `item` のツールチップを出す
+    summary: 用語・資料・調査の語にマーカーを付け、項目の ID と記録にあるスレッド・書き込みの ID をリンクにする。差分を描いた本文にも同じく付け、削除した行の中はリンクにしない。項目の ID のリンクには `title` を付けず、`attachTermTips` が種類 `item` のツールチップを出す
     args:
       - name: root
         type: HTMLElement
@@ -45,6 +45,15 @@ functions:
         type: '(id: string) => void'
         required: true
         description: 項目へ移る
+      - name: threads
+        type: LookupThread | null
+        required: false
+        default: 'null'
+        description: スレッドの ID からタイトルと書き込みの ID の並びを参照する。`null`（配る書き出し）のときはスレッドの ID を文字のままにする
+      - name: onOpenThread
+        type: '(threadId: string, postId: string | null) => void'
+        required: false
+        description: スレッドの ID・書き込みの ID のリンクを押したとき
     returns:
       type: void
       description: なし
@@ -55,12 +64,24 @@ functions:
         condition: '`D-1` を含む本文'
         mock: なし
         expected: D-1 のリンクを押すと `onOpen('D-1')`
+      - name: test_link_body_when_thread_ids
+        case: 正常
+        summary: スレッドの ID と書き込みの ID をリンクにする
+        condition: '`TH-1`・`TH-1-2`・`TH-99` を含む本文、`threads` は TH-1（書き込み TH-1-1・TH-1-2）だけ'
+        mock: なし
+        expected: TH-1・TH-1-2 がリンクで TH-99 は文字のまま。押すと `onOpenThread('TH-1', null)`・`onOpenThread('TH-1', 'TH-1-2')`
+      - name: test_link_body_when_diff
+        case: 正常
+        summary: 差分を描いた本文にもリンクとマーカーを付ける
+        condition: '`renderMarkdown` に `options.base` を指定して描いた、追加した行に `D-1` と用語、削除した行に `D-2` を含む本文'
+        mock: なし
+        expected: 追加した行の D-1 がリンクで用語にマーカーが付き、削除した行の D-2 はリンクにならない
     container: frontend/src/shared/core/body-links.ts
   - name: renderMarkdown
     title: 本文を描く
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: '本文の Markdown を mdmark で描いた要素にする。（処理 6 のコードブロックの `pre` のフォーカスの属性と、`options.table` による表の機能の指定を含む）。`config.features` は `MDMARK_FEATURES` の値（`options.table` が偽でなければ `table` だけオン）、`config.map` は『libraries』の `mdmarkMapConfig()`。`MDMARK_FEATURES` は `print` をオンにする。`options.base` を指定すると mdmark の `baseMarkdown` に渡し、`options.diffSource` を指定すると、選んだ時点と今の 2 つのリビジョンを返す取り出し元と `diffMode: "open"`・`docId`（項目の ID）を渡す'
+    summary: '本文の Markdown を mdmark で描いた要素にする（コピーのボタンの文言は `mount` の設定 `labels.paramCopy` に指定し、描いた後に書き換えない）。（処理 6 のコードブロックの `pre` のフォーカスの属性と、`options.table` による表の機能の指定を含む）。`config.features` は `MDMARK_FEATURES` の値（`options.table` が偽でなければ `table` だけオン）、`config.map` は『libraries』の `mdmarkMapConfig()`。`MDMARK_FEATURES` は `print` をオンにする。`options.base` を指定すると mdmark の `baseMarkdown` に渡し、`options.diffSource` を指定すると、選んだ時点と今の 2 つのリビジョンを返す取り出し元と `diffMode: "open"`・`docId`（項目の ID）を渡す'
     args:
       - name: source
         type: string
