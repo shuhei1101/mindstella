@@ -7,10 +7,6 @@ elements:
     description: mermaid で描いた図。ホイールで拡大・縮小し、背景のドラッグで動かす。図の文字は選んでコピーできる（文字の上のドラッグは動かさずに選ぶ）
     io: 表示
     source: 詳細パネルの本文の図
-  - name: 閉じる
-    kind: button
-    description: 図の拡大を閉じ、開いた元（詳細パネルか詳細の全画面の本文）に戻る。Esc でも閉じる。幅 389px 以下では文字を隠してマーカー（‹）だけのボタンにし、上の帯を 1 行に保つ（読み上げの名前は「本文へ戻る」のまま）
-    label: 本文へ戻る
   - name: 図の差分
     kind: label
     description: 詳細パネルの図の差分と同じ色を付け、窓の下端に凡例と「削除したもの」の札を並べる
@@ -28,9 +24,19 @@ elements:
     visible_when: Raw を押している間
     reason: 非機能要件の入力方式（全ての操作にキーボードで届く）を満たすため
     status: implemented
+  - name: 外側の幕
+    kind: region
+    description: 図の拡大の外側のグレーアウト。押すと図の拡大を閉じ、開いた元（詳細パネルか詳細の全画面の本文）へ戻して、図の拡大を開いた要素へフォーカスを戻す。Esc でも同じく閉じる。「本文へ戻る」のボタンは配置しない
+    io: 入力
+    visible_when: 常時
+    action: 図の拡大を閉じる
+  - name: 図の拡大の窓
+    kind: dialog
+    description: 窓の端から全周 24px の余白を空けて重ねる枠。上部のバーに Raw、その下に図か記法を出す。図は枠の内側に余白 16px で収める。幅 390px でも余白は同じ 24px で、外側の幕を押せる
+    io: 表示
+    visible_when: 常時
 lead: 本文の図を大きく見る。詳細パネルからはモーダルで開き、詳細の全画面からは全画面の中身を切り替える。
-notes:
-  幅 320px のモック: 幅 389px 以下で「本文へ戻る」をマーカーだけにする見本は `docs/mock/pages/diagram-viewer/289/a-icon-back/index.html`
 test_file: tests/integration/preview/test_spa_diagram_viewer_screen.py
 refs:
   - IF-489-70#
+mock: frontend/src/features/detail/diagram-viewer/diagram-viewer-screen.stories.tsx
