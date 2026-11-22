@@ -1,0 +1,103 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 詳細パネルで読んだ項目を確認済みにする流れを削除し、詳細パネルの幅を指でつかんで変えられるようにする（#675・#676）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-36.yaml
+    impact: changed
+    detail: 設定の更新で図の種類（mdmark.map の kinds・lines）を書き換えられるようにし、確認済みの削除に合わせてコメントの送信で確認済みにするかの設定の扱いを決める（#651・#675）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: changed
+    detail: 絞り込みのドロワーでの絞り込みと並べ替えの変更を 1 つずつ履歴に残し、戻る操作で 1 つずつ前の条件へ戻す（#650）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-6.yaml
+    impact: changed
+    detail: ボードのカードの無い所をドラッグして横にスクロールする（#669）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: following
+    detail: コメントの一覧の状態のタブの選択中の見分けと未読のマーカーの見た目の変更（#671）に追随する
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: following
+    detail: 確認済みの削除（#675）に合わせ、コメントを送信したときに項目を確認済みにする記述に追随する
+    depends_on:
+      - docs/scenario/SC-489-36.yaml
+docs:
+  - page: docs/guide/変更履歴.md
+    new: false
+    change: docs/guide/変更履歴.mark.md へ改名し、公開 URL を保つ permalink を docs/_config.yml に足す（#622）
+    status: todo
+  - page: docs/_config.yml
+    new: false
+    change: 変更履歴.mark.md の permalink を /guide/変更履歴.html にする（#622）
+    status: todo
+  - page: docs/guide/files.yml
+    new: false
+    change: 変更履歴の行のパスを .mark.md にする（#622）
+    status: todo
+  - page: docs/guide/index.yaml
+    new: false
+    change: 変更履歴の行のパスを .mark.md にする（#622）
+    status: todo
+  - page: docs/_theme/_data/nav.project.yml
+    new: false
+    change: 変更履歴のリンクを改名後のページに合わせる（#622）
+    status: todo
+  - page: docs/guide/README.md
+    new: false
+    change: 変更履歴へのリンクを .mark.md にする（#622）
+    status: todo
+  - page: docs/guide/はじめに.md
+    new: false
+    change: 変更履歴へのリンクを .mark.md にする（#622）
+    status: todo
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: 変更履歴へのリンクを .mark.md にする（#622）
+    status: todo
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: 変更履歴へのリンクを .mark.md にする（#622）。update_settings の書き換えられるキーに mdmark.map を足す（#651）
+    status: todo
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: 変更履歴へのリンクを .mark.md にする（#622）。設定の mdmark.map を update_settings が書くことと、確認済みのキーの扱いを合わせる（#651・#675）
+    status: todo
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 詳細パネルの確認済みのボタンの説明を削除し、ボードのドラッグのスクロール・ドロワーの絞り込みの戻る操作に合わせる（#650・#669・#675）
+    status: todo
+  - page: docs/test-procedure/TP-489-1.yaml
+    new: false
+    change: 非機能要件テストの層（tests/nfr/）と実行コマンドの節を足す（#494）
+    status: todo
+  - page: docs/nonfunctional/NFR-489-1.yaml
+    new: false
+    change: NFR-26 の確認方法に tests/nfr/test_record_operation_time.py を書く（#494）
+    status: todo
+  - page: docs/library/LIB-489-13.yaml
+    new: false
+    change: 表の既定のピン止め（table.pin_default）をどう指定するかを書く（#639）
+    status: todo
+scope_out:
+  - item: 狭い幅でも列の数が減らずカードが横に縮む事象（#671 の No 5）
+    reason: '概要のページの分は起票済みで、#671 の終了の条件に含まれない。ほかのカードの一覧も同じかの確認は #662 で行う'
+    plan: '#662'
+  - item: dev-docs の画面の表の既定のピン止めへの追従（#639）
+    reason: dev-docs は別のリポジトリで、この作業 PR では変更できない。MindStella の画面で決めた扱いを添えて dev-docs へ起票するかをレビューで決める
+    plan: to_file
+  - item: React への置き換えの前の画面との機能の突き合わせ（#669 の参考）
+    reason: 要望はボードのドラッグのスクロールで、機能の突き合わせは終了の条件に含まれない。含めるかをレビューで決める
+    plan: to_file
+  - item: 検討事項の推奨の案に枠線の色を付ける
+    reason: 利用者が変えないと決めた（#671 の TH-1531。採用した案と見分けが付かなくなる）
+    plan: none
