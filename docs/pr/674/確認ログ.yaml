@@ -5,3 +5,9 @@ confirmations:
     approver: shuhei1101
     commit:
     thread: https://github.com/shuhei1101/mindstella/pull/674#discussion_r4654880934
+  - topic: 図の拡大（#152）の窓の端からの余白
+    decision: 窓の端から 24px（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/674#discussion_r4656203132
