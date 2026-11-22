@@ -32,7 +32,7 @@ export const buttonVariants = cva(
 type ButtonProps = Omit<ComponentProps<typeof BaseButton>, "className"> &
   VariantProps<typeof buttonVariants> & {
     className?: string;
-    /** 書き込みの応答を待つ間か。真の間は押せなくし、1 秒を超えたら中身を見えなくして回るマーカーを重ねる（中身は残すので幅を変えない） */
+    /** 書き込みの応答を待つ間か。真の間は押せなくし、1 秒を超えたら中身を透明にして回るマーカーを重ねる（中身は残すので幅とボタンの名前を変えない） */
     pending?: boolean;
   };
 
@@ -63,7 +63,7 @@ export const Button = ({ className, variant, size, pending = false, disabled, ch
     >
       {pending ? (
         <>
-          <span className={cn("inline-flex items-center gap-1.5", spinner && "invisible")}>{children}</span>
+          <span className={cn("inline-flex items-center gap-1.5", spinner && "opacity-0")}>{children}</span>
           {spinner ? (
             <span data-part="pending-spinner" aria-hidden="true" className="absolute inset-0 flex items-center justify-center">
               <Icon name="spin" className="animate-spin" />

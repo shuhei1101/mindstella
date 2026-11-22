@@ -202,12 +202,8 @@ export const VoiceButtons = ({ voice, voiceReason, submit, doneRef, onStart, onC
 /** 結果の印と文言 */
 const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status: SendStatus; count: number | null; detail: string | null; showSpinner: boolean; onCopy: () => void }) => {
   if (status === "saving") {
-    return showSpinner ? (
-      <>
-        <Icon name="spin" className="animate-spin" />
-        <span>レビューに追加しています</span>
-      </>
-    ) : null;
+    // 回るマーカーは「レビューに追加」に重ねるので、結果の行は文言だけ
+    return showSpinner ? <span>レビューに追加しています</span> : null;
   }
   if (status === "saved") {
     return (

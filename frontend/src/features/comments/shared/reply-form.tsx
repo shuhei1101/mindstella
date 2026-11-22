@@ -29,12 +29,8 @@ export type ReplyFormProps = VoiceProps & {
 
 const ReplyResult = ({ status, count, detail }: { status: ReplyStatus; count: number | null; detail: string | null }) => {
   if (status === "saving") {
-    return (
-      <>
-        <Icon name="spin" className="animate-spin" />
-        <span>レビューに追加しています</span>
-      </>
-    );
+    // 回るマーカーは「レビューに追加」に重ねるので、結果の行は文言だけ
+    return <span>レビューに追加しています</span>;
   }
   if (status === "saved") {
     return (
