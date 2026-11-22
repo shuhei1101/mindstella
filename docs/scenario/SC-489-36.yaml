@@ -268,8 +268,8 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 書き換える設定
-        description: 図の種類を、ノードの種類の 1 つが mdmark の設定のスキーマに無いキーを持つ値にして渡す
-        notes: '`kinds: {question: {shape: 木}}`（`shape` に無い値）'
+        description: 図の種類を、ノードの種類の 1 つの `shape` が mdmark の設定のスキーマに無い値の図の種類にして渡す
+        notes: '`kinds: {question: {shape: 木}}`（`shape` は `rounded`・`rect`・`pill`・`double` のどれか）'
     flow: |-
       ```mermaid
       sequenceDiagram
