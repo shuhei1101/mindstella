@@ -30,7 +30,7 @@ describe("SettingsConfirm", () => {
     // 実行
     await userEvent.keyboard("{Escape}");
     // 検証
-    expect(screen.getByRole("button", { name: /保存しています/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "保存する" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "取り消す" })).toBeDisabled();
     expect(onCancel).not.toHaveBeenCalled();
   });
