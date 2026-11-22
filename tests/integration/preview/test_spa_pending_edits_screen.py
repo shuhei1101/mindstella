@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from playwright.sync_api import Locator, Page, Route, expect
-from preview_edit_helpers import edit_edits, edit_items
+from preview_edit_helpers import edit_edits, edit_items, read_items_file
 from preview_fixture_types import WriteReviewPreview
 from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import assert_below_topbar, open_spa
 
 import pytest
-from workspace_fixtures import MakeEdit, MakeItem
+import yaml
+from workspace_fixtures import RECORD_DIR, MakeEdit, MakeItem
 
 # まとめて保存を断る応答の本文
 BLOCKED_BODY = '{"type":"about:blank","title":"Conflict","status":409,"detail":"書き込めません","blocked":[{"id":"%s","reason":"invalid","detail":"書き込めない理由","refs":[]}]}'
@@ -173,10 +176,11 @@ def test_save_enabled(page: Page, write_edit_preview: WriteReviewPreview, make_i
     expect(_panel(page).get_by_role("button", name="まとめて保存する")).to_be_disabled()
 
 
-def test_save_disabled_while_sending(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
-    """保存を待つ間にもう一度押しても要求は 1 回で、文言を替えずに押せなくし、1 秒を超えると回るマーカーを出す（正常系）。"""
+def test_normal_when_pressed_again_while_saving(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
+    """保存を待つ間にもう一度押しても保存は 1 回で、文言を替えずに押せなくし、1 秒を超えると回るマーカーを出す（正常系）。"""
     # 準備
-    url, _ = write_edit_preview(make_item("D-1"), edits=(make_edit("E-1", target="D-1", key="title", value="D-1の新しい題", before="D-1の題"),))
+    url, root = write_edit_preview(make_item("D-1"), edits=(make_edit("E-1", target="D-1", key="answer", value="案 A にする", before=None),))
+    sets_before = len(_change_sets(root))
     open_spa(page, url, "?tab=decisions&panel=pending")
     held = hold_requests(page, "**/api/edits/save", "POST")
     button = _panel(page).get_by_role("button", name="まとめて保存する")
@@ -189,6 +193,15 @@ def test_save_disabled_while_sending(page: Page, write_edit_preview: WriteReview
     expect(button).to_have_text("まとめて保存する")
     held.release()
     expect(page.get_by_role("status").filter(has_text="件を保存しました。")).to_have_text("1 件を保存しました。")
+    assert next(item for item in read_items_file(root, "decisions.yaml") if item["id"] == "D-1")["answer"] == "案 A にする"
+    assert len(_change_sets(root)) == sets_before + 1
+
+
+def _change_sets(root: Path) -> list[dict[str, object]]:
+    """ワークスペースの changes.yaml の変更の回の並び（無ければ空）。"""
+    path = root / RECORD_DIR / "changes.yaml"
+    return yaml.safe_load(path.read_text(encoding="utf-8"))["sets"] if path.is_file() else []
+
 
 def test_saved_notice_label(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
     """全て書けたら「{n} 件を保存しました。」を status で出し、パネルを閉じる（正常系）。"""

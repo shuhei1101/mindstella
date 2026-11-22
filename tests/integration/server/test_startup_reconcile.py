@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 
+from claude_pane_fixtures import started_at
 from session_fixtures import SessionWorld, wait_until
 from workspace_fixtures import REPO_ROOT, UNREACHABLE_PROJECT_INDEX_PORT
 
@@ -81,7 +82,8 @@ def test_normal(session_world: SessionWorld, webhook: FakeWebhook) -> None:
     # A は同じ tmux のサーバーで動き続けている（ペインとその子プロセスがある）
     started = world.tmux("new-session", "-d", "-s", alive_id, "sleep", "600")
     assert started.returncode == 0, started.stderr
-    world.write_session(alive_id, status="running")
+    pane_pid = int(world.tmux("display-message", "-p", "-t", f"{alive_id}:0.0", "#{pane_pid}").stdout.strip())
+    world.write_session(alive_id, status="running", pid=pane_pid, pid_started_at=started_at(pane_pid))
     world.write_session(dead_id, status="running")
     # 実行
     server = world.start(_webhook_env(world, webhook))
