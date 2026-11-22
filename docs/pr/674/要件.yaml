@@ -32,7 +32,9 @@ docs:
   - page: docs/design-policy.mark.md
     new: false
     change: '#637: 書体の表の見出し・本文の書体の行を、ユーザーが選んだ書体にする'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-22T02:01:16.101651+00:00'
   - page: docs/architecture/ARCH-489-1.yaml
     new: false
     change: '#637: 外部システム Google Fonts の取得する書体（Inter）を、選んだ書体にする'

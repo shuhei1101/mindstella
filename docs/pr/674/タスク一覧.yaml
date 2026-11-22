@@ -25,7 +25,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-21T20:14:08.264623+00:00'
   - process: デザインスタイル選定
-    status: todo
+    status: done
+    note: 書体を IBM Plex Sans JP にした（確認ログ）。画面全体のスタイルは shadcn-swiss-cards のまま
+    updated_by: planner
+    updated_at: '2026-11-22T02:01:14.067186+00:00'
   - process: 画面一覧・画面遷移
     status: skipped
     reason: '判定フローチャート『モック要否』: 画面の追加・削除と画面遷移の変更が無い（Q2 NO）'
