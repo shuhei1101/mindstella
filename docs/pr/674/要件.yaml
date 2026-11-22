@@ -7,7 +7,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-12.yaml
     impact: changed
-    detail: 入力中に記録が更新されても保留を知らせるバーを出さず、入力欄から離れたら反映する。過去の差分を表示している間は変更履歴のボタンの色で分かる
+    detail: 入力中に記録が更新されても保留を知らせるバーを出さず、入力欄から離れたら反映する。過去の差分を表示している間は変更履歴のボタンの右上のオレンジの点で分かる
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-45.yaml
