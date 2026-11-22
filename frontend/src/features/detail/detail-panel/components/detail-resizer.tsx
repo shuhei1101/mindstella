@@ -29,8 +29,8 @@ export const DetailResizer = ({ width, onChange }: DetailResizerProps) => {
       aria-valuemax={panelWidthMax(window.innerWidth)}
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
-      // 見た目の線は 4px のまま、指でつかめるよう線を中心に 44px のタップ領域を持たせる
-      className={cn("absolute inset-y-0 -left-5.5 z-10 w-11 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-5 before:w-1 max-lg:hidden", active ? "before:bg-mark" : "hover:before:bg-mark-line")}
+      // 見た目の線は 4px のまま、指の端末だけ線を中心に 44px のタップ領域を持たせる（マウスの端末は本文のスクロールバーに重ねない）
+      className={cn("absolute inset-y-0 left-0 w-1 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-0 before:w-1 max-lg:hidden pointer-coarse:-left-5.5 pointer-coarse:z-10 pointer-coarse:w-11 pointer-coarse:before:left-5", active ? "before:bg-mark" : "hover:before:bg-mark-line")}
       onPointerDown={(event) => {
         drag.current = { startX: event.clientX, startWidth: width };
         event.currentTarget.setPointerCapture(event.pointerId);
