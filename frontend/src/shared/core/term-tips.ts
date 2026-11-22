@@ -178,6 +178,10 @@ export const termTip = ({ entries, anchor, pinned = false, on }: TermTipProps): 
   requestAnimationFrame(() => {
     if (tip.matches(":popover-open")) place();
   });
+  // 開いた後に書体を読み終えると印の位置が動くので、開いている間なら置き直す
+  void document.fonts.ready.then(() => {
+    if (tip.matches(":popover-open")) place();
+  });
 
   // 中の項目のリンクは、その項目へ移る
   tip.addEventListener("click", (event) => {
