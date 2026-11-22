@@ -69,7 +69,7 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
               {marks[option.key]}
             </div>
             {rows.length > 0 ? (
-              <dl className="mt-1 grid grid-cols-meta gap-x-2 text-small">
+              <dl className="mt-1 grid grid-cols-meta items-baseline gap-x-2 text-small">
                 {rows.map(({ label, field, value, was }) => (
                   <div key={field} className="contents">
                     <dt className="text-muted-foreground">{label}</dt>
@@ -91,7 +91,7 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
         </div>
       ))}
       {recommendation === undefined ? null : (
-        <p data-key={`options[${recommendation.key}].reason`} className="flex items-start gap-1.5 text-small">
+        <p data-key={`options[${recommendation.key}].reason`} className="flex items-baseline gap-1.5 text-small">
           <span className="flex-none text-muted-foreground">{`${recommendation.key} を推奨する理由`}</span>
           <span className="min-w-0 flex-1">
             <ValueText value={recommendation.reason} />
