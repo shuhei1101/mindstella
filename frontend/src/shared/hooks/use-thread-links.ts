@@ -1,6 +1,6 @@
 // 本文と書き込みのスレッドの ID のリンクに渡す、スレッドの引き方と開き方
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { type LookupThread, type OpenThread, revealPost, threadLookupOf } from "@/shared/core/thread-ids";
 import { threadsQuery } from "@/shared/hooks/preview-queries";
@@ -15,7 +15,9 @@ export const useThreadLinks = (): { threads: LookupThread | null; onOpenThread: 
   const threads = useMemo(() => (list === undefined ? null : threadLookupOf(list)), [list]);
   // 開き方は描くたびに替わるので、本文を描き直さないよう最新の開き方を参照する関数を 1 つに保つ
   const open = useRef(openThread);
-  open.current = openThread;
+  useEffect(() => {
+    open.current = openThread;
+  }, [openThread]);
   const onOpenThread = useCallback<OpenThread>((threadId, postId) => {
     open.current(threadId);
     if (postId !== null) requestAnimationFrame(() => { revealPost(postId); });
