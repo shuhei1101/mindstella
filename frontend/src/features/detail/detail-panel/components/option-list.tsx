@@ -1,4 +1,4 @@
-// 検討事項の案のカード（左上の記号のアイコン、採用 / 不採用と推奨のバッジ）と、採用した案が無いときに一覧の下に出す推奨する理由。差分の表示の間は前の値と今の値を並べる
+// 検討事項の案のカード（左上の記号のアイコン、採用 / 不採用と推奨のバッジ。採用した案が無いときは推奨の案の理由を「推奨理由」の欄に出す）。差分の表示の間は前の値と今の値を並べる
 import type { ReactNode } from "react";
 
 import { KeyDiff } from "@/features/detail/detail-panel/components/key-diff";
@@ -39,15 +39,13 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
   const compare = previous !== null;
   const removed = (previous ?? []).filter((entry) => !options.some((option) => option.key === entry.key));
   const decided = options.some((option) => option.adopted === true);
-  const recommendation = decided ? undefined : options.find((option) => option.recommended === true && option.reason !== undefined && option.reason !== "");
   return (
     <div className="flex flex-col gap-2">
       {options.map((option) => {
         const before = previous?.find((entry) => entry.key === option.key);
         const result = resultOf(option);
         const recommended = option.recommended === true && !decided;
-        const rows = FIELDS.filter(([, field]) => !(recommended && field === "reason"))
-          .map(([label, field]) => ({ label, field, value: optionText(option[field]), was: optionText(before?.[field]) }))
+        const rows = FIELDS.map(([label, field]) => ({ label: recommended && field === "reason" ? "推奨理由" : label, field, value: optionText(option[field]), was: optionText(before?.[field]) }))
           .filter(({ value, was }) => (value !== undefined && value !== "") || (compare && was !== undefined));
         return (
           <div key={option.key} className={cn("rounded-control border border-border-soft p-2", option.adopted === true && "border-mark-line bg-mark-weak")}>
@@ -90,14 +88,6 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
           </del>
         </div>
       ))}
-      {recommendation === undefined ? null : (
-        <p data-key={`options[${recommendation.key}].reason`} className="flex items-baseline gap-1.5 text-small">
-          <span className="flex-none text-muted-foreground">{`${recommendation.key} を推奨する理由`}</span>
-          <span className="min-w-0 flex-1">
-            <ValueText value={recommendation.reason} />
-          </span>
-        </p>
-      )}
     </div>
   );
 };
