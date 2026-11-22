@@ -74,3 +74,6 @@ scope_out:
   - item: トップバーの部品のモック HTML（docs/mock/components/topbar/stale.html・index.htmlと docs/mock/components/index.md の行）の「更新があります」・差分の札
     reason: React のリポジトリではモックは Storybook のストーリーで、今回の合意は topbar.stories.tsx にある。HTML のモックは過去の作業 PR で合意した案の記録
     plan: none
+  - item: tests/integration/storybook_react/test_markdown_body_stories.py の表の 4 件（test_mdmark_table・test_pinned_columns・test_opaque_background・test_table_in_diff）の fail
+    reason: mdmark の develop の表が既定で列を留めなくなった変更によるもので、develop（6140e3b2）でも同じ 4 件が fail する。今回の要望に含まれない
+    plan: '#639'
