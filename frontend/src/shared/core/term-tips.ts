@@ -102,9 +102,12 @@ const itemContent = ({ item, itemKind }: { item: Item; itemKind: Kind }): HTMLEl
   ];
 };
 
-/** スレッドの ID のツールチップの中身。1 行目にタイトルと ID、2 行目に「スレッド」と状態名 */
+/** スレッドの状態 → 状態名と、同じ形のマーカーを持つ項目の状態 */
+const THREAD_STATES = { open: { label: "オープン", mark: "未決定" }, closed: { label: "クローズ", mark: "完了" } } as const satisfies Record<"open" | "closed", { label: string; mark: string }>;
+
+/** スレッドの ID のツールチップの中身。1 行目にタイトルと ID、2 行目に「スレッド」と状態のマーカー・状態名 */
 const threadContent = ({ id, title, status }: { id: string; title: string; status: "open" | "closed" | undefined }): HTMLElement[] => {
-  const state = status === undefined ? [] : [h({ tag: "span", attrs: { "aria-hidden": "true" }, children: ["・"] }), h({ tag: "span", children: [status === "open" ? "オープン" : "クローズ"] })];
+  const state = status === undefined ? [] : [h({ tag: "span", attrs: { "aria-hidden": "true" }, children: ["・"] }), statusMarkElement(THREAD_STATES[status].mark), h({ tag: "span", children: [THREAD_STATES[status].label] })];
   return [
     h({ tag: "span", attrs: { class: "tt-head" }, children: [title, h({ tag: "span", attrs: { class: "mono" }, children: [id] })] }),
     h({ tag: "span", attrs: { class: "tt-body" }, children: [h({ tag: "span", attrs: { class: "tt-meta" }, children: ["スレッド", ...state] })] }),
