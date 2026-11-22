@@ -1,0 +1,9 @@
+# pytest は /tmp/pytest-of-shuhei2441 が使えないため TMPDIR=/tmp/pr679-tmp を渡した。vitest の全件は並列の既定で端末のメモリ不足になったため --maxWorkers=2 を渡した
+# Python の実装は 29ae23a4 から変えていないため、pytest は 29ae23a4 の後の出力（変えたのは frontend/ だけ）
+$ pytest tests/unit
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1753 passed, 1 skipped, 5 warnings in 33.72s
+$ npx vitest run --maxWorkers=2
+ Test Files  89 passed (89)
+      Tests  427 passed (427)
+   Duration  54.84s (environment 45%, tests 28%, import 14%, setup 9%, transform 3%, worker 1%)
