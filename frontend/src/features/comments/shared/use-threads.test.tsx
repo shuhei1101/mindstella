@@ -7,6 +7,8 @@ import { AppError } from "@/shared/core/app-error";
 import { threadsQuery } from "@/shared/hooks/preview-queries";
 import { server } from "@/testing/msw/server";
 import { renderPreviewHook } from "@/testing/render";
+import { useQuery } from "@tanstack/react-query";
+import { gateRefetch } from "@/testing/gated-get";
 
 const queryKeys = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.map(([filters]) => (filters as { queryKey?: unknown } | undefined)?.queryKey);
 
@@ -41,6 +43,22 @@ describe("useSetThreadStatus", () => {
     // 検証
     expect(error).toBeInstanceOf(AppError);
     expect((error as AppError).message).toBe("スレッドが見つかりません");
+  });
+
+  // 再読み込みが終わるまで pending（正常系）
+  test("use_set_thread_status_pending_until_refetched", async () => {
+    // 準備
+    server.use(http.patch("/api/threads/:id", () => HttpResponse.json({ id: "TH-1", status: "closed", changed: true })));
+    const gate = gateRefetch("*/api/threads", { threads: [] });
+    const { result } = await renderPreviewHook("/", () => ({ query: useQuery(threadsQuery()), set: useSetThreadStatus() }));
+    await waitFor(() => { expect(result.current.query.isSuccess).toBe(true); });
+    // 実行
+    act(() => { void result.current.set.mutateAsync({ id: "TH-1", status: "closed", reason: null }); });
+    // 検証
+    await waitFor(() => { expect(gate.gets).toBe(2); });
+    expect(result.current.set.isPending).toBe(true);
+    act(() => { gate.release(); });
+    await waitFor(() => { expect(result.current.set.isPending).toBe(false); });
   });
 });
 

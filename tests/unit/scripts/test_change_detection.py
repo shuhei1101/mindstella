@@ -488,15 +488,16 @@ def test_classify_writer(
 
 
 @pytest.mark.parametrize(
-    ("returncode", "started_at", "expected"),
+    ("returncode", "stdout", "started_at", "expected"),
     [
-        pytest.param(0, "100", True, id="alive"),
-        pytest.param(1, "100", False, id="no_pane"),
-        pytest.param(0, "200", False, id="restarted"),
+        pytest.param(0, "4321\n", "100", True, id="alive"),
+        pytest.param(1, "", "100", False, id="no_pane"),
+        pytest.param(0, "4321\n", "200", False, id="restarted"),
+        pytest.param(0, "", "100", False, id="blank_output"),
     ],
 )
 def test_session_alive(
-    monkeypatch: pytest.MonkeyPatch, returncode: int, started_at: str, expected: bool
+    monkeypatch: pytest.MonkeyPatch, returncode: int, stdout: str, started_at: str, expected: bool
 ) -> None:
     """ペインとプロセスの有無を見分ける（正常系）。"""
     # 準備
@@ -505,7 +506,7 @@ def test_session_alive(
 
     def run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
         """tmux の結果を返す。"""
-        return subprocess.CompletedProcess(args=args, returncode=returncode, stdout="%1\n", stderr="")
+        return subprocess.CompletedProcess(args=args, returncode=returncode, stdout=stdout, stderr="")
 
     # 実行
     result = change_detection.session_alive(session, run=run)

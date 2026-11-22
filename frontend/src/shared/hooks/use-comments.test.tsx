@@ -1,4 +1,4 @@
-import { act } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
@@ -9,6 +9,9 @@ import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
 import { server } from "@/testing/msw/server";
 import { renderPreviewHook } from "@/testing/render";
+import { useQuery } from "@tanstack/react-query";
+import { commentsQuery } from "@/shared/hooks/preview-queries";
+import { gateRefetch } from "@/testing/gated-get";
 
 const queryKeys = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.map(([filters]) => (filters as { queryKey?: unknown } | undefined)?.queryKey);
 
@@ -49,6 +52,21 @@ describe("useAddComment", () => {
     // 検証
     expect(error).not.toBeInstanceOf(AppError);
     expect(error).toBeInstanceOf(Error);
+  });
+
+  // 再読み込みが終わるまで pending（正常系）
+  test("use_add_comment_pending_until_refetched", async () => {
+    // 準備
+    const gate = gateRefetch("*/api/comments", { items: [], drafts: [] });
+    const { result } = await renderPreviewHook("/", () => ({ query: useQuery(commentsQuery()), add: useAddComment() }));
+    await waitFor(() => { expect(result.current.query.isSuccess).toBe(true); });
+    // 実行
+    act(() => { void result.current.add.mutateAsync({ target: "D-1", loc: null, body: "本文" }); });
+    // 検証
+    await waitFor(() => { expect(gate.gets).toBe(2); });
+    expect(result.current.add.isPending).toBe(true);
+    act(() => { gate.release(); });
+    await waitFor(() => { expect(result.current.add.isPending).toBe(false); });
   });
 });
 

@@ -7,6 +7,9 @@ import { useAddEdit, useCancelEdit, useSaveEdits } from "@/shared/hooks/use-edit
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { server } from "@/testing/msw/server";
 import { renderPreviewHook } from "@/testing/render";
+import { useQuery } from "@tanstack/react-query";
+import { editsQuery } from "@/shared/hooks/preview-queries";
+import { gateRefetch } from "@/testing/gated-get";
 
 describe("useAddEdit", () => {
   // 読み直す（正常系）
@@ -30,6 +33,21 @@ describe("useAddEdit", () => {
     // 検証
     expect(error).toBeInstanceOf(AppError);
     expect((error as AppError).message).toBe("編集できないキーです");
+  });
+
+  // 再読み込みが終わるまで pending（正常系）
+  test("use_add_edit_pending_until_refetched", async () => {
+    // 準備
+    const gate = gateRefetch("*/api/edits", { items: [] });
+    const { result } = await renderPreviewHook("/", () => ({ query: useQuery(editsQuery()), add: useAddEdit() }));
+    await waitFor(() => { expect(result.current.query.isSuccess).toBe(true); });
+    // 実行
+    act(() => { void result.current.add.mutateAsync({ target: "D-1", kind: "item-update", key: "answer", value: "回答" } as never); });
+    // 検証
+    await waitFor(() => { expect(gate.gets).toBe(2); });
+    expect(result.current.add.isPending).toBe(true);
+    act(() => { gate.release(); });
+    await waitFor(() => { expect(result.current.add.isPending).toBe(false); });
   });
 });
 

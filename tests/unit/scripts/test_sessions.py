@@ -47,6 +47,8 @@ class FakeTmux:
         self.log = log
         self.pane_dead = "0 0"
         self.pane_alive = True
+        # 同じ tmux のサーバーにほかのセッションがあると、無いペインでも終了コード 0 で空の出力を返す
+        self.pane_blank = False
         self.capture = "最後の行"
         self.fail_on_exit_paste = False
         self.exit_pasted = False
@@ -68,6 +70,8 @@ class FakeTmux:
         if command == "display-message":
             if "#{pane_dead}" in args[-1]:
                 return 0, self.pane_dead
+            if self.pane_blank:
+                return 0, ""
             return (0, str(PID)) if self.pane_alive else (1, "")
         if command == "capture-pane":
             return 0, self.capture
@@ -346,12 +350,13 @@ def test_build_env(
 
 
 @pytest.mark.parametrize(
-    ("status", "pane_alive", "started_at", "expected", "final_status"),
+    ("status", "pane_alive", "started_at", "expected", "final_status", "pane_blank", "pid"),
     [
-        pytest.param("running", True, PID_STARTED_AT, True, "running", id="alive"),
-        pytest.param("running", False, PID_STARTED_AT, False, "crashed", id="no-pane"),
-        pytest.param("running", True, "999", False, "crashed", id="other-process"),
-        pytest.param("stopped", True, PID_STARTED_AT, False, "stopped", id="stopped"),
+        pytest.param("running", True, PID_STARTED_AT, True, "running", False, PID, id="alive"),
+        pytest.param("running", False, PID_STARTED_AT, False, "crashed", False, PID, id="no-pane"),
+        pytest.param("running", True, "999", False, "crashed", False, PID, id="other-process"),
+        pytest.param("stopped", True, PID_STARTED_AT, False, "stopped", False, PID, id="stopped"),
+        pytest.param("running", True, PID_STARTED_AT, False, "crashed", True, None, id="blank-output"),
     ],
 )
 def test_is_alive(
@@ -360,11 +365,14 @@ def test_is_alive(
     started_at: str,
     expected: bool,
     final_status: str,
+    pane_blank: bool,
+    pid: int | None,
     ctx: SimpleNamespace,
 ) -> None:
     """ペインとプロセスで判定し、落ちていれば crashed にする。"""
-    _write_session(ctx, status=status, pid_started_at=started_at)
+    _write_session(ctx, status=status, pid_started_at=started_at, pid=pid)
     ctx.tmux.pane_alive = pane_alive
+    ctx.tmux.pane_blank = pane_blank
     assert sessions.is_alive(ctx.state_root, WORKSPACE_ID, ctx.tmux, ctx.proc) is expected
     assert _session(ctx).status == final_status
 
