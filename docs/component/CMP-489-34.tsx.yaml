@@ -46,7 +46,7 @@ args:
     type: 真偽値
     required: false
     default: 'false'
-    description: 保存している途中か。true のときは 2 つのボタンを押せなくし、1 秒を超えたら保存するボタンに回るマーカーと「保存しています」を出す。Esc でも閉じない
+    description: 保存している途中か。true のときは 2 つのボタンを押せなくし、1 秒を超えたら保存するボタンの上に回るマーカーを出す（ボタンの文言と幅は変えない）。Esc でも閉じない
   - name: error
     type: 文字列
     required: false

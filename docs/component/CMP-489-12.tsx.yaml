@@ -309,7 +309,7 @@ events:
   - name: 修正する
     when: 書き換えの「修正」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき（変換の確定の Enter を除く）
     value: '`onEditSubmit(id, body)`（`pending.id`・入力欄の中身）'
-    description: 使う側が空白だけなら「コメントを入れてから修正してください。」を `editError` に渡し、そうでなければ `PATCH /w/{workspace}/api/comments/{id}` へ送信する
+    description: 使う側が空白だけなら「コメントを入れてから修正してください。」を `editError` に渡し、そうでなければ `busy` を true にして `PATCH /w/{workspace}/api/comments/{id}` へ送信し、レビュー中の書き込みを読み直し終えたら `busy` を false に戻す
   - name: 修正をやめる
     when: 書き換えの「キャンセル」を押したときと、入力欄で Esc を押したとき
     value: '`onEditCancel(id)`（`pending.id`）'
@@ -317,7 +317,7 @@ events:
   - name: 削除
     when: '`pending` の「削除」を押したとき'
     value: '`onRemove(id)`（`pending.id`）'
-    description: 使う側が `DELETE /w/{workspace}/api/comments/{id}` で削除し、元の場所に「元に戻す」を出す
+    description: 使う側が `busy` を true にして `DELETE /w/{workspace}/api/comments/{id}` で削除し、レビュー中の書き込みを読み直し終えたら `busy` を false に戻して、元の場所に「元に戻す」を出す
   - name: まとまりを開く
     when: 本文の中のまとまりのリンクを押したとき（既定の動作を止める）
     value: '`onOpenChangeSet(id)`（まとまりの ID）'
