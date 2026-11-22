@@ -16,7 +16,7 @@ import yaml
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree, StartServer
 from .http_helpers import http_request
-from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
+from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR, free_port
 
 # このファイルから見たリポジトリの直下（tests/integration/server の 3 つ上）
 REPO_ROOT_PARENT_DEPTH = 3
@@ -62,11 +62,12 @@ HTML_BODY = (
     "<p>一覧の画面</p>\n"
 )
 
-# jsDelivr に届かないようにする環境変数（届かない宛先のプロキシを通す）
-UNREACHABLE_PROXY_ENV = {
-    "HTTPS_PROXY": "http://127.0.0.1:9",
-    "https_proxy": "http://127.0.0.1:9",
-}
+
+
+def _refusing_proxy_env() -> dict[str, str]:
+    """jsDelivr に届かないようにする環境変数を返す（空きを確認して閉じたポート＝接続をすぐ拒否する宛先のプロキシを通す）。"""
+    proxy = f"http://127.0.0.1:{free_port()}"
+    return {"HTTPS_PROXY": proxy, "https_proxy": proxy}
 
 # 中に持つライブラリごとの、表示に出るライセンスの名前と著作権の表示（libraries.json のパッケージ名 → 表示）
 EXPECTED_LICENSES = {
@@ -89,7 +90,7 @@ MDMARK_BUNDLED_LICENSES_HEAD = "dayjs 1.11.23 (MIT)"
 
 
 class _ExternalReferences(HTMLParser):
-    """script・img の src と link の href を持つ要素を集める。"""
+    """script・img の src と link の href のうち、`data:` 以外を指すものを持つ要素を集める。"""
 
     def __init__(self) -> None:
         """集めた要素のタグ名と属性の並びと、import map の要素の数を空で持つ。"""
@@ -98,11 +99,12 @@ class _ExternalReferences(HTMLParser):
         self.import_maps = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        """外のファイルや URL を指す属性を持つ要素と、import map の要素を控える。"""
+        """外のファイルや URL を指す属性を持つ要素と、import map の要素を控える（ファビコンの `data:image/svg+xml` は外を指さない）。"""
         values = dict(attrs)
         if tag == "script" and values.get("type") == "importmap":
             self.import_maps += 1
-        if (tag in ("script", "img") and "src" in values) or (tag == "link" and "href" in values):
+        reference = values.get("src") if tag in ("script", "img") else values.get("href") if tag == "link" else None
+        if reference is not None and not reference.startswith("data:"):
             self.found.append((tag, values))
 
 
@@ -172,6 +174,8 @@ def test_normal(
     references = _ExternalReferences()
     references.feed(html)
     assert references.found == []
+    # ファビコンの link は data:image/svg+xml を指す
+    assert re.search(r'<link rel="icon" type="image/svg\+xml" href="data:image/svg\+xml,', html) is not None
     assert references.import_maps == 0
     # 本文の </script> で要素が閉じていない（書き出し用のビルドの閉じタグの数に、足した要素の 9 つを足した数）
     assert html.count("</script>") == _build_closes() + EXPORT_ADDED_ELEMENTS
@@ -323,8 +327,8 @@ def test_error_when_download_fails(
     out = tmp_path / "配る.html"
     assert call_tool("export", workspace=str(root), out=str(out)).is_error is False
     before = out.read_bytes()
-    # 届かない宛先のプロキシを通すため、環境変数を足したサーバーを立てる
-    offline_server = start_server(extra_env=UNREACHABLE_PROXY_ENV)
+    # 接続をすぐ拒否する宛先のプロキシを通すため、環境変数を足したサーバーを立てる
+    offline_server = start_server(extra_env=_refusing_proxy_env())
     # 実行
     result = offline_server.call("export", workspace=str(root), out=str(out))
     # 検証

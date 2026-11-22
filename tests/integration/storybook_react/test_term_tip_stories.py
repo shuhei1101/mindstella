@@ -238,6 +238,19 @@ def test_item_id(open_story: OpenStory) -> None:
     assert item["links"] == 0
 
 
+def test_thread_id(open_story: OpenStory) -> None:
+    """本文のスレッドの ID。1 行目にスレッドのタイトルと ID、2 行目に「スレッド」・状態のマーカー・「オープン」を出し、役割は tooltip でリンクを持たない（正常系）。"""
+    # 準備・実行
+    page = _open_tip(open_story, "shared-termtip--thread-id")
+    # 検証
+    item: dict[str, Any] = page.evaluate(READ_ITEM_SCRIPT)
+    assert item["role"] == "tooltip"
+    assert item["head"] == "トップバーの見直しTH-2"
+    assert item["meta"] == "スレッド・オープン"
+    assert item["marks"] == 1
+    assert item["links"] == 0
+
+
 def test_item_id_without_status(open_story: OpenStory) -> None:
     """状態を持たない資料の ID。2 行目は種類だけ（正常系）。"""
     # 準備・実行

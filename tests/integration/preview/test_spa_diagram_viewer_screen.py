@@ -42,10 +42,14 @@ def test_raw_shows_source(viewer: Locator) -> None:
     expect(viewer.get_by_role("region", name="図の記法")).to_contain_text("A-->B")
 
 
-def test_back_closes(page: Page, viewer: Locator) -> None:
-    """「本文へ戻る」で閉じる（正常系）。"""
-    viewer.get_by_role("button", name="本文へ戻る").click()
+def test_outside_closes(page: Page, viewer: Locator) -> None:
+    """外側の幕を押すと閉じ、図の拡大を開いたボタンへフォーカスを戻す（正常系）。"""
+    # 実行（窓の端から 24px の余白の中＝外側の幕を押す）
+    page.mouse.click(OUTSIDE_POINT_PX, OUTSIDE_POINT_PX)
+    # 検証
     expect(page.get_by_role("dialog", name="図の拡大")).to_have_count(0)
+    expect(page.get_by_role("complementary", name="詳細")).to_be_visible()
+    expect(page.get_by_role("button", name="図を拡大表示")).to_be_focused()
 
 
 # ─── 画面設計の要素の確認項目 ───
@@ -53,31 +57,60 @@ def test_back_closes(page: Page, viewer: Locator) -> None:
 # 図を描き終わるまで待つ上限ミリ秒
 DIAGRAM_TIMEOUT_MS = 20_000
 
-# 「本文へ戻る」を印だけにする幅の上限（px）
-ICON_BACK_MAX_WIDTH = 389
+# 図の拡大の窓と、ブラウザの窓の端との余白（px。画面設計『図の拡大』の「図の拡大の窓」）
+WINDOW_MARGIN_PX = 24
+
+# 外側の幕を押す位置（窓の左上から、余白の中に入る px）
+OUTSIDE_POINT_PX = 8
+
+# 狭い幅の画面の大きさ
+NARROW_SIZE = {"width": 390, "height": 844}
 
 
-def test_close_label(viewer: Locator) -> None:
-    """閉じるの読み上げの名前と文言は「本文へ戻る」（正常系）。"""
-    # 準備・実行
-    close = viewer.get_by_role("button", name="本文へ戻る")
+def _margins(page: Page, dialog: Locator) -> dict[str, float]:
+    """図の拡大の窓と、ブラウザの窓の端との上下左右の余白を返す。"""
+    box = dialog.bounding_box()
+    size = page.viewport_size
+    assert box is not None
+    assert size is not None
+    return {
+        "top": box["y"],
+        "left": box["x"],
+        "right": size["width"] - (box["x"] + box["width"]),
+        "bottom": size["height"] - (box["y"] + box["height"]),
+    }
+
+
+def test_no_back_button(viewer: Locator) -> None:
+    """「本文へ戻る」のボタンを配置しない（正常系）。"""
     # 検証
-    expect(close).to_have_text("本文へ戻る")
+    expect(viewer.get_by_role("button", name="本文へ戻る")).to_have_count(0)
 
 
-def test_close_label_when_narrow(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
-    """幅 389px 以下では文字を隠して印だけにし、読み上げの名前は「本文へ戻る」のまま（正常系）。"""
+def test_window_margin(page: Page, viewer: Locator) -> None:
+    """1280x800 の窓で、図の拡大の窓は上下左右に 24px の余白を空けて重なる（正常系）。"""
+    # 準備・実行
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.wait_for_function("innerWidth === 1280")
+    # 検証
+    assert _margins(page, viewer) == dict.fromkeys(("top", "left", "right", "bottom"), WINDOW_MARGIN_PX)
+
+
+def test_window_margin_when_narrow(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """幅 390px でも余白は 24px で、外側の幕を押すと閉じる（正常系）。"""
     # 準備
-    page.set_viewport_size({"width": ICON_BACK_MAX_WIDTH, "height": 800})
+    page.set_viewport_size(NARROW_SIZE)
     url = write_preview(make_item("D-1", title="図", status="未決定", body="../docs/D-1.mark.md"), bodies={"D-1.mark.md": "```mermaid\nflowchart LR; A-->B\n```\n"})
     open_spa(page, url, "?tab=decisions&id=D-1")
     page.locator(".mermaid svg").wait_for(timeout=DIAGRAM_TIMEOUT_MS)
-    # 実行
     page.get_by_role("button", name="図を拡大表示").click()
-    close = page.get_by_role("dialog", name="図の拡大").get_by_role("button", name="本文へ戻る")
+    dialog = page.get_by_role("dialog", name="図の拡大")
+    # 実行
+    margins = _margins(page, dialog)
+    page.mouse.click(OUTSIDE_POINT_PX, OUTSIDE_POINT_PX)
     # 検証
-    expect(close).to_be_visible()
-    expect(close.get_by_text("本文へ戻る")).to_be_hidden()
+    assert margins == dict.fromkeys(("top", "left", "right", "bottom"), WINDOW_MARGIN_PX)
+    expect(dialog).to_have_count(0)
 
 
 def test_diff_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:
