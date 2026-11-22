@@ -1,6 +1,8 @@
 // 詳細パネルの左端に置く幅の区切り。ドラッグと矢印キーで幅を変え、幅を端末に残す
 import { useRef, useState } from "react";
 
+import { cn } from "@/shared/lib/cn";
+
 /** 詳細パネルの幅の決まり（px） */
 export const PANEL_WIDTH = { default: 640, min: 480, keepBody: 400, keepLeft: 160, step: 16, resizableFrom: 901, sideFrom: 1100 } as const;
 
@@ -27,7 +29,8 @@ export const DetailResizer = ({ width, onChange }: DetailResizerProps) => {
       aria-valuemax={panelWidthMax(window.innerWidth)}
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
-      className={active ? "absolute inset-y-0 left-0 w-1 cursor-col-resize bg-mark max-lg:hidden" : "absolute inset-y-0 left-0 w-1 cursor-col-resize hover:bg-mark-line max-lg:hidden"}
+      // 見た目の線は 4px のまま、指でつかめるよう線を中心に 44px のタップ領域を持たせる
+      className={cn("absolute inset-y-0 -left-5.5 z-10 w-11 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-5 before:w-1 max-lg:hidden", active ? "before:bg-mark" : "hover:before:bg-mark-line")}
       onPointerDown={(event) => {
         drag.current = { startX: event.clientX, startWidth: width };
         event.currentTarget.setPointerCapture(event.pointerId);

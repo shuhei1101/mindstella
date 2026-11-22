@@ -8,7 +8,7 @@ export type CommentMarkProps = { count: number };
 export const CommentMark = ({ count }: CommentMarkProps) => {
   const spoken = `コメント ${String(count)} 件`;
   return (
-    <span title={spoken} className="inline-flex items-center gap-0.5 rounded-full bg-mark-weak px-1 text-xs">
+    <span title={spoken} className="inline-flex items-center gap-0.5 rounded-full border border-mark-line bg-mark-weak px-1.5 text-xs text-foreground">
       <Icon name="bubble" className="size-3" />
       <span aria-hidden="true">{count > COMMENT_MARK_SHOWN_MAX ? `${String(COMMENT_MARK_SHOWN_MAX)}+` : String(count)}</span>
       <span className="sr-only">{spoken}</span>

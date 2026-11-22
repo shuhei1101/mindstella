@@ -94,7 +94,7 @@ export const ItemCard = ({ index, item, meta, links, selected, marks, comments, 
   const count = comments[item.id] ?? 0;
   return (
     // カードの中にタグのボタンを置くため、外枠は div にし、タイトルのボタンの ::after をカード全体へ広げる
-    <div data-card={item.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-2 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && "border-mark-line bg-row-selected", pending === "remove" && "opacity-60")}>
+    <div data-card={item.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-2 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && "border-mark bg-row-selected", pending === "remove" && "opacity-60")}>
       <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} className="cursor-pointer text-left text-small font-medium outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(item.id); }}>
         {item.title}
       </button>
@@ -105,7 +105,6 @@ export const ItemCard = ({ index, item, meta, links, selected, marks, comments, 
           <span key={value}>{value}</span>
         ))}
         {pending === undefined ? null : <PendingMark kind={pending} />}
-        {count > 0 ? <CommentMark count={count} /> : null}
       </span>
       {links.map((id) => (
         <span key={id} className="text-xs text-muted-foreground">
@@ -115,6 +114,11 @@ export const ItemCard = ({ index, item, meta, links, selected, marks, comments, 
       {onSelectTag !== undefined && (item.tags ?? []).length > 0 ? (
         <span className="flex flex-wrap gap-x-1 gap-y-1.5">
           <TagList values={item.tags} onSelect={onSelectTag} />
+        </span>
+      ) : null}
+      {count > 0 ? (
+        <span className="flex justify-end">
+          <CommentMark count={count} />
         </span>
       ) : null}
     </div>

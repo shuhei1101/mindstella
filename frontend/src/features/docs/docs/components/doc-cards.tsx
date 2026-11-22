@@ -32,7 +32,7 @@ export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen,
   const count = comments[doc.id] ?? 0;
   return (
     // カードの中にタグのボタンを置くため、外枠は div にし、タイトルのボタンの ::after をカード全体へ広げる
-    <div data-card={doc.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-3 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && inBoard && "bg-row-selected", pending === "remove" && "opacity-60")}>
+    <div data-card={doc.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-3 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && inBoard && "border-mark bg-row-selected", pending === "remove" && "opacity-60")}>
       <span className="flex items-center gap-1 text-xs text-muted-foreground">
         <Icon name={doc.kind === "図" ? "graph" : "cards"} className="size-3" />
         {doc.kind}
@@ -54,11 +54,15 @@ export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen,
           </span>
         )}
         {pending === undefined ? null : <PendingMark kind={pending} />}
-        {count > 0 ? <CommentMark count={count} /> : null}
       </span>
       {(doc.tags ?? []).length > 0 ? (
         <span className="flex flex-wrap gap-x-1 gap-y-1.5">
           <TagList values={doc.tags} onSelect={onSelectTag} />
+        </span>
+      ) : null}
+      {count > 0 ? (
+        <span className="flex justify-end">
+          <CommentMark count={count} />
         </span>
       ) : null}
     </div>

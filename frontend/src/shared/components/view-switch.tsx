@@ -26,7 +26,7 @@ export const ViewSwitch = ({ views, current, onChange }: ViewSwitchProps) => (
         }}
         className={cn(
           "inline-flex h-7 w-24 cursor-pointer items-center justify-center gap-1 rounded-control text-small hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
-          key === current && "bg-mark-weak font-medium text-foreground hover:bg-mark-weak",
+          key === current && "bg-mark font-medium text-on-mark hover:bg-mark",
         )}
       >
         <Icon name={VIEW_ICON[key]} />
