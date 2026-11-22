@@ -233,5 +233,4 @@
   /* 差分の表示の変更の点（保留の色） */
   --diff-changed: var(--st-hold);
   /* 差分の札の × に乗せたときの面 */
-  --topbar-chip-hover: color-mix(in oklab, var(--topbar-bg) 12%, var(--topbar-fg));
 }

@@ -8,9 +8,13 @@ import { revealHeading } from "@/shared/core/markdown-decorate";
 import { isRendered } from "@/shared/core/minimap";
 import { KIND_LABEL, type Item, type Kind, type Location, type RecordIndex } from "@/shared/core/records";
 import { statusMarkElement } from "@/shared/core/status-marks";
+import type { LookupThread } from "@/shared/core/thread-ids";
 
 /** ツールチップに並べる項目（種類と項目）。`item` は項目の ID のリンク・ボタンの 1 件で、`itemKind` にその項目の種類を持つ */
-export type TermTipEntry = { kind: (typeof MARK_KINDS)[number]; item: Item } | { kind: "item"; itemKind: Kind; item: Item };
+export type TermTipEntry =
+  | { kind: (typeof MARK_KINDS)[number]; item: Item }
+  | { kind: "item"; itemKind: Kind; item: Item }
+  | { kind: "thread"; id: string; title: string; status: "open" | "closed" | undefined };
 
 /** 本文の印のツールチップの引数 */
 export type TermTipProps = {
@@ -43,7 +47,7 @@ const focusablesIn = (parent: ParentNode): HTMLElement[] => {
 };
 
 /** 項目 1 件。用語は用語・ID・意味、資料・調査はタイトル・ID・説明（無ければ出さない） */
-const tipItem = ({ entry }: { entry: TermTipEntry }): HTMLElement => {
+const tipItem = ({ entry }: { entry: Exclude<TermTipEntry, { kind: "thread" }> }): HTMLElement => {
   const { item } = entry;
   const text = entry.kind === "terms" ? item.meaning : item.description;
   return h({
@@ -65,7 +69,7 @@ const tipItem = ({ entry }: { entry: TermTipEntry }): HTMLElement => {
 
 /** 用語と資料・調査を含むツールチップの中身。種類ごとの見出し（種類名と件数）とリストに分ける */
 const groupedContent = (entries: TermTipEntry[]): HTMLElement[] => {
-  return MARK_KINDS.map((kind) => ({ kind, entries: entries.filter((entry) => entry.kind === kind) }))
+  return MARK_KINDS.map((kind) => ({ kind, entries: entries.filter((entry): entry is Extract<TermTipEntry, { kind: (typeof MARK_KINDS)[number] }> => entry.kind === kind) }))
     .filter((group) => group.entries.length > 0)
     .map((group) =>
       h({
@@ -98,11 +102,20 @@ const itemContent = ({ item, itemKind }: { item: Item; itemKind: Kind }): HTMLEl
   ];
 };
 
+/** スレッドの ID のツールチップの中身。1 行目にタイトルと ID、2 行目に「スレッド」と状態名 */
+const threadContent = ({ id, title, status }: { id: string; title: string; status: "open" | "closed" | undefined }): HTMLElement[] => {
+  const state = status === undefined ? [] : [h({ tag: "span", attrs: { "aria-hidden": "true" }, children: ["・"] }), h({ tag: "span", children: [status === "open" ? "オープン" : "クローズ"] })];
+  return [
+    h({ tag: "span", attrs: { class: "tt-head" }, children: [title, h({ tag: "span", attrs: { class: "mono" }, children: [id] })] }),
+    h({ tag: "span", attrs: { class: "tt-body" }, children: [h({ tag: "span", attrs: { class: "tt-meta" }, children: ["スレッド", ...state] })] }),
+  ];
+};
+
 /** ツールチップを返す。使う側が文書に入れて `showPopover()` で開く。開くと印の上に置き、上に収まらなければ下に、どちらにも収まらなければ広い側の高さに縮める */
 export const termTip = ({ entries, anchor, pinned = false, on }: TermTipProps): HTMLElement => {
   // 用語 2 件以上か、資料・調査を含むときは、種類ごとの見出しとリンクで並べる（項目の ID の 1 件はリンクを持たない）
   const first = entries[0]!;
-  const multi = first.kind !== "item" && (entries.length > 1 || entries.some((entry) => entry.kind !== "terms"));
+  const multi = first.kind !== "item" && first.kind !== "thread" && (entries.length > 1 || entries.some((entry) => entry.kind !== "terms"));
   const tip = h({
     tag: "div",
     attrs: {
@@ -113,13 +126,15 @@ export const termTip = ({ entries, anchor, pinned = false, on }: TermTipProps): 
       popover: "manual",
     },
   });
-  if (first.kind === "item") {
+  if (first.kind === "thread") {
+    tip.append(...threadContent(first));
+  } else if (first.kind === "item") {
     tip.append(...itemContent(first));
   } else if (multi) {
     tip.append(...groupedContent(entries));
   } else {
     // 用語 1 件だけに一致した印は、用語・ID・意味だけを出す
-    const term = entries[0]!.item;
+    const term = first.item;
     tip.append(
       h({ tag: "span", attrs: { class: "tt-head" }, children: [term.title, h({ tag: "span", attrs: { class: "mono" }, children: [term.id] })] }),
       h({ tag: "span", attrs: { class: "tt-body" }, children: [term.meaning ?? ""] }),
@@ -316,11 +331,17 @@ document.addEventListener(
 );
 
 /** 本文の印に乗せる・フォーカスするとツールチップを出し、外れると隠す（本文の要素に委ねて付ける）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し、Tab で中へ移れる */
-export const attachTermTips = ({ root, index, onOpen }: { root: HTMLElement; index: RecordIndex; onOpen: (id: string) => void }): void => {
+export const attachTermTips = ({ root, index, onOpen, threads = null }: { root: HTMLElement; index: RecordIndex; onOpen: (id: string) => void; threads?: LookupThread | null }): void => {
   /** イベントの先の印と、一致した項目（用語 → 資料 → 調査の順）。用語 2 件以上か、資料・調査を含むか */
   const markOf = (event: Event): { mark: HTMLElement; entries: TermTipEntry[]; multi: boolean } | null => {
     // 項目の ID のリンク・ボタンは、その項目 1 件のタイトルと状態を出す
     const idMark = (event.target as Element).closest?.<HTMLElement>(ITEM_ID_SELECTOR) ?? null;
+    // スレッドの ID と書き込みの ID のリンク・ボタンは、そのスレッドのタイトルと状態を出す
+    const threadId = idMark?.getAttribute("data-thread") ?? null;
+    if (idMark !== null && threadId !== null) {
+      const thread = threads?.(threadId) ?? null;
+      return thread === null ? null : { mark: idMark, entries: [{ kind: "thread", id: threadId, title: thread.title, status: thread.status }], multi: false };
+    }
     if (idMark !== null) {
       const found = index.byId.get(idMark.getAttribute("data-id") ?? idMark.textContent);
       return found === undefined ? null : { mark: idMark, entries: [{ kind: "item", itemKind: found.kind, item: found.item }], multi: false };

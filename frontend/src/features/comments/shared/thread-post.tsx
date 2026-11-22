@@ -10,6 +10,7 @@ import { reviewLabel, type ReviewItem, type ThreadEvent, type ThreadPostData } f
 import { formatJst } from "@/shared/core/format";
 import type { LookupTitle } from "@/shared/core/post-links";
 import type { RecordIndex } from "@/shared/core/records";
+import type { LookupThread, OpenThread } from "@/shared/core/thread-ids";
 import type { VoiceStatus } from "@/shared/hooks/use-voice-input";
 import { cn } from "@/shared/lib/cn";
 
@@ -19,6 +20,9 @@ export type ThreadPostProps = Pick<VoiceProps, "voice" | "voiceReason" | "elapse
   pending?: ReviewItem | null;
   titles?: LookupTitle;
   changeSets?: LookupTitle;
+  /** 記録にあるスレッドの引き方（本文のスレッドの ID と書き込みの ID のボタン） */
+  threadTitles?: LookupThread | null;
+  onOpenThread?: OpenThread;
   /** 記録の索引（本文の項目の ID のツールチップ） */
   index?: RecordIndex | null;
   editing?: boolean;
@@ -66,6 +70,8 @@ export const ThreadPost = ({
   pending = null,
   titles,
   changeSets,
+  threadTitles = null,
+  onOpenThread,
   index = null,
   editing = false,
   editError = null,
@@ -149,14 +155,14 @@ export const ThreadPost = ({
   }
   if (post === null) throw new Error("ThreadPost には post・event・pending のどれか 1 つを渡す");
   return (
-    <article data-author={post.author} className={cn("grid min-w-0 grid-cols-1 gap-1 rounded-card p-2", post.author === "user" ? "ml-8 border border-border bg-card max-md:ml-4" : "mr-8 bg-muted max-md:mr-4")}>
+    <article data-author={post.author} data-post-id={post.id} tabIndex={-1} className={cn("grid min-w-0 grid-cols-1 gap-1 rounded-card p-2", post.author === "user" ? "ml-8 border border-border bg-card max-md:ml-4" : "mr-8 bg-muted max-md:mr-4")}>
       <div className="flex items-center gap-2 text-small">
         <span data-part="author" className="font-medium">{AUTHOR_LABELS[post.author]}</span>
         <time dateTime={post.created} className="text-muted-foreground">
           {formatJst(post.created)}
         </time>
       </div>
-      <PostBody body={post.body} titles={titles} index={index} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
+      <PostBody body={post.body} titles={titles} index={index} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} threadTitles={threadTitles} onOpenThread={onOpenThread} />
     </article>
   );
 };

@@ -18,7 +18,7 @@ type DiffSource = {
 /** mdmark の `mount` に指定する値 */
 type MountOptions = {
   markdown: string;
-  config: { features: Record<string, boolean>; map?: Record<string, unknown> };
+  config: { features: Record<string, boolean>; labels?: { paramCopy?: string }; map?: Record<string, unknown> };
   baseMarkdown?: string;
   docId?: string;
   diffMode?: "open";
@@ -208,10 +208,9 @@ const mountMarkdown = ({ root, markdown, table = false, base, diffSource }: { ro
   const map = mdmarkMapConfig();
   const features = table ? { ...MDMARK_FEATURES, table: true } : MDMARK_FEATURES;
   const diff = diffSource === undefined ? (base === undefined ? {} : { baseMarkdown: base }) : { docId: diffSource.docId, diffMode: "open" as const, diffSource: diffSourceOf(diffSource) };
-  mdmarkOf().mount(root, { markdown, config: { features, ...(map === undefined ? {} : { map }) }, ...diff });
+  mdmarkOf().mount(root, { markdown, config: { features, labels: { paramCopy: MDMARK_PARAM_COPY_LABEL }, ...(map === undefined ? {} : { map }) }, ...diff });
   resolveFileSources(root);
   trimBreakNewlines(root);
-  relabelParamCopy(root);
 };
 
 /** 引用の `>` を除いた先が `[!{英字}]` だけの Alert の種類の行（後ろに `-` を許す）。mdmark はこの行の後ろが強制改行だと Alert にしない */
@@ -286,33 +285,6 @@ export const embeddedHtmlRanges = (source: string): { open: number; close: numbe
     }
   });
   return ranges;
-};
-
-/** 見張りを付け済みの本文（同じ本文に 2 回当てても見張りを重ねない） */
-const relabeledRoots = new WeakSet<HTMLElement>();
-
-/** 今の値をコピーするボタンの文言を `MDMARK_PARAM_COPY_LABEL` に替える。アイコンの要素は残し、文字のノードだけを置き換える（文言が同じボタンは触らない） */
-const relabelButton = (button: Element): void => {
-  const texts = [...button.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE);
-  if (texts.length === 1 && texts[0]!.textContent === MDMARK_PARAM_COPY_LABEL) return;
-  for (const text of texts) text.remove();
-  button.append(document.createTextNode(MDMARK_PARAM_COPY_LABEL));
-};
-
-/** mdmark が描いた部品の今の値をコピーするボタンの文言を替える。部品が描き直したボタンにも当てるため、本文の子孫の追加を見張る */
-export const relabelParamCopy = (root: HTMLElement): void => {
-  for (const button of root.querySelectorAll(".mdmark-param-copy")) relabelButton(button);
-  if (relabeledRoots.has(root)) return;
-  relabeledRoots.add(root);
-  new MutationObserver((records) => {
-    for (const record of records) {
-      for (const added of record.addedNodes) {
-        if (!(added instanceof Element)) continue;
-        if (added.matches(".mdmark-param-copy")) relabelButton(added);
-        for (const button of added.querySelectorAll(".mdmark-param-copy")) relabelButton(button);
-      }
-    }
-  }).observe(root, { childList: true, subtree: true });
 };
 
 /** 印を持つブロックの先頭から、選択の端までにある改行（文の \n と br）の数を返す */

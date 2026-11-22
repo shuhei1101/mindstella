@@ -65,7 +65,6 @@
   --color-topbar-hover: var(--topbar-hover);
   --color-topbar-danger: var(--topbar-danger);
   --color-topbar-unread: var(--topbar-unread);
-  --color-topbar-chip-hover: var(--topbar-chip-hover);
   --color-transparent: transparent;
   --font-sans: var(--font-stack-sans);
   --font-mono: var(--font-stack-mono);
@@ -111,17 +110,6 @@
 /* 左のパネル・絞り込みのドロワー・それらのグレーアウトの上端（トップバーの下端。外枠が測った高さ） */
 @utility top-below-topbar {
   top: var(--topbar-height, 0px);
-}
-
-/* 差分の札の幅（名前が数文字読める下限と上限） */
-@utility chip-width {
-  min-width: 5.5em;
-  max-width: 24em;
-}
-
-/* 狭い幅の差分の札の上限 */
-@utility chip-width-narrow {
-  max-width: 12em;
 }
 
 /* 話し合いの概要を読める幅で折り返す */

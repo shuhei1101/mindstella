@@ -86,7 +86,7 @@ steps:
       外部ライブラリ・外部 API を決める検討事項には、ベストプラクティスと候補を調べるタスク（`kind`: `調査`）を積む。
   - name: 検討事項に案を記載する
     body: |-
-      `未整理` を除く検討事項は、案（`options` の `key`・`content`・`pros`・`cons`）を書いて追加し、未決定なら AI が推す案 1 つに `recommended: true` を付ける。決めたこととして追加するときは選ばれた案を `adopted: true` にする。
+      `未整理` を除く検討事項は、案（`options` の `key`・`content`・`pros`・`cons`）を書いて追加し、未決定なら AI が推す案 1 つに `recommended: true` を付け、その案の `reason` に推奨する理由を書く。決めたこととして追加するときは選ばれた案を `adopted: true` にする。
       既にある検討事項の案と推奨のマーカーは `edit_option` で、採用は `adopt` で変える。
     calls:
       - {server: mindstella, tool: edit_option}

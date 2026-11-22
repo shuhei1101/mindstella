@@ -13,6 +13,7 @@ import { htmlFrameElement } from "@/shared/core/html-frame";
 import { decorateMarkdown, type BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
 import { bodyFormatOf, type Item, type RecordIndex } from "@/shared/core/records";
 import { attachTermTips, scrollToHeading } from "@/shared/core/term-tips";
+import { useThreadLinks } from "@/shared/hooks/use-thread-links";
 
 const NOTE_BODY_UNAVAILABLE = "本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。";
 const NOTE_BODY_TOO_LARGE = "本文の差分を出せません。書き換えが大きく、差分を計算しきれませんでした。今の本文を出しています。";
@@ -42,6 +43,7 @@ export const BodyView = ({ label, item, id, index, source, versions, view, viewN
   const mdmark = useLibrary("mdmark").status;
   const jsdiff = useLibrary("jsdiff").status;
   const mermaid = useLibrary("mermaid").status;
+  const { threads, onOpenThread } = useThreadLinks();
   const html = bodyFormatOf(item.body) === "html";
   const current = index.data.bodies[item.body ?? ""];
   const comparing = versions !== null && versions.before !== null && !versions.trimmed;
@@ -90,12 +92,12 @@ export const BodyView = ({ label, item, id, index, source, versions, view, viewN
         onChangeSet,
       });
       // 本文の印と ID のリンクは、mdmark の語の照合で付ける
-      if (mdmark === "ready") linkBody({ root: target, index, selfId: id, onOpen, source: text });
+      if (mdmark === "ready") linkBody({ root: target, index, selfId: id, onOpen, source: text, threads, onOpenThread });
       drawHtmlBlocks(target);
     };
     link(root, source);
     decorateMarkdown({ root, display, fold: !changed });
-    attachTermTips({ root, index, onOpen });
+    attachTermTips({ root, index, onOpen, threads });
     const drawn = renderDiagrams(root);
     if (base !== null && !tooLarge && view === "rendered" && jsdiff === "ready") void drawn.then(() => { decorateDiagrams({ root, before: base }); });
     const onDiagramTool = (event: Event): void => {
@@ -131,7 +133,7 @@ export const BodyView = ({ label, item, id, index, source, versions, view, viewN
     };
     // heading の変更では描き直さない（見出しのリンクが送る）
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mdmark, jsdiff, mermaid, html, source, current, comparing, before, base, view, viewNonce, display, index, id, item.id, item.body]);
+  }, [mdmark, jsdiff, mermaid, html, source, current, comparing, before, base, view, viewNonce, display, index, id, item.id, item.body, threads, onOpenThread]);
   return (
     <section data-body-view className="flex flex-col gap-1">
       <h3 className="m-0 text-h2 font-semibold">{label}</h3>
