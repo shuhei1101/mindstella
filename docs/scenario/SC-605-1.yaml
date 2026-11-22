@@ -25,8 +25,8 @@ scenarios:
       - name: project-index
         description: テストごとに起動した project-index。グローバルの設定のファイル（一時ファイル）に、ワークスペース A・B の行と、今のプラグインの `agent-flows/dev-docs.yaml` を指す `mindstella-agent-flows` の行がある
       - name: 状態
-        description: ID の一覧に A・B がある。A の MindStella のセッションは `stopped`。B の MindStella のセッションは `running` でペインが無い
-        notes: 前の常駐サーバーの間に B の MindStella のセッションが落ちた場合に該当する
+        description: ID の一覧に A・B がある。A の MindStella のセッションは `running` で、ペインと Claude Code のプロセスがある。B の MindStella のセッションは `running` でペインが無い
+        notes: 前の常駐サーバーの間に B の MindStella のセッションが落ち、A は同じ tmux のサーバーで動き続けている場合に該当する
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -40,7 +40,7 @@ scenarios:
         SD->>SV: 起動する
         SV->>ST: ID の一覧がある
         SV->>ST: running の MindStella のセッションを参照する
-        SV->>SV: A は stopped・B は running でペインが無い
+        SV->>SV: A はペインとプロセスがある・B はペインが無い
         SV->>ST: B を crashed に書き換える
         SV->>IF: B・crashed
         IF->>DC: POST
@@ -50,12 +50,10 @@ scenarios:
       ```
     expected:
       - 待ち受けを始めたときには、B の `session.json` の `status` が `crashed` になっている
-      - A の `session.json` の `status` が `stopped` のまま
+      - A の `session.json` の `status` が `running` のまま
       - エンドポイントが、止まった理由が異常終了の B の要求を 1 件だけ受けている
       - ID の一覧と、グローバルの設定のファイルが起動の前と同じ
     test: test_normal
-    notes:
-      A を stopped にした理由: 落ちたかの判定が、同じ tmux のサーバーにほかのセッションがあるとペインの無い B も生きていると判定するため（#606）。#606 を片付けたら、A をペインと Claude Code のプロセスがある `running` に戻す
   - name: 正常シナリオ（ID の一覧が無い）
     setup:
       - name: Mock

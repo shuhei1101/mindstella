@@ -31,8 +31,8 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-44.yaml
-    impact: changed
-    detail: '#677。選んだ箇所へのコメントをレビューに溜める操作を、反映されるまでもう一度実行できず、待っていることがボタンで分かる'
+    impact: run_only
+    detail: '#677。選んだ箇所へのコメントを溜めるボタンは『項目へコメントする』と同じコメントの入力で、待つ間の決まりが効く（シナリオの記述は変わらない）'
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-28.yaml
