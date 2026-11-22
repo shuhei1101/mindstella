@@ -11,7 +11,7 @@ export const useThreadLinks = (): { threads: LookupThread | null; onOpenThread: 
   // スレッドは外枠が読む。ここでは読み込みを起こさず、読み込んだ分を使う
   const { data } = useQuery({ ...threadsQuery(), enabled: false });
   const { openThread } = usePreviewSearch();
-  const list = (data as { threads?: Parameters<typeof threadLookupOf>[0] } | undefined)?.threads;
+  const list = data?.status === 200 ? (data.data.threads as unknown as Parameters<typeof threadLookupOf>[0]) : undefined;
   const threads = useMemo(() => (list === undefined ? null : threadLookupOf(list)), [list]);
   // 開き方は描くたびに替わるので、本文を描き直さないよう最新の開き方を参照する関数を 1 つに保つ
   const open = useRef(openThread);
