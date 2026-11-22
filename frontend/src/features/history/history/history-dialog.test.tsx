@@ -24,7 +24,7 @@ describe("HistoryScreen", () => {
     stubRecords({ changes: { last_seq: 1, sets: [{ id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "ほかのセッションの書き込み", until_seq: 1, added: [], changed: ["D-1"], by: "external" }], pending: { added: [], changed: [] } } });
     renderRoute("/?tab=decisions");
     // 実行
-    await userEvent.click(await screen.findByRole("button", { name: "変更履歴" }));
+    await userEvent.click(await screen.findByRole("button", { name: "変更履歴（過去の差分を表示中）" }));
     // 検証
     expect(await screen.findByRole("button", { name: /ほかのセッションの書き込み/ })).toHaveTextContent("外部の変更");
   });
