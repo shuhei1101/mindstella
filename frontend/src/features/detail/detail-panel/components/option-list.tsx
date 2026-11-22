@@ -52,7 +52,10 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
         return (
           <div key={option.key} className={cn("rounded-control border border-border-soft p-2", option.adopted === true && "border-mark-line bg-mark-weak")}>
             <div className="flex items-start gap-2">
-              <span aria-label={`案 ${option.key}`} className={KEY_ICON_CLASS}>{option.key}</span>
+              <span className={KEY_ICON_CLASS}>
+                <span className="sr-only">案 </span>
+                {option.key}
+              </span>
               <div data-key={`options[${option.key}].content`} className="min-w-0 flex-1">
                 {compare && before?.content !== option.content ? <KeyDiff was={before?.content ?? null} now={option.content} /> : <ValueText value={option.content} />}
               </div>
