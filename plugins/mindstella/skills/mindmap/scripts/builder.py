@@ -68,6 +68,9 @@ FETCH_RETRY_AFTER_MAX_SEC = 10.0
 # 取り直す HTTP の状態コード（ほかに 5xx も取り直す）
 FETCH_RETRY_STATUSES = frozenset({HTTPStatus.FORBIDDEN, HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.TOO_MANY_REQUESTS})
 
+# サーバーのエラー（5xx）の範囲の上端（この値は含まない）
+SERVER_ERROR_STATUS_END = 600
+
 # jsDelivr の、版を固定したパッケージの中のファイルの URL の形（ライセンスの本文を取るのに使う）
 CDN_PACKAGE_URL = "https://cdn.jsdelivr.net/npm/{package}@{version}/{path}"
 
@@ -340,7 +343,7 @@ def _retry_after(error: urllib.error.HTTPError) -> float | None:
 
 def _is_retryable_status(status: int) -> bool:
     """一時的な失敗として取り直す状態コードか（403・408・429・5xx）。"""
-    return status in FETCH_RETRY_STATUSES or HTTPStatus.INTERNAL_SERVER_ERROR <= status < 600
+    return status in FETCH_RETRY_STATUSES or HTTPStatus.INTERNAL_SERVER_ERROR <= status < SERVER_ERROR_STATUS_END
 
 
 def fetch_url(url: str, timeout: float = FETCH_TIMEOUT_SEC) -> bytes:
