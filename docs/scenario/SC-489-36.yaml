@@ -233,7 +233,59 @@ scenarios:
       - '`summary`・`display`・`transcription` が呼ぶ前と同じである'
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_confirm_on_comment_changed
-lead: MindStella のセッションが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・関連する場所・保持する回数・表示の既定・文字起こしの設定・コメントの送信で確認済みにするか・画面が読み込む mdmark のバージョン）を書き換える単一ユースケース。
+  - name: 正常シナリオ（図の種類を書き換える）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の mdmark の設定がバージョン `v0.13.0` と図の種類（`kinds` に `llm`）を持つワークスペース
+      - name: 書き換える設定
+        description: 図の種類を、ノードの種類（`kinds`）に `llm`・`start`・`question`・`action`・`result`、線の種類（`lines`）を 1 つ持つ値にして渡す
+        notes: 各種類は mdmark の設定のスキーマの `map` に合う値にする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 図の種類を渡す
+        SV->>WS: config.yaml を読む
+        SV->>SV: 渡したキーを置き換え、スキーマと mdmark の設定のスキーマと突き合わせる
+        SV->>WS: config.yaml を書く
+        SV-->>CC: 書き換えた後の設定
+      ```
+    expected:
+      - '`config.yaml` の図の種類が渡した `kinds`・`lines` である'
+      - '`config.yaml` の mdmark のバージョンが `v0.13.0` のままである'
+      - '`summary`・`display`・`transcription` が呼ぶ前と同じである'
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_mdmark_map_changed
+  - name: 異常シナリオ（図の種類が mdmark の設定のスキーマに合わない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 書き換える設定
+        description: 図の種類を、ノードの種類の 1 つが mdmark の設定のスキーマに無いキーを持つ値にして渡す
+        notes: '`kinds: {question: {shape: 木}}`（`shape` に無い値）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+
+        CC->>SV: 図の種類を渡す
+        SV->>SV: mdmark の設定のスキーマと突き合わせて合わない
+        SV-->>CC: 合わない箇所を示すエラー
+      ```
+    expected:
+      - 設定を書き換えるツールがエラーを返す
+      - エラーの本文に、合わない図の種類のキーがある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_mdmark_map_invalid
+lead: MindStella のセッションが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・関連する場所・保持する回数・表示の既定・文字起こしの設定・コメントの送信で確認済みにするか・画面が読み込む mdmark のバージョンと図の種類）を書き換える単一ユースケース。
 issue: 44
 primary_actor: MindStella のセッション
 stakeholders:
