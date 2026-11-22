@@ -50,7 +50,7 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
           .map(([label, field]) => ({ label, field, value: optionText(option[field]), was: optionText(before?.[field]) }))
           .filter(({ value, was }) => (value !== undefined && value !== "") || (compare && was !== undefined));
         return (
-          <div key={option.key} className={cn("rounded-control border border-border-soft p-2", option.adopted === true && "border-mark-line bg-mark-weak", option.adopted === false && "opacity-70")}>
+          <div key={option.key} className={cn("rounded-control border border-border-soft p-2", option.adopted === true && "border-mark-line bg-mark-weak")}>
             <div className="flex items-start gap-2">
               <span aria-label={`案 ${option.key}`} className={KEY_ICON_CLASS}>{option.key}</span>
               <div data-key={`options[${option.key}].content`} className="min-w-0 flex-1">
