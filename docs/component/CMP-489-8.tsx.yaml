@@ -387,7 +387,7 @@ events:
   - name: 溜める
     when: 「レビューに追加」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。`status` が `saving` の間は発火しない
     value: '`onSubmit(target, loc, body)`（target・loc・body（入力欄の中身そのまま））'
-    description: 使う側が、空白だけなら `empty` にして入力欄へフォーカスを戻し、そうでなければ `saving` にして `POST /w/{workspace}/api/comments` へ送信し、201 なら入力欄と箇所を空にして `saved` にし、フォーカスを『プレビューを開く』の制約「「レビューに追加」の後のフォーカス」のとおり入力欄か「レビューに追加」のボタンへ移す。それ以外は `failed` にして入力欄へフォーカスを戻す
+    description: 使う側が、空白だけなら `empty` にして入力欄へフォーカスを戻し、そうでなければ `saving` にして `POST /w/{workspace}/api/comments` へ送信し、201 を受けてレビュー中の書き込みを読み直し終えたら（読み直し終えるまでは `saving` のまま）入力欄と箇所を空にして `saved` にし、フォーカスを『プレビューを開く』の制約「「レビューに追加」の後のフォーカス」のとおり入力欄か「レビューに追加」のボタンへ移す。それ以外は `failed` にして入力欄へフォーカスを戻す
   - name: 入力
     when: 入力欄の中身が変わったとき
     value: '`onInput(body)`（body）'

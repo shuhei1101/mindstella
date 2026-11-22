@@ -11,7 +11,7 @@ states:
       - name: to
         value: '{"visible_kinds": "全ての種類"}'
   - name: Busy
-    description: 保存している途中。ボタンを押せなくし、保存するボタンに待つマーカーを出す
+    description: 保存している途中。ボタンを押せなくし、1 秒を超えたら保存するボタンの上に回るマーカーを出す。ボタンの幅は変えない
     args:
       - name: busy
         value: 'true'
@@ -46,7 +46,7 @@ args:
     type: 真偽値
     required: false
     default: 'false'
-    description: 保存している途中か。true のときは 2 つのボタンを押せなくし、保存するボタンに待つマーカーと「保存しています」を出す。Esc でも閉じない
+    description: 保存している途中か。true のときは 2 つのボタンを押せなくし、1 秒を超えたら保存するボタンに回るマーカーと「保存しています」を出す。Esc でも閉じない
   - name: error
     type: 文字列
     required: false
@@ -55,7 +55,7 @@ args:
 events:
   - name: 保存する
     when: 「保存する」を押したとき
-    description: 使う側が `busy` にして『設定の既定の書き換え』を呼ぶ。書けたらモーダルを閉じてパネルに知らせを残し、書けなければ `error` に理由を入れて再描画する（画面の表示は保存の前のまま）
+    description: 使う側が `busy` にして『設定の既定の書き換え』を呼ぶ。書けて設定を読み直し終えたら（読み直し終えるまでは `busy` のまま）モーダルを閉じてパネルに知らせを残し、書けなければ `error` に理由を入れて再描画する（画面の表示は保存の前のまま）
     value: '`onSave()`'
   - name: 取り消す
     when: 「取り消す」か Esc を押したとき（`busy` の間は受けない）
