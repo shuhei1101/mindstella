@@ -7,6 +7,13 @@ components:
     kind: コンポーネント
     container: frontend/src/shared/components/ui/button.tsx
     usecase: 共通
-    summary: shadcn/ui の Button（Base UI バージョン）。見た目の違いは variants（default・secondary・ghost・outline・destructive）で持つ
+    summary: shadcn/ui の Button（Base UI バージョン）。見た目の違いは variants（default・secondary・ghost・outline・destructive）で持つ。`pending` が真の間は押せなくし（`disabled`・`aria-busy`）、真になってから 1 秒を超えたらボタンの中身を透明にして同じ場所に回るマーカーを重ねる（中身は残すので幅とボタンの名前を変えない）
+    unit_tests:
+      - name: test_button_when_pending
+        case: 正常
+        summary: 待つ間は押せず、1 秒を超えたら回るマーカーを出す
+        condition: '`pending` を真にして、`vi.useFakeTimers` で 999ms・1000ms 進める'
+        mock: '`vi.useFakeTimers`'
+        expected: どちらも `disabled` で `aria-busy` が真、押しても `onClick` を呼ばない。999ms では回るマーカーが無く、1000ms である。中身の要素はどちらも残っている
 notes:
   単体テスト: 同じフォルダの `button.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 
+from claude_pane_fixtures import started_at
 from session_fixtures import SessionWorld, wait_until
 from workspace_fixtures import REPO_ROOT, UNREACHABLE_PROJECT_INDEX_PORT
 
@@ -73,18 +74,22 @@ def _requests(world: SessionWorld, method: str) -> list[tuple[str, str, Any]]:
 
 
 def test_normal(session_world: SessionWorld, webhook: FakeWebhook) -> None:
-    """ID の一覧がある状態で、ペインが無い running の MindStella のセッションを crashed にし、通知を 1 件送信する（正常系）。"""
+    """ID の一覧がある状態で、同じ tmux のサーバーにほかのセッションがあっても、ペインが無い running の MindStella のセッションを crashed にし、通知を 1 件送信する（正常系）。"""
     # 準備
     world = session_world
-    stopped_id, dead_id = _prepare_workspaces(world, "a", "b")
+    alive_id, dead_id = _prepare_workspaces(world, "a", "b")
     ids_before = _ids_file(world).read_text(encoding="utf-8")
-    world.write_session(stopped_id, status="stopped", pane=None)
+    # A は同じ tmux のサーバーで動き続けている（ペインとその子プロセスがある）
+    started = world.tmux("new-session", "-d", "-s", alive_id, "sleep", "600")
+    assert started.returncode == 0, started.stderr
+    pane_pid = int(world.tmux("display-message", "-p", "-t", f"{alive_id}:0.0", "#{pane_pid}").stdout.strip())
+    world.write_session(alive_id, status="running", pid=pane_pid, pid_started_at=started_at(pane_pid))
     world.write_session(dead_id, status="running")
     # 実行
     server = world.start(_webhook_env(world, webhook))
     # 検証
     assert _status(world, dead_id) == "crashed", server.stderr_text()
-    assert _status(world, stopped_id) == "stopped"
+    assert _status(world, alive_id) == "running"
     wait_until(lambda: webhook.requests)
     wait_until(lambda: len(_requests(world, "GET")) >= 3)
     time.sleep(SETTLE_SEC)

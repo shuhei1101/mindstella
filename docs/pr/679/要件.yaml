@@ -1,0 +1,63 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-605-1.yaml
+    impact: changed
+    detail: '#606。ほかの MindStella のセッションが動いている間も、前の常駐サーバーの間に落ちたセッションを落ちたものとして記録する。正常系の書き換えない側の A を、生きている running に戻す'
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: run_only
+    detail: '#606。落ちたことの見回りが、ほかのセッションが動いている間も落ちたことを見つけて止まったことを通知する（シナリオの記述は変わらない）'
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-597-1.yaml
+    impact: run_only
+    detail: '#606。状態の取得が返す MindStella のセッションの状態に、落ちたかの判定の修正が効く（シナリオの記述は変わらない）'
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: changed
+    detail: '#677。まとめて送信したら、記録に反映されるまで送信をもう一度実行できず、送信を待っていることがボタンで分かる'
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: '#677。スレッドのクローズ・オープンへの戻しと返信をレビューに追加する操作を、反映されるまでもう一度実行できず、待っていることがボタンで分かる'
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-47.yaml
+    impact: changed
+    detail: '#677。項目へのコメントをレビューに溜める操作を、反映されるまでもう一度実行できず、待っていることがボタンで分かる'
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-44.yaml
+    impact: run_only
+    detail: '#677。選んだ箇所へのコメントを溜めるボタンは『項目へコメントする』と同じコメントの入力で、待つ間の決まりが効く（シナリオの記述は変わらない）'
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: changed
+    detail: '#677。保存待ちの編集の追加・取り消し・まとめて保存を、反映されるまでもう一度実行できず、待っていることがボタンで分かる'
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-27.yaml
+    impact: run_only
+    detail: '#677。項目を削除する編集のまとめて保存に、保存待ちのパネルの待つ間の決まりが効く（シナリオの記述は変わらない）'
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-29.yaml
+    impact: run_only
+    detail: '#677。項目を追加する編集のまとめて保存に、保存待ちのパネルの待つ間の決まりが効く（シナリオの記述は変わらない）'
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-15.yaml
+    impact: changed
+    detail: '#677。ワークスペースの既定の保存を、反映されるまでもう一度実行できず、待っていることがボタンで分かる'
+    depends_on: []
+scope_out:
+  - item: 押した直後に画面を変える楽観更新の操作（詳細パネルの確認済みの切り替え・スレッドの既読）を、応答を待つ間に押せなくすること
+    reason: knowledge の規約『入力と文言』の書き込みのボタンの決まりが、ミューテーションの楽観更新の許可リストの操作を除いている
+    plan: none
+  - item: スレッドの画面の結合テスト test_post_thread_id_link_action が、本文の ID のボタンを描き終える前に数えて落ちることがある
+    reason: 既存のテストの待ち方の不具合で、今回の要望（ペインの判定・書き込みのボタンの待つ間）に含まれない
+    plan: '#680'

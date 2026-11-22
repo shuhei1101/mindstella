@@ -11,6 +11,9 @@ NARROW_SIZE = {"width": 320, "height": 720}
 # 確かめの中身（モーダルの枠は確かめのダイアログが持つ）
 DIALOG = "#storybook-root"
 
+# 回るマーカーを重ねるまで（1 秒）を待つ上限のミリ秒
+SPINNER_TIMEOUT_MS = 3_000
+
 
 def _open(open_story: OpenStory, state: str) -> Page:
     """ストーリーを開く。"""
@@ -47,14 +50,16 @@ def test_kinds_changed(open_story: OpenStory) -> None:
 
 
 def test_busy(open_story: OpenStory) -> None:
-    """保存している途中。ボタンを押せなくし、保存するボタンに待つ印を出す（正常系）。"""
+    """保存している途中。ボタンを押せなくし、文言を替えずに 1 秒を超えたら保存するボタンに回るマーカーを重ねる（正常系）。"""
     # 準備・実行
     page = _open(open_story, "busy")
     # 検証
     buttons = page.locator(f"{DIALOG} [data-part=actions] button")
     assert buttons.evaluate_all("items => items.map(b => b.disabled)") == [True, True]
-    assert page.locator(f"{DIALOG} button svg.animate-spin").count() == 1
-    assert "保存しています" in page.inner_text(f"{DIALOG} [data-part=actions]")
+    page.wait_for_selector(f"{DIALOG} button [data-part=pending-spinner]", timeout=SPINNER_TIMEOUT_MS)
+    assert page.locator(f"{DIALOG} button [data-part=pending-spinner]").count() == 1
+    assert "保存する" in page.inner_text(f"{DIALOG} [data-part=actions]")
+    assert "保存しています" not in page.inner_text(f"{DIALOG} [data-part=actions]")
 
 
 def test_error_read_only(open_story: OpenStory) -> None:

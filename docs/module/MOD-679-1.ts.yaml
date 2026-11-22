@@ -1,0 +1,41 @@
+id: MOD-679-1
+title: プレビュー / use-single-flight
+lead: 書き込みの操作を、前の操作の応答と再読み込みが終わるまで同期に止め、要求を 1 件ずつにする。
+functions:
+  - name: useSingleFlight
+    title: 書き込みを 1 件ずつにする
+    kind: フック
+    usecase: 共通
+    summary: '`run(task, after)` を返却する。前の `task` が終わる前に呼ばれた `run` は、`task` を呼ばずにすぐ戻る。動いているかのフラグは `useRef` で持ち、再描画を待たずに 2 回目を止める'
+    returns:
+      type: '{ run: (task: () => Promise<unknown>, after?: () => void) => void; running: boolean }'
+      description: 書き込みを始める操作と、動いているか（`running` はフラグと同じ値を state にも持ち、再描画に使用する）
+    process: |-
+      1. フラグが真なら何もせずに戻る
+      2. フラグを真にし、`running` を真にして `task()` を呼ぶ
+      3. `task()` の Promise が解決か拒否したらフラグと `running` を偽にする（拒否は呼び出し側の `onError` が扱うため、ここでは捨てる）。`running` の偽は `flushSync` で描き終える
+      4. `after` があれば呼ぶ（書き込みの後に、`running` で押せなくしていたボタンへフォーカスを移すときに使用する）
+    unit_tests:
+      - name: test_use_single_flight_when_called_twice_before_render
+        case: 正常
+        summary: 再描画の前に 2 回呼んでも task は 1 回
+        condition: 同じ同期の処理の中で `run` を 2 回呼ぶ。`task` は解決を待たせる Promise
+        mock: なし
+        expected: '`task` が 1 回だけ呼ばれ、解決した後の `run` で再び呼ばれる'
+      - name: test_use_single_flight_when_rejected
+        case: 異常
+        summary: 失敗してもフラグを戻す
+        condition: '`task` が拒否する'
+        mock: なし
+        expected: '`running` が偽に戻り、次の `run` で `task` が呼ばれる'
+      - name: test_use_single_flight_when_after_given
+        case: 正常
+        summary: after は押せる状態を描いた後に呼ぶ
+        condition: '`run` に `task` と `after` を指定する。`task` は解決する Promise'
+        mock: なし
+        expected: '`after` が 1 回呼ばれ、呼ばれたとき `running` が偽'
+    container: frontend/src/shared/hooks/use-single-flight.ts
+notes:
+  呼び出し側: 書き込みのボタンとその Ctrl+Enter を持つ画面（レビュー中の書き込み・スレッド・詳細パネルのコメント・コメントの一覧の新規スレッド・保存待ちのパネル・既定の保存の確認・詳細パネルの項目の削除・項目の追加）は、mutation の `mutateAsync` を `run` で呼ぶ。待つ間の見た目は `running` か mutation の `isPending` を部品の待つ間の状態（`saving`・`busy`・`Button` の `pending`）にする
+  原因: 'PR #679 の測定で、再描画の前に同じボタンを 2 回押すと（`button.click()` を同期に 2 回）、`isPending` で止める今の作りでは要求が 2 回送信された。通常のダブルクリック・2 回のクリック・Ctrl+Enter の 2 回は 1 回だった'
+  単体テスト: 同じフォルダの `use-single-flight.test.ts` に配置する（knowledge の規約『フォルダ構成』）

@@ -19,6 +19,7 @@ import { showLocation } from "@/shared/stores/location-highlight-store";
 import { voiceEditingOf } from "@/shared/stores/voice-store";
 import { useFocusAfterAddTarget } from "@/shared/stores/prefs-store";
 import { useThreadLinks } from "@/shared/hooks/use-thread-links";
+import { useSingleFlight } from "@/shared/hooks/use-single-flight";
 
 export type ThreadViewProps = {
   /** 開くスレッドの ID（まだ送っていない新規スレッドはコメントの ID） */
@@ -47,6 +48,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   const replyForm = useRef<HTMLFormElement>(null);
   const updateComment = useUpdateComment();
   const removeComment = useRemoveComment();
+  const flight = useSingleFlight();
   const saveDraft = useSaveDraft();
   // 開いている間に既読を呼んだスレッド（失敗して読み直しても、開いている間は呼び直さない）
   const seenCalled = useRef(new Set<string>());
@@ -124,7 +126,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   const submitStatus = (): void => {
     if (thread === null) return;
     const text = reason.body.trim();
-    setStatus.mutate(
+    flight.run(() => setStatus.mutateAsync(
       { id: thread.id, status: nextStatus, reason: text === "" ? null : text },
       {
         onSuccess: () => {
@@ -134,11 +136,11 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
           setReason((current) => ({ ...current, detail: detailOf(error), failed: true }));
         },
       },
-    );
+    ));
   };
   const submitReply = (target: string, body: string): void => {
     setReply((current) => ({ ...current, status: "saving" }));
-    addComment.mutate(
+    flight.run(() => addComment.mutateAsync(
       { target: null, loc: null, thread: target, body },
       {
         onSuccess: (result) => {
@@ -149,7 +151,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
           setReply((current) => ({ ...current, status: "failed", detail: detailOf(error) }));
         },
       },
-    );
+    ));
   };
   const pendingPost = (item: ReviewItem) => (
     <li key={item.id}>
@@ -159,6 +161,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
         index={index}
         changeSets={changeSets}
         editing={editing?.id === item.id}
+        busy={(updateComment.isPending && updateComment.variables.id === item.id) || (removeComment.isPending && removeComment.variables === item.id)}
         editError={editing?.id === item.id ? editing.error : null}
         editBody={editing?.id === item.id ? editing.body : null}
         voice={editVoice.voice}
@@ -185,7 +188,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
           setEditing(null);
         }}
         onEditSubmit={(target, body) => {
-          updateComment.mutate(
+          flight.run(() => updateComment.mutateAsync(
             { id: target, body },
             {
               onSuccess: () => {
@@ -195,10 +198,10 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
                 setEditing({ id: target, body, error: detailOf(error) ?? "サーバーが止まっています。再起動してから修正してください。" });
               },
             },
-          );
+          ));
         }}
         onRemove={(target) => {
-          removeComment.mutate(target, { onSuccess: () => { setRemoved((current) => [...current, item]); } });
+          flight.run(() => removeComment.mutateAsync(target, { onSuccess: () => { setRemoved((current) => [...current, item]); } }));
         }}
         onToggle={(target, open) => {
           setOpened((current) => ({ ...current, [target]: open }));
@@ -250,7 +253,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
             <Button variant="ghost" onClick={closeReason}>
               キャンセル
             </Button>
-            <Button disabled={setStatus.isPending} onClick={submitStatus}>
+            <Button pending={setStatus.isPending} onClick={submitStatus}>
               {actionLabel}
             </Button>
           </div>
@@ -299,8 +302,10 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
                 </span>
                 <Button
                   variant="ghost"
+                  pending={addComment.isPending && addComment.variables.id === item.id}
+                  disabled={flight.running}
                   onClick={() => {
-                    addComment.mutate({ id: item.id, created: item.created, target: item.target, loc: item.loc, thread: item.thread, body: item.body }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); } });
+                    flight.run(() => addComment.mutateAsync({ id: item.id, created: item.created, target: item.target, loc: item.loc, thread: item.thread, body: item.body }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); } }));
                   }}
                 >
                   <Icon name="undo" />

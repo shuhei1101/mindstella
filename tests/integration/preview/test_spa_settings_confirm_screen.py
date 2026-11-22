@@ -8,6 +8,7 @@ from pathlib import Path
 import yaml
 from playwright.sync_api import Locator, Page, Route, expect
 from preview_fixture_types import WriteReviewPreview
+from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import open_spa
 from workspace_fixtures import RECORD_DIR, MakeItem
 
@@ -97,8 +98,28 @@ def test_busy(page: Page, write_review_preview: WriteReviewPreview, make_item: M
     page.route("**/api/config/display", lambda route: held.append(route))
     # 実行
     _dialog(page).get_by_role("button", name="保存する").click()
-    expect(_dialog(page).get_by_role("button", name="保存しています")).to_be_disabled()
+    expect(_dialog(page).get_by_role("button", name="保存する")).to_be_disabled()
     page.keyboard.press("Escape")
     # 検証
     expect(_dialog(page)).to_be_visible()
     held[0].abort()
+
+
+def test_normal_when_pressed_again_while_saving(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem) -> None:
+    """保存を待つ間にもう一度押しても要求は 1 回で、文言を替えずに押せなくし、1 秒を超えると回るマーカーを出す（正常系）。"""
+    # 準備
+    root = _open(page, write_review_preview, make_item)
+    held = hold_requests(page, "**/api/config/display", "PUT")
+    button = _dialog(page).get_by_role("button", name="保存する")
+    box = button.bounding_box()
+    assert box is not None
+    # 実行（再描画の前に 2 回押す）
+    press_twice(button)
+    # 検証
+    assert_waiting(page, button, held, box["width"])
+    expect(button).to_have_text("保存する")
+    held.release()
+    expect(_dialog(page)).to_have_count(0)
+    display = _config(root)["display"]
+    assert isinstance(display, dict)
+    assert "tasks" not in display["visible_kinds"]

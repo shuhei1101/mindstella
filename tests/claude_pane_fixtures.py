@@ -111,7 +111,7 @@ def _is_running(pid: int) -> bool:
     return completed.returncode == 0 and not completed.stdout.strip().startswith("Z")
 
 
-def _started_at(pid: int) -> str:
+def started_at(pid: int) -> str:
     """プロセスの起動時刻（`/proc/{PID}/stat` の 22 番目の欄 starttime）を返す。"""
     stat = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
     return stat.rpartition(")")[2].split()[STAT_STARTTIME_INDEX]
@@ -196,7 +196,7 @@ def start_claude_pane(tmp_path: Path) -> Iterator[StartClaudePane]:
                 "tmux_pane": pane,
                 "claude_config_dir": str(config_dir),
                 "claude_pid": claude_pid,
-                "claude_started_at": _started_at(claude_pid),
+                "claude_started_at": started_at(claude_pid),
             },
             transcript=transcript,
             capture=lambda: _tmux("capture-pane", "-p", "-t", pane),

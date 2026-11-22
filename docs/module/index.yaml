@@ -278,6 +278,8 @@ items:
     summary: "記録に保存待ちの編集を重ねた索引を読む"
   - page: MOD-633-2.ts.yaml
     summary: "項目の確認済みの設定と解除を送信し、応答を待つ間は押した後の値を返す"
+  - page: MOD-679-1.ts.yaml
+    summary: "書き込みの操作を、前の操作の応答と再読み込みが終わるまで同期に止め、要求を 1 件ずつにする"
   - page: MOD-489-131.ts.yaml
     summary: "一覧の画面の編集の入口を組む"
   - page: MOD-489-133.ts.yaml

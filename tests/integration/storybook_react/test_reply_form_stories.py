@@ -27,6 +27,9 @@ TEXTAREA_SIZES_SCRIPT = """e => ({
 SEND = "button[data-focus='reply-send']"
 MESSAGE = "form [role=status]"
 
+# 回るマーカーを重ねるまで（1 秒）を待つ上限のミリ秒
+SAVING_NOTICE_TIMEOUT_MS = 3_000
+
 
 # 入力欄と「レビューに追加」の位置（同じ行で、ボタンは入力欄の右・下端を合わせる）を読む
 LINE_GEOMETRY_SCRIPT = """() => {
@@ -86,14 +89,15 @@ def test_typing(open_story: OpenStory) -> None:
 
 
 def test_saving(open_story: OpenStory) -> None:
-    """溜めている。入力欄を読み取りだけにし、「レビューに追加」を押せなくする。回る印と「レビューに追加しています」を出す（正常系）。"""
+    """溜めている。入力欄を読み取りだけにし、「レビューに追加」を押せなくする。1 秒を超えたらボタンに回るマーカーを重ね、結果の行に「レビューに追加しています」だけを出す（正常系）。"""
     # 準備・実行
     page = open_story("comments-replyform--saving")
     # 検証
     assert page.get_attribute("textarea", "readonly") is not None
     assert page.is_disabled(SEND)
     assert page.inner_text(MESSAGE) == "レビューに追加しています"
-    assert page.locator(f"{MESSAGE} svg.animate-spin").count() == 1
+    page.wait_for_selector(f"{SEND} [data-part=pending-spinner]", timeout=SAVING_NOTICE_TIMEOUT_MS)
+    assert page.locator(f"{MESSAGE} svg.animate-spin").count() == 0
 
 
 def test_saved(open_story: OpenStory) -> None:

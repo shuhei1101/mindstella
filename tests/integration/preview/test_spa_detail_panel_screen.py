@@ -31,6 +31,7 @@ from preview_edit_helpers import edit_edits, edit_items
 from preview_embed_helpers import EMBEDDED_BODY, build_embedded_diff_workspace
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import mismatch_body_diff
+from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import assert_bottom_aligned, open_spa
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakePost, MakeThread, MakeWorkspace, WriteComments
 from record_write_helpers import call_or_write, write_tool
@@ -468,6 +469,26 @@ def test_row_edit_when_empty(page: Page, comment_preview: tuple[str, Path]) -> N
     # 検証
     expect(_panel(page).get_by_role("alert")).to_have_text("コメントを入れてから修正してください。")
 
+
+
+def test_normal_when_pressed_again_while_adding(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem) -> None:
+    """D-1 の詳細パネルで溜めるのを待つ間にもう一度押しても溜めるのは 1 件で、待つ間は押せず、1 秒を超えると回るマーカーを出す（正常系）。"""
+    # 準備
+    url, root = write_review_preview(make_item("D-1", status="未決定"))
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).get_by_role("textbox", name="D-1 へのコメント").fill("案 A にする")
+    held = hold_requests(page, "**/api/comments", "POST")
+    button = _panel(page).get_by_role("button", name="レビューに追加")
+    box = button.bounding_box()
+    assert box is not None
+    # 実行（再描画の前に 2 回押す）
+    press_twice(button)
+    # 検証
+    assert_waiting(page, button, held, box["width"])
+    held.release()
+    expect(_panel(page).get_by_role("textbox", name="D-1 へのコメント")).to_have_value("")
+    items = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"]
+    assert [(item["target"], item["body"]) for item in items] == [("D-1", "案 A にする")]
 
 def test_row_remove_and_undo(page: Page, comment_preview: tuple[str, Path]) -> None:
     """行の削除で行を「コメントを削除しました。」と「元に戻す」に置き換えてフォーカスを移し、「元に戻す」で戻す（正常系）。"""

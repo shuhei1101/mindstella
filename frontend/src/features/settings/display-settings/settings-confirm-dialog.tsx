@@ -5,6 +5,7 @@ import { SettingsConfirm, type DisplayValue } from "@/features/settings/display-
 import { useSaveDisplayDefault } from "@/features/settings/display-settings/use-save-display-default";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/components/ui/dialog";
 import { AppError } from "@/shared/core/app-error";
+import { useSingleFlight } from "@/shared/hooks/use-single-flight";
 
 export type SettingsConfirmDialogProps = {
   open: boolean;
@@ -17,11 +18,12 @@ export type SettingsConfirmDialogProps = {
 
 export const SettingsConfirmDialog = ({ open, onOpenChange, from, to, onSaved }: SettingsConfirmDialogProps) => {
   const save = useSaveDisplayDefault();
+  const flight = useSingleFlight();
   const [error, setError] = useState<string | null>(null);
   const busy = save.isPending;
   const handleSave = (): void => {
     setError(null);
-    save.mutate(
+    flight.run(() => save.mutateAsync(
       { visible_kinds: [...to.visibleKinds] },
       {
         onSuccess: () => {
@@ -32,7 +34,7 @@ export const SettingsConfirmDialog = ({ open, onOpenChange, from, to, onSaved }:
           setError(reason instanceof AppError ? `保存できませんでした。${reason.message}` : "保存できませんでした。サーバーが止まっています。再起動してから保存してください。");
         },
       },
-    );
+    ));
   };
   return (
     <Dialog

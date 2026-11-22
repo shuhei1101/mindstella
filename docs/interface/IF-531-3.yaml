@@ -51,7 +51,7 @@ constraints:
     constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 落ちたかの判定
-    constraint: '`status` が `running` のときだけ判定し、ペインかプロセスが無ければ `crashed` を返す（`stopping`・`restarting` は停止・再起動の処理に任せ、そのまま返す）。落ちたとするのは、`session.json` の `pane` が tmux の `display-message -p -t {ペイン} ''#{pane_pid}''` で引けない、または `pid` のプロセスが無いか起動時刻が違うとき（『セッションの値の注入』の `claude_started_at` と同じ見分け方）'
+    constraint: '`status` が `running` のときだけ判定し、ペインかプロセスが無ければ `crashed` を返す（`stopping`・`restarting` は停止・再起動の処理に任せ、そのまま返す）。落ちたとするのは、`session.json` の `pane` を tmux の `display-message -p -t {ペイン} ''#{pane_pid}''` で参照して失敗するか、出力が空か数字でない（同じ tmux のサーバーにほかのセッションがあると、無いペインを指しても終了コード 0 で空の出力を返却するため）、または `pid` のプロセスが無いか起動時刻が違うとき（『セッションの値の注入』の `claude_started_at` と同じ見分け方）'
   - item: MCP のツール
     constraint: '`sessions` は `workspace_id` を受け、同じ処理を呼ぶ'
   - item: 停止の通知
@@ -87,6 +87,7 @@ flows:
         description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
       - name: ワークスペース
         description: '`session.json` が `running` で、`pane` のペインが無い'
+        notes: 同じ tmux のサーバーにほかのセッションが 1 つ以上ある（無いペインを指した `display-message` が終了コード 0 で空の出力を返却する条件）
     flow: |-
       ```mermaid
       sequenceDiagram

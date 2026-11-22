@@ -453,7 +453,7 @@ def session_alive(
         return False
     try:
         found = run(
-            ["tmux", "-S", socket, "display-message", "-p", "-t", pane, "#{pane_id}"],
+            ["tmux", "-S", socket, "display-message", "-p", "-t", pane, "#{pane_pid}"],
             capture_output=True,
             text=True,
             check=False,
@@ -461,8 +461,8 @@ def session_alive(
         )
     except (OSError, subprocess.TimeoutExpired):
         return False
-    # ペインが無い
-    if found.returncode != 0:
+    # ペインが無い（ほかのセッションがあると、無いペインでも終了コード 0 で空の出力を返す）
+    if found.returncode != 0 or not found.stdout.strip().isdigit():
         return False
     return process_started_at(pid) == session.get("pid_started_at")
 

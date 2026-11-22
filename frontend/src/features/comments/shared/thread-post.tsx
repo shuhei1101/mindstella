@@ -26,6 +26,8 @@ export type ThreadPostProps = Pick<VoiceProps, "voice" | "voiceReason" | "elapse
   /** 記録の索引（本文の項目の ID のツールチップ） */
   index?: RecordIndex | null;
   editing?: boolean;
+  /** 修正・削除の応答を受けてレビュー中の書き込みを読み直し終えるまでか */
+  busy?: boolean;
   editError?: string | null;
   editBody?: string | null;
   open?: boolean;
@@ -74,6 +76,7 @@ export const ThreadPost = ({
   onOpenThread,
   index = null,
   editing = false,
+  busy = false,
   editError = null,
   editBody = null,
   open = false,
@@ -107,10 +110,10 @@ export const ThreadPost = ({
           <span className="flex-1" />
           {editing ? null : (
             <>
-              <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" onClick={() => onEditStart(pending.id)}>
+              <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" disabled={busy} onClick={() => onEditStart(pending.id)}>
                 <Icon name="edit" />
               </Button>
-              <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" onClick={() => onRemove(pending.id)}>
+              <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" pending={busy} onClick={() => onRemove(pending.id)}>
                 <Icon name="trash" />
               </Button>
             </>
@@ -122,6 +125,7 @@ export const ThreadPost = ({
             label={label}
             body={editBody ?? pending.body}
             error={editError}
+            saving={busy}
             voice={voice}
             voiceReason={voiceReason}
             elapsed={elapsed}

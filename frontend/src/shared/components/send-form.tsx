@@ -202,12 +202,8 @@ export const VoiceButtons = ({ voice, voiceReason, submit, doneRef, onStart, onC
 /** 結果の印と文言 */
 const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status: SendStatus; count: number | null; detail: string | null; showSpinner: boolean; onCopy: () => void }) => {
   if (status === "saving") {
-    return showSpinner ? (
-      <>
-        <Icon name="spin" className="animate-spin" />
-        <span>レビューに追加しています</span>
-      </>
-    ) : null;
+    // 回るマーカーは「レビューに追加」に重ねるので、結果の行は文言だけ
+    return showSpinner ? <span>レビューに追加しています</span> : null;
   }
   if (status === "saved") {
     return (
@@ -404,7 +400,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
         onBlocked={onVoiceBlocked}
         onDone={() => onVoiceDone?.(target, loc, body)}
         submit={
-          <Button ref={submitRef} type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" aria-busy={status === "saving"} disabled={status === "saving"}>
+          <Button ref={submitRef} type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" pending={status === "saving"}>
             <Icon name="comment" />
           </Button>
         }

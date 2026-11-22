@@ -188,6 +188,13 @@ states:
         value: '{"id":"TH-1-4","author":"ai","body":"続きは TH-2 で話します。案の比較は TH-2-3 にまとめています。TH-99 は存在しません。","created":"2026-10-12T02:10:00+00:00"}'
       - name: threadTitles
         value: '{"TH-2":"トップバーの見直し"}'
+  - name: PendingBusy
+    description: レビュー中の返信の修正・削除の反映を待っている。「修正」「削除」を押せなくし、1 秒を超えたら押したボタンの上に回るマーカーを出す
+    args:
+      - name: pending
+        value: '{"id":"C-43","thread":"TH-1","target":null,"body":"了解。T-14 は今週中に書いてほしい","created":"2026-10-12T05:14:00+00:00"}'
+      - name: busy
+        value: 'true'
 lead: スレッドの中に書いた順で並べる 1 件。利用者と AI の書き込み・クローズとオープンへの戻しの記録・レビュー中の返信を、書き手と種類が見分けられる形状で出す。
 args:
   - name: post
@@ -284,6 +291,12 @@ args:
     default: "{}"
     enabled_when: '`post` か `pending` を渡したとき'
     description: 記録にあるスレッドの ID（`TH-{数字}`）からそのタイトルへの対応。本文の中の `TH-{数字}` と書き込みの ID `TH-{数字}-{数字}` のうち、スレッドの ID が対応にあるものを、項目の ID と同じ見た目のリンク（スレッドのタイトルは [本文のマーカーのツールチップ](id:CMP-489-36) の `ThreadId` で出す）にする。対応に無いスレッドの ID と、スレッドにはあるが書き込みの無い書き込みの ID は文字のまま出す
+  - name: busy
+    type: 真偽値
+    default: 'false'
+    enabled_when: '`pending` を渡したとき'
+    description: 修正・削除の応答を受けてレビュー中の書き込みを読み直し終えるまでか。true のときは「修正」「削除」（書き換えている間は「キャンセル」「修正」）を押せなくし、1 秒を超えたら押したボタンの上に回るマーカーを出す。ボタンの幅は変えない
+    status: planned
 events:
   - name: 項目を開く
     when: 本文の中の項目の ID のリンクを押したとき
@@ -296,7 +309,7 @@ events:
   - name: 修正する
     when: 書き換えの「修正」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき（変換の確定の Enter を除く）
     value: '`onEditSubmit(id, body)`（`pending.id`・入力欄の中身）'
-    description: 使う側が空白だけなら「コメントを入れてから修正してください。」を `editError` に渡し、そうでなければ `PATCH /w/{workspace}/api/comments/{id}` へ送信する
+    description: 使う側が空白だけなら「コメントを入れてから修正してください。」を `editError` に渡し、そうでなければ `busy` を true にして `PATCH /w/{workspace}/api/comments/{id}` へ送信し、レビュー中の書き込みを読み直し終えたら `busy` を false に戻す
   - name: 修正をやめる
     when: 書き換えの「キャンセル」を押したときと、入力欄で Esc を押したとき
     value: '`onEditCancel(id)`（`pending.id`）'
@@ -304,7 +317,7 @@ events:
   - name: 削除
     when: '`pending` の「削除」を押したとき'
     value: '`onRemove(id)`（`pending.id`）'
-    description: 使う側が `DELETE /w/{workspace}/api/comments/{id}` で削除し、元の場所に「元に戻す」を出す
+    description: 使う側が `busy` を true にして `DELETE /w/{workspace}/api/comments/{id}` で削除し、レビュー中の書き込みを読み直し終えたら `busy` を false に戻して、元の場所に「元に戻す」を出す
   - name: まとまりを開く
     when: 本文の中のまとまりのリンクを押したとき（既定の動作を止める）
     value: '`onOpenChangeSet(id)`（まとまりの ID）'

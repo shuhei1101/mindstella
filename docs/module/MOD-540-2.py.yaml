@@ -379,15 +379,15 @@ functions:
       type: bool
       description: ペインとプロセスがあれば真
     process: |-
-      1. `pane`・`socket` が無い、または `tmux -S {socket} display-message -p -t {pane} '#{pane_id}'` が失敗すれば偽
+      1. `pane`・`socket` が無い、または `tmux -S {socket} display-message -p -t {pane} '#{pane_pid}'` が失敗するか、出力が数字でなければ偽
       2. `pid` のプロセスの起動時刻（『セッションの値の注入』の `process_started_at`）が `pid_started_at` と違えば偽。それ以外は真
     unit_tests:
       - name: test_session_alive
         case: 正常
         summary: ペインとプロセスの有無を見分ける
-        condition: '`parametrize`: ペインがあり起動時刻が同じ / ペインが無い / 起動時刻が違う'
+        condition: '`parametrize`: ペインがあり起動時刻が同じ / ペインが無い / 起動時刻が違う / `display-message` が終了コード 0 で空の出力'
         mock: '`run`・`process_started_at`'
-        expected: 真 / 偽 / 偽
+        expected: 真 / 偽 / 偽 / 偽
   - name: record_diff
     title: 違いを記録する
     kind: 関数

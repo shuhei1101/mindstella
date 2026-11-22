@@ -171,14 +171,15 @@ def test_with_value_location(open_story: OpenStory) -> None:
 
 
 def test_saving(open_story: OpenStory) -> None:
-    """溜めている。入力欄を書き換えられなくし、ボタンを押せなくする。1 秒を超えたら回る印と文言を出す（正常系）。"""
+    """溜めている。入力欄を書き換えられなくし、ボタンを押せなくする。1 秒を超えたらボタンに回るマーカーを重ね、結果の行に文言だけを出す（正常系）。"""
     # 準備・実行
     page = open_story("shared-sendform--saving")
     # 検証
     assert page.get_by_role("button", name="レビューに追加").is_disabled()
     assert page.get_attribute("textarea", "readonly") is not None
-    page.wait_for_selector("form [role=status] svg.animate-spin", timeout=SAVING_NOTICE_TIMEOUT_MS)
+    page.wait_for_selector("button[aria-label='レビューに追加'] [data-part=pending-spinner]", timeout=SAVING_NOTICE_TIMEOUT_MS)
     assert page.inner_text("form [role=status]") == "レビューに追加しています"
+    assert page.locator("form [role=status] svg.animate-spin").count() == 0
 
 
 def test_saved(open_story: OpenStory) -> None:

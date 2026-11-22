@@ -71,6 +71,9 @@ export const AiReopenedEvent: Story = { args: { event: {"kind": "reopened", "aut
 /** レビュー中の返信。利用者の書き込みと同じく右に寄せ、破線の枠と頭に「レビュー中」の印、右上に「修正」「削除」を出す。日時は出さない */
 export const Pending: Story = { args: { pending: {"id": "C-43", "thread": "TH-1", "target": null, "body": "了解。T-14 は今週中に書いてほしい", "created": "2026-10-12T05:14:00+00:00", "loc": null}, titles: lookup({"T-14": "移し替えの失敗の扱いを書く"}) } };
 
+/** レビュー中の返信の修正・削除の反映を待っている。「修正」「削除」を押せなくし、1 秒を超えたら押したボタンの上に回るマーカーを出す */
+export const PendingBusy: Story = { args: { pending: {"id": "C-43", "thread": "TH-1", "target": null, "body": "了解。T-14 は今週中に書いてほしい", "created": "2026-10-12T05:14:00+00:00", "loc": null}, busy: true } };
+
 /** レビュー中の返信を書き換えている。本文の代わりに書き換えの入力欄と「キャンセル」「修正」を出し、「修正」「削除」のアイコンは出さない */
 export const PendingEditing: Story = { args: { pending: {"id": "C-43", "thread": "TH-1", "target": null, "body": "了解。T-14 は今週中に書いてほしい", "created": "2026-10-12T05:14:00+00:00", "loc": null}, editing: true } };
 
