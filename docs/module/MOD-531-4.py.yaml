@@ -270,9 +270,9 @@ functions:
       - name: test_is_alive
         case: 正常
         summary: ペインとプロセスで判定し、落ちていれば crashed
-        condition: '`running`・ペインあり・起動時刻が合う / ペインが無い / 起動時刻が違う / `stopped`'
+        condition: '`running`・ペインあり・起動時刻が合う / ペインが無い / 起動時刻が違う / `stopped` / `display-message` が終了コード 0 で空の出力（`pid` が `None`）'
         mock: '`TmuxRunner`・`ProcessInspector`'
-        expected: '`True` / `False` で `crashed` / `False` で `crashed` / `False` で変えない'
+        expected: '`True` / `False` で `crashed` / `False` で `crashed` / `False` で変えない / `False` で `crashed`'
       - name: test_is_alive_when_crashed_from_running
         case: 正常
         summary: running から落ちたときだけ on_crashed を呼ぶ

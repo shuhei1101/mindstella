@@ -23,6 +23,13 @@ functions:
         condition: 403 と `detail`
         mock: MSW
         expected: '`AppError` の `detail`'
+      - name: test_use_save_display_default_pending_until_refetched
+        case: 正常
+        summary: 再読み込みが終わるまで pending
+        condition: 200。設定の読み取りの応答を遅らせる
+        mock: MSW
+        expected: 読み取りの応答を返却するまで `isPending` が真で、返却した後に偽
     container: frontend/src/features/settings/display-settings/use-save-display-default.ts
 notes:
   単体テスト: 同じフォルダの `use-save-display-default.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  待つ間: 『プレビュー / use-comments』の補足「待つ間」と同じ。設定の再読み込みを待つ

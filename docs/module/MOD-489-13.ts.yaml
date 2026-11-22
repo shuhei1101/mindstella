@@ -23,6 +23,12 @@ functions:
         condition: '409'
         mock: MSW
         expected: '`AppError` の `detail`'
+      - name: test_use_set_thread_status_pending_until_refetched
+        case: 正常
+        summary: 再読み込みが終わるまで pending
+        condition: 200。スレッドの読み取りの応答を遅らせる
+        mock: MSW
+        expected: 読み取りの応答を返却するまで `isPending` が真で、返却した後に偽
     container: frontend/src/features/comments/shared/use-threads.ts
   - name: useMarkThreadSeen
     title: スレッドの既読
@@ -48,3 +54,4 @@ functions:
     container: frontend/src/features/comments/shared/use-threads.ts
 notes:
   単体テスト: 同じフォルダの `use-threads.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  待つ間: 『プレビュー / use-comments』の補足「待つ間」と同じ。`useSetThreadStatus` はスレッドの再読み込みを待つ。`useMarkThreadSeen` は楽観更新のため対象外
