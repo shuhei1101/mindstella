@@ -17,7 +17,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-6.yaml
     impact: changed
-    detail: ボードのカードの無い所をドラッグして横にスクロールする（#669）
+    detail: ボードのカードの無い所をドラッグして横にスクロールする（#669）。表示形式の切り替えの選択中とホバーを見分けられる（#671）
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-5.yaml
