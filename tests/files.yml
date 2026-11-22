@@ -104,6 +104,14 @@ files:
   - topic:コメント
   - topic:ヘルパー
   - topic:結合テスト
+- path: integration/preview/preview_pending_helpers.py
+  name: 書き込みのボタンの待つ間の画面の結合テストの補助
+  description: 書き込みの要求を留め、再描画の前に 2 回押し、待つ間にボタンが押せず 1 秒を超えると回るマーカーを出すかを確認する関数。書き込みのボタンの待つ間の結合テストを追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
 - path: integration/preview/preview_edit_helpers.py
   name: 編集・保存待ちの画面の結合テストの補助
   description: 編集・保存待ちの画面の結合テストが共有する値と、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。

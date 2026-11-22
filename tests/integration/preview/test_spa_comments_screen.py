@@ -14,6 +14,7 @@ from pathlib import Path
 
 from playwright.sync_api import Locator, Page, Route, expect
 from preview_comment_helpers import read_workspace_yaml
+from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import assert_below_topbar, open_spa
 
 import pytest
@@ -195,6 +196,30 @@ def test_new_thread(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
     items = read_workspace_yaml(root, "comments.yaml")["items"]
     assert [item["body"] for item in items if "target" not in item and "thread" not in item] == ["全体を見直したい"]
 
+
+
+def test_new_thread_when_pressed_again_while_adding(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """溜めるのを待つ間にもう一度押しても溜めるのは 1 件で、待つ間は押せず、1 秒を超えるとボタンに回るマーカーを重ね、結果の行は文言だけにする（正常系）。"""
+    # 準備
+    _, root = spa_comments_preview
+    _open(page, spa_comments_preview)
+    _panel(page).get_by_role("button", name="新規スレッド").click()
+    _panel(page).get_by_role("textbox", name="新規スレッド").fill("全体を見直したい")
+    held = hold_requests(page, "**/api/comments", "POST")
+    button = _panel(page).get_by_role("button", name="レビューに追加")
+    box = button.bounding_box()
+    assert box is not None
+    # 実行（再描画の前に 2 回押す）
+    press_twice(button)
+    # 検証
+    assert_waiting(page, button, held, box["width"])
+    message = _panel(page).get_by_role("status").filter(has_text="レビューに追加しています")
+    expect(message).to_be_visible()
+    expect(message.locator("svg.animate-spin")).to_have_count(0)
+    held.release()
+    expect(_panel(page).locator("li[data-pending]").filter(has_text="全体を見直したい")).to_have_count(1)
+    items = read_workspace_yaml(root, "comments.yaml")["items"]
+    assert [item["body"] for item in items if "target" not in item and "thread" not in item] == ["全体を見直したい"]
 
 def test_new_thread_close(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
     """新規スレッドの入力を閉じると「新規スレッド」に戻し、下書きは残す（正常系）。"""

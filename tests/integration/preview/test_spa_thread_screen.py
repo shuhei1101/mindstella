@@ -21,6 +21,7 @@ from typing import Any
 from playwright.sync_api import Locator, Page, expect
 from preview_comment_helpers import free_comment, read_workspace_yaml
 from preview_fixture_types import WriteReviewPreview
+from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import open_spa
 from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread, WriteComments
 
@@ -126,6 +127,28 @@ def test_reason_input(page: Page, spa_comments_preview: tuple[str, Path]) -> Non
     assert threads["TH-2"]["status"] == "closed"
     assert threads["TH-2"]["events"][-1]["reason"] == "済んだ"
 
+
+
+def test_normal_when_pressed_again_while_closing(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """クローズを待つ間にもう一度押しても要求は 1 回で、待つ間は確定が押せず、1 秒を超えると回るマーカーを出す（正常系）。"""
+    # 準備
+    _, root = spa_comments_preview
+    _open(page, spa_comments_preview, "TH-2")
+    _panel(page).get_by_role("button", name="クローズにする").click()
+    _panel(page).get_by_role("textbox", name="理由（任意）").fill("済んだ")
+    held = hold_requests(page, "**/api/threads/*", "PATCH")
+    button = _panel(page).get_by_role("button", name="クローズにする")
+    box = button.bounding_box()
+    assert box is not None
+    # 実行（再描画の前に 2 回押す）
+    press_twice(button)
+    # 検証
+    assert_waiting(page, button, held, box["width"])
+    held.release()
+    expect(_panel(page).locator("[data-state=closed]")).to_have_text("クローズ")
+    expect(_panel(page).locator("article[data-event=closed]")).to_have_count(1)
+    threads = {thread["id"]: thread for thread in read_workspace_yaml(root, "threads.yaml")["items"]}
+    assert [event["kind"] for event in threads["TH-2"]["events"]].count("closed") == 1
 
 def test_reason_input_when_cancel(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
     """理由の入力の Esc は理由の入力を閉じて「状態を変える」へフォーカスを戻し、一覧へは戻らない（正常系）。"""

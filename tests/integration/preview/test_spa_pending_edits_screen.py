@@ -5,6 +5,7 @@ from __future__ import annotations
 from playwright.sync_api import Locator, Page, Route, expect
 from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WriteReviewPreview
+from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import assert_below_topbar, open_spa
 
 import pytest
@@ -173,18 +174,21 @@ def test_save_enabled(page: Page, write_edit_preview: WriteReviewPreview, make_i
 
 
 def test_save_disabled_while_sending(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
-    """送信中は「保存しています…」にして押せなくし、`aria-busy` を付ける（正常系）。"""
+    """保存を待つ間にもう一度押しても要求は 1 回で、文言を替えずに押せなくし、1 秒を超えると回るマーカーを出す（正常系）。"""
     # 準備
-    _open(page, write_edit_preview, make_item, make_edit)
-    panel = _panel(page)
-    page.route("**/api/edits/save", lambda route: None)
-    # 実行
-    panel.get_by_role("button", name="まとめて保存する").click()
-    sending = panel.get_by_role("button", name="保存しています…")
+    url, _ = write_edit_preview(make_item("D-1"), edits=(make_edit("E-1", target="D-1", key="title", value="D-1の新しい題", before="D-1の題"),))
+    open_spa(page, url, "?tab=decisions&panel=pending")
+    held = hold_requests(page, "**/api/edits/save", "POST")
+    button = _panel(page).get_by_role("button", name="まとめて保存する")
+    box = button.bounding_box()
+    assert box is not None
+    # 実行（再描画の前に 2 回押す）
+    press_twice(button)
     # 検証
-    expect(sending).to_be_disabled()
-    expect(sending).to_have_attribute("aria-busy", "true")
-
+    assert_waiting(page, button, held, box["width"])
+    expect(button).to_have_text("まとめて保存する")
+    held.release()
+    expect(page.get_by_role("status").filter(has_text="件を保存しました。")).to_have_text("1 件を保存しました。")
 
 def test_saved_notice_label(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
     """全て書けたら「{n} 件を保存しました。」を status で出し、パネルを閉じる（正常系）。"""
