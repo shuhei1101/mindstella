@@ -1,4 +1,4 @@
-// 検討事項の案のカード（左上の記号のアイコン、採用 / 不採用と推奨のバッジ）と、採用した案が無いときに一覧の下に出す推奨の理由。差分の表示の間は前の値と今の値を並べる
+// 検討事項の案のカード（左上の記号のアイコン、採用 / 不採用と推奨のバッジ）と、採用した案が無いときに一覧の下に出す推奨する理由。差分の表示の間は前の値と今の値を並べる
 import type { ReactNode } from "react";
 
 import { KeyDiff } from "@/features/detail/detail-panel/components/key-diff";
@@ -31,7 +31,7 @@ const resultOf = (option: Option | undefined): string | null => {
 const KEY_ICON_CLASS = "grid size-6 flex-none place-items-center rounded-full bg-muted font-mono text-small font-semibold text-foreground";
 
 /** 推奨・採用・不採用のバッジ */
-const BADGE_CLASS = "inline-flex flex-none items-center gap-0.5 rounded-control border px-1.5 text-xs";
+const BADGE_CLASS = "mt-0.5 inline-flex h-5 flex-none items-center gap-0.5 rounded-control border px-1.5 text-xs";
 
 export type OptionListProps = { options: readonly Option[]; previous: readonly Option[] | null; marks?: Record<string, ReactNode> };
 
@@ -56,7 +56,7 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
                 <span className="sr-only">案 </span>
                 {option.key}
               </span>
-              <div data-key={`options[${option.key}].content`} className="min-w-0 flex-1">
+              <div data-key={`options[${option.key}].content`} className="flex min-h-6 min-w-0 flex-1 items-center">
                 {compare && before?.content !== option.content ? <KeyDiff was={before?.content ?? null} now={option.content} /> : <ValueText value={option.content} />}
               </div>
               {recommended ? (
@@ -92,12 +92,7 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
       ))}
       {recommendation === undefined ? null : (
         <p data-key={`options[${recommendation.key}].reason`} className="flex items-start gap-1.5 text-small">
-          <span className={cn(BADGE_CLASS, "border-mark-line text-mark")}>
-            <Icon name="star" className="size-3" />
-            推奨
-          </span>
-          <span className="font-mono font-semibold">{recommendation.key}</span>
-          <span aria-hidden="true">—</span>
+          <span className="flex-none text-muted-foreground">{`${recommendation.key} を推奨する理由`}</span>
           <span className="min-w-0 flex-1">
             <ValueText value={recommendation.reason} />
           </span>

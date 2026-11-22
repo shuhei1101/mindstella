@@ -292,17 +292,23 @@ const HistoryButton = ({ fit, active, onClick }: { fit: Fit; active: boolean; on
   </button>
 );
 
-/** 差分の表示をやめる × */
-const ClearDiffButton = ({ fit, onClick }: { fit: Fit; onClick: (() => void) | undefined }) => (
-  <button
-    type="button"
-    aria-label="差分の表示をやめる"
-    title="差分の表示をやめる"
-    onClick={onClick}
-    className={cn("grid size-8 flex-none cursor-pointer place-items-center rounded-control text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg", iconButtonFitClass(fit))}
-  >
-    <Icon name="x" />
-  </button>
+/** 選んだ時点の日時と、差分の表示をやめる ×（時点の名前は出さない） */
+const DiffTime = ({ point, fit, onClear }: { point: DiffPoint; fit: Fit; onClear: (() => void) | undefined }) => (
+  <span className={cn("inline-flex h-8 min-w-0 flex-none items-center gap-0.5 rounded-control border border-topbar-line pl-2 text-small text-topbar-fg-2", fit.wide && "max-sm:pl-1")}>
+    <span className="truncate max-xs:sr-only" title={point.sub}>
+      <span className="sr-only">差分の時点: </span>
+      {point.sub}
+    </span>
+    <button
+      type="button"
+      aria-label="差分の表示をやめる"
+      title="差分の表示をやめる"
+      onClick={onClear}
+      className="grid size-7 flex-none cursor-pointer place-items-center rounded-control hover:bg-topbar-hover hover:text-topbar-fg"
+    >
+      <Icon name="x" />
+    </button>
+  </span>
 );
 
 /** 表示の設定のボタン */
@@ -557,7 +563,7 @@ export const Topbar = (props: TopbarProps) => {
         {fit.offline ? <ConnectionNotice readAt={readAt} /> : null}
         <SearchButton fit={fit} onClick={props.onOpenSearch} />
         {onOpenHistory === undefined ? null : <HistoryButton fit={fit} active={diffPoint !== null} onClick={onOpenHistory} />}
-        {diffPoint === null ? null : <ClearDiffButton fit={fit} onClick={props.onClearDiff} />}
+        {diffPoint === null ? null : <DiffTime point={diffPoint} fit={fit} onClear={props.onClearDiff} />}
         {comments ? <span className={cn("flex-1 basis-0", diffSqueezeClass(fit))} /> : null}
         {onToggleSettings === undefined ? null : <SettingsButton fit={fit} open={settingsOpen} onClick={onToggleSettings} />}
         {filter ? <FilterButton fit={fit} count={filterCount} open={filterOpen} onClick={props.onToggleFilter} /> : null}
