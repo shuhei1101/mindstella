@@ -25,7 +25,7 @@ constraints:
     constraint: ワークスペースのフォルダが Git の作業ツリーのとき、前回の中身を置き換えた時点の `git rev-parse HEAD` とシンボリック参照（`git symbolic-ref -q HEAD`）を持つ。書き換えを見つけたときにどちらかが変わっている、または `.git/MERGE_HEAD`・`.git/index.lock` があれば Git の操作とする。Git の作業ツリーでなければ、この見分けをしない
     notes: '`git checkout -- {ファイル}` のように HEAD を動かさない書き戻しは、外部の変更として記録する'
   - item: ペインとプロセスの確認方法
-    constraint: 状態の `session.json` の `pane` が `tmux display-message -p -t {pane}` で引け、`pid` のプロセスがあって起動時刻が `pid_started_at` と同じとき、ペインとプロセスがあるとする（『セッションの値の注入』の起動時刻の求め方）
+    constraint: 状態の `session.json` の `pane` を `tmux display-message -p -t {pane} '#{pane_id}'` で参照して終了コード 0 で空でない値が返り、`pid` のプロセスがあって起動時刻が `pid_started_at` と同じとき、ペインとプロセスがあるとする（『セッションの値の注入』の起動時刻の求め方）
   - item: 応答の途中の書き込みの帰属
     constraint: MindStella のセッションの応答の途中に別のセッションが書き込んだ変更も、そのセッションの変更（`ai`）として記録する
     notes: 書き込みのファイルからは書いたセッションを見分けられないため、応答の途中の変更を全てそのセッションに帰属させる
