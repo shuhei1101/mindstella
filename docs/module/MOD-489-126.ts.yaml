@@ -114,4 +114,4 @@ functions:
     container: frontend/src/shared/hooks/use-comments.ts
 notes:
   単体テスト: 同じフォルダの `use-comments.test.ts` に置く（knowledge の規約『フォルダ構成』）
-  待つ間: 書き込みの mutation は、成功の後の query の再読み込みを `onSuccess` で待ち（`await` する）、再読み込みが終わるまで `isPending` を真のままにする。呼び出し側は `isPending` を部品の待つ間の状態（`saving`・`busy`・`Button` の `pending`）にする。失敗したときは `isPending` が偽に戻る
+  待つ間: 書き込みの mutation は、成功の後の query の再読み込みを `onSuccess` で待ち（`await` する）、再読み込みが終わるまで `isPending` を真のままにする（今の作りを保つ）。2 回目の操作を止めるのは `isPending` ではなく『プレビュー / use-single-flight』の `run` で、呼び出し側は `mutateAsync` を `run` で呼ぶ
