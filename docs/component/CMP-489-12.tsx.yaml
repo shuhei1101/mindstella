@@ -181,6 +181,13 @@ states:
         value: disabled
       - name: voiceReason
         value: ほかの入力欄で音声入力中のため、音声で入力できません。
+  - name: ThreadIdLinks
+    description: 本文にスレッドの ID `TH-2`・書き込みの ID `TH-2-3`・記録に無い `TH-99` を持つ AI の書き込み。`TH-2` と `TH-2-3` はリンク（`title` にスレッドのタイトル）、`TH-99` は文字のまま
+    args:
+      - name: post
+        value: '{"id":"TH-1-4","author":"ai","body":"続きは TH-2 で話します。案の比較は TH-2-3 にまとめています。TH-99 は存在しません。","created":"2026-10-12T02:10:00+00:00"}'
+      - name: threadTitles
+        value: '{"TH-2":"トップバーの見直し"}'
 lead: スレッドの中に書いた順で並べる 1 件。利用者と AI の書き込み・クローズとオープンへの戻しの記録・レビュー中の返信を、書き手と種類が見分けられる形状で出す。
 args:
   - name: post
@@ -272,6 +279,11 @@ args:
     enabled_when: '`voiceStatus` が `voice-failed` のとき'
     description: 音声入力の失敗の理由（部品『返信の入力』の `voice-failed` の `detail` と同じ文）
     status: planned
+  - name: threadTitles
+    type: オブジェクト
+    default: "{}"
+    enabled_when: '`post` か `pending` を渡したとき'
+    description: 記録にあるスレッドの ID（`TH-{数字}`）からそのタイトルへの対応。本文の中の `TH-{数字}` と書き込みの ID `TH-{数字}-{数字}` のうち、スレッドの ID が対応にあるものを、項目の ID と同じ見た目のリンク（`title` にスレッドのタイトル）にする。対応に無いスレッドの ID と、スレッドにはあるが書き込みの無い書き込みの ID は文字のまま出す
 events:
   - name: 項目を開く
     when: 本文の中の項目の ID のリンクを押したとき
@@ -313,6 +325,10 @@ events:
     when: 修正の入力の ✓ を押したとき（`voice` が `recording`）
     value: '`onEditVoiceDone(id, body)`（`pending.id`・入力欄の中身そのまま）'
     description: 使う側が `POST /w/{workspace}/api/transcriptions` へ送信し、返った文字を入力欄のカーソルの位置へ挿入して `editBody` と `voiceStatus` を `inserted` にする（設定の挙動によらず、レビュー中への追加・送信はしない）。失敗は入力欄の中身を残して `voice-failed`。どちらもフォーカスを入力欄へ戻し、`voice` を `idle` に戻す（503 のときは `disabled`）
+  - name: スレッドを開く
+    when: 本文の中のスレッドの ID・書き込みの ID のリンクを押したとき
+    value: '`onOpenThread(threadId, postId)`（スレッドの ID と、書き込みの ID のときはその ID。スレッドの ID のときは `null`）'
+    description: 使う側がそのスレッドの画面を開き、書き込みの ID のときはその書き込みまでスクロールする
 accessibility:
   - 書き手は寄せと面の色だけでなく、頭の文字（「あなた」「AI」）でも示す。レビュー中は破線の枠に加えてマーカーのアイコンと「レビュー中」の文字で示す
   - 日時は `time` 要素で `datetime` に元の日時を持つ
@@ -322,6 +338,7 @@ accessibility:
   - 書き換えを保てなかった理由は `role="alert"` で読み上げ、入力欄の `aria-describedby` から指す
   - 本文の中のまとまりのリンクは `href` を `#diff={まとまりの ID}` にした `a` 要素にし、読み上げの名前を `文言`、`title` をそのまとまりの説明にする。Tab で本文の並びの順に止まり、Enter で押せる
   - 修正の入力のマイク・×・✓ の読み上げの名前とツールチップは、部品『返信の入力』の音声入力のボタンと同じにする
+  - 本文の中のスレッドの ID・書き込みの ID のリンクはボタンにし、読み上げの名前を ID、`title` をスレッドのタイトルにする
 test_file: tests/integration/storybook_react/test_thread_post_stories.py
 uses:
   - component: CMP-489-6#
