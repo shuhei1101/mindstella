@@ -294,7 +294,7 @@ const HistoryButton = ({ fit, active, onClick }: { fit: Fit; active: boolean; on
 
 /** 選んだ時点の日時と、差分の表示をやめる ×（時点の名前は出さない） */
 const DiffTime = ({ point, fit, onClear }: { point: DiffPoint; fit: Fit; onClear: (() => void) | undefined }) => (
-  <span className={cn("inline-flex h-8 min-w-0 flex-none items-center gap-0.5 rounded-control border border-topbar-line pl-2 text-small text-topbar-fg-2", fit.wide && "max-sm:pl-1")}>
+  <span className={cn("inline-flex h-8 min-w-0 shrink items-center gap-0.5 rounded-control border border-topbar-line pl-2 text-small text-topbar-fg-2", fit.wide && "max-sm:pl-1")}>
     <span className="truncate max-xs:sr-only" title={point.sub}>
       <span className="sr-only">差分の時点: </span>
       {point.sub}
