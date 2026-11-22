@@ -37,4 +37,18 @@ describe("useSingleFlight", () => {
     act(() => { result.current.run(task); });
     expect(task).toHaveBeenCalledTimes(2);
   });
+
+  // after は押せる状態を描いた後に呼ぶ（正常系）
+  test("use_single_flight_when_after_given", async () => {
+    // 準備
+    const task = vi.fn(() => Promise.resolve());
+    const { result } = renderHook(() => useSingleFlight());
+    const seen: boolean[] = [];
+    const after = vi.fn(() => { seen.push(result.current.running); });
+    // 実行
+    await act(async () => { result.current.run(task, after); await Promise.resolve(); await Promise.resolve(); });
+    // 検証
+    expect(after).toHaveBeenCalledTimes(1);
+    expect(seen).toEqual([false]);
+  });
 });

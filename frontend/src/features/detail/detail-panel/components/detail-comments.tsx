@@ -281,7 +281,7 @@ export const DetailReviewComments = ({ id, titles, changeSets, index, onOpenItem
                         <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" data-focus={`edit:${item.id}`} onClick={() => { focusAfter(() => { setEditing({ id: item.id, body: item.body, error: null }); }, `[data-comment="${item.id}"] textarea`); }}>
                           <Icon name="edit" />
                         </Button>
-                        <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" pending={remove.isPending && remove.variables === item.id} disabled={flight.running} onClick={() => { flight.run(() => remove.mutateAsync(item.id, { onSuccess: () => { focusAfter(() => { setRemoved((current) => [...current, item]); }, `[data-focus="undo:${item.id}"]`); } })); }}>
+                        <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" pending={remove.isPending && remove.variables === item.id} disabled={flight.running} onClick={() => { flight.run(() => remove.mutateAsync(item.id, { onSuccess: () => { flushSync(() => { setRemoved((current) => [...current, item]); }); } }), () => { host.current?.querySelector<HTMLElement>(`[data-focus="undo:${item.id}"]`)?.focus(); }); }}>
                           <Icon name="trash" />
                         </Button>
                       </>
