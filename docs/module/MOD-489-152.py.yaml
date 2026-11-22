@@ -678,7 +678,8 @@ functions:
       description: 本文
     process: |-
       1. `urllib.request.urlopen(url, timeout=timeout)` で取る（環境変数のプロキシに従う）
-         - 届かない（`URLError`・`OSError`。`TimeoutError` を含む）か、HTTP 403・408・429・5xx が返った場合、要求の回数が `FETCH_ATTEMPTS` 未満なら、`Retry-After`（秒。`FETCH_RETRY_AFTER_MAX_SEC` を上限にする）か、`random.uniform(0, FETCH_BACKOFF_BASE_SEC * 2 ** (回数 - 1))` 秒を `time.sleep` で待って 1 へ戻る（非機能要件『配る書き出しの取り直し』）
+         - 例外は `HTTPError` を `URLError`（`HTTPError` の親）より先に分け、`HTTPError` は状態コードで取り直すかを決める
+         - 届かない（`HTTPError` を除く `URLError`・`OSError`。`TimeoutError` を含む）か、HTTP 403・408・429・5xx が返った場合、要求の回数が `FETCH_ATTEMPTS` 未満なら、`Retry-After`（秒。`FETCH_RETRY_AFTER_MAX_SEC` を上限にする）か、`random.uniform(0, FETCH_BACKOFF_BASE_SEC * 2 ** (回数 - 1))` 秒を `time.sleep` で待って 1 へ戻る（非機能要件『配る書き出しの取り直し』）
          - それ以外の 200 以外が返った場合と、上限まで取れなかった場合、最後の要求の理由で `DownloadFailedError` を送出する
       2. 本文を全て読んで返す
     exceptions:
@@ -692,13 +693,6 @@ functions:
         condition: '`http.server` を `127.0.0.1` の空きポートで立て、`/a.js` に `abc` を返す'
         mock: なし（手元の HTTP サーバー）
         expected: '`b"abc"` を返す'
-      - name: test_fetch_url_when_unreachable
-        case: 異常
-        summary: 届かないか 200 以外なら DownloadFailedError
-        condition: '`parametrize`: 閉じたポートの URL / 手元の HTTP サーバーが 404 を返す URL / 手元の HTTP サーバーが 204 を返す URL'
-        mock: なし
-        expected: '`DownloadFailedError`（`match` にその URL）'
-        exception: 届かないか 200 以外
       - name: test_fetch_url_when_transient_failure
         case: 正常
         summary: 一時的な失敗の後に取り直して本文を返す
@@ -712,6 +706,13 @@ functions:
         mock: '`sleep`・`random`'
         expected: '`DownloadFailedError`（`match` に URL と `HTTP 403`）。要求が 3 回で、待った秒数が 1・2'
         exception: 取り直しの上限まで取れない
+      - name: test_fetch_url_when_unreachable
+        case: 異常
+        summary: 届かないか 200 以外なら DownloadFailedError
+        condition: '`parametrize`: 閉じたポートの URL / 手元の HTTP サーバーが 404 を返す URL / 手元の HTTP サーバーが 204 を返す URL'
+        mock: '`sleep`（待った秒数を記録する差し替え）・`random`（上限を返す差し替え）'
+        expected: '`DownloadFailedError`（`match` にその URL）。要求の回数は閉じたポートが 3 回（待った秒数 1・2）、404・204 が 1 回（待たない）'
+        exception: 届かないか 200 以外
   - name: format_licenses
     title: ライセンスの表示の組み立て
     kind: 関数
