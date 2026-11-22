@@ -1800,3 +1800,8 @@ files:
   related:
   - to: MOD-489-119
     type: tests
+- path: src/shared/core/thread-ids.ts
+  name: スレッドの ID の解決
+  description: 本文のスレッドの ID と書き込みの ID を記録にあるスレッドと書き込みに結び、本文と書き込みのリンクを付けるときに参照する。
+  tags:
+  - tool:react

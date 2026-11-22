@@ -1,5 +1,6 @@
 // スレッドの書き込みとレビュー中の書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける
 import { HTML_BLOCK_CLASS, TERM_TIP_ID } from "@/shared/core/body-links";
+import { type LookupThread, type OpenThread, resolveThreadId } from "@/shared/core/thread-ids";
 
 /** 本文の中の項目の ID（例 D-1・T-12・A-3） */
 const ITEM_ID_PATTERN = /\b[A-Z]{1,2}-\d+\b/g;
@@ -53,6 +54,42 @@ export const buttonizeItemIds = ({ root, titles, onOpen }: { root: HTMLElement; 
       button.textContent = match[0];
       button.addEventListener("click", () => {
         onOpen(match[0]);
+      });
+      parts.push(text.slice(last, match.index), button);
+      last = match.index + match[0].length;
+    }
+    if (parts.length === 0) continue;
+    parts.push(text.slice(last));
+    node.replaceWith(...parts.filter((part) => part !== ""));
+  }
+};
+
+/** 本文の中のスレッドの ID（`TH-150`）と書き込みの ID（`TH-150-2`） */
+const THREAD_ID_PATTERN = /\bTH-\d+(?:-\d+)?\b/g;
+
+/** 描いた本文の文字のうち、記録にあるスレッドの ID と書き込みの ID を、そのスレッドを開くボタンにする */
+export const linkThreadIds = ({ root, threads, onOpen }: { root: HTMLElement; threads: LookupThread; onOpen: OpenThread }): void => {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => (node.parentElement?.closest(ITEM_ID_SKIPPED) === null ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+  });
+  const nodes: Text[] = [];
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
+  for (const node of nodes) {
+    const text = node.textContent ?? "";
+    const parts: (Node | string)[] = [];
+    let last = 0;
+    for (const match of text.matchAll(THREAD_ID_PATTERN)) {
+      const target = resolveThreadId(match[0], threads);
+      if (target === null) continue;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "idlink";
+      button.dataset["thread"] = target.threadId;
+      if (target.postId !== null) button.dataset["post"] = target.postId;
+      button.setAttribute("aria-describedby", TERM_TIP_ID);
+      button.textContent = match[0];
+      button.addEventListener("click", () => {
+        onOpen(target.threadId, target.postId);
       });
       parts.push(text.slice(last, match.index), button);
       last = match.index + match[0].length;
