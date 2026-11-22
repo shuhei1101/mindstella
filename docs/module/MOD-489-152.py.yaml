@@ -210,6 +210,24 @@ constants:
     title: 差し込む位置
     usecase: 配る書き出し
     value: '"</body>"'
+  - name: FETCH_ATTEMPTS
+    title: 取るときの要求の上限
+    container: plugins/mindstella/skills/mindmap/scripts/builder.py
+    usecase: 配る書き出し
+    summary: 1 つの URL への要求の回数の上限（1 回目 + 取り直し）。非機能要件『配る書き出しの取り直し』
+    value: '3'
+  - name: FETCH_BACKOFF_BASE_SEC
+    title: 取り直しの間隔の基準
+    container: plugins/mindstella/skills/mindmap/scripts/builder.py
+    usecase: 配る書き出し
+    summary: 取り直しの間隔の上限の基準（秒）。n 回目の後は 0〜基準 × 2^(n-1) 秒の乱数（full jitter）
+    value: '1.0'
+  - name: FETCH_RETRY_AFTER_MAX_SEC
+    title: Retry-After の上限
+    container: plugins/mindstella/skills/mindmap/scripts/builder.py
+    usecase: 配る書き出し
+    summary: 応答の `Retry-After` に従って待つ秒数の上限
+    value: '10.0'
 functions:
   - name: collect_preview_data
     title: プレビューのデータの収集
@@ -641,7 +659,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
     scope: public
-    summary: URL を GET して本文のバイト列を返す。`FetchFn` の本物
+    summary: URL を GET し、一時的な失敗は取り直して本文のバイト列を返す。`FetchFn` の本物
     side_effects: HTTPS で外へ要求を送信する
     args:
       - name: url
@@ -660,7 +678,9 @@ functions:
       description: 本文
     process: |-
       1. `urllib.request.urlopen(url, timeout=timeout)` で取る（環境変数のプロキシに従う）
-         - `URLError`・`OSError`（`TimeoutError` を含む）か、200 以外が返った場合、`DownloadFailedError` を送出する（再取得しない）
+         - 例外は `HTTPError` を `URLError`（`HTTPError` の親）より先に分け、`HTTPError` は状態コードで取り直すかを決める
+         - 届かない（`HTTPError` を除く `URLError`・`OSError`。`TimeoutError` を含む）か、HTTP 403・408・429・5xx が返った場合、要求の回数が `FETCH_ATTEMPTS` 未満なら、`Retry-After`（秒。`FETCH_RETRY_AFTER_MAX_SEC` を上限にする）か、`random.uniform(0, FETCH_BACKOFF_BASE_SEC * 2 ** (回数 - 1))` 秒を `time.sleep` で待って 1 へ戻る（非機能要件『配る書き出しの取り直し』）
+         - それ以外の 200 以外が返った場合と、上限まで取れなかった場合、最後の要求の理由で `DownloadFailedError` を送出する
       2. 本文を全て読んで返す
     exceptions:
       - name: DownloadFailedError
@@ -673,12 +693,25 @@ functions:
         condition: '`http.server` を `127.0.0.1` の空きポートで立て、`/a.js` に `abc` を返す'
         mock: なし（手元の HTTP サーバー）
         expected: '`b"abc"` を返す'
+      - name: test_fetch_url_when_transient_failure
+        case: 正常
+        summary: 一時的な失敗の後に取り直して本文を返す
+        condition: '`parametrize`: 手元の HTTP サーバーが 1 回目に 403 / 429（`Retry-After: 1`）/ 503 を返し、2 回目に `abc` を返す'
+        mock: '`sleep`（待った秒数を記録する差し替え）・`random`（上限を返す差し替え）'
+        expected: '`b"abc"` を返し、要求が 2 回。429 では 1 秒、それ以外は 1 回目の間隔の上限（1 秒）を待つ'
+      - name: test_fetch_url_when_retries_exhausted
+        case: 異常
+        summary: 上限まで取れなければ DownloadFailedError
+        condition: 手元の HTTP サーバーが何回でも 403 を返す
+        mock: '`sleep`・`random`'
+        expected: '`DownloadFailedError`（`match` に URL と `HTTP 403`）。要求が 3 回で、待った秒数が 1・2'
+        exception: 取り直しの上限まで取れない
       - name: test_fetch_url_when_unreachable
         case: 異常
         summary: 届かないか 200 以外なら DownloadFailedError
         condition: '`parametrize`: 閉じたポートの URL / 手元の HTTP サーバーが 404 を返す URL / 手元の HTTP サーバーが 204 を返す URL'
-        mock: なし
-        expected: '`DownloadFailedError`（`match` にその URL）'
+        mock: '`sleep`（待った秒数を記録する差し替え）・`random`（上限を返す差し替え）'
+        expected: '`DownloadFailedError`（`match` にその URL）。要求の回数は閉じたポートが 3 回（待った秒数 1・2）、404・204 が 1 回（待たない）'
         exception: 届かないか 200 以外
   - name: format_licenses
     title: ライセンスの表示の組み立て

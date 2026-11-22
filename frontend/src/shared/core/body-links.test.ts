@@ -53,6 +53,47 @@ describe("linkBody", () => {
     // 検証
     expect(onOpen).toHaveBeenCalledWith("D-1");
   });
+
+  // スレッドの ID と書き込みの ID をリンクにする（正常系）
+  test("link_body_when_thread_ids", () => {
+    // 準備
+    const data = { decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { ready: [] } } as unknown as MindmapData;
+    const root = document.createElement("div");
+    const source = "TH-1 と TH-1-2 と TH-99 を見る";
+    root.innerHTML = `<p>${source}</p>`;
+    const onOpenThread = vi.fn();
+    const threads = (id: string) => (id === "TH-1" ? { title: "見直し", posts: ["TH-1-1", "TH-1-2"] } : null);
+    // 実行
+    linkBody({ root, index: buildIndex(data), selfId: "D-9", onOpen: vi.fn(), source, threads, onOpenThread });
+    // 検証
+    expect(root.querySelector("[data-thread='TH-99']")).toBeNull();
+    expect(root.textContent).toBe(source);
+    root.querySelector<HTMLElement>("[data-thread='TH-1']:not([data-post])")?.click();
+    root.querySelector<HTMLElement>("[data-post='TH-1-2']")?.click();
+    expect(onOpenThread.mock.calls).toEqual([
+      ["TH-1", null],
+      ["TH-1", "TH-1-2"],
+    ]);
+  });
+
+  // 差分を描いた本文にもリンクを付け、削除した行の中は付けない（正常系）
+  test("link_body_when_diff", () => {
+    // 準備
+    const data = {
+      decisions: [
+        { id: "D-1", title: "題", status: "未決定" },
+        { id: "D-2", title: "消した題", status: "未決定" },
+      ],
+      tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { ready: [] },
+    } as unknown as MindmapData;
+    const root = document.createElement("div");
+    root.innerHTML = '<div class="mdmark-diff-block" data-kind="add"><p>D-1 を足した</p></div><div class="mdmark-diff-block" data-kind="del"><p>D-2 を消した</p></div>';
+    // 実行
+    linkBody({ root, index: buildIndex(data), selfId: "D-9", onOpen: vi.fn(), source: "D-1 を足した" });
+    // 検証
+    expect(root.querySelector("[data-id='D-1']")).not.toBeNull();
+    expect(root.querySelector("[data-id='D-2']")).toBeNull();
+  });
 });
 
 describe("renderMarkdown", () => {

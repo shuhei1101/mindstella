@@ -151,6 +151,9 @@ export const LongNarrow: Story = {
 /** 本文の項目の ID（未決定の検討事項 D-3）に乗せた。1 行目にタイトルと ID、2 行目に「検討事項」・状態のマーカー・「未決定」を出し、リンクを持たない */
 export const ItemId: Story = { args: { entries: [{ kind: "item", itemKind: "decisions", item: item({ id: "D-3", title: "保存先の決め方", extra: { status: "未決定" } }) }] } };
 
+/** 本文のスレッドの ID（オープンの TH-2）に乗せた。1 行目にスレッドのタイトルと ID、2 行目に「スレッド」・状態のマーカー・「オープン」を出し、リンクを持たない */
+export const ThreadId: Story = { args: { entries: [{ kind: "thread", id: "TH-2", title: "トップバーの見直し", status: "open" }] } };
+
 /** 状態を持たない資料の ID。2 行目は「資料」だけ */
 export const ItemIdWithoutStatus: Story = { args: { entries: [{ kind: "item", itemKind: "docs", item: item({ id: "A-4", title: "話し合いの進め方の手引き" }) }] } };
 

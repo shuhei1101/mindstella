@@ -1,0 +1,44 @@
+# pytest は /tmp/pytest-of-shuhei2441 が root の持ち物で使えないため、環境変数 TMPDIR=/tmp/pr674-tmp を渡して実行した（引数は変えていない）
+# test_markdown_body_stories.py の表の 4 件の fail は、mdmark の develop の表が既定で列を留めなくなった変更によるもので、develop（6140e3b2）でも同じく fail する（スコープ外 #639）
+$ pytest tests/integration/preview/test_spa_open.py tests/integration/preview/test_spa_comments_screen.py tests/integration/preview/test_spa_thread_screen.py tests/integration/storybook_react/test_thread_post_stories.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/preview/test_spa_history_screen.py tests/integration/preview/test_spa_diagram_viewer_screen.py tests/integration/storybook_react/test_markdown_body_stories.py tests/integration/storybook_react/test_term_tip_stories.py tests/integration/storybook_react/test_body_diff_view_switch_stories.py tests/integration/storybook_react/test_topbar_stories.py tests/integration/preview/test_spa_docs_screen.py tests/integration/storybook_react/test_doc_export_menu_stories.py tests/integration/plugin/test_agent_flows.py tests/integration/server/test_export.py
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x79bf0a635f70>
+cb = <function Channel.send.<locals>.<lambda> at 0x79bf097b1080>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: Failed to execute 'getComputedStyle' on 'Window': parameter 1 is not of type 'Element'.
+E               at style (eval at evaluate (:311:30), <anonymous>:4:25)
+E               at eval (eval at evaluate (:311:30), <anonymous>:7:24)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../../.venvs/mindstella-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+=========================== short test summary info ============================
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_mdmark_table[chromium]
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_pinned_columns[chromium]
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_opaque_background[chromium]
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_table_in_diff[chromium]
+================== 4 failed, 612 passed in 926.64s (0:15:26) ===================
+exit=1

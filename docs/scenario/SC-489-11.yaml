@@ -147,6 +147,60 @@ scenarios:
       - 開いてから操作を終えるまでに、ブラウザが外へ出した要求が 0 件
       - どの画面にも、読めなかったライブラリの知らせが出ない
     test: test_normal_when_map_exported_with_pinned_mdmark
+  - name: 正常シナリオ（描画のライブラリの取得が一時的に失敗する）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、配る書き出しのツールを MCP のクライアントで呼ぶ。サーバーが jsDelivr へ出す要求のうち、mdmark のライセンスの本文への 1 回目を 403 で返し、2 回目からは本物の応答を返す差し替えを挟む
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 検討事項 D-1
+      - name: 書き出す先
+        description: ワークスペースの外の一時フォルダの中のパス
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+        participant CDN as jsDelivr
+
+        CC->>SV: 配る書き出し
+        SV->>CDN: mdmark のライセンスの本文を取る
+        CDN-->>SV: 403
+        SV->>CDN: 間を空けて取り直す
+        CDN-->>SV: ライセンスの本文
+        SV-->>CC: 書き出したファイルのパス
+      ```
+    expected:
+      - 配る書き出しのツールが成功を返し、書き出す先にファイルがある
+      - 書き出した HTML の中に、mdmark が同梱するライブラリのライセンスの本文がある
+      - サーバーが mdmark のライセンスの本文へ出した要求が 2 回である
+    test: test_normal_when_cdn_fails_temporarily
+  - name: 異常シナリオ（取り直しても描画のライブラリを取れない）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、配る書き出しのツールを MCP のクライアントで呼ぶ。サーバーが jsDelivr へ出す mdmark のライセンスの本文への要求を、何回でも 403 で返す差し替えを挟む
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 書き出す先
+        description: ワークスペースの外の一時フォルダの中に、一度配る書き出しを書き出したファイル
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+        participant CDN as jsDelivr
+
+        CC->>SV: 配る書き出し
+        SV->>CDN: mdmark のライセンスの本文を取る（取り直しの上限まで）
+        CDN-->>SV: 403
+        SV-->>CC: 取れなかった URL と理由を示すエラー
+      ```
+    expected:
+      - 配る書き出しのツールがエラーを返し、本文に取れなかった URL と HTTP 403 がある
+      - サーバーが mdmark のライセンスの本文へ出した要求の回数が、非機能要件『配る書き出しの取り直し』の要求の上限の 3 回である
+      - 書き出す先のファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_cdn_keeps_failing
 lead: 利用者が、記録を見るだけの 1 枚の HTML（配る書き出し）に書き出してもらい、ネットにつながらない端末のブラウザで開いて読む単一ユースケース。
 issue: 19
 test_file: tests/e2e/単一ユースケース/test_preview_export.py

@@ -147,8 +147,8 @@ def test_normal_when_records_changed(
     assert page.evaluate(SCROLL_TOP_SCRIPT) == scroll_top
 
 
-# 「更新があります」の帯の文言
-STALE_TEXT = "更新があります。入力欄から離れると反映します。"
+# 保留の間にも出さない「更新があります」のバーの文言
+STALE_TEXT = "更新があります"
 
 # 入力中に書き換えてから、画面に反映していないことを確かめるまで待つミリ秒（インターフェース定義の期待の 3 秒）
 HOLD_CHECK_MS = 3_000
@@ -160,7 +160,7 @@ def test_normal_when_records_changed_while_typing(
     call_tool: CallTool,
     page: Page,
 ) -> None:
-    """入力する欄にフォーカスがある間は読み直さず「更新があります」を出し、フォーカスが外れたら 1 回だけ読み直す（正常系）。"""
+    """入力する欄にフォーカスがある間は読み直さず、保留を画面に出さない。フォーカスが外れたら 1 回だけ読み直す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     served = call_tool("preview_url", workspace=str(root))
@@ -180,24 +180,22 @@ def test_normal_when_records_changed_while_typing(
     )
     # 実行（入力欄にフォーカスを置いたまま検討事項を足す）
     added = write_tool(call_tool, "add", workspace=str(root), kind="decision", item=NEW_DECISION)
-    band = page.get_by_role("status").filter(has_text=STALE_TEXT)
-    band.wait_for(timeout=UPDATE_TIMEOUT_MS)
     page.wait_for_timeout(HOLD_CHECK_MS)
     held = {
         "requests": len(records_requests),
         "added_shown": main.get_by_text(NEW_DECISION["title"]).count(),
         "value": entry.input_value(),
         "focused": entry.evaluate("e => document.activeElement === e"),
+        "stale_bar": page.get_by_text(STALE_TEXT).count(),
     }
     # 実行（入力欄の外を押す）
-    band.click()
+    page.get_by_role("complementary", name="詳細").get_by_role("heading", name="D-1の題").click()
     started = time.monotonic()
     expect(main.get_by_text(NEW_DECISION["title"]).first).to_be_visible(timeout=UPDATE_TIMEOUT_MS)
     elapsed = time.monotonic() - started
-    expect(band).to_have_count(0)
     # 検証
     assert added.is_error is False, added.text
-    assert held == {"requests": 0, "added_shown": 0, "value": "途中まで", "focused": True}
+    assert held == {"requests": 0, "added_shown": 0, "value": "途中まで", "focused": True, "stale_bar": 0}
     assert elapsed <= REFLECT_LIMIT_SEC
     assert len(records_requests) == 1
     assert entry.input_value() == "途中まで"

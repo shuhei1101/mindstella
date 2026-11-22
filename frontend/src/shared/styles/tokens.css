@@ -44,7 +44,7 @@
   --yellow-200: #fde68a;
   --yellow-900: #5c4a12;
   /* 文字 */
-  --font-stack-sans: "Inter", "Noto Sans JP", system-ui, sans-serif;
+  --font-stack-sans: "IBM Plex Sans JP", system-ui, sans-serif;
   --font-stack-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
   --fs-body: 0.875rem;
   --fs-small: 0.8125rem;
@@ -233,5 +233,4 @@
   /* 差分の表示の変更の点（保留の色） */
   --diff-changed: var(--st-hold);
   /* 差分の札の × に乗せたときの面 */
-  --topbar-chip-hover: color-mix(in oklab, var(--topbar-bg) 12%, var(--topbar-fg));
 }

@@ -161,7 +161,7 @@ external_systems:
       - LIB-489-11#
       - LIB-489-14#
   - name: Google Fonts
-    purpose: プレビューの文字（Inter・Noto Sans JP・JetBrains Mono）の取得
+    purpose: プレビューの文字（IBM Plex Sans JP・JetBrains Mono）の取得
     direction: 受信のみ
     protocol: HTTPS
     detail: API-489-1#

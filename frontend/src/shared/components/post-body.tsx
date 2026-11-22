@@ -5,9 +5,10 @@ import { useLibrary } from "@/shared/adapters/libraries";
 import { renderDiagrams, renderMarkdown, withHardBreaks } from "@/shared/core/body-links";
 import { drawHtmlBlocks, withoutLineMarks } from "@/shared/core/body-render";
 import { decorateMarkdown } from "@/shared/core/markdown-decorate";
-import { buttonizeItemIds, linkChangeSets, type LookupTitle } from "@/shared/core/post-links";
+import { buttonizeItemIds, linkChangeSets, linkThreadIds, type LookupTitle } from "@/shared/core/post-links";
 import type { RecordIndex } from "@/shared/core/records";
 import { attachTermTips } from "@/shared/core/term-tips";
+import type { LookupThread, OpenThread } from "@/shared/core/thread-ids";
 import { cn } from "@/shared/lib/cn";
 
 export type PostBodyProps = {
@@ -20,11 +21,14 @@ export type PostBodyProps = {
   className?: string;
   onOpenItem?: (id: string) => void;
   onOpenChangeSet?: (id: string) => void;
+  /** 記録にあるスレッドの引き方。渡すと、本文のスレッドの ID と書き込みの ID をそのスレッドを開くボタンにする */
+  threadTitles?: LookupThread | null;
+  onOpenThread?: OpenThread;
 };
 
 const noTitle: LookupTitle = () => null;
 
-export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, index = null, id, className, onOpenItem, onOpenChangeSet }: PostBodyProps) => {
+export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, index = null, id, className, onOpenItem, onOpenChangeSet, threadTitles = null, onOpenThread }: PostBodyProps) => {
   const { status } = useLibrary("mdmark");
   // 図は mermaid を読み終えてから描く（読み終えたら本文を描き直す）
   const diagrams = useLibrary("mermaid").status;
@@ -42,11 +46,12 @@ export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, index =
     decorateMarkdown({ root: rendered, fold: false });
     linkChangeSets({ root: rendered, changeSets, onChangeSet: (set) => onOpenChangeSet?.(set) });
     buttonizeItemIds({ root: rendered, titles, onOpen: (item) => onOpenItem?.(item) });
-    if (index !== null) attachTermTips({ root: rendered, index, onOpen: (item) => onOpenItem?.(item) });
+    if (threadTitles !== null) linkThreadIds({ root: rendered, threads: threadTitles, onOpen: (thread, post) => onOpenThread?.(thread, post) });
+    if (index !== null) attachTermTips({ root: rendered, index, onOpen: (item) => onOpenItem?.(item), threads: threadTitles });
     return () => {
       root.replaceChildren();
     };
-  }, [status, diagrams, body, titles, changeSets, index, onOpenItem, onOpenChangeSet]);
+  }, [status, diagrams, body, titles, changeSets, index, onOpenItem, onOpenChangeSet, threadTitles, onOpenThread]);
   // 読めない・読み込み中は文字のまま改行を保って出す
   if (status !== "ready") {
     return (

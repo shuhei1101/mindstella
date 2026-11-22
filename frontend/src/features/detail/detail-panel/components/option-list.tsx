@@ -1,4 +1,4 @@
-// 検討事項の案のカード（採用 / 不採用と理由、採用した案が無いときは推奨の印）。差分の表示の間は前の値と今の値を並べる
+// 検討事項の案のカード（左上の記号のアイコン、採用 / 不採用と推奨のバッジ。採用した案が無いときは推奨の案の理由を「推奨理由」の欄に出す）。差分の表示の間は前の値と今の値を並べる
 import type { ReactNode } from "react";
 
 import { KeyDiff } from "@/features/detail/detail-panel/components/key-diff";
@@ -27,6 +27,12 @@ const resultOf = (option: Option | undefined): string | null => {
   return option.adopted === false ? "不採用" : null;
 };
 
+/** 案の記号の丸いアイコン */
+const KEY_ICON_CLASS = "grid size-6 flex-none place-items-center rounded-full bg-muted font-mono text-small font-semibold text-foreground";
+
+/** 推奨・採用・不採用のバッジ */
+const BADGE_CLASS = "mt-0.5 inline-flex h-5 flex-none items-center gap-0.5 rounded-control border px-1.5 text-xs";
+
 export type OptionListProps = { options: readonly Option[]; previous: readonly Option[] | null; marks?: Record<string, ReactNode> };
 
 export const OptionList = ({ options, previous, marks = {} }: OptionListProps) => {
@@ -39,25 +45,29 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
         const before = previous?.find((entry) => entry.key === option.key);
         const result = resultOf(option);
         const recommended = option.recommended === true && !decided;
-        const rows = FIELDS.map(([label, field]) => ({ label, field, value: optionText(option[field]), was: optionText(before?.[field]) })).filter(({ value, was }) => (value !== undefined && value !== "") || (compare && was !== undefined));
+        const rows = FIELDS.map(([label, field]) => ({ label: recommended && field === "reason" ? "推奨理由" : label, field, value: optionText(option[field]), was: optionText(before?.[field]) }))
+          .filter(({ value, was }) => (value !== undefined && value !== "") || (compare && was !== undefined));
         return (
-          <div key={option.key} className={cn("rounded-control border border-border-soft p-2", option.adopted === true && "border-mark-line bg-mark-weak", option.adopted === false && "opacity-70")}>
+          <div key={option.key} className={cn("rounded-control border border-border-soft p-2", option.adopted === true && "border-mark-line bg-mark-weak")}>
             <div className="flex items-start gap-2">
-              <span className="font-mono text-small font-semibold">{option.key}</span>
-              <div data-key={`options[${option.key}].content`} className="min-w-0 flex-1">
+              <span className={KEY_ICON_CLASS}>
+                <span className="sr-only">案 </span>
+                {option.key}
+              </span>
+              <div data-key={`options[${option.key}].content`} className="flex min-h-6 min-w-0 flex-1 items-center">
                 {compare && before?.content !== option.content ? <KeyDiff was={before?.content ?? null} now={option.content} /> : <ValueText value={option.content} />}
               </div>
               {recommended ? (
-                <span className="inline-flex items-center gap-0.5 rounded-control border border-mark-line px-1 text-xs text-mark">
+                <span className={cn(BADGE_CLASS, "border-mark-line text-mark")}>
                   <Icon name="star" className="size-3" />
                   推奨
                 </span>
               ) : null}
-              {compare && resultOf(before) !== result ? <KeyDiff was={resultOf(before)} now={result} plain /> : result === null ? null : <span className="text-xs">{result}</span>}
+              {compare && resultOf(before) !== result ? <KeyDiff was={resultOf(before)} now={result} plain /> : result === null ? null : <span className={cn(BADGE_CLASS, option.adopted === true ? "border-mark-line bg-mark-weak text-mark" : "border-border text-muted-foreground")}>{result}</span>}
               {marks[option.key]}
             </div>
             {rows.length > 0 ? (
-              <dl className="mt-1 grid grid-cols-meta gap-x-2 text-small">
+              <dl className="mt-1 grid grid-cols-meta items-baseline gap-x-2 text-small">
                 {rows.map(({ label, field, value, was }) => (
                   <div key={field} className="contents">
                     <dt className="text-muted-foreground">{label}</dt>

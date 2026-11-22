@@ -339,7 +339,7 @@ tables:
       - name: options
         title: 案
         type: array
-        description: 要素は `key`（記号）・`content`・`pros`・`cons`・`note`・`adopted`（真偽値）・`recommended`（真偽値。AI が推す案のマーカー）・`reason`。`adopted` が真の案と `recommended` が真の案は、それぞれ 0 か 1 つ。状態との決まりはこの表の説明
+        description: 要素は `key`（記号）・`content`・`pros`・`cons`・`note`・`adopted`（真偽値）・`recommended`（真偽値。AI が推す案のマーカー）・`reason`（未決定の間は推奨する理由、決まった後は採用した・しなかった理由）。`adopted` が真の案と `recommended` が真の案は、それぞれ 0 か 1 つ。状態との決まりはこの表の説明
       - name: reason
         title: 理由
         type: string

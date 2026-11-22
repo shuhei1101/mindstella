@@ -40,3 +40,29 @@ functions:
       type: void
       description: root を書き換える
     container: frontend/src/shared/core/post-links.ts
+  - name: linkThreadIds
+    title: スレッドの ID のリンク
+    kind: 関数
+    usecase: スレッドで話す
+    summary: 描いた本文の文字のうち、記録にあるスレッドの ID（`TH-{数字}`）と書き込みの ID（`TH-{数字}-{数字}`）を、そのスレッドを開くボタンにする。ボタンには `title` を付けず、描く側が `attachTermTips` で種類 `thread` のツールチップを出す（コード・リンク・ボタン・図・HTML の本文の枠の中と、記録に無いスレッド・スレッドに無い書き込みの ID は文字のまま）
+    args:
+      - name: root
+        type: HTMLElement
+        description: 描いた本文
+      - name: threads
+        type: LookupThread
+        description: スレッドの ID からタイトルと書き込みの ID の並びを引く
+      - name: onOpen
+        type: '(threadId: string, postId: string | null) => void'
+        description: ボタンを押したとき
+    returns:
+      type: void
+      description: root を書き換える
+    container: frontend/src/shared/core/post-links.ts
+    unit_tests:
+      - name: test_link_thread_ids
+        case: 正常
+        summary: 記録にあるスレッド・書き込みの ID だけをボタンにする
+        condition: 本文「TH-2 と TH-2-3 と TH-2-9 と TH-99」、`threads` は TH-2（書き込み TH-2-1〜TH-2-3）だけ。ボタンを押す
+        mock: なし
+        expected: TH-2・TH-2-3 がボタンで、TH-2-9・TH-99 は文字のまま。押すと `onOpen` が `("TH-2", null)`・`("TH-2", "TH-2-3")`

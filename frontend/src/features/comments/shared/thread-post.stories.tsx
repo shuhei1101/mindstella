@@ -44,6 +44,15 @@ export const UserPost: Story = { args: { post: {"id": "TH-1-1", "author": "user"
 /** AI の書き込み。左に寄せて面の色を変え、頭に「AI」と日時。本文の中の記録にある項目の ID（D-12・T-14）はその項目を開くリンク、改行は保つ */
 export const AiPost: Story = { args: { post: {"id": "TH-1-2", "author": "ai", "body": "D-12 を案 B（写しから戻す）で決定にしました。\n戻す手順を書くタスクを T-14 に足しています。", "created": "2026-10-12T01:24:00+00:00"}, titles: lookup({"D-12": "移し替えが途中で失敗したときの扱い", "T-14": "移し替えの失敗の扱いを書く"}) } };
 
+/** 本文のスレッドの ID（TH-2）と書き込みの ID（TH-2-3）はリンク（`title` にスレッドのタイトル）、記録に無い TH-99 は文字のまま出す */
+export const ThreadIdLinks: Story = {
+  args: {
+    post: {"id": "TH-1-4", "author": "ai", "body": "続きは TH-2 で話します。案の比較は TH-2-3 にまとめています。TH-99 は存在しません。", "created": "2026-10-12T02:10:00+00:00"},
+    threadTitles: (threadId: string) => (threadId === "TH-2" ? { title: "トップバーの見直し", status: "open", posts: ["TH-2-1", "TH-2-2", "TH-2-3"] } : null),
+    onOpenThread: fn(),
+  },
+};
+
 /** 本文の中の記録に無い ID（D-99）は文字のまま出す */
 export const UnknownId: Story = { args: { post: {"id": "TH-6-1", "author": "ai", "body": "D-99 は D-12 と重なっているので消してよいですか。", "created": "2026-10-12T03:10:00+00:00"}, titles: lookup({"D-12": "移し替えが途中で失敗したときの扱い"}) } };
 

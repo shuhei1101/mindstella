@@ -451,4 +451,31 @@ requirements:
     overflow: 上限を過ぎたら打ち切り、その回は再起動せずに次の間隔を待つ（『利用枠の見回り』の例外）
     refs:
       - IF-616-1#
+  - id: NFR-35
+    name: 配る書き出しの取り直し
+    english_name: export_fetch_retry
+    category: 耐障害
+    external_constraint: jsDelivr は一時的に 403 を返す（#672 で、書き出しの結合テスト 2 件が 403 で落ち、流し直すと通った。403 が続く時間は測っていない）。`Retry-After` を返すことは公開の仕様にない
+    source_kind: 外部 API の制限
+    source: https://github.com/shuhei1101/mindstella/issues/672
+    value: 1 つの URL につき要求は最大 3 回（取り直しは 2 回）。間隔は 1 回目の後が 0〜1 秒、2 回目の後が 0〜2 秒の乱数（指数バックオフ + full jitter）。`Retry-After` があればその秒数を 10 秒を上限に待つ
+    unit: 回・秒
+    rationale: 規約『資源の値の決め方』のリトライに従い、取り直しは `fetch_url` の 1 層だけで、回数の上限を持つ指数バックオフ + ジッターにする。取るのは GET で冪等。403 が続く時間の実測が無いため、回数と間隔は `measurement` で見直す仮の値にする。取り直しで増える待ちは 1 つの URL につき、間隔が最大 20 秒（`Retry-After` が 2 回とも 10 秒。返らなければ最大 3 秒）と、要求 2 回分の待ち（1 回は接続に 30 秒、読み取り 1 回ごとに 30 秒。IF-489-57 の制約「待ちの上限」）。外側の待ち（MCP のツールの呼び出し）は、今も遅い回線で途切れない限り書き出し全体を打ち切らない作り（同じ制約の補足）で、取り直しによって新しく打ち切られることはない
+    measurement: release ブランチで、書き出しの結合テストと E2E が jsDelivr の 403 で落ちた回数を数え、流した回数の 1% を超えたら回数と間隔を見直す
+    overflow: 上限まで取れなければ `DownloadFailedError` で終え、書き出す先のファイルを書き換えない。利用者は `export` を呼び直す
+    breakdown:
+      - part: 要求の回数
+        value: 3 回
+        notes: 1 回目 + 取り直し 2 回
+      - part: 1 回目の後の間隔
+        value: 0〜1 秒
+        notes: 基準 1 秒の full jitter
+      - part: 2 回目の後の間隔
+        value: 0〜2 秒
+        notes: 基準を倍にした full jitter
+      - part: '`Retry-After` の上限'
+        value: 10 秒
+        notes: 返ったときだけ従う
+    refs:
+      - IF-489-57#
 lead: mindstella が外部の制約から逆算して決める値。

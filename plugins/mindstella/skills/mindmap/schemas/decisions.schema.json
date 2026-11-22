@@ -126,7 +126,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "採用した・しなかった理由"
+                "description": "未決定の間は推奨する理由、決定の後は採用した・しなかった理由"
               }
             }
           },

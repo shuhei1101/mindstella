@@ -68,6 +68,36 @@ def test_back(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
     expect(_panel(page).get_by_role("group", name="スレッドの状態で絞る")).to_be_visible()
 
 
+def test_post_thread_id_link_action(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_thread: MakeThread, make_post: MakePost) -> None:
+    """書き込みの本文の書き込みの ID のボタンを押すと、そのスレッドを開いてその書き込みまでスクロールし、フォーカスを移す。記録に無い ID は文字のまま（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1", title="最初の問い"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body="比較は TH-2-2 にあります。TH-99 は記録にありません。", created="2026-10-12T01:00:00+00:00"),
+                summary="最初のスレッド",
+            ),
+            make_thread(
+                "TH-2",
+                make_post("TH-2-1", body="二つ目の質問", created="2026-10-12T02:00:00+00:00"),
+                make_post("TH-2-2", author="ai", body="案の比較", created="2026-10-12T02:10:00+00:00"),
+                summary="トップバーの見直し",
+            ),
+        ),
+    )
+    open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+    link = _panel(page).locator("[data-post-id='TH-1-1'] button.idlink[data-post='TH-2-2']")
+    expect(_panel(page).locator("[data-post-id='TH-1-1']")).to_contain_text("TH-99 は記録にありません")
+    assert _panel(page).locator("[data-post-id='TH-1-1'] button.idlink").count() == 1
+    # 実行
+    link.click()
+    # 検証
+    expect(_panel(page).locator("[data-post-id='TH-2-2']")).to_be_focused()
+    assert "thread=TH-2" in page.url
+
+
 def test_change_status(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
     """「クローズにする」を押すと理由の入力を出して入力欄へフォーカスを移し、その間はボタンを出さない（正常系）。"""
     # 準備

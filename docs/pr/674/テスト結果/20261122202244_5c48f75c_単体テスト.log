@@ -1,0 +1,20 @@
+# pytest は /tmp/pytest-of-shuhei2441 が root の持ち物で使えないため、環境変数 TMPDIR=/tmp/pr674-tmp を渡して実行した（引数は変えていない）
+$ pytest tests/unit
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/.venvs/mindstella-dev/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 1751 passed, 1 skipped, 5 warnings in 31.70s =================
+exit=0
+
+$ npx vitest run
+
+
+ Test Files  87 passed (87)
+      Tests  420 passed (420)
+   Start at  20:21:51
+   Duration  21.03s (environment 44%, tests 27%, import 15%, setup 8%, transform 5%)
+
+
+exit=0

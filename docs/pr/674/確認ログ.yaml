@@ -1,0 +1,25 @@
+confirmations:
+  - topic: プレビューの文字の書体（#637 の --font-stack-sans）
+    decision: IBM Plex Sans JP（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/674#discussion_r4654880934
+  - topic: 図の拡大（#152）の窓の端からの余白
+    decision: 窓の端から 24px（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/674#discussion_r4656203132
+  - topic: 過去の差分を表示している間のトップバー（#184）
+    decision: 変更履歴のボタンの右上にオレンジの点を付け、右に × だけを置く。日時と時点の名前は出さない（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 9b2824e6
+    thread: https://github.com/shuhei1101/mindstella/pull/674#discussion_r4656328736
+  - topic: 検討事項の案のカード（#161）
+    decision: 推奨の理由を一覧の下に出さず、推奨の案のカードの一番下に「推奨理由」の欄を出す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 9b2824e6
+    thread: https://github.com/shuhei1101/mindstella/pull/674#discussion_r4656329051

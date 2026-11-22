@@ -115,6 +115,19 @@ def test_unknown_id(open_story: OpenStory) -> None:
     ) == ["D-12"]
 
 
+def test_thread_id_links(open_story: OpenStory) -> None:
+    """本文の記録にあるスレッドの ID（TH-2）と書き込みの ID（TH-2-3）はボタンにし、記録に無い TH-99 は文字のまま出す（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadpost--thread-id-links")
+    # 検証
+    buttons = page.eval_on_selector_all(
+        f"{POST} button.idlink",
+        "buttons => buttons.map(b => [b.textContent, b.dataset.thread, b.dataset.post ?? null, b.getAttribute('aria-describedby')])",
+    )
+    assert buttons == [["TH-2", "TH-2", None, "term-tip"], ["TH-2-3", "TH-2", "TH-2-3", "term-tip"]]
+    assert "TH-99 は存在しません" in page.inner_text(f"{POST} [data-part=body]")
+
+
 def test_closed_event(open_story: OpenStory) -> None:
     """利用者がクローズにした記録。枠の無い 1 行にチェックの印・「あなたがクローズにしました」・日時、次の行に理由を出す（正常系）。"""
     # 準備・実行

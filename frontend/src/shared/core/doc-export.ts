@@ -44,7 +44,7 @@ const escapeHtml = (text: string): string => {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 };
 
-/** エクスポートした HTML が起動のときに流す JavaScript。mdmark の中身から Blob の URL を作って `import()` し、本文を描き、今の値をコピーするボタンの文言を替える（`relabelParamCopy` と同じ置き換え） */
+/** エクスポートした HTML が起動のときに流す JavaScript。mdmark の中身から Blob の URL を作って `import()` し、本文を描き */
 const DOC_BOOT_SCRIPT = [
   "(async () => {",
   '  const data = JSON.parse(document.getElementById("doc-data").textContent);',
@@ -56,23 +56,7 @@ const DOC_BOOT_SCRIPT = [
   "    URL.revokeObjectURL(url);",
   "  }",
   '  const root = document.getElementById("doc");',
-  "  library.mount(root, { markdown: data.source, config: { features: data.features }, index: data.index });",
-  "  const relabel = (button) => {",
-  "    const texts = [...button.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE);",
-  "    if (texts.length === 1 && texts[0].textContent === data.copyLabel) return;",
-  "    texts.forEach((node) => node.remove());",
-  "    button.append(document.createTextNode(data.copyLabel));",
-  "  };",
-  '  root.querySelectorAll(".mdmark-param-copy").forEach(relabel);',
-  "  new MutationObserver((records) => {",
-  "    for (const record of records) {",
-  "      for (const added of record.addedNodes) {",
-  "        if (added.nodeType !== Node.ELEMENT_NODE) continue;",
-  '        if (added.matches(".mdmark-param-copy")) relabel(added);',
-  '        added.querySelectorAll(".mdmark-param-copy").forEach(relabel);',
-  "      }",
-  "    }",
-  "  }).observe(root, { childList: true, subtree: true });",
+  "  library.mount(root, { markdown: data.source, config: { features: data.features, labels: { paramCopy: data.copyLabel } }, index: data.index });",
   "})();",
 ].join("\n");
 

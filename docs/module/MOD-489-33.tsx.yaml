@@ -16,6 +16,12 @@ components:
         condition: 図を渡す
         mock: なし
         expected: モーダルに図
+      - name: test_diagram_viewer_when_outside_pressed
+        case: 正常
+        summary: 外側の幕を押すと閉じる
+        condition: 図を渡して開き、外側の幕を押す。続けて開き直して Esc を押す
+        mock: なし
+        expected: 「本文へ戻る」のボタンが無く、どちらでも `onClose` が 1 回ずつ。窓は画面の端から全周 24px 空けて重なる
     container: frontend/src/features/detail/diagram-viewer/diagram-viewer.tsx
 notes:
   単体テスト: 同じフォルダの `diagram-viewer.test.tsx` に置く（knowledge の規約『フォルダ構成』）

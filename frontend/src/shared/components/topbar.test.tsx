@@ -22,6 +22,26 @@ describe("Topbar", () => {
     expect(onNavigate).toHaveBeenCalledWith("decisions");
   });
 
+  // 差分の表示中は変更履歴のボタンに点と × だけを出す（正常系）
+  test("topbar_when_diff_point", async () => {
+    // 準備
+    const onClearDiff = vi.fn();
+    const { rerender } = render(
+      <Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" diffPoint={{ name: "前回開いてから", sub: "10/04 13:05 より後" }} onOpenHistory={vi.fn()} onClearDiff={onClearDiff} />,
+    );
+    // 実行
+    await userEvent.click(screen.getByRole("button", { name: "差分の表示をやめる" }));
+    // 検証
+    expect(screen.getByRole("button", { name: "変更履歴（過去の差分を表示中）" })).toBeInTheDocument();
+    expect(screen.queryByText(/前回開いてから/)).toBeNull();
+    expect(screen.queryByText(/10\/04 13:05/)).toBeNull();
+    expect(onClearDiff).toHaveBeenCalledTimes(1);
+    // 差分を出していないときは × が無い
+    rerender(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" diffPoint={null} onOpenHistory={vi.fn()} onClearDiff={onClearDiff} />);
+    expect(screen.getByRole("button", { name: "変更履歴" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "差分の表示をやめる" })).toBeNull();
+  });
+
   // offline で接続の状態を出す（正常系）
   test("topbar_when_offline", () => {
     // 実行
@@ -102,28 +122,5 @@ describe("Topbar", () => {
     // 検証
     expect(screen.getByRole("alert")).toHaveTextContent("同じ ID の項目が 2 件あります");
     expect(screen.getByRole("link", { name: "D-12" })).toBeInTheDocument();
-  });
-  // 保留中は「更新があります」の帯を出す（正常系）
-  test("topbar_when_stale", () => {
-    // 準備
-    const { rerender } = render(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" stale />);
-    // 実行
-    const band = screen.getByText("更新があります。入力欄から離れると反映します。").closest('[role="status"]');
-    // 検証
-    expect(band).not.toBeNull();
-    expect(band?.querySelector("button")).toBeNull();
-    rerender(
-      <Topbar
-        title="話し合い"
-        tabs={[...TABS]}
-        current="overview"
-        theme="light"
-        stale
-        voiceNotice={{ kind: "discarded", text: "D-022 が削除されたため、録音を破棄しました。" }}
-      />,
-    );
-    const stale = screen.getByText("更新があります。入力欄から離れると反映します。");
-    const notice = screen.getByText("D-022 が削除されたため、録音を破棄しました。");
-    expect(notice.compareDocumentPosition(stale) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

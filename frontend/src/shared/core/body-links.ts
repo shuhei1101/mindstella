@@ -3,6 +3,7 @@
 import { getLibrary, libraryState, mdmarkMapConfig } from "@/shared/adapters/libraries";
 import { h, markupIcon } from "@/shared/core/dom-parts";
 import type { Location, RecordIndex } from "@/shared/core/records";
+import { type LookupThread, type OpenThread, resolveThreadId } from "@/shared/core/thread-ids";
 import { workspacePath } from "@/shared/core/workspace-path";
 
 /** 差分の取り出し元が返すリビジョン */
@@ -17,7 +18,7 @@ type DiffSource = {
 /** mdmark の `mount` に指定する値 */
 type MountOptions = {
   markdown: string;
-  config: { features: Record<string, boolean>; map?: Record<string, unknown> };
+  config: { features: Record<string, boolean>; labels?: { paramCopy?: string }; map?: Record<string, unknown> };
   baseMarkdown?: string;
   docId?: string;
   diffMode?: "open";
@@ -207,10 +208,9 @@ const mountMarkdown = ({ root, markdown, table = false, base, diffSource }: { ro
   const map = mdmarkMapConfig();
   const features = table ? { ...MDMARK_FEATURES, table: true } : MDMARK_FEATURES;
   const diff = diffSource === undefined ? (base === undefined ? {} : { baseMarkdown: base }) : { docId: diffSource.docId, diffMode: "open" as const, diffSource: diffSourceOf(diffSource) };
-  mdmarkOf().mount(root, { markdown, config: { features, ...(map === undefined ? {} : { map }) }, ...diff });
+  mdmarkOf().mount(root, { markdown, config: { features, labels: { paramCopy: MDMARK_PARAM_COPY_LABEL }, ...(map === undefined ? {} : { map }) }, ...diff });
   resolveFileSources(root);
   trimBreakNewlines(root);
-  relabelParamCopy(root);
 };
 
 /** 引用の `>` を除いた先が `[!{英字}]` だけの Alert の種類の行（後ろに `-` を許す）。mdmark はこの行の後ろが強制改行だと Alert にしない */
@@ -285,33 +285,6 @@ export const embeddedHtmlRanges = (source: string): { open: number; close: numbe
     }
   });
   return ranges;
-};
-
-/** 見張りを付け済みの本文（同じ本文に 2 回当てても見張りを重ねない） */
-const relabeledRoots = new WeakSet<HTMLElement>();
-
-/** 今の値をコピーするボタンの文言を `MDMARK_PARAM_COPY_LABEL` に替える。アイコンの要素は残し、文字のノードだけを置き換える（文言が同じボタンは触らない） */
-const relabelButton = (button: Element): void => {
-  const texts = [...button.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE);
-  if (texts.length === 1 && texts[0]!.textContent === MDMARK_PARAM_COPY_LABEL) return;
-  for (const text of texts) text.remove();
-  button.append(document.createTextNode(MDMARK_PARAM_COPY_LABEL));
-};
-
-/** mdmark が描いた部品の今の値をコピーするボタンの文言を替える。部品が描き直したボタンにも当てるため、本文の子孫の追加を見張る */
-export const relabelParamCopy = (root: HTMLElement): void => {
-  for (const button of root.querySelectorAll(".mdmark-param-copy")) relabelButton(button);
-  if (relabeledRoots.has(root)) return;
-  relabeledRoots.add(root);
-  new MutationObserver((records) => {
-    for (const record of records) {
-      for (const added of record.addedNodes) {
-        if (!(added instanceof Element)) continue;
-        if (added.matches(".mdmark-param-copy")) relabelButton(added);
-        for (const button of added.querySelectorAll(".mdmark-param-copy")) relabelButton(button);
-      }
-    }
-  }).observe(root, { childList: true, subtree: true });
 };
 
 /** 印を持つブロックの先頭から、選択の端までにある改行（文の \n と br）の数を返す */
@@ -639,11 +612,17 @@ const ALPHANUMERIC_WORD = /^[A-Za-z0-9]+$/;
 /** 本文の印に当てる項目の種類（一致した項目とツールチップの並びもこの順） */
 export const MARK_KINDS = ["terms", "docs", "research"] as const;
 
+/** 差分を描いた本文の、削除したブロック（中の語と ID には印とリンクを付けない） */
+const REMOVED_DIFF_BLOCK = '.mdmark-diff-block[data-kind="del"]';
+
 /** 印を当てない祖先（`pre`・インラインコード・図・リンク・ボタン・見出しの中。インラインコードは中身がちょうど語のときだけ `code` ごと当てる） */
-const UNMARKED_ANCESTORS = "pre, code, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6";
+const UNMARKED_ANCESTORS = `pre, code, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6, ${REMOVED_DIFF_BLOCK}`;
 
 /** 項目の ID（英大文字 - 数字。前後が英数字のものは当てない） */
 const ITEM_ID_PATTERN = /(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])/g;
+
+/** スレッドの ID と書き込みの ID（前後が英数字のものは当てない） */
+const THREAD_ID_PATTERN = /(?<![A-Za-z0-9-])TH-[0-9]+(?:-[0-9]+)?(?![0-9])/g;
 
 /** 本文の中の、用語の印に当てられる文字のノード（祖先が `UNMARKED_ANCESTORS` でなく、本文のブロック `block` 自身の行を持つもの）を文書の順に返す */
 const markableTextNodes = (block: Element): Text[] => {
@@ -669,12 +648,16 @@ export const linkBody = ({
   selfId,
   onOpen,
   source,
+  threads = null,
+  onOpenThread,
 }: {
   root: HTMLElement;
   index: RecordIndex;
   selfId: string;
   onOpen: (id: string) => void;
   source: string;
+  threads?: LookupThread | null;
+  onOpenThread?: OpenThread;
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 }): void => {
   // 語 → 一致した項目の ID（用語 → 資料 → 調査の順）。項目自身・取り下げた資料と調査・空の語は当てない
@@ -821,10 +804,27 @@ export const linkBody = ({
     only.replaceWith(termMark({ text: only.data.trim(), ids }));
   }
 
+  // スレッドの ID と書き込みの ID のリンク（記録にあるスレッドと書き込みだけ）
+  const threadMark = ({ text, threadId, postId }: { text: string; threadId: string; postId: string | null }): HTMLElement =>
+    h({
+      tag: "a",
+      attrs: {
+        class: "idref",
+        href: "#",
+        "data-thread": threadId,
+        "data-post": postId,
+        "aria-describedby": TERM_TIP_ID,
+        onclick: (event: Event) => {
+          event.preventDefault();
+          onOpenThread?.(threadId, postId);
+        },
+      },
+      children: [text],
+    });
   // 項目の ID は、記録にあるものだけをリンクにする（コードの中は、中身がちょうど ID のときだけ）
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode: (node) =>
-      node.parentElement?.closest("pre, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6") !== null
+      node.parentElement?.closest(`pre, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6, ${REMOVED_DIFF_BLOCK}`) !== null
         ? NodeFilter.FILTER_REJECT
         : NodeFilter.FILTER_ACCEPT,
   });
@@ -834,12 +834,23 @@ export const linkBody = ({
     const text = node.data;
     const inCode = node.parentElement?.closest("code") !== null;
     const ranges: { start: number; end: number; mark: HTMLElement }[] = [];
+    // スレッドの ID（記録にあるスレッド・書き込みだけ）は項目の ID より先に当てる
+    if (threads !== null) {
+      for (const match of text.matchAll(THREAD_ID_PATTERN)) {
+        const target = resolveThreadId(match[0], threads);
+        if (target === null || (inCode && text.trim() !== match[0])) continue;
+        ranges.push({ start: match.index, end: match.index + match[0].length, mark: threadMark({ text: match[0], ...target }) });
+      }
+    }
     for (const match of text.matchAll(ITEM_ID_PATTERN)) {
       const id = match[0];
-      // 記録に無い ID・項目自身の ID・コードの一部は、そのままにする
+      const start = match.index ?? 0;
+      // 記録に無い ID・項目自身の ID・コードの一部・スレッドの ID に重なるものは、そのままにする
       if (!index.byId.has(id) || id === selfId || (inCode && text.trim() !== id)) continue;
-      ranges.push({ start: match.index ?? 0, end: (match.index ?? 0) + id.length, mark: idMark(id) });
+      if (ranges.some((range) => range.start <= start && start < range.end)) continue;
+      ranges.push({ start, end: start + id.length, mark: idMark(id) });
     }
+    ranges.sort((a, b) => a.start - b.start);
     if (ranges.length > 0) replaceRanges({ node, ranges });
   }
 };

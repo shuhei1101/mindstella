@@ -18,6 +18,7 @@ import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { showLocation } from "@/shared/stores/location-highlight-store";
 import { voiceEditingOf } from "@/shared/stores/voice-store";
 import { useFocusAfterAddTarget } from "@/shared/stores/prefs-store";
+import { useThreadLinks } from "@/shared/hooks/use-thread-links";
 
 export type ThreadViewProps = {
   /** 開くスレッドの ID（まだ送っていない新規スレッドはコメントの ID） */
@@ -38,6 +39,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   const pendingNew = thread === null ? (items.find((item) => item.id === id && item.thread === null) ?? null) : null;
   const replies = items.filter((item) => item.thread === id);
   const markSeen = useMarkThreadSeen();
+  const threadLinks = useThreadLinks();
   const setStatus = useSetThreadStatus();
   const addComment = useAddComment();
   const focusTarget = useFocusAfterAddTarget();
@@ -280,7 +282,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
             : pendingPost(pendingNew)
           : threadTimeline(thread).map((entry) => ("post" in entry ? (
             <li key={entry.post.id}>
-              <ThreadPost post={entry.post} titles={titles} index={index} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
+              <ThreadPost post={entry.post} titles={titles} index={index} changeSets={changeSets} threadTitles={threadLinks.threads} onOpenThread={threadLinks.onOpenThread} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
             </li>
           ) : (
             <li key={`${entry.event.kind}-${entry.event.created}`}>

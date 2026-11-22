@@ -266,7 +266,6 @@ export const PreviewShell = () => {
           pendingOpen={search.panel === "pending"}
           pendingBlocked={blocked.length > 0}
           {...(embedded ? {} : voiceTopbar)}
-          stale={stale}
           duplicateIds={duplicateIds}
           onOpenDuplicate={openItem}
           onCloseDuplicate={() => { useDuplicateIdsStore.getState().dismiss(); }}

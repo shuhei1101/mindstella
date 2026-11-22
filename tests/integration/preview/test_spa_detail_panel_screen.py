@@ -32,8 +32,8 @@ from preview_embed_helpers import EMBEDDED_BODY, build_embedded_diff_workspace
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import mismatch_body_diff
 from preview_spa_helpers import assert_bottom_aligned, open_spa
-from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace, WriteComments
-from record_write_helpers import write_tool
+from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakePost, MakeThread, MakeWorkspace, WriteComments
+from record_write_helpers import call_or_write, write_tool
 
 # 送る本文のスクロールの位置（px）
 SCROLLED_TOP = 600
@@ -550,6 +550,30 @@ def test_body_diff_visible(page: Page, write_history_preview: WriteReviewPreview
     expect(panel.locator(".md .mdmark-diff-block").first).to_be_visible()
 
 
+def test_id_link_when_diff_visible(page: Page, make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """差分の表示の間も、残した・足したブロックの項目の ID はリンクにし、削除したブロックの中の ID はリンクにしない（正常系）。"""
+    # 準備（D-1 の本文の 2 段落目を、まとまり V-2 で書き換える）
+    root = make_workspace()
+    workspace = str(root)
+    call_or_write(call_tool, "add", workspace=workspace, kind="decision", item={"title": "参照先", "status": "未決定", "options": [{"key": "A", "content": "案 A"}]})
+    call_or_write(call_tool, "add", workspace=workspace, kind="decision", item={"title": "本文の問い", "status": "未決定", "options": [{"key": "A", "content": "案 A"}], "body_markdown": "残す段落は D-1 を見る。\n\n消す段落も D-1 を見る。\n"})
+    call_or_write(call_tool, "commit", workspace=workspace, summary="最初の書き込み")
+    call_or_write(call_tool, "update", workspace=workspace, id="D-2", item={"body_markdown": "残す段落は D-1 を見る。\n\n## 足した見出し\n\n足した段落でも D-1 を見る。\n"})
+    call_or_write(call_tool, "commit", workspace=workspace, summary="本文を直す")
+    served = call_tool("preview_url", workspace=workspace)
+    assert served.data is not None
+    # 実行
+    panel = _diff(page, served.data["url"], "V-2", item="D-2")
+    body = panel.locator("[data-body-view] .md")
+    body.locator(".mdmark-diff-block").first.wait_for()
+    # 検証
+    removed = body.locator('.mdmark-diff-block[data-kind="del"]')
+    expect(removed).to_contain_text("消す段落も D-1 を見る。")
+    expect(removed.locator("a.idref")).to_have_count(0)
+    texts = body.locator("a.idref").evaluate_all("links => links.map((a) => a.closest('p')?.textContent)")
+    assert texts == ["残す段落は D-1 を見る。", "足した段落でも D-1 を見る。"]
+
+
 def test_diagram_diff_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:
     """差分の表示の間、図の記法が変わったときは図に差分の色を付ける（正常系）。"""
     # 準備・実行
@@ -729,6 +753,93 @@ def test_id_link_tooltip_action(page: Page, write_preview: WritePreview, make_it
     expect(tip.locator(".tt-meta")).to_contain_text("検討事項")
     expect(link).to_have_attribute("aria-describedby", "term-tip")
     assert link.get_attribute("title") is None
+
+
+def _thread_linked(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_thread: MakeThread, make_post: MakePost) -> Locator:
+    """本文にスレッドの ID（TH-2）・書き込みの ID（TH-2-2）・スレッドに無い書き込みの ID（TH-2-9）・記録に無い ID（TH-99）を持つ D-1 を開いた詳細パネルを返す。"""
+    url, _ = write_review_preview(
+        make_item("D-1", title="本文の題", status="未決定", body="../docs/D-1.mark.md"),
+        bodies={"D-1.mark.md": "続きは TH-2 で、比較は TH-2-2 にあります。TH-2-9 と TH-99 は記録にありません。\n"},
+        threads=(
+            make_thread(
+                "TH-2",
+                make_post("TH-2-1", body="最初の書き込み", created="2026-10-12T02:00:00+00:00"),
+                make_post("TH-2-2", author="ai", body="案の比較", created="2026-10-12T02:10:00+00:00"),
+                summary="トップバーの見直し",
+            ),
+        ),
+    )
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    panel = _panel(page)
+    panel.locator(".md a.idref[data-thread]").first.wait_for()
+    return panel
+
+
+def test_thread_id_link_visible(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_thread: MakeThread, make_post: MakePost) -> None:
+    """本文の記録にあるスレッドの ID と書き込みの ID だけをリンクにし、スレッドに無い書き込みの ID と記録に無い ID は文字のまま（正常系）。"""
+    # 準備・実行
+    panel = _thread_linked(page, write_review_preview, make_item, make_thread, make_post)
+    # 検証
+    links = panel.locator(".md a.idref[data-thread]").evaluate_all("links => links.map((a) => [a.textContent, a.dataset.thread, a.dataset.post ?? null])")
+    assert links == [["TH-2", "TH-2", None], ["TH-2-2", "TH-2", "TH-2-2"]]
+    expect(panel.locator("[data-body-view] .md")).to_contain_text("TH-2-9 と TH-99 は記録にありません")
+
+
+def test_thread_id_link_tooltip_action(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_thread: MakeThread, make_post: MakePost) -> None:
+    """スレッドの ID のリンクに乗せると、スレッドのタイトルと ID、「スレッド」と状態を持つツールチップを出す（正常系）。"""
+    # 準備
+    panel = _thread_linked(page, write_review_preview, make_item, make_thread, make_post)
+    tip = page.locator("[popover]:popover-open")
+    # 実行
+    panel.locator(".md a.idref[data-thread='TH-2']:not([data-post])").hover()
+    # 検証
+    expect(tip).to_have_attribute("role", "tooltip")
+    expect(tip.locator(".tt-head")).to_have_text("トップバーの見直しTH-2")
+    expect(tip.locator(".tt-meta")).to_have_text("スレッド・オープン")
+
+
+def test_thread_id_link_action(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_thread: MakeThread, make_post: MakePost) -> None:
+    """書き込みの ID のリンクを押すと、そのスレッドの画面を開いて書き込みまでスクロールし、フォーカスを移す（正常系）。"""
+    # 準備
+    panel = _thread_linked(page, write_review_preview, make_item, make_thread, make_post)
+    # 実行
+    panel.locator(".md a.idref[data-post='TH-2-2']").click()
+    # 検証
+    comments = page.get_by_role("dialog", name="コメント")
+    expect(comments.get_by_text("トップバーの見直し").first).to_be_visible()
+    expect(comments.locator("[data-post-id='TH-2-2']")).to_be_focused()
+    assert "thread=TH-2" in page.url
+
+
+def test_option_cards_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """案のカードは左上に記号の丸いアイコン（読み上げは「案 {記号}」）、採用した案に「採用」、`adopted` が偽の案に「不採用」のバッジを出す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", status="決定済み", answer="種類ごとに分ける", reason="探しやすい", options=[{"key": "A", "content": "案 A", "adopted": True}, {"key": "B", "content": "案 B", "adopted": False}, {"key": "C", "content": "案 C"}]))
+    # 実行
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    # 検証
+    cards = _panel(page).locator("[data-key$='.content']")
+    expect(cards).to_have_count(3)
+    icons = _panel(page).locator(".rounded-full:has(> .sr-only)").evaluate_all("icons => icons.map((icon) => icon.textContent)")
+    assert icons == ["案 A", "案 B", "案 C"]
+    badges = _panel(page).locator("[data-key$='.content'] ~ span").evaluate_all("badges => badges.map((badge) => badge.textContent)")
+    assert badges == ["採用", "不採用"]
+
+
+def test_recommended_reason_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """未決定の検討事項では、推奨の案の `reason` をそのカードの一番下の「推奨理由」の欄に出し、一覧の下には出さない。推奨のバッジは 1 か所だけ（正常系）。"""
+    # 準備
+    reason = "差分を追いやすいため"
+    url = write_preview(make_item("D-1", status="未決定", options=[{"key": "A", "content": "案 A", "pros": "速い"}, {"key": "B", "content": "案 B", "pros": "安全", "recommended": True, "reason": reason}]))
+    # 実行
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    panel = _panel(page)
+    # 検証
+    labels = panel.locator("dl:has(dd[data-key='options[B].reason']) dt").evaluate_all("terms => terms.map((term) => term.textContent)")
+    assert labels == ["メリット", "推奨理由"]
+    expect(panel.locator("dd[data-key='options[B].reason']")).to_have_text(reason)
+    expect(panel.get_by_text(reason, exact=True)).to_have_count(1)
+    expect(panel.get_by_text("推奨", exact=True)).to_have_count(1)
 
 
 def test_lead_visible(page: Page, write_sample_preview: WriteSamplePreview) -> None:

@@ -7,7 +7,10 @@ import hashlib
 import http.client
 import json
 import os
+import random
 import re
+import time
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -52,6 +55,21 @@ STYLE_CLOSE_TAG = "</style>"
 
 # jsDelivr への 1 回の要求で、接続と 1 回の読み取りをそれぞれ待つ秒数
 FETCH_TIMEOUT_SEC = 30
+
+# 1 つの URL への要求の回数の上限（1 回目 + 取り直し）
+FETCH_ATTEMPTS = 3
+
+# 取り直しの間隔の上限の基準（秒）。n 回目の後は 0〜基準 × 2^(n-1) 秒の乱数
+FETCH_BACKOFF_BASE_SEC = 1.0
+
+# 応答の Retry-After に従って待つ秒数の上限
+FETCH_RETRY_AFTER_MAX_SEC = 10.0
+
+# 取り直す HTTP の状態コード（ほかに 5xx も取り直す）
+FETCH_RETRY_STATUSES = frozenset({HTTPStatus.FORBIDDEN, HTTPStatus.REQUEST_TIMEOUT, HTTPStatus.TOO_MANY_REQUESTS})
+
+# サーバーのエラー（5xx）の範囲の上端（この値は含まない）
+SERVER_ERROR_STATUS_END = 600
 
 # jsDelivr の、版を固定したパッケージの中のファイルの URL の形（ライセンスの本文を取るのに使う）
 CDN_PACKAGE_URL = "https://cdn.jsdelivr.net/npm/{package}@{version}/{path}"
@@ -315,20 +333,48 @@ def validate_export_out(out: Path) -> Path:
     return out.resolve()
 
 
+def _retry_after(error: urllib.error.HTTPError) -> float | None:
+    """応答の Retry-After（秒）を `FETCH_RETRY_AFTER_MAX_SEC` を上限に返す。無いか秒で読めなければ None。"""
+    value = error.headers.get("Retry-After") if error.headers is not None else None
+    if value is None or not value.strip().isdigit():
+        return None
+    return min(float(value.strip()), FETCH_RETRY_AFTER_MAX_SEC)
+
+
+def _is_retryable_status(status: int) -> bool:
+    """一時的な失敗として取り直す状態コードか（403・408・429・5xx）。"""
+    return status in FETCH_RETRY_STATUSES or HTTPStatus.INTERNAL_SERVER_ERROR <= status < SERVER_ERROR_STATUS_END
+
+
 def fetch_url(url: str, timeout: float = FETCH_TIMEOUT_SEC) -> bytes:
-    """URL を GET して本文のバイト列を返す（取り直さない）。"""
-    try:
-        with urllib.request.urlopen(url, timeout=timeout) as response:
-            status = response.status
-            body = response.read()
-    except (OSError, http.client.HTTPException) as error:
-        # 届かない・待ちの上限を超えた・200 以外が返った（HTTPError も OSError）
-        reason = getattr(error, "reason", None) or error
-        raise DownloadFailedError(f"取れませんでした: {url}（{reason}）") from error
-    # 200 以外の成功（204 など）も、配布ファイルとして使えない
-    if status != HTTPStatus.OK:
-        raise DownloadFailedError(f"取れませんでした: {url}（HTTP {status}）")
-    return body
+    """URL を GET し、一時的な失敗は取り直して本文のバイト列を返す。"""
+    for attempt in range(1, FETCH_ATTEMPTS + 1):
+        wait: float | None = None
+        try:
+            with urllib.request.urlopen(url, timeout=timeout) as response:
+                status = response.status
+                body = response.read()
+        except urllib.error.HTTPError as error:
+            # 200 以外が返った（HTTPError は URLError の子なので先に分ける）
+            reason: object = f"HTTP {error.code}"
+            if not _is_retryable_status(error.code):
+                raise DownloadFailedError(f"取れませんでした: {url}（{reason}）") from error
+            wait = _retry_after(error)
+            last_error: BaseException = error
+        except (OSError, http.client.HTTPException) as error:
+            # 届かない・待ちの上限を超えた
+            reason = getattr(error, "reason", None) or error
+            last_error = error
+        else:
+            # 200 以外の成功（204 など）も、配布ファイルとして使えない
+            if status != HTTPStatus.OK:
+                raise DownloadFailedError(f"取れませんでした: {url}（HTTP {status}）")
+            return body
+        if attempt == FETCH_ATTEMPTS:
+            raise DownloadFailedError(f"取れませんでした: {url}（{reason}）") from last_error
+        # 間を空けて取り直す（Retry-After が無ければ指数バックオフ + full jitter）
+        time.sleep(wait if wait is not None else random.uniform(0, FETCH_BACKOFF_BASE_SEC * 2 ** (attempt - 1)))
+    raise AssertionError("unreachable")
 
 
 def _fetch_checked(*, fetch: FetchFn, url: str, integrity: str) -> bytes:
