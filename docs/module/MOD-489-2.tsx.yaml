@@ -6,7 +6,7 @@ components:
     title: プレビューの外枠
     kind: コンポーネント
     usecase: プレビューを開く
-    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。トップバーに `useVoiceStore` の `session`・`notice` を `voice`・`voiceNotice` で渡し、「音声入力中の入力欄へ移る」「音声入力の入力欄を開く」で `session.destination`（`notice.key`）の画面を、その画面を今開くときと同じ search の書き換えで開く。記録を再読み込みしたら `discardVoice` を呼ぶ（行き先の有無は `voiceDestinationExists` で作る）。トップバーの `stale` に反映の保留（`useStale`）を渡し、保留が立って描いた後と、保留が下りて描いた後に、入力欄の位置を戻す（`restoreAnchor`）。記録を再読み込みしても、開いている入力欄を再作成せず、入力中の値とカーソルの位置を書き換えない。`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『プレビューを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。再読み込みした記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す。変更履歴で選んだ時点は `writeScreenState` の `diffSel` に書き、最初の描画の前に `dropLegacyScreenState` を 1 度呼ぶ。トップバーを包む要素の高さを `ResizeObserver` で測り、`document.documentElement` の CSS 変数 `--topbar-height`（px）に書く（外したときは変数を削除する）。左のパネル（コメントの一覧・保存待ちのパネル・表示の設定）・絞り込みのドロワー・それらのグレーアウトは、この変数を上端に使う
+    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。トップバーに `useVoiceStore` の `session`・`notice` を `voice`・`voiceNotice` で渡し、「音声入力中の入力欄へ移る」「音声入力の入力欄を開く」で `session.destination`（`notice.key`）の画面を、その画面を今開くときと同じ search の書き換えで開く。記録を再読み込みしたら `discardVoice` を呼ぶ（行き先の有無は `voiceDestinationExists` で作る）。反映の保留（`useStale`）はトップバーに渡さず、保留が下りて描いた後に入力欄の位置を戻す（`restoreAnchor`）。記録を再読み込みしても、開いている入力欄を再作成せず、入力中の値とカーソルの位置を書き換えない。`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『プレビューを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。再読み込みした記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す。変更履歴で選んだ時点は `writeScreenState` の `diffSel` に書き、最初の描画の前に `dropLegacyScreenState` を 1 度呼ぶ。トップバーを包む要素の高さを `ResizeObserver` で測り、`document.documentElement` の CSS 変数 `--topbar-height`（px）に書く（外したときは変数を削除する）。左のパネル（コメントの一覧・保存待ちのパネル・表示の設定）・絞り込みのドロワー・それらのグレーアウトは、この変数を上端に使う
     refs:
       - IF-489-70#
     unit_tests:
@@ -90,10 +90,10 @@ components:
         expected: トップバーの音声入力中の表示が消え、帯に「T-1 が削除されたため、録音を破棄しました。」
       - name: test_preview_shell_when_records_changed_while_typing
         case: 正常
-        summary: 入力中に書き換わったら帯を出し、離れたら反映する
+        summary: 入力中に書き換わったら保留し、離れたら反映する
         condition: '`?tab=tasks&id=T-1` で T-1 のコメントの入力に「途中まで」と入れてフォーカスを置いたまま、MSW の記録に T-2 を追加して偽物の EventSource から `changed` を送信し、続けて入力欄の外を押す'
         mock: MSW・EventSource（偽物）
-        expected: 離れるまでタスクの画面に T-2 が無く、トップバーの下に「更新があります。入力欄から離れると反映します。」の帯がある。離れた後に T-2 が出て帯が消え、入力欄の値が「途中まで」
+        expected: 離れるまでタスクの画面に T-2 が無く、「更新があります」のバーが無い。離れた後に T-2 が出て、入力欄の値が「途中まで」
       - name: test_preview_shell_when_records_changed
         case: 正常
         summary: 再読み込みで入力欄を再作成しない
