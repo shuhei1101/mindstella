@@ -141,8 +141,8 @@ flows:
     summary: jsDelivr に届かないと、何も書かずに終わる
     setup:
       - name: Mock
-        description: 環境変数 `HTTPS_PROXY` に届かないアドレスを入れて起動し、jsDelivr への要求を全て失敗させる
-        notes: '`HTTPS_PROXY=http://127.0.0.1:9`'
+        description: 環境変数 `HTTPS_PROXY` に接続をすぐ拒否するアドレスを入れて起動し、jsDelivr への要求を全て失敗させる
+        notes: '`HTTPS_PROXY=http://127.0.0.1:{テストの中で空きを確認して閉じたポート}`'
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 書き出す先
