@@ -60,9 +60,8 @@ export const SettingsConfirm = ({ from, to, busy, error, onSave, onCancel }: Set
         <Button ref={(element: HTMLButtonElement | null) => { element?.focus(); }} variant="ghost" disabled={busy} onClick={onCancel}>
           取り消す
         </Button>
-        <Button disabled={busy} onClick={onSave}>
-          {busy ? <Icon name="spin" className="animate-spin" /> : null}
-          {busy ? "保存しています" : "保存する"}
+        <Button pending={busy} onClick={onSave}>
+          保存する
         </Button>
       </div>
     </div>

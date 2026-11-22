@@ -84,7 +84,7 @@ export const ReviewEditForm = ({ id, label, body, error = null, saving = false, 
       <Button variant="ghost" disabled={saving} onClick={() => onCancel(id)}>
         キャンセル
       </Button>
-      <Button ref={submitRef} type="submit" title="修正（Ctrl+Enter）" disabled={saving}>
+      <Button ref={submitRef} type="submit" title="修正（Ctrl+Enter）" pending={saving}>
         修正
       </Button>
     </>

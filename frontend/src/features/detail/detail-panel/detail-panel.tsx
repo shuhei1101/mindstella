@@ -34,6 +34,7 @@ import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll } from "@/shared/stores/prefs-store";
 import { isEmbedded } from "@/shared/core/embedded";
+import { useSingleFlight } from "@/shared/hooks/use-single-flight";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
 
@@ -131,6 +132,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const { edits } = useRecords();
   const add = useAddEdit();
   const cancel = useCancelEdit();
+  const flight = useSingleFlight();
   const [editing, setEditing] = useState(false);
   // 本文の差分の見せ方。開いた項目ごとに「描いた結果」から始め、選んだ回数で押し直しを描き直す
   const [diffView, setDiffView] = useState<{ id: string; view: BodyDiffView; nonce: number }>({ id, view: "rendered", nonce: 0 });
@@ -276,7 +278,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
       <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false && view !== "source"} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
-          <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
+          <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { flight.run(() => add.mutateAsync({ op: "item-remove", target: id })); }} onCancelRemove={() => { if (removal !== undefined) flight.run(() => cancel.mutateAsync(removal.id)); }} />
         ) : (
           <div className="flex flex-col gap-3 p-3">
             {diff === null ? null : (

@@ -18,6 +18,7 @@ import { useRecords } from "@/shared/hooks/use-records";
 import { cn } from "@/shared/lib/cn";
 import { useFocusAfterAddTarget, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 import { readVoiceState } from "@/shared/stores/voice-store";
+import { useSingleFlight } from "@/shared/hooks/use-single-flight";
 
 const FILTERS = [
   { key: "open", label: "オープン" },
@@ -41,6 +42,7 @@ const newThreadLabel = (target: string | null): string => (target === null ? "�
 /** 新規スレッドの入力。閉じて外れても録音と文字起こしは続ける。項目で絞っている間は、溜めるスレッドと下書き・音声入力をその項目への箇所を持たない入力に向ける（詳細パネルの下端の入力と下書きを共有する） */
 const NewThreadForm = ({ free, setFree, target }: { free: FreeState; setFree: (next: FreeState | ((current: FreeState) => FreeState)) => void; target: string | null }) => {
   const add = useAddComment();
+  const flight = useSingleFlight();
   const saveDraft = useSaveDraft();
   const focusTarget = useFocusAfterAddTarget();
   // 溜めた後にフォーカスを移す、新規スレッドの入力の form
@@ -86,7 +88,7 @@ const NewThreadForm = ({ free, setFree, target }: { free: FreeState; setFree: (n
               }}
               onSubmit={(_target, _loc, text) => {
                 setFree((current) => ({ ...current, status: "saving" }));
-                add.mutate(
+                flight.run(() => add.mutateAsync(
                   target === null ? { body: text } : { body: text, target },
                   {
                     onSuccess: (result) => {
@@ -95,7 +97,7 @@ const NewThreadForm = ({ free, setFree, target }: { free: FreeState; setFree: (n
                     },
                     onError: (error) => { setFree((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
                   },
-                );
+                ));
               }}
             />
   );

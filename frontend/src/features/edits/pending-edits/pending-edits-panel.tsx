@@ -11,6 +11,7 @@ import { toText } from "@/shared/core/format";
 import { KIND_LABEL, type Kind, type RecordIndex, type Relation, type RelationType, type Tag } from "@/shared/core/records";
 import { useCancelEdit, useSaveEdits } from "@/shared/hooks/use-edits";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
+import { useSingleFlight } from "@/shared/hooks/use-single-flight";
 
 const SETTING_LABELS: Record<string, string> = { summary: "題名", description: "説明", links: "関連する場所", history_limit: "保持する回数" };
 
@@ -94,6 +95,7 @@ export type PendingEditsPanelProps = { edits: readonly PendingEdit[]; index: Rec
 export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEditsPanelProps) => {
   const save = useSaveEdits();
   const cancel = useCancelEdit();
+  const flight = useSingleFlight();
   const blocked = useEditSessionStore((state) => state.blocked);
   const alert = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -115,7 +117,7 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
   useEffect(() => {
     if (blocked.length > 0) alert.current?.focus();
   }, [blocked]);
-  const label = save.isPending ? "保存しています…" : removals > 0 ? `まとめて保存する（${String(removals)} 件を削除）` : "まとめて保存する";
+  const label = removals > 0 ? `まとめて保存する（${String(removals)} 件を削除）` : "まとめて保存する";
   return (
     <>
     {/* 幅 901px 以上は後ろをグレーアウトし、押すと閉じる（押した操作は後ろの部品へ届けない） */}
@@ -215,7 +217,7 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
                         )}
                         {entry === undefined ? null : <BlockedNote blocked={entry} updated={index.byId.get(edit.target)?.item.updated ?? null} onOpen={onOpen} />}
                       </div>
-                      <Button variant="ghost" aria-label={`${who.id ?? who.kind} の${text.what}の編集を取り消す`} onClick={() => { cancel.mutate(edit.id); }}>
+                      <Button variant="ghost" aria-label={`${who.id ?? who.kind} の${text.what}の編集を取り消す`} pending={cancel.isPending && cancel.variables === edit.id} disabled={flight.running} onClick={() => { flight.run(() => cancel.mutateAsync(edit.id)); }}>
                         <Icon name="undo" />
                         <span className="max-sm:sr-only">取り消す</span>
                       </Button>
@@ -230,13 +232,13 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
       <div className="flex flex-col gap-1 border-t border-border-soft p-2">
         {edits.length === 0 ? null : <p className="m-0 text-xs text-muted-foreground">{`${String(edits.length)} 件${removals > 0 ? `（うち削除 ${String(removals)} 件）` : ""}をワークスペースに書き込みます`}</p>}
         <Button
-          disabled={save.isPending || edits.length === 0}
-          aria-busy={save.isPending || undefined}
+          pending={save.isPending}
+          disabled={edits.length === 0 || flight.running}
           onClick={() => {
             setFailure(null);
             setSaved(null);
             // 全て書けたらパネルを閉じる（保存した知らせは外枠が出す）。書き込めない編集があれば開いたまま知らせを出す
-            save.mutate(edits.length, { onSuccess: ({ blocked: refused }) => { if (refused.length === 0) onClose(); }, onError: (error) => { setFailure(error instanceof AppError ? { kind: "refused", message: error.message } : { kind: "unreachable" }); } });
+            flight.run(() => save.mutateAsync(edits.length, { onSuccess: ({ blocked: refused }) => { if (refused.length === 0) onClose(); }, onError: (error) => { setFailure(error instanceof AppError ? { kind: "refused", message: error.message } : { kind: "unreachable" }); } }));
           }}
         >
           <Icon name="save" />

@@ -1002,8 +1002,9 @@ def _dead_reason(current: SessionState, tmux: TmuxRunner, proc: ProcessInspector
     """落ちた理由（ペインが無い・PID が無い・起動時刻が違う）を返す。生きていれば None。"""
     if not current.pane:
         return "pane_missing"
-    code, _out = tmux.run(["display-message", "-p", "-t", current.pane, "#{pane_pid}"])
-    if code != 0:
+    code, out = tmux.run(["display-message", "-p", "-t", current.pane, "#{pane_pid}"])
+    # 同じ tmux のサーバーにほかのセッションがあると、無いペインでも終了コード 0 で空の出力を返す
+    if code != 0 or not out.strip().isdigit():
         return "pane_missing"
     # SessionStart の前でプロセスを知らない: ペインだけで判定する
     if current.pid is None:

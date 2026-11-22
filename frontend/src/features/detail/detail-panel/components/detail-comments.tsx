@@ -18,6 +18,7 @@ import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from 
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { voiceEditingOf } from "@/shared/stores/voice-store";
 import { useFocusAfterAddTarget, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
+import { useSingleFlight } from "@/shared/hooks/use-single-flight";
 
 export type DetailCommentsProps = {
   /** 開いている項目の ID */
@@ -60,6 +61,7 @@ export const DetailComments = ({ id, scroller }: DetailCommentsProps) => {
   const prefs = usePrefs();
   const formOpen = prefs.commentFormClosed !== true;
   const add = useAddComment();
+  const flight = useSingleFlight();
   const focusTarget = useFocusAfterAddTarget();
   // 溜めた後にフォーカスを移す、下端のコメントの入力の form
   const sendForm = useRef<HTMLFormElement>(null);
@@ -162,7 +164,7 @@ export const DetailComments = ({ id, scroller }: DetailCommentsProps) => {
         onBlur={(value) => { saveDraft({ target: id, loc, thread: null, body: value }, true); }}
         onSubmit={(target, location, value) => {
           setForm((current) => ({ ...current, status: "saving" }));
-          add.mutate(
+          flight.run(() => add.mutateAsync(
             { target, loc: location, body: value },
             {
               onSuccess: (result) => {
@@ -174,7 +176,7 @@ export const DetailComments = ({ id, scroller }: DetailCommentsProps) => {
               },
               onError: (error) => { setForm((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
             },
-          );
+          ));
         }}
       />
       {entry === null ? null : (
@@ -206,6 +208,7 @@ export const DetailReviewComments = ({ id, titles, changeSets, index, onOpenItem
   const add = useAddComment();
   const update = useUpdateComment();
   const remove = useRemoveComment();
+  const flight = useSingleFlight();
   const [removed, setRemoved] = useState<ReviewItem[]>([]);
   // 書き換えている行。録音中か結果待ちの修正の入力があれば、その行を書き換えている状態で開く
   const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(() => {
@@ -262,7 +265,7 @@ export const DetailReviewComments = ({ id, titles, changeSets, index, onOpenItem
                 return (
                   <li key={item.id} className="flex items-center gap-2 text-small">
                     <span role="status" className="flex-1">コメントを削除しました。</span>
-                    <Button variant="ghost" data-focus={`undo:${item.id}`} onClick={() => { add.mutate({ id: item.id, created: item.created, target: item.target, loc: item.loc, body: item.body }, { onSuccess: () => { focusAfter(() => { setRemoved((current) => current.filter((one) => one.id !== item.id)); }, `[data-focus="edit:${item.id}"]`); } }); }}>
+                    <Button variant="ghost" data-focus={`undo:${item.id}`} pending={add.isPending && add.variables.id === item.id} disabled={flight.running} onClick={() => { flight.run(() => add.mutateAsync({ id: item.id, created: item.created, target: item.target, loc: item.loc, body: item.body }, { onSuccess: () => { focusAfter(() => { setRemoved((current) => current.filter((one) => one.id !== item.id)); }, `[data-focus="edit:${item.id}"]`); } })); }}>
                       <Icon name="undo" />
                       元に戻す
                     </Button>
@@ -278,7 +281,7 @@ export const DetailReviewComments = ({ id, titles, changeSets, index, onOpenItem
                         <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" data-focus={`edit:${item.id}`} onClick={() => { focusAfter(() => { setEditing({ id: item.id, body: item.body, error: null }); }, `[data-comment="${item.id}"] textarea`); }}>
                           <Icon name="edit" />
                         </Button>
-                        <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" onClick={() => { remove.mutate(item.id, { onSuccess: () => { focusAfter(() => { setRemoved((current) => [...current, item]); }, `[data-focus="undo:${item.id}"]`); } }); }}>
+                        <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" pending={remove.isPending && remove.variables === item.id} disabled={flight.running} onClick={() => { flight.run(() => remove.mutateAsync(item.id, { onSuccess: () => { focusAfter(() => { setRemoved((current) => [...current, item]); }, `[data-focus="undo:${item.id}"]`); } })); }}>
                           <Icon name="trash" />
                         </Button>
                       </>
@@ -309,7 +312,7 @@ export const DetailReviewComments = ({ id, titles, changeSets, index, onOpenItem
                         focusAfter(() => { setEditing(null); }, `[data-focus="edit:${item.id}"]`);
                       }}
                       onSubmit={(target, body) => {
-                        update.mutate({ id: target, body }, { onSuccess: () => { focusAfter(() => { setEditing(null); }, `[data-focus="edit:${target}"]`); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。再起動してから修正してください。" }); } });
+                        flight.run(() => update.mutateAsync({ id: target, body }, { onSuccess: () => { focusAfter(() => { setEditing(null); }, `[data-focus="edit:${target}"]`); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。再起動してから修正してください。" }); } }));
                       }}
                     />
                   ) : (

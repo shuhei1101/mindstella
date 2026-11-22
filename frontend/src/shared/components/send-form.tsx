@@ -404,7 +404,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
         onBlocked={onVoiceBlocked}
         onDone={() => onVoiceDone?.(target, loc, body)}
         submit={
-          <Button ref={submitRef} type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" aria-busy={status === "saving"} disabled={status === "saving"}>
+          <Button ref={submitRef} type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" pending={status === "saving"}>
             <Icon name="comment" />
           </Button>
         }

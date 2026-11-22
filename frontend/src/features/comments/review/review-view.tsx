@@ -17,6 +17,7 @@ import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { cn } from "@/shared/lib/cn";
 import { showLocation } from "@/shared/stores/location-highlight-store";
 import { voiceEditingOf } from "@/shared/stores/voice-store";
+import { useSingleFlight } from "@/shared/hooks/use-single-flight";
 
 export type ReviewViewProps = {
   data: CommentData;
@@ -115,6 +116,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
   const update = useUpdateComment();
   const remove = useRemoveComment();
   const add = useAddComment();
+  const flight = useSingleFlight();
   const checked = sendable.filter((item) => !unchecked.has(item.id));
   const allChecked = checked.length === sendable.length && sendable.length > 0;
   const toggle = (id: string): void => {
@@ -134,7 +136,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
       return;
     }
     setOutcome({ kind: "sending" });
-    send.mutate(ids, {
+    flight.run(() => send.mutateAsync(ids, {
       onSuccess: (reply) => {
         setStale({});
         setOutcome({ kind: "sent", count: ids.length, at: reply.sent, entered: reply.entered });
@@ -148,7 +150,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
         }
         setOutcome({ kind: "failed", detail: error instanceof AppError ? error.message : null });
       },
-    });
+    }));
   };
   const rows: (ReviewItem & { gone?: boolean })[] = [...sorted, ...removed.map((item) => ({ ...item, gone: true }))].sort((a, b) => commentNumber(a.id) - commentNumber(b.id));
   return (
@@ -188,7 +190,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
               }}
             />
             <span className="flex-1 text-small">{`${String(checked.length)} / ${String(sendable.length)} 件`}</span>
-            <Button disabled={send.isPending} onClick={sendChecked}>
+            <Button pending={send.isPending} disabled={flight.running} onClick={sendChecked}>
               <Icon name="comment" />
               {`まとめて送信（${String(checked.length)} 件）`}
             </Button>
@@ -210,8 +212,10 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                     </span>
                     <Button
                       variant="ghost"
+                      pending={add.isPending && add.variables.id === item.id}
+                      disabled={flight.running}
                       onClick={() => {
-                        add.mutate({ id: item.id, created: item.created, target: item.target, loc: item.loc, thread: item.thread, body: item.body }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); } });
+                        flight.run(() => add.mutateAsync({ id: item.id, created: item.created, target: item.target, loc: item.loc, thread: item.thread, body: item.body }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); } }));
                       }}
                     >
                       <Icon name="undo" />
@@ -251,8 +255,10 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                           size="icon"
                           aria-label={`${label}を削除`}
                           title="削除"
+                          pending={remove.isPending && remove.variables === item.id}
+                          disabled={flight.running}
                           onClick={() => {
-                            remove.mutate(item.id, { onSuccess: (content) => { setRemoved((current) => [...current, { id: content.id, target: content.target ?? null, loc: (content.loc as ReviewItem["loc"] | undefined) ?? null, thread: content.thread ?? null, body: content.body, created: content.created }]); } });
+                            flight.run(() => remove.mutateAsync(item.id, { onSuccess: (content) => { setRemoved((current) => [...current, { id: content.id, target: content.target ?? null, loc: (content.loc as ReviewItem["loc"] | undefined) ?? null, thread: content.thread ?? null, body: content.body, created: content.created }]); } }));
                           }}
                         >
                           <Icon name="trash" />
@@ -272,6 +278,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       label={label}
                       body={editing.body}
                       error={editing.error}
+                      saving={update.isPending}
                       voice={editVoice.voice}
                       voiceReason={editVoice.voiceReason}
                       elapsed={editVoice.elapsed}
@@ -288,7 +295,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       onVoiceBlocked={editVoice.onVoiceBlocked}
                       onCancel={() => { setEditing(null); }}
                       onSubmit={(target, body) => {
-                        update.mutate({ id: target, body }, { onSuccess: () => { setEditing(null); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。再起動してから修正してください。" }); } });
+                        flight.run(() => update.mutateAsync({ id: target, body }, { onSuccess: () => { setEditing(null); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。再起動してから修正してください。" }); } }));
                       }}
                     />
                   ) : (
@@ -326,8 +333,10 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       <Button
                         variant="outline"
                         className="justify-self-start"
+                        pending={update.isPending && update.variables.id === item.id}
+                        disabled={flight.running}
                         onClick={() => {
-                          update.mutate({ id: item.id, loc: null }, { onSuccess: () => { setStale((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key !== item.id))); } });
+                          flight.run(() => update.mutateAsync({ id: item.id, loc: null }, { onSuccess: () => { setStale((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key !== item.id))); } }));
                         }}
                       >
                         箇所を解除
