@@ -82,6 +82,8 @@ export type DetailEditorProps = {
   /** キーか案の記号 → 直前の保存で書き込めなかった編集 */
   blocked: Record<string, BlockedEdit>;
   removing: boolean;
+  /** 項目の削除・削除の取り消しを溜めてから保存待ちの編集を読み直し終えるまでか */
+  removePending: boolean;
   removedOptions: readonly string[];
   referrers: readonly string[];
   usedTags: readonly string[];
@@ -145,7 +147,7 @@ const Field = ({ label, controlId, required, mark, children }: { label: string; 
 );
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
-export const DetailEditor = ({ kind, item, marks, blocked, removing, removedOptions, referrers, usedTags, body, index, onChange, onRemove, onCancelRemove }: DetailEditorProps) => {
+export const DetailEditor = ({ kind, item, marks, blocked, removing, removePending, removedOptions, referrers, usedTags, body, index, onChange, onRemove, onCancelRemove }: DetailEditorProps) => {
   const adding = item.id.startsWith(NEW_ID_PREFIX);
   const [titleEmpty, setTitleEmpty] = useState(false);
   const [drafts, setDrafts] = useState<{ key: string; content: string }[]>([]);
@@ -289,12 +291,12 @@ export const DetailEditor = ({ kind, item, marks, blocked, removing, removedOpti
         <section className="flex flex-col gap-1 border-t border-border-soft pt-2">
           <h3 className="m-0 text-h2 font-semibold">項目を削除</h3>
           {removing ? (
-            <Button type="button" variant="outline" className="self-start" onClick={onCancelRemove}>
+            <Button type="button" variant="outline" className="self-start" pending={removePending} onClick={onCancelRemove}>
               <Icon name="undo" />
               削除を取り消す
             </Button>
           ) : (
-            <Button type="button" variant="destructive" className="self-start" onClick={onRemove}>
+            <Button type="button" variant="destructive" className="self-start" pending={removePending} onClick={onRemove}>
               <Icon name="trash" />
               項目を削除
             </Button>
