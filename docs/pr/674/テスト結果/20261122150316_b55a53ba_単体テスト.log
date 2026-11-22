@@ -1,0 +1,77 @@
+$ npx vitest run frontend/src/shared/core/post-links.test.ts frontend/src/shared/core/body-links.test.ts frontend/src/shared/components/topbar.test.tsx frontend/src/features/detail/diagram-viewer/diagram-viewer.test.tsx frontend/src/app/preview-shell.test.tsx
+     × link_body_when_diff 5ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/shared/core/body-links.test.ts > linkBody > link_body_when_thread_ids
+AssertionError: expected [] to deeply equal [ [ 'TH-1', null ], …(1) ]
+- Expected
++ Received
+- [
+-   [
+-     "TH-1",
+-     null,
+-   ],
+-   [
+-     "TH-1",
+-     "TH-1-2",
+-   ],
+- ]
++ []
+ ❯ frontend/src/shared/core/body-links.test.ts:73:37
+     71|     root.querySelector<HTMLElement>("[data-thread='TH-1']:not([data-po…
+     72|     root.querySelector<HTMLElement>("[data-post='TH-1-2']")?.click();
+     73|     expect(onOpenThread.mock.calls).toEqual([
+       |                                     ^
+     74|       ["TH-1", null],
+     75|       ["TH-1", "TH-1-2"],
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+ FAIL  frontend/src/shared/core/body-links.test.ts > linkBody > link_body_when_diff
+AssertionError: expected <a class="idref" href="#id=D-2" …(2)></a> to be null
+- Expected:
+null
++ Received:
+<a
+  aria-describedby="term-tip"
+  class="idref"
+  data-id="D-2"
+  href="#id=D-2"
+>
+  D-2
+</a>
+ ❯ frontend/src/shared/core/body-links.test.ts:95:51
+     93|     // 検証
+     94|     expect(root.querySelector("[data-id='D-1']")).not.toBeNull();
+     95|     expect(root.querySelector("[data-id='D-2']")).toBeNull();
+       |                                                   ^
+     96|   });
+     97| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+ FAIL  frontend/src/shared/core/post-links.test.ts > linkThreadIds > link_thread_ids
+TypeError: linkThreadIds is not a function
+ ❯ frontend/src/shared/core/post-links.test.ts:15:5
+     13|     const threads = (id: string) => (id === "TH-2" ? { title: "トップバーの見…
+     14|     // 実行
+     15|     linkThreadIds({ root, threads, onOpen });
+       |     ^
+     16|     for (const button of root.querySelectorAll<HTMLButtonElement>("but…
+     17|     // 検証
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+ Test Files  2 failed | 3 passed (5)
+      Tests  3 failed | 34 passed (37)
+   Start at  15:03:16
+   Duration  3.77s (environment 43%, tests 30%, setup 11%, import 10%, transform 6%, worker 1%)
+
+$ pytest tests/unit/scripts/test_builder.py -k fetch_url
+E       AttributeError: module 'builder' has no attribute 'time'
+
+tests/unit/scripts/test_builder.py:353: AttributeError
+=========================== short test summary info ============================
+ERROR tests/unit/scripts/test_builder.py::test_fetch_url_when_unreachable[closed_port]
+ERROR tests/unit/scripts/test_builder.py::test_fetch_url_when_unreachable[not_found]
+ERROR tests/unit/scripts/test_builder.py::test_fetch_url_when_unreachable[no_content]
+ERROR tests/unit/scripts/test_builder.py::test_fetch_url_when_transient_failure[forbidden]
+ERROR tests/unit/scripts/test_builder.py::test_fetch_url_when_transient_failure[too_many_requests]
+ERROR tests/unit/scripts/test_builder.py::test_fetch_url_when_transient_failure[service_unavailable]
+ERROR tests/unit/scripts/test_builder.py::test_fetch_url_when_retries_exhausted
+1 passed, 31 deselected, 7 errors in 4.14s
+
+実装の前から pass したテスト: topbar_when_diff_point・diagram_viewer_when_outside_pressed・preview_shell_when_records_changed_while_typing は、モック作成の工程で入れた topbar.tsx（ClearDiffButton・HistoryButton の点。9b2824e6）・diagram-viewer.tsx（外側で閉じる・inset-6。モック作成の commit）・preview-shell.tsx（stale を渡さない）の振る舞いで pass する
