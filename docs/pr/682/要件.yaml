@@ -129,3 +129,6 @@ scope_out:
   - item: 検討事項の推奨の案に枠線の色を付ける
     reason: 利用者が変えないと決めた（#671 の TH-1531。採用した案と見分けが付かなくなる）
     plan: none
+  - item: 公開する文書を持つフォルダの目次・タブのページ（`docs/*/README.md`・`docs/guide/はじめに.md`・`使い方.md`・`リファレンス.md`）を、今の AI Monitor の `design_docs publish` が `.mark.md` として書き出す形式へ追従する
+    reason: '#622 は変更履歴の 1 ページだけの改名で、`publish` を流すと今回の対象外の目次のページをまとめて改名・削除するため、今回は `publish` の出力を持ち込まず、変更履歴の行だけを手で合わせた'
+    plan: to_file
