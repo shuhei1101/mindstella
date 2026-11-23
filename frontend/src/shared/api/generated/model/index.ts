@@ -15,8 +15,6 @@ export * from './commentPatchReply';
 export * from './commentReply';
 export * from './comments';
 export * from './commentsItemsItem';
-export * from './confirmedInput';
-export * from './confirmedReply';
 export * from './derived';
 export * from './displayInput';
 export * from './displayReply';

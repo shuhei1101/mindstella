@@ -868,16 +868,6 @@ files:
   related:
   - to: MOD-489-64
     type: implements
-- path: src/shared/components/confirmed-toggle.stories.tsx
-  name: 確認済みの切り替えのストーリー
-  description: 確認済みの切り替えのストーリー。
-  tags:
-  - tool:react
-- path: src/shared/components/confirmed-toggle.tsx
-  name: 確認済みの切り替え
-  description: 確認済みの切り替え。
-  tags:
-  - tool:react
 - path: src/shared/components/diff-mark.stories.tsx
   name: 差分のマーカーのストーリー
   description: 差分のマーカーのストーリー。
@@ -1513,12 +1503,6 @@ files:
   related:
   - to: MOD-489-128
     type: implements
-- path: src/shared/hooks/use-item-confirmed.ts
-  name: 項目の確認済みの付け外し
-  description: 項目の確認済みの付け外し。応答を待つ間は押した後の値を返し、失敗したら記録の値に戻して文を返す。
-  tags:
-  - tool:react
-  related: []
 - path: src/shared/hooks/use-preview-search.test.tsx
   name: import { act, waitFor } from @testing-library/react;
   description: import { act, waitFor } from @testing-library/react;。

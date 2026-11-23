@@ -19,50 +19,42 @@ export const GetRecordsResponse = zod.looseObject({
   "transcription": zod.object({
   "action": zod.enum(['review', 'send', 'insert']).optional(),
   "preset": zod.string().nullish()
-}).optional(),
-  "confirm_on_comment": zod.boolean().optional()
+}).optional()
 }),
   "decisions": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "confirmed": zod.boolean().optional()
+  "status": zod.string().optional()
 })),
   "tasks": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "confirmed": zod.boolean().optional()
+  "status": zod.string().optional()
 })),
   "research": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "confirmed": zod.boolean().optional()
+  "status": zod.string().optional()
 })),
   "docs": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "confirmed": zod.boolean().optional()
+  "status": zod.string().optional()
 })),
   "terms": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "confirmed": zod.boolean().optional()
+  "status": zod.string().optional()
 })),
   "notes": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "confirmed": zod.boolean().optional()
+  "status": zod.string().optional()
 })),
   "logs": zod.array(zod.looseObject({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.string().optional(),
-  "confirmed": zod.boolean().optional()
+  "status": zod.string().optional()
 })),
   "derived": zod.object({
   "ready": zod.array(zod.string()).describe('前提が全て決着した未決定の検討事項の ID（連番の順）')
@@ -72,7 +64,7 @@ export const GetRecordsResponse = zod.looseObject({
 
 
 /**
- * @summary レビュー中のコメントと下書きを返す
+ * @summary レビュー中のコメントと書きかけを返す
  */
 export const GetCommentsResponse = zod.looseObject({
   "items": zod.array(zod.looseObject({
@@ -193,7 +185,7 @@ export const GetThreadsResponse = zod.looseObject({
 
 
 /**
- * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を解除
+ * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す
  */
 export const UpdateCommentParams = zod.object({
   "id": zod.string()
@@ -260,7 +252,7 @@ export const SendCommentsResponse = zod.looseObject({
 
 
 /**
- * @summary コメントの入力欄の下書きを向けた先ごとに保つ
+ * @summary コメントの入力欄の書きかけを向けた先ごとに保つ
  */
 export const SaveDraftBody = zod.object({
   "target": zod.string().nullish(),
@@ -294,23 +286,6 @@ export const SetThreadStatusResponse = zod.object({
   "id": zod.string(),
   "status": zod.enum(['open', 'closed']),
   "changed": zod.boolean()
-})
-
-
-/**
- * @summary 利用者が項目を確認済みにするか、確認済みを解除する
- */
-export const SetItemConfirmedParams = zod.object({
-  "id": zod.string()
-})
-
-export const SetItemConfirmedBody = zod.object({
-  "confirmed": zod.boolean()
-})
-
-export const SetItemConfirmedResponse = zod.object({
-  "id": zod.string(),
-  "confirmed": zod.boolean()
 })
 
 
