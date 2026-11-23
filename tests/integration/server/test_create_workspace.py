@@ -322,6 +322,7 @@ def test_error_when_host_not_local(session_world: SessionWorld) -> None:
     # 準備
     world = session_world
     world.start({"MINDSTELLA_ALLOWED_HOSTS": "example.test"})
+    world.pi.requests.clear()
     # 実行
     status, body = world.api(
         "POST", "/workspaces", {"folder": str(world.folder())}, host="example.test"

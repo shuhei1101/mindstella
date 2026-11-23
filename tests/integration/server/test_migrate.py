@@ -646,7 +646,7 @@ def test_normal_when_submissions_to_threads(
     # 利用者が送ったものは利用者の既読
     assert [thread["posts"][0]["seen"] for thread in threads] == [True, True]
     assert not (root / RECORD_DIR / "submissions.yaml").exists()
-    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
+    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": [], "warnings": []}
     awaiting = call_tool("threads", workspace=str(root), awaiting=True)
     assert awaiting.data is not None
     assert [item["id"] for item in awaiting.data["items"]] == ["TH-2"]
@@ -877,7 +877,7 @@ def test_normal_when_mdmark_documents(
     assert [line for line in result.data["reports"] if line.startswith(prefix)] != []
     assert not (record / "mdmark.config.yaml").exists()
     assert not (record / ".mdmark").exists()
-    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
+    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": [], "warnings": []}
 
 
 def test_error_when_mdmark_documents_fail(
@@ -1092,6 +1092,7 @@ def test_normal_when_markdown_bodies_renamed(
         ("v0.14.0", 3, "call", True),
         ("v0.14.0", 4, "call", True),
         ("v0.14.0", 5, "call", True),
+        ("v0.14.0", 6, "call", True),
     ]
     decision = _read_decisions(root)[0]
     assert decision["body"] == "../docs/D-1.mark.md"
