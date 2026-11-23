@@ -1,0 +1,130 @@
+# 結合テスト（全 pass）
+回したコードの commit: 974dd5aa
+
+$ pytest tests/integration/server/test_adopt.py tests/integration/server/test_change_detection.py tests/integration/server/test_comments_send.py tests/integration/server/test_comments_send_now.py tests/integration/server/test_create_workspace.py tests/integration/server/test_edit_option.py tests/integration/server/test_migrate.py tests/integration/server/test_records.py tests/integration/server/test_update_settings.py 
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 125 items
+
+tests/integration/server/test_adopt.py .......                           [  5%]
+tests/integration/server/test_change_detection.py ............           [ 15%]
+tests/integration/server/test_comments_send.py .................         [ 28%]
+tests/integration/server/test_comments_send_now.py ......                [ 33%]
+tests/integration/server/test_create_workspace.py .............          [ 44%]
+tests/integration/server/test_edit_option.py .............               [ 54%]
+tests/integration/server/test_migrate.py ............................... [ 79%]
+                                                                         [ 79%]
+tests/integration/server/test_records.py .............                   [ 89%]
+tests/integration/server/test_update_settings.py .............           [100%]
+
+======================= 125 passed in 274.01s (0:04:34) ========================
+exit=0
+
+$ pytest tests/integration/preview/test_spa_comments_screen.py tests/integration/preview/test_spa_decisions_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/preview/test_spa_docs_screen.py tests/integration/preview/test_spa_open.py tests/integration/preview/test_spa_records_screen.py tests/integration/preview/test_spa_tasks_screen.py tests/integration/preview/test_spa_thread_screen.py tests/integration/preview/test_spa_workspace_settings_screen.py tests/integration/storybook_react/test_comment_mark_stories.py tests/integration/storybook_react/test_item_card_stories.py tests/integration/storybook_react/test_markdown_body_stories.py tests/integration/storybook_react/test_table_stories.py tests/integration/storybook_react/test_thread_row_stories.py tests/integration/storybook_react/test_view_switch_stories.py 
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 415 items
+
+tests/integration/preview/test_spa_comments_screen.py .................. [  4%]
+.                                                                        [  4%]
+tests/integration/preview/test_spa_decisions_screen.py ................. [  8%]
+....                                                                     [  9%]
+tests/integration/preview/test_spa_detail_panel_screen.py .............. [ 13%]
+........................................................................ [ 30%]
+..............................                                           [ 37%]
+tests/integration/preview/test_spa_docs_screen.py ...................... [ 42%]
+                                                                         [ 42%]
+tests/integration/preview/test_spa_open.py ............................. [ 49%]
+....                                                                     [ 50%]
+tests/integration/preview/test_spa_records_screen.py ............        [ 53%]
+tests/integration/preview/test_spa_tasks_screen.py ..................... [ 58%]
+..                                                                       [ 59%]
+tests/integration/preview/test_spa_thread_screen.py ...................  [ 63%]
+tests/integration/preview/test_spa_workspace_settings_screen.py ........ [ 65%]
+..                                                                       [ 66%]
+tests/integration/storybook_react/test_comment_mark_stories.py ...       [ 66%]
+tests/integration/storybook_react/test_item_card_stories.py ......       [ 68%]
+tests/integration/storybook_react/test_markdown_body_stories.py ........ [ 70%]
+.........                                                                [ 72%]
+tests/integration/storybook_react/test_table_stories.py ................ [ 76%]
+                                                                         [ 76%]
+tests/integration/storybook_react/test_thread_row_stories.py ........... [ 79%]
+....                                                                     [ 80%]
+tests/integration/storybook_react/test_view_switch_stories.py .....      [ 81%]
+tests/integration/preview/test_spa_comments_screen.py ..                 [ 81%]
+tests/integration/preview/test_spa_decisions_screen.py ...               [ 82%]
+tests/integration/preview/test_spa_detail_panel_screen.py ...            [ 83%]
+tests/integration/preview/test_spa_docs_screen.py .....                  [ 84%]
+tests/integration/preview/test_spa_records_screen.py .....               [ 85%]
+tests/integration/storybook_react/test_comment_mark_stories.py ..        [ 86%]
+tests/integration/storybook_react/test_item_card_stories.py .            [ 86%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 86%]
+tests/integration/storybook_react/test_table_stories.py .                [ 86%]
+tests/integration/storybook_react/test_view_switch_stories.py .          [ 86%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 87%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 87%]
+tests/integration/preview/test_spa_docs_screen.py .                      [ 87%]
+tests/integration/preview/test_spa_records_screen.py .....               [ 88%]
+tests/integration/storybook_react/test_comment_mark_stories.py ..        [ 89%]
+tests/integration/storybook_react/test_item_card_stories.py .            [ 89%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 89%]
+tests/integration/storybook_react/test_table_stories.py .                [ 90%]
+tests/integration/storybook_react/test_view_switch_stories.py .          [ 90%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 90%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 90%]
+tests/integration/preview/test_spa_records_screen.py .....               [ 92%]
+tests/integration/storybook_react/test_item_card_stories.py .            [ 92%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 92%]
+tests/integration/storybook_react/test_table_stories.py .                [ 92%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 93%]
+tests/integration/storybook_react/test_item_card_stories.py .            [ 93%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 93%]
+tests/integration/storybook_react/test_table_stories.py .                [ 93%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 93%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 94%]
+tests/integration/storybook_react/test_table_stories.py .                [ 94%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 94%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 94%]
+tests/integration/storybook_react/test_table_stories.py .                [ 95%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 95%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 95%]
+tests/integration/storybook_react/test_table_stories.py .                [ 95%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 96%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 96%]
+tests/integration/storybook_react/test_table_stories.py .                [ 96%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 96%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 97%]
+tests/integration/storybook_react/test_table_stories.py .                [ 97%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 97%]
+tests/integration/storybook_react/test_table_stories.py .                [ 97%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 98%]
+tests/integration/storybook_react/test_table_stories.py .                [ 98%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 98%]
+tests/integration/storybook_react/test_table_stories.py .                [ 98%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 99%]
+tests/integration/storybook_react/test_table_stories.py .                [ 99%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 99%]
+tests/integration/storybook_react/test_table_stories.py .                [ 99%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [100%]
+
+======================= 415 passed in 705.64s (0:11:45) ========================
+exit=0
+
+$ pytest tests/nfr
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 4 items
+
+tests/nfr/test_record_operation_time.py ....                             [100%]
+
+============================== 4 passed in 9.76s ===============================
+exit=0
