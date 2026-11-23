@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .color_helpers import MIN_CONTRAST, contrast, resolve_color
 from .storybook_react_fixture_types import OpenStory
 
 # 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
@@ -217,3 +218,16 @@ def test_no_unread_when_seen(open_story: OpenStory) -> None:
     # 検証
     assert page.locator(UNREAD).count() == 0
     assert page.get_attribute(ROW, "data-unread") is None
+
+
+def test_unread_fill(open_story: OpenStory) -> None:
+    """未読の札はマーカーの色で塗りつぶし、行の面とのコントラスト比が 3:1 以上（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadrow--unread")
+    badge = page.locator(UNREAD).evaluate("e => getComputedStyle(e).backgroundColor")
+    row = page.locator(f"{LINE2}").evaluate(
+        "e => { let node = e; while (node && getComputedStyle(node).backgroundColor === 'rgba(0, 0, 0, 0)') node = node.parentElement; return node ? getComputedStyle(node).backgroundColor : 'rgb(255, 255, 255)'; }"
+    )
+    # 検証
+    assert badge == resolve_color(page, "--mark")
+    assert contrast(badge, row) >= MIN_CONTRAST

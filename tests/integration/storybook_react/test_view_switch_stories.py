@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import expect
 
+from .color_helpers import MIN_CONTRAST, contrast, resolve_color
 from .storybook_react_fixture_types import OpenStory
 
 # 部品設計の状態
@@ -70,3 +71,25 @@ def test_docs(open_story: OpenStory) -> None:
     # 検証
     expect(group.get_by_role("button")).to_have_text(["カード", "ボード", "表"])
     expect(group.get_by_role("button", name="カード")).to_have_attribute("aria-pressed", "true")
+
+
+def test_decisions_selected_fill(open_story: OpenStory) -> None:
+    """選んでいる形式はマーカーの色の塗りで、選んでいない形式の面とのコントラスト比が 3:1 以上。選んでいない形式のホバーは面の色を変え、選んでいる形式はホバーで変えない（正常系）。"""
+    # 準備
+    page = open_story("shared-viewswitch--decisions")
+    group = page.get_by_role("group", name="表示形式")
+    board = group.get_by_role("button", name="ボード")
+    table = group.get_by_role("button", name="表")
+    background = "e => getComputedStyle(e).backgroundColor"
+    selected = board.evaluate(background)
+    unselected = table.evaluate(background)
+    # 実行
+    table.hover()
+    hovered = table.evaluate(background)
+    board.hover()
+    selected_hovered = board.evaluate(background)
+    # 検証
+    assert selected == resolve_color(page, "--mark")
+    assert contrast(selected, unselected) >= MIN_CONTRAST
+    assert hovered == resolve_color(page, "--accent")
+    assert selected_hovered == selected

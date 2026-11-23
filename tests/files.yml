@@ -618,6 +618,13 @@ files:
   - topic:スレッド
   - topic:ヘルパー
   - topic:結合テスト
+- path: integration/storybook_react/color_helpers.py
+  name: ストーリーの色の補助関数
+  description: ストーリーの色を CSS 変数の値と比べ、コントラスト比を求める補助関数。選んでいる・未読の塗りの結合テストを修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:色
 - path: integration/storybook_react/storybook_frame_helpers.py
   name: HTML の本文の枠を描く部品のストーリーの結合テストの補助
   description: HTML の本文の枠を描く部品のストーリーの結合テストが共有する、枠の中を読む関数。テストの準備や共有の操作を追加・変更するときに読む。
