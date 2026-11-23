@@ -29,3 +29,8 @@ confirmations:
     approver: shuhei1101
     commit:
     thread: https://github.com/shuhei1101/mindstella/pull/682#discussion_r4660653315
+  - topic: '#494 NFR-26 で測る項目 1 件の書き込みの操作'
+    decision: 項目 1 件の書き込みを MindStella の MCP の adopt で測り、終了の条件も adopt にする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/682#discussion_r4667199418
