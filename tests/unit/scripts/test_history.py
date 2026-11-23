@@ -12,7 +12,7 @@ import yaml
 import history
 import read_point
 import store
-from errors import ArgumentError, ItemNotFoundError, SchemaMismatchError
+from errors import SchemaMismatchError
 from fixture_types import MakeItem, MakeWorkspace
 from workspace_fixtures import RECORD_DIR
 

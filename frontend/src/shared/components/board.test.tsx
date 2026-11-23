@@ -5,8 +5,8 @@ import { Board } from "@/shared/components/board";
 import type { Item } from "@/shared/core/records";
 
 const ITEMS: Item[] = [
-  { id: "T-1", title: "画面を作る" },
-  { id: "T-2", title: "テストを書く" },
+  { id: "T-1", title: "画面を作る", created: "2026-11-01", updated: "2026-11-01" },
+  { id: "T-2", title: "テストを書く", created: "2026-11-01", updated: "2026-11-01" },
 ];
 
 beforeEach(() => {
