@@ -122,13 +122,13 @@ scope_out:
     plan: '#662'
   - item: dev-docs の画面の表の既定のピン止めへの追従（#639）
     reason: dev-docs は別のリポジトリで、この作業 PR では変更できない。MindStella の画面で決めた扱いを添えて dev-docs へ起票するかをレビューで決める
-    plan: to_file
+    plan: shuhei1101/dev-docs#324
   - item: React への置き換えの前の画面との機能の突き合わせ（#669 の参考）
     reason: 要望はボードのドラッグのスクロールで、機能の突き合わせは終了の条件に含まれない。含めるかをレビューで決める
-    plan: to_file
+    plan: '#683'
   - item: 検討事項の推奨の案に枠線の色を付ける
     reason: 利用者が変えないと決めた（#671 の TH-1531。採用した案と見分けが付かなくなる）
     plan: none
   - item: 公開する文書を持つフォルダの目次・タブのページ（`docs/*/README.md`・`docs/guide/はじめに.md`・`使い方.md`・`リファレンス.md`）を、今の AI Monitor の `design_docs publish` が `.mark.md` として書き出す形式へ追従する
     reason: '#622 は変更履歴の 1 ページだけの改名で、`publish` を流すと今回の対象外の目次のページをまとめて改名・削除するため、今回は `publish` の出力を持ち込まず、変更履歴の行だけを手で合わせた'
-    plan: to_file
+    plan: '#621'
