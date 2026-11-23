@@ -39,8 +39,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-22T23:24:52.349190+00:00'
   - process: モック作成
-    status: todo
+    status: done
     note: '#671（未読のマーカー・選択中とホバーの色・コメントのマーカーの位置）と #676（詳細パネルの幅の区切りの当たり判定）の変わる画面だけ'
+    updated_by: planner
+    updated_at: '2026-11-23T00:12:53.458315+00:00'
   - process: データ設計
     status: todo
     note: ER-489-1 の設定の mdmark.map を update_settings が書けるキーにする（#651）・history.yaml の confirmed と設定の確認済みのキーの扱い（#675）
