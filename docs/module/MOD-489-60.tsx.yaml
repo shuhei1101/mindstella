@@ -27,3 +27,5 @@ components:
     usecase: 項目を表で絞り込む
     summary: 部品設計『項目のカード.tsx』の props・イベント・状態を持つ。外枠は `div[data-card]`、タイトルは `button[data-id]` でその `::after` をカード全体へ広げ、`onSelectTag` を指定したときだけ部品『タグの並び』を `onSelect` つきで前面に並べる
     container: frontend/src/shared/components/board.tsx
+notes:
+  単体テスト: 同じフォルダの `board.test.tsx` に置く（knowledge の規約『フォルダ構成』）
