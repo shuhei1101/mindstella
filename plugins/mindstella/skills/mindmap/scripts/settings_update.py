@@ -33,18 +33,17 @@ EDITABLE_KEYS = (
     "display",
     "transcription",
     "mdmark",
-    "confirm_on_comment",
 )
 
 # 値が `null` のときに消してよい任意のキー
-REMOVABLE_KEYS = ("description", "links", "history_limit", "display", "transcription", "confirm_on_comment")
+REMOVABLE_KEYS = ("description", "links", "history_limit", "display", "transcription")
 
 # 渡すと引数の誤りにする、削除した設定のキー
 REMOVED_KEYS = ("goal", "phases", "playbooks", "targets", "target_label", "categories")
 
 # mdmark の設定のキーと、そのうち `update_settings` で書き換えられるキー
 MDMARK_KEY = "mdmark"
-MDMARK_EDITABLE_KEYS = ("version",)
+MDMARK_EDITABLE_KEYS = ("version", "map")
 
 # 表示の既定の書き換えの本文に必須のキー（これ以外のキーは受け付けない）
 DISPLAY_KEYS = ("visible_kinds",)
@@ -86,7 +85,7 @@ def merge_settings(
                 del merged[key]
                 changed.append(key)
             continue
-        # mdmark: version だけを置き換え、移し替えが書いた map を残す
+        # mdmark: 渡した version・map を当て（map は丸ごと置き換える）、渡さなかった方を残す
         if key == MDMARK_KEY and isinstance(merged.get(key), dict):
             value = {**merged[key], **value}
         # 前と値が違う（無かったキーを含む）ものだけを変わったキーにする
@@ -179,7 +178,7 @@ def _settings_key_lines(settings: dict[str, Any]) -> list[str]:
         # 必須のキーを null で消そうとした
         elif value is None and key not in REMOVABLE_KEYS:
             lines.append(f"{SETTINGS_FILE}: {key}: null で消せません")
-        # mdmark は version だけを書き換えられる（map は移し替えの手順だけが書く）
+        # mdmark は version・map だけを書き換えられる（map の中身は設定のスキーマとの突き合わせで弾く）
         elif key == MDMARK_KEY and isinstance(value, dict):
             lines.extend(
                 f"{SETTINGS_FILE}: {MDMARK_KEY}.{name}: 書き換えられないキー"
