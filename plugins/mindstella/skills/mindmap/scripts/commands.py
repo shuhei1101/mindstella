@@ -37,7 +37,6 @@ from history import (
     load_item_history,
     make_entry,
     note_pending,
-    unconfirm,
     pending_view,
     removed_items,
     stack_history,
@@ -104,7 +103,6 @@ RESERVED_KEYS = (
     "history_dropped_seq",
     "seq",
     "added_seq",
-    "confirmed",
 )
 
 # `item` で本文の Markdown を渡すキー（YAML には残さない）
@@ -369,14 +367,11 @@ def stage_update(
     changes = {key: value for key, value in item.items() if key not in BODY_INPUT_KEYS}
     merged, changed = merge_changes(ref.item, changes)
     timestamp = now()
-    row: ItemHistory = unconfirm(
-        {
-            **staged.history.get(item_id, {}),
-            "updated": timestamp,
-            "updated_by": cast(Any, editor),
-        },
-        cast(Any, editor),
-    )
+    row: ItemHistory = {
+        **staged.history.get(item_id, {}),
+        "updated": timestamp,
+        "updated_by": cast(Any, editor),
+    }
     body = _body_write(item_id, item)
     previous_name = ref.item.get("body")
     bodies = dict(staged.bodies)
@@ -464,9 +459,7 @@ def _adopt_once(root: Path, item_id: str, key: str, now: NowFn) -> tuple[str | N
         raise ItemNotFoundError(f"検討事項がありません: {item_id}")
     switched, previous = switch_adopted(ref.item, key)
     previous_status = ref.item["status"]
-    row: ItemHistory = unconfirm(
-        {**rows.get(item_id, {}), "updated": timestamp, "updated_by": EDITOR}, EDITOR
-    )
+    row: ItemHistory = {**rows.get(item_id, {}), "updated": timestamp, "updated_by": EDITOR}
     # 本文は変えないので、前後の本文は同じ（読まない）
     row, noted = _stack_changes(
         workspace,

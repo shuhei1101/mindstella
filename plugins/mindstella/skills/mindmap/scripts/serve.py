@@ -69,7 +69,7 @@ from files_serve import (
     plan_file,
     resolve_file,
 )
-from history import head_until_seq, load_changes, set_confirmed, touch_opened
+from history import head_until_seq, load_changes, touch_opened
 from kinds import BODY_REF_PREFIX, KINDS, SETTINGS_FILE, body_root, records_root
 from locations import location_to_dict
 from settings_update import update_display
@@ -154,10 +154,6 @@ THREADS_PATH = "/api/threads"
 
 # スレッド 1 件の利用者の既読にする口（`/api/threads/{id}/seen`）の、`{id}` の後ろ
 SEEN_SUFFIX = "/seen"
-
-# 確認済みの付け外しのパスの頭（PUT `/api/items/{id}/confirmed`）と末尾
-ITEMS_PATH = "/api/items"
-CONFIRMED_SUFFIX = "/confirmed"
 
 # 保存待ちの編集の読み取り・追加と、1 件の取り消し（`/api/edits/{id}`）のパス
 EDITS_PATH = "/api/edits"
@@ -649,16 +645,11 @@ class PreviewEndpoint:
         return _to_starlette(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     async def _put(self, request: Request, context: ServeContext, path: str, base: str) -> StarletteResponse:
-        """下書き・設定の既定・確認済みへ振り分ける。"""
+        """下書き・設定の既定へ振り分ける。"""
         if path == DRAFTS_PATH:
             return await _write(request, context, _saved_draft, HTTPStatus.NO_CONTENT)
         if path == CONFIG_DISPLAY_PATH:
             return await _write(request, context, update_display, HTTPStatus.OK)
-        item_id = _confirmed_item_id_of(path)
-        if item_id is not None:
-            return await _write(
-                request, context, lambda root, data: set_confirmed(root, item_id, data), HTTPStatus.OK
-            )
         return _to_starlette(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     async def _patch(self, request: Request, context: ServeContext, path: str, base: str) -> StarletteResponse:
@@ -1471,16 +1462,6 @@ def _edit_id_of(path: str | None) -> str | None:
         return None
     edit_id = unquote(path.removeprefix(prefix))
     return edit_id if edit_id and "/" not in edit_id else None
-
-
-def _confirmed_item_id_of(path: str | None) -> str | None:
-    """`/api/items/{id}/confirmed` のパスから項目の ID を取り出す（`id` は `/` を含まない）。"""
-    prefix = f"{ITEMS_PATH}/"
-    # 別のパス
-    if path is None or not path.startswith(prefix) or not path.endswith(CONFIRMED_SUFFIX):
-        return None
-    item_id = unquote(path.removeprefix(prefix).removesuffix(CONFIRMED_SUFFIX))
-    return item_id if item_id and "/" not in item_id else None
 
 
 def _seen_thread_id_of(path: str | None) -> str | None:

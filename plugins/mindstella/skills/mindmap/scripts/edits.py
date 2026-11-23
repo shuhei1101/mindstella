@@ -105,7 +105,6 @@ UNEDITABLE_KEYS = frozenset(
         "seq",
         "added_seq",
         "options",
-        "confirmed",
     }
 )
 
