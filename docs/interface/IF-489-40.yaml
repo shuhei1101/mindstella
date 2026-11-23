@@ -255,8 +255,6 @@ constraints:
     constraint: 『変更の検知』の「変更履歴を追加するとき」「変更履歴の 1 回分」「保持する回数」「連番」と同じ（`by` は `ai`）。積んだとき `changes.yaml` の `pending.changed` に ID を追加し、`pending.by` が `external` なら先に外部の変更のまとまりにする（『変更の検知』の「まだまとめていない変更の書き込み元」）。`before` は値が変わったキー（`options` は切り替える前の案の並びの全体、`status` は切り替える前の状態）。既にその案が採用で決定済みのときは積まない
   - item: 採用と状態
     constraint: 切り替えた後の状態は、切り替える前の状態によらず `決定済み`（未決定・要見直し・保留から決定済みにする）。`answer` は書き換えない（回答はエージェントフローが project-index の `write_docs` で書く）
-  - item: 確認済みの解除
-    constraint: 変更履歴を積んだとき（`updated_by` を `ai` にしたとき）、`history.yaml` のその行の `confirmed` を削除する（『変更の検知』の「確認済みの解除」と同じ）
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 refs:
   - IF-540-2#

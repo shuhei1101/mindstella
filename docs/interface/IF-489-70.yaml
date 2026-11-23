@@ -577,7 +577,7 @@ flows:
       - ブラウザのコンソールにエラーが出ていない
     test: test_normal_when_exported_offline
   - name: 正常系（配る書き出しで書き込む操作を出さない）
-    summary: 配る書き出しは、項目の追加・編集・確認済み・コメント・保存待ち・ワークスペースの既定にするの操作を出さない
+    summary: 配る書き出しは、項目の追加・編集・コメント・保存待ち・ワークスペースの既定にするの操作を出さない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `export` で書き出した HTML を実際のブラウザで `file://` で開く）
@@ -598,7 +598,7 @@ flows:
     expected:
       - トップバーにコメントと保存待ちのボタンが無い
       - タスクの項目を追加するボタンが無い
-      - 詳細パネルに編集する・確認済み・コメントの一覧のボタンと入力欄が無い
+      - 詳細パネルに編集する・コメントの一覧のボタンと入力欄が無い
       - 表示の設定のパネルにワークスペースの既定にするのボタンが無い
     test: test_normal_when_exported_read_only
 lead: 利用者がサーバーの配信の `/w/{workspace}/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの通知を受けると記録を再読み込みして再描画する。
@@ -768,7 +768,7 @@ constraints:
   - item: 通信
     constraint: サーバーの配信（同じオリジンの `/w/{workspace}/api/`）と、描画のライブラリと Google Fonts の文字の配信元だけへ通信する。記録を外へ送信しない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
   - item: 描画のライブラリ
-    constraint: mermaid・marked・jsdiff は、プラグインの `preview/libraries.json`（ライブラリごとの jsDelivr のバージョンを固定した URL・`integrity`（sha384）・置かれるグローバルの名前。画面と『配る書き出し』が共有する唯一の持ち主）の URL から、`integrity` で中身を確かめて読む。mdmark は、『記録の取得』の `mdmark_ref` の jsDelivr の URL（`gh/shuhei1101/mdmark@{mdmark_ref}/dist/`。`mdmark_ref` を受ける前は `develop`）から、`integrity` を付けずに `crossorigin="anonymous"` で読む。ES モジュールのため、CSS を link 要素で読み、JavaScript を `import()` で読む。`mount` の `config` には、`features`（画面と重なる機能のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・mermaid の描画も含める。表の機能 `table` は、詳細・詳細の全画面・本文の差分の本文でオンにし、スレッドの書き込みでオフにする）と、`settings.mdmark.map` を `map` として指定する。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える
+    constraint: mermaid・marked・jsdiff は、プラグインの `preview/libraries.json`（ライブラリごとの jsDelivr のバージョンを固定した URL・`integrity`（sha384）・置かれるグローバルの名前。画面と『配る書き出し』が共有する唯一の持ち主）の URL から、`integrity` で中身を確かめて読む。mdmark は、『記録の取得』の `mdmark_ref` の jsDelivr の URL（`gh/shuhei1101/mdmark@{mdmark_ref}/dist/`。`mdmark_ref` を受ける前は `develop`）から、`integrity` を付けずに `crossorigin="anonymous"` で読む。ES モジュールのため、CSS を link 要素で読み、JavaScript を `import()` で読む。`mount` の `config` には、`features`（画面と重なる機能のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・mermaid の描画も含める。表の機能 `table` は、詳細・詳細の全画面・本文の差分の本文でオンにし、スレッドの書き込みでオフにする）と、`settings.mdmark.map` を `map` として指定する。表の既定のピン止め（`table.pin_default`）は指定せず、mdmark の既定（描いた直後にどの列も留めない）のまま描く。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える
   - item: 本文の無害化
     constraint: 本文とスレッドの書き込みの Markdown は、mdmark が HTML に描くときに無害化した結果を差し込む。図はスクリプトを動かさない安全の設定で描く。HTML の本文は、記録の `marked_bodies` を `sandbox="allow-same-origin"`（`allow-scripts` を付けない）の iframe の `srcdoc` に描き、本文のスクリプトを動かさず、本文の CSS を枠の外へ漏らさない。枠の高さは `ResizeObserver` で描いた中身に合わせる。Markdown の中の言語指定 `html` のコードブロックも、コードではなく同じ枠に描く（行のマーカーは付けない）。Markdown の中の `<!-- html -->` 〜 `<!-- /html -->` の範囲（埋め込んだ HTML）は、枠に入れず mdmark の HTML の埋め込みの機能で本文の中に描き、範囲に書いたスクリプトとイベントの属性は無害化で外す
   - item: 画面への反映の時間
@@ -781,7 +781,7 @@ constraints:
   - item: URL の状態
     constraint: 画面で見ているものに影響する状態（リクエストの表の全て）は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する。既定の値は書かない
   - item: 履歴
-    constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）と、全体の検索の結果から開いた項目の種類の画面が今の画面と違うときは履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・絞り込みと並べ替え・差分の時点の再選択・左のパネルの開閉・コメントの一覧の中のスレッドとレビュー中の書き込みの画面の行き来・スレッドの絞り込み・全体の検索の開閉と検索の言葉の入力は積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む。タグを押して絞り込みに加えるときは積む（制約「タグを押して絞り込む」）
+    constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）と、全体の検索の結果から開いた項目の種類の画面が今の画面と違うときは履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・差分の時点の再選択・左のパネルの開閉・コメントの一覧の中のスレッドとレビュー中の書き込みの画面の行き来・スレッドの絞り込み・全体の検索の開閉と検索の言葉の入力は積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む。タグを押して絞り込みに加えるときは積む（制約「タグを押して絞り込む」）。絞り込みのドロワーでの絞り込みの変更（値の選択・解除・すべて解除・タグの組み合わせ方・プリセットの選択）と表の並べ替えの変更は、変えるたびに 1 つ積む。列の文字の条件の入力は、打っている間は URL を置き換え、入力が 500ms 止まったとき・Enter を押したとき・入力欄からフォーカスが離れたときに、積んだ後の変更があれば 1 つ積む（打ち終えた単位）。列の表示・ピン留め・初期設定に戻すは積まずに URL を置き換える
   - item: 画面の移動と項目
     constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`tagmatch`・`tx`・`sort` を外す。全体の検索の結果から項目を開くときは、その項目の種類の画面（表示しない種類の項目は概要）へ移り、`id` をその項目にして、`diff` と左のパネル（`panel`・`thread`・`review`・`tstatus`・`ttag`・`ttarget`）を残し、`view`・`full`・`h`・`f.{列}`・`tagmatch`・`tx`・`sort`・`search`・`q` を外す。開いた項目の種類の画面が今の画面と同じときも、同じく `view` を外して既定の表示形式で詳細パネルを開く
   - item: タグの条件とプリセット

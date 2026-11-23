@@ -156,5 +156,3 @@ items:
     summary: 常駐サーバーの起動時に、ID の一覧を再作成し、落ちた MindStella のセッションを記録し、エージェントフローの配信元を再登録する
   - page: IF-587-1.yaml
     summary: ワークスペースのファイルのフォルダのファイルを `/files/` の下で配る（範囲の要求に対応）
-  - page: IF-633-1.yaml
-    summary: 利用者が画面で項目を確認済みにする・確認済みを解除する（`history.yaml` の `confirmed` だけを書き換える）

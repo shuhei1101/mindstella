@@ -286,6 +286,55 @@ flows:
       - 'エラーの本文に `config.yaml: mdmark.version` で始まる行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_mdmark_version_invalid
+  - name: 正常系（図の種類を書き換える）
+    summary: 図の種類（`mdmark.map`）を丸ごと置き換え、mdmark のバージョンとほかのキーを残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '作成を済ませ、`config.yaml` の `mdmark` が `version: v0.13.0` と `map.kinds.llm` を持つワークスペース'
+        notes: '`settings` は `{"mdmark": {"map": {"kinds": {"llm": …, "start": …, "question": {"shape": "rect"}, "action": …, "result": …}, "lines": {…}}}}`（`version` を指定しない。各種類は mdmark の設定のスキーマに合う値）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace settings.mdmark.map
+        IF-->>WS: config.yaml を読む
+        IF->>IF: mdmark.map を置き換え（mdmark.version は残す）、スキーマと mdmark の設定のスキーマと突き合わせる
+        IF->>WS: config.yaml を書く
+        IF-->>クライアント: JSON（changed）
+      ```
+    expected:
+      - 結果の `changed` が `["mdmark"]`
+      - '`config.yaml` の `mdmark.map` が渡した `kinds`・`lines` で、`mdmark.version` が `v0.13.0` のまま'
+      - '`summary`・`display`・`transcription` が呼ぶ前と同じ'
+    test: test_normal_when_mdmark_map
+  - name: 異常系（図の種類が mdmark の設定のスキーマに合わない・SchemaMismatchError）
+    summary: mdmark の設定のスキーマに合わない図の種類を渡すと、何も書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '`settings` は `{"mdmark": {"map": {"kinds": {"question": {"shape": "木"}}}}}`（`shape` は `rounded`・`rect`・`pill`・`double` のどれか）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+
+        クライアント->>IF: update_settings workspace（map.kinds.question.shape が 木）
+        IF->>IF: mdmark の設定のスキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `config.yaml: mdmark.map.kinds.question.shape` で始まる行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_mdmark_map_invalid
 lead: '`settings` で渡した設定のキーを置き換える。削除したキー（ゴール・フェーズ・プレイブック・対象・カテゴリー）は受け付けず、項目を付け替えない。'
 idempotent: false
 side_effects: '`config.yaml` を書き換える。種類ごとの YAML は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'
@@ -302,7 +351,7 @@ request:
     required: true
     location: argument
     description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは削除する。渡さないキーはそのまま
-    constraints: キーは `summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment`・`mdmark` だけ。`confirm_on_comment` は真偽値。`mdmark` は `version` だけを受けて `version` だけを置き換え、移し替えの手順が書いた `mdmark.map` を残す。`null` で削除できるのは任意の `description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment` だけ（`confirm_on_comment` を削除すると既定の `true` になる）。1 つ以上のキーを持つ。削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）は引数の誤り
+    constraints: キーは `summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`mdmark` だけ。`mdmark` は `version` と `map`（`kinds`・`lines`）を受け、渡した方だけを置き換えて渡さなかった方を残す。`map` は丸ごと置き換え、mdmark の設定のスキーマの `map` と突き合わせる。`null` で削除できるのは任意の `description`・`links`・`history_limit`・`display`・`transcription` だけ。1 つ以上のキーを持つ。削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）は引数の誤り
     example: '{"display": {"visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"]}}'
 request_example: |-
   ```json
@@ -344,7 +393,7 @@ constraints:
   - item: エラーの返却方法
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 書き換えられるキー
-    constraint: '`settings` の制約に並べたキー（`summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`confirm_on_comment`・`mdmark`）。`display`（表示する種類の既定）と `transcription`（文字起こし後の挙動・用語集のプリセット）は丸ごと置き換える。`presets` は受け付けず、[プリセットの作成](id:IF-649-1)・[プリセットの更新](id:IF-649-2)・[プリセットの削除](id:IF-649-3) が書き換える'
+    constraint: '`settings` の制約に並べたキー（`summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`mdmark`）。`display`（表示する種類の既定）と `transcription`（文字起こし後の挙動・用語集のプリセット）は丸ごと置き換える。`presets` は受け付けず、[プリセットの作成](id:IF-649-1)・[プリセットの更新](id:IF-649-2)・[プリセットの削除](id:IF-649-3) が書き換える'
   - item: 検証の範囲
     constraint: 書き換えた後の `config.yaml` をスキーマと突き合わせる。参照先の ID があるかは確かめない（点検が持つ）
   - item: YAML の記載方法
