@@ -44,4 +44,3 @@ components:
     container: frontend/src/features/settings/workspace-settings/workspace-settings-screen.tsx
 notes:
   単体テスト: 同じフォルダの `workspace-settings-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）
-  コメントの送信で確認済みにする: '「コメント」の `fieldset` に `confirm_on_comment` のチェックボックスを置く。初めの値は記録の取得の `settings.confirm_on_comment`（無ければ `true`）に保存待ちの編集を当てた値。切り替えたときにほかのキーと同じく `setting` を 1 件溜める。単体テストに、切り替えると `key: confirm_on_comment` の編集を溜めることを確かめるテストを追加する'

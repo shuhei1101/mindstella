@@ -89,7 +89,6 @@
 | [プレビュー / term-tip](./MOD-489-87.tsx.yaml) | 部品設計『本文のマーカーのツールチップ.tsx』の props・イベント・状態を持つ |
 | [プレビュー / doc-export-menu](./MOD-489-67.tsx.yaml) | 部品設計『資料のエクスポートのメニュー.tsx』の props・イベント・状態を持つ |
 | [プレビュー / withdrawn-badge](./MOD-489-100.tsx.yaml) | 部品設計『取り下げの札.tsx』の props・イベント・状態を持つ |
-| [プレビュー / confirmed-toggle](./MOD-633-1.tsx.yaml) | 部品設計『確認済みの切り替え.tsx』の props・イベント・状態を持つ |
 | [プレビュー / body-format-badge](./MOD-489-62.tsx.yaml) | 部品設計『本文の形式の札.tsx』の props・イベント・状態を持つ |
 | [プレビュー / tag-list](./MOD-489-86.tsx.yaml) | 部品設計『タグの並び.tsx』の props・イベント・状態を持つ |
 | [プレビュー / chips-input](./MOD-489-63.tsx.yaml) | 部品設計『チップの入力.tsx』の props・イベント・状態を持つ |
@@ -144,7 +143,6 @@
 | [プレビュー / use-edits](./MOD-489-128.ts.yaml) | 保存待ちの編集を溜める・取り消す・まとめて保存する mutation |
 | [プレビュー / use-screen-filters](./MOD-489-132.ts.yaml) | 画面の絞り込みの条件を URL と端末の保存領域で持つ（制約「保存した絞り込みの条件」） |
 | [プレビュー / use-records](./MOD-489-130.ts.yaml) | 記録に保存待ちの編集を重ねた索引を読む |
-| [プレビュー / use-item-confirmed](./MOD-633-2.ts.yaml) | 項目の確認済みの設定と解除を送信し、応答を待つ間は押した後の値を返す |
 | [プレビュー / use-screen-edit](./MOD-489-131.ts.yaml) | 一覧の画面の編集の入口を組む |
 | [プレビュー / use-visible-kinds](./MOD-489-133.ts.yaml) | 表示する種類を返す |
 | [プレビュー / use-comments](./MOD-489-126.ts.yaml) | レビュー中の書き込みを溜める・書き換える・削除する・まとめて送信する mutation と、下書きの保存 |
@@ -159,6 +157,7 @@
 | [サーバー / 移行 / move_bodies_to_root.py](./MOD-626-1.py.yaml) | サーバー / 移行 / move_bodies_to_root.py |
 | [サーバー / 移行 / remove_network_look.py](./MOD-542-1.py.yaml) | サーバー / 移行 / remove_network_look.py |
 | [サーバー / 移行 / remove_preview_port.py](./MOD-642-2.py.yaml) | サーバー / 移行 / remove_preview_port.py |
+| [サーバー / 移行 / remove_confirmed.py](./MOD-682-1.py.yaml) | サーバー / 移行 / remove_confirmed.py |
 | [サーバー / 移行 / answer_to_adopted_option.py](./MOD-489-183.py.yaml) | サーバー / 移行 / answer_to_adopted_option.py |
 | [サーバー / 移行 / submissions_to_threads.py](./MOD-489-184.py.yaml) | サーバー / 移行 / submissions_to_threads.py |
 | [サーバー / 移行 / refs_to_related.py](./MOD-540-3.py.yaml) | サーバー / 移行 / v0.13.0 の参照のキーを種類つきの関連へ移す移し替え |

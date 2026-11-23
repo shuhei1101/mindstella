@@ -35,3 +35,4 @@ diagrams:
 notes:
   HTML の本文のスキーマ: '`docs.schema.json` の `body` の `pattern` を `^[^/\\]+\.(md|html)$` にし、ほかの 6 種類の `body` は `.md` のままにする。`common.schema.json` の `history[].before` の説明は、`body` を前に本文が無かった回と資料の本文の形式を替えた回だけ入れると修正する（ER 図『ワークスペース』）'
   タグのスキーマ: '`settings.schema.json` から `tags` を外す（`tags` を持つ `config.yaml` はスキーマに合わなくなり、`is_legacy_problem` が前のバージョンの形式として扱う）。`common.schema.json` と `threads.schema.json` の `tags` の説明は、自由な文字列で、`tags` のツールが正規化した表記で数えると修正する（ER 図『ワークスペース』）'
+  図の種類と確認済みのスキーマ: '`settings.schema.json` の `mdmark.map` を、mdmark の `schemas/mdmark.config.schema.json` の `map` の定義（mdmark の commit `adb270e7`）を複製した型にし、`mdmark` の説明を「`version`・`map` は `update_settings` と移し替えの手順が書く」に修正する（インターフェース定義『設定の更新』の制約「検証の範囲」）。`settings.schema.json` から `confirm_on_comment` を外す（ER 図『ワークスペース』）'

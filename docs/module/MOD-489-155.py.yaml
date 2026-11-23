@@ -135,7 +135,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/edits.py
     usecase: 画面で項目を編集して保存する
     summary: '`set`・`item-add` の `value` に渡せないキー（案は `option-*`・`adopt` で編集する。`item-add` の `options` だけは除く）'
-    value: frozenset({"id", "created", "updated", "updated_by", "history", "history_dropped_seq", "seq", "added_seq", "options", "confirmed"})
+    value: frozenset({"id", "created", "updated", "updated_by", "history", "history_dropped_seq", "seq", "added_seq", "options"})
   - name: USER_EDITOR
     title: 利用者の編集した人
     container: plugins/mindstella/skills/mindmap/scripts/edits.py

@@ -28,6 +28,13 @@ components:
         condition: '`tagExpr` に「画面」を含み「廃止」を含まない式を渡す'
         mock: なし
         expected: 指定方法の「詳細」が選ばれ「簡易」が無効で、タグのチェックボックスの代わりにタグの条件の詳細がある
+      - name: test_filter_drawer_when_text_commit
+        case: 正常
+        summary: 列の文字の条件を打ち終えたときに知らせる
+        condition: '`parametrize`: 入力欄に「画面」と打って 500ms 進める（フェイクのタイマー）/ 打って Enter を押す / 打ってフォーカスを外す'
+        mock: なし
+        expected: 打つたびに `onTextChange` が呼ばれ、`onTextCommit` が 1 回だけ呼ばれる（500ms の前には呼ばれない）
     container: frontend/src/shared/components/filter-drawer.tsx
 notes:
   単体テスト: 同じフォルダの `filter-drawer.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  文字の条件の区切り: 列の文字の条件の入力欄は、打つたびに `onTextChange(key, text)` を呼び、入力が 500ms 止まったとき・Enter を押したとき・入力欄からフォーカスが離れたときに `onTextCommit()` を 1 回呼ぶ（どれかで呼んだら待ちのタイマーを止める）

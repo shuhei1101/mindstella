@@ -10,3 +10,4 @@ components:
     container: frontend/src/features/detail/detail-panel/components/detail-resizer.tsx
 notes:
   単体テスト: 同じフォルダの `detail-resizer.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  指での操作: 'ドラッグは Pointer Events（`pointerdown` で `setPointerCapture`、`pointermove`、`pointerup`・`pointercancel` で終える）で受け、マウスと指を分けない。帯に `touch-action: none` を付け、指のドラッグ中にページをスクロールさせない。帯の幅は `@media (pointer: coarse)`（Tailwind の `pointer-coarse:`）で 44px にし、パネルの左端の線を帯の中央に挟む（パネルの外へ 22px 出し、本文に重ねて前面に出す）。単体テストに、`pointerType: touch` の `pointerdown`・`pointermove`・`pointerup` で幅が変わり、動かした分だけ `aria-valuenow` が変わることを確かめるテストを追加する'
