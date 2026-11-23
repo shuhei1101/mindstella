@@ -47,59 +47,75 @@ docs:
   - page: docs/guide/変更履歴.md
     new: false
     change: docs/guide/変更履歴.mark.md へ改名し、公開 URL を保つ permalink を docs/_config.yml に足す（#622）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/_config.yml
     new: false
     change: 変更履歴.mark.md の permalink を /guide/変更履歴.html にする（#622）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/guide/files.yml
     new: false
     change: 変更履歴の行のパスを .mark.md にする（#622）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/guide/index.yaml
     new: false
     change: 変更履歴の行のパスを .mark.md にする（#622）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/_theme/_data/nav.project.yml
     new: false
     change: 変更履歴のリンクを改名後のページに合わせる（#622）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/guide/README.md
     new: false
     change: 変更履歴へのリンクを .mark.md にする（#622）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/guide/はじめに.md
     new: false
     change: 変更履歴へのリンクを .mark.md にする（#622）
-    status: todo
-  - page: docs/guide/コアコンセプト-ワークスペース.md
-    new: false
-    change: 変更履歴へのリンクを .mark.md にする（#622）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/guide/コマンド.mark.md
     new: false
-    change: 変更履歴へのリンクを .mark.md にする（#622）。update_settings の書き換えられるキーに mdmark.map を足す（#651）
-    status: todo
+    change: update_settings の書き換えられるキーに mdmark.map を足す（#651）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
-    change: 変更履歴へのリンクを .mark.md にする（#622）。設定の mdmark.map を update_settings が書くことと、確認済みのキーの扱いを合わせる（#651・#675）
-    status: todo
+    change: 設定の mdmark.map を update_settings が書くことを足し、confirm_on_comment と confirmed の行を削除する（#651・#675）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/guide/プレビューを見る.mark.md
     new: false
-    change: 詳細パネルの確認済みのボタンの説明を削除し、ボードのドラッグのスクロール・ドロワーの絞り込みの戻る操作に合わせる（#650・#669・#675）
-    status: todo
+    change: 詳細パネルの確認済みの節を削除し、ボードのドラッグのスクロール・ドロワーと並べ替えの戻る操作・指でつかめる幅の区切り・コメントのマーカーの位置に合わせる（#650・#669・#671・#675・#676）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/test-procedure/TP-489-1.yaml
     new: false
     change: 非機能要件テストの層（tests/nfr/）と実行コマンドの節を足す（#494）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
   - page: docs/nonfunctional/NFR-489-1.yaml
     new: false
     change: NFR-26 の確認方法に tests/nfr/test_record_operation_time.py を書く（#494）
-    status: todo
-  - page: docs/library/LIB-489-13.yaml
-    new: false
-    change: 表の既定のピン止め（table.pin_default）をどう指定するかを書く（#639）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-23T10:31:24.145621+00:00'
 scope_out:
   - item: 狭い幅でも列の数が減らずカードが横に縮む事象（#671 の No 5）
     reason: '概要のページの分は起票済みで、#671 の終了の条件に含まれない。ほかのカードの一覧も同じかの確認は #662 で行う'
