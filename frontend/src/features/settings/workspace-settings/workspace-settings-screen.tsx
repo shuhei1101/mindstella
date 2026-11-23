@@ -6,7 +6,6 @@ import { HistoryLimitSchema } from "@/features/settings/workspace-settings/form"
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
-import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
 import { Select } from "@/shared/components/ui/select";
 import { Textarea } from "@/shared/components/ui/textarea";
@@ -266,23 +265,6 @@ export const WorkspaceSettingsScreen = () => {
                 </>
               );
             })()}
-          </fieldset>
-          <fieldset className="flex flex-col gap-3">
-            <legend className="font-medium">コメント</legend>
-            {field(
-              "confirm_on_comment",
-              "コメントの送信で確認済みにする",
-              <>
-                <Checkbox
-                  id="pe-ws-confirm_on_comment"
-                  checked={record.confirm_on_comment !== false}
-                  aria-describedby="pe-ws-confirm_on_comment-hint"
-                  onChange={(event) => { commit("confirm_on_comment", event.target.checked); }}
-                />
-                <p id="pe-ws-confirm_on_comment-hint" className="m-0 text-xs text-muted-foreground">オンのとき、コメントを送信した項目を確認済みにします。</p>
-              </>,
-              "pe-ws-confirm_on_comment",
-            )}
           </fieldset>
           {error === null ? null : (
             <p role="alert" className="flex items-center gap-1 text-small text-destructive">

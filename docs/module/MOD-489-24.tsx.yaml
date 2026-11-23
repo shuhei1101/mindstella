@@ -6,7 +6,7 @@ components:
     title: 詳細の見出し
     kind: コンポーネント
     usecase: 項目の詳細を読む
-    summary: 戻る・進む・全画面・エクスポート・編集・閉じるを並べる。全画面のボタンは幅 768px 以上だけ描く。種類と ID の右・編集の左に `ConfirmedToggle` を置き、`useItemConfirmed` の値と操作を渡す（サーバーの配信で、差分の表示をしていないときだけ）。`error` があれば見出しの下に `role="alert"` で出す
+    summary: 戻る・進む・全画面・エクスポート・編集・閉じるを並べる。全画面のボタンは幅 768px 以上だけ描く。`error` があれば見出しの下に `role="alert"` で出す
     container: frontend/src/features/detail/detail-panel/components/detail-header.tsx
 notes:
   単体テスト: 同じフォルダの `detail-header.test.tsx` に置く（knowledge の規約『フォルダ構成』）

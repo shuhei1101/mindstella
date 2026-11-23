@@ -603,39 +603,6 @@ scenarios:
       - コメントの一覧を開いても、URL の search params が D-1 を指したままで、ブラウザの履歴が増えない
       - 幅 390px では、D-1 の詳細パネルの見出しに全画面表示のボタンが無い。幅 1920px ではある
     test: test_normal_when_item_comments_opened
-  - name: 正常シナリオ（確認済みにして解除する）
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
-      - name: make_workspace
-        description: 作成を済ませたワークスペース
-      - name: 記録
-        description: 未確認の検討事項 D-1
-      - name: 配信
-        description: 記録を配っているサーバー
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant U as 利用者
-        participant P as プレビュー（ブラウザ）
-
-        U->>P: 検討事項の表で D-1 を押す
-        P-->>U: 未確認の D-1 の詳細パネル
-        U->>P: 詳細パネルを閉じ、もう一度 D-1 を開く
-        P-->>U: 未確認のままの D-1 の詳細パネル
-        U->>P: 確認済みにする操作
-        P-->>U: D-1 に確認済みのマーカー
-        U->>P: ページを再読み込みする
-        P-->>U: 確認済みの D-1
-        U->>P: 確認済みを解除する操作
-        P-->>U: D-1 から確認済みのマーカーが消える
-      ```
-    expected:
-      - 詳細パネルを開いて閉じただけでは、D-1 が未確認のままである
-      - 確認済みにする操作の後、ページを再読み込みしても D-1 が確認済みである
-      - 解除する操作の後、D-1 が未確認である
-      - 確認済みの設定と解除では、D-1 の種類ごとの YAML と本文、変更履歴が変わらない
-    test: test_normal_when_item_confirmed_and_cleared
   - name: 正常シナリオ（タグを押して絞り込みに加える）
     setup:
       - name: Mock
@@ -757,7 +724,35 @@ scenarios:
       - 「TH-1-2」を押すと、コメントの一覧で TH-1 が開き、2 件目の書き込みが画面に入る位置までスクロールされる
       - TH-2 の書き込みの本文の「TH-1」がリンクで、押すとコメントの一覧で TH-1 が開く
     test: test_normal_when_thread_id_links
-lead: 利用者が、詳細パネルで 1 件の項目の案・関係・本文を読み、関係する項目や本文の見出し・用語・項目の ID のリンクへ移り、全画面と図の拡大で読み、読んだ項目を確認済みにする単一ユースケース。
+  - name: 正常シナリオ（指で詳細パネルの幅を変える）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を持つ資料 A-1
+      - name: 配信
+        description: 記録を配っているサーバー。表示の幅は 1180px・高さは 820px（iPad の横向き）で、タッチで操作する端末として開く。端末の保存領域は空
+        notes: 指で触れる位置は、詳細パネルの左端の線から本文の側へ 16px 離れた所にする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 資料の画面で A-1 をタップする
+        P-->>U: 既定の幅の A-1 の詳細パネル
+        U->>P: 詳細パネルの左端の線の近くを指で触れ、左へ動かして離す
+        P-->>U: 指を動かした分だけ広がった詳細パネル
+      ```
+    expected:
+      - 詳細パネルの左端の区切りのタップ領域が、横幅 44px 以上ある
+      - 指を動かした後、詳細パネルの幅が指を動かした分だけ広がり、区切りの `aria-valuenow` が広がった幅を指す
+      - 指を動かしている間、本文と詳細パネルがスクロールせず、本文の文字が選択されない
+      - 区切りの線の見た目の幅は、マウスで開いたときと同じ
+    test: test_normal_when_resize_panel_by_touch
+lead: 利用者が、詳細パネルで 1 件の項目の案・関係・本文を読み、関係する項目や本文の見出し・用語・項目の ID のリンクへ移り、全画面と図の拡大で読む単一ユースケース。
 issue: 5
 primary_actor: 利用者
 trigger: 利用者がどれかの画面で項目を押すか、項目を指す URL を開く

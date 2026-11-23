@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import Browser, Locator, Page, expect
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from preview_a11y_checks import axe_rule_results
 from preview_body_link_helpers import build_body_link_workspace
@@ -1277,6 +1277,35 @@ def test_resizer_visible(page: Page, spa_preview: str) -> None:
     expect(page.get_by_role("separator", name="詳細パネルの幅")).to_be_hidden()
 
 
+def test_resizer_when_coarse_pointer(browser: Browser, spa_preview: str) -> None:
+    """指で操作する端末では幅の区切りを 44px の帯にし、パネルの左端の線を帯の中央に挟む。マウスの端末では 4px のまま（正常系）。"""
+    # 準備
+    touch = browser.new_context(has_touch=True, viewport={"width": 1280, "height": 800})
+    mouse = browser.new_context(viewport={"width": 1280, "height": 800})
+    touch_page = touch.new_page()
+    mouse_page = mouse.new_page()
+    # 実行
+    open_spa(touch_page, spa_preview, "?tab=decisions&id=D-1")
+    open_spa(mouse_page, spa_preview, "?tab=decisions&id=D-1")
+    touch_box = touch_page.get_by_role("separator", name="詳細パネルの幅").evaluate(_SEPARATOR_BOX_JS)
+    mouse_box = mouse_page.get_by_role("separator", name="詳細パネルの幅").evaluate(_SEPARATOR_BOX_JS)
+    touch.close()
+    mouse.close()
+    # 検証
+    assert touch_box["width"] == 44
+    assert abs(touch_box["center"] - touch_box["panelLeft"]) <= 2
+    assert mouse_box["width"] == 4
+    assert abs(mouse_box["left"] - mouse_box["panelLeft"]) <= 2
+
+
+# 幅の区切りの幅・左端・中央と、詳細パネルの左端を返す
+_SEPARATOR_BOX_JS = """(e) => {
+    const box = e.getBoundingClientRect();
+    const panel = e.closest('aside, [role=complementary]').getBoundingClientRect();
+    return {width: box.width, left: box.left, center: box.left + box.width / 2, panelLeft: panel.left};
+}"""
+
+
 def test_resizer_initial_value(page: Page, spa_preview: str) -> None:
     """幅の区切りは、そのタブに残した幅が無ければ既定の 640 で開き、残した幅があればその幅で開く（正常系）。"""
     # 準備
@@ -1618,56 +1647,6 @@ def test_review_edit_voice_input_after_moving(
     expect(form.locator("textarea")).to_be_focused()
     items = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"]
     assert [(item["id"], item["body"]) for item in items] == [("C-1", "確認: でよい")]
-
-
-def _confirmed_rows(root: Path) -> dict[str, Any]:
-    """`history.yaml` の `items` を読む。"""
-    return yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))["items"]
-
-
-def test_confirmed_toggle(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem) -> None:
-    """見出しの「確認済み」を押すと項目を確認済みにし、もう一度押すと解除する。記録を取得し直しても押した状態で描く（正常系）。"""
-    # 準備
-    url, root = write_edit_preview(make_item("D-1", title="記録の形"))
-    open_spa(page, url, "?tab=decisions&id=D-1")
-    toggle = page.get_by_role("complementary", name="詳細").get_by_role("button", name="確認済み")
-    expect(toggle).to_have_attribute("aria-pressed", "false")
-    # 実行
-    toggle.click()
-    # 検証
-    expect(toggle).to_have_attribute("aria-pressed", "true")
-    expect(toggle).to_be_enabled()
-    assert _confirmed_rows(root)["D-1"]["confirmed"] is True
-    page.reload()
-    expect(toggle).to_have_attribute("aria-pressed", "true")
-    # 実行（解除）
-    toggle.click()
-    # 検証
-    expect(toggle).to_have_attribute("aria-pressed", "false")
-    expect(toggle).to_be_enabled()
-    assert "confirmed" not in _confirmed_rows(root).get("D-1", {})
-
-
-def test_confirmed_toggle_when_unreachable(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem) -> None:
-    """付け外しが届かないときは押す前の状態に戻し、見出しの下に失敗を出す。別の項目を開くと消す（異常系）。"""
-    # 準備
-    url, _ = write_edit_preview(make_item("D-1", title="記録の形"), make_item("D-2", title="画面の幅"))
-    open_spa(page, url, "?tab=decisions&id=D-1")
-    panel = page.get_by_role("complementary", name="詳細")
-    toggle = panel.get_by_role("button", name="確認済み")
-    page.route("**/api/items/*/confirmed", lambda route: route.abort())
-    # 実行
-    toggle.click()
-    # 検証
-    alert = panel.get_by_role("alert")
-    expect(alert).to_have_text("確認済みを書き換えられませんでした。サーバーが止まっています。再起動してから押してください。")
-    expect(toggle).to_have_attribute("aria-pressed", "false")
-    # 実行（別の項目を開く）
-    page.goto(page.url.replace("id=D-1", "id=D-2"))
-    # 検証
-    expect(panel.get_by_role("button", name="確認済み")).to_be_visible()
-    expect(panel.get_by_role("alert")).to_have_count(0)
-
 
 
 def _tags(*names: str) -> list[dict[str, str]]:

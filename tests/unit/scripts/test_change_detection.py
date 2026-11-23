@@ -546,29 +546,6 @@ def test_record_diff(make_workspace: MakeWorkspace, make_item: MakeItem) -> None
     }
 
 
-def test_record_diff_unconfirms(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """変えた項目の確認済みを除く（正常系）。"""
-    # 準備
-    d1_before = make_item("D-1", answer="前の答え", confirmed=True)
-    root = make_workspace(
-        d1_before,
-        make_item("D-2", confirmed=True),
-        raw_files={"changes.yaml": "last_seq: 3\nsets: []\npending: {added: [], changed: []}\n"},
-    )
-    d1_item = {key: value for key, value in d1_before.items() if key != "confirmed"}
-    diff = ItemDiff(
-        added=[],
-        changed=[("decision", d1_item, {**d1_item, "answer": "今の答え"}, None, None)],
-        removed=[],
-    )
-    # 実行
-    change_detection.record_diff(root, diff, "external", now=lambda: NOW)
-    # 検証
-    rows = _read(root, "history.yaml")["items"]
-    assert "confirmed" not in rows["D-1"]
-    assert rows["D-2"]["confirmed"] is True
-
-
 def test_record_diff_when_writer_differs(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """書いた元が違う変更が入っていれば先にまとめる（正常系）。"""
     # 準備
@@ -592,7 +569,6 @@ def test_record_diff_when_writer_differs(make_workspace: MakeWorkspace, make_ite
     assert changes["sets"][0]["summary"] == "まとめる前の AI の書き換え"
     assert changes["sets"][0]["changed"] == ["D-3"]
     assert changes["pending"] == {"added": [], "changed": ["D-1"], "by": "external"}
-
 
 
 def test_record_diff_keeps_unread_after_read_point(

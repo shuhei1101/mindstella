@@ -91,7 +91,7 @@ def test_post_thread_id_link_action(page: Page, write_review_preview: WriteRevie
     open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
     link = _panel(page).locator("[data-post-id='TH-1-1'] button.idlink[data-post='TH-2-2']")
     expect(_panel(page).locator("[data-post-id='TH-1-1']")).to_contain_text("TH-99 は記録にありません")
-    assert _panel(page).locator("[data-post-id='TH-1-1'] button.idlink").count() == 1
+    expect(_panel(page).locator("[data-post-id='TH-1-1'] button.idlink")).to_have_count(1)
     # 実行
     link.click()
     # 検証

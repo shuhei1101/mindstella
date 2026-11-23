@@ -429,8 +429,6 @@ constraints:
     constraint: 起こさない。YAML か `changes.yaml` の置き換えに失敗したら、置き換えたものを前の中身に戻してからツールのエラーで終わる
   - item: 推奨のマーカー
     constraint: '`recommended` が真の案は 0 か 1 つ。`option` に `recommended: true` を渡すと、その案にマーカーを立ててほかの案の `recommended` のキーを削除する。マーカーを外した案は `recommended` のキーを持たない'
-  - item: 確認済みの解除
-    constraint: 変更履歴を積んだとき（`updated_by` を `ai` にしたとき）、`history.yaml` のその行の `confirmed` を削除する（『変更の検知』の「確認済みの解除」と同じ）
 refs:
   - IF-540-2#
 test_file: tests/integration/server/test_edit_option.py

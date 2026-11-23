@@ -1,0 +1,79 @@
+id: MOD-682-1
+title: サーバー / 移行 / remove_confirmed.py
+lead: v0.14.0 の 6 手順目の変換。`.mindstella/history.yaml` の行から廃止した確認済み `confirmed` を、`.mindstella/config.yaml` から `confirm_on_comment` を削除する。`yaml` と標準ライブラリだけを読み、このバージョンの形式を自分で組み立てる。
+constants:
+  - name: HISTORY_FILE
+    title: 項目の履歴のファイル
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py
+    usecase: 記録の形式の移行
+    summary: 書き換える項目の履歴（ワークスペースの直下からの相対パス）
+    value: '".mindstella/history.yaml"'
+  - name: CONFIG_FILE
+    title: 設定のファイル
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py
+    usecase: 記録の形式の移行
+    summary: 書き換える設定（ワークスペースの直下からの相対パス）
+    value: '".mindstella/config.yaml"'
+  - name: REMOVED_ROW_KEY
+    title: 行から削除するキー
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py
+    usecase: 記録の形式の移行
+    summary: '`history.yaml` の `items` の行から削除するキー'
+    value: '"confirmed"'
+  - name: REMOVED_SETTING_KEY
+    title: 設定から削除するキー
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py
+    usecase: 記録の形式の移行
+    summary: '`config.yaml` から削除するキー'
+    value: '"confirm_on_comment"'
+functions:
+  - name: remove_confirmed.migrate
+    title: 確認済みを削除する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: '`history.yaml` の行から `confirmed` を、`config.yaml` から `confirm_on_comment` を削除する'
+    side_effects: '`history.yaml`・`config.yaml` を書き換える（削除するキーを持たないファイルと、ほかのファイルは触らない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの直下
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。`history.yaml`・`config.yaml` の順。何も変えなければ空）
+    process: |-
+      1. `HISTORY_FILE` があれば読み、`items` の各行から `REMOVED_ROW_KEY` を削除する（行のほかのキーと並び・`updated` は変えない）
+         - 削除して空になった行（`confirmed` だけを持っていた行）は行ごと削除する
+      2. `CONFIG_FILE` があれば読み、オブジェクトで `REMOVED_SETTING_KEY` を持てば削除する（ほかのキーと並びは変えない）
+      3. 書き換えたファイルだけを一時ファイルに書いてから `os.replace` で置き換え、変えたファイルを返す。削除するキーをどれも持たなければ何も書かない（`changes.yaml` と変更履歴は触らない）
+    exceptions:
+      - name: RuntimeError
+        condition: '`history.yaml` か `config.yaml` を YAML として読めない。手順の `StepError` にしてコピーから戻すのは移行が担う'
+    unit_tests:
+      - name: test_migrate
+        case: 正常
+        summary: '`confirmed` と `confirm_on_comment` を削除する'
+        condition: '`history.yaml` に D-1 の行（`created`・`updated`・`history` と `confirmed: true`）と D-2 の行（`confirmed: true` だけ）、`config.yaml` が `summary`・`confirm_on_comment: false`・`display` をこの順で持つ'
+        mock: なし（`tmp_path`）
+        expected: D-1 の行が `confirmed` を持たずほかのキーは同じ、D-2 の行が無い。`config.yaml` が `summary`・`display` だけを同じ並びで持つ。戻り値が `.mindstella/history.yaml`・`.mindstella/config.yaml`
+      - name: test_migrate_when_already_current
+        case: 正常
+        summary: もう一度当てても変わらない
+        condition: '`parametrize`: `test_migrate` を当てた後のワークスペース / `history.yaml` が無いワークスペース'
+        mock: なし
+        expected: 戻り値が空で、ファイルが呼ぶ前と同じ（無いファイルを作らない）
+      - name: test_migrate_when_unreadable
+        case: 異常
+        summary: 読めないファイルは書き換えずに失敗する
+        condition: '`parametrize`: YAML として読めない `history.yaml` / `config.yaml`'
+        mock: なし
+        expected: '`RuntimeError`。どのファイルも呼ぶ前と同じ'
+        exception: YAML として読めない
+refs:
+  - IF-489-52#
+  - MOD-489-164#
+test_files:
+  - tests/unit/scripts/test_remove_confirmed.py

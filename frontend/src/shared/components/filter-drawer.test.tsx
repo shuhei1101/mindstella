@@ -1,8 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { FilterDrawer } from "@/shared/components/filter-drawer";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("FilterDrawer", () => {
   // 値を選ぶ（正常系）
@@ -55,5 +59,35 @@ describe("FilterDrawer", () => {
     expect(screen.queryByRole("checkbox", { name: /画面/ })).toBeNull();
     expect(screen.getByRole("combobox", { name: "条件の組み合わせ" })).toBeInTheDocument();
   });
-});
 
+  // 列の文字の条件を打ち終えたときに知らせる（正常系）
+  test.each([
+    { name: "idle", finish: (input: HTMLElement) => { void input; act(() => { vi.advanceTimersByTime(500); }); } },
+    { name: "enter", finish: (input: HTMLElement) => { fireEvent.keyDown(input, { key: "Enter" }); } },
+    { name: "blur", finish: (input: HTMLElement) => { fireEvent.blur(input); } },
+  ])("filter_drawer_when_text_commit ($name)", ({ finish }) => {
+    // 準備
+    vi.useFakeTimers();
+    const onTextChange = vi.fn();
+    const onTextCommit = vi.fn();
+    render(<FilterDrawer groups={[]} selected={{}} total={2} shown={2} texts={[{ key: "title", label: "タイトル", value: "" }]} onToggleValue={vi.fn()} onClearGroup={vi.fn()} onClearAll={vi.fn()} onClose={vi.fn()} onTextChange={onTextChange} onTextCommit={onTextCommit} />);
+    const input = screen.getByRole("searchbox", { name: "タイトル" });
+    // 実行
+    fireEvent.change(input, { target: { value: "画" } });
+    fireEvent.change(input, { target: { value: "画面" } });
+    act(() => {
+      vi.advanceTimersByTime(499);
+    });
+    // 検証（打つたびに知らせ、500ms の前には区切らない）
+    expect(onTextChange).toHaveBeenNthCalledWith(1, "title", "画");
+    expect(onTextChange).toHaveBeenNthCalledWith(2, "title", "画面");
+    expect(onTextCommit).not.toHaveBeenCalled();
+    // 実行
+    finish(input);
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    // 検証
+    expect(onTextCommit).toHaveBeenCalledTimes(1);
+  });
+});

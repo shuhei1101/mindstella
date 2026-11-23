@@ -250,3 +250,56 @@ def test_error_when_mdmark_version_invalid(
     assert result.is_error is True
     assert any(line.startswith("config.yaml: mdmark.version") for line in result.text.splitlines())
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_mdmark_map(
+    make_workspace: MakeWorkspace, valid_settings: dict[str, Any], call_tool: CallTool
+) -> None:
+    """図の種類（mdmark.map）を丸ごと置き換え、mdmark のバージョンとほかのキーを残す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        settings={
+            **valid_settings,
+            "display": DISPLAY,
+            "transcription": {"action": "insert"},
+            "mdmark": {"version": "v0.13.0", "map": {"kinds": {"llm": {"label": "LLM"}}}},
+        }
+    )
+    before = _read_yaml(root, "config.yaml")
+    new_map = {
+        "kinds": {
+            "llm": {"label": "LLM", "icon": "sparkles"},
+            "start": {"shape": "pill"},
+            "question": {"shape": "rect"},
+            "action": {"shape": "rounded", "color": "blue"},
+            "result": {"shape": "double"},
+        },
+        "lines": {"-.->": {"dash": "dashed"}},
+    }
+    # 実行
+    result = call_tool("update_settings", workspace=str(root), settings={"mdmark": {"map": new_map}})
+    # 検証
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    assert result.data["changed"] == ["mdmark"]
+    after = _read_yaml(root, "config.yaml")
+    assert after["mdmark"] == {"version": "v0.13.0", "map": new_map}
+    for key in ("summary", "display", "transcription"):
+        assert after[key] == before[key]
+
+
+def test_error_when_mdmark_map_invalid(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """mdmark の設定のスキーマに合わない図の種類を渡すと、何も書かない（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool(
+        "update_settings", workspace=str(root), settings={"mdmark": {"map": {"kinds": {"question": {"shape": "木"}}}}}
+    )
+    # 検証
+    assert result.is_error is True
+    assert any(line.startswith("config.yaml: mdmark.map.kinds.question.shape") for line in result.text.splitlines()), result.text
+    assert snapshot_tree(root) == before

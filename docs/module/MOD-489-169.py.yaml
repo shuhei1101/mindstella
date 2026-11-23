@@ -793,12 +793,6 @@ constants:
         value: '"text/css; charset=utf-8"'
       - key: .svg
         value: '"image/svg+xml"'
-  - name: ITEMS_PATH
-    title: 項目のパス
-    container: plugins/mindstella/skills/mindmap/scripts/serve.py
-    usecase: 確認済みの設定と解除
-    summary: PUT `/api/items/{id}/confirmed`（確認済みの設定と解除）の頭
-    value: '"/api/items"'
   - name: PREVIEW_PREFIX
     title: 配信の経路の先頭
     container: plugins/mindstella/skills/mindmap/scripts/serve.py

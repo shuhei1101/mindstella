@@ -85,6 +85,10 @@ defaults:
       path: guide/動作環境.mark.md
     values:
       permalink: /guide/動作環境.html
+  - scope:
+      path: guide/変更履歴.mark.md
+    values:
+      permalink: /guide/変更履歴.html
 
 # jekyll-optional-front-matter を全ファイルに適用する
 optional_front_matter:

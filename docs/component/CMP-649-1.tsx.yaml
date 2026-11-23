@@ -53,19 +53,31 @@ states:
   - name: SelectableTags
     description: タグを押せるカード。タグを押すと `onSelectTag` だけが呼ばれ、カードのタグ以外の所を押すと `onOpen` が呼ばれる。カードの外枠は div で、ボタンの入れ子は無い
   - name: SelectableTagsSelected
-    description: 開いている項目のカード。タグを押せるまま、枠と背景で選択中を示す
+    description: 開いている項目のカード。タグを押せるまま、枠（`--mark`）と背景（`--row-selected`。`--mark` を 14% 混ぜた面）で選択中を示す
     args:
       - name: selected
         value: 'true'
   - name: Default
     description: '`onSelectTag` を指定しないカード。タグを並べない'
+  - name: WithComments
+    description: コメントが 3 件ある項目のカード。コメントのマーカーをカードの右下に配置する
+    args:
+      - name: comments
+        value: '{T-1: 3}'
+  - name: SelectedWithComments
+    description: 開いている、コメントのある項目のカード。選択中の枠と背景がほかのカードと見分けられ、右下のコメントのマーカーの色は変えない
+    args:
+      - name: comments
+        value: '{T-1: 3}'
+      - name: selected
+        value: 'true'
 uses:
   - component: CMP-489-16#
     how: 押して絞り込めるタグ
   - component: CMP-489-32#
     how: タイトルの右の差分のマーカー
   - component: CMP-489-10#
-    how: コメントのマーカー
+    how: コメントのマーカー。カードの一番下の行に右寄せで配置し、ID の行には配置しない
   - component: CMP-489-22#
     how: 保存待ちのマーカー
 accessibility:

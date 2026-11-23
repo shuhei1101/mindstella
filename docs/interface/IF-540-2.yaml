@@ -6,7 +6,7 @@ entry:
 lead: 常駐サーバーが、ワークスペースの記録の書き換えを前回の中身と比べて項目の追加・変更・削除を見つけ、作成日・更新日・編集した人・変更履歴・連番を記録する。MindStella のセッションの応答の途中でない間の変更は、外部の変更のまとまりとして自動で commit する。
 test_file: tests/integration/server/test_change_detection.py
 idempotent: true
-side_effects: '`history.yaml` の項目の行（`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`と、書き換えた項目の `confirmed` の削除）と、`changes.yaml` の `last_seq`・`pending`・`sets` を書き換える。見るファイル（種類ごとの YAML と本文）は書かない。状態のフォルダの `workspaces/{ID}/snapshot/` に前回の中身を書く。重なった ID を見つけたら、開いている画面へ知らせ、MindStella のセッションのペインへ貼り付ける'
+side_effects: '`history.yaml` の項目の行（`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`）と、`changes.yaml` の `last_seq`・`pending`・`sets` を書き換える。見るファイル（種類ごとの YAML と本文）は書かない。状態のフォルダの `workspaces/{ID}/snapshot/` に前回の中身を書く。重なった ID を見つけたら、開いている画面へ知らせ、MindStella のセッションのペインへ貼り付ける'
 callers:
   - IF-489-1#
 constraints:
@@ -67,8 +67,6 @@ constraints:
     constraint: '直下の `files/` は見ない（「監視するファイル」の外）。ファイルの配置・差し替え・削除では、項目の変更も書き換えのまとまりも作らない'
   - item: ワークスペースの Git
     constraint: 読むだけで操作しない（commit・add をしない）。Git 管理外のワークスペースでも同じに動く
-  - item: 確認済みの解除
-    constraint: 変更を見つけて編集した人を `ai` か `external` にした項目は、`history.yaml` のその行の `confirmed` を削除する（ER 図『ワークスペース』の `items.{ID}.confirmed`）。常駐サーバーが自分で書いた変更（画面の保存など。「書き込み元の判別方法」の (1)）と Git の操作では削除しない。項目を追加したときは `confirmed` を書かない
 exclusivity: ワークスペースごとに 1 つの検知だけが動く（常駐サーバーのプロセスの中のワークスペースごとの鍵を、MindStella の MCP のツール・画面の保存と共有する）
 flows:
   - name: 正常系

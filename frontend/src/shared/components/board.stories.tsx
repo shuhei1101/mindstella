@@ -42,3 +42,9 @@ export const SelectableTagsSelected: Story = { args: { onSelectTag: fn(), select
 
 /** `onSelectTag` を指定しない今のカード。タグを並べない */
 export const Default: Story = {};
+
+/** コメントのある項目のカード。コメントのマーカーをカードの右下に置く */
+export const WithComments: Story = { args: { onSelectTag: fn(), comments: { [task.id]: 3 } } };
+
+/** 開いている、コメントのある項目のカード。選択中の枠と背景がほかのカードと見分けられる */
+export const SelectedWithComments: Story = { args: { onSelectTag: fn(), comments: { [task.id]: 3 }, selected: true } };

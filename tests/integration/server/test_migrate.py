@@ -646,7 +646,7 @@ def test_normal_when_submissions_to_threads(
     # 利用者が送ったものは利用者の既読
     assert [thread["posts"][0]["seen"] for thread in threads] == [True, True]
     assert not (root / RECORD_DIR / "submissions.yaml").exists()
-    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
+    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": [], "warnings": []}
     awaiting = call_tool("threads", workspace=str(root), awaiting=True)
     assert awaiting.data is not None
     assert [item["id"] for item in awaiting.data["items"]] == ["TH-2"]
@@ -877,7 +877,7 @@ def test_normal_when_mdmark_documents(
     assert [line for line in result.data["reports"] if line.startswith(prefix)] != []
     assert not (record / "mdmark.config.yaml").exists()
     assert not (record / ".mdmark").exists()
-    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
+    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": [], "warnings": []}
 
 
 def test_error_when_mdmark_documents_fail(
@@ -1092,6 +1092,7 @@ def test_normal_when_markdown_bodies_renamed(
         ("v0.14.0", 3, "call", True),
         ("v0.14.0", 4, "call", True),
         ("v0.14.0", 5, "call", True),
+        ("v0.14.0", 6, "call", True),
     ]
     decision = _read_decisions(root)[0]
     assert decision["body"] == "../docs/D-1.mark.md"
@@ -1331,6 +1332,47 @@ def test_normal_when_preview_port_removed(
         "call",
         True,
     )
+    # もう一度当てても、ワークスペースが変わらない
+    after = snapshot_tree(root)
+    again = _migrate(root)
+    assert again.error is None, again.text
+    assert snapshot_tree(root) == after
+
+
+def test_normal_when_confirmed_removed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """v0.14.0 の手順で、history.yaml の confirmed と config.yaml の confirm_on_comment を削除する（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1"),
+        make_item("D-2"),
+        settings={**valid_settings, "confirm_on_comment": False},
+        legacy_bodies=True,
+    )
+    records = root / RECORD_DIR
+    (records / VERSION_FILE).write_text("v0.13.0\n", encoding="utf-8")
+    history_path = records / "history.yaml"
+    rows = yaml.safe_load(history_path.read_text(encoding="utf-8"))["items"]
+    d1 = {key: rows["D-1"][key] for key in ("created", "updated", "history") if key in rows["D-1"]}
+    rows = {key: value for key, value in rows.items() if key != "D-2"}
+    write_yaml(history_path, {"items": {**rows, "D-1": {**rows["D-1"], "confirmed": True}, "D-2": {"confirmed": True}}})
+    # 実行
+    result = _migrate(root)
+    # 検証
+    assert result.error is None, result.text
+    assert result.data is not None
+    after_rows = yaml.safe_load(history_path.read_text(encoding="utf-8"))["items"]
+    assert "confirmed" not in after_rows["D-1"]
+    assert {key: after_rows["D-1"][key] for key in d1} == d1
+    assert "D-2" not in after_rows
+    settings = yaml.safe_load((records / SETTINGS).read_text(encoding="utf-8"))
+    assert settings == valid_settings
+    v0_14_steps = [step for step in result.data["steps"] if step["version"] == "v0.14.0"]
+    assert (v0_14_steps[5]["index"], v0_14_steps[5]["op"], v0_14_steps[5]["destructive"]) == (6, "call", True)
     # もう一度当てても、ワークスペースが変わらない
     after = snapshot_tree(root)
     again = _migrate(root)

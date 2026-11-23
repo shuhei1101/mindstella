@@ -30,7 +30,7 @@ def test_validate_settings_input() -> None:
         pytest.param({"field": "システム開発"}, id="not_editable_key"),
         pytest.param({"summary": None}, id="required_key_null"),
         pytest.param({"tags": []}, id="tags_removed"),
-        pytest.param({"mdmark": {"version": "v0.13.0", "map": {}}}, id="mdmark_map_given"),
+        pytest.param({"mdmark": {"version": "v0.13.0", "theme": {}}}, id="mdmark_unknown_key"),
         pytest.param({"mdmark": None}, id="mdmark_null"),
     ],
 )
@@ -57,15 +57,10 @@ def test_validate_settings_input_when_removed_key(settings: dict[str, Any], mess
     assert raised.value.argument == "settings"
 
 
-@pytest.mark.parametrize(
-    "settings",
-    [
-        pytest.param({"confirm_on_comment": False}, id="false"),
-        pytest.param({"confirm_on_comment": None}, id="null"),
-    ],
-)
-def test_validate_settings_input_confirm_on_comment(settings: dict[str, Any]) -> None:
-    """コメントの送信で確認済みにするかを書き換え・消せる（正常系）。"""
+def test_validate_settings_input_when_mdmark_map() -> None:
+    """図の種類を渡せる（正常系）。"""
+    # 準備
+    settings = {"mdmark": {"map": {"kinds": {"question": {"shape": "rect"}}, "lines": {}}}}
     # 実行・検証
     settings_update.validate_settings_input(settings)
 
@@ -93,6 +88,18 @@ def test_merge_settings_when_mdmark() -> None:
     merged, changed = settings_update.merge_settings(current, {"mdmark": {"version": "v0.13.0"}})
     # 検証
     assert merged["mdmark"] == {"version": "v0.13.0", "map": {"kinds": {"llm": {}}}}
+    assert changed == ["mdmark"]
+
+
+def test_merge_settings_when_mdmark_map() -> None:
+    """mdmark.map を丸ごと置き換え、version を残す（正常系）。"""
+    # 準備
+    current = {"summary": "題名", "mdmark": {"version": "v0.13.0", "map": {"kinds": {"llm": {}}}}}
+    new_map = {"kinds": {"question": {"shape": "rect"}}}
+    # 実行
+    merged, changed = settings_update.merge_settings(current, {"mdmark": {"map": new_map}})
+    # 検証
+    assert merged["mdmark"] == {"version": "v0.13.0", "map": new_map}
     assert changed == ["mdmark"]
 
 
@@ -173,17 +180,15 @@ def test_update_settings(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
 
 
-def test_update_settings_when_confirm_on_comment_invalid(
-    make_workspace: MakeWorkspace, make_item: MakeItem
-) -> None:
-    """真偽値でない confirm_on_comment は断る（異常系）。"""
+def test_update_settings_when_mdmark_map_invalid(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """設定のスキーマに合わない図の種類は断る（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as raised:
-        settings_update.update_settings(root, {"confirm_on_comment": "yes"})
-    assert any(line.startswith("config.yaml: confirm_on_comment") for line in raised.value.lines)
+        settings_update.update_settings(root, {"mdmark": {"map": {"kinds": {"question": {"shape": "木"}}}}})
+    assert any(line.startswith("config.yaml: mdmark.map.kinds.question.shape") for line in raised.value.lines)
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 

@@ -422,12 +422,6 @@ files:
   - tool:pytest
   - topic:フック
   - topic:結合テスト
-- path: integration/server/test_item_confirmed.py
-  name: 確認済みの付け外しの結合テスト
-  description: 確認済みの付け外し（PUT /api/items/{id}/confirmed）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
 - path: integration/server/test_launch.py
   name: 起動スクリプトの結合テスト
   description: bin/mindstella（起動スクリプト）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -624,6 +618,13 @@ files:
   - topic:スレッド
   - topic:ヘルパー
   - topic:結合テスト
+- path: integration/storybook_react/color_helpers.py
+  name: ストーリーの色の補助関数
+  description: ストーリーの色を CSS 変数の値と比べ、コントラスト比を求める補助関数。選んでいる・未読の塗りの結合テストを修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:色
 - path: integration/storybook_react/storybook_frame_helpers.py
   name: HTML の本文の枠を描く部品のストーリーの結合テストの補助
   description: HTML の本文の枠を描く部品のストーリーの結合テストが共有する、枠の中を読む関数。テストの準備や共有の操作を追加・変更するときに読む。
@@ -651,14 +652,6 @@ files:
   - tool:pytest
   - tool:storybook
   - topic:ヘルパー
-  - topic:結合テスト
-- path: integration/storybook_react/test_confirmed_toggle_stories.py
-  name: React の確認済みの切り替えのストーリーの結合テスト
-  description: 部品『確認済みの切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - tool:storybook
-  - topic:ストーリー
   - topic:結合テスト
 - path: integration/storybook_react/test_duplicate_id_notice_stories.py
   name: React の重なった ID の通知のストーリーの結合テスト
@@ -688,6 +681,16 @@ files:
   - topic:テスト
   - topic:ヘルパー
   - topic:起動
+- path: nfr/test_record_operation_time.py
+  name: 記録の更新とスレッドの操作の時間の非機能要件テスト
+  description: NFR-26（記録の更新とスレッドの操作の時間）を、記録が数百件のワークスペースで adopt・thread・update_thread・set_thread_status の 1 回の時間を測って確かめる非機能要件テスト。決定値や測る操作を変えるときに読む。
+  tags:
+  - tool:pytest
+  - topic:非機能要件
+  - topic:性能
+  related:
+  - to: NFR-489-1
+    type: tests
 - path: preview_clock_helpers.py
   name: ブラウザの時刻を止めるテストの補助
   description: プレビューのテストが共有する、ブラウザの時刻を止めるスクリプト。テストの準備や共有の操作を追加・変更するときに読む。

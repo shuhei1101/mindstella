@@ -37,7 +37,7 @@ export const PendingMark = () => (
 
 /** 未読の札 */
 export const UnseenMark = () => (
-  <span data-part="unread" className="inline-flex h-4.5 shrink-0 items-center gap-1 rounded-kbd bg-primary px-1.5 text-xs leading-none font-semibold whitespace-nowrap text-primary-foreground">
+  <span data-part="unread" className="inline-flex h-4.5 shrink-0 items-center gap-1 rounded-kbd bg-mark px-1.5 text-xs leading-none font-semibold whitespace-nowrap text-on-mark">
     <span aria-hidden="true" data-part="dot" className="size-1.5 rounded-full bg-current" />
     未読
   </span>

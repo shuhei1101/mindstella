@@ -60,7 +60,7 @@ states:
       - name: hasPendingReply
         value: 'true'
   - name: Unread
-    description: オープンで AI の返信が利用者の未読。2 行目の先頭に塗りつぶしの札「● 未読」を出し、向けた項目の ID・最後の書き手「AI」・日時をその右に並べる
+    description: オープンで AI の返信が利用者の未読。2 行目の先頭にマーカーの色（`--mark`）で塗りつぶした札「● 未読」（文字は `--on-mark`。行の面とのコントラスト比 3:1 以上）を出し、向けた項目の ID・最後の書き手「AI」・日時をその右に並べる
     args:
       - name: thread
         value: '{"id":"TH-2","status":"open","tags":["起票"],"summary":"D-16 の比べた結果を Issue に起票してよいかの確認。返事待ち","target":"D-16","posts":[{"author":"ai","body":"D-16 の比べた結果を Issue に起票してよいですか。","created":"2026-10-12T04:02:00+00:00","seen":false}],"events":[]}'

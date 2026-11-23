@@ -182,8 +182,6 @@ constraints:
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
-  - item: 確認済みにする項目
-    constraint: 『コメントをまとめて送信する』の「確認済みにする項目」と同じ
 refs:
   - IF-489-6#
   - ER-489-1#

@@ -21,8 +21,8 @@ export type TagMatch = "all" | "any";
 
 const TAG_MATCH_BUTTON: Record<TagMatch, string> = { all: "すべて含む", any: "どれかを含む" };
 
-/** 文字の欄を打ち終えるまで待つミリ秒 */
-const TEXT_DELAY_MS = 250;
+/** 文字の欄の入力が止まってから打ち終えたとみなすまでのミリ秒 */
+const TEXT_COMMIT_MS = 500;
 
 /** ドロワーの後ろの本文（`main` の中でドロワーを含まない要素）を操作できなくし、元に戻す関数を返す。トップバーとタブの帯は `main` の外なので操作できる */
 const inertBehind = (drawer: HTMLElement | null): (() => void) => {
@@ -64,11 +64,22 @@ export type FilterDrawerProps = {
   onClearGroup: (key: string) => void;
   onClearAll: () => void;
   onClose: () => void;
+  /** 列の文字の条件を打つたびに呼ぶ */
   onTextChange: (key: string, text: string) => void;
+  /** 列の文字の条件を打ち終えたとき（入力が止まった・Enter・フォーカスが離れた）に 1 回呼ぶ */
+  onTextCommit?: () => void;
 };
 
-export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, texts = [], tagMatch = "all", onTagMatchChange, presets = [], onApplyPreset, tagExpr = null, onTagExprChange, onToggleValue, onClearGroup, onClearAll, onClose, onTextChange }: FilterDrawerProps) => {
+export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, texts = [], tagMatch = "all", onTagMatchChange, presets = [], onApplyPreset, tagExpr = null, onTagExprChange, onToggleValue, onClearGroup, onClearAll, onClose, onTextChange, onTextCommit }: FilterDrawerProps) => {
   const timer = useRef(0);
+  // 打ち終えるのを待っている間か（待ちの無いときに Enter・フォーカスが離れても呼ばない）
+  const waiting = useRef(false);
+  const commitText = (): void => {
+    window.clearTimeout(timer.current);
+    if (!waiting.current) return;
+    waiting.current = false;
+    onTextCommit?.();
+  };
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     root.current?.querySelector("input")?.focus();
@@ -153,12 +164,15 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
                   autoComplete="off"
                   data-text-key={text.key}
                   onChange={(event) => {
-                    const { value } = event.target;
+                    onTextChange(text.key, event.target.value);
                     window.clearTimeout(timer.current);
-                    timer.current = window.setTimeout(() => {
-                      onTextChange(text.key, value);
-                    }, TEXT_DELAY_MS);
+                    waiting.current = true;
+                    timer.current = window.setTimeout(commitText, TEXT_COMMIT_MS);
                   }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") commitText();
+                  }}
+                  onBlur={commitText}
                 />
               </label>
             ))}

@@ -16,7 +16,7 @@ files:
   tags:
   - topic:コアコンセプト
   - topic:エージェントフロー
-- path: 変更履歴.md
+- path: 変更履歴.mark.md
   name: 変更履歴
   description: バージョンごとの変更の一覧。バージョンごとに何が変わったかを調べるとき・release を master へ入れるときに読む。
   visibility: public

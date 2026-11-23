@@ -121,21 +121,23 @@ export default meta;
 
 type Story = StoryObj<Args>;
 
-/** 8 列の表。mdmark の表の機能で描かれ、列の幅と折り返し・並べ替え・ピン止め・列の幅の変更のボタンは mdmark のまま。表が本文の幅からはみ出すため、先頭の列が左端に留まり、表の中だけが横にスクロールする。画面の CSS が当てた列の幅・フェード・しま模様は無い */
+/** 8 列の表。mdmark の表の機能で描かれ、列の幅と折り返し・並べ替え・ピン止め・列の幅の変更のボタンは mdmark のまま。表が本文の幅からはみ出し、表の中だけが横にスクロールする。描いた直後はどの列も左端に留まらない。画面の CSS が当てた列の幅・フェード・しま模様は無い */
 export const MdmarkTable: Story = {};
 
-/** 「名前」のピン止めのボタンを押して右へスクロールした。ID と名前の 2 列が左端に留まり、その間の状態の列は留まらない */
+/** 「ID」と「名前」のピン止めのボタンを押して右へスクロールした。ID と名前の 2 列が左端に留まり、その間の状態の列は留まらない */
 export const PinnedColumns: Story = {
   play: async ({ canvasElement }) => {
+    (await rendered(canvasElement, 'button.mdmark-pin[aria-label="「ID」の列をピン止め"]')).click();
     (await rendered(canvasElement, 'button.mdmark-pin[aria-label="「名前」の列をピン止め"]')).click();
     const scroll = canvasElement.querySelector<HTMLElement>(".mdmark-table-scroll");
     if (scroll !== null) scroll.scrollLeft = scroll.scrollWidth;
   },
 };
 
-/** 本文の背景は周りの面になじむ透明で、ピン止めした列・表の左右の端の影を隠す覆い・ツールチップは周りの面の色（`--mdmark-color-bg-opaque`）で塗られる。横にスクロールできない側の端に影が出ない */
+/** 本文の背景は周りの面になじむ透明で、ピン止めのボタンで留めた列・表の左右の端の影を隠す覆い・ツールチップは周りの面の色（`--mdmark-color-bg-opaque`）で塗られる。横にスクロールできない側の端に影が出ない */
 export const OpaqueBackground: Story = {
   play: async ({ canvasElement }) => {
+    (await rendered(canvasElement, 'button.mdmark-pin[aria-label="「ID」の列をピン止め"]')).click();
     const scroll = await rendered(canvasElement, ".mdmark-table-scroll");
     scroll.scrollLeft = Math.floor((scroll.scrollWidth - scroll.clientWidth) / 2);
   },
@@ -197,11 +199,11 @@ export const InThreadPost: Story = {
 /** 本文に `<!-- html -->` の範囲（`.mdmark-html`）があり、中に表・見出し・チャート・スライダーを持つ。範囲の中の見出しには開閉を当てず、範囲の中の表・見出しは書いた HTML と mdmark の部品の見た目のまま描く。範囲の前後の見出しには今までどおり開閉を当てる */
 export const EmbeddedHtml: Story = { args: { source: EMBEDDED_SOURCE } };
 
-/** 本文の差分の中の表。足した行・消した行を持ち、mdmark の表で描かれる。足した行・消した行の面の色と消した行の取り消し線は、ピン止めして左端に留まった列のセルにも付き、開閉を置かない */
+/** 本文の差分の中の表。足した行・消した行を持ち、mdmark の表で描かれる。足した行・消した行の面の色と消した行の取り消し線は、ピン止めのボタンで左端に留めた列のセルにも付き、開閉を置かない */
 export const TableInDiff: Story = {
   args: { source: `${SECTIONS_SOURCE}\n${tableSource(6)}`, fold: false },
   play: async ({ canvasElement }) => {
-    await rendered(canvasElement, ".mdmark-table");
+    (await rendered(canvasElement, 'button.mdmark-pin[aria-label="「ID」の列をピン止め"]')).click();
     const rows = canvasElement.querySelectorAll("tbody tr");
     rows[1]?.classList.add("df-row", "df-add");
     rows[2]?.classList.add("df-row", "df-del");

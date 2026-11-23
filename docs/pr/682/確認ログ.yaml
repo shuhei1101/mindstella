@@ -1,0 +1,36 @@
+confirmations:
+  - topic: '#671 選択中・ホバー・未読の見え方'
+    decision: 選んでいるものと未読のマーカーをティール（--mark）の塗りにし、ホバーは薄いグレーのままにする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/682#discussion_r4660651518
+  - topic: '#671 カードのコメントのマーカーの位置と選択中のカード'
+    decision: コメントのマーカーをカードの右下の行に置き、選択中のカードは枠を濃いティールにする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/682#discussion_r4660651932
+  - topic: '#676 詳細パネルの幅の区切りのつかむ範囲'
+    decision: 見た目の 4px の線は変えず、指の端末だけ線を中心に 44px の範囲でつかめるようにする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/682#discussion_r4660652342
+  - topic: '#639 画面の表の既定のピン止めの扱い'
+    decision: mdmark の既定のまま、描いた直後にどの列も留めない。結合テストの期待値を「留めない」に合わせる（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/682#discussion_r4660652984
+  - topic: '#675 確認済みを削除する範囲'
+    decision: ボタンと、確認済みの設定と解除の API・history.yaml の confirmed・confirm_on_comment の設定まで削除し、既にある confirmed の値は記録の形式の移行で削除する（推奨案 B）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/682#discussion_r4660653315
+  - topic: '#494 NFR-26 で測る項目 1 件の書き込みの操作'
+    decision: 項目 1 件の書き込みを MindStella の MCP の adopt で測り、終了の条件も adopt にする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/682#discussion_r4667199418

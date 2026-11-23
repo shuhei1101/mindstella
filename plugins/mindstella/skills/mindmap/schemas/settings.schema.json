@@ -95,10 +95,6 @@
         }
       }
     },
-    "confirm_on_comment": {
-      "type": "boolean",
-      "description": "コメントをまとめて送る・すぐ送るときに、送ったコメントが向いた項目を確認済み（`history.yaml` の `confirmed`）にするか。無ければ `true`。`update_settings` と、プレビューの設定の画面が書く"
-    },
     "transcription": {
       "type": "object",
       "description": "コメント・返信の入力の音声入力の設定。どの文字起こしのサービスを使うかは持たない（常駐サーバーの環境変数 `MINDSTELLA_TRANSCRIBER`）。`update_settings` と、プレビューの設定の画面が書く",
@@ -125,7 +121,7 @@
     },
     "mdmark": {
       "type": "object",
-      "description": "画面・Storybook・配る書き出しが読み込む mdmark。`version` は `update_settings` が書き、`map` は移し替えの手順だけが書く。設定の再読み込みの後に開いた画面から効く",
+      "description": "画面・Storybook・配る書き出しが読み込む mdmark。`version`・`map` は `update_settings` と移し替えの手順が書く。設定の再読み込みの後に開いた画面から効く",
       "additionalProperties": false,
       "properties": {
         "version": {
@@ -134,8 +130,142 @@
           "pattern": "^(latest|v[0-9]+\\.[0-9]+\\.[0-9]+)$"
         },
         "map": {
+          "title": "map の設定",
+          "description": "map の図の設定。mdmark の設定のスキーマ（schemas/mdmark.config.schema.json の map。mdmark の commit adb270e7）の定義を複製した型。画面が `mount` の `config.map` に指定する",
           "type": "object",
-          "description": "map の図の種類。mdmark の設定の `map` と同じ形の `kinds`・`lines`。画面が `mount` の `config.map` に指定する"
+          "properties": {
+            "node_fit": {
+              "title": "名前の長いノードの広げ方",
+              "description": "`height` は幅を上限 220px のまま折り返して高さを増やし、`width` は幅を上限 360px まで広げてから折り返す。",
+              "type": "string",
+              "enum": [
+                "height",
+                "width"
+              ],
+              "default": "height"
+            },
+            "url_state": {
+              "title": "状態をクエリ文字列に保つか",
+              "description": "中へ入ったグループと、シーケンス図の中だけを描くブロックを、URL のクエリ文字列 `map-{図の番号}` にも保つか。`false` ではクエリ文字列を読みも書きもせず、sessionStorage だけに保つ。",
+              "type": "boolean",
+              "default": true
+            },
+            "packets": {
+              "title": "データの印の見た目",
+              "description": "強調する線の上を流れるデータの印の塗り方と色合い。補足の `layout` の `packet` が線ごとに優先する。",
+              "type": "object",
+              "properties": {
+                "fill": {
+                  "type": "string",
+                  "enum": [
+                    "solid",
+                    "ring",
+                    "tinted",
+                    "glow",
+                    "shine",
+                    "random"
+                  ],
+                  "default": "tinted",
+                  "description": "塗り方。`random` は線ごとにほかの 5 つから選ぶ（描き直しても同じ）。"
+                },
+                "palette": {
+                  "type": "string",
+                  "enum": [
+                    "accent",
+                    "vivid",
+                    "pastel",
+                    "muted",
+                    "cool"
+                  ],
+                  "default": "accent",
+                  "description": "線の番号で順に使う 5 色の色合い。色を指定したノードがある図では、出発点のノードの色（無ければ灰色）を使う。"
+                }
+              },
+              "additionalProperties": false
+            },
+            "kinds": {
+              "title": "ノードの種類",
+              "description": "Mermaid のクラス名（`:::名前`）ごとのノードの種類。",
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "description": "種類の行の名前。"
+                  },
+                  "icon": {
+                    "type": "string",
+                    "description": "Lucide のアイコンの名前。"
+                  },
+                  "shape": {
+                    "type": "string",
+                    "enum": [
+                      "rounded",
+                      "rect",
+                      "pill",
+                      "double"
+                    ],
+                    "default": "rounded",
+                    "description": "形状。"
+                  },
+                  "color": {
+                    "type": "string",
+                    "description": "色の名前（`blue`・`green` など）。"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "lines": {
+              "title": "線の種類",
+              "description": "Mermaid の矢印（`-->`・`-.->`・`==>`）ごとと、補足の `layout` の `line` で指す名前ごとの線の種類。",
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "dash": {
+                    "type": "string",
+                    "enum": [
+                      "solid",
+                      "dashed",
+                      "dotted",
+                      "dash-dot",
+                      "long-dash"
+                    ],
+                    "default": "solid",
+                    "description": "模様。"
+                  },
+                  "width": {
+                    "type": "string",
+                    "enum": [
+                      "thin",
+                      "normal",
+                      "thick"
+                    ],
+                    "default": "normal",
+                    "description": "太さ。"
+                  },
+                  "head": {
+                    "type": "string",
+                    "enum": [
+                      "filled",
+                      "open",
+                      "none"
+                    ],
+                    "default": "filled",
+                    "description": "矢じり。"
+                  },
+                  "color": {
+                    "type": "string",
+                    "description": "色の名前（`blue`・`green` など）。"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
         }
       }
     },

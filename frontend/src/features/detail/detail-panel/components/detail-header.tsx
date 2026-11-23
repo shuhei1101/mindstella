@@ -1,13 +1,11 @@
 // 詳細の見出し（種類と ID・確認済み・戻る・進む・編集・エクスポート・コメントの一覧・全画面・閉じる）と、確認済みを書き換えられなかった旨
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
-import { ConfirmedToggle } from "@/shared/components/confirmed-toggle";
 import { DocExportControl } from "@/shared/components/doc-export-menu";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
 import type { PendingMarkKind } from "@/shared/core/edits";
 import { cn } from "@/shared/lib/cn";
-import { useItemConfirmed } from "@/shared/hooks/use-item-confirmed";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { bodyFormatOf, KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 
@@ -30,7 +28,6 @@ export type DetailHeaderProps = {
 
 export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
   const { canBack, canForward, openItemComments } = usePreviewSearch();
-  const confirmed = useItemConfirmed(item.id, item.confirmed === true);
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
   const editLabel = editing ? "編集を終える" : "編集する";
@@ -48,7 +45,6 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, comme
         <span aria-hidden="true" title={item.title} className={cn("min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none", !showTitle && "opacity-0")}>
           {item.title}
         </span>
-        {editable ? <ConfirmedToggle confirmed={confirmed.confirmed} saving={confirmed.saving} onToggle={confirmed.toggle} /> : null}
         {editable ? (
           <Button variant="outline" aria-pressed={editing} title={editLabel} onClick={onToggleEdit}>
             <Icon name="edit" />
@@ -76,12 +72,6 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, comme
           </Button>
         )}
       </div>
-      {confirmed.error === null ? null : (
-        <p role="alert" className="m-0 flex items-center gap-1 px-2 pb-2 text-small text-destructive">
-          <Icon name="alert" className="size-3" />
-          {confirmed.error}
-        </p>
-      )}
     </div>
   );
 };

@@ -6,7 +6,7 @@ functions:
     title: search の読み書き
     kind: フック
     usecase: プレビューを開く
-    summary: '`getRouteApi` の search と、`openItem`（積む）・`closeItem`・`setView`・`setFilters`・`setTagCondition`（`f`・`tagmatch`・`tx` を 1 回の移動で書く）・`setSort`・`setDiff`・`setPanel`・`setComments`（コメントの一覧の `thread`・`review`・`tstatus`・`ttag`・`ttarget`）・`openItemComments`（詳細パネルのコメントの一覧のボタン。`panel=comments`・`ttarget={ID}` にして `thread`・`review` を外し、コメントの一覧を開いたままなら `tstatus`・`ttag` を残す）・`setSearch`（全体の検索の `search`・`q`）（置き換える）と、`openFromSearch`（全体の検索の結果の項目を開く。画面が今と違えば積み、同じなら置き換える。`diff` と左のパネルを残す。外枠の単体テストが確かめる）を返す。見てきた項目の履歴は `history.state.trail` に残し、`canBack`・`canForward` を返す'
+    summary: '`getRouteApi` の search と、`openItem`（積む）・`closeItem`・`setView`・`setFilters`・`setTagCondition`（`f`・`tagmatch`・`tx` を 1 回の移動で書く）・`setDiff`・`setPanel`・`setComments`（コメントの一覧の `thread`・`review`・`tstatus`・`ttag`・`ttarget`）・`openItemComments`（詳細パネルのコメントの一覧のボタン。`panel=comments`・`ttarget={ID}` にして `thread`・`review` を外し、コメントの一覧を開いたままなら `tstatus`・`ttag` を残す）・`setSearch`（全体の検索の `search`・`q`）（置き換える）と、`setSort`（表の並べ替え。積む。`{replace: true}` を渡すと置き換える）・`pushTagCondition`（`setTagCondition` と同じく `f`・`tagmatch`・`tx` を 1 回の移動で書き、積む）・`pushTagMatch`（積む）と、`openFromSearch`（全体の検索の結果の項目を開く。画面が今と違えば積み、同じなら置き換える。`diff` と左のパネルを残す。外枠の単体テストが確かめる）を返す。見てきた項目の履歴は `history.state.trail` に残し、`canBack`・`canForward` を返す'
     returns:
       type: PreviewSearchApi
       description: search と操作
@@ -47,6 +47,18 @@ functions:
         condition: '`setPanel(undefined)`'
         mock: ルーターのメモリの履歴
         expected: '`panel`・`thread`・`review`・`tstatus`・`ttag` が外れる'
+      - name: test_use_preview_search_when_set_sort
+        case: 正常
+        summary: 並べ替えは積み、初期設定に戻すときは置き換える
+        condition: "`setSort('title')` の後に `setSort(undefined, {replace: true})`"
+        mock: ルーターのメモリの履歴
+        expected: 1 回目の後に履歴が 1 増え `sort=title`、2 回目の後は履歴の数が同じで `sort` が無い
+      - name: test_use_preview_search_when_push_tag_condition
+        case: 正常
+        summary: ドロワーのタグの条件は 1 つ積む
+        condition: "`pushTagCondition({f: {tags: '画面|保存'}, tagmatch: 'any', tx: undefined})` の後に `pushTagMatch(undefined)`"
+        mock: ルーターのメモリの履歴
+        expected: 履歴が 1 つずつ計 2 増え、最後は `f.tags=画面|保存` で `tagmatch` が無い
     container: frontend/src/shared/hooks/use-preview-search.ts
 notes:
   単体テスト: 同じフォルダの `use-preview-search.test.ts` に置く（knowledge の規約『フォルダ構成』）

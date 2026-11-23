@@ -55,7 +55,7 @@ def _pin_pressed(page: Page) -> dict[str, str | None]:
 
 
 def test_mdmark_table(open_story: OpenStory) -> None:
-    """8 列の表を mdmark の表で描く。並べ替え・ピン止め・列の幅の変更のボタンは mdmark のまま。はみ出すため先頭の列が左端に留まり、表の中だけが横にスクロールする。画面の CSS の見せ方は無い（正常系）。"""
+    """8 列の表を mdmark の表で描く。並べ替え・ピン止め・列の幅の変更のボタンは mdmark のまま。表の中だけが横にスクロールし、描いた直後はどの列も左端に留まらない。画面の CSS の見せ方は無い（正常系）。"""
     # 準備・実行
     page = _open(open_story, "mdmark-table")
     table = page.evaluate(_TABLE_JS)
@@ -65,10 +65,9 @@ def test_mdmark_table(open_story: OpenStory) -> None:
     assert len(pressed) == 8
     assert page.locator(".mdmark .mdmark-table .mdmark-col-resize").count() == 8
     assert page.locator(".mdmark .mdmark-table button.mdmark-sort").count() >= 1
-    # 検証（はみ出すので先頭の列だけが最初からピン止めされる）
-    assert pressed["「ID」の列をピン止め"] == "true"
-    assert [label for label, value in pressed.items() if value == "true"] == ["「ID」の列をピン止め"]
-    assert table["pinned"] == ["ID"]
+    # 検証（描いた直後はどの列もピン止めしない。mdmark の既定）
+    assert [label for label, value in pressed.items() if value == "true"] == []
+    assert table["pinned"] == []
     # 検証（表の中だけが横にスクロールし、本文の区画はスクロールしない）
     assert table["scrolls"] is True
     assert table["mdScrolls"] is False
@@ -77,7 +76,7 @@ def test_mdmark_table(open_story: OpenStory) -> None:
 
 
 def test_pinned_columns(open_story: OpenStory) -> None:
-    """「名前」のピン止めのボタンを押して右へスクロールした。ID と名前の 2 列が左端に留まり、状態の列は留まらない（正常系）。"""
+    """「ID」と「名前」のピン止めのボタンを押して右へスクロールした。ID と名前の 2 列が左端に留まり、状態の列は留まらない（正常系）。"""
     # 準備・実行
     page = _open(open_story, "pinned-columns")
     table = page.evaluate(_TABLE_JS)
@@ -96,7 +95,7 @@ def test_pinned_columns(open_story: OpenStory) -> None:
 
 
 def test_opaque_background(open_story: OpenStory) -> None:
-    """本文の背景は透明で、ピン止めした列は周りの面の色（`--card` を指定した `--mdmark-color-bg-opaque`）で塗られる（正常系）。"""
+    """本文の背景は透明で、ピン止めのボタンで留めた列は周りの面の色（`--card` を指定した `--mdmark-color-bg-opaque`）で塗られる（正常系）。"""
     # 準備・実行
     page = _open(open_story, "opaque-background")
     colors = page.evaluate(
@@ -304,7 +303,7 @@ def test_embedded_html(open_story: OpenStory) -> None:
 
 
 def test_table_in_diff(open_story: OpenStory) -> None:
-    """本文の差分の中の表。足した行・消した行の面の色と消した行の取り消し線が、ピン止めした列のセルにも付き、開閉を置かない（正常系）。"""
+    """本文の差分の中の表。足した行・消した行の面の色と消した行の取り消し線が、ピン止めのボタンで留めた列のセルにも付き、開閉を置かない（正常系）。"""
     # 準備・実行
     page = _open(open_story, "table-in-diff")
     cells = page.evaluate(

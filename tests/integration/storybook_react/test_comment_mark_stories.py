@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import expect
 
+from .color_helpers import resolve_color
 from .storybook_react_fixture_types import OpenStory
 
 # 部品設計の状態
@@ -44,3 +45,13 @@ def test_count(open_story: OpenStory, state: str, shown: str, spoken: str) -> No
     expect(mark).to_have_attribute("title", spoken)
     assert mark.locator("svg").get_attribute("aria-hidden") == "true"
     assert mark.evaluate("e => e.tabIndex") == -1
+
+
+def test_one_pill(open_story: OpenStory) -> None:
+    """ピルは --mark-line の縁と --mark-weak の面で描く（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-commentmark--one")
+    pill = page.get_by_title("コメント 1 件")
+    style = pill.evaluate("e => ({border: getComputedStyle(e).borderTopColor, background: getComputedStyle(e).backgroundColor})")
+    # 検証
+    assert style == {"border": resolve_color(page, "--mark-line"), "background": resolve_color(page, "--mark-weak")}

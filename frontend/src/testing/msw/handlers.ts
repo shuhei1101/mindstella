@@ -38,6 +38,5 @@ export const handlers = [
   http.put("*/api/drafts", () => new HttpResponse(null, { status: 204 })),
   http.patch("*/api/threads/:id", async ({ params, request }) => HttpResponse.json({ id: params["id"], status: ((await request.json()) as { status: string }).status, changed: true })),
   http.post("*/api/threads/:id/seen", ({ params }) => HttpResponse.json({ id: params["id"], seen: [] })),
-  http.put("*/api/items/:id/confirmed", async ({ params, request }) => HttpResponse.json({ id: params["id"], confirmed: ((await request.json()) as { confirmed: boolean }).confirmed })),
   http.put("*/api/config/display", async ({ request }) => HttpResponse.json({ display: await request.json() })),
 ];

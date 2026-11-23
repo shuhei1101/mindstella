@@ -64,7 +64,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const { search, openItem, closeItem, setSort, setView } = usePreviewSearch();
   const { index } = useRecords();
   const { point } = useDiffView();
-  const { filters, tagMatch, setFilters, setTagMatch, addTag, tagExpr, setTagExpr } = useScreenFilters(kind);
+  const { filters, tagMatch, setFilters, setTagMatch, clearAll, setTextFilter, commitTextFilter, addTag, tagExpr, setTagExpr } = useScreenFilters(kind);
   const view = search.view ?? views?.[0]?.key ?? "table";
   // 一覧のスクロール位置は画面と表示形式ごとに残し、記録を読み終えて行を描いたら戻す
   const scrollRef = useListScroll(`${kind}:${view}`, index !== null);
@@ -100,7 +100,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const columnKeys = index === null ? null : columnsOf(index, openItem).map((column) => column.key);
   // 記録に合わない並べ替えの列は URL から外す
   useEffect(() => {
-    if (search.sort !== undefined && columnKeys !== null && !columnKeys.includes(search.sort.replace(/^-/, ""))) setSort(undefined);
+    if (search.sort !== undefined && columnKeys !== null && !columnKeys.includes(search.sort.replace(/^-/, ""))) setSort(undefined, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 列の並びと並べ替えが変わったときだけ確かめる
   }, [search.sort, columnKeys?.join()]);
   if (index === null) return null;
@@ -143,7 +143,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       onHiddenColumnsChange={(next) => { store({ hidden: next, pinTo }); }}
       onResetColumns={() => {
         store(undefined);
-        setSort(undefined);
+        setSort(undefined, { replace: true });
       }}
       onOpenItem={openItemFromList}
       addedRows={edit?.adds ?? []}
@@ -180,29 +180,24 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
           presets={presetChoicesOf({ presets, rowTags: rows.map((row) => tagNames((row as unknown as Item).tags)), current: tagExpr })}
           onApplyPreset={(name) => {
             const preset = presets.find((one) => one.name === name);
-            if (preset !== undefined) setTagExpr(preset.filter);
+            if (preset !== undefined) setTagExpr(preset.filter, { push: true });
           }}
           tagExpr={tagExpr}
-          onTagExprChange={setTagExpr}
+          onTagExprChange={(expr) => { setTagExpr(expr, { push: true }); }}
           texts={columns.filter((column) => column.filterable !== true && column.key !== "id").map((column) => ({ key: column.key, label: column.label, value: filters[`${TEXT_FILTER_PREFIX}${column.key}`]?.[0] ?? "" }))}
           onToggleValue={(key, value) => {
             const current = filters[key] ?? [];
             const next = current.includes(value) ? current.filter((candidate) => candidate !== value) : [...current, value];
-            setFilters(next.length === 0 ? withoutKey(filters, key) : { ...filters, [key]: next });
+            setFilters(next.length === 0 ? withoutKey(filters, key) : { ...filters, [key]: next }, { push: true });
           }}
           onClearGroup={(key) => {
-            if (key === TAG_FILTER_KEY) setTagExpr(null);
-            else setFilters(withoutKey(filters, key));
+            if (key === TAG_FILTER_KEY) setTagExpr(null, { push: true });
+            else setFilters(withoutKey(filters, key), { push: true });
           }}
-          onClearAll={() => {
-            setTagExpr(null);
-            setFilters({});
-          }}
+          onClearAll={clearAll}
           onClose={onCloseDrawer}
-          onTextChange={(key, text) => {
-            const name = `${TEXT_FILTER_PREFIX}${key}`;
-            setFilters(text === "" ? withoutKey(filters, name) : { ...filters, [name]: [text] });
-          }}
+          onTextChange={setTextFilter}
+          onTextCommit={commitTextFilter}
         />
       ) : null}
     </div>

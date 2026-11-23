@@ -6,11 +6,26 @@ components:
     title: ボード
     kind: コンポーネント
     usecase: タスクをボードで見る
-    summary: 状態ごとの列に `ItemCard` を並べたボード。`onSelectTag` を受けて各カードへ渡し、ボードのスクロール領域に `useListScroll` の ref を付ける。横にスクロールする領域は左右に余白を持ち、`tabIndex={0}`・`aria-label="ボード"` を付けてカードが 0 枚でもキーボードでフォーカス・スクロールできる
+    summary: 状態ごとの列に `ItemCard` を並べたボード。`onSelectTag` を受けて各カードへ渡し、ボードのスクロール領域に `useListScroll` の ref を付ける。横にスクロールする領域は左右に余白を持ち、`tabIndex={0}`・`aria-label="ボード"` を付けてカードが 0 枚でもキーボードでフォーカス・スクロールできる。カード・ボタン・リンクの外（列と列の間・列の空いた所）をマウスの左ボタンで押したまま動かすと、動かした分だけ横にスクロールする（`pointerdown` で `pointerType` が `mouse` のときだけ始め、`setPointerCapture` して `pointermove` で `scrollLeft` を書き換え、`pointerup`・`pointercancel` で終える。幅 720px 以下の縦の 1 列では動かさない）。動かしている間は文字を選ばせずカーソルを `grabbing` にし、4px 以上動かした後の `click` は止める。指はブラウザのスクロールに任せる
     container: frontend/src/shared/components/board.tsx
+    unit_tests:
+      - name: test_board_when_drag_background
+        case: 正常
+        summary: 背景のドラッグで横にスクロールする
+        condition: '列と列の間で `pointerType: mouse` の `pointerdown` を送り、`clientX` を 120px 減らした `pointermove` と `pointerup` を送る'
+        mock: なし
+        expected: スクロール領域の `scrollLeft` が 120 増え、カードの `onOpen` が呼ばれない
+      - name: test_board_when_drag_starts_on_card
+        case: 正常
+        summary: カードの上からはドラッグしない
+        condition: カードの上で `pointerdown`・`pointermove`・`pointerup` を送る
+        mock: なし
+        expected: '`scrollLeft` が変わらない'
   - name: ItemCard
     title: 項目のカード
     kind: コンポーネント
     usecase: 項目を表で絞り込む
     summary: 部品設計『項目のカード.tsx』の props・イベント・状態を持つ。外枠は `div[data-card]`、タイトルは `button[data-id]` でその `::after` をカード全体へ広げ、`onSelectTag` を指定したときだけ部品『タグの並び』を `onSelect` つきで前面に並べる
     container: frontend/src/shared/components/board.tsx
+notes:
+  単体テスト: 同じフォルダの `board.test.tsx` に置く（knowledge の規約『フォルダ構成』）
