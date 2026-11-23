@@ -31,6 +31,18 @@ use_cases:
     detail: 確認済みの削除（#675）に合わせ、コメントを送信したときに項目を確認済みにする記述に追随する
     depends_on:
       - docs/scenario/SC-489-36.yaml
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: following
+    detail: 確認済みの削除（#675）に合わせ、書き換えで確認済みを解除する記述を削除する
+    depends_on:
+      - docs/scenario/SC-489-36.yaml
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: following
+    detail: 確認済みの削除（#675）に合わせ、コメントを送信した項目が確認済みになる記述を削除する（流れは変えない）
+    depends_on:
+      - docs/scenario/SC-489-3.yaml
 docs:
   - page: docs/guide/変更履歴.md
     new: false

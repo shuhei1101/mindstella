@@ -44,8 +44,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-23T00:12:53.458315+00:00'
   - process: データ設計
-    status: todo
+    status: done
     note: ER-489-1 の設定の mdmark.map を update_settings が書けるキーにする（#651）・history.yaml の confirmed と設定の確認済みのキーの扱い（#675）
+    updated_by: planner
+    updated_at: '2026-11-23T00:15:46.637344+00:00'
   - process: インターフェース定義設計
     status: todo
   - process: エージェント・MCP サーバー設計
