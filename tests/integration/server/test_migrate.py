@@ -1336,3 +1336,44 @@ def test_normal_when_preview_port_removed(
     again = _migrate(root)
     assert again.error is None, again.text
     assert snapshot_tree(root) == after
+
+
+def test_normal_when_confirmed_removed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """v0.14.0 の手順で、history.yaml の confirmed と config.yaml の confirm_on_comment を削除する（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1"),
+        make_item("D-2"),
+        settings={**valid_settings, "confirm_on_comment": False},
+        legacy_bodies=True,
+    )
+    records = root / RECORD_DIR
+    (records / VERSION_FILE).write_text("v0.13.0\n", encoding="utf-8")
+    history_path = records / "history.yaml"
+    rows = yaml.safe_load(history_path.read_text(encoding="utf-8"))["items"]
+    d1 = {key: rows["D-1"][key] for key in ("created", "updated", "history") if key in rows["D-1"]}
+    rows = {key: value for key, value in rows.items() if key != "D-2"}
+    write_yaml(history_path, {"items": {**rows, "D-1": {**rows["D-1"], "confirmed": True}, "D-2": {"confirmed": True}}})
+    # 実行
+    result = _migrate(root)
+    # 検証
+    assert result.error is None, result.text
+    assert result.data is not None
+    after_rows = yaml.safe_load(history_path.read_text(encoding="utf-8"))["items"]
+    assert "confirmed" not in after_rows["D-1"]
+    assert {key: after_rows["D-1"][key] for key in d1} == d1
+    assert "D-2" not in after_rows
+    settings = yaml.safe_load((records / SETTINGS).read_text(encoding="utf-8"))
+    assert settings == valid_settings
+    v0_14_steps = [step for step in result.data["steps"] if step["version"] == "v0.14.0"]
+    assert (v0_14_steps[5]["index"], v0_14_steps[5]["op"], v0_14_steps[5]["destructive"]) == (6, "call", True)
+    # もう一度当てても、ワークスペースが変わらない
+    after = snapshot_tree(root)
+    again = _migrate(root)
+    assert again.error is None, again.text
+    assert snapshot_tree(root) == after
