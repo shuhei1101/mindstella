@@ -79,7 +79,7 @@ functions:
       - name: test_validate_settings_input_when_bad_key
         case: 異常
         summary: 書き換えられないキー・必須のキーの null を弾く
-        condition: '`parametrize`: `{}` / `{"field": "システム開発"}` / `{"summary": null}` / `{"tags": []}` / `{"mdmark": {"version": "v0.13.0", "map": {}}}` / `{"mdmark": null}`'
+        condition: '`parametrize`: `{}` / `{"field": "システム開発"}` / `{"summary": null}` / `{"tags": []}` / `{"mdmark": {"version": "v0.13.0", "theme": {}}}`（`version`・`map` 以外のキー） / `{"mdmark": null}`'
         mock: なし
         expected: '`SchemaMismatchError`'
         exception: 書き換えられないキー
