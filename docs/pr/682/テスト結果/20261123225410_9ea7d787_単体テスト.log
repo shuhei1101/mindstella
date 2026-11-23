@@ -1,0 +1,561 @@
+# 単体テスト作成（Red）
+テストコードの末尾の commit: 9ea7d787（テストコードの追加は e12d6c74。9ea7d787 は lint で見つけたテストコードの違反の修正）
+
+## 実装の前から pass したテスト
+- tests/unit/scripts/test_settings_update.py::test_merge_settings_when_mdmark_map: plugins/mindstella/skills/mindmap/scripts/settings_update.py の merge_settings（89〜91 行目。mdmark のキーは今の値に渡した値を重ね、version を残して map を丸ごと置き換える）が、テストコードより前の commit 72642a17（#550）で既に持つ
+
+## 回したコマンド（サーバー）
+$ TMPDIR=/tmp/pr682/tmp .venv/bin/python -m pytest tests/unit
+（/tmp/pytest-of-shuhei2441 が root の所有で pytest が一時フォルダを作れないため、TMPDIR だけを替えた。テスト実行方法の pytest は .venv の Python で流した）
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1740 items
+
+tests/unit/scripts/test_answer_to_adopted_option.py .....                [  0%]
+tests/unit/scripts/test_api.py ......                                    [  0%]
+tests/unit/scripts/test_backup.py ......                                 [  0%]
+tests/unit/scripts/test_body_to_docs_path.py .                           [  1%]
+tests/unit/scripts/test_builder.py ..................................... [  3%]
+..                                                                       [  3%]
+tests/unit/scripts/test_change_detection.py ............................ [  4%]
+                                                                         [  4%]
+tests/unit/scripts/test_check_env.py ........................            [  6%]
+tests/unit/scripts/test_checker.py ...............................       [  8%]
+tests/unit/scripts/test_claude_input.py ................................ [  9%]
+..................................                                       [ 11%]
+tests/unit/scripts/test_commands.py .................................... [ 13%]
+.................................................                        [ 16%]
+tests/unit/scripts/test_comments.py .................................... [ 18%]
+..............................                                           [ 20%]
+tests/unit/scripts/test_edits.py ....................................... [ 22%]
+                                                                         [ 22%]
+tests/unit/scripts/test_ensure_server.py ............................... [ 24%]
+                                                                         [ 24%]
+tests/unit/scripts/test_field_to_playbooks.py ....                       [ 24%]
+tests/unit/scripts/test_files_serve.py ................................  [ 26%]
+tests/unit/scripts/test_graph.py .........                               [ 27%]
+tests/unit/scripts/test_history.py ..................................... [ 29%]
+............                                                             [ 29%]
+tests/unit/scripts/test_home_settings.py ............                    [ 30%]
+tests/unit/scripts/test_html_body.py .................                   [ 31%]
+tests/unit/scripts/test_ids.py ....                                      [ 31%]
+tests/unit/scripts/test_inject_session.py ....................           [ 32%]
+tests/unit/scripts/test_kinds.py ..........                              [ 33%]
+tests/unit/scripts/test_launch.py ............                           [ 34%]
+tests/unit/scripts/test_locations.py ................................... [ 36%]
+...                                                                      [ 36%]
+tests/unit/scripts/test_markdown_bodies_to_mark_md.py ....               [ 36%]
+tests/unit/scripts/test_mdmark_documents.py .....                        [ 36%]
+tests/unit/scripts/test_mdmark_ref.py ..................                 [ 37%]
+tests/unit/scripts/test_meta_to_history_yaml.py .                        [ 38%]
+tests/unit/scripts/test_migration_coverage.py .........                  [ 38%]
+tests/unit/scripts/test_migration_ops.py ......................          [ 39%]
+tests/unit/scripts/test_migrator.py .................................... [ 41%]
+........                                                                 [ 42%]
+tests/unit/scripts/test_move_bodies_to_root.py .....                     [ 42%]
+tests/unit/scripts/test_notify.py .....................................  [ 44%]
+tests/unit/scripts/test_place_source_config.py .....                     [ 45%]
+tests/unit/scripts/test_presets.py ..............                        [ 45%]
+tests/unit/scripts/test_project_index.py ............................... [ 47%]
+..                                                                       [ 47%]
+tests/unit/scripts/test_read_point.py ...........                        [ 48%]
+tests/unit/scripts/test_readme.py ..........                             [ 48%]
+tests/unit/scripts/test_refs_to_related.py ..                            [ 49%]
+tests/unit/scripts/test_register.py ..................................s. [ 51%]
+..........                                                               [ 51%]
+tests/unit/scripts/test_remove_confirmed.py EEEEE                        [ 52%]
+tests/unit/scripts/test_remove_discussion_keys.py .....                  [ 52%]
+tests/unit/scripts/test_remove_network_look.py ......                    [ 52%]
+tests/unit/scripts/test_remove_preview_port.py ....                      [ 52%]
+tests/unit/scripts/test_remove_tag_vocabulary.py ...                     [ 53%]
+tests/unit/scripts/test_reset_unread.py ............                     [ 53%]
+tests/unit/scripts/test_resume.py .......                                [ 54%]
+tests/unit/scripts/test_serve.py ....................................... [ 56%]
+........................................................................ [ 60%]
+........................................                                 [ 62%]
+tests/unit/scripts/test_server.py ...................................... [ 65%]
+..............                                                           [ 65%]
+tests/unit/scripts/test_session_hook.py ......................           [ 67%]
+tests/unit/scripts/test_sessions.py .................................... [ 69%]
+........................................................................ [ 73%]
+.                                                                        [ 73%]
+tests/unit/scripts/test_settings_update.py ..........F........F......... [ 75%]
+.                                                                        [ 75%]
+tests/unit/scripts/test_startup.py ...................                   [ 76%]
+tests/unit/scripts/test_state.py ..................                      [ 77%]
+tests/unit/scripts/test_store.py ....................................... [ 79%]
+........................................................................ [ 83%]
+.........................                                                [ 85%]
+tests/unit/scripts/test_submissions_to_threads.py ......                 [ 85%]
+tests/unit/scripts/test_tag_text.py ...............                      [ 86%]
+tests/unit/scripts/test_tags_to_objects.py ...                           [ 86%]
+tests/unit/scripts/test_tags_to_vocabulary.py ....                       [ 86%]
+tests/unit/scripts/test_threads.py ..................................... [ 88%]
+......................................                                   [ 90%]
+tests/unit/scripts/test_transcriber.py ....                              [ 91%]
+tests/unit/scripts/test_transcriber_registry.py ......                   [ 91%]
+tests/unit/scripts/test_usage_watch.py ....................              [ 92%]
+tests/unit/scripts/test_versions.py ......................               [ 93%]
+tests/unit/scripts/test_voice_paste.py ......................            [ 95%]
+tests/unit/scripts/test_workspaces.py .................................. [ 97%]
+...............................................                          [ 99%]
+tests/unit/test_isolated_environment.py ...                              [100%]
+
+==================================== ERRORS ====================================
+________________________ ERROR at setup of test_migrate ________________________
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def remove_confirmed(scripts_dir: Path) -> ModuleType:
+        """バージョンのフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_remove_confirmed", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_remove_confirmed.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7afc0c6e52b0>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+____ ERROR at setup of test_migrate_when_already_current[already_migrated] _____
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def remove_confirmed(scripts_dir: Path) -> ModuleType:
+        """バージョンのフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_remove_confirmed", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_remove_confirmed.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7afc0c800a40>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+_____ ERROR at setup of test_migrate_when_already_current[without_history] _____
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def remove_confirmed(scripts_dir: Path) -> ModuleType:
+        """バージョンのフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_remove_confirmed", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_remove_confirmed.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7afc0c6e7800>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+___________ ERROR at setup of test_migrate_when_unreadable[history] ____________
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def remove_confirmed(scripts_dir: Path) -> ModuleType:
+        """バージョンのフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_remove_confirmed", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_remove_confirmed.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7afc0c6e4d40>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+____________ ERROR at setup of test_migrate_when_unreadable[config] ____________
+
+scripts_dir = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/scripts')
+
+    @pytest.fixture
+    def remove_confirmed(scripts_dir: Path) -> ModuleType:
+        """バージョンのフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+        path = scripts_dir.parent / SCRIPT_PATH
+        spec = importlib.util.spec_from_file_location("migration_v0_14_0_remove_confirmed", path)
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+>       spec.loader.exec_module(module)
+
+tests/unit/scripts/test_remove_confirmed.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7afc0c6e6000>
+path = '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/plugins/mindstella/skills/mindmap/migrations/v0.14.0/scripts/remove_confirmed.py'
+
+<frozen importlib._bootstrap_external>:1190: FileNotFoundError
+=================================== FAILURES ===================================
+_________________ test_validate_settings_input_when_mdmark_map _________________
+
+    def test_validate_settings_input_when_mdmark_map() -> None:
+        """図の種類を渡せる（正常系）。"""
+        # 準備
+        settings = {"mdmark": {"map": {"kinds": {"question": {"shape": "rect"}}, "lines": {}}}}
+        # 実行・検証
+>       settings_update.validate_settings_input(settings)
+
+tests/unit/scripts/test_settings_update.py:65: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+settings = {'mdmark': {'map': {'kinds': {'question': {'shape': 'rect'}}, 'lines': {}}}}
+
+    def validate_settings_input(settings: dict[str, Any]) -> None:
+        """`settings` のキーを、書き換える前に確かめる。"""
+        removed = [key for key in settings if key in REMOVED_KEYS]
+        # 削除したキーを渡した
+        if removed:
+            raise ArgumentError("settings", f"削除したキーです: {'・'.join(removed)}")
+        lines = _settings_key_lines(settings)
+        # 書き換えられないキー・消せないキーの null・空の settings
+        if lines:
+>           raise SchemaMismatchError(lines)
+E           errors.SchemaMismatchError: スキーマに合いません
+
+plugins/mindstella/skills/mindmap/scripts/settings_update.py:72: SchemaMismatchError
+_________________ test_update_settings_when_mdmark_map_invalid _________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x7afc06c1b2e0>
+make_item = <function make_item.<locals>._make at 0x7afc06c19bc0>
+
+    def test_update_settings_when_mdmark_map_invalid(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """設定のスキーマに合わない図の種類は断る（異常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+        # 実行・検証
+        with pytest.raises(SchemaMismatchError) as raised:
+            settings_update.update_settings(root, {"mdmark": {"map": {"kinds": {"question": {"shape": "木"}}}}})
+>       assert any(line.startswith("config.yaml: mdmark.map.kinds.question.shape") for line in raised.value.lines)
+E       assert False
+E        +  where False = any(<generator object test_update_settings_when_mdmark_map_invalid.<locals>.<genexpr> at 0x7afc06c1f030>)
+
+tests/unit/scripts/test_settings_update.py:191: AssertionError
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/.venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_mdmark_map
+FAILED tests/unit/scripts/test_settings_update.py::test_update_settings_when_mdmark_map_invalid
+ERROR tests/unit/scripts/test_remove_confirmed.py::test_migrate - FileNotFoun...
+ERROR tests/unit/scripts/test_remove_confirmed.py::test_migrate_when_already_current[already_migrated]
+ERROR tests/unit/scripts/test_remove_confirmed.py::test_migrate_when_already_current[without_history]
+ERROR tests/unit/scripts/test_remove_confirmed.py::test_migrate_when_unreadable[history]
+ERROR tests/unit/scripts/test_remove_confirmed.py::test_migrate_when_unreadable[config]
+======= 2 failed, 1732 passed, 1 skipped, 5 warnings, 5 errors in 31.61s =======
+exit=1
+
+## 回したコマンド（フロント）
+$ npx vitest run
+
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681
+
+ ❯ frontend/src/shared/hooks/use-screen-filters.test.tsx (14 tests | 3 failed) 1067ms
+   ❯ useScreenFilters (14)
+     × use_screen_filters_when_push 87ms
+     × use_screen_filters_when_clear_all 61ms
+     × use_screen_filters_when_text_filter 56ms
+ ❯ frontend/src/shared/hooks/use-preview-search.test.tsx (9 tests | 2 failed) 1057ms
+   ❯ usePreviewSearch (9)
+     × use_preview_search_when_set_sort 122ms
+     × use_preview_search_when_push_tag_condition 66ms
+ ❯ frontend/src/shared/components/filter-drawer.test.tsx (6 tests | 3 failed) 652ms
+   ❯ FilterDrawer (6)
+     × filter_drawer_when_text_commit (idle) 44ms
+     × filter_drawer_when_text_commit (enter) 21ms
+     × filter_drawer_when_text_commit (blur) 24ms
+ ❯ frontend/src/shared/components/board.test.tsx (2 tests | 1 failed) 265ms
+   ❯ Board (2)
+     × board_when_drag_background 206ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/components/board.test.tsx > Board > board_when_drag_background
+AssertionError: expected 200 to be 320 // Object.is equality
+
+- Expected
++ Received
+
+- 320
++ 200
+
+ ❯ frontend/src/shared/components/board.test.tsx:47:31
+     45|     fireEvent.pointerUp(region, { pointerType: "mouse", pointerId: 1, …
+     46|     // 検証
+     47|     expect(region.scrollLeft).toBe(320);
+       |                               ^
+     48|     expect(onOpen).not.toHaveBeenCalled();
+     49|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  frontend/src/shared/components/filter-drawer.test.tsx > FilterDrawer > filter_drawer_when_text_commit (idle)
+ FAIL  frontend/src/shared/components/filter-drawer.test.tsx > FilterDrawer > filter_drawer_when_text_commit (enter)
+ FAIL  frontend/src/shared/components/filter-drawer.test.tsx > FilterDrawer > filter_drawer_when_text_commit (blur)
+AssertionError: expected 1st "vi.fn()" call to have been called with [ 'title', '画' ]
+
+- Expected
++ Received
+
+  [
+    "title",
+-   "画",
++   "画面",
+  ]
+
+ ❯ frontend/src/shared/components/filter-drawer.test.tsx:82:26
+     80|     });
+     81|     // 検証（打つたびに知らせ、500ms の前には区切らない）
+     82|     expect(onTextChange).toHaveBeenNthCalledWith(1, "title", "画");
+       |                          ^
+     83|     expect(onTextChange).toHaveBeenNthCalledWith(2, "title", "画面");
+     84|     expect(onTextCommit).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_set_sort
+AssertionError: expected 1 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ frontend/src/shared/hooks/use-preview-search.test.tsx:105:28
+    103|     // 検証
+    104|     await waitFor(() => expect(result.current.search.sort).toBe("title…
+    105|     expect(history.length).toBe(before + 1);
+       |                            ^
+    106|     // 実行
+    107|     act(() => result.current.setSort(undefined, { replace: true }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+ FAIL  frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_push_tag_condition
+TypeError: result.current.pushTagCondition is not a function
+ ❯ frontend/src/shared/hooks/use-preview-search.test.tsx:119:30
+    117|     const before = history.length;
+    118|     // 実行
+    119|     act(() => result.current.pushTagCondition({ f: { tags: "画面|保存" }, …
+       |                              ^
+    120|     await waitFor(() => expect(result.current.search.tagmatch).toBe("a…
+    121|     act(() => result.current.pushTagMatch(undefined));
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:47:24
+ ❯ process.env.NODE_ENV.exports.act node_modules/react/cjs/react.development.js:890:22
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:46:25
+ ❯ frontend/src/shared/hooks/use-preview-search.test.tsx:119:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯
+
+ FAIL  frontend/src/shared/hooks/use-screen-filters.test.tsx > useScreenFilters > use_screen_filters_when_push
+AssertionError: expected 1 to be 3 // Object.is equality
+
+- Expected
++ Received
+
+- 3
++ 1
+
+ ❯ frontend/src/shared/hooks/use-screen-filters.test.tsx:191:35
+    189|     // 検証
+    190|     await waitFor(() => expect(router.state.location.search).toMatchOb…
+    191|     expect(router.history.length).toBe(before + 2);
+       |                                   ^
+    192|   });
+    193|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯
+
+ FAIL  frontend/src/shared/hooks/use-screen-filters.test.tsx > useScreenFilters > use_screen_filters_when_clear_all
+TypeError: result.current.clearAll is not a function
+ ❯ frontend/src/shared/hooks/use-screen-filters.test.tsx:201:22
+    199|     // 実行
+    200|     act(() => {
+    201|       result.current.clearAll();
+       |                      ^
+    202|     });
+    203|     // 検証
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:47:24
+ ❯ process.env.NODE_ENV.exports.act node_modules/react/cjs/react.development.js:890:22
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:46:25
+ ❯ frontend/src/shared/hooks/use-screen-filters.test.tsx:200:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯
+
+ FAIL  frontend/src/shared/hooks/use-screen-filters.test.tsx > useScreenFilters > use_screen_filters_when_text_filter
+TypeError: result.current.setTextFilter is not a function
+ ❯ frontend/src/shared/hooks/use-screen-filters.test.tsx:217:22
+    215|     // 実行
+    216|     act(() => {
+    217|       result.current.setTextFilter("title", "画");
+       |                      ^
+    218|     });
+    219|     await waitFor(() => expect(result.current.filters).toMatchObject({…
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:47:24
+ ❯ process.env.NODE_ENV.exports.act node_modules/react/cjs/react.development.js:890:22
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:46:25
+ ❯ frontend/src/shared/hooks/use-screen-filters.test.tsx:216:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/9]⎯
+
+
+ Test Files  4 failed | 85 passed (89)
+      Tests  9 failed | 424 passed (433)
+   Start at  22:49:22
+   Duration  27.70s (environment 42%, tests 28%, import 14%, setup 9%, transform 6%)
+
+Environment  jsdom was created 89 times · 74.68s total, 42% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit=1
+
+## テストコードの修正の後に流し直したもの
+lint で見つけたテストコードの違反（tests/unit/scripts/test_history.py の未使用の import、board.test.tsx の項目に created・updated が無い型の誤り）を直した後、board.test.tsx だけを流し直した（Red の理由は変わらない）
+$ npx vitest run frontend/src/shared/components/board.test.tsx
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681
+
+ ❯ frontend/src/shared/components/board.test.tsx (2 tests | 1 failed) 145ms
+   ❯ Board (2)
+     × board_when_drag_background 117ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/components/board.test.tsx > Board > board_when_drag_background
+AssertionError: expected 200 to be 320 // Object.is equality
+
+- Expected
++ Received
+
+- 320
++ 200
+
+ ❯ frontend/src/shared/components/board.test.tsx:47:31
+     45|     fireEvent.pointerUp(region, { pointerType: "mouse", pointerId: 1, …
+     46|     // 検証
+     47|     expect(region.scrollLeft).toBe(320);
+       |                               ^
+     48|     expect(onOpen).not.toHaveBeenCalled();
+     49|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  22:55:35
+   Duration  1.83s (transform 50%, environment 27%, import 9%, tests 9%, setup 5%)
+
+exit=1
+
+## lint
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+ruff: All checks passed!（修正の後）
+typecheck・ESLint に残る違反は、実装が無いこと（onTextCommit・pushTagCondition・pushTagMatch・clearAll・setTextFilter・commitTextFilter・setFilters / setSort の第 2 引数）による use-preview-search.test.tsx・use-screen-filters.test.tsx・filter-drawer.test.tsx のものだけ。ESLint が worktree の直下の .venv/（playwright の同梱物）も検査して出す違反は、テストコードと関係しない
+
+
+> typecheck
+> tsc -p frontend
+
+frontend/src/shared/components/filter-drawer.test.tsx(73,239): error TS2322: Type '{ groups: never[]; selected: {}; total: number; shown: number; texts: { key: string; label: string; value: string; }[]; onToggleValue: Mock<Procedure>; onClearGroup: Mock<Procedure>; onClearAll: Mock<...>; onClose: Mock<...>; onTextChange: Mock<...>; onTextCommit: Mock<...>; }' is not assignable to type 'IntrinsicAttributes & FilterDrawerProps'.
+  Property 'onTextCommit' does not exist on type 'IntrinsicAttributes & FilterDrawerProps'.
+frontend/src/shared/hooks/use-preview-search.test.tsx(107,49): error TS2554: Expected 1 arguments, but got 2.
+frontend/src/shared/hooks/use-preview-search.test.tsx(119,30): error TS2551: Property 'pushTagCondition' does not exist on type 'PreviewSearchApi'. Did you mean 'setTagCondition'?
+frontend/src/shared/hooks/use-preview-search.test.tsx(121,30): error TS2339: Property 'pushTagMatch' does not exist on type 'PreviewSearchApi'.
+frontend/src/shared/hooks/use-screen-filters.test.tsx(183,67): error TS2554: Expected 1 arguments, but got 2.
+frontend/src/shared/hooks/use-screen-filters.test.tsx(201,22): error TS2339: Property 'clearAll' does not exist on type 'ScreenFilters'.
+frontend/src/shared/hooks/use-screen-filters.test.tsx(217,22): error TS2551: Property 'setTextFilter' does not exist on type 'ScreenFilters'. Did you mean 'setFilters'?
+frontend/src/shared/hooks/use-screen-filters.test.tsx(221,22): error TS2551: Property 'setTextFilter' does not exist on type 'ScreenFilters'. Did you mean 'setFilters'?
+frontend/src/shared/hooks/use-screen-filters.test.tsx(225,22): error TS2339: Property 'commitTextFilter' does not exist on type 'ScreenFilters'.
+frontend/src/shared/hooks/use-screen-filters.test.tsx(228,22): error TS2551: Property 'setTextFilter' does not exist on type 'ScreenFilters'. Did you mean 'setFilters'?
+/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/frontend/src/shared/hooks/use-preview-search.test.tsx
+  119:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  119:15  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  119:15  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  121:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  121:15  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  121:15  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-sprint-bundle-681/frontend/src/shared/hooks/use-screen-filters.test.tsx
+  201:7  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  217:7  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  221:7  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  225:7  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  228:7  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+✖ 22 problems (17 errors, 5 warnings)
+  0 errors and 5 warnings potentially fixable with the `--fix` option.
