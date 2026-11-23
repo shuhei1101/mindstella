@@ -28,6 +28,6 @@ args:
 accessibility:
   - 吹き出しと数字は `aria-hidden` にし、「コメント {件数} 件」を読み上げにだけ残す文字と `title` を持つ（件数は 99 を超えても実数）
   - 押す操作を持たず、フォーカスも受けない。置いたカード・行・節点を押すと詳細パネルが開く
-  - 置いたカード・行・節点がホバー・フォーカス・選んでいる状態になっても、マーカーの色は変えない
+  - 置いたカード・行・節点がホバー・フォーカス・選んでいる状態になっても、マーカーの色は変えない。ピルは `--mark-line` の縁と `--mark-weak` の面で、選んでいるカードの面（`--row-selected`）の上でも縁で見分ける
 test_file: tests/integration/storybook_react/test_comment_mark_stories.py
 refs: []

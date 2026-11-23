@@ -4,11 +4,11 @@ implementation: frontend/src/shared/components/markdown-body.tsx#MarkdownBody
 story: Shared/MarkdownBody
 states:
   - name: MdmarkTable
-    description: 8 列の表。mdmark の表の機能で描かれ、列の幅と折り返し・並べ替え・ピン止め・列の幅の変更のボタンは mdmark のまま。表が本文の幅からはみ出すため、先頭の列が左端に留まり、表の中だけが横にスクロールする。画面の CSS が当てた列の幅・フェード・しま模様は無い
+    description: 8 列の表。mdmark の表の機能で描かれ、列の幅と折り返し・並べ替え・ピン止め・列の幅の変更のボタンは mdmark のまま。表が本文の幅からはみ出し、表の中だけが横にスクロールする。描いた直後はどの列も左端に留まらない（mdmark の既定。`table.pin_default` を指定しない）。画面の CSS が当てた列の幅・フェード・しま模様は無い
   - name: PinnedColumns
     description: 「名前」のピン止めのボタンを押して右へスクロールした。ID と名前の 2 列が左端に留まり、その間の状態の列は留まらない
   - name: OpaqueBackground
-    description: 本文の背景は周りの面になじむ透明で、ピン止めした列・表の左右の端の影を隠す覆い・ツールチップは周りの面の色（`--mdmark-color-bg-opaque`）で塗られる。横にスクロールできない側の端に影が出ない
+    description: 本文の背景は周りの面になじむ透明で、ピン止めのボタンで留めた列・表の左右の端の影を隠す覆い・ツールチップは周りの面の色（`--mdmark-color-bg-opaque`）で塗られる。横にスクロールできない側の端に影が出ない
   - name: Sections
     description: 本文で使っている上位 2 つの階層の見出しの頭に開閉の矢印を置き、開いた状態で描く。中身の無い見出しには置かない。見出しの文言は選べる
   - name: Folded
@@ -38,7 +38,7 @@ states:
     notes:
       理由: 範囲の HTML は書き手が見た目を決めており、見出しに開閉を置くと範囲の中のつながりを切るため
   - name: TableInDiff
-    description: 本文の差分の中の表。追加した行・削除した行を持ち、mdmark の表で描かれる。追加した行・削除した行の面の色と削除した行の取り消し線は、ピン止めして左端に留まった列のセルにも付き、開閉を置かない
+    description: 本文の差分の中の表。追加した行・削除した行を持ち、mdmark の表で描かれる。追加した行・削除した行の面の色と削除した行の取り消し線は、ピン止めのボタンで左端に留めた列のセルにも付き、開閉を置かない
     args:
       - name: fold
         value: 'false'

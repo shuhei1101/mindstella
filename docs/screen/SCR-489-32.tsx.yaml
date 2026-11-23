@@ -566,7 +566,7 @@ elements:
     id: panel-resizer
     kind: separator
     position: パネルの内側の左端
-    description: ドラッグかキーで詳細パネルの幅を変える縦の帯（`role="separator"`・`aria-orientation="vertical"`・`aria-valuemin` / `aria-valuemax` / `aria-valuenow` に下限・上限・今の幅）。読み上げの名前は「詳細パネルの幅」。帯の幅は 24px で、本文のスクロールバーに重ねない。帯の縦の中央につまみをふだんから薄く出し、乗せると線とつまみを濃く、ドラッグ中とキーボードのフォーカスではアクセントの色にする（フォーカスはつまみの周りだけを枠で囲み、見出しと本文の文字に重ねない）。押すとフォーカスを移す。下限・上限で止まっている間は、その向きだけのカーソルにする
+    description: 'ドラッグかキーで詳細パネルの幅を変える縦の帯（`role="separator"`・`aria-orientation="vertical"`・`aria-valuemin` / `aria-valuemax` / `aria-valuenow` に下限・上限・今の幅）。読み上げの名前は「詳細パネルの幅」。帯の幅は 24px で、本文のスクロールバーに重ねない。指で操作する端末（`pointer: coarse`）では帯の幅を 44px にし、パネルの左端の線を帯の中央に挟む（パネルの外へ 22px 出す）。指のドラッグでもマウスと同じく幅を変え、ドラッグ中はページをスクロールさせない。帯の縦の中央につまみをふだんから薄く出し、乗せると線とつまみを濃く、ドラッグ中とキーボードのフォーカスではアクセントの色にする（フォーカスはつまみの周りだけを枠で囲み、見出しと本文の文字に重ねない）。押すとフォーカスを移す。下限・上限で止まっている間は、その向きだけのカーソルにする'
     io: 入出力
     type: 数値（px）
     visible_when: 表示の幅が 901px 以上
@@ -783,32 +783,6 @@ elements:
     visible_when: 行の修正を押した行
     action_ref: IF-489-58#
     status: planned
-  - name: 確認済み
-    kind: button
-    component: CMP-633-1#
-    args:
-      - name: confirmed
-        value: 記録の取得のその項目の confirmed（付け外しの応答を待つ間は押した後の値）
-      - name: saving
-        value: 付け外しの応答を待っている間 true
-    position: 見出し > 種類と ID・見出しのタイトルの右・編集するの左
-    description: 押すと、開いている項目を確認済みにするか解除する。押した直後に押した後の状態で描き、応答を待つ間は押せなくする。200 ならそのままにし、200 以外か届かないときは押す前の状態に戻し、「確認済みを書き換えられなかった旨」を出す。書き換えの通知で記録を再取得したときは、取得した confirmed で再描画する（AI の書き込みで未確認に戻ったときを含む）。幅 480px 以下はアイコンだけにし、幅 320px でも見出しのボタンを表示幅の中に収める
-    visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
-    source: 記録の取得のその項目の confirmed
-    target: 確認済みの設定と解除.confirmed
-    action_ref: IF-633-1#
-    status: planned
-    introduced:
-      pr: 633
-  - name: 確認済みを書き換えられなかった旨
-    kind: label
-    position: 見出しの下
-    description: '`role="alert"`。マーカーのアイコンと「確認済みを書き換えられませんでした。」に、届かないときは「サーバーが止まっています。再起動してから押してください。」、そのほかのエラーは `detail` を続ける。自動で削除せず、次に「確認済み」を押すか別の項目を開くと削除する（React の画面はトーストの仕組みを持たず、詳細パネルのほかの失敗と同じくその場に出す）'
-    io: 表示
-    visible_when: 直前の確認済みの設定と解除が 200 以外か届かなかった
-    status: planned
-    introduced:
-      pr: 633
   - name: スレッドの ID のリンク
     kind: link
     position: 本文 > 文中
