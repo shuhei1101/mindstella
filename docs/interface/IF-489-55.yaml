@@ -351,7 +351,7 @@ request:
     required: true
     location: argument
     description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは削除する。渡さないキーはそのまま
-    constraints: キーは `summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`mdmark` だけ。`mdmark` は `version` と `map`（`kinds`・`lines`）を受け、渡した方だけを置き換えて渡さなかった方を残す。`map` は丸ごと置き換え、mdmark の設定のスキーマの `map` と突き合わせる。`null` で削除できるのは任意の `description`・`links`・`history_limit`・`display`・`transcription` だけ。1 つ以上のキーを持つ。削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）は引数の誤り
+    constraints: キーは `summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`mdmark` だけ。`mdmark` は `version` と `map`（`kinds`・`lines`）を受け、渡した方だけを置き換えて渡さなかった方を残す。`map` は丸ごと置き換え、制約「検証の範囲」のプラグインの設定のスキーマの `mdmark.map` と突き合わせる。`null` で削除できるのは任意の `description`・`links`・`history_limit`・`display`・`transcription` だけ。1 つ以上のキーを持つ。削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）は引数の誤り
     example: '{"display": {"visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"]}}'
 request_example: |-
   ```json
@@ -395,7 +395,7 @@ constraints:
   - item: 書き換えられるキー
     constraint: '`settings` の制約に並べたキー（`summary`・`description`・`links`・`history_limit`・`display`・`transcription`・`mdmark`）。`display`（表示する種類の既定）と `transcription`（文字起こし後の挙動・用語集のプリセット）は丸ごと置き換える。`presets` は受け付けず、[プリセットの作成](id:IF-649-1)・[プリセットの更新](id:IF-649-2)・[プリセットの削除](id:IF-649-3) が書き換える'
   - item: 検証の範囲
-    constraint: 書き換えた後の `config.yaml` をスキーマと突き合わせる。参照先の ID があるかは確かめない（点検が持つ）
+    constraint: 書き換えた後の `config.yaml` をプラグインの設定のスキーマ（`skills/mindmap/schemas/settings.schema.json`）と突き合わせる。その `mdmark.map` は、mdmark の `schemas/mdmark.config.schema.json` の `map` の定義（mdmark の commit `adb270e7` の時点）を複製したもので、通信せずに検証する。mdmark の `map` の定義が変わったら複製し直し、複製した元の commit をここに記載する。参照先の ID があるかは確かめない（点検が持つ）
   - item: YAML の記載方法
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない。キーの並びは今の `config.yaml` の並びを保ち、新しいキーは末尾に追加する'
   - item: 部分成功
