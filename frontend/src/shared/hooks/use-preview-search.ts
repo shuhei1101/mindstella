@@ -49,7 +49,12 @@ export type PreviewSearchApi = {
   pushTagExpr: (tx: string) => void;
   /** タグの条件（`f.tags`・`tagmatch`・`tx`）をまとめて書き換える（置き換える） */
   setTagCondition: (patch: { f: Record<string, string>; tagmatch: PreviewSearch["tagmatch"]; tx: string | undefined }) => void;
-  setSort: (sort: string | undefined) => void;
+  /** タグの条件（`f.tags`・`tagmatch`・`tx`）をまとめて書き換えて履歴に積む（ドロワーで変えるとき） */
+  pushTagCondition: (patch: { f: Record<string, string>; tagmatch: PreviewSearch["tagmatch"]; tx: string | undefined }) => void;
+  /** タグの組み合わせ方を書き換えて履歴に積む（ドロワーで変えるとき）。`all` は `tagmatch` を外す */
+  pushTagMatch: (tagmatch: PreviewSearch["tagmatch"]) => void;
+  /** 表の並べ替えを変えて履歴に積む。`replace` を渡すと置き換える（列が無くなった並びの解除・初期設定に戻すとき） */
+  setSort: (sort: string | undefined, options?: { replace: boolean }) => void;
   setDiff: (diff: string | undefined) => void;
   /** 左のパネルを開閉する（置き換える）。コメントの一覧でないときは `thread`・`review`・`tstatus`・`ttag`・`ttarget` を外す */
   setPanel: (panel: PreviewSearch["panel"]) => void;
@@ -122,8 +127,14 @@ export const usePreviewSearch = (): PreviewSearchApi => {
     setTagMatch: (tagmatch) => {
       apply({ tagmatch }, true);
     },
-    setSort: (sort) => {
-      apply({ sort }, true);
+    pushTagCondition: (patch) => {
+      apply(patch, false);
+    },
+    pushTagMatch: (tagmatch) => {
+      apply({ tagmatch }, false);
+    },
+    setSort: (sort, options) => {
+      apply({ sort }, options?.replace === true);
     },
     setDiff: (diff) => {
       apply({ diff }, true);
