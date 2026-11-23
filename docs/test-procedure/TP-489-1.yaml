@@ -111,6 +111,25 @@ layers:
         ```bash
         ruff check {Pythonファイルパス}
         ```
+  - id: TL-8
+    name: 非機能要件テスト
+    description: pytest で、非機能要件の決定値を測って確かめる（`tests/nfr/`）。結合テスト（バック）と同じく、実際の `server.py` を常駐サーバーとして空きポートで子プロセスに立て、MCP のクライアントでツールを呼んで時間を測る。記録は測る前に一時フォルダへ作る
+    prerequisites:
+      - Python 3.12 以上と、`requirements-dev.txt` の開発用の依存（pytest・PyYAML・jsonschema・mcp）
+      - PyYAML が libyaml を持つ（`yaml.CSafeLoader` を読める）。持たない環境では測らずに skip する（非機能要件 NFR-26 の超過時の挙動）
+      - 利用者の端末の 8784 に触れない。常駐サーバーには空きポートを `MINDSTELLA_PORT` で渡し、テストの後に止める
+      - 時間を測るため、ほかの全件実行と重ねずに流す。実行はリポジトリの直下で行う
+    run_all: |-
+      ```bash
+      pytest tests/nfr
+      ```
+    run_one:
+      label: ファイル
+      command: |-
+        ```bash
+        pytest {テストファイルパス}
+        ```
+    parallel: false
 notes:
   部品のストーリー（Storybook）: |-
     前提: Node 20.19 以上（22 系なら 22.12 以上。vite 8.3.2 の `engines`）。リポジトリの直下で `npm ci` を済ませておく。
