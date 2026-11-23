@@ -306,7 +306,7 @@ requirements:
     tests:
       - name: test_record_operation_time
         summary: 記録が数百件のワークスペースで、1 件の操作を 1 秒以下で終える
-        condition: '`parametrize`: `adopt`（検討事項 1 件の採用する案の切り替え）/ `thread`（新規スレッド 1 件）/ `update_thread`（スレッド 1 件の書き込みの書き換え）/ `set_thread_status`（スレッド 1 件のクローズ）。資料 136 件・検討事項 392 件・用語 162 件・スレッド 787 件で、項目ごとに変更履歴を 3 回分持つワークスペース。同じツールを 1 回呼んで読み込みと検証を済ませた後の 1 回を測る'
+        condition: '`parametrize`: `adopt`（検討事項 1 件の採用する案の切り替え）/ `thread`（スレッド 1 件の読み取り。返した書き込みを AI の既読にする）/ `update_thread`（スレッド 1 件の書き込みの書き換え）/ `set_thread_status`（スレッド 1 件のクローズ）。資料 136 件・検討事項 392 件・用語 162 件・スレッド 787 件で、項目ごとに変更履歴を 3 回分持つワークスペース。同じツールを 1 回呼んで読み込みと検証を済ませた後の 1 回を測る'
         measurement: 常駐サーバーへ MCP のクライアントでツールを呼んでから結果を受け取るまでの時間（`time.perf_counter`）
         expected: どのツールも 1.0 秒以下で、結果がエラーでない
         notes: PyYAML が libyaml を持たない環境では skip する。スレッドのツールは、結合テストと同じく引数に `session` を入れて呼ぶ
