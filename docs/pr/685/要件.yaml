@@ -1,0 +1,47 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: changed
+    detail: 絞り込みのドロワーで今の絞り込みに名前を付けてプリセットとして保存し、保存したプリセットがドロワーの一覧に並び、当たる項目が無いときは印が出る（#362）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-649-1.yaml
+    impact: following
+    detail: 利用者が画面から保存したプリセットも、AI が作ったプリセットと同じ設定の presets に並ぶことに追随する（#362）
+    depends_on:
+      - docs/scenario/SC-489-49.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-48.yaml
+    impact: changed
+    detail: 全体の検索で、検索の文字がタグ・状態などの絞り込みの値と一致したら結果の先頭に絞り込みをオンにする候補を出し、押すとその絞り込みがオンになる（#143）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 詳細パネル・詳細の全画面で本文と参照・関連・経緯の欄の見分けが付き（#159）、ヘッダーのボタンから資料の本文の目次を開いて見出しへ移れる（#160）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: changed
+    detail: 本文の「原文の差分」で、変更履歴で選んだ時点と重なる「変更表示」のボタンと前と後の時点を選ぶ欄を出さない（#668）
+    depends_on: []
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 絞り込みのドロワーで今の絞り込みをプリセットとして保存する操作、全体の検索から絞り込みをオンにする候補、詳細のヘッダーから本文の目次を開く操作を追加し、詳細の本文と補足の欄の見分けと「原文の差分」のボタンと欄を出さない表示に合わせる
+    status: todo
+  - page: docs/nonfunctional/NFR-489-1.yaml
+    new: false
+    change: NFR-16『画面への反映の時間』の tests の condition・measurement が今は無い MCP のツール `add` で項目を追加すると書いているため、今の項目を追加するツールに合わせる
+    status: todo
+  - page: docs/library/LIB-489-13.yaml
+    new: false
+    change: 差分の取り出し元を指定したときに「変更表示」のボタンとリビジョンを選ぶ欄を出さない mount の opts の指定（mdmark#784）を、使う部分として追加する
+    status: todo
+scope_out:
+  - item: プリセットに保存したタグが 0 件に当たるときの判定・check の警告・記録の取得で配る件数と、一覧のマーカーの作り直し（#362 の本文の「やること」の 2 つ目）
+    reason: '#360・#361 で入っており、保存した元を問わずプリセットを扱う。#362 では画面から保存したプリセットでマーカーが出ることをテストで確かめるだけにする（#362 の書き直しの判断）'
+    plan: none
+  - item: 保存したプリセットの名前の変更・削除を画面から行う操作
+    reason: 要望は今の絞り込みを名前付きで保存することだけで、名前の変更・削除は MCP の update_preset・delete_preset が持つ
+    plan: none
