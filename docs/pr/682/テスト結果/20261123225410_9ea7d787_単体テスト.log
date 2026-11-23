@@ -2,6 +2,7 @@
 テストコードの末尾の commit: 9ea7d787（テストコードの追加は e12d6c74。9ea7d787 は lint で見つけたテストコードの違反の修正）
 
 ## 実装の前から pass したテスト
+- frontend/src/features/detail/detail-panel/components/detail-resizer.test.tsx の detail_resizer_when_touch: モック作成の commit 161e1bad（#676）で detail-resizer.tsx が Pointer Events のドラッグと指の端末の 44px の帯を既に持つ
 - tests/unit/scripts/test_settings_update.py::test_merge_settings_when_mdmark_map: plugins/mindstella/skills/mindmap/scripts/settings_update.py の merge_settings（89〜91 行目。mdmark のキーは今の値に渡した値を重ね、version を残して map を丸ごと置き換える）が、テストコードより前の commit 72642a17（#550）で既に持つ
 
 ## 回したコマンド（サーバー）
