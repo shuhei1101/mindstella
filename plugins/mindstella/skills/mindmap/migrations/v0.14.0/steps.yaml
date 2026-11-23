@@ -14,3 +14,6 @@ steps:
   - op: call
     script: remove_preview_port
     destructive: true
+  - op: call
+    script: remove_confirmed
+    destructive: true
