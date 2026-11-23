@@ -172,5 +172,71 @@ describe("useScreenFilters", () => {
     expect(router.state.location.search.tx).toBe(tx);
     expect(router.history.length).toBe(before);
   });
-});
 
+  // ドロワーからの変更は 1 つずつ積む（正常系）
+  test("use_screen_filters_when_push", async () => {
+    // 準備
+    const { result, router } = await renderPreviewHook("/?tab=tasks&f.tags=%E7%94%BB%E9%9D%A2", () => useScreenFilters("tasks"));
+    const before = router.history.length;
+    // 実行
+    act(() => {
+      result.current.setFilters({ tags: ["画面"], status: ["保留"] }, { push: true });
+    });
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ f: { status: "保留" } }));
+    act(() => {
+      result.current.setTagMatch("any");
+    });
+    // 検証
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ tagmatch: "any" }));
+    expect(router.history.length).toBe(before + 2);
+  });
+
+  // すべて解除は 1 つだけ積む（正常系）
+  test("use_screen_filters_when_clear_all", async () => {
+    // 準備
+    const { result, router } = await renderPreviewHook("/?tab=tasks&f.tags=%E7%94%BB%E9%9D%A2&f.status=%E4%BF%9D%E7%95%99&tagmatch=any", () => useScreenFilters("tasks"));
+    const before = router.history.length;
+    // 実行
+    act(() => {
+      result.current.clearAll();
+    });
+    // 検証
+    await waitFor(() => expect(router.state.location.search.f ?? {}).toEqual({}));
+    expect(router.state.location.search).not.toHaveProperty("tagmatch");
+    expect(router.state.location.search).not.toHaveProperty("tx");
+    expect(router.history.length).toBe(before + 1);
+  });
+
+  // 列の文字の条件は打ち終えた単位で積む（正常系）
+  test("use_screen_filters_when_text_filter", async () => {
+    // 準備
+    const { result, router } = await renderPreviewHook("/?tab=tasks", () => useScreenFilters("tasks"));
+    const before = router.history.length;
+    // 実行
+    act(() => {
+      result.current.setTextFilter("title", "画");
+    });
+    await waitFor(() => expect(result.current.filters).toMatchObject({ "~title": ["画"] }));
+    act(() => {
+      result.current.setTextFilter("title", "画面");
+    });
+    await waitFor(() => expect(result.current.filters).toMatchObject({ "~title": ["画面"] }));
+    act(() => {
+      result.current.commitTextFilter();
+    });
+    act(() => {
+      result.current.setTextFilter("title", "画面の");
+    });
+    await waitFor(() => expect(result.current.filters).toMatchObject({ "~title": ["画面の"] }));
+    // 検証
+    expect(router.history.length).toBe(before + 2);
+    act(() => {
+      router.history.back();
+    });
+    await waitFor(() => expect(result.current.filters).toMatchObject({ "~title": ["画面"] }));
+    act(() => {
+      router.history.back();
+    });
+    await waitFor(() => expect(result.current.filters).not.toHaveProperty("~title"));
+  });
+});

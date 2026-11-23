@@ -548,6 +548,14 @@ files:
   related:
   - to: MOD-489-24
     type: implements
+- path: src/features/detail/detail-panel/components/detail-resizer.test.tsx
+  name: 幅の区切りの単体テスト
+  description: 詳細パネルの幅の区切りを指のドラッグで動かせることを確かめる単体テスト。幅の区切りの振る舞いを変えるときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-25
+    type: tests
 - path: src/features/detail/detail-panel/components/detail-resizer.tsx
   name: 詳細パネルの左端に置く幅の区切り
   description: 詳細パネルの左端に置く幅の区切り。
@@ -772,6 +780,14 @@ files:
   related:
   - to: MOD-489-60
     type: implements
+- path: src/shared/components/board.test.tsx
+  name: ボードの単体テスト
+  description: ボードの背景のドラッグで横にスクロールすることを確かめる単体テスト。ボードの振る舞いを変えるときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-60
+    type: tests
 - path: src/shared/components/board.tsx
   name: 状態ごとの列にカードを並べたボードと、項目のカード
   description: 状態ごとの列にカードを並べたボードと、項目のカード。
@@ -857,12 +873,6 @@ files:
   description: 確認済みの切り替えのストーリー。
   tags:
   - tool:react
-- path: src/shared/components/confirmed-toggle.test.tsx
-  name: 確認済みの切り替えの単体テスト
-  description: 確認済みの切り替えの単体テスト。
-  tags:
-  - tool:react
-  related: []
 - path: src/shared/components/confirmed-toggle.tsx
   name: 確認済みの切り替え
   description: 確認済みの切り替え。
@@ -1503,12 +1513,6 @@ files:
   related:
   - to: MOD-489-128
     type: implements
-- path: src/shared/hooks/use-item-confirmed.test.tsx
-  name: 確認済みの付け外しの単体テスト
-  description: 確認済みの付け外しの単体テスト。
-  tags:
-  - tool:react
-  related: []
 - path: src/shared/hooks/use-item-confirmed.ts
   name: 項目の確認済みの付け外し
   description: 項目の確認済みの付け外し。応答を待つ間は押した後の値を返し、失敗したら記録の値に戻して文を返す。

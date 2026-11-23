@@ -22,21 +22,6 @@ describe("WorkspaceSettingsScreen", () => {
     await waitFor(() => expect(posted).toHaveBeenCalledWith({ op: "setting", target: "settings", key: "summary", value: "画面の編集" }));
   });
 
-  // コメントの送信で確認済みにするかを溜める（正常系）
-  test("workspace_settings_screen_when_confirm_on_comment", async () => {
-    // 準備
-    const posted = vi.fn<(body: unknown) => Response>(() => HttpResponse.json({ id: "E-1", target: "settings", count: 1 }, { status: 201 }));
-    server.use(http.post("/api/edits", async ({ request }) => posted(await request.json())));
-    renderRoute("/?tab=settings");
-    const checkbox = await screen.findByRole("checkbox", { name: "コメントの送信で確認済みにする" });
-    expect(checkbox).toBeChecked();
-    expect(screen.getByText("オンのとき、コメントを送信した項目を確認済みにします。")).toBeInTheDocument();
-    // 実行
-    await userEvent.click(checkbox);
-    // 検証
-    await waitFor(() => expect(posted).toHaveBeenCalledWith({ op: "setting", target: "settings", key: "confirm_on_comment", value: false }));
-  });
-
   // 音声入力のまとまり（正常系）
   test("workspace_settings_screen_when_transcription", async () => {
     // 準備

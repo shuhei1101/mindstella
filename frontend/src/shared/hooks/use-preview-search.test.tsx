@@ -92,4 +92,36 @@ describe("usePreviewSearch", () => {
     expect(result.current.search.tstatus).toBeUndefined();
     expect(result.current.search.ttag).toBeUndefined();
   });
+
+  // 並べ替えは積み、初期設定に戻すときは置き換える（正常系）
+  test("use_preview_search_when_set_sort", async () => {
+    // 準備
+    const { result, history } = await renderPreviewHook("/?tab=decisions&view=table", usePreviewSearch);
+    const before = history.length;
+    // 実行
+    act(() => result.current.setSort("title"));
+    // 検証
+    await waitFor(() => expect(result.current.search.sort).toBe("title"));
+    expect(history.length).toBe(before + 1);
+    // 実行
+    act(() => result.current.setSort(undefined, { replace: true }));
+    // 検証
+    await waitFor(() => expect(result.current.search.sort).toBeUndefined());
+    expect(history.length).toBe(before + 1);
+  });
+
+  // ドロワーのタグの条件は 1 つ積む（正常系）
+  test("use_preview_search_when_push_tag_condition", async () => {
+    // 準備
+    const { result, history } = await renderPreviewHook("/?tab=tasks", usePreviewSearch);
+    const before = history.length;
+    // 実行
+    act(() => result.current.pushTagCondition({ f: { tags: "画面|保存" }, tagmatch: "any", tx: undefined }));
+    await waitFor(() => expect(result.current.search.tagmatch).toBe("any"));
+    act(() => result.current.pushTagMatch(undefined));
+    // 検証
+    await waitFor(() => expect(result.current.search.tagmatch).toBeUndefined());
+    expect(result.current.search.f).toEqual({ tags: "画面|保存" });
+    expect(history.length).toBe(before + 2);
+  });
 });
