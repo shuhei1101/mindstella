@@ -8,5 +8,19 @@ components:
     usecase: 資料を読む
     summary: 資料を連番の順にカードで並べる。カードの外枠は `div[data-card]`、タイトルは `button[data-id]` でその `::after` をカード全体へ広げ、タグは部品『タグの並び』を `onSelect`（`onSelectTag`）つきで前面に並べる。カードの並びのスクロール領域に `useListScroll` の ref を付ける。カードのタイトルは `h2`（見た目の大きさは変えない）にし、カードを並べる列の数は『docs-screen』の領域のコンテナクエリで 3・2・1 に切り替える
     container: frontend/src/features/docs/docs/components/doc-cards.tsx
+    unit_tests:
+      - name: test_doc_cards_when_default_sort
+        case: 正常
+        summary: 既定は更新日時の新しい順
+        condition: '`sort` を指定せず、更新日時が A-1 < A-3 < A-2 の 3 件'
+        mock: なし
+        expected: A-2・A-3・A-1 の順で、各カードに「作成」「更新」の `time` がある
+      - name: test_doc_cards_when_open_order
+        case: 正常
+        summary: 開いたときに今の並びを通知する
+        condition: 2 枚目のカードを押す
+        mock: なし
+        expected: '`onOpen` が 2 枚目の ID と描いた並びの ID で呼ばれる'
 notes:
   単体テスト: 同じフォルダの `doc-cards.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  日時と並べ替え: '`orderDocs` をやめ、カードの並びを `sortRows`（モジュール構成『list-rows』）で `sort`（無ければ `INITIAL_CARD_SORT.docs` の更新日時の新しい順）の順にする。カードの種類・状態の行の次に `ItemDates` を描く。カードを押したときは、描いた並びの ID を `onOpen(id, order)` で使用する側へ通知する（#186・#364）'

@@ -15,7 +15,20 @@ components:
         summary: 既定はカード
         condition: '`?tab=docs`'
         mock: MSW
-        expected: 連番の順のカード
+        expected: 更新日時の新しい順のカードと、「更新日時」が押された「並べ替え」
+      - name: test_docs_screen_when_card_sort_id
+        case: 正常
+        summary: 連番を押すと sort=id
+        condition: '`?tab=docs` で「並べ替え」の「連番」を押す'
+        mock: MSW・ルーターのメモリの履歴
+        expected: URL に `sort=id` があり、履歴が 1 増え、カードが連番の順
+      - name: test_docs_screen_when_open_from_list
+        case: 正常
+        summary: カードから開くと一覧の並びを持つ
+        condition: 2 枚目のカードを押す
+        mock: MSW・ルーターのメモリの履歴
+        expected: '`useListOrderStore` の `orders` がカードの並びで、`history.state.fromList` が真'
     container: frontend/src/features/docs/docs/docs-screen.tsx
 notes:
   単体テスト: 同じフォルダの `docs-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  並べ替えと一覧の並び: '表示形式の切り替えの右に `CardSort`（モジュール構成『card-sort』）をカード・ボードの表示のときだけ配置し、`value` は `cardSortFromParam(sort, INITIAL_CARD_SORT.docs)`、`onChange` は `cardSortToParam` の値で `setSort`（履歴に積む）を呼ぶ。カード・ボード・表が描いた並びを `useListOrderStore` の `setOrders` で置き換え、項目を開くときは `openItem(id, {fromList: true})` を呼ぶ。画面を離れるときに `clear` する（#186・#364）'
