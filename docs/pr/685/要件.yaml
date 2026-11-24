@@ -56,3 +56,6 @@ scope_out:
   - item: 保存したプリセットの名前の変更・削除を画面から行う操作
     reason: 要望は今の絞り込みを名前付きで保存することだけで、名前の変更・削除は MCP の update_preset・delete_preset が持つ
     plan: none
+  - item: '`eslint.config.js` の `ignores` に git の管理外の `.venv/`・`storybook-static/` を加え、lint の全件実行が worktree の状態で失敗しないようにする'
+    reason: テスト実行方法の lint の層は ESLint で `frontend/src/` を検査するとしているが、全件実行が管理外のフォルダまで検査する。develop でも同じく出る不具合で、今回の要望に含まれない
+    plan: '#691'
