@@ -136,8 +136,8 @@ requirements:
     tests:
       - name: test_preview_reflect_time
         summary: 書き換えから画面の再描画までが 1 秒以内
-        condition: 検討事項を 1 件持つワークスペース。MCP の `next_id` で検討事項の ID を取り、project-index の `write_docs`（`source` はワークスペースの ID）で 1 件ずつ 10 回追加する
-        measurement: '`write_docs` を呼ぶ直前から、検討事項の表に追加した行が出るまでを計測の側の単調な時計で測る'
+        condition: 検討事項を 1 件持つワークスペース。MCP の `next_id` で検討事項の ID を取り、`write_docs` と同じ置き換えで記録の YAML を書き換える補助（`tests/record_write_helpers.py` の `write_items`）で 1 件ずつ 10 回追加する
+        measurement: '`write_items` を呼ぶ直前（`next_id` を含む）から、検討事項の表に追加した行が出るまでを計測の側の単調な時計で測る'
         expected: 10 回の最大が 1 秒以下
   - id: NFR-17
     name: 送信の本文の長さ
