@@ -8,6 +8,12 @@ export type CardSortDir = "asc" | "desc";
 
 export type CardSortValue = { key: CardSortKey; dir: CardSortDir };
 
+/** 画面を開いた直後の並べ替え。資料は更新日時の新しい順、ほかの種類は連番 */
+export const INITIAL_CARD_SORT = {
+  docs: { key: "updated", dir: "desc" },
+  other: { key: "default", dir: "asc" },
+} as const satisfies Record<string, CardSortValue>;
+
 const OPTIONS = [
   { key: "default", label: "連番" },
   { key: "created", label: "作成日時" },
