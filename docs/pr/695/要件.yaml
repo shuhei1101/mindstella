@@ -171,11 +171,15 @@ docs:
   - page: docs/test-procedure/TP-489-1.yaml
     new: false
     change: lint の層の検査の対象と除外を、`eslint.config.js` の変更に合わせる（#691）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:24:19.066331+00:00'
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 戻る・進むと前後の項目への移動、作成日時・更新日時での並べ替え、スレッドを開いたときの動きを利用者の操作として記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:24:19.066331+00:00'
   - page: docs/component/CMP-695-1.tsx.yaml
     new: true
     change: 部品『一覧の並びの前後』を新設する（#364）
