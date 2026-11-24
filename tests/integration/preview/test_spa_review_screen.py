@@ -440,7 +440,11 @@ def test_row_labels_not_wrapped_when_narrow(page: Page, review_preview: tuple[st
     kinds = _panel(page).locator("[data-part=kind]")
     expect(kinds.first).to_be_visible()
     # 検証
-    lines = kinds.evaluate_all("items => items.map((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight))")
-    assert lines and all(value < 1.5 for value in lines), lines
+    lines = [element.evaluate(_TEXT_LINES_JS) for element in kinds.all()]
+    assert lines and all(value == 1 for value in lines), lines
     reply_title = _row(page, "C-43").get_by_text("D-1 の案の相談")
     expect(reply_title).to_have_attribute("title", "D-1 の案の相談")
+
+
+# 要素の文字が並ぶ行の数（折り返していなければ 1）
+_TEXT_LINES_JS = "(e) => { const range = document.createRange(); range.selectNodeContents(e); return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size; }"

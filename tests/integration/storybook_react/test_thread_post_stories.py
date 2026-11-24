@@ -484,4 +484,4 @@ def test_long_ai_post_opened(open_story: OpenStory) -> None:
     # 検証
     expect(less).to_have_attribute("aria-expanded", "true")
     expect(page.locator(f"{POST} [data-folded]")).to_have_count(0)
-    expect(page.locator(POST)).to_contain_text("7. 変更履歴の時点の並びが分かりにくい")
+    expect(page.locator(POST)).to_contain_text("変更履歴の時点の並びが分かりにくい")

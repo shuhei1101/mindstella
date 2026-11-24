@@ -22,6 +22,9 @@ TAGS = "#storybook-root li [data-part=tags] button"
 UNREAD = f"{LINE2} [data-part=unread]"
 OPEN_BUTTON = "#storybook-root li > button"
 
+# 要素の文字が並ぶ行の数（折り返していなければ 1）
+TEXT_LINES_JS = "(e) => { const range = document.createRange(); range.selectNodeContents(e); return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size; }"
+
 # 塗りが無いときの背景色
 TRANSPARENT = "rgba(0, 0, 0, 0)"
 
@@ -241,8 +244,7 @@ def test_long_values_narrow(open_story: OpenStory) -> None:
     # 検証（札と書き手は 1 行の高さ）
     for selector in (STATE, UNREAD, f"{LINE2} [data-part=author]"):
         element = page.locator(selector).first
-        lines = element.evaluate("(e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)")
-        assert lines < 1.5, selector
+        assert element.evaluate(TEXT_LINES_JS) == 1, selector
     # 検証（要約は 2 行まで、2 行目は 1 行で行の幅を超えない）
     title_lines = page.locator(TITLE).evaluate("(e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)")
     assert title_lines <= TITLE_MAX_LINES + 0.5

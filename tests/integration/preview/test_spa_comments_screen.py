@@ -399,5 +399,9 @@ def test_row_labels_not_wrapped_when_narrow(page: Page, spa_comments_preview: tu
     expect(rows.first).to_be_visible()
     # 検証
     for selector in ("[data-state]", "[data-part=author]"):
-        lines = rows.locator(selector).evaluate_all("items => items.map((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight))")
-        assert lines and all(value < 1.5 for value in lines), (selector, lines)
+        lines = [element.evaluate(_TEXT_LINES_JS) for element in rows.locator(selector).all()]
+        assert lines and all(value == 1 for value in lines), (selector, lines)
+
+
+# 要素の文字が並ぶ行の数（折り返していなければ 1）
+_TEXT_LINES_JS = "(e) => { const range = document.createRange(); range.selectNodeContents(e); return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size; }"
