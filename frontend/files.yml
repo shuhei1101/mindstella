@@ -978,6 +978,70 @@ files:
   description: 詳細の本文と参照・関連・経緯の欄を、タブ・折りたたみ・背景の色のどれかで分ける。本文と補足の見せ方を変更するときに参照する。
   tags:
   - tool:react
+- path: src/shared/components/preset-save.test.tsx
+  name: プリセットの保存の単体テスト
+  description: 部品『プリセットの保存』の保存・押せない理由・空の名前・失敗の理由・保存中の再送の防止を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-362-1
+    type: tests
+- path: src/shared/hooks/use-preset-save.test.tsx
+  name: プリセットの保存のフックの単体テスト
+  description: プリセットの保存のフックが送信する本文と、問題の応答の detail の扱いを確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-362-2
+    type: tests
+- path: src/shared/stores/filter-candidates-store.test.ts
+  name: 絞り込みの候補のストアの単体テスト
+  description: 絞り込みの候補のストアの登録と消去を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-143-1
+    type: tests
+- path: src/shared/core/body-toc.test.ts
+  name: 本文の目次の見出しの取り出しの単体テスト
+  description: 本文の Markdown から見出しの階層・文字・名前を取り出す処理を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-160-1
+    type: tests
+- path: src/shared/components/body-toc.test.tsx
+  name: 本文の目次の単体テスト
+  description: 本文の目次のポップオーバーの見出しの選択と Esc で閉じる操作を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-160-2
+    type: tests
+- path: src/features/detail/detail-panel/components/detail-supplements.test.tsx
+  name: 詳細のタブの単体テスト
+  description: 詳細の本文・関連・コメントのタブの切り替えと矢印の操作を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-159-1
+    type: tests
+- path: src/features/detail/detail-panel/components/detail-header.test.tsx
+  name: 詳細の見出しの単体テスト
+  description: 詳細の見出しの目次のボタンを出す条件を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-24
+    type: tests
+- path: src/shared/components/list-screen.test.tsx
+  name: 一覧の画面の枠の単体テスト
+  description: 一覧の画面の枠が絞り込みの候補をストアへ登録する処理を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-76
+    type: tests
 - path: src/shared/components/filter-drawer.stories.tsx
   name: 絞り込みのストーリー
   description: 絞り込みのストーリー。

@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 import presets
-from errors import PresetNameTakenError
+from errors import PresetNameTakenError, SchemaMismatchError, SettingsInvalidError
 from fixture_types import MakeItem, MakeWorkspace
 from store import load_workspace
 from workspace_fixtures import RECORD_DIR
@@ -119,6 +119,58 @@ def test_create_preset_when_name_taken(make_workspace: MakeWorkspace, valid_sett
     with pytest.raises(PresetNameTakenError, match="UI の設計"):
         presets.create_preset(root, name="ｕｉ の設計", description=None, expr=_eq("画面"))
     assert (root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8") == before
+
+
+def test_create_preset_from_preview(make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]) -> None:
+    """末尾に追加して件数を返す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", tags=_tags("画面", "廃止")),
+        make_item("A-2", tags=_tags("画面")),
+        settings=_with_presets(valid_settings, {"name": "画面の設計", "filter": _eq("画面")}),
+    )
+    expr = {"and": [_eq("画面"), _eq("廃止")]}
+    # 実行
+    result = presets.create_preset_from_preview(root, {"name": " 廃止する画面 ", "filter": expr})
+    # 検証
+    assert result == {"preset": {"name": "廃止する画面", "filter": expr}, "count": 1}
+    assert [entry["name"] for entry in _read_presets(root) or []] == ["画面の設計", "廃止する画面"]
+
+
+@pytest.mark.parametrize(
+    ("body", "key"),
+    [
+        pytest.param({"name": "画面", "filter": _eq("画面"), "description": "説明"}, "description", id="unknown_key"),
+        pytest.param({"name": "   ", "filter": _eq("画面")}, "name", id="blank_name"),
+        pytest.param({"name": "あ" * 41, "filter": _eq("画面")}, "name", id="long_name"),
+        pytest.param({"name": "画面", "filter": {"and": []}}, "filter.and", id="empty_bundle"),
+    ],
+)
+def test_create_preset_from_preview_when_body_invalid(
+    make_workspace: MakeWorkspace, valid_settings: dict[str, Any], body: dict[str, Any], key: str
+) -> None:
+    """合わない本文は書かない（異常系）。"""
+    # 準備
+    root = make_workspace(settings=valid_settings)
+    before = (root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8")
+    # 実行・検証
+    with pytest.raises(SettingsInvalidError, match=key):
+        presets.create_preset_from_preview(root, body)
+    assert (root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8") == before
+
+
+def test_create_preset_from_preview_when_config_invalid(make_workspace: MakeWorkspace, valid_settings: dict[str, Any]) -> None:
+    """崩れた config.yaml には書き足さない（異常系）。"""
+    # 準備
+    root = make_workspace(settings=valid_settings)
+    config = root / RECORD_DIR / "config.yaml"
+    config.write_text(yaml.safe_dump({**valid_settings, "presets": "画面"}, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    before = config.read_text(encoding="utf-8")
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as caught:
+        presets.create_preset_from_preview(root, {"name": "画面の設計", "filter": _eq("画面")})
+    assert any("presets" in line for line in caught.value.lines)
+    assert config.read_text(encoding="utf-8") == before
 
 
 def test_update_preset_when_move(make_workspace: MakeWorkspace, valid_settings: dict[str, Any]) -> None:
