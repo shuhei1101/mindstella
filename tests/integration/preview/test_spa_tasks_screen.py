@@ -361,3 +361,36 @@ def test_drawer_presets(page: Page, write_preview: WritePreview, make_item: Make
     # 検証（再読み込みしても同じ条件で、式のチップを出す）
     expect(page.locator("[data-card]")).to_have_count(1)
     expect(page.get_by_role("button", name="タグ: 「画面」を含む かつ 「廃止」を含まない の条件を解除")).to_be_visible()
+
+
+def test_preset_saved(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
+    """絞り込みのドロワーで今のタグの条件をプリセットとして保存すると、件数つきでプリセットの並びに出し、当たらないプリセットは 0 件で出す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("T-1", title="画面の作業", status="未着手", tags=[{"name": "画面"}]),
+        make_item("T-2", title="廃止する作業", status="未着手", tags=[{"name": "画面"}, {"name": "廃止"}]),
+        make_item("T-3", title="データの作業", status="完了", tags=[{"name": "データ"}]),
+    )
+    open_spa(page, url, "?tab=tasks&view=table")
+    page.get_by_role("button", name="絞り込み").click()
+    drawer = page.get_by_role("dialog", name="絞り込み")
+    # 実行（「画面」と「廃止」で保存する）
+    drawer.get_by_role("checkbox", name="画面").check()
+    drawer.get_by_role("checkbox", name="廃止").check()
+    drawer.get_by_role("button", name="プリセットとして保存").click()
+    drawer.get_by_label("プリセットの名前").fill("廃止する画面")
+    drawer.get_by_role("button", name="保存", exact=True).click()
+    # 検証
+    saved = drawer.get_by_role("button", name="廃止する画面 1 件")
+    expect(saved).to_be_visible()
+    expect(saved).to_have_attribute("aria-pressed", "true")
+    # 実行（「データ」と「廃止」で保存する）
+    drawer.get_by_role("checkbox", name="画面").uncheck()
+    drawer.get_by_role("checkbox", name="データ").check()
+    drawer.get_by_role("button", name="プリセットとして保存").click()
+    drawer.get_by_label("プリセットの名前").fill("削除するデータ")
+    drawer.get_by_role("button", name="保存", exact=True).click()
+    # 検証
+    empty = drawer.get_by_role("button", name="削除するデータ 0 件")
+    expect(empty).to_be_visible()
+    expect(empty).to_be_enabled()
