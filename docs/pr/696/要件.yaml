@@ -49,7 +49,9 @@ docs:
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: 資料の status の下書き・確認中・完成の意味を加える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T10:35:15.682123+00:00'
 scope_out:
   - item: 1 件の検討事項で 1 つの質問だけを聞く決まり
     reason: 要望に含まれない。#686 がこの作業 PR の後に入れる

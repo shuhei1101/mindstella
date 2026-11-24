@@ -84,7 +84,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-24T10:07:01.522795+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
+    note: docs/guide/ワークスペースの書式.mark.md を修正。docs/guide/エージェントフロー.md は工程名が実装で決定するため実装で修正する
+    updated_by: planner
+    updated_at: '2026-11-24T10:35:18.365078+00:00'
   - process: 単体テスト作成
     status: skipped
     reason: コードを変えない
