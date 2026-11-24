@@ -43,4 +43,4 @@ export const NameTaken: Story = {
 };
 
 /** 最大の長さ（40 文字）の名前 */
-export const LongName: Story = { args: { defaultOpen: true, defaultName: "画面の設計の見直しで使用する廃止予定の画面と部品をまとめて開くためのプリセット" } };
+export const LongName: Story = { args: { defaultOpen: true, defaultName: "画面の設計の見直しで使用する廃止予定の画面と部品をまとめて開くためのプリセット集" } };

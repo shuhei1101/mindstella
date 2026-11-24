@@ -81,7 +81,7 @@ states:
       - name: defaultOpen
         value: 'true'
       - name: defaultName
-        value: 画面の設計の見直しで使用する廃止予定の画面と部品をまとめて開くためのプリセット
+        value: 画面の設計の見直しで使用する廃止予定の画面と部品をまとめて開くためのプリセット集
 accessibility:
   - 「プリセットとして保存」を押せないときは `disabled` にせず `aria-disabled="true"` にし、フォーカスできるまま押せない理由を `aria-describedby` で結ぶ
   - 名前の入力欄に「プリセットの名前」の `label` を付け、エラーがある間は `aria-invalid="true"` と `aria-describedby` でエラーの文を結ぶ
