@@ -206,7 +206,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
         <div className="border-b border-border px-3 py-2">
           <div role="group" aria-label="スレッドの状態で絞る" className={SEGMENTED_GROUP_CLASS}>
           {FILTERS.map((entry) => (
-            <Button key={entry.key} variant="ghost" aria-pressed={filter === entry.key} className={cn(SEGMENTED_ITEM_CLASS, "h-7", filter === entry.key && SEGMENTED_SELECTED_CLASS)} onClick={() => { setComments({ tstatus: entry.key === "open" ? undefined : entry.key }); }}>
+            <Button key={entry.key} variant="ghost" aria-pressed={filter === entry.key} className={cn(SEGMENTED_ITEM_CLASS, "h-7 font-normal", filter === entry.key && SEGMENTED_SELECTED_CLASS)} onClick={() => { setComments({ tstatus: entry.key === "open" ? undefined : entry.key }); }}>
               {entry.label}
               <span className="font-mono text-small">{counts[entry.key]}</span>
             </Button>
