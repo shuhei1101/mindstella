@@ -44,7 +44,7 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, comme
   return (
     <div className="border-b border-border-soft">
       <div className="flex items-center gap-1 p-2">
-        <span className="text-xs text-muted-foreground">
+        <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
           <span className="max-sm:hidden">{KIND_LABEL[kind]} </span>
           <span className="font-mono">{item.id}</span>
         </span>
