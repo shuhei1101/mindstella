@@ -1,0 +1,44 @@
+$ npx eslint frontend/src/features/comments/shared/thread-post.test.tsx frontend/src/features/comments/thread/thread-view.test.tsx frontend/src/features/detail/detail-panel/components/detail-header.test.tsx frontend/src/features/detail/detail-panel/components/value-text.test.tsx frontend/src/features/docs/docs/components/doc-cards.test.tsx frontend/src/features/docs/docs/docs-screen.test.tsx frontend/src/features/search/search/use-search-shortcut.test.tsx frontend/src/features/settings/display-settings/components/settings-panel.test.tsx frontend/src/shared/components/board.test.tsx frontend/src/shared/components/card-sort.test.tsx frontend/src/shared/components/item-dates.test.tsx frontend/src/shared/components/list-columns.test.tsx frontend/src/shared/components/sibling-nav.test.tsx frontend/src/shared/components/table.test.tsx frontend/src/shared/components/thread-title.test.tsx frontend/src/shared/core/format.test.ts frontend/src/shared/core/list-rows.test.ts frontend/src/shared/hooks/use-preview-search.test.tsx frontend/src/shared/hooks/use-shortcut.test.tsx frontend/src/shared/stores/list-order-store.test.ts frontend/src/shared/stores/prefs-store.test.ts  frontend/src/testing/render.tsx
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/features/docs/docs/docs-screen.test.tsx
+  54:12  error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+  54:30  error  Unsafe member access .getState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  54:41  error  Unsafe member access .orders on a type that cannot be resolved    @typescript-eslint/no-unsafe-member-access
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/shared/components/board.test.tsx
+  97:24  error  Unsafe assignment of an `any` value            @typescript-eslint/no-unsafe-assignment
+  97:29  error  Unsafe member access .id on an `any` value     @typescript-eslint/no-unsafe-member-access
+  97:62  error  Unsafe return of a value of type `any`         @typescript-eslint/no-unsafe-return
+  97:74  error  Unsafe member access .id on an `any` value     @typescript-eslint/no-unsafe-member-access
+  98:19  error  Unsafe member access .title on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/shared/components/card-sort.test.tsx
+  27:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/shared/components/list-columns.test.tsx
+  22:37  error  Unsafe call of a type that could not be resolved              @typescript-eslint/no-unsafe-call
+  22:53  error  Unsafe member access .cell on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  28:12  error  Unsafe call of a type that could not be resolved              @typescript-eslint/no-unsafe-call
+  28:28  error  Unsafe member access .get on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/shared/core/format.test.ts
+  15:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/shared/hooks/use-preview-search.test.tsx
+  156:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  156:15  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  156:15  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/shared/hooks/use-shortcut.test.tsx
+  11:12   error  Unsafe call of a type that could not be resolved                @typescript-eslint/no-unsafe-call
+  37:17   error  'any' overrides all other types in this union type              @typescript-eslint/no-redundant-type-constituents
+  38:114  error  Unsafe assignment of an error typed value                       @typescript-eslint/no-unsafe-assignment
+  45:20   error  Unsafe member access .active on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/shared/stores/list-order-store.test.ts
+  14:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+
+✖ 22 problems (22 errors, 0 warnings)
+
+
+残る違反は、テストが import するモジュール・関数・props（use-shortcut・list-order-store・formatItemDateTime・cardSortToParam・commonColumns の日時の列・Board の card の第 2 引数・backItem）が実装の前で型を解決できないことによる。単体テスト作成の工程で残してよい型の違反として残す。
