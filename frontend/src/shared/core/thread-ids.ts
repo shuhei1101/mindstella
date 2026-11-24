@@ -44,6 +44,8 @@ export const revealPost = (postId: string, frames = 60): void => {
   if (element !== null) {
     element.scrollIntoView({ block: "nearest" });
     element.focus({ preventScroll: true });
+    // 開いたままのスレッドでは画面が控えを取り出さないため、移り終えたら控えを消す
+    if (requestedPost === postId) requestedPost = null;
     return;
   }
   if (frames > 0) requestAnimationFrame(() => { revealPost(postId, frames - 1); });
