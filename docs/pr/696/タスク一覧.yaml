@@ -20,10 +20,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-24T10:07:01.522795+00:00'
   - process: 複合ユースケース設計
-    status: skipped
-    reason: 複合ユースケース『話し合いを記録しながら進める』の流れ（回答が要ることを検討事項に挙げて通知する）は変わらない
+    status: done
     updated_by: planner
-    updated_at: '2026-11-24T10:07:01.522795+00:00'
+    updated_at: '2026-11-24T10:50:36.956081+00:00'
+    note: SC-489-52 のスレッドで聞く 2 つのシナリオの削除とエージェントフローとの対応の書き換え（be00c666）。単一ユースケース設計のレビューで合格
   - process: デザインスタイル選定
     status: skipped
     reason: 画面を変えない
