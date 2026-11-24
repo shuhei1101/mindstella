@@ -1,0 +1,61 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-568-1.yaml
+    impact: changed
+    detail: 作業の完了の通知を、応答の終わりではなく利用者に手番を返すときのまとまりの確定で 1 件だけ送る。サブエージェントやバックグラウンドの処理を待つだけの応答の終わりでは送らず、返信だけで手番を返すときも送る（#697）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: changed
+    detail: コメントの取り込みの最後に、その回の修正と返信をまとめて 1 回だけ確定してから手番を返す決まりにする（#697）
+    depends_on:
+      - docs/scenario/SC-568-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-26.yaml
+    impact: following
+    detail: 起動と再開でのまとめ忘れの確定が、作業の完了の通知のきっかけの変更に追随する（#697）
+    depends_on:
+      - docs/scenario/SC-568-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: run_only
+    detail: 応答の途中でない間の外部の変更の自動のまとまりで、作業の完了の通知を送らないことが変わらないかを確かめる（#697）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: 利用者が画面でスレッドをクローズ・オープンに戻すときに理由を聞かずに押したらすぐ変え、クローズしたらコメントの一覧に戻る（#377）。iPhone の幅でスレッドを開いても画面が端末の幅に収まる（#585）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: 利用者がトップバーの更新のボタンで、サーバーへ接続し直して最新の記録を読み込み直し、開いている項目・絞り込み・入力中のコメントを保ったまま復帰できる（#482）。トップバーの状態の表示とボタンを、幅に関わらずアイコンと件数だけにする（#573）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: following
+    detail: トップバーの音声入力中の表示がアイコンと経過時間だけになり、名前はツールチップと読み上げで出る（#573）
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: スレッドのクローズ・オープンが押したらすぐ変わりクローズで一覧に戻ること（#377）、トップバーの更新のボタン（#482）、トップバーの状態の表示とボタンがアイコンと件数だけになり名前はツールチップで出ること（#573）を書く
+    status: todo
+  - page: docs/guide/セットアップ手順-Discordに通知する.md
+    new: false
+    change: 作業の完了の通知が届くのを、応答の終わりから利用者に手番が返ったときに書き換える（#697）
+    status: todo
+scope_out:
+  - item: '#553 の結合テスト 3 件（tests/integration/preview/test_detail_panel_screen.py の test_body_alias_tooltip_pinned・test_diff_minimap_when_empty_area_pressed・test_diff_body_layout_switch）の修正'
+    reason: '対象のテストファイルは今の画面ごと #644（7a2e75f7）で削除され、origin/develop に同じ名前のテストが無い。直す対象が残っていないため、要件.mark.md の #553 の行にスコープの消失として記録し、マージで #553 を閉じる'
+    plan: none
+  - item: AI の返信を commit まで画面に表示しない変更
+    reason: '#697 の後続で、この束の子ではない。返信は今までどおり書き込んだ時点で画面に表示する'
+    plan: '#698'
+  - item: 作業の完了の通知・停止の通知の URL を外部に公開した URL にする変更
+    reason: 同じ notify.py を変えるが、通知のきっかけではなく通知の中身の変更で、この束の子ではない
+    plan: '#617'
+  - item: トップバーに MindStella のセッションの状態と起動し直すボタンを表示する変更
+    reason: 同じトップバーを変えるが、この束の子ではない。この PR でアイコンだけの作りにした後で足す
+    plan: '#586'
