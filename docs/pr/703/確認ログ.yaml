@@ -1,0 +1,7 @@
+confirmations:
+  - topic: '#377・#482 画面一覧・画面遷移'
+    decision: スレッドのクローズ・オープンは理由の入力欄を挟まずにすぐ状態を変え、クローズしたらコメントの一覧へ戻る（履歴に追加しない）。オープンに戻したときはスレッドに留まる。トップバーの接続の状態の表示のすぐ右に更新のボタンを常に出し、今の画面に留まったまま接続し直して読み込み直す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 1a7308ab
+    thread: https://github.com/shuhei1101/mindstella/pull/703#discussion_r4683950268
