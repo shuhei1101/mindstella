@@ -7,6 +7,14 @@ export const formatJst = (iso: string): string => {
   return `${part("month")}/${part("day")} ${part("hour")}:${part("minute")}`;
 };
 
+/** 項目の作成日時・更新日時を JST で、今年は `MM/DD HH:mm`、今年でない日時は `YYYY/MM/DD HH:mm` にする。日時として読めない値は空の文字 */
+export const formatItemDateTime = (iso: string, now: Date = new Date()): string => {
+  if (Number.isNaN(Date.parse(iso))) return "";
+  const yearOf = (date: Date): string => new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric" }).formatToParts(date).find((entry) => entry.type === "year")?.value ?? "";
+  const year = yearOf(new Date(iso));
+  return year === yearOf(now) ? formatJst(iso) : `${year}/${formatJst(iso)}`;
+};
+
 /** 値が無いときに出す文字 */
 export const NO_VALUE = "（なし）";
 

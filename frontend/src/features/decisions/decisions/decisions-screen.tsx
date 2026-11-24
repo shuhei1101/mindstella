@@ -20,6 +20,8 @@ const decisionColumns = (index: RecordIndex, onOpen: (id: string) => void): Tabl
     { key: "ready", label: "着手可否", filterable: true, order: ["着手可能", "前提待ち", "なし"], get: (row) => (row["status"] !== "未決定" ? "なし" : index.readyIds.has(row.id) ? "着手可能" : "前提待ち") },
     { key: "depends_on", label: "前提", get: (row) => refsOf(row as unknown as Item, "depends_on"), cell: (row) => <IdLinks ids={refsOf(row as unknown as Item, "depends_on")} titleOf={(id) => titleOf(index, id)} onOpen={onOpen} /> },
     common.tags,
+    common.created,
+    common.updated,
   ];
 };
 
@@ -33,10 +35,11 @@ export const DecisionsScreen = ({ drawerOpen, onCloseDrawer }: DecisionsScreenPr
       columnsOf={decisionColumns}
       drawerOpen={drawerOpen}
       onCloseDrawer={onCloseDrawer}
-      content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef }) => (
+      content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef, sort }) => (
         <Board
         scrollRef={scrollRef}
           columns={boardColumns({ items: shown, statuses: DECISION_STATUSES, statusFilter: filters["status"] ?? [] })}
+          sort={sort}
           emptyText="検討事項はありません。"
           added={addedCards(edit, DECISION_STATUSES, onOpenAdded)}
           card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[]} links={refsOf(item, "depends_on")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />}

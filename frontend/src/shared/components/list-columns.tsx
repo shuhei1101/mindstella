@@ -2,6 +2,7 @@
 import { StatusMark } from "@/shared/components/icon";
 import type { Row, TableColumn } from "@/shared/components/table";
 import { TagList } from "@/shared/components/tag-list";
+import { formatItemDateTime } from "@/shared/core/format";
 import { tagNames, type Tag } from "@/shared/core/records";
 
 const textOf = (row: Row, key: string): string | undefined => {
@@ -16,6 +17,22 @@ export const rowTexts = (row: Row, key: string): string[] => {
 };
 
 const rowTags = (row: Row): string[] => tagNames(row["tags"] as readonly (Tag | string)[] | undefined);
+
+/** 日時の列。セルは表示の書式の `time`、並べ替えと絞り込みは元の ISO 8601 の値で行う */
+const dateColumn = (key: "created" | "updated", label: string) =>
+  ({
+    key,
+    label,
+    get: (row: Row) => textOf(row, key),
+    cell: (row: Row) => {
+      const value = textOf(row, key);
+      return value === undefined || formatItemDateTime(value) === "" ? null : (
+        <time dateTime={value} className="whitespace-nowrap">
+          {formatItemDateTime(value)}
+        </time>
+      );
+    },
+  }) satisfies TableColumn;
 
 /** ID の並びを押せる題に並べる */
 export const IdLinks = ({ ids, titleOf, onOpen }: { ids: readonly string[]; titleOf: (id: string) => string; onOpen: (id: string) => void }) => (
@@ -49,4 +66,6 @@ export const commonColumns = () => ({
   }),
   tags: { key: "tags", label: "タグ", filterable: true, get: rowTags, cell: (row: Row) => <TagList values={rowTags(row)} /> } satisfies TableColumn,
   text: (key: string, label: string, options: Partial<TableColumn> = {}): TableColumn => ({ key, label, get: (row) => textOf(row, key), ...options }),
+  created: dateColumn("created", "作成日時"),
+  updated: dateColumn("updated", "更新日時"),
 });

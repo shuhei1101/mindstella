@@ -10,6 +10,7 @@ import type { PendingMarkKind } from "@/shared/core/edits";
 import type { TocEntry } from "@/shared/core/body-toc";
 import { cn } from "@/shared/lib/cn";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
+import { useShortcut } from "@/shared/hooks/use-shortcut";
 import { bodyFormatOf, KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 
 export type DetailHeaderProps = {
@@ -31,12 +32,15 @@ export type DetailHeaderProps = {
   toc?: readonly TocEntry[];
   /** 目次で押した見出し */
   onHeading?: (slug: string) => void;
-  /** 元の画面の今の並び。渡さないとき（並びの元の画面が無いとき）は前後の項目へ移るボタンを描かない */
-  sibling?: SiblingNavProps;
+  /** 元の画面の今の並び。null・渡さないとき（一覧から開いていないとき）は前後の項目へ移るボタンを描かず、キーも受けない */
+  sibling?: SiblingNavProps | null;
 };
 
-export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, toc = [], onHeading, sibling }: DetailHeaderProps) => {
-  const { canBack, canForward, openItemComments } = usePreviewSearch();
+export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, toc = [], onHeading, sibling = null }: DetailHeaderProps) => {
+  const { canBack, canForward, openItemComments, backItem, forwardItem } = usePreviewSearch();
+  const prevKey = useShortcut("item.prev", () => sibling?.onPrev(), sibling !== null && sibling.position > 1);
+  const nextKey = useShortcut("item.next", () => sibling?.onNext(), sibling !== null && sibling.position < sibling.total);
+  const siblingKeys = prevKey.active || nextKey.active ? { prev: prevKey.keys, next: nextKey.keys } : null;
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
   const editLabel = editing ? "編集を終える" : "編集する";
@@ -67,11 +71,11 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, comme
             <Icon name="comment" />
           </Button>
         )}
-        {sibling === undefined ? null : <SiblingNav {...sibling} />}
-        <Button variant="ghost" size="icon" aria-label="前の項目へ戻る" title="前の項目へ戻る" disabled={!canBack} onClick={() => { window.history.back(); }}>
+        {sibling === null ? null : <SiblingNav {...sibling} keys={siblingKeys} />}
+        <Button variant="ghost" size="icon" aria-label="前の項目へ戻る" title="前の項目へ戻る" disabled={!canBack} onClick={backItem}>
           ←
         </Button>
-        <Button variant="ghost" size="icon" aria-label="次の項目へ進む" title="次の項目へ進む" disabled={!canForward} onClick={() => { window.history.forward(); }}>
+        <Button variant="ghost" size="icon" aria-label="次の項目へ進む" title="次の項目へ進む" disabled={!canForward} onClick={forwardItem}>
           →
         </Button>
         <Button variant="ghost" size="icon" aria-label={fullLabel} title={fullLabel} className="max-md:hidden" onClick={onToggleFull}>

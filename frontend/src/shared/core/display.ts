@@ -13,6 +13,7 @@ const REVIEW_ORDER_LABEL = "コメントの並び";
 
 /** 区画「コメントの入力」の「レビューに追加」の後のフォーカスの名前 */
 export const FOCUS_AFTER_ADD_LABEL = "レビューに追加した後のフォーカス";
+export const SINGLE_KEY_SHORTCUTS_LABEL = "1 文字のショートカット";
 
 /** 表示する種類を、外した種類の名前で書く（全て出すときは「すべて表示」） */
 export const kindsText = (kinds: ReadonlySet<Kind>): string => {
@@ -36,6 +37,7 @@ export const overrideNames = ({ prefs, theme }: { prefs: Prefs; theme: Theme | n
     ...(prefs.sectionFold === false ? [BODY_VIEW_LABELS.fold] : []),
     ...(prefs.reviewOrder === "oldest" ? [REVIEW_ORDER_LABEL] : []),
     ...(prefs.focusAfterAdd === "input" || prefs.focusAfterAdd === "none" ? [FOCUS_AFTER_ADD_LABEL] : []),
+    ...(prefs.singleKeyShortcuts === false ? [SINGLE_KEY_SHORTCUTS_LABEL] : []),
   ];
 };
 
@@ -49,6 +51,7 @@ export const resetPrefs = (prefs: Record<string, unknown>): Record<string, unkno
   minimap: null,
   reviewOrder: null,
   focusAfterAdd: null,
+  singleKeyShortcuts: null,
   sectionFold: null,
 });
 

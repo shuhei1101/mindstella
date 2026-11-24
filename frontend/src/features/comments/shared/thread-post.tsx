@@ -1,4 +1,6 @@
 // スレッドの書き込み（部品設計『スレッドの書き込み.tsx』）。利用者と AI の書き込み・クローズとオープンへの戻しの記録・レビュー中の書き込みのどれか 1 つを出す
+import { useState } from "react";
+
 import { ReviewEditForm } from "@/features/comments/shared/review-edit-form";
 import { AUTHOR_LABELS, PendingMark } from "@/features/comments/shared/thread-state";
 import { Icon } from "@/shared/components/icon";
@@ -47,6 +49,8 @@ export type ThreadPostProps = Pick<VoiceProps, "voice" | "voiceReason" | "elapse
   onRemove?: (id: string) => void;
   onOpenChangeSet?: (id: string) => void;
   onToggle?: (id: string, open: boolean) => void;
+  /** 送信した書き込みの本文を 5 行までに畳むか（スレッドの最新以外の書き込み） */
+  fold?: boolean;
 };
 
 const noop = (): void => undefined;
@@ -98,7 +102,11 @@ export const ThreadPost = ({
   onRemove = noop,
   onOpenChangeSet,
   onToggle = noop,
+  fold = false,
 }: ThreadPostProps) => {
+  // 畳んだ送信した書き込みの開閉（使用する側が `open` を渡さないときは部品が覚える）
+  const [postOpenState, setPostOpen] = useState(false);
+  const postOpen = open || postOpenState;
   if (event !== null) return <EventItem event={event} />;
   if (pending !== null) {
     const label = reviewLabel(pending);
@@ -166,7 +174,22 @@ export const ThreadPost = ({
           {formatJst(post.created)}
         </time>
       </div>
-      <PostBody body={post.body} titles={titles} index={index} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} threadTitles={threadTitles} onOpenThread={onOpenThread} />
+      {fold ? (
+        <ReviewBodyFold id={post.id} label={`${post.id} の書き込み`} body={post.body} titles={titles} index={index} changeSets={changeSets} open={postOpen} onToggle={(id, next) => { setPostOpen(next); onToggle(id, next); }} onOpenChangeSet={onOpenChangeSet} onOpenItem={onOpenItem} threadTitles={threadTitles} onOpenThread={onOpenThread}>
+          {(content, toggle) => (
+            <>
+              {content}
+              {toggle === null ? null : (
+                <div data-part="more-row" className="flex">
+                  {toggle}
+                </div>
+              )}
+            </>
+          )}
+        </ReviewBodyFold>
+      ) : (
+        <PostBody body={post.body} titles={titles} index={index} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} threadTitles={threadTitles} onOpenThread={onOpenThread} />
+      )}
     </article>
   );
 };

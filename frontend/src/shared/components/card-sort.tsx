@@ -1,5 +1,7 @@
 // カード・ボードの並べ替え。並べる項目を選ぶボタンの組で、同じ項目をもう一度押すと向きが逆になる
 import { Icon } from "@/shared/components/icon";
+import { sortRows, type ListColumn } from "@/shared/core/list-rows";
+import type { Item } from "@/shared/core/records";
 import { Button } from "@/shared/components/ui/button";
 
 export type CardSortKey = "default" | "created" | "updated";
@@ -26,6 +28,36 @@ export const nextCardSort = (current: CardSortValue, key: CardSortKey): CardSort
   if (current.key !== key) return { key, dir: "desc" };
   return { key, dir: current.dir === "desc" ? "asc" : "desc" };
 };
+
+/** 並びを URL の `sort` にする。画面の既定と同じ並びは書かず、連番は `id`、降順は頭に `-` を付ける */
+export const cardSortToParam = (value: CardSortValue, initial: CardSortValue): string | undefined => {
+  if (value.key === initial.key && value.dir === initial.dir) return undefined;
+  if (value.key === "default") return "id";
+  return value.dir === "desc" ? `-${value.key}` : value.key;
+};
+
+/** URL の `sort` を並びにする。無ければ画面の既定、`id`・`-id`・知らない値は連番 */
+export const cardSortFromParam = (sort: string | undefined, initial: CardSortValue): CardSortValue => {
+  if (sort === undefined) return initial;
+  const dir: CardSortDir = sort.startsWith("-") ? "desc" : "asc";
+  const key = dir === "desc" ? sort.slice(1) : sort;
+  return key === "created" || key === "updated" ? { key, dir } : { key: "default", dir: "asc" };
+};
+
+/** 並びを `sortRows` の `sort` にする（連番は `id`） */
+export const cardSortToRowSort = (value: CardSortValue): string => {
+  const key = value.key === "default" ? "id" : value.key;
+  return value.dir === "desc" ? `-${key}` : key;
+};
+
+const ITEM_SORT_COLUMNS: ListColumn<Item>[] = [
+  { key: "id", label: "連番", get: (item) => item.id },
+  { key: "created", label: "作成日時", get: (item) => item.created },
+  { key: "updated", label: "更新日時", get: (item) => item.updated },
+];
+
+/** カード・ボードの項目を `sortRows` の `sort`（`id`・`created`・`updated`、降順は頭に `-`）の順に並べる */
+export const sortItems = (items: readonly Item[], sort: string): Item[] => sortRows({ rows: items, columns: ITEM_SORT_COLUMNS, sort });
 
 export type CardSortProps = { value: CardSortValue; onChange: (value: CardSortValue) => void };
 

@@ -42,6 +42,9 @@ export type SettingsPanelProps = {
   /** 端末の主な入力がタッチか（「自動」の下の文を切り替える） */
   pointerCoarse: boolean;
   onFocusAfterAddChange: (value: FocusAfterAdd) => void;
+  /** 修飾キーの無い 1 文字のショートカット（一覧の並びの前後の `j`・`k`）を使用するか */
+  singleKeyShortcuts?: boolean;
+  onSingleKeyShortcutsChange?: (value: boolean) => void;
   /** 「設定を編集する」を押したとき（渡さないと入口を出さない） */
   onWorkspace?: () => void;
 };
@@ -64,8 +67,10 @@ const AlwaysRow = ({ icon, label }: { icon: IconName; label: string }) => (
 );
 
 export const SettingsPanel = (props: SettingsPanelProps) => {
-  const { visibleKinds, defaultKinds, counts, overrides, canSave, message, storageAvailable, minimap, bodyView, focusAfterAdd, pointerCoarse, onKindsChange, onReset, onSaveDefault, onMinimapChange, onBodyViewChange, onFocusAfterAddChange, onWorkspace } = props;
+  const { visibleKinds, defaultKinds, counts, overrides, canSave, message, storageAvailable, minimap, bodyView, focusAfterAdd, pointerCoarse, singleKeyShortcuts, onSingleKeyShortcutsChange, onKindsChange, onReset, onSaveDefault, onMinimapChange, onBodyViewChange, onFocusAfterAddChange, onWorkspace } = props;
   const focusHintId = useId();
+  const keyHintId = useId();
+  const usesSingleKey = singleKeyShortcuts ?? true;
   const shown = KIND_KEYS.filter((kind) => visibleKinds.includes(kind));
   const allShown = shown.length === KIND_KEYS.length;
   const differs = !sameKinds(visibleKinds, defaultKinds);
@@ -143,6 +148,14 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
           </ul>
           <p id={focusHintId} className="m-0 text-small text-muted-foreground">自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。</p>
         </fieldset>
+      </fieldset>
+      <fieldset className="m-0 grid gap-1 border-0 p-0">
+        <legend className="mb-1 font-medium">キーボード</legend>
+        <label className="flex min-h-10 items-center gap-2">
+          <Checkbox checked={usesSingleKey} aria-describedby={keyHintId} onChange={() => onSingleKeyShortcutsChange?.(!usesSingleKey)} />
+          <span>1 文字のショートカットを使用する</span>
+        </label>
+        <p id={keyHintId} className="m-0 text-small text-muted-foreground">オフにすると、詳細の j・k で一覧の前後の項目へ移る操作を受け付けません。</p>
       </fieldset>
       <div className="grid gap-2">
         {overrides.length === 0 ? (

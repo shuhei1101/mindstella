@@ -11,7 +11,7 @@ import { DetailComments, DetailReviewComments } from "@/features/detail/detail-p
 import { DiffDeadlineContext, KeyDiff, keyDiffs, nextDiffDeadline, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
 import { OptionList } from "@/features/detail/detail-panel/components/option-list";
 import { RelatedList } from "@/features/detail/detail-panel/components/related-list";
-import { ValueText } from "@/features/detail/detail-panel/components/value-text";
+import { ValueLinksContext, ValueText, type ValueLinks } from "@/features/detail/detail-panel/components/value-text";
 import { DiagramViewer, type DiagramViewerProps } from "@/features/detail/diagram-viewer/diagram-viewer";
 import { DiffMark } from "@/shared/components/diff-mark";
 import { DiffMinimap } from "@/shared/components/diff-minimap";
@@ -36,7 +36,9 @@ import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll } from "@/shared/stores/prefs-store";
 import { isEmbedded } from "@/shared/core/embedded";
+import { useThreadLinks } from "@/shared/hooks/use-thread-links";
 import type { SiblingNavProps } from "@/shared/components/sibling-nav";
+import { siblingOf, useListOrderStore } from "@/shared/stores/list-order-store";
 import { useSingleFlight } from "@/shared/hooks/use-single-flight";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
@@ -120,12 +122,31 @@ const bodyDisplayOf = (): BodyDisplay => {
   return { fold: prefs.sectionFold !== false };
 };
 
-export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string; sibling?: SiblingNavProps };
+export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string; sibling?: SiblingNavProps | null };
 
 /** 見出しと本文。パネルと全画面が共通で使う */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
-export const DetailContent = ({ id, index, full, sibling }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
-  const { search, openItem, closeItem, setFull, setHeading, setDiff } = usePreviewSearch();
+export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
+  const { search, openItem, closeItem, setFull, setHeading, setDiff, fromList, openSibling } = usePreviewSearch();
+  const orders = useListOrderStore((state) => state.orders);
+  const threadLinks = useThreadLinks();
+  // 一覧から開いた項目で、後ろの画面の今の並びにあるときだけ、前後の項目へ移る
+  const found = fromList ? siblingOf(orders, id) : null;
+  const sibling: SiblingNavProps | null =
+    siblingProp !== undefined
+      ? siblingProp
+      : found === null
+        ? null
+        : {
+            position: found.position,
+            total: found.total,
+            onPrev: () => {
+              if (found.prev !== null) openSibling(found.prev);
+            },
+            onNext: () => {
+              if (found.next !== null) openSibling(found.next);
+            },
+          };
   const { point } = useDiffView();
   // 押したタグを後ろの画面の絞り込みに加える（後ろの画面が概要なら項目の種類の画面へ移る）
   const { addTag } = useScreenFilters(search.tab ?? "overview");
@@ -272,6 +293,7 @@ export const DetailContent = ({ id, index, full, sibling }: Omit<DetailContentPr
   };
   // 差分の表示の間と配る書き出しは編集・確認済みを出さない
   const embedded = isEmbedded();
+  const valueLinks: ValueLinks = { index, selfId: id, onOpen: openItem, threads: embedded ? null : threadLinks.threads, onOpenThread: threadLinks.onOpenThread };
   const canEdit = point === null && !embedded;
   const marks: Record<string, PendingMarkKind> = {};
   const blockedIds = new Set(blockedEdits.map((entry) => entry.id));
@@ -294,6 +316,7 @@ export const DetailContent = ({ id, index, full, sibling }: Omit<DetailContentPr
     setHeading(slug);
   };
   return (
+    <ValueLinksContext.Provider value={valueLinks}>
     <DiffDeadlineContext.Provider value={deadline}>
       <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} toc={toc} onHeading={toHeading} sibling={sibling} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false && view !== "source"} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
@@ -360,6 +383,7 @@ export const DetailContent = ({ id, index, full, sibling }: Omit<DetailContentPr
       {embedded || editing ? null : <DetailComments id={id} scroller={bodyScroller} />}
       {diagram === null ? null : <DiagramViewer {...diagram} onClose={() => { setDiagram(null); }} />}
     </DiffDeadlineContext.Provider>
+    </ValueLinksContext.Provider>
   );
 };
 
@@ -380,7 +404,7 @@ const readPanelWidth = (): number => {
   return saved !== null && /^[1-9]\d*$/.test(saved) ? Number(saved) : PANEL_WIDTH.default;
 };
 
-export type DetailPanelProps = { id: string; index: RecordIndex; sibling?: SiblingNavProps };
+export type DetailPanelProps = { id: string; index: RecordIndex; sibling?: SiblingNavProps | null };
 
 export const DetailPanel = ({ id, index, sibling }: DetailPanelProps) => {
   const [width, setWidth] = useState(readPanelWidth);

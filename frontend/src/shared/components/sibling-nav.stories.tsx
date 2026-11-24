@@ -23,5 +23,5 @@ export const First: Story = { args: { position: 1, total: 2 } };
 /** 並びの末尾。次の項目へは移れない */
 export const Last: Story = { args: { position: 3, total: 3 } };
 
-/** 件数が 3 桁の並び。位置の幅が変わってもボタンの位置が動かない */
-export const ManyItems: Story = { args: { position: 128, total: 512 } };
+/** 4 桁の件数（「1234 / 5678」）。位置の文字を折り返さない */
+export const ManyItems: Story = { args: { position: 1234, total: 5678 } };

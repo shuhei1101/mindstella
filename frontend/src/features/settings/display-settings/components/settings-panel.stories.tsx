@@ -8,7 +8,7 @@ import { KIND_KEYS } from "@/shared/core/records";
 const meta = {
   title: "Settings/SettingsPanel",
   component: SettingsPanel,
-  args: { visibleKinds: [...KIND_KEYS], defaultKinds: [...KIND_KEYS], counts: { decisions: 12, tasks: 8, research: 3, docs: 5, terms: 9, notes: 4, logs: 20 }, overrides: [], canSave: true, message: null, storageAvailable: true, minimap: true, bodyView: { fold: true }, onKindsChange: fn(), onReset: fn(), onSaveDefault: fn(), onClose: fn(), onMinimapChange: fn(), onBodyViewChange: fn(), focusAfterAdd: "auto", pointerCoarse: false, onFocusAfterAddChange: fn() },
+  args: { visibleKinds: [...KIND_KEYS], defaultKinds: [...KIND_KEYS], counts: { decisions: 12, tasks: 8, research: 3, docs: 5, terms: 9, notes: 4, logs: 20 }, overrides: [], canSave: true, message: null, storageAvailable: true, minimap: true, bodyView: { fold: true }, onKindsChange: fn(), onReset: fn(), onSaveDefault: fn(), onClose: fn(), onMinimapChange: fn(), onBodyViewChange: fn(), focusAfterAdd: "auto", pointerCoarse: false, onFocusAfterAddChange: fn(), singleKeyShortcuts: true, onSingleKeyShortcutsChange: fn() },
   // パネルの中と同じ見出しの順にするため、パネルの見出し「表示の設定」（h2）の下に置く
   decorators: [
     (Story) => (
@@ -62,3 +62,6 @@ export const FocusAfterAddCoarse: Story = { args: { focusAfterAdd: "auto", point
 
 /** 「レビューに追加した後のフォーカス」を「戻さない」にした。変えている項目に「レビューに追加した後のフォーカス」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す */
 export const FocusAfterAddOverridden: Story = { args: { focusAfterAdd: "none", overrides: ["レビューに追加した後のフォーカス"] } };
+
+/** 1 文字のショートカットをオフにした。区画「キーボード」のチェックを外し、変えている項目に「1 文字のショートカット」と「既定に戻す」を出す。表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「表示する種類は、ワークスペースの既定と同じです。」を出す */
+export const SingleKeyShortcutsOff: Story = { args: { singleKeyShortcuts: false, overrides: ["1 文字のショートカット"] } };

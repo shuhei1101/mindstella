@@ -1,5 +1,5 @@
-// 資料の画面（画面設計『資料.tsx』）。カード（既定）・ボード・表で見る。連番の順に並べる
-import { DocCard, orderDocs } from "@/features/docs/docs/components/doc-cards";
+// 資料の画面（画面設計『資料.tsx』）。カード（既定）・ボード・表で見る。カード・ボードは「並べ替え」の順（既定は更新日時の新しい順）に並べる
+import { DocCard, DocCards } from "@/features/docs/docs/components/doc-cards";
 import { AddedCard, addedCards, Board, boardColumns } from "@/shared/components/board";
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
 import { commonColumns } from "@/shared/components/list-columns";
@@ -38,6 +38,8 @@ const docColumns = (): TableColumn[] => {
       },
     },
     common.tags,
+    common.created,
+    common.updated,
   ];
 };
 
@@ -50,12 +52,13 @@ export const DocsScreen = ({ drawerOpen, onCloseDrawer }: DocsScreenProps) => (
     columnsOf={docColumns}
     drawerOpen={drawerOpen}
     onCloseDrawer={onCloseDrawer}
-    content={({ view, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef }) => {
+    content={({ view, shown, sort, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef }) => {
       if (view === "board") {
         return (
           <Board
             scrollRef={scrollRef}
-            columns={boardColumns({ items: shown, statuses: DOC_STATUSES, statusFilter: filters["status"] ?? [] }).map((column) => ({ ...column, items: orderDocs(column.items) }))}
+            columns={boardColumns({ items: shown, statuses: DOC_STATUSES, statusFilter: filters["status"] ?? [] })}
+            sort={sort}
             emptyText="資料はありません。"
             added={addedCards(edit, DOC_STATUSES, onOpenAdded)}
             card={(item) => <DocCard key={item.id} doc={item} inBoard selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />}
@@ -72,9 +75,7 @@ export const DocsScreen = ({ drawerOpen, onCloseDrawer }: DocsScreenProps) => (
           {adds.map((item) => (
             <AddedCard key={item.id} item={item} mark={edit?.marks[item.id] ?? "pending"} onOpen={onOpenAdded} />
           ))}
-          {orderDocs(shown).map((doc) => (
-            <DocCard key={doc.id} doc={doc} inBoard={false} selected={doc.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />
-          ))}
+          <DocCards docs={shown} sort={sort} selectedId={selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />
         </div>
         </div>
       );

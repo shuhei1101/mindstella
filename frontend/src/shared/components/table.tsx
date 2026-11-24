@@ -56,7 +56,8 @@ export type TableProps = {
   onPin: (key: string) => void;
   onHiddenColumnsChange: (hiddenColumns: string[]) => void;
   onResetColumns: () => void;
-  onOpenItem: (id: string) => void;
+  /** 行のタイトルを押した。`order` は絞り込み・並べ替えを当てた行の ID の並び */
+  onOpenItem: (id: string, order: string[]) => void;
   /** 追加する項目（先頭の行に置く） */
   addedRows?: Row[];
   onOpenAdded?: (id: string) => void;
@@ -229,7 +230,7 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
                     <TableCell key={column.key} style={pinStyle(position).style} className={cn(pinStyle(position).className, pinStyle(position).className !== false && "bg-card", column.key !== "title" && "whitespace-nowrap", column.num === true && "text-right")}>
                       {column.key === "title" ? (
                         <span className="inline-flex flex-wrap items-center gap-1">
-                          <button type="button" data-id={row.id} className="cursor-pointer text-left underline-offset-2 hover:underline" onClick={() => { onOpenItem(row.id); }}>
+                          <button type="button" data-id={row.id} className="cursor-pointer text-left underline-offset-2 hover:underline" onClick={() => { onOpenItem(row.id, shownRows.map((shownRow) => shownRow.id)); }}>
                             {content}
                           </button>
                           {row["withdrawn"] === true ? <WithdrawnBadge /> : null}

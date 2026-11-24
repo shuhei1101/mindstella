@@ -19,6 +19,8 @@ const taskColumns = (index: RecordIndex, onOpen: (id: string) => void): TableCol
     common.text("kind", "種類", { filterable: true }),
     { key: "for", label: "進める検討事項", get: (row) => refsOf(row as unknown as Item, "for"), cell: (row) => <IdLinks ids={refsOf(row as unknown as Item, "for")} titleOf={(id) => titleOf(index, id)} onOpen={onOpen} /> },
     common.tags,
+    common.created,
+    common.updated,
   ];
 };
 
@@ -31,10 +33,11 @@ export const TasksScreen = ({ drawerOpen, onCloseDrawer }: TasksScreenProps) => 
     columnsOf={taskColumns}
     drawerOpen={drawerOpen}
     onCloseDrawer={onCloseDrawer}
-    content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef }) => (
+    content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef, sort }) => (
       <Board
         scrollRef={scrollRef}
         columns={boardColumns({ items: shown, statuses: TASK_STATUSES, statusFilter: filters["status"] ?? [] })}
+        sort={sort}
         emptyText="タスクはありません。"
         added={addedCards(edit, TASK_STATUSES, onOpenAdded)}
         card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[item.kind]} links={refsOf(item, "for")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />}
