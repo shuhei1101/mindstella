@@ -264,7 +264,7 @@ def test_datetime_columns(open_story: OpenStory) -> None:
     # 準備・実行
     page = open_story("shared-table--datetime-columns")
     headers = page.get_by_role("columnheader").all_inner_texts()
-    cell = page.locator("tr:has(td)").first.locator("time").last
+    cell = page.locator("#storybook-root tbody tr").first.locator("time").last
     # 検証
     assert any("作成日時" in header for header in headers)
     assert any("更新日時" in header for header in headers)
@@ -277,7 +277,7 @@ def test_sorted_by_updated_desc(open_story: OpenStory) -> None:
     # 準備・実行
     page = open_story("shared-table--sorted-by-updated-desc")
     header = page.get_by_role("columnheader", name=re.compile("更新日時"))
-    times = page.locator("tr:has(td)").evaluate_all("rows => rows.map((row) => [...row.querySelectorAll('time')].at(-1)?.getAttribute('datetime'))")
+    times = page.locator("#storybook-root tbody tr").evaluate_all("rows => rows.map((row) => [...row.querySelectorAll('time')].at(-1)?.getAttribute('datetime'))")
     # 検証
     assert header.get_attribute("aria-sort") == "descending"
     assert times == sorted(times, reverse=True)

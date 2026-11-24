@@ -310,7 +310,8 @@ def test_table_scroll_restored(page: Page, write_preview: WritePreview, make_ite
     left_row = page.evaluate(FIRST_VISIBLE_ROW_JS, TABLE_SCROLL_SELECTOR)
     # 実行
     page.get_by_role("link", name="検討事項").click()
-    page.go_back()
+    # タブの帯での移動は履歴を増やさない（インターフェース定義『プレビューを開く』の制約「履歴」）ため、同じタブで表の URL を開き直す
+    open_spa(page, url, "?tab=tasks&view=table")
     # 検証
     assert left_row not in (None, "T-1")
     expect(page.locator("tbody tr[data-id='T-1']")).to_be_attached()

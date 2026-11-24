@@ -22,8 +22,8 @@ TAGS = "#storybook-root li [data-part=tags] button"
 UNREAD = f"{LINE2} [data-part=unread]"
 OPEN_BUTTON = "#storybook-root li > button"
 
-# 要素の文字が並ぶ行の数（折り返していなければ 1）
-TEXT_LINES_JS = "(e) => { const range = document.createRange(); range.selectNodeContents(e); return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size; }"
+# 要素の中の文字（テキストノード）が並ぶ行の数（折り返していなければ 1）
+TEXT_LINES_JS = "(e) => { const walker = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); const tops = new Set(); for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) { if (node.textContent.trim() === '') continue; const range = document.createRange(); range.selectNodeContents(node); for (const rect of range.getClientRects()) if (rect.width > 0) tops.add(Math.round(rect.top)); } return tops.size; }"
 
 # 塗りが無いときの背景色
 TRANSPARENT = "rgba(0, 0, 0, 0)"

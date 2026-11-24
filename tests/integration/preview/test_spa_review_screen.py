@@ -446,5 +446,5 @@ def test_row_labels_not_wrapped_when_narrow(page: Page, review_preview: tuple[st
     expect(reply_title).to_have_attribute("title", "D-1 の案の相談")
 
 
-# 要素の文字が並ぶ行の数（折り返していなければ 1）
-_TEXT_LINES_JS = "(e) => { const range = document.createRange(); range.selectNodeContents(e); return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size; }"
+# 要素の中の文字（テキストノード）が並ぶ行の数（折り返していなければ 1）
+_TEXT_LINES_JS = "(e) => { const walker = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); const tops = new Set(); for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) { if (node.textContent.trim() === '') continue; const range = document.createRange(); range.selectNodeContents(node); for (const rect of range.getClientRects()) if (rect.width > 0) tops.add(Math.round(rect.top)); } return tops.size; }"

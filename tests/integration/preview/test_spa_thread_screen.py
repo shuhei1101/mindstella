@@ -429,8 +429,15 @@ def test_open_latest(page: Page, write_review_preview: WriteReviewPreview, make_
     latest = _panel(page).locator("article[data-post-id='TH-1-7']")
     # 検証
     expect(latest).to_be_focused()
-    offset = latest.evaluate("(article) => article.getBoundingClientRect().top - article.closest('ol').getBoundingClientRect().top")
-    assert offset < 40
+    # 先頭を並びの上端に合わせる。その位置が一番下を超えるときは一番下まで送る
+    placed = latest.evaluate(
+        """(article) => {
+          const list = article.closest('ol');
+          const offset = article.getBoundingClientRect().top - list.getBoundingClientRect().top;
+          return offset < 40 || list.scrollTop >= list.scrollHeight - list.clientHeight - 1;
+        }"""
+    )
+    assert placed
     expect(latest.locator("[data-folded]")).to_have_count(0)
     expect(latest.get_by_role("button", name=re.compile("続きを表示"))).to_have_count(0)
 

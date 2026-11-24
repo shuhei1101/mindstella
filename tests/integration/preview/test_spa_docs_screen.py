@@ -343,4 +343,4 @@ def test_board_sorted_in_column(page: Page, write_preview: WritePreview, make_it
     open_spa(page, write_preview(*_three_docs(make_item)), "?tab=docs&view=board")
     column = page.get_by_role("region", name="下書き")
     # 検証
-    expect(column.get_by_role("heading", level=2)).to_have_text(["新しい資料", "間の資料", "古い資料"])
+    expect(column.locator("[data-card] h2")).to_have_text(["新しい資料", "間の資料", "古い資料"])
