@@ -17,3 +17,9 @@ confirmations:
     approver: shuhei1101
     commit: 2984483b
     thread: https://github.com/shuhei1101/mindstella/pull/695#discussion_r4679775453
+  - topic: '#364 前後の項目へ移るキーと表示の設定のオフの切り替え'
+    decision: '`k` で一覧の前の項目、`j` で一覧の次の項目へ移る。表示の設定の「コメントの入力」の下に区画「キーボード」を追加し、チェックボックス「1 文字のショートカットを使用する」（既定はオン）と説明を出す（推奨案 A）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 04ee724f
+    thread: https://github.com/shuhei1101/mindstella/pull/695#discussion_r4680294078
