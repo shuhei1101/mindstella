@@ -18,9 +18,29 @@ use_cases:
       - docs/scenario/SC-489-30.yaml
   - kind: composite
     scenario: docs/scenario/SC-489-52.yaml
-    impact: run_only
-    detail: 回答が要ることを検討事項に挙げて通知する流れの記述は変わらないが、コメントの取り込みと記録の使い分けの手順が変わる
-    depends_on: []
+    impact: changed
+    detail: 方針とワークスペースの外への書き込みの合意をスレッドで聞く 2 つのシナリオを削除し（検討事項で聞く流れは単一ユースケース『記録の使い分け』と既存の『画面から送信した回答を取り込む』で確かめる）、エージェントフローとの対応と報告のスレッドの呼び名を合わせる
+    depends_on:
+      - docs/scenario/SC-489-30.yaml
+      - docs/scenario/SC-489-43.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-1.yaml
+    impact: changed
+    detail: 通知のスレッドを報告のスレッドにし、作成する条件と記載する中身を単一ユースケース『コメントの取り込み』の補足「報告のスレッド」に合わせる（追加・着手したタスクも載せる）。利用者に聞くことは方針も検討事項に挙げる
+    depends_on:
+      - docs/scenario/SC-489-43.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-25.yaml
+    impact: following
+    detail: AI が作成したスレッドの呼び名を報告のスレッドに合わせる
+    depends_on:
+      - docs/scenario/SC-489-43.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: following
+    detail: 写さなかった値を知らせるスレッドの呼び名を報告のスレッドに合わせる
+    depends_on:
+      - docs/scenario/SC-489-43.yaml
 docs:
   - page: docs/guide/エージェントフロー.md
     new: false
