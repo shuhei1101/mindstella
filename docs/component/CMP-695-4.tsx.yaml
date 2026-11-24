@@ -1,0 +1,50 @@
+title: スレッドの見出しのタイトル
+lead: スレッドの画面の見出しのタイトル。書き込みの並びが一番上のときは全文、スクロールした後は 1 行にして末尾を「…」にする。
+implementation: frontend/src/shared/components/thread-title.tsx#ThreadTitle
+story: Shared/ThreadTitle
+test_file: tests/integration/storybook_react/test_thread_title_stories.py
+args:
+  - name: title
+    type: 文字列
+    required: true
+    description: スレッドのタイトル（要約、無ければ最初の書き込みの 1 行目）
+  - name: collapsed
+    type: 真偽値
+    required: true
+    description: 書き込みの並びをスクロールした後か。真のとき 1 行にして末尾を「…」にし、`title` に全文を持たせる
+states:
+  - name: FullSixLines
+    description: 書き込みの並びが一番上。コメントの一覧のパネルの幅で 6 行に折り返す長いタイトルを全文で出す
+    args:
+      - name: collapsed
+        value: 'false'
+  - name: Collapsed
+    description: スクロールした後。1 行にして末尾を「…」にする
+    args:
+      - name: collapsed
+        value: 'true'
+  - name: FullThreeLines
+    description: 3 行に折り返すタイトルを全文で出す
+    args:
+      - name: collapsed
+        value: 'false'
+  - name: LongWord
+    description: 1 単語の長い英字。全文のときもパネルの幅で折り返し、横にはみ出さない
+    args:
+      - name: title
+        value: configuration-of-the-preview-server-and-the-workspace-settings-file-path
+      - name: collapsed
+        value: 'false'
+  - name: LongWordCollapsed
+    description: 1 単語の長い英字をスクロールした後。1 行にして末尾を「…」にする
+    args:
+      - name: title
+        value: configuration-of-the-preview-server-and-the-workspace-settings-file-path
+      - name: collapsed
+        value: 'true'
+accessibility:
+  - 1 行にしたときも全文を DOM に残し、読み上げは全文を読む
+  - 1 行にしたときは `title` に全文を持たせ、ポインターを乗せると全文を出す
+refs:
+  - SCR-489-4#
+id: CMP-695-4

@@ -83,6 +83,11 @@ args:
     default: なし（タグの条件の式のチップを出さない）
     description: '簡易で表せないタグの条件の式を文にしたもの。チップ（部品『絞り込みの条件のチップ』）へそのまま渡し、先頭に「タグ: {文}」のチップを出す。式に合う行は使う側が `rows` に絞って渡す'
     enabled_when: '`onClearTagExpr` を渡したとき'
+  - name: columns[].cell
+    type: 関数
+    required: false
+    default: なし（値を文字にして出す）
+    description: セルの中身を描く関数（`cell(row)`）。作成日時・更新日時の列は、部品『項目の日時』と同じ書式（今年は `MM/DD HH:mm`、今年でない日時は `YYYY/MM/DD HH:mm`）を `time` 要素で出す。並べ替えと絞り込みは元の値で行う
 events:
   - name: タグの条件の式の解除
     when: チップの、タグの条件の式のチップの × か「すべて解除」を押したとき
@@ -192,6 +197,18 @@ states:
         value: '「画面」を含む かつ 「廃止」を含まない'
   - name: SelectableTags
     description: タグの列のタグを押せる。タグを押すと `onSelectTag` だけが呼ばれ、行のタイトルを押したときだけ詳細を開く
+  - name: DatetimeColumns
+    description: 作成日時・更新日時の列を持つ表。日時のセルは JST の日時を折り返さずに出す
+    args:
+      - name: columns
+        value: 検討事項の列に `created`（作成日時）・`updated`（更新日時）を加えた列
+  - name: SortedByUpdatedDesc
+    description: 更新日時の新しい順。更新日時の見出しに向きの矢印を出し、`aria-sort="descending"`
+    args:
+      - name: columns
+        value: 検討事項の列に `created`・`updated` を加えた列
+      - name: sort
+        value: '{"key": "updated", "dir": "desc"}'
 accessibility:
   - 並べ替え中の列の見出しに `aria-sort`（ascending・descending）を付け、ほかは `none`
   - ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列}まで固定` の読み上げ名を付ける

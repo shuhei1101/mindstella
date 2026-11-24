@@ -1,0 +1,49 @@
+title: 項目の日時
+lead: カードに出す項目の作成日時と更新日時（「作成 {日時}　更新 {日時}」）。
+implementation: frontend/src/shared/components/item-dates.tsx#ItemDates
+story: Shared/ItemDates
+test_file: tests/integration/storybook_react/test_item_dates_stories.py
+args:
+  - name: created
+    type: 文字列
+    required: true
+    description: 項目の `created`（ISO 8601）。JST で、今年の日時は `MM/DD HH:mm`、今年でない日時は `YYYY/MM/DD HH:mm` で出す
+  - name: updated
+    type: 文字列
+    required: true
+    description: 項目の `updated`（ISO 8601）。`created` と同じ書式で出す。`created` と同じ値でも出す
+states:
+  - name: Updated
+    description: 作成の後に更新した項目。「作成 11/02 10:15　更新 11/20 18:40」
+    args:
+      - name: created
+        value: '2026-11-02T01:15:00+00:00'
+      - name: updated
+        value: '2026-11-20T09:40:00+00:00'
+  - name: NotUpdated
+    description: 作成から更新していない項目。作成と更新に同じ日時を出す
+    args:
+      - name: created
+        value: '2026-11-02T01:15:00+00:00'
+      - name: updated
+        value: '2026-11-02T01:15:00+00:00'
+  - name: Narrow
+    description: 幅 240px。「作成 {日時}」と「更新 {日時}」の組ごとに折り返し、組の中の文字は折り返さない
+    args:
+      - name: created
+        value: '2026-11-02T01:15:00+00:00'
+      - name: updated
+        value: '2026-11-20T09:40:00+00:00'
+  - name: LastYear
+    description: 去年に作成して今年更新した項目。「作成 2025/12/28 09:00　更新 11/20 18:40」。ストーリーは今日を 2026-11-24 に固定する
+    args:
+      - name: created
+        value: '2025-12-28T00:00:00+00:00'
+      - name: updated
+        value: '2026-11-20T09:40:00+00:00'
+accessibility:
+  - 日時は `time` 要素で `datetime` に元の日時を持つ
+  - 「作成」「更新」の文字で日時の種類を示す
+refs:
+  - IF-489-70#
+id: CMP-695-2

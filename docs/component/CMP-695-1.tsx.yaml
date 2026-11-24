@@ -1,0 +1,61 @@
+title: 一覧の並びの前後
+lead: 詳細パネル・詳細の全画面のヘッダーに配置する、開いた元の一覧の今の並びで前後の項目へ移る 2 つのボタンと、並びの中の位置（`{何件目} / {件数}`）。
+implementation: frontend/src/shared/components/sibling-nav.tsx#SiblingNav
+story: Shared/SiblingNav
+test_file: tests/integration/storybook_react/test_sibling_nav_stories.py
+args:
+  - name: position
+    type: 整数
+    required: true
+    choices: 1 以上 `total` 以下
+    description: 開いている項目の並びの中の位置（1 始まり）
+  - name: total
+    type: 整数
+    required: true
+    choices: 1 以上
+    description: 並びの件数
+events:
+  - name: 前の項目へ移る
+    when: 「一覧の前の項目」を押したとき（`position` が 1 のときは押せない）
+    value: '`onPrev()`'
+    description: 使用する側が並びの 1 つ前の項目を開き、履歴に追加する
+  - name: 次の項目へ移る
+    when: 「一覧の次の項目」を押したとき（`position` が `total` のときは押せない）
+    value: '`onNext()`'
+    description: 使用する側が並びの 1 つ後の項目を開き、履歴に追加する
+states:
+  - name: Middle
+    description: 3 件の 2 件目。上向きと下向きの山形のボタンの間に「2 / 3」を出し、枠で 1 つにまとめる
+    args:
+      - name: position
+        value: '2'
+      - name: total
+        value: '3'
+  - name: First
+    description: 先頭。「一覧の前の項目」を押せない見た目にする
+    args:
+      - name: position
+        value: '1'
+      - name: total
+        value: '3'
+  - name: Last
+    description: 末尾。「一覧の次の項目」を押せない見た目にする
+    args:
+      - name: position
+        value: '3'
+      - name: total
+        value: '3'
+  - name: ManyItems
+    description: 4 桁の件数（「1234 / 5678」）。位置の文字を折り返さない
+    args:
+      - name: position
+        value: '1234'
+      - name: total
+        value: '5678'
+accessibility:
+  - 外枠は `role="group"` で読み上げの名前を「一覧の並び」にする
+  - ボタンの読み上げの名前と `title` を「一覧の前の項目」「一覧の次の項目」にし、押せないときは `disabled` にする
+  - 位置の文字は等幅の数字で出し、折り返さない
+refs:
+  - IF-489-70#
+id: CMP-695-1

@@ -76,6 +76,13 @@ states:
     args:
       - name: thread
         value: '{"id":"TH-6","status":"closed","tags":["起票"],"summary":"T-4 の Issue の起票の確認。起票して完了","target":"T-4","posts":[{"author":"user","body":"起票してよい","created":"2026-10-12T03:00:00+00:00","seen":true},{"author":"ai","body":"T-4 の Issue を起票しました。","created":"2026-10-12T03:07:00+00:00","seen":false}],"events":[{"kind":"closed","author":"ai","reason":"起票した","created":"2026-10-12T03:07:00+00:00"}]}'
+  - name: LongValuesNarrow
+    description: 幅 390px で、値を最大の長さにした行（改行の無い長い要約・5 桁のスレッドの ID・5 桁の向けた項目の ID・未読・レビュー中の返信あり）。状態の札・未読の札・レビュー中のマーカー・書き手の文字は折り返さず、要約は 2 行で末尾を省き、2 行目は日時を残して ID から詰める
+    args:
+      - name: thread
+        value: '{"id":"TH-12345","status":"open","tags":["画面"],"summary":"詳細パネルのヘッダーに並べる前後の項目へ移るボタンと位置の文字の置き場所と、狭い幅で折り返さずに省略する範囲と、長い値を入れたストーリーでスクリーンショットを確かめる方法の相談","target":"D-12345","posts":[{"author":"user","body":"狭い幅でも札を折り返さないで","created":"2026-10-12T01:20:00+00:00","seen":true},{"author":"ai","body":"札を折り返さず、要約の側で省きます。","created":"2026-10-12T01:24:00+00:00","seen":false}],"events":[]}'
+      - name: hasPendingReply
+        value: 'true'
 lead: スレッドの一覧に並べる 1 件の行。状態の札・タイトル・向けた項目・最後の書き手と日時・レビュー中のマーカー・タグを出し、押すとそのスレッドを開く。まだ送信していない新規スレッドも同じ構造で「レビュー中」の札にする。
 args:
   - name: thread
