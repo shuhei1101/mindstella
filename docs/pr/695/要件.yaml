@@ -1,0 +1,147 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 一覧・ボードから開いた項目も戻る・進むでたどり、タブの切り替えは履歴に追加しない。元の画面の並びで前後の項目へ移る。値の欄の項目の ID から資料を開く
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: changed
+    detail: 表を作成日時・更新日時の列で並べ替える
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: changed
+    detail: 資料のカードに作成日時・更新日時が出て、それで並べ替える
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-6.yaml
+    impact: changed
+    detail: タスクのカードに作成日時・更新日時が出て、それで並べ替える
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: スレッドを開くと最新の書き込みから読め、最新以外の長い書き込みは折りたたまれ、スクロールすると見出しのタイトルが 1 行になる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: run_only
+    detail: レビュー中の書き込みの行のラベルが長い値でも折り返されないことを確認する
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: following
+    detail: 変わった項目の詳細を開いて読み返す流れが、戻る・進むと前後の項目の変更に追随する
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+docs:
+  - page: docs/interface/IF-489-70.yaml
+    new: false
+    change: 制約「履歴」を、一覧・ボード・表・検索から開いた項目と前後の項目への移動を詳細の履歴に追加し、タブの切り替えは置き換える形に変える（#148・#364）
+    status: todo
+  - page: docs/screen/SCR-489-32.tsx.yaml
+    new: false
+    change: ヘッダーに前後の項目へ移るボタンと位置を追加し、戻る・進むの対象と長い値の見せ方を記載する（#148・#364・#688・#690）
+    status: todo
+  - page: docs/screen/SCR-489-30.tsx.yaml
+    new: false
+    change: 詳細の全画面に前後の項目へ移るボタンと位置を追加する（#364）
+    status: todo
+  - page: docs/screen/SCR-489-4.tsx.yaml
+    new: false
+    change: 見出しのタイトルの省略と、開いたときの最新の書き込みへの移動と長い書き込みの折りたたみを記載する（#372・#374）
+    status: todo
+  - page: docs/screen/SCR-489-9.tsx.yaml
+    new: false
+    change: 行の種類のラベルとボタンを折り返さず、長い値をタイトルの側で省略することを記載する（#690）
+    status: todo
+  - page: docs/screen/SCR-489-2.tsx.yaml
+    new: false
+    change: スレッドの一覧の行の長い値の見せ方を記載する（#690）
+    status: todo
+  - page: docs/screen/SCR-489-20.tsx.yaml
+    new: false
+    change: カードの作成日時・更新日時とその並べ替え、描いた並びの詳細への受け渡しを記載する（#186・#364）
+    status: todo
+  - page: docs/screen/SCR-489-6.tsx.yaml
+    new: false
+    change: 同上（#186・#364）
+    status: todo
+  - page: docs/screen/SCR-489-34.tsx.yaml
+    new: false
+    change: 同上（#186・#364）
+    status: todo
+  - page: docs/screen/SCR-489-26.tsx.yaml
+    new: false
+    change: 表の作成日時・更新日時の列と、描いた並びの詳細への受け渡しを記載する（#186・#364）
+    status: todo
+  - page: docs/component/CMP-489-48.tsx.yaml
+    new: false
+    change: 作成日時・更新日時の列と並べ替えを追加する（#186）
+    status: todo
+  - page: docs/component/CMP-649-1.tsx.yaml
+    new: false
+    change: カードに作成日時・更新日時を出す（#186）
+    status: todo
+  - page: docs/component/CMP-489-12.tsx.yaml
+    new: false
+    change: 送信済みの長い書き込みを折りたたむ状態を追加する（#374）
+    status: todo
+  - page: docs/component/CMP-489-42.tsx.yaml
+    new: false
+    change: 使用先にスレッドの送信済みの書き込みを加える（#374）
+    status: todo
+  - page: docs/component/CMP-489-14.tsx.yaml
+    new: false
+    change: 長いタイトル・長い ID で札とマーカーを折り返さないことを記載する（#690）
+    status: todo
+  - page: docs/module/MOD-489-129.ts.yaml
+    new: false
+    change: 開いた項目を詳細の履歴に追加し、タブの切り替えを置き換えにする（#148）
+    status: todo
+  - page: docs/module/MOD-489-24.tsx.yaml
+    new: false
+    change: 前後の項目へ移るボタンと位置を追加する（#364）
+    status: todo
+  - page: docs/module/MOD-489-102.ts.yaml
+    new: false
+    change: '`linkBody` の対象に値の欄を加える（#688）'
+    status: todo
+  - page: docs/module/MOD-489-31.tsx.yaml
+    new: false
+    change: 描いた後に `linkBody` を適用する（#688）
+    status: todo
+  - page: docs/module/MOD-489-75.tsx.yaml
+    new: false
+    change: 作成日時・更新日時の列を追加する（#186）
+    status: todo
+  - page: docs/module/MOD-489-14.tsx.yaml
+    new: false
+    change: 見出しのタイトルの省略と、開いたときの最新の書き込みへの移動を追加する（#372・#374）
+    status: todo
+  - page: docs/module/MOD-489-6.tsx.yaml
+    new: false
+    change: 行のラベルとボタンの折り返しの指定を記載する（#690）
+    status: todo
+  - page: docs/test-procedure/TP-489-1.yaml
+    new: false
+    change: lint の層の検査の対象と除外を、`eslint.config.js` の変更に合わせる（#691）
+    status: todo
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 戻る・進むと前後の項目への移動、作成日時・更新日時での並べ替え、スレッドを開いたときの動きを利用者の操作として記載する
+    status: todo
+scope_out:
+  - item: 戻る・進むで戻ったときの一覧と詳細パネルのスクロールの位置の復元（#148 のタイトルの「スクロールの位置も戻す」）
+    reason: '計画の行の判断で #452 が受け持つと決めた（詳細パネルだけを別の仕組みで戻すと #452 で作り替えになる）'
+    plan: '#452'
+  - item: タイトル・一覧の行・ツールチップの中の項目の ID のリンク（#688 のやりたいことの「画面のどこに記載していても」のうち、値の欄の外）
+    reason: 範囲は着手した planner が決めるとされており、押すと詳細を開く行・カードの中にリンクを入れると操作が重なるため、今の判断では外す。確定は単一ユースケース設計のレビュー（要件.mark.md の `未確定`）
+    plan: none
+  - item: 検討事項の案のカードを押して案を選ぶ操作と、カードの中の ID のリンクの当たりの調整
+    reason: '案のカードを押す操作は #363 の要望で、この束には含まない'
+    plan: '#363'
+  - item: スレッドの見出しの上のクローズ・オープンを、理由を聞かずに切り替える操作
+    reason: '#377 の要望で、この束には含まない'
+    plan: '#377'
