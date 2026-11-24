@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode, type RefCallback } from "react";
 
-import { CardSort, cardSortFromParam, cardSortToParam, cardSortToRowSort, INITIAL_CARD_SORT, sortItems } from "@/shared/components/card-sort";
+import { CardSort, cardSortFromParam, cardSortToParam, cardSortToRowSort, INITIAL_CARD_SORT, isCardSortParam, sortItems } from "@/shared/components/card-sort";
 import type { DiffMarks } from "@/shared/components/diff-mark";
 import { FilterChips } from "@/shared/components/filter-chips";
 import { FilterDrawer, type FilterGroup } from "@/shared/components/filter-drawer";
@@ -125,6 +125,14 @@ const boardOrders = (items: readonly Item[]): string[][] => {
   return [...byStatus.values()];
 };
 
+/** カード・ボードの表示で受け付けない `sort`（表の列の並べ替え）は、無いものとして URL から外す（置き換える） */
+const useDropCardSort = ({ view, sort, setSort }: { view: View; sort: string | undefined; setSort: (sort: string | undefined, options: { replace: boolean }) => void }): void => {
+  useEffect(() => {
+    if (view !== "table" && sort !== undefined && !isCardSortParam(sort)) setSort(undefined, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 表示形式と並べ替えが変わったときだけ確かめる
+  }, [view, sort]);
+};
+
 /** カード・ボードの表示のときだけ「並べ替え」を出す */
 const CardSortControl = ({ shown, ...props }: { shown: boolean } & ComponentProps<typeof CardSort>) => (shown ? <CardSort {...props} /> : null);
 
@@ -146,6 +154,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const view = search.view ?? views?.[0]?.key ?? "table";
   // 一覧のスクロール位置は画面と表示形式ごとに残し、記録を読み終えて行を描いたら戻す
   const scrollRef = useListScroll(`${kind}:${view}`, index !== null);
+  useDropCardSort({ view, sort: search.sort, setSort });
   const onSelectTag = (name: string): void => {
     addTag(name);
   };

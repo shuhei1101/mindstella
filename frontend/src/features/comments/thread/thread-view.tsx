@@ -19,6 +19,7 @@ import { showLocation } from "@/shared/stores/location-highlight-store";
 import { voiceEditingOf } from "@/shared/stores/voice-store";
 import { useFocusAfterAddTarget } from "@/shared/stores/prefs-store";
 import { useThreadLinks } from "@/shared/hooks/use-thread-links";
+import { takeRequestedPost } from "@/shared/core/thread-ids";
 import { useSingleFlight } from "@/shared/hooks/use-single-flight";
 import { ThreadTitle } from "@/shared/components/thread-title";
 
@@ -134,7 +135,9 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   }, []);
   // 開いた直後に 1 回だけ、最新の送信した書き込みの先頭を並びの上端に合わせ、その書き込みへフォーカスを移す
   const latestPostId = thread === null ? null : (thread.posts.at(-1)?.id ?? null);
-  const movedToLatest = useRef(false);
+  // 書き込みの ID のリンクで開いたときは、その書き込みへ移す処理（`revealPost`）に任せ、最新の書き込みへ移さない
+  const [openedForPost] = useState(() => takeRequestedPost(id));
+  const movedToLatest = useRef(openedForPost !== null);
   useEffect(() => {
     const element = list.current;
     if (movedToLatest.current || element === null || latestPostId === null) return undefined;

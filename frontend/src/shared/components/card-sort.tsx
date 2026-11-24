@@ -36,9 +36,12 @@ export const cardSortToParam = (value: CardSortValue, initial: CardSortValue): s
   return value.dir === "desc" ? `-${value.key}` : value.key;
 };
 
-/** URL の `sort` を並びにする。無ければ画面の既定、`id`・`-id`・知らない値は連番 */
+/** カード・ボードが受け付ける `sort` か（`id`・`created`・`updated` と、頭に `-` を付けた値） */
+export const isCardSortParam = (sort: string): boolean => ["id", "created", "updated"].includes(sort.replace(/^-/, ""));
+
+/** URL の `sort` を並びにする。`id`・`-id` は連番、`created`・`updated` はその並び、無い値と受け付けない値は画面の既定 */
 export const cardSortFromParam = (sort: string | undefined, initial: CardSortValue): CardSortValue => {
-  if (sort === undefined) return initial;
+  if (sort === undefined || !isCardSortParam(sort)) return initial;
   const dir: CardSortDir = sort.startsWith("-") ? "desc" : "asc";
   const key = dir === "desc" ? sort.slice(1) : sort;
   return key === "created" || key === "updated" ? { key, dir } : { key: "default", dir: "asc" };

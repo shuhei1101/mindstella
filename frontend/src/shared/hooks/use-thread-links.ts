@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { type LookupThread, type OpenThread, revealPost, threadLookupOf } from "@/shared/core/thread-ids";
+import { type LookupThread, type OpenThread, revealPost, threadLookupOf, requestPost } from "@/shared/core/thread-ids";
 import { threadsQuery } from "@/shared/hooks/preview-queries";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 
@@ -19,6 +19,7 @@ export const useThreadLinks = (): { threads: LookupThread | null; onOpenThread: 
     open.current = openThread;
   }, [openThread]);
   const onOpenThread = useCallback<OpenThread>((threadId, postId) => {
+    if (postId !== null) requestPost(postId);
     open.current(threadId);
     if (postId !== null) requestAnimationFrame(() => { revealPost(postId); });
   }, []);
