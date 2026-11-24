@@ -55,6 +55,7 @@ export const PresetSave = ({ hasTagCondition, hasOtherConditions, onSave, defaul
     );
   }
   const submit = async (): Promise<void> => {
+    if (saving) return;
     if (name.trim() === "") {
       setError("プリセットの名前を入れてください。");
       return;

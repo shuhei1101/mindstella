@@ -119,7 +119,9 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose, fil
           {query.trim() === "" ? <p className="p-2 text-small text-muted-foreground">ID・タイトル・本文で、すべての項目を検索します。</p> : null}
           {filters.length === 0 ? null : (
             <div role="group" aria-label="絞り込みをオンにする">
-              <h2 className="px-2 pt-2 text-xs font-medium text-muted-foreground">絞り込みをオンにする</h2>
+              <div role="presentation" aria-hidden="true" className="px-2 pt-2 text-xs font-medium text-muted-foreground">
+                絞り込みをオンにする
+              </div>
               {filters.map((candidate) => (
                 <div
                   key={`${candidate.key}:${candidate.value}`}
@@ -149,7 +151,9 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose, fil
           {query.trim() !== "" && total === 0 ? <p className="p-2 text-small text-muted-foreground">該当する項目はありません。別の条件を試してください。</p> : null}
           {tiers.map((group) => (
             <div key={group.tier} role="group" aria-label={TIER_LABEL[group.tier]}>
-              <h2 className="px-2 pt-2 text-xs font-medium text-muted-foreground">{TIER_LABEL[group.tier]}</h2>
+              <div role="presentation" aria-hidden="true" className="px-2 pt-2 text-xs font-medium text-muted-foreground">
+                {TIER_LABEL[group.tier]}
+              </div>
               {group.hits.map((hit) => {
                 const item = index.byId.get(hit.id)?.item;
                 return (
