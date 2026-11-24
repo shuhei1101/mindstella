@@ -128,32 +128,46 @@ docs:
     updated_at: '2026-11-24T12:38:59.560121+00:00'
   - page: docs/module/MOD-489-129.ts.yaml
     new: false
-    change: 開いた項目を詳細の履歴に追加し、タブの切り替えを置き換えにする（#148）
-    status: todo
+    change: 詳細の履歴（`trail`・`fromList`）と、絞り込み・並べ替えを飛ばす `backItem`・`forwardItem`、置き換える `setTab` を記載する（#148・#364）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:08:57.025815+00:00'
   - page: docs/module/MOD-489-24.tsx.yaml
     new: false
     change: 前後の項目へ移るボタンと位置を追加する（#364）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:08:57.025815+00:00'
   - page: docs/module/MOD-489-102.ts.yaml
     new: false
     change: '`linkBody` の対象に値の欄を加える（#688）'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:08:57.025815+00:00'
   - page: docs/module/MOD-489-31.tsx.yaml
     new: false
     change: 描いた後に `linkBody` を適用する（#688）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:08:57.025815+00:00'
   - page: docs/module/MOD-489-75.tsx.yaml
     new: false
     change: 作成日時・更新日時の列を追加する（#186）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:08:57.025815+00:00'
   - page: docs/module/MOD-489-14.tsx.yaml
     new: false
     change: 見出しのタイトルの省略と、開いたときの最新の書き込みへの移動を追加する（#372・#374）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:08:57.025815+00:00'
   - page: docs/module/MOD-489-6.tsx.yaml
     new: false
     change: 行のラベルとボタンの折り返しの指定を記載する（#690）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:08:57.025815+00:00'
   - page: docs/test-procedure/TP-489-1.yaml
     new: false
     change: lint の層の検査の対象と除外を、`eslint.config.js` の変更に合わせる（#691）
@@ -192,6 +206,102 @@ docs:
     status: done
     updated_by: planner
     updated_at: '2026-11-24T12:53:28.063694+00:00'
+  - page: docs/module/MOD-489-111.ts.yaml
+    new: false
+    change: '`formatItemDateTime`（今年は `MM/DD HH:mm`、今年でない日時は `YYYY/MM/DD HH:mm`）を追加する（#186）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-489-115.ts.yaml
+    new: false
+    change: '`sortRows` にカード・ボードの `id`・`created`・`updated` の並べ替えを加える（#186）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-489-60.tsx.yaml
+    new: false
+    change: カードの日時と列の中の並べ替え、開いた列の並びの受け渡しを記載する（#186・#364）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-489-9.tsx.yaml
+    new: false
+    change: 送信した書き込みを `fold` で畳むことを記載する（#374）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-489-10.tsx.yaml
+    new: false
+    change: 札とマーカーを折り返さない指定を記載する（#690）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-489-85.tsx.yaml
+    new: false
+    change: 開いたときに表の今の並びを渡すことを記載する（#364）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-489-140.ts.yaml
+    new: false
+    change: 個人の上書き `singleKeyShortcuts` を追加する（#364）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-489-46.tsx.yaml
+    new: false
+    change: 区画「キーボード」を追加する（#364）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-695-1.tsx.yaml
+    new: true
+    change: sibling-nav を新設する（#364）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-695-2.tsx.yaml
+    new: true
+    change: item-dates を新設する（#186）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-695-3.tsx.yaml
+    new: true
+    change: card-sort を新設する（#186）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-695-4.tsx.yaml
+    new: true
+    change: thread-title を新設する（#372）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-695-5.ts.yaml
+    new: true
+    change: list-order-store を新設する（#364）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-695-6.ts.yaml
+    new: true
+    change: use-shortcut を新設する（#364）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/module/MOD-695-7.ts.yaml
+    new: true
+    change: shortcuts を新設する（#364）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
+  - page: docs/library/LIB-695-1.yaml
+    new: true
+    change: 外部ライブラリ @tanstack/react-hotkeys を追加する（#364）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T13:09:33.871006+00:00'
 scope_out:
   - item: 戻る・進むで戻ったときの一覧と詳細パネルのスクロールの位置の復元（#148 のタイトルの「スクロールの位置も戻す」）
     reason: '計画の行の判断で #452 が受け持つと決めた（詳細パネルだけを別の仕組みで戻すと #452 で作り替えになる）'
