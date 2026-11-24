@@ -559,6 +559,7 @@ def test_normal_when_comment_sent(page: Page, write_review_preview: WriteReviewP
     field.fill("ここを言い換える")
     field.press("Control+Enter")
     # 検証
+    panel.get_by_role("tab", name="コメント").click()
     expect(panel.locator("li[data-comment]")).to_have_count(1)
     expect(panel.locator("li[data-comment]")).to_contain_text("本文 2 行目")
     expect(page.locator(COMMENTS_BUTTON)).to_have_attribute("aria-label", "コメント（レビュー中 1 件）")
