@@ -1751,3 +1751,105 @@ def test_review_comments_scroll_with_body(page: Page, long_comment_preview: tupl
     assert region.evaluate("element => element.scrollTop") > 0
     assert form.bounding_box() == before
     assert_bottom_aligned(form, _panel(page))
+
+
+# 本文の目次を確かめる、見出しを持つ資料の本文
+TOC_BODY = "# 目的\n\n本文\n\n## 保存先\n\n本文\n\n### 決め方\n\n本文\n"
+
+
+def _tabs(panel: Locator) -> Locator:
+    """詳細の本文の切り替えのタブを返す。"""
+    return panel.get_by_role("tablist", name="詳細の表示").get_by_role("tab")
+
+
+def test_supplement_tabs(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
+    """「本文」「関連」「コメント」のタブで中身を切り替え、URL と履歴を変えない。関係する項目へ移ると「本文」に戻る（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-9", title="関連を持つ資料", status="確認中", related=[{"to": "D-8", "type": "see_also"}]),
+        make_item("D-8", title="関係する検討事項", status="未決定"),
+    )
+    open_spa(page, url, "?tab=docs&id=A-9")
+    panel = page.get_by_role("complementary", name="詳細")
+    expect(_tabs(panel)).to_have_text(["本文", "関連", "コメント"])
+    expect(panel.get_by_role("tab", name="本文")).to_have_attribute("aria-selected", "true")
+    before_url = page.url
+    before = page.evaluate("history.length")
+    # 実行
+    panel.get_by_role("tab", name="関連").click()
+    # 検証
+    expect(panel.get_by_role("tab", name="関連")).to_have_attribute("aria-selected", "true")
+    expect(panel.get_by_role("tabpanel").get_by_role("heading", name="関連する項目")).to_be_visible()
+    assert page.url == before_url
+    assert page.evaluate("history.length") == before
+    # 実行
+    panel.get_by_role("tabpanel").get_by_role("button", name=re.compile("D-8")).click()
+    # 検証
+    page.wait_for_url("**id=D-8**")
+    expect(panel.get_by_role("tab", name="本文")).to_have_attribute("aria-selected", "true")
+    expect(panel.get_by_role("tabpanel")).to_contain_text("関係する検討事項")
+
+
+def test_supplement_tabs_when_arrow(page: Page, spa_preview: str) -> None:
+    """左右の矢印で隣のタブへフォーカスを移して選ぶ（正常系）。"""
+    # 準備
+    open_spa(page, spa_preview, "?tab=decisions&id=D-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    panel.get_by_role("tab", name="本文").focus()
+    # 実行
+    page.keyboard.press("ArrowRight")
+    # 検証
+    expect(panel.get_by_role("tab", name="関連")).to_be_focused()
+    expect(panel.get_by_role("tab", name="関連")).to_have_attribute("aria-selected", "true")
+    # 実行
+    page.keyboard.press("ArrowLeft")
+    page.keyboard.press("ArrowLeft")
+    # 検証
+    expect(panel.get_by_role("tab", name="コメント")).to_be_focused()
+    expect(panel.get_by_role("tab", name="コメント")).to_have_attribute("aria-selected", "true")
+
+
+def test_body_toc(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
+    """見出しを持つ Markdown の本文は目次のボタンを出し、項目を押すと「本文」を選んで search の `h` を置き換え、履歴に積まない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="目次の資料", status="確認中", body="../docs/A-1.mark.md"),
+        bodies={"A-1.mark.md": TOC_BODY},
+    )
+    open_spa(page, url, "?tab=docs&id=A-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    panel.get_by_role("tab", name="関連").click()
+    before = page.evaluate("history.length")
+    # 実行
+    panel.get_by_role("button", name="本文の目次").click()
+    nav = page.get_by_role("navigation", name="本文の目次")
+    expect(nav.get_by_role("button")).to_have_text(["目的", "保存先", "決め方"])
+    nav.get_by_role("button", name="保存先").click()
+    # 検証
+    page.wait_for_url("**h=*")
+    assert "h=%E4%BF%9D%E5%AD%98%E5%85%88" in page.url
+    assert page.evaluate("history.length") == before
+    expect(panel.get_by_role("tab", name="本文")).to_have_attribute("aria-selected", "true")
+    expect(panel.get_by_role("heading", name="保存先")).to_be_in_viewport()
+
+
+@pytest.mark.parametrize(
+    ("body", "file"),
+    [
+        pytest.param("見出しの無い本文", "A-1.mark.md", id="no_heading"),
+        pytest.param("<h2>HTML の見出し</h2><p>本文</p>", "A-1.html", id="html"),
+    ],
+)
+def test_body_toc_when_hidden(write_preview: WritePreview, make_item: MakeItem, page: Page, body: str, file: str) -> None:
+    """見出しの無い本文と HTML の本文では目次のボタンを出さない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="目次の無い資料", status="確認中", body=f"../docs/{file}"),
+        bodies={file: body},
+    )
+    # 実行
+    open_spa(page, url, "?tab=docs&id=A-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    # 検証
+    expect(panel.get_by_text("目次の無い資料").first).to_be_visible()
+    expect(panel.get_by_role("button", name="本文の目次")).to_have_count(0)

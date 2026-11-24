@@ -66,3 +66,19 @@ def test_comment_input_at_bottom(page: Page, spa_preview: str, size: dict[str, i
     form = dialog.locator("form[data-id='D-1']")
     expect(form).to_be_visible()
     assert_bottom_aligned(form, dialog)
+
+
+def test_supplement_tabs_and_toc(page: Page, spa_preview: str) -> None:
+    """全画面にも本文の切り替えのタブと本文の目次を出し、目次の項目を押すと「本文」を選んで見出しへ移る（正常系）。"""
+    # 準備
+    open_spa(page, spa_preview, "?tab=decisions&id=D-1&full=1")
+    dialog = page.get_by_role("dialog", name="記録の形")
+    expect(dialog.get_by_role("tablist", name="詳細の表示").get_by_role("tab")).to_have_text(["本文", "関連", "コメント"])
+    dialog.get_by_role("tab", name="関連").click()
+    # 実行
+    dialog.get_by_role("button", name="本文の目次").click()
+    page.get_by_role("navigation", name="本文の目次").get_by_role("button", name="決め方").click()
+    # 検証
+    page.wait_for_url("**h=*")
+    expect(dialog.get_by_role("tab", name="本文")).to_have_attribute("aria-selected", "true")
+    expect(dialog.get_by_role("heading", name="決め方")).to_be_visible()

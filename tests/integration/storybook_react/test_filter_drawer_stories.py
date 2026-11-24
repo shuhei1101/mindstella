@@ -21,6 +21,8 @@ STATES = (
     "shared-filterdrawer--presets",
     "shared-filterdrawer--preset-applied",
     "shared-filterdrawer--tag-detail",
+    "shared-filterdrawer--preset-save-no-tag",
+    "shared-filterdrawer--preset-save-open",
 )
 
 # ドロワーの幅（px）。コメントの一覧と同じ
@@ -190,3 +192,22 @@ def test_tag_detail(open_story: OpenStory) -> None:
     assert dialog.get_by_role("radio", name="すべて含む").count() == 0
     expect(dialog.get_by_role("combobox", name="条件の組み合わせ")).to_have_value("and")
 
+
+
+def test_preset_save_no_tag(open_story: OpenStory) -> None:
+    """タグの条件が無いと、プリセットのまとまりの下の「プリセットとして保存」を押せない見た目にし、理由を出す（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-filterdrawer--preset-save-no-tag").get_by_role("dialog", name="絞り込み")
+    button = dialog.get_by_role("button", name="プリセットとして保存")
+    # 検証
+    expect(button).to_have_attribute("aria-disabled", "true")
+    expect(button).to_have_accessible_description("タグの条件を選ぶと、プリセットとして保存できます。")
+
+
+def test_preset_save_open(open_story: OpenStory) -> None:
+    """タグと状態を選んで名前の入力を開くと、タグの条件だけを保存する旨を出す（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-filterdrawer--preset-save-open").get_by_role("dialog", name="絞り込み")
+    # 検証
+    expect(dialog.get_by_label("プリセットの名前")).to_be_visible()
+    expect(dialog.get_by_text("タグの条件だけを保存します。状態・種類・文字の条件は保存しません。")).to_be_visible()

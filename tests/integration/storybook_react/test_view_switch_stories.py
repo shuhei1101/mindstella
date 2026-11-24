@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import expect
 
-from .color_helpers import MIN_CONTRAST, contrast, resolve_color
+from .color_helpers import resolve_color
 from .storybook_react_fixture_types import OpenStory
 
 # 部品設計の状態
@@ -74,7 +74,7 @@ def test_docs(open_story: OpenStory) -> None:
 
 
 def test_decisions_selected_fill(open_story: OpenStory) -> None:
-    """選んでいる形式はマーカーの色の塗りで、選んでいない形式の面とのコントラスト比が 3:1 以上。選んでいない形式のホバーは面の色を変え、選んでいる形式はホバーで変えない（正常系）。"""
+    """選んでいる形式は `--tab-selected` の面と太字で、選んでいない形式の面と色が違う。選んでいない形式のホバーは `--card` の面にし、選んでいる形式はホバーで変えない（正常系）。"""
     # 準備
     page = open_story("shared-viewswitch--decisions")
     group = page.get_by_role("group", name="表示形式")
@@ -89,7 +89,8 @@ def test_decisions_selected_fill(open_story: OpenStory) -> None:
     board.hover()
     selected_hovered = board.evaluate(background)
     # 検証
-    assert selected == resolve_color(page, "--mark")
-    assert contrast(selected, unselected) >= MIN_CONTRAST
-    assert hovered == resolve_color(page, "--accent")
+    assert selected == resolve_color(page, "--tab-selected")
+    assert selected != unselected
+    assert int(board.evaluate("e => getComputedStyle(e).fontWeight")) > int(table.evaluate("e => getComputedStyle(e).fontWeight"))
+    assert hovered == resolve_color(page, "--card")
     assert selected_hovered == selected

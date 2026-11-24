@@ -396,6 +396,36 @@ def test_normal_when_search(make_workspace: MakeWorkspace, call_tool: CallTool, 
     assert page.get_attribute(CURRENT_TAB, "data-tab") == "tasks"
 
 
+def test_normal_when_search_filter_candidate(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
+    """全体の検索の先頭の絞り込みの候補を選び、今の画面の絞り込みにその値を加える（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="画面の資料", status="確認中", tags=[{"name": "画面"}]),
+        make_item("A-2", title="廃止の資料", status="確認中", tags=[{"name": "画面"}, {"name": "廃止"}]),
+        make_item("A-3", title="タグの無い資料", status="確認中"),
+    )
+    open_spa(page, url, "?tab=docs")
+    before = _history_length(page)
+    # 実行（Ctrl+K を押して「廃」と入力する）
+    page.keyboard.press("Control+k")
+    page.get_by_role("textbox", name="検索キーワード").fill("廃")
+    page.wait_for_url(re.compile("q="))
+    candidate = page.get_by_role("group", name="絞り込みをオンにする").get_by_role("option")
+    expect(candidate).to_have_count(1)
+    first = page.get_by_role("option").first.inner_text()
+    # 実行（「タグ = 廃止」を押す）
+    candidate.click()
+    page.wait_for_url(re.compile("f\\.tags="))
+    # 検証
+    assert "タグ = 廃止" in first
+    assert "1" in first
+    expect(page.get_by_role("dialog", name="すべての項目を検索")).to_be_hidden()
+    assert page.evaluate("decodeURIComponent(location.search)") == "?tab=docs&f.tags=廃止"
+    assert _history_length(page) == before + 1
+    expect(page.get_by_text("廃止の資料")).to_be_visible()
+    expect(page.get_by_text("画面の資料")).to_be_hidden()
+    expect(page.get_by_text("タグの無い資料")).to_be_hidden()
+
 def test_normal_when_edits_saved(page: Page, spa_preview: str) -> None:
     """編集を溜めてまとめて保存すると、記録へ書き込む（正常系）。"""
     open_spa(page, spa_preview, "?tab=decisions&id=D-1")
