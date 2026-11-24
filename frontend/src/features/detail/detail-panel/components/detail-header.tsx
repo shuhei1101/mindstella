@@ -1,10 +1,12 @@
 // 詳細の見出し（種類と ID・確認済み・戻る・進む・編集・エクスポート・コメントの一覧・全画面・閉じる）と、確認済みを書き換えられなかった旨
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
+import { BodyToc } from "@/shared/components/body-toc";
 import { DocExportControl } from "@/shared/components/doc-export-menu";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
 import type { PendingMarkKind } from "@/shared/core/edits";
+import { bodyToc } from "@/shared/core/body-toc";
 import { cn } from "@/shared/lib/cn";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { bodyFormatOf, KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
@@ -24,12 +26,15 @@ export type DetailHeaderProps = {
   onToggleEdit: () => void;
   onToggleFull: () => void;
   onClose: () => void;
+  /** 本文の目次で押した見出しへ移る。Markdown の本文を持つ資料で、見出しがあるときだけ目次のボタンを出す */
+  onHeading?: (slug: string) => void;
 };
 
-export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
+export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, onHeading }: DetailHeaderProps) => {
   const { canBack, canForward, openItemComments } = usePreviewSearch();
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
+  const toc = source === undefined || onHeading === undefined ? [] : bodyToc(source);
   const editLabel = editing ? "編集を終える" : "編集する";
   const fullLabel = full ? "元の大きさに戻す" : "全画面表示";
   return (
@@ -51,6 +56,7 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, comme
             <span>{editLabel}</span>
           </Button>
         ) : null}
+        {toc.length === 0 || onHeading === undefined ? null : <BodyToc entries={toc} onHeading={onHeading} />}
         {source === undefined ? null : <DocExportControl item={item} source={source} index={index} />}
         {full || !comments ? null : (
           <Button variant="ghost" size="icon" aria-label={`${item.id} のコメントの一覧を開く`} title="この項目のコメントの一覧" onClick={() => { openItemComments(item.id); }}>

@@ -958,6 +958,26 @@ files:
   description: プリセットの保存の状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
   tags:
   - tool:react
+- path: src/shared/components/body-toc.tsx
+  name: 本文の目次
+  description: 詳細のヘッダーのボタンで開き、本文の見出しを階層つきで並べて押すとその見出しへ移る目次。目次の見た目や操作を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/body-toc.stories.tsx
+  name: 本文の目次のストーリー
+  description: 本文の目次の状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/core/body-toc.ts
+  name: 本文の目次の見出しの取り出し
+  description: 資料の本文の Markdown から、コードブロックの外の見出しを階層と見出しを指す名前つきで取り出す。目次に並べる見出しを変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/features/detail/detail-panel/components/detail-supplements.tsx
+  name: 詳細の本文と補足の見分け方
+  description: 詳細の本文と参照・関連・経緯の欄を、タブ・折りたたみ・背景の色のどれかで分ける。本文と補足の見せ方を変更するときに参照する。
+  tags:
+  - tool:react
 - path: src/shared/components/filter-drawer.stories.tsx
   name: 絞り込みのストーリー
   description: 絞り込みのストーリー。

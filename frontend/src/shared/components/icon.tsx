@@ -157,6 +157,11 @@ const ICONS = {
       <path d="m9 6 6 6-6 6"/>
     </>
   ),
+  toc: (
+    <>
+      <path d="M4 6h1M9 6h11M6 12h1M11 12h9M8 18h1M13 18h7"/>
+    </>
+  ),
   filter: (
     <>
       <path d="M4 5h16l-6 7.5V19l-4-2v-4.5Z"/>

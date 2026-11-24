@@ -5,6 +5,7 @@ import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/co
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
 import { DetailResizer, PANEL_WIDTH } from "@/features/detail/detail-panel/components/detail-resizer";
 import { BodyView } from "@/features/detail/detail-panel/components/body-view";
+import { DetailSupplements, type SupplementLayout } from "@/features/detail/detail-panel/components/detail-supplements";
 import type { BodyDiffView } from "@/shared/components/body-diff-view-switch";
 import { DetailComments, DetailReviewComments } from "@/features/detail/detail-panel/components/detail-comments";
 import { DiffDeadlineContext, KeyDiff, keyDiffs, nextDiffDeadline, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
@@ -117,11 +118,11 @@ const bodyDisplayOf = (): BodyDisplay => {
   return { fold: prefs.sectionFold !== false };
 };
 
-export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string };
+export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string; supplementLayout?: SupplementLayout };
 
 /** 見出しと本文。パネルと全画面が共通で使う */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
-export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
+export const DetailContent = ({ id, index, full, supplementLayout }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
   const { search, openItem, closeItem, setFull, setHeading, setDiff } = usePreviewSearch();
   const { point } = useDiffView();
   // 押したタグを後ろの画面の絞り込みに加える（後ろの画面が概要なら項目の種類の画面へ移る）
@@ -208,12 +209,6 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
           </Section>
         ) : null}
         {body("本文")}
-        {relation("前提", related.prerequisites)}
-        {relation("後続の項目", related.successors)}
-        {relation("派生元", related.parents)}
-        {relation("派生した項目", related.children)}
-        {relation("関連タスク", related.tasks)}
-        {relation("経緯（会話ログ）", related.logs)}
       </>
     ),
     tasks: (
@@ -257,6 +252,19 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
     ),
     logs: body("要約"),
   };
+  // 検討事項の関係する項目は、リンク・関連・参照元と同じ補足の欄に並べる
+  const supplementsByKind: Partial<Record<Kind, ReactNode>> = {
+    decisions: (
+      <>
+        {relation("前提", related.prerequisites)}
+        {relation("後続の項目", related.successors)}
+        {relation("派生元", related.parents)}
+        {relation("派生した項目", related.children)}
+        {relation("関連タスク", related.tasks)}
+        {relation("経緯（会話ログ）", related.logs)}
+      </>
+    ),
+  };
   // 差分の表示の間と配る書き出しは編集・確認済みを出さない
   const embedded = isEmbedded();
   const canEdit = point === null && !embedded;
@@ -275,7 +283,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const change = ({ op, key, value }: EditChange): void => { add.mutate({ op, target: id, key, value }); };
   return (
     <DiffDeadlineContext.Provider value={deadline}>
-      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
+      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} onHeading={setHeading} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false && view !== "source"} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
           <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removePending={flight.running} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { flight.run(() => add.mutateAsync({ op: "item-remove", target: id })); }} onCancelRemove={() => { if (removal !== undefined) flight.run(() => cancel.mutateAsync(removal.id)); }} />
@@ -291,6 +299,10 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
               </div>
             )}
             {diff?.versions?.trimmed === true ? <p role="note" className="text-small text-muted-foreground">{NOTE_TRIMMED}</p> : null}
+            <DetailSupplements
+              layout={supplementLayout}
+              main={
+                <>
             <div data-key="status">{keys?.has("status") === true ? <KeyDiff was={<Status value={keys.left["status"]} />} now={<Status value={keys.right["status"]} />} plain /> : <Status value={item.status} />}</div>
             <h2 ref={setTitleElement} data-key="title" className="m-0 flex flex-wrap items-center gap-1 text-next font-semibold">
               <KeyValue name="title" value={item.title} keys={keys} />
@@ -300,6 +312,11 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             <Meta item={item} keys={keys} onSelectTag={point === null && !full ? selectTag : undefined} />
             {kind === "decisions" || kind === "tasks" ? null : <Labelled label="取り下げた理由" name="reason" value={item.reason} keys={keys} />}
             {byKind[kind]}
+                </>
+              }
+              supplements={
+                <>
+            {supplementsByKind[kind]}
             {(item.links ?? []).length > 0 ? (
               <Section label="リンク">
                 <ul className="flex flex-col gap-1">
@@ -316,6 +333,9 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             ) : null}
             {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
             {relation("参照元", related.referencedBy)}
+                </>
+              }
+            />
             {embedded ? null : (
               <DetailReviewComments id={id} index={index} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
             )}
@@ -345,9 +365,9 @@ const readPanelWidth = (): number => {
   return saved !== null && /^[1-9]\d*$/.test(saved) ? Number(saved) : PANEL_WIDTH.default;
 };
 
-export type DetailPanelProps = { id: string; index: RecordIndex };
+export type DetailPanelProps = { id: string; index: RecordIndex; supplementLayout?: SupplementLayout };
 
-export const DetailPanel = ({ id, index }: DetailPanelProps) => {
+export const DetailPanel = ({ id, index, supplementLayout }: DetailPanelProps) => {
   const [width, setWidth] = useState(readPanelWidth);
   return (
     <aside aria-label="詳細" style={{ width }} className="relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!">
@@ -358,7 +378,7 @@ export const DetailPanel = ({ id, index }: DetailPanelProps) => {
           sessionStorage.setItem(workspaceKey(PANEL_WIDTH_KEY), String(next));
         }}
       />
-      <DetailContent key={id} id={id} index={index} full={false} />
+      <DetailContent key={id} id={id} index={index} full={false} supplementLayout={supplementLayout} />
     </aside>
   );
 };
