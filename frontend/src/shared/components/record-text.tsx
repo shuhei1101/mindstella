@@ -1,6 +1,8 @@
 // 記録の文字を描き、項目の ID・スレッドの ID をリンクかマーカーにする部品（モック）
 import { Fragment } from "react";
 
+import { hashWith } from "@/shared/core/body-links";
+
 /** ID が指す項目・スレッドの、ツールチップに出す中身 */
 export type RecordIdTarget = { id: string; title: string; kindLabel: string; status?: string };
 
@@ -24,7 +26,8 @@ type RecordTextProps = {
 
 type TextPart = { text: string; target: RecordIdTarget | null };
 
-const RECORD_ID_PATTERN = /\b(?:TH-\d+(?:-\d+)?|[A-Z]{1,2}-\d+)\b/g;
+/** スレッドの ID と項目の ID（前後が英数字のものは当てない。本文のリンクと同じ判定） */
+const RECORD_ID_PATTERN = /(?<![A-Za-z0-9-])(?:TH-[0-9]+(?:-[0-9]+)?|[A-Z]+-[0-9]+)(?![0-9])/g;
 
 /** 記録の文字を、記録にある ID と文字の並びに分ける */
 const splitText = ({ text, lookup }: { text: string; lookup: LookupRecordId }): TextPart[] => {
@@ -57,7 +60,7 @@ export const RecordText = ({ text, mode, lookup, onOpen, descriptionId }: Record
           return (
             <a
               key={key}
-              href={`#${target.id}`}
+              href={hashWith({ id: target.id, heading: null })}
               data-record-id={target.id}
               title={describe(target)}
               className="font-mono text-mark underline decoration-mark-line underline-offset-3"
