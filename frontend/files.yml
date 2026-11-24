@@ -948,6 +948,16 @@ files:
   related:
   - to: MOD-489-69
     type: implements
+- path: src/shared/components/preset-save.tsx
+  name: プリセットの保存
+  description: 今の絞り込みのタグの条件に名前を付けてプリセットとして保存する入力。保存の操作・名前の入力・エラーの見た目を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/preset-save.stories.tsx
+  name: プリセットの保存のストーリー
+  description: プリセットの保存の状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
+  tags:
+  - tool:react
 - path: src/shared/components/filter-drawer.stories.tsx
   name: 絞り込みのストーリー
   description: 絞り込みのストーリー。

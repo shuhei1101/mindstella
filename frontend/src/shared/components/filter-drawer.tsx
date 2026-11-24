@@ -6,6 +6,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
 import type { Filters } from "@/shared/core/filters";
+import { PresetSave, type PresetSaveProps } from "@/shared/components/preset-save";
 import { TagExprEditor } from "@/shared/components/tag-expr-editor";
 import { simpleTagsOf, type PresetChoice, type PresetFilter } from "@/shared/core/presets";
 import { cn } from "@/shared/lib/cn";
@@ -56,6 +57,8 @@ export type FilterDrawerProps = {
   /** 選択できるプリセット。選択するとプリセットのタグの式でタグの条件を置き換える */
   presets?: PresetChoice[];
   onApplyPreset?: (name: string) => void;
+  /** 今の絞り込みのタグの条件をプリセットとして保存する。指定するとプリセットの下に保存の操作を出す */
+  presetSave?: Omit<PresetSaveProps, "hasTagCondition">;
   /** 今のタグの条件の式。条件が無ければ null */
   tagExpr?: PresetFilter | null;
   /** タグの条件を式で置き換える。指定するとタグの条件を詳細で指定できる */
@@ -70,7 +73,7 @@ export type FilterDrawerProps = {
   onTextCommit?: () => void;
 };
 
-export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, texts = [], tagMatch = "all", onTagMatchChange, presets = [], onApplyPreset, tagExpr = null, onTagExprChange, onToggleValue, onClearGroup, onClearAll, onClose, onTextChange, onTextCommit }: FilterDrawerProps) => {
+export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, texts = [], tagMatch = "all", onTagMatchChange, presets = [], onApplyPreset, presetSave, tagExpr = null, onTagExprChange, onToggleValue, onClearGroup, onClearAll, onClose, onTextChange, onTextCommit }: FilterDrawerProps) => {
   const timer = useRef(0);
   // 打ち終えるのを待っている間か（待ちの無いときに Enter・フォーカスが離れても呼ばない）
   const waiting = useRef(false);
@@ -152,6 +155,11 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
             </ul>
           </fieldset>
         ) : null}
+        {presetSave === undefined ? null : (
+          <div className="mb-2">
+            <PresetSave {...presetSave} hasTagCondition={tagExpr !== null || (selected["tags"] ?? []).length > 0} />
+          </div>
+        )}
         {texts.length > 0 ? (
           <fieldset className="mb-2">
             <legend className="text-small font-medium">文字を含む</legend>
