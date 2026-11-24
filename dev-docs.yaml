@@ -10,6 +10,27 @@ related:
   types: [references, depends_on, see_also, implements, tests]
 github:
   repository: shuhei1101/mindstella
+direct_commit:
+  branch: develop
+  kinds:
+    - architecture
+    - nonfunctional
+    - scenario
+    - interface
+    - module
+    - screen
+    - component
+    - er
+    - config
+    - api
+    - library
+    - test_procedure
+    - index
+    - files_guide
+    - files_root
+    - files_plugin
+    - files_frontend
+    - files_tests
 documents:
   - id: architecture
     title: アーキテクチャ図
