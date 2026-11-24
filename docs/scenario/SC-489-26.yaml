@@ -33,9 +33,9 @@ scenarios:
   - name: 正常シナリオ（再開）
     setup:
       - name: Mock
-        description: 'モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、SessionStart のフックのスクリプトを `MINDSTELLA_SESSION` と `source: compact` で呼び、起動と再開の工程が連ねる `pending`・`commit`・`threads` を決めた引数で再生する。コメントの取り込みの中身は単一ユースケース『コメントの取り込み』で確かめるので、取り込み待ちのスレッドの一覧までを再生する'
+        description: 'モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、SessionStart のフックのスクリプトを `MINDSTELLA_SESSION` と `source: compact` で呼び、起動と再開の工程が連ねる `pending`・`commit`・project-index の `search_docs`（保留のタスク）・`threads` を決めた引数で再生する。コメントの取り込みの中身は単一ユースケース『コメントの取り込み』で確かめるので、取り込み待ちのスレッドの一覧までを再生する'
       - name: make_workspace
-        description: 要見直しの検討事項 D-1・進行中の作業 T-1・未決定の検討事項 D-2 と、まだまとめていない変更と、取り込み待ちのスレッド 1 件を持つワークスペース
+        description: 要見直しの検討事項 D-1・進行中の作業 T-1・未決定の検討事項 D-2・D-2 の決定を待つ保留のタスク T-2（`reason` に着手できる条件 `D-2 が決定済みになったら`）と、まだまとめていない変更と、取り込み待ちのスレッド 1 件を持つワークスペース
         notes: 前回参照した時点を状態のフォルダに記録した後に、`write_docs` で D-1 のタイトルを書き換え、`commit` せずに残す
     flow: |-
       ```mermaid
@@ -51,6 +51,9 @@ scenarios:
         CC->>SV: まだまとめていない変更を取得する
         SV-->>CC: D-1
         CC->>SV: commit（まとめ忘れ）
+        CC->>PI: 保留のタスクを検索する（search_docs）
+        PI-->>CC: T-2
+        CC->>CC: T-2 の着手できる条件を満たしていないので、保留のままにする
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: 1 件
         CC->>CC: コメントの取り込みへ進む
@@ -60,6 +63,7 @@ scenarios:
       - 注入文が、次の候補を持たず、未決定の D-2 を候補として並べない
       - まとめ忘れの変更が 1 つのまとまりとして commit され、まだまとめていない変更が 0 件である
       - 前回参照した時点が書き換わり、続けて SessionStart のフックを呼ぶと、前回参照した後に変わった項目が 0 件である
+      - T-2 が保留のままで、保留のタスクの検索が T-2 を返す
     test: test_normal_when_resume
   - name: 正常シナリオ（進め方の文書がある）
     setup:
@@ -128,6 +132,7 @@ notes:
   進み具合: エージェントフローの工程ごとの進み具合は書き込まず、圧縮・クリアの後は記録と commit から戻す
   E2E の範囲: モデルを呼ばず、SessionStart のフックのスクリプトを MindStella のセッションの環境変数と契機で呼んで注入文を確かめ、起動と再開の工程が連ねるツールの呼び出しを再生する。進め方の工程の中身は確かめない
   検討事項の案: セットアップの検討事項は、単一ユースケース『記録の追加と更新』の補足「検討事項の案」の構造で作る
+  保留のタスクの見直し: まとめ忘れを commit した後、取り込み待ちのコメントを取り込む前に、状態が保留のタスクを全て検索し、`reason` の着手できる条件を満たしたものを進行中にしてすぐに着手する。再開の状況の注入は保留のタスクを持たない
 minimal_guarantee: 注入に失敗しても MindStella のセッションの起動は止めず、前回参照した時点を書き換えない。
 frequency: MindStella のセッションの起動・`/clear`・再起動・圧縮のたびに 1 回
 refs:
