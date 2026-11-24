@@ -5,3 +5,9 @@ confirmations:
     approver: shuhei1101
     commit: e7cd0f9ac527c5650c051175500af4062b27d40f
     thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4670327644
+  - topic: '#159 本文と補足の見分け方'
+    decision: 案 A（タブ）にする。タブは「本文」「関連」「コメント」の 3 つで、補足のタブ名は欄を並べず 1 語にし、レビュー中のコメントをコメントのタブへ移す。画面のタブ全体で、選んだタブの色を薄くし、選んでいないタブにも枠線を付ける（色の濃さはモックで確認し直す）
+    decided_by: reply
+    approver: shuhei1101
+    commit: c91fd5fc
+    thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4674999472
