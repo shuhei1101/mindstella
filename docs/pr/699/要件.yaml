@@ -1,0 +1,18 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-30.yaml
+    impact: changed
+    detail: 1 件の検討事項では 1 つの質問だけを聞き、決める内容が複数あるときは内容ごとに検討事項を分ける
+    depends_on: []
+docs:
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: 記録の使い分けの工程「検討事項に案を記載する」の行に、1 件の検討事項で 1 つの質問だけを聞き、決める内容が複数あるときは分けることを加える
+    status: todo
+scope_out:
+  - item: aituber の台本作成の受付のエージェントフローに同じ決まりを追加する
+    reason: 別のリポジトリの変更。後続の Issue が受け持つ
+    plan: shuhei1101/aituber#254
+  - item: 点検（check）で複数の質問をまとめた検討事項を見つける
+    reason: 質問の数は案の文の意味で決まり、キーと値の点検では見分けられない。誤検知で利用者の回答を止めないよう、エージェントフローの決まりだけにする（判断が分かれるためレビューで確定する）
+    plan: none
