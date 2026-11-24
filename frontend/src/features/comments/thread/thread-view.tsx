@@ -20,6 +20,7 @@ import { voiceEditingOf } from "@/shared/stores/voice-store";
 import { useFocusAfterAddTarget } from "@/shared/stores/prefs-store";
 import { useThreadLinks } from "@/shared/hooks/use-thread-links";
 import { useSingleFlight } from "@/shared/hooks/use-single-flight";
+import { ThreadTitle } from "@/shared/components/thread-title";
 
 export type ThreadViewProps = {
   /** 開くスレッドの ID（まだ送っていない新規スレッドはコメントの ID） */
@@ -262,7 +263,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
       <div className="grid gap-1 border-b border-border px-3 py-2">
         <h2 ref={heading} tabIndex={-1} className="m-0 flex items-center gap-2 text-body font-medium focus-visible:outline-none">
           <ThreadState status={thread === null ? "pending" : thread.status} />
-          <span>{title}</span>
+          <ThreadTitle title={title} collapsed={false} />
         </h2>
         {thread?.target === null || thread?.target === undefined ? null : (
           <button type="button" className="flex cursor-pointer items-center gap-1 text-left text-small" disabled={titles(thread.target) === null} onClick={() => { showLocation({ target: thread.target ?? "", loc: thread.loc }); onOpenItem(thread.target ?? ""); }}>

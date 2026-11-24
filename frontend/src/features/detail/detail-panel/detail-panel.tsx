@@ -36,6 +36,7 @@ import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll } from "@/shared/stores/prefs-store";
 import { isEmbedded } from "@/shared/core/embedded";
+import type { SiblingNavProps } from "@/shared/components/sibling-nav";
 import { useSingleFlight } from "@/shared/hooks/use-single-flight";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
@@ -119,11 +120,11 @@ const bodyDisplayOf = (): BodyDisplay => {
   return { fold: prefs.sectionFold !== false };
 };
 
-export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string };
+export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string; sibling?: SiblingNavProps };
 
 /** 見出しと本文。パネルと全画面が共通で使う */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
-export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
+export const DetailContent = ({ id, index, full, sibling }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
   const { search, openItem, closeItem, setFull, setHeading, setDiff } = usePreviewSearch();
   const { point } = useDiffView();
   // 押したタグを後ろの画面の絞り込みに加える（後ろの画面が概要なら項目の種類の画面へ移る）
@@ -294,7 +295,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   };
   return (
     <DiffDeadlineContext.Provider value={deadline}>
-      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} toc={toc} onHeading={toHeading} />
+      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} toc={toc} onHeading={toHeading} sibling={sibling} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false && view !== "source"} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
           <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removePending={flight.running} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { flight.run(() => add.mutateAsync({ op: "item-remove", target: id })); }} onCancelRemove={() => { if (removal !== undefined) flight.run(() => cancel.mutateAsync(removal.id)); }} />
@@ -379,9 +380,9 @@ const readPanelWidth = (): number => {
   return saved !== null && /^[1-9]\d*$/.test(saved) ? Number(saved) : PANEL_WIDTH.default;
 };
 
-export type DetailPanelProps = { id: string; index: RecordIndex };
+export type DetailPanelProps = { id: string; index: RecordIndex; sibling?: SiblingNavProps };
 
-export const DetailPanel = ({ id, index }: DetailPanelProps) => {
+export const DetailPanel = ({ id, index, sibling }: DetailPanelProps) => {
   const [width, setWidth] = useState(readPanelWidth);
   return (
     <aside aria-label="詳細" style={{ width }} className="relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!">
@@ -392,7 +393,7 @@ export const DetailPanel = ({ id, index }: DetailPanelProps) => {
           sessionStorage.setItem(workspaceKey(PANEL_WIDTH_KEY), String(next));
         }}
       />
-      <DetailContent key={id} id={id} index={index} full={false} />
+      <DetailContent key={id} id={id} index={index} full={false} sibling={sibling} />
     </aside>
   );
 };

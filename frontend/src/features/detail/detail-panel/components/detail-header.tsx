@@ -4,6 +4,7 @@ import { BodyToc } from "@/shared/components/body-toc";
 import { DocExportControl } from "@/shared/components/doc-export-menu";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
+import { SiblingNav, type SiblingNavProps } from "@/shared/components/sibling-nav";
 import { Button } from "@/shared/components/ui/button";
 import type { PendingMarkKind } from "@/shared/core/edits";
 import type { TocEntry } from "@/shared/core/body-toc";
@@ -30,9 +31,11 @@ export type DetailHeaderProps = {
   toc?: readonly TocEntry[];
   /** 目次で押した見出し */
   onHeading?: (slug: string) => void;
+  /** 元の画面の今の並び。渡さないとき（並びの元の画面が無いとき）は前後の項目へ移るボタンを描かない */
+  sibling?: SiblingNavProps;
 };
 
-export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, toc = [], onHeading }: DetailHeaderProps) => {
+export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, toc = [], onHeading, sibling }: DetailHeaderProps) => {
   const { canBack, canForward, openItemComments } = usePreviewSearch();
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
@@ -64,6 +67,7 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, comme
             <Icon name="comment" />
           </Button>
         )}
+        {sibling === undefined ? null : <SiblingNav {...sibling} />}
         <Button variant="ghost" size="icon" aria-label="前の項目へ戻る" title="前の項目へ戻る" disabled={!canBack} onClick={() => { window.history.back(); }}>
           ←
         </Button>

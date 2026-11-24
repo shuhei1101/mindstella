@@ -52,8 +52,8 @@ const DATA = { ...RECORDS, decisions: DECISIONS, docs: DOCS, notes: NOTES, bodie
 
 const respond = () => worker.use(http.get("*/api/records", () => HttpResponse.json(DATA)));
 
-const panelOf = (id: string) => {
-  const Panel = () => <DetailPanel id={id} index={buildIndex(DATA)} />;
+const panelOf = (id: string, sibling?: { position: number; total: number }) => {
+  const Panel = () => <DetailPanel id={id} index={buildIndex(DATA)} {...(sibling === undefined ? {} : { sibling: { ...sibling, onPrev: () => undefined, onNext: () => undefined } })} />;
   return Panel;
 };
 
@@ -78,3 +78,9 @@ export const Decided: Story = { args: { path: "/?tab=decisions&id=D-8", screen: 
 /** 本文に見出しを持つ資料。ヘッダーの目次のボタンから本文の目次を開く */
 export const BodyToc: Story = { args: { path: "/?tab=docs&id=A-9", screen: panelOf("A-9") } };
 
+
+/** 一覧・表・ボードから開いた検討事項。見出しに、元の画面の今の並びで前後の項目へ移るボタンと位置（2 / 3）を出す */
+export const SiblingNav: Story = { args: { path: "/?tab=decisions&id=D-7", screen: panelOf("D-7", { position: 2, total: 3 }) } };
+
+/** 並びの末尾の項目。次の項目へ移るボタンは押せない */
+export const SiblingNavLast: Story = { args: { path: "/?tab=decisions&id=D-8", screen: panelOf("D-8", { position: 3, total: 3 }) } };

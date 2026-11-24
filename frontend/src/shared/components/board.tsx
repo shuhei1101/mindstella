@@ -3,6 +3,7 @@ import { useRef, type MouseEvent, type PointerEvent, type ReactNode, type RefCal
 
 import { CommentMark } from "@/shared/components/comment-mark";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
+import { ItemDates } from "@/shared/components/item-dates";
 import { StatusMark } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { addedTitle } from "@/shared/components/table";
@@ -168,6 +169,7 @@ export const ItemCard = ({ index, item, meta, links, selected, marks, comments, 
         ))}
         {pending === undefined ? null : <PendingMark kind={pending} />}
       </span>
+      <ItemDates created={item.created} updated={item.updated} />
       {links.map((id) => (
         <span key={id} className="text-xs text-muted-foreground">
           <span className="font-mono">{id}</span> {titleOf(index, id)}

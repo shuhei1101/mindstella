@@ -3,6 +3,7 @@ import { CommentMark } from "@/shared/components/comment-mark";
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
 import { Icon, StatusMark } from "@/shared/components/icon";
+import { ItemDates } from "@/shared/components/item-dates";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { TagList } from "@/shared/components/tag-list";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
@@ -55,6 +56,7 @@ export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen,
         )}
         {pending === undefined ? null : <PendingMark kind={pending} />}
       </span>
+      <ItemDates created={doc.created} updated={doc.updated} />
       {(doc.tags ?? []).length > 0 ? (
         <span className="flex flex-wrap gap-x-1 gap-y-1.5">
           <TagList values={doc.tags} onSelect={onSelectTag} />
