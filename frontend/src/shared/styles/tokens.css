@@ -230,6 +230,7 @@
   --mark-line: color-mix(in oklab, var(--mark) 45%, var(--card));
   --row-hover: color-mix(in oklab, var(--foreground) 4%, var(--card));
   --row-selected: color-mix(in oklab, var(--mark) 14%, var(--card));
+  --tab-selected: color-mix(in oklab, var(--mark) 22%, var(--card));
   /* 差分の表示の変更の点（保留の色） */
   --diff-changed: var(--st-hold);
   /* 差分の札の × に乗せたときの面 */

@@ -14,7 +14,7 @@ export type ViewSwitchProps = {
 };
 
 export const ViewSwitch = ({ views, current, onChange }: ViewSwitchProps) => (
-  <div role="group" aria-label="表示形式" className="inline-flex rounded-control border border-border bg-card p-0.5">
+  <div role="group" aria-label="表示形式" className="inline-flex gap-1">
     {views.map(({ key, label }) => (
       <button
         key={key}
@@ -25,8 +25,8 @@ export const ViewSwitch = ({ views, current, onChange }: ViewSwitchProps) => (
           if (key !== current) onChange(key);
         }}
         className={cn(
-          "inline-flex h-7 w-24 cursor-pointer items-center justify-center gap-1 rounded-control text-small hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
-          key === current && "bg-mark font-medium text-on-mark hover:bg-mark",
+          "inline-flex h-7 w-24 cursor-pointer items-center justify-center gap-1 rounded-control border border-border bg-card text-small hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
+          key === current && "border-mark bg-tab-selected font-medium hover:bg-tab-selected",
         )}
       >
         <Icon name={VIEW_ICON[key]} />

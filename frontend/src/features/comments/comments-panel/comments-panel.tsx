@@ -204,7 +204,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
       <div className="flex min-h-0 flex-1 flex-col">
         <div role="group" aria-label="スレッドの状態で絞る" className="flex gap-1 border-b border-border px-3 py-2">
           {FILTERS.map((entry) => (
-            <Button key={entry.key} variant="ghost" aria-pressed={filter === entry.key} className="aria-pressed:bg-mark aria-pressed:font-medium aria-pressed:text-on-mark aria-pressed:hover:bg-mark" onClick={() => { setComments({ tstatus: entry.key === "open" ? undefined : entry.key }); }}>
+            <Button key={entry.key} variant="ghost" aria-pressed={filter === entry.key} className="border border-border aria-pressed:border-mark aria-pressed:bg-tab-selected aria-pressed:font-medium aria-pressed:hover:bg-tab-selected" onClick={() => { setComments({ tstatus: entry.key === "open" ? undefined : entry.key }); }}>
               {entry.label}
               <span className="font-mono text-small">{counts[entry.key]}</span>
             </Button>

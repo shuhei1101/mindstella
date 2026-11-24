@@ -50,6 +50,7 @@
   --color-on-mark: var(--on-mark);
   --color-row-hover: var(--row-hover);
   --color-row-selected: var(--row-selected);
+  --color-tab-selected: var(--tab-selected);
   --color-hit: var(--hit);
   --color-st-done: var(--st-done);
   --color-st-open: var(--st-open);

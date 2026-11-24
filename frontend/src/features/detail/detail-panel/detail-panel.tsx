@@ -335,10 +335,12 @@ export const DetailContent = ({ id, index, full, supplementLayout }: Omit<Detail
             {relation("参照元", related.referencedBy)}
                 </>
               }
+              comments={
+                embedded ? null : (
+                  <DetailReviewComments id={id} index={index} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
+                )
+              }
             />
-            {embedded ? null : (
-              <DetailReviewComments id={id} index={index} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
-            )}
           </div>
         )}
       </DiffMinimap>
