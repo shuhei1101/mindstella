@@ -340,3 +340,6 @@ scope_out:
   - item: React のモジュール構成の `test_files`（対象の横に置く単体テストのパス）を記録する
     reason: このリポジトリのモジュール構成のスキーマが `test_files` に `tests/` で始まるパスだけを受け、規約『V字モデル』の React の配置（対象の横）を記録できない。スキーマの版の問題で、この束の変更ではない
     plan: none
+  - item: '`frontend/files.yml` に無いフロントエンドのソースの行（`thread-view.tsx` ほか、コメントの一覧・詳細パネルなどのファイルの多く）'
+    reason: 行が無いのは `thread-view.tsx` だけでなく、`frontend/src` の多くのファイルにわたる。この束の変更で生じたものではなく、片方だけを足すと管理用の YAML の範囲が不揃いになる（reviewer の対象外の規約逸脱の報告）
+    plan: none

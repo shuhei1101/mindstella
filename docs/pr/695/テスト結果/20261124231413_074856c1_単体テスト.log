@@ -1,0 +1,14 @@
+$ npx vitest run
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694
+
+
+ Test Files  108 passed (108)
+      Tests  524 passed (524)
+   Start at  23:13:17
+   Duration  23.23s (environment 45%, tests 28%, import 13%, setup 9%, transform 4%, worker 1%)
+
+Environment  jsdom was created 108 times · 66.58s total, 45% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
