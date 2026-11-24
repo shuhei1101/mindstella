@@ -16,6 +16,7 @@ import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { cn } from "@/shared/lib/cn";
+import { SEGMENTED_GROUP_CLASS, SEGMENTED_ITEM_CLASS, SEGMENTED_SELECTED_CLASS } from "@/shared/lib/segmented";
 import { useFocusAfterAddTarget, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 import { readVoiceState } from "@/shared/stores/voice-store";
 import { useSingleFlight } from "@/shared/hooks/use-single-flight";
@@ -202,13 +203,15 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
     }
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <div role="group" aria-label="スレッドの状態で絞る" className="flex gap-1 border-b border-border px-3 py-2">
+        <div className="border-b border-border px-3 py-2">
+          <div role="group" aria-label="スレッドの状態で絞る" className={SEGMENTED_GROUP_CLASS}>
           {FILTERS.map((entry) => (
-            <Button key={entry.key} variant="ghost" aria-pressed={filter === entry.key} className="aria-pressed:bg-mark aria-pressed:font-medium aria-pressed:text-on-mark aria-pressed:hover:bg-mark" onClick={() => { setComments({ tstatus: entry.key === "open" ? undefined : entry.key }); }}>
+            <Button key={entry.key} variant="ghost" aria-pressed={filter === entry.key} className={cn(SEGMENTED_ITEM_CLASS, "h-7 font-normal", filter === entry.key && SEGMENTED_SELECTED_CLASS)} onClick={() => { setComments({ tstatus: entry.key === "open" ? undefined : entry.key }); }}>
               {entry.label}
               <span className="font-mono text-small">{counts[entry.key]}</span>
             </Button>
           ))}
+          </div>
         </div>
         {target === null ? null : <TargetChip target={target} title={targetTitle} onClear={() => { setComments({ ttarget: undefined }); }} />}
         {tag === null ? null : (

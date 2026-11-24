@@ -1,0 +1,25 @@
+confirmations:
+  - topic: '#362 プリセットとして保存する範囲'
+    decision: 今の絞り込みのうちタグの条件だけを保存し、状態・種類・列の文字の条件は保存しない。保存するときにタグの条件だけを保存する旨を出す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: e7cd0f9ac527c5650c051175500af4062b27d40f
+    thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4670327644
+  - topic: '#159 本文と補足の見分け方'
+    decision: 案 A（タブ）にする。タブは「本文」「関連」「コメント」の 3 つで、補足のタブ名は欄を並べず 1 語にし、レビュー中のコメントをコメントのタブへ移す。画面のタブ全体で、選んだタブの色を薄くし、選んでいないタブにも枠線を付ける（色の濃さはモックで確認し直す）
+    decided_by: reply
+    approver: shuhei1101
+    commit: c91fd5fc
+    thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4674999472
+  - topic: '#159 補足のタブ名'
+    decision: タブ名を「関連」にし、タブの中の欄の見出し「関連」を「関連する項目」にする（推奨案 C）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 4459c0e2
+    thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4675047389
+  - topic: '#159 画面のタブの見た目'
+    decision: 表示形式の切り替え・スレッドの状態の切り替え・詳細のタブの 3 か所とも、1 つの灰色の枠線の中にボタンをつなげた切り替えボタン（segmented control）にし、選んだボタンを薄い緑の面と影で浮き出させる（案 C）。この見た目で再確認は不要
+    decided_by: reply
+    approver: shuhei1101
+    commit: 7c756419
+    thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4675106279

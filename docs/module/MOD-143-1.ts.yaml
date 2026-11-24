@@ -1,0 +1,52 @@
+id: MOD-143-1
+title: プレビュー / filter-candidates-store
+lead: 今の画面の絞り込みの値と、値を絞り込みに加える処理を、全体の検索へ渡すストア。
+stores:
+  - name: useFilterCandidatesStore
+    title: 絞り込みの候補のストア
+    container: frontend/src/shared/stores/filter-candidates-store.ts
+    usecase: 項目を検索する
+    summary: 一覧の画面（`ListScreen`）が描いている間だけ、その画面の絞り込みの値と「値を加える」処理を持つ。概要など絞り込みを持たない画面では空のまま
+    state:
+      - name: groups
+        type: readonly FilterCandidateGroup[]
+        initial: '[]'
+        description: 今の画面の絞り込みの条件（`key`・`label`・値ごとの `value`・`count`）。並びはドロワーと同じ
+      - name: apply
+        type: '((key: string, value: string) => void) | null'
+        initial: 'null'
+        description: 値を今の画面の絞り込みに加え、履歴に 1 つ積む処理
+    actions:
+      - name: publish
+        title: 候補の登録
+        kind: 関数
+        summary: '`groups` と `apply` を置き換える。`ListScreen` が描くたびに後片付けつきの `useEffect` で呼び、外したときは `clear` を呼ぶ'
+        args:
+          - name: groups
+            type: readonly FilterCandidateGroup[]
+            required: true
+            description: 絞り込みの条件
+          - name: apply
+            type: '(key: string, value: string) => void'
+            required: true
+            description: 値を加える処理
+        returns:
+          type: void
+          description: なし
+        unit_tests:
+          - name: test_publish
+            case: 正常
+            summary: 登録と消去
+            condition: '`publish` の後に `clear`'
+            mock: なし
+            expected: '`publish` の後は渡した値、`clear` の後は `groups` が空で `apply` が null'
+      - name: clear
+        title: 候補の消去
+        kind: 関数
+        summary: '`groups` を空、`apply` を null にする'
+        returns:
+          type: void
+          description: なし
+notes:
+  単体テスト: 同じフォルダの `filter-candidates-store.test.ts` に置く
+  使う側: 登録は `ListScreen`、読み取りは `PreviewShell`（`SearchDialog` の `filterCandidates`・`onApplyFilter` に渡す）

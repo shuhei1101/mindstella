@@ -187,3 +187,23 @@ export const TagDetail: Story = {
     onTagMatchChange: fn(),
   },
 };
+
+/** タグの条件が無い。プリセットの下の保存の操作を押せない理由を出す */
+export const PresetSaveNoTag: Story = {
+  args: {
+    presets: [{ name: "画面の設計", count: 2, applied: false }],
+    onApplyPreset: fn(),
+    presetSave: { hasOtherConditions: false, onSave: fn(() => Promise.resolve({ error: null })) },
+  },
+};
+
+/** タグの条件と状態の条件で絞っている。保存の入力を開き、タグの条件だけを保存する旨を出す */
+export const PresetSaveOpen: Story = {
+  args: {
+    selected: { tags: ["プレビュー", "サーバー"], status: ["未着手"] },
+    shown: 1,
+    presets: [{ name: "画面の設計", count: 2, applied: false }],
+    onApplyPreset: fn(),
+    presetSave: { hasOtherConditions: true, defaultOpen: true, defaultName: "廃止する画面", onSave: fn(() => Promise.resolve({ error: null })) },
+  },
+};

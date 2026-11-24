@@ -7,7 +7,7 @@ components:
     kind: 画面
     container: frontend/src/features/search/search/search-dialog.tsx
     usecase: 項目を検索する
-    summary: shadcn/ui の Dialog で、検索の言葉と、`searchItems` の結果を段ごとの見出しの下に並べる
+    summary: shadcn/ui の Dialog で、検索の言葉と、`searchItems` の結果を段ごとの見出しの下に並べる。`filterCandidates` があるときは、`matchFilterCandidates` で検索の言葉に前方一致した値を「絞り込みをオンにする」の段に「{見出し} = {値}」と件数つきで先頭に並べ、上下の矢印の位置を候補から項目へ続けて数える。候補を押すか Enter で `onApplyFilter(key, value)` を呼ぶ。段の見出しは `role="presentation"`・`aria-hidden` にし、段は `role="group"` と見出しの名前で組む
     description: |-
       - 検索の言葉は search の `q` で、入力のたびに `replace: true` で書き換える
       - 結果を押すか、上下の矢印で選んで Enter で `onOpen(id)` を呼ぶ
@@ -34,6 +34,15 @@ components:
         type: () => void
         required: true
         description: 閉じる
+      - name: filterCandidates
+        type: readonly FilterCandidate[]
+        required: false
+        default: '[]'
+        description: 今の画面の絞り込みの値（`key`・`label`・`value`・`count`）
+      - name: onApplyFilter
+        type: '(key: string, value: string) => void'
+        required: false
+        description: 候補の値を絞り込みに加える。無いときは候補を出さない
     state:
       - name: active
         type: number
@@ -73,5 +82,38 @@ components:
         condition: '`query` が「画面」で、`Ctrl+K` を押す'
         mock: なし
         expected: 入力欄の文字が全て選ばれ、イベントの `defaultPrevented` が真
+      - name: test_search_dialog_when_filter_candidate
+        case: 正常
+        summary: 候補を先頭に並べて選ぶ
+        condition: '`filterCandidates` にタグ「廃止」「画面」を渡し、`query` が「廃」。Enter を押す'
+        mock: なし
+        expected: 「絞り込みをオンにする」の段に「タグ = 廃止」だけがあり、`onApplyFilter` が `tags`・`廃止` で呼ばれる
 notes:
   単体テスト: 同じフォルダの `search-dialog.test.tsx` に置く
+functions:
+  - name: matchFilterCandidates
+    title: 絞り込みの候補の照合
+    kind: 関数
+    container: frontend/src/features/search/search/search-dialog.tsx
+    usecase: 項目を検索する
+    scope: public
+    summary: 候補のうち、値が検索の言葉と NFKC と小文字をそろえて前方一致するものを元の並びで返す。言葉が空白だけなら空
+    args:
+      - name: candidates
+        type: readonly FilterCandidate[]
+        required: true
+        description: 候補
+      - name: query
+        type: string
+        required: true
+        description: 検索の言葉
+    returns:
+      type: FilterCandidate[]
+      description: 一致した候補
+    unit_tests:
+      - name: test_match_filter_candidates
+        case: 正常
+        summary: 前方一致と表記の揺れ
+        condition: '候補「UI」「画面」「旧画面」と、`parametrize`: 「ｕｉ」 / 「画」 / 「 」'
+        mock: なし
+        expected: 「UI」 / 「画面」（「旧画面」は含まない） / 空

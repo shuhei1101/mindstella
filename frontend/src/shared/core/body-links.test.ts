@@ -155,10 +155,12 @@ describe("renderMarkdown", () => {
     const options = mount.options.at(-1) as {
       docId?: string;
       diffMode?: string;
+      diffControls?: boolean;
       diffSource: { revisions: (docId: string) => Promise<Revision[]>; content: (input: { docId: string; revisionId: string }) => Promise<string> };
     };
     expect(options.docId).toBe("D-1");
     expect(options.diffMode).toBe("open");
+    expect(options.diffControls).toBe(false);
     const revisions = await options.diffSource.revisions("D-1");
     expect(revisions).toHaveLength(2);
     const contents = await Promise.all(revisions.map(({ id }) => options.diffSource.content({ docId: "D-1", revisionId: id })));

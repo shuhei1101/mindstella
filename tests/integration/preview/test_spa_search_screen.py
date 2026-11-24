@@ -74,7 +74,7 @@ def test_query(page: Page, spa_preview: str) -> None:
     assert _search(page) == "?tab=tasks&search=1&q=画面"
     assert page.evaluate("history.length") == before
     group = _dialog(page).get_by_role("group", name="タイトルに一致")
-    expect(group.get_by_role("heading", level=2)).to_have_text("タイトルに一致")
+    expect(group).to_be_visible()
     expect(group.get_by_role("option")).to_have_count(2)
     expect(group.get_by_role("option").nth(0)).to_contain_text("D-2")
     expect(group.get_by_role("option").nth(1)).to_contain_text("T-1")
@@ -171,3 +171,55 @@ def test_narrow(page: Page, spa_preview: str) -> None:
     assert close["x"] + close["width"] <= NARROW["width"]
     assert abs((close["y"] + close["height"] / 2) - (box["y"] + box["height"] / 2)) <= 2
     assert page.evaluate(DIALOG_OVERFLOW_SCRIPT) == 0
+
+
+def test_filter_candidate(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
+    """検索の言葉で始まる今の画面の絞り込みの値を、結果の先頭の「絞り込みをオンにする」の段に件数つきで並べる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="資料 1", status="確認中", tags=[{"name": "画面"}]),
+        make_item("A-2", title="廃止の資料", status="確認中", tags=[{"name": "画面"}, {"name": "廃止"}]),
+    )
+    # 実行
+    open_spa(page, url, "?tab=docs&search=1&q=%E5%BB%83")
+    # 検証
+    group = _dialog(page).get_by_role("group", name="絞り込みをオンにする")
+    expect(group.get_by_role("option")).to_have_count(1)
+    expect(group.get_by_role("option")).to_contain_text("タグ = 廃止")
+    expect(group.get_by_role("option")).to_contain_text("1")
+    options = _dialog(page).get_by_role("option")
+    expect(options.first).to_contain_text("タグ = 廃止")
+
+
+def test_filter_candidate_when_overview(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
+    """絞り込みを持たない概要では、絞り込みの候補を出さない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="廃止の資料", status="確認中", tags=[{"name": "廃止"}]),
+    )
+    # 実行
+    open_spa(page, url, "?search=1&q=%E5%BB%83")
+    # 検証
+    expect(_dialog(page).get_by_role("option").first).to_be_visible()
+    expect(_dialog(page).get_by_role("group", name="絞り込みをオンにする")).to_have_count(0)
+
+
+def test_filter_candidate_apply(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
+    """上下の矢印で候補を選んで Enter で、その値を今の画面の絞り込みに加えて検索を閉じ、履歴に 1 つ積む（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="資料 1", status="確認中", tags=[{"name": "画面"}]),
+        make_item("A-2", title="資料 2", status="確認中", tags=[{"name": "画面"}, {"name": "廃止"}]),
+    )
+    open_spa(page, url, "?tab=docs&search=1&q=%E5%BB%83")
+    expect(_dialog(page).get_by_role("group", name="絞り込みをオンにする").get_by_role("option")).to_have_count(1)
+    before = page.evaluate("history.length")
+    # 実行
+    page.keyboard.press("Enter")
+    # 検証
+    page.wait_for_url("**f.tags=*")
+    assert _search(page) == "?tab=docs&f.tags=廃止"
+    expect(_dialog(page)).to_be_hidden()
+    assert page.evaluate("history.length") == before + 1
+    expect(page.get_by_text("資料 2")).to_be_visible()
+    expect(page.get_by_text("資料 1")).to_be_hidden()

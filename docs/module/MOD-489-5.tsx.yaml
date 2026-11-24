@@ -61,3 +61,4 @@ components:
     container: frontend/src/features/comments/comments-panel/comments-panel.tsx
 notes:
   単体テスト: 同じフォルダの `comments-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  状態の絞り込みの見た目: 「オープン」「クローズ」「すべて」の組を `SEGMENTED_GROUP_CLASS`、ボタンを `SEGMENTED_ITEM_CLASS`（押した状態のボタンは `SEGMENTED_SELECTED_CLASS`）で描く（『segmented』）

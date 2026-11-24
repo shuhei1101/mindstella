@@ -149,3 +149,4 @@ functions:
       - MOD-642-1#functions[workspacePath]
 notes:
   単体テスト: 同じフォルダの `body-links.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  原文の差分の指定: '`renderMarkdown` が取り出し元（`diffSource`）を渡して描くとき（「原文の差分」）は、`mount` の引数に `diffMode: "open"` に加えて `diffControls: false` を渡し、mdmark の「変更表示」のボタンとリビジョンを選ぶ欄を配置させない（『プレビューを開く』の制約「描画のライブラリ」）。`RenderOptions` の型に `diffControls?: false` を加える。単体テストは `renderMarkdown` に `test_render_markdown_when_diff_source`（取り出し元を渡すと `mount` の引数に `diffMode: open` と `diffControls: false` がある）を追加する'

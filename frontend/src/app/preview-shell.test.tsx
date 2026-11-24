@@ -172,6 +172,22 @@ describe("PreviewShell", () => {
     expect(window.history.length).toBe(before + 1);
   });
 
+  // 全体の検索の絞り込みの候補を選ぶ（正常系）
+  test("preview_shell_when_search_filter_candidate", async () => {
+    // 準備
+    stubRecords({ docs: [{ id: "A-1", title: "資料 1", status: "確認中", tags: [{ name: "画面" }] }, { id: "A-2", title: "資料 2", status: "確認中", tags: [{ name: "画面" }, { name: "廃止" }] }] });
+    renderRoute("/?tab=docs&search=1&q=%E5%BB%83");
+    const before = window.history.length;
+    // 実行
+    await userEvent.click(await screen.findByRole("option", { name: /タグ = 廃止/ }));
+    // 検証
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("f.tags")).toBe("廃止"));
+    expect(new URLSearchParams(window.location.search).get("search")).toBeNull();
+    expect(new URLSearchParams(window.location.search).get("q")).toBeNull();
+    expect(screen.queryByRole("dialog", { name: /検索/ })).not.toBeInTheDocument();
+    expect(window.history.length).toBe(before + 1);
+  });
+
   // 同じ画面の項目は履歴に積まずに詳細パネルを開く（正常系）
   test("preview_shell_when_search_same_tab", async () => {
     // 準備

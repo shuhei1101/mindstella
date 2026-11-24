@@ -1,0 +1,276 @@
+id: IF-362-1
+title: 画面からのプリセットの作成
+entry:
+  kind: endpoint
+  value: POST /w/{workspace}/api/presets
+lead: 絞り込みのドロワーの「プリセットとして保存」で、今の絞り込みのタグの条件に名前を付けたプリセットを、設定の `presets` の末尾に追加する。書いたら開いている画面へ知らせる。
+test_file: tests/integration/server/test_preset_create_endpoint.py
+idempotent: false
+side_effects: '`config.yaml` の `presets` だけを書き換え、書き換えの通知を送信する。ほかのキーと種類ごとの YAML は書き換えない'
+permissions: 配信の画面からの要求だけ（`Host` と `Origin` を確かめる）。役割での絞り込みは持たない（#25 が入れる）
+exclusivity: ほかの書き込むエンドポイントと同じく、書き換えの鍵（プロセスの中の鍵と `.mindstella.lock`）を取ってから読み書きする
+callers:
+  - IF-489-70#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確認」に合うもの
+  - name: Origin
+    type: str
+    required: false
+    location: header
+    description: 送信元
+    constraints: 無いか、『プレビューの配信』の制約「送信元の確認」に合うもの
+  - name: Content-Type
+    type: str
+    required: true
+    location: header
+    description: 本文の構造
+    constraints: '`application/json`'
+  - name: name
+    type: str
+    required: true
+    location: body
+    description: プリセットの名前
+    constraints: 『プリセットの作成』の `name` と同じ（1 字以上 40 字以内。既にあるプリセットの名前と NFKC と大文字小文字をそろえて重ならない）。画面は前後の空白を除いて送信する
+  - name: filter
+    type: dict
+    required: true
+    location: body
+    description: 今の絞り込みのタグの条件から作ったタグの式
+    constraints: 『プリセットの作成』の `filter` と同じ
+request_example: |-
+  ```json
+  {"name": "廃止する画面", "filter": {"and": [{"field": "tags", "op": "eq", "values": ["画面"]}, {"field": "tags", "op": "eq", "values": ["廃止"]}]}}
+  ```
+response:
+  - name: preset
+    type: dict
+    description: 保存したプリセット（`name`・`filter`）
+  - name: count
+    type: int
+    description: そのプリセットに該当する、全ての種類の項目の数
+status_codes:
+  - code: '201'
+    condition: 追加できた。該当する件数が 0 のときも含む
+  - code: '400'
+    condition: 本文が JSON のオブジェクトでない・`name` が空か 40 字を超える・`filter` が合わない・そのほかのキーがある
+    notes: '`detail` に合わないキーと理由。何も書かない'
+  - code: '403'
+    condition: '`Host` か `Origin` が合わない'
+    notes: 何も書かない
+  - code: '409'
+    condition: '`name` が既にあるプリセットの名前と重なる'
+    notes: '`detail` に重なった名前。何も書かない'
+  - code: '415'
+    condition: '`Content-Type` が `application/json` でない'
+    notes: 何も書かない
+  - code: '422'
+    condition: 今の `config.yaml` がスキーマに合わない（`presets` やほかのキーが崩れている）
+    notes: '`detail` に合わない箇所。何も書かない'
+  - code: '500'
+    condition: '`config.yaml` を書けない（ワークスペースのフォルダが読み取り専用 など）'
+    notes: '`detail` に書けなかったパスと理由。`config.yaml` は書く前の中身のまま'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語で、画面は 400・409 の `detail` を名前の入力欄の下に出す
+constraints:
+  - item: 記載方法
+    constraint: 『プリセットの作成』と同じ関数で、検証・`presets` の末尾への追加・件数の計算をする。`description` は受け付けない
+  - item: 書き換えの通知
+    constraint: 書き終えたら『書き換えの通知』を送信し、『記録の取得』の保持した応答を捨てる
+  - item: 変更履歴
+    constraint: '`changes.yaml` にも項目の `history` にも入れない'
+  - item: 配る書き出し
+    constraint: 配る書き出しの画面はこのエンドポイントを呼ばない（保存の入力を出さない）
+refs:
+  - IF-649-1#
+  - ER-489-1#tables[config.yaml]
+  - IF-489-44#
+flows:
+  - name: 正常系
+    summary: プリセットを末尾に追加し、該当する件数を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: '資料 A-1（タグ: 画面・廃止）・A-2（タグ: 画面）を持ち、`presets` に「画面の設計」を持つワークスペース'
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/presets
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST（廃止する画面、画面かつ廃止）
+        IF-->>WS: config.yaml を読む
+        IF->>WS: presets の末尾に追加して書く
+        IF-->>クライアント: 201、preset、count: 1
+      ```
+
+      <!-- /map -->
+    expected:
+      - ステータスが 201 で、`count` が 1（A-1）
+      - '`config.yaml` の `presets` が「画面の設計」「廃止する画面」の順で、ほかのキーは呼ぶ前と同じ'
+      - '`GET /w/{workspace}/api/events` に書き換えの通知が届く'
+    test: test_normal
+  - name: 異常系（値が合わない・400）
+    summary: 空の名前・空の束の式・受け付けないキーは書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: '`presets` を持たないワークスペース'
+        notes: '`parametrize`: 名前が空文字 / `filter` が `{and: []}` / `description` を持つ本文'
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/presets
+
+        クライアント->>IF: POST（合わない値）
+        IF-->>クライアント: 400
+      ```
+
+      <!-- /map -->
+    expected:
+      - ステータスが 400
+      - '`detail` に合わないキーと理由がある'
+      - '`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_value_invalid
+  - name: 異常系（送信元が違う・403）
+    summary: 別のサイトのページからは書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/presets
+
+        クライアント->>IF: POST（Origin: attacker.example）
+        IF-->>クライアント: 403
+      ```
+
+      <!-- /map -->
+    expected:
+      - ステータスが 403
+      - '`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_origin_mismatch
+  - name: 異常系（名前が重なる・409）
+    summary: 全角半角・大文字小文字だけ違う名前も重なりとして拒む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: '`presets` に「UI の設計」を持つワークスペース'
+        notes: 名前「ｕｉ の設計」（全角の小文字）で送信する
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/presets
+
+        クライアント->>IF: POST（ｕｉ の設計）
+        IF-->>クライアント: 409
+      ```
+
+      <!-- /map -->
+    expected:
+      - ステータスが 409
+      - '`detail` に重なった名前「UI の設計」がある'
+      - '`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_name_taken
+  - name: 異常系（本文の構造が違う・415）
+    summary: JSON でない本文は読まずに書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '`Content-Type: text/plain` を付ける'
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/presets
+
+        クライアント->>IF: POST（Content-Type: text/plain）
+        IF-->>クライアント: 415
+      ```
+
+      <!-- /map -->
+    expected:
+      - ステータスが 415
+      - '`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_content_type_mismatch
+  - name: 異常系（書けない・500）
+    summary: ワークスペースのフォルダに書けないと、理由を返して何も変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 作成を済ませ、`preview_url` を呼んだ後にワークスペースのフォルダを読み取り専用（`0o500`）にしたワークスペース
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/presets
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST（廃止する画面）
+        IF->>WS: 一時ファイルを書く（書けない）
+        IF-->>クライアント: 500
+      ```
+
+      <!-- /map -->
+    expected:
+      - ステータスが 500
+      - '`detail` に書けなかったパスと理由がある'
+      - '`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_write_fails
+  - name: 異常系（設定が崩れている・422）
+    summary: 今の config.yaml がスキーマに合わないと、合わない箇所を返して何も書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 作成を済ませ、`preview_url` を呼んだ後に `config.yaml` の `presets` を文字列に書き換えたワークスペース
+        notes: '`presets: 画面` に書き換える'
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/presets
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST（廃止する画面）
+        IF-->>WS: config.yaml を読む（スキーマに合わない）
+        IF-->>クライアント: 422
+      ```
+
+      <!-- /map -->
+    expected:
+      - ステータスが 422
+      - '`detail` に合わない箇所 `presets` がある'
+      - '`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_config_invalid

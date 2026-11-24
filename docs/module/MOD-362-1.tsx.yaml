@@ -1,0 +1,94 @@
+id: MOD-362-1
+title: プレビュー / preset-save
+lead: 部品設計『プリセットの保存.tsx』の props・イベント・状態を持つ。
+components:
+  - name: PresetSave
+    title: プリセットの保存
+    kind: コンポーネント
+    container: frontend/src/shared/components/preset-save.tsx
+    usecase: 項目を表で絞り込む
+    summary: 部品設計『プリセットの保存.tsx』の props・イベント・状態を持つ。閉じた間は「プリセットとして保存」のボタン（`hasTagCondition` が偽のときは `aria-disabled` と理由の文）、開いた間は名前の入力と「キャンセル」「保存」の form を描く。送信では、保存中なら何もせず、前後の空白を除いた名前が空なら「プリセットの名前を入れてください。」を出し、それ以外は `saving` を真にして `onSave` を待ち、返った `error` が `null` なら閉じて名前を空にし、それ以外は `error` を出す
+    props:
+      - name: hasTagCondition
+        type: boolean
+        required: true
+        description: 今の絞り込みにタグの条件があるか
+      - name: hasOtherConditions
+        type: boolean
+        required: true
+        description: タグの条件のほかの条件があるか
+      - name: onSave
+        type: '(name: string) => Promise<PresetSaveResult>'
+        required: true
+        description: 名前を受けて保存し、失敗した理由を返す
+      - name: defaultOpen
+        type: boolean
+        required: false
+        default: 'false'
+        description: 最初から開く（ストーリー用）
+      - name: defaultError
+        type: string | null
+        required: false
+        default: 'null'
+        description: 最初に出すエラー（ストーリー用）
+      - name: defaultName
+        type: string
+        required: false
+        default: 空文字
+        description: 最初に入れておく名前（ストーリー用）
+    state:
+      - name: open
+        type: boolean
+        initial: defaultOpen
+        description: 名前の入力を開いているか
+        notes: useState
+      - name: name
+        type: string
+        initial: defaultName
+        description: 入力中の名前
+        notes: useState
+      - name: error
+        type: string | null
+        initial: defaultError
+        description: 入力欄の下に出すエラー
+        notes: useState
+      - name: saving
+        type: boolean
+        initial: 'false'
+        description: '`onSave` の応答を待っているか'
+        notes: useState
+    refs:
+      - CMP-362-1#
+    unit_tests:
+      - name: test_preset_save
+        case: 正常
+        summary: 名前を入れて保存する
+        condition: '「プリセットとして保存」を押し、「 廃止する画面 」と入れて「保存」を押す。`onSave` は `{error: null}` を返す'
+        mock: なし（`onSave` は vi.fn）
+        expected: '`onSave` が「廃止する画面」で 1 回呼ばれ、入力が閉じて「プリセットとして保存」に戻る'
+      - name: test_preset_save_when_no_tag_condition
+        case: 正常
+        summary: タグの条件が無いと開かない
+        condition: '`hasTagCondition` が偽で「プリセットとして保存」を押す'
+        mock: なし
+        expected: ボタンが `aria-disabled="true"` で理由の文を指す `aria-describedby` を持ち、名前の入力が開かない
+      - name: test_preset_save_when_empty_name
+        case: 異常
+        summary: 空の名前は送信しない
+        condition: 名前を空白だけにして「保存」を押す
+        mock: なし（`onSave` は vi.fn）
+        expected: '`onSave` が呼ばれず、「プリセットの名前を入れてください。」が出て入力欄が `aria-invalid="true"`'
+      - name: test_preset_save_when_error
+        case: 異常
+        summary: 保存できなかった理由を出す
+        condition: '`onSave` が `{error: "同じ名前のプリセット「画面の設計」が既にあります。別の名前を入れてください。"}` を返す'
+        mock: なし（`onSave` は vi.fn）
+        expected: 入力が開いたままで名前が残り、入力欄の下に返った文がある
+      - name: test_preset_save_when_saving
+        case: 正常
+        summary: 保存中はもう一度送信しない
+        condition: 解決しない Promise を返す `onSave` で「保存」を 2 回押す
+        mock: なし（`onSave` は vi.fn）
+        expected: '`onSave` が 1 回だけ呼ばれ、ボタンが「保存中…」で `aria-disabled="true"`'
+notes:
+  単体テスト: 同じフォルダの `preset-save.test.tsx` に置く（knowledge の規約『フォルダ構成』）

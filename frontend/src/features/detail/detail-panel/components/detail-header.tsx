@@ -1,10 +1,12 @@
 // 詳細の見出し（種類と ID・確認済み・戻る・進む・編集・エクスポート・コメントの一覧・全画面・閉じる）と、確認済みを書き換えられなかった旨
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
+import { BodyToc } from "@/shared/components/body-toc";
 import { DocExportControl } from "@/shared/components/doc-export-menu";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
 import type { PendingMarkKind } from "@/shared/core/edits";
+import type { TocEntry } from "@/shared/core/body-toc";
 import { cn } from "@/shared/lib/cn";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { bodyFormatOf, KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
@@ -24,9 +26,13 @@ export type DetailHeaderProps = {
   onToggleEdit: () => void;
   onToggleFull: () => void;
   onClose: () => void;
+  /** 本文の見出し。空のときは目次のボタンを描かない */
+  toc?: readonly TocEntry[];
+  /** 目次で押した見出し */
+  onHeading?: (slug: string) => void;
 };
 
-export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
+export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, toc = [], onHeading }: DetailHeaderProps) => {
   const { canBack, canForward, openItemComments } = usePreviewSearch();
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
@@ -51,6 +57,7 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, comme
             <span>{editLabel}</span>
           </Button>
         ) : null}
+        {toc.length === 0 || onHeading === undefined ? null : <BodyToc entries={toc} onHeading={onHeading} />}
         {source === undefined ? null : <DocExportControl item={item} source={source} index={index} />}
         {full || !comments ? null : (
           <Button variant="ghost" size="icon" aria-label={`${item.id} のコメントの一覧を開く`} title="この項目のコメントの一覧" onClick={() => { openItemComments(item.id); }}>

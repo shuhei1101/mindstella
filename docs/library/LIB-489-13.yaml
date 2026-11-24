@@ -35,6 +35,25 @@ catalogs:
             type: string
             required: false
             description: 描く文書の `opts.index.docs` の ID（自分自身への参照を除く）
+          - name: opts.diffSource
+            type: DiffSource
+            required: false
+            description: リビジョンの一覧と本文を返す取り出し元。プレビューは本文の差分の「原文の差分」でだけ渡す（「今」と「選んだ時点」の 2 つを新しい順に返す）
+          - name: opts.diffMode
+            type: "'button' | 'open' | 'blocks' | 'side-by-side'"
+            required: false
+            default: button
+            description: 差分の出し方。プレビューは `open`
+          - name: opts.diffControls
+            type: boolean
+            required: false
+            default: 'true'
+            description: 「変更表示」のボタンと前と後のリビジョンを選ぶ欄を配置するか。`false` のときは配置せず、一番新しいリビジョンとその 1 つ前の差分を出す。プレビューは比べる時点を画面の差分の時点で選ぶため `false` を渡す
+            notes: shuhei1101/mdmark#784。mdmark#792 で develop に入った。`opts.diffSource` を指定しないときと `diffMode` が `blocks` のときは使わない
+          - name: opts.baseMarkdown
+            type: string | null
+            required: false
+            description: 比較元の Markdown。プレビューは本文の差分の「描いた結果」で渡す
         returns:
           - name: update
             type: '(markdown: string) => void'

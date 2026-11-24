@@ -1921,3 +1921,5 @@ functions:
         condition: '`parametrize`: `mindstella-notes-3f2a9c` / `mindstella-家計簿-3f2a9c`'
         mock: なし
         expected: '`/w/mindstella-notes-3f2a9c/` / `/w/mindstella-%E5%AE%B6%E8%A8%88%E7%B0%BF-3f2a9c/`'
+notes:
+  プリセットの保存: 定数 `PRESETS_PATH = "/api/presets"` を足し、`_post` で `PRESETS_PATH` の要求を `_write(request, context, create_preset_from_preview, HTTPStatus.CREATED)` へ振り分ける（『画面からのプリセットの作成』。`write_response` が `Content-Type`・`Origin`・JSON のオブジェクト・書き換えの鍵を確かめる）。`error_response` は `PresetNameTakenError` を 409 にする（`detail` はエラーのメッセージ。重なった名前を含む）。`config.yaml` を書くと書き換えのマーカーが変わり、書き換えの通知と記録の取得の保持した応答の破棄は既存の経路のまま動く。結合テストはインターフェース定義『画面からのプリセットの作成』の `tests/integration/server/test_preset_create_endpoint.py` が確かめる

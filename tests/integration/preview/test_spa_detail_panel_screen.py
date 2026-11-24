@@ -85,6 +85,7 @@ def test_back_keeps_trail_over_reload(page: Page, spa_preview: str) -> None:
     back = panel.get_by_role("button", name="前の項目へ戻る")
     forward = panel.get_by_role("button", name="次の項目へ進む")
     expect(back).to_be_disabled()
+    panel.get_by_role("tab", name="関連").click()
     panel.get_by_role("button", name="D-2").click()
     expect(back).to_be_enabled()
     page.reload()
@@ -99,6 +100,7 @@ def test_back_keeps_trail_over_filter(page: Page, spa_preview: str) -> None:
     """絞り込みを変えても、見てきた項目の位置を保つ（正常系）。"""
     open_spa(page, spa_preview, "?tab=decisions&view=table&id=D-1")
     panel = page.get_by_role("complementary", name="詳細")
+    panel.get_by_role("tab", name="関連").click()
     panel.get_by_role("button", name="D-2").click()
     expect(page).to_have_url(re.compile("id=D-2"))
     page.get_by_role("button", name="状態: 保留 の条件を解除").click()
@@ -189,6 +191,7 @@ def test_back_forward_enabled(page: Page, spa_preview: str) -> None:
     expect(panel.get_by_role("button", name="前の項目へ戻る")).to_be_disabled()
     expect(panel.get_by_role("button", name="次の項目へ進む")).to_be_disabled()
     # 実行
+    panel.get_by_role("tab", name="関連").click()
     panel.get_by_role("button", name="D-2").click()
     # 検証
     expect(panel.get_by_role("button", name="前の項目へ戻る")).to_be_enabled()
@@ -290,9 +293,11 @@ def test_related_visible(page: Page, write_sample_preview: WriteSamplePreview) -
     # 準備
     url = write_sample_preview()
     open_spa(page, url, "?tab=decisions&id=D-2")
+    _panel(page).get_by_role("tab", name="関連").click()
     expect(_panel(page).get_by_role("heading", name="前提", exact=True)).to_be_visible()
     # 実行
     open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).get_by_role("tab", name="関連").click()
     # 検証
     expect(_panel(page).get_by_role("heading", name="前提", exact=True)).to_have_count(0)
     expect(_panel(page).get_by_role("heading", name="後続の項目", exact=True)).to_be_visible()
@@ -347,6 +352,7 @@ def test_comment_input(page: Page, comment_preview: tuple[str, Path]) -> None:
     field.press("Control+Enter")
     # 検証
     expect(field).to_have_value("")
+    _panel(page).get_by_role("tab", name="コメント").click()
     expect(_comments(page)).to_have_count(4)
     expect(page.get_by_role("button", name=re.compile("レビュー中 4 件"))).to_be_visible()
     items = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"]
@@ -381,6 +387,7 @@ def test_review_comments(page: Page, comment_preview: tuple[str, Path]) -> None:
     # 準備・実行
     url, _ = comment_preview
     open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).get_by_role("tab", name="コメント").click()
     # 検証
     expect(_panel(page).get_by_role("heading", name="レビュー中のコメント")).to_be_visible()
     assert _comments(page).evaluate_all("rows => rows.map(r => r.dataset.comment)") == ["C-3", "C-2", "C-1"]
@@ -393,6 +400,7 @@ def test_review_comments_when_none(page: Page, comment_preview: tuple[str, Path]
     # 準備・実行
     url, _ = comment_preview
     open_spa(page, url, "?tab=decisions&id=D-2")
+    _panel(page).get_by_role("tab", name="コメント").click()
     # 検証
     expect(_panel(page)).to_contain_text("レビュー中のコメントはありません。")
 
@@ -402,6 +410,7 @@ def test_review_order(page: Page, comment_preview: tuple[str, Path]) -> None:
     # 準備
     url, _ = comment_preview
     open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).get_by_role("tab", name="コメント").click()
     # 実行
     _panel(page).get_by_role("button", name="コメントの並び: 新しい順").click()
     # 検証
@@ -416,7 +425,6 @@ def test_selection_comment(page: Page, comment_preview: tuple[str, Path]) -> Non
     # 準備
     url, _ = comment_preview
     open_spa(page, url, "?tab=decisions&id=D-1")
-    expect(_panel(page).get_by_role("heading", name="レビュー中のコメント")).to_be_visible()
     expect(_panel(page).locator(".md [data-line-start='5']")).to_have_text("二つ目の段落")
     # 実行（本文の段落を選び終える）
     page.evaluate(SELECT_PARAGRAPH_JS, "二つ目の段落")
@@ -442,6 +450,7 @@ def test_row_edit(page: Page, comment_preview: tuple[str, Path]) -> None:
     # 準備
     url, _ = comment_preview
     open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).get_by_role("tab", name="コメント").click()
     # 実行
     _comments(page).filter(has_text="D-2 と合わせたい").get_by_role("button", name="D-1 へのコメントを修正").click()
     field = _panel(page).get_by_role("textbox", name="D-1 へのコメントの本文")
@@ -462,6 +471,7 @@ def test_row_edit_when_empty(page: Page, comment_preview: tuple[str, Path]) -> N
     # 準備
     url, _ = comment_preview
     open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).get_by_role("tab", name="コメント").click()
     _panel(page).locator("li[data-comment='C-2']").get_by_role("button", name="D-1 へのコメントを修正").click()
     # 実行
     _panel(page).get_by_role("textbox", name="D-1 へのコメントの本文").fill("  ")
@@ -495,6 +505,7 @@ def test_row_remove_and_undo(page: Page, comment_preview: tuple[str, Path]) -> N
     # 準備
     url, _ = comment_preview
     open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).get_by_role("tab", name="コメント").click()
     # 実行
     _panel(page).locator("li[data-comment='C-2']").get_by_role("button", name="D-1 へのコメントを削除").click()
     # 検証
@@ -514,6 +525,7 @@ def test_row_body(page: Page, comment_preview: tuple[str, Path]) -> None:
     # 準備・実行
     url, _ = comment_preview
     open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).get_by_role("tab", name="コメント").click()
     # 検証
     expect(_panel(page).locator("li[data-comment='C-2'] button.idlink")).to_have_text("D-2")
 
@@ -523,6 +535,7 @@ def test_row_more(page: Page, comment_preview: tuple[str, Path]) -> None:
     # 準備
     url, _ = comment_preview
     open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).get_by_role("tab", name="コメント").click()
     # 実行
     _panel(page).get_by_role("button", name="D-1 へのコメントの続きを表示").click()
     # 検証
@@ -1573,8 +1586,10 @@ def test_related_items_by_type(page: Page, write_preview: WritePreview, make_ite
     open_spa(page, url, "?tab=decisions&id=D-1")
     panel = page.get_by_role("complementary", name="詳細")
     # 実行
+    panel.get_by_role("tab", name="関連").click()
     expect(panel.get_by_role("heading", name="派生した項目")).to_be_visible()
     panel.get_by_role("button", name="D-2").click()
+    panel.get_by_role("tab", name="関連").click()
     # 検証
     expect(panel.get_by_role("heading", name="派生元")).to_be_visible()
 
@@ -1623,6 +1638,7 @@ def test_review_edit_voice_input_after_moving(
     page.add_init_script(FAKE_MIC_SCRIPT)
     with wait_transcription_status(page):
         open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).get_by_role("tab", name="コメント").click()
     row = _panel(page).locator("li[data-comment='C-1']")
     row.get_by_role("button", name="D-1 へのコメントを修正").click()
     form = row.locator("form[data-part=edit]")
@@ -1731,7 +1747,7 @@ def test_comment_input_at_bottom(page: Page, long_comment_preview: tuple[str, Pa
 
 
 def test_review_comments_scroll_with_body(page: Page, long_comment_preview: tuple[str, Path]) -> None:
-    """レビュー中のコメントは本文のスクロール領域の中で本文と一緒にスクロールし、コメントの入力は下端に留まる（正常系）。"""
+    """本文は本文のスクロール領域の中でスクロールし、「コメント」のタブのレビュー中のコメントも同じ領域に出し、コメントの入力は下端に留まる（正常系）。"""
     # 準備
     url, _ = long_comment_preview
     page.set_viewport_size({"width": 390, "height": 844})
@@ -1739,15 +1755,119 @@ def test_review_comments_scroll_with_body(page: Page, long_comment_preview: tupl
     region = _panel(page).get_by_role("region", name="詳細の本文")
     form = _panel(page).locator("form[data-id='D-3']")
     expect(region.get_by_text("60 段落目の本文", exact=False)).to_be_attached()
-    expect(region.get_by_role("heading", name="レビュー中のコメント")).to_be_attached()
     expect(region.locator("form[data-id='D-3']")).to_have_count(0)
     assert region.evaluate("element => element.scrollHeight > element.clientHeight") is True
-    expect(_comments(page).first).not_to_be_in_viewport()
     before = form.bounding_box()
-    # 実行
+    # 実行（本文をスクロールする）
     region.evaluate("element => element.scrollTo({ top: element.scrollHeight })")
     # 検証
-    expect(_comments(page).first).to_be_in_viewport()
     assert region.evaluate("element => element.scrollTop") > 0
     assert form.bounding_box() == before
+    # 実行（「コメント」のタブを選ぶ）
+    _panel(page).get_by_role("tab", name="コメント").click()
+    # 検証
+    expect(region.get_by_role("heading", name="レビュー中のコメント")).to_be_visible()
+    expect(_comments(page).first).to_be_in_viewport()
+    assert form.bounding_box() == before
     assert_bottom_aligned(form, _panel(page))
+
+# 本文の目次を確かめる、見出しを持つ資料の本文
+TOC_BODY = "# 目的\n\n本文\n\n## 保存先\n\n本文\n\n### 決め方\n\n本文\n"
+
+
+def _tabs(panel: Locator) -> Locator:
+    """詳細の本文の切り替えのタブを返す。"""
+    return panel.get_by_role("tablist", name="詳細の表示").get_by_role("tab")
+
+
+def test_supplement_tabs(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
+    """「本文」「関連」「コメント」のタブで中身を切り替え、URL と履歴を変えない。関係する項目へ移ると「本文」に戻る（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-9", title="関連を持つ資料", status="確認中", related=[{"to": "D-8", "type": "see_also"}]),
+        make_item("D-8", title="関係する検討事項", status="未決定"),
+    )
+    open_spa(page, url, "?tab=docs&id=A-9")
+    panel = page.get_by_role("complementary", name="詳細")
+    expect(_tabs(panel)).to_have_text(["本文", "関連", "コメント"])
+    expect(panel.get_by_role("tab", name="本文")).to_have_attribute("aria-selected", "true")
+    before_url = page.url
+    before = page.evaluate("history.length")
+    # 実行
+    panel.get_by_role("tab", name="関連").click()
+    # 検証
+    expect(panel.get_by_role("tab", name="関連")).to_have_attribute("aria-selected", "true")
+    expect(panel.get_by_role("tabpanel").get_by_role("heading", name="関連する項目")).to_be_visible()
+    assert page.url == before_url
+    assert page.evaluate("history.length") == before
+    # 実行
+    panel.get_by_role("tabpanel").get_by_role("button", name=re.compile("D-8")).click()
+    # 検証
+    page.wait_for_url("**id=D-8**")
+    expect(panel.get_by_role("tab", name="本文")).to_have_attribute("aria-selected", "true")
+    expect(panel.get_by_role("tabpanel")).to_contain_text("関係する検討事項")
+
+
+def test_supplement_tabs_when_arrow(page: Page, spa_preview: str) -> None:
+    """左右の矢印で隣のタブへフォーカスを移して選ぶ（正常系）。"""
+    # 準備
+    open_spa(page, spa_preview, "?tab=decisions&id=D-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    panel.get_by_role("tab", name="本文").focus()
+    # 実行
+    page.keyboard.press("ArrowRight")
+    # 検証
+    expect(panel.get_by_role("tab", name="関連")).to_be_focused()
+    expect(panel.get_by_role("tab", name="関連")).to_have_attribute("aria-selected", "true")
+    # 実行
+    page.keyboard.press("ArrowLeft")
+    page.keyboard.press("ArrowLeft")
+    # 検証
+    expect(panel.get_by_role("tab", name="コメント")).to_be_focused()
+    expect(panel.get_by_role("tab", name="コメント")).to_have_attribute("aria-selected", "true")
+
+
+def test_body_toc(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
+    """見出しを持つ Markdown の本文は目次のボタンを出し、項目を押すと「本文」を選んで search の `h` を置き換え、履歴に積まない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="目次の資料", status="確認中", body="../docs/A-1.mark.md"),
+        bodies={"A-1.mark.md": TOC_BODY},
+    )
+    open_spa(page, url, "?tab=docs&id=A-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    panel.get_by_role("tab", name="関連").click()
+    before = page.evaluate("history.length")
+    # 実行
+    panel.get_by_role("button", name="本文の目次").click()
+    nav = page.get_by_role("navigation", name="本文の目次")
+    expect(nav.get_by_role("button")).to_have_text(["目的", "保存先", "決め方"])
+    nav.get_by_role("button", name="保存先").click()
+    # 検証
+    page.wait_for_url("**h=*")
+    assert "h=%E4%BF%9D%E5%AD%98%E5%85%88" in page.url
+    assert page.evaluate("history.length") == before
+    expect(panel.get_by_role("tab", name="本文")).to_have_attribute("aria-selected", "true")
+    expect(panel.get_by_role("heading", name="保存先")).to_be_in_viewport()
+
+
+@pytest.mark.parametrize(
+    ("body", "file"),
+    [
+        pytest.param("見出しの無い本文", "A-1.mark.md", id="no_heading"),
+        pytest.param("<h2>HTML の見出し</h2><p>本文</p>", "A-1.html", id="html"),
+    ],
+)
+def test_body_toc_when_hidden(write_preview: WritePreview, make_item: MakeItem, page: Page, body: str, file: str) -> None:
+    """見出しの無い本文と HTML の本文では目次のボタンを出さない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="目次の無い資料", status="確認中", body=f"../docs/{file}"),
+        bodies={file: body},
+    )
+    # 実行
+    open_spa(page, url, "?tab=docs&id=A-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    # 検証
+    expect(panel.get_by_text("目次の無い資料").first).to_be_visible()
+    expect(panel.get_by_role("button", name="本文の目次")).to_have_count(0)

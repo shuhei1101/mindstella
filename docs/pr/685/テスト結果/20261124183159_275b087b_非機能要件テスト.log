@@ -1,0 +1,12 @@
+$ pytest tests/nfr/test_preview_reflect_time.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-next-sprint-bundle-684
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1 item
+
+tests/nfr/test_preview_reflect_time.py .                                 [100%]
+
+============================== 1 passed in 9.25s ===============================
+rc=0

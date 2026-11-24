@@ -1,0 +1,1810 @@
+$ npx vitest run {追加・改修した 13 ファイル}
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-next-sprint-bundle-684
+ ❯ frontend/src/shared/components/list-screen.test.tsx (0 test)
+ ❯ frontend/src/shared/core/body-links.test.ts (9 tests | 1 failed) 102ms
+   ❯ renderMarkdown (4)
+     × render_markdown_when_diff_source 11ms
+ ❯ frontend/src/shared/stores/filter-candidates-store.test.ts (0 test)
+ ❯ frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx (3 tests | 3 failed) 200ms
+   ❯ DetailSupplements (3)
+     × detail_supplements 136ms
+     × detail_supplements_when_arrow 25ms
+     × detail_supplements_when_no_comments 16ms
+ ❯ frontend/src/features/search/search/search-dialog.test.tsx (9 tests | 1 failed) 811ms
+   ❯ SearchDialog (6)
+     × search_dialog_when_filter_candidate 130ms
+ ❯ frontend/src/shared/hooks/use-preset-save.test.tsx (0 test)
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel
+  • GET /api/transcription
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_comments
+  • GET /api/transcription
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_tabs
+  • GET /api/transcription
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_toc
+  • GET /api/transcription
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx (9 tests | 4 failed) 2924ms
+   ❯ DetailPanel (9)
+     × detail_panel 1264ms
+     × detail_panel_when_comments 169ms
+     × detail_panel_when_tabs 74ms
+     × detail_panel_when_toc 70ms
+ ❯ frontend/src/app/preview-shell.test.tsx (20 tests | 1 failed) 4515ms
+   ❯ PreviewShell (20)
+     × preview_shell_when_search_filter_candidate 1008ms
+⎯⎯⎯⎯⎯⎯ Failed Suites 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/shared/components/list-screen.test.tsx [ frontend/src/shared/components/list-screen.test.tsx ]
+Error: Failed to resolve import "@/shared/stores/filter-candidates-store" from "frontend/src/shared/components/list-screen.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-next-sprint-bundle-684/frontend/src/shared/components/list-screen.test.tsx:4:41
+  1  |  import { act, screen, waitFor } from "@testing-library/react";
+  2  |  import { describe, expect, test } from "vitest";
+  3  |  import { useFilterCandidatesStore } from "@/shared/stores/filter-candidates-store";
+     |                                            ^
+  4  |  import { stubRecords } from "@/testing/msw/fixtures";
+  5  |  import { renderRoute } from "@/testing/render";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+ FAIL  frontend/src/shared/stores/filter-candidates-store.test.ts [ frontend/src/shared/stores/filter-candidates-store.test.ts ]
+Error: Failed to resolve import "@/shared/stores/filter-candidates-store" from "frontend/src/shared/stores/filter-candidates-store.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-next-sprint-bundle-684/frontend/src/shared/stores/filter-candidates-store.test.ts:4:41
+  1  |  import { act } from "@testing-library/react";
+  2  |  import { describe, expect, test, vi } from "vitest";
+  3  |  import { useFilterCandidatesStore } from "@/shared/stores/filter-candidates-store";
+     |                                            ^
+  4  |  describe("useFilterCandidatesStore", () => {
+  5  |  	// 登録と消去（正常系）
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+ FAIL  frontend/src/shared/hooks/use-preset-save.test.tsx [ frontend/src/shared/hooks/use-preset-save.test.tsx ]
+Error: Failed to resolve import "@/shared/hooks/use-preset-save" from "frontend/src/shared/hooks/use-preset-save.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-next-sprint-bundle-684/frontend/src/shared/hooks/use-preset-save.test.tsx:5:30
+  2  |  import { http, HttpResponse } from "msw";
+  3  |  import { describe, expect, test, vi } from "vitest";
+  4  |  import { usePresetSave } from "@/shared/hooks/use-preset-save";
+     |                                 ^
+  5  |  import { server } from "@/testing/msw/server";
+  6  |  const EXPR = {
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_search_filter_candidate
+TestingLibraryElementError: Unable to find role="option" and name `/タグ = 廃止/`
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m"position: relative; height: calc(100dvh - 768px); width: calc(100vw - 1024px); box-sizing: border-box; overflow-y: hidden; overflow-x: hidden; scroll-behavior: unset;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-hidden[39m=[32m"true"[39m
+    [33mdata-base-ui-inert[39m=[32m""[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex h-dvh flex-col"[39m
+    [36m>[39m
+      [36m<div>[39m
+        [36m<div>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex min-w-0 flex-none items-center gap-2.5"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-5.5 flex-none text-mark"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2.2"[39m
+                [33mviewBox[39m=[32m"0 0 32 32"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"8"[39m
+                  [33mcy[39m=[32m"16"[39m
+                  [33mr[39m=[32m"4"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 16h5M17 16V7h5M17 16v9h5"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"25"[39m
+                  [33mcy[39m=[32m"7"[39m
+                  [33mr[39m=[32m"2.6"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"25"[39m
+                  [33mcy[39m=[32m"25"[39m
+                  [33mr[39m=[32m"2.6"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-bold tracking-tight max-xs:hidden"[39m
+              [36m>[39m
+                [0mmindstella[0m
+              [36m</span>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"[39m
+              [33mtitle[39m=[32m"要件出しのスキル mindmap を設計する"[39m
+            [36m>[39m
+              [0m要件出しのスキル mindmap を設計する[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex-1 basis-0"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33maria-keyshortcuts[39m=[32m"Control+K Meta+K"[39m
+              [33maria-label[39m=[32m"すべての項目を検索"[39m
+              [33mclass[39m=[32m"flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"11"[39m
+                  [33mcy[39m=[32m"11"[39m
+                  [33mr[39m=[32m"7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"m20 20-3.5-3.5"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"max-lg:hidden"[39m
+              [36m>[39m
+                [0mすべての項目を検索[0m
+              [36m</span>[39m
+              [36m<kbd[39m
+                [33mclass[39m=[32m"ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"[39m
+              [36m>[39m
+                [0mCtrl+K[0m
+              [36m</kbd>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-haspopup[39m=[32m"dialog"[39m
+              [33maria-label[39m=[32m"変更履歴"[39m
+              [33mclass[39m=[32m"relative inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 12a9 9 0 1 0 3-6.7L3 8"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 3v5h5"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 7v5l3 2"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"max-xl:hidden"[39m
+              [36m>[39m
+                [0m変更履歴[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex-1 basis-0"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-label[39m=[32m"表示の設定"[39m
+              [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 m...
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m"position: relative; height: calc(100dvh - 768px); width: calc(100vw - 1024px); box-sizing: border-box; overflow-y: hidden; overflow-x: hidden; scroll-behavior: unset;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-hidden[39m=[32m"true"[39m
+    [33mdata-base-ui-inert[39m=[32m""[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex h-dvh flex-col"[39m
+    [36m>[39m
+      [36m<div>[39m
+        [36m<div>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex min-w-0 flex-none items-center gap-2.5"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-5.5 flex-none text-mark"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2.2"[39m
+                [33mviewBox[39m=[32m"0 0 32 32"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"8"[39m
+                  [33mcy[39m=[32m"16"[39m
+                  [33mr[39m=[32m"4"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 16h5M17 16V7h5M17 16v9h5"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"25"[39m
+                  [33mcy[39m=[32m"7"[39m
+                  [33mr[39m=[32m"2.6"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"25"[39m
+                  [33mcy[39m=[32m"25"[39m
+                  [33mr[39m=[32m"2.6"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-bold tracking-tight max-xs:hidden"[39m
+              [36m>[39m
+                [0mmindstella[0m
+              [36m</span>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"[39m
+              [33mtitle[39m=[32m"要件出しのスキル mindmap を設計する"[39m
+            [36m>[39m
+              [0m要件出しのスキル mindmap を設計する[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex-1 basis-0"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33maria-keyshortcuts[39m=[32m"Control+K Meta+K"[39m
+              [33maria-label[39m=[32m"すべての項目を検索"[39m
+              [33mclass[39m=[32m"flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"11"[39m
+                  [33mcy[39m=[32m"11"[39m
+                  [33mr[39m=[32m"7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"m20 20-3.5-3.5"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"max-lg:hidden"[39m
+              [36m>[39m
+                [0mすべての項目を検索[0m
+              [36m</span>[39m
+              [36m<kbd[39m
+                [33mclass[39m=[32m"ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"[39m
+              [36m>[39m
+                [0mCtrl+K[0m
+              [36m</kbd>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-haspopup[39m=[32m"dialog"[39m
+              [33maria-label[39m=[32m"変更履歴"[39m
+              [33mclass[39m=[32m"relative inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 12a9 9 0 1 0 3-6.7L3 8"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 3v5h5"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 7v5l3 2"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"max-xl:hidden"[39m
+              [36m>[39m
+                [0m変更履歴[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex-1 basis-0"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-label[39m=[32m"表示の設定"[39m
+              [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 m...
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/app/preview-shell.test.tsx:182:40
+    180|     const before = window.history.length;
+    181|     // 実行
+    182|     await userEvent.click(await screen.findByRole("option", { name: /タ…
+       |                                        ^
+    183|     // 検証
+    184|     await waitFor(() => expect(new URLSearchParams(window.location.sea…
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+ FAIL  frontend/src/shared/core/body-links.test.ts > renderMarkdown > render_markdown_when_diff_source
+AssertionError: expected undefined to be false // Object.is equality
+- Expected:
+false
++ Received:
+undefined
+ ❯ frontend/src/shared/core/body-links.test.ts:163:34
+    161|     expect(options.docId).toBe("D-1");
+    162|     expect(options.diffMode).toBe("open");
+    163|     expect(options.diffControls).toBe(false);
+       |                                  ^
+    164|     const revisions = await options.diffSource.revisions("D-1");
+    165|     expect(revisions).toHaveLength(2);
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel
+TestingLibraryElementError: Unable to find an accessible element with the role "tab" and name "関連"
+Here are the accessible roles:
+  separator:
+  Name "詳細パネルの幅":
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細パネルの幅"[39m
+    [33maria-orientation[39m=[32m"vertical"[39m
+    [33maria-valuemax[39m=[32m"864"[39m
+    [33maria-valuemin[39m=[32m"480"[39m
+    [33maria-valuenow[39m=[32m"640"[39m
+    [33mclass[39m=[32m"absolute inset-y-0 left-0 w-1 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-0 before:w-1 max-lg:hidden pointer-coarse:-left-5.5 pointer-coarse:z-10 pointer-coarse:w-11 pointer-coarse:before:left-5 hover:before:bg-mark-line"[39m
+    [33mrole[39m=[32m"separator"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  --------------------------------------------------button:
+  Name "編集する":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"編集する"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "D-1 のコメントの一覧を開く":
+  [36m<button[39m
+    [33maria-label[39m=[32m"D-1 のコメントの一覧を開く"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"この項目のコメントの一覧"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "前の項目へ戻る":
+  [36m<button[39m
+    [33maria-label[39m=[32m"前の項目へ戻る"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mdata-disabled[39m=[32m""[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"前の項目へ戻る"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "次の項目へ進む":
+  [36m<button[39m
+    [33maria-label[39m=[32m"次の項目へ進む"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mdata-disabled[39m=[32m""[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"次の項目へ進む"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "全画面表示":
+  [36m<button[39m
+    [33maria-label[39m=[32m"全画面表示"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 max-md:hidden"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"全画面表示"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "詳細を閉じる":
+  [36m<button[39m
+    [33maria-label[39m=[32m"詳細を閉じる"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  --------------------------------------------------region:
+  Name "詳細の本文":
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細の本文"[39m
+    [33mclass[39m=[32m"panel-body"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  heading:
+  Name "D-1の題":
+  [36m<h2[39m
+    [33mclass[39m=[32m"m-0 flex flex-wrap items-center gap-1 text-next font-semibold"[39m
+    [33mdata-key[39m=[32m"title"[39m
+  [36m/>[39m
+  Name "案":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-h2 font-semibold"[39m
+  [36m/>[39m
+  Name "本文":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-h2 font-semibold"[39m
+  [36m/>[39m
+  Name "後続の項目":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-h2 font-semibold"[39m
+  [36m/>[39m
+  Name "レビュー中のコメント":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-small font-medium"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  list:
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"flex flex-col gap-1"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  listitem:
+  Name "":
+  [36m<li[39m
+    [33mclass[39m=[32m"flex items-center gap-2 text-small"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  button:
+  Name "D-2":
+  [36m<button[39m
+    [33mclass[39m=[32m"cursor-pointer font-mono text-xs underline-offset-2 hover:underline"[39m
+    [33mdata-id[39m=[32m"D-2"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  paragraph:
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"m-0 text-small text-muted-foreground"[39m
+  [36m/>[39m
+  --------------------------------------------------button:
+  Name "コメントの入力を閉じる":
+  [36m<button[39m
+    [33maria-controls[39m=[32m"_r_0_-body"[39m
+    [33maria-expanded[39m=[32m"true"[39m
+    [33maria-label[39m=[32m"コメントの入力を閉じる"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground ml-auto size-6 shrink-0"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"コメントの入力を閉じる"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "音声で入力":
+  [36m<button[39m
+    [33maria-describedby[39m=[32m"_r_1_"[39m
+    [33maria-disabled[39m=[32m"true"[39m
+    [33maria-label[39m=[32m"音声で入力"[39m
+    [33mclass[39m=[32m"inline-flex items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border hover:bg-accent size-8 shrink-0 size-send pointer-coarse:size-11 cursor-not-allowed bg-muted text-muted-foreground"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "レビューに追加":
+  [36m<button[39m
+    [33maria-label[39m=[32m"レビューに追加"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"レビューに追加（Ctrl+Enter）"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  textbox:
+  Name "D-1 へのコメント":
+  [36m<textarea[39m
+    [33maria-describedby[39m=[32m"_r_0_-msg"[39m
+    [33maria-keyshortcuts[39m=[32m"Control+Enter"[39m
+    [33mclass[39m=[32m"w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"[39m
+    [33mid[39m=[32m"_r_0_"[39m
+    [33mname[39m=[32m"body"[39m
+    [33mrows[39m=[32m"1"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  status:
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"m-0 flex items-start gap-1 text-small text-muted-foreground empty:hidden"[39m
+    [33mid[39m=[32m"_r_0_-msg"[39m
+    [33mrole[39m=[32m"status"[39m
+  [36m/>[39m
+  --------------------------------------------------
+Ignored nodes: comments, script, style
+[36m<aside[39m
+  [33maria-label[39m=[32m"詳細"[39m
+  [33mclass[39m=[32m"relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!"[39m
+  [33mstyle[39m=[32m"width: 640px;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細パネルの幅"[39m
+    [33maria-orientation[39m=[32m"vertical"[39m
+    [33maria-valuemax[39m=[32m"864"[39m
+    [33maria-valuemin[39m=[32m"480"[39m
+    [33maria-valuenow[39m=[32m"640"[39m
+    [33mclass[39m=[32m"absolute inset-y-0 left-0 w-1 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-0 before:w-1 max-lg:hidden pointer-coarse:-left-5.5 pointer-coarse:z-10 pointer-coarse:w-11 pointer-coarse:before:left-5 hover:before:bg-mark-line"[39m
+    [33mrole[39m=[32m"separator"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"border-b border-border-soft"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex items-center gap-1 p-2"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"max-sm:hidden"[39m
+        [36m>[39m
+          [0m検討事項[0m
+          [0m [0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"font-mono"[39m
+        [36m>[39m
+          [0mD-1[0m
+        [36m</span>[39m
+      [36m</span>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mclass[39m=[32m"min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none opacity-0"[39m
+        [33mtitle[39m=[32m"D-1の題"[39m
+      [36m>[39m
+        [0mD-1の題[0m
+      [36m</span>[39m
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"false"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"編集する"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m4 20 1-4L16 5l3 3L8 19Z"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m14 7 3 3"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<span>[39m
+          [0m編集する[0m
+        [36m</span>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"D-1 のコメントの一覧を開く"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"この項目のコメントの一覧"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 5h16v11H10l-5 4v-4H4Z"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M8 9h8M8 12.5h5"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"前の項目へ戻る"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mdata-disabled[39m=[32m""[39m
+        [33mdisabled[39m=[32m""[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"前の項目へ戻る"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0m←[0m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"次の項目へ進む"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mdata-disabled[39m=[32m""[39m
+        [33mdisabled[39m=[32m""[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"次の項目へ進む"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0m→[0m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"全画面表示"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 max-md:hidden"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"全画面表示"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"詳細を閉じる"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:te...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx:32:41
+     30|     expect(panel).toHaveTextContent("案 A");
+     31|     expect(panel).toHaveTextContent("本文の文");
+     32|     await userEvent.click(within(panel).getByRole("tab", { name: "関連" …
+       |                                         ^
+     33|     expect(panel).toHaveTextContent("D-2の題");
+     34|   });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_comments
+TestingLibraryElementError: Unable to find an accessible element with the role "tab" and name "コメント"
+Here are the accessible roles:
+  separator:
+  Name "詳細パネルの幅":
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細パネルの幅"[39m
+    [33maria-orientation[39m=[32m"vertical"[39m
+    [33maria-valuemax[39m=[32m"864"[39m
+    [33maria-valuemin[39m=[32m"480"[39m
+    [33maria-valuenow[39m=[32m"640"[39m
+    [33mclass[39m=[32m"absolute inset-y-0 left-0 w-1 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-0 before:w-1 max-lg:hidden pointer-coarse:-left-5.5 pointer-coarse:z-10 pointer-coarse:w-11 pointer-coarse:before:left-5 hover:before:bg-mark-line"[39m
+    [33mrole[39m=[32m"separator"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  --------------------------------------------------button:
+  Name "編集する":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"編集する"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "D-1 のコメントの一覧を開く":
+  [36m<button[39m
+    [33maria-label[39m=[32m"D-1 のコメントの一覧を開く"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"この項目のコメントの一覧"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "前の項目へ戻る":
+  [36m<button[39m
+    [33maria-label[39m=[32m"前の項目へ戻る"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mdata-disabled[39m=[32m""[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"前の項目へ戻る"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "次の項目へ進む":
+  [36m<button[39m
+    [33maria-label[39m=[32m"次の項目へ進む"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mdata-disabled[39m=[32m""[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"次の項目へ進む"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "全画面表示":
+  [36m<button[39m
+    [33maria-label[39m=[32m"全画面表示"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 max-md:hidden"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"全画面表示"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "詳細を閉じる":
+  [36m<button[39m
+    [33maria-label[39m=[32m"詳細を閉じる"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  --------------------------------------------------region:
+  Name "詳細の本文":
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細の本文"[39m
+    [33mclass[39m=[32m"panel-body"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  heading:
+  Name "D-1の題":
+  [36m<h2[39m
+    [33mclass[39m=[32m"m-0 flex flex-wrap items-center gap-1 text-next font-semibold"[39m
+    [33mdata-key[39m=[32m"title"[39m
+  [36m/>[39m
+  Name "案":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-h2 font-semibold"[39m
+  [36m/>[39m
+  Name "レビュー中のコメント":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-small font-medium"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  paragraph:
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"m-0 text-small text-muted-foreground"[39m
+  [36m/>[39m
+  --------------------------------------------------button:
+  Name "コメントの入力を閉じる":
+  [36m<button[39m
+    [33maria-controls[39m=[32m"_r_a_-body"[39m
+    [33maria-expanded[39m=[32m"true"[39m
+    [33maria-label[39m=[32m"コメントの入力を閉じる"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground ml-auto size-6 shrink-0"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"コメントの入力を閉じる"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "音声で入力":
+  [36m<button[39m
+    [33maria-describedby[39m=[32m"_r_b_"[39m
+    [33maria-disabled[39m=[32m"true"[39m
+    [33maria-label[39m=[32m"音声で入力"[39m
+    [33mclass[39m=[32m"inline-flex items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border hover:bg-accent size-8 shrink-0 size-send pointer-coarse:size-11 cursor-not-allowed bg-muted text-muted-foreground"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "レビューに追加":
+  [36m<button[39m
+    [33maria-label[39m=[32m"レビューに追加"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"レビューに追加（Ctrl+Enter）"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  textbox:
+  Name "D-1 へのコメント":
+  [36m<textarea[39m
+    [33maria-describedby[39m=[32m"_r_a_-msg"[39m
+    [33maria-keyshortcuts[39m=[32m"Control+Enter"[39m
+    [33mclass[39m=[32m"w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"[39m
+    [33mid[39m=[32m"_r_a_"[39m
+    [33mname[39m=[32m"body"[39m
+    [33mrows[39m=[32m"1"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  status:
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"m-0 flex items-start gap-1 text-small text-muted-foreground empty:hidden"[39m
+    [33mid[39m=[32m"_r_a_-msg"[39m
+    [33mrole[39m=[32m"status"[39m
+  [36m/>[39m
+  --------------------------------------------------
+Ignored nodes: comments, script, style
+[36m<aside[39m
+  [33maria-label[39m=[32m"詳細"[39m
+  [33mclass[39m=[32m"relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!"[39m
+  [33mstyle[39m=[32m"width: 640px;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細パネルの幅"[39m
+    [33maria-orientation[39m=[32m"vertical"[39m
+    [33maria-valuemax[39m=[32m"864"[39m
+    [33maria-valuemin[39m=[32m"480"[39m
+    [33maria-valuenow[39m=[32m"640"[39m
+    [33mclass[39m=[32m"absolute inset-y-0 left-0 w-1 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-0 before:w-1 max-lg:hidden pointer-coarse:-left-5.5 pointer-coarse:z-10 pointer-coarse:w-11 pointer-coarse:before:left-5 hover:before:bg-mark-line"[39m
+    [33mrole[39m=[32m"separator"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"border-b border-border-soft"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex items-center gap-1 p-2"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"max-sm:hidden"[39m
+        [36m>[39m
+          [0m検討事項[0m
+          [0m [0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"font-mono"[39m
+        [36m>[39m
+          [0mD-1[0m
+        [36m</span>[39m
+      [36m</span>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mclass[39m=[32m"min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none opacity-0"[39m
+        [33mtitle[39m=[32m"D-1の題"[39m
+      [36m>[39m
+        [0mD-1の題[0m
+      [36m</span>[39m
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"false"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"編集する"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m4 20 1-4L16 5l3 3L8 19Z"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m14 7 3 3"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<span>[39m
+          [0m編集する[0m
+        [36m</span>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"D-1 のコメントの一覧を開く"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"この項目のコメントの一覧"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 5h16v11H10l-5 4v-4H4Z"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M8 9h8M8 12.5h5"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"前の項目へ戻る"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mdata-disabled[39m=[32m""[39m
+        [33mdisabled[39m=[32m""[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"前の項目へ戻る"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0m←[0m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"次の項目へ進む"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mdata-disabled[39m=[32m""[39m
+        [33mdisabled[39m=[32m""[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"次の項目へ進む"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0m→[0m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"全画面表示"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 max-md:hidden"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"全画面表示"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"詳細を閉じる"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:te...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx:98:41
+     96|     const scroller = within(panel).getByRole("region", { name: "詳細の本文"…
+     97|     expect(scroller).not.toContainElement(input);
+     98|     await userEvent.click(within(panel).getByRole("tab", { name: "コメント…
+       |                                         ^
+     99|     expect(scroller).toContainElement(within(panel).getByRole("heading…
+    100|   });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/13]⎯
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_tabs
+TestingLibraryElementError: Unable to find an accessible element with the role "tab" and name "関連"
+Here are the accessible roles:
+  separator:
+  Name "詳細パネルの幅":
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細パネルの幅"[39m
+    [33maria-orientation[39m=[32m"vertical"[39m
+    [33maria-valuemax[39m=[32m"864"[39m
+    [33maria-valuemin[39m=[32m"480"[39m
+    [33maria-valuenow[39m=[32m"640"[39m
+    [33mclass[39m=[32m"absolute inset-y-0 left-0 w-1 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-0 before:w-1 max-lg:hidden pointer-coarse:-left-5.5 pointer-coarse:z-10 pointer-coarse:w-11 pointer-coarse:before:left-5 hover:before:bg-mark-line"[39m
+    [33mrole[39m=[32m"separator"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  --------------------------------------------------button:
+  Name "編集する":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"編集する"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "D-2 のコメントの一覧を開く":
+  [36m<button[39m
+    [33maria-label[39m=[32m"D-2 のコメントの一覧を開く"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"この項目のコメントの一覧"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "前の項目へ戻る":
+  [36m<button[39m
+    [33maria-label[39m=[32m"前の項目へ戻る"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mdata-disabled[39m=[32m""[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"前の項目へ戻る"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "次の項目へ進む":
+  [36m<button[39m
+    [33maria-label[39m=[32m"次の項目へ進む"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mdata-disabled[39m=[32m""[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"次の項目へ進む"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "全画面表示":
+  [36m<button[39m
+    [33maria-label[39m=[32m"全画面表示"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 max-md:hidden"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"全画面表示"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "詳細を閉じる":
+  [36m<button[39m
+    [33maria-label[39m=[32m"詳細を閉じる"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  --------------------------------------------------region:
+  Name "詳細の本文":
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細の本文"[39m
+    [33mclass[39m=[32m"panel-body"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  heading:
+  Name "D-2の題":
+  [36m<h2[39m
+    [33mclass[39m=[32m"m-0 flex flex-wrap items-center gap-1 text-next font-semibold"[39m
+    [33mdata-key[39m=[32m"title"[39m
+  [36m/>[39m
+  Name "関連する項目":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-h2 font-semibold"[39m
+  [36m/>[39m
+  Name "レビュー中のコメント":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-small font-medium"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  list:
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"flex flex-col gap-1"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  listitem:
+  Name "":
+  [36m<li[39m
+    [33mclass[39m=[32m"flex items-center gap-2 text-small"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  button:
+  Name "D-1":
+  [36m<button[39m
+    [33mclass[39m=[32m"cursor-pointer font-mono text-xs underline-offset-2 hover:underline"[39m
+    [33mdata-id[39m=[32m"D-1"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  paragraph:
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"m-0 text-small text-muted-foreground"[39m
+  [36m/>[39m
+  --------------------------------------------------button:
+  Name "コメントの入力を閉じる":
+  [36m<button[39m
+    [33maria-controls[39m=[32m"_r_k_-body"[39m
+    [33maria-expanded[39m=[32m"true"[39m
+    [33maria-label[39m=[32m"コメントの入力を閉じる"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground ml-auto size-6 shrink-0"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"コメントの入力を閉じる"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "音声で入力":
+  [36m<button[39m
+    [33maria-describedby[39m=[32m"_r_l_"[39m
+    [33maria-disabled[39m=[32m"true"[39m
+    [33maria-label[39m=[32m"音声で入力"[39m
+    [33mclass[39m=[32m"inline-flex items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border hover:bg-accent size-8 shrink-0 size-send pointer-coarse:size-11 cursor-not-allowed bg-muted text-muted-foreground"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "レビューに追加":
+  [36m<button[39m
+    [33maria-label[39m=[32m"レビューに追加"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"レビューに追加（Ctrl+Enter）"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  textbox:
+  Name "D-2 へのコメント":
+  [36m<textarea[39m
+    [33maria-describedby[39m=[32m"_r_k_-msg"[39m
+    [33maria-keyshortcuts[39m=[32m"Control+Enter"[39m
+    [33mclass[39m=[32m"w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"[39m
+    [33mid[39m=[32m"_r_k_"[39m
+    [33mname[39m=[32m"body"[39m
+    [33mrows[39m=[32m"1"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  status:
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"m-0 flex items-start gap-1 text-small text-muted-foreground empty:hidden"[39m
+    [33mid[39m=[32m"_r_k_-msg"[39m
+    [33mrole[39m=[32m"status"[39m
+  [36m/>[39m
+  --------------------------------------------------
+Ignored nodes: comments, script, style
+[36m<aside[39m
+  [33maria-label[39m=[32m"詳細"[39m
+  [33mclass[39m=[32m"relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!"[39m
+  [33mstyle[39m=[32m"width: 640px;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細パネルの幅"[39m
+    [33maria-orientation[39m=[32m"vertical"[39m
+    [33maria-valuemax[39m=[32m"864"[39m
+    [33maria-valuemin[39m=[32m"480"[39m
+    [33maria-valuenow[39m=[32m"640"[39m
+    [33mclass[39m=[32m"absolute inset-y-0 left-0 w-1 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-0 before:w-1 max-lg:hidden pointer-coarse:-left-5.5 pointer-coarse:z-10 pointer-coarse:w-11 pointer-coarse:before:left-5 hover:before:bg-mark-line"[39m
+    [33mrole[39m=[32m"separator"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"border-b border-border-soft"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex items-center gap-1 p-2"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"max-sm:hidden"[39m
+        [36m>[39m
+          [0m検討事項[0m
+          [0m [0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"font-mono"[39m
+        [36m>[39m
+          [0mD-2[0m
+        [36m</span>[39m
+      [36m</span>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mclass[39m=[32m"min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none opacity-0"[39m
+        [33mtitle[39m=[32m"D-2の題"[39m
+      [36m>[39m
+        [0mD-2の題[0m
+      [36m</span>[39m
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"false"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"編集する"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m4 20 1-4L16 5l3 3L8 19Z"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m14 7 3 3"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<span>[39m
+          [0m編集する[0m
+        [36m</span>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"D-2 のコメントの一覧を開く"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"この項目のコメントの一覧"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 5h16v11H10l-5 4v-4H4Z"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M8 9h8M8 12.5h5"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"前の項目へ戻る"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mdata-disabled[39m=[32m""[39m
+        [33mdisabled[39m=[32m""[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"前の項目へ戻る"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0m←[0m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"次の項目へ進む"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mdata-disabled[39m=[32m""[39m
+        [33mdisabled[39m=[32m""[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"次の項目へ進む"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0m→[0m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"全画面表示"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 max-md:hidden"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"全画面表示"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"詳細を閉じる"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:te...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx:129:41
+    127|     const panel = await screen.findByRole("complementary", { name: /詳細…
+    128|     // 実行
+    129|     await userEvent.click(within(panel).getByRole("tab", { name: "関連" …
+       |                                         ^
+    130|     // 検証
+    131|     expect(within(panel).getByRole("heading", { name: "関連する項目" })).toB…
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/13]⎯
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_toc
+TestingLibraryElementError: Unable to find an accessible element with the role "tab" and name "関連"
+Here are the accessible roles:
+  separator:
+  Name "詳細パネルの幅":
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細パネルの幅"[39m
+    [33maria-orientation[39m=[32m"vertical"[39m
+    [33maria-valuemax[39m=[32m"864"[39m
+    [33maria-valuemin[39m=[32m"480"[39m
+    [33maria-valuenow[39m=[32m"640"[39m
+    [33mclass[39m=[32m"absolute inset-y-0 left-0 w-1 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-0 before:w-1 max-lg:hidden pointer-coarse:-left-5.5 pointer-coarse:z-10 pointer-coarse:w-11 pointer-coarse:before:left-5 hover:before:bg-mark-line"[39m
+    [33mrole[39m=[32m"separator"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  --------------------------------------------------button:
+  Name "編集する":
+  [36m<button[39m
+    [33maria-pressed[39m=[32m"false"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"編集する"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "D-1 のコメントの一覧を開く":
+  [36m<button[39m
+    [33maria-label[39m=[32m"D-1 のコメントの一覧を開く"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"この項目のコメントの一覧"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "前の項目へ戻る":
+  [36m<button[39m
+    [33maria-label[39m=[32m"前の項目へ戻る"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mdata-disabled[39m=[32m""[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"前の項目へ戻る"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "次の項目へ進む":
+  [36m<button[39m
+    [33maria-label[39m=[32m"次の項目へ進む"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mdata-disabled[39m=[32m""[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"次の項目へ進む"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "全画面表示":
+  [36m<button[39m
+    [33maria-label[39m=[32m"全画面表示"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 max-md:hidden"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"全画面表示"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "詳細を閉じる":
+  [36m<button[39m
+    [33maria-label[39m=[32m"詳細を閉じる"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  --------------------------------------------------region:
+  Name "詳細の本文":
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細の本文"[39m
+    [33mclass[39m=[32m"panel-body"[39m
+    [33mrole[39m=[32m"region"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  heading:
+  Name "D-1の題":
+  [36m<h2[39m
+    [33mclass[39m=[32m"m-0 flex flex-wrap items-center gap-1 text-next font-semibold"[39m
+    [33mdata-key[39m=[32m"title"[39m
+  [36m/>[39m
+  Name "案":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-h2 font-semibold"[39m
+  [36m/>[39m
+  Name "本文":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-h2 font-semibold"[39m
+  [36m/>[39m
+  Name "レビュー中のコメント":
+  [36m<h3[39m
+    [33mclass[39m=[32m"m-0 text-small font-medium"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  paragraph:
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"m-0 text-small text-muted-foreground"[39m
+  [36m/>[39m
+  --------------------------------------------------button:
+  Name "コメントの入力を閉じる":
+  [36m<button[39m
+    [33maria-controls[39m=[32m"_r_m_-body"[39m
+    [33maria-expanded[39m=[32m"true"[39m
+    [33maria-label[39m=[32m"コメントの入力を閉じる"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground ml-auto size-6 shrink-0"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"コメントの入力を閉じる"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "音声で入力":
+  [36m<button[39m
+    [33maria-describedby[39m=[32m"_r_n_"[39m
+    [33maria-disabled[39m=[32m"true"[39m
+    [33maria-label[39m=[32m"音声で入力"[39m
+    [33mclass[39m=[32m"inline-flex items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border hover:bg-accent size-8 shrink-0 size-send pointer-coarse:size-11 cursor-not-allowed bg-muted text-muted-foreground"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+  Name "レビューに追加":
+  [36m<button[39m
+    [33maria-label[39m=[32m"レビューに追加"[39m
+    [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"[39m
+    [33mtabindex[39m=[32m"0"[39m
+    [33mtitle[39m=[32m"レビューに追加（Ctrl+Enter）"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  textbox:
+  Name "D-1 へのコメント":
+  [36m<textarea[39m
+    [33maria-describedby[39m=[32m"_r_m_-msg"[39m
+    [33maria-keyshortcuts[39m=[32m"Control+Enter"[39m
+    [33mclass[39m=[32m"w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"[39m
+    [33mid[39m=[32m"_r_m_"[39m
+    [33mname[39m=[32m"body"[39m
+    [33mrows[39m=[32m"1"[39m
+  [36m/>[39m
+  --------------------------------------------------
+  status:
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"m-0 flex items-start gap-1 text-small text-muted-foreground empty:hidden"[39m
+    [33mid[39m=[32m"_r_m_-msg"[39m
+    [33mrole[39m=[32m"status"[39m
+  [36m/>[39m
+  --------------------------------------------------
+Ignored nodes: comments, script, style
+[36m<aside[39m
+  [33maria-label[39m=[32m"詳細"[39m
+  [33mclass[39m=[32m"relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!"[39m
+  [33mstyle[39m=[32m"width: 640px;"[39m
+[36m>[39m
+  [36m<div[39m
+    [33maria-label[39m=[32m"詳細パネルの幅"[39m
+    [33maria-orientation[39m=[32m"vertical"[39m
+    [33maria-valuemax[39m=[32m"864"[39m
+    [33maria-valuemin[39m=[32m"480"[39m
+    [33maria-valuenow[39m=[32m"640"[39m
+    [33mclass[39m=[32m"absolute inset-y-0 left-0 w-1 cursor-col-resize touch-none select-none before:absolute before:inset-y-0 before:left-0 before:w-1 max-lg:hidden pointer-coarse:-left-5.5 pointer-coarse:z-10 pointer-coarse:w-11 pointer-coarse:before:left-5 hover:before:bg-mark-line"[39m
+    [33mrole[39m=[32m"separator"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"border-b border-border-soft"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex items-center gap-1 p-2"[39m
+    [36m>[39m
+      [36m<span[39m
+        [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"max-sm:hidden"[39m
+        [36m>[39m
+          [0m検討事項[0m
+          [0m [0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"font-mono"[39m
+        [36m>[39m
+          [0mD-1[0m
+        [36m</span>[39m
+      [36m</span>[39m
+      [36m<span[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33mclass[39m=[32m"min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none opacity-0"[39m
+        [33mtitle[39m=[32m"D-1の題"[39m
+      [36m>[39m
+        [0mD-1の題[0m
+      [36m</span>[39m
+      [36m<button[39m
+        [33maria-pressed[39m=[32m"false"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"編集する"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m4 20 1-4L16 5l3 3L8 19Z"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"m14 7 3 3"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<span>[39m
+          [0m編集する[0m
+        [36m</span>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"D-1 のコメントの一覧を開く"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"この項目のコメントの一覧"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 5h16v11H10l-5 4v-4H4Z"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M8 9h8M8 12.5h5"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"前の項目へ戻る"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mdata-disabled[39m=[32m""[39m
+        [33mdisabled[39m=[32m""[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"前の項目へ戻る"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0m←[0m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"次の項目へ進む"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"[39m
+        [33mdata-disabled[39m=[32m""[39m
+        [33mdisabled[39m=[32m""[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"次の項目へ進む"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [0m→[0m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"全画面表示"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 max-md:hidden"[39m
+        [33mtabindex[39m=[32m"0"[39m
+        [33mtitle[39m=[32m"全画面表示"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+          [33mheight[39m=[32m"16"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"1.75"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"16"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+      [36m</button>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"詳細を閉じる"[39m
+        [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:te...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx:145:41
+    143|     renderRoute("/?tab=decisions&id=D-1");
+    144|     const panel = await screen.findByRole("complementary", { name: /詳細…
+    145|     await userEvent.click(within(panel).getByRole("tab", { name: "関連" …
+       |                                         ^
+    146|     const before = window.history.length;
+    147|     // 実行
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/13]⎯
+ FAIL  frontend/src/features/search/search/search-dialog.test.tsx > SearchDialog > search_dialog_when_filter_candidate
+AssertionError: expected "vi.fn()" to be called once with arguments: [ 'tags', '廃止' ]
+Received:
+  1st vi.fn() call:
+  [
+-   "tags",
+-   "廃止",
++   {
++     "count": 1,
++     "key": "tags",
++     "label": "タグ",
++     "value": "廃止",
++   },
+  ]
+Number of calls: 1
+ ❯ frontend/src/features/search/search/search-dialog.test.tsx:88:27
+     86|     const group = screen.getByRole("group", { name: "絞り込みをオンにする" });
+     87|     expect(within(group).getAllByRole("option").map((option) => option…
+     88|     expect(onApplyFilter).toHaveBeenCalledExactlyOnceWith("tags", "廃止"…
+       |                           ^
+     89|   });
+     90| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/13]⎯
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx > DetailSupplements > detail_supplements
+TestingLibraryElementError: Unable to find an accessible element with the role "tab" and name "関連"
+Here are the accessible roles:
+  paragraph:
+  Name "":
+  [36m<p />[39m
+  Name "":
+  [36m<p />[39m
+  Name "":
+  [36m<p />[39m
+  --------------------------------------------------
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<p>[39m
+      [0m本文の中身[0m
+    [36m</p>[39m
+    [36m<p>[39m
+      [0m関連の中身[0m
+    [36m</p>[39m
+    [36m<p>[39m
+      [0mコメントの中身[0m
+    [36m</p>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx:14:34
+     12|     render(<DetailSupplements tab="main" onTabChange={onTabChange} mai…
+     13|     // 実行
+     14|     await userEvent.click(screen.getByRole("tab", { name: "関連" }));
+       |                                  ^
+     15|     // 検証
+     16|     expect(screen.getByRole("tab", { name: "本文" })).toHaveAttribute("a…
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/13]⎯
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx > DetailSupplements > detail_supplements_when_arrow
+TestingLibraryElementError: Unable to find an accessible element with the role "tab" and name "本文"
+Here are the accessible roles:
+  paragraph:
+  Name "":
+  [36m<p />[39m
+  Name "":
+  [36m<p />[39m
+  Name "":
+  [36m<p />[39m
+  --------------------------------------------------
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<p>[39m
+      [0m本文の中身[0m
+    [36m</p>[39m
+    [36m<p>[39m
+      [0m関連の中身[0m
+    [36m</p>[39m
+    [36m<p>[39m
+      [0mコメントの中身[0m
+    [36m</p>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx:26:12
+     24|     const onTabChange = vi.fn();
+     25|     render(<DetailSupplements tab="main" onTabChange={onTabChange} mai…
+     26|     screen.getByRole("tab", { name: "本文" }).focus();
+       |            ^
+     27|     // 実行
+     28|     await userEvent.keyboard("{ArrowRight}");
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/13]⎯
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx > DetailSupplements > detail_supplements_when_no_comments
+TestingLibraryElementError: Unable to find an accessible element with the role "tab"
+Here are the accessible roles:
+  paragraph:
+  Name "":
+  [36m<p />[39m
+  Name "":
+  [36m<p />[39m
+  --------------------------------------------------
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<p>[39m
+      [0m本文の中身[0m
+    [36m</p>[39m
+    [36m<p>[39m
+      [0m関連の中身[0m
+    [36m</p>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:109:15
+ ❯ frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx:40:19
+     38|     render(<DetailSupplements tab="main" onTabChange={vi.fn()} main={<…
+     39|     // 検証
+     40|     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).t…
+       |                   ^
+     41|   });
+     42| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/13]⎯
+ Test Files  8 failed | 5 passed (13)
+      Tests  10 failed | 61 passed (71)
+   Start at  16:51:03
+   Duration  7.94s (environment 39%, tests 34%, import 12%, setup 8%, transform 6%, worker 1%)
+Environment  jsdom was created 13 times · 15.09s total, 39% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+$ .venv/bin/python -m pytest tests/unit/scripts/test_presets.py
+
+tests/unit/scripts/test_presets.py:171: AttributeError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_presets.py::test_create_preset_from_preview - ...
+FAILED tests/unit/scripts/test_presets.py::test_create_preset_from_preview_when_body_invalid[unknown_key]
+FAILED tests/unit/scripts/test_presets.py::test_create_preset_from_preview_when_body_invalid[blank_name]
+FAILED tests/unit/scripts/test_presets.py::test_create_preset_from_preview_when_body_invalid[long_name]
+FAILED tests/unit/scripts/test_presets.py::test_create_preset_from_preview_when_body_invalid[empty_bundle]
+FAILED tests/unit/scripts/test_presets.py::test_create_preset_from_preview_when_config_invalid
+6 failed, 14 passed in 0.13s
+
+実装の前から pass したテストと、振る舞いを持つコード（モック作成の commit）:
+- preset_save・preset_save_when_no_tag_condition・preset_save_when_empty_name・preset_save_when_error・preset_save_when_saving: frontend/src/shared/components/preset-save.tsx（b5a4c12d）
+- body_toc・body_toc_when_fenced・body_toc_when_same_text（core）と body_toc・body_toc_when_escape（部品）: frontend/src/shared/core/body-toc.ts・frontend/src/shared/components/body-toc.tsx（0826d69e）
+- detail_header_when_toc: frontend/src/features/detail/detail-panel/components/detail-header.tsx（0826d69e）
+- filter_drawer_when_preset_save: frontend/src/shared/components/filter-drawer.tsx（d5a3daa4）
+- match_filter_candidates: frontend/src/features/search/search/search-dialog.tsx（b5a4c12d）
+fail は全て実装が無いこと（モジュールが無い・create_preset_from_preview が無い・タブ／候補の適用／diffControls が未実装）による。

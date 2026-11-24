@@ -1,0 +1,25 @@
+id: MOD-159-2
+title: プレビュー / segmented
+lead: 切り替えボタン（表示形式の切り替え・スレッドの状態の絞り込み・詳細の本文の切り替え）が共有する見た目のクラス。
+constants:
+  - name: SEGMENTED_GROUP_CLASS
+    title: 切り替えボタンの組のクラス
+    container: frontend/src/shared/lib/segmented.ts
+    usecase: 共通
+    summary: ボタンを 1 つの枠線と `--muted` の面の中につなげて並べる組のクラス
+    value: '`inline-flex rounded-control border border-border bg-muted p-0.5`'
+  - name: SEGMENTED_ITEM_CLASS
+    title: 切り替えボタンのクラス
+    container: frontend/src/shared/lib/segmented.ts
+    usecase: 共通
+    summary: 選んでいないボタンのクラス（薄い文字、ホバーで `--card` の面と濃い文字、フォーカスの輪）。高さ・幅は使う側が加える
+    value: '`cursor-pointer rounded-sm text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring`'
+  - name: SEGMENTED_SELECTED_CLASS
+    title: 選んだ切り替えボタンのクラス
+    container: frontend/src/shared/lib/segmented.ts
+    usecase: 共通
+    summary: 選んだボタンを `--tab-selected` の面・マーカーの色の細い輪・影・太字で浮き出させ、ホバーで色を変えないクラス。使う側が選んだボタンにだけ付ける
+    value: '`bg-tab-selected font-medium text-foreground shadow-sm ring-1 ring-mark/50 hover:bg-tab-selected`'
+notes:
+  使う側: 部品『表示形式の切り替え』（`view-switch.tsx`）・コメントの一覧の状態の絞り込み（`comments-panel.tsx`）・詳細の本文の切り替え（`detail-supplements.tsx`）が `cn` で組み合わせる。色を変えるときはこのファイルだけを書き換える
+  単体テスト: 定数だけなので持たない。見た目は部品設計『表示形式の切り替え』の結合テストで確かめる

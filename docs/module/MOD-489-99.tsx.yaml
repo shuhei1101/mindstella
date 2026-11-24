@@ -19,3 +19,4 @@ components:
     container: frontend/src/shared/components/view-switch.tsx
 notes:
   単体テスト: 同じフォルダの `view-switch.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  見た目: 組を `SEGMENTED_GROUP_CLASS`、ボタンを `SEGMENTED_ITEM_CLASS` と幅 `w-24`・高さ `h-6`（選んでいる形式は `SEGMENTED_SELECTED_CLASS`）で描く（『segmented』）

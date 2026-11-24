@@ -6,7 +6,7 @@ components:
     title: 詳細パネル
     kind: 画面
     usecase: 項目の詳細を読む
-    summary: 画面設計『詳細パネル.tsx』の要素と操作を描く。`DetailContent`（詳細の全画面も使う）は、`DetailReviewComments` を部品『差分のミニマップ』の中（本文のスクロール領域）の関係する項目の後に、`DetailComments` を差分のミニマップの後（パネルの下端）に描き、`DetailComments` の `scroller` に本文のスクロール領域の要素を返す関数を渡す。差分の表示をしていないときはタグの行の部品『タグの並び』に `onSelect` を渡し、押したタグを後ろの画面の `useScreenFilters` の `addTag`（後ろの画面が概要のときは項目の種類を添える）へ渡す
+    summary: 画面設計『詳細パネル.tsx』の要素と操作を描く。`DetailContent`（詳細の全画面も使う）は、部品『差分のミニマップ』の中（本文のスクロール領域）に `DetailSupplements` を描き、状態・タイトルから本文までを `main`、リンクと関係する項目を `supplements`、`DetailReviewComments` を `comments`（配る書き出しでは null）に渡す。選んでいるタブは `useState` で持ち、項目の `id` が変わったら `main` に戻す。関係する項目の `see_also` の見出しは「関連する項目」（会話ログは「更新した項目」）にする。本文が Markdown のときは `bodyToc` の結果を `DetailHeader` の `toc` に渡し、見出しを選んだら `main` を選んでから本文の見出しへの移動（既存の `h` の置き換えと畳んだセクションの開き）を呼ぶ。`DetailComments` を差分のミニマップの後（パネルの下端）に描き、`DetailComments` の `scroller` に本文のスクロール領域の要素を返す関数を渡す。差分の表示をしていないときはタグの行の部品『タグの並び』に `onSelect` を渡し、押したタグを後ろの画面の `useScreenFilters` の `addTag`（後ろの画面が概要のときは項目の種類を添える）へ渡す
     refs:
       - SCR-489-32#
     unit_tests:
@@ -52,6 +52,18 @@ components:
         condition: '`history.replaceState` で `location` のパスを `/w/mindstella-x-1/` にし、`sessionStorage` の `mindmap-panel-width:mindstella-x-1` に 880、`mindmap-panel-width` に 1000 を置いて `id=D-1` を開く'
         mock: MSW
         expected: 詳細パネルの幅が 880px（読み書きのキーは `workspaceKey(PANEL_WIDTH_KEY)`）
+      - name: test_detail_panel_when_tabs
+        case: 正常
+        summary: タブで関連とコメントへ切り替え、項目を移ると本文に戻る
+        condition: サーバーの配信で `id=A-9` を開き、「関連」を押し、関係する項目の D-8 を押す
+        mock: MSW
+        expected: 「関連」のパネルに「関連する項目」の見出しがあり、D-8 へ移ると「本文」が選ばれている
+      - name: test_detail_panel_when_toc
+        case: 正常
+        summary: 目次から見出しへ移る
+        condition: 見出しを持つ資料で「関連」を選んだ後、「本文の目次」から「保存先」を押す
+        mock: MSW
+        expected: 「本文」が選ばれ、search の `h` が「保存先」の `slug` で、履歴の数が変わらない
     container: frontend/src/features/detail/detail-panel/detail-panel.tsx
 notes:
   単体テスト: 同じフォルダの `detail-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）

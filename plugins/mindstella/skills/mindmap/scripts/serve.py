@@ -53,6 +53,7 @@ from errors import (
     EditsBlockedError,
     ItemNotFoundError,
     MindmapError,
+    PresetNameTakenError,
     SchemaMismatchError,
     WorkspaceIdConflictError,
     SettingsInvalidError,
@@ -60,6 +61,7 @@ from errors import (
     WorkspaceNotFoundError,
     WriteFailedError,
 )
+from presets import create_preset_from_preview
 from files_serve import (
     FILE_SECURITY_HEADERS,
     FILE_WRITE_CHUNK,
@@ -185,6 +187,7 @@ SPA_DIR = "spa"
 
 # 設定の既定の書き換えと、設定の再読み込みのパス
 CONFIG_DISPLAY_PATH = "/api/config/display"
+PRESETS_PATH = "/api/presets"
 CONFIG_RELOAD_PATH = "/api/config/reload"
 
 # JSON・HTML・問題の応答の `Content-Type`
@@ -640,6 +643,8 @@ class PreviewEndpoint:
                 HTTPStatus.CREATED,
                 after=lambda body: _entered_body(context, body),
             )
+        if path == PRESETS_PATH:
+            return await _write(request, context, create_preset_from_preview, HTTPStatus.CREATED)
         if path == TRANSCRIPTIONS_PATH:
             return await self._transcribe(request, context)
         return _to_starlette(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
@@ -1367,7 +1372,7 @@ def error_response(error: MindmapError) -> Response:
                 body=json.dumps(problem, ensure_ascii=False).encode("utf-8"),
             )
         return response
-    if isinstance(error, (EditConflictError, ConcurrentWriteError)):
+    if isinstance(error, (EditConflictError, ConcurrentWriteError, PresetNameTakenError)):
         return problem_response(HTTPStatus.CONFLICT, detail)
     # 書き込めない編集は、全てを返す
     if isinstance(error, EditsBlockedError):

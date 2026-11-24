@@ -163,6 +163,68 @@ functions:
         condition: 「画面の設計」だけを持つ
         mock: なし
         expected: '`config.yaml` に `presets` が無い'
+  - name: create_preset_from_preview
+    title: 画面からのプリセットの作成
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/presets.py
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: インターフェース定義『画面からのプリセットの作成』。要求の本文を確かめて `create_preset` を呼び、`preset`・`count` を返す（配信の `write_response` が書き換えの鍵を取って呼ぶ）
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: body
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文（JSON のオブジェクト）
+    returns:
+      type: dict[str, Any]
+      description: '`preset`（`name`・`filter`）と `count`'
+    process: |-
+      1. 本文に `name`・`filter` のほかのキーがあれば、キーごとに `{キー}: 知らないキーです` を並べた `SettingsInvalidError` を送出する
+      2. `name` が文字列でないか、前後の空白を除いて空か 40 字を超えれば `SettingsInvalidError`（`name: ...`）を送出する
+      3. `filter` がオブジェクトでなければ、またはタグの式の検証が行を返せば、その行を `filter.` を頭に付けて並べた `SettingsInvalidError` を送出する（タグの式の検証）
+      4. 今の `config.yaml` が設定のスキーマに合わなければ、合わない箇所の `SchemaMismatchError` を送出する（`check_settings`・`build_mismatch_error`。『設定の既定の書き換え』の `update_display` と同じ）
+      5. `create_preset(root, name=前後の空白を除いた名前, expr=filter)` を呼び、結果の `preset`・`count` だけを返す（プリセットの作成）
+    callees:
+      - MOD-649-3#functions[validate_preset_filter]
+      - MOD-649-3#functions[create_preset]
+    exceptions:
+      - name: SettingsInvalidError
+        condition: 本文に `name`・`filter` のほかのキーがある
+      - name: SettingsInvalidError
+        condition: '`name` が空か 40 字を超える'
+      - name: SettingsInvalidError
+        condition: '`filter` がタグの式に合わない'
+      - name: SchemaMismatchError
+        condition: 今の `config.yaml` がスキーマに合わない
+    unit_tests:
+      - name: test_create_preset_from_preview
+        case: 正常
+        summary: 末尾に追加して件数を返す
+        condition: 資料 A-1（画面・廃止）・A-2（画面）と「画面の設計」を持つワークスペースに、名前「 廃止する画面 」・画面かつ廃止の式
+        mock: なし（一時ディレクトリ）
+        expected: '`{preset: {name: 廃止する画面, filter: その式}, count: 1}` で、`presets` が「画面の設計」「廃止する画面」の順'
+      - name: test_create_preset_from_preview_when_body_invalid
+        case: 異常
+        summary: 合わない本文は書かない
+        condition: '`parametrize`: `description` を持つ / 名前が空白だけ / 41 字の名前 / `filter` が `{and: []}`'
+        mock: なし（一時ディレクトリ）
+        expected: '`SettingsInvalidError` でメッセージに `description`・`name`・`name`・`filter.and` があり、`config.yaml` が呼ぶ前と同じ'
+        exception: 本文が合わない
+      - name: test_create_preset_from_preview_when_config_invalid
+        case: 異常
+        summary: 崩れた config.yaml には書き足さない
+        condition: '`presets` を文字列にした `config.yaml`'
+        mock: なし（一時ディレクトリ）
+        expected: '`SchemaMismatchError` で `lines` に `presets` を指す行があり、`config.yaml` が呼ぶ前と同じ'
+        exception: config.yaml がスキーマに合わない
+    refs:
+      - IF-362-1#
 notes:
   単体テスト: '`tests/unit/scripts/test_presets.py` に置く'
   書き込み: '`config.yaml` の書き込みは `settings_update.py` と同じ読み書きの関数（`safe_dump(allow_unicode=True, sort_keys=False)` と一時ファイルの `os.replace`）を使う'

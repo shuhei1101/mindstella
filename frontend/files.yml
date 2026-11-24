@@ -948,6 +948,100 @@ files:
   related:
   - to: MOD-489-69
     type: implements
+- path: src/shared/components/preset-save.tsx
+  name: プリセットの保存
+  description: 今の絞り込みのタグの条件に名前を付けてプリセットとして保存する入力。保存の操作・名前の入力・エラーの見た目を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/preset-save.stories.tsx
+  name: プリセットの保存のストーリー
+  description: プリセットの保存の状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/body-toc.tsx
+  name: 本文の目次
+  description: 詳細のヘッダーのボタンで開き、本文の見出しを階層つきで並べて押すとその見出しへ移る目次。目次の見た目や操作を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/body-toc.stories.tsx
+  name: 本文の目次のストーリー
+  description: 本文の目次の状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/core/body-toc.ts
+  name: 本文の目次の見出しの取り出し
+  description: 資料の本文の Markdown から、コードブロックの外の見出しを階層と見出しを指す名前つきで取り出す。目次に並べる見出しを変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/features/detail/detail-panel/components/detail-supplements.tsx
+  name: 詳細の本文と補足の見分け方
+  description: 詳細の本文と参照・関連・経緯の欄を、タブ・折りたたみ・背景の色のどれかで分ける。本文と補足の見せ方を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/preset-save.test.tsx
+  name: プリセットの保存の単体テスト
+  description: 部品『プリセットの保存』の保存・押せない理由・空の名前・失敗の理由・保存中の再送の防止を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-362-1
+    type: tests
+- path: src/shared/hooks/use-preset-save.test.tsx
+  name: プリセットの保存のフックの単体テスト
+  description: プリセットの保存のフックが送信する本文と、問題の応答の detail の扱いを確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-362-2
+    type: tests
+- path: src/shared/stores/filter-candidates-store.test.ts
+  name: 絞り込みの候補のストアの単体テスト
+  description: 絞り込みの候補のストアの登録と消去を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-143-1
+    type: tests
+- path: src/shared/core/body-toc.test.ts
+  name: 本文の目次の見出しの取り出しの単体テスト
+  description: 本文の Markdown から見出しの階層・文字・名前を取り出す処理を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-160-1
+    type: tests
+- path: src/shared/components/body-toc.test.tsx
+  name: 本文の目次の単体テスト
+  description: 本文の目次のポップオーバーの見出しの選択と Esc で閉じる操作を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-160-2
+    type: tests
+- path: src/features/detail/detail-panel/components/detail-supplements.test.tsx
+  name: 詳細のタブの単体テスト
+  description: 詳細の本文・関連・コメントのタブの切り替えと矢印の操作を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-159-1
+    type: tests
+- path: src/features/detail/detail-panel/components/detail-header.test.tsx
+  name: 詳細の見出しの単体テスト
+  description: 詳細の見出しの目次のボタンを出す条件を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-24
+    type: tests
+- path: src/shared/components/list-screen.test.tsx
+  name: 一覧の画面の枠の単体テスト
+  description: 一覧の画面の枠が絞り込みの候補をストアへ登録する処理を確かめる単体テスト。テストを追加・修正するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-76
+    type: tests
 - path: src/shared/components/filter-drawer.stories.tsx
   name: 絞り込みのストーリー
   description: 絞り込みのストーリー。
@@ -1787,3 +1881,29 @@ files:
   description: 本文のスレッドの ID と書き込みの ID を記録にあるスレッドと書き込みに結び、本文と書き込みのリンクを付けるときに参照する。
   tags:
   - tool:react
+- path: src/shared/hooks/use-preset-save.ts
+  name: プリセットの保存のフック
+  description: 画面から今のタグの条件の式をプリセットとして保存し、失敗の理由を返す。画面からのプリセットの保存を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-362-2
+    type: implements
+- path: src/shared/stores/filter-candidates-store.ts
+  name: 絞り込みの候補のストア
+  description: 今の画面の絞り込みの値と値を加える処理を、全体の検索へ渡す。検索からの絞り込みを変更するときに読む。
+  tags:
+  - tool:react
+  - topic:ストア
+  related:
+  - to: MOD-143-1
+    type: implements
+- path: src/shared/lib/segmented.ts
+  name: 切り替えボタンのクラス
+  description: 表示形式の切り替え・スレッドの状態の絞り込み・詳細の本文の切り替えが共有する見た目のクラスを持つ。切り替えボタンの見た目を変更するときに読む。
+  tags:
+  - tool:tailwind-css
+  - topic:スタイル
+  related:
+  - to: MOD-159-2
+    type: implements

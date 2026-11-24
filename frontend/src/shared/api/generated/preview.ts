@@ -34,6 +34,8 @@ import type {
   EditReply,
   Edits,
   OpenedReply,
+  PresetCreated,
+  PresetInput,
   Problem,
   Records,
   RemovedComment,
@@ -2104,6 +2106,160 @@ export function usePutConfigDisplay<TData = Awaited<ReturnType<typeof putConfigD
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getPutConfigDisplayQueryOptions(displayInput,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type postPresetResponse201 = {
+  data: PresetCreated
+  status: 201
+}
+
+export type postPresetResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type postPresetResponse403 = {
+  data: Problem
+  status: 403
+}
+
+export type postPresetResponse409 = {
+  data: Problem
+  status: 409
+}
+
+export type postPresetResponse422 = {
+  data: Problem
+  status: 422
+}
+
+export type postPresetResponse500 = {
+  data: Problem
+  status: 500
+}
+
+export type postPresetResponseSuccess = (postPresetResponse201) & {
+  headers: Headers;
+};
+export type postPresetResponseError = (postPresetResponse400 | postPresetResponse403 | postPresetResponse409 | postPresetResponse422 | postPresetResponse500) & {
+  headers: Headers;
+};
+
+export type postPresetResponse = (postPresetResponseSuccess | postPresetResponseError)
+
+export const getPostPresetUrl = () => {
+
+
+
+
+  return `/api/presets`
+}
+
+/**
+ * @summary 今のタグの条件に名前を付けたプリセットを config.yaml の presets の末尾に加える
+ */
+export const postPreset = async (presetInput: PresetInput, options?: Parameters<typeof apiClient>[1]): Promise<postPresetResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<postPresetResponse>(getPostPresetUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(presetInput)
+  }
+);}
+
+
+
+
+
+export const getPostPresetQueryKey = (presetInput?: PresetInput,) => {
+    return [
+    'POST', `/api/presets`, presetInput
+    ] as const;
+    }
+
+
+export const getPostPresetQueryOptions = <TData = Awaited<ReturnType<typeof postPreset>>, TError = Problem>(presetInput: PresetInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postPreset>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPostPresetQueryKey(presetInput);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof postPreset>>> = ({ signal }) => postPreset(presetInput, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postPreset>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PostPresetQueryResult = NonNullable<Awaited<ReturnType<typeof postPreset>>>
+export type PostPresetQueryError = Problem
+
+
+export function usePostPreset<TData = Awaited<ReturnType<typeof postPreset>>, TError = Problem>(
+ presetInput: PresetInput, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postPreset>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postPreset>>,
+          TError,
+          Awaited<ReturnType<typeof postPreset>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostPreset<TData = Awaited<ReturnType<typeof postPreset>>, TError = Problem>(
+ presetInput: PresetInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postPreset>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postPreset>>,
+          TError,
+          Awaited<ReturnType<typeof postPreset>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostPreset<TData = Awaited<ReturnType<typeof postPreset>>, TError = Problem>(
+ presetInput: PresetInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postPreset>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 今のタグの条件に名前を付けたプリセットを config.yaml の presets の末尾に加える
+ */
+
+export function usePostPreset<TData = Awaited<ReturnType<typeof postPreset>>, TError = Problem>(
+ presetInput: PresetInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postPreset>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPostPresetQueryOptions(presetInput,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

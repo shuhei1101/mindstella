@@ -1,0 +1,53 @@
+id: CMP-160-1
+title: 本文の目次
+lead: 詳細パネル・詳細の全画面のヘッダーに置く目次のボタンと、押すと開くポップオーバー。資料の本文の見出しを本文の順に階層の字下げつきで並べ、押すとその見出しへ移る。
+implementation: frontend/src/shared/components/body-toc.tsx#BodyToc
+story: Shared/BodyToc
+test_file: tests/integration/storybook_react/test_body_toc_stories.py
+args:
+  - name: entries
+    type: オブジェクトの配列
+    required: true
+    description: 本文の順の見出し。使う側が Markdown の本文から作る（コードブロックの中の `#` の行は見出しにしない）。空のときは使う側が部品を出さない
+  - name: entries[].level
+    type: 整数
+    required: true
+    choices: 1〜6
+    description: 見出しの階層。本文の一番上の階層を字下げしない位置にし、下の階層ほど字下げする
+  - name: entries[].text
+    type: 文字列
+    required: true
+    description: 描いた見出しに出る文字（リンクは文言、強調・行内のコードの記号は除く）
+  - name: entries[].slug
+    type: 文字列
+    required: true
+    description: 見出しを指す名前。search params の `h` と同じ値
+  - name: defaultOpen
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 最初から開いた状態で出す（ストーリー用）
+events:
+  - name: 見出しへ移る
+    when: 目次の項目を押したとき
+    value: '`onHeading(slug)`'
+    description: 部品がポップオーバーを閉じ、使う側がその見出しへスクロールして search params の `h` を置き換える（履歴に積まない。『プレビューを開く』の制約「履歴」の「本文の見出しへの移動」）
+states:
+  - name: Default
+    description: 閉じた目次のボタン（アイコンだけ）
+  - name: Open
+    description: 開いた目次。上端に「目次」の見出しを置き、下の階層の見出しを字下げする
+    args:
+      - name: defaultOpen
+        value: 'true'
+  - name: LongHeading
+    description: 長い見出しを 1 行で `…` で省略し、全文を `title` に持たせる
+    args:
+      - name: defaultOpen
+        value: 'true'
+accessibility:
+  - 目次のボタンに「本文の目次」の読み上げの名前とツールチップを付ける
+  - 項目の並びを `nav`（読み上げの名前「本文の目次」）と `ul` で組み、項目をボタンにする
+  - Esc で閉じ、閉じたら目次のボタンへフォーカスを戻す
+refs:
+  - IF-489-70#

@@ -86,6 +86,8 @@ items:
     summary: "update_preset: プリセットの名前・説明・タグの式・並び順を置き換え、該当する項目の件数を返却する"
   - page: IF-649-3.yaml
     summary: "delete_preset: プリセットを設定から削除する"
+  - page: IF-362-1.yaml
+    summary: "POST /w/{workspace}/api/presets: 画面から絞り込みのプリセットを設定に追加し、該当する項目の件数を返却する"
   - page: IF-489-23.yaml
     summary: "GET /w/{workspace}/api/comments: レビュー中のコメントと下書きをその場で読んで返す"
   - page: IF-489-24.yaml

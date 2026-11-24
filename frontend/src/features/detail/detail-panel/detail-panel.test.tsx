@@ -29,6 +29,7 @@ describe("DetailPanel", () => {
     expect(panel).toHaveTextContent("D-1の題");
     expect(panel).toHaveTextContent("案 A");
     expect(panel).toHaveTextContent("本文の文");
+    await userEvent.click(within(panel).getByRole("tab", { name: "関連" }));
     expect(panel).toHaveTextContent("D-2の題");
   });
 
@@ -94,6 +95,7 @@ describe("DetailPanel", () => {
     const input = await within(panel).findByRole("textbox", { name: /D-1 へのコメント/ });
     const scroller = within(panel).getByRole("region", { name: "詳細の本文" });
     expect(scroller).not.toContainElement(input);
+    await userEvent.click(within(panel).getByRole("tab", { name: "コメント" }));
     expect(scroller).toContainElement(within(panel).getByRole("heading", { name: "レビュー中のコメント" }));
   });
   // 見出しのコメントの一覧のボタンで、その項目で絞ったコメントの一覧を開く（正常系）
@@ -116,5 +118,38 @@ describe("DetailPanel", () => {
     renderRoute("/?id=D-1&full=1");
     await waitFor(() => expect(document.body).toHaveTextContent("D-1の題"));
     expect(screen.queryByRole("button", { name: "D-1 のコメントの一覧を開く" })).toBeNull();
+  });
+  // タブで関連とコメントへ切り替え、項目を移ると本文に戻る（正常系）
+  test("detail_panel_when_tabs", async () => {
+    // 準備
+    stubRecords({ decisions: [decision, { id: "D-2", title: "D-2の題", status: "未決定", related: [{ to: "D-1", type: "see_also" }] }], bodies: { "docs/D-1.md": "本文の文" } });
+    renderRoute("/?tab=decisions&id=D-2");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    // 実行
+    await userEvent.click(within(panel).getByRole("tab", { name: "関連" }));
+    // 検証
+    expect(within(panel).getByRole("heading", { name: "関連する項目" })).toBeInTheDocument();
+    // 実行
+    await userEvent.click(within(panel).getByRole("button", { name: /D-1/ }));
+    // 検証
+    await waitFor(() => expect(panel).toHaveTextContent("D-1の題"));
+    expect(within(panel).getByRole("tab", { name: "本文" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  // 目次から見出しへ移る（正常系）
+  test("detail_panel_when_toc", async () => {
+    // 準備
+    stubRecords({ decisions: [{ ...decision, history: [] }], bodies: { "docs/D-1.md": "# 目的\n\n本文\n\n## 保存先\n\n本文" } });
+    renderRoute("/?tab=decisions&id=D-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    await userEvent.click(within(panel).getByRole("tab", { name: "関連" }));
+    const before = window.history.length;
+    // 実行
+    await userEvent.click(within(panel).getByRole("button", { name: "本文の目次" }));
+    await userEvent.click(screen.getByRole("button", { name: "保存先" }));
+    // 検証
+    expect(within(panel).getByRole("tab", { name: "本文" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("h")).toBe("保存先"));
+    expect(window.history.length).toBe(before);
   });
 });

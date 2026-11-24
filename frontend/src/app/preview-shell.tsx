@@ -12,7 +12,7 @@ import { HistoryScreen } from "@/features/history/history/history-dialog";
 import { ItemAddPanel } from "@/features/detail/detail-panel/components/item-add-panel";
 import { OverviewScreen } from "@/features/overview/overview/overview-screen";
 import { RecordsScreen, type RecordKind } from "@/features/records/records/records-screen";
-import { SearchDialog } from "@/features/search/search/search-dialog";
+import { SearchDialog, type FilterCandidate } from "@/features/search/search/search-dialog";
 import { useSearchShortcut } from "@/features/search/search/use-search-shortcut";
 import { DisplaySettingsPanel } from "@/features/settings/display-settings/display-settings-panel";
 import { WorkspaceSettingsScreen } from "@/features/settings/workspace-settings/workspace-settings-screen";
@@ -34,6 +34,7 @@ import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useConnectionStore } from "@/shared/stores/connection-store";
 import { useDuplicateIdsStore, useShownDuplicateIds } from "@/shared/stores/duplicate-ids-store";
+import { useFilterCandidatesStore } from "@/shared/stores/filter-candidates-store";
 import { clearDisplayNotice, displayChanged, sameDisplay, useDisplayNoticeAt } from "@/shared/stores/display-notice-store";
 import { writePrefs } from "@/shared/stores/prefs-store";
 import { restoreAnchor, useStale } from "@/shared/stores/refresh-hold-store";
@@ -131,6 +132,10 @@ export const PreviewShell = () => {
   const { index, rawIndex, edits } = useRecords();
   const { point, since } = useDiffView();
   const theme = useThemeStore((state) => state.theme);
+  // 開いている一覧の画面の絞り込みの値（全体の検索の結果の先頭に出す）
+  const candidateGroups = useFilterCandidatesStore((state) => state.groups);
+  const applyCandidate = useFilterCandidatesStore((state) => state.apply);
+  const filterCandidates: FilterCandidate[] = candidateGroups.flatMap(({ key, label, values }) => values.map(({ value, count }) => ({ key, label, value, count })));
   const setTheme = useThemeStore((state) => state.setTheme);
   const connection = useConnectionStore((state) => state.connection);
   // トップバーを包む要素の高さを測り、左のパネル・絞り込みのドロワーの上端の CSS 変数に書く
@@ -325,6 +330,7 @@ export const PreviewShell = () => {
             openFromSearch(visible.has(kind) ? kind : undefined, id);
           }}
           onClose={() => { setSearch({ search: undefined, q: undefined }); }}
+          {...(applyCandidate === null ? {} : { filterCandidates, onApplyFilter: applyCandidate })}
         />
       ) : null}
       {saved === null ? null : (

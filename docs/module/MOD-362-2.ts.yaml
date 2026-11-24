@@ -1,0 +1,36 @@
+id: MOD-362-2
+title: プレビュー / use-preset-save
+lead: 画面から今のタグの条件の式をプリセットとして保存するフック。
+functions:
+  - name: usePresetSave
+    title: プリセットの保存
+    kind: フック
+    container: frontend/src/shared/hooks/use-preset-save.ts
+    usecase: 項目を表で絞り込む
+    summary: '部品『プリセットの保存』の `onSave` に渡す関数を返す。名前と今のタグの条件の式を『画面からのプリセットの作成』（orval が作る `POST /api/presets` の関数）へ送信し、201 なら `{error: null}`、400・409・422 なら問題の応答の `detail`、それ以外と通信の失敗は「保存できませんでした。もう一度お試しください。」を `error` に入れて返す。保存した後の記録の再読み込みは書き換えの通知に任せる'
+    args:
+      - name: tagExpr
+        type: PresetFilter | null
+        required: true
+        description: 今のタグの条件の式（`useScreenFilters` の `tagExpr`）
+    returns:
+      type: '(name: string) => Promise<PresetSaveResult>'
+      description: 保存する関数。`tagExpr` が null のときは送信せず「タグの条件を選ぶと、プリセットとして保存できます。」を返す
+    unit_tests:
+      - name: test_use_preset_save
+        case: 正常
+        summary: 名前と式を送信する
+        condition: 「画面」を含む式で「画面の設計」を保存する。MSW が 201 を返す
+        mock: MSW
+        expected: '`{error: null}` が返り、送信した本文が `{name: 画面の設計, filter: その式}`'
+      - name: test_use_preset_save_when_problem
+        case: 異常
+        summary: 問題の応答の detail を返す
+        condition: '`parametrize`: MSW が 409 と `detail` を返す / 500 を返す'
+        mock: MSW
+        expected: '`error` が `detail` の文 / 「保存できませんでした。もう一度お試しください。」'
+    refs:
+      - IF-362-1#
+notes:
+  単体テスト: 同じフォルダの `use-preset-save.test.tsx` に置く
+  API の関数: '`frontend/openapi.yaml` に `POST /api/presets`（本文 `PresetInput`：`name`・`filter`。応答 201 `PresetCreated`：`preset`・`count`。400・403・409・415・422・500 は問題の応答）を足し、`npm run generate-api` で orval が作る関数と MSW の handler を使う'

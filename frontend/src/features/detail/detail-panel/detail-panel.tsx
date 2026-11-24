@@ -5,6 +5,7 @@ import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/co
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
 import { DetailResizer, PANEL_WIDTH } from "@/features/detail/detail-panel/components/detail-resizer";
 import { BodyView } from "@/features/detail/detail-panel/components/body-view";
+import { DetailSupplements, type DetailTab } from "@/features/detail/detail-panel/components/detail-supplements";
 import type { BodyDiffView } from "@/shared/components/body-diff-view-switch";
 import { DetailComments, DetailReviewComments } from "@/features/detail/detail-panel/components/detail-comments";
 import { DiffDeadlineContext, KeyDiff, keyDiffs, nextDiffDeadline, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
@@ -17,12 +18,13 @@ import { DiffMinimap } from "@/shared/components/diff-minimap";
 import { Icon, StatusMark } from "@/shared/components/icon";
 import { TagList } from "@/shared/components/tag-list";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
+import { bodyToc } from "@/shared/core/body-toc";
 import { LINE_ATTR, VALUE_KEY_ATTR } from "@/shared/core/body-links";
 import { HTML_BODY_ATTR } from "@/shared/core/body-render";
 import { buildVersions, type DiffPoint, type VersionPair } from "@/shared/core/diff";
 import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/core/edits";
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
-import { kindOfId, tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
+import { bodyFormatOf, kindOfId, tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
 import { applyHighlight } from "@/shared/core/term-tips";
 import { workspaceKey } from "@/shared/core/workspace-path";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
@@ -134,6 +136,9 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const cancel = useCancelEdit();
   const flight = useSingleFlight();
   const [editing, setEditing] = useState(false);
+  // 選んでいるタブ。項目を移ったら本文に戻す
+  const [tab, setTab] = useState<{ id: string; tab: DetailTab }>({ id, tab: "main" });
+  const currentTab = tab.id === id ? tab.tab : "main";
   // 本文の差分の見せ方。開いた項目ごとに「描いた結果」から始め、選んだ回数で押し直しを描き直す
   const [diffView, setDiffView] = useState<{ id: string; view: BodyDiffView; nonce: number }>({ id, view: "rendered", nonce: 0 });
   const view = diffView.id === id ? diffView.view : "rendered";
@@ -208,12 +213,6 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
           </Section>
         ) : null}
         {body("本文")}
-        {relation("前提", related.prerequisites)}
-        {relation("後続の項目", related.successors)}
-        {relation("派生元", related.parents)}
-        {relation("派生した項目", related.children)}
-        {relation("関連タスク", related.tasks)}
-        {relation("経緯（会話ログ）", related.logs)}
       </>
     ),
     tasks: (
@@ -257,6 +256,19 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
     ),
     logs: body("要約"),
   };
+  // 検討事項の関係する項目は、リンク・関連・参照元と同じ補足の欄に並べる
+  const supplementsByKind: Partial<Record<Kind, ReactNode>> = {
+    decisions: (
+      <>
+        {relation("前提", related.prerequisites)}
+        {relation("後続の項目", related.successors)}
+        {relation("派生元", related.parents)}
+        {relation("派生した項目", related.children)}
+        {relation("関連タスク", related.tasks)}
+        {relation("経緯（会話ログ）", related.logs)}
+      </>
+    ),
+  };
   // 差分の表示の間と配る書き出しは編集・確認済みを出さない
   const embedded = isEmbedded();
   const canEdit = point === null && !embedded;
@@ -273,9 +285,16 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const removal = edits.find((edit) => edit.target === id && edit.op === "item-remove");
   const referrers = index.referencedBy.get(id) ?? [];
   const change = ({ op, key, value }: EditChange): void => { add.mutate({ op, target: id, key, value }); };
+  const ownBody = bodyFormatOf(entry.item.body) === "md" && !editing ? index.data.bodies[entry.item.body ?? ""] : undefined;
+  const toc = ownBody === undefined ? [] : bodyToc(ownBody);
+  const selectTab = (next: DetailTab): void => { setTab({ id, tab: next }); };
+  const toHeading = (slug: string): void => {
+    selectTab("main");
+    setHeading(slug);
+  };
   return (
     <DiffDeadlineContext.Provider value={deadline}>
-      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
+      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} toc={toc} onHeading={toHeading} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false && view !== "source"} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
           <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removePending={flight.running} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { flight.run(() => add.mutateAsync({ op: "item-remove", target: id })); }} onCancelRemove={() => { if (removal !== undefined) flight.run(() => cancel.mutateAsync(removal.id)); }} />
@@ -291,6 +310,11 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
               </div>
             )}
             {diff?.versions?.trimmed === true ? <p role="note" className="text-small text-muted-foreground">{NOTE_TRIMMED}</p> : null}
+            <DetailSupplements
+              tab={currentTab}
+              onTabChange={selectTab}
+              main={
+                <>
             <div data-key="status">{keys?.has("status") === true ? <KeyDiff was={<Status value={keys.left["status"]} />} now={<Status value={keys.right["status"]} />} plain /> : <Status value={item.status} />}</div>
             <h2 ref={setTitleElement} data-key="title" className="m-0 flex flex-wrap items-center gap-1 text-next font-semibold">
               <KeyValue name="title" value={item.title} keys={keys} />
@@ -300,6 +324,11 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             <Meta item={item} keys={keys} onSelectTag={point === null && !full ? selectTag : undefined} />
             {kind === "decisions" || kind === "tasks" ? null : <Labelled label="取り下げた理由" name="reason" value={item.reason} keys={keys} />}
             {byKind[kind]}
+                </>
+              }
+              supplements={
+                <>
+            {supplementsByKind[kind]}
             {(item.links ?? []).length > 0 ? (
               <Section label="リンク">
                 <ul className="flex flex-col gap-1">
@@ -314,11 +343,16 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
                 </ul>
               </Section>
             ) : null}
-            {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
+            {relation(kind === "logs" ? "更新した項目" : "関連する項目", related.related)}
             {relation("参照元", related.referencedBy)}
-            {embedded ? null : (
-              <DetailReviewComments id={id} index={index} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
-            )}
+                </>
+              }
+              comments={
+                embedded ? null : (
+                  <DetailReviewComments id={id} index={index} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
+                )
+              }
+            />
           </div>
         )}
       </DiffMinimap>

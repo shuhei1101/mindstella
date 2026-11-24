@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
-import { SearchDialog } from "@/features/search/search/search-dialog";
+import { matchFilterCandidates, SearchDialog } from "@/features/search/search/search-dialog";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
 
 const empty = { decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { ready: [] }, bodies: {} };
@@ -32,7 +32,7 @@ describe("SearchDialog", () => {
     // 実行
     render(<SearchDialog {...props({ query: "画面" })} />);
     // 検証
-    const section = (name: string) => screen.getByRole("heading", { level: 2, name }).parentElement as HTMLElement;
+    const section = (name: string) => screen.getByRole("group", { name });
     expect(within(section("完全に一致")).getByText("D-1")).toBeInTheDocument();
     expect(within(section("タイトルに一致")).getByText("D-2")).toBeInTheDocument();
     expect(within(section("ほかの所に一致")).getByText("T-1")).toBeInTheDocument();
@@ -70,5 +70,37 @@ describe("SearchDialog", () => {
     expect(input.selectionStart).toBe(0);
     expect(input.selectionEnd).toBe(input.value.length);
     expect(event.defaultPrevented).toBe(true);
+  });
+  // 候補を先頭に並べて選ぶ（正常系）
+  test("search_dialog_when_filter_candidate", async () => {
+    // 準備
+    const onApplyFilter = vi.fn();
+    const filterCandidates = [
+      { key: "tags", label: "タグ", value: "廃止", count: 1 },
+      { key: "tags", label: "タグ", value: "画面", count: 2 },
+    ];
+    render(<SearchDialog {...props({ query: "廃" })} filterCandidates={filterCandidates} onApplyFilter={onApplyFilter} />);
+    // 実行
+    await userEvent.keyboard("{Enter}");
+    // 検証
+    const group = screen.getByRole("group", { name: "絞り込みをオンにする" });
+    expect(within(group).getAllByRole("option").map((option) => option.textContent)).toEqual([expect.stringContaining("タグ = 廃止")]);
+    expect(onApplyFilter).toHaveBeenCalledExactlyOnceWith("tags", "廃止");
+  });
+});
+
+describe("matchFilterCandidates", () => {
+  // 前方一致と表記の揺れ（正常系）
+  test.each([
+    { query: "ｕｉ", expected: ["UI"] },
+    { query: "画", expected: ["画面"] },
+    { query: " ", expected: [] },
+  ])("match_filter_candidates", ({ query, expected }) => {
+    // 準備
+    const candidates = ["UI", "画面", "旧画面"].map((value) => ({ key: "tags", label: "タグ", value, count: 1 }));
+    // 実行
+    const matched = matchFilterCandidates({ candidates, query });
+    // 検証
+    expect(matched.map(({ value }) => value)).toEqual(expected);
   });
 });

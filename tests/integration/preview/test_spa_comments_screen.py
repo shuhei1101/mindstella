@@ -103,6 +103,30 @@ def test_status_filter(page: Page, spa_comments_preview: tuple[str, Path]) -> No
     expect(_rows(page).first).to_contain_text("閉じた話")
 
 
+# CSS 変数を計算した後の色にして返す
+_RESOLVE_COLOR_JS = """(name) => {
+    const probe = document.createElement('span');
+    probe.style.backgroundColor = `var(${name})`;
+    document.body.append(probe);
+    const color = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return color;
+}"""
+
+
+def test_status_filter_look(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """状態の絞り込みは表示形式の切り替えと同じ切り替えボタンで、選んでいる状態を `--tab-selected` の面と太字で浮き出させる（正常系）。"""
+    # 準備・実行
+    _open(page, spa_comments_preview)
+    group = _panel(page).get_by_role("group", name="スレッドの状態で絞る")
+    selected = group.get_by_role("button", name="オープン")
+    unselected = group.get_by_role("button", name="クローズ")
+    # 検証
+    assert selected.evaluate("e => getComputedStyle(e).backgroundColor") == page.evaluate(_RESOLVE_COLOR_JS, "--tab-selected")
+    assert int(selected.evaluate("e => getComputedStyle(e).fontWeight")) > int(unselected.evaluate("e => getComputedStyle(e).fontWeight"))
+    assert group.evaluate("e => getComputedStyle(e).borderTopWidth") != "0px"
+
+
 def test_tag_filter(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
     """行のタグを押すとそのタグで絞り、チップに件数を出し、× で外す（正常系）。"""
     # 準備

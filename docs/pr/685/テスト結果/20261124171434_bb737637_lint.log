@@ -1,0 +1,102 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p frontend
+
+
+> lint
+> eslint
+
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-next-sprint-bundle-684/.venv/lib/python3.12/site-packages/playwright/driver/package/lib/coreBundle.js
+   6086:11  warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-globals')
+  73372:5   warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-syntax')
+  75262:5   warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-syntax')
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-next-sprint-bundle-684/.venv/lib/python3.12/site-packages/playwright/driver/package/lib/utilsBundle.js
+   4562:7   warning  Unused eslint-disable directive (no problems were reported from 'camelcase')
+   4564:7   warning  Unused eslint-disable directive (no problems were reported from 'camelcase')
+  17624:25  error    Definition for rule '@typescript-eslint/prefer-nullish-coalescing' was not found  @typescript-eslint/prefer-nullish-coalescing
+  17647:11  error    Definition for rule '@typescript-eslint/prefer-nullish-coalescing' was not found  @typescript-eslint/prefer-nullish-coalescing
+  34422:9   error    Definition for rule '@typescript-eslint/unbound-method' was not found             @typescript-eslint/unbound-method
+  41164:9   error    Definition for rule '@typescript-eslint/unbound-method' was not found             @typescript-eslint/unbound-method
+  46203:3   error    Definition for rule '@typescript-eslint/no-unused-vars' was not found             @typescript-eslint/no-unused-vars
+  46207:3   error    Definition for rule '@typescript-eslint/no-unused-vars' was not found             @typescript-eslint/no-unused-vars
+
+✖ 11 problems (6 errors, 5 warnings)
+  0 errors and 5 warnings potentially fixable with the `--fix` option.
+
+
+# 違反は worktree の直下の .venv（git の管理外の Playwright の同梱物）だけで、作業 PR の変更ファイルには無い。frontend/ だけを検査した結果:
+$ npx eslint frontend
+exit 0
+
+# base ブランチ（develop の worktree。HEAD は origin/develop の 4cc13b47）で、同じ .venv を一時に複製して同じ run_all を実行した出力（npm ci を済ませてから実行。複製した .venv は実行の後に削除した）。.venv の同梱物の違反は base でも出る。storybook-static/ の違反は develop の worktree にだけある git の管理外のビルドの出力によるもの
+$ git rev-parse --short HEAD
+4cc13b47
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p frontend
+
+
+> lint
+> eslint
+
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/driver/package/lib/coreBundle.js
+   6086:11  warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-globals')
+  73372:5   warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-syntax')
+  75262:5   warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-syntax')
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/driver/package/lib/utilsBundle.js
+   4562:7   warning  Unused eslint-disable directive (no problems were reported from 'camelcase')
+   4564:7   warning  Unused eslint-disable directive (no problems were reported from 'camelcase')
+  17624:25  error    Definition for rule '@typescript-eslint/prefer-nullish-coalescing' was not found  @typescript-eslint/prefer-nullish-coalescing
+  17647:11  error    Definition for rule '@typescript-eslint/prefer-nullish-coalescing' was not found  @typescript-eslint/prefer-nullish-coalescing
+  34422:9   error    Definition for rule '@typescript-eslint/unbound-method' was not found             @typescript-eslint/unbound-method
+  41164:9   error    Definition for rule '@typescript-eslint/unbound-method' was not found             @typescript-eslint/unbound-method
+  46203:3   error    Definition for rule '@typescript-eslint/no-unused-vars' was not found             @typescript-eslint/no-unused-vars
+  46207:3   error    Definition for rule '@typescript-eslint/no-unused-vars' was not found             @typescript-eslint/no-unused-vars
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/develop/storybook-static/sb-manager/globals-runtime.js
+  10300:13   error    Definition for rule 'regexp/strict' was not found                                            regexp/strict
+  13112:11   error    Definition for rule 'regexp/no-dupe-characters-character-class' was not found                regexp/no-dupe-characters-character-class
+  14768:7    error    Definition for rule '@typescript-eslint/no-unnecessary-condition' was not found              @typescript-eslint/no-unnecessary-condition
+  14859:7    error    Definition for rule '@typescript-eslint/no-unnecessary-condition' was not found              @typescript-eslint/no-unnecessary-condition
+  14861:9    error    Definition for rule '@typescript-eslint/no-non-null-assertion' was not found                 @typescript-eslint/no-non-null-assertion
+  28384:5    error    Definition for rule 'react-hooks/exhaustive-deps' was not found                              react-hooks/exhaustive-deps
+  28408:5    error    Definition for rule 'react-hooks/exhaustive-deps' was not found                              react-hooks/exhaustive-deps
+  29968:7    warning  Unused eslint-disable directive (no problems were reported from 'no-eval')
+  43258:3    warning  Unused eslint-disable directive (no problems were reported from 'no-shadow')
+  45401:3    warning  Unused eslint-disable directive (no problems were reported from 'no-shadow')
+  45910:160  warning  Unused eslint-disable directive (no problems were reported from 'no-self-compare')
+  46339:13   warning  Unused eslint-disable directive (no problems were reported from 'no-prototype-builtins')
+  48799:5    warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-properties')
+  48801:7    warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-properties')
+  49390:7    warning  Unused eslint-disable directive (no problems were reported from 'new-cap')
+  49428:7    warning  Unused eslint-disable directive (no problems were reported from 'new-cap')
+  49430:7    warning  Unused eslint-disable directive (no problems were reported from 'new-cap')
+  49460:5    warning  Unused eslint-disable directive (no problems were reported from 'new-cap')
+  49465:5    warning  Unused eslint-disable directive (no problems were reported from 'new-cap')
+  49564:7    warning  Unused eslint-disable directive (no problems were reported from 'new-cap')
+  49618:7    warning  Unused eslint-disable directive (no problems were reported from 'new-cap')
+  49643:7    warning  Unused eslint-disable directive (no problems were reported from 'new-cap')
+  52709:5    warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-properties')
+  52711:7    warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-properties')
+  53374:5    warning  Unused eslint-disable directive (no problems were reported from 'prefer-object-has-own')
+  53531:7    error    Definition for rule '@typescript-eslint/restrict-template-expressions' was not found         @typescript-eslint/restrict-template-expressions
+  54034:9    error    Definition for rule '@typescript-eslint/no-non-null-assertion' was not found                 @typescript-eslint/no-non-null-assertion
+  62279:5    error    Definition for rule 'jsx-a11y/anchor-has-content' was not found                              jsx-a11y/anchor-has-content
+  73449:3    error    Definition for rule '@typescript-eslint/no-unused-vars' was not found                        @typescript-eslint/no-unused-vars
+  76638:7    error    Definition for rule 'react-hooks/rules-of-hooks' was not found                               react-hooks/rules-of-hooks
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/develop/storybook-static/sb-manager/runtime.js
+  19728:17  error  Definition for rule '@typescript-eslint/ban-ts-comment' was not found  @typescript-eslint/ban-ts-comment
+
+✖ 42 problems (19 errors, 23 warnings)
+  0 errors and 23 warnings potentially fixable with the `--fix` option.
+
+exit 1
