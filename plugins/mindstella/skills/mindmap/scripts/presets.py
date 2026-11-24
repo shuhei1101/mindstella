@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from errors import ArgumentError, PresetNameTakenError, PresetNotFoundError, SchemaMismatchError
+from errors import ArgumentError, PresetNameTakenError, PresetNotFoundError, SchemaMismatchError, SettingsInvalidError
 from kinds import KINDS
 from settings_update import save_settings
-from store import Workspace, load_workspace
+from store import Workspace, build_mismatch_error, check_settings, load_workspace
 from tag_text import normalize_tag, tag_name
 
 # 設定のプリセットの並びのキー
@@ -32,6 +32,9 @@ MAX_LAYERS = 3
 
 # プリセットの名前の字数の上限
 MAX_NAME_LENGTH = 40
+
+# 画面からの作成の要求の本文が持てるキー
+PREVIEW_BODY_KEYS = ("name", "filter")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -173,6 +176,33 @@ def create_preset(
     files = save_settings(workspace, {**workspace.settings, PRESETS_KEY: [*presets, entry]})
     count = _count_after_write(root, name)
     return {"preset": _public(entry), "count": count, "warnings": _warnings(name, count), "files": files}
+
+
+def create_preset_from_preview(root: Path, body: dict[str, Any]) -> dict[str, Any]:
+    """画面からの要求の本文を確認して `create_preset` を呼び、保存したプリセットと件数を返却する。"""
+    # 名前と式のほかのキーは受け付けない
+    unknown = [key for key in body if key not in PREVIEW_BODY_KEYS]
+    if unknown:
+        raise SettingsInvalidError("、".join(f"{key}: 知らないキーです" for key in unknown))
+    raw_name = body.get("name")
+    name = raw_name.strip() if isinstance(raw_name, str) else ""
+    # 名前が無い・空白だけ・長すぎる
+    if not 1 <= len(name) <= MAX_NAME_LENGTH:
+        raise SettingsInvalidError(f"name: 1 字以上 {MAX_NAME_LENGTH} 字以内にしてください")
+    expr = body.get("filter")
+    # 式がオブジェクトでない
+    if not isinstance(expr, dict):
+        raise SettingsInvalidError("filter: タグの式のオブジェクトを渡してください")
+    lines = validate_preset_filter(expr)
+    # 式が構造に合わない
+    if lines:
+        raise SettingsInvalidError("、".join(lines))
+    # 崩れた config.yaml の上には書き足さない
+    _, problems = check_settings(root)
+    if problems:
+        raise build_mismatch_error(problems)
+    created = create_preset(root, name=name, expr=expr)
+    return {"preset": {"name": created["preset"]["name"], "filter": created["preset"]["filter"]}, "count": created["count"]}
 
 
 def update_preset(root: Path, *, name: str, changes: PresetChanges) -> dict[str, Any]:

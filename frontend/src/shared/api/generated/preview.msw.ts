@@ -37,6 +37,8 @@ import type {
   Loc,
   OpenedPoint,
   OpenedReply,
+  PresetCreated,
+  PresetInput,
   Records,
   RemovedComment,
   SaveReply,
@@ -88,6 +90,8 @@ export const getSetThreadStatusResponseMock = (overrideResponse: Partial<Extract
 export const getMarkThreadSeenResponseMock = (overrideResponse: Partial<Extract<SeenReply, object>> = {}): SeenReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), seen: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
 export const getPutConfigDisplayResponseMock = (overrideResponse: Partial<Extract<DisplayReply, object>> = {}): DisplayReply => ({display: {visible_kinds: faker.helpers.arrayElements(Object.values(Kind))}, ...overrideResponse})
+
+export const getPostPresetResponseMock = (overrideResponse: Partial<Extract<PresetCreated, object>> = {}): PresetCreated => ({preset: {name: faker.string.alpha({length: {min: 10, max: 20}}), filter: {}}, count: faker.number.int(), ...overrideResponse})
 
 export const getGetTranscriptionResponseMock = (overrideResponse: Partial<Extract<TranscriptionStatus, object>> = {}): TranscriptionStatus => ({available: faker.datatype.boolean(), reason: faker.helpers.arrayElement([faker.helpers.arrayElement(['stopped','unsupported'] as const), null]), detail: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), presets: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), action: faker.helpers.arrayElement(['review','send','insert'] as const), preset: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
 
@@ -286,6 +290,18 @@ export const getPutConfigDisplayMockHandler = (overrideResponse?: DisplayReply |
   }, options)
 }
 
+export const getPostPresetMockHandler = (overrideResponse?: PresetCreated | ((info: Parameters<HttpResponseResolver<PathParams, PresetInput>>[0]) => Promise<PresetCreated> | PresetCreated), options?: RequestHandlerOptions) => {
+  return http.post<PathParams, PresetInput>('*/api/presets', async (info: Parameters<HttpResponseResolver<PathParams, PresetInput>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getPostPresetResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
 export const getGetTranscriptionMockHandler = (overrideResponse?: TranscriptionStatus | ((info: Parameters<HttpResponseResolver>[0]) => Promise<TranscriptionStatus> | TranscriptionStatus), options?: RequestHandlerOptions) => {
   return http.get('*/api/transcription', async (info: Parameters<HttpResponseResolver>[0]) => {
 
@@ -338,6 +354,7 @@ export const getMindstellaPreviewMock = () => [
   getSetThreadStatusMockHandler(),
   getMarkThreadSeenMockHandler(),
   getPutConfigDisplayMockHandler(),
+  getPostPresetMockHandler(),
   getGetTranscriptionMockHandler(),
   getPostTranscriptionMockHandler(),
   getSendNowMockHandler()

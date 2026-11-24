@@ -317,6 +317,27 @@ export const PutConfigDisplayResponse = zod.object({
 
 
 /**
+ * @summary 今のタグの条件に名前を付けたプリセットを config.yaml の presets の末尾に加える
+ */
+export const postPresetBodyNameMax = 40;
+
+
+
+export const PostPresetBody = zod.object({
+  "name": zod.string().min(1).max(postPresetBodyNameMax),
+  "filter": zod.record(zod.string(), zod.unknown())
+})
+
+export const PostPresetResponse = zod.object({
+  "preset": zod.object({
+  "name": zod.string(),
+  "filter": zod.record(zod.string(), zod.unknown())
+}),
+  "count": zod.int()
+})
+
+
+/**
  * @summary 文字起こしを使えるかと理由・用語集のプリセットの候補・ワークスペースの文字起こしの設定
  */
 export const GetTranscriptionResponse = zod.object({

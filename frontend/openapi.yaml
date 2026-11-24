@@ -366,6 +366,53 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /api/presets:
+    post:
+      operationId: postPreset
+      summary: 今のタグの条件に名前を付けたプリセットを config.yaml の presets の末尾に加える
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresetInput"
+      responses:
+        "201":
+          description: 加えたプリセットと、該当する項目の件数
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresetCreated"
+        "400":
+          description: 合わない本文
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: Host か Origin が合わない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: 名前が既にあるプリセットと重なる
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: 今の config.yaml がスキーマに合わない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: config.yaml を書けない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /api/transcription:
     get:
       operationId: getTranscription
@@ -609,6 +656,33 @@ components:
             visible_kinds:
               type: array
               items: { $ref: "#/components/schemas/Kind" }
+    PresetInput:
+      type: object
+      required: [name, filter]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+        filter:
+          type: object
+          additionalProperties: true
+    PresetCreated:
+      type: object
+      required: [preset, count]
+      properties:
+        preset:
+          type: object
+          required: [name, filter]
+          properties:
+            name:
+              type: string
+            filter:
+              type: object
+              additionalProperties: true
+        count:
+          type: integer
     EditInput:
       type: object
       required: [op]
