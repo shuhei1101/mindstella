@@ -1186,6 +1186,16 @@ files:
   related:
   - to: MOD-489-78
     type: implements
+- path: src/shared/components/record-text.stories.tsx
+  name: 記録の文字のストーリー
+  description: 記録の文字の部品の、リンクとマーカーの見せ方のストーリーで、ID をリンクにする場所の見せ方を確認するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/record-text.tsx
+  name: 記録の文字
+  description: 記録の文字を描き、記録にある項目の ID・スレッドの ID をリンクかマーカーにする部品で、記録の文字の ID の見せ方を変更するときに参照する。
+  tags:
+  - tool:react
 - path: src/shared/components/removed-band.stories.tsx
   name: 削除した項目の帯のストーリー
   description: 削除した項目の帯のストーリー。
