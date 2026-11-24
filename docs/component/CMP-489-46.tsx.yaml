@@ -66,6 +66,18 @@ states:
     args:
       - name: tagExpr
         value: '{"and": [{"field": "tags", "op": "eq", "values": ["画面"]}, {"field": "tags", "op": "ne", "values": ["廃止"]}]}'
+  - name: PresetSaveNoTag
+    description: タグの条件が無い。プリセットのまとまりの下の「プリセットとして保存」を押せない見た目にし、理由を出す
+    args:
+      - name: presetSave
+        value: '`hasOtherConditions` は偽'
+  - name: PresetSaveOpen
+    description: タグ「画面」と状態を選んでいて、名前の入力を開いた。タグの条件だけを保存する旨を出す
+    args:
+      - name: selected
+        value: '{"status": ["未決定"], "tags": ["画面"]}'
+      - name: presetSave
+        value: '`hasOtherConditions` は真、`defaultOpen` は真'
 lead: 項目を並べる画面で、列ごとに文字を入れる欄と、条件ごとに値を件数つきのチェックボックスで並べて選ぶドロワー。タブの帯の下から左に重ねるパネルで、開いている間はトップバーとタブの帯とドロワー以外をグレーアウトする。開閉はトップバーの絞り込みのボタン（部品設計『トップバー』）が持つ。
 args:
   - name: groups
@@ -129,6 +141,11 @@ args:
     default: なし（タグの条件の式を持たない）
     description: 今のタグの条件の式（『記録の取得』の `settings.presets[].filter` と同じ構造）。簡易で表せない式のときは、タグの条件の指定方法を「詳細」にして簡易を選択できなくする
     enabled_when: '`onTagExprChange` を渡したとき'
+  - name: presetSave
+    type: オブジェクト
+    required: false
+    default: なし（プリセットの保存を出さない。配る書き出し）
+    description: プリセットのまとまりの下に出す部品設計『プリセットの保存』へ渡す引数（`hasOtherConditions`・`onSave`）。`hasTagCondition` はドロワーが `selected` の `tags` か `tagExpr` から決める
 events:
   - name: プリセットの選択
     when: プリセットのボタンを押したとき
@@ -177,4 +194,5 @@ refs:
   - CMP-659-1#
   - CMP-489-20#
   - CMP-489-48#
+  - CMP-362-1#
 test_file: tests/integration/storybook_react/test_filter_drawer_stories.py

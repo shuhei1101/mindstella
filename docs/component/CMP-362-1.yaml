@@ -1,0 +1,91 @@
+id: CMP-362-1
+title: プリセットの保存
+lead: 絞り込みのドロワーのプリセットのまとまりの下に置く、今の絞り込みのタグの条件に名前を付けてプリセットとして保存する入力。「プリセットとして保存」のボタンで名前の入力を開き、保存できなかった理由を入力欄の下に出す。
+implementation: frontend/src/shared/components/preset-save.tsx#PresetSave
+story: Shared/PresetSave
+test_file: tests/integration/storybook_react/test_preset_save_stories.py
+args:
+  - name: hasTagCondition
+    type: 真偽値
+    required: true
+    description: 今の絞り込みにタグの条件があるか。偽のときは「プリセットとして保存」を押せない見た目にし、下に「タグの条件を選ぶと、プリセットとして保存できます。」を出す
+  - name: hasOtherConditions
+    type: 真偽値
+    required: true
+    description: タグの条件のほかに、状態・種類・列の文字の条件があるか。真のときは名前の入力の下に「タグの条件だけを保存します。状態・種類・文字の条件は保存しません。」を出す
+  - name: defaultOpen
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 最初から名前の入力を開いた状態で出す（ストーリー用）
+  - name: defaultError
+    type: 文字列
+    required: false
+    default: なし（エラーを出さない）
+    description: 最初に出すエラー（ストーリー用）
+  - name: defaultName
+    type: 文字列
+    required: false
+    default: 空文字
+    description: 最初に入れておく名前（ストーリー用）
+events:
+  - name: 保存
+    when: 名前を入れて「保存」を押したとき・入力欄で Enter を押したとき（前後の空白を除いて空のときは呼ばず「プリセットの名前を入れてください。」を出す。保存中はもう一度呼ばない）
+    value: '`onSave(name)`（引数は前後の空白を除いた名前。`Promise<{error}>` を返す）'
+    description: 使う側が『画面からのプリセットの作成』へ今のタグの条件の式を送信し、失敗したときは `detail` を `error` に入れて返す。`error` が `null` なら入力を閉じて名前を空にし、それ以外は入力欄の下に `error` を出して名前を残す
+  - name: 取り消し
+    when: 「キャンセル」を押したとき
+    value: なし
+    description: 部品が入力を閉じてエラーを消す。使う側へは知らせない
+states:
+  - name: Default
+    description: タグの条件があり、「プリセットとして保存」を押せる
+    args:
+      - name: hasTagCondition
+        value: 'true'
+      - name: hasOtherConditions
+        value: 'false'
+  - name: NoTagCondition
+    description: タグの条件が無く、「プリセットとして保存」を押せない。押せない理由を下に出す
+    args:
+      - name: hasTagCondition
+        value: 'false'
+  - name: Open
+    description: 名前の入力を開いた。「キャンセル」と「保存」を右に並べる
+    args:
+      - name: defaultOpen
+        value: 'true'
+      - name: defaultName
+        value: 廃止する画面
+  - name: WithOtherConditions
+    description: タグの条件のほかに状態などの条件があり、タグの条件だけを保存する旨を出す
+    args:
+      - name: defaultOpen
+        value: 'true'
+      - name: defaultName
+        value: 廃止する画面
+      - name: hasOtherConditions
+        value: 'true'
+  - name: NameTaken
+    description: 名前が既にあるプリセットと重なった。入力欄の下に理由を出し、名前を残す
+    args:
+      - name: defaultOpen
+        value: 'true'
+      - name: defaultName
+        value: 画面の設計
+      - name: defaultError
+        value: 同じ名前のプリセット「画面の設計」が既にあります。別の名前を入れてください。
+  - name: LongName
+    description: 最大の長さ（40 文字）の名前。入力欄の幅を超えず、横にもはみ出さない
+    args:
+      - name: defaultOpen
+        value: 'true'
+      - name: defaultName
+        value: 画面の設計の見直しで使用する廃止予定の画面と部品をまとめて開くためのプリセット
+accessibility:
+  - 「プリセットとして保存」を押せないときは `disabled` にせず `aria-disabled="true"` にし、フォーカスできるまま押せない理由を `aria-describedby` で結ぶ
+  - 名前の入力欄に「プリセットの名前」の `label` を付け、エラーがある間は `aria-invalid="true"` と `aria-describedby` でエラーの文を結ぶ
+  - 保存中は「保存」のボタンを `aria-disabled="true"` と「保存中…」の文字にし、もう一度押しても送信しない
+refs:
+  - CMP-489-46#
+  - IF-362-1#
