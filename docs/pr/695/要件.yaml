@@ -44,40 +44,58 @@ docs:
     updated_at: '2026-11-24T12:20:56.076676+00:00'
   - page: docs/screen/SCR-489-32.tsx.yaml
     new: false
-    change: ヘッダーに前後の項目へ移るボタンと位置を追加し、戻る・進むの対象と長い値の見せ方を記載する（#148・#364・#688・#690）
-    status: todo
+    change: 見出しに一覧の並びの前後（Alt+↑ / Alt+↓）を追加し、戻る・進むを詳細の履歴に合わせ、値の欄に本文と同じリンクを付け、種類と ID を折り返さないことを記載する（#148・#364・#688・#690）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T12:47:42.689343+00:00'
   - page: docs/screen/SCR-489-30.tsx.yaml
     new: false
     change: 詳細の全画面に前後の項目へ移るボタンと位置を追加する（#364）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T12:47:42.689343+00:00'
   - page: docs/screen/SCR-489-4.tsx.yaml
     new: false
     change: 見出しのタイトルの省略と、開いたときの最新の書き込みへの移動と長い書き込みの折りたたみを記載する（#372・#374）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T12:47:42.689343+00:00'
   - page: docs/screen/SCR-489-9.tsx.yaml
     new: false
     change: 行の種類のラベルとボタンを折り返さず、長い値をタイトルの側で省略することを記載する（#690）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T12:47:42.689343+00:00'
   - page: docs/screen/SCR-489-2.tsx.yaml
     new: false
     change: スレッドの一覧の行の長い値の見せ方を記載する（#690）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T12:47:42.689343+00:00'
   - page: docs/screen/SCR-489-20.tsx.yaml
     new: false
     change: カードの作成日時・更新日時とその並べ替え、描いた並びの詳細への受け渡しを記載する（#186・#364）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T12:47:42.689343+00:00'
   - page: docs/screen/SCR-489-6.tsx.yaml
     new: false
     change: 同上（#186・#364）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T12:47:42.689343+00:00'
   - page: docs/screen/SCR-489-34.tsx.yaml
     new: false
     change: 同上（#186・#364）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T12:47:42.689343+00:00'
   - page: docs/screen/SCR-489-26.tsx.yaml
     new: false
     change: 表の作成日時・更新日時の列と、描いた並びの詳細への受け渡しを記載する（#186・#364）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T12:47:42.689343+00:00'
   - page: docs/component/CMP-489-48.tsx.yaml
     new: false
     change: 作成日時・更新日時の列のセルの描き方（`columns[].cell`）と、日時の列・更新日時で並べ替えた状態を追加する（#186）
