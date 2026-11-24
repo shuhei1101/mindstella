@@ -45,7 +45,9 @@ docs:
   - page: docs/guide/エージェントフロー.md
     new: false
     change: 記録の使い分け・コメントの取り込み・起動と再開の工程の表を、決まり 9 件（方針の質問を検討事項で聞く・報告のスレッド・保留・状態・確認の依頼・描画の確認など）に合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T10:38:06.434403+00:00'
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: 資料の status の下書き・確認中・完成の意味を加える
