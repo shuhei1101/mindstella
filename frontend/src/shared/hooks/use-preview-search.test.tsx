@@ -139,7 +139,7 @@ describe("usePreviewSearch", () => {
     await waitFor(() => expect(result.current.search.id).toBe("D-1"));
     // 検証
     expect(result.current.fromList).toBe(false);
-    expect((history.location.state as { trail?: string[] }).trail).toEqual(["D-2", "D-1"]);
+    expect((history.location.state as { trail?: { items: string[] } }).trail?.items).toEqual(["D-2", "D-1"]);
   });
 
   // 詳細の戻るは並べ替えの履歴を飛ばす（正常系）

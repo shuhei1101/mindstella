@@ -301,7 +301,7 @@ describe("ThreadView の修正の音声入力", () => {
     // 検証
     const latest = (await screen.findByText("3 件目")).closest("article");
     await waitFor(() => expect(latest).toHaveFocus());
-    const list = latest?.closest("ol")?.parentElement;
+    const list = latest?.closest("ol");
     expect(list?.scrollTop).toBe(400);
     expect(["TH-1-1", "TH-1-2", "TH-1-3"].map((id) => folds.get(id) === true)).toEqual([true, true, false]);
   });
@@ -316,7 +316,7 @@ describe("ThreadView の修正の音声入力", () => {
     });
     renderRoute("/?panel=comments&thread=TH-1");
     const post = await screen.findByText("どちらにしますか");
-    const scroller = post.closest("ol")?.parentElement as HTMLElement;
+    const scroller = post.closest("ol") as HTMLElement;
     const title = () => document.querySelector("[data-part='thread-title']");
     const scrollTo = (top: number) => {
       scroller.scrollTop = top;

@@ -62,7 +62,7 @@ describe("Table", () => {
       { id: "D-3", title: "か", status: "未決定" },
       { id: "D-4", title: "さ", status: "未決定" },
     ];
-    render(<Table {...props({ rows, sort: "title", filters: { status: ["未決定"] }, onOpenItem })} />);
+    render(<Table {...props({ rows, sort: { key: "title", dir: "asc" }, filters: { status: ["未決定"] }, onOpenItem })} />);
     // 実行
     await userEvent.click(screen.getByRole("button", { name: "さ" }));
     // 検証
