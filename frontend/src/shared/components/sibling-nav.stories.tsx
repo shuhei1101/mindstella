@@ -18,7 +18,7 @@ type Story = StoryObj<typeof meta>;
 export const Middle: Story = {};
 
 /** 並びの先頭。前の項目へは移れない */
-export const First: Story = { args: { position: 1, total: 2 } };
+export const First: Story = { args: { position: 1, total: 3 } };
 
 /** 並びの末尾。次の項目へは移れない */
 export const Last: Story = { args: { position: 3, total: 3 } };
