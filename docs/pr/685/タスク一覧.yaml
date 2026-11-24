@@ -39,7 +39,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-23T18:30:03.061458+00:00'
   - process: モック作成
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T05:01:03.994162+00:00'
   - process: データ設計
     status: skipped
     reason: '保存するプリセットは #360 の config.yaml の presets の形式のままで、データの構造は変わらない'

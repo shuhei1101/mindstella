@@ -17,3 +17,9 @@ confirmations:
     approver: shuhei1101
     commit: 4459c0e2
     thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4675047389
+  - topic: '#159 画面のタブの見た目'
+    decision: 表示形式の切り替え・スレッドの状態の切り替え・詳細のタブの 3 か所とも、1 つの灰色の枠線の中にボタンをつなげた切り替えボタン（segmented control）にし、選んだボタンを薄い緑の面と影で浮き出させる（案 C）。この見た目で再確認は不要
+    decided_by: reply
+    approver: shuhei1101
+    commit: 7c756419
+    thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4675106279

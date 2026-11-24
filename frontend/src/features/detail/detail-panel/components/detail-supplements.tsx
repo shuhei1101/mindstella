@@ -38,12 +38,12 @@ export const DetailSupplements = ({ layout, main, supplements, comments }: Detai
     ] as const;
     const tabClass = (selected: boolean): string =>
       cn(
-        "-mb-px h-9 cursor-pointer rounded-t-control border-b-2 border-transparent px-4 text-small text-muted-foreground hover:bg-row-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
-        selected && "border-mark bg-tab-selected font-medium text-foreground hover:bg-tab-selected",
+        "h-6 min-w-20 cursor-pointer rounded-sm px-3 text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
+        selected && "bg-tab-selected font-medium text-foreground shadow-sm ring-1 ring-mark/50 hover:bg-tab-selected",
       );
     return (
       <>
-        <div role="tablist" aria-label="詳細の表示" className="flex border-b border-border">
+        <div role="tablist" aria-label="詳細の表示" className="inline-flex self-start rounded-control border border-border bg-muted p-0.5">
           {tabs.map((entry) => (
             <button key={entry.key} type="button" role="tab" aria-selected={tab === entry.key} className={tabClass(tab === entry.key)} onClick={() => { setTab(entry.key); }}>
               {entry.label}
