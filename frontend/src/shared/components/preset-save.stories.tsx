@@ -10,7 +10,7 @@ const meta = {
   args: { hasTagCondition: true, hasOtherConditions: false, onSave: fn((): Promise<PresetSaveResult> => Promise.resolve({ error: null })) },
   decorators: [
     (Story) => (
-      <div className="w-96 p-2">
+      <div className="w-full max-w-96 p-2">
         <Story />
       </div>
     ),
