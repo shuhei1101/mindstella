@@ -34,21 +34,19 @@ export const ThreadRow = ({ thread = null, pending = null, hasPendingReply = fal
     <li data-thread={sent ? id : undefined} data-pending={sent ? undefined : id} data-unread={unseen ? "" : undefined} className={cn("grid rounded-control border border-border bg-card hover:bg-accent", !sent && "border-dashed")}>
       <button type="button" aria-label={openLabel} className={cn("grid w-full cursor-pointer gap-1 px-3 py-2 text-left focus-visible:outline-2 focus-visible:outline-ring", sent && thread.tags.length > 0 && "pb-1")} data-focus={sent ? `thread:${id}` : `thread:new:${id}`} onClick={() => onOpen(id)}>
         <span data-part="line1" className="flex min-w-0 items-start gap-2">
-          <span className="shrink-0 whitespace-nowrap">
-            <ThreadState status={status} />
-          </span>
+          <ThreadState status={status} />
           <span data-part="title" className={cn("line-clamp-2 min-w-0 wrap-anywhere", summarized ? "font-semibold" : "font-normal")}>
             {title}
           </span>
         </span>
         <span data-part="line2" className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground tabular-nums">
-          {unseen ? <span className="shrink-0 whitespace-nowrap"><UnseenMark /></span> : null}
+          {unseen ? <UnseenMark /> : null}
           {target === null ? null : <span data-part="target" title={target} className="min-w-0 truncate font-mono text-foreground">{target}</span>}
           <span data-part="author" className={cn("shrink-0 font-semibold whitespace-nowrap", unseen && "text-foreground")}>{AUTHOR_LABELS[author]}</span>
           <time dateTime={created} className={cn("flex-none", unseen && "text-foreground")}>
             {created === "" ? "" : formatJst(created)}
           </time>
-          {hasPendingReply ? <span className="shrink-0 whitespace-nowrap"><PendingMark /></span> : null}
+          {hasPendingReply ? <PendingMark /> : null}
         </span>
       </button>
       {!sent || thread.tags.length === 0 ? null : (

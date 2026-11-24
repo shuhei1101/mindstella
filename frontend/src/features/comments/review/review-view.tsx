@@ -234,9 +234,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                     <span data-part="kind" className="shrink-0 rounded-control border border-border px-1.5 whitespace-nowrap">{item.thread === null ? "新規スレッド" : "返信"}</span>
                     {replyTo === null ? null : (
                       <button type="button" className="flex min-w-0 cursor-pointer items-center gap-1" onClick={() => { onOpenThread(replyTo.id); }}>
-                        <span className="shrink-0 whitespace-nowrap">
-                          <ThreadState status={replyTo.status} />
-                        </span>
+                        <ThreadState status={replyTo.status} />
                         <span title={threadTitle(replyTo)} className="min-w-0 truncate">{threadTitle(replyTo)}</span>
                       </button>
                     )}
