@@ -436,5 +436,19 @@ items:
     summary: サーバー / ビルド / mdmark_ref.py
   - page: MOD-659-1.ts.yaml
     summary: プレビュー / presets
+  - page: MOD-159-2.ts.yaml
+    summary: プレビュー / segmented
+  - page: MOD-362-1.tsx.yaml
+    summary: プレビュー / preset-save
+  - page: MOD-362-2.ts.yaml
+    summary: プレビュー / use-preset-save
+  - page: MOD-143-1.ts.yaml
+    summary: プレビュー / filter-candidates-store
+  - page: MOD-160-1.ts.yaml
+    summary: プレビュー / body-toc（見出しの取り出し）
+  - page: MOD-160-2.tsx.yaml
+    summary: プレビュー / body-toc（目次のポップオーバー）
+  - page: MOD-159-1.tsx.yaml
+    summary: プレビュー / detail-supplements
   - page: MOD-659-2.tsx.yaml
     summary: プレビュー / tag-expr-editor

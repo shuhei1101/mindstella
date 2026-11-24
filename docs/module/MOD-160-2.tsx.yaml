@@ -1,0 +1,47 @@
+id: MOD-160-2
+title: プレビュー / body-toc（目次のポップオーバー）
+lead: 部品設計『本文の目次.tsx』の props・イベント・状態を持つ。
+components:
+  - name: BodyToc
+    title: 本文の目次
+    kind: コンポーネント
+    container: frontend/src/shared/components/body-toc.tsx
+    usecase: 項目の詳細を読む
+    summary: 部品設計『本文の目次.tsx』の props・イベント・状態を持つ。Base UI の Popover（`ui/popover`）で、項目を `entries` の一番上の階層からの差で字下げし、押したら閉じて `onHeading(slug)` を呼ぶ
+    props:
+      - name: entries
+        type: readonly TocEntry[]
+        required: true
+        description: 見出し
+      - name: onHeading
+        type: '(slug: string) => void'
+        required: true
+        description: 押した見出しを知らせる
+      - name: defaultOpen
+        type: boolean
+        required: false
+        default: 'false'
+        description: 最初から開く（ストーリー用）
+    state:
+      - name: open
+        type: boolean
+        initial: defaultOpen
+        description: ポップオーバーを開いているか
+        notes: useState
+    refs:
+      - CMP-160-1#
+    unit_tests:
+      - name: test_body_toc
+        case: 正常
+        summary: 見出しを押すと知らせて閉じる
+        condition: 「本文の目次」を押し、「保存先」を押す
+        mock: なし（`onHeading` は vi.fn）
+        expected: '`onHeading` が「保存先」の `slug` で呼ばれ、ポップオーバーが閉じる'
+      - name: test_body_toc_when_escape
+        case: 正常
+        summary: Esc で閉じてボタンへ戻る
+        condition: 開いて Esc を押す
+        mock: なし
+        expected: 閉じ、「本文の目次」のボタンにフォーカスがある
+notes:
+  単体テスト: 同じフォルダの `body-toc.test.tsx` に置く

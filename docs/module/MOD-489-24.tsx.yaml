@@ -6,7 +6,24 @@ components:
     title: 詳細の見出し
     kind: コンポーネント
     usecase: 項目の詳細を読む
-    summary: 戻る・進む・全画面・エクスポート・編集・閉じるを並べる。全画面のボタンは幅 768px 以上だけ描く。`error` があれば見出しの下に `role="alert"` で出す
+    summary: 戻る・進む・全画面・エクスポート・編集・閉じるを並べる。全画面のボタンは幅 768px 以上だけ描く。`error` があれば見出しの下に `role="alert"` で出す。`toc` が 1 つ以上あるときは、エクスポートの左に部品『本文の目次』（`BodyToc`）を置き、`onHeading` を渡す
     container: frontend/src/features/detail/detail-panel/components/detail-header.tsx
+    props:
+      - name: toc
+        type: readonly TocEntry[]
+        required: false
+        default: '[]'
+        description: 本文の見出し。空のときは目次のボタンを描かない
+      - name: onHeading
+        type: '(slug: string) => void'
+        required: false
+        description: 目次で押した見出し
+    unit_tests:
+      - name: test_detail_header_when_toc
+        case: 正常
+        summary: 見出しがあるときだけ目次のボタンを描く
+        condition: '`parametrize`: `toc` に 2 件 / `toc` が空'
+        mock: なし
+        expected: 「本文の目次」のボタンがある / 無い
 notes:
   単体テスト: 同じフォルダの `detail-header.test.tsx` に置く（knowledge の規約『フォルダ構成』）

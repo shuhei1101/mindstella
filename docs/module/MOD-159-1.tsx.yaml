@@ -1,0 +1,53 @@
+id: MOD-159-1
+title: プレビュー / detail-supplements
+lead: 詳細の中身を「本文」「関連」「コメント」のタブで切り替える。
+components:
+  - name: DetailSupplements
+    title: 本文の切り替え
+    kind: コンポーネント
+    container: frontend/src/features/detail/detail-panel/components/detail-supplements.tsx
+    usecase: 項目の詳細を読む
+    summary: 画面設計『詳細パネル』の要素「本文の切り替え」。`role="tablist"` の中に `role="tab"` のボタンを `SEGMENTED_GROUP_CLASS`・`SEGMENTED_ITEM_CLASS`（選んだタブは `SEGMENTED_SELECTED_CLASS`）で並べ、選んだタブの中身を `role="tabpanel"` に描く。`comments` が null（配る書き出し）のときは「コメント」のタブを出さない。選んだタブだけを `tabIndex=0`、ほかを `-1` にし、左右の矢印・Home・End で隣・端のタブを選んでフォーカスを移す。タブとパネルを `aria-controls`・`aria-labelledby` で結ぶ。モックで見比べた `collapse`・`tint` の見せ方と引数 `layout` は削除する
+    props:
+      - name: main
+        type: ReactNode
+        required: true
+        description: 「本文」のタブの中身（状態・タイトルから本文まで）
+      - name: supplements
+        type: ReactNode
+        required: true
+        description: 「関連」のタブの中身（リンクと関係する項目）
+      - name: comments
+        type: ReactNode | null
+        required: true
+        description: 「コメント」のタブの中身（レビュー中のコメント）。null のときはタブを出さない
+      - name: tab
+        type: '"main" | "related" | "comments"'
+        required: true
+        description: 選んでいるタブ
+      - name: onTabChange
+        type: '(tab: "main" | "related" | "comments") => void'
+        required: true
+        description: タブを選んだ
+    unit_tests:
+      - name: test_detail_supplements
+        case: 正常
+        summary: タブを押して切り替える
+        condition: '`tab` が `main` で「関連」を押す'
+        mock: なし（`onTabChange` は vi.fn）
+        expected: 「本文」が `aria-selected="true"` でパネルに `main` があり、`onTabChange` が `related` で呼ばれる
+      - name: test_detail_supplements_when_arrow
+        case: 正常
+        summary: 矢印で隣のタブへ移る
+        condition: '`tab` が `main` で「本文」にフォーカスを置き、右の矢印・左の矢印・End を押す'
+        mock: なし（`onTabChange` は vi.fn）
+        expected: '`onTabChange` が `related`・`comments`（先頭から左は末尾へ回る）・`comments` の順で呼ばれる'
+      - name: test_detail_supplements_when_no_comments
+        case: 正常
+        summary: 配る書き出しではコメントのタブを出さない
+        condition: '`comments` が null'
+        mock: なし
+        expected: タブが「本文」「関連」の 2 つ
+notes:
+  単体テスト: 同じフォルダの `detail-supplements.test.tsx` に置く
+  タブの状態の持ち主: 選んでいるタブは `DetailContent` が持ち（項目の `id` が変わったら `main` に戻す）、目次から見出しへ移るときに `main` を選ぶ

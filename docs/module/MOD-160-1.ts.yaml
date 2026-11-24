@@ -1,0 +1,63 @@
+id: MOD-160-1
+title: プレビュー / body-toc（見出しの取り出し）
+lead: 資料の本文の Markdown から、目次に並べる見出しを取り出す。
+data_models:
+  - name: TocEntry
+    title: 目次の項目
+    container: frontend/src/shared/core/body-toc.ts
+    usecase: 項目の詳細を読む
+    summary: 見出し 1 つ
+    properties:
+      - name: level
+        type: number
+        description: 見出しの階層（1〜6）
+      - name: text
+        type: string
+        description: 描いた見出しに出る文字
+      - name: slug
+        type: string
+        description: 見出しを指す名前（`linkHeadings` が付ける ID と同じ）
+functions:
+  - name: bodyToc
+    title: 本文の目次
+    kind: 関数
+    container: frontend/src/shared/core/body-toc.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: Markdown の見出しの行を本文の順に返す。コードブロックの中の `#` の行は見出しにしない
+    args:
+      - name: markdown
+        type: string
+        required: true
+        description: 本文の Markdown
+    returns:
+      type: TocEntry[]
+      description: 本文の順の見出し。見出しが無ければ空
+    process: |-
+      1. 行ごとに、`` ``` ``・`~~~`（3 つ以上）で始まる行でコードブロックの内外を切り替える（閉じるのは開いたのと同じ記号の行）
+      2. コードブロックの外で、`#` 1〜6 個と空白で始まる行を見出しにし、末尾の `#` と空白を除く
+      3. 文言のリンクを表示の文字にし、強調・行内のコードの記号を除く。残った文字が空の行は除く
+      4. `headingSlug` で同じ文言に番号を付けた `slug` を求める
+    callees:
+      - MOD-489-102#functions[linkHeadings]
+    unit_tests:
+      - name: test_body_toc
+        case: 正常
+        summary: 階層と文字を取り出す
+        condition: '`# 目的`・`## [保存先](x) の **決め方**`・`### 末尾 ##` を持つ本文'
+        mock: なし
+        expected: 階層 1・2・3 と「目的」「保存先 の 決め方」「末尾」
+      - name: test_body_toc_when_fenced
+        case: 正常
+        summary: コードブロックの中は見出しにしない
+        condition: '`` ``` `` と `~~~` の中に `# 後で消す` を持ち、外に `## 見出し` を持つ本文'
+        mock: なし
+        expected: 「見出し」だけ
+      - name: test_body_toc_when_same_text
+        case: 正常
+        summary: 同じ文言に番号を付ける
+        condition: '`## 決め方` を 2 つ持つ本文'
+        mock: なし
+        expected: 2 つ目の `slug` が `linkHeadings` が付ける ID と同じ番号つき
+notes:
+  単体テスト: 同じフォルダの `body-toc.test.ts` に置く
