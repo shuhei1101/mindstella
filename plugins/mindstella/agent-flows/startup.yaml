@@ -28,6 +28,14 @@ steps:
       進め方の文書に、何をどの順に話し合うか・何を作るかが書いてある。
     calls:
       - {server: project-index, tool: search_docs}
+  - name: 保留のタスクを見直す
+    when: 取り込み待ちのスレッドが 0 件
+    body: |-
+      mindstella/on-comment の工程「保留のタスクを見直す」のとおりに見直す。取り込み待ちのスレッドが 1 件以上のときは、コメントの取り込みの最初の見直しに任せる。
+    calls:
+      - {server: project-index, tool: search_docs}
+    refs:
+      - mindstella/on-comment
   - name: 取り込み待ちのコメントを取り込む
     when: 取り込み待ちのスレッドが 1 件以上ある
     body: |-
