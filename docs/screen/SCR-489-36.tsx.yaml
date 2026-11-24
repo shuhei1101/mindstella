@@ -31,6 +31,15 @@ elements:
     io: 入力
     visible_when: 全体の検索を開いていないとき
     status: planned
+  - name: 絞り込みの候補
+    kind: list
+    position: 検索の結果の先頭
+    description: 今の画面の絞り込みの値（種類・状態・タグなど、部品設計『絞り込み』の `groups`）のうち、検索の言葉と NFKC と大文字小文字をそろえて前方一致する値を、「絞り込みをオンにする」の段に「{条件の見出し} = {値}」と件数つきで並べる。段の見出しは検索の結果の段と同じ見出しの階層にする。上下の矢印の選択は候補から項目へ続けて動く
+    io: 表示
+    source: 今の画面の絞り込みの値と件数
+    visible_when: 検索の言葉が空でなく、今の画面が絞り込みを持ち（概要では出さない）、一致する値が 1 つ以上ある
+    action: 押すか、上下の矢印で選んで Enter で、その値を今の画面の絞り込みに加え、検索を閉じる（search params と履歴は『プレビューを開く』の制約「画面の移動と項目」「履歴」のとおり）
+    status: planned
 lead: 全体の検索のモーダル。全種類の項目を ID・タイトル・本文で検索し、開いているかと検索の言葉を URL の search params の `search`・`q` に持つ（インターフェース定義『プレビューを開く』）。
 mock: docs/mock/pages/search/216/a-by-tier/index.html
 test_file: tests/integration/preview/test_spa_search_screen.py
