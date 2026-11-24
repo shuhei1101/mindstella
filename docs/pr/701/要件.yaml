@@ -11,34 +11,40 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-48.yaml
-    impact: changed
-    detail: 検索の結果の行のタイトルの中の ID は、行を開く操作と重ねず、リンクにできない場所の見せ方で項目・スレッドを示す
-    depends_on: []
+    impact: following
+    detail: 検索の結果の行のタイトルの中の ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
   - kind: single
     scenario: docs/scenario/SC-489-40.yaml
-    impact: changed
-    detail: 資料のカード・ボード・表のタイトルの中の ID の見せ方を、リンクにできない場所の決まりに合わせる
-    depends_on: []
+    impact: following
+    detail: 資料のカード・ボード・表のタイトルの中の ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
   - kind: single
     scenario: docs/scenario/SC-489-6.yaml
-    impact: changed
-    detail: タスクのボード・表のタイトルの中の ID の見せ方を、リンクにできない場所の決まりに合わせる
-    depends_on: []
+    impact: following
+    detail: タスクのボード・表のタイトルの中の ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
   - kind: single
     scenario: docs/scenario/SC-489-25.yaml
-    impact: changed
-    detail: 概要のタイルの一覧の行のタイトルの中の ID の見せ方を、リンクにできない場所の決まりに合わせる
-    depends_on: []
+    impact: following
+    detail: 概要のタイルの一覧の行のタイトルの中の ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
   - kind: single
     scenario: docs/scenario/SC-489-18.yaml
-    impact: changed
-    detail: 削除した項目の帯のタイトルの中の ID を、記録にある項目・スレッドだけリンクにする
-    depends_on: []
+    impact: following
+    detail: 削除した項目の帯のタイトルの中の ID を、項目の詳細を読むのタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
   - kind: single
     scenario: docs/scenario/SC-489-28.yaml
-    impact: changed
-    detail: 保存待ちのパネルの項目のタイトルの中の ID の見せ方を、リンクにできない場所の決まりに合わせる
-    depends_on: []
+    impact: following
+    detail: 保存待ちのパネルの項目のタイトルの中の ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
   - kind: single
     scenario: docs/scenario/SC-489-11.yaml
     impact: run_only
