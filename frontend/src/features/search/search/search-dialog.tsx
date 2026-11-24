@@ -34,7 +34,7 @@ export type SearchDialogProps = {
   /** 開いている画面の絞り込みの条件の値。絞り込みのドロワーを持たない画面では指定しない */
   filterCandidates?: readonly FilterCandidate[];
   /** 絞り込みの候補を押したときに、その条件の値をオンにする */
-  onApplyFilter?: (candidate: FilterCandidate) => void;
+  onApplyFilter?: (key: string, value: string) => void;
 };
 
 export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose, filterCandidates = [], onApplyFilter }: SearchDialogProps) => {
@@ -62,7 +62,7 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose, fil
   const optionId = (hit: SearchHit): string => `search-hit-${hit.id}`;
   const filterOptionId = (candidate: FilterCandidate): string => `search-filter-${candidate.key}-${candidate.value}`;
   const applyFilter = (candidate: FilterCandidate): void => {
-    onApplyFilter?.(candidate);
+    onApplyFilter?.(candidate.key, candidate.value);
     onClose();
   };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {

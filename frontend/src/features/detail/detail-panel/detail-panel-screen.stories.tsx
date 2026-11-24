@@ -2,7 +2,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse } from "msw";
 
-import type { SupplementLayout } from "@/features/detail/detail-panel/components/detail-supplements";
 import { DetailPanel } from "@/features/detail/detail-panel/detail-panel";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
 import { RECORDS } from "@/testing/msw/handlers";
@@ -53,8 +52,8 @@ const DATA = { ...RECORDS, decisions: DECISIONS, docs: DOCS, notes: NOTES, bodie
 
 const respond = () => worker.use(http.get("*/api/records", () => HttpResponse.json(DATA)));
 
-const panelOf = (id: string, supplementLayout?: SupplementLayout) => {
-  const Panel = () => <DetailPanel id={id} index={buildIndex(DATA)} supplementLayout={supplementLayout} />;
+const panelOf = (id: string) => {
+  const Panel = () => <DetailPanel id={id} index={buildIndex(DATA)} />;
   return Panel;
 };
 
@@ -79,14 +78,3 @@ export const Decided: Story = { args: { path: "/?tab=decisions&id=D-8", screen: 
 /** 本文に見出しを持つ資料。ヘッダーの目次のボタンから本文の目次を開く */
 export const BodyToc: Story = { args: { path: "/?tab=docs&id=A-9", screen: panelOf("A-9") } };
 
-/** 本文と補足の見分け方の案 A: 詳細の上のタブで「本文」と「参照・関連・経緯」を切り替える */
-export const SupplementsTabs: Story = { args: { path: "/?tab=docs&id=A-9", screen: panelOf("A-9", "tabs") } };
-
-/** 本文と補足の見分け方の案 B: 本文の下の「参照・関連・経緯」を折りたたみ、既定で閉じる */
-export const SupplementsCollapse: Story = { args: { path: "/?tab=docs&id=A-9", screen: panelOf("A-9", "collapse") } };
-
-/** 本文と補足の見分け方の案 C: 本文の下の「参照・関連・経緯」の欄の背景の色を変える */
-export const SupplementsTint: Story = { args: { path: "/?tab=docs&id=A-9", screen: panelOf("A-9", "tint") } };
-
-/** 本文と補足の見分け方の案 C を、関係する項目の多い検討事項で見る */
-export const SupplementsTintDecision: Story = { args: { path: "/?tab=decisions&id=D-8", screen: panelOf("D-8", "tint") } };

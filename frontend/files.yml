@@ -1881,3 +1881,29 @@ files:
   description: 本文のスレッドの ID と書き込みの ID を記録にあるスレッドと書き込みに結び、本文と書き込みのリンクを付けるときに参照する。
   tags:
   - tool:react
+- path: src/shared/hooks/use-preset-save.ts
+  name: プリセットの保存のフック
+  description: 画面から今のタグの条件の式をプリセットとして保存し、失敗の理由を返す。画面からのプリセットの保存を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-362-2
+    type: implements
+- path: src/shared/stores/filter-candidates-store.ts
+  name: 絞り込みの候補のストア
+  description: 今の画面の絞り込みの値と値を加える処理を、全体の検索へ渡す。検索からの絞り込みを変更するときに読む。
+  tags:
+  - tool:react
+  - topic:ストア
+  related:
+  - to: MOD-143-1
+    type: implements
+- path: src/shared/lib/segmented.ts
+  name: 切り替えボタンのクラス
+  description: 表示形式の切り替え・スレッドの状態の絞り込み・詳細の本文の切り替えが共有する見た目のクラスを持つ。切り替えボタンの見た目を変更するときに読む。
+  tags:
+  - tool:tailwind-css
+  - topic:スタイル
+  related:
+  - to: MOD-159-2
+    type: implements

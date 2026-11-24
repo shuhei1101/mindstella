@@ -1,81 +1,86 @@
-// 詳細の本文と、参照・関連・経緯の欄（補足）の見分け方。モック作成で案を見比べるため、見分け方を引数で選ぶ
-import { useState, type ReactNode } from "react";
+// 詳細の中身を「本文」「関連」「コメント」のタブで切り替える（画面設計『詳細パネル』の要素「本文の切り替え」）
+import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import { cn } from "@/shared/lib/cn";
+import { SEGMENTED_GROUP_CLASS, SEGMENTED_ITEM_CLASS, SEGMENTED_SELECTED_CLASS } from "@/shared/lib/segmented";
 
-/** 見分け方。`tabs` は本文・関連・コメントをタブで切り替え、`collapse` は補足を折りたたみ、`tint` は補足の欄の背景の色を変える */
-export type SupplementLayout = "tabs" | "collapse" | "tint";
-
-/** 補足の欄の見出し */
-const SUPPLEMENT_LABEL = "参照・関連・経緯";
+/** 詳細のタブ */
+export type DetailTab = "main" | "related" | "comments";
 
 export type DetailSupplementsProps = {
-  layout: SupplementLayout | undefined;
+  /** 選んでいるタブ */
+  tab: DetailTab;
+  onTabChange: (tab: DetailTab) => void;
   /** 本文（状態・タイトルから本文まで） */
   main: ReactNode;
-  /** 補足（参照・関連・経緯・リンク） */
+  /** 関連（リンクと関係する項目） */
   supplements: ReactNode;
-  /** レビュー中のコメント。`tabs` ではコメントのタブに出し、ほかの見分け方では補足の後ろに出す */
-  comments: ReactNode;
+  /** レビュー中のコメント。null のときはタブを出さない */
+  comments: ReactNode | null;
 };
 
-export const DetailSupplements = ({ layout, main, supplements, comments }: DetailSupplementsProps) => {
-  const [tab, setTab] = useState<"main" | "related" | "comments">("main");
-  if (layout === undefined) {
-    return (
-      <>
-        {main}
-        {supplements}
-        {comments}
-      </>
-    );
-  }
-  if (layout === "tabs") {
-    const tabs = [
-      { key: "main", label: "本文", content: main },
-      { key: "related", label: "関連", content: supplements },
-      { key: "comments", label: "コメント", content: comments },
-    ] as const;
-    const tabClass = (selected: boolean): string =>
-      cn(
-        "h-6 min-w-20 cursor-pointer rounded-sm px-3 text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
-        selected && "bg-tab-selected font-medium text-foreground shadow-sm ring-1 ring-mark/50 hover:bg-tab-selected",
-      );
-    return (
-      <>
-        <div role="tablist" aria-label="詳細の表示" className="inline-flex self-start rounded-control border border-border bg-muted p-0.5">
-          {tabs.map((entry) => (
-            <button key={entry.key} type="button" role="tab" aria-selected={tab === entry.key} className={tabClass(tab === entry.key)} onClick={() => { setTab(entry.key); }}>
-              {entry.label}
-            </button>
-          ))}
-        </div>
-        <div role="tabpanel" className="flex flex-col gap-3">
-          {tabs.find((entry) => entry.key === tab)?.content}
-        </div>
-      </>
-    );
-  }
-  if (layout === "collapse") {
-    return (
-      <>
-        {main}
-        <details className="group rounded-card border border-border-soft">
-          <summary className="cursor-pointer px-3 py-2 text-small font-medium text-muted-foreground hover:bg-row-hover">{SUPPLEMENT_LABEL}</summary>
-          <div className="flex flex-col gap-3 border-t border-border-soft p-3">{supplements}</div>
-        </details>
-        {comments}
-      </>
-    );
-  }
+export const DetailSupplements = ({ tab, onTabChange, main, supplements, comments }: DetailSupplementsProps) => {
+  const prefix = useId();
+  const buttons = useRef(new Map<DetailTab, HTMLButtonElement>());
+  const first = { key: "main" as const, label: "本文", content: main };
+  const tabs: { key: DetailTab; label: string; content: ReactNode }[] = [
+    first,
+    { key: "related", label: "関連", content: supplements },
+    ...(comments === null ? [] : [{ key: "comments" as const, label: "コメント", content: comments }]),
+  ];
+  const current = tabs.find((entry) => entry.key === tab) ?? first;
+  const tabId = (key: DetailTab): string => `${prefix}-tab-${key}`;
+  const panelId = `${prefix}-panel`;
+  // 矢印・Home・End で選んだときは、選んだタブを描き直した後にフォーカスを移す
+  const keyed = useRef(false);
+  useEffect(() => {
+    if (!keyed.current) return;
+    keyed.current = false;
+    buttons.current.get(current.key)?.focus();
+  }, [current.key]);
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number): void => {
+    const last = tabs.length - 1;
+    const next = { ArrowRight: index === last ? 0 : index + 1, ArrowLeft: index === 0 ? last : index - 1, Home: 0, End: last }[event.key];
+    const target = next === undefined ? undefined : tabs[next];
+    if (target === undefined) return;
+    event.preventDefault();
+    keyed.current = true;
+    onTabChange(target.key);
+  };
   return (
     <>
-      {main}
-      <aside aria-label={SUPPLEMENT_LABEL} className="flex flex-col gap-3 rounded-card bg-muted p-3">
-        <p className="m-0 text-xs font-medium text-muted-foreground">{SUPPLEMENT_LABEL}</p>
-        {supplements}
-      </aside>
-      {comments}
+      <div role="tablist" aria-label="詳細の表示" className={cn(SEGMENTED_GROUP_CLASS, "self-start")}>
+        {tabs.map((entry, index) => {
+          const selected = entry.key === current.key;
+          return (
+            <button
+              key={entry.key}
+              ref={(node) => {
+                if (node === null) buttons.current.delete(entry.key);
+                else buttons.current.set(entry.key, node);
+              }}
+              id={tabId(entry.key)}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={panelId}
+              tabIndex={selected ? 0 : -1}
+              className={cn(SEGMENTED_ITEM_CLASS, "h-6 min-w-20 px-3", selected && SEGMENTED_SELECTED_CLASS)}
+              onClick={() => {
+                onTabChange(entry.key);
+              }}
+              onKeyDown={(event) => {
+                onKeyDown(event, index);
+              }}
+            >
+              {entry.label}
+            </button>
+          );
+        })}
+      </div>
+      <div role="tabpanel" id={panelId} aria-labelledby={tabId(current.key)} className="flex flex-col gap-3">
+        {current.content}
+      </div>
     </>
   );
 };

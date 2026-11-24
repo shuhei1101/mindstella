@@ -207,7 +207,7 @@ export const resolveFileSources = (root: HTMLElement): void => {
 const mountMarkdown = ({ root, markdown, table = false, base, diffSource }: { root: HTMLElement; markdown: string; table?: boolean; base?: string | undefined; diffSource?: BodyDiffSource | undefined }): void => {
   const map = mdmarkMapConfig();
   const features = table ? { ...MDMARK_FEATURES, table: true } : MDMARK_FEATURES;
-  const diff = diffSource === undefined ? (base === undefined ? {} : { baseMarkdown: base }) : { docId: diffSource.docId, diffMode: "open" as const, diffSource: diffSourceOf(diffSource) };
+  const diff = diffSource === undefined ? (base === undefined ? {} : { baseMarkdown: base }) : { docId: diffSource.docId, diffMode: "open" as const, diffControls: false, diffSource: diffSourceOf(diffSource) };
   mdmarkOf().mount(root, { markdown, config: { features, labels: { paramCopy: MDMARK_PARAM_COPY_LABEL }, ...(map === undefined ? {} : { map }) }, ...diff });
   resolveFileSources(root);
   trimBreakNewlines(root);

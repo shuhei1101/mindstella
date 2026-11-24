@@ -5,7 +5,7 @@ import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/co
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
 import { DetailResizer, PANEL_WIDTH } from "@/features/detail/detail-panel/components/detail-resizer";
 import { BodyView } from "@/features/detail/detail-panel/components/body-view";
-import { DetailSupplements, type SupplementLayout } from "@/features/detail/detail-panel/components/detail-supplements";
+import { DetailSupplements, type DetailTab } from "@/features/detail/detail-panel/components/detail-supplements";
 import type { BodyDiffView } from "@/shared/components/body-diff-view-switch";
 import { DetailComments, DetailReviewComments } from "@/features/detail/detail-panel/components/detail-comments";
 import { DiffDeadlineContext, KeyDiff, keyDiffs, nextDiffDeadline, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
@@ -18,12 +18,13 @@ import { DiffMinimap } from "@/shared/components/diff-minimap";
 import { Icon, StatusMark } from "@/shared/components/icon";
 import { TagList } from "@/shared/components/tag-list";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
+import { bodyToc } from "@/shared/core/body-toc";
 import { LINE_ATTR, VALUE_KEY_ATTR } from "@/shared/core/body-links";
 import { HTML_BODY_ATTR } from "@/shared/core/body-render";
 import { buildVersions, type DiffPoint, type VersionPair } from "@/shared/core/diff";
 import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/core/edits";
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
-import { kindOfId, tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
+import { bodyFormatOf, kindOfId, tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
 import { applyHighlight } from "@/shared/core/term-tips";
 import { workspaceKey } from "@/shared/core/workspace-path";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
@@ -118,11 +119,11 @@ const bodyDisplayOf = (): BodyDisplay => {
   return { fold: prefs.sectionFold !== false };
 };
 
-export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string; supplementLayout?: SupplementLayout };
+export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string };
 
 /** 見出しと本文。パネルと全画面が共通で使う */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
-export const DetailContent = ({ id, index, full, supplementLayout }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
+export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
   const { search, openItem, closeItem, setFull, setHeading, setDiff } = usePreviewSearch();
   const { point } = useDiffView();
   // 押したタグを後ろの画面の絞り込みに加える（後ろの画面が概要なら項目の種類の画面へ移る）
@@ -135,6 +136,9 @@ export const DetailContent = ({ id, index, full, supplementLayout }: Omit<Detail
   const cancel = useCancelEdit();
   const flight = useSingleFlight();
   const [editing, setEditing] = useState(false);
+  // 選んでいるタブ。項目を移ったら本文に戻す
+  const [tab, setTab] = useState<{ id: string; tab: DetailTab }>({ id, tab: "main" });
+  const currentTab = tab.id === id ? tab.tab : "main";
   // 本文の差分の見せ方。開いた項目ごとに「描いた結果」から始め、選んだ回数で押し直しを描き直す
   const [diffView, setDiffView] = useState<{ id: string; view: BodyDiffView; nonce: number }>({ id, view: "rendered", nonce: 0 });
   const view = diffView.id === id ? diffView.view : "rendered";
@@ -281,9 +285,16 @@ export const DetailContent = ({ id, index, full, supplementLayout }: Omit<Detail
   const removal = edits.find((edit) => edit.target === id && edit.op === "item-remove");
   const referrers = index.referencedBy.get(id) ?? [];
   const change = ({ op, key, value }: EditChange): void => { add.mutate({ op, target: id, key, value }); };
+  const ownBody = bodyFormatOf(entry.item.body) === "md" && !editing ? index.data.bodies[entry.item.body ?? ""] : undefined;
+  const toc = ownBody === undefined ? [] : bodyToc(ownBody);
+  const selectTab = (next: DetailTab): void => { setTab({ id, tab: next }); };
+  const toHeading = (slug: string): void => {
+    selectTab("main");
+    setHeading(slug);
+  };
   return (
     <DiffDeadlineContext.Provider value={deadline}>
-      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} onHeading={setHeading} />
+      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} toc={toc} onHeading={toHeading} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false && view !== "source"} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
           <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removePending={flight.running} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { flight.run(() => add.mutateAsync({ op: "item-remove", target: id })); }} onCancelRemove={() => { if (removal !== undefined) flight.run(() => cancel.mutateAsync(removal.id)); }} />
@@ -300,7 +311,8 @@ export const DetailContent = ({ id, index, full, supplementLayout }: Omit<Detail
             )}
             {diff?.versions?.trimmed === true ? <p role="note" className="text-small text-muted-foreground">{NOTE_TRIMMED}</p> : null}
             <DetailSupplements
-              layout={supplementLayout}
+              tab={currentTab}
+              onTabChange={selectTab}
               main={
                 <>
             <div data-key="status">{keys?.has("status") === true ? <KeyDiff was={<Status value={keys.left["status"]} />} now={<Status value={keys.right["status"]} />} plain /> : <Status value={item.status} />}</div>
@@ -367,9 +379,9 @@ const readPanelWidth = (): number => {
   return saved !== null && /^[1-9]\d*$/.test(saved) ? Number(saved) : PANEL_WIDTH.default;
 };
 
-export type DetailPanelProps = { id: string; index: RecordIndex; supplementLayout?: SupplementLayout };
+export type DetailPanelProps = { id: string; index: RecordIndex };
 
-export const DetailPanel = ({ id, index, supplementLayout }: DetailPanelProps) => {
+export const DetailPanel = ({ id, index }: DetailPanelProps) => {
   const [width, setWidth] = useState(readPanelWidth);
   return (
     <aside aria-label="詳細" style={{ width }} className="relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!">
@@ -380,7 +392,7 @@ export const DetailPanel = ({ id, index, supplementLayout }: DetailPanelProps) =
           sessionStorage.setItem(workspaceKey(PANEL_WIDTH_KEY), String(next));
         }}
       />
-      <DetailContent key={id} id={id} index={index} full={false} supplementLayout={supplementLayout} />
+      <DetailContent key={id} id={id} index={index} full={false} />
     </aside>
   );
 };

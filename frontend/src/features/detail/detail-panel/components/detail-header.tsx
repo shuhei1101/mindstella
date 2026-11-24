@@ -6,7 +6,7 @@ import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
 import type { PendingMarkKind } from "@/shared/core/edits";
-import { bodyToc } from "@/shared/core/body-toc";
+import type { TocEntry } from "@/shared/core/body-toc";
 import { cn } from "@/shared/lib/cn";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { bodyFormatOf, KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
@@ -26,15 +26,16 @@ export type DetailHeaderProps = {
   onToggleEdit: () => void;
   onToggleFull: () => void;
   onClose: () => void;
-  /** 本文の目次で押した見出しへ移る。Markdown の本文を持つ資料で、見出しがあるときだけ目次のボタンを出す */
+  /** 本文の見出し。空のときは目次のボタンを描かない */
+  toc?: readonly TocEntry[];
+  /** 目次で押した見出し */
   onHeading?: (slug: string) => void;
 };
 
-export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, onHeading }: DetailHeaderProps) => {
+export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, toc = [], onHeading }: DetailHeaderProps) => {
   const { canBack, canForward, openItemComments } = usePreviewSearch();
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
-  const toc = source === undefined || onHeading === undefined ? [] : bodyToc(source);
   const editLabel = editing ? "編集を終える" : "編集する";
   const fullLabel = full ? "元の大きさに戻す" : "全画面表示";
   return (

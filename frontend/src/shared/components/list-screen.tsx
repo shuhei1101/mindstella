@@ -1,11 +1,12 @@
 // 一覧の画面の枠。表示形式の切り替え・項目の追加・削除した項目の帯・絞り込みのドロワーと、表の状態を持つ
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState, type ReactNode, type RefCallback } from "react";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefCallback } from "react";
 
 import type { DiffMarks } from "@/shared/components/diff-mark";
 import { FilterChips } from "@/shared/components/filter-chips";
-import { FilterDrawer } from "@/shared/components/filter-drawer";
+import { FilterDrawer, type FilterGroup } from "@/shared/components/filter-drawer";
 import { Icon } from "@/shared/components/icon";
+import type { PresetSaveProps, PresetSaveResult } from "@/shared/components/preset-save";
 import { RemovedBand } from "@/shared/components/removed-band";
 import { Table, type Row, type TableColumn } from "@/shared/components/table";
 import { Button } from "@/shared/components/ui/button";
@@ -23,8 +24,10 @@ import { useListScroll } from "@/shared/hooks/use-list-scroll";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useScreenEdit } from "@/shared/hooks/use-screen-edit";
+import { usePresetSave } from "@/shared/hooks/use-preset-save";
 import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
+import { useFilterCandidatesStore } from "@/shared/stores/filter-candidates-store";
 import { readPrefs, writePrefs } from "@/shared/stores/prefs-store";
 
 /** 画面の枠が中身に渡す値 */
@@ -60,6 +63,40 @@ export type ListScreenProps = {
 
 const asColumns = (columns: TableColumn[]): ListColumn<Row>[] => columns.map((column) => ({ key: column.key, label: column.label, get: column.get ?? ((row) => row[column.key]), ...(column.order === undefined ? {} : { order: column.order }) }));
 
+/** タグのほかに条件（状態・種類・列の文字）があるか */
+const hasOtherConditions = (filters: Filters): boolean => Object.entries(filters).some(([key, values]) => key !== TAG_FILTER_KEY && values.length > 0);
+
+/** ドロワーのプリセットの保存。配る書き出しでは出さない */
+const presetSaveOf = (filters: Filters, onSave: (name: string) => Promise<PresetSaveResult>): { presetSave?: Omit<PresetSaveProps, "hasTagCondition"> } =>
+  isEmbedded() ? {} : { presetSave: { hasOtherConditions: hasOtherConditions(filters), onSave } };
+
+/** 値を条件に加えて履歴に積む。既にあれば何もしない。タグは押したタグと同じ加え方にする */
+const addValue = ({ filters, key, value, setFilters, addTag }: { filters: Filters; key: string; value: string; setFilters: (next: Filters, options: { push: boolean }) => void; addTag: (tag: string) => void }): void => {
+  if (key === TAG_FILTER_KEY) {
+    addTag(value);
+    return;
+  }
+  const current = filters[key] ?? [];
+  if (!current.includes(value)) setFilters({ ...filters, [key]: [...current, value] }, { push: true });
+};
+
+/** 描いている間、絞り込みの値と値を加える処理を全体の検索へ渡す。中身が変わったときだけ登録し直す */
+const PublishCandidates = ({ groups, apply }: { groups: readonly FilterGroup[]; apply: (key: string, value: string) => void }) => {
+  const latest = useRef(apply);
+  useLayoutEffect(() => {
+    latest.current = apply;
+  });
+  const publish = useEffectEvent(() => {
+    useFilterCandidatesStore.getState().publish(groups, (key, value) => { latest.current(key, value); });
+  });
+  const signature = JSON.stringify(groups);
+  useEffect(() => {
+    publish();
+    return useFilterCandidatesStore.getState().clear;
+  }, [signature]);
+  return null;
+};
+
 export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, content }: ListScreenProps) => {
   const { search, openItem, closeItem, setSort, setView } = usePreviewSearch();
   const { index } = useRecords();
@@ -71,6 +108,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const onSelectTag = (name: string): void => {
     addTag(name);
   };
+  const savePreset = usePresetSave(tagExpr);
   const comments = useQuery(commentsQuery());
   const startAdd = useEditSessionStore((state) => state.startAdd);
   const openAdded = useEditSessionStore((state) => state.openAdded);
@@ -155,6 +193,10 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
     />
   );
   const conditions = columns.filter((column) => column.filterable === true);
+  const groups = drawerGroups({ rows, columns: list, conditions: asColumns(conditions), filters, tagMatch });
+  const applyCandidate = (key: string, value: string): void => {
+    addValue({ filters, key, value, setFilters, addTag });
+  };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
       <div className="flex items-center gap-2">
@@ -169,9 +211,10 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       {view === "table" ? null : <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={setFilters} {...exprChip} />}
       <RemovedBand items={removedOf({ point, kind })} />
       {view === "table" || content === undefined ? table : content({ index, view, shown: filtered as unknown as Item[], filters, tagMatch, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, onSelectTag, scrollRef, table })}
+      <PublishCandidates groups={groups} apply={applyCandidate} />
       {drawerOpen ? (
         <FilterDrawer
-          groups={drawerGroups({ rows, columns: list, conditions: asColumns(conditions), filters, tagMatch })}
+          groups={groups}
           selected={filters}
           total={rows.length}
           shown={filtered.length}
@@ -182,6 +225,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
             const preset = presets.find((one) => one.name === name);
             if (preset !== undefined) setTagExpr(preset.filter, { push: true });
           }}
+          {...presetSaveOf(filters, savePreset)}
           tagExpr={tagExpr}
           onTagExprChange={(expr) => { setTagExpr(expr, { push: true }); }}
           texts={columns.filter((column) => column.filterable !== true && column.key !== "id").map((column) => ({ key: column.key, label: column.label, value: filters[`${TEXT_FILTER_PREFIX}${column.key}`]?.[0] ?? "" }))}
