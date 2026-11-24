@@ -84,8 +84,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-24T11:02:12.163269+00:00'
   - process: ドキュメント修正
-    status: todo
-    note: docs/guide/エージェントフロー.md の工程「検討事項に案を記載する」の行
+    status: done
+    note: docs/guide/エージェントフロー.md は設計で修正済み（2a7267c3）
+    updated_by: planner
+    updated_at: '2026-11-24T11:10:23.627453+00:00'
   - process: 単体テスト作成
     status: skipped
     reason: コードを変えない
