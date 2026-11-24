@@ -1,6 +1,6 @@
 // 一覧の画面の枠。表示形式の切り替え・項目の追加・削除した項目の帯・絞り込みのドロワーと、表の状態を持つ
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefCallback } from "react";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode, type RefCallback } from "react";
 
 import { CardSort, cardSortFromParam, cardSortToParam, cardSortToRowSort, INITIAL_CARD_SORT, sortItems } from "@/shared/components/card-sort";
 import type { DiffMarks } from "@/shared/components/diff-mark";
@@ -125,6 +125,19 @@ const boardOrders = (items: readonly Item[]): string[][] => {
   return [...byStatus.values()];
 };
 
+/** カード・ボードの表示のときだけ「並べ替え」を出す */
+const CardSortControl = ({ shown, ...props }: { shown: boolean } & ComponentProps<typeof CardSort>) => (shown ? <CardSort {...props} /> : null);
+
+/** カード・ボードの「並べ替え」の並び（資料は更新日時の新しい順、ほかは連番が既定）と、詳細の一覧の並びの前後に使う描いた並び */
+const listOrders = ({ kind, view, sort, filtered, sorted }: { kind: Kind; view: View; sort: string | undefined; filtered: Item[]; sorted: Row[] }) => {
+  const initialCardSort = kind === "docs" ? INITIAL_CARD_SORT.docs : INITIAL_CARD_SORT.other;
+  const cardSort = cardSortFromParam(sort, initialCardSort);
+  const cardRowSort = cardSortToRowSort(cardSort);
+  const cards = view === "table" ? [] : sortItems(filtered, cardRowSort);
+  const orders = view === "table" ? [sorted.map((row) => row.id)] : view === "board" ? boardOrders(cards) : [cards.map((item) => item.id)];
+  return { initialCardSort, cardSort, cardRowSort, cards, orders };
+};
+
 export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, content }: ListScreenProps) => {
   const { search, openItem, closeItem, setSort, setView } = usePreviewSearch();
   const { index } = useRecords();
@@ -180,12 +193,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const filtered = filterRows({ rows, columns: list, filters, tagMatch }).filter((row) => complexExpr === null || matchesTagExpr(tagNames((row as unknown as Item).tags), complexExpr));
   const exprChip = complexExpr === null ? {} : { tagExprText: describeTagExpr(complexExpr), onClearTagExpr: () => { setTagExpr(null); } };
   const sorted = sortRows({ rows: filtered, columns: list, sort: search.sort });
-  // カード・ボードは「並べ替え」の並び（資料は更新日時の新しい順、ほかは連番が既定）
-  const initialCardSort = kind === "docs" ? INITIAL_CARD_SORT.docs : INITIAL_CARD_SORT.other;
-  const cardSort = cardSortFromParam(search.sort, initialCardSort);
-  const cardRowSort = cardSortToRowSort(cardSort);
-  const cards = view === "table" ? [] : sortItems(filtered as unknown as Item[], cardRowSort);
-  const orders = view === "table" ? [sorted.map((row) => row.id)] : view === "board" ? boardOrders(cards) : [cards.map((item) => item.id)];
+  const { initialCardSort, cardSort, cardRowSort, cards, orders } = listOrders({ kind, view, sort: search.sort, filtered: filtered as unknown as Item[], sorted });
   const marks: DiffMarks | undefined = point === null ? undefined : Object.fromEntries([...[...point.added].map((id) => [id, "new"] as const), ...[...point.changed].map((id) => [id, "changed"] as const)]);
   const hidden = saved?.hidden ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
   const pinTo = saved?.pinTo ?? null;
@@ -235,7 +243,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
     <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
       <div className="flex items-center gap-2">
         {views === null ? null : <ViewSwitch views={views} current={view} onChange={setView} />}
-        {view === "table" || content === undefined ? null : <CardSort value={cardSort} onChange={(next) => { setSort(cardSortToParam(next, initialCardSort)); }} />}
+        <CardSortControl shown={view !== "table" && content !== undefined} value={cardSort} onChange={(next) => { setSort(cardSortToParam(next, initialCardSort)); }} />
         {edit === null ? null : (
           <Button variant="outline" aria-label={`${KIND_LABEL[kind]}の項目を追加`} title="項目追加" className="ml-auto" onClick={edit.onAdd}>
             <Icon name="plus" />

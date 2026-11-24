@@ -49,6 +49,9 @@ export type SettingsPanelProps = {
   onWorkspace?: () => void;
 };
 
+/** 区画「キーボード」のチェックの文言 */
+const SINGLE_KEY_SHORTCUTS_CHECK_LABEL = "1 文字のショートカットを使用する";
+
 /** 種類 → 種類の行に出す印 */
 const KIND_ICON = { decisions: "decision", tasks: "task", research: "research", docs: "doc", terms: "term", notes: "note", logs: "log" } as const satisfies Record<Kind, IconName>;
 
@@ -151,10 +154,14 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
       </fieldset>
       <fieldset className="m-0 grid gap-1 border-0 p-0">
         <legend className="mb-1 font-medium">キーボード</legend>
-        <label className="flex min-h-10 items-center gap-2">
-          <Checkbox checked={usesSingleKey} aria-describedby={keyHintId} onChange={() => onSingleKeyShortcutsChange?.(!usesSingleKey)} />
-          <span>1 文字のショートカットを使用する</span>
-        </label>
+        <ul className="m-0 grid list-none gap-1 p-0">
+          <li>
+            <label className="flex min-h-10 items-center gap-2">
+              <Checkbox checked={usesSingleKey} aria-describedby={keyHintId} onChange={() => onSingleKeyShortcutsChange?.(!usesSingleKey)} />
+              <span>{SINGLE_KEY_SHORTCUTS_CHECK_LABEL}</span>
+            </label>
+          </li>
+        </ul>
         <p id={keyHintId} className="m-0 text-small text-muted-foreground">オフにすると、詳細の j・k で一覧の前後の項目へ移る操作を受け付けません。</p>
       </fieldset>
       <div className="grid gap-2">

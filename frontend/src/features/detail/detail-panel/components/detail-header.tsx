@@ -36,11 +36,16 @@ export type DetailHeaderProps = {
   sibling?: SiblingNavProps | null;
 };
 
-export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, toc = [], onHeading, sibling = null }: DetailHeaderProps) => {
-  const { canBack, canForward, openItemComments, backItem, forwardItem } = usePreviewSearch();
+/** 一覧の並びの前後へ移る `k`・`j` を受け、受けている間だけボタンに添えるキーを返す */
+const useSiblingKeys = (sibling: SiblingNavProps | null): SiblingNavProps["keys"] => {
   const prevKey = useShortcut("item.prev", () => sibling?.onPrev(), sibling !== null && sibling.position > 1);
   const nextKey = useShortcut("item.next", () => sibling?.onNext(), sibling !== null && sibling.position < sibling.total);
-  const siblingKeys = prevKey.active || nextKey.active ? { prev: prevKey.keys, next: nextKey.keys } : null;
+  return prevKey.active || nextKey.active ? { prev: prevKey.keys, next: nextKey.keys } : null;
+};
+
+export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, toc = [], onHeading, sibling = null }: DetailHeaderProps) => {
+  const { canBack, canForward, openItemComments, backItem, forwardItem } = usePreviewSearch();
+  const siblingKeys = useSiblingKeys(sibling);
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
   const editLabel = editing ? "編集を終える" : "編集する";

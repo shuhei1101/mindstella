@@ -49,7 +49,7 @@ export const WithComments: Story = { args: { onSelectTag: fn(), comments: { [tas
 /** 開いている、コメントのある項目のカード。選択中の枠と背景がほかのカードと見分けられる */
 export const SelectedWithComments: Story = { args: { onSelectTag: fn(), comments: { [task.id]: 3 }, selected: true } };
 
-/** 作成の後に更新した項目のカード。種類・状態の文字の行の次に「作成 {日時}　更新 {日時}」を出す */
+/** 作成の後に更新した項目のカード。種類・状態の文字の行の次に「作成 {日時}・更新 {日時}」を出す */
 export const Dates: Story = { args: { item: { ...task, created: "2026-11-02T01:15:00+00:00", updated: "2026-11-20T09:40:00+00:00" } } };
 
 /** 列の幅 240px。日時は「作成 {日時}」と「更新 {日時}」の組ごとに折り返し、カードの外へはみ出さない */
