@@ -68,12 +68,12 @@ status_codes:
   - code: '415'
     condition: '`Content-Type` が `application/json` でない'
     notes: 何も書かない
-  - code: '500'
-    condition: '`config.yaml` を書けない（ワークスペースのフォルダが読み取り専用 など）'
-    notes: '`detail` に書けなかったパスと理由。`config.yaml` は書く前の中身のまま'
   - code: '422'
     condition: 今の `config.yaml` がスキーマに合わない（`presets` やほかのキーが崩れている）
     notes: '`detail` に合わない箇所。何も書かない'
+  - code: '500'
+    condition: '`config.yaml` を書けない（ワークスペースのフォルダが読み取り専用 など）'
+    notes: '`detail` に書けなかったパスと理由。`config.yaml` は書く前の中身のまま'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語で、画面は 400・409 の `detail` を名前の入力欄の下に出す
 constraints:
   - item: 記載方法
