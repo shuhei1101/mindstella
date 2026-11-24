@@ -35,7 +35,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-24T15:47:53.008200+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T15:59:17.267576+00:00'
   - process: モック作成
     status: todo
   - process: データ設計
