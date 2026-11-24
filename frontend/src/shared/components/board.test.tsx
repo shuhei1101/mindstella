@@ -94,7 +94,7 @@ describe("Board", () => {
           { status: "進行中", items: [items[1] as Item, items[2] as Item], excluded: false },
         ]}
         card={(item, order) => (
-          <button key={item.id} type="button" onClick={() => onOpen(item.id, order)}>
+          <button key={item.id} type="button" onClick={() => { onOpen(item.id, order); }}>
             {item.title}
           </button>
         )}
