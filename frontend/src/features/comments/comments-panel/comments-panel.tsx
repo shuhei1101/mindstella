@@ -202,13 +202,15 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
     }
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <div role="group" aria-label="スレッドの状態で絞る" className="flex gap-1 border-b border-border px-3 py-2">
+        <div className="border-b border-border px-3 py-2">
+          <div role="group" aria-label="スレッドの状態で絞る" className="inline-flex rounded-control border border-border bg-muted p-0.5">
           {FILTERS.map((entry) => (
-            <Button key={entry.key} variant="ghost" aria-pressed={filter === entry.key} className="border border-border aria-pressed:border-mark aria-pressed:bg-tab-selected aria-pressed:font-medium aria-pressed:hover:bg-tab-selected" onClick={() => { setComments({ tstatus: entry.key === "open" ? undefined : entry.key }); }}>
+            <Button key={entry.key} variant="ghost" aria-pressed={filter === entry.key} className="h-7 rounded-sm text-muted-foreground hover:bg-card hover:text-foreground aria-pressed:bg-tab-selected aria-pressed:font-medium aria-pressed:text-foreground aria-pressed:shadow-sm aria-pressed:ring-1 aria-pressed:ring-mark/50 aria-pressed:hover:bg-tab-selected" onClick={() => { setComments({ tstatus: entry.key === "open" ? undefined : entry.key }); }}>
               {entry.label}
               <span className="font-mono text-small">{counts[entry.key]}</span>
             </Button>
           ))}
+          </div>
         </div>
         {target === null ? null : <TargetChip target={target} title={targetTitle} onClear={() => { setComments({ ttarget: undefined }); }} />}
         {tag === null ? null : (

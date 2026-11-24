@@ -331,7 +331,7 @@ export const DetailContent = ({ id, index, full, supplementLayout }: Omit<Detail
                 </ul>
               </Section>
             ) : null}
-            {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
+            {relation(kind === "logs" ? "更新した項目" : "関連する項目", related.related)}
             {relation("参照元", related.referencedBy)}
                 </>
               }

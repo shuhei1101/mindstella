@@ -11,3 +11,9 @@ confirmations:
     approver: shuhei1101
     commit: c91fd5fc
     thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4674999472
+  - topic: '#159 補足のタブ名'
+    decision: タブ名を「関連」にし、タブの中の欄の見出し「関連」を「関連する項目」にする（推奨案 C）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 4459c0e2
+    thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4675047389
