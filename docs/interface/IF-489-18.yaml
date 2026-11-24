@@ -219,7 +219,7 @@ status_codes:
     condition: '`Host` が制約「接続先の確認」に合わない'
     notes: 本文は返さない
   - code: '404'
-    condition: '`{workspace}` が配っているワークスペースの ID でない（知らない ID・削除したワークスペース）。または `/w/{workspace}/`・`/w/{workspace}/mindstella.html`・`/w/{workspace}/spa`（`/w/{workspace}/spa/{path}` を含む）・`/w/{workspace}/assets/{path}`（出力のフォルダの中のファイル）・`/w/{workspace}/api/records`・`/w/{workspace}/api/events`・`/w/{workspace}/api/comments`（`/w/{workspace}/api/comments/{id}`・`/w/{workspace}/api/comments/send` を含む）・`/w/{workspace}/api/drafts`・`/w/{workspace}/api/config/display`・`/w/{workspace}/api/config/reload` 以外のパス'
+    condition: '`{workspace}` が配っているワークスペースの ID でない（知らない ID・削除したワークスペース）。または `/w/{workspace}/`・`/w/{workspace}/mindstella.html`・`/w/{workspace}/spa`（`/w/{workspace}/spa/{path}` を含む）・`/w/{workspace}/assets/{path}`（出力のフォルダの中のファイル）・`/w/{workspace}/api/records`・`/w/{workspace}/api/events`・`/w/{workspace}/api/comments`（`/w/{workspace}/api/comments/{id}`・`/w/{workspace}/api/comments/send` を含む）・`/w/{workspace}/api/drafts`・`/w/{workspace}/api/config/display`・`/w/{workspace}/api/presets`・`/w/{workspace}/api/config/reload` 以外のパス'
   - code: '500'
     condition: 出力のフォルダに `index.html` が無い（同梱の誤り）
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語

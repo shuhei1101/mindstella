@@ -3,7 +3,7 @@ title: プレビューを開く
 entry:
   kind: screen
   value: サーバーの配信の `/w/{workspace}/`（画面は『プレビューの配信』が返し、ソースは `frontend/`）
-  api: '`GET /w/{workspace}/api/records`（記録）・`GET /w/{workspace}/api/events`（書き換えの通知）・`GET /w/{workspace}/api/comments`（レビュー中の書き込みと下書き、項目ごとのコメントのマーカー）・`GET /w/{workspace}/api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /w/{workspace}/api/threads`（スレッドと利用者の未読）・`POST /w/{workspace}/api/opened`（前回開いた日時）・`POST /w/{workspace}/api/edits`・`DELETE /w/{workspace}/api/edits/{id}`・`POST /w/{workspace}/api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /w/{workspace}/api/comments`・`PATCH`/`DELETE /w/{workspace}/api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /w/{workspace}/api/drafts`（下書き）・`POST /w/{workspace}/api/comments/send`（まとめて送信する）・`PATCH /w/{workspace}/api/threads/{id}`（クローズとオープンへの戻し）・`POST /w/{workspace}/api/threads/{id}/seen`（利用者の既読）・`PUT /w/{workspace}/api/config/display`（ワークスペースの既定の書き換え）・`GET /w/{workspace}/api/transcription`（文字起こしの可否と設定）・`POST /w/{workspace}/api/transcriptions`（音声の文字起こし）・`POST /w/{workspace}/api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
+  api: '`GET /w/{workspace}/api/records`（記録）・`GET /w/{workspace}/api/events`（書き換えの通知）・`GET /w/{workspace}/api/comments`（レビュー中の書き込みと下書き、項目ごとのコメントのマーカー）・`GET /w/{workspace}/api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /w/{workspace}/api/threads`（スレッドと利用者の未読）・`POST /w/{workspace}/api/opened`（前回開いた日時）・`POST /w/{workspace}/api/edits`・`DELETE /w/{workspace}/api/edits/{id}`・`POST /w/{workspace}/api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /w/{workspace}/api/comments`・`PATCH`/`DELETE /w/{workspace}/api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /w/{workspace}/api/drafts`（下書き）・`POST /w/{workspace}/api/comments/send`（まとめて送信する）・`PATCH /w/{workspace}/api/threads/{id}`（クローズとオープンへの戻し）・`POST /w/{workspace}/api/threads/{id}/seen`（利用者の既読）・`PUT /w/{workspace}/api/config/display`（ワークスペースの既定の書き換え）・`POST /w/{workspace}/api/presets`（絞り込みのプリセットの保存）・`GET /w/{workspace}/api/transcription`（文字起こしの可否と設定）・`POST /w/{workspace}/api/transcriptions`（音声の文字起こし）・`POST /w/{workspace}/api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
 flows:
   - name: 正常系
     summary: '`/w/{workspace}/` を開くと、記録を読んでトップバーと概要を描く'
@@ -601,6 +601,30 @@ flows:
       - 詳細パネルに編集する・コメントの一覧のボタンと入力欄が無い
       - 表示の設定のパネルにワークスペースの既定にするのボタンが無い
     test: test_normal_when_exported_read_only
+  - name: 正常系（全体の検索で絞り込みの候補を選ぶ）
+    summary: 全体の検索の先頭の絞り込みの候補を選び、今の画面の絞り込みにその値を加える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL を Playwright のブラウザで開く）
+      - name: make_workspace
+        description: '資料 A-1（タグ: 画面）・A-2（タグ: 画面・廃止）・A-3（タグ無し）を持つワークスペース'
+        notes: '`/w/{workspace}/?tab=docs` で開き、`Ctrl+K` を押して「廃」と入力し、候補の「タグ: 廃止」を押す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+
+        ユーザー->>IF: Ctrl+K を押して「廃」と入力する
+        IF-->>ユーザー: 先頭に「タグ: 廃止」の候補がある検索の結果
+        ユーザー->>IF: 「タグ: 廃止」を押す
+        IF-->>ユーザー: タグ「廃止」で絞った資料の画面
+      ```
+    expected:
+      - '「廃」と入力した後、検索の結果の先頭に「タグ: 廃止」の候補が件数 1 つきである'
+      - 候補を押した後、全体の検索が閉じ、URL の search params が `tab=docs&f.tags=廃止` で（`search`・`q` が無い）、履歴が 1 つ増える
+      - 資料の画面に A-2 だけがある
+    test: test_normal_when_search_filter_candidate
 lead: 利用者がサーバーの配信の `/w/{workspace}/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの通知を受けると記録を再読み込みして再描画する。
 callers:
   - SC-489-12#
@@ -768,7 +792,7 @@ constraints:
   - item: 通信
     constraint: サーバーの配信（同じオリジンの `/w/{workspace}/api/`）と、描画のライブラリと Google Fonts の文字の配信元だけへ通信する。記録を外へ送信しない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
   - item: 描画のライブラリ
-    constraint: mermaid・marked・jsdiff は、プラグインの `preview/libraries.json`（ライブラリごとの jsDelivr のバージョンを固定した URL・`integrity`（sha384）・置かれるグローバルの名前。画面と『配る書き出し』が共有する唯一の持ち主）の URL から、`integrity` で中身を確かめて読む。mdmark は、『記録の取得』の `mdmark_ref` の jsDelivr の URL（`gh/shuhei1101/mdmark@{mdmark_ref}/dist/`。`mdmark_ref` を受ける前は `develop`）から、`integrity` を付けずに `crossorigin="anonymous"` で読む。ES モジュールのため、CSS を link 要素で読み、JavaScript を `import()` で読む。`mount` の `config` には、`features`（画面と重なる機能のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・mermaid の描画も含める。表の機能 `table` は、詳細・詳細の全画面・本文の差分の本文でオンにし、スレッドの書き込みでオフにする）と、`settings.mdmark.map` を `map` として指定する。表の既定のピン止め（`table.pin_default`）は指定せず、mdmark の既定（描いた直後にどの列も留めない）のまま描く。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える
+    constraint: 'mermaid・marked・jsdiff は、プラグインの `preview/libraries.json`（ライブラリごとの jsDelivr のバージョンを固定した URL・`integrity`（sha384）・置かれるグローバルの名前。画面と『配る書き出し』が共有する唯一の持ち主）の URL から、`integrity` で中身を確かめて読む。mdmark は、『記録の取得』の `mdmark_ref` の jsDelivr の URL（`gh/shuhei1101/mdmark@{mdmark_ref}/dist/`。`mdmark_ref` を受ける前は `develop`）から、`integrity` を付けずに `crossorigin="anonymous"` で読む。ES モジュールのため、CSS を link 要素で読み、JavaScript を `import()` で読む。`mount` の `config` には、`features`（画面と重なる機能のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・mermaid の描画も含める。表の機能 `table` は、詳細・詳細の全画面・本文の差分の本文でオンにし、スレッドの書き込みでオフにする）と、`settings.mdmark.map` を `map` として指定する。本文の差分の「原文の差分」では、`diffControls: false` を指定して mdmark の「変更表示」のボタンとリビジョンを選ぶ欄を配置させない（比べる時点は画面の差分の時点で選ぶ）。表の既定のピン止め（`table.pin_default`）は指定せず、mdmark の既定（描いた直後にどの列も留めない）のまま描く。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える'
   - item: 本文の無害化
     constraint: 本文とスレッドの書き込みの Markdown は、mdmark が HTML に描くときに無害化した結果を差し込む。図はスクリプトを動かさない安全の設定で描く。HTML の本文は、記録の `marked_bodies` を `sandbox="allow-same-origin"`（`allow-scripts` を付けない）の iframe の `srcdoc` に描き、本文のスクリプトを動かさず、本文の CSS を枠の外へ漏らさない。枠の高さは `ResizeObserver` で描いた中身に合わせる。Markdown の中の言語指定 `html` のコードブロックも、コードではなく同じ枠に描く（行のマーカーは付けない）。Markdown の中の `<!-- html -->` 〜 `<!-- /html -->` の範囲（埋め込んだ HTML）は、枠に入れず mdmark の HTML の埋め込みの機能で本文の中に描き、範囲に書いたスクリプトとイベントの属性は無害化で外す
   - item: 画面への反映の時間
@@ -781,9 +805,9 @@ constraints:
   - item: URL の状態
     constraint: 画面で見ているものに影響する状態（リクエストの表の全て）は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する。既定の値は書かない
   - item: 履歴
-    constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）と、全体の検索の結果から開いた項目の種類の画面が今の画面と違うときは履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・差分の時点の再選択・左のパネルの開閉・コメントの一覧の中のスレッドとレビュー中の書き込みの画面の行き来・スレッドの絞り込み・全体の検索の開閉と検索の言葉の入力は積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む。タグを押して絞り込みに加えるときは積む（制約「タグを押して絞り込む」）。絞り込みのドロワーでの絞り込みの変更（値の選択・解除・すべて解除・タグの組み合わせ方・プリセットの選択）と表の並べ替えの変更は、変えるたびに 1 つ積む。列の文字の条件の入力は、打ち終えた単位の最初の変更で 1 つ積み、続く変更は URL を置き換える。入力が 500ms 止まったとき・Enter を押したとき・入力欄からフォーカスが離れたときに単位を終え、次の変更でまた 1 つ積む。列の表示・ピン留め・初期設定に戻すは積まずに URL を置き換える
+    constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）と、全体の検索の結果から開いた項目の種類の画面が今の画面と違うときは履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・差分の時点の再選択・左のパネルの開閉・コメントの一覧の中のスレッドとレビュー中の書き込みの画面の行き来・スレッドの絞り込み・全体の検索の開閉と検索の言葉の入力は積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む。タグを押して絞り込みに加えるときと、全体の検索の絞り込みの候補を選んで絞り込みに加えるときは積む（制約「タグを押して絞り込む」「画面の移動と項目」）。絞り込みのドロワーでの絞り込みの変更（値の選択・解除・すべて解除・タグの組み合わせ方・プリセットの選択）と表の並べ替えの変更は、変えるたびに 1 つ積む。列の文字の条件の入力は、打ち終えた単位の最初の変更で 1 つ積み、続く変更は URL を置き換える。入力が 500ms 止まったとき・Enter を押したとき・入力欄からフォーカスが離れたときに単位を終え、次の変更でまた 1 つ積む。列の表示・ピン留め・初期設定に戻すは積まずに URL を置き換える
   - item: 画面の移動と項目
-    constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`tagmatch`・`tx`・`sort` を外す。全体の検索の結果から項目を開くときは、その項目の種類の画面（表示しない種類の項目は概要）へ移り、`id` をその項目にして、`diff` と左のパネル（`panel`・`thread`・`review`・`tstatus`・`ttag`・`ttarget`）を残し、`view`・`full`・`h`・`f.{列}`・`tagmatch`・`tx`・`sort`・`search`・`q` を外す。開いた項目の種類の画面が今の画面と同じときも、同じく `view` を外して既定の表示形式で詳細パネルを開く
+    constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`tagmatch`・`tx`・`sort` を外す。全体の検索の結果から項目を開くときは、その項目の種類の画面（表示しない種類の項目は概要）へ移り、`id` をその項目にして、`diff` と左のパネル（`panel`・`thread`・`review`・`tstatus`・`ttag`・`ttarget`）を残し、`view`・`full`・`h`・`f.{列}`・`tagmatch`・`tx`・`sort`・`search`・`q` を外す。開いた項目の種類の画面が今の画面と同じときも、同じく `view` を外して既定の表示形式で詳細パネルを開く。全体の検索の絞り込みの候補を選ぶときは、今の画面のまま、その値を絞り込みの条件（`f.{列}`。タグは `f.tags`）に加え、`search`・`q` を外してほかの search params を残す。候補は今の画面の絞り込みの値のうち、検索の言葉と NFKC と大文字小文字をそろえて前方一致するもので、概要など絞り込みを持たない画面では出さない
   - item: タグの条件とプリセット
     constraint: 項目を並べる画面の絞り込みのドロワーの先頭に、『記録の取得』の `settings.presets` を並び順で、その画面の項目のうち式に合う件数つきで並べる（プリセットが 0 件なら出さない）。件数が 0 のプリセットにはマーカーを出し、選択できるまま残す。プリセットを選択すると、タグの条件をプリセットの式で置き換え（簡易で表せる式は `f.tags`・`tagmatch`、表せない式は `tx`）、ほかの条件は残す。今のタグの条件がプリセットの式と同じとき、そのプリセットを選択済みの見た目にする。プリセットを解除する操作は持たず、タグの条件を解除して解除する。タグの条件は、簡易（選択したタグのすべて・いずれか）と詳細（式の条件と束を、knowledge の規約『フィルター・照合条件の構造』の入れ子の深さに合わせて 3 レイヤーまで組む）で指定し、`tx` があるときは詳細の表示にする。`tx` で絞っている間は、条件のチップに式を文にして出し、× でタグの条件を解除する
   - item: 保存した絞り込みの条件
