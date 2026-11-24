@@ -51,4 +51,21 @@ describe("Table", () => {
     // 検証
     expect(onPin).toHaveBeenCalledWith("title");
   });
+
+  // 開いたときに今の並びを渡す（正常系）
+  test("table_when_open_order", async () => {
+    // 準備
+    const onOpenItem = vi.fn();
+    const rows = [
+      { id: "D-1", title: "ち", status: "未決定" },
+      { id: "D-2", title: "あ", status: "決定" },
+      { id: "D-3", title: "か", status: "未決定" },
+      { id: "D-4", title: "さ", status: "未決定" },
+    ];
+    render(<Table {...props({ rows, sort: "title", filters: { status: ["未決定"] }, onOpenItem })} />);
+    // 実行
+    await userEvent.click(screen.getByRole("button", { name: "さ" }));
+    // 検証
+    expect(onOpenItem).toHaveBeenCalledWith("D-4", ["D-3", "D-4", "D-1"]);
+  });
 });

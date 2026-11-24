@@ -53,6 +53,18 @@ describe("writePrefs", () => {
     expect(localStorage.getItem(PREFS_KEY)).toBeNull();
   });
 
+  // 1 文字のショートカットの上書きを書き、読める（正常系）
+  test("write_prefs_when_single_key_shortcuts", () => {
+    // 準備
+    localStorage.clear();
+    writePrefs({ minimap: false });
+    // 実行
+    writePrefs({ singleKeyShortcuts: false });
+    // 検証
+    expect(readPrefs().singleKeyShortcuts).toBe(false);
+    expect(readPrefs().minimap).toBe(false);
+  });
+
   afterEach(() => {
     history.replaceState(null, "", "/");
   });

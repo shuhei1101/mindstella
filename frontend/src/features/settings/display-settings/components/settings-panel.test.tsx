@@ -69,4 +69,18 @@ describe("SettingsPanel", () => {
     expect(group).toHaveAccessibleDescription("自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。");
     expect(onFocusAfterAddChange).toHaveBeenCalledWith("none");
   });
+
+  // 1 文字のショートカットのチェック（正常系）
+  test("settings_panel_when_single_key_shortcuts", async () => {
+    // 準備
+    const onSingleKeyShortcutsChange = vi.fn();
+    render(<SettingsPanel {...base} singleKeyShortcuts onSingleKeyShortcutsChange={onSingleKeyShortcutsChange} />);
+    const section = screen.getByRole("group", { name: "キーボード" });
+    const checkbox = within(section).getByRole("checkbox", { name: "1 文字のショートカットを使用する" });
+    // 実行
+    await userEvent.click(checkbox);
+    // 検証
+    expect(checkbox).toHaveAccessibleDescription("オフにすると、詳細の j・k で一覧の前後の項目へ移る操作を受け付けません。");
+    expect(onSingleKeyShortcutsChange).toHaveBeenCalledWith(false);
+  });
 });

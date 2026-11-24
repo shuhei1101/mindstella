@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -18,6 +18,17 @@ vi.mock("@/shared/stores/prefs-store", async (importOriginal) => ({
   useFocusAfterAddTarget: () => focusTarget.current,
 }));
 
+// ThreadPost に渡った `fold` を書き込みの ID ごとに残す（本物の描画はそのまま）
+const folds = vi.hoisted(() => new Map<string, boolean | undefined>());
+vi.mock("@/features/comments/shared/thread-post", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/features/comments/shared/thread-post")>();
+  const ThreadPost = (props: Parameters<typeof original.ThreadPost>[0]) => {
+    if (props.post !== undefined && props.post !== null) folds.set(props.post.id, (props as { fold?: boolean }).fold);
+    return original.ThreadPost(props);
+  };
+  return { ...original, ThreadPost };
+});
+
 const unseen = {
   threads: [
     {
@@ -35,6 +46,8 @@ const unseen = {
 };
 
 afterEach(() => {
+  vi.restoreAllMocks();
+  folds.clear();
   focusTarget.current = "input";
   resetVoiceStore();
   removeFakeWakeLock();
@@ -260,5 +273,60 @@ describe("ThreadView の修正の音声入力", () => {
     await waitFor(() => expect(within(edit).getByRole<HTMLTextAreaElement>("textbox").value).toContain("案 A にする"));
     expect(sent).toEqual([]);
     removeFakeMedia();
+  });
+
+  // 開いたら最新の書き込みへ移る（正常系）
+  test("thread_view_when_open_latest", async () => {
+    // 準備
+    const three = {
+      threads: [
+        {
+          ...unseen.threads[0],
+          posts: [
+            { id: "TH-1-1", author: "ai", body: "1 件目", created: "2026-11-01T00:00:00+00:00", seen: true },
+            { id: "TH-1-2", author: "user", body: "2 件目", created: "2026-11-02T00:00:00+00:00", seen: true },
+            { id: "TH-1-3", author: "ai", body: "3 件目", created: "2026-11-03T00:00:00+00:00", seen: true },
+          ],
+        },
+      ],
+    };
+    server.use(http.get("/api/threads", () => HttpResponse.json(three)));
+    vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function (this: HTMLElement) {
+      return this.closest("article")?.textContent?.includes("3 件目") === true ? 400 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(1000);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(300);
+    // 実行
+    renderRoute("/?panel=comments&thread=TH-1");
+    // 検証
+    const latest = (await screen.findByText("3 件目")).closest("article");
+    await waitFor(() => expect(latest).toHaveFocus());
+    const list = latest?.closest("ol")?.parentElement;
+    expect(list?.scrollTop).toBe(400);
+    expect(["TH-1-1", "TH-1-2", "TH-1-3"].map((id) => folds.get(id) === true)).toEqual([true, true, false]);
+  });
+
+  // スクロールしたらタイトルを 1 行にする（正常系）
+  test("thread_view_when_title_collapsed", async () => {
+    // 準備
+    server.use(http.get("/api/threads", () => HttpResponse.json(unseen)), http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: ["TH-1-1"] })));
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
+    renderRoute("/?panel=comments&thread=TH-1");
+    const post = await screen.findByText("どちらにしますか");
+    const scroller = post.closest("ol")?.parentElement as HTMLElement;
+    const title = () => document.querySelector("[data-part='thread-title']");
+    const scrollTo = (top: number) => {
+      scroller.scrollTop = top;
+      fireEvent.scroll(scroller);
+    };
+    // 実行・検証
+    expect(title()).not.toHaveAttribute("data-collapsed");
+    scrollTo(120);
+    await waitFor(() => expect(title()).toHaveAttribute("data-collapsed"));
+    scrollTo(0);
+    await waitFor(() => expect(title()).not.toHaveAttribute("data-collapsed"));
   });
 });

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { Board } from "@/shared/components/board";
@@ -61,5 +62,48 @@ describe("Board", () => {
     fireEvent.pointerUp(card, { pointerType: "mouse", pointerId: 1, clientX: 180 });
     // 検証
     expect(region.scrollLeft).toBe(200);
+  });
+
+  // 列の中を並べ替える（正常系）
+  test("board_when_sorted", () => {
+    // 準備
+    const items: Item[] = [
+      { id: "T-1", title: "古い", created: "2026-11-01T00:00:00+00:00", updated: "2026-11-02T00:00:00+00:00" },
+      { id: "T-2", title: "新しい", created: "2026-11-01T00:00:00+00:00", updated: "2026-11-20T00:00:00+00:00" },
+      { id: "T-3", title: "間", created: "2026-11-01T00:00:00+00:00", updated: "2026-11-10T00:00:00+00:00" },
+    ];
+    // 実行
+    render(<Board columns={[{ status: "未着手", items, excluded: false }]} sort="-updated" card={(item) => <button key={item.id} type="button">{item.title}</button>} emptyText="タスクはありません。" />);
+    // 検証
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["新しい", "間", "古い"]);
+  });
+
+  // カードを押すとその列の並びが渡る（正常系）
+  test("board_when_open_order", async () => {
+    // 準備
+    const onOpen = vi.fn();
+    const items: Item[] = [
+      { id: "T-1", title: "一", created: "2026-11-01T00:00:00+00:00", updated: "2026-11-01T00:00:00+00:00" },
+      { id: "T-2", title: "二", created: "2026-11-01T00:00:00+00:00", updated: "2026-11-01T00:00:00+00:00" },
+      { id: "T-3", title: "三", created: "2026-11-01T00:00:00+00:00", updated: "2026-11-01T00:00:00+00:00" },
+    ];
+    render(
+      <Board
+        columns={[
+          { status: "未着手", items: [items[0] as Item], excluded: false },
+          { status: "進行中", items: [items[1] as Item, items[2] as Item], excluded: false },
+        ]}
+        card={(item, order) => (
+          <button key={item.id} type="button" onClick={() => onOpen(item.id, order)}>
+            {item.title}
+          </button>
+        )}
+        emptyText="タスクはありません。"
+      />,
+    );
+    // 実行
+    await userEvent.click(screen.getByRole("button", { name: "三" }));
+    // 検証
+    expect(onOpen).toHaveBeenCalledWith("T-3", ["T-2", "T-3"]);
   });
 });
