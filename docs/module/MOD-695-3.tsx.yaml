@@ -43,7 +43,7 @@ functions:
     title: URL の sort にする
     kind: 関数
     usecase: 共通
-    summary: 並びを `sort` の値にする。画面の既定と同じ並びは `undefined`（書かない）、連番は `id`、降順は頭に `-` を付ける。逆向きの `cardSortFromParam` も同じファイルに置き、`-id` と知らない値は連番として扱う
+    summary: 並びを `sort` の値にする。画面の既定と同じ並びは `undefined`（書かない）、連番は `id`、降順は頭に `-` を付ける。逆向きの `cardSortFromParam` も同じファイルに置き、`id`・`-id` は連番、`created`・`updated`（と `-` 付き）はその並び、無い値と受け付けない値（表の列の `title` など）は画面の既定にする。受け付けるかは `isCardSortParam` で判定し、一覧の画面はカード・ボードの表示で受け付けない `sort` を置き換えで URL から外す（インターフェース定義『プレビューを開く』の `sort`）
     args:
       - name: value
         type: CardSortValue
@@ -63,6 +63,12 @@ functions:
         condition: '`parametrize`: 資料で `{updated, desc}` / 資料で `{default, asc}` / ほかの種類で `{created, asc}`'
         mock: なし
         expected: '`undefined` / `id` / `created`'
+      - name: test_card_sort_from_param
+        case: 正常
+        summary: 受け付けない値は画面の既定
+        condition: '`parametrize`: 資料で `title` / 無し / `-id` / `-created`'
+        mock: なし
+        expected: '`{updated, desc}` / `{updated, desc}` / `{default, asc}` / `{created, desc}`'
     container: frontend/src/shared/components/card-sort.tsx
 components:
   - name: CardSort
