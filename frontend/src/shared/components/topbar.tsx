@@ -129,6 +129,8 @@ type Fit = {
   /** 件数の札が幅の広い中身（絞り込みのバッジ 2 桁・`99+`）を持つ */
   wide: boolean;
   pending: boolean;
+  /** 接続の状態・更新があります・音声入力中・差分の表示のどれかを出していて、狭い幅で詰める */
+  crowded: boolean;
 };
 
 /** 表示の設定・絞り込み・保存待ち・コメントのボタンに共通のクラス */
@@ -141,8 +143,13 @@ const panelButtonClass = (fit: Fit, open: boolean): string =>
     "max-sm:gap-1 max-sm:px-1.5",
     fit.wide && (fit.diff || fit.offline) && "max-sm:gap-0.5 max-sm:px-0.5",
     "max-xs:gap-0.5 max-xs:px-0.5",
+    fit.crowded && "max-sm:w-7 max-sm:justify-center max-sm:gap-0 max-sm:px-0 max-xs:w-6",
     open && "border-topbar-fg-2 bg-topbar-hover",
   );
+
+/** 詰める幅（481px 未満）で、件数の札をアイコンの右上に重ねる */
+const badgeFitClass = (fit: Fit): string =>
+  cn(fit.crowded && "max-sm:absolute max-sm:-top-1.5 max-sm:-right-1.5 max-sm:h-4 max-sm:min-w-4 max-sm:px-0.5 max-sm:ring-2 max-sm:ring-topbar-bg");
 
 /** 印だけのボタン（検索・変更履歴・ライト / ダーク）の狭い幅の詰め方 */
 const iconButtonFitClass = (fit: Fit): string =>
@@ -150,6 +157,7 @@ const iconButtonFitClass = (fit: Fit): string =>
     fit.wide && (fit.diff || fit.offline) && "max-sm:w-7 max-sm:flex-none",
     "max-xs:w-7 max-xs:flex-none",
     fit.offline && fit.diff && "max-xs:w-6.5",
+    fit.crowded && "max-sm:w-7 max-sm:flex-none max-xs:w-6",
   );
 
 /** 画面を移るリンク。押したときは使う側が移る */
@@ -191,11 +199,11 @@ const TabLink = ({
 };
 
 /** サーバーにつながらないときの表示。どの幅でも印だけを出し、状態と読んだ日時は読み上げとツールチップに持つ */
-const ConnectionNotice = ({ readAt }: { readAt: string | null }) => {
+const ConnectionNotice = ({ fit, readAt }: { fit: Fit; readAt: string | null }) => {
   const readAtText = readAt === null ? null : formatJst(readAt);
   const text = readAtText === null ? "サーバーにつながりません" : `サーバーにつながりません（${readAtText} に読んだ記録）`;
   return (
-    <span role="status" className="group/tip relative inline-grid size-8 flex-none place-items-center text-topbar-fg">
+    <span role="status" className={cn("group/tip relative inline-grid size-8 flex-none place-items-center text-topbar-fg", iconButtonFitClass(fit))}>
       <Icon name="offline" className="text-topbar-danger max-2xs:size-4.5" />
       <span className="sr-only">{text}</span>
       <Tip text={text} />
@@ -235,6 +243,7 @@ const headerClass = (fit: Fit): string =>
     fit.diff ? "max-sm:gap-2 max-sm:px-2.5" : "max-sm:gap-0.75 max-sm:px-2.5",
     fit.wide && (fit.diff || fit.offline) && "max-sm:gap-px max-sm:px-2",
     "max-xs:gap-px max-xs:px-2",
+    fit.crowded && "max-sm:gap-px max-sm:px-1.5",
   );
 
 /** 差分の札を出している間（つながらない間は 1440px 以下、それ以外は 1100px 以下）に、札へ幅を回すため隠す */
@@ -248,6 +257,7 @@ const Brand = ({ fit }: { fit: Fit }) => (
       fit.offline && fit.diff && "max-sm:hidden",
       fit.wide && fit.diff && "max-sm:hidden",
       fit.diff && "max-xs:hidden",
+      fit.crowded && "max-sm:hidden",
     )}
   >
     <svg
@@ -366,7 +376,7 @@ const FilterButton = ({ fit, count, open, onClick }: { fit: Fit; count: number; 
       <span
         aria-hidden="true"
         data-wide={count >= FILTER_BADGE_WIDE_FROM ? "" : undefined}
-        className="inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-mark px-1.25 mono text-count leading-none font-semibold text-on-mark"
+        className={cn("inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-mark px-1.25 mono text-count leading-none font-semibold text-on-mark", badgeFitClass(fit))}
       >
         {count}
       </span>
@@ -404,6 +414,7 @@ const PendingButton = ({
       className={cn(
         "inline-grid h-4.5 min-w-4.5 place-items-center rounded-full px-1.25 mono text-count font-bold text-topbar-bg",
         blocked ? "bg-topbar-danger" : "bg-topbar-unread",
+        badgeFitClass(fit),
       )}
     >
       {capped(count)}
@@ -450,6 +461,7 @@ const CommentsButton = ({
       className={cn(
         "inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-topbar-fg px-1.25 mono text-count font-semibold text-topbar-bg",
         count === 0 && "bg-transparent text-topbar-fg-2 ring-1 ring-topbar-line ring-inset",
+        badgeFitClass(fit),
       )}
     >
       {capped(count)}
@@ -540,6 +552,7 @@ const fitOf = (props: TopbarProps): Fit => {
     diff: diffPoint !== null,
     wide: (filter && filterCount >= FILTER_BADGE_WIDE_FROM) || (comments && commentCount > COUNT_CAP) || (showPending && pendingCount > COUNT_CAP),
     pending: showPending,
+    crowded: connection === "offline" || diffPoint !== null || (props.voice ?? null) !== null || props.stale === true,
   };
 };
 
@@ -580,7 +593,7 @@ export const Topbar = (props: TopbarProps) => {
           {title}
         </span>
         <span className={cn("flex-1", comments && "basis-0", diffSqueezeClass(fit))} />
-        {fit.offline ? <ConnectionNotice readAt={readAt} /> : null}
+        {fit.offline ? <ConnectionNotice fit={fit} readAt={readAt} /> : null}
         {onRefresh === undefined ? null : <RefreshButton fit={fit} stale={stale} refreshing={refreshing} onClick={onRefresh} />}
         <SearchButton fit={fit} onClick={props.onOpenSearch} />
         {onOpenHistory === undefined ? null : <HistoryButton fit={fit} active={diffPoint !== null} onClick={onOpenHistory} />}
