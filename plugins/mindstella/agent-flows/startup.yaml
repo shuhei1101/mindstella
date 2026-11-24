@@ -38,6 +38,7 @@ steps:
       - {server: project-index, tool: write_docs}
       - {server: mindstella, tool: commit}
       - {server: mindstella, tool: new_thread}
+      - {server: mindstella, tool: set_thread_status}
     refs:
       - mindstella/on-comment
   - name: 取り込み待ちのコメントを取り込む
