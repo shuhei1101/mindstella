@@ -81,7 +81,7 @@ export const CardLinkRowMarkers: Story = {
 export const SearchResultMarkers: Story = {
   args: { text: "D-1 の比較（D-99 は除く）", mode: "marker", descriptionId: "result-a1-ids" },
   render: (args) => (
-    <div role="listbox" aria-label="検索の結果" className="w-96">
+    <div role="listbox" aria-label="検索の結果" className="w-full max-w-96">
       <div role="option" aria-selected="true" aria-describedby="result-a1-ids" tabIndex={-1} className="flex items-center gap-2 rounded-control bg-row-selected px-2 py-1.5 text-small">
         <span className="font-mono text-xs text-muted-foreground">A-1</span>
         <span className="min-w-0 flex-1 truncate">
