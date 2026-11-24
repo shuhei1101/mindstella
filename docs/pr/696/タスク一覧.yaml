@@ -1,0 +1,104 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 対象のエージェントフローとシナリオは設計書と実装が揃っている
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めの依頼ではない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 既存のエージェントフローの工程の文言の変更で、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: 複合ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T10:50:36.956081+00:00'
+    note: SC-489-52 のスレッドで聞く 2 つのシナリオの削除とエージェントフローとの対応の書き換え（be00c666）。単一ユースケース設計のレビューで合格
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T10:19:39.553954+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: データ設計
+    status: skipped
+    reason: 資料・タスク・検討事項の状態の値はスキーマに既にあり、変えない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: インターフェース定義設計
+    status: skipped
+    reason: ツール・注入（再開の状況）・エージェントフローのファイルの構造を変えない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: エージェント・MCP サーバー設計
+    status: skipped
+    reason: エージェントと MCP サーバーを追加・変更しない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: エージェントフロー・LLM 呼び出し設計
+    status: skipped
+    reason: このプロジェクトはエージェントフローの設計書の種類を持たず、工程の中身は単一ユースケースのシナリオで設計し、エージェントフローのファイルが実装になる
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: 精度評価設計
+    status: skipped
+    reason: LLM の呼び出しを追加しない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 画面の部品を変えない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: モジュール構成設計
+    status: skipped
+    reason: コードのモジュールを変えない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: ドキュメント修正
+    status: done
+    note: docs/guide/ワークスペースの書式.mark.md を修正。docs/guide/エージェントフロー.md は工程名が実装で決定するため実装で修正する
+    updated_by: planner
+    updated_at: '2026-11-24T10:35:18.365078+00:00'
+  - process: 単体テスト作成
+    status: skipped
+    reason: コードを変えない
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T10:38:36.284016+00:00'
+  - process: 結合テスト作成
+    status: skipped
+    reason: 追加する工程の calls は既存の結合テスト『エージェントフローの参照』が今のツールを指すことを確認する。実装で実行のみ
+    updated_by: planner
+    updated_at: '2026-11-24T10:07:01.522795+00:00'

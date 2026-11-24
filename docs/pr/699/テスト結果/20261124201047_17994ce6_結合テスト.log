@@ -1,0 +1,4 @@
+$ python3 -m pytest tests/integration/plugin/test_agent_flows.py -q --basetemp=/tmp/pr699/pt -p no:cacheprovider
+..                                                                       [100%]
+2 passed in 4.86s
+exit=0
