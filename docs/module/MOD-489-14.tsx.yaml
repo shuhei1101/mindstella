@@ -70,6 +70,12 @@ components:
         condition: "`requestPost('TH-1-2')` の後に 3 件の書き込みを持つ TH-1 を開き、2 件目へフォーカスする"
         mock: MSW
         expected: 2 コマの後も 2 件目にフォーカスがあり、並びの `scrollTop` が 0
+      - name: test_thread_view_when_reveal_post_clears_request
+        case: 正常
+        summary: 開いたままのスレッドで書き込みへ移り終えたら記録を削除する
+        condition: TH-1 を開いたまま `requestPost('TH-1-1')` と `revealPost('TH-1-1')` を呼ぶ
+        mock: MSW・`scrollIntoView` の差し替え
+        expected: "`takeRequestedPost('TH-1')` が `null`"
     container: frontend/src/features/comments/thread/thread-view.tsx
 notes:
   単体テスト: 同じフォルダの `thread-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）

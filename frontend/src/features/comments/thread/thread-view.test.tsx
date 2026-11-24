@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { requestPost } from "@/shared/core/thread-ids";
+import { requestPost, revealPost, takeRequestedPost } from "@/shared/core/thread-ids";
 import { resetVoiceStore } from "@/shared/stores/voice-store";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
@@ -356,5 +356,20 @@ describe("ThreadView の修正の音声入力", () => {
     await new Promise((resolve) => { requestAnimationFrame(() => { requestAnimationFrame(resolve); }); });
     expect(second).toHaveFocus();
     expect(second?.closest("ol")?.scrollTop).toBe(0);
+  });
+
+  // 開いたままのスレッドで書き込みへ移り終えたら控えを消し、次に開き直したときは最新の書き込みへ移る（正常系）
+  test("thread_view_when_reveal_post_clears_request", async () => {
+    // 準備
+    server.use(http.get("/api/threads", () => HttpResponse.json(unseen)), http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: ["TH-1-1"] })));
+    renderRoute("/?panel=comments&thread=TH-1");
+    await screen.findByText("どちらにしますか");
+    // jsdom は scrollIntoView を持たないため、呼び出しだけを受ける
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    // 実行（開いたままのスレッドの書き込みの ID のリンク）
+    requestPost("TH-1-1");
+    revealPost("TH-1-1");
+    // 検証
+    expect(takeRequestedPost("TH-1")).toBeNull();
   });
 });
