@@ -1,0 +1,7 @@
+confirmations:
+  - topic: '#362 プリセットとして保存する範囲'
+    decision: 今の絞り込みのうちタグの条件だけを保存し、状態・種類・列の文字の条件は保存しない。保存するときにタグの条件だけを保存する旨を出す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: e7cd0f9ac527c5650c051175500af4062b27d40f
+    thread: https://github.com/shuhei1101/mindstella/pull/685#discussion_r4670327644
