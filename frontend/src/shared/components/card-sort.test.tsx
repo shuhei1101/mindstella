@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
-import { CardSort, cardSortToParam, INITIAL_CARD_SORT, nextCardSort, type CardSortKey, type CardSortValue } from "@/shared/components/card-sort";
+import { CardSort, cardSortFromParam, cardSortToParam, INITIAL_CARD_SORT, nextCardSort, type CardSortKey, type CardSortValue } from "@/shared/components/card-sort";
 
 describe("nextCardSort", () => {
   // 向きを決める（正常系）
@@ -25,6 +25,19 @@ describe("cardSortToParam", () => {
   ])("card_sort_to_param", ({ value, initial, expected }) => {
     // 実行・検証
     expect(cardSortToParam(value, initial)).toBe(expected);
+  });
+});
+
+describe("cardSortFromParam", () => {
+  // 受け付けない値は画面の既定、-id は連番（正常系）
+  test.each<{ sort: string | undefined; expected: CardSortValue }>([
+    { sort: "title", expected: INITIAL_CARD_SORT.docs },
+    { sort: undefined, expected: INITIAL_CARD_SORT.docs },
+    { sort: "-id", expected: { key: "default", dir: "asc" } },
+    { sort: "-created", expected: { key: "created", dir: "desc" } },
+  ])("card_sort_from_param", ({ sort, expected }) => {
+    // 実行・検証
+    expect(cardSortFromParam(sort, INITIAL_CARD_SORT.docs)).toEqual(expected);
   });
 });
 

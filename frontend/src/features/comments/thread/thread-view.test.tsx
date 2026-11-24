@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { requestPost } from "@/shared/core/thread-ids";
 import { resetVoiceStore } from "@/shared/stores/voice-store";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
@@ -328,5 +329,32 @@ describe("ThreadView の修正の音声入力", () => {
     await waitFor(() => expect(title()).toHaveAttribute("data-collapsed"));
     scrollTo(0);
     await waitFor(() => expect(title()).not.toHaveAttribute("data-collapsed"));
+  });
+
+  // 書き込みの ID のリンクで開いたときは最新の書き込みへ移らない（正常系）
+  test("thread_view_when_open_post", async () => {
+    // 準備
+    const three = {
+      threads: [
+        {
+          ...unseen.threads[0],
+          posts: [
+            { id: "TH-1-1", author: "ai", body: "1 件目", created: "2026-11-01T00:00:00+00:00", seen: true },
+            { id: "TH-1-2", author: "user", body: "2 件目", created: "2026-11-02T00:00:00+00:00", seen: true },
+            { id: "TH-1-3", author: "ai", body: "3 件目", created: "2026-11-03T00:00:00+00:00", seen: true },
+          ],
+        },
+      ],
+    };
+    server.use(http.get("/api/threads", () => HttpResponse.json(three)));
+    requestPost("TH-1-2");
+    // 実行
+    renderRoute("/?panel=comments&thread=TH-1");
+    const second = (await screen.findByText("2 件目")).closest("article");
+    second?.focus();
+    // 検証
+    await new Promise((resolve) => { requestAnimationFrame(() => { requestAnimationFrame(resolve); }); });
+    expect(second).toHaveFocus();
+    expect(second?.closest("ol")?.scrollTop).toBe(0);
   });
 });
