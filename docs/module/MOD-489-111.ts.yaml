@@ -12,3 +12,29 @@ functions:
       type: unknown
       description: 処理の結果
     container: frontend/src/shared/core/format.ts
+  - name: formatItemDateTime
+    title: 項目の日時の表示
+    kind: 関数
+    usecase: 共通
+    summary: 項目の `created`・`updated` を JST で、今年の日時は `MM/DD HH:mm`、今年でない日時は `YYYY/MM/DD HH:mm` にする
+    args:
+      - name: iso
+        type: string
+        required: true
+        description: タイムゾーン付き ISO 8601
+      - name: now
+        type: Date
+        required: false
+        default: new Date()
+        description: 今年を決める日時（JST の年で比べる）
+    returns:
+      type: string
+      description: 表示する日時
+    unit_tests:
+      - name: test_format_item_date_time
+        case: 正常
+        summary: 今年は年を出さない
+        condition: '`parametrize`: `2026-11-20T09:40:00+00:00` / `2025-12-28T00:00:00+00:00` / `2025-12-31T16:00:00+00:00`（JST で 2026 年）、`now` は 2026-11-24'
+        mock: なし
+        expected: '`11/20 18:40` / `2025/12/28 09:00` / `01/01 01:00`'
+    container: frontend/src/shared/core/format.ts

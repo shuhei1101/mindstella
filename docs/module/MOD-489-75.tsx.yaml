@@ -8,3 +8,5 @@ components:
     usecase: 項目を表で絞り込む
     summary: 一覧の表の共通の列
     container: frontend/src/shared/components/list-columns.tsx
+notes:
+  作成日時・更新日時の列: 共通の列の末尾に `created`（作成日時）・`updated`（更新日時）を加える（#186）。`cell` は `formatItemDateTime`（モジュール構成『format』）の文字を `time`（`dateTime` に元の値）で折り返さずに描き、並べ替えと絞り込みは元の ISO 8601 の値で行う。単体テストは同じフォルダの `list-columns.test.tsx` に `test_common_columns_when_datetime`（日時の列が末尾にあり、セルが `time` で今年は `MM/DD HH:mm`）を置く

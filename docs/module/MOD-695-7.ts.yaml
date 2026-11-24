@@ -1,0 +1,19 @@
+title: プレビュー / shortcuts
+lead: ショートカットの定義（ID・キー・説明・スコープ）を 1 か所に持つ。
+constants:
+  - name: SHORTCUTS
+    title: ショートカットの定義
+    usecase: 共通
+    summary: ID → `{key, description, scope, singleKey}`。`useShortcut` が ID から引き、部品にキーを書かない
+    entries:
+      - key: search.open
+        value: "{key: 'Mod+K', description: '全体の検索を開く', scope: 'アプリ全体', singleKey: false}"
+        description: 全体の検索
+      - key: item.prev
+        value: "{key: 'K', description: '一覧の前の項目', scope: '詳細', singleKey: true}"
+        description: 一覧の並びの前の項目
+      - key: item.next
+        value: "{key: 'J', description: '一覧の次の項目', scope: '詳細', singleKey: true}"
+        description: 一覧の並びの次の項目
+    container: frontend/src/shared/core/shortcuts.ts
+id: MOD-695-7

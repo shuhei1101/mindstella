@@ -1,0 +1,42 @@
+title: プレビュー / list-order-store
+lead: 表・ボード・カードが今描いている並びを持ち、詳細の一覧の並びの前後を求める。
+stores:
+  - name: useListOrderStore
+    title: 一覧の並び
+    usecase: 項目の詳細を読む
+    summary: 表・ボード・カードを描く画面が、描いた並び（ボードは列ごとの並び）を描くたびに `setOrders` で置き換える。画面を離れたら `clear` する。URL には持たせない（インターフェース定義『プレビューを開く』の制約「一覧の並び」）
+    state:
+      - name: orders
+        type: readonly (readonly string[])[]
+        description: 今描いている並び。表・カードは 1 つ、ボードは列の数だけ持つ。一覧を描いていないときは空
+    container: frontend/src/shared/stores/list-order-store.ts
+functions:
+  - name: siblingOf
+    title: 並びの前後
+    kind: 関数
+    usecase: 項目の詳細を読む
+    summary: 開いている項目を含む並びを `orders` から探し、位置・件数・前後の ID を返す。含む並びが無ければ `null`
+    args:
+      - name: orders
+        type: readonly (readonly string[])[]
+        required: true
+        description: 今描いている並び
+      - name: id
+        type: string
+        required: true
+        description: 開いている項目の ID
+    returns:
+      type: '{position: number; total: number; prev: string | null; next: string | null} | null'
+      description: 並びの中の位置と前後
+    unit_tests:
+      - name: test_sibling_of
+        case: 正常
+        summary: 前後を求める
+        condition: "`parametrize`: `[['D-2','D-4','D-5']]` で D-4 / D-2 / D-9、ボード `[['D-1'],['D-2','D-3']]` で D-3"
+        mock: なし
+        expected: '`{2, 3, D-2, D-5}` / `{1, 3, null, D-4}` / `null` / `{2, 2, D-2, null}`'
+    container: frontend/src/shared/stores/list-order-store.ts
+notes:
+  単体テスト: 同じフォルダの `list-order-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  使用する側: '検討事項・タスク・資料・記録の表の画面が、表・ボード・カードの描いた並びを `setOrders` し、項目を開くときは `usePreviewSearch` の `openItem(id, {fromList: true})` を呼ぶ。詳細パネルは `fromList` が真のときだけ `siblingOf` の結果を `DetailHeader` の `sibling` に渡し、前後は `openSibling` で開く'
+id: MOD-695-5

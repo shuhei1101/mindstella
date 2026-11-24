@@ -8,5 +8,13 @@ components:
     usecase: 項目の詳細を読む
     summary: 文字列の値を mdmark で描く
     container: frontend/src/features/detail/detail-panel/components/value-text.tsx
+    unit_tests:
+      - name: test_value_text_when_item_id
+        case: 正常
+        summary: 値の中の項目の ID をリンクにする
+        condition: '`D-1` と記録に無い `D-99` を含む値'
+        mock: mdmark の差し替え
+        expected: D-1 のリンクを押すと `onOpen('D-1')` が呼ばれ、D-99 は文字のまま
 notes:
   単体テスト: 同じフォルダの `value-text.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  値の欄のリンク: mdmark で描いた後に、本文と同じ `linkBody`（モジュール構成『body-links』）を描いた要素へ当て、本文のマーカー・項目の ID・スレッドの ID のリンクを付ける（#688）。索引・開く操作・スレッドの参照は本文を描く要素と同じ値を詳細パネルから受け取る。配る書き出しではスレッドの参照を `null` にする

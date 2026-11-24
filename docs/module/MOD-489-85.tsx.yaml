@@ -28,6 +28,13 @@ components:
         condition: ピン留めを押す
         mock: なし
         expected: '`onPin` が key で呼ばれる'
+      - name: test_table_when_open_order
+        case: 正常
+        summary: 開いたときに今の並びを渡す
+        condition: 状態で絞ってタイトルで並べた表の 2 行目を押す
+        mock: なし
+        expected: '`onOpenItem` が 2 行目の ID と、描いた行の ID の並びで呼ばれる'
     container: frontend/src/shared/components/table.tsx
 notes:
   単体テスト: 同じフォルダの `table.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  開いた並び: 行のタイトルを押したとき、絞り込み・並べ替えを当てた行の ID の並びを `onOpenItem(id, order)` で使用する側へ知らせる（#364）。ストーリーに部品設計の `DatetimeColumns`・`SortedByUpdatedDesc` を追加する

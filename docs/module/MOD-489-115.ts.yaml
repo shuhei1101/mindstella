@@ -12,3 +12,5 @@ functions:
       type: unknown
       description: 処理の結果
     container: frontend/src/shared/core/list-rows.ts
+notes:
+  カード・ボードの並べ替え: '`sortRows` の `sort` に `id`・`-id`・`created`・`-created`・`updated`・`-updated` を受け、カード・ボードも同じ関数で並べる（#186）。`id` は連番の数の順で、`-id` は連番として扱う。既定の並びは画面が『カードの並べ替え』の `INITIAL_CARD_SORT` から決める。単体テストは同じフォルダの `list-rows.test.ts` に `test_sort_rows_when_updated_desc`（更新日時の新しい順）・`test_sort_rows_when_id`（連番の数の順で D-10 が D-2 の後）を置く'

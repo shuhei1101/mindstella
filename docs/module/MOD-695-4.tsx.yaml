@@ -1,0 +1,30 @@
+title: プレビュー / thread-title
+lead: 部品設計『スレッドの見出しのタイトル.tsx』の props・状態を持つ。
+components:
+  - name: ThreadTitle
+    title: スレッドの見出しのタイトル
+    kind: コンポーネント
+    usecase: スレッドで話す
+    summary: '`collapsed` が真のとき `truncate` と `title` に全文、偽のとき `wrap-anywhere` で全文を描く'
+    refs:
+      - CMP-695-4#
+    props:
+      - name: title
+        type: string
+        required: true
+        description: スレッドのタイトル
+      - name: collapsed
+        type: boolean
+        required: true
+        description: 1 行に省くか
+    unit_tests:
+      - name: test_thread_title
+        case: 正常
+        summary: 1 行にしたときだけ title を持つ
+        condition: '`parametrize`: `collapsed` が真 / 偽'
+        mock: なし
+        expected: '`title` が全文で `data-collapsed` がある / `title` も `data-collapsed` も無い'
+    container: frontend/src/shared/components/thread-title.tsx
+notes:
+  単体テスト: 同じフォルダの `thread-title.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+id: MOD-695-4
