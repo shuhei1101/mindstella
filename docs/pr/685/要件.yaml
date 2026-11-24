@@ -29,18 +29,26 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 絞り込みのドロワーで今の絞り込みをプリセットとして保存する操作、全体の検索から絞り込みをオンにする候補、詳細のヘッダーから本文の目次を開く操作を追加し、詳細の本文と補足の欄の見分けと「原文の差分」のボタンと欄を出さない表示に合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T07:44:39.705545+00:00'
   - page: docs/nonfunctional/NFR-489-1.yaml
     new: false
     change: NFR-16『画面への反映の時間』の tests の condition・measurement が今は無い MCP のツール `add` で項目を追加すると書いているため、今の項目を追加するツールに合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T07:44:39.705545+00:00'
   - page: docs/library/LIB-489-13.yaml
     new: false
     change: 差分の取り出し元を指定したときに「変更表示」のボタンとリビジョンを選ぶ欄を出さない mount の opts の指定（mdmark#784）を、使う部分として追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T07:44:39.705545+00:00'
   - page: docs/guide/コマンド.mark.md
     change: 画面からプリセットを保存する `POST /api/presets` を、配信のエンドポイントの一覧と節に追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T07:44:39.705545+00:00'
 scope_out:
   - item: プリセットに保存したタグが 0 件に当たるときの判定・check の警告・記録の取得で配る件数と、一覧のマーカーの作り直し（#362 の本文の「やること」の 2 つ目）
     reason: '#360・#361 で入っており、保存した元を問わずプリセットを扱う。#362 では画面から保存したプリセットでマーカーが出ることをテストで確かめるだけにする（#362 の書き直しの判断）'
