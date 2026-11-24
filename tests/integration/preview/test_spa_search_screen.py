@@ -74,7 +74,7 @@ def test_query(page: Page, spa_preview: str) -> None:
     assert _search(page) == "?tab=tasks&search=1&q=画面"
     assert page.evaluate("history.length") == before
     group = _dialog(page).get_by_role("group", name="タイトルに一致")
-    expect(group.get_by_role("heading", level=2)).to_have_text("タイトルに一致")
+    expect(group).to_be_visible()
     expect(group.get_by_role("option")).to_have_count(2)
     expect(group.get_by_role("option").nth(0)).to_contain_text("D-2")
     expect(group.get_by_role("option").nth(1)).to_contain_text("T-1")

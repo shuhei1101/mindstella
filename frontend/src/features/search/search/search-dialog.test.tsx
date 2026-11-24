@@ -32,7 +32,7 @@ describe("SearchDialog", () => {
     // 実行
     render(<SearchDialog {...props({ query: "画面" })} />);
     // 検証
-    const section = (name: string) => screen.getByRole("heading", { level: 2, name }).parentElement as HTMLElement;
+    const section = (name: string) => screen.getByRole("group", { name });
     expect(within(section("完全に一致")).getByText("D-1")).toBeInTheDocument();
     expect(within(section("タイトルに一致")).getByText("D-2")).toBeInTheDocument();
     expect(within(section("ほかの所に一致")).getByText("T-1")).toBeInTheDocument();
