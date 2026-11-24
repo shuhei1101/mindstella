@@ -6,11 +6,15 @@ steps:
   - name: 保留のタスクを見直す
     body: |-
       `search_docs` で状態が `保留` のタスクを全て検索し、`reason` の着手できる条件を満たしたものを `進行中` にしてすぐに着手する。
+      状態を変えたら mindstella/record の「記録を書き込む」で書き、この回の書き換えとして「書き換えをまとめる」で `commit` し、「報告のスレッドで報告する」で着手したタスクを報告する。
     calls:
       - {server: project-index, tool: search_docs}
+      - {server: project-index, tool: write_docs}
+    refs:
+      - mindstella/record
   - name: 取り込み待ちのスレッドを取得する
     body: |-
-      `threads` を `awaiting: true` で呼ぶ。状態は渡さず、オープンもクローズも拾う。0 件なら何も記録せずに終える。
+      `threads` を `awaiting: true` で呼ぶ。状態は渡さず、オープンもクローズも拾う。0 件で、見直しで記録を変えていなければ、何も記録せずに終える。変えていれば、「書き換えをまとめる」と「報告のスレッドで報告する」へ進む。
     calls:
       - {server: mindstella, tool: threads}
   - name: コメントを参照する
