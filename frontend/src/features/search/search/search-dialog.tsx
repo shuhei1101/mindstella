@@ -12,15 +12,32 @@ const TIER_LABEL: Record<SearchTier, string> = { 1: "完全に一致", 2: "タ�
 /** 結果 1 件に添える、項目の要約 */
 const summaryOf = (item: Item | undefined): string => item?.answer ?? item?.conclusion ?? item?.meaning ?? item?.content ?? item?.lead ?? "";
 
+/** 開いている画面の絞り込みの条件の値 1 つ。検索の文字で始まる値を、結果の先頭に絞り込みの候補として出す */
+export type FilterCandidate = { key: string; label: string; value: string; count: number };
+
+/** 検索の文字と値の名前を、NFKC と大文字小文字をそろえて比べる文字列にする */
+const normalize = (text: string): string => text.normalize("NFKC").toLowerCase().trim();
+
+/** 値の名前が検索の文字で始まる候補だけを残す */
+export const matchFilterCandidates = ({ query, candidates }: { query: string; candidates: readonly FilterCandidate[] }): FilterCandidate[] => {
+  const word = normalize(query);
+  if (word === "") return [];
+  return candidates.filter((candidate) => normalize(candidate.value).startsWith(word));
+};
+
 export type SearchDialogProps = {
   index: RecordIndex;
   query: string;
   onQueryChange: (query: string) => void;
   onOpen: (id: string) => void;
   onClose: () => void;
+  /** 開いている画面の絞り込みの条件の値。絞り込みのドロワーを持たない画面では指定しない */
+  filterCandidates?: readonly FilterCandidate[];
+  /** 絞り込みの候補を押したときに、その条件の値をオンにする */
+  onApplyFilter?: (candidate: FilterCandidate) => void;
 };
 
-export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose }: SearchDialogProps) => {
+export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose, filterCandidates = [], onApplyFilter }: SearchDialogProps) => {
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   // 開く前にフォーカスがあった要素を覚え、閉じたら戻す
@@ -37,8 +54,17 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose }: S
     node?.focus();
   };
   const hits = searchItems({ query, index });
-  const selected = hits[Math.min(active, hits.length - 1)];
+  const filters = onApplyFilter === undefined ? [] : matchFilterCandidates({ query, candidates: filterCandidates });
+  const total = filters.length + hits.length;
+  const position = Math.min(active, total - 1);
+  const selectedFilter = position < filters.length ? filters[position] : undefined;
+  const selected = position >= filters.length ? hits[position - filters.length] : undefined;
   const optionId = (hit: SearchHit): string => `search-hit-${hit.id}`;
+  const filterOptionId = (candidate: FilterCandidate): string => `search-filter-${candidate.key}-${candidate.value}`;
+  const applyFilter = (candidate: FilterCandidate): void => {
+    onApplyFilter?.(candidate);
+    onClose();
+  };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
     // 開いている間の Ctrl+K（macOS は Cmd+K）は、言葉を選び直す
     if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
@@ -48,7 +74,10 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose }: S
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      setActive((position) => Math.max(0, Math.min(hits.length - 1, position + (event.key === "ArrowDown" ? 1 : -1))));
+      setActive((current) => Math.max(0, Math.min(total - 1, current + (event.key === "ArrowDown" ? 1 : -1))));
+    } else if (event.key === "Enter" && selectedFilter !== undefined) {
+      event.preventDefault();
+      applyFilter(selectedFilter);
     } else if (event.key === "Enter" && selected !== undefined) {
       event.preventDefault();
       onOpen(selected.id);
@@ -73,7 +102,7 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose }: S
             placeholder="ID・タイトル・本文で検索"
             autoComplete="off"
             aria-controls="search-results"
-            aria-activedescendant={selected === undefined ? undefined : optionId(selected)}
+            aria-activedescendant={selectedFilter !== undefined ? filterOptionId(selectedFilter) : selected === undefined ? undefined : optionId(selected)}
             className="h-8 min-w-0 flex-1 rounded-control border border-input bg-card px-2 text-small"
             value={query}
             onChange={(event) => {
@@ -88,7 +117,36 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose }: S
         </div>
         <div id="search-results" role="listbox" aria-label="検索の結果" className="min-h-0 overflow-y-auto">
           {query.trim() === "" ? <p className="p-2 text-small text-muted-foreground">ID・タイトル・本文で、すべての項目を検索します。</p> : null}
-          {query.trim() !== "" && hits.length === 0 ? <p className="p-2 text-small text-muted-foreground">該当する項目はありません。別の条件を試してください。</p> : null}
+          {filters.length === 0 ? null : (
+            <div role="group" aria-label="絞り込みをオンにする">
+              <h2 className="px-2 pt-2 text-xs font-medium text-muted-foreground">絞り込みをオンにする</h2>
+              {filters.map((candidate) => (
+                <div
+                  key={`${candidate.key}:${candidate.value}`}
+                  id={filterOptionId(candidate)}
+                  role="option"
+                  tabIndex={-1}
+                  aria-selected={candidate === selectedFilter}
+                  className={cn("flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-small", candidate === selectedFilter ? "bg-row-selected" : "hover:bg-row-hover")}
+                  onClick={() => {
+                    applyFilter(candidate);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") applyFilter(candidate);
+                  }}
+                >
+                  <Icon name="filter" className="flex-none text-mark" />
+                  <span className="min-w-0 flex-1">
+                    {candidate.label} = <span className="font-medium">{candidate.value}</span>
+                  </span>
+                  <span className="flex-none text-xs text-muted-foreground">
+                    <span className="font-mono">{candidate.count}</span> 件
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {query.trim() !== "" && total === 0 ? <p className="p-2 text-small text-muted-foreground">該当する項目はありません。別の条件を試してください。</p> : null}
           {tiers.map((group) => (
             <div key={group.tier} role="group" aria-label={TIER_LABEL[group.tier]}>
               <h2 className="px-2 pt-2 text-xs font-medium text-muted-foreground">{TIER_LABEL[group.tier]}</h2>
