@@ -199,3 +199,21 @@ def test_scrim_below_topbar(page: Page, spa_preview: str) -> None:
     _open(page, spa_preview)
     # 検証
     assert_below_topbar(page, page.locator("[data-scrim]"))
+
+
+def test_single_key_shortcuts(page: Page, spa_preview: str) -> None:
+    """区画「キーボード」の「1 文字のショートカットを使用する」は既定で付き、外すと保存領域に上書きを残し、変えている項目に「1 文字のショートカット」を出す（正常系）。"""
+    # 準備
+    _open(page, spa_preview)
+    checkbox = _panel(page).get_by_role("group", name="キーボード").get_by_role("checkbox", name="1 文字のショートカットを使用する")
+    expect(checkbox).to_be_checked()
+    # 実行
+    checkbox.uncheck()
+    # 検証
+    expect(checkbox).not_to_be_checked()
+    assert _prefs(page).get("singleKeyShortcuts") is False
+    expect(_panel(page)).to_contain_text("1 文字のショートカット")
+    # 実行（既定に戻す）
+    _panel(page).get_by_role("button", name="既定に戻す").click()
+    # 検証
+    expect(checkbox).to_be_checked()

@@ -13,10 +13,10 @@ const recordColumns = (kind: RecordKind) => (index: RecordIndex, onOpen: (id: st
   const related = (label: string): TableColumn => ({ key: "related", label, get: (row) => refsOf(row as unknown as Item, "see_also"), cell: (row) => <IdLinks ids={refsOf(row as unknown as Item, "see_also")} titleOf={(id) => titleOf(index, id)} onOpen={onOpen} /> });
   const list = (key: string, label: string): TableColumn => ({ key, label, get: (row) => rowTexts(row, key), cell: (row) => <TagList values={rowTexts(row, key)} /> });
   const columnsOf: Record<RecordKind, TableColumn[]> = {
-    research: [common.id, common.title(), common.text("question", "問い"), common.text("conclusion", "結論"), common.text("confidence", "確度", { filterable: true, order: ["高", "中", "低"] }), common.tags],
-    terms: [common.id, common.title("用語"), common.text("meaning", "意味"), list("aliases", "別名"), list("avoid", "使わない表記"), common.tags],
-    notes: [common.id, common.title(), common.text("content", "内容"), common.tags, related("関連")],
-    logs: [common.id, common.text("date", "日付"), common.title(), common.tags, related("更新した項目")],
+    research: [common.id, common.title(), common.text("question", "問い"), common.text("conclusion", "結論"), common.text("confidence", "確度", { filterable: true, order: ["高", "中", "低"] }), common.tags, common.created, common.updated],
+    terms: [common.id, common.title("用語"), common.text("meaning", "意味"), list("aliases", "別名"), list("avoid", "使わない表記"), common.tags, common.created, common.updated],
+    notes: [common.id, common.title(), common.text("content", "内容"), common.tags, related("関連"), common.created, common.updated],
+    logs: [common.id, common.text("date", "日付"), common.title(), common.tags, related("更新した項目"), common.created, common.updated],
   };
   return columnsOf[kind];
 };

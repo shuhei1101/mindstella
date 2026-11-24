@@ -18,6 +18,11 @@ components:
         type: '(slug: string) => void'
         required: false
         description: 目次で押した見出し
+      - name: sibling
+        type: SiblingNavProps | null
+        required: false
+        default: 'null'
+        description: 一覧の並びの位置と前後へ移る操作。`null` のときは部品『一覧の並びの前後』を描かず、キーも受けない
     unit_tests:
       - name: test_detail_header_when_toc
         case: 正常
@@ -25,5 +30,18 @@ components:
         condition: '`parametrize`: `toc` に 2 件 / `toc` が空'
         mock: なし
         expected: 「本文の目次」のボタンがある / 無い
+      - name: test_detail_header_when_sibling
+        case: 正常
+        summary: 一覧の並びの前後を戻る・進むの左に描く
+        condition: '`parametrize`: `sibling` が `{position: 2, total: 3}` / `null`'
+        mock: なし
+        expected: 「2 / 3」が「前の項目へ戻る」より前にある / 無い
+      - name: test_detail_header_when_key
+        case: 正常
+        summary: j・k で前後へ移る
+        condition: '`parametrize`: `j` / `k` / 入力欄にフォーカスして `j` / `Ctrl+j` / `isComposing` の `j`'
+        mock: なし
+        expected: '`onNext` / `onPrev` / どちらも呼ばれない / 呼ばれない / 呼ばれない'
 notes:
   単体テスト: 同じフォルダの `detail-header.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  一覧の並びの前後: '`sibling` を受けたとき、戻る・進むの左に `SiblingNav` を描き、`useShortcut`（モジュール構成『use-shortcut』）で `item.prev` を `onPrev`（先頭では無効）、`item.next` を `onNext`（末尾では無効）に割り当てる。戻り値の `active` が真のときだけ `SiblingNav` の `keys` に `keys`・`label` を指定する。種類と ID の `span` は `shrink-0 whitespace-nowrap`、見出しのタイトルは `min-w-0 truncate`（#690）'

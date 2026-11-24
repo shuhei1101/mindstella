@@ -3,8 +3,10 @@ import { useRef, type MouseEvent, type PointerEvent, type ReactNode, type RefCal
 
 import { CommentMark } from "@/shared/components/comment-mark";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
+import { ItemDates } from "@/shared/components/item-dates";
 import { StatusMark } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
+import { sortItems } from "@/shared/components/card-sort";
 import { addedTitle } from "@/shared/components/table";
 import { TagList } from "@/shared/components/tag-list";
 import type { PendingMarkKind, ScreenEdit } from "@/shared/core/edits";
@@ -24,7 +26,10 @@ export const boardColumns = ({ items, statuses, statusFilter = [] }: { items: re
 
 export type BoardProps = {
   columns: BoardColumn[];
-  card: (item: Item) => ReactNode;
+  /** カードを描く。`order` はそのカードの列の描いた並びの ID */
+  card: (item: Item, order: string[]) => ReactNode;
+  /** 列の中の並び（`sortRows` の `sort`）。無ければ渡した列の順 */
+  sort?: string;
   emptyText: string;
   /** 状態の列の先頭に置く追加する項目のカード */
   added?: (status: string) => ReactNode[];
@@ -91,14 +96,16 @@ const useDragScroll = () => {
   };
 };
 
-export const Board = ({ columns, card, emptyText, added, scrollRef }: BoardProps) => {
+export const Board = ({ columns, card, sort, emptyText, added, scrollRef }: BoardProps) => {
   const dragHandlers = useDragScroll();
   return (
   // 横にスクロールする領域。カードが 0 枚でもキーボードで送れるようにする
   // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
   <div ref={scrollRef} tabIndex={0} role="region" aria-label="ボード" className="flex min-h-0 flex-1 gap-3 overflow-x-auto px-3 pb-2" {...dragHandlers}>
-    {columns.map(({ status, items, excluded }) => {
+    {columns.map(({ status, items: columnItems, excluded }) => {
       const adds = added?.(status) ?? [];
+      const items = sort === undefined ? columnItems : sortItems(columnItems, sort);
+      const order = items.map((item) => item.id);
       return (
       <section key={status} aria-label={status} className="flex w-72 flex-none flex-col gap-2">
         <h2 className="flex items-center gap-1 text-h2 font-medium">
@@ -109,7 +116,7 @@ export const Board = ({ columns, card, emptyText, added, scrollRef }: BoardProps
         {excluded ? <p className="text-small text-muted-foreground">状態の条件で外しています。</p> : null}
         {!excluded && items.length === 0 && adds.length === 0 ? <p className="text-small text-muted-foreground">{emptyText}</p> : null}
         {excluded ? null : adds}
-        {excluded ? null : items.map(card)}
+        {excluded ? null : items.map((item) => card(item, order))}
       </section>
       );
     })}
@@ -168,6 +175,7 @@ export const ItemCard = ({ index, item, meta, links, selected, marks, comments, 
         ))}
         {pending === undefined ? null : <PendingMark kind={pending} />}
       </span>
+      <ItemDates created={item.created} updated={item.updated} />
       {links.map((id) => (
         <span key={id} className="text-xs text-muted-foreground">
           <span className="font-mono">{id}</span> {titleOf(index, id)}

@@ -1,0 +1,3168 @@
+$ npx vitest run --reporter=verbose frontend/src/features/comments/shared/thread-post.test.tsx frontend/src/features/comments/thread/thread-view.test.tsx frontend/src/features/detail/detail-panel/components/detail-header.test.tsx frontend/src/features/detail/detail-panel/components/value-text.test.tsx frontend/src/features/docs/docs/components/doc-cards.test.tsx frontend/src/features/docs/docs/docs-screen.test.tsx frontend/src/features/search/search/use-search-shortcut.test.tsx frontend/src/features/settings/display-settings/components/settings-panel.test.tsx frontend/src/shared/components/board.test.tsx frontend/src/shared/components/card-sort.test.tsx frontend/src/shared/components/item-dates.test.tsx frontend/src/shared/components/list-columns.test.tsx frontend/src/shared/components/sibling-nav.test.tsx frontend/src/shared/components/table.test.tsx frontend/src/shared/components/thread-title.test.tsx frontend/src/shared/core/format.test.ts frontend/src/shared/core/list-rows.test.ts frontend/src/shared/hooks/use-preview-search.test.tsx frontend/src/shared/hooks/use-shortcut.test.tsx frontend/src/shared/stores/list-order-store.test.ts frontend/src/shared/stores/prefs-store.test.ts
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694
+
+ ✓ frontend/src/features/settings/display-settings/components/settings-panel.test.tsx > SettingsPanel > settings_panel 242ms
+ ✓ frontend/src/features/settings/display-settings/components/settings-panel.test.tsx > SettingsPanel > settings_panel_when_same_as_default 26ms
+ ✓ frontend/src/features/comments/shared/thread-post.test.tsx > ThreadPost > thread_post 193ms
+ ✓ frontend/src/features/comments/shared/thread-post.test.tsx > ThreadPost > thread_post_when_pending_editing 46ms
+ ✓ frontend/src/shared/components/table.test.tsx > Table > table_when_sort 240ms
+ ✓ frontend/src/shared/components/table.test.tsx > Table > table_when_hidden_column 31ms
+ ✓ frontend/src/features/settings/display-settings/components/settings-panel.test.tsx > SettingsPanel > settings_panel_when_focus_after_add (pointerCoarse: false) 100ms
+ ✓ frontend/src/features/settings/display-settings/components/settings-panel.test.tsx > SettingsPanel > settings_panel_when_focus_after_add (pointerCoarse: true) 72ms
+ × frontend/src/features/settings/display-settings/components/settings-panel.test.tsx > SettingsPanel > settings_panel_when_single_key_shortcuts 200ms
+   → Unable to find an accessible element with the role "group" and name "キーボード"
+
+Here are the accessible roles:
+
+  group:
+
+  Name "表示する種類":
+  <fieldset
+    class="m-0 grid gap-1 border-0 p-0"
+    data-part="kinds"
+  />
+
+  Name "詳細に表示するもの":
+  <fieldset
+    class="m-0 grid gap-1 border-0 p-0"
+  />
+
+  Name "コメントの入力":
+  <fieldset
+    class="m-0 grid gap-1 border-0 p-0"
+  />
+
+  Name "レビューに追加した後のフォーカス":
+  <fieldset
+    aria-describedby="_r_4_"
+    class="m-0 grid gap-1 border-0 p-0"
+  />
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  <ul
+    class="m-0 grid list-none gap-1 p-0"
+  />
+
+  Name "":
+  <ul
+    class="m-0 grid list-none gap-1 p-0"
+  />
+
+  Name "":
+  <ul
+    class="m-0 grid list-none gap-1 p-0"
+  />
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  <li
+    data-part="all"
+  />
+
+  Name "":
+  <li
+    class="flex min-h-10 items-center gap-2 text-muted-foreground"
+    data-part="always"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  --------------------------------------------------
+  checkbox:
+
+  Name "すべて7/7":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  Name "検討事項":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="decisions"
+  />
+
+  Name "タスク":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="tasks"
+  />
+
+  Name "調査":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="research"
+  />
+
+  Name "資料":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="docs"
+  />
+
+  Name "用語集":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="terms"
+  />
+
+  Name "メモ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="notes"
+  />
+
+  Name "会話ログ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="logs"
+  />
+
+  Name "差分のミニマップ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  Name "セクションの折りたたみ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  --------------------------------------------------
+  radio:
+
+  Name "自動この端末では入力欄へ戻します":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    name="focus-after-add"
+    type="radio"
+    value="auto"
+  />
+
+  Name "入力欄へ戻す":
+  <input
+    class="size-4 accent-primary"
+    name="focus-after-add"
+    type="radio"
+    value="input"
+  />
+
+  Name "戻さない":
+  <input
+    class="size-4 accent-primary"
+    name="focus-after-add"
+    type="radio"
+    value="none"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p
+    class="m-0 text-small text-muted-foreground"
+    id="_r_4_"
+  />
+
+  Name "":
+  <p
+    class="m-0 text-small text-muted-foreground"
+  />
+
+  Name "":
+  <p
+    class="m-0 text-small text-muted-foreground"
+  />
+
+  --------------------------------------------------
+  status:
+
+  Name "":
+  <p
+    class="m-0 flex items-start gap-1 text-small"
+    data-part="message"
+    role="status"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="grid gap-4"
+      data-part="wrap"
+    >
+      <fieldset
+        class="m-0 grid gap-1 border-0 p-0"
+        data-part="kinds"
+      >
+        <legend
+          class="mb-1 font-medium"
+        >
+          表示する種類
+        </legend>
+        <ul
+          class="m-0 grid list-none gap-1 p-0"
+        >
+          <li
+            data-part="all"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+              />
+              <span
+                class="flex-1"
+              >
+                すべて
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              >
+                7/7
+              </span>
+            </label>
+          </li>
+          <li
+            class="flex min-h-10 items-center gap-2 text-muted-foreground"
+            data-part="always"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="m5 12 5 5 9-10"
+              />
+            </svg>
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 11 12 4l9 7"
+              />
+              <path
+                d="M5 10v10h14V10"
+              />
+            </svg>
+            <span
+              class="flex-1"
+            >
+              概要
+            </span>
+            <span
+              class="text-small"
+            >
+              常に表示
+            </span>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="decisions"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="8"
+                />
+                <path
+                  d="m9 12 2 2 4-4"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                検討事項
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="tasks"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <rect
+                  height="16"
+                  rx="2"
+                  width="16"
+                  x="4"
+                  y="4"
+                />
+                <path
+                  d="M8 9h8M8 13h8M8 17h5"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                タスク
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="research"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="10.5"
+                  cy="10.5"
+                  r="6"
+                />
+                <path
+                  d="m15 15 5 5"
+                />
+                <path
+                  d="M8 10.5h5"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                調査
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="docs"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M6 3h8l4 4v14H6Z"
+                />
+                <path
+                  d="M14 3v4h4"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                資料
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="terms"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M4 5h11a3 3 0 0 1 3 3v12H7a3 3 0 0 1-3-3Z"
+                />
+                <path
+                  d="M4 17a3 3 0 0 1 3-3h11"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                用語集
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="notes"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M5 4h14v12l-4 4H5Z"
+                />
+                <path
+                  d="M15 20v-4h4"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                メモ
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="logs"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M4 6h16v10H9l-5 4Z"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                会話ログ
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+        </ul>
+      </fieldset>
+      <fieldset
+        class="m-0 grid gap-1 border-0 p-0"
+      >
+        <legend
+          class="mb-1 font-medium"
+        >
+          詳細に表示するもの
+        </legend>
+        <ul
+          class="m-0 grid list-none gap-1 p-0"
+        >
+          <li>
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+              />
+              <span>
+                差分のミニマップ
+              </span>
+            </label>
+          </li>
+          <li>
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+              />
+              <span>
+                セクションの折りたたみ
+              </span>
+            </label>
+          </li>
+        </ul>
+      </fieldset>
+      <fieldset
+        class="m-0 grid gap-1 border-0 p-0"
+      >
+        <legend
+          class="mb-1 font-medium"
+        >
+          コメントの入力
+        </legend>
+        <fieldset
+          aria-describedby="_r_4_"
+          class="m-0 grid gap-1 border-0 p-0"
+        >
+          <legend
+            class="mb-1"
+          >
+            レビューに追加した後のフォーカス
+          </legend>
+          <ul
+            class="m-0 grid list-none gap-1 p-0"
+          >
+            <li>
+              <label
+                class="flex min-h-10 items-center gap-2"
+              >
+                <input
+                  checked=""
+                  class="size-4 accent-primary"
+                  name="focus-after-add"
+                  type="radio"
+                  value="auto"
+                />
+                <span
+                  class="grid"
+                >
+                  <span>
+                    自動
+                  </span>
+                  <span
+                    class="text-small text-muted-foreground"
+                  >
+                    この端末では入力欄へ戻します
+                  </span>
+                </span>
+              </label>
+            </li>
+            <li>
+              <label
+                class="flex min-h-10 items-center gap-2"
+              >
+                <input
+                  class="size-4 accent-primary"
+                  name="focus-after-add"
+                  type="radio"
+                  value="input"
+                />
+                <span
+                  class="grid"
+                >
+                  <span>
+                    入力欄へ戻す
+                  </span>
+                </span>
+              </label>
+            </li>
+            <li>
+              <label
+                class="flex min-h-10 items-center gap-2"
+              >
+                <input
+                  class="size-4 accent-primary"
+                  name="focus-after-add"
+                  type="radio"
+                  value="none"
+                />
+                <span
+                  class="grid"
+                >
+                  <span>
+                    戻さない
+                  </span>
+                </span>
+              </label>
+            </li>
+          </ul>
+          <p
+            class="m-0 text-small text-muted-foreground"
+            id="_r_4_"
+          >
+            自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。
+          </p>
+        </fieldset>
+      </fieldset>
+      <div
+        class="grid gap-2"
+      >
+        <p
+          class="m-0 text-small text-muted-foreground"
+        >
+          ワークスペースの既定のまま表示しています。
+        </p>
+      </div>
+      <div
+        class="grid gap-2 border-t border-border pt-3"
+        data-part="save"
+      >
+        <p
+          class="m-0 text-small text-muted-foreground"
+        >
+          表示する種類は、ワークスペースの既定と同じです。
+        </p>
+      </div>
+      <p
+        class="m-0 flex items-start gap-1 text-small"
+        data-part="message"
+        role="status"
+      />
+    </div>
+  </div>
+</body>
+ ✓ frontend/src/shared/components/table.test.tsx > Table > table_when_pin 46ms
+ × frontend/src/shared/components/table.test.tsx > Table > table_when_open_order 103ms
+   → expected "vi.fn()" to be called with arguments: [ 'D-4', [ 'D-3', 'D-4', 'D-1' ] ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "D-4",
+-   [
+-     "D-3",
+-     "D-4",
+-     "D-1",
+-   ],
+  ]
+
+
+Number of calls: 1
+
+ ✓ frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_open_item 158ms
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ✓ frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_set_filters 111ms
+stderr | frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_toc
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_wide_table
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ✓ frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_change_tab 119ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view 367ms
+ × frontend/src/features/detail/detail-panel/components/value-text.test.tsx > ValueText > value_text_when_item_id 1036ms
+   → D-1 のリンクがまだ無い
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div>
+        <div
+          class="md"
+        >
+          D-1 と D-99 を比べる
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_seen_failed
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_wide_table 92ms
+ ✓ frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_change_tab_with_tag_condition 110ms
+stderr | frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_toc
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ✓ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_toc 539ms
+ ✓ frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_set_tag_condition 118ms
+ ✓ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_toc 127ms
+ ✓ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_sibling (expected: true) 63ms
+ × frontend/src/features/comments/shared/thread-post.test.tsx > ThreadPost > thread_post_when_fold (fold: true) 1016ms
+   → Unable to find role="button" and name `/TH-1-1 の書き込みの続きを表示/`
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <article
+      class="grid min-w-0 grid-cols-1 gap-1 rounded-card p-2 mr-8 bg-muted max-md:mr-4"
+      data-author="ai"
+      data-post-id="TH-1-1"
+      tabindex="-1"
+    >
+      <div
+        class="flex items-center gap-2 text-small"
+      >
+        <span
+          class="font-medium"
+          data-part="author"
+        >
+          AI
+        </span>
+        <time
+          class="text-muted-foreground"
+          datetime="2026-11-01T00:00:00+00:00"
+        >
+          11/01 09:00
+        </time>
+      </div>
+      <div
+        class="min-w-0"
+        data-part="body"
+      >
+        <div
+          class="md"
+        >
+          1 行目
+
+2 行目
+
+3 行目
+
+4 行目
+
+5 行目
+
+6 行目
+
+7 行目
+
+8 行目
+        </div>
+      </div>
+    </article>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <article
+      class="grid min-w-0 grid-cols-1 gap-1 rounded-card p-2 mr-8 bg-muted max-md:mr-4"
+      data-author="ai"
+      data-post-id="TH-1-1"
+      tabindex="-1"
+    >
+      <div
+        class="flex items-center gap-2 text-small"
+      >
+        <span
+          class="font-medium"
+          data-part="author"
+        >
+          AI
+        </span>
+        <time
+          class="text-muted-foreground"
+          datetime="2026-11-01T00:00:00+00:00"
+        >
+          11/01 09:00
+        </time>
+      </div>
+      <div
+        class="min-w-0"
+        data-part="body"
+      >
+        <div
+          class="md"
+        >
+          1 行目
+
+2 行目
+
+3 行目
+
+4 行目
+
+5 行目
+
+6 行目
+
+7 行目
+
+8 行目
+        </div>
+      </div>
+    </article>
+  </div>
+</body>
+ ✓ frontend/src/features/comments/shared/thread-post.test.tsx > ThreadPost > thread_post_when_fold (fold: false) 9ms
+ ✓ frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_set_comments 110ms
+ ✓ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_sibling (expected: false) 63ms
+ × frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_key: j 66ms
+   → expected "vi.fn()" to be called 1 times, but got 0 times
+ ✓ frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_close_comments 107ms
+ × frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_key: k 60ms
+   → expected "vi.fn()" to be called 1 times, but got 0 times
+ ✓ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_key: 入力欄の j 72ms
+ ✓ frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_set_sort 166ms
+ ✓ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_key: Ctrl+j 76ms
+ ✓ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_key: isComposing の j 68ms
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_seen_failed
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ✓ frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_push_tag_condition 185ms
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_close
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_seen_failed 722ms
+ ✓ frontend/src/shared/components/card-sort.test.tsx > nextCardSort > next_card_sort 2ms
+ ✓ frontend/src/shared/components/card-sort.test.tsx > nextCardSort > next_card_sort 1ms
+ ✓ frontend/src/shared/components/card-sort.test.tsx > nextCardSort > next_card_sort 0ms
+ × frontend/src/shared/components/card-sort.test.tsx > cardSortToParam > card_sort_to_param 3ms
+   → cardSortToParam is not a function
+ × frontend/src/shared/components/card-sort.test.tsx > cardSortToParam > card_sort_to_param 0ms
+   → cardSortToParam is not a function
+ × frontend/src/shared/components/card-sort.test.tsx > cardSortToParam > card_sort_to_param 0ms
+   → cardSortToParam is not a function
+ ✓ frontend/src/shared/components/card-sort.test.tsx > CardSort > card_sort 239ms
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_close_focus
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ✓ frontend/src/shared/components/board.test.tsx > Board > board_when_drag_background 144ms
+ ✓ frontend/src/shared/components/board.test.tsx > Board > board_when_drag_starts_on_card 40ms
+ × frontend/src/shared/components/board.test.tsx > Board > board_when_sorted 27ms
+   → expected [ '古い', '新しい', '間' ] to deeply equal [ '新しい', '間', '古い' ]
+ × frontend/src/shared/components/board.test.tsx > Board > board_when_open_order 46ms
+   → expected "vi.fn()" to be called with arguments: [ 'T-3', [ 'T-2', 'T-3' ] ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "T-3",
+-   [
+-     "T-2",
+-     "T-3",
+-   ],
++   1,
+  ]
+
+
+Number of calls: 1
+
+ × frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_open_item_from_list 120ms
+   → expected undefined to be true // Object.is equality
+ × frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_back_item_skips_sort 218ms
+   → result.current.backItem is not a function
+ × frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_set_tab_replaces 166ms
+   → expected 3 to be 2 // Object.is equality
+ ✓ frontend/src/shared/components/sibling-nav.test.tsx > SiblingNav > sibling_nav_when_edge 161ms
+ ✓ frontend/src/shared/components/sibling-nav.test.tsx > SiblingNav > sibling_nav_when_edge 24ms
+ × frontend/src/shared/components/sibling-nav.test.tsx > SiblingNav > sibling_nav_when_keys 30ms
+   → expect(element).toHaveAttribute("aria-keyshortcuts", "k") // element.getAttribute("aria-keyshortcuts") === "k"
+
+Expected the element to have attribute:
+  aria-keyshortcuts="k"
+Received:
+  null
+ × frontend/src/features/docs/docs/components/doc-cards.test.tsx > DocCards > doc_cards_when_default_sort 18ms
+   → Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+ × frontend/src/features/docs/docs/components/doc-cards.test.tsx > DocCards > doc_cards_when_open_order 4ms
+   → Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+ ✓ frontend/src/shared/core/list-rows.test.ts > sortRows > sort_rows_when_updated_desc 16ms
+ × frontend/src/shared/core/list-rows.test.ts > sortRows > sort_rows_when_id 10ms
+   → expected [ 'D-1', 'D-10', 'D-2' ] to deeply equal [ 'D-1', 'D-2', 'D-10' ]
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_focus_after_add (input)
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ × frontend/src/shared/core/format.test.ts > formatItemDateTime > format_item_date_time 2ms
+   → formatItemDateTime is not a function
+ × frontend/src/shared/core/format.test.ts > formatItemDateTime > format_item_date_time 1ms
+   → formatItemDateTime is not a function
+ × frontend/src/shared/core/format.test.ts > formatItemDateTime > format_item_date_time 0ms
+   → formatItemDateTime is not a function
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_focus_after_add (submit)
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ × frontend/src/shared/components/list-columns.test.tsx > commonColumns > common_columns_when_datetime 10ms
+   → Cannot read properties of undefined (reading 'cell')
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView の修正の音声入力 > thread_view_when_open_latest
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ✓ frontend/src/features/search/search/use-search-shortcut.test.tsx > useSearchShortcut > use_search_shortcut 13ms
+ ✓ frontend/src/features/search/search/use-search-shortcut.test.tsx > useSearchShortcut > use_search_shortcut_when_open 2ms
+ ✓ frontend/src/features/search/search/use-search-shortcut.test.tsx > useSearchShortcut > use_search_shortcut_when_input_focused 99ms
+ ✓ frontend/src/shared/components/item-dates.test.tsx > ItemDates > item_dates 33ms
+ ✓ frontend/src/shared/components/thread-title.test.tsx > ThreadTitle > thread_title 28ms
+ ✓ frontend/src/shared/components/thread-title.test.tsx > ThreadTitle > thread_title 3ms
+ ✓ frontend/src/shared/stores/prefs-store.test.ts > readPrefs > read_prefs_when_invalid 2ms
+ ✓ frontend/src/shared/stores/prefs-store.test.ts > readPrefs > read_prefs_when_legacy_written 1ms
+ ✓ frontend/src/shared/stores/prefs-store.test.ts > writePrefs > write_prefs 4ms
+ ✓ frontend/src/shared/stores/prefs-store.test.ts > writePrefs > write_prefs_when_workspace_path 1ms
+ ✓ frontend/src/shared/stores/prefs-store.test.ts > writePrefs > write_prefs_when_single_key_shortcuts 0ms
+ ✓ frontend/src/shared/stores/prefs-store.test.ts > readBodyScrolls > read_body_scrolls 1ms
+ ✓ frontend/src/shared/stores/prefs-store.test.ts > readBodyScrolls > read_body_scrolls_when_broken 0ms
+ ✓ frontend/src/shared/stores/prefs-store.test.ts > useFocusAfterAddTarget > use_focus_after_add_target (auto_fine) 9ms
+ ✓ frontend/src/shared/stores/prefs-store.test.ts > useFocusAfterAddTarget > use_focus_after_add_target (auto_coarse) 1ms
+ ✓ frontend/src/shared/stores/prefs-store.test.ts > useFocusAfterAddTarget > use_focus_after_add_target (input_coarse) 2ms
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView の修正の音声入力 > thread_view_when_title_collapsed
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_close 257ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_close_focus 275ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_voice 392ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_voice_reviewed 244ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_focus_after_add (input) 307ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_focus_after_add (submit) 184ms
+ ✓ frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView の修正の音声入力 > thread_view_when_edit_voice 273ms
+ × frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView の修正の音声入力 > thread_view_when_open_latest 1042ms
+   → expect(element).toHaveFocus()
+
+Expected element with focus:
+  <article
+  class="grid min-w-0 grid-cols-1 gap-1 rounded-card p-2 mr-8 bg-muted max-md:mr-4"
+  data-author="ai"
+  data-post-id="TH-1-3"
+  tabindex="-1"
+>
+  <div
+    class="flex items-center gap-2 text-small"
+  >
+    <span
+      class="font-medium"
+      data-part="author"
+    >
+      AI
+    </span>
+    <time
+      class="text-muted-foreground"
+      datetime="2026-11-03T00:00:00+00:00"
+    >
+      11/03 09:00
+    </time>
+  </div>
+  <p
+    class="m-0 whitespace-pre-wrap"
+    data-part="body"
+  >
+    3 件目
+  </p>
+</article>
+Received element with focus:
+  <h2
+  class="m-0 flex-1 text-body font-medium focus-visible:outline-none"
+  tabindex="-1"
+>
+  コメント
+</h2>
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+  style="--topbar-height: 0px;"
+>
+  <head>
+    <link
+      crossorigin="anonymous"
+      href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <div>
+            <header
+              class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+            >
+              <span
+                class="flex min-w-0 flex-none items-center gap-2.5"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-5.5 flex-none text-mark"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.2"
+                  viewBox="0 0 32 32"
+                >
+                  <circle
+                    cx="8"
+                    cy="16"
+                    r="4"
+                  />
+                  <path
+                    d="M12 16h5M17 16V7h5M17 16v9h5"
+                  />
+                  <circle
+                    cx="25"
+                    cy="7"
+                    r="2.6"
+                  />
+                  <circle
+                    cx="25"
+                    cy="25"
+                    r="2.6"
+                  />
+                </svg>
+                <span
+                  class="font-bold tracking-tight max-xs:hidden"
+                >
+                  mindstella
+                </span>
+              </span>
+              <span
+                class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+                title="要件出しのスキル mindmap を設計する"
+              >
+                要件出しのスキル mindmap を設計する
+              </span>
+              <span
+                class="flex-1 basis-0"
+              />
+              <button
+                aria-keyshortcuts="Control+K Meta+K"
+                aria-label="すべての項目を検索"
+                class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <circle
+                    cx="11"
+                    cy="11"
+                    r="7"
+                  />
+                  <path
+                    d="m20 20-3.5-3.5"
+                  />
+                </svg>
+                <span
+                  class="max-lg:hidden"
+                >
+                  すべての項目を検索
+                </span>
+                <kbd
+                  class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+                >
+                  Ctrl+K
+                </kbd>
+              </button>
+              <button
+                aria-haspopup="dialog"
+                aria-label="変更履歴"
+                class="relative inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                  />
+                  <path
+                    d="M3 3v5h5"
+                  />
+                  <path
+                    d="M12 7v5l3 2"
+                  />
+                </svg>
+                <span
+                  class="max-xl:hidden"
+                >
+                  変更履歴
+                </span>
+              </button>
+              <span
+                class="flex-1 basis-0"
+              />
+              <button
+                aria-expanded="false"
+                aria-label="表示の設定"
+                class="inline-flex cursor...
+ × frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView の修正の音声入力 > thread_view_when_title_collapsed 1032ms
+   → expect(element).toHaveAttribute("data-collapsed") // element.hasAttribute("data-collapsed")
+
+Expected the element to have attribute:
+  data-collapsed
+Received:
+  null
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+  style="--topbar-height: 0px;"
+>
+  <head>
+    <link
+      crossorigin="anonymous"
+      href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <div>
+            <header
+              class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+            >
+              <span
+                class="flex min-w-0 flex-none items-center gap-2.5"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-5.5 flex-none text-mark"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.2"
+                  viewBox="0 0 32 32"
+                >
+                  <circle
+                    cx="8"
+                    cy="16"
+                    r="4"
+                  />
+                  <path
+                    d="M12 16h5M17 16V7h5M17 16v9h5"
+                  />
+                  <circle
+                    cx="25"
+                    cy="7"
+                    r="2.6"
+                  />
+                  <circle
+                    cx="25"
+                    cy="25"
+                    r="2.6"
+                  />
+                </svg>
+                <span
+                  class="font-bold tracking-tight max-xs:hidden"
+                >
+                  mindstella
+                </span>
+              </span>
+              <span
+                class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+                title="要件出しのスキル mindmap を設計する"
+              >
+                要件出しのスキル mindmap を設計する
+              </span>
+              <span
+                class="flex-1 basis-0"
+              />
+              <button
+                aria-keyshortcuts="Control+K Meta+K"
+                aria-label="すべての項目を検索"
+                class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <circle
+                    cx="11"
+                    cy="11"
+                    r="7"
+                  />
+                  <path
+                    d="m20 20-3.5-3.5"
+                  />
+                </svg>
+                <span
+                  class="max-lg:hidden"
+                >
+                  すべての項目を検索
+                </span>
+                <kbd
+                  class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+                >
+                  Ctrl+K
+                </kbd>
+              </button>
+              <button
+                aria-haspopup="dialog"
+                aria-label="変更履歴"
+                class="relative inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                  />
+                  <path
+                    d="M3 3v5h5"
+                  />
+                  <path
+                    d="M12 7v5l3 2"
+                  />
+                </svg>
+                <span
+                  class="max-xl:hidden"
+                >
+                  変更履歴
+                </span>
+              </button>
+              <span
+                class="flex-1 basis-0"
+              />
+              <button
+                aria-expanded="false"
+                aria-label="表示の設定"
+                class="inline-flex cursor...
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/hooks/use-shortcut.test.tsx [ frontend/src/shared/hooks/use-shortcut.test.tsx ]
+Error: Failed to resolve import "@/shared/hooks/use-shortcut" from "frontend/src/shared/hooks/use-shortcut.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/shared/hooks/use-shortcut.test.tsx:4:28
+  1  |  import { fireEvent, render } from "@testing-library/react";
+  2  |  import { afterEach, describe, expect, test, vi } from "vitest";
+  3  |  import { useShortcut } from "@/shared/hooks/use-shortcut";
+     |                               ^
+  4  |  import { writePrefs } from "@/shared/stores/prefs-store";
+  5  |  var _jsxFileName = "/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/f...
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/27]⎯
+
+ FAIL  frontend/src/shared/stores/list-order-store.test.ts [ frontend/src/shared/stores/list-order-store.test.ts ]
+Error: Failed to resolve import "@/shared/stores/list-order-store" from "frontend/src/shared/stores/list-order-store.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/shared/stores/list-order-store.test.ts:3:26
+  1  |  import { describe, expect, test } from "vitest";
+  2  |  import { siblingOf } from "@/shared/stores/list-order-store";
+     |                             ^
+  3  |  describe("siblingOf", () => {
+  4  |  	// 前後を求める（正常系）
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/27]⎯
+
+ FAIL  frontend/src/features/docs/docs/docs-screen.test.tsx [ frontend/src/features/docs/docs/docs-screen.test.tsx ]
+Error: Failed to resolve import "@/shared/stores/list-order-store" from "frontend/src/features/docs/docs/docs-screen.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-detail-thread-list-bundle-694/frontend/src/features/docs/docs/docs-screen.test.tsx:5:34
+  2  |  import userEvent from "@testing-library/user-event";
+  3  |  import { describe, expect, test } from "vitest";
+  4  |  import { useListOrderStore } from "@/shared/stores/list-order-store";
+     |                                     ^
+  5  |  import { stubRecords } from "@/testing/msw/fixtures";
+  6  |  import { renderRoute } from "@/testing/render";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/27]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 24 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/components/board.test.tsx > Board > board_when_sorted
+AssertionError: expected [ '古い', '新しい', '間' ] to deeply equal [ '新しい', '間', '古い' ]
+
+- Expected
++ Received
+
+  [
++   "古い",
+    "新しい",
+    "間",
+-   "古い",
+  ]
+
+ ❯ frontend/src/shared/components/board.test.tsx:78:79
+     76|     render(<Board columns={[{ status: "未着手", items, excluded: false }]…
+     77|     // 検証
+     78|     expect(screen.getAllByRole("button").map((button) => button.textCo…
+       |                                                                               ^
+     79|   });
+     80|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/27]⎯
+
+ FAIL  frontend/src/shared/components/board.test.tsx > Board > board_when_open_order
+AssertionError: expected "vi.fn()" to be called with arguments: [ 'T-3', [ 'T-2', 'T-3' ] ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "T-3",
+-   [
+-     "T-2",
+-     "T-3",
+-   ],
++   1,
+  ]
+
+
+Number of calls: 1
+
+ ❯ frontend/src/shared/components/board.test.tsx:107:20
+    105|     await userEvent.click(screen.getByRole("button", { name: "三" }));
+    106|     // 検証
+    107|     expect(onOpen).toHaveBeenCalledWith("T-3", ["T-2", "T-3"]);
+       |                    ^
+    108|   });
+    109| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/27]⎯
+
+ FAIL  frontend/src/shared/components/card-sort.test.tsx > cardSortToParam > card_sort_to_param
+ FAIL  frontend/src/shared/components/card-sort.test.tsx > cardSortToParam > card_sort_to_param
+ FAIL  frontend/src/shared/components/card-sort.test.tsx > cardSortToParam > card_sort_to_param
+TypeError: cardSortToParam is not a function
+ ❯ frontend/src/shared/components/card-sort.test.tsx:27:12
+     25|   ])("card_sort_to_param", ({ value, initial, expected }) => {
+     26|     // 実行・検証
+     27|     expect(cardSortToParam(value, initial)).toBe(expected);
+       |            ^
+     28|   });
+     29| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/27]⎯
+
+ FAIL  frontend/src/shared/components/list-columns.test.tsx > commonColumns > common_columns_when_datetime
+TypeError: Cannot read properties of undefined (reading 'cell')
+ ❯ frontend/src/shared/components/list-columns.test.tsx:22:53
+     20|     const row = { id: "D-1", title: "題", created: "2026-11-02T01:15:00…
+     21|     // 実行
+     22|     const { container } = render(<>{columns.updated.cell?.(row)}</>);
+       |                                                     ^
+     23|     // 検証
+     24|     expect(Object.keys(columns).slice(-2)).toEqual(["created", "update…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/27]⎯
+
+ FAIL  frontend/src/shared/components/sibling-nav.test.tsx > SiblingNav > sibling_nav_when_keys
+Error: expect(element).toHaveAttribute("aria-keyshortcuts", "k") // element.getAttribute("aria-keyshortcuts") === "k"
+
+Expected the element to have attribute:
+  aria-keyshortcuts="k"
+Received:
+  null
+ ❯ frontend/src/shared/components/sibling-nav.test.tsx:26:18
+     24|     const prev = screen.getByRole("button", { name: "一覧の前の項目" });
+     25|     const next = screen.getByRole("button", { name: "一覧の次の項目" });
+     26|     expect(prev).toHaveAttribute("aria-keyshortcuts", "k");
+       |                  ^
+     27|     expect(next).toHaveAttribute("aria-keyshortcuts", "j");
+     28|     expect(prev).toHaveAttribute("title", "一覧の前の項目（K）");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/27]⎯
+
+ FAIL  frontend/src/shared/components/table.test.tsx > Table > table_when_open_order
+AssertionError: expected "vi.fn()" to be called with arguments: [ 'D-4', [ 'D-3', 'D-4', 'D-1' ] ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "D-4",
+-   [
+-     "D-3",
+-     "D-4",
+-     "D-1",
+-   ],
+  ]
+
+
+Number of calls: 1
+
+ ❯ frontend/src/shared/components/table.test.tsx:69:24
+     67|     await userEvent.click(screen.getByRole("button", { name: "さ" }));
+     68|     // 検証
+     69|     expect(onOpenItem).toHaveBeenCalledWith("D-4", ["D-3", "D-4", "D-1…
+       |                        ^
+     70|   });
+     71| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/27]⎯
+
+ FAIL  frontend/src/shared/core/format.test.ts > formatItemDateTime > format_item_date_time
+ FAIL  frontend/src/shared/core/format.test.ts > formatItemDateTime > format_item_date_time
+ FAIL  frontend/src/shared/core/format.test.ts > formatItemDateTime > format_item_date_time
+TypeError: formatItemDateTime is not a function
+ ❯ frontend/src/shared/core/format.test.ts:15:12
+     13|     const now = new Date("2026-11-24T03:00:00+00:00");
+     14|     // 実行・検証
+     15|     expect(formatItemDateTime(iso, now)).toBe(expected);
+       |            ^
+     16|   });
+     17| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/27]⎯
+
+ FAIL  frontend/src/shared/core/list-rows.test.ts > sortRows > sort_rows_when_id
+AssertionError: expected [ 'D-1', 'D-10', 'D-2' ] to deeply equal [ 'D-1', 'D-2', 'D-10' ]
+
+- Expected
++ Received
+
+  [
+    "D-1",
+-   "D-2",
+    "D-10",
++   "D-2",
+  ]
+
+ ❯ frontend/src/shared/core/list-rows.test.ts:33:39
+     31|     const rows = sortRows({ rows: ROWS, columns: COLUMNS, sort: "id" }…
+     32|     // 検証
+     33|     expect(rows.map((row) => row.id)).toEqual(["D-1", "D-2", "D-10"]);
+       |                                       ^
+     34|   });
+     35| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/27]⎯
+
+ FAIL  frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_open_item_from_list
+AssertionError: expected undefined to be true // Object.is equality
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ frontend/src/shared/hooks/use-preview-search.test.tsx:136:37
+    134|     await waitFor(() => expect(result.current.search.id).toBe("D-2"));
+    135|     // 検証
+    136|     expect(result.current.fromList).toBe(true);
+       |                                     ^
+    137|     // 実行
+    138|     act(() => result.current.openItem("D-1"));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/27]⎯
+
+ FAIL  frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_back_item_skips_sort
+TypeError: result.current.backItem is not a function
+ ❯ frontend/src/shared/hooks/use-preview-search.test.tsx:156:30
+    154|     await waitFor(() => expect(result.current.search.id).toBe("D-4"));
+    155|     // 実行
+    156|     act(() => result.current.backItem());
+       |                              ^
+    157|     // 検証
+    158|     await waitFor(() => expect(result.current.search.id).toBe("D-2"));
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:47:24
+ ❯ process.env.NODE_ENV.exports.act node_modules/react/cjs/react.development.js:890:22
+ ❯ node_modules/@testing-library/react/dist/act-compat.js:46:25
+ ❯ frontend/src/shared/hooks/use-preview-search.test.tsx:156:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/27]⎯
+
+ FAIL  frontend/src/shared/hooks/use-preview-search.test.tsx > usePreviewSearch > use_preview_search_when_set_tab_replaces
+AssertionError: expected 3 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 3
+
+ ❯ frontend/src/shared/hooks/use-preview-search.test.tsx:174:28
+    172|     // 検証
+    173|     await waitFor(() => expect(result.current.search.tab).toBe("tasks"…
+    174|     expect(history.length).toBe(before);
+       |                            ^
+    175|   });
+    176| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/27]⎯
+
+ FAIL  frontend/src/features/comments/shared/thread-post.test.tsx > ThreadPost > thread_post_when_fold (fold: true)
+TestingLibraryElementError: Unable to find role="button" and name `/TH-1-1 の書き込みの続きを表示/`
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <article
+      class="grid min-w-0 grid-cols-1 gap-1 rounded-card p-2 mr-8 bg-muted max-md:mr-4"
+      data-author="ai"
+      data-post-id="TH-1-1"
+      tabindex="-1"
+    >
+      <div
+        class="flex items-center gap-2 text-small"
+      >
+        <span
+          class="font-medium"
+          data-part="author"
+        >
+          AI
+        </span>
+        <time
+          class="text-muted-foreground"
+          datetime="2026-11-01T00:00:00+00:00"
+        >
+          11/01 09:00
+        </time>
+      </div>
+      <div
+        class="min-w-0"
+        data-part="body"
+      >
+        <div
+          class="md"
+        >
+          1 行目
+
+2 行目
+
+3 行目
+
+4 行目
+
+5 行目
+
+6 行目
+
+7 行目
+
+8 行目
+        </div>
+      </div>
+    </article>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <article
+      class="grid min-w-0 grid-cols-1 gap-1 rounded-card p-2 mr-8 bg-muted max-md:mr-4"
+      data-author="ai"
+      data-post-id="TH-1-1"
+      tabindex="-1"
+    >
+      <div
+        class="flex items-center gap-2 text-small"
+      >
+        <span
+          class="font-medium"
+          data-part="author"
+        >
+          AI
+        </span>
+        <time
+          class="text-muted-foreground"
+          datetime="2026-11-01T00:00:00+00:00"
+        >
+          11/01 09:00
+        </time>
+      </div>
+      <div
+        class="min-w-0"
+        data-part="body"
+      >
+        <div
+          class="md"
+        >
+          1 行目
+
+2 行目
+
+3 行目
+
+4 行目
+
+5 行目
+
+6 行目
+
+7 行目
+
+8 行目
+        </div>
+      </div>
+    </article>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/features/comments/shared/thread-post.test.tsx:63:27
+     61|     const button = screen.queryByRole("button", { name: /TH-1-1 の書き込みの…
+     62|     if (expected) {
+     63|       expect(await screen.findByRole("button", { name: /TH-1-1 の書き込みの続…
+       |                           ^
+     64|     } else {
+     65|       expect(button).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/27]⎯
+
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView の修正の音声入力 > thread_view_when_open_latest
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <article
+  class="grid min-w-0 grid-cols-1 gap-1 rounded-card p-2 mr-8 bg-muted max-md:mr-4"
+  data-author="ai"
+  data-post-id="TH-1-3"
+  tabindex="-1"
+>
+  <div
+    class="flex items-center gap-2 text-small"
+  >
+    <span
+      class="font-medium"
+      data-part="author"
+    >
+      AI
+    </span>
+    <time
+      class="text-muted-foreground"
+      datetime="2026-11-03T00:00:00+00:00"
+    >
+      11/03 09:00
+    </time>
+  </div>
+  <p
+    class="m-0 whitespace-pre-wrap"
+    data-part="body"
+  >
+    3 件目
+  </p>
+</article>
+Received element with focus:
+  <h2
+  class="m-0 flex-1 text-body font-medium focus-visible:outline-none"
+  tabindex="-1"
+>
+  コメント
+</h2>
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+  style="--topbar-height: 0px;"
+>
+  <head>
+    <link
+      crossorigin="anonymous"
+      href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <div>
+            <header
+              class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+            >
+              <span
+                class="flex min-w-0 flex-none items-center gap-2.5"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-5.5 flex-none text-mark"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.2"
+                  viewBox="0 0 32 32"
+                >
+                  <circle
+                    cx="8"
+                    cy="16"
+                    r="4"
+                  />
+                  <path
+                    d="M12 16h5M17 16V7h5M17 16v9h5"
+                  />
+                  <circle
+                    cx="25"
+                    cy="7"
+                    r="2.6"
+                  />
+                  <circle
+                    cx="25"
+                    cy="25"
+                    r="2.6"
+                  />
+                </svg>
+                <span
+                  class="font-bold tracking-tight max-xs:hidden"
+                >
+                  mindstella
+                </span>
+              </span>
+              <span
+                class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+                title="要件出しのスキル mindmap を設計する"
+              >
+                要件出しのスキル mindmap を設計する
+              </span>
+              <span
+                class="flex-1 basis-0"
+              />
+              <button
+                aria-keyshortcuts="Control+K Meta+K"
+                aria-label="すべての項目を検索"
+                class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <circle
+                    cx="11"
+                    cy="11"
+                    r="7"
+                  />
+                  <path
+                    d="m20 20-3.5-3.5"
+                  />
+                </svg>
+                <span
+                  class="max-lg:hidden"
+                >
+                  すべての項目を検索
+                </span>
+                <kbd
+                  class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+                >
+                  Ctrl+K
+                </kbd>
+              </button>
+              <button
+                aria-haspopup="dialog"
+                aria-label="変更履歴"
+                class="relative inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                  />
+                  <path
+                    d="M3 3v5h5"
+                  />
+                  <path
+                    d="M12 7v5l3 2"
+                  />
+                </svg>
+                <span
+                  class="max-xl:hidden"
+                >
+                  変更履歴
+                </span>
+              </button>
+              <span
+                class="flex-1 basis-0"
+              />
+              <button
+                aria-expanded="false"
+                aria-label="表示の設定"
+                class="inline-flex cursor...
+ ❯ frontend/src/features/comments/thread/thread-view.test.tsx:303:40
+    301|     // 検証
+    302|     const latest = (await screen.findByText("3 件目")).closest("article"…
+    303|     await waitFor(() => expect(latest).toHaveFocus());
+       |                                        ^
+    304|     const list = latest?.closest("ol")?.parentElement;
+    305|     expect(list?.scrollTop).toBe(400);
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/27]⎯
+
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView の修正の音声入力 > thread_view_when_title_collapsed
+Error: expect(element).toHaveAttribute("data-collapsed") // element.hasAttribute("data-collapsed")
+
+Expected the element to have attribute:
+  data-collapsed
+Received:
+  null
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+  style="--topbar-height: 0px;"
+>
+  <head>
+    <link
+      crossorigin="anonymous"
+      href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <div>
+            <header
+              class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+            >
+              <span
+                class="flex min-w-0 flex-none items-center gap-2.5"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-5.5 flex-none text-mark"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.2"
+                  viewBox="0 0 32 32"
+                >
+                  <circle
+                    cx="8"
+                    cy="16"
+                    r="4"
+                  />
+                  <path
+                    d="M12 16h5M17 16V7h5M17 16v9h5"
+                  />
+                  <circle
+                    cx="25"
+                    cy="7"
+                    r="2.6"
+                  />
+                  <circle
+                    cx="25"
+                    cy="25"
+                    r="2.6"
+                  />
+                </svg>
+                <span
+                  class="font-bold tracking-tight max-xs:hidden"
+                >
+                  mindstella
+                </span>
+              </span>
+              <span
+                class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+                title="要件出しのスキル mindmap を設計する"
+              >
+                要件出しのスキル mindmap を設計する
+              </span>
+              <span
+                class="flex-1 basis-0"
+              />
+              <button
+                aria-keyshortcuts="Control+K Meta+K"
+                aria-label="すべての項目を検索"
+                class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <circle
+                    cx="11"
+                    cy="11"
+                    r="7"
+                  />
+                  <path
+                    d="m20 20-3.5-3.5"
+                  />
+                </svg>
+                <span
+                  class="max-lg:hidden"
+                >
+                  すべての項目を検索
+                </span>
+                <kbd
+                  class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+                >
+                  Ctrl+K
+                </kbd>
+              </button>
+              <button
+                aria-haspopup="dialog"
+                aria-label="変更履歴"
+                class="relative inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                  />
+                  <path
+                    d="M3 3v5h5"
+                  />
+                  <path
+                    d="M12 7v5l3 2"
+                  />
+                </svg>
+                <span
+                  class="max-xl:hidden"
+                >
+                  変更履歴
+                </span>
+              </button>
+              <span
+                class="flex-1 basis-0"
+              />
+              <button
+                aria-expanded="false"
+                aria-label="表示の設定"
+                class="inline-flex cursor...
+ ❯ frontend/src/features/comments/thread/thread-view.test.tsx:328:41
+    326|     expect(title()).not.toHaveAttribute("data-collapsed");
+    327|     scrollTo(120);
+    328|     await waitFor(() => expect(title()).toHaveAttribute("data-collapse…
+       |                                         ^
+    329|     scrollTo(0);
+    330|     await waitFor(() => expect(title()).not.toHaveAttribute("data-coll…
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/27]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_key: j
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx:89:20
+     87|     fireEvent.keyDown(inInput ? input : document.body, { bubbles: true…
+     88|     // 検証
+     89|     expect(onNext).toHaveBeenCalledTimes(expected === "next" ? 1 : 0);
+       |                    ^
+     90|     expect(onPrev).toHaveBeenCalledTimes(expected === "prev" ? 1 : 0);
+     91|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/27]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_key: k
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx:90:20
+     88|     // 検証
+     89|     expect(onNext).toHaveBeenCalledTimes(expected === "next" ? 1 : 0);
+     90|     expect(onPrev).toHaveBeenCalledTimes(expected === "prev" ? 1 : 0);
+       |                    ^
+     91|   });
+     92| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/27]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/value-text.test.tsx > ValueText > value_text_when_item_id
+Error: D-1 のリンクがまだ無い
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div>
+        <div
+          class="md"
+        >
+          D-1 と D-99 を比べる
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+ ❯ frontend/src/features/detail/detail-panel/components/value-text.test.tsx:21:33
+     19|     const link = await waitFor(() => {
+     20|       const found = container.querySelector<HTMLElement>("[data-id='D-…
+     21|       if (found === null) throw new Error("D-1 のリンクがまだ無い");
+       |                                 ^
+     22|       return found;
+     23|     });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/27]⎯
+
+ FAIL  frontend/src/features/docs/docs/components/doc-cards.test.tsx > DocCards > doc_cards_when_default_sort
+ FAIL  frontend/src/features/docs/docs/components/doc-cards.test.tsx > DocCards > doc_cards_when_open_order
+Error: Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+ ❯ createFiberFromTypeAndProps node_modules/react-dom/cjs/react-dom-client.development.js:5330:28
+ ❯ createFiberFromElement node_modules/react-dom/cjs/react-dom-client.development.js:5344:14
+ ❯ reconcileChildFibersImpl node_modules/react-dom/cjs/react-dom-client.development.js:7286:31
+ ❯ node_modules/react-dom/cjs/react-dom-client.development.js:7456:33
+ ❯ reconcileChildren node_modules/react-dom/cjs/react-dom-client.development.js:10097:13
+ ❯ beginWork node_modules/react-dom/cjs/react-dom-client.development.js:12326:15
+ ❯ runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:1048:13
+ ❯ performUnitOfWork node_modules/react-dom/cjs/react-dom-client.development.js:19176:22
+ ❯ workLoopSync node_modules/react-dom/cjs/react-dom-client.development.js:19004:41
+ ❯ renderRootSync node_modules/react-dom/cjs/react-dom-client.development.js:18985:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/27]⎯
+
+ FAIL  frontend/src/features/settings/display-settings/components/settings-panel.test.tsx > SettingsPanel > settings_panel_when_single_key_shortcuts
+TestingLibraryElementError: Unable to find an accessible element with the role "group" and name "キーボード"
+
+Here are the accessible roles:
+
+  group:
+
+  Name "表示する種類":
+  <fieldset
+    class="m-0 grid gap-1 border-0 p-0"
+    data-part="kinds"
+  />
+
+  Name "詳細に表示するもの":
+  <fieldset
+    class="m-0 grid gap-1 border-0 p-0"
+  />
+
+  Name "コメントの入力":
+  <fieldset
+    class="m-0 grid gap-1 border-0 p-0"
+  />
+
+  Name "レビューに追加した後のフォーカス":
+  <fieldset
+    aria-describedby="_r_4_"
+    class="m-0 grid gap-1 border-0 p-0"
+  />
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  <ul
+    class="m-0 grid list-none gap-1 p-0"
+  />
+
+  Name "":
+  <ul
+    class="m-0 grid list-none gap-1 p-0"
+  />
+
+  Name "":
+  <ul
+    class="m-0 grid list-none gap-1 p-0"
+  />
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  <li
+    data-part="all"
+  />
+
+  Name "":
+  <li
+    class="flex min-h-10 items-center gap-2 text-muted-foreground"
+    data-part="always"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li
+    data-part="kind"
+  />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  --------------------------------------------------
+  checkbox:
+
+  Name "すべて7/7":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  Name "検討事項":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="decisions"
+  />
+
+  Name "タスク":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="tasks"
+  />
+
+  Name "調査":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="research"
+  />
+
+  Name "資料":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="docs"
+  />
+
+  Name "用語集":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="terms"
+  />
+
+  Name "メモ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="notes"
+  />
+
+  Name "会話ログ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+    value="logs"
+  />
+
+  Name "差分のミニマップ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  Name "セクションの折りたたみ":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    type="checkbox"
+  />
+
+  --------------------------------------------------
+  radio:
+
+  Name "自動この端末では入力欄へ戻します":
+  <input
+    checked=""
+    class="size-4 accent-primary"
+    name="focus-after-add"
+    type="radio"
+    value="auto"
+  />
+
+  Name "入力欄へ戻す":
+  <input
+    class="size-4 accent-primary"
+    name="focus-after-add"
+    type="radio"
+    value="input"
+  />
+
+  Name "戻さない":
+  <input
+    class="size-4 accent-primary"
+    name="focus-after-add"
+    type="radio"
+    value="none"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p
+    class="m-0 text-small text-muted-foreground"
+    id="_r_4_"
+  />
+
+  Name "":
+  <p
+    class="m-0 text-small text-muted-foreground"
+  />
+
+  Name "":
+  <p
+    class="m-0 text-small text-muted-foreground"
+  />
+
+  --------------------------------------------------
+  status:
+
+  Name "":
+  <p
+    class="m-0 flex items-start gap-1 text-small"
+    data-part="message"
+    role="status"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="grid gap-4"
+      data-part="wrap"
+    >
+      <fieldset
+        class="m-0 grid gap-1 border-0 p-0"
+        data-part="kinds"
+      >
+        <legend
+          class="mb-1 font-medium"
+        >
+          表示する種類
+        </legend>
+        <ul
+          class="m-0 grid list-none gap-1 p-0"
+        >
+          <li
+            data-part="all"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+              />
+              <span
+                class="flex-1"
+              >
+                すべて
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              >
+                7/7
+              </span>
+            </label>
+          </li>
+          <li
+            class="flex min-h-10 items-center gap-2 text-muted-foreground"
+            data-part="always"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="m5 12 5 5 9-10"
+              />
+            </svg>
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 11 12 4l9 7"
+              />
+              <path
+                d="M5 10v10h14V10"
+              />
+            </svg>
+            <span
+              class="flex-1"
+            >
+              概要
+            </span>
+            <span
+              class="text-small"
+            >
+              常に表示
+            </span>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="decisions"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="8"
+                />
+                <path
+                  d="m9 12 2 2 4-4"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                検討事項
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="tasks"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <rect
+                  height="16"
+                  rx="2"
+                  width="16"
+                  x="4"
+                  y="4"
+                />
+                <path
+                  d="M8 9h8M8 13h8M8 17h5"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                タスク
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="research"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="10.5"
+                  cy="10.5"
+                  r="6"
+                />
+                <path
+                  d="m15 15 5 5"
+                />
+                <path
+                  d="M8 10.5h5"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                調査
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="docs"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M6 3h8l4 4v14H6Z"
+                />
+                <path
+                  d="M14 3v4h4"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                資料
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="terms"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M4 5h11a3 3 0 0 1 3 3v12H7a3 3 0 0 1-3-3Z"
+                />
+                <path
+                  d="M4 17a3 3 0 0 1 3-3h11"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                用語集
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="notes"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M5 4h14v12l-4 4H5Z"
+                />
+                <path
+                  d="M15 20v-4h4"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                メモ
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+          <li
+            data-part="kind"
+          >
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+                value="logs"
+              />
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M4 6h16v10H9l-5 4Z"
+                />
+              </svg>
+              <span
+                class="flex-1"
+                data-part="label"
+              >
+                会話ログ
+              </span>
+              <span
+                class="font-mono text-small"
+                data-part="count"
+              />
+            </label>
+          </li>
+        </ul>
+      </fieldset>
+      <fieldset
+        class="m-0 grid gap-1 border-0 p-0"
+      >
+        <legend
+          class="mb-1 font-medium"
+        >
+          詳細に表示するもの
+        </legend>
+        <ul
+          class="m-0 grid list-none gap-1 p-0"
+        >
+          <li>
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+              />
+              <span>
+                差分のミニマップ
+              </span>
+            </label>
+          </li>
+          <li>
+            <label
+              class="flex min-h-10 items-center gap-2"
+            >
+              <input
+                checked=""
+                class="size-4 accent-primary"
+                type="checkbox"
+              />
+              <span>
+                セクションの折りたたみ
+              </span>
+            </label>
+          </li>
+        </ul>
+      </fieldset>
+      <fieldset
+        class="m-0 grid gap-1 border-0 p-0"
+      >
+        <legend
+          class="mb-1 font-medium"
+        >
+          コメントの入力
+        </legend>
+        <fieldset
+          aria-describedby="_r_4_"
+          class="m-0 grid gap-1 border-0 p-0"
+        >
+          <legend
+            class="mb-1"
+          >
+            レビューに追加した後のフォーカス
+          </legend>
+          <ul
+            class="m-0 grid list-none gap-1 p-0"
+          >
+            <li>
+              <label
+                class="flex min-h-10 items-center gap-2"
+              >
+                <input
+                  checked=""
+                  class="size-4 accent-primary"
+                  name="focus-after-add"
+                  type="radio"
+                  value="auto"
+                />
+                <span
+                  class="grid"
+                >
+                  <span>
+                    自動
+                  </span>
+                  <span
+                    class="text-small text-muted-foreground"
+                  >
+                    この端末では入力欄へ戻します
+                  </span>
+                </span>
+              </label>
+            </li>
+            <li>
+              <label
+                class="flex min-h-10 items-center gap-2"
+              >
+                <input
+                  class="size-4 accent-primary"
+                  name="focus-after-add"
+                  type="radio"
+                  value="input"
+                />
+                <span
+                  class="grid"
+                >
+                  <span>
+                    入力欄へ戻す
+                  </span>
+                </span>
+              </label>
+            </li>
+            <li>
+              <label
+                class="flex min-h-10 items-center gap-2"
+              >
+                <input
+                  class="size-4 accent-primary"
+                  name="focus-after-add"
+                  type="radio"
+                  value="none"
+                />
+                <span
+                  class="grid"
+                >
+                  <span>
+                    戻さない
+                  </span>
+                </span>
+              </label>
+            </li>
+          </ul>
+          <p
+            class="m-0 text-small text-muted-foreground"
+            id="_r_4_"
+          >
+            自動は、マウスで操作する端末では入力欄へ戻し、タッチで操作する端末では戻しません。
+          </p>
+        </fieldset>
+      </fieldset>
+      <div
+        class="grid gap-2"
+      >
+        <p
+          class="m-0 text-small text-muted-foreground"
+        >
+          ワークスペースの既定のまま表示しています。
+        </p>
+      </div>
+      <div
+        class="grid gap-2 border-t border-border pt-3"
+        data-part="save"
+      >
+        <p
+          class="m-0 text-small text-muted-foreground"
+        >
+          表示する種類は、ワークスペースの既定と同じです。
+        </p>
+      </div>
+      <p
+        class="m-0 flex items-start gap-1 text-small"
+        data-part="message"
+        role="status"
+      />
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/settings/display-settings/components/settings-panel.test.tsx:78:28
+     76|     const onSingleKeyShortcutsChange = vi.fn();
+     77|     render(<SettingsPanel {...base} singleKeyShortcuts onSingleKeyShor…
+     78|     const section = screen.getByRole("group", { name: "キーボード" });
+       |                            ^
+     79|     const checkbox = within(section).getByRole("checkbox", { name: "1 …
+     80|     // 実行
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/27]⎯
+
+
+ Test Files  17 failed | 4 passed (21)
+      Tests  24 failed | 61 passed (85)
+   Start at  22:37:34
+   Duration  6.97s (environment 42%, tests 36%, import 9%, setup 8%, transform 4%, worker 1%)
+
+Environment  jsdom was created 21 times · 14.45s total, 42% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+
+# 実装の前から pass したテストと、振る舞いを持つ箇所
+| テスト | 振る舞いを持つ箇所 | 入れた commit（テストコードより前） |
+| --- | --- | --- |
+| next_card_sort・card_sort | frontend/src/shared/components/card-sort.tsx の nextCardSort・CardSort | 2984483b |
+| sibling_nav_when_edge | frontend/src/shared/components/sibling-nav.tsx の SiblingNav の disabled | d7a1c7c6 |
+| item_dates | frontend/src/shared/components/item-dates.tsx の ItemDates（formatJst） | d7a1c7c6 |
+| thread_title | frontend/src/shared/components/thread-title.tsx の ThreadTitle | d7a1c7c6 |
+| detail_header_when_sibling | frontend/src/features/detail/detail-panel/components/detail-header.tsx の sibling（SiblingNav を戻るの左に描く） | 81c2c0ae |
+| detail_header_when_key: 入力欄の j・Ctrl+j・isComposing の j | キーを受ける処理がまだ無いため呼ばれない（呼ばれないことを確かめる場合） | - |
+| detail_header_when_toc | 既存の目次のボタン。資料のカードに日時を描く d7a1c7c6 の後、スタブの資料に created・updated を追加した | d7a1c7c6 |
+| thread_post_when_fold (fold: false) | frontend/src/features/comments/shared/thread-post.tsx の送信した書き込みの全文の描画 | e8ba4f75 |
+| sort_rows_when_updated_desc | frontend/src/shared/core/list-rows.ts の sortRows の `-` 付きの降順（ISO 8601 の文字の順） | 12bc5a13 |
+| use_search_shortcut_when_input_focused | frontend/src/features/search/search/use-search-shortcut.ts の window の keydown | 8354ede5 |
+| write_prefs_when_single_key_shortcuts | frontend/src/shared/stores/prefs-store.ts の writePrefs の、知らない項目を残す書き込み | 23ca62fa |
+
+use-shortcut.test.tsx・list-order-store.test.ts・docs-screen.test.tsx は、モジュール use-shortcut・list-order-store が無いため読み込めずに fail した。

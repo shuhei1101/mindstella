@@ -86,12 +86,12 @@ args:
   - name: id
     type: 文字列
     required: true
-    description: レビュー中の書き込みの ID。本文の要素の `id` を `review-body-{ID}`、開閉のボタンの `data-focus` を `{focus}more:{ID}` にする
+    description: レビュー中の書き込みか送信した書き込みの ID。本文の要素の `id` を `review-body-{ID}`、開閉のボタンの `data-focus` を `{focus}more:{ID}` にする
     status: implemented
   - name: label
     type: 文字列
     required: true
-    description: 行の読み上げの名前の頭（「{スレッドの ID} への返信」「{向けた項目の ID} へのコメント」「項目を指さないコメント」）。開閉のボタンの読み上げの名前に使う
+    description: 行の読み上げの名前の頭（「{スレッドの ID} への返信」「{向けた項目の ID} へのコメント」「項目を指さないコメント」。送信した書き込みは「{書き込みの ID} の書き込み」）。開閉のボタンの読み上げの名前に使う
     status: implemented
   - name: body
     type: 文字列
@@ -148,6 +148,6 @@ accessibility:
 refs: []
 notes:
   測り方: 本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ開閉のボタンを出す（測るまでは `hidden`）。本文の幅が変わったときは `ResizeObserver` で再計測する
-  置き場所: 開閉のボタンの置き場所は使う側が決める。レビュー中の書き込みの画面では「スレッドを開く」と同じ行の先に置き、返信の行は「続きを表示」だけの行にする。スレッドの画面のレビュー中の書き込みと詳細パネルのレビュー中のコメントも、本文の下に「続きを表示」だけの行を置く。ストーリーは本文の下にボタンを並べて描く
+  置き場所: 開閉のボタンの置き場所は使う側が決める。レビュー中の書き込みの画面では「スレッドを開く」と同じ行の先に置き、返信の行は「続きを表示」だけの行にする。スレッドの画面のレビュー中の書き込みと、最新以外の送信した書き込みと、詳細パネルのレビュー中のコメントも、本文の下に「続きを表示」だけの行を置く。ストーリーは本文の下にボタンを並べて描く
   モック: '`docs/mock/components/review-body-fold/`（「スレッドを開く」と同じ行に置く案 B を採用。確認ログ: docs/pr/329/確認ログ.md）。スレッドの画面と詳細パネルの置き場所は `docs/mock/pages/comment-thread/427/a-below/`・`docs/mock/pages/detail-panel/427/a-below/`（確認ログ: docs/pr/427/確認ログ.md）'
 test_file: tests/integration/storybook_react/test_review_body_fold_stories.py

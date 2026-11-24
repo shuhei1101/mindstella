@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from .storybook_react_fixture_types import OpenStory
 
 # 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
@@ -461,3 +461,27 @@ def test_pending_editing_voice_disabled(open_story: OpenStory) -> None:
     assert mic.get_attribute("title") == "ほかの入力欄で音声入力中のため、音声で入力できません。"
     assert page.locator("#storybook-root > article form[data-part=edit] textarea").get_attribute("readonly") is None
     assert page.locator("#storybook-root > article form[data-part=edit]").get_by_role("button", name="修正", exact=True).is_enabled()
+
+
+def test_long_ai_post_folded(open_story: OpenStory) -> None:
+    """最新ではない 8 行の AI の書き込み。行の高さの 5 行分までを出し、本文の下の行に「続きを表示」を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadpost--long-ai-post-folded")
+    more = page.get_by_role("button", name="TH-1-2 の書き込みの続きを表示")
+    body = page.locator(f"{POST} [data-folded]")
+    # 検証
+    expect(more).to_have_attribute("aria-expanded", "false")
+    expect(more).to_contain_text("続きを表示")
+    lines = body.evaluate("(element) => element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight)")
+    assert lines <= 5.5
+
+
+def test_long_ai_post_opened(open_story: OpenStory) -> None:
+    """最新ではない書き込みを開いた。全文を出し、「折りたたむ」を `aria-expanded="true"` で出す（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadpost--long-ai-post-opened")
+    less = page.get_by_role("button", name="TH-1-2 の書き込みの本文を折りたたむ")
+    # 検証
+    expect(less).to_have_attribute("aria-expanded", "true")
+    expect(page.locator(f"{POST} [data-folded]")).to_have_count(0)
+    expect(page.locator(POST)).to_contain_text("変更履歴の時点の並びが分かりにくい")

@@ -124,4 +124,53 @@ describe("usePreviewSearch", () => {
     expect(result.current.search.f).toEqual({ tags: "画面|保存" });
     expect(history.length).toBe(before + 2);
   });
+
+  // 一覧から開いたマーカーを持つ（正常系）
+  test("use_preview_search_when_open_item_from_list", async () => {
+    // 準備
+    const { result, history } = await renderPreviewHook("/?tab=decisions", usePreviewSearch);
+    // 実行
+    act(() => result.current.openItem("D-2", { fromList: true }));
+    await waitFor(() => expect(result.current.search.id).toBe("D-2"));
+    // 検証
+    expect(result.current.fromList).toBe(true);
+    // 実行
+    act(() => result.current.openItem("D-1"));
+    await waitFor(() => expect(result.current.search.id).toBe("D-1"));
+    // 検証
+    expect(result.current.fromList).toBe(false);
+    expect((history.location.state as { trail?: { items: string[] } }).trail?.items).toEqual(["D-2", "D-1"]);
+  });
+
+  // 詳細の戻るは並べ替えの履歴を飛ばす（正常系）
+  test("use_preview_search_when_back_item_skips_sort", async () => {
+    // 準備
+    const { result } = await renderPreviewHook("/?tab=decisions&view=table", usePreviewSearch);
+    act(() => result.current.openItem("D-2"));
+    await waitFor(() => expect(result.current.search.id).toBe("D-2"));
+    act(() => result.current.setSort("-updated"));
+    await waitFor(() => expect(result.current.search.sort).toBe("-updated"));
+    act(() => result.current.openItem("D-4"));
+    await waitFor(() => expect(result.current.search.id).toBe("D-4"));
+    // 実行
+    act(() => result.current.backItem());
+    // 検証
+    await waitFor(() => expect(result.current.search.id).toBe("D-2"));
+    expect(result.current.search.sort).toBe("-updated");
+    expect(result.current.canBack).toBe(false);
+  });
+
+  // タブの切り替えは置き換える（正常系）
+  test("use_preview_search_when_set_tab_replaces", async () => {
+    // 準備
+    const { result, history } = await renderPreviewHook("/?tab=decisions", usePreviewSearch);
+    act(() => result.current.openItem("D-1"));
+    await waitFor(() => expect(result.current.search.id).toBe("D-1"));
+    const before = history.length;
+    // 実行
+    act(() => result.current.setTab("tasks"));
+    // 検証
+    await waitFor(() => expect(result.current.search.tab).toBe("tasks"));
+    expect(history.length).toBe(before);
+  });
 });

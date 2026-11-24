@@ -11,6 +11,7 @@ from workspace_fixtures import MakeItem as _MakeItem
 import re
 
 from playwright.sync_api import Page, expect
+from preview_fixture_types import WritePreview
 from preview_spa_helpers import assert_bottom_aligned, open_spa
 
 import pytest
@@ -82,3 +83,20 @@ def test_supplement_tabs_and_toc(page: Page, spa_preview: str) -> None:
     page.wait_for_url("**h=*")
     expect(dialog.get_by_role("tab", name="本文")).to_have_attribute("aria-selected", "true")
     expect(dialog.get_by_role("heading", name="決め方")).to_be_visible()
+
+
+def test_sibling_nav_in_fullscreen(page: Page, write_preview: WritePreview, make_item: _MakeItem) -> None:
+    """一覧から開いた項目を全画面にしても、見出しに一覧の並びの前後を出し、前後へ移れる（正常系）。"""
+    # 準備
+    url = write_preview(*(make_item(f"T-{number}") for number in (1, 2, 3)))
+    open_spa(page, url, "?tab=tasks")
+    page.locator("[data-card='T-1'] button[data-id='T-1']").click()
+    page.get_by_role("button", name="全画面表示").click()
+    nav = page.get_by_role("group", name="一覧の並び")
+    # 検証
+    expect(nav).to_have_text("1 / 3")
+    # 実行
+    nav.get_by_role("button", name="一覧の次の項目").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"id=T-2"))
+    expect(page).to_have_url(re.compile(r"full=1"))

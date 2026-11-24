@@ -452,3 +452,17 @@ items:
     summary: プレビュー / detail-supplements
   - page: MOD-659-2.tsx.yaml
     summary: プレビュー / tag-expr-editor
+  - page: MOD-695-1.tsx.yaml
+    summary: プレビュー / sibling-nav
+  - page: MOD-695-2.tsx.yaml
+    summary: プレビュー / item-dates
+  - page: MOD-695-3.tsx.yaml
+    summary: プレビュー / card-sort
+  - page: MOD-695-4.tsx.yaml
+    summary: プレビュー / thread-title
+  - page: MOD-695-5.ts.yaml
+    summary: プレビュー / list-order-store
+  - page: MOD-695-6.ts.yaml
+    summary: プレビュー / use-shortcut
+  - page: MOD-695-7.ts.yaml
+    summary: プレビュー / shortcuts

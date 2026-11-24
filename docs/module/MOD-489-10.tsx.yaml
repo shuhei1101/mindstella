@@ -25,3 +25,4 @@ components:
     container: frontend/src/features/comments/shared/thread-row.tsx
 notes:
   単体テスト: 同じフォルダの `thread-row.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  長い値: 状態の札・未読の札・レビュー中のマーカー・書き手の文字に `shrink-0 whitespace-nowrap` を付け、2 行目の ID を `min-w-0 truncate` にする（#690）。ストーリーに部品設計の `LongValuesNarrow` を追加する

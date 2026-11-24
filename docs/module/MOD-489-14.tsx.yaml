@@ -52,8 +52,33 @@ components:
         condition: '`parametrize`: `useFocusAfterAddTarget` が `input` / `submit` で返信を溜める（201）'
         mock: MSW・`useFocusAfterAddTarget`
         expected: 返信の入力欄にフォーカス / 「レビューに追加」にフォーカス
+      - name: test_thread_view_when_open_latest
+        case: 正常
+        summary: 開いたら最新の書き込みへ移る
+        condition: 3 件の書き込みを持つ TH-1 を開く
+        mock: MSW・要素の大きさの差し替え
+        expected: 3 件目の書き込みにフォーカスがあり、並びの `scrollTop` がその書き込みの先頭の位置、1・2 件目にだけ `fold` が渡る
+      - name: test_thread_view_when_title_collapsed
+        case: 正常
+        summary: スクロールしたらタイトルを 1 行にする
+        condition: 並びの `scrollTop` を 0 → 120 → 0 に変えて `scroll` を送る
+        mock: MSW・`requestAnimationFrame` の差し替え
+        expected: タイトルの `data-collapsed` が 無い → ある → 無い
+      - name: test_thread_view_when_open_post
+        case: 正常
+        summary: 書き込みの ID のリンクで開いたときは最新の書き込みへ移らない
+        condition: "`requestPost('TH-1-2')` の後に 3 件の書き込みを持つ TH-1 を開き、2 件目へフォーカスする"
+        mock: MSW
+        expected: 2 コマの後も 2 件目にフォーカスがあり、並びの `scrollTop` が 0
+      - name: test_thread_view_when_reveal_post_clears_request
+        case: 正常
+        summary: 開いたままのスレッドで書き込みへ移り終えたら記録を削除する
+        condition: TH-1 を開いたまま `requestPost('TH-1-1')` と `revealPost('TH-1-1')` を呼ぶ
+        mock: MSW・`scrollIntoView` の差し替え
+        expected: "`takeRequestedPost('TH-1')` が `null`"
     container: frontend/src/features/comments/thread/thread-view.tsx
 notes:
   単体テスト: 同じフォルダの `thread-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   修正の入力の音声入力: '書き換えている行を `{id, body, error}` で持ち、初めの値は `voiceEditingOf("thread")` の ID にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread, target}`、開く画面は `thread`）を使い、`ThreadPost` へ `editBody` と音声の props・イベントを渡す。返信の入力の `useVoiceInput` とは別の `key` で、同時に 1 つだけ録音する。単体テストに `test_thread_view_when_edit_voice` を追加する'
   書き込みの幅: 書き込みの並び（`ol`）は列を `grid-cols-1`（`repeat(1, minmax(0, 1fr))`。Tailwind の任意値は lint が禁じる） にし、並びが書き込みの中の幅の広い表・コードブロックに合わせて広がらないようにする（#619）。書き込みの `article` にも `min-w-0` を付ける（モジュール構成『thread-post』）。単体テストに `test_thread_view_when_wide_table` を追加し、並びがそのクラスを持つことを確かめる
+  タイトルと最新の書き込み: '見出しのタイトルは `ThreadTitle`（モジュール構成『thread-title』）で描き、書き込みの並びのスクロール領域の `scrollTop` が 0 より大きい間だけ `collapsed` を真にする（`scroll` を `requestAnimationFrame` で 1 コマに 1 回読む。#372）。送信した書き込みのうち最後の 1 件以外に `fold` を渡す。スレッドを開いた直後（書き込みの ID を持たずに開いたとき。書き込みの ID のリンクは `requestPost`（`thread-ids.ts`）で開く書き込みを控え、画面は開いたときに `takeRequestedPost` で取り出して、控えがあれば最新の書き込みへ移さない）、描いた後に最新の送信した書き込みの先頭を並びの上端に合わせる位置（その位置が一番下を超えるときは一番下）へ `scrollTop` を設定し、その書き込みの `article`（`tabIndex={-1}`）へ `focus({preventScroll: true})` する（#374）'

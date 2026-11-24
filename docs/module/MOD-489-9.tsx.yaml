@@ -22,8 +22,15 @@ components:
         condition: '`pending` と `editing`'
         mock: なし
         expected: 入力欄と「キャンセル」「修正」
+      - name: test_thread_post_when_fold
+        case: 正常
+        summary: 最新以外の長い書き込みを畳む
+        condition: '`parametrize`: 8 行の AI の `post` で `fold` が真 / 偽'
+        mock: ResizeObserver の差し替え・mdmark の差し替え
+        expected: 「続きを表示」があり `aria-expanded` が false / 「続きを表示」が無い
     container: frontend/src/features/comments/shared/thread-post.tsx
 notes:
   単体テスト: 同じフォルダの `thread-post.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   修正の入力の音声入力: '`editing` の間、部品設計の `voice`・`voiceReason`・`elapsed`・`levels`・`voiceStatus`・`voiceDetail` と `onEditVoiceStart`・`onEditVoiceCancel`・`onEditVoiceDone`（と押せないときの `onEditVoiceBlocked`）を `ReviewEditForm` へそのまま渡す。`editBody` は入力欄の中身で、書き換えは `onEditInput(id, body)` で使う側へ知らせる。ストーリーに部品設計の `PendingEditingRecording`・`PendingEditingTranscribing`・`PendingEditingInserted`・`PendingEditingVoiceDisabled` を追加する'
   書き込みの幅: 送信済みの書き込みとレビュー中の書き込みの `article`（`grid`）に `min-w-0` と `grid-cols-1`（`repeat(1, minmax(0, 1fr))`） を付け、本文の幅の広い表・コードブロックに合わせて書き込みが広がらないようにする（#619。表の横スクロールはモジュール構成『post-body』）
+  送信した書き込みの折りたたみ: '`post` と `fold` が真のとき、本文を `ReviewBodyFold`（`id` は `post.id`、`label` は「{書き込みの ID} の書き込み」）で描き、開閉のボタンを本文の下の行に配置する。`fold` が偽のときは今までどおり全文を描く（#374）'

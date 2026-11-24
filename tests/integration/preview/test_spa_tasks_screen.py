@@ -310,7 +310,8 @@ def test_table_scroll_restored(page: Page, write_preview: WritePreview, make_ite
     left_row = page.evaluate(FIRST_VISIBLE_ROW_JS, TABLE_SCROLL_SELECTOR)
     # 実行
     page.get_by_role("link", name="検討事項").click()
-    page.go_back()
+    # タブの帯での移動は履歴を増やさない（インターフェース定義『プレビューを開く』の制約「履歴」）ため、同じタブで表の URL を開き直す
+    open_spa(page, url, "?tab=tasks&view=table")
     # 検証
     assert left_row not in (None, "T-1")
     expect(page.locator("tbody tr[data-id='T-1']")).to_be_attached()
@@ -394,3 +395,52 @@ def test_preset_saved(write_preview: WritePreview, make_item: MakeItem, page: Pa
     empty = drawer.get_by_role("button", name="削除するデータ 0 件")
     expect(empty).to_be_visible()
     expect(empty).to_be_enabled()
+
+
+# ─── 作成日時・更新日時と並べ替え（#186・#364） ───
+
+
+def _dated_items(make_item: MakeItem) -> tuple[dict[str, object], ...]:
+    """更新日時が T-1 < T-3 < T-2 の同じ状態の 3 件を返す。"""
+    return (
+        make_item("T-1", title="一つ目", created="2026-11-01T00:00:00+00:00", updated="2026-11-02T00:00:00+00:00"),
+        make_item("T-2", title="二つ目", created="2026-11-03T00:00:00+00:00", updated="2026-11-20T00:00:00+00:00"),
+        make_item("T-3", title="三つ目", created="2026-11-02T00:00:00+00:00", updated="2026-11-10T00:00:00+00:00"),
+    )
+
+
+def _column_ids(page: Page) -> list[str]:
+    """「未着手」の列のカードの ID を並び順に返す。"""
+    return page.get_by_role("region", name="未着手").locator("[data-card]").evaluate_all("cards => cards.map((card) => card.dataset.card)")
+
+
+def test_board_card_sort_default(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """ボードは開いた直後は連番の順で、「並べ替え」の「連番」が押された見た目になる。カードに作成日時・更新日時を出す（正常系）。"""
+    # 準備・実行
+    open_spa(page, write_preview(*_dated_items(make_item)), "?tab=tasks")
+    # 検証
+    expect(page.get_by_role("group", name="並べ替え").get_by_role("button", name="連番")).to_have_attribute("aria-pressed", "true")
+    assert _column_ids(page) == ["T-1", "T-2", "T-3"]
+    expect(page.locator("[data-card='T-2'] [data-part='item-dates'] > span")).to_have_text(["作成 11/03 09:00", "更新 11/20 09:00"])
+
+
+def test_board_card_sort_updated(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """「更新日時」を押すと列の中が更新日時の新しい順になり、URL に `sort=-updated` が入る（正常系）。"""
+    # 準備
+    open_spa(page, write_preview(*_dated_items(make_item)), "?tab=tasks")
+    # 実行
+    page.get_by_role("group", name="並べ替え").get_by_role("button", name="更新日時").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"sort=-updated"))
+    expect(page.locator("[data-card]").first).to_have_attribute("data-card", "T-2")
+    assert _column_ids(page) == ["T-2", "T-3", "T-1"]
+
+
+def test_table_date_columns(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """表に作成日時・更新日時の列があり、セルは `time` で JST の日時を出す（正常系）。"""
+    # 準備・実行
+    open_spa(page, write_preview(*_dated_items(make_item)), "?tab=tasks&view=table")
+    row = page.get_by_role("row").filter(has_text="二つ目")
+    # 検証
+    expect(page.get_by_role("columnheader", name=re.compile("更新日時"))).to_be_visible()
+    expect(row.locator("time[datetime='2026-11-20T00:00:00+00:00']")).to_have_text("11/20 09:00")

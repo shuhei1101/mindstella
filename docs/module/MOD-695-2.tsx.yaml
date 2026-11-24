@@ -1,0 +1,30 @@
+title: プレビュー / item-dates
+lead: 部品設計『項目の日時.tsx』の props・状態を持つ。
+components:
+  - name: ItemDates
+    title: 項目の日時
+    kind: コンポーネント
+    usecase: 共通
+    summary: 「作成 {日時}」「更新 {日時}」を `formatItemDateTime`（モジュール構成『format』）で描き、組ごとに `whitespace-nowrap` にして組の間でだけ折り返す
+    refs:
+      - CMP-695-2#
+    props:
+      - name: created
+        type: string
+        required: true
+        description: 項目の `created`
+      - name: updated
+        type: string
+        required: true
+        description: 項目の `updated`
+    unit_tests:
+      - name: test_item_dates
+        case: 正常
+        summary: 作成と更新を time で描く
+        condition: 今年の `created` と `updated`
+        mock: '`vi.setSystemTime`'
+        expected: 2 つの `time` が `dateTime` に元の値を持ち、文字が「作成 11/02 10:15」「更新 11/20 18:40」
+    container: frontend/src/shared/components/item-dates.tsx
+notes:
+  単体テスト: 同じフォルダの `item-dates.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+id: MOD-695-2

@@ -1907,3 +1907,43 @@ files:
   related:
   - to: MOD-159-2
     type: implements
+- path: src/shared/components/sibling-nav.tsx
+  name: 一覧の並びの前後の項目へ移るボタン
+  description: 詳細の見出しに置く、元の画面の今の並びで前後の項目へ移るボタンと並びの中の位置。前後の項目へ移る操作や見た目を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/sibling-nav.stories.tsx
+  name: 一覧の並びの前後の項目へ移るボタンのストーリー
+  description: 一覧の並びの前後の項目へ移るボタンの状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/item-dates.tsx
+  name: カードの作成日時・更新日時
+  description: カードに並べる項目の作成日時と更新日時。カードの日時の見せ方を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/item-dates.stories.tsx
+  name: カードの作成日時・更新日時のストーリー
+  description: カードの作成日時・更新日時の状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/card-sort.tsx
+  name: カード・ボードの並べ替え
+  description: カード・ボードを連番・作成日時・更新日時で並べ替えるボタンの組と、押したときの向きの決め方。カードの並べ替えの操作を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/card-sort.stories.tsx
+  name: カード・ボードの並べ替えのストーリー
+  description: カード・ボードの並べ替えの状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/thread-title.tsx
+  name: スレッドの見出しのタイトル
+  description: スレッドの見出しのタイトルを、書き込みの並びが一番上のときは全文、スクロールした後は 1 行に省略して出す。見出しのタイトルの見せ方を変更するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/thread-title.stories.tsx
+  name: スレッドの見出しのタイトルのストーリー
+  description: スレッドの見出しのタイトルの長さと省略の状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
+  tags:
+  - tool:react

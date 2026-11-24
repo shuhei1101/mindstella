@@ -24,6 +24,8 @@ export type Prefs = {
   commentFormClosed?: true | null;
   /** 「レビューに追加」の後のフォーカスの上書き。null・無しは自動（端末の主な入力で決める） */
   focusAfterAdd?: "input" | "none" | null;
+  /** 1 文字のショートカット（一覧の並びの前後の `j`・`k`）を使用しない上書き。null・無しは使用する */
+  singleKeyShortcuts?: false | null;
 };
 
 /** 詳細の本文をスクロールした位置を残す sessionStorage のキー */

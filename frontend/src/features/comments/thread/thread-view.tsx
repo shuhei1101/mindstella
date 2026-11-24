@@ -19,7 +19,9 @@ import { showLocation } from "@/shared/stores/location-highlight-store";
 import { voiceEditingOf } from "@/shared/stores/voice-store";
 import { useFocusAfterAddTarget } from "@/shared/stores/prefs-store";
 import { useThreadLinks } from "@/shared/hooks/use-thread-links";
+import { takeRequestedPost } from "@/shared/core/thread-ids";
 import { useSingleFlight } from "@/shared/hooks/use-single-flight";
+import { ThreadTitle } from "@/shared/components/thread-title";
 
 export type ThreadViewProps = {
   /** 開くスレッドの ID（まだ送っていない新規スレッドはコメントの ID） */
@@ -105,10 +107,52 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   // 理由の入力を閉じた後、次に描いた「状態を変える」へフォーカスを戻すか
   const focusStatusButton = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
-  // 開いたときに見出しへフォーカスを移す（パネルが Esc を受ける）
+  // 開いたときに見出しへフォーカスを移す（パネルが Esc を受ける）。書き込みがあれば、描いた後に最新の書き込みへ移す
   useEffect(() => {
     heading.current?.focus();
   }, []);
+  const list = useRef<HTMLOListElement>(null);
+  // 書き込みの並びをスクロールした後は、見出しのタイトルを 1 行にする（scroll は 1 コマに 1 回読む）
+  const [titleCollapsed, setTitleCollapsed] = useState(false);
+  useEffect(() => {
+    const element = list.current;
+    if (element === null) return undefined;
+    let waiting = false;
+    let frame = 0;
+    const onScroll = (): void => {
+      if (waiting) return;
+      waiting = true;
+      frame = requestAnimationFrame(() => {
+        waiting = false;
+        setTitleCollapsed(element.scrollTop > 0);
+      });
+    };
+    element.addEventListener("scroll", onScroll);
+    return () => {
+      element.removeEventListener("scroll", onScroll);
+      if (waiting) cancelAnimationFrame(frame);
+    };
+  }, []);
+  // 開いた直後に 1 回だけ、最新の送信した書き込みの先頭を並びの上端に合わせ、その書き込みへフォーカスを移す
+  const latestPostId = thread === null ? null : (thread.posts.at(-1)?.id ?? null);
+  // 書き込みの ID のリンクで開いたときは、その書き込みへ移す処理（`revealPost`）に任せ、最新の書き込みへ移さない
+  const [openedForPost] = useState(() => takeRequestedPost(id));
+  const movedToLatest = useRef(openedForPost !== null);
+  useEffect(() => {
+    const element = list.current;
+    if (movedToLatest.current || element === null || latestPostId === null) return undefined;
+    const article = element.querySelector<HTMLElement>(`article[data-post-id="${latestPostId}"]`);
+    if (article === null) return undefined;
+    movedToLatest.current = true;
+    // 外枠が開いたときに見出しへ移すフォーカスの後に移す
+    const frame = requestAnimationFrame(() => {
+      element.scrollTop = Math.min(article.offsetTop - element.offsetTop, element.scrollHeight - element.clientHeight);
+      article.focus({ preventScroll: true });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [latestPostId]);
   // 理由の入力を閉じ、描き直した「状態を変える」へフォーカスを戻す
   const closeReason = (): void => {
     focusStatusButton.current = true;
@@ -262,7 +306,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
       <div className="grid gap-1 border-b border-border px-3 py-2">
         <h2 ref={heading} tabIndex={-1} className="m-0 flex items-center gap-2 text-body font-medium focus-visible:outline-none">
           <ThreadState status={thread === null ? "pending" : thread.status} />
-          <span>{title}</span>
+          <ThreadTitle title={title} collapsed={titleCollapsed} />
         </h2>
         {thread?.target === null || thread?.target === undefined ? null : (
           <button type="button" className="flex cursor-pointer items-center gap-1 text-left text-small" disabled={titles(thread.target) === null} onClick={() => { showLocation({ target: thread.target ?? "", loc: thread.loc }); onOpenItem(thread.target ?? ""); }}>
@@ -278,14 +322,14 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
           </span>
         )}
       </div>
-      <ol className="m-0 grid min-h-0 flex-1 list-none grid-cols-1 content-start gap-2 overflow-y-auto p-3">
+      <ol ref={list} className="m-0 grid min-h-0 flex-1 list-none grid-cols-1 content-start gap-2 overflow-y-auto p-3">
         {thread === null
           ? pendingNew === null
             ? null
             : pendingPost(pendingNew)
           : threadTimeline(thread).map((entry) => ("post" in entry ? (
             <li key={entry.post.id}>
-              <ThreadPost post={entry.post} titles={titles} index={index} changeSets={changeSets} threadTitles={threadLinks.threads} onOpenThread={threadLinks.onOpenThread} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
+              <ThreadPost post={entry.post} fold={entry.post.id !== latestPostId} titles={titles} index={index} changeSets={changeSets} threadTitles={threadLinks.threads} onOpenThread={threadLinks.onOpenThread} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
             </li>
           ) : (
             <li key={`${entry.event.kind}-${entry.event.created}`}>

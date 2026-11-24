@@ -1,0 +1,43 @@
+id: MOD-695-6
+title: プレビュー / use-shortcut
+lead: ショートカットの定義の ID からキーを引き、`@tanstack/react-hotkeys` で受ける薄いフック。
+functions:
+  - name: useShortcut
+    title: ショートカット
+    kind: フック
+    usecase: 共通
+    summary: '`SHORTCUTS`（モジュール構成『shortcuts』）から `id` の定義を引き、`useHotkey` に定義のキーと `{enabled}` を指定する。IME の変換中・入力欄にフォーカスがある間（1 文字のキー）・定義に無い修飾キーを押したときは、ライブラリの既定（`ignoreInputs: ''auto''`・変換中の判定・修飾キーの完全一致）で発火しないため、自前で判定しない（外部ライブラリ『@tanstack/react-hotkeys』の動作確認）。自前で加えるのは、定義が 1 文字（`singleKey`）のとき個人の上書き `singleKeyShortcuts` が `false` の間は `enabled` を偽にすることだけ。部品からは `useHotkey` を直接呼ばない'
+    args:
+      - name: id
+        type: ShortcutId
+        required: true
+        description: 定義の ID
+      - name: handler
+        type: () => void
+        required: true
+        description: 押されたときの処理
+      - name: enabled
+        type: boolean
+        required: false
+        default: 'true'
+        description: 受けるか（押せない向きのときは偽）
+    returns:
+      type: '{active: boolean; keys: string; label: string}'
+      description: 今キーを受けているかと、`aria-keyshortcuts` の値と画面に出すキーの文字
+    unit_tests:
+      - name: test_use_shortcut_when_single_key
+        case: 正常
+        summary: 1 文字のキーの判定
+        condition: '`parametrize`: `item.next` で `j` / `Shift+j` / `isComposing` の `j` / `keyCode: 229` の `j` / `input` にフォーカスして `j` / `enabled` が偽 / `singleKeyShortcuts: false`'
+        mock: '`localStorage`'
+        expected: 呼ばれる / これ以降は全て呼ばれず、最後の 2 つは `active` も偽
+      - name: test_use_shortcut_when_mod_key
+        case: 正常
+        summary: 修飾キーつきのキーは設定によらず受ける
+        condition: '`singleKeyShortcuts: false` で、入力欄にフォーカスして `search.open`（`Mod+K`）を押す'
+        mock: '`localStorage`'
+        expected: 呼ばれる
+    container: frontend/src/shared/hooks/use-shortcut.ts
+notes:
+  単体テスト: 同じフォルダの `use-shortcut.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  既存のショートカット: 全体の検索の `Ctrl+K` は、モジュール構成『use-search-shortcut』の `useSearchShortcut` が `useShortcut('search.open', onOpen, !open)` を呼ぶ形にする（規約『ショートカット』の定義は 1 か所）

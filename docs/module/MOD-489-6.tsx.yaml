@@ -26,3 +26,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `review-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   修正の入力の音声入力: '書き換えている行を `{id, body, error}` で持ち、初めの値は `voiceEditingOf("review")` の ID（本文はそのコメントの本文）にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread, target}`、開く画面は `review`、名前は「{ID} へのコメントの修正」か「{スレッド} への返信の修正」）を使い、`ReviewEditForm` へ `body`・`onBodyChange` と音声の props を渡す。単体テストに、修正の入力のマイクで録音して文字起こしの結果が入力欄に入る場合（`test_review_view_when_edit_voice`）を追加する'
+  長い値: 行の種類の札・向けた項目の ID・返信先のスレッドの状態の札・「スレッドを開く」「続きを表示」のボタンに `shrink-0 whitespace-nowrap` を付け、向けた項目・返信先のスレッドのタイトルは `min-w-0 truncate` と `title` に全文を持たせる（#690）。結合テストで最大の長さの値を入れたストーリーを撮って確認する

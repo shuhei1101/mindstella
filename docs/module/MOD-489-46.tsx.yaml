@@ -28,6 +28,13 @@ components:
         condition: '`parametrize`: `focusAfterAdd: auto`・`pointerCoarse: false` / `pointerCoarse: true`。「戻さない」を押す'
         mock: なし
         expected: 凡例「コメントの入力」の中に 3 つのラジオがあり「自動」が選ばれ、その下に「この端末では入力欄へ戻します」 / 「この端末では戻しません」。グループの `aria-describedby` が区画の下の説明を指し、`onFocusAfterAddChange` が `none` で呼ばれる
+      - name: test_settings_panel_when_single_key_shortcuts
+        case: 正常
+        summary: 1 文字のショートカットのチェック
+        condition: '`singleKeyShortcuts: true` でチェックを外す'
+        mock: なし
+        expected: 凡例「キーボード」の中にチェックがあり、`aria-describedby` が説明を指し、`onSingleKeyShortcutsChange` が `false` で呼ばれる
     container: frontend/src/features/settings/display-settings/components/settings-panel.tsx
 notes:
   単体テスト: 同じフォルダの `settings-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  キーボード: 区画「コメントの入力」の下に凡例「キーボード」の `fieldset` を置き、`singleKeyShortcuts` のチェックボックス「1 文字のショートカットを使用する」と説明を描き、切り替えを `onSingleKeyShortcutsChange` で知らせる（#364）

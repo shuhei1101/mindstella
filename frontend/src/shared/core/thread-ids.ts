@@ -23,12 +23,29 @@ export const threadLookupOf = (threads: readonly { id: string; summary: string |
   return (threadId) => byId.get(threadId) ?? null;
 };
 
+/** 書き込みの ID のリンクで開こうとしている書き込み（スレッドの画面が開いた直後に最新の書き込みへ移すかを決める） */
+let requestedPost: string | null = null;
+
+/** 書き込みの ID のリンクで開く書き込みを控える */
+export const requestPost = (postId: string): void => {
+  requestedPost = postId;
+};
+
+/** スレッドの画面が開いたときに、そのスレッドの書き込みを指して開いたかを取り出す（取り出したら控えを消す） */
+export const takeRequestedPost = (threadId: string): string | null => {
+  const postId = requestedPost;
+  requestedPost = null;
+  return postId?.startsWith(`${threadId}-`) === true ? postId : null;
+};
+
 /** 開いたスレッドの画面で、書き込みの要素（`data-post-id`）が描かれるのを待ってスクロールし、フォーカスを移す（描かれなければ何もしない） */
 export const revealPost = (postId: string, frames = 60): void => {
   const element = document.querySelector<HTMLElement>(`[data-post-id="${CSS.escape(postId)}"]`);
   if (element !== null) {
     element.scrollIntoView({ block: "nearest" });
     element.focus({ preventScroll: true });
+    // 開いたままのスレッドでは画面が控えを取り出さないため、移り終えたら控えを消す
+    if (requestedPost === postId) requestedPost = null;
     return;
   }
   if (frames > 0) requestAnimationFrame(() => { revealPost(postId, frames - 1); });

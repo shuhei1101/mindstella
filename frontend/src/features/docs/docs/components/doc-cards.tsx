@@ -3,15 +3,15 @@ import { CommentMark } from "@/shared/components/comment-mark";
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
 import { Icon, StatusMark } from "@/shared/components/icon";
+import { ItemDates } from "@/shared/components/item-dates";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { TagList } from "@/shared/components/tag-list";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
 import type { ScreenEdit } from "@/shared/core/edits";
-import { bodyFormatOf, compareIds, type Item } from "@/shared/core/records";
+import { cardSortToRowSort, INITIAL_CARD_SORT, sortItems } from "@/shared/components/card-sort";
+import { bodyFormatOf, type Item } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
 
-/** 連番の順に並べる */
-export const orderDocs = (docs: readonly Item[]): Item[] => [...docs].sort((a, b) => compareIds(a.id, b.id));
 
 export type DocCardProps = {
   doc: Item;
@@ -55,6 +55,7 @@ export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen,
         )}
         {pending === undefined ? null : <PendingMark kind={pending} />}
       </span>
+      <ItemDates created={doc.created} updated={doc.updated} />
       {(doc.tags ?? []).length > 0 ? (
         <span className="flex flex-wrap gap-x-1 gap-y-1.5">
           <TagList values={doc.tags} onSelect={onSelectTag} />
@@ -67,4 +68,24 @@ export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen,
       ) : null}
     </div>
   );
+};
+
+export type DocCardsProps = {
+  docs: readonly Item[];
+  /** 並び（`sortRows` の `sort`）。無ければ更新日時の新しい順 */
+  sort?: string;
+  selectedId: string | null | undefined;
+  marks: DiffMarks | undefined;
+  comments: Record<string, number>;
+  edit: ScreenEdit | null;
+  /** カードを押した。`order` は描いた並びの ID */
+  onOpen: (id: string, order: string[]) => void;
+  onSelectTag?: (name: string) => void;
+};
+
+/** 資料のカードを並びの順に描く */
+export const DocCards = ({ docs, sort = cardSortToRowSort(INITIAL_CARD_SORT.docs), selectedId, marks, comments, edit, onOpen, onSelectTag }: DocCardsProps) => {
+  const ordered = sortItems(docs, sort);
+  const order = ordered.map((doc) => doc.id);
+  return ordered.map((doc) => <DocCard key={doc.id} doc={doc} inBoard={false} selected={doc.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={(id) => { onOpen(id, order); }} {...(onSelectTag === undefined ? {} : { onSelectTag })} />);
 };

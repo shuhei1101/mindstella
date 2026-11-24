@@ -1,0 +1,50 @@
+title: '@tanstack/react-hotkeys'
+kind: ライブラリ
+lead: キーボードのショートカットを IME・スコープ・入力欄の判定つきで受ける React のライブラリ。
+version:
+  current: 0.27.2
+  latest: 0.27.2
+  checked_on: '2026-11-24'
+  source: package.json
+  pinning: 0.27.2 に固定する（`^` を付けない）
+catalogs:
+  - name: API
+    version: 0.27.2
+    entries:
+      - name: useHotkey
+        kind: フック
+        purpose: 定義のキーを受け、押されたときに処理を呼ぶ
+        params:
+          - name: ignoreInputs
+            type: boolean | 'auto'
+            required: false
+            default: "'auto'"
+            description: 入力欄（input・textarea・select・contenteditable）にフォーカスがある間のキーを無視する。`'auto'` は 1 文字・Shift / Alt の組み合わせで真、Ctrl / Meta と Escape で偽
+          - name: enabled
+            type: boolean
+            required: false
+            default: 'true'
+            description: 偽の間は発火しない（登録は残る）
+          - name: preventDefault
+            type: boolean | 'always'
+            required: false
+            default: 'true'
+            description: 一致したときブラウザの既定の動きを止める
+purl: pkg:npm/@tanstack/react-hotkeys
+dependency_scope: 必須
+adoption: 採用
+used_in:
+  - frontend/src/shared/hooks/use-shortcut.ts
+upstream: TanStack/hotkeys
+verification:
+  state: 済
+  detail: '0.27.2 を入れた worktree で、jsdom の Vitest に `useHotkey(''J'', ...)`・`useHotkey(''Mod+K'', ...)` を描き、keydown を送って測った。既定のオプション（`ignoreInputs: ''auto''`）で、`J` は `key: j` で発火し（Shift を要求しない）、`isComposing`・`keyCode: 229`・`input`・`textarea` にフォーカス・`Shift+j`・`Ctrl+j` では発火しない。`Mod+K` は `input` にフォーカスがあっても発火する。`contenteditable` は jsdom が `isContentEditable` を持たないため発火した（ブラウザの結合テストで確認する。画面は `contenteditable` の入力欄を持たない）'
+  date: '2026-11-24'
+license: MIT
+official_url: https://tanstack.com/hotkeys
+docs_url: https://tanstack.com/hotkeys/latest/docs/overview
+install: |-
+  ```bash
+  npm install --save-exact @tanstack/react-hotkeys@0.27.2
+  ```
+id: LIB-695-1

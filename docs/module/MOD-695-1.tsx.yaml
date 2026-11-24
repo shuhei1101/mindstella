@@ -1,0 +1,49 @@
+title: プレビュー / sibling-nav
+lead: 部品設計『一覧の並びの前後.tsx』の props・イベント・状態を持つ。
+components:
+  - name: SiblingNav
+    title: 一覧の並びの前後
+    kind: コンポーネント
+    usecase: 項目の詳細を読む
+    summary: 部品設計『一覧の並びの前後.tsx』の props・イベント・状態を持つ。ボタンに渡す `aria-keyshortcuts` は `keys`（`{prev, next}`。キーが無効なときは `null`）で受ける
+    refs:
+      - CMP-695-1#
+    props:
+      - name: position
+        type: number
+        required: true
+        description: 並びの中の位置（1 始まり）
+      - name: total
+        type: number
+        required: true
+        description: 並びの件数
+      - name: onPrev
+        type: () => void
+        required: true
+        description: 前の項目へ移る
+      - name: onNext
+        type: () => void
+        required: true
+        description: 次の項目へ移る
+      - name: keys
+        type: '{prev: string; next: string} | null'
+        required: false
+        default: 'null'
+        description: ボタンの `aria-keyshortcuts` と `title` に添えるキー
+    unit_tests:
+      - name: test_sibling_nav_when_edge
+        case: 正常
+        summary: 先頭・末尾でその向きを押せない
+        condition: '`parametrize`: `position` 1 / 3、`total` 3'
+        mock: なし
+        expected: 「一覧の前の項目」が disabled / 「一覧の次の項目」が disabled
+      - name: test_sibling_nav_when_keys
+        case: 正常
+        summary: キーを添える
+        condition: "`keys` が `{prev: 'k', next: 'j'}`"
+        mock: なし
+        expected: ボタンの `aria-keyshortcuts` が `k`・`j`、`title` が「一覧の前の項目（K）」「一覧の次の項目（J）」
+    container: frontend/src/shared/components/sibling-nav.tsx
+notes:
+  単体テスト: 同じフォルダの `sibling-nav.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+id: MOD-695-1

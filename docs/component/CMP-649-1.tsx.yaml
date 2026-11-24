@@ -8,7 +8,7 @@ args:
   - name: item
     type: オブジェクト
     required: true
-    description: カードにする項目（埋め込みのデータの項目そのもの）
+    description: カードにする項目（埋め込みのデータの項目そのもの）。`created`・`updated` をタイトルの下の文字の行の次に部品『項目の日時』で出す
   - name: index
     type: オブジェクト
     required: true
@@ -71,6 +71,10 @@ states:
         value: '{T-1: 3}'
       - name: selected
         value: 'true'
+  - name: Dates
+    description: 作成の後に更新した項目のカード。種類・状態の文字の行の次に「作成 {日時}　更新 {日時}」を出す
+  - name: DatesNarrow
+    description: 列の幅 240px。日時は「作成 {日時}」と「更新 {日時}」の組ごとに折り返し、カードの外へはみ出さない
 uses:
   - component: CMP-489-16#
     how: 押して絞り込めるタグ
@@ -80,6 +84,8 @@ uses:
     how: コメントのマーカー。カードの一番下の行に右寄せで配置し、ID の行には配置しない
   - component: CMP-489-22#
     how: 保存待ちのマーカー
+  - component: CMP-695-2#
+    how: 種類・状態の文字の行の次の作成日時・更新日時
 accessibility:
   - カードの外枠は `div` にし、タイトルを `button` にして、その押せる範囲をカード全体へ広げる。タグのボタンをタイトルのボタンより前面に置き、ボタンを入れ子にしない
   - 開いている項目のタイトルに `aria-current="true"` を付ける

@@ -94,6 +94,9 @@ export const DisplaySettingsPanel = () => {
             pointerCoarse={pointerCoarse}
             // 自動は上書きを外し、入力欄へ戻す・戻さないだけを上書きとして残す
             onFocusAfterAddChange={(value) => { writePrefs({ focusAfterAdd: value === "auto" ? null : value }); }}
+            singleKeyShortcuts={prefs.singleKeyShortcuts !== false}
+            // 使用する（既定）は上書きを外し、使用しないだけを上書きとして残す
+            onSingleKeyShortcutsChange={(value) => { writePrefs({ singleKeyShortcuts: value ? null : false }); }}
             onKindsChange={(kinds) => { writePrefs({ kinds }); }}
             onReset={() => {
               writePrefs(resetPrefs(readPrefs()));

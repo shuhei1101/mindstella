@@ -1,0 +1,100 @@
+title: プレビュー / card-sort
+lead: 部品設計『カードの並べ替え.tsx』の props・イベント・状態と、次の並びを決める関数を持つ。
+constants:
+  - name: INITIAL_CARD_SORT
+    title: カード・ボードの既定の並び
+    usecase: 共通
+    summary: 画面を開いた直後の並び
+    entries:
+      - key: docs
+        value: "{key: 'updated', dir: 'desc'}"
+        description: 資料
+      - key: other
+        value: "{key: 'default', dir: 'asc'}"
+        description: ほかの種類
+    container: frontend/src/shared/components/card-sort.tsx
+functions:
+  - name: nextCardSort
+    title: 次の並び
+    kind: 関数
+    usecase: 共通
+    summary: 連番は昇順、選んでいない日時は新しい順、選んでいる日時は向きを逆にする
+    args:
+      - name: current
+        type: CardSortValue
+        required: true
+        description: 今の並び
+      - name: key
+        type: CardSortKey
+        required: true
+        description: 押したボタン
+    returns:
+      type: CardSortValue
+      description: 次の並び
+    unit_tests:
+      - name: test_next_card_sort
+        case: 正常
+        summary: 向きを決める
+        condition: '`parametrize`: 連番から `updated` / `updated` の新しい順から `updated` / `updated` から `default`'
+        mock: なし
+        expected: '`{updated, desc}` / `{updated, asc}` / `{default, asc}`'
+    container: frontend/src/shared/components/card-sort.tsx
+  - name: cardSortToParam
+    title: URL の sort にする
+    kind: 関数
+    usecase: 共通
+    summary: 並びを `sort` の値にする。画面の既定と同じ並びは `undefined`（書かない）、連番は `id`、降順は頭に `-` を付ける。逆向きの `cardSortFromParam` も同じファイルに置き、`id`・`-id` は連番、`created`・`updated`（と `-` 付き）はその並び、無い値と受け付けない値（表の列の `title` など）は画面の既定にする。受け付けるかは `isCardSortParam` で判定し、一覧の画面はカード・ボードの表示で受け付けない `sort` を置き換えで URL から外す（インターフェース定義『プレビューを開く』の `sort`）
+    args:
+      - name: value
+        type: CardSortValue
+        required: true
+        description: 並び
+      - name: initial
+        type: CardSortValue
+        required: true
+        description: 画面の既定の並び
+    returns:
+      type: string | undefined
+      description: '`sort` の値'
+    unit_tests:
+      - name: test_card_sort_to_param
+        case: 正常
+        summary: 既定と違うときだけ書く
+        condition: '`parametrize`: 資料で `{updated, desc}` / 資料で `{default, asc}` / ほかの種類で `{created, asc}`'
+        mock: なし
+        expected: '`undefined` / `id` / `created`'
+      - name: test_card_sort_from_param
+        case: 正常
+        summary: 受け付けない値は画面の既定
+        condition: '`parametrize`: 資料で `title` / 無し / `-id` / `-created`'
+        mock: なし
+        expected: '`{updated, desc}` / `{updated, desc}` / `{default, asc}` / `{created, desc}`'
+    container: frontend/src/shared/components/card-sort.tsx
+components:
+  - name: CardSort
+    title: カードの並べ替え
+    kind: コンポーネント
+    usecase: 共通
+    summary: 部品設計『カードの並べ替え.tsx』の props・イベント・状態を持つ。押したボタンで `nextCardSort` を求めて `onChange` で知らせる
+    refs:
+      - CMP-695-3#
+    props:
+      - name: value
+        type: CardSortValue
+        required: true
+        description: 今の並び
+      - name: onChange
+        type: '(value: CardSortValue) => void'
+        required: true
+        description: 次の並び
+    unit_tests:
+      - name: test_card_sort
+        case: 正常
+        summary: 押したボタンで次の並びを知らせる
+        condition: 連番のとき「更新日時」を押す
+        mock: なし
+        expected: '`onChange` が `{updated, desc}` で呼ばれ、「連番」が `aria-pressed="true"`'
+    container: frontend/src/shared/components/card-sort.tsx
+notes:
+  単体テスト: 同じフォルダの `card-sort.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+id: MOD-695-3

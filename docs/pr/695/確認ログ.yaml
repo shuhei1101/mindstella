@@ -1,0 +1,25 @@
+confirmations:
+  - topic: '#364 並びの前後の項目へ移るボタンの名前と置き場所'
+    decision: 戻る・進む（← →）の左に、上下の山形と「2 / 3」を枠でまとめて置き、名前は「一覧の前の項目」「一覧の次の項目」にする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 2984483b
+    thread: https://github.com/shuhei1101/mindstella/pull/695#discussion_r4679772069
+  - topic: '#186 カードの日時と並べ替え'
+    decision: 'カード・ボードに「作成 {日時}　更新 {日時}」を出し、上に「並べ替え: 連番・作成日時・更新日時」のボタンの組を置く。資料は更新日時の新しい順、ほかの種類は連番で開き、日時は初めて押すと新しい順、もう一度押すと古い順（推奨案 A）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 2984483b
+    thread: https://github.com/shuhei1101/mindstella/pull/695#discussion_r4679774039
+  - topic: '#372 スレッドの見出しのタイトル'
+    decision: 書き込みの並びが一番上のときは全文、スクロールしたら 1 行にして末尾を「…」にする。全文はタイトルに乗せると出る説明で参照できる（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 2984483b
+    thread: https://github.com/shuhei1101/mindstella/pull/695#discussion_r4679775453
+  - topic: '#364 前後の項目へ移るキーと表示の設定のオフの切り替え'
+    decision: '`k` で一覧の前の項目、`j` で一覧の次の項目へ移る。表示の設定の「コメントの入力」の下に区画「キーボード」を追加し、チェックボックス「1 文字のショートカットを使用する」（既定はオン）と説明を出す（推奨案 A）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 04ee724f
+    thread: https://github.com/shuhei1101/mindstella/pull/695#discussion_r4680294078

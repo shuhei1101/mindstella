@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn, userEvent, within } from "storybook/test";
 
 import { StatusMark } from "@/shared/components/icon";
+import { commonColumns } from "@/shared/components/list-columns";
 import { Table, type Row, type TableColumn } from "@/shared/components/table";
 
 /** 確度の並び（並べ替え・絞り込みの値の順） */
@@ -142,3 +143,15 @@ export const SelectableTags: Story = { args: { columns: taggedColumns, rows: tag
 
 /** 簡易で表せないタグの条件で絞った行を受けた。チップの先頭に式を文にしたチップを出す */
 export const TagExpr: Story = { args: { tagExprText: "「画面」を含む かつ 「廃止」を含まない", onClearTagExpr: fn() } };
+
+/** 作成日時・更新日時の列を足した検討事項の列 */
+const datetimeColumns: TableColumn[] = [...columns, commonColumns().created, commonColumns().updated];
+
+/** 作成日時・更新日時を持つ行 */
+const datedRows: Row[] = rows.map((row, position) => ({ ...row, created: `2026-11-0${String(position + 1)}T01:15:00+00:00`, updated: `2026-11-${String(20 - position * 3)}T09:40:00+00:00` }));
+
+/** 作成日時・更新日時の列を持つ表。日時のセルは JST の日時を折り返さずに出す */
+export const DatetimeColumns: Story = { args: { columns: datetimeColumns, rows: datedRows } };
+
+/** 更新日時の新しい順。更新日時の見出しに向きの矢印を出し、`aria-sort="descending"` */
+export const SortedByUpdatedDesc: Story = { args: { columns: datetimeColumns, rows: datedRows, sort: { key: "updated", dir: "desc" } } };

@@ -2,6 +2,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { render, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { vi } from "vitest";
 
 import { createQueryClient } from "@/app/query-client";
@@ -44,4 +45,22 @@ export const renderPreviewHook = async <T,>(path: string, useHook: () => T) => {
     if (result.current === undefined) throw new Error("hook がまだ呼ばれていない");
   });
   return { result: result as { current: T }, history, router, queryClient, unmount };
+};
+
+/** メモリの履歴のルーターの中で部品を描く（ルーターの hook を使う部品を単体で描くとき） */
+export const renderInPreviewRouter = async (path: string, ui: ReactNode) => {
+  const rootRoute = createRootRoute();
+  const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", validateSearch: parsePreviewSearch, component: () => ui });
+  const history = createMemoryHistory({ initialEntries: [path] });
+  const router = createRouter({ routeTree: rootRoute.addChildren([indexRoute]), history, parseSearch: parseSearchString, stringifySearch: stringifySearchString });
+  const queryClient = createQueryClient();
+  const rendered = render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  await waitFor(() => {
+    if (router.state.status !== "idle") throw new Error("ルーターがまだ準備中");
+  });
+  return { ...rendered, history, router };
 };

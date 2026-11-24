@@ -41,8 +41,8 @@ export const ThreadRow = ({ thread = null, pending = null, hasPendingReply = fal
         </span>
         <span data-part="line2" className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground tabular-nums">
           {unseen ? <UnseenMark /> : null}
-          {target === null ? null : <span data-part="target" className="font-mono text-foreground">{target}</span>}
-          <span data-part="author" className={cn("font-semibold", unseen && "text-foreground")}>{AUTHOR_LABELS[author]}</span>
+          {target === null ? null : <span data-part="target" title={target} className="min-w-0 truncate font-mono text-foreground">{target}</span>}
+          <span data-part="author" className={cn("shrink-0 font-semibold whitespace-nowrap", unseen && "text-foreground")}>{AUTHOR_LABELS[author]}</span>
           <time dateTime={created} className={cn("flex-none", unseen && "text-foreground")}>
             {created === "" ? "" : formatJst(created)}
           </time>

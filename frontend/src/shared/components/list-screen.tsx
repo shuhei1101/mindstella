@@ -1,7 +1,8 @@
 // 一覧の画面の枠。表示形式の切り替え・項目の追加・削除した項目の帯・絞り込みのドロワーと、表の状態を持つ
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefCallback } from "react";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode, type RefCallback } from "react";
 
+import { CardSort, cardSortFromParam, cardSortToParam, cardSortToRowSort, INITIAL_CARD_SORT, isCardSortParam, sortItems } from "@/shared/components/card-sort";
 import type { DiffMarks } from "@/shared/components/diff-mark";
 import { FilterChips } from "@/shared/components/filter-chips";
 import { FilterDrawer, type FilterGroup } from "@/shared/components/filter-drawer";
@@ -28,6 +29,7 @@ import { usePresetSave } from "@/shared/hooks/use-preset-save";
 import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useFilterCandidatesStore } from "@/shared/stores/filter-candidates-store";
+import { useListOrderStore } from "@/shared/stores/list-order-store";
 import { readPrefs, writePrefs } from "@/shared/stores/prefs-store";
 
 /** 画面の枠が中身に渡す値 */
@@ -40,7 +42,10 @@ export type ListContext = {
   marks: DiffMarks | undefined;
   comments: Record<string, number>;
   edit: ScreenEdit | null;
+  /** 一覧から項目を開く（一覧の並びの前後で移れるように、一覧から開いたマーカーを付ける） */
   onOpen: (id: string) => void;
+  /** カード・ボードの並び（`sortRows` の `sort`）。`shown` はこの順 */
+  sort: string;
   onOpenAdded: (id: string) => void;
   selectedId: string | undefined;
   /** 押したタグを画面の絞り込みに加える */
@@ -97,6 +102,50 @@ const PublishCandidates = ({ groups, apply }: { groups: readonly FilterGroup[]; 
   return null;
 };
 
+/** 描いた並びを一覧の並びとして置き換え、画面を離れたら空にする */
+const PublishOrders = ({ orders }: { orders: readonly (readonly string[])[] }) => {
+  const signature = JSON.stringify(orders);
+  const publish = useEffectEvent(() => {
+    useListOrderStore.getState().setOrders(orders);
+  });
+  useEffect(() => {
+    publish();
+  }, [signature]);
+  useEffect(() => useListOrderStore.getState().clear, []);
+  return null;
+};
+
+/** ボードの並び。項目を状態ごとにまとめ、まとめの中は渡した順 */
+const boardOrders = (items: readonly Item[]): string[][] => {
+  const byStatus = new Map<string, string[]>();
+  for (const item of items) {
+    const key = item.status ?? "";
+    byStatus.set(key, [...(byStatus.get(key) ?? []), item.id]);
+  }
+  return [...byStatus.values()];
+};
+
+/** カード・ボードの表示で受け付けない `sort`（表の列の並べ替え）は、無いものとして URL から外す（置き換える） */
+const useDropCardSort = ({ view, sort, setSort }: { view: View; sort: string | undefined; setSort: (sort: string | undefined, options: { replace: boolean }) => void }): void => {
+  useEffect(() => {
+    if (view !== "table" && sort !== undefined && !isCardSortParam(sort)) setSort(undefined, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 表示形式と並べ替えが変わったときだけ確かめる
+  }, [view, sort]);
+};
+
+/** カード・ボードの表示のときだけ「並べ替え」を出す */
+const CardSortControl = ({ shown, ...props }: { shown: boolean } & ComponentProps<typeof CardSort>) => (shown ? <CardSort {...props} /> : null);
+
+/** カード・ボードの「並べ替え」の並び（資料は更新日時の新しい順、ほかは連番が既定）と、詳細の一覧の並びの前後に使う描いた並び */
+const listOrders = ({ kind, view, sort, filtered, sorted }: { kind: Kind; view: View; sort: string | undefined; filtered: Item[]; sorted: Row[] }) => {
+  const initialCardSort = kind === "docs" ? INITIAL_CARD_SORT.docs : INITIAL_CARD_SORT.other;
+  const cardSort = cardSortFromParam(sort, initialCardSort);
+  const cardRowSort = cardSortToRowSort(cardSort);
+  const cards = view === "table" ? [] : sortItems(filtered, cardRowSort);
+  const orders = view === "table" ? [sorted.map((row) => row.id)] : view === "board" ? boardOrders(cards) : [cards.map((item) => item.id)];
+  return { initialCardSort, cardSort, cardRowSort, cards, orders };
+};
+
 export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, content }: ListScreenProps) => {
   const { search, openItem, closeItem, setSort, setView } = usePreviewSearch();
   const { index } = useRecords();
@@ -105,6 +154,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const view = search.view ?? views?.[0]?.key ?? "table";
   // 一覧のスクロール位置は画面と表示形式ごとに残し、記録を読み終えて行を描いたら戻す
   const scrollRef = useListScroll(`${kind}:${view}`, index !== null);
+  useDropCardSort({ view, sort: search.sort, setSort });
   const onSelectTag = (name: string): void => {
     addTag(name);
   };
@@ -120,7 +170,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   }, [closeItem, startAdd, kind]);
   const openItemFromList = (id: string): void => {
     closeAdd();
-    openItem(id);
+    openItem(id, { fromList: true });
   };
   const onOpenAdded = (id: string): void => {
     closeItem();
@@ -152,6 +202,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const filtered = filterRows({ rows, columns: list, filters, tagMatch }).filter((row) => complexExpr === null || matchesTagExpr(tagNames((row as unknown as Item).tags), complexExpr));
   const exprChip = complexExpr === null ? {} : { tagExprText: describeTagExpr(complexExpr), onClearTagExpr: () => { setTagExpr(null); } };
   const sorted = sortRows({ rows: filtered, columns: list, sort: search.sort });
+  const { initialCardSort, cardSort, cardRowSort, cards, orders } = listOrders({ kind, view, sort: search.sort, filtered: filtered as unknown as Item[], sorted });
   const marks: DiffMarks | undefined = point === null ? undefined : Object.fromEntries([...[...point.added].map((id) => [id, "new"] as const), ...[...point.changed].map((id) => [id, "changed"] as const)]);
   const hidden = saved?.hidden ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
   const pinTo = saved?.pinTo ?? null;
@@ -201,6 +252,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
     <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
       <div className="flex items-center gap-2">
         {views === null ? null : <ViewSwitch views={views} current={view} onChange={setView} />}
+        <CardSortControl shown={view !== "table" && content !== undefined} value={cardSort} onChange={(next) => { setSort(cardSortToParam(next, initialCardSort)); }} />
         {edit === null ? null : (
           <Button variant="outline" aria-label={`${KIND_LABEL[kind]}の項目を追加`} title="項目追加" className="ml-auto" onClick={edit.onAdd}>
             <Icon name="plus" />
@@ -210,7 +262,8 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       </div>
       {view === "table" ? null : <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={setFilters} {...exprChip} />}
       <RemovedBand items={removedOf({ point, kind })} />
-      {view === "table" || content === undefined ? table : content({ index, view, shown: filtered as unknown as Item[], filters, tagMatch, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, onSelectTag, scrollRef, table })}
+      {view === "table" || content === undefined ? table : content({ index, view, shown: cards, sort: cardRowSort, filters, tagMatch, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, onSelectTag, scrollRef, table })}
+      <PublishOrders orders={orders} />
       <PublishCandidates groups={groups} apply={applyCandidate} />
       {drawerOpen ? (
         <FilterDrawer

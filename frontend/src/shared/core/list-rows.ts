@@ -1,6 +1,7 @@
 // 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て
 import { toText } from "@/shared/core/format";
 import { TAG_FILTER_KEY, TEXT_FILTER_PREFIX, withoutKey, type Filters, type TagMatch } from "@/shared/core/filters";
+import { compareIds } from "@/shared/core/records";
 
 /** 列から値を取る定義 */
 export type ListColumn<R> = {
@@ -65,6 +66,8 @@ export const sortRows = <R,>({ rows, columns, sort }: { rows: readonly R[]; colu
     const x = column.get(a);
     const y = column.get(b);
     if (typeof x === "number" && typeof y === "number") return x - y;
+    // 連番は数の順（D-10 は D-2 の後）
+    if (key === "id" && typeof x === "string" && typeof y === "string") return compareIds(x, y);
     return compareValues(column, valuesOf(column, a).join(" "), valuesOf(column, b).join(" "));
   };
   return rows

@@ -1,4 +1,4 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
 import { useSearchShortcut } from "@/features/search/search/use-search-shortcut";
@@ -10,7 +10,7 @@ const Host = ({ open, onOpen }: { open: boolean; onOpen: () => void }) => {
 
 const pressCtrlK = (): KeyboardEvent => {
   const event = new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true });
-  fireEvent(window, event);
+  fireEvent(document.body, event);
   return event;
 };
 
@@ -36,5 +36,23 @@ describe("useSearchShortcut", () => {
     pressCtrlK();
     // 検証
     expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  // 入力欄の中でも開く（正常系）
+  test("use_search_shortcut_when_input_focused", () => {
+    // 準備
+    const onOpen = vi.fn();
+    render(
+      <>
+        <Host open={false} onOpen={onOpen} />
+        <input aria-label="入力欄" />
+      </>,
+    );
+    const input = screen.getByRole("textbox", { name: "入力欄" });
+    input.focus();
+    // 実行
+    fireEvent.keyDown(input, { key: "k", code: "KeyK", ctrlKey: true, bubbles: true, cancelable: true });
+    // 検証
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 });

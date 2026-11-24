@@ -22,6 +22,9 @@ TAGS = "#storybook-root li [data-part=tags] button"
 UNREAD = f"{LINE2} [data-part=unread]"
 OPEN_BUTTON = "#storybook-root li > button"
 
+# 要素の中の文字（テキストノード）が並ぶ行の数（折り返していなければ 1）
+TEXT_LINES_JS = "(e) => { const walker = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); const tops = new Set(); for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) { if (node.textContent.trim() === '') continue; const range = document.createRange(); range.selectNodeContents(node); for (const rect of range.getClientRects()) if (rect.width > 0) tops.add(Math.round(rect.top)); } return tops.size; }"
+
 # 塗りが無いときの背景色
 TRANSPARENT = "rgba(0, 0, 0, 0)"
 
@@ -231,3 +234,19 @@ def test_unread_fill(open_story: OpenStory) -> None:
     # 検証
     assert badge == resolve_color(page, "--mark")
     assert contrast(badge, row) >= MIN_CONTRAST
+
+
+def test_long_values_narrow(open_story: OpenStory) -> None:
+    """幅 390px で値を最大の長さにした行。札と書き手は折り返さず、要約は 2 行まで、2 行目は 1 行に収める（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadrow--long-values-narrow")
+    line2 = page.locator(LINE2)
+    # 検証（札と書き手は 1 行の高さ）
+    for selector in (STATE, UNREAD, f"{LINE2} [data-part=author]"):
+        element = page.locator(selector).first
+        assert element.evaluate(TEXT_LINES_JS) == 1, selector
+    # 検証（要約は 2 行まで、2 行目は 1 行で行の幅を超えない）
+    title_lines = page.locator(TITLE).evaluate("(e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)")
+    assert title_lines <= TITLE_MAX_LINES + 0.5
+    assert line2.evaluate("(e) => e.scrollWidth <= e.clientWidth + 1")
+    assert page.locator(f"{LINE2} time").is_visible()

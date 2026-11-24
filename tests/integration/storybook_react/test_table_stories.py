@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -24,6 +26,8 @@ STATES = (
     "shared-table--tag-match-any",
     "shared-table--selectable-tags",
     "shared-table--tag-expr",
+    "shared-table--datetime-columns",
+    "shared-table--sorted-by-updated-desc",
 )
 
 # 位置の比べで許す差（px）
@@ -254,3 +258,26 @@ def test_tag_expr(open_story: OpenStory) -> None:
     # 検証
     expect(page.get_by_role("button", name="タグ: 「画面」を含む かつ 「廃止」を含まない の条件を解除")).to_be_visible()
 
+
+def test_datetime_columns(open_story: OpenStory) -> None:
+    """作成日時・更新日時の列。セルは JST の日時を `time` で折り返さずに出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-table--datetime-columns")
+    headers = page.get_by_role("columnheader").all_inner_texts()
+    cell = page.locator("#storybook-root tbody tr").first.locator("time").last
+    # 検証
+    assert any("作成日時" in header for header in headers)
+    assert any("更新日時" in header for header in headers)
+    assert cell.get_attribute("datetime") is not None
+    assert cell.evaluate("(e) => getComputedStyle(e).whiteSpace") == "nowrap"
+
+
+def test_sorted_by_updated_desc(open_story: OpenStory) -> None:
+    """更新日時の新しい順。更新日時の見出しが `aria-sort="descending"` で、行が更新日時の新しい順（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-table--sorted-by-updated-desc")
+    header = page.get_by_role("columnheader", name=re.compile("更新日時"))
+    times = page.locator("#storybook-root tbody tr").evaluate_all("rows => rows.map((row) => [...row.querySelectorAll('time')].at(-1)?.getAttribute('datetime'))")
+    # 検証
+    assert header.get_attribute("aria-sort") == "descending"
+    assert times == sorted(times, reverse=True)

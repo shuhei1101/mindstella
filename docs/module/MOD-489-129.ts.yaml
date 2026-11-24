@@ -59,7 +59,26 @@ functions:
         condition: "`pushTagCondition({f: {tags: '画面|保存'}, tagmatch: 'any', tx: undefined})` の後に `pushTagMatch(undefined)`"
         mock: ルーターのメモリの履歴
         expected: 履歴が 1 つずつ計 2 増え、最後は `f.tags=画面|保存` で `tagmatch` が無い
+      - name: test_use_preview_search_when_open_item_from_list
+        case: 正常
+        summary: 一覧から開いたマーカーを持つ
+        condition: "`openItem('D-2', {fromList: true})` の後に `openItem('D-1')`"
+        mock: ルーターのメモリの履歴
+        expected: 1 回目の後は `fromList` が真、2 回目の後は偽で、`trail` が `['D-2', 'D-1']`
+      - name: test_use_preview_search_when_back_item_skips_sort
+        case: 正常
+        summary: 詳細の戻るは並べ替えの履歴を飛ばす
+        condition: "`openItem('D-2')`・`setSort('-updated')`・`openItem('D-4')` の後に `backItem()`"
+        mock: ルーターのメモリの履歴
+        expected: '`id=D-2` で `sort=-updated` が残り、`canBack` が偽'
+      - name: test_use_preview_search_when_set_tab_replaces
+        case: 正常
+        summary: タブの切り替えは置き換える
+        condition: "`openItem('D-1')` の後に `setTab('tasks')`"
+        mock: ルーターのメモリの履歴
+        expected: 履歴の数が変わらず `tab=tasks`
     container: frontend/src/shared/hooks/use-preview-search.ts
 notes:
   単体テスト: 同じフォルダの `use-preview-search.test.ts` に置く（knowledge の規約『フォルダ構成』）
   修正の入力の音声入力: '`VoiceTarget` にレビュー中の書き込みの画面 `{review: true}` を追加する。`openVoiceInput` は受けたら `panel=comments&review=1`（`thread` を除外）に置き換える'
+  詳細の履歴: '`openItem(id, {fromList})` は履歴に積み、`history.state` に `trail`（開いた項目の ID の並び）・`trailIndex`（今の位置）・`fromList`（一覧から開いたか）を持つ。今の位置より後ろの `trail` は切り捨てる。絞り込み・並べ替えで積む行は、直前の行の `trail`・`trailIndex`・`fromList` を引き継ぐ。`openSibling(id)` は `openItem(id, {fromList: true})`。`setTab` は置き換える。`backItem`・`forwardItem` は、`trailIndex` が 1 つ前・後の履歴の行まで `history.go(delta)` で移り（間の絞り込み・並べ替えの行を飛ばす）、移った後に移る前の `tab`・`view`・`f.{列}`・`tagmatch`・`tx`・`sort` で search を置き換える（飛ばした条件と後ろの画面を今のままにする）。`delta` は各行の `history.state` に持たせる行の連番 `seq` と `trailSeqs`（`trail` の各位置の行の連番）の差から求める。`canBack`・`canForward` は `trailIndex` から求め、`fromList` を返す'

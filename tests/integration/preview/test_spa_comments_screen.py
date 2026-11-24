@@ -388,3 +388,20 @@ def test_topbar_usable_while_open(page: Page, spa_comments_preview: tuple[str, P
     page.get_by_role("banner").get_by_role("button", name=re.compile("^コメント（")).click()
     # 検証
     expect(_panel(page)).to_have_count(0)
+
+
+def test_row_labels_not_wrapped_when_narrow(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """幅 390px でも、行の状態の札・書き手の文字は折り返さない（#690。正常系）。"""
+    # 準備・実行
+    page.set_viewport_size({"width": 390, "height": 844})
+    _open(page, spa_comments_preview)
+    rows = _panel(page).locator("li[data-thread]")
+    expect(rows.first).to_be_visible()
+    # 検証
+    for selector in ("[data-state]", "[data-part=author]"):
+        lines = [element.evaluate(_TEXT_LINES_JS) for element in rows.locator(selector).all()]
+        assert lines and all(value == 1 for value in lines), (selector, lines)
+
+
+# 要素の中の文字（テキストノード）が並ぶ行の数（折り返していなければ 1）
+_TEXT_LINES_JS = "(e) => { const walker = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); const tops = new Set(); for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) { if (node.textContent.trim() === '') continue; const range = document.createRange(); range.selectNodeContents(node); for (const rect of range.getClientRects()) if (rect.width > 0) tops.add(Math.round(rect.top)); } return tops.size; }"

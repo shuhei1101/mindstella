@@ -1,0 +1,43 @@
+title: カードの並べ替え
+lead: 'カード・ボードの上に配置する「並べ替え: 連番・作成日時・更新日時」のボタンの組。日時を選ぶと向きを矢印で出し、同じボタンをもう一度押すと向きを逆にする。'
+implementation: frontend/src/shared/components/card-sort.tsx#CardSort
+story: Shared/CardSort
+test_file: tests/integration/storybook_react/test_card_sort_stories.py
+args:
+  - name: value
+    type: オブジェクト
+    required: true
+    description: '今の並び（`key` は default・created・updated、`dir` は asc・desc）。資料を開いた直後は `{key: updated, dir: desc}`、ほかの種類は `{key: default, dir: asc}`'
+events:
+  - name: 並べ替え
+    when: ボタンを押したとき
+    value: '`onChange(value)`（次の並び。連番は `{key: default, dir: asc}`、選んでいない日時は新しい順、選んでいる日時は向きを逆にした値）'
+    description: 使用する側が URL の `sort` を書き直し、履歴に追加する
+states:
+  - name: Default
+    description: タスク・検討事項などを開いた直後。「連番」が押された見た目で、矢印を出さない
+    args:
+      - name: value
+        value: '{"key": "default", "dir": "asc"}'
+  - name: DocsInitial
+    description: 資料を開いた直後。「更新日時」が押された見た目で、新しい順の矢印を出す
+    args:
+      - name: value
+        value: '{"key": "updated", "dir": "desc"}'
+  - name: UpdatedDesc
+    description: 更新日時を初めて選んだ。新しい順
+    args:
+      - name: value
+        value: '{"key": "updated", "dir": "desc"}'
+  - name: CreatedAsc
+    description: 作成日時をもう一度押した。古い順の矢印を出す
+    args:
+      - name: value
+        value: '{"key": "created", "dir": "asc"}'
+accessibility:
+  - 外枠は `role="group"` で読み上げの名前を「並べ替え」にする
+  - 選んでいるボタンは `aria-pressed="true"` にする
+  - 日時のボタンを選んでいるときは `title` を「{項目}（新しい順 / 古い順）」にし、向きを矢印の向きだけで伝えない
+refs:
+  - IF-489-70#
+id: CMP-695-3
