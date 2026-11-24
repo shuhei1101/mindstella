@@ -71,6 +71,9 @@ status_codes:
   - code: '500'
     condition: '`config.yaml` を書けない（ワークスペースのフォルダが読み取り専用 など）'
     notes: '`detail` に書けなかったパスと理由。`config.yaml` は書く前の中身のまま'
+  - code: '422'
+    condition: 今の `config.yaml` がスキーマに合わない（`presets` やほかのキーが崩れている）
+    notes: '`detail` に合わない箇所。何も書かない'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語で、画面は 400・409 の `detail` を名前の入力欄の下に出す
 constraints:
   - item: 記載方法
@@ -243,3 +246,31 @@ flows:
       - '`detail` に書けなかったパスと理由がある'
       - '`config.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_write_fails
+  - name: 異常系（設定が崩れている・422）
+    summary: 今の config.yaml がスキーマに合わないと、合わない箇所を返して何も書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 作成を済ませ、`preview_url` を呼んだ後に `config.yaml` の `presets` を文字列に書き換えたワークスペース
+        notes: '`presets: 画面` に書き換える'
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/presets
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST（廃止する画面）
+        IF-->>WS: config.yaml を読む（スキーマに合わない）
+        IF-->>クライアント: 422
+      ```
+
+      <!-- /map -->
+    expected:
+      - ステータスが 422
+      - '`detail` に合わない箇所 `presets` がある'
+      - '`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_config_invalid

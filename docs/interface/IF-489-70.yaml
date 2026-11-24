@@ -608,7 +608,7 @@ flows:
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL を Playwright のブラウザで開く）
       - name: make_workspace
         description: '資料 A-1（タグ: 画面）・A-2（タグ: 画面・廃止）・A-3（タグ無し）を持つワークスペース'
-        notes: '`/w/{workspace}/?tab=docs` で開き、`Ctrl+K` を押して「廃」と入力し、候補の「タグ: 廃止」を押す'
+        notes: '`/w/{workspace}/?tab=docs` で開き、`Ctrl+K` を押して「廃」と入力し、候補の「タグ = 廃止」を押す'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -616,12 +616,12 @@ flows:
         participant IF as React のプレビュー
 
         ユーザー->>IF: Ctrl+K を押して「廃」と入力する
-        IF-->>ユーザー: 先頭に「タグ: 廃止」の候補がある検索の結果
-        ユーザー->>IF: 「タグ: 廃止」を押す
+        IF-->>ユーザー: 先頭に「タグ = 廃止」の候補がある検索の結果
+        ユーザー->>IF: 「タグ = 廃止」を押す
         IF-->>ユーザー: タグ「廃止」で絞った資料の画面
       ```
     expected:
-      - '「廃」と入力した後、検索の結果の先頭に「タグ: 廃止」の候補が件数 1 つきである'
+      - '「廃」と入力した後、検索の結果の先頭に「タグ = 廃止」の候補が件数 1 つきである'
       - 候補を押した後、全体の検索が閉じ、URL の search params が `tab=docs&f.tags=廃止` で（`search`・`q` が無い）、履歴が 1 つ増える
       - 資料の画面に A-2 だけがある
     test: test_normal_when_search_filter_candidate
