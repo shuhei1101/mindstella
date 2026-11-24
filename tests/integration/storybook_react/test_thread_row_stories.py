@@ -231,3 +231,20 @@ def test_unread_fill(open_story: OpenStory) -> None:
     # 検証
     assert badge == resolve_color(page, "--mark")
     assert contrast(badge, row) >= MIN_CONTRAST
+
+
+def test_long_values_narrow(open_story: OpenStory) -> None:
+    """幅 390px で値を最大の長さにした行。札と書き手は折り返さず、要約は 2 行まで、2 行目は 1 行に収める（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadrow--long-values-narrow")
+    line2 = page.locator(LINE2)
+    # 検証（札と書き手は 1 行の高さ）
+    for selector in (STATE, UNREAD, f"{LINE2} [data-part=author]"):
+        element = page.locator(selector).first
+        lines = element.evaluate("(e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)")
+        assert lines < 1.5, selector
+    # 検証（要約は 2 行まで、2 行目は 1 行で行の幅を超えない）
+    title_lines = page.locator(TITLE).evaluate("(e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)")
+    assert title_lines <= TITLE_MAX_LINES + 0.5
+    assert line2.evaluate("(e) => e.scrollWidth <= e.clientWidth + 1")
+    assert page.locator(f"{LINE2} time").is_visible()

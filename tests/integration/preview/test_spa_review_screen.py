@@ -429,3 +429,18 @@ def test_edit_voice_input(
     expect(form.locator("textarea")).to_be_focused()
     assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "確認: でよい"
     assert not (root / ".mindstella" / "threads.yaml").exists()
+
+
+def test_row_labels_not_wrapped_when_narrow(page: Page, review_preview: tuple[str, Path]) -> None:
+    """幅 390px でも、行の種類の札・向けた項目の ID は折り返さず、返信先のスレッドのタイトルは 1 行で `title` に全文を持つ（#690。正常系）。"""
+    # 準備・実行
+    page.set_viewport_size({"width": 390, "height": 844})
+    url, _ = review_preview
+    open_spa(page, url, "?tab=decisions&panel=comments&review=1")
+    kinds = _panel(page).locator("[data-part=kind]")
+    expect(kinds.first).to_be_visible()
+    # 検証
+    lines = kinds.evaluate_all("items => items.map((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight))")
+    assert lines and all(value < 1.5 for value in lines), lines
+    reply_title = _row(page, "C-43").get_by_text("D-1 の案の相談")
+    expect(reply_title).to_have_attribute("title", "D-1 の案の相談")

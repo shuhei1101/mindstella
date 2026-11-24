@@ -1871,3 +1871,123 @@ def test_body_toc_when_hidden(write_preview: WritePreview, make_item: MakeItem, 
     # 検証
     expect(panel.get_by_text("目次の無い資料").first).to_be_visible()
     expect(panel.get_by_role("button", name="本文の目次")).to_have_count(0)
+
+
+# ─── 一覧の並びの前後・詳細の履歴・値の欄のリンク（#148・#364・#688） ───
+
+
+def _ordered_tasks(make_item: MakeItem) -> tuple[dict[str, Any], ...]:
+    """同じ状態の 3 件のタスクを返す（ボードの列の並びは連番の順）。"""
+    return tuple(make_item(f"T-{number}", title=f"{number} 件目のタスク") for number in (1, 2, 3))
+
+
+def _open_from_board(page: Page, url: str, item_id: str) -> Locator:
+    """タスクのボードを開き、カードを押して詳細パネルを開く。"""
+    open_spa(page, url, "?tab=tasks")
+    page.locator(f"[data-card='{item_id}'] button[data-id='{item_id}']").click()
+    panel = page.get_by_role("complementary", name="詳細")
+    expect(page).to_have_url(re.compile(rf"id={item_id}"))
+    return panel
+
+
+def test_sibling_nav_from_list(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """一覧から開いた項目は見出しの戻る・進むの左に「{何件目} / {件数}」と前後のボタンを出し、ボタンで並びの前後へ移る（正常系）。"""
+    # 準備
+    panel = _open_from_board(page, write_preview(*_ordered_tasks(make_item)), "T-2")
+    nav = panel.get_by_role("group", name="一覧の並び")
+    # 検証
+    expect(nav).to_have_text("2 / 3")
+    assert nav.evaluate("(nav) => Boolean(nav.compareDocumentPosition(document.querySelector('[aria-label=\"前の項目へ戻る\"]')) & Node.DOCUMENT_POSITION_FOLLOWING)")
+    # 実行
+    nav.get_by_role("button", name="一覧の次の項目").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"id=T-3"))
+    expect(nav).to_have_text("3 / 3")
+    expect(nav.get_by_role("button", name="一覧の次の項目")).to_be_disabled()
+
+
+def test_sibling_nav_keys(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """`j` で次、`k` で前の項目へ移る。入力欄の中の `j` では移らず、ボタンは `aria-keyshortcuts` と `title` にキーを持つ（正常系）。"""
+    # 準備
+    panel = _open_from_board(page, write_preview(*_ordered_tasks(make_item)), "T-2")
+    nav = panel.get_by_role("group", name="一覧の並び")
+    expect(nav.get_by_role("button", name="一覧の次の項目")).to_have_attribute("aria-keyshortcuts", "j")
+    expect(nav.get_by_role("button", name="一覧の前の項目")).to_have_attribute("title", "一覧の前の項目（K）")
+    # 実行
+    page.locator("body").press("j")
+    # 検証
+    expect(page).to_have_url(re.compile(r"id=T-3"))
+    # 実行
+    page.locator("body").press("k")
+    # 検証
+    expect(page).to_have_url(re.compile(r"id=T-2"))
+    # 実行（入力欄の中）
+    panel.get_by_role("textbox").first.press("j")
+    # 検証
+    expect(page).to_have_url(re.compile(r"id=T-2"))
+
+
+def test_sibling_nav_off_by_setting(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """表示の設定で「1 文字のショートカットを使用する」を外すと、`j`・`k` で移らずボタンはキーを持たない（正常系）。"""
+    # 準備
+    url = write_preview(*_ordered_tasks(make_item))
+    open_spa(page, url, "?tab=tasks&panel=display")
+    page.get_by_role("checkbox", name="1 文字のショートカットを使用する").uncheck()
+    panel = _open_from_board(page, url, "T-2")
+    nav = panel.get_by_role("group", name="一覧の並び")
+    # 実行
+    page.locator("body").press("j")
+    # 検証
+    expect(page).to_have_url(re.compile(r"id=T-2"))
+    expect(nav.get_by_role("button", name="一覧の次の項目")).not_to_have_attribute("aria-keyshortcuts", re.compile(".+"))
+
+
+def test_sibling_nav_hidden_when_opened_by_url(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """URL で直接開いた項目（一覧から開いたマーカーが無い）は、一覧の並びの前後を出さない（正常系）。"""
+    # 準備・実行
+    open_spa(page, write_preview(*_ordered_tasks(make_item)), "?tab=tasks&id=T-2")
+    panel = page.get_by_role("complementary", name="詳細")
+    # 検証
+    expect(panel.get_by_role("heading").first).to_be_visible()
+    expect(panel.get_by_role("group", name="一覧の並び")).to_have_count(0)
+
+
+def test_back_skips_sort(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """詳細の「前の項目へ戻る」は、間にした並べ替えを飛ばして前の項目へ戻り、今の並べ替えを残す（正常系）。"""
+    # 準備
+    url = write_preview(*_ordered_tasks(make_item))
+    panel = _open_from_board(page, url, "T-1")
+    page.get_by_role("group", name="並べ替え").get_by_role("button", name="作成日時").click()
+    expect(page).to_have_url(re.compile(r"sort=-created"))
+    page.locator("button[data-id='T-3']").first.click()
+    expect(page).to_have_url(re.compile(r"id=T-3"))
+    # 実行
+    panel.get_by_role("button", name="前の項目へ戻る").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"id=T-1"))
+    expect(page).to_have_url(re.compile(r"sort=-created"))
+    expect(panel.get_by_role("button", name="前の項目へ戻る")).to_be_disabled()
+
+
+def test_tab_switch_replaces_history(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """タブの帯で画面を移っても履歴は増えない（正常系）。"""
+    # 準備
+    _open_from_board(page, write_preview(*_ordered_tasks(make_item), make_item("D-1")), "T-1")
+    before = page.evaluate("history.length")
+    # 実行
+    page.get_by_role("link", name=re.compile("検討事項")).click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"tab=decisions"))
+    assert page.evaluate("history.length") == before
+
+
+def test_value_links(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """値の欄（背景）の中の項目の ID は本文と同じリンクになり、押すとその項目を開く（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", lead="D-2 の結論を待つ"), make_item("D-2", title="先に決める検討事項"))
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    lead = page.get_by_role("complementary", name="詳細").locator("[data-key=lead]")
+    # 実行
+    lead.locator("[data-id='D-2']").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"id=D-2"))

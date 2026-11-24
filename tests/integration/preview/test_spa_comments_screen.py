@@ -388,3 +388,16 @@ def test_topbar_usable_while_open(page: Page, spa_comments_preview: tuple[str, P
     page.get_by_role("banner").get_by_role("button", name=re.compile("^コメント（")).click()
     # 検証
     expect(_panel(page)).to_have_count(0)
+
+
+def test_row_labels_not_wrapped_when_narrow(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """幅 390px でも、行の状態の札・書き手の文字は折り返さない（#690。正常系）。"""
+    # 準備・実行
+    page.set_viewport_size({"width": 390, "height": 844})
+    _open(page, spa_comments_preview)
+    rows = _panel(page).locator("li[data-thread]")
+    expect(rows.first).to_be_visible()
+    # 検証
+    for selector in ("[data-state]", "[data-part=author]"):
+        lines = rows.locator(selector).evaluate_all("items => items.map((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight))")
+        assert lines and all(value < 1.5 for value in lines), (selector, lines)

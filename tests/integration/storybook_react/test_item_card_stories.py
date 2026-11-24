@@ -17,6 +17,8 @@ STATES = (
     "shared-itemcard--default",
     "shared-itemcard--with-comments",
     "shared-itemcard--selected-with-comments",
+    "shared-itemcard--dates",
+    "shared-itemcard--dates-narrow",
 )
 
 
@@ -111,3 +113,25 @@ def _card_style(card: Locator) -> dict[str, str]:
             return {border: style.borderTopColor, background: style.backgroundColor, mark: `${mark.borderTopColor} ${mark.backgroundColor}`};
         }"""
     )
+
+
+def test_dates(open_story: OpenStory) -> None:
+    """種類・状態の文字の行の次に「作成 {日時}」「更新 {日時}」を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-itemcard--dates")
+    dates = page.locator("[data-part='item-dates'] > span")
+    # 検証
+    expect(dates).to_have_text(["作成 11/02 10:15", "更新 11/20 18:40"])
+
+
+def test_dates_narrow(open_story: OpenStory) -> None:
+    """列の幅 240px。日時は組ごとに折り返し、カードの外へはみ出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-itemcard--dates-narrow")
+    card = page.locator("[data-card]").first
+    dates = page.locator("[data-part='item-dates']")
+    # 検証
+    card_box = card.bounding_box()
+    dates_box = dates.bounding_box()
+    assert card_box is not None and dates_box is not None
+    assert dates_box["x"] + dates_box["width"] <= card_box["x"] + card_box["width"] + 1

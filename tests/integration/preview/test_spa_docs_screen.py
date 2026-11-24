@@ -13,9 +13,9 @@ from workspace_fixtures import MakeEdit, MakeItem
 
 
 def test_cards_in_id_order(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
-    """既定はカードで、連番の順に並べる（正常系）。"""
+    """既定はカードで、「並べ替え」の「連番」を選ぶと連番の順に並べる（正常系）。"""
     url = write_preview(make_item("A-2", title="後の資料"), make_item("A-1", title="先の資料"))
-    open_spa(page, url, "?tab=docs")
+    open_spa(page, url, "?tab=docs&sort=id")
     expect(page.get_by_role("heading", level=2)).to_have_text(["先の資料", "後の資料"])
 
 
@@ -250,3 +250,97 @@ def test_card_tag_press(page: Page, write_preview: WritePreview, make_item: Make
     expect(page).to_have_url(re.compile(r"f\.tags=%E7%94%BB%E9%9D%A2"))
     expect(page.locator("[data-card='A-2']")).to_have_count(0)
     expect(page.get_by_role("complementary", name="詳細")).to_have_count(0)
+
+
+# ─── 作成日時・更新日時と並べ替え（#186・#364） ───
+
+
+def _dated(make_item: MakeItem, item_id: str, title: str, created: str, updated: str) -> dict[str, object]:
+    """作成日時・更新日時を持つ資料を返す。"""
+    return make_item(item_id, title=title, created=created, updated=updated)
+
+
+def _three_docs(make_item: MakeItem) -> tuple[dict[str, object], ...]:
+    """更新日時が A-1 < A-3 < A-2 の 3 件の資料を返す。"""
+    return (
+        _dated(make_item, "A-1", "古い資料", "2026-11-01T00:00:00+00:00", "2026-11-02T00:00:00+00:00"),
+        _dated(make_item, "A-2", "新しい資料", "2026-11-03T00:00:00+00:00", "2026-11-20T00:00:00+00:00"),
+        _dated(make_item, "A-3", "間の資料", "2026-11-02T00:00:00+00:00", "2026-11-10T00:00:00+00:00"),
+    )
+
+
+def test_cards_in_updated_order(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """カードは、開いた直後は更新日時の新しい順に並び、「並べ替え」の「更新日時」が押された見た目になる（正常系）。"""
+    # 準備・実行
+    open_spa(page, write_preview(*_three_docs(make_item)), "?tab=docs")
+    sort = page.get_by_role("group", name="並べ替え")
+    # 検証
+    expect(page.get_by_role("heading", level=2)).to_have_text(["新しい資料", "間の資料", "古い資料"])
+    expect(sort.get_by_role("button", name="更新日時")).to_have_attribute("aria-pressed", "true")
+
+
+def test_card_sort_press(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """「連番」を押すと連番の順になり URL に `sort=id` が入る。ブラウザの戻るで前の並びへ戻る（正常系）。"""
+    # 準備
+    open_spa(page, write_preview(*_three_docs(make_item)), "?tab=docs")
+    sort = page.get_by_role("group", name="並べ替え")
+    # 実行
+    sort.get_by_role("button", name="連番").click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"sort=id"))
+    expect(page.get_by_role("heading", level=2)).to_have_text(["古い資料", "新しい資料", "間の資料"])
+    # 実行（戻る）
+    page.go_back()
+    # 検証
+    expect(page.get_by_role("heading", level=2)).to_have_text(["新しい資料", "間の資料", "古い資料"])
+
+
+def test_card_sort_reverse(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """選んでいる「更新日時」をもう一度押すと古い順になり、`title` で向きを伝える（正常系）。"""
+    # 準備
+    open_spa(page, write_preview(*_three_docs(make_item)), "?tab=docs")
+    button = page.get_by_role("group", name="並べ替え").get_by_role("button", name="更新日時")
+    # 実行
+    button.click()
+    # 検証
+    expect(page).to_have_url(re.compile(r"sort=updated"))
+    expect(button).to_have_attribute("title", "更新日時（古い順）")
+    expect(page.get_by_role("heading", level=2)).to_have_text(["古い資料", "間の資料", "新しい資料"])
+
+
+def test_card_sort_dropped_from_table_sort(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """カード・ボードで受け付けない `sort`（表の列）は無いものとして既定の並びにし、URL から除外する（正常系）。"""
+    # 準備・実行
+    open_spa(page, write_preview(*_three_docs(make_item)), "?tab=docs&view=cards&sort=title")
+    # 検証
+    expect(page).not_to_have_url(re.compile(r"sort="))
+    expect(page.get_by_role("heading", level=2)).to_have_text(["新しい資料", "間の資料", "古い資料"])
+
+
+def test_card_sort_hidden_in_table(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """表の表示では「並べ替え」を出さず、表に作成日時・更新日時の列を出す（正常系）。"""
+    # 準備・実行
+    open_spa(page, write_preview(*_three_docs(make_item)), "?tab=docs&view=table")
+    # 検証
+    expect(page.get_by_role("group", name="並べ替え")).to_have_count(0)
+    expect(page.get_by_role("columnheader", name=re.compile("作成日時"))).to_be_visible()
+    expect(page.get_by_role("columnheader", name=re.compile("更新日時"))).to_be_visible()
+
+
+@pytest.mark.parametrize("view", ["cards", "board"])
+def test_card_dates_visible(page: Page, write_preview: WritePreview, make_item: MakeItem, view: str) -> None:
+    """カードの種類・状態の行の次に「作成 {日時}」「更新 {日時}」を出す（正常系）。"""
+    # 準備・実行
+    open_spa(page, write_preview(*_three_docs(make_item)), f"?tab=docs&view={view}")
+    card = page.locator("[data-card='A-2']")
+    # 検証
+    expect(card.locator("[data-part='item-dates'] > span")).to_have_text(["作成 11/03 09:00", "更新 11/20 09:00"])
+
+
+def test_board_sorted_in_column(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """ボードの列の中もカードと同じ並びにする（正常系）。"""
+    # 準備・実行
+    open_spa(page, write_preview(*_three_docs(make_item)), "?tab=docs&view=board")
+    column = page.get_by_role("region", name="下書き")
+    # 検証
+    expect(column.get_by_role("heading", level=2)).to_have_text(["新しい資料", "間の資料", "古い資料"])

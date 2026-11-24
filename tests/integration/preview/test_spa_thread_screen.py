@@ -17,6 +17,7 @@ from workspace_fixtures import MakeItem as _MakeItem, MakePost as _MakePost, Mak
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+import re
 
 from playwright.sync_api import Locator, Page, expect
 from preview_comment_helpers import free_comment, read_workspace_yaml
@@ -405,3 +406,68 @@ def test_wide_table_scrolls_inside(
         )
         assert sizes == {"list": True, "article": True, "table": True, "code": True, "wrapped": True}, (width, sizes)
 
+
+
+# ─── 開いたときの最新の書き込み・書き込みの折りたたみ・見出しのタイトル（#372・#374） ───
+
+# 改行で 8 行の書き込みの本文
+EIGHT_LINES = "\n".join(f"{index} 行目" for index in range(1, 9))
+
+
+def _long_thread(make_post: MakePost, make_thread: MakeThread) -> dict[str, Any]:
+    """古い長い書き込み 6 件と、最新の長い書き込みを持つスレッドを返す（並びは画面の高さを超える）。"""
+    posts = [make_post(f"TH-1-{index}", author="ai" if index % 2 == 0 else "user", body=EIGHT_LINES, read=True, created=f"2026-11-0{index}T00:00:00+00:00") for index in range(1, 8)]
+    return make_thread("TH-1", *posts, target="D-1", summary="長いスレッドのタイトル。" * 8)
+
+
+def test_open_latest(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_post: MakePost, make_thread: MakeThread) -> None:
+    """開くと最新の書き込みの先頭が並びの上端に来て、その書き込みにフォーカスがある。最新の書き込みは畳まない（正常系）。"""
+    # 準備・実行
+    url, _ = write_review_preview(make_item("D-1"), threads=(_long_thread(make_post, make_thread),))
+    page.set_viewport_size({"width": 1280, "height": 700})
+    open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+    latest = _panel(page).locator("article[data-post-id='TH-1-7']")
+    # 検証
+    expect(latest).to_be_focused()
+    offset = latest.evaluate("(article) => article.getBoundingClientRect().top - article.closest('ol').getBoundingClientRect().top")
+    assert offset < 40
+    expect(latest.locator("[data-folded]")).to_have_count(0)
+    expect(latest.get_by_role("button", name=re.compile("続きを表示"))).to_have_count(0)
+
+
+def test_older_posts_folded(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_post: MakePost, make_thread: MakeThread) -> None:
+    """最新以外の長い書き込みは 5 行までに畳み、「続きを表示」で全文、「折りたたむ」で畳み直す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("D-1"), threads=(_long_thread(make_post, make_thread),))
+    open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+    first = _panel(page).locator("article[data-post-id='TH-1-1']")
+    more = first.get_by_role("button", name="TH-1-1 の書き込みの続きを表示")
+    expect(more).to_have_attribute("aria-expanded", "false")
+    # 実行
+    more.click()
+    # 検証
+    less = first.get_by_role("button", name="TH-1-1 の書き込みの本文を折りたたむ")
+    expect(less).to_have_attribute("aria-expanded", "true")
+    expect(first).to_contain_text("8 行目")
+    # 実行
+    less.click()
+    # 検証
+    expect(more).to_be_visible()
+
+
+def test_title_collapsed_on_scroll(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_post: MakePost, make_thread: MakeThread) -> None:
+    """並びが一番上のときは見出しのタイトルを全文、スクロールした後は 1 行にして `title` に全文を持つ（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("D-1"), threads=(_long_thread(make_post, make_thread),))
+    open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+    title = _panel(page).locator("[data-part='thread-title']")
+    expect(_panel(page).locator("article[data-post-id='TH-1-7']")).to_be_focused()
+    # 実行（一番上へ戻す）
+    _panel(page).locator("ol").first.evaluate("(list) => { list.scrollTop = 0; list.dispatchEvent(new Event('scroll')); }")
+    # 検証
+    expect(title).not_to_have_attribute("data-collapsed", "")
+    # 実行（スクロールする）
+    _panel(page).locator("ol").first.evaluate("(list) => { list.scrollTop = 200; list.dispatchEvent(new Event('scroll')); }")
+    # 検証
+    expect(title).to_have_attribute("data-collapsed", "")
+    expect(title).to_have_attribute("title", "長いスレッドのタイトル。" * 8)

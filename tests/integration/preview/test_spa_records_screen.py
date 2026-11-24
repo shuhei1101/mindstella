@@ -164,3 +164,19 @@ def test_table_tag_press(page: Page, write_preview: WritePreview, make_item: Mak
     expect(page).to_have_url(re.compile(r"f\.tags=%E7%94%BB%E9%9D%A2"))
     expect(page.locator("tr[data-id='R-2']")).to_have_count(0)
     expect(page.get_by_role("complementary", name="詳細")).to_have_count(0)
+
+
+# ─── 作成日時・更新日時の列（#186） ───
+
+
+@pytest.mark.parametrize("kind", ["research", "terms", "notes", "logs"])
+def test_date_columns(page: Page, write_preview: WritePreview, make_item: MakeItem, kind: str) -> None:
+    """どの記録の表にも作成日時・更新日時の列があり、セルは `time` で JST の日時を出す（正常系）。"""
+    # 準備
+    prefix = {"research": "R", "terms": "G", "notes": "N", "logs": "L"}[kind]
+    item = make_item(f"{prefix}-1", created="2026-11-02T01:15:00+00:00", updated="2026-11-20T09:40:00+00:00")
+    # 実行
+    open_spa(page, write_preview(item), f"?tab={kind}")
+    # 検証
+    expect(page.get_by_role("columnheader", name=re.compile("作成日時"))).to_be_visible()
+    expect(page.locator("time[datetime='2026-11-20T09:40:00+00:00']")).to_have_text("11/20 18:40")

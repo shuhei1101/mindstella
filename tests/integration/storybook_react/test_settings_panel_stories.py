@@ -224,3 +224,18 @@ def test_focus_after_add_overridden(open_story: OpenStory) -> None:
     assert _buttons(page) == ["既定に戻す"]
     assert "レビューに追加した後のフォーカス" in page.inner_text(f"{PANEL} [data-part=over] > span:last-child")
     assert "表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(PANEL)
+
+
+def test_single_key_shortcuts_off(open_story: OpenStory) -> None:
+    """1 文字のショートカットをオフにした。区画「キーボード」のチェックが外れ、変えている項目に「1 文字のショートカット」と「既定に戻す」を出す（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "single-key-shortcuts-off")
+    section = page.get_by_role("group", name="キーボード")
+    checkbox = section.get_by_role("checkbox", name="1 文字のショートカットを使用する")
+    # 検証
+    assert checkbox.is_checked() is False
+    assert checkbox.evaluate("(box) => document.getElementById(box.getAttribute('aria-describedby')).textContent") == "オフにすると、詳細の j・k で一覧の前後の項目へ移る操作を受け付けません。"
+    text = page.inner_text(PANEL)
+    assert "1 文字のショートカット" in text
+    assert "既定に戻す" in _buttons(page)
+    assert "表示する種類は、ワークスペースの既定と同じです。" in text
