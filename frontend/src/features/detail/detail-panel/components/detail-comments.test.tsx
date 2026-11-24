@@ -242,6 +242,7 @@ describe("DetailReviewComments", () => {
     );
     renderRoute("/?tab=docs&id=A-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    await userEvent.click(await within(panel).findByRole("tab", { name: "コメント" }));
     // 実行
     await userEvent.click(await within(panel).findByRole("button", { name: "コメントの並び: 新しい順" }));
     // 検証
@@ -273,6 +274,7 @@ describe("DetailReviewComments", () => {
     );
     renderRoute("/?tab=docs&id=A-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    await userEvent.click(await within(panel).findByRole("tab", { name: "コメント" }));
     // 実行
     await userEvent.click(await within(panel).findByRole("button", { name: /を削除$/ }));
     // 検証
@@ -307,6 +309,7 @@ describe("DetailComments の修正の音声入力", () => {
     );
     renderRoute("/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    await userEvent.click(await within(panel).findByRole("tab", { name: "コメント" }));
     await userEvent.click(await within(panel).findByRole("button", { name: "D-1 へのコメントを修正" }));
     const edit = (await within(panel).findByRole("textbox", { name: "D-1 へのコメントの本文" })).closest("form");
     if (edit === null) throw new Error("修正の入力が無い");

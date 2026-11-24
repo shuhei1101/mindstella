@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import type { Filters } from "@/shared/core/filters";
+import type { PresetFilter } from "@/shared/core/presets";
 import { FilterDrawer } from "@/shared/components/filter-drawer";
 
 afterEach(() => {
@@ -91,10 +93,10 @@ describe("FilterDrawer", () => {
     expect(onTextCommit).toHaveBeenCalledTimes(1);
   });
   // タグの条件の有無で保存を押せるかが変わる（正常系）
-  test.each([
+  test.each<{ selected: Filters; tagExpr: PresetFilter | null; disabled: boolean }>([
     { selected: {}, tagExpr: null, disabled: true },
     { selected: { tags: ["画面"] }, tagExpr: null, disabled: false },
-    { selected: {}, tagExpr: { field: "tags", op: "eq", values: ["画面"] } as const, disabled: false },
+    { selected: {}, tagExpr: { field: "tags", op: "eq", values: ["画面"] }, disabled: false },
   ])("filter_drawer_when_preset_save", ({ selected, tagExpr, disabled }) => {
     // 実行
     render(<FilterDrawer groups={[]} selected={selected} total={2} shown={2} tagExpr={tagExpr} onTagExprChange={vi.fn()} presetSave={{ hasOtherConditions: false, onSave: vi.fn() }} onToggleValue={vi.fn()} onClearGroup={vi.fn()} onClearAll={vi.fn()} onClose={vi.fn()} onTextChange={vi.fn()} />);

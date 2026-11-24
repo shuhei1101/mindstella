@@ -2,10 +2,11 @@ import { renderHook } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { describe, expect, test, vi } from "vitest";
 
+import type { PresetFilter } from "@/shared/core/presets";
 import { usePresetSave } from "@/shared/hooks/use-preset-save";
 import { server } from "@/testing/msw/server";
 
-const EXPR = { field: "tags", op: "eq", values: ["画面"] } as const;
+const EXPR: PresetFilter = { field: "tags", op: "eq", values: ["画面"] };
 
 describe("usePresetSave", () => {
   // 名前と式を送信する（正常系）

@@ -26,10 +26,10 @@ describe("DetailSupplements", () => {
     screen.getByRole("tab", { name: "本文" }).focus();
     // 実行
     await userEvent.keyboard("{ArrowRight}");
-    await userEvent.keyboard("{ArrowLeft}{ArrowLeft}");
+    await userEvent.keyboard("{ArrowLeft}");
     await userEvent.keyboard("{End}");
     // 検証
-    expect(onTabChange.mock.calls.map(([tab]: [string]) => tab)).toEqual(["related", "comments", "comments"]);
+    expect(onTabChange.mock.calls.map((call) => call[0] as string)).toEqual(["related", "comments", "comments"]);
   });
 
   // 配る書き出しではコメントのタブを出さない（正常系）
