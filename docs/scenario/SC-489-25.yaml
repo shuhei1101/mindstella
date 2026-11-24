@@ -8,7 +8,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 記録
-        description: '未決定の検討事項 D-2・D-6・要見直しの検討事項 D-3・保留の検討事項 D-4・決定済みの検討事項 D-1・進行中のタスク T-2・資料 A-1（状態: 完成）と A-2（状態: 確認中）と、AI が作成した通知のスレッド TH-1（利用者の未読）'
+        description: '未決定の検討事項 D-2・D-6・要見直しの検討事項 D-3・保留の検討事項 D-4・決定済みの検討事項 D-1・進行中のタスク T-2・資料 A-1（状態: 完成）と A-2（状態: 確認中）と、AI が作成した報告のスレッド TH-1（利用者の未読）'
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
@@ -39,7 +39,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 記録
-        description: AI が作成した通知のスレッド TH-1（利用者の未読）と、AI の返信を利用者が既読にしたスレッド TH-2
+        description: AI が作成した報告のスレッド TH-1（利用者の未読）と、AI の返信を利用者が既読にしたスレッド TH-2
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-

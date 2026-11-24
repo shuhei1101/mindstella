@@ -1,0 +1,72 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-30.yaml
+    impact: changed
+    detail: 方針の質問をスレッドで聞かずに理解・案・推奨を持つ検討事項にし、回答待ちを保留にせず、資料・タスクの状態の意味と資料の確認の依頼と描画の確認を加える
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: changed
+    detail: 回ごとの報告を新規のスレッド 1 件にまとめて前の回の報告をクローズし、返信で回答を求めず、クローズの前に約束がタスクにあるかを確認し、回の最初に保留のタスクを見直す
+    depends_on:
+      - docs/scenario/SC-489-30.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-26.yaml
+    impact: changed
+    detail: 起動と再開の回の最初に保留のタスクを見直し、条件を満たしたものに着手する
+    depends_on:
+      - docs/scenario/SC-489-30.yaml
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: changed
+    detail: 方針とワークスペースの外への書き込みの合意をスレッドで聞く 2 つのシナリオを削除し（検討事項で聞く流れは単一ユースケース『記録の使い分け』と既存の『画面から送信した回答を取り込む』で確かめる）、エージェントフローとの対応と報告のスレッドの呼び名を合わせる
+    depends_on:
+      - docs/scenario/SC-489-30.yaml
+      - docs/scenario/SC-489-43.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-1.yaml
+    impact: changed
+    detail: 通知のスレッドを報告のスレッドにし、作成する条件と記載する中身を単一ユースケース『コメントの取り込み』の補足「報告のスレッド」に合わせる（追加・着手したタスクも載せる）。利用者に聞くことは方針も検討事項に挙げる
+    depends_on:
+      - docs/scenario/SC-489-43.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-25.yaml
+    impact: following
+    detail: AI が作成したスレッドの呼び名を報告のスレッドに合わせる
+    depends_on:
+      - docs/scenario/SC-489-43.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: following
+    detail: 写さなかった値を知らせるスレッドの呼び名を報告のスレッドに合わせる
+    depends_on:
+      - docs/scenario/SC-489-43.yaml
+docs:
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: 記録の使い分け・コメントの取り込み・起動と再開の工程の表を、決まり 9 件（方針の質問を検討事項で聞く・報告のスレッド・保留・状態・確認の依頼・描画の確認など）に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T10:38:06.434403+00:00'
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: 資料の status の下書き・確認中・完成の意味を加える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-24T10:35:15.682123+00:00'
+scope_out:
+  - item: 1 件の検討事項で 1 つの質問だけを聞く決まり
+    reason: 要望に含まれない。#686 がこの作業 PR の後に入れる
+    plan: '#686'
+  - item: 毎回作業を進める（コメントの取り込みだけで回を終えない）決まり
+    reason: 進める対象がワークスペースごとの進め方の文書に依存するため共通にしない（Issue の見送った案）
+    plan: none
+  - item: 資料を利用者に示す前にサブエージェントでレビューする決まり
+    reason: 1 つのワークスペースのローカルルールのため共通にしない（Issue の見送った案）
+    plan: none
+  - item: 再開の状況の注入に保留のタスクを加える
+    reason: 要望に含まれない。回の最初の見直しは search_docs で保留のタスクを検索して行う
+    plan: none
+  - item: 元のワークスペースのローカルルールから重なる行を削除する
+    reason: Git 管理外のワークスペースの作業で、Issue の要望は削除できることのコメントまで
+    plan: none

@@ -7,7 +7,7 @@ steps:
     body: |-
       SessionStart のフックが注入した、取り込み待ちのスレッドの件数・前回参照した後に変わった項目と削除した項目・要見直しの検討事項・進行中のタスクを確認する。
       注入に収まらなかった変更がある（注入文に件数だけが書かれている）ときだけ、`changes_since_read` で残りと前の値を取得する。
-      注入文に移し替えの報告があれば、移せなかった値と仮の値を入れたキーを、回の最後の通知（mindstella/on-comment の「検討事項と回答を通知する」）に含める。仮の値は検討事項に挙げて利用者に確かめる。
+      注入文に移し替えの報告があれば、移せなかった値と仮の値を入れたキーを、回の最後の報告（mindstella/on-comment の「報告のスレッドで報告する」）に含める。仮の値は検討事項に挙げて利用者に確かめる。
     calls:
       - {server: mindstella, tool: changes_since_read}
   - name: まだまとめていない変更を取得する
@@ -28,6 +28,19 @@ steps:
       進め方の文書に、何をどの順に話し合うか・何を作るかが書いてある。
     calls:
       - {server: project-index, tool: search_docs}
+  - name: 保留のタスクを見直す
+    when: 取り込み待ちのスレッドが 0 件
+    body: |-
+      mindstella/on-comment の工程「保留のタスクを見直す」のとおりに見直す。取り込み待ちのスレッドが 1 件以上のときは、コメントの取り込みの最初の見直しに任せる。
+      状態を変えたら、mindstella/on-comment の「書き換えをまとめる」のとおり `commit` し、「報告のスレッドで報告する」のとおり報告する。
+    calls:
+      - {server: project-index, tool: search_docs}
+      - {server: project-index, tool: write_docs}
+      - {server: mindstella, tool: commit}
+      - {server: mindstella, tool: new_thread}
+      - {server: mindstella, tool: set_thread_status}
+    refs:
+      - mindstella/on-comment
   - name: 取り込み待ちのコメントを取り込む
     when: 取り込み待ちのスレッドが 1 件以上ある
     body: |-
