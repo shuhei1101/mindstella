@@ -7,7 +7,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-43.yaml
     impact: changed
-    detail: コメントの取り込みの最後に、その回の修正と返信をまとめて 1 回だけ確定してから手番を返す決まりにする（#697）
+    detail: コメントの取り込みの最後に、手番を返す直前の commit を 1 回だけ呼ぶ決まりを加える。返信へ差分のリンクを入れるスレッドごとの commit は作業の途中の commit として残す（#697）
     depends_on:
       - docs/scenario/SC-568-1.yaml
   - kind: single
@@ -33,10 +33,9 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-45.yaml
-    impact: following
-    detail: トップバーの音声入力中の表示がアイコンと経過時間だけになり、名前はツールチップと読み上げで出る（#573）
-    depends_on:
-      - docs/scenario/SC-489-12.yaml
+    impact: run_only
+    detail: トップバーの音声入力中の表示がアイコンと経過時間だけになっても、録音中の入力欄へ戻れることが変わらないかを確かめる（#573。シナリオの記述は変えない）
+    depends_on: []
 docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
