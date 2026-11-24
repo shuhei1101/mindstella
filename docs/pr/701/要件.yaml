@@ -55,6 +55,12 @@ use_cases:
     impact: run_only
     detail: 記録を書き換えたときの再描画で、リンクが付き直る
     depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: following
+    detail: 表のタイトルと値のセルの ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
 docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
