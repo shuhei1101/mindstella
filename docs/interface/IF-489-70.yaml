@@ -294,7 +294,7 @@ flows:
       - ブラウザのコンソールにエラーが出ていない
     test: test_normal_when_comment_sent
   - name: 正常系（スレッドで返信してクローズにする）
-    summary: '`thread` が指すスレッドを開いて既読にし、返信を溜め、理由を添えてクローズにする'
+    summary: '`thread` が指すスレッドを開いて既読にし、返信を溜め、理由を聞かずにクローズにして一覧へ戻る'
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
@@ -313,16 +313,16 @@ flows:
         ユーザー->>IF: 返信を書いて溜める
         IF->>SV: POST /w/{workspace}/api/comments {thread: TH-1, body}
         SV-->>IF: 201
-        ユーザー->>IF: 理由を添えてクローズにする
-        IF->>SV: PATCH /w/{workspace}/api/threads/TH-1 {status: closed, reason}
+        ユーザー->>IF: クローズにする
+        IF->>SV: PATCH /w/{workspace}/api/threads/TH-1 {status: closed, reason: null}
         SV-->>IF: 200
-        IF-->>ユーザー: クローズの知らせ
+        IF-->>ユーザー: スレッドの一覧
       ```
     expected:
       - '開いた後、`threads.yaml` の TH-1 の全ての書き込みが `seen: true` で、トップバーのコメントのボタンに未読の点が無い'
       - 返信を溜めた後、書き込みの並びの末尾にレビュー中の返信があり、`comments.yaml` に `thread` が TH-1 の 1 件がある
-      - クローズにした後、`threads.yaml` の TH-1 の `status` が `closed` で状態の記録に理由「決まった」があり、返信の入力の代わりにクローズの知らせがある
-      - 一覧へ戻った後、URL に `thread` が無く、履歴の数が変わらない
+      - クローズにした後、`threads.yaml` の TH-1 の `status` が `closed` で、状態の記録の理由が `null`
+      - クローズにした後、スレッドの一覧へ戻り、URL に `thread` が無く、履歴の数が変わらない
     test: test_normal_when_thread_replied_and_closed
   - name: 正常系（下書きを戻す）
     summary: コメントの入力欄の下書きをサーバーに保ち、再読み込みすると同じ入力欄に戻す
