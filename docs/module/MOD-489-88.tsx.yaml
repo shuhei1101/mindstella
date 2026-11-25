@@ -28,7 +28,7 @@ components:
         summary: offline で接続の状態を出す
         condition: '`connection` に offline、`readAt` を渡す'
         mock: なし
-        expected: 「サーバーにつながりません」を含む状態が出る
+        expected: '`role="status"` の接続の状態の読み上げの文字が「サーバーにつながりません（{日時} に読んだ記録）」で、`title` 属性を持たない'
       - name: test_topbar_when_many_comments
         case: 正常
         summary: 100 件以上は 99+
@@ -40,12 +40,24 @@ components:
         summary: 音声入力中の表示と知らせの帯
         condition: '`voice` が `{state: recording, label: D-022 へのコメント, elapsed: 12}` / `{state: transcribing, label: D-022 へのコメント}` / `voiceNotice` が `{kind: failed, text: …}` で「入力欄を開く」と × を押す'
         mock: なし
-        expected: 'コメントのボタンの左に読み上げの名前「音声入力中（D-022 へのコメント）。録音中の入力欄へ移動」のボタンと `0:12`、押すと `onOpenVoice` が 1 回 / 「文字起こし中」/ 帯が `role="status"` で、`onOpenVoice` と `onDismissVoiceNotice` が 1 回ずつ'
+        expected: 'コメントのボタンの左に読み上げの名前「音声入力中（D-022 へのコメント）。録音中の入力欄へ移動」のボタンと `0:12`、押すと `onOpenVoice` が 1 回 / 読み上げの名前「文字起こし中（D-022 へのコメント）。入力欄へ移動」で、画面に「文字起こし中」の文字が無い / 帯が `role="status"` で、`onOpenVoice` と `onDismissVoiceNotice` が 1 回ずつ'
       - name: test_topbar_when_diff_point
         case: 正常
         summary: 差分の表示中は変更履歴のボタンに点と × だけを出す
         condition: '`diffPoint: {name: 前回開いてから, sub: 10/04 13:05 より後}` を渡し、× を押す'
         mock: なし
         expected: 「変更履歴」のボタンの読み上げ名が「変更履歴（過去の差分を表示中）」で、「前回開いてから」「10/04 13:05」の文字が無い。読み上げ名「差分の表示をやめる」のボタンを押すと `onClearDiff` が 1 回。`diffPoint` が `null` のときは読み上げ名「変更履歴」で × が無い
+      - name: test_topbar_when_refresh
+        case: 正常
+        summary: 更新のボタンを押すと onRefresh、保留中は点と「更新があります」
+        condition: '`onRefresh` を渡して更新のボタンを押す / `stale` true / `refreshing` true / `onRefresh` を渡さない'
+        mock: なし
+        expected: 読み上げの名前「最新の記録を読み込む」のボタンで `onRefresh` が 1 回 / 名前が「更新があります。最新の記録を読み込む」 / `aria-busy` で押せない / ボタンが無い
+      - name: test_topbar_when_icon_only
+        case: 正常
+        summary: ボタンは名前を文字で出さず、ツールチップと読み上げに持つ
+        condition: '`comments`・`filter`・`pending` を真にして描き、表示の設定のボタンへ Tab でフォーカスを移し、Esc を押す'
+        mock: なし
+        expected: 「表示の設定」「絞り込み」「保存待ち」「コメント」の文字はツールチップ（`aria-hidden`）にだけあり、どの要素も `title` 属性を持たない。Esc の後はトップバーに `data-tipsoff` が付く
 notes:
   単体テスト: 同じフォルダの `topbar.test.tsx` に置く（knowledge の規約『フォルダ構成』）

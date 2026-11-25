@@ -14,7 +14,7 @@ functions:
     kind: 関数
     container: frontend/src/shared/adapters/events-client.ts
     usecase: プレビューを開く
-    summary: '開いた画面のワークスペースのパスの頭を付けた `EVENTS_URL`（`workspacePath() + EVENTS_URL`）へ EventSource でつなぎ、`changed` と再接続（`open`）で記録の query の再読み込みを反映の依頼（`requestRefresh`）に渡し、入力中・音声入力中は保留して離れたときに再読み込みし、`duplicate_ids` で重なった ID のストアを書き換え、接続の状態を書き換える。再接続は EventSource に任せる'
+    summary: '開いた画面のワークスペースのパスの頭を付けた `EVENTS_URL`（`workspacePath() + EVENTS_URL`）へ EventSource でつなぎ、`changed` と再接続（`open`）で記録の query の再読み込みを反映の依頼（`requestRefresh`）に渡し、入力中・音声入力中は保留して離れたときに再読み込みし、`duplicate_ids` で重なった ID のストアを書き換え、接続の状態を書き換える。再接続は EventSource に任せ、更新のボタン（`reconnectEvents`）と画面をもう一度表示したときに閉じていた接続では作り直す'
     args:
       - name: queryClient
         type: QueryClient
@@ -23,7 +23,7 @@ functions:
     returns:
       type: () => void
       description: 接続を閉じる関数
-    process: '1. EventSource を `workspacePath() + EVENTS_URL` で作る
+    process: '1. EventSource を `workspacePath() + EVENTS_URL` で作り、3〜6 の受け取りを付ける（作り直すときも同じ内部の関数で作る）。作り直す関数をモジュールの内部に持ち、`reconnectEvents` から呼べるようにする
 
       2. 文字の入力欄のフォーカスを見張る（`watchTextFocus`）。反映の保留（`useRefreshHoldStore.subscribe`）と音声入力（`subscribeVoice`）が変わるたびに、保留の解除（`releaseRefresh`）に 4 つの query の再読み込み（`invalidatePreview`）を渡す
 
@@ -33,9 +33,11 @@ functions:
 
       5. `duplicate_ids` で `data` の ID の配列を重なった ID のストアに入れる（閉じた後も、集まりが変われば再表示する）
 
-      6. `error` で接続の状態を offline にする（前の記録の query は残す）
+      6. `error` で接続の状態を offline にする（前の記録の query は残す）。3・6 では接続し直しの状態を偽にする（`setRefreshing(false)`）
 
-      7. 閉じる関数は、EventSource を閉じ、フォーカスの見張りと購読をやめる'
+      6a. `document` の `visibilitychange` で画面が表示され、EventSource が閉じていれば（`readyState` が `CLOSED`）、`reconnectEvents` と同じく作り直す
+
+      7. 閉じる関数は、EventSource を閉じ、フォーカスの見張りと購読と `visibilitychange` の受け取りをやめ、作り直す関数を削除する'
     unit_tests:
       - name: test_connect_events_when_changed
         case: 正常
@@ -67,6 +69,12 @@ functions:
         condition: T-1 へ録音中に、MSW の `GET /api/records` が T-1 の無い記録を返す状態で `changed` を送信する
         mock: EventSource（偽物）・MSW
         expected: '`changed` を受けた時点では記録の query は invalidate されず、`discardVoice` で録音が捨てられ、音声入力の知らせが discarded。録音が終わった後に保留の解除で記録の query が 1 回だけ invalidate される'
+      - name: test_connect_events_when_visible_after_closed
+        case: 正常
+        summary: 閉じた接続は画面をもう一度表示したときに作り直す
+        condition: 偽物の EventSource の `readyState` を `CLOSED` にし、`visibilityState` を `visible` にして `visibilitychange` を送る。続けて `readyState` が `OPEN` のままもう一度送る
+        mock: EventSource（偽物）
+        expected: 1 回目で古い EventSource が閉じられ新しい EventSource が作られ、`OPEN` のままの 2 回目は作らない
     callees:
       - MOD-642-1#functions[workspacePath]
   - name: checkVoiceDestination
@@ -96,5 +104,32 @@ functions:
         condition: T-1 へ録音中に、MSW の `GET /api/records` が 422
         mock: MSW
         expected: 録音が続き、知らせが無い
+  - name: reconnectEvents
+    title: 書き換えの通知への接続し直し
+    kind: 関数
+    container: frontend/src/shared/adapters/events-client.ts
+    usecase: プレビューを開く
+    summary: 更新のボタンで、今の EventSource を閉じて作り直し、記録の query の再読み込みを反映の依頼に渡す。接続中でも作り直す
+    args: []
+    returns:
+      type: void
+      description: '-'
+    process: |-
+      1. `connectEvents` でつないでいなければ（配る書き出し）何もしない
+      2. 接続し直しの状態を真にする（`setRefreshing(true)`）
+      3. 今の EventSource を閉じ、`connectEvents` の 1 と同じ内部の関数で作り直す。`open` が届くと 4 つの query の再読み込みを反映の依頼（`requestRefresh`）に渡し、入力中・音声入力中は保留する（開いている項目・絞り込みは URL の search params にあるため変えない）
+    unit_tests:
+      - name: test_reconnect_events
+        case: 正常
+        summary: 接続中でも作り直して再読み込みする
+        condition: '`connectEvents` でつなぎ `open` を送った後、`reconnectEvents()` を呼び、新しい偽物の EventSource から `open` を送る'
+        mock: EventSource（偽物）
+        expected: 古い EventSource が閉じられ、呼んだ直後は `refreshing` が true、`open` の後に false で記録の query が invalidate される
+      - name: test_reconnect_events_when_not_connected
+        case: 正常
+        summary: つないでいなければ何もしない
+        condition: '`connectEvents` を呼ばずに（または閉じた後に）`reconnectEvents()` を呼ぶ'
+        mock: EventSource（偽物）
+        expected: EventSource が作られず、`refreshing` が false のまま
 notes:
   単体テスト: 同じフォルダの `events-client.test.ts` に置く（knowledge の規約『フォルダ構成』）
