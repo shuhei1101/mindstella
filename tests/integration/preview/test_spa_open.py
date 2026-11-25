@@ -186,7 +186,8 @@ def test_normal_when_records_changed_while_typing(
         "added_shown": main.get_by_text(NEW_DECISION["title"]).count(),
         "value": entry.input_value(),
         "focused": entry.evaluate("e => document.activeElement === e"),
-        "stale_bar": page.get_by_text(STALE_TEXT).count(),
+        # 更新のボタンのツールチップ（読み上げから外した要素）の文言は帯に数えない
+        "stale_bar": page.get_by_text(STALE_TEXT).and_(page.locator(":not([aria-hidden='true'] *)")).count(),
     }
     # 実行（入力欄の外を押す）
     page.get_by_role("complementary", name="詳細").get_by_role("heading", name="D-1の題").click()
@@ -588,7 +589,7 @@ def test_normal_when_comment_sent(page: Page, write_review_preview: WriteReviewP
 def test_normal_when_thread_replied_and_closed(
     page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_post: MakePost, make_thread: MakeThread
 ) -> None:
-    """`thread` が指すスレッドを開いて既読にし、返信を溜め、理由を添えてクローズにする（正常系）。"""
+    """`thread` が指すスレッドを開いて既読にし、返信を溜め、理由を聞かずにクローズにして一覧へ戻る（正常系）。"""
     # 準備
     url, root = write_review_preview(
         make_item("D-1"),
@@ -608,22 +609,16 @@ def test_normal_when_thread_replied_and_closed(
     # 検証
     expect(panel.locator("ol > li > article").last).to_contain_text("了解")
     assert [item["thread"] for item in _workspace_yaml(root, "comments.yaml")["items"]] == ["TH-1"]
-    # 実行（理由を添えてクローズにする）
-    panel.get_by_role("button", name="クローズにする").click()
-    panel.get_by_role("textbox", name="理由（任意）").fill("決まった")
-    panel.get_by_role("button", name="クローズにする").click()
-    # 検証
-    expect(panel).to_contain_text("クローズにしたスレッドです。")
-    thread = _workspace_yaml(root, "threads.yaml")["items"][0]
-    assert thread["status"] == "closed"
-    assert thread["events"][-1]["reason"] == "決まった"
-    # 実行（一覧へ戻る）
+    # 実行（クローズにする）
     before = _history_length(page)
-    panel.get_by_role("button", name="一覧へ戻る").click()
-    # 検証
+    panel.get_by_role("button", name="クローズにする").click()
+    # 検証（一覧へ戻り、履歴に積まない）
     expect(panel.get_by_role("group", name="スレッドの状態で絞る")).to_be_visible()
     assert "thread=" not in page.url
     assert _history_length(page) == before
+    thread = _workspace_yaml(root, "threads.yaml")["items"][0]
+    assert thread["status"] == "closed"
+    assert thread["events"][-1].get("reason") is None
 
 
 def test_normal_when_comment_draft_restored(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem) -> None:
