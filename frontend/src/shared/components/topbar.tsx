@@ -259,7 +259,7 @@ const headerClass = (fit: Fit): string =>
     fit.diff && "max-xl:gap-2",
     fit.offline && fit.diff && "max-2xl:gap-2",
     fit.crowded
-      ? "md:max-lg:gap-2 max-md:gap-px max-md:px-1.5 max-xs:px-1"
+      ? "max-md:gap-px max-md:px-1.5 max-xs:px-1 md:max-lg:gap-2"
       : cn(
           "sm:max-lg:gap-2",
           fit.diff ? "max-sm:gap-2 max-sm:px-2.5" : "max-sm:gap-0.75 max-sm:px-2.5",
