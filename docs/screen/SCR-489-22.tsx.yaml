@@ -109,7 +109,7 @@ elements:
       - name: mode
         value: marker
       - name: lookup
-        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID は `null`）
+        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID と、配る書き出しのスレッドの ID は `null`）
 refs:
   - IF-489-70#
 notes:

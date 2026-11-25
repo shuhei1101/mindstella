@@ -112,7 +112,7 @@ elements:
       - name: onClearTagExpr
         value: タグの条件を解除する（tx を外す）
       - name: lookup
-        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID は `null`）
+        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID と、配る書き出しのスレッドの ID は `null`）
     description: 資料の表。列の末尾に作成日時（`created`）・更新日時（`updated`）を並べ、見出しで並べ替えられる。行のタイトルを押して開くと、その履歴の行に一覧から開いたマーカーを持たせ、表の今の並びを詳細の一覧の並びにする。取り下げた資料（`withdrawn` が真）の行は、差分の表示によらずタイトルの右に取り下げの札を置き、行の文字を薄くする（部品設計『表』の `rows`）
     visible_when: 表示形式が表
   - name: ボード
@@ -181,7 +181,7 @@ elements:
       - name: items
         value: 選んだ時点で削除した項目（記録の取得.changes の removed）のうち、種類が doc のものの id・title を ID の順に並べたもの。合わせた範囲で追加して削除した項目も含む
       - name: lookup
-        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID は `null`）
+        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID と、配る書き出しのスレッドの ID は `null`）
       - name: onOpen
         value: 項目の ID は詳細パネルを開き、スレッドの ID はそのスレッドを開いて、履歴に追加する
     position: ツールバー・条件のチップの下、カード・ボード・表の上
@@ -287,7 +287,7 @@ elements:
       - name: mode
         value: marker
       - name: lookup
-        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID は `null`）
+        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID と、配る書き出しのスレッドの ID は `null`）
 lead: 資料をカード（既定）・ボード・表で見る画面。
 notes:
   コメントのマーカーのモック: コメントのマーカーの見本は `docs/mock/pages/docs/121/standard/index.html`
