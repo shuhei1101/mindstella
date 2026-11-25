@@ -466,3 +466,7 @@ items:
     summary: プレビュー / use-shortcut
   - page: MOD-695-7.ts.yaml
     summary: プレビュー / shortcuts
+  - page: MOD-701-1.tsx.yaml
+    summary: プレビュー / record-text
+  - page: MOD-701-2.ts.yaml
+    summary: プレビュー / record-ids

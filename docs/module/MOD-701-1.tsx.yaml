@@ -1,0 +1,54 @@
+title: プレビュー / record-text
+lead: 部品設計『記録の文字.tsx』の props・状態を持つ。
+components:
+  - name: RecordText
+    title: 記録の文字
+    kind: コンポーネント
+    usecase: 共通
+    summary: '`findRecordIds` で分けた文字を、`link` は `a[href=#id={ID}][data-record-id]`、`marker` は `span[data-record-id]`（等幅・点線の下線・`text-decoration-thickness: 1.5px`）で描き、記録に無い ID は文字のまま。乗せる・フォーカスで部品『本文のマーカーのツールチップ』を出し、`marker` で `descriptionId` があるときは ID の説明を「、」でつないだ隠した `span` を描く'
+    refs:
+      - CMP-701-1#
+    props:
+      - name: text
+        type: string
+        required: true
+        description: 記録の文字
+      - name: mode
+        type: '"link" | "marker"'
+        required: true
+        description: リンクにするかマーカーにするか
+      - name: lookup
+        type: LookupRecordId
+        required: true
+        description: ID から記録の項目・スレッドを検索する
+      - name: onOpen
+        type: '(id: string) => void'
+        required: false
+        description: '`link` の ID を押したとき（既定の遷移は止める）'
+      - name: descriptionId
+        type: string
+        required: false
+        description: '`marker` の説明の要素の id'
+    unit_tests:
+      - name: test_record_text_link
+        case: 正常
+        summary: 記録にある ID だけをリンクにし、押すと onOpen を呼ぶ
+        condition: '`mode` が `link`、文字「D-1 の比較（TH-1 の続き、D-99 は除く）」。D-1 を押す'
+        mock: なし
+        expected: D-1・TH-1 が `a[href="#id=D-1"]`・`a[href="#id=TH-1"]`、D-99 は文字のまま。`onOpen` が `"D-1"` で呼ばれる
+      - name: test_record_text_marker
+        case: 正常
+        summary: マーカーはフォーカスできる要素にせず、説明を描く
+        condition: '`mode` が `marker`、`descriptionId` が `ids`、文字「D-1 の比較（D-99 は除く）」'
+        mock: なし
+        expected: D-1 は `span[data-record-id]` で `a`・`button`・`tabindex` を持たない。`#ids` の文字は D-1 のタイトル・ID・種類・状態
+      - name: test_record_text_no_ids
+        case: 正常
+        summary: 記録にある ID が無いときは文字だけ
+        condition: '`mode` が `marker`、`descriptionId` が `ids`、文字「保存先の比較」'
+        mock: なし
+        expected: 文字だけを描き、`#ids` を描かない
+    container: frontend/src/shared/components/record-text.tsx
+notes:
+  単体テスト: 同じフォルダの `record-text.test.tsx` に配置する（knowledge の規約『フォルダ構成』）
+id: MOD-701-1

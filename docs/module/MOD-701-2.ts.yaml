@@ -1,0 +1,100 @@
+title: プレビュー / record-ids
+lead: 記録の文字の中の項目の ID・スレッドの ID を見つけ、記録の項目・スレッドに結ぶ。プレーンテキストの部品と、描いた本文の DOM の両方が同じ判定を使用する。
+constants:
+  - name: RECORD_ID_PATTERN
+    title: 記録の ID の判定
+    container: frontend/src/shared/core/record-ids.ts
+    usecase: 共通
+    summary: スレッドの ID（`TH-{数字}`）・書き込みの ID（`TH-{数字}-{数字}`）・項目の ID（`{英大文字}-{数字}`）。前が英数字・`-` のときと、後ろが数字のときはヒットさせない
+    value: '`/(?<![A-Za-z0-9-])(?:TH-[0-9]+(?:-[0-9]+)?|[A-Z]+-[0-9]+)(?![0-9])/g`'
+data_models:
+  - name: RecordIdTarget
+    title: ID が指す項目・スレッド
+    container: frontend/src/shared/core/record-ids.ts
+    usecase: 共通
+    summary: ツールチップと読み上げに出す、ID が指す項目・スレッドの中身
+    properties:
+      - name: id
+        type: string
+        description: 項目・スレッドの ID（書き込みの ID のときはその ID）
+      - name: kind
+        type: '"item" | "thread"'
+        description: 部品『本文のマーカーのツールチップ』の種類
+      - name: title
+        type: string
+        description: 項目・スレッドのタイトル
+      - name: kindLabel
+        type: string
+        description: 種類の名前（検討事項・スレッド など）
+      - name: status
+        type: string | undefined
+        description: 状態の名前。状態を持たない種類は持たない
+  - name: LookupRecordId
+    title: 記録の ID の検索
+    container: frontend/src/shared/core/record-ids.ts
+    usecase: 共通
+    summary: '`(id: string) => RecordIdTarget | null`。ID から記録の項目・スレッドを検索し、記録に無い ID は `null` を返却する関数の型'
+functions:
+  - name: findRecordIds
+    title: 記録の ID の検索
+    kind: 関数
+    usecase: 共通
+    summary: 文字の中の `RECORD_ID_PATTERN` にヒットする ID のうち、`lookup` が `null` を返却しないものを、文字の中の位置とともに並びの順で返却する
+    args:
+      - name: text
+        type: string
+        description: 記録の文字
+      - name: lookup
+        type: LookupRecordId
+        description: ID から記録の項目・スレッドを検索する
+    returns:
+      type: '{ start: number; end: number; target: RecordIdTarget }[]'
+      description: 記録にある ID と、文字の中の開始・終了の位置
+    container: frontend/src/shared/core/record-ids.ts
+    unit_tests:
+      - name: test_find_record_ids
+        case: 正常
+        summary: 記録にある ID だけを位置つきで返却する
+        condition: 文字「D-1 の比較（TH-1 の続き、TH-1-2 と D-99、XD-1・D-12a）」、`lookup` は D-1・TH-1・TH-1-2 だけを返却する
+        mock: なし
+        expected: D-1・TH-1・TH-1-2 の 3 件を文字の中の位置とともに返却し、D-99・XD-1・D-12a は返却しない
+      - name: test_find_record_ids_none
+        case: 正常
+        summary: ID を持たない文字は空
+        condition: 文字「保存先の比較」
+        mock: なし
+        expected: 空の配列
+  - name: recordLookupOf
+    title: 記録の ID の検索の作成
+    kind: 関数
+    usecase: 共通
+    summary: 記録の索引の項目とスレッドの検索から `LookupRecordId` を作る。スレッドの ID・書き込みの ID は `resolveThreadId` でスレッドに結び、`threads` が `null`（配る書き出し）のときは `null` を返却する
+    args:
+      - name: index
+        type: RecordIndex
+        description: 記録の索引（項目の ID → 種類・タイトル・状態）
+      - name: threads
+        type: LookupThread | null
+        description: スレッドの ID からタイトルと書き込みの ID の並びを検索する。配る書き出しでは `null`
+    returns:
+      type: LookupRecordId
+      description: ID から記録の項目・スレッドを検索する関数
+    container: frontend/src/shared/core/record-ids.ts
+    unit_tests:
+      - name: test_record_lookup_of
+        case: 正常
+        summary: 項目・スレッド・書き込みの ID を記録に結ぶ
+        condition: '`parametrize`: ID が D-1（未決定の検討事項）/ TH-1（オープン）/ TH-1-2（TH-1 の書き込み）/ TH-1-9（TH-1 に無い書き込み）/ D-99（記録に無い）'
+        mock: なし
+        expected: D-1 は `kind` が `item`・状態「未決定」、TH-1・TH-1-2 は `kind` が `thread`・状態「オープン」、TH-1-9・D-99 は `null`
+      - name: test_record_lookup_of_export
+        case: 正常
+        summary: 配る書き出しはスレッドの ID を結ばない
+        condition: '`threads` が `null`。ID が TH-1 / D-1'
+        mock: なし
+        expected: TH-1 は `null`、D-1 は項目を返却する
+refs:
+  - CMP-701-1#
+  - MOD-489-102#
+  - MOD-489-119#
+id: MOD-701-2
