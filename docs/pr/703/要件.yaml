@@ -74,3 +74,6 @@ scope_out:
   - item: トップバーに MindStella のセッションの状態と起動し直すボタンを表示する変更
     reason: 同じトップバーを変えるが、この束の子ではない。この PR でアイコンだけの作りにした後で足す
     plan: '#586'
+  - item: 単体テスト tests/unit/scripts/test_serve.py の test_stream が終わらず、pytest tests/unit の全件実行が止まる不具合
+    reason: origin/develop（4fe2d1b8）でも同じく止まり、この PR は serve.py・test_serve.py を変更しない。今回の要望に含まれない
+    plan: '#704'
