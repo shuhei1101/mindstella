@@ -1,5 +1,5 @@
 // トップバー（部品設計『トップバー.tsx』）。題名・接続の状態・更新のボタン・検索の入口・変更履歴・ライト / ダーク・表示の設定・絞り込み・保存待ち・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯・重なった ID の通知を出す
-import type { MouseEvent } from "react";
+import { type MouseEvent, useEffect, useState } from "react";
 
 import { DuplicateIdNotice } from "@/shared/components/duplicate-id-notice";
 import { Icon, type IconName } from "@/shared/components/icon";
@@ -112,13 +112,20 @@ const formatJst = (iso: string): string => {
 /** 検索のキーの案内（macOS は ⌘K） */
 const searchKey = (): string => (/Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘K" : "Ctrl+K");
 
-/** ホバーと :focus-visible で出すツールチップ。読み上げは親の aria-label が持つ */
-const Tip = ({ text }: { text: string }) => (
+/**
+ * ホバーと :focus-visible で出すツールチップ。読み上げは親の aria-label が持つ。
+ * トップバーの左側の要素は `start`（左端に揃えて右へ伸ばす）、右側の要素は `end` にして画面の外へ出さない。
+ * 上の余白（`pt-1.5`）でボタンとつなぎ、ポインタをツールチップへ動かしても消えない。Esc でトップバーの `data-tipsoff` が付くと隠す
+ */
+const Tip = ({ text, align = "end" }: { text: string; align?: "start" | "end" }) => (
   <span
     aria-hidden="true"
-    className="pointer-events-none absolute top-full right-0 z-40 mt-1.5 hidden rounded-control bg-foreground px-2 py-1 text-small font-normal whitespace-nowrap text-background group-hover/tip:block group-focus-visible/tip:block"
+    className={cn(
+      "absolute top-full z-40 hidden pt-1.5 group-hover/tip:block group-focus-visible/tip:block in-data-tipsoff:hidden!",
+      align === "start" ? "left-0" : "right-0",
+    )}
   >
-    {text}
+    <span className="block w-max max-w-64 rounded-control bg-foreground px-2 py-1 text-small font-normal text-background">{text}</span>
   </span>
 );
 
@@ -129,7 +136,7 @@ type Fit = {
   /** 件数の札が幅の広い中身（絞り込みのバッジ 2 桁・`99+`）を持つ */
   wide: boolean;
   pending: boolean;
-  /** 接続の状態・更新があります・音声入力中・差分の表示のどれかを出していて、狭い幅で詰める */
+  /** 更新のボタン・接続の状態・更新があります・音声入力中・差分の表示のどれかを出していて、狭い幅で詰める */
   crowded: boolean;
 };
 
@@ -203,17 +210,23 @@ const ConnectionNotice = ({ fit, readAt }: { fit: Fit; readAt: string | null }) 
   const readAtText = readAt === null ? null : formatJst(readAt);
   const text = readAtText === null ? "サーバーにつながりません" : `サーバーにつながりません（${readAtText} に読んだ記録）`;
   return (
-    <span role="status" className={cn("group/tip relative inline-grid size-8 flex-none place-items-center text-topbar-fg", iconButtonFitClass(fit))}>
+    <span
+      role="status"
+      // 押せない表示だが、キーボードでもツールチップの状態と読んだ日時を確かめられるようにフォーカスを受ける
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- 状態の表示をツールチップで読むため
+      tabIndex={0}
+      className={cn("group/tip relative inline-grid size-8 flex-none place-items-center rounded-control text-topbar-fg focus-visible:outline-2 focus-visible:outline-mark-line", iconButtonFitClass(fit))}
+    >
       <Icon name="offline" className="text-topbar-danger max-2xs:size-4.5" />
       <span className="sr-only">{text}</span>
-      <Tip text={text} />
+      <Tip text={text} align="start" />
     </span>
   );
 };
 
 /** 更新のボタン。押すと書き換えの通知へ接続し直して記録を読み込み直す。反映を保留している間は点を出す */
 const RefreshButton = ({ fit, stale, refreshing, onClick }: { fit: Fit; stale: boolean; refreshing: boolean; onClick: () => void }) => {
-  const text = stale ? "更新があります。接続し直して最新の記録を読み込む" : "接続し直して最新の記録を読み込む";
+  const text = stale ? "更新があります。最新の記録を読み込む" : "最新の記録を読み込む";
   return (
     <button
       type="button"
@@ -228,7 +241,7 @@ const RefreshButton = ({ fit, stale, refreshing, onClick }: { fit: Fit; stale: b
     >
       <Icon name={refreshing ? "spin" : "refresh"} className={cn(refreshing && "animate-spin")} />
       {stale ? <span aria-hidden="true" className="absolute top-1 right-1 size-2 rounded-full bg-topbar-unread ring-2 ring-topbar-bg" /> : null}
-      <Tip text={stale ? "更新があります" : "最新の記録を読み込む"} />
+      <Tip text={text} align="start" />
     </button>
   );
 };
@@ -304,7 +317,7 @@ const SearchButton = ({ fit, onClick }: { fit: Fit; onClick: (() => void) | unde
   >
     <Icon name="search" />
     <kbd className="rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden">{searchKey()}</kbd>
-    <Tip text="すべての項目を検索" />
+    <Tip text="すべての項目を検索" align="start" />
   </button>
 );
 
@@ -322,7 +335,7 @@ const HistoryButton = ({ fit, active, onClick }: { fit: Fit; active: boolean; on
     )}
   >
     <Icon name="history" />
-    <Tip text={active ? "変更履歴（過去の差分を表示中）" : "変更履歴"} />
+    <Tip text={active ? "変更履歴（過去の差分を表示中）" : "変更履歴"} align="start" />
     {active ? <span aria-hidden="true" className="absolute -top-1 -right-1 size-2.5 rounded-full bg-diff-changed ring-2 ring-topbar-bg" /> : null}
   </button>
 );
@@ -336,7 +349,7 @@ const ClearDiffButton = ({ fit, onClick }: { fit: Fit; onClick: (() => void) | u
     className={cn("group/tip relative grid size-8 flex-none cursor-pointer place-items-center rounded-control text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg", iconButtonFitClass(fit))}
   >
     <Icon name="x" />
-    <Tip text="差分の表示をやめる" />
+    <Tip text="差分の表示をやめる" align="start" />
   </button>
 );
 
@@ -524,7 +537,7 @@ const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChang
         onChange?.(nextTheme);
       }}
       className={cn(
-        "group/tip relative inline-grid size-8 cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
+        "group/tip relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
         iconButtonFitClass(fit),
       )}
     >
@@ -552,7 +565,7 @@ const fitOf = (props: TopbarProps): Fit => {
     diff: diffPoint !== null,
     wide: (filter && filterCount >= FILTER_BADGE_WIDE_FROM) || (comments && commentCount > COUNT_CAP) || (showPending && pendingCount > COUNT_CAP),
     pending: showPending,
-    crowded: connection === "offline" || diffPoint !== null || (props.voice ?? null) !== null || props.stale === true,
+    crowded: props.onRefresh !== undefined || connection === "offline" || diffPoint !== null || (props.voice ?? null) !== null || props.stale === true,
   };
 };
 
@@ -585,9 +598,27 @@ export const Topbar = (props: TopbarProps) => {
     onToggleSettings,
   } = props;
   const fit = fitOf(props);
+  // Esc でツールチップを隠し、ポインタが別の要素へ移るかフォーカスが動いたら戻す（WCAG 1.4.13 の Dismissible）
+  const [tipsOff, setTipsOff] = useState(false);
+  useEffect(() => {
+    const hide = (event: globalThis.KeyboardEvent): void => {
+      if (event.key === "Escape") setTipsOff(true);
+    };
+    const show = (): void => {
+      setTipsOff(false);
+    };
+    document.addEventListener("keydown", hide);
+    document.addEventListener("pointerover", show);
+    document.addEventListener("focusin", show);
+    return () => {
+      document.removeEventListener("keydown", hide);
+      document.removeEventListener("pointerover", show);
+      document.removeEventListener("focusin", show);
+    };
+  }, []);
   return (
     <div>
-      <header className={headerClass(fit)}>
+      <header className={headerClass(fit)} data-tipsoff={tipsOff ? "" : undefined}>
         <Brand fit={fit} />
         <span title={title} className="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden">
           {title}
