@@ -52,7 +52,7 @@ export const DocsScreen = ({ drawerOpen, onCloseDrawer }: DocsScreenProps) => (
     columnsOf={docColumns}
     drawerOpen={drawerOpen}
     onCloseDrawer={onCloseDrawer}
-    content={({ view, shown, sort, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef }) => {
+    content={({ view, lookup, shown, sort, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef }) => {
       if (view === "board") {
         return (
           <Board
@@ -61,7 +61,7 @@ export const DocsScreen = ({ drawerOpen, onCloseDrawer }: DocsScreenProps) => (
             sort={sort}
             emptyText="資料はありません。"
             added={addedCards(edit, DOC_STATUSES, onOpenAdded)}
-            card={(item) => <DocCard key={item.id} doc={item} inBoard selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />}
+            card={(item) => <DocCard key={item.id} doc={item} lookup={lookup} inBoard selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />}
           />
         );
       }
@@ -75,7 +75,7 @@ export const DocsScreen = ({ drawerOpen, onCloseDrawer }: DocsScreenProps) => (
           {adds.map((item) => (
             <AddedCard key={item.id} item={item} mark={edit?.marks[item.id] ?? "pending"} onOpen={onOpenAdded} />
           ))}
-          <DocCards docs={shown} sort={sort} selectedId={selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />
+          <DocCards docs={shown} lookup={lookup} sort={sort} selectedId={selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />
         </div>
         </div>
       );

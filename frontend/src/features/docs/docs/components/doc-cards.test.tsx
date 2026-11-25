@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
 import { DocCards, type DocCardsProps } from "@/features/docs/docs/components/doc-cards";
+import { sampleRecordLookup } from "@/testing/record-lookup";
 import type { Item } from "@/shared/core/records";
 
 const DOCS: Item[] = [
@@ -12,6 +13,7 @@ const DOCS: Item[] = [
 ];
 
 const props = (patch: Partial<DocCardsProps> = {}): DocCardsProps => ({
+  lookup: sampleRecordLookup,
   docs: DOCS,
   selectedId: null,
   marks: undefined,

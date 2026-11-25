@@ -1,4 +1,6 @@
 // 全体の検索（画面設計『全体の検索.tsx』）。ID・タイトル・本文で、全種類の項目を探すモーダル
+import { RecordText } from "@/shared/components/record-text";
+import type { LookupRecordId } from "@/shared/core/record-ids";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { Icon, StatusMark } from "@/shared/components/icon";
@@ -27,6 +29,8 @@ export const matchFilterCandidates = ({ query, candidates }: { query: string; ca
 
 export type SearchDialogProps = {
   index: RecordIndex;
+  /** 結果のタイトルの中の ID から記録の項目・スレッドを検索する */
+  lookup: LookupRecordId;
   query: string;
   onQueryChange: (query: string) => void;
   onOpen: (id: string) => void;
@@ -37,7 +41,7 @@ export type SearchDialogProps = {
   onApplyFilter?: (key: string, value: string) => void;
 };
 
-export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose, filterCandidates = [], onApplyFilter }: SearchDialogProps) => {
+export const SearchDialog = ({ index, lookup, query, onQueryChange, onOpen, onClose, filterCandidates = [], onApplyFilter }: SearchDialogProps) => {
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   // 開く前にフォーカスがあった要素を覚え、閉じたら戻す
@@ -163,6 +167,7 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose, fil
                     role="option"
                     tabIndex={-1}
                     aria-selected={hit === selected}
+                    aria-describedby={`${optionId(hit)}-ids`}
                     className={cn("flex cursor-pointer gap-3 rounded-control px-2 py-1.5", hit === selected ? "bg-row-selected" : "hover:bg-row-hover")}
                     onClick={() => {
                       onOpen(hit.id);
@@ -175,7 +180,7 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose, fil
                     <span className="min-w-0 text-small">
                       <span className="inline-flex items-center gap-1">
                         <StatusMark status={item?.status} />
-                        {hit.title}
+                        <RecordText text={hit.title} mode="marker" lookup={lookup} descriptionId={`${optionId(hit)}-ids`} />
                         <span className="rounded-full bg-muted px-1.5 text-xs text-muted-foreground">{KIND_LABEL[hit.kind]}</span>
                       </span>
                       <br />

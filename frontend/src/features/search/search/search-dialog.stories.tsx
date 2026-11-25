@@ -5,13 +5,15 @@ import { useState } from "react";
 import { SearchDialog, type FilterCandidate } from "@/features/search/search/search-dialog";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
 import { RECORDS } from "@/testing/msw/handlers";
+import { recordLookupOf } from "@/shared/core/record-ids";
 
 const index = buildIndex(RECORDS as unknown as MindmapData);
+const lookup = recordLookupOf({ index, threads: null });
 
 /** 検索の言葉を自分で持って描く */
 const WithQuery = ({ initial, filterCandidates }: { initial: string; filterCandidates?: FilterCandidate[] }) => {
   const [query, setQuery] = useState(initial);
-  return <SearchDialog index={index} query={query} onQueryChange={setQuery} onOpen={() => undefined} onClose={() => undefined} filterCandidates={filterCandidates} onApplyFilter={filterCandidates === undefined ? undefined : () => undefined} />;
+  return <SearchDialog index={index} lookup={lookup} query={query} onQueryChange={setQuery} onOpen={() => undefined} onClose={() => undefined} filterCandidates={filterCandidates} onApplyFilter={filterCandidates === undefined ? undefined : () => undefined} />;
 };
 
 /** 資料の画面の絞り込みの条件の値 */
