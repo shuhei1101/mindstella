@@ -56,7 +56,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-24T17:14:39.211895+00:00'
   - process: エージェントフロー・LLM 呼び出し設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-25T03:27:21.651409+00:00'
   - process: 精度評価設計
     status: skipped
     reason: Claude Code のエージェントで、精度評価をしない（判定フローチャート『精度評価をするか』Q2 YES）
