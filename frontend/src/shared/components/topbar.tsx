@@ -155,25 +155,21 @@ const panelButtonClass = (fit: Fit, open: boolean): string =>
     "hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line",
     "max-xl:px-2",
     fit.offline && "max-2xl:px-2",
-    "max-sm:gap-1 max-sm:px-1.5",
-    fit.wide && (fit.diff || fit.offline) && "max-sm:gap-0.5 max-sm:px-0.5",
-    "max-xs:gap-0.5 max-xs:px-0.5",
-    fit.crowded && "max-md:w-7 max-md:justify-center max-md:gap-0 max-md:px-0 max-xs:w-6",
+    fit.crowded
+      ? "max-md:w-7 max-md:justify-center max-md:gap-0 max-md:px-0 max-xs:w-6"
+      : cn("max-sm:gap-1 max-sm:px-1.5", fit.wide && (fit.diff || fit.offline) && "max-sm:gap-0.5 max-sm:px-0.5", "max-xs:gap-0.5 max-xs:px-0.5"),
     open && "border-topbar-fg-2 bg-topbar-hover",
   );
 
-/** 詰める幅（481px 未満）で、件数の札をアイコンの右上に重ねる */
+/** 詰める幅（721px 未満）で、件数の札をアイコンの右上に重ねる */
 const badgeFitClass = (fit: Fit): string =>
   cn(fit.crowded && "max-md:absolute max-md:-top-1.5 max-md:-right-1.5 max-md:h-4 max-md:min-w-4 max-md:px-0.5 max-md:ring-2 max-md:ring-topbar-bg");
 
 /** 印だけのボタン（検索・変更履歴・ライト / ダーク）の狭い幅の詰め方 */
 const iconButtonFitClass = (fit: Fit): string =>
-  cn(
-    fit.wide && (fit.diff || fit.offline) && "max-sm:w-7 max-sm:flex-none",
-    "max-xs:w-7 max-xs:flex-none",
-    fit.offline && fit.diff && "max-xs:w-6.5",
-    fit.crowded && "max-md:w-7 max-md:flex-none max-xs:w-6",
-  );
+  fit.crowded
+    ? "max-md:w-7 max-md:flex-none max-xs:w-6"
+    : cn(fit.wide && (fit.diff || fit.offline) && "max-sm:w-7 max-sm:flex-none", "max-xs:w-7 max-xs:flex-none", fit.offline && fit.diff && "max-xs:w-6.5");
 
 /** 画面を移るリンク。押したときは使う側が移る */
 const TabLink = ({
@@ -224,7 +220,7 @@ const ConnectionNotice = ({ fit, readAt }: { fit: Fit; readAt: string | null }) 
       // 押せない表示だが、キーボードでもツールチップの状態と読んだ日時を確かめられるようにフォーカスを受ける
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- 状態の表示をツールチップで読むため
       tabIndex={0}
-      className={cn("relative inline-grid h-8 w-6 flex-none place-items-center rounded-control text-topbar-fg focus-visible:outline-2 focus-visible:outline-mark-line max-sm:w-4", iconButtonFitClass(fit))}
+      className={cn("relative inline-grid h-8 w-6 flex-none place-items-center rounded-control text-topbar-fg focus-visible:outline-2 focus-visible:outline-mark-line", !fit.crowded && "max-sm:w-4", iconButtonFitClass(fit))}
     >
       <Icon name="offline" className="text-topbar-danger max-2xs:size-4.5" />
       <span className="sr-only">{text}</span>
@@ -260,14 +256,17 @@ const RefreshButton = ({ fit, stale, refreshing, onClick }: { fit: Fit; stale: b
 const headerClass = (fit: Fit): string =>
   cn(
     "relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg",
-    "sm:max-lg:gap-2",
     fit.diff && "max-xl:gap-2",
     fit.offline && fit.diff && "max-2xl:gap-2",
-    fit.diff ? "max-sm:gap-2 max-sm:px-2.5" : "max-sm:gap-0.75 max-sm:px-2.5",
-    fit.wide && (fit.diff || fit.offline) && "max-sm:gap-px max-sm:px-2",
-    "max-xs:gap-px max-xs:px-2",
-    fit.offline && "sm:max-md:px-2.5",
-    fit.crowded && "max-md:gap-px max-md:px-1.5 max-xs:px-1",
+    fit.crowded
+      ? "md:max-lg:gap-2 max-md:gap-px max-md:px-1.5 max-xs:px-1"
+      : cn(
+          "sm:max-lg:gap-2",
+          fit.diff ? "max-sm:gap-2 max-sm:px-2.5" : "max-sm:gap-0.75 max-sm:px-2.5",
+          fit.wide && (fit.diff || fit.offline) && "max-sm:gap-px max-sm:px-2",
+          "max-xs:gap-px max-xs:px-2",
+          fit.offline && "sm:max-md:px-2.5",
+        ),
   );
 
 /** 差分の札を出している間（つながらない間は 1440px 以下、それ以外は 1100px 以下）に、札へ幅を回すため隠す */
@@ -379,9 +378,7 @@ const SettingsButton = ({ fit, open, onClick }: { fit: Fit; open: boolean; onCli
       panelButtonClass(fit, open),
       fit.diff && "max-xl:px-1",
       fit.offline && fit.diff && "max-2xl:px-1",
-      fit.diff && "max-sm:px-1",
-      fit.wide && (fit.diff || fit.offline) && "max-sm:px-0.5",
-      "max-xs:px-0.5",
+      !fit.crowded && cn(fit.diff && "max-sm:px-1", fit.wide && (fit.diff || fit.offline) && "max-sm:px-0.5", "max-xs:px-0.5"),
     )}
   >
     <Icon name="sliders" />
