@@ -1957,3 +1957,43 @@ files:
   description: スレッドの見出しのタイトルの長さと省略の状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
   tags:
   - tool:react
+- path: src/shared/components/record-text.lint.test.ts
+  name: 記録の文字の検出の lint の単体テスト
+  description: eslint.config.js の no-restricted-syntax が、記録の文字を JSX の子に直接描く記載を誤りにするかを確かめる単体テストで、呼び忘れの検出の規則を修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-489-170
+    type: tests
+- path: src/shared/components/record-text.test.tsx
+  name: 記録の文字の単体テスト
+  description: 記録の文字の ID のリンクとマーカーを確かめる単体テストで、record-text を修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-701-1
+    type: tests
+- path: src/shared/core/record-ids.test.ts
+  name: 記録の ID の判定の単体テスト
+  description: 記録の文字の中の ID の判定と、記録の項目・スレッドへの結び方を確かめる単体テストで、record-ids を修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-701-2
+    type: tests
+- path: src/shared/components/thread-title.test.tsx
+  name: スレッドの見出しのタイトルの単体テスト
+  description: スレッドの見出しのタイトルの省略と、タイトルの中の ID のリンクを確かめる単体テストで、thread-title を修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-695-4
+    type: tests
