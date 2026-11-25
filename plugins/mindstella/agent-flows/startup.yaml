@@ -18,7 +18,7 @@ steps:
   - name: まとめ忘れを commit する
     when: まだまとめていない変更がある
     body: |-
-      前の話し合いでまとめ忘れた分として、一言の説明を付けて `commit` する。
+      前の話し合いでまとめ忘れた分として、一言の説明を付けて `commit` する。作業の途中の `commit` なので、`hand_back` は渡さない。
     calls:
       - {server: mindstella, tool: commit}
   - name: 進め方の文書を参照する
