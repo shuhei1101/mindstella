@@ -61,9 +61,9 @@ components:
       - name: test_comments_panel_when_closed_focus
         case: 正常
         summary: クローズにして戻った後、行が消えれば次の行へフォーカスを移す
-        condition: '`parametrize`: 絞り込みが「すべて」で TH-2 をクローズにする / 「オープン」で TH-1・TH-2・TH-3 の TH-2 をクローズにする / 「オープン」で最後の TH-3 をクローズにする / 「オープン」で 1 件だけの TH-1 をクローズにする'
+        condition: '`parametrize`: 絞り込みが「すべて」で TH-2 をクローズにする / 「オープン」で並びが TH-3・TH-2・TH-1（新しい順）の TH-2 をクローズにする / 「オープン」で一番下の TH-1 をクローズにする / 「オープン」で 1 件だけの TH-1 をクローズにする'
         mock: MSW
-        expected: search から `thread` が外れ履歴の数が変わらず、フォーカスが TH-2 の行 / TH-3 の行 / TH-2 の行 / 空の表示
+        expected: search から `thread` が外れ履歴の数が変わらず、フォーカスが TH-2 の行 / TH-1 の行 / TH-2 の行 / 空の表示
     container: frontend/src/features/comments/comments-panel/comments-panel.tsx
 notes:
   単体テスト: 同じフォルダの `comments-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）

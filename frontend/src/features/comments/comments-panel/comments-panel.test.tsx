@@ -104,11 +104,11 @@ describe("CommentsPanel", () => {
     expect(closedFilter).toHaveFocus();
   });
 
-  // クローズにして戻った後、行が消えれば次の行へフォーカスを移す（正常系）
+  // クローズにして戻った後、行が消えれば次の行へフォーカスを移す（一覧の並びは新しい順で TH-3・TH-2・TH-1）（正常系）
   test.each([
     { name: "all", search: "&tstatus=all", ids: ["TH-1", "TH-2", "TH-3"], close: "TH-2", focus: "thread:TH-2" },
-    { name: "open-middle", search: "", ids: ["TH-1", "TH-2", "TH-3"], close: "TH-2", focus: "thread:TH-3" },
-    { name: "open-last", search: "", ids: ["TH-1", "TH-2", "TH-3"], close: "TH-3", focus: "thread:TH-2" },
+    { name: "open-middle", search: "", ids: ["TH-1", "TH-2", "TH-3"], close: "TH-2", focus: "thread:TH-1" },
+    { name: "open-last", search: "", ids: ["TH-1", "TH-2", "TH-3"], close: "TH-1", focus: "thread:TH-2" },
     { name: "open-only", search: "", ids: ["TH-1"], close: "TH-1", focus: null },
   ])("comments_panel_when_closed_focus ($name)", async ({ search, ids, close, focus }) => {
     // 準備

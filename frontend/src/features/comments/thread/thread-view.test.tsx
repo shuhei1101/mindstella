@@ -174,7 +174,7 @@ describe("ThreadView", () => {
       http.patch("/api/threads/:id", () => {
         calls += 1;
         if (calls === 2) alertBeforeSecond = screen.queryByRole("alert") !== null;
-        return HttpResponse.json({ detail: "未読の書き込みがあります" }, { status: 409 });
+        return HttpResponse.json({ type: "about:blank", title: "Conflict", status: 409, detail: "未読の書き込みがあります" }, { status: 409, headers: { "Content-Type": "application/problem+json" } });
       }),
     );
     renderRoute("/?panel=comments&thread=TH-1");
