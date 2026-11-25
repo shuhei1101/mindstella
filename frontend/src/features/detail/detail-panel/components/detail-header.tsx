@@ -1,4 +1,6 @@
 // 詳細の見出し（種類と ID・確認済み・戻る・進む・編集・エクスポート・コメントの一覧・全画面・閉じる）と、確認済みを書き換えられなかった旨
+import { RecordText } from "@/shared/components/record-text";
+import type { LookupRecordId } from "@/shared/core/record-ids";
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
 import { BodyToc } from "@/shared/components/body-toc";
 import { DocExportControl } from "@/shared/components/doc-export-menu";
@@ -25,6 +27,10 @@ export type DetailHeaderProps = {
   pending: PendingMarkKind | null;
   /** 本文の先頭のタイトルがスクロール領域の上へ外れているか（外れている間だけ見出しにタイトルを出す） */
   showTitle: boolean;
+  /** 見出しのタイトルの中の ID から記録の項目・スレッドを検索する */
+  lookup: LookupRecordId;
+  /** 見出しのタイトルの中の ID のリンクを押したとき */
+  onOpenRecord: (id: string) => void;
   onToggleEdit: () => void;
   onToggleFull: () => void;
   onClose: () => void;
@@ -43,7 +49,7 @@ const useSiblingKeys = (sibling: SiblingNavProps | null): SiblingNavProps["keys"
   return prevKey.active || nextKey.active ? { prev: prevKey.keys, next: nextKey.keys } : null;
 };
 
-export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, onToggleEdit, onToggleFull, onClose, toc = [], onHeading, sibling = null }: DetailHeaderProps) => {
+export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, lookup, onOpenRecord, onToggleEdit, onToggleFull, onClose, toc = [], onHeading, sibling = null }: DetailHeaderProps) => {
   const { canBack, canForward, openItemComments, backItem, forwardItem } = usePreviewSearch();
   const siblingKeys = useSiblingKeys(sibling);
   const format = bodyFormatOf(item.body);
@@ -60,8 +66,8 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, comme
         {kind === "docs" && format !== null ? <BodyFormatBadge format={format} /> : null}
         {pending === null ? null : <PendingMark kind={pending} compact />}
         {/* 隠している間も場所は取ったままにし、種類と ID を動かさない */}
-        <span aria-hidden="true" title={item.title} className={cn("min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none", !showTitle && "opacity-0")}>
-          {item.title}
+        <span inert={!showTitle} title={item.title} className={cn("min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none", !showTitle && "opacity-0")}>
+          <RecordText text={item.title} mode="link" lookup={lookup} onOpen={onOpenRecord} />
         </span>
         {editable ? (
           <Button variant="outline" aria-pressed={editing} title={editLabel} onClick={onToggleEdit}>

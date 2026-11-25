@@ -16,6 +16,7 @@ export const DetailFullscreen = ({ id, index }: DetailFullscreenProps) => {
       }}
     >
       <DialogContent className="flex h-full max-w-5xl flex-col rounded-none border-0 p-0 shadow-none">
+        {/* eslint-disable-next-line no-restricted-syntax -- 読み上げだけのダイアログの名前で、中の ID をリンクにしない（タイトルのリンクは詳細の中身が描く） */}
         <DialogTitle className="sr-only">{index.byId.get(id)?.item.title}</DialogTitle>
         <DetailContent key={id} id={id} index={index} full />
       </DialogContent>

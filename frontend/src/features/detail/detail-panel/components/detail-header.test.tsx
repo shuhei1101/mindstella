@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 import { stubRecords } from "@/testing/msw/fixtures";
 import { DetailHeader, type DetailHeaderProps } from "@/features/detail/detail-panel/components/detail-header";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
+import { sampleRecordLookup } from "@/testing/record-lookup";
 import { renderInPreviewRouter, renderRoute } from "@/testing/render";
 
 vi.mock("@/shared/adapters/libraries", async (original) => ({ ...(await original<object>()), ...(await import("@/testing/libraries")) }));
@@ -20,6 +21,8 @@ const props = (patch: Partial<DetailHeaderProps> = {}): DetailHeaderProps => ({
   comments: false,
   pending: null,
   showTitle: false,
+  lookup: sampleRecordLookup,
+  onOpenRecord: vi.fn(),
   onToggleEdit: vi.fn(),
   onToggleFull: vi.fn(),
   onClose: vi.fn(),

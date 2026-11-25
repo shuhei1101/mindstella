@@ -37,6 +37,8 @@ import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll } from "@/shared/stores/prefs-store";
 import { isEmbedded } from "@/shared/core/embedded";
 import { useThreadLinks } from "@/shared/hooks/use-thread-links";
+import { useRecordLookup } from "@/shared/hooks/use-record-lookup";
+import { RecordText } from "@/shared/components/record-text";
 import type { SiblingNavProps } from "@/shared/components/sibling-nav";
 import { siblingOf, useListOrderStore } from "@/shared/stores/list-order-store";
 import { useSingleFlight } from "@/shared/hooks/use-single-flight";
@@ -130,6 +132,7 @@ export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<De
   const { search, openItem, closeItem, setFull, setHeading, setDiff, fromList, openSibling } = usePreviewSearch();
   const orders = useListOrderStore((state) => state.orders);
   const threadLinks = useThreadLinks();
+  const record = useRecordLookup({ index, onOpenItem: openItem });
   // 一覧から開いた項目で、後ろの画面の今の並びにあるときだけ、前後の項目へ移る
   const found = fromList ? siblingOf(orders, id) : null;
   const sibling: SiblingNavProps | null =
@@ -218,7 +221,7 @@ export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<De
     source === undefined ? null : (
       <BodyView label={label} item={entry.item} id={id} index={index} source={source} versions={diff?.versions ?? null} view={view} viewNonce={diffView.nonce} display={display} heading={search.h} onOpen={openItem} onHeading={setHeading} onChangeSet={setDiff} onView={(next) => { setDiffView((previous) => ({ id, view: next, nonce: previous.nonce + 1 })); }} onDiagram={({ svg, ...figure }) => { setDiagram({ ...figure, svg: svg.outerHTML }); }} />
     );
-  const relation = (label: string, ids: readonly string[]) => <RelatedList label={label} ids={ids} index={index} onOpen={openItem} />;
+  const relation = (label: string, ids: readonly string[]) => <RelatedList label={label} ids={ids} index={index} lookup={record.lookup} onOpen={record.onOpen} />;
   const list = (label: string, name: string, values: readonly string[] | undefined) =>
     keys?.has(name) === true ? <Section label={label}><KeyDiff was={valueText(keys.left[name])} now={valueText(keys.right[name])} /></Section> : (values ?? []).length > 0 ? <Section label={label}><div className="flex flex-wrap gap-1"><TagList values={values} /></div></Section> : null;
   const previous = keys?.has("options") === true ? (keys.left["options"] as Item["options"]) ?? [] : null;
@@ -318,7 +321,7 @@ export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<De
   return (
     <ValueLinksContext.Provider value={valueLinks}>
     <DiffDeadlineContext.Provider value={deadline}>
-      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} toc={toc} onHeading={toHeading} sibling={sibling} />
+      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} lookup={record.lookup} onOpenRecord={record.onOpen} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} toc={toc} onHeading={toHeading} sibling={sibling} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false && view !== "source"} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
           <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removePending={flight.running} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { flight.run(() => add.mutateAsync({ op: "item-remove", target: id })); }} onCancelRemove={() => { if (removal !== undefined) flight.run(() => cancel.mutateAsync(removal.id)); }} />
@@ -341,7 +344,7 @@ export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<De
                 <>
             <div data-key="status">{keys?.has("status") === true ? <KeyDiff was={<Status value={keys.left["status"]} />} now={<Status value={keys.right["status"]} />} plain /> : <Status value={item.status} />}</div>
             <h2 ref={setTitleElement} data-key="title" className="m-0 flex flex-wrap items-center gap-1 text-next font-semibold">
-              <KeyValue name="title" value={item.title} keys={keys} />
+              {keys?.has("title") === true ? <KeyValue name="title" value={item.title} keys={keys} /> : <RecordText text={item.title} mode="link" lookup={record.lookup} onOpen={record.onOpen} />}
               {diff?.kind === "new" ? <DiffMark kind="new" labeled /> : null}
               {item.withdrawn === true ? <WithdrawnBadge large /> : null}
             </h2>
@@ -360,7 +363,7 @@ export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<De
                     <li key={link.url} className="flex items-center gap-1 text-small">
                       <Icon name="link" className="size-3" />
                       <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-mark underline">
-                        {link.title}
+                        <RecordText text={link.title} mode="marker" lookup={record.lookup} />
                       </a>
                     </li>
                   ))}
