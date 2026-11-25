@@ -144,6 +144,8 @@ def test_normal_when_pressed_again_while_closing(page: Page, spa_comments_previe
     _open(page, spa_comments_preview, "TH-2")
     held = hold_requests(page, "**/api/threads/*", "PATCH")
     button = _panel(page).get_by_role("button", name="クローズにする")
+    # 幅は文字のフォントを読み終えてから測る（読み終える前の幅と比べない）
+    page.evaluate("document.fonts.ready")
     box = button.bounding_box()
     assert box is not None
     # 実行（再描画の前に 2 回押す）
