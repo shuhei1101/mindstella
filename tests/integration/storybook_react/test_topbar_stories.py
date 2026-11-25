@@ -125,30 +125,29 @@ def test_offline(open_story: OpenStory) -> None:
 
 
 def test_offline_narrow(open_story: OpenStory) -> None:
-    """幅 390px でサーバーにつながらない。接続の状態を印だけにし、「つながりません」は読み上げにだけ残して、読んだ日時を title に持つ（正常系）。"""
+    """幅 390px でサーバーにつながらない。`Offline` と同じくマーカーだけを出し、状態と読んだ日時をツールチップと読み上げに持つ（正常系）。"""
     # 準備
     page = open_story("shared-topbar--offline-narrow")
     page.set_viewport_size(NARROW_SIZE)
     page.wait_for_function("innerWidth === 390")
     # 実行
-    hidden_text = page.evaluate(ICON_ONLY_SCRIPT)
+    status = page.evaluate(STATUS_SCRIPT)
     # 検証
-    status = page.locator("header [role=status]")
-    assert status.get_attribute("title") == "10/04 11:21 に読んだ記録を出しています"
-    assert status.locator("svg").is_visible()
-    assert hidden_text == {"text": "つながりません", "width": 1, "height": 1, "longShown": False}
+    assert page.locator("header [role=status] svg").is_visible()
+    assert status == {"srOnly": "サーバーにつながりません（10/04 11:21 に読んだ記録）", "shown": True, "title": None}
+    assert _tip(page, "header [role=status]") == "サーバーにつながりません（10/04 11:21 に読んだ記録）"
 
 
 def test_comments(open_story: OpenStory) -> None:
-    """コメントのボタンをライト / ダークの切り替えの左隣に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す（正常系）。"""
+    """コメントのボタンをライト / ダークの切り替えの左隣に置き、全体の検索の入口を中央へ寄せる。マーカーと塗りの件数だけを出し、名前はツールチップと読み上げに持つ（正常系）。"""
     # 準備・実行
     page = open_story("shared-topbar--comments")
     # 検証
     button = page.get_by_role("button", name="コメント（レビュー中 3 件）")
     assert button.count() == 1
     assert button.get_attribute("aria-expanded") == "false"
-    assert button.locator("> span:nth-child(2)").inner_text() == "コメント"
-    assert button.locator("> span:last-child").inner_text() == "3"
+    assert button.inner_text().strip() == "3"
+    assert _tip(page, "header button[aria-label^=コメント]") == "コメント"
     assert page.eval_on_selector("header button[aria-label^=コメント] > span:last-child", BACKGROUND_SCRIPT) != TRANSPARENT
     # テーマの切り替えが右端、その左にコメントのボタン（位置は同じ瞬間にまとめて読む）
     boxes = page.evaluate(TOPBAR_BOXES_SCRIPT)
@@ -189,15 +188,14 @@ def test_comments_open(open_story: OpenStory) -> None:
 
 
 def test_comments_narrow(open_story: OpenStory) -> None:
-    """幅 390px。コメントのボタンの文字を隠し、印と件数だけにする（正常系）。"""
+    """幅 390px。コメントのボタンは、ほかの幅と同じくマーカーと件数だけ（正常系）。"""
     # 準備
     page = open_story("shared-topbar--comments-narrow")
     page.set_viewport_size(NARROW_SIZE)
     page.wait_for_function("innerWidth === 390")
     # 実行・検証
-    assert not page.is_visible("header button[aria-label^=コメント] > span:nth-child(2)")
     assert page.is_visible("header button[aria-label^=コメント] svg")
-    assert page.inner_text("header button[aria-label^=コメント] > span:last-child") == "3"
+    assert page.inner_text("header button[aria-label^=コメント]").strip() == "3"
     assert page.get_attribute("header button[aria-label^=コメント]", "aria-label") == "コメント（レビュー中 3 件）"
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
@@ -275,15 +273,14 @@ def test_comments_unread_open(open_story: OpenStory) -> None:
 
 
 def test_comments_unread_narrow(open_story: OpenStory) -> None:
-    """幅 390px で未読がある。印と件数だけで、点を重ねてもボタンと × を押し出さず 390px の中に収める（正常系）。"""
+    """幅 390px で未読がある。マーカーと件数だけで、点を重ねてもボタンと × を押し出さず 390px の中に収める（正常系）。"""
     # 準備
     page = open_story("shared-topbar--comments-unread-narrow")
     page.set_viewport_size(NARROW_SIZE)
     page.wait_for_function("innerWidth === 390")
     # 実行・検証
-    assert not page.is_visible("header button[aria-label^=コメント] > span:nth-child(2)")
     assert page.is_visible("header button[aria-label^=コメント] span[aria-hidden]")
-    assert page.inner_text("header button[aria-label^=コメント] > span:last-child") == "3"
+    assert page.inner_text("header button[aria-label^=コメント]").strip() == "3"
     assert page.get_attribute("header button[aria-label^=コメント]", "aria-label") == "コメント（未読あり・レビュー中 3 件）"
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     # 点まで含めて、ボタンが画面の中に収まる
@@ -317,15 +314,20 @@ def test_no_overflow_when_narrow(open_story: OpenStory, story_id: str) -> None:
 
 
 # 接続の状態の文言が、見た目の上で隠れ（1px 四方に切る）、DOM には残っていることを読む
-ICON_ONLY_SCRIPT = """() => {
-  const short = document.querySelector('header [role=status] > span:nth-of-type(2)');
-  const r = short.getBoundingClientRect();
-  return {
-    text: short.textContent,
-    width: r.width,
-    height: r.height,
-    longShown: document.querySelector('header [role=status] > span:nth-of-type(1)').getClientRects().length > 0,
-  };
+# 要素を包むツールチップ（読み上げから外した要素）の文言を返す
+TIP_SCRIPT = """(element) => element.closest('[class~="group/tip"]').querySelector(':scope > [aria-hidden=true] > span').textContent"""
+
+
+def _tip(page: Page, selector: str) -> str:
+    """要素のツールチップの文言を返す。"""
+    return str(page.eval_on_selector(selector, TIP_SCRIPT))
+
+
+# 接続の状態の読み上げの文言（印だけで出し、文字は読み上げにだけ残す）
+STATUS_SCRIPT = """() => {
+  const status = document.querySelector('header [role=status]');
+  const text = status.querySelector('.sr-only');
+  return { srOnly: text.textContent, shown: getComputedStyle(text).position === 'absolute', title: status.getAttribute('title') };
 }"""
 
 # 絞り込みのボタン
@@ -333,11 +335,12 @@ FILTER_BUTTON = "header button[aria-label^=絞り込み]"
 
 
 def test_filter(open_story: OpenStory) -> None:
-    """絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない。ライト / ダークの切り替えは右端に置く（正常系）。"""
+    """絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない。名前はツールチップと読み上げに持つ。ライト / ダークの切り替えは右端に置く（正常系）。"""
     # 準備・実行
     page = open_story("shared-topbar--filter")
     # 検証
-    assert page.inner_text(f"{FILTER_BUTTON} > span:not([aria-hidden])") == "絞り込み"
+    assert page.inner_text(FILTER_BUTTON).strip() == ""
+    assert _tip(page, FILTER_BUTTON) == "絞り込み"
     assert page.get_attribute(FILTER_BUTTON, "aria-label") == "絞り込み"
     assert page.get_attribute(FILTER_BUTTON, "aria-expanded") == "false"
     assert page.locator(f"{FILTER_BUTTON} > span[aria-hidden]").count() == 0
@@ -351,7 +354,7 @@ def test_filter(open_story: OpenStory) -> None:
 
 
 def test_filter_on(open_story: OpenStory) -> None:
-    """2 つの条件で絞り込み中。「絞り込み」の右に印の色のバッジ「2」を出す（正常系）。"""
+    """2 つの条件で絞り込み中。絞り込みのマーカーの右にマーカーの色のバッジ「2」を出す（正常系）。"""
     # 準備・実行
     page = open_story("shared-topbar--filter-on")
     # 検証
@@ -360,9 +363,9 @@ def test_filter_on(open_story: OpenStory) -> None:
     assert page.get_attribute(FILTER_BUTTON, "aria-label") == "絞り込み（2 つの条件で絞り込み中）"
     assert page.get_attribute(f"{FILTER_BUTTON} > span[aria-hidden]", "aria-hidden") == "true"
     assert page.eval_on_selector(f"{FILTER_BUTTON} > span[aria-hidden]", BACKGROUND_SCRIPT) != TRANSPARENT
-    label_box = page.locator(f"{FILTER_BUTTON} > span:not([aria-hidden])").bounding_box()
+    icon_box = page.locator(f"{FILTER_BUTTON} > svg").bounding_box()
     badge_box = page.locator(f"{FILTER_BUTTON} > span[aria-hidden]").bounding_box()
-    assert label_box["x"] + label_box["width"] <= badge_box["x"]
+    assert icon_box["x"] + icon_box["width"] <= badge_box["x"]
 
 
 def test_filter_open(open_story: OpenStory) -> None:
@@ -422,7 +425,8 @@ def test_diff_on(open_story: OpenStory) -> None:
     # 検証
     history = page.get_by_role("button", name=HISTORY_DIFF_LABEL)
     assert history.get_attribute("aria-haspopup") == "dialog"
-    assert history.locator("> span:not([aria-hidden])").inner_text() == "変更履歴"
+    assert history.inner_text().strip() == ""
+    assert _tip(page, "header button[aria-label^=変更履歴]") == HISTORY_DIFF_LABEL
     assert page.locator(HISTORY_DOT).count() == 1
     assert page.get_by_role("button", name="差分の表示をやめる").count() == 1
     assert page.locator("header").get_by_text("前回開いてから").count() == 0
@@ -447,10 +451,9 @@ def test_diff_on_narrow(open_story: OpenStory) -> None:
     # 実行
     boxes = page.evaluate(DIFF_BOXES_SCRIPT)
     # 検証
-    assert not page.is_visible("header button[aria-label^=変更履歴] > span:not([aria-hidden])")
+    assert page.inner_text("header button[aria-label^=変更履歴]").strip() == ""
     assert page.is_visible(HISTORY_DOT)
-    assert not page.is_visible("header button[aria-label^=コメント] > span:nth-child(2)")
-    assert page.inner_text("header button[aria-label^=コメント] > span:last-child") == "3"
+    assert page.inner_text("header button[aria-label^=コメント]").strip() == "3"
     assert page.get_attribute("header button[aria-label^=変更履歴]", "aria-label") == HISTORY_DIFF_LABEL
     # 帯の子が左から順に並び、重ならず、画面の中に収まる
     order = ["brand", "search", "history", "off", "comments", "theme"]
@@ -507,8 +510,9 @@ def test_export(open_story: OpenStory) -> None:
     settings_box = page.locator("header button[aria-label=表示の設定]").bounding_box()
     theme_box = page.locator("header button[data-theme]").bounding_box()
     assert settings_box["x"] + settings_box["width"] <= theme_box["x"]
+    # ツールチップを包む要素ごとに数え、最後の要素がライト / ダークの切り替えを持つ
     last = page.eval_on_selector_all(
-        "header > *", "items => items[items.length - 1].hasAttribute('data-theme')"
+        "header > *", "items => items[items.length - 1].querySelector('button[data-theme]') !== null"
     )
     assert last is True
 
@@ -688,14 +692,14 @@ def test_filter_narrow_clear_diff_when_width(open_story: OpenStory, story_id: st
 
 @pytest.mark.parametrize(("story_id", "width"), OFFLINE_STORY_CASES)
 def test_filter_narrow_offline_icon_only_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
-    """サーバーにつながらない間は、幅 390〜900px で接続の状態が印だけになり、「つながりません」は読み上げに残る（正常系）。"""
+    """サーバーにつながらない間は、幅 390〜900px で接続の状態がマーカーだけになり、状態と読んだ日時は読み上げとツールチップに残る（正常系）。"""
     # 準備
     page = _open_narrow_story_at(open_story, story_id, width)
     # 実行
-    hidden_text = page.evaluate(ICON_ONLY_SCRIPT)
+    status = page.evaluate(STATUS_SCRIPT)
     # 検証
     assert page.locator("header [role=status] svg").is_visible()
-    assert hidden_text == {"text": "つながりません", "width": 1, "height": 1, "longShown": False}
+    assert status == {"srOnly": "サーバーにつながりません（10/04 11:21 に読んだ記録）", "shown": True, "title": None}
 
 
 @pytest.mark.parametrize(
@@ -1199,15 +1203,15 @@ PENDING_FIT_CASES = [
 
 
 def test_pending(open_story: OpenStory) -> None:
-    """絞り込みとコメントのボタンの間に、印・「保存待ち」・印の色の塗りの件数を出す（正常系）。"""
+    """絞り込みとコメントのボタンの間に、重ねた紙のアイコンとマーカーの色の塗りの件数を出し、「保存待ち」はツールチップと読み上げに持つ（正常系）。"""
     # 準備・実行
     page = open_story("shared-topbar--pending")
     # 検証
     button = page.get_by_role("button", name="保存待ち（5 件）")
     assert button.count() == 1
     assert button.get_attribute("aria-expanded") == "false"
-    assert button.locator("> span:nth-child(2)").inner_text() == "保存待ち"
-    assert button.locator("> span:last-child").inner_text() == "5"
+    assert button.inner_text().strip() == "5"
+    assert _tip(page, PENDING_BUTTON) == "保存待ち"
     assert button.locator("svg").count() == 1
     assert page.eval_on_selector(f"{PENDING_BUTTON} > span:last-child", BACKGROUND_SCRIPT) != TRANSPARENT
     # 並びは 絞り込み → 保存待ち → コメント
@@ -1253,7 +1257,7 @@ def test_pending_many(open_story: OpenStory) -> None:
 
 
 def test_pending_narrow(open_story: OpenStory) -> None:
-    """幅 390px。保存待ちのボタンの文字を隠して印と件数だけにし、ツール名の文字を隠す。ほかのボタンを隠さず横にはみ出さない（正常系）。"""
+    """幅 390px。保存待ちのボタンはマーカーと件数だけのまま、ツール名の文字を隠す。ほかのボタンを隠さず横にはみ出さない（正常系）。"""
     # 準備
     page = open_story("shared-topbar--pending-narrow")
     page.set_viewport_size(NARROW_SIZE)
@@ -1261,9 +1265,8 @@ def test_pending_narrow(open_story: OpenStory) -> None:
     # 実行
     measured = page.evaluate(BUTTONS_FIT_SCRIPT)
     # 検証
-    assert not page.is_visible(f"{PENDING_BUTTON} > span:nth-child(2)")
     assert page.is_visible(f"{PENDING_BUTTON} svg")
-    assert page.inner_text(f"{PENDING_BUTTON} > span:last-child") == "7"
+    assert page.inner_text(PENDING_BUTTON).strip() == "7"
     assert not page.is_visible("header > span:first-child > span")
     assert page.is_visible("header > span:first-child")
     for selector in ("header button[aria-label^=絞り込み]", "header button[aria-label=表示の設定]", "header button[aria-label^=コメント]", "header button[aria-label^=変更履歴]"):
@@ -1302,14 +1305,15 @@ VOICE_BOXES_SCRIPT = """() => {
 
 
 def test_voice_recording(open_story: OpenStory) -> None:
-    """録音中。コメントのボタンの左隣に、マイクのアイコン・「音声入力中」・経過の時間のボタンを出す（正常系）。"""
+    """録音中。コメントのボタンの左隣に、マイクのアイコンと経過の時間のボタンを出し、「音声入力中」はツールチップと読み上げに持つ（正常系）。"""
     # 準備・実行
     page = open_story("shared-topbar--voice-recording")
     # 検証
     button = page.get_by_role("button", name="音声入力中（D-022 へのコメント）。録音中の入力欄へ移動")
     assert button.count() == 1
-    assert button.inner_text().split() == ["音声入力中", "0:12"]
-    assert button.get_attribute("title") == "音声入力中（D-022 へのコメント）"
+    assert button.inner_text().split() == ["0:12"]
+    assert button.get_attribute("title") is None
+    assert _tip(page, "header button[aria-label^=音声入力中]") == "音声入力中: D-022 へのコメント。押すと録音中の入力欄へ移動します"
     boxes = page.evaluate(VOICE_BOXES_SCRIPT)
     assert boxes["voice"]["right"] <= boxes["comments"]["left"]
 
@@ -1327,13 +1331,14 @@ def test_voice_recording_when_medium(open_story: OpenStory) -> None:
 
 
 def test_voice_transcribing(open_story: OpenStory) -> None:
-    """文字起こし中。アイコンを回る印に替え、「文字起こし中」にする（正常系）。"""
+    """文字起こし中。アイコンを回るマーカーに替え、ツールチップと読み上げを「文字起こし中」にする（正常系）。"""
     # 準備・実行
     page = open_story("shared-topbar--voice-transcribing")
     # 検証
     button = page.get_by_role("button", name="文字起こし中（D-022 へのコメント）。入力欄へ移動")
     assert button.count() == 1
-    assert button.inner_text().strip() == "文字起こし中"
+    assert button.inner_text().strip() == ""
+    assert _tip(page, "header button[aria-label^=文字起こし中]") == "文字起こし中: D-022 へのコメント。押すと入力欄へ移動します"
 
 
 def test_voice_recording_narrow(open_story: OpenStory) -> None:
@@ -1346,7 +1351,8 @@ def test_voice_recording_narrow(open_story: OpenStory) -> None:
     # 検証
     button = page.get_by_role("button", name="音声入力中（D-022 へのコメント）。録音中の入力欄へ移動")
     assert button.inner_text().strip() == ""
-    assert button.get_attribute("title") == "音声入力中（D-022 へのコメント）"
+    assert button.get_attribute("title") is None
+    assert _tip(page, "header button[aria-label^=音声入力中]") == "音声入力中: D-022 へのコメント。押すと録音中の入力欄へ移動します"
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
@@ -1383,3 +1389,80 @@ def test_duplicate_ids(open_story: OpenStory) -> None:
     assert tabs_box is not None
     assert notice_box is not None
     assert tabs_box["y"] + tabs_box["height"] <= notice_box["y"]
+
+
+# 更新のボタン
+REFRESH_BUTTON = "header button[aria-label$=最新の記録を読み込む]"
+
+
+def test_refresh(open_story: OpenStory) -> None:
+    """つながっている間。接続の状態の位置に回る矢印の更新のボタンだけを出し、名前「最新の記録を読み込む」はツールチップと読み上げに持つ（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-topbar--refresh")
+    # 検証
+    button = page.get_by_role("button", name="最新の記録を読み込む", exact=True)
+    assert button.count() == 1
+    assert button.inner_text().strip() == ""
+    assert button.locator("svg").count() == 1
+    assert button.get_attribute("title") is None
+    assert _tip(page, REFRESH_BUTTON) == "最新の記録を読み込む"
+    assert page.locator("header [role=status]").count() == 0
+
+
+def test_refresh_stale(open_story: OpenStory) -> None:
+    """反映を保留している間。更新のボタンの右上に点を重ね、ツールチップと読み上げの名前を「更新があります。最新の記録を読み込む」にする（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-topbar--refresh-stale")
+    # 検証
+    button = page.get_by_role("button", name="更新があります。最新の記録を読み込む")
+    assert button.count() == 1
+    assert page.locator(f"{REFRESH_BUTTON} > span[aria-hidden]").count() == 1
+    assert _tip(page, REFRESH_BUTTON) == "更新があります。最新の記録を読み込む"
+
+
+def test_refreshing(open_story: OpenStory) -> None:
+    """接続し直して読み込み直している間。更新のボタンを回るマーカーにして押せなくする（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-topbar--refreshing")
+    # 検証
+    button = page.get_by_role("button", name="最新の記録を読み込む", exact=True)
+    assert button.get_attribute("aria-busy") == "true"
+    assert button.is_disabled()
+    assert "animate-spin" in str(button.locator("svg").get_attribute("class"))
+
+
+def test_refresh_offline(open_story: OpenStory) -> None:
+    """サーバーにつながらない間。接続の状態のマーカーのすぐ右に更新のボタンを出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-topbar--refresh-offline")
+    # 検証
+    status = page.locator("header [role=status]").bounding_box()
+    button = page.locator(REFRESH_BUTTON).bounding_box()
+    search = page.get_by_role("button", name="すべての項目を検索").bounding_box()
+    assert status is not None
+    assert button is not None
+    assert search is not None
+    assert status["x"] + status["width"] <= button["x"]
+    assert button["x"] + button["width"] <= search["x"]
+
+
+@pytest.mark.parametrize(
+    ("story_id", "width"),
+    [
+        pytest.param("shared-topbar--refresh-offline-voice-narrow", 390, id="offline-voice-w390"),
+        pytest.param("shared-topbar--refresh-stale-voice-narrow", 390, id="stale-voice-w390"),
+        pytest.param("shared-topbar--refresh-narrowest", 320, id="narrowest-w320"),
+    ],
+)
+def test_refresh_narrow_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """更新のボタンと、接続の状態・音声入力中の表示・差分の表示・件数が並んでも、詰める間の幅で収め、トップバーもページも横にはみ出さない（正常系）。"""
+    # 準備
+    page = open_story(story_id)
+    page.set_viewport_size({"width": width, "height": NARROWEST_HEIGHT})
+    page.wait_for_function(f"innerWidth === {width}")
+    # 実行
+    measured = page.evaluate(BUTTONS_FIT_SCRIPT)
+    # 検証
+    assert page.locator(REFRESH_BUTTON).is_visible()
+    assert page.locator("header button[aria-label^=音声入力中]").is_visible()
+    assert measured == {"pageFits": True, "barFits": True, "outside": []}
