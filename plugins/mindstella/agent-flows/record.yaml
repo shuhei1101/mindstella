@@ -1,6 +1,6 @@
 id: mindstella/record
 title: 記録の使い分け
-summary: 発言を内容ごとに振り分け、話題のタグを付けて記録に書き込む
+summary: 発言を内容ごとに振り分け、話題のタグを付けて記録に書き込み、手番を返す直前に手番を返す commit をする
 condition: 利用者の発言・コメントを記録するとき
 steps:
   - name: 発言を振り分ける
