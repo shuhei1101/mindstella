@@ -77,3 +77,6 @@ scope_out:
   - item: 単体テスト tests/unit/scripts/test_serve.py の test_stream が終わらず、pytest tests/unit の全件実行が止まる不具合
     reason: origin/develop（4fe2d1b8）でも同じく止まり、この PR は serve.py・test_serve.py を変更しない。今回の要望に含まれない
     plan: '#704'
+  - item: スレッドの画面で書き込みのカードがカードの中に重なり、Impeccable の nested-cards が検出される（frontend/src/features/comments/thread/thread-view.tsx・thread-post.tsx）
+    reason: detect_screen_issues の Impeccable の規則 nested-cards から外れている。この PR は書き込みの並びの見た目を変えず、今回の要望に含まれない
+    plan: '#705'
