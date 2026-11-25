@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import uvicorn
-import yaml
 from mcp.server.mcpserver import MCPServer
 from mcp.types import CallToolResult, TextContent
 from pydantic import Field
@@ -38,7 +37,6 @@ import state
 import usage_watch
 import workspaces
 from claude_input import InputTargets, Session, parse_session
-from kinds import SETTINGS_FILE, records_root
 from home_settings import HomeSettings, InvalidSettingsError, home_settings_path, load_home_settings
 from errors import (
     ApiError,
@@ -308,19 +306,6 @@ def main(
         listening.close()
         logger.info("常駐サーバーを終えた")
     return 0
-
-
-def _describe_workspace(context: ServerContext, workspace_id: str) -> tuple[str, str | None] | None:
-    """作業の完了の通知に載せるワークスペースの名前（設定の summary、空ならフォルダの名前）と画面の URL を返却する。"""
-    row = workspaces.find_workspace_row(context.pi_port, workspace_id)
-    # 配信元の行が無い: 通知しない
-    if row is None:
-        return None
-    folder = workspaces.workspace_folder(row)
-    loaded = yaml.safe_load((records_root(folder) / SETTINGS_FILE).read_text(encoding="utf-8"))
-    summary = loaded.get("summary") if isinstance(loaded, dict) else None
-    name = str(summary).strip() if summary else ""
-    return (name or folder.name, context.previews.url_of(folder))
 
 
 def _restart_for_comment(root: Path, context: ServerContext) -> bool:
@@ -615,7 +600,7 @@ def build_server(
         if hand_back and not result.is_error:
             workspace_id = workspaces.workspace_id_of(locate(workspace, session))
             notify.notify_work_done(
-                workspace_id, lambda: _describe_workspace(context, workspace_id)
+                workspace_id, lambda: sessions.describe_workspace(context, workspace_id)
             )
         return result
 

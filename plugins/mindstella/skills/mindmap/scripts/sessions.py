@@ -301,7 +301,7 @@ def notify_stopped(
 ) -> threading.Thread | None:
     """ワークスペースの名前と画面の URL を参照する関数を添えて、停止を通知する。"""
     return notify.notify_stopped(
-        workspace_id, reason, lambda: _describe_workspace(ctx, workspace_id)
+        workspace_id, reason, lambda: describe_workspace(ctx, workspace_id)
     )
 
 
@@ -973,7 +973,7 @@ def _session_workspace(ctx: Any, session_id: str) -> tuple[str, Path]:
     return workspace_id, workspaces.workspace_folder(row)
 
 
-def _describe_workspace(ctx: Any, workspace_id: str) -> tuple[str, str | None] | None:
+def describe_workspace(ctx: Any, workspace_id: str) -> tuple[str, str | None] | None:
     """通知に載せるワークスペースの名前（設定の summary、空ならフォルダの名前）と画面の URL を返却する。"""
     row = workspaces.find_workspace_row(ctx.pi_port, workspace_id)
     # 配信元の行が無い: 通知しない

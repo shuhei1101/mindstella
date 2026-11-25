@@ -62,7 +62,7 @@ export const Narrow: Story = {
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
 
-/** サーバーにつながらない。検索の入口の左にマーカーだけを出し、「サーバーにつながりません（{日時} に読んだ記録）」をツールチップと読み上げに持つ。すぐ右に更新のボタンを出す */
+/** サーバーにつながらない。検索の入口の左にマーカーだけを出し、「サーバーにつながりません（{日時} に読んだ記録）」をツールチップと読み上げに持つ */
 export const Offline: Story = {
   args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
   parameters: {
