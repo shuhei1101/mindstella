@@ -1,0 +1,9 @@
+
+> typecheck
+> tsc -p frontend
+
+
+> lint
+> eslint frontend/src
+
+exit 0

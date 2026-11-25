@@ -50,4 +50,25 @@ describe("RecordText", () => {
     expect(container.querySelector("[data-record-id]")).toBeNull();
     expect(container.querySelector("#ids")).toBeNull();
   });
+  // カードのボタンの外のマーカーを押すと、カードのボタンを押したことにする（正常系）
+  test("record_text_marker_card_click", async () => {
+    // 準備
+    const onCard = vi.fn();
+    const { container } = render(
+      <div data-card="T-1">
+        <button type="button" onClick={onCard}>
+          題
+        </button>
+        <span>
+          <RecordText text="D-1 の比較" mode="marker" lookup={lookup} />
+        </span>
+      </div>,
+    );
+    const marker = container.querySelector<HTMLElement>('[data-record-id="D-1"]');
+    if (marker === null) throw new Error("マーカーがありません");
+    // 実行
+    await userEvent.click(marker);
+    // 検証
+    expect(onCard).toHaveBeenCalledTimes(1);
+  });
 });
