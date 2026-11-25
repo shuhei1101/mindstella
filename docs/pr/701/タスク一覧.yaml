@@ -80,7 +80,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-25T11:11:36.638251+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-25T11:22:55.201485+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装

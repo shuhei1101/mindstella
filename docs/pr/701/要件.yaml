@@ -65,7 +65,9 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 記録の文字のどこに書いた項目の ID・スレッドの ID も自動でリンクになることと、リンクにできない場所の見せ方を記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-25T11:22:53.695024+00:00'
   - page: docs/module/MOD-489-170.yaml
     new: false
     change: 記録の文字を描く部品は ID のリンクをまとめた部品を使う決まりと、使っていない部品を検出する仕組み（lint か結合テスト）を記載する
