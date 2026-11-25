@@ -5,6 +5,7 @@ import { fn, userEvent, within } from "storybook/test";
 import { StatusMark } from "@/shared/components/icon";
 import { commonColumns } from "@/shared/components/list-columns";
 import { Table, type Row, type TableColumn } from "@/shared/components/table";
+import { sampleRecordLookup } from "@/testing/record-lookup";
 
 /** 確度の並び（並べ替え・絞り込みの値の順） */
 const CONFIDENCE_ORDER = ["高", "中", "低"];
@@ -45,7 +46,7 @@ const markedRows: Row[] = [
 const meta = {
   title: "Shared/Table",
   component: Table,
-  args: { kind: "decisions", columns, rows, onSort: fn(), onFilter: fn(), onPin: fn(), onHiddenColumnsChange: fn(), onResetColumns: fn(), onOpenItem: fn() },
+  args: { kind: "decisions", lookup: sampleRecordLookup, columns, rows, onSort: fn(), onFilter: fn(), onPin: fn(), onHiddenColumnsChange: fn(), onResetColumns: fn(), onOpenItem: fn() },
 } satisfies Meta<typeof Table>;
 
 export default meta;
@@ -155,3 +156,6 @@ export const DatetimeColumns: Story = { args: { columns: datetimeColumns, rows: 
 
 /** 更新日時の新しい順。更新日時の見出しに向きの矢印を出し、`aria-sort="descending"` */
 export const SortedByUpdatedDesc: Story = { args: { columns: datetimeColumns, rows: datedRows, sort: { key: "updated", dir: "desc" } } };
+
+/** タイトルに記録にある D-1 と記録に無い D-99 を持つ行。D-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す */
+export const TitleIdMarkers: Story = { args: { rows: [{ id: "D-5", title: "D-1 の比較（D-99 は除く）", conf: "高", status: "未決定" }, ...rows.slice(1)] } };

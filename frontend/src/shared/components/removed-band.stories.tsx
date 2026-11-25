@@ -2,11 +2,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { RemovedBand } from "@/shared/components/removed-band";
+import { sampleRecordLookup } from "@/testing/record-lookup";
 
 const meta = {
   title: "Shared/RemovedBand",
   component: RemovedBand,
-  args: { items: [] },
+  args: { items: [], lookup: sampleRecordLookup },
 } satisfies Meta<typeof RemovedBand>;
 
 export default meta;
@@ -42,3 +43,6 @@ export const Narrow: Story = {
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
+
+/** 削除したときのタイトルに、記録にある D-1 と記録に無い D-99 を持つ。D-1 はリンク、D-99 は文字のまま。削除した項目の ID はリンクにしない */
+export const TitleIdLinks: Story = { args: { items: [{ id: "D-53", title: "D-1 の見直し（D-99 は除く）" }] } };

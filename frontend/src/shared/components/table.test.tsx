@@ -3,9 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
 import { Table, type TableProps } from "@/shared/components/table";
+import { sampleRecordLookup } from "@/testing/record-lookup";
 
 const props = (patch: Partial<TableProps> = {}): TableProps => ({
   kind: "decisions",
+  lookup: sampleRecordLookup,
   columns: [
     { key: "id", label: "ID", fixed: true },
     { key: "title", label: "タイトル", fixed: true },

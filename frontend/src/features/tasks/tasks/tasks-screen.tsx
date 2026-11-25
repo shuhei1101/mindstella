@@ -33,14 +33,14 @@ export const TasksScreen = ({ drawerOpen, onCloseDrawer }: TasksScreenProps) => 
     columnsOf={taskColumns}
     drawerOpen={drawerOpen}
     onCloseDrawer={onCloseDrawer}
-    content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef, sort }) => (
+    content={({ index, lookup, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, onSelectTag, scrollRef, sort }) => (
       <Board
         scrollRef={scrollRef}
         columns={boardColumns({ items: shown, statuses: TASK_STATUSES, statusFilter: filters["status"] ?? [] })}
         sort={sort}
         emptyText="タスクはありません。"
         added={addedCards(edit, TASK_STATUSES, onOpenAdded)}
-        card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[item.kind]} links={refsOf(item, "for")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />}
+        card={(item) => <ItemCard key={item.id} index={index} lookup={lookup} item={item} meta={[item.kind]} links={refsOf(item, "for")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onSelectTag={onSelectTag} />}
       />
     )}
   />

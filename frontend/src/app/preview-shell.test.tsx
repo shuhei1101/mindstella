@@ -39,7 +39,7 @@ describe("PreviewShell", () => {
     renderRoute("/?tab=tasks");
     // 検証
     expect(await screen.findByRole("group", { name: "表示形式" })).toBeInTheDocument();
-    expect(await screen.findByText("T-1の題")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "T-1の題" })).toBeInTheDocument();
   });
 
   // id で詳細パネルを重ねる（正常系）
@@ -283,11 +283,11 @@ describe("PreviewShell", () => {
     await waitFor(() => expect(FakeEventSource.last).not.toBeNull());
     // 更新のボタンのツールチップ（読み上げから外した要素）の文言は帯に数えない
     expect(screen.queryByText(/更新があります/, { ignore: "[aria-hidden='true'] *" })).toBeNull();
-    expect(screen.queryByText("T-2の題")).toBeNull();
+    expect(screen.queryByRole("button", { name: "T-2の題" })).toBeNull();
     // 実行
     await userEvent.click(screen.getByRole("group", { name: "表示形式" }));
     // 検証
-    expect(await screen.findByText("T-2の題")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "T-2の題" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /T-1 へのコメント/ })).toHaveValue("途中まで");
     close();
   });
@@ -304,7 +304,7 @@ describe("PreviewShell", () => {
     // 実行
     act(() => FakeEventSource.last?.emit("changed"));
     // 検証
-    expect(await screen.findByText("T-2の題")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "T-2の題" })).toBeInTheDocument();
     const after = screen.getByRole("textbox", { name: /T-1 へのコメント/ });
     expect(after).toBe(input);
     expect(after).toHaveValue("途中まで");

@@ -8,6 +8,7 @@ import { CommentMark } from "@/shared/components/comment-mark";
 import { FilterChips } from "@/shared/components/filter-chips";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
+import { RecordText } from "@/shared/components/record-text";
 import { TagList } from "@/shared/components/tag-list";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
 import { Button } from "@/shared/components/ui/button";
@@ -15,6 +16,7 @@ import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/shared/components/ui/popover";
 import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from "@/shared/components/ui/table";
 import type { PendingMarkKind } from "@/shared/core/edits";
+import type { LookupRecordId } from "@/shared/core/record-ids";
 import { TAG_FILTER_KEY, type Filters, type TagMatch } from "@/shared/core/filters";
 import { filterRows, sortRows, type ListColumn } from "@/shared/core/list-rows";
 import { KIND_LABEL, type Kind, type Tag } from "@/shared/core/records";
@@ -41,6 +43,8 @@ export type TableColumn = {
 
 export type TableProps = {
   kind: string;
+  /** 行のタイトルの中の ID から記録の項目・スレッドを検索する */
+  lookup: LookupRecordId;
   columns: TableColumn[];
   rows: Row[];
   /** 並べている列と向き */
@@ -88,7 +92,7 @@ const sortOf = (sort: TableProps["sort"], key: string): "ascending" | "descendin
   return sort.dir === "asc" ? "ascending" : "descending";
 };
 
-export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, addedRows = [], onOpenAdded, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem, tagMatch = "all", onSelectTag, scrollRef, tagExprText, onClearTagExpr }: TableProps) => {
+export const Table = ({ kind, lookup, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, addedRows = [], onOpenAdded, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem, tagMatch = "all", onSelectTag, scrollRef, tagExprText, onClearTagExpr }: TableProps) => {
   const hidden = hiddenColumns ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
   const defs: ColumnDef<typeof features, Row>[] = columns.map((column) => ({ id: column.key, accessorFn: (row: Row) => cellText(column.get === undefined ? row[column.key] : column.get(row)), header: column.label }));
   // 条件に合う行を、並べ替えの向きで並べる
@@ -230,8 +234,8 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
                     <TableCell key={column.key} style={pinStyle(position).style} className={cn(pinStyle(position).className, pinStyle(position).className !== false && "bg-card", column.key !== "title" && "whitespace-nowrap", column.num === true && "text-right")}>
                       {column.key === "title" ? (
                         <span className="inline-flex flex-wrap items-center gap-1">
-                          <button type="button" data-id={row.id} className="cursor-pointer text-left underline-offset-2 hover:underline" onClick={() => { onOpenItem(row.id, shownRows.map((shownRow) => shownRow.id)); }}>
-                            {content}
+                          <button type="button" data-id={row.id} aria-describedby={`table-ids-${row.id}`} className="cursor-pointer text-left underline-offset-2 hover:underline" onClick={() => { onOpenItem(row.id, shownRows.map((shownRow) => shownRow.id)); }}>
+                            {column.cell === undefined ? <RecordText text={cellText(row["title"])} mode="marker" lookup={lookup} descriptionId={`table-ids-${row.id}`} /> : content}
                           </button>
                           {row["withdrawn"] === true ? <WithdrawnBadge /> : null}
                           {kindMark === undefined ? null : <DiffMark kind={kindMark} />}
