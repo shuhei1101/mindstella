@@ -1,0 +1,87 @@
+$ npx vitest run frontend/src/shared/core/record-ids.test.ts frontend/src/shared/components/record-text.test.tsx frontend/src/shared/components/record-text.lint.test.ts frontend/src/shared/components/thread-title.test.tsx
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-record-text-id-links
+
+ ❯ frontend/src/shared/core/record-ids.test.ts (0 test)
+ ❯ frontend/src/shared/components/thread-title.test.tsx (3 tests | 1 failed) 70ms
+   ❯ ThreadTitle (3)
+     × thread_title_id_links 43ms
+ ❯ frontend/src/shared/components/record-text.lint.test.ts (7 tests | 6 failed) 83ms
+   ❯ eslint.config.js の記録の文字の検出 (7)
+     × record_text_lint_error 44ms
+     × record_text_lint_error 7ms
+     × record_text_lint_error 3ms
+     × record_text_lint_error 3ms
+     × record_text_lint_error 10ms
+     × record_text_lint_error 3ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/core/record-ids.test.ts [ frontend/src/shared/core/record-ids.test.ts ]
+Error: Failed to resolve import "@/shared/core/record-ids" from "frontend/src/shared/core/record-ids.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-record-text-id-links/frontend/src/shared/core/record-ids.test.ts:3:88
+  1  |  import { describe, expect, test } from "vitest";
+  2  |  import { findRecordIds, recordLookupOf } from "@/shared/core/record-ids";
+     |                                                 ^
+  3  |  import { buildIndex } from "@/shared/core/records";
+  4  |  import { threadLookupOf } from "@/shared/core/thread-ids";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/components/record-text.lint.test.ts > eslint.config.js の記録の文字の検出 > record_text_lint_error
+ FAIL  frontend/src/shared/components/record-text.lint.test.ts > eslint.config.js の記録の文字の検出 > record_text_lint_error
+ FAIL  frontend/src/shared/components/record-text.lint.test.ts > eslint.config.js の記録の文字の検出 > record_text_lint_error
+ FAIL  frontend/src/shared/components/record-text.lint.test.ts > eslint.config.js の記録の文字の検出 > record_text_lint_error
+ FAIL  frontend/src/shared/components/record-text.lint.test.ts > eslint.config.js の記録の文字の検出 > record_text_lint_error
+ FAIL  frontend/src/shared/components/record-text.lint.test.ts > eslint.config.js の記録の文字の検出 > record_text_lint_error
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ frontend/src/shared/components/record-text.lint.test.ts:30:43
+     28|   test.each(["<p>{x.title}</p>", "<p>{x?.title}</p>", "<p>{title}</p>"…
+     29|     // 実行・検証
+     30|     expect(errorsOf(`const a = ${jsx};`)).toBe(1);
+       |                                           ^
+     31|   });
+     32|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  frontend/src/shared/components/thread-title.test.tsx > ThreadTitle > thread_title_id_links
+AssertionError: expected null not to be null
+ ❯ frontend/src/shared/components/thread-title.test.tsx:21:68
+     19|     const { container } = render(<ThreadTitle title="D-1 の決め方（TH-1 の続き…
+     20|     // 検証
+     21|     expect(container.querySelector('a[data-record-id="D-1"]')).not.toB…
+       |                                                                    ^
+     22|     expect(container.querySelector('a[data-record-id="TH-1"]')).not.to…
+     23|     expect(container.querySelector('[data-record-id="D-99"]')).toBeNul…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+
+ Test Files  3 failed | 1 passed (4)
+      Tests  7 failed | 6 passed (13)
+   Start at  20:27:48
+   Duration  3.39s (environment 58%, import 17%, setup 13%, transform 7%, tests 5%, worker 1%)
+
+
+# 実装の前から pass したテスト
+- record-text.test.tsx（record_text_link・record_text_marker・record_text_no_ids）: 確認する振る舞いは frontend/src/shared/components/record-text.tsx の RecordText（モック）に既にある。入れた commit は 24a7bb45・357711ce（テストコードの 865fd294 より前）
+- record-text.lint.test.ts の record_text_lint_ok と thread-title.test.tsx の thread_title: 今の eslint.config.js・ThreadTitle が既に満たす振る舞い（RecordText の記載を誤りにしない・1 行に省略する）

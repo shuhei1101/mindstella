@@ -1,0 +1,43 @@
+$ npx eslint frontend/src/shared/core/record-ids.test.ts frontend/src/shared/components/record-text.test.tsx frontend/src/shared/components/record-text.lint.test.ts frontend/src/shared/components/thread-title.test.tsx
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-record-text-id-links/frontend/src/shared/components/record-text.test.tsx
+  14:40   error  Unsafe return of a value of type error         @typescript-eslint/no-unsafe-return
+  14:48   error  Computed name [id] resolves to an `any` value  @typescript-eslint/no-unsafe-member-access
+  21:100  error  Unsafe assignment of an error typed value      @typescript-eslint/no-unsafe-assignment
+  35:93   error  Unsafe assignment of an error typed value      @typescript-eslint/no-unsafe-assignment
+  47:82   error  Unsafe assignment of an error typed value      @typescript-eslint/no-unsafe-assignment
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-record-text-id-links/frontend/src/shared/components/thread-title.test.tsx
+  13:40   error  Unsafe return of a value of type error         @typescript-eslint/no-unsafe-return
+  13:48   error  Computed name [id] resolves to an `any` value  @typescript-eslint/no-unsafe-member-access
+  19:109  error  Unsafe assignment of an error typed value      @typescript-eslint/no-unsafe-assignment
+  33:77   error  Unsafe assignment of an error typed value      @typescript-eslint/no-unsafe-assignment
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-record-text-id-links/frontend/src/shared/core/record-ids.test.ts
+  14:40  error  Unsafe return of a value of type error                                                    @typescript-eslint/no-unsafe-return
+  14:48  error  Computed name [id] resolves to an `any` value                                             @typescript-eslint/no-unsafe-member-access
+  22:11  error  Unsafe assignment of an error typed value                                                 @typescript-eslint/no-unsafe-assignment
+  22:19  error  Unsafe call of a type that could not be resolved                                          @typescript-eslint/no-unsafe-call
+  22:41  error  Unsafe assignment of an error typed value                                                 @typescript-eslint/no-unsafe-assignment
+  24:12  error  Unsafe call of a type that could not be resolved                                          @typescript-eslint/no-unsafe-call
+  24:18  error  Unsafe member access .map on a type that cannot be resolved                               @typescript-eslint/no-unsafe-member-access
+  24:38  error  Unsafe return of a value of type `any`                                                    @typescript-eslint/no-unsafe-return
+  24:45  error  Unsafe member access .id on an `any` value                                                @typescript-eslint/no-unsafe-member-access
+  25:67  error  Unsafe argument of type error typed assigned to a parameter of type `number | undefined`  @typescript-eslint/no-unsafe-argument
+  25:74  error  Unsafe argument of type error typed assigned to a parameter of type `number | undefined`  @typescript-eslint/no-unsafe-argument
+  25:92  error  Unsafe member access .id on a type that cannot be resolved                                @typescript-eslint/no-unsafe-member-access
+  31:12  error  Unsafe call of a type that could not be resolved                                          @typescript-eslint/no-unsafe-call
+  31:44  error  Unsafe assignment of an error typed value                                                 @typescript-eslint/no-unsafe-assignment
+  60:11  error  Unsafe assignment of an error typed value                                                 @typescript-eslint/no-unsafe-assignment
+  60:22  error  Unsafe call of a type that could not be resolved                                          @typescript-eslint/no-unsafe-call
+  62:12  error  Unsafe call of a type that could not be resolved                                          @typescript-eslint/no-unsafe-call
+  68:11  error  Unsafe assignment of an error typed value                                                 @typescript-eslint/no-unsafe-assignment
+  68:22  error  Unsafe call of a type that could not be resolved                                          @typescript-eslint/no-unsafe-call
+  70:12  error  Unsafe call of a type that could not be resolved                                          @typescript-eslint/no-unsafe-call
+  71:12  error  Unsafe call of a type that could not be resolved                                          @typescript-eslint/no-unsafe-call
+  71:29  error  Unsafe member access .title on a type that cannot be resolved                             @typescript-eslint/no-unsafe-member-access
+
+✖ 31 problems (31 errors, 0 warnings)
+
+
+# 残した違反: 全て、まだ無い frontend/src/shared/core/record-ids.ts の型（RecordIdTarget・LookupRecordId・findRecordIds・recordLookupOf）を解決できないこと、ThreadTitle に props lookup が無いことによる（実装が無いことによる型の違反）
