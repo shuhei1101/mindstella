@@ -1196,6 +1196,9 @@ files:
   description: 記録の文字を描き、記録にある項目の ID・スレッドの ID をリンクかマーカーにする部品で、記録の文字の ID の見せ方を変更するときに参照する。
   tags:
   - tool:react
+  related:
+  - to: MOD-701-1
+    type: implements
 - path: src/shared/components/removed-band.stories.tsx
   name: 削除した項目の帯のストーリー
   description: 削除した項目の帯のストーリー。
@@ -1997,3 +2000,19 @@ files:
   related:
   - to: MOD-695-4
     type: tests
+- path: src/shared/core/record-ids.ts
+  name: 記録の ID の判定
+  description: 記録の文字の中の項目の ID・スレッドの ID を見つけて記録の項目・スレッドに結ぶ処理で、ID の判定や結び方を変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-701-2
+    type: implements
+- path: src/shared/hooks/use-record-lookup.ts
+  name: 記録の ID の検索の hook
+  description: 記録の索引と読み込んだスレッドから記録の文字の lookup と onOpen を作る hook で、記録の文字を描く部品へ渡す検索を変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-701-2
+    type: implements

@@ -2,13 +2,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 
-import { RecordText, type LookupRecordId, type RecordIdTarget } from "@/shared/components/record-text";
+import { RecordText } from "@/shared/components/record-text";
+import type { LookupRecordId, RecordIdTarget } from "@/shared/core/record-ids";
 
 /** 見本の記録にある項目・スレッド。D-99 は記録に無い */
 const TARGETS: Record<string, RecordIdTarget> = {
-  "D-1": { id: "D-1", title: "保存先の決め方", kindLabel: "検討事項", status: "未決定" },
-  "D-2": { id: "D-2", title: "D-1 の見直し", kindLabel: "検討事項", status: "決定済み" },
-  "TH-1": { id: "TH-1", title: "保存先の候補", kindLabel: "スレッド", status: "オープン" },
+  "D-1": { id: "D-1", kind: "item", title: "保存先の決め方", kindLabel: "検討事項", status: "未決定" },
+  "D-2": { id: "D-2", kind: "item", title: "D-1 の見直し", kindLabel: "検討事項", status: "決定済み" },
+  "TH-1": { id: "TH-1", kind: "thread", title: "保存先の候補", kindLabel: "スレッド", status: "オープン" },
 };
 
 const lookup: LookupRecordId = (id) => TARGETS[id] ?? null;
