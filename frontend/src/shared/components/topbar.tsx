@@ -267,7 +267,7 @@ const headerClass = (fit: Fit): string =>
     fit.wide && (fit.diff || fit.offline) && "max-sm:gap-px max-sm:px-2",
     "max-xs:gap-px max-xs:px-2",
     fit.offline && "sm:max-md:px-2.5",
-    fit.crowded && "max-sm:gap-px max-sm:px-1.5",
+    fit.crowded && "max-sm:gap-px max-sm:px-1.5 max-xs:px-1",
   );
 
 /** 差分の札を出している間（つながらない間は 1440px 以下、それ以外は 1100px 以下）に、札へ幅を回すため隠す */
@@ -512,7 +512,7 @@ const VoiceButton = ({ voice, onClick }: { voice: TopbarVoice; onClick: (() => v
       className={cn(
         "relative inline-flex h-8 min-w-8 flex-none cursor-pointer items-center justify-center gap-1.5 rounded-control border bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg hover:bg-topbar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mark-line",
         recording ? "border-topbar-danger" : "border-topbar-line",
-        "max-xl:px-2 max-sm:gap-0 max-sm:px-0.5",
+        "max-xl:px-2 max-sm:gap-0 max-sm:px-0.5 max-xs:min-w-6",
       )}
     >
       {recording ? <Icon name="mic" className="text-topbar-danger" /> : <Icon name="spin" className="size-3 animate-spin" />}
@@ -549,7 +549,7 @@ const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChang
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
   return (
     // 狭い幅で詰めるときに縮められるよう、包む要素とボタンを flex-none にしない
-    <WithTip text={theme === "dark" ? "ライトに切り替え" : "ダークに切り替え"} className="min-w-0 flex-initial">
+    <WithTip text={theme === "dark" ? "ライトに切り替え" : "ダークに切り替え"} className="min-w-6 flex-initial">
     <button
       type="button"
       data-theme={nextTheme}
@@ -558,7 +558,7 @@ const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChang
         onChange?.(nextTheme);
       }}
       className={cn(
-        "relative inline-grid size-8 min-w-0 cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
+        "relative inline-grid size-8 min-w-6 cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
         iconButtonFitClass(fit),
       )}
     >
