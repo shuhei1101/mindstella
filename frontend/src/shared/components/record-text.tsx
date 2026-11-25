@@ -106,15 +106,22 @@ export const RecordText = ({ text, mode, lookup, onOpen, descriptionId }: Record
       );
     } else {
       parts.push(
+        // マーカーはフォーカスを受けず、キーボードでは行のボタンを押す。押下はポインターでボタンの外のマーカーを押したときだけ受ける
+        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
         <span
           key={key}
           ref={position === 0 ? firstMarker : undefined}
           data-record-id={target.id}
-          className="font-mono id-marker"
+          className="id-marker font-mono"
           onMouseEnter={(event) => {
             show({ anchor: event.currentTarget, target });
           }}
           onMouseLeave={hide}
+          onClick={(event) => {
+            // マーカーはボタンの ::after より上にあるため、ボタンの外のマーカー（カードの関係する項目の行）を押したときはカードのボタンを押したことにする
+            if (event.currentTarget.closest(MARKER_HOST) !== null) return;
+            event.currentTarget.closest("[data-card]")?.querySelector<HTMLElement>(MARKER_HOST)?.click();
+          }}
         >
           {label}
         </span>,
