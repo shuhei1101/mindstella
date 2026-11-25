@@ -2016,3 +2016,11 @@ files:
   related:
   - to: MOD-701-2
     type: implements
+- path: src/testing/record-lookup.ts
+  name: 見本の記録の ID の検索
+  description: ストーリーと単体テストが部品『記録の文字』に指定する見本の記録の ID の検索で、見本の ID と中身を変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-701-2
+    type: tests

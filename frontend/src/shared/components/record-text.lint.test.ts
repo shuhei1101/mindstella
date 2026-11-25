@@ -6,7 +6,7 @@ import config from "../../../../eslint.config.js";
 
 /** eslint.config.js の no-restricted-syntax の設定（frontend/src の .tsx にヒットする最後の指定） */
 const restrictedSyntax = (): Linter.RuleEntry => {
-  const entries = (config as Linter.Config[]).flatMap((item) => (item.rules?.["no-restricted-syntax"] === undefined ? [] : [item.rules["no-restricted-syntax"]]));
+  const entries = config.flatMap((item) => (item.rules?.["no-restricted-syntax"] === undefined ? [] : [item.rules["no-restricted-syntax"]]));
   const entry = entries.at(-1);
   if (entry === undefined) throw new Error("no-restricted-syntax の設定がありません");
   return entry;

@@ -9,6 +9,21 @@ import reactHooks from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
 import tseslint from "typescript-eslint";
 
+/** enum を禁じる指定 */
+const NO_ENUM = { selector: "TSEnumDeclaration", message: "enum は使わず、as const のオブジェクトか文字列のユニオンにする" };
+
+/** 記録の文字（項目・スレッドの title・summary と titleOf の結果）を JSX の子に直接描く記載。部品『記録の文字』（RecordText）で描く */
+const RECORD_TEXT_CHILD = ":matches(JSXElement, JSXFragment) > JSXExpressionContainer > ";
+const RECORD_TEXT_SELECTORS = [
+  "MemberExpression[property.name=/^(title|summary)$/]",
+  "ChainExpression > MemberExpression[property.name=/^(title|summary)$/]",
+  "Identifier[name=/^(title|summary)$/]",
+  'CallExpression[callee.name="titleOf"]',
+].map((selector) => ({
+  selector: `${RECORD_TEXT_CHILD}${selector}`,
+  message: "記録の文字は RecordText で描く。記録の文字でない title は理由を記載した eslint-disable-next-line で除外する",
+}));
+
 export default tseslint.config(
   { ignores: ["frontend/src/shared/api/generated/**", "frontend/src/route-tree.gen.ts", "plugins/**", "tests/**", "docs/mock/**", "node_modules/**", "storybook-react-static/**", ".storybook-react/public/**"] },
   {
@@ -47,7 +62,7 @@ export default tseslint.config(
       "sonarjs/cognitive-complexity": ["error", 15],
       "func-style": ["error", "expression"],
       "@typescript-eslint/consistent-type-definitions": ["error", "type"],
-      "no-restricted-syntax": ["error", { selector: "TSEnumDeclaration", message: "enum は使わず、as const のオブジェクトか文字列のユニオンにする" }],
+      "no-restricted-syntax": ["error", NO_ENUM],
       "import/no-default-export": "error",
       "@typescript-eslint/no-non-null-assertion": "error",
       "boundaries/dependencies": [
@@ -63,6 +78,12 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    // 記録の文字を描く部品そのもの・ストーリー・テストを除き、記録の文字を JSX の子に直接描く記載を誤りにする
+    files: ["frontend/src/**/*.tsx"],
+    ignores: ["frontend/src/shared/components/record-text.tsx", "frontend/src/**/*.stories.tsx", "frontend/src/**/*.test.tsx"],
+    rules: { "no-restricted-syntax": ["error", NO_ENUM, ...RECORD_TEXT_SELECTORS] },
   },
   {
     // Storybook のストーリーは default export を求める

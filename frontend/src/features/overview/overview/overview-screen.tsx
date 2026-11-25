@@ -52,6 +52,7 @@ const Tiles = ({ records, threads, visible }: { records: Records; threads: reado
             {records.settings.description}
           </p>
         )}
+        {/* eslint-disable-next-line no-restricted-syntax -- 話し合いの概要の文で、記録の項目・スレッドのタイトルではない */}
         <h1 className="m-0 mt-1.5 text-hero/tight font-bold tracking-tight @max-3xl:text-hero-narrow">{records.settings.summary}</h1>
       </header>
       <div className="grid grid-cols-2 gap-4 @max-3xl:grid-cols-1">

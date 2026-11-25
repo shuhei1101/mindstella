@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { ThreadRow } from "@/features/comments/shared/thread-row";
 import type { Thread } from "@/shared/core/comments";
+import { sampleRecordLookup } from "@/testing/record-lookup";
 
 const thread = (seen: boolean): Thread => ({
   id: "TH-1",
@@ -21,7 +22,7 @@ describe("ThreadRow", () => {
   test("thread_row", async () => {
     // 準備
     const onOpen = vi.fn();
-    render(<ThreadRow thread={thread(true)} onOpen={onOpen} onTag={vi.fn()} />);
+    render(<ThreadRow thread={thread(true)} lookup={sampleRecordLookup} onOpen={onOpen} onTag={vi.fn()} />);
     // 実行
     await userEvent.click(screen.getByRole("button", { name: /案の選び方/ }));
     // 検証
@@ -31,7 +32,7 @@ describe("ThreadRow", () => {
   // 未読（正常系）
   test("thread_row_when_unread", () => {
     // 準備と実行
-    render(<ThreadRow thread={thread(false)} onOpen={vi.fn()} onTag={vi.fn()} />);
+    render(<ThreadRow thread={thread(false)} lookup={sampleRecordLookup} onOpen={vi.fn()} onTag={vi.fn()} />);
     // 検証
     expect(screen.getByText("未読")).toBeInTheDocument();
   });

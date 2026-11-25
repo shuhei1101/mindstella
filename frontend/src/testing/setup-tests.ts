@@ -16,8 +16,9 @@ globalThis.ResizeObserver ??= NoopResizeObserver;
 window.scrollTo = () => undefined;
 
 // jsdom は popover の API と document.fonts を持たないため、ツールチップが呼ぶ空の実装を置く
-HTMLElement.prototype.showPopover ??= () => undefined;
-HTMLElement.prototype.hidePopover ??= () => undefined;
+for (const name of ["showPopover", "hidePopover"] as const) {
+  if (!(name in HTMLElement.prototype)) Object.defineProperty(HTMLElement.prototype, name, { value: () => undefined });
+}
 if (!("fonts" in document)) Object.defineProperty(document, "fonts", { value: { ready: Promise.resolve() } });
 
 beforeAll(() => {

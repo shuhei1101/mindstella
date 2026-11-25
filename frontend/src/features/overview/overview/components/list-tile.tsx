@@ -80,6 +80,7 @@ export const TileHead = ({
   <div className="flex flex-wrap items-baseline justify-between gap-x-3">
     <h2 id={id} className="m-0 flex items-center gap-2 text-h2 font-semibold whitespace-nowrap text-muted-foreground">
       <Icon name={icon} />
+      {/* eslint-disable-next-line no-restricted-syntax -- タイルの見出しの固定の文言で、記録の文字ではない */}
       {title}
     </h2>
     {count === null || onShowAll === undefined ? null : (
