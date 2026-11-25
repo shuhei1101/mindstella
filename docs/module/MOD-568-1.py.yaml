@@ -1,91 +1,8 @@
 id: MOD-568-1
 title: サーバー / 作業の完了の通知 / notify.py
-lead: MindStella のセッションごとの書き込みのマーカーを常駐サーバーのメモリに持ち、応答の終わりにマーカーがあれば Discord の Webhook へ作業の完了を送信する。HTTP は標準ライブラリの `urllib.request` で送信し、他のモジュールに依存しない。
+lead: 手番を返す直前の `commit`（`hand_back` が真）が成功したときと MindStella のセッションが止まったときに、Discord の Webhook へ作業の完了・停止を送信する。HTTP は標準ライブラリの `urllib.request` で送信し、他のモジュールに依存しない。
 test_files:
   - tests/unit/scripts/test_notify.py
-classes:
-  - name: WriteMarkers
-    title: 書き込みのマーカー
-    container: plugins/mindstella/skills/mindmap/scripts/notify.py
-    usecase: 作業の完了を通知する
-    role: 長期保持のランタイム状態
-    summary: この応答で `commit`・`new_thread`・`reply` が成功したワークスペースの ID を持つ。常駐サーバーのプロセスに 1 つだけ作る
-    kind: クラス
-    description: ワークスペース 1 つに MindStella のセッションは 1 つなので、ワークスペースの ID をキーにする。再起動すると空になる
-    properties:
-      - name: _marked
-        type: set[str]
-        access: 内部 (_)
-        description: マーカーが付いたワークスペースの ID
-      - name: _guard
-        type: threading.Lock
-        access: 内部 (_)
-        description: '`_marked` を触る間だけ取る鍵'
-    methods:
-      - name: mark
-        title: マーカーを付ける
-        kind: メソッド
-        summary: ワークスペースの ID を `_marked` に追加する
-        thread_safe: true
-        args:
-          - name: workspace_id
-            type: str
-            required: true
-            passing: positional
-            description: ワークスペースの ID
-        returns:
-          type: None
-          description: なし
-        process: 1. `_guard` を取り、`_marked` に追加する
-      - name: clear
-        title: マーカーを解除する
-        kind: メソッド
-        summary: ワークスペースの ID を `_marked` から除外する（無ければ何もしない）
-        thread_safe: true
-        args:
-          - name: workspace_id
-            type: str
-            required: true
-            passing: positional
-            description: ワークスペースの ID
-        returns:
-          type: None
-          description: なし
-        process: 1. `_guard` を取り、`_marked` から除外する
-      - name: take
-        title: マーカーを確認して解除する
-        kind: メソッド
-        summary: マーカーがあったかを返し、同じ鍵の中で解除する
-        thread_safe: true
-        args:
-          - name: workspace_id
-            type: str
-            required: true
-            passing: positional
-            description: ワークスペースの ID
-        returns:
-          type: bool
-          description: マーカーがあったか
-        process: 1. `_guard` を取り、`_marked` にあれば除外して真、無ければ偽を返す
-        unit_tests:
-          - name: test_take
-            case: 正常
-            summary: 付けたマーカーを 1 回だけ取り出す
-            condition: '`mark("ws")` の後に `take("ws")` を 2 回呼ぶ'
-            mock: なし
-            expected: 1 回目が真、2 回目が偽
-          - name: test_take_when_cleared
-            case: 正常
-            summary: 解除したマーカーは取り出さない
-            condition: '`mark("ws")`・`clear("ws")` の後に `take("ws")`'
-            mock: なし
-            expected: 偽
-          - name: test_take_when_other_workspace
-            case: 正常
-            summary: ワークスペースごとに分ける
-            condition: '`mark("a")` の後に `take("b")` と `take("a")`'
-            mock: なし
-            expected: '`b` が偽、`a` が真'
 functions:
   - name: read_webhook_url
     title: Webhook の URL の参照
@@ -231,127 +148,6 @@ functions:
         condition: '`parametrize`: `URLError` / `TimeoutError` を送出する偽の `opener`。`caplog`'
         mock: '`opener`'
         expected: 偽。記録に URL を含まない
-  - name: mark_written
-    title: 書き込みのマーカーを付ける
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/notify.py
-    usecase: 作業の完了を通知する
-    scope: public
-    summary: ツールの名前が `MARKING_TOOLS` で、結果が書き込んだことを示すときだけ `MARKERS` に付ける（『エントリーポイント』が成功したツールの後に呼ぶ）
-    args:
-      - name: tool
-        type: str
-        required: true
-        passing: positional
-        description: ツールの名前
-      - name: workspace_id
-        type: str
-        required: true
-        passing: positional
-        description: ワークスペースの ID
-      - name: payload
-        type: dict[str, Any]
-        required: true
-        passing: positional
-        description: ツールの結果
-    returns:
-      type: None
-      description: なし
-    process: |-
-      1. `tool` が `MARKING_TOOLS` に無ければ何もしない
-      2. `tool` が `commit` で `payload["id"]` が None（まとめる変更が無かった）なら何もしない
-      3. `MARKERS.mark(workspace_id)` を呼ぶ
-    unit_tests:
-      - name: test_mark_written
-        case: 正常
-        summary: commit・new_thread・reply でマーカーを付ける
-        condition: '`parametrize`: `commit`（`id` が `V-3`）/ `new_thread` / `reply`'
-        mock: なし
-        expected: '`MARKERS.take("ws")` が真'
-      - name: test_mark_written_when_not_marking
-        case: 正常
-        summary: 対象外のツールと、まとめなかった commit は付けない
-        condition: '`parametrize`: `set_thread_status` / `update_thread` / `commit`（`id` が None）'
-        mock: なし
-        expected: '`MARKERS.take("ws")` が偽'
-  - name: clear_written
-    title: 書き込みのマーカーを解除する
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/notify.py
-    usecase: 作業の完了を通知する
-    scope: public
-    summary: '`MARKERS.clear` を呼ぶ（『セッションの管理』が `prompt_submit`・`stop_failure`・`session_end` で呼ぶ）'
-    args:
-      - name: workspace_id
-        type: str
-        required: true
-        passing: positional
-        description: ワークスペースの ID
-    returns:
-      type: None
-      description: なし
-    process: 1. `MARKERS.clear(workspace_id)` を呼ぶ
-  - name: notify_if_written
-    title: 書き込んだ応答の通知
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/notify.py
-    usecase: 作業の完了を通知する
-    scope: public
-    summary: マーカーを確認して解除し、あったときだけ `daemon` のスレッドで本文を組み立てて送信する（『セッションの管理』が `stop` で呼ぶ）
-    side_effects: スレッドを 1 つ起動する
-    args:
-      - name: workspace_id
-        type: str
-        required: true
-        passing: positional
-        description: ワークスペースの ID
-      - name: describe
-        type: Callable[[], tuple[str, str | None] | None]
-        required: true
-        passing: positional
-        description: ワークスペースの名前と画面の URL を返す関数。ワークスペースが見つからなければ None（スレッドの中で呼ぶ）
-      - name: environ
-        type: Mapping[str, str]
-        required: false
-        default: os.environ
-        passing: keyword
-        description: 環境変数
-      - name: send
-        type: Callable[[str, str], bool]
-        required: false
-        default: send_webhook
-        passing: injected
-        description: 送信する関数（テストで差し替える）
-    returns:
-      type: threading.Thread | None
-      description: 起動したスレッド。送信しないときは None（テストが `join` する）
-    process: |-
-      1. `MARKERS.take(workspace_id)` が偽なら None を返す
-      2. `read_webhook_url(environ)` が None なら None を返す（Webhook の URL の参照）
-      3. 次の処理をする `daemon=True` のスレッドを起動して返す
-         - `describe()` が None なら何も送信しない
-         - `send(url, build_content(name, page_url))` を呼ぶ（本文の組み立て・Webhook への送信）
-         - 想定していない例外は記録してスレッドを終える
-           - `[ERROR]` 通知の予期しないエラー（例外の種類）
-    unit_tests:
-      - name: test_notify_if_written
-        case: 正常
-        summary: マーカーがあれば 1 回送信して解除する
-        condition: '`mark_written("reply", "ws", {})` の後。`describe` は `("家計簿", "http://127.0.0.1:8784/w/mindstella-x-1/")`、`environ` は URL を書いた一時ファイルを指す。返ったスレッドを `join` する'
-        mock: '`send`'
-        expected: '`send` が URL と `build_content` の本文で 1 回呼ばれ、`MARKERS.take("ws")` が偽'
-      - name: test_notify_if_written_when_not_marked
-        case: 正常
-        summary: マーカーが無ければ送信しない
-        condition: マーカーが無い `ws`
-        mock: '`send`'
-        expected: None を返し、`send` も `describe` も呼ばれない
-      - name: test_notify_if_written_when_not_configured
-        case: 正常
-        summary: Webhook の設定が無ければ送信せずマーカーも解除する
-        condition: マーカーがある `ws`、空の `environ`
-        mock: '`send`'
-        expected: None を返し、`send` が呼ばれず、`MARKERS.take("ws")` が偽
   - name: build_stopped_content
     title: 停止の本文の組み立て
     kind: 関数
@@ -441,7 +237,7 @@ functions:
       description: 起動したスレッド。送信しないときは None（テストが `join` する）
     process: |-
       1. `read_webhook_url(environ)` が None なら None を返す（Webhook の URL の参照）
-      2. `notify_if_written` と同じスレッドの本体（`describe()` が None なら送信しない・想定していない例外を記録して終える）で、`send(url, build_stopped_content(name, reason, page_url))` を呼ぶ `daemon=True` のスレッドを起動して返す（スレッドの本体は `notify_if_written` と共有する内部の関数にまとめる）
+      2. `notify_work_done` と同じスレッドの本体（`describe()` が None なら送信しない・想定していない例外を記録して終える）で、`send(url, build_stopped_content(name, reason, page_url))` を呼ぶ `daemon=True` のスレッドを起動して返す（スレッドの本体は `notify_work_done` と共有する内部の関数にまとめる）
          - `[INFO]` 停止を通知する（ワークスペースの ID・止まった理由）
     unit_tests:
       - name: test_notify_stopped
@@ -462,19 +258,67 @@ functions:
         condition: '`describe` が None を返す'
         mock: '`send`'
         expected: スレッドを返し、`join` の後も `send` が呼ばれない
+  - name: notify_work_done
+    title: 作業の完了の通知
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/notify.py
+    usecase: 作業の完了を通知する
+    scope: public
+    summary: Webhook の設定があれば、`daemon` のスレッドで本文を組み立てて送信する（『エントリーポイント』が `hand_back` が真の `commit` の成功の後に呼ぶ）
+    side_effects: スレッドを 1 つ起動する
+    args:
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID（記録に使う）
+      - name: describe
+        type: Callable[[], tuple[str, str | None] | None]
+        required: true
+        passing: positional
+        description: ワークスペースの名前と画面の URL を返す関数。ワークスペースが見つからなければ None（スレッドの中で呼ぶ）
+      - name: environ
+        type: Mapping[str, str]
+        required: false
+        default: os.environ
+        passing: keyword
+        description: 環境変数
+      - name: send
+        type: Callable[[str, str], bool]
+        required: false
+        default: send_webhook
+        passing: injected
+        description: 送信する関数（テストで差し替える）
+    returns:
+      type: threading.Thread | None
+      description: 起動したスレッド。送信しないときは None（テストが `join` する）
+    process: |-
+      1. `read_webhook_url(environ)` が None なら None を返す（Webhook の URL の参照）
+      2. 次の処理をする `daemon=True` のスレッドを起動して返す（スレッドの本体は `notify_stopped` と共有する内部の関数にまとめる）
+         - `describe()` が None なら何も送信しない
+         - `send(url, build_content(name, page_url))` を呼ぶ（本文の組み立て・Webhook への送信）
+         - 想定していない例外は記録してスレッドを終える
+           - `[ERROR]` 通知の予期しないエラー（例外の種類）
+    unit_tests:
+      - name: test_notify_work_done
+        case: 正常
+        summary: 1 回送信する
+        condition: '`describe` は `("家計簿", "http://127.0.0.1:8784/w/mindstella-x-1/")`、`environ` は URL を書いた一時ファイルを指す。返ったスレッドを `join` する'
+        mock: '`send`'
+        expected: '`send` が URL と `build_content` の本文で 1 回呼ばれる'
+      - name: test_notify_work_done_when_not_configured
+        case: 正常
+        summary: Webhook の設定が無ければ送信しない
+        condition: 空の `environ`
+        mock: '`send`'
+        expected: None を返し、`send` も `describe` も呼ばれない
+      - name: test_notify_work_done_when_workspace_missing
+        case: 正常
+        summary: ワークスペースが見つからなければ送信しない
+        condition: '`describe` が None を返す'
+        mock: '`send`'
+        expected: スレッドを返し、`join` の後も `send` が呼ばれない
 constants:
-  - name: MARKERS
-    title: プロセスの書き込みのマーカー
-    container: plugins/mindstella/skills/mindmap/scripts/notify.py
-    usecase: 作業の完了を通知する
-    summary: 常駐サーバーのプロセスに 1 つの `WriteMarkers`（再起動すると空になる）
-    value: WriteMarkers()
-  - name: MARKING_TOOLS
-    title: マーカーを付けるツール
-    container: plugins/mindstella/skills/mindmap/scripts/notify.py
-    usecase: 作業の完了を通知する
-    summary: 成功したら書き込みのマーカーを付ける MCP のツール
-    value: ("commit", "new_thread", "reply")
   - name: WEBHOOK_FILE_ENV
     title: Webhook の設定のファイルの環境変数
     container: plugins/mindstella/skills/mindmap/scripts/notify.py

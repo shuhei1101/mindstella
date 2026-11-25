@@ -502,8 +502,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`restarting` のときの `session_end` は `status` を変えず通知もしない。`running` のとき、`stop_failure` の `error` が `rate_limit` なら `request_restart` を `rate_limit` で、`pre_compact` なら `compact` で、応答を返した後の別のスレッドで呼ぶ。`session` が状態に無ければ偽（`session_start` は `socket`・`claude_config_dir`・`balancer_account`（本文に無ければ `None`）も入れる）。記録した後に、`prompt_submit`・`stop_failure`・`session_end` では書き込みのマーカーを解除し（`notify.clear_written`）、`stop` では作業の完了を通知する（`notify.notify_if_written`。名前と画面の URL は、`workspaces.find_workspace_row` のフォルダの `config.yaml` の `summary`（空ならフォルダの名前）と `ctx.previews.url_of` をスレッドの中で参照する）。`session_end` が書き換える前の `running` から `stopped` にしたときだけ `notify_stopped` を `session_ended` で呼ぶ
-    side_effects: '`session.json` を書く。書き込みのマーカーを解除する。`stop` では通知のスレッドを起動することがある'
+    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`restarting` のときの `session_end` は `status` を変えず通知もしない。`running` のとき、`stop_failure` の `error` が `rate_limit` なら `request_restart` を `rate_limit` で、`pre_compact` なら `compact` で、応答を返した後の別のスレッドで呼ぶ。`session` が状態に無ければ偽（`session_start` は `socket`・`claude_config_dir`・`balancer_account`（本文に無ければ `None`）も入れる）。どの出来事でも作業の完了は通知しない（『エントリーポイント』が `hand_back` が真の `commit` で通知する）。`session_end` が書き換える前の `running` から `stopped` にしたときだけ `notify_stopped` を `session_ended` で呼ぶ
+    side_effects: '`session.json` を書く。`session_end` では停止の通知のスレッドを起動することがある'
     args:
       - name: session_id
         type: str
@@ -536,18 +536,6 @@ functions:
         condition: 状態に無い `session`
         mock: なし
         expected: '`False` を返し、`session.json` が変わらない'
-      - name: test_record_event_when_stop
-        case: 正常
-        summary: stop で書き込んだ応答の通知を呼ぶ
-        condition: 状態にある `session` に `stop`
-        mock: '`notify.notify_if_written`'
-        expected: '`notify_if_written` がワークスペースの ID で 1 回呼ばれ、`responding` が偽'
-      - name: test_record_event_when_clearing
-        case: 正常
-        summary: prompt_submit・stop_failure・session_end では通知せずにマーカーを解除する
-        condition: '`parametrize`: `prompt_submit` / `stop_failure` / `session_end`（`reason: logout`）。事前に `notify.MARKERS.mark` でマーカーを付ける'
-        mock: '`notify.notify_if_written`'
-        expected: '`notify.MARKERS.take` が偽で、`notify_if_written` が呼ばれない'
       - name: test_record_event_when_session_ended
         case: 正常
         summary: running からの session_end だけ Claude Code の終了を通知する
@@ -572,6 +560,12 @@ functions:
         condition: '`parametrize`: 本文に `balancer_account: a` / 無い'
         mock: なし
         expected: '`session.json` の `balancer_account` が `a` / `None`'
+      - name: test_record_event_when_stop
+        case: 正常
+        summary: stop では作業の完了を通知しない
+        condition: '`parametrize`: 状態にある `session` に `stop` / `prompt_submit` / `stop_failure`'
+        mock: '`notify.notify_work_done`・`notify.notify_stopped`'
+        expected: '`responding` が出来事のとおりに書き換わり、`notify_work_done` も `notify_stopped` も呼ばれない'
   - name: notify_stopped
     title: 停止を通知する
     kind: 関数
