@@ -1,4 +1,4 @@
-"""MindStella のセッションごとの書き込みのマーカーを持ち、Discord の Webhook へ作業の完了と停止を送信する。"""
+"""Discord の Webhook へ MindStella のセッションの作業の完了と停止を送信する。"""
 
 from __future__ import annotations
 
@@ -42,9 +42,6 @@ STOP_REASON_TEXTS: dict[StopReason, str] = {
 # 停止の本文の 1 行目の名前の後ろの文言
 STOPPED_TEXT = "停止しました"
 
-# 成功したら書き込みのマーカーを付ける MCP のツール
-MARKING_TOOLS = ("commit", "new_thread", "reply")
-
 # Webhook の設定のファイルの場所を受ける環境変数
 WEBHOOK_FILE_ENV = "MINDSTELLA_DISCORD_WEBHOOK_FILE"
 
@@ -62,37 +59,6 @@ DONE_TEXT = "作業が完了しました"
 
 # 名前を切り詰めたときに末尾へ付ける文字
 ELLIPSIS = "…"
-
-
-class WriteMarkers:
-    """この応答で書き込んだワークスペースの ID を、常駐サーバーのメモリに持つ。"""
-
-    def __init__(self) -> None:
-        self._marked: set[str] = set()
-        # _marked を触る間だけ取る鍵（MCP のツールと出来事の受け取りが別のスレッドで触る）
-        self._guard = threading.Lock()
-
-    def mark(self, workspace_id: str) -> None:
-        """マーカーを付ける。"""
-        with self._guard:
-            self._marked.add(workspace_id)
-
-    def clear(self, workspace_id: str) -> None:
-        """マーカーを解除する（無ければ何もしない）。"""
-        with self._guard:
-            self._marked.discard(workspace_id)
-
-    def take(self, workspace_id: str) -> bool:
-        """マーカーがあったかを返却し、同じ鍵の中で解除する。"""
-        with self._guard:
-            if workspace_id in self._marked:
-                self._marked.remove(workspace_id)
-                return True
-            return False
-
-
-# 常駐サーバーのプロセスに 1 つの書き込みのマーカー（起動し直すと空になる）
-MARKERS = WriteMarkers()
 
 
 def read_webhook_url(environ: Mapping[str, str]) -> str | None:
@@ -173,37 +139,19 @@ def send_webhook(
     return True
 
 
-def mark_written(tool: str, workspace_id: str, payload: dict[str, Any]) -> None:
-    """ツールの名前が MARKING_TOOLS で、結果が書き込んだことを示すときだけ MARKERS に付ける。"""
-    # 対象外のツール
-    if tool not in MARKING_TOOLS:
-        return
-    # まとめる変更が無かった commit
-    if tool == "commit" and payload.get("id") is None:
-        return
-    MARKERS.mark(workspace_id)
-
-
-def clear_written(workspace_id: str) -> None:
-    """書き込みのマーカーを解除する。"""
-    MARKERS.clear(workspace_id)
-
-
-def notify_if_written(
+def notify_work_done(
     workspace_id: str,
     describe: Callable[[], tuple[str, str | None] | None],
     *,
     environ: Mapping[str, str] = os.environ,
     send: Callable[[str, str], bool] = send_webhook,
 ) -> threading.Thread | None:
-    """マーカーを確認して解除し、あったときだけ daemon のスレッドで本文を組み立てて送信する。"""
-    # この応答で書き込んでいない
-    if not MARKERS.take(workspace_id):
-        return None
+    """Webhook の設定があれば、daemon のスレッドで作業の完了の本文を組み立てて送信する。"""
     url = read_webhook_url(environ)
     # Webhook の設定が無い
     if url is None:
         return None
+    logger.info("作業の完了を通知する: %s", workspace_id)
     return _start_send(url, describe, build_content, send)
 
 

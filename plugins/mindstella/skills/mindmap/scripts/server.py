@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import uvicorn
+import yaml
 from mcp.server.mcpserver import MCPServer
 from mcp.types import CallToolResult, TextContent
 from pydantic import Field
@@ -37,6 +38,7 @@ import state
 import usage_watch
 import workspaces
 from claude_input import InputTargets, Session, parse_session
+from kinds import SETTINGS_FILE, records_root
 from home_settings import HomeSettings, InvalidSettingsError, home_settings_path, load_home_settings
 from errors import (
     ApiError,
@@ -308,6 +310,19 @@ def main(
     return 0
 
 
+def _describe_workspace(context: ServerContext, workspace_id: str) -> tuple[str, str | None] | None:
+    """作業の完了の通知に載せるワークスペースの名前（設定の summary、空ならフォルダの名前）と画面の URL を返却する。"""
+    row = workspaces.find_workspace_row(context.pi_port, workspace_id)
+    # 配信元の行が無い: 通知しない
+    if row is None:
+        return None
+    folder = workspaces.workspace_folder(row)
+    loaded = yaml.safe_load((records_root(folder) / SETTINGS_FILE).read_text(encoding="utf-8"))
+    summary = loaded.get("summary") if isinstance(loaded, dict) else None
+    name = str(summary).strip() if summary else ""
+    return (name or folder.name, context.previews.url_of(folder))
+
+
 def _restart_for_comment(root: Path, context: ServerContext) -> bool:
     """落ちていればコメントの契機で MindStella のセッションを起動し直し、準備ができたかを返す。"""
     workspace_id = workspaces.workspace_id_of(root)
@@ -441,17 +456,14 @@ def build_server(
         except (ArgumentError, NotMindStellaSessionError) as error:
             return error_result(error)
 
-        def run_and_mark(path: Path) -> dict[str, Any]:
-            """ツールの処理を呼び、MindStella のセッションのツールが成功したら書き込みのマーカーを付ける。"""
+        def run_and_discard(path: Path) -> dict[str, Any]:
+            """ツールの処理を呼び、書いたファイルを開いている画面の次の記録の取得で読み直させる。"""
             payload = run(path)
-            # 書いたファイルを、開いている画面の次の記録の取得で読み直させる
             previews.discard_records(path)
-            if tool is not None:
-                notify.mark_written(tool, workspaces.workspace_id_of(path), payload)
             return payload
 
         return call_tool(
-            lambda: run_and_mark(root),
+            lambda: run_and_discard(root),
             write_lock=write_lock,
             lock_root=root,
             lock_create=create,
@@ -589,10 +601,23 @@ def build_server(
             str, Field(description="このまとまりで何をしたかの一言の説明（1〜200 文字）")
         ],
         session: SessionArg = None,
+        hand_back: Annotated[
+            bool,
+            Field(
+                description="手番を利用者へ返す直前の commit なら true。成功したら作業の完了を通知する"
+            ),
+        ] = False,
     ) -> CallToolResult:
-        return write(
+        result = write(
             workspace, session, lambda root: commands.run_commit(root, summary), tool="commit"
         )
+        # 手番を返す commit が成功した: 鍵を放した後に作業の完了を通知する
+        if hand_back and not result.is_error:
+            workspace_id = workspaces.workspace_id_of(locate(workspace, session))
+            notify.notify_work_done(
+                workspace_id, lambda: _describe_workspace(context, workspace_id)
+            )
+        return result
 
     @server.tool(
         name="pending",

@@ -530,12 +530,6 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
         return current.replace(responding=kind == "prompt_submit")
 
     state.update_session(ctx.state_root, workspace_id, change)
-    # 応答の終わり: この応答で書き込んでいれば作業の完了を通知する
-    if kind == "stop":
-        notify.notify_if_written(workspace_id, lambda: _describe_workspace(ctx, workspace_id))
-    # 応答の始まり・エラーで終わった応答・終了: 通知せずにマーカーを解除する
-    elif kind in ("prompt_submit", "stop_failure", "session_end"):
-        notify.clear_written(workspace_id)
     # 停止の依頼なしに running から止まった: Claude Code の終了を通知する
     # （stopping からは止めるスレッドが通知する）
     if (
