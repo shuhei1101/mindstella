@@ -224,7 +224,7 @@ const ConnectionNotice = ({ fit, readAt }: { fit: Fit; readAt: string | null }) 
       // 押せない表示だが、キーボードでもツールチップの状態と読んだ日時を確かめられるようにフォーカスを受ける
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- 状態の表示をツールチップで読むため
       tabIndex={0}
-      className={cn("relative inline-grid h-8 w-6 flex-none place-items-center rounded-control text-topbar-fg max-sm:w-4 focus-visible:outline-2 focus-visible:outline-mark-line", iconButtonFitClass(fit))}
+      className={cn("relative inline-grid h-8 w-6 flex-none place-items-center rounded-control text-topbar-fg focus-visible:outline-2 focus-visible:outline-mark-line max-sm:w-4", iconButtonFitClass(fit))}
     >
       <Icon name="offline" className="text-topbar-danger max-2xs:size-4.5" />
       <span className="sr-only">{text}</span>
