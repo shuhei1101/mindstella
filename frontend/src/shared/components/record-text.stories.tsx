@@ -1,6 +1,6 @@
 // 記録の文字の部品のストーリー（モック）
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { fn, userEvent } from "storybook/test";
 
 import { RecordText } from "@/shared/components/record-text";
 import type { LookupRecordId, RecordIdTarget } from "@/shared/core/record-ids";
@@ -104,4 +104,30 @@ export const LongTitle: Story = {
       <RecordText {...args} />
     </h2>
   ),
+};
+
+/** 見出しのタイトルの D-1 のリンクに乗せた。D-1 のタイトルと ID・「検討事項」・状態のツールチップを出す */
+export const LinkHover: Story = {
+  ...HeadingLinks,
+  play: async ({ canvasElement }) => {
+    const link = canvasElement.querySelector<HTMLElement>('[data-record-id="D-1"]');
+    if (link !== null) await userEvent.hover(link);
+  },
+};
+
+/** カードのタイトルの D-1 のマーカーに乗せた。D-1 のタイトルと状態のツールチップを出し、押すとカードを開く操作は変わらない */
+export const MarkerHover: Story = {
+  ...CardTitleMarkers,
+  play: async ({ canvasElement }) => {
+    const marker = canvasElement.querySelector<HTMLElement>('[data-record-id="D-1"]');
+    if (marker !== null) await userEvent.hover(marker);
+  },
+};
+
+/** カードのタイトルのボタンに Tab でフォーカスした。行の中の ID のツールチップを出し、ボタンの aria-describedby で D-1 の説明を読み上げる */
+export const MarkerRowFocus: Story = {
+  ...CardTitleMarkers,
+  play: async () => {
+    await userEvent.tab();
+  },
 };
