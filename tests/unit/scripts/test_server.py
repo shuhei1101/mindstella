@@ -965,69 +965,88 @@ def test_require_mindstella_session(tmp_path: Path, make_workspace: MakeWorkspac
         server.require_mindstella_session(context, root, other, "commit")
 
 
-def test_build_server_when_marking_tool(
+def _recording_notify(calls: list[str]) -> Callable[..., None]:
+    """作業の完了の通知の代わりに、ワークスペースの ID を記録する関数を作る。"""
+
+    def notify_work_done(workspace_id: str, _describe: Callable[[], Any], **_kwargs: Any) -> None:
+        calls.append(workspace_id)
+
+    return notify_work_done
+
+
+@pytest.mark.parametrize(
+    "committed_before",
+    [
+        pytest.param(False, id="with-changes"),
+        pytest.param(True, id="nothing-to-commit"),
+    ],
+)
+def test_build_server_when_hand_back(
     tmp_path: Path,
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     monkeypatch: pytest.MonkeyPatch,
+    committed_before: bool,
 ) -> None:
-    """MindStella のセッションの reply が成功したら書き込みのマーカーを付ける（正常系）。"""
+    """hand_back が真の commit が成功したら作業の完了を通知する（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"), name="ws")
     state_root = tmp_path / "state"
     _write_mindstella_session(state_root, root, "abc")
-    commands.run_new_thread(root, body="質問です", summary="質問", tags=None, target=None)
-    monkeypatch.setattr(notify, "MARKERS", notify.WriteMarkers())
+    calls: list[str] = []
+    monkeypatch.setattr(notify, "notify_work_done", _recording_notify(calls))
     mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784), state_root=state_root)
     session = {**_session_of(tmp_path), "claude_session_id": "abc"}
+    if committed_before:
+        # まとめる書き換えを残さない
+        _run_async(
+            mcp_server.call_tool("commit", {"workspace": str(root), "summary": "先", "session": session})
+        )
     # 実行
     result = _run_async(
         mcp_server.call_tool(
-            "reply",
-            {
-                "workspace": str(root),
-                "id": "TH-1",
-                "body": "答えます",
-                "summary": "質問",
-                "session": session,
-            },
+            "commit",
+            {"workspace": str(root), "summary": "返す", "hand_back": True, "session": session},
         )
     )
     # 検証
     assert isinstance(result, CallToolResult)
     assert result.is_error is False
-    assert notify.MARKERS.take(workspace_id_of(root)) is True
+    assert calls == [workspace_id_of(root)]
 
 
-def test_build_server_when_marking_tool_failed(
+@pytest.mark.parametrize(
+    ("tool", "session_id"),
+    [
+        pytest.param("commit", "abc", id="commit-without-hand-back"),
+        pytest.param("commit-hand-back", "xyz", id="other-session"),
+        pytest.param("reply", "abc", id="reply"),
+    ],
+)
+def test_build_server_when_not_hand_back(
     tmp_path: Path,
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     monkeypatch: pytest.MonkeyPatch,
+    tool: str,
+    session_id: str,
 ) -> None:
-    """違うセッションの呼び出しは書き込みのマーカーを付けない（正常系）。"""
+    """hand_back を渡さない commit と、失敗した commit と、返信は通知しない（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"), name="ws")
     state_root = tmp_path / "state"
     _write_mindstella_session(state_root, root, "abc")
     commands.run_new_thread(root, body="質問です", summary="質問", tags=None, target=None)
-    monkeypatch.setattr(notify, "MARKERS", notify.WriteMarkers())
+    calls: list[str] = []
+    monkeypatch.setattr(notify, "notify_work_done", _recording_notify(calls))
     mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784), state_root=state_root)
-    session = {**_session_of(tmp_path), "claude_session_id": "xyz"}
+    session = {**_session_of(tmp_path), "claude_session_id": session_id}
+    arguments: dict[str, Any] = {
+        "commit": {"workspace": str(root), "summary": "途中"},
+        "commit-hand-back": {"workspace": str(root), "summary": "返す", "hand_back": True},
+        "reply": {"workspace": str(root), "id": "TH-1", "body": "答えます", "summary": "質問"},
+    }[tool]
     # 実行
-    result = _run_async(
-        mcp_server.call_tool(
-            "reply",
-            {
-                "workspace": str(root),
-                "id": "TH-1",
-                "body": "答えます",
-                "summary": "質問",
-                "session": session,
-            },
-        )
-    )
+    _run_async(mcp_server.call_tool(tool.removesuffix("-hand-back"), {**arguments, "session": session}))
     # 検証
-    assert isinstance(result, CallToolResult)
-    assert result.is_error is True
-    assert notify.MARKERS.take(workspace_id_of(root)) is False
+    assert calls == []
