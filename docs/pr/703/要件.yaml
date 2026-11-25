@@ -40,15 +40,21 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: スレッドのクローズ・オープンが押したらすぐ変わりクローズで一覧に戻ること（#377）、トップバーの更新のボタン（#482）、トップバーの状態の表示とボタンがアイコンと件数だけになり名前はツールチップで出ること（#573）を書く
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-25T04:01:27.741644+00:00'
   - page: docs/guide/セットアップ手順-Discordに通知する.md
     new: false
     change: 作業の完了の通知が届くのを、応答の終わりから利用者に手番が返ったときに書き換える（#697）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-25T04:01:27.741644+00:00'
   - page: docs/guide/コマンド.mark.md
     new: false
     change: 「書き換えをまとめる」の使い方と引数の表に、任意の引数 `hand_back`（既定は偽）と、真のときに成功した後（まとめる書き換えが無いときも）作業の完了の通知を送信することを書く（#697）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-25T04:01:27.741644+00:00'
   - page: docs/guide/エージェントフロー.md
     new: false
     change: '「コメントの取り込み」「記録の使い分け」に工程「手番を返す」（手番を返す直前に 1 回だけ `hand_back: true` で `commit` する）を追加し、「書き換えをまとめる」「まとめ忘れを commit する」を作業の途中の `commit` として記載する（#697）'
