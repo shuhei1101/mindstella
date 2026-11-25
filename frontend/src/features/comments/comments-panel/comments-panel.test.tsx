@@ -104,6 +104,38 @@ describe("CommentsPanel", () => {
     expect(closedFilter).toHaveFocus();
   });
 
+  // クローズにして戻った後、行が消えれば次の行へフォーカスを移す（正常系）
+  test.each([
+    { name: "all", search: "&tstatus=all", ids: ["TH-1", "TH-2", "TH-3"], close: "TH-2", focus: "thread:TH-2" },
+    { name: "open-middle", search: "", ids: ["TH-1", "TH-2", "TH-3"], close: "TH-2", focus: "thread:TH-3" },
+    { name: "open-last", search: "", ids: ["TH-1", "TH-2", "TH-3"], close: "TH-3", focus: "thread:TH-2" },
+    { name: "open-only", search: "", ids: ["TH-1"], close: "TH-1", focus: null },
+  ])("comments_panel_when_closed_focus ($name)", async ({ search, ids, close, focus }) => {
+    // 準備
+    const statuses = new Map<string, "open" | "closed">(ids.map((id) => [id, "open"]));
+    server.use(
+      transcription,
+      http.get("/api/threads", () => HttpResponse.json({ threads: ids.map((id) => thread(id, statuses.get(id) ?? "open", `${id} の話`)) })),
+      http.post("/api/threads/:id/seen", ({ params }) => HttpResponse.json({ id: params["id"], seen: [] })),
+      http.patch("/api/threads/:id", ({ params }) => {
+        statuses.set(String(params["id"]), "closed");
+        return HttpResponse.json({ id: params["id"], status: "closed", changed: true });
+      }),
+    );
+    renderRoute(`/?panel=comments&thread=${close}${search}`);
+    const panel = await screen.findByRole("dialog", { name: "コメント" });
+    const before = window.history.length;
+    // 実行
+    await userEvent.click(await within(panel).findByRole("button", { name: "クローズにする" }));
+    // 検証
+    await waitFor(() => expect(new URLSearchParams(window.location.search).has("thread")).toBe(false));
+    expect(window.history.length).toBe(before);
+    await waitFor(() => {
+      const target = focus === null ? within(panel).getByText("オープンのスレッドはありません。") : panel.querySelector(`[data-focus="${focus}"]`);
+      expect(target).toHaveFocus();
+    });
+  });
+
   // スレッドが読めない（異常系）
   test("comments_panel_when_threads_failed", async () => {
     // 準備
