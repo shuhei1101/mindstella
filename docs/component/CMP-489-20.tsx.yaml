@@ -249,7 +249,7 @@ states:
       - name: readAt
         value: '2026-10-04T02:21:00+00:00'
     notes:
-      見せ方: Storybook（React）の画面幅を 1441px にして見せる（幅 1440px 以下は「つながりません」だけになる）
+      見せ方: Storybook（React）の画面幅を 1280px にして見せる
   - name: OfflineNarrow
     description: 幅 390px でサーバーにつながらない。`Offline` と同じくマーカーだけを出し、状態と読んだ日時をツールチップと読み上げに持つ
     args:
@@ -798,8 +798,22 @@ states:
   - name: RefreshOfflineVoiceNarrow
     description: 幅 390px で、つながらず音声入力中。接続の状態・更新のボタン・音声入力中の表示が並んでも詰める間の幅で収め、トップバーもページも横にはみ出さない
     args:
+      - name: comments
+        value: 'true'
+      - name: commentCount
+        value: '3'
+      - name: filter
+        value: 'true'
+      - name: filterCount
+        value: '2'
+      - name: pending
+        value: 'true'
+      - name: pendingCount
+        value: '4'
       - name: connection
         value: offline
+      - name: readAt
+        value: '2026-10-04T02:21:00+00:00'
       - name: voice
         value: '{"state": "recording", "label": "TH-12 への返信", "elapsed": 12}'
     notes:
@@ -807,6 +821,18 @@ states:
   - name: RefreshStaleVoiceNarrow
     description: 幅 390px で、反映を保留したまま音声入力中。点つきの更新のボタンと音声入力中の表示が並んでも横にはみ出さない
     args:
+      - name: comments
+        value: 'true'
+      - name: commentCount
+        value: '3'
+      - name: filter
+        value: 'true'
+      - name: filterCount
+        value: '2'
+      - name: pending
+        value: 'true'
+      - name: pendingCount
+        value: '4'
       - name: stale
         value: 'true'
       - name: voice
@@ -816,12 +842,26 @@ states:
   - name: RefreshNarrowest
     description: 幅 320px で、つながらない・差分の表示・音声入力中・件数 `99+`・絞り込みのバッジ 2 桁・保存待ちが全て並ぶ間。詰める間の幅で収め、トップバーもページも横にはみ出さない
     args:
-      - name: connection
-        value: offline
+      - name: comments
+        value: 'true'
       - name: commentCount
         value: '120'
+      - name: filter
+        value: 'true'
       - name: filterCount
         value: '12'
+      - name: pending
+        value: 'true'
+      - name: pendingCount
+        value: '4'
+      - name: diffPoint
+        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+      - name: connection
+        value: offline
+      - name: readAt
+        value: '2026-10-04T02:21:00+00:00'
+      - name: voice
+        value: '{"state": "recording", "label": "TH-12 への返信", "elapsed": 12}'
     notes:
       見せ方: Storybook（React）の画面幅を 320px にして見せる
 refs: []
