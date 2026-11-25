@@ -1,0 +1,9 @@
+# 単体テスト（全 pass）
+# commit: 76cdcb47
+# 実行日時: 2026-11-25 19:21:29 JST
+# tests/unit は 319adafc で実行した（tests/unit/scripts/test_serve.py::test_stream は #704 のため外した）。319adafc..76cdcb47 の差分は frontend/・preview/・tests/integration/ と設計書・PR ドキュメントだけで、tests/unit の実行範囲に触れない
+# Vitest の全件は 84526b30 で実行した。84526b30..76cdcb47 の実装の差分は topbar.tsx のクラスの並びだけで、topbar.test.tsx を 76cdcb47 で実行し直した（8 passed）
+
+$ npx vitest run
+ Test Files  108 passed (108)
+      Tests  536 passed (536)
