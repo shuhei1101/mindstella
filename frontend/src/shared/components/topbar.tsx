@@ -158,13 +158,13 @@ const panelButtonClass = (fit: Fit, open: boolean): string =>
     "max-sm:gap-1 max-sm:px-1.5",
     fit.wide && (fit.diff || fit.offline) && "max-sm:gap-0.5 max-sm:px-0.5",
     "max-xs:gap-0.5 max-xs:px-0.5",
-    fit.crowded && "max-sm:w-7 max-sm:justify-center max-sm:gap-0 max-sm:px-0 max-xs:w-6",
+    fit.crowded && "max-md:w-7 max-md:justify-center max-md:gap-0 max-md:px-0 max-xs:w-6",
     open && "border-topbar-fg-2 bg-topbar-hover",
   );
 
 /** 詰める幅（481px 未満）で、件数の札をアイコンの右上に重ねる */
 const badgeFitClass = (fit: Fit): string =>
-  cn(fit.crowded && "max-sm:absolute max-sm:-top-1.5 max-sm:-right-1.5 max-sm:h-4 max-sm:min-w-4 max-sm:px-0.5 max-sm:ring-2 max-sm:ring-topbar-bg");
+  cn(fit.crowded && "max-md:absolute max-md:-top-1.5 max-md:-right-1.5 max-md:h-4 max-md:min-w-4 max-md:px-0.5 max-md:ring-2 max-md:ring-topbar-bg");
 
 /** 印だけのボタン（検索・変更履歴・ライト / ダーク）の狭い幅の詰め方 */
 const iconButtonFitClass = (fit: Fit): string =>
@@ -172,7 +172,7 @@ const iconButtonFitClass = (fit: Fit): string =>
     fit.wide && (fit.diff || fit.offline) && "max-sm:w-7 max-sm:flex-none",
     "max-xs:w-7 max-xs:flex-none",
     fit.offline && fit.diff && "max-xs:w-6.5",
-    fit.crowded && "max-sm:w-7 max-sm:flex-none max-xs:w-6",
+    fit.crowded && "max-md:w-7 max-md:flex-none max-xs:w-6",
   );
 
 /** 画面を移るリンク。押したときは使う側が移る */
@@ -267,7 +267,7 @@ const headerClass = (fit: Fit): string =>
     fit.wide && (fit.diff || fit.offline) && "max-sm:gap-px max-sm:px-2",
     "max-xs:gap-px max-xs:px-2",
     fit.offline && "sm:max-md:px-2.5",
-    fit.crowded && "max-sm:gap-px max-sm:px-1.5 max-xs:px-1",
+    fit.crowded && "max-md:gap-px max-md:px-1.5 max-xs:px-1",
   );
 
 /** 差分の札を出している間（つながらない間は 1440px 以下、それ以外は 1100px 以下）に、札へ幅を回すため隠す */
@@ -281,7 +281,7 @@ const Brand = ({ fit }: { fit: Fit }) => (
       fit.offline && fit.diff && "max-sm:hidden",
       fit.wide && fit.diff && "max-sm:hidden",
       fit.diff && "max-xs:hidden",
-      fit.crowded && "max-sm:hidden",
+      fit.crowded && "max-md:hidden",
     )}
   >
     <svg
