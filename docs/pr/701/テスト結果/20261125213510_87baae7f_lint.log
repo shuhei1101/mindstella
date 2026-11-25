@@ -1,0 +1,22 @@
+
+> typecheck
+> tsc -p frontend
+
+
+> lint
+> eslint frontend/src
+
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-record-text-id-links/frontend/src/shared/components/record-text.tsx
+  115:21  warning  Incorrect class order. Expected
+
+"id-marker·font-mono"
+
+to be
+
+"font-mono·id-marker"  better-tailwindcss/enforce-consistent-class-order
+
+✖ 1 problem (0 errors, 1 warning)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
+exit 0
