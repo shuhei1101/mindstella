@@ -593,7 +593,7 @@ functions:
     returns:
       type: threading.Thread | None
       description: '`notify.notify_stopped` の戻り値'
-    process: '1. `notify.notify_stopped(workspace_id, reason, lambda: _describe_workspace(ctx, workspace_id))` を呼んで返す（停止の通知）'
+    process: '1. `notify.notify_stopped(workspace_id, reason, lambda: describe_workspace(ctx, workspace_id))` を呼んで返す（停止の通知）'
     unit_tests:
       - name: test_notify_stopped
         case: 正常
