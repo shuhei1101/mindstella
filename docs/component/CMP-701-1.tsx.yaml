@@ -1,0 +1,126 @@
+title: 記録の文字
+lead: 記録から取得したプレーンテキスト（項目・スレッドのタイトルなど）を描き、記録にある項目の ID・スレッドの ID を、押せない場所ではその項目・スレッドを開くリンクに、押す要素の中ではマーカーにする。記録に無い ID は文字のまま出す。
+implementation: frontend/src/shared/components/record-text.tsx#RecordText
+story: Shared/RecordText
+test_file: tests/integration/storybook_react/test_record_text_stories.py
+args:
+  - name: text
+    type: 文字列
+    required: true
+    description: 記録から取得した文字。項目の ID（`D-1` など）とスレッドの ID（`TH-1`）・書き込みの ID（`TH-1-2`）を、前後が英数字・`-` でないときだけヒットさせる（本文のリンクと同じ判定）
+  - name: mode
+    type: 列挙
+    required: true
+    choices: link・marker
+    description: '`link` は押せない場所（詳細・スレッドの見出しのタイトル、関係する項目のタイトル、削除した項目の帯）、`marker` は押す要素の中（カード・行・表のタイトルのボタン、検索の結果の `option`、外部の URL のリンクの文字）で使用する'
+  - name: lookup
+    type: 関数
+    required: true
+    description: ID から記録の項目・スレッドを検索する（`lookup(id)`）。ある ID は `{id, title, kindLabel, status}`（状態を持たない種類は `status` なし）、無い ID は `null` を返却する。配る書き出しではスレッドの ID に `null` を返却し、スレッドの ID を文字のままにする
+  - name: onOpen
+    type: 関数
+    required: false
+    default: なし（押しても何もしない）
+    enabled_when: '`mode` が `link` のとき'
+    description: ID のリンクを押したときに呼ぶ
+  - name: descriptionId
+    type: 文字列
+    required: false
+    default: なし（説明を描かない）
+    enabled_when: '`mode` が `marker` のとき'
+    description: 行の中の ID の項目・スレッドの説明（タイトル・ID・種類・状態を「、」でつないだ文）を描く、隠した要素の id。使用する側が行のボタン（検索の結果は `option`）の `aria-describedby` に指定する。記録にある ID が無いときは要素を描かない
+events:
+  - name: 項目・スレッドを開く
+    when: '`link` の ID のリンクを押したとき（Enter を含む）'
+    value: '`onOpen(id)`（引数はリンクの ID）'
+    description: 使用する側がその項目の詳細パネルかスレッドを開いて履歴に追加する。リンクの `href` は本文のリンクと同じ `#id={ID}`
+states:
+  - name: HeadingLinks
+    description: 詳細パネルの見出しのタイトル。記録にある D-1・TH-1 を本文のリンクと同じ色・下線のリンクにし、記録に無い D-99 は文字のまま
+    args:
+      - name: text
+        value: D-1 の比較（TH-1 の続き、D-99 は除く）
+      - name: mode
+        value: link
+  - name: LinkHover
+    description: 見出しのタイトルの D-1 のリンクに乗せた。部品『本文のマーカーのツールチップ』の `ItemId` と同じく、D-1 のタイトルと ID・「検討事項」・状態を出す
+    args:
+      - name: mode
+        value: link
+    notes:
+      見せ方: ストーリーの play で D-1 のリンクに乗せる
+  - name: RelatedTitleLinks
+    description: 詳細パネルの「関連する項目」の行。ID のボタンの外側のタイトルの中の D-1 をリンクにする
+    args:
+      - name: text
+        value: D-1 の見直し
+      - name: mode
+        value: link
+  - name: CardTitleMarkers
+    description: 項目のカードのタイトルのボタンの中。ID は等幅の文字に本文の用語のマーカーと同じ色・太さの点線の下線のマーカーにし、カードの中にフォーカスできる要素を増やさない
+    args:
+      - name: text
+        value: D-1 の比較（D-99 は除く）
+      - name: mode
+        value: marker
+      - name: descriptionId
+        value: card-a1-ids
+  - name: MarkerHover
+    description: カードのタイトルの D-1 のマーカーに乗せた。D-1 のタイトルと状態のツールチップを出し、押すとカードを開く操作は変わらない
+    args:
+      - name: mode
+        value: marker
+      - name: descriptionId
+        value: card-a1-ids
+    notes:
+      見せ方: ストーリーの play で D-1 のマーカーに乗せる
+  - name: MarkerRowFocus
+    description: カードのタイトルのボタンに Tab でフォーカスした。行の中の ID のツールチップを出し、ボタンの `aria-describedby` で D-1 の説明を読み上げる
+    args:
+      - name: mode
+        value: marker
+      - name: descriptionId
+        value: card-a1-ids
+    notes:
+      見せ方: ストーリーの play でボタンにフォーカスする
+  - name: CardLinkRowMarkers
+    description: タスクのカードの進める検討事項の行。カード全体を押すと開くため、タイトルの中の D-1 はマーカーにする
+    args:
+      - name: text
+        value: D-1 の見直し
+      - name: mode
+        value: marker
+      - name: descriptionId
+        value: card-t1-for
+  - name: SearchResultMarkers
+    description: 全体の検索の結果の行（`option`）。中にフォーカスできる要素を配置せず、マーカーにする
+    args:
+      - name: text
+        value: D-1 の比較（D-99 は除く）
+      - name: mode
+        value: marker
+      - name: descriptionId
+        value: result-a1-ids
+  - name: NoIds
+    description: ID を持たないタイトル。文字をそのまま描き、説明の要素も描かない
+    args:
+      - name: text
+        value: 保存先の比較
+  - name: LongTitle
+    description: 長いタイトル（幅 240px）。ID のリンクの途中でも折り返し、枠の外へはみ出さない
+    args:
+      - name: text
+        value: D-1 と TH-1 で話した保存先の候補を、運用の手間・費用・書き込みの速さで比べ直し、D-2 の見直しの結論を反映した資料（D-99 は対象外）
+      - name: mode
+        value: link
+uses:
+  - component: CMP-489-36#
+    how: ID に乗せたときの、種類 `item`・`thread` のツールチップ
+accessibility:
+  - '`link` の ID は `a` 要素にし、Tab で届いて Enter で開ける。フォーカスしたときも乗せたときと同じツールチップを出し、リンクの `aria-describedby` で指す'
+  - '`marker` の ID はフォーカスできる要素にせず、押す要素の中に操作の要素を入れ子にしない。行のボタン（検索の結果は `option`）にフォーカスしたとき、使用する側が `descriptionId` の説明を `aria-describedby` で読み上げ、行の中の ID のツールチップを出す'
+  - '`marker` の点線の下線は `link` の実線の下線と形状で見分ける。状態はツールチップの状態名でも示す'
+refs:
+  - CMP-489-36#
+  - SC-489-5#
+id: CMP-701-1

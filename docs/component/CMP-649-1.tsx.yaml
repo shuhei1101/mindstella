@@ -40,6 +40,10 @@ args:
     required: true
     choices: add・edit・remove・null
     description: 画面の保存待ちの編集か null。`edit.marks` のこの項目の ID の値で部品『保存待ちのマーカー』を置き、値が `remove` のときはカードを薄くする。null のときはマーカーを出さない
+  - name: lookup
+    type: 関数
+    required: true
+    description: タイトルと関係する項目のタイトルの中の ID から記録の項目・スレッドを検索する関数。部品『記録の文字』の `lookup` にそのまま指定し、記録にある ID をマーカーにする
 events:
   - name: 詳細を開く
     when: タグ以外のカードの所を押したとき
@@ -75,6 +79,8 @@ states:
     description: 作成の後に更新した項目のカード。種類・状態の文字の行の次に「作成 {日時}　更新 {日時}」を出す
   - name: DatesNarrow
     description: 列の幅 240px。日時は「作成 {日時}」と「更新 {日時}」の組ごとに折り返し、カードの外へはみ出さない
+  - name: TitleIdMarkers
+    description: タイトルに記録にある D-1 と記録に無い D-99、関係する項目のタイトルに D-1 を持つカード。D-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す。押すとカードを押したときと同じく詳細を開く
 uses:
   - component: CMP-489-16#
     how: 押して絞り込めるタグ
@@ -86,10 +92,13 @@ uses:
     how: 保存待ちのマーカー
   - component: CMP-695-2#
     how: 種類・状態の文字の行の次の作成日時・更新日時
+  - component: CMP-701-1#
+    how: タイトルと関係する項目のタイトルを `mode` を `marker` にして描き、`descriptionId` をタイトルのボタンの `aria-describedby` に指定する
 accessibility:
   - カードの外枠は `div` にし、タイトルを `button` にして、その押せる範囲をカード全体へ広げる。タグのボタンをタイトルのボタンより前面に置き、ボタンを入れ子にしない
   - 開いている項目のタイトルに `aria-current="true"` を付ける
   - タイトルにフォーカスがあるとき、カードの外枠に輪郭を出す
   - 外枠に `data-card={ID}`、タイトルのボタンに `data-id={ID}` を付ける。タイトルの文字は `button[data-id]` で、カードの中のマーカーは `[data-card]` で引く
+  - タイトルと関係する項目のタイトルの中の ID はマーカーにし、カードの中にフォーカスできる要素を増やさない。タイトルのボタンにフォーカスしたとき、`aria-describedby` で ID の項目・スレッドのタイトルと状態を読み上げ、ツールチップを出す
 refs:
   - IF-489-70#

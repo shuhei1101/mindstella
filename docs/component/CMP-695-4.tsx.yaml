@@ -12,6 +12,15 @@ args:
     type: 真偽値
     required: true
     description: 書き込みの並びをスクロールした後か。真のとき 1 行にして末尾を「…」にし、`title` に全文を持たせる
+  - name: lookup
+    type: 関数
+    required: true
+    description: タイトルの中の ID から記録の項目・スレッドを検索する関数。部品『記録の文字』の `lookup` にそのまま指定し、記録にある ID をリンクにする
+  - name: onOpen
+    type: 関数
+    required: false
+    default: なし（押しても何もしない）
+    description: タイトルの中の ID のリンクを押したときに呼ぶ（`onOpen(id)`）。部品『記録の文字』の `onOpen` にそのまま指定する
 states:
   - name: FullSixLines
     description: 書き込みの並びが一番上。コメントの一覧のパネルの幅で 6 行に折り返す長いタイトルを全文で出す
@@ -42,9 +51,26 @@ states:
         value: configuration-of-the-preview-server-and-the-workspace-settings-file-path
       - name: collapsed
         value: 'true'
+  - name: TitleIdLinks
+    description: 記録にある D-1・TH-1 と記録に無い D-99 を持つタイトル。D-1・TH-1 は本文のリンクと同じ見た目のリンク、D-99 は文字のまま
+    args:
+      - name: title
+        value: D-1 の決め方（TH-1 の続き、D-99 は除く）
+      - name: collapsed
+        value: 'false'
+  - name: TitleIdLinksCollapsed
+    description: ID のリンクを持つタイトルをスクロールした後。1 行にして末尾を「…」にし、見えている範囲の ID はリンクのまま
+    args:
+      - name: title
+        value: D-1 の決め方（TH-1 の続き、D-99 は除く）
+      - name: collapsed
+        value: 'true'
 accessibility:
   - 1 行にしたときも全文を DOM に残し、読み上げは全文を読む
   - 1 行にしたときは `title` に全文を持たせ、ポインターを乗せると全文を出す
 refs:
   - SCR-489-4#
 id: CMP-695-4
+uses:
+  - component: CMP-701-1#
+    how: タイトルを `mode` を `link` にして描く
