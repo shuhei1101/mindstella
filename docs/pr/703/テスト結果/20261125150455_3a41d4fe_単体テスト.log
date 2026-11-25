@@ -2,7 +2,9 @@
 # commit: 3a41d4fe
 # 実行日時: 2026-11-25 15:04:55 JST
 # 失敗は全て実装の無いこと（notify_work_done・hand_back・reconnectEvents・setRefreshing・クローズの後の一覧への戻り）で落ちる
-# 実装の前から pass するもの: topbar.test.tsx の全件（アイコンだけのボタンとツールチップはモック作成の commit で topbar.tsx に実装済み）、test_record_event_when_stop の prompt_submit・stop_failure（今の sessions.py もこの 2 つでは通知を送信しない）
+# 実装の前から pass するもの:
+#   - topbar.test.tsx の全件: 作業ブランチのモック作成の commit で topbar.tsx に入れた振る舞いによる。アイコンだけのボタン・ツールチップ（Tip）・更新のボタン（RefreshButton）は dd248d41、Esc で隠す data-tipsoff は 9d87235f、ツールチップをボタンの外に出した WithTip は ce09d1cc
+#   - test_record_event_when_stop の prompt_submit・stop_failure: base ブランチ（4fe2d1b8）の sessions.py の record_event は、kind が stop のときだけ notify.notify_if_written を呼び、prompt_submit・stop_failure では notify.clear_written だけを呼んで通知を送信しない（a92c8814、#569）
 
 $ python3 -m pytest tests/unit/scripts/test_notify.py tests/unit/scripts/test_server.py tests/unit/scripts/test_sessions.py
 FAILED tests/unit/scripts/test_notify.py::test_notify_work_done - AttributeEr...
