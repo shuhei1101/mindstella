@@ -116,6 +116,19 @@ elements:
     status: planned
     introduced:
       pr: 422
+  - name: まとまりの見出しのタイトルの中の ID
+    kind: label
+    component: CMP-701-1#
+    position: 項目のまとまり > 見出し
+    description: まとまりの見出しのボタンのタイトルの中の、記録にある項目の ID・スレッドの ID をマーカーにする。乗せると ID の項目・スレッドのタイトルと状態のツールチップを出し、見出しのボタンにフォーカスすると `aria-describedby` で読み上げる。押すと見出しを押したときと同じく項目を開く
+    visible_when: 記録にある ID を持つタイトルの見出しを出すとき
+    args:
+      - name: text
+        value: まとまりの項目のタイトル
+      - name: mode
+        value: marker
+      - name: lookup
+        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID は `null`）
 lead: 保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、まとめてワークスペースに保存する。トップバーの保存待ちのボタンで開き、コメントの一覧と同じ左のパネルで見ている画面に重ねる。幅 900px 以下は画面の幅いっぱいに出す。コメントの一覧・表示の設定とは片方だけを開き、行から開いた項目は右の詳細パネルで読む。差分の表示中と配る書き出しでは開かない。
 test_file: tests/integration/preview/test_spa_pending_edits_screen.py
 refs:

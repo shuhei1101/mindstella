@@ -40,6 +40,19 @@ elements:
     visible_when: 検索の言葉が空でなく、今の画面が絞り込みを持ち（概要では出さない）、一致する値が 1 つ以上ある
     action: 押すか、上下の矢印で選んで Enter で、その値を今の画面の絞り込みに加え、検索を閉じる（search params と履歴は『プレビューを開く』の制約「画面の移動と項目」「履歴」のとおり）
     status: planned
+  - name: 検索の結果のタイトルの中の ID
+    kind: label
+    component: CMP-701-1#
+    position: 検索の結果 > 行
+    description: 検索の結果の行（`option`）のタイトルの中の、記録にある項目の ID・スレッドの ID をマーカーにし、行の中にフォーカスできる要素を配置しない。乗せると ID の項目・スレッドのタイトルと状態のツールチップを出し、行を選ぶと `aria-describedby` で読み上げる。押すと行を押したときと同じ項目を開く
+    visible_when: 記録にある ID を持つタイトルの行を出すとき
+    args:
+      - name: text
+        value: 行の項目のタイトル
+      - name: mode
+        value: marker
+      - name: lookup
+        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID と、配る書き出しのスレッドの ID は `null`）
 lead: 全体の検索のモーダル。全種類の項目を ID・タイトル・本文で検索し、開いているかと検索の言葉を URL の search params の `search`・`q` に持つ（インターフェース定義『プレビューを開く』）。
 mock: docs/mock/pages/search/216/a-by-tier/index.html
 test_file: tests/integration/preview/test_spa_search_screen.py

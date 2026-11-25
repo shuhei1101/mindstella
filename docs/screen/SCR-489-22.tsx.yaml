@@ -97,6 +97,19 @@ elements:
     io: 表示
     source: 記録の取得.docs
     visible_when: 常時（0 件のときは「確認中の資料はありません。」で、「すべて表示」を出さない）
+  - name: タイルの行のタイトルの中の ID
+    kind: label
+    component: CMP-701-1#
+    position: 未読の AI の書き込み・未決定の検討事項・要見直し・確認中の資料 > 行
+    description: タイルの行のタイトルの中の、記録にある項目の ID・スレッドの ID をマーカーにする。乗せると ID の項目・スレッドのタイトルと状態のツールチップを出し、行のボタンにフォーカスすると `aria-describedby` で読み上げる。押すと行を押したときと同じ項目・スレッドを開く
+    visible_when: 記録にある ID を持つタイトルの行を出すとき
+    args:
+      - name: text
+        value: 行の項目・スレッドのタイトル
+      - name: mode
+        value: marker
+      - name: lookup
+        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID は `null`）
 refs:
   - IF-489-70#
 notes:
