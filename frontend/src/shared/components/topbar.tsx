@@ -144,7 +144,7 @@ type Fit = {
   /** 件数の札が幅の広い中身（絞り込みのバッジ 2 桁・`99+`）を持つ */
   wide: boolean;
   pending: boolean;
-  /** 更新のボタン・接続の状態・更新があります・音声入力中・差分の表示のどれかを出していて、狭い幅で詰める */
+  /** 更新のボタン・更新があります・音声入力中のどれかを出していて、狭い幅で詰める */
   crowded: boolean;
 };
 
@@ -224,7 +224,7 @@ const ConnectionNotice = ({ fit, readAt }: { fit: Fit; readAt: string | null }) 
       // 押せない表示だが、キーボードでもツールチップの状態と読んだ日時を確かめられるようにフォーカスを受ける
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- 状態の表示をツールチップで読むため
       tabIndex={0}
-      className={cn("relative inline-grid size-8 flex-none place-items-center rounded-control text-topbar-fg focus-visible:outline-2 focus-visible:outline-mark-line", iconButtonFitClass(fit))}
+      className={cn("relative inline-grid h-8 w-6 flex-none place-items-center rounded-control text-topbar-fg max-sm:w-4 focus-visible:outline-2 focus-visible:outline-mark-line", iconButtonFitClass(fit))}
     >
       <Icon name="offline" className="text-topbar-danger max-2xs:size-4.5" />
       <span className="sr-only">{text}</span>
@@ -266,6 +266,7 @@ const headerClass = (fit: Fit): string =>
     fit.diff ? "max-sm:gap-2 max-sm:px-2.5" : "max-sm:gap-0.75 max-sm:px-2.5",
     fit.wide && (fit.diff || fit.offline) && "max-sm:gap-px max-sm:px-2",
     "max-xs:gap-px max-xs:px-2",
+    fit.offline && "sm:max-md:px-2.5",
     fit.crowded && "max-sm:gap-px max-sm:px-1.5",
   );
 
@@ -547,7 +548,8 @@ const VoiceNoticeBand = ({ notice, onOpen, onDismiss }: { notice: TopbarVoiceNot
 const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChange: ((theme: Theme) => void) | undefined }) => {
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
   return (
-    <WithTip text={theme === "dark" ? "ライトに切り替え" : "ダークに切り替え"}>
+    // 狭い幅で詰めるときに縮められるよう、包む要素とボタンを flex-none にしない
+    <WithTip text={theme === "dark" ? "ライトに切り替え" : "ダークに切り替え"} className="min-w-0 flex-initial">
     <button
       type="button"
       data-theme={nextTheme}
@@ -556,7 +558,7 @@ const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChang
         onChange?.(nextTheme);
       }}
       className={cn(
-        "relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
+        "relative inline-grid size-8 min-w-0 cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
         iconButtonFitClass(fit),
       )}
     >
@@ -584,7 +586,7 @@ const fitOf = (props: TopbarProps): Fit => {
     diff: diffPoint !== null,
     wide: (filter && filterCount >= FILTER_BADGE_WIDE_FROM) || (comments && commentCount > COUNT_CAP) || (showPending && pendingCount > COUNT_CAP),
     pending: showPending,
-    crowded: props.onRefresh !== undefined || connection === "offline" || diffPoint !== null || (props.voice ?? null) !== null || props.stale === true,
+    crowded: props.onRefresh !== undefined || (props.voice ?? null) !== null || props.stale === true,
   };
 };
 
