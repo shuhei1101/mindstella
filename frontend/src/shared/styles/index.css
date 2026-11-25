@@ -138,17 +138,22 @@
   letter-spacing: -0.01em;
 }
 
-/* 次に検討する項目の行: 順位・タイトルと補足・矢印 */
 /* 押す要素の中の記録の ID のマーカー。本文の用語のマーカーと同じ色・太さの点線の下線（部品『記録の文字』） */
 @utility id-marker {
-  /* カードのボタンの ::after がカード全体を覆うため、マーカーをその上に置いて乗せたことを受ける */
-  position: relative;
-  z-index: 1;
   text-decoration: underline dotted var(--subtle-foreground);
   text-decoration-thickness: 1.5px;
   text-underline-offset: 4px;
 }
 
+@layer components {
+  /* カードのタイトルのボタンの ::after がカード全体を覆うため、カードの中のマーカーだけをその上に配置して乗せたことを受ける */
+  [data-card] [data-record-id] {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+/* 次に検討する項目の行: 順位・タイトルと補足・矢印 */
 @utility grid-cols-next {
   grid-template-columns: 2.2em 1fr auto;
 }
