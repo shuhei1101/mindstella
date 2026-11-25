@@ -98,3 +98,5 @@ refs:
   - MOD-489-102#
   - MOD-489-119#
 id: MOD-701-2
+notes:
+  単体テスト: 同じフォルダの `record-ids.test.ts` に配置する（knowledge の規約『フォルダ構成』）
