@@ -1,5 +1,5 @@
 // トップバー（部品設計『トップバー.tsx』）。題名・接続の状態・更新のボタン・検索の入口・変更履歴・ライト / ダーク・表示の設定・絞り込み・保存待ち・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯・重なった ID の通知を出す
-import { type MouseEvent, useEffect, useState } from "react";
+import { type MouseEvent, type ReactNode, useEffect, useState } from "react";
 
 import { DuplicateIdNotice } from "@/shared/components/duplicate-id-notice";
 import { Icon, type IconName } from "@/shared/components/icon";
@@ -121,11 +121,19 @@ const Tip = ({ text, align = "end" }: { text: string; align?: "start" | "end" })
   <span
     aria-hidden="true"
     className={cn(
-      "absolute top-full z-40 hidden pt-1.5 group-hover/tip:block group-focus-visible/tip:block in-data-tipsoff:hidden!",
+      "absolute top-full z-40 hidden pt-1.5 group-hover/tip:block group-has-focus-visible/tip:block in-data-tipsoff:hidden!",
       align === "start" ? "left-0" : "right-0",
     )}
   >
     <span className="block w-max max-w-64 rounded-control bg-foreground px-2 py-1 text-small font-normal text-background">{text}</span>
+  </span>
+);
+
+/** ボタンとツールチップを包む。ツールチップをボタンの外に置き、ツールチップを押してもボタンが動かないようにする */
+const WithTip = ({ text, align, className, children }: { text: string; align?: "start" | "end"; className?: string; children: ReactNode }) => (
+  <span className={cn("group/tip relative inline-flex flex-none", className)}>
+    {children}
+    <Tip text={text} {...(align === undefined ? {} : { align })} />
   </span>
 );
 
@@ -143,7 +151,7 @@ type Fit = {
 /** 表示の設定・絞り込み・保存待ち・コメントのボタンに共通のクラス */
 const panelButtonClass = (fit: Fit, open: boolean): string =>
   cn(
-    "group/tip relative h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg",
+    "relative h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg",
     "hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line",
     "max-xl:px-2",
     fit.offline && "max-2xl:px-2",
@@ -210,17 +218,18 @@ const ConnectionNotice = ({ fit, readAt }: { fit: Fit; readAt: string | null }) 
   const readAtText = readAt === null ? null : formatJst(readAt);
   const text = readAtText === null ? "サーバーにつながりません" : `サーバーにつながりません（${readAtText} に読んだ記録）`;
   return (
+    <WithTip text={text} align="start">
     <span
       role="status"
       // 押せない表示だが、キーボードでもツールチップの状態と読んだ日時を確かめられるようにフォーカスを受ける
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- 状態の表示をツールチップで読むため
       tabIndex={0}
-      className={cn("group/tip relative inline-grid size-8 flex-none place-items-center rounded-control text-topbar-fg focus-visible:outline-2 focus-visible:outline-mark-line", iconButtonFitClass(fit))}
+      className={cn("relative inline-grid size-8 flex-none place-items-center rounded-control text-topbar-fg focus-visible:outline-2 focus-visible:outline-mark-line", iconButtonFitClass(fit))}
     >
       <Icon name="offline" className="text-topbar-danger max-2xs:size-4.5" />
       <span className="sr-only">{text}</span>
-      <Tip text={text} align="start" />
     </span>
+    </WithTip>
   );
 };
 
@@ -228,6 +237,7 @@ const ConnectionNotice = ({ fit, readAt }: { fit: Fit; readAt: string | null }) 
 const RefreshButton = ({ fit, stale, refreshing, onClick }: { fit: Fit; stale: boolean; refreshing: boolean; onClick: () => void }) => {
   const text = stale ? "更新があります。最新の記録を読み込む" : "最新の記録を読み込む";
   return (
+    <WithTip text={text} align="start">
     <button
       type="button"
       aria-label={text}
@@ -235,14 +245,14 @@ const RefreshButton = ({ fit, stale, refreshing, onClick }: { fit: Fit; stale: b
       disabled={refreshing}
       onClick={onClick}
       className={cn(
-        "group/tip relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg disabled:cursor-default",
+        "relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg disabled:cursor-default",
         iconButtonFitClass(fit),
       )}
     >
       <Icon name={refreshing ? "spin" : "refresh"} className={cn(refreshing && "animate-spin")} />
       {stale ? <span aria-hidden="true" className="absolute top-1 right-1 size-2 rounded-full bg-topbar-unread ring-2 ring-topbar-bg" /> : null}
-      <Tip text={text} align="start" />
     </button>
+    </WithTip>
   );
 };
 
@@ -304,57 +314,61 @@ const Brand = ({ fit }: { fit: Fit }) => (
 
 /** 全体の検索の入口。虫眼鏡と、幅 901px 以上はキーの案内を出す */
 const SearchButton = ({ fit, onClick }: { fit: Fit; onClick: (() => void) | undefined }) => (
+  <WithTip text="すべての項目を検索" align="start">
   <button
     type="button"
     aria-label="すべての項目を検索"
     aria-keyshortcuts="Control+K Meta+K"
     onClick={onClick}
     className={cn(
-      "group/tip relative flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent pr-1.5 pl-2 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
+      "relative flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent pr-1.5 pl-2 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
       "max-lg:w-8 max-lg:justify-center max-lg:p-0",
       iconButtonFitClass(fit),
     )}
   >
     <Icon name="search" />
     <kbd className="rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden">{searchKey()}</kbd>
-    <Tip text="すべての項目を検索" align="start" />
   </button>
+  </WithTip>
 );
 
 /** 「変更履歴」のボタン */
 const HistoryButton = ({ fit, active, onClick }: { fit: Fit; active: boolean; onClick: () => void }) => (
+  <WithTip text={active ? "変更履歴（過去の差分を表示中）" : "変更履歴"} align="start">
   <button
     type="button"
     aria-haspopup="dialog"
     aria-label={active ? "変更履歴（過去の差分を表示中）" : "変更履歴"}
     onClick={onClick}
     className={cn(
-      "group/tip relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border border-topbar-line bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
+      "relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border border-topbar-line bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
       active && "text-topbar-fg",
       iconButtonFitClass(fit),
     )}
   >
     <Icon name="history" />
-    <Tip text={active ? "変更履歴（過去の差分を表示中）" : "変更履歴"} align="start" />
     {active ? <span aria-hidden="true" className="absolute -top-1 -right-1 size-2.5 rounded-full bg-diff-changed ring-2 ring-topbar-bg" /> : null}
   </button>
+  </WithTip>
 );
 
 /** 差分の表示をやめる × */
 const ClearDiffButton = ({ fit, onClick }: { fit: Fit; onClick: (() => void) | undefined }) => (
+  <WithTip text="差分の表示をやめる" align="start">
   <button
     type="button"
     aria-label="差分の表示をやめる"
     onClick={onClick}
-    className={cn("group/tip relative grid size-8 flex-none cursor-pointer place-items-center rounded-control text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg", iconButtonFitClass(fit))}
+    className={cn("relative grid size-8 flex-none cursor-pointer place-items-center rounded-control text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg", iconButtonFitClass(fit))}
   >
     <Icon name="x" />
-    <Tip text="差分の表示をやめる" align="start" />
   </button>
+  </WithTip>
 );
 
 /** 表示の設定のボタン */
 const SettingsButton = ({ fit, open, onClick }: { fit: Fit; open: boolean; onClick: () => void }) => (
+  <WithTip text="表示の設定" className={cn(fit.diff && "max-xl:ml-auto", fit.offline && fit.diff && "max-2xl:ml-auto")}>
   <Button
     variant="ghost"
     aria-label="表示の設定"
@@ -362,20 +376,21 @@ const SettingsButton = ({ fit, open, onClick }: { fit: Fit; open: boolean; onCli
     onClick={onClick}
     className={cn(
       panelButtonClass(fit, open),
-      fit.diff && "max-xl:ml-auto max-xl:px-1",
-      fit.offline && fit.diff && "max-2xl:ml-auto max-2xl:px-1",
+      fit.diff && "max-xl:px-1",
+      fit.offline && fit.diff && "max-2xl:px-1",
       fit.diff && "max-sm:px-1",
       fit.wide && (fit.diff || fit.offline) && "max-sm:px-0.5",
       "max-xs:px-0.5",
     )}
   >
     <Icon name="sliders" />
-    <Tip text="表示の設定" />
   </Button>
+  </WithTip>
 );
 
 /** 絞り込みのボタンと、値を選んでいる条件の数のバッジ */
 const FilterButton = ({ fit, count, open, onClick }: { fit: Fit; count: number; open: boolean; onClick: (() => void) | undefined }) => (
+  <WithTip text={count === 0 ? "絞り込み" : `絞り込み（${String(count)} つの条件）`}>
   <Button
     variant="ghost"
     aria-label={count === 0 ? "絞り込み" : `絞り込み（${String(count)} つの条件で絞り込み中）`}
@@ -384,7 +399,6 @@ const FilterButton = ({ fit, count, open, onClick }: { fit: Fit; count: number; 
     className={panelButtonClass(fit, open)}
   >
     <Icon name="filter" />
-    <Tip text={count === 0 ? "絞り込み" : `絞り込み（${String(count)} つの条件）`} />
     {count === 0 ? null : (
       <span
         aria-hidden="true"
@@ -395,6 +409,7 @@ const FilterButton = ({ fit, count, open, onClick }: { fit: Fit; count: number; 
       </span>
     )}
   </Button>
+  </WithTip>
 );
 
 /** 保存待ちのボタン（重ねた紙の印・「保存待ち」・件数） */
@@ -411,6 +426,7 @@ const PendingButton = ({
   blocked: boolean;
   onClick: (() => void) | undefined;
 }) => (
+  <WithTip text={blocked ? "保存待ち（書き込めない編集あり）" : "保存待ち"}>
   <Button
     variant="ghost"
     aria-label={`保存待ち（${String(count)} 件${blocked ? "・書き込めない編集あり" : ""}）`}
@@ -421,7 +437,6 @@ const PendingButton = ({
     <span className={cn("inline-grid place-items-center", blocked && "text-topbar-danger")}>
       <Icon name={blocked ? "alert" : "layers"} />
     </span>
-    <Tip text={blocked ? "保存待ち（書き込めない編集あり）" : "保存待ち"} />
     <span
       data-wide={count > COUNT_CAP ? "" : undefined}
       className={cn(
@@ -433,6 +448,7 @@ const PendingButton = ({
       {capped(count)}
     </span>
   </Button>
+  </WithTip>
 );
 
 /** コメントのボタン（吹き出しの印と未読の点・「コメント」・件数） */
@@ -449,6 +465,7 @@ const CommentsButton = ({
   unread: boolean;
   onClick: (() => void) | undefined;
 }) => (
+  <WithTip text={unread ? "コメント（未読あり）" : "コメント"}>
   <Button
     variant="ghost"
     aria-label={`コメント（${unread ? "未読あり・" : ""}レビュー中 ${String(count)} 件）`}
@@ -468,7 +485,6 @@ const CommentsButton = ({
         />
       ) : null}
     </span>
-    <Tip text={unread ? "コメント（未読あり）" : "コメント"} />
     <span
       data-wide={count > COUNT_CAP ? "" : undefined}
       className={cn(
@@ -480,18 +496,20 @@ const CommentsButton = ({
       {capped(count)}
     </span>
   </Button>
+  </WithTip>
 );
 
 /** 音声入力中の表示（コメントのボタンの左隣）。押すと録音中の入力欄へ移る */
 const VoiceButton = ({ voice, onClick }: { voice: TopbarVoice; onClick: (() => void) | undefined }) => {
   const recording = voice.state === "recording";
   return (
+    <WithTip text={recording ? `音声入力中（${voice.label}）` : `文字起こし中（${voice.label}）`}>
     <button
       type="button"
       aria-label={recording ? `音声入力中（${voice.label}）。録音中の入力欄へ移動` : `文字起こし中（${voice.label}）。入力欄へ移動`}
       onClick={onClick}
       className={cn(
-        "group/tip relative inline-flex h-8 min-w-8 flex-none cursor-pointer items-center justify-center gap-1.5 rounded-control border bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg hover:bg-topbar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mark-line",
+        "relative inline-flex h-8 min-w-8 flex-none cursor-pointer items-center justify-center gap-1.5 rounded-control border bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg hover:bg-topbar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mark-line",
         recording ? "border-topbar-danger" : "border-topbar-line",
         "max-xl:px-2 max-sm:gap-0 max-sm:px-0.5",
       )}
@@ -502,8 +520,8 @@ const VoiceButton = ({ voice, onClick }: { voice: TopbarVoice; onClick: (() => v
           {formatElapsed(voice.elapsed)}
         </span>
       ) : null}
-      <Tip text={recording ? `音声入力中（${voice.label}）` : `文字起こし中（${voice.label}）`} />
     </button>
+    </WithTip>
   );
 };
 
@@ -529,6 +547,7 @@ const VoiceNoticeBand = ({ notice, onOpen, onDismiss }: { notice: TopbarVoiceNot
 const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChange: ((theme: Theme) => void) | undefined }) => {
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
   return (
+    <WithTip text={theme === "dark" ? "ライトに切り替え" : "ダークに切り替え"}>
     <button
       type="button"
       data-theme={nextTheme}
@@ -537,13 +556,13 @@ const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChang
         onChange?.(nextTheme);
       }}
       className={cn(
-        "group/tip relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
+        "relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
         iconButtonFitClass(fit),
       )}
     >
       <Icon name={theme === "dark" ? "sun" : "moon"} />
-      <Tip text={theme === "dark" ? "ライトに切り替え" : "ダークに切り替え"} />
     </button>
+    </WithTip>
   );
 };
 
