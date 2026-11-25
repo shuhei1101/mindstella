@@ -1455,20 +1455,22 @@ def test_refresh_offline(open_story: OpenStory) -> None:
         pytest.param("shared-topbar--refresh-offline-voice-narrow", 481, id="offline-voice-w481"),
         pytest.param("shared-topbar--refresh-stale-voice-narrow", 481, id="stale-voice-w481"),
         pytest.param("shared-topbar--refresh-narrowest", 481, id="narrowest-w481"),
-        pytest.param("shared-topbar--refresh-offline-voice-narrow", 767, id="offline-voice-w767"),
-        pytest.param("shared-topbar--refresh-stale-voice-narrow", 767, id="stale-voice-w767"),
-        pytest.param("shared-topbar--refresh-narrowest", 767, id="narrowest-w767"),
+        pytest.param("shared-topbar--refresh-offline-voice-narrow", 720, id="offline-voice-w720"),
+        pytest.param("shared-topbar--refresh-stale-voice-narrow", 720, id="stale-voice-w720"),
+        pytest.param("shared-topbar--refresh-narrowest", 720, id="narrowest-w720"),
     ],
 )
 def test_refresh_narrow_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
-    """更新のボタンと、接続の状態・音声入力中の表示・差分の表示・件数が並んでも、詰める間の幅で収め、トップバーもページも横にはみ出さない（正常系）。"""
+    """更新のボタンと、接続の状態・音声入力中の表示・差分の表示・件数が並んでも、詰める間の幅と間隔 1px で収め、トップバーもページも横にはみ出さない（正常系）。"""
     # 準備
     page = open_story(story_id)
     page.set_viewport_size({"width": width, "height": NARROWEST_HEIGHT})
     page.wait_for_function(f"innerWidth === {width}")
     # 実行
     measured = page.evaluate(BUTTONS_FIT_SCRIPT)
+    spacing = page.evaluate("() => { const s = getComputedStyle(document.querySelector('header')); return [s.columnGap, s.paddingLeft]; }")
     # 検証
     assert page.locator(REFRESH_BUTTON).is_visible()
     assert page.locator("header button[aria-label^=音声入力中]").is_visible()
     assert measured == {"pageFits": True, "barFits": True, "outside": []}
+    assert spacing == ["1px", "4px" if width < 390 else "6px"]
