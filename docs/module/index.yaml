@@ -470,3 +470,5 @@ items:
     summary: プレビュー / record-text
   - page: MOD-701-2.ts.yaml
     summary: プレビュー / record-ids
+  - page: MOD-701-3.ts.yaml
+    summary: プレビュー / use-record-lookup

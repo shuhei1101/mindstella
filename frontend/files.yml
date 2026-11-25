@@ -2014,7 +2014,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: MOD-701-2
+  - to: MOD-701-3
     type: implements
 - path: src/testing/record-lookup.ts
   name: 見本の記録の ID の検索
