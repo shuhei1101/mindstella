@@ -62,18 +62,18 @@ export const Narrow: Story = {
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
 
-/** サーバーにつながらない。検索の入口の左に、印と読んだ日時つきの接続の状態を出す（全文が出る幅 1441px で見せる） */
+/** サーバーにつながらない。検索の入口の左にマーカーだけを出し、「サーバーにつながりません（{日時} に読んだ記録）」をツールチップと読み上げに持つ */
 export const Offline: Story = {
   args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
   parameters: {
     viewport: {
-      options: { wide: { name: "幅 1441px", styles: { width: "1441px", height: "900px" } } },
+      options: { wide: { name: "幅 1280px", styles: { width: "1280px", height: "900px" } } },
     },
   },
   globals: { viewport: { value: "wide", isRotated: false } },
 };
 
-/** 幅 390px でサーバーにつながらない。幅 900px 以下は印だけを見せ、「つながりません」は読み上げにだけ残して、読んだ日時を title に持つ */
+/** 幅 390px でサーバーにつながらない。`Offline` と同じくマーカーだけを出し、状態と読んだ日時をツールチップと読み上げに持つ */
 export const OfflineNarrow: Story = {
   args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
   parameters: {
@@ -574,4 +574,110 @@ export const VoiceFailed: Story = { args: { comments: true, commentCount: 3, voi
 /** 重なった ID の通知を出している。タブの帯の下に帯を出し、本文を下げる */
 export const DuplicateIds: Story = {
   args: { duplicateIds: [{ id: "D-12", kind: "検討事項" }], onOpenDuplicate: fn(), onCloseDuplicate: fn() },
+};
+
+/** 幅ごとのビューポート（更新のボタンのストーリーで使用する） */
+const refreshViewports = {
+  viewport: {
+    options: {
+      w320: { name: "幅 320px", styles: { width: "320px", height: "568px" } },
+      w390: { name: "幅 390px", styles: { width: "390px", height: "844px" } },
+      w1280: { name: "幅 1280px", styles: { width: "1280px", height: "800px" } },
+    },
+  },
+};
+
+/** つながっている間の更新のボタン。接続の状態の位置に回る矢印だけを出し、名前はツールチップと読み上げに持つ */
+export const Refresh: Story = {
+  args: { comments: true, commentCount: 3, filter: true, onToggleFilter: fn(), onRefresh: fn(), onOpenHistory: fn() },
+  parameters: refreshViewports,
+  globals: { viewport: { value: "w1280", isRotated: false } },
+};
+
+/** 反映を保留している間（入力中・音声入力中の書き換え）。更新のボタンの右上に点を出し、ツールチップは「更新があります」 */
+export const RefreshStale: Story = {
+  args: { comments: true, commentCount: 3, filter: true, onToggleFilter: fn(), onRefresh: fn(), onOpenHistory: fn(), stale: true },
+  parameters: refreshViewports,
+  globals: { viewport: { value: "w1280", isRotated: false } },
+};
+
+/** 接続し直して読み込み直している間。更新のボタンを回る読み込み中のアイコンにして押せなくする */
+export const Refreshing: Story = {
+  args: { comments: true, commentCount: 3, onRefresh: fn(), refreshing: true },
+  parameters: refreshViewports,
+  globals: { viewport: { value: "w1280", isRotated: false } },
+};
+
+/** サーバーにつながらない間。つながらない印のすぐ右に更新のボタンを出す */
+export const RefreshOffline: Story = {
+  args: { comments: true, commentCount: 3, filter: true, onToggleFilter: fn(), onRefresh: fn(), onOpenHistory: fn(), connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
+  parameters: refreshViewports,
+  globals: { viewport: { value: "w1280", isRotated: false } },
+};
+
+/** 幅 390px でつながらない間に音声入力中。つながらない印・更新のボタン・音声入力中の表示と経過時間が並んでも横にはみ出さない */
+export const RefreshOfflineVoiceNarrow: Story = {
+  args: {
+    comments: true,
+    commentCount: 3,
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    pending: true,
+    pendingCount: 4,
+    onTogglePending: fn(),
+    onRefresh: fn(),
+    onOpenHistory: fn(),
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    voice: { state: "recording", label: "TH-12 への返信", elapsed: 12 },
+    onOpenVoice: fn(),
+  },
+  parameters: refreshViewports,
+  globals: { viewport: { value: "w390", isRotated: false } },
+};
+
+/** 幅 390px で反映を保留したまま音声入力中。点つきの更新のボタン・音声入力中の表示が並んでも横にはみ出さない */
+export const RefreshStaleVoiceNarrow: Story = {
+  args: {
+    comments: true,
+    commentCount: 3,
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    pending: true,
+    pendingCount: 4,
+    onTogglePending: fn(),
+    onRefresh: fn(),
+    onOpenHistory: fn(),
+    stale: true,
+    voice: { state: "recording", label: "TH-12 への返信", elapsed: 12 },
+    onOpenVoice: fn(),
+  },
+  parameters: refreshViewports,
+  globals: { viewport: { value: "w390", isRotated: false } },
+};
+
+/** 幅 320px で全ての表示とボタンが並ぶ（つながらない・差分の表示・音声入力中・件数 99+）。横にはみ出さない */
+export const RefreshNarrowest: Story = {
+  args: {
+    comments: true,
+    commentCount: 120,
+    filter: true,
+    filterCount: 12,
+    onToggleFilter: fn(),
+    pending: true,
+    pendingCount: 4,
+    onTogglePending: fn(),
+    onRefresh: fn(),
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    voice: { state: "recording", label: "TH-12 への返信", elapsed: 12 },
+    onOpenVoice: fn(),
+  },
+  parameters: refreshViewports,
+  globals: { viewport: { value: "w320", isRotated: false } },
 };

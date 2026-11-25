@@ -11,3 +11,13 @@ describe("useConnectionStore.setConnection", () => {
     expect(useConnectionStore.getState().connection).toBe("offline");
   });
 });
+
+describe("useConnectionStore.setRefreshing", () => {
+  // 書き換える（正常系）
+  test("set_refreshing", () => {
+    // 実行
+    useConnectionStore.getState().setRefreshing(true);
+    // 検証
+    expect(useConnectionStore.getState().refreshing).toBe(true);
+  });
+});

@@ -441,17 +441,14 @@ def build_server(
         except (ArgumentError, NotMindStellaSessionError) as error:
             return error_result(error)
 
-        def run_and_mark(path: Path) -> dict[str, Any]:
-            """ツールの処理を呼び、MindStella のセッションのツールが成功したら書き込みのマーカーを付ける。"""
+        def run_and_discard(path: Path) -> dict[str, Any]:
+            """ツールの処理を呼び、書いたファイルを開いている画面の次の記録の取得で読み直させる。"""
             payload = run(path)
-            # 書いたファイルを、開いている画面の次の記録の取得で読み直させる
             previews.discard_records(path)
-            if tool is not None:
-                notify.mark_written(tool, workspaces.workspace_id_of(path), payload)
             return payload
 
         return call_tool(
-            lambda: run_and_mark(root),
+            lambda: run_and_discard(root),
             write_lock=write_lock,
             lock_root=root,
             lock_create=create,
@@ -589,10 +586,23 @@ def build_server(
             str, Field(description="このまとまりで何をしたかの一言の説明（1〜200 文字）")
         ],
         session: SessionArg = None,
+        hand_back: Annotated[
+            bool,
+            Field(
+                description="手番を利用者へ返す直前の commit なら true。成功したら作業の完了を通知する"
+            ),
+        ] = False,
     ) -> CallToolResult:
-        return write(
+        result = write(
             workspace, session, lambda root: commands.run_commit(root, summary), tool="commit"
         )
+        # 手番を返す commit が成功した: 鍵を放した後に作業の完了を通知する
+        if hand_back and not result.is_error:
+            workspace_id = workspaces.workspace_id_of(locate(workspace, session))
+            notify.notify_work_done(
+                workspace_id, lambda: sessions.describe_workspace(context, workspace_id)
+            )
+        return result
 
     @server.tool(
         name="pending",

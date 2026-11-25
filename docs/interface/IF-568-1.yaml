@@ -2,22 +2,20 @@ id: IF-568-1
 title: 作業の完了の通知
 entry:
   kind: trigger
-  value: 『MindStella のセッションの出来事の受け取り』が `stop` を記録して応答を返却した後
-lead: MindStella のセッションの 1 回の応答の間に AI がスレッドに書き込んだか commit したときに、応答の終わりで、利用者が用意した Webhook の設定のファイルの Discord の Webhook へ、作業が完了したことを 1 件送信する。
+  value: 『書き換えのまとまり』が `hand_back` を真にして成功し、結果を返却した後
+lead: MindStella のセッションが利用者に手番を返す直前の `commit` に成功したときに、利用者が用意した Webhook の設定のファイルの Discord の Webhook へ、作業が完了したことを 1 件送信する。
 test_file: tests/integration/server/test_work_done_notify.py
 idempotent: false
 side_effects: Discord の Webhook へ 1 件の `POST`。送信の結果を標準エラーへ 1 行記録する（Webhook の URL を含めない）
 callers:
-  - IF-531-6#
-exclusivity: 送信は常駐サーバーの中の別のスレッド（`daemon` のスレッド）で行い、出来事の受け取りの応答と常駐サーバーの停止を待たせない。書き込みのマーカーは、MindStella のセッションごとに `stop` 1 回につき 1 回だけ確認して解除する
+  - IF-489-43#
+exclusivity: 送信は常駐サーバーの中の別のスレッド（`daemon` のスレッド）で行い、`commit` の結果の返却と常駐サーバーの停止を待たせない
 exceptions:
   - name: なし（正常終了）
     condition: 送信した・送信しなかった・送信に失敗した、のどれでも例外を出さない
 constraints:
   - item: 通知するか
-    constraint: MindStella のセッションに限る MCP のツールのうち `commit`・`new_thread`・`reply` が成功したときに、呼んだ MindStella のセッションに「この応答で書き込んだ」マーカーを常駐サーバーのメモリで付ける。応答の終わり（`stop`）でマーカーがあれば送信し、無ければ送信しない。停止の工程・画面の保存・変更の検知が作るまとまりと、`set_thread_status`・`update_thread` はマーカーを付けない。常駐サーバーが応答の途中で再起動したときはマーカーが消え、その応答では送信しない
-  - item: 書き込みのマーカーを解除するとき
-    constraint: '`prompt_submit`・`stop`（調べた後）・`stop_failure`・`session_end` を受けたときに解除する。`stop_failure`・`session_end` では送信しない'
+    constraint: MindStella のセッションが『書き換えのまとまり』を `hand_back` を真にして呼び、成功したときだけ 1 件送信する（まとめる書き換えが無く、まとまりを追加しなかったときも送信する）。`hand_back` が偽の `commit`・スレッドの書き込み・応答の終了（`stop`・`stop_failure`）・MindStella のセッションの終了・停止の工程と画面の保存と変更の検知が作るまとまりでは送信しない
   - item: 本文
     constraint: '`{ワークスペースの名前}: 作業が完了しました` と `{画面の URL}` の 2 行。絵文字を使用しない。ワークスペースの名前は `config.yaml` の題名（`summary`）で、空ならフォルダの名前。画面の URL は『ワークスペースの作成』の `url` と同じで、配信が無く画面の URL が無いときは 1 行目だけにする。本文が 2000 文字を超えるときは、ワークスペースの名前を切り詰めて 2000 文字以内にする'
   - item: 送信の方法
@@ -31,7 +29,7 @@ constraints:
     constraint: Webhook の URL を、標準エラー・応答・ワークスペース・状態のフォルダに記録しない。失敗の行に記録するのは、ステータスコードか失敗の種類（接続できない・上限を過ぎた・設定を参照できない）だけ
 flows:
   - name: 正常系
-    summary: 応答の間に AI がスレッドに返信したので、応答の終わりに 1 件送信する
+    summary: 手番を返す直前の commit が成功したので、1 件送信する
     setup:
       - name: Mock
         description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。受けた要求を記録して 200 を返却する）
@@ -43,16 +41,14 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant EV as POST /_admin/sessions/{session}/events
+        participant CM as commit（MCP のツール）
         participant IF as 作業の完了の通知
         participant DC as Discord
 
-        クライアント->>EV: prompt_submit
-        EV->>EV: 書き込みのマーカーを解除する
-        クライアント->>MCP: MindStella のセッションとして reply を呼ぶ
-        クライアント->>EV: stop
-        EV-->>クライアント: 200 recorded: true
-        EV->>IF: 書き込みのマーカー
+        クライアント->>CM: MindStella のセッションとして reply を呼ぶ
+        クライアント->>CM: MindStella のセッションとして commit を hand_back true で呼ぶ
+        CM-->>クライアント: 結果
+        CM->>IF: 呼ぶ
         IF->>DC: POST ?wait=true content
         DC-->>IF: 200
       ```
@@ -61,11 +57,11 @@ flows:
       - '`content` が `{題名}: 作業が完了しました` と画面の URL の 2 行である'
       - 標準エラーに送信の成功の行があり、エンドポイントの URL を含まない
     test: test_normal
-  - name: 正常系（commit だけの応答）
-    summary: 応答の間に AI が commit だけしたときも 1 件送信する
+  - name: 正常系（作業の途中の commit）
+    summary: hand_back を指定しない commit と、スレッドの書き込みでは送信しない
     setup:
       - name: Mock
-        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。200 を返却する）
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。受けた要求を記録して 200 を返却する）
       - name: 常駐サーバー
         description: 正常系と同じ
       - name: 状態
@@ -74,49 +70,20 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant EV as POST /_admin/sessions/{session}/events
-        participant IF as 作業の完了の通知
-        participant DC as Discord
+        participant CM as commit（MCP のツール）
 
-        クライアント->>EV: prompt_submit
-        クライアント->>MCP: MindStella のセッションとして commit を呼ぶ
-        クライアント->>EV: stop
-        EV->>IF: 書き込みのマーカー
-        IF->>DC: POST ?wait=true content
-        DC-->>IF: 200
-      ```
-    expected:
-      - エンドポイントが 1 件の要求を受けている
-    test: test_normal_when_commit_only
-  - name: 正常系（書き込みが無い）
-    summary: MindStella のセッションが commit・new_thread・reply を呼ばなかった応答では送信しない
-    setup:
-      - name: Mock
-        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）
-      - name: 常駐サーバー
-        description: 正常系と同じ
-      - name: 状態
-        description: '正常系と同じ。応答の間に、停止の工程と同じ `run_commit` で `by: ai` のまとまりを作り、利用者の書き込みを追加する（MindStella のセッションは MCP のツールを呼ばない）'
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant EV as POST /_admin/sessions/{session}/events
-        participant IF as 作業の完了の通知
-
-        クライアント->>EV: prompt_submit
-        クライアント->>EV: stop
-        EV->>IF: 書き込みのマーカー
-        IF->>IF: マーカーが無いので送信しない
+        クライアント->>CM: MindStella のセッションとして reply を呼ぶ
+        クライアント->>CM: MindStella のセッションとして commit を呼ぶ（hand_back なし）
+        CM-->>クライアント: 結果
       ```
     expected:
       - エンドポイントが要求を受けていない
-    test: test_normal_when_nothing_written
-  - name: 正常系（エラーで終わった応答）
-    summary: stop_failure で終わった応答では送信せず、書き込みのマーカーを解除する
+    test: test_normal_when_committed_during_work
+  - name: 正常系（応答の終了）
+    summary: commit の後に応答の終了（stop）を受けても送信しない
     setup:
       - name: Mock
-        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。受けた要求を記録して 200 を返却する）
       - name: 常駐サーバー
         description: 正常系と同じ
       - name: 状態
@@ -125,20 +92,16 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
+        participant CM as commit（MCP のツール）
         participant EV as POST /_admin/sessions/{session}/events
-        participant IF as 作業の完了の通知
 
-        クライアント->>EV: prompt_submit
-        クライアント->>MCP: MindStella のセッションとして reply を呼ぶ
-        クライアント->>EV: stop_failure
-        EV->>EV: 書き込みのマーカーを解除する
+        クライアント->>CM: MindStella のセッションとして commit を呼ぶ（hand_back なし）
         クライアント->>EV: stop
-        EV->>IF: 書き込みのマーカーが無い
-        IF->>IF: 送信しない
+        EV-->>クライアント: 200 recorded: true
       ```
     expected:
       - エンドポイントが要求を受けていない
-    test: test_normal_when_response_failed
+    test: test_normal_when_response_stopped
   - name: 正常系（Webhook の設定が無い）
     summary: 環境変数が無いときは送信しない
     setup:
@@ -152,22 +115,20 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant EV as POST /_admin/sessions/{session}/events
+        participant MCP as commit（MCP のツール）
         participant IF as 作業の完了の通知
 
-        クライアント->>EV: prompt_submit
-        クライアント->>MCP: MindStella のセッションとして reply を呼ぶ
-        クライアント->>EV: stop
-        EV-->>クライアント: 200 recorded: true
-        EV->>IF: 書き込みのマーカー
+        クライアント->>MCP: MindStella のセッションとして commit を hand_back true で呼ぶ
+        MCP-->>クライアント: 結果
+        MCP->>IF: 呼ぶ
         IF->>IF: 設定が無いので送信しない
       ```
     expected:
-      - '`stop` の応答が 200 で `recorded` が真'
+      - '`commit` がツールのエラーにならない'
       - 標準エラーに送信の行が無い
     test: test_normal_when_webhook_not_configured
   - name: 異常系（送信の失敗・なし）
-    summary: Webhook が 500 を返却しても出来事の受け取りは成功し、失敗を URL を含めずに記録する
+    summary: Webhook が 500 を返却しても commit は成功し、失敗を URL を含めずに記録する
     setup:
       - name: Mock
         description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。500 を返却する）
@@ -179,26 +140,24 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant EV as POST /_admin/sessions/{session}/events
+        participant MCP as commit（MCP のツール）
         participant IF as 作業の完了の通知
         participant DC as Discord
 
-        クライアント->>EV: prompt_submit
-        クライアント->>MCP: MindStella のセッションとして reply を呼ぶ
-        クライアント->>EV: stop
-        EV-->>クライアント: 200 recorded: true
-        EV->>IF: 書き込みのマーカー
+        クライアント->>MCP: MindStella のセッションとして commit を hand_back true で呼ぶ
+        MCP-->>クライアント: 結果
+        MCP->>IF: 呼ぶ
         IF->>DC: POST ?wait=true content
         DC-->>IF: 500
         IF->>IF: 標準エラーに失敗を 1 行記録する
       ```
     expected:
-      - '`stop` の応答が 200 で `recorded` が真'
+      - '`commit` がツールのエラーにならない'
       - エンドポイントが 1 件だけ要求を受けている（再送信しない）
       - 標準エラーに `500` を含む失敗の行があり、エンドポイントの URL を含まない
     test: test_error_when_send_failed
   - name: 異常系（送信を待つ上限・なし）
-    summary: Webhook が上限まで応答しないときは打ち切り、出来事の受け取りを待たせない
+    summary: Webhook が上限まで応答しないときは打ち切り、commit の結果を待たせない
     setup:
       - name: Mock
         description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。上限より長く応答しない）
@@ -210,25 +169,23 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant EV as POST /_admin/sessions/{session}/events
+        participant MCP as commit（MCP のツール）
         participant IF as 作業の完了の通知
         participant DC as Discord
 
-        クライアント->>EV: prompt_submit
-        クライアント->>MCP: MindStella のセッションとして reply を呼ぶ
-        クライアント->>EV: stop
-        EV-->>クライアント: 200 recorded: true
-        EV->>IF: 書き込みのマーカー
+        クライアント->>MCP: MindStella のセッションとして commit を hand_back true で呼ぶ
+        MCP-->>クライアント: 結果
+        MCP->>IF: 呼ぶ
         IF->>DC: POST ?wait=true content
         IF->>IF: 上限で打ち切り、標準エラーに失敗を 1 行記録する
       ```
     expected:
-      - '`stop` の応答が、送信の結果を待たずに 200 で返っている'
+      - '`commit` の結果が、送信の結果を待たずに返っている'
       - 標準エラーに上限を過ぎた失敗の行があり、エンドポイントの URL を含まない
     test: test_error_when_send_timed_out
 refs:
-  - IF-531-6#
   - API-568-1#
   - SC-568-1#
   - CFG-489-1#
   - NFR-489-1#
+  - IF-489-43#

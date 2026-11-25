@@ -1,0 +1,14 @@
+# 単体テスト（全 pass）
+# commit: b2bf6063
+# 実行日時: 2026-11-25 16:58:06 JST
+# tests/unit/scripts/test_serve.py::test_stream は origin/develop（4fe2d1b8）でも終わらずに止まるため外して実行した（#704）。--deselect は前方一致で test_stream_events・test_stream_events_when_idle も外すため、2 件は別に実行した
+
+$ pytest tests/unit --deselect tests/unit/scripts/test_serve.py::test_stream
+1735 passed, 1 skipped, 3 deselected, 5 warnings in 30.10s
+
+$ pytest tests/unit/scripts/test_serve.py -k "test_stream_"
+2 passed, 149 deselected in 0.10s
+
+$ npx vitest run
+ Test Files  108 passed (108)
+      Tests  536 passed (536)

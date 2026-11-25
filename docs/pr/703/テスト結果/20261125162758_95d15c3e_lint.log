@@ -1,0 +1,16 @@
+# lint
+# commit: 95d15c3e
+# 実行日時: 2026-11-25 16:27:58 JST
+# eslint は NODE_OPTIONS=--max-old-space-size=6144 を付けて実行した（付けずに実行するとメモリが足りず終了コード 137 で止まる）
+
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p frontend
+
+
+> lint
+> eslint frontend/src
+
+exit 0

@@ -6,7 +6,7 @@ components:
     title: スレッド
     kind: 画面
     usecase: スレッドで話す
-    summary: 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする。返信を溜めたら、`ReplyForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら返信の入力の「レビューに追加」へ、`input` なら入力欄へフォーカスを移す
+    summary: '画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする。「状態を変える」は理由の入力の状態を持たず、押したら `reason: null` で状態の書き換えを呼ぶ（失敗の理由だけを状態に持ち、次に押したときに削除する）。クローズにできたら props の `onClosed` を呼び（一覧へ戻るのは使う側）、オープンに戻したらスレッドを再読み込みして「状態を変える」へフォーカスを戻す。返信を溜めたら、`ReplyForm` に渡した `formRef` の form で `focusAfterAdded` を呼び、`useFocusAfterAddTarget` が `submit` なら返信の入力の「レビューに追加」へ、`input` なら入力欄へフォーカスを移す'
     refs:
       - SCR-489-4#
     unit_tests:
@@ -22,18 +22,6 @@ components:
         condition: '`POST /api/threads/TH-1/seen` が 500 で、再読み込みした TH-1 が未読のまま'
         mock: MSW
         expected: 開いている間は `POST /api/threads/TH-1/seen` が 1 回だけで、一覧へ戻って再度開くと 2 回目が呼ばれる
-      - name: test_thread_view_when_close
-        case: 正常
-        summary: クローズにする
-        condition: 理由を書いて確定
-        mock: MSW
-        expected: '`PATCH /api/threads/TH-1` が `status: closed` と理由で呼ばれる'
-      - name: test_thread_view_when_close_focus
-        case: 正常
-        summary: クローズにした後、「オープンに戻す」へフォーカスを戻す
-        condition: 理由を入力して確定し、再描画より先に次のコマが来る
-        mock: MSW と `vi.stubGlobal`
-        expected: 再描画した「オープンに戻す」にフォーカスがある
       - name: test_thread_view_when_voice
         case: 正常
         summary: 音声で返信を送信する
@@ -76,6 +64,24 @@ components:
         condition: TH-1 を開いたまま `requestPost('TH-1-1')` と `revealPost('TH-1-1')` を呼ぶ
         mock: MSW・`scrollIntoView` の差し替え
         expected: "`takeRequestedPost('TH-1')` が `null`"
+      - name: test_thread_view_when_close
+        case: 正常
+        summary: 理由を聞かずにクローズにし、一覧へ戻るよう使う側へ知らせる
+        condition: オープンの TH-1 で「クローズにする」を押す
+        mock: MSW
+        expected: '理由の入力欄が出ず、`PATCH /api/threads/TH-1` が `{status: closed, reason: null}` で 1 回呼ばれ、`onClosed` が 1 回呼ばれる'
+      - name: test_thread_view_when_reopen_focus
+        case: 正常
+        summary: オープンに戻した後、この画面に留まり「クローズにする」へフォーカスを戻す
+        condition: クローズの TH-1 で「オープンに戻す」を押し、再描画より先に次のコマが来る
+        mock: MSW と `vi.stubGlobal`
+        expected: '`PATCH` が `{status: open, reason: null}` で呼ばれ、`onClosed` が呼ばれず、再描画した「クローズにする」にフォーカスがある'
+      - name: test_thread_view_when_status_failed
+        case: 異常
+        summary: 状態を変えられなかったら理由を出し、画面に留まる
+        condition: '`PATCH /api/threads/TH-1` が 409（`detail` あり）で「クローズにする」を押し、続けてもう一度押す'
+        mock: MSW
+        expected: '`role="alert"` に「クローズにできませんでした。{detail}」が出て `onClosed` が呼ばれず、もう一度押すと送信の前に理由が消える'
     container: frontend/src/features/comments/thread/thread-view.tsx
 notes:
   単体テスト: 同じフォルダの `thread-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { checkVoiceDestination, connectEvents } from "@/shared/adapters/events-client";
+import { checkVoiceDestination, connectEvents, reconnectEvents } from "@/shared/adapters/events-client";
 import { useConnectionStore } from "@/shared/stores/connection-store";
 import { useDuplicateIdsStore } from "@/shared/stores/duplicate-ids-store";
 import { useRefreshHoldStore } from "@/shared/stores/refresh-hold-store";
@@ -66,6 +66,26 @@ describe("connectEvents", () => {
     // 検証
     expect(afterError).toBe("offline");
     expect(useConnectionStore.getState().connection).toBe("online");
+  });
+
+  // 閉じた接続は画面をもう一度表示したときに作り直す（正常系）
+  test("connect_events_when_visible_after_closed", () => {
+    // 準備
+    const close = connectEvents(new QueryClient());
+    const first = FakeEventSource.last;
+    if (first === undefined) throw new Error("EventSource が作られていない");
+    first.readyState = FakeEventSource.CLOSED;
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    // 実行
+    document.dispatchEvent(new Event("visibilitychange"));
+    const second = FakeEventSource.last;
+    document.dispatchEvent(new Event("visibilitychange"));
+    const third = FakeEventSource.last;
+    close();
+    // 検証
+    expect(first.closed).toBe(true);
+    expect(second).not.toBe(first);
+    expect(third).toBe(second);
   });
 
   // duplicate_ids で重なった ID のストアを書き換える（正常系）
@@ -142,5 +162,48 @@ describe("checkVoiceDestination", () => {
     // 検証
     expect(readVoiceState().session?.key).toBe("T-1#");
     expect(readVoiceState().notice).toBeNull();
+  });
+});
+
+describe("reconnectEvents", () => {
+  beforeEach(() => {
+    vi.stubGlobal("EventSource", FakeEventSource);
+    useConnectionStore.setState({ connection: "online", refreshing: false });
+  });
+
+  // 接続中でも作り直して再読み込みする（正常系）
+  test("reconnect_events", () => {
+    // 準備
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const close = connectEvents(queryClient);
+    const first = FakeEventSource.last;
+    first?.emit("open");
+    invalidate.mockClear();
+    // 実行
+    reconnectEvents();
+    const refreshingAfterCall = useConnectionStore.getState().refreshing;
+    const second = FakeEventSource.last;
+    second?.emit("open");
+    close();
+    // 検証
+    expect(first?.closed).toBe(true);
+    expect(second).not.toBe(first);
+    expect(refreshingAfterCall).toBe(true);
+    expect(useConnectionStore.getState().refreshing).toBe(false);
+    expect(recordsInvalidations(invalidate)).toBe(1);
+  });
+
+  // つないでいなければ何もしない（正常系）
+  test("reconnect_events_when_not_connected", () => {
+    // 準備
+    const close = connectEvents(new QueryClient());
+    close();
+    const before = FakeEventSource.last;
+    // 実行
+    reconnectEvents();
+    // 検証
+    expect(FakeEventSource.last).toBe(before);
+    expect(useConnectionStore.getState().refreshing).toBe(false);
   });
 });

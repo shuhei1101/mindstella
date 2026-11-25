@@ -52,7 +52,7 @@ args:
     type: 文字列
     required: false
     enabled_when: '`connection` が `offline` のとき'
-    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1440px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 900px 以下はマーカーだけを見せて文言を読み上げにだけ残す
+    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。どの幅でも接続の状態はマーカーだけにし、「サーバーにつながりません（{日時} に読んだ記録）」（日時は JST の `MM/DD HH:mm`）をツールチップと読み上げに持たせる
   - name: tabs[].marked
     type: 真偽値
     required: false
@@ -74,7 +74,7 @@ args:
     default: '0'
     choices: 0 以上
     enabled_when: '`comments` が `true` のとき'
-    description: レビュー中のコメントの件数。マーカーと「コメント」の右に出す。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない。99 を超えたら件数の札に幅の広い中身のマーカー `data-wide` を付ける
+    description: レビュー中のコメントの件数。吹き出しのマーカーの右に出す（詰める間はマーカーの右上に重ねる）。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない。99 を超えたら件数の札に幅の広い中身のマーカー `data-wide` を付ける
   - name: commentsOpen
     type: 真偽値
     required: false
@@ -95,7 +95,7 @@ args:
     default: '0'
     choices: 0 以上
     enabled_when: '`filter` が `true` のとき'
-    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけマーカーの色のバッジで「絞り込み」の右に出し、0 のときはバッジを出さない。10 以上のときはバッジに幅の広い中身のマーカー `data-wide` を付ける
+    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけマーカーの色のバッジで絞り込みのマーカーの右に出し（詰める間はマーカーの右上に重ねる）、0 のときはバッジを出さない。10 以上のときはバッジに幅の広い中身のマーカー `data-wide` を付ける
   - name: filterOpen
     type: 真偽値
     default: 'false'
@@ -111,14 +111,14 @@ args:
     type: 真偽値
     required: false
     default: 'false'
-    description: 保存待ちのボタンを出すか。サーバーの配信で保存待ちの編集が 1 件以上あるとき true、配る書き出しと差分の表示の間は false。出すときは絞り込みのボタンとコメントのボタンの間に置き、幅 1100px 以下は「保存待ち」の文字を隠してマーカーと件数だけにする。幅 480px 以下で出している間はツール名の文字を隠して幅を回す
+    description: 保存待ちのボタンを出すか。サーバーの配信で保存待ちの編集が 1 件以上あるとき true、配る書き出しと差分の表示の間は false。出すときは絞り込みのボタンとコメントのボタンの間に置き、マーカーと件数だけを出す。幅 480px 以下で出している間はツール名の文字を隠して幅を回す
   - name: pendingCount
     type: 整数
     required: false
     default: '0'
     choices: 1 以上
     enabled_when: '`pending` が `true` のとき'
-    description: 保存待ちの編集の件数。重ねた紙のアイコンと「保存待ち」の右にマーカーの色の塗りで出す。99 を超えたら `99+` にして幅を揺らさず、件数の札に幅の広い中身のマーカー `data-wide` を付ける
+    description: 保存待ちの編集の件数。重ねた紙のアイコンの右に（詰める間はアイコンの右上に重ねて）マーカーの色の塗りで出す。99 を超えたら `99+` にして幅を揺らさず、件数の札に幅の広い中身のマーカー `data-wide` を付ける
   - name: pendingOpen
     type: 真偽値
     required: false
@@ -135,7 +135,7 @@ args:
     type: オブジェクト
     required: false
     default: なし（出さない）
-    description: 音声入力中の入力欄。`state`（recording・transcribing）・`label`（入力欄の名前。「{ID} へのコメント」「新規スレッド」「{スレッド} への返信」「{ID} へのコメントの修正」「{スレッド} への返信の修正」）・`elapsed`（録音を始めてからの秒数）を持つ。あるとき、コメントのボタンの左隣に失敗の色（`--red-300`）の枠のボタンを出す。recording は失敗の色のマイクのアイコン・「音声入力中」・`elapsed` を `m:ss`、transcribing は回るマーカー・「文字起こし中」で枠をトップバーの線の色にする。幅 1100px 以下は文字を隠してアイコンと時間、幅 480px 以下はアイコンだけにする。配る書き出しでは渡さない
+    description: 音声入力中の入力欄。`state`（recording・transcribing）・`label`（入力欄の名前。「{ID} へのコメント」「新規スレッド」「{スレッド} への返信」「{ID} へのコメントの修正」「{スレッド} への返信の修正」）・`elapsed`（録音を始めてからの秒数）を持つ。あるとき、コメントのボタンの左隣に失敗の色（`--red-300`）の枠のボタンを出す。recording は失敗の色のマイクのアイコンと `elapsed` の `m:ss`、transcribing は回るマーカーで枠をトップバーの線の色にし、「音声入力中」「文字起こし中」の文字は出さない。幅 480px 以下はアイコンだけにする。配る書き出しでは渡さない
   - name: voiceNotice
     type: オブジェクト
     required: false
@@ -146,6 +146,16 @@ args:
     required: false
     default: '`[]`（通知を出さない）'
     description: '重なった ID と種類の名前（`{id, kind}`）。空でなければ、タブの帯の下に重なった ID の通知を出す（『書き換えの通知』の `event: duplicate_ids` から使う側が組み立て、閉じたら重なった ID の集まりが変わるまで空を渡す）'
+  - name: stale
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 書き換えの通知の反映を保留しているか（入力中・音声入力中の書き換え）。真のとき、更新のボタンの右上に点を重ね、ツールチップと読み上げの名前を「更新があります。最新の記録を読み込む」にする
+  - name: refreshing
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 接続し直して読み込み直している間か。真のとき、更新のボタンのアイコンを回るマーカーにし、`aria-busy` を付けて押せなくする
 events:
   - name: 画面を移る
     when: タブを押したとき
@@ -202,6 +212,10 @@ events:
   - name: 重なった ID の通知を閉じる
     when: 重なった ID の通知の閉じるボタンを押したとき
     description: 使う側が通知を隠し、重なった ID の集まりが変わるまで `duplicateIds` に空を渡す
+  - name: 更新する
+    when: 更新のボタンを押したとき（接続中でも押せる）
+    value: '`onRefresh()`'
+    description: 使う側が書き換えの通知の接続（`EventSource`）を閉じて作り直し、記録を読み込み直す。開いている項目・絞り込み・入力中のコメントは保つ。渡さないと更新のボタンを出さない（配る書き出し）。更新のボタンは接続の状態のすぐ右（つながっている間はその位置）に出し、回る矢印のアイコンとツールチップ・読み上げの名前「最新の記録を読み込む」を持つ
 states:
   - name: DuplicateIds
     description: 重なった ID の通知を出している。タブの帯の下に帯を出し、本文を下げる
@@ -228,16 +242,16 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 390px にして確かめる
   - name: Offline
-    description: サーバーにつながらない。検索の入口の左に、マーカーと「サーバーにつながりません（{日時} に読んだ記録）」を出す。マーカーを `--red-300`、文言をトップバーの文字色（`--topbar-fg`）で出す
+    description: サーバーにつながらない。検索の入口の左に `--red-300` のマーカーだけを出し、「サーバーにつながりません（{日時} に読んだ記録）」をツールチップと読み上げに持つ
     args:
       - name: connection
         value: offline
       - name: readAt
         value: '2026-10-04T02:21:00+00:00'
     notes:
-      見せ方: Storybook（React）の画面幅を 1441px にして見せる（幅 1440px 以下は「つながりません」だけになる）
+      見せ方: Storybook（React）の画面幅を 1280px にして見せる
   - name: OfflineNarrow
-    description: 幅 390px でサーバーにつながらない。マーカーだけを出し、「つながりません」を読み上げに、読んだ日時を `title` に持つ
+    description: 幅 390px でサーバーにつながらない。`Offline` と同じくマーカーだけを出し、状態と読んだ日時をツールチップと読み上げに持つ
     args:
       - name: connection
         value: offline
@@ -294,7 +308,7 @@ states:
       - name: commentsOpen
         value: 'true'
   - name: CommentsNarrow
-    description: 幅 390px。コメントのボタンの文字を隠し、マーカーと件数だけにする
+    description: 幅 390px。コメントのボタンは、ほかの幅と同じくマーカーと件数だけ
     args:
       - name: comments
         value: 'true'
@@ -335,7 +349,7 @@ states:
       - name: commentCount
         value: '2'
   - name: FilterOn
-    description: 2 つの条件で絞り込み中。「絞り込み」の右にマーカーの色のバッジ「2」を出す
+    description: 2 つの条件で絞り込み中。絞り込みのマーカーの右にマーカーの色のバッジ「2」を出す
     args:
       - name: filter
         value: 'true'
@@ -359,7 +373,7 @@ states:
       - name: commentCount
         value: '2'
   - name: FilterNarrow
-    description: 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする（幅 1100px 以下で同じ）
+    description: 幅 390px。絞り込みのボタンは、ほかの幅と同じくアイコンとバッジだけ
     args:
       - name: filter
         value: 'true'
@@ -370,7 +384,7 @@ states:
       - name: commentCount
         value: '2'
   - name: FilterDiffMedium
-    description: 幅 901〜1100px で、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 900px 以下と同じく、3 つのボタンと「変更履歴」の文字を隠してアイコン（件数・バッジは残す）だけにし、トップバーもページも横にはみ出さない。幅 1101px 以上ではボタンの文字を出す
+    description: 幅 901〜1100px で、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。3 つのボタンと変更履歴のボタンはアイコン（件数・バッジは残す）だけで、トップバーもページも横にはみ出さない
     args:
       - name: filter
         value: 'true'
@@ -385,7 +399,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 901px・963px・1100px にして見せる
   - name: FilterDiffOffline
-    description: サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 901〜1440px では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない
+    description: サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 901〜1440px で接続の状態のマーカーと更新のボタンを並べても、トップバーもページも横にはみ出さない
     args:
       - name: connection
         value: offline
@@ -660,7 +674,7 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 390px・480px にして見せる
   - name: Pending
-    description: 保存待ちが 5 件。絞り込みとコメントのボタンの間に、重ねた紙のアイコン・「保存待ち」・マーカーの色の塗りの件数「5」を出す
+    description: 保存待ちが 5 件。絞り込みとコメントのボタンの間に、重ねた紙のアイコンとマーカーの色の塗りの件数「5」を出し、「保存待ち」はツールチップと読み上げに持つ
     args:
       - name: pending
         value: 'true'
@@ -702,7 +716,7 @@ states:
       - name: comments
         value: 'true'
   - name: PendingNarrow
-    description: 幅 390px。保存待ちのボタンの文字を隠してマーカーと件数だけにし、ツール名の文字を隠す（マーカーは残す）。絞り込み・表示の設定・コメント・変更履歴のボタンを 1 つも隠さず、トップバーもページも横にはみ出さない
+    description: 幅 390px。保存待ちのボタンはマーカーと件数だけのまま、ツール名の文字を隠す（マーカーは残す）。絞り込み・表示の設定・コメント・変更履歴のボタンを 1 つも隠さず、トップバーもページも横にはみ出さない
     args:
       - name: pending
         value: 'true'
@@ -728,12 +742,12 @@ states:
       - name: commentCount
         value: '120'
   - name: VoiceRecording
-    description: 録音中。コメントのボタンの左隣に、失敗の色の枠・マイクのアイコン・「音声入力中」・経過の時間のボタンを出す
+    description: 録音中。コメントのボタンの左隣に、失敗の色の枠・マイクのアイコン・経過の時間のボタンを出し、「音声入力中」はツールチップと読み上げに持つ
     args:
       - name: voice
         value: '{"state": "recording", "label": "D-022 へのコメント", "elapsed": 12}'
   - name: VoiceTranscribing
-    description: 文字起こし中。アイコンを回るマーカーに替え、「文字起こし中」にして、枠をトップバーの線の色にする
+    description: 文字起こし中。アイコンを回るマーカーに替え、ツールチップと読み上げを「文字起こし中」にして、枠をトップバーの線の色にする
     args:
       - name: voice
         value: '{"state": "transcribing", "label": "D-022 へのコメント"}'
@@ -754,23 +768,120 @@ states:
     args:
       - name: voiceNotice
         value: '{"kind": "failed", "text": "D-022 へのコメントをレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。"}'
+  - name: Refresh
+    description: つながっている間。接続の状態の位置に回る矢印の更新のボタンだけを出し、名前「最新の記録を読み込む」はツールチップと読み上げに持つ
+    notes:
+      見せ方: Storybook（React）の画面幅を 1280px にして見せる
+  - name: RefreshStale
+    description: 反映を保留している間。更新のボタンの右上に点を重ね、ツールチップと読み上げの名前を「更新があります。最新の記録を読み込む」にする
+    args:
+      - name: stale
+        value: 'true'
+    notes:
+      見せ方: Storybook（React）の画面幅を 1280px にして見せる
+  - name: Refreshing
+    description: 接続し直して読み込み直している間。更新のボタンを回るマーカーにして押せなくする
+    args:
+      - name: refreshing
+        value: 'true'
+    notes:
+      見せ方: Storybook（React）の画面幅を 1280px にして見せる
+  - name: RefreshOffline
+    description: サーバーにつながらない間。接続の状態のマーカーのすぐ右に更新のボタンを出す
+    args:
+      - name: connection
+        value: offline
+      - name: readAt
+        value: '2026-10-04T02:21:00+00:00'
+    notes:
+      見せ方: Storybook（React）の画面幅を 1280px にして見せる
+  - name: RefreshOfflineVoiceNarrow
+    description: 幅 390px で、つながらず音声入力中。接続の状態・更新のボタン・音声入力中の表示が並んでも詰める間の幅で収め、トップバーもページも横にはみ出さない
+    args:
+      - name: comments
+        value: 'true'
+      - name: commentCount
+        value: '3'
+      - name: filter
+        value: 'true'
+      - name: filterCount
+        value: '2'
+      - name: pending
+        value: 'true'
+      - name: pendingCount
+        value: '4'
+      - name: connection
+        value: offline
+      - name: readAt
+        value: '2026-10-04T02:21:00+00:00'
+      - name: voice
+        value: '{"state": "recording", "label": "TH-12 への返信", "elapsed": 12}'
+    notes:
+      見せ方: Storybook（React）の画面幅を 390px にして見せる
+  - name: RefreshStaleVoiceNarrow
+    description: 幅 390px で、反映を保留したまま音声入力中。点つきの更新のボタンと音声入力中の表示が並んでも横にはみ出さない
+    args:
+      - name: comments
+        value: 'true'
+      - name: commentCount
+        value: '3'
+      - name: filter
+        value: 'true'
+      - name: filterCount
+        value: '2'
+      - name: pending
+        value: 'true'
+      - name: pendingCount
+        value: '4'
+      - name: stale
+        value: 'true'
+      - name: voice
+        value: '{"state": "recording", "label": "TH-12 への返信", "elapsed": 12}'
+    notes:
+      見せ方: Storybook（React）の画面幅を 390px にして見せる
+  - name: RefreshNarrowest
+    description: 幅 320px で、つながらない・差分の表示・音声入力中・件数 `99+`・絞り込みのバッジ 2 桁・保存待ちが全て並ぶ間。詰める間の幅で収め、トップバーもページも横にはみ出さない
+    args:
+      - name: comments
+        value: 'true'
+      - name: commentCount
+        value: '120'
+      - name: filter
+        value: 'true'
+      - name: filterCount
+        value: '12'
+      - name: pending
+        value: 'true'
+      - name: pendingCount
+        value: '4'
+      - name: diffPoint
+        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+      - name: connection
+        value: offline
+      - name: readAt
+        value: '2026-10-04T02:21:00+00:00'
+      - name: voice
+        value: '{"state": "recording", "label": "TH-12 への返信", "elapsed": 12}'
+    notes:
+      見せ方: Storybook（React）の画面幅を 320px にして見せる
 refs: []
 uses:
   - component: CMP-540-2#
     how: タブの帯の下の、重なった ID の通知の帯
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
-  - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
+  - 状態の表示とボタンはどの幅でもアイコンと件数だけにし、名前を `aria-label` と、ホバーと `:focus-visible` で出す CSS のツールチップに持たせる。`title` は使用しない。ツールチップは読み上げから外し、トップバーの左側の要素は左端、右側の要素は右端に揃えて画面の外へ出さず、幅 `max-w-64` で折り返す。ツールチップはボタンの外（ボタンと並べた包み）に配置して押してもボタンを押したことにせず、Esc で隠す
   - ホバーは面の色、キーボードのフォーカスはマーカーの色の輪で見分ける
-  - 接続の状態は `role="status"` で読み上げに伝え、色だけでなくマーカーのアイコンと文言でも示す。押せる部品にはしない
-  - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、狭い幅で文言を隠しても名前を残す。差分を表示している間は読み上げ名を「変更履歴（過去の差分を表示中）」にし、点は読み上げから除外する。× は「差分の表示をやめる」の読み上げ名を持つ
+  - 接続の状態は `role="status"` で読み上げに伝え、色だけでなくマーカーのアイコンでも示す。押せる部品にはしないが、キーボードでもツールチップを確かめられるようにフォーカスを受ける
+  - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、差分を表示している間は読み上げ名を「変更履歴（過去の差分を表示中）」にし、点は読み上げから除外する。× は「差分の表示をやめる」の読み上げ名を持つ
   - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、`commentsUnread` が `true` のときは「コメント（未読あり・レビュー中 {件数} 件）」にする。点は読み上げから外し、一覧を開いているかを `aria-expanded` で示す
-  - 表示の設定のボタンの読み上げの名前は「表示の設定」で、狭い幅で文字を隠しても残し、パネルを開いているかを `aria-expanded` で示す
-  - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、狭い幅で文字を隠しても名前を残す
-  - 検索の入口は `aria-keyshortcuts="Control+K Meta+K"` でキーの近道を支援技術にも伝える。キーの案内は `kbd` 要素で出し、狭い幅で文字を隠しても読み上げ名「すべての項目を検索」を残す
+  - 表示の設定のボタンの読み上げの名前は「表示の設定」で、パネルを開いているかを `aria-expanded` で示す
+  - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示す
+  - 検索の入口は `aria-keyshortcuts="Control+K Meta+K"` でキーの近道を支援技術にも伝える。キーの案内は幅 901px 以上で `kbd` 要素で出し、読み上げ名「すべての項目を検索」を持つ
   - どの幅でも、全てのボタン（差分の表示をやめる × を含む）の押せる的を縦横 `--target-min`（24px）以上に保つ。表示の設定・絞り込み・コメントのボタンの幅の下限は幅で区切らずに持ち、狭い幅の詰め方を追加しても 24px を割らないようにする
-  - '音声入力中の表示はボタンにし、読み上げの名前を「音声入力中（{label}）。録音中の入力欄へ移動」（文字起こし中は「文字起こし中（{label}）。入力欄へ移動」）、ツールチップに「音声入力中: {label}。押すと録音中の入力欄へ移動します」（文字起こし中は「文字起こし中: {label}。押すと入力欄へ移動します」）を持つ。経過の時間とアイコンは読み上げから外し、狭い幅で文字を隠しても名前を残す。色だけでなくマイクのアイコンと文言で音声入力中を伝える'
+  - '音声入力中の表示はボタンにし、読み上げの名前を「音声入力中（{label}）。録音中の入力欄へ移動」（文字起こし中は「文字起こし中（{label}）。入力欄へ移動」）、ツールチップに「音声入力中: {label}。押すと録音中の入力欄へ移動します」（文字起こし中は「文字起こし中: {label}。押すと入力欄へ移動します」）を持つ。経過の時間とアイコンは読み上げから外す。色だけでなくマイクのアイコンとツールチップで音声入力中を伝える'
   - 音声入力の知らせの帯は `role="status"` で読み上げに伝え、× に読み上げの名前「閉じる」を持つ。警告のマーカーは読み上げから外す
 notes:
   部品の作り: shadcn/ui（Base UI バージョン）の Button を使い、ボタンの見た目の違いは Button の variants で持つ。色・余白はデザイン方針のトークンだけを Tailwind のクラスで指す
   引数の名前: 今の部品（関連の『トップバー』の `.ts`）と同じ引数・イベント・状態を、camelCase の props と `on{動作}` の props で持つ
+  詰める間: 幅 720px 以下で、更新のボタン・更新があります・音声入力中の表示のどれかを出している間。ツール名を隠し、マーカーだけのボタンと表示の設定・絞り込み・保存待ち・コメントのボタンを幅 28px（幅 389px 以下は 24px）に揃え、件数の札とバッジをマーカーの右上に重ね、要素の間隔を 1px、左右の余白を 6px（幅 389px 以下は 4px）に詰める

@@ -19,7 +19,9 @@ from pathlib import Path
 from typing import Any
 import re
 
-from playwright.sync_api import Locator, Page, expect
+import pytest
+
+from playwright.sync_api import Browser, Locator, Page, Playwright, expect
 from preview_comment_helpers import free_comment, read_workspace_yaml
 from preview_fixture_types import WriteReviewPreview
 from preview_pending_helpers import assert_waiting, hold_requests, press_twice
@@ -101,44 +103,49 @@ def test_post_thread_id_link_action(page: Page, write_review_preview: WriteRevie
 
 
 def test_change_status(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """「クローズにする」を押すと理由の入力を出して入力欄へフォーカスを移し、その間はボタンを出さない（正常系）。"""
-    # 準備
-    _open(page, spa_comments_preview, "TH-2")
-    # 実行
-    _panel(page).get_by_role("button", name="クローズにする").click()
-    # 検証
-    expect(_panel(page).get_by_role("textbox", name="理由（任意）")).to_be_focused()
-    expect(_panel(page).get_by_role("button", name="クローズにする")).to_have_count(1)
-
-
-def test_reason_input(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """理由を書いて確定すると状態と理由を書き、状態の札と記録を描き直して「オープンに戻す」へフォーカスを戻す（正常系）。"""
+    """「クローズにする」は理由を聞かずに状態を書き、一覧へ戻って次の行へフォーカスを移す（履歴に積まない）（正常系）。"""
     # 準備
     _, root = spa_comments_preview
     _open(page, spa_comments_preview, "TH-2")
-    _panel(page).get_by_role("button", name="クローズにする").click()
+    before = page.evaluate("history.length")
     # 実行
-    _panel(page).get_by_role("textbox", name="理由（任意）").fill("済んだ")
     _panel(page).get_by_role("button", name="クローズにする").click()
     # 検証
-    expect(_panel(page).get_by_role("button", name="オープンに戻す")).to_be_focused()
-    expect(_panel(page).locator("[data-state=closed]")).to_have_text("クローズ")
-    expect(_panel(page).locator("article[data-event=closed]")).to_contain_text("済んだ")
+    expect(_panel(page).get_by_role("group", name="スレッドの状態で絞る")).to_be_visible()
+    expect(_panel(page).get_by_role("textbox", name="理由（任意）")).to_have_count(0)
+    expect(_panel(page).locator("[data-focus='thread:TH-1']")).to_be_focused()
+    assert "thread=" not in page.url
+    assert page.evaluate("history.length") == before
     threads = {thread["id"]: thread for thread in read_workspace_yaml(root, "threads.yaml")["items"]}
     assert threads["TH-2"]["status"] == "closed"
-    assert threads["TH-2"]["events"][-1]["reason"] == "済んだ"
+    assert threads["TH-2"]["events"][-1].get("reason") is None
 
+
+def test_reopen(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """「オープンに戻す」はこの画面に留まり、状態の札と記録を描き直して「クローズにする」へフォーカスを戻す（正常系）。"""
+    # 準備
+    _, root = spa_comments_preview
+    _open(page, spa_comments_preview, "TH-5")
+    # 実行
+    _panel(page).get_by_role("button", name="オープンに戻す").click()
+    # 検証
+    expect(_panel(page).get_by_role("button", name="クローズにする")).to_be_focused()
+    expect(_panel(page).locator("[data-state=open]")).to_have_text("オープン")
+    expect(_panel(page).locator("article[data-event=reopened]")).to_have_count(1)
+    assert "thread=TH-5" in page.url
+    threads = {thread["id"]: thread for thread in read_workspace_yaml(root, "threads.yaml")["items"]}
+    assert threads["TH-5"]["status"] == "open"
 
 
 def test_normal_when_pressed_again_while_closing(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """クローズを待つ間にもう一度押しても要求は 1 回で、待つ間は確定が押せず、1 秒を超えると回るマーカーを出す（正常系）。"""
+    """クローズを待つ間にもう一度押しても要求は 1 回で、待つ間は押せず、1 秒を超えると回るマーカーを出す（正常系）。"""
     # 準備
     _, root = spa_comments_preview
     _open(page, spa_comments_preview, "TH-2")
-    _panel(page).get_by_role("button", name="クローズにする").click()
-    _panel(page).get_by_role("textbox", name="理由（任意）").fill("済んだ")
     held = hold_requests(page, "**/api/threads/*", "PATCH")
     button = _panel(page).get_by_role("button", name="クローズにする")
+    # 幅は文字のフォントを読み終えてから測る（読み終える前の幅と比べない）
+    page.evaluate("document.fonts.ready")
     box = button.bounding_box()
     assert box is not None
     # 実行（再描画の前に 2 回押す）
@@ -146,35 +153,28 @@ def test_normal_when_pressed_again_while_closing(page: Page, spa_comments_previe
     # 検証
     assert_waiting(page, button, held, box["width"])
     held.release()
-    expect(_panel(page).locator("[data-state=closed]")).to_have_text("クローズ")
-    expect(_panel(page).locator("article[data-event=closed]")).to_have_count(1)
+    expect(_panel(page).get_by_role("group", name="スレッドの状態で絞る")).to_be_visible()
     threads = {thread["id"]: thread for thread in read_workspace_yaml(root, "threads.yaml")["items"]}
     assert [event["kind"] for event in threads["TH-2"]["events"]].count("closed") == 1
 
-def test_reason_input_when_cancel(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """理由の入力の Esc は理由の入力を閉じて「状態を変える」へフォーカスを戻し、一覧へは戻らない（正常系）。"""
-    # 準備
-    _open(page, spa_comments_preview, "TH-2")
-    _panel(page).get_by_role("button", name="クローズにする").click()
-    # 実行
-    page.keyboard.press("Escape")
-    # 検証
-    expect(_panel(page).get_by_role("textbox", name="理由（任意）")).to_have_count(0)
-    expect(_panel(page).get_by_role("button", name="クローズにする")).to_be_focused()
-    assert "thread=TH-2" in page.url
-
 
 def test_status_failed(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """状態を書き換えられなかったとき、理由を `role="alert"` で出し、理由の入力は開いたまま残す（異常系）。"""
+    """状態を書き換えられなかったとき、理由を `role="alert"` で出してこの画面に留まり、次に押すと送信の前に理由を消す（異常系）。"""
     # 準備
     _open(page, spa_comments_preview, "TH-2")
     page.route("**/api/threads/TH-2", lambda route: route.abort())
-    _panel(page).get_by_role("button", name="クローズにする").click()
     # 実行
-    _panel(page).get_by_role("textbox", name="理由（任意）").press("Control+Enter")
+    _panel(page).get_by_role("button", name="クローズにする").click()
     # 検証
     expect(_panel(page).get_by_role("alert")).to_have_text("クローズにできませんでした。サーバーが止まっています。再起動してから押してください。")
-    expect(_panel(page).get_by_role("textbox", name="理由（任意）")).to_be_visible()
+    assert "thread=TH-2" in page.url
+    # 実行（もう一度押す。送信を留めて、送信の前の表示を確かめる）
+    page.unroute("**/api/threads/TH-2")
+    held = hold_requests(page, "**/api/threads/*", "PATCH")
+    _panel(page).get_by_role("button", name="クローズにする").click()
+    # 検証
+    expect(_panel(page).get_by_role("alert")).to_have_count(0)
+    held.release()
 
 
 def test_heading(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
@@ -407,6 +407,25 @@ def test_wide_table_scrolls_inside(
         assert sizes == {"list": True, "article": True, "table": True, "code": True, "wrapped": True}, (width, sizes)
 
 
+
+@pytest.mark.parametrize("tab", ["decisions", "tasks", "docs"])
+def test_page_width_when_phone(
+    playwright: Playwright, browser: Browser, spa_comments_preview: tuple[str, Path], tab: str
+) -> None:
+    """iPhone の端末の設定で、一覧のタブの上でスレッドを開いても、画面全体の幅が端末の幅を超えない（正常系）。"""
+    # 準備
+    url, _ = spa_comments_preview
+    context = browser.new_context(**playwright.devices["iPhone 13"])
+    phone = context.new_page()
+    try:
+        # 実行
+        open_spa(phone, url, f"?tab={tab}&panel=comments&thread=TH-1")
+        expect(_panel(phone).get_by_role("button", name="クローズにする")).to_be_visible()
+        sizes = phone.evaluate("() => ({ inner: window.innerWidth, scroll: document.documentElement.scrollWidth })")
+    finally:
+        context.close()
+    # 検証
+    assert sizes == {"inner": 390, "scroll": 390}, sizes
 
 # ─── 開いたときの最新の書き込み・書き込みの折りたたみ・見出しのタイトル（#372・#374） ───
 

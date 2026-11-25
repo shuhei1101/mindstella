@@ -228,6 +228,57 @@ flows:
       - 'ツールのエラーになり、本文が `エラー: MindStella のセッションだけが呼べます: commit`'
       - '`changes.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_not_mindstella_session
+  - name: 正常系（手番を返す）
+    summary: hand_back が真では、まとめる書き換えが無くても、結果を返却した後に作業の完了の通知を呼ぶ
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。受けた要求を記録して 200 を返却する）。MCP サーバーは `MINDSTELLA_DISCORD_WEBHOOK_FILE` にエンドポイントの URL を記載した一時ファイルを指定して起動する
+      - name: make_workspace
+        description: 検討事項 D-1 を追加して `commit` したワークスペース（まだまとめていない書き換えが無い）
+      - name: MindStella のセッション
+        description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant NT as 作業の完了の通知
+        participant DC as Discord
+
+        クライアント->>IF: commit workspace summary「質問に答えた」 hand_back true
+        IF->>IF: まとめる書き換えが無い
+        IF-->>クライアント: JSON（id: null）
+        IF->>NT: 呼ぶ
+        NT->>DC: POST ?wait=true content
+      ```
+    expected:
+      - ツールのエラーにならず、`id` が `null`
+      - エンドポイントが 1 件の要求を受けている
+      - '`changes.yaml` の中身が呼ぶ前と同じ'
+    test: test_normal_when_hand_back
+  - name: 正常系（作業の途中）
+    summary: hand_back を渡さない commit では、まとまりを追加しても通知を呼ばない
+    setup:
+      - name: Mock
+        description: Discord の Webhook（正常系（手番を返す）と同じ）
+      - name: make_workspace
+        description: 検討事項 D-1 を追加し、まだ `commit` していないワークスペース
+      - name: MindStella のセッション
+        description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+
+        クライアント->>IF: commit workspace summary「D-1 を足す」
+        IF->>IF: pending をまとまりにする
+        IF-->>クライアント: JSON（id: V-2）
+      ```
+    expected:
+      - ツールのエラーにならず、`id` が空でない
+      - エンドポイントが要求を受けていない
+    test: test_normal_when_not_hand_back
 lead: まだまとめていない書き換え（最後のまとまりより後に `pending` に入った書き換え）を、日時と一言の説明を付けた 1 つのまとまりにする。プレビューの変更履歴は、このまとまりを並べる。
 idempotent: false
 side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ追加し、`pending` を空にする。項目の YAML と本文は書き換えない'
@@ -253,6 +304,13 @@ request:
     location: argument
     description: 呼んだ Claude Code の `session_id`（『セッションの値の注入』が入れる）
     constraints: そのワークスペースの MindStella のセッションの `claude_session_id`（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）
+  - name: hand_back
+    type: bool
+    required: false
+    default: 'false'
+    location: argument
+    description: 利用者に手番を返す直前の commit か。真のとき、成功した後に『作業の完了の通知』を呼ぶ。返信へ差分のリンクを入れるために作業の途中で呼ぶときは偽
+    example: 'true'
 response:
   - name: id
     type: str | None
@@ -318,7 +376,7 @@ constraints:
   - item: YAML の記載方法
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。一時ファイルに書いてから `os.replace` で置き換える'
   - item: 作業の完了の通知
-    constraint: まとまりを作ったときに、呼んだ MindStella のセッションに『作業の完了の通知』の書き込みのマーカーを付ける。まとめる変更が無くてまとまりを作らなかったときと、失敗したときは付けない
+    constraint: '`hand_back` が真で成功したとき（まとめる書き換えが無く、まとまりを追加しなかったときも含む）だけ、結果を返却した後に『作業の完了の通知』を呼ぶ。`hand_back` が偽のときと、エラーになったときは呼ばない。通知の成否は結果に含めない'
 exclusivity: ワークスペースを書き換えるツールと同じ鍵とロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
 refs:
   - ER-489-1#

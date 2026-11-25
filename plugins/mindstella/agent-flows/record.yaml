@@ -1,6 +1,6 @@
 id: mindstella/record
 title: 記録の使い分け
-summary: 発言を内容ごとに振り分け、話題のタグを付けて記録に書き込む
+summary: 発言を内容ごとに振り分け、話題のタグを付けて記録に書き込み、手番を返す直前に手番を返す commit をする
 condition: 利用者の発言・コメントを記録するとき
 steps:
   - name: 発言を振り分ける
@@ -120,3 +120,10 @@ steps:
       図や mdmark の記法を持つ資料は、書き込む前に mdmark の点検か書き出しで、描いたときの警告が無いことを確認する。
     calls:
       - {server: project-index, tool: write_docs}
+  - name: 手番を返す
+    when: 応答を終えて利用者に手番を返す
+    body: |-
+      手番を返す直前に、その間の修正と返信をまとめて `commit` を `hand_back: true` で 1 回だけ呼ぶ。書き換えが無く返信だけの応答でも呼ぶ。
+      サブエージェント・バックグラウンドの処理の完了を待つ前と、作業の途中の `commit`（スレッドごとの `commit`・まとめ忘れの `commit`）では `hand_back` を渡さない。
+    calls:
+      - {server: mindstella, tool: commit}

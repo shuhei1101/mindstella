@@ -1,0 +1,10 @@
+# 結合テスト（全 pass）
+# commit: 11b99350
+# 実行日時: 2026-11-25 19:21:29 JST
+# 並列数: 1（テスト実行方法の層に parallelism が無いため。判定フローチャート『結合テストの並列数』）
+# 結合テスト（バック）（TL-3）は 319adafc で実行した（テスト結果/20261125183959_9fbcd8ca_結合テスト.log）。319adafc..11b99350 の差分は frontend/・preview/・tests/integration/storybook_react/・tests/integration/preview/ と設計書・PR ドキュメントだけで、TL-3 の実行範囲に触れない
+# 11b99350..76cdcb47 の差分は topbar.tsx のクラスの並びだけで、ビルドした CSS は変わらない
+
+## 結合テスト（フロント）（TL-4）
+$ pytest tests/integration/preview/test_spa_thread_screen.py tests/integration/preview/test_spa_comments_screen.py tests/integration/preview/test_spa_open.py tests/integration/preview/test_spa_decisions_screen.py tests/integration/preview/test_spa_tasks_screen.py tests/integration/preview/test_spa_docs_screen.py tests/integration/preview/test_spa_records_screen.py tests/integration/storybook_react/test_topbar_stories.py
+======================= 488 passed in 574.36s (0:09:34) ========================

@@ -301,7 +301,7 @@ def notify_stopped(
 ) -> threading.Thread | None:
     """ワークスペースの名前と画面の URL を参照する関数を添えて、停止を通知する。"""
     return notify.notify_stopped(
-        workspace_id, reason, lambda: _describe_workspace(ctx, workspace_id)
+        workspace_id, reason, lambda: describe_workspace(ctx, workspace_id)
     )
 
 
@@ -530,12 +530,6 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
         return current.replace(responding=kind == "prompt_submit")
 
     state.update_session(ctx.state_root, workspace_id, change)
-    # 応答の終わり: この応答で書き込んでいれば作業の完了を通知する
-    if kind == "stop":
-        notify.notify_if_written(workspace_id, lambda: _describe_workspace(ctx, workspace_id))
-    # 応答の始まり・エラーで終わった応答・終了: 通知せずにマーカーを解除する
-    elif kind in ("prompt_submit", "stop_failure", "session_end"):
-        notify.clear_written(workspace_id)
     # 停止の依頼なしに running から止まった: Claude Code の終了を通知する
     # （stopping からは止めるスレッドが通知する）
     if (
@@ -979,7 +973,7 @@ def _session_workspace(ctx: Any, session_id: str) -> tuple[str, Path]:
     return workspace_id, workspaces.workspace_folder(row)
 
 
-def _describe_workspace(ctx: Any, workspace_id: str) -> tuple[str, str | None] | None:
+def describe_workspace(ctx: Any, workspace_id: str) -> tuple[str, str | None] | None:
     """通知に載せるワークスペースの名前（設定の summary、空ならフォルダの名前）と画面の URL を返却する。"""
     row = workspaces.find_workspace_row(ctx.pi_port, workspace_id)
     # 配信元の行が無い: 通知しない
