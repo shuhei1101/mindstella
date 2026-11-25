@@ -1452,6 +1452,12 @@ def test_refresh_offline(open_story: OpenStory) -> None:
         pytest.param("shared-topbar--refresh-offline-voice-narrow", 390, id="offline-voice-w390"),
         pytest.param("shared-topbar--refresh-stale-voice-narrow", 390, id="stale-voice-w390"),
         pytest.param("shared-topbar--refresh-narrowest", 320, id="narrowest-w320"),
+        pytest.param("shared-topbar--refresh-offline-voice-narrow", 481, id="offline-voice-w481"),
+        pytest.param("shared-topbar--refresh-stale-voice-narrow", 481, id="stale-voice-w481"),
+        pytest.param("shared-topbar--refresh-narrowest", 481, id="narrowest-w481"),
+        pytest.param("shared-topbar--refresh-offline-voice-narrow", 767, id="offline-voice-w767"),
+        pytest.param("shared-topbar--refresh-stale-voice-narrow", 767, id="stale-voice-w767"),
+        pytest.param("shared-topbar--refresh-narrowest", 767, id="narrowest-w767"),
     ],
 )
 def test_refresh_narrow_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
