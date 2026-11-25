@@ -48,13 +48,46 @@ const parseDuplicateIds = (data: unknown): string[] | null => {
   }
 };
 
-/** `EVENTS_URL` へつなぎ、`changed` とつなぎ直しで記録の query の読み直しを反映の依頼に渡し（入力中・音声入力中は保留して離れたときに読み直す）、`duplicate_ids` で重なった ID を、接続の状態を書き換える。つなぎ直しは EventSource に任せ、閉じる関数を返す */
+/** `connectEvents` でつないでいる間だけ持つ、EventSource を作り直す関数（配る書き出しでは null） */
+let recreate: (() => void) | null = null;
+
+/** `EVENTS_URL` へつなぎ、`changed` とつなぎ直しで記録の query の読み直しを反映の依頼に渡し（入力中・音声入力中は保留して離れたときに読み直す）、`duplicate_ids` で重なった ID を、接続の状態を書き換える。つなぎ直しは EventSource に任せ、更新のボタン（`reconnectEvents`）と画面をもう一度表示したときに閉じていた接続では作り直す。閉じる関数を返す */
 export const connectEvents = (queryClient: QueryClient): (() => void) => {
-  const source = new EventSource(`${workspacePath()}${EVENTS_URL}`);
-  const { setConnection } = useConnectionStore.getState();
+  const { setConnection, setRefreshing } = useConnectionStore.getState();
   const refresh = (): void => {
     void invalidatePreview(queryClient);
   };
+  const open = (): EventSource => {
+    const created = new EventSource(`${workspacePath()}${EVENTS_URL}`);
+    created.addEventListener("open", () => {
+      setConnection("online");
+      setRefreshing(false);
+      // 切れている間の書き換えを拾う
+      requestRefresh(refresh);
+    });
+    created.addEventListener("changed", () => {
+      requestRefresh(refresh);
+      // 音声入力の間は画面に反映せず、録音の行き先の有無だけを確かめる
+      if (readVoiceState().session !== null) void checkVoiceDestination();
+    });
+    created.addEventListener("duplicate_ids", (event) => {
+      const ids = parseDuplicateIds((event as MessageEvent<unknown>).data);
+      // 読めない知らせは捨てる（次の知らせで描き直す）
+      if (ids !== null) useDuplicateIdsStore.getState().setIds(ids);
+    });
+    created.addEventListener("error", () => {
+      // 前に読んだ記録の query は残し、トップバーに切れたことを出す
+      setConnection("offline");
+      setRefreshing(false);
+    });
+    return created;
+  };
+  let source = open();
+  const reopen = (): void => {
+    source.close();
+    source = open();
+  };
+  recreate = reopen;
   const stopWatching = watchTextFocus(document);
   // フォーカスが離れたとき・音声入力が終わったときに、保留していた読み直しを 1 回だけ行う
   const release = (): void => {
@@ -62,29 +95,24 @@ export const connectEvents = (queryClient: QueryClient): (() => void) => {
   };
   const unsubscribeHold = useRefreshHoldStore.subscribe(release);
   const unsubscribeVoice = subscribeVoice(release);
-  source.addEventListener("open", () => {
-    setConnection("online");
-    // 切れている間の書き換えを拾う
-    requestRefresh(refresh);
-  });
-  source.addEventListener("changed", () => {
-    requestRefresh(refresh);
-    // 音声入力の間は画面に反映せず、録音の行き先の有無だけを確かめる
-    if (readVoiceState().session !== null) void checkVoiceDestination();
-  });
-  source.addEventListener("duplicate_ids", (event) => {
-    const ids = parseDuplicateIds((event as MessageEvent<unknown>).data);
-    // 読めない知らせは捨てる（次の知らせで描き直す）
-    if (ids !== null) useDuplicateIdsStore.getState().setIds(ids);
-  });
-  source.addEventListener("error", () => {
-    // 前に読んだ記録の query は残し、トップバーに切れたことを出す
-    setConnection("offline");
-  });
+  // 画面をもう一度表示したとき、閉じていた接続だけを作り直す（開いている接続は EventSource に任せる）
+  const onVisibilityChange = (): void => {
+    if (document.visibilityState === "visible" && source.readyState === EventSource.CLOSED) reopen();
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
   return () => {
     source.close();
     stopWatching();
     unsubscribeHold();
     unsubscribeVoice();
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    if (recreate === reopen) recreate = null;
   };
+};
+
+/** 更新のボタンで、今の EventSource を閉じて作り直す。`open` が届くと記録の query の読み直しを反映の依頼に渡す。つないでいなければ何もしない */
+export const reconnectEvents = (): void => {
+  if (recreate === null) return;
+  useConnectionStore.getState().setRefreshing(true);
+  recreate();
 };

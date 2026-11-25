@@ -503,7 +503,7 @@ const CommentsButton = ({
 const VoiceButton = ({ voice, onClick }: { voice: TopbarVoice; onClick: (() => void) | undefined }) => {
   const recording = voice.state === "recording";
   return (
-    <WithTip text={recording ? `音声入力中（${voice.label}）` : `文字起こし中（${voice.label}）`}>
+    <WithTip text={recording ? `音声入力中: ${voice.label}。押すと録音中の入力欄へ移動します` : `文字起こし中: ${voice.label}。押すと入力欄へ移動します`}>
     <button
       type="button"
       aria-label={recording ? `音声入力中（${voice.label}）。録音中の入力欄へ移動` : `文字起こし中（${voice.label}）。入力欄へ移動`}

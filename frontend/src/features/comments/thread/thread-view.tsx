@@ -1,5 +1,5 @@
 // スレッド（画面設計『スレッド.tsx』）。書き込みと状態の変更を書いた順に並べ、下端で返信を溜め、上端でクローズとオープンへの戻しをする
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { ReplyForm, type ReplyStatus } from "@/features/comments/shared/reply-form";
@@ -10,7 +10,6 @@ import { useMarkThreadSeen, useSetThreadStatus } from "@/features/comments/share
 import { Icon } from "@/shared/components/icon";
 import { focusAfterAdded } from "@/shared/components/send-form";
 import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
 import { AppError } from "@/shared/core/app-error";
 import { commentNumber, hasUnseen, reviewLabel, threadTimeline, threadTitle, type ReviewItem } from "@/shared/core/comments";
 import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from "@/shared/hooks/use-comments";
@@ -28,6 +27,8 @@ export type ThreadViewProps = {
   id: string;
   data: CommentData;
   onBack: () => void;
+  /** クローズにできたとき（一覧へ戻るのは使う側） */
+  onClosed: () => void;
   onOpenItem: (id: string) => void;
   onOpenChangeSet: (id: string) => void;
 };
@@ -36,7 +37,7 @@ export type ThreadViewProps = {
 const detailOf = (error: unknown): string | null => (error instanceof AppError ? error.message : null);
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
-export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: ThreadViewProps) => {
+export const ThreadView = ({ id, data, onBack, onClosed, onOpenItem, onOpenChangeSet }: ThreadViewProps) => {
   const { threads, items, drafts, titles, changeSets, index } = data;
   const thread = threads.find((one) => one.id === id) ?? null;
   const pendingNew = thread === null ? (items.find((item) => item.id === id && item.thread === null) ?? null) : null;
@@ -77,8 +78,8 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
       return { start: field?.selectionStart ?? reply.body.length, end: field?.selectionEnd ?? reply.body.length };
     },
   });
-  const reasonId = useId();
-  const [reason, setReason] = useState<{ open: boolean; body: string; detail: string | null; failed: boolean }>({ open: false, body: "", detail: null, failed: false });
+  // 状態を変えられなかった理由（次に「状態を変える」を押すと削除する）
+  const [statusError, setStatusError] = useState<{ detail: string | null } | null>(null);
   // 書き換えている行。録音中か結果待ちの修正の入力があれば、その行を書き換えている状態で開く
   const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(() => {
     const voiced = voiceEditingOf("thread");
@@ -104,8 +105,9 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   });
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [removed, setRemoved] = useState<ReviewItem[]>([]);
-  // 理由の入力を閉じた後、次に描いた「状態を変える」へフォーカスを戻すか
+  // オープンに戻した後、再描画した「状態を変える」へフォーカスを戻すか
   const focusStatusButton = useRef(false);
+  const statusButton = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   // 開いたときに見出しへフォーカスを移す（パネルが Esc を受ける）。書き込みがあれば、描いた後に最新の書き込みへ移す
   useEffect(() => {
@@ -153,31 +155,30 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
       cancelAnimationFrame(frame);
     };
   }, [latestPostId]);
-  // 理由の入力を閉じ、描き直した「状態を変える」へフォーカスを戻す
-  const closeReason = (): void => {
-    focusStatusButton.current = true;
-    setReason({ open: false, body: "", detail: null, failed: false });
-  };
-  const statusButtonRef = (element: HTMLButtonElement | null): void => {
-    if (element === null || !focusStatusButton.current) return;
-    focusStatusButton.current = false;
-    element.focus();
-  };
-
   const closed = thread?.status === "closed";
+  // オープンに戻してスレッドを読み直し終え、押せるようになった「状態を変える」へフォーカスを戻す
+  useEffect(() => {
+    if (!focusStatusButton.current || closed || setStatus.isPending) return;
+    focusStatusButton.current = false;
+    statusButton.current?.focus();
+  }, [closed, setStatus.isPending]);
   const nextStatus = closed ? "open" : "closed";
   const actionLabel = closed ? "オープンに戻す" : "クローズにする";
   const submitStatus = (): void => {
     if (thread === null) return;
-    const text = reason.body.trim();
+    setStatusError(null);
     flight.run(() => setStatus.mutateAsync(
-      { id: thread.id, status: nextStatus, reason: text === "" ? null : text },
+      { id: thread.id, status: nextStatus, reason: null },
       {
         onSuccess: () => {
-          closeReason();
+          if (nextStatus === "closed") {
+            onClosed();
+            return;
+          }
+          focusStatusButton.current = true;
         },
         onError: (error) => {
-          setReason((current) => ({ ...current, detail: detailOf(error), failed: true }));
+          setStatusError({ detail: detailOf(error) });
         },
       },
     ));
@@ -262,46 +263,18 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
           一覧へ戻る
         </Button>
         <span className="flex-1" />
-        {thread === null || reason.open ? null : (
-          <Button ref={statusButtonRef} variant="outline" onClick={() => { setReason({ open: true, body: "", detail: null, failed: false }); }}>
+        {thread === null ? null : (
+          <Button ref={statusButton} variant="outline" pending={setStatus.isPending} onClick={submitStatus}>
             <Icon name={closed ? "undo" : "check"} />
             {actionLabel}
           </Button>
         )}
       </div>
-      {reason.open && thread !== null ? (
-        <div className="grid gap-1.5 border-b border-border px-3 py-2">
-          <label htmlFor={reasonId} className="grid gap-1 text-small">
-            理由（任意）
-            <Input id={reasonId} ref={(element) => { element?.focus(); }} value={reason.body} readOnly={setStatus.isPending} onChange={(event) => { setReason((current) => ({ ...current, body: event.target.value })); }} onKeyDown={(event) => {
-              // Esc は理由の入力だけを閉じる（一覧へは戻らない）
-              if (event.key === "Escape") {
-                event.preventDefault();
-                event.stopPropagation();
-                closeReason();
-                return;
-              }
-              if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) {
-                event.preventDefault();
-                submitStatus();
-              }
-            }} />
-          </label>
-          {reason.failed ? (
-            <p role="alert" className="m-0 flex items-start gap-1 text-small text-destructive">
-              <Icon name="alert" />
-              <span>{`${closed ? "オープンに戻せませんでした。" : "クローズにできませんでした。"}${reason.detail ?? "サーバーが止まっています。再起動してから押してください。"}`}</span>
-            </p>
-          ) : null}
-          <div className="flex justify-end gap-1.5">
-            <Button variant="ghost" onClick={closeReason}>
-              キャンセル
-            </Button>
-            <Button pending={setStatus.isPending} onClick={submitStatus}>
-              {actionLabel}
-            </Button>
-          </div>
-        </div>
+      {statusError !== null && thread !== null ? (
+        <p role="alert" className="m-0 flex items-start gap-1 border-b border-border px-3 py-2 text-small text-destructive">
+          <Icon name="alert" />
+          <span>{`${closed ? "オープンに戻せませんでした。" : "クローズにできませんでした。"}${statusError.detail ?? "サーバーが止まっています。再起動してから押してください。"}`}</span>
+        </p>
       ) : null}
       <div className="grid gap-1 border-b border-border px-3 py-2">
         <h2 ref={heading} tabIndex={-1} className="m-0 flex items-center gap-2 text-body font-medium focus-visible:outline-none">
