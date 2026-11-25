@@ -17,6 +17,7 @@ import { useSearchShortcut } from "@/features/search/search/use-search-shortcut"
 import { DisplaySettingsPanel } from "@/features/settings/display-settings/display-settings-panel";
 import { WorkspaceSettingsScreen } from "@/features/settings/workspace-settings/workspace-settings-screen";
 import { TasksScreen } from "@/features/tasks/tasks/tasks-screen";
+import { reconnectEvents } from "@/shared/adapters/events-client";
 import { Icon, type IconName } from "@/shared/components/icon";
 import { Topbar, type TabKey, type TopbarTab } from "@/shared/components/topbar";
 import { AppError } from "@/shared/core/app-error";
@@ -138,6 +139,7 @@ export const PreviewShell = () => {
   const filterCandidates: FilterCandidate[] = candidateGroups.flatMap(({ key, label, values }) => values.map(({ value, count }) => ({ key, label, value, count })));
   const setTheme = useThemeStore((state) => state.setTheme);
   const connection = useConnectionStore((state) => state.connection);
+  const refreshing = useConnectionStore((state) => state.refreshing);
   // トップバーを包む要素の高さを測り、左のパネル・絞り込みのドロワーの上端の CSS 変数に書く
   const topbarFrame = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -271,6 +273,9 @@ export const PreviewShell = () => {
           pendingOpen={search.panel === "pending"}
           pendingBlocked={blocked.length > 0}
           {...(embedded ? {} : voiceTopbar)}
+          stale={stale}
+          refreshing={refreshing}
+          {...(embedded ? {} : { onRefresh: reconnectEvents })}
           duplicateIds={duplicateIds}
           onOpenDuplicate={openItem}
           onCloseDuplicate={() => { useDuplicateIdsStore.getState().dismiss(); }}

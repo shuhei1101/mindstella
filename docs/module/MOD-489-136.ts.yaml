@@ -12,6 +12,10 @@ stores:
         type: '''online'' | ''offline'''
         initial: online
         description: トップバーの `connection` に渡す
+      - name: refreshing
+        type: boolean
+        initial: 'false'
+        description: 更新のボタンで接続し直している間か。トップバーの `refreshing` に渡す
     actions:
       - name: setConnection
         title: 接続の状態の書き換え
@@ -32,5 +36,24 @@ stores:
             condition: offline を渡す
             mock: なし
             expected: '`connection` が offline'
+      - name: setRefreshing
+        title: 接続し直しの状態の書き換え
+        kind: メソッド
+        summary: 接続し直している間かを書き換える
+        args:
+          - name: refreshing
+            type: boolean
+            required: true
+            description: 新しい状態
+        returns:
+          type: void
+          description: '-'
+        unit_tests:
+          - name: test_set_refreshing
+            case: 正常
+            summary: 書き換える
+            condition: true を渡す
+            mock: なし
+            expected: '`refreshing` が true'
 notes:
   単体テスト: 同じフォルダの `connection-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

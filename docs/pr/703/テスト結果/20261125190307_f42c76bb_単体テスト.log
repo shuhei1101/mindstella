@@ -1,0 +1,8 @@
+# 単体テスト（全 pass）
+# commit: f42c76bb
+# 実行日時: 2026-11-25 19:03:07 JST
+# tests/unit は 319adafc で実行した（tests/unit/scripts/test_serve.py::test_stream は #704 のため外した）。319adafc..f42c76bb の差分は frontend/・preview/・tests/integration/ と設計書・PR ドキュメントだけで、tests/unit の実行範囲に触れない
+
+$ npx vitest run
+ Test Files  108 passed (108)
+      Tests  536 passed (536)

@@ -2,9 +2,20 @@
 
 from __future__ import annotations
 
+import time
+from collections.abc import Iterator
 from pathlib import Path
 
-from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, McpServer, SnapshotTree
+import pytest
+
+from .fixture_types import (
+    CallTool,
+    LockDirs,
+    MakeItem,
+    MakeWorkspace,
+    McpServer,
+    SnapshotTree,
+)
 from .history_helpers import (
     DECISION_ITEM,
     add_item,
@@ -14,7 +25,16 @@ from .history_helpers import (
     remove_item,
     update_item,
 )
-from workspace_fixtures import RECORD_DIR, mindstella_session
+from session_fixtures import SessionWorld, wait_until
+from workspace_fixtures import (
+    MDMARK_COMMAND_ENV,
+    NOOP_MDMARK_COMMAND,
+    RECORD_DIR,
+    TEST_SESSION_ID,
+    mindstella_session,
+)
+
+from .test_work_done_notify import NO_SEND_WAIT_SEC, WEBHOOK_FILE_ENV, FakeWebhook
 
 # 手で崩した `changes.yaml`（`pending` から `added` を消した）
 BROKEN_CHANGES = "last_seq: 0\nsets: []\npending:\n  changed: []\n"
@@ -200,3 +220,56 @@ def test_error_when_not_mindstella_session(
     assert result.is_error is True
     assert result.text.startswith("エラー: MindStella のセッションだけが呼べます: commit")
     assert (root / RECORD_DIR / "changes.yaml").read_bytes() == before
+
+
+@pytest.fixture
+def webhook() -> Iterator[FakeWebhook]:
+    """200 を返却する Webhook の Mock を起動し、テストの後で閉じる。"""
+    fake = FakeWebhook()
+    fake.start()
+    yield fake
+    fake.close()
+
+
+
+def _start_with_webhook(world: SessionWorld, webhook: FakeWebhook) -> tuple[McpServer, Path]:
+    """Webhook の URL を記載した設定のファイルを指定して常駐サーバーを起動し、MindStella のセッションを持つワークスペースを作る。"""
+    path = world.root / "webhook.ini"
+    path.write_text(f"{webhook.url}\n", encoding="utf-8")
+    server = world.start({MDMARK_COMMAND_ENV: NOOP_MDMARK_COMMAND, WEBHOOK_FILE_ENV: str(path)})
+    workspace_id = str(world.create_workspace()["id"])
+    world.write_session(workspace_id, session=TEST_SESSION_ID, claude_session_id="c-mindstella-test")
+    return server, world.folder()
+
+
+def test_normal_when_hand_back(session_world: SessionWorld, webhook: FakeWebhook) -> None:
+    """hand_back が真では、まとめる書き換えが無くても、結果を返却した後に作業の完了の通知を呼ぶ（正常系）。"""
+    # 準備
+    server, root = _start_with_webhook(session_world, webhook)
+    add_item(server.call, root, "decision", DECISION_ITEM)
+    assert server.call("commit", workspace=str(root), summary="足す").is_error is False
+    before = (root / RECORD_DIR / "changes.yaml").read_bytes()
+    # 実行
+    result = server.call("commit", workspace=str(root), summary="質問に答えた", hand_back=True)
+    wait_until(lambda: webhook.requests)
+    # 検証
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    assert result.data["id"] is None
+    assert len(webhook.requests) == 1
+    assert (root / RECORD_DIR / "changes.yaml").read_bytes() == before
+
+
+def test_normal_when_not_hand_back(session_world: SessionWorld, webhook: FakeWebhook) -> None:
+    """hand_back を渡さない commit では、まとまりを追加しても通知を呼ばない（正常系）。"""
+    # 準備
+    server, root = _start_with_webhook(session_world, webhook)
+    add_item(server.call, root, "decision", DECISION_ITEM)
+    # 実行
+    result = server.call("commit", workspace=str(root), summary="D-1 を足す")
+    time.sleep(NO_SEND_WAIT_SEC)
+    # 検証
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    assert result.data["id"] is not None
+    assert webhook.requests == []

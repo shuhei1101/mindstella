@@ -1,10 +1,8 @@
-"""作業の完了の通知（応答の終わりに Discord の Webhook へ送信する）の結合テスト。"""
+"""作業の完了の通知（手番を返す直前の commit の成功で Discord の Webhook へ送信する）の結合テスト。"""
 
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 import threading
 import time
 import urllib.parse
@@ -16,15 +14,12 @@ from typing import Any
 
 import pytest
 
-from .http_helpers import send_json
-from record_write_helpers import write_items
-from session_fixtures import SCRIPTS_DIR, SessionWorld, wait_until
+from session_fixtures import SessionWorld, wait_until
 from workspace_fixtures import (
     LISTEN_HOST,
     MDMARK_COMMAND_ENV,
     NOOP_MDMARK_COMMAND,
     TEST_SESSION_ID,
-    MakeItem,
     McpServer,
 )
 
@@ -40,7 +35,7 @@ SLOW_RESPONSE_SEC = 15.0
 # 上限を過ぎた失敗の記録を待つ秒数（上限 10 秒に余裕を足す）
 TIMEOUT_LOG_WAIT_SEC = 20.0
 
-# stop の応答が送信を待たずに返ったとみなす秒数
+# commit の結果が送信を待たずに返ったとみなす秒数
 QUICK_RESPONSE_SEC = 3.0
 
 
@@ -141,39 +136,33 @@ def _new_thread(server: McpServer, root: Path) -> str:
     return str(result.data["id"])
 
 
-def _commit_outside_mcp(root: Path) -> subprocess.CompletedProcess[str]:
-    """停止の工程と同じく、MCP を通さずに `run_commit` でまとまりを作る。"""
-    code = (
-        "import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); import commands; "
-        "commands.run_commit(Path(sys.argv[2]), 'MCP を通さないまとまり')"
+def _reply(server: McpServer, root: Path) -> None:
+    """MindStella のセッションとしてスレッドを作成して返信する。"""
+    thread_id = _new_thread(server, root)
+    replied = server.call(
+        "reply", workspace=str(root), id=thread_id, body="回答します", summary="質問"
     )
-    return subprocess.run(
-        [sys.executable, "-c", code, str(SCRIPTS_DIR), str(root)],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=False,
-    )
+    assert replied.is_error is False, replied.text
+
+
+def _hand_back(server: McpServer, root: Path) -> Any:
+    """MindStella のセッションとして、手番を返す直前の commit を呼ぶ。"""
+    return server.call("commit", workspace=str(root), summary="質問に答えた", hand_back=True)
 
 
 def test_normal(session_world: SessionWorld, webhook: FakeWebhook) -> None:
-    """応答の間に AI がスレッドに返信したので、応答の終わりに 1 件送信する（正常系）。"""
+    """手番を返す直前の commit が成功したので、1 件送信する（正常系）。"""
     # 準備
     world = session_world
     server = _start(world, webhook)
     root = _prepare(world, server)
     page_url = server.call("preview_url", workspace=str(root)).data["url"]
-    thread_id = _new_thread(server, root)
+    _reply(server, root)
     # 実行
-    _event(world, "prompt_submit")
-    replied = server.call(
-        "reply", workspace=str(root), id=thread_id, body="回答します", summary="質問"
-    )
-    status, body = _event(world, "stop")
+    committed = _hand_back(server, root)
     wait_until(lambda: webhook.requests)
     # 検証
-    assert replied.is_error is False, replied.text
-    assert (status, body) == (200, {"recorded": True})
+    assert committed.is_error is False, committed.text
     assert len(webhook.requests) == 1
     assert webhook.requests[0]["query"] == {"wait": ["true"]}
     assert webhook.requests[0]["body"] == {"content": f"家計簿: 作業が完了しました\n{page_url}"}
@@ -188,75 +177,37 @@ def test_normal(session_world: SessionWorld, webhook: FakeWebhook) -> None:
     assert webhook.url not in log
 
 
-def test_normal_when_commit_only(
-    session_world: SessionWorld, webhook: FakeWebhook, make_item: MakeItem
+def test_normal_when_committed_during_work(
+    session_world: SessionWorld, webhook: FakeWebhook
 ) -> None:
-    """応答の間に AI が commit だけしたときも 1 件送信する（正常系）。"""
+    """hand_back を指定しない commit と、スレッドの書き込みでは送信しない（正常系）。"""
     # 準備
     world = session_world
     server = _start(world, webhook)
     root = _prepare(world, server)
     # 実行
-    _event(world, "prompt_submit")
-    item = make_item("D-1")
-    item.pop("id")
-    write_items(server.call, str(root), add=[("decision", item)])
-    committed = server.call("commit", workspace=str(root), summary="決めたことを追加した")
-    _event(world, "stop")
-    wait_until(lambda: webhook.requests)
-    # 検証
-    assert committed.is_error is False, committed.text
-    assert committed.data is not None
-    assert committed.data["id"] is not None
-    assert len(webhook.requests) == 1
-
-
-def test_normal_when_nothing_written(
-    session_world: SessionWorld, webhook: FakeWebhook, make_item: MakeItem
-) -> None:
-    """MindStella のセッションが commit・new_thread・reply を呼ばなかった応答では送信しない（正常系）。"""
-    # 準備
-    world = session_world
-    server = _start(world, webhook)
-    root = _prepare(world, server)
-    thread_id = _new_thread(server, root)
-    page_url = server.call("preview_url", workspace=str(root)).data["url"]
-    item = make_item("D-1")
-    item.pop("id")
-    # 実行
-    _event(world, "prompt_submit")
-    write_items(server.call, str(root), add=[("decision", item)])
-    committed = _commit_outside_mcp(root)
-    user_write = send_json(
-        page_url,
-        "PATCH",
-        f"/api/threads/{thread_id}",
-        {"status": "closed", "reason": "利用者が決着"},
-    )
-    status, _body = _event(world, "stop")
+    _reply(server, root)
+    committed = server.call("commit", workspace=str(root), summary="返信を書いた")
     time.sleep(NO_SEND_WAIT_SEC)
     # 検証
-    assert committed.returncode == 0, committed.stderr
-    assert user_write.status == 200
-    assert status == 200
+    assert committed.is_error is False, committed.text
     assert webhook.requests == []
 
 
-def test_normal_when_response_failed(session_world: SessionWorld, webhook: FakeWebhook) -> None:
-    """stop_failure で終わった応答では送信せず、書き込みのマーカーを解除する（正常系）。"""
+def test_normal_when_response_stopped(session_world: SessionWorld, webhook: FakeWebhook) -> None:
+    """commit の後に応答の終了（stop）を受けても送信しない（正常系）。"""
     # 準備
     world = session_world
     server = _start(world, webhook)
     root = _prepare(world, server)
-    thread_id = _new_thread(server, root)
-    _event(world, "prompt_submit")
-    server.call("reply", workspace=str(root), id=thread_id, body="回答します", summary="質問")
+    _reply(server, root)
+    committed = server.call("commit", workspace=str(root), summary="返信を書いた")
     # 実行
-    failed, _body = _event(world, "stop_failure")
-    stopped, _body = _event(world, "stop")
+    status, body = _event(world, "stop")
     time.sleep(NO_SEND_WAIT_SEC)
     # 検証
-    assert (failed, stopped) == (200, 200)
+    assert committed.is_error is False, committed.text
+    assert (status, body) == (200, {"recorded": True})
     assert webhook.requests == []
 
 
@@ -266,53 +217,47 @@ def test_normal_when_webhook_not_configured(session_world: SessionWorld) -> None
     world = session_world
     server = _start(world, None)
     root = _prepare(world, server)
-    thread_id = _new_thread(server, root)
-    _event(world, "prompt_submit")
-    server.call("reply", workspace=str(root), id=thread_id, body="回答します", summary="質問")
+    _reply(server, root)
     # 実行
-    status, body = _event(world, "stop")
+    committed = _hand_back(server, root)
     time.sleep(NO_SEND_WAIT_SEC)
     # 検証
-    assert (status, body) == (200, {"recorded": True})
+    assert committed.is_error is False, committed.text
     assert "Webhook への送信" not in server.stderr_text()
 
 
 def test_error_when_send_failed(session_world: SessionWorld, webhook: FakeWebhook) -> None:
-    """Webhook が 500 を返却しても出来事の受け取りは成功し、失敗を URL を含めずに記録する（異常系）。"""
+    """Webhook が 500 を返却しても commit は成功し、失敗を URL を含めずに記録する（異常系）。"""
     # 準備
     world = session_world
     webhook.status = 500
     server = _start(world, webhook)
     root = _prepare(world, server)
-    thread_id = _new_thread(server, root)
-    _event(world, "prompt_submit")
-    server.call("reply", workspace=str(root), id=thread_id, body="回答します", summary="質問")
+    _reply(server, root)
     # 実行
-    status, body = _event(world, "stop")
+    committed = _hand_back(server, root)
     log = wait_until(
         lambda: "Webhook への送信が失敗した: 500" in server.stderr_text() and server.stderr_text()
     )
     time.sleep(NO_SEND_WAIT_SEC)
     # 検証
-    assert (status, body) == (200, {"recorded": True})
+    assert committed.is_error is False, committed.text
     assert len(webhook.requests) == 1
     assert "secret-token" not in log
     assert webhook.url not in log
 
 
 def test_error_when_send_timed_out(session_world: SessionWorld, webhook: FakeWebhook) -> None:
-    """Webhook が上限まで応答しないときは打ち切り、出来事の受け取りを待たせない（異常系）。"""
+    """Webhook が上限まで応答しないときは打ち切り、commit の結果を待たせない（異常系）。"""
     # 準備
     world = session_world
     webhook.delay_sec = SLOW_RESPONSE_SEC
     server = _start(world, webhook)
     root = _prepare(world, server)
-    thread_id = _new_thread(server, root)
-    _event(world, "prompt_submit")
-    server.call("reply", workspace=str(root), id=thread_id, body="回答します", summary="質問")
+    _reply(server, root)
     # 実行
     started = time.monotonic()
-    status, body = _event(world, "stop")
+    committed = _hand_back(server, root)
     elapsed = time.monotonic() - started
     log = wait_until(
         lambda: (
@@ -322,7 +267,7 @@ def test_error_when_send_timed_out(session_world: SessionWorld, webhook: FakeWeb
         timeout=TIMEOUT_LOG_WAIT_SEC,
     )
     # 検証
-    assert (status, body) == (200, {"recorded": True})
+    assert committed.is_error is False, committed.text
     assert elapsed < QUICK_RESPONSE_SEC
     assert "secret-token" not in log
     assert webhook.url not in log

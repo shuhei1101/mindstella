@@ -1,4 +1,4 @@
-"""notify.py（書き込みのマーカーと作業の完了の通知）の単体テスト。"""
+"""notify.py（作業の完了の通知と停止の通知）の単体テスト。"""
 
 from __future__ import annotations
 
@@ -22,14 +22,6 @@ WORKSPACE_ID = "ws"
 
 # テストの画面の URL
 PAGE_URL = "http://127.0.0.1:47800/w/mindstella-x-1/"
-
-
-@pytest.fixture(autouse=True)
-def markers(monkeypatch: pytest.MonkeyPatch) -> notify.WriteMarkers:
-    """テストごとに空のマーカーへ差し替える。"""
-    fresh = notify.WriteMarkers()
-    monkeypatch.setattr(notify, "MARKERS", fresh)
-    return fresh
 
 
 @pytest.fixture
@@ -95,41 +87,6 @@ def _recording_describe(
         return result
 
     return describe
-
-
-def test_take(markers: notify.WriteMarkers) -> None:
-    """付けたマーカーを 1 回だけ取り出す（正常系）。"""
-    # 準備
-    markers.mark("ws")
-    # 実行
-    first = markers.take("ws")
-    second = markers.take("ws")
-    # 検証
-    assert first is True
-    assert second is False
-
-
-def test_take_when_cleared(markers: notify.WriteMarkers) -> None:
-    """解除したマーカーは取り出さない（正常系）。"""
-    # 準備
-    markers.mark("ws")
-    markers.clear("ws")
-    # 実行
-    result = markers.take("ws")
-    # 検証
-    assert result is False
-
-
-def test_take_when_other_workspace(markers: notify.WriteMarkers) -> None:
-    """ワークスペースごとに分ける（正常系）。"""
-    # 準備
-    markers.mark("a")
-    # 実行
-    other = markers.take("b")
-    own = markers.take("a")
-    # 検証
-    assert other is False
-    assert own is True
 
 
 def test_read_webhook_url(tmp_path: Path) -> None:
@@ -269,48 +226,13 @@ def test_send_webhook_when_unreachable(
     assert "secret-token" not in caplog.text
 
 
-@pytest.mark.parametrize(
-    ("tool", "payload"),
-    [
-        pytest.param("commit", {"id": "V-3"}, id="commit"),
-        pytest.param("new_thread", {"id": "TH-1", "post": "P-1", "created": True}, id="new-thread"),
-        pytest.param("reply", {"post": "P-2"}, id="reply"),
-    ],
-)
-def test_mark_written(tool: str, payload: dict[str, Any], markers: notify.WriteMarkers) -> None:
-    """commit・new_thread・reply でマーカーを付ける（正常系）。"""
-    # 実行
-    notify.mark_written(tool, WORKSPACE_ID, payload)
-    # 検証
-    assert markers.take(WORKSPACE_ID) is True
-
-
-@pytest.mark.parametrize(
-    ("tool", "payload"),
-    [
-        pytest.param("set_thread_status", {"id": "TH-1"}, id="set-thread-status"),
-        pytest.param("update_thread", {"id": "TH-1"}, id="update-thread"),
-        pytest.param("commit", {"id": None}, id="commit-nothing"),
-    ],
-)
-def test_mark_written_when_not_marking(
-    tool: str, payload: dict[str, Any], markers: notify.WriteMarkers
-) -> None:
-    """対象外のツールと、まとめなかった commit は付けない（正常系）。"""
-    # 実行
-    notify.mark_written(tool, WORKSPACE_ID, payload)
-    # 検証
-    assert markers.take(WORKSPACE_ID) is False
-
-
-def test_notify_if_written(webhook_file: Path, markers: notify.WriteMarkers) -> None:
-    """マーカーがあれば 1 回送信して解除する（正常系）。"""
+def test_notify_work_done(webhook_file: Path) -> None:
+    """1 回送信する（正常系）。"""
     # 準備
-    notify.mark_written("reply", WORKSPACE_ID, {})
     sent: list[tuple[str, str]] = []
     described: list[bool] = []
     # 実行
-    thread = notify.notify_if_written(
+    thread = notify.notify_work_done(
         WORKSPACE_ID,
         _recording_describe(described, ("家計簿", "http://127.0.0.1:1/w/mindstella-x-1/")),
         environ={"MINDSTELLA_DISCORD_WEBHOOK_FILE": str(webhook_file)},
@@ -321,35 +243,15 @@ def test_notify_if_written(webhook_file: Path, markers: notify.WriteMarkers) -> 
     # 検証
     assert thread.daemon is True
     assert sent == [(WEBHOOK_URL, "家計簿: 作業が完了しました\nhttp://127.0.0.1:1/w/mindstella-x-1/")]
-    assert markers.take(WORKSPACE_ID) is False
 
 
-def test_notify_if_written_when_not_marked(webhook_file: Path) -> None:
-    """マーカーが無ければ送信しない（正常系）。"""
+def test_notify_work_done_when_not_configured() -> None:
+    """Webhook の設定が無ければ送信しない（正常系）。"""
     # 準備
     sent: list[tuple[str, str]] = []
     described: list[bool] = []
     # 実行
-    thread = notify.notify_if_written(
-        WORKSPACE_ID,
-        _recording_describe(described, ("家計簿", None)),
-        environ={"MINDSTELLA_DISCORD_WEBHOOK_FILE": str(webhook_file)},
-        send=_recording_send(sent),
-    )
-    # 検証
-    assert thread is None
-    assert sent == []
-    assert described == []
-
-
-def test_notify_if_written_when_not_configured(markers: notify.WriteMarkers) -> None:
-    """Webhook の設定が無ければ送信せずマーカーも解除する（正常系）。"""
-    # 準備
-    markers.mark(WORKSPACE_ID)
-    sent: list[tuple[str, str]] = []
-    described: list[bool] = []
-    # 実行
-    thread = notify.notify_if_written(
+    thread = notify.notify_work_done(
         WORKSPACE_ID,
         _recording_describe(described, ("家計簿", None)),
         environ={},
@@ -358,7 +260,29 @@ def test_notify_if_written_when_not_configured(markers: notify.WriteMarkers) -> 
     # 検証
     assert thread is None
     assert sent == []
-    assert markers.take(WORKSPACE_ID) is False
+    assert described == []
+
+
+def test_notify_work_done_when_workspace_missing(webhook_file: Path) -> None:
+    """ワークスペースが見つからなければ送信しない（正常系）。"""
+    # 準備
+    sent: list[tuple[str, str]] = []
+
+    def describe() -> None:
+        """ワークスペースが見つからない。"""
+        return
+
+    # 実行
+    thread = notify.notify_work_done(
+        WORKSPACE_ID,
+        describe,
+        environ={"MINDSTELLA_DISCORD_WEBHOOK_FILE": str(webhook_file)},
+        send=_recording_send(sent),
+    )
+    assert thread is not None
+    thread.join(timeout=5)
+    # 検証
+    assert sent == []
 
 
 @pytest.mark.parametrize(

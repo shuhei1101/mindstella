@@ -1,0 +1,47 @@
+# 単体テスト（実装前の Red）
+# commit: 3a41d4fe
+# 実行日時: 2026-11-25 15:04:55 JST
+# 失敗は全て実装の無いこと（notify_work_done・hand_back・reconnectEvents・setRefreshing・クローズの後の一覧への戻り）で落ちる
+# 実装の前から pass するもの:
+#   - topbar.test.tsx の全件: 作業ブランチのモック作成の commit で topbar.tsx に入れた振る舞いによる。アイコンだけのボタン・ツールチップ（Tip）・更新のボタン（RefreshButton）は dd248d41、Esc で隠す data-tipsoff は 9d87235f、ツールチップをボタンの外に出した WithTip は ce09d1cc
+#   - test_record_event_when_stop の prompt_submit・stop_failure: base ブランチ（4fe2d1b8）の sessions.py の record_event は、kind が stop のときだけ notify.notify_if_written を呼び、prompt_submit・stop_failure では notify.clear_written だけを呼んで通知を送信しない（a92c8814、#569）
+
+$ python3 -m pytest tests/unit/scripts/test_notify.py tests/unit/scripts/test_server.py tests/unit/scripts/test_sessions.py
+FAILED tests/unit/scripts/test_notify.py::test_notify_work_done - AttributeEr...
+FAILED tests/unit/scripts/test_notify.py::test_notify_work_done_when_not_configured
+FAILED tests/unit/scripts/test_notify.py::test_notify_work_done_when_workspace_missing
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_hand_back[with-changes]
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_hand_back[nothing-to-commit]
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_not_hand_back[commit-without-hand-back]
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_not_hand_back[other-session]
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_not_hand_back[reply]
+FAILED tests/unit/scripts/test_sessions.py::test_record_event_when_stop[stop]
+9 failed, 182 passed in 1.41s
+
+
+$ npx vitest run (変更したテストファイル)
+     × set_refreshing
+     × connect_events_when_visible_after_closed
+     × reconnect_events
+     × reconnect_events_when_not_connected
+     × thread_view_when_close
+     × thread_view_when_reopen_focus
+     × thread_view_when_status_failed
+     × comments_panel_when_closed_focus (all)
+     × comments_panel_when_closed_focus (open-middle)
+     × comments_panel_when_closed_focus (open-last)
+     × comments_panel_when_closed_focus (open-only)
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/shared/adapters/events-client.test.ts > connectEvents > connect_events_when_visible_after_closed
+ FAIL  frontend/src/shared/adapters/events-client.test.ts > reconnectEvents > reconnect_events
+ FAIL  frontend/src/shared/adapters/events-client.test.ts > reconnectEvents > reconnect_events_when_not_connected
+ FAIL  frontend/src/shared/stores/connection-store.test.ts > useConnectionStore.setRefreshing > set_refreshing
+ FAIL  frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_closed_focus (all)
+ FAIL  frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_closed_focus (open-middle)
+ FAIL  frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_closed_focus (open-last)
+ FAIL  frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_closed_focus (open-only)
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_close
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_reopen_focus
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_status_failed
+ Test Files  4 failed | 1 passed (5)
+      Tests  11 failed | 37 passed (48)

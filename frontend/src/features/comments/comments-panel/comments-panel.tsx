@@ -156,23 +156,46 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   const close = (): void => {
     setPanel(undefined);
   };
-  // 一覧へ戻った後、次に描いた一覧でフォーカスを戻すスレッドの ID
-  const focusRow = useRef<string | null>(null);
-  // スレッドの一覧へ戻り、描き直した一覧の開いていた行へフォーカスを戻す
-  const backToList = (): void => {
-    focusRow.current = search.thread ?? null;
-    setComments({ thread: undefined });
-  };
-  // 一覧を描いた後に 1 回だけ、開いていた行へフォーカスを移す（行が無ければ移さない）
-  useEffect(() => {
-    const from = focusRow.current;
-    if (from === null || search.thread !== undefined || search.review !== undefined) return;
-    focusRow.current = null;
-    document.querySelector<HTMLElement>(`[data-focus="thread:${from}"], [data-focus="thread:new:${from}"]`)?.focus();
-  }, [search.thread, search.review]);
   const counts = threadCounts({ threads: data.threads, tag, target });
   const rows = visibleThreads({ threads: data.threads, filter, tag, target });
   const pending = pendingThreads({ items: data.items, filter, tag, target });
+  // 一覧に並ぶスレッドの ID の順（開いているスレッドが一覧から消えた後も、消える前の順を保つ）
+  const order = [...pending.map((item) => item.id), ...rows.map((thread) => thread.id)];
+  const lastOrder = useRef(order);
+  useEffect(() => {
+    if (search.thread === undefined || order.includes(search.thread)) lastOrder.current = order;
+  });
+  // 一覧へ戻った後、次に描いた一覧でフォーカスを戻すスレッドの ID と、行が無いときに移す先の候補の順（「一覧へ戻る」では空）
+  const focusRow = useRef<{ from: string; fallback: string[] } | null>(null);
+  const emptyRef = useRef<HTMLParagraphElement>(null);
+  // スレッドの一覧へ戻り、描き直した一覧の開いていた行へフォーカスを戻す
+  const backToList = (): void => {
+    focusRow.current = search.thread === undefined ? null : { from: search.thread, fallback: [] };
+    setComments({ thread: undefined });
+  };
+  // クローズにして一覧へ戻り、開いていた行、無ければ次の行、無ければ前の行、行が 1 件も無ければ空の表示へフォーカスを移す
+  const backAfterClosed = (): void => {
+    const from = search.thread;
+    if (from === undefined) return;
+    const ids = lastOrder.current;
+    const at = ids.indexOf(from);
+    focusRow.current = { from, fallback: at < 0 ? [] : [...ids.slice(at + 1), ...ids.slice(0, at).reverse()] };
+    setComments({ thread: undefined });
+  };
+  // 一覧を描いた後に 1 回だけ、開いていた行へフォーカスを移す（「一覧へ戻る」で行が無ければ移さない）
+  useEffect(() => {
+    const entry = focusRow.current;
+    if (entry === null || search.thread !== undefined || search.review !== undefined) return;
+    focusRow.current = null;
+    const rowOf = (id: string): HTMLElement | null => document.querySelector<HTMLElement>(`[data-focus="thread:${id}"], [data-focus="thread:new:${id}"]`);
+    const found = [entry.from, ...entry.fallback].map(rowOf).find((element) => element !== null);
+    if (found !== undefined) {
+      found.focus();
+      return;
+    }
+    if (entry.fallback.length > 0 || order.length === 0) emptyRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 一覧へ戻ったときだけ移す
+  }, [search.thread, search.review]);
   const targetTitle = target === null ? undefined : index?.byId.get(target)?.item.title;
   const repliesOf = new Set(data.items.map((item) => item.thread).filter((thread): thread is string => thread !== null));
   const header = (
@@ -199,7 +222,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
       return <ReviewView data={data} highlight={search.thread ?? null} onBack={() => { setComments({ review: undefined }); }} onOpenThread={(id) => { setComments({ review: undefined, thread: id }); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />;
     }
     if (search.thread !== undefined) {
-      return <ThreadView key={search.thread} id={search.thread} data={data} onBack={backToList} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />;
+      return <ThreadView key={search.thread} id={search.thread} data={data} onBack={backToList} onClosed={backAfterClosed} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />;
     }
     return (
       <div className="flex min-h-0 flex-1 flex-col">
@@ -238,7 +261,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
           ))}
         </ul>
         {pending.length === 0 && rows.length === 0 && data.threadsError === null ? (
-          <p className="m-0 flex items-center gap-1 px-3 py-2 text-small text-muted-foreground">
+          <p ref={emptyRef} tabIndex={-1} className="m-0 flex items-center gap-1 px-3 py-2 text-small text-muted-foreground focus-visible:outline-none">
             <Icon name="comment" />
             {emptyText({ filter, tag, target })}
           </p>

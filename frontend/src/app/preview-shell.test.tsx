@@ -281,7 +281,8 @@ describe("PreviewShell", () => {
     act(() => FakeEventSource.last?.emit("changed"));
     // 検証
     await waitFor(() => expect(FakeEventSource.last).not.toBeNull());
-    expect(screen.queryByText(/更新があります/)).toBeNull();
+    // 更新のボタンのツールチップ（読み上げから外した要素）の文言は帯に数えない
+    expect(screen.queryByText(/更新があります/, { ignore: "[aria-hidden='true'] *" })).toBeNull();
     expect(screen.queryByText("T-2の題")).toBeNull();
     // 実行
     await userEvent.click(screen.getByRole("group", { name: "表示形式" }));

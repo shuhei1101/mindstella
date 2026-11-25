@@ -1,0 +1,19 @@
+confirmations:
+  - topic: '#377・#482 画面一覧・画面遷移'
+    decision: スレッドのクローズ・オープンは理由の入力欄を挟まずにすぐ状態を変え、クローズしたらコメントの一覧へ戻る（履歴に追加しない）。オープンに戻したときはスレッドに留まる。トップバーの接続の状態の表示のすぐ右に更新のボタンを常に出し、今の画面に留まったまま接続し直して読み込み直す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 1a7308ab
+    thread: https://github.com/shuhei1101/mindstella/pull/703#discussion_r4683950268
+  - topic: '#573・#482 トップバーのモック'
+    decision: 状態の表示とボタンはどの幅でもアイコンと件数だけにし、名前と状態はホバーとフォーカスのツールチップと読み上げに持たせる。更新のボタンを接続の状態の表示のすぐ右に常に出す。481px 未満は詰めて 320px でもはみ出さない（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: ce09d1cc
+    thread: https://github.com/shuhei1101/mindstella/pull/703#discussion_r4688474828
+  - topic: 「更新があります」の出し方
+    decision: 更新のボタンの右上に点を出し、ツールチップを「更新があります。最新の記録を読み込む」にする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: ce09d1cc
+    thread: https://github.com/shuhei1101/mindstella/pull/703#discussion_r4688475476

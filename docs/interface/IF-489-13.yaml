@@ -258,7 +258,7 @@ constraints:
   - item: タグ
     constraint: どの文字列でも、渡した表記のまま書く。重なりと空の文字列は今までどおり ArgumentError
   - item: 作業の完了の通知
-    constraint: スレッドを作成したときに、呼んだ MindStella のセッションに『作業の完了の通知』の書き込みのマーカーを付ける。失敗したときは付けない
+    constraint: スレッドを作成しても、『作業の完了の通知』は送信しない。通知は、手番を返す直前の『書き換えのまとまり』（`hand_back` が真）が送信する
 refs:
   - ER-489-1#tables[threads.yaml]
   - SC-489-1#

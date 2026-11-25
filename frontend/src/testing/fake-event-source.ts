@@ -3,8 +3,12 @@ type Listener = (event: Event) => void;
 
 export class FakeEventSource {
   static last: FakeEventSource | undefined;
+  static readonly OPEN = 1;
+  static readonly CLOSED = 2;
   readonly url: string;
   closed = false;
+  /** 接続の状態（EventSource.OPEN / CLOSED）。テストから閉じた状態にできる */
+  readyState: number = FakeEventSource.OPEN;
   private readonly listeners = new Map<string, Listener[]>();
 
   constructor(url: string) {
@@ -27,5 +31,6 @@ export class FakeEventSource {
   /** つながりを閉じる */
   close(): void {
     this.closed = true;
+    this.readyState = FakeEventSource.CLOSED;
   }
 }

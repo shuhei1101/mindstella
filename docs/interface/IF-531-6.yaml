@@ -5,7 +5,7 @@ entry:
   value: POST `/_admin/sessions/{session}/events`
 lead: MindStella のセッションのフックが送信する出来事（起動・終了・応答の始まりと終わり）を受け、状態のフォルダの MindStella のセッションに記録する。
 idempotent: true
-side_effects: '`session.json` の `claude_session_id`・`pid`・`pane`・`claude_config_dir`・`balancer_account`・`status`・`responding` を書き換える。`prompt_submit`・`stop`・`stop_failure`・`session_end` で『作業の完了の通知』の書き込みのマーカーを解除し、`stop` の応答を返却した後に『作業の完了の通知』を呼ぶ。`session_end` が `running` から `stopped` に書き換えたときに『停止の通知』を呼ぶ'
+side_effects: '`session.json` の `claude_session_id`・`pid`・`pane`・`claude_config_dir`・`balancer_account`・`status`・`responding` を書き換える。`session_end` が `running` から `stopped` に書き換えたときに『停止の通知』を呼ぶ'
 request:
   - name: session
     type: str
@@ -101,7 +101,7 @@ constraints:
   - item: 同時の依頼
     constraint: '`session.json` ごとの書き込みの鍵だけを取って読み・書く。ワークスペースごとの順番の鍵は取らない（『MindStella のセッションの作成』が鍵を持ったまま SessionStart の登録を待つため）'
   - item: 作業の完了の通知
-    constraint: '`prompt_submit` で『作業の完了の通知』の書き込みのマーカーを解除し、`stop` で応答を返却した後に『作業の完了の通知』を呼ぶ。`stop_failure`・`session_end` ではマーカーを解除するだけにする。マーカーの付け方と送信は『作業の完了の通知』のとおり。通知の成否は応答に含めない'
+    constraint: 'どの出来事でも『作業の完了の通知』を呼ばない。通知は、手番を返す直前の『書き換えのまとまり』（`hand_back` が真）が呼ぶ'
   - item: 停止の通知
     constraint: '`session_end`（`reason` が `clear`・`resume` 以外）で書き換える前の `status` が `running` のときだけ、『停止の通知』を止まった理由 `session_ended` で呼ぶ。`stopping`（停止の依頼の途中）からの書き換えでは呼ばず、『MindStella のセッションの停止』が止め終えたときに呼ぶ。通知の成否は応答に含めない'
   - item: 利用上限

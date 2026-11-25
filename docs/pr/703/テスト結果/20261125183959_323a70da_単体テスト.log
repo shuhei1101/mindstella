@@ -1,0 +1,18 @@
+# 単体テスト（全 pass）
+# commit: 323a70da
+# 実行日時: 2026-11-25 18:39:59 JST
+# tests/unit と Vitest の全件は 319adafc で実行した。319adafc..323a70da の実装の差分は topbar.tsx のクラスの並びだけで、topbar.test.tsx を 323a70da で実行し直した
+# tests/unit/scripts/test_serve.py::test_stream は origin/develop（4fe2d1b8）でも終わらずに止まるため外して実行した（#704）
+
+$ pytest tests/unit --deselect tests/unit/scripts/test_serve.py::test_stream
+1735 passed, 1 skipped, 3 deselected, 5 warnings in 30.65s
+
+$ pytest tests/unit/scripts/test_serve.py -k "test_stream_"
+2 passed, 149 deselected in 0.12s
+
+$ npx vitest run
+ Test Files  108 passed (108)
+      Tests  536 passed (536)
+
+$ npx vitest run frontend/src/shared/components/topbar.test.tsx（323a70da）
+      Tests  8 passed (8)

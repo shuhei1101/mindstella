@@ -250,7 +250,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {views === null ? null : <ViewSwitch views={views} current={view} onChange={setView} />}
         <CardSortControl shown={view !== "table" && content !== undefined} value={cardSort} onChange={(next) => { setSort(cardSortToParam(next, initialCardSort)); }} />
         {edit === null ? null : (

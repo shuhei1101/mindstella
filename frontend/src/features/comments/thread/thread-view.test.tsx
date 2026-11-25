@@ -111,7 +111,7 @@ describe("ThreadView", () => {
     await waitFor(() => expect(calls).toBe(2));
   });
 
-  // クローズにする（正常系）
+  // 理由を聞かずにクローズにし、一覧へ戻る（正常系）
   test("thread_view_when_close", async () => {
     // 準備
     const bodies: unknown[] = [];
@@ -126,14 +126,14 @@ describe("ThreadView", () => {
     renderRoute("/?panel=comments&thread=TH-1");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "クローズにする" }));
-    await userEvent.type(screen.getByRole("textbox", { name: "理由（任意）" }), "決まった");
-    await userEvent.click(screen.getAllByRole("button", { name: "クローズにする" }).at(-1) as HTMLElement);
     // 検証
-    await waitFor(() => expect(bodies).toEqual([{ status: "closed", reason: "決まった" }]));
+    expect(screen.queryByRole("textbox", { name: "理由（任意）" })).toBeNull();
+    await waitFor(() => expect(bodies).toEqual([{ status: "closed", reason: null }]));
+    await waitFor(() => expect(new URLSearchParams(window.location.search).has("thread")).toBe(false));
   });
 
-  // クローズにした後、描き直した「オープンに戻す」へフォーカスを戻す（正常系）
-  test("thread_view_when_close_focus", async () => {
+  // オープンに戻した後、この画面に留まり「クローズにする」へフォーカスを戻す（正常系）
+  test("thread_view_when_reopen_focus", async () => {
     // 準備（描き直しより先に次のコマが来る順にする）
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       queueMicrotask(() => {
@@ -141,24 +141,51 @@ describe("ThreadView", () => {
       });
       return 0;
     });
-    let status = "open";
+    let status = "closed";
+    const bodies: unknown[] = [];
     server.use(
       http.get("/api/threads", () => HttpResponse.json({ threads: [{ ...unseen.threads[0], status }] })),
       http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: [] })),
-      http.patch("/api/threads/:id", () => {
-        status = "closed";
-        return HttpResponse.json({ id: "TH-1", status: "closed", changed: true });
+      http.patch("/api/threads/:id", async ({ request }) => {
+        bodies.push(await request.json());
+        status = "open";
+        return HttpResponse.json({ id: "TH-1", status: "open", changed: true });
       }),
     );
     renderRoute("/?panel=comments&thread=TH-1");
-    await userEvent.click(await screen.findByRole("button", { name: "クローズにする" }));
-    await userEvent.type(screen.getByRole("textbox", { name: "理由（任意）" }), "決まった");
     // 実行
-    await userEvent.click(screen.getAllByRole("button", { name: "クローズにする" }).at(-1) as HTMLElement);
+    await userEvent.click(await screen.findByRole("button", { name: "オープンに戻す" }));
     // 検証
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "オープンに戻す" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: "クローズにする" })).toHaveFocus();
     });
+    expect(bodies).toEqual([{ status: "open", reason: null }]);
+    expect(new URLSearchParams(window.location.search).get("thread")).toBe("TH-1");
+  });
+
+  // 状態を変えられなかったら理由を出し、画面に留まる（異常系）
+  test("thread_view_when_status_failed", async () => {
+    // 準備
+    let calls = 0;
+    let alertBeforeSecond: boolean | null = null;
+    server.use(
+      http.get("/api/threads", () => HttpResponse.json(unseen)),
+      http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: [] })),
+      http.patch("/api/threads/:id", () => {
+        calls += 1;
+        if (calls === 2) alertBeforeSecond = screen.queryByRole("alert") !== null;
+        return HttpResponse.json({ type: "about:blank", title: "Conflict", status: 409, detail: "未読の書き込みがあります" }, { status: 409, headers: { "Content-Type": "application/problem+json" } });
+      }),
+    );
+    renderRoute("/?panel=comments&thread=TH-1");
+    // 実行
+    await userEvent.click(await screen.findByRole("button", { name: "クローズにする" }));
+    // 検証
+    expect(await screen.findByRole("alert")).toHaveTextContent("クローズにできませんでした。未読の書き込みがあります");
+    expect(new URLSearchParams(window.location.search).get("thread")).toBe("TH-1");
+    await userEvent.click(screen.getByRole("button", { name: "クローズにする" }));
+    await waitFor(() => expect(calls).toBe(2));
+    expect(alertBeforeSecond).toBe(false);
   });
 
   // 音声で返信を送る（正常系）
