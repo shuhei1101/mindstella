@@ -68,3 +68,4 @@ functions:
 notes:
   単体テスト: 同じフォルダの `panel-resizer.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   指での操作: 'ドラッグは Pointer Events（`pointerdown` で `setPointerCapture`、`pointermove`、`pointerup`・`pointercancel`・`lostpointercapture` で終える）で受け、マウスと指を分けない。区切りに `touch-action: none` を付ける'
+  置き換え: '`frontend/src/features/detail/detail-panel/components/detail-resizer.tsx`・`detail-resizer.test.tsx` を削除し、`detail-panel.tsx` の import をこの部品と『panel-width-store』（`DETAIL_PANEL_WIDTH`・`detailPanelMax`）に置き換える'

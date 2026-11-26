@@ -6,7 +6,7 @@ components:
     title: 表示の設定
     kind: 画面
     usecase: 表示の設定を変える
-    summary: '画面設計『表示の設定.tsx』の要素と操作を描く。上書きを端末の保存領域に書き（「レビューに追加」の後のフォーカスは `auto` で `focusAfterAdd` を `null`、それ以外はその値）、既定にするで確かめのモーダルを開く。パネルは部品『左のパネル』（`resizerLabel` 「表示の設定の幅」）で描く。パネルとグレーアウトは `position: fixed` で、上端を CSS 変数 `--topbar-height`（無ければ 0）、下端を画面の下端にする（幅によらず同じ）'
+    summary: '画面設計『表示の設定.tsx』の要素と操作を描く。上書きを端末の保存領域に書き（「レビューに追加」の後のフォーカスは `auto` で `focusAfterAdd` を `null`、それ以外はその値）、既定にするで確かめのモーダルを開く。パネルは部品『左のパネル』を `resizerLabel` を省いて描き、コメントの一覧と同じ幅で開く（幅の区切りは持たない）。パネルとグレーアウトは `position: fixed` で、上端を CSS 変数 `--topbar-height`（無ければ 0）、下端を画面の下端にする（幅によらず同じ）'
     refs:
       - SCR-489-24#
     unit_tests:
