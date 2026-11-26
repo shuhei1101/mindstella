@@ -1,0 +1,11 @@
+$ pytest tests/integration/preview/test_spa_comments_screen.py tests/integration/preview/test_spa_thread_screen.py tests/integration/preview/test_spa_review_screen.py tests/integration/preview/test_spa_open.py
+E         - textbox "D-1 へのコメント"
+E         - button "音声で入力"
+E         - button "レビューに追加"
+
+tests/integration/preview/test_spa_open.py:171: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_spa_open.py::test_normal_when_records_changed_while_typing[chromium]
+1 failed, 126 passed in 252.94s (0:04:12)
+
+# fail の 1 件は develop（19ecee06）でも fail する（20261127040138_3c5a0559_結合テスト.log に記録）
