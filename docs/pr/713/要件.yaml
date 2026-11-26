@@ -1,0 +1,77 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: コメントの一覧のパネルの右端の区切りをドラッグ・キーで動かして幅を変え、スレッドの一覧・スレッド 1 件で同じ幅のまま読み書きする。開き直しても変えた幅で出る
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: following
+    detail: レビュー中の書き込みの画面もコメントの一覧と同じ幅で出し、長い書き込みでも横にスクロールしない
+    depends_on:
+      - docs/scenario/SC-489-5.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: run_only
+    detail: 詳細パネルの幅の区切りを共通の部品へ移し、資料の広い表は表の中だけで横にスクロールさせるため、詳細を読む手順が壊れないかを確認する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: changed
+    detail: 手番を返す前に、回答なしで進められる進め方の工程を進め、タスクを保留・完了・中止にしたかを確認してから手番を返す。未着手・進行中のタスクが残っていると手番を返せない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-30.yaml
+    impact: changed
+    detail: 手番の終了時にタスクを保留（着手できる条件つき）・完了・中止のどれかにする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-26.yaml
+    impact: following
+    detail: 起動と再開の注入文に手番を返す条件が入ることに追随する
+    depends_on:
+      - docs/scenario/SC-489-43.yaml
+  - kind: single
+    scenario: docs/scenario/SC-568-1.yaml
+    impact: following
+    detail: タスクが残っていて手番を返せなかったときは作業の完了を通知しない
+    depends_on:
+      - docs/scenario/SC-489-43.yaml
+docs:
+  - page: plugins/mindstella/agent-flows/on-comment.yaml
+    new: false
+    change: 「手番を返す」の前に「手番を返す前の確認」の工程を追加する（進められる工程の進め残しとタスクの状態）
+    status: todo
+  - page: plugins/mindstella/agent-flows/record.yaml
+    new: false
+    change: 工程「手番を返す」に、手番の終了時のタスクの状態を保留・完了・中止に限る確認と、commit に拒否されたときの対応を追加する
+    status: todo
+  - page: plugins/mindstella/content/prompts/session-start.yaml
+    new: false
+    change: 起動と再開の注入文に、手番を返す条件を 1 行で入れる
+    status: todo
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: 手番を返す前の確認の工程を追加する
+    status: todo
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: commit の hand_back で未着手・進行中のタスクが残っていると拒否し、残っているタスクを返却することを追加する
+    status: todo
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: コメントの一覧のパネルの幅を右端の区切りで変える操作を追加する
+    status: todo
+scope_out:
+  - item: スレッド 1 件の見出しが右端を突き抜ける件・一覧の見た目・スレッドから開いた資料の操作
+    reason: '要望に含まれない（#706 の本文が #707 で扱うと決めている）。#357 の後に着手する後続'
+    plan: '#707'
+  - item: 差分の表示の間のタブの変更のマーク・資料を開くと画面の全体がスクロールする件・トップバーの「差分の表示をやめる」のボタン
+    reason: 要望に含まれない。縦のスクロールの件で、#706 の本文が関連として分けている
+    plan: '#692'
+  - item: 動画作成のワークスペースに残っている未着手のタスク（T-5・T-6・T-11〜T-14・T-16）の状態の修正
+    reason: 利用者のワークスペースの記録で、この PR の仕組みが入った後にそのワークスペースの MindStella のセッションが手番を返す前に修正する
+    plan: none
+  - item: コメントをまとめて送信したときに Claude Code へ入力する 1 行（claude_input.py の INPUT_TEMPLATE）へ手番を返す条件を入れること
+    reason: 入力を受けたセッションはエージェントフロー mindstella/on-comment に従い、追加する「手番を返す前の確認」の工程を通るため。含めるかは判断が分かれるので、レビューで確定する
+    plan: none
