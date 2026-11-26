@@ -18,6 +18,7 @@ from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import assert_below_topbar, open_spa
 
 import pytest
+from preview_record_id_helpers import assert_described, assert_tip
 
 # パネルを画面いっぱいに出す幅（これ以下）と、画面の高さ
 NARROW_SIZE = {"width": 800, "height": 700}
@@ -405,3 +406,17 @@ def test_row_labels_not_wrapped_when_narrow(page: Page, spa_comments_preview: tu
 
 # 要素の中の文字（テキストノード）が並ぶ行の数（折り返していなければ 1）
 _TEXT_LINES_JS = "(e) => { const walker = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); const tops = new Set(); for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) { if (node.textContent.trim() === '') continue; const range = document.createRange(); range.selectNodeContents(node); for (const rect of range.getClientRects()) if (rect.width > 0) tops.add(Math.round(rect.top)); } return tops.size; }"
+
+
+def test_thread_row_id_markers(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """スレッドの行の要約の中の記録にある D-1 をマーカーにし、乗せるとツールチップを出し、行を開くボタンの aria-describedby で読み上げる（正常系）。"""
+    # 準備
+    _open(page, spa_comments_preview)
+    row = _rows(page).filter(has_text="D-1 の案の相談").locator("> button")
+    marker = row.locator("[data-record-id='D-1']").first
+    # 実行
+    marker.hover()
+    # 検証
+    expect(row.locator("a")).to_have_count(0)
+    assert_tip(page, "最初の問い")
+    assert_described(page, row, "最初の問い")

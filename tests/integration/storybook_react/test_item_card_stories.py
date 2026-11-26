@@ -19,6 +19,7 @@ STATES = (
     "shared-itemcard--selected-with-comments",
     "shared-itemcard--dates",
     "shared-itemcard--dates-narrow",
+    "shared-itemcard--title-id-markers",
 )
 
 
@@ -135,3 +136,48 @@ def test_dates_narrow(open_story: OpenStory) -> None:
     dates_box = dates.bounding_box()
     assert card_box is not None and dates_box is not None
     assert dates_box["x"] + dates_box["width"] <= card_box["x"] + card_box["width"] + 1
+
+
+# 見本の記録の D-1 のツールチップに出る文字（タイトル・ID・種類・状態）
+D1_TIP_TEXTS = ("保存先の決め方", "D-1", "検討事項", "未決定")
+
+
+def test_title_id_markers(open_story: OpenStory) -> None:
+    """タイトルと関係する項目のタイトルの中の記録にある D-1 をマーカーにし、D-99 は文字のまま、カードの中にリンクを増やさない（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-itemcard--title-id-markers")
+    card = page.locator("div[data-card]")
+    title = card.locator("button[data-id]")
+    # 検証
+    expect(title.locator("[data-record-id='D-1']")).to_have_text("D-1")
+    expect(title.locator("[data-record-id='D-99']")).to_have_count(0)
+    expect(card.locator("a")).to_have_count(0)
+    expect(card.locator(":scope > span [data-record-id='D-1']")).to_have_count(1)
+    described = (title.get_attribute("aria-describedby") or "").split()
+    expect(page.locator(f"#{described[0]}")).to_contain_text("保存先の決め方（D-1）")
+
+
+@pytest.mark.parametrize("viewport", [{"width": 1280, "height": 800}, {"width": 390, "height": 844}])
+def test_title_id_marker_hover(open_story: OpenStory, viewport: dict[str, int]) -> None:
+    """タイトルの D-1 のマーカーに乗せると、ボタンの ::after に覆われずに D-1 のツールチップを出す（正常系）。"""
+    # 準備
+    page = open_story("shared-itemcard--title-id-markers")
+    page.set_viewport_size(viewport)
+    # 実行
+    page.locator("button[data-id] [data-record-id='D-1']").hover()
+    # 検証
+    tip = page.locator(".term-tip")
+    expect(tip).to_be_visible()
+    for text in D1_TIP_TEXTS:
+        expect(tip).to_contain_text(text)
+
+
+def test_title_id_marker_focus(open_story: OpenStory) -> None:
+    """タイトルのボタンに Tab でフォーカスすると、タイトルの中の D-1 のツールチップを出す（正常系）。"""
+    # 準備
+    page = open_story("shared-itemcard--title-id-markers")
+    # 実行
+    page.keyboard.press("Tab")
+    # 検証
+    expect(page.locator("button[data-id]")).to_be_focused()
+    expect(page.locator(".term-tip")).to_contain_text("保存先の決め方")

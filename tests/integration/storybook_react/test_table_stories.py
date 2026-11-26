@@ -28,6 +28,7 @@ STATES = (
     "shared-table--tag-expr",
     "shared-table--datetime-columns",
     "shared-table--sorted-by-updated-desc",
+    "shared-table--title-id-markers",
 )
 
 # 位置の比べで許す差（px）
@@ -281,3 +282,37 @@ def test_sorted_by_updated_desc(open_story: OpenStory) -> None:
     # 検証
     assert header.get_attribute("aria-sort") == "descending"
     assert times == sorted(times, reverse=True)
+
+
+def test_title_id_markers(open_story: OpenStory) -> None:
+    """行のタイトルの中の記録にある D-1 をマーカーにし、D-99 は文字のまま、表の中にリンクを増やさない（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-table--title-id-markers")
+    row = page.locator("tbody tr[data-id='D-5']")
+    # 検証
+    expect(row.locator("[data-record-id='D-1']")).to_have_text("D-1")
+    expect(row.locator("[data-record-id='D-99']")).to_have_count(0)
+    expect(page.locator("tbody a")).to_have_count(0)
+    title = row.locator("button:has([data-record-id])")
+    described = title.get_attribute("aria-describedby")
+    assert described is not None
+    expect(page.locator(f"#{described}")).to_contain_text("保存先の決め方（D-1）")
+
+
+def test_title_id_marker_hover(open_story: OpenStory) -> None:
+    """行のタイトルの D-1 のマーカーに乗せると、D-1 のツールチップを出す（正常系）。"""
+    # 準備
+    page = open_story("shared-table--title-id-markers")
+    # 実行
+    page.locator("tbody [data-record-id='D-1']").hover()
+    # 検証
+    expect(page.locator(".term-tip")).to_contain_text("保存先の決め方")
+
+
+def test_title_id_marker_not_raised(open_story: OpenStory) -> None:
+    """表のマーカーは重なりの指定を持たず、固定した列の上に描かれない（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-table--title-id-markers")
+    marker = page.locator("tbody [data-record-id='D-1']")
+    # 検証
+    assert marker.evaluate("e => getComputedStyle(e).zIndex") == "auto"

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from playwright.sync_api import expect
+
 from .color_helpers import MIN_CONTRAST, contrast, resolve_color
 from .storybook_react_fixture_types import OpenStory
 
@@ -250,3 +252,26 @@ def test_long_values_narrow(open_story: OpenStory) -> None:
     assert title_lines <= TITLE_MAX_LINES + 0.5
     assert line2.evaluate("(e) => e.scrollWidth <= e.clientWidth + 1")
     assert page.locator(f"{LINE2} time").is_visible()
+
+
+def test_title_id_markers(open_story: OpenStory, page_errors: list[str]) -> None:
+    """要約の中の記録にある D-1・TH-1 をマーカーにし、D-99 は文字のまま、行を開くボタンの中にリンクを増やさない（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadrow--title-id-markers")
+    root = page.locator("#storybook-root")
+    # 検証
+    assert page_errors == []
+    expect(root.locator("[data-record-id='D-1']").first).to_be_visible()
+    expect(root.locator("[data-record-id='TH-1']")).to_have_count(1)
+    expect(root.locator("[data-record-id='D-99']")).to_have_count(0)
+    expect(root.locator("button a")).to_have_count(0)
+
+
+def test_title_id_marker_hover(open_story: OpenStory) -> None:
+    """要約の D-1 のマーカーに乗せると、D-1 のツールチップを出す（正常系）。"""
+    # 準備
+    page = open_story("comments-threadrow--title-id-markers")
+    # 実行
+    page.locator("#storybook-root [data-record-id='D-1']").first.hover()
+    # 検証
+    expect(page.locator(".term-tip")).to_contain_text("保存先の決め方")

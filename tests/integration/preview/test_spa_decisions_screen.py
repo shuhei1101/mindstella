@@ -10,6 +10,7 @@ from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_spa_helpers import AXE_SCRIPT, assert_below_topbar, open_spa
 from workspace_fixtures import MakeEdit, MakeItem
+from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_described, assert_tip
 
 # 押せる範囲と h1 の axe の規則を当て、違反を返す
 AXE_RULES_JS = """async () => {
@@ -301,3 +302,20 @@ def test_table_date_columns(page: Page, write_preview: WritePreview, make_item: 
     # 検証
     expect(page.get_by_role("columnheader", name=re.compile("更新日時"))).to_be_visible()
     expect(row.locator("time[datetime='2026-11-20T00:00:00+00:00']")).to_have_text("11/20 09:00")
+
+
+def test_card_title_id_markers(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """カードのタイトルの中の記録にある D-1 をマーカーにし、乗せると D-1 のツールチップを出し、押すとカードの詳細を開く（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", title=TARGET_TITLE, status="未決定"), make_item("D-2", title=LINKED_TITLE, status="未決定"))
+    open_spa(page, url, "?tab=decisions&view=board")
+    card = page.locator("[data-card='D-2']")
+    marker = card.locator("button[data-id] [data-record-id='D-1']")
+    # 実行
+    marker.hover()
+    # 検証
+    expect(card.locator("[data-record-id='D-99'], a")).to_have_count(0)
+    assert_tip(page)
+    assert_described(page, card.locator("button[data-id]"))
+    marker.click()
+    expect(page).to_have_url(re.compile(r"id=D-2"))

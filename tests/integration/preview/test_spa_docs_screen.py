@@ -10,6 +10,7 @@ from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview
 from preview_spa_helpers import open_spa
 from workspace_fixtures import MakeEdit, MakeItem
+from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_described, assert_tip
 
 
 def test_cards_in_id_order(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
@@ -344,3 +345,20 @@ def test_board_sorted_in_column(page: Page, write_preview: WritePreview, make_it
     column = page.get_by_role("region", name="下書き")
     # 検証
     expect(column.locator("[data-card] h2")).to_have_text(["新しい資料", "間の資料", "古い資料"])
+
+
+def test_doc_card_title_id_markers(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """資料のカードのタイトルの中の記録にある D-1 をマーカーにし、乗せるとツールチップを出し、押すとカードの詳細を開く（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", title=TARGET_TITLE, status="未決定"), make_item("A-1", title=LINKED_TITLE))
+    open_spa(page, url, "?tab=docs")
+    card = page.locator("[data-card='A-1']")
+    marker = card.locator("button[data-id] [data-record-id='D-1']")
+    # 実行
+    marker.hover()
+    # 検証
+    expect(card.locator("[data-record-id='D-99'], a")).to_have_count(0)
+    assert_tip(page)
+    assert_described(page, card.locator("button[data-id]"))
+    marker.click()
+    expect(page).to_have_url(re.compile(r"id=A-1"))
