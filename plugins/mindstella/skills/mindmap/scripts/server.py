@@ -594,7 +594,10 @@ def build_server(
         ] = False,
     ) -> CallToolResult:
         result = write(
-            workspace, session, lambda root: commands.run_commit(root, summary), tool="commit"
+            workspace,
+            session,
+            lambda root: commands.run_commit(root, summary, hand_back=hand_back),
+            tool="commit",
         )
         # 手番を返す commit が成功した: 鍵を放した後に作業の完了を通知する
         if hand_back and not result.is_error:

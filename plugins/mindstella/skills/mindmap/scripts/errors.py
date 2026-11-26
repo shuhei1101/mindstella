@@ -115,6 +115,14 @@ class ArgumentError(MindmapError):
         self.argument = argument
 
 
+class OpenTasksRemainError(MindmapError):
+    """手番を返す `commit` で、状態が `未着手`・`進行中` のタスクが残っている。"""
+
+    def __init__(self, lines: list[str]) -> None:
+        """残っているタスクごとの `{ID}: {状態}: {タイトル}` の行を持つ。"""
+        super().__init__("未着手・進行中のタスクが残っています（保留・完了・中止にしてから呼び直してください）", lines)
+
+
 class DownloadFailedError(MindmapError):
     """配る書き出しで jsDelivr から配布ファイルかライセンスの本文を取れないか、配布ファイルが `integrity` と合わない。"""
 
