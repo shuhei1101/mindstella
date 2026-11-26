@@ -2056,3 +2056,11 @@ files:
   related:
   - to: MOD-489-5
     type: tests
+- path: src/shared/components/panel-resizer.tsx
+  name: パネルの幅の区切り
+  description: パネルの左端・右端に配置し、ドラッグとキーで幅を変えて変更と確定を通知する幅の区切り。幅の区切りの操作や見た目を変えるときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-25
+    type: implements
