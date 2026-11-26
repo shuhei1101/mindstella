@@ -77,11 +77,7 @@ steps:
       - {server: mindstella, tool: set_thread_status}
   - name: 手番を返す前の確認
     body: |-
-      進め方の文書の工程のうち、利用者の回答なしで進められる工程が残っていないかを確認し、残っていれば進める。確認が要る点は mindstella/record の工程「利用者に聞くことを方針と細部に分ける」で検討事項に挙げ、進めてよいかを報告で利用者に聞かない。
-      `search_docs` で状態が `未着手`・`進行中` のタスクを検索し、済んだものは `完了`、続きを次の手番に回すものと着手できない条件があるものは `保留`（`reason` に着手できる条件）、やめるものは `中止` にして、mindstella/record の「記録を書き込む」で書き込む。
-    calls:
-      - {server: project-index, tool: search_docs}
-      - {server: project-index, tool: write_docs}
+      mindstella/record の工程「手番を返す前の確認」のとおり確認する。
     refs:
       - mindstella/record
   - name: 報告のスレッドで報告する
