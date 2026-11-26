@@ -76,7 +76,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-26T16:21:00.716947+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-26T16:53:24.439350+00:00'
   - process: ドキュメント修正
     status: todo
     note: エージェントフロー on-comment・record、起動と再開の注入文、公開ドキュメントのエージェントフロー・コマンド・プレビューを見る
