@@ -279,6 +279,58 @@ flows:
       - ツールのエラーにならず、`id` が空でない
       - エンドポイントが要求を受けていない
     test: test_normal_when_not_hand_back
+  - name: 異常系（未着手・進行中のタスクが残っている・OpenTasksRemainError）
+    summary: hand_back が真で、状態が未着手・進行中のタスクが残っていれば、まとめずに残っているタスクを返却して拒む
+    setup:
+      - name: Mock
+        description: Discord の Webhook（正常系（手番を返す）と同じ）
+      - name: make_workspace
+        description: 未着手のタスク T-1・進行中のタスク T-2・保留のタスク T-3・完了のタスク T-4 を追加し、まだ `commit` していないワークスペース
+      - name: MindStella のセッション
+        description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: commit workspace summary「T-1 を積む」 hand_back true
+        IF-->>WS: tasks.yaml を読む
+        IF->>IF: 未着手の T-1・進行中の T-2 が残っている
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文の 1 行目が `エラー: 未着手・進行中のタスクが残っています` で始まる'
+      - '本文に `T-1: 未着手` と `T-2: 進行中` で始まる行があり、T-3・T-4 の行が無い'
+      - '`changes.yaml` の中身が呼ぶ前と同じで、`pending` に T-1・T-2・T-3・T-4 が残っている'
+      - エンドポイントが要求を受けていない
+    test: test_error_when_open_tasks_remain
+  - name: 正常系（作業の途中はタスクの状態を問わない）
+    summary: hand_back を渡さない commit は、未着手・進行中のタスクが残っていてもまとめる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 未着手のタスク T-1 を追加し、まだ `commit` していないワークスペース
+      - name: MindStella のセッション
+        description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: commit workspace summary「T-1 を積む」
+        IF->>IF: pending をまとまりにする
+        IF->>WS: changes.yaml を書く
+        IF-->>クライアント: JSON（id: V-2）
+      ```
+    expected:
+      - ツールのエラーにならず、`id` が空でなく、`added` が `[T-1]`
+      - T-1 の状態が未着手のままである
+    test: test_normal_when_open_tasks_during_work
 lead: まだまとめていない書き換え（最後のまとまりより後に `pending` に入った書き換え）を、日時と一言の説明を付けた 1 つのまとまりにする。プレビューの変更履歴は、このまとまりを並べる。
 idempotent: false
 side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ追加し、`pending` を空にする。項目の YAML と本文は書き換えない'
@@ -350,7 +402,10 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。`changes.yaml` を書き換えない
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。引数の誤りは `エラー: 引数の誤り: summary: {理由}`。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
+  - name: OpenTasksRemainError
+    condition: '`hand_back` が真で、`tasks.yaml` に状態が `未着手`・`進行中` のタスクが 1 件以上ある'
+    notes: ツールのエラー。エラーの本文に残っているタスクの ID・状態・タイトル。何も書き込まず、作業の完了の通知も呼ばない
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。引数の誤りは `エラー: 引数の誤り: summary: {理由}`。未着手・進行中のタスクが残っているときは `エラー: 未着手・進行中のタスクが残っています（保留・完了・中止にしてから呼び直してください）` の後に、タスクごとに `{ID}: {状態}: {タイトル}` の行を ID の順に続ける。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
   - item: 呼べるセッション
     constraint: そのワークスペースの MindStella のセッションだけ（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）。正常系のフローは、状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
@@ -377,6 +432,9 @@ constraints:
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。一時ファイルに書いてから `os.replace` で置き換える'
   - item: 作業の完了の通知
     constraint: '`hand_back` が真で成功したとき（まとめる書き換えが無く、まとまりを追加しなかったときも含む）だけ、結果を返却した後に『作業の完了の通知』を呼ぶ。`hand_back` が偽のときと、エラーになったときは呼ばない。通知の成否は結果に含めない'
+  - item: 手番を返す条件
+    constraint: '`hand_back` が真のときだけ、まとめる前に `tasks.yaml` を読み、状態が `未着手`・`進行中` のタスクがあれば OpenTasksRemainError にする。`保留`・`完了`・`中止` だけなら、タスクが 0 件のときも、今までどおりまとめる。決めるのはタスクの状態だけで、進め方の工程が残っているかは調べない（エージェントフロー mindstella/on-comment の「手番を返す前の確認」が受け持つ）。`hand_back` が偽のときはタスクの状態を問わない'
+    notes: 調べるのは、引数の誤り・WorkspaceNotFoundError・NotMindStellaSessionError の後で、外部の変更をまとめる前。拒んだときは外部の変更のまとまりも追加しない
 exclusivity: ワークスペースを書き換えるツールと同じ鍵とロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
 refs:
   - ER-489-1#
