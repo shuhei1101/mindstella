@@ -472,6 +472,6 @@ def test_no_horizontal_scroll(
     if narrowed:
         narrow_left_panel(page)
         expect(_panel(page).get_by_role("separator", name="コメントの一覧の幅")).to_have_attribute("aria-valuenow", "320")
-    expect(_panel(page).locator("li[data-comment], li[data-pending], li").first).to_be_visible()
+    expect(_panel(page).locator("li[data-comment]")).to_have_count(30)
     # 検証
     assert_no_horizontal_scroll(page, _panel(page))
