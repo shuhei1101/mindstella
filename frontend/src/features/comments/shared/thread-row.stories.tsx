@@ -87,9 +87,12 @@ export const LongTitlePending: Story = {
     thread: { id: "TH-7", status: "open", tags: ["画面"], summary: `${"改行の無い長いタイトル".repeat(12)}https://example.com/${"segment".repeat(20)}`, target: "D-12", posts: [{ id: "P-18", author: "ai", body: "D-12 を案 B で決定にしました。", created: "2026-10-12T01:24:00+00:00", seen: true }], events: [], loc: null },
     hasPendingReply: true,
   },
-  render: (args) => (
-    <ul style={{ width: "320px" }} className="m-0 grid list-none p-0">
-      <ThreadRow {...args} />
-    </ul>
-  ),
+  // meta の decorators を置き換え、包む `<ul>` に幅を持たせる（`<ul>` を入れ子にしない）
+  decorators: [
+    (Story) => (
+      <ul style={{ width: "320px" }} className="m-0 grid list-none p-0">
+        <Story />
+      </ul>
+    ),
+  ],
 };

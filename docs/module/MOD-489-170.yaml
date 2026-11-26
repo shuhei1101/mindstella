@@ -57,6 +57,7 @@ directory: |-
       use-comments.ts     レビュー中の書き込みの mutation と下書きの保存
       use-voice-input.ts  文字起こしの可否と、録音・文字起こし・すぐ送る
       use-screen-filters.ts  画面の絞り込みの条件
+        use-viewport-width.ts  表示の幅と、窓の幅が変わったときの描き直し
     stores/
       connection-store.ts 接続の状態（Zustand）
       theme-store.ts      ライト / ダーク（Zustand・端末の保存領域）

@@ -1,25 +1,10 @@
 // コメントの一覧・保存待ちのパネル・表示の設定が共有する左のパネルの外側の要素。幅と、指定したときは右端の幅の区切りを持つ
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { clampWidth, PanelResizer } from "@/shared/components/panel-resizer";
+import { useViewportWidth } from "@/shared/hooks/use-viewport-width";
 import { currentDetailWidth, currentLeftWidth, LEFT_PANEL_WIDTH, leftPanelMax, usePanelWidthStore } from "@/shared/stores/panel-width-store";
-
-/** 幅の区切りを出す表示の幅の media query */
-const RESIZABLE_QUERY = `(min-width: ${LEFT_PANEL_WIDTH.resizableFrom}px)`;
-
-/** 表示の幅が変わったら描き直す（resize と、区切りを出す幅をまたいだ matchMedia の変化） */
-const subscribeViewport = (onChange: () => void): (() => void) => {
-  window.addEventListener("resize", onChange);
-  const media = typeof window.matchMedia === "function" ? window.matchMedia(RESIZABLE_QUERY) : null;
-  media?.addEventListener("change", onChange);
-  return () => {
-    window.removeEventListener("resize", onChange);
-    media?.removeEventListener("change", onChange);
-  };
-};
-
-const viewportWidth = (): number => window.innerWidth;
 
 export type LeftPanelProps = Omit<ComponentPropsWithoutRef<"aside">, "children"> & {
   /** 描く要素。role="dialog" を持つパネルは section（aside は dialog の role を持てない） */
@@ -30,7 +15,7 @@ export type LeftPanelProps = Omit<ComponentPropsWithoutRef<"aside">, "children">
 };
 
 export const LeftPanel = ({ as: Element = "aside", resizerLabel, children, style, ...rest }: LeftPanelProps) => {
-  const viewport = useSyncExternalStore(subscribeViewport, viewportWidth);
+  const viewport = useViewportWidth();
   const storedLeft = usePanelWidthStore((state) => state.leftWidth);
   const storedDetail = usePanelWidthStore((state) => state.detailWidth);
   const detailOpen = usePanelWidthStore((state) => state.detailOpen);

@@ -30,6 +30,7 @@ import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
+import { useViewportWidth } from "@/shared/hooks/use-viewport-width";
 import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { currentDetailWidth, currentLeftWidth, DETAIL_PANEL_WIDTH, detailPanelMax, usePanelWidthStore } from "@/shared/stores/panel-width-store";
@@ -417,7 +418,8 @@ export const DetailPanel = ({ id, index, sibling }: DetailPanelProps) => {
     setOpen("detail", true);
     return () => setOpen("detail", false);
   }, [setOpen]);
-  const max = detailPanelMax(window.innerWidth, currentLeftWidth({ leftWidth: storedLeft }), leftOpen);
+  const viewport = useViewportWidth();
+  const max = detailPanelMax(viewport, currentLeftWidth({ leftWidth: storedLeft }), leftOpen);
   const width = clampWidth(currentDetailWidth({ detailWidth: storedDetail }), DETAIL_PANEL_WIDTH.min, max);
   return (
     <aside aria-label="詳細" style={{ width }} className="relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!">

@@ -9,7 +9,7 @@ import { PanelResizer } from "@/shared/components/panel-resizer";
 const PanelStage = (props: ComponentProps<typeof PanelResizer>) => {
   const [width, setWidth] = useState(props.width);
   return (
-    <div className="relative h-80 border border-border bg-card" style={{ width, marginLeft: props.side === "left" ? "auto" : undefined }}>
+    <div className="relative h-80 border border-border bg-card" style={{ width, maxWidth: "100%", marginLeft: props.side === "left" ? "auto" : undefined }}>
       <p className="m-0 p-3 text-small text-muted-foreground">{`${props.label}: ${width}px`}</p>
       <PanelResizer
         {...props}
@@ -28,6 +28,13 @@ const meta = {
   component: PanelResizer,
   render: (args) => <PanelStage {...args} />,
   args: { onChange: fn(), onCommit: fn(), step: 16 },
+  // 区切りは 900px 以下では描かないため、区切りを描く幅で開く
+  parameters: {
+    viewport: {
+      options: { wide: { name: "幅 1280px", styles: { width: "1280px", height: "900px" } } },
+    },
+  },
+  globals: { viewport: { value: "wide", isRotated: false } },
 } satisfies Meta<typeof PanelResizer>;
 
 export default meta;
@@ -46,5 +53,5 @@ export const AtMin: Story = { args: { side: "right", width: 320, min: 320, max: 
 /** 上限の幅。広げる向きにドラッグ・キーを押しても上限のまま */
 export const AtMax: Story = { args: { side: "right", width: 800, min: 320, max: 800, label: "コメントの一覧の幅" } };
 
-/** 指の端末（`pointer: coarse`）。区切りの幅を 44px にし、パネルの端の線を中央に挟む（確かめるときは pointer: coarse を模して開く） */
+/** 指の端末（`pointer: coarse`）。区切りの幅を 44px にし、パネルの端の線を中央に挟む（確かめるときは、区切りを描く幅 901px 以上で pointer: coarse を模して開く） */
 export const Touch: Story = { args: { side: "right", width: 384, min: 320, max: 800, label: "コメントの一覧の幅" } };

@@ -1644,6 +1644,22 @@ files:
   related:
   - to: MOD-489-132
     type: implements
+- path: src/shared/hooks/use-viewport-width.test.ts
+  name: 表示の幅のフックの単体テスト
+  description: 窓の幅が変わると表示の幅のフックが変わった後の幅を返却することを確認する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-713-4
+    type: tests
+- path: src/shared/hooks/use-viewport-width.ts
+  name: 表示の幅を返却し、窓の幅が変わったら描き直させるフック
+  description: 表示の幅を返却し、窓の幅が変わったら描き直させるフック。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-713-4
+    type: implements
 - path: src/shared/hooks/use-visible-kinds.ts
   name: 表示する種類
   description: 表示する種類。

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
@@ -170,6 +170,28 @@ describe("DetailPanel", () => {
     // 検証
     expect(separator).toHaveAttribute("aria-valuemax", "656");
     await waitFor(() => expect(panel.style.width).toBe("656px"));
+    usePanelWidthStore.setState({ leftOpen: false, leftWidth: null, detailWidth: null });
+    sessionStorage.clear();
+  });
+
+  // 窓の幅を狭めると上限と幅が追従する（正常系）
+  test("detail_panel_when_viewport_resized", async () => {
+    // 準備
+    stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
+    window.innerWidth = 1440;
+    usePanelWidthStore.setState({ leftOpen: true, leftWidth: 384, detailWidth: 640 });
+    renderRoute("/?tab=decisions&id=D-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    const separator = within(panel).getByRole("separator", { name: "詳細パネルの幅" });
+    expect(panel.style.width).toBe("640px");
+    // 実行
+    act(() => {
+      window.innerWidth = 1100;
+      window.dispatchEvent(new Event("resize"));
+    });
+    // 検証
+    await waitFor(() => expect(separator).toHaveAttribute("aria-valuemax", "480"));
+    expect(panel.style.width).toBe("480px");
     usePanelWidthStore.setState({ leftOpen: false, leftWidth: null, detailWidth: null });
     sessionStorage.clear();
   });
