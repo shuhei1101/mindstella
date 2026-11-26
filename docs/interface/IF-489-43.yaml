@@ -331,6 +331,60 @@ flows:
       - ツールのエラーにならず、`id` が空でなく、`added` が `[T-1]`
       - T-1 の状態が未着手のままである
     test: test_normal_when_open_tasks_during_work
+  - name: 異常系（手番を返すときに tasks.yaml が崩れている・SchemaMismatchError）
+    summary: hand_back が真で、手で崩した tasks.yaml ではまとめず、合わない箇所を返却する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（正常系（手番を返す）と同じ）
+      - name: make_workspace
+        description: タスク T-1 を追加してまだ `commit` していないワークスペースで、`tasks.yaml` の T-1 から `status` を削除した
+      - name: MindStella のセッション
+        description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: commit workspace summary「a」 hand_back true
+        IF-->>WS: tasks.yaml を読む
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `tasks.yaml: ` で始まる行がある'
+      - '`changes.yaml` の中身が呼ぶ前と同じ'
+      - エンドポイントが要求を受けていない
+    test: test_error_when_tasks_schema_mismatch_on_hand_back
+  - name: 正常系（手番を返すときに tasks.yaml が無い）
+    summary: tasks.yaml が無いワークスペースでは、タスクが 0 件として手番を返す commit を通す
+    setup:
+      - name: Mock
+        description: Discord の Webhook（正常系（手番を返す）と同じ）
+      - name: make_workspace
+        description: 検討事項 D-1 だけを追加してまだ `commit` していないワークスペースで、`tasks.yaml` が無い
+      - name: MindStella のセッション
+        description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant NT as 作業の完了の通知
+
+        クライアント->>IF: commit workspace summary「D-1 を足す」 hand_back true
+        IF->>IF: tasks.yaml が無いのでタスクは 0 件
+        IF->>IF: pending をまとまりにする
+        IF-->>クライアント: JSON（id: V-2）
+        IF->>NT: 呼ぶ
+      ```
+    expected:
+      - ツールのエラーにならず、`id` が空でなく、`added` が `[D-1]`
+      - エンドポイントが 1 件の要求を受けている
+      - '`tasks.yaml` が無いままである'
+    test: test_normal_when_no_tasks_file_on_hand_back
 lead: まだまとめていない書き換え（最後のまとまりより後に `pending` に入った書き換え）を、日時と一言の説明を付けた 1 つのまとまりにする。プレビューの変更履歴は、このまとまりを並べる。
 idempotent: false
 side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ追加し、`pending` を空にする。項目の YAML と本文は書き換えない'
@@ -397,7 +451,7 @@ exceptions:
     condition: '`session.claude_session_id` が、そのワークスペースの MindStella のセッションでない'
     notes: ツールのエラー。何も書き込まない
   - name: SchemaMismatchError
-    condition: '`changes.yaml` がスキーマに合わないか、YAML として読めない'
+    condition: '`changes.yaml` がスキーマに合わないか、YAML として読めない。`hand_back` が真で、`tasks.yaml` がスキーマに合わないか、YAML として読めない'
     notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した
@@ -433,7 +487,7 @@ constraints:
   - item: 作業の完了の通知
     constraint: '`hand_back` が真で成功したとき（まとめる書き換えが無く、まとまりを追加しなかったときも含む）だけ、結果を返却した後に『作業の完了の通知』を呼ぶ。`hand_back` が偽のときと、エラーになったときは呼ばない。通知の成否は結果に含めない'
   - item: 手番を返す条件
-    constraint: '`hand_back` が真のときだけ、まとめる前に `tasks.yaml` を読み、状態が `未着手`・`進行中` のタスクがあれば OpenTasksRemainError にする。`保留`・`完了`・`中止` だけなら、タスクが 0 件のときも、今までどおりまとめる。決めるのはタスクの状態だけで、進め方の工程が残っているかは調べない（エージェントフロー mindstella/on-comment の「手番を返す前の確認」が受け持つ）。`hand_back` が偽のときはタスクの状態を問わない'
+    constraint: '`hand_back` が真のときだけ、まとめる前に `tasks.yaml` を読み、状態が `未着手`・`進行中` のタスクがあれば OpenTasksRemainError にする。`保留`・`完了`・`中止` だけなら、タスクが 0 件のときも、今までどおりまとめる。`tasks.yaml` が無いときはタスクが 0 件として扱う。`tasks.yaml` がスキーマに合わないか YAML として読めないときは SchemaMismatchError にし、何も書き込まず、作業の完了の通知も呼ばない。決めるのはタスクの状態だけで、進め方の工程が残っているかは調べない（エージェントフロー mindstella/on-comment の「手番を返す前の確認」が受け持つ）。`hand_back` が偽のときはタスクの状態を問わない'
     notes: 調べるのは、引数の誤り・WorkspaceNotFoundError・NotMindStellaSessionError の後で、外部の変更をまとめる前。拒んだときは外部の変更のまとまりも追加しない
 exclusivity: ワークスペースを書き換えるツールと同じ鍵とロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
 refs:
