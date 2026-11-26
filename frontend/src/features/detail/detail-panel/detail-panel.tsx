@@ -344,7 +344,11 @@ export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<De
                 <>
             <div data-key="status">{keys?.has("status") === true ? <KeyDiff was={<Status value={keys.left["status"]} />} now={<Status value={keys.right["status"]} />} plain /> : <Status value={item.status} />}</div>
             <h2 ref={setTitleElement} data-key="title" className="m-0 flex flex-wrap items-center gap-1 text-next font-semibold">
-              {keys?.has("title") === true ? <KeyValue name="title" value={item.title} keys={keys} /> : <RecordText text={item.title} mode="link" lookup={record.lookup} onOpen={record.onOpen} />}
+              {keys?.has("title") === true ? <KeyValue name="title" value={item.title} keys={keys} /> : (
+                <span>
+                  <RecordText text={item.title} mode="link" lookup={record.lookup} onOpen={record.onOpen} />
+                </span>
+              )}
               {diff?.kind === "new" ? <DiffMark kind="new" labeled /> : null}
               {item.withdrawn === true ? <WithdrawnBadge large /> : null}
             </h2>
