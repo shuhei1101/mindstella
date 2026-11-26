@@ -485,3 +485,50 @@ def test_long_ai_post_opened(open_story: OpenStory) -> None:
     expect(less).to_have_attribute("aria-expanded", "true")
     expect(page.locator(f"{POST} [data-folded]")).to_have_count(0)
     expect(page.locator(POST)).to_contain_text("変更履歴の時点の並びが分かりにくい")
+
+
+# 最も狭めたパネルの幅（px）
+PANE_WIDTH_PX = 320
+
+# パネルの幅の台の中の書き込み（ストーリーが台の div で包む）
+PANE_POST = "#storybook-root article"
+
+# 書き込みが自分の幅の中に収まっているか（横にスクロールしない）
+FITS_JS = "(e) => e.scrollWidth <= e.clientWidth + 1"
+
+
+def _assert_fits_pane(page: Page) -> None:
+    """書き込みがパネルの幅を超えず、本文・ページが横にスクロールしないことを確かめる。"""
+    post = page.locator(PANE_POST)
+    box = post.bounding_box()
+    assert box is not None
+    assert box["width"] <= PANE_WIDTH_PX + 1
+    assert post.evaluate(FITS_JS)
+    assert page.locator(f"{PANE_POST} [data-part=body]").evaluate(FITS_JS)
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
+
+
+def test_long_unbroken_text(open_story: OpenStory) -> None:
+    """3000 文字を超える書き込みと改行の無い長い URL。本文はカードの幅で折り返し（URL も折り返す）、カードの外へはみ出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadpost--long-unbroken-text")
+    # 検証
+    _assert_fits_pane(page)
+    url = page.locator(f"{PANE_POST} [data-part=body]").get_by_text("https://example.com/", exact=False).first
+    assert url.evaluate("(e) => e.getClientRects().length") >= 1
+    url_box = url.bounding_box()
+    assert url_box is not None
+    assert url_box["width"] <= PANE_WIDTH_PX
+
+
+def test_wide_table_post(open_story: OpenStory) -> None:
+    """画面の幅を超える列の多い表を持つ書き込み。表は表の部品の中だけで横にスクロールし、カード・パネルは横にスクロールしない（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadpost--wide-table-post")
+    # 検証
+    table = page.locator(f"{PANE_POST} table")
+    assert table.count() == 1
+    assert table.evaluate("(e) => e.scrollWidth") > PANE_WIDTH_PX
+    scroller = table.evaluate("(e) => { for (let n = e; n; n = n.parentElement) { const x = getComputedStyle(n).overflowX; if (x === 'auto' || x === 'scroll') return n.scrollWidth > n.clientWidth; } return false; }")
+    assert scroller is True
+    _assert_fits_pane(page)

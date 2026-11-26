@@ -392,6 +392,7 @@ STATES = (
     "diff-rendered",
     "diff-source",
     "diff-unchanged",
+    "wide-table-in-narrow-pane",
 )
 
 

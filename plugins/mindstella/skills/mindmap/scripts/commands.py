@@ -10,6 +10,8 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
+import yaml
+
 from builder import export_preview, validate_export_out
 from checker import check_workspace
 from change_detection import accept_written
@@ -20,6 +22,7 @@ from errors import (
     ItemNotFoundError,
     LastOptionError,
     OptionExistsError,
+    OpenTasksRemainError,
     OptionNotFoundError,
     SchemaMismatchError,
     WriteFailedError,
@@ -42,7 +45,17 @@ from history import (
     stack_history,
 )
 from ids import reserve_ids
-from kinds import BODY_REF_PREFIX, EDITOR, KINDS, RECORD_DIR, SETTINGS_FILE, Kind, records_root, workspace_path
+from kinds import (
+    BODY_REF_PREFIX,
+    EDITOR,
+    KINDS,
+    RECORD_DIR,
+    SETTINGS_FILE,
+    Kind,
+    id_number,
+    records_root,
+    workspace_path,
+)
 from migrator import count_steps
 from presets import PRESETS_KEY, preset_counts
 from read_point import save_read_seq
@@ -51,6 +64,7 @@ from settings_update import update_settings
 from store import (
     CHANGES_FILE,
     OPTIONS_OPTIONAL_STATUSES,
+    WHOLE_PATH,
     BatchChange,
     BodyWrite,
     Change,
@@ -59,8 +73,11 @@ from store import (
     create_workspace,
     dump_yaml,
     find_item,
+    format_path,
     is_legacy_problem,
+    load_validators,
     load_workspace,
+    load_yaml_text,
     now_utc,
     read_body,
     read_kind_items,
@@ -128,6 +145,9 @@ OPTION_KEYS = ("content", "pros", "cons", "note", "reason", "recommended")
 
 # 検討事項の案を採用したときに入る状態
 DECIDED_STATUS = "決定済み"
+
+# 手番を返す commit で残っていると拒むタスクの状態
+OPEN_TASK_STATUSES = ("未着手", "進行中")
 
 # 保存待ちの編集の仮の ID（`new-{連番}`）を、振った ID に置き換える参照の場所（`related` は各要素の `to`）
 REF_KEYS = ("related", "sources")
@@ -554,7 +574,45 @@ def run_changes_since_read(root: Path) -> dict[str, Any]:
     return result
 
 
-def run_commit(root: Path, summary: str, now: NowFn = now_utc) -> dict[str, Any]:
+def check_hand_back(root: Path) -> None:
+    """`tasks.yaml` に状態が未着手・進行中のタスクがあれば OpenTasksRemainError を送出する。"""
+    spec = KINDS["task"]
+    path = records_root(root) / spec.file
+    # tasks.yaml が無い: タスク 0 件
+    if not path.is_file():
+        return
+    try:
+        value = load_yaml_text(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as error:
+        # YAML として読めない: 全体の問題として送出する
+        reason = " ".join(str(error).split())
+        raise SchemaMismatchError(
+            [f"{spec.file}: {WHOLE_PATH}: YAML として読めません: {reason}"]
+        ) from error
+    errors = sorted(
+        load_validators()[spec.schema].iter_errors(value),
+        key=lambda error: [str(part) for part in error.absolute_path],
+    )
+    # スキーマに合わない: 合わない箇所ごとの行を持って送出する
+    if errors:
+        raise SchemaMismatchError(
+            [f"{spec.file}: {format_path(error.absolute_path)}: {error.message}" for error in errors]
+        )
+    items = value.get("items") or [] if isinstance(value, dict) else []
+    open_tasks = sorted(
+        (item for item in items if item.get("status") in OPEN_TASK_STATUSES),
+        key=lambda item: id_number(item["id"]),
+    )
+    # 未着手・進行中のタスクが残っている: ID の番号の順に並べて拒む
+    if open_tasks:
+        raise OpenTasksRemainError(
+            [f"{item['id']}: {item['status']}: {item['title']}" for item in open_tasks]
+        )
+
+
+def run_commit(
+    root: Path, summary: str, now: NowFn = now_utc, *, hand_back: bool = False
+) -> dict[str, Any]:
     """まだまとめていない変更を、説明つきの 1 つのまとまりにして書き込む。"""
     text = summary.strip()
     # 説明が空白だけか、長すぎる
@@ -563,6 +621,9 @@ def run_commit(root: Path, summary: str, now: NowFn = now_utc) -> dict[str, Any]
             "summary", f"前後の空白を除いて 1〜{SUMMARY_MAX_LENGTH} 文字で渡してください"
         )
     require_workspace(root)
+    # 手番を返す commit: まとめる前にタスクの状態を検証する（外部の変更もまとめない）
+    if hand_back:
+        check_hand_back(root)
     at = now()
     loaded = load_changes(root)
     # 外部の変更が入っていれば、先に外部の変更のまとまりにする

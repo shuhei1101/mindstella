@@ -550,12 +550,18 @@ functions:
         default: now_utc
         passing: injected
         description: 今の日時を返す関数
+      - name: hand_back
+        type: bool
+        required: false
+        default: 'False'
+        passing: keyword
+        description: 手番を利用者へ返す直前の `commit` か（真ならまとめる前にタスクの状態を検証する）
     returns:
       type: dict[str, Any]
       description: '`{id, at, summary, added, changed, removed}`（まとめなかったときは `id`・`at`・`summary` が `None`、`added`・`changed`・`removed` が空。`removed` はまとまりの `removed` を `{id, kind, title}` にしたもの）'
     process: |-
       1. 前後の空白を除いた `summary` が空か `SUMMARY_MAX_LENGTH` を超えれば `ArgumentError`（`summary`）を送出する
-      2. ワークスペースを確かめる（`require_workspace`）。まとまりを読む（`load_changes`）
+      2. ワークスペースを確かめる（`require_workspace`）。`hand_back` が真なら、タスクの状態を検証する（`check_hand_back`。送出したら外部の変更もまとめずに終える）。まとまりを読む（`load_changes`）
       3. `pending.by` が `external` なら、先に外部の変更のまとまりにする（`flush_pending`）。その後にまとめる（`commit_pending`。`by` は `ai`）
          - 自分のまとまりが `None` の場合、外部の変更のまとまりだけを書いて（あれば）空の結果を返す
       4. 新しい記録を `records_root(root) / CHANGES_FILE` に書く（一時ファイルから `os.replace`。`OSError` は一時ファイルを削除して `WriteFailedError`）
@@ -569,6 +575,12 @@ functions:
       - name: WriteFailedError
         condition: '`changes.yaml` を書けない'
         message: '書き込めませんでした: {パス}（{理由}）'
+      - name: OpenTasksRemainError
+        condition: '`hand_back` が真で、状態が `未着手`・`進行中` のタスクがある'
+        message: 未着手・進行中のタスクが残っています（保留・完了・中止にしてから呼び直してください）
+      - name: SchemaMismatchError
+        condition: '`hand_back` が真で、`tasks.yaml` が YAML として読めないかスキーマに合わない'
+        message: スキーマに合いません
     unit_tests:
       - name: test_run_commit
         case: 正常
@@ -589,6 +601,27 @@ functions:
         mock: なし
         expected: '`ArgumentError`（引数の名前 `summary`）'
         exception: 空白だけ
+      - name: test_run_commit_when_hand_back_open_tasks
+        case: 異常
+        summary: 手番を返す commit は、未着手のタスクが残っていれば外部の変更もまとめずに拒む
+        condition: '`pending` が `by: external`。未着手の T-1 がある。`hand_back=True`'
+        mock: '`now`'
+        exception: OpenTasksRemainError
+        expected: '`OpenTasksRemainError` で、`changes.yaml` が呼ぶ前と同じ'
+      - name: test_run_commit_when_hand_back_summary_blank
+        case: 異常
+        summary: 説明が空白だけなら、未着手のタスクがあっても引数の誤り
+        condition: 未着手の T-1 がある。`summary` 「   」・`hand_back=True`
+        mock: なし
+        exception: ArgumentError
+        expected: '`ArgumentError`（引数の名前 `summary`）'
+      - name: test_run_commit_when_hand_back_no_workspace
+        case: 異常
+        summary: ワークスペースが無ければ、tasks.yaml が壊れていてもワークスペースが無い誤り
+        condition: '`.mindstella/config.yaml` が無く、YAML として読めない `tasks.yaml` だけがあるフォルダ。`hand_back=True`'
+        mock: なし
+        exception: WorkspaceNotFoundError
+        expected: '`WorkspaceNotFoundError`'
   - name: run_pending
     title: pending の処理
     kind: 関数
@@ -1382,3 +1415,52 @@ functions:
         mock: なし
         expected: '`ArgumentError`（引数の名前 `kind`）'
         exception: 決めた種類でない
+  - name: check_hand_back
+    title: 手番を返す前のタスクの状態の検証
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: '`run_commit` が `hand_back` のときに呼ぶ。ワークスペースの `tasks.yaml` に状態が `未着手`・`進行中` のタスクがあれば `OpenTasksRemainError` を送出する'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: None
+      description: 残っているタスクが無ければ何も返却しない
+    process: |-
+      1. `records_root(root) / KINDS["task"].file` が無ければ、タスク 0 件として終える
+      2. YAML として読めなければ `SchemaMismatchError`（`tasks.yaml: (全体): YAML として読めません: {理由}`）を送出する
+      3. タスクのスキーマ（`load_validators()`）と突き合わせ、合わない箇所があれば `SchemaMismatchError`（箇所ごとの `tasks.yaml: {キーのパス}: {理由}`）を送出する
+      4. `status` が `未着手`・`進行中` の項目を ID の番号の順に並べ、1 件以上あれば `OpenTasksRemainError`（`{ID}: {状態}: {タイトル}` の行）を送出する
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`tasks.yaml` が YAML として読めないかスキーマに合わない'
+        message: スキーマに合いません
+      - name: OpenTasksRemainError
+        condition: 状態が `未着手`・`進行中` のタスクが 1 件以上ある
+        message: 未着手・進行中のタスクが残っています（保留・完了・中止にしてから呼び直してください）
+    unit_tests:
+      - name: test_check_hand_back
+        case: 正常
+        summary: 保留・完了・中止だけなら送出しない
+        condition: '`parametrize`: 保留の T-1・完了の T-2・中止の T-3 / `tasks.yaml` が無い / タスクが 0 件'
+        mock: なし
+        expected: 例外を送出しない
+      - name: test_check_hand_back_when_open_tasks
+        case: 異常
+        summary: 未着手・進行中のタスクを並べて拒む
+        condition: 進行中の T-10・未着手の T-2・保留の T-3・完了の T-4
+        mock: なし
+        exception: OpenTasksRemainError
+        expected: '`lines` が `["T-2: 未着手: {T-2 のタイトル}", "T-10: 進行中: {T-10 のタイトル}"]`'
+      - name: test_check_hand_back_when_tasks_invalid
+        case: 異常
+        summary: 読めない・スキーマに合わない tasks.yaml はスキーマの誤り
+        condition: '`parametrize`: `tasks.yaml` が YAML として読めない / `status` が `済み` のタスクを持つ'
+        mock: なし
+        exception: SchemaMismatchError
+        expected: '`lines` の先頭が `tasks.yaml: ` で始まる'

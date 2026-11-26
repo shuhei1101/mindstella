@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+import pytest
 import yaml
 
 from playwright.sync_api import Page, Route, expect
@@ -907,3 +908,60 @@ def test_normal_when_exported_read_only(
     expect(panel.get_by_role("button", name="T-1 のコメントの一覧を開く")).to_have_count(0)
     expect(panel.get_by_role("textbox")).to_have_count(0)
     expect(settings.get_by_role("button", name="ワークスペースの既定にする")).to_have_count(0)
+
+
+# ─── 横幅（モジュール構成『React』の補足「横幅」） ───
+
+# 動作環境の最も狭い画面の幅
+NARROWEST_SIZE = {"width": 360, "height": 800}
+
+# 改行の無い長いタイトル（長い URL を含む）
+_LONG_TITLE = f"{'改行の無い長いタイトル' * 8}https://example.com/{'segment' * 20}"
+
+# 列が多く画面の幅を超える表を持つ資料の本文
+_WIDE_TABLE_BODY = (
+    "| " + " | ".join(f"列{n}" for n in range(1, 13)) + " |\n"
+    + "| " + " | ".join("---" for _ in range(12)) + " |\n"
+    + "| " + " | ".join(f"値{n}の長い文字列" for n in range(1, 13)) + " |\n\n"
+    + f"https://example.com/{'very-long-path-segment-' * 15}end\n"
+)
+
+
+@pytest.mark.parametrize(
+    "search",
+    [
+        "?tab=overview",
+        "?tab=decisions",
+        "?tab=tasks",
+        "?tab=docs",
+        "?tab=settings",
+        "?tab=decisions&id=D-1",
+        "?tab=docs&id=A-1",
+    ],
+)
+def test_normal_when_narrowest_no_horizontal_scroll(
+    page: Page, write_preview: WritePreview, make_item: MakeItem, search: str
+) -> None:
+    """幅 360px で、改行の無い長いタイトルと列の多い表を持つ記録を開いても、ページは横にスクロールしない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", title=_LONG_TITLE),
+        make_item("T-1", title=_LONG_TITLE),
+        make_item("A-1", title=_LONG_TITLE, body="../docs/A-1.mark.md"),
+        bodies={"A-1.mark.md": _WIDE_TABLE_BODY},
+    )
+    page.set_viewport_size(NARROWEST_SIZE)
+    # 実行
+    open_spa(page, url, search)
+    page.wait_for_timeout(500)
+    # 検証
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), page.evaluate(
+        "[document.documentElement.scrollWidth, document.documentElement.clientWidth]"
+    )
+    # 資料の詳細: 閉じるボタンが画面の中に残り、コメントの入力欄が表示の幅に収まる（画面設計『資料』の補足「横幅」）
+    if "id=A-1" in search:
+        detail = page.get_by_role("complementary", name="詳細")
+        for control in (detail.get_by_role("button", name="詳細を閉じる"), detail.get_by_role("textbox", name="A-1 へのコメント")):
+            box = control.bounding_box()
+            assert box is not None
+            assert box["x"] >= 0 and box["x"] + box["width"] <= NARROWEST_SIZE["width"] + 1

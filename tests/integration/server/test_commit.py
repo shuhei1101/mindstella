@@ -273,3 +273,90 @@ def test_normal_when_not_hand_back(session_world: SessionWorld, webhook: FakeWeb
     assert result.data is not None
     assert result.data["id"] is not None
     assert webhook.requests == []
+
+
+def _add_task(server: McpServer, root: Path, title: str, status: str) -> str:
+    """状態を指定してタスクを追加し、ID を返却する。"""
+    return add_item(server.call, root, "task", {"title": title, "kind": "作業", "status": status})
+
+
+def test_error_when_open_tasks_remain(session_world: SessionWorld, webhook: FakeWebhook) -> None:
+    """hand_back が真で、未着手・進行中のタスクが残っていれば、まとめずに残っているタスクを返却して拒む（異常系）。"""
+    # 準備
+    server, root = _start_with_webhook(session_world, webhook)
+    ids = [
+        _add_task(server, root, "画面を作る", "未着手"),
+        _add_task(server, root, "API を作る", "進行中"),
+        _add_task(server, root, "後で決める", "保留"),
+        _add_task(server, root, "調べる", "完了"),
+    ]
+    before = (root / RECORD_DIR / "changes.yaml").read_bytes()
+    # 実行
+    result = server.call("commit", workspace=str(root), summary="T-1 を積む", hand_back=True)
+    time.sleep(NO_SEND_WAIT_SEC)
+    # 検証
+    assert result.is_error is True
+    lines = result.text.splitlines()
+    assert lines[0].startswith("エラー: 未着手・進行中のタスクが残っています")
+    assert any(line.startswith(f"{ids[0]}: 未着手") for line in lines)
+    assert any(line.startswith(f"{ids[1]}: 進行中") for line in lines)
+    assert not any(line.startswith(f"{ids[2]}:") or line.startswith(f"{ids[3]}:") for line in lines)
+    assert (root / RECORD_DIR / "changes.yaml").read_bytes() == before
+    assert read_changes(root)["pending"]["added"] == ids
+    assert webhook.requests == []
+
+
+def test_normal_when_open_tasks_during_work(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """hand_back を渡さない commit は、未着手・進行中のタスクが残っていてもまとめる（正常系）。"""
+    # 準備
+    root = make_workspace()
+    task_id = add_item(call_tool, root, "task", {"title": "画面を作る", "kind": "作業", "status": "未着手"})
+    # 実行
+    result = call_tool("commit", workspace=str(root), summary="T-1 を積む")
+    # 検証
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    assert result.data["id"]
+    assert result.data["added"] == [task_id]
+    assert "status: 未着手" in (root / RECORD_DIR / "tasks.yaml").read_text(encoding="utf-8")
+
+
+def test_error_when_tasks_schema_mismatch_on_hand_back(session_world: SessionWorld, webhook: FakeWebhook) -> None:
+    """hand_back が真で、手で崩した tasks.yaml ではまとめず、合わない箇所を返却する（異常系）。"""
+    # 準備
+    server, root = _start_with_webhook(session_world, webhook)
+    _add_task(server, root, "画面を作る", "未着手")
+    tasks = root / RECORD_DIR / "tasks.yaml"
+    seq = read_changes(root)["last_seq"]
+    broken = "\n".join(line for line in tasks.read_text(encoding="utf-8").splitlines() if not line.strip().startswith("status:"))
+    tasks.write_text(broken + "\n", encoding="utf-8")
+    # 手で崩した書き換えを常駐サーバーの変更の検出が記録し終えてから、呼ぶ前の中身を取る
+    wait_until(lambda: read_changes(root)["last_seq"] > seq)
+    before = (root / RECORD_DIR / "changes.yaml").read_bytes()
+    # 実行
+    result = server.call("commit", workspace=str(root), summary="a", hand_back=True)
+    time.sleep(NO_SEND_WAIT_SEC)
+    # 検証
+    assert result.is_error is True
+    assert any(line.startswith("tasks.yaml: ") for line in result.text.splitlines()), result.text
+    assert (root / RECORD_DIR / "changes.yaml").read_bytes() == before
+    assert webhook.requests == []
+
+
+def test_normal_when_no_tasks_file_on_hand_back(session_world: SessionWorld, webhook: FakeWebhook) -> None:
+    """tasks.yaml が無いワークスペースでは、タスクが 0 件として手番を返す commit を通す（正常系）。"""
+    # 準備
+    server, root = _start_with_webhook(session_world, webhook)
+    decision_id = add_item(server.call, root, "decision", DECISION_ITEM)
+    tasks = root / RECORD_DIR / "tasks.yaml"
+    tasks.unlink(missing_ok=True)
+    # 実行
+    result = server.call("commit", workspace=str(root), summary="D-1 を足す", hand_back=True)
+    wait_until(lambda: webhook.requests)
+    # 検証
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    assert result.data["id"]
+    assert result.data["added"] == [decision_id]
+    assert len(webhook.requests) == 1
+    assert not tasks.exists()

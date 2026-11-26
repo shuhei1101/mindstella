@@ -548,22 +548,6 @@ files:
   related:
   - to: MOD-489-24
     type: implements
-- path: src/features/detail/detail-panel/components/detail-resizer.test.tsx
-  name: 幅の区切りの単体テスト
-  description: 詳細パネルの幅の区切りを指のドラッグで動かせることを確かめる単体テスト。幅の区切りの振る舞いを変えるときに読む。
-  tags:
-  - tool:react
-  related:
-  - to: MOD-489-25
-    type: tests
-- path: src/features/detail/detail-panel/components/detail-resizer.tsx
-  name: 詳細パネルの左端に置く幅の区切り
-  description: 詳細パネルの左端に置く幅の区切り。
-  tags:
-  - tool:react
-  related:
-  - to: MOD-489-25
-    type: implements
 - path: src/features/detail/detail-panel/components/key-diff.tsx
   name: 変わったキーの前の値と今の値を並べる
   description: 変わったキーの前の値と今の値を並べる。
@@ -597,12 +581,14 @@ files:
   - to: MOD-489-31
     type: implements
 - path: src/features/detail/detail-panel/detail-panel.test.tsx
-  name: import { screen } from @testing-library/react;
-  description: import { screen } from @testing-library/react;。
+  name: 詳細パネルの単体テスト
+  description: 詳細パネルの描画・差分・編集・コメント・タブ・目次・幅の保存と上限を Vitest で確認する。詳細パネルの振る舞いを変えるときに参照する。
   tags:
   - tool:react
+  - tool:vitest
+  - topic:単体テスト
   related:
-  - to: MOD-489-170
+  - to: MOD-489-32
     type: tests
 - path: src/features/detail/detail-panel/detail-panel-screen.stories.tsx
   name: 詳細パネルの画面のストーリー
@@ -1658,6 +1644,22 @@ files:
   related:
   - to: MOD-489-132
     type: implements
+- path: src/shared/hooks/use-viewport-width.test.ts
+  name: 表示の幅のフックの単体テスト
+  description: 窓の幅が変わると表示の幅のフックが変わった後の幅を返却することを確認する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-713-4
+    type: tests
+- path: src/shared/hooks/use-viewport-width.ts
+  name: 表示の幅を返却し、窓の幅が変わったら描き直させるフック
+  description: 表示の幅を返却し、窓の幅が変わったら描き直させるフック。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-713-4
+    type: implements
 - path: src/shared/hooks/use-visible-kinds.ts
   name: 表示する種類
   description: 表示する種類。
@@ -2024,3 +2026,76 @@ files:
   related:
   - to: MOD-701-2
     type: tests
+- path: src/shared/components/panel-resizer.test.tsx
+  name: 幅の区切りの単体テスト
+  description: 共通の幅の区切りの左右のドラッグ・収める範囲・フレームのまとめ・確定・キー・指の操作・読み上げの属性を Vitest で確認する。幅の区切りの振る舞いを変えるときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-489-25
+    type: tests
+- path: src/shared/components/left-panel.test.tsx
+  name: 左のパネルの単体テスト
+  description: 左のパネルの幅・右端の幅の区切り・上限・開いているかを Vitest で確認する。左のパネルの幅の振る舞いを変えるときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-713-3
+    type: tests
+- path: src/shared/stores/panel-width-store.test.ts
+  name: パネルの幅のストアの単体テスト
+  description: 左のパネルと詳細パネルの幅の保存・上限の計算を Vitest で確認する。パネルの幅の保存や上限を変えるときに参照する。
+  tags:
+  - tool:zustand
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-713-2
+    type: tests
+- path: src/features/comments/comments-panel/comments-panel.test.tsx
+  name: コメントの一覧の単体テスト
+  description: コメントの一覧の並び・絞り込み・新規スレッド・フォーカス・パネルの幅を Vitest で確認する。コメントの一覧の振る舞いを変えるときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-489-5
+    type: tests
+- path: src/shared/components/panel-resizer.tsx
+  name: パネルの幅の区切り
+  description: パネルの左端・右端に配置し、ドラッグとキーで幅を変えて変更と確定を通知する幅の区切り。幅の区切りの操作や見た目を変えるときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-25
+    type: implements
+- path: src/shared/stores/panel-width-store.ts
+  name: パネルの幅のストア
+  description: 左のパネルと詳細パネルの幅・開いているか・互いの幅を引いた上限を持ち、確定した幅をそのタブの sessionStorage に残す。パネルの幅の保存や上限を変えるときに参照する。
+  tags:
+  - tool:zustand
+  related:
+  - to: MOD-713-2
+    type: implements
+- path: src/shared/components/left-panel.tsx
+  name: 左のパネル
+  description: コメントの一覧・保存待ちのパネル・表示の設定が共有する左のパネルの外側の要素で、幅と右端の幅の区切りを持つ。左のパネルの幅の振る舞いを変えるときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-713-3
+    type: implements
+- path: src/shared/components/panel-resizer.stories.tsx
+  name: 幅の区切りのストーリー
+  description: 幅の区切りの左端・右端・下限・上限・指の端末の状態を Storybook のストーリーで描く。幅の区切りの見た目を確認・修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:storybook
+  related:
+  - to: CMP-713-1
+    type: implements

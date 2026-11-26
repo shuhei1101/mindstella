@@ -254,3 +254,10 @@ classes:
     summary: '名前に該当するプリセットが無い。メッセージは `プリセットがありません: {名前}（あるプリセット: {名前の並び}）`'
     kind: クラス
     inherits: MindmapError
+  - name: OpenTasksRemainError
+    title: 未着手・進行中のタスクが残っている
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 記録の追加と更新
+    summary: '手番を返す `commit`（`hand_back` が真）で、状態が `未着手`・`進行中` のタスクが残っている。メッセージは `未着手・進行中のタスクが残っています（保留・完了・中止にしてから呼び直してください）`、`lines` はタスクごとの `{ID}: {状態}: {タイトル}`（ID の番号の順）'
+    kind: クラス
+    inherits: MindmapError

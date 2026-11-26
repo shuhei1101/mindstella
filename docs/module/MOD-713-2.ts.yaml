@@ -1,0 +1,141 @@
+id: MOD-713-2
+title: プレビュー / panel-width-store
+lead: 左のパネルと詳細パネルの幅と開いているかを持ち、互いの幅を引いた上限を求め、確定した幅をそのタブの `sessionStorage` に残す。
+stores:
+  - name: usePanelWidthStore
+    title: パネルの幅
+    container: frontend/src/shared/stores/panel-width-store.ts
+    usecase: 共通
+    summary: 左のパネル（コメントの一覧・保存待ちのパネル・表示の設定）と詳細パネルの幅と、開いているかを持つ Zustand のストア。幅は、このタブでまだ適用していない間（`null`）は `currentLeftWidth`・`currentDetailWidth` が保存領域から参照する
+    refs:
+      - IF-489-70#
+      - SCR-489-2#
+      - SCR-489-32#
+    state:
+      - name: leftWidth
+        title: 左のパネルの幅
+        type: number | null
+        initial: 'null'
+        description: このタブで適用した幅。`null` の間は保存領域の値を使用する（`currentLeftWidth`）。画面に適用するときは使用する側が上限で収め、残した値は書き換えない
+      - name: detailWidth
+        title: 詳細パネルの幅
+        type: number | null
+        initial: 'null'
+        description: このタブで適用した幅。`null` の間は保存領域の値を使用する（`currentDetailWidth`）
+      - name: leftOpen
+        title: 左のパネルを開いているか
+        type: boolean
+        initial: 'false'
+        description: 部品『左のパネル』が描かれている間は真
+      - name: detailOpen
+        title: 詳細パネルを開いているか
+        type: boolean
+        initial: 'false'
+        description: 詳細パネルが描かれている間は真
+    actions:
+      - name: setLeftWidth
+        title: 左のパネルの幅を適用する
+        kind: 関数
+        summary: 幅の区切りの `onChange` で呼ぶ。保存しない
+      - name: commitLeftWidth
+        title: 左のパネルの幅を確定する
+        kind: 関数
+        summary: 幅の区切りの `onCommit` で呼ぶ。適用した後に `sessionStorage` の `workspaceKey(LEFT_PANEL_WIDTH_KEY)` に残す（保存できないときは適用するだけ）
+        unit_tests:
+          - name: test_commit_left_width
+            case: 正常
+            summary: 確定したときだけ保存領域に書く
+            condition: '`setLeftWidth(500)` の後に `commitLeftWidth(520)`'
+            mock: なし（jsdom の `sessionStorage`）
+            expected: '`setLeftWidth` の後は保存領域にキーが無く、`commitLeftWidth` の後は `mindmap-left-panel-width` が `520`、`leftWidth` が 520'
+      - name: setDetailWidth
+        title: 詳細パネルの幅を適用する
+        kind: 関数
+        summary: 幅の区切りの `onChange` で呼ぶ。保存しない
+      - name: commitDetailWidth
+        title: 詳細パネルの幅を確定する
+        kind: 関数
+        summary: 幅の区切りの `onCommit` で呼ぶ。適用した後に `sessionStorage` の `workspaceKey(PANEL_WIDTH_KEY)` に残す
+      - name: setOpen
+        title: 開いているかを書く
+        kind: 関数
+        summary: "`setOpen('left' | 'detail', open)`。パネルを描いたとき・除外したときに呼ぶ"
+constants:
+  - name: LEFT_PANEL_WIDTH
+    title: 左のパネルの幅の決まり
+    summary: 左のパネルの既定・下限・本文に残す幅・キーの 1 回の幅・区切りを出す幅（px）
+    value: '`{ default: 384, min: 320, keepBody: 400, step: 16, resizableFrom: 901 }`'
+    container: frontend/src/shared/stores/panel-width-store.ts
+  - name: DETAIL_PANEL_WIDTH
+    title: 詳細パネルの幅の決まり
+    summary: 詳細パネルの既定・下限・本文に残す幅・左に残す幅・キーの 1 回の幅・区切りを出す幅・横に並べる幅（px）
+    value: '`{ default: 640, min: 480, keepBody: 400, keepLeft: 160, step: 16, resizableFrom: 901, sideFrom: 1100 }`'
+    container: frontend/src/shared/stores/panel-width-store.ts
+  - name: LEFT_PANEL_WIDTH_KEY
+    title: 左のパネルの幅の保存のキー
+    summary: '`workspaceKey` で末尾に `:{workspace}` を付ける'
+    value: '`mindmap-left-panel-width`'
+    container: frontend/src/shared/stores/panel-width-store.ts
+  - name: PANEL_WIDTH_KEY
+    title: 詳細パネルの幅の保存のキー
+    summary: '`workspaceKey` で末尾に `:{workspace}` を付ける'
+    value: '`mindmap-panel-width`'
+    container: frontend/src/shared/stores/panel-width-store.ts
+functions:
+  - name: readStoredWidth
+    title: 残した幅を参照する
+    kind: 関数
+    summary: '`sessionStorage` の `workspaceKey(key)` の値が正の整数ならその数、無いか正の整数でなければ `fallback` を返却する'
+    container: frontend/src/shared/stores/panel-width-store.ts
+    unit_tests:
+      - name: test_read_stored_width
+        case: 正常
+        summary: 残した幅か既定を返却する
+        condition: '`parametrize`: `mindmap-left-panel-width:mindstella-x-1` が `520` / 無い / `abc` / `0`。パスは `/w/mindstella-x-1/`、`fallback` は 384'
+        mock: '`history.replaceState`'
+        expected: 520 / 384 / 384 / 384
+  - name: leftPanelMax
+    title: 左のパネルの上限
+    kind: 関数
+    summary: '`leftPanelMax(viewport, detailWidth, detailOpen)`。表示の幅 − `keepBody`。表示の幅が `sideFrom`（1100px）以上で詳細パネルを開いていれば、さらに詳細パネルの幅（`detailPanelMax(viewport, 0, false)` で収めた幅）を引く。下限を下回るときは下限'
+    container: frontend/src/shared/stores/panel-width-store.ts
+    unit_tests:
+      - name: test_left_panel_max
+        case: 正常
+        summary: 左のパネルの上限
+        condition: '`parametrize`: 表示の幅 1440 で詳細パネルを開いていない / 1440 で幅 640 の詳細パネルを開いている / 1000 で幅 640 を開いている（詳細パネルは本文に重なる） / 1100 で幅 640 を開いている'
+        mock: なし
+        expected: 1040 / 400 / 600 / 320
+  - name: detailPanelMax
+    title: 詳細パネルの上限
+    kind: 関数
+    summary: '`detailPanelMax(viewport, leftWidth, leftOpen)`。表示の幅が `sideFrom` 以上では表示の幅 − `keepBody`（左のパネルを開いていればさらに左のパネルの幅を引く）、未満では表示の幅 − `keepLeft`。下限を下回るときは下限'
+    container: frontend/src/shared/stores/panel-width-store.ts
+    unit_tests:
+      - name: test_detail_panel_max
+        case: 正常
+        summary: 詳細パネルの上限
+        condition: '`parametrize`: 表示の幅 1440 で左のパネルを開いていない / 1440 で幅 384 の左のパネルを開いている / 1000 / 1100 で幅 384 を開いている'
+        mock: なし
+        expected: 1040 / 656 / 840 / 480
+  - name: currentLeftWidth
+    title: 左のパネルの今の幅
+    kind: 関数
+    summary: '`currentLeftWidth(state)`。`leftWidth` が `null` なら `readStoredWidth(LEFT_PANEL_WIDTH_KEY, LEFT_PANEL_WIDTH.default)`、それ以外は `leftWidth` を返却する'
+    container: frontend/src/shared/stores/panel-width-store.ts
+    unit_tests:
+      - name: test_current_left_width
+        case: 正常
+        summary: 適用した幅か、まだなら保存領域の幅を返却する
+        condition: '`parametrize`: `leftWidth` が `null` で保存領域が `520` / `leftWidth` が 500 で保存領域が `520`'
+        mock: なし（jsdom の `sessionStorage`）
+        expected: 520 / 500
+  - name: currentDetailWidth
+    title: 詳細パネルの今の幅
+    kind: 関数
+    summary: '`currentDetailWidth(state)`。`detailWidth` が `null` なら `readStoredWidth(PANEL_WIDTH_KEY, DETAIL_PANEL_WIDTH.default)`、それ以外は `detailWidth` を返却する'
+    container: frontend/src/shared/stores/panel-width-store.ts
+notes:
+  単体テスト: 同じフォルダの `panel-width-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  両方の上限: 詳細パネルの上限は左のパネルの残した幅を、左のパネルの上限は左のパネルを引かない上限で収めた詳細パネルの幅を引く。互いの上限を参照して循環しない
+  幅の初期値: ストアは import したときに作られ、その時点では開いたワークスペースのパスが決まっていないことがあるため、保存領域は使用するときに `workspaceKey` で参照する

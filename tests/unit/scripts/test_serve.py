@@ -6,6 +6,7 @@ import contextlib
 import json
 import os
 import shutil
+import socket
 import sys
 import threading
 import time
@@ -14,7 +15,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+import httpx
 import pytest
+import uvicorn
 import yaml
 from starlette.applications import Starlette
 from starlette.routing import Route
@@ -2356,6 +2359,29 @@ def test_endpoint_when_two_workspaces(
     assert "A へのコメント" not in json.dumps(second_comments, ensure_ascii=False)
 
 
+@contextlib.contextmanager
+def _live_server(registry: serve.PreviewRegistry) -> Iterator[str]:
+    """経路を登録したアプリを 127.0.0.1 の空きポートで本当に待ち受け、その基底 URL を返す（閉じると止める）。
+
+    TestClient はアプリが応答を終えるまで本文を集めるため、終わらない Server-Sent Events は本物の待ち受けで受け取る。
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(_preview_app(registry), log_level="warning", lifespan="off"))
+    runner = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True)
+    runner.start()
+    deadline = time.monotonic() + HTTP_TIMEOUT_SEC
+    while not server.started and time.monotonic() < deadline:
+        time.sleep(0.01)
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        runner.join(timeout=HTTP_TIMEOUT_SEC)
+        sock.close()
+
+
 def test_stream(
     registry: serve.PreviewRegistry,
     make_workspace: MakeWorkspace,
@@ -2369,14 +2395,21 @@ def test_stream(
     url, _started = registry.start(root)
     before = set(threading.enumerate())
     received = ""
-    # 実行
-    with _client(registry) as client, client.stream("GET", f"{_base_of(url)}/api/events") as stream:
+    # 実行（受け取れないときは読み取りの上限秒数で fail して終わる）
+    with (
+        _live_server(registry) as base,
+        httpx.Client(timeout=HTTP_TIMEOUT_SEC) as client,
+        client.stream(
+            "GET", f"{base}{_base_of(url)}/api/events", headers={"Host": f"127.0.0.1:{PORT}"}
+        ) as stream,
+    ):
+        assert stream.status_code == 200
         ai_update(root, "D-1", {"title": "書き換えた問い"})
         for chunk in stream.iter_text():
             received += chunk
             if "changed" in received:
                 break
-    # 検証（閉じた後、知らせのために足したスレッドが上限秒数のうちに全て終わる）
+    # 検証（閉じた後、知らせのために足したスレッドと待ち受けが上限秒数のうちに全て終わる）
     deadline = time.monotonic() + HTTP_TIMEOUT_SEC
     added = set(threading.enumerate()) - before
     while added and time.monotonic() < deadline:

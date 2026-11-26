@@ -247,3 +247,13 @@ export const DiffSource: Story = { args: { source: DIFF_AFTER, base: DIFF_BEFORE
 
 /** 差分の表示で、選んだ時点から変わっていない本文。色を付けずに今の本文だけを出す */
 export const DiffUnchanged: Story = { args: { source: DIFF_AFTER, base: DIFF_AFTER, fold: false } };
+
+/** 列が多く画面の幅を超える表を、最も狭めたパネルの幅（320px）の本文の区画で描く。表は表の部品の中だけで横にスクロールし、本文の区画は横にスクロールせず、区画の幅を超えて描かれない */
+export const WideTableInNarrowPane: Story = {
+  args: { source: tableSource(12) },
+  render: (props: Args) => (
+    <div data-part="narrow-pane" style={{ width: "320px" }} className="min-w-0 border border-border">
+      <MarkdownBody {...props} />
+    </div>
+  ),
+};

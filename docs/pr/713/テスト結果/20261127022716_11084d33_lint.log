@@ -1,0 +1,51 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p frontend
+
+frontend/src/features/comments/comments-panel/comments-panel.test.tsx(6,36): error TS2307: Cannot find module '@/shared/stores/panel-width-store' or its corresponding type declarations.
+frontend/src/features/detail/detail-panel/detail-panel.test.tsx(5,36): error TS2307: Cannot find module '@/shared/stores/panel-width-store' or its corresponding type declarations.
+frontend/src/shared/components/left-panel.test.tsx(4,27): error TS2307: Cannot find module '@/shared/components/left-panel' or its corresponding type declarations.
+frontend/src/shared/components/left-panel.test.tsx(5,36): error TS2307: Cannot find module '@/shared/stores/panel-width-store' or its corresponding type declarations.
+frontend/src/shared/components/panel-resizer.test.tsx(4,30): error TS2307: Cannot find module '@/shared/components/panel-resizer' or its corresponding type declarations.
+frontend/src/shared/stores/panel-width-store.test.ts(3,83): error TS2307: Cannot find module '@/shared/stores/panel-width-store' or its corresponding type declarations.
+typecheck_exit=2
+  225:7   error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+  225:26  error  Unsafe member access .setState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  236:7   error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+  236:26  error  Unsafe member access .setState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  162:5   error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+  162:24  error  Unsafe member access .setState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  171:5   error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+  171:24  error  Unsafe member access .setState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+   25:3   error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+   25:22  error  Unsafe member access .setState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+   67:5   error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+   67:24  error  Unsafe member access .setState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+   91:5   error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+   91:24  error  Unsafe member access .setState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  104:11  error  Unsafe assignment of an error typed value                         @typescript-eslint/no-unsafe-assignment
+  104:31  error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+  104:50  error  Unsafe member access .getState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  104:61  error  Unsafe member access .leftOpen on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  109:12  error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+  109:31  error  Unsafe member access .getState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  109:42  error  Unsafe member access .leftOpen on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  22:12  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  35:12  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  48:12  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  56:11  error  Unsafe assignment of an error typed value                          @typescript-eslint/no-unsafe-assignment
+  56:47  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  56:66  error  Unsafe member access .getState on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+  58:5   error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  60:5   error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  64:12  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  64:31  error  Unsafe member access .getState on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+  64:42  error  Unsafe member access .leftWidth on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+✖ 32 problems (32 errors, 0 warnings)
+ruff_exit=0
+
+## 残した違反
+
+- typecheck と lint の違反は、まだ無いモジュール（frontend/src/shared/components/panel-resizer.tsx・left-panel.tsx、frontend/src/shared/stores/panel-width-store.ts）を参照していることによるもので、実装で無くなる

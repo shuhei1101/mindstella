@@ -12,8 +12,8 @@ trigger: MindStella のセッションが、利用者に手番を返す直前に
 preconditions:
   - 常駐サーバーが、環境変数で指定された Webhook の設定のファイル（中身は Webhook の URL の 1 行）を参照できる
   - MindStella のセッションが、単一ユースケース『外部のアプリから起動する』か『端末から起動する』で起動している
-  - MindStella のセッションが、エージェントフローの決まりに従い、利用者に手番を返す直前に 1 回だけ `commit` を呼ぶ（単一ユースケース『コメントの取り込み』）
-success_guarantee: MindStella のセッションが手番を返す直前の `commit` が成功するたびに、1 件の通知が Discord のチャンネルに届く。返信に差分のリンクを入れるために作業の途中で呼ぶ `commit` では届かない。修正が無く返信だけで手番を返す `commit` でも届く。サブエージェントやバックグラウンドの処理を待つだけで応答が終了したときは届かない。
+  - MindStella のセッションが、エージェントフローの決まりに従い、利用者に手番を返す直前に、成功する `commit` を 1 回だけ呼ぶ（単一ユースケース『コメントの取り込み』）。拒まれたら、残っているタスクの状態を変えてから呼び直す
+success_guarantee: MindStella のセッションが手番を返す直前の `commit` が成功するたびに、1 件の通知が Discord のチャンネルに届く。返信に差分のリンクを入れるために作業の途中で呼ぶ `commit` では届かない。修正が無く返信だけで手番を返す `commit` でも届く。サブエージェントやバックグラウンドの処理を待つだけで応答が終了したときと、未着手・進行中のタスクが残っていて手番を返す直前の `commit` が拒まれたときは届かない。
 minimal_guarantee: Webhook の設定が無い・送信に失敗したときも、出来事の記録・スレッドの書き込み・commit は変わらない。Webhook の URL は、ログ・応答・ワークスペースの記録に記載しない。
 frequency: MindStella のセッションが利用者に手番を返すたびに 1 回
 priority: 高
@@ -169,6 +169,33 @@ scenarios:
       - エンドポイントに届いた要求が 1 件だけである
       - 書き換えのまとまりが 2 つ増えている
     test: test_normal_when_committed_during_work
+  - name: 正常シナリオ（タスクが残っていて手番を返せない）
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイントで、200 を返却する）と、Claude Code のセッション（未着手のタスクを残したまま手番を返す直前の `commit` を呼び、拒まれた後に project-index の `write_docs` でタスクを保留にして呼び直す。project-index はテストが起動する）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 正常シナリオと同じ。未着手のタスク T-1 を持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SRV as 常駐サーバー
+        participant PI as project-index の MCP
+        participant DC as Discord
+
+        CC->>SRV: 手番を返す直前に書き換えをまとめる（commit）
+        SRV-->>CC: エラー（未着手の T-1）
+        CC->>PI: write_docs（T-1 を保留にする）
+        CC->>SRV: 手番を返す直前に書き換えをまとめる（commit）
+        SRV-->>CC: まとめた
+        SRV->>DC: 作業が終わったことを 1 件の通知で送信する
+      ```
+    expected:
+      - 1 回目の `commit` がエラーになり、その時点でエンドポイントに要求が届いていない
+      - 呼び直した `commit` が成功した後に、エンドポイントに届いた要求が 1 件だけである
+    test: test_normal_when_hand_back_refused
 refs:
   - SC-540-1#
   - IF-568-1#

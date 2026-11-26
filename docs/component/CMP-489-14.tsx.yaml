@@ -88,6 +88,8 @@ states:
     args:
       - name: thread
         value: '{"id":"TH-2","status":"open","tags":["画面"],"summary":"D-1 の決め方（TH-1 の続き、D-99 は除く）","target":"D-1","posts":[{"author":"ai","body":"D-1 は TH-1 の候補から選びます。","created":"2026-10-12T01:24:00+00:00"}],"events":[]}'
+  - name: LongTitlePending
+    description: 改行の無い長いタイトルと「レビュー中」の札を持つ行を、最も狭めたパネルの幅で出す。タイトルは行の幅に収まるように省略し、札は折り返さない
 lead: スレッドの一覧に並べる 1 件の行。状態の札・タイトル・向けた項目・最後の書き手と日時・レビュー中のマーカー・タグを出し、押すとそのスレッドを開く。まだ送信していない新規スレッドも同じ構造で「レビュー中」の札にする。
 args:
   - name: thread

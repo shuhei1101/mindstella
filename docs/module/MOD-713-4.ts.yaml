@@ -1,0 +1,19 @@
+id: MOD-713-4
+title: プレビュー / use-viewport-width
+lead: 表示の幅を返却し、窓の幅が変わったら描き直させるフック。
+functions:
+  - name: useViewportWidth
+    title: 表示の幅
+    kind: 関数
+    usecase: 共通
+    container: frontend/src/shared/hooks/use-viewport-width.ts
+    summary: '`useSyncExternalStore` で `window.innerWidth` を返却し、`resize` と幅の区切りを出す幅（`min-width: 901px`）をまたいだ `matchMedia` の変化で描き直させる。部品『左のパネル』と詳細パネルが上限を求めるのに使用する'
+    unit_tests:
+      - name: test_use_viewport_width
+        case: 正常
+        summary: 窓の幅が変わると変わった後の幅を返却する
+        condition: 表示の幅 1440 で描き、`window.innerWidth` を 1100 にして `resize` を送信する
+        mock: '`window.innerWidth`'
+        expected: 1440 の後に 1100
+notes:
+  単体テスト: 同じフォルダの `use-viewport-width.test.ts` に配置する（knowledge の規約『フォルダ構成』）

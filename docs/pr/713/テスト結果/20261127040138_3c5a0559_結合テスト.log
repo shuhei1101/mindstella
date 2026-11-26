@@ -1,0 +1,43 @@
+$ pytest tests/integration/plugin/test_agent_flows.py tests/integration/plugin/test_session_hook.py tests/integration/server/test_commit.py tests/integration/server/test_work_done_notify.py
+..............................                                           [100%]
+30 passed in 55.40s
+
+$ pytest tests/integration/preview/ tests/integration/storybook_react/test_markdown_body_stories.py tests/integration/storybook_react/test_panel_resizer_stories.py tests/integration/storybook_react/test_thread_post_stories.py tests/integration/storybook_react/test_thread_row_stories.py
+
+open_story = <function open_story.<locals>._open at 0x705e551a4d60>
+
+    def test_diff_source(open_story: OpenStory) -> None:
+        """差分の表示で「原文の差分」。mdmark の行の差分を開いた状態で、リビジョンの欄に「選んだ時点」「今」が入り、書き換えた行の変わった単語を濃い色にする（正常系）。"""
+        # 準備・実行
+        page = _open(open_story, "diff-source")
+        page.wait_for_selector(".mdmark-diff-line", timeout=STORY_TIMEOUT_MS)
+        # 検証（削除した行と追加した行）
+        assert page.locator('.mdmark-diff-line[data-kind="del"]').count() >= 1
+        assert page.locator('.mdmark-diff-line[data-kind="add"]').count() >= 1
+        assert page.locator(".mdmark-diff-word").count() >= 1
+        # 検証（前と後のリビジョンの欄）
+        pickers = page.locator(".mdmark-diff-picker").all_inner_texts()
+        joined = " ".join(pickers)
+>       assert "選んだ時点" in joined
+E       AssertionError: assert '選んだ時点' in ''
+
+tests/integration/storybook_react/test_markdown_body_stories.py:363: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_spa_open.py::test_normal_when_records_changed_while_typing[chromium]
+FAILED tests/integration/preview/test_spa_open.py::test_normal_when_exported_offline[chromium]
+FAILED tests/integration/preview/test_spa_open.py::test_normal_when_exported_read_only[chromium]
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_diff_source[chromium]
+4 failed, 590 passed in 1043.65s (0:17:23)
+
+# 失敗した 4 件の再実行
+$ pytest tests/integration/preview/test_spa_open.py -k "records_changed_while_typing or exported_offline or exported_read_only"
+FAILED tests/integration/preview/test_spa_open.py::test_normal_when_records_changed_while_typing[chromium]
+1 failed, 2 passed, 38 deselected in 19.86s
+
+# develop（19ecee06）での同じテストの実行（この PR の差分を含まない）
+$ pytest tests/integration/preview/test_spa_open.py -k records_changed_while_typing
+FAILED tests/integration/preview/test_spa_open.py::test_normal_when_records_changed_while_typing[chromium]
+1 failed, 33 deselected in 12.10s
+$ pytest tests/integration/storybook_react/test_markdown_body_stories.py -k diff_source
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_diff_source[chromium]
+1 failed, 31 deselected in 2.02s

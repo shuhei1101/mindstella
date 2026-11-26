@@ -1050,3 +1050,71 @@ def test_build_server_when_not_hand_back(
     _run_async(mcp_server.call_tool(tool.removesuffix("-hand-back"), {**arguments, "session": session}))
     # 検証
     assert calls == []
+
+
+def test_build_server_when_hand_back_open_tasks(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """未着手・進行中のタスクが残っていれば手番を返す commit を拒む（異常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("T-1"),
+        raw_files={"changes.yaml": "last_seq: 1\nsets: []\npending: {added: [T-1], changed: []}\n"},
+        name="ws",
+    )
+    state_root = tmp_path / "state"
+    _write_mindstella_session(state_root, root, "abc")
+    calls: list[str] = []
+    monkeypatch.setattr(notify, "notify_work_done", _recording_notify(calls))
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784), state_root=state_root)
+    session = {**_session_of(tmp_path), "claude_session_id": "abc"}
+    changes = root / ".mindstella" / "changes.yaml"
+    before = changes.read_text(encoding="utf-8")
+    # 実行
+    result = _run_async(
+        mcp_server.call_tool(
+            "commit",
+            {"workspace": str(root), "summary": "返す", "hand_back": True, "session": session},
+        )
+    )
+    # 検証
+    assert isinstance(result, CallToolResult)
+    assert result.is_error is True
+    lines = result.content[0].text.splitlines()
+    assert lines[0].startswith("エラー: 未着手・進行中のタスクが残っています")
+    assert lines[1].startswith("T-1: 未着手: ")
+    assert changes.read_text(encoding="utf-8") == before
+    assert calls == []
+
+
+def test_build_server_when_not_hand_back_open_tasks(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """作業の途中の commit はタスクの状態を問わない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("T-1"),
+        raw_files={"changes.yaml": "last_seq: 1\nsets: []\npending: {added: [T-1], changed: []}\n"},
+        name="ws",
+    )
+    state_root = tmp_path / "state"
+    _write_mindstella_session(state_root, root, "abc")
+    calls: list[str] = []
+    monkeypatch.setattr(notify, "notify_work_done", _recording_notify(calls))
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784), state_root=state_root)
+    session = {**_session_of(tmp_path), "claude_session_id": "abc"}
+    # 実行
+    result = _run_async(
+        mcp_server.call_tool("commit", {"workspace": str(root), "summary": "途中", "session": session})
+    )
+    # 検証
+    assert isinstance(result, CallToolResult)
+    assert result.is_error is False
+    assert result.structured_content is not None
+    assert result.structured_content["added"] == ["T-1"]

@@ -127,3 +127,37 @@ export const LongAiPostFolded: Story = { args: { post: {"id": "TH-1-2", "author"
 
 /** 最新ではない AI の書き込みを開いた。全文を出し、本文の下の行に上向きのアイコンと「折りたたむ」を出す（`aria-expanded="true"`） */
 export const LongAiPostOpened: Story = { args: { post: {"id": "TH-1-2", "author": "ai", "body": "見直して気になった点を挙げます。\n1. 概要のタイルの並びが毎回変わる\n2. 検討事項の表で列の幅が狭い\n3. タスクのボードで完了の列が長い\n4. 資料のカードの日付が読みにくい\n5. 用語集の別名の列が狭い\n6. 詳細パネルの本文の図が小さい\n7. 変更履歴の時点の並びが分かりにくい", "created": "2026-11-04T01:24:00+00:00"}, fold: true, open: true } };
+
+/** 3000 文字を超える書き込みと、改行の無い長い URL を持つ書き込み。本文はカードの幅で折り返し（URL も折り返す）、カードの外へはみ出さない */
+export const LongUnbrokenText: Story = {
+  args: {
+    post: {
+      id: "TH-1-9",
+      author: "user",
+      body: `${"長い書き込みの文です。".repeat(320)}\nhttps://example.com/${"very-long-path-segment-without-breaks-".repeat(12)}end`,
+      created: "2026-10-12T03:00:00+00:00",
+    },
+  },
+  render: (args) => (
+    <div style={{ width: "320px" }}>
+      <PostStage {...args} />
+    </div>
+  ),
+};
+
+/** 画面の幅を超える列の多い表を持つ書き込み。表は表の部品の中だけで横にスクロールし、カード・パネルは横にスクロールしない */
+export const WideTablePost: Story = {
+  args: {
+    post: {
+      id: "TH-1-10",
+      author: "ai",
+      body: ["| ID | 名前 | 状態 | 担当 | 期限 | 優先度 | 種類 | 補足 | 関連 | 作成日 |", "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |", "| D-1 | 保存の方式 | 未決定 | 利用者 | 2026-11-30 | 高 | 検討事項 | ファイルに書くか DB に書くか | T-1・T-2 | 2026-11-01 |"].join("\n"),
+      created: "2026-10-12T03:05:00+00:00",
+    },
+  },
+  render: (args) => (
+    <div style={{ width: "320px" }}>
+      <PostStage {...args} />
+    </div>
+  ),
+};

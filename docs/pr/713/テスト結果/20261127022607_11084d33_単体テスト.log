@@ -1,0 +1,48 @@
+# 単体テスト（Red）: 11084d33
+
+$ pytest tests/unit/scripts/test_commands.py tests/unit/scripts/test_server.py -k hand_back --basetemp=/tmp/mindstella-713-pt/log
+E       AttributeError: module 'commands' has no attribute 'check_hand_back'
+E       AttributeError: module 'commands' has no attribute 'check_hand_back'
+E       AttributeError: module 'commands' has no attribute 'check_hand_back'
+E       AttributeError: module 'errors' has no attribute 'OpenTasksRemainError'
+E           AttributeError: module 'commands' has no attribute 'check_hand_back'
+E           AttributeError: module 'commands' has no attribute 'check_hand_back'
+E       AttributeError: module 'errors' has no attribute 'OpenTasksRemainError'
+E           TypeError: run_commit() got an unexpected keyword argument 'hand_back'
+E           TypeError: run_commit() got an unexpected keyword argument 'hand_back'
+E       assert False is True
+E        +  where False = CallToolResult(meta=None, content=[TextContent(type='text', text='{"id": "V-1", "at": "2026-11-26T17:26:09+00:00", "su...26:09+00:00', 'summary': '返す', 'added': ['T-1'], 'changed': [], 'removed': []}, is_error=False, result_type='complete').is_error
+FAILED tests/unit/scripts/test_commands.py::test_check_hand_back[settled] - A...
+FAILED tests/unit/scripts/test_commands.py::test_check_hand_back[no_tasks_file]
+FAILED tests/unit/scripts/test_commands.py::test_check_hand_back[no_tasks] - ...
+FAILED tests/unit/scripts/test_commands.py::test_check_hand_back_when_open_tasks
+FAILED tests/unit/scripts/test_commands.py::test_check_hand_back_when_tasks_invalid[not_yaml]
+FAILED tests/unit/scripts/test_commands.py::test_check_hand_back_when_tasks_invalid[schema_mismatch]
+FAILED tests/unit/scripts/test_commands.py::test_run_commit_when_hand_back_open_tasks
+FAILED tests/unit/scripts/test_commands.py::test_run_commit_when_hand_back_summary_blank
+FAILED tests/unit/scripts/test_commands.py::test_run_commit_when_hand_back_no_workspace
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_hand_back_open_tasks
+10 failed, 6 passed, 135 deselected in 0.69s
+
+$ npx vitest run frontend/src/shared/components/panel-resizer.test.tsx frontend/src/shared/stores/panel-width-store.test.ts frontend/src/shared/components/left-panel.test.tsx frontend/src/features/detail/detail-panel/detail-panel.test.tsx frontend/src/features/comments/comments-panel/comments-panel.test.tsx
+ FAIL  frontend/src/shared/stores/panel-width-store.test.ts [ frontend/src/shared/stores/panel-width-store.test.ts ]
+Error: Failed to resolve import "@/shared/stores/panel-width-store" from "frontend/src/shared/stores/panel-width-store.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/components/left-panel.test.tsx [ frontend/src/shared/components/left-panel.test.tsx ]
+Error: Failed to resolve import "@/shared/components/left-panel" from "frontend/src/shared/components/left-panel.test.tsx". Does the file exist?
+ FAIL  frontend/src/shared/components/panel-resizer.test.tsx [ frontend/src/shared/components/panel-resizer.test.tsx ]
+Error: Failed to resolve import "@/shared/components/panel-resizer" from "frontend/src/shared/components/panel-resizer.test.tsx". Does the file exist?
+ FAIL  frontend/src/features/comments/comments-panel/comments-panel.test.tsx [ frontend/src/features/comments/comments-panel/comments-panel.test.tsx ]
+Error: Failed to resolve import "@/shared/stores/panel-width-store" from "frontend/src/features/comments/comments-panel/comments-panel.test.tsx". Does the file exist?
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx [ frontend/src/features/detail/detail-panel/detail-panel.test.tsx ]
+Error: Failed to resolve import "@/shared/stores/panel-width-store" from "frontend/src/features/detail/detail-panel/detail-panel.test.tsx". Does the file exist?
+ Test Files  5 failed (5)
+      Tests  no tests
+
+## fail の原因
+
+- 全ての fail は、実装の無いこと（commands.check_hand_back・errors.OpenTasksRemainError・run_commit の hand_back・commit のツールの拒否、frontend の panel-resizer・panel-width-store・left-panel のモジュール）による
+
+## 実装の前から pass したテスト
+
+- test_build_server_when_not_hand_back_open_tasks: hand_back を省いた commit がタスクの状態を問わずにまとめる振る舞いは、作業ブランチの plugins/mindstella/skills/mindmap/scripts/server.py の commit のツール（589〜600 行。hand_back が偽のときはタスクの状態を調べない）に既にある。入れた commit: 0d538fe5（#703）
+- test_build_server_when_hand_back・test_build_server_when_not_hand_back・test_run_commit 系の既存のテスト: 既存の振る舞い

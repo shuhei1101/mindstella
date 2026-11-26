@@ -65,6 +65,8 @@
 .md [data-md-level="5"] { font-size: .83em; margin: 1.67em 0; }
 .md [data-md-level="6"] { font-size: .67em; margin: 2.33em 0; }
 .md a:not(.idref), .md code { overflow-wrap: anywhere; }
+/* 段落・リスト・引用・見出しの長い単語は区画の幅で折り返す（表のセルは表の部品の中で横にスクロールさせるので当てない） */
+.md p, .md li, .md blockquote, .md [data-md-level] { overflow-wrap: anywhere; }
 .md pre { background: var(--muted); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; }
 .md pre:focus-visible { outline-offset: -2px; }
 .md pre.md-raw { white-space: pre-wrap; overflow-wrap: anywhere; }

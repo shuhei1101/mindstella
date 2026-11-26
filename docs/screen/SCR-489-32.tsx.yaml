@@ -566,13 +566,13 @@ elements:
     id: panel-resizer
     kind: separator
     position: パネルの内側の左端
-    description: 'ドラッグかキーで詳細パネルの幅を変える縦の帯（`role="separator"`・`aria-orientation="vertical"`・`aria-valuemin` / `aria-valuemax` / `aria-valuenow` に下限・上限・今の幅）。読み上げの名前は「詳細パネルの幅」。帯の幅は 24px で、本文のスクロールバーに重ねない。指で操作する端末（`pointer: coarse`）では帯の幅を 44px にし、パネルの左端の線を帯の中央に挟む（パネルの外へ 22px 出す）。指のドラッグでもマウスと同じく幅を変え、ドラッグ中はページをスクロールさせない。帯の縦の中央につまみをふだんから薄く出し、乗せると線とつまみを濃く、ドラッグ中とキーボードのフォーカスではアクセントの色にする（フォーカスはつまみの周りだけを枠で囲み、見出しと本文の文字に重ねない）。押すとフォーカスを移す。下限・上限で止まっている間は、その向きだけのカーソルにする'
+    description: 'ドラッグかキーで詳細パネルの幅を変える縦の帯（`role="separator"`・`aria-orientation="vertical"`・`aria-valuemin` / `aria-valuemax` / `aria-valuenow` に下限・上限・今の幅）。読み上げの名前は「詳細パネルの幅」。帯の幅・指の端末のタップ領域・つまみ・フォーカス・カーソルの見た目は部品『幅の区切り』のとおりで、向きは `left`。指のドラッグでもマウスと同じく幅を変え、ドラッグ中はページをスクロールさせない。押すとフォーカスを移す'
     io: 入出力
     type: 数値（px）
     visible_when: 表示の幅が 901px 以上
     range:
       min: '480'
-      max: 本文を寄せる幅（1100px 以上）では表示の幅 − 400、本文に重ねる幅（901〜1099px）では表示の幅 − 160
+      max: 本文を寄せる幅（1100px 以上）では表示の幅 − 400（左のパネルを開いているときは、さらに左のパネルの幅を引く）、本文に重ねる幅（901〜1099px）では表示の幅 − 160
       step: 矢印キー 1 回で 16
     initial_value: そのタブの `sessionStorage` に残した幅。無ければ既定の 640。上限を超えるときは上限に収めて出し、残した値は書き換えない。開いたまま窓の幅が変わったときも、残した幅を今の上限に再調整（`aria-valuemax` / `aria-valuenow` も合わせる）、窓を再拡大すると残した幅に戻す
     source: プレビューを開く.詳細パネル
@@ -581,6 +581,7 @@ elements:
     status: planned
     introduced:
       pr: 340
+    component: CMP-713-1#
   - name: エクスポート
     kind: button
     position: 見出し > 編集するの右・前後の移動の左

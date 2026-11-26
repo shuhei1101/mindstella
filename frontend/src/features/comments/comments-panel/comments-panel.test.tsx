@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { usePanelWidthStore } from "@/shared/stores/panel-width-store";
 import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
 
@@ -214,4 +215,26 @@ describe("CommentsPanel", () => {
     const focused = target === "submit" ? () => within(panel).getByRole("button", { name: "レビューに追加" }) : () => within(panel).getByRole("textbox");
     await waitFor(() => expect(focused()).toHaveFocus());
   });
+
+  // スレッドの一覧・スレッド・レビュー中の書き込みで同じ幅を使用する（正常系）
+  test.each(["/?panel=comments", "/?panel=comments&thread=TH-1", "/?panel=comments&review=1"])(
+    "comments_panel_when_width_shared: %s",
+    async (path) => {
+      // 準備
+      window.innerWidth = 1440;
+      usePanelWidthStore.setState({ leftWidth: 520 });
+      server.use(
+        transcription,
+        http.get("/api/threads", () => HttpResponse.json({ threads: [thread("TH-1", "open", "一つ目")] })),
+        http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })),
+      );
+      // 実行
+      renderRoute(path);
+      // 検証
+      const panel = await screen.findByRole("dialog", { name: "コメント" });
+      expect(panel.style.width).toBe("520px");
+      expect(within(panel).getAllByRole("separator", { name: "コメントの一覧の幅" })).toHaveLength(1);
+      usePanelWidthStore.setState({ leftWidth: null });
+    },
+  );
 });

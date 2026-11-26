@@ -55,7 +55,7 @@ export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, index =
   // 読めない・読み込み中は文字のまま改行を保って出す
   if (status !== "ready") {
     return (
-      <p id={id} data-part="body" className={cn("m-0 whitespace-pre-wrap", className)}>
+      <p id={id} data-part="body" className={cn("m-0 wrap-anywhere whitespace-pre-wrap", className)}>
         {body}
       </p>
     );
