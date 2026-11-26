@@ -41,27 +41,39 @@ docs:
   - page: plugins/mindstella/agent-flows/on-comment.yaml
     new: false
     change: 「手番を返す」の前に「手番を返す前の確認」の工程を追加する（進められる工程の進め残しとタスクの状態）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-26T17:10:13.865341+00:00'
   - page: plugins/mindstella/agent-flows/record.yaml
     new: false
     change: 工程「手番を返す」に、手番の終了時のタスクの状態を保留・完了・中止に限る確認と、commit に拒否されたときの対応を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-26T17:10:13.865341+00:00'
   - page: plugins/mindstella/content/prompts/session-start.yaml
     new: false
     change: 起動と再開の注入文に、手番を返す条件を 1 行で入れる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-26T17:10:13.865341+00:00'
   - page: docs/guide/エージェントフロー.md
     new: false
     change: 手番を返す前の確認の工程を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-26T17:10:13.865341+00:00'
   - page: docs/guide/コマンド.mark.md
     new: false
     change: commit の hand_back で未着手・進行中のタスクが残っていると拒否し、残っているタスクを返却することを追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-26T17:10:13.865341+00:00'
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: コメントの一覧のパネルの幅を右端の区切りで変える操作を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-26T17:10:13.865341+00:00'
 scope_out:
   - item: スレッド 1 件の見出しが右端を突き抜ける件・一覧の見た目・スレッドから開いた資料の操作
     reason: '要望に含まれない（#706 の本文が #707 で扱うと決めている）。#357 の後に着手する後続'

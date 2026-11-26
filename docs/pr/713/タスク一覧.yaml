@@ -80,8 +80,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-26T16:53:24.439350+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: エージェントフロー on-comment・record、起動と再開の注入文、公開ドキュメントのエージェントフロー・コマンド・プレビューを見る
+    updated_by: planner
+    updated_at: '2026-11-26T17:10:14.608450+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
