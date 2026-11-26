@@ -68,6 +68,8 @@ export const RecordText = ({ text, mode, lookup, onOpen, descriptionId }: Record
     };
     host.addEventListener("focus", onFocus);
     host.addEventListener("blur", onBlur);
+    // 描く前にフォーカスを受けていた行のボタンにも出す
+    if (document.activeElement === host) onFocus();
     return () => {
       host.removeEventListener("focus", onFocus);
       host.removeEventListener("blur", onBlur);
@@ -112,7 +114,7 @@ export const RecordText = ({ text, mode, lookup, onOpen, descriptionId }: Record
           key={key}
           ref={position === 0 ? firstMarker : undefined}
           data-record-id={target.id}
-          className="id-marker font-mono"
+          className="font-mono id-marker"
           onMouseEnter={(event) => {
             show({ anchor: event.currentTarget, target });
           }}

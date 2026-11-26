@@ -94,7 +94,14 @@ export const SearchResultMarkers: Story = {
 };
 
 /** ID を持たないタイトル。文字をそのまま描く */
-export const NoIds: Story = { args: { text: "保存先の比較" } };
+export const NoIds: Story = {
+  args: { text: "保存先の比較" },
+  render: (args) => (
+    <h2 className="m-0 text-h2 font-semibold">
+      <RecordText {...args} />
+    </h2>
+  ),
+};
 
 /** 長いタイトル（幅 240px）。タイトルの文字は折り返し、枠の外へはみ出さない */
 export const LongTitle: Story = {

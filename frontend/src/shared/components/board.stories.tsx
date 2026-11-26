@@ -63,5 +63,8 @@ export const DatesNarrow: Story = {
   ),
 };
 
+/** 関係する項目の D-2 のタイトル「D-1 の見直し」を持つ記録 */
+const linkedIndex = buildIndex({ ...RECORDS, decisions: [...RECORDS.decisions, { id: "D-2", title: "D-1 の見直し", status: "決定済み" }] } as unknown as MindmapData);
+
 /** タイトルに記録にある D-1 と記録に無い D-99、関係する項目のタイトルに D-1 を持つカード。D-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す */
-export const TitleIdMarkers: Story = { args: { item: { ...task, title: "D-1 の比較（D-99 は除く）" }, links: ["D-2"] } };
+export const TitleIdMarkers: Story = { args: { index: linkedIndex, item: { ...task, title: "D-1 の比較（D-99 は除く）" }, links: ["D-2"] } };
