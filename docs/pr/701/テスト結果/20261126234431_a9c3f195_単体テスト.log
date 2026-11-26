@@ -1,0 +1,15 @@
+$ npx vitest run
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-record-text-id-links
+
+
+ Test Files  111 passed (111)
+      Tests  556 passed (556)
+   Start at  23:44:31
+   Duration  40.84s (environment 43%, tests 29%, import 14%, setup 8%, transform 5%, worker 1%)
+
+Environment  jsdom was created 111 times · 110.22s total, 43% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit 0
