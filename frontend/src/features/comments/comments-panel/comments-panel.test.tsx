@@ -233,7 +233,7 @@ describe("CommentsPanel", () => {
       const panel = await screen.findByRole("dialog", { name: "コメント" });
       expect(panel.style.width).toBe("520px");
       expect(within(panel).getAllByRole("separator", { name: "コメントの一覧の幅" })).toHaveLength(1);
-      usePanelWidthStore.setState({ leftWidth: 384 });
+      usePanelWidthStore.setState({ leftWidth: null });
     },
   );
 });

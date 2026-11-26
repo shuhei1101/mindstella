@@ -168,7 +168,7 @@ describe("DetailPanel", () => {
     // 検証
     expect(separator).toHaveAttribute("aria-valuemax", "656");
     await waitFor(() => expect(panel.style.width).toBe("656px"));
-    usePanelWidthStore.setState({ leftOpen: false, leftWidth: 384, detailWidth: 640 });
+    usePanelWidthStore.setState({ leftOpen: false, leftWidth: null, detailWidth: null });
     sessionStorage.clear();
   });
 });

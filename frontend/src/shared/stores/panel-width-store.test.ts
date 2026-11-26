@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, test } from "vitest";
 
-import { detailPanelMax, leftPanelMax, readStoredWidth, usePanelWidthStore } from "@/shared/stores/panel-width-store";
+import { currentLeftWidth, detailPanelMax, leftPanelMax, readStoredWidth, usePanelWidthStore } from "@/shared/stores/panel-width-store";
 
 afterEach(() => {
   sessionStorage.clear();
   history.replaceState(null, "", "/");
+  usePanelWidthStore.setState({ leftWidth: null, detailWidth: null, leftOpen: false, detailOpen: false });
 });
 
 describe("readStoredWidth", () => {
@@ -62,5 +63,19 @@ describe("usePanelWidthStore", () => {
     expect(beforeCommit).toBeNull();
     expect(sessionStorage.getItem("mindmap-left-panel-width")).toBe("520");
     expect(usePanelWidthStore.getState().leftWidth).toBe(520);
+  });
+});
+
+describe("currentLeftWidth", () => {
+  // 適用した幅か、まだなら保存領域の幅を返却する（正常系）
+  test.each([
+    { name: "まだ適用していない", leftWidth: null, expected: 520 },
+    { name: "適用した", leftWidth: 500, expected: 500 },
+  ])("current_left_width: $name", ({ leftWidth, expected }) => {
+    // 準備
+    sessionStorage.setItem("mindmap-left-panel-width", "520");
+    usePanelWidthStore.setState({ leftWidth });
+    // 実行・検証
+    expect(currentLeftWidth(usePanelWidthStore.getState())).toBe(expected);
   });
 });

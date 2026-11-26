@@ -22,7 +22,7 @@ const stubViewport = (width: number): void => {
 afterEach(() => {
   vi.unstubAllGlobals();
   sessionStorage.clear();
-  usePanelWidthStore.setState({ leftWidth: 384, detailWidth: 640, leftOpen: false, detailOpen: false });
+  usePanelWidthStore.setState({ leftWidth: null, detailWidth: null, leftOpen: false, detailOpen: false });
 });
 
 const renderPanel = (resizerLabel?: string) =>
