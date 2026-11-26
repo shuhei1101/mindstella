@@ -107,7 +107,7 @@ export const PanelResizer = ({ side, width, min, max, step = DEFAULT_STEP, label
       data-side={side}
       // 帯は 24px でパネルの内側に置き、指の端末は 44px にしてパネルの端の線を帯の中央に挟む
       className={cn(
-        "group absolute inset-y-0 z-10 w-6 touch-none select-none outline-none max-lg:hidden pointer-coarse:w-11",
+        "group absolute inset-y-0 z-10 w-6 touch-none outline-none select-none max-lg:hidden pointer-coarse:w-11",
         side === "left" ? "left-0 pointer-coarse:-left-5.5" : "right-0 pointer-coarse:-right-5.5",
         cursorOf(side, width, min, max),
       )}

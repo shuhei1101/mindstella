@@ -2064,3 +2064,11 @@ files:
   related:
   - to: MOD-489-25
     type: implements
+- path: src/shared/stores/panel-width-store.ts
+  name: パネルの幅のストア
+  description: 左のパネルと詳細パネルの幅・開いているか・互いの幅を引いた上限を持ち、確定した幅をそのタブの sessionStorage に残す。パネルの幅の保存や上限を変えるときに参照する。
+  tags:
+  - tool:zustand
+  related:
+  - to: MOD-713-2
+    type: implements
