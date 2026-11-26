@@ -26,6 +26,7 @@ from preview_comment_helpers import free_comment, read_workspace_yaml
 from preview_fixture_types import WriteReviewPreview
 from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import open_spa
+from preview_width_helpers import LONG_POST_BODY, NARROWEST_SIZE, WIDE_SIZE, assert_no_horizontal_scroll, narrow_left_panel
 from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread, WriteComments
 from preview_record_id_helpers import assert_tip
 
@@ -512,3 +513,30 @@ def test_title_id_links(page: Page, spa_comments_preview: tuple[str, Path]) -> N
     assert_tip(page, "最初の問い")
     link.click()
     expect(page).to_have_url(re.compile(r"id=D-1"))
+
+
+@pytest.mark.parametrize("narrowed", [pytest.param(False, id="width-360"), pytest.param(True, id="panel-320")])
+def test_no_horizontal_scroll(
+    page: Page,
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    narrowed: bool,
+) -> None:
+    """1 スレッドの書き込み 50 件（3000 文字を超える書き込みと改行の無い長い URL を含む）を、幅 360px と、幅 1440px で左のパネルを下限の 320px にして開いても、ページもパネルも横にスクロールしない（正常系）。"""
+    # 準備
+    posts = [
+        make_post(f"TH-1-{n}", author="ai" if n % 2 == 0 else "user", body=LONG_POST_BODY if n in (1, 25, 50) else f"{n} 件目の書き込み", read=True)
+        for n in range(1, 51)
+    ]
+    url, _ = write_review_preview(make_item("D-1"), threads=(make_thread("TH-1", *posts, summary="長い相談", target="D-1"),))
+    page.set_viewport_size(WIDE_SIZE if narrowed else NARROWEST_SIZE)
+    # 実行
+    open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+    if narrowed:
+        narrow_left_panel(page)
+        expect(_panel(page).get_by_role("separator", name="コメントの一覧の幅")).to_have_attribute("aria-valuenow", "320")
+    expect(_panel(page).locator("article")).to_have_count(50)
+    # 検証
+    assert_no_horizontal_scroll(page, _panel(page))

@@ -958,3 +958,10 @@ def test_normal_when_narrowest_no_horizontal_scroll(
     assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), page.evaluate(
         "[document.documentElement.scrollWidth, document.documentElement.clientWidth]"
     )
+    # 資料の詳細: 閉じるボタンが画面の中に残り、コメントの入力欄が表示の幅に収まる（画面設計『資料』の補足「横幅」）
+    if "id=A-1" in search:
+        detail = page.get_by_role("complementary", name="詳細")
+        for control in (detail.get_by_role("button", name="詳細を閉じる"), detail.get_by_role("textbox", name="A-1 へのコメント")):
+            box = control.bounding_box()
+            assert box is not None
+            assert box["x"] >= 0 and box["x"] + box["width"] <= NARROWEST_SIZE["width"] + 1

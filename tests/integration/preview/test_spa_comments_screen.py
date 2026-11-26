@@ -16,6 +16,9 @@ from playwright.sync_api import Locator, Page, Route, expect
 from preview_comment_helpers import read_workspace_yaml
 from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import assert_below_topbar, open_spa
+from preview_width_helpers import LONG_TITLE, NARROWEST_SIZE, assert_no_horizontal_scroll, narrow_left_panel
+from preview_fixture_types import WriteReviewPreview
+from workspace_fixtures import MakePost, MakeThread
 
 import pytest
 from preview_record_id_helpers import assert_described, assert_tip
@@ -530,3 +533,30 @@ def test_left_width_shared(page: Page, spa_comments_preview: tuple[str, Path]) -
     expect(region).to_have_count(1)
     assert region.evaluate("(e) => e.getBoundingClientRect().width") == 400
     expect(region.get_by_role("separator")).to_have_count(0)
+
+
+@pytest.mark.parametrize("narrowed", [pytest.param(False, id="width-360"), pytest.param(True, id="panel-320")])
+def test_no_horizontal_scroll(
+    page: Page,
+    write_review_preview: WriteReviewPreview,
+    make_item: _MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    narrowed: bool,
+) -> None:
+    """スレッド 100 件（改行の無い長いタイトルを含む）を、幅 360px と、幅 1440px で左のパネルを下限の 320px にして開いても、ページもパネルも横にスクロールしない（正常系）。"""
+    # 準備
+    threads = tuple(
+        make_thread(f"TH-{n}", make_post(f"TH-{n}-1", body="相談"), summary=LONG_TITLE if n % 10 == 1 else f"相談 {n}", target="D-1", tags=["画面"])
+        for n in range(1, 101)
+    )
+    url, _ = write_review_preview(make_item("D-1", title=LONG_TITLE), threads=threads)
+    page.set_viewport_size(WIDE_SIZE if narrowed else NARROWEST_SIZE)
+    # 実行
+    open_spa(page, url, "?tab=decisions&panel=comments")
+    if narrowed:
+        narrow_left_panel(page)
+        expect(_resizer(page)).to_have_attribute("aria-valuenow", "320")
+    expect(_rows(page)).to_have_count(100)
+    # 検証
+    assert_no_horizontal_scroll(page, _panel(page))

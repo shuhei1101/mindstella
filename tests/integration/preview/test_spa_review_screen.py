@@ -22,6 +22,7 @@ from preview_voice_helpers import (
 )
 from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import open_spa
+from preview_width_helpers import LONG_POST_BODY, NARROWEST_SIZE, WIDE_SIZE, assert_no_horizontal_scroll, narrow_left_panel
 from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread, WriteComments
 
 # 5 行を超える本文
@@ -448,3 +449,29 @@ def test_row_labels_not_wrapped_when_narrow(page: Page, review_preview: tuple[st
 
 # 要素の中の文字（テキストノード）が並ぶ行の数（折り返していなければ 1）
 _TEXT_LINES_JS = "(e) => { const walker = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); const tops = new Set(); for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) { if (node.textContent.trim() === '') continue; const range = document.createRange(); range.selectNodeContents(node); for (const rect of range.getClientRects()) if (rect.width > 0) tops.add(Math.round(rect.top)); } return tops.size; }"
+
+
+@pytest.mark.parametrize("narrowed", [pytest.param(False, id="width-360"), pytest.param(True, id="panel-320")])
+def test_no_horizontal_scroll(
+    page: Page,
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    narrowed: bool,
+) -> None:
+    """レビュー中の書き込み 30 件（3000 文字を超える書き込みと改行の無い長い URL を含む）を、幅 360px と、幅 1440px で左のパネルを下限の 320px にして開いても、ページもパネルも横にスクロールしない（正常系）。"""
+    # 準備
+    comments = tuple(
+        free_comment(make_comment(f"C-{n}", body=LONG_POST_BODY if n in (1, 15, 30) else f"{n} 件目のコメント"))
+        for n in range(1, 31)
+    )
+    url, _ = write_review_preview(make_item("D-1"), comments=comments)
+    page.set_viewport_size(WIDE_SIZE if narrowed else NARROWEST_SIZE)
+    # 実行
+    open_spa(page, url, "?tab=decisions&panel=comments&review=1")
+    if narrowed:
+        narrow_left_panel(page)
+        expect(_panel(page).get_by_role("separator", name="コメントの一覧の幅")).to_have_attribute("aria-valuenow", "320")
+    expect(_panel(page).locator("li[data-comment], li[data-pending], li").first).to_be_visible()
+    # 検証
+    assert_no_horizontal_scroll(page, _panel(page))
