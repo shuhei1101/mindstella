@@ -1,0 +1,23 @@
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: スレッドの見出しの全文の開き方、スマホで項目の ID のリンクを 1 回押すと開くこと、ロックしていないコメントの一覧から開いた資料を操作できることを追加
+    status: todo
+scope_out:
+  - item: 資料の画面の表による横スクロール・レビュー中の書き込みの横スクロール・「新規スレッド」のマーカーの折り返し
+    reason: '計画の判断で #706 に残したスコープ'
+    plan: '#706'
+  - item: スレッドの画面の書き込みのカードの重なり（Impeccable の nested-cards）
+    reason: 書き込みのカード（thread-post）はこの作業のスレッドの一覧の行と対象箇所が違う
+    plan: '#705'
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: 長い書き込みから作ったスレッドの見出しを省略して全文を開けるようにし、ロックしていないコメントの一覧から開いた資料をパネルを閉じずに操作できるようにする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: スマホでは本文の項目の ID のリンクを 1 回押すとその項目へ移り、ツールチップを出さない
+    depends_on: []
