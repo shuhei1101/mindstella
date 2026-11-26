@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 
 import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/components/detail-editor";
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
-import { DetailResizer, PANEL_WIDTH } from "@/features/detail/detail-panel/components/detail-resizer";
 import { BodyView } from "@/features/detail/detail-panel/components/body-view";
 import { DetailSupplements, type DetailTab } from "@/features/detail/detail-panel/components/detail-supplements";
 import type { BodyDiffView } from "@/shared/components/body-diff-view-switch";
@@ -14,6 +13,7 @@ import { RelatedList } from "@/features/detail/detail-panel/components/related-l
 import { ValueLinksContext, ValueText, type ValueLinks } from "@/features/detail/detail-panel/components/value-text";
 import { DiagramViewer, type DiagramViewerProps } from "@/features/detail/diagram-viewer/diagram-viewer";
 import { DiffMark } from "@/shared/components/diff-mark";
+import { clampWidth, PanelResizer } from "@/shared/components/panel-resizer";
 import { DiffMinimap } from "@/shared/components/diff-minimap";
 import { Icon, StatusMark } from "@/shared/components/icon";
 import { TagList } from "@/shared/components/tag-list";
@@ -26,13 +26,13 @@ import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
 import { bodyFormatOf, kindOfId, tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
 import { applyHighlight } from "@/shared/core/term-tips";
-import { workspaceKey } from "@/shared/core/workspace-path";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
+import { currentDetailWidth, currentLeftWidth, DETAIL_PANEL_WIDTH, detailPanelMax, usePanelWidthStore } from "@/shared/stores/panel-width-store";
 import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll } from "@/shared/stores/prefs-store";
 import { isEmbedded } from "@/shared/core/embedded";
@@ -403,27 +403,25 @@ const KeyLead = ({ name, value, keys }: { name: string; value: string | undefine
   );
 };
 
-/** そのタブで変えた幅を残す sessionStorage のキー */
-const PANEL_WIDTH_KEY = "mindmap-panel-width";
-
-const readPanelWidth = (): number => {
-  const saved = sessionStorage.getItem(workspaceKey(PANEL_WIDTH_KEY));
-  return saved !== null && /^[1-9]\d*$/.test(saved) ? Number(saved) : PANEL_WIDTH.default;
-};
-
 export type DetailPanelProps = { id: string; index: RecordIndex; sibling?: SiblingNavProps | null };
 
 export const DetailPanel = ({ id, index, sibling }: DetailPanelProps) => {
-  const [width, setWidth] = useState(readPanelWidth);
+  const storedDetail = usePanelWidthStore((state) => state.detailWidth);
+  const storedLeft = usePanelWidthStore((state) => state.leftWidth);
+  const leftOpen = usePanelWidthStore((state) => state.leftOpen);
+  const setDetailWidth = usePanelWidthStore((state) => state.setDetailWidth);
+  const commitDetailWidth = usePanelWidthStore((state) => state.commitDetailWidth);
+  const setOpen = usePanelWidthStore((state) => state.setOpen);
+  // 描いている間だけ、詳細パネルを開いているとストアへ通知する（左のパネルの上限が詳細パネルの幅を引く）
+  useEffect(() => {
+    setOpen("detail", true);
+    return () => setOpen("detail", false);
+  }, [setOpen]);
+  const max = detailPanelMax(window.innerWidth, currentLeftWidth({ leftWidth: storedLeft }), leftOpen);
+  const width = clampWidth(currentDetailWidth({ detailWidth: storedDetail }), DETAIL_PANEL_WIDTH.min, max);
   return (
     <aside aria-label="詳細" style={{ width }} className="relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!">
-      <DetailResizer
-        width={width}
-        onChange={(next) => {
-          setWidth(next);
-          sessionStorage.setItem(workspaceKey(PANEL_WIDTH_KEY), String(next));
-        }}
-      />
+      <PanelResizer side="left" width={width} min={DETAIL_PANEL_WIDTH.min} max={max} step={DETAIL_PANEL_WIDTH.step} label="詳細パネルの幅" onChange={setDetailWidth} onCommit={commitDetailWidth} />
       <DetailContent key={id} id={id} index={index} full={false} sibling={sibling} />
     </aside>
   );

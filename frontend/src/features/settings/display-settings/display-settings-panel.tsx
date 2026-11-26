@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { SettingsPanel } from "@/features/settings/display-settings/components/settings-panel";
 import { SettingsConfirmDialog } from "@/features/settings/display-settings/settings-confirm-dialog";
+import { LeftPanel } from "@/shared/components/left-panel";
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { displayDefaults, overrideNames, resetPrefs } from "@/shared/core/display";
@@ -58,8 +59,8 @@ export const DisplaySettingsPanel = () => {
   return (
     <>
       <div data-scrim aria-hidden="true" className="fixed inset-x-0 top-below-topbar bottom-0 z-20 bg-foreground/40 max-lg:hidden" onClick={close} />
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
-      <section
+      <LeftPanel
+        as="section"
         role="dialog"
         aria-modal="true"
         aria-label="表示の設定"
@@ -114,7 +115,7 @@ export const DisplaySettingsPanel = () => {
             }}
           />
         </div>
-      </section>
+      </LeftPanel>
       <SettingsConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}

@@ -6,6 +6,7 @@ import { ReviewView } from "@/features/comments/review/review-view";
 import { ThreadRow } from "@/features/comments/shared/thread-row";
 import { useCommentData } from "@/features/comments/shared/use-comment-data";
 import { ThreadView } from "@/features/comments/thread/thread-view";
+import { LeftPanel } from "@/shared/components/left-panel";
 import { Icon } from "@/shared/components/icon";
 import { RecordText } from "@/shared/components/record-text";
 import { focusAfterAdded, SendForm, type SendStatus } from "@/shared/components/send-form";
@@ -298,11 +299,12 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   return (
     <>
       {pinned ? null : <div data-scrim aria-hidden="true" className="fixed inset-x-0 top-below-topbar bottom-0 z-20 bg-foreground/40 max-lg:hidden" onClick={close} />}
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
-      <section
+      <LeftPanel
+        as="section"
         role="dialog"
         aria-modal={!pinned}
         aria-label="コメント"
+        resizerLabel="コメントの一覧の幅"
         className="fixed top-below-topbar bottom-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card max-lg:w-full"
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
@@ -314,7 +316,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
       >
         {header}
         {body}
-      </section>
+      </LeftPanel>
     </>
   );
 };

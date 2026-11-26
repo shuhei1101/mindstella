@@ -548,14 +548,6 @@ files:
   related:
   - to: MOD-489-24
     type: implements
-- path: src/features/detail/detail-panel/components/detail-resizer.tsx
-  name: 詳細パネルの左端に置く幅の区切り
-  description: 詳細パネルの左端に置く幅の区切り。
-  tags:
-  - tool:react
-  related:
-  - to: MOD-489-25
-    type: implements
 - path: src/features/detail/detail-panel/components/key-diff.tsx
   name: 変わったキーの前の値と今の値を並べる
   description: 変わったキーの前の値と今の値を並べる。
@@ -2071,4 +2063,12 @@ files:
   - tool:zustand
   related:
   - to: MOD-713-2
+    type: implements
+- path: src/shared/components/left-panel.tsx
+  name: 左のパネル
+  description: コメントの一覧・保存待ちのパネル・表示の設定が共有する左のパネルの外側の要素で、幅と右端の幅の区切りを持つ。左のパネルの幅の振る舞いを変えるときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-713-3
     type: implements

@@ -1,4 +1,5 @@
 // 保存待ちのパネル（画面設計『保存待ちのパネル.tsx』）。保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、まとめて保存する
+import { LeftPanel } from "@/shared/components/left-panel";
 import { RecordText } from "@/shared/components/record-text";
 import type { LookupRecordId } from "@/shared/core/record-ids";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -131,8 +132,7 @@ export const PendingEditsPanel = ({ edits, index, lookup, onClose, onOpen }: Pen
     <>
     {/* 幅 901px 以上は後ろをグレーアウトし、押すと閉じる（押した操作は後ろの部品へ届けない） */}
     <div data-scrim aria-hidden="true" className="fixed inset-x-0 top-below-topbar bottom-0 z-20 hidden bg-foreground/40 lg:block" onClick={onClose} />
-    {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
-    <aside
+    <LeftPanel
       id="pending-panel"
       aria-label="保存待ちの編集"
       className="fixed top-below-topbar bottom-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card"
@@ -256,7 +256,7 @@ export const PendingEditsPanel = ({ edits, index, lookup, onClose, onOpen }: Pen
           {label}
         </Button>
       </div>
-    </aside>
+    </LeftPanel>
     </>
   );
 };
