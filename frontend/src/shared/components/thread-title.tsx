@@ -63,7 +63,14 @@ export const ThreadTitle = ({ title, collapsed, lookup, onOpen }: ThreadTitlePro
   const expanded = !collapsed && open;
   return (
     <span data-part="thread-title" data-collapsed={collapsed ? "" : undefined} data-clamped={clamped ? "" : undefined} className="flex min-w-0 flex-1 flex-col items-start">
-      <span ref={box} id={textId} title={collapsed ? title : undefined} className={cn("w-full min-w-0 wrap-anywhere", collapsed && "truncate", clamped && "line-clamp-2", expanded && "max-h-72 overflow-y-auto")}>
+      <span
+        ref={box}
+        id={textId}
+        title={collapsed ? title : undefined}
+        // 全文を開いた間は見出しの中でスクロールするため、キーボードでもスクロールの領域へ移れるようにする
+        {...(expanded ? { tabIndex: 0, role: "region", "aria-label": "スレッドのタイトルの全文" } : {})}
+        className={cn("w-full min-w-0 wrap-anywhere", collapsed && "truncate", clamped && "line-clamp-2", expanded && "max-h-72 overflow-y-auto focus-visible:outline-2 focus-visible:outline-ring")}
+      >
         <RecordText text={title} mode="link" lookup={lookup} {...(onOpen === undefined ? {} : { onOpen })} />
       </span>
       {!collapsed && exceeds ? <TitleToggle open={open} controls={textId} onToggle={() => { setOpen((value) => !value); }} /> : null}
