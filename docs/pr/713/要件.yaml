@@ -89,16 +89,16 @@ scope_out:
     plan: none
   - item: mdmark が描く表の列の幅の区切り（`span[aria-label="「ID」の列の幅"]` ほか）で axe の `aria-valid-attr-value`（critical）が出る件（`markdown-body.stories.tsx` の `MdmarkTable` などで見つけた）
     reason: 外部ライブラリ mdmark が描く要素の ARIA の属性の値で、この PR が変えた要素ではなく、今回の要望に含まれない
-    plan: to_file
+    plan: '#714'
   - item: コメントの一覧・スレッドの画面でカードの中にカードがある件（Impeccable の `nested-cards`。`?panel=comments`・`?panel=comments&thread=TH-1`）
     reason: パネルの中のカードの構成で、この PR はパネルの外側の要素だけを替えており、今回の要望に含まれない
-    plan: to_file
+    plan: '#705'
   - item: 表示の設定の幅 390px で本文の文字が画面の端に近い件（Impeccable の `body-text-viewport-edge`。`?panel=display`）
     reason: 幅 900px 以下のパネルの余白の件で、この PR は 900px 以下のパネルの幅を変えておらず、今回の要望に含まれない
-    plan: to_file
+    plan: '#715'
   - item: 部品『Markdownの本文』の結合テスト `test_diff_source` が、mdmark の原文の差分にリビジョンの欄（`.mdmark-diff-picker`）が描かれず fail する件
     reason: develop（`19ecee06`）でも同じく fail し、この PR はストーリー `DiffSource` と mdmark の版を変えていない。mdmark が描く差分の部品の構成の件で、今回の要望に含まれない
-    plan: to_file
+    plan: '#716'
   - item: インターフェース定義『プレビューを開く』の結合テスト `test_normal_when_records_changed_while_typing` が、表の表示で題「D-1の題」を見つけられず fail する件（最初に当たるのが読み上げ用の hidden の `#table-ids-D-1`）
     reason: develop（`19ecee06`）でも同じく fail し、項目の ID のリンク（#701）の表示に合わせたテストの修正で、今回の要望に含まれない
-    plan: to_file
+    plan: '#717'
