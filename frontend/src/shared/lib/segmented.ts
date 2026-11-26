@@ -7,4 +7,4 @@ export const SEGMENTED_GROUP_CLASS = "inline-flex rounded-control border border-
 export const SEGMENTED_ITEM_CLASS = "cursor-pointer rounded-sm text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring";
 
 /** 選んだボタンにだけ加える */
-export const SEGMENTED_SELECTED_CLASS = "bg-tab-selected font-medium text-foreground shadow-sm ring-1 ring-mark/50 hover:bg-tab-selected";
+export const SEGMENTED_SELECTED_CLASS = "bg-tab-selected font-medium text-foreground ring-1 ring-inset ring-mark/50 hover:bg-tab-selected";
