@@ -108,4 +108,21 @@ describe("LeftPanel", () => {
     expect(openWhileRendered).toBe(true);
     expect(usePanelWidthStore.getState().leftOpen).toBe(false);
   });
+
+  // section のダイアログとして描き、共有した幅で開く（正常系）
+  test("left_panel_as_section", () => {
+    // 準備
+    stubViewport(1440);
+    usePanelWidthStore.setState({ leftWidth: 520 });
+    // 実行
+    render(
+      <LeftPanel as="section" role="dialog" aria-label="表示の設定">
+        <p>中身</p>
+      </LeftPanel>,
+    );
+    // 検証
+    const panel = screen.getByRole("dialog", { name: "表示の設定" });
+    expect(panel.tagName).toBe("SECTION");
+    expect(panel.style.width).toBe("520px");
+  });
 });
