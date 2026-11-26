@@ -87,3 +87,12 @@ scope_out:
   - item: コメントをまとめて送信したときに Claude Code へ入力する 1 行（claude_input.py の INPUT_TEMPLATE）へ手番を返す条件を入れること
     reason: 入力を受けたセッションはエージェントフロー mindstella/on-comment に従い、追加する「手番を返す前の確認」の工程を通るため。含めるかは判断が分かれるので、レビューで確定する
     plan: none
+  - item: mdmark が描く表の列の幅の区切り（`span[aria-label="「ID」の列の幅"]` ほか）で axe の `aria-valid-attr-value`（critical）が出る件（`markdown-body.stories.tsx` の `MdmarkTable` などで見つけた）
+    reason: 外部ライブラリ mdmark が描く要素の ARIA の属性の値で、この PR が変えた要素ではなく、今回の要望に含まれない
+    plan: to_file
+  - item: コメントの一覧・スレッドの画面でカードの中にカードがある件（Impeccable の `nested-cards`。`?panel=comments`・`?panel=comments&thread=TH-1`）
+    reason: パネルの中のカードの構成で、この PR はパネルの外側の要素だけを替えており、今回の要望に含まれない
+    plan: to_file
+  - item: 表示の設定の幅 390px で本文の文字が画面の端に近い件（Impeccable の `body-text-viewport-edge`。`?panel=display`）
+    reason: 幅 900px 以下のパネルの余白の件で、この PR は 900px 以下のパネルの幅を変えておらず、今回の要望に含まれない
+    plan: to_file
