@@ -63,6 +63,8 @@ describe("DetailPanel", () => {
   test("detail_panel_when_width_saved", async () => {
     // 準備
     stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
+    // 880px が上限（表示の幅 − 400）に収まる表示の幅
+    window.innerWidth = 1440;
     sessionStorage.setItem("mindmap-panel-width:mindstella-x-1", "880");
     sessionStorage.setItem("mindmap-panel-width", "1000");
     // 実行

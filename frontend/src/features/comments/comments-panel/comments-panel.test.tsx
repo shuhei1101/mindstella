@@ -226,6 +226,7 @@ describe("CommentsPanel", () => {
       server.use(
         transcription,
         http.get("/api/threads", () => HttpResponse.json({ threads: [thread("TH-1", "open", "一つ目")] })),
+        http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })),
       );
       // 実行
       renderRoute(path);
