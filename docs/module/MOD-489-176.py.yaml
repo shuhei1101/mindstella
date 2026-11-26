@@ -1382,3 +1382,52 @@ functions:
         mock: なし
         expected: '`ArgumentError`（引数の名前 `kind`）'
         exception: 決めた種類でない
+  - name: check_hand_back
+    title: 手番を返す前のタスクの状態の検証
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: ワークスペースの `tasks.yaml` に状態が `未着手`・`進行中` のタスクがあれば `OpenTasksRemainError` を送出する
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: None
+      description: 残っているタスクが無ければ何も返却しない
+    process: |-
+      1. `records_root(root) / KINDS["task"].file` が無ければ、タスク 0 件として終える
+      2. YAML として読めなければ `SchemaMismatchError`（`tasks.yaml: (全体): YAML として読めません: {理由}`）を送出する
+      3. タスクのスキーマ（`load_validators()`）と突き合わせ、合わない箇所があれば `SchemaMismatchError`（箇所ごとの `tasks.yaml: {キーのパス}: {理由}`）を送出する
+      4. `status` が `未着手`・`進行中` の項目を ID の番号の順に並べ、1 件以上あれば `OpenTasksRemainError`（`{ID}: {状態}: {タイトル}` の行）を送出する
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`tasks.yaml` が YAML として読めないかスキーマに合わない'
+        message: スキーマに合いません
+      - name: OpenTasksRemainError
+        condition: 状態が `未着手`・`進行中` のタスクが 1 件以上ある
+        message: 未着手・進行中のタスクが残っています（保留・完了・中止にしてから呼び直してください）
+    unit_tests:
+      - name: test_check_hand_back
+        case: 正常
+        summary: 保留・完了・中止だけなら送出しない
+        condition: '`parametrize`: 保留の T-1・完了の T-2・中止の T-3 / `tasks.yaml` が無い / タスクが 0 件'
+        mock: なし
+        expected: 例外を送出しない
+      - name: test_check_hand_back_when_open_tasks
+        case: 異常
+        summary: 未着手・進行中のタスクを並べて拒む
+        condition: 進行中の T-10・未着手の T-2・保留の T-3・完了の T-4
+        mock: なし
+        exception: OpenTasksRemainError
+        expected: '`lines` が `["T-2: 未着手: {T-2 のタイトル}", "T-10: 進行中: {T-10 のタイトル}"]`'
+      - name: test_check_hand_back_when_tasks_invalid
+        case: 異常
+        summary: 読めない・スキーマに合わない tasks.yaml はスキーマの誤り
+        condition: '`parametrize`: `tasks.yaml` が YAML として読めない / `status` が `済み` のタスクを持つ'
+        mock: なし
+        exception: SchemaMismatchError
+        expected: '`lines` の先頭が `tasks.yaml: ` で始まる'

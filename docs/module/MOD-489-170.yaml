@@ -61,6 +61,7 @@ directory: |-
       connection-store.ts 接続の状態（Zustand）
       theme-store.ts      ライト / ダーク（Zustand・端末の保存領域）
       prefs-store.ts      表・本文の見せ方・絞り込み・表示する種類・コメントの個人の上書き（端末の保存領域）
+      panel-width-store.ts 左のパネルと詳細パネルの幅と上限（Zustand・端末の保存領域）
     lib/
       cn.ts               クラス名を合わせる
   ```
@@ -72,6 +73,8 @@ directory: |-
       icon.tsx              線のアイコンと状態の印
       topbar.tsx            トップバー
       topbar.stories.tsx    トップバーの状態ごとのストーリー
+      panel-resizer.tsx     パネルの幅の区切り（詳細パネルと左のパネル）
+      left-panel.tsx        コメントの一覧・保存待ちのパネル・表示の設定が共有する左のパネル
       {部品}.tsx            部品設計の `.tsx` の部品（表・絞り込み・差分の印 など）と横のストーリー
     shared/styles/
       tokens.css            :root の 3 ティアのトークン（デザイン方針の値）

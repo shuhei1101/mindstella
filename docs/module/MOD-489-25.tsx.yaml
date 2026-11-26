@@ -1,13 +1,70 @@
 id: MOD-489-25
-title: プレビュー / detail-resizer
-lead: 詳細パネルの幅をドラッグとキーで変える。
+title: プレビュー / panel-resizer
+lead: パネルの幅をドラッグとキーで変える共通の幅の区切り（部品設計『幅の区切り』）。
 components:
-  - name: DetailResizer
+  - name: PanelResizer
     title: 幅の区切り
     kind: コンポーネント
-    usecase: 項目の詳細を読む
-    summary: 詳細パネルの幅をドラッグとキーで変える
-    container: frontend/src/features/detail/detail-panel/components/detail-resizer.tsx
+    usecase: 共通
+    summary: 部品設計『幅の区切り』の引数・イベント・状態を持つ。`side` が `left` ならポインターが左へ動いた分、`right` なら右へ動いた分だけ広げる。幅は `clampWidth(width, min, max)` で収めて整数に丸める
+    container: frontend/src/shared/components/panel-resizer.tsx
+    refs:
+      - CMP-713-1#
+    unit_tests:
+      - name: test_panel_resizer_when_left_drag
+        case: 正常
+        summary: 左端の区切りを左へドラッグすると広がる
+        condition: '`side=left`・`width=640`。`pointerdown` の後に `clientX` を 100 減らした `pointermove`、`pointerup`'
+        mock: '`requestAnimationFrame` をすぐ実行する関数に差し替える'
+        expected: '`onChange(740)` の後に `onCommit(740)` が 1 回呼ばれる'
+      - name: test_panel_resizer_when_right_drag
+        case: 正常
+        summary: 右端の区切りを右へドラッグすると広がる
+        condition: '`side=right`・`width=384`。`clientX` を 100 増やした `pointermove`、`pointerup`'
+        mock: '`requestAnimationFrame`'
+        expected: '`onChange(484)`・`onCommit(484)`'
+      - name: test_panel_resizer_when_clamped
+        case: 正常
+        summary: 下限・上限に収める
+        condition: '`parametrize`: `min=320`・`max=800` で下限を超えて狭める / 上限を超えて広げる'
+        mock: '`requestAnimationFrame`'
+        expected: '`onChange(320)` / `onChange(800)`'
+      - name: test_panel_resizer_when_frames_coalesced
+        case: 正常
+        summary: ドラッグ中の onChange を 1 フレームに 1 回にまとめる
+        condition: 同じフレームの間に `pointermove` を 3 回送る
+        mock: '`requestAnimationFrame` を手で進める関数に差し替える'
+        expected: フレームを 1 つ進めると `onChange` が最後の幅で 1 回だけ呼ばれ、`onCommit` は呼ばれない
+      - name: test_panel_resizer_when_drag_cancelled
+        case: 正常
+        summary: ドラッグが中断しても確定する
+        condition: '`parametrize`: `pointermove` の後に `pointercancel` / `lostpointercapture`'
+        mock: '`requestAnimationFrame`'
+        expected: '`onCommit` が動かした幅で 1 回呼ばれる'
+      - name: test_panel_resizer_when_keys
+        case: 正常
+        summary: 矢印キー・Home・End で幅を変えて確定する
+        condition: '`parametrize`: `side=left` で ← / `side=right` で → / Home / End。`width=640`・`min=480`・`max=1040`・`step=16`'
+        mock: なし
+        expected: '`onChange` と `onCommit` が同じ値（656 / 656 / 480 / 1040）で呼ばれ、キーの既定の動作を止める'
+      - name: test_panel_resizer_when_touch
+        case: 正常
+        summary: 指のドラッグでも幅が変わる
+        condition: '`pointerType: touch` の `pointerdown`・`pointermove`・`pointerup`'
+        mock: '`requestAnimationFrame`'
+        expected: 動かした分だけ `onChange`・`onCommit` が呼ばれる
+      - name: test_panel_resizer_aria
+        case: 正常
+        summary: 読み上げの属性を持つ
+        condition: '`label=コメントの一覧の幅`・`width=384`・`min=320`・`max=800`'
+        mock: なし
+        expected: '`role=separator`・`aria-orientation=vertical`・`aria-label`・`aria-valuenow=384`・`aria-valuemin=320`・`aria-valuemax=800`・`tabIndex=0`'
+functions:
+  - name: clampWidth
+    title: 幅を収める
+    kind: 関数
+    summary: 幅を min 以上・max 以下に収めて整数に丸める。max が min より小さいときは min
+    container: frontend/src/shared/components/panel-resizer.tsx
 notes:
-  単体テスト: 同じフォルダの `detail-resizer.test.tsx` に置く（knowledge の規約『フォルダ構成』）
-  指での操作: 'ドラッグは Pointer Events（`pointerdown` で `setPointerCapture`、`pointermove`、`pointerup`・`pointercancel` で終える）で受け、マウスと指を分けない。帯に `touch-action: none` を付け、指のドラッグ中にページをスクロールさせない。帯の幅は `@media (pointer: coarse)`（Tailwind の `pointer-coarse:`）で 44px にし、パネルの左端の線を帯の中央に挟む（パネルの外へ 22px 出し、本文に重ねて前面に出す）。単体テストに、`pointerType: touch` の `pointerdown`・`pointermove`・`pointerup` で幅が変わり、動かした分だけ `aria-valuenow` が変わることを確かめるテストを追加する'
+  単体テスト: 同じフォルダの `panel-resizer.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  指での操作: 'ドラッグは Pointer Events（`pointerdown` で `setPointerCapture`、`pointermove`、`pointerup`・`pointercancel`・`lostpointercapture` で終える）で受け、マウスと指を分けない。区切りに `touch-action: none` を付ける'
