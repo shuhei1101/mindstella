@@ -1354,3 +1354,105 @@ def test_run_next_id_when_kind_unknown(make_workspace: MakeWorkspace) -> None:
     with pytest.raises(ArgumentError, match="kind") as exc_info:
         commands.run_next_id(root, "thread")
     assert exc_info.value.argument == "kind"
+
+
+@pytest.mark.parametrize(
+    "tasks",
+    [
+        pytest.param(
+            [
+                {"status": "保留", "reason": "利用者が素材を置いたら"},
+                {"status": "完了"},
+                {"status": "中止", "reason": "やめた"},
+            ],
+            id="settled",
+        ),
+        pytest.param(None, id="no_tasks_file"),
+        pytest.param([], id="no_tasks"),
+    ],
+)
+def test_check_hand_back(
+    make_workspace: MakeWorkspace, make_item: MakeItem, tasks: list[dict[str, Any]] | None
+) -> None:
+    """保留・完了・中止だけなら送出しない（正常系）。"""
+    # 準備
+    if tasks is None:
+        root = make_workspace()
+    elif tasks:
+        root = make_workspace(*(make_item(f"T-{n}", **task) for n, task in enumerate(tasks, start=1)))
+    else:
+        root = make_workspace(raw_files={"tasks.yaml": "items: []\n"})
+    # 実行・検証（例外を送出しない）
+    commands.check_hand_back(root)
+
+
+def test_check_hand_back_when_open_tasks(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """未着手・進行中のタスクを ID の番号の順に並べて拒む（異常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("T-10", status="進行中"),
+        make_item("T-2"),
+        make_item("T-3", status="保留", reason="利用者が素材を置いたら"),
+        make_item("T-4", status="完了"),
+    )
+    # 実行・検証
+    with pytest.raises(errors.OpenTasksRemainError) as exc_info:
+        commands.check_hand_back(root)
+    assert exc_info.value.lines == ["T-2: 未着手: T-2の題", "T-10: 進行中: T-10の題"]
+
+
+@pytest.mark.parametrize(
+    "tasks_yaml",
+    [
+        pytest.param("items: [\n", id="not_yaml"),
+        pytest.param(
+            "items:\n  - id: T-1\n    title: T-1の題\n    kind: 作業\n    status: 済み\n", id="schema_mismatch"
+        ),
+    ],
+)
+def test_check_hand_back_when_tasks_invalid(make_workspace: MakeWorkspace, tasks_yaml: str) -> None:
+    """読めない・スキーマに合わない tasks.yaml はスキーマの誤り（異常系）。"""
+    # 準備
+    root = make_workspace(raw_files={"tasks.yaml": tasks_yaml})
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        commands.check_hand_back(root)
+    assert exc_info.value.lines
+    assert exc_info.value.lines[0].startswith("tasks.yaml: ")
+
+
+def test_run_commit_when_hand_back_open_tasks(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """手番を返す commit は、未着手のタスクが残っていれば外部の変更もまとめずに拒む（異常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("T-1"),
+        raw_files={
+            "changes.yaml": "last_seq: 2\nsets: []\npending: {added: [], changed: [T-1], by: external}\n"
+        },
+    )
+    before = (root / RECORD_DIR / "changes.yaml").read_text(encoding="utf-8")
+    # 実行・検証
+    with pytest.raises(errors.OpenTasksRemainError):
+        commands.run_commit(root, "a", now=_fixed_now, hand_back=True)
+    assert (root / RECORD_DIR / "changes.yaml").read_text(encoding="utf-8") == before
+
+
+def test_run_commit_when_hand_back_summary_blank(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """説明が空白だけなら、未着手のタスクがあっても引数の誤り（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("T-1"))
+    # 実行・検証
+    with pytest.raises(ArgumentError, match="summary") as exc_info:
+        commands.run_commit(root, "   ", now=_fixed_now, hand_back=True)
+    assert exc_info.value.argument == "summary"
+
+
+def test_run_commit_when_hand_back_no_workspace(tmp_path: Path) -> None:
+    """ワークスペースが無ければ、tasks.yaml が壊れていてもワークスペースが無い誤り（異常系）。"""
+    # 準備
+    root = tmp_path / "workspace"
+    (root / RECORD_DIR).mkdir(parents=True)
+    (root / RECORD_DIR / "tasks.yaml").write_text("items: [\n", encoding="utf-8")
+    # 実行・検証
+    with pytest.raises(WorkspaceNotFoundError):
+        commands.run_commit(root, "a", now=_fixed_now, hand_back=True)

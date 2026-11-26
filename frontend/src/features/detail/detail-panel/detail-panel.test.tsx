@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
+import { usePanelWidthStore } from "@/shared/stores/panel-width-store";
 import { stubRecords } from "@/testing/msw/fixtures";
 import { renderRoute } from "@/testing/render";
 
@@ -151,5 +152,23 @@ describe("DetailPanel", () => {
     expect(within(panel).getByRole("tab", { name: "本文" })).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(new URLSearchParams(window.location.search).get("h")).toBe("保存先"));
     expect(window.history.length).toBe(before);
+  });
+
+  // 左のパネルを開いていれば上限から左のパネルの幅を引く（正常系）
+  test("detail_panel_when_left_open", async () => {
+    // 準備
+    stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
+    window.innerWidth = 1440;
+    usePanelWidthStore.setState({ leftOpen: true, leftWidth: 384 });
+    renderRoute("/?tab=decisions&id=D-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    const separator = within(panel).getByRole("separator", { name: "詳細パネルの幅" });
+    // 実行
+    fireEvent.keyDown(separator, { key: "End" });
+    // 検証
+    expect(separator).toHaveAttribute("aria-valuemax", "656");
+    await waitFor(() => expect(panel.style.width).toBe("656px"));
+    usePanelWidthStore.setState({ leftOpen: false, leftWidth: 384, detailWidth: 640 });
+    sessionStorage.clear();
   });
 });

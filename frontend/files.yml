@@ -548,14 +548,6 @@ files:
   related:
   - to: MOD-489-24
     type: implements
-- path: src/features/detail/detail-panel/components/detail-resizer.test.tsx
-  name: 幅の区切りの単体テスト
-  description: 詳細パネルの幅の区切りを指のドラッグで動かせることを確かめる単体テスト。幅の区切りの振る舞いを変えるときに読む。
-  tags:
-  - tool:react
-  related:
-  - to: MOD-489-25
-    type: tests
 - path: src/features/detail/detail-panel/components/detail-resizer.tsx
   name: 詳細パネルの左端に置く幅の区切り
   description: 詳細パネルの左端に置く幅の区切り。
@@ -2023,4 +2015,44 @@ files:
   - tool:react
   related:
   - to: MOD-701-2
+    type: tests
+- path: src/shared/components/panel-resizer.test.tsx
+  name: 幅の区切りの単体テスト
+  description: 共通の幅の区切りの左右のドラッグ・収める範囲・フレームのまとめ・確定・キー・指の操作・読み上げの属性を Vitest で確認する。幅の区切りの振る舞いを変えるときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-489-25
+    type: tests
+- path: src/shared/components/left-panel.test.tsx
+  name: 左のパネルの単体テスト
+  description: 左のパネルの幅・右端の幅の区切り・上限・開いているかを Vitest で確認する。左のパネルの幅の振る舞いを変えるときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-713-3
+    type: tests
+- path: src/shared/stores/panel-width-store.test.ts
+  name: パネルの幅のストアの単体テスト
+  description: 左のパネルと詳細パネルの幅の保存・上限の計算を Vitest で確認する。パネルの幅の保存や上限を変えるときに参照する。
+  tags:
+  - tool:zustand
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-713-2
+    type: tests
+- path: src/features/comments/comments-panel/comments-panel.test.tsx
+  name: コメントの一覧の単体テスト
+  description: コメントの一覧の並び・絞り込み・新規スレッド・フォーカス・パネルの幅を Vitest で確認する。コメントの一覧の振る舞いを変えるときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-489-5
     type: tests
