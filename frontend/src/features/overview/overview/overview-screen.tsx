@@ -8,6 +8,8 @@ import { compareIds } from "@/shared/core/records";
 import type { PreviewSearch } from "@/shared/core/preview-search";
 import { recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
+import { useRecordLookup } from "@/shared/hooks/use-record-lookup";
+import { useRecords } from "@/shared/hooks/use-records";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
 
 /** 状態がその値の項目を、連番の順に行にする */
@@ -26,13 +28,15 @@ const unreadRows = (threads: readonly Thread[]): ListTileRow[] =>
       const last = unseen.at(-1)?.["created"];
       if (typeof last !== "string") return [];
       const summary = typeof thread["summary"] === "string" ? thread["summary"] : "";
-      return [{ row: { id: thread.id, label: `${thread.id} ${summary}`.trim(), note: formatJst(last) }, last }];
+      return [{ row: { id: thread.id, prefix: thread.id, label: summary, note: formatJst(last) }, last }];
     })
     .sort((a, b) => (a.last < b.last ? 1 : a.last > b.last ? -1 : 0))
     .map(({ row }) => row);
 
 const Tiles = ({ records, threads, visible }: { records: Records; threads: readonly Thread[]; visible: ReadonlySet<Kind> }) => {
-  const { openList, openThread } = usePreviewSearch();
+  const { openList, openThread, openItem: openDetail } = usePreviewSearch();
+  const { index } = useRecords();
+  const { lookup } = useRecordLookup({ index, onOpenItem: openDetail });
   const openItem = (kind: Kind) => (id: string) => {
     openList(kind, { id });
   };
@@ -61,6 +65,7 @@ const Tiles = ({ records, threads, visible }: { records: Records; threads: reado
           headingId="h-unread"
           icon="comment"
           title="未読の AI の書き込み"
+          lookup={lookup}
           rows={unread}
           emptyText="未読の AI の書き込みはありません。"
           onOpen={openThread}
@@ -73,6 +78,7 @@ const Tiles = ({ records, threads, visible }: { records: Records; threads: reado
           headingId="h-open"
           icon="decision"
           title="未決定の検討事項"
+          lookup={lookup}
           rows={rowsOf(records.decisions, "未決定")}
           emptyText="未決定の検討事項はありません。"
           onOpen={openItem("decisions")}
@@ -83,6 +89,7 @@ const Tiles = ({ records, threads, visible }: { records: Records; threads: reado
           headingId="h-review"
           icon="alert"
           title="要見直し"
+          lookup={lookup}
           rows={rowsOf(records.decisions, "要見直し")}
           emptyText="要見直しの検討事項はありません。"
           onOpen={openItem("decisions")}
@@ -93,6 +100,7 @@ const Tiles = ({ records, threads, visible }: { records: Records; threads: reado
           headingId="h-docs"
           icon="doc"
           title="確認中の資料"
+          lookup={lookup}
           rows={rowsOf(records.docs, "確認中")}
           emptyText="確認中の資料はありません。"
           onOpen={openItem("docs")}

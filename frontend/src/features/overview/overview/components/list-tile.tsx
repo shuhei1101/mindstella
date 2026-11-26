@@ -1,5 +1,7 @@
 // 未読の AI の書き込み・未決定・要見直し・確認中の資料に共通の、件数と行と「すべて表示」のタイル
 import { Icon, type IconName, StatusMark } from "@/shared/components/icon";
+import { RecordText } from "@/shared/components/record-text";
+import type { LookupRecordId } from "@/shared/core/record-ids";
 
 /** タイルに出す件数 */
 const LIST_LIMIT = 3;
@@ -7,7 +9,9 @@ const LIST_LIMIT = 3;
 /** タイルの 1 行（項目かスレッド） */
 export type ListTileRow = {
   id: string;
-  /** 行の文字（項目はタイトル、スレッドは ID と要約） */
+  /** 行の文字の前に添える ID（スレッドの行だけ） */
+  prefix?: string | undefined;
+  /** 行の文字（項目はタイトル、スレッドは要約） */
   label: string;
   /** 状態の印に出す状態。スレッドの行は持たない */
   status?: string | undefined;
@@ -23,6 +27,8 @@ export type ListTileProps = {
   icon: IconName;
   title: string;
   rows: ListTileRow[];
+  /** 行の文字の中の ID から記録の項目・スレッドを検索する関数（部品『記録の文字』の `lookup`） */
+  lookup: LookupRecordId;
   /** 0 件のときに出す文 */
   emptyText: string;
   /** 「すべて表示」を押したとき。渡さないと出さない（その種類の画面を表示しないとき） */
@@ -30,7 +36,7 @@ export type ListTileProps = {
   onOpen: (id: string) => void;
 };
 
-export const ListTile = ({ tileId, headingId, icon, title, rows, emptyText, onShowAll, onOpen }: ListTileProps) => (
+export const ListTile = ({ tileId, headingId, icon, title, rows, lookup, emptyText, onShowAll, onOpen }: ListTileProps) => (
   <section id={tileId} aria-labelledby={headingId} className="min-w-0 rounded-control bg-card px-6.5 py-6 @max-3xl:p-5 dark:border dark:border-border-soft">
     <TileHead id={headingId} icon={icon} title={title} count={rows.length > 0 ? rows.length : null} onShowAll={onShowAll} />
     <p className="mt-1.5 mb-2.5 mono text-num/tight font-bold tracking-tight">{rows.length}</p>
@@ -43,13 +49,17 @@ export const ListTile = ({ tileId, headingId, icon, title, rows, emptyText, onSh
             <button
               type="button"
               data-id={row.id}
+              aria-describedby={`${tileId}-ids-${row.id}`}
               onClick={() => {
                 onOpen(row.id);
               }}
               className="group flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left font-semibold hover:text-mark"
             >
               {row.status === undefined ? null : <StatusMark status={row.status} />}
-              <span>{row.label}</span>
+              <span>
+                {row.prefix === undefined ? null : `${row.prefix} `}
+                <RecordText text={row.label} mode="marker" lookup={lookup} descriptionId={`${tileId}-ids-${row.id}`} />
+              </span>
               <span aria-hidden="true" className="text-subtle-foreground">
                 <Icon name="chev" />
               </span>
