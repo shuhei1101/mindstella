@@ -297,7 +297,7 @@ export const PreviewShell = () => {
       </div>
       <div className="flex min-h-0 flex-1">
         {data === undefined && records.error instanceof AppError ? (
-          <main id="main" className="min-h-0 flex-1 overflow-y-auto">
+          <main id="main" className="min-h-0 min-w-0 flex-1 overflow-y-auto">
             <div>
               <RecordsError error={records.error} />
             </div>

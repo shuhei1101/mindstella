@@ -2072,3 +2072,12 @@ files:
   related:
   - to: MOD-713-3
     type: implements
+- path: src/shared/components/panel-resizer.stories.tsx
+  name: 幅の区切りのストーリー
+  description: 幅の区切りの左端・右端・下限・上限・指の端末の状態を Storybook のストーリーで描く。幅の区切りの見た目を確認・修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:storybook
+  related:
+  - to: CMP-713-1
+    type: implements

@@ -80,3 +80,16 @@ export const TitleIdMarkers: Story = {
     thread: { id: "TH-2", status: "open", tags: ["画面"], summary: "D-1 の決め方（TH-1 の続き、D-99 は除く）", target: "D-1", posts: [{ id: "TH-2-1", author: "ai", body: "D-1 は TH-1 の候補から選びます。", created: "2026-10-12T01:24:00+00:00", seen: true }], events: [], loc: null },
   },
 };
+
+/** 改行の無い長いタイトルと「レビュー中」の札を持つ行を、最も狭めたパネルの幅（320px）で出す。タイトルは行の幅に収まるように省略し、札は折り返さない */
+export const LongTitlePending: Story = {
+  args: {
+    thread: { id: "TH-7", status: "open", tags: ["画面"], summary: `${"改行の無い長いタイトル".repeat(12)}https://example.com/${"segment".repeat(20)}`, target: "D-12", posts: [{ id: "P-18", author: "ai", body: "D-12 を案 B で決定にしました。", created: "2026-10-12T01:24:00+00:00", seen: true }], events: [], loc: null },
+    hasPendingReply: true,
+  },
+  render: (args) => (
+    <ul style={{ width: "320px" }} className="m-0 grid list-none p-0">
+      <ThreadRow {...args} />
+    </ul>
+  ),
+};
