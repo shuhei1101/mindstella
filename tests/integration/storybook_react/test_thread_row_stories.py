@@ -275,3 +275,25 @@ def test_title_id_marker_hover(open_story: OpenStory) -> None:
     page.locator("#storybook-root [data-record-id='D-1']").first.hover()
     # 検証
     expect(page.locator(".term-tip")).to_contain_text("保存先の決め方")
+
+
+# 最も狭めたパネルの幅（px）
+PANE_WIDTH_PX = 320
+
+
+def test_long_title_pending(open_story: OpenStory) -> None:
+    """改行の無い長いタイトルと「レビュー中」の札を持つ行を最も狭めたパネルの幅で出す。タイトルは行の幅に収まるように省略し、札は折り返さない（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadrow--long-title-pending")
+    row = page.locator(ROW)
+    # 検証
+    box = row.bounding_box()
+    assert box is not None
+    assert box["width"] <= PANE_WIDTH_PX + 1
+    assert row.evaluate("(e) => e.scrollWidth <= e.clientWidth + 1")
+    title_lines = page.locator(TITLE).evaluate("(e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)")
+    assert title_lines <= TITLE_MAX_LINES + 0.5
+    pending = page.locator(LINE2).get_by_text("レビュー中")
+    assert pending.evaluate(TEXT_LINES_JS) == 1
+    assert page.locator(LINE2).evaluate("(e) => e.scrollWidth <= e.clientWidth + 1")
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")

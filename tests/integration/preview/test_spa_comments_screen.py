@@ -420,3 +420,113 @@ def test_thread_row_id_markers(page: Page, spa_comments_preview: tuple[str, Path
     expect(row.locator("a")).to_have_count(0)
     assert_tip(page, "最初の問い")
     assert_described(page, row, "最初の問い")
+
+# ─── 幅の区切り ───
+
+# 左のパネルの幅を残す sessionStorage のキー（ワークスペースの配信ではワークスペースの ID を付ける）
+_LEFT_WIDTH_KEY_JS = "'mindmap-left-panel-width' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')"
+
+# 幅の区切りを出す広い幅
+WIDE_SIZE = {"width": 1440, "height": 800}
+
+
+def _resizer(page: Page) -> Locator:
+    """コメントの一覧の幅の区切りを返す。"""
+    return _panel(page).get_by_role("separator", name="コメントの一覧の幅")
+
+
+def test_resizer_visible(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """幅の区切りは表示の幅が 901px 以上のときだけ出す（正常系）。"""
+    # 準備
+    page.set_viewport_size({"width": 1280, "height": 800})
+    _open(page, spa_comments_preview)
+    expect(_resizer(page)).to_be_visible()
+    # 実行
+    page.set_viewport_size({"width": 900, "height": 800})
+    # 検証
+    expect(_resizer(page)).to_have_count(0)
+
+
+def test_resizer_initial_value(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """そのタブに残した幅が無ければ既定の 384 で開き、残した幅があればその幅、上限を超えるときは上限で開いて残した値は書き換えない（正常系）。"""
+    # 準備
+    page.set_viewport_size(WIDE_SIZE)
+    _open(page, spa_comments_preview)
+    expect(_resizer(page)).to_have_attribute("aria-valuenow", "384")
+    # 実行（残した幅で開き直す）
+    page.evaluate(f"sessionStorage.setItem({_LEFT_WIDTH_KEY_JS}, '500')")
+    page.reload()
+    # 検証
+    expect(_resizer(page)).to_have_attribute("aria-valuenow", "500")
+    assert _panel(page).evaluate("(e) => e.getBoundingClientRect().width") == 500
+    # 実行（上限を超える幅で開き直す）
+    page.evaluate(f"sessionStorage.setItem({_LEFT_WIDTH_KEY_JS}, '1200')")
+    page.reload()
+    # 検証（上限は表示の幅 − 400）
+    expect(_resizer(page)).to_have_attribute("aria-valuemax", "1040")
+    expect(_resizer(page)).to_have_attribute("aria-valuenow", "1040")
+    assert page.evaluate(f"sessionStorage.getItem({_LEFT_WIDTH_KEY_JS})") == "1200"
+
+
+def test_resizer_action(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """→ で広げ ← で狭め、Home で下限、End で上限にし、変えた幅をそのタブに残す（正常系）。"""
+    # 準備
+    page.set_viewport_size(WIDE_SIZE)
+    _open(page, spa_comments_preview)
+    resizer = _resizer(page)
+    resizer.focus()
+    # 実行・検証（矢印キー）
+    page.keyboard.press("ArrowRight")
+    page.keyboard.press("ArrowRight")
+    page.keyboard.press("ArrowLeft")
+    expect(resizer).to_have_attribute("aria-valuenow", "400")
+    assert page.evaluate(f"sessionStorage.getItem({_LEFT_WIDTH_KEY_JS})") == "400"
+    # 実行・検証（Home・End）
+    page.keyboard.press("Home")
+    expect(resizer).to_have_attribute("aria-valuenow", "320")
+    page.keyboard.press("End")
+    expect(resizer).to_have_attribute("aria-valuenow", "1040")
+    assert page.evaluate(f"sessionStorage.getItem({_LEFT_WIDTH_KEY_JS})") == "1040"
+    # 実行・検証（ドラッグ）
+    page.keyboard.press("Home")
+    box = resizer.bounding_box()
+    assert box is not None
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x + 40, y)
+    page.mouse.move(x + 80, y)
+    page.mouse.up()
+    expect(resizer).to_have_attribute("aria-valuenow", "400")
+    assert page.evaluate(f"sessionStorage.getItem({_LEFT_WIDTH_KEY_JS})") == "400"
+
+
+def test_resizer_max_when_detail_open(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """幅 1100px 以上で詳細パネルを開いているときは、上限からさらに詳細パネルの幅を引く（正常系）。"""
+    # 準備・実行
+    page.set_viewport_size(WIDE_SIZE)
+    _open(page, spa_comments_preview, "&id=D-1")
+    resizer = _resizer(page)
+    resizer.focus()
+    page.keyboard.press("End")
+    # 検証（1440 − 400 − 640）
+    expect(resizer).to_have_attribute("aria-valuemax", "400")
+    expect(resizer).to_have_attribute("aria-valuenow", "400")
+
+
+def test_left_width_shared(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """コメントの一覧で変えた幅で表示の設定も開き、表示の設定は区切りを持たない（正常系）。"""
+    # 準備
+    page.set_viewport_size(WIDE_SIZE)
+    _open(page, spa_comments_preview)
+    _resizer(page).focus()
+    page.keyboard.press("ArrowRight")
+    expect(_resizer(page)).to_have_attribute("aria-valuenow", "400")
+    url, _ = spa_comments_preview
+    # 実行
+    open_spa(page, url, "?tab=decisions&panel=display")
+    # 検証
+    region = page.locator("[role=dialog][aria-label='表示の設定']")
+    expect(region).to_have_count(1)
+    assert region.evaluate("(e) => e.getBoundingClientRect().width") == 400
+    expect(region.get_by_role("separator")).to_have_count(0)

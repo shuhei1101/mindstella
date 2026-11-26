@@ -302,3 +302,20 @@ def test_group_heading_id_markers(page: Page, write_edit_preview: WriteReviewPre
     expect(heading.locator("[data-record-id='D-99'], a")).to_have_count(0)
     assert_tip(page)
     assert_described(page, heading)
+
+
+def test_left_width_shared(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
+    """幅 901px 以上では、そのタブに残した左のパネルの幅（コメントの一覧と共有）で開き、幅の区切りは持たない（正常系）。"""
+    # 準備
+    page.set_viewport_size({"width": 1440, "height": 800})
+    _open(page, write_edit_preview, make_item, make_edit)
+    panel = page.get_by_role("complementary", name="保存待ちの編集")
+    expect(panel).to_be_visible()
+    assert panel.evaluate("(e) => e.getBoundingClientRect().width") == 384
+    # 実行
+    page.evaluate("sessionStorage.setItem('mindmap-left-panel-width' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''), '500')")
+    page.reload()
+    # 検証
+    expect(panel).to_be_visible()
+    assert panel.evaluate("(e) => e.getBoundingClientRect().width") == 500
+    expect(panel.get_by_role("separator")).to_have_count(0)

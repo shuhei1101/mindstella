@@ -1292,7 +1292,7 @@ def test_resizer_visible(page: Page, spa_preview: str) -> None:
 
 
 def test_resizer_when_coarse_pointer(browser: Browser, spa_preview: str) -> None:
-    """指で操作する端末では幅の区切りを 44px の帯にし、パネルの左端の線を帯の中央に挟む。マウスの端末では 4px のまま（正常系）。"""
+    """指で操作する端末では幅の区切りを 44px の帯にし、パネルの左端の線を帯の中央に挟む。マウスの端末では 24px の帯をパネルの内側の左端に置く（正常系）。"""
     # 準備
     touch = browser.new_context(has_touch=True, viewport={"width": 1280, "height": 800})
     mouse = browser.new_context(viewport={"width": 1280, "height": 800})
@@ -1308,7 +1308,7 @@ def test_resizer_when_coarse_pointer(browser: Browser, spa_preview: str) -> None
     # 検証
     assert touch_box["width"] == 44
     assert abs(touch_box["center"] - touch_box["panelLeft"]) <= 2
-    assert mouse_box["width"] == 4
+    assert mouse_box["width"] == 24
     assert abs(mouse_box["left"] - mouse_box["panelLeft"]) <= 2
 
 
@@ -1350,6 +1350,19 @@ def test_resizer_action(page: Page, spa_preview: str) -> None:
     assert wider > 640
     assert int(separator.get_attribute("aria-valuenow") or "0") < 640
     assert page.evaluate("sessionStorage.getItem('mindmap-panel-width' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : ''))") == separator.get_attribute("aria-valuenow")
+
+
+def test_resizer_max_when_left_open(page: Page, spa_preview: str) -> None:
+    """本文を寄せる幅で左のパネルを開いているときは、上限からさらに左のパネルの幅を引く（正常系）。"""
+    # 準備・実行
+    page.set_viewport_size({"width": 1440, "height": 800})
+    open_spa(page, spa_preview, "?tab=decisions&id=D-1&panel=display")
+    separator = page.get_by_role("separator", name="詳細パネルの幅")
+    separator.focus()
+    page.keyboard.press("End")
+    # 検証（1440 − 400 − 384）
+    expect(separator).to_have_attribute("aria-valuemax", "656")
+    expect(separator).to_have_attribute("aria-valuenow", "656")
 
 
 def test_export_label(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
