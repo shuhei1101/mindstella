@@ -10,10 +10,10 @@ const meta = {
   title: "Comments/ThreadRow",
   component: ThreadRow,
   args: { lookup: sampleRecordLookup, onOpen: fn(), onTag: fn() },
-  // 行は `<li>` なので、コメントの一覧と同じく `<ul>` で包む
+  // 行は `<li>` なので、コメントの一覧と同じく `<ul>` で包む（幅は parameters の rowWidth で指定し、無ければ指定しない）
   decorators: [
-    (Story) => (
-      <ul className="m-0 list-none p-0">
+    (Story, { parameters }) => (
+      <ul style={{ width: parameters.rowWidth as string | undefined }} className="m-0 list-none p-0">
         <Story />
       </ul>
     ),
@@ -87,12 +87,5 @@ export const LongTitlePending: Story = {
     thread: { id: "TH-7", status: "open", tags: ["画面"], summary: `${"改行の無い長いタイトル".repeat(12)}https://example.com/${"segment".repeat(20)}`, target: "D-12", posts: [{ id: "P-18", author: "ai", body: "D-12 を案 B で決定にしました。", created: "2026-10-12T01:24:00+00:00", seen: true }], events: [], loc: null },
     hasPendingReply: true,
   },
-  // meta の decorators を置き換え、包む `<ul>` に幅を持たせる（`<ul>` を入れ子にしない）
-  decorators: [
-    (Story) => (
-      <ul style={{ width: "320px" }} className="m-0 grid list-none p-0">
-        <Story />
-      </ul>
-    ),
-  ],
+  parameters: { rowWidth: "320px" },
 };
