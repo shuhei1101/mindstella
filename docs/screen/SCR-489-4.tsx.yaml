@@ -38,6 +38,10 @@ elements:
         value: スレッドの要約。無ければ最初の書き込みの 1 行目
       - name: collapsed
         value: 書き込みの並びのスクロールの位置が一番上でないとき true
+      - name: lookup
+        value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID は `null`）
+      - name: onOpen
+        value: 項目の ID は詳細パネルを開き、スレッドの ID はそのスレッドを開いて、履歴に追加する
   - name: 向けた項目
     kind: button
     position: 見出し > タイトルの下

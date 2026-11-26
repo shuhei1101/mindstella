@@ -14,6 +14,8 @@ STATES = (
     "shared-threadtitle--full-three-lines",
     "shared-threadtitle--long-word",
     "shared-threadtitle--long-word-collapsed",
+    "shared-threadtitle--title-id-links",
+    "shared-threadtitle--title-id-links-collapsed",
 )
 
 # 要素の高さと行の高さを返す
@@ -53,3 +55,16 @@ def test_collapsed(open_story: OpenStory, state: str) -> None:
     expect(title).to_have_attribute("data-collapsed", "")
     assert title.get_attribute("title") == title.text_content()
     assert title.evaluate(_LINES_JS) < 1.5
+
+
+@pytest.mark.parametrize("state", ["shared-threadtitle--title-id-links", "shared-threadtitle--title-id-links-collapsed"])
+def test_title_id_links(open_story: OpenStory, state: str) -> None:
+    """記録にある D-1・TH-1 を本文のリンクと同じ #id= のリンクにし、D-99 は文字のまま出す。1 行にしても見えている ID はリンクのまま（正常系）。"""
+    # 準備・実行
+    page = open_story(state)
+    root = page.locator("#storybook-root")
+    # 検証
+    expect(root.get_by_role("link")).to_have_count(2)
+    expect(root.get_by_role("link", name="D-1")).to_have_attribute("href", "#id=D-1")
+    expect(root.get_by_role("link", name="TH-1")).to_have_attribute("href", "#id=TH-1")
+    expect(root.get_by_role("link", name="D-1")).to_be_visible()

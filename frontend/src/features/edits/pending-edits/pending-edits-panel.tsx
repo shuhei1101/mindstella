@@ -1,4 +1,6 @@
 // 保存待ちのパネル（画面設計『保存待ちのパネル.tsx』）。保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、まとめて保存する
+import { RecordText } from "@/shared/components/record-text";
+import type { LookupRecordId } from "@/shared/core/record-ids";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Icon } from "@/shared/components/icon";
@@ -90,9 +92,16 @@ const valueView = (value: string | Tag[]): ReactNode => {
   return value.length === 0 ? flat(value) : <TagList values={value} />;
 };
 
-export type PendingEditsPanelProps = { edits: readonly PendingEdit[]; index: RecordIndex; onClose: () => void; onOpen: (target: string) => void };
+export type PendingEditsPanelProps = {
+  edits: readonly PendingEdit[];
+  index: RecordIndex;
+  /** まとまりの見出しのタイトルの中の ID から記録の項目・スレッドを検索する */
+  lookup: LookupRecordId;
+  onClose: () => void;
+  onOpen: (target: string) => void;
+};
 
-export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEditsPanelProps) => {
+export const PendingEditsPanel = ({ edits, index, lookup, onClose, onOpen }: PendingEditsPanelProps) => {
   const save = useSaveEdits();
   const cancel = useCancelEdit();
   const flight = useSingleFlight();
@@ -181,10 +190,12 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
           return (
             <section key={group.target} className="flex flex-col gap-1">
               <h3 className="m-0">
-                <button type="button" aria-label={`${who.id ?? who.kind}「${who.title}」を開く`} className="flex cursor-pointer items-center gap-1 text-left text-small font-medium" onClick={() => { onOpen(group.target); }}>
+                <button type="button" aria-label={`${who.id ?? who.kind}「${who.title}」を開く`} aria-describedby={`pending-ids-${group.target}`} className="flex cursor-pointer items-center gap-1 text-left text-small font-medium" onClick={() => { onOpen(group.target); }}>
                   <span className="text-xs text-muted-foreground">{who.kind}</span>
                   {who.id === null ? null : <span className="font-mono text-xs">{who.id}</span>}
-                  <span>{who.title}</span>
+                  <span>
+                    <RecordText text={who.title} mode="marker" lookup={lookup} descriptionId={`pending-ids-${group.target}`} />
+                  </span>
                 </button>
               </h3>
               <ul className="flex flex-col gap-1">

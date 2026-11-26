@@ -18,11 +18,13 @@ import { isEmbedded } from "@/shared/core/embedded";
 import { TAG_FILTER_KEY, TEXT_FILTER_PREFIX, withoutKey, type Filters, type TagMatch } from "@/shared/core/filters";
 import { drawerGroups, filterRows, nextSort, sortRows, type ListColumn } from "@/shared/core/list-rows";
 import { describeTagExpr, matchesTagExpr, presetChoicesOf, simpleTagsOf } from "@/shared/core/presets";
+import type { LookupRecordId } from "@/shared/core/record-ids";
 import { KIND_LABEL, tagNames, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 import { commentsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useListScroll } from "@/shared/hooks/use-list-scroll";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
+import { useRecordLookup } from "@/shared/hooks/use-record-lookup";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useScreenEdit } from "@/shared/hooks/use-screen-edit";
 import { usePresetSave } from "@/shared/hooks/use-preset-save";
@@ -35,6 +37,8 @@ import { readPrefs, writePrefs } from "@/shared/stores/prefs-store";
 /** 画面の枠が中身に渡す値 */
 export type ListContext = {
   index: RecordIndex;
+  /** タイトルの中の ID から記録の項目・スレッドを検索する（部品『記録の文字』の `lookup`） */
+  lookup: LookupRecordId;
   view: View;
   shown: Item[];
   filters: Filters;
@@ -149,6 +153,7 @@ const listOrders = ({ kind, view, sort, filtered, sorted }: { kind: Kind; view: 
 export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, content }: ListScreenProps) => {
   const { search, openItem, closeItem, setSort, setView } = usePreviewSearch();
   const { index } = useRecords();
+  const record = useRecordLookup({ index, onOpenItem: openItem });
   const { point } = useDiffView();
   const { filters, tagMatch, setFilters, setTagMatch, clearAll, setTextFilter, commitTextFilter, addTag, tagExpr, setTagExpr } = useScreenFilters(kind);
   const view = search.view ?? views?.[0]?.key ?? "table";
@@ -217,6 +222,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const table = (
     <Table
       kind={kind}
+      lookup={record.lookup}
       columns={columns}
       rows={sorted}
       sort={search.sort === undefined ? null : { key: search.sort.replace(/^-/, ""), dir: search.sort.startsWith("-") ? "desc" : "asc" }}
@@ -261,8 +267,8 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
         )}
       </div>
       {view === "table" ? null : <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={setFilters} {...exprChip} />}
-      <RemovedBand items={removedOf({ point, kind })} />
-      {view === "table" || content === undefined ? table : content({ index, view, shown: cards, sort: cardRowSort, filters, tagMatch, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, onSelectTag, scrollRef, table })}
+      <RemovedBand items={removedOf({ point, kind })} lookup={record.lookup} onOpen={record.onOpen} />
+      {view === "table" || content === undefined ? table : content({ index, lookup: record.lookup, view, shown: cards, sort: cardRowSort, filters, tagMatch, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, onSelectTag, scrollRef, table })}
       <PublishOrders orders={orders} />
       <PublishCandidates groups={groups} apply={applyCandidate} />
       {drawerOpen ? (

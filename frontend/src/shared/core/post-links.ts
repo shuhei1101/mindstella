@@ -1,9 +1,7 @@
 // スレッドの書き込みとレビュー中の書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける
 import { HTML_BLOCK_CLASS, TERM_TIP_ID } from "@/shared/core/body-links";
+import { RECORD_ID_PATTERN } from "@/shared/core/record-ids";
 import { type LookupThread, type OpenThread, resolveThreadId } from "@/shared/core/thread-ids";
-
-/** 本文の中の項目の ID（例 D-1・T-12・A-3） */
-const ITEM_ID_PATTERN = /\b[A-Z]{1,2}-\d+\b/g;
 
 /** 項目の ID をボタンにしない文字の置き場所（コード・リンク・ボタン・図・HTML の本文の枠の中） */
 const ITEM_ID_SKIPPED = `pre, code, a, button, figure.diagram, .${HTML_BLOCK_CLASS}`;
@@ -44,8 +42,9 @@ export const buttonizeItemIds = ({ root, titles, onOpen }: { root: HTMLElement; 
     const text = node.textContent ?? "";
     const parts: (Node | string)[] = [];
     let last = 0;
-    for (const match of text.matchAll(ITEM_ID_PATTERN)) {
-      if (titles(match[0]) === null) continue;
+    for (const match of text.matchAll(RECORD_ID_PATTERN)) {
+      // スレッドの ID は `linkThreadIds` がボタンにする
+      if (match[0].startsWith("TH-") || titles(match[0]) === null) continue;
       const button = document.createElement("button");
       button.type = "button";
       button.className = "idlink";
@@ -64,9 +63,6 @@ export const buttonizeItemIds = ({ root, titles, onOpen }: { root: HTMLElement; 
   }
 };
 
-/** 本文の中のスレッドの ID（`TH-150`）と書き込みの ID（`TH-150-2`） */
-const THREAD_ID_PATTERN = /\bTH-\d+(?:-\d+)?\b/g;
-
 /** 描いた本文の文字のうち、記録にあるスレッドの ID と書き込みの ID を、そのスレッドを開くボタンにする */
 export const linkThreadIds = ({ root, threads, onOpen }: { root: HTMLElement; threads: LookupThread; onOpen: OpenThread }): void => {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -78,8 +74,8 @@ export const linkThreadIds = ({ root, threads, onOpen }: { root: HTMLElement; th
     const text = node.textContent ?? "";
     const parts: (Node | string)[] = [];
     let last = 0;
-    for (const match of text.matchAll(THREAD_ID_PATTERN)) {
-      const target = resolveThreadId(match[0], threads);
+    for (const match of text.matchAll(RECORD_ID_PATTERN)) {
+      const target = match[0].startsWith("TH-") ? resolveThreadId(match[0], threads) : null;
       if (target === null) continue;
       const button = document.createElement("button");
       button.type = "button";

@@ -57,6 +57,7 @@ const TableField = ({ settingKey, rows, commit }: { settingKey: keyof typeof TAB
           <tr>
             {columns.map((column) => (
               <th key={column.key} scope="col" className="text-left font-medium">
+                {/* eslint-disable-next-line no-restricted-syntax -- 表の列の見出しの固定の文言で、記録の文字ではない */}
                 {column.title}
               </th>
             ))}

@@ -1,0 +1,26 @@
+title: プレビュー / use-record-lookup
+lead: 記録の索引と読み込んだスレッドから、部品『記録の文字』の `lookup` と `onOpen` を作るフック。
+functions:
+  - name: useRecordLookup
+    title: 記録の ID の検索と開き方
+    kind: フック
+    usecase: 共通
+    summary: '`recordLookupOf` に記録の索引と `useThreadLinks` のスレッドの検索を指定した `lookup` と、スレッドの ID・書き込みの ID はそのスレッドを、それ以外は項目の詳細を開く `onOpen` を返却する。記録を読み込む前（`index` が `null`）はどの ID も結ばず、スレッドを読み込まない配る書き出しではスレッドの ID を結ばない'
+    args:
+      - name: index
+        type: RecordIndex | null
+        description: 記録の索引（読み込む前は `null`）
+      - name: onOpenItem
+        type: '(id: string) => void'
+        description: 項目の ID を押したときに詳細を開く
+    returns:
+      type: '{ lookup: LookupRecordId; onOpen: (id: string) => void }'
+      description: 部品『記録の文字』に指定する検索と開き方
+    container: frontend/src/shared/hooks/use-record-lookup.ts
+notes:
+  使用する側: 画面の本体（一覧の画面・詳細パネル・コメントの一覧・スレッド・プレビューの外枠）が呼び、作った `lookup` を部品へ props で指定する。部品はこのフックを呼ばない（QueryClient を持たない単体テスト・ストーリーで描けるようにする）
+  単体テスト: 持たない。結び方は `record-ids` の `recordLookupOf` の単体テスト、画面への指定は画面の単体テストで確認する
+refs:
+  - MOD-701-2#
+  - CMP-701-1#
+id: MOD-701-3

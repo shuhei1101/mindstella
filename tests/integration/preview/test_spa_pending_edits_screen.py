@@ -13,6 +13,7 @@ from preview_spa_helpers import assert_below_topbar, open_spa
 import pytest
 import yaml
 from workspace_fixtures import RECORD_DIR, MakeEdit, MakeItem
+from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_described, assert_tip
 
 # まとめて保存を断る応答の本文
 BLOCKED_BODY = '{"type":"about:blank","title":"Conflict","status":409,"detail":"書き込めません","blocked":[{"id":"%s","reason":"invalid","detail":"書き込めない理由","refs":[]}]}'
@@ -282,3 +283,22 @@ def test_scrim_below_topbar(page: Page, write_edit_preview: WriteReviewPreview, 
     _open(page, write_edit_preview, make_item, make_edit)
     # 検証
     assert_below_topbar(page, page.locator("[data-scrim]"))
+
+
+def test_group_heading_id_markers(page: Page, write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit) -> None:
+    """まとまりの見出しのタイトルの中の記録にある D-1 をマーカーにし、乗せるとツールチップを出し、見出しのボタンの aria-describedby で読み上げる（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        make_item("D-1", title=TARGET_TITLE, status="未決定"),
+        make_item("D-2", title=LINKED_TITLE, status="未決定"),
+        edits=(make_edit("E-1", target="D-2", key="answer", value="案 A で進める", before=None),),
+    )
+    open_spa(page, url, "?tab=decisions&panel=pending")
+    heading = page.get_by_role("complementary", name="保存待ちの編集").locator("h3 button").filter(has_text="D-2")
+    marker = heading.locator("[data-record-id='D-1']")
+    # 実行
+    marker.hover()
+    # 検証
+    expect(heading.locator("[data-record-id='D-99'], a")).to_have_count(0)
+    assert_tip(page)
+    assert_described(page, heading)

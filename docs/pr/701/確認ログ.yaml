@@ -1,0 +1,13 @@
+confirmations:
+  - topic: 記録の文字の ID のリンクのモック
+    decision: モックのとおり実装する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/701#discussion_r4690638743
+  - topic: 押す要素の中の ID のマーカーの見た目
+    decision: 等幅の文字に点線の下線（本文の用語のマーカーと同じ色）（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/701#discussion_r4690639733

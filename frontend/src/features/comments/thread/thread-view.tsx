@@ -17,6 +17,7 @@ import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { showLocation } from "@/shared/stores/location-highlight-store";
 import { voiceEditingOf } from "@/shared/stores/voice-store";
 import { useFocusAfterAddTarget } from "@/shared/stores/prefs-store";
+import { useRecordLookup } from "@/shared/hooks/use-record-lookup";
 import { useThreadLinks } from "@/shared/hooks/use-thread-links";
 import { takeRequestedPost } from "@/shared/core/thread-ids";
 import { useSingleFlight } from "@/shared/hooks/use-single-flight";
@@ -44,6 +45,7 @@ export const ThreadView = ({ id, data, onBack, onClosed, onOpenItem, onOpenChang
   const replies = items.filter((item) => item.thread === id);
   const markSeen = useMarkThreadSeen();
   const threadLinks = useThreadLinks();
+  const record = useRecordLookup({ index, onOpenItem });
   const setStatus = useSetThreadStatus();
   const addComment = useAddComment();
   const focusTarget = useFocusAfterAddTarget();
@@ -279,7 +281,7 @@ export const ThreadView = ({ id, data, onBack, onClosed, onOpenItem, onOpenChang
       <div className="grid gap-1 border-b border-border px-3 py-2">
         <h2 ref={heading} tabIndex={-1} className="m-0 flex items-center gap-2 text-body font-medium focus-visible:outline-none">
           <ThreadState status={thread === null ? "pending" : thread.status} />
-          <ThreadTitle title={title} collapsed={titleCollapsed} />
+          <ThreadTitle title={title} collapsed={titleCollapsed} lookup={record.lookup} onOpen={record.onOpen} />
         </h2>
         {thread?.target === null || thread?.target === undefined ? null : (
           <button type="button" className="flex cursor-pointer items-center gap-1 text-left text-small" disabled={titles(thread.target) === null} onClick={() => { showLocation({ target: thread.target ?? "", loc: thread.loc }); onOpenItem(thread.target ?? ""); }}>

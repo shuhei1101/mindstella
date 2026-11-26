@@ -20,6 +20,11 @@ states:
         value: '[{"id": "N-6", "title": "ゴールを後から変える・追加する・無しで始める"}, {"id": "N-7", "title": "読み返したい点をメモする"}]'
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
+  - name: TitleIdLinks
+    description: 削除したときのタイトルに、記録にある D-1 と記録に無い D-99 を持つ。D-1 はリンク、D-99 は文字のまま。削除した項目の ID はリンクにしない
+    args:
+      - name: items
+        value: '[{"id": "D-53", "title": "D-1 の見直し（D-99 は除く）"}]'
 lead: 差分の表示の間、選んだ時点で削除したその種類の項目を、一覧（ボード・カード・表）の上に削除したマーカー・ID・削除したときのタイトルで並べる帯。削除した項目は中身が残らないため、押せる要素にしない。
 args:
   - name: items
@@ -34,11 +39,22 @@ args:
     type: 文字列
     required: true
     description: 削除したときのタイトル。途中で切らずに折り返す
+  - name: lookup
+    type: 関数
+    required: true
+    description: タイトルの中の ID から記録の項目・スレッドを検索する関数。部品『記録の文字』の `lookup` にそのまま指定し、記録にある ID をリンクにする
+  - name: onOpen
+    type: 関数
+    required: false
+    default: なし（押しても何もしない）
+    description: タイトルの中の ID のリンクを押したときに呼ぶ（`onOpen(id)`）
 uses:
   - component: CMP-489-32#
     how: 各項目の頭に `kind` を `removed` にして置く
+  - component: CMP-701-1#
+    how: 削除したときのタイトルを `mode` を `link` にして描く
 accessibility:
   - 帯は `section` にし、「この時点で削除した項目」を読み上げ名にする
-  - 項目は `ul` の `li` にし、ボタン・リンクにしない（キーボードの移動先にしない）
+  - 項目は `ul` の `li` にし、ボタン・リンクにしない（キーボードの移動先にしない）。タイトルの中の記録にある ID だけを部品『記録の文字』のリンクにする
 test_file: tests/integration/storybook_react/test_removed_band_stories.py
 refs: []

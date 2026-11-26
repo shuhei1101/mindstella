@@ -35,6 +35,7 @@ from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import assert_bottom_aligned, open_spa
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakePost, MakeThread, MakeWorkspace, WriteComments
 from record_write_helpers import call_or_write, write_tool
+from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_tip
 
 # 送る本文のスクロールの位置（px）
 SCROLLED_TOP = 600
@@ -1088,7 +1089,7 @@ def test_head_title_visible(page: Page, write_preview: WritePreview, make_item: 
     long_body = "\n\n".join(f"{number} 番目の段落" for number in range(1, 121)) + "\n"
     url = write_preview(make_item("A-1", title="長い本文の資料"), bodies={"A-1.mark.md": long_body})
     open_spa(page, url, "?tab=docs&id=A-1")
-    head = _panel(page).locator("span[aria-hidden=true][title='長い本文の資料']")
+    head = _panel(page).locator("span[title='長い本文の資料']")
     expect(head).to_have_css("opacity", "0")
     _panel(page).get_by_text("120 番目の段落").wait_for(state="attached")
     # 実行
@@ -1991,3 +1992,35 @@ def test_value_links(page: Page, write_preview: WritePreview, make_item: MakeIte
     lead.locator("[data-id='D-2']").click()
     # 検証
     expect(page).to_have_url(re.compile(r"id=D-2"))
+
+
+def test_title_id_links(page: Page, write_preview: WritePreview, make_item: _MakeItem) -> None:
+    """タイトルの中の記録にある D-1 を本文のリンクと同じ #id= のリンクにし、D-99 は文字のまま、乗せるとツールチップを出し、押すと D-1 の詳細を開く（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", title=TARGET_TITLE, status="未決定"), make_item("D-2", title=LINKED_TITLE, status="未決定"))
+    open_spa(page, url, "?tab=decisions&id=D-2")
+    detail = page.get_by_role("complementary", name="詳細")
+    link = detail.get_by_role("heading", level=2).get_by_role("link", name="D-1", exact=True)
+    # 実行
+    link.hover()
+    # 検証
+    expect(link).to_have_attribute("href", "#id=D-1")
+    expect(detail.get_by_role("link", name="D-99", exact=True)).to_have_count(0)
+    assert_tip(page)
+    link.click()
+    expect(page).to_have_url(re.compile(r"id=D-1(&|$)"))
+
+
+def test_related_title_id_links(page: Page, write_preview: WritePreview, make_item: _MakeItem) -> None:
+    """関係する項目のタイトルの中の記録にある D-1 をリンクにする（正常系）。"""
+    # 準備・実行
+    url = write_preview(
+        make_item("D-1", title=TARGET_TITLE, status="未決定"),
+        make_item("D-2", title=LINKED_TITLE, status="未決定"),
+        make_item("D-3", title="続きの検討", status="未決定", related=[{"to": "D-2", "type": "depends_on"}]),
+    )
+    open_spa(page, url, "?tab=decisions&id=D-3")
+    detail = page.get_by_role("complementary", name="詳細")
+    detail.get_by_role("tab", name="関連").click()
+    # 検証
+    expect(detail.get_by_role("tabpanel", name="関連").get_by_role("link", name="D-1", exact=True)).to_have_attribute("href", "#id=D-1")

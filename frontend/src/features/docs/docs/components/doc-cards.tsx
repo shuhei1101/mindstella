@@ -1,4 +1,6 @@
 // 資料のカード。種類・形式・状態・タグを並べる
+import { RecordText } from "@/shared/components/record-text";
+import type { LookupRecordId } from "@/shared/core/record-ids";
 import { CommentMark } from "@/shared/components/comment-mark";
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
@@ -15,6 +17,8 @@ import { cn } from "@/shared/lib/cn";
 
 export type DocCardProps = {
   doc: Item;
+  /** タイトルの中の ID から記録の項目・スレッドを検索する */
+  lookup: LookupRecordId;
   inBoard: boolean;
   selected: boolean;
   marks: DiffMarks | undefined;
@@ -25,7 +29,7 @@ export type DocCardProps = {
   onSelectTag?: (name: string) => void;
 };
 
-export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen, onSelectTag }: DocCardProps) => {
+export const DocCard = ({ doc, lookup, inBoard, selected, marks, comments, edit, onOpen, onSelectTag }: DocCardProps) => {
   const format = bodyFormatOf(doc.body);
   const mark = marks?.[doc.id];
   const pending = edit?.marks[doc.id];
@@ -39,8 +43,8 @@ export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen,
         {format === null ? null : <BodyFormatBadge format={format} />}
       </span>
       <h2 className="m-0 text-small font-medium">
-        <button type="button" data-id={doc.id} aria-current={selected ? "true" : undefined} className="cursor-pointer text-left outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(doc.id); }}>
-          {doc.title}
+        <button type="button" data-id={doc.id} aria-current={selected ? "true" : undefined} aria-describedby={`doc-card-ids-${doc.id}`} className="cursor-pointer text-left outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(doc.id); }}>
+          <RecordText text={doc.title} mode="marker" lookup={lookup} descriptionId={`doc-card-ids-${doc.id}`} />
         </button>
       </h2>
       {doc.withdrawn === true ? <WithdrawnBadge /> : null}
@@ -72,6 +76,8 @@ export const DocCard = ({ doc, inBoard, selected, marks, comments, edit, onOpen,
 
 export type DocCardsProps = {
   docs: readonly Item[];
+  /** カードのタイトルの中の ID から記録の項目・スレッドを検索する */
+  lookup: LookupRecordId;
   /** 並び（`sortRows` の `sort`）。無ければ更新日時の新しい順 */
   sort?: string;
   selectedId: string | null | undefined;
@@ -84,8 +90,8 @@ export type DocCardsProps = {
 };
 
 /** 資料のカードを並びの順に描く */
-export const DocCards = ({ docs, sort = cardSortToRowSort(INITIAL_CARD_SORT.docs), selectedId, marks, comments, edit, onOpen, onSelectTag }: DocCardsProps) => {
+export const DocCards = ({ docs, lookup, sort = cardSortToRowSort(INITIAL_CARD_SORT.docs), selectedId, marks, comments, edit, onOpen, onSelectTag }: DocCardsProps) => {
   const ordered = sortItems(docs, sort);
   const order = ordered.map((doc) => doc.id);
-  return ordered.map((doc) => <DocCard key={doc.id} doc={doc} inBoard={false} selected={doc.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={(id) => { onOpen(id, order); }} {...(onSelectTag === undefined ? {} : { onSelectTag })} />);
+  return ordered.map((doc) => <DocCard key={doc.id} doc={doc} lookup={lookup} inBoard={false} selected={doc.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={(id) => { onOpen(id, order); }} {...(onSelectTag === undefined ? {} : { onSelectTag })} />);
 };

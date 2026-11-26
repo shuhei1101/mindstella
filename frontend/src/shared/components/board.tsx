@@ -6,10 +6,12 @@ import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
 import { ItemDates } from "@/shared/components/item-dates";
 import { StatusMark } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
+import { RecordText } from "@/shared/components/record-text";
 import { sortItems } from "@/shared/components/card-sort";
 import { addedTitle } from "@/shared/components/table";
 import { TagList } from "@/shared/components/tag-list";
 import type { PendingMarkKind, ScreenEdit } from "@/shared/core/edits";
+import type { LookupRecordId } from "@/shared/core/record-ids";
 import { compareIds, titleOf, type Item, type RecordIndex } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
 
@@ -145,6 +147,8 @@ export const addedCards = (edit: ScreenEdit | null, statuses: readonly string[],
 
 export type ItemCardProps = {
   index: RecordIndex;
+  /** タイトルと関係する項目のタイトルの中の ID から記録の項目・スレッドを検索する */
+  lookup: LookupRecordId;
   item: Item;
   meta: (string | undefined)[];
   links: readonly string[];
@@ -157,15 +161,18 @@ export type ItemCardProps = {
   onSelectTag?: (name: string) => void;
 };
 
-export const ItemCard = ({ index, item, meta, links, selected, marks, comments, edit, onOpen, onSelectTag }: ItemCardProps) => {
+export const ItemCard = ({ index, lookup, item, meta, links, selected, marks, comments, edit, onOpen, onSelectTag }: ItemCardProps) => {
   const mark = marks?.[item.id];
   const pending = edit?.marks[item.id];
   const count = comments[item.id] ?? 0;
+  // タイトルのボタンの aria-describedby が指す、タイトルと関係する項目のタイトルの中の ID の説明
+  const titleIdsId = `card-ids-${item.id}`;
+  const linkIdsId = (id: string): string => `card-ids-${item.id}-${id}`;
   return (
     // カードの中にタグのボタンを置くため、外枠は div にし、タイトルのボタンの ::after をカード全体へ広げる
     <div data-card={item.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-2 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && "border-mark bg-row-selected", pending === "remove" && "opacity-60")}>
-      <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} className="cursor-pointer text-left text-small font-medium outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(item.id); }}>
-        {item.title}
+      <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} aria-describedby={[titleIdsId, ...links.map(linkIdsId)].join(" ")} className="cursor-pointer text-left text-small font-medium outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(item.id); }}>
+        <RecordText text={item.title} mode="marker" lookup={lookup} descriptionId={titleIdsId} />
       </button>
       <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
         {mark === undefined ? null : <DiffMark kind={mark} />}
@@ -178,7 +185,7 @@ export const ItemCard = ({ index, item, meta, links, selected, marks, comments, 
       <ItemDates created={item.created} updated={item.updated} />
       {links.map((id) => (
         <span key={id} className="text-xs text-muted-foreground">
-          <span className="font-mono">{id}</span> {titleOf(index, id)}
+          <span className="font-mono">{id}</span> <RecordText text={titleOf(index, id)} mode="marker" lookup={lookup} descriptionId={linkIdsId(id)} />
         </span>
       ))}
       {onSelectTag !== undefined && (item.tags ?? []).length > 0 ? (

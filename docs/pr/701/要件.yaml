@@ -1,0 +1,83 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 詳細パネル・詳細の全画面のタイトルなど、本文と値の欄の外に出る記録の文字の項目の ID・スレッドの ID からも、その項目・スレッドへ移れる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: スレッドの見出しのタイトルと、スレッドの一覧の行のタイトルの項目の ID・スレッドの ID からも、その項目・スレッドへ移れる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-48.yaml
+    impact: following
+    detail: 検索の結果の行のタイトルの中の ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: following
+    detail: 資料のカード・ボード・表のタイトルの中の ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-6.yaml
+    impact: following
+    detail: タスクのボード・表のタイトルの中の ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-25.yaml
+    impact: following
+    detail: 概要のタイルの一覧の行のタイトルの中の ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: following
+    detail: 削除した項目の帯のタイトルの中の ID を、項目の詳細を読むのタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: following
+    detail: 保存待ちのパネルの項目のタイトルの中の ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: run_only
+    detail: 配る書き出しでは、スレッドの ID を今までどおり文字のままにする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: run_only
+    detail: 記録を書き換えたときの再描画で、リンクが付き直る
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: following
+    detail: 表のタイトルと値のセルの ID の見せ方を、項目の詳細を読むの一覧の行のタイトルの ID の決まりに合わせる（シナリオの記述は変えない）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 記録の文字のどこに書いた項目の ID・スレッドの ID も自動でリンクになることと、リンクにできない場所の見せ方を記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-25T11:22:53.695024+00:00'
+  - page: docs/module/MOD-489-170.yaml
+    new: false
+    change: 記録の文字を描く部品は ID のリンクをまとめた部品を使う決まりと、使っていない部品を検出する仕組み（lint か結合テスト）を記載する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-25T11:11:37.175464+00:00'
+scope_out:
+  - item: 項目の ID・スレッドの ID（書き込みの ID を含む）以外の ID（書き換えのまとまりの ID など）の自動のリンク
+    reason: '要望は項目の ID とスレッドの ID だけを挙げている。まとまりのリンク（linkChangeSets）は # で始まるリンクの記法を持ち、プレーンテキストの自動のリンクとは別の仕組み'
+    plan: none
+  - item: 記録の文字でない画面の文言（ボタンのラベル・見出し・空の表示など、コードに書いた文字）の ID のリンク
+    reason: 要望は記録の文字を表示する場所が対象。画面の文言は記録の ID を持たない
+    plan: none

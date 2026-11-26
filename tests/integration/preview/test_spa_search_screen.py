@@ -6,6 +6,7 @@ from playwright.sync_api import Locator, Page, ViewportSize, expect
 from preview_fixture_types import WritePreview
 from preview_spa_helpers import open_spa
 from workspace_fixtures import MakeItem
+from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_described, assert_tip
 
 # 全体の検索のモーダル
 DIALOG_NAME = "すべての項目を検索"
@@ -223,3 +224,17 @@ def test_filter_candidate_apply(write_preview: WritePreview, make_item: MakeItem
     assert page.evaluate("history.length") == before + 1
     expect(page.get_by_text("資料 2")).to_be_visible()
     expect(page.get_by_text("資料 1")).to_be_hidden()
+
+
+def test_result_title_id_markers(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """検索の結果の行のタイトルの中の記録にある D-1 をマーカーにし、行の中にフォーカスできる要素を配置せず、行の aria-describedby で読み上げる（正常系）。"""
+    # 準備・実行
+    url = write_preview(make_item("D-1", title=TARGET_TITLE, status="未決定"), make_item("D-2", title=LINKED_TITLE, status="未決定"))
+    open_spa(page, url, "?tab=decisions&search=1&q=%E8%A6%8B%E7%9B%B4%E3%81%97")
+    option = page.get_by_role("option").filter(has_text="D-2")
+    # 検証
+    expect(option.locator("[data-record-id='D-1']")).to_have_text("D-1")
+    expect(option.locator("[data-record-id='D-99'], a, button")).to_have_count(0)
+    assert_described(page, option)
+    option.locator("[data-record-id='D-1']").hover()
+    assert_tip(page)

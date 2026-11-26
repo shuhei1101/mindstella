@@ -12,6 +12,7 @@ STATES = (
     "shared-removedband--one",
     "shared-removedband--many-long-titles",
     "shared-removedband--narrow",
+    "shared-removedband--title-id-links",
 )
 
 
@@ -74,3 +75,23 @@ def test_narrow(open_story: OpenStory) -> None:
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )
+
+
+def test_title_id_links(open_story: OpenStory) -> None:
+    """削除したときのタイトルの中の記録にある D-1 だけをリンクにし、D-99 と削除した項目の ID はリンクにしない（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-removedband--title-id-links")
+    item = page.locator("li").filter(has_text="D-53")
+    # 検証
+    expect(item.get_by_role("link")).to_have_count(1)
+    expect(item.get_by_role("link", name="D-1")).to_have_attribute("href", "#id=D-1")
+
+
+def test_title_id_link_hover(open_story: OpenStory) -> None:
+    """D-1 のリンクに乗せると、D-1 のツールチップを出す（正常系）。"""
+    # 準備
+    page = open_story("shared-removedband--title-id-links")
+    # 実行
+    page.get_by_role("link", name="D-1").hover()
+    # 検証
+    expect(page.locator(".term-tip")).to_contain_text("保存先の決め方")

@@ -7,13 +7,16 @@ import { ThreadRow } from "@/features/comments/shared/thread-row";
 import { useCommentData } from "@/features/comments/shared/use-comment-data";
 import { ThreadView } from "@/features/comments/thread/thread-view";
 import { Icon } from "@/shared/components/icon";
+import { RecordText } from "@/shared/components/record-text";
 import { focusAfterAdded, SendForm, type SendStatus } from "@/shared/components/send-form";
 import { Button } from "@/shared/components/ui/button";
 import { AppError } from "@/shared/core/app-error";
 import { pendingThreads, threadCounts, visibleThreads, type ThreadFilter } from "@/shared/core/comments";
+import type { LookupRecordId } from "@/shared/core/record-ids";
 import { useAddComment, useSaveDraft } from "@/shared/hooks/use-comments";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
+import { useRecordLookup } from "@/shared/hooks/use-record-lookup";
 import { useRecords } from "@/shared/hooks/use-records";
 import { cn } from "@/shared/lib/cn";
 import { SEGMENTED_GROUP_CLASS, SEGMENTED_ITEM_CLASS, SEGMENTED_SELECTED_CLASS } from "@/shared/lib/segmented";
@@ -105,11 +108,15 @@ const NewThreadForm = ({ free, setFree, target }: { free: FreeState; setFree: (n
 };
 
 /** 項目の絞り込みのチップ（ID とタイトルと外す ×。件数は状態の絞り込みが出す） */
-const TargetChip = ({ target, title, onClear }: { target: string; title: string | undefined; onClear: () => void }) => (
+const TargetChip = ({ target, title, lookup, onOpen, onClear }: { target: string; title: string | undefined; lookup: LookupRecordId; onOpen: (id: string) => void; onClear: () => void }) => (
   <div className="flex min-w-0 items-center gap-1 border-b border-border px-3 py-1 text-small">
     <Icon name="comment" />
     <span className="font-mono">{target}</span>
-    {title === undefined ? null : <span className="min-w-0 truncate">{title}</span>}
+    {title === undefined ? null : (
+      <span className="min-w-0 truncate">
+        <RecordText text={title} mode="link" lookup={lookup} onOpen={onOpen} />
+      </span>
+    )}
     <Button variant="ghost" size="icon" aria-label={`項目「${target}」の絞り込みを外す`} onClick={onClear}>
       <Icon name="x" />
     </Button>
@@ -130,6 +137,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   const tag = search.ttag ?? null;
   const target = search.ttarget ?? null;
   const { index } = useRecords();
+  const record = useRecordLookup({ index, onOpenItem });
   // 新規スレッドの下書き（項目で絞っている間は、その項目への箇所を持たない下書き。詳細パネルの下端の入力と同じ）
   const draftOf = (of: string | null): string => data.drafts.find((draft) => draft.target === of && draft.loc === null && draft.thread === null)?.body ?? "";
   // 新規スレッドの入力で音声入力中なら、入力を出して開く
@@ -236,7 +244,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
           ))}
           </div>
         </div>
-        {target === null ? null : <TargetChip target={target} title={targetTitle} onClear={() => { setComments({ ttarget: undefined }); }} />}
+        {target === null ? null : <TargetChip target={target} title={targetTitle} lookup={record.lookup} onOpen={record.onOpen} onClear={() => { setComments({ ttarget: undefined }); }} />}
         {tag === null ? null : (
           <div className="flex items-center gap-1 border-b border-border px-3 py-1 text-small">
             <span>#{tag}</span>
@@ -254,10 +262,10 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
         )}
         <ul className="m-0 min-h-0 flex-1 list-none overflow-y-auto p-0">
           {pending.map((item) => (
-            <ThreadRow key={item.id} pending={item} onOpen={(id) => { setComments({ thread: id }); }} onTag={() => undefined} />
+            <ThreadRow key={item.id} pending={item} lookup={record.lookup} onOpen={(id) => { setComments({ thread: id }); }} onTag={() => undefined} />
           ))}
           {rows.map((thread) => (
-            <ThreadRow key={thread.id} thread={thread} hasPendingReply={repliesOf.has(thread.id)} activeTag={tag} onOpen={(id) => { setComments({ thread: id }); }} onTag={(next) => { setComments({ ttag: next === tag ? undefined : next }); }} />
+            <ThreadRow key={thread.id} thread={thread} hasPendingReply={repliesOf.has(thread.id)} activeTag={tag} lookup={record.lookup} onOpen={(id) => { setComments({ thread: id }); }} onTag={(next) => { setComments({ ttag: next === tag ? undefined : next }); }} />
           ))}
         </ul>
         {pending.length === 0 && rows.length === 0 && data.threadsError === null ? (

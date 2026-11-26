@@ -11,7 +11,7 @@ describe("TasksScreen", () => {
     renderRoute("/?tab=tasks");
     // 検証
     expect(await screen.findByRole("heading", { level: 2, name: /進行中/ })).toBeInTheDocument();
-    expect(screen.getByText("T-1の題")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "T-1の題" })).toBeInTheDocument();
   });
 
   // 足す項目を差し込む（正常系）

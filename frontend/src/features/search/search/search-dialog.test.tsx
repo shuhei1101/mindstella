@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { matchFilterCandidates, SearchDialog } from "@/features/search/search/search-dialog";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
+import { sampleRecordLookup } from "@/testing/record-lookup";
 
 const empty = { decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { ready: [] }, bodies: {} };
 const index = buildIndex({
@@ -16,7 +17,7 @@ const index = buildIndex({
   bodies: { "docs/T-1.md": "画面を作る" },
 } as unknown as MindmapData);
 
-const props = (patch: Partial<Parameters<typeof SearchDialog>[0]> = {}) => ({ index, query: "", onQueryChange: vi.fn(), onOpen: vi.fn(), onClose: vi.fn(), ...patch });
+const props = (patch: Partial<Parameters<typeof SearchDialog>[0]> = {}) => ({ index, lookup: sampleRecordLookup, query: "", onQueryChange: vi.fn(), onOpen: vi.fn(), onClose: vi.fn(), ...patch });
 
 describe("SearchDialog", () => {
   // 空のときの案内（正常系）

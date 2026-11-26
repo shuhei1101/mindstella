@@ -15,6 +15,12 @@ globalThis.ResizeObserver ??= NoopResizeObserver;
 // jsdom は window.scrollTo を持たないため、ルーターのスクロール位置の復元が呼ぶ空の実装を置く
 window.scrollTo = () => undefined;
 
+// jsdom は popover の API と document.fonts を持たないため、ツールチップが呼ぶ空の実装を置く
+for (const name of ["showPopover", "hidePopover"] as const) {
+  if (!(name in HTMLElement.prototype)) Object.defineProperty(HTMLElement.prototype, name, { value: () => undefined });
+}
+if (!("fonts" in document)) Object.defineProperty(document, "fonts", { value: { ready: Promise.resolve() } });
+
 beforeAll(() => {
   // handler の無い要求はテストを失敗させる
   server.listen({ onUnhandledFrame: "error" });

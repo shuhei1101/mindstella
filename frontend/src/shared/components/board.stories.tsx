@@ -5,6 +5,7 @@ import { fn } from "storybook/test";
 import { ItemCard } from "@/shared/components/board";
 import { buildIndex, type Item, type MindmapData } from "@/shared/core/records";
 import { RECORDS } from "@/testing/msw/handlers";
+import { sampleRecordLookup } from "@/testing/record-lookup";
 
 const index = buildIndex(RECORDS as unknown as MindmapData);
 
@@ -27,7 +28,7 @@ const meta = {
       <ItemCard {...args} />
     </div>
   ),
-  args: { index, item: task, meta: ["作業"], links: [], selected: false, marks: undefined, comments: {}, edit: null, onOpen: fn() },
+  args: { index, lookup: sampleRecordLookup, item: task, meta: ["作業"], links: [], selected: false, marks: undefined, comments: {}, edit: null, onOpen: fn() },
 } satisfies Meta<typeof ItemCard>;
 
 export default meta;
@@ -61,3 +62,9 @@ export const DatesNarrow: Story = {
     </div>
   ),
 };
+
+/** 関係する項目の D-2 のタイトル「D-1 の見直し」を持つ記録 */
+const linkedIndex = buildIndex({ ...RECORDS, decisions: [...RECORDS.decisions, { id: "D-2", title: "D-1 の見直し", status: "決定済み" }] } as unknown as MindmapData);
+
+/** タイトルに記録にある D-1 と記録に無い D-99、関係する項目のタイトルに D-1 を持つカード。D-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す */
+export const TitleIdMarkers: Story = { args: { index: linkedIndex, item: { ...task, title: "D-1 の比較（D-99 は除く）" }, links: ["D-2"] } };

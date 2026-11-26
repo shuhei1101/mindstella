@@ -11,6 +11,7 @@ from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_spa_helpers import open_spa, wcag_violations
 from workspace_fixtures import ADOPTED_OPTIONS, MakeEdit, MakeItem, MakePost, MakeThread
+from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_described, assert_tip
 
 # 概要のタイルの項目 ID
 TILE_IDS = ("tile-unread", "tile-open", "tile-review", "tile-docs")
@@ -489,3 +490,18 @@ def test_wcag(write_sample_preview: WriteSamplePreview, page: Page, color_scheme
     violations = wcag_violations(page)
     # 検証
     assert violations == []
+
+
+def test_tile_row_id_markers(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """タイルの行のタイトルの中の記録にある D-1 をマーカーにし、乗せるとツールチップを出し、行のボタンの aria-describedby で読み上げる（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", title=TARGET_TITLE, status="未決定"), make_item("D-2", title=LINKED_TITLE, status="未決定"))
+    open_spa(page, url)
+    row = page.locator("#tile-open button[data-id='D-2']")
+    marker = row.locator("[data-record-id='D-1']")
+    # 実行
+    marker.hover()
+    # 検証
+    expect(row.locator("[data-record-id='D-99'], a")).to_have_count(0)
+    assert_tip(page)
+    assert_described(page, row)

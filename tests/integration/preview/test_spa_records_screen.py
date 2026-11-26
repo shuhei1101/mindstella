@@ -10,6 +10,7 @@ from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview
 from preview_spa_helpers import open_spa
 from workspace_fixtures import MakeEdit, MakeItem
+from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_described, assert_tip
 
 
 @pytest.mark.parametrize(
@@ -180,3 +181,20 @@ def test_date_columns(page: Page, write_preview: WritePreview, make_item: MakeIt
     # 検証
     expect(page.get_by_role("columnheader", name=re.compile("作成日時"))).to_be_visible()
     expect(page.locator("time[datetime='2026-11-20T09:40:00+00:00']")).to_have_text("11/20 18:40")
+
+
+def test_table_title_id_markers(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """表のタイトルの中の記録にある D-1 をマーカーにし、乗せると D-1 のツールチップを出し、押すとその行の詳細を開く（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", title=TARGET_TITLE, status="未決定"), make_item("R-1", title=LINKED_TITLE))
+    open_spa(page, url, "?tab=research")
+    row = page.locator("tbody tr[data-id='R-1']")
+    marker = row.locator("[data-record-id='D-1']")
+    # 実行
+    marker.hover()
+    # 検証
+    expect(row.locator("[data-record-id='D-99'], a")).to_have_count(0)
+    assert_tip(page)
+    assert_described(page, row.locator("button:has([data-record-id])"))
+    marker.click()
+    expect(page.get_by_role("complementary", name="詳細")).to_contain_text("R-1")

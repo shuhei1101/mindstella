@@ -1186,6 +1186,19 @@ files:
   related:
   - to: MOD-489-78
     type: implements
+- path: src/shared/components/record-text.stories.tsx
+  name: 記録の文字のストーリー
+  description: 記録の文字の部品の、リンクとマーカーの見せ方のストーリーで、ID をリンクにする場所の見せ方を確認するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/components/record-text.tsx
+  name: 記録の文字
+  description: 記録の文字を描き、記録にある項目の ID・スレッドの ID をリンクかマーカーにする部品で、記録の文字の ID の見せ方を変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-701-1
+    type: implements
 - path: src/shared/components/removed-band.stories.tsx
   name: 削除した項目の帯のストーリー
   description: 削除した項目の帯のストーリー。
@@ -1947,3 +1960,67 @@ files:
   description: スレッドの見出しのタイトルの長さと省略の状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
   tags:
   - tool:react
+- path: src/shared/components/record-text.lint.test.ts
+  name: 記録の文字の検出の lint の単体テスト
+  description: eslint.config.js の no-restricted-syntax が、記録の文字を JSX の子に直接描く記載を誤りにするかを確かめる単体テストで、呼び忘れの検出の規則を修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-489-170
+    type: tests
+- path: src/shared/components/record-text.test.tsx
+  name: 記録の文字の単体テスト
+  description: 記録の文字の ID のリンクとマーカーを確かめる単体テストで、record-text を修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-701-1
+    type: tests
+- path: src/shared/core/record-ids.test.ts
+  name: 記録の ID の判定の単体テスト
+  description: 記録の文字の中の ID の判定と、記録の項目・スレッドへの結び方を確かめる単体テストで、record-ids を修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-701-2
+    type: tests
+- path: src/shared/components/thread-title.test.tsx
+  name: スレッドの見出しのタイトルの単体テスト
+  description: スレッドの見出しのタイトルの省略と、タイトルの中の ID のリンクを確かめる単体テストで、thread-title を修正するときに参照する。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-695-4
+    type: tests
+- path: src/shared/core/record-ids.ts
+  name: 記録の ID の判定
+  description: 記録の文字の中の項目の ID・スレッドの ID を見つけて記録の項目・スレッドに結ぶ処理で、ID の判定や結び方を変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-701-2
+    type: implements
+- path: src/shared/hooks/use-record-lookup.ts
+  name: 記録の ID の検索の hook
+  description: 記録の索引と読み込んだスレッドから記録の文字の lookup と onOpen を作る hook で、記録の文字を描く部品へ渡す検索を変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-701-3
+    type: implements
+- path: src/testing/record-lookup.ts
+  name: 見本の記録の ID の検索
+  description: ストーリーと単体テストが部品『記録の文字』に指定する見本の記録の ID の検索で、見本の ID と中身を変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-701-2
+    type: tests

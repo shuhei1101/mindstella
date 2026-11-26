@@ -1,0 +1,8 @@
+$ npm run lint
+
+> lint
+> eslint frontend/src
+
+exit=0
+$ npx tsc -p frontend/tsconfig.json --noEmit
+exit=0

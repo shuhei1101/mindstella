@@ -639,6 +639,7 @@ export const Topbar = (props: TopbarProps) => {
       <header className={headerClass(fit)} data-tipsoff={tipsOff ? "" : undefined}>
         <Brand fit={fit} />
         <span title={title} className="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden">
+          {/* eslint-disable-next-line no-restricted-syntax -- ワークスペースの題名で、記録の項目・スレッドの文字ではない */}
           {title}
         </span>
         <span className={cn("flex-1", comments && "basis-0", diffSqueezeClass(fit))} />

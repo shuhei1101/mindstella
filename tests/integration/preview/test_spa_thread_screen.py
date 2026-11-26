@@ -27,6 +27,7 @@ from preview_fixture_types import WriteReviewPreview
 from preview_pending_helpers import assert_waiting, hold_requests, press_twice
 from preview_spa_helpers import open_spa
 from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread, WriteComments
+from preview_record_id_helpers import assert_tip
 
 # 書き込みを待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
@@ -497,3 +498,17 @@ def test_title_collapsed_on_scroll(page: Page, write_review_preview: WriteReview
     # 検証
     expect(title).to_have_attribute("data-collapsed", "")
     expect(title).to_have_attribute("title", "長いスレッドのタイトル。" * 8)
+
+
+def test_title_id_links(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """スレッドの見出しのタイトルの中の記録にある D-1 をリンクにし、乗せるとツールチップを出し、押すと D-1 の詳細を開く（正常系）。"""
+    # 準備
+    _open(page, spa_comments_preview, "TH-1")
+    link = _panel(page).locator("[data-part='thread-title']").get_by_role("link", name="D-1")
+    # 実行
+    link.hover()
+    # 検証
+    expect(link).to_have_attribute("href", "#id=D-1")
+    assert_tip(page, "最初の問い")
+    link.click()
+    expect(page).to_have_url(re.compile(r"id=D-1"))

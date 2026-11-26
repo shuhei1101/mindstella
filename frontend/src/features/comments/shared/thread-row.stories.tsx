@@ -3,12 +3,13 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 
 import { ThreadRow } from "@/features/comments/shared/thread-row";
+import { sampleRecordLookup } from "@/testing/record-lookup";
 
 
 const meta = {
   title: "Comments/ThreadRow",
   component: ThreadRow,
-  args: { onOpen: fn(), onTag: fn() },
+  args: { lookup: sampleRecordLookup, onOpen: fn(), onTag: fn() },
   // 行は `<li>` なので、コメントの一覧と同じく `<ul>` で包む
   decorators: [
     (Story) => (
@@ -71,4 +72,11 @@ export const LongValuesNarrow: Story = {
     },
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 要約に記録にある D-1・TH-1 と記録に無い D-99 を持つ。D-1・TH-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す */
+export const TitleIdMarkers: Story = {
+  args: {
+    thread: { id: "TH-2", status: "open", tags: ["画面"], summary: "D-1 の決め方（TH-1 の続き、D-99 は除く）", target: "D-1", posts: [{ id: "TH-2-1", author: "ai", body: "D-1 は TH-1 の候補から選びます。", created: "2026-10-12T01:24:00+00:00", seen: true }], events: [], loc: null },
+  },
 };

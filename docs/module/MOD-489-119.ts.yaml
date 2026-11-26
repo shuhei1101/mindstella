@@ -66,3 +66,5 @@ functions:
         condition: 本文「TH-2 と TH-2-3 と TH-2-9 と TH-99」、`threads` は TH-2（書き込み TH-2-1〜TH-2-3）だけ。ボタンを押す
         mock: なし
         expected: TH-2・TH-2-3 がボタンで、TH-2-9・TH-99 は文字のまま。押すと `onOpen` が `("TH-2", null)`・`("TH-2", "TH-2-3")`
+notes:
+  ID の判定: '`buttonizeItemIds`・`linkThreadIds` が本文の文字から ID を見つける判定は、`record-ids` の `RECORD_ID_PATTERN`・`findRecordIds` を使用する（部品『記録の文字』と同じ判定）。ボタンの付け方は変えない'

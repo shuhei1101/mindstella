@@ -2,6 +2,7 @@
 // 描いた本文の加工（行の印・図と HTML の入れ物・見出しと本文の印・選んだ範囲の箇所・図の描画）
 import { getLibrary, libraryState, mdmarkMapConfig } from "@/shared/adapters/libraries";
 import { h, markupIcon } from "@/shared/core/dom-parts";
+import { RECORD_ID_PATTERN } from "@/shared/core/record-ids";
 import type { Location, RecordIndex } from "@/shared/core/records";
 import { type LookupThread, type OpenThread, resolveThreadId } from "@/shared/core/thread-ids";
 import { workspacePath } from "@/shared/core/workspace-path";
@@ -618,12 +619,6 @@ const REMOVED_DIFF_BLOCK = '.mdmark-diff-block[data-kind="del"]';
 /** 印を当てない祖先（`pre`・インラインコード・図・リンク・ボタン・見出しの中。インラインコードは中身がちょうど語のときだけ `code` ごと当てる） */
 const UNMARKED_ANCESTORS = `pre, code, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6, ${REMOVED_DIFF_BLOCK}`;
 
-/** 項目の ID（英大文字 - 数字。前後が英数字のものは当てない） */
-const ITEM_ID_PATTERN = /(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])/g;
-
-/** スレッドの ID と書き込みの ID（前後が英数字のものは当てない） */
-const THREAD_ID_PATTERN = /(?<![A-Za-z0-9-])TH-[0-9]+(?:-[0-9]+)?(?![0-9])/g;
-
 /** 本文の中の、用語の印に当てられる文字のノード（祖先が `UNMARKED_ANCESTORS` でなく、本文のブロック `block` 自身の行を持つもの）を文書の順に返す */
 const markableTextNodes = (block: Element): Text[] => {
   const own = block.classList.contains(EMBEDDED_HTML_CLASS);
@@ -834,23 +829,21 @@ export const linkBody = ({
     const text = node.data;
     const inCode = node.parentElement?.closest("code") !== null;
     const ranges: { start: number; end: number; mark: HTMLElement }[] = [];
-    // スレッドの ID（記録にあるスレッド・書き込みだけ）は項目の ID より先に当てる
-    if (threads !== null) {
-      for (const match of text.matchAll(THREAD_ID_PATTERN)) {
-        const target = resolveThreadId(match[0], threads);
-        if (target === null || (inCode && text.trim() !== match[0])) continue;
-        ranges.push({ start: match.index, end: match.index + match[0].length, mark: threadMark({ text: match[0], ...target }) });
-      }
-    }
-    for (const match of text.matchAll(ITEM_ID_PATTERN)) {
+    // 部品『記録の文字』と同じ判定で ID を見つける。スレッドの ID は記録にあるスレッド・書き込みだけをリンクにする
+    for (const match of text.matchAll(RECORD_ID_PATTERN)) {
       const id = match[0];
-      const start = match.index ?? 0;
-      // 記録に無い ID・項目自身の ID・コードの一部・スレッドの ID に重なるものは、そのままにする
-      if (!index.byId.has(id) || id === selfId || (inCode && text.trim() !== id)) continue;
-      if (ranges.some((range) => range.start <= start && start < range.end)) continue;
+      const start = match.index;
+      // コードの一部はそのままにする
+      if (inCode && text.trim() !== id) continue;
+      if (id.startsWith("TH-")) {
+        const target = threads === null ? null : resolveThreadId(id, threads);
+        if (target !== null) ranges.push({ start, end: start + id.length, mark: threadMark({ text: id, ...target }) });
+        continue;
+      }
+      // 記録に無い ID・項目自身の ID は、そのままにする
+      if (!index.byId.has(id) || id === selfId) continue;
       ranges.push({ start, end: start + id.length, mark: idMark(id) });
     }
-    ranges.sort((a, b) => a.start - b.start);
     if (ranges.length > 0) replaceRanges({ node, ranges });
   }
 };

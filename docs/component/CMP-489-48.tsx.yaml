@@ -88,6 +88,10 @@ args:
     required: false
     default: なし（値を文字にして出す）
     description: セルの中身を描く関数（`cell(row)`）。作成日時・更新日時の列は、部品『項目の日時』と同じ書式（今年は `MM/DD HH:mm`、今年でない日時は `YYYY/MM/DD HH:mm`）を `time` 要素で出す。並べ替えと絞り込みは元の値で行う
+  - name: lookup
+    type: 関数
+    required: true
+    description: 行のタイトルの中の ID から記録の項目・スレッドを検索する関数。部品『記録の文字』の `lookup` にそのまま指定し、記録にある ID をマーカーにする
 events:
   - name: タグの条件の式の解除
     when: チップの、タグの条件の式のチップの × か「すべて解除」を押したとき
@@ -209,6 +213,8 @@ states:
         value: 検討事項の列に `created`・`updated` を加えた列
       - name: sort
         value: '{"key": "updated", "dir": "desc"}'
+  - name: TitleIdMarkers
+    description: タイトルに記録にある D-1 と記録に無い D-99 を持つ行。D-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す。押すとタイトルを押したときと同じく詳細を開く
 accessibility:
   - 並べ替え中の列の見出しに `aria-sort`（ascending・descending）を付け、ほかは `none`
   - ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列}まで固定` の読み上げ名を付ける
@@ -217,6 +223,7 @@ accessibility:
   - 操作してもスクロールの位置を保つ
   - 文字の条件のチップの × に `{列}に「{文字}」を含む の条件を解除` の読み上げ名を付ける
   - 列の表示のボタンに「列の表示」の読み上げ名を付け、幅 720px 以下で文言を隠してアイコンだけにしても読み上げ名は残す
+  - 行のタイトルの中の ID はマーカーにし、タイトルのボタンの中にフォーカスできる要素を増やさない。タイトルのボタンにフォーカスしたとき、`aria-describedby` で ID の項目・スレッドのタイトルと状態を読み上げ、ツールチップを出す
 refs:
   - IF-489-70#
 notes:
@@ -226,3 +233,5 @@ uses:
     how: 表の上の絞り込みの条件のチップ
   - component: CMP-489-16#
     how: タグの列のセル
+  - component: CMP-701-1#
+    how: 行のタイトルを `mode` を `marker` にして描き、`descriptionId` をタイトルのボタンの `aria-describedby` に指定する

@@ -30,6 +30,7 @@ import { voiceDestinationExists } from "@/shared/core/voice";
 import { commentsQuery, recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { usePreviewSearch, type VoiceTarget } from "@/shared/hooks/use-preview-search";
+import { useRecordLookup } from "@/shared/hooks/use-record-lookup";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
@@ -131,6 +132,7 @@ export const PreviewShell = () => {
   const comments = useQuery(commentsQuery());
   const threads = useQuery(threadsQuery());
   const { index, rawIndex, edits } = useRecords();
+  const record = useRecordLookup({ index, onOpenItem: openItem });
   const { point, since } = useDiffView();
   const theme = useThemeStore((state) => state.theme);
   // 開いている一覧の画面の絞り込みの値（全体の検索の結果の先頭に出す）
@@ -310,6 +312,7 @@ export const PreviewShell = () => {
         <PendingEditsPanel
           edits={edits}
           index={rawIndex}
+          lookup={record.lookup}
           onClose={() => { setPanel(undefined); }}
           onOpen={(target) => {
             const added = edits.find((edit) => edit.op === "item-add" && edit.target === target);
@@ -327,6 +330,7 @@ export const PreviewShell = () => {
       {index !== null && search.search !== undefined ? (
         <SearchDialog
           index={index}
+          lookup={record.lookup}
           query={search.q ?? ""}
           onQueryChange={(q) => { setSearch({ q: q === "" ? undefined : q }); }}
           onOpen={(id) => {
