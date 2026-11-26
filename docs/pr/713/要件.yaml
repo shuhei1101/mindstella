@@ -96,3 +96,9 @@ scope_out:
   - item: 表示の設定の幅 390px で本文の文字が画面の端に近い件（Impeccable の `body-text-viewport-edge`。`?panel=display`）
     reason: 幅 900px 以下のパネルの余白の件で、この PR は 900px 以下のパネルの幅を変えておらず、今回の要望に含まれない
     plan: to_file
+  - item: 部品『Markdownの本文』の結合テスト `test_diff_source` が、mdmark の原文の差分にリビジョンの欄（`.mdmark-diff-picker`）が描かれず fail する件
+    reason: develop（`19ecee06`）でも同じく fail し、この PR はストーリー `DiffSource` と mdmark の版を変えていない。mdmark が描く差分の部品の構成の件で、今回の要望に含まれない
+    plan: to_file
+  - item: インターフェース定義『プレビューを開く』の結合テスト `test_normal_when_records_changed_while_typing` が、表の表示で題「D-1の題」を見つけられず fail する件（最初に当たるのが読み上げ用の hidden の `#table-ids-D-1`）
+    reason: develop（`19ecee06`）でも同じく fail し、項目の ID のリンク（#701）の表示に合わせたテストの修正で、今回の要望に含まれない
+    plan: to_file
