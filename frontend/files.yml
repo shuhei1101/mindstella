@@ -581,12 +581,14 @@ files:
   - to: MOD-489-31
     type: implements
 - path: src/features/detail/detail-panel/detail-panel.test.tsx
-  name: import { screen } from @testing-library/react;
-  description: import { screen } from @testing-library/react;。
+  name: 詳細パネルの単体テスト
+  description: 詳細パネルの描画・差分・編集・コメント・タブ・目次・幅の保存と上限を Vitest で確認する。詳細パネルの振る舞いを変えるときに参照する。
   tags:
   - tool:react
+  - tool:vitest
+  - topic:単体テスト
   related:
-  - to: MOD-489-170
+  - to: MOD-489-32
     type: tests
 - path: src/features/detail/detail-panel/detail-panel-screen.stories.tsx
   name: 詳細パネルの画面のストーリー
