@@ -294,6 +294,7 @@ notes:
   削除した項目と取り下げのモック: 削除した項目の帯と取り下げの札の見本は `docs/mock/pages/docs/179/b-band/index.html`
   形式の札のモック: カード・ボードの形式の札と表の形式の列の見本は `docs/mock/pages/docs/214/a-kind/index.html`（種類の右に置く案 A を採用）
   主題のタグのモック: 'カード・ボードのタグの主題のマーカーの見本は `docs/mock/pages/docs/385/a-ring/index.html`（採用した案 A。確認ログ: docs/pr/385/確認ログ.md）'
+  横幅: 列が多く画面の幅を超える表を持つ資料も、表は mdmark の表の部品の中だけで横にスクロールし、ページの全体は横にスクロールしない（`document.documentElement.scrollWidth` が表示の幅を超えない）。トップバーの閉じるボタンは画面の中に残り、チャットの入力欄は表示の幅に収まる。確認する場面は列の多い表・幅 360px
 test_file: tests/integration/preview/test_spa_docs_screen.py
 refs:
   - IF-489-70#

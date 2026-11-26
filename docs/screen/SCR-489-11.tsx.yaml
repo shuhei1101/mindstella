@@ -133,3 +133,5 @@ lead: 保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、
 test_file: tests/integration/preview/test_spa_pending_edits_screen.py
 refs:
   - IF-489-70#
+notes:
+  パネルの幅: コメントの一覧と同じ左のパネルの幅（幅 901px 以上）で開く。幅の区切りは持たない（画面設計『コメントの一覧』の補足「左のパネルの幅」）

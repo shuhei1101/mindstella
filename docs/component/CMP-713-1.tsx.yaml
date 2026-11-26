@@ -1,0 +1,115 @@
+id: CMP-713-1
+title: 幅の区切り
+lead: パネルの端に配置する幅の区切り。ドラッグと矢印キーでパネルの幅を変え、向き（パネルの左端・右端）で広がる方向を変える。詳細パネルとコメントの一覧のパネルで使用する。
+implementation: frontend/src/shared/components/panel-resizer.tsx#PanelResizer
+story: Shared/PanelResizer
+test_file: tests/integration/storybook_react/test_panel_resizer_stories.py
+args:
+  - name: side
+    type: 列挙
+    required: true
+    choices: left・right
+    description: 区切りを配置するパネルの端。`left` はポインターを左へ動かすと広がり、`right` は右へ動かすと広がる。矢印キーも同じ向き（`left` は←で広げ、`right` は→で広げる）
+  - name: width
+    type: 整数
+    required: true
+    choices: min 以上・max 以下（px）
+    description: 今のパネルの幅
+  - name: min
+    type: 整数
+    required: true
+    description: 幅の下限（px）
+  - name: max
+    type: 整数
+    required: true
+    description: 幅の上限（px）。使用する側が窓の幅から本文に残す幅を引いて指定する
+  - name: step
+    type: 整数
+    required: false
+    default: '16'
+    description: 矢印キー 1 回で変える幅（px）
+  - name: label
+    type: 文字列
+    required: true
+    description: 読み上げの名前（`詳細パネルの幅`・`コメントの一覧の幅`）
+events:
+  - name: 幅の変更
+    when: ドラッグでポインターが動いたときと、フォーカス中に矢印キーを押したとき
+    value: '`onChange(width)`（min 以上・max 以下に収めて整数に丸めた幅）'
+    description: 使用する側がパネルの幅に当て、端末の保存領域に残す
+states:
+  - name: Left
+    description: パネルの左端の区切り（詳細パネル）。左へドラッグすると広がる
+    args:
+      - name: side
+        value: left
+      - name: width
+        value: '640'
+      - name: min
+        value: '480'
+      - name: max
+        value: '1040'
+      - name: label
+        value: 詳細パネルの幅
+  - name: Right
+    description: パネルの右端の区切り（コメントの一覧）。右へドラッグすると広がる
+    args:
+      - name: side
+        value: right
+      - name: width
+        value: '384'
+      - name: min
+        value: '320'
+      - name: max
+        value: '800'
+      - name: label
+        value: コメントの一覧の幅
+  - name: AtMin
+    description: 下限の幅。狭める向きにドラッグ・キーを押しても下限のまま
+    args:
+      - name: side
+        value: right
+      - name: width
+        value: '320'
+      - name: min
+        value: '320'
+      - name: max
+        value: '800'
+      - name: label
+        value: コメントの一覧の幅
+  - name: AtMax
+    description: 上限の幅。広げる向きにドラッグ・キーを押しても上限のまま
+    args:
+      - name: side
+        value: right
+      - name: width
+        value: '800'
+      - name: min
+        value: '320'
+      - name: max
+        value: '800'
+      - name: label
+        value: コメントの一覧の幅
+  - name: Touch
+    description: '指の端末（`pointer: coarse`）。帯の幅を 44px にし、パネルの端の線を帯の中央に挟む'
+    args:
+      - name: side
+        value: right
+      - name: width
+        value: '384'
+      - name: min
+        value: '320'
+      - name: max
+        value: '800'
+      - name: label
+        value: コメントの一覧の幅
+accessibility:
+  - '`role="separator"`・`aria-orientation="vertical"`・`aria-label`（`label`）・`aria-valuenow`（`width`）・`aria-valuemin`（`min`）・`aria-valuemax`（`max`）を持ち、`tabIndex=0` でフォーカスを受ける'
+  - フォーカス中は左右の矢印キーで `step` ずつ幅を変え、Home で下限、End で上限にする（ページの横スクロールは止める）
+  - 帯の幅は 24px、指の端末では帯の幅を 44px にしてパネルの端の線を帯の中央に挟み、マウスの端末では隣の本文のスクロールバーに重ねない
+  - ドラッグ中は線を強調の色にし、離すと戻す
+refs:
+  - SCR-489-32#
+  - SCR-489-2#
+notes:
+  ドラッグの作り: ポインターを押したときに `setPointerCapture` でつかみ、動いた分を押したときの幅から計算する。上限・下限の値と保存は使用する側が持ち、部品は収めた幅を `onChange` で通知するだけにする

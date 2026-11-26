@@ -572,7 +572,7 @@ elements:
     visible_when: 表示の幅が 901px 以上
     range:
       min: '480'
-      max: 本文を寄せる幅（1100px 以上）では表示の幅 − 400、本文に重ねる幅（901〜1099px）では表示の幅 − 160
+      max: 本文を寄せる幅（1100px 以上）では表示の幅 − 400（左のパネルを開いているときは、さらに左のパネルの幅を引く）、本文に重ねる幅（901〜1099px）では表示の幅 − 160
       step: 矢印キー 1 回で 16
     initial_value: そのタブの `sessionStorage` に残した幅。無ければ既定の 640。上限を超えるときは上限に収めて出し、残した値は書き換えない。開いたまま窓の幅が変わったときも、残した幅を今の上限に再調整（`aria-valuemax` / `aria-valuenow` も合わせる）、窓を再拡大すると残した幅に戻す
     source: プレビューを開く.詳細パネル
@@ -581,6 +581,7 @@ elements:
     status: planned
     introduced:
       pr: 340
+    component: CMP-713-1#
   - name: エクスポート
     kind: button
     position: 見出し > 編集するの右・前後の移動の左

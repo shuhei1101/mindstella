@@ -211,6 +211,10 @@ states:
         value: 'true'
       - name: open
         value: 'true'
+  - name: LongUnbrokenText
+    description: 3000 文字を超える書き込みと、改行の無い長い URL を持つ書き込み。本文はカードの幅で折り返し（URL も折り返す）、カードの外へはみ出さず、ページ・パネルは横にスクロールしない
+  - name: WideTablePost
+    description: 画面の幅を超える列の多い表を持つ書き込み。表は mdmark の表の部品の中だけで横にスクロールし、カード・パネルは横にスクロールしない
 lead: スレッドの中に書いた順で並べる 1 件。利用者と AI の書き込み・クローズとオープンへの戻しの記録・レビュー中の返信を、書き手と種類が見分けられる形状で出す。
 args:
   - name: post
