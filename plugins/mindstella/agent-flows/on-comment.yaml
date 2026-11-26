@@ -14,7 +14,7 @@ steps:
       - mindstella/record
   - name: 取り込み待ちのスレッドを取得する
     body: |-
-      `threads` を `awaiting: true` で呼ぶ。状態は渡さず、オープンもクローズも拾う。0 件で、見直しで記録を変えていなければ、何も記録せずに終える。変えていれば、「書き換えをまとめる」・「報告のスレッドで報告する」・「手番を返す」へ進む。
+      `threads` を `awaiting: true` で呼ぶ。状態は渡さず、オープンもクローズも拾う。0 件で、見直しで記録を変えていなければ、何も記録せずに終える。変えていれば、「書き換えをまとめる」・「手番を返す前の確認」・「報告のスレッドで報告する」・「手番を返す」へ進む。
     calls:
       - {server: mindstella, tool: threads}
   - name: コメントを参照する
@@ -75,6 +75,15 @@ steps:
       クローズにする前に、そのスレッドの AI の書き込みの約束（後で行うと書いた作業）がタスクにあることを確かめ、無ければその回のうちにタスクにする。
     calls:
       - {server: mindstella, tool: set_thread_status}
+  - name: 手番を返す前の確認
+    body: |-
+      進め方の文書の工程のうち、利用者の回答なしで進められる工程が残っていないかを確認し、残っていれば進める。確認が要る点は mindstella/record の工程「利用者に聞くことを方針と細部に分ける」で検討事項に挙げ、進めてよいかを報告で利用者に聞かない。
+      `search_docs` で状態が `未着手`・`進行中` のタスクを検索し、済んだものは `完了`、続きを次の手番に回すものと着手できない条件があるものは `保留`（`reason` に着手できる条件）、やめるものは `中止` にして、mindstella/record の「記録を書き込む」で書き込む。
+    calls:
+      - {server: project-index, tool: search_docs}
+      - {server: project-index, tool: write_docs}
+    refs:
+      - mindstella/record
   - name: 報告のスレッドで報告する
     when: この回で会話ログのほかに記録を追加・変更した
     body: |-

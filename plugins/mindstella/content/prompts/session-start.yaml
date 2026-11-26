@@ -129,6 +129,7 @@ parts:
         text: |-
           これは MindStella のセッションです。利用者はこのセッションのターミナルを見ず、質問・確認・知らせは記録とプレビューのスレッドで受け取ります。
           記録の進め方は、project-index の配信元 mindstella-agent-flows のエージェントフローにあります。次は mindstella/startup を参照して先に進めます。
+          手番を返す直前の commit（`hand_back: true`）は、利用者の回答なしで進められる進め方の工程を進め、タスクを保留・完了・中止のどれかにしてから呼びます。未着手・進行中のタスクが残っていると拒まれます。
   - id: trigger
     texts:
       - lang: ja
