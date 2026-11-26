@@ -1089,7 +1089,7 @@ def test_head_title_visible(page: Page, write_preview: WritePreview, make_item: 
     long_body = "\n\n".join(f"{number} 番目の段落" for number in range(1, 121)) + "\n"
     url = write_preview(make_item("A-1", title="長い本文の資料"), bodies={"A-1.mark.md": long_body})
     open_spa(page, url, "?tab=docs&id=A-1")
-    head = _panel(page).locator("span[aria-hidden=true][title='長い本文の資料']")
+    head = _panel(page).locator("span[title='長い本文の資料']")
     expect(head).to_have_css("opacity", "0")
     _panel(page).get_by_text("120 番目の段落").wait_for(state="attached")
     # 実行
