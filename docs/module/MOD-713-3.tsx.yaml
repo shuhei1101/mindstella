@@ -7,7 +7,7 @@ components:
     kind: コンポーネント
     usecase: 共通
     container: frontend/src/shared/components/left-panel.tsx
-    summary: "`aside` を描き、受けた属性（`aria-label`・`className` など）と `children` をそのまま指定する。表示の幅が `LEFT_PANEL_WIDTH.resizableFrom`（901px）以上では、幅を『panel-width-store』の `leftWidth` を `clampWidth(leftWidth, min, leftPanelMax(...))` で収めた値にし、`resizerLabel` を指定したときだけ右端に部品『幅の区切り』（`side=right`・`label`・`min`・`max`・`step`）を描いて `onChange` で `setLeftWidth`、`onCommit` で `commitLeftWidth` を呼ぶ。900px 以下は幅を適用せず、区切りを描かない（各パネルの今の全幅のまま）。描いたときに `setOpen('left', true)`、除外したときに `setOpen('left', false)` を呼ぶ。表示の幅は `matchMedia('(min-width: 901px)')` の変化と `resize` で参照し直す"
+    summary: "`aside` を描き、受けた属性（`aria-label`・`className` など）と `children` をそのまま指定する。表示の幅が `LEFT_PANEL_WIDTH.resizableFrom`（901px）以上では、幅を『panel-width-store』の `currentLeftWidth(state)` を `clampWidth(幅, min, leftPanelMax(...))` で収めた値にし、`resizerLabel` を指定したときだけ右端に部品『幅の区切り』（`side=right`・`label`・`min`・`max`・`step`）を描いて `onChange` で `setLeftWidth`、`onCommit` で `commitLeftWidth` を呼ぶ。900px 以下は幅を適用せず、区切りを描かない（各パネルの今の全幅のまま）。描いたときに `setOpen('left', true)`、除外したときに `setOpen('left', false)` を呼ぶ。表示の幅は `matchMedia('(min-width: 901px)')` の変化と `resize` で参照し直す"
     refs:
       - SCR-489-2#
       - SCR-489-11#

@@ -6,7 +6,7 @@ stores:
     title: パネルの幅
     container: frontend/src/shared/stores/panel-width-store.ts
     usecase: 共通
-    summary: 左のパネル（コメントの一覧・保存待ちのパネル・表示の設定）と詳細パネルの幅と、開いているかを持つ Zustand のストア。幅は作るときに `readStoredWidth` で参照する
+    summary: 左のパネル（コメントの一覧・保存待ちのパネル・表示の設定）と詳細パネルの幅と、開いているかを持つ Zustand のストア。幅は、このタブでまだ適用していない間（`null`）は `currentLeftWidth`・`currentDetailWidth` が保存領域から参照する
     refs:
       - IF-489-70#
       - SCR-489-2#
@@ -14,14 +14,14 @@ stores:
     state:
       - name: leftWidth
         title: 左のパネルの幅
-        type: number
-        initial: '`readStoredWidth(LEFT_PANEL_WIDTH_KEY, LEFT_PANEL_WIDTH.default)`'
-        description: 残した幅。画面に適用するときは使用する側が上限で収め、残した値は書き換えない
+        type: number | null
+        initial: 'null'
+        description: このタブで適用した幅。`null` の間は保存領域の値を使用する（`currentLeftWidth`）。画面に適用するときは使用する側が上限で収め、残した値は書き換えない
       - name: detailWidth
         title: 詳細パネルの幅
-        type: number
-        initial: '`readStoredWidth(PANEL_WIDTH_KEY, DETAIL_PANEL_WIDTH.default)`'
-        description: 残した幅
+        type: number | null
+        initial: 'null'
+        description: このタブで適用した幅。`null` の間は保存領域の値を使用する（`currentDetailWidth`）
       - name: leftOpen
         title: 左のパネルを開いているか
         type: boolean
@@ -118,6 +118,24 @@ functions:
         condition: '`parametrize`: 表示の幅 1440 で左のパネルを開いていない / 1440 で幅 384 の左のパネルを開いている / 1000 / 1100 で幅 384 を開いている'
         mock: なし
         expected: 1040 / 656 / 840 / 480
+  - name: currentLeftWidth
+    title: 左のパネルの今の幅
+    kind: 関数
+    summary: '`currentLeftWidth(state)`。`leftWidth` が `null` なら `readStoredWidth(LEFT_PANEL_WIDTH_KEY, LEFT_PANEL_WIDTH.default)`、それ以外は `leftWidth` を返却する'
+    container: frontend/src/shared/stores/panel-width-store.ts
+    unit_tests:
+      - name: test_current_left_width
+        case: 正常
+        summary: 適用した幅か、まだなら保存領域の幅を返却する
+        condition: '`parametrize`: `leftWidth` が `null` で保存領域が `520` / `leftWidth` が 500 で保存領域が `520`'
+        mock: なし（jsdom の `sessionStorage`）
+        expected: 520 / 500
+  - name: currentDetailWidth
+    title: 詳細パネルの今の幅
+    kind: 関数
+    summary: '`currentDetailWidth(state)`。`detailWidth` が `null` なら `readStoredWidth(PANEL_WIDTH_KEY, DETAIL_PANEL_WIDTH.default)`、それ以外は `detailWidth` を返却する'
+    container: frontend/src/shared/stores/panel-width-store.ts
 notes:
   単体テスト: 同じフォルダの `panel-width-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
   両方の上限: 詳細パネルの上限は左のパネルの残した幅を、左のパネルの上限は左のパネルを引かない上限で収めた詳細パネルの幅を引く。互いの上限を参照して循環しない
+  幅の初期値: ストアは import したときに作られ、その時点では開いたワークスペースのパスが決まっていないことがあるため、保存領域は使用するときに `workspaceKey` で参照する
