@@ -1,13 +1,13 @@
 id: MOD-713-3
 title: プレビュー / left-panel
-lead: コメントの一覧・保存待ちのパネル・表示の設定が共有する左のパネルの `aside` で、幅と、コメントの一覧では右端の幅の区切りを持つ。
+lead: コメントの一覧・保存待ちのパネル・表示の設定が共有する左のパネルの外側の要素で、幅と、コメントの一覧では右端の幅の区切りを持つ。
 components:
   - name: LeftPanel
     title: 左のパネル
     kind: コンポーネント
     usecase: 共通
     container: frontend/src/shared/components/left-panel.tsx
-    summary: "`aside` を描き、受けた属性（`aria-label`・`className` など）と `children` をそのまま指定する。表示の幅が `LEFT_PANEL_WIDTH.resizableFrom`（901px）以上では、幅を『panel-width-store』の `currentLeftWidth(state)` を `clampWidth(幅, min, leftPanelMax(表示の幅, currentDetailWidth(state), detailOpen))` で収めた値にし、`resizerLabel` を指定したときだけ右端に部品『幅の区切り』（`side=right`・`label`・`min`・`max`・`step`）を描いて `onChange` で `setLeftWidth`、`onCommit` で `commitLeftWidth` を呼ぶ。900px 以下は幅を適用せず、区切りを描かない（各パネルの今の全幅のまま）。描いたときに `setOpen('left', true)`、除外したときに `setOpen('left', false)` を呼ぶ。表示の幅は `matchMedia('(min-width: 901px)')` の変化と `resize` で参照し直す"
+    summary: "`as` の要素（既定 `aside`）を描き、受けた属性（`role`・`aria-label`・`className`・`onKeyDown` など）と `children` をそのまま指定する。表示の幅が `LEFT_PANEL_WIDTH.resizableFrom`（901px）以上では、幅を『panel-width-store』の `currentLeftWidth(state)` を `clampWidth(幅, min, leftPanelMax(表示の幅, currentDetailWidth(state), detailOpen))` で収めた値にし、`resizerLabel` を指定したときだけ右端に部品『幅の区切り』（`side=right`・`label`・`min`・`max`・`step`）を描いて `onChange` で `setLeftWidth`、`onCommit` で `commitLeftWidth` を呼ぶ。900px 以下は幅を適用せず、区切りを描かない（各パネルの今の全幅のまま）。描いたときに `setOpen('left', true)`、除外したときに `setOpen('left', false)` を呼ぶ。表示の幅は `matchMedia('(min-width: 901px)')` の変化と `resize` で参照し直す"
     refs:
       - SCR-489-2#
       - SCR-489-11#
@@ -20,6 +20,11 @@ components:
       - name: children
         type: ReactNode
         description: パネルの中身
+      - name: as
+        type: '"aside" | "section"'
+        required: false
+        default: '"aside"'
+        description: 描く要素。`role="dialog"` を持つパネル（コメントの一覧・表示の設定）は `section`（`aside` は `dialog` の role を持てない）
     unit_tests:
       - name: test_left_panel_when_resized
         case: 正常
@@ -57,5 +62,11 @@ components:
         condition: 表示の幅 1440。ストアの `leftWidth` が 520 で、`resizerLabel` を省いて描く
         mock: '`window.innerWidth`・`matchMedia`'
         expected: パネルの幅が 520px で、`role=separator` が無い
+      - name: test_left_panel_as_section
+        case: 正常
+        summary: section のダイアログとして描き、共有した幅で開く
+        condition: 表示の幅 1440。ストアの `leftWidth` が 520 で、`as="section"`・`role="dialog"`・`aria-label="表示の設定"` を指定して描く
+        mock: '`window.innerWidth`・`matchMedia`'
+        expected: 読み上げの名前「表示の設定」の `role=dialog` の `section` があり、幅が 520px
 notes:
   単体テスト: 同じフォルダの `left-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
