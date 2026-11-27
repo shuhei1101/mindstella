@@ -80,8 +80,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T16:38:36.542618+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
     note: panel-width-store・left-panel・body-links・markdown-decorate・record-text・thread-row・detail-supplements・detail-header・detail-fullscreen・display-settings-panel
+    updated_by: planner
+    updated_at: '2026-11-27T16:54:16.771635+00:00'
   - process: ドキュメント修正
     status: todo
     note: 外部ライブラリ『mdmark』（LIB-489-13）のオフの機能の一覧と理由・「コードの色付け」「表の列の幅のつまみの ARIA の値」
