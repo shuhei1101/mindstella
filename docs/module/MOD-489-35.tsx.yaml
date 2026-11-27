@@ -24,3 +24,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `doc-cards.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   日時と並べ替え: '`orderDocs` をやめ、カードの並びを `sortRows`（モジュール構成『list-rows』）で `sort`（無ければ `INITIAL_CARD_SORT.docs` の更新日時の新しい順）の順にする。カードの種類・状態の行の次に `ItemDates` を描く。カードを押したときは、描いた並びの ID を `onOpen(id, order)` で使用する側へ通知する（#186・#364）'
+  お気に入り: '`DocCard` は `favorite` を受け、指定されたときだけ部品『お気に入りの星』を右上に配置する（タイトルの `h2` は `wrap-anywhere`）。`DocCards` は `favorites`・`favoritesFirst`・`onToggleFavorite` を受け、`favoritesFirst` が真なら `sortItems` で並べた後に `favoritesFirst` で先頭に並べる。単体テスト `test_doc_cards_when_favorites`（お気に入りが先頭で、それぞれの中は更新日時の新しい順）を追加する'

@@ -2,8 +2,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { Board } from "@/shared/components/board";
-import type { Item } from "@/shared/core/records";
+import { Board, ItemCard } from "@/shared/components/board";
+import { buildIndex, type Item, type MindmapData } from "@/shared/core/records";
+import { RECORDS } from "@/testing/msw/handlers";
+import { sampleRecordLookup } from "@/testing/record-lookup";
 
 const ITEMS: Item[] = [
   { id: "T-1", title: "画面を作る", created: "2026-11-01", updated: "2026-11-01" },
@@ -105,5 +107,21 @@ describe("Board", () => {
     await userEvent.click(screen.getByRole("button", { name: "三" }));
     // 検証
     expect(onOpen).toHaveBeenCalledWith("T-3", ["T-2", "T-3"]);
+  });
+});
+
+describe("ItemCard", () => {
+  // 星を押すと onToggle だけを呼び、カードを開かない（正常系）
+  test("item_card_when_favorite", async () => {
+    // 準備
+    const onToggle = vi.fn();
+    const onOpen = vi.fn();
+    const item: Item = { id: "T-1", title: "画面を作る", created: "2026-11-01", updated: "2026-11-01" };
+    render(<ItemCard index={buildIndex(RECORDS as unknown as MindmapData)} lookup={sampleRecordLookup} item={item} meta={[]} links={[]} selected={false} marks={undefined} comments={{}} edit={null} onOpen={onOpen} favorite={{ on: true, onToggle }} />);
+    // 実行
+    await userEvent.click(screen.getByRole("button", { name: "画面を作るをお気に入りに登録" }));
+    // 検証
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(onOpen).not.toHaveBeenCalled();
   });
 });

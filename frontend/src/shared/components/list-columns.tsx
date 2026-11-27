@@ -1,7 +1,9 @@
 // 一覧の表の共通の列
+import { FavoriteToggle } from "@/shared/components/favorite-toggle";
 import { StatusMark } from "@/shared/components/icon";
 import type { Row, TableColumn } from "@/shared/components/table";
 import { TagList } from "@/shared/components/tag-list";
+import { FAVORITE_COLUMN_KEY, FAVORITE_ORDER } from "@/shared/core/favorites";
 import { formatItemDateTime } from "@/shared/core/format";
 import { tagNames, type Tag } from "@/shared/core/records";
 
@@ -68,4 +70,14 @@ export const commonColumns = () => ({
   text: (key: string, label: string, options: Partial<TableColumn> = {}): TableColumn => ({ key, label, get: (row) => textOf(row, key), ...options }),
   created: dateColumn("created", "作成日時"),
   updated: dateColumn("updated", "更新日時"),
+});
+
+/** 表の一番左に配置する星の列。隠せず、見出しで並べ替える（昇順でお気に入りが先頭） */
+export const favoriteColumn = (favorites: ReadonlySet<string>, onToggle: (id: string) => void): TableColumn => ({
+  key: FAVORITE_COLUMN_KEY,
+  label: "お気に入り",
+  fixed: true,
+  order: FAVORITE_ORDER,
+  get: (row) => (favorites.has(row.id) ? FAVORITE_ORDER[0] : FAVORITE_ORDER[1]),
+  cell: (row) => <FavoriteToggle title={textOf(row, "title") ?? row.id} on={favorites.has(row.id)} onToggle={() => { onToggle(row.id); }} />,
 });

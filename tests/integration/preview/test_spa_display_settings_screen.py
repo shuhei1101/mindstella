@@ -6,6 +6,7 @@ import json
 
 from playwright.sync_api import Locator, Page, expect
 from preview_spa_helpers import assert_below_topbar, open_spa
+from preview_favorites_helpers import seed_prefs
 
 import pytest
 
@@ -217,3 +218,36 @@ def test_single_key_shortcuts(page: Page, spa_preview: str) -> None:
     _panel(page).get_by_role("button", name="既定に戻す").click()
     # 検証
     expect(checkbox).to_be_checked()
+
+
+def test_favorites_section(page: Page, spa_preview: str) -> None:
+    """区画「お気に入り」の 2 つのチェックを切り替えると保存領域が上書きを持ち、変えている項目に名前を出す（正常系）。"""
+    # 準備
+    _open(page, spa_preview)
+    section = _panel(page).get_by_role("group", name="お気に入り")
+    first = section.get_by_role("checkbox", name="お気に入りを一番上にする")
+    only = section.get_by_role("checkbox", name="お気に入りだけを表示する")
+    expect(first).to_be_checked()
+    expect(only).not_to_be_checked()
+    # 実行
+    first.click()
+    only.click()
+    # 検証
+    assert _prefs(page).get("favoritesFirst") is False
+    assert _prefs(page).get("favoritesOnly") is True
+    expect(_panel(page)).to_contain_text("お気に入りだけを表示する")
+    expect(_panel(page).get_by_role("button", name="既定に戻す")).to_be_visible()
+
+
+def test_favorites_reset_keeps_registration(page: Page, spa_preview: str) -> None:
+    """「既定に戻す」はお気に入りの 2 つの上書きを外し、お気に入りの登録は残す（正常系）。"""
+    # 準備
+    seed_prefs(page, {"favorites": ["D-1"], "favoritesFirst": False, "favoritesOnly": True})
+    _open(page, spa_preview)
+    # 実行
+    _panel(page).get_by_role("button", name="既定に戻す").click()
+    # 検証
+    prefs = _prefs(page)
+    assert prefs.get("favoritesFirst") is None
+    assert prefs.get("favoritesOnly") is None
+    assert prefs.get("favorites") == ["D-1"]

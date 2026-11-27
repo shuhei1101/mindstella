@@ -107,6 +107,15 @@ states:
         value: 'false'
       - name: overrides
         value: '["1 文字のショートカット"]'
+  - name: FavoritesOverridden
+    description: 「お気に入りを一番上にする」をオフ、「お気に入りだけを表示する」をオンにした。区画「お気に入り」のチェックを切り替え、変えている項目に 2 つの名前と「既定に戻す」を出す
+    args:
+      - name: favoritesFirst
+        value: 'false'
+      - name: favoritesOnly
+        value: 'true'
+      - name: overrides
+        value: '["お気に入りを一番上にする", "お気に入りだけを表示する"]'
 lead: トップバーの「表示の設定」で左から出すパネルの中身。表示する種類と、区画「詳細に表示するもの」の差分のミニマップとセクションの折りたたみを選ばせ、この端末で変えている項目と「既定に戻す」、線で区切った下に「ワークスペースの既定にする」を出す。差分のミニマップ・セクションの折りたたみは変えている項目・既定に戻すの対象にだけ含める。枠と開閉はコメントの一覧と同じ左のパネルを使う。
 args:
   - name: visibleKinds
@@ -171,6 +180,16 @@ args:
     default: 'true'
     description: 今当てている修飾キーの無い 1 文字のショートカット（一覧の並びの前後の `j`・`k`）を使用するか。区画「コメントの入力」の下の区画「キーボード」に、チェックボックス 1 行「1 文字のショートカットを使用する」で出す。ワークスペースの既定は持たず、「ワークスペースの既定にする」を出すかの比べには使わない
     status: planned
+  - name: favoritesFirst
+    type: 真偽値
+    required: false
+    default: 'true'
+    description: 区画「お気に入り」の「お気に入りを一番上にする」のチェック。一番上に並べるのはカードの一覧だけで、区画の下にそのことを記載した説明を置き、チェックの `aria-describedby` で指す
+  - name: favoritesOnly
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 区画「お気に入り」の「お気に入りだけを表示する」のチェック
 events:
   - name: 表示する種類を変える
     when: 種類のチェックか「すべて」を付け外ししたとき
@@ -204,6 +223,14 @@ events:
     when: 「1 文字のショートカットを使用する」のチェックを付け外ししたとき
     value: '`onSingleKeyShortcutsChange(enabled)`（切り替えた後の真偽値）'
     description: '使用する側が、オフのときは個人の上書き `single_key_shortcuts: false` として残し、オンのときは上書きを外す。その場でキーの受け付けを切り替え、履歴には積まない'
+  - name: お気に入りを一番上にするを切り替える
+    when: 「お気に入りを一番上にする」のチェックを切り替えたとき
+    value: '`onFavoritesFirstChange(value)`'
+    description: 使う側が端末の保存領域に書く（オンは上書きを外し、オフだけを上書きとして残す）。「この端末で変えている項目」には「お気に入りを一番上にする」と出し、「ワークスペースの既定にする」の対象には含めない
+  - name: お気に入りだけを表示するを切り替える
+    when: 「お気に入りだけを表示する」のチェックを切り替えたとき
+    value: '`onFavoritesOnlyChange(value)`'
+    description: 使う側が端末の保存領域に書く（オンだけを上書きとして残す）。「この端末で変えている項目」には「お気に入りだけを表示する」と出し、「ワークスペースの既定にする」の対象には含めない
 accessibility:
   - 表示する種類は凡例「表示する種類」の `fieldset` の中のチェックボックスにする。「すべて」の途中の状態は `indeterminate` で示す
   - 知らせは `role="status"`、端末に保存できないことは `role="alert"` で読み上げに伝える

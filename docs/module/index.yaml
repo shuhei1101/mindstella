@@ -474,3 +474,9 @@ items:
     summary: プレビュー / record-ids
   - page: MOD-701-3.ts.yaml
     summary: プレビュー / use-record-lookup
+  - page: MOD-721-1.ts.yaml
+    summary: プレビュー / favorites
+  - page: MOD-721-2.ts.yaml
+    summary: プレビュー / use-favorites
+  - page: MOD-721-3.tsx.yaml
+    summary: プレビュー / favorite-toggle

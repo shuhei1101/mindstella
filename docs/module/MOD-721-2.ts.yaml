@@ -1,0 +1,29 @@
+id: MOD-721-2
+title: プレビュー / use-favorites
+lead: お気に入りと、その並び・絞り込みの上書きを端末の保存領域から参照し、登録・解除する。
+functions:
+  - name: useFavorites
+    title: お気に入りの購読
+    kind: フック
+    container: frontend/src/shared/hooks/use-favorites.ts
+    usecase: 項目をお気に入りにする
+    summary: '`usePrefs` の `favorites`・`favoritesFirst`・`favoritesOnly` から `ids`（`Set`）・`first`（`favoritesFirst` が `false` でなければ真）・`only`（`favoritesOnly` が `true` のときだけ真）を返却する。`toggle(id)` は `readPrefs().favorites` に `toggleFavorite` を適用して `writePrefs` し、`clearOnly()` は `favoritesOnly` を `null` で書き込む'
+    args: []
+    returns:
+      type: Favorites
+      description: '`{ids, first, only, toggle, clearOnly}`'
+    unit_tests:
+      - name: test_use_favorites
+        case: 正常
+        summary: 保存領域の値と既定
+        condition: '`parametrize`: 保存領域が空 / `favorites: [D-1]`・`favoritesFirst: false`・`favoritesOnly: true`'
+        mock: '`localStorage`'
+        expected: '`ids` が空・`first` 真・`only` 偽 / `ids` が `{D-1}`・`first` 偽・`only` 真'
+      - name: test_use_favorites_when_toggle
+        case: 正常
+        summary: 登録・解除と絞り込みの解除を書き込む
+        condition: "`toggle('D-2')` を 2 回、`favoritesOnly: true` で `clearOnly()`"
+        mock: '`localStorage`'
+        expected: 1 回目の後に `favorites` が `[D-2]`、2 回目の後に `[]`。`clearOnly` の後に `favoritesOnly` が `null` で、ほかの項目は残る
+notes:
+  単体テスト: 同じフォルダの `use-favorites.test.ts` に配置する（knowledge の規約『フォルダ構成』）

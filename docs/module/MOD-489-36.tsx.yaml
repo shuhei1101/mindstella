@@ -32,3 +32,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `docs-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   並べ替えと一覧の並び: '表示形式の切り替えの右に `CardSort`（モジュール構成『card-sort』）をカード・ボードの表示のときだけ配置し、`value` は `cardSortFromParam(sort, INITIAL_CARD_SORT.docs)`、`onChange` は `cardSortToParam` の値で `setSort`（履歴に積む）を呼ぶ。カード・ボード・表が描いた並びを `useListOrderStore` の `setOrders` で置き換え、項目を開くときは `openItem(id, {fromList: true})` を呼ぶ。画面を離れるときに `clear` する（#186・#364）'
+  お気に入り: 一覧の画面の枠から受けた `favorites`・`favoritesFirst`・`onToggleFavorite` を、カードの一覧（`DocCards`）とボードのカード（`DocCard` の `favorite`）へ指定する。ストーリーに画面設計のお気に入りの状態（`FavoritesFirst`・`FavoritesOnly` など）を追加する

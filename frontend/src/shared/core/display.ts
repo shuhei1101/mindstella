@@ -15,6 +15,10 @@ const REVIEW_ORDER_LABEL = "コメントの並び";
 export const FOCUS_AFTER_ADD_LABEL = "レビューに追加した後のフォーカス";
 export const SINGLE_KEY_SHORTCUTS_LABEL = "1 文字のショートカット";
 
+/** 区画「お気に入り」の項目の名前 */
+export const FAVORITES_FIRST_LABEL = "お気に入りを一番上にする";
+export const FAVORITES_ONLY_LABEL = "お気に入りだけを表示する";
+
 /** 表示する種類を、外した種類の名前で書く（全て出すときは「すべて表示」） */
 export const kindsText = (kinds: ReadonlySet<Kind>): string => {
   const hidden = KIND_KEYS.filter((kind) => !kinds.has(kind)).map((kind) => KIND_LABEL[kind]);
@@ -38,10 +42,12 @@ export const overrideNames = ({ prefs, theme }: { prefs: Prefs; theme: Theme | n
     ...(prefs.reviewOrder === "oldest" ? [REVIEW_ORDER_LABEL] : []),
     ...(prefs.focusAfterAdd === "input" || prefs.focusAfterAdd === "none" ? [FOCUS_AFTER_ADD_LABEL] : []),
     ...(prefs.singleKeyShortcuts === false ? [SINGLE_KEY_SHORTCUTS_LABEL] : []),
+    ...(prefs.favoritesFirst === false ? [FAVORITES_FIRST_LABEL] : []),
+    ...(prefs.favoritesOnly === true ? [FAVORITES_ONLY_LABEL] : []),
   ];
 };
 
-/** 既定に戻した保存領域の値（`diffSel`・`commentsPinned`・`commentFormClosed` と知らない項目は残し、渡した値は変えない） */
+/** 既定に戻した保存領域の値（`diffSel`・`commentsPinned`・`commentFormClosed`・`favorites` と知らない項目は残し、渡した値は変えない） */
 export const resetPrefs = (prefs: Record<string, unknown>): Record<string, unknown> => ({
   ...prefs,
   theme: null,
@@ -53,6 +59,8 @@ export const resetPrefs = (prefs: Record<string, unknown>): Record<string, unkno
   focusAfterAdd: null,
   singleKeyShortcuts: null,
   sectionFold: null,
+  favoritesFirst: null,
+  favoritesOnly: null,
 });
 
 /** ワークスペースの既定（表示する種類は無ければ全ての種類） */

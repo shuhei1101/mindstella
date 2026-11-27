@@ -1,0 +1,25 @@
+confirmations:
+  - topic: '#353 お気に入りの画面のモック'
+    decision: カード・ボードのカードの右上に星のボタンを配置し、カードの一覧ではお気に入りを先頭に並べ、ボードは星だけ、表は一番左の星の列で並べ替える。表示の設定に区画「お気に入り」を追加し、「お気に入りを一番上にする」（既定オン、カードの一覧だけ）・「お気に入りだけを表示する」（既定オフ、カード・ボード・表）を切り替える（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 7f934efb
+    thread: https://github.com/shuhei1101/mindstella/pull/721#discussion_r4715766292
+  - topic: '#353 表の星の列の見出しの文言'
+    decision: 見出しに「お気に入り」の文字を出す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 7f934efb
+    thread: https://github.com/shuhei1101/mindstella/pull/721#discussion_r4715766735
+  - topic: '#353 お気に入りだけで絞り込んでいる間のチップの文言'
+    decision: チップの文言を「お気に入りのみ」にする（ユーザーの返信で推奨案 A の「お気に入りだけ」から変更）
+    decided_by: reply
+    approver: shuhei1101
+    commit: 203157a5
+    thread: https://github.com/shuhei1101/mindstella/pull/721#discussion_r4715767202
+  - topic: '#353 お気に入りの置き場所'
+    decision: プレビューの端末の保存領域（表示の個人の上書きと同じ場所）に、ワークスペースごとの項目の ID の並びで持つ（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 7f934efb
+    thread: https://github.com/shuhei1101/mindstella/pull/721#discussion_r4715767526

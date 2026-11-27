@@ -49,3 +49,15 @@ describe("DocCards", () => {
     expect(onOpen).toHaveBeenCalledWith("A-3", ["A-2", "A-3", "A-1"]);
   });
 });
+
+describe("DocCards favorites", () => {
+  // お気に入りが先頭で、それぞれの中は更新日時の新しい順（正常系）
+  test("doc_cards_when_favorites", () => {
+    // 実行
+    const { container } = render(<DocCards {...props({ favorites: new Set(["A-1", "A-3"]), favoritesFirst: true, onToggleFavorite: vi.fn() })} />);
+    // 検証
+    const cards = [...container.querySelectorAll<HTMLElement>("[data-card]")];
+    expect(cards.map((card) => card.dataset["card"])).toEqual(["A-3", "A-1", "A-2"]);
+    expect(screen.getAllByRole("button", { name: /をお気に入りに登録$/ })).toHaveLength(3);
+  });
+});

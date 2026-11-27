@@ -1,0 +1,96 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリへの変更のため
+    updated_by: planner
+    updated_at: '2026-11-27T03:58:41.443551+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 変更する箇所の設計書が既にあるため
+    updated_by: planner
+    updated_at: '2026-11-27T03:58:41.443551+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではないため
+    updated_by: planner
+    updated_at: '2026-11-27T03:58:41.443551+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: '圧縮の後の SessionStart（source: compact）の再開の注入は既に動いており、未検証の技術機構に依存しないため'
+    updated_by: planner
+    updated_at: '2026-11-27T03:58:41.443551+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: SC-489-51 は表示する種類を 2 人が別々に変える交差点で、表示の設定の項目ごとの変え方は単一ユースケースの E2E で確かめると定めているため、お気に入りの切り替えを足しても連鎖は変わらない。SC-489-52 が使う再起動は利用上限の契機だけで、圧縮の契機を参照する複合ユースケースは無い
+    updated_by: planner
+    updated_at: '2026-11-27T04:03:12.094909+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: デザイン方針（docs/design-policy.mark.md）があり、お気に入りの星は見た目の方向を変えないため
+    updated_by: planner
+    updated_at: '2026-11-27T03:58:41.443551+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の追加・削除と画面遷移の変更が無いため
+    updated_by: planner
+    updated_at: '2026-11-27T03:58:41.443551+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T04:09:08.589968+00:00'
+  - process: モック作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T04:50:39.676364+00:00'
+  - process: データ設計
+    status: done
+    note: '#709: 設定 CFG-489-1 から MINDSTELLA_LAUNCH_REASON を削除。#353: お気に入りは端末の保存領域（確認ログで決定）で、ワークスペースの記録・設定は変えない。キーはインターフェース定義『プレビューを開く』の制約「端末の保存領域」で定める'
+    updated_by: planner
+    updated_at: '2026-11-27T04:51:38.906676+00:00'
+  - process: インターフェース定義設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T04:57:45.628462+00:00'
+  - process: エージェント・MCP サーバー設計
+    status: skipped
+    reason: エージェント・MCP サーバーを追加・変更しないため（フックは既存のインターフェース定義の修正で扱う）
+    updated_by: planner
+    updated_at: '2026-11-27T03:58:41.443551+00:00'
+  - process: エージェントフロー・LLM 呼び出し設計
+    status: skipped
+    reason: エージェントフローと LLM の呼び出しを変えないため
+    updated_by: planner
+    updated_at: '2026-11-27T03:58:41.443551+00:00'
+  - process: 精度評価設計
+    status: skipped
+    reason: LLM・意思決定モデルのノードを変えないため
+    updated_by: planner
+    updated_at: '2026-11-27T03:58:41.443551+00:00'
+  - process: 部品設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:11:48.945716+00:00'
+  - process: 画面設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:11:48.945716+00:00'
+  - process: モジュール構成設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:23:03.276143+00:00'
+  - process: ドキュメント修正
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:48.763076+00:00'
+  - process: 単体テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:39:50.021725+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:46:58.900960+00:00'
+  - process: 結合テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T06:40:15.573086+00:00'

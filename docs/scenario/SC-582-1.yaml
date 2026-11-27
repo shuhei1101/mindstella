@@ -1,6 +1,6 @@
 id: SC-582-1
 title: MindStella のセッションを再起動する
-lead: MindStella のセッションが利用上限に達した・使用中のアカウントの利用枠がしきい値以上になった・圧縮を止めた・落ちた後にコメントが届いた・再起動を依頼されたときに、常駐サーバーが MindStella のセッションを止めて同じ MindStella のセッションの ID のまま再起動し、契機に応じて前の会話を引き継ぐ単一ユースケース。
+lead: MindStella のセッションが利用上限に達した・使用中のアカウントの利用枠がしきい値以上になった・落ちた後にコメントが届いた・再起動を依頼されたときに、常駐サーバーが MindStella のセッションを止めて同じ MindStella のセッションの ID のまま再起動し、契機に応じて前の会話を引き継ぐ単一ユースケース。
 issue: 520
 primary_actor: 常駐サーバー
 stakeholders:
@@ -8,13 +8,13 @@ stakeholders:
     interest: アカウントが利用上限に達しても、利用上限で応答が途中で止まる前に別のアカウントへ切り替わり、MindStella のセッションが落ちても、リセットや起動のコマンドを待たずに同じ会話の続きから話し合いを続けられる。アカウントを指定して起動した MindStella のセッションは、再起動しても指定したアカウントのまま続き、指定したアカウントが利用上限に達するかしきい値以上になったときだけ、設定に従って指定を解除して別のアカウントへ切り替わる。再起動できないときは理由が分かり、送信したコメントが消えない
   - name: 外部のアプリ
     interest: MindStella のセッションの ID が再起動で変わらず、再起動の途中・失敗の理由を API で確かめられる
-trigger: StopFailure のフックが利用上限を送信する・常駐サーバーが一定の間隔で確かめた使用中のアカウントの利用枠がしきい値以上になる・PreCompact のフックが再起動を依頼する・MindStella のセッションが無いワークスペースへコメントが届く・外部のアプリが再起動を依頼する（`POST /workspaces/{id}/sessions/{session}/restart`）
+trigger: StopFailure のフックが利用上限を送信する・常駐サーバーが一定の間隔で確かめた使用中のアカウントの利用枠がしきい値以上になる・MindStella のセッションが無いワークスペースへコメントが届く・外部のアプリが再起動を依頼する（`POST /workspaces/{id}/sessions/{session}/restart`）
 preconditions:
   - MindStella のセッションが、単一ユースケース『外部のアプリから起動する』か『端末から起動する』で一度起動している
   - ワークスペースがクローズ待ちでもクローズ済みでもない
-success_guarantee: MindStella のセッションが同じ MindStella のセッションの ID のまま起動中に戻り、状態に新しい Claude Code の `session_id` が記録されている。利用上限・しきい値・落ちた後のコメント・再起動の依頼では前の会話を引き継ぎ、圧縮では新規の会話で再起動する。再起動の前に届いていたコメントは、再起動した MindStella のセッションに取り込み待ちとして届く。
+success_guarantee: MindStella のセッションが同じ MindStella のセッションの ID のまま起動中に戻り、状態に新しい Claude Code の `session_id` が記録されている。前の会話を引き継いで再起動する。再起動の前に届いていたコメントは、再起動した MindStella のセッションに取り込み待ちとして届く。
 minimal_guarantee: 再起動に失敗しても、届いたコメントは取り込み待ちのスレッドに残り、失敗した段階と理由が状態に記録されて『MindStella のセッションの一覧』で分かる。再起動の途中に失敗したときは、起動したプロセスを止めて tmux のペインを閉じる。しきい値の契機は、止める前に切り替え先のアカウントが無いと分かったときと利用枠を確かめられないときに止めず、今のアカウントで続ける。指定の解除をオフにした MindStella のセッションは、指定したアカウント以外では再起動しない。
-frequency: 利用上限・しきい値・圧縮・落ちた後のコメント・再起動の依頼のたびに 1 回
+frequency: 利用上限・しきい値・落ちた後のコメント・再起動の依頼のたびに 1 回
 priority: 高
 scenarios:
   - name: 正常シナリオ（利用上限）
@@ -56,40 +56,6 @@ scenarios:
       - Webhook の Mock が、止まった理由「利用上限」の通知を 1 件だけ受けている
       - 取り込み待ちのスレッドが残っている
     test: test_normal_when_rate_limited
-  - name: 正常シナリオ（圧縮）
-    setup:
-      - name: Mock
-        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（引数と環境変数を記録し、SessionStart のフックを叩いて待ち、PreCompact のフックを叩いた後、`/exit` が貼られたら SessionEnd のフックを叩いて終わる）
-      - name: 常駐サーバー
-        description: 正常シナリオ（利用上限）と同じ
-      - name: tmux
-        description: 正常シナリオ（利用上限）と同じ
-      - name: ワークスペース
-        description: MindStella のセッションが起動中
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant CC as MindStella のセッション
-        participant HK as フック
-        participant MGR as セッションの管理
-        participant CB as claude-balancer
-
-        CC->>HK: PreCompact
-        HK->>MGR: 再起動を依頼する
-        HK-->>CC: 圧縮を止める
-        MGR->>MGR: 状態を再起動の途中にする
-        MGR->>CC: 止めて tmux のペインを閉じる
-        MGR->>CB: 起動の契機「圧縮」を環境変数に入れ、新規の会話で exec を起動する
-        CB->>CC: Claude Code を起動する
-        CC->>HK: SessionStart（startup）
-        HK-->>CC: 起動の契機が圧縮なので、再開として再開の状況を注入する
-      ```
-    expected:
-      - PreCompact のフックの出力が圧縮を止めている
-      - 2 回目に起動した Claude Code が `--resume` を受けておらず、起動の契機の環境変数が圧縮である
-      - 2 回目の SessionStart の注入が、起動ではなく再開の契機と再開の状況を持つ
-      - 『MindStella のセッションの一覧』が、同じ MindStella のセッションの ID を `running` で返す
-    test: test_normal_when_compacted
   - name: 正常シナリオ（落ちた後にコメントが届く）
     setup:
       - name: Mock
@@ -532,7 +498,7 @@ scenarios:
   - name: 正常シナリオ（指定したアカウントを借りられない間に再起動して指定を解除する）
     setup:
       - name: Mock
-        description: claude-balancer（`exec` で受けた引数を記録する。`--account` でアカウント A を受けると、貸せないとして子プロセスを起動せず終了コード 125 で終わり、標準エラーに理由を書く。`--account` が無ければ `--` の後のコマンドをアカウント B の `CLAUDE_CONFIG_DIR` で実行する）・Claude Code（PreCompact のフックを叩いた後、`/exit` が貼られたら SessionEnd のフックを叩いて終わる）
+        description: claude-balancer（`exec` で受けた引数を記録する。`--account` でアカウント A を受けると、貸せないとして子プロセスを起動せず終了コード 125 で終わり、標準エラーに理由を書く。`--account` が無ければ `--` の後のコマンドをアカウント B の `CLAUDE_CONFIG_DIR` で実行する）・Claude Code（`/exit` が貼られたら SessionEnd のフックを叩いて終わる）
       - name: 常駐サーバー
         description: 正常シナリオ（利用上限）と同じ。mindstella のホームの設定は置かない（指定の解除は既定のオン）
       - name: tmux
@@ -542,13 +508,12 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
+        participant APP as 外部のアプリ
         participant CC as MindStella のセッション
-        participant HK as フック
         participant MGR as セッションの管理
         participant CB as claude-balancer
 
-        CC->>HK: PreCompact
-        HK->>MGR: 再起動を依頼する
+        APP->>MGR: 再起動を依頼する（POST /workspaces/{id}/sessions/{session}/restart）
         MGR->>CC: 止めて tmux のペインを閉じる
         MGR->>CB: 指定したアカウント A で exec を起動する（--account A）
         CB-->>MGR: 終了コード 125（アカウント A を貸せない）
@@ -574,13 +539,12 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
+        participant APP as 外部のアプリ
         participant CC as MindStella のセッション
-        participant HK as フック
         participant MGR as セッションの管理
         participant CB as claude-balancer
 
-        CC->>HK: PreCompact
-        HK->>MGR: 再起動を依頼する
+        APP->>MGR: 再起動を依頼する（POST /workspaces/{id}/sessions/{session}/restart）
         MGR->>CC: 止めて tmux のペインを閉じる
         MGR->>CB: 指定したアカウント A で exec を起動する（--account A）
         CB-->>MGR: 終了コード 125（アカウント A を貸せない）
@@ -604,7 +568,6 @@ notes:
     | --- | --- | --- |
     | 利用上限 | 前の会話を引き継ぐ（`--resume`） | 利用上限に達したアカウントは claude-balancer の貸与の判定で除外される |
     | しきい値 | 前の会話を引き継ぐ（`--resume`） | しきい値以上のアカウントは claude-balancer の貸与の判定で除外される。切り替え先のアカウントが無ければ再起動しない |
-    | 圧縮 | 新規の会話 | 指定しない |
     | 落ちた・無操作の上限で止めた後のコメント | 前の会話を引き継ぐ | `--resume` で claude-balancer が前回のアカウントを優先する |
     | 再起動の依頼 | 前の会話を引き継ぐ | `--resume` で claude-balancer が前回のアカウントを優先する |
 

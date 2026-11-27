@@ -96,7 +96,7 @@ files:
     type: implements
 - path: hooks/hooks.json
   name: フックの登録
-  description: 会話の始まりにスレッドを未読へ戻して常駐サーバーを起動するフックと、mindstella のツールの呼び出しにセッションの値を入れるフックを登録する。PreCompact では圧縮を止めて常駐サーバーへ再起動を依頼するフックを登録する。SessionStart・PreToolUse・PreCompact のフックで動かすスクリプトを変更するときに読む。
+  description: 会話の始まりにスレッドを未読へ戻して常駐サーバーを起動するフックと、mindstella のツールの呼び出しにセッションの値を入れるフックを登録する。SessionStart・PreToolUse のフックで動かすスクリプトを変更するときに読む。
   tags:
   - tool:claude-code
   - topic:フック

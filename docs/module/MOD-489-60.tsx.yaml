@@ -30,3 +30,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `board.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   日時と並べ替え: '`ItemCard` は種類・状態の行の次に `ItemDates`（モジュール構成『item-dates』）を描く。`Board` は `sort` を受け、各列の中を `sortRows` で並べる。カードを押して開くときは、開いたカードの列の描いた並びの ID を `onOpen(id, order)` で使用する側へ知らせる（#186・#364）。単体テストに `test_board_when_sorted`（`sort=-updated` で列の中が更新日時の新しい順）・`test_board_when_open_order`（カードを押すとその列の並びが渡る）を追加する'
+  お気に入りの星: '`ItemCard` は `favorite`（`{on, onToggle}`）を受け、指定されたときだけ部品『お気に入りの星』をカードの右上に配置し（タイトルの `::after` より前面）、カードの右の余白を星の分だけ広げる。タイトルは長い英単語でも折り返す（`wrap-anywhere`）。ストーリーに部品設計の `FavoriteOff`・`FavoriteOn`・`FavoriteLongTitle` を追加し、単体テスト `test_item_card_when_favorite`（星を押すと `onToggle` だけが呼ばれ `onOpen` は呼ばれない）を追加する'

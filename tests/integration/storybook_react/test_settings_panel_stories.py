@@ -239,3 +239,20 @@ def test_single_key_shortcuts_off(open_story: OpenStory) -> None:
     assert "1 文字のショートカット" in text
     assert "既定に戻す" in _buttons(page)
     assert "表示する種類は、ワークスペースの既定と同じです。" in text
+
+
+def test_favorites_overridden(open_story: OpenStory) -> None:
+    """区画「お気に入り」の 2 つを既定と逆にした。チェックが切り替わり、変えている項目に 2 つの名前と「既定に戻す」を出す（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "favorites-overridden")
+    section = page.get_by_role("group", name="お気に入り")
+    first = section.get_by_role("checkbox", name="お気に入りを一番上にする")
+    only = section.get_by_role("checkbox", name="お気に入りだけを表示する")
+    # 検証
+    assert first.is_checked() is False
+    assert only.is_checked() is True
+    assert first.evaluate("(box) => document.getElementById(box.getAttribute('aria-describedby')).textContent") == "一番上に並べるのはカードの一覧だけで、ボードと表の並びは変えません。"
+    over = page.inner_text(f"{PANEL} [data-part=over] > span:last-child")
+    assert "お気に入りを一番上にする" in over
+    assert "お気に入りだけを表示する" in over
+    assert "既定に戻す" in _buttons(page)

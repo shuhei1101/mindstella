@@ -8,6 +8,7 @@ from playwright.sync_api import Page, expect
 from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview
 from preview_spa_helpers import open_spa
+from preview_favorites_helpers import assert_card_star_toggles, assert_favorites_only_chip, assert_star_column, seed_prefs
 from workspace_fixtures import MakeEdit, MakeItem
 from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_described, assert_tip
 
@@ -117,7 +118,7 @@ def test_table_visible(page: Page, spa_preview: str) -> None:
     # 検証
     expect(page.get_by_role("table")).to_be_visible()
     expect(page.get_by_role("region", name="進行中")).to_have_count(0)
-    expect(page.get_by_role("button", name="画面を作る")).to_be_visible()
+    expect(page.get_by_role("button", name="画面を作る", exact=True)).to_be_visible()
 
 
 def test_board_diff_mark_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:
@@ -466,3 +467,35 @@ def test_card_link_row_id_markers(page: Page, write_preview: WritePreview, make_
     assert_described(page, card.locator("button[data-id]"))
     marker.click()
     expect(page).to_have_url(re.compile(r"id=T-1"))
+
+
+# ─── お気に入り ───
+
+
+def test_favorite_star_on_board(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """ボードのカードの右上の星を押すと登録・解除し、カードは開かない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("T-1", title="星の項目"))
+    open_spa(page, url, "?tab=tasks&view=board")
+    # 実行・検証
+    assert_card_star_toggles(page, "T-1", "星の項目")
+
+
+def test_favorite_column_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """表の一番左に「お気に入り」の列を出し、見出しで並べ替える（正常系）。"""
+    # 準備
+    url = write_preview(make_item("T-1"), make_item("T-2"), make_item("T-3"))
+    seed_prefs(page, {"favorites": ["T-2"]})
+    open_spa(page, url, "?tab=tasks&view=table")
+    # 実行・検証
+    assert_star_column(page, "T-2")
+
+
+def test_favorites_only_chip_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """「お気に入りだけを表示する」の間はボードに「お気に入りのみ」のチップを出し、× で解除する（正常系）。"""
+    # 準備
+    url = write_preview(make_item("T-1"), make_item("T-2"))
+    seed_prefs(page, {"favorites": ["T-1"], "favoritesOnly": True})
+    open_spa(page, url, "?tab=tasks&view=board")
+    # 実行・検証
+    assert_favorites_only_chip(page, "T-1", "T-2")

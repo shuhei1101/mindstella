@@ -47,12 +47,18 @@ functions:
         condition: '`kinds`・`minimap: false`・`reviewOrder: ''oldest''`・`focusAfterAdd: ''none''`'
         mock: なし
         expected: 「表示する種類」「差分のミニマップ」「コメントの並び」「レビューに追加した後のフォーカス」
+      - name: test_override_names_when_favorites
+        case: 正常
+        summary: お気に入りの 2 つの上書き
+        condition: "`parametrize`: `favoritesFirst: false`・`favoritesOnly: true` / `favorites: ['D-1']` だけ"
+        mock: なし
+        expected: 「お気に入りを一番上にする」「お気に入りだけを表示する」 / 空
     container: frontend/src/shared/core/display.ts
   - name: resetPrefs
     title: 既定に戻した上書き
     kind: 関数
     usecase: 表示の設定を変える
-    summary: 表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・コメントの並び・「レビューに追加」の後のフォーカスを外す。`diffSel`・`commentsPinned`・`commentFormClosed` と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて再描画する
+    summary: 表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・コメントの並び・「レビューに追加」の後のフォーカス・お気に入りを先頭に並べるか（`favoritesFirst`）・お気に入りだけを表示するか（`favoritesOnly`）を外す。`diffSel`・`commentsPinned`・`commentFormClosed`・お気に入りの登録（`favorites`）と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて再描画する
     args:
       - name: prefs
         type: Record<string, unknown>

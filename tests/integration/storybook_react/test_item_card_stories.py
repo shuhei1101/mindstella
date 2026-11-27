@@ -20,6 +20,9 @@ STATES = (
     "shared-itemcard--dates",
     "shared-itemcard--dates-narrow",
     "shared-itemcard--title-id-markers",
+    "shared-itemcard--favorite-off",
+    "shared-itemcard--favorite-on",
+    "shared-itemcard--favorite-long-title",
 )
 
 
@@ -181,3 +184,38 @@ def test_title_id_marker_focus(open_story: OpenStory) -> None:
     # 検証
     expect(page.locator("button[data-id]")).to_be_focused()
     expect(page.locator(".term-tip")).to_contain_text("保存先の決め方")
+
+
+@pytest.mark.parametrize(
+    ("state", "pressed"),
+    [
+        pytest.param("shared-itemcard--favorite-off", "false", id="off"),
+        pytest.param("shared-itemcard--favorite-on", "true", id="on"),
+    ],
+)
+def test_favorite(open_story: OpenStory, state: str, pressed: str) -> None:
+    """カードの右上に星を出し、登録しているかを aria-pressed で示す（正常系）。"""
+    # 準備・実行
+    page = open_story(state)
+    # 検証
+    card = page.locator("[data-card]").first
+    star = card.locator("[data-favorite]")
+    expect(star).to_have_attribute("aria-pressed", pressed)
+    card_box = card.bounding_box()
+    star_box = star.bounding_box()
+    assert card_box is not None and star_box is not None
+    assert star_box["x"] + star_box["width"] <= card_box["x"] + card_box["width"]
+    assert star_box["x"] > card_box["x"] + card_box["width"] / 2
+    assert star_box["y"] - card_box["y"] < star_box["height"]
+
+
+def test_favorite_long_title(open_story: OpenStory) -> None:
+    """長いタイトルは星と重ならずに折り返す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-itemcard--favorite-long-title")
+    # 検証
+    card = page.locator("[data-card]").first
+    title = card.locator("button[data-id]").bounding_box()
+    star = card.locator("[data-favorite]").bounding_box()
+    assert title is not None and star is not None
+    assert title["x"] + title["width"] <= star["x"] + 1

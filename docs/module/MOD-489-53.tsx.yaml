@@ -25,3 +25,4 @@ components:
     container: frontend/src/features/tasks/tasks/tasks-screen.tsx
 notes:
   単体テスト: 同じフォルダの `tasks-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  お気に入り: 一覧の画面の枠から受けた `favorites`・`onToggleFavorite` で、ボードの `ItemCard` に `favorite` を指定する

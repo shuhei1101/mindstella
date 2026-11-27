@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn, userEvent, within } from "storybook/test";
 
 import { StatusMark } from "@/shared/components/icon";
-import { commonColumns } from "@/shared/components/list-columns";
+import { commonColumns, favoriteColumn } from "@/shared/components/list-columns";
 import { Table, type Row, type TableColumn } from "@/shared/components/table";
 import { sampleRecordLookup } from "@/testing/record-lookup";
 
@@ -159,3 +159,15 @@ export const SortedByUpdatedDesc: Story = { args: { columns: datetimeColumns, ro
 
 /** タイトルに記録にある D-1 と記録に無い D-99 を持つ行。D-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す */
 export const TitleIdMarkers: Story = { args: { rows: [{ id: "D-5", title: "D-1 の比較（D-99 は除く）", conf: "高", status: "未決定" }, ...rows.slice(1)] } };
+
+/** お気に入りの D-2 を持つ星の列 */
+const favoriteColumns: TableColumn[] = [favoriteColumn(new Set(["D-2"]), () => undefined), ...columns];
+
+/** 一番左の星の列。お気に入りの D-2 の星を塗り、ほかの行は線だけ。「列の表示」で外せない */
+export const FavoriteColumn: Story = { args: { columns: favoriteColumns } };
+
+/** 星の列で昇順。お気に入りの D-2 が先頭で、見出しの `aria-sort="ascending"` */
+export const FavoriteColumnSortedAsc: Story = { args: { columns: favoriteColumns, sort: { key: "favorite", dir: "asc" } } };
+
+/** 星の列で降順。お気に入りの D-2 が末尾で、見出しの `aria-sort="descending"` */
+export const FavoriteColumnSortedDesc: Story = { args: { columns: favoriteColumns, sort: { key: "favorite", dir: "desc" } } };

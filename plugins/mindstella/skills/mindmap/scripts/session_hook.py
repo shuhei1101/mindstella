@@ -3,7 +3,7 @@
 依存が揃う前のシステムの `python3` で起動するため、Python 3.8 で読める構文と標準ライブラリだけで書く。
 環境変数 `MINDSTELLA_SESSION` が無い通常のセッションでは何もしない。
 使い方（Claude Code がフックの入力の JSON を標準入力へ渡す）:
-python3 session_hook.py {session-start | session-end | prompt-submit | stop | stop-failure | pre-compact}
+python3 session_hook.py {session-start | session-end | prompt-submit | stop | stop-failure}
 """
 
 from __future__ import annotations
@@ -34,15 +34,7 @@ EVENTS = {
     "prompt-submit": "prompt_submit",
     "stop": "stop",
     "stop-failure": "stop_failure",
-    "pre-compact": "pre_compact",
 }
-
-# PreCompact で圧縮を止め、常駐サーバーが起動し直すことを伝える出力
-BLOCK_COMPACT = {"decision": "block", "reason": "[mindstella] 圧縮の代わりに起動し直します"}
-
-# 圧縮の契機で起動したことを示す環境変数とその値
-LAUNCH_REASON_ENV = "MINDSTELLA_LAUNCH_REASON"
-COMPACT_REASON = "compact"
 
 # MINDSTELLA_PORT が無いときのポート
 DEFAULT_PORT = 8784
@@ -86,9 +78,13 @@ def main(
     parser = argparse.ArgumentParser(
         description="MindStella のセッションの出来事を常駐サーバーへ送る"
     )
-    parser.add_argument("event", choices=sorted(EVENTS))
+    parser.add_argument("event")
     args = parser.parse_args(argv)
     raw = (sys.stdin if stdin is None else stdin).read()
+    # 知らない出来事（前のバージョンの hooks.json が登録した pre-compact など）: 終了コード 2 はフックの操作を止めるため、1 行だけ残して 0 で終える
+    if args.event not in EVENTS:
+        print(f"[mindstella] 知らない出来事のため送信しません（{args.event}）", file=sys.stderr)
+        return 0
     session_id = env.get("MINDSTELLA_SESSION")
     # 通常のセッション: 入力を読み捨てて何もしない
     if not session_id:
@@ -102,26 +98,15 @@ def main(
 
     body = _build_body(EVENTS[args.event], hook_input, env)
     port = _read_port(env)
-    sent = True
     try:
         send(port, session_id, body)
     except (OSError, ValueError) as error:
         # 常駐サーバーへ送れない: 会話を止めずに 1 行だけ残す
-        sent = False
         print(
             f"[mindstella] 常駐サーバーへ出来事を送信できません（{body['event']}）: {error}",
             file=sys.stderr,
         )
-    # 圧縮の前: 常駐サーバーが起動し直すので、送れたときだけ圧縮を止める
-    if body["event"] == "pre_compact":
-        if sent:
-            out.write(json.dumps(BLOCK_COMPACT, ensure_ascii=False))
-            out.flush()
-        return 0
     source = str(hook_input.get("source") or "")
-    # 圧縮の契機で起動し直した最初の起動: 再開として状況を引く
-    if source == "startup" and env.get(LAUNCH_REASON_ENV) == COMPACT_REASON:
-        source = COMPACT_REASON
     # SessionStart で fork でない: 再開の状況を注入する
     if body["event"] == "session_start" and source != "fork":
         _inject(out, port, session_id, source, env.get("MINDSTELLA_FLOW") or None, fetch, move)

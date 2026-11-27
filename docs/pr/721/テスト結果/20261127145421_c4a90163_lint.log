@@ -1,0 +1,5 @@
+# lint: c4a90163
+$ ruff check plugins tests
+All checks passed!
+exit=0
+（フロントは変更なし。前回の lint のログのとおり）

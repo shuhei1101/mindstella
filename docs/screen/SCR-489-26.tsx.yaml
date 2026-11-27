@@ -167,6 +167,33 @@ elements:
     status: planned
     introduced:
       pr: 325
+  - name: 星の列
+    kind: button
+    component: CMP-721-1#
+    args:
+      - name: title
+        value: その行の項目のタイトル
+      - name: on
+        value: 端末の保存領域の `favorites` にその行の ID があるか
+    position: 表 > 一番左の列
+    description: 表の一番左に見出し「お気に入り」の列を配置し（`favoriteColumn`。列の表示で外せない）、行ごとに星を出す。押すとその行の項目をお気に入りに登録・解除し、行の詳細は開かない。見出しを押すとほかの列と同じく昇順 → 降順 → 解除で並べ替え（`sort` の `favorite`）、昇順でお気に入りが先頭になる
+    io: 入力
+    visible_when: 常時
+  - name: お気に入りのみのチップ
+    kind: button
+    component: CMP-649-2#
+    args:
+      - name: filters
+        value: 絞り込みのドロワーの selected
+      - name: labels
+        value: 条件の列の名前
+      - name: onClearFavoritesOnly
+        value: 端末の保存領域の `favorites_only` の上書きを削除する
+    position: 表の上のチップの行の先頭
+    label: お気に入りのみ
+    description: 「お気に入りだけを表示する」で絞っていることを、絞り込みの条件のチップの先頭に出す。× と「すべて解除」で `favorites_only` の上書きを削除し、一覧を全ての項目で再描画する
+    io: 入力
+    visible_when: 端末の保存領域の `favorites_only` が真のとき
 lead: 調査・用語集・メモ・会話ログを表だけで見る画面。種類ごとに同じ画面を使い回す。
 notes:
   コメントのマーカーのモック: コメントのマーカーの見本は `docs/mock/pages/records/121/standard/index.html`

@@ -75,3 +75,26 @@ describe("focusAfterAddTarget", () => {
     expect(focusAfterAddTarget(prefs, coarse)).toBe(expected);
   });
 });
+
+describe("overrideNames favorites", () => {
+  // お気に入りの 2 つの上書き（正常系）
+  test.each([
+    { prefs: { favoritesFirst: false as const, favoritesOnly: true as const }, expected: ["お気に入りを一番上にする", "お気に入りだけを表示する"] },
+    { prefs: { favorites: ["D-1"] }, expected: [] },
+  ])("override_names_when_favorites $expected", ({ prefs, expected }) => {
+    // 実行と検証
+    expect(overrideNames({ prefs, theme: null })).toEqual(expected);
+  });
+});
+
+describe("resetPrefs favorites", () => {
+  // お気に入りの登録を残し、2 つの上書きを外す（正常系）
+  test("reset_prefs_when_favorites", () => {
+    // 実行
+    const result = resetPrefs({ favorites: ["D-1"], favoritesFirst: false, favoritesOnly: true });
+    // 検証
+    expect(result["favorites"]).toEqual(["D-1"]);
+    expect(result["favoritesFirst"] ?? null).toBeNull();
+    expect(result["favoritesOnly"] ?? null).toBeNull();
+  });
+});

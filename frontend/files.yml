@@ -1952,6 +1952,35 @@ files:
   description: カード・ボードの並べ替えの状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
   tags:
   - tool:react
+- path: src/shared/components/favorite-toggle.tsx
+  name: お気に入りの星
+  description: 押すと項目をお気に入りに登録・解除する星のボタン。カードの右上と表の星の列の星を変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-721-3
+    type: implements
+- path: src/shared/components/favorite-toggle.stories.tsx
+  name: お気に入りの星のストーリー
+  description: お気に入りの星の状態ごとのストーリー。ストーリーを追加・修正するときに参照する。
+  tags:
+  - tool:react
+- path: src/shared/core/favorites.ts
+  name: お気に入りの計算
+  description: お気に入りを先頭に並べる・お気に入りだけに絞る・登録と解除の計算。お気に入りの並びと絞り込みを変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-721-1
+    type: implements
+- path: src/shared/hooks/use-favorites.ts
+  name: お気に入りのフック
+  description: お気に入りと、その並び・絞り込みの上書きを端末の保存領域から参照し、登録・解除するフック。お気に入りの保存を変更するときに参照する。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-721-2
+    type: implements
 - path: src/shared/components/thread-title.tsx
   name: スレッドの見出しのタイトル
   description: スレッドの見出しのタイトルを、書き込みの並びが一番上のときは全文、スクロールした後は 1 行に省略して出す。見出しのタイトルの見せ方を変更するときに参照する。

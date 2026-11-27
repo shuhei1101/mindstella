@@ -29,6 +29,9 @@ STATES = (
     "shared-table--datetime-columns",
     "shared-table--sorted-by-updated-desc",
     "shared-table--title-id-markers",
+    "shared-table--favorite-column",
+    "shared-table--favorite-column-sorted-asc",
+    "shared-table--favorite-column-sorted-desc",
 )
 
 # 位置の比べで許す差（px）
@@ -316,3 +319,33 @@ def test_title_id_marker_not_raised(open_story: OpenStory) -> None:
     marker = page.locator("tbody [data-record-id='D-1']")
     # 検証
     assert marker.evaluate("e => getComputedStyle(e).zIndex") == "auto"
+
+
+def test_favorite_column(open_story: OpenStory) -> None:
+    """一番左に「お気に入り」の列を出し、登録した D-2 の行の星を塗る（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-table--favorite-column")
+    # 検証
+    first_cell = page.locator("tbody tr[data-id]").first.locator("td").first
+    expect(first_cell.locator("[data-favorite]")).to_have_count(1)
+    expect(page.get_by_role("columnheader", name="お気に入り")).to_be_visible()
+    expect(page.locator("tr[data-id='D-2'] [data-favorite]")).to_have_attribute("aria-pressed", "true")
+    other = page.locator("tbody tr[data-id]:not([data-id='D-2']) [data-favorite]").first
+    expect(other).to_have_attribute("aria-pressed", "false")
+
+
+@pytest.mark.parametrize(
+    ("state", "sort", "position"),
+    [
+        pytest.param("shared-table--favorite-column-sorted-asc", "ascending", 0, id="asc"),
+        pytest.param("shared-table--favorite-column-sorted-desc", "descending", -1, id="desc"),
+    ],
+)
+def test_favorite_column_sorted(open_story: OpenStory, state: str, sort: str, position: int) -> None:
+    """星の列の昇順でお気に入りが先頭、降順で末尾になり、見出しに aria-sort を付ける（正常系）。"""
+    # 準備・実行
+    page = open_story(state)
+    # 検証
+    expect(page.get_by_role("columnheader", name="お気に入り")).to_have_attribute("aria-sort", sort)
+    ids = page.evaluate(_ROW_IDS_JS)
+    assert ids[position] == "D-2"

@@ -68,3 +68,12 @@ const linkedIndex = buildIndex({ ...RECORDS, decisions: [...RECORDS.decisions, {
 
 /** タイトルに記録にある D-1 と記録に無い D-99、関係する項目のタイトルに D-1 を持つカード。D-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す */
 export const TitleIdMarkers: Story = { args: { index: linkedIndex, item: { ...task, title: "D-1 の比較（D-99 は除く）" }, links: ["D-2"] } };
+
+/** お気に入りに登録していないカード。右上に線だけの星を出す */
+export const FavoriteOff: Story = { args: { onSelectTag: fn(), favorite: { on: false, onToggle: fn() } } };
+
+/** お気に入りに登録したカード。右上に塗った星を出し、星を押すと `onToggle` だけが呼ばれる */
+export const FavoriteOn: Story = { args: { onSelectTag: fn(), favorite: { on: true, onToggle: fn() } } };
+
+/** 長いタイトルのお気に入りのカード。タイトルは星と重ならずに折り返す */
+export const FavoriteLongTitle: Story = { args: { favorite: { on: true, onToggle: fn() }, item: { ...task, title: "お気に入りに登録した項目のタイトルが長く、カードの幅の中で何行かに折り返すときの星との重なりを確かめる" } } };

@@ -56,6 +56,12 @@ functions:
         condition: '`singleKeyShortcuts: false` を書いて読む'
         mock: '`localStorage`'
         expected: '`readPrefs().singleKeyShortcuts` が `false`、ほかの項目は残る'
+      - name: test_write_prefs_when_favorites
+        case: 正常
+        summary: お気に入りと 2 つの上書きを書き込み、参照できる
+        condition: "`favorites: ['D-1']`・`favoritesFirst: false`・`favoritesOnly: true` を書き込んで参照する"
+        mock: '`localStorage`'
+        expected: '`readPrefs()` の 3 つの項目が書き込んだ値で、ほかの項目は残る'
     container: frontend/src/shared/stores/prefs-store.ts
   - name: readBodyScrolls
     title: 本文のスクロール位置の読み取り
@@ -158,6 +164,15 @@ stores:
       - name: singleKeyShortcuts
         type: false | null
         description: 1 文字のショートカットを使用しない上書き（インターフェース定義の `single_key_shortcuts`）。`null` は使用する
+      - name: favorites
+        type: string[] | null
+        description: お気に入りに登録した項目の ID（キーがワークスペースごとのため、そのワークスペースの項目だけ）。登録した順
+      - name: favoritesFirst
+        type: false | null
+        description: カードの一覧でお気に入りを先頭に並べない上書き（インターフェース定義の `favorites_first`）。`null` は先頭に並べる
+      - name: favoritesOnly
+        type: true | null
+        description: お気に入りの項目だけを表示する上書き（インターフェース定義の `favorites_only`）。`null` は全ての項目を表示する
     container: frontend/src/shared/stores/prefs-store.ts
 notes:
   単体テスト: 同じフォルダの `prefs-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

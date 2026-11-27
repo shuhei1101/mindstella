@@ -3,6 +3,7 @@ import { useRef, type MouseEvent, type PointerEvent, type ReactNode, type RefCal
 
 import { CommentMark } from "@/shared/components/comment-mark";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
+import { FavoriteToggle } from "@/shared/components/favorite-toggle";
 import { ItemDates } from "@/shared/components/item-dates";
 import { StatusMark } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
@@ -159,9 +160,11 @@ export type ItemCardProps = {
   onOpen: (id: string) => void;
   /** 渡すとタグを並べ、押したタグを絞り込みに加える */
   onSelectTag?: (name: string) => void;
+  /** 渡すとカードの右上に星を配置し、押すとお気に入りに登録・解除する */
+  favorite?: { on: boolean; onToggle: () => void };
 };
 
-export const ItemCard = ({ index, lookup, item, meta, links, selected, marks, comments, edit, onOpen, onSelectTag }: ItemCardProps) => {
+export const ItemCard = ({ index, lookup, item, meta, links, selected, marks, comments, edit, onOpen, onSelectTag, favorite }: ItemCardProps) => {
   const mark = marks?.[item.id];
   const pending = edit?.marks[item.id];
   const count = comments[item.id] ?? 0;
@@ -170,8 +173,9 @@ export const ItemCard = ({ index, lookup, item, meta, links, selected, marks, co
   const linkIdsId = (id: string): string => `card-ids-${item.id}-${id}`;
   return (
     // カードの中にタグのボタンを置くため、外枠は div にし、タイトルのボタンの ::after をカード全体へ広げる
-    <div data-card={item.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-2 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && "border-mark bg-row-selected", pending === "remove" && "opacity-60")}>
-      <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} aria-describedby={[titleIdsId, ...links.map(linkIdsId)].join(" ")} className="cursor-pointer text-left text-small font-medium outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(item.id); }}>
+    <div data-card={item.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-2 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && "border-mark bg-row-selected", pending === "remove" && "opacity-60", favorite !== undefined && "pr-9")}>
+      {favorite === undefined ? null : <FavoriteToggle title={item.title} on={favorite.on} onToggle={favorite.onToggle} className="absolute top-1.5 right-1.5" />}
+      <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} aria-describedby={[titleIdsId, ...links.map(linkIdsId)].join(" ")} className="min-w-0 cursor-pointer text-left text-small font-medium wrap-anywhere outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(item.id); }}>
         <RecordText text={item.title} mode="marker" lookup={lookup} descriptionId={titleIdsId} />
       </button>
       <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">

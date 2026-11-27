@@ -1,0 +1,13 @@
+# 単体テスト（全 pass）: カードのマーカーの修正の後（86143642、実装の修正 1099289d）
+$ npx vitest run
+      Tests  636 passed (636)
+   Start at  15:34:54
+   Duration  29.53s (environment 45%, tests 28%, import 14%, setup 8%, transform 4%, worker 1%)
+
+Environment  jsdom was created 119 times · 82.89s total, 45% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit=0
+
+（Python の単体テストは c4a90163 以降に変更なし: 20261127145421_c4a90163_単体テスト.log）

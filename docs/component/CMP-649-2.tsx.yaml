@@ -34,6 +34,10 @@ events:
     when: チップの × か「すべて解除」を押したとき
     value: '`onFilter(filters)`（引数は解除した後の条件）'
     description: 使う側が条件を変えて一覧と絞り込みのドロワーを再描画する。サーバーの配信では、解除した後の条件をそのタブの保存領域に残す
+  - name: お気に入りだけの表示の解除
+    when: 「お気に入りのみ」のチップの × か「すべて解除」を押したとき（`onClearFavoritesOnly` を渡したときだけチップを先頭に出す）
+    value: '`onClearFavoritesOnly()`'
+    description: 使う側が端末の保存領域の `favorites_only` の上書きを削除して一覧を再描画する
 states:
   - name: TagMatchAll
     description: '状態とタグ 2 つで絞り、タグの組み合わせ方は既定の「すべて含む」。タグのチップは「タグ: {名前}」'
@@ -56,7 +60,15 @@ states:
         value: '{"status": ["未着手"]}'
       - name: tagExprText
         value: '「画面」を含む かつ 「廃止」を含まない'
+  - name: FavoritesOnly
+    description: 「お気に入りだけを表示する」をオンにした。先頭に「お気に入りのみ」のチップを出し、× と「すべて解除」で解除する
+  - name: FavoritesOnlyWithStatus
+    description: 「お気に入りだけを表示する」と状態の条件を重ねた。「お気に入りのみ」を先頭に、状態のチップを後ろに並べる
+    args:
+      - name: filters
+        value: '{"status": ["未着手"]}'
 accessibility:
   - 'チップの × に `{列}: {値} の条件を解除` の読み上げ名を付ける（タグの組み合わせ方が any のときは列の名前をチップと同じ「タグ（どれかを含む）」にする）'
+  - 「お気に入りのみ」のチップの × に `お気に入りのみ の条件を解除` の読み上げ名を付ける
 refs:
   - CMP-489-48#

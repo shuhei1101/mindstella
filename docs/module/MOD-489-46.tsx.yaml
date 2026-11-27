@@ -38,3 +38,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `settings-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   キーボード: 区画「コメントの入力」の下に凡例「キーボード」の `fieldset` を置き、`singleKeyShortcuts` のチェックボックス「1 文字のショートカットを使用する」と説明を描き、切り替えを `onSingleKeyShortcutsChange` で知らせる（#364）
+  お気に入り: 区画「キーボード」の下に凡例「お気に入り」の `fieldset` を配置し、`favoritesFirst`（既定は真）のチェックボックス「お気に入りを一番上にする」と `favoritesOnly`（既定は偽）の「お気に入りだけを表示する」を描き、切り替えを `onFavoritesFirstChange`・`onFavoritesOnlyChange` で知らせる。一番上に並べるのはカードの一覧だけであることの説明を、「お気に入りを一番上にする」の `aria-describedby` にする。ストーリーに部品設計の `FavoritesOverridden` を追加する

@@ -94,7 +94,6 @@ EVENT_NAMES = (
     "prompt_submit",
     "stop",
     "stop_failure",
-    "pre_compact",
 )
 
 # 起動し直しで /exit を貼ってから tmux のセッションが閉じるまで待つ秒数（非機能要件『起動し直しで exec の終了を待つ上限』）
@@ -106,14 +105,11 @@ CRASH_WATCH_INTERVAL_SEC = 60.0
 # 見回る間隔を上書きする環境変数
 CRASH_WATCH_INTERVAL_ENV = "MINDSTELLA_CRASH_WATCH_INTERVAL"
 
-# 圧縮の契機で起動したことをフックへ渡す環境変数の名前
-LAUNCH_REASON_ENV = "MINDSTELLA_LAUNCH_REASON"
-
 # 作成・起動し直しの応答の warnings に入れる値（launch.json が無い）
 LAUNCH_RECORD_MISSING = "launch_record_missing"
 
 # restart_reason に入る値
-RESTART_REASONS = ("api", "rate_limit", "compact", "comment", "usage_threshold")
+RESTART_REASONS = ("api", "rate_limit", "comment", "usage_threshold")
 
 # 指定したアカウントを解除する契機（ホームの設定の account.release_on_limit が真のとき）
 LIMIT_REASONS = ("rate_limit", "usage_threshold")
@@ -122,10 +118,10 @@ LIMIT_REASONS = ("rate_limit", "usage_threshold")
 SPECIFIED_ACCOUNT_LIMITED = "指定したアカウントが利用上限に達した"
 
 # 最後の書き込みを待たずに止める契機
-NO_WAIT_REASONS = ("rate_limit", "compact")
+NO_WAIT_REASONS = ("rate_limit",)
 
 # 起動に失敗したときに restart_failed を通知する契機（rate_limit・comment は止まったことを通知済み）
-FAILURE_NOTIFIED_REASONS = ("api", "compact")
+FAILURE_NOTIFIED_REASONS = ("api",)
 
 # stop_failure の error のうち、利用上限
 RATE_LIMIT_ERROR = "rate_limit"
@@ -207,7 +203,6 @@ def build_env(
     claude_config_dir: str | None,
     has_balancer: bool,
     *,
-    launch_reason: str | None = None,
     balancer_url: str | None = None,
 ) -> dict[str, str]:
     """MindStella のセッションに渡す環境変数を作る。"""
@@ -221,8 +216,6 @@ def build_env(
     # claude-balancer が無い: 依頼の設定のフォルダのアカウントで起動する
     if not has_balancer and claude_config_dir:
         env["CLAUDE_CONFIG_DIR"] = claude_config_dir
-    if launch_reason:
-        env[LAUNCH_REASON_ENV] = launch_reason
     # ホームの設定に claude-balancer の待ち受け先がある: ペインの claude-balancer にも同じ先を使わせる
     if balancer_url:
         env["CLAUDE_BALANCER_URL"] = balancer_url
@@ -506,9 +499,6 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
         # 起動し直しの途中の終了: 状態を変えない（起動し直しのスレッドが書き換える）
         if kind == "session_end" and current.status == "restarting":
             return current.replace(responding=False)
-        # 圧縮の前: 状態を変えない
-        if kind == "pre_compact":
-            return current
         # 起動・clear・compact・fork: Claude Code の session_id とプロセスを入れ直す
         if kind == "session_start":
             return current.replace(
@@ -549,8 +539,6 @@ def _restart_reason_of(kind: str, event: dict[str, Any]) -> str | None:
     """出来事から起動し直しの契機を返す。起動し直さないなら None。"""
     if kind == "stop_failure" and event.get("error") == RATE_LIMIT_ERROR:
         return "rate_limit"
-    if kind == "pre_compact":
-        return "compact"
     return None
 
 
@@ -805,7 +793,7 @@ def _launch_again(
     current: SessionState | None,
 ) -> None:
     """記録した指定・会話・指定したアカウントで起動し、SessionStart の登録を待つ。失敗したら登録を戻す。"""
-    resume_id = None if reason == "compact" else resume_id_for(current, folder)
+    resume_id = resume_id_for(current, folder)
     balancer = shutil.which("claude-balancer")
     command = build_command(
         options,
@@ -821,7 +809,6 @@ def _launch_again(
         _read_flow(folder),
         None,
         balancer is not None,
-        launch_reason="compact" if reason == "compact" else None,
         balancer_url=ctx.home.balancer_url,
     )
     # 準備の判定に使うため、登録を空けて起動する（失敗したら戻す）

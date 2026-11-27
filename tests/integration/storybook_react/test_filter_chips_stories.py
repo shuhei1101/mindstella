@@ -12,6 +12,8 @@ STATES = (
     "shared-filterchips--tag-match-all",
     "shared-filterchips--tag-match-any",
     "shared-filterchips--tag-expr",
+    "shared-filterchips--favorites-only",
+    "shared-filterchips--favorites-only-with-status",
 )
 
 
@@ -55,3 +57,22 @@ def test_tag_expr(open_story: OpenStory) -> None:
     expect(chips.first).to_have_accessible_name("タグ: 「画面」を含む かつ 「廃止」を含まない の条件を解除")
     expect(page.get_by_text("状態: 未着手", exact=True)).to_be_visible()
 
+
+def test_favorites_only(open_story: OpenStory) -> None:
+    """「お気に入りだけを表示する」の間は「お気に入りのみ」のチップを出し、× と「すべて解除」を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-filterchips--favorites-only")
+    # 検証
+    expect(page.get_by_text("お気に入りのみ", exact=True)).to_be_visible()
+    expect(page.get_by_role("button", name="お気に入りのみ の条件を解除")).to_be_visible()
+    expect(page.get_by_role("button", name="すべて解除")).to_be_visible()
+
+
+def test_favorites_only_with_status(open_story: OpenStory) -> None:
+    """ほかの条件と重ねたときは「お気に入りのみ」を先頭に並べる（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-filterchips--favorites-only-with-status")
+    # 検証
+    chips = page.get_by_role("button", name="の条件を解除")
+    expect(chips.first).to_have_accessible_name("お気に入りのみ の条件を解除")
+    expect(page.get_by_text("状態: 未着手", exact=True)).to_be_visible()

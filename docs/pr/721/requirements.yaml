@@ -1,0 +1,93 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-582-1.yaml
+    impact: changed
+    detail: 圧縮を止めて再起動する契機（正常シナリオ（圧縮））を削除し、利用上限・利用枠のしきい値・落ちた後のコメント・再起動の依頼の契機だけを残す
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-26.yaml
+    impact: changed
+    detail: '圧縮の契機を、PreCompact で止めて起動し直した後ではなく、Claude Code が圧縮した後の再開（source: compact）だけにする'
+    depends_on:
+      - docs/scenario/SC-582-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-721-1.yaml
+    impact: new
+    detail: 利用者が項目のカードの星でお気に入りに登録・解除し、カードの一覧の先頭に並べ、ボードでは星だけを出し、表の星の列で並べ替える
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: changed
+    detail: 表示の設定に「お気に入りを一番上にする」「お気に入りだけを表示する」の切り替えを追加する
+    depends_on:
+      - docs/scenario/SC-721-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: run_only
+    detail: 星の列の並べ替えは SC-721-1 が持ち、表の並べ替え・絞り込み・列の表示の振る舞いは変えないが、表に星の列を足す変更が壊しうるため E2E の対象にする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-15.yaml
+    impact: run_only
+    detail: お気に入りの並びと絞り込みの切り替えは端末ごとの上書きだけで、ワークスペースの既定に含めない。表示の設定のパネルを変えるため E2E の対象にする
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-51.yaml
+    impact: run_only
+    detail: 連鎖は変わらないが、表示の個人の上書きの保存領域にお気に入りを足すと互いの表示を分ける振る舞いを壊しうるため E2E の対象にする
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: run_only
+    detail: 起動と再開・利用上限の再起動を使う連鎖で、圧縮の再起動を外す変更がその振る舞いを壊しうるため E2E の対象にする
+    depends_on: []
+docs:
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: MindStella のセッションを再起動する契機の表から「会話を圧縮しようとした」の行を削除する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: 自動で再起動する契機から圧縮を外し、圧縮の後は同じ会話のまま状況が注入されることにする
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
+  - page: docs/guide/セットアップ手順-Discordに通知する.md
+    new: false
+    change: 再起動の失敗の通知の契機から圧縮を外す
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: 圧縮・クリアの後の記述が、起動し直さず同じ会話で mindstella/startup へ戻る動きと合うかを確かめ、合わない箇所を修正する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 項目をお気に入りに登録・解除する操作と、一覧の先頭への並び・表の星の列・表示の設定の切り替えを追記する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
+  - page: plugins/mindstella/files.yml
+    new: false
+    change: hooks/hooks.json の説明から PreCompact のフックの記述を削除する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
+scope_out:
+  - item: 自動の圧縮の設定（autoCompactEnabled・autoCompactWindow）の変更
+    reason: '#709 の利用者が今の設定のまま変えないと決めたため'
+    plan: none
+  - item: 利用上限・利用枠のしきい値・落ちた後のコメント・再起動の依頼をきっかけにした再起動の変更
+    reason: '#709 の利用者が外すよう指示したのは圧縮だけで、今のまま残すため'
+    plan: none
+  - item: AI（MindStella のセッション）がお気に入りを登録・解除する操作
+    reason: '#353 でお気に入りは利用者だけが設定すると決めているため'
+    plan: none
+  - item: 結合テスト test_spa_open.py::test_normal_when_records_changed_while_typing の fail（隠れた span を指す get_by_text('D-1の題').first）
+    reason: 'base ブランチ（develop c813669e）でも同じ箇所で fail する既存の不具合で、#709・#353 の要望に含まれないため。既に #717 で扱っている'
+    plan: '#717'

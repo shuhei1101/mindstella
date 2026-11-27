@@ -28,3 +28,9 @@ export const TagMatchAny: Story = {
 export const TagExpr: Story = {
   args: { filters: { status: ["未着手"] }, tagExprText: "「画面」を含む かつ 「廃止」を含まない", onClearTagExpr: fn() },
 };
+
+/** 「お気に入りだけを表示する」をオンにした。先頭に「お気に入りのみ」のチップを出し、× と「すべて解除」で解除する */
+export const FavoritesOnly: Story = { args: { onClearFavoritesOnly: fn() } };
+
+/** 「お気に入りだけを表示する」と状態の条件を重ねた。「お気に入りのみ」を先頭に、状態のチップを後ろに並べる */
+export const FavoritesOnlyWithStatus: Story = { args: { filters: { status: ["未着手"] }, onClearFavoritesOnly: fn() } };
