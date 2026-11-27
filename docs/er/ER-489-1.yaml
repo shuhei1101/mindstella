@@ -351,7 +351,7 @@ tables:
         title: 利用者の選択
         type: object
         not_null: false
-        description: 利用者がプレビューで案を選んで送信し、AI がまだ採用していないときだけ持つ。`adopted` の採用とは別で、状態を変えない。記載するのはサーバーのコメントのまとめて送信だけで、案を採用する切り替え（`adopt`）が削除する
+        description: 利用者がプレビューで案を選んで送信し、AI がまだ採用していないときだけ持つ。`adopted` の採用とは別で、状態を変えない。記載するのはサーバーのコメントのまとめて送信だけで、案を採用する切り替え（`adopt`）が削除する。既に持つときは、まとめて送信した選択で書き換える
       - name: user_choice.key
         title: 選んだ案
         type: string
@@ -378,8 +378,10 @@ tables:
       | `未整理`・`対象外`・`取り下げ` を除く状態は、`options` を 1 つ以上持つ | `{ID} は状態 {状態} のため案を 1 つ以上持つ（options に案を書く）` |
       | `決定済み` は、`adopted` が真の案を 1 つ持つ | `{ID} は決定済みなのに採用した案を持たない（adopt で案を採用する）` |
       | `adopted` が真の案を持つ検討事項は `未決定` にしない（方針転換で `要見直し` にした検討事項は、前に採用した案を持ったままでよい） | `{ID} は採用した案 {記号} を持つのに未決定（adopt で決定済みにするか、採用を外す）` |
+      | `user_choice.key` は、その検討事項の `options` にある記号 | `{ID} の利用者の選択 {記号} は案に無い（案を戻すか、user_choice を削除する）` |
+      | `決定済み` は `user_choice` を持たない | `{ID} は決定済みなのに利用者の選択を持つ（adopt で採用して片付ける）` |
 
-      理由の行は、スキーマに合わない箇所と同じ `decisions.yaml: items[{番号}].{options か status}: {理由}` の構造で返す。
+      理由の行は、スキーマに合わない箇所と同じ `decisions.yaml: items[{番号}].{options・status・user_choice のどれか}: {理由}` の構造で返す。
   - name: tasks.yaml
     title: タスク
     datastore: YAML
