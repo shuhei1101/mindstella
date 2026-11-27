@@ -158,6 +158,9 @@ NEXT_ID_MAX_COUNT = 50
 # 検討事項の ID の頭（`edit_option` が受ける ID）
 DECISION_PREFIX = "D-"
 
+# 検討事項の利用者の選択のキー（採用と、利用者が選んだ案の削除で片付ける）
+USER_CHOICE_KEY = "user_choice"
+
 # 案の書き換えの `option` を渡す引数の名前（引数の誤りに添える）
 OPTION_NAME = "option"
 
@@ -222,7 +225,7 @@ def merge_changes(
 
 
 def switch_adopted(item: dict[str, Any], key: str) -> tuple[dict[str, Any], str | None]:
-    """指定した記号の案だけを採用にし、状態を決定済みにした新しい項目と、それまで採用していた案の記号を返す。"""
+    """指定した記号の案だけを採用にし、状態を決定済みにして利用者の選択を外した新しい項目と、それまで採用していた案の記号を返す。"""
     options = [option for option in item.get("options") or [] if isinstance(option, dict)]
     keys = [str(option.get("key")) for option in options]
     # 検討事項がその記号の案を持たない
@@ -233,7 +236,9 @@ def switch_adopted(item: dict[str, Any], key: str) -> tuple[dict[str, Any], str 
         (str(option["key"]) for option in options if option.get("adopted") is True), None
     )
     switched = [{**option, "adopted": str(option.get("key")) == key} for option in options]
-    return {**item, "options": switched, "status": DECIDED_STATUS}, previous
+    # 選んだ案と採用した案が違っても、利用者の選択は採用で片付ける
+    rest = {name: value for name, value in item.items() if name != USER_CHOICE_KEY}
+    return {**rest, "options": switched, "status": DECIDED_STATUS}, previous
 
 
 def run_init(root: Path, settings: dict[str, Any]) -> dict[str, Any]:
@@ -453,20 +458,23 @@ def run_update_settings(root: Path, settings: dict[str, Any]) -> dict[str, Any]:
 def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[str, Any]:
     """検討事項の採用する案を切り替えて書き込む。ほかが間に書いたら 1 回だけ読み直して当て直す。"""
     try:
-        previous, previous_status = _adopt_once(root, item_id, key, now)
+        previous, previous_status, user_choice = _adopt_once(root, item_id, key, now)
     except ConcurrentWriteError:
-        previous, previous_status = _adopt_once(root, item_id, key, now)
+        previous, previous_status, user_choice = _adopt_once(root, item_id, key, now)
     return {
         "id": item_id,
         "adopted": key,
         "previous": previous,
         "status": DECIDED_STATUS,
         "previous_status": previous_status,
+        "user_choice": user_choice,
     }
 
 
-def _adopt_once(root: Path, item_id: str, key: str, now: NowFn) -> tuple[str | None, str]:
-    """読んで採用を切り替えて書き、それまで採用していた案の記号と前の状態を返す。"""
+def _adopt_once(
+    root: Path, item_id: str, key: str, now: NowFn
+) -> tuple[str | None, str, dict[str, Any] | None]:
+    """読んで採用を切り替えて書き、それまで採用していた案の記号と前の状態と片付けた利用者の選択を返す。"""
     workspace = load_workspace(root)
     timestamp = now()
     loaded = load_changes(root)
@@ -477,6 +485,7 @@ def _adopt_once(root: Path, item_id: str, key: str, now: NowFn) -> tuple[str | N
     # 検討事項以外の項目は案を持たない
     if ref.kind != "decision":
         raise ItemNotFoundError(f"検討事項がありません: {item_id}")
+    user_choice = ref.item.get(USER_CHOICE_KEY)
     switched, previous = switch_adopted(ref.item, key)
     previous_status = ref.item["status"]
     row: ItemHistory = {**rows.get(item_id, {}), "updated": timestamp, "updated_by": EDITOR}
@@ -503,7 +512,7 @@ def _adopt_once(root: Path, item_id: str, key: str, now: NowFn) -> tuple[str | N
         ),
     )
     accept_written(workspace.root, written)
-    return previous, previous_status
+    return previous, previous_status, user_choice
 
 
 def run_edit_option(
@@ -543,10 +552,48 @@ def _edit_option_once(
     ref = find_item(replace(staged.workspace, items=staged.items), item_id)
     options = apply_option_edit(ref.item, action, key, option)
     # 並びを丸ごと渡して更新を当てる（options は渡せないキーに入っていない）
-    new_staged, result = stage_update(staged, item_id, {"options": options}, now)
+    update: dict[str, Any] = {"options": options}
+    # 利用者が選んだ案を消した: 利用者の選択も消す
+    if action == "remove" and (ref.item.get(USER_CHOICE_KEY) or {}).get("key") == key:
+        update[USER_CHOICE_KEY] = None
+    new_staged, result = stage_update(staged, item_id, update, now)
     written = save_batch(staged.workspace, _batch_of(new_staged, staged.original))
     accept_written(staged.workspace.root, written)
     return options, result
+
+
+def run_user_choices(root: Path) -> dict[str, Any]:
+    """利用者がプレビューで案を選んで送信した検討事項を、送信した日時の古い順に返す（何も書かない）。"""
+    workspace = load_workspace(root)
+    chosen = []
+    for index, item in enumerate(workspace.items["decision"]):
+        user_choice = item.get(USER_CHOICE_KEY)
+        if not isinstance(user_choice, dict):
+            continue
+        option = next(
+            (
+                entry
+                for entry in item.get("options") or []
+                if entry.get("key") == user_choice["key"]
+            ),
+            {},
+        )
+        chosen.append(
+            (
+                user_choice["at"],
+                index,
+                {
+                    "id": item["id"],
+                    "title": item["title"],
+                    "status": item["status"],
+                    "key": user_choice["key"],
+                    "content": option.get("content"),
+                    "note": user_choice.get("note"),
+                    "at": user_choice["at"],
+                },
+            )
+        )
+    return {"items": [entry for _at, _index, entry in sorted(chosen, key=lambda row: row[:2])]}
 
 
 def run_next_id(root: Path, kind: str, *, count: int = 1) -> dict[str, list[str]]:

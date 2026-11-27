@@ -517,6 +517,45 @@ def _decision_rule_hits(decisions: Any) -> list[tuple[int, str, Problem]]:
                     ),
                 )
             )
+        problems.extend(
+            (index, "user_choice", problem)
+            for problem in _user_choice_problems(item, index, label, item_id, status, options)
+        )
+    return problems
+
+
+def _user_choice_problems(
+    item: dict[str, Any],
+    index: int,
+    label: str,
+    item_id: str | None,
+    status: str,
+    options: list[Any],
+) -> list[Problem]:
+    """利用者の選択が案と状態の決まりに合わない問題を返す（持たなければ空）。"""
+    user_choice = item.get("user_choice")
+    # 利用者の選択を持たないか、形がスキーマに合わない（スキーマの検証が拾う）
+    if not isinstance(user_choice, dict) or not isinstance(user_choice.get("key"), str):
+        return []
+    where = f"items[{index}].user_choice"
+    problems: list[Problem] = []
+    keys = {option.get("key") for option in options if isinstance(option, dict)}
+    # 選んだ案の記号が案に無い
+    if user_choice["key"] not in keys:
+        problems.append(
+            _decision_problem(
+                item_id,
+                where,
+                f"{label} の利用者の選択 {user_choice['key']} は案に無い（案を戻すか、user_choice を削除する）",
+            )
+        )
+    # 決定済みは利用者の選択を持たない
+    if status == "決定済み":
+        problems.append(
+            _decision_problem(
+                item_id, where, f"{label} は決定済みなのに利用者の選択を持つ（adopt で採用して片付ける）"
+            )
+        )
     return problems
 
 

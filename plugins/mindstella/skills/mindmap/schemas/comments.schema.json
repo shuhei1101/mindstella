@@ -20,7 +20,6 @@
         "additionalProperties": false,
         "required": [
           "id",
-          "body",
           "created"
         ],
         "properties": {
@@ -108,6 +107,19 @@
           "thread": {
             "type": "string",
             "pattern": "^TH-[0-9]+$"
+          },
+          "choice": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           }
         },
         "allOf": [
@@ -123,6 +135,46 @@
                   {
                     "required": [
                       "target"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "loc"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "not": {
+                "required": [
+                  "choice"
+                ]
+              }
+            },
+            "then": {
+              "required": [
+                "body"
+              ]
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "choice"
+              ]
+            },
+            "then": {
+              "required": [
+                "target"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "thread"
                     ]
                   },
                   {

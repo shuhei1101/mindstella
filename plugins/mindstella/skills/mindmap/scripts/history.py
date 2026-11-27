@@ -1,4 +1,4 @@
-"""項目の変更履歴の 1 回分・本文の差分・書き換えのまとまり（`changes.yaml`）・前回開いた日時（`.mindstella-opened`）。
+"""項目の変更履歴の 1 回分・本文の差分・書き換えのまとまり（`changes.yaml`）。
 
 書き込みは呼ぶ側が `save_change` などに任せる。鍵も呼ぶ側が取る。
 """
@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import difflib
 import json
-import os
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, NotRequired, TypedDict
 
@@ -25,9 +23,6 @@ from store import (
     format_path,
     load_yaml_text,
     read_body,
-    remove_files,
-    write_failed,
-    write_temp,
 )
 
 __all__ = [
@@ -36,7 +31,6 @@ __all__ = [
     "DEFAULT_HISTORY_LIMIT",
     "EXTERNAL_SUMMARY",
     "HISTORY_FILE",
-    "OPENED_FILE",
     "PENDING_AI_SUMMARY",
     "SET_ID_PREFIX",
     "SUMMARY_MAX_LENGTH",
@@ -45,7 +39,6 @@ __all__ = [
     "Changes",
     "HistoryEntry",
     "ItemHistory",
-    "OpenedPoint",
     "Pending",
     "RemovedItem",
     "advance_seq",
@@ -54,7 +47,6 @@ __all__ = [
     "commit_pending",
     "diff_body",
     "flush_pending",
-    "head_until_seq",
     "history_limit",
     "load_changes",
     "load_item_history",
@@ -65,18 +57,11 @@ __all__ = [
     "pending_view",
     "removed_items",
     "stack_history",
-    "touch_opened",
     "values_at_read",
 ]
 
 # `SCHEMA_DIR` の下の、`changes.yaml` を検証するスキーマのファイル名
 CHANGES_SCHEMA = "changes.schema.json"
-
-# プレビューを最後に開いた日時（1 行目）と通し番号（2 行目）を持つファイルの名前（`records_root` の下）
-OPENED_FILE = ".mindstella-opened"
-
-# `OPENED_FILE` の行数（日時の行と通し番号の行）
-OPENED_LINE_COUNT = 2
 
 # `config.yaml` に `history_limit` が無いときの回数
 DEFAULT_HISTORY_LIMIT = 5
@@ -190,15 +175,6 @@ class ItemHistory(TypedDict, total=False):
     history: list[HistoryEntry]
     # 消した変更履歴の通し番号の最大
     history_dropped_seq: int
-
-
-class OpenedPoint(TypedDict):
-    """前回開いた時点。`POST /api/opened` の `previous`・`opened` の形。"""
-
-    # 開いた日時（UTC のタイムゾーン付き ISO 8601）。範囲の始まりの表示にだけ使う
-    at: str
-    # 開いた時点の通し番号（`head_until_seq`）。0 以上
-    seq: int
 
 
 class Changes(TypedDict):
@@ -619,31 +595,6 @@ def _editors_since(item: dict[str, Any], read_seq: int) -> list[str]:
     return [editor for editor in ("user", "external", "ai") if editor in editors]
 
 
-def head_until_seq(changes: Changes) -> int:
-    """先頭（最新）のまとまりの `until_seq` を返す。まとまりが無ければ 0。"""
-    # `last_seq` は使わない: `commit_pending` が `until_seq` に `last_seq` をそのまま入れるため、
-    # `last_seq` を開いた時点にすると、開く前に書き換えて開いた後にまとめたまとまりが範囲から落ちる
-    if not changes["sets"]:
-        return 0
-    return changes["sets"][0]["until_seq"]
-
-
-def touch_opened(root: Path, opened: OpenedPoint) -> OpenedPoint | None:
-    """前回開いた時点を読み、今の時点に書き換えて、前の時点を返す。"""
-    path = records_root(root) / OPENED_FILE
-    previous = _read_opened(path)
-    try:
-        temp = write_temp(path, f"{opened['at']}\n{opened['seq']}\n")
-    except OSError as error:
-        raise write_failed(path, error) from error
-    try:
-        os.replace(temp, path)
-    except OSError as error:
-        remove_files([temp])
-        raise write_failed(path, error) from error
-    return previous
-
-
 def _existing_items(workspace: Workspace, ids: list[str]) -> list[tuple[str, dict[str, Any]]]:
     """ID の並びのうち、ワークスペースに項目があるものを、ID と項目の組にする。"""
     found: list[tuple[str, dict[str, Any]]] = []
@@ -654,23 +605,3 @@ def _existing_items(workspace: Workspace, ids: list[str]) -> list[tuple[str, dic
             # 消えた項目は並べない（点検が参照切れとして知らせる）
             continue
     return found
-
-
-def _read_opened(path: Path) -> OpenedPoint | None:
-    """前回開いた時点のファイルを読む。無い・日時や通し番号として読めない（前の版の形を含む）ときは `None`。"""
-    if not path.is_file():
-        return None
-    lines = path.read_text(encoding="utf-8").splitlines()
-    # 日時と通し番号の 2 行に満たない: 前の版の形（日時だけ）
-    if len(lines) < OPENED_LINE_COUNT:
-        return None
-    at, seq_text = lines[0].strip(), lines[1].strip()
-    try:
-        datetime.fromisoformat(at)
-        seq = int(seq_text)
-    except ValueError:
-        return None
-    # 負の通し番号は読めない値として扱う
-    if seq < 0:
-        return None
-    return {"at": at, "seq": seq}
