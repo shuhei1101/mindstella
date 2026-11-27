@@ -150,7 +150,9 @@ export const ThreadView = ({ id, data, onBack, onClosed, onOpenItem, onOpenChang
     movedToLatest.current = true;
     // 外枠が開いたときに見出しへ移すフォーカスの後に移す
     const frame = requestAnimationFrame(() => {
-      element.scrollTop = Math.min(article.offsetTop - element.offsetTop, element.scrollHeight - element.clientHeight);
+      // 最新の書き込みが最初の書き込みなら、並びの一番上のまま（見出しのタイトルを 2 行の省略で出す）
+      const first = element.querySelector("article[data-post-id]") === article;
+      element.scrollTop = first ? 0 : Math.min(article.offsetTop - element.offsetTop, element.scrollHeight - element.clientHeight);
       article.focus({ preventScroll: true });
     });
     return () => {
@@ -279,7 +281,7 @@ export const ThreadView = ({ id, data, onBack, onClosed, onOpenItem, onOpenChang
         </p>
       ) : null}
       <div className="grid gap-1 border-b border-border px-3 py-2">
-        <h2 ref={heading} tabIndex={-1} className="m-0 flex items-center gap-2 text-body font-medium focus-visible:outline-none">
+        <h2 ref={heading} tabIndex={-1} className="m-0 flex min-w-0 items-start gap-2 text-body font-medium focus-visible:outline-none">
           <ThreadState status={thread === null ? "pending" : thread.status} />
           <ThreadTitle title={title} collapsed={titleCollapsed} lookup={record.lookup} onOpen={record.onOpen} />
         </h2>
