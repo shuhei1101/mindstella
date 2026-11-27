@@ -42,13 +42,13 @@ functions:
         description: 状態のフォルダ
     returns:
       type: dict[str, Any]
-      description: '`{trigger, awaiting_threads, changed, changed_more, removed, removed_more, needs_review, needs_review_more, in_progress, in_progress_more, flow, migration, until_seq, context}`'
+      description: '`{trigger, awaiting_threads, user_choices, changed, changed_more, removed, removed_more, needs_review, needs_review_more, in_progress, in_progress_more, flow, migration, until_seq, context}`'
     process: |-
       1. ワークスペースとまとまりを読む（`load_workspace`、『変更履歴』の `load_changes`。`read_seq` は『前回参照した時点』の値）
       2. 前回参照した時点より後に追加した項目（`added_seq` が大きい）を種類の順に、続けて変えた項目（`seq` が大きい）を種類の順に `{id, kind, title, updated_by}` で並べて `changed` にする（前の値は組み立てない。`seq`・`added_seq` は『変更履歴』の `merge_item_history` で引く）。`removed` はまとまりの削除した項目のうち、前回参照した時点にあって後で削除したもの（`removed_items`）を `{id, kind, title}` にする。前回参照した時点が無ければどちらも空
       3. 状態が `要見直し` の検討事項と `進行中` のタスクを `{id, title}` で連番の順に拾う
       4. 2.・3. の 4 つの並びを `SUMMARY_LIMIT` 件で切り、超えた件数を `{キー}_more` に入れる（超えなければ 0）
-      5. スレッドを読み（`load_threads`）、取り込み待ちの書き込みを持つスレッドを数える（`awaiting_posts`）
+      5. スレッドを読み（`load_threads`）、取り込み待ちの書き込みを持つスレッドを数える（`awaiting_posts`）。`user_choice` を持つ検討事項を数えて `user_choices` に入れる
       6. 設定の `flow`（無ければ `None`）、移し替えの報告（`load_migration_report`）、`until_seq`（まとまりの `last_seq`）を入れる
       7. `source` が `startup` なら `trigger` を `startup`、それ以外は `resume` にする
       8. ここまでの辞書で注入文を描いて（`render_context`）`context` に入れて返す
@@ -61,7 +61,7 @@ functions:
         summary: 変更・要見直し・進行中・取り込み待ちをまとめ、何も書かない
         condition: '`read_seq` 3、`last_seq` 5。D-1（`seq` 5、状態 `要見直し`）・T-1（`added_seq` 4、状態 `進行中`）・未決定の D-2（`seq` 2）、取り込み待ちのスレッド 1 件で `source` が `compact`'
         mock: なし（`state_root` は `tmp_path`）
-        expected: '`trigger` が `resume`、`changed` が T-1・D-1 の順、`needs_review` が D-1、`in_progress` が T-1、`awaiting_threads` が 1、`until_seq` が 5、`{キー}_more` が全て 0。`load_read_seq` が 3 のまま'
+        expected: '`trigger` が `resume`、`changed` が T-1・D-1 の順、`needs_review` が D-1、`in_progress` が T-1、`awaiting_threads` が 1、`user_choices` が 0、`until_seq` が 5、`{キー}_more` が全て 0。`load_read_seq` が 3 のまま'
       - name: test_summarize_resume_when_no_read_point
         case: 正常
         summary: 前回参照した時点が無ければ変更を返さない
@@ -80,6 +80,12 @@ functions:
         condition: '`save_migration_report` で `not_carried` 1 件を書いたワークスペースを 2 回まとめる'
         mock: なし
         expected: 2 回とも `migration.not_carried` が 1 件
+      - name: test_summarize_resume_when_user_choices
+        case: 正常
+        summary: 利用者が案を選んだ検討事項を数え、注入文に件数を入れる
+        condition: '`user_choice` を持つ未決定の D-1・D-2 と持たない D-3、取り込み待ちのスレッド 0 件で `source` が `compact`'
+        mock: なし
+        expected: '`user_choices` が 2、`awaiting_threads` が 0。`context` が件数 2 を持ち、`D-1`・`D-2` を持たない。`decisions.yaml` が呼ぶ前と同じ'
   - name: render_context
     title: 注入文を描く
     kind: 関数
@@ -131,6 +137,12 @@ functions:
         mock: なし
         expected: '`jinja2.UndefinedError`'
         exception: 描けない
+      - name: test_render_context_when_user_choices
+        case: 正常
+        summary: 利用者が案を選んだ検討事項が 1 件以上のときだけ件数を描く
+        condition: '同梱のプロンプトファイル。`parametrize`: `user_choices` 3 / 0'
+        mock: なし
+        expected: '`3` と `user_choices` を含む / 利用者が案を選んだ検討事項の行を含まない'
 refs:
   - IF-489-32#
   - MOD-565-1#

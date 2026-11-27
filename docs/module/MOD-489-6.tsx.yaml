@@ -22,8 +22,15 @@ components:
         condition: 409 と `stale`
         mock: MSW
         expected: 行に理由と「箇所を解除」
+      - name: test_review_view_when_choice
+        case: 正常
+        summary: 案の選択の行を出し、一言を空にして修正すると一言を削除する
+        condition: D-1 への案 B の選択 C-1（一言「x」）を持つレビュー中。C-1 の修正で入力を空にして「修正」を押す
+        mock: MSW
+        expected: 'C-1 の行が「案の選択」の札・D-1 のタイトル・「案 B」と案 B の中身を持ち、チェックの読み上げ名が「D-1 への案の選択を送信する」。`PATCH /api/comments/C-1` が `{body: null}` で呼ばれる'
     container: frontend/src/features/comments/review/review-view.tsx
 notes:
   単体テスト: 同じフォルダの `review-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   修正の入力の音声入力: '書き換えている行を `{id, body, error}` で持ち、初めの値は `voiceEditingOf("review")` の ID（本文はそのコメントの本文）にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread, target}`、開く画面は `review`、名前は「{ID} へのコメントの修正」か「{スレッド} への返信の修正」）を使い、`ReviewEditForm` へ `body`・`onBodyChange` と音声の props を渡す。単体テストに、修正の入力のマイクで録音して文字起こしの結果が入力欄に入る場合（`test_review_view_when_edit_voice`）を追加する'
   長い値: 行の種類の札・向けた項目の ID・返信先のスレッドの状態の札・「スレッドを開く」「続きを表示」のボタンに `shrink-0 whitespace-nowrap` を付け、向けた項目・返信先のスレッドのタイトルは `min-w-0 truncate` と `title` に全文を持たせる（#690）。結合テストで最大の長さの値を入れたストーリーを撮って確認する
+  案の選択の行: '`choice` を持つ行は、行の種類を「案の選択」、行の頭を向けた項目にし、本文の上に「案 {記号}」と記録のその検討事項の案の `content`（案が無ければ記号だけ）を出す。`body` が `null` なら本文の代わりに「一言なし」を出す。修正で空白だけを確定したら `useUpdateComment` に `body: null` を指定する。「スレッドを開く」と箇所は出さない。読み上げの名前は `reviewLabel` で作る'

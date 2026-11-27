@@ -1,6 +1,6 @@
 id: MOD-489-157
 title: サーバー / 変更履歴 / history.py
-lead: 項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』と『前回参照した時点』に依存し、書き込みは `save_change`・`save_batch` に任せる。
+lead: 項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』と『前回参照した時点』に依存し、書き込みは `save_change`・`save_batch` に任せる。
 test_files:
   - tests/unit/scripts/test_history.py
 directory: |-
@@ -9,7 +9,7 @@ directory: |-
     schemas/
       changes.schema.json  changes.yaml（書き換えのまとまり）
     scripts/
-      history.py           変更履歴の 1 回分・本文の差分・まとまり・前回開いた日時
+      history.py           変更履歴の 1 回分・本文の差分・まとまり
   ```
 data_models:
   - name: HistoryEntry
@@ -147,20 +147,6 @@ data_models:
       - name: by
         type: NotRequired[Literal["ai", "external"]]
         description: 入っている変更の書いた元。無ければ `ai`
-  - name: OpenedPoint
-    title: 前回開いた時点
-    container: plugins/mindstella/skills/mindmap/scripts/history.py
-    usecase: 前回からの差分を見る
-    role: DTO
-    summary: '`OPENED_FILE` の中身で、`POST /api/opened` の `previous`・`opened` の形式'
-    description: '`TypedDict`。'
-    properties:
-      - name: at
-        type: str
-        description: 開いた日時（UTC のタイムゾーン付き ISO 8601）。範囲の始まりの表示にだけ使う
-      - name: seq
-        type: int
-        description: 開いた時点の連番（`head_until_seq`）。0 以上
   - name: ItemHistory
     title: 項目の履歴の行
     container: plugins/mindstella/skills/mindmap/scripts/history.py
@@ -203,12 +189,6 @@ constants:
     usecase: 共通
     summary: '`changes.yaml` を検証するスキーマのファイル名（`SCHEMA_DIR` の下）'
     value: '"changes.schema.json"'
-  - name: OPENED_FILE
-    title: 前回開いた日時のファイル名
-    container: plugins/mindstella/skills/mindmap/scripts/history.py
-    usecase: 前回からの差分を見る
-    summary: プレビューを最後に開いた日時（1 行目）と連番（2 行目）を持つファイルの名前（`records_root(root)` の下）
-    value: '".mindstella-opened"'
   - name: DEFAULT_HISTORY_LIMIT
     title: 保持する回数の既定
     container: plugins/mindstella/skills/mindmap/scripts/history.py
@@ -654,49 +634,6 @@ functions:
         condition: '`pending.removed` に N-2（`kind: note`・`title: 重複したメモ`）、`pending.added`・`pending.changed` が空'
         mock: なし
         expected: '`removed` が `[{id: N-2, kind: note, title: 重複したメモ}]`、`added`・`changed` が空'
-  - name: touch_opened
-    title: 前回開いた日時を書き換える
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/history.py
-    usecase: 前回からの差分を見る
-    scope: public
-    side_effects: ワークスペースの `OPENED_FILE` を置き換える
-    summary: '`OPENED_FILE` の前回開いた時点を読んでから今の日時と連番に書き換え、前の時点を返す'
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: ワークスペースのフォルダ
-      - name: opened
-        type: OpenedPoint
-        required: true
-        passing: positional
-        description: 今の時点（今の日時と `head_until_seq`）
-    returns:
-      type: OpenedPoint | None
-      description: 前の時点。無い・1 行目が日時として読めない・2 行目が無い（前のバージョンの形式）・2 行目が 0 以上の整数として読めなければ `None`
-    process: |-
-      1. `records_root(root) / OPENED_FILE` を読む（無ければ `None`。1 行目を `datetime.fromisoformat` で、2 行目を 0 以上の整数として読めなければ `None`）
-      2. 一時ファイルに `{opened.at}\n{opened.seq}\n` を書いて `os.replace` で置き換える
-         - `OSError` が起きた場合、一時ファイルを削除して `WriteFailedError` を送出する
-    exceptions:
-      - name: WriteFailedError
-        condition: 一時ファイルの書き込みか置き換えで `OSError`
-        message: '書き込めませんでした: {パス}（{理由}）'
-    unit_tests:
-      - name: test_touch_opened
-        case: 正常
-        summary: 前の時点を返して書き換える
-        condition: 無い状態で 1 回、別の日時と連番でもう 1 回呼ぶ
-        mock: なし
-        expected: 1 回目が `None`、2 回目が 1 回目の `opened`。ファイルの 1 行目が 2 回目の `at`、2 行目が 2 回目の `seq`
-      - name: test_touch_opened_when_previous_unreadable
-        case: 正常
-        summary: 連番を読めない前の時点は無いものとして返し、今の構造で書き換える
-        condition: '`parametrize`: 1 行の日時だけ（前のバージョンの形式）/ 2 行目が `x` / 2 行目が `-1` / 1 行目が日時でない'
-        mock: なし
-        expected: '`None` を返し、ファイルが渡した `opened` の 2 行になる'
   - name: advance_seq
     title: 連番を振る
     kind: 関数
@@ -885,33 +822,6 @@ functions:
         condition: '`sets[0].removed` に N-1（`seq` 3）、`removed` を持たない `sets[1]`、`pending.removed` に N-2（`seq` 5）'
         mock: なし
         expected: N-1・N-2 の順の 2 件
-  - name: head_until_seq
-    title: 先頭のまとまりの連番
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/history.py
-    usecase: 前回からの差分を見る
-    scope: public
-    summary: 先頭（最新）のまとまりの `until_seq` を返す。開いた時点の連番に使う
-    description: '`last_seq` ではなくこの値を使う。`commit_pending` は `until_seq` に `last_seq` をそのまま入れるため、`last_seq` を開いた時点にすると、開く前に書き換えて開いた後にまとめたまとまりが範囲から落ちる'
-    args:
-      - name: changes
-        type: Changes
-        required: true
-        passing: positional
-        description: まとまりの記録
-    returns:
-      type: int
-      description: 先頭のまとまりの `until_seq`。まとまりが無ければ 0
-    process: |-
-      1. `sets` が空なら 0 を返す
-      2. `sets[0]["until_seq"]` を返す
-    unit_tests:
-      - name: test_head_until_seq
-        case: 正常
-        summary: 先頭のまとまりの連番を返し、`last_seq` は返さない
-        condition: '`parametrize`: まとまりが無い（`last_seq` 3）/ まとまり 2 つ（新しい順に `until_seq` 5・2、`last_seq` 7）'
-        mock: なし
-        expected: 0 / 5
   - name: load_item_history
     title: 項目の履歴の読み込み
     kind: 関数

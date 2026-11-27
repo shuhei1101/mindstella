@@ -25,3 +25,4 @@ components:
     container: frontend/src/shared/components/markdown-body.tsx
 notes:
   単体テスト: 同じフォルダの `markdown-body.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  埋め込んだ音声: '本文の入れ物から、mdmark が描いた音声（`audio` の `controls`）の祖先に当たる高さの固定・`overflow: hidden`・`line-height` の上書きを外し、再生バーの高さを `audio` 自身に任せる（部品設計『Markdownの本文』の状態 `AudioEmbed`・`AudioEmbedNarrow`）。詳細パネル・詳細の全画面で描いた結果で、どの祖先が再生バーを切っているかを確かめてからその規則だけを変える。確かめるのは部品の結合テスト（再生バーの範囲が入れ物の範囲に収まる）'

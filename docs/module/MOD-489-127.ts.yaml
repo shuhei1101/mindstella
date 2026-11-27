@@ -6,10 +6,10 @@ functions:
     title: 差分の表示
     kind: フック
     usecase: 前回からの差分を見る
-    summary: search の `diff` とそのタブの保存領域（`useScreenState` の `diffSel`）の時点から `DiffPoint` を解決し、`POST /w/{workspace}/api/opened` の時点を `sessionStorage` のキー `workspaceKey(OPENED_SESSION_KEY)` に持つ
+    summary: search の `diff` とそのタブの保存領域（`useScreenState` の `diffSel`）の時点から `DiffPoint` を解決し（`resolveDiffPoint`）、解決した時点がまとまりの ID ならそのまとまりを既読にする（『既読のまとまり』の `markRead`。配る書き出しでは既読にしない）。解決できない時点（`since` など）は URL から除外する
     returns:
       type: DiffView
-      description: 時点・マーカー・削除した項目
+      description: '`{point}`（時点。差分を出さないときは `null`）'
     unit_tests:
       - name: test_use_diff_view
         case: 正常
@@ -23,12 +23,18 @@ functions:
         condition: URL に無くそのタブの保存領域に `V-1`
         mock: MSW
         expected: '`setDiff(''V-1'')` が呼ばれる'
-      - name: test_use_diff_view_when_opened_stored
+      - name: test_use_diff_view_when_marked_read
         case: 正常
-        summary: 同じタブで再呼び出ししない
-        condition: '`sessionStorage` に時点がある'
+        summary: 開いたまとまりを既読にし、まだまとめていない変更は既読にしない
+        condition: '`parametrize`: `diff=V-2` / `diff=pending`'
         mock: MSW
-        expected: '`POST /w/{workspace}/api/opened` が呼ばれない'
+        expected: '`useUnreadSetIds` の結果に V-2 が無い / 既読が変わらない'
+      - name: test_use_diff_view_when_not_set_id
+        case: 正常
+        summary: まとまりの ID でない時点は差分を出さず URL から除外する
+        condition: '`diff=since`'
+        mock: MSW
+        expected: '`point` が `null` で、search に `diff` が無い'
     container: frontend/src/shared/hooks/use-diff-view.ts
 notes:
   単体テスト: 同じフォルダの `use-diff-view.test.ts` に置く（knowledge の規約『フォルダ構成』）

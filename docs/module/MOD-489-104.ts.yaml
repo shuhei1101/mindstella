@@ -207,7 +207,7 @@ functions:
     title: レビュー中の書き込みの読み上げの名前
     kind: 関数
     usecase: コメントを選んで送信する
-    summary: 「{スレッドの ID} への返信」「{向けた項目の ID} へのコメント」「項目を指さないコメント」
+    summary: 「{スレッドの ID} への返信」「{向けた項目の ID} へのコメント」「{向けた項目の ID} への案の選択」（`choice` を持つとき）「項目を指さないコメント」
     args:
       - name: item
         type: ReviewItem
@@ -223,6 +223,12 @@ functions:
         condition: '`target` も `thread` も無い'
         mock: なし
         expected: 「項目を指さないコメント」
+      - name: test_review_label_when_choice
+        case: 正常
+        summary: 案の選択
+        condition: '`target: D-1`・`choice: {key: B}`'
+        mock: なし
+        expected: 「D-1 への案の選択」
     container: frontend/src/shared/core/comments.ts
   - name: hasUnseen
     title: スレッドの利用者の未読
@@ -269,6 +275,31 @@ functions:
         condition: TH-1・TH-2 が未読で TH-1
         mock: なし
         expected: 'TH-1 だけ `seen: true`'
+    container: frontend/src/shared/core/comments.ts
+  - name: choiceOf
+    title: 検討事項へのレビュー中の案の選択
+    kind: 関数
+    usecase: 項目の詳細を読む
+    summary: レビュー中の書き込みのうち、`target` がその検討事項で `choice` を持つ 1 件を返却する
+    args:
+      - name: items
+        type: readonly ReviewItem[]
+        required: true
+        description: レビュー中の書き込み
+      - name: target
+        type: string
+        required: true
+        description: 検討事項の ID
+    returns:
+      type: ReviewItem | undefined
+      description: 案の選択。無ければ `undefined`
+    unit_tests:
+      - name: test_choice_of
+        case: 正常
+        summary: その検討事項への案の選択だけを返却する
+        condition: C-1（D-1 へのコメント）・C-2（D-1 への案 B の選択）・C-3（D-2 への案 A の選択）で `D-1` / `D-9`
+        mock: なし
+        expected: C-2 / `undefined`
     container: frontend/src/shared/core/comments.ts
 notes:
   単体テスト: 同じフォルダの `comments.test.ts` に置く（knowledge の規約『フォルダ構成』）

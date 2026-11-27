@@ -1383,12 +1383,14 @@ functions:
       3. 状態が `OPTIONS_OPTIONAL_STATUSES` に無く、`options` が無いか空の場合、`key: items[{n}].options`・`detail` は ER 図の 1 つ目の理由の行
       4. 状態が `決定済み` で、採用した案が無い場合、`key: items[{n}].options`・`detail` は ER 図の 2 つ目の理由の行
       5. 状態が `未決定` で、採用した案がある場合、`key: items[{n}].status`・`detail` は ER 図の 3 つ目の理由の行（記号は採用した案の `key`）
-      6. `id` は要素の `id`（無ければ `None`）
+      6. `user_choice` が辞書で `key` が `options` の記号に無い場合、`key: items[{n}].user_choice`・`detail` は ER 図の 4 つ目の理由の行（記号は `user_choice.key`）
+      7. 状態が `決定済み` で `user_choice` を持つ場合、`key: items[{n}].user_choice`・`detail` は ER 図の 5 つ目の理由の行
+      8. `id` は要素の `id`（無ければ `None`）
     unit_tests:
       - name: test_check_decision_rules
         case: 正常
         summary: 決まりに合う検討事項は問題 0 件
-        condition: '`parametrize`: 案を持つ未決定 / 案 A を採用した決定済み / 案 A を採用した要見直し / 案を持たない未整理・対象外・取り下げ'
+        condition: '`parametrize`: 案を持つ未決定 / 案 A を採用した決定済み / 案 A を採用した要見直し / 案を持たない未整理・対象外・取り下げ / 案 A・B を持ち `user_choice` が案 B の未決定'
         mock: なし
         expected: 空の並び
       - name: test_check_decision_rules_when_mismatch
@@ -1403,6 +1405,12 @@ functions:
         condition: '`items` の要素に文字列と、`options` が文字列の検討事項'
         mock: なし
         expected: 空の並び
+      - name: test_check_decision_rules_when_user_choice_mismatch
+        case: 正常
+        summary: 利用者の選択が案と状態に合わない検討事項を拾う
+        condition: 案 A・B を持ち `user_choice` が案 Z の未決定の D-1、案 A を採用した決定済みで `user_choice`（案 B）を持つ D-2
+        mock: なし
+        expected: 2 件で、`key` が `items[0].user_choice`（`detail` に `Z`）・`items[1].user_choice`（`detail` に `adopt`）
   - name: build_mismatch_error
     title: スキーマに合わない例外を作る
     kind: 関数

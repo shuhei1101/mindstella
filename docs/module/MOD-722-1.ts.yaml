@@ -1,0 +1,98 @@
+id: MOD-722-1
+title: プレビュー / read-changes-store
+lead: 変更履歴の既読のまとまりの ID をワークスペースごとに端末の保存領域に持ち、未読のまとまりを決める（インターフェース定義『プレビューを開く』の制約「既読のまとまり」）。
+stores:
+  - name: useReadChangesStore
+    title: 既読のまとまり
+    container: frontend/src/shared/stores/read-changes-store.ts
+    usecase: 前回からの差分を見る
+    summary: 'ワークスペースごとの既読のまとまりの ID を Zustand の `persist`（`name: mindmap-read-changes`、`localStorage`）で持つ。保存領域を使用できないときはメモリの上だけで持つ。store は export せず、下のフックだけを export する'
+    state:
+      - name: read
+        type: Record<string, string[]>
+        initial: '{}'
+        description: ワークスペースの ID（`workspaceKey` に使用する ID）ごとの既読のまとまりの ID（`V-{番号}`）。重なりを持たない
+    actions:
+      - name: markRead
+        title: 既読にする
+        kind: メソッド
+        summary: 指定したまとまりの ID をそのワークスペースの既読に加える（差分の表示で開いたまとまり・「すべて既読にする」のときの全てのまとまり）
+        args:
+          - name: workspace
+            type: string
+            required: true
+            description: ワークスペースの ID
+          - name: ids
+            type: string[]
+            required: true
+            description: 既読にするまとまりの ID
+        returns:
+          type: void
+          description: '-'
+        unit_tests:
+          - name: test_mark_read
+            case: 正常
+            summary: 既読に加え、重なりを持たず、ほかのワークスペースは変えない
+            condition: '`markRead("a", ["V-1"])`・`markRead("a", ["V-1", "V-2"])`・`markRead("b", ["V-1"])`'
+            mock: なし
+            expected: '`read.a` が `[V-1, V-2]`、`read.b` が `[V-1]`。`localStorage` の `mindmap-read-changes` に同じ値がある'
+      - name: prune
+        title: 無くなったまとまりを既読から削除する
+        kind: メソッド
+        summary: 記録に無いまとまりの ID をそのワークスペースの既読から削除する（記録を参照するたびに呼ぶ。変わらなければ書き換えない）
+        args:
+          - name: workspace
+            type: string
+            required: true
+            description: ワークスペースの ID
+          - name: ids
+            type: string[]
+            required: true
+            description: 記録の全てのまとまりの ID
+        returns:
+          type: void
+          description: '-'
+        unit_tests:
+          - name: test_prune
+            case: 正常
+            summary: 記録に無い ID だけを削除する
+            condition: '`read.a` が `[V-1, V-2]` で `prune("a", ["V-2", "V-3"])`'
+            mock: なし
+            expected: '`read.a` が `[V-2]`'
+functions:
+  - name: useUnreadSetIds
+    title: 未読のまとまり
+    kind: フック
+    container: frontend/src/shared/stores/read-changes-store.ts
+    usecase: 前回からの差分を見る
+    summary: 記録のまとまりのうち ID が既読に無いものの ID を、記録の並び（新しい順）で返却する（まだまとめていない変更は数えない。『差分の表示』の `unreadSetIds`）
+    args:
+      - name: workspace
+        type: string
+        required: true
+        description: ワークスペースの ID
+      - name: setIds
+        type: string[]
+        required: true
+        description: 記録の `changes.sets` の ID（新しい順）
+    returns:
+      type: string[]
+      description: 未読のまとまりの ID
+    unit_tests:
+      - name: test_use_unread_set_ids
+        case: 正常
+        summary: 既読に無いまとまりだけを返却する
+        condition: '`read.a` が `[V-1]` で `useUnreadSetIds("a", ["V-3", "V-2", "V-1"])`'
+        mock: なし
+        expected: '`[V-3, V-2]`'
+      - name: test_use_unread_set_ids_when_storage_unavailable
+        case: 異常
+        summary: 保存領域を使用できなくてもタブの中で既読を持つ
+        condition: '`localStorage.setItem` が例外を送出する状態で `markRead("a", ["V-1"])` の後に `useUnreadSetIds("a", ["V-1"])`'
+        mock: '`vi.spyOn(Storage.prototype, "setItem")`'
+        expected: 例外にならず `[]`
+        exception: 保存領域を使用できない
+refs:
+  - IF-489-70#
+notes:
+  単体テスト: 同じフォルダの `read-changes-store.test.ts` に配置する（knowledge の規約『フォルダ構成』）

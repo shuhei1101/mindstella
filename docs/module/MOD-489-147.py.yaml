@@ -20,9 +20,13 @@ diagrams:
         class 箇所
         class スレッド
         class 読み書きと検証
+        class 変更履歴
+        class 変更の検知
         コメント --> 箇所 : 構造と合うかの確かめ
         コメント --> スレッド : 返信先の確かめ・まとめて送信する・すぐ送信する
         コメント --> 読み書きと検証
+        コメント --> 変更履歴 : 案の選択の変更履歴とまとまり
+        コメント --> 変更の検知 : 自分の書き込みを伝える
       ```
 data_models:
   - name: ReviewComment
@@ -42,8 +46,8 @@ data_models:
         type: Location | None
         description: 選んだ箇所
       - name: body
-        type: str
-        description: 本文（前後の空白を除いたもの）
+        type: str | None
+        description: 本文（前後の空白を除いたもの）。一言を添えない案の選択は `None`（キーを記載しない）
       - name: created
         type: str
         description: 溜めた日時
@@ -51,6 +55,10 @@ data_models:
         type: str | None
         default: None
         description: 返信先のスレッドの ID。新規スレッドの最初の書き込みは `None`（キーを書かない）。持つときは `target`・`loc` を持たない
+      - name: choice
+        type: str | None
+        default: None
+        description: 案の選択の選んだ案の記号（`comments.yaml` の `choice.key`）。案の選択でないコメントは `None`（キーを記載しない）。持つときは `target` が検討事項で、`loc`・`thread` を持たない
   - name: CommentFile
     title: レビュー中のコメントのファイル
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
@@ -107,14 +115,64 @@ data_models:
         type: dict[str, Any] | None
         description: 箇所（`location_to_dict`）
       - name: body
-        type: str
-        description: 本文
+        type: str | None
+        description: 本文。一言を添えない案の選択は `None`
       - name: created
         type: str
         description: 溜めた日時
       - name: thread
         type: str | None
         description: 返信先のスレッドの ID。新規スレッドの最初の書き込みは `None`
+      - name: choice
+        type: dict[str, str] | None
+        description: 案の選択（`{key}`）。案の選択でないコメントは `None`
+  - name: CommentInput
+    title: コメントの入力
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 項目へコメントする
+    role: DTO
+    summary: '`_parse_comment_input` が確かめた溜める要求。`@dataclass(frozen=True, slots=True, kw_only=True)`'
+    properties:
+      - name: target
+        type: str | None
+        description: 向けた項目の ID
+      - name: loc
+        type: Location | None
+        description: 選んだ箇所
+      - name: thread
+        type: str | None
+        description: 返信先のスレッドの ID
+      - name: body
+        type: str | None
+        description: 前後の空白を除いた本文。案の選択で一言を渡さなければ `None`
+      - name: id
+        type: str | None
+        description: 元に戻すときのコメントの ID
+      - name: created
+        type: str | None
+        description: 元に戻すときの溜めた日時
+      - name: choice
+        type: str | None
+        description: 案の選択の選んだ案の記号
+  - name: SentItem
+    title: 送信した書き込み
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送信する
+    role: DTO
+    summary: 『コメントをまとめて送信する』の `items[]` の 1 行。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: comment
+        type: str
+        description: 送信したレビュー中のコメントの ID
+      - name: thread
+        type: str | None
+        description: 書き込みを追加したスレッドの ID。案の選択は `None`
+      - name: post
+        type: str | None
+        description: 追加した書き込みの ID。案の選択は `None`
+      - name: decision
+        type: str | None
+        description: 案の選択のとき、`user_choice` を記載した検討事項の ID。それ以外は `None`
 constants:
   - name: COMMENTS_FILE
     title: レビュー中のコメントのファイル名
@@ -146,6 +204,18 @@ constants:
     usecase: 項目へコメントする
     summary: コメントの ID の頭の文字（項目の種類とスレッドの頭の文字と重ならない）
     value: '"C"'
+  - name: CHOICE_SUMMARY
+    title: 案の選択のまとまりの説明
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送信する
+    summary: 'まとめて送信した案の選択を 1 つにしたまとまりの説明（PR #723 の確認ログ）'
+    value: '"画面からの案の選択"'
+  - name: CHOOSABLE_STATUSES
+    title: 案を選べる状態
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 項目へコメントする
+    summary: 案の選択を溜められる・送信できる検討事項の状態
+    value: frozenset({"未決定", "要見直し"})
 functions:
   - name: load_comments
     title: レビュー中のコメントの読み込み
@@ -260,8 +330,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
     usecase: 項目へコメントする
     scope: public
-    summary: 向けた先（項目と箇所か、返信先のスレッド）と本文を確かめ、レビュー中のコメントを 1 件追加する。`id` を渡されたら削除したコメントを同じ ID で戻す（鍵は呼ぶ側が取る。スレッドは作らない）
-    side_effects: '`comments.yaml` を一時ファイルから置き換える。新しく溜めたときは同じ向けた先の下書きを `drafts.yaml` から削除する'
+    summary: 向けた先（項目と箇所か、返信先のスレッド）と本文・案の選択を確かめ、レビュー中のコメントを 1 件追加する。`id` を渡されたら削除したコメントを同じ ID で戻す（鍵は呼ぶ側が取る。スレッドは作らない）
+    side_effects: '`comments.yaml` を一時ファイルから置き換える。新しく溜めたときは同じ向けた先の下書きを `drafts.yaml` から削除する（案の選択は下書きを削除しない）'
     args:
       - name: root
         type: Path
@@ -272,7 +342,7 @@ functions:
         type: dict[str, Any]
         required: true
         passing: positional
-        description: 要求の本文のオブジェクト（`target`・`loc`・`thread`・`body`・`id`・`created`）
+        description: 要求の本文のオブジェクト（`target`・`loc`・`thread`・`body`・`id`・`created`・`choice`）
       - name: now
         type: Callable[[], str]
         required: false
@@ -287,14 +357,17 @@ functions:
       2. ワークスペースを読み（`load_workspace`）、`target` があれば項目を引く（`find_item`）
       3. `loc` があれば今の項目に合うかを確かめる（`check_location`）
          - 合わなければ、その理由の `CommentConflictError` を送出する
-      4. `thread` があればスレッドを読み（`load_threads`）、ID で引く
+      4. `choice` があれば案の選択を確かめる（`_check_choice`）
+         - 理由が返れば、その理由の `CommentConflictError` を送出する
+      5. `thread` があればスレッドを読み（`load_threads`）、ID で引く
          - 無ければ `ThreadNotFoundError` を送出する
          - クローズなら `スレッド {ID} はクローズです` の `CommentConflictError` を送出する（元に戻すときも同じ）
-      5. コメントを読む（`load_comments`）
+      6. コメントを読む（`load_comments`）
+         - `choice` があり、同じ `target` に `choice` を持つコメントが既にある場合、`{target} への案の選択は {ID} にあります` の `CommentConflictError` を送出する
          - `id` がある場合、その ID が今の `items` にあるか連番が `seq` を超えれば `CommentConflictError` を送出する。渡された ID と `created` で戻し、`seq` は変えない
          - `id` が無ければ `C-{seq + 1}` と今の日時で追加し、`seq` を 1 上げる
-      6. 連番の小さい順に並べた `{seq, items}` を書く（`_write_yaml`。`None` の `target`・`loc`・`thread` はキーを書かない）
-      7. 新しく溜めたとき、同じ向けた先（`target` と `loc` の組か、`thread`）の下書きがあれば削除して書く
+      7. 連番の小さい順に並べた `{seq, items}` を書く（`_write_yaml`。`None` の `target`・`loc`・`thread`・`body`・`choice` はキーを記載しない。`choice` は `{key}` で記載する）
+      8. 新しく溜めたとき（案の選択を除く）、同じ向けた先（`target` と `loc` の組か、`thread`）の下書きがあれば削除して書く
          - `WriteFailedError` の場合、`[WARNING]` 下書きを削除できなかった（パス・理由）を出して溜めたまま返す
     exceptions:
       - name: CommentInvalidError
@@ -303,7 +376,7 @@ functions:
         condition: '`target` の項目がワークスペースに無い'
         message: '項目がありません: {target}'
       - name: CommentConflictError
-        condition: 箇所が今の項目に合わない、返信先のスレッドがクローズ、または戻す `id` が今のレビュー中にあるか `seq` を超える
+        condition: 箇所が今の項目に合わない、返信先のスレッドがクローズ、戻す `id` が今のレビュー中にあるか `seq` を超える、案の選択が `_check_choice` に合わない、または同じ検討事項への案の選択が既にレビュー中にある
         message: '{理由}'
       - name: WriteFailedError
         condition: '`comments.yaml` の一時ファイルの書き込みか置き換えで `OSError` が起きた'
@@ -357,13 +430,32 @@ functions:
         mock: なし
         expected: '`ThreadNotFoundError` / `CommentConflictError`（メッセージに `クローズ`）。`comments.yaml` が無い'
         exception: スレッドが無い・クローズ
+      - name: test_add_comment_when_choice
+        case: 正常
+        summary: 案の選択を一言つきで溜め、検討事項と下書きは変えない
+        condition: '案 A・B を持つ未決定の D-1 と D-1 への下書き。`{target: D-1, choice: {key: B}, body: 費用を優先する}`'
+        mock: '`now`'
+        expected: '溜めたコメントの `choice` が `B`・`body` が `費用を優先する`。ファイルに `choice: {key: B}` があり `loc`・`thread` のキーが無い。`decisions.yaml`・`drafts.yaml` が呼ぶ前と同じ'
+      - name: test_add_comment_when_choice_without_note
+        case: 正常
+        summary: 一言なしの案の選択は本文のキーを記載しない
+        condition: '案 A・B を持つ未決定の D-1。`{target: D-1, choice: {key: A}}`'
+        mock: '`now`'
+        expected: 溜めたコメントの `body` が `None` で、ファイルに `body` のキーが無い
+      - name: test_add_comment_when_choice_rejected
+        case: 異常
+        summary: 選べない検討事項・案に無い記号・同じ検討事項への 2 件目は溜めない
+        condition: '`parametrize`: 決定済みの D-2 への `{key: A}` / D-1 への `{key: Z}` / D-1 への案の選択 C-1 があるときの D-1 への `{key: B}` / 資料 A-1 への `{key: A}`'
+        mock: なし
+        expected: どれも `CommentConflictError`（3 つ目のメッセージに `D-1` と `C-1`）。`comments.yaml` が呼ぶ前と同じ
+        exception: 案の選択が合わない
   - name: update_comment
     title: コメントを修正する
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
     usecase: コメントを選んで送信する
     scope: public
-    summary: レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す（鍵は呼ぶ側が取る）
+    summary: レビュー中のコメント 1 件の本文か案の選択の記号を書き換えるか、箇所を外す（鍵は呼ぶ側が取る）
     side_effects: '`comments.yaml` を一時ファイルから置き換える'
     args:
       - name: root
@@ -380,22 +472,28 @@ functions:
         type: dict[str, Any]
         required: true
         passing: positional
-        description: 要求の本文のオブジェクト（`body`・`loc`）
+        description: 要求の本文のオブジェクト（`body`・`loc`・`choice`）
     returns:
       type: ReviewComment
       description: 書き換えた後のコメント
     process: |-
-      1. `body` も `loc` も無ければ `CommentInvalidError`。`body` は文字列で前後の空白を除いて 1〜`MAX_BODY_CHARS` 文字、`loc` は `None` だけを受ける（それ以外は `loc: null だけを受けます` の `CommentInvalidError`）
+      1. `body` も `loc` も `choice` も無ければ `CommentInvalidError`。`body` は文字列で前後の空白を除いて 1〜`MAX_BODY_CHARS` 文字か `None`、`loc` は `None` だけ（それ以外は `loc: null だけを受けます` の `CommentInvalidError`）、`choice` は `key` に文字列を持つオブジェクトだけを受ける
       2. コメントを読み、ID で引く（無ければ `CommentNotFoundError`）
-      3. `body` を置き換えるか `loc` を `None` にし、並びと `seq` を変えずに書く（`_write_yaml`）
+      3. 案の選択でないコメントに `choice` か `body: None` を渡したら、`choice: 案の選択のコメントだけが受けます` か `body: 案の選択のコメントだけが null を受けます` の `CommentInvalidError` を送出する
+      4. `choice` があればワークスペースを読み（`load_workspace`）、向けた検討事項に当てて確かめる（`_check_choice`）
+         - 理由が返れば、その理由の `CommentConflictError` を送出する
+      5. `body` を置き換える（`None` なら削除する）か、`choice` を置き換えるか、`loc` を `None` にし、並びと `seq` を変えずに書く（`_write_yaml`）
     exceptions:
       - name: CommentInvalidError
-        condition: '`body` も `loc` も無い、`body` が空白だけか上限を超える、`loc` が `null` 以外'
+        condition: '`body` も `loc` も `choice` も無い、`body` が空白だけか上限を超える、`loc` が `null` 以外、`choice` の形式が崩れている、案の選択でないコメントに `choice` か `body: null` を渡した'
       - name: CommentNotFoundError
         condition: その ID のコメントがレビュー中に無い
         message: 'コメントがありません: {ID}'
       - name: WriteFailedError
         condition: '`comments.yaml` を書けない'
+      - name: CommentConflictError
+        condition: '`choice` が `_check_choice` に合わない'
+        message: '{理由}'
     unit_tests:
       - name: test_update_comment
         case: 正常
@@ -410,6 +508,19 @@ functions:
         mock: なし
         expected: '`CommentInvalidError` / `CommentInvalidError` / `CommentInvalidError` / `CommentNotFoundError`。`comments.yaml` が呼ぶ前と同じ'
         exception: 構造の誤り・無い ID
+      - name: test_update_comment_when_choice
+        case: 正常
+        summary: 案の選択を選び直して一言を書き換える・一言を削除する
+        condition: '案 A・B を持つ未決定の D-1 と、D-1 への案 A の選択 C-1（一言「x」）。`parametrize`: `{choice: {key: B}, body: 費用を優先する}` / `{body: null}`'
+        mock: なし
+        expected: C-1 の `choice` が `B`・`body` が `費用を優先する` / C-1 の `body` が `None` でファイルに `body` のキーが無い。どちらも `target` が D-1 のままで `decisions.yaml` が呼ぶ前と同じ
+      - name: test_update_comment_when_choice_rejected
+        case: 異常
+        summary: '案に無い記号と、案の選択でないコメントへの choice・body: null は書き換えない'
+        condition: '`parametrize`: 案の選択 C-1 に `{choice: {key: Z}}` / 案の選択でない C-2 に `{choice: {key: A}}` / C-2 に `{body: null}`'
+        mock: なし
+        expected: '`CommentConflictError` / `CommentInvalidError` / `CommentInvalidError`。`comments.yaml` が呼ぶ前と同じ'
+        exception: 案の選択が合わない・案の選択でない
   - name: delete_comment
     title: コメントを削除する
     kind: 関数
@@ -431,7 +542,7 @@ functions:
         description: コメントの ID
     returns:
       type: tuple[ReviewComment, int]
-      description: 削除したコメントと、削除した後の件数
+      description: 削除したコメントと、削除した後の件数。配信は削除したコメントの `choice` を応答の `choice` に入れる
     process: |-
       1. コメントを読み、ID で引く（無ければ `CommentNotFoundError`）
       2. その 1 件を除いた `{seq, items}` を書く（`_write_yaml`）
@@ -454,6 +565,12 @@ functions:
         mock: なし
         expected: '`CommentNotFoundError`（メッセージに `C-9`）'
         exception: その ID のコメントが無い
+      - name: test_delete_comment_when_choice
+        case: 正常
+        summary: 案の選択を削除すると、選んだ案の記号つきで返す
+        condition: D-1 への案 B の選択 C-1 で `C-1`
+        mock: なし
+        expected: 返したコメントの `choice` が `B`。`comments.yaml` が空
   - name: save_draft
     title: 下書きを保つ
     kind: 関数
@@ -534,8 +651,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
     usecase: コメントを選んで送信する
     scope: public
-    summary: 渡した ID のコメントを全て確かめてからスレッドへ追加し、レビュー中から外す。1 件でも合わなければ何も書き換えない（鍵は呼ぶ側が取る）
-    side_effects: '`threads.yaml` を先に、`comments.yaml` を後に一時ファイルから置き換える'
+    summary: 渡した ID のコメントを全て確かめてから、案の選択は検討事項の `user_choice` へ、ほかはスレッドへ追加し、レビュー中から外す。1 件でも合わなければ何も書き換えない（鍵は呼ぶ側が取る）
+    side_effects: '案の選択があれば `decisions.yaml`・`history.yaml`・`changes.yaml` を、続けて `threads.yaml`、最後に `comments.yaml` を一時ファイルから置き換える'
     args:
       - name: root
         type: Path
@@ -554,22 +671,25 @@ functions:
         passing: injected
         description: 今の日時を返す関数
     returns:
-      type: tuple[str, list[SentPost]]
-      description: 送信した日時と、溜めた順の送信したコメント・スレッド・書き込みの ID（モジュール構成『スレッド』の `SentPost`）
+      type: tuple[str, list[SentItem]]
+      description: 送信した日時と、溜めた順の送信したコメント・スレッド・書き込み・検討事項の ID（`SentItem`）
     process: |-
       1. `ids` が 1 件以上の文字列の配列で重なりが無いかを確かめる（合わなければ `ids: {理由}` の `CommentInvalidError`）
       2. コメントを読み、無い ID があればその全てを持った `CommentNotFoundError` を送出する
       3. ワークスペースとスレッドを読み（`load_workspace`、`load_threads`）、渡したコメントを溜めた順に確かめる。同じ `comment` を持つ書き込みが既にあるコメントは確かめない（二重に送信しないため、追加せずに外すだけ）
          - 新規スレッドの分は、向けた項目が無ければ `{target} がありません`、箇所が合わなければ `check_location` の理由を控える
          - 返信の分は、返信先のスレッドが無ければ `スレッド {ID} がありません`、クローズなら `スレッド {ID} はクローズです` を控える
+         - 案の選択の分は、向けた検討事項が無ければ `{target} がありません`、`_check_choice` に合わなければその理由を控える
          - 控えが 1 件でもあれば、全てを `stale` に持った `CommentConflictError` を送出する
-      4. 前の `threads.yaml` の中身（無ければ無いこと）を控え、スレッドへ追加する（`UserPostInput` にして `append_user_posts`。`loc` は `location_to_dict`）
-      5. 送信したコメントを除いた `{seq, items}` を書く（`_write_yaml`）
-         - `WriteFailedError` の場合、控えた `threads.yaml` を書き戻し（無かったときは削除する）、同じ例外を送出する
-      6. 送信した返信のスレッドの下書きがあれば削除して書く
+      4. 前の `decisions.yaml`・`history.yaml`・`changes.yaml` の中身を控え、案の選択があれば利用者の選択を記載する（`_write_user_choices`）
+      5. 前の `threads.yaml` の中身（無ければ無いこと）を控え、案の選択でない分をスレッドへ追加する（`UserPostInput` にして `append_user_posts`。`loc` は `location_to_dict`。案の選択だけのときは書かない）
+         - `WriteFailedError` の場合、控えた `decisions.yaml`・`history.yaml`・`changes.yaml` を書き戻し、同じ例外を送出する
+      6. 送信したコメントを除いた `{seq, items}` を書く（`_write_yaml`）
+         - `WriteFailedError` の場合、控えた `threads.yaml`・`decisions.yaml`・`history.yaml`・`changes.yaml` を書き戻し（無かったファイルは削除する）、同じ例外を送出する
+      7. 送信した返信のスレッドの下書きがあれば削除して書く
          - `WriteFailedError` の場合、`[WARNING]` 下書きを削除できなかった（パス・理由）を出して送信したまま返す
-      7. 送信した日時と、コメント・スレッド・書き込みの ID の組を返す
-         - `[INFO]` コメントを送信した（件数・スレッドの ID）
+      8. 送信した日時と、溜めた順の `SentItem`（スレッドへの分は `thread`・`post`、案の選択は `decision`）を返す
+         - `[INFO]` コメントを送信した（件数・スレッドの ID・案の選択の件数）
     exceptions:
       - name: CommentInvalidError
         condition: '`ids` が無い・空・文字列の配列でない・重なりがある'
@@ -578,12 +698,12 @@ functions:
         condition: '`ids` のどれかがレビュー中に無い'
         message: 'コメントがありません: {ID、ID}'
       - name: CommentConflictError
-        condition: 向けた項目が消えたコメント、箇所が今の項目に合わないコメント、クローズか無いスレッドへの返信がある
+        condition: 向けた項目が消えたコメント、箇所が今の項目に合わないコメント、クローズか無いスレッドへの返信、検討事項が `未決定`・`要見直し` でないか選んだ案が無くなった案の選択がある
         message: 送信できない書き込みが {件数} 件あります
       - name: SchemaMismatchError
         condition: '`load_comments`・`load_threads`・`load_workspace` が送信するもの'
       - name: WriteFailedError
-        condition: '`threads.yaml` か `comments.yaml` を書けない（どちらも前のままに戻した後）'
+        condition: '`decisions.yaml`・`history.yaml`・`changes.yaml`・`threads.yaml`・`comments.yaml` のどれかを書けない（この送信で置き換えたファイルを前のままに戻した後）'
     unit_tests:
       - name: test_send_comments
         case: 正常
@@ -623,6 +743,38 @@ functions:
         condition: TH-1 と C-1 を持つワークスペース。`comments.yaml` への `os.replace` だけ `OSError` を送出するように差し替える
         mock: '`os.replace`'
         expected: '`WriteFailedError`。`threads.yaml`・`comments.yaml` が呼ぶ前と同じ'
+        exception: 置き換えで OSError
+      - name: test_send_comments_when_choices
+        case: 正常
+        summary: 案の選択を検討事項の利用者の選択へ移し、スレッドは作らない
+        condition: '案 A・B を持つ未決定の D-1・D-2、D-1 への案 B の選択 C-1（一言なし）・D-2 への案 B の選択 C-2（一言「費用を優先する」）。`{ids: [C-1, C-2]}`'
+        mock: '`now`'
+        expected: '`items` が C-1 → D-1、C-2 → D-2 で `thread`・`post` が `None`。D-1 の `user_choice` が `{key: B, at: now}`、D-2 が `{key: B, note: 費用を優先する, at: now}`。D-1・D-2 が未決定のまま。`threads.yaml` が無く、`comments.yaml` が空。`changes.yaml` に説明 `画面からの案の選択`・`by: user` のまとまりが 1 つ増え、D-1・D-2 の変更履歴の `before` の `user_choice` が `None`'
+      - name: test_send_comments_when_choices_and_posts
+        case: 正常
+        summary: 案の選択とスレッドへの書き込みを一緒に送信し、まだまとめていない変更は先にまとまりにする
+        condition: '`changes.yaml` の `pending` に AI の変更、D-1 への案 B の選択 C-1 と D-2 への新規スレッドの C-2。`{ids: [C-1, C-2]}`'
+        mock: '`now`'
+        expected: '`items` が C-1 → D-1、C-2 → TH-1・TH-1-1。`changes.yaml` に AI のまとまり → 案の選択のまとまりの順に 2 つ増える'
+      - name: test_send_comments_when_choice_same
+        case: 正常
+        summary: 同じ記号と一言の利用者の選択を持つ検討事項は書き換えない
+        condition: '`user_choice: {key: B, at: 前の日時}` を持つ D-1 と、D-1 への案 B の選択 C-1（一言なし）。`{ids: [C-1]}`'
+        mock: '`now`'
+        expected: D-1 の `user_choice.at` が前の日時のままで、`changes.yaml`・`history.yaml` が呼ぶ前と同じ。`comments.yaml` が空
+      - name: test_send_comments_when_choice_stale
+        case: 異常
+        summary: 選べなくなった検討事項・無くなった案への案の選択は何も送信しない
+        condition: '`parametrize`: C-1 を溜めた後に D-1 を決定済みにした / 案 B を削除した'
+        mock: なし
+        expected: '`CommentConflictError` の `stale` が C-1 の 1 件。`decisions.yaml`・`comments.yaml` が呼ぶ前と同じ'
+        exception: 送信できない案の選択がある
+      - name: test_send_comments_when_threads_write_fails_after_choices
+        case: 異常
+        summary: スレッドを書けなければ利用者の選択を書き戻す
+        condition: D-1 への案の選択 C-1 と新規スレッドの C-2。`threads.yaml` への `os.replace` だけ `OSError` を送出するように差し替える
+        mock: '`os.replace`'
+        expected: '`WriteFailedError`。`decisions.yaml`・`history.yaml`・`changes.yaml`・`threads.yaml`・`comments.yaml` が呼ぶ前と同じ'
         exception: 置き換えで OSError
   - name: send_now
     title: すぐ送信する
@@ -703,7 +855,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
     usecase: 項目へコメントする
     scope: internal
-    summary: 溜める要求の `target`・`loc`・`thread`・`body`・`id`・`created` の形式を確かめる
+    summary: 溜める要求の `target`・`loc`・`thread`・`body`・`id`・`created`・`choice` の形式を確かめる
     args:
       - name: data
         type: dict[str, Any]
@@ -711,26 +863,27 @@ functions:
         passing: positional
         description: 要求の本文のオブジェクト
     returns:
-      type: tuple[str | None, Location | None, str | None, str, str | None, str | None]
-      description: '`target`・箇所・`thread`・前後の空白を除いた `body`・`id`・`created`'
+      type: CommentInput
+      description: '確かめた要求（`body` は前後の空白を除き、案の選択で渡さなければ `None`）'
     process: |-
-      1. `body` を確かめる（文字列で、前後の空白を除いて 1〜`MAX_BODY_CHARS` 文字）
+      1. `body` を確かめる（文字列で、前後の空白を除いて 1〜`MAX_BODY_CHARS` 文字。`choice` があるときは無くてよい）
       2. `target` があれば文字列かを確かめる
       3. `loc` があれば `target` もあるかを確かめ、`parse_location` を当てる
       4. `thread` があれば文字列で、`target`・`loc` を一緒に渡していないかを確かめる
-      5. `id` があれば `C-{数字}` の構造で `created` もあるかを、`created` があれば `id` もあるかを確かめる
+      5. `choice` があれば `key` に文字列を持つオブジェクトで、`target` があり、`loc`・`thread` を一緒に渡していないかを確かめる
+      6. `id` があれば `C-{数字}` の構造で `created` もあるかを、`created` があれば `id` もあるかを確かめる
          - 合わない場合、`{キー}: {理由}` の `CommentInvalidError` を送出する
     exceptions:
       - name: CommentInvalidError
-        condition: '`body` が無い・文字列でない・空白だけ・上限を超える、`target` が文字列でない、`loc` だけで `target` が無い、`loc` の形式が崩れている、`thread` が文字列でないか `target`・`loc` と一緒に渡した、`id` と `created` の組みが合わない'
+        condition: '`choice` を渡さないのに `body` が無い、`body` が文字列でない・空白だけ・上限を超える、`target` が文字列でない、`loc` だけで `target` が無い、`loc` の形式が崩れている、`thread` が文字列でないか `target`・`loc` と一緒に渡した、`choice` の形式が崩れているか `target` が無いか `loc`・`thread` と一緒に渡した、`id` と `created` の組みが合わない'
         message: '{キー}: {理由}'
     unit_tests:
       - name: test_parse_comment_input_when_invalid
         case: 異常
         summary: 構造の誤りを拾う
-        condition: '`parametrize`: `body` が無い / `body` が `"  "` / `body` が 10001 文字 / `body` が `1` / `target` が `1` / `loc` だけ / `id` だけ / `id: X-1` / `thread` が `1` / `thread` と `target` / `thread` と `target`・`loc`'
+        condition: '`parametrize`: `body` が無い / `body` が `"  "` / `body` が 10001 文字 / `body` が `1` / `target` が `1` / `loc` だけ / `id` だけ / `id: X-1` / `thread` が `1` / `thread` と `target` / `thread` と `target`・`loc` / `choice` が `B` / `choice` だけで `target` が無い / `choice` と `loc` / `choice` と `thread`'
         mock: なし
-        expected: '`CommentInvalidError`（メッセージに順に `body`・`body`・`body`・`body`・`target`・`target`・`created`・`id`・`thread`・`thread`・`thread`）'
+        expected: '`CommentInvalidError`（メッセージに順に `body`・`body`・`body`・`body`・`target`・`target`・`created`・`id`・`thread`・`thread`・`thread`・`choice`・`choice`・`choice`・`choice`）'
         exception: 構造の誤り
       - name: test_parse_comment_input_when_boundary
         case: 正常
@@ -767,3 +920,92 @@ functions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
         message: '書き込めませんでした: {パス}（{理由}）'
+  - name: _check_choice
+    title: 案の選択の確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 項目へコメントする
+    scope: internal
+    summary: 案の選択が向けた検討事項に当てはまるかを確かめ、合わない理由を返す
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: target
+        type: str
+        required: true
+        passing: positional
+        description: 向けた項目の ID
+      - name: key
+        type: str
+        required: true
+        passing: positional
+        description: 選んだ案の記号
+    returns:
+      type: str | None
+      description: 合わない理由。当てはまれば `None`
+    process: |-
+      1. 項目を引く（`find_item`）
+         - 検討事項でない場合、`{target} は検討事項ではありません` を返す
+      2. 状態が `CHOOSABLE_STATUSES` に無い場合、`{target} は {状態} のため案を選べません` を返す
+      3. `options` に `key` の案が無い場合、`{target} に案 {key} がありません` を返す
+      4. `None` を返す
+    unit_tests:
+      - name: test_check_choice
+        case: 正常
+        summary: 当てはまる案の選択は理由を返さない
+        condition: '`parametrize`: 未決定の D-1 の案 B / 要見直しの D-2 の案 A'
+        mock: なし
+        expected: '`None`'
+      - name: test_check_choice_when_mismatch
+        case: 正常
+        summary: 合わない理由を返す
+        condition: '`parametrize`: 資料 A-1 / 決定済みの D-3 / D-1 の案 Z'
+        mock: なし
+        expected: 順に `検討事項ではありません`・`決定済み のため案を選べません`・`案 Z がありません` を含む理由
+  - name: _write_user_choices
+    title: 利用者の選択の記載
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送信する
+    scope: internal
+    summary: 送信する案の選択を検討事項の `user_choice` に当て、変更履歴とまとまりを積んで 1 回で記載する
+    side_effects: '`decisions.yaml`・`history.yaml`・`changes.yaml` を一時ファイルから置き換える（変わる検討事項が無ければ記載しない）'
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: choices
+        type: list[ReviewComment]
+        required: true
+        passing: positional
+        description: 送信する案の選択（溜めた順）
+      - name: at
+        type: str
+        required: true
+        passing: keyword
+        description: 送信した日時
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. 案の選択ごとに、検討事項の今の `user_choice` と `key`・`note` が同じなら飛ばす。違えば `{key, note（あれば）, at}` に置き換えた検討事項を作る
+         - 置き換える検討事項が無ければ、何も記載せずに返す
+      2. 変更履歴と `changes.yaml` を読み（`load_item_history`、`load_changes`）、まだまとめていない変更があれば先にその書いた元のまとまりにする（`commit_pending`。説明と `by` は『保存待ちの編集』の `save_edits` と同じ）
+      3. 置き換える検討事項ごとに、`by: user`・`before` に置き換える前の `user_choice` を持った変更履歴を 1 回分積み、`history.yaml` の行の `updated`・`updated_by`（`user`）を書き換える（`make_entry`、`stack_history`、`note_pending`）
+      4. 案の選択の変更を説明 `CHOICE_SUMMARY`・`by: user` の 1 つのまとまりにする（`commit_pending`）
+      5. 検討事項・変更履歴・まとまりを 1 回で記載し（`save_batch`）、書き換えの検知に自分の書き込みとして伝える（`accept_written`）
+    exceptions:
+      - name: WriteFailedError
+        condition: '`save_batch` が送出するもの'
+    unit_tests:
+      - name: test_write_user_choices
+        case: 正常
+        summary: 選択を書き換え、前の選択を変更履歴に残す
+        condition: '`user_choice: {key: A}` を持つ D-1 に案 B（一言「x」）の選択'
+        mock: なし
+        expected: 'D-1 の `user_choice` が `{key: B, note: x, at}`。D-1 の変更履歴の最後の `before.user_choice.key` が `A`、`by` が `user`'

@@ -165,13 +165,19 @@ classes:
             required: true
             passing: positional
             description: 届いた件数
+          - name: choices
+            type: int
+            required: false
+            default: '0'
+            passing: keyword
+            description: 届いた案の選択の件数
         returns:
           type: bool
           description: 会話の記録に入ったと確かめたか（応答の `entered`）
         process: |-
-          1. `target_of(root)` を引く。`None` なら `enter_to_claude(None, count, pane_lock=None, paste_lock=_paste_lock)` を返す
+          1. `target_of(root)` を引く。`None` なら `enter_to_claude(None, count, choices=choices, pane_lock=None, paste_lock=_paste_lock)` を返す
           2. `_guard` を取り、`_pane_locks` から `(target.socket, target.pane)` の鍵を引く（無ければ作って入れる）
-          3. `enter_to_claude(target, count, pane_lock=その鍵, paste_lock=_paste_lock)` を返す
+          3. `enter_to_claude(target, count, choices=choices, pane_lock=その鍵, paste_lock=_paste_lock)` を返す
         unit_tests:
           - name: test_enter
             case: 正常
@@ -200,15 +206,21 @@ classes:
             required: true
             passing: positional
             description: 届いた件数
+          - name: choices
+            type: int
+            required: false
+            default: '0'
+            passing: keyword
+            description: 届いた案の選択の件数
         returns:
           type: tuple[bool, bool]
           description: '`(entered, restarted)`（応答の `entered`・`restarted`）'
         process: |-
-          1. 状態のフォルダに MindStella のセッションが無ければ、`(enter(root, count), False)` を返す
+          1. 状態のフォルダに MindStella のセッションが無ければ、`(enter(root, count, choices=choices), False)` を返す
           2. `restarting`・クローズ待ち・`_restarter` が `None` なら `(False, False)` を返す（コメントはスレッドに残る）
-          3. `running` で `enter(root, count)` が真なら `(True, False)` を返す
+          3. `running` で `enter(root, count, choices=choices)` が真なら `(True, False)` を返す
           4. `_restarter(root)` が偽なら `(False, False)` を返す
-          5. `(enter(root, count), True)` を返す
+          5. `(enter(root, count, choices=choices), True)` を返す
         unit_tests:
           - name: test_enter_or_restart
             case: 正常
@@ -265,6 +277,18 @@ constants:
     usecase: コメントを選んで送信する
     summary: Claude Code が会話の記録のフォルダ名をそのまま使う上限の文字数（超えると先頭この文字数に `-{パスのハッシュ}` を追加する。外部ライブラリ『claude-code』）
     value: '200'
+  - name: MIXED_INPUT_TEMPLATE
+    title: コメントと案の選択の入力の雛形
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送信する
+    summary: 'コメントと案の選択を一緒に送信したときに貼る 1 行（PR #723 の確認ログ）'
+    value: '"[mindstella] ユーザーからのコメントが {count} 件と案の選択が {choices} 件届きました。再読み込みしてください。"'
+  - name: CHOICE_INPUT_TEMPLATE
+    title: 案の選択だけの入力の雛形
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送信する
+    summary: '案の選択だけを送信したときに貼る 1 行（PR #723 の確認ログ）'
+    value: '"[mindstella] ユーザーからの案の選択が {choices} 件届きました。再読み込みしてください。"'
 functions:
   - name: parse_session
     title: セッションの値の読み込み
@@ -439,7 +463,7 @@ functions:
     title: 入力する文字列
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
     usecase: コメントを選んで送信する
-    summary: 件数を入れた `INPUT_TEMPLATE` を返す
+    summary: 件数を入れた入力の 1 行を返す（案の選択が無ければ `INPUT_TEMPLATE`、コメントと案の選択があれば `MIXED_INPUT_TEMPLATE`、案の選択だけなら `CHOICE_INPUT_TEMPLATE`）
     kind: 関数
     scope: public
     args:
@@ -447,11 +471,20 @@ functions:
         type: int
         required: true
         passing: positional
-        description: 届いた件数（まとめて送信した応答の `items` の件数）
+        description: 届いたコメントの件数（まとめて送信した応答の `items` のうち `thread` を持つ件数）
+      - name: choices
+        type: int
+        required: false
+        default: '0'
+        passing: keyword
+        description: 届いた案の選択の件数（まとめて送信した応答の `items` のうち `decision` を持つ件数）
     returns:
       type: str
       description: 改行を含まない 1 行
-    process: 1. `INPUT_TEMPLATE.format(count=count)` を返す
+    process: |-
+      1. `choices` が 0 なら `INPUT_TEMPLATE.format(count=count)` を返す
+      2. `count` が 0 なら `CHOICE_INPUT_TEMPLATE.format(choices=choices)` を返す
+      3. `MIXED_INPUT_TEMPLATE.format(count=count, choices=choices)` を返す
     unit_tests:
       - name: test_input_text
         case: 正常
@@ -459,6 +492,12 @@ functions:
         condition: '`count=3`'
         mock: なし
         expected: '`[mindstella] ユーザーからのコメントが 3 件届きました。再読み込みしてください。`'
+      - name: test_input_text_when_choices
+        case: 正常
+        summary: 案の選択を含むときは案の選択の件数を入れた文面にする
+        condition: '`parametrize`: `count=2, choices=3` / `count=0, choices=3`'
+        mock: なし
+        expected: '`[mindstella] ユーザーからのコメントが 2 件と案の選択が 3 件届きました。再読み込みしてください。` / `[mindstella] ユーザーからの案の選択が 3 件届きました。再読み込みしてください。`'
   - name: snapshot_sizes
     title: 会話の記録の大きさの控え
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
@@ -605,7 +644,7 @@ functions:
     title: Claude Code への入力
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
     usecase: コメントを選んで送信する
-    summary: 宛先が生きていれば届いた件数の 1 行をペインへ貼り、上限までに会話の記録に入ったかを返す。入力できなかった理由を記録する
+    summary: 宛先が生きていれば届いた件数（コメントと案の選択）の 1 行をペインへ貼り、上限までに会話の記録に入ったかを返す。入力できなかった理由を記録する
     kind: 関数
     scope: public
     thread_safe: true
@@ -655,6 +694,12 @@ functions:
         default: inject_session.PROC_DIR
         passing: injected
         description: 起動時刻を読む `/proc`（`is_session_alive` へ渡す）
+      - name: choices
+        type: int
+        required: false
+        default: '0'
+        passing: keyword
+        description: 届いた案の選択の件数（`input_text` へ渡す）
     returns:
       type: bool
       description: 会話の記録に入った（または待ち行列に入った）と確かめたか（応答の `entered`）
@@ -667,7 +712,7 @@ functions:
          1. 宛先が生きているかを確かめる（`is_session_alive(target, deadline=deadline, proc_dir=proc_dir)`）
             - 理由が返った場合、tmux へ貼らずに偽を返す
               - `[WARNING]` 宛先のセッションが終わったため Claude Code へ入力しない（理由）
-         2. `paste_to_pane(target, input_text(count), deadline=deadline)` を呼ぶ
+         2. `paste_to_pane(target, input_text(count, choices=choices), deadline=deadline)` を呼ぶ
             - 理由が返った場合、偽を返す
               - `[WARNING]` Claude Code へ入力できない（理由）
       5. `paste_lock` を離してから、`confirm_deadline` を `clock() + CONFIRM_DEADLINE_SEC` にする

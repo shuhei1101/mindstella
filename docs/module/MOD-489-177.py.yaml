@@ -37,7 +37,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）。`init` を外し、`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` を追加する
-    value: ("next_id", "update_settings", "adopt", "edit_option", "changes_since_read", "commit", "pending", "check", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "workspaces", "workspace", "create_workspace", "create_session", "sessions", "stop_session", "restart_session", "close_workspace", "reopen_workspace", "delete_workspace", "update_workspace", "server_status", "server_stop")
+    value: ("next_id", "update_settings", "adopt", "edit_option", "changes_since_read", "user_choices", "commit", "pending", "check", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "workspaces", "workspace", "create_workspace", "create_session", "sessions", "stop_session", "restart_session", "close_workspace", "reopen_workspace", "delete_workspace", "update_workspace", "server_status", "server_stop")
   - name: DEFAULT_PORT
     title: 既定の待ち受けのポート
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -398,6 +398,7 @@ functions:
          - `server_status` は `call_tool(status)`、`server_stop` は `call_tool(lambda: run_server_stop(previews, request_stop=request_stop))` にする（`session` は受けても使わない）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
          - ワークスペースを書き換えるツール（`init`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`new_thread`・`reply`・`set_thread_status`・`update_thread`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
+         - `user_choices` は参照するだけなので `lock_root` を渡さず、`call_tool(lambda: commands.run_user_choices(root))` にする（インターフェース定義『利用者が案を選んだ検討事項の一覧』の排他）
          - `thread` は `lock_root` を渡さず、既読を書くときだけ鍵を取れるよう、`run_thread` に `lock=lambda: workspace_lock(root, write_lock)` を渡す（インターフェース定義『スレッドの取得』の同時の呼び出し）
       3. `@server.custom_route(STATUS_PATH, methods=["GET"])` で、`status()` を `JSONResponse` で返す入口を登録する。続けて、`{PREVIEW_PREFIX}/{workspace}` と `{PREVIEW_PREFIX}/{workspace}/{rest:path}` を GET・POST・PUT・PATCH・DELETE で `PreviewEndpoint(previews)` に登録する（`custom_route`。モジュール構成『配信』）
       4. サーバーを返す
@@ -495,6 +496,12 @@ functions:
         condition: 同じワークスペースで `hand_back` を省いて `commit` を呼ぶ
         mock: '`notify.notify_work_done`'
         expected: '`is_error` が偽で、結果の `added` が `[T-1]`'
+      - name: test_build_server_when_user_choices
+        case: 正常
+        summary: user_choices が利用者が案を選んだ検討事項を返し、何も書き換えない
+        condition: '`user_choice` を持つ未決定の D-1 を持つワークスペースで `call_tool("user_choices", {"workspace": 絶対パス})`'
+        mock: なし
+        expected: '`is_error` が偽で、`structured_content` の `items` が D-1 の 1 件。ワークスペースのファイルが呼ぶ前と同じ'
   - name: call_tool
     title: ツールの呼び出し
     kind: 関数

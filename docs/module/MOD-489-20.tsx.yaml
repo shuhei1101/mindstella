@@ -22,6 +22,13 @@ components:
         condition: サーバーの配信で項目を開く
         mock: MSW
         expected: 下端に部品『DetailComments』があり
+      - name: test_detail_fullscreen_when_choose_option
+        case: 正常
+        summary: 全画面でも案を選んで溜める
+        condition: 案 A・B を持つ未決定の D-1 を `full=1` で開き、案 B を選んで確定する
+        mock: MSW
+        expected: '`POST /api/comments` が `{target: D-1, choice: {key: B}}` で呼ばれ、案 B のカードが破線の「選択済み」になる'
     container: frontend/src/features/detail/detail-fullscreen/detail-fullscreen.tsx
 notes:
   単体テスト: 同じフォルダの `detail-fullscreen.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  案の選択: 詳細パネルと同じく、案の一覧に `choice`・`onChoose`・`onCancelChoice` を指定する（モジュール構成『detail-panel』の注記「案の選択」）
