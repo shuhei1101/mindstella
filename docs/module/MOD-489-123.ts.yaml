@@ -6,9 +6,28 @@ functions:
     title: 本文のマーカーのツールチップ
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 本文のマーカーのツールチップと、見出しへの送り・示す箇所。項目の ID のリンク（`a.idref`）と書き込みの項目の ID のボタンにも、乗せる・フォーカスしたときに部品『本文のマーカーのツールチップ』の種類 `item`（タイトル・ID・種類・状態）を出し、`aria-describedby` でツールチップを指す
+    summary: 本文のマーカーのツールチップと、見出しへの送り・示す箇所。項目の ID のリンク（`a.idref`）と書き込みの項目の ID のボタンにも、乗せる・フォーカスしたときに部品『本文のマーカーのツールチップ』の種類 `item`（タイトル・ID・種類・状態）を出し、`aria-describedby` でツールチップを指す。『pointer-input』の `isTouchInput()` が真のときは、`mouseover`・`focusin` でツールチップを出さない（ID のリンク・ボタンは 1 回の押下で移る）。用語 1 件だけに一致したマーカー（`a.term`）の押下は `root` のキャプチャの段階で受け、`isTouchInput()` が真でそのマーカーのツールチップを押して残していないときは、`preventDefault`・`stopPropagation` で移動を止めて押して残したツールチップを出す。残しているときはツールチップを閉じてそのまま移る
     args: []
     returns:
       type: unknown
       description: 処理の結果
     container: frontend/src/shared/core/term-tips.ts
+    unit_tests:
+      - name: test_attach_term_tips_when_touch_id
+        case: 正常
+        summary: 指で押した ID のリンクにツールチップを出さない
+        condition: 記録に D-3 がある本文の `a.idref`（D-3）へ、`pointerType` が `touch` の `pointerdown` の後に `mouseover`・`focusin` を送信する
+        mock: なし
+        expected: ツールチップが開かない
+      - name: test_attach_term_tips_when_touch_term
+        case: 正常
+        summary: 指で押した用語のマーカーは 1 回目でツールチップ、2 回目で移る
+        condition: 用語 G-1 だけに一致した `a.term` に移動の `click` リスナーを付け、`pointerType` が `touch` の `pointerdown` と `click` を 2 回送信する
+        mock: なし
+        expected: 1 回目は押して残したツールチップが開き、移動のリスナーが呼ばれない。2 回目はツールチップが閉じ、移動のリスナーが 1 回呼ばれる
+      - name: test_attach_term_tips_when_mouse
+        case: 正常
+        summary: マウスでは今までどおり乗せると出し、1 回で移る
+        condition: '`pointerType` が `mouse` の `pointerdown` の後、D-3 の `a.idref` へ `mouseover` を送信し、G-1 の `a.term` を 1 回 `click` する'
+        mock: なし
+        expected: D-3 のツールチップが開き、G-1 の移動のリスナーが 1 回呼ばれる

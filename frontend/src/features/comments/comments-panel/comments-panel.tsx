@@ -34,6 +34,8 @@ const FILTERS = [
 export type CommentsPanelProps = {
   onOpenItem: (id: string) => void;
   onOpenChangeSet: (id: string) => void;
+  /** この一覧から開いた詳細パネルをグレーアウトの上に出しているか。真の間はモーダルにしない */
+  detailRaised?: boolean;
 };
 
 /** 新規スレッドの入力の、音声入力の識別 */
@@ -130,7 +132,7 @@ const STATE_TEXT: Record<ThreadFilter, string> = { open: "オープンの", clos
 const emptyText = ({ filter, tag, target }: { filter: ThreadFilter; tag: string | null; target: string | null }): string =>
   `${target === null ? "" : `${target} への`}${tag === null ? "" : `タグ「${tag}」の`}${STATE_TEXT[filter]}スレッドはありません。`;
 
-export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProps) => {
+export const CommentsPanel = ({ onOpenItem, onOpenChangeSet, detailRaised = false }: CommentsPanelProps) => {
   const { search, setPanel, setComments } = usePreviewSearch();
   const data = useCommentData();
   const pinned = usePrefs().commentsPinned === true;
@@ -302,7 +304,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
       <LeftPanel
         as="section"
         role="dialog"
-        aria-modal={!pinned}
+        aria-modal={!pinned && !detailRaised}
         aria-label="コメント"
         resizerLabel="コメントの一覧の幅"
         className="fixed top-below-topbar bottom-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card max-lg:w-full"

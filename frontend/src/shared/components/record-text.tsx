@@ -6,6 +6,7 @@ import { hashWith } from "@/shared/core/body-links";
 import { findRecordIds, type LookupRecordId, type RecordIdTarget } from "@/shared/core/record-ids";
 import { KIND_KEYS, KIND_LABEL, type Item } from "@/shared/core/records";
 import type { TermTipEntry } from "@/shared/core/term-tips";
+import { isTouchInput } from "@/shared/lib/pointer-input";
 
 /** `link` は押せない場所、`marker` は押す要素の中（カード・行・検索の結果） */
 export type RecordTextMode = "link" | "marker";
@@ -46,6 +47,8 @@ export const RecordText = ({ text, mode, lookup, onOpen, descriptionId }: Record
   const firstMarker = useRef<HTMLSpanElement>(null);
 
   const show = ({ anchor, target }: { anchor: HTMLElement; target: RecordIdTarget }): void => {
+    // 指で押したときはツールチップを出さず、1 回の押下で開く
+    if (isTouchInput()) return;
     const entry = tipEntryOf(target);
     setTip(entry === null ? null : { anchor, entry });
   };

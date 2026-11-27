@@ -1,0 +1,27 @@
+title: プレビュー / pointer-input
+lead: 直前の操作が指で押したものかを、文書の `pointerdown`・`pointerover`・`keydown` から保持する。
+functions:
+  - name: isTouchInput
+    title: 指で押した操作か
+    kind: 関数
+    scope: public
+    container: frontend/src/shared/lib/pointer-input.ts
+    usecase: 共通
+    summary: 直前の `pointerdown`・`pointerover` の `pointerType` が `touch` で、その後に `keydown` が無いときに真を返却する
+    returns:
+      type: boolean
+      description: 指で押した操作の途中か
+    process: |-
+      1. モジュールを読み込んだときに、`document` の `pointerdown`・`pointerover`（キャプチャの段階）で `pointerType` を、`keydown`（キャプチャの段階）で `keyboard` を、直前の入力として保持する
+      2. 保持した直前の入力が `touch` かを返却する（まだ何も押していないときは偽）
+    unit_tests:
+      - name: test_is_touch_input
+        case: 正常
+        summary: 直前の入力で判定する
+        condition: '`parametrize`: 何も送信しない / `pointerType` が `touch` の `pointerdown` / `mouse` の `pointerdown` / `touch` の `pointerdown` の後に `keydown` / `touch` の `pointerdown` の後に `mouse` の `pointerover`'
+        mock: なし
+        expected: 偽 / 真 / 偽 / 偽 / 偽
+notes:
+  単体テスト: 同じフォルダの `pointer-input.test.ts` に配置する（knowledge の規約『フォルダ構成』）
+  指の判定: '端末の `pointer: coarse` ではなく押した操作で分ける。指で押すと、ブラウザは `pointerdown` の後に互換の `mouseover`・`mouseenter`・`focus`・`click` を送信するため、それらのリスナーから呼んで判定できる'
+id: MOD-707-1

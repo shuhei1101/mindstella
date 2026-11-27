@@ -151,6 +151,10 @@ def _panel(page: Page) -> Locator:
     return page.get_by_role("complementary", name="詳細")
 
 
+# 指で操作するスマホの画面幅と高さ
+TOUCH_VIEWPORT = {"width": 390, "height": 844}
+
+
 def _linked(page: Page, write_preview: WritePreview, make_item: MakeItem) -> Locator:
     """用語 G-1「保存先」・G-3「AI」、検討事項 D-3 と、リンクを持つ本文の資料 A-1 の詳細パネルを開く。"""
     url = write_preview(
@@ -2037,3 +2041,41 @@ def test_related_title_id_links(page: Page, write_preview: WritePreview, make_it
     detail.get_by_role("tab", name="関連").click()
     # 検証
     expect(detail.get_by_role("tabpanel", name="関連").get_by_role("link", name="D-1", exact=True)).to_have_attribute("href", "#id=D-1")
+
+
+def _touch_page(browser: Browser) -> Page:
+    """指で操作するスマホ（幅 390px）のページを返す。"""
+    context = browser.new_context(has_touch=True, is_mobile=True, viewport=TOUCH_VIEWPORT)
+    return context.new_page()
+
+
+def test_id_link_touch_action(browser: Browser, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """指で本文の項目の ID のリンクを押すと、ツールチップを出さずに 1 回でその項目の詳細へ移る（正常系）。"""
+    # 準備
+    page = _touch_page(browser)
+    panel = _linked(page, write_preview, make_item)
+    # 実行
+    panel.locator(".md a.idref").first.tap()
+    # 検証
+    expect(page).to_have_url(re.compile(r"id=D-3"))
+    expect(page.locator("[popover]:popover-open")).to_have_count(0)
+    page.context.close()
+
+
+def test_term_touch_action(browser: Browser, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """指で用語 1 件だけに一致したマーカーを押すと、1 回目はツールチップを出して移らず、出ている間の 2 回目で用語の詳細へ移る（正常系）。"""
+    # 準備
+    page = _touch_page(browser)
+    panel = _linked(page, write_preview, make_item)
+    mark = panel.locator(".md a.term", has_text="保存先").first
+    tip = page.locator("[popover]:popover-open")
+    # 実行（1 回目）
+    mark.tap()
+    # 検証（1 回目）
+    expect(tip).to_contain_text("記録を置く場所")
+    expect(page).to_have_url(re.compile(r"id=A-1"))
+    # 実行（2 回目）
+    mark.tap()
+    # 検証（2 回目）
+    expect(page).to_have_url(re.compile(r"id=G-1"))
+    page.context.close()

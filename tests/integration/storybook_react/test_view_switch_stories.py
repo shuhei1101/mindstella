@@ -16,6 +16,10 @@ STATES = (
 )
 
 
+# box-shadow の層ごとに、内側（inset）か、色の無い空の層かを返す
+SHADOW_LAYERS_JS = """(e) => getComputedStyle(e).boxShadow.split(/,(?![^(]*\\))/).map((layer) => ({ inset: layer.includes("inset"), empty: layer.includes("rgba(0, 0, 0, 0)") }))"""
+
+
 @pytest.mark.parametrize("state", STATES)
 def test_state_renders(open_story: OpenStory, page_errors: list[str], state: str) -> None:
     """全ての状態のストーリーをエラーなく描く（正常系）。"""
@@ -94,3 +98,13 @@ def test_decisions_selected_fill(open_story: OpenStory) -> None:
     assert int(board.evaluate("e => getComputedStyle(e).fontWeight")) > int(table.evaluate("e => getComputedStyle(e).fontWeight"))
     assert hovered == resolve_color(page, "--card")
     assert selected_hovered == selected
+
+
+def test_selected_ring_inside(open_story: OpenStory) -> None:
+    """選んでいる形式は影を付けず、選択の色の輪をボタンの内側に収める（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-viewswitch--docs")
+    layers = page.get_by_role("group", name="表示形式").get_by_role("button", name="カード").evaluate(SHADOW_LAYERS_JS)
+    # 検証
+    assert any(layer["inset"] for layer in layers)
+    assert all(layer["inset"] or layer["empty"] for layer in layers)

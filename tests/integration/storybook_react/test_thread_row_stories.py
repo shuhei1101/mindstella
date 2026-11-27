@@ -30,6 +30,16 @@ TEXT_LINES_JS = "(e) => { const walker = document.createTreeWalker(e, NodeFilter
 # 塗りが無いときの背景色
 TRANSPARENT = "rgba(0, 0, 0, 0)"
 
+# 一覧のストーリーの行の数（部品設計の List・Many）
+LIST_ROWS = 5
+MANY_ROWS = 100
+
+# ページ全体が横にスクロールしない
+NO_PAGE_SCROLL_JS = "() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"
+
+# 行の角丸・背景色・上の線の幅・下の線の種類と幅を読む
+ROW_STYLE_SCRIPT = "rows => rows.map((e) => { const s = getComputedStyle(e); return { radius: s.borderTopLeftRadius, background: s.backgroundColor, top: s.borderTopWidth, bottom: s.borderBottomStyle, bottomWidth: s.borderBottomWidth }; })"
+
 # 要素の背景色と、枠の線の種類を読む
 BACKGROUND_SCRIPT = "e => getComputedStyle(e).backgroundColor"
 BORDER_STYLE_SCRIPT = "e => getComputedStyle(e).borderTopStyle"
@@ -82,7 +92,7 @@ def test_no_summary(open_story: OpenStory) -> None:
 
 
 def test_pending_new_to_item(open_story: OpenStory) -> None:
-    """まだ送っていない、項目へ向けた新しいスレッド。状態の札の代わりに鉛筆の印と「レビュー中」の札、行の枠を破線にする。タグは出さない（正常系）。"""
+    """まだ送っていない、項目へ向けた新しいスレッド。状態の札の代わりに鉛筆の印と「レビュー中」の札、行の下の区切りの線を破線にする。タグは出さない（正常系）。"""
     # 準備・実行
     page = open_story("comments-threadrow--pending-new-to-item")
     # 検証
@@ -93,7 +103,7 @@ def test_pending_new_to_item(open_story: OpenStory) -> None:
     assert page.inner_text(f"{LINE2} [data-part=target]") == "D-5"
     assert page.get_attribute(ROW, "data-pending") == "C-41"
     assert page.locator(TAGS).count() == 0
-    assert page.eval_on_selector(ROW, "e => getComputedStyle(e).borderTopStyle") == "dashed"
+    assert page.eval_on_selector(ROW, "e => getComputedStyle(e).borderBottomStyle") == "dashed"
 
 
 def test_pending_new_free(open_story: OpenStory) -> None:
@@ -297,3 +307,38 @@ def test_long_title_pending(open_story: OpenStory) -> None:
     assert pending.evaluate(TEXT_LINES_JS) == 1
     assert page.locator(LINE2).evaluate("(e) => e.scrollWidth <= e.clientWidth + 1")
     assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
+
+
+def test_list(open_story: OpenStory) -> None:
+    """状態の違う 5 件の行を、角丸のカードにせず背景を付けずに、行の下の区切りの線で分けて並べる。新規スレッドの線は破線（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-threadrow--list")
+    rows = page.locator(ROW)
+    styles = rows.evaluate_all(ROW_STYLE_SCRIPT)
+    # 検証
+    expect(rows).to_have_count(LIST_ROWS)
+    assert all(style["radius"] == "0px" and style["background"] == TRANSPARENT and style["top"] == "0px" and style["bottomWidth"] != "0px" for style in styles)
+    assert [style["bottom"] for style in styles] == ["solid", "solid", "solid", "dashed", "solid"]
+    assert page.evaluate(NO_PAGE_SCROLL_JS)
+
+
+def test_list_hover(open_story: OpenStory) -> None:
+    """行に乗せると、行の全体に `--accent` の面を出す（正常系）。"""
+    # 準備
+    page = open_story("comments-threadrow--list")
+    row = page.locator(ROW).first
+    # 実行
+    row.hover()
+    # 検証
+    assert row.evaluate(BACKGROUND_SCRIPT) == resolve_color(page, "--accent")
+
+
+def test_many(open_story: OpenStory) -> None:
+    """100 件の行を区切りの線で分けたまま並べ、横にはみ出さない（正常系）。"""
+    # 準備
+    page = open_story("comments-threadrow--many")
+    # 実行
+    page.set_viewport_size(NARROW_SIZE)
+    # 検証
+    expect(page.locator(ROW)).to_have_count(MANY_ROWS)
+    assert page.evaluate(NO_PAGE_SCROLL_JS)

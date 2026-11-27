@@ -1,0 +1,29 @@
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: スレッドの見出しの全文の開き方、スマホで項目の ID のリンクを 1 回押すと開くこと、ロックしていないコメントの一覧から開いた資料を操作できることを追加
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T02:31:50.530432+00:00'
+scope_out:
+  - item: 資料の画面の表による横スクロール・レビュー中の書き込みの横スクロール・「新規スレッド」のマーカーの折り返し
+    reason: '計画の判断で #706 に残したスコープ'
+    plan: '#706'
+  - item: スレッドの画面の書き込みのカードの重なり（Impeccable の nested-cards）
+    reason: 書き込みのカード（thread-post）はこの作業のスレッドの一覧の行と対象箇所が違う
+    plan: '#705'
+  - item: スレッドの画面の書き込みの並び（`ol`）がスクロールの領域なのに Tab で届かない（axe の scrollable-region-focusable）
+    reason: 書き込みの並びはこの作業の修正箇所（見出し・一覧の行・タブ・詳細パネルの重なり・ID のリンク）と違う。撮影の崩れの検出で見つけた対象外の逸脱
+  - item: 一覧の後ろの本文の見出し（`#main > h1`）が切れて全文を出す手段が無い（clipped-text-without-full-text）
+    reason: パネルの後ろの本文の見出しで、この作業の修正箇所と違う。撮影の崩れの検出で見つけた対象外の逸脱
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: 長い書き込みから作ったスレッドの見出しを省略して全文を開けるようにし、ロックしていないコメントの一覧から開いた資料をパネルを閉じずに操作できるようにする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: スマホでは本文の項目の ID のリンクを 1 回押すとその項目へ移り、ツールチップを出さない
+    depends_on: []

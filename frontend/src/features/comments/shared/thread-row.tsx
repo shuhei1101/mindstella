@@ -37,7 +37,7 @@ export const ThreadRow = ({ thread = null, pending = null, hasPendingReply = fal
   // 未読の行は、読み上げの名前が状態の次に「未読」を読む
   const openLabel = unseen ? [STATE_LABELS[status].label, "未読", title, target, AUTHOR_LABELS[author], formatJst(created), hasPendingReply ? "レビュー中の返信あり" : null].filter((part) => part !== null).join("、") : undefined;
   return (
-    <li data-thread={sent ? id : undefined} data-pending={sent ? undefined : id} data-unread={unseen ? "" : undefined} className={cn("grid rounded-control border border-border bg-card hover:bg-accent", !sent && "border-dashed")}>
+    <li data-thread={sent ? id : undefined} data-pending={sent ? undefined : id} data-unread={unseen ? "" : undefined} className={cn("grid border-b border-border hover:bg-accent", !sent && "border-dashed")}>
       <button type="button" aria-label={openLabel} aria-describedby={titleIdsId} className={cn("grid w-full cursor-pointer gap-1 px-3 py-2 text-left focus-visible:outline-2 focus-visible:outline-ring", sent && thread.tags.length > 0 && "pb-1")} data-focus={sent ? `thread:${id}` : `thread:new:${id}`} onClick={() => onOpen(id)}>
         <span data-part="line1" className="flex min-w-0 items-start gap-2">
           <ThreadState status={status} />

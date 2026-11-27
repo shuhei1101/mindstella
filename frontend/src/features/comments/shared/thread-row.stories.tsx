@@ -89,3 +89,34 @@ export const LongTitlePending: Story = {
   },
   parameters: { rowWidth: "320px" },
 };
+
+/** 一覧と同じ並び（オープン・未読・レビュー中・新規スレッド・クローズ）。行は角丸の枠を持たず、行と行の間を区切りの線で分ける */
+export const List: Story = {
+  args: { thread: null },
+  render: (args) => (
+    <>
+      <ThreadRow {...args} thread={Replied.args?.thread ?? null} />
+      <ThreadRow {...args} thread={Unread.args?.thread ?? null} />
+      <ThreadRow {...args} thread={PendingReply.args?.thread ?? null} hasPendingReply />
+      <ThreadRow {...args} thread={null} pending={PendingNewToItem.args?.pending ?? null} />
+      <ThreadRow {...args} thread={Closed.args?.thread ?? null} />
+    </>
+  ),
+  parameters: { rowWidth: "min(384px, 100%)" },
+};
+
+/** スレッド 100 件。区切りの線で分けた行が続く */
+export const Many: Story = {
+  args: { thread: null },
+  render: (args) => (
+    <>
+      {Array.from({ length: 100 }, (_, index) => {
+        const base = Replied.args?.thread;
+        if (base === undefined || base === null) return null;
+        const id = `TH-${String(index + 1)}`;
+        return <ThreadRow key={id} {...args} thread={{ ...base, id, summary: `${String(index + 1)} 件目のスレッドの要約` }} />;
+      })}
+    </>
+  ),
+  parameters: { rowWidth: "min(384px, 100%)" },
+};

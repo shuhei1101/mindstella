@@ -23,22 +23,50 @@ args:
     description: タイトルの中の ID のリンクを押したときに呼ぶ（`onOpen(id)`）。部品『記録の文字』の `onOpen` にそのまま指定する
 states:
   - name: FullSixLines
-    description: 書き込みの並びが一番上。コメントの一覧のパネルの幅で 6 行に折り返す長いタイトルを全文で出す
+    description: 書き込みの並びが一番上。コメントの一覧のパネルの幅で 6 行に折り返す長いタイトルを 2 行で省略し、下に山形のアイコンと「続きを表示」のボタンを出す
     args:
       - name: collapsed
         value: 'false'
+  - name: Expanded
+    description: 「続きを表示」を押した後。全文をパネルの幅で折り返して出し、ボタンを山形のアイコンと「折りたたむ」にする
+    args:
+      - name: collapsed
+        value: 'false'
+    notes:
+      見せ方: ストーリーの play で「続きを表示」を押す
+  - name: LongText
+    description: 改行の無い 3000 文字を超えるタイトル。2 行で省略し、パネルの右端を超えず、パネルが横にスクロールしない
+    args:
+      - name: collapsed
+        value: 'false'
+    notes:
+      見せ方: '`title` に 25 文字の文を 120 回つなげた文字を指定する'
+  - name: LongTextExpanded
+    description: 改行の無い 3000 文字を超えるタイトルの全文。見出しの中で 288px までにしてスクロールさせ、書き込みの並びを押し出さない
+    args:
+      - name: collapsed
+        value: 'false'
+    notes:
+      見せ方: '`LongText` と同じ `title` を指定し、ストーリーの play で「続きを表示」を押す'
+  - name: Short
+    description: 2 行に収まる短いタイトル。省略せず、開閉のボタンを出さない
+    args:
+      - name: title
+        value: 保存先の決め方の相談
+      - name: collapsed
+        value: 'false'
   - name: Collapsed
-    description: スクロールした後。1 行にして末尾を「…」にする
+    description: スクロールした後。1 行にして末尾を「…」にし、開閉のボタンを出さない
     args:
       - name: collapsed
         value: 'true'
   - name: FullThreeLines
-    description: 3 行に折り返すタイトルを全文で出す
+    description: 3 行に折り返すタイトル。2 行で省略し、「続きを表示」を出す
     args:
       - name: collapsed
         value: 'false'
   - name: LongWord
-    description: 1 単語の長い英字。全文のときもパネルの幅で折り返し、横にはみ出さない
+    description: 1 単語の長い英字。パネルの幅で折り返し、横にはみ出さない
     args:
       - name: title
         value: configuration-of-the-preview-server-and-the-workspace-settings-file-path
@@ -66,8 +94,11 @@ states:
       - name: collapsed
         value: 'true'
 accessibility:
-  - 1 行にしたときも全文を DOM に残し、読み上げは全文を読む
+  - 1 行・2 行に省略したときも全文を DOM に残し、読み上げは全文を読む
   - 1 行にしたときは `title` に全文を持たせ、ポインターを乗せると全文を出す
+  - 開閉のボタンは `button` 要素にし、`aria-expanded` で開いているかを伝え、`aria-controls` でタイトルの要素を指す。読み上げの名前は「タイトルの続きを表示」「タイトルを折りたたむ」
+  - 全文を開いて見出しの中でスクロールさせる間は、タイトルの要素を Tab で届く `role="region"`（読み上げの名前「スレッドのタイトルの全文」）にし、キーボードでスクロールできるようにする。フォーカスはマーカーの色の輪で示す
+  - '指の端末（`pointer: coarse`）では、開閉のボタンの押せる領域を高さ 44px 以上にする。見た目の高さ（28px）は変えず、ボタンの擬似要素（`::after`）をボタンの上下に 8px ずつはみ出して配置し、その範囲も押せるようにする'
 refs:
   - SCR-489-4#
 id: CMP-695-4

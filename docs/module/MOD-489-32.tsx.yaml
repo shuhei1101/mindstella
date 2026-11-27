@@ -79,3 +79,4 @@ components:
     container: frontend/src/features/detail/detail-panel/detail-panel.tsx
 notes:
   単体テスト: 同じフォルダの `detail-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  グレーアウトの上: 'props に `raised?: boolean`（既定は偽）を加える。真のときは `aside` に `data-raised` と `lg:z-30` を付け、コメントの一覧のグレーアウト（`fixed`・`z-20`）の上に出す。`aside` は `relative` のままで、重なりの順だけを上げる。単体テスト `test_detail_panel_when_raised`（`raised` を真で描くと `aside` が `data-raised` を持つ。偽では持たない）を追加する'

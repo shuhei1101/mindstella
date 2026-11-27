@@ -43,6 +43,7 @@ import { RecordText } from "@/shared/components/record-text";
 import type { SiblingNavProps } from "@/shared/components/sibling-nav";
 import { siblingOf, useListOrderStore } from "@/shared/stores/list-order-store";
 import { useSingleFlight } from "@/shared/hooks/use-single-flight";
+import { cn } from "@/shared/lib/cn";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
 
@@ -404,9 +405,15 @@ const KeyLead = ({ name, value, keys }: { name: string; value: string | undefine
   );
 };
 
-export type DetailPanelProps = { id: string; index: RecordIndex; sibling?: SiblingNavProps | null };
+export type DetailPanelProps = {
+  id: string;
+  index: RecordIndex;
+  sibling?: SiblingNavProps | null;
+  /** コメントの一覧から開いたか。真のときはコメントの一覧のグレーアウトの上に出す */
+  raised?: boolean;
+};
 
-export const DetailPanel = ({ id, index, sibling }: DetailPanelProps) => {
+export const DetailPanel = ({ id, index, sibling, raised = false }: DetailPanelProps) => {
   const storedDetail = usePanelWidthStore((state) => state.detailWidth);
   const storedLeft = usePanelWidthStore((state) => state.leftWidth);
   const leftOpen = usePanelWidthStore((state) => state.leftOpen);
@@ -422,7 +429,7 @@ export const DetailPanel = ({ id, index, sibling }: DetailPanelProps) => {
   const max = detailPanelMax(viewport, currentLeftWidth({ leftWidth: storedLeft }), leftOpen);
   const width = clampWidth(currentDetailWidth({ detailWidth: storedDetail }), DETAIL_PANEL_WIDTH.min, max);
   return (
-    <aside aria-label="詳細" style={{ width }} className="relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!">
+    <aside aria-label="詳細" data-raised={raised ? "" : undefined} style={{ width }} className={cn("relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!", raised && "lg:z-30")}>
       <PanelResizer side="left" width={width} min={DETAIL_PANEL_WIDTH.min} max={max} step={DETAIL_PANEL_WIDTH.step} label="詳細パネルの幅" onChange={setDetailWidth} onCommit={commitDetailWidth} />
       <DetailContent key={id} id={id} index={index} full={false} sibling={sibling} />
     </aside>

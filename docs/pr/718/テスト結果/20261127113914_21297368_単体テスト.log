@@ -1,0 +1,186 @@
+$ npx vitest run
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-comments-panel-thread-list-and-links
+
+ ❯ frontend/src/shared/lib/pointer-input.test.ts (0 test)
+ ❯ frontend/src/shared/core/term-tips.test.ts (3 tests | 2 failed) 86ms
+   ❯ attachTermTips (3)
+     × attach_term_tips_when_touch_id 66ms
+     × attach_term_tips_when_touch_term 6ms
+ ❯ frontend/src/shared/components/record-text.test.tsx (5 tests | 1 failed) 249ms
+   ❯ RecordText (5)
+     × record_text_when_touch 21ms
+ ❯ frontend/src/features/comments/comments-panel/comments-panel.test.tsx (17 tests | 1 failed) 2916ms
+   ❯ CommentsPanel (17)
+     × comments_panel_when_detail_raised 50ms
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx (13 tests | 1 failed) 3034ms
+   ❯ DetailPanel (13)
+     × detail_panel_when_raised（true） 45ms
+stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_detail_from_comments
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_detail_from_comments
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ❯ frontend/src/app/preview-shell.test.tsx (22 tests | 1 failed) 4011ms
+   ❯ PreviewShell (22)
+     × preview_shell_when_detail_from_comments 153ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/lib/pointer-input.test.ts [ frontend/src/shared/lib/pointer-input.test.ts ]
+Error: Failed to resolve import "@/shared/lib/pointer-input" from "frontend/src/shared/lib/pointer-input.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-comments-panel-thread-list-and-links/frontend/src/shared/lib/pointer-input.test.ts:29:42
+  57 |  	])("is_touch_input（$name）", async ({ steps, expected }) => {
+  58 |  		// 準備
+  59 |  		const { isTouchInput } = await import("@/shared/lib/pointer-input");
+     |                                          ^
+  60 |  		// 実行
+  61 |  		send(steps);
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_detail_from_comments
+Error: [2mexpect([22m[31melement[39m[2m).toHaveAttribute([22m[32m[32m"data-raised"[32m[39m[2m) // element.hasAttribute("data-raised")[22m
+
+Expected the element to have attribute:
+[32m  data-raised[39m
+Received:
+[31m  null[39m
+ ❯ frontend/src/app/preview-shell.test.tsx:350:20
+    348|     // 検証
+    349|     const detail = await screen.findByRole("complementary", { name: /詳…
+    350|     expect(detail).toHaveAttribute("data-raised");
+       |                    ^
+    351|     expect(screen.getByRole("dialog", { name: "コメント" })).not.toHaveAtt…
+    352|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  frontend/src/shared/components/record-text.test.tsx > RecordText > record_text_when_touch
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ frontend/src/shared/components/record-text.test.tsx:91:22
+     89|     fireEvent.click(link);
+     90|     // 検証
+     91|     expect(tipShown).toBe(false);
+       |                      ^
+     92|     expect(onOpen).toHaveBeenCalledTimes(1);
+     93|     expect(onOpen).toHaveBeenCalledWith("D-1");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  frontend/src/shared/core/term-tips.test.ts > attachTermTips > attach_term_tips_when_touch_id
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ frontend/src/shared/core/term-tips.test.ts:74:23
+     72|     idref.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+     73|     // 検証
+     74|     expect(tipOpen()).toBe(false);
+       |                       ^
+     75|   });
+     76|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  frontend/src/shared/core/term-tips.test.ts > attachTermTips > attach_term_tips_when_touch_term
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ frontend/src/shared/core/term-tips.test.ts:85:23
+     83|     term.click();
+     84|     // 検証（1 回目）
+     85|     expect(tipOpen()).toBe(true);
+       |                       ^
+     86|     expect(navigate).not.toHaveBeenCalled();
+     87|     // 実行（2 回目）
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_detail_raised
+Error: [2mexpect([22m[31melement[39m[2m).not.toHaveAttribute([22m[32m[32m"aria-modal"[32m[39m[2m, [22m[32m[32m"true"[32m[39m[2m) // element.getAttribute("aria-modal") === "true"[22m
+
+Expected the element not to have attribute:
+[32m  aria-modal="true"[39m
+Received:
+[31m  aria-modal="true"[39m
+ ❯ frontend/src/features/comments/comments-panel/comments-panel.test.tsx:250:23
+    248|     await userEvent.click(container.querySelector<HTMLElement>("[data-…
+    249|     // 検証
+    250|     expect(panel).not.toHaveAttribute("aria-modal", "true");
+       |                       ^
+    251|     await waitFor(() => expect(router.state.location.search).not.toHav…
+    252|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_raised（true）
+Error: [2mexpect([22m[31melement[39m[2m).toHaveAttribute([22m[32m[32m"data-raised"[32m[39m[2m) // element.hasAttribute("data-raised")[22m
+
+Expected the element to have attribute:
+[32m  data-raised[39m
+Received:
+[31m  null[39m
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx:216:33
+    214|     // 検証
+    215|     const panel = await screen.findByRole("complementary", { name: /詳細…
+    216|     if (expected) expect(panel).toHaveAttribute("data-raised");
+       |                                 ^
+    217|     else expect(panel).not.toHaveAttribute("data-raised");
+    218|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  6 failed | 110 passed (116)
+      Tests  6 failed | 602 passed (608)
+   Start at  11:38:24
+   Duration  32.06s (environment 44%, tests 29%, import 14%, setup 8%, transform 4%, worker 1%)
+
+Environment  jsdom was created 116 times · 89.14s total, 44% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit=1
+
+実装の前から pass したテスト:
+- thread_title_when_clamped・thread_title_when_toggled: frontend/src/shared/components/thread-title.tsx の useExceedsLines・TitleToggle（モック作成の commit 30964aca・de530d4a で入れた）
+- attach_term_tips_when_mouse・detail_panel_when_raised（false）・preview_shell_when_detail_before_comments: 今のマウスの振る舞いと、raised を持たない今の詳細パネル・コメントの一覧の振る舞い

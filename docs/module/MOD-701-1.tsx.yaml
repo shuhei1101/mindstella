@@ -5,7 +5,7 @@ components:
     title: 記録の文字
     kind: コンポーネント
     usecase: 共通
-    summary: '`findRecordIds` で分けた文字を、`link` は `a[href=#id={ID}][data-record-id]`、`marker` は `span[data-record-id]`（等幅・点線の下線・`text-decoration-thickness: 1.5px`）で描き、記録に無い ID は文字のまま。乗せる・フォーカスで部品『本文のマーカーのツールチップ』を出し、`marker` で `descriptionId` があるときは ID の説明を「、」でつないだ隠した `span` を描く'
+    summary: '`findRecordIds` で分けた文字を、`link` は `a[href=#id={ID}][data-record-id]`、`marker` は `span[data-record-id]`（等幅・点線の下線・`text-decoration-thickness: 1.5px`）で描き、記録に無い ID は文字のまま。乗せる・フォーカスで部品『本文のマーカーのツールチップ』を出し（『pointer-input』の `isTouchInput()` が真のときは出さない）、`marker` で `descriptionId` があるときは ID の説明を「、」でつないだ隠した `span` を描く'
     refs:
       - CMP-701-1#
     props:
@@ -48,6 +48,12 @@ components:
         condition: '`mode` が `marker`、`descriptionId` が `ids`、文字「保存先の比較」'
         mock: なし
         expected: 文字だけを描き、`#ids` を描かない
+      - name: test_record_text_when_touch
+        case: 正常
+        summary: 指で押したときはツールチップを出さず 1 回で開く
+        condition: '`mode` が `link`、文字「D-1 の比較」。`pointerType` が `touch` の `pointerdown` の後に D-1 へ `mouseenter`・`focus`・`click` を送信する'
+        mock: なし
+        expected: '`role="tooltip"` が描かれず、`onOpen` が `"D-1"` で 1 回呼ばれる'
     container: frontend/src/shared/components/record-text.tsx
 notes:
   単体テスト: 同じフォルダの `record-text.test.tsx` に配置する（knowledge の規約『フォルダ構成』）

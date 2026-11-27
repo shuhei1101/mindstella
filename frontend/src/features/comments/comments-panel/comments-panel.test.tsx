@@ -3,9 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { CommentsPanel } from "@/features/comments/comments-panel/comments-panel";
 import { usePanelWidthStore } from "@/shared/stores/panel-width-store";
 import { server } from "@/testing/msw/server";
-import { renderRoute } from "@/testing/render";
+import { renderInPreviewRouter, renderRoute } from "@/testing/render";
 
 // 「レビューに追加」の後のフォーカスの移動先（テストごとに書き換える）
 const focusTarget = vi.hoisted((): { current: "input" | "submit" } => ({ current: "input" }));
@@ -237,4 +238,18 @@ describe("CommentsPanel", () => {
       usePanelWidthStore.setState({ leftWidth: null });
     },
   );
+  // 詳細パネルを上に出した間はモーダルにせず、グレーアウトを押すと閉じる（正常系）
+  test("comments_panel_when_detail_raised", async () => {
+    // 準備
+    window.innerWidth = 1440;
+    const { container, router } = await renderInPreviewRouter("/?panel=comments", <CommentsPanel onOpenItem={vi.fn()} onOpenChangeSet={vi.fn()} detailRaised />);
+    const panel = await screen.findByRole("dialog", { name: "コメント" });
+    // 実行
+    const scrim = container.querySelector<HTMLElement>("[data-scrim]");
+    if (scrim === null) throw new Error("グレーアウトが描かれていない");
+    await userEvent.click(scrim);
+    // 検証
+    expect(panel).not.toHaveAttribute("aria-modal", "true");
+    await waitFor(() => expect(router.state.location.search).not.toHaveProperty("panel"));
+  });
 });

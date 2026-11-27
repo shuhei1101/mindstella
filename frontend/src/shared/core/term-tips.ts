@@ -9,6 +9,7 @@ import { isRendered } from "@/shared/core/minimap";
 import { KIND_LABEL, type Item, type Kind, type Location, type RecordIndex } from "@/shared/core/records";
 import { statusMarkElement } from "@/shared/core/status-marks";
 import type { LookupThread } from "@/shared/core/thread-ids";
+import { isTouchInput } from "@/shared/lib/pointer-input";
 
 /** ツールチップに並べる項目（種類と項目）。`item` は項目の ID のリンク・ボタンの 1 件で、`itemKind` にその項目の種類を持つ */
 export type TermTipEntry =
@@ -363,11 +364,14 @@ export const attachTermTips = ({ root, index, onOpen, threads = null }: { root: 
     return entries.length === 0 ? null : { mark, entries, multi: entries.length > 1 || entries.some((entry) => entry.kind !== "terms") };
   };
   root.addEventListener("mouseover", (event) => {
+    // 指で押したときの互換のイベントではツールチップを出さない（ID は 1 回の押下で移り、用語は押下で出す）
+    if (isTouchInput()) return;
     const found = markOf(event);
     // 押して残している間は、ほかの印に乗せても替えない
     if (found !== null && !isPinned()) showTermTip({ ...found, pinned: false, onOpen });
   });
   root.addEventListener("focusin", (event) => {
+    if (isTouchInput()) return;
     const found = markOf(event);
     if (found !== null && found.mark !== refocused) showTermTip({ ...found, pinned: false, onOpen });
   });
@@ -391,6 +395,22 @@ export const attachTermTips = ({ root, index, onOpen, threads = null }: { root: 
     event.preventDefault();
     first.focus();
   });
+  // 指で押した用語 1 件だけのマーカーは、1 回目で押して残したツールチップを出し、出ている間の 2 回目で移る。マーカー自身の移動のリスナーより先に受ける
+  root.addEventListener(
+    "click",
+    (event) => {
+      const found = isTouchInput() ? markOf(event) : null;
+      if (found === null || found.multi || !found.mark.matches("a.term")) return;
+      if (tipState?.mark === found.mark && isPinned()) {
+        hideTermTip(true);
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      showTermTip({ ...found, pinned: true, onOpen });
+    },
+    true,
+  );
   root.addEventListener("click", (event) => {
     const found = markOf(event);
     if (found === null) return;

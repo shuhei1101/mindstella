@@ -334,4 +334,34 @@ describe("PreviewShell", () => {
     expect(screen.queryByRole("button", { name: "ワークスペースの既定にする" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "設定を編集する" })).not.toBeInTheDocument();
   });
+  // コメントの一覧から開いた詳細パネルだけをグレーアウトの上に出す（正常系）
+  test("preview_shell_when_detail_from_comments", async () => {
+    // 準備
+    window.innerWidth = 1440;
+    stubRecords({ tasks: [{ id: "T-1", title: "T-1の題", status: "未着手" }] });
+    const thread = { id: "TH-1", status: "open", summary: "T-1 の相談", tags: [], target: "T-1", target_title: "T-1の題", loc: null, events: [], posts: [{ id: "TH-1-1", author: "ai", body: "質問", created: "2026-11-01T00:00:00+00:00", seen: true }] };
+    server.use(http.get("*/api/threads", () => HttpResponse.json({ threads: [thread] })));
+    renderRoute("/?tab=tasks&panel=comments&thread=TH-1");
+    const comments = await screen.findByRole("dialog", { name: "コメント" });
+    // 実行
+    await userEvent.click(await within(comments).findByRole("button", { name: /T-1の題/ }));
+    // 検証
+    const detail = await screen.findByRole("complementary", { name: /詳細/ });
+    expect(detail).toHaveAttribute("data-raised");
+    expect(screen.getByRole("dialog", { name: "コメント" })).not.toHaveAttribute("aria-modal", "true");
+  });
+
+  // 先に開いていた詳細パネルは、トップバーからコメントの一覧を開いても上に出さない（正常系）
+  test("preview_shell_when_detail_before_comments", async () => {
+    // 準備
+    window.innerWidth = 1440;
+    stubRecords({ tasks: [{ id: "T-1", title: "T-1の題", status: "未着手" }] });
+    renderRoute("/?tab=tasks&id=T-1");
+    const detail = await screen.findByRole("complementary", { name: /詳細/ });
+    // 実行
+    await userEvent.click(await screen.findByRole("button", { name: /^コメント（/ }));
+    // 検証
+    expect(await screen.findByRole("dialog", { name: "コメント" })).toHaveAttribute("aria-modal", "true");
+    expect(detail).not.toHaveAttribute("data-raised");
+  });
 });

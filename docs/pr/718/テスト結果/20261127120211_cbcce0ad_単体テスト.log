@@ -1,0 +1,15 @@
+$ npx vitest run
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-comments-panel-thread-list-and-links
+
+
+ Test Files  116 passed (116)
+      Tests  613 passed (613)
+   Start at  12:00:15
+   Duration  30.42s (environment 46%, tests 28%, import 13%, setup 9%, transform 4%, worker 1%)
+
+Environment  jsdom was created 116 times · 87.37s total, 46% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit=0

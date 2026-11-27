@@ -1,0 +1,19 @@
+confirmations:
+  - topic: '#707 スレッドの見出しの収め方'
+    decision: 長い書き込みから作ったスレッドの見出しを開いた直後から 2 行で省略し、収まらないときだけ下の開閉のボタンで全文を開く。全文は見出しの中で 288px までにしてスクロールさせる（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: de530d4a
+    thread: https://github.com/shuhei1101/mindstella/pull/718#discussion_r4712969988
+  - topic: '#707 見出しの開閉のボタンの文言'
+    decision: 書き込みの折りたたみと同じ「続きを表示」「折りたたむ」と山形のアイコンにする。単一 UC の「続きを見る」は「続きを表示」に書き換える（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: de530d4a
+    thread: https://github.com/shuhei1101/mindstella/pull/718#discussion_r4712970626
+  - topic: '#707 コメントのパネルのモック'
+    decision: スレッドの一覧は角丸のカードをやめて区切りの線で分け（新規スレッドは破線）、選んだタブは影をやめて選択の色の線をボタンの内側に収める（3 か所で同じ）見た目で進める（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: de530d4a
+    thread: https://github.com/shuhei1101/mindstella/pull/718#discussion_r4712971450

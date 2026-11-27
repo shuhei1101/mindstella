@@ -1,8 +1,9 @@
 // 記録の文字の部品のストーリー（モック）
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import { fn, userEvent } from "storybook/test";
 
-import { RecordText } from "@/shared/components/record-text";
+import { RecordText, type RecordTextProps } from "@/shared/components/record-text";
 import type { LookupRecordId, RecordIdTarget } from "@/shared/core/record-ids";
 
 /** 見本の記録にある項目・スレッド。D-99 は記録に無い */
@@ -13,6 +14,25 @@ const TARGETS: Record<string, RecordIdTarget> = {
 };
 
 const lookup: LookupRecordId = (id) => TARGETS[id] ?? null;
+
+/** 見出しのタイトルに描き、押して開いた ID を下に並べて出す（指で押したストーリーで、1 回で開いたかを確かめる） */
+const OpenedIds = (args: RecordTextProps) => {
+  const [opened, setOpened] = useState<string[]>([]);
+  return (
+    <>
+      <h2 className="m-0 text-h2 font-semibold">
+        <RecordText
+          {...args}
+          onOpen={(id) => {
+            args.onOpen?.(id);
+            setOpened((ids) => [...ids, id]);
+          }}
+        />
+      </h2>
+      <output data-part="opened">{opened.join(",")}</output>
+    </>
+  );
+};
 
 const meta = {
   title: "Shared/RecordText",
@@ -119,6 +139,16 @@ export const LinkHover: Story = {
   play: async ({ canvasElement }) => {
     const link = canvasElement.querySelector<HTMLElement>('[data-record-id="D-1"]');
     if (link !== null) await userEvent.hover(link);
+  },
+};
+
+/** 指で見出しのタイトルの D-1 のリンクを押した。ツールチップを出さず、1 回で onOpen("D-1") を呼ぶ */
+export const TouchLinkTap: Story = {
+  args: { text: "D-1 の比較（TH-1 の続き、D-99 は除く）", mode: "link" },
+  render: (args) => <OpenedIds {...args} />,
+  play: async ({ canvasElement }) => {
+    const link = canvasElement.querySelector<HTMLElement>('[data-record-id="D-1"]');
+    if (link !== null) await userEvent.pointer([{ keys: "[TouchA]", target: link }]);
   },
 };
 
