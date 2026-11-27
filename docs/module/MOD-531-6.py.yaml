@@ -120,6 +120,12 @@ functions:
         condition: '`stop-failure`、標準入力に `error: rate_limit`'
         mock: '`post_event`'
         expected: '`post_event` が `event: stop_failure`・`error: rate_limit` を受け、標準出力が空で 0 を返す'
+      - name: test_main_when_pre_compact
+        case: 異常
+        summary: pre-compact の出来事は受け付けず、圧縮を止めない
+        condition: '`pre-compact`、`MINDSTELLA_SESSION` あり'
+        mock: '`post_event`'
+        expected: '`SystemExit`（`2`）で、標準出力が空で `post_event` を呼ばない'
     process: |-
       1. `MINDSTELLA_SESSION` が無ければ標準入力を読み捨てて 0 を返す
       2. 出来事を送信する（`post`）。送れなければ標準エラーに 1 行書き、続ける

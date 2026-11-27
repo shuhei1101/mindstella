@@ -548,6 +548,12 @@ functions:
         condition: '`parametrize`: 状態にある `session` に `stop` / `prompt_submit` / `stop_failure`'
         mock: '`notify.notify_work_done`・`notify.notify_stopped`'
         expected: '`responding` が出来事のとおりに書き換わり、`notify_work_done` も `notify_stopped` も呼ばれない'
+      - name: test_record_event_when_pre_compact
+        case: 異常
+        summary: 前のプラグインが送る pre_compact は受け付けない
+        condition: '`running` の状態に `pre_compact`'
+        mock: なし
+        expected: '`ApiError`（400）で、`session.json` が変わらない'
   - name: notify_stopped
     title: 停止を通知する
     kind: 関数
