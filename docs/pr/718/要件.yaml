@@ -2,7 +2,9 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: スレッドの見出しの全文の開き方、スマホで項目の ID のリンクを 1 回押すと開くこと、ロックしていないコメントの一覧から開いた資料を操作できることを追加
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T02:31:50.530432+00:00'
 scope_out:
   - item: 資料の画面の表による横スクロール・レビュー中の書き込みの横スクロール・「新規スレッド」のマーカーの折り返し
     reason: '計画の判断で #706 に残したスコープ'
