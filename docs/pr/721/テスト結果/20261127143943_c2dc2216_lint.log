@@ -1,0 +1,30 @@
+$ ruff check tests/unit/scripts/test_session_hook.py tests/unit/scripts/test_sessions.py
+All checks passed!
+exit=0
+$ npx eslint (changed test files)
+exit=0
+$ npm run typecheck
+
+> typecheck
+> tsc -p frontend
+
+frontend/src/shared/components/list-columns.test.tsx(47,12): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+frontend/src/shared/components/list-columns.test.tsx(48,12): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+exit=2
+
+# 型の誤りを修正した後（c2dc2216）
+$ npm run typecheck
+
+> typecheck
+> tsc -p frontend
+
+exit=0
+$ npx eslint frontend/src/shared/components/list-columns.test.tsx
+exit=0
+$ npx vitest run frontend/src/shared/components/list-columns.test.tsx
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+$ npx eslint (変更した 11 のテストファイル)
+exit=0
+
+残る違反: 無し
