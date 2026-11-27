@@ -23,7 +23,9 @@ docs:
   - page: docs/library/LIB-489-13.yaml
     new: false
     change: opts.config.features のオフの一覧を MindStella の画面と重なる機能だけにして機能ごとの理由を記載し、「コードの色付け」を書き換える。#714 の切り分けの結果で「表の列の幅のつまみの ARIA の値」を修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T17:36:15.509221+00:00'
 scope_out:
   - item: カード・表の行・検索の結果などスレッドの行のほかの押す要素の中の ID のツールチップ
     reason: '#726 の依頼はスレッドの行だけで、ほかの押す要素の中の ID はツールチップを出す今の動きのままにする'
@@ -31,3 +33,6 @@ scope_out:
   - item: mdmark の列の幅のつまみの aria-required-attr（描いた直後に aria-valuenow を持たない）
     reason: '#714 の aria-valid-attr-value とは別の事象で、mdmark の側に同じ内容の open の Issue がある'
     plan: shuhei1101/mdmark#816
+  - item: mdmark の列の幅のつまみの aria-valid-attr-value（document に取り付ける前に描いた表で aria-valuemin が NaN）
+    reason: '#714 の原因は mdmark の側（描いたときだけ値を入れ、取り付けた後に入れ直さない）で、mindstella は mdmark の部品を上書きしない'
+    plan: shuhei1101/mdmark#827
