@@ -4,15 +4,18 @@
  * mindstella preview
  * OpenAPI spec version: 0.0.0
  */
+import type { Choice } from './choice';
 import type { Loc } from './loc';
 
 export interface CommentInput {
   /** @nullable */
   target?: string | null;
   loc?: Loc | null;
-  body: string;
+  /** @nullable */
+  body?: string | null;
   /** @nullable */
   thread?: string | null;
+  choice?: Choice;
   id?: string;
   created?: string;
 }

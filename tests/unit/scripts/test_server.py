@@ -32,7 +32,7 @@ from errors import (
     SchemaMismatchError,
     WorkspaceNotFoundError,
 )
-from fixture_types import MakeItem, MakeWorkspace
+from fixture_types import MakeItem, MakeWorkspace, SnapshotTree
 from state import SessionState, update_session
 from voice_paste import VoicePasteTranscriber
 from workspaces import workspace_id_of
@@ -47,6 +47,7 @@ EXPECTED_TOOL_NAMES = (
     "adopt",
     "edit_option",
     "changes_since_read",
+    "user_choices",
     "commit",
     "pending",
     "check",
@@ -674,6 +675,30 @@ def test_build_server_when_relative_workspace(
     assert result.structured_content is not None
     assert result.structured_content["added"] == []
     assert result.structured_content["changed"] == []
+
+
+def test_build_server_when_user_choices(
+    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
+) -> None:
+    """user_choices が利用者が案を選んだ検討事項を返し、何も書き換えない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item(
+            "D-1",
+            options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+            user_choice={"key": "B", "at": "2026-10-01T00:00:00+00:00"},
+        )
+    )
+    before = snapshot_tree(root)
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock(), port=8784))
+    # 実行
+    result = _run_async(mcp_server.call_tool("user_choices", {"workspace": str(root)}))
+    # 検証
+    assert isinstance(result, CallToolResult)
+    assert result.is_error is False
+    assert result.structured_content is not None
+    assert [item["id"] for item in result.structured_content["items"]] == ["D-1"]
+    assert snapshot_tree(root) == before
 
 
 def test_build_server_when_relative_without_session() -> None:

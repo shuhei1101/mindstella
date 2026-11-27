@@ -14,6 +14,7 @@ from commands import (
     HTML_BODY_INPUT_KEY,
     OPTION_KEYS,
     REF_KEYS,
+    USER_CHOICE_KEY,
     Staged,
     apply_option_edit,
     stage_add,
@@ -752,6 +753,10 @@ def _apply_item_edits(
                 ]
                 option = None if edit.op == "option-remove" else edit.value
                 working["options"] = apply_option_edit(working, action, str(edit.key), option)  # type: ignore[arg-type]
+                # 利用者が選んだ案を消した: 利用者の選択も消す
+                chosen = (working.get(USER_CHOICE_KEY) or {}).get("key")
+                if edit.op == "option-remove" and chosen == edit.key:
+                    working.pop(USER_CHOICE_KEY)
         except MindmapError as error:
             failed.append(_invalid(edit, error))
             continue

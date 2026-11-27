@@ -76,7 +76,20 @@ components:
         condition: 表示の幅 1440。ストアの `leftOpen` が真・`leftWidth` が 384・`detailWidth` が 640 で `id=D-1` を開き、`window.innerWidth` を 1100 にして `resize` を送信する
         mock: MSW・`window.innerWidth`
         expected: 幅の区切りの `aria-valuemax` と詳細パネルの幅が 480（上限 1100 − 400 − 384 = 316 が下限を下回るため下限）
+      - name: test_detail_panel_when_choose_option
+        case: 正常
+        summary: 案を選ぶと案の選択を溜め、選び直すと書き換え、取り消すと削除する
+        condition: 案 A・B を持つ未決定の D-1 を開き、案 A を選んで確定し、案 B を選び直し、「選択を取り消す」を押す
+        mock: MSW
+        expected: '`POST /api/comments` が `{target: D-1, choice: {key: A}}`、`PATCH /api/comments/C-1` が `{choice: {key: B}, body: null}`、`DELETE /api/comments/C-1` の順に 1 回ずつ呼ばれる'
+      - name: test_detail_panel_when_user_choice
+        case: 正常
+        summary: 記録の利用者の選択を送信済みで出し、決定済みと差分の表示では選ぶ操作を出さない
+        condition: '`parametrize`: `user_choice` が案 B の未決定の D-1 / 決定済みの D-2 / `diff=V-1` で開いた D-1'
+        mock: MSW
+        expected: 案 B のカードが実線の「選択済み」で読み上げに「（送信済み）」 / 「この案を選ぶ」が無い / 「この案を選ぶ」が無い
     container: frontend/src/features/detail/detail-panel/detail-panel.tsx
 notes:
   単体テスト: 同じフォルダの `detail-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   グレーアウトの上: 'props に `raised?: boolean`（既定は偽）を加える。真のときは `aside` に `data-raised` と `lg:z-30` を付け、コメントの一覧のグレーアウト（`fixed`・`z-20`）の上に出す。`aside` は `relative` のままで、重なりの順だけを上げる。単体テスト `test_detail_panel_when_raised`（`raised` を真で描くと `aside` が `data-raised` を持つ。偽では持たない）を追加する'
+  案の選択: '状態が `未決定`・`要見直し` の検討事項の案の一覧（`OptionList`）に `choice`・`onChoose`・`onCancelChoice` を指定する。`choice` は、レビュー中の書き込みのうちその検討事項への案の選択（『コメント』の `choiceOf`）があれば `{key, note: body, sent: false}`、無ければ記録の `user_choice` の `{key, note, sent: true}`、どちらも無ければ `null`。`onChoose` は、レビュー中の案の選択があれば `useUpdateComment` で `choice` と `body`（一言が無ければ `null`）を、無ければ `useAddComment` で `target`・`choice`・`body`（一言があれば）を送信する。`onCancelChoice` は `useRemoveComment` でレビュー中の案の選択を削除する。差分の表示の間・配る書き出し・そのほかの状態では `onChoose` を指定しない。送信が届かない・エラーのときは選ぶ前の表示のまま、コメントの入力の送信の失敗と同じ出し方で理由を出す'

@@ -1,0 +1,23 @@
+$ pytest tests/integration/plugin/test_agent_flows.py tests/integration/server/test_adopt.py tests/integration/server/test_check.py tests/integration/server/test_comment_add.py tests/integration/server/test_comment_delete.py tests/integration/server/test_comment_update.py tests/integration/server/test_comments_read.py tests/integration/server/test_comments_send.py tests/integration/server/test_edit_option.py tests/integration/server/test_edits_save.py tests/integration/server/test_mcp_server.py tests/integration/server/test_resume.py tests/integration/server/test_user_choices.py 
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-bundle-722-history-unread-decision-choice
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 109 items
+
+tests/integration/plugin/test_agent_flows.py ..                          [  1%]
+tests/integration/server/test_adopt.py ........                          [  9%]
+tests/integration/server/test_check.py ............                      [ 20%]
+tests/integration/server/test_comment_add.py ................            [ 34%]
+tests/integration/server/test_comment_delete.py ...                      [ 37%]
+tests/integration/server/test_comment_update.py ......                   [ 43%]
+tests/integration/server/test_comments_read.py ...                       [ 45%]
+tests/integration/server/test_comments_send.py ..................        [ 62%]
+tests/integration/server/test_edit_option.py ..............              [ 75%]
+tests/integration/server/test_edits_save.py .........                    [ 83%]
+tests/integration/server/test_mcp_server.py ..........                   [ 92%]
+tests/integration/server/test_resume.py ....                             [ 96%]
+tests/integration/server/test_user_choices.py ....                       [100%]
+
+======================= 109 passed in 205.46s (0:03:25) ========================

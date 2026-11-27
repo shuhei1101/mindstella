@@ -52,6 +52,7 @@ def test_normal(
         "previous": "A",
         "status": "決定済み",
         "previous_status": "決定済み",
+        "user_choice": None,
     }
     adopted = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
         "items"
@@ -96,6 +97,7 @@ def test_normal_when_undecided_adopted(
         "previous": None,
         "status": "決定済み",
         "previous_status": "未決定",
+        "user_choice": None,
     }
     assert second.is_error is False
     assert second.data == {
@@ -104,6 +106,7 @@ def test_normal_when_undecided_adopted(
         "previous": "A",
         "status": "決定済み",
         "previous_status": "要見直し",
+        "user_choice": None,
     }
     decided, reviewed = (
         yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))["items"]
@@ -216,3 +219,36 @@ def test_error_when_write_fails(
     assert result.text.startswith("エラー: ")
     assert "Traceback" not in result.text
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_user_choice_cleared(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> None:
+    """利用者の選択を持つ検討事項の案を採用すると、選択を削除して片付けた選択を返す（正常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "種類ごとに分ける"}, {"key": "B", "content": "1 つにまとめる"}]
+    user_choice = {"key": "B", "note": "費用を優先する", "at": "2026-11-01T00:00:00+00:00"}
+    root = make_workspace(
+        make_item("D-1", status="未決定", options=options, user_choice=user_choice)
+    )
+    commit(call_tool, root, "足す")
+    # 実行
+    result = call_tool("adopt", workspace=str(root), id="D-1", key="B")
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["adopted"] == "B"
+    assert (result.data["user_choice"]["key"], result.data["user_choice"]["note"]) == (
+        "B",
+        "費用を優先する",
+    )
+    decided = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ][0]
+    assert decided["status"] == "決定済み"
+    assert [option.get("adopted") for option in decided["options"]] == [False, True]
+    assert "user_choice" not in decided
+    assert read_history(root)["D-1"]["history"][0]["before"]["user_choice"] == user_choice
+    check = call_tool("check", workspace=str(root))
+    assert check.data is not None
+    assert [row for row in check.data["problems"] if row["kind"] == "schema"] == []

@@ -1,0 +1,138 @@
+use_cases:
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: changed
+    detail: 変更履歴の時点の選び方が「最新」から始まる時系列の一覧になり、まだ開いていない変更に未読のマーカーが付く。差分の表示の間は変更があった画面のタブにマーカーが付く
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: changed
+    detail: 利用者が検討事項の案を画面で選んで回答し、MindStella のセッションが選ばれた検討事項を拾って採用まで済ませる流れが加わる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: changed
+    detail: 変更履歴を時系列の一覧にし（「差分を出さない今の内容」を「最新」にし、「前回開いてから」をやめる）、未読のマーカー・すべて既読にする・ヘッダーの未読の件数を出す。差分の表示の間は変更があった画面のタブにマーカーを付け、トップバーの差分の表示をやめるボタンを無くす
+    depends_on:
+      - docs/scenario/SC-489-50.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: AI が記録をまとめたら、開いている画面の変更履歴に反映して未読の件数を増やす
+    depends_on:
+      - docs/scenario/SC-489-18.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 検討事項の詳細の案のカードを押して案を選び、一言を添え、選び直し・取り消しができる。資料を開いていても画面の全体はスクロールしない
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-21.yaml
+    impact: changed
+    detail: MindStella のセッションが利用者の選んだ案を拾い、採用と理由の記録を済ませてから利用者の選択を片付ける
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-26.yaml
+    impact: changed
+    detail: 起動と再開で、利用者が案を選んだ検討事項があることを知らせて取り込みへ進む
+    depends_on:
+      - docs/scenario/SC-489-21.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: changed
+    detail: 利用者が案の選択をまとめて送信するとコメントと同じく通知が入力され、取り込みで選ばれた検討事項を取得して一言を理由に反映する
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: changed
+    detail: スレッドの書き込みの並びをカードの中のカードに見せない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-587-1.yaml
+    impact: changed
+    detail: 資料に埋め込んだ音声の再生バーを見切れずに全体を表示する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: run_only
+    detail: 変更の記録の連番を未読の数え方に使うため、記録の書き込みを壊さないかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: changed
+    detail: 確定した案の選択をレビュー中に溜め、まとめて送信したときに MindStella のセッションへ 1 回だけ通知する
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 変更履歴の時系列の一覧・未読のマーカー・すべて既読にする・ヘッダーの未読の件数と、差分の表示のタブのマーカーと、検討事項の案を画面で選ぶ操作を説明し、差分の表示をやめるボタンの説明を削除する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: 検討事項に利用者の選択（選んだ案の記号・日時・一言）のキーを追加し、変更履歴の既読の持ち方を合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: 利用者が案を選んだ検討事項を AI が取得する MCP のツール（または既存のツールの戻り値の追加）を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
+  - page: docs/guide/エージェントフロー.md
+    new: false
+    change: 利用者が画面で選んだ案を拾って採用するエージェントフローの工程を説明に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
+  - page: plugins/mindstella/agent-flows/startup.yaml
+    new: false
+    change: 起動と再開で、利用者が案を選んだ検討事項を取り込む工程を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
+  - page: plugins/mindstella/agent-flows/on-comment.yaml
+    new: false
+    change: 利用者が案を選んだ検討事項を採用し、一言をスレッドと同じ流れで取り込んでから利用者の選択を片付ける工程を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    change: 前回開いた日時を削除し、AI が最後に読んだ時点と変更履歴の既読の違いを合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
+scope_out:
+  - item: 変更履歴に、利用者の最後の書き込みより後に AI が書き換えた内容を 1 つの差分にする「今回の差分」を追加する
+    reason: 束の子に含まれない要望。#156 で「前回開いてから」をやめて時系列にするので、#693 は本文の関連のとおり先に入ったこの作業 PR の変更履歴に合わせて対応する
+    plan: '#693'
+  - item: トップバーのボタンをアイコンだけの表示にする
+    reason: 束の子に含まれない要望。変更履歴のボタンの未読の件数はこの作業 PR で追加し、#573 がそれを含めてアイコンと件数の表示にする
+    plan: '#573'
+  - item: 過去の差分を見ている間の変更履歴のボタンの色
+    reason: 束の子に含まれない要望
+    plan: '#184'
+  - item: 変更があった項目だけを表示する絞り込み
+    reason: '束の子に含まれない要望。#158 は #156 を依存に持ち、この作業 PR の後に着手する'
+    plan: '#158'
+  - item: 案のカードの記号・推奨・採用の見せ方
+    reason: 束の子に含まれない要望。この作業 PR は案のカードに押す操作と利用者が選んだ状態を追加するだけで、記号のアイコン・推奨と採用のバッジは変えない
+    plan: '#161'
+  - item: 複数の検討事項にまとめて回答し、誰が決めたかを持たせる
+    reason: 束の子に含まれない要望。この作業 PR は 1 件の検討事項の詳細で案を選ぶ操作を持つ
+    plan: '#484'
+  - item: レビュー中の書き込みの行の「修正」「削除」のアイコンのボタンが、axe の target-size（押す領域 24px・十分な間隔）に当たる
+    reason: 作業前からある既存の部品の大きさで、束の子の要望に含まれない（実装した画面の撮影の detect_screen_issues で、長い場面の幅 1280 のレビュー中の書き込みで検出）
+    plan: 未起票
+  - item: 部品『Markdownの本文』のストーリー DiffSource の結合テスト `test_diff_source` が、原文の差分のリビジョンの欄（`.mdmark-diff-picker`）を見つけられずに落ちる
+    reason: 作業前からある不具合で、develop の時点のストーリーでも同じく落ちる（この作業 PR は差分の表示の本文の描き方を変えていない）
+    plan: 未起票
+  - item: スレッドの画面の書き込みの一覧（`ol`）が、書き込みが多くて縦にスクロールするときに axe の scrollable-region-focusable（キーボードでスクロールできない）に当たる
+    reason: 作業前からある一覧の作りで、この作業 PR は一覧のスクロールの規則を変えていない（マージ提案の前の detect_screen_issues で、書き込み 30 件の場面で検出）
+    plan: 未起票

@@ -4,9 +4,10 @@ import { useRef } from "react";
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/shared/components/ui/dialog";
+import { cn } from "@/shared/lib/cn";
 
 /** モーダルに並べる時点 1 つ（`external` が真ならほかのセッションの書き込みのまとまり） */
-export type HistoryPoint = { sel: string; name: string; sub: string; count?: number; external?: boolean };
+export type HistoryPoint = { sel: string; name: string; sub: string; count?: number; external?: boolean; unread?: boolean };
 
 /** 外部の変更のまとまりに付ける札の文言 */
 const EXTERNAL_TAG = "外部の変更";
@@ -16,9 +17,12 @@ export type HistoryDialogProps = {
   current: string;
   onSelect: (sel: string) => void;
   onClose: () => void;
+  /** 「すべて既読にする」を押したとき。渡したときだけボタンを出す */
+  onMarkAllRead?: () => void;
 };
 
-export const HistoryDialog = ({ points, current, onSelect, onClose }: HistoryDialogProps) => {
+export const HistoryDialog = ({ points, current, onSelect, onClose, onMarkAllRead }: HistoryDialogProps) => {
+  const unreadCount = points.filter((point) => point.unread === true).length;
   // 開いたときにフォーカスを置く、今選んでいる時点の行
   const selectedRow = useRef<HTMLButtonElement>(null);
   return (
@@ -35,6 +39,14 @@ export const HistoryDialog = ({ points, current, onSelect, onClose }: HistoryDia
           <Icon name="x" />
         </DialogClose>
       </div>
+      {onMarkAllRead === undefined ? null : (
+        <div className="flex items-center justify-between gap-2 border-b border-border-soft px-3 py-2">
+          <span className="text-small text-muted-foreground">{unreadCount === 0 ? "未読はありません" : `未読 ${String(unreadCount)} 件`}</span>
+          <Button variant="outline" disabled={unreadCount === 0} onClick={onMarkAllRead}>
+            すべて既読にする
+          </Button>
+        </div>
+      )}
       <ul className="max-h-96 overflow-auto p-1">
         {points.map((point) => {
           const selected = point.sel === current;
@@ -55,7 +67,13 @@ export const HistoryDialog = ({ points, current, onSelect, onClose }: HistoryDia
                   {selected ? <Icon name="check" /> : null}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-small font-medium wrap-break-word">
+                  <span className={cn("block text-small wrap-break-word", point.unread === true ? "font-semibold" : "font-medium")}>
+                    {point.unread === true ? (
+                      <>
+                        <span aria-hidden="true" className="mr-1.5 inline-block size-2 rounded-full bg-topbar-unread align-middle" />
+                        <span className="sr-only">未読 </span>
+                      </>
+                    ) : null}
                     {point.name}
                     {point.external === true ? (
                       <>

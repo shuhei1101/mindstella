@@ -435,7 +435,7 @@ functions:
          - まだまとめていない変更があれば、先に `commit_pending` で `AI_PENDING_SUMMARY` のまとまりにする
          - 設定（`setting`）を `stage_settings` で当てる
          - 項目の追加（`item-add`）を仮の ID の連番の順に `stage_add`（`editor` は `USER_EDITOR`）で当て、仮の ID → 振った ID を控える。参照のキー（`REF_KEYS`）の値の仮の ID は振った ID に置き換える
-         - キー・案・採用（`set`・`option-*`・`adopt`）を溜めた順に項目ごとにまとめ、`apply_option_edit`・`switch_adopted` で案を組み、`stage_update`（`editor` は `USER_EDITOR`）で 1 項目 1 回で当てる
+         - キー・案・採用（`set`・`option-*`・`adopt`）を溜めた順に項目ごとにまとめ、`apply_option_edit`・`switch_adopted` で案を組み、`stage_update`（`editor` は `USER_EDITOR`）で 1 項目 1 回で当てる。`option-remove` で利用者の選択（`user_choice.key`）の案を削除したら `user_choice` も削除する（インターフェース定義『案の書き換え』の制約「利用者の選択」と同じ）。`adopt` は `switch_adopted` が `user_choice` を削除する
          - 項目の削除（`item-remove`）を当て、`note_removed` で記録する
          - 当てる途中の `SchemaMismatchError`・`ArgumentError` は、引き起こした編集の ID に紐づけて `invalid` にする
       4. 2. か 3. で書き込めない編集が 1 件以上あれば、溜めた順に並べて `EditsBlockedError` を送出する（何も書かない）
@@ -498,6 +498,12 @@ functions:
         condition: 'D-1 と、E-1（検討事項の追加 `new-1`、`status: 決定済み`、`options` が案 A・B で B が採用）'
         mock: '`now`'
         expected: '`added` が `[{temp: new-1, id: D-2}]`。D-2 が案 A・B を持ち B だけが採用、状態が決定済み、`history.yaml` の D-2 の `updated_by` が `user` で、`edits.yaml` が 0 件'
+      - name: test_save_edits_when_user_choice
+        case: 正常
+        summary: 利用者が選んだ案の削除と採用で利用者の選択を削除する
+        condition: '案 A・B・C を持ち `user_choice` が案 B の未決定の D-1。`parametrize`: E-1（案 B の `option-remove`）/ E-1（採用する案を A）/ E-1（案 C の `option-remove`）'
+        mock: '`now`'
+        expected: D-1 が `user_choice` を持たず未決定 / D-1 が `user_choice` を持たず決定済み / D-1 の `user_choice` が案 B のまま。どれも `EditsBlockedError` にならない
   - name: _parse_edit_input
     title: 追加の本文の確かめ
     kind: 関数

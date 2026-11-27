@@ -475,3 +475,96 @@ def test_no_horizontal_scroll(
     expect(_panel(page).locator("li[data-comment]")).to_have_count(30)
     # 検証
     assert_no_horizontal_scroll(page, _panel(page))
+
+
+# ─── 案の選択の行 ───
+
+# 案 A・B を持つ未決定の検討事項の案
+CHOICE_OPTIONS = [{"key": "A", "content": "種類ごとに分ける"}, {"key": "B", "content": "1 つにまとめる"}]
+
+
+@pytest.fixture
+def choice_preview(write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment) -> tuple[str, Path]:
+    """案の選択（D-2 への案 B の一言なしの C-51・D-3 への案 A の一言つきの C-52）を持つワークスペースの配信の URL とフォルダを返す。"""
+    without_note = make_comment("C-51", target="D-2", choice={"key": "B"})
+    del without_note["body"]
+    return write_review_preview(
+        make_item("D-2", title="キーの分け方", options=CHOICE_OPTIONS),
+        make_item("D-3", title="保存先", options=CHOICE_OPTIONS),
+        comments=(without_note, make_comment("C-52", target="D-3", choice={"key": "A"}, body="費用を優先する")),
+    )
+
+
+def test_rows_when_choice(page: Page, choice_preview: tuple[str, Path]) -> None:
+    """検討事項の詳細で確定した案の選択も 1 件 1 行で並べる（正常系）。"""
+    # 準備・実行
+    _open(page, choice_preview)
+    # 検証
+    assert _panel(page).locator("li[data-comment]").evaluate_all("rows => rows.map(r => r.dataset.comment)") == ["C-51", "C-52"]
+
+
+def test_row_checkbox_when_choice(page: Page, choice_preview: tuple[str, Path]) -> None:
+    """案の選択の行のチェックは「{向けた項目の ID} への案の選択を送信する」の読み上げの名前を持つ（正常系）。"""
+    # 準備・実行
+    _open(page, choice_preview)
+    # 検証
+    expect(_row(page, "C-51").get_by_role("checkbox", name="D-2 への案の選択を送信する")).to_be_checked()
+
+
+def test_row_kind_when_choice(page: Page, choice_preview: tuple[str, Path]) -> None:
+    """案の選択の行の頭に「案の選択」の札を出す（正常系）。"""
+    # 準備・実行
+    _open(page, choice_preview)
+    # 検証
+    expect(_row(page, "C-51").locator("[data-part=kind]")).to_have_text("案の選択")
+
+
+def test_row_target_when_choice(page: Page, choice_preview: tuple[str, Path]) -> None:
+    """案の選択の行の向けた項目を押すと、画面を開いたまま右にその検討事項の詳細パネルを開く（正常系）。"""
+    # 準備
+    _open(page, choice_preview)
+    # 実行
+    _row(page, "C-51").get_by_role("button", name="D-2 キーの分け方").click()
+    # 検証
+    page.wait_for_url("**id=D-2**")
+    expect(page.get_by_role("complementary", name="詳細")).to_be_visible()
+    expect(_row(page, "C-51").get_by_role("button", name="スレッドを開く")).to_have_count(0)
+
+
+def test_row_body_when_choice(page: Page, choice_preview: tuple[str, Path]) -> None:
+    """案の選択の行は「案 {記号}」と選んだ案の中身を出し、一言を添えないものは「一言なし」を出す（正常系）。"""
+    # 準備・実行
+    _open(page, choice_preview)
+    # 検証
+    expect(_row(page, "C-51").locator("[data-part=choice]")).to_have_text("案 B1 つにまとめる")
+    expect(_row(page, "C-51").locator("[data-part=body]")).to_have_text("一言なし")
+    expect(_row(page, "C-52").locator("[data-part=body]")).to_have_text("費用を優先する")
+
+
+def test_edit_when_choice(page: Page, choice_preview: tuple[str, Path]) -> None:
+    """案の選択の一言は「…への案の選択の一言を修正」で書き換え、空白だけにすると一言を削除する（正常系）。"""
+    # 準備
+    _, root = choice_preview
+    _open(page, choice_preview)
+    # 実行
+    _row(page, "C-52").get_by_role("button", name="D-3 への案の選択の一言を修正").click()
+    _row(page, "C-52").get_by_role("textbox").fill("  ")
+    _row(page, "C-52").get_by_role("button", name="修正", exact=True).click()
+    # 検証
+    expect(_row(page, "C-52").locator("[data-part=body]")).to_have_text("一言なし")
+    items = {item["id"]: item for item in read_workspace_yaml(root, "comments.yaml")["items"]}
+    assert (items["C-52"]["choice"], items["C-52"].get("body")) == ({"key": "A"}, None)
+
+
+def test_remove_and_undo_when_choice(page: Page, choice_preview: tuple[str, Path]) -> None:
+    """案の選択を削除して「元に戻す」と、同じ ID のまま案の選択として戻す（正常系）。"""
+    # 準備
+    _, root = choice_preview
+    _open(page, choice_preview)
+    # 実行
+    _row(page, "C-52").get_by_role("button", name="D-3 への案の選択を削除").click()
+    _panel(page).get_by_role("button", name="元に戻す").click()
+    # 検証
+    expect(_row(page, "C-52").locator("[data-part=kind]")).to_have_text("案の選択")
+    items = {item["id"]: item for item in read_workspace_yaml(root, "comments.yaml")["items"]}
+    assert (items["C-52"]["target"], items["C-52"]["choice"], items["C-52"]["body"]) == ("D-3", {"key": "A"}, "費用を優先する")

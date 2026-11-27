@@ -13,6 +13,7 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from change_detection import accept_written
 from errors import (
     CommentConflictError,
     CommentInvalidError,
@@ -22,9 +23,16 @@ from errors import (
     ThreadNotFoundError,
     WriteFailedError,
 )
-from kinds import records_root
+from history import (
+    EXTERNAL_SUMMARY,
+    commit_pending,
+    load_changes,
+    load_item_history,
+)
+from kinds import HISTORY_FILE as HISTORY_FILE_NAME, KINDS, records_root
 from locations import Location, check_location, location_to_dict, parse_location
 from store import (
+    CHANGES_FILE as CHANGES_FILE_NAME,
     SCHEMA_DIR,
     WHOLE_PATH,
     NowFn,
@@ -36,6 +44,8 @@ from store import (
     load_yaml_text,
     now_utc,
     remove_files,
+    save_batch,
+    BatchChange,
     write_failed,
     write_temp,
 )
@@ -67,6 +77,22 @@ COMMENT_ID_PREFIX = "C"
 # コメントの ID の形（`C-{連番}`）
 COMMENT_ID_PATTERN = re.compile(rf"^{COMMENT_ID_PREFIX}-(\d+)$")
 
+# まとめて送信した案の選択を 1 つにしたまとまりの説明
+CHOICE_SUMMARY = "画面からの案の選択"
+
+# 案の選択を溜められる・送信できる検討事項の状態
+CHOOSABLE_STATUSES = frozenset({"未決定", "要見直し"})
+
+# 案の選択を記載する検討事項の種類と、利用者の選択のキー
+DECISION_KIND = "decision"
+USER_CHOICE_KEY = "user_choice"
+
+# まだまとめていない変更を先にまとまりにするときの説明（保存待ちの編集の保存と同じ）
+AI_PENDING_SUMMARY = "まとめる前の AI の書き換え"
+
+# 利用者の選択を書いた項目と変更履歴の編集した人
+USER_EDITOR = "user"
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ReviewComment:
@@ -77,12 +103,14 @@ class ReviewComment:
     target: str | None
     # 選んだ箇所
     loc: Location | None
-    # 前後の空白を除いた本文
-    body: str
+    # 前後の空白を除いた本文（一言を添えない案の選択は None で、キーを書かない）
+    body: str | None
     # 溜めた日時
     created: str
     # 返信先のスレッドの ID（新規スレッドの最初の書き込みは None で、キーを書かない。持つときは target・loc を持たない）
     thread: str | None = None
+    # 案の選択の選んだ案の記号（案の選択でないコメントは None で、キーを書かない。持つときは target が検討事項で、loc・thread を持たない）
+    choice: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -119,10 +147,42 @@ class ReviewCommentView:
     # 向けた項目のタイトル（項目に紐づかないか、消えていれば None）
     target_title: str | None
     loc: dict[str, Any] | None
-    body: str
+    # 本文（一言を添えない案の選択は None）
+    body: str | None
     created: str
     # 返信先のスレッドの ID（新規スレッドの最初の書き込みは None）
     thread: str | None
+    # 案の選択（`{key}`。案の選択でないコメントは None）
+    choice: dict[str, str] | None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CommentInput:
+    """`_parse_comment_input` が確かめた溜める要求。"""
+
+    target: str | None
+    loc: Location | None
+    thread: str | None
+    # 前後の空白を除いた本文（案の選択で一言を渡さなければ None）
+    body: str | None
+    # 元に戻すときのコメントの ID と溜めた日時
+    id: str | None
+    created: str | None
+    # 案の選択の選んだ案の記号
+    choice: str | None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SentItem:
+    """『コメントをまとめて送信する』の `items[]` の 1 行。"""
+
+    # 送信したレビュー中のコメントの ID
+    comment: str
+    # 書き込みを追加したスレッドと書き込みの ID（案の選択は None）
+    thread: str | None
+    post: str | None
+    # 案の選択のとき、`user_choice` を記載した検討事項の ID（それ以外は None）
+    decision: str | None
 
 
 def load_comments(root: Path) -> CommentFile:
@@ -136,9 +196,10 @@ def load_comments(root: Path) -> CommentFile:
             id=item["id"],
             target=item.get("target"),
             loc=parse_location(item["loc"]) if "loc" in item else None,
-            body=item["body"],
+            body=item.get("body"),
             created=item["created"],
             thread=item.get("thread"),
+            choice=item["choice"]["key"] if "choice" in item else None,
         )
         for item in value["items"]
     ]
@@ -174,6 +235,7 @@ def list_review(workspace: Workspace) -> dict[str, Any]:
             body=comment.body,
             created=comment.created,
             thread=comment.thread,
+            choice=None if comment.choice is None else {"key": comment.choice},
         )
         for comment in load_comments(workspace.root).items
     ]
@@ -192,14 +254,21 @@ def list_review(workspace: Workspace) -> dict[str, Any]:
 def add_comment(
     root: Path, data: dict[str, Any], now: NowFn = now_utc
 ) -> tuple[ReviewComment, int]:
-    """向けた先（項目と箇所か、返信先のスレッド）と本文を確かめ、レビュー中のコメントを 1 件足す。`id` を渡されたら消したコメントを同じ ID で戻す。"""
-    target, loc, thread, body, comment_id, created = _parse_comment_input(data)
+    """向けた先（項目と箇所か、返信先のスレッド）と本文・案の選択を確かめ、レビュー中のコメントを 1 件足す。`id` を渡されたら消したコメントを同じ ID で戻す。"""
+    parsed = _parse_comment_input(data)
+    target, loc, thread, body = parsed.target, parsed.loc, parsed.thread, parsed.body
+    comment_id, created, choice = parsed.id, parsed.created, parsed.choice
     workspace = load_workspace(root)
     # 向けた項目が無ければ ItemNotFoundError が上がる
     item = None if target is None else find_item(workspace, target).item
     if loc is not None and item is not None:
         reason = check_location(workspace, item, loc)
         # 箇所が今の項目に合わない
+        if reason is not None:
+            raise CommentConflictError(reason)
+    # 案の選択: 選べる検討事項の案か
+    if choice is not None and target is not None:
+        reason = _check_choice(workspace, target, choice)
         if reason is not None:
             raise CommentConflictError(reason)
     # 返信先のスレッドが無い・クローズ: 溜めない（元に戻すときも同じ）
@@ -214,6 +283,18 @@ def add_comment(
             raise CommentConflictError(reason)
 
     current = load_comments(root)
+    if choice is not None:
+        existing = next(
+            (
+                comment
+                for comment in current.items
+                if comment.target == target and comment.choice is not None
+            ),
+            None,
+        )
+        # 同じ検討事項への案の選択は 1 件だけ
+        if existing is not None:
+            raise CommentConflictError(f"{target} への案の選択は {existing.id} にあります")
     if comment_id is not None:
         # 戻す ID が今のレビュー中にあるか、これまでに振った連番を超える
         if (
@@ -228,6 +309,7 @@ def add_comment(
             body=body,
             created=created or "",
             thread=thread,
+            choice=choice,
         )
         seq = current.seq
     else:
@@ -240,40 +322,52 @@ def add_comment(
             body=body,
             created=now(),
             thread=thread,
+            choice=choice,
         )
     items = sorted([*current.items, comment], key=_number_of)
     _write_comments(root, seq, items)
-    # 新しく溜めたときは、同じ向けた先の下書きを消す
-    if comment_id is None:
+    # 新しく溜めたときは、同じ向けた先の下書きを消す（案の選択は下書きを消さない）
+    if comment_id is None and choice is None:
         _remove_draft(root, target, loc, thread)
     return comment, len(items)
 
 
 def update_comment(root: Path, comment_id: str, data: dict[str, Any]) -> ReviewComment:
-    """レビュー中のコメント 1 件の本文を書き換えるか、箇所を解除する。"""
-    has_body, has_loc = "body" in data, "loc" in data
+    """レビュー中のコメント 1 件の本文か案の選択の記号を書き換えるか、箇所を解除する。"""
+    has_body, has_loc, has_choice = "body" in data, "loc" in data, "choice" in data
     # 書き換えるものが無い
-    if not has_body and not has_loc:
-        raise CommentInvalidError("body: body か loc を渡してください")
+    if not has_body and not has_loc and not has_choice:
+        raise CommentInvalidError("body: body か loc か choice を渡してください")
     body = None
-    if has_body:
+    if has_body and data["body"] is not None:
         body = _validate_body(data["body"])
     # 箇所は外すこと（null）だけを受ける
     if has_loc and data["loc"] is not None:
         raise CommentInvalidError("loc: null だけを受けます")
+    choice = _parse_choice(data["choice"]) if has_choice else None
 
     current = load_comments(root)
     found = next((comment for comment in current.items if comment.id == comment_id), None)
     # その ID のコメントが無い
     if found is None:
         raise CommentNotFoundError(f"コメントがありません: {comment_id}")
+    # 案の選択でないコメントは、選んだ案も本文を消すことも受けない
+    if found.choice is None and has_choice:
+        raise CommentInvalidError("choice: 案の選択のコメントだけが受けます")
+    if found.choice is None and has_body and data["body"] is None:
+        raise CommentInvalidError("body: 案の選択のコメントだけが null を受けます")
+    if choice is not None and found.target is not None:
+        reason = _check_choice(load_workspace(root), found.target, choice)
+        if reason is not None:
+            raise CommentConflictError(reason)
     updated = ReviewComment(
         id=found.id,
         target=found.target,
         loc=None if has_loc else found.loc,
-        body=found.body if body is None else body,
+        body=(body if has_body else found.body),
         created=found.created,
         thread=found.thread,
+        choice=found.choice if choice is None else choice,
     )
     items = [updated if comment.id == comment_id else comment for comment in current.items]
     _write_comments(root, current.seq, items)
@@ -319,8 +413,8 @@ def save_draft(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> None:
 
 def send_comments(
     root: Path, data: dict[str, Any], now: NowFn = now_utc
-) -> tuple[str, list[SentPost]]:
-    """渡した ID のコメントを全て確かめてからスレッドへ足し、レビュー中から外す。1 件でも合わなければ何も書き換えない。"""
+) -> tuple[str, list[SentItem]]:
+    """渡した ID のコメントを全て確かめてから、案の選択は検討事項の `user_choice` へ、ほかはスレッドへ足し、レビュー中から外す。1 件でも合わなければ何も書き換えない。"""
     ids = data.get("ids")
     # ids が 1 件以上の文字列の配列でない、または重なりがある
     if not isinstance(ids, list) or not ids or not all(isinstance(entry, str) for entry in ids):
@@ -350,35 +444,72 @@ def send_comments(
     if stale:
         raise CommentConflictError(f"送信できない書き込みが {len(stale)} 件あります", stale=stale)
 
-    threads_path = records_root(root) / THREADS_FILE
-    previous = threads_path.read_bytes() if threads_path.exists() else None
-    posts = [
-        UserPostInput(
-            comment=comment.id,
-            thread=comment.thread,
-            target=comment.target,
-            loc=None if comment.loc is None else location_to_dict(comment.loc),
-            body=comment.body,
-        )
-        for comment in chosen
+    choices = [comment for comment in chosen if comment.choice is not None]
+    posts_to_send = [comment for comment in chosen if comment.choice is None]
+    records = records_root(root)
+    choice_paths = [
+        records / name for name in (KINDS[DECISION_KIND].file, HISTORY_FILE_NAME, CHANGES_FILE_NAME)
     ]
-    sent, sent_posts = append_user_posts(root, posts, now=now)
+    choice_previous = {
+        path: (path.read_bytes() if path.exists() else None) for path in choice_paths
+    }
+    at = now()
+    wrote_choices = bool(choices) and _write_user_choices(workspace, choices, at=at)
+
+    threads_path = records / THREADS_FILE
+    previous = threads_path.read_bytes() if threads_path.exists() else None
+    sent_posts: list[SentPost] = []
+    sent = at
+    if posts_to_send:
+        posts = [
+            UserPostInput(
+                comment=comment.id,
+                thread=comment.thread,
+                target=comment.target,
+                loc=None if comment.loc is None else location_to_dict(comment.loc),
+                body=str(comment.body),
+            )
+            for comment in posts_to_send
+        ]
+        try:
+            sent, sent_posts = append_user_posts(root, posts, now=lambda: at)
+        except WriteFailedError:
+            # スレッドを書けなかった: 書いた利用者の選択を書き戻す
+            _restore_choice_files(root, choice_previous, wrote_choices)
+            raise
     try:
         _write_comments(
             root, current.seq, [comment for comment in current.items if comment.id not in set(ids)]
         )
     except WriteFailedError:
-        # レビュー中を書けなかった: 足したスレッドを書き戻し、どちらも前のままにする
-        _restore_file(threads_path, previous)
+        # レビュー中を書けなかった: 足したスレッドと利用者の選択を書き戻し、どれも前のままにする
+        if posts_to_send:
+            _restore_file(threads_path, previous)
+        _restore_choice_files(root, choice_previous, wrote_choices)
         raise
     # 送った返信のスレッドの下書きは消す
-    for comment in chosen:
+    for comment in posts_to_send:
         if comment.thread is not None:
             _remove_draft(root, None, None, comment.thread)
+    by_comment = {entry.comment: entry for entry in sent_posts}
+    items = [
+        SentItem(comment=comment.id, thread=None, post=None, decision=comment.target)
+        if comment.choice is not None
+        else SentItem(
+            comment=comment.id,
+            thread=by_comment[comment.id].thread,
+            post=by_comment[comment.id].post,
+            decision=None,
+        )
+        for comment in chosen
+    ]
     logger.info(
-        "コメントを送った: %d 件 %s", len(sent_posts), sorted({entry.thread for entry in sent_posts})
+        "コメントを送った: %d 件 %s 案の選択 %d 件",
+        len(sent_posts),
+        sorted({entry.thread for entry in sent_posts}),
+        len(choices),
     )
-    return sent, sent_posts
+    return sent, items
 
 
 def send_now(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> tuple[str, SentPost]:
@@ -409,12 +540,20 @@ def send_now(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> tuple[st
     return sent, posts[0]
 
 
-def _parse_comment_input(
-    data: dict[str, Any],
-) -> tuple[str | None, Location | None, str | None, str, str | None, str | None]:
-    """溜める要求の `target`・`loc`・`thread`・`body`・`id`・`created` の形を確かめる。"""
-    body = _validate_body(data.get("body"))
+def _parse_comment_input(data: dict[str, Any]) -> CommentInput:
+    """溜める要求の `target`・`loc`・`thread`・`body`・`id`・`created`・`choice` の形を確かめる。"""
+    has_choice = data.get("choice") is not None
+    # 案の選択は一言（本文）を渡さなくてよい
+    body = None if has_choice and data.get("body") is None else _validate_body(data.get("body"))
     target, loc, thread = _parse_destination(data)
+    choice = None
+    if has_choice:
+        choice = _parse_choice(data["choice"])
+        # 案の選択は検討事項に向け、箇所・返信先を持たない
+        if target is None:
+            raise CommentInvalidError("choice: choice を渡すときは target も渡してください")
+        if loc is not None or thread is not None:
+            raise CommentInvalidError("choice: loc・thread と一緒には渡せません")
     comment_id, created = data.get("id"), data.get("created")
     if comment_id is not None:
         # `C-{数字}` の形でない
@@ -425,7 +564,24 @@ def _parse_comment_input(
             raise CommentInvalidError("created: id を渡すときは created も渡してください")
     elif created is not None:
         raise CommentInvalidError("id: created を渡すときは id も渡してください")
-    return target, loc, thread, body, comment_id, created
+    return CommentInput(
+        target=target,
+        loc=loc,
+        thread=thread,
+        body=body,
+        id=comment_id,
+        created=created,
+        choice=choice,
+    )
+
+
+def _parse_choice(value: Any) -> str:
+    """案の選択が `key` に文字列を持つオブジェクトかを確かめ、選んだ案の記号を返す。"""
+    key = value.get("key") if isinstance(value, dict) else None
+    # 形が崩れている
+    if not isinstance(key, str) or not key:
+        raise CommentInvalidError("choice: {key} のオブジェクトで渡してください")
+    return key
 
 
 def _parse_destination(data: dict[str, Any]) -> tuple[str | None, Location | None, str | None]:
@@ -464,8 +620,104 @@ def _validate_body(value: Any) -> str:
 
 
 def _stale_reason(workspace: Workspace, threads: list[Thread], comment: ReviewComment) -> str | None:
-    """向けた項目が消えた・箇所が今の項目に合わない・返信先が無いかクローズのときの理由を返す（送れれば None）。"""
+    """向けた項目が消えた・箇所が今の項目に合わない・返信先が無いかクローズ・案を選べないときの理由を返す（送れれば None）。"""
+    if comment.choice is not None and comment.target is not None:
+        return _check_choice(workspace, comment.target, comment.choice)
     return _destination_reason(workspace, threads, comment.target, comment.loc, comment.thread)
+
+
+def _check_choice(workspace: Workspace, target: str, key: str) -> str | None:
+    """案の選択が向けた検討事項に当てはまるかを確かめ、合わない理由を返す（当てはまれば None）。"""
+    try:
+        ref = find_item(workspace, target)
+    except ItemNotFoundError:
+        return f"{target} がありません"
+    # 検討事項でない
+    if ref.kind != DECISION_KIND:
+        return f"{target} は検討事項ではありません"
+    status = ref.item.get("status")
+    # 案を選べる状態でない
+    if status not in CHOOSABLE_STATUSES:
+        return f"{target} は {status} のため案を選べません"
+    keys = {
+        str(option.get("key"))
+        for option in ref.item.get("options") or []
+        if isinstance(option, dict)
+    }
+    # 選んだ記号の案が無い
+    if key not in keys:
+        return f"{target} に案 {key} がありません"
+    return None
+
+
+def _write_user_choices(workspace: Workspace, choices: list[ReviewComment], *, at: str) -> bool:
+    """送信する案の選択を検討事項の `user_choice` に当て、変更履歴とまとまりを積んで 1 回で書く。書いたかを返す。"""
+    # ツールの処理が点検を読み、点検がこのモジュールを読むため、関数の中で読む
+    from commands import Staged, stage_update
+
+    updates: list[tuple[str, dict[str, Any]]] = []
+    for comment in choices:
+        target = str(comment.target)
+        current = find_item(workspace, target).item.get(USER_CHOICE_KEY) or {}
+        # 同じ記号と一言の利用者の選択を持つ: 書き換えない
+        if current.get("key") == comment.choice and current.get("note") == comment.body:
+            continue
+        chosen: dict[str, Any] = {"key": comment.choice}
+        if comment.body is not None:
+            chosen["note"] = comment.body
+        chosen["at"] = at
+        updates.append((target, chosen))
+    # 書き換える検討事項が無い
+    if not updates:
+        return False
+    loaded = load_changes(workspace.root)
+    pending_by = loaded["pending"].get("by", "ai")
+    record, _ = commit_pending(
+        loaded,
+        EXTERNAL_SUMMARY if pending_by == "external" else AI_PENDING_SUMMARY,
+        at,
+        by=pending_by,
+    )
+    staged = Staged(
+        workspace=workspace,
+        items=workspace.items,
+        touched=frozenset(),
+        bodies={},
+        history=load_item_history(workspace.root),
+        changes=record,
+    )
+    for target, chosen in updates:
+        staged, _ = stage_update(
+            staged, target, {USER_CHOICE_KEY: chosen}, lambda: at, editor=USER_EDITOR
+        )
+    record, _ = commit_pending(staged.changes, CHOICE_SUMMARY, at, by=USER_EDITOR)
+    written = save_batch(
+        workspace,
+        BatchChange(
+            items={kind: staged.items[kind] for kind in KINDS if kind in staged.touched},
+            bodies=[],
+            history=dict(staged.history),
+            changes=dict(record),
+        ),
+    )
+    accept_written(workspace.root, written)
+    return True
+
+
+def _restore_choice_files(root: Path, previous: dict[Path, bytes | None], wrote: bool) -> None:
+    """利用者の選択を書いた `decisions.yaml`・`history.yaml`・`changes.yaml` を前の中身に戻し、変更の検知にも戻した中身を伝える。"""
+    # 利用者の選択を書いていない: 戻すものが無い
+    if not wrote:
+        return
+    for path, content in previous.items():
+        _restore_file(path, content)
+    accept_written(
+        root,
+        {
+            path.name: (None if content is None else content.decode("utf-8"))
+            for path, content in previous.items()
+        },
+    )
 
 
 def _destination_reason(
@@ -556,16 +808,19 @@ def read_validated(path: Path, schema_name: str) -> Any | None:
 
 
 def _comment_dict(comment: ReviewComment) -> dict[str, Any]:
-    """コメントを YAML に書く辞書にする（持たない `target`・`loc`・`thread` は書かない）。"""
+    """コメントを YAML に書く辞書にする（持たない `target`・`loc`・`thread`・`body`・`choice` は書かない）。"""
     result: dict[str, Any] = {"id": comment.id}
     if comment.target is not None:
         result["target"] = comment.target
     if comment.loc is not None:
         result["loc"] = location_to_dict(comment.loc)
-    result["body"] = comment.body
+    if comment.body is not None:
+        result["body"] = comment.body
     result["created"] = comment.created
     if comment.thread is not None:
         result["thread"] = comment.thread
+    if comment.choice is not None:
+        result["choice"] = {"key": comment.choice}
     return result
 
 

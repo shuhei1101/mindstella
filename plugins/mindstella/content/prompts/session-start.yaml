@@ -16,6 +16,11 @@ vars:
     required: true
     description: 取り込み待ちのスレッドの件数
     example: 1
+  user_choices:
+    type: integer
+    required: true
+    description: 利用者が案を選んだ検討事項の件数
+    example: 2
   changed:
     type: array
     required: true
@@ -135,6 +140,12 @@ parts:
       - lang: ja
         text: |-
           {% if trigger == "startup" %}起動しました。{% else %}再開しました。{% endif %}取り込み待ちのコメントのスレッドは {{ awaiting_threads }} 件です。
+  - id: user-choices
+    when: "{{ user_choices > 0 }}"
+    texts:
+      - lang: ja
+        text: |-
+          利用者がプレビューで案を選んだ検討事項は {{ user_choices }} 件です。user_choices で取得し、mindstella/on-comment のとおり採用します。
   - id: changed
     when: "{{ changed | length > 0 }}"
     texts:

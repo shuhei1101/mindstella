@@ -11,3 +11,9 @@ export const workspaceKey = (key: string, pathname: string = location.pathname):
   const encoded = WORKSPACE_PATH_PATTERN.exec(pathname)?.[1];
   return encoded === undefined ? key : `${key}:${decodeURIComponent(encoded)}`;
 };
+
+/** サーバーの配信ではワークスペースの ID、該当しなければ空文字 */
+export const workspaceIdOf = (pathname: string = location.pathname): string => {
+  const encoded = WORKSPACE_PATH_PATTERN.exec(pathname)?.[1];
+  return encoded === undefined ? "" : decodeURIComponent(encoded);
+};

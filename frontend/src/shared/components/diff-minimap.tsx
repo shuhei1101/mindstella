@@ -58,7 +58,7 @@ export const DiffMinimap = ({ shown, children, initialScrollTop, onBodyScroll }:
     <div ref={frame} className="panel-scroll">
       {/* 本文のスクロール領域。中にフォーカスできる要素が無くてもキーボードで送れるようにする */}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-      <div ref={body} tabIndex={0} role="region" aria-label="詳細の本文" className="panel-body" onScroll={(event) => { if (!restoring.current) onBodyScroll?.(event.currentTarget.scrollTop); }}>
+      <div ref={body} tabIndex={0} role="region" aria-label="詳細の本文" className="panel-body overflow-y-auto" onScroll={(event) => { if (!restoring.current) onBodyScroll?.(event.currentTarget.scrollTop); }}>
         {children}
       </div>
     </div>

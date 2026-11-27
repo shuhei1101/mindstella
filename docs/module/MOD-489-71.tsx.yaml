@@ -22,6 +22,18 @@ components:
         condition: 行を押す
         mock: なし
         expected: '`onSelect` が sel で呼ばれる'
+      - name: test_history_dialog_when_unread
+        case: 正常
+        summary: 未読の行にマーカーを付け、すべて既読にするを押すとイベントを通知する
+        condition: '`points[1].unread` が真で「すべて既読にする」を押す'
+        mock: なし
+        expected: 2 つ目の行だけが未読の点を持ち、一覧の上に「未読 1 件」。`onMarkAllRead` が 1 回呼ばれる
+      - name: test_history_dialog_when_all_read
+        case: 正常
+        summary: 未読が無ければすべて既読にするを押せない
+        condition: どの `points[].unread` も偽
+        mock: なし
+        expected: 「未読はありません」を出し、「すべて既読にする」が `disabled`
     container: frontend/src/shared/components/history-dialog.tsx
 notes:
   単体テスト: 同じフォルダの `history-dialog.test.tsx` に置く（knowledge の規約『フォルダ構成』）

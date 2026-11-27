@@ -98,10 +98,9 @@ BODY_D2_V1 = "1 行目の段落\n\n2 つ目の段落\n"
 BODY_D2_V2 = "1 行目の段落\n\n書き換えた 2 つ目の段落\n"
 BODY_D2_NOW = "頭に足した段落\n\n1 行目の段落\n\n書き換えた 2 つ目の段落\n"
 
-# まとまり V-1・V-2 の日時と、前回開いた日時（V-1 と V-2 の間）
+# まとまり V-1・V-2 の日時
 FIRST_SET_AT = "2026-10-01T00:00:00+00:00"
 SECOND_SET_AT = "2026-10-02T00:00:00+00:00"
-OPENED_AT = "2026-10-01T12:00:00+00:00"
 
 
 def read_yaml(path: Path) -> Any:
@@ -174,16 +173,12 @@ def build_history_workspace(
         _call(call_tool, "update", workspace=workspace, id="D-2", item={"body_markdown": BODY_D2_NOW})
         _call(call_tool, "update", workspace=workspace, id="T-1", item={"status": "進行中"})
         _call(call_tool, "add", workspace=workspace, kind="note", item={"title": "新しいメモ", "content": "メモ"})
-    # まとまりの日時を固定し、前回開いた日時を V-1 と V-2 の間に置く
+    # まとまりの日時を固定する
     changes = read_yaml(root / RECORD_DIR / "changes.yaml")
     changes["sets"][1]["at"] = FIRST_SET_AT
     changes["sets"][0]["at"] = SECOND_SET_AT
     (root / RECORD_DIR / "changes.yaml").write_text(
         yaml.safe_dump(changes, allow_unicode=True, sort_keys=False), encoding="utf-8"
-    )
-    # 通し番号は V-1 の until_seq（V-1 より後のまとまりと、まだまとめていない変更が「前回開いてから」に入る）
-    (root / RECORD_DIR / ".mindstella-opened").write_text(
-        f"{OPENED_AT}\n{changes['sets'][1]['until_seq']}\n", encoding="utf-8"
     )
     return root
 

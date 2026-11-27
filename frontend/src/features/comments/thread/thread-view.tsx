@@ -86,7 +86,7 @@ export const ThreadView = ({ id, data, onBack, onClosed, onOpenItem, onOpenChang
   const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(() => {
     const voiced = voiceEditingOf("thread");
     const item = voiced === null ? undefined : items.find((one) => one.id === voiced);
-    return item === undefined ? null : { id: item.id, body: item.body, error: null };
+    return item === undefined ? null : { id: item.id, body: item.body ?? "", error: null };
   });
   const editingItem = editing === null ? null : (items.find((one) => one.id === editing.id) ?? null);
   // 修正の入力の音声入力（挿入だけ）。返信の入力とは別の入力欄で、画面で同時に 1 つだけ録音する
@@ -231,7 +231,7 @@ export const ThreadView = ({ id, data, onBack, onClosed, onOpenItem, onOpenChang
         onOpenItem={onOpenItem}
         onOpenChangeSet={onOpenChangeSet}
         onEditStart={(target) => {
-          setEditing({ id: target, body: item.body, error: null });
+          setEditing({ id: target, body: item.body ?? "", error: null });
         }}
         onEditCancel={() => {
           setEditing(null);
@@ -317,7 +317,7 @@ export const ThreadView = ({ id, data, onBack, onClosed, onOpenItem, onOpenChang
           .sort((a, b) => commentNumber(a.id) - commentNumber(b.id))
           .map((item) =>
             removed.includes(item) && !replies.includes(item) ? (
-              <li key={item.id} className="flex items-center gap-2 rounded-card border border-border p-2 text-small">
+              <li key={item.id} className="flex items-center gap-2 border-l-2 border-dashed border-border py-1 pl-2 text-small">
                 <span role="status" className="flex-1">
                   コメントを削除しました。
                 </span>

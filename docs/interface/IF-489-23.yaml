@@ -98,8 +98,8 @@ response:
     type: dict | None
     description: 選んだ箇所（`kind`・`start`・`end`・`key`・`text`）。箇所を持たなければ `null`。形式は ER 図『ワークスペース』の `comments.yaml`
   - name: items[].body
-    type: str
-    description: 本文
+    type: str | None
+    description: 本文。一言を添えない案の選択は `null`
   - name: items[].created
     type: str
     description: 溜めた日時（UTC のタイムゾーン付き ISO 8601）
@@ -119,6 +119,9 @@ response:
   - name: drafts[].thread
     type: str | None
     description: スレッドの返信の入力欄の下書きのとき、そのスレッドの ID。それ以外は `null`
+  - name: items[].choice
+    type: dict | None
+    description: 案の選択のコメントの選んだ案（`key`）。案の選択でないコメントは `null`
 status_codes:
   - code: '200'
     condition: 読めた（`comments.yaml`・`drafts.yaml` が無いときはどちらも空）

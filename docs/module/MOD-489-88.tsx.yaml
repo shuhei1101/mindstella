@@ -43,10 +43,10 @@ components:
         expected: 'コメントのボタンの左に読み上げの名前「音声入力中（D-022 へのコメント）。録音中の入力欄へ移動」のボタンと `0:12`、押すと `onOpenVoice` が 1 回 / 読み上げの名前「文字起こし中（D-022 へのコメント）。入力欄へ移動」で、画面に「文字起こし中」の文字が無い / 帯が `role="status"` で、`onOpenVoice` と `onDismissVoiceNotice` が 1 回ずつ'
       - name: test_topbar_when_diff_point
         case: 正常
-        summary: 差分の表示中は変更履歴のボタンに点と × だけを出す
-        condition: '`diffPoint: {name: 前回開いてから, sub: 10/04 13:05 より後}` を渡し、× を押す'
+        summary: 差分の表示中は変更履歴のボタンに点だけを出し、差分の表示をやめるボタンを出さない
+        condition: '`diffPoint: {name: V-2, sub: 10/04 13:05}` を指定する'
         mock: なし
-        expected: 「変更履歴」のボタンの読み上げ名が「変更履歴（過去の差分を表示中）」で、「前回開いてから」「10/04 13:05」の文字が無い。読み上げ名「差分の表示をやめる」のボタンを押すと `onClearDiff` が 1 回。`diffPoint` が `null` のときは読み上げ名「変更履歴」で × が無い
+        expected: 「変更履歴」のボタンの読み上げ名が「変更履歴（過去の差分を表示中）」で、「10/04 13:05」の文字が無い。読み上げ名「差分の表示をやめる」のボタンが無い。`diffPoint` が `null` のときは読み上げ名「変更履歴」
       - name: test_topbar_when_refresh
         case: 正常
         summary: 更新のボタンを押すと onRefresh、保留中は点と「更新があります」
@@ -59,5 +59,17 @@ components:
         condition: '`comments`・`filter`・`pending` を真にして描き、表示の設定のボタンへ Tab でフォーカスを移し、Esc を押す'
         mock: なし
         expected: 「表示の設定」「絞り込み」「保存待ち」「コメント」の文字はツールチップ（`aria-hidden`）にだけあり、どの要素も `title` 属性を持たない。Esc の後はトップバーに `data-tipsoff` が付く
+      - name: test_topbar_when_history_unread
+        case: 正常
+        summary: 変更履歴のボタンに未読の件数を出す
+        condition: '`parametrize`: `historyUnread` 3 / 120 / 0'
+        mock: なし
+        expected: 件数の札が `3` で読み上げ名が「変更履歴（未読 3 件）」 / 札が `99+` で読み上げ名が「変更履歴（未読 120 件）」 / 札が無く読み上げ名が「変更履歴」
+      - name: test_topbar_when_tab_marked
+        case: 正常
+        summary: marked のタブに点を重ねる
+        condition: '`tabs` の検討事項だけ `marked: true`'
+        mock: なし
+        expected: 検討事項のタブだけが点を持ち、「新規・変更・削除した項目があります」を読み上げに持つ
 notes:
   単体テスト: 同じフォルダの `topbar.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
 
+import change_detection
 import comments
 import errors
 import locations
@@ -33,6 +35,8 @@ from fixture_types import (
     WriteDrafts,
     WriteThreads,
 )
+from claude_input import InputTargets
+from record_helpers import ai_update
 from workspace_fixtures import RECORD_DIR
 
 # now の代わりに返す日時
@@ -88,6 +92,71 @@ def _reply_comment(comment_id: str, thread: str) -> dict[str, Any]:
         "body": f"{comment_id}の本文",
         "created": DEFAULT_TIMESTAMP,
     }
+
+
+# 案 A・B を持つ検討事項の案
+TWO_OPTIONS = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+
+# 案の選択の前後で比べる記録のファイル
+CHOICE_FILES = ("decisions.yaml", "history.yaml", "changes.yaml", "threads.yaml", "comments.yaml")
+
+
+def _choice_comment(comment_id: str, target: str, key: str, note: str | None = None) -> dict[str, Any]:
+    """案の選択のレビュー中のコメント（loc・thread を持たず、一言が無ければ body も持たない）を作る。"""
+    comment: dict[str, Any] = {
+        "id": comment_id,
+        "target": target,
+        "choice": {"key": key},
+        "created": DEFAULT_TIMESTAMP,
+    }
+    if note is not None:
+        comment["body"] = note
+    return comment
+
+
+def _read_decision(root: Path, decision_id: str) -> dict[str, Any]:
+    """decisions.yaml から ID の検討事項を読む。"""
+    data = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))
+    return next(item for item in data["items"] if item["id"] == decision_id)
+
+
+def _read_changes(root: Path) -> dict[str, Any]:
+    """ワークスペースの書き換えのまとまり（changes.yaml）を読む（無ければ空の辞書）。"""
+    path = root / RECORD_DIR / "changes.yaml"
+    if not path.is_file():
+        return {}
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def _file_bytes(root: Path, names: tuple[str, ...]) -> dict[str, bytes | None]:
+    """記録のフォルダのファイルの中身を名前ごとに返す（無いファイルは None）。"""
+    return {
+        name: (path.read_bytes() if (path := root / RECORD_DIR / name).is_file() else None)
+        for name in names
+    }
+
+
+class _IdleThread:
+    """start を呼んでも何もしないスレッドの代わり（poll はテストから呼ぶ）。"""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """渡した引数は使わない。"""
+
+    def start(self) -> None:
+        """何もしない。"""
+
+    def join(self, timeout: float | None = None) -> None:
+        """何もしない。"""
+
+
+def _start_detector(
+    root: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> change_detection.ChangeDetector:
+    """スレッドを立てずに、そのワークスペースの変更の検知を始める。"""
+    monkeypatch.setattr(change_detection.threading, "Thread", _IdleThread)
+    detector = change_detection.ChangeDetector(root, state_dir, threading.Lock(), InputTargets())
+    detector.start()
+    return detector
 
 
 def _reply_draft(thread: str, body: str = "下書き") -> dict[str, Any]:
@@ -889,6 +958,14 @@ def test_send_comments_when_comments_write_fails(
             "thread",
             id="thread_with_target_and_loc",
         ),
+        pytest.param({"target": "D-1", "choice": "B"}, "choice", id="choice_not_object"),
+        pytest.param({"choice": {"key": "B"}}, "choice", id="choice_without_target"),
+        pytest.param(
+            {"target": "A-1", "loc": LINE2_LOC, "choice": {"key": "B"}},
+            "choice",
+            id="choice_with_loc",
+        ),
+        pytest.param({"thread": "TH-1", "choice": {"key": "B"}}, "choice", id="choice_with_thread"),
     ],
 )
 def test_parse_comment_input_when_invalid(data: dict[str, Any], expected_key: str) -> None:
@@ -906,7 +983,8 @@ def test_parse_comment_input_when_boundary() -> None:
     # 実行
     result = comments._parse_comment_input({"body": body})
     # 検証
-    assert len(result[3]) == MAX_BODY_CHARS
+    assert result.body is not None
+    assert len(result.body) == MAX_BODY_CHARS
 
 
 def test_send_now(
@@ -1026,3 +1104,370 @@ def _history_rows(root: Path) -> dict[str, Any]:
         return {}
     return yaml.safe_load(path.read_text(encoding="utf-8"))["items"]
 
+
+# ===== 案の選択 =====
+
+
+def test_add_comment_when_choice(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_draft: MakeDraft,
+    write_drafts: WriteDrafts,
+) -> None:
+    """案の選択を一言つきで溜め、検討事項と下書きは変えない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=TWO_OPTIONS))
+    write_drafts(root, make_draft(target="D-1"))
+    before = _file_bytes(root, ("decisions.yaml", "drafts.yaml"))
+    # 実行
+    comment, _count = comments.add_comment(
+        root, {"target": "D-1", "choice": {"key": "B"}, "body": "費用を優先する"}, now=_fixed_now
+    )
+    # 検証
+    assert (comment.choice, comment.body) == ("B", "費用を優先する")
+    saved = _read_comments(root)["items"][-1]
+    assert saved["choice"] == {"key": "B"}
+    assert ("loc" in saved, "thread" in saved) == (False, False)
+    assert _file_bytes(root, ("decisions.yaml", "drafts.yaml")) == before
+
+
+def test_add_comment_when_choice_without_note(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """一言なしの案の選択は本文のキーを記載しない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=TWO_OPTIONS))
+    # 実行
+    comment, _count = comments.add_comment(
+        root, {"target": "D-1", "choice": {"key": "A"}}, now=_fixed_now
+    )
+    # 検証
+    assert comment.body is None
+    assert "body" not in _read_comments(root)["items"][-1]
+
+
+@pytest.mark.parametrize(
+    ("data", "messages"),
+    [
+        pytest.param({"target": "D-2", "choice": {"key": "A"}}, ["D-2"], id="decided"),
+        pytest.param({"target": "D-1", "choice": {"key": "Z"}}, ["Z"], id="missing_option"),
+        pytest.param(
+            {"target": "D-3", "choice": {"key": "B"}}, ["D-3", "C-1"], id="already_chosen"
+        ),
+        pytest.param({"target": "A-1", "choice": {"key": "A"}}, ["A-1"], id="not_decision"),
+    ],
+)
+def test_add_comment_when_choice_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    write_comments: WriteComments,
+    data: dict[str, Any],
+    messages: list[str],
+) -> None:
+    """選べない検討事項・案に無い記号・同じ検討事項への 2 件目は溜めない（異常系）。"""
+    # 準備（D-3 は D-1 と同じ未決定の検討事項で、案の選択 C-1 を持つ）
+    root = make_workspace(
+        make_item("D-1", options=TWO_OPTIONS),
+        make_item("D-2", status="決定済み", options=[{"key": "A", "content": "案 A", "adopted": True}]),
+        make_item("D-3", options=TWO_OPTIONS),
+        make_item("A-1"),
+        bodies={"A-1.mark.md": A_BODY},
+    )
+    write_comments(root, _choice_comment("C-1", "D-3", "A"))
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
+    # 実行・検証
+    with pytest.raises(CommentConflictError) as exc_info:
+        comments.add_comment(root, data, now=_fixed_now)
+    assert all(message in str(exc_info.value) for message in messages)
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("data", "expected_choice", "expected_body"),
+    [
+        pytest.param(
+            {"choice": {"key": "B"}, "body": "費用を優先する"}, "B", "費用を優先する", id="rechoose"
+        ),
+        pytest.param({"body": None}, "A", None, id="remove_note"),
+    ],
+)
+def test_update_comment_when_choice(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    write_comments: WriteComments,
+    data: dict[str, Any],
+    expected_choice: str,
+    expected_body: str | None,
+) -> None:
+    """案の選択を選び直して一言を書き換える・一言を削除する（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=TWO_OPTIONS))
+    write_comments(root, _choice_comment("C-1", "D-1", "A", note="x"))
+    decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
+    # 実行
+    result = comments.update_comment(root, "C-1", data)
+    # 検証
+    assert (result.target, result.choice, result.body) == ("D-1", expected_choice, expected_body)
+    saved = _read_comments(root)["items"][0]
+    assert saved["choice"] == {"key": expected_choice}
+    assert saved.get("body") == expected_body
+    assert ("body" in saved) == (expected_body is not None)
+    assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
+
+
+@pytest.mark.parametrize(
+    ("comment_id", "data", "expected_error", "message"),
+    [
+        pytest.param(
+            "C-1", {"choice": {"key": "Z"}}, CommentConflictError, "案 Z", id="missing_option"
+        ),
+        pytest.param(
+            "C-2", {"choice": {"key": "A"}}, CommentInvalidError, "案の選択", id="choice_to_comment"
+        ),
+        pytest.param("C-2", {"body": None}, CommentInvalidError, "案の選択", id="null_body_to_comment"),
+    ],
+)
+def test_update_comment_when_choice_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    comment_id: str,
+    data: dict[str, Any],
+    expected_error: type[MindmapError],
+    message: str,
+) -> None:
+    """案に無い記号と、案の選択でないコメントへの choice・body: null は書き換えない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=TWO_OPTIONS))
+    write_comments(root, _choice_comment("C-1", "D-1", "A"), make_comment("C-2"))
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
+    # 実行・検証
+    with pytest.raises(expected_error, match=message):
+        comments.update_comment(root, comment_id, data)
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
+
+
+def test_delete_comment_when_choice(
+    make_workspace: MakeWorkspace, make_item: MakeItem, write_comments: WriteComments
+) -> None:
+    """案の選択を削除すると、選んだ案の記号つきで返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=TWO_OPTIONS))
+    write_comments(root, _choice_comment("C-1", "D-1", "B"))
+    # 実行
+    deleted, count = comments.delete_comment(root, "C-1")
+    # 検証
+    assert (deleted.choice, count) == ("B", 0)
+    assert _read_comments(root)["items"] == []
+
+
+def test_send_comments_when_choices(
+    make_workspace: MakeWorkspace, make_item: MakeItem, write_comments: WriteComments
+) -> None:
+    """案の選択を検討事項の利用者の選択へ移し、スレッドは作らない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", options=TWO_OPTIONS), make_item("D-2", options=TWO_OPTIONS)
+    )
+    write_comments(
+        root,
+        _choice_comment("C-1", "D-1", "B"),
+        _choice_comment("C-2", "D-2", "B", note="費用を優先する"),
+    )
+    sets_before = len(_read_changes(root).get("sets", []))
+    # 実行
+    _sent, items = comments.send_comments(root, {"ids": ["C-1", "C-2"]}, now=_fixed_now)
+    # 検証
+    assert [(item.comment, item.decision, item.thread, item.post) for item in items] == [
+        ("C-1", "D-1", None, None),
+        ("C-2", "D-2", None, None),
+    ]
+    first, second = _read_decision(root, "D-1"), _read_decision(root, "D-2")
+    assert first["user_choice"] == {"key": "B", "at": FIXED_NOW}
+    assert second["user_choice"] == {"key": "B", "note": "費用を優先する", "at": FIXED_NOW}
+    assert (first["status"], second["status"]) == ("未決定", "未決定")
+    assert not (root / RECORD_DIR / "threads.yaml").exists()
+    assert _read_comments(root)["items"] == []
+    changes = _read_changes(root)
+    assert len(changes["sets"]) == sets_before + 1
+    assert (changes["sets"][0]["summary"], changes["sets"][0]["by"]) == ("画面からの案の選択", "user")
+    rows = _history_rows(root)
+    for decision_id in ("D-1", "D-2"):
+        assert rows[decision_id]["history"][-1]["before"].get("user_choice") is None
+
+
+def test_send_comments_when_choices_and_posts(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+) -> None:
+    """案の選択とスレッドへの書き込みを一緒に送信し、まだまとめていない変更は先にまとまりにする（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", options=TWO_OPTIONS), make_item("D-2"), make_item("T-1")
+    )
+    ai_update(root, "T-1", {"status": "進行中"}, now=_fixed_now)
+    write_comments(root, _choice_comment("C-1", "D-1", "B"), make_comment("C-2", target="D-2"))
+    sets_before = len(_read_changes(root).get("sets", []))
+    # 実行
+    _sent, items = comments.send_comments(root, {"ids": ["C-1", "C-2"]}, now=_fixed_now)
+    # 検証
+    assert [(item.comment, item.decision, item.thread, item.post) for item in items] == [
+        ("C-1", "D-1", None, None),
+        ("C-2", None, "TH-1", "TH-1-1"),
+    ]
+    sets = _read_changes(root)["sets"]
+    assert len(sets) == sets_before + 2
+    assert sets[0]["summary"] == "画面からの案の選択"
+    assert sets[1]["changed"] == ["T-1"]
+
+
+def test_send_comments_when_choice_same(
+    make_workspace: MakeWorkspace, make_item: MakeItem, write_comments: WriteComments
+) -> None:
+    """同じ記号と一言の利用者の選択を持つ検討事項は書き換えない（正常系）。"""
+    # 準備
+    previous = {"key": "B", "at": DEFAULT_TIMESTAMP}
+    root = make_workspace(make_item("D-1", options=TWO_OPTIONS, user_choice=previous))
+    write_comments(root, _choice_comment("C-1", "D-1", "B"))
+    before = _file_bytes(root, ("changes.yaml", "history.yaml"))
+    # 実行
+    comments.send_comments(root, {"ids": ["C-1"]}, now=_fixed_now)
+    # 検証
+    assert _read_decision(root, "D-1")["user_choice"] == previous
+    assert _file_bytes(root, ("changes.yaml", "history.yaml")) == before
+    assert _read_comments(root)["items"] == []
+
+
+@pytest.mark.parametrize(
+    "decision",
+    [
+        pytest.param(
+            {"status": "決定済み", "options": [{**TWO_OPTIONS[0], "adopted": True}, TWO_OPTIONS[1]]},
+            id="decided",
+        ),
+        pytest.param({"options": [TWO_OPTIONS[0]]}, id="option_removed"),
+    ],
+)
+def test_send_comments_when_choice_stale(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    write_comments: WriteComments,
+    decision: dict[str, Any],
+) -> None:
+    """選べなくなった検討事項・無くなった案への案の選択は何も送信しない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", **decision))
+    write_comments(root, _choice_comment("C-1", "D-1", "B"))
+    before = _file_bytes(root, ("decisions.yaml", "comments.yaml"))
+    # 実行・検証
+    with pytest.raises(CommentConflictError) as exc_info:
+        comments.send_comments(root, {"ids": ["C-1"]}, now=_fixed_now)
+    assert [comment_id for comment_id, _reason in exc_info.value.stale] == ["C-1"]
+    assert _file_bytes(root, ("decisions.yaml", "comments.yaml")) == before
+
+
+@pytest.mark.parametrize(
+    "failing_name",
+    [
+        pytest.param("threads.yaml", id="threads"),
+        pytest.param("comments.yaml", id="comments"),
+    ],
+)
+def test_send_comments_when_write_fails_after_choices(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failing_replace: FailingReplace,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    failing_name: str,
+) -> None:
+    """スレッドかレビュー中を書けなければ利用者の選択とスレッドを書き戻し、変更の検知にも書き戻した中身を伝える（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=TWO_OPTIONS), make_item("D-2"))
+    write_comments(root, _choice_comment("C-1", "D-1", "B"), make_comment("C-2", target="D-2"))
+    detector = _start_detector(root, tmp_path / "state", monkeypatch)
+    before = _file_bytes(root, CHOICE_FILES)
+    history_before = _history_rows(root)
+    sets_before = _read_changes(root).get("sets", [])
+    monkeypatch.setattr(comments.os, "replace", failing_replace(failing_name))
+    # 実行・検証
+    try:
+        with pytest.raises(WriteFailedError):
+            comments.send_comments(root, {"ids": ["C-1", "C-2"]}, now=_fixed_now)
+        assert _file_bytes(root, CHOICE_FILES) == before
+        # 書き戻した中身が前回の中身なら、検知を動かしても外部の変更として記録しない
+        monkeypatch.undo()
+        detector.poll()
+        assert _history_rows(root) == history_before
+        assert _read_changes(root).get("sets", []) == sets_before
+    finally:
+        detector.stop()
+
+
+@pytest.mark.parametrize(
+    ("decision_id", "key"),
+    [pytest.param("D-1", "B", id="undecided"), pytest.param("D-2", "A", id="needs_review")],
+)
+def test_check_choice(
+    make_workspace: MakeWorkspace, make_item: MakeItem, decision_id: str, key: str
+) -> None:
+    """当てはまる案の選択は理由を返さない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", options=TWO_OPTIONS),
+        make_item("D-2", status="要見直し", options=[{**TWO_OPTIONS[0], "adopted": True}]),
+    )
+    # 実行
+    result = comments._check_choice(store.load_workspace(root), decision_id, key)
+    # 検証
+    assert result is None
+
+
+@pytest.mark.parametrize(
+    ("target", "key", "expected"),
+    [
+        pytest.param("A-1", "A", "検討事項ではありません", id="not_decision"),
+        pytest.param("D-3", "A", "決定済み のため案を選べません", id="decided"),
+        pytest.param("D-1", "Z", "案 Z がありません", id="missing_option"),
+    ],
+)
+def test_check_choice_when_mismatch(
+    make_workspace: MakeWorkspace, make_item: MakeItem, target: str, key: str, expected: str
+) -> None:
+    """合わない理由を返す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", options=TWO_OPTIONS),
+        make_item("D-3", status="決定済み", options=[{**TWO_OPTIONS[0], "adopted": True}]),
+        make_item("A-1"),
+        bodies={"A-1.mark.md": A_BODY},
+    )
+    # 実行
+    result = comments._check_choice(store.load_workspace(root), target, key)
+    # 検証
+    assert result is not None
+    assert expected in result
+
+
+def test_write_user_choices(
+    make_workspace: MakeWorkspace, make_item: MakeItem, make_comment: MakeComment
+) -> None:
+    """選択を書き換え、前の選択を変更履歴に残す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", options=TWO_OPTIONS, user_choice={"key": "A", "at": DEFAULT_TIMESTAMP})
+    )
+    choice = comments.ReviewComment(
+        id="C-1", target="D-1", loc=None, body="x", created=DEFAULT_TIMESTAMP, choice="B"
+    )
+    # 実行
+    comments._write_user_choices(store.load_workspace(root), [choice], at=FIXED_NOW)
+    # 検証
+    assert _read_decision(root, "D-1")["user_choice"] == {"key": "B", "note": "x", "at": FIXED_NOW}
+    last = _history_rows(root)["D-1"]["history"][-1]
+    assert (last["before"]["user_choice"]["key"], last["by"]) == ("A", "user")

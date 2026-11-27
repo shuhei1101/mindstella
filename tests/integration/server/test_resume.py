@@ -6,9 +6,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from record_write_helpers import write_items
 from session_fixtures import SessionWorld
-from workspace_fixtures import TEST_SESSION_ID
+from workspace_fixtures import RECORD_DIR, TEST_SESSION_ID
 
 from .fixture_types import MakePost, MakeThread, SnapshotTree, WriteThreads
 from .history_helpers import read_changes
@@ -106,3 +108,37 @@ def test_error_when_unknown_session(session_world: SessionWorld, snapshot_tree: 
     # 検証
     assert status == 404
     assert snapshot_tree(world.state_root) == before
+
+
+def test_normal_when_user_choices(
+    session_world: SessionWorld,
+    write_threads: WriteThreads,
+) -> None:
+    """利用者が案を選んだ検討事項の件数を返却し、注入文に件数だけを入れる（正常系）。"""
+    # 準備
+    world = session_world
+    root, _state = _start(world)
+    decision = {"status": "未決定", "options": [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]}
+    write_items(
+        world.servers[0].call,
+        str(root),
+        add=[("decision", {"title": f"問い {n}", **decision}) for n in (1, 2, 3)],
+    )
+    decisions_path = root / RECORD_DIR / "decisions.yaml"
+    record = yaml.safe_load(decisions_path.read_text(encoding="utf-8"))
+    for item, key in zip(record["items"][:2], ("A", "B"), strict=True):
+        item["user_choice"] = {"key": key, "note": "費用を優先する", "at": "2026-11-01T00:00:00+00:00"}
+    decisions_path.write_text(yaml.safe_dump(record, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    write_threads(root)
+    before = decisions_path.read_bytes()
+    # 実行
+    status, body = _resume(world, "compact")
+    # 検証
+    assert status == 200
+    assert (body["awaiting_threads"], body["user_choices"]) == (0, 2)
+    context = body["context"]
+    assert "利用者がプレビューで案を選んだ検討事項は 2 件です。" in context
+    assert "D-1" not in context
+    assert "D-2" not in context
+    assert "費用を優先する" not in context
+    assert decisions_path.read_bytes() == before

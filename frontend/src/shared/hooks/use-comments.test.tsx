@@ -70,6 +70,27 @@ describe("useAddComment", () => {
   });
 });
 
+describe("useAddComment の案の選択", () => {
+  // 案の選択を一言なしで溜める（正常系）
+  test("use_add_comment_when_choice", async () => {
+    // 準備
+    const bodies: unknown[] = [];
+    server.use(
+      http.post("/api/comments", async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ id: "C-3", created: "2026-11-01T00:00:00+00:00", count: 1 }, { status: 201 });
+      }),
+    );
+    const { result, queryClient } = await renderPreviewHook("/", useAddComment);
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    // 実行
+    await act(() => result.current.mutateAsync({ target: "D-1", choice: { key: "B" } }));
+    // 検証
+    expect(bodies).toEqual([{ target: "D-1", choice: { key: "B" } }]);
+    expect(queryKeys(invalidate)).toEqual(expect.arrayContaining([["/api/comments"]]));
+  });
+});
+
 describe("useUpdateComment", () => {
   // 箇所を解除（正常系）
   test("use_update_comment", async () => {
@@ -86,6 +107,38 @@ describe("useUpdateComment", () => {
     await act(() => result.current.mutateAsync({ id: "C-1", loc: null }));
     // 検証
     expect(bodies).toEqual([{ loc: null }]);
+  });
+});
+
+describe("useUpdateComment の案の選択", () => {
+  // 案の選択を選び直して一言を削除する（正常系）
+  test("use_update_comment_when_choice", async () => {
+    // 準備
+    const bodies: unknown[] = [];
+    server.use(
+      http.patch("/api/comments/:id", async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ id: "C-1", body: null, loc: null, choice: { key: "A" } });
+      }),
+    );
+    const { result } = await renderPreviewHook("/", useUpdateComment);
+    // 実行
+    await act(() => result.current.mutateAsync({ id: "C-1", choice: { key: "A" }, body: null }));
+    // 検証
+    expect(bodies).toEqual([{ choice: { key: "A" }, body: null }]);
+  });
+});
+
+describe("useRemoveComment の案の選択", () => {
+  // 案の選択を削除すると選んだ案を返却する（正常系）
+  test("use_remove_comment_when_choice", async () => {
+    // 準備
+    server.use(http.delete("/api/comments/:id", () => HttpResponse.json({ id: "C-1", target: "D-1", loc: null, body: null, choice: { key: "B" }, created: "2026-11-01T00:00:00+00:00", count: 0 })));
+    const { result } = await renderPreviewHook("/", useRemoveComment);
+    // 実行
+    const removed = await act(() => result.current.mutateAsync("C-1"));
+    // 検証
+    expect(removed).toMatchObject({ choice: { key: "B" } });
   });
 });
 

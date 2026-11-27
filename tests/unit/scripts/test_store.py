@@ -1365,6 +1365,17 @@ def test_check_settings_when_invalid(
             ],
             id="optional_statuses_without_options",
         ),
+        pytest.param(
+            [
+                {
+                    "id": "D-1",
+                    "status": "未決定",
+                    "options": [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+                    "user_choice": {"key": "B", "at": "2026-10-01T00:00:00+00:00"},
+                }
+            ],
+            id="undecided_with_user_choice",
+        ),
     ],
 )
 def test_check_decision_rules(items: list[dict[str, Any]]) -> None:
@@ -1406,6 +1417,39 @@ def test_check_decision_rules_when_mismatch() -> None:
     }
     assert "A" in problems[2].detail
     assert "未決定" in problems[2].detail
+
+
+def test_check_decision_rules_when_user_choice_mismatch() -> None:
+    """利用者の選択が案と状態に合わない検討事項を拾う（正常系）。"""
+    # 準備
+    decisions = {
+        "items": [
+            {
+                "id": "D-1",
+                "status": "未決定",
+                "options": [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+                "user_choice": {"key": "Z", "at": "2026-10-01T00:00:00+00:00"},
+            },
+            {
+                "id": "D-2",
+                "status": "決定済み",
+                "options": [
+                    {"key": "A", "content": "案 A", "adopted": True},
+                    {"key": "B", "content": "案 B"},
+                ],
+                "user_choice": {"key": "B", "at": "2026-10-01T00:00:00+00:00"},
+            },
+        ]
+    }
+    # 実行
+    problems = store.check_decision_rules(decisions)
+    # 検証
+    assert [(problem.id, problem.key) for problem in problems] == [
+        ("D-1", "items[0].user_choice"),
+        ("D-2", "items[1].user_choice"),
+    ]
+    assert "Z" in problems[0].detail
+    assert "adopt" in problems[1].detail
 
 
 def test_check_decision_rules_when_malformed() -> None:

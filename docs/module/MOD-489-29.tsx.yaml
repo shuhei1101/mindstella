@@ -6,7 +6,40 @@ components:
     title: 案の一覧
     kind: コンポーネント
     usecase: 項目の詳細を読む
-    summary: 検討事項の案をカードで並べる
+    summary: 部品設計『案の一覧』の props・イベント・状態を持つ。検討事項の案をカードで並べ、`onChoose` を受けたときだけ案を選ぶ操作（「この案を選ぶ」・一言の入力・「一言を編集」・「選択を取り消す」）を出す。`choice` の案のカードは「選択済み」の札を付け、送信前は枠線と札の線を破線、送信済み（`choice.sent`）は実線にし、札に続けて「（未送信）」「（送信済み）」を `sr-only` で読み上げにだけ持たせる。一言は前後の空白を除き、空なら `note` を持たずに `onChoose` を呼ぶ
     container: frontend/src/features/detail/detail-panel/components/option-list.tsx
+    refs:
+      - CMP-722-1#
+    unit_tests:
+      - name: test_option_list_when_choose
+        case: 正常
+        summary: この案を選ぶから一言を添えて確定する
+        condition: '`onChoose` を渡し、案 B の「この案を選ぶ」を押して一言に「  費用を優先する 」を入れ、入力の下の「この案を選ぶ」を押す'
+        mock: なし
+        expected: '入力欄にフォーカスが移り、`onChoose` が `{key: B, note: 費用を優先する}` で 1 回呼ばれる'
+      - name: test_option_list_when_choose_without_note
+        case: 正常
+        summary: 空白だけの一言は note を持たない
+        condition: 一言に空白だけを入れて確定する
+        mock: なし
+        expected: '`onChoose` が `{key: B}` で呼ばれる'
+      - name: test_option_list_when_chosen
+        case: 正常
+        summary: 送信前の選択は破線で、一言を編集・選択を取り消すを出す
+        condition: '`choice: {key: B}` で「選択を取り消す」を押す'
+        mock: なし
+        expected: 案 B のカードが `border-dashed` で札の文字が「選択済み」、読み上げに「（未送信）」を持ち、「一言なし」を出す。`onCancelChoice` が 1 回呼ばれる
+      - name: test_option_list_when_sent
+        case: 正常
+        summary: 送信済みの選択は実線で、一言を編集・選択を取り消すを出さない
+        condition: '`choice: {key: B, note: 費用を優先する, sent: true}`'
+        mock: なし
+        expected: 案 B のカードが `border-dashed` を持たず、読み上げに「（送信済み）」を持つ。「一言を編集」「選択を取り消す」が無く、案 A に「案 A を選ぶ」がある
+      - name: test_option_list_when_not_choosable
+        case: 正常
+        summary: onChoose を渡さないときと差分の表示の間は選ぶ操作を出さない
+        condition: '`parametrize`: `onChoose` なし / `previous` と `onChoose` を渡す'
+        mock: なし
+        expected: どちらも「この案を選ぶ」が無い
 notes:
   単体テスト: 同じフォルダの `option-list.test.tsx` に置く（knowledge の規約『フォルダ構成』）

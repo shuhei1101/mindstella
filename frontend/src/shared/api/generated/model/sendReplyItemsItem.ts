@@ -7,6 +7,10 @@
 
 export type SendReplyItemsItem = {
   comment: string;
-  thread: string;
-  post: string;
+  /** @nullable */
+  thread: string | null;
+  /** @nullable */
+  post: string | null;
+  /** @nullable */
+  decision: string | null;
 };

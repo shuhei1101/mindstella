@@ -6,7 +6,7 @@ components:
     title: 変更履歴
     kind: 画面
     usecase: 前回からの差分を見る
-    summary: 画面設計『変更履歴.tsx』の要素と操作を描く
+    summary: 画面設計『変更履歴.tsx』の要素と操作を描く。時点の並びは先頭の「最新」（差分を出さない）・「まだまとめていない変更」（あれば）・まとまりの新しい順で、まとまりの行の `unread` は『既読のまとまり』の `useUnreadSetIds` にあるかで決める。「すべて既読にする」で記録の全てのまとまりを `markRead` する。配る書き出しでは `unread` と「すべて既読にする」を指定しない
     refs:
       - SCR-489-16#
     unit_tests:
@@ -22,6 +22,18 @@ components:
         condition: 行を押す
         mock: MSW
         expected: '`diff` が置き換わる'
+      - name: test_history_screen_when_unread
+        case: 正常
+        summary: 先頭を最新にし、既読でないまとまりに未読のマーカーを付ける
+        condition: まとまり V-1・V-2 を持ち、既読が `[V-1]` の記録
+        mock: MSW
+        expected: 行が「最新」・V-2・V-1 の順で、「前回開いてから」の行が無い。V-2 の行だけが未読のマーカーを持ち、一覧の上に「未読 1 件」
+      - name: test_history_screen_when_mark_all_read
+        case: 正常
+        summary: すべて既読にするで全てのまとまりを既読にする
+        condition: V-1・V-2 が未読の記録で「すべて既読にする」を押す
+        mock: MSW
+        expected: 未読のマーカーを持つ行が無く「未読はありません」を出し、`useUnreadSetIds` が空
     container: frontend/src/features/history/history/history-dialog.tsx
 notes:
   単体テスト: 同じフォルダの `history-dialog.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -9,10 +9,11 @@ import { ReviewBodyFold } from "@/shared/components/review-body-fold";
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { AppError } from "@/shared/core/app-error";
-import { commentNumber, isBlockedReply, reviewLabel, threadTitle, type ReviewItem } from "@/shared/core/comments";
+import { commentNumber, isBlockedReply, isChoice, reviewLabel, threadTitle, type ReviewItem } from "@/shared/core/comments";
 import { formatJst } from "@/shared/core/format";
 import { locationLabel } from "@/shared/core/records";
 import { useAddComment, useRemoveComment, useSendComments, useUpdateComment } from "@/shared/hooks/use-comments";
+import { useRecords } from "@/shared/hooks/use-records";
 import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { cn } from "@/shared/lib/cn";
 import { showLocation } from "@/shared/stores/location-highlight-store";
@@ -81,6 +82,12 @@ const OutcomeText = ({ outcome }: { outcome: SendOutcome }) => {
 
 export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, onOpenChangeSet }: ReviewViewProps) => {
   const { items, threads, titles, changeSets } = data;
+  const { index } = useRecords();
+  /** 案の選択の行に出す、選んだ案の中身（記録に案が無ければ null） */
+  const optionContent = (item: ReviewItem): string | null => {
+    const target = item.target === null ? undefined : index?.byId.get(item.target)?.item;
+    return target?.options?.find((option) => option.key === item.choice?.key)?.content ?? null;
+  };
   const sorted = [...items].sort((a, b) => commentNumber(a.id) - commentNumber(b.id));
   const sendable = sorted.filter((item) => !isBlockedReply({ item, threads }));
   // チェックを外した書き込み（開いたときと新しく溜めた書き込みはチェックした状態で入る）
@@ -92,7 +99,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
   const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(() => {
     const voiced = voiceEditingOf("review");
     const item = voiced === null ? undefined : items.find((one) => one.id === voiced);
-    return item === undefined ? null : { id: item.id, body: item.body, error: null };
+    return item === undefined ? null : { id: item.id, body: item.body ?? "", error: null };
   });
   const editingItem = editing === null ? null : (items.find((one) => one.id === editing.id) ?? null);
   // 修正の入力の音声入力（挿入だけ）
@@ -200,10 +207,11 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
               <OutcomeText outcome={outcome} />
             </p>
           )}
-          <ul className="m-0 grid min-h-0 flex-1 list-none content-start gap-2 overflow-y-auto p-3">
+          <ul className="m-0 grid min-h-0 flex-1 list-none grid-cols-1 content-start gap-2 overflow-y-auto p-3">
             {/* eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ */}
             {rows.map((item) => {
               const label = reviewLabel(item);
+              const choice = isChoice(item);
               if (item.gone === true) {
                 return (
                   <li key={item.id} className="flex items-center gap-2 rounded-card border border-border p-2 text-small">
@@ -215,7 +223,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       pending={add.isPending && add.variables.id === item.id}
                       disabled={flight.running}
                       onClick={() => {
-                        flight.run(() => add.mutateAsync({ id: item.id, created: item.created, target: item.target, loc: item.loc, thread: item.thread, body: item.body }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); } }));
+                        flight.run(() => add.mutateAsync({ id: item.id, created: item.created, target: item.target, loc: item.loc, thread: item.thread, body: item.body, ...(item.choice === undefined || item.choice === null ? {} : { choice: item.choice }) }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); } }));
                       }}
                     >
                       <Icon name="undo" />
@@ -228,10 +236,10 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
               const staleReason = stale[item.id];
               const replyTo = item.thread === null ? null : (threads.find((one) => one.id === item.thread) ?? null);
               return (
-                <li key={item.id} data-comment={item.id} data-highlight={highlight !== null && (item.thread === highlight || item.id === highlight) ? "" : undefined} className={cn("grid gap-1 rounded-card border p-2", staleReason === undefined ? "border-border" : "border-st-review", highlight !== null && (item.thread === highlight || item.id === highlight) && "bg-accent")}>
+                <li key={item.id} data-comment={item.id} data-highlight={highlight !== null && (item.thread === highlight || item.id === highlight) ? "" : undefined} className={cn("grid min-w-0 grid-cols-1 gap-1 rounded-card border p-2", staleReason === undefined ? "border-border" : "border-st-review", highlight !== null && (item.thread === highlight || item.id === highlight) && "bg-accent")}>
                   <div className="flex items-center gap-2 text-small">
-                    <Checkbox aria-label={item.thread === null ? `${item.target ?? "項目を指さない"}${item.target === null ? "コメントを送信する" : " へのコメントを送信する"}` : `${item.thread} への返信を送信する`} checked={!blocked && !unchecked.has(item.id)} disabled={blocked} onChange={() => { toggle(item.id); }} />
-                    <span data-part="kind" className="shrink-0 rounded-control border border-border px-1.5 whitespace-nowrap">{item.thread === null ? "新規スレッド" : "返信"}</span>
+                    <Checkbox aria-label={choice ? `${label}を送信する` : item.thread === null ? `${item.target ?? "項目を指さない"}${item.target === null ? "コメントを送信する" : " へのコメントを送信する"}` : `${item.thread} への返信を送信する`} checked={!blocked && !unchecked.has(item.id)} disabled={blocked} onChange={() => { toggle(item.id); }} />
+                    <span data-part="kind" className="shrink-0 rounded-control border border-border px-1.5 whitespace-nowrap">{choice ? "案の選択" : item.thread === null ? "新規スレッド" : "返信"}</span>
                     {replyTo === null ? null : (
                       <button type="button" className="flex min-w-0 cursor-pointer items-center gap-1" onClick={() => { onOpenThread(replyTo.id); }}>
                         <ThreadState status={replyTo.status} />
@@ -247,7 +255,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                     <span className="flex-1" />
                     {editing?.id === item.id ? null : (
                       <>
-                        <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" onClick={() => { setEditing({ id: item.id, body: item.body, error: null }); }}>
+                        <Button variant="ghost" size="icon" aria-label={choice ? `${label}の一言を修正` : `${label}を修正`} title="修正" onClick={() => { setEditing({ id: item.id, body: item.body ?? "", error: null }); }}>
                           <Icon name="edit" />
                         </Button>
                         <Button
@@ -258,7 +266,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                           pending={remove.isPending && remove.variables === item.id}
                           disabled={flight.running}
                           onClick={() => {
-                            flight.run(() => remove.mutateAsync(item.id, { onSuccess: (content) => { setRemoved((current) => [...current, { id: content.id, target: content.target ?? null, loc: (content.loc as ReviewItem["loc"] | undefined) ?? null, thread: content.thread ?? null, body: content.body, created: content.created }]); } }));
+                            flight.run(() => remove.mutateAsync(item.id, { onSuccess: (content) => { setRemoved((current) => [...current, { id: content.id, target: content.target ?? null, loc: (content.loc as ReviewItem["loc"] | undefined) ?? null, thread: content.thread ?? null, body: content.body ?? null, choice: content.choice ?? null, created: content.created }]); } }));
                           }}
                         >
                           <Icon name="trash" />
@@ -266,6 +274,12 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       </>
                     )}
                   </div>
+                  {choice ? (
+                    <p data-part="choice" className="m-0 min-w-0 text-small wrap-break-word">
+                      <span className="font-medium">{`案 ${item.choice?.key ?? ""}`}</span>
+                      {optionContent(item) === null ? null : <span className="ml-1.5 text-muted-foreground">{optionContent(item)}</span>}
+                    </p>
+                  ) : null}
                   {item.loc === null ? null : (
                     <div data-part="loc" className="grid gap-0.5 text-small">
                       <span className="font-medium">{locationLabel(item.loc)}</span>
@@ -294,18 +308,23 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       onVoiceDone={() => void editVoice.onVoiceDone()}
                       onVoiceBlocked={editVoice.onVoiceBlocked}
                       onCancel={() => { setEditing(null); }}
+                      allowEmpty={choice}
                       onSubmit={(target, body) => {
-                        flight.run(() => update.mutateAsync({ id: target, body }, { onSuccess: () => { setEditing(null); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。再起動してから修正してください。" }); } }));
+                        // 案の選択の一言は、空にすると削除する
+                        const next = choice && body.trim() === "" ? null : body;
+                        flight.run(() => update.mutateAsync({ id: target, body: next }, { onSuccess: () => { setEditing(null); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。再起動してから修正してください。" }); } }));
                       }}
                     />
+                  ) : choice && item.body === null ? (
+                    <p data-part="body" className="m-0 text-small text-muted-foreground">一言なし</p>
                   ) : (
-                    <ReviewBodyFold id={item.id} label={label} body={item.body} changeSets={changeSets} open={opened[item.id] ?? false} onToggle={(id, open) => { setOpened((current) => ({ ...current, [id]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
+                    <ReviewBodyFold id={item.id} label={label} body={item.body ?? ""} changeSets={changeSets} open={opened[item.id] ?? false} onToggle={(id, open) => { setOpened((current) => ({ ...current, [id]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
                       {(content, toggleButton) => (
                         <>
                           {content}
                           <div className="flex flex-wrap items-center gap-1">
                             {toggleButton}
-                            {item.thread === null ? (
+                            {item.thread === null && !choice ? (
                               <Button variant="ghost" className="shrink-0 whitespace-nowrap" onClick={() => { onOpenThread(item.id); }}>
                                 スレッドを開く
                               </Button>

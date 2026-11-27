@@ -3,27 +3,41 @@ title: 変更履歴
 implementation: frontend/src/shared/components/history-dialog.tsx#HistoryDialog
 story: Shared/HistoryDialog
 states:
-  - name: SinceSelected
-    description: 「前回開いてから」を選んでいる。先頭から差分を出さない・まだまとめていない変更・前回開いてから・まとまり 2 つ
-    args:
-      - name: current
-        value: since
-  - name: 'Off'
-    description: 差分を出していない。「差分を出さない（今の内容）」にチェック
+  - name: Unread
+    description: 差分を出していない（「最新」にチェック）。先頭から最新・まだまとめていない変更・まとまり 3 つを新しい順に並べ、未読のまとまり 2 つに未読のマーカーを付け、一覧の上に「未読 2 件」と「すべて既読にする」を出す
     args:
       - name: current
         value: （空文字列）
+  - name: ChangeSetSelected
+    description: 未読のまとまり「通知の方法の検討事項を足す」を選んで既読にした後。その行にチェックを付け、未読のマーカーを除外して「未読 1 件」にする
+    args:
+      - name: current
+        value: V-3
+      - name: points[].unread
+        value: V-3 を偽
+  - name: AllRead
+    description: 未読が無い。「未読はありません」を出し、「すべて既読にする」を押せない
+    args:
+      - name: points[].unread
+        value: 全て偽
+  - name: Empty
+    description: まとまりがまだ無い。「最新」の行だけを出す
+    args:
+      - name: points
+        value: 「最新」だけ
+  - name: Many
+    description: まとまりが 30 件、うち 12 件が未読。一覧を縦にスクロールし、「未読 12 件」と「すべて既読にする」は一覧の上に残す
   - name: NoPending
     description: まだまとめていない変更が無い。その行を出さない
-  - name: LongName
-    description: 長い説明のまとまり。名前を折り返し、日時と件数の列を押し出さない
+  - name: LongText
+    description: 長い説明の未読のまとまり。名前を折り返し、日時と件数の列を押し出さない
   - name: External
-    description: 外部の変更のまとまりがある。名前「ほかのセッションの書き込み」の横に「外部の変更」の札（線の枠・強い色を使わない）を付け、補足に「書き換えが止んで 1 分後に自動でまとめた」
+    description: 外部の変更のまとまりがある。名前「ほかのセッションの書き込み」の横に「外部の変更」の札（線の枠・強い色を使用しない）を付け、補足に「書き換えが止んで 1 分後に自動でまとめた」
     args:
       - name: points[].external
-        value: true（2 つ目のまとまり）
+        value: true（まとまりの 2 つ目）
   - name: Narrow
-    description: 幅 390px。モーダルを画面幅に合わせ、一覧を縦にスクロールする
+    description: 幅 390px。モーダルを画面幅に合わせ、一覧を縦にスクロールする。「すべて既読にする」の押す領域は縦横 24px 以上
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
 lead: トップバーの「変更履歴」で開くモーダル。差分の表示で比べる時点を、日時・説明・変わった項目の数つきで新しい順に並べ、1 つ選ばせる。
@@ -31,11 +45,11 @@ args:
   - name: points
     type: オブジェクトの配列
     required: true
-    description: 選べる時点。先頭から「差分を出さない（今の内容）」・「まだまとめていない変更」（あるときだけ）・「前回開いてから」・まとまりを新しい順に。その並びで出す
+    description: 選べる時点。先頭から「最新」・「まだまとめていない変更」（あるときだけ）・まとまりを新しい順に。その並びで出す
   - name: points[].sel
     type: 文字列
     required: true
-    description: 時点の識別子。空文字列は差分を出さない、`pending`・`since`・まとまりの ID
+    description: 時点の識別子。空文字列は「最新」（差分を出さない）、`pending`・まとまりの ID
   - name: points[].name
     type: 文字列
     required: true
@@ -43,7 +57,7 @@ args:
   - name: points[].sub
     type: 文字列
     required: true
-    description: 名前の下の補足（まとまりの日時・「{日時} より後」・差分を出さない行の説明）
+    description: 名前の下の補足（まとまりの日時・「最新」の行の説明）
   - name: points[].count
     type: 整数
     required: false
@@ -59,6 +73,12 @@ args:
     type: 文字列
     required: true
     description: 今選んでいる時点の `sel`。その行にチェックを付け、開いたときにフォーカスを置く
+  - name: points[].unread
+    type: 真偽値
+    required: false
+    default: 偽（未読のマーカーを付けない）
+    enabled_when: '`sel` がまとまりの ID のとき'
+    description: 差分の表示でまだ開いていないまとまりか。真なら名前の前に未読の点を付け、名前を 1 段階太くする。「最新」と「まだまとめていない変更」には付けない
 events:
   - name: 時点を選ぶ
     when: 行を押したとき
@@ -68,10 +88,16 @@ events:
     when: 閉じるボタン・Esc・モーダルの外を押したとき
     description: 使う側がモーダルを閉じ、「変更履歴」のボタンにフォーカスを戻す。選んだ時点は変えない
     value: '`onClose()`'
+  - name: すべて既読にする
+    when: 一覧の上の「すべて既読にする」を押したとき（未読が 0 件の間は押せない）
+    value: '`onMarkAllRead()`'
+    description: 使用する側が記録の全てのまとまりを既読にして端末の保存領域に残し、モーダルとトップバーの未読を削除する。モーダルは閉じず、選んだ時点も変えない。`onMarkAllRead` を指定しないとき（配る書き出し）は、件数とボタンの行を出さない
 accessibility:
   - '`dialog` を `showModal()` で開き、見出し「変更履歴」を読み上げ名にする'
   - 選んでいる行に `aria-current="true"` を付け、チェックのアイコンだけに頼らない
   - 行はボタンにし、キーボードで移って選べる
   - 「外部の変更」の札は行のボタンの読み上げ名に含める（名前に続けて読む）
+  - 未読の点は読み上げから除外し、行のボタンの読み上げ名の頭に「未読」を続ける
+  - 「すべて既読にする」はボタンで、未読が 0 件の間は `disabled` にする
 test_file: tests/integration/storybook_react/test_history_dialog_stories.py
 refs: []

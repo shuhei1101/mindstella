@@ -480,6 +480,8 @@ classes:
              - `GET /files/...` の場合、`_send_file` へ渡す
              - `GET /api/events` の場合、`_stream` へ渡す
              - `POST /api/transcriptions` の場合、`_transcribe` へ渡す
+             - `POST /api/comments/send` の場合、`send_comments` が返した送信した日時と `SentItem` の並びを `{sent, items}`（`items` は `SentItem` の `asdict`）にし、鍵を外した後に `thread` を持つ件数と `decision` を持つ件数を Claude Code への入力（『ClaudeCodeへの入力』の `enter_or_restart(root, count, choices)`）に渡す
+             - `PATCH /api/comments/{id}` の応答は書き換えたコメントの `{id, body, loc, choice}`、`DELETE /api/comments/{id}` は `delete_response` の応答にする（`choice` は `{key}` か `None`）
              - 本文を読む処理は、`Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば読まずに 400 を返し、`await request.body()` で読む
              - それ以外のパスは 404 を返す
           4. 処理の関数を `run_in_threadpool` で呼び、返った `Response` を `starlette.responses.Response(content=body, status_code=status, media_type=content_type)` にして `Cache-Control: no-store` を付け、`Response.headers` を重ねて返却する。GET 以外の要求の後は `context.records_cache.discard()` を呼ぶ
@@ -514,6 +516,12 @@ classes:
             condition: A・B を `start` し、`POST /w/{A の ID}/api/comments` でコメントを溜めてから、両方の `GET /api/comments` を呼ぶ
             mock: なし（`TestClient`）
             expected: A の応答に溜めたコメントがあり、B の応答は空
+          - name: test_endpoint_when_choices_sent
+            case: 正常
+            summary: 案の選択をまとめて送信すると、検討事項の ID つきで返し、入力に案の選択の件数を渡す
+            condition: '案 A・B を持つ未決定の D-1 と D-2 への新規スレッドのコメントを持つワークスペースを `start` し、`POST /api/comments` で D-1 への `choice: {key: B}` を溜めてから `POST /api/comments/send` で両方を送信する。入力の宛先は `enter_or_restart` の引数を記録する偽物'
+            mock: '`ServeContext.input_targets`'
+            expected: '201 で、`items` の案の選択の行が `decision: D-1`・`thread: null`。`enter_or_restart` が `count` 1・`choices` 1 で呼ばれる'
       - name: _send_file
         title: ファイルの応答
         kind: メソッド
@@ -1226,7 +1234,7 @@ functions:
         description: 削除するコメントの ID
     returns:
       type: Response
-      description: 200 の `{id, target, loc, body, created, count}`、または問題の応答
+      description: 200 の `{id, target, loc, body, created, count, choice}`（`choice` は削除した案の選択の `{key}`。案の選択でないコメントは `None`）、または問題の応答
     process: |-
       1. `Origin` が合わなければ 403 を返す（`check_origin`）
       2. 書き換えの鍵を取って（`workspace_lock`）コメントを削除する（`delete_comment`）
@@ -1239,6 +1247,12 @@ functions:
         condition: 'C-1・C-2 を持つワークスペース。`parametrize`: `Origin` 無しで `C-2` / `Origin: https://attacker.example` で `C-2` / `Origin` 無しで `C-9`'
         mock: なし
         expected: 200 で `id` が C-2・`count` が 1 / 403 / 404。後の 2 つは `comments.yaml` が呼ぶ前と同じ
+      - name: test_delete_response_when_choice
+        case: 正常
+        summary: 案の選択を削除すると選んだ案を返す
+        condition: D-1 への案 B の選択 C-1 を持つワークスペースで `C-1`
+        mock: なし
+        expected: '200 で `choice` が `{key: B}`、`body` が `null`'
   - name: error_response
     title: エラーの応答
     kind: 関数
@@ -1279,55 +1293,6 @@ functions:
         condition: '`parametrize`: `EditInvalidError` / `EditNotFoundError` / `EditConflictError` / `EditsBlockedError(blocked=[BlockedEdit(id=E-1, reason=referenced, detail=理由, refs=[D-2])])`'
         mock: なし
         expected: '400 / 404 / 409 / 409（本文の `blocked` が `[{id: E-1, reason: referenced, detail: 理由, refs: [D-2]}]`）'
-  - name: opened_response
-    title: 前回開いた日時の応答
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/serve.py
-    usecase: 前回からの差分を見る
-    scope: public
-    summary: 前回開いた日時と連番を返し、今の値に書き換える（インターフェース定義『前回開いた日時』）
-    args:
-      - name: context
-        type: ServeContext
-        required: true
-        passing: positional
-        description: 配っているワークスペース
-      - name: now
-        type: Callable[[], str]
-        required: false
-        default: now_utc
-        passing: injected
-        description: 今の日時を返す関数
-    returns:
-      type: Response
-      description: 200 と `{previous, opened}`、`changes.yaml` が読めなければ 422、書けなければ 500 の problem+json
-    process: |-
-      1. `changes.yaml` を読み（`load_changes`。記録のロックは取らない）、今の連番を求める（`head_until_seq`）
-         - `SchemaMismatchError` の場合、`.mindstella-opened` を書き換えずに 422 を返す（`problem_response`、`detail` は `error.lines` を改行でつなぐ）
-      2. 前回開いた時点を `{at: now(), seq}` に書き換える（`touch_opened`。記録のロックは取らない）
-         - `WriteFailedError` の場合、500 を返す（`problem_response`、`detail` に理由）
-      3. 200・`application/json; charset=utf-8`・`Cache-Control: no-store` で `{previous, opened}` を返す
-    unit_tests:
-      - name: test_opened_response
-        case: 正常
-        summary: 2 回目は 1 回目の時点を返し、連番は先頭のまとまりの `until_seq`
-        condition: '`.mindstella-opened` を持たず、まとまり 1 つとまだまとめていない変更を持つワークスペースで 2 回呼ぶ。`now` は 1 回目と 2 回目で違う日時'
-        mock: '`now`'
-        expected: 1 回目の `previous` が `null`、`opened.seq` が先頭のまとまりの `until_seq`（`last_seq` でない）。2 回目の `previous` が 1 回目の `opened`
-      - name: test_opened_response_when_changes_invalid
-        case: 異常
-        summary: '`changes.yaml` が読めなければ 422 で、前回開いた時点を書き換えない'
-        condition: '`.mindstella-opened` を持ち、`changes.yaml` の `last_seq` を文字列にしたワークスペース'
-        mock: なし
-        expected: 'ステータスが 422、`Content-Type` が `application/problem+json`、`detail` が `changes.yaml: last_seq:` で始まる行を持つ。`.mindstella-opened` が呼ぶ前と同じ'
-        exception: 変更履歴が読めない
-      - name: test_opened_response_when_write_fails
-        case: 異常
-        summary: 書けなければ 500
-        condition: '`touch_opened` を `WriteFailedError` を送出する関数に差し替える'
-        mock: '`touch_opened`（`serve` モジュールの参照を monkeypatch）'
-        expected: ステータスが 500、`Content-Type` が `application/problem+json`
-        exception: 書き込めない
   - name: reload_response
     title: 設定の再読み込みの応答
     kind: 関数

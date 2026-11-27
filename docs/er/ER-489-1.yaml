@@ -347,6 +347,29 @@ tables:
         title: 経緯
         type: array
         description: 決めた会話ログの ID（`L-`）
+      - name: user_choice
+        title: 利用者の選択
+        type: object
+        not_null: false
+        description: 利用者がプレビューで案を選んで送信し、AI がまだ採用していないときだけ持つ。`adopted` の採用とは別で、状態を変えない。記載するのはサーバーのコメントのまとめて送信だけで、案を採用する切り替え（`adopt`）が削除する。既に持つときは、まとめて送信した選択で書き換える
+      - name: user_choice.key
+        title: 選んだ案
+        type: string
+        not_null: true
+        description: 選んだ案の `key`。その検討事項の `options` にある記号
+        example: B
+      - name: user_choice.note
+        title: 一言
+        type: string
+        not_null: false
+        description: 選ぶときに添えた一言。前後の空白を除いて 1〜10000 文字。添えなかったときはキーを持たない
+        example: 費用を優先する
+      - name: user_choice.at
+        title: 送信した日時
+        type: string
+        not_null: true
+        description: まとめて送信した日時（UTC のタイムゾーン付き ISO 8601）
+        example: '2026-11-27T07:30:00+00:00'
     description: |-
       案と状態の決まり（書き込むツールと読み込みの検証、点検が見る）:
 
@@ -355,8 +378,10 @@ tables:
       | `未整理`・`対象外`・`取り下げ` を除く状態は、`options` を 1 つ以上持つ | `{ID} は状態 {状態} のため案を 1 つ以上持つ（options に案を書く）` |
       | `決定済み` は、`adopted` が真の案を 1 つ持つ | `{ID} は決定済みなのに採用した案を持たない（adopt で案を採用する）` |
       | `adopted` が真の案を持つ検討事項は `未決定` にしない（方針転換で `要見直し` にした検討事項は、前に採用した案を持ったままでよい） | `{ID} は採用した案 {記号} を持つのに未決定（adopt で決定済みにするか、採用を外す）` |
+      | `user_choice.key` は、その検討事項の `options` にある記号 | `{ID} の利用者の選択 {記号} は案に無い（案を戻すか、user_choice を削除する）` |
+      | `決定済み` は `user_choice` を持たない | `{ID} は決定済みなのに利用者の選択を持つ（adopt で採用して片付ける）` |
 
-      理由の行は、スキーマに合わない箇所と同じ `decisions.yaml: items[{番号}].{options か status}: {理由}` の構造で返す。
+      理由の行は、スキーマに合わない箇所と同じ `decisions.yaml: items[{番号}].{options・status・user_choice のどれか}: {理由}` の構造で返す。
   - name: tasks.yaml
     title: タスク
     datastore: YAML
@@ -738,26 +763,6 @@ tables:
         title: 中身
         type: string
         description: プラグインのスキーマと同じ中身
-  - name: .mindstella-opened
-    title: 前回開いた日時
-    datastore: テキスト
-    summary: プレビューを最後に開いた日時と連番
-    scale: 2 行
-    access: 全件
-    description: プレビューのタブが開いたときにサーバーが書き換える（『前回開いた日時』）。書き換えの通知・点検・移し替えの対象にしない。2 行目を持たない前のバージョンの形式は、前回開いた時点なしとして読む
-    columns:
-      - name: (1 行目)
-        title: 日時
-        type: string
-        not_null: true
-        description: UTC のタイムゾーン付き ISO 8601
-        example: '2026-10-04T13:05:00+00:00'
-      - name: (2 行目)
-        title: 連番
-        type: number
-        not_null: true
-        description: 開いた時点の `changes.yaml` の先頭のまとまりの `until_seq`（まとまりが無ければ 0）。「前回開いてから」は `until_seq` がこれより大きいまとまりを範囲にする
-        example: '12'
   - name: comments.yaml
     title: レビュー中のコメント
     datastore: YAML
@@ -821,8 +826,8 @@ tables:
       - name: body
         title: 本文
         type: string
-        not_null: true
-        description: コメントの本文。前後の空白を除いて 1〜10000 文字
+        not_null: false
+        description: コメントの本文。前後の空白を除いて 1〜10000 文字。`choice` を持たないものは必ず持ち、`choice` を持つものは案に添えた一言で、添えないときはキーを持たない
         example: ここは言い換える
       - name: created
         title: 溜めた日時
@@ -837,6 +842,17 @@ tables:
         not_null: false
         description: 既存のスレッドへの返信のとき、そのスレッドの ID。新規スレッドの最初の書き込み（項目の詳細パネル・新規スレッドの入力欄で溜めたもの）はキーを持たない。持つときは `target`・`loc` を持たない
         example: TH-3
+      - name: choice
+        title: 案の選択
+        type: object
+        not_null: false
+        description: 検討事項の詳細で案を選んで確定したものだけが持つ。持つときは `target` が未決定・要見直しの検討事項で、`loc` と `thread` を持たず、一言は `body` に持つ。同じ検討事項への案の選択は 1 件だけで、選び直すとその 1 件を書き換え、取り消すと削除する。まとめて送信すると、検討事項の `user_choice` に移る（スレッドには移らない）
+      - name: choice.key
+        title: 選んだ案
+        type: string
+        not_null: true
+        description: 選んだ案の `key`
+        example: B
   - name: drafts.yaml
     title: 下書き
     datastore: YAML

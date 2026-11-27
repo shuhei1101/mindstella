@@ -29,10 +29,13 @@ def summarize_resume(root: Path, source: str, *, state_root: Path | None = None)
     needs_review = _rows(workspace.items["decision"], "要見直し")
     in_progress = _rows(workspace.items["task"], "進行中")
     awaiting = sum(1 for thread in load_threads(root) if awaiting_posts(thread))
+    # 利用者がプレビューで案を選んだ検討事項（件数だけ。中身は user_choices で取得する）
+    chosen = sum(1 for item in workspace.items["decision"] if "user_choice" in item)
     status: dict[str, Any] = {
         # startup だけを起動、それ以外（resume・clear・compact）を再開にする
         "trigger": "startup" if source == "startup" else "resume",
         "awaiting_threads": awaiting,
+        "user_choices": chosen,
     }
     for key, rows in (
         ("changed", changed),

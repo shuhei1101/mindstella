@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { connectEvents } from "@/shared/adapters/events-client";
 import { resetEmbeddedDataForTest } from "@/shared/core/embedded";
+import { markRead, prune } from "@/shared/stores/read-changes-store";
 import { useRefreshHoldStore } from "@/shared/stores/refresh-hold-store";
 import { resetVoiceStore } from "@/shared/stores/voice-store";
 import { FakeEventSource } from "@/testing/fake-event-source";
@@ -363,5 +364,70 @@ describe("PreviewShell", () => {
     // 検証
     expect(await screen.findByRole("dialog", { name: "コメント" })).toHaveAttribute("aria-modal", "true");
     expect(detail).not.toHaveAttribute("data-raised");
+  });
+
+  // 差分の表示の間、変更を持つ種類のタブにだけ点を付ける（正常系）
+  test("preview_shell_when_tab_marked", async () => {
+    // 準備
+    const marker = "新規・変更・削除した項目があります";
+    stubRecords({ changes: { last_seq: 1, sets: [{ id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "1 回目", until_seq: 1, added: [], changed: ["D-1"] }], pending: { added: [], changed: [] } } });
+    const view = renderRoute("/?tab=decisions&diff=V-1");
+    // 検証
+    await waitFor(() => expect(screen.getByRole("link", { name: /検討事項/ })).toHaveTextContent(marker));
+    expect(screen.getByRole("link", { name: /概要/ })).not.toHaveTextContent(marker);
+    expect(screen.getByRole("link", { name: /タスク/ })).not.toHaveTextContent(marker);
+    // 実行（diff を外して開き直す）
+    view.unmount();
+    renderRoute("/?tab=decisions");
+    // 検証
+    await screen.findByRole("link", { name: /検討事項/ });
+    expect(screen.getByRole("link", { name: /検討事項/ })).not.toHaveTextContent(marker);
+  });
+
+  // 未読のまとまりの件数をトップバーに出し、書き換えの通知で増えたまとまりを加える（正常系）
+  test("preview_shell_when_history_unread", async () => {
+    // 準備（前のテストの既読を持ち越さない）
+    prune("", []);
+    const set = (id: string, seq: number) => ({ id, at: `2026-11-0${String(seq)}T00:00:00+00:00`, summary: `${String(seq)} 回目`, until_seq: seq, added: [], changed: ["D-1"] });
+    stubRecords({ changes: { last_seq: 2, sets: [set("V-2", 2), set("V-1", 1)], pending: { added: [], changed: [] } } });
+    const view = renderRoute("/?tab=decisions");
+    const close = connectEvents(view.queryClient);
+    // 検証
+    expect(await screen.findByRole("button", { name: "変更履歴（未読 2 件）" })).toBeInTheDocument();
+    // 実行
+    stubRecords({ changes: { last_seq: 3, sets: [set("V-3", 3), set("V-2", 2), set("V-1", 1)], pending: { added: [], changed: [] } } });
+    act(() => FakeEventSource.last?.emit("changed"));
+    // 検証
+    expect(await screen.findByRole("button", { name: "変更履歴（未読 3 件）" })).toBeInTheDocument();
+    close();
+  });
+
+  // 記録に無いまとまりを既読から削除する（正常系）
+  test("preview_shell_when_read_pruned", async () => {
+    // 準備
+    prune("", []);
+    markRead("", ["V-1", "V-9"]);
+    stubRecords({ changes: { last_seq: 1, sets: [{ id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "1 回目", until_seq: 1, added: [], changed: ["D-1"] }], pending: { added: [], changed: [] } } });
+    // 実行
+    renderRoute("/?tab=decisions");
+    // 検証
+    await waitFor(() => {
+      const stored = JSON.parse(localStorage.getItem("mindmap-read-changes") ?? "{}") as { state?: { read?: Record<string, string[]> } };
+      expect(Object.values(stored.state?.read ?? {})).toEqual([["V-1"]]);
+    });
+  });
+
+  // 外枠をビューポートの高さに収め、外枠ではスクロールさせない（正常系）
+  test("preview_shell_when_page_height", async () => {
+    // 準備
+    stubRecords({ docs: [{ id: "A-1", title: "A-1の題", status: "下書き", body: "docs/A-1.md" }], bodies: { "docs/A-1.md": "長い本文の行\n".repeat(200) } });
+    // 実行
+    renderRoute("/?tab=docs&id=A-1");
+    await screen.findByRole("complementary", { name: /詳細/ });
+    // 検証
+    const shell = document.querySelector(".h-dvh");
+    expect(shell).not.toBeNull();
+    expect(shell).toHaveClass("overflow-hidden");
+    expect(screen.getByRole("region", { name: "詳細の本文" })).toHaveClass("overflow-y-auto");
   });
 });

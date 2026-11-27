@@ -22,11 +22,13 @@ import { Icon, type IconName } from "@/shared/components/icon";
 import { Topbar, type TabKey, type TopbarTab } from "@/shared/components/topbar";
 import { AppError } from "@/shared/core/app-error";
 import { anyOpenUnseen, type ReviewItem, type Thread } from "@/shared/core/comments";
+import { changedKinds } from "@/shared/core/diff";
 import { SETTINGS_TARGET } from "@/shared/core/edits";
 import { isEmbedded } from "@/shared/core/embedded";
 import { normalizeSearch } from "@/shared/core/preview-search";
 import { KIND_KEYS, KIND_LABEL, kindOfId, type Kind } from "@/shared/core/records";
 import { voiceDestinationExists } from "@/shared/core/voice";
+import { workspaceIdOf } from "@/shared/core/workspace-path";
 import { commentsQuery, recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { usePreviewSearch, type VoiceTarget } from "@/shared/hooks/use-preview-search";
@@ -39,6 +41,7 @@ import { useDuplicateIdsStore, useShownDuplicateIds } from "@/shared/stores/dupl
 import { useFilterCandidatesStore } from "@/shared/stores/filter-candidates-store";
 import { clearDisplayNotice, displayChanged, sameDisplay, useDisplayNoticeAt } from "@/shared/stores/display-notice-store";
 import { writePrefs } from "@/shared/stores/prefs-store";
+import { markRead, prune, useUnreadSetIds } from "@/shared/stores/read-changes-store";
 import { restoreAnchor, useStale } from "@/shared/stores/refresh-hold-store";
 import { dropLegacyScreenState, writeScreenState } from "@/shared/stores/screen-state-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
@@ -133,7 +136,7 @@ export const PreviewShell = () => {
   const threads = useQuery(threadsQuery());
   const { index, rawIndex, edits } = useRecords();
   const record = useRecordLookup({ index, onOpenItem: openItem });
-  const { point, since } = useDiffView();
+  const { point } = useDiffView();
   const theme = useThemeStore((state) => state.theme);
   // 開いている一覧の画面の絞り込みの値（全体の検索の結果の先頭に出す）
   const candidateGroups = useFilterCandidatesStore((state) => state.groups);
@@ -209,8 +212,17 @@ export const PreviewShell = () => {
   const visible = useVisibleKinds();
   const pendingCount = edits.length;
   const diffActive = point !== null;
-  // 配る書き出しは書き込む操作（コメント・保存待ち・音声入力）を出さない
+  // 配る書き出しは書き込む操作（コメント・保存待ち・音声入力）と既読を出さない
   const embedded = isEmbedded();
+  // 変更履歴の既読（ワークスペースごと）。記録を参照するたびに、記録に無いまとまりを既読から削除する
+  const workspaceId = workspaceIdOf();
+  const setIds = useMemo(() => rawIndex?.data.changes.sets.map((set) => set.id) ?? [], [rawIndex]);
+  const unreadSetIds = useUnreadSetIds(workspaceId, setIds);
+  useEffect(() => {
+    if (rawIndex !== null && !embedded) prune(workspaceId, setIds);
+  }, [rawIndex, embedded, workspaceId, setIds]);
+  // 差分の表示の間、変更を持つ種類のタブに点を付ける
+  const markedKinds = changedKinds(point);
   // 開いたときに確かめ終えたか（開いている間に取り消して保存待ちが 0 件になっても、保存待ちのパネルは開いたまま空の状態を出す）
   const opened = useRef(false);
   const threadList = threads.data?.status === 200 ? (threads.data.data.threads as unknown as Thread[]) : null;
@@ -237,7 +249,7 @@ export const PreviewShell = () => {
   }, [index, JSON.stringify(search), pendingCount, diffActive, JSON.stringify(threadContext), [...visible].join(",")]);
   const tabs: TopbarTab[] = [
     { key: "overview", label: "概要", icon: TAB_ICON.overview },
-    ...KIND_KEYS.filter((kind) => visible.has(kind)).map((kind) => ({ key: kind, label: KIND_LABEL[kind], icon: TAB_ICON[kind], ...(data === undefined ? {} : { count: data[kind].length }) })),
+    ...KIND_KEYS.filter((kind) => visible.has(kind)).map((kind) => ({ key: kind, label: KIND_LABEL[kind], icon: TAB_ICON[kind], ...(data === undefined ? {} : { count: data[kind].length }), marked: markedKinds.has(kind) })),
   ];
   const tab = search.tab ?? "overview";
   const listTab = tab !== "overview" && tab !== "settings";
@@ -264,7 +276,7 @@ export const PreviewShell = () => {
     );
   };
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <div ref={topbarFrame}>
         <Topbar
           title={data?.settings.summary ?? ""}
@@ -274,6 +286,7 @@ export const PreviewShell = () => {
           connection={connection === "offline" || !reachable ? "offline" : "online"}
           readAt={data?.built_at ?? null}
           diffPoint={point === null ? null : { name: point.name, sub: point.sub }}
+          historyUnread={embedded ? 0 : unreadSetIds.length}
           comments={!embedded}
           commentCount={comments.data?.status === 200 ? comments.data.data.items.length : 0}
           commentsOpen={search.panel === "comments"}
@@ -297,10 +310,6 @@ export const PreviewShell = () => {
           onOpenSearch={() => { setSearch({ search: "1" }); }}
           onThemeChange={setTheme}
           onOpenHistory={() => { setHistoryOpen(true); }}
-          onClearDiff={() => {
-            writeScreenState({ diffSel: null });
-            setDiff(undefined);
-          }}
           onToggleComments={() => { setPanel(search.panel === "comments" ? undefined : "comments"); }}
           onToggleSettings={() => { setPanel(search.panel === "display" ? undefined : "display"); }}
           onToggleFilter={() => { setDrawerOpen(!drawerOpen); }}
@@ -369,8 +378,8 @@ export const PreviewShell = () => {
       {historyOpen && rawIndex !== null ? (
         <HistoryScreen
           changes={rawIndex.data.changes}
-          since={since ?? { at: rawIndex.data.built_at, seq: rawIndex.data.changes.sets[0]?.until_seq ?? 0 }}
           point={point}
+          {...(embedded ? {} : { unreadSetIds, onMarkAllRead: () => { markRead(workspaceId, setIds); } })}
           onSelect={(sel) => {
             writeScreenState({ diffSel: sel === "" ? null : sel });
             setDiff(sel === "" ? undefined : sel);

@@ -392,7 +392,7 @@ def test_filter_narrow(open_story: OpenStory) -> None:
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
-# 帯の子の左右の位置（ツール名・検索の入口・変更履歴・差分の表示をやめる ×・コメント・テーマの切り替え）を同じ瞬間に読む
+# 帯の子の左右の位置（ツール名・検索の入口・変更履歴・コメント・テーマの切り替え）を同じ瞬間に読む
 DIFF_BOXES_SCRIPT = """() => {
   const box = (selector) => {
     const element = document.querySelector(selector);
@@ -404,7 +404,6 @@ DIFF_BOXES_SCRIPT = """() => {
     brand: box('header > span:first-child'),
     search: box('header button[aria-label=すべての項目を検索]'),
     history: box('header button[aria-label^=変更履歴]'),
-    off: box('header button[aria-label=差分の表示をやめる]'),
     theme: box('header button[data-theme]'),
     comments: box('header button[aria-label^=コメント]'),
     page: { width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth },
@@ -414,25 +413,21 @@ DIFF_BOXES_SCRIPT = """() => {
 # 差分を表示している間の「変更履歴」の読み上げ名
 HISTORY_DIFF_LABEL = "変更履歴（過去の差分を表示中）"
 
-# 「変更履歴」の右上の点の要素
-HISTORY_DOT = "header button[aria-label^=変更履歴] > span[aria-hidden=true].rounded-full"
+# 「変更履歴」の左上の差分の表示の点の要素（右上の未読の件数の札を除く）
+HISTORY_DOT = "header button[aria-label^=変更履歴] > span[aria-hidden=true].rounded-full:not(.font-mono)"
 
 
 def test_diff_on(open_story: OpenStory) -> None:
-    """変更履歴で「前回開いてから」を選んだ間。「変更履歴」の右上に点、右に × だけを出し、時点の名前と日時は出さない。検討事項・資料のタブに点を出す（正常系）。"""
+    """変更履歴でまとまりを選んだ間。「変更履歴」の左上に点、右上に未読の件数を出し、差分の表示をやめる × は出さない。検討事項・資料のタブに点を出す（正常系）。"""
     # 準備・実行
     page = open_story("shared-topbar--diff-on")
     # 検証
-    history = page.get_by_role("button", name=HISTORY_DIFF_LABEL)
+    history = page.get_by_role("button", name=f"{HISTORY_DIFF_LABEL}（未読 1 件）")
     assert history.get_attribute("aria-haspopup") == "dialog"
-    assert history.inner_text().strip() == ""
+    assert history.inner_text().strip() == "1"
     assert _tip(page, "header button[aria-label^=変更履歴]") == HISTORY_DIFF_LABEL
     assert page.locator(HISTORY_DOT).count() == 1
-    assert page.get_by_role("button", name="差分の表示をやめる").count() == 1
-    assert page.locator("header").get_by_text("前回開いてから").count() == 0
-    assert page.locator("header span[title^=前回開いてから]").count() == 0
-    boxes = page.evaluate(DIFF_BOXES_SCRIPT)
-    assert boxes["history"]["right"] <= boxes["off"]["left"]
+    assert page.get_by_role("button", name="差分の表示をやめる").count() == 0
     # 印の付いた種類のタブにだけ点が付き、件数は残る
     dotted = page.eval_on_selector_all(
         "nav[aria-label=項目の種類] a:has(.sr-only)", "tabs => tabs.map(t => t.dataset.tab)"
@@ -443,7 +438,7 @@ def test_diff_on(open_story: OpenStory) -> None:
 
 
 def test_diff_on_narrow(open_story: OpenStory) -> None:
-    """幅 390px のサーバーの配信で、差分の表示の間。ボタンをアイコンだけにし、コメントのボタンと × を押し出さずに 390px の中に収める（正常系）。"""
+    """幅 390px のサーバーの配信で、差分の表示の間。ボタンをアイコンだけにし、未読の件数と点の付いた「変更履歴」とコメントのボタンを押し出さずに 390px の中に収める（正常系）。"""
     # 準備
     page = open_story("shared-topbar--diff-on-narrow")
     page.set_viewport_size(NARROW_SIZE)
@@ -451,16 +446,37 @@ def test_diff_on_narrow(open_story: OpenStory) -> None:
     # 実行
     boxes = page.evaluate(DIFF_BOXES_SCRIPT)
     # 検証
-    assert page.inner_text("header button[aria-label^=変更履歴]").strip() == ""
+    assert page.inner_text("header button[aria-label^=変更履歴]").strip() == "12"
     assert page.is_visible(HISTORY_DOT)
     assert page.inner_text("header button[aria-label^=コメント]").strip() == "3"
-    assert page.get_attribute("header button[aria-label^=変更履歴]", "aria-label") == HISTORY_DIFF_LABEL
+    assert page.get_attribute("header button[aria-label^=変更履歴]", "aria-label") == f"{HISTORY_DIFF_LABEL}（未読 12 件）"
     # 帯の子が左から順に並び、重ならず、画面の中に収まる
-    order = ["brand", "search", "history", "off", "comments", "theme"]
+    order = ["brand", "search", "history", "comments", "theme"]
     for left, right in itertools.pairwise(order):
         assert boxes[left]["right"] <= boxes[right]["left"], (left, right)
     assert boxes["theme"]["right"] <= boxes["page"]["width"]
     assert boxes["page"]["scroll"] <= boxes["page"]["width"]
+
+
+def test_history_unread(open_story: OpenStory) -> None:
+    """差分を出していない間に未読のまとまりが 3 件ある。「変更履歴」のボタンの右上に件数 3 を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-topbar--history-unread")
+    # 検証
+    history = page.get_by_role("button", name="変更履歴（未読 3 件）")
+    assert history.inner_text().strip() == "3"
+    assert page.locator(HISTORY_DOT).count() == 0
+
+
+def test_history_unread_many(open_story: OpenStory) -> None:
+    """未読のまとまりが 100 件以上。件数を `99+` にし、ボタンの幅を変えない（正常系）。"""
+    # 準備・実行（件数 3 の幅を測ってから、100 件以上を開いて測る）
+    few_width = open_story("shared-topbar--history-unread").locator("header button[aria-label^=変更履歴]").evaluate("e => e.getBoundingClientRect().width")
+    page = open_story("shared-topbar--history-unread-many")
+    many_width = page.locator("header button[aria-label^=変更履歴]").evaluate("e => e.getBoundingClientRect().width")
+    # 検証
+    assert page.get_by_role("button", name="変更履歴（未読 120 件）").inner_text().strip() == "99+"
+    assert many_width == few_width
 
 
 def test_settings_open(open_story: OpenStory) -> None:
@@ -520,20 +536,20 @@ def test_export(open_story: OpenStory) -> None:
 # 押せる的の縦横の下限（px。トークン `--target-min`）
 TARGET_MIN_PX = 24
 
-# `LongTitle` の題名（差分の表示をやめる × と同じ帯に長い題名を置く）
+# `LongTitle` の題名（差分の表示の間の帯に長い題名を置く）
 LONG_TITLE = "プレビューの画面（概要・検討事項・タスク・資料・詳細パネル）を見本に沿って作るための話し合いの記録"
 
 # Storybook の body が持つ左右の余白を外す（トップバーを画面の幅いっぱいに置く本物の画面と同じ幅で測る）
 NO_BODY_PADDING = "body { padding: 0 !important; }"
 
-# ページとトップバーが横にはみ出さないことと、差分の表示をやめる × が表示幅の中で押せる的の大きさを持つかを同じ瞬間に読む
+# ページとトップバーが横にはみ出さないことと、変更履歴のボタンが表示幅の中で押せる的の大きさを持つかを同じ瞬間に読む
 FIT_SCRIPT = f"""() => {{
   const bar = document.querySelector('header');
-  const off = document.querySelector('header button[aria-label=差分の表示をやめる]').getBoundingClientRect();
+  const history = document.querySelector('header button[aria-label^=変更履歴]').getBoundingClientRect();
   return {{
     pageFits: document.documentElement.scrollWidth <= innerWidth,
     barFits: bar.scrollWidth <= bar.clientWidth,
-    offFits: off.left >= 0 && off.right <= innerWidth && off.width >= {TARGET_MIN_PX} && off.height >= {TARGET_MIN_PX},
+    historyFits: history.left >= 0 && history.right <= innerWidth && history.width >= {TARGET_MIN_PX} && history.height >= {TARGET_MIN_PX},
   }};
 }}"""
 
@@ -560,30 +576,30 @@ def _open_story_at(open_story: OpenStory, story_id: str, width: int) -> Page:
 
 @pytest.mark.parametrize("width", FIT_WIDTHS)
 def test_filter_diff_medium_when_width(open_story: OpenStory, width: int) -> None:
-    """絞り込み・表示の設定・コメントのボタンと差分の表示をやめる × を出しても、幅 901〜1441px でページもトップバーも横にはみ出さず、× は表示幅の中で 24px 以上の的を持つ（正常系）。"""
+    """絞り込み・表示の設定・コメントのボタンを出して差分を表示しても、幅 901〜1441px でページもトップバーも横にはみ出さず、変更履歴のボタンは表示幅の中で 24px 以上の的を持つ（正常系）。"""
     # 準備・実行
     page = _open_story_at(open_story, "shared-topbar--filter-diff-medium", width)
     measured = page.evaluate(FIT_SCRIPT)
     # 検証
     assert measured["pageFits"]
     assert measured["barFits"]
-    assert measured["offFits"]
+    assert measured["historyFits"]
 
 
 @pytest.mark.parametrize("width", FIT_WIDTHS)
 def test_filter_diff_offline_when_width(open_story: OpenStory, width: int) -> None:
-    """サーバーにつながらず差分の表示をやめる × を出しても、幅 901〜1441px でページもトップバーも横にはみ出さず、× は表示幅の中で 24px 以上の的を持つ（正常系）。"""
+    """サーバーにつながらず差分を表示しても、幅 901〜1441px でページもトップバーも横にはみ出さず、変更履歴のボタンは表示幅の中で 24px 以上の的を持つ（正常系）。"""
     # 準備・実行
     page = _open_story_at(open_story, "shared-topbar--filter-diff-offline", width)
     measured = page.evaluate(FIT_SCRIPT)
     # 検証
     assert measured["pageFits"]
     assert measured["barFits"]
-    assert measured["offFits"]
+    assert measured["historyFits"]
 
 
 def test_filter_diff_medium_when_long_title(open_story: OpenStory) -> None:
-    """題名が長くても、幅 1101px でページもトップバーも横にはみ出さず、× は表示幅の中で 24px 以上の的を持つ（正常系）。"""
+    """題名が長くても、幅 1101px でページもトップバーも横にはみ出さず、変更履歴のボタンは表示幅の中で 24px 以上の的を持つ（正常系）。"""
     # 準備
     page = _open_story_at(open_story, "shared-topbar--filter-diff-medium", 1101)
     page.evaluate(
@@ -595,7 +611,7 @@ def test_filter_diff_medium_when_long_title(open_story: OpenStory) -> None:
     # 検証
     assert measured["pageFits"]
     assert measured["barFits"]
-    assert measured["offFits"]
+    assert measured["historyFits"]
 
 
 # 幅 390〜900px で全てのボタンを出す 4 つの状態と、部品設計『トップバー』が見せ方に挙げた幅
@@ -680,14 +696,14 @@ def test_filter_narrow_states_when_width(open_story: OpenStory, story_id: str, w
 
 
 @pytest.mark.parametrize(("story_id", "width"), DIFF_STORY_CASES)
-def test_filter_narrow_clear_diff_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
-    """差分を出している間は、幅 390〜900px で差分の表示をやめる × が表示幅の中で 24px 以上の的を持つ（正常系）。"""
+def test_filter_narrow_history_button_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """差分を出している間は、幅 390〜900px で変更履歴のボタンが表示幅の中で 24px 以上の的を持つ（正常系）。"""
     # 準備
     page = _open_narrow_story_at(open_story, story_id, width)
     # 実行
     measured = page.evaluate(FIT_SCRIPT)
     # 検証
-    assert measured["offFits"]
+    assert measured["historyFits"]
 
 
 @pytest.mark.parametrize(("story_id", "width"), OFFLINE_STORY_CASES)
@@ -764,14 +780,14 @@ NARROWEST_CASES = [
     for width in NARROWEST_WIDTHS
 ]
 
-# 差分の表示をやめる × を出している状態と幅の組
+# 差分を出している状態と幅の組
 NARROWEST_DIFF_CASES = [
     pytest.param(story_id, width, id=f"{story_id.removeprefix('shared-topbar--')}-w{width}")
     for story_id in (FIT_NARROWEST_DIFF, FIT_NARROWEST_OFFLINE_DIFF)
     for width in NARROWEST_WIDTHS
 ]
 
-# 状態と幅と、ツール名の印を隠すか（差分の表示をやめる × を出している状態だけ隠す）の組
+# 状態と幅と、ツール名の印を隠すか（差分を出している状態だけ隠す）の組
 NARROWEST_PACKING_CASES = [
     pytest.param(story_id, width, brand_hidden, id=f"{story_id.removeprefix('shared-topbar--')}-w{width}")
     for story_id, brand_hidden in (
@@ -824,7 +840,7 @@ NARROWEST_ICON_BUTTON_CASES = [
 
 @pytest.mark.parametrize(("story_id", "width"), NARROWEST_CASES)
 def test_fit_narrowest_states_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
-    """幅 320・361・389px で全てのボタンを出しても、ページもトップバーも横にはみ出さず、全てのボタンと差分の表示をやめる × が表示幅の中にある（正常系）。"""
+    """幅 320・361・389px で全てのボタンを出しても、ページもトップバーも横にはみ出さず、全てのボタンが表示幅の中にある（正常系）。"""
     # 準備
     page = _open_narrow_story_at(open_story, story_id, width)
     # 実行
@@ -834,19 +850,19 @@ def test_fit_narrowest_states_when_width(open_story: OpenStory, story_id: str, w
 
 
 @pytest.mark.parametrize(("story_id", "width"), NARROWEST_DIFF_CASES)
-def test_fit_narrowest_clear_diff_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
-    """差分を出している間は、幅 320・361・389px で差分の表示をやめる × が表示幅の中で 24px 以上の的を持つ（正常系）。"""
+def test_fit_narrowest_history_button_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """差分を出している間は、幅 320・361・389px で変更履歴のボタンが表示幅の中で 24px 以上の的を持つ（正常系）。"""
     # 準備
     page = _open_narrow_story_at(open_story, story_id, width)
     # 実行
     measured = page.evaluate(FIT_SCRIPT)
     # 検証
-    assert measured["offFits"]
+    assert measured["historyFits"]
 
 
 @pytest.mark.parametrize(("story_id", "width", "brand_hidden"), NARROWEST_PACKING_CASES)
 def test_fit_narrowest_packing_when_width(open_story: OpenStory, story_id: str, width: int, brand_hidden: bool) -> None:
-    """幅 389px 以下では、要素の間隔 1px・左右の余白 8px、表示の設定・絞り込み・コメントのボタンの左右の余白と印と件数の間隔 2px（差分ありでも）に詰め、ツール名の文字を隠し、差分の表示をやめる × を出している間だけ印も隠す（正常系）。"""
+    """幅 389px 以下では、要素の間隔 1px・左右の余白 8px、表示の設定・絞り込み・コメントのボタンの左右の余白と印と件数の間隔 2px（差分ありでも）に詰め、ツール名の文字を隠し、差分を出している間だけ印も隠す（正常系）。"""
     # 準備
     page = _open_narrow_story_at(open_story, story_id, width)
     # 実行
@@ -956,7 +972,7 @@ def _overflowing_widths(page: Page, widths: range) -> list[int]:
 
 @pytest.mark.parametrize(("story_id", "args", "widths"), NARROWEST_CONTENT_CASES)
 def test_fit_narrowest_every_width(open_story: OpenStory, story_id: str, args: str, widths: range) -> None:
-    """幅を 1px ずつ変えても（既定の中身は 320〜1440px、最大の中身は 320〜389px）、ページもトップバーも横にはみ出さず、全てのボタンと差分の表示をやめる × が表示幅の中にある（正常系）。"""
+    """幅を 1px ずつ変えても（既定の中身は 320〜1440px、最大の中身は 320〜389px）、ページもトップバーも横にはみ出さず、全てのボタンが表示幅の中にある（正常系）。"""
     # 準備（ストーリーは 1 回だけ開き、表示幅を変えながら測る）
     page = open_story(f"{story_id}{args}")
     page.evaluate("document.fonts.ready")
@@ -981,7 +997,7 @@ FIT_WIDE_EVERY_WIDTH = range(390, 1441)
 # 幅 389px 以下と同じ詰め方が効く幅（幅 480px 以下の両端）
 FIT_WIDE_PACKED_WIDTHS = [390, 480]
 
-# 差分の表示をやめる × か接続の状態を出している状態と、ツール名の印を隠すか（差分の表示をやめる × を出している状態だけ隠す）の組
+# 差分か接続の状態を出している状態と、ツール名の印を隠すか（差分を出している状態だけ隠す）の組
 FIT_WIDE_PACKED_CASES = [
     pytest.param(story_id, width, brand_hidden, id=f"{story_id.removeprefix('shared-topbar--')}-w{width}")
     for story_id, brand_hidden in (
@@ -1012,21 +1028,21 @@ FIT_WIDE_UNPACKED_CASES = [
 ]
 
 
-def _short_clear_diff_widths(page: Page, widths: range) -> list[int]:
-    """表示幅を 1px ずつ変えながら差分の表示をやめる × を測り、表示幅の中で 24px の的を持たなかった幅を返す。"""
+def _short_history_button_widths(page: Page, widths: range) -> list[int]:
+    """表示幅を 1px ずつ変えながら変更履歴のボタンを測り、表示幅の中で 24px の的を持たなかった幅を返す。"""
     short = []
     for width in widths:
         # 幅を変え、画面がその幅になってから測る
         page.set_viewport_size({"width": width, "height": NARROWEST_HEIGHT})
         page.wait_for_function(f"innerWidth === {width}")
-        if not page.evaluate(FIT_SCRIPT)["offFits"]:
+        if not page.evaluate(FIT_SCRIPT)["historyFits"]:
             short.append(width)
     return short
 
 
 @pytest.mark.parametrize("story_id", [FIT_WIDE, FIT_WIDE_DIFF, FIT_WIDE_OFFLINE, FIT_WIDE_OFFLINE_DIFF])
 def test_fit_wide_every_width(open_story: OpenStory, story_id: str) -> None:
-    """最大の中身（絞り込みのバッジ 2 桁・コメントの件数 99+）を、幅を 1px ずつ変えて 390〜1440px で開いても、ページもトップバーも横にはみ出さず、全てのボタンと差分の表示をやめる × が表示幅の中にある（正常系）。"""
+    """最大の中身（絞り込みのバッジ 2 桁・コメントの件数 99+）を、幅を 1px ずつ変えて 390〜1440px で開いても、ページもトップバーも横にはみ出さず、全てのボタンが表示幅の中にある（正常系）。"""
     # 準備（ストーリーは 1 回だけ開き、表示幅を変えながら測る）
     page = open_story(story_id)
     page.evaluate("document.fonts.ready")
@@ -1037,20 +1053,20 @@ def test_fit_wide_every_width(open_story: OpenStory, story_id: str) -> None:
 
 
 @pytest.mark.parametrize("story_id", [FIT_WIDE_DIFF, FIT_WIDE_OFFLINE_DIFF])
-def test_fit_wide_clear_diff_every_width(open_story: OpenStory, story_id: str) -> None:
-    """差分を出している間は、幅を 1px ずつ変えて 390〜1440px で開いても、差分の表示をやめる × が表示幅の中で 24px 以上の的を持つ（正常系）。"""
+def test_fit_wide_history_button_every_width(open_story: OpenStory, story_id: str) -> None:
+    """差分を出している間は、幅を 1px ずつ変えて 390〜1440px で開いても、変更履歴のボタンが表示幅の中で 24px 以上の的を持つ（正常系）。"""
     # 準備（ストーリーは 1 回だけ開き、表示幅を変えながら測る）
     page = open_story(story_id)
     page.evaluate("document.fonts.ready")
     # 実行
-    short = _short_clear_diff_widths(page, FIT_WIDE_EVERY_WIDTH)
+    short = _short_history_button_widths(page, FIT_WIDE_EVERY_WIDTH)
     # 検証（届かなかった幅をまとめて出す）
     assert short == []
 
 
 @pytest.mark.parametrize(("story_id", "width", "brand_hidden"), FIT_WIDE_PACKED_CASES)
 def test_fit_wide_packing_when_width(open_story: OpenStory, story_id: str, width: int, brand_hidden: bool) -> None:
-    """件数の札が最大の中身で、差分の表示をやめる × か接続の状態を出している間は、幅 390・480px でも幅 389px 以下と同じ詰め方（間隔 1px・左右の余白 8px・3 つのボタンの余白と印と件数の間隔 2px）にし、ツール名の文字を隠す。差分の表示をやめる × を出している状態だけ印も隠す（正常系）。"""
+    """件数の札が最大の中身で、差分か接続の状態を出している間は、幅 390・480px でも幅 389px 以下と同じ詰め方（間隔 1px・左右の余白 8px・3 つのボタンの余白と印と件数の間隔 2px）にし、ツール名の文字を隠す。差分を出している状態だけ印も隠す（正常系）。"""
     # 準備
     page = _open_narrow_story_at(open_story, story_id, width)
     # 実行
@@ -1067,7 +1083,7 @@ def test_fit_wide_packing_when_width(open_story: OpenStory, story_id: str, width
 
 @pytest.mark.parametrize(("story_id", "width"), FIT_WIDE_PACKED_ICON_CASES)
 def test_fit_wide_icon_buttons_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
-    """件数の札が最大の中身で、差分の表示をやめる × か接続の状態を出している間は、幅 390・480px でも印だけのボタン（検索・変更履歴・ライト / ダーク）を高さ 32px・幅 28px に揃えて縮ませない（正常系）。"""
+    """件数の札が最大の中身で、差分か接続の状態を出している間は、幅 390・480px でも印だけのボタン（検索・変更履歴・ライト / ダーク）を高さ 32px・幅 28px に揃えて縮ませない（正常系）。"""
     # 準備
     page = _open_narrow_story_at(open_story, story_id, width)
     # 実行
@@ -1078,7 +1094,7 @@ def test_fit_wide_icon_buttons_when_width(open_story: OpenStory, story_id: str, 
 
 @pytest.mark.parametrize(("wide_story", "default_story", "width"), FIT_WIDE_UNPACKED_CASES)
 def test_fit_wide_unpacked_when_width(open_story: OpenStory, wide_story: str, default_story: str, width: int) -> None:
-    """詰め方が効かない組み合わせ（差分の表示をやめる × も接続の状態も出していない間の幅 390〜480px、全ての状態の幅 481px 以上）は、件数の札に `data-wide` が付いても、間隔・余白・ボタンの余白が既定の中身の同じ状態と一致する（正常系）。"""
+    """詰め方が効かない組み合わせ（差分も接続の状態も出していない間の幅 390〜480px、全ての状態の幅 481px 以上）は、件数の札に `data-wide` が付いても、間隔・余白・ボタンの余白が既定の中身の同じ状態と一致する（正常系）。"""
     # 準備・実行
     wide = _open_narrow_story_at(open_story, wide_story, width).evaluate(BAR_SHAPE_SCRIPT)
     default = _open_narrow_story_at(open_story, default_story, width).evaluate(BAR_SHAPE_SCRIPT)
@@ -1113,7 +1129,7 @@ TARGET_MIN_PX = 24
 TOPBAR_SELECTOR = "header"
 TARGET_SIZE_RULE = "target-size"
 
-# 見えているボタンのうち、枠が縦横 24px 未満のものの名前と寸法を読む（差分の表示をやめる × を含む）
+# 見えているボタンのうち、枠が縦横 24px 未満のものの名前と寸法を読む
 SMALL_BUTTONS_SCRIPT = """(min) => [...document.querySelectorAll('header button')]
   .filter((e) => e.getClientRects().length > 0)
   .map((e) => {
@@ -1155,7 +1171,7 @@ COUNTLESS_CASES = [
 
 @pytest.mark.parametrize(("story_id", "width"), TARGET_SIZE_CASES)
 def test_fit_target_size_buttons_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
-    """幅 320〜480px で全てのボタンを出しても、トップバーの全てのボタン（差分の表示をやめる × を含む）の枠が縦横 24px 以上ある（正常系）。"""
+    """幅 320〜480px で全てのボタンを出しても、トップバーの全てのボタンの枠が縦横 24px 以上ある（正常系）。"""
     # 準備
     page = _open_narrow_story_at(open_story, story_id, width)
     # 実行

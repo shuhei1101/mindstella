@@ -1,0 +1,11 @@
+$ pytest tests/integration/preview/test_spa_detail_panel_screen.py
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-bundle-722-history-unread-decision-choice
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 144 items
+
+tests/integration/preview/test_spa_detail_panel_screen.py .............. [  9%]
+........................................................................ [ 59%]
+..........................................................               [100%]
+
+======================= 144 passed in 228.44s (0:03:48) ========================

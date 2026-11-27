@@ -326,3 +326,42 @@ def test_normal_when_preset_matches_nothing(
     warning = result.data["warnings"][0]
     assert (warning["kind"], warning["file"], warning["key"]) == ("empty_preset", ".mindstella/config.yaml", "presets[1]")
     assert warning["detail"].startswith("古い分類:")
+
+
+def test_normal_when_user_choice_mismatch(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """案に無い記号を選んだ利用者の選択と、決定済みなのに持つ利用者の選択を拾う（正常系）。"""
+    # 準備
+    option_a = {"key": "A", "content": "案 A"}
+    option_b = {"key": "B", "content": "案 B"}
+    chosen_at = "2026-11-01T00:00:00+00:00"
+    root = make_workspace(
+        make_item("D-1", options=[option_a, option_b], user_choice={"key": "Z", "at": chosen_at}),
+        make_item(
+            "D-2",
+            status="決定済み",
+            options=[{**option_a, "adopted": True}, option_b],
+            user_choice={"key": "B", "at": chosen_at},
+        ),
+        make_item("D-3", options=[option_a, option_b], user_choice={"key": "B", "at": chosen_at}),
+    )
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["ok"] is False
+    problems = [row for row in result.data["problems"] if row["kind"] == "decision_state"]
+    assert [(row["id"], row["key"]) for row in problems] == [
+        ("D-1", "items[0].user_choice"),
+        ("D-2", "items[1].user_choice"),
+    ]
+    assert "Z" in problems[0]["detail"]
+    assert "adopt" in problems[1]["detail"]
+    assert all(row["id"] != "D-3" for row in result.data["problems"])
+    assert snapshot_tree(root) == before

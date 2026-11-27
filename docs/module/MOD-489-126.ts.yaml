@@ -6,7 +6,7 @@ functions:
     title: 書き込みを溜める
     kind: フック
     usecase: 項目へコメントする
-    summary: '`POST /api/comments` を呼び、成功でレビュー中の書き込みを再読み込みする。「元に戻す」は削除したときに返った `id`・`created` を渡して同じ hook で呼ぶ'
+    summary: '`POST /api/comments` を呼び、成功でレビュー中の書き込みを再読み込みする。案の選択は `target`・`choice`（`{key}`）と、一言があれば `body` を送信する。「元に戻す」は削除したときに返った `id`・`created`（案の選択は `choice` も）を指定して同じ hook で呼ぶ'
     returns:
       type: UseMutationResult
       description: mutation
@@ -29,12 +29,18 @@ functions:
         condition: 201。レビュー中のコメントの読み取りの応答を遅らせる
         mock: MSW
         expected: 読み取りの応答を返却するまで `isPending` が真で、返却した後に偽
+      - name: test_use_add_comment_when_choice
+        case: 正常
+        summary: 案の選択を一言なしで溜める
+        condition: '`{target: D-1, choice: {key: B}}` で 201'
+        mock: MSW
+        expected: 'リクエストの本文が `{target: D-1, choice: {key: B}}` で `body` を持たず、レビュー中のコメントの query が再読み込みされる'
     container: frontend/src/shared/hooks/use-comments.ts
   - name: useUpdateComment
     title: 書き込みを書き換える
     kind: フック
     usecase: コメントを選んで送信する
-    summary: '`PATCH /api/comments/{id}` で `body` か `loc: null` を送信し、成功で再読み込みする'
+    summary: '`PATCH /api/comments/{id}` で `body`（案の選択は `null` で一言を削除する）・`choice`（案の選択の選び直し）・`loc: null` を送信し、成功で再読み込みする'
     returns:
       type: UseMutationResult
       description: mutation
@@ -45,12 +51,18 @@ functions:
         condition: '`loc: null`'
         mock: MSW
         expected: 'リクエストの本文が `{loc: null}`'
+      - name: test_use_update_comment_when_choice
+        case: 正常
+        summary: 案の選択を選び直して一言を削除する
+        condition: '`{choice: {key: A}, body: null}` で 200'
+        mock: MSW
+        expected: 'リクエストの本文が `{choice: {key: A}, body: null}`'
     container: frontend/src/shared/hooks/use-comments.ts
   - name: useRemoveComment
     title: 書き込みを削除する
     kind: フック
     usecase: コメントを選んで送信する
-    summary: '`DELETE /api/comments/{id}` を呼び、返った中身を「元に戻す」のために返す。成功したら `discardReviewVoice([id])` を呼ぶ'
+    summary: '`DELETE /api/comments/{id}` を呼び、返った中身（案の選択は `choice` を含む）を「元に戻す」のために返却する。成功したら `discardReviewVoice([id])` を呼ぶ'
     returns:
       type: UseMutationResult
       description: mutation
@@ -67,6 +79,12 @@ functions:
         condition: '`review:C-1` を録音中。`DELETE /api/comments/C-1` が 200'
         mock: MSW と `vi.stubGlobal`
         expected: 応答の直後に `session` が nullで `notice` が `discarded`
+      - name: test_use_remove_comment_when_choice
+        case: 正常
+        summary: 案の選択を削除すると選んだ案を返却する
+        condition: '`choice: {key: B}` を含む 200'
+        mock: MSW
+        expected: '返った中身の `choice` が `{key: B}`'
     container: frontend/src/shared/hooks/use-comments.ts
   - name: useSendComments
     title: まとめて送信する

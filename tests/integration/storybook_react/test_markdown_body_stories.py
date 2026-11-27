@@ -393,6 +393,8 @@ STATES = (
     "diff-source",
     "diff-unchanged",
     "wide-table-in-narrow-pane",
+    "audio-embed",
+    "audio-embed-narrow",
 )
 
 
@@ -404,3 +406,44 @@ def test_state_renders(open_story: OpenStory, page_errors: list[str], state: str
     # 検証
     assert "sb-show-errordisplay" not in (page.get_attribute("body", "class") or "")
     assert page_errors == []
+
+
+# 音声の再生バーの高さと、上下を切る祖先の有無を読む
+AUDIO_JS = """() => {
+  const audio = document.querySelector('.md audio');
+  const box = audio.getBoundingClientRect();
+  let clipped = false;
+  for (let e = audio.parentElement; e && e !== document.body; e = e.parentElement) {
+    const r = e.getBoundingClientRect();
+    if (getComputedStyle(e).overflowY !== 'visible' && (r.top > box.top + 0.5 || r.bottom < box.bottom - 0.5)) clipped = true;
+  }
+  return { height: box.height, clipped, controls: audio.controls };
+}"""
+
+
+def test_audio_embed(open_story: OpenStory) -> None:
+    """本文に埋め込んだ音声。再生バーを、祖先の高さ・overflow で上下を切らずに全体を表示する（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "audio-embed")
+    page.wait_for_selector(".md audio", timeout=STORY_TIMEOUT_MS)
+    measured = page.evaluate(AUDIO_JS)
+    # 検証
+    assert measured["controls"] is True
+    assert measured["height"] > 0
+    assert measured["clipped"] is False
+
+
+def test_audio_embed_narrow(open_story: OpenStory) -> None:
+    """幅 390px で埋め込んだ音声。再生バーを本文の幅に収め、上下を切らず、本文の区画を横にスクロールさせない（正常系）。"""
+    # 準備
+    page = _open(open_story, "audio-embed-narrow")
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.wait_for_selector(".md audio", timeout=STORY_TIMEOUT_MS)
+    # 実行
+    measured = page.evaluate(AUDIO_JS)
+    audio_right = page.locator(".md audio").evaluate("e => e.getBoundingClientRect().right")
+    body_right = page.locator(".md").evaluate("e => e.getBoundingClientRect().right")
+    # 検証
+    assert measured["clipped"] is False
+    assert audio_right <= body_right + 0.5
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")

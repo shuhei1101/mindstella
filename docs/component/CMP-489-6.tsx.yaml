@@ -67,6 +67,12 @@ states:
         value: 'false'
   - name: WideTableInNarrowPane
     description: 列が多く画面の幅を超える表を、最も狭めたパネルの幅で描く。表は mdmark の表の部品の中だけで横にスクロールし、本文の区画は横にスクロールせず、区画の幅を超えて描かれない
+  - name: AudioEmbed
+    description: 本文に `![キャプション](../files/{名前}.mp3)` で埋め込んだ音声。mdmark が描いた再生バー（`audio` の `controls`）を、入れ物の高さ・`overflow`・`line-height` で上下を切らずに全体を表示する。キャプションの位置と再生バーの高さは、mdmark だけで描いたときと同じになる
+  - name: AudioEmbedNarrow
+    description: 幅 390px で埋め込んだ音声。再生バーを本文の幅に収め、上下を切らず、本文の区画を横にスクロールさせない
+    notes:
+      見せ方: Storybook（React）の画面幅を 390px にして見せる
 lead: Markdown の本文を mdmark の `mount` で描き、mdmark の共通のスタイルに重ねるスタイルを当てる。表は mdmark の表の機能のまま描き、コードブロックの言語の札とコピー・GitHub の Alert の見出しのアイコンを常に当て、セクションの折りたたみを表示の設定の値で当てる。差分の表示の間は、選んだ時点の本文と比べて mdmark の差分で描く（「描いた結果」は比較元の Markdown の色分け、「原文の差分」は取り出し元の行の差分）。mdmark の印刷の機能をオンにして描く。詳細パネル・詳細の全画面・本文の差分の本文で使う。
 args:
   - name: source

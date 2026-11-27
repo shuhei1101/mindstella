@@ -47,6 +47,12 @@ components:
         condition: 本文のスクロール領域の兄弟に描き、`scroller` にその領域を渡して本文の 2 行目を選ぶ。続けて入力欄の中の文字を選ぶ
         mock: MSW と mdmark の差し替え
         expected: 選んだ箇所の入口が出る。入力欄の中の選択では出ない
+      - name: test_detail_comments_when_choice
+        case: 正常
+        summary: 案の選択はレビュー中のコメントの一覧に出さない
+        condition: D-1 へのコメント C-1 と案の選択 C-2
+        mock: MSW
+        expected: 一覧が C-1 だけで、件数が 1
     container: frontend/src/features/detail/detail-panel/components/detail-comments.tsx
   - name: DetailReviewComments
     title: 詳細のレビュー中のコメント
@@ -73,3 +79,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `detail-comments.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   修正の入力の音声入力: '書き換えている行（`{id, body, error}`）の初めの値は `voiceEditingOf("panel")`（詳細の全画面は `full`）の ID にする。書き換えている行に `useVoiceInput`（`key` は `review:{ID}`、向けた先は `{review: ID, thread: null, target: 開いている項目}`、開く画面は `panel` か `full`、名前は「{ID} へのコメントの修正」）を使い、`ReviewEditForm` へ `body`・`onBodyChange` と音声の props を渡す。コメントの入力の `useVoiceInput` とは別の `key`。単体テストに `test_detail_comments_when_edit_voice` を追加する'
+  案の選択: レビュー中のコメントの一覧と件数から `choice` を持つ書き込みを除く（案の選択は案のカードに出す。画面設計『詳細パネル』の要素「レビュー中のコメント」）

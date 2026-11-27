@@ -4,10 +4,13 @@
  * mindstella preview
  * OpenAPI spec version: 0.0.0
  */
+import type { Choice } from './choice';
 import type { Loc } from './loc';
 
 export interface CommentPatchReply {
   id: string;
-  body: string;
+  /** @nullable */
+  body: string | null;
   loc?: Loc | null;
+  choice?: Choice | null;
 }

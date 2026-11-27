@@ -505,3 +505,15 @@ def test_tile_row_id_markers(page: Page, write_preview: WritePreview, make_item:
     expect(row.locator("[data-record-id='D-99'], a")).to_have_count(0)
     assert_tip(page)
     assert_described(page, row)
+
+
+def test_topbar_history_unread(write_history_preview: WriteReviewPreview, page: Page) -> None:
+    """トップバーの変更履歴のボタンに、端末の保存領域の既読に無いまとまりの件数を出す（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    # 実行
+    open_spa(page, url)
+    # 検証
+    history = page.locator("header button[aria-label^=変更履歴]")
+    expect(history).to_have_attribute("aria-label", "変更履歴（未読 2 件）")
+    expect(history).to_have_text("2")

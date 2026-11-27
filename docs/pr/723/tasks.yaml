@@ -1,0 +1,97 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリへの変更のため
+    updated_by: planner
+    updated_at: '2026-11-27T06:54:56.937080+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 変更する箇所の設計書が既にあるため
+    updated_by: planner
+    updated_at: '2026-11-27T06:54:56.937080+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではないため
+    updated_by: planner
+    updated_at: '2026-11-27T06:54:56.937080+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 開いている画面への反映は書き換えの通知（Server-Sent Events）で既に動いており、未読の数え方・案の選択の書き込みも既存の配信の書き込みと同じ仕組みで、未検証の技術機構に依存しないため
+    updated_by: planner
+    updated_at: '2026-11-27T06:54:56.937080+00:00'
+  - process: 複合ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T07:04:33.711667+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: デザイン方針（docs/design-policy.mark.md）があり、未読のマーカー・案の選択・タブのマーカーは見た目の方向を変えないため
+    updated_by: planner
+    updated_at: '2026-11-27T06:54:56.937080+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の追加・削除と画面遷移の変更が無いため（変更履歴のモーダル・検討事項の詳細・スレッドの画面の中の変更）
+    updated_by: planner
+    updated_at: '2026-11-27T06:54:56.937080+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T07:23:16.812078+00:00'
+  - process: モック作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T07:59:33.079434+00:00'
+  - process: データ設計
+    status: done
+    note: 既読は端末の保存領域に持ち、キーはインターフェース定義『プレビューを開く』の制約「端末の保存領域」で定める
+    updated_by: planner
+    updated_at: '2026-11-27T08:03:25.250183+00:00'
+  - process: インターフェース定義設計
+    status: done
+    note: 既読のキーは『プレビューを開く』の制約「既読のまとまり」の `mindmap-read-changes`。AI の取得方法（要件の未確定）は推奨の案 A で IF-722-1 を作り、エージェント・MCP サーバー設計で確定する
+    updated_by: planner
+    updated_at: '2026-11-27T08:27:09.703160+00:00'
+  - process: エージェント・MCP サーバー設計
+    status: skipped
+    reason: このリポジトリはエージェント・MCP サーバー・起動の設計書を持たず、MCP サーバーのツールはインターフェース定義『MCP サーバーの起動』と IF-722-1 で定義済み。MindStella のセッションの持ち方・モデル・きっかけは変えないため。要件の未確定（AI の取得方法）は案 A で確定した
+    updated_by: planner
+    updated_at: '2026-11-27T09:00:15.431789+00:00'
+  - process: エージェントフロー・LLM 呼び出し設計
+    status: done
+    note: LLM の呼び出しは変えない（MindStella のセッションは Claude Code のエージェント）。エージェントフロー mindstella/startup・mindstella/on-comment と注入文のプロンプトファイル session-start を修正
+    updated_by: planner
+    updated_at: '2026-11-27T09:02:22.045927+00:00'
+  - process: 精度評価設計
+    status: skipped
+    reason: 変わるのは Claude Code のエージェント（MindStella のセッション）のエージェントフローだけで、判定フローチャート『精度評価をするか』の Q2 YES（精度評価をせず、テストでは Mock にする）のため
+    updated_by: planner
+    updated_at: '2026-11-27T06:54:56.937080+00:00'
+  - process: 部品設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T09:16:19.211113+00:00'
+  - process: 画面設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T09:16:19.211113+00:00'
+  - process: モジュール構成設計
+    status: done
+    note: 画面設計『レビュー中の書き込み』に案の選択の行が無かったため、この工程で画面設計も修正した
+    updated_by: planner
+    updated_at: '2026-11-27T11:53:24.761884+00:00'
+  - process: ドキュメント修正
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:57.373961+00:00'
+  - process: 単体テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:34:48.815893+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T13:21:25.021393+00:00'
+  - process: 結合テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T15:27:00.760575+00:00'

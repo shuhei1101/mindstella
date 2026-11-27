@@ -163,7 +163,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 採用する案の切り替え
     scope: public
-    summary: 指定した記号の案だけを採用にし、状態を `決定済み` にした新しい項目を返す
+    summary: 指定した記号の案だけを採用にし、状態を `決定済み` にして利用者の選択（`user_choice`）を削除した新しい項目を返す
     args:
       - name: item
         type: dict[str, Any]
@@ -181,7 +181,7 @@ functions:
     process: |-
       1. `options` にその記号の案が無ければ `OptionNotFoundError`（持っている記号の一覧つき）を送出する
       2. それまで `adopted` が真だった最初の案の記号を控える
-      3. 指定した案の `adopted` を真、ほかを偽にし、`status` を `決定済み` にした新しい項目を返す（`answer`・案の `recommended` は変えない）
+      3. 指定した案の `adopted` を真、ほかを偽にし、`status` を `決定済み` にして `user_choice` のキーを削除した新しい項目を返す（`answer`・案の `recommended` は変えない。選んだ案と採用した案が違っても削除する）
     exceptions:
       - name: OptionNotFoundError
         condition: 検討事項がその記号の案を持たない（`options` が無いときも含む）
@@ -212,6 +212,12 @@ functions:
         condition: '`parametrize`: 状態が `未決定` / `要見直し` / `保留` で、案 A・B を持ち B に `recommended: true` を持つ検討事項に `key: B`'
         mock: なし
         expected: '`status` が `決定済み`、案 B だけが `adopted` が真で `recommended` が真のまま。渡した項目は変わらない'
+      - name: test_switch_adopted_when_user_choice
+        case: 正常
+        summary: 利用者の選択を持つ検討事項は、選んだ案と採用した案が違っても選択を削除する
+        condition: '`parametrize`: `user_choice` が案 B の検討事項に `B` / `user_choice` が案 A の検討事項に `B`'
+        mock: なし
+        expected: どちらも返した項目が `user_choice` を持たず、案 B だけが採用。渡した項目は `user_choice` を持ったまま
   - name: run_init
     title: init の処理
     kind: 関数
@@ -248,7 +254,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 採用する案の切り替え
     scope: public
-    summary: 検討事項の採用する案を切り替え、状態を `決定済み` にして書き込む
+    summary: 検討事項の採用する案を切り替え、状態を `決定済み` にして利用者の選択を片付けて書き込む
     args:
       - name: root
         type: Path
@@ -273,15 +279,16 @@ functions:
         description: 今の日時を返す関数
     returns:
       type: dict[str, Any]
-      description: '`{id, adopted, previous, status, previous_status}`（`status` は `決定済み`、`previous_status` は切り替える前の状態）'
+      description: '`{id, adopted, previous, status, previous_status, user_choice}`（`status` は `決定済み`、`previous_status` は切り替える前の状態、`user_choice` は片付けた利用者の選択。持たなかったときは `None`）'
     process: |-
       1. ワークスペース・まとまり・項目の履歴を読み、項目を引く（`load_workspace`、`load_changes`、`load_item_history`、`find_item`）
          - 種類が `decision` でない場合、`ItemNotFoundError` を送出する
-      2. 採用を切り替え（`switch_adopted`）、履歴の行の `updated` を今の日時、`updated_by` を `EDITOR` にする
-      3. 変更履歴と連番を `stage_update` の 3. と同じく付ける（本文は変えないので `before_body` と `after_body` は同じ。`by` は `EDITOR`）
+      2. 切り替える前の `user_choice` を控え、採用を切り替え（`switch_adopted`。`user_choice` も削除する）、履歴の行の `updated` を今の日時、`updated_by` を `EDITOR` にする
+      3. 変更履歴と連番を `stage_update` の 3. と同じく付ける（本文は変えないので `before_body` と `after_body` は同じ。`by` は `EDITOR`。`before` は削除する前の `user_choice` を含む）
       4. 差し替えた並び・履歴・まとまりを書き込む（`save_change`。まとまりの `pending.by` が `external` なら、先に外部の変更のまとまりにする（`flush_pending`））
          - `ConcurrentWriteError` の場合（project-index が間に書いた）、1. から再読み込みして 1 回だけ再適用する。2 回目も同じなら `ConcurrentWriteError` を送出する
       5. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（『変更の検知』の `accept_own_write`）
+      6. 控えた `user_choice` を結果の `user_choice` に入れて返す
     exceptions:
       - name: ConcurrentWriteError
         condition: 再読み込みして再適用しても、置き換える直前に種類の YAML がほかから書き換えられた
@@ -322,6 +329,18 @@ functions:
         condition: '案 A・B を持つ未決定の D-1 を持つワークスペースに `key: B`'
         mock: なし
         expected: '戻り値が `status: 決定済み`・`previous_status: 未決定`・`previous: None`。D-1 の `history` の 1 回分の `before` が `status: 未決定` と、どの案も採用でない `options` を持つ'
+      - name: test_run_adopt_when_user_choice
+        case: 正常
+        summary: 利用者の選択を片付けて返し、削除する前の選択を変更履歴に残す
+        condition: '案 A・B を持ち `user_choice: {key: B, note: 費用を優先する, at}` を持つ未決定の D-1 に `key: B`'
+        mock: なし
+        expected: '戻り値の `user_choice` が `{key: B, note: 費用を優先する, at}`。D-1 が `user_choice` を持たず決定済み。D-1 の `history` の 1 回分の `before` が `user_choice` を持つ'
+      - name: test_run_adopt_when_no_user_choice
+        case: 正常
+        summary: 利用者の選択を持たなければ結果の user_choice は None
+        condition: '案 A・B を持つ未決定の D-1 に `key: A`'
+        mock: なし
+        expected: 戻り値の `user_choice` が `None`
   - name: run_check
     title: check の処理
     kind: 関数
@@ -826,7 +845,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 検討事項の案の編集
     scope: public
-    summary: 検討事項の案の並びに、記号で指した 1 つの追加する・修正する・削除するを当てた新しい並びを返す
+    summary: 検討事項の案の並びに、記号で指した 1 つの追加する・修正する・削除するを当てた新しい並びを返す（利用者の選択の片付けは `run_edit_option` が行う）
     args:
       - name: item
         type: dict[str, Any]
@@ -945,6 +964,7 @@ functions:
       1. `item_id` が `D-` で始まらなければ `ArgumentError`（`id`）
       2. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
       3. 案の書き換えを当て（`apply_option_edit`）、その `options` を `item` にして更新を当てる（`stage_update`。`options` は `RESERVED_KEYS` に無いのでそのまま渡せる）
+         - `remove` で削除した案の記号が検討事項の `user_choice.key` の場合、`item` に `user_choice: None` も入れて利用者の選択を削除する（`merge_changes` が `None` のキーを削除する）
       4. 書き込む（`save_batch`。履歴も書く）。`changed` は `stage_update` の `changed` が `options` を含むか
          - `ConcurrentWriteError` の場合、2. から再読み込みして 1 回だけ再適用する。2 回目も同じなら `ConcurrentWriteError` を送出する
       5. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（`accept_own_write`）
@@ -975,6 +995,12 @@ functions:
         condition: '`commit` 済みの案 A だけを持つ D-1 に `add` B'
         mock: '`now`'
         expected: '`options` が A・B、`changed` が真。D-1 の `history[0].before` が `{options: [A]}` で `seq` が `last_seq`'
+      - name: test_run_edit_option_when_user_chosen_option_removed
+        case: 正常
+        summary: 利用者が選んだ案を削除すると利用者の選択も削除し、ほかの案の削除では残す
+        condition: '案 A・B・C を持ち `user_choice` が案 B の未決定の D-1。`parametrize`: `remove` B / `remove` C'
+        mock: '`now`'
+        expected: '`options` が A・C で D-1 が `user_choice` を持たない / `options` が A・B で `user_choice` が案 B のまま。どちらも `status` が `未決定`'
   - name: run_changes_since_read
     title: changes_since_read の処理
     kind: 関数
@@ -1464,3 +1490,54 @@ functions:
         mock: なし
         exception: SchemaMismatchError
         expected: '`lines` の先頭が `tasks.yaml: ` で始まる'
+  - name: run_user_choices
+    title: user_choices の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 採用する案の切り替え
+    scope: public
+    summary: 利用者が案を選んだ検討事項（`user_choice` を持つ検討事項）を、選んだ案の中身と一言つきで送信した日時の古い順に返す（何も書き換えない）
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: dict[str, Any]
+      description: '`{items: [{id, title, status, key, content, note, at}]}`（インターフェース定義『利用者が案を選んだ検討事項の一覧』の応答）。該当が無ければ `items` は空'
+    process: |-
+      1. ワークスペースを参照し（`load_workspace`）、`validate_workspace` の問題のうち `decisions.yaml` のもの（スキーマと案と状態の決まり）があれば `build_mismatch_error` で `SchemaMismatchError` を送出する
+      2. 検討事項のうち `user_choice` を持つものを集め、選んだ案の `content` を引いて `{id, title, status, key, content, note（無ければ None）, at}` にする
+      3. `at` の古い順（同じなら検討事項の並びの順）に並べて返す
+    args_example: |-
+      ```python
+      run_user_choices(Path("/work/ws"))
+      ```
+    returns_example: |-
+      ```python
+      {"items": [{"id": "D-2", "title": "保存先", "status": "未決定", "key": "A", "content": "ローカルに置く", "note": "費用を優先する", "at": "2026-11-27T09:00:00+00:00"}]}
+      ```
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`decisions.yaml` がスキーマか案と状態の決まりに合わない（YAML として参照できないときも含む）'
+    unit_tests:
+      - name: test_run_user_choices
+        case: 正常
+        summary: 利用者の選択を持つ検討事項だけを送信した日時の古い順に返す
+        condition: D-1（案 B・一言なし・10:00）・D-2（案 A・一言「費用を優先する」・09:00）・D-3（`user_choice` なし）と、D-3 への送信前の案の選択を持つ `comments.yaml`
+        mock: なし
+        expected: '`items` が D-2・D-1 の順。D-2 の `content` が案 A の中身・`note` が `費用を優先する`、D-1 の `note` が `None`。ワークスペースのファイルが呼ぶ前と同じ'
+      - name: test_run_user_choices_when_none
+        case: 正常
+        summary: 利用者の選択が無ければ空
+        condition: '`user_choice` を持たない D-1 だけ'
+        mock: なし
+        expected: '`{items: []}`'
+      - name: test_run_user_choices_when_rule_mismatch
+        case: 異常
+        summary: 利用者の選択が案に無い記号を指すと返却しない
+        condition: '`user_choice.key` が案に無い `Z` の D-1'
+        mock: なし
+        exception: SchemaMismatchError
+        expected: '`lines` に `decisions.yaml: items[0].user_choice:` で始まる行がある'

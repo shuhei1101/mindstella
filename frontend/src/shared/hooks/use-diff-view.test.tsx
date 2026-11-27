@@ -1,8 +1,9 @@
 import { waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 
-import { OPENED_SESSION_KEY, useDiffView } from "@/shared/hooks/use-diff-view";
+import { useDiffView } from "@/shared/hooks/use-diff-view";
+import { prune } from "@/shared/stores/read-changes-store";
 import { RECORDS } from "@/testing/msw/handlers";
 import { server } from "@/testing/msw/server";
 import { renderPreviewHook } from "@/testing/render";
@@ -23,6 +24,22 @@ const withChanges = () =>
       }),
     ),
   );
+
+// 既読のまとまりを持つ端末の保存領域のキー
+const READ_CHANGES_KEY = "mindmap-read-changes";
+
+/** 保存領域のどれかのワークスペースの既読にある、まとまりの ID を返す */
+const storedReadIds = (): string[] => {
+  const raw = localStorage.getItem(READ_CHANGES_KEY);
+  return raw === null ? [] : Object.values((JSON.parse(raw) as { state: { read: Record<string, string[]> } }).state.read).flat();
+};
+
+beforeEach(() => {
+  // 前のテストの既読（保存領域とメモリの上）と、そのタブで選んだ時点を持ち越さない
+  prune("", []);
+  localStorage.removeItem(READ_CHANGES_KEY);
+  sessionStorage.clear();
+});
 
 describe("useDiffView", () => {
   // URL の時点で解決する（正常系）
@@ -46,17 +63,27 @@ describe("useDiffView", () => {
     await waitFor(() => expect(router.state.location.search).toMatchObject({ diff: "V-1" }));
   });
 
-  // 同じタブで呼び直さない（正常系）
-  test("use_diff_view_when_opened_stored", async () => {
+  // 開いたまとまりを既読にし、まだまとめていない変更は既読にしない（正常系）
+  test.each([
+    { diff: "V-2", expected: ["V-2"] },
+    { diff: "pending", expected: [] },
+  ])("use_diff_view_when_marked_read", async ({ diff, expected }) => {
     // 準備
-    sessionStorage.setItem(OPENED_SESSION_KEY, JSON.stringify({ at: "2026-11-01T00:00:00+00:00", seq: 1 }));
-    const opened = vi.fn(() => HttpResponse.json({ previous: null, opened: { at: "2026-11-01T00:00:00+00:00", seq: 1 } }));
-    server.use(http.post("/api/opened", opened));
+    withChanges();
     // 実行
-    const { result } = await renderPreviewHook("/?tab=decisions", useDiffView);
-    await waitFor(() => expect(result.current.since).not.toBeNull());
+    await renderPreviewHook(`/?tab=decisions&diff=${diff}`, useDiffView);
     // 検証
-    expect(opened).not.toHaveBeenCalled();
-    sessionStorage.clear();
+    await waitFor(() => expect(storedReadIds()).toEqual(expected));
+  });
+
+  // まとまりの ID でない時点は差分を出さず URL から除外する（正常系）
+  test("use_diff_view_when_not_set_id", async () => {
+    // 準備
+    withChanges();
+    // 実行
+    const { result, router } = await renderPreviewHook("/?tab=decisions&diff=since", useDiffView);
+    // 検証
+    await waitFor(() => expect(router.state.location.search).not.toHaveProperty("diff"));
+    expect(result.current.point).toBeNull();
   });
 });

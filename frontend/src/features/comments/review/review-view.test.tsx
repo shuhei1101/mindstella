@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test } from "vitest";
@@ -59,6 +59,37 @@ describe("ReviewView", () => {
     // 検証
     expect(await screen.findByRole("alert")).toHaveTextContent("本文の 3 行目がありません");
     expect(screen.getByRole("button", { name: "箇所を解除" })).toBeInTheDocument();
+  });
+});
+
+describe("ReviewView の案の選択", () => {
+  // 案の選択の行を出し、一言を空にして修正すると一言を削除する（正常系）
+  test("review_view_when_choice", async () => {
+    // 準備
+    const bodies: unknown[] = [];
+    stubRecords({ decisions: [{ id: "D-1", title: "D-1の題", status: "未決定", options: [{ key: "A", content: "案 A の中身" }, { key: "B", content: "案 B の中身" }] }] });
+    server.use(
+      http.get("/api/comments", () => HttpResponse.json({ items: [{ id: "C-1", target: "D-1", target_title: "D-1の題", loc: null, thread: null, body: "x", choice: { key: "B" }, created: "2026-11-01T00:00:00+00:00" }], drafts: [] })),
+      http.patch("/api/comments/:id", async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ id: "C-1", body: null, loc: null, choice: { key: "B" } });
+      }),
+    );
+    renderRoute("/?panel=comments&review=1");
+    const check = await screen.findByRole("checkbox", { name: "D-1 への案の選択を送信する" });
+    const row = check.closest("li");
+    if (row === null) throw new Error("案の選択の行がありません");
+    // 検証（札・タイトル・案の記号と中身）
+    expect(within(row).getByText("案の選択")).toBeInTheDocument();
+    expect(row).toHaveTextContent("D-1の題");
+    expect(row).toHaveTextContent("案 B");
+    expect(row).toHaveTextContent("案 B の中身");
+    // 実行
+    await userEvent.click(within(row).getByRole("button", { name: "D-1 への案の選択の一言を修正" }));
+    await userEvent.clear(screen.getByRole("textbox", { name: /の本文$/ }));
+    await userEvent.click(screen.getByRole("button", { name: "修正" }));
+    // 検証
+    await waitFor(() => expect(bodies).toEqual([{ body: null }]));
   });
 });
 

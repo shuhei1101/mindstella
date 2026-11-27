@@ -1,0 +1,31 @@
+$ pytest tests/integration/preview/test_spa_decisions_screen.py tests/integration/preview/test_spa_detail_fullscreen_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/preview/test_spa_diagram_viewer_screen.py tests/integration/preview/test_spa_docs_screen.py tests/integration/preview/test_spa_history_screen.py tests/integration/preview/test_spa_open.py tests/integration/preview/test_spa_overview_screen.py tests/integration/preview/test_spa_records_screen.py tests/integration/preview/test_spa_review_screen.py tests/integration/preview/test_spa_tasks_screen.py tests/integration/preview/test_spa_thread_screen.py tests/integration/storybook_react/test_diff_minimap_stories.py tests/integration/storybook_react/test_history_dialog_stories.py tests/integration/storybook_react/test_markdown_body_stories.py tests/integration/storybook_react/test_option_list_stories.py tests/integration/storybook_react/test_thread_post_stories.py tests/integration/storybook_react/test_topbar_stories.py 
+E       AssertionError: assert [('C-2', {'key': 'A'})] == [('C-2', {'key': 'B'})]
+E         
+E         At index 0 diff: ('C-2', {'key': 'A'}) != ('C-2', {'key': 'B'})
+E         Use -v to get more diff
+
+tests/integration/preview/test_spa_detail_panel_screen.py:2138: AssertionError
+__________________________ test_diff_source[chromium] __________________________
+
+open_story = <function open_story.<locals>._open at 0x776e01baf740>
+
+    def test_diff_source(open_story: OpenStory) -> None:
+        """差分の表示で「原文の差分」。mdmark の行の差分を開いた状態で、リビジョンの欄に「選んだ時点」「今」が入り、書き換えた行の変わった単語を濃い色にする（正常系）。"""
+        # 準備・実行
+        page = _open(open_story, "diff-source")
+        page.wait_for_selector(".mdmark-diff-line", timeout=STORY_TIMEOUT_MS)
+        # 検証（削除した行と追加した行）
+        assert page.locator('.mdmark-diff-line[data-kind="del"]').count() >= 1
+        assert page.locator('.mdmark-diff-line[data-kind="add"]').count() >= 1
+        assert page.locator(".mdmark-diff-word").count() >= 1
+        # 検証（前と後のリビジョンの欄）
+        pickers = page.locator(".mdmark-diff-picker").all_inner_texts()
+        joined = " ".join(pickers)
+>       assert "選んだ時点" in joined
+E       AssertionError: assert '選んだ時点' in ''
+
+tests/integration/storybook_react/test_markdown_body_stories.py:363: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_spa_detail_panel_screen.py::test_choice[chromium]
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_diff_source[chromium]
+================== 2 failed, 864 passed in 1127.58s (0:18:47) ==================

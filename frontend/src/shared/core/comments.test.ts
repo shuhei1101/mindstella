@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  choiceOf,
   commentNumber,
   hasUnseen,
   isBlockedReply,
@@ -110,6 +111,7 @@ describe("pendingThreads（項目）", () => {
       item({ id: "C-41", target: "D-1" }),
       item({ id: "C-42", target: null }),
       item({ id: "C-43", target: null, thread: "TH-1" }),
+      item({ id: "C-44", target: "D-1", body: null, choice: { key: "B" } }),
     ];
     // 実行
     const result = pendingThreads({ items, filter, tag, target: "D-1" });
@@ -145,6 +147,11 @@ describe("reviewLabel", () => {
   test("review_label_when_no_target", () => {
     expect(reviewLabel(item({ target: null, thread: null }))).toBe("項目を指さないコメント");
   });
+
+  // 案の選択（正常系）
+  test("review_label_when_choice", () => {
+    expect(reviewLabel(item({ target: "D-1", choice: { key: "B" } }))).toBe("D-1 への案の選択");
+  });
 });
 
 describe("hasUnseen", () => {
@@ -163,5 +170,16 @@ describe("withSeen", () => {
     const result = withSeen({ threads, id: "TH-1" });
     // 検証
     expect(result.map((entry) => entry.posts.every((one) => one.seen))).toEqual([true, false]);
+  });
+});
+
+describe("choiceOf", () => {
+  // その検討事項への案の選択だけを返却する（正常系）
+  test("choice_of", () => {
+    // 準備
+    const items = [item({ id: "C-1" }), item({ id: "C-2", body: null, choice: { key: "B" } }), item({ id: "C-3", target: "D-2", body: null, choice: { key: "A" } })];
+    // 実行・検証
+    expect(choiceOf(items, "D-1")?.id).toBe("C-2");
+    expect(choiceOf(items, "D-9")).toBeUndefined();
   });
 });

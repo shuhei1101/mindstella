@@ -14,6 +14,12 @@ catalogs:
       - name: create
         kind: 関数
         purpose: 接続の状態とライト / ダークのストア
+      - name: persist
+        kind: 関数
+        purpose: 変更履歴の既読のまとまりを端末の保存領域（localStorage）に持つ
+      - name: createJSONStorage
+        kind: 関数
+        purpose: 既読のまとまりの保存先（例外を出さない localStorage の包み）を persist に指定する
 lead: フックで読む小さなクライアントの状態のストア。
 purl: pkg:npm/zustand
 dependency_scope: 必須
@@ -23,8 +29,8 @@ used_in:
 upstream: pmndrs/zustand
 verification:
   state: 済
-  date: '2026-11-04'
-  detail: Vitest で setConnection・setTheme の書き換えと、端末の保存領域の theme だけが書き換わることを確かめた
+  date: '2026-11-27'
+  detail: Vitest で setConnection・setTheme の書き換えと、端末の保存領域の theme だけが書き換わることを確かめた。persist・createJSONStorage は、既読の store の単体テストで localStorage の mindmap-read-changes に既読を保存することと、setItem が例外を出しても例外にならずタブの中で既読を持つことを確かめた
 license: MIT
 official_url: https://zustand.docs.pmnd.rs/
 docs_url: https://zustand.docs.pmnd.rs/apis/create

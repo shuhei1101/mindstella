@@ -32,6 +32,7 @@ from change_detection import ChangeDetector, detector_of, workspace_id_of
 from claude_input import InputTargets, Session
 from comments import (
     ReviewComment,
+    SentItem,
     add_comment,
     delete_comment,
     list_review,
@@ -71,18 +72,15 @@ from files_serve import (
     plan_file,
     resolve_file,
 )
-from history import head_until_seq, load_changes, touch_opened
 from kinds import BODY_REF_PREFIX, KINDS, SETTINGS_FILE, body_root, records_root
 from locations import location_to_dict
 from settings_update import update_display
 from store import (
     CHANGES_FILE,
     EDITS_FILE,
-    NowFn,
     build_mismatch_error,
     check_settings,
     load_workspace,
-    now_utc,
     require_workspace,
     workspace_lock,
 )
@@ -166,9 +164,6 @@ EDITS_SAVE_PATH = "/api/edits/save"
 # 記録の取得と書き換えの通知のパス
 RECORDS_PATH = "/api/records"
 EVENTS_PATH = "/api/events"
-
-# 前回開いた日時のパス
-OPENED_PATH = "/api/opened"
 
 # 配信が画面を返すパス（ワークスペースのパスの頭より後ろ）。画面の URL はこのパスで終わる
 PAGE_PATH = "/"
@@ -608,11 +603,9 @@ class PreviewEndpoint:
         return await _call(call)
 
     async def _post(self, request: Request, context: ServeContext, path: str, base: str) -> StarletteResponse:
-        """前回開いた日時・設定の再読み込み・保存待ちの編集・既読・コメント・まとめて送信する・すぐ送信する・文字起こしへ振り分ける。"""
+        """設定の再読み込み・保存待ちの編集・既読・コメント・まとめて送信する・すぐ送信する・文字起こしへ振り分ける。"""
         origin = request.headers.get("origin")
         seen_thread_id = _seen_thread_id_of(path)
-        if path == OPENED_PATH:
-            return await _call(lambda: opened_response(context))
         if path == CONFIG_RELOAD_PATH:
             return await _call(lambda: reload_response(context, origin=origin))
         if path == EDITS_SAVE_PATH:
@@ -1042,28 +1035,6 @@ def _accepts_gzip(accept_encoding: str | None) -> bool:
     return False
 
 
-def opened_response(context: ServeContext, now: NowFn = now_utc) -> Response:
-    """前回開いた時点を返し、今の時点に書き換える（記録のロックは取らない）。"""
-    try:
-        seq = head_until_seq(load_changes(context.root))
-    except SchemaMismatchError as error:
-        # changes.yaml が読めない: 前回開いた時点を書き換えず、画面はタブを開いた時点を範囲の始まりにする
-        return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join(error.lines))
-    opened = {"at": now(), "seq": seq}
-    try:
-        previous = touch_opened(context.root, opened)
-    except WriteFailedError as error:
-        # 前回開いた時点を書けない: 画面はタブを開いた時点を範囲の始まりにする
-        return problem_response(HTTPStatus.INTERNAL_SERVER_ERROR, str(error))
-    return Response(
-        status=HTTPStatus.OK,
-        content_type=JSON_TYPE,
-        body=json.dumps({"previous": previous, "opened": opened}, ensure_ascii=False).encode(
-            "utf-8"
-        ),
-    )
-
-
 def seen_response(context: ServeContext, thread_id: str, *, origin: str | None) -> Response:
     """送り元を確かめ、そのスレッドの利用者の未読の書き込みを全て既読にして、既読にした ID を返す。"""
     # 別のサイトからの書き込み
@@ -1116,7 +1087,6 @@ def reload_response(context: ServeContext, *, origin: str | None) -> Response:
 
 def workspace_signature(root: Path) -> str:
     """見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ、書き換えの印を返す。"""
-    # 前回開いた日時（`.mindstella-opened`）は、タブが開くたびに書き換わるので見ない
     names = [
         SETTINGS_FILE,
         *(spec.file for spec in KINDS.values()),
@@ -1339,6 +1309,7 @@ def delete_response(context: ServeContext, *, origin: str | None, comment_id: st
         "loc": None if deleted.loc is None else location_to_dict(deleted.loc),
         "thread": deleted.thread,
         "body": deleted.body,
+        "choice": None if deleted.choice is None else {"key": deleted.choice},
         "created": deleted.created,
         "count": count,
     }
@@ -1404,7 +1375,7 @@ def _added_body(comment: ReviewComment, count: int) -> dict[str, Any]:
     return {"id": comment.id, "created": comment.created, "count": count}
 
 
-def _sent_body(sent: str, items: list[SentPost]) -> dict[str, Any]:
+def _sent_body(sent: str, items: list[SentItem]) -> dict[str, Any]:
     """まとめて送った応答の本文を作る。"""
     return {"sent": sent, "items": [asdict(item) for item in items]}
 
@@ -1412,12 +1383,14 @@ def _sent_body(sent: str, items: list[SentPost]) -> dict[str, Any]:
 def _entered_body(context: ServeContext, body: dict[str, Any]) -> dict[str, Any]:
     """まとめて送った応答の本文に、Claude Code へ入力したか（`entered`）と起動し直したか（`restarted`）を足す。"""
     targets = context.input_targets
-    # まとめて送るは送った件数、すぐ送るは 1 件
-    count = len(body["items"]) if "items" in body else 1
+    # まとめて送るはスレッドへ送った件数と案の選択の件数、すぐ送るは 1 件
+    rows = body.get("items")
+    count = 1 if rows is None else sum(1 for row in rows if row.get("thread") is not None)
+    choices = 0 if rows is None else sum(1 for row in rows if row.get("decision") is not None)
     # 宛先の台帳が無い: 入力しない
     if targets is None:
         return {**body, "entered": False, "restarted": False}
-    entered, restarted = targets.enter_or_restart(context.root, count)
+    entered, restarted = targets.enter_or_restart(context.root, count, choices=choices)
     return {**body, "entered": entered, "restarted": restarted}
 
 
@@ -1432,6 +1405,7 @@ def _updated_body(comment: ReviewComment) -> dict[str, Any]:
         "id": comment.id,
         "body": comment.body,
         "loc": None if comment.loc is None else location_to_dict(comment.loc),
+        "choice": None if comment.choice is None else {"key": comment.choice},
     }
 
 

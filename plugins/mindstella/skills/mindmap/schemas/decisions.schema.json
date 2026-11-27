@@ -177,6 +177,33 @@
             "type": "string",
             "pattern": "^L-[0-9]+$"
           }
+        },
+        "user_choice": {
+          "type": "object",
+          "description": "利用者がプレビューで案を選んで送信し、AI がまだ採用していないときだけ持つ利用者の選択（状態を変えない。採用する案の切り替えが削除する）",
+          "required": [
+            "key",
+            "at"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "type": "string",
+              "minLength": 1,
+              "description": "選んだ案の記号（その検討事項の `options` にある記号）"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 10000,
+              "description": "選ぶときに添えた一言"
+            },
+            "at": {
+              "type": "string",
+              "minLength": 1,
+              "description": "まとめて送信した日時"
+            }
+          }
         }
       }
     }

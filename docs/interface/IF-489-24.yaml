@@ -327,6 +327,52 @@ flows:
       - ステータスが 409 で、`detail` にクローズであることがある
       - '`comments.yaml` が無い'
     test: test_error_when_thread_closed
+  - name: 正常系（案の選択）
+    summary: 検討事項の案の選択を一言つきで溜め、検討事項は書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 案 A・B を持つ未決定の検討事項 D-1 を持ち、`comments.yaml` を持たないワークスペース
+        notes: '`target` は D-1、`choice` は `{key: B}`、`body` は `費用を優先する`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/comments
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {target: D-1, choice: {key: B}, body: 費用を優先する}
+        IF-->>WS: 項目・コメントの取得
+        IF->>WS: comments.yaml に追加する
+        IF-->>クライアント: 201、JSON（id・created・count）
+      ```
+    expected:
+      - ステータスが 201 で、`id` が `C-1`、`count` が 1
+      - '`comments.yaml` に `id: C-1`・`target: D-1`・`choice: {key: B}`・`body: 費用を優先する` の 1 件があり、`loc` と `thread` を持たない'
+      - '`decisions.yaml` の中身が溜める前と同じ（D-1 は `user_choice` を持たない）'
+    test: test_normal_when_choice
+  - name: 異常系（同じ検討事項の案の選択がある・409）
+    summary: 同じ検討事項への案の選択が既にレビュー中にあれば溜めない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 案 A・B を持つ未決定の検討事項 D-1 と、D-1 への案 A の選択 C-1 を持つワークスペース
+        notes: '`target` は D-1、`choice` は `{key: B}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/comments
+
+        クライアント->>IF: POST {target: D-1, choice: {key: B}}
+        IF-->>クライアント: 409
+      ```
+    expected:
+      - ステータスが 409 で、`detail` に `D-1` と `C-1` がある
+      - '`comments.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_choice_exists
 lead: 詳細パネル・詳細の全画面・コメントの一覧の入力から、項目・選んだ箇所へのコメントか項目に紐づかないコメントを受け、送信せずにレビュー中のコメントとして `comments.yaml` に溜める。削除したコメントを元に戻すときもこれを呼ぶ。
 idempotent: false
 side_effects: '`comments.yaml` に 1 件追加（無ければ作る）、同じ向けた先（`target` と `loc`）の下書きを `drafts.yaml` から削除する。どちらも一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
@@ -398,9 +444,9 @@ request:
     example: 言い換えたい文
   - name: body
     type: str
-    required: true
+    required: false
     location: body
-    description: コメントの本文
+    description: コメントの本文。`choice` を渡すときは案に添えた一言で、添えないときは渡さない
     constraints: 前後の空白を除いて 1 文字以上、10000 文字以下
     example: ここは言い換える
   - name: id
@@ -428,6 +474,14 @@ request:
     constraints: オープンのスレッド。`target`・`loc` と一緒に渡さない
     example: TH-3
     status: implemented
+  - name: choice.key
+    type: str
+    required: false
+    default: なし（案の選択でないコメント）
+    location: body
+    description: 検討事項の詳細で案を選んで確定したときの、選んだ案の記号。渡すときは `target` に `未決定`・`要見直し` の検討事項を渡し、`loc`・`thread` を渡さない
+    constraints: '`target` の検討事項の `options` にある記号'
+    example: B
 request_example: |-
   ```json
   {
@@ -452,7 +506,7 @@ status_codes:
   - code: '201'
     condition: 溜めた
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・`body` が無いか空白だけか 10000 文字を超える・`loc` の形式が崩れている（`target` が無い、`kind` に合うキーが無い など）・`thread` を `target` か `loc` と一緒に渡した・リクエストの本文が 128KiB を超える
+    condition: 本文が JSON のオブジェクトでない・`choice` を渡さないのに `body` が無い・`body` が空白だけか 10000 文字を超える・`loc` の形式が崩れている（`target` が無い、`kind` に合うキーが無い など）・`thread` を `target` か `loc` と一緒に渡した・`choice` を `target` 無しで渡したか `loc`・`thread` と一緒に渡した・リクエストの本文が 128KiB を超える
     notes: 何も書かない
   - code: '403'
     condition: '`Origin` が『プレビューの配信』の制約「送信元の確認」に合わない'
@@ -461,7 +515,7 @@ status_codes:
     condition: '`target` の項目か `thread` のスレッドがワークスペースに無い'
     notes: 何も書かない
   - code: '409'
-    condition: 箇所が今の項目に合わない（「箇所の確認」）、`thread` のスレッドがクローズ、または `id` が今のレビュー中にあるか `seq` を超える
+    condition: 箇所が今の項目に合わない（「箇所の確認」）、`thread` のスレッドがクローズ、`id` が今のレビュー中にあるか `seq` を超える、または `choice` の検討事項が `未決定`・`要見直し` でないか `choice.key` が案に無いか、同じ検討事項への案の選択が既にレビュー中にある
     notes: 何も書かない。`detail` に合わない理由
   - code: '415'
     condition: '`Content-Type` が `application/json` でない'
@@ -475,7 +529,7 @@ status_codes:
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 書き込む中身
-    constraint: '`id`（`C-{seq + 1}`。元に戻すときは渡した ID）・`target`（あれば）・`loc`（あれば）・`thread`（あれば）・`body`（前後の空白を除く）・`created`。新しく振ったときは `seq` を 1 上げる。スレッドは作らない（作るのは『コメントをまとめて送信する』）。ER 図『ワークスペース』の `comments.yaml`'
+    constraint: '`id`（`C-{seq + 1}`。元に戻すときは渡した ID）・`target`（あれば）・`loc`（あれば）・`thread`（あれば）・`choice`（あれば）・`body`（あれば。前後の空白を除く）・`created`。新しく振ったときは `seq` を 1 上げる。スレッドは作らない（作るのは『コメントをまとめて送信する』）。ER 図『ワークスペース』の `comments.yaml`'
   - item: 箇所の確認
     constraint: 本文の箇所は、行の範囲がその項目の本文の行数に収まり、その行の範囲の文に選んだ文が含まれるかを確かめる。値の箇所は、キーがその項目にあり、その値に選んだ文が含まれるかを確かめる。比べる前に、選んだ文と元の文の両方から記号 `*`・`_`・`~`・`` ` ``・`\`・`|`・`#`・`>` と空白・改行を外す。Markdown の本文の元の文は先に、各行の行頭のリストの記号（`-`・`+`・`数字.`・`数字)`）・表の区切りの行・コードブロックのフェンスの行・画像（`![代わりの文](URL)` を丸ごと）を外し、リンク `[文](URL)` を `文` にし、文字参照を文字に戻す。HTML の本文の元の文は、`html.parser.HTMLParser` で原文を読んだときの文の断片のうち、その行の範囲にあるものをつなぐ（タグとコメントを外し、`style`・`script`・`template`・`title` の中身を除き、文字参照を文字に戻す）。『コメントをまとめて送信する』も同じ確かめ方を使う
   - item: 下書き
@@ -492,6 +546,8 @@ constraints:
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: 案の選択
+    constraint: 同じ検討事項への案の選択はレビュー中に 1 件だけ持つ。選び直しは『レビュー中のコメントの書き換え』、取り消しは『レビュー中のコメントの削除』で行う。案の選択を溜めても下書き（`drafts.yaml`）は削除しない
 refs:
   - ER-489-1#
   - SC-489-47#

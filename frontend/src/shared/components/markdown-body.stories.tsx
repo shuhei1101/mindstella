@@ -191,6 +191,23 @@ export const Narrow: Story = {
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
 
+/** 音声を埋め込んだ本文（`files/sample.wav` は Storybook の静的なファイル） */
+const AUDIO_SOURCE = ["セリフの音声を確かめる。", "", "![セリフの音声](../files/sample.wav)", "", "音声の後ろの段落。", ""].join("\n");
+
+/** 本文に埋め込んだ音声。mdmark が描いた再生バーを、入れ物の高さ・`overflow`・`line-height` で上下を切らずに全体を表示する */
+export const AudioEmbed: Story = { args: { source: AUDIO_SOURCE } };
+
+/** 幅 390px で埋め込んだ音声。再生バーを本文の幅に収め、上下を切らず、本文の区画を横にスクロールさせない */
+export const AudioEmbedNarrow: Story = {
+  args: { source: AUDIO_SOURCE },
+  parameters: {
+    viewport: {
+      options: { narrow390: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow390", isRotated: false } },
+};
+
 /** スレッドの書き込みの本文。コードブロックの言語の札とコピーのボタン、Alert の見出しのアイコンを当て、表は mdmark の表の機能をオフにした共通のスタイルのまま描き、セクションの開閉は当てない */
 export const InThreadPost: Story = {
   args: { source: [CODE_SOURCE, CALLOUT_SOURCE, tableSource(3)].join("\n"), fold: false, tables: false },

@@ -836,3 +836,59 @@ def test_save_edits_when_empty(
     with pytest.raises(EditInvalidError):
         edits.save_edits(root, now=_fixed_now)
     assert snapshot_tree(root) == before
+
+
+@pytest.mark.parametrize(
+    ("edit", "expected_choice", "expected_status"),
+    [
+        pytest.param(
+            {"op": "option-remove", "key": "B", "value": None, "before": {"key": "B", "content": "案 B"}},
+            None,
+            "未決定",
+            id="chosen_option_removed",
+        ),
+        pytest.param(
+            {"op": "adopt", "key": "A", "value": "A", "before": None},
+            None,
+            "決定済み",
+            id="adopted",
+        ),
+        pytest.param(
+            {"op": "option-remove", "key": "C", "value": None, "before": {"key": "C", "content": "案 C"}},
+            "B",
+            "未決定",
+            id="other_option_removed",
+        ),
+    ],
+)
+def test_save_edits_when_user_choice(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    write_edits: WriteEdits,
+    edit: dict[str, Any],
+    expected_choice: str | None,
+    expected_status: str,
+) -> None:
+    """利用者が選んだ案の削除と採用で利用者の選択を削除する（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item(
+            "D-1",
+            status="未決定",
+            options=[
+                {"key": "A", "content": "案 A"},
+                {"key": "B", "content": "案 B"},
+                {"key": "C", "content": "案 C"},
+            ],
+            user_choice={"key": "B", "at": DEFAULT_TIMESTAMP},
+        )
+    )
+    write_edits(root, make_edit("E-1", **edit))
+    # 実行（EditsBlockedError にならない）
+    edits.save_edits(root, now=_fixed_now)
+    # 検証
+    decision = _find(_read_items(root, "decisions.yaml"), "D-1")
+    assert decision.get("user_choice", {}).get("key") == expected_choice
+    assert ("user_choice" in decision) == (expected_choice is not None)
+    assert decision["status"] == expected_status

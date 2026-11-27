@@ -343,3 +343,28 @@ def test_error_when_last_option_removed(
     assert "1 つ以上" in result.text
     assert "add" in result.text
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_user_chosen_option_removed(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> None:
+    """利用者が選んだ案を削除すると、利用者の選択も削除する（正常系）。"""
+    # 準備
+    option_c = {"key": "C", "content": "ファイルを分けない"}
+    root = make_workspace(
+        make_item(
+            "D-1",
+            status="未決定",
+            options=[OPTION_A, OPTION_B, option_c],
+            user_choice={"key": "B", "at": "2026-11-01T00:00:00+00:00"},
+        )
+    )
+    commit(call_tool, root, "足す")
+    # 実行
+    result = call_tool("edit_option", workspace=str(root), id="D-1", action="remove", key="B")
+    # 検証
+    assert result.is_error is False
+    item = read_items(root, "decisions.yaml")[0]
+    assert [option["key"] for option in item["options"]] == ["A", "C"]
+    assert "user_choice" not in item
+    assert item["status"] == "未決定"

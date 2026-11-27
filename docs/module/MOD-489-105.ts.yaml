@@ -6,7 +6,7 @@ functions:
     title: 時点の解決
     kind: 関数
     usecase: 前回からの差分を見る
-    summary: '`since`・`pending`・まとまりの ID からマーカーを付ける項目と削除した項目を決める'
+    summary: '`pending`・まとまりの ID からマーカーを付ける項目と削除した項目を決める。まとまりの ID でない値（`since` など）は差分を出さない'
     args:
       - name: changes
         type: Changes
@@ -16,10 +16,6 @@ functions:
         type: string | null
         required: true
         description: 選んだ時点
-      - name: since
-        type: OpenedPoint
-        required: true
-        description: 前回開いた時点
     returns:
       type: DiffPoint | null
       description: 時点。記録に無ければ null
@@ -40,6 +36,12 @@ functions:
         case: 正常
         summary: 空の pending
         condition: '`pending` と空の変更'
+        mock: なし
+        expected: 'null'
+      - name: test_resolve_diff_point_when_not_set_id
+        case: 正常
+        summary: まとまりの ID でない値は差分を出さない
+        condition: V-1 を持つ変更履歴と `since`
         mock: なし
         expected: 'null'
     container: frontend/src/shared/core/diff.ts
@@ -160,6 +162,58 @@ functions:
         condition: D-3 と T-1 を削除した時点と `decisions`
         mock: なし
         expected: D-3 だけ
+    container: frontend/src/shared/core/diff.ts
+  - name: changedKinds
+    title: 変更を持つ種類
+    kind: 関数
+    usecase: 前回からの差分を見る
+    summary: 時点の範囲で追加・変更・削除・取り下げた項目を持つ種類を返却する（インターフェース定義『プレビューを開く』の制約「タブのマーカー」。画面の組み立てがトップバーの `tabs[].marked` にする）
+    args:
+      - name: point
+        type: DiffPoint | null
+        required: true
+        description: 時点。`null` なら空
+    returns:
+      type: Set<Kind>
+      description: 変更を持つ種類（項目の ID の頭の文字で決める。取り下げは変更に含まれる）
+    unit_tests:
+      - name: test_changed_kinds
+        case: 正常
+        summary: 追加・変更・削除した項目の種類を返却する
+        condition: D-1 を変え、T-2 を追加し、N-3 を削除した時点
+        mock: なし
+        expected: '`decisions`・`tasks`・`notes` の 3 つ。`research` を含まない'
+      - name: test_changed_kinds_when_null
+        case: 正常
+        summary: 差分を出していなければ空
+        condition: '`null`'
+        mock: なし
+        expected: 空の Set
+    container: frontend/src/shared/core/diff.ts
+  - name: unreadSetIds
+    title: 未読のまとまりの ID
+    kind: 関数
+    usecase: 前回からの差分を見る
+    summary: まとまりの ID の並びのうち、既読に無いものを並びの順で返却する
+    args:
+      - name: setIds
+        type: readonly string[]
+        required: true
+        description: 記録のまとまりの ID（新しい順）
+      - name: read
+        type: readonly string[]
+        required: true
+        description: 既読のまとまりの ID
+    returns:
+      type: string[]
+      description: 未読のまとまりの ID
+    unit_tests:
+      - name: test_unread_set_ids
+        case: 正常
+        summary: 既読に無いものだけ
+        condition: '`[V-3, V-2, V-1]` と `[V-2, V-9]`'
+        mock: なし
+        expected: '`[V-3, V-1]`'
     container: frontend/src/shared/core/diff.ts
 notes:
   単体テスト: 同じフォルダの `diff.test.ts` に置く（knowledge の規約『フォルダ構成』）

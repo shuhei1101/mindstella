@@ -4,21 +4,18 @@ import type * as JsDiffModule from "diff";
 import { embeddedHtmlRanges } from "@/shared/core/body-links";
 import { formatJst } from "@/shared/core/format";
 import { getLibrary } from "@/shared/adapters/libraries";
-import { compareIds, type BodyDiffHunk, type Changes, type HistoryEntry, type Item, type Kind, type RemovedItem } from "@/shared/core/records";
+import { compareIds, kindOfId, type BodyDiffHunk, type Changes, type HistoryEntry, type Item, type Kind, type RemovedItem } from "@/shared/core/records";
 
 /** 読み込んだ jsdiff */
 export type JsDiff = Pick<typeof JsDiffModule, "diffLines" | "diffWords" | "diffArrays">;
 
-/** 前回開いた時点。「前回開いてから」の範囲の始まり */
-export type OpenedPoint = { at: string; seq: number };
-
 /** 変更履歴で選んだ時点と、その時点で印を付ける項目 */
 export type DiffPoint = {
-  /** `since`・`pending`・まとまりの ID */
+  /** `pending`・まとまりの ID */
   sel: string;
   /** 札と詳細パネルに出す名前 */
   name: string;
-  /** 日時（JST）。「前回開いてから」は `{日時} より後` */
+  /** 日時（JST） */
   sub: string;
   /** 新規の印を付ける ID（`removed` にある ID は入れない） */
   added: Set<string>;
@@ -26,7 +23,7 @@ export type DiffPoint = {
   changed: Set<string>;
   /** この時点の変更履歴の始まりの `seq`（これより大きい `seq` を戻す） */
   fromSeq: number;
-  /** この時点の終わりの `seq`。null は今まで（`since`・`pending`） */
+  /** この時点の終わりの `seq`。null は今まで（`pending`） */
   untilSeq: number | null;
   /** 削除した項目（ID → 削除した項目）。まとまり・`pending` の `removed` を合わせたもの */
   removed: Map<string, RemovedItem>;
@@ -123,9 +120,6 @@ export const REMOVED_KIND_TAB: Record<RemovedItem["kind"], Kind> = {
 const PENDING_NAME = "まだまとめていない変更";
 const PENDING_SUB = "AI がまだ区切っていない書き換え";
 
-/** 「前回開いてから」の名前 */
-const SINCE_NAME = "前回開いてから";
-
 /** 選んだ時点の名前・補足・印・範囲から、時点を組み立てる */
 const buildPoint = ({
   sel,
@@ -161,8 +155,8 @@ export const removedOf = ({ point, kind }: { point: DiffPoint | null; kind: Kind
     .sort((a, b) => compareIds(a.id, b.id));
 };
 
-/** 選んだ時点の識別子から、印を付ける項目と変更履歴の範囲を決める。差分を出さないときは null */
-export const resolveDiffPoint = (changes: Changes, sel: string | null, since: OpenedPoint): DiffPoint | null => {
+/** 選んだ時点の識別子から、印を付ける項目と変更履歴の範囲を決める。差分を出さないとき（まとまりの ID でない値を含む）は null */
+export const resolveDiffPoint = (changes: Changes, sel: string | null): DiffPoint | null => {
   if (sel === null) return null;
   const sets = changes.sets;
   // 先頭のまとまりまでの変更履歴（それより後がまだまとめていない分）
@@ -172,21 +166,6 @@ export const resolveDiffPoint = (changes: Changes, sel: string | null, since: Op
     const pending = changes.pending;
     if (pending.added.length === 0 && pending.changed.length === 0 && (pending.removed ?? []).length === 0) return null;
     return buildPoint({ sel, name: PENDING_NAME, sub: PENDING_SUB, groups: [changes.pending], fromSeq: latestSeq, untilSeq: null });
-  }
-  if (sel === "since") {
-    // 日時は比べず、開いた時点の通し番号より大きいまとまりを範囲にする
-    const inRange = sets.filter((set) => set.until_seq > since.seq);
-    const oldest = inRange.at(-1);
-    // 範囲で一番古いまとまりの 1 つ前の `until_seq` から。範囲にまとまりが無ければ、先頭のまとまりの `until_seq` から
-    const fromSeq = oldest === undefined ? latestSeq : (sets[sets.indexOf(oldest) + 1]?.until_seq ?? 0);
-    return buildPoint({
-      sel,
-      name: SINCE_NAME,
-      sub: `${formatJst(since.at)} より後`,
-      groups: [...inRange, changes.pending],
-      fromSeq,
-      untilSeq: null,
-    });
   }
   const position = sets.findIndex((set) => set.id === sel);
   // 記録に無いまとまり
@@ -720,4 +699,21 @@ export const childMarks = ({ before, after, jsdiff }: { before: string[]; after:
     }
   }
   return marks;
+};
+
+/** 時点の範囲で追加・変更・削除した項目を持つ種類（タブのマーカー）。差分を出していなければ空 */
+export const changedKinds = (point: DiffPoint | null): Set<Kind> => {
+  const kinds = new Set<Kind>();
+  if (point === null) return kinds;
+  for (const id of [...point.added, ...point.changed, ...point.removed.keys()]) {
+    const kind = kindOfId(id);
+    if (kind !== null) kinds.add(kind);
+  }
+  return kinds;
+};
+
+/** まとまりの ID の並びのうち、既読に無いものを並びの順で返却する */
+export const unreadSetIds = (setIds: readonly string[], read: readonly string[]): string[] => {
+  const known = new Set(read);
+  return setIds.filter((id) => !known.has(id));
 };

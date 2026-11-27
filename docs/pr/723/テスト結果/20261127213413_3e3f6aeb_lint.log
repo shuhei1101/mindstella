@@ -1,0 +1,85 @@
+# lint
+# commit: 3e3f6aeb
+# 実行日時: 2026-11-27 21:34:32 JST
+#
+# 残る違反は、型検査（tsc）15 件と ESLint 27 件で、どれも実装の無い関数・型・モジュール（choiceOf・changedKinds・unreadSetIds・read-changes-store・ReviewItem.choice・CommentInput.choice・resolveDiffPoint の引数）を参照していることによるもの（単体テスト作成では残してよい違反）。ruff は違反 0 件。
+# 全件実行のコマンドは型検査で止まって ESLint まで進まないため、ESLint（npm run lint）も個別に回した。
+
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p frontend
+
+frontend/src/shared/core/comments.test.ts(4,3): error TS2305: Module '"@/shared/core/comments"' has no exported member 'choiceOf'.
+frontend/src/shared/core/comments.test.ts(152,46): error TS2353: Object literal may only specify known properties, and 'choice' does not exist in type 'Partial<ReviewItem>'.
+frontend/src/shared/core/comments.test.ts(179,59): error TS2322: Type 'null' is not assignable to type 'string | undefined'.
+frontend/src/shared/core/comments.test.ts(179,129): error TS2322: Type 'null' is not assignable to type 'string | undefined'.
+frontend/src/shared/core/diff.test.ts(4,25): error TS2305: Module '"@/shared/core/diff"' has no exported member 'changedKinds'.
+frontend/src/shared/core/diff.test.ts(4,101): error TS2305: Module '"@/shared/core/diff"' has no exported member 'unreadSetIds'.
+frontend/src/shared/core/diff.test.ts(19,19): error TS2554: Expected 3 arguments, but got 2.
+frontend/src/shared/core/diff.test.ts(28,12): error TS2554: Expected 3 arguments, but got 2.
+frontend/src/shared/core/diff.test.ts(33,12): error TS2554: Expected 3 arguments, but got 2.
+frontend/src/shared/core/diff.test.ts(38,12): error TS2554: Expected 3 arguments, but got 2.
+frontend/src/shared/core/diff.test.ts(42,32): error TS2554: Expected 3 arguments, but got 2.
+frontend/src/shared/core/diff.test.ts(105,32): error TS2554: Expected 3 arguments, but got 2.
+frontend/src/shared/hooks/use-comments.test.tsx(87,65): error TS2353: Object literal may only specify known properties, and 'choice' does not exist in type 'CommentInput'.
+frontend/src/shared/hooks/use-comments.test.tsx(126,83): error TS2322: Type 'null' is not assignable to type 'string | undefined'.
+frontend/src/shared/stores/read-changes-store.test.ts(16,17): error TS2307: Cannot find module '@/shared/stores/read-changes-store' or its corresponding type declarations.
+(終了コード 2)
+
+$ npm run lint
+
+> lint
+> eslint frontend/src
+
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-bundle-722-history-unread-decision-choice/frontend/src/shared/core/comments.test.ts
+  181:12  error  Unsafe call of a type that could not be resolved            @typescript-eslint/no-unsafe-call
+  181:36  error  Unsafe member access .id on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  182:12  error  Unsafe call of a type that could not be resolved            @typescript-eslint/no-unsafe-call
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-bundle-722-history-unread-decision-choice/frontend/src/shared/core/diff.test.ts
+  105:11  error  Unsafe assignment of an error typed value                     @typescript-eslint/no-unsafe-assignment
+  105:19  error  Unsafe call of a type that could not be resolved              @typescript-eslint/no-unsafe-call
+  107:13  error  Unsafe spread of an error typed value in an array             @typescript-eslint/no-unsafe-assignment
+  108:12  error  Unsafe call of a type that could not be resolved              @typescript-eslint/no-unsafe-call
+  108:18  error  Unsafe member access .has on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+  113:12  error  Unsafe call of a type that could not be resolved              @typescript-eslint/no-unsafe-call
+  113:31  error  Unsafe member access .size on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  120:12  error  Unsafe call of a type that could not be resolved              @typescript-eslint/no-unsafe-call
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-bundle-722-history-unread-decision-choice/frontend/src/shared/stores/read-changes-store.test.ts
+  16:3   error  Unsafe return of a value of type `Promise<any>`  @typescript-eslint/no-unsafe-return
+  31:11  error  Unsafe assignment of an `any` value              @typescript-eslint/no-unsafe-assignment
+  33:5   error  Unsafe call of an `any` typed value              @typescript-eslint/no-unsafe-call
+  34:5   error  Unsafe call of an `any` typed value              @typescript-eslint/no-unsafe-call
+  35:5   error  Unsafe call of an `any` typed value              @typescript-eslint/no-unsafe-call
+  45:11  error  Unsafe assignment of an `any` value              @typescript-eslint/no-unsafe-assignment
+  46:5   error  Unsafe call of an `any` typed value              @typescript-eslint/no-unsafe-call
+  48:5   error  Unsafe call of an `any` typed value              @typescript-eslint/no-unsafe-call
+  58:11  error  Unsafe assignment of an `any` value              @typescript-eslint/no-unsafe-assignment
+  59:5   error  Unsafe call of an `any` typed value              @typescript-eslint/no-unsafe-call
+  61:41  error  Unsafe return of a value of type `any`           @typescript-eslint/no-unsafe-return
+  61:41  error  Unsafe call of an `any` typed value              @typescript-eslint/no-unsafe-call
+  72:11  error  Unsafe assignment of an `any` value              @typescript-eslint/no-unsafe-assignment
+  74:5   error  Unsafe call of an `any` typed value              @typescript-eslint/no-unsafe-call
+  75:41  error  Unsafe return of a value of type `any`           @typescript-eslint/no-unsafe-return
+  75:41  error  Unsafe call of an `any` typed value              @typescript-eslint/no-unsafe-call
+
+✖ 27 problems (27 errors, 0 warnings)
+
+(終了コード 1)
+
+# base ブランチ（1c84acab。作業ブランチの node_modules を使用した一時 worktree）で同じコマンドを回した結果
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p frontend
+
+
+> lint
+> eslint frontend/src
+
+(終了コード 0)

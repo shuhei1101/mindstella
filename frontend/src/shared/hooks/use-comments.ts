@@ -27,23 +27,23 @@ const cancelDraft = (key: string): void => {
   draftTimers.delete(key);
 };
 
-/** 書き込みを溜め、レビュー中の書き込みを読み直す。溜めた向けた先の予約した下書きの保存は取り消す（サーバーがその下書きを消すため） */
+/** 書き込みを溜め、レビュー中の書き込みを読み直す。溜めた向けた先の予約した下書きの保存は取り消す（サーバーがその下書きを消すため。案の選択は下書きを消さない） */
 export const useAddComment = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: CommentInput) => {
-      cancelDraft(draftKey(input));
+      if (input.choice === undefined) cancelDraft(draftKey(input));
       return (await addComment(input)).data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: commentsQuery().queryKey }),
   });
 };
 
-/** 書き込みの本文を書き換えるか箇所を外し、読み直す */
+/** 書き込みの本文か案の選択の記号を書き換えるか箇所を外し、読み直す（案の選択の一言は null で削除する） */
 export const useUpdateComment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...patch }: { id: string; body?: string; loc?: null }) => (await updateComment(id, patch)).data,
+    mutationFn: async ({ id, ...patch }: { id: string; body?: string | null; loc?: null; choice?: { key: string } }) => (await updateComment(id, patch)).data,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: commentsQuery().queryKey }),
   });
 };

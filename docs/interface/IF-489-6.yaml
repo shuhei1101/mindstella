@@ -451,9 +451,37 @@ flows:
       - ステータスが 409 で、`stale` が C-1 の 1 件で `reason` にクローズであることがある
       - '`threads.yaml`・`comments.yaml` の中身が送信する前と同じ'
     test: test_error_when_thread_closed
+  - name: 正常系（案の選択を送信する）
+    summary: 案の選択を検討事項の利用者の選択へ移し、スレッドは作らない
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを起動して `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する。`preview_url` の `session` に `tmux`・`tmux_pane` を入れない）
+      - name: make_workspace
+        description: 案 A・B を持つ未決定の検討事項 D-1・D-2 と、D-1 への案 B の選択 C-1（一言なし）・D-2 への案 B の選択 C-2（一言「費用を優先する」）を持ち、`threads.yaml` を持たないワークスペース
+        notes: '`ids` は `["C-1", "C-2"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/comments/send
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {ids: [C-1, C-2]}
+        IF-->>WS: コメント・検討事項の取得
+        IF->>IF: 検討事項の状態と案を確認する
+        IF->>WS: decisions.yaml の D-1・D-2 に user_choice を記載する
+        IF->>WS: comments.yaml から C-1・C-2 を削除する
+        IF-->>クライアント: 201、JSON（sent・items）
+      ```
+    expected:
+      - ステータスが 201 で、`items` が C-1 → D-1、C-2 → D-2 の順で、`thread`・`post` が `null`
+      - '`decisions.yaml` の D-1 の `user_choice` が `key: B`・`at` が `sent` と同じで `note` を持たず、D-2 の `user_choice` が `key: B`・`note: 費用を優先する`'
+      - D-1・D-2 の状態が `未決定` のままで、`adopted` の案が無い
+      - '`threads.yaml` が作られておらず、`comments.yaml` のレビュー中が 0 件'
+    test: test_normal_when_choices_sent
 lead: コメントの一覧でチェックしたレビュー中の書き込みを受け、新規スレッドの分はオープンのスレッドを立てて最初の書き込みにし、返信の分は向けたスレッドの末尾に追加して（`threads.yaml`）から、レビュー中（`comments.yaml`）から外す。1 件でも送信できないときは何も書き換えない。追加した後、tmux の中で立てた Claude Code なら、届いた件数を Claude Code のペインへ 1 回の入力として貼り、会話の記録に入ったかを確かめて応答に載せる。
 idempotent: false
-side_effects: '`threads.yaml` に新規スレッドと返信の書き込みを追加（無ければ作る）、`comments.yaml` からその書き込みを削除する。どちらも一時ファイルから `os.replace` で置き換え、`threads.yaml` を先に書く。ほかのファイルは書き換えない。書き終えた後、送信先のペインがあれば、tmux の `load-buffer`・`paste-buffer`・`send-keys` で Claude Code のペインへ文字列を入力する（入力は取り消さない）'
+side_effects: '案の選択があれば `decisions.yaml` の向けた検討事項の `user_choice` を記載し、`history.yaml` と `changes.yaml` に変更履歴とまとまりを追加する。`threads.yaml` に新規スレッドと返信の書き込みを追加（無ければ作る）、`comments.yaml` から送信した書き込みを削除する。どれも一時ファイルから `os.replace` で置き換え、制約「置き換える順」の順に置き換える。ほかのファイルは書き換えない。書き終えた後、送信先のペインがあれば、tmux の `load-buffer`・`paste-buffer`・`send-keys` で Claude Code のペインへ文字列を入力する（入力は取り消さない）'
 callers:
   - IF-489-70#
 request:
@@ -498,12 +526,12 @@ response:
     description: 送信したレビュー中の書き込みの ID。並びはコメントの連番の小さい順（溜めた順）
     example: C-1
   - name: items[].thread
-    type: str
-    description: 書き込みを追加したスレッドの ID（新規スレッドは振った ID）
+    type: str | None
+    description: 書き込みを追加したスレッドの ID（新規スレッドは振った ID）。案の選択は `null`
     example: TH-3
   - name: items[].post
-    type: str
-    description: 追加した書き込みの ID
+    type: str | None
+    description: 追加した書き込みの ID。案の選択は `null`
     example: TH-3-1
   - name: entered
     type: bool
@@ -513,6 +541,10 @@ response:
   - name: restarted
     type: bool
     description: MindStella のセッションが無かったので再起動してから入力したか
+  - name: items[].decision
+    type: str | None
+    description: 案の選択のとき、`user_choice` を記載した検討事項の ID。案の選択でない書き込みは `null`
+    example: D-1
 status_codes:
   - code: '201'
     condition: 全て送信した
@@ -526,7 +558,7 @@ status_codes:
     condition: '`ids` のどれかがレビュー中のコメントに無い'
     notes: 何も書かない。`detail` に無い ID
   - code: '409'
-    condition: 向けた項目が無くなったコメントか、箇所が今の項目に合わないコメントか、クローズか無いスレッドへの返信がある
+    condition: 向けた項目が無くなったコメントか、箇所が今の項目に合わないコメントか、クローズか無いスレッドへの返信がある、または案の選択の検討事項が `未決定`・`要見直し` でないか選んだ案が無くなった
     notes: 何も書かない。本文に `stale[]`（`{id, reason}`）を追加し、送信できない書き込みを全て返す
   - code: '415'
     condition: '`Content-Type` が `application/json` でない'
@@ -540,11 +572,11 @@ status_codes:
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。409 だけ `stale` を追加する
 constraints:
   - item: 書き込む中身
-    constraint: '返信先（`thread`）を持たない書き込みは 1 件ごとにスレッドの作成（`id` は `TH-{連番}`。連番の最大 + 1 から順に・`status: open`・`tags: []`・`summary: null`・`target` と `loc`（あれば）・`events: []`）。返信先を持つ書き込みはそのスレッドの末尾に追加する。追加する書き込みは `author: user`・`body`・`created`（送信した日時）・`read: false`・`taken: null`・`comment`（元のコメントの ID）。ER 図『ワークスペース』の `threads.yaml`'
+    constraint: '案の選択（`choice` を持つ）は、スレッドに移さず、向けた検討事項の `user_choice` に `key`・`note`（`body` があれば）・`at`（送信した日時）を記載する（既に持つときは書き換える）。返信先（`thread`）を持たない書き込みは 1 件ごとにスレッドの作成（`id` は `TH-{連番}`。連番の最大 + 1 から順に・`status: open`・`tags: []`・`summary: null`・`target` と `loc`（あれば）・`events: []`）。返信先を持つ書き込みはそのスレッドの末尾に追加する。追加する書き込みは `author: user`・`body`・`created`（送信した日時）・`read: false`・`taken: null`・`comment`（元のコメントの ID）。ER 図『ワークスペース』の `threads.yaml`'
   - item: 全てか何もなしか
     constraint: 全ての ID・向けた項目・箇所を確かめてから書く。1 件でも 404・409 に当たれば、どのコメントも送信せずレビュー中に残す（単一ユースケース『コメントを選んで送信する』の補足）
   - item: 箇所の確認
-    constraint: 『レビュー中のコメントの追加』の「箇所の確認」と同じ。向けた項目が無くなったコメントも 409 の `stale` に載せる（箇所を持たないときも）。返信は向けたスレッドがオープンであることを確かめ、クローズか無いスレッドへの返信を `stale` に載せる（画面はチェックできない行にするが、送信する前にクローズにされたときに備える）
+    constraint: 『レビュー中のコメントの追加』の「箇所の確認」と同じ。向けた項目が無くなったコメントも 409 の `stale` に載せる（箇所を持たないときも）。返信は向けたスレッドがオープンであることを確かめ、クローズか無いスレッドへの返信を `stale` に載せる（画面はチェックできない行にするが、送信する前にクローズにされたときに備える）。案の選択は、向けた検討事項が `未決定`・`要見直し` で選んだ案が `options` にあることを確認し、合わなければ `stale` に記載する
   - item: 本文の上限
     constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400。ID だけを送信するため、送信できる件数は溜める件数の規模（ER 図の `comments.yaml`）より大きい
     decided_by: NFR-489-1#requirements[送信の本文の長さ]
@@ -566,8 +598,8 @@ constraints:
   - item: 入力の時点
     constraint: '`threads.yaml` と `comments.yaml` を書き終え、書き換えの鍵とワークスペースのロックを外してから入力する。鍵を持ったまま tmux と会話の記録を待たない。同じペイン（`session.tmux` のソケットと `session.tmux_pane` の組）への入力と確かめは、ペインごとの入力の鍵で順に行い、同じペインへ同時に送信された 2 回の入力を重ねない。生きているかの確かめと tmux の 3 つのコマンドは、名前の付いたバッファを共有するため、プロセスの中の 1 本の貼り付けの鍵で順に行う。貼り付けの鍵は届いたかの確かめの間は持たず、別のペインへの送信は前の送信が届いたかの確かめを待たない'
   - item: 入力する文字列
-    constraint: '`[mindstella] ユーザーからのコメントが {足した件数} 件届きました。再読み込みしてください。` の 1 行だけを入力する（新規スレッドと返信を合わせた件数）。スレッドの ID・向けた項目・箇所・本文は入れない'
-    notes: 'ユーザーが決めた文面（PR #201 の確認ログ）。`[mindstella]` は `session` が利用者の発言と見分けるマーカーで、Claude Code は取り込み待ちのスレッドの一覧で中身を読む（インターフェース定義『話し合いの進行』の制約「送信の取り込み」）'
+    constraint: '`[mindstella] ユーザーからのコメントが {足した件数} 件届きました。再読み込みしてください。` の 1 行だけを入力する（新規スレッドと返信を合わせた件数）。案の選択を含むときは、コメントと一緒なら `[mindstella] ユーザーからのコメントが {足した件数} 件と案の選択が {選択の件数} 件届きました。再読み込みしてください。`、案の選択だけなら `[mindstella] ユーザーからの案の選択が {選択の件数} 件届きました。再読み込みしてください。` にする。スレッドの ID・向けた項目・箇所・本文は入れない'
+    notes: 'ユーザーが決めた文面（コメントだけの文面は PR #201 の確認ログ、案の選択を含む 2 つの文面は PR #723 の確認ログ）。`[mindstella]` は `session` が利用者の発言と見分けるマーカーで、Claude Code は取り込み待ちのスレッドの一覧で中身を読む（インターフェース定義『話し合いの進行』の制約「送信の取り込み」）'
   - item: 入力のやり方
     constraint: 文字列を `tmux -S {ソケット} load-buffer -b {名前の付いたバッファ} -` へ標準入力で渡し、`tmux -S {ソケット} paste-buffer -p -d -b {同じバッファ} -t {session.tmux_pane}` でブラケットペーストとして貼り、待たずに `tmux -S {ソケット} send-keys -t {session.tmux_pane} Enter` で確定する。ペインの状態（打ちかけ・選択の表示）は見ない
     notes: 'ブラケットペーストにしないと本文の改行で途中確定する。貼ってから `Enter` までの待ちは 0ms で確定することを PoC で確かめた。打ちかけとつながる・選択の表示で失われるのは利用者が tmux で気づいて修正する（PR #201 の確認ログ）'
@@ -584,6 +616,10 @@ constraints:
   - item: MindStella のセッションが無いとき
     constraint: '宛先が生きていないとき、ワークスペースの MindStella のセッションが `crashed`（`running` でも落ちていれば `crashed` にする）でクローズ待ちでもクローズ済みでもなければ、『MindStella のセッションの再起動』を契機 `comment` で呼び、準備ができたら新しいペインへ同じ文字列を入力して `restarted` を真にする。再起動に失敗したときと、クローズ待ち・クローズ済みのときは `entered: false` にし、コメントはスレッドに残す。再起動を待つ間も書き換えの鍵とワークスペースのロックを持たない'
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
+  - item: 利用者の選択の変更履歴
+    constraint: '`user_choice` を記載した検討事項ごとに、『変更の検知』の「変更履歴を追加するとき」「変更履歴の 1 回分」「保持する回数」「連番」と同じ方法で変更履歴を 1 回分追加する（`by` は `user`、`before` は記載する前の `user_choice`。前に無ければ `null`）。追加する前に `changes.yaml` のまだまとめていない変更（`pending`）があれば先に 1 つのまとまりにし（『保存待ちの編集をまとめて保存』の制約「書き換えのまとまり」と同じ説明と `by`）、案の選択の変更を説明「画面からの案の選択」・`by: user` で別の 1 つのまとまりにする。`user_choice` の `key`・`note` が送信するものと同じ検討事項は書き換えず、変更履歴も追加しない'
+  - item: 置き換える順
+    constraint: '`decisions.yaml`・`history.yaml`・`changes.yaml` → `threads.yaml` → `comments.yaml` の順に置き換える。途中の置き換えに失敗したら、この送信で置き換えたファイルを前の中身に戻してから 500 を返却し、送信した書き込みをレビュー中に残す。`comments.yaml` を置き換える前にプロセスが落ちたときは、制約「二重に送信しない」と、`user_choice` が同じなら書き換えない決まりで、送信し直しても重ならない'
 refs:
   - ER-489-1#
   - SC-489-3#

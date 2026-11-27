@@ -33,7 +33,6 @@ import type {
   EditInput,
   EditReply,
   Edits,
-  OpenedReply,
   PresetCreated,
   PresetInput,
   Problem,
@@ -931,119 +930,6 @@ export function useSaveEdits<TData = Awaited<ReturnType<typeof saveEdits>>, TErr
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getSaveEditsQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export type postOpenedResponse200 = {
-  data: OpenedReply
-  status: 200
-}
-
-export type postOpenedResponseSuccess = (postOpenedResponse200) & {
-  headers: Headers;
-};
-;
-
-export type postOpenedResponse = (postOpenedResponseSuccess)
-
-export const getPostOpenedUrl = () => {
-
-
-
-
-  return `/api/opened`
-}
-
-/**
- * @summary 前回開いた日時を返し、今の日時に書き換える
- */
-export const postOpened = async ( options?: Parameters<typeof apiClient>[1]): Promise<postOpenedResponse> => {
-
-  return apiClient<postOpenedResponse>(getPostOpenedUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getPostOpenedQueryKey = () => {
-    return [
-    'POST', `/api/opened`
-    ] as const;
-    }
-
-
-export const getPostOpenedQueryOptions = <TData = Awaited<ReturnType<typeof postOpened>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getPostOpenedQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof postOpened>>> = ({ signal }) => postOpened({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type PostOpenedQueryResult = NonNullable<Awaited<ReturnType<typeof postOpened>>>
-export type PostOpenedQueryError = unknown
-
-
-export function usePostOpened<TData = Awaited<ReturnType<typeof postOpened>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postOpened>>,
-          TError,
-          Awaited<ReturnType<typeof postOpened>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostOpened<TData = Awaited<ReturnType<typeof postOpened>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof postOpened>>,
-          TError,
-          Awaited<ReturnType<typeof postOpened>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function usePostOpened<TData = Awaited<ReturnType<typeof postOpened>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary 前回開いた日時を返し、今の日時に書き換える
- */
-
-export function usePostOpened<TData = Awaited<ReturnType<typeof postOpened>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getPostOpenedQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

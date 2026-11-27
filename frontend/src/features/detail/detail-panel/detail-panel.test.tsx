@@ -216,4 +216,81 @@ describe("DetailPanel", () => {
     if (expected) expect(panel).toHaveAttribute("data-raised");
     else expect(panel).not.toHaveAttribute("data-raised");
   });
+
+  // 案を選ぶと案の選択を溜め、選び直すと書き換え、取り消すと削除する（正常系）
+  test("detail_panel_when_choose_option", async () => {
+    // 準備
+    const user = userEvent.setup();
+    const calls: { method: string; path: string; body: unknown }[] = [];
+    let items: { id: string; target: string; loc: null; thread: null; body: string | null; choice: { key: string }; created: string }[] = [];
+    server.use(
+      http.get("*/api/comments", () => HttpResponse.json({ items, drafts: [] })),
+      http.post("*/api/comments", async ({ request }) => {
+        const body = (await request.json()) as { target: string; choice: { key: string } };
+        calls.push({ method: "POST", path: "/api/comments", body });
+        items = [{ id: "C-1", target: body.target, loc: null, thread: null, body: null, choice: body.choice, created: "2026-11-04T02:21:00+00:00" }];
+        return HttpResponse.json({ id: "C-1", created: "2026-11-04T02:21:00+00:00", count: 1 }, { status: 201 });
+      }),
+      http.patch("*/api/comments/:id", async ({ params, request }) => {
+        const body = (await request.json()) as { choice: { key: string } };
+        calls.push({ method: "PATCH", path: `/api/comments/${String(params["id"])}`, body });
+        items = items.map((item) => ({ ...item, choice: body.choice, body: null }));
+        return HttpResponse.json({ id: params["id"], body: null, loc: null, choice: body.choice });
+      }),
+      http.delete("*/api/comments/:id", ({ params }) => {
+        calls.push({ method: "DELETE", path: `/api/comments/${String(params["id"])}`, body: null });
+        const removed = items[0];
+        items = [];
+        return HttpResponse.json({ ...removed, count: 0 });
+      }),
+    );
+    stubRecords({ decisions: [{ ...decision, options: [{ key: "A", content: "案 A" }, { key: "B", content: "案 B" }] }], bodies: { "docs/D-1.md": "本文" } });
+    renderRoute("/?tab=decisions&id=D-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    // 実行（案 A を選んで確定する）
+    await user.click(within(panel).getByRole("button", { name: "案 A を選ぶ" }));
+    await user.click(within(panel).getByRole("button", { name: "この案を選ぶ" }));
+    // 実行（案 B を選び直す）
+    await user.click(await within(panel).findByRole("button", { name: "案 B を選ぶ" }));
+    await user.click(within(panel).getByRole("button", { name: "この案を選ぶ" }));
+    // 実行（選択を取り消す）
+    await user.click(await within(panel).findByRole("button", { name: "選択を取り消す" }));
+    // 検証
+    await waitFor(() =>
+      expect(calls).toEqual([
+        { method: "POST", path: "/api/comments", body: { target: "D-1", choice: { key: "A" } } },
+        { method: "PATCH", path: "/api/comments/C-1", body: { choice: { key: "B" }, body: null } },
+        { method: "DELETE", path: "/api/comments/C-1", body: null },
+      ]),
+    );
+  });
+
+  // 記録の利用者の選択を送信済みで出し、決定済みと差分の表示では選ぶ操作を出さない（正常系）
+  test.each([
+    { name: "user_choice", url: "/?tab=decisions&id=D-1", sent: true },
+    { name: "decided", url: "/?tab=decisions&id=D-2", sent: false },
+    { name: "diff", url: "/?tab=decisions&id=D-1&diff=V-2", sent: false },
+  ])("detail_panel_when_user_choice ($name)", async ({ url, sent }) => {
+    // 準備
+    const options = [{ key: "A", content: "案 A" }, { key: "B", content: "案 B" }];
+    stubRecords({
+      decisions: [
+        { ...decision, options, user_choice: { key: "B", at: "2026-11-03T00:00:00+00:00" } },
+        { id: "D-2", title: "D-2の題", status: "決定済み", options: [{ key: "A", content: "案 A", adopted: true }, { key: "B", content: "案 B" }] },
+      ],
+      bodies: { "docs/D-1.md": "今の行\n" },
+      changes,
+    });
+    // 実行
+    renderRoute(url);
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    await within(panel).findByText("案 B");
+    // 検証
+    if (sent) {
+      expect(within(panel).getByText("（送信済み）")).toBeInTheDocument();
+      expect(within(panel).getByText("選択済み").closest("span")).not.toHaveClass("border-dashed");
+    }
+    expect(within(panel).queryByRole("button", { name: "この案を選ぶ" })).not.toBeInTheDocument();
+    if (!sent) expect(within(panel).queryByRole("button", { name: /^案 [AB] を選ぶ$/ })).not.toBeInTheDocument();
+  });
 });

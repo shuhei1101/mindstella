@@ -1,0 +1,31 @@
+confirmations:
+  - topic: '#363 案を選ぶ操作の置き場所'
+    decision: 検討事項の詳細の案のカードの下に「この案を選ぶ」のボタンを配置し、押すと一言の入力（任意）と確定を出す。選んだ案は破線の枠と「選択済み（未送信）」の札にし、一言を編集・選択を取り消すを出す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 2534cf13
+    thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4716891900
+  - topic: '#363 案の選択を含むときのペインへ入力する文面'
+    decision: コメントと一緒なら `[mindstella] ユーザーからのコメントが {n} 件と案の選択が {m} 件届きました。再読み込みしてください。`、案の選択だけなら `[mindstella] ユーザーからの案の選択が {m} 件届きました。再読み込みしてください。`（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 1169657e
+    thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4717209098
+  - topic: '#363 案の選択のまとまりの説明'
+    decision: 変更履歴の一覧のまとまりの説明を「画面からの案の選択」にする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 1169657e
+    thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4717209687
+  - topic: '#363 送信済みの案の選択の見せ方'
+    decision: 札は送信前も送信済みも「選択済み」だけにしてカッコの文字を出さず、送信前は枠線と札の線を破線、送信済みは実線にして分ける。送信済みは一言を文字だけ出し、一言を編集・選択を取り消すを出さない（案 A の見せ方から札の文言を変えた）
+    decided_by: reply
+    approver: shuhei1101
+    commit: 806f09dc
+    thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4718643655
+  - topic: '#363 レビュー中の書き込みの案の選択の行'
+    decision: 行の頭の札を「案の選択」にし、検討事項の ID とタイトルを並べる。本文の上に「案 {記号}」と選んだ案の中身を 1 行で出し、一言があれば本文として、無ければ「一言なし」を出す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: d5618e05
+    thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4719113733

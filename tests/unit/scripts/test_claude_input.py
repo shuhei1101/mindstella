@@ -319,6 +319,7 @@ def test_enter_when_pane_lock(monkeypatch: pytest.MonkeyPatch) -> None:
         target: claude_input.InputTarget | None,
         count: int,
         *,
+        choices: int = 0,
         pane_lock: threading.Lock | None,
         paste_lock: threading.Lock,
     ) -> bool:
@@ -596,6 +597,31 @@ def test_input_text() -> None:
     result = claude_input.input_text(3)
     # 検証
     assert result == TEXT
+
+
+@pytest.mark.parametrize(
+    ("count", "choices", "expected"),
+    [
+        pytest.param(
+            2,
+            3,
+            "[mindstella] ユーザーからのコメントが 2 件と案の選択が 3 件届きました。再読み込みしてください。",
+            id="mixed",
+        ),
+        pytest.param(
+            0,
+            3,
+            "[mindstella] ユーザーからの案の選択が 3 件届きました。再読み込みしてください。",
+            id="choices_only",
+        ),
+    ],
+)
+def test_input_text_when_choices(count: int, choices: int, expected: str) -> None:
+    """案の選択を含むときは案の選択の件数を入れた文面にする（正常系）。"""
+    # 準備・実行
+    result = claude_input.input_text(count, choices=choices)
+    # 検証
+    assert result == expected
 
 
 def test_snapshot_sizes(tmp_path: Path) -> None:

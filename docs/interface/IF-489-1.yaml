@@ -281,7 +281,7 @@ response:
     description: '`mindstella`。Claude Code の中のツールの名前は `mcp__plugin_mindstella_mindstella__{ツール}` になる'
   - name: ツール
     type: list[str]
-    description: '`next_id`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`pending`・`check`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`・`server_status`・`server_stop`・`workspaces`・`workspace`・`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`・`reopen_workspace`・`delete_workspace`・`update_workspace`'
+    description: '`next_id`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`user_choices`・`commit`・`pending`・`check`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`・`server_status`・`server_stop`・`workspaces`・`workspace`・`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`・`reopen_workspace`・`delete_workspace`・`update_workspace`'
   - name: 結果
     type: CallToolResult
     description: ツールの結果。構造化の結果（`structuredContent`）に JSON のオブジェクトを 1 個入れ、同じ JSON を文字列の本文（`content` の text）にも入れる

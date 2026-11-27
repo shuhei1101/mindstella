@@ -13,6 +13,7 @@ import { RemovedBand } from "@/shared/components/removed-band";
 import { Table, type Row, type TableColumn } from "@/shared/components/table";
 import { Button } from "@/shared/components/ui/button";
 import { ViewSwitch, type View } from "@/shared/components/view-switch";
+import { isChoice, type ReviewItem } from "@/shared/core/comments";
 import { removedOf } from "@/shared/core/diff";
 import { favoritesFirst, favoritesOnly } from "@/shared/core/favorites";
 import { NEW_ID_PREFIX, type ScreenEdit } from "@/shared/core/edits";
@@ -203,8 +204,9 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   const edit = useScreenEdit(kind, point !== null || isEmbedded(), onAdd);
   const counts = useMemo(() => {
     const result: Record<string, number> = {};
-    for (const { target } of (comments.data?.status === 200 ? comments.data.data.items : [])) {
-      if (typeof target === "string") result[target] = (result[target] ?? 0) + 1;
+    // 案の選択は詳細パネルの件数と揃えて数えない
+    for (const item of comments.data?.status === 200 ? ((comments.data.data.items as unknown as ReviewItem[] | undefined) ?? []) : []) {
+      if (typeof item.target === "string" && !isChoice(item)) result[item.target] = (result[item.target] ?? 0) + 1;
     }
     return result;
   }, [comments.data]);

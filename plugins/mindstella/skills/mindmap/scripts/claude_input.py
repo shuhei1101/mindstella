@@ -27,6 +27,15 @@ logger = logging.getLogger(__name__)
 # `{count}` に件数を入れて貼る 1 行。`[mindstella]` は `session` が利用者の発言と見分ける印
 INPUT_TEMPLATE = "[mindstella] ユーザーからのコメントが {count} 件届きました。再読み込みしてください。"
 
+# コメントと案の選択を一緒に送信したときと、案の選択だけを送信したときに貼る 1 行
+MIXED_INPUT_TEMPLATE = (
+    "[mindstella] ユーザーからのコメントが {count} 件と案の選択が {choices} 件届きました。"
+    "再読み込みしてください。"
+)
+CHOICE_INPUT_TEMPLATE = (
+    "[mindstella] ユーザーからの案の選択が {choices} 件届きました。再読み込みしてください。"
+)
+
 # 貼り付けの鍵を取ってから、生きているかの確かめと tmux の 3 つのコマンドを打ち切るまでの秒数
 PASTE_DEADLINE_SEC = 0.5
 
@@ -145,7 +154,7 @@ class InputTargets:
         with self._guard:
             return self._targets.get(resolved)
 
-    def enter(self, root: Path, count: int) -> bool:
+    def enter(self, root: Path, count: int, *, choices: int = 0) -> bool:
         """そのワークスペースの宛先へ、届いた件数の 1 行を入力し、会話の記録に入ったかを返す。"""
         target = self.target_of(root)
         # MindStella のセッションがクローズ待ちか止まっている: 貼らない
@@ -156,12 +165,16 @@ class InputTargets:
             return False
         # 宛先が無い: ペインの鍵を作らない
         if target is None or isinstance(target, str):
-            return enter_to_claude(None, count, pane_lock=None, paste_lock=self._paste_lock)
+            return enter_to_claude(
+                None, count, choices=choices, pane_lock=None, paste_lock=self._paste_lock
+            )
         with self._guard:
             pane_lock = self._pane_locks.setdefault((target.socket, target.pane), threading.Lock())
-        return enter_to_claude(target, count, pane_lock=pane_lock, paste_lock=self._paste_lock)
+        return enter_to_claude(
+            target, count, choices=choices, pane_lock=pane_lock, paste_lock=self._paste_lock
+        )
 
-    def enter_or_restart(self, root: Path, count: int) -> tuple[bool, bool]:
+    def enter_or_restart(self, root: Path, count: int, *, choices: int = 0) -> tuple[bool, bool]:
         """宛先へ入力し、MindStella のセッションが落ちていれば起動し直してから入力する。
 
         `(entered, restarted)` を返す。
@@ -171,18 +184,18 @@ class InputTargets:
             current = state.read_session(self._state_root, self._workspace_id(root.resolve()))
         # MindStella のセッションが無い: 起動し直さずに入力する
         if current is None:
-            return self.enter(root, count), False
+            return self.enter(root, count, choices=choices), False
         # 起動し直しの途中・クローズ待ち・起動し直せない: 入力せずスレッドに残す
         if current.status == "restarting" or current.close_pending or self._restarter is None:
             return False, False
         # 貼れる状態: 入力できればそのまま（落ちていて貼れなければ起動し直す）
         if current.status == DELIVERABLE_STATUS:
-            entered = self.enter(root, count)
+            entered = self.enter(root, count, choices=choices)
             if entered:
                 return True, False
         if not self._restarter(root):
             return False, False
-        return self.enter(root, count), True
+        return self.enter(root, count, choices=choices), True
 
 
 def mindstella_session_target(
@@ -363,9 +376,15 @@ def transcript_dirs(target: InputTarget) -> list[Path]:
     return [path for path in projects.iterdir() if path.name.startswith(prefix)]
 
 
-def input_text(count: int) -> str:
-    """件数を入れた `INPUT_TEMPLATE`（改行を含まない 1 行）を返す。"""
-    return INPUT_TEMPLATE.format(count=count)
+def input_text(count: int, *, choices: int = 0) -> str:
+    """件数を入れた入力の 1 行（改行を含まない）を返す。案の選択があれば案の選択の件数も入れる。"""
+    # 案の選択が無い
+    if choices == 0:
+        return INPUT_TEMPLATE.format(count=count)
+    # 案の選択だけ
+    if count == 0:
+        return CHOICE_INPUT_TEMPLATE.format(choices=choices)
+    return MIXED_INPUT_TEMPLATE.format(count=count, choices=choices)
 
 
 def snapshot_sizes(folders: list[Path]) -> dict[Path, int]:
@@ -471,6 +490,7 @@ def enter_to_claude(
     target: InputTarget | None,
     count: int,
     *,
+    choices: int = 0,
     pane_lock: threading.Lock | None,
     paste_lock: threading.Lock,
     run: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
@@ -485,7 +505,7 @@ def enter_to_claude(
         return False
     # 同じペインへ同時に送られた入力と確かめを重ねない
     with pane_lock:
-        text = input_text(count)
+        text = input_text(count, choices=choices)
         sizes = snapshot_sizes(transcript_dirs(target))
         # 名前の付いたバッファを共有するため、生きているかの確かめと貼り付けだけを貼り付けの鍵の中で行う
         with paste_lock:

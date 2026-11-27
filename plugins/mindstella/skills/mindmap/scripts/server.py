@@ -63,6 +63,7 @@ TOOL_NAMES = (
     "adopt",
     "edit_option",
     "changes_since_read",
+    "user_choices",
     "commit",
     "pending",
     "check",
@@ -575,6 +576,13 @@ def build_server(
     )
     def changes_since_read(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
         return write(workspace, session, commands.run_changes_since_read)
+
+    @server.tool(
+        name="user_choices",
+        description="利用者がプレビューで案を選んで送信した検討事項（選んだ案・一言・送信した日時）を、送信した日時の古い順に返す",
+    )
+    def user_choices(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
+        return read(workspace, session, commands.run_user_choices)
 
     @server.tool(
         name="commit",
