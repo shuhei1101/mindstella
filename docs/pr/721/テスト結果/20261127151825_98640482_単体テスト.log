@@ -1,0 +1,32 @@
+# 単体テスト（Red）: 結合テストで見つけたカードのマーカーの不具合（テストコードの commit 98640482）
+$ npx vitest run frontend/src/shared/components/record-text.test.tsx
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-session-keep-on-compact-and-favorites
+
+ ❯ frontend/src/shared/components/record-text.test.tsx (6 tests | 1 failed) 175ms
+   ❯ RecordText (6)
+     × record_text_marker_card_click_when_favorite 15ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/components/record-text.test.tsx > RecordText > record_text_marker_card_click_when_favorite
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ frontend/src/shared/components/record-text.test.tsx:97:20
+     95|     await userEvent.click(marker);
+     96|     // 検証
+     97|     expect(onCard).toHaveBeenCalledTimes(1);
+       |                    ^
+     98|     expect(onStar).not.toHaveBeenCalled();
+     99|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  15:18:25
+   Duration  882ms (environment 52%, tests 22%, setup 10%, import 8%, transform 7%, worker 1%)
+
+exit=1
+
+fail の理由: record-text.tsx が [data-card] の中の最初のボタン（お気に入りの星）を押すため（実装の誤り）

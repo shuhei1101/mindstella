@@ -1,0 +1,15 @@
+$ ruff check plugins tests
+All checks passed!
+exit=0
+$ npm run typecheck
+
+> typecheck
+> tsc -p frontend
+
+exit=0
+$ npm run lint
+
+> lint
+> eslint frontend/src
+
+exit=0

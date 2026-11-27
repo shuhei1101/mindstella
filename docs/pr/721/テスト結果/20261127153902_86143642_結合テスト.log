@@ -1,0 +1,110 @@
+# 結合テスト: 86143642
+
+## 結合テスト（バック）（TL-3）
+$ pytest tests/integration/plugin/test_plugin_loading.py
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/plugin/test_plugin_loading.py .                        [100%]
+
+============================== 1 passed in 2.52s ===============================
+exit=0
+$ pytest tests/integration/plugin/test_session_hook.py
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 7 items
+
+tests/integration/plugin/test_session_hook.py .......                    [100%]
+
+============================== 7 passed in 3.53s ===============================
+exit=0
+$ pytest tests/integration/server/test_session_events.py
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 4 items
+
+tests/integration/server/test_session_events.py ....                     [100%]
+
+============================== 4 passed in 4.90s ===============================
+exit=0
+$ pytest tests/integration/server/test_restart_session.py
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 10 items
+
+tests/integration/server/test_restart_session.py ..........              [100%]
+
+============================= 10 passed in 30.02s ==============================
+exit=0
+$ pytest tests/integration/server/test_resume.py
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 3 items
+
+tests/integration/server/test_resume.py ...                              [100%]
+
+============================== 3 passed in 4.83s ===============================
+exit=0
+
+## 結合テスト（フロント）（TL-4）: 部品
+$ pytest tests/integration/storybook_react/test_favorite_toggle_stories.py tests/integration/storybook_react/test_item_card_stories.py tests/integration/storybook_react/test_filter_chips_stories.py tests/integration/storybook_react/test_table_stories.py tests/integration/storybook_react/test_settings_panel_stories.py
+tests/integration/storybook_react/test_item_card_stories.py .            [ 88%]
+tests/integration/storybook_react/test_table_stories.py ...........      [100%]
+
+============================= 99 passed in 53.24s ==============================
+exit=0
+
+## 結合テスト（フロント）（TL-4）: 画面・プレビューを開く（tests/integration/preview の全件）
+$ pytest tests/integration/preview
+E               - cell "10/01 09:00":
+E                 - time: 10/01 09:00
+E       - complementary "詳細":
+E         - separator "詳細パネルの幅"
+E         - text: 検討事項 D-1
+E         - link "D-1":
+E           - /url: "#id=D-1"
+E         - text: の題
+E         - button "編集する"
+E         - button "D-1 のコメントの一覧を開く"
+E         - button "前の項目へ戻る" [disabled]: ←
+E         - button "次の項目へ進む" [disabled]: →
+E         - button "全画面表示"
+E         - button "詳細を閉じる"
+E         - region "詳細の本文":
+E           - tablist "詳細の表示":
+E             - tab "本文" [selected]
+E             - tab "関連"
+E             - tab "コメント"
+E           - tabpanel "本文":
+E             - text: 未決定
+E             - heading "D-1の題" [level=2]:
+E               - link "D-1":
+E                 - /url: "#id=D-1"
+E               - text: の題
+E             - term: 更新日
+E             - definition: 2026-10-01T00:00:00+00:00
+E             - heading "案" [level=3]
+E             - text: 案 A
+E             - paragraph: 案 A
+E         - text: D-1 へのコメント
+E         - button "コメントの入力を閉じる" [expanded]
+E         - textbox "D-1 へのコメント"
+E         - button "音声で入力"
+E         - button "レビューに追加"
+
+tests/integration/preview/test_spa_open.py:171: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_spa_open.py::test_normal_when_records_changed_while_typing[chromium]
+1 failed, 547 passed in 970.99s (0:16:10)
+exit=1
+
+## fail した 1 件を base ブランチで回した出力
+# base ブランチ（develop c813669e）で同じテストを回した出力
+$ pytest tests/integration/preview/test_spa_open.py::test_normal_when_records_changed_while_typing
+E       AssertionError: Locator expected to be visible
+E       Actual value: hidden 
+E       Call log:
+E         - Expect "to_be_visible" with timeout 5000ms
+E         - waiting for locator("main#main").get_by_text("D-1の題").first
+E           14 × locator resolved to <span hidden="" id="table-ids-D-1">D-1の題（D-1） 検討事項 未決定</span>
+E              - unexpected value "hidden"
+E       
+exit=1
+
+test_normal_when_records_changed_while_typing は base ブランチ（develop）でも同じ箇所（隠れた span を指す get_by_text('D-1の題').first）で fail する既存の不具合で、この作業 PR の変更による退行ではない
