@@ -39,6 +39,14 @@ export const Chosen: Story = { render: () => <Interactive initial={{ key: "B" }}
 /** 案 B を一言つきで選んだ */
 export const ChosenWithNote: Story = { render: () => <Interactive initial={{ key: "B", note: "費用を優先する" }} /> };
 
+/** 「この案を選ぶ」を押した後。一言（任意）の入力と「キャンセル」「この案を選ぶ」を出す */
+export const Editing: Story = {
+  render: () => <Interactive initial={null} />,
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector<HTMLButtonElement>('button[aria-label="案 B を選ぶ"]')?.click();
+  },
+};
+
 /** 案 B を送信済み（記録の利用者の選択）。枠線と「選択済み」の札の線を実線にし、一言を編集・取り消すを出さない。ほかの案は選び直せる */
 export const Sent: Story = { render: () => <Interactive initial={{ key: "B", note: "費用を優先する", sent: true }} /> };
 
