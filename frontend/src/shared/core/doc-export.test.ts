@@ -1,3 +1,4 @@
+import { JSDOM } from "jsdom";
 import { describe, expect, test } from "vitest";
 
 import { buildDocHtml, stripEmbeddedHtml } from "@/shared/core/doc-export";
@@ -13,6 +14,27 @@ describe("buildDocHtml", () => {
     expect(html).toContain("本文の文");
     expect(html).toContain(".a{}");
     expect(html).toContain("var a;");
+  });
+
+  // 書き出した HTML は外部のリンクを新規タブで開く（正常系）
+  test("build_doc_html_external_links", async () => {
+    // 準備
+    const empty = { decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { ready: [] } } as unknown as MindmapData;
+    const html = buildDocHtml({ item: { id: "A-1", title: "題" } as Item, source: "本文", index: buildIndex(empty), assets: { css: "", js: "" } });
+    const dom = new JSDOM(html, { url: "file:///tmp/A-1.html", runScripts: "outside-only" });
+    // jsdom は Blob の URL の import() を持たないため、起動のスクリプトの読み込みを、外部と項目の ID のリンクを描く mount の代わりに置き換えて流す
+    const boot = [...dom.window.document.querySelectorAll("script:not([type])")].map((script) => script.textContent).join("\n");
+    const stub = '({ mount: (root) => { root.innerHTML = \'<a href="https://example.com/">外部</a><a href="#id=D-1">D-1</a>\'; } })';
+    dom.window.URL.createObjectURL = () => "blob:doc-mdmark";
+    dom.window.URL.revokeObjectURL = () => undefined;
+    // 実行
+    await (dom.window.eval(boot.replace("await import(url)", stub)) as Promise<void>);
+    // 検証
+    const external = dom.window.document.querySelector('a[href="https://example.com/"]');
+    const internal = dom.window.document.querySelector('a[href="#id=D-1"]');
+    expect(external?.getAttribute("target")).toBe("_blank");
+    expect(external?.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(internal?.hasAttribute("target")).toBe(false);
   });
 });
 

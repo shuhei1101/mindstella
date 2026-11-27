@@ -5,6 +5,7 @@ import {
   commentNumber,
   hasUnseen,
   isBlockedReply,
+  itemThreadCount,
   pendingThreads,
   reviewLabel,
   threadCounts,
@@ -181,5 +182,19 @@ describe("choiceOf", () => {
     // 実行・検証
     expect(choiceOf(items, "D-1")?.id).toBe("C-2");
     expect(choiceOf(items, "D-9")).toBeUndefined();
+  });
+});
+
+describe("itemThreadCount", () => {
+  // 項目に向けたスレッドと新規スレッドを数える（正常系）
+  test.each([
+    { id: "D-1", expected: 3 },
+    { id: "D-3", expected: 0 },
+  ])("item_thread_count: $id", ({ id, expected }) => {
+    // 準備
+    const threads = [thread({ id: "TH-1", target: "D-1" }), thread({ id: "TH-2", target: "D-1", status: "closed" }), thread({ id: "TH-3", target: "D-2" })];
+    const pending = [item({ id: "C-1", target: "D-1" }), item({ id: "C-2", target: "D-1", thread: "TH-1" }), item({ id: "C-3", target: "D-1", choice: { key: "A" } })];
+    // 実行・検証
+    expect(itemThreadCount({ threads, pending, id })).toBe(expected);
   });
 });
