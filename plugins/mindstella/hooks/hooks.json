@@ -68,16 +68,6 @@
           }
         ]
       }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/session_hook.py\" pre-compact"
-          }
-        ]
-      }
     ]
   }
 }
