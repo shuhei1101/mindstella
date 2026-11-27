@@ -207,7 +207,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
               <OutcomeText outcome={outcome} />
             </p>
           )}
-          <ul className="m-0 grid min-h-0 flex-1 list-none content-start gap-2 overflow-y-auto p-3">
+          <ul className="m-0 grid min-h-0 flex-1 list-none grid-cols-1 content-start gap-2 overflow-y-auto p-3">
             {/* eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ */}
             {rows.map((item) => {
               const label = reviewLabel(item);
@@ -236,7 +236,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
               const staleReason = stale[item.id];
               const replyTo = item.thread === null ? null : (threads.find((one) => one.id === item.thread) ?? null);
               return (
-                <li key={item.id} data-comment={item.id} data-highlight={highlight !== null && (item.thread === highlight || item.id === highlight) ? "" : undefined} className={cn("grid gap-1 rounded-card border p-2", staleReason === undefined ? "border-border" : "border-st-review", highlight !== null && (item.thread === highlight || item.id === highlight) && "bg-accent")}>
+                <li key={item.id} data-comment={item.id} data-highlight={highlight !== null && (item.thread === highlight || item.id === highlight) ? "" : undefined} className={cn("grid min-w-0 grid-cols-1 gap-1 rounded-card border p-2", staleReason === undefined ? "border-border" : "border-st-review", highlight !== null && (item.thread === highlight || item.id === highlight) && "bg-accent")}>
                   <div className="flex items-center gap-2 text-small">
                     <Checkbox aria-label={choice ? `${label}を送信する` : item.thread === null ? `${item.target ?? "項目を指さない"}${item.target === null ? "コメントを送信する" : " へのコメントを送信する"}` : `${item.thread} への返信を送信する`} checked={!blocked && !unchecked.has(item.id)} disabled={blocked} onChange={() => { toggle(item.id); }} />
                     <span data-part="kind" className="shrink-0 rounded-control border border-border px-1.5 whitespace-nowrap">{choice ? "案の選択" : item.thread === null ? "新規スレッド" : "返信"}</span>
@@ -275,7 +275,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                     )}
                   </div>
                   {choice ? (
-                    <p data-part="choice" className="m-0 text-small">
+                    <p data-part="choice" className="m-0 min-w-0 text-small wrap-break-word">
                       <span className="font-medium">{`案 ${item.choice?.key ?? ""}`}</span>
                       {optionContent(item) === null ? null : <span className="ml-1.5 text-muted-foreground">{optionContent(item)}</span>}
                     </p>
