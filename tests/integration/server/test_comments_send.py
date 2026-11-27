@@ -632,3 +632,38 @@ def test_normal_when_mindstella_session(
     assert second.json()["entered"] is False
     assert len(pane.lines()) == 1
     assert [item["id"] for item in read_threads(root)] == ["TH-1", "TH-2"]
+
+
+def test_normal_when_choices_sent(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """案の選択を検討事項の利用者の選択へ移し、スレッドは作らない（正常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+    root = make_workspace(make_item("D-1", options=options), make_item("D-2", options=options))
+    without_note = make_comment("C-1", choice={"key": "B"})
+    del without_note["body"]
+    with_note = make_comment("C-2", target="D-2", choice={"key": "B"}, body="費用を優先する")
+    write_comments(root, without_note, with_note)
+    url = serve_preview(root)
+    # 実行
+    result = post_json(url, SEND_PATH, {"ids": ["C-1", "C-2"]})
+    # 検証
+    assert result.status == 201
+    payload = result.json()
+    assert [(row["comment"], row["decision"], row["thread"], row["post"]) for row in payload["items"]] == [
+        ("C-1", "D-1", None, None),
+        ("C-2", "D-2", None, None),
+    ]
+    first, second = _read(root, "decisions.yaml")["items"]
+    assert first["user_choice"] == {"key": "B", "at": payload["sent"]}
+    assert (second["user_choice"]["key"], second["user_choice"]["note"]) == ("B", "費用を優先する")
+    for item in (first, second):
+        assert item["status"] == "未決定"
+        assert not any(option.get("adopted") for option in item["options"])
+    assert not threads_path(root).exists()
+    assert _read(root, "comments.yaml")["items"] == []

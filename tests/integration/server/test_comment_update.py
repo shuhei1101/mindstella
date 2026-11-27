@@ -132,3 +132,32 @@ def test_error_when_comment_not_found(
     assert result.status == 404
     assert "C-9" in result.json()["detail"]
     assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
+
+
+def test_normal_when_choice_changed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """案の選択の記号と一言を書き換え、向けた検討事項は変えない（正常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+    root = make_workspace(make_item("D-1", options=options))
+    choice = make_comment("C-1", choice={"key": "A"})
+    del choice["body"]
+    write_comments(root, choice)
+    url = serve_preview(root)
+    decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
+    # 実行
+    result = send_json(
+        url, "PATCH", "/api/comments/C-1", {"choice": {"key": "B"}, "body": "費用を優先する"}
+    )
+    # 検証
+    assert result.status == 200
+    payload = result.json()
+    assert (payload["choice"]["key"], payload["body"]) == ("B", "費用を優先する")
+    [item] = _read_comments(root)["items"]
+    assert (item["target"], item["choice"], item["body"]) == ("D-1", {"key": "B"}, "費用を優先する")
+    assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before

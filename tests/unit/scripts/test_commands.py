@@ -1592,3 +1592,16 @@ def test_run_user_choices_when_none(make_workspace: MakeWorkspace, make_item: Ma
     payload = commands.run_user_choices(root)
     # 検証
     assert payload == {"items": []}
+
+
+def test_run_user_choices_when_rule_mismatch(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """利用者の選択が案に無い記号を指すと返却しない（異常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", options=CHOICE_OPTIONS, user_choice={"key": "Z", "at": "2026-10-01T10:00:00+00:00"})
+    )
+    # 実行
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        commands.run_user_choices(root)
+    # 検証
+    assert exc_info.value.lines[0].startswith("decisions.yaml: items[0].user_choice:")

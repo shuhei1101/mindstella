@@ -459,12 +459,15 @@ files:
   related:
   - to: IF-540-1
     type: tests
-- path: integration/server/test_opened.py
-  name: 前回開いた日時の結合テスト
-  description: POST /api/opened（前回開いた日時）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+- path: integration/server/test_user_choices.py
+  name: user_choicesの結合テスト
+  description: user_choices（利用者が案を選んだ検討事項の一覧）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:結合テスト
+  related:
+  - to: IF-722-1
+    type: tests
 - path: integration/server/test_pending.py
   name: まだまとめていない変更の結合テスト
   description: pending（まだまとめていない変更）の結合テスト。テストの期待値や準備を確認・修正するときに読む。

@@ -366,3 +366,59 @@ def test_error_when_thread_closed(
     assert result.status == 409
     assert "クローズ" in result.json()["detail"]
     assert not (root / RECORD_DIR / "comments.yaml").exists()
+
+
+# 案 A・B を持つ未決定の検討事項の案
+CHOICE_OPTIONS = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+
+
+def test_normal_when_choice(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """検討事項の案の選択を一言つきで溜め、検討事項は書き換えない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=CHOICE_OPTIONS))
+    url = serve_preview(root)
+    decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
+    # 実行
+    result = post_json(
+        url, COMMENTS_PATH, {"target": "D-1", "choice": {"key": "B"}, "body": "費用を優先する"}
+    )
+    # 検証
+    assert result.status == 201
+    payload = result.json()
+    assert (payload["id"], payload["count"]) == ("C-1", 1)
+    items = _read_comments(root)["items"]
+    assert [
+        (item["id"], item["target"], item["choice"], item["body"]) for item in items
+    ] == [("C-1", "D-1", {"key": "B"}, "費用を優先する")]
+    assert "loc" not in items[0]
+    assert "thread" not in items[0]
+    assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
+
+
+def test_error_when_choice_exists(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """同じ検討事項への案の選択が既にレビュー中にあれば溜めない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=CHOICE_OPTIONS))
+    choice = make_comment("C-1", choice={"key": "A"})
+    del choice["body"]
+    write_comments(root, choice)
+    url = serve_preview(root)
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
+    # 実行
+    result = post_json(url, COMMENTS_PATH, {"target": "D-1", "choice": {"key": "B"}})
+    # 検証
+    assert result.status == 409
+    detail = result.json()["detail"]
+    assert "D-1" in detail
+    assert "C-1" in detail
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
