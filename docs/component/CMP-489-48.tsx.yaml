@@ -125,6 +125,10 @@ events:
     when: タグの列のセルのタグを押したとき（`onSelectTag` を指定したときだけタグをボタンにする）
     value: '`onSelectTag(name)`（引数はタグの名前）'
     description: 使う側がそのタグを `filters` の `tags` に加え（既にあれば何もしない）、詳細パネルは開かない
+  - name: お気に入りだけの表示の解除
+    when: チップの「お気に入りのみ」の × か「すべて解除」を押したとき（`onClearFavoritesOnly` を渡したときだけ）
+    value: '`onClearFavoritesOnly()`'
+    description: チップ（部品『絞り込みの条件のチップ』）へそのまま渡す。使う側が `favorites_only` の上書きを削除する
 states:
   - name: Default
     description: 通常。並べ替えのマーカーは見出しにホバーかフォーカスしたときだけ出す。チップの行の右端に列のアイコンと「列の表示」のボタンを置き、チップの行と表の間を 12px 空ける
@@ -215,6 +219,25 @@ states:
         value: '{"key": "updated", "dir": "desc"}'
   - name: TitleIdMarkers
     description: タイトルに記録にある D-1 と記録に無い D-99 を持つ行。D-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す。押すとタイトルを押したときと同じく詳細を開く
+  - name: FavoriteColumn
+    description: 一番左の星の列（見出し「お気に入り」、`fixed`）。お気に入りの D-2 の星を塗り、ほかの行は線だけ。「列の表示」で外せない
+    args:
+      - name: columns
+        value: 星の列（`favoriteColumn`、お気に入りは D-2）と検討事項の列
+  - name: FavoriteColumnSortedAsc
+    description: 星の列で昇順。お気に入りの D-2 が先頭で、残りは渡した順のまま。見出しの `aria-sort="ascending"`
+    args:
+      - name: columns
+        value: FavoriteColumn と同じ
+      - name: sort
+        value: '{"key": "favorite", "dir": "asc"}'
+  - name: FavoriteColumnSortedDesc
+    description: 星の列で降順。お気に入りの D-2 が末尾で、見出しの `aria-sort="descending"`
+    args:
+      - name: columns
+        value: FavoriteColumn と同じ
+      - name: sort
+        value: '{"key": "favorite", "dir": "desc"}'
 accessibility:
   - 並べ替え中の列の見出しに `aria-sort`（ascending・descending）を付け、ほかは `none`
   - ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列}まで固定` の読み上げ名を付ける
@@ -235,3 +258,5 @@ uses:
     how: タグの列のセル
   - component: CMP-701-1#
     how: 行のタイトルを `mode` を `marker` にして描き、`descriptionId` をタイトルのボタンの `aria-describedby` に指定する
+  - component: CMP-721-1#
+    how: 星の列のセル（列の定義の `cell` が描く）

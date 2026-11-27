@@ -44,6 +44,16 @@ args:
     type: 関数
     required: true
     description: タイトルと関係する項目のタイトルの中の ID から記録の項目・スレッドを検索する関数。部品『記録の文字』の `lookup` にそのまま指定し、記録にある ID をマーカーにする
+  - name: favorite
+    type: オブジェクト
+    required: false
+    default: なし（星を出さない）
+    description: お気に入りの星。渡すとカードの右上に部品『お気に入りの星』を配置し、タイトルと星が重ならないようカードの右の余白を広げる
+  - name: favorite.on
+    type: 真偽値
+    required: true
+    enabled_when: '`favorite` を渡したとき'
+    description: お気に入りに登録しているか
 events:
   - name: 詳細を開く
     when: タグ以外のカードの所を押したとき
@@ -53,6 +63,10 @@ events:
     when: カードのタグを押したとき（`onSelectTag` を指定したときだけタグを並べる）
     value: '`onSelectTag(name)`（タグの名前。`data-tag`）'
     description: 使う側がそのタグを画面の絞り込みに加える。詳細は開かない
+  - name: お気に入りの登録・解除
+    when: カードの右上の星を押したとき（`favorite` を渡したときだけ）
+    value: '`favorite.onToggle()`'
+    description: 使う側がお気に入りに登録・解除する。詳細は開かない
 states:
   - name: SelectableTags
     description: タグを押せるカード。タグを押すと `onSelectTag` だけが呼ばれ、カードのタグ以外の所を押すと `onOpen` が呼ばれる。カードの外枠は div で、ボタンの入れ子は無い
@@ -81,6 +95,21 @@ states:
     description: 列の幅 240px。日時は「作成 {日時}」と「更新 {日時}」の組ごとに折り返し、カードの外へはみ出さない
   - name: TitleIdMarkers
     description: タイトルに記録にある D-1 と記録に無い D-99、関係する項目のタイトルに D-1 を持つカード。D-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す。押すとカードを押したときと同じく詳細を開く
+  - name: FavoriteOff
+    description: お気に入りに登録していないカード。右上に線だけの星を出す
+    args:
+      - name: favorite
+        value: '{"on": false}'
+  - name: FavoriteOn
+    description: お気に入りに登録したカード。右上に塗った星を出し、星を押すと `favorite.onToggle` だけが呼ばれる
+    args:
+      - name: favorite
+        value: '{"on": true}'
+  - name: FavoriteLongTitle
+    description: 長いタイトルのお気に入りのカード。タイトルは星と重ならずに折り返し、空白の無い長い語もカードの中で折り返す
+    args:
+      - name: favorite
+        value: '{"on": true}'
 uses:
   - component: CMP-489-16#
     how: 押して絞り込めるタグ
@@ -94,6 +123,8 @@ uses:
     how: 種類・状態の文字の行の次の作成日時・更新日時
   - component: CMP-701-1#
     how: タイトルと関係する項目のタイトルを `mode` を `marker` にして描き、`descriptionId` をタイトルのボタンの `aria-describedby` に指定する
+  - component: CMP-721-1#
+    how: カードの右上のお気に入りの星
 accessibility:
   - カードの外枠は `div` にし、タイトルを `button` にして、その押せる範囲をカード全体へ広げる。タグのボタンをタイトルのボタンより前面に置き、ボタンを入れ子にしない
   - 開いている項目のタイトルに `aria-current="true"` を付ける

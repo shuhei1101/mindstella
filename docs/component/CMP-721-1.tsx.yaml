@@ -1,0 +1,44 @@
+title: お気に入りの星
+lead: 項目をお気に入りに登録・解除する星のボタン。カード・ボードのカードの右上と、表の一番左の星の列に配置する。
+implementation: frontend/src/shared/components/favorite-toggle.tsx#FavoriteToggle
+story: Shared/FavoriteToggle
+test_file: tests/integration/storybook_react/test_favorite_toggle_stories.py
+args:
+  - name: title
+    type: 文字列
+    required: true
+    description: 項目のタイトル。読み上げの名前「{タイトル}をお気に入りに登録」に入れる
+  - name: on
+    type: 真偽値
+    required: true
+    description: お気に入りに登録しているか。真のとき塗った星を印の色（`--mark`）で、偽のとき線だけの星を薄い文字色で出す
+  - name: className
+    type: 文字列
+    required: false
+    default: なし
+    description: 使う側が配置する位置（カードの右上の `absolute` など）
+events:
+  - name: 登録・解除
+    when: 星のボタンを押したとき（Enter・Space を含む）
+    value: '`onToggle()`'
+    description: 使う側が端末の保存領域の `favorites` に加えるか削除する。押した操作はカード・行へ伝えず、詳細は開かない
+states:
+  - name: Off
+    description: 登録していない。線だけの星を薄い色で出し、`aria-pressed` は false
+  - name: On
+    description: 登録している。塗った星を印の色で出し、`aria-pressed` は true
+    args:
+      - name: on
+        value: 'true'
+  - name: Focused
+    description: キーボードで移った。フォーカスの輪を出し、Enter で `onToggle` を呼ぶ
+    notes:
+      見せ方: '`play` で Tab で移って Enter を押す'
+accessibility:
+  - '`button` 要素にし、`aria-pressed` で登録しているかを伝える'
+  - 読み上げの名前は登録の有無によらず「{タイトル}をお気に入りに登録」にし、状態は `aria-pressed` で伝える。`title` は「お気に入りに登録」「お気に入りを解除」
+  - 押せる的は 24px 四方。カードのタイトルのボタンがカード全体へ広げた押せる範囲より前面に置き、ボタンを入れ子にしない
+  - 登録しているかを色だけで伝えず、塗った星・線だけの星の形状でも分ける
+refs:
+  - IF-489-70#
+id: CMP-721-1
