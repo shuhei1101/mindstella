@@ -5,7 +5,7 @@ components:
     title: スレッドの見出しのタイトル
     kind: コンポーネント
     usecase: スレッドで話す
-    summary: '`collapsed` が真のとき `truncate` と `title` に全文、偽のとき `wrap-anywhere` で描き、`THREAD_TITLE_LINES`（2）行を超えるときだけ `line-clamp-2` で省略して下に開閉のボタン（`TitleToggle`）を出す。超えるかは `useExceedsLines` が、タイトルの要素の `scrollHeight` を行の高さ × 2（+1px）と比べて決め、`ResizeObserver` で幅が変わるたびに再計測する。開いた間は `max-h-72 overflow-y-auto` で見出しの中でスクロールさせ、タイトルの要素に `tabIndex` 0・`role="region"`・`aria-label` を付ける。開いているか（`open`）は `useState` で持ち、`collapsed` が真の間も保つ。開閉のボタンは `Button`（`ghost`・`h-7`）にし、`pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2` で押せる領域を上下に 8px ずつ広げる。タイトルは `RecordText` の `link` で描く'
+    summary: '`collapsed` が真のとき `truncate` と `title` に全文、偽のとき `wrap-anywhere` で描き、`THREAD_TITLE_LINES`（2）行を超えるときだけ `line-clamp-2` で省略して下に開閉のボタン（`TitleToggle`）を出す。超えるかは `useExceedsLines` が、タイトルの要素の `scrollHeight` を行の高さ × 2（+1px）と比べて決め、`ResizeObserver` で幅が変わるたびに再計測する。開いた間は `max-h-72 overflow-y-auto` で見出しの中でスクロールさせ、タイトルの要素に `tabIndex` 0・`role="region"`・`aria-label` を付ける。開いているか（`open`）は `useState` で持ち、`collapsed` が真の間も保つ。開閉のボタンは `Button`（`ghost`・`h-7`）に `relative` を加えて `::after` の位置の基準をボタンにし、`pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2` で押せる領域を上下に 8px ずつ広げる。タイトルは `RecordText` の `link` で描く'
     refs:
       - CMP-695-4#
     props:
@@ -53,4 +53,5 @@ components:
     container: frontend/src/shared/components/thread-title.tsx
 notes:
   単体テスト: 同じフォルダの `thread-title.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+  押せる領域の確認: 'jsdom は擬似要素の位置を計算しないため、部品設計の結合テスト（`tests/integration/storybook_react/test_thread_title_stories.py`）で、指の端末を模したブラウザ（`has_touch`・`pointer: coarse`）で `FullSixLines` を開き、開閉のボタンの `::after` の矩形がボタンの上下 8px の範囲に収まり、高さが 44px 以上であることを確認する'
 id: MOD-695-4
