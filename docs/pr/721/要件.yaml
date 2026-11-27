@@ -23,16 +23,14 @@ use_cases:
       - docs/scenario/SC-721-1.yaml
   - kind: single
     scenario: docs/scenario/SC-489-49.yaml
-    impact: changed
-    detail: 表の一番左に星の列を追加し、その列で並べ替えられるようにする
-    depends_on:
-      - docs/scenario/SC-721-1.yaml
+    impact: run_only
+    detail: 星の列の並べ替えは SC-721-1 が持ち、表の並べ替え・絞り込み・列の表示の振る舞いは変えないが、表に星の列を足す変更が壊しうるため E2E の対象にする
+    depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-15.yaml
-    impact: following
-    detail: お気に入りの表示の切り替えをワークスペースの既定に含めるかに追随する（置き場所は設計で決める）
-    depends_on:
-      - docs/scenario/SC-489-31.yaml
+    impact: run_only
+    detail: お気に入りの並びと絞り込みの切り替えは端末ごとの上書きだけで、ワークスペースの既定に含めない。表示の設定のパネルを変えるため E2E の対象にする
+    depends_on: []
   - kind: composite
     scenario: docs/scenario/SC-489-51.yaml
     impact: run_only
