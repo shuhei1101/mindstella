@@ -133,3 +133,6 @@ scope_out:
   - item: 部品『Markdownの本文』のストーリー DiffSource の結合テスト `test_diff_source` が、原文の差分のリビジョンの欄（`.mdmark-diff-picker`）を見つけられずに落ちる
     reason: 作業前からある不具合で、develop の時点のストーリーでも同じく落ちる（この作業 PR は差分の表示の本文の描き方を変えていない）
     plan: 未起票
+  - item: スレッドの画面の書き込みの一覧（`ol`）が、書き込みが多くて縦にスクロールするときに axe の scrollable-region-focusable（キーボードでスクロールできない）に当たる
+    reason: 作業前からある一覧の作りで、この作業 PR は一覧のスクロールの規則を変えていない（マージ提案の前の detect_screen_issues で、書き込み 30 件の場面で検出）
+    plan: 未起票
