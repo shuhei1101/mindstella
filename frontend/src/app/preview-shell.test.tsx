@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { connectEvents } from "@/shared/adapters/events-client";
 import { resetEmbeddedDataForTest } from "@/shared/core/embedded";
+import { markRead, prune } from "@/shared/stores/read-changes-store";
 import { useRefreshHoldStore } from "@/shared/stores/refresh-hold-store";
 import { resetVoiceStore } from "@/shared/stores/voice-store";
 import { FakeEventSource } from "@/testing/fake-event-source";
@@ -385,8 +386,8 @@ describe("PreviewShell", () => {
 
   // 未読のまとまりの件数をトップバーに出し、書き換えの通知で増えたまとまりを加える（正常系）
   test("preview_shell_when_history_unread", async () => {
-    // 準備
-    localStorage.removeItem("mindmap-read-changes");
+    // 準備（前のテストの既読を持ち越さない）
+    prune("", []);
     const set = (id: string, seq: number) => ({ id, at: `2026-11-0${String(seq)}T00:00:00+00:00`, summary: `${String(seq)} 回目`, until_seq: seq, added: [], changed: ["D-1"] });
     stubRecords({ changes: { last_seq: 2, sets: [set("V-2", 2), set("V-1", 1)], pending: { added: [], changed: [] } } });
     const view = renderRoute("/?tab=decisions");
@@ -404,7 +405,8 @@ describe("PreviewShell", () => {
   // 記録に無いまとまりを既読から削除する（正常系）
   test("preview_shell_when_read_pruned", async () => {
     // 準備
-    localStorage.setItem("mindmap-read-changes", JSON.stringify({ state: { read: { "": ["V-1", "V-9"] } }, version: 0 }));
+    prune("", []);
+    markRead("", ["V-1", "V-9"]);
     stubRecords({ changes: { last_seq: 1, sets: [{ id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "1 回目", until_seq: 1, added: [], changed: ["D-1"] }], pending: { added: [], changed: [] } } });
     // 実行
     renderRoute("/?tab=decisions");

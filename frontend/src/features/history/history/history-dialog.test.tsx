@@ -2,11 +2,9 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test } from "vitest";
 
+import { markRead, prune } from "@/shared/stores/read-changes-store";
 import { stubRecords } from "@/testing/msw/fixtures";
 import { renderRoute } from "@/testing/render";
-
-// 既読のまとまりを持つ端末の保存領域のキー
-const READ_CHANGES_KEY = "mindmap-read-changes";
 
 // まとまり V-1・V-2 を持つ変更履歴
 const TWO_SETS = {
@@ -18,13 +16,9 @@ const TWO_SETS = {
   pending: { added: [], changed: [] },
 };
 
-/** 全てのワークスペースの既読を、渡したまとまりの ID にした保存領域の値を作る */
-const storeRead = (ids: string[]): void => {
-  localStorage.setItem(READ_CHANGES_KEY, JSON.stringify({ state: { read: { "": ids, workspace: ids } }, version: 0 }));
-};
-
 beforeEach(() => {
-  localStorage.removeItem(READ_CHANGES_KEY);
+  // 前のテストの既読を持ち越さない
+  prune("", []);
 });
 
 describe("HistoryScreen", () => {
@@ -55,7 +49,7 @@ describe("HistoryScreen", () => {
   test("history_screen_when_unread", async () => {
     // 準備
     stubRecords({ changes: TWO_SETS });
-    storeRead(["V-1"]);
+    markRead("", ["V-1"]);
     renderRoute("/?tab=decisions");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: /^変更履歴/ }));
