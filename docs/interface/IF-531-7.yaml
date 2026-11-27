@@ -2,7 +2,7 @@ id: IF-531-7
 title: MindStella のセッションのフック
 entry:
   kind: trigger
-  value: '`session_hook.py`（SessionStart・SessionEnd・UserPromptSubmit・Stop・StopFailure・PreCompact）'
+  value: '`session_hook.py`（SessionStart・SessionEnd・UserPromptSubmit・Stop・StopFailure）'
 lead: プラグインのフックが全てのセッションで呼び、環境変数 `MINDSTELLA_SESSION` を持つ MindStella のセッションでだけ、出来事を常駐サーバーへ送信し、SessionStart では起動の契機・再開の状況・進め方の文書の場所と、起動と再開のエージェントフローを先に進める案内を注入する。
 idempotent: true
 side_effects: 『MindStella のセッションの出来事の受け取り』へ送信する。SessionStart では『再開の状況』を呼び、応答の `changed_more`・`removed_more` がどちらも 0 のときだけ、注入文を標準出力に書き終えた後に『前回参照した時点の更新』へ『再開の状況』の `until_seq` を送信する。ほかは書かない
@@ -11,7 +11,7 @@ request:
   type: str
   required: true
   location: argument
-  description: コマンドの最初の引数。`session-start`・`session-end`・`prompt-submit`・`stop`・`stop-failure`・`pre-compact`
+  description: コマンドの最初の引数。`session-start`・`session-end`・`prompt-submit`・`stop`・`stop-failure`
 - name: 標準入力
   type: JSON
   required: true
@@ -63,7 +63,7 @@ exceptions:
   notes: 終了コード 0。常駐サーバーへつながらない・応答が 200 でないときは標準エラーに 1 行書いて終わり、会話を止めない
 constraints:
 - item: 契機
-  constraint: プラグインの `hooks/hooks.json` の `SessionStart`・`SessionEnd`・`UserPromptSubmit`・`Stop`・`StopFailure`・`PreCompact`（`matcher` なし）に、`python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/session_hook.py" {出来事}` を置く
+  constraint: プラグインの `hooks/hooks.json` の `SessionStart`・`SessionEnd`・`UserPromptSubmit`・`Stop`・`StopFailure`（`matcher` なし）に、`python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/session_hook.py" {出来事}` を置く
 - item: 動く Python
   constraint: システムの `python3` の標準ライブラリだけ（『常駐サーバーの起動の確認』と同じ）
 - item: 送信する時間の上限
@@ -86,10 +86,6 @@ constraints:
   notes: claude-balancer は既定の設定のフォルダのアカウントを貸すとき `CLAUDE_CONFIG_DIR` を外して起動する（LIB-531-1）
 - item: StopFailure の種類
   constraint: '`stop-failure` で、標準入力の `error` を『MindStella のセッションの出来事の受け取り』へ `error` で送信する'
-- item: 圧縮を止める
-  constraint: '`pre-compact` で、出来事 `pre_compact` を送信してから標準出力に `{"decision": "block", "reason": "[mindstella] 圧縮の代わりに起動し直します"}` を書き、圧縮を止める。常駐サーバーへつながらないときは止めずに圧縮させる。通常のセッションは止めない'
-- item: 圧縮で再起動したときの注入
-  constraint: '環境変数 `MINDSTELLA_LAUNCH_REASON` が `compact` で `source` が `startup` のときは、再開として注入する（『再開の状況』へ `source: compact` で送信する）'
 - item: 借りたアカウント
   constraint: '`session-start` で、`OTEL_RESOURCE_ATTRIBUTES` を `,` で区切った `{キー}={値}` のうち、キーが `claude_balancer.account` の値を `balancer_account` で送信する。変数が無い・その項目が無いときは送信しない'
   notes: claude-balancer の `exec` は、借りたアカウント名を `claude_balancer.account` として子プロセスの `OTEL_RESOURCE_ATTRIBUTES` に追加する（LIB-531-1）
