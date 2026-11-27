@@ -21,7 +21,7 @@ from preview_fixture_types import WriteReviewPreview
 from workspace_fixtures import MakePost, MakeThread
 
 import pytest
-from preview_record_id_helpers import assert_described, assert_tip
+from preview_record_id_helpers import assert_described
 
 # パネルを画面いっぱいに出す幅（これ以下）と、画面の高さ
 NARROW_SIZE = {"width": 800, "height": 700}
