@@ -69,12 +69,6 @@ constants:
     usecase: MindStella のセッションを再起動する
     summary: 見回りの間隔の秒数。`MINDSTELLA_CRASH_WATCH_INTERVAL` で上書きできる
     value: 60.0（非機能要件『落ちたことを見回る間隔』）
-  - name: LAUNCH_REASON_ENV
-    title: 起動の契機の環境変数
-    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-    usecase: MindStella のセッションを再起動する
-    summary: 圧縮の契機で起動したことをフックへ渡す環境変数の名前
-    value: '"MINDSTELLA_LAUNCH_REASON"'
   - name: LAUNCH_RECORD_MISSING
     title: 記録が無いことの警告
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
@@ -86,7 +80,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: MindStella のセッションを再起動する
     summary: '`restart_reason` に入る値'
-    value: ("api", "rate_limit", "compact", "comment", "usage_threshold")
+    value: ("api", "rate_limit", "comment", "usage_threshold")
 functions:
   - name: new_session_id
     title: MindStella のセッションの ID を振る
@@ -162,7 +156,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`MINDSTELLA_SESSION`・`MINDSTELLA_WORKSPACE`・`MINDSTELLA_PORT`・`MINDSTELLA_FLOW`（あれば）・`CLAUDE_CONFIG_DIR`（claude-balancer が無く指定があれば）・`LAUNCH_REASON_ENV`（`launch_reason` があれば）・`CLAUDE_BALANCER_URL`（`balancer_url` があれば）を返す'
+    summary: '`MINDSTELLA_SESSION`・`MINDSTELLA_WORKSPACE`・`MINDSTELLA_PORT`・`MINDSTELLA_FLOW`（あれば）・`CLAUDE_CONFIG_DIR`（claude-balancer が無く指定があれば）・`CLAUDE_BALANCER_URL`（`balancer_url` があれば）を返す'
     args:
       - name: session_id
         type: str
@@ -194,12 +188,6 @@ functions:
         required: true
         passing: positional
         description: claude-balancer があるか
-      - name: launch_reason
-        type: str | None
-        required: false
-        default: None
-        passing: keyword
-        description: 起動の契機（圧縮の再起動のとき `compact`）
       - name: balancer_url
         type: str | None
         required: false
@@ -216,12 +204,6 @@ functions:
         condition: '`parametrize`: flow あり・balancer あり・config_dir あり / flow 無し・balancer 無し・config_dir あり'
         mock: なし
         expected: '`MINDSTELLA_FLOW: src#doc` があり `CLAUDE_CONFIG_DIR` が無い / `MINDSTELLA_FLOW` が無く `CLAUDE_CONFIG_DIR` がある'
-      - name: test_build_env_when_compact
-        case: 正常
-        summary: 圧縮の契機を渡す
-        condition: '`launch_reason` が `compact`'
-        mock: なし
-        expected: '`MINDSTELLA_LAUNCH_REASON: compact` がある'
       - name: test_build_env_when_balancer_url
         case: 正常
         summary: ホームの設定の待ち受け先を渡す
@@ -502,7 +484,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`restarting` のときの `session_end` は `status` を変えず通知もしない。`running` のとき、`stop_failure` の `error` が `rate_limit` なら `request_restart` を `rate_limit` で、`pre_compact` なら `compact` で、応答を返した後の別のスレッドで呼ぶ。`session` が状態に無ければ偽（`session_start` は `socket`・`claude_config_dir`・`balancer_account`（本文に無ければ `None`）も入れる）。どの出来事でも作業の完了は通知しない（『エントリーポイント』が `hand_back` が真の `commit` で通知する）。`session_end` が書き換える前の `running` から `stopped` にしたときだけ `notify_stopped` を `session_ended` で呼ぶ
+    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`restarting` のときの `session_end` は `status` を変えず通知もしない。`running` のとき、`stop_failure` の `error` が `rate_limit` なら `request_restart` を `rate_limit` で、応答を返した後の別のスレッドで呼ぶ。`session` が状態に無ければ偽（`session_start` は `socket`・`claude_config_dir`・`balancer_account`（本文に無ければ `None`）も入れる）。どの出来事でも作業の完了は通知しない（『エントリーポイント』が `hand_back` が真の `commit` で通知する）。`session_end` が書き換える前の `running` から `stopped` にしたときだけ `notify_stopped` を `session_ended` で呼ぶ
     side_effects: '`session.json` を書く。`session_end` では停止の通知のスレッドを起動することがある'
     args:
       - name: session_id
@@ -544,10 +526,10 @@ functions:
         expected: '`notify_stopped` が `session_ended` で 1 回 / 呼ばれない / 呼ばれない'
       - name: test_record_event_when_rate_limit
         case: 正常
-        summary: stop_failure の rate_limit と pre_compact で再起動を始める
-        condition: '`parametrize`: `stop_failure`・`error: rate_limit` / `stop_failure`・`error: server_error` / `pre_compact`。`status` は `running`'
+        summary: stop_failure の rate_limit で再起動を始める
+        condition: '`parametrize`: `stop_failure`・`error: rate_limit` / `stop_failure`・`error: server_error`。`status` は `running`'
         mock: '`request_restart`'
-        expected: '`rate_limit` で 1 回 / 呼ばない / `compact` で 1 回'
+        expected: '`rate_limit` で 1 回 / 呼ばない'
       - name: test_record_event_when_restarting
         case: 正常
         summary: 再起動の途中の session_end は状態を変えず通知しない
@@ -754,7 +736,7 @@ functions:
     usecase: MindStella のセッションを再起動する
     scope: public
     summary: IF-582-1 の受け付け。ワークスペースごとの鍵の中でクローズ済み・`stopping`・`restarting` を断り、`status` を `restarting`、`restart_reason` を契機、契機が `api` なら `close_pending` を偽にして、止めて起動する工程を別のスレッドで始める
-    description: '別のスレッドは、生きていれば停止と同じ待ち方で `/exit` を貼り、`EXEC_EXIT_WAIT_SEC` まで tmux のセッションが閉じるのを待つ（過ぎたら `kill-session`）。最後の書き込みを待つ上限を過ぎたら再起動せず、`pending_write` を真・`status` を `running`・`restart_reason` を `None` に戻す。契機が `rate_limit` なら `notify_stopped` を `rate_limited` で、`usage_threshold` なら `usage_threshold` で呼ぶ。`specified_account` があり契機が `rate_limit`・`usage_threshold` のとき、`ctx.home.release_on_limit` が真なら `specified_account` を `None` にしてから起動し、偽なら `rate_limit` では起動せずに `crashed`・`last_error` を `account: 指定したアカウントが利用上限に達した` にする。`check_launch_options`・`resume_id_for` の後、`create_session` と同じ起動の工程（`build_command` に `resume_id`、`build_env` に契機が `compact` のとき `LAUNCH_REASON_ENV`）で起動し、準備ができたら `running` にして `restart_reason`・`last_error` を戻す。`--account` を付けた起動が `account` の段階で失敗し、`ctx.home.release_on_limit` が真なら、`specified_account` を `None` にしてペインを閉じ、`--account` を付けずに 1 回だけ再起動する。失敗はペインを閉じて `crashed`・`last_error` にし、契機が `api`・`compact` なら `notify_stopped` を `restart_failed` で呼ぶ'
+    description: '別のスレッドは、生きていれば停止と同じ待ち方で `/exit` を貼り、`EXEC_EXIT_WAIT_SEC` まで tmux のセッションが閉じるのを待つ（過ぎたら `kill-session`）。最後の書き込みを待つ上限を過ぎたら再起動せず、`pending_write` を真・`status` を `running`・`restart_reason` を `None` に戻す。契機が `rate_limit` なら `notify_stopped` を `rate_limited` で、`usage_threshold` なら `usage_threshold` で呼ぶ。`specified_account` があり契機が `rate_limit`・`usage_threshold` のとき、`ctx.home.release_on_limit` が真なら `specified_account` を `None` にしてから起動し、偽なら `rate_limit` では起動せずに `crashed`・`last_error` を `account: 指定したアカウントが利用上限に達した` にする。`check_launch_options`・`resume_id_for` の後、`create_session` と同じ起動の工程（`build_command` に `resume_id`）で起動し、準備ができたら `running` にして `restart_reason`・`last_error` を戻す。`--account` を付けた起動が `account` の段階で失敗し、`ctx.home.release_on_limit` が真なら、`specified_account` を `None` にしてペインを閉じ、`--account` を付けずに 1 回だけ再起動する。失敗はペインを閉じて `crashed`・`last_error` にし、契機が `api` なら `notify_stopped` を `restart_failed` で呼ぶ'
     side_effects: '`session.json` を書き換え、tmux のセッションを再作成する。停止の通知を呼ぶ'
     args:
       - name: workspace_id
@@ -834,9 +816,9 @@ functions:
       - name: test_restart_session_with_specified_account
         case: 正常
         summary: specified_account と契機と release_on_limit で --account が決まる
-        condition: '`specified_account` が `/c`。`parametrize`: 契機 `api` / `rate_limit` で真 / `usage_threshold` で真 / `compact` で真'
+        condition: '`specified_account` が `/c`。`parametrize`: 契機 `api` / `rate_limit` で真 / `usage_threshold` で真'
         mock: '`TmuxRunner`'
-        expected: '`respawn-pane` の引数に `--account /c` がある・`specified_account` が `/c` / 無い・`None` / 無い・`None` / ある・`/c`'
+        expected: '`respawn-pane` の引数に `--account /c` がある・`specified_account` が `/c` / 無い・`None` / 無い・`None`'
       - name: test_restart_session_when_release_off
         case: 異常
         summary: release_on_limit が偽で利用上限なら再起動しない
@@ -855,7 +837,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: MindStella のセッションを再起動する
     scope: public
-    summary: '`rate_limit`・`compact`・`comment`・`usage_threshold` の契機で `restart_session` を呼ぶ。`restarting` なら重ねて起動せず真、`comment` でクローズ待ち・クローズ済みなら偽を返す（`ApiError` を外へ出さない）'
+    summary: '`rate_limit`・`comment`・`usage_threshold` の契機で `restart_session` を呼ぶ。`restarting` なら重ねて起動せず真、`comment` でクローズ待ち・クローズ済みなら偽を返す（`ApiError` を外へ出さない）'
     args:
       - name: workspace_id
         type: str
@@ -866,7 +848,7 @@ functions:
         type: str
         required: true
         passing: positional
-        description: '`rate_limit`・`compact`・`comment`・`usage_threshold`'
+        description: '`rate_limit`・`comment`・`usage_threshold`'
       - name: ctx
         type: ServerContext
         required: true

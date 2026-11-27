@@ -10,3 +10,4 @@ components:
     container: frontend/src/shared/components/list-columns.tsx
 notes:
   作成日時・更新日時の列: 共通の列の末尾に `created`（作成日時）・`updated`（更新日時）を加える（#186）。`cell` は `formatItemDateTime`（モジュール構成『format』）の文字を `time`（`dateTime` に元の値）で折り返さずに描き、並べ替えと絞り込みは元の ISO 8601 の値で行う。単体テストは同じフォルダの `list-columns.test.tsx` に `test_common_columns_when_datetime`（日時の列が末尾にあり、セルが `time` で今年は `MM/DD HH:mm`）を置く
+  お気に入りの列: '`favoriteColumn(favorites, onToggle)` を追加する。`key` は `FAVORITE_COLUMN_KEY`、列名は「お気に入り」、`fixed` で隠せず、`order` は `FAVORITE_ORDER`（昇順でお気に入りが先頭）、`get` は登録していれば `★`、`cell` は部品『お気に入りの星』（`title` は行のタイトル、無ければ ID）。単体テスト `test_favorite_column`（登録した行の `get` が `★`、セルの星を押すと `onToggle` が行の ID で呼ばれる）を追加する'

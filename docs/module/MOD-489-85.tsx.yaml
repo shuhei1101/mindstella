@@ -38,3 +38,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `table.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   開いた並び: 行のタイトルを押したとき、絞り込み・並べ替えを当てた行の ID の並びを `onOpenItem(id, order)` で使用する側へ知らせる（#364）。ストーリーに部品設計の `DatetimeColumns`・`SortedByUpdatedDesc` を追加する
+  お気に入り: '`onClearFavoritesOnly` を受け、指定されたときだけ部品『絞り込みの条件のチップ』へ指定する。星の列は使用する側が列の定義（`favoriteColumn`）で指定し、表は引数を増やさない。ストーリーに部品設計の `FavoriteColumn`・`FavoriteColumnSortedAsc`・`FavoriteColumnSortedDesc` を追加する'

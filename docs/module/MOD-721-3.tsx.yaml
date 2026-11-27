@@ -1,0 +1,19 @@
+id: MOD-721-3
+title: プレビュー / favorite-toggle
+lead: 部品設計『お気に入りの星.tsx』の props・イベント・状態を持つ。
+components:
+  - name: FavoriteToggle
+    title: お気に入りの星
+    kind: コンポーネント
+    container: frontend/src/shared/components/favorite-toggle.tsx
+    usecase: 項目をお気に入りにする
+    summary: 部品設計『お気に入りの星.tsx』の props・イベント・状態を持つ。`button` に `aria-pressed`（`on`）・`aria-label`（`{title}をお気に入りに登録`）・`data-favorite`（`on`・`off`）を付け、押したときは `stopPropagation` してから `onToggle` を呼ぶ（カード・行を開く操作へ伝えない）。登録している星は塗る
+    unit_tests:
+      - name: test_favorite_toggle
+        case: 正常
+        summary: 押すと onToggle だけを呼ぶ
+        condition: '`onClick` を持つ親の中に配置して押す。`parametrize`: `on` 偽 / 真'
+        mock: なし
+        expected: '`onToggle` が 1 回、親の `onClick` は呼ばれない。`aria-pressed` が `false` / `true`'
+notes:
+  単体テスト: 同じフォルダの `favorite-toggle.test.tsx` に配置する。ストーリーは `favorite-toggle.stories.tsx`（knowledge の規約『フォルダ構成』）

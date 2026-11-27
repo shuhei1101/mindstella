@@ -147,7 +147,7 @@ tables:
       - name: restart_reason
         title: 再起動の契機
         type: string | null
-        description: '`restarting` の間の契機（`api`・`rate_limit`・`compact`・`comment`・`usage_threshold`）。再起動が終わったら `null`。失敗したときに『停止の通知』を呼ぶかを決める'
+        description: '`restarting` の間の契機（`api`・`rate_limit`・`comment`・`usage_threshold`）。再起動が終わったら `null`。失敗したときに『停止の通知』を呼ぶかを決める'
       - name: balancer_account
         title: claude-balancer が貸したアカウント名
         type: string | null

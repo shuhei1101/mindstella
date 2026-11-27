@@ -1,0 +1,94 @@
+id: MOD-721-1
+title: プレビュー / favorites
+lead: お気に入りの並び・絞り込み・登録の計算（DOM と保存領域に触らない）。
+constants:
+  - name: FAVORITE_COLUMN_KEY
+    title: 星の列のキー
+    container: frontend/src/shared/core/favorites.ts
+    usecase: 項目をお気に入りにする
+    summary: 表の星の列の `key`。並べ替えの `sort` の値になる
+    value: '"favorite"'
+  - name: FAVORITE_ORDER
+    title: 星の列の並べ替えの値
+    container: frontend/src/shared/core/favorites.ts
+    usecase: 項目をお気に入りにする
+    summary: 星の列の `order`。昇順でお気に入りが先頭になる
+    value: '["★", ""]'
+functions:
+  - name: favoritesFirst
+    title: お気に入りを先頭に並べる
+    kind: 関数
+    container: frontend/src/shared/core/favorites.ts
+    usecase: 項目をお気に入りにする
+    summary: お気に入りの項目を先頭に並べる。お気に入りの中とそれ以外の中は指定した順のまま
+    args:
+      - name: items
+        type: readonly T[]
+        required: true
+        description: 並べた項目（`T` は `id` を持つ）
+      - name: favorites
+        type: ReadonlySet<string>
+        required: true
+        description: お気に入りに登録した項目の ID
+    returns:
+      type: T[]
+      description: 並べた後の項目
+    unit_tests:
+      - name: test_favorites_first
+        case: 正常
+        summary: お気に入りを先頭に並べ、それぞれの中の順を保つ
+        condition: '`[D-1, D-2, D-3, D-4]` で `{D-3, D-1}`、記録に無い `D-9` を含む'
+        mock: なし
+        expected: '`[D-1, D-3, D-2, D-4]`'
+  - name: favoritesOnly
+    title: お気に入りだけに絞る
+    kind: 関数
+    container: frontend/src/shared/core/favorites.ts
+    usecase: 項目をお気に入りにする
+    summary: お気に入りの項目だけを指定した順のまま返却する
+    args:
+      - name: items
+        type: readonly T[]
+        required: true
+        description: 絞る項目
+      - name: favorites
+        type: ReadonlySet<string>
+        required: true
+        description: お気に入りに登録した項目の ID
+    returns:
+      type: T[]
+      description: お気に入りの項目
+    unit_tests:
+      - name: test_favorites_only
+        case: 正常
+        summary: お気に入りだけを残す
+        condition: '`parametrize`: `[D-1, D-2, D-3]` で `{D-3, D-1}` / 空の集合'
+        mock: なし
+        expected: '`[D-1, D-3]` / `[]`'
+  - name: toggleFavorite
+    title: お気に入りの登録・解除
+    kind: 関数
+    container: frontend/src/shared/core/favorites.ts
+    usecase: 項目をお気に入りにする
+    summary: 登録していなければ末尾に追加し、登録していれば除外した配列を返却する（指定した配列は変えない）
+    args:
+      - name: favorites
+        type: readonly string[]
+        required: true
+        description: 今のお気に入り
+      - name: id
+        type: string
+        required: true
+        description: 押した項目の ID
+    returns:
+      type: string[]
+      description: 登録・解除した後のお気に入り
+    unit_tests:
+      - name: test_toggle_favorite
+        case: 正常
+        summary: 登録と解除
+        condition: '`parametrize`: `[D-1]` に `D-2` / `[D-1, D-2]` から `D-1`'
+        mock: なし
+        expected: '`[D-1, D-2]` / `[D-2]`'
+notes:
+  単体テスト: 同じフォルダの `favorites.test.ts` に配置する（knowledge の規約『フォルダ構成』）
