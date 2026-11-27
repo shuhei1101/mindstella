@@ -33,13 +33,13 @@ type Story = StoryObj<typeof meta>;
 /** 未決定で、まだ選んでいない。どの案のカードにも「この案を選ぶ」を出す */
 export const NotChosen: Story = { render: () => <Interactive initial={null} /> };
 
-/** 案 B を一言なしで選んだ。選んだカードを破線の枠と「選択済み（未送信）」の札にし、取り消すを出す */
+/** 案 B を一言なしで選んだ。選んだカードの枠と「選択済み」の札の線を破線にし、取り消すを出す */
 export const Chosen: Story = { render: () => <Interactive initial={{ key: "B" }} /> };
 
 /** 案 B を一言つきで選んだ */
 export const ChosenWithNote: Story = { render: () => <Interactive initial={{ key: "B", note: "費用を優先する" }} /> };
 
-/** 案 B を送信済み（記録の利用者の選択）。実線の枠線と「選択済み（送信済み）」の札にし、一言を編集・取り消すを出さない。ほかの案は選び直せる */
+/** 案 B を送信済み（記録の利用者の選択）。枠線と「選択済み」の札の線を実線にし、一言を編集・取り消すを出さない。ほかの案は選び直せる */
 export const Sent: Story = { render: () => <Interactive initial={{ key: "B", note: "費用を優先する", sent: true }} /> };
 
 /** 長い一言。カードの幅で折り返す */

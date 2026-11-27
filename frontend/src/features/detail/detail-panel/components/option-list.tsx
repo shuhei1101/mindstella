@@ -140,7 +140,8 @@ const OptionCard = ({ option, before, compare, decided, mark, choose }: { option
         {chosen ? (
           <span className={cn(BADGE_CLASS, "border-primary text-primary", !sent && "border-dashed")}>
             <Icon name="check" className="size-3" />
-            {sent ? "選択済み（送信済み）" : "選択済み（未送信）"}
+            選択済み
+            <span className="sr-only">{sent ? "（送信済み）" : "（未送信）"}</span>
           </span>
         ) : null}
         {mark}
