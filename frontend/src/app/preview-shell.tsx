@@ -189,6 +189,18 @@ export const PreviewShell = () => {
   }, [noticeAt]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // コメントの一覧から詳細パネルを開いたか。開いているパネルが変わったら、描いている途中で戻す
+  const [detailFromComments, setDetailFromComments] = useState(false);
+  const [shownPanel, setShownPanel] = useState(search.panel);
+  if (search.panel !== shownPanel) {
+    setShownPanel(search.panel);
+    setDetailFromComments(false);
+  }
+  const detailRaised = detailFromComments && search.panel === "comments" && search.id !== undefined;
+  const openItemFromComments = (id: string): void => {
+    setDetailFromComments(true);
+    openItem(id);
+  };
   // 変更の検知が知らせた重なった ID（閉じた集まりと同じ間は空）
   const duplicateIds = useShownDuplicateIds().map((id) => {
     const kind = kindOfId(id);
@@ -304,7 +316,7 @@ export const PreviewShell = () => {
           </main>
         ) : null}
         {screen()}
-        {index !== null && search.id !== undefined && search.full === undefined ? <DetailPanel id={search.id} index={index} /> : null}
+        {index !== null && search.id !== undefined && search.full === undefined ? <DetailPanel id={search.id} index={index} raised={detailRaised} /> : null}
         {index !== null && adding !== null && search.id === undefined ? <ItemAddPanel key={adding.target ?? adding.kind} kind={adding.kind} target={adding.target} index={index} edits={edits} /> : null}
       </div>
       {index !== null && search.id !== undefined && search.full !== undefined ? <DetailFullscreen id={search.id} index={index} /> : null}
@@ -325,7 +337,7 @@ export const PreviewShell = () => {
           }}
         />
       ) : null}
-      {search.panel === "comments" ? <CommentsPanel onOpenItem={openItem} onOpenChangeSet={setDiff} /> : null}
+      {search.panel === "comments" ? <CommentsPanel onOpenItem={openItemFromComments} onOpenChangeSet={setDiff} detailRaised={detailRaised} /> : null}
       {search.panel === "display" ? <DisplaySettingsPanel /> : null}
       {index !== null && search.search !== undefined ? (
         <SearchDialog

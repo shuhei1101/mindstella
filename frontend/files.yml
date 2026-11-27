@@ -1991,6 +1991,15 @@ files:
   related:
   - to: MOD-489-123
     type: tests
+- path: src/shared/lib/pointer-input.ts
+  name: 指で押した操作かの判定
+  description: 直前の操作が指で押したものかを文書の pointerdown・pointerover・keydown から保持し、指で押したときにツールチップを出さない判定を修正するときに参照する。
+  tags:
+  - tool:react
+  - topic:タッチ
+  related:
+  - to: MOD-707-1
+    type: implements
 - path: src/shared/lib/pointer-input.test.ts
   name: 指で押した操作かの判定の単体テスト
   description: 直前の入力が指で押した操作かの判定を確かめる単体テストで、pointer-input を修正するときに参照する。

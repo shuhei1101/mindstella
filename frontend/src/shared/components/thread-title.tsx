@@ -48,7 +48,7 @@ type TitleToggleProps = { open: boolean; controls: string; onToggle: () => void 
 
 /** 2 行に省略したタイトルの全文を開く・閉じるボタン */
 const TitleToggle = ({ open, controls, onToggle }: TitleToggleProps) => (
-  <Button variant="ghost" aria-expanded={open} aria-controls={controls} data-part="more" aria-label={open ? "タイトルを折りたたむ" : "タイトルの続きを表示"} className="-ml-2 h-7 font-normal" onClick={onToggle}>
+  <Button variant="ghost" aria-expanded={open} aria-controls={controls} data-part="more" aria-label={open ? "タイトルを折りたたむ" : "タイトルの続きを表示"} className="relative -ml-2 h-7 font-normal pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2" onClick={onToggle}>
     <Icon name="chev" className={open ? "-rotate-90" : "rotate-90"} />
     <span>{open ? "折りたたむ" : "続きを表示"}</span>
   </Button>
