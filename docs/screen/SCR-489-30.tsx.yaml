@@ -48,7 +48,7 @@ elements:
     io: 入力
     visible_when: サーバーの配信で開いたとき
     status: planned
-lead: 詳細パネルの中身を画面の中央のモーダルで大きく出す。モーダルは窓から 32px 内側（幅 720px 以下は 8px）で、幅の上限は 1600px。後ろはほかのモーダルと同じ濃さでグレーアウトし、元の画面が透けて見える。
+lead: 詳細パネルの中身を画面の中央のモーダルで大きく出す。モーダルは窓の幅と高さの 90% の大きさ（上下左右に窓の 5% の間）で、窓の中央に出す。後ろはほかのモーダルと同じ濃さでグレーアウトし、元の画面が透けて見える。
 notes:
   HTML の本文のモック: 形式の札・HTML の本文・HTML の本文の差分の見本は `docs/mock/pages/detail-full/214/c-marks/index.html`
   差分のミニマップのモック: 差分のミニマップの見本は `docs/mock/pages/detail-full/237/a-right-rail/index.html`（採用した案 A）
