@@ -4,6 +4,7 @@ import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRe
 
 import { CardSort, cardSortFromParam, cardSortToParam, cardSortToRowSort, INITIAL_CARD_SORT, isCardSortParam, sortItems } from "@/shared/components/card-sort";
 import type { DiffMarks } from "@/shared/components/diff-mark";
+import { favoriteColumn } from "@/shared/components/list-columns";
 import { FilterChips } from "@/shared/components/filter-chips";
 import { FilterDrawer, type FilterGroup } from "@/shared/components/filter-drawer";
 import { Icon } from "@/shared/components/icon";
@@ -13,6 +14,7 @@ import { Table, type Row, type TableColumn } from "@/shared/components/table";
 import { Button } from "@/shared/components/ui/button";
 import { ViewSwitch, type View } from "@/shared/components/view-switch";
 import { removedOf } from "@/shared/core/diff";
+import { favoritesFirst, favoritesOnly } from "@/shared/core/favorites";
 import { NEW_ID_PREFIX, type ScreenEdit } from "@/shared/core/edits";
 import { isEmbedded } from "@/shared/core/embedded";
 import { TAG_FILTER_KEY, TEXT_FILTER_PREFIX, withoutKey, type Filters, type TagMatch } from "@/shared/core/filters";
@@ -22,6 +24,7 @@ import type { LookupRecordId } from "@/shared/core/record-ids";
 import { KIND_LABEL, tagNames, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 import { commentsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
+import { useFavorites } from "@/shared/hooks/use-favorites";
 import { useListScroll } from "@/shared/hooks/use-list-scroll";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecordLookup } from "@/shared/hooks/use-record-lookup";
@@ -58,6 +61,12 @@ export type ListContext = {
   scrollRef: RefCallback<HTMLElement>;
   /** 表（並べ替え・列の表示・固定は URL と端末の保存領域で持つ） */
   table: ReactNode;
+  /** お気に入りに登録した項目の ID */
+  favorites: ReadonlySet<string>;
+  /** カードの一覧でお気に入りを先頭に並べるか（`shown` は並べた後の順） */
+  favoritesFirst: boolean;
+  /** 項目をお気に入りに登録・解除する */
+  onToggleFavorite: (id: string) => void;
 };
 
 export type ListScreenProps = {
@@ -129,6 +138,9 @@ const boardOrders = (items: readonly Item[]): string[][] => {
   return [...byStatus.values()];
 };
 
+/** 「お気に入りだけを表示する」がオンならお気に入りの行だけにする */
+const onlyFavoritesIfSet = <T extends { id: string }>(rows: T[], favorites: { ids: ReadonlySet<string>; only: boolean }): T[] => (favorites.only ? favoritesOnly(rows, favorites.ids) : rows);
+
 /** カード・ボードの表示で受け付けない `sort`（表の列の並べ替え）は、無いものとして URL から外す（置き換える） */
 const useDropCardSort = ({ view, sort, setSort }: { view: View; sort: string | undefined; setSort: (sort: string | undefined, options: { replace: boolean }) => void }): void => {
   useEffect(() => {
@@ -141,11 +153,13 @@ const useDropCardSort = ({ view, sort, setSort }: { view: View; sort: string | u
 const CardSortControl = ({ shown, ...props }: { shown: boolean } & ComponentProps<typeof CardSort>) => (shown ? <CardSort {...props} /> : null);
 
 /** カード・ボードの「並べ替え」の並び（資料は更新日時の新しい順、ほかは連番が既定）と、詳細の一覧の並びの前後に使う描いた並び */
-const listOrders = ({ kind, view, sort, filtered, sorted }: { kind: Kind; view: View; sort: string | undefined; filtered: Item[]; sorted: Row[] }) => {
+const listOrders = ({ kind, view, sort, filtered, sorted, favorites }: { kind: Kind; view: View; sort: string | undefined; filtered: Item[]; sorted: Row[]; favorites: { ids: ReadonlySet<string>; first: boolean } }) => {
   const initialCardSort = kind === "docs" ? INITIAL_CARD_SORT.docs : INITIAL_CARD_SORT.other;
   const cardSort = cardSortFromParam(sort, initialCardSort);
   const cardRowSort = cardSortToRowSort(cardSort);
-  const cards = view === "table" ? [] : sortItems(filtered, cardRowSort);
+  const sortedCards = view === "table" ? [] : sortItems(filtered, cardRowSort);
+  // カードの一覧だけお気に入りを先頭に寄せる（ボードは並びを変えない）
+  const cards = view === "cards" && favorites.first ? favoritesFirst(sortedCards, favorites.ids) : sortedCards;
   const orders = view === "table" ? [sorted.map((row) => row.id)] : view === "board" ? boardOrders(cards) : [cards.map((item) => item.id)];
   return { initialCardSort, cardSort, cardRowSort, cards, orders };
 };
@@ -164,6 +178,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
     addTag(name);
   };
   const savePreset = usePresetSave(tagExpr);
+  const favorites = useFavorites();
   const comments = useQuery(commentsQuery());
   const startAdd = useEditSessionStore((state) => state.startAdd);
   const openAdded = useEditSessionStore((state) => state.openAdded);
@@ -190,24 +205,27 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
     }
     return result;
   }, [comments.data]);
-  const columnKeys = index === null ? null : columnsOf(index, openItem).map((column) => column.key);
+  const columnsWithFavorite = (records: RecordIndex): TableColumn[] => [favoriteColumn(favorites.ids, favorites.toggle), ...columnsOf(records, openItem)];
+  const columnKeys = index === null ? null : columnsWithFavorite(index).map((column) => column.key);
   // 記録に合わない並べ替えの列は URL から外す
   useEffect(() => {
     if (search.sort !== undefined && columnKeys !== null && !columnKeys.includes(search.sort.replace(/^-/, ""))) setSort(undefined, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 列の並びと並べ替えが変わったときだけ確かめる
   }, [search.sort, columnKeys?.join()]);
   if (index === null) return null;
-  const columns = columnsOf(index, openItem);
+  const columns = columnsWithFavorite(index);
   const presets = index.data.settings.presets ?? [];
   const list = asColumns(columns);
   // 追加する項目は絞り込みに関わらず先頭に置く
   const rows = index.data[kind].filter((item) => !item.id.startsWith(NEW_ID_PREFIX)) as unknown as Row[];
   // 簡易で表せないタグの式は、簡易の条件の代わりに式で絞る
   const complexExpr = tagExpr !== null && simpleTagsOf(tagExpr) === null ? tagExpr : null;
-  const filtered = filterRows({ rows, columns: list, filters, tagMatch }).filter((row) => complexExpr === null || matchesTagExpr(tagNames((row as unknown as Item).tags), complexExpr));
+  const matched = filterRows({ rows, columns: list, filters, tagMatch }).filter((row) => complexExpr === null || matchesTagExpr(tagNames((row as unknown as Item).tags), complexExpr));
+  // 「お気に入りだけを表示する」はカード・ボード・表のどれでも絞る
+  const filtered = onlyFavoritesIfSet(matched, favorites);
   const exprChip = complexExpr === null ? {} : { tagExprText: describeTagExpr(complexExpr), onClearTagExpr: () => { setTagExpr(null); } };
   const sorted = sortRows({ rows: filtered, columns: list, sort: search.sort });
-  const { initialCardSort, cardSort, cardRowSort, cards, orders } = listOrders({ kind, view, sort: search.sort, filtered: filtered as unknown as Item[], sorted });
+  const { initialCardSort, cardSort, cardRowSort, cards, orders } = listOrders({ kind, view, sort: search.sort, filtered: filtered as unknown as Item[], sorted, favorites });
   const marks: DiffMarks | undefined = point === null ? undefined : Object.fromEntries([...[...point.added].map((id) => [id, "new"] as const), ...[...point.changed].map((id) => [id, "changed"] as const)]);
   const hidden = saved?.hidden ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
   const pinTo = saved?.pinTo ?? null;
@@ -268,7 +286,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       </div>
       {view === "table" ? null : <FilterChips filters={filters} labels={labels} tagMatch={tagMatch} onFilter={setFilters} {...exprChip} />}
       <RemovedBand items={removedOf({ point, kind })} lookup={record.lookup} onOpen={record.onOpen} />
-      {view === "table" || content === undefined ? table : content({ index, lookup: record.lookup, view, shown: cards, sort: cardRowSort, filters, tagMatch, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, onSelectTag, scrollRef, table })}
+      {view === "table" || content === undefined ? table : content({ index, lookup: record.lookup, view, shown: cards, sort: cardRowSort, filters, tagMatch, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, onSelectTag, scrollRef, table, favorites: favorites.ids, favoritesFirst: favorites.first, onToggleFavorite: favorites.toggle })}
       <PublishOrders orders={orders} />
       <PublishCandidates groups={groups} apply={applyCandidate} />
       {drawerOpen ? (

@@ -98,6 +98,11 @@ export const DisplaySettingsPanel = () => {
             singleKeyShortcuts={prefs.singleKeyShortcuts !== false}
             // 使用する（既定）は上書きを外し、使用しないだけを上書きとして残す
             onSingleKeyShortcutsChange={(value) => { writePrefs({ singleKeyShortcuts: value ? null : false }); }}
+            favoritesFirst={prefs.favoritesFirst !== false}
+            // 先頭に並べる（既定）は上書きを外し、並べないだけを上書きとして残す
+            onFavoritesFirstChange={(value) => { writePrefs({ favoritesFirst: value ? null : false }); }}
+            favoritesOnly={prefs.favoritesOnly === true}
+            onFavoritesOnlyChange={(value) => { writePrefs({ favoritesOnly: value ? true : null }); }}
             onKindsChange={(kinds) => { writePrefs({ kinds }); }}
             onReset={() => {
               writePrefs(resetPrefs(readPrefs()));

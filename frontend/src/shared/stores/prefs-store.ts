@@ -26,6 +26,12 @@ export type Prefs = {
   focusAfterAdd?: "input" | "none" | null;
   /** 1 文字のショートカット（一覧の並びの前後の `j`・`k`）を使用しない上書き。null・無しは使用する */
   singleKeyShortcuts?: false | null;
+  /** お気に入りに登録した項目の ID（キーがワークスペースごとなので、そのワークスペースの項目だけ） */
+  favorites?: string[];
+  /** カードの一覧でお気に入りを先頭に並べない上書き。null・無しは先頭に並べる */
+  favoritesFirst?: false | null;
+  /** お気に入りの項目だけを表示する上書き。null・無しは全ての項目を表示する */
+  favoritesOnly?: true | null;
 };
 
 /** 詳細の本文をスクロールした位置を残す sessionStorage のキー */

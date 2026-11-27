@@ -4,7 +4,7 @@ import { useId } from "react";
 import { Icon, type IconName } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
-import { BODY_VIEW_LABELS, FOCUS_AFTER_ADD_LABEL, MINIMAP_LABEL } from "@/shared/core/display";
+import { BODY_VIEW_LABELS, FAVORITES_FIRST_LABEL, FAVORITES_ONLY_LABEL, FOCUS_AFTER_ADD_LABEL, MINIMAP_LABEL } from "@/shared/core/display";
 import { KIND_KEYS, KIND_LABEL, type Kind } from "@/shared/core/records";
 import type { BodyView } from "@/shared/core/markdown-decorate";
 
@@ -45,6 +45,12 @@ export type SettingsPanelProps = {
   /** 修飾キーの無い 1 文字のショートカット（一覧の並びの前後の `j`・`k`）を使用するか */
   singleKeyShortcuts?: boolean;
   onSingleKeyShortcutsChange?: (value: boolean) => void;
+  /** カードの一覧でお気に入りを先頭に並べるか */
+  favoritesFirst?: boolean;
+  onFavoritesFirstChange?: (value: boolean) => void;
+  /** カード・ボード・表をお気に入りの項目だけに絞るか */
+  favoritesOnly?: boolean;
+  onFavoritesOnlyChange?: (value: boolean) => void;
   /** 「設定を編集する」を押したとき（渡さないと入口を出さない） */
   onWorkspace?: () => void;
 };
@@ -70,9 +76,10 @@ const AlwaysRow = ({ icon, label }: { icon: IconName; label: string }) => (
 );
 
 export const SettingsPanel = (props: SettingsPanelProps) => {
-  const { visibleKinds, defaultKinds, counts, overrides, canSave, message, storageAvailable, minimap, bodyView, focusAfterAdd, pointerCoarse, singleKeyShortcuts, onSingleKeyShortcutsChange, onKindsChange, onReset, onSaveDefault, onMinimapChange, onBodyViewChange, onFocusAfterAddChange, onWorkspace } = props;
+  const { visibleKinds, defaultKinds, counts, overrides, canSave, message, storageAvailable, minimap, bodyView, focusAfterAdd, pointerCoarse, singleKeyShortcuts, onSingleKeyShortcutsChange, favoritesFirst = true, onFavoritesFirstChange, favoritesOnly = false, onFavoritesOnlyChange, onKindsChange, onReset, onSaveDefault, onMinimapChange, onBodyViewChange, onFocusAfterAddChange, onWorkspace } = props;
   const focusHintId = useId();
   const keyHintId = useId();
+  const firstHintId = useId();
   const usesSingleKey = singleKeyShortcuts ?? true;
   const shown = KIND_KEYS.filter((kind) => visibleKinds.includes(kind));
   const allShown = shown.length === KIND_KEYS.length;
@@ -131,6 +138,24 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
             </li>
           ))}
         </ul>
+      </fieldset>
+      <fieldset className="m-0 grid gap-1 border-0 p-0">
+        <legend className="mb-1 font-medium">お気に入り</legend>
+        <ul className="m-0 grid list-none gap-1 p-0">
+          <li>
+            <label className="flex min-h-10 items-center gap-2">
+              <Checkbox checked={favoritesFirst} aria-describedby={firstHintId} onChange={() => onFavoritesFirstChange?.(!favoritesFirst)} />
+              <span>{FAVORITES_FIRST_LABEL}</span>
+            </label>
+          </li>
+          <li>
+            <label className="flex min-h-10 items-center gap-2">
+              <Checkbox checked={favoritesOnly} onChange={() => onFavoritesOnlyChange?.(!favoritesOnly)} />
+              <span>{FAVORITES_ONLY_LABEL}</span>
+            </label>
+          </li>
+        </ul>
+        <p id={firstHintId} className="m-0 text-small text-muted-foreground">一番上に並べるのはカードの一覧だけで、ボードと表の並びは変えません。</p>
       </fieldset>
       <fieldset className="m-0 grid gap-1 border-0 p-0">
         <legend className="mb-1 font-medium">コメントの入力</legend>

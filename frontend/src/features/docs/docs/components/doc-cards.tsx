@@ -4,6 +4,7 @@ import type { LookupRecordId } from "@/shared/core/record-ids";
 import { CommentMark } from "@/shared/components/comment-mark";
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
+import { FavoriteToggle } from "@/shared/components/favorite-toggle";
 import { Icon, StatusMark } from "@/shared/components/icon";
 import { ItemDates } from "@/shared/components/item-dates";
 import { PendingMark } from "@/shared/components/pending-mark";
@@ -11,6 +12,7 @@ import { TagList } from "@/shared/components/tag-list";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
 import type { ScreenEdit } from "@/shared/core/edits";
 import { cardSortToRowSort, INITIAL_CARD_SORT, sortItems } from "@/shared/components/card-sort";
+import { favoritesFirst } from "@/shared/core/favorites";
 import { bodyFormatOf, type Item } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
 
@@ -27,16 +29,19 @@ export type DocCardProps = {
   onOpen: (id: string) => void;
   /** 渡すとタグを押せるようにし、押したタグを絞り込みに加える */
   onSelectTag?: (name: string) => void;
+  /** 渡すとカードの右上に星を配置し、押すとお気に入りに登録・解除する */
+  favorite?: { on: boolean; onToggle: () => void };
 };
 
-export const DocCard = ({ doc, lookup, inBoard, selected, marks, comments, edit, onOpen, onSelectTag }: DocCardProps) => {
+export const DocCard = ({ doc, lookup, inBoard, selected, marks, comments, edit, onOpen, onSelectTag, favorite }: DocCardProps) => {
   const format = bodyFormatOf(doc.body);
   const mark = marks?.[doc.id];
   const pending = edit?.marks[doc.id];
   const count = comments[doc.id] ?? 0;
   return (
     // カードの中にタグのボタンを置くため、外枠は div にし、タイトルのボタンの ::after をカード全体へ広げる
-    <div data-card={doc.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-3 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && inBoard && "border-mark bg-row-selected", pending === "remove" && "opacity-60")}>
+    <div data-card={doc.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-3 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && inBoard && "border-mark bg-row-selected", pending === "remove" && "opacity-60", favorite !== undefined && "pr-9")}>
+      {favorite === undefined ? null : <FavoriteToggle title={doc.title} on={favorite.on} onToggle={favorite.onToggle} className="absolute top-2 right-2" />}
       <span className="flex items-center gap-1 text-xs text-muted-foreground">
         <Icon name={doc.kind === "図" ? "graph" : "cards"} className="size-3" />
         {doc.kind}
@@ -87,11 +92,17 @@ export type DocCardsProps = {
   /** カードを押した。`order` は描いた並びの ID */
   onOpen: (id: string, order: string[]) => void;
   onSelectTag?: (name: string) => void;
+  /** お気に入りに登録した項目の ID（渡すと各カードに星を配置する） */
+  favorites?: ReadonlySet<string>;
+  /** お気に入りを先頭に並べるか */
+  favoritesFirst?: boolean;
+  onToggleFavorite?: (id: string) => void;
 };
 
 /** 資料のカードを並びの順に描く */
-export const DocCards = ({ docs, lookup, sort = cardSortToRowSort(INITIAL_CARD_SORT.docs), selectedId, marks, comments, edit, onOpen, onSelectTag }: DocCardsProps) => {
-  const ordered = sortItems(docs, sort);
+export const DocCards = ({ docs, lookup, sort = cardSortToRowSort(INITIAL_CARD_SORT.docs), selectedId, marks, comments, edit, onOpen, onSelectTag, favorites, favoritesFirst: first = false, onToggleFavorite }: DocCardsProps) => {
+  const sorted = sortItems(docs, sort);
+  const ordered = first && favorites !== undefined ? favoritesFirst(sorted, favorites) : sorted;
   const order = ordered.map((doc) => doc.id);
-  return ordered.map((doc) => <DocCard key={doc.id} doc={doc} lookup={lookup} inBoard={false} selected={doc.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={(id) => { onOpen(id, order); }} {...(onSelectTag === undefined ? {} : { onSelectTag })} />);
+  return ordered.map((doc) => <DocCard key={doc.id} doc={doc} lookup={lookup} inBoard={false} selected={doc.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={(id) => { onOpen(id, order); }} {...(onSelectTag === undefined ? {} : { onSelectTag })} {...(favorites === undefined || onToggleFavorite === undefined ? {} : { favorite: { on: favorites.has(doc.id), onToggle: () => { onToggleFavorite(doc.id); } } })} />);
 };
