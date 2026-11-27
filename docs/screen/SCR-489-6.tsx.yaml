@@ -246,6 +246,45 @@ elements:
         value: marker
       - name: lookup
         value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID と、配る書き出しのスレッドの ID は `null`）
+  - name: お気に入りの星
+    kind: button
+    component: CMP-721-1#
+    args:
+      - name: title
+        value: そのタスクのタイトル
+      - name: on
+        value: 端末の保存領域の `favorites` にそのタスクの ID があるか
+    position: ボードのカード > 右上
+    description: 押すとそのタスクをお気に入りに登録・解除し（『プレビューを開く』の制約「お気に入り」）、カードの星を描き替える。列の中の並びは変えず、カードの詳細は開かない
+    io: 入力
+    visible_when: 表示形式がボード
+  - name: 星の列
+    kind: button
+    component: CMP-721-1#
+    args:
+      - name: title
+        value: その行のタスクのタイトル
+      - name: on
+        value: 端末の保存領域の `favorites` にその行の ID があるか
+    position: 表 > 一番左の列
+    description: 表の一番左に見出し「お気に入り」の列を配置し（`favoriteColumn`。列の表示で外せない）、行ごとに星を出す。押すとその行のタスクをお気に入りに登録・解除し、行の詳細は開かない。見出しを押すとほかの列と同じく昇順 → 降順 → 解除で並べ替え（`sort` の `favorite`）、昇順でお気に入りが先頭になる
+    io: 入力
+    visible_when: 表示形式が表
+  - name: お気に入りのみのチップ
+    kind: button
+    component: CMP-649-2#
+    args:
+      - name: filters
+        value: 絞り込みのドロワーの selected
+      - name: labels
+        value: 条件の列の名前
+      - name: onClearFavoritesOnly
+        value: 端末の保存領域の `favorites_only` の上書きを削除する
+    position: ツールバーの下（ボードは条件のチップ、表は表の上のチップの行）の先頭
+    label: お気に入りのみ
+    description: 「お気に入りだけを表示する」で絞っていることを、絞り込みの条件のチップの先頭に出す。ボード・表はお気に入りのタスクだけに絞る。× と「すべて解除」で `favorites_only` の上書きを削除し、一覧を全ての項目で再描画する
+    io: 入力
+    visible_when: 端末の保存領域の `favorites_only` が真のとき
 lead: タスクをボード（既定）・表で見る画面。
 notes:
   コメントのマーカーのモック: コメントのマーカーの見本は `docs/mock/pages/tasks/121/standard/index.html`
