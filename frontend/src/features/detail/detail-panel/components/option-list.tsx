@@ -63,7 +63,7 @@ const ChooseBar = ({ optionKey, chosen, note, onChoose, onCancel }: { optionKey:
         <Textarea id={`choice-note-${optionKey}`} rows={2} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="選んだ理由など" />
         <div className="flex justify-end gap-1.5">
           <Button variant="ghost" onClick={() => setEditing(false)}>
-            やめる
+            キャンセル
           </Button>
           <Button
            
@@ -84,7 +84,7 @@ const ChooseBar = ({ optionKey, chosen, note, onChoose, onCancel }: { optionKey:
         <span className="min-w-0 text-small wrap-break-word text-muted-foreground">{note === undefined ? "一言なし" : `一言: ${note}`}</span>
         <span className="flex gap-1.5">
           <Button variant="ghost" onClick={() => setEditing(true)}>
-            一言を直す
+            一言を編集
           </Button>
           <Button variant="outline" onClick={onCancel}>
             選択を取り消す
