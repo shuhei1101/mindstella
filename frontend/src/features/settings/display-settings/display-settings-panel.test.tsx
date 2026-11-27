@@ -51,3 +51,23 @@ describe("DisplaySettingsPanel", () => {
     expect(stored()["focusAfterAdd"] ?? null).toBeNull();
   });
 });
+
+describe("DisplaySettingsPanel favorites", () => {
+  // チェックを切り替えると保存領域が上書きと null を行き来する（正常系）
+  test("display_settings_panel_when_favorites", async () => {
+    // 準備
+    renderRoute("/?panel=display");
+    const group = await screen.findByRole("group", { name: "お気に入り" });
+    const first = within(group).getByRole("checkbox", { name: "お気に入りを一番上にする" });
+    const only = within(group).getByRole("checkbox", { name: "お気に入りだけを表示する" });
+    // 実行・検証
+    await userEvent.click(first);
+    expect(stored()["favoritesFirst"]).toBe(false);
+    await userEvent.click(first);
+    expect(stored()["favoritesFirst"] ?? null).toBeNull();
+    await userEvent.click(only);
+    expect(stored()["favoritesOnly"]).toBe(true);
+    await userEvent.click(only);
+    expect(stored()["favoritesOnly"] ?? null).toBeNull();
+  });
+});

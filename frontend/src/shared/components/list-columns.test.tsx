@@ -1,7 +1,8 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { commonColumns } from "@/shared/components/list-columns";
+import { commonColumns, favoriteColumn } from "@/shared/components/list-columns";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -26,5 +27,25 @@ describe("commonColumns", () => {
     expect(time).toHaveAttribute("datetime", "2026-11-20T09:40:00+00:00");
     expect(time).toHaveTextContent("11/20 18:40");
     expect(columns.created.get(row)).toBe("2026-11-02T01:15:00+00:00");
+  });
+});
+
+describe("favoriteColumn", () => {
+  // 登録した行は ★ で、星を押すと行の ID で知らせる（正常系）
+  test("favorite_column", async () => {
+    // 準備
+    const onToggle = vi.fn();
+    const column = favoriteColumn(new Set(["D-1"]), onToggle);
+    const on = { id: "D-1", title: "題" };
+    const off = { id: "D-2", title: "別" };
+    // 実行
+    render(<>{column.cell?.(off)}</>);
+    await userEvent.click(screen.getByRole("button", { name: "別をお気に入りに登録" }));
+    // 検証
+    expect(column.key).toBe("favorite");
+    expect(column.label).toBe("お気に入り");
+    expect(column.get(on)).toBe("★");
+    expect(column.get(off)).toBe("");
+    expect(onToggle).toHaveBeenCalledWith("D-2");
   });
 });

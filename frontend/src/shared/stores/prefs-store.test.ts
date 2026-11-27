@@ -120,3 +120,16 @@ describe("useFocusAfterAddTarget", () => {
     expect(result.current).toBe(expected);
   });
 });
+
+describe("writePrefs favorites", () => {
+  // お気に入りと 2 つの上書きを書き込み、参照できる（正常系）
+  test("write_prefs_when_favorites", () => {
+    // 準備
+    localStorage.clear();
+    writePrefs({ minimap: false });
+    // 実行
+    writePrefs({ favorites: ["D-1"], favoritesFirst: false, favoritesOnly: true });
+    // 検証
+    expect(readPrefs()).toMatchObject({ favorites: ["D-1"], favoritesFirst: false, favoritesOnly: true, minimap: false });
+  });
+});

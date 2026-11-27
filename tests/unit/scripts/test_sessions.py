@@ -760,6 +760,19 @@ def test_record_event_unknown(ctx: SimpleNamespace) -> None:
     assert _session(ctx) == before
 
 
+def test_record_event_when_pre_compact(ctx: SimpleNamespace) -> None:
+    """前のプラグインが送る pre_compact は受け付けず、状態を変えない（異常系）。"""
+    # 準備
+    _write_session(ctx)
+    before = _session(ctx)
+    # 実行
+    with pytest.raises(ApiError) as caught:
+        sessions.record_event(SESSION_ID, {"event": "pre_compact", "claude_session_id": "c1"}, ctx)
+    # 検証
+    assert caught.value.status == 400
+    assert _session(ctx) == before
+
+
 @pytest.mark.parametrize(
     ("event", "responding"),
     [
@@ -1082,16 +1095,6 @@ def test_build_command_when_resume() -> None:
     ]
 
 
-def test_build_env_when_compact() -> None:
-    """圧縮の契機を渡す（正常系）。"""
-    # 実行
-    env = sessions.build_env(
-        SESSION_ID, WORKSPACE_ID, 8784, None, None, True, launch_reason="compact"
-    )
-    # 検証
-    assert env["MINDSTELLA_LAUNCH_REASON"] == "compact"
-
-
 def _transcript(config_dir: Path, folder: Path, claude_session_id: str) -> Path:
     """会話の記録のファイルを Claude Code と同じ名前の作り方で作る。"""
     two_units = "".join("--" if ord(char) > 0xFFFF else char for char in str(folder))
@@ -1211,9 +1214,6 @@ def test_create_session_when_launch_record_missing(ctx: SimpleNamespace, clock: 
             [],
             id="server-error",
         ),
-        pytest.param(
-            {"event": "pre_compact", "claude_session_id": "c1"}, ["compact"], id="pre-compact"
-        ),
     ],
 )
 def test_record_event_when_rate_limit(
@@ -1222,7 +1222,7 @@ def test_record_event_when_rate_limit(
     ctx: SimpleNamespace,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """stop_failure の rate_limit と pre_compact で起動し直しを始める（正常系）。"""
+    """stop_failure の rate_limit で起動し直しを始める（正常系）。"""
     # 準備
     _write_session(ctx)
     reasons: list[str] = []
@@ -1717,7 +1717,6 @@ def test_restart_session_when_usage_threshold(
         pytest.param("api", True, "/c", id="api"),
         pytest.param("rate_limit", False, None, id="rate-limit"),
         pytest.param("usage_threshold", False, None, id="usage-threshold"),
-        pytest.param("compact", True, "/c", id="compact"),
     ],
 )
 def test_restart_session_with_specified_account(
