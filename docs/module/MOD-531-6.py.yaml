@@ -28,7 +28,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で、`balancer_account_from` の値があれば `balancer_account` で送信する）、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。`stop-failure` では標準入力の `error` を送信する。どの結末も 0 を返す'
+    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で、`balancer_account_from` の値があれば `balancer_account` で送信する）、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。`stop-failure` では標準入力の `error` を送信する。`EVENTS` に無い出来事（前の版の `hooks.json` が登録した `pre-compact` を含む）は、送信せずに標準エラーへ 1 行だけ記録する。どの結末も 0 を返す（フックの終了コード 2 は Claude Code の操作を止めるため、引数の誤りでも 2 で終えない）'
     description: 依存が揃う前のシステムの `python3` で起動するので、Python 3.8 で読める構文と標準ライブラリだけで書く
     side_effects: 常駐サーバーへ出来事を送信する
     args:
@@ -125,7 +125,7 @@ functions:
         summary: pre-compact の出来事は受け付けず、圧縮を止めない
         condition: '`pre-compact`、`MINDSTELLA_SESSION` あり'
         mock: '`post_event`'
-        expected: '`SystemExit`（`2`）で、標準出力が空で `post_event` を呼ばない'
+        expected: '0 を返し、標準出力が空で `post_event` を呼ばず、標準エラーが `pre-compact` を含む 1 行'
     process: |-
       1. `MINDSTELLA_SESSION` が無ければ標準入力を読み捨てて 0 を返す
       2. 出来事を送信する（`post`）。送れなければ標準エラーに 1 行書き、続ける

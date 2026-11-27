@@ -339,24 +339,26 @@ def _refuse(_port: int, _session: str, _body: dict[str, Any]) -> None:
     raise OSError("connection refused")
 
 
-def test_main_when_pre_compact() -> None:
-    """pre-compact の出来事は受け付けず、圧縮を止めない（異常系）。"""
+def test_main_when_pre_compact(capsys: pytest.CaptureFixture[str]) -> None:
+    """前のバージョンが登録した pre-compact は送信せず、0 で終えて圧縮を止めない（異常系）。"""
     # 準備
     stdout = io.StringIO()
     sent: list[dict[str, Any]] = []
     # 実行
-    with pytest.raises(SystemExit) as caught:
-        session_hook.main(
-            ["pre-compact"],
-            environ=ENVIRON,
-            stdin=io.StringIO(json.dumps({"session_id": "c1", "trigger": "auto"})),
-            stdout=stdout,
-            post=lambda _port, _session, body: sent.append(body),
-        )
+    code = session_hook.main(
+        ["pre-compact"],
+        environ=ENVIRON,
+        stdin=io.StringIO(json.dumps({"session_id": "c1", "trigger": "auto"})),
+        stdout=stdout,
+        post=lambda _port, _session, body: sent.append(body),
+    )
     # 検証
-    assert caught.value.code == 2
+    assert code == 0
     assert stdout.getvalue() == ""
     assert sent == []
+    errors = capsys.readouterr().err.splitlines()
+    assert len(errors) == 1
+    assert "pre-compact" in errors[0]
 
 
 @pytest.mark.parametrize(
