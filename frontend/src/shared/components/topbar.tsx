@@ -71,6 +71,8 @@ export type TopbarProps = {
   onThemeChange?: (theme: Theme) => void;
   /** 渡さないと「変更履歴」を出さない */
   onOpenHistory?: () => void;
+  /** 変更履歴の未読のまとまりの件数（0 のときは出さない） */
+  historyUnread?: number;
   onClearDiff?: () => void;
   onToggleComments?: () => void;
   /** 渡さないと表示の設定のボタンを出さない */
@@ -333,12 +335,12 @@ const SearchButton = ({ fit, onClick }: { fit: Fit; onClick: (() => void) | unde
 );
 
 /** 「変更履歴」のボタン */
-const HistoryButton = ({ fit, active, onClick }: { fit: Fit; active: boolean; onClick: () => void }) => (
+const HistoryButton = ({ fit, active, unread, onClick }: { fit: Fit; active: boolean; unread: number; onClick: () => void }) => (
   <WithTip text={active ? "変更履歴（過去の差分を表示中）" : "変更履歴"} align="start">
   <button
     type="button"
     aria-haspopup="dialog"
-    aria-label={active ? "変更履歴（過去の差分を表示中）" : "変更履歴"}
+    aria-label={`${active ? "変更履歴（過去の差分を表示中）" : "変更履歴"}${unread > 0 ? `（未読 ${String(unread)} 件）` : ""}`}
     onClick={onClick}
     className={cn(
       "relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border border-topbar-line bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
@@ -347,21 +349,12 @@ const HistoryButton = ({ fit, active, onClick }: { fit: Fit; active: boolean; on
     )}
   >
     <Icon name="history" />
-    {active ? <span aria-hidden="true" className="absolute -top-1 -right-1 size-2.5 rounded-full bg-diff-changed ring-2 ring-topbar-bg" /> : null}
-  </button>
-  </WithTip>
-);
-
-/** 差分の表示をやめる × */
-const ClearDiffButton = ({ fit, onClick }: { fit: Fit; onClick: (() => void) | undefined }) => (
-  <WithTip text="差分の表示をやめる" align="start">
-  <button
-    type="button"
-    aria-label="差分の表示をやめる"
-    onClick={onClick}
-    className={cn("relative grid size-8 flex-none cursor-pointer place-items-center rounded-control text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg", iconButtonFitClass(fit))}
-  >
-    <Icon name="x" />
+    {active ? <span aria-hidden="true" className="absolute -top-1 -left-1 size-2.5 rounded-full bg-diff-changed ring-2 ring-topbar-bg" /> : null}
+    {unread > 0 ? (
+      <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 inline-grid h-4 min-w-4 place-items-center rounded-full bg-topbar-unread px-1 font-mono text-count leading-none text-topbar-bg ring-2 ring-topbar-bg">
+        {unread > 99 ? "99+" : unread}
+      </span>
+    ) : null}
   </button>
   </WithTip>
 );
@@ -646,8 +639,7 @@ export const Topbar = (props: TopbarProps) => {
         {fit.offline ? <ConnectionNotice fit={fit} readAt={readAt} /> : null}
         {onRefresh === undefined ? null : <RefreshButton fit={fit} stale={stale} refreshing={refreshing} onClick={onRefresh} />}
         <SearchButton fit={fit} onClick={props.onOpenSearch} />
-        {onOpenHistory === undefined ? null : <HistoryButton fit={fit} active={diffPoint !== null} onClick={onOpenHistory} />}
-        {diffPoint === null ? null : <ClearDiffButton fit={fit} onClick={props.onClearDiff} />}
+        {onOpenHistory === undefined ? null : <HistoryButton fit={fit} active={diffPoint !== null} unread={props.historyUnread ?? 0} onClick={onOpenHistory} />}
         {comments ? <span className={cn("flex-1 basis-0", diffSqueezeClass(fit))} /> : null}
         {onToggleSettings === undefined ? null : <SettingsButton fit={fit} open={settingsOpen} onClick={onToggleSettings} />}
         {filter ? <FilterButton fit={fit} count={filterCount} open={filterOpen} onClick={props.onToggleFilter} /> : null}

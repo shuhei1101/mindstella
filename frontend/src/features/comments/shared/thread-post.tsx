@@ -111,7 +111,7 @@ export const ThreadPost = ({
   if (pending !== null) {
     const label = reviewLabel(pending);
     return (
-      <article data-author="user" data-comment={pending.id} className="ml-8 grid min-w-0 grid-cols-1 gap-1 rounded-card border border-dashed border-border bg-card p-2 max-md:ml-4">
+      <article data-author="user" data-comment={pending.id} className="ml-8 grid min-w-0 grid-cols-1 gap-1 border-l-2 border-dashed border-border py-1 pl-2 max-md:ml-4">
         <div className="flex items-center gap-2 text-small">
           <span data-part="author" className="font-medium">{AUTHOR_LABELS.user}</span>
           <PendingMark />
@@ -167,7 +167,7 @@ export const ThreadPost = ({
   }
   if (post === null) throw new Error("ThreadPost には post・event・pending のどれか 1 つを渡す");
   return (
-    <article data-author={post.author} data-post-id={post.id} tabIndex={-1} className={cn("grid min-w-0 grid-cols-1 gap-1 rounded-card p-2", post.author === "user" ? "ml-8 border border-border bg-card max-md:ml-4" : "mr-8 bg-muted max-md:mr-4")}>
+    <article data-author={post.author} data-post-id={post.id} tabIndex={-1} className={cn("grid min-w-0 grid-cols-1 gap-1", post.author === "user" ? "ml-8 border-l-2 border-primary py-1 pl-2 max-md:ml-4" : "mr-8 rounded-control bg-muted p-2 max-md:mr-4")}>
       <div className="flex items-center gap-2 text-small">
         <span data-part="author" className="font-medium">{AUTHOR_LABELS[post.author]}</span>
         <time dateTime={post.created} className="text-muted-foreground">

@@ -84,10 +84,11 @@ export const OfflineNarrow: Story = {
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
 
-/** 変更履歴で「前回開いてから」を選んだ間。「変更履歴」のボタンの右上にオレンジの点を付けて右に × だけを置き、時点の名前と日時は出さない。検討事項・資料のタブに点 */
+/** 変更履歴でまとまりを選んだ間。「変更履歴」のボタンの左上にオレンジの点を付け、差分の表示をやめる × は置かない。変わった項目を持つ検討事項・資料のタブに点 */
 export const DiffOn: Story = {
   args: {
-    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    historyUnread: 1,
     onOpenHistory: fn(),
     onClearDiff: fn(),
     tabs: [
@@ -103,10 +104,17 @@ export const DiffOn: Story = {
   },
 };
 
-/** 幅 390px のサーバーの配信で、差分の表示の間。「変更履歴」とコメントのボタンをアイコン（コメントは件数も）だけにし、点の付いた「変更履歴」のボタンと × を押し出さずに収める */
+/** 差分を出していない間に、未読のまとまりが 3 件ある。「変更履歴」のボタンの右上に件数を出す */
+export const HistoryUnread: Story = { args: { onOpenHistory: fn(), historyUnread: 3 } };
+
+/** 未読のまとまりが 100 件以上。件数を「99+」にする */
+export const HistoryUnreadMany: Story = { args: { onOpenHistory: fn(), historyUnread: 120 } };
+
+/** 幅 390px のサーバーの配信で、差分の表示の間。「変更履歴」とコメントのボタンをアイコン（件数つき）だけにし、点と未読の件数の付いた「変更履歴」のボタンを押し出さずに収める */
 export const DiffOnNarrow: Story = {
   args: {
     diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    historyUnread: 12,
     onOpenHistory: fn(),
     onClearDiff: fn(),
     comments: true,

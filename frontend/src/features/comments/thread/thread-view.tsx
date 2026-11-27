@@ -317,7 +317,7 @@ export const ThreadView = ({ id, data, onBack, onClosed, onOpenItem, onOpenChang
           .sort((a, b) => commentNumber(a.id) - commentNumber(b.id))
           .map((item) =>
             removed.includes(item) && !replies.includes(item) ? (
-              <li key={item.id} className="flex items-center gap-2 rounded-card border border-border p-2 text-small">
+              <li key={item.id} className="flex items-center gap-2 border-l-2 border-border py-1 pl-2 text-small">
                 <span role="status" className="flex-1">
                   コメントを削除しました。
                 </span>

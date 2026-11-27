@@ -4,12 +4,13 @@ import { fn } from "storybook/test";
 
 import { HistoryDialog } from "@/shared/components/history-dialog";
 
-/** 選べる時点（差分を出さない・まだまとめていない変更・前回開いてから・まとまり 2 つ） */
+/** 選べる時点（最新・まだまとめていない変更・まとまりの新しい順。未読のまとまりにマーカー） */
+const LATEST = { sel: "", name: "最新", sub: "マーカーと差分を出さずに今の内容だけを読む" };
 const POINTS = [
-  { sel: "", name: "差分を出さない（今の内容）", sub: "印と差分を出さずに今の内容だけを読む" },
+  LATEST,
   { sel: "pending", name: "まだまとめていない変更", sub: "AI がまだ区切っていない書き換え", count: 2 },
-  { sel: "since", name: "前回開いてから", sub: "10/04 13:05 より後", count: 5 },
-  { sel: "V-2", name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45", count: 3 },
+  { sel: "V-3", name: "通知の方法の検討事項を足す", sub: "10/04 15:20", count: 2, unread: true },
+  { sel: "V-2", name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45", count: 3, unread: true },
   { sel: "V-1", name: "検討事項の初めの並び", sub: "10/03 09:12", count: 12 },
 ];
 
@@ -24,28 +25,39 @@ const meta = {
       </div>
     ),
   ],
-  args: { points: POINTS, current: "since", onSelect: fn(), onClose: fn() },
+  args: { points: POINTS, current: "", onSelect: fn(), onClose: fn(), onMarkAllRead: fn() },
 } satisfies Meta<typeof HistoryDialog>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** 「前回開いてから」を選んでいる。先頭から差分を出さない・まだまとめていない変更・前回開いてから・まとまり 2 つ */
-export const SinceSelected: Story = { args: { current: "since" } };
+/** 差分を出していない（「最新」にチェック）。未読のまとまり 2 つにマーカーを付け、「すべて既読にする」を出す */
+export const Unread: Story = { args: { current: "" } };
 
-/** 差分を出していない。「差分を出さない（今の内容）」にチェック */
-export const Off: Story = { args: { current: "" } };
+/** 未読のまとまり「通知の方法の検討事項を足す」を選んで既読にした後 */
+export const ChangeSetSelected: Story = { args: { current: "V-3", points: POINTS.map((point) => (point.sel === "V-3" ? { ...point, unread: false } : point)) } };
+
+/** 未読が無い。「すべて既読にする」を押せない */
+export const AllRead: Story = { args: { points: POINTS.map((point) => ({ ...point, unread: false })) } };
+
+/** まとまりがまだ無い */
+export const Empty: Story = { args: { points: POINTS.slice(0, 1) } };
+
+/** まとまりが多い。一覧を縦に送る */
+export const Many: Story = {
+  args: { points: [LATEST, ...Array.from({ length: 30 }, (_, index) => ({ sel: `V-${String(30 - index)}`, name: `まとまり ${String(30 - index)}`, sub: "10/04 15:20", count: index + 1, unread: index < 12 }))] },
+};
 
 /** まだまとめていない変更が無い。その行を出さない */
 export const NoPending: Story = { args: { points: POINTS.filter((point) => point.sel !== "pending") } };
 
 /** 長い説明のまとまり。名前を折り返し、日時と件数の列を押し出さない */
-export const LongName: Story = {
+export const LongText: Story = {
   args: {
     points: [
-      ...POINTS.slice(0, 3),
-      { sel: "V-2", name: "フェーズの切り方を見直しに戻して、対象とカテゴリーの付け替えをまとめて行い、ゴールまでの残りの項目を数え直した長い説明のまとまり", sub: "10/04 14:45", count: 3 },
+      ...POINTS.slice(0, 2),
+      { sel: "V-2", unread: true, name: "フェーズの切り方を見直しに戻して、対象とカテゴリーの付け替えをまとめて行い、ゴールまでの残りの項目を数え直した長い説明のまとまり", sub: "10/04 14:45", count: 3 },
     ],
   },
 };
