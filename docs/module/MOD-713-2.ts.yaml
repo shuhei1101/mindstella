@@ -1,12 +1,12 @@
 id: MOD-713-2
 title: プレビュー / panel-width-store
-lead: 左のパネルと詳細パネルの幅と開いているかを持ち、互いの幅を引いた上限を求め、確定した幅をそのタブの `sessionStorage` に残す。
+lead: 左のパネルと詳細パネルの幅を持ち、表示の幅の 2/3 の上限を求め、確定した幅をそのタブの `sessionStorage` に残す。
 stores:
   - name: usePanelWidthStore
     title: パネルの幅
     container: frontend/src/shared/stores/panel-width-store.ts
     usecase: 共通
-    summary: 左のパネル（コメントの一覧・保存待ちのパネル・表示の設定）と詳細パネルの幅と、開いているかを持つ Zustand のストア。幅は、このタブでまだ適用していない間（`null`）は `currentLeftWidth`・`currentDetailWidth` が保存領域から参照する
+    summary: 左のパネル（コメントの一覧・保存待ちのパネル・表示の設定）と詳細パネルの幅を持つ Zustand のストア。幅は、このタブでまだ適用していない間（`null`）は `currentLeftWidth`・`currentDetailWidth` が保存領域から参照する
     refs:
       - IF-489-70#
       - SCR-489-2#
@@ -22,16 +22,6 @@ stores:
         type: number | null
         initial: 'null'
         description: このタブで適用した幅。`null` の間は保存領域の値を使用する（`currentDetailWidth`）
-      - name: leftOpen
-        title: 左のパネルを開いているか
-        type: boolean
-        initial: 'false'
-        description: 部品『左のパネル』が描かれている間は真
-      - name: detailOpen
-        title: 詳細パネルを開いているか
-        type: boolean
-        initial: 'false'
-        description: 詳細パネルが描かれている間は真
     actions:
       - name: setLeftWidth
         title: 左のパネルの幅を適用する
@@ -56,20 +46,16 @@ stores:
         title: 詳細パネルの幅を確定する
         kind: 関数
         summary: 幅の区切りの `onCommit` で呼ぶ。適用した後に `sessionStorage` の `workspaceKey(PANEL_WIDTH_KEY)` に残す
-      - name: setOpen
-        title: 開いているかを書く
-        kind: 関数
-        summary: "`setOpen('left' | 'detail', open)`。パネルを描いたとき・除外したときに呼ぶ"
 constants:
   - name: LEFT_PANEL_WIDTH
     title: 左のパネルの幅の決まり
-    summary: 左のパネルの既定・下限・本文に残す幅・キーの 1 回の幅・区切りを出す幅（px）
-    value: '`{ default: 384, min: 320, keepBody: 400, step: 16, resizableFrom: 901 }`'
+    summary: 左のパネルの既定・下限・キーの 1 回の幅・区切りを出す幅（px）
+    value: '`{ default: 384, min: 320, step: 16, resizableFrom: 901 }`'
     container: frontend/src/shared/stores/panel-width-store.ts
   - name: DETAIL_PANEL_WIDTH
     title: 詳細パネルの幅の決まり
-    summary: 詳細パネルの既定・下限・本文に残す幅・左に残す幅・キーの 1 回の幅・区切りを出す幅・横に並べる幅（px）
-    value: '`{ default: 640, min: 480, keepBody: 400, keepLeft: 160, step: 16, resizableFrom: 901, sideFrom: 1100 }`'
+    summary: 詳細パネルの既定・下限・キーの 1 回の幅・区切りを出す幅（px）
+    value: '`{ default: 640, min: 480, step: 16, resizableFrom: 901 }`'
     container: frontend/src/shared/stores/panel-width-store.ts
   - name: LEFT_PANEL_WIDTH_KEY
     title: 左のパネルの幅の保存のキー
@@ -80,6 +66,11 @@ constants:
     title: 詳細パネルの幅の保存のキー
     summary: '`workspaceKey` で末尾に `:{workspace}` を付ける'
     value: '`mindmap-panel-width`'
+    container: frontend/src/shared/stores/panel-width-store.ts
+  - name: PANEL_MAX_RATIO
+    title: パネルの幅の上限の比
+    summary: 左のパネルと詳細パネルの上限を、表示の幅に対する比で持つ
+    value: '`2 / 3`'
     container: frontend/src/shared/stores/panel-width-store.ts
 functions:
   - name: readStoredWidth
@@ -97,27 +88,27 @@ functions:
   - name: leftPanelMax
     title: 左のパネルの上限
     kind: 関数
-    summary: '`leftPanelMax(viewport, detailWidth, detailOpen)`。表示の幅 − `keepBody`。表示の幅が `sideFrom`（1100px）以上で詳細パネルを開いていれば、さらに詳細パネルの幅（`detailPanelMax(viewport, 0, false)` で収めた幅）を引く。下限を下回るときは下限'
+    summary: '`leftPanelMax(viewport)`。`Math.floor(viewport * PANEL_MAX_RATIO)`。詳細パネルの幅も本文に残す幅も引かない。下限を下回るときは下限'
     container: frontend/src/shared/stores/panel-width-store.ts
     unit_tests:
       - name: test_left_panel_max
         case: 正常
         summary: 左のパネルの上限
-        condition: '`parametrize`: 表示の幅 1440 で詳細パネルを開いていない / 1440 で幅 640 の詳細パネルを開いている / 1000 で幅 640 を開いている（詳細パネルは本文に重なる） / 1100 で幅 640 を開いている'
+        condition: '`parametrize`: 表示の幅 1440 / 1000 / 901 / 450'
         mock: なし
-        expected: 1040 / 400 / 600 / 320
+        expected: 960 / 666 / 600 / 320
   - name: detailPanelMax
     title: 詳細パネルの上限
     kind: 関数
-    summary: '`detailPanelMax(viewport, leftWidth, leftOpen)`。表示の幅が `sideFrom` 以上では表示の幅 − `keepBody`（左のパネルを開いていればさらに左のパネルの幅を引く）、未満では表示の幅 − `keepLeft`。下限を下回るときは下限'
+    summary: '`detailPanelMax(viewport)`。`Math.floor(viewport * PANEL_MAX_RATIO)`。左のパネルの幅も本文に残す幅も引かない。下限を下回るときは下限'
     container: frontend/src/shared/stores/panel-width-store.ts
     unit_tests:
       - name: test_detail_panel_max
         case: 正常
         summary: 詳細パネルの上限
-        condition: '`parametrize`: 表示の幅 1440 で左のパネルを開いていない / 1440 で幅 384 の左のパネルを開いている / 1000 / 1100 で幅 384 を開いている'
+        condition: '`parametrize`: 表示の幅 1440 / 1100 / 1000 / 600'
         mock: なし
-        expected: 1040 / 656 / 840 / 480
+        expected: 960 / 733 / 666 / 480
   - name: currentLeftWidth
     title: 左のパネルの今の幅
     kind: 関数
@@ -137,5 +128,5 @@ functions:
     container: frontend/src/shared/stores/panel-width-store.ts
 notes:
   単体テスト: 同じフォルダの `panel-width-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
-  両方の上限: 詳細パネルの上限は左のパネルの残した幅を、左のパネルの上限は左のパネルを引かない上限で収めた詳細パネルの幅を引く。互いの上限を参照して循環しない
+  両方の上限: 2 つのパネルの上限は表示の幅だけで決め、互いの幅を引かない。重なることを許可し、重なり順は『left-panel』が持つ。上限のために開いているかを持つ必要が無くなったため、`leftOpen`・`detailOpen`・`setOpen` を削除した
   幅の初期値: ストアは import したときに作られ、その時点では開いたワークスペースのパスが決まっていないことがあるため、保存領域は使用するときに `workspaceKey` で参照する
