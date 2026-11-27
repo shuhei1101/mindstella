@@ -1,10 +1,15 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { describe, expect, test, vi } from "vitest";
 
+import { DetailPanel } from "@/features/detail/detail-panel/detail-panel";
+import { buildIndex, type MindmapData } from "@/shared/core/records";
 import { usePanelWidthStore } from "@/shared/stores/panel-width-store";
 import { stubRecords } from "@/testing/msw/fixtures";
-import { renderRoute } from "@/testing/render";
+import { RECORDS } from "@/testing/msw/handlers";
+import { server } from "@/testing/msw/server";
+import { renderInPreviewRouter, renderRoute } from "@/testing/render";
 
 vi.mock("@/shared/adapters/libraries", async (original) => ({ ...(await original<object>()), ...(await import("@/testing/libraries")) }));
 
@@ -194,5 +199,21 @@ describe("DetailPanel", () => {
     expect(panel.style.width).toBe("480px");
     usePanelWidthStore.setState({ leftOpen: false, leftWidth: null, detailWidth: null });
     sessionStorage.clear();
+  });
+  // raised でグレーアウトの上に出す（正常系）
+  test.each([
+    { raised: true, expected: true },
+    { raised: false, expected: false },
+  ])("detail_panel_when_raised（$raised）", async ({ raised, expected }) => {
+    // 準備
+    const data = { ...RECORDS, decisions: [decision], bodies: { "docs/D-1.md": "本文" } } as unknown as MindmapData;
+    stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
+    server.use(http.get("*/api/transcription", () => HttpResponse.json({ available: false, reason: null, detail: null, presets: [], action: "send", preset: null })));
+    // 実行
+    await renderInPreviewRouter("/?tab=decisions&id=D-1", <DetailPanel id="D-1" index={buildIndex(data)} raised={raised} />);
+    // 検証
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    if (expected) expect(panel).toHaveAttribute("data-raised");
+    else expect(panel).not.toHaveAttribute("data-raised");
   });
 });

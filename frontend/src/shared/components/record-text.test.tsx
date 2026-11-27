@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
@@ -70,5 +70,26 @@ describe("RecordText", () => {
     await userEvent.click(marker);
     // 検証
     expect(onCard).toHaveBeenCalledTimes(1);
+  });
+  // 指で押したときはツールチップを出さず 1 回で開く（正常系）
+  test("record_text_when_touch", () => {
+    // 準備
+    const onOpen = vi.fn();
+    render(<RecordText text="D-1 の比較" mode="link" lookup={lookup} onOpen={onOpen} />);
+    const link = screen.getByRole("link", { name: "D-1" });
+    // 実行（jsdom は PointerEvent を持たないため、pointerType を持つ Event を送信する）
+    const down = new Event("pointerdown", { bubbles: true });
+    Object.defineProperty(down, "pointerType", { value: "touch" });
+    act(() => {
+      link.dispatchEvent(down);
+      fireEvent.mouseEnter(link);
+      fireEvent.focus(link);
+    });
+    const tipShown = document.querySelector('[role="tooltip"]') !== null;
+    fireEvent.click(link);
+    // 検証
+    expect(tipShown).toBe(false);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith("D-1");
   });
 });
