@@ -13,6 +13,7 @@ preconditions:
   - 常駐サーバーが、環境変数で指定された Webhook の設定のファイル（中身は Webhook の URL の 1 行）を参照できる
   - MindStella のセッションが、単一ユースケース『外部のアプリから起動する』か『端末から起動する』で起動している
   - MindStella のセッションが、エージェントフローの決まりに従い、利用者に手番を返す直前に、成功する `commit` を 1 回だけ呼ぶ（単一ユースケース『コメントの取り込み』）。拒まれたら、残っているタスクの状態を変えてから呼び直す
+  - 利用者が画面を外部へ公開しているときは、画面の公開 URL の基底を mindstella のホームの設定に記載している
 success_guarantee: MindStella のセッションが手番を返す直前の `commit` が成功するたびに、1 件の通知が Discord のチャンネルに届く。返信に差分のリンクを入れるために作業の途中で呼ぶ `commit` では届かない。修正が無く返信だけで手番を返す `commit` でも届く。サブエージェントやバックグラウンドの処理を待つだけで応答が終了したときと、未着手・進行中のタスクが残っていて手番を返す直前の `commit` が拒まれたときは届かない。
 minimal_guarantee: Webhook の設定が無い・送信に失敗したときも、出来事の記録・スレッドの書き込み・commit は変わらない。Webhook の URL は、ログ・応答・ワークスペースの記録に記載しない。
 frequency: MindStella のセッションが利用者に手番を返すたびに 1 回
@@ -196,6 +197,34 @@ scenarios:
       - 1 回目の `commit` がエラーになり、その時点でエンドポイントに要求が届いていない
       - 呼び直した `commit` が成功した後に、エンドポイントに届いた要求が 1 件だけである
     test: test_normal_when_hand_back_refused
+  - name: 正常シナリオ（公開 URL を指定している）
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイントで、受けた要求を記録して 200 を返却する）と、Claude Code のセッション（スレッドに返信して `commit` を呼ぶ）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ。ホームの設定に画面の公開 URL の基底を記載している
+        notes: 基底は `https://mindstella.example.com`
+      - name: ワークスペース
+        description: 題名を持ち、プレビューを配信している
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SRV as 常駐サーバー
+        participant DC as Discord
+
+        CC->>SRV: 手番を返す直前に書き換えをまとめる（commit）
+        SRV-->>CC: まとめた
+        SRV->>DC: 公開 URL を記載した作業の完了の通知を送信する
+        DC-->>SRV: 受けた
+      ```
+
+      <!-- /map -->
+    expected:
+      - 通知の末尾の URL が、公開 URL の基底にワークスペースのプレビューのパス（`/w/{workspace}/`）を付けた URL で、`127.0.0.1` の URL が記載されていない
+    test: test_normal_when_public_url_configured
 refs:
   - SC-540-1#
   - IF-568-1#
