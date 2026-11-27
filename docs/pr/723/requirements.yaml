@@ -41,10 +41,10 @@ use_cases:
       - docs/scenario/SC-489-21.yaml
   - kind: single
     scenario: docs/scenario/SC-489-43.yaml
-    impact: following
-    detail: 案の選択に添えた一言をスレッドとして取り込むときの扱いに追随する
+    impact: changed
+    detail: 利用者が案を選んで確定するとコメントと同じく通知が入力され、取り込みで選ばれた検討事項を取得して一言を理由に反映する
     depends_on:
-      - docs/scenario/SC-489-21.yaml
+      - docs/scenario/SC-489-52.yaml
   - kind: single
     scenario: docs/scenario/SC-489-5.yaml
     impact: changed
