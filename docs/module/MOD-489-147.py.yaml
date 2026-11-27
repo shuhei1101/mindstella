@@ -769,19 +769,12 @@ functions:
         mock: なし
         expected: '`CommentConflictError` の `stale` が C-1 の 1 件。`decisions.yaml`・`comments.yaml` が呼ぶ前と同じ'
         exception: 送信できない案の選択がある
-      - name: test_send_comments_when_threads_write_fails_after_choices
+      - name: test_send_comments_when_write_fails_after_choices
         case: 異常
-        summary: スレッドを書けなければ利用者の選択を書き戻す
-        condition: D-1 への案の選択 C-1 と新規スレッドの C-2。`threads.yaml` への `os.replace` だけ `OSError` を送出するように差し替える
+        summary: スレッドかレビュー中を書けなければ利用者の選択とスレッドを書き戻し、変更の検知にも書き戻した中身を伝える
+        condition: 'D-1 への案の選択 C-1 と新規スレッドの C-2。`parametrize`: `threads.yaml` / `comments.yaml` への `os.replace` だけ `OSError` を送出するように差し替える'
         mock: '`os.replace`'
         expected: '`WriteFailedError`。`decisions.yaml`・`history.yaml`・`changes.yaml`・`threads.yaml`・`comments.yaml` が呼ぶ前と同じで、変更の検知の前回の中身も呼ぶ前と同じ（その後に検知を動かしても `external` の変更履歴とまとまりが増えない）'
-        exception: 置き換えで OSError
-      - name: test_send_comments_when_comments_write_fails_after_choices
-        case: 異常
-        summary: レビュー中を書けなければ利用者の選択とスレッドを書き戻し、変更の検知にも書き戻した中身を伝える
-        condition: D-1 への案の選択 C-1 と新規スレッドの C-2。`comments.yaml` への `os.replace` だけ `OSError` を送出するように差し替える
-        mock: '`os.replace`'
-        expected: '`WriteFailedError`。`decisions.yaml`・`history.yaml`・`changes.yaml`・`threads.yaml`・`comments.yaml` が呼ぶ前と同じで、変更の検知の前回の中身も呼ぶ前と同じ'
         exception: 置き換えで OSError
   - name: send_now
     title: すぐ送信する
