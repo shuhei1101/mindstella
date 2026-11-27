@@ -639,3 +639,17 @@ def test_post_id_touch_action(browser: Browser, write_review_preview: WriteRevie
     expect(page).to_have_url(re.compile(r"id=D-1"))
     expect(page.locator("[popover]:popover-open")).to_have_count(0)
     context.close()
+
+
+def test_removed_style(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """削除した書き込みの行は左の線だけで示し、カードの見た目（枠線・角丸・背景色の組）を重ねない（正常系）。"""
+    # 準備
+    _open(page, spa_comments_preview, "TH-1")
+    # 実行
+    _panel(page).get_by_role("button", name="TH-1 への返信を削除").click()
+    row = _panel(page).locator("li:has(> [role=status])").filter(has_text="コメントを削除しました。")
+    # 検証
+    style = row.evaluate(
+        "e => { const s = getComputedStyle(e); return [s.borderLeftWidth !== '0px', s.borderTopWidth, s.borderRadius, s.backgroundColor]; }"
+    )
+    assert style == [True, "0px", "0px", "rgba(0, 0, 0, 0)"]

@@ -14,6 +14,9 @@ NARROW_POST_RATIO = 0.9
 
 POST = "#storybook-root > article"
 
+# 書き込みの線の太さと種類（左・上）と角丸を読む
+LINES_JS = "e => { const s = getComputedStyle(e); return { left: s.borderLeftWidth !== '0px', leftStyle: s.borderLeftStyle, top: s.borderTopWidth, radius: s.borderTopLeftRadius }; }"
+
 # 本文が mdmark で描き終わり、mermaid を読み終えた後の描き直しも済んだか（本文を持たない記録の行は待たない）
 BODY_RENDERED_JS = "() => !document.querySelector('#storybook-root [data-part=body]') || (document.querySelector('#storybook-root [data-part=body] .md') !== null && window.mermaid !== undefined)"
 
@@ -32,7 +35,7 @@ def open_story(open_story: OpenStory) -> OpenStory:
 
 
 def test_user_post(open_story: OpenStory) -> None:
-    """利用者の書き込み。右に寄せ、頭に「あなた」と日時を出す（正常系）。"""
+    """利用者の書き込み。右に寄せ、左に線を引き、頭に「あなた」と日時を出し、カードの見た目を重ねない（正常系）。"""
     # 準備・実行
     page = open_story("comments-threadpost--user-post")
     # 検証
@@ -46,6 +49,8 @@ def test_user_post(open_story: OpenStory) -> None:
     box = page.locator(POST).bounding_box()
     assert box is not None
     assert box["x"] + box["width"] >= page.evaluate("innerWidth") * 0.5
+    lines = page.eval_on_selector(POST, LINES_JS)
+    assert (lines["left"], lines["leftStyle"], lines["top"]) == (True, "solid", "0px")
 
 
 def test_ai_post(open_story: OpenStory) -> None:
@@ -63,6 +68,10 @@ def test_ai_post(open_story: OpenStory) -> None:
     assert page.inner_text(f"{POST} [data-part=body]") == (
         "D-12 を案 B（写しから戻す）で決定にしました。\n戻す手順を書くタスクを T-14 に足しています。"
     )
+    # 枠線は引かず、角丸は操作の部品と同じ小さい半径
+    lines = page.eval_on_selector(POST, LINES_JS)
+    assert (lines["left"], lines["top"]) == (False, "0px")
+    assert lines["radius"] != "0px"
 
 
 def test_markdown_post(open_story: OpenStory) -> None:
@@ -94,12 +103,13 @@ def test_markdown_post(open_story: OpenStory) -> None:
 
 
 def test_pending_markdown(open_story: OpenStory) -> None:
-    """レビュー中の返信の Markdown。破線の枠の中で「起票してよい」を太字（`strong`）で描き、`**` は出ない（正常系）。"""
+    """レビュー中の返信の Markdown。破線の左の線の中で「起票してよい」を太字（`strong`）で描き、`**` は出ない（正常系）。"""
     # 準備・実行
     page = open_story("comments-threadpost--pending-markdown")
     # 検証
     assert page.get_attribute(POST, "data-comment") == "C-45"
-    assert page.eval_on_selector(POST, "e => getComputedStyle(e).borderTopStyle") == "dashed"
+    lines = page.eval_on_selector(POST, LINES_JS)
+    assert (lines["left"], lines["leftStyle"], lines["top"]) == (True, "dashed", "0px")
     assert page.inner_text(f"{POST} [data-part=body] strong") == "起票してよい"
     assert "**" not in page.inner_text(f"{POST} [data-part=body]")
 
@@ -170,7 +180,7 @@ def test_ai_reopened_event(open_story: OpenStory) -> None:
 
 
 def test_pending(open_story: OpenStory) -> None:
-    """レビュー中の返信。利用者の書き込みと同じく右に寄せ、破線の枠と頭に「レビュー中」の印、右上に「修正」「削除」を出し、日時は出さない（正常系）。"""
+    """レビュー中の返信。利用者の書き込みと同じく右に寄せ、破線の左の線と頭に「レビュー中」の印、右上に「修正」「削除」を出し、日時は出さない（正常系）。"""
     # 準備・実行
     page = open_story("comments-threadpost--pending")
     # 検証
@@ -178,7 +188,8 @@ def test_pending(open_story: OpenStory) -> None:
     assert page.inner_text(f"{POST} [data-part=author]") == "あなた"
     assert page.inner_text(f"{POST} [data-part=pending]") == "レビュー中"
     assert page.locator(f"{POST} time").count() == 0
-    assert page.eval_on_selector(POST, "e => getComputedStyle(e).borderTopStyle") == "dashed"
+    lines = page.eval_on_selector(POST, LINES_JS)
+    assert (lines["left"], lines["leftStyle"], lines["top"]) == (True, "dashed", "0px")
     assert page.get_by_role("button", name="TH-1 への返信を修正").count() == 1
     assert page.get_by_role("button", name="TH-1 への返信を削除").count() == 1
     assert page.get_attribute(f"{POST} button.idlink", "title") is None
@@ -306,12 +317,13 @@ def test_change_set_link_not_linked(open_story: OpenStory) -> None:
 
 
 def test_pending_change_set_link(open_story: OpenStory) -> None:
-    """レビュー中の返信の中でも、破線の枠の中に同じ見た目のまとまりのリンクを出し、外の項目の ID はボタンにする（正常系）。"""
+    """レビュー中の返信の中でも、破線の左の線の中に同じ見た目のまとまりのリンクを出し、外の項目の ID はボタンにする（正常系）。"""
     # 準備・実行
     page = open_story("comments-threadpost--pending-change-set-link")
     # 検証
     assert page.get_attribute(POST, "data-comment") == "C-44"
-    assert page.eval_on_selector(POST, "e => getComputedStyle(e).borderTopStyle") == "dashed"
+    lines = page.eval_on_selector(POST, LINES_JS)
+    assert (lines["left"], lines["leftStyle"], lines["top"]) == (True, "dashed", "0px")
     assert page.eval_on_selector_all(SET_LINK, "links => links.map(a => a.textContent)") == [
         "A-14 の手引きの書き直し"
     ]

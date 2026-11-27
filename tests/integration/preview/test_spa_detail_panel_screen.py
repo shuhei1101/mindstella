@@ -2079,3 +2079,94 @@ def test_term_touch_action(browser: Browser, write_preview: WritePreview, make_i
     # 検証（2 回目）
     expect(page).to_have_url(re.compile(r"id=G-1"))
     page.context.close()
+
+
+# ─── 案の選択 ───
+
+# 案 A・B を持つ検討事項の案
+CHOICE_OPTIONS = [{"key": "A", "content": "種類ごとに分ける"}, {"key": "B", "content": "1 つにまとめる"}]
+
+
+@pytest.fixture
+def choice_preview(write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment) -> tuple[str, Path]:
+    """未決定の D-1・要見直しの D-2・案 A を採用した決定済みの D-3 と、D-1 へのコメント C-1 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1", title="キーの分け方", status="未決定", options=CHOICE_OPTIONS),
+        make_item("D-2", title="保存先", status="要見直し", options=[{**CHOICE_OPTIONS[0], "adopted": True}, CHOICE_OPTIONS[1]]),
+        make_item("D-3", title="決めた問い", status="決定済み", options=[{**CHOICE_OPTIONS[0], "adopted": True}, CHOICE_OPTIONS[1]]),
+        comments=(make_comment("C-1", target="D-1", body="案 B が気になる"),),
+    )
+
+
+@pytest.mark.parametrize(
+    ("search", "shown"),
+    [
+        pytest.param("?tab=decisions&id=D-1", 2, id="undecided"),
+        pytest.param("?tab=decisions&id=D-2", 2, id="needs_review"),
+        pytest.param("?tab=decisions&id=D-3", 0, id="decided"),
+    ],
+)
+def test_choice_visible(page: Page, choice_preview: tuple[str, Path], search: str, shown: int) -> None:
+    """未決定・要見直しの検討事項の案のカードにだけ「この案を選ぶ」を出す（正常系）。"""
+    # 準備・実行
+    url, _ = choice_preview
+    open_spa(page, url, search)
+    # 検証
+    expect(_panel(page).get_by_role("button", name=re.compile("^案 [AB] を選ぶ$"))).to_have_count(shown)
+
+
+def test_choice(page: Page, choice_preview: tuple[str, Path]) -> None:
+    """一言を添えて確定するとレビュー中の案の選択として溜め、選び直すと書き換え、「選択を取り消す」で削除する（正常系）。"""
+    # 準備
+    url, root = choice_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    panel = _panel(page)
+    # 実行（案 A を一言つきで選ぶ）
+    panel.get_by_role("button", name="案 A を選ぶ").click()
+    panel.get_by_role("textbox", name="一言（任意）").fill("費用を優先する")
+    panel.get_by_role("button", name="この案を選ぶ").click()
+    # 検証
+    expect(panel.locator("[data-chosen]")).to_contain_text("一言: 費用を優先する")
+    chosen = [item for item in yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"] if "choice" in item]
+    assert [(item["target"], item["choice"], item["body"]) for item in chosen] == [("D-1", {"key": "A"}, "費用を優先する")]
+    # 実行（案 B で選び直す）
+    panel.get_by_role("button", name="案 B を選ぶ").click()
+    panel.get_by_role("button", name="この案を選ぶ").click()
+    # 検証
+    expect(panel.locator("[data-chosen]")).to_have_count(1)
+    rechosen = [item for item in yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"] if "choice" in item]
+    assert [(item["id"], item["choice"]) for item in rechosen] == [(chosen[0]["id"], {"key": "B"})]
+    # 実行（取り消す）
+    panel.get_by_role("button", name="選択を取り消す").click()
+    # 検証
+    expect(panel.locator("[data-chosen]")).to_have_count(0)
+    remaining = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"]
+    assert [item["id"] for item in remaining] == ["C-1"]
+
+
+def test_choice_constraints(page: Page, choice_preview: tuple[str, Path]) -> None:
+    """幅 390px でも「この案を選ぶ」の押す領域が縦横 24px 以上ある（正常系）。"""
+    # 準備
+    url, _ = choice_preview
+    page.set_viewport_size({"width": 390, "height": 844})
+    # 実行
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    box = _panel(page).get_by_role("button", name="案 A を選ぶ").bounding_box()
+    # 検証
+    assert box is not None
+    assert (box["width"] >= 24, box["height"] >= 24) == (True, True)
+
+
+def test_review_comments_when_choice(page: Page, choice_preview: tuple[str, Path]) -> None:
+    """レビュー中のコメントは案の選択を除いて並べ、件数にも数えない（正常系）。"""
+    # 準備
+    url, _ = choice_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    panel = _panel(page)
+    panel.get_by_role("button", name="案 B を選ぶ").click()
+    panel.get_by_role("button", name="この案を選ぶ").click()
+    expect(panel.locator("[data-chosen]")).to_have_count(1)
+    # 実行
+    panel.get_by_role("tab", name="コメント").click()
+    # 検証
+    assert _comments(page).evaluate_all("rows => rows.map(r => r.dataset.comment)") == ["C-1"]
