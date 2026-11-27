@@ -452,6 +452,39 @@ scenarios:
       - 1 回目の手番を返す直前の commit がエラーになり、本文に T-1・T-2 の ID と状態があり、まとまりが増えていない
       - T-1 が保留で `reason` を持ち、T-2 が完了で、呼び直した手番を返す直前の commit が成功する
     test: test_error_when_tasks_left_open
+  - name: 正常シナリオ（利用者が選んだ案）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、コメントの取り込みの工程が連ねる取り込み待ちのスレッドの一覧・利用者が案を選んだ検討事項の一覧・`adopt`・project-index の `write_docs`（理由と会話ログ）・`commit`・`new_thread` を、決めた引数で順に再生する
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: 作成済みのワークスペース
+        description: 案 A・B を持つ未決定の検討事項 D-1（利用者の選択：案 B・一言なし）と D-2（利用者の選択：案 B・一言「費用を優先する」）を持ち、取り込み待ちのスレッドを持たない
+        notes: 利用者が案の選択を確定した通知で、コメントの取り込みを始める
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as MindStella の MCP
+        participant PI as project-index の MCP
+        participant WS as ワークスペース
+
+        CC->>SV: 取り込み待ちのスレッドの一覧
+        SV-->>CC: 0 件
+        CC->>SV: 利用者が案を選んだ検討事項の一覧
+        SV-->>CC: D-1・D-2
+        CC->>SV: adopt D-1 B・adopt D-2 B
+        CC->>PI: write_docs（D-2 の理由に一言を反映し、会話ログに選択と一言を残す）
+        CC->>SV: commit
+        CC->>SV: 新規スレッドを作成する（反映した回答の通知）
+        SV->>WS: 書く
+      ```
+    expected:
+      - D-1・D-2 の採用する案が B で、決定済みであり、どちらも利用者の選択を持たない
+      - D-2 の理由に一言「費用を優先する」の内容があり、会話ログに D-1・D-2 の選んだ案と一言が残っている
+      - 報告のスレッドが 1 件立ち、反映した回答（D-1・D-2 と採用した案 B）を表で持つ
+      - 利用者が案を選んだ検討事項の一覧が 0 件を返却する
+    test: test_normal_when_user_chosen_options
 lead: 'MindStella のセッションが、コメントの取り込みのエージェントフロー（`mindstella/on-comment`）に従い、取り込み待ちのスレッド（AI が取り込んでいない利用者の書き込みを持つスレッド。オープンでもクローズでも）を 1 件ずつ読んで記録に反映し、commit してから返信か取り込み済みにしてクローズにし、最後にその回の報告を新規の報告のスレッド 1 件にまとめ、前の回の報告のスレッドをクローズにする単一ユースケース。'
 issue: 67
 primary_actor: MindStella のセッション

@@ -101,6 +101,44 @@ scenarios:
       - D-2 が決定済みで、案 A だけが採用である
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_undecided_adopted
+  - name: 正常シナリオ（利用者が選んだ案）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 検討事項 D-1
+        description: 案 A・B を持ち、利用者の選択（案 B・一言なし）を持つ未決定の検討事項
+      - name: 検討事項 D-2
+        description: 案 A・B を持ち、利用者の選択（案 B・一言「費用を優先する」）を持つ未決定の検討事項
+      - name: 検討事項 D-3
+        description: 案 A・B を持ち、利用者の選択を持たない未決定の検討事項
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant SV as MindStella の MCP
+        participant PI as project-index
+        participant WS as ワークスペース
+
+        CC->>SV: 利用者が案を選んだ検討事項の一覧
+        SV-->>CC: D-1（案 B）と D-2（案 B・一言）
+        CC->>SV: D-1 の採用する案を B にする
+        SV->>WS: 案 B を採用にして決定済みにし、利用者の選択を片付けて decisions.yaml に書く
+        CC->>SV: D-2 の採用する案を B にする
+        SV->>WS: 同じく書く
+        CC->>PI: write_docs（D-2 の採用した理由に一言を反映する）
+        CC->>SV: 利用者が案を選んだ検討事項の一覧
+        SV-->>CC: 0 件
+      ```
+    expected:
+      - D-1・D-2 が決定済みで、案 B だけが採用である
+      - D-1・D-2 が利用者の選択を持たない
+      - D-2 の採用した理由に、一言「費用を優先する」の内容がある
+      - D-3 は呼ぶ前と同じ未決定のままで、最初の一覧に入らない
+      - 切り替えた後の一覧が 0 件を返却する
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_user_chosen_option_adopted
 lead: MindStella のセッションが、利用者の回答で検討事項の採用する案を MindStella の MCP で切り替え、project-index で関連をたどって影響を受ける項目を洗い出す単一ユースケース。
 issue: 3
 primary_actor: MindStella のセッション

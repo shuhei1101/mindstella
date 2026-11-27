@@ -114,6 +114,32 @@ scenarios:
       - フックの出力が、起動と再開の案内も再開の状況も持たない
       - 前回参照した時点が書き換わらない
     test: test_normal_when_ordinary_session
+  - name: 正常シナリオ（利用者が案を選んだ検討事項がある）
+    setup:
+      - name: Mock
+        description: 'モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、SessionStart のフックのスクリプトを `MINDSTELLA_SESSION` と `source: compact` で呼び、起動と再開の工程が連ねる `pending`・`threads`・利用者が案を選んだ検討事項の一覧を決めた引数で再生する。取り込みの中身は単一ユースケース『コメントの取り込み』で確認する'
+      - name: make_workspace
+        description: 利用者の選択（案 B）を持つ未決定の検討事項 D-1 を持ち、取り込み待ちのスレッドとまだまとめていない変更を持たないワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant HK as SessionStart のフック
+        participant CC as MindStella のセッション
+        participant SV as MindStella の MCP
+
+        HK->>SV: 再開の状況を取得する
+        SV-->>HK: 利用者が案を選んだ検討事項 1 件
+        HK->>CC: 再開の契機・状況・起動と再開のエージェントフローの案内を注入する
+        CC->>SV: まだまとめていない変更を取得する
+        SV-->>CC: 0 件
+        CC->>SV: 取り込み待ちのスレッドの一覧と、利用者が案を選んだ検討事項の一覧
+        SV-->>CC: スレッド 0 件・検討事項 D-1
+        CC->>CC: コメントの取り込みへ進む
+      ```
+    expected:
+      - 注入文が、起動の契機 `再開` と、利用者が案を選んだ検討事項の件数 1 を持つ
+      - 取り込み待ちのスレッドが 0 件でも、起動と再開を終えずにコメントの取り込みへ進む
+    test: test_normal_when_user_chosen_options_pending
 lead: MindStella のセッションが、起動の直後と `/clear`・再起動・圧縮の後に、SessionStart のフックが注入した起動の契機と再開の状況を受け、起動と再開のエージェントフロー（`mindstella/startup`）に従って、まとめ忘れを commit し、進め方の文書を参照し、取り込み待ちのコメントを取り込んでから進め方の工程へ進む単一ユースケース。
 issue: 3
 primary_actor: MindStella のセッション
