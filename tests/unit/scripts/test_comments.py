@@ -1386,11 +1386,7 @@ def test_send_comments_when_write_fails_after_choices(
     write_comments: WriteComments,
     failing_name: str,
 ) -> None:
-    """スレッドかレビュー中を書けなければ利用者の選択とスレッドを書き戻し、変更の検知にも書き戻した中身を伝える（異常系）。
-
-    モジュール構成の test_send_comments_when_threads_write_fails_after_choices と
-    test_send_comments_when_comments_write_fails_after_choices を、失敗させるファイルで分ける。
-    """
+    """スレッドかレビュー中を書けなければ利用者の選択とスレッドを書き戻し、変更の検知にも書き戻した中身を伝える（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", options=TWO_OPTIONS), make_item("D-2"))
     write_comments(root, _choice_comment("C-1", "D-1", "B"), make_comment("C-2", target="D-2"))
