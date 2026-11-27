@@ -35,7 +35,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T18:21:07.182141+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    note: SC-489-18・SC-489-49・SC-587-1・SC-582-1・SC-568-1・SC-570-1 にシナリオを追加し、SC-489-14・SC-597-1 に画面の URL を追随させた。SC-489-30（#566）はガイドを作るかのユーザーの回答まで変えない
+    updated_by: planner
+    updated_at: '2026-11-27T18:35:28.567414+00:00'
   - process: モック作成
     status: todo
   - process: データ設計
