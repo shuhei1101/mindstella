@@ -52,7 +52,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T08:27:09.703160+00:00'
   - process: エージェント・MCP サーバー設計
-    status: todo
+    status: skipped
+    reason: このリポジトリはエージェント・MCP サーバー・起動の設計書を持たず、MCP サーバーのツールはインターフェース定義『MCP サーバーの起動』と IF-722-1 で定義済み。MindStella のセッションの持ち方・モデル・きっかけは変えないため。要件の未確定（AI の取得方法）は案 A で確定した
+    updated_by: planner
+    updated_at: '2026-11-27T09:00:15.431789+00:00'
   - process: エージェントフロー・LLM 呼び出し設計
     status: todo
   - process: 精度評価設計
