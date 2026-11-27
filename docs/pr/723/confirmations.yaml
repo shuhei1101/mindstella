@@ -1,0 +1,7 @@
+confirmations:
+  - topic: '#363 案を選ぶ操作の置き場所'
+    decision: 検討事項の詳細の案のカードの下に「この案を選ぶ」のボタンを配置し、押すと一言の入力（任意）と確定を出す。選んだ案は破線の枠と「選択済み（未送信）」の札にし、一言を編集・選択を取り消すを出す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 2534cf13
+    thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4716891900
