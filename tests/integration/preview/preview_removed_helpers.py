@@ -14,10 +14,8 @@ from record_write_helpers import call_or_write
 __all__ = [
     "BAND",
     "BAND_ITEM",
-    "OPENED_BEFORE_SETS_AT",
     "REMOVED_IN_PENDING_BY_TAB",
     "REMOVED_IN_V2_BY_TAB",
-    "REMOVED_SINCE_BY_TAB",
     "REMOVED_TITLES",
     "WITHDRAWN_BADGE",
     "WITHDRAWN_REASONS",
@@ -34,8 +32,6 @@ BAND_ITEM = f"{BAND} li.rm-item"
 # 取り下げの札
 WITHDRAWN_BADGE = ".wd-badge"
 
-# 前回開いた日時（V-1 より前。「前回開いてから」が全てのまとまりを含む）
-OPENED_BEFORE_SETS_AT = "2026-09-30T00:00:00+00:00"
 
 # 消したときのタイトル（項目の ID → タイトル）。D-4 は足したまとまりより後のまとまりで消す
 REMOVED_TITLES = {
@@ -62,8 +58,6 @@ REMOVED_IN_V2_BY_TAB = {
 # 画面の種類ごとの、まだまとめていない変更を選んだときに帯へ並べる（ID, タイトル）
 REMOVED_IN_PENDING_BY_TAB = {"tasks": [("T-2", REMOVED_TITLES["T-2"])]}
 
-# 画面の種類ごとの、「前回開いてから」を選んだときに帯へ並べる（ID, タイトル）。V-2 とまだまとめていない変更を合わせる
-REMOVED_SINCE_BY_TAB = {**REMOVED_IN_V2_BY_TAB, **REMOVED_IN_PENDING_BY_TAB}
 
 # 取り下げた項目の ID → 取り下げた理由
 WITHDRAWN_REASONS = {
@@ -140,16 +134,12 @@ def build_removed_workspace(
     _call(call_tool, "commit", workspace=workspace, summary="消す")
     # まだまとめていない変更: タスクを消す
     _call(call_tool, "remove", workspace=workspace, id="T-2")
-    # まとまりの日時を固定し、前回開いた日時を V-1 より前に置く
+    # まとまりの日時を固定する
     changes = read_yaml(root / RECORD_DIR / "changes.yaml")
     changes["sets"][1]["at"] = FIRST_SET_AT
     changes["sets"][0]["at"] = SECOND_SET_AT
     (root / RECORD_DIR / "changes.yaml").write_text(
         yaml.safe_dump(changes, allow_unicode=True, sort_keys=False), encoding="utf-8"
-    )
-    # 通し番号は 0（全てのまとまりが「前回開いてから」に入る）
-    (root / RECORD_DIR / ".mindstella-opened").write_text(
-        f"{OPENED_BEFORE_SETS_AT}\n0\n", encoding="utf-8"
     )
     return root
 

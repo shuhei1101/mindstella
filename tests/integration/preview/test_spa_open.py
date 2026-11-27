@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from record_write_helpers import write_tool
+from record_write_helpers import call_or_write, write_tool
 import json
 import re
 import time
@@ -168,7 +168,7 @@ def test_normal_when_records_changed_while_typing(
     assert served.data is not None
     open_spa(page, served.data["url"], "?tab=decisions&view=table&id=D-1")
     main = page.locator("main#main")
-    expect(main.get_by_text("D-1の題").first).to_be_visible()
+    expect(main.get_by_role("button", name="D-1の題", exact=True)).to_be_visible()
     entry = page.get_by_role("complementary", name="詳細").get_by_role("textbox", name="D-1 へのコメント")
     entry.fill("途中まで")
     opened_url = page.url
@@ -303,11 +303,48 @@ def test_normal_when_filter(page: Page, spa_preview: str) -> None:
     assert "保留" not in (page.evaluate(f"localStorage.getItem('mindmap-preview' + {key})") or "")
 
 
-def test_normal_when_diff(page: Page, write_history_preview: WriteReviewPreview) -> None:
-    """`diff` の時点の差分を出す（正常系）。"""
-    url, _ = write_history_preview()
-    open_spa(page, url, "?tab=decisions&diff=V-2&id=D-1")
-    expect(page.get_by_role("complementary", name="詳細")).to_contain_text("新しい段落を足しました")
+def test_normal_when_diff(make_workspace: MakeWorkspace, call_tool: CallTool, page: Page) -> None:
+    """`diff` が指すまとまりの差分の表示で開き、時点を選び直すと履歴に積まずに `diff` を置き換える（正常系）。"""
+    # 準備（V-1 で D-1・D-2 を足し、V-2 で D-1 の本文を変えて D-3 を足し、D-2 を消す）
+    root = make_workspace()
+    workspace = str(root)
+    decision = {"status": "未決定", "options": [{"key": "A", "content": "案 A"}]}
+    call_or_write(call_tool, "add", workspace=workspace, kind="decision", item={**decision, "title": "本文を変える問い", "body_markdown": "1 行目\n\n消す行\n"})
+    call_or_write(call_tool, "add", workspace=workspace, kind="decision", item={**decision, "title": "消す問い"})
+    call_or_write(call_tool, "commit", workspace=workspace, summary="足す")
+    call_or_write(call_tool, "update", workspace=workspace, id="D-1", item={"body_markdown": "1 行目\n\n足した行\n"})
+    call_or_write(call_tool, "add", workspace=workspace, kind="decision", item={**decision, "title": "足す問い"})
+    call_or_write(call_tool, "remove", workspace=workspace, id="D-2")
+    call_or_write(call_tool, "commit", workspace=workspace, summary="直す")
+    served = call_tool("preview_url", workspace=workspace)
+    assert served.data is not None
+    url = served.data["url"]
+    open_spa(page, url, "?tab=decisions&view=table&id=D-1&diff=V-2")
+    main = page.locator("main#main")
+    detail = page.get_by_role("complementary", name="詳細")
+    # 検証（開いた直後）
+    expect(main.locator("tr:has(button[data-id='D-1']) [title='変更']")).to_have_count(1)
+    expect(main.locator("tr:has(button[data-id='D-3']) [title='新規']")).to_have_count(1)
+    removed = main.get_by_role("region", name="この時点で削除した項目").locator("li[data-removed-id]")
+    expect(removed).to_have_count(1)
+    expect(removed).to_have_attribute("data-removed-id", "D-2")
+    expect(removed).to_contain_text("消す問い")
+    expect(detail.locator('.md .mdmark-diff-block[data-kind="add"]').first).to_be_visible()
+    expect(detail.locator('.md .mdmark-diff-block[data-kind="del"]').first).to_be_attached()
+    dotted = page.eval_on_selector_all("nav[aria-label=項目の種類] a:has(.sr-only)", "tabs => tabs.map(t => t.dataset.tab)")
+    assert dotted == ["decisions"]
+    history_length = page.evaluate("history.length")
+    # 実行
+    page.locator("header button[aria-label^=変更履歴]").click()
+    page.get_by_role("dialog", name="変更履歴").locator("button[data-sel='V-1']").click()
+    # 検証（選び直した後）
+    expect(page).to_have_url(re.compile("diff=V-1"))
+    assert page.evaluate("history.length") == history_length
+    # 実行
+    page.reload()
+    # 検証（再読み込みした後）
+    expect(page).to_have_url(re.compile("diff=V-1"))
+    expect(main.locator("tr:has(button[data-id='D-1']) [title='新規']")).to_have_count(1)
 
 
 def test_normal_when_diff_missing(page: Page, write_history_preview: WriteReviewPreview) -> None:
@@ -317,16 +354,120 @@ def test_normal_when_diff_missing(page: Page, write_history_preview: WriteReview
     page.wait_for_function("!location.search.includes('V-99')")
 
 
-def test_normal_when_since(page: Page, write_history_preview: WriteReviewPreview) -> None:
-    """「前回開いてから」は同じタブで `POST /api/opened` を呼び直さない（正常系）。"""
-    url, _ = write_history_preview()
-    calls: list[str] = []
-    page.on("request", lambda request: calls.append(request.url) if request.url.endswith("/api/opened") else None)
+def test_normal_when_unread(make_workspace: MakeWorkspace, call_tool: CallTool, page: Page) -> None:
+    """開いていないまとまりを未読に数え、開いたまとまりと「すべて既読にする」で既読にし、増えたまとまりを未読に加える（正常系）。"""
+    # 準備（まとまり V-1・V-2 を作る）
+    root = make_workspace()
+    workspace = str(root)
+    call_or_write(call_tool, "add", workspace=workspace, kind="decision", item=NEW_DECISION)
+    call_or_write(call_tool, "commit", workspace=workspace, summary="1 つ目")
+    call_or_write(call_tool, "update", workspace=workspace, id="D-1", item={"title": "直した問い"})
+    call_or_write(call_tool, "commit", workspace=workspace, summary="2 つ目")
+    served = call_tool("preview_url", workspace=workspace)
+    assert served.data is not None
+    url = served.data["url"]
+    history_button = page.locator("header button[aria-label^=変更履歴]")
+    dialog = page.get_by_role("dialog", name="変更履歴")
+    # 実行（開く）
+    open_spa(page, url, "?tab=decisions")
+    # 検証
+    expect(history_button).to_have_attribute("aria-label", "変更履歴（未読 2 件）")
+    history_button.click()
+    assert dialog.locator("button[data-sel]").evaluate_all("rows => rows.map((r) => r.dataset.sel)") == ["", "V-2", "V-1"]
+    expect(dialog.locator("button[data-sel]").first).to_contain_text("最新")
+    expect(dialog.get_by_text("未読", exact=True)).to_have_count(2)
+    expect(dialog.get_by_text("前回開いてから")).to_have_count(0)
+    # 実行（V-2 を選ぶ）
+    dialog.locator("button[data-sel='V-2']").click()
+    # 検証
+    expect(page).to_have_url(re.compile("diff=V-2"))
+    expect(history_button).to_have_attribute("aria-label", "変更履歴（過去の差分を表示中）（未読 1 件）")
+    history_button.click()
+    expect(dialog.locator("button[data-sel='V-2']").get_by_text("未読", exact=True)).to_have_count(0)
+    # 実行（「最新」に戻し、すべて既読にする）
+    dialog.locator("button[data-sel='']").click()
+    history_button.click()
+    dialog.get_by_role("button", name="すべて既読にする").click()
+    dialog.get_by_role("button", name="変更履歴を閉じる").click()
+    # 検証
+    expect(history_button).to_have_attribute("aria-label", "変更履歴")
+    page.reload()
+    expect(history_button).to_have_attribute("aria-label", "変更履歴")
+    # 実行（まとまり V-3 を作る）
+    call_or_write(call_tool, "add", workspace=workspace, kind="decision", item={**NEW_DECISION, "title": "3 つ目の問い"})
+    call_or_write(call_tool, "commit", workspace=workspace, summary="3 つ目")
+    # 検証（再読み込みの操作をせずに未読が増える）
+    expect(history_button).to_have_attribute("aria-label", "変更履歴（未読 1 件）", timeout=UPDATE_TIMEOUT_MS)
+    history_button.click()
+    expect(dialog.get_by_text("未読", exact=True)).to_have_count(1)
+    expect(dialog.locator("button[data-sel='V-3']").get_by_text("未読", exact=True)).to_have_count(1)
+    # 実行（diff=since を付けて開き直す）
     open_spa(page, url, "?tab=decisions&diff=since")
-    page.wait_for_function("sessionStorage.getItem('mindmap-preview-opened' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')) !== null")
-    open_spa(page, url, "?tab=tasks&diff=since")
-    page.wait_for_load_state("networkidle")
-    assert len(calls) == 1
+    # 検証
+    page.wait_for_function("!location.search.includes('diff=')")
+    expect(history_button).not_to_have_attribute("aria-label", re.compile("過去の差分"))
+
+
+@pytest.mark.parametrize("width", [pytest.param(1280, id="w1280"), pytest.param(390, id="w390")])
+def test_normal_when_doc_keeps_page_height(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page, width: int) -> None:
+    """本文の長い資料を開いても画面の全体は縦にスクロールせず、本文の区画の中だけがスクロールする（正常系）。"""
+    # 準備
+    body = "\n\n".join(f"段落 {number}" for number in range(1, 121)) + "\n\n最後の段落\n"
+    root = make_workspace(make_item("A-1"), bodies={"A-1.mark.md": body})
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    page.set_viewport_size({"width": width, "height": 800})
+    open_spa(page, served.data["url"], "?tab=docs&id=A-1")
+    region = page.get_by_role("region", name="詳細の本文")
+    # 実行
+    region.evaluate("e => { e.scrollTop = e.scrollHeight; }")
+    # 検証
+    assert page.evaluate("document.scrollingElement.scrollHeight <= document.scrollingElement.clientHeight")
+    assert page.locator("header").evaluate("e => e.getBoundingClientRect().top") == 0
+    expect(region.get_by_text("最後の段落", exact=True)).to_be_in_viewport()
+
+
+def test_normal_when_option_chosen(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page) -> None:
+    """検討事項の詳細で案を選んで溜め、選び直してからまとめて送信すると、利用者の選択として記録する（正常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+    root = make_workspace(make_item("D-1", options=options))
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    errors = watch_console(page)
+    open_spa(page, served.data["url"], "?tab=decisions&id=D-1")
+    detail = page.get_by_role("complementary", name="詳細")
+    comments_button = page.locator("header button[aria-label^=コメント]")
+    # 実行（案 A を選ぶ）
+    detail.get_by_role("button", name="案 A を選ぶ").click()
+    detail.get_by_role("button", name="この案を選ぶ").click()
+    # 検証
+    expect(detail.locator("[data-chosen]")).to_contain_text("案 A")
+    expect(comments_button).to_have_attribute("aria-label", re.compile("レビュー中 1 件"))
+    # 実行（案 B で選び直し、一言を添える）
+    detail.get_by_role("button", name="案 B を選ぶ").click()
+    detail.get_by_role("textbox", name="一言（任意）").fill("費用を優先する")
+    detail.get_by_role("button", name="この案を選ぶ").click()
+    # 検証
+    expect(detail.locator("[data-chosen]")).to_have_count(1)
+    expect(detail.locator("[data-chosen]")).to_contain_text("案 B")
+    expect(comments_button).to_have_attribute("aria-label", re.compile("レビュー中 1 件"))
+    # 実行（コメントの一覧のレビュー中からまとめて送信する）
+    comments_button.click()
+    page.get_by_role("dialog", name="コメント").get_by_role("button", name="レビュー中の書き込みを確かめる（1 件）").click()
+    page.get_by_role("dialog", name="コメント").get_by_role("button", name="まとめて送信（1 件）").click()
+    # 検証
+    expect(page.get_by_role("dialog", name="コメント").get_by_role("status").filter(has_text="1 件を送信し")).to_be_visible()
+    expect(comments_button).to_have_attribute("aria-label", "コメント（レビュー中 0 件）")
+    [item] = _workspace_yaml(root, "decisions.yaml")["items"]
+    assert (item["user_choice"]["key"], item["user_choice"]["note"], item["status"]) == ("B", "費用を優先する", "未決定")
+    page.set_viewport_size({"width": 390, "height": 844})
+    open_spa(page, served.data["url"], "?tab=decisions&id=D-1")
+    box = page.get_by_role("complementary", name="詳細").get_by_role("button", name="案 A を選ぶ").bounding_box()
+    assert box is not None
+    assert (box["width"] >= 24, box["height"] >= 24) == (True, True)
+    assert errors.messages == []
+    assert errors.exceptions == []
 
 
 def test_normal_when_records_changed_with_item(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page) -> None:
