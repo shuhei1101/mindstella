@@ -31,7 +31,7 @@ def test_table_sort(page: Page, spa_preview: str) -> None:
     """表の見出しを押すと昇順に並べ、URL に残す（正常系）。"""
     open_spa(page, spa_preview, "?tab=decisions")
     page.get_by_role("button", name="表", exact=True).click()
-    expect(page.get_by_role("cell", name="記録の形")).to_be_visible()
+    expect(page.get_by_role("cell", name="記録の形", exact=True)).to_be_visible()
     page.get_by_role("button", name="タイトルで並べ替え").click()
     expect(page.get_by_role("columnheader", name="タイトル")).to_have_attribute("aria-sort", "ascending")
     expect(page).to_have_url(re.compile("sort=title"))
@@ -40,10 +40,10 @@ def test_table_sort(page: Page, spa_preview: str) -> None:
 def test_filter_drawer(page: Page, spa_preview: str) -> None:
     """ドロワーの条件で絞り、チップで解除する（正常系）。"""
     open_spa(page, spa_preview, "?tab=decisions&view=table&f.status=%E4%BF%9D%E7%95%99")
-    expect(page.get_by_role("cell", name="画面の幅")).to_be_visible()
-    expect(page.get_by_role("cell", name="記録の形")).to_be_hidden()
+    expect(page.get_by_role("cell", name="画面の幅", exact=True)).to_be_visible()
+    expect(page.get_by_role("cell", name="記録の形", exact=True)).to_be_hidden()
     page.get_by_role("button", name="状態: 保留 の条件を解除").click()
-    expect(page.get_by_role("cell", name="記録の形")).to_be_visible()
+    expect(page.get_by_role("cell", name="記録の形", exact=True)).to_be_visible()
 
 
 @pytest.mark.parametrize("search", ["?tab=decisions&view=table", "?tab=decisions", "?tab=tasks", "?tab=docs", "?tab=research"])

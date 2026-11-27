@@ -118,7 +118,7 @@ def test_table_visible(page: Page, spa_preview: str) -> None:
     # 検証
     expect(page.get_by_role("table")).to_be_visible()
     expect(page.get_by_role("region", name="進行中")).to_have_count(0)
-    expect(page.get_by_role("button", name="画面を作る")).to_be_visible()
+    expect(page.get_by_role("button", name="画面を作る", exact=True)).to_be_visible()
 
 
 def test_board_diff_mark_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:

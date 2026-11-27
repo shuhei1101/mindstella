@@ -24,7 +24,7 @@ def test_table_columns(page: Page, write_preview: WritePreview, make_item: MakeI
     open_spa(page, url, f"?tab={tab}")
     expect(page.get_by_role("columnheader", name=column)).to_be_visible()
     expect(page.get_by_role("group", name="表示形式")).to_have_count(0)
-    page.get_by_role("button", name="記録の題").click()
+    page.get_by_role("button", name="記録の題", exact=True).click()
     expect(page.get_by_role("complementary", name="詳細")).to_contain_text("記録の題")
 
 

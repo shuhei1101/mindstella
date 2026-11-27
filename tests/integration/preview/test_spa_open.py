@@ -297,7 +297,7 @@ def test_normal_when_search_mismatched(page: Page, spa_preview: str) -> None:
 def test_normal_when_filter(page: Page, spa_preview: str) -> None:
     """`f.{列}` の条件で開き、そのタブの保存領域に残し、端末の保存領域には残さない（正常系）。"""
     open_spa(page, spa_preview, "?tab=decisions&view=table&f.status=%E4%BF%9D%E7%95%99")
-    expect(page.get_by_role("cell", name="画面の幅")).to_be_visible()
+    expect(page.get_by_role("cell", name="画面の幅", exact=True)).to_be_visible()
     key = "(location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')"
     page.wait_for_function(f"(sessionStorage.getItem('mindmap-filters' + {key}) ?? '').includes('保留')")
     assert "保留" not in (page.evaluate(f"localStorage.getItem('mindmap-preview' + {key})") or "")
