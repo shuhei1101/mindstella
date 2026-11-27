@@ -175,7 +175,7 @@ export const ItemCard = ({ index, lookup, item, meta, links, selected, marks, co
     // カードの中にタグのボタンを置くため、外枠は div にし、タイトルのボタンの ::after をカード全体へ広げる
     <div data-card={item.id} className={cn("relative flex w-full flex-col gap-1 rounded-card border border-border-soft bg-card p-2 text-left hover:bg-row-hover has-focus-visible:outline-2 has-focus-visible:outline-ring", selected && "border-mark bg-row-selected", pending === "remove" && "opacity-60", favorite !== undefined && "pr-9")}>
       {favorite === undefined ? null : <FavoriteToggle title={item.title} on={favorite.on} onToggle={favorite.onToggle} className="absolute top-1.5 right-1.5" />}
-      <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} aria-describedby={[titleIdsId, ...links.map(linkIdsId)].join(" ")} className="cursor-pointer text-left text-small font-medium outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(item.id); }}>
+      <button type="button" data-id={item.id} aria-current={selected ? "true" : undefined} aria-describedby={[titleIdsId, ...links.map(linkIdsId)].join(" ")} className="min-w-0 cursor-pointer text-left text-small font-medium wrap-anywhere outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(item.id); }}>
         <RecordText text={item.title} mode="marker" lookup={lookup} descriptionId={titleIdsId} />
       </button>
       <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">

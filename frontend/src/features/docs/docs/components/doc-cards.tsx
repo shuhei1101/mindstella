@@ -47,7 +47,7 @@ export const DocCard = ({ doc, lookup, inBoard, selected, marks, comments, edit,
         {doc.kind}
         {format === null ? null : <BodyFormatBadge format={format} />}
       </span>
-      <h2 className="m-0 text-small font-medium">
+      <h2 className="m-0 min-w-0 text-small font-medium wrap-anywhere">
         <button type="button" data-id={doc.id} aria-current={selected ? "true" : undefined} aria-describedby={`doc-card-ids-${doc.id}`} className="cursor-pointer text-left outline-none after:absolute after:inset-0 after:rounded-card" onClick={() => { onOpen(doc.id); }}>
           <RecordText text={doc.title} mode="marker" lookup={lookup} descriptionId={`doc-card-ids-${doc.id}`} />
         </button>

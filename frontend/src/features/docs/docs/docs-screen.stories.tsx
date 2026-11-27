@@ -17,7 +17,7 @@ const doc = (n: number, title: string, status = "確認中") => {
   return { id: `A-${String(n)}`, title, status, kind: "比較", tags: [{ name: "画面" }], created: `2026-11-${day}T00:00:00+00:00`, updated: `2026-11-${day}T00:00:00+00:00`, body: "## 比較\n\n本文" };
 };
 
-const DOCS = [doc(1, "画面の配色の比較"), doc(2, "一覧の並べ替えの調査"), doc(3, "お気に入りの置き場所の比較", "確定")];
+const DOCS = [doc(1, "画面の配色の比較"), doc(2, "一覧の並べ替えの調査"), doc(3, "お気に入りの置き場所の比較", "完成")];
 
 const LONG_DOCS = [
   doc(1, "カードの一覧とボードと表のそれぞれで、お気に入りに登録した資料をどの位置に並べるかと、表示の設定で切り替えたときの見え方を比べた長いタイトルの資料"),
@@ -25,7 +25,7 @@ const LONG_DOCS = [
   doc(3, "短い資料"),
 ];
 
-const MANY_DOCS = Array.from({ length: 40 }, (_, index) => doc(index + 1, `資料 ${String(index + 1)} の比較`, index % 3 === 0 ? "確定" : "確認中"));
+const MANY_DOCS = Array.from({ length: 40 }, (_, index) => doc(index + 1, `資料 ${String(index + 1)} の比較`, index % 3 === 0 ? "完成" : "確認中"));
 
 /** 記録の資料と、端末の保存領域の表示の上書きを用意する */
 const prepare = (docs: unknown[], prefs: Record<string, unknown>) => () => {
