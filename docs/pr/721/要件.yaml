@@ -35,10 +35,14 @@ use_cases:
       - docs/scenario/SC-489-31.yaml
   - kind: composite
     scenario: docs/scenario/SC-489-51.yaml
-    impact: following
-    detail: お気に入りと表示の切り替えを人ごとに分けるかに追随する（置き場所は設計で決める）
-    depends_on:
-      - docs/scenario/SC-489-31.yaml
+    impact: run_only
+    detail: 連鎖は変わらないが、表示の個人の上書きの保存領域にお気に入りを足すと互いの表示を分ける振る舞いを壊しうるため E2E の対象にする
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: run_only
+    detail: 起動と再開・利用上限の再起動を使う連鎖で、圧縮の再起動を外す変更がその振る舞いを壊しうるため E2E の対象にする
+    depends_on: []
 docs:
   - page: docs/guide/コマンド.mark.md
     new: false

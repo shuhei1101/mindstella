@@ -20,7 +20,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T03:58:41.443551+00:00'
   - process: 複合ユースケース設計
-    status: todo
+    status: skipped
+    reason: SC-489-51 は表示する種類を 2 人が別々に変える交差点で、表示の設定の項目ごとの変え方は単一ユースケースの E2E で確かめると定めているため、お気に入りの切り替えを足しても連鎖は変わらない。SC-489-52 が使う再起動は利用上限の契機だけで、圧縮の契機を参照する複合ユースケースは無い
+    updated_by: planner
+    updated_at: '2026-11-27T04:03:12.094909+00:00'
   - process: デザインスタイル選定
     status: skipped
     reason: デザイン方針（docs/design-policy.mark.md）があり、お気に入りの星は見た目の方向を変えないため
