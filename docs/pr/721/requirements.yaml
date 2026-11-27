@@ -45,27 +45,39 @@ docs:
   - page: docs/guide/コマンド.mark.md
     new: false
     change: MindStella のセッションを再起動する契機の表から「会話を圧縮しようとした」の行を削除する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
   - page: docs/guide/話し合い-続きを再開する.md
     new: false
     change: 自動で再起動する契機から圧縮を外し、圧縮の後は同じ会話のまま状況が注入されることにする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
   - page: docs/guide/セットアップ手順-Discordに通知する.md
     new: false
     change: 再起動の失敗の通知の契機から圧縮を外す
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
   - page: docs/guide/エージェントフロー.md
     new: false
     change: 圧縮・クリアの後の記述が、起動し直さず同じ会話で mindstella/startup へ戻る動きと合うかを確かめ、合わない箇所を修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 項目をお気に入りに登録・解除する操作と、一覧の先頭への並び・表の星の列・表示の設定の切り替えを追記する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
   - page: plugins/mindstella/files.yml
     new: false
     change: hooks/hooks.json の説明から PreCompact のフックの記述を削除する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:29:34.171206+00:00'
 scope_out:
   - item: 自動の圧縮の設定（autoCompactEnabled・autoCompactWindow）の変更
     reason: '#709 の利用者が今の設定のまま変えないと決めたため'
