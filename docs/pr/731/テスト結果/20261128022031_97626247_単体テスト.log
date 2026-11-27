@@ -1,0 +1,995 @@
+$ npx vitest run frontend/src/shared/stores/panel-width-store.test.ts frontend/src/shared/components/left-panel.test.tsx frontend/src/shared/components/record-text.test.tsx frontend/src/features/comments/shared/thread-row.test.tsx frontend/src/shared/core/comments.test.ts frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx frontend/src/features/detail/detail-panel/components/detail-header.test.tsx frontend/src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx frontend/src/shared/core/body-links.test.ts frontend/src/shared/core/doc-export.test.ts
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-panel-width-and-small-fixes
+
+ ❯ frontend/src/shared/core/body-links.test.ts (11 tests | 2 failed) 122ms
+   ❯ renderMarkdown (5)
+     × render_markdown_features 13ms
+   ❯ markExternalLinks (1)
+     × mark_external_links 1ms
+stderr | frontend/src/shared/components/left-panel.test.tsx > LeftPanel > left_panel_when_over_max
+An update to LeftPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to LeftPanel inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ❯ frontend/src/shared/components/left-panel.test.tsx (7 tests | 2 failed) 219ms
+   ❯ LeftPanel (7)
+     × left_panel_when_over_max 16ms
+     × left_panel_above_detail 5ms
+ ❯ frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx (6 tests | 2 failed) 273ms
+   ❯ DetailSupplements (6)
+     × detail_supplements_when_comment_count: 3 27ms
+     × detail_supplements_when_comment_count: 120 9ms
+ ❯ frontend/src/features/comments/shared/thread-row.test.tsx (3 tests | 1 failed) 211ms
+   ❯ ThreadRow (3)
+     × thread_row_without_id_tooltip 29ms
+ ❯ frontend/src/shared/components/record-text.test.tsx (7 tests | 1 failed) 264ms
+   ❯ RecordText (7)
+     × record_text_marker_without_tooltip 16ms
+ ❯ frontend/src/shared/core/doc-export.test.ts (3 tests | 1 failed) 51ms
+   ❯ buildDocHtml (2)
+     × build_doc_html_external_links 41ms
+ ❯ frontend/src/shared/stores/panel-width-store.test.ts (15 tests | 6 failed) 27ms
+   ❯ leftPanelMax (4)
+     × left_panel_max: 表示の幅 1440 4ms
+     × left_panel_max: 表示の幅 1000 1ms
+     × left_panel_max: 表示の幅 901 1ms
+   ❯ detailPanelMax (4)
+     × detail_panel_max: 表示の幅 1440 1ms
+     × detail_panel_max: 表示の幅 1100 1ms
+     × detail_panel_max: 表示の幅 1000 0ms
+ ❯ frontend/src/shared/core/comments.test.ts (22 tests | 2 failed) 15ms
+   ❯ itemThreadCount (2)
+     × item_thread_count: D-1 2ms
+     × item_thread_count: D-3 0ms
+stderr | frontend/src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx > DetailFullscreen > detail_fullscreen_size
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+ ❯ frontend/src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx (4 tests | 1 failed) 699ms
+   ❯ DetailFullscreen (4)
+     × detail_fullscreen_size 98ms
+ ❯ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx (11 tests | 1 failed) 2001ms
+   ❯ DetailHeader (11)
+     × detail_header_when_comment_count: 3 1057ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 19 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/components/left-panel.test.tsx > LeftPanel > left_panel_when_over_max
+AssertionError: expected '1040px' to be '960px' // Object.is equality
+
+Expected: "960px"
+Received: "1040px"
+
+ ❯ frontend/src/shared/components/left-panel.test.tsx:71:77
+     69|     renderPanel("コメントの一覧の幅");
+     70|     // 検証
+     71|     expect(screen.getByRole("complementary", { name: "コメント" }).style.w…
+       |                                                                             ^
+     72|     expect(screen.getByRole("separator", { name: "コメントの一覧の幅" })).toHav…
+     73|     expect(sessionStorage.getItem("mindmap-left-panel-width")).toBe("1…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/19]⎯
+
+ FAIL  frontend/src/shared/components/left-panel.test.tsx > LeftPanel > left_panel_above_detail
+Error: expect(element).toHaveClass("lg:z-35")
+
+Expected the element to have class:
+  lg:z-35
+Received:
+
+ ❯ frontend/src/shared/components/left-panel.test.tsx:106:65
+    104|     renderPanel("コメントの一覧の幅");
+    105|     // 検証
+    106|     expect(screen.getByRole("complementary", { name: "コメント" })).toHave…
+       |                                                                 ^
+    107|   });
+    108|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/19]⎯
+
+ FAIL  frontend/src/shared/components/record-text.test.tsx > RecordText > record_text_marker_without_tooltip
+AssertionError: expected <div id="term-tip" …(3)>…(2)</div> to be null
+
+- Expected:
+null
+
++ Received:
+<div
+  class="term-tip"
+  id="term-tip"
+  popover="manual"
+  role="tooltip"
+>
+  <span
+    class="tt-head"
+  >
+    保存先の決め方
+    <span
+      class="mono"
+    >
+      D-1
+    </span>
+  </span>
+  <span
+    class="tt-body"
+  >
+    <span
+      class="tt-meta"
+    >
+      検討事項
+      <span
+        aria-hidden="true"
+      >
+        ・
+      </span>
+      <svg
+        aria-hidden="true"
+        class="st-mark"
+        height="10"
+        viewBox="0 0 10 10"
+        width="10"
+      >
+        <circle
+          cx="5"
+          cy="5"
+          fill="none"
+          r="3.8"
+          stroke="var(--st-open)"
+          stroke-width="1.6"
+        />
+      </svg>
+      <span>
+        未決定
+      </span>
+    </span>
+  </span>
+</div>
+
+ ❯ frontend/src/shared/components/record-text.test.tsx:137:56
+    135|     });
+    136|     // 検証
+    137|     expect(document.querySelector('[role="tooltip"]')).toBeNull();
+       |                                                        ^
+    138|     expect(marker?.tagName).toBe("SPAN");
+    139|     expect(container.querySelector("#ids")).toHaveTextContent("保存先の決め方…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/19]⎯
+
+ FAIL  frontend/src/shared/core/body-links.test.ts > renderMarkdown > render_markdown_features
+AssertionError: expected { glossary: false, …(15) } to not have property "syntax"
+
+- Expected:
+undefined
+
++ Received:
+false
+
+ ❯ frontend/src/shared/core/body-links.test.ts:155:26
+    153|     // 検証
+    154|     const { features } = (mount.options.at(-1) as { config: { features…
+    155|     expect(features).not.toHaveProperty("syntax");
+       |                          ^
+    156|     expect(features).not.toHaveProperty("code");
+    157|     const off = Object.entries(features).filter(([, on]) => !on).map((…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/19]⎯
+
+ FAIL  frontend/src/shared/core/body-links.test.ts > markExternalLinks > mark_external_links
+TypeError: markExternalLinks is not a function
+ ❯ frontend/src/shared/core/body-links.test.ts:197:5
+    195|     ].join("");
+    196|     // 実行
+    197|     markExternalLinks(root);
+       |     ^
+    198|     // 検証
+    199|     const marked = [...root.querySelectorAll("a")].map((a) => ({ text:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/19]⎯
+
+ FAIL  frontend/src/shared/core/comments.test.ts > itemThreadCount > item_thread_count: D-1
+ FAIL  frontend/src/shared/core/comments.test.ts > itemThreadCount > item_thread_count: D-3
+TypeError: itemThreadCount is not a function
+ ❯ frontend/src/shared/core/comments.test.ts:198:12
+    196|     const pending = [item({ id: "C-1", target: "D-1" }), item({ id: "C…
+    197|     // 実行・検証
+    198|     expect(itemThreadCount({ threads, pending, id })).toBe(expected);
+       |            ^
+    199|   });
+    200| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/19]⎯
+
+ FAIL  frontend/src/shared/core/doc-export.test.ts > buildDocHtml > build_doc_html_external_links
+AssertionError: expected null to be '_blank' // Object.is equality
+
+- Expected:
+"_blank"
+
++ Received:
+null
+
+ ❯ frontend/src/shared/core/doc-export.test.ts:35:46
+     33|     const external = dom.window.document.querySelector('a[href="https:…
+     34|     const internal = dom.window.document.querySelector('a[href="#id=D-…
+     35|     expect(external?.getAttribute("target")).toBe("_blank");
+       |                                              ^
+     36|     expect(external?.getAttribute("rel")).toBe("noopener noreferrer");
+     37|     expect(internal?.hasAttribute("target")).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/19]⎯
+
+ FAIL  frontend/src/shared/stores/panel-width-store.test.ts > leftPanelMax > left_panel_max: 表示の幅 1440
+AssertionError: expected 1040 to be 960 // Object.is equality
+
+- Expected
++ Received
+
+- 960
++ 1040
+
+ ❯ frontend/src/shared/stores/panel-width-store.test.ts:36:36
+     34|   ])("left_panel_max: $name", ({ viewport, expected }) => {
+     35|     // 実行・検証
+     36|     expect(leftPanelMax(viewport)).toBe(expected);
+       |                                    ^
+     37|   });
+     38| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/19]⎯
+
+ FAIL  frontend/src/shared/stores/panel-width-store.test.ts > leftPanelMax > left_panel_max: 表示の幅 1000
+AssertionError: expected 600 to be 666 // Object.is equality
+
+- Expected
++ Received
+
+- 666
++ 600
+
+ ❯ frontend/src/shared/stores/panel-width-store.test.ts:36:36
+     34|   ])("left_panel_max: $name", ({ viewport, expected }) => {
+     35|     // 実行・検証
+     36|     expect(leftPanelMax(viewport)).toBe(expected);
+       |                                    ^
+     37|   });
+     38| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/19]⎯
+
+ FAIL  frontend/src/shared/stores/panel-width-store.test.ts > leftPanelMax > left_panel_max: 表示の幅 901
+AssertionError: expected 501 to be 600 // Object.is equality
+
+- Expected
++ Received
+
+- 600
++ 501
+
+ ❯ frontend/src/shared/stores/panel-width-store.test.ts:36:36
+     34|   ])("left_panel_max: $name", ({ viewport, expected }) => {
+     35|     // 実行・検証
+     36|     expect(leftPanelMax(viewport)).toBe(expected);
+       |                                    ^
+     37|   });
+     38| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/19]⎯
+
+ FAIL  frontend/src/shared/stores/panel-width-store.test.ts > detailPanelMax > detail_panel_max: 表示の幅 1440
+AssertionError: expected 1040 to be 960 // Object.is equality
+
+- Expected
++ Received
+
+- 960
++ 1040
+
+ ❯ frontend/src/shared/stores/panel-width-store.test.ts:49:38
+     47|   ])("detail_panel_max: $name", ({ viewport, expected }) => {
+     48|     // 実行・検証
+     49|     expect(detailPanelMax(viewport)).toBe(expected);
+       |                                      ^
+     50|   });
+     51| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/19]⎯
+
+ FAIL  frontend/src/shared/stores/panel-width-store.test.ts > detailPanelMax > detail_panel_max: 表示の幅 1100
+AssertionError: expected 700 to be 733 // Object.is equality
+
+- Expected
++ Received
+
+- 733
++ 700
+
+ ❯ frontend/src/shared/stores/panel-width-store.test.ts:49:38
+     47|   ])("detail_panel_max: $name", ({ viewport, expected }) => {
+     48|     // 実行・検証
+     49|     expect(detailPanelMax(viewport)).toBe(expected);
+       |                                      ^
+     50|   });
+     51| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/19]⎯
+
+ FAIL  frontend/src/shared/stores/panel-width-store.test.ts > detailPanelMax > detail_panel_max: 表示の幅 1000
+AssertionError: expected 840 to be 666 // Object.is equality
+
+- Expected
++ Received
+
+- 666
++ 840
+
+ ❯ frontend/src/shared/stores/panel-width-store.test.ts:49:38
+     47|   ])("detail_panel_max: $name", ({ viewport, expected }) => {
+     48|     // 実行・検証
+     49|     expect(detailPanelMax(viewport)).toBe(expected);
+       |                                      ^
+     50|   });
+     51| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/19]⎯
+
+ FAIL  frontend/src/features/comments/shared/thread-row.test.tsx > ThreadRow > thread_row_without_id_tooltip
+AssertionError: expected <div id="term-tip" …(3)>…(2)</div> to be null
+
+- Expected:
+null
+
++ Received:
+<div
+  class="term-tip"
+  id="term-tip"
+  popover="manual"
+  role="tooltip"
+>
+  <span
+    class="tt-head"
+  >
+    保存先の決め方
+    <span
+      class="mono"
+    >
+      D-1
+    </span>
+  </span>
+  <span
+    class="tt-body"
+  >
+    <span
+      class="tt-meta"
+    >
+      検討事項
+      <span
+        aria-hidden="true"
+      >
+        ・
+      </span>
+      <svg
+        aria-hidden="true"
+        class="st-mark"
+        height="10"
+        viewBox="0 0 10 10"
+        width="10"
+      >
+        <circle
+          cx="5"
+          cy="5"
+          fill="none"
+          r="3.8"
+          stroke="var(--st-open)"
+          stroke-width="1.6"
+        />
+      </svg>
+      <span>
+        未決定
+      </span>
+    </span>
+  </span>
+</div>
+
+ ❯ frontend/src/features/comments/shared/thread-row.test.tsx:52:56
+     50|     });
+     51|     // 検証
+     52|     expect(document.querySelector('[role="tooltip"]')).toBeNull();
+       |                                                        ^
+     53|     expect(screen.getByRole("button", { name: /案の選び方/ })).toHaveAccess…
+     54|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/19]⎯
+
+ FAIL  frontend/src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx > DetailFullscreen > detail_fullscreen_size
+Error: expect(element).toHaveClass("w-9/10 h-9/10")
+
+Expected the element to have class:
+  w-9/10 h-9/10
+Received:
+  fixed top-1/2 left-1/2 z-50 max-h-full w-full -translate-1/2 overflow-auto rounded-card border-border bg-popover text-popover-foreground flex h-full max-w-5xl flex-col rounded-none border-0 p-0 shadow-none
+ ❯ frontend/src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx:24:20
+     22|     const dialog = await screen.findByRole("dialog", { name: /D-1の題/ }…
+     23|     // 検証
+     24|     expect(dialog).toHaveClass("w-9/10", "h-9/10");
+       |                    ^
+     25|     expect(dialog).not.toHaveClass("max-w-5xl");
+     26|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/19]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-header.test.tsx > DetailHeader > detail_header_when_comment_count: 3
+TestingLibraryElementError: Unable to find role="button" and name "D-2 のコメントの一覧を開く（3 件）"
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="border-b border-border-soft"
+    >
+      <div
+        class="flex items-center gap-1 p-2"
+      >
+        <span
+          class="shrink-0 text-xs whitespace-nowrap text-muted-foreground"
+        >
+          <span
+            class="max-sm:hidden"
+          >
+            検討事項
+             
+          </span>
+          <span
+            class="font-mono"
+          >
+            D-2
+          </span>
+        </span>
+        <span
+          class="min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none opacity-0"
+          inert=""
+          title="保存先を決める"
+        >
+          保存先を決める
+        </span>
+        <button
+          aria-label="D-2 のコメントの一覧を開く"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+          tabindex="0"
+          title="この項目のコメントの一覧"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 flex-none fill-none stroke-current"
+            height="16"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="16"
+          >
+            <path
+              d="M4 5h16v11H10l-5 4v-4H4Z"
+            />
+            <path
+              d="M8 9h8M8 12.5h5"
+            />
+          </svg>
+        </button>
+        <button
+          aria-label="前の項目へ戻る"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+          data-disabled=""
+          disabled=""
+          tabindex="0"
+          title="前の項目へ戻る"
+          type="button"
+        >
+          ←
+        </button>
+        <button
+          aria-label="次の項目へ進む"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+          data-disabled=""
+          disabled=""
+          tabindex="0"
+          title="次の項目へ進む"
+          type="button"
+        >
+          →
+        </button>
+        <button
+          aria-label="全画面表示"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 max-md:hidden"
+          tabindex="0"
+          title="全画面表示"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 flex-none fill-none stroke-current"
+            height="16"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="16"
+          >
+            <path
+              d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+            />
+          </svg>
+        </button>
+        <button
+          aria-label="詳細を閉じる"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+          tabindex="0"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 flex-none fill-none stroke-current"
+            height="16"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="16"
+          >
+            <path
+              d="M18 6 6 18M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="border-b border-border-soft"
+    >
+      <div
+        class="flex items-center gap-1 p-2"
+      >
+        <span
+          class="shrink-0 text-xs whitespace-nowrap text-muted-foreground"
+        >
+          <span
+            class="max-sm:hidden"
+          >
+            検討事項
+             
+          </span>
+          <span
+            class="font-mono"
+          >
+            D-2
+          </span>
+        </span>
+        <span
+          class="min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none opacity-0"
+          inert=""
+          title="保存先を決める"
+        >
+          保存先を決める
+        </span>
+        <button
+          aria-label="D-2 のコメントの一覧を開く"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+          tabindex="0"
+          title="この項目のコメントの一覧"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 flex-none fill-none stroke-current"
+            height="16"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="16"
+          >
+            <path
+              d="M4 5h16v11H10l-5 4v-4H4Z"
+            />
+            <path
+              d="M8 9h8M8 12.5h5"
+            />
+          </svg>
+        </button>
+        <button
+          aria-label="前の項目へ戻る"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+          data-disabled=""
+          disabled=""
+          tabindex="0"
+          title="前の項目へ戻る"
+          type="button"
+        >
+          ←
+        </button>
+        <button
+          aria-label="次の項目へ進む"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+          data-disabled=""
+          disabled=""
+          tabindex="0"
+          title="次の項目へ進む"
+          type="button"
+        >
+          →
+        </button>
+        <button
+          aria-label="全画面表示"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 max-md:hidden"
+          tabindex="0"
+          title="全画面表示"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 flex-none fill-none stroke-current"
+            height="16"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="16"
+          >
+            <path
+              d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+            />
+          </svg>
+        </button>
+        <button
+          aria-label="詳細を閉じる"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+          tabindex="0"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 flex-none fill-none stroke-current"
+            height="16"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="16"
+          >
+            <path
+              d="M18 6 6 18M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/features/detail/detail-panel/components/detail-header.test.tsx:104:33
+    102|     await renderInPreviewRouter("/?tab=decisions&id=D-2", <DetailHeade…
+    103|     // 検証
+    104|     const button = await screen.findByRole("button", { name });
+       |                                 ^
+    105|     if (badge === null) expect(within(button).queryByText(/\d/)).toBeN…
+    106|     else expect(within(button).getByText(badge)).toBeInTheDocument();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/19]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx > DetailSupplements > detail_supplements_when_comment_count: 3
+TestingLibraryElementError: Unable to find an accessible element with the role "tab" and name "コメント 3 件"
+
+Here are the accessible roles:
+
+  tablist:
+
+  Name "詳細の表示":
+  <div
+    aria-label="詳細の表示"
+    class="inline-flex rounded-control border border-border bg-muted p-0.5 self-start"
+    role="tablist"
+  />
+
+  --------------------------------------------------
+  tab:
+
+  Name "本文":
+  <button
+    aria-controls="_r_3_-panel"
+    aria-selected="true"
+    class="cursor-pointer rounded-sm text-small hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3 bg-tab-selected font-medium text-foreground ring-1 ring-inset ring-mark/50 hover:bg-tab-selected"
+    id="_r_3_-tab-main"
+    role="tab"
+    tabindex="0"
+    type="button"
+  />
+
+  Name "関連":
+  <button
+    aria-controls="_r_3_-panel"
+    aria-selected="false"
+    class="cursor-pointer rounded-sm text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3"
+    id="_r_3_-tab-related"
+    role="tab"
+    tabindex="-1"
+    type="button"
+  />
+
+  Name "コメント":
+  <button
+    aria-controls="_r_3_-panel"
+    aria-selected="false"
+    class="cursor-pointer rounded-sm text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3"
+    id="_r_3_-tab-comments"
+    role="tab"
+    tabindex="-1"
+    type="button"
+  />
+
+  --------------------------------------------------
+  tabpanel:
+
+  Name "本文":
+  <div
+    aria-labelledby="_r_3_-tab-main"
+    class="flex flex-col gap-3"
+    id="_r_3_-panel"
+    role="tabpanel"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      aria-label="詳細の表示"
+      class="inline-flex rounded-control border border-border bg-muted p-0.5 self-start"
+      role="tablist"
+    >
+      <button
+        aria-controls="_r_3_-panel"
+        aria-selected="true"
+        class="cursor-pointer rounded-sm text-small hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3 bg-tab-selected font-medium text-foreground ring-1 ring-inset ring-mark/50 hover:bg-tab-selected"
+        id="_r_3_-tab-main"
+        role="tab"
+        tabindex="0"
+        type="button"
+      >
+        本文
+      </button>
+      <button
+        aria-controls="_r_3_-panel"
+        aria-selected="false"
+        class="cursor-pointer rounded-sm text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3"
+        id="_r_3_-tab-related"
+        role="tab"
+        tabindex="-1"
+        type="button"
+      >
+        関連
+      </button>
+      <button
+        aria-controls="_r_3_-panel"
+        aria-selected="false"
+        class="cursor-pointer rounded-sm text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3"
+        id="_r_3_-tab-comments"
+        role="tab"
+        tabindex="-1"
+        type="button"
+      >
+        コメント
+      </button>
+    </div>
+    <div
+      aria-labelledby="_r_3_-tab-main"
+      class="flex flex-col gap-3"
+      id="_r_3_-panel"
+      role="tabpanel"
+    >
+      <p>
+        本文の中身
+      </p>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx:52:24
+     50|     render(<DetailSupplements tab="main" onTabChange={vi.fn()} main={<…
+     51|     // 検証
+     52|     const tab = screen.getByRole("tab", { name });
+       |                        ^
+     53|     if (badge === null) expect(tab).toHaveTextContent(/^コメント$/);
+     54|     else expect(within(tab).getByText(badge)).toBeInTheDocument();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/19]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx > DetailSupplements > detail_supplements_when_comment_count: 120
+TestingLibraryElementError: Unable to find an accessible element with the role "tab" and name "コメント 120 件"
+
+Here are the accessible roles:
+
+  tablist:
+
+  Name "詳細の表示":
+  <div
+    aria-label="詳細の表示"
+    class="inline-flex rounded-control border border-border bg-muted p-0.5 self-start"
+    role="tablist"
+  />
+
+  --------------------------------------------------
+  tab:
+
+  Name "本文":
+  <button
+    aria-controls="_r_5_-panel"
+    aria-selected="true"
+    class="cursor-pointer rounded-sm text-small hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3 bg-tab-selected font-medium text-foreground ring-1 ring-inset ring-mark/50 hover:bg-tab-selected"
+    id="_r_5_-tab-main"
+    role="tab"
+    tabindex="0"
+    type="button"
+  />
+
+  Name "関連":
+  <button
+    aria-controls="_r_5_-panel"
+    aria-selected="false"
+    class="cursor-pointer rounded-sm text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3"
+    id="_r_5_-tab-related"
+    role="tab"
+    tabindex="-1"
+    type="button"
+  />
+
+  Name "コメント":
+  <button
+    aria-controls="_r_5_-panel"
+    aria-selected="false"
+    class="cursor-pointer rounded-sm text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3"
+    id="_r_5_-tab-comments"
+    role="tab"
+    tabindex="-1"
+    type="button"
+  />
+
+  --------------------------------------------------
+  tabpanel:
+
+  Name "本文":
+  <div
+    aria-labelledby="_r_5_-tab-main"
+    class="flex flex-col gap-3"
+    id="_r_5_-panel"
+    role="tabpanel"
+  />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      aria-label="詳細の表示"
+      class="inline-flex rounded-control border border-border bg-muted p-0.5 self-start"
+      role="tablist"
+    >
+      <button
+        aria-controls="_r_5_-panel"
+        aria-selected="true"
+        class="cursor-pointer rounded-sm text-small hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3 bg-tab-selected font-medium text-foreground ring-1 ring-inset ring-mark/50 hover:bg-tab-selected"
+        id="_r_5_-tab-main"
+        role="tab"
+        tabindex="0"
+        type="button"
+      >
+        本文
+      </button>
+      <button
+        aria-controls="_r_5_-panel"
+        aria-selected="false"
+        class="cursor-pointer rounded-sm text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3"
+        id="_r_5_-tab-related"
+        role="tab"
+        tabindex="-1"
+        type="button"
+      >
+        関連
+      </button>
+      <button
+        aria-controls="_r_5_-panel"
+        aria-selected="false"
+        class="cursor-pointer rounded-sm text-small text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring h-6 min-w-20 px-3"
+        id="_r_5_-tab-comments"
+        role="tab"
+        tabindex="-1"
+        type="button"
+      >
+        コメント
+      </button>
+    </div>
+    <div
+      aria-labelledby="_r_5_-tab-main"
+      class="flex flex-col gap-3"
+      id="_r_5_-panel"
+      role="tabpanel"
+    >
+      <p>
+        本文の中身
+      </p>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/detail/detail-panel/components/detail-supplements.test.tsx:52:24
+     50|     render(<DetailSupplements tab="main" onTabChange={vi.fn()} main={<…
+     51|     // 検証
+     52|     const tab = screen.getByRole("tab", { name });
+       |                        ^
+     53|     if (badge === null) expect(tab).toHaveTextContent(/^コメント$/);
+     54|     else expect(within(tab).getByText(badge)).toBeInTheDocument();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/19]⎯
+
+
+ Test Files  10 failed (10)
+      Tests  19 failed | 70 passed (89)
+   Start at  02:20:31
+   Duration  3.54s (environment 42%, tests 30%, import 11%, setup 9%, transform 7%, worker 1%)
+
+    Isolate  10 workers spawned · ~629ms startup each (spawn + environment, per file)
+             at least ~269ms faster with isolate: false — reuses workers across files instead of one per file
+
+
+# 実装の前から pass したテストと、振る舞いを持つコード
+- left_panel_max: 下限を下回る / detail_panel_max: 下限を下回る: 下限で止める処理は frontend/src/shared/stores/panel-width-store.ts の leftPanelMax・detailPanelMax（26dbedf1 (#713)）
+- detail_supplements_when_comment_count: 0 / detail_header_when_comment_count: 0: 件数を指定しないときにバッジを描かないのは今の DetailSupplements・DetailHeader の描画（バッジの処理が無い）
+- render_markdown_when_code_block: バーを持つコードブロックでも pre の属性を変えないのは frontend/src/shared/core/body-links.ts の renderMarkdown の処理 6（fa0a6328 (#444)）
