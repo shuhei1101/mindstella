@@ -44,8 +44,8 @@ describe("favoriteColumn", () => {
     // 検証
     expect(column.key).toBe("favorite");
     expect(column.label).toBe("お気に入り");
-    expect(column.get(on)).toBe("★");
-    expect(column.get(off)).toBe("");
+    expect(column.get?.(on)).toBe("★");
+    expect(column.get?.(off)).toBe("");
     expect(onToggle).toHaveBeenCalledWith("D-2");
   });
 });
