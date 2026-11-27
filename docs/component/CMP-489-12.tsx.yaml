@@ -378,6 +378,7 @@ accessibility:
   - 本文の中のまとまりのリンクは `href` を `#diff={まとまりの ID}` にした `a` 要素にし、読み上げの名前を `文言`、`title` をそのまとまりの説明にする。Tab で本文の並びの順に止まり、Enter で押せる
   - 修正の入力のマイク・×・✓ の読み上げの名前とツールチップは、部品『返信の入力』の音声入力のボタンと同じにする
   - 本文の中のスレッドの ID・書き込みの ID のリンクはボタンにし、読み上げの名前を ID にする。スレッドのタイトルは [本文のマーカーのツールチップ](id:CMP-489-36) の `ThreadId` で出し、`title` は付けない
+  - 本文の中の項目の ID・スレッドの ID・書き込みの ID のボタンを指で押したとき（ポインターの `pointerType` が `touch`）は、ツールチップを出さず、1 回で開く
 test_file: tests/integration/storybook_react/test_thread_post_stories.py
 uses:
   - component: CMP-489-6#
