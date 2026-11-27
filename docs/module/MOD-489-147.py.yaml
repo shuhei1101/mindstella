@@ -683,9 +683,9 @@ functions:
          - 控えが 1 件でもあれば、全てを `stale` に持った `CommentConflictError` を送出する
       4. 前の `decisions.yaml`・`history.yaml`・`changes.yaml` の中身を控え、案の選択があれば利用者の選択を記載する（`_write_user_choices`）
       5. 前の `threads.yaml` の中身（無ければ無いこと）を控え、案の選択でない分をスレッドへ追加する（`UserPostInput` にして `append_user_posts`。`loc` は `location_to_dict`。案の選択だけのときは書かない）
-         - `WriteFailedError` の場合、控えた `decisions.yaml`・`history.yaml`・`changes.yaml` を書き戻し、同じ例外を送出する
+         - `WriteFailedError` の場合、控えた `decisions.yaml`・`history.yaml`・`changes.yaml` を書き戻し、4. で利用者の選択を記載していたら、書き戻したファイルとその中身で書き換えの検知にもう一度伝えて（`accept_written`）から、同じ例外を送出する
       6. 送信したコメントを除いた `{seq, items}` を書く（`_write_yaml`）
-         - `WriteFailedError` の場合、控えた `threads.yaml`・`decisions.yaml`・`history.yaml`・`changes.yaml` を書き戻し（無かったファイルは削除する）、同じ例外を送出する
+         - `WriteFailedError` の場合、控えた `threads.yaml`・`decisions.yaml`・`history.yaml`・`changes.yaml` を書き戻し（無かったファイルは削除する）、4. で利用者の選択を記載していたら、書き戻した `decisions.yaml`・`history.yaml`・`changes.yaml` とその中身（無かったファイルは `None`）で書き換えの検知にもう一度伝えて（`accept_written`）から、同じ例外を送出する
       7. 送信した返信のスレッドの下書きがあれば削除して書く
          - `WriteFailedError` の場合、`[WARNING]` 下書きを削除できなかった（パス・理由）を出して送信したまま返す
       8. 送信した日時と、溜めた順の `SentItem`（スレッドへの分は `thread`・`post`、案の選択は `decision`）を返す
@@ -774,7 +774,14 @@ functions:
         summary: スレッドを書けなければ利用者の選択を書き戻す
         condition: D-1 への案の選択 C-1 と新規スレッドの C-2。`threads.yaml` への `os.replace` だけ `OSError` を送出するように差し替える
         mock: '`os.replace`'
-        expected: '`WriteFailedError`。`decisions.yaml`・`history.yaml`・`changes.yaml`・`threads.yaml`・`comments.yaml` が呼ぶ前と同じ'
+        expected: '`WriteFailedError`。`decisions.yaml`・`history.yaml`・`changes.yaml`・`threads.yaml`・`comments.yaml` が呼ぶ前と同じで、変更の検知の前回の中身も呼ぶ前と同じ（その後に検知を動かしても `external` の変更履歴とまとまりが増えない）'
+        exception: 置き換えで OSError
+      - name: test_send_comments_when_comments_write_fails_after_choices
+        case: 異常
+        summary: レビュー中を書けなければ利用者の選択とスレッドを書き戻し、変更の検知にも書き戻した中身を伝える
+        condition: D-1 への案の選択 C-1 と新規スレッドの C-2。`comments.yaml` への `os.replace` だけ `OSError` を送出するように差し替える
+        mock: '`os.replace`'
+        expected: '`WriteFailedError`。`decisions.yaml`・`history.yaml`・`changes.yaml`・`threads.yaml`・`comments.yaml` が呼ぶ前と同じで、変更の検知の前回の中身も呼ぶ前と同じ'
         exception: 置き換えで OSError
   - name: send_now
     title: すぐ送信する
