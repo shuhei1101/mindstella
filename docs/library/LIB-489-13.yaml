@@ -40,6 +40,7 @@ catalogs:
               | `views` | 項目の一覧（カード・表） |
               | `mermaid` | 画面が描いて差分を取る図 |
               | `diagram-resize`・`lightbox` | 図・画像の拡大 |
+              | `back-to-top` | 詳細パネル・全画面の本文のスクロールの領域（mdmark のボタンが右下に重なる） |
           - name: opts.index
             type: '{docs: Array<{id, path, title, aliases?, description?}>, terms: Array<{id, term, meaning, aliases?}>}'
             required: false
