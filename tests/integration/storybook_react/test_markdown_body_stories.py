@@ -272,11 +272,11 @@ def test_external_link(open_story: OpenStory) -> None:
     """本文に外部の URL へのリンクと、同じオリジン・# で始まるリンクを持つ。外部の URL へのリンクだけが target="_blank" と rel="noopener noreferrer" を持つ（正常系）。"""
     # 準備・実行
     page = _open(open_story, "external-link")
-    links = page.evaluate("() => [...document.querySelectorAll('.md a[href]')].map((a) => [a.textContent, a.getAttribute('target'), a.getAttribute('rel')])")
+    links = page.evaluate("() => Object.fromEntries([...document.querySelectorAll('.md a[href]')].map((a) => [a.getAttribute('href'), [a.getAttribute('target'), a.getAttribute('rel')]]))")
     # 検証
-    assert ["外部のページ", "_blank", "noopener noreferrer"] in links
-    assert ["同じオリジン", None, None] in links
-    assert ["D-1", None, None] in links
+    assert links["https://example.com/"] == ["_blank", "noopener noreferrer"]
+    assert links["/w/sample/"] == [None, None]
+    assert links["#id=D-1"] == [None, None]
 
 
 def test_callouts(open_story: OpenStory) -> None:
