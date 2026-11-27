@@ -43,6 +43,9 @@ TITLE_EXPANDED_MAX_PX = 288
 # 要素の高さが行の高さの何行分かを返す
 TITLE_LINES_JS = "(element) => element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight)"
 
+# 指で操作するスマホの画面幅と高さ
+TOUCH_VIEWPORT = {"width": 390, "height": 844}
+
 # 5 行を超えるレビュー中の返信の本文
 LONG_REPLY = "\n\n".join(f"{index} 行目の返信" for index in range(1, 9))
 
@@ -620,3 +623,19 @@ def test_no_horizontal_scroll(
     expect(_panel(page).locator("article")).to_have_count(50)
     # 検証
     assert_no_horizontal_scroll(page, _panel(page))
+
+
+def test_post_id_touch_action(browser: Browser, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_post: MakePost, make_thread: MakeThread) -> None:
+    """指でスレッドの書き込みの中の項目の ID のボタンを押すと、ツールチップを出さずに 1 回でその項目の詳細パネルを開く（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("D-1", title="最初の問い"), threads=(make_thread("TH-1", make_post("TH-1-1", author="ai", body="D-1 を確認してください。", read=True), summary="D-1 の相談"),))
+    context = browser.new_context(has_touch=True, is_mobile=True, viewport=TOUCH_VIEWPORT)
+    page = context.new_page()
+    open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+    button = page.locator("article[data-post-id='TH-1-1'] button.idlink", has_text="D-1")
+    # 実行
+    button.tap()
+    # 検証
+    expect(page).to_have_url(re.compile(r"id=D-1"))
+    expect(page.locator("[popover]:popover-open")).to_have_count(0)
+    context.close()

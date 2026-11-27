@@ -22,9 +22,6 @@ STATES = (
     "shared-recordtext--touch-link-tap",
 )
 
-# 指で押す play が終わるまで待つミリ秒
-TOUCH_SETTLE_MS = 500
-
 # 見本の記録の D-1 のツールチップに出る文字（タイトル・ID・種類・状態）
 D1_TIP_TEXTS = ("保存先の決め方", "D-1", "検討事項", "未決定")
 
@@ -165,9 +162,18 @@ def test_long_title(open_story: OpenStory) -> None:
 
 
 def test_touch_link_tap(open_story: OpenStory) -> None:
-    """指で D-1 のリンクを押すと、ツールチップを出さない（正常系）。"""
+    """指で D-1 のリンクを 1 回押すと、ツールチップを出さずに `onOpen` を D-1 で 1 回呼ぶ（正常系）。"""
     # 準備・実行
     page = open_story("shared-recordtext--touch-link-tap")
-    page.wait_for_timeout(TOUCH_SETTLE_MS)
+    opened = page.locator("[data-part=opened]")
     # 検証
+    expect(opened).to_have_text("D-1")
     expect(page.locator(".term-tip")).to_have_count(0)
+
+
+def test_link_hover_tip_with_mouse(open_story: OpenStory) -> None:
+    """対照として、マウスで D-1 のリンクに乗せたときはツールチップを出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-recordtext--link-hover")
+    # 検証
+    _assert_d1_tip(page)
