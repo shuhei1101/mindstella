@@ -50,8 +50,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T16:08:30.908481+00:00'
   - process: インターフェース定義設計
-    status: todo
+    status: done
     note: IF-489-70『プレビューを開く』の結合テストの一覧と画面の振る舞い（外部のリンク・コードブロック）
+    updated_by: planner
+    updated_at: '2026-11-27T16:25:59.287247+00:00'
   - process: エージェント・MCP サーバー設計
     status: skipped
     reason: エージェント・MCP サーバーに触れない
