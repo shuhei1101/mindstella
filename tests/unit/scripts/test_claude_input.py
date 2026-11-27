@@ -319,6 +319,7 @@ def test_enter_when_pane_lock(monkeypatch: pytest.MonkeyPatch) -> None:
         target: claude_input.InputTarget | None,
         count: int,
         *,
+        choices: int = 0,
         pane_lock: threading.Lock | None,
         paste_lock: threading.Lock,
     ) -> bool:
