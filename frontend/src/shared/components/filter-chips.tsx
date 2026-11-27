@@ -11,7 +11,12 @@ export type FilterChipsProps = {
   /** チェックで表せないタグの式の文。無ければ出さない */
   tagExprText?: string;
   onClearTagExpr?: () => void;
+  /** 渡すと「お気に入りだけ」のチップを先頭に出し、× で「お気に入りだけを表示する」を解除する */
+  onClearFavoritesOnly?: () => void;
 };
+
+/** 「お気に入りだけを表示する」のチップの文言 */
+export const FAVORITES_ONLY_CHIP = "お気に入りだけ";
 
 const Chip = ({ text, onClear }: { text: string; onClear: () => void }) => (
   <span className="inline-flex items-center gap-1 rounded-full bg-mark-weak px-2 text-xs">
@@ -22,7 +27,7 @@ const Chip = ({ text, onClear }: { text: string; onClear: () => void }) => (
   </span>
 );
 
-export const FilterChips = ({ filters, labels, tagMatch = "all", onFilter, tagExprText, onClearTagExpr }: FilterChipsProps) => {
+export const FilterChips = ({ filters, labels, tagMatch = "all", onFilter, tagExprText, onClearTagExpr, onClearFavoritesOnly }: FilterChipsProps) => {
   const chips = Object.entries(filters).flatMap(([key, values]) => {
     if (key.startsWith(TEXT_FILTER_PREFIX)) {
       const name = labels[key.slice(TEXT_FILTER_PREFIX.length)] ?? key.slice(TEXT_FILTER_PREFIX.length);
@@ -38,15 +43,17 @@ export const FilterChips = ({ filters, labels, tagMatch = "all", onFilter, tagEx
   const exprChip = tagExprText !== undefined && onClearTagExpr !== undefined;
   return (
     <div className="flex flex-wrap items-center gap-1">
+      {onClearFavoritesOnly === undefined ? null : <Chip text={FAVORITES_ONLY_CHIP} onClear={onClearFavoritesOnly} />}
       {exprChip ? <Chip text={`${labels["tags"] ?? "タグ"}: ${tagExprText}`} onClear={onClearTagExpr} /> : null}
       {chips.map((chip) => (
         <Chip key={chip.id} text={chip.text} onClear={() => { onFilter(chip.next); }} />
       ))}
-      {chips.length > 0 || exprChip ? (
+      {chips.length > 0 || exprChip || onClearFavoritesOnly !== undefined ? (
         <Button
           variant="ghost"
           onClick={() => {
             onClearTagExpr?.();
+            onClearFavoritesOnly?.();
             onFilter({});
           }}
         >

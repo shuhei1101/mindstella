@@ -11,6 +11,8 @@ export type Favorites = {
   only: boolean;
   /** 項目をお気に入りに登録・解除する */
   toggle: (id: string) => void;
+  /** 「お気に入りだけを表示する」の上書きを外す */
+  clearOnly: () => void;
 };
 
 export const useFavorites = (): Favorites => {
@@ -21,6 +23,9 @@ export const useFavorites = (): Favorites => {
     only: prefs.favoritesOnly === true,
     toggle: (id) => {
       writePrefs({ favorites: toggleFavorite(readPrefs().favorites ?? [], id) });
+    },
+    clearOnly: () => {
+      writePrefs({ favoritesOnly: null });
     },
   };
 };
