@@ -95,6 +95,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T17:20:52.310576+00:00'
   - process: 実装
-    status: todo
+    status: done
+    note: パネルの幅の上限・重なり順・全画面の大きさ・件数のバッジ・スレッドの行の ID・外部のリンク・mdmark の機能・本文の区切りの間・表示の設定の余白（単体テスト全 pass・lint 違反なし）
+    updated_by: planner
+    updated_at: '2026-11-27T17:38:46.761831+00:00'
   - process: 結合テスト作成
     status: todo
