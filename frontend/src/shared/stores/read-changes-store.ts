@@ -40,6 +40,11 @@ const safeStorage: StateStorage = {
 
 const useReadChangesStore = create<ReadChangesState>()(persist(() => ({ read: {} }), { name: READ_CHANGES_KEY, storage: createJSONStorage(() => safeStorage) }));
 
+// ほかのタブが既読を書き換えたら読み直す（書き込みで相手の既読を上書きしない）
+window.addEventListener("storage", (event) => {
+  if (event.key === READ_CHANGES_KEY) void useReadChangesStore.persist.rehydrate();
+});
+
 /** 指定したまとまりの ID をそのワークスペースの既読に加える */
 export const markRead = (workspace: string, ids: readonly string[]): void => {
   useReadChangesStore.setState((state) => {

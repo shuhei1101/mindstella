@@ -6,7 +6,7 @@ stores:
     title: 既読のまとまり
     container: frontend/src/shared/stores/read-changes-store.ts
     usecase: 前回からの差分を見る
-    summary: 'ワークスペースごとの既読のまとまりの ID を Zustand の `persist`（`name: mindmap-read-changes`、`localStorage`）で持つ。保存領域を使用できないときはメモリの上だけで持つ。store は export せず、下のフックだけを export する'
+    summary: 'ワークスペースごとの既読のまとまりの ID を Zustand の `persist`（`name: mindmap-read-changes`、`localStorage`）で持つ。保存領域を使用できないときはメモリの上だけで持つ。ほかのタブが `mindmap-read-changes` を書き換えた（`window` の `storage` イベント）ときは `persist.rehydrate()` で再読み込みする。store は export せず、下のフックだけを export する'
     state:
       - name: read
         type: Record<string, string[]>
@@ -92,6 +92,12 @@ functions:
         mock: '`vi.spyOn(Storage.prototype, "setItem")`'
         expected: 例外にならず `[]`
         exception: 保存領域を使用できない
+      - name: test_use_unread_set_ids_when_other_tab_writes
+        case: 正常
+        summary: ほかのタブが既読を書き換えたら再読み込みし、相手の既読を上書きしない
+        condition: '`useUnreadSetIds("a", ["V-3", "V-2", "V-1"])` を描いた後、`localStorage` の `read.a` を `[V-3]` にして `storage` イベントを送信し、`markRead("a", ["V-2"])`'
+        mock: なし
+        expected: '`[V-1]`。`localStorage` の `read.a` が `[V-3, V-2]`'
 refs:
   - IF-489-70#
 notes:

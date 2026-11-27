@@ -79,10 +79,10 @@ export const threadCounts = ({ threads, tag, target }: { threads: readonly Threa
   return { open, closed: tagged.length - open, all: tagged.length };
 };
 
-/** 一覧の先頭に出す、まだ送っていない新規スレッド（クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
+/** 一覧の先頭に出す、まだ送っていない新規スレッド（案の選択は除く。クローズの絞り込みとタグの絞り込みでは出さない。項目で絞っている間はその項目へのものだけ） */
 export const pendingThreads = ({ items, filter, tag, target }: { items: readonly ReviewItem[]; filter: ThreadFilter; tag: string | null; target: string | null }): ReviewItem[] => {
   if (filter === "closed" || tag !== null) return [];
-  return items.filter((item) => item.thread === null && (target === null || item.target === target));
+  return items.filter((item) => item.thread === null && !isChoice(item) && (target === null || item.target === target));
 };
 
 /** レビュー中の書き込みが、クローズのスレッドへの返信か（スレッドが見つからなければ偽） */

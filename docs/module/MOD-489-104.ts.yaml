@@ -122,7 +122,7 @@ functions:
     title: まだ送信していない新規スレッド
     kind: 関数
     usecase: コメントを選んで送信する
-    summary: レビュー中の書き込みのうち `thread` を持たないもの（`target` が `null` でなければその項目へ向けたものだけ）を溜めた順に返す。状態の絞り込みが `closed` か、タグで絞っているときは空
+    summary: レビュー中の書き込みのうち `thread` を持たないもの（案の選択（`choice` を持つ）は除く。`target` が `null` でなければその項目へ向けたものだけ）を溜めた順に返す。状態の絞り込みが `closed` か、タグで絞っているときは空
     args:
       - name: items
         type: readonly ReviewItem[]
@@ -153,7 +153,7 @@ functions:
       - name: test_pending_threads_when_target
         case: 正常
         summary: 項目で絞ると、その項目への新規スレッドだけを出す
-        condition: "C-41（D-1 への新規スレッド）・C-42（項目を指さない新規スレッド）・C-43（返信）。`test.each`: `{filter: 'open', tag: null, target: 'D-1'}` / `{filter: 'closed', tag: null, target: 'D-1'}` / `{filter: 'open', tag: '画面', target: 'D-1'}`"
+        condition: "C-41（D-1 への新規スレッド）・C-42（項目を指さない新規スレッド）・C-43（返信）・C-44（D-1 への案の選択）。`test.each`: `{filter: 'open', tag: null, target: 'D-1'}` / `{filter: 'closed', tag: null, target: 'D-1'}` / `{filter: 'open', tag: '画面', target: 'D-1'}`"
         mock: なし
         expected: '`[C-41]` / `[]` / `[]`'
     container: frontend/src/shared/core/comments.ts

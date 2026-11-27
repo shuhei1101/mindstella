@@ -61,9 +61,7 @@ const ChooseBar = ({ optionKey, chosen, sent, note, onChoose, onCancel }: { opti
           一言（任意）
         </label>
         <Textarea
-          ref={(element) => {
-            element?.focus();
-          }}
+          autoFocus
           id={`choice-note-${optionKey}`}
           rows={2}
           value={draft}
