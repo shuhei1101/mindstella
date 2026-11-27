@@ -57,7 +57,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T09:00:15.431789+00:00'
   - process: エージェントフロー・LLM 呼び出し設計
-    status: todo
+    status: done
+    note: LLM の呼び出しは変えない（MindStella のセッションは Claude Code のエージェント）。エージェントフロー mindstella/startup・mindstella/on-comment と注入文のプロンプトファイル session-start を修正
+    updated_by: planner
+    updated_at: '2026-11-27T09:02:22.045927+00:00'
   - process: 精度評価設計
     status: skipped
     reason: 変わるのは Claude Code のエージェント（MindStella のセッション）のエージェントフローだけで、判定フローチャート『精度評価をするか』の Q2 YES（精度評価をせず、テストでは Mock にする）のため
