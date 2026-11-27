@@ -104,7 +104,7 @@ elements:
     status: planned
   - name: 選んだ時点
     kind: label
-    description: 本文の冒頭に、変更履歴で選んだ時点の名前と日時（前回開いてからは範囲の始まり）を出す
+    description: 本文の冒頭に、変更履歴で選んだ時点の名前と日時を出す
     io: 表示
     source: プレビューを開く.diffと記録の取得.changes
     visible_when: 差分の表示の間で、開いた項目がその時点で追加されたか変わったとき
@@ -840,6 +840,22 @@ elements:
         value: リンクのセクションの外部の URL のリンクの中は `marker`、それ以外は `link`
       - name: lookup
         value: 記録の項目・スレッドから ID を検索する関数（記録に無い ID と、配る書き出しのスレッドの ID は `null`）
+  - name: 案の選択
+    kind: list
+    component: CMP-722-1#
+    args:
+      - name: options
+        value: 記録の取得.decisions[].options
+      - name: previous
+        value: 差分の表示の間は選んだ時点の options、それ以外は指定しない
+      - name: choice
+        value: レビュー中のコメントの読み取り.items[] のうち target がその検討事項で choice を持つ 1 件（key と body。sent は偽）、無ければ記録の取得.decisions[].user_choice（key と note。sent は真）
+    position: 案
+    description: 案のカードの下に「この案を選ぶ」を出し、一言（任意）を添えて確定するとレビュー中の案の選択として溜める。同じ検討事項にレビュー中の案の選択があれば書き換え、「選択を取り消す」で削除する（『プレビューを開く』の制約「案の選択」）。溜めた後はトップバーのコメントのボタンの件数に加わる。送信した選択は「選択済み（送信済み）」で出し、AI が採用するまで残る
+    io: 入力
+    target: レビュー中のコメントの追加（target と choice.key、一言は body）・レビュー中のコメントの書き換え・レビュー中のコメントの削除
+    visible_when: サーバーの配信で、状態が `未決定`・`要見直し` の検討事項を、差分の表示をしていない読む表示で開いたとき
+    constraints: 押す領域はどの幅でも縦横 24px 以上。一言は前後の空白を除いて 10000 文字以下
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 notes:
   取り下げのモック: 取り下げの札と取り下げた理由の見本は `docs/mock/pages/detail-panel/179/standard/index.html`

@@ -2,27 +2,40 @@ id: SCR-489-16
 title: 変更履歴
 screen: frontend/src/features/history/history/history-dialog.tsx
 elements:
+  - name: 既読の操作
+    kind: button
+    component: CMP-489-26#
+    args:
+      - name: onMarkAllRead
+        value: サーバーの配信でだけ指定する（配る書き出しでは指定せず、件数とボタンの行を出さない）
+    description: 一覧の上に「未読 {件数} 件」（0 件は「未読はありません」）と「すべて既読にする」を出す。押すと記録の全てのまとまりを既読にし（『プレビューを開く』の制約「既読のまとまり」）、一覧の未読のマーカーとトップバーの未読の件数を削除する。モーダルは閉じず、選んだ時点も変えない
+    io: 入力
+    source: 記録の取得.changes.sets と、端末の保存領域の既読のまとまり
+    visible_when: サーバーの配信
+    enabled_when: 未読のまとまりが 1 件以上
   - name: 時点の一覧
     kind: list
     component: CMP-489-26#
     args:
       - name: points
-        value: 「差分を出さない（今の内容）」・「まだまとめていない変更」（記録の取得.changes.pending の added・changed・removed のどれかが空でないとき）・「前回開いてから」・記録の取得.changes.sets の並び
+        value: 「最新」・「まだまとめていない変更」（記録の取得.changes.pending の added・changed・removed のどれかが空でないとき）・記録の取得.changes.sets の並び（新しい順）
       - name: points[].sel
-        value: 空文字列・pending・since・sets[].id
+        value: 空文字列・pending・sets[].id
       - name: points[].name
-        value: 差分を出さない（今の内容）・まだまとめていない変更・前回開いてから・sets[].summary
+        value: 最新・まだまとめていない変更・sets[].summary
       - name: points[].sub
-        value: マーカーと差分を出さずに今の内容だけを読む・AI がまだ区切っていない書き換え・{前回開いた日時} より後・sets[].at（JST の MM/DD HH:mm）
+        value: マーカーと差分を出さずに今の内容だけを読む・AI がまだ区切っていない書き換え・sets[].at（JST の MM/DD HH:mm）
       - name: points[].external
         value: sets[].by が external のまとまりで真（名前の横に「外部の変更」の札。名前は sets[].summary の「ほかのセッションの書き込み」）
+      - name: points[].unread
+        value: サーバーの配信で、sets[].id が端末の保存領域の既読に無いまとまりで真（配る書き出しでは指定しない）
       - name: points[].count
-        value: その時点の added・changed・removed の数。合わせた範囲で追加して削除した項目は、削除した項目として 1 件に数える（差分を出さない行は渡さない）
+        value: その時点の added・changed・removed の数。合わせた範囲で追加して削除した項目は、削除した項目として 1 件に数える（「最新」の行は指定しない）
       - name: current
         value: プレビューを開く.diff（無ければ空文字列）
-    description: 時点を新しい順に並べる。行を押すとモーダルを閉じ、どの画面もその時点の差分の表示で再描画する。「差分を出さない（今の内容）」は差分の表示をやめる
+    description: 時点を新しい順に並べる。行を押すとモーダルを閉じ、どの画面もその時点の差分の表示で再描画し、まとまりの行ならそのまとまりを既読にする。「最新」は差分の表示をやめる。書き換えの通知で再読み込みして増えたまとまりは、開いたままのモーダルにも未読で加わる
     io: 入力
-    source: 記録の取得.changes、前回開いた日時.previous（`null` のときは前回開いた日時.opened）
+    source: 記録の取得.changes、端末の保存領域の既読のまとまり
     visible_when: 常時
   - name: 閉じる
     kind: button

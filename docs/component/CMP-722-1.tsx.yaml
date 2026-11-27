@@ -1,0 +1,81 @@
+id: CMP-722-1
+title: 案の一覧
+lead: 検討事項の詳細パネル・詳細の全画面に、検討事項の案を 1 枚ずつのカードで並べる。未決定・要見直しの検討事項では、利用者が案を選んで一言を添えられる。
+implementation: frontend/src/features/detail/detail-panel/components/option-list.tsx#OptionList
+story: Features/Detail/OptionList
+test_file: tests/integration/storybook_react/test_option_list_stories.py
+args:
+  - name: options
+    type: オブジェクトの配列
+    required: true
+    description: 検討事項の案（`options`）。記号・中身・メリット・デメリット・備考・理由・推奨・採用を持ち、その並びでカードを並べる
+  - name: previous
+    type: オブジェクトの配列
+    required: false
+    default: なし（差分を出さない）
+    description: 差分の表示の間の、選んだ時点の案の並び。指定すると前の値と今の値を並べ、削除した案を取り消し線で出す。指定している間は案を選ぶ操作を出さない
+  - name: choice
+    type: オブジェクト
+    required: false
+    default: なし（選んでいない）
+    enabled_when: '`onChoose` を指定したとき'
+    description: 利用者の選択。`key`（選んだ案の記号）・`note`（一言。無ければ持たない）・`sent`（送信済みか）を持つ。送信前はレビュー中の案の選択（`comments.yaml` の `choice`）、送信済みは記録の `user_choice`
+  - name: choice.sent
+    type: 真偽値
+    required: false
+    default: 偽（送信前）
+    description: 真なら送信済みの選択。札を「選択済み（送信済み）」にし、一言を編集・選択を取り消すを出さない。ほかの案のカードには「この案を選ぶ」を出し、選び直すとレビュー中の案の選択になる
+events:
+  - name: 案を選ぶ
+    when: カードの「この案を選ぶ」を押し、一言の入力の下の「この案を選ぶ」で確定したとき（一言を編集して確定したときも）
+    value: '`onChoose({key, note})`（一言が空白だけなら `note` を持たない）'
+    description: 使用する側が、レビュー中の案の選択を追加するか（同じ検討事項にまだ無いとき）書き換える（『レビュー中のコメントの追加』・『レビュー中のコメントの書き換え』）。`onChoose` を指定しないとき（配る書き出し・決定済み・差分の表示の間）は選ぶ操作を出さない
+  - name: 選択を取り消す
+    when: 送信前の選択のカードの「選択を取り消す」を押したとき
+    value: '`onCancelChoice()`'
+    description: 使用する側が、レビュー中の案の選択を削除する（『レビュー中のコメントの削除』）
+states:
+  - name: NotChosen
+    description: 未決定で、まだ選んでいない。どの案のカードの下にも「この案を選ぶ」を出す。推奨の案には推奨の札と推奨理由を出す
+  - name: Chosen
+    description: 案 B を一言なしで選んだ（送信前）。選んだカードを破線の枠線と「選択済み（未送信）」の札にし、「一言なし」と「一言を編集」「選択を取り消す」を出す。ほかの案のカードには「この案を選ぶ」を残す
+    args:
+      - name: choice
+        value: '{"key": "B"}'
+  - name: ChosenWithNote
+    description: '案 B を一言「費用を優先する」つきで選んだ（送信前）。カードの下に「一言: 費用を優先する」を出す'
+    args:
+      - name: choice
+        value: '{"key": "B", "note": "費用を優先する"}'
+  - name: Editing
+    description: 「この案を選ぶ」を押した後。カードの下に一言（任意）の入力と「キャンセル」「この案を選ぶ」を出す
+  - name: Sent
+    description: 案 B を送信済み（記録の `user_choice`）。選んだカードを実線の枠線と「選択済み（送信済み）」の札にし、一言を編集・選択を取り消すを出さない。AI の採用（採用の札と面の色）とは見分けられる
+    args:
+      - name: choice
+        value: '{"key": "B", "note": "費用を優先する", "sent": true}'
+  - name: LongText
+    description: 長い一言。カードの幅で折り返し、ボタンを押し出さない
+    args:
+      - name: choice
+        value: '{"key": "A", "note": "（120 文字の一言）"}'
+  - name: Many
+    description: 案が 5 つで、案 C を選んだ。カードを縦に並べ、選んだカードだけに札を出す
+    args:
+      - name: choice
+        value: '{"key": "C"}'
+  - name: Decided
+    description: 決定済み（AI が案 B を採用した）。採用・不採用の札を出し、選ぶ操作を出さない
+  - name: Narrow
+    description: 幅 390px。カードと一言の入力を幅に収め、「この案を選ぶ」「一言を編集」「選択を取り消す」の押す領域を縦横 24px 以上に保って折り返す
+    args:
+      - name: choice
+        value: '{"key": "B", "note": "費用を優先する"}'
+    notes:
+      見せ方: Storybook（React）の画面幅を 390px にして見せる
+accessibility:
+  - 「この案を選ぶ」「一言を編集」「選択を取り消す」はボタンにし、読み上げ名に案の記号を含める（「案 B を選ぶ」など）
+  - 選んだ案のカードの札は文字（「選択済み（未送信）」「選択済み（送信済み）」）で伝え、枠線の形状と色だけに頼らない
+  - 一言の入力欄はラベル「一言（任意）」を持ち、開いたら入力欄にフォーカスを移す
+  - 押す領域はどの幅でも縦横 24px 以上
+refs: []

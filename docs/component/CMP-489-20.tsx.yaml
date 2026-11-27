@@ -62,7 +62,7 @@ args:
     type: オブジェクト
     required: false
     default: なし（差分を出さない）
-    description: 変更履歴で選んだ時点。`name`（「前回開いてから」・「まだまとめていない変更」・まとまりの説明）と `sub`（日時など）を持つ。あるとき、「変更履歴」のボタンの右上に差分の色（`--diff-changed`）の点を付け、ボタンの右に差分の表示をやめる × だけを出す。時点の名前と日時は出さない
+    description: 変更履歴で選んだ時点。`name`（「まだまとめていない変更」・まとまりの説明）と `sub`（日時など）を持つ。あるとき、「変更履歴」のボタンの左上に差分の色（`--diff-changed`）の点を付ける。差分の表示をやめる操作はトップバーに配置せず、変更履歴のモーダルで「最新」を選ぶ。時点の名前と日時は出さない
   - name: comments
     type: 真偽値
     required: false
@@ -156,6 +156,13 @@ args:
     required: false
     default: 'false'
     description: 接続し直して読み込み直している間か。真のとき、更新のボタンのアイコンを回るマーカーにし、`aria-busy` を付けて押せなくする
+  - name: historyUnread
+    type: 整数
+    required: false
+    default: 0（件数を出さない）
+    choices: 0 以上
+    enabled_when: '`onOpenHistory` を指定したとき'
+    description: 変更履歴の未読のまとまりの件数（インターフェース定義『プレビューを開く』の制約「既読のまとまり」）。1 以上のとき「変更履歴」のボタンの右上に件数の札を重ね、100 以上は `99+` にする。ボタンの幅は変えない
 events:
   - name: 画面を移る
     when: タブを押したとき
@@ -173,10 +180,6 @@ events:
     when: 「変更履歴」のボタンを押したとき
     description: 使う側が変更履歴のモーダル（部品設計『変更履歴』）を開く
     value: '`onOpenHistory()`'
-  - name: 差分の表示をやめる
-    when: 「変更履歴」の右の × を押したとき
-    description: 使う側が選んだ時点を削除して端末の保存領域に残し、マーカーと差分のない画面に再描画する
-    value: '`onClearDiff()`'
   - name: コメントを開く
     when: コメントのボタンを押したとき（0 件でも押せる）
     description: 使う側がコメントの一覧を開く。開いているときは閉じる。どちらも履歴に積まない
@@ -260,14 +263,16 @@ states:
     notes:
       見せ方: Storybook（React）の画面幅を 390px にして見せる
   - name: DiffOn
-    description: 変更履歴で「前回開いてから」を選んだ間。「変更履歴」の右上に点と右に ×、検討事項・資料のタブに点
+    description: 変更履歴でまとまりを選んだ間。「変更履歴」の左上に点、右上に未読の件数 1、変わった項目を持つ検討事項・資料のタブに点。差分の表示をやめる × は配置しない
     args:
       - name: diffPoint
-        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
       - name: tabs
         value: 検討事項・資料の `marked` を真にした並び
+      - name: historyUnread
+        value: '1'
   - name: DiffOnNarrow
-    description: 幅 390px のサーバーの配信で、差分の表示の間。「変更履歴」とコメントのボタンをアイコン（コメントは件数も）だけにし、コメントのボタンと × を押し出さずに 390px の中に収める
+    description: 幅 390px のサーバーの配信で、差分の表示の間。「変更履歴」とコメントのボタンをアイコン（コメントは件数も）だけにし、未読の件数 12 と点の付いた「変更履歴」とコメントのボタンを押し出さずに 390px の中に収める
     args:
       - name: diffPoint
         value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
@@ -275,6 +280,8 @@ states:
         value: 'true'
       - name: commentCount
         value: '3'
+      - name: historyUnread
+        value: '12'
     notes:
       見せ方: Storybook（React）の画面幅を 390px にして見せる
   - name: Comments
@@ -546,7 +553,7 @@ states:
       - name: commentCount
         value: '3'
       - name: diffPoint
-        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
     notes:
       見せ方: Storybook（React）の画面幅を 320px・361px・389px・390px にして見せる
   - name: FitNarrowestOffline
@@ -582,7 +589,7 @@ states:
       - name: commentCount
         value: '120'
       - name: diffPoint
-        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
     notes:
       見せ方: Storybook（React）の画面幅を 320px・361px・389px・390px にして見せる
   - name: FitNarrowestNoCount
@@ -610,7 +617,7 @@ states:
       - name: commentCount
         value: '120'
   - name: FitWideDiff
-    description: 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。件数の札に `data-wide` があり差分の表示をやめる × を出しているので、`FitNarrowestDiff` と同じ詰め方（ツール名の文字とマーカーを隠し、要素の間隔 1px・左右の余白 8px、マーカーだけのボタンを幅 28px、3 つのボタンの左右の余白とマーカーと件数の間隔 2px、幅の下限 `--target-min`（24px））にする。件数の札を持たない表示の設定のボタンは幅 24px でマーカーを中央に置く。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffNarrow` と同じ
+    description: 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。件数の札に `data-wide` があり差分を表示しているので、`FitNarrowestDiff` と同じ詰め方（ツール名の文字とマーカーを隠し、要素の間隔 1px・左右の余白 8px、マーカーだけのボタンを幅 28px、3 つのボタンの左右の余白とマーカーと件数の間隔 2px、幅の下限 `--target-min`（24px））にする。件数の札を持たない表示の設定のボタンは幅 24px でマーカーを中央に置く。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffNarrow` と同じ
     args:
       - name: filter
         value: 'true'
@@ -621,7 +628,7 @@ states:
       - name: commentCount
         value: '120'
       - name: diffPoint
-        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
   - name: FitWideOffline
     description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` があり接続の状態を出しているので、`FitNarrowestOffline` と同じ詰め方（ツール名の文字を隠し、マーカーは残す。3 つのボタンの幅の下限 `--target-min`）にする。件数の札を持たない表示の設定のボタンは幅 24px でマーカーを中央に置く。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterOfflineNarrow` と同じ
     args:
@@ -653,7 +660,7 @@ states:
       - name: commentCount
         value: '120'
       - name: diffPoint
-        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
   - name: FitWideOfflineDiffNoFilter
     description: 幅 390〜480px で、サーバーにつながらず、絞り込み（件数なし）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。コメントの件数に `data-wide` が付き `FitWideOfflineDiff` と同じ詰め方になるので、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、マーカーを中央に置く
     args:
@@ -670,7 +677,7 @@ states:
       - name: commentCount
         value: '120'
       - name: diffPoint
-        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
     notes:
       見せ方: Storybook（React）の画面幅を 390px・480px にして見せる
   - name: Pending
@@ -855,7 +862,7 @@ states:
       - name: pendingCount
         value: '4'
       - name: diffPoint
-        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
       - name: connection
         value: offline
       - name: readAt
@@ -864,6 +871,16 @@ states:
         value: '{"state": "recording", "label": "TH-12 への返信", "elapsed": 12}'
     notes:
       見せ方: Storybook（React）の画面幅を 320px にして見せる
+  - name: HistoryUnread
+    description: 差分を出していない間に、未読のまとまりが 3 件ある。「変更履歴」のボタンの右上に件数 3 を出す
+    args:
+      - name: historyUnread
+        value: '3'
+  - name: HistoryUnreadMany
+    description: 未読のまとまりが 100 件以上。件数を `99+` にし、ボタンの幅を変えない
+    args:
+      - name: historyUnread
+        value: '120'
 refs: []
 uses:
   - component: CMP-540-2#
@@ -873,12 +890,12 @@ accessibility:
   - 状態の表示とボタンはどの幅でもアイコンと件数だけにし、名前を `aria-label` と、ホバーと `:focus-visible` で出す CSS のツールチップに持たせる。`title` は使用しない。ツールチップは読み上げから外し、トップバーの左側の要素は左端、右側の要素は右端に揃えて画面の外へ出さず、幅 `max-w-64` で折り返す。ツールチップはボタンの外（ボタンと並べた包み）に配置して押してもボタンを押したことにせず、Esc で隠す
   - ホバーは面の色、キーボードのフォーカスはマーカーの色の輪で見分ける
   - 接続の状態は `role="status"` で読み上げに伝え、色だけでなくマーカーのアイコンでも示す。押せる部品にはしないが、キーボードでもツールチップを確かめられるようにフォーカスを受ける
-  - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、差分を表示している間は読み上げ名を「変更履歴（過去の差分を表示中）」にし、点は読み上げから除外する。× は「差分の表示をやめる」の読み上げ名を持つ
+  - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、差分を表示している間は読み上げ名を「変更履歴（過去の差分を表示中）」にし、点は読み上げから除外する。未読のまとまりがある間は、読み上げ名の後ろに「（未読 {件数} 件）」を続け、件数の札は読み上げから除外する
   - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、`commentsUnread` が `true` のときは「コメント（未読あり・レビュー中 {件数} 件）」にする。点は読み上げから外し、一覧を開いているかを `aria-expanded` で示す
   - 表示の設定のボタンの読み上げの名前は「表示の設定」で、パネルを開いているかを `aria-expanded` で示す
   - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示す
   - 検索の入口は `aria-keyshortcuts="Control+K Meta+K"` でキーの近道を支援技術にも伝える。キーの案内は幅 901px 以上で `kbd` 要素で出し、読み上げ名「すべての項目を検索」を持つ
-  - どの幅でも、全てのボタン（差分の表示をやめる × を含む）の押せる的を縦横 `--target-min`（24px）以上に保つ。表示の設定・絞り込み・コメントのボタンの幅の下限は幅で区切らずに持ち、狭い幅の詰め方を追加しても 24px を割らないようにする
+  - どの幅でも、全てのボタンの押せる的を縦横 `--target-min`（24px）以上に保つ。表示の設定・絞り込み・コメントのボタンの幅の下限は幅で区切らずに持ち、狭い幅の詰め方を追加しても 24px を割らないようにする
   - '音声入力中の表示はボタンにし、読み上げの名前を「音声入力中（{label}）。録音中の入力欄へ移動」（文字起こし中は「文字起こし中（{label}）。入力欄へ移動」）、ツールチップに「音声入力中: {label}。押すと録音中の入力欄へ移動します」（文字起こし中は「文字起こし中: {label}。押すと入力欄へ移動します」）を持つ。経過の時間とアイコンは読み上げから外す。色だけでなくマイクのアイコンとツールチップで音声入力中を伝える'
   - 音声入力の知らせの帯は `role="status"` で読み上げに伝え、× に読み上げの名前「閉じる」を持つ。警告のマーカーは読み上げから外す
 notes:
