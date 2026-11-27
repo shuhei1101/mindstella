@@ -2124,20 +2124,23 @@ def test_choice(page: Page, choice_preview: tuple[str, Path]) -> None:
     # 実行（案 A を一言つきで選ぶ）
     panel.get_by_role("button", name="案 A を選ぶ").click()
     panel.get_by_role("textbox", name="一言（任意）").fill("費用を優先する")
-    panel.get_by_role("button", name="この案を選ぶ").click()
+    with page.expect_response(lambda response: "/api/comments" in response.url and response.request.method == "POST"):
+        panel.get_by_role("button", name="この案を選ぶ").click()
     # 検証
     expect(panel.locator("[data-chosen]")).to_contain_text("一言: 費用を優先する")
     chosen = [item for item in yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"] if "choice" in item]
     assert [(item["target"], item["choice"], item["body"]) for item in chosen] == [("D-1", {"key": "A"}, "費用を優先する")]
     # 実行（案 B で選び直す）
     panel.get_by_role("button", name="案 B を選ぶ").click()
-    panel.get_by_role("button", name="この案を選ぶ").click()
+    with page.expect_response(lambda response: "/api/comments/" in response.url and response.request.method == "PATCH"):
+        panel.get_by_role("button", name="この案を選ぶ").click()
     # 検証
     expect(panel.locator("[data-chosen]")).to_have_count(1)
     rechosen = [item for item in yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"] if "choice" in item]
     assert [(item["id"], item["choice"]) for item in rechosen] == [(chosen[0]["id"], {"key": "B"})]
     # 実行（取り消す）
-    panel.get_by_role("button", name="選択を取り消す").click()
+    with page.expect_response(lambda response: "/api/comments/" in response.url and response.request.method == "DELETE"):
+        panel.get_by_role("button", name="選択を取り消す").click()
     # 検証
     expect(panel.locator("[data-chosen]")).to_have_count(0)
     remaining = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"]
