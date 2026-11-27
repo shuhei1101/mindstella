@@ -223,7 +223,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       pending={add.isPending && add.variables.id === item.id}
                       disabled={flight.running}
                       onClick={() => {
-                        flight.run(() => add.mutateAsync({ id: item.id, created: item.created, target: item.target, loc: item.loc, thread: item.thread, body: item.body }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); } }));
+                        flight.run(() => add.mutateAsync({ id: item.id, created: item.created, target: item.target, loc: item.loc, thread: item.thread, body: item.body, ...(item.choice === undefined || item.choice === null ? {} : { choice: item.choice }) }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); } }));
                       }}
                     >
                       <Icon name="undo" />
@@ -255,7 +255,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                     <span className="flex-1" />
                     {editing?.id === item.id ? null : (
                       <>
-                        <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" onClick={() => { setEditing({ id: item.id, body: item.body ?? "", error: null }); }}>
+                        <Button variant="ghost" size="icon" aria-label={choice ? `${label}の一言を修正` : `${label}を修正`} title="修正" onClick={() => { setEditing({ id: item.id, body: item.body ?? "", error: null }); }}>
                           <Icon name="edit" />
                         </Button>
                         <Button
