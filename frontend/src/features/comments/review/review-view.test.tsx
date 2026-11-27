@@ -85,7 +85,7 @@ describe("ReviewView の案の選択", () => {
     expect(row).toHaveTextContent("案 B");
     expect(row).toHaveTextContent("案 B の中身");
     // 実行
-    await userEvent.click(within(row).getByRole("button", { name: "D-1 への案の選択を修正" }));
+    await userEvent.click(within(row).getByRole("button", { name: "D-1 への案の選択の一言を修正" }));
     await userEvent.clear(screen.getByRole("textbox", { name: /の本文$/ }));
     await userEvent.click(screen.getByRole("button", { name: "修正" }));
     // 検証
