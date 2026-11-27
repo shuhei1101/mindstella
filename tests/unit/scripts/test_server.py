@@ -47,6 +47,7 @@ EXPECTED_TOOL_NAMES = (
     "adopt",
     "edit_option",
     "changes_since_read",
+    "user_choices",
     "commit",
     "pending",
     "check",
