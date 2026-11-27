@@ -40,7 +40,7 @@ export const FullSixLines: Story = {};
 /** 「続きを表示」を押した後。全文を出し、下に「折りたたむ」を出す */
 export const Expanded: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "タイトルの続きを表示" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "タイトルの続きを表示" }));
   },
 };
 
@@ -51,7 +51,7 @@ export const LongText: Story = { args: { title: "長文の音声入力の書き�
 export const LongTextExpanded: Story = {
   args: { title: "長文の音声入力の書き込みから作ったスレッドのタイトル。".repeat(120) },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "タイトルの続きを表示" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "タイトルの続きを表示" }));
   },
 };
 
