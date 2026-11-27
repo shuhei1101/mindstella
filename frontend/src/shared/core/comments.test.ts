@@ -111,6 +111,7 @@ describe("pendingThreads（項目）", () => {
       item({ id: "C-41", target: "D-1" }),
       item({ id: "C-42", target: null }),
       item({ id: "C-43", target: null, thread: "TH-1" }),
+      item({ id: "C-44", target: "D-1", body: null, choice: { key: "B" } }),
     ];
     // 実行
     const result = pendingThreads({ items, filter, tag, target: "D-1" });
