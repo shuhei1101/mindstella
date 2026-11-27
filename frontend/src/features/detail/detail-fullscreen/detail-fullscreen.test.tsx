@@ -21,7 +21,7 @@ describe("DetailFullscreen", () => {
     renderRoute("/?tab=decisions&id=D-1&full=1");
     const dialog = await screen.findByRole("dialog", { name: /D-1の題/ });
     // 検証
-    expect(dialog).toHaveClass("w-9/10", "h-9/10");
+    expect(dialog).toHaveClass("size-9/10");
     expect(dialog).not.toHaveClass("max-w-5xl");
   });
   // 下端にコメント（正常系）

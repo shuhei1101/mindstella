@@ -1,5 +1,4 @@
-import { JSDOM } from "jsdom";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { buildDocHtml, stripEmbeddedHtml } from "@/shared/core/doc-export";
 import { buildIndex, type Item, type MindmapData } from "@/shared/core/records";
@@ -21,20 +20,24 @@ describe("buildDocHtml", () => {
     // 準備
     const empty = { decisions: [], tasks: [], research: [], docs: [], terms: [], notes: [], logs: [], derived: { ready: [] } } as unknown as MindmapData;
     const html = buildDocHtml({ item: { id: "A-1", title: "題" } as Item, source: "本文", index: buildIndex(empty), assets: { css: "", js: "" } });
-    const dom = new JSDOM(html, { url: "file:///tmp/A-1.html", runScripts: "outside-only" });
+    const parsed = new DOMParser().parseFromString(html, "text/html");
+    document.body.replaceChildren(...[...parsed.body.children].filter((element) => !element.matches("script:not([type])")).map((element) => document.importNode(element, true)));
     // jsdom は Blob の URL の import() を持たないため、起動のスクリプトの読み込みを、外部と項目の ID のリンクを描く mount の代わりに置き換えて流す
-    const boot = [...dom.window.document.querySelectorAll("script:not([type])")].map((script) => script.textContent).join("\n");
+    const boot = [...parsed.querySelectorAll("script:not([type])")].map((script) => script.textContent).join("\n");
     const stub = '({ mount: (root) => { root.innerHTML = \'<a href="https://example.com/">外部</a><a href="#id=D-1">D-1</a>\'; } })';
-    dom.window.URL.createObjectURL = () => "blob:doc-mdmark";
-    dom.window.URL.revokeObjectURL = () => undefined;
+    const created = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:doc-mdmark");
+    const revoked = vi.spyOn(URL, "revokeObjectURL").mockReturnValue(undefined);
     // 実行
-    await (dom.window.eval(boot.replace("await import(url)", stub)) as Promise<void>);
+    await ((0, eval)(boot.replace("await import(url)", stub)) as Promise<void>);
     // 検証
-    const external = dom.window.document.querySelector('a[href="https://example.com/"]');
-    const internal = dom.window.document.querySelector('a[href="#id=D-1"]');
+    const external = document.querySelector('a[href="https://example.com/"]');
+    const internal = document.querySelector('a[href="#id=D-1"]');
     expect(external?.getAttribute("target")).toBe("_blank");
     expect(external?.getAttribute("rel")).toBe("noopener noreferrer");
     expect(internal?.hasAttribute("target")).toBe(false);
+    created.mockRestore();
+    revoked.mockRestore();
+    document.body.replaceChildren();
   });
 });
 
