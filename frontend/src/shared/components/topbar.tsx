@@ -73,7 +73,6 @@ export type TopbarProps = {
   onOpenHistory?: () => void;
   /** 変更履歴の未読のまとまりの件数（0 のときは出さない） */
   historyUnread?: number;
-  onClearDiff?: () => void;
   onToggleComments?: () => void;
   /** 渡さないと表示の設定のボタンを出さない */
   onToggleSettings?: () => void;

@@ -23,6 +23,7 @@ import {
 } from './model';
 import type {
   CancelEdit200,
+  Choice,
   CommentInput,
   CommentPatch,
   CommentPatchReply,
@@ -35,8 +36,6 @@ import type {
   EditReply,
   Edits,
   Loc,
-  OpenedPoint,
-  OpenedReply,
   PresetCreated,
   PresetInput,
   Records,
@@ -69,21 +68,21 @@ export const getCancelEditResponseMock = (overrideResponse: Partial<Extract<Canc
 
 export const getSaveEditsResponseMock = (overrideResponse: Partial<Extract<SaveReply, object>> = {}): SaveReply => ({set: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), at: faker.string.alpha({length: {min: 10, max: 20}}), added: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({temp: faker.string.alpha({length: {min: 10, max: 20}}), id: faker.string.alpha({length: {min: 10, max: 20}})})), changed: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), removed: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), settings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
-export const getPostOpenedResponseOpenedPointMock = (overrideResponse: Partial<OpenedPoint> = {}): OpenedPoint => ({...{at: faker.string.alpha({length: {min: 10, max: 20}}), seq: faker.number.int()}, ...overrideResponse});
-
-export const getPostOpenedResponseMock = (overrideResponse: Partial<Extract<OpenedReply, object>> = {}): OpenedReply => ({previous: faker.helpers.arrayElement([{...getPostOpenedResponseOpenedPointMock()},null,]), opened: {at: faker.string.alpha({length: {min: 10, max: 20}}), seq: faker.number.int()}, ...overrideResponse})
-
 export const getGetThreadsResponseMock = (overrideResponse: Partial<Extract<Threads, object>> = {}): Threads => ({threads: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','closed'] as const), posts: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({seen: faker.datatype.boolean()}))})), ...overrideResponse})
 
 export const getUpdateCommentResponseLocMock = (overrideResponse: Partial<Loc> = {}): Loc => ({...{kind: faker.helpers.arrayElement(['body','value'] as const), start: faker.helpers.arrayElement([faker.number.int(), undefined]), end: faker.helpers.arrayElement([faker.number.int(), undefined]), key: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), text: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, ...overrideResponse});
 
-export const getUpdateCommentResponseMock = (overrideResponse: Partial<Extract<CommentPatchReply, object>> = {}): CommentPatchReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), body: faker.string.alpha({length: {min: 10, max: 20}}), loc: faker.helpers.arrayElement([{...getUpdateCommentResponseLocMock()},null,]), ...overrideResponse})
+export const getUpdateCommentResponseChoiceMock = (overrideResponse: Partial<Choice> = {}): Choice => ({...{key: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse});
+
+export const getUpdateCommentResponseMock = (overrideResponse: Partial<Extract<CommentPatchReply, object>> = {}): CommentPatchReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), body: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), loc: faker.helpers.arrayElement([{...getUpdateCommentResponseLocMock()},null,]), choice: faker.helpers.arrayElement([{...getUpdateCommentResponseChoiceMock()},null,]), ...overrideResponse})
 
 export const getRemoveCommentResponseLocMock = (overrideResponse: Partial<Loc> = {}): Loc => ({...{kind: faker.helpers.arrayElement(['body','value'] as const), start: faker.helpers.arrayElement([faker.number.int(), undefined]), end: faker.helpers.arrayElement([faker.number.int(), undefined]), key: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), text: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, ...overrideResponse});
 
-export const getRemoveCommentResponseMock = (overrideResponse: Partial<Extract<RemovedComment, object>> = {}): RemovedComment => ({id: faker.string.alpha({length: {min: 10, max: 20}}), target: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), loc: faker.helpers.arrayElement([{...getRemoveCommentResponseLocMock()},null,]), thread: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), body: faker.string.alpha({length: {min: 10, max: 20}}), created: faker.string.alpha({length: {min: 10, max: 20}}), count: faker.number.int(), ...overrideResponse})
+export const getRemoveCommentResponseChoiceMock = (overrideResponse: Partial<Choice> = {}): Choice => ({...{key: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse});
 
-export const getSendCommentsResponseMock = (overrideResponse: Partial<Extract<SendReply, object>> = {}): SendReply => ({sent: faker.string.alpha({length: {min: 10, max: 20}}), items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({comment: faker.string.alpha({length: {min: 10, max: 20}}), thread: faker.string.alpha({length: {min: 10, max: 20}}), post: faker.string.alpha({length: {min: 10, max: 20}})})), entered: faker.datatype.boolean(), ...overrideResponse})
+export const getRemoveCommentResponseMock = (overrideResponse: Partial<Extract<RemovedComment, object>> = {}): RemovedComment => ({id: faker.string.alpha({length: {min: 10, max: 20}}), target: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), loc: faker.helpers.arrayElement([{...getRemoveCommentResponseLocMock()},null,]), thread: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), body: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), choice: faker.helpers.arrayElement([{...getRemoveCommentResponseChoiceMock()},null,]), created: faker.string.alpha({length: {min: 10, max: 20}}), count: faker.number.int(), ...overrideResponse})
+
+export const getSendCommentsResponseMock = (overrideResponse: Partial<Extract<SendReply, object>> = {}): SendReply => ({sent: faker.string.alpha({length: {min: 10, max: 20}}), items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({comment: faker.string.alpha({length: {min: 10, max: 20}}), thread: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), post: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), decision: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])})), entered: faker.datatype.boolean(), ...overrideResponse})
 
 export const getSetThreadStatusResponseMock = (overrideResponse: Partial<Extract<ThreadStatusReply, object>> = {}): ThreadStatusReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','closed'] as const), changed: faker.datatype.boolean(), ...overrideResponse})
 
@@ -179,18 +178,6 @@ export const getSaveEditsMockHandler = (overrideResponse?: SaveReply | ((info: P
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getSaveEditsResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
-
-export const getPostOpenedMockHandler = (overrideResponse?: OpenedReply | ((info: Parameters<HttpResponseResolver>[0]) => Promise<OpenedReply> | OpenedReply), options?: RequestHandlerOptions) => {
-  return http.post('*/api/opened', async (info: Parameters<HttpResponseResolver>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getPostOpenedResponseMock(),
       { status: 200
       })
   }, options)
@@ -345,7 +332,6 @@ export const getMindstellaPreviewMock = () => [
   getAddEditMockHandler(),
   getCancelEditMockHandler(),
   getSaveEditsMockHandler(),
-  getPostOpenedMockHandler(),
   getGetThreadsMockHandler(),
   getUpdateCommentMockHandler(),
   getRemoveCommentMockHandler(),

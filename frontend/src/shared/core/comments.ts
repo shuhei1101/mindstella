@@ -27,7 +27,10 @@ export type ReviewItem = {
   target_title?: string | null;
   loc: Location | null;
   thread: string | null;
-  body: string;
+  /** 本文（一言を添えない案の選択は null） */
+  body: string | null;
+  /** 案の選択の選んだ案（案の選択でないコメントは持たない） */
+  choice?: { key: string } | null;
   created: string;
 };
 
@@ -100,8 +103,15 @@ export const threadTimeline = (thread: Thread): TimelineEntry[] => {
 /** レビュー中の書き込みの読み上げの名前の頭 */
 export const reviewLabel = (item: ReviewItem): string => {
   if (item.thread !== null) return `${item.thread} への返信`;
-  return item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
+  if (item.target === null) return "項目を指さないコメント";
+  return isChoice(item) ? `${item.target} への案の選択` : `${item.target} へのコメント`;
 };
+
+/** 案の選択か（`choice` を持つ） */
+export const isChoice = (item: ReviewItem): boolean => item.choice !== undefined && item.choice !== null;
+
+/** レビュー中の書き込みのうち、その検討事項への案の選択（無ければ undefined） */
+export const choiceOf = (items: readonly ReviewItem[], target: string): ReviewItem | undefined => items.find((item) => item.target === target && isChoice(item));
 
 /** 利用者の未読の書き込み（`seen` が偽）を持つか。`seen` を持たない書き込みは未読にしない */
 export const hasUnseen = (thread: Thread): boolean => thread.posts.some((post) => post.seen === false);

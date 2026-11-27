@@ -5,7 +5,6 @@
  * OpenAPI spec version: 0.0.0
  */
 
-export interface OpenedPoint {
-  at: string;
-  seq: number;
+export interface Choice {
+  key: string;
 }

@@ -150,17 +150,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/BlockedProblem"
-  /api/opened:
-    post:
-      operationId: postOpened
-      summary: 前回開いた日時を返し、今の日時に書き換える
-      responses:
-        "200":
-          description: 前回と今の時点
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/OpenedReply"
   /api/threads:
     get:
       operationId: getThreads
@@ -518,17 +507,22 @@ components:
         end: { type: integer }
         key: { type: string }
         text: { type: string }
+    Choice:
+      type: object
+      required: [key]
+      properties:
+        key: { type: string }
     CommentInput:
       type: object
-      required: [body]
       properties:
         target: { type: [string, "null"] }
         loc:
           oneOf:
             - $ref: "#/components/schemas/Loc"
             - type: "null"
-        body: { type: string }
+        body: { type: [string, "null"] }
         thread: { type: [string, "null"] }
+        choice: { $ref: "#/components/schemas/Choice" }
         id: { type: string }
         created: { type: string }
     CommentReply:
@@ -541,17 +535,22 @@ components:
     CommentPatch:
       type: object
       properties:
-        body: { type: string }
+        body: { type: [string, "null"] }
         loc: { type: "null" }
+        choice: { $ref: "#/components/schemas/Choice" }
     CommentPatchReply:
       type: object
       required: [id, body]
       properties:
         id: { type: string }
-        body: { type: string }
+        body: { type: [string, "null"] }
         loc:
           oneOf:
             - $ref: "#/components/schemas/Loc"
+            - type: "null"
+        choice:
+          oneOf:
+            - $ref: "#/components/schemas/Choice"
             - type: "null"
     RemovedComment:
       type: object
@@ -564,7 +563,11 @@ components:
             - $ref: "#/components/schemas/Loc"
             - type: "null"
         thread: { type: [string, "null"] }
-        body: { type: string }
+        body: { type: [string, "null"] }
+        choice:
+          oneOf:
+            - $ref: "#/components/schemas/Choice"
+            - type: "null"
         created: { type: string }
         count: { type: integer }
     SendInput:
@@ -583,11 +586,12 @@ components:
           type: array
           items:
             type: object
-            required: [comment, thread, post]
+            required: [comment, thread, post, decision]
             properties:
               comment: { type: string }
-              thread: { type: string }
-              post: { type: string }
+              thread: { type: [string, "null"] }
+              post: { type: [string, "null"] }
+              decision: { type: [string, "null"] }
         entered: { type: boolean }
       additionalProperties: true
     StaleComment:
@@ -747,21 +751,6 @@ components:
         settings:
           type: array
           items: { type: string }
-    OpenedPoint:
-      type: object
-      required: [at, seq]
-      properties:
-        at: { type: string }
-        seq: { type: integer }
-    OpenedReply:
-      type: object
-      required: [opened]
-      properties:
-        previous:
-          oneOf:
-            - $ref: "#/components/schemas/OpenedPoint"
-            - type: "null"
-        opened: { $ref: "#/components/schemas/OpenedPoint" }
     TranscriptionStatus:
       type: object
       required: [available, reason, detail, presets, action, preset]

@@ -85,8 +85,11 @@ export const AddCommentBody = zod.object({
   "key": zod.string().optional(),
   "text": zod.string().optional()
 }),zod.null()]).optional(),
-  "body": zod.string(),
+  "body": zod.string().nullish(),
   "thread": zod.string().nullish(),
+  "choice": zod.object({
+  "key": zod.string()
+}).optional(),
   "id": zod.string().optional(),
   "created": zod.string().optional()
 })
@@ -156,21 +159,6 @@ export const SaveEditsResponse = zod.object({
 
 
 /**
- * @summary 前回開いた日時を返し、今の日時に書き換える
- */
-export const PostOpenedResponse = zod.object({
-  "previous": zod.union([zod.object({
-  "at": zod.string(),
-  "seq": zod.int()
-}),zod.null()]).optional(),
-  "opened": zod.object({
-  "at": zod.string(),
-  "seq": zod.int()
-})
-})
-
-
-/**
  * @summary スレッドを書き込みと状態の記録ごと返す
  */
 export const GetThreadsResponse = zod.looseObject({
@@ -192,19 +180,25 @@ export const UpdateCommentParams = zod.object({
 })
 
 export const UpdateCommentBody = zod.object({
-  "body": zod.string().optional(),
-  "loc": zod.null().optional()
+  "body": zod.string().nullish(),
+  "loc": zod.null().optional(),
+  "choice": zod.object({
+  "key": zod.string()
+}).optional()
 })
 
 export const UpdateCommentResponse = zod.object({
   "id": zod.string(),
-  "body": zod.string(),
+  "body": zod.string().nullable(),
   "loc": zod.union([zod.object({
   "kind": zod.enum(['body', 'value']),
   "start": zod.int().optional(),
   "end": zod.int().optional(),
   "key": zod.string().optional(),
   "text": zod.string().optional()
+}),zod.null()]).optional(),
+  "choice": zod.union([zod.object({
+  "key": zod.string()
 }),zod.null()]).optional()
 })
 
@@ -227,7 +221,10 @@ export const RemoveCommentResponse = zod.object({
   "text": zod.string().optional()
 }),zod.null()]).optional(),
   "thread": zod.string().nullish(),
-  "body": zod.string(),
+  "body": zod.string().nullable(),
+  "choice": zod.union([zod.object({
+  "key": zod.string()
+}),zod.null()]).optional(),
   "created": zod.string(),
   "count": zod.int()
 })
@@ -244,8 +241,9 @@ export const SendCommentsResponse = zod.looseObject({
   "sent": zod.string(),
   "items": zod.array(zod.object({
   "comment": zod.string(),
-  "thread": zod.string(),
-  "post": zod.string()
+  "thread": zod.string().nullable(),
+  "post": zod.string().nullable(),
+  "decision": zod.string().nullable()
 })),
   "entered": zod.boolean()
 })

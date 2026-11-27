@@ -4,9 +4,12 @@
  * mindstella preview
  * OpenAPI spec version: 0.0.0
  */
+import type { Choice } from './choice';
 
 export interface CommentPatch {
-  body?: string;
+  /** @nullable */
+  body?: string | null;
   /** @nullable */
   loc?: null;
+  choice?: Choice;
 }

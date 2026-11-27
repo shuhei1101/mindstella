@@ -21,6 +21,8 @@ export type ReviewEditFormProps = VoiceProps & {
   onBodyChange: (body: string) => void;
   onSubmit: (id: string, body: string) => void;
   onCancel: (id: string) => void;
+  /** 空白だけの本文でも確定させるか（案の選択の一言は空にすると削除する） */
+  allowEmpty?: boolean;
   /** 録音中の ✓ */
   onVoiceDone?: () => void;
 };
@@ -50,7 +52,7 @@ const EditMessage = ({ voice, elapsed, message, voiceStatus, voiceDetail }: { vo
   );
 };
 
-export const ReviewEditForm = ({ id, label, body, error = null, saving = false, voice, voiceReason = null, elapsed = 0, levels = [], voiceStatus = "idle", voiceDetail = null, onBodyChange, onSubmit, onCancel, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked }: ReviewEditFormProps) => {
+export const ReviewEditForm = ({ id, label, body, error = null, saving = false, voice, voiceReason = null, elapsed = 0, levels = [], voiceStatus = "idle", voiceDetail = null, onBodyChange, onSubmit, onCancel, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked, allowEmpty = false }: ReviewEditFormProps) => {
   const [empty, setEmpty] = useState(false);
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const doneRef = useRef<HTMLButtonElement>(null);
@@ -59,7 +61,7 @@ export const ReviewEditForm = ({ id, label, body, error = null, saving = false, 
   useVoiceFocus(phase, fieldRef, doneRef, submitRef, voiceStatus);
   const trySave = (): void => {
     if (saving) return;
-    if (body.trim() === "") {
+    if (body.trim() === "" && !allowEmpty) {
       setEmpty(true);
       return;
     }

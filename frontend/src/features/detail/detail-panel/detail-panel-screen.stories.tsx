@@ -42,13 +42,17 @@ const DOCS = [
     related: [{ to: "D-8", type: "see_also" }],
     links: [{ title: "保存先の比較の表", url: "https://example.com/storage" }],
   },
+  { id: "A-10", title: "セリフの音声", status: "完成", body: "docs/A-10.mark.md" },
 ];
 
 const NOTES = [{ id: "N-1", title: "保存先のメモ", status: "未整理", content: "A-9 を読み返す", related: [{ to: "A-9", type: "see_also" }] }];
 
 const BODY_A9 = ["# 目的", "", "記録の保存先を決める。", "", "## 保存先", "", "ワークスペースの直下とホームの設定フォルダを比べる。", "", "### 決め方", "", "記録とコードを同じリポジトリで扱えるかで決める。", "", "## 残る論点", "", "端末を移ったときの持ち出し。"].join("\n");
 
-const DATA = { ...RECORDS, decisions: DECISIONS, docs: DOCS, notes: NOTES, bodies: { "docs/A-9.mark.md": BODY_A9 } } as unknown as MindmapData;
+/** 音声を埋め込んだ本文（`files/sample.wav` は Storybook の静的なファイル） */
+const BODY_A10 = ["セリフの音声を確かめる。", "", "![セリフの音声](../files/sample.wav)", "", "音声の後ろの段落。"].join("\n");
+
+const DATA = { ...RECORDS, decisions: DECISIONS, docs: DOCS, notes: NOTES, bodies: { "docs/A-9.mark.md": BODY_A9, "docs/A-10.mark.md": BODY_A10 } } as unknown as MindmapData;
 
 const respond = () => worker.use(http.get("*/api/records", () => HttpResponse.json(DATA)));
 
@@ -84,3 +88,6 @@ export const SiblingNav: Story = { args: { path: "/?tab=decisions&id=D-7", scree
 
 /** 並びの末尾の項目。次の項目へ移るボタンは押せない */
 export const SiblingNavLast: Story = { args: { path: "/?tab=decisions&id=D-8", screen: panelOf("D-8", { position: 3, total: 3 }) } };
+
+/** 音声を埋め込んだ資料の本文。再生バーの上下を切らずに全体を表示する */
+export const AudioBody: Story = { args: { path: "/?tab=docs&id=A-10", screen: panelOf("A-10") } };

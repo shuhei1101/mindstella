@@ -90,7 +90,6 @@ export const DiffOn: Story = {
     diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
     historyUnread: 1,
     onOpenHistory: fn(),
-    onClearDiff: fn(),
     tabs: [
       { key: "overview", label: "概要", icon: "home" },
       { key: "decisions", label: "検討事項", icon: "decision", count: 12, marked: true },
@@ -116,7 +115,6 @@ export const DiffOnNarrow: Story = {
     diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
     historyUnread: 12,
     onOpenHistory: fn(),
-    onClearDiff: fn(),
     comments: true,
     commentCount: 3,
   },
@@ -216,7 +214,6 @@ export const FilterDiffMedium: Story = {
     commentCount: 3,
     diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
     onOpenHistory: fn(),
-    onClearDiff: fn(),
   },
 };
 
@@ -232,7 +229,6 @@ export const FilterDiffOffline: Story = {
     commentCount: 3,
     diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
     onOpenHistory: fn(),
-    onClearDiff: fn(),
   },
 };
 
@@ -270,7 +266,6 @@ export const FilterDiffOfflineNarrow: Story = {
     commentCount: 3,
     diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
     onOpenHistory: fn(),
-    onClearDiff: fn(),
   },
   ...narrowViewport,
 };
@@ -313,7 +308,6 @@ export const FilterDiffNarrow: Story = {
     commentCount: 3,
     diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
     onOpenHistory: fn(),
-    onClearDiff: fn(),
   },
   ...narrowViewport,
 };
@@ -357,7 +351,6 @@ export const FitNarrowestDiff: Story = {
     commentCount: 3,
     diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
     onOpenHistory: fn(),
-    onClearDiff: fn(),
   },
   ...fitViewport,
 };
@@ -389,7 +382,6 @@ export const FitNarrowestOfflineDiff: Story = {
     commentCount: 120,
     diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
     onOpenHistory: fn(),
-    onClearDiff: fn(),
   },
   ...fitViewport,
 };
@@ -444,7 +436,6 @@ export const FitWideDiff: Story = {
     commentCount: 120,
     diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
     onOpenHistory: fn(),
-    onClearDiff: fn(),
   },
   ...fitWideViewport,
 };
@@ -476,7 +467,6 @@ export const FitWideOfflineDiff: Story = {
     commentCount: 120,
     diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
     onOpenHistory: fn(),
-    onClearDiff: fn(),
   },
   ...fitWideViewport,
 };
@@ -493,7 +483,6 @@ export const FitWideOfflineDiffNoFilter: Story = {
     commentCount: 120,
     diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
     onOpenHistory: fn(),
-    onClearDiff: fn(),
   },
   ...fitWideViewport,
 };
@@ -679,7 +668,6 @@ export const RefreshNarrowest: Story = {
     onTogglePending: fn(),
     onRefresh: fn(),
     onOpenHistory: fn(),
-    onClearDiff: fn(),
     diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
     connection: "offline",
     readAt: "2026-10-04T02:21:00+00:00",

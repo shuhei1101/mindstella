@@ -376,8 +376,18 @@ files:
   - tool:vitest
   - topic:単体テスト
   related:
-  - to: MOD-722-1
+  - to: frontend/src/shared/stores/read-changes-store.ts
     type: tests
+- path: src/shared/stores/read-changes-store.ts
+  name: 既読のまとまりのストア
+  description: 変更履歴の既読のまとまりの ID をワークスペースごとに端末の保存領域に持ち、未読のまとまりを決める。既読の持ち方・数え方を変更するときに読む。
+  tags:
+  - tool:zustand
+  - topic:ストア
+  - topic:変更履歴
+  related:
+  - to: MOD-722-1
+    type: implements
 - path: src/shared/stores/theme-store.test.ts
   name: ライト / ダークのストアの単体テスト
   description: ライト / ダークのストアの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。

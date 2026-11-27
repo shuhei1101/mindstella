@@ -1,77 +1,37 @@
-// 差分の表示の時点と、項目ごとの印を返す。前回開いた時点は `sessionStorage` に持つ（インターフェース定義『SPAを開く』の制約「「前回開いてから」の範囲」）
-import { useEffect, useState } from "react";
+// 差分の表示の時点と、項目ごとの印を返す。まとまりを開いたら既読にする（インターフェース定義『プレビューを開く』の制約「既読のまとまり」）
+import { useEffect } from "react";
 
-import { postOpened } from "@/shared/api/generated/preview";
-import { resolveDiffPoint, type DiffPoint, type OpenedPoint } from "@/shared/core/diff";
-import { workspaceKey } from "@/shared/core/workspace-path";
+import { isEmbedded } from "@/shared/core/embedded";
+import { resolveDiffPoint, type DiffPoint } from "@/shared/core/diff";
+import { workspaceIdOf } from "@/shared/core/workspace-path";
 import { useRecords } from "@/shared/hooks/use-records";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
+import { markRead } from "@/shared/stores/read-changes-store";
 import { useScreenState } from "@/shared/stores/screen-state-store";
-
-/** そのタブの「前回開いてから」の始まりを残す sessionStorage のキー */
-export const OPENED_SESSION_KEY = "mindmap-preview-opened";
 
 /** 差分の表示 */
 export type DiffView = {
   point: DiffPoint | null;
-  /** 前回開いた時点。読めていなければ null */
-  since: OpenedPoint | null;
-};
-
-const isOpenedPoint = (value: unknown): value is OpenedPoint => {
-  if (typeof value !== "object" || value === null) return false;
-  const { at, seq } = value as Partial<OpenedPoint>;
-  return typeof at === "string" && typeof seq === "number" && Number.isInteger(seq) && seq >= 0;
-};
-
-const readStored = (): OpenedPoint | null => {
-  try {
-    const value: unknown = JSON.parse(sessionStorage.getItem(workspaceKey(OPENED_SESSION_KEY)) ?? "null");
-    return isOpenedPoint(value) ? value : null;
-  } catch {
-    return null;
-  }
-};
-
-/** タブで 1 度だけ `POST /api/opened` を呼ぶ */
-let opening: Promise<OpenedPoint | null> | null = null;
-const openOnce = (): Promise<OpenedPoint | null> => {
-  opening ??= postOpened()
-    .then((reply) => {
-      const body = reply.data;
-      const point = isOpenedPoint(body.previous) ? body.previous : body.opened;
-      sessionStorage.setItem(workspaceKey(OPENED_SESSION_KEY), JSON.stringify(point));
-      return point;
-    })
-    .catch(() => null)
-    .finally(() => {
-      opening = null;
-    });
-  return opening;
 };
 
 export const useDiffView = (): DiffView => {
   const { search, setDiff } = usePreviewSearch();
   const { rawIndex } = useRecords();
-  const [since, setSince] = useState<OpenedPoint | null>(readStored);
-  useEffect(() => {
-    if (since !== null) return;
-    let alive = true;
-    void openOnce().then((point) => {
-      if (alive) setSince(point);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [since]);
   const saved = useScreenState().diffSel ?? null;
   const sel = search.diff ?? saved;
-  const fallback: OpenedPoint = since ?? { at: rawIndex?.data.built_at ?? "", seq: rawIndex?.data.changes.sets[0]?.until_seq ?? 0 };
-  const point = rawIndex === null ? null : resolveDiffPoint(rawIndex.data.changes, sel, fallback);
-  // 端末の時点で差分を出せたときは、その時点を URL に書く
+  const changes = rawIndex?.data.changes ?? null;
+  const point = changes === null ? null : resolveDiffPoint(changes, sel);
+  // 開いたのがまとまりなら既読にする（まだまとめていない変更は数えない。配る書き出しでは既読にしない）
+  const openedSet = point !== null && changes !== null && changes.sets.some((set) => set.id === point.sel) ? point.sel : null;
+  useEffect(() => {
+    if (openedSet !== null && !isEmbedded()) markRead(workspaceIdOf(), [openedSet]);
+  }, [openedSet]);
+  // 端末の時点で差分を出せたときはその時点を URL に書き、解決できない時点は URL から外す
+  const unresolved = changes !== null && search.diff !== undefined && point === null;
   useEffect(() => {
     if (search.diff === undefined && point !== null) setDiff(point.sel);
+    if (unresolved) setDiff(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setDiff は描画ごとに作り直される
-  }, [search.diff, point?.sel]);
-  return { point, since };
+  }, [search.diff, point?.sel, unresolved]);
+  return { point };
 };

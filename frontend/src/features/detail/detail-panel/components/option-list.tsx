@@ -60,13 +60,21 @@ const ChooseBar = ({ optionKey, chosen, sent, note, onChoose, onCancel }: { opti
         <label className="text-xs text-muted-foreground" htmlFor={`choice-note-${optionKey}`}>
           一言（任意）
         </label>
-        <Textarea id={`choice-note-${optionKey}`} rows={2} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="選んだ理由など" />
+        <Textarea
+          ref={(element) => {
+            element?.focus();
+          }}
+          id={`choice-note-${optionKey}`}
+          rows={2}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="選んだ理由など"
+        />
         <div className="flex justify-end gap-1.5">
           <Button variant="ghost" onClick={() => setEditing(false)}>
             キャンセル
           </Button>
           <Button
-           
             onClick={() => {
               onChoose(draft.trim() === "" ? { key: optionKey } : { key: optionKey, note: draft.trim() });
               setEditing(false);
@@ -102,7 +110,7 @@ const ChooseBar = ({ optionKey, chosen, sent, note, onChoose, onCancel }: { opti
   }
   return (
     <div className="mt-2 flex justify-end border-t border-border-soft pt-2">
-      <Button variant="outline" onClick={() => setEditing(true)}>
+      <Button variant="outline" aria-label={`案 ${optionKey} を選ぶ`} onClick={() => setEditing(true)}>
         <Icon name="check" className="size-3.5" />
         この案を選ぶ
       </Button>

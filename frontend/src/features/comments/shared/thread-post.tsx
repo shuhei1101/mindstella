@@ -131,7 +131,7 @@ export const ThreadPost = ({
           <ReviewEditForm
             id={pending.id}
             label={label}
-            body={editBody ?? pending.body}
+            body={editBody ?? pending.body ?? ""}
             error={editError}
             saving={busy}
             voice={voice}
@@ -149,7 +149,7 @@ export const ThreadPost = ({
             onVoiceBlocked={onEditVoiceBlocked}
           />
         ) : (
-          <ReviewBodyFold id={pending.id} label={label} body={pending.body} titles={titles} index={index} changeSets={changeSets} open={open} onToggle={onToggle} onOpenChangeSet={onOpenChangeSet} onOpenItem={onOpenItem}>
+          <ReviewBodyFold id={pending.id} label={label} body={pending.body ?? ""} titles={titles} index={index} changeSets={changeSets} open={open} onToggle={onToggle} onOpenChangeSet={onOpenChangeSet} onOpenItem={onOpenItem}>
             {(content, toggle) => (
               <>
                 {content}

@@ -11,7 +11,7 @@ import { focusAfterAdded, SendForm, type SendStatus } from "@/shared/components/
 import { Button } from "@/shared/components/ui/button";
 import { AppError } from "@/shared/core/app-error";
 import { selectionLocation } from "@/shared/core/body-links";
-import { commentNumber, reviewLabel, type Draft, type ReviewItem } from "@/shared/core/comments";
+import { isChoice, commentNumber, reviewLabel, type Draft, type ReviewItem } from "@/shared/core/comments";
 import { locationLabel, type Location, type RecordIndex } from "@/shared/core/records";
 import { commentsQuery } from "@/shared/hooks/preview-queries";
 import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from "@/shared/hooks/use-comments";
@@ -201,7 +201,8 @@ export const DetailComments = ({ id, scroller }: DetailCommentsProps) => {
 export const DetailReviewComments = ({ id, titles, changeSets, index, onOpenItem, onOpenChangeSet }: DetailReviewCommentsProps) => {
   const comments = useQuery(commentsQuery());
   const body = comments.data?.status === 200 ? (comments.data.data as { items?: ReviewItem[] }) : undefined;
-  const items = (body?.items ?? NO_ITEMS).filter((item) => item.target === id && item.thread === null);
+  // 案の選択は案のカードに出すので、レビュー中のコメントの一覧と件数から除く
+  const items = (body?.items ?? NO_ITEMS).filter((item) => item.target === id && item.thread === null && !isChoice(item));
   const host = useRef<HTMLDivElement>(null);
   const prefs = usePrefs();
   const order = prefs.reviewOrder === "oldest" ? "oldest" : "newest";
@@ -214,7 +215,7 @@ export const DetailReviewComments = ({ id, titles, changeSets, index, onOpenItem
   const [editing, setEditing] = useState<{ id: string; body: string; error: string | null } | null>(() => {
     const voiced = voiceEditingOf("panel");
     const item = voiced === null ? undefined : items.find((one) => one.id === voiced);
-    return item === undefined ? null : { id: item.id, body: item.body, error: null };
+    return item === undefined ? null : { id: item.id, body: item.body ?? "", error: null };
   });
   const [opened, setOpened] = useState<Record<string, boolean>>({});
 
@@ -278,7 +279,7 @@ export const DetailReviewComments = ({ id, titles, changeSets, index, onOpenItem
                     <span className="flex-1">{item.loc === null ? "" : locationLabel(item.loc)}</span>
                     {editing?.id === item.id ? null : (
                       <>
-                        <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" data-focus={`edit:${item.id}`} onClick={() => { focusAfter(() => { setEditing({ id: item.id, body: item.body, error: null }); }, `[data-comment="${item.id}"] textarea`); }}>
+                        <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" data-focus={`edit:${item.id}`} onClick={() => { focusAfter(() => { setEditing({ id: item.id, body: item.body ?? "", error: null }); }, `[data-comment="${item.id}"] textarea`); }}>
                           <Icon name="edit" />
                         </Button>
                         <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" pending={remove.isPending && remove.variables === item.id} disabled={flight.running} onClick={() => { flight.run(() => remove.mutateAsync(item.id, { onSuccess: () => { flushSync(() => { setRemoved((current) => [...current, item]); }); } }), () => { host.current?.querySelector<HTMLElement>(`[data-focus="undo:${item.id}"]`)?.focus(); }); }}>
@@ -316,7 +317,7 @@ export const DetailReviewComments = ({ id, titles, changeSets, index, onOpenItem
                       }}
                     />
                   ) : (
-                    <ReviewBodyFold id={item.id} label={label} body={item.body} titles={titles} index={index} changeSets={changeSets} focus="detail-" open={opened[item.id] ?? false} onToggle={(target, open) => { setOpened((current) => ({ ...current, [target]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
+                    <ReviewBodyFold id={item.id} label={label} body={item.body ?? ""} titles={titles} index={index} changeSets={changeSets} focus="detail-" open={opened[item.id] ?? false} onToggle={(target, open) => { setOpened((current) => ({ ...current, [target]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
                       {(content, toggle) => (
                         <>
                           {content}

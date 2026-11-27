@@ -4,6 +4,7 @@
  * mindstella preview
  * OpenAPI spec version: 0.0.0
  */
+import type { Choice } from './choice';
 import type { Loc } from './loc';
 
 export interface RemovedComment {
@@ -13,7 +14,9 @@ export interface RemovedComment {
   loc?: Loc | null;
   /** @nullable */
   thread?: string | null;
-  body: string;
+  /** @nullable */
+  body: string | null;
+  choice?: Choice | null;
   created: string;
   count: number;
 }

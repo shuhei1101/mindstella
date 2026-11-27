@@ -1,4 +1,5 @@
 // 詳細パネル（画面設計『詳細パネル.tsx』）。項目 1 件の中身を本文の右に出し、差分の表示の間は前後の差分を出す
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/components/detail-editor";
@@ -8,7 +9,7 @@ import { DetailSupplements, type DetailTab } from "@/features/detail/detail-pane
 import type { BodyDiffView } from "@/shared/components/body-diff-view-switch";
 import { DetailComments, DetailReviewComments } from "@/features/detail/detail-panel/components/detail-comments";
 import { DiffDeadlineContext, KeyDiff, keyDiffs, nextDiffDeadline, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
-import { OptionList } from "@/features/detail/detail-panel/components/option-list";
+import { OptionList, type OptionChoice } from "@/features/detail/detail-panel/components/option-list";
 import { RelatedList } from "@/features/detail/detail-panel/components/related-list";
 import { ValueLinksContext, ValueText, type ValueLinks } from "@/features/detail/detail-panel/components/value-text";
 import { DiagramViewer, type DiagramViewerProps } from "@/features/detail/diagram-viewer/diagram-viewer";
@@ -26,6 +27,10 @@ import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
 import { bodyFormatOf, kindOfId, tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
 import { applyHighlight } from "@/shared/core/term-tips";
+import { AppError } from "@/shared/core/app-error";
+import { choiceOf, type ReviewItem } from "@/shared/core/comments";
+import { commentsQuery } from "@/shared/hooks/preview-queries";
+import { useAddComment, useRemoveComment, useUpdateComment } from "@/shared/hooks/use-comments";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
@@ -127,6 +132,53 @@ const bodyDisplayOf = (): BodyDisplay => {
 };
 
 export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string; sibling?: SiblingNavProps | null };
+
+/** 案を選べる検討事項の状態 */
+const CHOOSABLE_STATUSES = new Set(["未決定", "要見直し"]);
+
+/** 送信が届かないときの理由（コメントの入力の送信の失敗と同じ出し方） */
+const CHOICE_UNREACHABLE = "サーバーが止まっています。再起動してから選んでください。";
+
+/** 検討事項の案の一覧に、レビュー中の案の選択か記録の利用者の選択を出し、選ぶ・選び直す・取り消すを溜める */
+const ChoosableOptions = ({ id, item }: { id: string; item: Item }) => {
+  const comments = useQuery(commentsQuery());
+  const add = useAddComment();
+  const update = useUpdateComment();
+  const remove = useRemoveComment();
+  const [error, setError] = useState<string | null>(null);
+  const items = comments.data?.status === 200 ? ((comments.data.data.items as unknown as ReviewItem[] | undefined) ?? []) : [];
+  const pending = choiceOf(items, id);
+  const userChoice = (item as { user_choice?: { key: string; note?: string } }).user_choice;
+  const choice: OptionChoice | null =
+    pending?.choice != null
+      ? { key: pending.choice.key, ...(pending.body === null ? {} : { note: pending.body }), sent: false }
+      : userChoice === undefined
+        ? null
+        : { key: userChoice.key, ...(userChoice.note === undefined ? {} : { note: userChoice.note }), sent: true };
+  const failed = (reason: unknown): void => {
+    setError(reason instanceof AppError ? reason.message : CHOICE_UNREACHABLE);
+  };
+  const choose = ({ key, note }: OptionChoice): void => {
+    setError(null);
+    if (pending === undefined) add.mutate({ target: id, choice: { key }, ...(note === undefined ? {} : { body: note }) }, { onError: failed });
+    else update.mutate({ id: pending.id, choice: { key }, body: note ?? null }, { onError: failed });
+  };
+  const cancel = (): void => {
+    if (pending === undefined) return;
+    setError(null);
+    remove.mutate(pending.id, { onError: failed });
+  };
+  return (
+    <>
+      <OptionList options={item.options ?? []} previous={null} choice={choice} onChoose={choose} onCancelChoice={cancel} />
+      {error === null ? null : (
+        <p role="alert" className="m-0 mt-1 text-small text-destructive">
+          {error}
+        </p>
+      )}
+    </>
+  );
+};
 
 /** 見出しと本文。パネルと全画面が共通で使う */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
@@ -232,7 +284,11 @@ export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<De
     decisions: (
       <>
         <KeyLead name="lead" value={item.lead} keys={keys} />
-        {(item.options ?? []).length > 0 || previous !== null ? <Section label="案"><OptionList options={item.options ?? []} previous={previous} /></Section> : null}
+        {(item.options ?? []).length > 0 || previous !== null ? (
+          <Section label="案">
+            {point === null && !isEmbedded() && CHOOSABLE_STATUSES.has(String(item.status)) ? <ChoosableOptions id={id} item={item} /> : <OptionList options={item.options ?? []} previous={previous} />}
+          </Section>
+        ) : null}
         {item.answer !== undefined || item.reason !== undefined || keys?.has("answer") === true || keys?.has("reason") === true ? (
           <Section label="採用した案と理由">
             <Labelled label="決定内容" name="answer" value={item.answer} keys={keys} />
