@@ -5,3 +5,15 @@ confirmations:
     approver: shuhei1101
     commit: 2534cf13
     thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4716891900
+  - topic: '#363 案の選択を含むときのペインへ入力する文面'
+    decision: コメントと一緒なら `[mindstella] ユーザーからのコメントが {n} 件と案の選択が {m} 件届きました。再読み込みしてください。`、案の選択だけなら `[mindstella] ユーザーからの案の選択が {m} 件届きました。再読み込みしてください。`（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 1169657e
+    thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4717209098
+  - topic: '#363 案の選択のまとまりの説明'
+    decision: 変更履歴の一覧のまとまりの説明を「画面からの案の選択」にする（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 1169657e
+    thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4717209687
