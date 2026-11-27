@@ -78,9 +78,13 @@ def main(
     parser = argparse.ArgumentParser(
         description="MindStella のセッションの出来事を常駐サーバーへ送る"
     )
-    parser.add_argument("event", choices=sorted(EVENTS))
+    parser.add_argument("event")
     args = parser.parse_args(argv)
     raw = (sys.stdin if stdin is None else stdin).read()
+    # 知らない出来事（前のバージョンの hooks.json が登録した pre-compact など）: 終了コード 2 はフックの操作を止めるため、1 行だけ残して 0 で終える
+    if args.event not in EVENTS:
+        print(f"[mindstella] 知らない出来事のため送信しません（{args.event}）", file=sys.stderr)
+        return 0
     session_id = env.get("MINDSTELLA_SESSION")
     # 通常のセッション: 入力を読み捨てて何もしない
     if not session_id:
