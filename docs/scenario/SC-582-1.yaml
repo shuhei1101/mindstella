@@ -572,17 +572,24 @@ scenarios:
         actor U as 利用者
         participant P as プレビュー（ブラウザ）
         participant SRV as 常駐サーバー
+        participant CC as MindStella のセッション
 
         U->>P: D-1 にコメントを記載してまとめて送信する
+        P-->>U: 送信中の表示
         P->>SRV: まとめて送信する
-        SRV-->>P: スレッドに追加した。再起動の後に入力する（restarted）
-        P-->>U: コメントが再起動の後に MindStella のセッションへ届くことの通知
+        SRV->>SRV: スレッドに追加し、再起動の準備ができるのを待つ
+        CC-->>SRV: 起動した
+        SRV->>CC: 届いた件数を入力する
+        SRV-->>P: 入力した（entered: true）
+        P-->>U: コメントが MindStella のセッションに届いたことの通知
       ```
 
       <!-- /map -->
     expected:
-      - 送信したコメントがスレッドに残り、画面に、再起動の途中のため再起動した後に届くことの通知が出る
-      - 再起動した後、コメントが取り込み待ちとして MindStella のセッションに届く
+      - 送信の応答が再起動の準備ができるまで返却されず、その間、画面に送信中であることが出る
+      - 応答の `entered` が `true` のとき、画面にコメントが MindStella のセッションに届いたことの通知が出る
+      - 応答の `entered` が `false` のとき（準備を待つ上限を過ぎた 等）、画面にコメントが取り込み待ちとして残ったことの通知が出る
+      - 送信したコメントがスレッドに残る
     test: test_normal_when_comment_sent_while_restarting
   - name: 異常シナリオ（再起動に失敗して画面から起動し直す）
     setup:

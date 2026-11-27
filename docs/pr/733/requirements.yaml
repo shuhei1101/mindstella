@@ -56,6 +56,18 @@ docs:
     new: false
     change: '#566: 記録の種類ごとのガイドを同梱する場合、配信の行を追加する。#693: 前回開いた日時（.mindstella-opened）の記載を今回の差分の始まりの持ち方に合わせる'
     status: todo
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: '#693: 変更履歴の「今回の差分」。#158: 絞り込みのドロワーの変更があった項目の条件。#586: MindStella のセッションの状態の表示。#592: 埋め込みの警告'
+    status: todo
+  - page: docs/guide/セットアップ手順-プレビューを外から見る.md
+    new: false
+    change: '#617: 画面の公開 URL の基底をホームの設定に記載する手順と、通知・preview_url の URL がその基底になること'
+    status: todo
+  - page: docs/guide/セットアップ手順-Discordに通知する.md
+    new: false
+    change: '#617: 通知の本文の {プレビューの URL} が、基底を指定したときは公開 URL になること'
+    status: todo
 scope_out:
   - item: '#566 の記録の種類ごとのガイドを作るかどうか'
     reason: '話し合いの D-816（案 A 採用）で、ガイドの内容は mindstella のリポジトリの文書とエージェントフローで足りるとして T-67 を中止にした。Issue #566 へは資料の場所が追記されていない。要件を変える論点のため、作るかを単一ユースケース設計でユーザーへ確認して決める（ここでは確定しない）'
