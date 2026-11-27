@@ -75,7 +75,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T09:16:19.211113+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
+    note: 画面設計『レビュー中の書き込み』に案の選択の行が無かったため、この工程で画面設計も修正した
+    updated_by: planner
+    updated_at: '2026-11-27T11:53:24.761884+00:00'
   - process: ドキュメント修正
     status: todo
   - process: 単体テスト作成
