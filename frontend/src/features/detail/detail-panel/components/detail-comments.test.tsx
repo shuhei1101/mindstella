@@ -274,8 +274,9 @@ describe("DetailReviewComments", () => {
     if (section === null) throw new Error("レビュー中のコメントのセクションがありません");
     // 検証
     expect(within(section).getAllByRole("listitem")).toHaveLength(1);
-    expect(within(section).getByText("D-1 への意見")).toBeInTheDocument();
-    expect(within(section).queryByText("選んだ一言")).not.toBeInTheDocument();
+    // 本文の項目の ID はリンクになるので、文字列はセクションの中身で確かめる
+    expect(section).toHaveTextContent("D-1 への意見");
+    expect(section).not.toHaveTextContent("選んだ一言");
   });
 
   // 削除して元に戻す（正常系）
