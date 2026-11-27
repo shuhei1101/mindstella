@@ -33,6 +33,16 @@ from preview_record_id_helpers import assert_tip
 # 書き込みを待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
 
+# 改行の無い 3000 文字を超える書き込みの本文（スレッドのタイトルは書き込みの 1 行目になる）
+LONG_FIRST_LINE = "長文の音声入力の書き込みから作ったスレッドのタイトル。" * 120
+
+# 見出しのタイトルを省略する行数の上限（2 行に余裕を足した値）と、全文を開いた間の最大の高さ（px）
+CLAMP_LINES_LIMIT = 2.5
+TITLE_EXPANDED_MAX_PX = 288
+
+# 要素の高さが行の高さの何行分かを返す
+TITLE_LINES_JS = "(element) => element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight)"
+
 # 5 行を超えるレビュー中の返信の本文
 LONG_REPLY = "\n\n".join(f"{index} 行目の返信" for index in range(1, 9))
 
@@ -484,7 +494,7 @@ def test_older_posts_folded(page: Page, write_review_preview: WriteReviewPreview
 
 
 def test_title_collapsed_on_scroll(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_post: MakePost, make_thread: MakeThread) -> None:
-    """並びが一番上のときは見出しのタイトルを全文、スクロールした後は 1 行にして `title` に全文を持つ（正常系）。"""
+    """並びが一番上のときは見出しのタイトルを 2 行で省略して「続きを表示」を出し、スクロールした後は 1 行にして `title` に全文を持つ（正常系）。"""
     # 準備
     url, _ = write_review_preview(make_item("D-1"), threads=(_long_thread(make_post, make_thread),))
     open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
@@ -494,11 +504,81 @@ def test_title_collapsed_on_scroll(page: Page, write_review_preview: WriteReview
     _panel(page).locator("ol").first.evaluate("(list) => { list.scrollTop = 0; list.dispatchEvent(new Event('scroll')); }")
     # 検証
     expect(title).not_to_have_attribute("data-collapsed", "")
+    expect(title).to_have_attribute("data-clamped", "")
+    expect(_panel(page).get_by_role("button", name="タイトルの続きを表示")).to_be_visible()
     # 実行（スクロールする）
     _panel(page).locator("ol").first.evaluate("(list) => { list.scrollTop = 200; list.dispatchEvent(new Event('scroll')); }")
     # 検証
     expect(title).to_have_attribute("data-collapsed", "")
-    expect(title).to_have_attribute("title", "長いスレッドのタイトル。" * 8)
+    expect(title.locator("span[id]").first).to_have_attribute("title", "長いスレッドのタイトル。" * 8)
+    expect(_panel(page).get_by_role("button", name="タイトルの続きを表示")).to_have_count(0)
+
+
+def _first_long_post_thread(make_post: MakePost, make_thread: MakeThread) -> dict[str, Any]:
+    """3000 文字を超える 1 件の書き込みから作り、要約を持たないスレッド（タイトルは書き込みの 1 行目）を返す。"""
+    return make_thread("TH-1", make_post("TH-1-1", body=LONG_FIRST_LINE, read=True))
+
+
+def test_long_title_clamped_on_open(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_post: MakePost, make_thread: MakeThread) -> None:
+    """3000 文字を超える書き込みから作ったスレッドを開いた直後から、見出しのタイトルを 2 行で省略して「続きを表示」を出す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("D-1"), threads=(_first_long_post_thread(make_post, make_thread),))
+    # 実行
+    open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+    title = _panel(page).locator("[data-part='thread-title']")
+    button = _panel(page).get_by_role("button", name="タイトルの続きを表示")
+    # 検証
+    expect(button).to_have_attribute("aria-expanded", "false")
+    expect(title).to_have_attribute("data-clamped", "")
+    expect(title).not_to_have_attribute("data-collapsed", "")
+    assert title.locator("span[id]").first.evaluate(TITLE_LINES_JS) < CLAMP_LINES_LIMIT
+
+
+def test_long_title_expand(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_post: MakePost, make_thread: MakeThread) -> None:
+    """「続きを表示」で全文を出して見出しの中で 288px までにしてスクロールさせ、「折りたたむ」で 2 行に戻す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("D-1"), threads=(_first_long_post_thread(make_post, make_thread),))
+    open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+    title = _panel(page).locator("[data-part='thread-title']")
+    # 実行（開く）
+    _panel(page).get_by_role("button", name="タイトルの続きを表示").click()
+    region = _panel(page).get_by_role("region", name="スレッドのタイトルの全文")
+    # 検証（開く）
+    expect(_panel(page).get_by_role("button", name="タイトルを折りたたむ")).to_have_attribute("aria-expanded", "true")
+    assert region.evaluate("(element) => element.getBoundingClientRect().height") <= TITLE_EXPANDED_MAX_PX
+    assert region.evaluate("(element) => element.scrollHeight > element.clientHeight")
+    expect(_panel(page).locator("article[data-post-id='TH-1-1']")).to_be_visible()
+    # 実行（折りたたむ）
+    _panel(page).get_by_role("button", name="タイトルを折りたたむ").click()
+    # 検証（折りたたむ）
+    expect(title).to_have_attribute("data-clamped", "")
+
+
+@pytest.mark.parametrize("narrowed", [pytest.param(False, id="width-360"), pytest.param(True, id="panel-320")])
+@pytest.mark.parametrize("expanded", [pytest.param(False, id="clamped"), pytest.param(True, id="expanded")])
+def test_long_title_no_horizontal_scroll(
+    page: Page,
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    narrowed: bool,
+    expanded: bool,
+) -> None:
+    """3000 文字を超える書き込みのスレッドの見出しは、2 行の省略でも全文でも、幅 360px と最も狭めたパネルでパネルの右端を超えない（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("D-1"), threads=(_first_long_post_thread(make_post, make_thread),))
+    page.set_viewport_size(WIDE_SIZE if narrowed else NARROWEST_SIZE)
+    open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+    if narrowed:
+        narrow_left_panel(page)
+    # 実行
+    if expanded:
+        _panel(page).get_by_role("button", name="タイトルの続きを表示").click()
+    # 検証
+    title = _panel(page).locator("[data-part='thread-title']")
+    assert title.evaluate("(element) => element.getBoundingClientRect().right") <= _panel(page).evaluate("(element) => element.getBoundingClientRect().right")
+    assert_no_horizontal_scroll(page, _panel(page))
 
 
 def test_title_id_links(page: Page, spa_comments_preview: tuple[str, Path]) -> None:

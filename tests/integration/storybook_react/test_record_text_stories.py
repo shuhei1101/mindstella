@@ -19,7 +19,11 @@ STATES = (
     "shared-recordtext--search-result-markers",
     "shared-recordtext--no-ids",
     "shared-recordtext--long-title",
+    "shared-recordtext--touch-link-tap",
 )
+
+# 指で押す play が終わるまで待つミリ秒
+TOUCH_SETTLE_MS = 500
 
 # 見本の記録の D-1 のツールチップに出る文字（タイトル・ID・種類・状態）
 D1_TIP_TEXTS = ("保存先の決め方", "D-1", "検討事項", "未決定")
@@ -158,3 +162,12 @@ def test_long_title(open_story: OpenStory) -> None:
     # 検証
     expect(heading.get_by_role("link")).to_have_count(3)
     assert heading.evaluate("e => e.scrollWidth <= e.clientWidth")
+
+
+def test_touch_link_tap(open_story: OpenStory) -> None:
+    """指で D-1 のリンクを押すと、ツールチップを出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-recordtext--touch-link-tap")
+    page.wait_for_timeout(TOUCH_SETTLE_MS)
+    # 検証
+    expect(page.locator(".term-tip")).to_have_count(0)

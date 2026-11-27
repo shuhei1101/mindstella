@@ -26,6 +26,12 @@ from preview_record_id_helpers import assert_described, assert_tip
 # パネルを画面いっぱいに出す幅（これ以下）と、画面の高さ
 NARROW_SIZE = {"width": 800, "height": 700}
 
+# 行の角丸・背景色・上の線の幅・下の線の種類と幅を読む
+_ROW_STYLE_JS = "rows => rows.map((e) => { const s = getComputedStyle(e); return { radius: s.borderTopLeftRadius, background: s.backgroundColor, top: s.borderTopWidth, bottom: s.borderBottomStyle, bottomWidth: s.borderBottomWidth }; })"
+
+# box-shadow の層ごとに、内側（inset）か、色の無い空の層かを返す
+_SHADOW_LAYERS_JS = """(e) => getComputedStyle(e).boxShadow.split(/,(?![^(]*\\))/).map((layer) => ({ inset: layer.includes("inset"), empty: layer.includes("rgba(0, 0, 0, 0)") }))"""
+
 # 書き換えの知らせ・保存を待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
 
@@ -560,3 +566,63 @@ def test_no_horizontal_scroll(
     expect(_rows(page)).to_have_count(100)
     # 検証
     assert_no_horizontal_scroll(page, _panel(page))
+
+
+def test_thread_rows_divider(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """スレッドの行は角丸のカードにせず背景を付けず、行の下の区切りの線で分ける。まだ送っていない新規スレッドの線は破線（正常系）。"""
+    # 準備・実行
+    _open(page, spa_comments_preview)
+    styles = _rows(page).evaluate_all(_ROW_STYLE_JS)
+    # 検証
+    assert all(style["radius"] == "0px" and style["background"] == "rgba(0, 0, 0, 0)" and style["top"] == "0px" and style["bottomWidth"] != "0px" for style in styles)
+    assert styles[0]["bottom"] == "dashed"
+    assert all(style["bottom"] == "solid" for style in styles[1:])
+
+
+def test_status_filter_ring_inside(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """ライトモードで、選んでいる状態は影を付けず、選択の色の輪をボタンの内側に収めて隣のボタンにかけない（正常系）。"""
+    # 準備・実行
+    _open(page, spa_comments_preview)
+    group = _panel(page).get_by_role("group", name="スレッドの状態で絞る")
+    layers = group.get_by_role("button", name="オープン").evaluate(_SHADOW_LAYERS_JS)
+    # 検証
+    assert page.evaluate("document.documentElement.classList.contains('dark')") is False
+    assert any(layer["inset"] for layer in layers)
+    assert all(layer["inset"] or layer["empty"] for layer in layers)
+
+
+def test_detail_from_thread_operable(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """ピン止めしていない一覧のスレッドから開いた詳細パネルはグレーアウトの上に出て操作でき、中を押しても一覧を閉じない。グレーアウトを押すと一覧を閉じる（正常系）。"""
+    # 準備
+    _open(page, spa_comments_preview, "&thread=TH-1")
+    # 実行（スレッドの向けた項目から詳細パネルを開き、タブを押す）
+    _panel(page).get_by_role("button", name=re.compile("最初の問い")).click()
+    detail = page.get_by_role("complementary", name="詳細")
+    detail.get_by_role("tab", name="関連").click()
+    # 検証
+    expect(detail).to_have_attribute("data-raised", "")
+    expect(detail.get_by_role("tab", name="関連")).to_have_attribute("aria-selected", "true")
+    expect(_panel(page)).to_be_visible()
+    expect(_panel(page)).not_to_have_attribute("aria-modal", "true")
+    # 実行（詳細パネルと一覧の間のグレーアウトを押す）
+    panel_box = _panel(page).bounding_box()
+    detail_box = detail.bounding_box()
+    assert panel_box is not None and detail_box is not None
+    page.mouse.click((panel_box["x"] + panel_box["width"] + detail_box["x"]) / 2, detail_box["y"] + detail_box["height"] / 2)
+    # 検証
+    expect(_panel(page)).to_have_count(0)
+    expect(page).not_to_have_url(re.compile(r"panel=comments"))
+
+
+def test_detail_before_panel_under_scrim(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
+    """先に開いていた詳細パネルは、トップバーから一覧を開くとグレーアウトの下に置き、一覧はモーダルのまま（正常系）。"""
+    # 準備
+    url, _ = spa_comments_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    detail = page.get_by_role("complementary", name="詳細")
+    expect(detail).to_be_visible()
+    # 実行
+    page.get_by_role("button", name=re.compile(r"^コメント（")).click()
+    # 検証
+    expect(_panel(page)).to_have_attribute("aria-modal", "true")
+    expect(detail).not_to_have_attribute("data-raised", "")
