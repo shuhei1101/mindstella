@@ -70,27 +70,44 @@ docs:
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: 変更履歴の時系列の一覧・未読のマーカー・すべて既読にする・ヘッダーの未読の件数と、差分の表示のタブのマーカーと、検討事項の案を画面で選ぶ操作を説明し、差分の表示をやめるボタンの説明を削除する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
     change: 検討事項に利用者の選択（選んだ案の記号・日時・一言）のキーを追加し、変更履歴の既読の持ち方を合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
   - page: docs/guide/コマンド.mark.md
     new: false
     change: 利用者が案を選んだ検討事項を AI が取得する MCP のツール（または既存のツールの戻り値の追加）を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
   - page: docs/guide/エージェントフロー.md
     new: false
     change: 利用者が画面で選んだ案を拾って採用するエージェントフローの工程を説明に合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
   - page: plugins/mindstella/agent-flows/startup.yaml
     new: false
     change: 起動と再開で、利用者が案を選んだ検討事項を取り込む工程を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
   - page: plugins/mindstella/agent-flows/on-comment.yaml
     new: false
     change: 利用者が案を選んだ検討事項を採用し、一言をスレッドと同じ流れで取り込んでから利用者の選択を片付ける工程を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    change: 前回開いた日時を削除し、AI が最後に読んだ時点と変更履歴の既読の違いを合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T12:06:28.049526+00:00'
 scope_out:
   - item: 変更履歴に、利用者の最後の書き込みより後に AI が書き換えた内容を 1 つの差分にする「今回の差分」を追加する
     reason: 束の子に含まれない要望。#156 で「前回開いてから」をやめて時系列にするので、#693 は本文の関連のとおり先に入ったこの作業 PR の変更履歴に合わせて対応する
