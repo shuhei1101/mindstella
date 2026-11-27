@@ -1,0 +1,67 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-27T18:21:07.182141+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 変更する箇所の設計書が既にあるため対象外
+    updated_by: planner
+    updated_at: '2026-11-27T18:21:07.182141+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではないため対象外
+    updated_by: planner
+    updated_at: '2026-11-27T18:21:07.182141+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 既存の差分の表示・絞り込み・通知・配信の仕組みの組み合わせで、未検証の技術に依存しない
+    updated_by: planner
+    updated_at: '2026-11-27T18:21:07.182141+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: ユースケースの連鎖は変わらず、単一ユースケースの中の操作と表示の変更にとどまる
+    updated_by: planner
+    updated_at: '2026-11-27T18:21:07.182141+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 判定フローチャート『モック要否』の Q4 YES。デザイン方針（docs/design-policy.mark.md）があり、見た目の方向を変えない
+    updated_by: planner
+    updated_at: '2026-11-27T18:21:07.182141+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 判定フローチャート『モック要否』の Q2 NO。画面の追加・削除と画面遷移の変更は無い
+    updated_by: planner
+    updated_at: '2026-11-27T18:21:07.182141+00:00'
+  - process: 単一ユースケース設計
+    status: todo
+  - process: モック作成
+    status: todo
+  - process: データ設計
+    status: todo
+  - process: インターフェース定義設計
+    status: todo
+  - process: エージェント・MCP サーバー設計
+    status: todo
+  - process: エージェントフロー・LLM 呼び出し設計
+    status: todo
+  - process: 精度評価設計
+    status: skipped
+    reason: 判定フローチャート『精度評価をするか』の Q1 NO。LLM・意思決定モデルのノードを変えない
+    updated_by: planner
+    updated_at: '2026-11-27T18:21:07.182141+00:00'
+  - process: 部品設計
+    status: todo
+  - process: 画面設計
+    status: todo
+  - process: モジュール構成設計
+    status: todo
+  - process: ドキュメント修正
+    status: todo
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
