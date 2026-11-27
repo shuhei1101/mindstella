@@ -42,7 +42,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T07:59:33.079434+00:00'
   - process: データ設計
-    status: todo
+    status: done
+    note: 既読は端末の保存領域に持ち、キーはインターフェース定義『プレビューを開く』の制約「端末の保存領域」で定める
+    updated_by: planner
+    updated_at: '2026-11-27T08:03:25.250183+00:00'
   - process: インターフェース定義設計
     status: todo
   - process: エージェント・MCP サーバー設計
