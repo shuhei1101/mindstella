@@ -5,7 +5,7 @@ components:
     title: スレッドの見出しのタイトル
     kind: コンポーネント
     usecase: スレッドで話す
-    summary: '`collapsed` が真のとき `truncate` と `title` に全文、偽のとき `wrap-anywhere` で全文を描く。タイトルは `RecordText` の `link` で描く'
+    summary: '`collapsed` が真のとき `truncate` と `title` に全文、偽のとき `wrap-anywhere` で描き、`THREAD_TITLE_LINES`（2）行を超えるときだけ `line-clamp-2` で省略して下に開閉のボタン（`TitleToggle`）を出す。超えるかは `useExceedsLines` が、タイトルの要素の `scrollHeight` を行の高さ × 2（+1px）と比べて決め、`ResizeObserver` で幅が変わるたびに再計測する。開いた間は `max-h-72 overflow-y-auto` で見出しの中でスクロールさせ、タイトルの要素に `tabIndex` 0・`role="region"`・`aria-label` を付ける。開いているか（`open`）は `useState` で持ち、`collapsed` が真の間も保つ。開閉のボタンは `Button`（`ghost`・`h-7`）にし、`pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2` で押せる領域を上下に 8px ずつ広げる。タイトルは `RecordText` の `link` で描く'
     refs:
       - CMP-695-4#
     props:
@@ -38,6 +38,18 @@ components:
         condition: タイトル「D-1 の決め方（TH-1 の続き、D-99 は除く）」、`lookup` は D-1・TH-1 だけを返却する
         mock: なし
         expected: D-1・TH-1 が `a[data-record-id]`、D-99 は文字のまま
+      - name: test_thread_title_when_clamped
+        case: 正常
+        summary: 2 行を超えるときだけ省略して開閉のボタンを出す
+        condition: '`parametrize`: 行の高さ 20px で `scrollHeight` が 120 / 40'
+        mock: '`getComputedStyle`・`scrollHeight`・`ResizeObserver`（`vi.stubGlobal`）'
+        expected: '`data-clamped` があり「タイトルの続きを表示」のボタン（`aria-expanded="false"`・`aria-controls` がタイトルの要素）がある / `data-clamped` もボタンも無い'
+      - name: test_thread_title_when_toggled
+        case: 正常
+        summary: 開閉のボタンで全文を開き、もう一度押すと省略に戻す
+        condition: 2 行を超えるタイトルで「タイトルの続きを表示」を押し、続けて「タイトルを折りたたむ」を押す
+        mock: '`getComputedStyle`・`scrollHeight`・`ResizeObserver`（`vi.stubGlobal`）'
+        expected: 開いた後は `data-clamped` が無く、タイトルの要素が `role="region"`（名前「スレッドのタイトルの全文」）でボタンが `aria-expanded="true"`。折りたたむと `data-clamped` が戻り、`role` が無い
     container: frontend/src/shared/components/thread-title.tsx
 notes:
   単体テスト: 同じフォルダの `thread-title.test.tsx` に置く（knowledge の規約『フォルダ構成』）

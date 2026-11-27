@@ -74,3 +74,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `comments-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   状態の絞り込みの見た目: 「オープン」「クローズ」「すべて」の組を `SEGMENTED_GROUP_CLASS`、ボタンを `SEGMENTED_ITEM_CLASS`（押した状態のボタンは `SEGMENTED_SELECTED_CLASS`）で描く（『segmented』）
+  詳細パネルを上に出した間: 'props に `detailRaised?: boolean`（既定は偽）を加える。パネルの `aria-modal` を `!pinned && !detailRaised` にし、グレーアウトは今のまま描いて押すと閉じる。詳細パネルはグレーアウトの上にあるため、詳細パネルの中の押下はグレーアウトに届かず、パネルを閉じない。単体テスト `test_comments_panel_when_detail_raised`（`detailRaised` が真のときパネルが `aria-modal` を持たず、グレーアウトを押すと search に `panel` が無い）を追加する'

@@ -26,3 +26,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `thread-row.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   長い値: 状態の札・未読の札・レビュー中のマーカー・書き手の文字に `shrink-0 whitespace-nowrap` を付け、2 行目の ID を `min-w-0 truncate` にする（#690）。ストーリーに部品設計の `LongValuesNarrow` を追加する
+  区切りの線: 行の `li` は `grid border-b border-border hover:bg-accent` にし、角丸・枠線・`bg-card` を付けない。まだ送信していない新規スレッドは `border-dashed` を加える。ストーリーに部品設計の `List`・`Many` を追加し、幅を `min(384px, 100%)` にする
