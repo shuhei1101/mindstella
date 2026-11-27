@@ -84,7 +84,7 @@ states:
       - name: hasPendingReply
         value: 'true'
   - name: TitleIdMarkers
-    description: 要約に記録にある D-1・TH-1 と記録に無い D-99 を持つ。D-1・TH-1 は点線の下線のマーカーにし、乗せるとタイトルと状態のツールチップを出す。押すと行を押したときと同じくスレッドを開く
+    description: 要約に記録にある D-1・TH-1 と記録に無い D-99 を持つ。D-1・TH-1 は点線の下線のマーカーにし、乗せても行のボタンにフォーカスしてもツールチップを出さない。押すと行を押したときと同じくスレッドを開く
     args:
       - name: thread
         value: '{"id":"TH-2","status":"open","tags":["画面"],"summary":"D-1 の決め方（TH-1 の続き、D-99 は除く）","target":"D-1","posts":[{"author":"ai","body":"D-1 は TH-1 の候補から選びます。","created":"2026-10-12T01:24:00+00:00"}],"events":[]}'
@@ -141,10 +141,10 @@ accessibility:
   - 未読の札は、色に加えて塗りつぶしの形状・点のマーカー・「未読」の文字で示す。行を開くボタンの読み上げの名前は、状態の次に「未読」を読む
   - タグの札は行を開くボタンと別のボタンにし、`aria-pressed` と読み上げの名前「タグ「{タグ}」で絞る」を持つ
   - 行を開くボタンとタグの札のそれぞれに Tab で届き、フォーカスは枠の全体にマーカーの色の輪で出す
-  - タイトルの中の ID はマーカーにし、行を開くボタンの中にフォーカスできる要素を増やさない。行を開くボタンにフォーカスしたとき、`aria-describedby` で ID の項目・スレッドのタイトルと状態を読み上げ、ツールチップを出す
+  - タイトルの中の ID はマーカーにし、行を開くボタンの中にフォーカスできる要素を増やさない。行を開くボタンにフォーカスしたとき、`aria-describedby` で ID の項目・スレッドのタイトルと状態を読み上げる。行のボタンと重なるため、ID のツールチップは出さない
 refs:
   - SCR-489-2#
 test_file: tests/integration/storybook_react/test_thread_row_stories.py
 uses:
   - component: CMP-701-1#
-    how: タイトルを `mode` を `marker` にして描き、`descriptionId` を行を開くボタンの `aria-describedby` に指定する
+    how: タイトルを `mode` を `marker`、`tooltip` を false にして描き、`descriptionId` を行を開くボタンの `aria-describedby` に指定する

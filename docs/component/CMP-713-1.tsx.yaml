@@ -22,7 +22,7 @@ args:
   - name: max
     type: 整数
     required: true
-    description: 幅の上限（px）。使用する側が窓の幅から本文に残す幅を引いて指定する
+    description: 幅の上限（px）。使用する側が画面設計の上限（詳細パネル・コメントの一覧は表示の幅の 2/3）を指定する
   - name: step
     type: 整数
     required: false
