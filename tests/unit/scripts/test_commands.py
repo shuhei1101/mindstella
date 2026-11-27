@@ -784,6 +784,7 @@ def test_run_adopt_when_undecided(make_workspace: MakeWorkspace, make_item: Make
         "previous": None,
         "status": "決定済み",
         "previous_status": "未決定",
+        "user_choice": None,
     }
     saved = _read_items(root, "decisions.yaml")[0]
     assert saved["status"] == "決定済み"
