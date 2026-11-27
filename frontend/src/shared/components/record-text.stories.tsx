@@ -122,6 +122,16 @@ export const LinkHover: Story = {
   },
 };
 
+/** 指で見出しのタイトルの D-1 のリンクを押した。ツールチップを出さず、1 回で onOpen("D-1") を呼ぶ */
+export const TouchLinkTap: Story = {
+  ...HeadingLinks,
+  args: { text: "D-1 の比較（TH-1 の続き、D-99 は除く）", mode: "link" },
+  play: async ({ canvasElement }) => {
+    const link = canvasElement.querySelector<HTMLElement>('[data-record-id="D-1"]');
+    if (link !== null) await userEvent.pointer([{ keys: "[TouchA]", target: link }]);
+  },
+};
+
 /** カードのタイトルの D-1 のマーカーに乗せた。D-1 のタイトルと状態のツールチップを出し、押すとカードを開く操作は変わらない */
 export const MarkerHover: Story = {
   ...CardTitleMarkers,
