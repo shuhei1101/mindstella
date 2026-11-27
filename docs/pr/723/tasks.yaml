@@ -47,7 +47,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T08:03:25.250183+00:00'
   - process: インターフェース定義設計
-    status: todo
+    status: done
+    note: 既読のキーは『プレビューを開く』の制約「既読のまとまり」の `mindmap-read-changes`。AI の取得方法（要件の未確定）は推奨の案 A で IF-722-1 を作り、エージェント・MCP サーバー設計で確定する
+    updated_by: planner
+    updated_at: '2026-11-27T08:27:09.703160+00:00'
   - process: エージェント・MCP サーバー設計
     status: todo
   - process: エージェントフロー・LLM 呼び出し設計
