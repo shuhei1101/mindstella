@@ -60,7 +60,11 @@ export const Many: Story = {
 
 /** 決定済み（AI が採用した）。選ぶ操作を出さない */
 export const Decided: Story = {
-  render: () => <Interactive initial={null} options={[{ ...OPTION_A, adopted: false }, { ...OPTION_B, adopted: true }]} />,
+  render: () => (
+    <div className="max-w-xl p-4">
+      <OptionList options={[{ ...OPTION_A, adopted: false }, { ...OPTION_B, adopted: true }]} previous={null} />
+    </div>
+  ),
 };
 
 /** 幅 390px。ボタンの押せる領域を保ったまま折り返す */

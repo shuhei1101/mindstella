@@ -180,7 +180,8 @@ export const OptionList = ({ options, previous, marks = {}, choice = null, onCho
   const compare = previous !== null;
   const removed = (previous ?? []).filter((entry) => !options.some((option) => option.key === entry.key));
   const decided = options.some((option) => option.adopted === true);
-  const choosable = onChoose !== undefined && !decided && !compare;
+  // 選ぶ操作は onChoose を受けたときだけ出す（選べる状態かは使う側が決める）。差分の表示の間は出さない
+  const choosable = onChoose !== undefined && !compare;
   return (
     <div className="flex flex-col gap-2">
       {options.map((option) => (
