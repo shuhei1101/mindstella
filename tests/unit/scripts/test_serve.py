@@ -26,6 +26,7 @@ from starlette.testclient import TestClient
 import change_detection
 import errors
 import serve
+from claude_input import InputTargets
 from transcriber import (
     TranscriberStoppedError,
     TranscriberUnsupportedError,
@@ -62,9 +63,8 @@ PORT = 5000
 # 接続や応答を待つ上限秒数
 HTTP_TIMEOUT_SEC = 10
 
-# 前回開いた日時として、1 回目・2 回目の呼び出しで返す日時
+# 前の版の前回開いた日時のファイルに入れていた日時
 FIRST_OPENED = "2026-10-04T13:05:00+00:00"
-SECOND_OPENED = "2026-10-04T14:45:00+00:00"
 
 # 古い更新日時（書き換えたかを更新日時で確かめるため、先にファイルをこの時刻へ戻す）
 OLD_MTIME_SEC = 1_000_000_000
@@ -154,21 +154,6 @@ def _context(root: Path, settings: dict[str, Any] | None = None) -> serve.ServeC
         write_lock=threading.Lock(),
         settings=serve.SettingsHolder({} if settings is None else settings),
     )
-
-
-def _first_opened_now() -> str:
-    """今の日時の代わりに、1 回目に開いた日時を返す。"""
-    return FIRST_OPENED
-
-
-def _second_opened_now() -> str:
-    """今の日時の代わりに、2 回目に開いた日時を返す。"""
-    return SECOND_OPENED
-
-
-def _failing_touch_opened(*args: Any, **kwargs: Any) -> Any:
-    """書き込めないことにして WriteFailedError を送る、前回開いた日時を書き換える代わりの関数。"""
-    raise WriteFailedError("書き込めませんでした: .mindstella-opened（権限がありません）")
 
 
 def test_start(
@@ -1551,71 +1536,6 @@ def test_seen_response_when_rejected(
     assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
 
 
-def test_opened_response(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """2 回目は 1 回目の時点を返し、通し番号は先頭のまとまりの `until_seq` にする（正常系）。"""
-    # 準備
-    # まとまり 1 つ（until_seq 3）と、その後に書き換えたまだまとめていない変更（last_seq 4）
-    changes_text = (
-        "last_seq: 4\n"
-        "sets:\n"
-        "  - id: V-1\n"
-        "    at: '2026-10-04T12:00:00+00:00'\n"
-        "    summary: 最初のまとまり\n"
-        "    until_seq: 3\n"
-        "    added: [D-1]\n"
-        "    changed: []\n"
-        "pending:\n"
-        "  added: []\n"
-        "  changed: [D-1]\n"
-    )
-    root = make_workspace(make_item("D-1"), raw_files={"changes.yaml": changes_text})
-    # 実行
-    first = serve.opened_response(_context(root), now=_first_opened_now)
-    second = serve.opened_response(_context(root), now=_second_opened_now)
-    # 検証
-    first_point = {"at": FIRST_OPENED, "seq": 3}
-    second_point = {"at": SECOND_OPENED, "seq": 3}
-    assert (first.status, second.status) == (200, 200)
-    assert second.content_type == "application/json; charset=utf-8"
-    assert json.loads(first.body) == {"previous": None, "opened": first_point}
-    assert json.loads(second.body) == {"previous": first_point, "opened": second_point}
-
-
-def test_opened_response_when_changes_invalid(
-    make_workspace: MakeWorkspace, make_item: MakeItem
-) -> None:
-    """`changes.yaml` が読めなければ 422 で、前回開いた時点を書き換えない（異常系）。"""
-    # 準備
-    # last_seq を文字列にしてスキーマに合わなくした記録
-    changes_text = 'last_seq: "x"\nsets: []\npending:\n  added: []\n  changed: []\n'
-    root = make_workspace(make_item("D-1"), raw_files={"changes.yaml": changes_text})
-    opened_path = root / RECORD_DIR / ".mindstella-opened"
-    opened_path.write_text(f"{FIRST_OPENED}\n3\n", encoding="utf-8")
-    # 実行
-    response = serve.opened_response(_context(root), now=_second_opened_now)
-    # 検証
-    assert response.status == 422
-    assert response.content_type == "application/problem+json; charset=utf-8"
-    detail_lines = json.loads(response.body)["detail"].splitlines()
-    assert any(line.startswith("changes.yaml: last_seq:") for line in detail_lines)
-    assert opened_path.read_text(encoding="utf-8") == f"{FIRST_OPENED}\n3\n"
-
-
-def test_opened_response_when_write_fails(
-    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """書けなければ 500（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    # serve モジュールの参照を、書き込めないエラーを送る関数に差し替える
-    monkeypatch.setattr(serve, "touch_opened", _failing_touch_opened)
-    # 実行
-    response = serve.opened_response(_context(root))
-    # 検証
-    assert response.status == 500
-    assert response.content_type == "application/problem+json; charset=utf-8"
-
-
 @pytest.mark.parametrize(
     ("origin", "comment_id", "expected_status", "expected_remaining", "expected_deleted"),
     [
@@ -1651,6 +1571,27 @@ def test_delete_response(
         "items"
     ]
     assert [item["id"] for item in saved] == expected_remaining
+
+
+def test_delete_response_when_choice(
+    make_workspace: MakeWorkspace, make_item: MakeItem, write_comments: WriteComments
+) -> None:
+    """案の選択を削除すると選んだ案を返す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}])
+    )
+    write_comments(
+        root,
+        {"id": "C-1", "target": "D-1", "choice": {"key": "B"}, "created": "2026-10-01T00:00:00+00:00"},
+    )
+    # 実行
+    response = serve.delete_response(_context(root), origin=None, comment_id="C-1")
+    # 検証
+    assert response.status == 200
+    payload = json.loads(response.body)
+    assert payload["choice"] == {"key": "B"}
+    assert payload["body"] is None
 
 
 # 保存待ちの編集（E-1: D-1 の answer）を持つ edits.yaml と、壊れた edits.yaml
@@ -2357,6 +2298,56 @@ def test_endpoint_when_two_workspaces(
     assert posted.status_code == 201
     assert "A へのコメント" in json.dumps(first_comments, ensure_ascii=False)
     assert "A へのコメント" not in json.dumps(second_comments, ensure_ascii=False)
+
+
+class _RecordingTargets(InputTargets):
+    """enter_or_restart の引数を控え、入力しなかったことにする宛先の台帳。"""
+
+    def __init__(self) -> None:
+        """控えを空にする。"""
+        super().__init__()
+        self.calls: list[tuple[int, int]] = []
+
+    def enter_or_restart(self, root: Path, count: int, *, choices: int = 0) -> tuple[bool, bool]:
+        """届いた件数と案の選択の件数を控え、入力していないことを返す。"""
+        self.calls.append((count, choices))
+        return False, False
+
+
+def test_endpoint_when_choices_sent(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """案の選択をまとめて送信すると、検討事項の ID つきで返し、入力に案の選択の件数を渡す（正常系）。"""
+    # 準備
+    targets = _RecordingTargets()
+    registry = serve.PreviewRegistry(threading.Lock(), port=PORT, input_targets=targets)
+    root = make_workspace(
+        make_item("D-1", options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]),
+        make_item("D-2"),
+    )
+    url, _started = registry.start(root)
+    base = _base_of(url)
+    headers = {"Content-Type": "application/json"}
+    # 実行
+    try:
+        with _client(registry) as client:
+            choice = client.post(
+                f"{base}/api/comments",
+                content=json.dumps({"target": "D-1", "choice": {"key": "B"}}),
+                headers=headers,
+            )
+            comment = client.post(
+                f"{base}/api/comments", content=_post_body(target="D-2", body="D-2 への意見"), headers=headers
+            )
+            ids = [choice.json()["id"], comment.json()["id"]]
+            sent = client.post(
+                f"{base}/api/comments/send", content=json.dumps({"ids": ids}), headers=headers
+            )
+    finally:
+        registry.stop_all()
+    # 検証
+    assert sent.status_code == 201
+    rows = {row["comment"]: row for row in sent.json()["items"]}
+    assert (rows[ids[0]]["decision"], rows[ids[0]]["thread"]) == ("D-1", None)
+    assert targets.calls == [(1, 1)]
 
 
 @contextlib.contextmanager

@@ -26,6 +26,7 @@ def _status(**changes: Any) -> dict[str, Any]:
     status: dict[str, Any] = {
         "trigger": "resume",
         "awaiting_threads": 0,
+        "user_choices": 0,
         "changed": [],
         "changed_more": 0,
         "removed": [],
@@ -73,12 +74,37 @@ def test_summarize_resume(
     assert result["needs_review"] == [{"id": "D-1", "title": "D-1の題"}]
     assert result["in_progress"] == [{"id": "T-1", "title": "T-1の題"}]
     assert result["awaiting_threads"] == 1
+    assert result["user_choices"] == 0
     assert result["until_seq"] == 5
     assert result["changed_more"] == 0
     assert result["removed_more"] == 0
     assert result["needs_review_more"] == 0
     assert result["in_progress_more"] == 0
     assert read_point.load_read_seq(root, state_root=state_root) == 3
+
+
+def test_summarize_resume_when_user_choices(
+    make_workspace: MakeWorkspace, make_item: MakeItem, tmp_path: Path
+) -> None:
+    """利用者が案を選んだ検討事項を数え、注入文に件数を入れる（正常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+    chosen = {"key": "B", "at": "2026-10-01T00:00:00+00:00"}
+    root = make_workspace(
+        make_item("D-1", options=options, user_choice=chosen),
+        make_item("D-2", options=options, user_choice=chosen),
+        make_item("D-3", options=options),
+    )
+    _write_last_seq(root, 0)
+    decisions_before = (root / ".mindstella" / "decisions.yaml").read_bytes()
+    # 実行
+    result = resume.summarize_resume(root, "compact", state_root=tmp_path / "state")
+    # 検証
+    assert (result["user_choices"], result["awaiting_threads"]) == (2, 0)
+    assert "2" in result["context"]
+    assert "D-1" not in result["context"]
+    assert "D-2" not in result["context"]
+    assert (root / ".mindstella" / "decisions.yaml").read_bytes() == decisions_before
 
 
 def test_summarize_resume_when_no_read_point(
@@ -174,6 +200,22 @@ def test_render_context_when_overflow_or_migrated() -> None:
     assert "changes_since_read" in result
     assert "社内" in result
     assert "進め方の文書" not in result
+
+
+@pytest.mark.parametrize(
+    ("count", "expected"), [pytest.param(3, True, id="chosen"), pytest.param(0, False, id="none")]
+)
+def test_render_context_when_user_choices(count: int, expected: bool) -> None:
+    """利用者が案を選んだ検討事項が 1 件以上のときだけ件数を描く（正常系）。"""
+    # 準備
+    status = _status(user_choices=count)
+    # 実行
+    result = resume.render_context(status)
+    # 検証
+    assert ("案を選んだ検討事項" in result) == expected
+    if expected:
+        assert "3" in result
+        assert "user_choices" in result
 
 
 def test_render_context_when_undefined(tmp_path: Path) -> None:

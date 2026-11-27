@@ -749,6 +749,7 @@ def test_run_adopt(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
         "previous": "A",
         "status": "決定済み",
         "previous_status": "決定済み",
+        "user_choice": None,
     }
     options = _read_items(root, "decisions.yaml")[0]["options"]
     assert options[0]["adopted"] is False
@@ -1456,3 +1457,137 @@ def test_run_commit_when_hand_back_no_workspace(tmp_path: Path) -> None:
     # 実行・検証
     with pytest.raises(WorkspaceNotFoundError):
         commands.run_commit(root, "a", now=_fixed_now, hand_back=True)
+
+
+# ===== 利用者の選択 =====
+
+# 案 A・B を持つ検討事項の案（採用していない）
+CHOICE_OPTIONS = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+
+
+@pytest.mark.parametrize(
+    "chosen",
+    [pytest.param("B", id="same_as_adopted"), pytest.param("A", id="different_from_adopted")],
+)
+def test_switch_adopted_when_user_choice(chosen: str) -> None:
+    """利用者の選択を持つ検討事項は、選んだ案と採用した案が違っても選択を削除する（正常系）。"""
+    # 準備
+    item = {
+        "status": "未決定",
+        "options": [dict(option) for option in CHOICE_OPTIONS],
+        "user_choice": {"key": chosen, "at": DEFAULT_TIMESTAMP},
+    }
+    # 実行
+    switched, _previous = commands.switch_adopted(item, "B")
+    # 検証
+    assert "user_choice" not in switched
+    assert [option["key"] for option in switched["options"] if option.get("adopted")] == ["B"]
+    assert item["user_choice"] == {"key": chosen, "at": DEFAULT_TIMESTAMP}
+
+
+def test_run_adopt_when_user_choice(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """利用者の選択を片付けて返し、削除する前の選択を変更履歴に残す（正常系）。"""
+    # 準備
+    chosen = {"key": "B", "note": "費用を優先する", "at": DEFAULT_TIMESTAMP}
+    root = make_workspace(make_item("D-1", options=CHOICE_OPTIONS, user_choice=chosen))
+    # 実行
+    payload = commands.run_adopt(root, "D-1", "B", now=_fixed_now)
+    # 検証
+    assert payload["user_choice"] == chosen
+    decision = _read_items(root, "decisions.yaml")[0]
+    assert "user_choice" not in decision
+    assert decision["status"] == "決定済み"
+    assert _read_history(root)["D-1"]["history"][-1]["before"]["user_choice"] == chosen
+
+
+def test_run_adopt_when_no_user_choice(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """利用者の選択を持たなければ結果の user_choice は None（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=CHOICE_OPTIONS))
+    # 実行
+    payload = commands.run_adopt(root, "D-1", "A", now=_fixed_now)
+    # 検証
+    assert "user_choice" in payload
+    assert payload["user_choice"] is None
+
+
+@pytest.mark.parametrize(
+    ("removed", "expected_keys", "expected_choice"),
+    [
+        pytest.param("B", ["A", "C"], None, id="chosen_option"),
+        pytest.param("C", ["A", "B"], "B", id="other_option"),
+    ],
+)
+def test_run_edit_option_when_user_chosen_option_removed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    removed: str,
+    expected_keys: list[str],
+    expected_choice: str | None,
+) -> None:
+    """利用者が選んだ案を削除すると利用者の選択も削除し、ほかの案の削除では残す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item(
+            "D-1",
+            options=[*CHOICE_OPTIONS, {"key": "C", "content": "案 C"}],
+            user_choice={"key": "B", "at": DEFAULT_TIMESTAMP},
+        )
+    )
+    # 実行
+    commands.run_edit_option(root, "D-1", "remove", removed, None, now=_fixed_now)
+    # 検証
+    decision = _read_items(root, "decisions.yaml")[0]
+    assert [option["key"] for option in decision["options"]] == expected_keys
+    assert decision.get("user_choice", {}).get("key") == expected_choice
+    assert ("user_choice" in decision) == (expected_choice is not None)
+    assert decision["status"] == "未決定"
+
+
+def test_run_user_choices(
+    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
+) -> None:
+    """利用者の選択を持つ検討事項だけを送信した日時の古い順に返す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item(
+            "D-1",
+            options=CHOICE_OPTIONS,
+            user_choice={"key": "B", "at": "2026-10-01T10:00:00+00:00"},
+        ),
+        make_item(
+            "D-2",
+            options=CHOICE_OPTIONS,
+            user_choice={"key": "A", "note": "費用を優先する", "at": "2026-10-01T09:00:00+00:00"},
+        ),
+        make_item("D-3", options=CHOICE_OPTIONS),
+    )
+    write_yaml(
+        root / RECORD_DIR / "comments.yaml",
+        {
+            "seq": 1,
+            "items": [
+                {"id": "C-1", "target": "D-3", "choice": {"key": "A"}, "created": DEFAULT_TIMESTAMP}
+            ],
+        },
+    )
+    before = snapshot_tree(root)
+    # 実行
+    payload = commands.run_user_choices(root)
+    # 検証
+    items = payload["items"]
+    assert [item["id"] for item in items] == ["D-2", "D-1"]
+    assert (items[0]["key"], items[0]["content"], items[0]["note"]) == ("A", "案 A", "費用を優先する")
+    assert (items[1]["key"], items[1]["content"], items[1]["note"]) == ("B", "案 B", None)
+    assert items[1]["at"] == "2026-10-01T10:00:00+00:00"
+    assert snapshot_tree(root) == before
+
+
+def test_run_user_choices_when_none(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """利用者の選択が無ければ空（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=CHOICE_OPTIONS))
+    # 実行
+    payload = commands.run_user_choices(root)
+    # 検証
+    assert payload == {"items": []}

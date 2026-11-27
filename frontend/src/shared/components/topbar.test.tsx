@@ -22,24 +22,42 @@ describe("Topbar", () => {
     expect(onNavigate).toHaveBeenCalledWith("decisions");
   });
 
-  // 差分の表示中は変更履歴のボタンに点と × だけを出す（正常系）
-  test("topbar_when_diff_point", async () => {
+  // 差分の表示中は変更履歴のボタンに点だけを出し、差分の表示をやめるボタンを出さない（正常系）
+  test("topbar_when_diff_point", () => {
     // 準備
-    const onClearDiff = vi.fn();
-    const { rerender } = render(
-      <Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" diffPoint={{ name: "前回開いてから", sub: "10/04 13:05 より後" }} onOpenHistory={vi.fn()} onClearDiff={onClearDiff} />,
-    );
-    // 実行
-    await userEvent.click(screen.getByRole("button", { name: "差分の表示をやめる" }));
+    const { rerender } = render(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" diffPoint={{ name: "V-2", sub: "10/04 13:05" }} onOpenHistory={vi.fn()} />);
     // 検証
     expect(screen.getByRole("button", { name: "変更履歴（過去の差分を表示中）" })).toBeInTheDocument();
-    expect(screen.queryByText(/前回開いてから/)).toBeNull();
     expect(screen.queryByText(/10\/04 13:05/)).toBeNull();
-    expect(onClearDiff).toHaveBeenCalledTimes(1);
-    // 差分を出していないときは × が無い
-    rerender(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" diffPoint={null} onOpenHistory={vi.fn()} onClearDiff={onClearDiff} />);
-    expect(screen.getByRole("button", { name: "変更履歴" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "差分の表示をやめる" })).toBeNull();
+    // 差分を出していないとき
+    rerender(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" diffPoint={null} onOpenHistory={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "変更履歴" })).toBeInTheDocument();
+  });
+
+  // 変更履歴のボタンに未読の件数を出す（正常系）
+  test.each([
+    { unread: 3, badge: "3", name: "変更履歴（未読 3 件）" },
+    { unread: 120, badge: "99+", name: "変更履歴（未読 120 件）" },
+    { unread: 0, badge: null, name: "変更履歴" },
+  ])("topbar_when_history_unread ($unread)", ({ unread, badge, name }) => {
+    // 実行
+    render(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" diffPoint={null} historyUnread={unread} onOpenHistory={vi.fn()} />);
+    // 検証
+    const button = screen.getByRole("button", { name });
+    if (badge === null) expect(button.textContent ?? "").not.toMatch(/\d/);
+    else expect(button).toHaveTextContent(badge);
+  });
+
+  // marked のタブに点を重ねる（正常系）
+  test("topbar_when_tab_marked", () => {
+    // 準備
+    const tabs = [TABS[0], { ...TABS[1], marked: true }];
+    // 実行
+    render(<Topbar title="話し合い" tabs={tabs} current="overview" theme="light" />);
+    // 検証
+    expect(screen.getByRole("link", { name: /検討事項/ })).toHaveTextContent("新規・変更・削除した項目があります");
+    expect(screen.getByRole("link", { name: /概要/ })).not.toHaveTextContent("新規・変更・削除した項目があります");
   });
 
   // offline で接続の状態を出す（正常系）

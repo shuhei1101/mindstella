@@ -368,6 +368,16 @@ files:
   related:
   - to: MOD-540-9
     type: implements
+- path: src/shared/stores/read-changes-store.test.ts
+  name: 既読のまとまりのストアの単体テスト
+  description: 変更履歴の既読のまとまりのストアの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: MOD-722-1
+    type: tests
 - path: src/shared/stores/theme-store.test.ts
   name: ライト / ダークのストアの単体テスト
   description: ライト / ダークのストアの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
@@ -556,6 +566,16 @@ files:
   related:
   - to: MOD-489-28
     type: implements
+- path: src/features/detail/detail-panel/components/option-list.test.tsx
+  name: 検討事項の案のカードの単体テスト
+  description: 検討事項の案のカードの案を選ぶ操作と、送信前・送信済みの見せ方を Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/detail/detail-panel/components/option-list.tsx
+    type: tests
 - path: src/features/detail/detail-panel/components/option-list.tsx
   name: 検討事項の案のカード
   description: 検討事項の案のカード。

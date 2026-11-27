@@ -251,6 +251,33 @@ describe("DetailReviewComments", () => {
     expect((JSON.parse(localStorage.getItem("mindmap-preview") ?? "{}") as Record<string, unknown>)["reviewOrder"]).toBe("oldest");
   });
 
+  // 案の選択はレビュー中のコメントの一覧に出さない（正常系）
+  test("detail_comments_when_choice", async () => {
+    // 準備
+    stubRecords({ decisions: [{ id: "D-1", title: "D-1の題", status: "未決定", options: [{ key: "A", content: "案 A" }, { key: "B", content: "案 B" }] }] });
+    server.use(
+      http.get("/api/comments", () =>
+        HttpResponse.json({
+          items: [
+            { id: "C-1", target: "D-1", target_title: "D-1の題", loc: null, thread: null, body: "D-1 への意見", created: "2026-11-01T00:00:00+00:00" },
+            { id: "C-2", target: "D-1", target_title: "D-1の題", loc: null, thread: null, body: "選んだ一言", choice: { key: "B" }, created: "2026-11-01T00:01:00+00:00" },
+          ],
+          drafts: [],
+        }),
+      ),
+    );
+    renderRoute("/?tab=decisions&id=D-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    await userEvent.click(await within(panel).findByRole("tab", { name: "コメント" }));
+    // 実行
+    const section = (await within(panel).findByRole("heading", { name: "レビュー中のコメント" })).closest("section");
+    if (section === null) throw new Error("レビュー中のコメントのセクションがありません");
+    // 検証
+    expect(within(section).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(section).getByText("D-1 への意見")).toBeInTheDocument();
+    expect(within(section).queryByText("選んだ一言")).not.toBeInTheDocument();
+  });
+
   // 削除して元に戻す（正常系）
   test("detail_review_comments_when_remove", async () => {
     // 準備

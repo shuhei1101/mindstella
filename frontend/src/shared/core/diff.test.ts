@@ -1,7 +1,7 @@
 import * as jsdiff from "diff";
 import { describe, expect, test } from "vitest";
 
-import { buildVersions, diffLineParts, htmlChangedLines, removedOf, resolveDiffPoint, type DiffPoint } from "@/shared/core/diff";
+import { buildVersions, changedKinds, diffLineParts, htmlChangedLines, removedOf, resolveDiffPoint, unreadSetIds, type DiffPoint } from "@/shared/core/diff";
 import type { Changes, Item } from "@/shared/core/records";
 
 const changes: Changes = {
@@ -12,13 +12,11 @@ const changes: Changes = {
   ],
   pending: { added: [], changed: [] },
 };
-const since = { at: "2026-11-01T00:00:00+00:00", seq: 1 };
-
 describe("resolveDiffPoint", () => {
   // まとまりを解決する（正常系）
   test("resolve_diff_point", () => {
     // 実行
-    const point = resolveDiffPoint(changes, "V-2", since);
+    const point = resolveDiffPoint(changes, "V-2");
     // 検証
     expect(point?.added.has("D-2")).toBe(true);
     expect(point?.changed.has("D-1")).toBe(true);
@@ -27,16 +25,21 @@ describe("resolveDiffPoint", () => {
 
   // 記録に無い（正常系）
   test("resolve_diff_point_when_missing", () => {
-    expect(resolveDiffPoint(changes, "V-99", since)).toBeNull();
+    expect(resolveDiffPoint(changes, "V-99")).toBeNull();
   });
 
   // 空の pending（正常系）
   test("resolve_diff_point_when_pending_empty", () => {
-    expect(resolveDiffPoint(changes, "pending", since)).toBeNull();
+    expect(resolveDiffPoint(changes, "pending")).toBeNull();
+  });
+
+  // まとまりの ID でない値は差分を出さない（正常系）
+  test("resolve_diff_point_when_not_set_id", () => {
+    expect(resolveDiffPoint(changes, "since")).toBeNull();
   });
 });
 
-const point = (): DiffPoint => resolveDiffPoint(changes, "V-2", since) as DiffPoint;
+const point = (): DiffPoint => resolveDiffPoint(changes, "V-2") as DiffPoint;
 
 describe("buildVersions", () => {
   // キーと本文を戻す（正常系）
@@ -86,5 +89,34 @@ describe("removedOf", () => {
   // 種類で絞る（正常系）
   test("removed_of", () => {
     expect(removedOf({ point: point(), kind: "decisions" }).map((item) => item.id)).toEqual(["D-3"]);
+  });
+});
+
+describe("changedKinds", () => {
+  // 追加・変更・削除した項目の種類を返却する（正常系）
+  test("changed_kinds", () => {
+    // 準備
+    const kindsChanges: Changes = {
+      last_seq: 2,
+      sets: [{ id: "V-1", at: "2026-11-02T00:00:00+00:00", summary: "1 回目", until_seq: 2, added: ["T-2"], changed: ["D-1"], removed: [{ id: "N-3", kind: "note", title: "消したメモ" }] }],
+      pending: { added: [], changed: [] },
+    };
+    // 実行
+    const kinds = changedKinds(resolveDiffPoint(kindsChanges, "V-1"));
+    // 検証
+    expect([...kinds].sort()).toEqual(["decisions", "notes", "tasks"]);
+    expect(kinds.has("research")).toBe(false);
+  });
+
+  // 差分を出していなければ空（正常系）
+  test("changed_kinds_when_null", () => {
+    expect(changedKinds(null).size).toBe(0);
+  });
+});
+
+describe("unreadSetIds", () => {
+  // 既読に無いものだけ（正常系）
+  test("unread_set_ids", () => {
+    expect(unreadSetIds(["V-3", "V-2", "V-1"], ["V-2", "V-9"])).toEqual(["V-3", "V-1"]);
   });
 });
