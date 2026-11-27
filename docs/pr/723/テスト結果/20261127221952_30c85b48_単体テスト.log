@@ -1,0 +1,128 @@
+# 単体テスト（全件 pass）
+# commit: 30c85b48
+# 実行日時: 2026-11-27 22:19:52 JST
+# 環境: PATH に ~/.venvs/mindstella-dev/bin を先頭に置き、TMPDIR を一時フォルダへ向けた
+
+$ pytest tests/unit
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-bundle-722-history-unread-decision-choice
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1785 items
+
+tests/unit/scripts/test_answer_to_adopted_option.py .....                [  0%]
+tests/unit/scripts/test_api.py ......                                    [  0%]
+tests/unit/scripts/test_backup.py ......                                 [  0%]
+tests/unit/scripts/test_body_to_docs_path.py .                           [  1%]
+tests/unit/scripts/test_builder.py ..................................... [  3%]
+..                                                                       [  3%]
+tests/unit/scripts/test_change_detection.py ............................ [  4%]
+                                                                         [  4%]
+tests/unit/scripts/test_check_env.py ........................            [  6%]
+tests/unit/scripts/test_checker.py ...............................       [  7%]
+tests/unit/scripts/test_claude_input.py ................................ [  9%]
+....................................                                     [ 11%]
+tests/unit/scripts/test_commands.py .................................... [ 13%]
+..................................................................       [ 17%]
+tests/unit/scripts/test_comments.py .................................... [ 19%]
+...........................................................              [ 22%]
+tests/unit/scripts/test_edits.py ....................................... [ 24%]
+...                                                                      [ 25%]
+tests/unit/scripts/test_ensure_server.py ............................... [ 26%]
+                                                                         [ 26%]
+tests/unit/scripts/test_field_to_playbooks.py ....                       [ 27%]
+tests/unit/scripts/test_files_serve.py ................................  [ 28%]
+tests/unit/scripts/test_graph.py .........                               [ 29%]
+tests/unit/scripts/test_history.py ..................................... [ 31%]
+.....                                                                    [ 31%]
+tests/unit/scripts/test_home_settings.py ............                    [ 32%]
+tests/unit/scripts/test_html_body.py .................                   [ 33%]
+tests/unit/scripts/test_ids.py ....                                      [ 33%]
+tests/unit/scripts/test_inject_session.py ....................           [ 34%]
+tests/unit/scripts/test_kinds.py ..........                              [ 35%]
+tests/unit/scripts/test_launch.py ............                           [ 35%]
+tests/unit/scripts/test_locations.py ................................... [ 37%]
+...                                                                      [ 37%]
+tests/unit/scripts/test_markdown_bodies_to_mark_md.py ....               [ 38%]
+tests/unit/scripts/test_mdmark_documents.py .....                        [ 38%]
+tests/unit/scripts/test_mdmark_ref.py ..................                 [ 39%]
+tests/unit/scripts/test_meta_to_history_yaml.py .                        [ 39%]
+tests/unit/scripts/test_migration_coverage.py .........                  [ 40%]
+tests/unit/scripts/test_migration_ops.py ......................          [ 41%]
+tests/unit/scripts/test_migrator.py .................................... [ 43%]
+........                                                                 [ 43%]
+tests/unit/scripts/test_move_bodies_to_root.py .....                     [ 44%]
+tests/unit/scripts/test_notify.py ............................           [ 45%]
+tests/unit/scripts/test_place_source_config.py .....                     [ 45%]
+tests/unit/scripts/test_presets.py ....................                  [ 47%]
+tests/unit/scripts/test_project_index.py ............................... [ 48%]
+..                                                                       [ 48%]
+tests/unit/scripts/test_read_point.py ...........                        [ 49%]
+tests/unit/scripts/test_readme.py ..........                             [ 50%]
+tests/unit/scripts/test_refs_to_related.py ..                            [ 50%]
+tests/unit/scripts/test_register.py ..................................s. [ 52%]
+..........                                                               [ 52%]
+tests/unit/scripts/test_remove_confirmed.py .....                        [ 52%]
+tests/unit/scripts/test_remove_discussion_keys.py .....                  [ 53%]
+tests/unit/scripts/test_remove_network_look.py ......                    [ 53%]
+tests/unit/scripts/test_remove_preview_port.py ....                      [ 53%]
+tests/unit/scripts/test_remove_tag_vocabulary.py ...                     [ 54%]
+tests/unit/scripts/test_reset_unread.py ............                     [ 54%]
+tests/unit/scripts/test_resume.py ..........                             [ 55%]
+tests/unit/scripts/test_serve.py ....................................... [ 57%]
+........................................................................ [ 61%]
+.......................................                                  [ 63%]
+tests/unit/scripts/test_server.py ...................................... [ 65%]
+....................                                                     [ 66%]
+tests/unit/scripts/test_session_hook.py ...................              [ 67%]
+tests/unit/scripts/test_sessions.py .................................... [ 69%]
+......................................................................   [ 73%]
+tests/unit/scripts/test_settings_update.py ............................. [ 75%]
+.                                                                        [ 75%]
+tests/unit/scripts/test_startup.py ...................                   [ 76%]
+tests/unit/scripts/test_state.py ..................                      [ 77%]
+tests/unit/scripts/test_store.py ....................................... [ 79%]
+........................................................................ [ 83%]
+...........................                                              [ 85%]
+tests/unit/scripts/test_submissions_to_threads.py ......                 [ 85%]
+tests/unit/scripts/test_tag_text.py ...............                      [ 86%]
+tests/unit/scripts/test_tags_to_objects.py ...                           [ 86%]
+tests/unit/scripts/test_tags_to_vocabulary.py ....                       [ 86%]
+tests/unit/scripts/test_threads.py ..................................... [ 89%]
+......................................                                   [ 91%]
+tests/unit/scripts/test_transcriber.py ....                              [ 91%]
+tests/unit/scripts/test_transcriber_registry.py ......                   [ 91%]
+tests/unit/scripts/test_usage_watch.py ....................              [ 92%]
+tests/unit/scripts/test_versions.py ......................               [ 94%]
+tests/unit/scripts/test_voice_paste.py ......................            [ 95%]
+tests/unit/scripts/test_workspaces.py .................................. [ 97%]
+...............................................                          [ 99%]
+tests/unit/test_isolated_environment.py ...                              [100%]
+
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/.venvs/mindstella-dev/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 1784 passed, 1 skipped, 5 warnings in 32.62s =================
+
+$ npx vitest run
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-bundle-722-history-unread-decision-choice
+
+
+ Test Files  121 passed (121)
+      Tests  676 passed (676)
+   Start at  22:18:43
+   Duration  29.20s (environment 43%, tests 30%, import 14%, setup 8%, transform 4%)
+
+Environment  jsdom was created 121 times · 79.84s total, 43% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

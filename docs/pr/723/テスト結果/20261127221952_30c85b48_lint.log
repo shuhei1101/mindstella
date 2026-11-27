@@ -1,0 +1,15 @@
+# lint（違反 0 件）
+# commit: 30c85b48
+# 実行日時: 2026-11-27 22:19:52 JST
+
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p frontend
+
+
+> lint
+> eslint frontend/src
+
+(終了コード 0)
