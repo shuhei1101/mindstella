@@ -191,7 +191,7 @@ export const CodeIndentGuides: Story = {
   args: { source: ["```python", "def total(items):", "    result = 0", "    for item in items:", "        if item > 0:", "            result += item", "    return result", "```"].join("\n") },
 };
 
-/** 見出しの下に段落・表・map の図・リストを並べた本文。見出しごとに包む要素（md-section-body）の直下のブロック同士に、mdmark の本文と同じ間（--mdmark-space）が空く */
+/** 見出しの下に段落・表・map の図・リストと小見出しを並べた本文。見出しごとに包む要素（md-section-body）の直下のブロック同士に、mdmark の本文と同じ間（--mdmark-space）が空き、小見出しの上の間は mdmark の見出しの間のまま */
 export const SectionSpacing: Story = {
   args: {
     source: [
@@ -216,6 +216,10 @@ export const SectionSpacing: Story = {
       "- 項目 2",
       "",
       "まとめの段落です。",
+      "",
+      "### 料金",
+      "",
+      "料金の説明です。",
     ].join("\n"),
   },
 };
