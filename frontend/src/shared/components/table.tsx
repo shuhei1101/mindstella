@@ -72,7 +72,7 @@ export type TableProps = {
   /** チェックで表せないタグの式の文と、その解除 */
   tagExprText?: string;
   onClearTagExpr?: () => void;
-  /** 渡すと「お気に入りだけ」のチップを出し、× で「お気に入りだけを表示する」を解除する */
+  /** 渡すと「お気に入りのみ」のチップを出し、× で「お気に入りだけを表示する」を解除する */
   onClearFavoritesOnly?: () => void;
   /** 表のスクロール領域に付ける ref（スクロール位置の復元） */
   scrollRef?: RefCallback<HTMLElement>;

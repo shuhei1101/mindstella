@@ -11,12 +11,12 @@ export type FilterChipsProps = {
   /** チェックで表せないタグの式の文。無ければ出さない */
   tagExprText?: string;
   onClearTagExpr?: () => void;
-  /** 渡すと「お気に入りだけ」のチップを先頭に出し、× で「お気に入りだけを表示する」を解除する */
+  /** 渡すと「お気に入りのみ」のチップを先頭に出し、× で「お気に入りだけを表示する」を解除する */
   onClearFavoritesOnly?: () => void;
 };
 
 /** 「お気に入りだけを表示する」のチップの文言 */
-export const FAVORITES_ONLY_CHIP = "お気に入りだけ";
+export const FAVORITES_ONLY_CHIP = "お気に入りのみ";
 
 const Chip = ({ text, onClear }: { text: string; onClear: () => void }) => (
   <span className="inline-flex items-center gap-1 rounded-full bg-mark-weak px-2 text-xs">

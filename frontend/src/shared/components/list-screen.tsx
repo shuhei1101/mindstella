@@ -141,7 +141,7 @@ const boardOrders = (items: readonly Item[]): string[][] => {
 /** 「お気に入りだけを表示する」がオンならお気に入りの行だけにする */
 const onlyFavoritesIfSet = <T extends { id: string }>(rows: T[], favorites: { ids: ReadonlySet<string>; only: boolean }): T[] => (favorites.only ? favoritesOnly(rows, favorites.ids) : rows);
 
-/** 「お気に入りだけを表示する」の間だけ、絞り込みのチップに「お気に入りだけ」を出す引数 */
+/** 「お気に入りだけを表示する」の間だけ、絞り込みのチップに「お気に入りのみ」を出す引数 */
 const favoritesChipOf = (favorites: { only: boolean; clearOnly: () => void }): { onClearFavoritesOnly?: () => void } => (favorites.only ? { onClearFavoritesOnly: favorites.clearOnly } : {});
 
 /** カード・ボードの表示で受け付けない `sort`（表の列の並べ替え）は、無いものとして URL から外す（置き換える） */
@@ -227,7 +227,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   // 「お気に入りだけを表示する」はカード・ボード・表のどれでも絞る
   const filtered = onlyFavoritesIfSet(matched, favorites);
   const exprChip = complexExpr === null ? {} : { tagExprText: describeTagExpr(complexExpr), onClearTagExpr: () => { setTagExpr(null); } };
-  // 「お気に入りだけを表示する」の間は、絞り込みのチップの先頭に「お気に入りだけ」を出す
+  // 「お気に入りだけを表示する」の間は、絞り込みのチップの先頭に「お気に入りのみ」を出す
   const favoritesChip = favoritesChipOf(favorites);
   const sorted = sortRows({ rows: filtered, columns: list, sort: search.sort });
   const { initialCardSort, cardSort, cardRowSort, cards, orders } = listOrders({ kind, view, sort: search.sort, filtered: filtered as unknown as Item[], sorted, favorites });
