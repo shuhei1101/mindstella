@@ -17,3 +17,9 @@ confirmations:
     approver: shuhei1101
     commit: 1169657e
     thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4717209687
+  - topic: '#363 送信済みの案の選択の見せ方'
+    decision: 札は送信前も送信済みも「選択済み」だけにしてカッコの文字を出さず、送信前は枠線と札の線を破線、送信済みは実線にして分ける。送信済みは一言を文字だけ出し、一言を編集・選択を取り消すを出さない（案 A の見せ方から札の文言を変えた）
+    decided_by: reply
+    approver: shuhei1101
+    commit: 806f09dc
+    thread: https://github.com/shuhei1101/mindstella/pull/723#discussion_r4718643655
