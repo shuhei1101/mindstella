@@ -7,7 +7,7 @@ components:
     kind: コンポーネント
     usecase: 共通
     container: frontend/src/shared/components/left-panel.tsx
-    summary: "`as` の要素（既定 `aside`）を描き、受けた属性（`role`・`aria-label`・`className`・`onKeyDown` など）と `children` をそのまま指定する。表示の幅が `LEFT_PANEL_WIDTH.resizableFrom`（901px）以上では、幅を『panel-width-store』の `currentLeftWidth(state)` を `clampWidth(幅, min, leftPanelMax(表示の幅))` で収めた値にし、`resizerLabel` を指定したときだけ右端に部品『幅の区切り』（`side=right`・`label`・`min`・`max`・`step`）を描いて `onChange` で `setLeftWidth`、`onCommit` で `commitLeftWidth` を呼ぶ。900px 以下は幅を適用せず、区切りを描かない（各パネルの今の全幅のまま）。表示の幅が 901px 以上では、詳細パネル（`lg:z-30`）より上の重なり順 `lg:z-[35]` を要素に付ける。表示の幅は『use-viewport-width』の `useViewportWidth()` で参照する"
+    summary: "`as` の要素（既定 `aside`）を描き、受けた属性（`role`・`aria-label`・`className`・`onKeyDown` など）と `children` をそのまま指定する。表示の幅が `LEFT_PANEL_WIDTH.resizableFrom`（901px）以上では、幅を『panel-width-store』の `currentLeftWidth(state)` を `clampWidth(幅, min, leftPanelMax(表示の幅))` で収めた値にし、`resizerLabel` を指定したときだけ右端に部品『幅の区切り』（`side=right`・`label`・`min`・`max`・`step`）を描いて `onChange` で `setLeftWidth`、`onCommit` で `commitLeftWidth` を呼ぶ。900px 以下は幅を適用せず、区切りを描かない（各パネルの今の全幅のまま）。表示の幅が 901px 以上では、詳細パネル（`lg:z-30`）より上の重なり順 `lg:z-35` を要素に付ける。表示の幅は『use-viewport-width』の `useViewportWidth()` で参照する"
     refs:
       - SCR-489-2#
       - SCR-489-11#
@@ -55,7 +55,7 @@ components:
         summary: 詳細パネルより上の重なり順で描く
         condition: 表示の幅 1440 で描く
         mock: なし
-        expected: '`aside` が class `lg:z-[35]` を持つ'
+        expected: '`aside` が class `lg:z-35` を持つ'
       - name: test_left_panel_without_resizer
         case: 正常
         summary: resizerLabel を省くと区切りを描かず、共有した幅で開く
