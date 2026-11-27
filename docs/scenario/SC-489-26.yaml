@@ -122,7 +122,7 @@ stakeholders:
     interest: MindStella のセッションが落ちた・止めた・圧縮された後も、前回の続きから記録を読み落とさずに再開できる。届いていたコメントが取り込まれる
   - name: 導入する側（外部のアプリ）
     interest: 起動のときに指定した進め方の文書の工程へ進む
-trigger: MindStella のセッションが起動するか、`/clear` の後・PreCompact で止めて再起動した後・圧縮を止められずに圧縮された後に、SessionStart のフックが呼ばれる
+trigger: MindStella のセッションが起動するか、`/clear` の後・再起動した後・圧縮された後に、SessionStart のフックが呼ばれる
 preconditions:
   - ワークスペースが作成済みである
   - MindStella のセッションが、環境変数 `MINDSTELLA_SESSION` を持って起動している
