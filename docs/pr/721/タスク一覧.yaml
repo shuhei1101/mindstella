@@ -43,7 +43,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T04:50:39.676364+00:00'
   - process: データ設計
-    status: todo
+    status: done
+    note: '#709: 設定 CFG-489-1 から MINDSTELLA_LAUNCH_REASON を削除。#353: お気に入りは端末の保存領域（確認ログで決定）で、ワークスペースの記録・設定は変えない。キーはインターフェース定義『プレビューを開く』の制約「端末の保存領域」で定める'
+    updated_by: planner
+    updated_at: '2026-11-27T04:51:38.906676+00:00'
   - process: インターフェース定義設計
     status: todo
   - process: エージェント・MCP サーバー設計
