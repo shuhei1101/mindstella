@@ -245,7 +245,9 @@ describe("CommentsPanel", () => {
     const { container, router } = await renderInPreviewRouter("/?panel=comments", <CommentsPanel onOpenItem={vi.fn()} onOpenChangeSet={vi.fn()} detailRaised />);
     const panel = await screen.findByRole("dialog", { name: "コメント" });
     // 実行
-    await userEvent.click(container.querySelector<HTMLElement>("[data-scrim]")!);
+    const scrim = container.querySelector<HTMLElement>("[data-scrim]");
+    if (scrim === null) throw new Error("グレーアウトが描かれていない");
+    await userEvent.click(scrim);
     // 検証
     expect(panel).not.toHaveAttribute("aria-modal", "true");
     await waitFor(() => expect(router.state.location.search).not.toHaveProperty("panel"));

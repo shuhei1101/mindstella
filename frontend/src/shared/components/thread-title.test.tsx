@@ -54,7 +54,7 @@ const stubTitleHeight = (height: number): void => {
       disconnect = (): void => undefined;
     },
   );
-  const computed = window.getComputedStyle;
+  const computed = window.getComputedStyle.bind(window);
   vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
     const style = computed(element, pseudo);
     return new Proxy(style, { get: (target, key) => (key === "lineHeight" ? "20px" : Reflect.get(target, key, target) as unknown) });

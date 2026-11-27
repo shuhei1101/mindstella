@@ -29,13 +29,15 @@ const setUp = (): { root: HTMLElement; idref: HTMLElement; term: HTMLElement; na
   root.innerHTML = '<p><a class="idref" href="#id=D-3" data-id="D-3">D-3</a> と <a class="term" href="#id=G-1" data-id="G-1">ワークスペース</a></p>';
   document.body.append(root);
   attachTermTips({ root, index: buildIndex(DATA), onOpen: vi.fn() });
-  const term = root.querySelector<HTMLElement>("a.term")!;
+  const term = root.querySelector<HTMLElement>("a.term");
+  const idref = root.querySelector<HTMLElement>("a.idref");
+  if (term === null || idref === null) throw new Error("本文のリンクが描かれていない");
   const navigate = vi.fn();
   term.addEventListener("click", (event) => {
     event.preventDefault();
     navigate();
   });
-  return { root, idref: root.querySelector<HTMLElement>("a.idref")!, term, navigate };
+  return { root, idref, term, navigate };
 };
 
 /** ツールチップが開いているか */
@@ -50,7 +52,7 @@ describe("attachTermTips", () => {
     vi.spyOn(HTMLElement.prototype, "hidePopover").mockImplementation(function (this: HTMLElement) {
       this.removeAttribute("data-test-open");
     });
-    const matches = Element.prototype.matches;
+    const matches = Object.getOwnPropertyDescriptor(Element.prototype, "matches")?.value as (this: Element, selector: string) => boolean;
     vi.spyOn(Element.prototype, "matches").mockImplementation(function (this: Element, selector: string) {
       return selector === ":popover-open" ? this.hasAttribute("data-test-open") : matches.call(this, selector);
     });
