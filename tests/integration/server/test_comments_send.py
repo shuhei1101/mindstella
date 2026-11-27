@@ -75,8 +75,8 @@ def test_normal(
     # 検証
     assert result.status == 201
     assert result.json()["items"] == [
-        {"comment": "C-1", "thread": "TH-1", "post": "TH-1-1"},
-        {"comment": "C-2", "thread": "TH-2", "post": "TH-2-1"},
+        {"comment": "C-1", "thread": "TH-1", "post": "TH-1-1", "decision": None},
+        {"comment": "C-2", "thread": "TH-2", "post": "TH-2-1", "decision": None},
     ]
     # tmux の外で立てたサーバーなので、入力しない
     assert result.json()["entered"] is False
@@ -136,7 +136,7 @@ def test_normal_when_reply(
     result = post_json(url, SEND_PATH, {"ids": ["C-1"]})
     # 検証
     assert result.status == 201
-    assert result.json()["items"] == [{"comment": "C-1", "thread": "TH-1", "post": "TH-1-2"}]
+    assert result.json()["items"] == [{"comment": "C-1", "thread": "TH-1", "post": "TH-1-2", "decision": None}]
     threads = read_threads(root)
     assert [item["id"] for item in threads] == ["TH-1"]
     ai_post, user_post = threads[0]["posts"]

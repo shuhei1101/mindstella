@@ -419,6 +419,8 @@ def test_normal_when_doc_keeps_page_height(make_workspace: MakeWorkspace, make_i
     page.set_viewport_size({"width": width, "height": 800})
     open_spa(page, served.data["url"], "?tab=docs&id=A-1")
     region = page.get_by_role("region", name="詳細の本文")
+    # 本文を最後の段落まで描き終えてからスクロールする
+    region.get_by_text("最後の段落", exact=True).wait_for(state="attached")
     # 実行
     region.evaluate("e => { e.scrollTop = e.scrollHeight; }")
     # 検証

@@ -52,6 +52,7 @@ def test_normal(
         "previous": "A",
         "status": "決定済み",
         "previous_status": "決定済み",
+        "user_choice": None,
     }
     adopted = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
         "items"
@@ -96,6 +97,7 @@ def test_normal_when_undecided_adopted(
         "previous": None,
         "status": "決定済み",
         "previous_status": "未決定",
+        "user_choice": None,
     }
     assert second.is_error is False
     assert second.data == {
@@ -104,6 +106,7 @@ def test_normal_when_undecided_adopted(
         "previous": "A",
         "status": "決定済み",
         "previous_status": "要見直し",
+        "user_choice": None,
     }
     decided, reviewed = (
         yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))["items"]
