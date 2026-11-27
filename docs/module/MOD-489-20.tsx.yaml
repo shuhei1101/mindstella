@@ -32,3 +32,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `detail-fullscreen.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   案の選択: 詳細パネルと同じく、案の一覧に `choice`・`onChoose`・`onCancelChoice` を指定する（モジュール構成『detail-panel』の注記「案の選択」）
+  モーダルの大きさ: '`DialogContent` の `max-w-5xl` を除外し、幅と高さを `size-9/10 max-w-none` にする（#728。`DialogContent` は `fixed` で包含ブロックが窓のため、窓の 90% になり、上下左右に窓の 5% の間が空いて中央に出る。Tailwind の任意値は使用しない）。単体テスト `test_detail_fullscreen_size`（モーダルの要素が `size-9/10` を持ち `max-w-5xl` を持たない）を追加する'

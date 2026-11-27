@@ -6,7 +6,7 @@ components:
     title: スレッドの行
     kind: コンポーネント
     usecase: スレッドで話す
-    summary: 部品設計『スレッドの行.tsx』の props・イベント・状態を持つ
+    summary: 部品設計『スレッドの行.tsx』の props・イベント・状態を持つ。タイトルは『record-text』の `RecordText` を `mode="marker"`・`tooltip={false}` で描く
     refs:
       - CMP-489-14#
     unit_tests:
@@ -22,6 +22,12 @@ components:
         condition: 未読の書き込みを持つ
         mock: なし
         expected: 未読の札がある
+      - name: test_thread_row_without_id_tooltip
+        case: 正常
+        summary: 行の中の ID にツールチップを出さない
+        condition: 要約に記録にある D-1 を持つ行で、D-1 に `mouseenter`、行のボタンに `focus` を送信する
+        mock: なし
+        expected: '`role="tooltip"` が描かれず、ボタンの `aria-describedby` が D-1 の説明を指す'
     container: frontend/src/features/comments/shared/thread-row.tsx
 notes:
   単体テスト: 同じフォルダの `thread-row.test.tsx` に置く（knowledge の規約『フォルダ構成』）

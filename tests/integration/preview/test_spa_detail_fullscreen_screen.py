@@ -100,3 +100,18 @@ def test_sibling_nav_in_fullscreen(page: Page, write_preview: WritePreview, make
     # 検証
     expect(page).to_have_url(re.compile(r"id=T-2"))
     expect(page).to_have_url(re.compile(r"full=1"))
+
+
+def test_fullscreen_size(page: Page, spa_preview: str) -> None:
+    """全画面のモーダルを窓の幅と高さの 90% の大きさで、上下左右に同じ間を空けて中央に出す（正常系）。"""
+    # 準備
+    page.set_viewport_size({"width": 1920, "height": 1000})
+    # 実行
+    open_spa(page, spa_preview, "?tab=decisions&id=D-1&full=1")
+    box = page.get_by_role("dialog", name="記録の形").bounding_box()
+    # 検証
+    assert box is not None
+    assert abs(box["width"] - 1920 * 0.9) <= 2
+    assert abs(box["height"] - 1000 * 0.9) <= 2
+    assert abs(box["x"] - 1920 * 0.05) <= 2
+    assert abs(box["y"] - 1000 * 0.05) <= 2

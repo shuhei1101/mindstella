@@ -80,7 +80,7 @@ export const missingLibraries = (names: ("mdmark" | "mermaid")[]): ("mdmark" | "
 /** 図の入れ物が原文を持つ属性の名前 */
 export const DIAGRAM_SOURCE_ATTR = "data-source";
 
-/** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大・コードブロックのバーと行の部品と、mermaid の描画（プレビューが描いて差分を取る）も止める（`html`・`diagrams`・`map` は既定のまま）。表の機能（`table`）はここではオフで持ち、`renderMarkdown` が `table` を偽で受けないときだけオンで指定する */
+/** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能のオフ（機能ごとの重なる画面の機能は外部ライブラリ『mdmark』）。ほかの機能（コードの色付け・コードブロックのバーと行の部品・印刷など）は既定のオンのまま。表の機能（`table`）はここではオフで持ち、`renderMarkdown` が `table` を偽で受けないときだけオンで指定する */
 export const MDMARK_FEATURES: Record<string, boolean> = {
   glossary: false,
   backlinks: false,
@@ -91,8 +91,6 @@ export const MDMARK_FEATURES: Record<string, boolean> = {
   table: false,
   toc: false,
   views: false,
-  syntax: false,
-  code: false,
   mermaid: false,
   "side-toc": false,
   "back-to-top": false,
@@ -204,12 +202,30 @@ export const resolveFileSources = (root: HTMLElement): void => {
   }
 };
 
+/** `root` の中の、別のオリジンの `http:`・`https:` を指すリンクを新規タブで開く（`#` で始まるリンク・同じオリジン・解決できないリンクは変えない） */
+export const markExternalLinks = (root: HTMLElement): void => {
+  for (const anchor of root.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+    const href = anchor.getAttribute("href") ?? "";
+    if (href.startsWith("#")) continue;
+    let url: URL;
+    try {
+      url = new URL(href, location.href);
+    } catch {
+      continue;
+    }
+    if ((url.protocol !== "http:" && url.protocol !== "https:") || url.origin === location.origin) continue;
+    anchor.setAttribute("target", "_blank");
+    anchor.setAttribute("rel", "noopener noreferrer");
+  }
+};
+
 /** 要素の中に、機能を止めた mdmark で Markdown を描く（`table` が真なら表の機能だけオンにする。描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
 const mountMarkdown = ({ root, markdown, table = false, base, diffSource }: { root: HTMLElement; markdown: string; table?: boolean; base?: string | undefined; diffSource?: BodyDiffSource | undefined }): void => {
   const map = mdmarkMapConfig();
   const features = table ? { ...MDMARK_FEATURES, table: true } : MDMARK_FEATURES;
   const diff = diffSource === undefined ? (base === undefined ? {} : { baseMarkdown: base }) : { docId: diffSource.docId, diffMode: "open" as const, diffControls: false, diffSource: diffSourceOf(diffSource) };
   mdmarkOf().mount(root, { markdown, config: { features, labels: { paramCopy: MDMARK_PARAM_COPY_LABEL }, ...(map === undefined ? {} : { map }) }, ...diff });
+  markExternalLinks(root);
   resolveFileSources(root);
   trimBreakNewlines(root);
 };
@@ -453,6 +469,9 @@ const focusCodeBlocks = (root: HTMLElement): void => {
   }
 };
 
+/** コードブロックの `code` を包む、置き換える単位の要素（mdmark のバーを持つ `.mdmark-code` の入れ物。無ければ `pre`） */
+const codeBlockOf = (code: Element): Element => code.closest(".mdmark-code") ?? code.closest("pre") ?? code;
+
 /** 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は `table`（省くと真）のとき mdmark の表の機能で描く */
 export const renderMarkdown = (source: string, options: { table?: boolean; base?: string; diffSource?: BodyDiffSource } = {}): HTMLElement => {
   const root = h({ tag: "div", attrs: { class: "md" } });
@@ -517,19 +536,19 @@ export const renderMarkdown = (source: string, options: { table?: boolean; base?
         h({ tag: "pre", attrs: { class: "dg-raw", hidden: true }, children: [original] }),
       ],
     });
-    (code.closest("pre") ?? code).replaceWith(figure);
+    codeBlockOf(code).replaceWith(figure);
   }
   // html のコードブロックを、原文と元の行の印を持つ HTML の本文の枠の入れ物に置き換える（枠を描くのは詳細の画面。埋め込んだ HTML の範囲の外だけ）
   for (const code of root.querySelectorAll("code.language-html")) {
     if (code.closest(`.${EMBEDDED_HTML_CLASS}`) !== null) continue;
-    const pre = code.closest("pre") ?? code;
+    const target = codeBlockOf(code);
     const block = h({
       tag: "div",
       attrs: { class: HTML_BLOCK_CLASS, [DIAGRAM_SOURCE_ATTR]: code.textContent ?? "" },
     });
-    const line = pre.getAttribute(LINE_ATTR);
+    const line = target.getAttribute(LINE_ATTR) ?? code.closest("pre")?.getAttribute(LINE_ATTR) ?? null;
     if (line !== null) block.setAttribute(LINE_ATTR, line);
-    pre.replaceWith(block);
+    target.replaceWith(block);
   }
   focusCodeBlocks(root);
   return root;

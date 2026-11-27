@@ -72,17 +72,9 @@
 .md pre.md-raw { white-space: pre-wrap; overflow-wrap: anywhere; }
 .md code { font-family: var(--font-stack-mono); font-size: .92em; }
 .md-error { color: var(--st-review); font-size: var(--fs-small); }
-.md :is(.md-fold, .code-copy):focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
-/* コードブロックの入れ物: 札とボタンの基準 */
-.md .md-code { position: relative; margin: 8px 0; }
-.md .md-code > pre { margin: 0; padding-right: 40px; }
-.md .md-code.has-lang > pre { padding-top: 30px; }
-.md .code-lang { position: absolute; top: 6px; left: 12px; font-family: var(--font-stack-mono); font-size: var(--fs-xs); line-height: 1.5; color: var(--subtle-foreground); }
-.md .code-copy { position: absolute; top: 2px; right: 2px; width: 28px; height: 28px; opacity: 0; }
-.md .md-code:hover > .code-copy, .md .code-copy:focus-visible { opacity: 1; }
-@media (hover: none) {
-  .md .code-copy { opacity: 1; }
-}
+.md .md-fold:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+/* 見出しごとの区切りの中のブロックの間: mdmark の本文と同じ間（見出しの上の間は mdmark のまま） */
+.mdmark .md-section-body > * + :where(:not(h1, h2, h3, h4, h5, h6)) { margin-block-start: var(--mdmark-space); }
 /* 囲み: 見た目は mdmark の囲み（種類の色の薄い面と細い枠）に任せる。見出しのアイコンは decorateMarkdown が足すので、mdmark の見出しの飾りは出さない */
 .md .markdown-alert-title::before { display: none; }
 .md .markdown-alert .markdown-alert-title { color: color-mix(in oklab, var(--mdmark-callout-color) 70%, var(--foreground)); }

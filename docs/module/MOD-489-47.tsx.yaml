@@ -32,3 +32,4 @@ components:
 notes:
   単体テスト: 同じフォルダの `display-settings-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   お気に入り: '`favoritesFirst` に `prefs.favoritesFirst !== false`、`favoritesOnly` に `prefs.favoritesOnly === true` を指定する。切り替えは既定の値（先頭に並べる・全てを表示する）を `null`、それ以外（`false`・`true`）を上書きとして `writePrefs` で書き込む。単体テスト `test_display_settings_panel_when_favorites`（チェックを切り替えると保存領域が `false` / `null`・`true` / `null` になる）を追加する'
+  幅 900px 以下の余白: 幅 900px 以下（`max-lg`）では、本文の領域の左右の余白を `max-lg:px-6`（24px）にする（#715）。上下の余白は今の `p-3` のまま

@@ -23,6 +23,11 @@ components:
         required: false
         default: 'null'
         description: 一覧の並びの位置と前後へ移る操作。`null` のときは部品『一覧の並びの前後』を描かず、キーも受けない
+      - name: commentCount
+        type: number
+        required: false
+        default: '0'
+        description: コメントの一覧のボタンに出す件数。1 以上のときアイコンの右上にバッジ（100 以上は `99+`）を重ね、ボタンの `aria-label` を「{ID} のコメントの一覧を開く（{件数} 件）」にする
     unit_tests:
       - name: test_detail_header_when_toc
         case: 正常
@@ -42,6 +47,12 @@ components:
         condition: '`parametrize`: `j` / `k` / 入力欄にフォーカスして `j` / `Ctrl+j` / `isComposing` の `j`'
         mock: なし
         expected: '`onNext` / `onPrev` / どちらも呼ばれない / 呼ばれない / 呼ばれない'
+      - name: test_detail_header_when_comment_count
+        case: 正常
+        summary: コメントの一覧のボタンに件数のバッジを描く
+        condition: '`parametrize`: `commentCount` が 3 / 0'
+        mock: なし
+        expected: ボタンに `3` のバッジがあり名前が「D-1 のコメントの一覧を開く（3 件）」 / バッジが無く名前が「D-1 のコメントの一覧を開く」
 notes:
   単体テスト: 同じフォルダの `detail-header.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   一覧の並びの前後: '`sibling` を受けたとき、戻る・進むの左に `SiblingNav` を描き、`useShortcut`（モジュール構成『use-shortcut』）で `item.prev` を `onPrev`（先頭では無効）、`item.next` を `onNext`（末尾では無効）に割り当てる。戻り値の `active` が真のときだけ `SiblingNav` の `keys` に `keys`・`label` を指定する。種類と ID の `span` は `shrink-0 whitespace-nowrap`、見出しのタイトルは `min-w-0 truncate`（#690）'

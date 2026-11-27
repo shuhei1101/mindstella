@@ -5,7 +5,7 @@ import { currentLeftWidth, detailPanelMax, leftPanelMax, readStoredWidth, usePan
 afterEach(() => {
   sessionStorage.clear();
   history.replaceState(null, "", "/");
-  usePanelWidthStore.setState({ leftWidth: null, detailWidth: null, leftOpen: false, detailOpen: false });
+  usePanelWidthStore.setState({ leftWidth: null, detailWidth: null });
 });
 
 describe("readStoredWidth", () => {
@@ -25,28 +25,28 @@ describe("readStoredWidth", () => {
 });
 
 describe("leftPanelMax", () => {
-  // 左のパネルの上限（正常系）
+  // 左のパネルの上限は表示の幅の 2/3（正常系）
   test.each([
-    { name: "詳細パネルを開いていない", viewport: 1440, detailWidth: 640, detailOpen: false, expected: 1040 },
-    { name: "詳細パネルを開いている", viewport: 1440, detailWidth: 640, detailOpen: true, expected: 400 },
-    { name: "詳細パネルは本文に重なる", viewport: 1000, detailWidth: 640, detailOpen: true, expected: 600 },
-    { name: "下限を下回る", viewport: 1100, detailWidth: 640, detailOpen: true, expected: 320 },
-  ])("left_panel_max: $name", ({ viewport, detailWidth, detailOpen, expected }) => {
+    { name: "表示の幅 1440", viewport: 1440, expected: 960 },
+    { name: "表示の幅 1000", viewport: 1000, expected: 666 },
+    { name: "表示の幅 901", viewport: 901, expected: 600 },
+    { name: "下限を下回る", viewport: 450, expected: 320 },
+  ])("left_panel_max: $name", ({ viewport, expected }) => {
     // 実行・検証
-    expect(leftPanelMax(viewport, detailWidth, detailOpen)).toBe(expected);
+    expect(leftPanelMax(viewport)).toBe(expected);
   });
 });
 
 describe("detailPanelMax", () => {
-  // 詳細パネルの上限（正常系）
+  // 詳細パネルの上限は表示の幅の 2/3（正常系）
   test.each([
-    { name: "左のパネルを開いていない", viewport: 1440, leftWidth: 384, leftOpen: false, expected: 1040 },
-    { name: "左のパネルを開いている", viewport: 1440, leftWidth: 384, leftOpen: true, expected: 656 },
-    { name: "本文に重なる幅", viewport: 1000, leftWidth: 384, leftOpen: true, expected: 840 },
-    { name: "下限を下回る", viewport: 1100, leftWidth: 384, leftOpen: true, expected: 480 },
-  ])("detail_panel_max: $name", ({ viewport, leftWidth, leftOpen, expected }) => {
+    { name: "表示の幅 1440", viewport: 1440, expected: 960 },
+    { name: "表示の幅 1100", viewport: 1100, expected: 733 },
+    { name: "表示の幅 1000", viewport: 1000, expected: 666 },
+    { name: "下限を下回る", viewport: 600, expected: 480 },
+  ])("detail_panel_max: $name", ({ viewport, expected }) => {
     // 実行・検証
-    expect(detailPanelMax(viewport, leftWidth, leftOpen)).toBe(expected);
+    expect(detailPanelMax(viewport)).toBe(expected);
   });
 });
 

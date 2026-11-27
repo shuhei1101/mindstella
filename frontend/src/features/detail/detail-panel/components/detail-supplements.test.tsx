@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
@@ -38,5 +38,19 @@ describe("DetailSupplements", () => {
     render(<DetailSupplements tab="main" onTabChange={vi.fn()} main={<p>本文の中身</p>} supplements={<p>関連の中身</p>} comments={null} />);
     // 検証
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["本文", "関連"]);
+  });
+
+  // コメントのタブに件数のバッジを描く（正常系）
+  test.each([
+    { commentCount: 3, badge: "3", name: "コメント 3 件" },
+    { commentCount: 0, badge: null, name: "コメント" },
+    { commentCount: 120, badge: "99+", name: "コメント 120 件" },
+  ])("detail_supplements_when_comment_count: $commentCount", ({ commentCount, badge, name }) => {
+    // 実行
+    render(<DetailSupplements tab="main" onTabChange={vi.fn()} main={<p>本文の中身</p>} supplements={<p>関連の中身</p>} comments={<p>コメントの中身</p>} commentCount={commentCount} />);
+    // 検証
+    const tab = screen.getByRole("tab", { name });
+    if (badge === null) expect(tab).toHaveTextContent(/^コメント$/);
+    else expect(within(tab).getByText(badge)).toBeInTheDocument();
   });
 });

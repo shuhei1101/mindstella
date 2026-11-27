@@ -17,9 +17,14 @@ export type DetailSupplementsProps = {
   supplements: ReactNode;
   /** レビュー中のコメント。null のときはタブを出さない */
   comments: ReactNode | null;
+  /** その項目に向けたスレッドの件数。0 のときはバッジを描かない */
+  commentCount?: number;
 };
 
-export const DetailSupplements = ({ tab, onTabChange, main, supplements, comments }: DetailSupplementsProps) => {
+/** 件数のバッジの文字の上限（超えたら `99+`） */
+const COUNT_CAP = 99;
+
+export const DetailSupplements = ({ tab, onTabChange, main, supplements, comments, commentCount = 0 }: DetailSupplementsProps) => {
   const prefix = useId();
   const buttons = useRef(new Map<DetailTab, HTMLButtonElement>());
   const first = { key: "main" as const, label: "本文", content: main };
@@ -52,6 +57,7 @@ export const DetailSupplements = ({ tab, onTabChange, main, supplements, comment
       <div role="tablist" aria-label="詳細の表示" className={cn(SEGMENTED_GROUP_CLASS, "self-start")}>
         {tabs.map((entry, index) => {
           const selected = entry.key === current.key;
+          const count = entry.key === "comments" ? commentCount : 0;
           return (
             <button
               key={entry.key}
@@ -64,6 +70,7 @@ export const DetailSupplements = ({ tab, onTabChange, main, supplements, comment
               role="tab"
               aria-selected={selected}
               aria-controls={panelId}
+              aria-label={count > 0 ? `${entry.label} ${String(count)} 件` : undefined}
               tabIndex={selected ? 0 : -1}
               className={cn(SEGMENTED_ITEM_CLASS, "h-6 min-w-20 px-3", selected && SEGMENTED_SELECTED_CLASS)}
               onClick={() => {
@@ -74,6 +81,11 @@ export const DetailSupplements = ({ tab, onTabChange, main, supplements, comment
               }}
             >
               {entry.label}
+              {count > 0 ? (
+                <span aria-hidden="true" className="ml-1 inline-grid h-4 min-w-4 place-items-center rounded-full bg-mark px-1 font-mono text-count leading-none text-on-mark">
+                  {count > COUNT_CAP ? `${String(COUNT_CAP)}+` : count}
+                </span>
+              ) : null}
             </button>
           );
         })}

@@ -75,7 +75,7 @@ def test_ai_post(open_story: OpenStory) -> None:
 
 
 def test_markdown_post(open_story: OpenStory) -> None:
-    """AI の書き込みの Markdown。見出しは `h2`、表は `table`、`python` のコードは言語の札とコピーのボタンを持つ `pre`、`mermaid` は図、`> [!NOTE]` は「補足」の囲みで描かれ、記法の文字は出ない。段落の中の D-1 は項目を開くボタン。生の HTML の `onerror` は取り除かれて動かない（正常系）。"""
+    """AI の書き込みの Markdown。見出しは `h2`、表は `table`、`python` のコードは mdmark のバー（言語の札とコピーのボタン）を持つ `pre`、`mermaid` は図、`> [!NOTE]` は「補足」の囲みで描かれ、記法の文字は出ない。段落の中の D-1 は項目を開くボタン。生の HTML の `onerror` は取り除かれて動かない（正常系）。"""
     # 準備・実行
     page = open_story("comments-threadpost--markdown-post")
     page.wait_for_selector(f"{POST} [data-part=body] figure.diagram .mermaid svg")
@@ -83,9 +83,9 @@ def test_markdown_post(open_story: OpenStory) -> None:
     # 検証（見出し・表・コードブロック・図・囲み）
     assert page.inner_text(f"{body} h2") == "比べた結果"
     assert page.locator(f"{body} table").count() == 1
-    assert page.locator(f"{body} .md-code .code-lang").all_inner_texts() == ["python"]
-    assert page.locator(f"{body} .md-code button.code-copy").count() == 1
-    assert page.locator(f"{body} .md-code pre").count() == 1
+    assert page.locator(f"{body} .mdmark-code .mdmark-code-lang").all_inner_texts() == ["python"]
+    assert page.locator(f"{body} .mdmark-code button.mdmark-code-copy").count() == 1
+    assert page.locator(f"{body} .mdmark-code pre").count() == 1
     assert page.locator(f"{body} figure.diagram .mermaid svg").count() == 1
     assert page.inner_text(f"{body} .markdown-alert .markdown-alert-title") == "補足"
     # 検証（記法の文字は出ない）

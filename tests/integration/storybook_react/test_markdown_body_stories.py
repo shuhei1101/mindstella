@@ -179,36 +179,30 @@ def test_fold_off(open_story: OpenStory) -> None:
 
 
 def test_code_block(open_story: OpenStory) -> None:
-    """言語を書いたコードブロックは左上に言語の札を出し、ホバーで右上にコピーのボタンを出す。言語を書かないコードブロックには札を出さない。長い行は折り返さず、コードブロックの中だけで横に送れる。言語の札とコピーのボタンは横に送っても同じ位置に残る（正常系）。"""
+    """言語を書いたコードブロックは mdmark のコードブロックのバー（言語の札・コピー）と行の部品と色分けで描き、画面の言語の札とコピーのボタンを重ねない。長い行は折り返さず、コードブロックの中だけで横にスクロールできる。言語の札とコピーのボタンは横にスクロールしても同じ位置に残る（正常系）。"""
     # 準備・実行
     page = _open(open_story, "code-block")
-    blocks = page.locator(".md .md-code")
-    button = blocks.nth(0).locator("button.code-copy")
-    hidden = button.evaluate("e => getComputedStyle(e).opacity")
-    blocks.nth(0).hover()
-    shown = button.evaluate("e => getComputedStyle(e).opacity")
-    # 検証（札は言語を書いたものだけ。札とボタンは `pre` の外）
+    blocks = page.locator(".md .mdmark-code")
+    # 検証（札は言語を書いたものだけ。コピーのボタンはコードブロック 1 つに 1 つ。画面の札とボタンは無い）
     assert blocks.count() == 2
-    assert blocks.nth(0).locator(".code-lang").inner_text() == "bash"
-    assert blocks.nth(1).locator(".code-lang").count() == 0
-    assert page.locator(".md .md-code > pre .code-copy, .md .md-code > pre .code-lang").count() == 0
-    assert button.get_attribute("aria-label") == "コードをコピー"
-    # 検証（ホバーで出る）
-    assert (hidden, shown) == ("0", "1")
-    # 検証（長い行は折り返さず、フォーカスできるコードブロックの中で横に送る。札とボタンは送っても動かない）
-    pre = page.locator(".md .md-code > pre").nth(0)
+    assert blocks.nth(0).locator(".mdmark-code-lang").inner_text() == "bash"
+    assert blocks.nth(1).locator(".mdmark-code-lang").count() == 0
+    assert [blocks.nth(i).locator("button.mdmark-code-copy").count() for i in range(2)] == [1, 1]
+    assert page.locator(".md .md-code, .md .code-lang, .md button.code-copy").count() == 0
+    # 検証（長い行は折り返さず、コードブロックの中で横にスクロールする。札とボタンはスクロールしても動かない）
+    pre = blocks.nth(0).locator("pre")
     before = blocks.nth(0).evaluate(LABEL_AND_BUTTON_POSITIONS_JS)
     pre.evaluate("e => { e.scrollLeft = e.scrollWidth; }")
     after = blocks.nth(0).evaluate(LABEL_AND_BUTTON_POSITIONS_JS)
     assert pre.evaluate("e => e.scrollWidth > e.clientWidth && e.scrollLeft > 0")
-    assert (pre.get_attribute("tabindex"), pre.get_attribute("aria-label")) == ("0", "コード: bash")
+    assert pre.get_attribute("tabindex") == "0"
     assert before == after
 
 
 # 言語の札とコピーのボタンの位置（コードブロックの枠からの距離）を読む
 LABEL_AND_BUTTON_POSITIONS_JS = """(block) => {
     const box = block.getBoundingClientRect();
-    return [".code-lang", "button.code-copy"].map((selector) => {
+    return [".mdmark-code-lang", "button.mdmark-code-copy"].map((selector) => {
         const rect = block.querySelector(selector).getBoundingClientRect();
         return [rect.left - box.left, rect.top - box.top];
     });
@@ -216,15 +210,73 @@ LABEL_AND_BUTTON_POSITIONS_JS = """(block) => {
 
 
 def test_code_copied(open_story: OpenStory) -> None:
-    """コピーのボタンを押した直後。ボタンがチェックのマーカーに変わり、クリップボードには札とボタンを含まないコードだけが入る（正常系）。"""
+    """mdmark のコピーのボタンを押した直後。ボタンの見た目は mdmark のままで、コピーしたことを伝える領域がある（正常系）。"""
     # 準備・実行
     page = _open(open_story, "code-copied")
-    first = page.locator(".md .md-code button.code-copy").nth(0)
-    second = page.locator(".md .md-code button.code-copy").nth(1)
-    # 検証（押した方だけアイコンが替わり、コピーしたことを伝える領域がある）
-    assert first.locator("svg").count() == 1
-    assert first.inner_html() != second.inner_html()
-    assert page.locator(".md .md-code").first.locator("[role=status]").count() == 1
+    first = page.locator(".md .mdmark-code").nth(0)
+    # 検証（mdmark のボタンと状態の領域がある。画面のボタンは無い）
+    assert first.locator("button.mdmark-code-copy").count() == 1
+    assert first.locator("[role=status]").count() == 1
+    assert page.locator(".md button.code-copy").count() == 0
+
+
+def test_code_markdown_raw(open_story: OpenStory) -> None:
+    """言語 markdown のコードブロック。描いた結果で出し、バーの「Raw」を押すと元の Markdown のコードに切り替わる（正常系）。"""
+    # 準備・実行（ストーリーの play で「Raw」を押す）
+    page = _open(open_story, "code-markdown-raw")
+    raw = page.locator(".md .mdmark-code button.mdmark-code-raw")
+    raw.wait_for(timeout=STORY_TIMEOUT_MS)
+    page.wait_for_timeout(SETTLE_MS)
+    # 検証
+    assert raw.get_attribute("aria-pressed") == "true"
+    assert "## 見出し" in page.locator(".md .mdmark-code pre").first.inner_text()
+
+
+def test_code_indent_guides(open_story: OpenStory) -> None:
+    """言語 python の 2 階層の字下げを持つコードブロック。字下げの縦線と行の開閉のボタンがあり、キーワードが色分けされる（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "code-indent-guides")
+    block = page.locator(".md .mdmark-code").first
+    block.locator(".mdmark-code-line").first.wait_for(timeout=STORY_TIMEOUT_MS)
+    # 検証（字下げの行と縦線の背景・開閉のボタン・色分け）
+    assert block.locator('.mdmark-code-line[data-indent="2"]').count() >= 1
+    assert block.locator('.mdmark-code-line[data-indent="1"]').first.evaluate("e => getComputedStyle(e).backgroundImage") != "none"
+    assert block.locator("button.mdmark-code-fold").count() >= 1
+    assert block.locator(".hljs-keyword").count() >= 1
+
+
+# 見出しごとに包む要素の直下の子の要素名と上の間（px）を読む
+SECTION_GAPS_JS = """() => {
+    const body = document.querySelector('.md .md-section-body');
+    const space = parseFloat(getComputedStyle(document.querySelector('.mdmark')).getPropertyValue('--mdmark-space')) * parseFloat(getComputedStyle(document.documentElement).fontSize);
+    return { space, children: [...body.children].map((e) => [e.tagName, parseFloat(getComputedStyle(e).marginBlockStart)]) };
+}"""
+
+
+def test_section_spacing(open_story: OpenStory) -> None:
+    """見出しの下に段落・表・map の図・リストと小見出しを並べた本文。見出しごとに包む要素の直下のブロック同士に mdmark の本文と同じ間が空き、小見出しの上の間は mdmark の見出しの間のまま（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "section-spacing")
+    page.wait_for_selector(".md .md-section-body h3", timeout=STORY_TIMEOUT_MS)
+    gaps = page.evaluate(SECTION_GAPS_JS)
+    # 検証（先頭の後のブロックは mdmark の間。h3 は mdmark の h3 の 1.75 倍）
+    blocks = [(tag, gap) for tag, gap in gaps["children"][1:] if tag != "H3"]
+    heading = [gap for tag, gap in gaps["children"] if tag == "H3"]
+    assert len(blocks) >= 4
+    assert all(abs(gap - gaps["space"]) <= TOLERANCE_PX for _, gap in blocks)
+    assert len(heading) == 1
+    assert abs(heading[0] - gaps["space"] * 1.75) <= TOLERANCE_PX
+
+
+def test_external_link(open_story: OpenStory) -> None:
+    """本文に外部の URL へのリンクと、同じオリジン・# で始まるリンクを持つ。外部の URL へのリンクだけが target="_blank" と rel="noopener noreferrer" を持つ（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "external-link")
+    links = page.evaluate("() => Object.fromEntries([...document.querySelectorAll('.md a[href]')].map((a) => [a.getAttribute('href'), [a.getAttribute('target'), a.getAttribute('rel')]]))")
+    # 検証
+    assert links["https://example.com/"] == ["_blank", "noopener noreferrer"]
+    assert links["/w/sample/"] == [None, None]
+    assert links["#id=D-1"] == [None, None]
 
 
 def test_callouts(open_story: OpenStory) -> None:
@@ -265,12 +317,13 @@ def test_narrow(open_story: OpenStory) -> None:
 
 
 def test_in_thread_post(open_story: OpenStory) -> None:
-    """スレッドの書き込みの本文。コードブロックの言語の札とコピーのボタン、Alert の見出しのアイコンを当て、表は mdmark の表の機能をオフにした共通のスタイルのまま描き、セクションの開閉は当てない（正常系）。"""
+    """スレッドの書き込みの本文。コードブロックは mdmark のバー・行の部品・色分けのまま描き、Alert の見出しのアイコンを当て、表は mdmark の表の機能をオフにした共通のスタイルのまま描き、セクションの開閉は当てない（正常系）。"""
     # 準備・実行
     page = _open(open_story, "in-thread-post")
-    # 検証（コードブロックの言語の札とコピーのボタンは当てる）
-    assert page.locator(".md .md-code .code-lang").count() == 1
-    assert page.locator(".md .md-code button.code-copy").count() == 2
+    # 検証（コードブロックは mdmark のバーのまま。画面の札とボタンは無い）
+    assert page.locator(".md .mdmark-code .mdmark-code-lang").count() == 1
+    assert page.locator(".md .mdmark-code button.mdmark-code-copy").count() == 2
+    assert page.locator(".md .md-code, .md button.code-copy").count() == 0
     # 検証（Alert の見出しのアイコンは当てる）
     assert page.locator(".md .markdown-alert .markdown-alert-title svg.icon").count() == 5
     # 検証（表は mdmark の表の部品にせず、ピン止め・並べ替えを持たない。画面の CSS の見せ方も無い）
@@ -349,7 +402,7 @@ def test_diff_rendered(open_story: OpenStory) -> None:
 
 
 def test_diff_source(open_story: OpenStory) -> None:
-    """差分の表示で「原文の差分」。mdmark の行の差分を開いた状態で、リビジョンの欄に「選んだ時点」「今」が入り、書き換えた行の変わった単語を濃い色にする（正常系）。"""
+    """差分の表示で「原文の差分」。mdmark の「変更表示」のボタンとリビジョンの欄を配置せず（`diffControls: false`）、選んだ時点と今の行の差分を出し、書き換えた行の変わった単語を濃い色にする（正常系）。"""
     # 準備・実行
     page = _open(open_story, "diff-source")
     page.wait_for_selector(".mdmark-diff-line", timeout=STORY_TIMEOUT_MS)
@@ -357,11 +410,8 @@ def test_diff_source(open_story: OpenStory) -> None:
     assert page.locator('.mdmark-diff-line[data-kind="del"]').count() >= 1
     assert page.locator('.mdmark-diff-line[data-kind="add"]').count() >= 1
     assert page.locator(".mdmark-diff-word").count() >= 1
-    # 検証（前と後のリビジョンの欄）
-    pickers = page.locator(".mdmark-diff-picker").all_inner_texts()
-    joined = " ".join(pickers)
-    assert "選んだ時点" in joined
-    assert "今" in joined
+    # 検証（前と後のリビジョンの欄を配置しない）
+    assert page.locator(".mdmark-diff-picker").count() == 0
 
 
 def test_diff_unchanged(open_story: OpenStory) -> None:
@@ -384,6 +434,10 @@ STATES = (
     "fold-off",
     "code-block",
     "code-copied",
+    "code-markdown-raw",
+    "code-indent-guides",
+    "section-spacing",
+    "external-link",
     "callouts",
     "narrow",
     "in-thread-post",

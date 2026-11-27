@@ -92,4 +92,17 @@ describe("DetailHeader", () => {
     expect(onNext).toHaveBeenCalledTimes(expected === "next" ? 1 : 0);
     expect(onPrev).toHaveBeenCalledTimes(expected === "prev" ? 1 : 0);
   });
+
+  // コメントの一覧のボタンに件数のバッジを描く（正常系）
+  test.each([
+    { commentCount: 3, badge: "3", name: "D-2 のコメントの一覧を開く（3 件）" },
+    { commentCount: 0, badge: null, name: "D-2 のコメントの一覧を開く" },
+  ])("detail_header_when_comment_count: $commentCount", async ({ commentCount, badge, name }) => {
+    // 実行
+    await renderInPreviewRouter("/?tab=decisions&id=D-2", <DetailHeader {...props({ comments: true, commentCount })} />);
+    // 検証
+    const button = await screen.findByRole("button", { name });
+    if (badge === null) expect(within(button).queryByText(/\d/)).toBeNull();
+    else expect(within(button).getByText(badge)).toBeInTheDocument();
+  });
 });

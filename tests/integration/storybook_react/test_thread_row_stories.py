@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from playwright.sync_api import expect
 
 from .color_helpers import MIN_CONTRAST, contrast, resolve_color
@@ -278,13 +280,20 @@ def test_title_id_markers(open_story: OpenStory, page_errors: list[str]) -> None
 
 
 def test_title_id_marker_hover(open_story: OpenStory) -> None:
-    """要約の D-1 のマーカーに乗せると、D-1 のツールチップを出す（正常系）。"""
+    """要約の D-1 のマーカーに乗せても、行を開くボタンにフォーカスしても、ツールチップを出さない。ボタンの読み上げの説明は残る（正常系）。"""
     # 準備
     page = open_story("comments-threadrow--title-id-markers")
+    root = page.locator("#storybook-root")
     # 実行
-    page.locator("#storybook-root [data-record-id='D-1']").first.hover()
+    root.locator("[data-record-id='D-1']").first.hover()
+    page.wait_for_timeout(300)
+    hovered = page.locator(".term-tip").count()
+    root.locator("button[aria-describedby]").first.focus()
+    page.wait_for_timeout(300)
     # 検証
-    expect(page.locator(".term-tip")).to_contain_text("保存先の決め方")
+    assert hovered == 0
+    expect(page.locator(".term-tip")).to_have_count(0)
+    expect(root.locator("button[aria-describedby]").first).to_have_accessible_description(re.compile("保存先の決め方"))
 
 
 # 最も狭めたパネルの幅（px）

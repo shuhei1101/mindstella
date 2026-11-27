@@ -22,7 +22,7 @@ const stubViewport = (width: number): void => {
 afterEach(() => {
   vi.unstubAllGlobals();
   sessionStorage.clear();
-  usePanelWidthStore.setState({ leftWidth: null, detailWidth: null, leftOpen: false, detailOpen: false });
+  usePanelWidthStore.setState({ leftWidth: null, detailWidth: null });
 });
 
 const renderPanel = (resizerLabel?: string) =>
@@ -59,18 +59,18 @@ describe("LeftPanel", () => {
     expect(screen.getByRole("separator", { name: "コメントの一覧の幅" })).toHaveAttribute("aria-valuenow", "520");
   });
 
-  // 詳細パネルを開いていれば上限から詳細パネルの幅を引く（正常系）
-  test("left_panel_when_detail_open", () => {
+  // 上限は表示の幅の 2/3 で、詳細パネルの幅によらない（正常系）
+  test("left_panel_when_over_max", () => {
     // 準備
     stubViewport(1440);
-    sessionStorage.setItem("mindmap-left-panel-width", "900");
-    usePanelWidthStore.setState({ leftWidth: 900, detailWidth: 640, detailOpen: true });
+    sessionStorage.setItem("mindmap-left-panel-width", "1200");
+    usePanelWidthStore.setState({ leftWidth: 1200, detailWidth: 960 });
     // 実行
     renderPanel("コメントの一覧の幅");
     // 検証
-    expect(screen.getByRole("complementary", { name: "コメント" }).style.width).toBe("400px");
-    expect(screen.getByRole("separator", { name: "コメントの一覧の幅" })).toHaveAttribute("aria-valuemax", "400");
-    expect(sessionStorage.getItem("mindmap-left-panel-width")).toBe("900");
+    expect(screen.getByRole("complementary", { name: "コメント" }).style.width).toBe("960px");
+    expect(screen.getByRole("separator", { name: "コメントの一覧の幅" })).toHaveAttribute("aria-valuemax", "960");
+    expect(sessionStorage.getItem("mindmap-left-panel-width")).toBe("1200");
   });
 
   // 900px 以下は区切りを描かない（正常系）
@@ -96,17 +96,14 @@ describe("LeftPanel", () => {
     expect(screen.queryByRole("separator")).not.toBeInTheDocument();
   });
 
-  // 描いている間だけ開いている（正常系）
-  test("left_panel_open_state", () => {
+  // 詳細パネルより上の重なり順で描く（正常系）
+  test("left_panel_above_detail", () => {
     // 準備
     stubViewport(1440);
-    const { unmount } = renderPanel("コメントの一覧の幅");
-    const openWhileRendered = usePanelWidthStore.getState().leftOpen;
     // 実行
-    unmount();
+    renderPanel("コメントの一覧の幅");
     // 検証
-    expect(openWhileRendered).toBe(true);
-    expect(usePanelWidthStore.getState().leftOpen).toBe(false);
+    expect(screen.getByRole("complementary", { name: "コメント" })).toHaveClass("lg:z-35");
   });
 
   // section のダイアログとして描き、共有した幅で開く（正常系）

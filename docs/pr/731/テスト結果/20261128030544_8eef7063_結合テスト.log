@@ -1,0 +1,22 @@
+$ python3 -m pytest tests/integration/preview tests/integration/storybook_react/test_markdown_body_stories.py tests/integration/storybook_react/test_thread_post_stories.py tests/integration/storybook_react/test_record_text_stories.py tests/integration/storybook_react/test_thread_row_stories.py tests/integration/storybook_react/test_panel_resizer_stories.py tests/integration/storybook_react/test_settings_panel_stories.py -n 4
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-panel-width-and-small-fixes
+configfile: pytest.ini
+plugins: xdist-3.8.0, base-url-2.1.0, anyio-4.14.1, asyncio-1.4.0, playwright-0.9.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+created: 4/4 workers
+4 workers [716 items]
+
+........................................................................ [ 10%]
+........................................................................ [ 20%]
+........................................................................ [ 30%]
+........................................................................ [ 40%]
+........................................................................ [ 50%]
+........................................................................ [ 60%]
+........................................................................ [ 70%]
+........................................................................ [ 80%]
+........................................................................ [ 90%]
+....................................................................     [100%]
+======================= 716 passed in 312.44s (0:05:12) ========================
+EXIT=0

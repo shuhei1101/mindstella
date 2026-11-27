@@ -118,4 +118,24 @@ describe("RecordText", () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onOpen).toHaveBeenCalledWith("D-1");
   });
+
+  // tooltip が偽のマーカーはツールチップを出さない（正常系）
+  test("record_text_marker_without_tooltip", () => {
+    // 準備
+    const { container } = render(
+      <button type="button">
+        <RecordText text="D-1 の決め方" mode="marker" lookup={lookup} descriptionId="ids" tooltip={false} />
+      </button>,
+    );
+    const marker = container.querySelector<HTMLElement>('[data-record-id="D-1"]');
+    // 実行
+    act(() => {
+      if (marker !== null) fireEvent.mouseEnter(marker);
+      fireEvent.focus(screen.getByRole("button"));
+    });
+    // 検証
+    expect(document.querySelector('[role="tooltip"]')).toBeNull();
+    expect(marker?.tagName).toBe("SPAN");
+    expect(container.querySelector("#ids")).toHaveTextContent("保存先の決め方");
+  });
 });

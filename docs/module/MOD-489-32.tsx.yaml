@@ -6,7 +6,7 @@ components:
     title: 詳細パネル
     kind: 画面
     usecase: 項目の詳細を読む
-    summary: 画面設計『詳細パネル.tsx』の要素と操作を描く。`DetailContent`（詳細の全画面も使う）は、部品『差分のミニマップ』の中（本文のスクロール領域）に `DetailSupplements` を描き、状態・タイトルから本文までを `main`、リンクと関係する項目を `supplements`、`DetailReviewComments` を `comments`（配る書き出しでは null）に渡す。選んでいるタブは `useState` で持ち、項目の `id` が変わったら `main` に戻す。関係する項目の `see_also` の見出しは「関連する項目」（会話ログは「更新した項目」）にする。本文が Markdown のときは `bodyToc` の結果を `DetailHeader` の `toc` に渡し、見出しを選んだら `main` を選んでから本文の見出しへの移動（既存の `h` の置き換えと畳んだセクションの開き）を呼ぶ。`DetailComments` を差分のミニマップの後（パネルの下端）に描き、`DetailComments` の `scroller` に本文のスクロール領域の要素を返す関数を渡す。差分の表示をしていないときはタグの行の部品『タグの並び』に `onSelect` を渡し、押したタグを後ろの画面の `useScreenFilters` の `addTag`（後ろの画面が概要のときは項目の種類を添える）へ渡す。幅は『panel-width-store』の `currentDetailWidth(state)` を `clampWidth(幅, DETAIL_PANEL_WIDTH.min, detailPanelMax(表示の幅, currentLeftWidth(state), leftOpen))` で収めた値（表示の幅は『use-viewport-width』の `useViewportWidth()`。窓の幅が変わると上限と幅も追従する）にし、左端に部品『幅の区切り』（`side=left`）を描いて `onChange` で `setDetailWidth`、`onCommit` で `commitDetailWidth` を呼ぶ。描いたときに `setOpen('detail', true)`、除外したときに `setOpen('detail', false)` を呼ぶ
+    summary: 画面設計『詳細パネル.tsx』の要素と操作を描く。`DetailContent`（詳細の全画面も使う）は、部品『差分のミニマップ』の中（本文のスクロール領域）に `DetailSupplements` を描き、状態・タイトルから本文までを `main`、リンクと関係する項目を `supplements`、`DetailReviewComments` を `comments`（配る書き出しでは null）に渡す。選んでいるタブは `useState` で持ち、項目の `id` が変わったら `main` に戻す。関係する項目の `see_also` の見出しは「関連する項目」（会話ログは「更新した項目」）にする。本文が Markdown のときは `bodyToc` の結果を `DetailHeader` の `toc` に渡し、見出しを選んだら `main` を選んでから本文の見出しへの移動（既存の `h` の置き換えと畳んだセクションの開き）を呼ぶ。`DetailComments` を差分のミニマップの後（パネルの下端）に描き、`DetailComments` の `scroller` に本文のスクロール領域の要素を返す関数を渡す。差分の表示をしていないときはタグの行の部品『タグの並び』に `onSelect` を渡し、押したタグを後ろの画面の `useScreenFilters` の `addTag`（後ろの画面が概要のときは項目の種類を添える）へ渡す。幅は『panel-width-store』の `currentDetailWidth(state)` を `clampWidth(幅, DETAIL_PANEL_WIDTH.min, detailPanelMax(表示の幅))` で収めた値（表示の幅は『use-viewport-width』の `useViewportWidth()`。窓の幅が変わると上限と幅も追従する）にし、左端に部品『幅の区切り』（`side=left`）を描いて `onChange` で `setDetailWidth`、`onCommit` で `commitDetailWidth` を呼ぶ
     refs:
       - SCR-489-32#
     unit_tests:
@@ -64,18 +64,18 @@ components:
         condition: 見出しを持つ資料で「関連」を選んだ後、「本文の目次」から「保存先」を押す
         mock: MSW
         expected: 「本文」が選ばれ、search の `h` が「保存先」の `slug` で、履歴の数が変わらない
-      - name: test_detail_panel_when_left_open
+      - name: test_detail_panel_when_over_max
         case: 正常
-        summary: 左のパネルを開いていれば上限から左のパネルの幅を引く
-        condition: 表示の幅 1440。ストアの `leftOpen` が真・`leftWidth` が 384 で `id=D-1` を開き、幅の区切りで End を押す
+        summary: 上限は表示の幅の 2/3 で、左のパネルの幅によらない
+        condition: 表示の幅 1440。ストアの `leftWidth` が 960 で `id=D-1` を開き、幅の区切りで End を押す
         mock: MSW・`window.innerWidth`
-        expected: 幅の区切りの `aria-valuemax` と詳細パネルの幅が 656
+        expected: 幅の区切りの `aria-valuemax` と詳細パネルの幅が 960
       - name: test_detail_panel_when_viewport_resized
         case: 正常
         summary: 窓の幅を狭めると上限と幅が追従する
-        condition: 表示の幅 1440。ストアの `leftOpen` が真・`leftWidth` が 384・`detailWidth` が 640 で `id=D-1` を開き、`window.innerWidth` を 1100 にして `resize` を送信する
+        condition: 表示の幅 1440。ストアの `detailWidth` が 900 で `id=D-1` を開き、`window.innerWidth` を 1100 にして `resize` を送信する
         mock: MSW・`window.innerWidth`
-        expected: 幅の区切りの `aria-valuemax` と詳細パネルの幅が 480（上限 1100 − 400 − 384 = 316 が下限を下回るため下限）
+        expected: 幅の区切りの `aria-valuemax` と詳細パネルの幅が 733（1100 × 2/3 の切り捨て）
       - name: test_detail_panel_when_choose_option
         case: 正常
         summary: 案を選ぶと案の選択を溜め、選び直すと書き換え、取り消すと削除する
@@ -93,3 +93,5 @@ notes:
   単体テスト: 同じフォルダの `detail-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
   グレーアウトの上: 'props に `raised?: boolean`（既定は偽）を加える。真のときは `aside` に `data-raised` と `lg:z-30` を付け、コメントの一覧のグレーアウト（`fixed`・`z-20`）の上に出す。`aside` は `relative` のままで、重なりの順だけを上げる。単体テスト `test_detail_panel_when_raised`（`raised` を真で描くと `aside` が `data-raised` を持つ。偽では持たない）を追加する'
   案の選択: '状態が `未決定`・`要見直し` の検討事項の案の一覧（`OptionList`）に `choice`・`onChoose`・`onCancelChoice` を指定する。`choice` は、レビュー中の書き込みのうちその検討事項への案の選択（『コメント』の `choiceOf`）があれば `{key, note: body, sent: false}`、無ければ記録の `user_choice` の `{key, note, sent: true}`、どちらも無ければ `null`。`onChoose` は、レビュー中の案の選択があれば `useUpdateComment` で `choice` と `body`（一言が無ければ `null`）を、無ければ `useAddComment` で `target`・`choice`・`body`（一言があれば）を送信する。`onCancelChoice` は `useRemoveComment` でレビュー中の案の選択を削除する。差分の表示の間・配る書き出し・そのほかの状態では `onChoose` を指定しない。送信が届かない・エラーのときは選ぶ前の表示のまま、コメントの入力の送信の失敗と同じ出し方で理由を出す'
+  パネルの幅の上限: "`DetailPanel` の幅の上限は『panel-width-store』の `detailPanelMax(表示の幅)` にし、左のパネルの幅と開いているかを参照しない。`setOpen('detail', …)` の呼び出しを削除する（#725）"
+  コメントの件数: '`DetailContent` が『comments』の `itemThreadCount` で開いている項目の件数を求め、`DetailHeader` と `DetailSupplements` の `commentCount` に指定する。スレッドは `threadsQuery()` の結果、まだ送信していない新規スレッドは `commentsQuery()` の `items` を使用する。配る書き出しでは求めず 0 にする（#724）'

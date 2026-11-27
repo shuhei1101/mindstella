@@ -21,7 +21,7 @@ from preview_fixture_types import WriteReviewPreview
 from workspace_fixtures import MakePost, MakeThread
 
 import pytest
-from preview_record_id_helpers import assert_described, assert_tip
+from preview_record_id_helpers import assert_described
 
 # パネルを画面いっぱいに出す幅（これ以下）と、画面の高さ
 NARROW_SIZE = {"width": 800, "height": 700}
@@ -418,16 +418,21 @@ _TEXT_LINES_JS = "(e) => { const walker = document.createTreeWalker(e, NodeFilte
 
 
 def test_thread_row_id_markers(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """スレッドの行の要約の中の記録にある D-1 をマーカーにし、乗せるとツールチップを出し、行を開くボタンの aria-describedby で読み上げる（正常系）。"""
+    """スレッドの行の要約の中の記録にある D-1 をマーカーにし、乗せても行のボタンにフォーカスしてもツールチップを出さず、行を開くボタンの aria-describedby で読み上げる（正常系）。"""
     # 準備
     _open(page, spa_comments_preview)
     row = _rows(page).filter(has_text="D-1 の案の相談").locator("> button")
     marker = row.locator("[data-record-id='D-1']").first
     # 実行
     marker.hover()
+    page.wait_for_timeout(300)
+    hovered = page.locator(".term-tip").count()
+    row.focus()
+    page.wait_for_timeout(300)
     # 検証
     expect(row.locator("a")).to_have_count(0)
-    assert_tip(page, "最初の問い")
+    assert hovered == 0
+    expect(page.locator(".term-tip")).to_have_count(0)
     assert_described(page, row, "最初の問い")
 
 # ─── 幅の区切り ───
@@ -471,9 +476,9 @@ def test_resizer_initial_value(page: Page, spa_comments_preview: tuple[str, Path
     # 実行（上限を超える幅で開き直す）
     page.evaluate(f"sessionStorage.setItem({_LEFT_WIDTH_KEY_JS}, '1200')")
     page.reload()
-    # 検証（上限は表示の幅 − 400）
-    expect(_resizer(page)).to_have_attribute("aria-valuemax", "1040")
-    expect(_resizer(page)).to_have_attribute("aria-valuenow", "1040")
+    # 検証（上限は表示の幅 × 2/3）
+    expect(_resizer(page)).to_have_attribute("aria-valuemax", "960")
+    expect(_resizer(page)).to_have_attribute("aria-valuenow", "960")
     assert page.evaluate(f"sessionStorage.getItem({_LEFT_WIDTH_KEY_JS})") == "1200"
 
 
@@ -494,8 +499,8 @@ def test_resizer_action(page: Page, spa_comments_preview: tuple[str, Path]) -> N
     page.keyboard.press("Home")
     expect(resizer).to_have_attribute("aria-valuenow", "320")
     page.keyboard.press("End")
-    expect(resizer).to_have_attribute("aria-valuenow", "1040")
-    assert page.evaluate(f"sessionStorage.getItem({_LEFT_WIDTH_KEY_JS})") == "1040"
+    expect(resizer).to_have_attribute("aria-valuenow", "960")
+    assert page.evaluate(f"sessionStorage.getItem({_LEFT_WIDTH_KEY_JS})") == "960"
     # 実行・検証（ドラッグ）
     page.keyboard.press("Home")
     box = resizer.bounding_box()
@@ -511,16 +516,23 @@ def test_resizer_action(page: Page, spa_comments_preview: tuple[str, Path]) -> N
 
 
 def test_resizer_max_when_detail_open(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
-    """幅 1100px 以上で詳細パネルを開いているときは、上限からさらに詳細パネルの幅を引く（正常系）。"""
+    """詳細パネルを開いていても、上限は表示の幅 × 2/3 のまま。重なったときはコメントの一覧を詳細パネルより前に出す（正常系）。"""
     # 準備・実行
     page.set_viewport_size(WIDE_SIZE)
     _open(page, spa_comments_preview, "&id=D-1")
     resizer = _resizer(page)
     resizer.focus()
     page.keyboard.press("End")
-    # 検証（1440 − 400 − 640）
-    expect(resizer).to_have_attribute("aria-valuemax", "400")
-    expect(resizer).to_have_attribute("aria-valuenow", "400")
+    # 検証（1440 × 2/3）
+    expect(resizer).to_have_attribute("aria-valuemax", "960")
+    expect(resizer).to_have_attribute("aria-valuenow", "960")
+    # 検証（重なった所では、コメントの一覧が前にある）
+    detail = page.get_by_role("complementary", name="詳細").bounding_box()
+    panel = _panel(page).bounding_box()
+    assert detail is not None and panel is not None
+    x = (max(detail["x"], panel["x"]) + min(detail["x"] + detail["width"], panel["x"] + panel["width"])) / 2
+    y = panel["y"] + panel["height"] / 2
+    assert page.evaluate("([x, y]) => document.elementFromPoint(x, y)?.closest('aside, section')?.getAttribute('aria-label')", [x, y]) == _panel(page).get_attribute("aria-label")
 
 
 def test_left_width_shared(page: Page, spa_comments_preview: tuple[str, Path]) -> None:

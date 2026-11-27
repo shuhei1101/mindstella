@@ -734,6 +734,57 @@ flows:
       - 幅 390px でも「この案を選ぶ」の押す領域が縦横 24px 以上
       - ブラウザのコンソールにエラーが出ていない
     test: test_normal_when_option_chosen
+  - name: 正常系（外部のリンク）
+    summary: 本文とスレッドの書き込みの別のオリジンを指すリンクを新規タブで開き、項目の ID のリンクは今のタブで開く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く。外のページはテストが別のポートで配る）
+      - name: make_workspace
+        description: 本文に外のページへの Markdown のリンクと「D-1」を持つ資料 A-1・検討事項 D-1 と、AI の書き込みに外のページの URL を持つオープンのスレッド TH-1 を持つワークスペース
+        notes: '`/w/{workspace}/?tab=docs&id=A-1` で開く'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+
+        ユーザー->>IF: /w/{workspace}/?tab=docs&id=A-1 を開き、本文の外のページへのリンクを押す
+        IF-->>ユーザー: 外のページを開いた新規のタブ
+        ユーザー->>IF: 本文の「D-1」を押す
+        IF-->>ユーザー: 同じタブの D-1 の詳細パネル
+        ユーザー->>IF: コメントの一覧で TH-1 を開き、書き込みの外のページの URL を押す
+        IF-->>ユーザー: 外のページを開いた新規のタブ
+      ```
+    expected:
+      - 本文と書き込みの外のページへの `a` が `target="_blank"` と `rel="noopener noreferrer"` を持ち、押すたびにタブが 1 つ増える
+      - 本文の「D-1」のリンクは `target` を持たず、押すと同じタブで URL の `id` が `D-1` になる
+      - 元のタブの URL は、外のページへのリンクを押す前と同じ
+    test: test_normal_when_external_links
+  - name: 正常系（本文のコードブロック）
+    summary: 本文のコードブロックを mdmark のバー・行の部品・色分けで描く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 本文に言語 `markdown` のコードブロック（見出しと入れ子のリスト）と言語 `python` のコードブロック（2 階層の字下げ）を持つ資料 A-1 を持つワークスペース
+        notes: '`/w/{workspace}/?tab=docs&id=A-1` で開く'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+
+        ユーザー->>IF: /w/{workspace}/?tab=docs&id=A-1 を開く
+        IF-->>ユーザー: コードブロックを mdmark のバー・行の部品・色分けで描いた本文
+        ユーザー->>IF: markdown のコードブロックの「Raw」を押す
+        IF-->>ユーザー: 元の Markdown のコード
+      ```
+    expected:
+      - markdown のコードブロックが描いた結果で出て、「Raw」を押すと元の Markdown のコードに切り替わる
+      - python のコードブロックに字下げの縦線と行の開閉のボタンがあり、色分けの要素がある
+      - コードブロック 1 つにつき、言語の札とコピーのボタンが 1 つずつだけある
+      - ブラウザのコンソールにエラーが出ていない
+    test: test_normal_when_code_blocks
 lead: 利用者がサーバーの配信の `/w/{workspace}/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの通知を受けると記録を再読み込みして再描画する。
 callers:
   - SC-489-12#
@@ -899,9 +950,9 @@ request:
     example: 'tx={"and":[{"field":"tags","op":"eq","values":["画面"]},{"field":"tags","op":"ne","values":["廃止"]}]}'
 constraints:
   - item: 通信
-    constraint: サーバーの配信（同じオリジンの `/w/{workspace}/api/`）と、描画のライブラリと Google Fonts の文字の配信元だけへ通信する。記録を外へ送信しない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
+    constraint: サーバーの配信（同じオリジンの `/w/{workspace}/api/`）と、描画のライブラリ（mdmark が色分けのために読む highlight.js を含む）と Google Fonts の文字の配信元だけへ通信する。記録を外へ送信しない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
   - item: 描画のライブラリ
-    constraint: 'mermaid・marked・jsdiff は、プラグインの `preview/libraries.json`（ライブラリごとの jsDelivr のバージョンを固定した URL・`integrity`（sha384）・置かれるグローバルの名前。画面と『配る書き出し』が共有する唯一の持ち主）の URL から、`integrity` で中身を確かめて読む。mdmark は、『記録の取得』の `mdmark_ref` の jsDelivr の URL（`gh/shuhei1101/mdmark@{mdmark_ref}/dist/`。`mdmark_ref` を受ける前は `develop`）から、`integrity` を付けずに `crossorigin="anonymous"` で読む。ES モジュールのため、CSS を link 要素で読み、JavaScript を `import()` で読む。`mount` の `config` には、`features`（画面と重なる機能のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・mermaid の描画も含める。表の機能 `table` は、詳細・詳細の全画面・本文の差分の本文でオンにし、スレッドの書き込みでオフにする）と、`settings.mdmark.map` を `map` として指定する。本文の差分の「原文の差分」では、`diffControls: false` を指定して mdmark の「変更表示」のボタンとリビジョンを選ぶ欄を配置させない（比べる時点は画面の差分の時点で選ぶ）。表の既定のピン止め（`table.pin_default`）は指定せず、mdmark の既定（描いた直後にどの列も留めない）のまま描く。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える'
+    constraint: 'mermaid・marked・jsdiff は、プラグインの `preview/libraries.json`（ライブラリごとの jsDelivr のバージョンを固定した URL・`integrity`（sha384）・置かれるグローバルの名前。画面と『配る書き出し』が共有する唯一の持ち主）の URL から、`integrity` で中身を確かめて読む。mdmark は、『記録の取得』の `mdmark_ref` の jsDelivr の URL（`gh/shuhei1101/mdmark@{mdmark_ref}/dist/`。`mdmark_ref` を受ける前は `develop`）から、`integrity` を付けずに `crossorigin="anonymous"` で読む。ES モジュールのため、CSS を link 要素で読み、JavaScript を `import()` で読む。`mount` の `config` には、`features`（既定はオンのままにし、MindStella の画面と重なる機能だけをオフにする。オフにする機能と重なる画面の機能は外部ライブラリ『mdmark』が持つ。色分け `syntax` とコードブロックのバー・行の部品はオンにする。表の機能 `table` は、詳細・詳細の全画面・本文の差分の本文でオンにし、スレッドの書き込みでオフにする）と、`settings.mdmark.map` を `map` として指定する。本文の差分の「原文の差分」では、`diffControls: false` を指定して mdmark の「変更表示」のボタンとリビジョンを選ぶ欄を配置させない（比べる時点は画面の差分の時点で選ぶ）。表の既定のピン止め（`table.pin_default`）は指定せず、mdmark の既定（描いた直後にどの列も留めない）のまま描く。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える'
   - item: 本文の無害化
     constraint: 本文とスレッドの書き込みの Markdown は、mdmark が HTML に描くときに無害化した結果を差し込む。図はスクリプトを動かさない安全の設定で描く。HTML の本文は、記録の `marked_bodies` を `sandbox="allow-same-origin"`（`allow-scripts` を付けない）の iframe の `srcdoc` に描き、本文のスクリプトを動かさず、本文の CSS を枠の外へ漏らさない。枠の高さは `ResizeObserver` で描いた中身に合わせる。Markdown の中の言語指定 `html` のコードブロックも、コードではなく同じ枠に描く（行のマーカーは付けない）。Markdown の中の `<!-- html -->` 〜 `<!-- /html -->` の範囲（埋め込んだ HTML）は、枠に入れず mdmark の HTML の埋め込みの機能で本文の中に描き、範囲に書いたスクリプトとイベントの属性は無害化で外す
   - item: 画面への反映の時間
@@ -954,7 +1005,7 @@ constraints:
   - item: HTML の本文の中のリンク
     constraint: 親の画面が枠の文書に `click`・`auxclick` の受け手を追加し、押された要素から最も近い `href` を持つ `a`（SVG の `a` を含む）・`area` の押下を受けて、既定の動作を止める（枠の中では移らない。`target` の有無、Ctrl・Shift・Meta つき、中ボタン、Enter によらない）。`href` の属性の値が `#` で始まるリンクは、`#` の後ろを `decodeURIComponent` で戻した `id` を持つ枠の中の要素まで本文のスクロール領域をスクロールし、その要素が無ければ何もしない（URL の search paramsは変えず、履歴に積まない）。それ以外は、`href` の属性の値がそれだけで絶対の URL として読め、スキームが `http:`・`https:`・`mailto:` のリンクだけを、親の画面の `window.open` に `_blank` と `noopener,noreferrer` を渡して開く。相対の URL とほかのスキーム（`javascript:`・`data:`・`file:` ほか）のリンクは開かない。ポインターを押してから離すまでの間に枠の中の選択が変わり、`click` の時点で選択が空でないときは、開かず送信しない（リンクの文をなぞって選んだ直後）。キーボードからの `click`（`detail` が 0）は選択の有無によらず扱う。枠に描く全ての場所（HTML の本文・`html` のコードブロック・HTML の本文の差分の描いた結果・配る書き出し）で同じ
   - item: 本文の表とセクションの見せ方
-    constraint: 表は mdmark の表の機能（`features.table`）で描き、列の幅と折り返し・表の中の横スクロール・ピン止め（複数の列を含む）・並べ替えを mdmark に任せる。本文の区画を縦にスクロールしたときに表の見出し行を区画の上端に留めることはしない（外部ライブラリ『mdmark』の制限「表の見出し行の固定」。mdmark の `mount` で描いた表は見出し行を留めず、スクロールする区画の中で留める位置もブラウザで変わる。mdmark の対応は shuhei1101/mdmark#683）。画面の CSS は、mdmark の使い方『テーマを上書きする』の CSS 変数のほかに、mdmark が描いた表・差分・図・囲みの見た目と動きを上書きする規則を持たない。`.mdmark` の `--mdmark-color-bg` を透明にする箇所と `:root` には、`--mdmark-color-bg-opaque` を周りの面の色で指定する。セクションの折りたたみがオンのとき、本文で使っている上位 2 つの階層の見出しの頭に開閉の矢印（24px）のボタンを置き、開いた状態で描く。畳んだ中身は `hidden="until-found"` にし、ページ内の検索・リンク・search params の `h` で飛んだときは開く。見出しの文言は選んでコメントできるまま残す。コードブロックの言語の札とコピーのボタンは `pre` の外に置き、選んだ箇所の行のマーカーをずらさない。Alert の囲みの見出しは「補足」「ヒント」「重要」「警告」「注意」。配る書き出しにも同じスタイルが当たる
+    constraint: 表は mdmark の表の機能（`features.table`）で描き、列の幅と折り返し・表の中の横スクロール・ピン止め（複数の列を含む）・並べ替えを mdmark に任せる。本文の区画を縦にスクロールしたときに表の見出し行を区画の上端に留めることはしない（外部ライブラリ『mdmark』の制限「表の見出し行の固定」。mdmark の `mount` で描いた表は見出し行を留めず、スクロールする区画の中で留める位置もブラウザで変わる。mdmark の対応は shuhei1101/mdmark#683）。画面の CSS は、mdmark の使い方『テーマを上書きする』の CSS 変数のほかに、mdmark が描いた表・差分・図・囲みの見た目と動きを上書きする規則を持たない。`.mdmark` の `--mdmark-color-bg` を透明にする箇所と `:root` には、`--mdmark-color-bg-opaque` を周りの面の色で指定する。セクションの折りたたみがオンのとき、本文で使っている上位 2 つの階層の見出しの頭に開閉の矢印（24px）のボタンを置き、開いた状態で描く。畳んだ中身は `hidden="until-found"` にし、ページ内の検索・リンク・search params の `h` で飛んだときは開く。見出しの文言は選んでコメントできるまま残す。コードブロックのバー（言語の札・コピー・言語 `markdown` の `Raw` の切り替え）と行の部品（字下げの縦線・行の開閉）と色分けは mdmark の機能で描き、画面は同じ部品を重ねて配置しない。選んだ箇所の行のマーカーをずらさない。見出しごとに包む要素（`md-section-body`）の直下のブロック同士には、mdmark の本文と同じ間（`--mdmark-space`）を付ける。Alert の囲みの見出しは「補足」「ヒント」「重要」「警告」「注意」。配る書き出しにも同じスタイルが当たる
   - item: 埋め込んだ HTML と部品
     constraint: '範囲の中の図・チャート（`<mdmark-chart>`）と操作できる部品（`<mdmark-param>` ほか）は mdmark の部品で描く。チャートは拡大・縮小のボタンとドラッグで倍率と表示の位置を変え、図の拡大の画面は開かない。チャート以外の要素には拡大・縮小のボタンを付けない。今の値をコピーするボタンは、文言を「今の値をコピー」にし、部品の今の値を `{"{キー}": {"name": ..., "value": ...}}` の JSON にしてクリップボードへ書き込む。範囲の中の文にも、範囲の外の本文と同じく用語・資料・調査のマーカーとツールチップ、項目の ID のリンク（押すとその項目へ移り履歴に積む）を付ける。用語・エイリアスの一致は mdmark の一致の機能に任せ、全角半角・英字の大文字小文字・前後の空白の違いを揃えて比べる'
   - item: HTML の本文の差分
@@ -987,6 +1038,8 @@ constraints:
     constraint: 画面の全体（トップバーとタブの帯を含む）をビューポートの高さに収め、ページ全体を縦にスクロールさせない。縦にスクロールするのは、本文の区画・一覧のスクロール領域・パネルとモーダルの中だけ
   - item: 案の選択
     constraint: 検討事項の詳細パネル・詳細の全画面で、状態が `未決定`・`要見直し` の検討事項の案のカードの下に「この案を選ぶ」を配置する（押す領域は縦横 24px 以上）。押すと一言の入力と確定を出し、確定すると `POST /w/{workspace}/api/comments` に `target` と `choice.key`（一言は `body`）を指定してレビュー中の書き込みとして溜める。同じ検討事項で別の案を選び直すと `PATCH /w/{workspace}/api/comments/{id}` で書き換え、取り消すと `DELETE /w/{workspace}/api/comments/{id}` で削除する。溜めた選択はコメントのボタンの件数とレビュー中の一覧に含め、まとめて送信でほかのコメントと一緒に送信する。記録の `user_choice` を持つ案のカードには利用者が選んだ状態を出し、AI の採用（`決定済み`）の見せ方と分ける。配る書き出しでは「この案を選ぶ」を出さない
+  - item: 外部のリンク
+    constraint: Markdown の本文（詳細パネル・詳細の全画面・本文の差分）とスレッドの書き込みを mdmark で描いた直後に、`href` を今のページの URL で解決した結果のオリジンが今のページと異なる `a` に `target="_blank"` と `rel="noopener noreferrer"` を付ける。`#` で始まるリンク・同じオリジンのリンク・項目の ID とスレッドの ID のリンクは今のタブのままにする。配る書き出しでも同じ。HTML の本文の枠の中のリンクは対象外（制約『HTML の本文の中のリンク』）
 refs:
   - IF-489-18#
   - IF-489-51#

@@ -1,0 +1,14 @@
+$ npx vitest run
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/design-preview-panel-width-and-small-fixes
+
+
+ Test Files  121 passed (121)
+      Tests  690 passed (690)
+   Start at  02:37:02
+   Duration  30.85s (environment 43%, tests 31%, import 14%, setup 8%, transform 4%)
+
+Environment  jsdom was created 121 times · 83.77s total, 43% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

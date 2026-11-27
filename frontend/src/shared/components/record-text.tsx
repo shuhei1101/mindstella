@@ -19,6 +19,8 @@ export type RecordTextProps = {
   onOpen?: (id: string) => void;
   /** `marker` のとき、行の中の ID の説明を描く要素の id。使用する側が行のボタンの `aria-describedby` に指定する */
   descriptionId?: string;
+  /** `marker` で偽のとき、乗せたときも行のボタンにフォーカスしたときも ID のツールチップを出さない（下線と説明は描く） */
+  tooltip?: boolean;
 };
 
 /** 押す要素の中のマーカーのフォーカスを受ける祖先（行のボタン・検索の結果の `option`・リンク） */
@@ -41,7 +43,7 @@ const tipEntryOf = (target: RecordIdTarget): TermTipEntry | null => {
 
 type ShownTip = { anchor: HTMLElement; entry: TermTipEntry };
 
-export const RecordText = ({ text, mode, lookup, onOpen, descriptionId }: RecordTextProps) => {
+export const RecordText = ({ text, mode, lookup, onOpen, descriptionId, tooltip = true }: RecordTextProps) => {
   const found = useMemo(() => findRecordIds({ text, lookup }), [text, lookup]);
   const [tip, setTip] = useState<ShownTip | null>(null);
   const firstMarker = useRef<HTMLSpanElement>(null);
@@ -49,6 +51,7 @@ export const RecordText = ({ text, mode, lookup, onOpen, descriptionId }: Record
   const show = ({ anchor, target }: { anchor: HTMLElement; target: RecordIdTarget }): void => {
     // 指で押したときはツールチップを出さず、1 回の押下で開く
     if (isTouchInput()) return;
+    if (mode === "marker" && !tooltip) return;
     const entry = tipEntryOf(target);
     setTip(entry === null ? null : { anchor, entry });
   };
@@ -61,7 +64,7 @@ export const RecordText = ({ text, mode, lookup, onOpen, descriptionId }: Record
   useEffect(() => {
     const marker = firstMarker.current;
     const host = marker?.closest<HTMLElement>(MARKER_HOST) ?? null;
-    if (mode !== "marker" || marker === null || host === null || firstTarget === null) return undefined;
+    if (mode !== "marker" || !tooltip || marker === null || host === null || firstTarget === null) return undefined;
     const onFocus = (): void => {
       const entry = tipEntryOf(firstTarget);
       setTip(entry === null ? null : { anchor: marker, entry });
@@ -77,7 +80,7 @@ export const RecordText = ({ text, mode, lookup, onOpen, descriptionId }: Record
       host.removeEventListener("focus", onFocus);
       host.removeEventListener("blur", onBlur);
     };
-  }, [mode, firstTarget]);
+  }, [mode, tooltip, firstTarget]);
 
   const parts: ReactNode[] = [];
   let last = 0;

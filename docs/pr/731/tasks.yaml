@@ -1,0 +1,106 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 既存の設計書があり、棚卸しの対象が無い
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではない
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 既存の部品・ストア・CSS・mdmark の機能の設定の変更で、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: ユースケースの連鎖は変わらない
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 判定フローチャート『モック要否』で、画面の追加・削除・遷移の変更が無く、依頼が見た目の結果（2/3・9/10・バッジの位置・新規タブ）を記載しているため、モックを作らない。デザイン方針もある
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の追加・削除・画面遷移の変更が無い
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    note: SC-489-5（パネルの幅の上限・重なり順・スレッドの行の ID）・SC-489-46（全画面のモーダルの大きさ・外部のリンク・コメントの件数のバッジ・コードブロック）
+    updated_by: planner
+    updated_at: '2026-11-27T16:17:22.069345+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 判定フローチャート『モック要否』の Q3 が NO（依頼が見た目の結果を記載している）
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: データ設計
+    status: skipped
+    reason: 記録・保存領域の構造は変わらない（幅を残すキーと値の形式も変えない）
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: インターフェース定義設計
+    status: done
+    note: IF-489-70『プレビューを開く』の結合テストの一覧と画面の振る舞い（外部のリンク・コードブロック）
+    updated_by: planner
+    updated_at: '2026-11-27T16:25:59.287247+00:00'
+  - process: エージェント・MCP サーバー設計
+    status: skipped
+    reason: エージェント・MCP サーバーに触れない
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: エージェントフロー・LLM 呼び出し設計
+    status: skipped
+    reason: エージェントフロー・LLM 呼び出しに触れない
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: 精度評価設計
+    status: skipped
+    reason: LLM・意思決定モデルのノードに触れない
+    updated_by: planner
+    updated_at: '2026-11-27T16:08:30.908481+00:00'
+  - process: 部品設計
+    status: done
+    note: 記録の文字・スレッドの行・Markdownの本文・幅の区切り
+    updated_by: planner
+    updated_at: '2026-11-27T16:35:14.823037+00:00'
+  - process: 画面設計
+    status: done
+    note: コメントの一覧・詳細パネル・詳細の全画面・表示の設定
+    updated_by: planner
+    updated_at: '2026-11-27T16:38:36.542618+00:00'
+  - process: モジュール構成設計
+    status: done
+    note: panel-width-store・left-panel・body-links・markdown-decorate・record-text・thread-row・detail-supplements・detail-header・detail-fullscreen・display-settings-panel
+    updated_by: planner
+    updated_at: '2026-11-27T16:54:16.771635+00:00'
+  - process: ドキュメント修正
+    status: done
+    note: '外部ライブラリ『mdmark』（LIB-489-13）のオフの機能の一覧と理由・「コードの色付け」を修正。「表の列の幅のつまみの ARIA の値」は #714 の確認（実装の後の画面の検査）で内容が定まるため、更新ドキュメントの行は todo のまま残す'
+    updated_by: planner
+    updated_at: '2026-11-27T17:06:04.902294+00:00'
+  - process: 単体テスト作成
+    status: done
+    note: 'パネルの幅の上限・重なり順・件数のバッジ・ID のツールチップ・外部のリンク・mdmark の機能・全画面の大きさ（Red のログ: 20261128022031_97626247_単体テスト.log）'
+    updated_by: planner
+    updated_at: '2026-11-27T17:20:52.310576+00:00'
+  - process: 実装
+    status: done
+    note: パネルの幅の上限・重なり順・全画面の大きさ・件数のバッジ・スレッドの行の ID・外部のリンク・mdmark の機能・本文の区切りの間・表示の設定の余白（単体テスト全 pass・lint 違反なし）
+    updated_by: planner
+    updated_at: '2026-11-27T17:38:46.761831+00:00'
+  - process: 結合テスト作成
+    status: done
+    note: IF-489-70 の正常系 2 件・画面設計（コメントの一覧・詳細パネル・詳細の全画面・表示の設定）・部品設計（Markdownの本文・記録の文字・スレッドの行・スレッドの書き込み）の結合テストを追加・修正し、実行範囲の 716 件が全 pass
+    updated_by: planner
+    updated_at: '2026-11-27T18:07:14.827344+00:00'

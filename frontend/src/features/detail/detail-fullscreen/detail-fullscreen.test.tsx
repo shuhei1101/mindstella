@@ -15,6 +15,15 @@ describe("DetailFullscreen", () => {
     // 検証
     expect(await screen.findByRole("dialog", { name: /D-1の題/ })).toBeInTheDocument();
   });
+  // 窓の 9/10 の大きさで開く（正常系）
+  test("detail_fullscreen_size", async () => {
+    // 実行
+    renderRoute("/?tab=decisions&id=D-1&full=1");
+    const dialog = await screen.findByRole("dialog", { name: /D-1の題/ });
+    // 検証
+    expect(dialog).toHaveClass("size-9/10");
+    expect(dialog).not.toHaveClass("max-w-5xl");
+  });
   // 下端にコメント（正常系）
   test("detail_fullscreen_when_comments", async () => {
     // 実行

@@ -22,9 +22,6 @@ export const BODY_VIEW_DEFAULT: BodyView = { fold: true };
 /** 本文で使っている見出しの階層のうち、上からこの数の階層にだけ開閉を置く */
 const FOLD_LEVELS = 2;
 
-/** コードブロックのコピーのボタンを押した後、チェックのマーカーを出しておくミリ秒（図のコピーと同じ） */
-const CODE_COPIED_MS = 1400;
-
 /** mdmark が描いた Alert の囲みの種類（クラス `markdown-alert-{種類}`）→ 見出しの頭に置くアイコン */
 const CALLOUT_KINDS: Record<string, MarkupIconName> = {
   note: "note",
@@ -138,37 +135,9 @@ export const revealHeading = ({ root, slug }: { root: ParentNode; slug: string }
   }
 };
 
-/** 要素が、埋め込んだ HTML の範囲（`.mdmark-html`）の中にあるか（範囲の中の要素には、表・コードブロック・Alert の見せ方を当てない） */
+/** 要素が、埋め込んだ HTML の範囲（`.mdmark-html`）の中にあるか（範囲の中の要素には、Alert の見せ方を当てない） */
 const inEmbeddedHtml = (element: Element): boolean => {
   return element.closest(`.${EMBEDDED_HTML_CLASS}`) !== null;
-};
-
-/** コードブロックを入れ物で包み、右上にコピーのボタン、言語を書いたものは左上に言語の札を置く（札とボタンはコードの文字に入れない） */
-const decorateCodeBlocks = (root: HTMLElement): void => {
-  for (const code of root.querySelectorAll<HTMLElement>("pre > code")) {
-    const pre = code.parentElement as HTMLElement;
-    if (pre.parentElement?.classList.contains("md-code") === true || inEmbeddedHtml(code)) continue;
-    const lang = [...code.classList].find((name) => name.startsWith("language-"))?.slice("language-".length) ?? null;
-    const status = h({ tag: "span", attrs: { class: "sr-only", role: "status" } });
-    const copy = h({
-      tag: "button",
-      attrs: { class: "icon-btn code-copy", type: "button", "aria-label": "コードをコピー", title: "コピー" },
-      children: [markupIcon("copy")],
-    });
-    copy.addEventListener("click", () => {
-      void navigator.clipboard?.writeText(code.textContent ?? "").then(() => {
-        copy.replaceChildren(markupIcon("check"));
-        status.textContent = "コピーしました";
-        window.setTimeout(() => {
-          copy.replaceChildren(markupIcon("copy"));
-          status.textContent = "";
-        }, CODE_COPIED_MS);
-      });
-    });
-    const box = h({ tag: "div", attrs: { class: lang === null ? "md-code" : "md-code has-lang" } });
-    pre.replaceWith(box);
-    box.append(...(lang === null ? [] : [h({ tag: "span", attrs: { class: "code-lang" }, children: [lang] })]), pre, copy, status);
-  }
 };
 
 /** mdmark が描いた Alert の囲み（`div.markdown-alert`）の見出し（`p.markdown-alert-title`）の頭に、種類のアイコンを置く（置いてあれば重ねない） */
@@ -194,6 +163,5 @@ export const decorateMarkdown = ({
   fold?: boolean;
 }): void => {
   if (fold && display.fold) addFoldButtons(root);
-  decorateCodeBlocks(root);
   decorateCallouts(root);
 };

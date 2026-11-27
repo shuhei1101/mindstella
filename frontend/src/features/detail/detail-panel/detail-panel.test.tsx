@@ -103,7 +103,7 @@ describe("DetailPanel", () => {
     const input = await within(panel).findByRole("textbox", { name: /D-1 へのコメント/ });
     const scroller = within(panel).getByRole("region", { name: "詳細の本文" });
     expect(scroller).not.toContainElement(input);
-    await userEvent.click(within(panel).getByRole("tab", { name: "コメント" }));
+    await userEvent.click(within(panel).getByRole("tab", { name: /^コメント/ }));
     expect(scroller).toContainElement(within(panel).getByRole("heading", { name: "レビュー中のコメント" }));
   });
   // 見出しのコメントの一覧のボタンで、その項目で絞ったコメントの一覧を開く（正常系）
@@ -161,21 +161,21 @@ describe("DetailPanel", () => {
     expect(window.history.length).toBe(before);
   });
 
-  // 左のパネルを開いていれば上限から左のパネルの幅を引く（正常系）
-  test("detail_panel_when_left_open", async () => {
+  // 上限は表示の幅の 2/3 で、左のパネルの幅によらない（正常系）
+  test("detail_panel_when_over_max", async () => {
     // 準備
     stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
     window.innerWidth = 1440;
-    usePanelWidthStore.setState({ leftOpen: true, leftWidth: 384 });
+    usePanelWidthStore.setState({ leftWidth: 960 });
     renderRoute("/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     const separator = within(panel).getByRole("separator", { name: "詳細パネルの幅" });
     // 実行
     fireEvent.keyDown(separator, { key: "End" });
     // 検証
-    expect(separator).toHaveAttribute("aria-valuemax", "656");
-    await waitFor(() => expect(panel.style.width).toBe("656px"));
-    usePanelWidthStore.setState({ leftOpen: false, leftWidth: null, detailWidth: null });
+    expect(separator).toHaveAttribute("aria-valuemax", "960");
+    await waitFor(() => expect(panel.style.width).toBe("960px"));
+    usePanelWidthStore.setState({ leftWidth: null, detailWidth: null });
     sessionStorage.clear();
   });
 
@@ -184,20 +184,20 @@ describe("DetailPanel", () => {
     // 準備
     stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
     window.innerWidth = 1440;
-    usePanelWidthStore.setState({ leftOpen: true, leftWidth: 384, detailWidth: 640 });
+    usePanelWidthStore.setState({ detailWidth: 900 });
     renderRoute("/?tab=decisions&id=D-1");
     const panel = await screen.findByRole("complementary", { name: /詳細/ });
     const separator = within(panel).getByRole("separator", { name: "詳細パネルの幅" });
-    expect(panel.style.width).toBe("640px");
+    expect(panel.style.width).toBe("900px");
     // 実行
     act(() => {
       window.innerWidth = 1100;
       window.dispatchEvent(new Event("resize"));
     });
     // 検証
-    await waitFor(() => expect(separator).toHaveAttribute("aria-valuemax", "480"));
-    expect(panel.style.width).toBe("480px");
-    usePanelWidthStore.setState({ leftOpen: false, leftWidth: null, detailWidth: null });
+    await waitFor(() => expect(separator).toHaveAttribute("aria-valuemax", "733"));
+    expect(panel.style.width).toBe("733px");
+    usePanelWidthStore.setState({ leftWidth: null, detailWidth: null });
     sessionStorage.clear();
   });
   // raised でグレーアウトの上に出す（正常系）

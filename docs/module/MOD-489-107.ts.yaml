@@ -54,3 +54,5 @@ functions:
     container: frontend/src/shared/core/doc-export.ts
 notes:
   単体テスト: 同じフォルダの `doc-export.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  色分け: '`MDMARK_EXPORT_FEATURES` から `syntax: false` を削除し、書き出した HTML でもコードブロックを色分けする（#710。プレビューと同じ範囲にそろえる）'
+  外部のリンク: 書き出した HTML に埋め込むスクリプトは、`library.mount` の直後に『body-links』の `markExternalLinks` と同じ判定（`href` が `#` で始まらず、`new URL(href, location.href)` のスキームが `http:`・`https:` で、`origin` が `location.origin` と異なる）で `target="_blank"`・`rel="noopener noreferrer"` を付ける（#708。『プレビューを開く』の制約「外部のリンク」の「配る書き出しでも同じ」）。`file:` で開いたときは `location.origin` が `null` になるため、`http:`・`https:` のリンクは全て別のオリジンとして扱い、それ以外のスキームは変えない。単体テスト `test_build_doc_html_external_links`（書き出した HTML を jsdom で開き、`mount` の代わりのものが描いた `https:` のリンクに `target` と `rel` が付き、`#id=D-1` のリンクには付かない）を追加する

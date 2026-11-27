@@ -1,14 +1,14 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { linkBody, linkHeadings, renderMarkdown, resolveFileSources } from "@/shared/core/body-links";
+import { linkBody, linkHeadings, markExternalLinks, renderMarkdown, resolveFileSources } from "@/shared/core/body-links";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
 
-// mdmark の代わりに、決まった HTML を描く（mdmark と同じ属性のフェンスのコードブロック 2 つ・属性の無い字下げのコードブロック・mermaid のコードブロック・範囲の中の pre）
+// mdmark の代わりに、決まった HTML を描く（mdmark と同じ属性のフェンスのコードブロック 2 つ（1 つはバーを持つ）・属性の無い字下げのコードブロック・mermaid のコードブロック・範囲の中の pre）
 const CODE_BLOCK_HTML = [
-  '<pre tabindex="0" aria-label="コード: json" data-source-line="0"><code class="language-json">{"type": "http"}</code></pre>',
+  '<div class="mdmark-code"><div class="mdmark-code-bar"><span class="mdmark-code-lang">json</span><button type="button" class="mdmark-code-copy">コピー</button></div><pre tabindex="0" aria-label="コード: json" data-source-line="0"><code class="language-json">{"type": "http"}</code></pre></div>',
   '<pre tabindex="0" aria-label="コード" data-source-line="4"><code>plugins/mindstella/</code></pre>',
   '<pre data-source-line="8"><code>字下げのコード</code></pre>',
-  '<pre tabindex="0" aria-label="コード: mermaid" data-source-line="10"><code class="language-mermaid">flowchart LR</code></pre>',
+  '<div class="mdmark-code"><div class="mdmark-code-bar"><span class="mdmark-code-lang">mermaid</span></div><pre tabindex="0" aria-label="コード: mermaid" data-source-line="10"><code class="language-mermaid">flowchart LR</code></pre></div>',
   '<div class="mdmark-html"><pre><code>範囲の中のコード</code></pre></div>',
   '<div class="mdmark-map"><pre><code class="language-mermaid">flowchart TB</code></pre></div>',
 ].join("");
@@ -114,6 +114,8 @@ describe("renderMarkdown", () => {
     expect([...root.querySelectorAll(".mdmark-html pre")].map((pre) => pre.getAttribute("tabindex"))).toEqual([null]);
     expect(root.querySelectorAll(".mdmark-map .diagram").length).toBe(0);
     expect(root.querySelectorAll(".mdmark-map code.language-mermaid").length).toBe(1);
+    // mermaid のコードブロックは mdmark のバーの入れ物ごと図に置き換え、バーを残さない
+    expect([...root.querySelectorAll(".mdmark-code-bar .mdmark-code-lang")].map((lang) => lang.textContent)).toEqual(["json"]);
   });
 
   // mount が例外を投げても投げ返さず、mdmark の知らせと原文を返す（異常系）
@@ -144,6 +146,20 @@ describe("renderMarkdown", () => {
     expect(options.config.features["print"]).toBe(true);
   });
 
+  // 画面と重なる mdmark の機能だけをオフにする（正常系）
+  test("render_markdown_features", () => {
+    // 準備
+    mount.options.length = 0;
+    // 実行
+    renderMarkdown("本文");
+    // 検証
+    const { features } = (mount.options.at(-1) as { config: { features: Record<string, boolean> } }).config;
+    expect(features).not.toHaveProperty("syntax");
+    expect(features).not.toHaveProperty("code");
+    const off = Object.entries(features).filter(([, on]) => !on).map(([name]) => name).sort();
+    expect(off).toEqual(["anchors", "back-to-top", "backlinks", "comments", "diagram-resize", "glossary", "lightbox", "mermaid", "sections", "side-toc", "toc", "views"].sort());
+  });
+
   // 取り出し元を渡す（正常系）
   test("render_markdown_when_diff_source", async () => {
     // 準備
@@ -165,6 +181,30 @@ describe("renderMarkdown", () => {
     expect(revisions).toHaveLength(2);
     const contents = await Promise.all(revisions.map(({ id }) => options.diffSource.content({ docId: "D-1", revisionId: id })));
     expect([...contents].sort()).toEqual(["今の段落", "前の段落"].sort());
+  });
+});
+
+describe("markExternalLinks", () => {
+  // 別のオリジンのリンクだけを新規タブで開く（正常系）
+  test("mark_external_links", () => {
+    // 準備
+    const root = document.createElement("div");
+    root.innerHTML = [
+      '<a href="https://example.com/a">別のオリジン</a>',
+      `<a href="${location.origin}/w/x/">同じオリジン</a>`,
+      '<a href="#id=D-1">D-1</a>',
+      '<a href="#見出し">見出し</a>',
+    ].join("");
+    // 実行
+    markExternalLinks(root);
+    // 検証
+    const marked = [...root.querySelectorAll("a")].map((a) => ({ text: a.textContent, target: a.getAttribute("target"), rel: a.getAttribute("rel") }));
+    expect(marked).toEqual([
+      { text: "別のオリジン", target: "_blank", rel: "noopener noreferrer" },
+      { text: "同じオリジン", target: null, rel: null },
+      { text: "D-1", target: null, rel: null },
+      { text: "見出し", target: null, rel: null },
+    ]);
   });
 });
 

@@ -19,15 +19,15 @@ states:
       - name: display
         value: '{"fold": false}'
   - name: CodeBlock
-    description: 言語を書いたコードブロックは左上に言語の札を出し、ホバーで右上にコピーのボタンを出す。言語を書かないコードブロックには札を出さない。長い行は折り返さず、コードブロックの中だけで横にスクロールできる。言語の札とコピーのボタンは横にスクロールしても同じ位置に残る
+    description: 言語を書いたコードブロックは mdmark のコードブロックのバー（言語の札・コピー）と行の部品（字下げの縦線・行の開閉）と色分けで描き、画面の言語の札とコピーのボタンを重ねない。長い行は折り返さず、コードブロックの中だけで横にスクロールできる。言語の札とコピーのボタンは横にスクロールしても同じ位置に残る
   - name: CodeCopied
-    description: コピーのボタンを押した直後。ボタンがチェックのアイコンに変わり、クリップボードには札とボタンを含まないコードだけが入る
+    description: mdmark のコピーのボタンを押した直後。ボタンの見た目は mdmark のままで、クリップボードには札とボタンを含まないコードだけが入る
   - name: Callouts
     description: '`> [!NOTE]`・`[!TIP]`・`[!IMPORTANT]`・`[!WARNING]`・`[!CAUTION]` の引用は、mdmark が種類の色の薄い面と細い枠の囲み（`markdown-alert`）と見出し「補足」「ヒント」「重要」「警告」「注意」で描き、見出しの頭に種類のアイコンを追加する。マーカーの無い引用は mdmark の引用の見た目のまま'
   - name: Narrow
     description: 画面の幅 320px。表は mdmark の表のまま表の中だけで横にスクロールし、本文の区画は横にスクロールしない
   - name: InThreadPost
-    description: スレッドの書き込みの本文。コードブロックの言語の札とコピーのボタン、Alert の見出しのアイコンを当て、表は mdmark の表の機能をオフにした共通のスタイルのまま描き、セクションの開閉は当てない
+    description: スレッドの書き込みの本文。コードブロックは mdmark のバー・行の部品・色分けのまま描き、Alert の見出しのアイコンを当て、表は mdmark の表の機能をオフにした共通のスタイルのまま描き、セクションの開閉は当てない
     args:
       - name: tables
         value: 'false'
@@ -50,7 +50,7 @@ states:
       - name: fold
         value: 'false'
   - name: DiffSource
-    description: 差分の表示で「原文の差分」。mdmark の「変更表示」を押した状態で、前と後のリビジョンの欄に「選んだ時点」「今」が入り、書き換えた行の変わった単語だけが濃い色になる
+    description: '差分の表示で「原文の差分」。mdmark の「変更表示」のボタンとリビジョンの欄を配置せず（`diffControls: false`）、選んだ時点と今の行の差分を出し、書き換えた行の変わった単語だけが濃い色になる'
     args:
       - name: base
         value: DiffRendered と同じ
@@ -73,7 +73,17 @@ states:
     description: 幅 390px で埋め込んだ音声。再生バーを本文の幅に収め、上下を切らず、本文の区画を横にスクロールさせない
     notes:
       見せ方: Storybook（React）の画面幅を 390px にして見せる
-lead: Markdown の本文を mdmark の `mount` で描き、mdmark の共通のスタイルに重ねるスタイルを当てる。表は mdmark の表の機能のまま描き、コードブロックの言語の札とコピー・GitHub の Alert の見出しのアイコンを常に当て、セクションの折りたたみを表示の設定の値で当てる。差分の表示の間は、選んだ時点の本文と比べて mdmark の差分で描く（「描いた結果」は比較元の Markdown の色分け、「原文の差分」は取り出し元の行の差分）。mdmark の印刷の機能をオンにして描く。詳細パネル・詳細の全画面・本文の差分の本文で使う。
+  - name: CodeMarkdownRaw
+    description: 言語 `markdown` のコードブロック。mdmark が描いた結果で出し、バーの「Raw」を押すと元の Markdown のコードに切り替わる
+    notes:
+      見せ方: ストーリーの play で「Raw」を押す
+  - name: CodeIndentGuides
+    description: 言語 `python` の 2 階層の字下げを持つコードブロック。字下げの縦線と行の開閉のボタンがあり、キーワードが色分けされる
+  - name: SectionSpacing
+    description: 見出しの下に段落・表・map の図・リストを並べた本文。見出しごとに包む要素（`md-section-body`）の直下のブロック同士に、mdmark の本文と同じ間（`--mdmark-space`）が空く
+  - name: ExternalLink
+    description: 本文に外部の URL へのリンクと、同じオリジン・`#` で始まるリンクを持つ。外部の URL へのリンクだけが `target="_blank"` と `rel="noopener noreferrer"` を持つ
+lead: Markdown の本文を mdmark の `mount` で描き、mdmark の共通のスタイルに重ねるスタイルを当てる。表は mdmark の表の機能のまま描き、コードブロックは mdmark のバー・行の部品・色分けのまま描き、GitHub の Alert の見出しのアイコンを常に当て、セクションの折りたたみを表示の設定の値で当てる。差分の表示の間は、選んだ時点の本文と比べて mdmark の差分で描く（「描いた結果」は比較元の Markdown の色分け、「原文の差分」は取り出し元の行の差分）。mdmark の印刷の機能をオンにして描く。詳細パネル・詳細の全画面・本文の差分の本文で使う。
 args:
   - name: source
     type: 文字列
@@ -98,7 +108,7 @@ args:
     type: 文字列
     required: false
     default: なし（差分を出さず、`source` だけを描く）
-    description: '差分の表示で選んだ時点の本文。指定すると `diffView` に応じて mdmark の差分で描く。`rendered` は `mount` の比較元の Markdown（`baseMarkdown`）に指定し、追加・変更したブロックを追加の色、削除したブロックを削除の色で変更前の位置に出す。`source` は選んだ時点と今の 2 つだけを返却する取り出し元（`diffSource`）と `diffMode: "open"` で行の差分を出し、mdmark が配置する「変更表示」のボタンとリビジョンの欄はそのまま出す。`base` と `source` が同じときは色を付けずに描く'
+    description: '差分の表示で選んだ時点の本文。指定すると `diffView` に応じて mdmark の差分で描く。`rendered` は `mount` の比較元の Markdown（`baseMarkdown`）に指定し、追加・変更したブロックを追加の色、削除したブロックを削除の色で変更前の位置に出す。`source` は選んだ時点と今の 2 つだけを返却する取り出し元（`diffSource`）と `diffMode: "open"` で行の差分を出し、`diffControls: false` を指定して mdmark の「変更表示」のボタンとリビジョンの欄を配置させない（比べる時点は画面の差分の時点で選ぶ）。`base` と `source` が同じときは色を付けずに描く'
   - name: diffView
     type: 列挙
     required: false
@@ -108,10 +118,10 @@ args:
 accessibility:
   - 表の入れ物・ピン止め・並べ替え・列の幅の変更のボタンの読み上げの名前とキーボードの操作は mdmark の表のままにし、上書きしない
   - 開閉の矢印は `button` で `aria-expanded` と `aria-controls` を持ち、読み上げの名前は「{見出し}を開閉」
-  - コピーのボタンは読み上げの名前「コードをコピー」を持ち、コピーしたことを `role="status"` で伝える
+  - コードブロックのバー・行の開閉のボタンの読み上げの名前とキーボードの操作は mdmark のままにし、上書きしない
   - Alert の種類は色だけでなく見出しの文言でも示す
   - 'コードブロックの `pre` は `tabindex="0"` と読み上げの名前「コード: {言語}」（言語を書かないものは「コード」）を持ち、キーボードで横にスクロールできる（フェンスのコードブロックは mdmark が付け、mdmark が付けない字下げのコードブロックには描画の関数が「コード」で付ける）'
-  - 差分の色分け・行の差分の読み上げ（「追加:」「削除:」）と、「変更表示」のボタン・リビジョンの欄の読み上げの名前とキーボードの操作は mdmark のままにし、上書きしない
+  - 差分の色分け・行の差分の読み上げ（「追加:」「削除:」）は mdmark のままにし、上書きしない
 refs:
   - IF-489-70#
   - CMP-489-50#

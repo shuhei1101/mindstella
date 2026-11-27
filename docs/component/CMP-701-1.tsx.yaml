@@ -29,6 +29,12 @@ args:
     default: なし（説明を描かない）
     enabled_when: '`mode` が `marker` のとき'
     description: 行の中の ID の項目・スレッドの説明（タイトル・ID・種類・状態を「、」でつないだ文）を描く、隠した要素の id。使用する側が行のボタン（検索の結果は `option`）の `aria-describedby` に指定する。記録にある ID が無いときは要素を描かない
+  - name: tooltip
+    type: 真偽値
+    required: false
+    default: 'true'
+    enabled_when: '`mode` が `marker` のとき'
+    description: false のとき、ID に乗せても、行のボタンにフォーカスしても、ID のツールチップを出さない。マーカーの下線と `descriptionId` の説明は描く。スレッドの行で false にする
 events:
   - name: 項目・スレッドを開く
     when: '`link` の ID のリンクを押したとき（Enter を含む）'
@@ -122,12 +128,25 @@ states:
         value: link
     notes:
       見せ方: ストーリーの play で、`pointerType` を `touch` にしたポインターの操作で D-1 のリンクを押す
+  - name: MarkerNoTooltip
+    description: スレッドの行のボタンの中。D-1 は点線の下線のマーカーのままで、乗せてもボタンにフォーカスしてもツールチップを出さない。ボタンの `aria-describedby` の説明は残る
+    args:
+      - name: text
+        value: D-1 の決め方（TH-1 の続き）
+      - name: mode
+        value: marker
+      - name: descriptionId
+        value: thread-th2-ids
+      - name: tooltip
+        value: 'false'
+    notes:
+      見せ方: ストーリーの play で D-1 のマーカーに乗せ、続けてボタンにフォーカスする
 uses:
   - component: CMP-489-36#
     how: ID に乗せたときの、種類 `item`・`thread` のツールチップ
 accessibility:
   - '`link` の ID は `a` 要素にし、Tab で届いて Enter で開ける。フォーカスしたときも乗せたときと同じツールチップを出し、リンクの `aria-describedby` で指す'
-  - '`marker` の ID はフォーカスできる要素にせず、押す要素の中に操作の要素を入れ子にしない。行のボタン（検索の結果は `option`）にフォーカスしたとき、使用する側が `descriptionId` の説明を `aria-describedby` で読み上げ、行の中の ID のツールチップを出す'
+  - '`marker` の ID はフォーカスできる要素にせず、押す要素の中に操作の要素を入れ子にしない。行のボタン（検索の結果は `option`）にフォーカスしたとき、使用する側が `descriptionId` の説明を `aria-describedby` で読み上げ、`tooltip` が true のときだけ行の中の ID のツールチップを出す'
   - '`marker` の点線の下線は `link` の実線の下線と形状で見分ける。状態はツールチップの状態名でも示す'
   - 指で押したとき（ポインターの `pointerType` が `touch`）は、`link` の ID にツールチップを出さず、1 回で `onOpen` を呼ぶ。マウスとキーボードのときは、乗せたとき・フォーカスしたときにツールチップを出す
 refs:
