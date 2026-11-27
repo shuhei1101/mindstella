@@ -277,20 +277,6 @@ settings:
       - IF-568-1#
     introduced:
       pr: 569
-  - key: MINDSTELLA_LAUNCH_REASON
-    title: 起動の契機
-    file: 環境変数
-    type: str
-    required: false
-    default: なし（圧縮でない起動）
-    description: 『MindStella のセッションの再起動』が圧縮の契機で起動するときに `compact` で渡す。『MindStella のセッションのフック』の SessionStart が、`source` が `startup` でも再開として注入する
-    env_var: MINDSTELLA_LAUNCH_REASON
-    reload: restart
-    status: planned
-    visibility: developer
-    refs:
-      - IF-582-1#
-      - IF-531-7#
   - key: MINDSTELLA_CRASH_WATCH_INTERVAL
     title: 落ちたことを見回る間隔の秒数
     file: 環境変数
