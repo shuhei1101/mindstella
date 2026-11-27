@@ -35,8 +35,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T16:08:30.908481+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
     note: SC-489-5（パネルの幅の上限・重なり順・スレッドの行の ID）・SC-489-46（全画面のモーダルの大きさ・外部のリンク・コメントの件数のバッジ・コードブロック）
+    updated_by: planner
+    updated_at: '2026-11-27T16:17:22.069345+00:00'
   - process: モック作成
     status: skipped
     reason: 判定フローチャート『モック要否』の Q3 が NO（依頼が見た目の結果を記載している）
