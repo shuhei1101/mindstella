@@ -123,9 +123,10 @@ export const RecordText = ({ text, mode, lookup, onOpen, descriptionId }: Record
           }}
           onMouseLeave={hide}
           onClick={(event) => {
-            // マーカーはボタンの ::after より上にあるため、ボタンの外のマーカー（カードの関係する項目の行）を押したときはカードのボタンを押したことにする
+            // マーカーはボタンの ::after より上にあるため、ボタンの外のマーカー（カードの関係する項目の行）を押したときはカードのタイトルのボタンを押したことにする（先頭のお気に入りの星は押さない）
             if (event.currentTarget.closest(MARKER_HOST) !== null) return;
-            event.currentTarget.closest("[data-card]")?.querySelector<HTMLElement>(MARKER_HOST)?.click();
+            const card = event.currentTarget.closest("[data-card]");
+            (card?.querySelector<HTMLElement>("button[data-id]") ?? card?.querySelector<HTMLElement>(MARKER_HOST))?.click();
           }}
         >
           {label}
