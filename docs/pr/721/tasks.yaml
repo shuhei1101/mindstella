@@ -87,6 +87,8 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T05:39:50.021725+00:00'
   - process: 実装
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-27T05:46:58.900960+00:00'
   - process: 結合テスト作成
     status: todo
