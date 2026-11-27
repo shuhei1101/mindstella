@@ -54,3 +54,4 @@ functions:
     container: frontend/src/shared/core/doc-export.ts
 notes:
   単体テスト: 同じフォルダの `doc-export.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  色分け: '`MDMARK_EXPORT_FEATURES` から `syntax: false` を削除し、書き出した HTML でもコードブロックを色分けする（#710。プレビューと同じ範囲にそろえる）'

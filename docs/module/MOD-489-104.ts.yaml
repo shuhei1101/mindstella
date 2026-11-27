@@ -301,5 +301,18 @@ functions:
         mock: なし
         expected: C-2 / `undefined`
     container: frontend/src/shared/core/comments.ts
+  - name: itemThreadCount
+    title: 項目に向けたスレッドの件数
+    kind: 関数
+    usecase: 項目の詳細を読む
+    summary: '`itemThreadCount({ threads, pending, id })`。`threads` のうち `target` が `id` のスレッド（状態を問わない）と、`pending` のうち `thread` を持たず `target` が `id` の書き込みの件数の和を返却する。案の選択（`choice` を持つ書き込み）は数えない'
+    container: frontend/src/shared/core/comments.ts
+    unit_tests:
+      - name: test_item_thread_count
+        case: 正常
+        summary: 項目に向けたスレッドと新規スレッドを数える
+        condition: D-1 へのオープンとクローズのスレッド、D-2 へのスレッド、D-1 への新規スレッドと返信と案の選択を指定する。`id` は D-1 / D-3
+        mock: なし
+        expected: 3 / 0
 notes:
   単体テスト: 同じフォルダの `comments.test.ts` に置く（knowledge の規約『フォルダ構成』）

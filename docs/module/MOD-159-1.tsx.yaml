@@ -7,7 +7,7 @@ components:
     kind: コンポーネント
     container: frontend/src/features/detail/detail-panel/components/detail-supplements.tsx
     usecase: 項目の詳細を読む
-    summary: 画面設計『詳細パネル』の要素「本文の切り替え」。`role="tablist"` の中に `role="tab"` のボタンを `SEGMENTED_GROUP_CLASS`・`SEGMENTED_ITEM_CLASS`（選んだタブは `SEGMENTED_SELECTED_CLASS`）で並べ、選んだタブの中身を `role="tabpanel"` に描く。`comments` が null（配る書き出し）のときは「コメント」のタブを出さない。選んだタブだけを `tabIndex=0`、ほかを `-1` にし、左右の矢印・Home・End で隣・端のタブを選んでフォーカスを移す。タブとパネルを `aria-controls`・`aria-labelledby` で結ぶ。モックで見比べた `collapse`・`tint` の見せ方と引数 `layout` は削除する
+    summary: 画面設計『詳細パネル』の要素「本文の切り替え」。`role="tablist"` の中に `role="tab"` のボタンを `SEGMENTED_GROUP_CLASS`・`SEGMENTED_ITEM_CLASS`（選んだタブは `SEGMENTED_SELECTED_CLASS`）で並べ、選んだタブの中身を `role="tabpanel"` に描く。`comments` が null（配る書き出し）のときは「コメント」のタブを出さない。`commentCount` が 1 以上のとき、「コメント」のタブのラベルの右に件数のバッジ（100 以上は `99+`）を描き、タブの `aria-label` を「コメント {件数} 件」にする。選んだタブだけを `tabIndex=0`、ほかを `-1` にし、左右の矢印・Home・End で隣・端のタブを選んでフォーカスを移す。タブとパネルを `aria-controls`・`aria-labelledby` で結ぶ。モックで見比べた `collapse`・`tint` の見せ方と引数 `layout` は削除する
     props:
       - name: main
         type: ReactNode
@@ -29,6 +29,11 @@ components:
         type: '(tab: "main" | "related" | "comments") => void'
         required: true
         description: タブを選んだ
+      - name: commentCount
+        type: number
+        required: false
+        default: '0'
+        description: その項目に向けたスレッドの件数（『comments』の `itemThreadCount`）。0 のときはバッジを描かない
     unit_tests:
       - name: test_detail_supplements
         case: 正常
@@ -48,6 +53,12 @@ components:
         condition: '`comments` が null'
         mock: なし
         expected: タブが「本文」「関連」の 2 つ
+      - name: test_detail_supplements_when_comment_count
+        case: 正常
+        summary: コメントのタブに件数のバッジを描く
+        condition: '`parametrize`: `commentCount` が 3 / 0 / 120'
+        mock: なし
+        expected: 「コメント」のタブに `3` のバッジと名前「コメント 3 件」 / バッジが無く名前「コメント」 / `99+` のバッジと名前「コメント 120 件」
 notes:
   単体テスト: 同じフォルダの `detail-supplements.test.tsx` に置く
   タブの状態の持ち主: 選んでいるタブは `DetailContent` が持ち（項目の `id` が変わったら `main` に戻す）、目次から見出しへ移るときに `main` を選ぶ

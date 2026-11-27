@@ -5,7 +5,7 @@ components:
     title: 記録の文字
     kind: コンポーネント
     usecase: 共通
-    summary: '`findRecordIds` で分けた文字を、`link` は `a[href=#id={ID}][data-record-id]`、`marker` は `span[data-record-id]`（等幅・点線の下線・`text-decoration-thickness: 1.5px`）で描き、記録に無い ID は文字のまま。乗せる・フォーカスで部品『本文のマーカーのツールチップ』を出し（『pointer-input』の `isTouchInput()` が真のときは出さない）、`marker` で `descriptionId` があるときは ID の説明を「、」でつないだ隠した `span` を描く'
+    summary: '`findRecordIds` で分けた文字を、`link` は `a[href=#id={ID}][data-record-id]`、`marker` は `span[data-record-id]`（等幅・点線の下線・`text-decoration-thickness: 1.5px`）で描き、記録に無い ID は文字のまま。乗せる・フォーカスで部品『本文のマーカーのツールチップ』を出し（『pointer-input』の `isTouchInput()` が真のときと、`marker` で `tooltip` が偽のときは出さない）、`marker` で `descriptionId` があるときは ID の説明を「、」でつないだ隠した `span` を描く'
     refs:
       - CMP-701-1#
     props:
@@ -29,6 +29,11 @@ components:
         type: string
         required: false
         description: '`marker` の説明の要素の id'
+      - name: tooltip
+        type: boolean
+        required: false
+        default: 'true'
+        description: '`marker` で偽のとき、乗せたときも行のボタンにフォーカスしたときも ID のツールチップを出さない。下線と `descriptionId` の説明は描く'
     unit_tests:
       - name: test_record_text_link
         case: 正常
@@ -60,6 +65,12 @@ components:
         condition: '`[data-card]` の中に星のボタン、`data-id` を持つタイトルのボタン、ボタンの外の `marker` の順に配置してマーカーを押す'
         mock: なし
         expected: タイトルのボタンの `onClick` が 1 回、星のボタンは呼ばれない
+      - name: test_record_text_marker_without_tooltip
+        case: 正常
+        summary: tooltip が偽のマーカーはツールチップを出さない
+        condition: '`mode` が `marker`、`tooltip` が偽、`descriptionId` が `ids`、文字「D-1 の決め方」。D-1 に `mouseenter`、ボタンに `focus` を送信する'
+        mock: なし
+        expected: '`role="tooltip"` が描かれず、D-1 は `span[data-record-id]` のままで `#ids` の説明がある'
     container: frontend/src/shared/components/record-text.tsx
 notes:
   単体テスト: 同じフォルダの `record-text.test.tsx` に配置する（knowledge の規約『フォルダ構成』）

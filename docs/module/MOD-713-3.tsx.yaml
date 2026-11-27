@@ -7,7 +7,7 @@ components:
     kind: コンポーネント
     usecase: 共通
     container: frontend/src/shared/components/left-panel.tsx
-    summary: "`as` の要素（既定 `aside`）を描き、受けた属性（`role`・`aria-label`・`className`・`onKeyDown` など）と `children` をそのまま指定する。表示の幅が `LEFT_PANEL_WIDTH.resizableFrom`（901px）以上では、幅を『panel-width-store』の `currentLeftWidth(state)` を `clampWidth(幅, min, leftPanelMax(表示の幅, currentDetailWidth(state), detailOpen))` で収めた値にし、`resizerLabel` を指定したときだけ右端に部品『幅の区切り』（`side=right`・`label`・`min`・`max`・`step`）を描いて `onChange` で `setLeftWidth`、`onCommit` で `commitLeftWidth` を呼ぶ。900px 以下は幅を適用せず、区切りを描かない（各パネルの今の全幅のまま）。描いたときに `setOpen('left', true)`、除外したときに `setOpen('left', false)` を呼ぶ。表示の幅は『use-viewport-width』の `useViewportWidth()` で参照する"
+    summary: "`as` の要素（既定 `aside`）を描き、受けた属性（`role`・`aria-label`・`className`・`onKeyDown` など）と `children` をそのまま指定する。表示の幅が `LEFT_PANEL_WIDTH.resizableFrom`（901px）以上では、幅を『panel-width-store』の `currentLeftWidth(state)` を `clampWidth(幅, min, leftPanelMax(表示の幅))` で収めた値にし、`resizerLabel` を指定したときだけ右端に部品『幅の区切り』（`side=right`・`label`・`min`・`max`・`step`）を描いて `onChange` で `setLeftWidth`、`onCommit` で `commitLeftWidth` を呼ぶ。900px 以下は幅を適用せず、区切りを描かない（各パネルの今の全幅のまま）。表示の幅が 901px 以上では、詳細パネル（`lg:z-30`）より上の重なり順 `lg:z-[35]` を要素に付ける。表示の幅は『use-viewport-width』の `useViewportWidth()` で参照する"
     refs:
       - SCR-489-2#
       - SCR-489-11#
@@ -38,24 +38,24 @@ components:
         condition: '`sessionStorage` の `mindmap-left-panel-width` に 520 を入れて描く'
         mock: '`window.innerWidth`・`matchMedia`'
         expected: パネルの幅が 520px で、区切りの `aria-valuenow` が 520
-      - name: test_left_panel_when_detail_open
+      - name: test_left_panel_when_over_max
         case: 正常
-        summary: 詳細パネルを開いていれば上限から詳細パネルの幅を引く
-        condition: 表示の幅 1440。ストアの `detailOpen` が真・`detailWidth` が 640 で、残した幅が 900
+        summary: 上限は表示の幅の 2/3 で、詳細パネルの幅によらない
+        condition: 表示の幅 1440。ストアの `detailWidth` が 960 で、残した幅が 1200
         mock: '`window.innerWidth`・`matchMedia`'
-        expected: パネルの幅が 400px で、区切りの `aria-valuemax` が 400。`sessionStorage` の値は 900 のまま
+        expected: パネルの幅が 960px で、区切りの `aria-valuemax` が 960。`sessionStorage` の値は 1200 のまま
       - name: test_left_panel_when_narrow
         case: 正常
         summary: 900px 以下は区切りを描かない
         condition: 表示の幅 900
         mock: '`window.innerWidth`・`matchMedia`'
         expected: '`role=separator` が無く、`aside` に `style.width` が無い'
-      - name: test_left_panel_open_state
+      - name: test_left_panel_above_detail
         case: 正常
-        summary: 描いている間だけ開いている
-        condition: 描いた後に除外する
+        summary: 詳細パネルより上の重なり順で描く
+        condition: 表示の幅 1440 で描く
         mock: なし
-        expected: 描いた後のストアの `leftOpen` が真、除外した後は偽
+        expected: '`aside` が class `lg:z-[35]` を持つ'
       - name: test_left_panel_without_resizer
         case: 正常
         summary: resizerLabel を省くと区切りを描かず、共有した幅で開く

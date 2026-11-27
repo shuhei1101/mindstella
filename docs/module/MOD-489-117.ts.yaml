@@ -1,14 +1,17 @@
 id: MOD-489-117
 title: プレビュー / markdown-decorate
-lead: 描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し）。
+lead: 描いた Markdown の本文の見せ方（セクションの折りたたみ・Alert の見出し）。
 functions:
   - name: decorateMarkdown
     title: 本文の見せ方
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し。表は mdmark の表の機能のままで、見せ方を当てない）
+    summary: 描いた Markdown の本文の見せ方（セクションの折りたたみ・Alert の見出し。表とコードブロックは mdmark の機能のままで、見せ方を適用しない）
     args: []
     returns:
       type: unknown
       description: 処理の結果
     container: frontend/src/shared/core/markdown-decorate.ts
+notes:
+  コードブロック: '`decorateCodeBlocks`（言語の札・コピーのボタン・`md-code` の入れ物）を削除し、mdmark のコードブロックのバー・行の部品に任せる（#710。『プレビューを開く』の制約「本文の表とセクションの見せ方」）。`body.css` の `md-code`・`code-lang`・`code-copy` の規則も削除する'
+  区切りの間: '見出しごとに包む `div.md-section-body` の直下のブロック同士の間は、`body.css` に `.mdmark .md-section-body > * + * { margin-block-start: var(--mdmark-space); }` を追加して付ける（#729）。包む要素の class は変えない'
