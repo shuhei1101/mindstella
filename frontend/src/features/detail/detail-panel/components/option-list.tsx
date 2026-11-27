@@ -36,7 +36,7 @@ const KEY_ICON_CLASS = "grid size-6 flex-none place-items-center rounded-full bg
 const BADGE_CLASS = "mt-0.5 inline-flex h-5 flex-none items-center gap-0.5 rounded-control border px-1.5 text-xs";
 
 /** 利用者が選んだ案（送信前のレビュー中。AI の採用とは別） */
-export type OptionChoice = { key: string; note?: string };
+export type OptionChoice = { key: string; note?: string; sent?: boolean };
 
 export type OptionListProps = {
   options: readonly Option[];
@@ -51,7 +51,7 @@ export type OptionListProps = {
 };
 
 /** 案を選ぶ操作の帯。押すと一言の入力と確定を出す */
-const ChooseBar = ({ optionKey, chosen, note, onChoose, onCancel }: { optionKey: string; chosen: boolean; note: string | undefined; onChoose: (choice: OptionChoice) => void; onCancel: (() => void) | undefined }) => {
+const ChooseBar = ({ optionKey, chosen, sent, note, onChoose, onCancel }: { optionKey: string; chosen: boolean; sent: boolean; note: string | undefined; onChoose: (choice: OptionChoice) => void; onCancel: (() => void) | undefined }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(note ?? "");
   if (editing) {
@@ -75,6 +75,13 @@ const ChooseBar = ({ optionKey, chosen, note, onChoose, onCancel }: { optionKey:
             この案を選ぶ
           </Button>
         </div>
+      </div>
+    );
+  }
+  if (chosen && sent) {
+    return (
+      <div className="mt-2 border-t border-border-soft pt-2">
+        <span className="min-w-0 text-small wrap-break-word text-muted-foreground">{note === undefined ? "一言なし" : `一言: ${note}`}</span>
       </div>
     );
   }
@@ -104,7 +111,7 @@ const ChooseBar = ({ optionKey, chosen, note, onChoose, onCancel }: { optionKey:
 };
 
 /** 案のカードに渡す、選ぶ操作の状態 */
-type ChooseState = { chosen: boolean; note: string | undefined; onChoose: (choice: OptionChoice) => void; onCancel: (() => void) | undefined };
+type ChooseState = { chosen: boolean; sent: boolean; note: string | undefined; onChoose: (choice: OptionChoice) => void; onCancel: (() => void) | undefined };
 
 /** 案のカード 1 枚 */
 const OptionCard = ({ option, before, compare, decided, mark, choose }: { option: Option; before: Option | undefined; compare: boolean; decided: boolean; mark: ReactNode; choose?: ChooseState }) => {
@@ -112,8 +119,9 @@ const OptionCard = ({ option, before, compare, decided, mark, choose }: { option
   const rows = FIELDS.map(([label, field]) => ({ label: recommended && field === "reason" ? "推奨理由" : label, field, value: optionText(option[field]), was: optionText(before?.[field]) }))
     .filter(({ value, was }) => (value !== undefined && value !== "") || (compare && was !== undefined));
   const chosen = choose?.chosen === true;
+  const sent = chosen && choose?.sent === true;
   return (
-    <div data-chosen={chosen ? "" : undefined} className={cn("rounded-control border border-border-soft p-2", option.adopted === true && "border-mark-line bg-mark-weak", chosen && "border-dashed border-primary")}>
+    <div data-chosen={chosen ? "" : undefined} className={cn("rounded-control border border-border-soft p-2", option.adopted === true && "border-mark-line bg-mark-weak", chosen && (sent ? "border-primary" : "border-dashed border-primary"))}>
       <div className="flex items-start gap-2">
         <span className={KEY_ICON_CLASS}>
           <span className="sr-only">案 </span>
@@ -130,9 +138,9 @@ const OptionCard = ({ option, before, compare, decided, mark, choose }: { option
         ) : null}
         <ResultBadge before={before} option={option} compare={compare} />
         {chosen ? (
-          <span className={cn(BADGE_CLASS, "border-dashed border-primary text-primary")}>
+          <span className={cn(BADGE_CLASS, "border-primary text-primary", !sent && "border-dashed")}>
             <Icon name="check" className="size-3" />
-            選択済み（未送信）
+            {sent ? "選択済み（送信済み）" : "選択済み（未送信）"}
           </span>
         ) : null}
         {mark}
@@ -147,7 +155,7 @@ const OptionCard = ({ option, before, compare, decided, mark, choose }: { option
           ))}
         </dl>
       ) : null}
-      {choose === undefined ? null : <ChooseBar optionKey={option.key} chosen={chosen} note={choose.note} onChoose={choose.onChoose} onCancel={choose.onCancel} />}
+      {choose === undefined ? null : <ChooseBar optionKey={option.key} chosen={chosen} sent={sent} note={choose.note} onChoose={choose.onChoose} onCancel={choose.onCancel} />}
     </div>
   );
 };
@@ -175,7 +183,7 @@ export const OptionList = ({ options, previous, marks = {}, choice = null, onCho
           compare={compare}
           decided={decided}
           mark={marks[option.key]}
-          {...(choosable ? { choose: { chosen: choice?.key === option.key, note: choice?.key === option.key ? choice.note : undefined, onChoose, onCancel: onCancelChoice } } : {})}
+          {...(choosable ? { choose: { chosen: choice?.key === option.key, sent: choice?.key === option.key && choice.sent === true, note: choice?.key === option.key ? choice.note : undefined, onChoose, onCancel: onCancelChoice } } : {})}
         />
       ))}
       {removed.map((option) => (

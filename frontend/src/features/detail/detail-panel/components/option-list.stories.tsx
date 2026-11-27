@@ -39,6 +39,9 @@ export const Chosen: Story = { render: () => <Interactive initial={{ key: "B" }}
 /** 案 B を一言つきで選んだ */
 export const ChosenWithNote: Story = { render: () => <Interactive initial={{ key: "B", note: "費用を優先する" }} /> };
 
+/** 案 B を送信済み（記録の利用者の選択）。実線の枠線と「選択済み（送信済み）」の札にし、一言を編集・取り消すを出さない。ほかの案は選び直せる */
+export const Sent: Story = { render: () => <Interactive initial={{ key: "B", note: "費用を優先する", sent: true }} /> };
+
 /** 長い一言。カードの幅で折り返す */
 export const LongText: Story = { render: () => <Interactive initial={{ key: "A", note: "行を足す運用はほとんど無く、書き方の短さを優先したい。参照が壊れたときは点検で見つけられるので、番地で指す方で進めてほしい" }} /> };
 
