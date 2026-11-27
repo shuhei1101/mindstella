@@ -9,6 +9,7 @@ from playwright.sync_api import Page, expect
 from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview
 from preview_spa_helpers import open_spa
+from preview_favorites_helpers import assert_card_star_toggles, assert_favorites_only_chip, assert_star_column, seed_prefs
 from workspace_fixtures import MakeEdit, MakeItem
 from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_described, assert_tip
 
@@ -362,3 +363,48 @@ def test_doc_card_title_id_markers(page: Page, write_preview: WritePreview, make
     assert_described(page, card.locator("button[data-id]"))
     marker.click()
     expect(page).to_have_url(re.compile(r"id=A-1"))
+
+
+# ─── お気に入り ───
+
+
+@pytest.mark.parametrize("view", ["cards", "board"])
+def test_favorite_star_visible(page: Page, write_preview: WritePreview, make_item: MakeItem, view: str) -> None:
+    """資料のカード・ボードのカードの右上の星を押すと登録・解除し、カードは開かない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", title="配色の比較"))
+    open_spa(page, url, f"?tab=docs&view={view}")
+    # 実行・検証
+    assert_card_star_toggles(page, "A-1", "配色の比較")
+
+
+def test_favorites_first_in_cards(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """カードの一覧ではお気に入りを先頭に並べ、それぞれの中は「並べ替え」の順のまま（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", title="資料 1"), make_item("A-2", title="資料 2"), make_item("A-3", title="資料 3"))
+    seed_prefs(page, {"favorites": ["A-3"]})
+    # 実行
+    open_spa(page, url, "?tab=docs&sort=id")
+    # 検証
+    expect(page.get_by_role("heading", level=2)).to_have_text(["資料 3", "資料 1", "資料 2"])
+
+
+def test_favorite_column_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """表の一番左に「お気に入り」の列を出し、見出しで並べ替える（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), make_item("A-2"), make_item("A-3"))
+    seed_prefs(page, {"favorites": ["A-2"]})
+    open_spa(page, url, "?tab=docs&view=table")
+    # 実行・検証
+    assert_star_column(page, "A-2")
+
+
+@pytest.mark.parametrize("view", ["cards", "board", "table"])
+def test_favorites_only_chip_visible(page: Page, write_preview: WritePreview, make_item: MakeItem, view: str) -> None:
+    """「お気に入りだけを表示する」の間は「お気に入りのみ」のチップを出し、× で解除する（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), make_item("A-2"))
+    seed_prefs(page, {"favorites": ["A-1"], "favoritesOnly": True})
+    open_spa(page, url, f"?tab=docs&view={view}")
+    # 実行・検証
+    assert_favorites_only_chip(page, "A-1", "A-2")

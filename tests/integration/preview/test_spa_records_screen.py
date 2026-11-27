@@ -9,6 +9,7 @@ from playwright.sync_api import Page, expect
 from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview
 from preview_spa_helpers import open_spa
+from preview_favorites_helpers import assert_favorites_only_chip, assert_star_column, seed_prefs
 from workspace_fixtures import MakeEdit, MakeItem
 from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_described, assert_tip
 
@@ -198,3 +199,27 @@ def test_table_title_id_markers(page: Page, write_preview: WritePreview, make_it
     assert_described(page, row.locator("button:has([data-record-id])"))
     marker.click()
     expect(page.get_by_role("complementary", name="詳細")).to_contain_text("R-1")
+
+
+# ─── お気に入り ───
+
+
+@pytest.mark.parametrize(("tab", "_label", "prefix"), RECORD_TABS)
+def test_favorite_column_visible(page: Page, write_preview: WritePreview, make_item: MakeItem, tab: str, _label: str, prefix: str) -> None:
+    """記録の表の一番左に「お気に入り」の列を出し、見出しで並べ替える（正常系）。"""
+    # 準備
+    url = write_preview(make_item(f"{prefix}-1"), make_item(f"{prefix}-2"), make_item(f"{prefix}-3"))
+    seed_prefs(page, {"favorites": [f"{prefix}-2"]})
+    open_spa(page, url, f"?tab={tab}")
+    # 実行・検証
+    assert_star_column(page, f"{prefix}-2")
+
+
+def test_favorites_only_chip_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """「お気に入りだけを表示する」の間は記録の表に「お気に入りのみ」のチップを出し、× で解除する（正常系）。"""
+    # 準備
+    url = write_preview(make_item("R-1"), make_item("R-2"))
+    seed_prefs(page, {"favorites": ["R-1"], "favoritesOnly": True})
+    open_spa(page, url, "?tab=research")
+    # 実行・検証
+    assert_favorites_only_chip(page, "R-1", "R-2")

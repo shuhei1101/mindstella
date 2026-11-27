@@ -965,3 +965,54 @@ def test_normal_when_narrowest_no_horizontal_scroll(
             box = control.bounding_box()
             assert box is not None
             assert box["x"] >= 0 and box["x"] + box["width"] <= NARROWEST_SIZE["width"] + 1
+
+
+# 端末の保存領域のキー（サーバーの配信では末尾に `:{workspace}` を付ける）
+_PREFS_KEY_JS = "'mindmap-preview' + (location.pathname.split('/')[1] === 'w' ? ':' + decodeURIComponent(location.pathname.split('/')[2]) : '')"
+
+
+def _snapshot(root: Path) -> dict[str, bytes]:
+    """ワークスペースの記録と設定のファイルの中身を、相対パスごとに返す（開いた時刻の印は除く）。"""
+    return {
+        str(path.relative_to(root)): path.read_bytes()
+        for path in sorted(root.rglob("*"))
+        if path.is_file() and ".git" not in path.parts and path.name != ".mindstella-opened"
+    }
+
+
+def test_normal_when_favorites(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page) -> None:
+    """お気に入りだけで絞り込んで開き、チップの × で解除するとお気に入りを先頭に並べ、記録と設定を書き換えない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1"),
+        make_item("A-2"),
+        make_item("A-3"),
+        bodies={"A-1.mark.md": "資料 1\n", "A-2.mark.md": "資料 2\n", "A-3.mark.md": "資料 3\n"},
+    )
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    before = _snapshot(root)
+    page.add_init_script(
+        "try { if (!sessionStorage.getItem('favorites-seeded')) {"
+        f" localStorage.setItem({_PREFS_KEY_JS}, JSON.stringify({{ favorites: ['A-3', 'A-9'], favoritesOnly: true }}));"
+        " sessionStorage.setItem('favorites-seeded', '1'); } } catch (e) {}"
+    )
+    # 実行
+    open_spa(page, served.data["url"], "?tab=docs&sort=id")
+    cards = page.locator("[data-card]")
+    # 検証
+    clear = page.get_by_role("button", name="お気に入りのみ の条件を解除")
+    expect(clear).to_be_visible()
+    expect(cards).to_have_count(1)
+    expect(cards.first).to_have_attribute("data-card", "A-3")
+    expect(page.locator("[data-card='A-9']")).to_have_count(0)
+    # 実行（チップの × で解除する）
+    clear.click()
+    # 検証
+    expect(clear).to_have_count(0)
+    expect(cards).to_have_count(3)
+    assert cards.evaluate_all("(cards) => cards.map((card) => card.dataset.card)") == ["A-3", "A-1", "A-2"]
+    prefs = json.loads(page.evaluate(f"localStorage.getItem({_PREFS_KEY_JS}) ?? '{{}}'"))
+    assert prefs.get("favoritesOnly") is None
+    assert prefs["favorites"] == ["A-3", "A-9"]
+    assert _snapshot(root) == before

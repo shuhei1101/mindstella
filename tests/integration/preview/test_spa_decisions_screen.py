@@ -9,6 +9,7 @@ from playwright.sync_api import Page, ViewportSize, expect
 from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_spa_helpers import AXE_SCRIPT, assert_below_topbar, open_spa
+from preview_favorites_helpers import assert_card_star_toggles, assert_favorites_only_chip, assert_star_column, seed_prefs
 from workspace_fixtures import MakeEdit, MakeItem
 from preview_record_id_helpers import LINKED_TITLE, TARGET_TITLE, assert_described, assert_tip
 
@@ -319,3 +320,35 @@ def test_card_title_id_markers(page: Page, write_preview: WritePreview, make_ite
     assert_described(page, card.locator("button[data-id]"))
     marker.click()
     expect(page).to_have_url(re.compile(r"id=D-2"))
+
+
+# ─── お気に入り ───
+
+
+def test_favorite_star_on_board(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """ボードのカードの右上の星を押すと登録・解除し、カードは開かない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", title="星の項目"))
+    open_spa(page, url, "?tab=decisions&view=board")
+    # 実行・検証
+    assert_card_star_toggles(page, "D-1", "星の項目")
+
+
+def test_favorite_column_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """表の一番左に「お気に入り」の列を出し、見出しで並べ替える（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"), make_item("D-2"), make_item("D-3"))
+    seed_prefs(page, {"favorites": ["D-2"]})
+    open_spa(page, url, "?tab=decisions&view=table")
+    # 実行・検証
+    assert_star_column(page, "D-2")
+
+
+def test_favorites_only_chip_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """「お気に入りだけを表示する」の間はボードに「お気に入りのみ」のチップを出し、× で解除する（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"), make_item("D-2"))
+    seed_prefs(page, {"favorites": ["D-1"], "favoritesOnly": True})
+    open_spa(page, url, "?tab=decisions&view=board")
+    # 実行・検証
+    assert_favorites_only_chip(page, "D-1", "D-2")
