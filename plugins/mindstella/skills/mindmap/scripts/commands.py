@@ -70,6 +70,7 @@ from store import (
     Change,
     NowFn,
     Workspace,
+    build_mismatch_error,
     create_workspace,
     dump_yaml,
     find_item,
@@ -85,6 +86,7 @@ from store import (
     require_workspace,
     save_batch,
     save_change,
+    validate_workspace,
     write_failed,
     write_temp,
 )
@@ -565,6 +567,12 @@ def _edit_option_once(
 def run_user_choices(root: Path) -> dict[str, Any]:
     """利用者がプレビューで案を選んで送信した検討事項を、送信した日時の古い順に返す（何も書かない）。"""
     workspace = load_workspace(root)
+    # decisions.yaml がスキーマか案と状態の決まりに合わなければ返さない
+    problems = [
+        problem for problem in validate_workspace(workspace) if problem.file == KINDS["decision"].file
+    ]
+    if problems:
+        raise build_mismatch_error(problems, workspace)
     chosen = []
     for index, item in enumerate(workspace.items["decision"]):
         user_choice = item.get(USER_CHOICE_KEY)

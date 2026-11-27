@@ -1507,7 +1507,7 @@ functions:
       type: dict[str, Any]
       description: '`{items: [{id, title, status, key, content, note, at}]}`（インターフェース定義『利用者が案を選んだ検討事項の一覧』の応答）。該当が無ければ `items` は空'
     process: |-
-      1. ワークスペースを読む（`load_workspace`。スキーマと案と状態の決まりに合わなければ `SchemaMismatchError` が伝わる）
+      1. ワークスペースを参照し（`load_workspace`）、`validate_workspace` の問題のうち `decisions.yaml` のもの（スキーマと案と状態の決まり）があれば `build_mismatch_error` で `SchemaMismatchError` を送出する
       2. 検討事項のうち `user_choice` を持つものを集め、選んだ案の `content` を引いて `{id, title, status, key, content, note（無ければ None）, at}` にする
       3. `at` の古い順（同じなら検討事項の並びの順）に並べて返す
     args_example: |-
@@ -1520,7 +1520,7 @@ functions:
       ```
     exceptions:
       - name: SchemaMismatchError
-        condition: '`load_workspace` が送出するもの（`decisions.yaml` がスキーマか案と状態の決まりに合わない）'
+        condition: '`decisions.yaml` がスキーマか案と状態の決まりに合わない（YAML として参照できないときも含む）'
     unit_tests:
       - name: test_run_user_choices
         case: 正常
@@ -1534,3 +1534,10 @@ functions:
         condition: '`user_choice` を持たない D-1 だけ'
         mock: なし
         expected: '`{items: []}`'
+      - name: test_run_user_choices_when_rule_mismatch
+        case: 異常
+        summary: 利用者の選択が案に無い記号を指すと返却しない
+        condition: '`user_choice.key` が案に無い `Z` の D-1'
+        mock: なし
+        exception: SchemaMismatchError
+        expected: '`lines` に `decisions.yaml: items[0].user_choice:` で始まる行がある'
