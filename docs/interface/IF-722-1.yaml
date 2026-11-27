@@ -1,0 +1,159 @@
+id: IF-722-1
+title: 利用者が案を選んだ検討事項の一覧
+lead: 利用者がプレビューで案を選んで送信し、AI がまだ採用していない検討事項（`user_choice` を持つ検討事項）を、選んだ案と一言つきで返却する。参照するだけで、何も書き換えない。
+entry:
+  kind: mcp_tool
+  value: '`user_choices`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__user_choices`）。結果とエラーの返し方は『MCP サーバーの起動』'
+idempotent: true
+side_effects: なし（何も書き換えない）
+callers:
+  - SC-489-43#scenarios[正常シナリオ（利用者が選んだ案）]
+  - SC-489-21#scenarios[正常シナリオ（利用者が選んだ案）]
+  - SC-489-26#scenarios[正常シナリオ（利用者が案を選んだ検討事項がある）]
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+response:
+  - name: items
+    type: list[dict]
+    description: '`user_choice` を持つ検討事項。送信した日時（`user_choice.at`）の古い順。無ければ空の配列'
+  - name: items[].id
+    type: str
+    description: 検討事項の ID
+    example: D-2
+  - name: items[].title
+    type: str
+    description: 検討事項のタイトル
+  - name: items[].status
+    type: str
+    description: 検討事項の状態（`未決定`・`要見直し` など）
+  - name: items[].key
+    type: str
+    description: 利用者が選んだ案の記号（`user_choice.key`）
+    example: B
+  - name: items[].content
+    type: str
+    description: 選んだ案の中身（`options[].content`）
+  - name: items[].note
+    type: str | None
+    description: 利用者が添えた一言。無ければ `null`
+  - name: items[].at
+    type: str
+    description: まとめて送信した日時（UTC のタイムゾーン付き ISO 8601）
+exceptions:
+  - name: なし（正常終了）
+    condition: 参照できた（該当が 0 件のときも含む）
+    notes: 結果を返却する
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー
+  - name: SchemaMismatchError
+    condition: '`decisions.yaml` がスキーマか案と状態の決まりに合わない（YAML として参照できないときも含む）'
+    notes: ツールのエラー。エラーの本文に合わない箇所
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける'
+constraints:
+  - item: 結果の構造
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: 対象
+    constraint: 送信した選択（`decisions.yaml` の `user_choice`）だけを返し、送信前のレビュー中の案の選択（`comments.yaml` の `choice`）は返却しない
+  - item: 片付け
+    constraint: このツールは選択を片付けない。片付けるのは『採用する案の切り替え』（`adopt`）
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（参照するだけで、書き込みのロックは取らない）
+flows:
+  - name: 正常系
+    summary: 利用者の選択を持つ検討事項だけを、送信した日時の古い順に返却する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '未決定の検討事項 D-1（`user_choice`: 案 B・一言なし・10:00 に送信）・D-2（`user_choice`: 案 A・一言「費用を優先する」・09:00 に送信）・D-3（`user_choice` なし）と、D-3 への送信前の案の選択（`comments.yaml` の `choice`）を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as user_choices（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: user_choices workspace
+        IF-->>WS: decisions.yaml を参照する
+        IF-->>クライアント: JSON（items: D-2・D-1）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`items` が D-2・D-1 の順の 2 件で、D-3 を含まない'
+      - D-2 の `key` が `A`、`content` が案 A の中身、`note` が `費用を優先する`
+      - D-1 の `note` が `null`
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_normal
+  - name: 正常系（選ばれた検討事項が無い）
+    summary: '`user_choice` を持つ検討事項が無ければ空の配列を返却する'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 未決定の検討事項 D-1（`user_choice` なし）だけを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as user_choices（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: user_choices workspace
+        IF-->>WS: decisions.yaml を参照する
+        IF-->>クライアント: JSON（items: 空）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`items` が空の配列'
+    test: test_normal_when_no_choices
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: .mindstella/config.yaml が無いフォルダを指すとエラーになる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as user_choices（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: user_choices workspace
+        IF-->>WS: .mindstella/config.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（スキーマに合わない・SchemaMismatchError）
+    summary: 手で崩した decisions.yaml は合わない箇所を返却する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`user_choice.key` を案に無い `Z` に直接書き換えた検討事項 D-1 を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as user_choices（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: user_choices workspace
+        IF-->>WS: decisions.yaml を参照する
+        IF->>IF: 案と状態の決まりに合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `decisions.yaml: items[0].user_choice:` で始まる行がある'
+    test: test_error_when_schema_mismatch
+test_file: tests/integration/server/test_user_choices.py

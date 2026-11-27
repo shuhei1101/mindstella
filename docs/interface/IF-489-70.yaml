@@ -3,7 +3,7 @@ title: プレビューを開く
 entry:
   kind: screen
   value: サーバーの配信の `/w/{workspace}/`（画面は『プレビューの配信』が返し、ソースは `frontend/`）
-  api: '`GET /w/{workspace}/api/records`（記録）・`GET /w/{workspace}/api/events`（書き換えの通知）・`GET /w/{workspace}/api/comments`（レビュー中の書き込みと下書き、項目ごとのコメントのマーカー）・`GET /w/{workspace}/api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /w/{workspace}/api/threads`（スレッドと利用者の未読）・`POST /w/{workspace}/api/opened`（前回開いた日時）・`POST /w/{workspace}/api/edits`・`DELETE /w/{workspace}/api/edits/{id}`・`POST /w/{workspace}/api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /w/{workspace}/api/comments`・`PATCH`/`DELETE /w/{workspace}/api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /w/{workspace}/api/drafts`（下書き）・`POST /w/{workspace}/api/comments/send`（まとめて送信する）・`PATCH /w/{workspace}/api/threads/{id}`（クローズとオープンへの戻し）・`POST /w/{workspace}/api/threads/{id}/seen`（利用者の既読）・`PUT /w/{workspace}/api/config/display`（ワークスペースの既定の書き換え）・`POST /w/{workspace}/api/presets`（絞り込みのプリセットの保存）・`GET /w/{workspace}/api/transcription`（文字起こしの可否と設定）・`POST /w/{workspace}/api/transcriptions`（音声の文字起こし）・`POST /w/{workspace}/api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
+  api: '`GET /w/{workspace}/api/records`（記録）・`GET /w/{workspace}/api/events`（書き換えの通知）・`GET /w/{workspace}/api/comments`（レビュー中の書き込みと下書き、項目ごとのコメントのマーカー）・`GET /w/{workspace}/api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /w/{workspace}/api/threads`（スレッドと利用者の未読）・`POST /w/{workspace}/api/edits`・`DELETE /w/{workspace}/api/edits/{id}`・`POST /w/{workspace}/api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /w/{workspace}/api/comments`・`PATCH`/`DELETE /w/{workspace}/api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /w/{workspace}/api/drafts`（下書き）・`POST /w/{workspace}/api/comments/send`（まとめて送信する）・`PATCH /w/{workspace}/api/threads/{id}`（クローズとオープンへの戻し）・`POST /w/{workspace}/api/threads/{id}/seen`（利用者の既読）・`PUT /w/{workspace}/api/config/display`（ワークスペースの既定の書き換え）・`POST /w/{workspace}/api/presets`（絞り込みのプリセットの保存）・`GET /w/{workspace}/api/transcription`（文字起こしの可否と設定）・`POST /w/{workspace}/api/transcriptions`（音声の文字起こし）・`POST /w/{workspace}/api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
 flows:
   - name: 正常系
     summary: '`/w/{workspace}/` を開くと、記録を読んでトップバーと概要を描く'
@@ -109,12 +109,13 @@ flows:
       - name: make_workspace
         description: まとまり V-1（D-1 を追加した）と V-2（D-1 の本文を変え、D-2 を追加し、D-3 を削除した）を持つワークスペース
         notes: '`/w/{workspace}/?tab=decisions&view=table&id=D-1&diff=V-2` で開き、トップバーの変更履歴で V-1 を選ぶ'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: diff=V-2 を付けて開く\n  IF-->>SV: POST /w/{workspace}/api/opened\n  IF-->>SV: GET /w/{workspace}/api/records\n  IF-->>ユーザー: 差分のマーカーと削除した項目の帯の付いた表と、本文の差分の詳細\n  ユーザー->>IF: 変更履歴で V-1 を選ぶ\n  IF-->>ユーザー: V-1 からの差分の表示\n```"
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: diff=V-2 を付けて開く\n  IF-->>SV: GET /w/{workspace}/api/records\n  IF-->>ユーザー: 差分のマーカーと削除した項目の帯の付いた表と、本文の差分の詳細\n  ユーザー->>IF: 変更履歴で V-1 を選ぶ\n  IF-->>ユーザー: V-1 からの差分の表示\n```"
     expected:
       - 表の D-1 の行に変更のマーカー、D-2 の行に新規のマーカーがあり、表の上の削除した項目の帯に D-3 がある
       - 詳細パネルの本文に、追加した行と削除した行の差分の色分けがある
       - V-1 を選んだ後、URL の `diff` が `V-1` になり、履歴の数が変わらない
       - 再読み込みすると、`diff=V-1` の差分の表示で開く
+      - タブの帯の検討事項のタブに変更のマーカーがあり、概要とタスクのタブにマーカーが無い
     test: test_normal_when_diff
   - name: 正常系（記録に無い時点を指す）
     summary: 記録に無いまとまりを指す `diff` では差分を出さずに開き、`diff` を外す
@@ -128,19 +129,6 @@ flows:
       - 差分のマーカーと削除した項目の帯が無い
       - URL の search params に `diff` が無い
     test: test_normal_when_diff_missing
-  - name: 正常系（前回開いてから）
-    summary: 「前回開いてから」を選ぶと、`POST /w/{workspace}/api/opened` が返した前回の時点より後の変更にマーカーを付ける
-    setup:
-      - *id001
-      - name: make_workspace
-        description: まとまり V-1 を持ち、前回開いた日時の連番が V-1 の `until_seq` のワークスペース
-        notes: 開いた後に MCP の `add` で D-2 を追加し、`commit` でまとまり V-2 にしてから、変更履歴で「前回開いてから」を選ぶ
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /w/{workspace}/?tab=decisions を開く\n  IF-->>SV: POST /w/{workspace}/api/opened\n  SV-->>IF: previous\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /w/{workspace}/api/records\n  ユーザー->>IF: 変更履歴で「前回開いてから」を選ぶ\n  IF-->>ユーザー: D-2 に新規のマーカー\n```"
-    expected:
-      - D-2 に新規のマーカーがあり、D-1 にマーカーが無い
-      - URL の `diff` が `since`
-      - 同じタブで再読み込みしても `POST /w/{workspace}/api/opened` が呼ばれない
-    test: test_normal_when_since
   - name: 正常系（書き換えで項目と表示を保つ）
     summary: 詳細と絞り込みを開いたまま書き換えると、URL と詳細を保って再描画し、開いていた項目が消えたら詳細を閉じる
     setup:
@@ -655,6 +643,97 @@ flows:
       - 端末の保存領域に `favorites_only` が無く、`favorites` に A-3 と A-9 が残っている
       - ワークスペースの記録と `config.yaml` の中身が、開く前と同じである
     test: test_normal_when_favorites
+  - name: 正常系（未読のまとまり）
+    summary: 差分の表示で開いていないまとまりを未読として数え、開いたまとまりと「すべて既読にする」で既読にし、`commit` で増えたまとまりを未読に加える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: まとまり V-1・V-2 を持ち、ブラウザの保存領域に既読を持たないワークスペース
+        notes: '`/w/{workspace}/?tab=decisions` で開き、変更履歴で V-2 を選んで「最新」に戻し、「すべて既読にする」を押してから、MCP の `add` と `commit` でまとまり V-3 を作る'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: /w/{workspace}/?tab=decisions を開く
+        IF-->>SV: GET /w/{workspace}/api/records
+        IF-->>ユーザー: 変更履歴のボタンの未読の件数 2
+        ユーザー->>IF: 変更履歴で V-2 を選ぶ
+        IF-->>ユーザー: V-2 の差分の表示と未読の件数 1
+        ユーザー->>IF: 「最新」を選び、「すべて既読にする」を押す
+        IF-->>ユーザー: 未読の件数の無い変更履歴のボタン
+        SV-->>IF: changed の通知（V-3 の commit）
+        IF-->>SV: GET /w/{workspace}/api/records
+        IF-->>ユーザー: 未読の件数 1
+      ```
+    expected:
+      - 開いた直後、トップバーの変更履歴のボタンに未読の件数 2 がある
+      - 変更履歴の一覧の先頭が「最新」で、その下に V-2・V-1 の順に未読のマーカーつきで並び、「前回開いてから」の行が無い
+      - V-2 を選んだ後、URL の `diff` が `V-2` で、未読の件数が 1、V-2 の行に未読のマーカーが無い
+      - 「すべて既読にする」を押した後、未読の件数が出ず、再読み込みしても出ない
+      - V-3 を `commit` した後、再読み込みの操作をせずに未読の件数 1 が出て、変更履歴の一覧の V-3 にだけ未読のマーカーがある
+      - '`diff=since` を付けて開き直すと差分を出さず、URL から `diff` を除外する'
+    test: test_normal_when_unread
+  - name: 正常系（資料を開いても画面の全体をスクロールしない）
+    summary: 本文の長い資料を開いても、画面の全体は縦にスクロールせず、本文の区画の中だけがスクロールする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 本文が画面の高さを超える資料 A-1 を持つワークスペース
+        notes: '`/w/{workspace}/?tab=docs&id=A-1` を幅 1280px・390px で開き、本文の区画を最後までスクロールする'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+
+        ユーザー->>IF: /w/{workspace}/?tab=docs&id=A-1 を開く
+        IF-->>ユーザー: 資料の一覧と詳細パネル
+        ユーザー->>IF: 本文の区画を最後までスクロールする
+        IF-->>ユーザー: 本文の最後の行
+      ```
+    expected:
+      - どちらの幅でも、ページの `scrollHeight` が `clientHeight` 以下で、画面の全体が縦にスクロールしない
+      - スクロールした後も、トップバーが画面の上端にある
+      - 本文の最後の行が画面に入る
+    test: test_normal_when_doc_keeps_page_height
+  - name: 正常系（案を選んで送信する）
+    summary: 検討事項の詳細で案を選んでレビュー中の書き込みとして溜め、選び直してからまとめて送信すると、利用者の選択として記録する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 案 A・B を持つ未決定の検討事項 D-1 を持ち、`comments.yaml` を持たないワークスペース
+        notes: '`/w/{workspace}/?tab=decisions&id=D-1` で開き、案 A の「この案を選ぶ」で確定し、案 B で選び直して一言「費用を優先する」を添え、コメントの一覧のレビュー中からまとめて送信する'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: 案 A の「この案を選ぶ」を押して確定する
+        IF->>SV: POST /w/{workspace}/api/comments {target: D-1, choice: {key: A}}
+        SV-->>IF: 201
+        ユーザー->>IF: 案 B を選び直し、一言を添えて確定する
+        IF->>SV: PATCH /w/{workspace}/api/comments/C-1 {choice: {key: B}, body}
+        SV-->>IF: 200
+        ユーザー->>IF: まとめて送信する
+        IF->>SV: POST /w/{workspace}/api/comments/send {ids: [C-1]}
+        SV-->>IF: 201
+        IF-->>ユーザー: 案 B のカードに利用者が選んだ状態
+      ```
+    expected:
+      - 確定した後、案 A のカードに選んだ状態があり、トップバーのコメントのボタンの件数が 1
+      - 選び直した後も件数が 1 のままで、案 B のカードだけに選んだ状態がある
+      - 送信した後、記録の D-1 の `user_choice.key` が `B`、`user_choice.note` が `費用を優先する` で、D-1 の状態は `未決定` のまま
+      - 幅 390px でも「この案を選ぶ」の押す領域が縦横 24px 以上
+      - ブラウザのコンソールにエラーが出ていない
+    test: test_normal_when_option_chosen
 lead: 利用者がサーバーの配信の `/w/{workspace}/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの通知を受けると記録を再読み込みして再描画する。
 callers:
   - SC-489-12#
@@ -697,12 +776,12 @@ request:
     constraints: 見出しの文言の空白を `-` にした状態。同じ文言の見出しが 2 つ以上あるときは、本文の頭から 2 つ目が `-1`、3 つ目が `-2` を続ける。`id` があるときだけ効く。本文に無い見出しと、本文が HTML の資料のときは本文の頭で開き、URL から外す
     example: 決め方
   - name: diff
-    type: "'since' | 'pending' | str"
+    type: "'pending' | str"
     required: false
     default: なし（そのタブの保存領域に残した時点。残していなければ差分を出さない）
     location: query
-    description: 差分の表示で比べる時点。`since` は「前回開いてから」、`pending` は「まだまとめていない変更」、それ以外はまとまりの ID（`V-{番号}`）
-    constraints: そのタブの保存領域（制約「保存した絞り込みの条件」のキー）に残した時点より先に読み、差分を出せた時点を保存領域にも残す。記録に無いまとまりの ID と、まだまとめていない変更が空の `pending` は差分を出さず、URL から外す。URL に無く、保存領域の時点で差分を出せたときは、その時点を URL に書く
+    description: 差分の表示で比べる時点。`pending` は「まだまとめていない変更」、それ以外はまとまりの ID（`V-{番号}`）
+    constraints: そのタブの保存領域（制約「保存した絞り込みの条件」のキー）に残した時点より先に読み、差分を出せた時点を保存領域にも残す。記録に無いまとまりの ID（まとまりの ID でない値を含む）と、まだまとめていない変更が空の `pending` は差分を出さず、URL から外す。URL に無く、保存領域の時点で差分を出せたときは、その時点を URL に書く
     example: V-2
   - name: f.{列}
     type: str
@@ -844,8 +923,6 @@ constraints:
     constraint: 画面ごとの絞り込みの条件（タグの組み合わせ方とタグの条件の式 `tx` を含む）と変更履歴で選んだ時点を、そのタブの `sessionStorage` のキー（`mindmap-filters`）に、条件を変えるたびに書く。URL に `f.{列}` が無い画面を開くときは保存した条件を当てて URL に書き、`f.{列}` があれば URL の条件で開いて保存した条件を書き換える。保存した値が今の記録に無ければ、その値を外して描く
   - item: 端末の保存領域
     constraint: ライト / ダークと、表ごとの表示する列・ピン留め、差分のミニマップを表示する・しない、1 文字のショートカットを使用する・しない（個人の上書き `single_key_shortcuts`）、セクションの折りたたみ、レビュー中のコメントの並び、「レビューに追加」の後のフォーカス、お気に入りに登録した項目の ID の並び（`favorites`）・お気に入りを一番上にする（個人の上書き `favorites_first`）・お気に入りだけを表示する（個人の上書き `favorites_only`）を `localStorage` の 1 つのキーに持つ。絞り込みの条件と変更履歴で選んだ時点はこのキーに持たず、このキーに残っていれば参照せずに削除する（制約「保存した絞り込みの条件」）。配る書き出しは絞り込みの条件を保存しない。保存できない環境では開いている間だけ保つ。詳細パネルの幅（区切りのドラッグかキーで変えた幅）は、そのタブの `sessionStorage` の 1 つのキーに持ち、種類で分けない。配る書き出しも同じ。保存できない環境では既定の幅で開く。コメントの一覧のパネルの幅（右端の区切りのドラッグかキーで変えた幅）も、そのタブの `sessionStorage` の 1 つのキーに持ち、スレッドの一覧・スレッド・レビュー中の書き込みと、同じ左のパネルに出す保存待ちのパネル・表示の設定で同じ値を使用する。配る書き出しはコメントの一覧を持たない。保存できない環境では既定の幅で開く。サーバーの配信では全てのワークスペースを同じオリジンで配るため、`localStorage`・`sessionStorage` のキーの末尾に `:{workspace}`（『プレビューの URL』の制約「画面のパス」）を付けてワークスペースごとに分ける（配る書き出しは付けない）。詳細パネル・詳細の全画面の本文のスクロール位置は、`sessionStorage` のキー（`mindmap-body-scroll`）に項目の ID ごとに持ち、項目を開いたときにその位置へ戻す。`h` の見出しへ送信するときは戻さない。表の見せ方とセクションの見せ方・表示する種類・コメントの一覧のピン止めの上書きも同じ `localStorage` のキーに持ち、知らない項目を削除しない
-  - item: 「前回開いてから」の範囲
-    constraint: サーバーの配信では、タブで最初に記録を読む前に `POST /w/{workspace}/api/opened` を 1 度呼び、`previous`（日時と連番）をそのタブの範囲の始まりにする（`sessionStorage` に持ち、同じタブで再読み込みしても再呼び出ししない）。`previous` が `null` のときは `opened`（タブを開いた時点）にし、呼べなかったときはタブを開いた日時と、読んだ記録の先頭のまとまりの `until_seq` にする。始まりの連番が読んだ記録の先頭のまとまりの `until_seq` より大きいとき（ワークスペースを戻した・再作成した）も、タブを開いた時点にする。配る書き出しは `localStorage` に前回開いた日時と、書き出した記録の先頭のまとまりの `until_seq` を持ち、同じ決め方にする（連番を持たない前のバージョンの値は前回開いた時点なしとして扱う）。範囲に入るのは、`until_seq` が始まりの連番より大きいまとまりと、まだまとめていない変更。日時は比べず、`{日時} より後` の表示にだけ使う
   - item: 前のバージョンの組み立て
     constraint: 項目の `history` を新しいものから順に、選んだ時点の最初の `seq` まで当てる（キーは `before` で戻し、本文は `body_diff` で戻す）。選んだ時点の範囲の中の回が 1 つでも保持する回数を超えて消えていれば（範囲の要素が無いか、項目の `history_dropped_seq` が範囲の始まりの `seq` より大きい）、マーカーだけ付けて詳細パネルにその旨を出す。`body_diff` の `now` が今の本文に当たらなければ、本文は今の内容を描いて差分を出せない旨を出し、キーの差分は出す。`update_settings` が付け替えた `phase` は変更履歴に無いため、前のバージョンでも今の値で出す
   - item: 差分の表示と書き換え
@@ -902,11 +979,18 @@ constraints:
     constraint: 項目を並べる画面（表・ボード・カード）から項目を開いたときと、前後の項目へ移ったとき、その履歴の行の `history.state` に一覧から開いたマーカー（`fromList`）を持つ（URL の search params には持たせない）。並びの中身は、画面が今描いている並び（絞り込み・並べ替えを適用した順。ボードは開いている項目の列の中の順）を描くたびに使用する。詳細パネル・詳細の全画面は、今の履歴の行にマーカーがあり、開いている項目が今の並びにあるときだけ、並びの前後の項目へ移るボタンと位置（`{何件目} / {件数}`）を出し、先頭・末尾ではその向きのボタンを押せない状態にする。マーカーの無い行（URL から直接開いた・詳細の中のリンク・全体の検索の結果から開いた）と、マーカーがあっても今の並びに無い項目では出さない。戻る・進む・再読み込みでたどり着いた行も、その行のマーカーで決める。キー（`k` 前・`j` 次）でも移れ、入力欄にフォーカスがある間と IME の入力中と、個人の上書き `single_key_shortcuts` が `false` のときは無効にする
   - item: お気に入り
     constraint: カード・ボードのカードの右上と表の一番左の星の列の星を押すと、その項目の ID を端末の保存領域の `favorites` の末尾に加える（登録済みなら削除する）。サーバーへは送信せず、ワークスペースの記録と `config.yaml` を変えない。記録に無い ID は参照するときに無視し、`favorites` からは削除しない。`favorites_first` が無い（既定）ときは、カードの一覧だけ、並べ替えの順に並べた後にお気に入りを先頭に並べる（お気に入りの中とそれ以外の中は並べ替えの順のまま）。ボードと表の並びは変えない。`favorites_only` が真のときは、カード・ボード・表のどれでもお気に入りの項目だけに絞り、絞り込みのチップの先頭に「お気に入りのみ」を出す。チップの × と「すべて解除」は `favorites_only` の上書きを削除する。「既定に戻す」は `favorites_first`・`favorites_only` の上書きを削除し、`favorites` は残す。どちらの上書きも「ワークスペースの既定にする」の対象に含めない。星の列の並べ替えはほかの列と同じく search params の `sort`（`favorite`・`-favorite`）に持ち、昇順でお気に入りが先頭になる
+  - item: 既読のまとまり
+    constraint: サーバーの配信では、差分の表示で開いた（変更履歴で選んだ・`diff` を付けて開いた・本文のまとまりのリンクを押した）まとまりの ID を、端末の保存領域（`localStorage`）の `mindmap-read-changes` のワークスペース（`{workspace}`）ごとの配列に加える。「すべて既読にする」は、その時点の記録の全てのまとまりの ID を加える。未読は、記録のまとまりのうち ID が既読に無いもので、まだまとめていない変更は数えない。トップバーの変更履歴のボタンに未読の件数（0 件のときは出さない）を、変更履歴の一覧の未読のまとまりの行に未読のマーカーを出す。書き換えの通知で再読み込みしたときに増えたまとまりは未読になる。記録に無いまとまりの ID は、記録を参照するたびに既読から削除する。保存領域を使用できないときは、そのタブを開いている間だけ既読を持つ。配る書き出しでは未読の件数・未読のマーカー・「すべて既読にする」を出さない
+  - item: タブのマーカー
+    constraint: 差分の表示の間、選んだ時点の範囲で追加・変更・削除・取り下げた項目を持つ種類の画面のタブに変更のマーカーを出し、持たない種類の画面のタブと、概要・設定のタブには出さない。書き換えの通知で再読み込みしたときは、同じ時点で数え直す
+  - item: 画面の高さ
+    constraint: 画面の全体（トップバーとタブの帯を含む）をビューポートの高さに収め、ページ全体を縦にスクロールさせない。縦にスクロールするのは、本文の区画・一覧のスクロール領域・パネルとモーダルの中だけ
+  - item: 案の選択
+    constraint: 検討事項の詳細パネル・詳細の全画面で、状態が `未決定`・`要見直し` の検討事項の案のカードの下に「この案を選ぶ」を配置する（押す領域は縦横 24px 以上）。押すと一言の入力と確定を出し、確定すると `POST /w/{workspace}/api/comments` に `target` と `choice.key`（一言は `body`）を指定してレビュー中の書き込みとして溜める。同じ検討事項で別の案を選び直すと `PATCH /w/{workspace}/api/comments/{id}` で書き換え、取り消すと `DELETE /w/{workspace}/api/comments/{id}` で削除する。溜めた選択はコメントのボタンの件数とレビュー中の一覧に含め、まとめて送信でほかのコメントと一緒に送信する。記録の `user_choice` を持つ案のカードには利用者が選んだ状態を出し、AI の採用（`決定済み`）の見せ方と分ける。配る書き出しでは「この案を選ぶ」を出さない
 refs:
   - IF-489-18#
   - IF-489-51#
   - IF-489-44#
-  - IF-489-34#
   - IF-489-23#
   - IF-489-29#
   - IF-489-11#
@@ -928,4 +1012,5 @@ refs:
   - IF-489-49#
   - IF-489-54#
   - IF-587-1#
+  - ER-489-1#
 test_file: tests/integration/preview/test_spa_open.py

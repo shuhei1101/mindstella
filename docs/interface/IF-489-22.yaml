@@ -113,6 +113,30 @@ flows:
       - ステータスが 404 で、`detail` に `C-9` がある
       - '`comments.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_comment_not_found
+  - name: 正常系（案を選び直す）
+    summary: 案の選択の記号と一言を書き換え、向けた検討事項は変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 案 A・B を持つ未決定の検討事項 D-1 と、D-1 への案 A の選択 C-1（一言なし）を持つワークスペース
+        notes: '`PATCH /w/{workspace}/api/comments/C-1` に `{choice: {key: B}, body: 費用を優先する}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /w/{workspace}/api/comments/{id}
+        participant WS as ワークスペース
+
+        クライアント->>IF: PATCH /w/{workspace}/api/comments/C-1 {choice, body}
+        IF->>WS: comments.yaml の C-1 を書き換える
+        IF-->>クライアント: 200
+      ```
+    expected:
+      - ステータスが 200 で、`choice.key` が `B`、`body` が `費用を優先する`
+      - '`comments.yaml` の C-1 の `choice` と `body` だけが変わり、`target` が D-1 のまま'
+      - '`decisions.yaml` の中身が呼ぶ前と同じ'
+    test: test_normal_when_choice_changed
 lead: コメントの一覧の行の中で、レビュー中のコメント 1 件の本文を書き換えるか、箇所が合わなくなったコメントから箇所を外す。
 idempotent: true
 side_effects: '`comments.yaml` のそのコメントの `body` を書き換えるか `loc` を削除する。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
@@ -150,7 +174,7 @@ request:
     default: なし（本文を変えない）
     location: body
     description: 書き換えた後の本文
-    constraints: 前後の空白を除いて 1 文字以上、10000 文字以下
+    constraints: 前後の空白を除いて 1 文字以上、10000 文字以下。案の選択のコメントだけ `null` を渡せ、一言を削除する
     example: 案 A に決める
   - name: loc
     type: None
@@ -159,6 +183,14 @@ request:
     location: body
     description: '`null` を渡すと箇所を外す。箇所を付け替えることはできない'
     constraints: '`null` だけ'
+  - name: choice.key
+    type: str
+    required: false
+    default: なし（選んだ案を変えない）
+    location: body
+    description: 案の選択のコメントで、選び直した案の記号
+    constraints: 向けた検討事項の `options` にある記号
+    example: A
 response:
   - name: id
     type: str
@@ -169,11 +201,14 @@ response:
   - name: loc
     type: dict | None
     description: 書き換えた後の箇所。外したら `null`
+  - name: choice
+    type: dict | None
+    description: 書き換えた後の案の選択（`key`）。案の選択でないコメントは `null`
 status_codes:
   - code: '200'
     condition: 書き換えた
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・`body` も `loc` も無い・`body` が空白だけか 10000 文字を超える・`loc` が `null` 以外
+    condition: '本文が JSON のオブジェクトでない・`body` も `loc` も `choice` も無い・`body` が空白だけか 10000 文字を超える・案の選択でないコメントに `choice` か `body: null` を渡した・`loc` が `null` 以外'
     notes: 何も書かない
   - code: '403'
     condition: '`Origin` が『プレビューの配信』の制約「送信元の確認」に合わない'
@@ -190,10 +225,13 @@ status_codes:
   - code: '500'
     condition: '`comments.yaml` を書けない'
     notes: '`detail` に書けなかったパスと理由。`comments.yaml` は前のまま'
+  - code: '409'
+    condition: '`choice.key` が向けた検討事項の案に無いか、向けた検討事項が `未決定`・`要見直し` でない'
+    notes: 何も書かない。`detail` に合わない理由
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 書き換えるキー
-    constraint: '`body` と `loc` だけ。`id`・`target`・`created` は変えない。並びも変えない'
+    constraint: '`body`・`loc`・`choice` だけ。`id`・`target`・`created` は変えない。並びも変えない'
   - item: 本文の上限
     constraint: 『レビュー中のコメントの追加』と同じ
     decided_by: NFR-489-1#requirements[送信の本文の長さ]

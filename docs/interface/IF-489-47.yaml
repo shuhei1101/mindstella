@@ -330,9 +330,36 @@ flows:
       - エラーの本文に `D-1`、`A`、案を 1 つ以上残す旨がある
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_last_option_removed
+  - name: 正常系（利用者が選んだ案を削除する）
+    summary: 利用者が選んだ案を削除すると、利用者の選択も削除する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A・B・C を持ち、利用者の選択が案 B の未決定の検討事項 D-1 を追加して `commit` したワークスペース
+      - name: 引数
+        description: '`action: remove`、`key: B`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-1 action remove key B
+        IF-->>WS: 全ての YAML を参照する
+        IF->>IF: 案 B を抜き、利用者の選択を削除して、変更履歴を追加する
+        IF->>WS: decisions.yaml と changes.yaml を記載する
+        IF-->>クライアント: JSON（options・changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - D-1 の `options` が A・C の順で、D-1 が `user_choice` を持たない
+      - D-1 の `status` が `未決定` のまま
+    test: test_normal_when_user_chosen_option_removed
 lead: 検討事項の案を記号（`key`）で指して、1 つ追加する・中身と推奨のマーカーを修正する・削除する。指さない案と検討事項のほかのキーはそのまま残し（推奨のマーカーを立てたときはほかの案のマーカーを外す）、値が変わったときは書き換える前の案の並びを変更履歴に 1 回分積む。
 idempotent: false
-side_effects: '`decisions.yaml` のその検討事項の `options` と、`history.yaml` のその項目の行の `updated`・`updated_by`（`ai`）を書き換える。値が変わったときは、『変更の検知』と同じ積み方で `history.yaml` の `history`・`seq` と `changes.yaml` の `last_seq`・`pending.changed` を書き換える。YAML・`history.yaml`・`changes.yaml` の一時ファイルを書き終えてから `os.replace` で置き換える'
+side_effects: '`decisions.yaml` のその検討事項の `options`（利用者が選んだ案を削除したときは `user_choice` も）と、`history.yaml` のその項目の行の `updated`・`updated_by`（`ai`）を書き換える。値が変わったときは、『変更の検知』と同じ積み方で `history.yaml` の `history`・`seq` と `changes.yaml` の `last_seq`・`pending.changed` を書き換える。YAML・`history.yaml`・`changes.yaml` の一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 request:
   - name: workspace
@@ -429,6 +456,8 @@ constraints:
     constraint: 起こさない。YAML か `changes.yaml` の置き換えに失敗したら、置き換えたものを前の中身に戻してからツールのエラーで終わる
   - item: 推奨のマーカー
     constraint: '`recommended` が真の案は 0 か 1 つ。`option` に `recommended: true` を渡すと、その案にマーカーを立ててほかの案の `recommended` のキーを削除する。マーカーを外した案は `recommended` のキーを持たない'
+  - item: 利用者の選択
+    constraint: '`remove` で削除した案がその検討事項の `user_choice.key` のときは、`user_choice` も削除する。それ以外の操作では `user_choice` を書き換えない'
 refs:
   - IF-540-2#
 test_file: tests/integration/server/test_edit_option.py

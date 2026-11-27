@@ -181,9 +181,35 @@ flows:
       - 'D-2 の `history` の 1 回分の `before` が `status: 要見直し` だけを持ち、`options` を持たない'
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_undecided_adopted
+  - name: 正常系（利用者の選択を片付ける）
+    summary: 利用者の選択を持つ検討事項の案を採用すると、選択を削除して片付けた選択を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '案 A・B を持ち、利用者の選択（`key: B`・`note: 費用を優先する`）を持つ未決定の検討事項 D-1 を追加して `commit` したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as adopt（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: adopt workspace id D-1 key B
+        IF->>IF: 案 B を採用にし、状態を決定済みにして、利用者の選択を削除する
+        IF->>WS: decisions.yaml を書く
+        IF-->>クライアント: JSON（adopted: B、user_choice: key B・note 費用を優先する）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - D-1 が `決定済み` で案 B だけが採用で、`user_choice` を持たない
+      - 結果の `user_choice` が片付けた選択（`key` が `B`、`note` が `費用を優先する`）
+      - D-1 の `history` の 1 回分の `before` が `user_choice` を持つ
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_user_choice_cleared
 lead: 検討事項の案のうち、指定した記号の案だけを採用にし、ほかの案の採用を外して、状態を `決定済み` にする。
 idempotent: true
-side_effects: '`decisions.yaml` のその検討事項の `options[].adopted`・`status` と、`history.yaml` のその項目の行の `updated`・`updated_by`（`ai`）を書き換える。採用か状態が変わったときは、`history.yaml` の `history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『変更の検知』と同じ積み方）。回答（`answer`）・推奨のマーカー（`options[].recommended`）は変えない'
+side_effects: '`decisions.yaml` のその検討事項の `options[].adopted`・`status` と、`history.yaml` のその項目の行の `updated`・`updated_by`（`ai`）を書き換える。採用か状態が変わったときは、`history.yaml` の `history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『変更の検知』と同じ積み方）。利用者の選択（`user_choice`）を持つときは削除する。回答（`answer`）・推奨のマーカー（`options[].recommended`）は変えない'
 request:
   - name: workspace
     type: str
@@ -220,6 +246,9 @@ response:
   - name: previous_status
     type: str
     description: 切り替える前の状態
+  - name: user_choice
+    type: dict | None
+    description: 片付けた利用者の選択（`key`・`note`・`at`）。持たなかったときは `null`。選んだ案と採用した案が違うときも片付ける
 exceptions:
   - name: なし（正常終了）
     condition: 切り替えた（既にその案が採用で決定済みのときも含む）
@@ -255,6 +284,8 @@ constraints:
     constraint: 『変更の検知』の「変更履歴を追加するとき」「変更履歴の 1 回分」「保持する回数」「連番」と同じ（`by` は `ai`）。積んだとき `changes.yaml` の `pending.changed` に ID を追加し、`pending.by` が `external` なら先に外部の変更のまとまりにする（『変更の検知』の「まだまとめていない変更の書き込み元」）。`before` は値が変わったキー（`options` は切り替える前の案の並びの全体、`status` は切り替える前の状態）。既にその案が採用で決定済みのときは積まない
   - item: 採用と状態
     constraint: 切り替えた後の状態は、切り替える前の状態によらず `決定済み`（未決定・要見直し・保留から決定済みにする）。`answer` は書き換えない（回答はエージェントフローが project-index の `write_docs` で書く）
+  - item: 利用者の選択
+    constraint: 採用した案が利用者の選んだ案と同じかどうかによらず、`user_choice` を削除する（ER 図の案と状態の決まり「`決定済み` は `user_choice` を持たない」）。`user_choice` が変わったときは変更履歴の `before` に削除する前の `user_choice` を含める。既にその案が採用で決定済みでも、`user_choice` を持てば削除して変更履歴を積む
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 refs:
   - IF-540-2#

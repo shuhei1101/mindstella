@@ -277,6 +277,34 @@ flows:
       - '`ok` が真で `problems` が空'
       - '`warnings` が 1 件で、`kind` が `empty_preset`、`key` が `presets[1]`、`detail` が `古い分類:` で始まる'
     test: test_normal_when_preset_matches_nothing
+  - name: 正常系（利用者の選択が案と状態に合わない）
+    summary: 案に無い記号を選んだ利用者の選択と、決定済みなのに持つ利用者の選択を検出する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動し、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A・B を持ち利用者の選択が案 Z の未決定の D-1、案 A を採用した決定済みで利用者の選択（案 B）を持つ D-2、案 A・B を持ち利用者の選択が案 B の未決定の D-3 を持つワークスペース
+        notes: decisions.yaml を直接記載して作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as check（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: check workspace
+        IF-->>WS: 全ての YAML を参照する
+        IF->>IF: 検討事項の案と状態を決まりと突き合わせる
+        IF-->>クライアント: JSON（ok: false、decision_state 2 件）
+      ```
+    expected:
+      - ツールのエラーにならず、`ok` が偽
+      - '`kind` が `decision_state` の問題が 2 件で、`id` が D-1・D-2 の順'
+      - D-1 の `key` が `items[0].user_choice` で、`detail` に `Z` がある
+      - D-2 の `key` が `items[1].user_choice` で、`detail` に `adopt` がある
+      - D-3 の問題が無い
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_normal_when_user_choice_mismatch
 lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の本文（Markdown と HTML）のずれ・案と状態の合わない検討事項を全て洗い出す。
 idempotent: true
 side_effects: なし（読むだけ。見つけた問題は修正しない）
@@ -345,7 +373,7 @@ constraints:
   - item: 変更履歴のずれ
     constraint: 本文を持つ項目の `history.yaml` の行の `history` を新しいものから順に今の本文へ当て、`body_diff` の `now` の行が当てる先の行と合わないものを `stale_history` にする（ツールを通さずに本文を書き換えたときに起きる）。`key` は合わなかった要素の `history[{位置}].body_diff`、`detail` はその回より前の本文の差分を出せないこと
   - item: 案と状態
-    constraint: 検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）に合わない検討事項を `decision_state` にする。合わない決まり 1 つ = 1 件で、`key` は `items[{番号}].options` か `items[{番号}].status`、`detail` は ER 図の理由の行。`未整理`・`対象外`・`取り下げ` の検討事項が案を持たないことは問題にしない
+    constraint: 検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）に合わない検討事項を `decision_state` にする。合わない決まり 1 つ = 1 件で、`key` は `items[{番号}].options`・`items[{番号}].status`・`items[{番号}].user_choice` のどれか、`detail` は ER 図の理由の行。`未整理`・`対象外`・`取り下げ` の検討事項が案を持たないことは問題にしない
   - item: 埋め込んだファイル
     constraint: '`docs/*.md` の本文の画像の記法 `![…](パス)` のうち、相対パスだけを `docs/` を基準に解決し、ファイルが無いものを `missing_file` にする。問題は `file` が本文のファイル（例 `docs/A-1.mark.md`）、`id` が本文を持つ項目の ID、`key` が `null`、`detail` が記法に書かれたパス（例 `../files/missing.mp4`）。絶対 URL・`data:`・`/` で始まるパス・コードブロックとインラインコードの中は確かめない。HTML の本文（`docs/*.html`）は確かめない。URL のフラグメント（`#`）とクエリ（`?`）は外してから確かめる'
   - item: 0 件のプリセット

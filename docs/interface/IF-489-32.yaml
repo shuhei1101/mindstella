@@ -52,7 +52,10 @@ response:
     description: 状況をまとめたときの `changes.yaml` の `last_seq`。フックが『前回参照した時点の更新』へ渡す
   - name: context
     type: str
-    description: SessionStart の注入文。プラグインのプロンプトファイルを `trigger` とこの応答の値で描いた文で、起動の契機・取り込み待ちの件数・変わった項目と削除した項目・要見直し・進行中・超えた件数・移し替えの報告・進め方の文書の場所と、`mindstella/startup` を参照して先に進める案内を持つ。`changed_more`・`removed_more` が 1 以上なら `changes_since_read` を呼んで残りと前の値を取る案内を持つ。次の候補・スキルの呼び方を持たない
+    description: SessionStart の注入文。プラグインのプロンプトファイルを `trigger` とこの応答の値で描いた文で、起動の契機・取り込み待ちの件数・利用者が案を選んだ検討事項の件数（1 件以上のとき）・変わった項目と削除した項目・要見直し・進行中・超えた件数・移し替えの報告・進め方の文書の場所と、`mindstella/startup` を参照して先に進める案内を持つ。`changed_more`・`removed_more` が 1 以上なら `changes_since_read` を呼んで残りと前の値を取る案内を持つ。次の候補・スキルの呼び方を持たない
+  - name: user_choices
+    type: int
+    description: 利用者が案を選んだ検討事項（`user_choice` を持つ検討事項）の件数。中身は MindStella のセッションが『利用者が案を選んだ検討事項の一覧』（`user_choices`）で取得する
 status_codes:
   - code: '200'
     condition: 状況をまとめた
@@ -151,6 +154,33 @@ flows:
     expected:
       - 応答が 404 で、状態のフォルダが変わっていない
     test: test_error_when_unknown_session
+  - name: 正常系（利用者が案を選んだ検討事項がある）
+    summary: 利用者が案を選んだ検討事項の件数を返却し、注入文に件数を入れる
+    setup:
+      - name: Mock
+        description: なし（HTTP のクライアントで送信する）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: make_workspace
+        description: 利用者の選択を持つ未決定の検討事項 D-1・D-2 と、利用者の選択を持たない D-3 を持ち、取り込み待ちのスレッドを持たないワークスペースと MindStella のセッション
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /_admin/sessions/{session}/resume
+        participant WS as ワークスペース
+        participant ST as 状態のフォルダ
+
+        クライアント->>API: source: compact
+        API-->>ST: read_point.json を参照する
+        API-->>WS: 記録と changes.yaml を参照する
+        API-->>クライアント: 200 状況・until_seq
+      ```
+    expected:
+      - '`awaiting_threads` が 0、`user_choices` が 2'
+      - '`context` が利用者が案を選んだ検討事項の件数 2 を持ち、検討事項の ID と選んだ案を持たない'
+      - ワークスペースの `decisions.yaml` の中身が呼ぶ前と同じ
+    test: test_normal_when_user_choices
 callers:
   - IF-531-7#
 refs:

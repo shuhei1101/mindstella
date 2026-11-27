@@ -112,6 +112,9 @@ response:
   - name: count
     type: int
     description: 削除した後のレビュー中のコメントの件数
+  - name: choice
+    type: dict | None
+    description: 削除したコメントの案の選択（`key`）。案の選択でないコメントは `null`。画面は「元に戻す」で『レビュー中のコメントの追加』へ同じ値で渡す
 status_codes:
   - code: '200'
     condition: 削除した
