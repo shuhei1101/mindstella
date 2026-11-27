@@ -12,6 +12,10 @@ scope_out:
   - item: スレッドの画面の書き込みのカードの重なり（Impeccable の nested-cards）
     reason: 書き込みのカード（thread-post）はこの作業のスレッドの一覧の行と対象箇所が違う
     plan: '#705'
+  - item: スレッドの画面の書き込みの並び（`ol`）がスクロールの領域なのに Tab で届かない（axe の scrollable-region-focusable）
+    reason: 書き込みの並びはこの作業の修正箇所（見出し・一覧の行・タブ・詳細パネルの重なり・ID のリンク）と違う。撮影の崩れの検出で見つけた対象外の逸脱
+  - item: 一覧の後ろの本文の見出し（`#main > h1`）が切れて全文を出す手段が無い（clipped-text-without-full-text）
+    reason: パネルの後ろの本文の見出しで、この作業の修正箇所と違う。撮影の崩れの検出で見つけた対象外の逸脱
 use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-5.yaml
