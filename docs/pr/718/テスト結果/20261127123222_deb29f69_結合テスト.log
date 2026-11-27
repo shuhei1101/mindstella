@@ -1,0 +1,9 @@
+$ pytest tests/integration/storybook_react/test_thread_title_stories.py tests/integration/storybook_react/test_thread_row_stories.py tests/integration/storybook_react/test_view_switch_stories.py tests/integration/storybook_react/test_record_text_stories.py tests/integration/storybook_react/test_term_tip_stories.py tests/integration/preview/test_spa_thread_screen.py tests/integration/preview/test_spa_comments_screen.py tests/integration/preview/test_spa_detail_panel_screen.py
+（npm run build-storybook-react の後に実行。並列の実行は使用しない）
+........................................................................ [ 23%]
+........................................................................ [ 46%]
+........................................................................ [ 69%]
+........................................................................ [ 92%]
+.......................                                                  [100%]
+311 passed in 465.44s (0:07:45)
+exit=0
