@@ -469,6 +469,9 @@ const focusCodeBlocks = (root: HTMLElement): void => {
   }
 };
 
+/** コードブロックの `code` を包む、置き換える単位の要素（mdmark のバーを持つ `.mdmark-code` の入れ物。無ければ `pre`） */
+const codeBlockOf = (code: Element): Element => code.closest(".mdmark-code") ?? code.closest("pre") ?? code;
+
 /** 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は `table`（省くと真）のとき mdmark の表の機能で描く */
 export const renderMarkdown = (source: string, options: { table?: boolean; base?: string; diffSource?: BodyDiffSource } = {}): HTMLElement => {
   const root = h({ tag: "div", attrs: { class: "md" } });
@@ -533,19 +536,19 @@ export const renderMarkdown = (source: string, options: { table?: boolean; base?
         h({ tag: "pre", attrs: { class: "dg-raw", hidden: true }, children: [original] }),
       ],
     });
-    (code.closest("pre") ?? code).replaceWith(figure);
+    codeBlockOf(code).replaceWith(figure);
   }
   // html のコードブロックを、原文と元の行の印を持つ HTML の本文の枠の入れ物に置き換える（枠を描くのは詳細の画面。埋め込んだ HTML の範囲の外だけ）
   for (const code of root.querySelectorAll("code.language-html")) {
     if (code.closest(`.${EMBEDDED_HTML_CLASS}`) !== null) continue;
-    const pre = code.closest("pre") ?? code;
+    const target = codeBlockOf(code);
     const block = h({
       tag: "div",
       attrs: { class: HTML_BLOCK_CLASS, [DIAGRAM_SOURCE_ATTR]: code.textContent ?? "" },
     });
-    const line = pre.getAttribute(LINE_ATTR);
+    const line = target.getAttribute(LINE_ATTR) ?? code.closest("pre")?.getAttribute(LINE_ATTR) ?? null;
     if (line !== null) block.setAttribute(LINE_ATTR, line);
-    pre.replaceWith(block);
+    target.replaceWith(block);
   }
   focusCodeBlocks(root);
   return root;
