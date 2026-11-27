@@ -88,3 +88,6 @@ scope_out:
   - item: AI（MindStella のセッション）がお気に入りを登録・解除する操作
     reason: '#353 でお気に入りは利用者だけが設定すると決めているため'
     plan: none
+  - item: 結合テスト test_spa_open.py::test_normal_when_records_changed_while_typing の fail（隠れた span を指す get_by_text('D-1の題').first）
+    reason: 'base ブランチ（develop c813669e）でも同じ箇所で fail する既存の不具合で、#709・#353 の要望に含まれないため。既に #717 で扱っている'
+    plan: '#717'
