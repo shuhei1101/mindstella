@@ -71,6 +71,32 @@ describe("RecordText", () => {
     // 検証
     expect(onCard).toHaveBeenCalledTimes(1);
   });
+  // カードの先頭にお気に入りの星があっても、マーカーはカードのタイトルのボタン（data-id）を押す（正常系）
+  test("record_text_marker_card_click_when_favorite", async () => {
+    // 準備
+    const onCard = vi.fn();
+    const onStar = vi.fn();
+    const { container } = render(
+      <div data-card="T-1">
+        <button type="button" aria-pressed={false} onClick={onStar}>
+          星
+        </button>
+        <button type="button" data-id="T-1" onClick={onCard}>
+          題
+        </button>
+        <span>
+          <RecordText text="D-1 の比較" mode="marker" lookup={lookup} />
+        </span>
+      </div>,
+    );
+    const marker = container.querySelector<HTMLElement>('[data-record-id="D-1"]');
+    if (marker === null) throw new Error("マーカーがありません");
+    // 実行
+    await userEvent.click(marker);
+    // 検証
+    expect(onCard).toHaveBeenCalledTimes(1);
+    expect(onStar).not.toHaveBeenCalled();
+  });
   // 指で押したときはツールチップを出さず 1 回で開く（正常系）
   test("record_text_when_touch", () => {
     // 準備
