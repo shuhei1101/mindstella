@@ -1,11 +1,11 @@
 id: mindstella/startup
 title: 起動と再開
-summary: 注入された状況を確認し、まとめ忘れを commit し、進め方の文書を参照し、取り込み待ちのコメントを取り込んでから、進め方の工程へ進む
+summary: 注入された状況を確認し、まとめ忘れを commit し、進め方の文書を参照し、取り込み待ちのコメントと利用者が選んだ案を取り込んでから、進め方の工程へ進む
 condition: MindStella のセッションを起動したとき、/clear の後、圧縮の後（SessionStart のフックが注入で案内する）
 steps:
   - name: 状況を確認する
     body: |-
-      SessionStart のフックが注入した、取り込み待ちのスレッドの件数・前回参照した後に変わった項目と削除した項目・要見直しの検討事項・進行中のタスクを確認する。
+      SessionStart のフックが注入した、取り込み待ちのスレッドの件数・利用者が案を選んだ検討事項の件数・前回参照した後に変わった項目と削除した項目・要見直しの検討事項・進行中のタスクを確認する。
       注入に収まらなかった変更がある（注入文に件数だけが書かれている）ときだけ、`changes_since_read` で残りと前の値を取得する。
       注入文に移し替えの報告があれば、移せなかった値と仮の値を入れたキーを、回の最後の報告（mindstella/on-comment の「報告のスレッドで報告する」）に含める。仮の値は検討事項に挙げて利用者に確かめる。
     calls:
@@ -29,9 +29,9 @@ steps:
     calls:
       - {server: project-index, tool: search_docs}
   - name: 保留のタスクを見直す
-    when: 取り込み待ちのスレッドが 0 件
+    when: 取り込み待ちのスレッドと利用者が案を選んだ検討事項がどちらも 0 件
     body: |-
-      mindstella/on-comment の工程「保留のタスクを見直す」のとおりに見直す。取り込み待ちのスレッドが 1 件以上のときは、コメントの取り込みの最初の見直しに任せる。
+      mindstella/on-comment の工程「保留のタスクを見直す」のとおりに見直す。どちらかが 1 件以上のときは、コメントの取り込みの最初の見直しに任せる。
       状態を変えたら、mindstella/on-comment の「書き換えをまとめる」のとおり `commit` し、「報告のスレッドで報告する」のとおり報告する。
     calls:
       - {server: project-index, tool: search_docs}
@@ -42,9 +42,9 @@ steps:
     refs:
       - mindstella/on-comment
   - name: 取り込み待ちのコメントを取り込む
-    when: 取り込み待ちのスレッドが 1 件以上ある
+    when: 取り込み待ちのスレッドか、利用者が案を選んだ検討事項が 1 件以上ある
     body: |-
-      mindstella/on-comment を参照し、取り込み待ちのスレッドを取り込む。
+      mindstella/on-comment を参照し、取り込み待ちのスレッドと利用者が選んだ案を取り込む。
     refs:
       - mindstella/on-comment
   - name: 進め方の工程へ進む
