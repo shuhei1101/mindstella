@@ -85,8 +85,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T16:54:16.771635+00:00'
   - process: ドキュメント修正
-    status: todo
-    note: 外部ライブラリ『mdmark』（LIB-489-13）のオフの機能の一覧と理由・「コードの色付け」「表の列の幅のつまみの ARIA の値」
+    status: done
+    note: '外部ライブラリ『mdmark』（LIB-489-13）のオフの機能の一覧と理由・「コードの色付け」を修正。「表の列の幅のつまみの ARIA の値」は #714 の確認（実装の後の画面の検査）で内容が定まるため、更新ドキュメントの行は todo のまま残す'
+    updated_by: planner
+    updated_at: '2026-11-27T17:06:04.902294+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
