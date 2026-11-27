@@ -426,6 +426,6 @@ describe("PreviewShell", () => {
     const shell = document.querySelector(".h-dvh");
     expect(shell).not.toBeNull();
     expect(shell).toHaveClass("overflow-hidden");
-    expect(document.querySelector("main#main")?.closest(".overflow-y-auto") ?? document.querySelector("main#main.overflow-y-auto")).not.toBeNull();
+    expect(screen.getByRole("region", { name: "詳細の本文" })).toHaveClass("overflow-y-auto");
   });
 });

@@ -3,6 +3,7 @@ import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, test } from "vitest";
 
 import { useDiffView } from "@/shared/hooks/use-diff-view";
+import { prune } from "@/shared/stores/read-changes-store";
 import { RECORDS } from "@/testing/msw/handlers";
 import { server } from "@/testing/msw/server";
 import { renderPreviewHook } from "@/testing/render";
@@ -34,7 +35,10 @@ const storedReadIds = (): string[] => {
 };
 
 beforeEach(() => {
+  // 前のテストの既読（保存領域とメモリの上）と、そのタブで選んだ時点を持ち越さない
+  prune("", []);
   localStorage.removeItem(READ_CHANGES_KEY);
+  sessionStorage.clear();
 });
 
 describe("useDiffView", () => {
