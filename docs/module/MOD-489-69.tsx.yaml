@@ -14,6 +14,12 @@ components:
         condition: '`tagExprText` と `onClearTagExpr` を渡し、先頭のチップの × を押す'
         mock: なし
         expected: '先頭に「タグ: {文}」のチップがあり、`onClearTagExpr` が呼ばれる'
+      - name: test_filter_chips_when_favorites_only
+        case: 正常
+        summary: お気に入りのみのチップと解除
+        condition: '`onClearFavoritesOnly` と状態の条件を指定し、× と「すべて解除」を押す'
+        mock: なし
+        expected: 「お気に入りのみ」のチップが先頭にあり、どちらでも `onClearFavoritesOnly` が 1 回呼ばれる
     container: frontend/src/shared/components/filter-chips.tsx
 notes:
-  お気に入りのみのチップ: '`onClearFavoritesOnly` を指定したときだけ、チップの先頭に `FAVORITES_ONLY_CHIP`（「お気に入りのみ」）のチップを配置し、× で `onClearFavoritesOnly` を呼ぶ。「すべて解除」も `onClearFavoritesOnly` を呼ぶ。単体テスト `test_filter_chips_when_favorites_only`（チップが先頭にあり、× と「すべて解除」で `onClearFavoritesOnly` が呼ばれる）を追加する'
+  お気に入りのみのチップ: '`onClearFavoritesOnly` を指定したときだけ、チップの先頭に `FAVORITES_ONLY_CHIP`（「お気に入りのみ」）のチップを配置し、× で `onClearFavoritesOnly` を呼ぶ。「すべて解除」も `onClearFavoritesOnly` を呼ぶ'
