@@ -80,7 +80,7 @@ export const missingLibraries = (names: ("mdmark" | "mermaid")[]): ("mdmark" | "
 /** 図の入れ物が原文を持つ属性の名前 */
 export const DIAGRAM_SOURCE_ATTR = "data-source";
 
-/** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大・コードブロックのバーと行の部品と、mermaid の描画（プレビューが描いて差分を取る）も止める（`html`・`diagrams`・`map` は既定のまま）。表の機能（`table`）はここではオフで持ち、`renderMarkdown` が `table` を偽で受けないときだけオンで指定する */
+/** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能のオフ（機能ごとの重なる画面の機能は外部ライブラリ『mdmark』）。ほかの機能（コードの色付け・コードブロックのバーと行の部品・印刷など）は既定のオンのまま。表の機能（`table`）はここではオフで持ち、`renderMarkdown` が `table` を偽で受けないときだけオンで指定する */
 export const MDMARK_FEATURES: Record<string, boolean> = {
   glossary: false,
   backlinks: false,
@@ -91,8 +91,6 @@ export const MDMARK_FEATURES: Record<string, boolean> = {
   table: false,
   toc: false,
   views: false,
-  syntax: false,
-  code: false,
   mermaid: false,
   "side-toc": false,
   "back-to-top": false,
@@ -204,12 +202,30 @@ export const resolveFileSources = (root: HTMLElement): void => {
   }
 };
 
+/** `root` の中の、別のオリジンの `http:`・`https:` を指すリンクを新規タブで開く（`#` で始まるリンク・同じオリジン・解決できないリンクは変えない） */
+export const markExternalLinks = (root: HTMLElement): void => {
+  for (const anchor of root.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+    const href = anchor.getAttribute("href") ?? "";
+    if (href.startsWith("#")) continue;
+    let url: URL;
+    try {
+      url = new URL(href, location.href);
+    } catch {
+      continue;
+    }
+    if ((url.protocol !== "http:" && url.protocol !== "https:") || url.origin === location.origin) continue;
+    anchor.setAttribute("target", "_blank");
+    anchor.setAttribute("rel", "noopener noreferrer");
+  }
+};
+
 /** 要素の中に、機能を止めた mdmark で Markdown を描く（`table` が真なら表の機能だけオンにする。描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
 const mountMarkdown = ({ root, markdown, table = false, base, diffSource }: { root: HTMLElement; markdown: string; table?: boolean; base?: string | undefined; diffSource?: BodyDiffSource | undefined }): void => {
   const map = mdmarkMapConfig();
   const features = table ? { ...MDMARK_FEATURES, table: true } : MDMARK_FEATURES;
   const diff = diffSource === undefined ? (base === undefined ? {} : { baseMarkdown: base }) : { docId: diffSource.docId, diffMode: "open" as const, diffControls: false, diffSource: diffSourceOf(diffSource) };
   mdmarkOf().mount(root, { markdown, config: { features, labels: { paramCopy: MDMARK_PARAM_COPY_LABEL }, ...(map === undefined ? {} : { map }) }, ...diff });
+  markExternalLinks(root);
   resolveFileSources(root);
   trimBreakNewlines(root);
 };

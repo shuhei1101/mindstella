@@ -42,7 +42,7 @@ export const ThreadRow = ({ thread = null, pending = null, hasPendingReply = fal
         <span data-part="line1" className="flex min-w-0 items-start gap-2">
           <ThreadState status={status} />
           <span data-part="title" className={cn("line-clamp-2 min-w-0 wrap-anywhere", summarized ? "font-semibold" : "font-normal")}>
-            <RecordText text={title} mode="marker" lookup={lookup} descriptionId={titleIdsId} />
+            <RecordText text={title} mode="marker" lookup={lookup} descriptionId={titleIdsId} tooltip={false} />
           </span>
         </span>
         <span data-part="line2" className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground tabular-nums">

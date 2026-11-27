@@ -28,8 +28,8 @@ import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
 import { bodyFormatOf, kindOfId, tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
 import { applyHighlight } from "@/shared/core/term-tips";
 import { AppError } from "@/shared/core/app-error";
-import { choiceOf, type ReviewItem } from "@/shared/core/comments";
-import { commentsQuery } from "@/shared/hooks/preview-queries";
+import { choiceOf, itemThreadCount, type ReviewItem, type Thread } from "@/shared/core/comments";
+import { commentsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { useAddComment, useRemoveComment, useUpdateComment } from "@/shared/hooks/use-comments";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
@@ -38,7 +38,7 @@ import { useRecords } from "@/shared/hooks/use-records";
 import { useViewportWidth } from "@/shared/hooks/use-viewport-width";
 import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
-import { currentDetailWidth, currentLeftWidth, DETAIL_PANEL_WIDTH, detailPanelMax, usePanelWidthStore } from "@/shared/stores/panel-width-store";
+import { currentDetailWidth, DETAIL_PANEL_WIDTH, detailPanelMax, usePanelWidthStore } from "@/shared/stores/panel-width-store";
 import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll } from "@/shared/stores/prefs-store";
 import { isEmbedded } from "@/shared/core/embedded";
@@ -180,12 +180,24 @@ const ChoosableOptions = ({ id, item }: { id: string; item: Item }) => {
   );
 };
 
+/** 項目に向けたスレッドの件数（送信していない新規スレッドを含む）。配る書き出しでは 0 */
+const useItemThreadCount = (id: string, embedded: boolean): number => {
+  // スレッドは外枠が読む。ここでは読み込みを起こさず、読み込んだ分を使う
+  const threads = useQuery({ ...threadsQuery(), enabled: false });
+  const comments = useQuery({ ...commentsQuery(), enabled: !embedded });
+  if (embedded) return 0;
+  const threadList = threads.data?.status === 200 ? ((threads.data.data.threads as unknown as Thread[] | undefined) ?? []) : [];
+  const pending = comments.data?.status === 200 ? ((comments.data.data.items as unknown as ReviewItem[] | undefined) ?? []) : [];
+  return itemThreadCount({ threads: threadList, pending, id });
+};
+
 /** 見出しと本文。パネルと全画面が共通で使う */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 分岐を 1 か所で読めるように保つ
 export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
   const { search, openItem, closeItem, setFull, setHeading, setDiff, fromList, openSibling } = usePreviewSearch();
   const orders = useListOrderStore((state) => state.orders);
   const threadLinks = useThreadLinks();
+  const commentCount = useItemThreadCount(id, isEmbedded());
   const record = useRecordLookup({ index, onOpenItem: openItem });
   // 一覧から開いた項目で、後ろの画面の今の並びにあるときだけ、前後の項目へ移る
   const found = fromList ? siblingOf(orders, id) : null;
@@ -379,7 +391,7 @@ export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<De
   return (
     <ValueLinksContext.Provider value={valueLinks}>
     <DiffDeadlineContext.Provider value={deadline}>
-      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} lookup={record.lookup} onOpenRecord={record.onOpen} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} toc={toc} onHeading={toHeading} sibling={sibling} />
+      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} comments={!embedded} commentCount={commentCount} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} lookup={record.lookup} onOpenRecord={record.onOpen} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} toc={toc} onHeading={toHeading} sibling={sibling} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false && view !== "source"} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
           <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removePending={flight.running} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { flight.run(() => add.mutateAsync({ op: "item-remove", target: id })); }} onCancelRemove={() => { if (removal !== undefined) flight.run(() => cancel.mutateAsync(removal.id)); }} />
@@ -398,6 +410,7 @@ export const DetailContent = ({ id, index, full, sibling: siblingProp }: Omit<De
             <DetailSupplements
               tab={currentTab}
               onTabChange={selectTab}
+              commentCount={commentCount}
               main={
                 <>
             <div data-key="status">{keys?.has("status") === true ? <KeyDiff was={<Status value={keys.left["status"]} />} now={<Status value={keys.right["status"]} />} plain /> : <Status value={item.status} />}</div>
@@ -471,18 +484,10 @@ export type DetailPanelProps = {
 
 export const DetailPanel = ({ id, index, sibling, raised = false }: DetailPanelProps) => {
   const storedDetail = usePanelWidthStore((state) => state.detailWidth);
-  const storedLeft = usePanelWidthStore((state) => state.leftWidth);
-  const leftOpen = usePanelWidthStore((state) => state.leftOpen);
   const setDetailWidth = usePanelWidthStore((state) => state.setDetailWidth);
   const commitDetailWidth = usePanelWidthStore((state) => state.commitDetailWidth);
-  const setOpen = usePanelWidthStore((state) => state.setOpen);
-  // 描いている間だけ、詳細パネルを開いているとストアへ通知する（左のパネルの上限が詳細パネルの幅を引く）
-  useEffect(() => {
-    setOpen("detail", true);
-    return () => setOpen("detail", false);
-  }, [setOpen]);
   const viewport = useViewportWidth();
-  const max = detailPanelMax(viewport, currentLeftWidth({ leftWidth: storedLeft }), leftOpen);
+  const max = detailPanelMax(viewport);
   const width = clampWidth(currentDetailWidth({ detailWidth: storedDetail }), DETAIL_PANEL_WIDTH.min, max);
   return (
     <aside aria-label="詳細" data-raised={raised ? "" : undefined} style={{ width }} className={cn("relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!", raised && "lg:z-30")}>

@@ -85,6 +85,10 @@ export const pendingThreads = ({ items, filter, tag, target }: { items: readonly
   return items.filter((item) => item.thread === null && !isChoice(item) && (target === null || item.target === target));
 };
 
+/** 項目に向けたスレッドの件数（状態を問わない）と、レビュー中の新規スレッドの件数の和。返信と案の選択は数えない */
+export const itemThreadCount = ({ threads, pending, id }: { threads: readonly Thread[]; pending: readonly ReviewItem[]; id: string }): number =>
+  threads.filter((thread) => thread.target === id).length + pending.filter((item) => item.thread === null && !isChoice(item) && item.target === id).length;
+
 /** レビュー中の書き込みが、クローズのスレッドへの返信か（スレッドが見つからなければ偽） */
 export const isBlockedReply = ({ item, threads }: { item: ReviewItem; threads: readonly Thread[] }): boolean => {
   if (item.thread === null) return false;

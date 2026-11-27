@@ -4,12 +4,11 @@ import { MDMARK_PARAM_COPY_LABEL, embeddedHtmlRanges } from "@/shared/core/body-
 import { h } from "@/shared/core/dom-parts";
 import type { Item, RecordIndex } from "@/shared/core/records";
 
-/** エクスポートした 1 枚の HTML の `mdmark.mount` に渡す機能のオフ。用語と資料・調査のエイリアスのツールチップ（`glossary`・`backlinks`）は mdmark が描き、通信するコードの色付けと、ファイルの外を指す機能を止める */
+/** エクスポートした 1 枚の HTML の `mdmark.mount` に渡す機能のオフ。用語と資料・調査のエイリアスのツールチップ（`glossary`・`backlinks`）は mdmark が描き、ファイルの外を指す機能を止める */
 export const MDMARK_EXPORT_FEATURES: Record<string, boolean> = {
   comments: false,
   print: false,
   views: false,
-  syntax: false,
 };
 
 /** 1 枚の HTML に入れる mdmark の CSS と JavaScript の中身 */
@@ -57,6 +56,20 @@ const DOC_BOOT_SCRIPT = [
   "  }",
   '  const root = document.getElementById("doc");',
   "  library.mount(root, { markdown: data.source, config: { features: data.features, labels: { paramCopy: data.copyLabel } }, index: data.index });",
+  // 別のオリジンの http(s) のリンクを新規タブで開く（file: で開くと origin が null になり、http(s) のリンクは全て別のオリジン）
+  '  for (const anchor of root.querySelectorAll("a[href]")) {',
+  '    const href = anchor.getAttribute("href");',
+  '    if (href.startsWith("#")) continue;',
+  "    let url;",
+  "    try {",
+  "      url = new URL(href, location.href);",
+  "    } catch {",
+  "      continue;",
+  "    }",
+  '    if ((url.protocol !== "http:" && url.protocol !== "https:") || url.origin === location.origin) continue;',
+  '    anchor.setAttribute("target", "_blank");',
+  '    anchor.setAttribute("rel", "noopener noreferrer");',
+  "  }",
   "})();",
 ].join("\n");
 

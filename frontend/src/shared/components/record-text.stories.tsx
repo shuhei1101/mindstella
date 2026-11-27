@@ -168,3 +168,20 @@ export const MarkerRowFocus: Story = {
     await userEvent.tab();
   },
 };
+
+/** スレッドの行のボタンの中。D-1 は点線の下線のマーカーのままで、乗せてもボタンにフォーカスしてもツールチップを出さない。ボタンの aria-describedby の説明は残る */
+export const MarkerNoTooltip: Story = {
+  args: { text: "D-1 の決め方（TH-1 の続き）", mode: "marker", descriptionId: "thread-th2-ids", tooltip: false },
+  render: (args) => (
+    <div className="w-64 rounded-card border border-border-soft bg-card p-2">
+      <button type="button" aria-describedby="thread-th2-ids" className="cursor-pointer text-left text-small font-medium">
+        <RecordText {...args} />
+      </button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const marker = canvasElement.querySelector<HTMLElement>('[data-record-id="D-1"]');
+    if (marker !== null) await userEvent.hover(marker);
+    await userEvent.tab();
+  },
+};

@@ -157,14 +157,14 @@ export const Folded: Story = {
 /** 表示の設定でセクションの折りたたみをオフにした。見出しに開閉を置かない */
 export const FoldOff: Story = { args: { source: SECTIONS_SOURCE, display: { ...BODY_VIEW_DEFAULT, fold: false } } };
 
-/** 言語を書いたコードブロックは左上に言語の札を出し、ホバーで右上にコピーのボタンを出す。言語を書かないコードブロックには札を出さない。長い行は折り返さず、コードブロックの中だけで横に送れる。言語の札とコピーのボタンは横に送っても同じ位置に残る */
+/** 言語を書いたコードブロックは mdmark のコードブロックのバー（言語の札・コピー）と行の部品と色分けで描き、画面の言語の札とコピーのボタンを重ねない。長い行は折り返さず、コードブロックの中だけで横にスクロールできる。言語の札とコピーのボタンは横にスクロールしても同じ位置に残る */
 export const CodeBlock: Story = { args: { source: CODE_SOURCE } };
 
-/** コピーのボタンを押した直後。ボタンがチェックのマーカーに変わり、クリップボードには札とボタンを含まないコードだけが入る */
+/** mdmark のコピーのボタンを押した直後。ボタンの見た目は mdmark のままで、クリップボードには札とボタンを含まないコードだけが入る */
 export const CodeCopied: Story = {
   args: { source: CODE_SOURCE },
   play: async ({ canvasElement }) => {
-    const button = await rendered(canvasElement, "button.code-copy");
+    const button = await rendered(canvasElement, "button.mdmark-code-copy");
     // ストーリーの画面ではクリップボードの許可に左右されないよう、書き込みを受けるだけの代わりを置く
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: () => Promise.resolve() } });
     // 元のコピーのマーカーへ戻す待ちを止め、押した直後の状態のまま残す
@@ -175,6 +175,54 @@ export const CodeCopied: Story = {
     window.setTimeout = setTimer;
     button.focus({ focusVisible: true });
   },
+};
+
+/** 言語 markdown のコードブロック。mdmark が描いた結果で出し、バーの「Raw」を押すと元の Markdown のコードに切り替わる */
+export const CodeMarkdownRaw: Story = {
+  args: { source: ["```markdown", "## 見出し", "", "- 項目 1", "- 項目 2", "```"].join("\n") },
+  play: async ({ canvasElement }) => {
+    const raw = await rendered(canvasElement, "button.mdmark-code-raw");
+    raw.click();
+  },
+};
+
+/** 言語 python の 2 階層の字下げを持つコードブロック。字下げの縦線と行の開閉のボタンがあり、キーワードが色分けされる */
+export const CodeIndentGuides: Story = {
+  args: { source: ["```python", "def total(items):", "    result = 0", "    for item in items:", "        if item > 0:", "            result += item", "    return result", "```"].join("\n") },
+};
+
+/** 見出しの下に段落・表・map の図・リストを並べた本文。見出しごとに包む要素（md-section-body）の直下のブロック同士に、mdmark の本文と同じ間（--mdmark-space）が空く */
+export const SectionSpacing: Story = {
+  args: {
+    source: [
+      "## 候補",
+      "",
+      "候補の説明です。",
+      "",
+      "| 案 | 内容 |",
+      "| --- | --- |",
+      "| A | 先に試す |",
+      "",
+      "<!-- map -->",
+      "",
+      "```mermaid",
+      "flowchart LR",
+      "  a --> b",
+      "```",
+      "",
+      "<!-- /map -->",
+      "",
+      "- 項目 1",
+      "- 項目 2",
+      "",
+      "まとめの段落です。",
+    ].join("\n"),
+  },
+};
+
+/** 本文に外部の URL へのリンクと、同じオリジン・# で始まるリンクを持つ。外部の URL へのリンクだけが target="_blank" と rel="noopener noreferrer" を持つ */
+export const ExternalLink: Story = {
+  args: { source: ["[外部のページ](https://example.com/)", "", "[同じオリジン](/w/sample/)", "", "[D-1](#id=D-1)"].join("\n") },
 };
 
 /** `> [!NOTE]`・`[!TIP]`・`[!IMPORTANT]`・`[!WARNING]`・`[!CAUTION]` の引用を、種類の色の薄い面と細い枠で囲み、見出しにアイコンと「補足」「ヒント」「重要」「警告」「注意」を出す。印の無い引用は今の見た目のまま */

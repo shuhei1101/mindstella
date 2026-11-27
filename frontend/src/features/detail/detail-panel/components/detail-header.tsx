@@ -24,6 +24,8 @@ export type DetailHeaderProps = {
   editing: boolean;
   /** コメントの一覧のボタンを出すか（サーバーの配信で、全画面でない詳細パネルのとき） */
   comments: boolean;
+  /** コメントの一覧のボタンに出す件数。0 のときはバッジを描かない */
+  commentCount?: number;
   pending: PendingMarkKind | null;
   /** 本文の先頭のタイトルがスクロール領域の上へ外れているか（外れている間だけ見出しにタイトルを出す） */
   showTitle: boolean;
@@ -42,6 +44,21 @@ export type DetailHeaderProps = {
   sibling?: SiblingNavProps | null;
 };
 
+/** 件数のバッジの文字の上限（超えたら `99+`） */
+const COUNT_CAP = 99;
+
+/** 項目のコメントの一覧を開くボタン。件数が 1 以上のとき、アイコンの右上に件数のバッジを重ねる */
+const CommentListButton = ({ id, count, onOpen }: { id: string; count: number; onOpen: (id: string) => void }) => (
+  <Button variant="ghost" size="icon" className="relative" aria-label={`${id} のコメントの一覧を開く${count > 0 ? `（${String(count)} 件）` : ""}`} title="この項目のコメントの一覧" onClick={() => { onOpen(id); }}>
+    <Icon name="comment" />
+    {count > 0 ? (
+      <span aria-hidden="true" className="pointer-events-none absolute -top-1 -right-1 inline-grid h-4 min-w-4 place-items-center rounded-full bg-mark px-1 font-mono text-count leading-none text-on-mark">
+        {count > COUNT_CAP ? `${String(COUNT_CAP)}+` : count}
+      </span>
+    ) : null}
+  </Button>
+);
+
 /** 一覧の並びの前後へ移る `k`・`j` を受け、受けている間だけボタンに添えるキーを返す */
 const useSiblingKeys = (sibling: SiblingNavProps | null): SiblingNavProps["keys"] => {
   const prevKey = useShortcut("item.prev", () => sibling?.onPrev(), sibling !== null && sibling.position > 1);
@@ -49,7 +66,7 @@ const useSiblingKeys = (sibling: SiblingNavProps | null): SiblingNavProps["keys"
   return prevKey.active || nextKey.active ? { prev: prevKey.keys, next: nextKey.keys } : null;
 };
 
-export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, pending, showTitle, lookup, onOpenRecord, onToggleEdit, onToggleFull, onClose, toc = [], onHeading, sibling = null }: DetailHeaderProps) => {
+export const DetailHeader = ({ item, kind, index, full, editable, editing, comments, commentCount = 0, pending, showTitle, lookup, onOpenRecord, onToggleEdit, onToggleFull, onClose, toc = [], onHeading, sibling = null }: DetailHeaderProps) => {
   const { canBack, canForward, openItemComments, backItem, forwardItem } = usePreviewSearch();
   const siblingKeys = useSiblingKeys(sibling);
   const format = bodyFormatOf(item.body);
@@ -78,9 +95,7 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, comme
         {toc.length === 0 || onHeading === undefined ? null : <BodyToc entries={toc} onHeading={onHeading} />}
         {source === undefined ? null : <DocExportControl item={item} source={source} index={index} />}
         {full || !comments ? null : (
-          <Button variant="ghost" size="icon" aria-label={`${item.id} のコメントの一覧を開く`} title="この項目のコメントの一覧" onClick={() => { openItemComments(item.id); }}>
-            <Icon name="comment" />
-          </Button>
+          <CommentListButton id={item.id} count={commentCount} onOpen={openItemComments} />
         )}
         {sibling === null ? null : <SiblingNav {...sibling} keys={siblingKeys} />}
         <Button variant="ghost" size="icon" aria-label="前の項目へ戻る" title="前の項目へ戻る" disabled={!canBack} onClick={backItem}>

@@ -80,7 +80,7 @@ export const DisplaySettingsPanel = () => {
             <Icon name="x" />
           </Button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 max-lg:px-6">
           <SettingsPanel
             visibleKinds={visibleKinds}
             defaultKinds={defaults.kinds}
