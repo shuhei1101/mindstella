@@ -61,6 +61,7 @@ const ChooseBar = ({ optionKey, chosen, sent, note, onChoose, onCancel }: { opti
           一言（任意）
         </label>
         <Textarea
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- この案を選ぶを押して開いたときだけ一言の入力欄へフォーカスを移す
           autoFocus
           id={`choice-note-${optionKey}`}
           rows={2}
