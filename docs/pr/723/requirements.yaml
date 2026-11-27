@@ -130,3 +130,6 @@ scope_out:
   - item: レビュー中の書き込みの行の「修正」「削除」のアイコンのボタンが、axe の target-size（押す領域 24px・十分な間隔）に当たる
     reason: 作業前からある既存の部品の大きさで、束の子の要望に含まれない（実装した画面の撮影の detect_screen_issues で、長い場面の幅 1280 のレビュー中の書き込みで検出）
     plan: 未起票
+  - item: 部品『Markdownの本文』のストーリー DiffSource の結合テスト `test_diff_source` が、原文の差分のリビジョンの欄（`.mdmark-diff-picker`）を見つけられずに落ちる
+    reason: 作業前からある不具合で、develop の時点のストーリーでも同じく落ちる（この作業 PR は差分の表示の本文の描き方を変えていない）
+    plan: 未起票
