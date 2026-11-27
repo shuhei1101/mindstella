@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -15,6 +17,7 @@ STATES = (
     "shared-recordtext--card-title-markers",
     "shared-recordtext--marker-hover",
     "shared-recordtext--marker-row-focus",
+    "shared-recordtext--marker-no-tooltip",
     "shared-recordtext--card-link-row-markers",
     "shared-recordtext--search-result-markers",
     "shared-recordtext--no-ids",
@@ -117,6 +120,18 @@ def test_marker_row_focus(open_story: OpenStory) -> None:
     # 検証
     expect(page.locator("#storybook-root button")).to_be_focused()
     _assert_d1_tip(page)
+
+
+def test_marker_no_tooltip(open_story: OpenStory) -> None:
+    """スレッドの行のボタンの中。D-1 は点線の下線のマーカーのままで、乗せてもボタンにフォーカスしてもツールチップを出さない。ボタンの aria-describedby の説明は残る（正常系）。"""
+    # 準備・実行（ストーリーの play で D-1 に乗せ、ボタンにフォーカスする）
+    page = open_story("shared-recordtext--marker-no-tooltip")
+    button = page.locator("#storybook-root button")
+    # 検証
+    expect(button).to_be_focused()
+    expect(page.locator("#storybook-root [data-record-id='D-1']")).to_have_count(1)
+    expect(page.locator(".term-tip")).to_have_count(0)
+    expect(button).to_have_accessible_description(re.compile("保存先の決め方"))
 
 
 def test_card_link_row_markers(open_story: OpenStory) -> None:

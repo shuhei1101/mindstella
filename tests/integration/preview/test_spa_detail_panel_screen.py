@@ -1357,16 +1357,16 @@ def test_resizer_action(page: Page, spa_preview: str) -> None:
 
 
 def test_resizer_max_when_left_open(page: Page, spa_preview: str) -> None:
-    """本文を寄せる幅で左のパネルを開いているときは、上限からさらに左のパネルの幅を引く（正常系）。"""
+    """左のパネルを開いていても、上限は表示の幅 × 2/3 のまま（正常系）。"""
     # 準備・実行
     page.set_viewport_size({"width": 1440, "height": 800})
     open_spa(page, spa_preview, "?tab=decisions&id=D-1&panel=display")
     separator = page.get_by_role("separator", name="詳細パネルの幅")
     separator.focus()
     page.keyboard.press("End")
-    # 検証（1440 − 400 − 384）
-    expect(separator).to_have_attribute("aria-valuemax", "656")
-    expect(separator).to_have_attribute("aria-valuenow", "656")
+    # 検証（1440 × 2/3）
+    expect(separator).to_have_attribute("aria-valuemax", "960")
+    expect(separator).to_have_attribute("aria-valuenow", "960")
 
 
 def test_export_label(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
@@ -2173,3 +2173,28 @@ def test_review_comments_when_choice(page: Page, choice_preview: tuple[str, Path
     panel.get_by_role("tab", name="コメント").click()
     # 検証
     assert _comments(page).evaluate_all("rows => rows.map(r => r.dataset.comment)") == ["C-1"]
+
+
+def test_comment_count_badges(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_thread: MakeThread, make_comment: MakeComment) -> None:
+    """「コメント」のタブとヘッダーのコメントのボタンに、その項目に向けたスレッド（状態を問わず、レビュー中の新規スレッドを含む）の件数のバッジを出す。件数の無い項目には出さない（正常系）。"""
+    # 準備（D-1 へのオープンとクローズのスレッド・D-1 への新規スレッド・D-2 へのスレッド）
+    url, _ = write_review_preview(
+        make_item("D-1", title="記録の形", status="未決定"),
+        make_item("D-2", title="画面の幅", status="保留"),
+        comments=(make_comment("C-1", target="D-1", body="新規のスレッド"),),
+        threads=(
+            make_thread("TH-1", target="D-1"),
+            make_thread("TH-2", target="D-1", status="closed"),
+            make_thread("TH-3", target="D-2"),
+        ),
+    )
+    # 実行
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    panel = _panel(page)
+    # 検証（D-1 は 3 件）
+    expect(panel.get_by_role("tab", name="コメント 3 件")).to_be_visible()
+    expect(panel.get_by_role("tab", name="コメント 3 件")).to_contain_text("3")
+    expect(panel.get_by_role("button", name="D-1 のコメントの一覧を開く（3 件）")).to_be_visible()
+    # 実行・検証（D-2 は 1 件。スレッドの無い項目は無い）
+    open_spa(page, url, "?tab=decisions&id=D-2")
+    expect(_panel(page).get_by_role("tab", name="コメント 1 件")).to_be_visible()

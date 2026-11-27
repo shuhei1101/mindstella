@@ -5,7 +5,10 @@ from __future__ import annotations
 from record_write_helpers import call_or_write, write_tool
 import json
 import re
+import threading
 import time
+from collections.abc import Iterator
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -27,6 +30,7 @@ from workspace_fixtures import (
     MakeThread,
     MakeWorkspace,
     StartServer,
+    WriteThreads,
     free_port,
 )
 
@@ -1159,3 +1163,133 @@ def test_normal_when_favorites(make_workspace: MakeWorkspace, make_item: MakeIte
     assert prefs.get("favoritesOnly") is None
     assert prefs["favorites"] == ["A-3", "A-9"]
     assert _snapshot(root) == before
+
+
+@pytest.fixture
+def outside_page() -> Iterator[str]:
+    """別のポートで 1 枚のページを配り、その URL を返す（テストの後に止める）。"""
+    body = b"<!doctype html><title>outside</title><p>outside</p>"
+
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_: object) -> None:
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", free_port()), _Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}/outside"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_normal_when_external_links(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    make_post: MakePost,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+    page: Page,
+    outside_page: str,
+) -> None:
+    """本文とスレッドの書き込みの別のオリジンを指すリンクを新規タブで開き、項目の ID のリンクは今のタブで開く（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", title="手引き"),
+        make_item("D-1", title="記録の形", status="未決定"),
+        bodies={"A-1.mark.md": f"[外のページ]({outside_page}) と D-1 を見る。\n"},
+    )
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1", author="ai", body=f"参考: {outside_page}"), summary="参考のページ"))
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_spa(page, served.data["url"], "?tab=docs&id=A-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    body_link = panel.locator(f'.md a[href="{outside_page}"]')
+    expect(body_link).to_have_attribute("target", "_blank", timeout=UPDATE_TIMEOUT_MS)
+    expect(body_link).to_have_attribute("rel", "noopener noreferrer")
+    before = page.url
+    # 実行（本文の外のページへのリンク）
+    with page.context.expect_page() as opened:
+        body_link.click()
+    # 検証
+    assert opened.value.url == outside_page
+    assert page.url == before
+    opened.value.close()
+    # 実行・検証（本文の D-1 は今のタブ）
+    id_link = panel.locator('.md a[data-id="D-1"], .md a[href="#id=D-1"]').first
+    assert id_link.get_attribute("target") is None
+    id_link.click()
+    page.wait_for_url(re.compile(r"id=D-1"))
+    assert len(page.context.pages) == 1
+    # 実行（スレッドの書き込みの外のページの URL）
+    open_spa(page, served.data["url"], "?tab=docs&panel=comments&thread=TH-1")
+    post_link = page.locator(f'a[href="{outside_page}"]').first
+    expect(post_link).to_have_attribute("target", "_blank", timeout=UPDATE_TIMEOUT_MS)
+    with page.context.expect_page() as opened_post:
+        post_link.click()
+    # 検証
+    assert opened_post.value.url == outside_page
+    assert len(page.context.pages) == 2
+
+
+# 言語 markdown と言語 python のコードブロックを持つ本文
+CODE_BLOCKS_BODY = """# 手引き
+
+```markdown
+## 見出し
+
+- 項目
+  - 入れ子の項目
+```
+
+```python
+def total(items):
+    result = 0
+    for item in items:
+        if item > 0:
+            result += item
+    return result
+```
+"""
+
+
+def test_normal_when_code_blocks(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page) -> None:
+    """本文のコードブロックを mdmark のバー・行の部品・色分けで描く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", title="手引き"), bodies={"A-1.mark.md": CODE_BLOCKS_BODY})
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    errors = watch_console(page)
+    # 実行
+    open_spa(page, served.data["url"], "?tab=docs&id=A-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    blocks = panel.locator(".md .mdmark-code")
+    expect(blocks).to_have_count(2, timeout=UPDATE_TIMEOUT_MS)
+    markdown, python = blocks.nth(0), blocks.nth(1)
+    raw = markdown.locator("button.mdmark-code-raw")
+    expect(raw).to_have_attribute("aria-pressed", "false")
+    rendered = markdown.inner_text()
+    raw.click()
+    # 検証（markdown は描いた結果から元の Markdown に切り替わる）
+    expect(raw).to_have_attribute("aria-pressed", "true")
+    assert "## 見出し" not in rendered
+    expect(markdown.locator("pre")).to_contain_text("## 見出し")
+    # 検証（python は字下げの縦線・行の開閉・色分けを持つ）
+    expect(python.locator('.mdmark-code-line[data-indent="2"]')).not_to_have_count(0)
+    expect(python.locator("button.mdmark-code-fold")).not_to_have_count(0)
+    expect(python.locator(".hljs-keyword")).not_to_have_count(0)
+    # 検証（言語の札とコピーのボタンはコードブロック 1 つに 1 つずつ）
+    for block in (markdown, python):
+        expect(block.locator(".mdmark-code-lang")).to_have_count(1)
+        expect(block.locator("button.mdmark-code-copy")).to_have_count(1)
+    expect(panel.locator(".md button.code-copy, .md .code-lang")).to_have_count(0)
+    assert errors.messages == []
+    assert errors.exceptions == []

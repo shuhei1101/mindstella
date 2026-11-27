@@ -251,3 +251,14 @@ def test_favorites_reset_keeps_registration(page: Page, spa_preview: str) -> Non
     assert prefs.get("favoritesFirst") is None
     assert prefs.get("favoritesOnly") is None
     assert prefs.get("favorites") == ["D-1"]
+
+
+def test_body_padding_when_narrow(page: Page, spa_preview: str) -> None:
+    """幅 900px 以下では、本文の領域の左右の余白を 24px にする（正常系）。"""
+    # 準備
+    page.set_viewport_size({"width": 390, "height": 844})
+    # 実行
+    _open(page, spa_preview)
+    padding = _panel(page).locator("div.overflow-y-auto").first.evaluate("(e) => [getComputedStyle(e).paddingLeft, getComputedStyle(e).paddingRight]")
+    # 検証
+    assert padding == ["24px", "24px"]
