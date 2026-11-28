@@ -2491,40 +2491,33 @@ def _refusing_restart(workspace_id: str) -> tuple[int, dict[str, Any]]:
     raise errors.ApiError(409, "restarting", "MindStella のセッションは restarting の途中です")
 
 
-@pytest.mark.parametrize(
-    ("access", "expected"),
-    [
-        pytest.param(
-            serve.SessionAccess(
-                status=lambda workspace_id: {
-                    "status": "crashed",
-                    "last_error": "x",
-                    "waiting": 2,
-                    "warnings": [],
-                },
-                restart=lambda workspace_id: (202, {}),
-            ),
-            {"status": "crashed", "last_error": "x", "waiting": 2, "warnings": []},
-            id="access",
-        ),
-        pytest.param(
-            None,
-            {"status": "none", "last_error": None, "waiting": 0, "warnings": []},
-            id="no_access",
-        ),
-    ],
-)
-def test_session_response(
-    tmp_path: Path, access: serve.SessionAccess | None, expected: dict[str, Any]
-) -> None:
-    """操作の応答をそのまま返し、操作が無ければ none（正常系）。"""
+# 操作が返すセッションの状態（落ちて再起動に失敗した）
+CRASHED_STATUS = {"status": "crashed", "last_error": "x", "waiting": 2, "warnings": []}
+
+
+def test_session_response(tmp_path: Path) -> None:
+    """操作の応答をそのまま返す（正常系）。"""
     # 準備
+    access = serve.SessionAccess(
+        status=lambda workspace_id: CRASHED_STATUS, restart=lambda workspace_id: (202, {})
+    )
     context = _session_context(tmp_path, access)
     # 実行
     response = serve.session_response(context)
     # 検証
     assert response.status == 200
-    assert json.loads(response.body) == expected
+    assert json.loads(response.body) == CRASHED_STATUS
+
+
+def test_session_response_when_no_access(tmp_path: Path) -> None:
+    """操作が無ければ none（正常系）。"""
+    # 準備
+    context = _session_context(tmp_path, None)
+    # 実行
+    response = serve.session_response(context)
+    # 検証
+    assert response.status == 200
+    assert json.loads(response.body) == {"status": "none", "last_error": None, "waiting": 0, "warnings": []}
 
 
 def test_session_restart_response(tmp_path: Path) -> None:
