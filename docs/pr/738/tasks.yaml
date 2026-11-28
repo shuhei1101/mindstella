@@ -48,7 +48,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-28T10:32:57.361493+00:00'
   - process: インターフェース定義設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-28T10:47:01.089339+00:00'
   - process: エージェント・MCP サーバー設計
     status: skipped
     reason: mindstella はエージェントの設計書（docs/agent）を持たず、MCP のツールはインターフェース定義設計で扱うため対象外
