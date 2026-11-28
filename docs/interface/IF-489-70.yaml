@@ -3,7 +3,7 @@ title: プレビューを開く
 entry:
   kind: screen
   value: サーバーの配信の `/w/{workspace}/`（画面は『プレビューの配信』が返し、ソースは `frontend/`）
-  api: '`GET /w/{workspace}/api/records`（記録）・`GET /w/{workspace}/api/events`（書き換えの通知）・`GET /w/{workspace}/api/comments`（レビュー中の書き込みと下書き、項目ごとのコメントのマーカー）・`GET /w/{workspace}/api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /w/{workspace}/api/threads`（スレッドと利用者の未読）・`POST /w/{workspace}/api/edits`・`DELETE /w/{workspace}/api/edits/{id}`・`POST /w/{workspace}/api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /w/{workspace}/api/comments`・`PATCH`/`DELETE /w/{workspace}/api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /w/{workspace}/api/drafts`（下書き）・`POST /w/{workspace}/api/comments/send`（まとめて送信する）・`PATCH /w/{workspace}/api/threads/{id}`（クローズとオープンへの戻し）・`POST /w/{workspace}/api/threads/{id}/seen`（利用者の既読）・`PUT /w/{workspace}/api/config/display`（ワークスペースの既定の書き換え）・`POST /w/{workspace}/api/presets`（絞り込みのプリセットの保存）・`GET /w/{workspace}/api/transcription`（文字起こしの可否と設定）・`POST /w/{workspace}/api/transcriptions`（音声の文字起こし）・`POST /w/{workspace}/api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
+  api: '`GET /w/{workspace}/api/records`（記録）・`GET /w/{workspace}/api/events`（書き換えの通知）・`GET /w/{workspace}/api/comments`（レビュー中の書き込みと下書き、項目ごとのコメントのマーカー）・`GET /w/{workspace}/api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /w/{workspace}/api/threads`（スレッドと利用者の未読）・`POST /w/{workspace}/api/edits`・`DELETE /w/{workspace}/api/edits/{id}`・`POST /w/{workspace}/api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /w/{workspace}/api/comments`・`PATCH`/`DELETE /w/{workspace}/api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /w/{workspace}/api/drafts`（下書き）・`POST /w/{workspace}/api/comments/send`（まとめて送信する）・`PATCH /w/{workspace}/api/threads/{id}`（クローズとオープンへの戻し）・`POST /w/{workspace}/api/threads/{id}/seen`（利用者の既読）・`PUT /w/{workspace}/api/config/display`（ワークスペースの既定の書き換え）・`POST /w/{workspace}/api/presets`（絞り込みのプリセットの保存）・`POST /w/{workspace}/api/favorites`（お気に入りの登録・解除）・`GET /w/{workspace}/api/transcription`（文字起こしの可否と設定）・`POST /w/{workspace}/api/transcriptions`（音声の文字起こし）・`POST /w/{workspace}/api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
 flows:
   - name: 正常系
     summary: '`/w/{workspace}/` を開くと、記録を読んでトップバーと概要を描く'
@@ -614,14 +614,14 @@ flows:
       - 資料の画面に A-2 だけがある
     test: test_normal_when_search_filter_candidate
   - name: 正常系（お気に入り）
-    summary: 端末の保存領域のお気に入りで、カードの一覧の先頭に並べ、お気に入りだけを表示する間はチップで解除できる
+    summary: 記録のお気に入りで、カードの一覧の先頭に並べ、お気に入りだけを表示する間はチップで解除できる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 資料 A-1・A-2・A-3 を持つワークスペース
       - name: 端末の保存領域
-        description: '`favorites` に A-3 と記録に無い A-9、`favorites_only` を真にしておく'
+        description: '`favorites_only` を真にしておく。ワークスペースの `favorites.yaml` に A-3 と記録に無い A-9 を持たせておく'
         notes: '`/w/{workspace}/?tab=docs&sort=id` で開く'
     flow: |-
       ```mermaid
@@ -631,7 +631,7 @@ flows:
         participant LS as 端末の保存領域
 
         ユーザー->>IF: /w/{workspace}/?tab=docs&sort=id を開く
-        IF->>LS: お気に入りと上書きを参照する
+        IF->>LS: 上書きを参照する（お気に入りは記録の favorites）
         IF-->>ユーザー: チップ「お気に入りのみ」と A-3 のカードだけ
         ユーザー->>IF: チップの × を押す
         IF->>LS: favorites_only を削除する
@@ -640,7 +640,7 @@ flows:
     expected:
       - 開いた直後、絞り込みのチップの先頭に「お気に入りのみ」があり、カードが A-3 だけで、A-9 のカードは無い
       - チップの × を押すとチップが消え、カードが A-3・A-1・A-2 の順に並ぶ
-      - 端末の保存領域に `favorites_only` が無く、`favorites` に A-3 と A-9 が残っている
+      - 端末の保存領域に `favorites_only` が無く、`favorites.yaml` に A-3 と A-9 が残っている
       - ワークスペースの記録と `config.yaml` の中身が、開く前と同じである
     test: test_normal_when_favorites
   - name: 正常系（未読のまとまり）

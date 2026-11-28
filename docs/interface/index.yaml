@@ -52,6 +52,10 @@ items:
     summary: "adopt: 検討事項の採用する案を 1 つに切り替える"
   - page: IF-722-1.yaml
     summary: "user_choices: 利用者が案を選んだ検討事項を、選んだ案と一言つきで返却する"
+  - page: IF-727-1.yaml
+    summary: "set_favorite: AI が ID で指した項目をワークスペースのお気に入りに登録・解除する"
+  - page: IF-727-2.yaml
+    summary: "POST /w/{workspace}/api/favorites: プレビューの星で項目をワークスペースのお気に入りに登録・解除する"
   - page: IF-489-32.yaml
     summary: "POST /_admin/sessions/{session}/resume: 起動・再開の契機に、取り込み待ちのスレッド・前回から変わった項目・要見直し・進行中を返す"
   - page: IF-565-2.yaml

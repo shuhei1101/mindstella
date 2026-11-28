@@ -148,7 +148,7 @@ response_notes: |-
   > つながりが切れたら、ブラウザの EventSource が自分で再接続する。サーバーが止まっている間は画面に「サーバーにつながりません」と出し、前に読んだ記録で描き続ける（『プレビューを開く』）。
 constraints:
   - item: 監視するファイル
-    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`history.yaml`・`docs/` の直下の `*.md`・`*.html`。`comments.yaml`・`drafts.yaml` は見ない（書くのは画面だけで、画面が応答から再描画する）。`threads.yaml` は AI の返信・スレッドの作成・クローズとオープンへの戻しを開いている画面へ届けるために見る（AI の既読だけの書き換えも知らせる）'
+    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`history.yaml`・`favorites.yaml`・`docs/` の直下の `*.md`・`*.html`。`comments.yaml`・`drafts.yaml` は見ない（書くのは画面だけで、画面が応答から再描画する）。`threads.yaml` は AI の返信・スレッドの作成・クローズとオープンへの戻しを開いている画面へ届けるために見る（AI の既読だけの書き換えも知らせる）。`favorites.yaml` は、別のプロセスからの『お気に入りの登録・解除』を開いている画面へ届けるために監視する（変更の検知は比べない）'
   - item: 監視する間隔
     constraint: 250ms ごとに書き換えのマーカーを再作成し、前と違えば知らせる
     decided_by: NFR-489-1#requirements[画面への反映の時間]
