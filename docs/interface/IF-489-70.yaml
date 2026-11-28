@@ -3,7 +3,7 @@ title: プレビューを開く
 entry:
   kind: screen
   value: サーバーの配信の `/w/{workspace}/`（画面は『プレビューの配信』が返し、ソースは `frontend/`）
-  api: '`GET /w/{workspace}/api/records`（記録）・`GET /w/{workspace}/api/events`（書き換えの通知）・`GET /w/{workspace}/api/comments`（レビュー中の書き込みと下書き、項目ごとのコメントのマーカー）・`GET /w/{workspace}/api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /w/{workspace}/api/threads`（スレッドと利用者の未読）・`POST /w/{workspace}/api/edits`・`DELETE /w/{workspace}/api/edits/{id}`・`POST /w/{workspace}/api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /w/{workspace}/api/comments`・`PATCH`/`DELETE /w/{workspace}/api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /w/{workspace}/api/drafts`（下書き）・`POST /w/{workspace}/api/comments/send`（まとめて送信する）・`PATCH /w/{workspace}/api/threads/{id}`（クローズとオープンへの戻し）・`POST /w/{workspace}/api/threads/{id}/seen`（利用者の既読）・`PUT /w/{workspace}/api/config/display`（ワークスペースの既定の書き換え）・`POST /w/{workspace}/api/presets`（絞り込みのプリセットの保存）・`GET /w/{workspace}/api/transcription`（文字起こしの可否と設定）・`POST /w/{workspace}/api/transcriptions`（音声の文字起こし）・`POST /w/{workspace}/api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
+  api: '`GET /w/{workspace}/api/records`（記録）・`GET /w/{workspace}/api/events`（書き換えの通知）・`GET /w/{workspace}/api/comments`（レビュー中の書き込みと下書き、項目ごとのコメントのマーカー）・`GET /w/{workspace}/api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちのマーカー）・`GET /w/{workspace}/api/threads`（スレッドと利用者の未読）・`POST /w/{workspace}/api/edits`・`DELETE /w/{workspace}/api/edits/{id}`・`POST /w/{workspace}/api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /w/{workspace}/api/comments`・`PATCH`/`DELETE /w/{workspace}/api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・削除する）・`PUT /w/{workspace}/api/drafts`（下書き）・`POST /w/{workspace}/api/comments/send`（まとめて送信する）・`PATCH /w/{workspace}/api/threads/{id}`（クローズとオープンへの戻し）・`POST /w/{workspace}/api/threads/{id}/seen`（利用者の既読）・`PUT /w/{workspace}/api/config/display`（ワークスペースの既定の書き換え）・`POST /w/{workspace}/api/presets`（絞り込みのプリセットの保存）・`POST /w/{workspace}/api/favorites`（お気に入りの登録・解除）・`GET /w/{workspace}/api/transcription`（文字起こしの可否と設定）・`POST /w/{workspace}/api/transcriptions`（音声の文字起こし）・`POST /w/{workspace}/api/comments/send-now`（入力欄の全文 1 件をすぐ送信する）'
 flows:
   - name: 正常系
     summary: '`/w/{workspace}/` を開くと、記録を読んでトップバーと概要を描く'
@@ -571,7 +571,7 @@ flows:
         description: なし（MCP サーバーを立てて `export` で書き出した HTML を実際のブラウザで `file://` で開く）
       - name: make_workspace
         description: タスク T-1 を持つワークスペース
-        notes: 書き出した HTML を `#/?tab=tasks&id=T-1` で開き、トップバーの表示の設定を開く
+        notes: '`favorites.yaml` に T-1 を持たせてから書き出す。書き出した HTML を `#/?tab=tasks&id=T-1` で開き、トップバーの表示の設定を開く'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -588,6 +588,7 @@ flows:
       - タスクの項目を追加するボタンが無い
       - 詳細パネルに編集する・コメントの一覧のボタンと入力欄が無い
       - 表示の設定のパネルにワークスペースの既定にするのボタンが無い
+      - T-1 の詳細パネルのヘッダーとタスクのカードの星が塗られて出て、`disabled` で押せない
     test: test_normal_when_exported_read_only
   - name: 正常系（全体の検索で絞り込みの候補を選ぶ）
     summary: 全体の検索の先頭の絞り込みの候補を選び、今の画面の絞り込みにその値を加える
@@ -614,14 +615,14 @@ flows:
       - 資料の画面に A-2 だけがある
     test: test_normal_when_search_filter_candidate
   - name: 正常系（お気に入り）
-    summary: 端末の保存領域のお気に入りで、カードの一覧の先頭に並べ、お気に入りだけを表示する間はチップで解除できる
+    summary: 記録のお気に入りで、カードの一覧の先頭に並べ、お気に入りだけを表示する間はチップで解除できる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
       - name: make_workspace
         description: 資料 A-1・A-2・A-3 を持つワークスペース
       - name: 端末の保存領域
-        description: '`favorites` に A-3 と記録に無い A-9、`favorites_only` を真にしておく'
+        description: '`favorites_only` を真にしておく。ワークスペースの `favorites.yaml` に A-3 と記録に無い A-9 を持たせておく'
         notes: '`/w/{workspace}/?tab=docs&sort=id` で開く'
     flow: |-
       ```mermaid
@@ -631,7 +632,7 @@ flows:
         participant LS as 端末の保存領域
 
         ユーザー->>IF: /w/{workspace}/?tab=docs&sort=id を開く
-        IF->>LS: お気に入りと上書きを参照する
+        IF->>LS: 上書きを参照する（お気に入りは記録の favorites）
         IF-->>ユーザー: チップ「お気に入りのみ」と A-3 のカードだけ
         ユーザー->>IF: チップの × を押す
         IF->>LS: favorites_only を削除する
@@ -640,7 +641,7 @@ flows:
     expected:
       - 開いた直後、絞り込みのチップの先頭に「お気に入りのみ」があり、カードが A-3 だけで、A-9 のカードは無い
       - チップの × を押すとチップが消え、カードが A-3・A-1・A-2 の順に並ぶ
-      - 端末の保存領域に `favorites_only` が無く、`favorites` に A-3 と A-9 が残っている
+      - 端末の保存領域に `favorites_only` が無く、`favorites.yaml` に A-3 と A-9 が残っている
       - ワークスペースの記録と `config.yaml` の中身が、開く前と同じである
     test: test_normal_when_favorites
   - name: 正常系（未読のまとまり）
@@ -785,6 +786,66 @@ flows:
       - コードブロック 1 つにつき、言語の札とコピーのボタンが 1 つずつだけある
       - ブラウザのコンソールにエラーが出ていない
     test: test_normal_when_code_blocks
+  - name: 正常系（端末に残ったお気に入りの移し替え）
+    summary: 前のバージョンの端末の `favorites` のうち記録にある ID だけをワークスペースのお気に入りへ移し、端末の値を削除する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/w/{workspace}/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 資料 A-1・A-2・A-3 を持ち、`favorites.yaml` に A-1 を持つワークスペース
+      - name: 端末の保存領域
+        description: 前のバージョンの `favorites` に A-3 と記録に無い A-9 を持たせておく
+        notes: '`/w/{workspace}/?tab=docs&sort=id` で開く'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+        participant LS as 端末の保存領域
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: /w/{workspace}/?tab=docs&sort=id を開く
+        IF->>SV: GET /w/{workspace}/api/records
+        IF->>LS: 前のバージョンの favorites を参照する
+        IF->>SV: POST /w/{workspace}/api/favorites {id: A-3, favorite: true}
+        SV-->>IF: 200、favorites: [A-1, A-3]
+        IF->>LS: 前のバージョンの favorites を削除する
+        IF-->>ユーザー: A-1（星）・A-3（星）・A-2 の順のカード
+      ```
+    expected:
+      - A-9 を送信する要求が 0 件で、A-3 を登録する要求が 1 件
+      - '`favorites.yaml` に A-1 と A-3 があり、A-9 が無い'
+      - 端末の保存領域に前のバージョンの `favorites` が無い
+      - カードが A-1・A-3・A-2 の順で、A-1 と A-3 の星が塗られている
+    test: test_normal_when_local_favorites_migrated
+  - name: 正常系（移し替えの一部が失敗する）
+    summary: 登録の要求が 1 件でも 200 でなければ、端末の前のバージョンの `favorites` を残し、次に開いたときに移し直す
+    setup:
+      - name: Mock
+        description: サーバーの配信の `POST /w/{workspace}/api/favorites` だけを、ブラウザの要求の差し替えで 500 にする（ほかの要求は実際の配信へ通す）
+      - name: make_workspace
+        description: 資料 A-1・A-2・A-3 を持ち、`favorites.yaml` を持たないワークスペース
+      - name: 端末の保存領域
+        description: 前のバージョンの `favorites` に A-3 を持たせておく
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+        participant LS as 端末の保存領域
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: 資料の画面を開く
+        IF->>LS: 前のバージョンの favorites を参照する
+        IF->>SV: POST /w/{workspace}/api/favorites {id: A-3, favorite: true}
+        SV-->>IF: 500
+        IF-->>ユーザー: A-1・A-2・A-3 の順のカード（どれも星は空）
+      ```
+    expected:
+      - 端末の保存領域に前のバージョンの `favorites` が A-3 のまま残っている
+      - カードが A-1・A-2・A-3 の順で、どの星も塗られていない
+      - 画面にエラーのトーストを出さない（移し替えは利用者の操作ではないため）
+    test: test_normal_when_migration_failed
 lead: 利用者がサーバーの配信の `/w/{workspace}/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの通知を受けると記録を再読み込みして再描画する。
 callers:
   - SC-489-12#
@@ -973,7 +1034,7 @@ constraints:
   - item: 保存した絞り込みの条件
     constraint: 画面ごとの絞り込みの条件（タグの組み合わせ方とタグの条件の式 `tx` を含む）と変更履歴で選んだ時点を、そのタブの `sessionStorage` のキー（`mindmap-filters`）に、条件を変えるたびに書く。URL に `f.{列}` が無い画面を開くときは保存した条件を当てて URL に書き、`f.{列}` があれば URL の条件で開いて保存した条件を書き換える。保存した値が今の記録に無ければ、その値を外して描く
   - item: 端末の保存領域
-    constraint: ライト / ダークと、表ごとの表示する列・ピン留め、差分のミニマップを表示する・しない、1 文字のショートカットを使用する・しない（個人の上書き `single_key_shortcuts`）、セクションの折りたたみ、レビュー中のコメントの並び、「レビューに追加」の後のフォーカス、お気に入りに登録した項目の ID の並び（`favorites`）・お気に入りを一番上にする（個人の上書き `favorites_first`）・お気に入りだけを表示する（個人の上書き `favorites_only`）を `localStorage` の 1 つのキーに持つ。絞り込みの条件と変更履歴で選んだ時点はこのキーに持たず、このキーに残っていれば参照せずに削除する（制約「保存した絞り込みの条件」）。配る書き出しは絞り込みの条件を保存しない。保存できない環境では開いている間だけ保つ。詳細パネルの幅（区切りのドラッグかキーで変えた幅）は、そのタブの `sessionStorage` の 1 つのキーに持ち、種類で分けない。配る書き出しも同じ。保存できない環境では既定の幅で開く。コメントの一覧のパネルの幅（右端の区切りのドラッグかキーで変えた幅）も、そのタブの `sessionStorage` の 1 つのキーに持ち、スレッドの一覧・スレッド・レビュー中の書き込みと、同じ左のパネルに出す保存待ちのパネル・表示の設定で同じ値を使用する。配る書き出しはコメントの一覧を持たない。保存できない環境では既定の幅で開く。サーバーの配信では全てのワークスペースを同じオリジンで配るため、`localStorage`・`sessionStorage` のキーの末尾に `:{workspace}`（『プレビューの URL』の制約「画面のパス」）を付けてワークスペースごとに分ける（配る書き出しは付けない）。詳細パネル・詳細の全画面の本文のスクロール位置は、`sessionStorage` のキー（`mindmap-body-scroll`）に項目の ID ごとに持ち、項目を開いたときにその位置へ戻す。`h` の見出しへ送信するときは戻さない。表の見せ方とセクションの見せ方・表示する種類・コメントの一覧のピン止めの上書きも同じ `localStorage` のキーに持ち、知らない項目を削除しない
+    constraint: ライト / ダークと、表ごとの表示する列・ピン留め、差分のミニマップを表示する・しない、1 文字のショートカットを使用する・しない（個人の上書き `single_key_shortcuts`）、セクションの折りたたみ、レビュー中のコメントの並び、「レビューに追加」の後のフォーカス、お気に入りを一番上にする（個人の上書き `favorites_first`）・お気に入りだけを表示する（個人の上書き `favorites_only`）を `localStorage` の 1 つのキーに持つ。絞り込みの条件と変更履歴で選んだ時点はこのキーに持たず、このキーに残っていれば参照せずに削除する（制約「保存した絞り込みの条件」）。配る書き出しは絞り込みの条件を保存しない。保存できない環境では開いている間だけ保つ。詳細パネルの幅（区切りのドラッグかキーで変えた幅）は、そのタブの `sessionStorage` の 1 つのキーに持ち、種類で分けない。配る書き出しも同じ。保存できない環境では既定の幅で開く。コメントの一覧のパネルの幅（右端の区切りのドラッグかキーで変えた幅）も、そのタブの `sessionStorage` の 1 つのキーに持ち、スレッドの一覧・スレッド・レビュー中の書き込みと、同じ左のパネルに出す保存待ちのパネル・表示の設定で同じ値を使用する。配る書き出しはコメントの一覧を持たない。保存できない環境では既定の幅で開く。サーバーの配信では全てのワークスペースを同じオリジンで配るため、`localStorage`・`sessionStorage` のキーの末尾に `:{workspace}`（『プレビューの URL』の制約「画面のパス」）を付けてワークスペースごとに分ける（配る書き出しは付けない）。詳細パネル・詳細の全画面の本文のスクロール位置は、`sessionStorage` のキー（`mindmap-body-scroll`）に項目の ID ごとに持ち、項目を開いたときにその位置へ戻す。`h` の見出しへ送信するときは戻さない。表の見せ方とセクションの見せ方・表示する種類・コメントの一覧のピン止めの上書きも同じ `localStorage` のキーに持ち、知らない項目を削除しない
   - item: 前のバージョンの組み立て
     constraint: 項目の `history` を新しいものから順に、選んだ時点の最初の `seq` まで当てる（キーは `before` で戻し、本文は `body_diff` で戻す）。選んだ時点の範囲の中の回が 1 つでも保持する回数を超えて消えていれば（範囲の要素が無いか、項目の `history_dropped_seq` が範囲の始まりの `seq` より大きい）、マーカーだけ付けて詳細パネルにその旨を出す。`body_diff` の `now` が今の本文に当たらなければ、本文は今の内容を描いて差分を出せない旨を出し、キーの差分は出す。`update_settings` が付け替えた `phase` は変更履歴に無いため、前のバージョンでも今の値で出す
   - item: 差分の表示と書き換え
@@ -1029,7 +1090,7 @@ constraints:
   - item: 一覧の並び
     constraint: 項目を並べる画面（表・ボード・カード）から項目を開いたときと、前後の項目へ移ったとき、その履歴の行の `history.state` に一覧から開いたマーカー（`fromList`）を持つ（URL の search params には持たせない）。並びの中身は、画面が今描いている並び（絞り込み・並べ替えを適用した順。ボードは開いている項目の列の中の順）を描くたびに使用する。詳細パネル・詳細の全画面は、今の履歴の行にマーカーがあり、開いている項目が今の並びにあるときだけ、並びの前後の項目へ移るボタンと位置（`{何件目} / {件数}`）を出し、先頭・末尾ではその向きのボタンを押せない状態にする。マーカーの無い行（URL から直接開いた・詳細の中のリンク・全体の検索の結果から開いた）と、マーカーがあっても今の並びに無い項目では出さない。戻る・進む・再読み込みでたどり着いた行も、その行のマーカーで決める。キー（`k` 前・`j` 次）でも移れ、入力欄にフォーカスがある間と IME の入力中と、個人の上書き `single_key_shortcuts` が `false` のときは無効にする
   - item: お気に入り
-    constraint: カード・ボードのカードの右上と表の一番左の星の列の星を押すと、その項目の ID を端末の保存領域の `favorites` の末尾に加える（登録済みなら削除する）。サーバーへは送信せず、ワークスペースの記録と `config.yaml` を変えない。記録に無い ID は参照するときに無視し、`favorites` からは削除しない。`favorites_first` が無い（既定）ときは、カードの一覧だけ、並べ替えの順に並べた後にお気に入りを先頭に並べる（お気に入りの中とそれ以外の中は並べ替えの順のまま）。ボードと表の並びは変えない。`favorites_only` が真のときは、カード・ボード・表のどれでもお気に入りの項目だけに絞り、絞り込みのチップの先頭に「お気に入りのみ」を出す。チップの × と「すべて解除」は `favorites_only` の上書きを削除する。「既定に戻す」は `favorites_first`・`favorites_only` の上書きを削除し、`favorites` は残す。どちらの上書きも「ワークスペースの既定にする」の対象に含めない。星の列の並べ替えはほかの列と同じく search params の `sort`（`favorite`・`-favorite`）に持ち、昇順でお気に入りが先頭になる
+    constraint: カード・ボードのカードの右上と表の一番左の星の列と、詳細パネル・詳細の全画面のヘッダーの星を押すと、『画面からのお気に入りの登録・解除』でその項目を登録する（登録済みなら解除する）。押した時点で星を切り替え、200 の応答の `favorites` で描き直す。200 以外のときは星を押す前の状態に戻し、トースト「お気に入りを変更できませんでした。{detail}」（`{detail}` は応答の `detail`）を出す。お気に入りは『記録の取得』の `favorites` を参照し、記録に無い ID は参照するときに無視する。配る書き出しでは、書き出した時点の `favorites` で星を塗り、星は `disabled` にして押せない。`favorites_first` が無い（既定）ときは、カードの一覧だけ、並べ替えの順に並べた後にお気に入りを先頭に並べる（お気に入りの中とそれ以外の中は並べ替えの順のまま）。ボードと表の並びは変えない。`favorites_only` が真のときは、カード・ボード・表のどれでもお気に入りの項目だけに絞り、絞り込みのチップの先頭に「お気に入りのみ」を出す。チップの × と「すべて解除」は `favorites_only` の上書きを削除する。「既定に戻す」は `favorites_first`・`favorites_only` の上書きを削除し、お気に入りの登録は変えない。どちらの上書きも「ワークスペースの既定にする」の対象に含めない。星の列の並べ替えはほかの列と同じく search params の `sort`（`favorite`・`-favorite`）に持ち、昇順でお気に入りが先頭になる
   - item: 既読のまとまり
     constraint: サーバーの配信では、差分の表示で開いた（変更履歴で選んだ・`diff` を付けて開いた・本文のまとまりのリンクを押した）まとまりの ID を、端末の保存領域（`localStorage`）の `mindmap-read-changes` のワークスペース（`{workspace}`）ごとの配列に加える。「すべて既読にする」は、その時点の記録の全てのまとまりの ID を加える。未読は、記録のまとまりのうち ID が既読に無いもので、まだまとめていない変更は数えない。トップバーの変更履歴のボタンに未読の件数（0 件のときは出さない）を、変更履歴の一覧の未読のまとまりの行に未読のマーカーを出す。書き換えの通知で再読み込みしたときに増えたまとまりは未読になる。記録に無いまとまりの ID は、記録を参照するたびに既読から削除する。保存領域を使用できないときは、そのタブを開いている間だけ既読を持つ。配る書き出しでは未読の件数・未読のマーカー・「すべて既読にする」を出さない
   - item: タブのマーカー
@@ -1040,6 +1101,8 @@ constraints:
     constraint: 検討事項の詳細パネル・詳細の全画面で、状態が `未決定`・`要見直し` の検討事項の案のカードの下に「この案を選ぶ」を配置する（押す領域は縦横 24px 以上）。押すと一言の入力と確定を出し、確定すると `POST /w/{workspace}/api/comments` に `target` と `choice.key`（一言は `body`）を指定してレビュー中の書き込みとして溜める。同じ検討事項で別の案を選び直すと `PATCH /w/{workspace}/api/comments/{id}` で書き換え、取り消すと `DELETE /w/{workspace}/api/comments/{id}` で削除する。溜めた選択はコメントのボタンの件数とレビュー中の一覧に含め、まとめて送信でほかのコメントと一緒に送信する。記録の `user_choice` を持つ案のカードには利用者が選んだ状態を出し、AI の採用（`決定済み`）の見せ方と分ける。配る書き出しでは「この案を選ぶ」を出さない
   - item: 外部のリンク
     constraint: Markdown の本文（詳細パネル・詳細の全画面・本文の差分）とスレッドの書き込みを mdmark で描いた直後に、`href` を今のページの URL で解決した結果のオリジンが今のページと異なる `a` に `target="_blank"` と `rel="noopener noreferrer"` を付ける。`#` で始まるリンク・同じオリジンのリンク・項目の ID とスレッドの ID のリンクは今のタブのままにする。配る書き出しでも同じ。HTML の本文の枠の中のリンクは対象外（制約『HTML の本文の中のリンク』）
+  - item: 端末に残ったお気に入りの移し替え
+    constraint: 'サーバーの配信で記録を参照した後、端末の保存領域に前のバージョンの `favorites` があれば、そのうち記録にあり、記録の `favorites` に無い ID を、並びの順に 1 件ずつ『画面からのお気に入りの登録・解除』（`favorite: true`）で送信する。記録に無い ID は送信せずに捨てる。全件が 200 のとき（送信する ID が 0 件のときを含む）だけ、端末の保存領域の前のバージョンの `favorites` を削除する。1 件でも 200 でなければ、そこで送信を止めて端末の値を残し、次に開いたときに移し直す。移し替えの失敗は画面に出さない。配る書き出しでは移し替えない'
 refs:
   - IF-489-18#
   - IF-489-51#

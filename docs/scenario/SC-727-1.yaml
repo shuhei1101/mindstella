@@ -1,0 +1,111 @@
+title: AI が項目をお気に入りにする
+lead: MindStella のセッションの AI が、利用者の指示で項目をお気に入りに登録・解除し、利用者がプレビューで星が付いた・外れたのを見る単一ユースケース。
+issue: 727
+primary_actor: MindStella のセッションの AI
+stakeholders:
+  - name: 利用者
+    interest: 毎回参照する資料などを、AI に頼むだけでお気に入りにでき、プレビューの一覧の先頭ですぐに見つけられる
+  - name: MindStella のセッションの AI
+    interest: 項目を ID で指してお気に入りに登録・解除でき、記録に無い ID を指したときは理由つきで分かる
+trigger: 利用者が AI に、項目をお気に入りに登録・解除するよう指示する（AI が作成した資料をお気に入りにする手順も含む）
+preconditions:
+  - サーバーがワークスペースを配っている
+  - MindStella のセッションが mindstella の MCP のツールを呼べる
+success_guarantee: AI が指した項目がワークスペースのお気に入りに登録され（解除の指示では削除され）、プレビューを開いている利用者の画面に、再読み込みせずに星が付く（外れる）。項目の YAML・本文と `config.yaml` は変わらず、変更履歴に載らない。
+minimal_guarantee: 記録に無い ID の登録を指したときは、お気に入りを変えずにその ID と理由を AI へ返却する。ほかの項目のお気に入りは変わらない。
+frequency: 利用者が指示したときと、手順で資料を作成したとき
+priority: 中
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、テストが MCP のクライアントとしてツールを呼ぶ。サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 資料 A-1・A-2
+      - name: 配信
+        description: 記録を配っているサーバーと、資料の画面（カード）の URL。ワークスペースのお気に入りは空
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant AI as AI（MCP のクライアント）
+        participant S as サーバー
+        participant WS as ワークスペース
+        participant P as プレビュー（ブラウザ）
+        participant U as 利用者
+
+        U->>P: 資料の画面を開いておく
+        P-->>U: A-1・A-2 のカード（どれも星は空）
+        AI->>S: A-2 をお気に入りに登録する
+        S->>WS: お気に入りに A-2 を残す
+        S-->>AI: 登録した後のお気に入り（A-2）
+        S-->>P: 書き換えの通知
+        P-->>U: A-2 のカードの星を塗り、A-2・A-1 の順に並べる
+        AI->>S: A-2 のお気に入りを解除する
+        S->>WS: お気に入りから A-2 を削除する
+        S-->>AI: 解除した後のお気に入り（空）
+        S-->>P: 書き換えの通知
+        P-->>U: A-1・A-2 の順のカード（どれも星は空）
+      ```
+    expected:
+      - 登録の呼び出しが、登録した後のお気に入りとして A-2 を返却する
+      - 再読み込みしないまま、プレビューの A-2 のカードの星が塗られ、カードが A-2・A-1 の順に並ぶ
+      - ワークスペースのお気に入りに A-2 が残っている
+      - 解除の呼び出しの後、プレビューの A-2 の星が空に戻り、ワークスペースのお気に入りに A-2 が無い
+      - ワークスペースの記録の項目の YAML・本文と `config.yaml` の中身が呼ぶ前と同じで、変更履歴に A-2 の変更が無い
+    test: test_normal
+  - name: 正常シナリオ（登録済みの項目）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、テストが MCP のクライアントとしてツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 資料 A-1・A-2
+      - name: お気に入り
+        description: ワークスペースのお気に入りに A-1 を残しておく
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant AI as AI（MCP のクライアント）
+        participant S as サーバー
+
+        AI->>S: A-1 をお気に入りに登録する
+        S-->>AI: 登録した後のお気に入り（A-1）
+        AI->>S: A-2 のお気に入りを解除する
+        S-->>AI: 解除した後のお気に入り（A-1）
+      ```
+    expected:
+      - 登録済みの A-1 の登録はエラーにならず、お気に入りが A-1 の 1 件のまま
+      - 登録していない A-2 の解除はエラーにならず、お気に入りが A-1 のまま
+    test: test_normal_when_already_set
+  - name: 異常シナリオ（記録に無い項目）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、テストが MCP のクライアントとしてツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 資料 A-1
+      - name: お気に入り
+        description: ワークスペースのお気に入りに A-1 を残しておく
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant AI as AI（MCP のクライアント）
+        participant S as サーバー
+
+        AI->>S: 記録に無い A-9 をお気に入りに登録する
+        S-->>AI: A-9 が記録に無いエラー
+      ```
+    expected:
+      - 呼び出しが、記録に無い ID として A-9 を挙げたエラーを返却する
+      - ワークスペースのお気に入りが A-1 のまま変わらない
+    test: test_error_when_missing_item
+notes:
+  E2E の範囲: MCP のツールの呼び出しから、ワークスペースのお気に入りとプレビューの星までを確認する。AI がどの指示でお気に入りにするかの判断は確認しない（記録のエージェントフローの手順）
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` を追加する
+refs:
+  - SC-721-1#
+id: SC-727-1

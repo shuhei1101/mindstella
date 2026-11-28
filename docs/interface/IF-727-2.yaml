@@ -1,0 +1,216 @@
+title: 画面からのお気に入りの登録・解除
+entry:
+  kind: endpoint
+  value: POST /w/{workspace}/api/favorites
+lead: プレビューの星のボタンで、項目をワークスペースのお気に入り（`favorites.yaml`）に登録・解除する。書き込んだら開いている画面へ通知する。
+test_file: tests/integration/server/test_favorites_endpoint.py
+idempotent: true
+side_effects: '`.mindstella/favorites.yaml` だけを書き換え（無ければ作る）、書き換えの通知を送信する。種類ごとの YAML・本文・`config.yaml`・`history.yaml`・`changes.yaml` は書き換えない'
+permissions: 配信の画面からの要求だけ（`Host` と `Origin` を確かめる）
+exclusivity: ほかの書き込むエンドポイントと同じく、書き換えの鍵（プロセスの中の鍵と `.mindstella.lock`）を取ってから読み書きする
+callers:
+  - IF-489-70#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確認」に合うもの
+  - name: Origin
+    type: str
+    required: false
+    location: header
+    description: 送信元
+    constraints: 無いか、『プレビューの配信』の制約「送信元の確認」に合うもの
+  - name: Content-Type
+    type: str
+    required: true
+    location: header
+    description: 本文の構造
+    constraints: '`application/json`'
+  - name: id
+    type: str
+    required: true
+    location: body
+    description: 登録・解除する項目の ID
+    constraints: 『お気に入りの登録・解除』の `id` と同じ
+  - name: favorite
+    type: bool
+    required: true
+    location: body
+    description: 真で登録、偽で解除
+request_example: |-
+  ```json
+  {"id": "A-3", "favorite": true}
+  ```
+response:
+  - name: favorites
+    type: list[str]
+    description: 登録・解除した後のお気に入りの ID（`favorites.yaml` の並び）。画面はこの値で星を描き直す
+status_codes:
+  - code: '200'
+    condition: 登録・解除できた。登録済みの登録と未登録の解除も含む
+  - code: '400'
+    condition: 本文が JSON のオブジェクトでない・`id` が空か文字列でない・`favorite` が真偽値でない・そのほかのキーがある
+    notes: '`detail` に合わないキーと理由。何も書き込まない'
+  - code: '403'
+    condition: '`Host` か `Origin` が合わない'
+    notes: 何も書き込まない
+  - code: '404'
+    condition: '`favorite` が真で、`id` が種類ごとの YAML のどれにも無い'
+    notes: '`detail` に記録に無い ID。何も書き込まない'
+  - code: '415'
+    condition: '`Content-Type` が `application/json` でない'
+    notes: 何も書き込まない
+  - code: '500'
+    condition: '`favorites.yaml` を書き込めない（ワークスペースのフォルダが読み取り専用 など）'
+    notes: '`detail` に書き込めなかったパスと理由。`favorites.yaml` は前の中身のまま'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。画面は 200 以外のとき、押した星を押す前の状態に戻し、登録できなかったことを出す（単一ユースケース『項目をお気に入りにする』の「お気に入りを書き込めない」）
+constraints:
+  - item: 記載方法
+    constraint: 『お気に入りの登録・解除』と同じ関数で、検証・行の追加と削除をする
+  - item: 書き換えの通知
+    constraint: 書き換えたら『書き換えの通知』を送信し、『記録の取得』の保持した応答を捨てる
+  - item: 変更履歴
+    constraint: '`changes.yaml` にも項目の `history` にも入れない。保存待ちの編集に溜めず、受けた時点で確定する'
+  - item: 配る書き出し
+    constraint: 配る書き出しの画面はこのエンドポイントを呼ばない（星を押せない）
+refs:
+  - IF-727-1#
+  - ER-489-1#tables[favorites.yaml]
+  - IF-489-44#
+  - SC-721-1#
+flows:
+  - name: 正常系
+    summary: 項目を登録し、書き換えの通知を送信する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 資料 A-1・A-2・A-3 を持ち、`favorites.yaml` に A-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/favorites
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST（A-3, true）
+        IF->>WS: favorites.yaml の末尾に A-3 を追加する
+        IF-->>クライアント: 200、favorites: [A-1, A-3]
+      ```
+    expected:
+      - ステータスが 200 で、`favorites` が `[A-1, A-3]`
+      - '`favorites.yaml` の `items` が A-1・A-3 の順'
+      - '`GET /w/{workspace}/api/events` に書き換えの通知が届く'
+      - '`docs.yaml`・`history.yaml`・`changes.yaml` が呼ぶ前と同じ'
+    test: test_normal
+  - name: 異常系（値が合わない・400）
+    summary: 空の ID・真偽値でない favorite・受け付けないキーは書き込まない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 資料 A-1 を持つワークスペース
+        notes: '`parametrize`: `id` が空文字 / `favorite` が文字列 `"yes"` / `note` を持つ本文'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/favorites
+
+        クライアント->>IF: POST（合わない値）
+        IF-->>クライアント: 400
+      ```
+    expected:
+      - ステータスが 400
+      - '`detail` に合わないキーと理由がある'
+      - '`favorites.yaml` が作られていない'
+    test: test_error_when_value_invalid
+  - name: 異常系（送信元が違う・403）
+    summary: 別のサイトのページからは書き込まない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 資料 A-1 を持つワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/favorites
+
+        クライアント->>IF: POST（Origin: attacker.example）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403
+      - '`favorites.yaml` が作られていない'
+    test: test_error_when_origin_mismatch
+  - name: 異常系（記録に無い項目・404）
+    summary: 記録に無い ID の登録を拒む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 資料 A-1 を持ち、`favorites.yaml` に A-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/favorites
+
+        クライアント->>IF: POST（A-9, true）
+        IF-->>クライアント: 404
+      ```
+    expected:
+      - ステータスが 404 で、`detail` に A-9 がある
+      - '`favorites.yaml` が呼ぶ前と同じ'
+    test: test_error_when_item_not_found
+  - name: 異常系（本文の構造が違う・415）
+    summary: JSON でない本文は読まずに書き込まない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 資料 A-1 を持つワークスペース
+        notes: '`Content-Type: text/plain` を付ける'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/favorites
+
+        クライアント->>IF: POST（Content-Type: text/plain）
+        IF-->>クライアント: 415
+      ```
+    expected:
+      - ステータスが 415
+      - '`favorites.yaml` が作られていない'
+    test: test_error_when_content_type_mismatch
+  - name: 異常系（書き込めない・500）
+    summary: ワークスペースのフォルダに書き込めないと、理由を返却して何も変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを起動して `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する）
+      - name: make_workspace
+        description: 資料 A-1 を持ち、`preview_url` を呼んだ後に `.mindstella/` を読み取り専用（`0o500`）にしたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/favorites
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST（A-1, true）
+        IF->>WS: 一時ファイルを書き込む（書き込めない）
+        IF-->>クライアント: 500
+      ```
+    expected:
+      - ステータスが 500
+      - '`detail` に書き込めなかったパスと理由がある'
+      - '`favorites.yaml` が作られていない'
+    test: test_error_when_write_fails
+id: IF-727-2

@@ -1,0 +1,44 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-721-1.yaml
+    impact: changed
+    detail: 詳細パネル（と詳細の全画面）の固定のヘッダーの星で、開いている項目をお気に入りに登録・解除する流れを足す。AI が登録したお気に入りも画面に出るよう、お気に入りの残り先（今は端末だけ）と、記録と config.yaml を変えないという保証を見直す
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: run_only
+    detail: 詳細のヘッダーの星の操作は単一ユースケース『項目をお気に入りにする』が持ち、詳細を読む流れの記述は変わらない。ヘッダーにボタンが加わり目次・一覧の並びの前後・コメントのボタンの配置を壊しうるため確認する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-31.yaml
+    impact: changed
+    detail: 「お気に入りの並びと絞り込みを変える」の前提と既定に戻した後の期待値を、端末の保存領域のお気に入りからワークスペースのお気に入りに書き換える。切り替えは今のまま端末の上書き
+    depends_on:
+      - docs/scenario/SC-721-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-727-1.yaml
+    impact: new
+    detail: MindStella のセッションの AI が、利用者の指示で項目をお気に入りに登録・解除し、利用者がプレビューでその項目の星が塗られているのを見る
+    depends_on:
+      - docs/scenario/SC-721-1.yaml
+docs:
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 「項目をお気に入りにする」に詳細パネル・詳細の全画面のヘッダーの星を追加し、お気に入りの残り先の説明（今は「この端末に残り、サーバーへは送信しない」）を新しい残り先に合わせる
+    status: todo
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: AI がお気に入りを登録・解除する MCP のツールを追加する
+    status: todo
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: 記録のフォルダのファイルの一覧に `favorites.yaml`（お気に入りの項目の ID と登録した日時）を追加する
+    status: todo
+  - page: plugins/mindstella/agent-flows/record.yaml
+    new: false
+    change: 利用者がお気に入りを指示したときに、AI が項目をお気に入りに登録・解除する手順を追加する
+    status: todo
+scope_out:
+  - item: aituber の台本作成の手順で、台本の資料をお気に入りに登録する工程
+    reason: aituber のエージェントフローの変更で、mindstella の要望に含まれない。本 PR の手段が決まらないと中身が決まらない
+    plan: to_file

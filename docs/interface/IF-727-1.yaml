@@ -1,0 +1,173 @@
+title: お気に入りの登録・解除
+entry:
+  kind: mcp_tool
+  value: '`set_favorite`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__set_favorite`）。結果とエラーの返却方法は『MCP サーバーの起動』'
+lead: AI が、ID で指した項目をワークスペースのお気に入り（`favorites.yaml`）に登録・解除する。書き込んだら開いている画面へ知らせる。
+test_file: tests/integration/server/test_set_favorite.py
+idempotent: true
+side_effects: '`.mindstella/favorites.yaml` だけを書き換える（無ければ作る）。種類ごとの YAML・本文・`config.yaml`・`history.yaml`・`changes.yaml` は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: id
+    type: str
+    required: true
+    location: argument
+    description: 登録・解除する項目の ID
+    constraints: 登録のときは種類ごとの 7 つの YAML のどれかにある ID。解除のときは記録に無い ID も受け付ける（削除した項目の行を解除できるようにする）
+  - name: favorite
+    type: bool
+    required: true
+    location: argument
+    description: 真で登録、偽で解除
+response:
+  - name: favorites
+    type: list[str]
+    description: 登録・解除した後のお気に入りの ID（`favorites.yaml` の並び）
+  - name: changed
+    type: bool
+    description: '`favorites.yaml` を書き換えたか。登録済みの登録・未登録の解除は偽'
+exceptions:
+  - name: なし（正常終了）
+    condition: 登録・解除できた。登録済みの登録と未登録の解除も含む
+    notes: 結果を返却する
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: ItemNotFoundError
+    condition: '`favorite` が真で、`id` が種類ごとの YAML のどれにも無い'
+    notes: ツールのエラー。本文に記録に無い ID。何も書き込まない
+  - name: WriteFailedError
+    condition: 一時ファイルの書き込みか置き換えに失敗した
+    notes: ツールのエラー。`favorites.yaml` は前の中身のまま
+constraints:
+  - item: 結果とエラーの返却方法
+    constraint: 『プリセットの作成』と同じ
+  - item: 書き換える行
+    constraint: 登録は `items` の末尾に `id`・`added`（書き込んだ日時）を追加し、解除はその `id` の行を削除する。ほかの行は今の並びと値を保つ。登録済みの登録と未登録の解除は書き込まずに結果を返却する
+  - item: 画面からの登録・解除との共有
+    constraint: 『画面からのお気に入りの登録・解除』と同じ関数で検証と書き込みをする
+  - item: 書き換えの通知
+    constraint: 書き終えたら、開いているプレビューへ通知し、『記録の取得』の保持した応答を捨てる。別のプロセスからの書き込みは『書き換えの通知』の監視するファイルで知らせる
+  - item: 変更履歴
+    constraint: '`changes.yaml` にも項目の `history` にも入れない。MindStella のセッション以外からも呼べる'
+refs:
+  - ER-489-1#tables[favorites.yaml]
+  - IF-489-44#
+  - SC-727-1#
+flows:
+  - name: 正常系
+    summary: 項目を登録し、解除する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 資料 A-1・A-2 を持ち、`favorites.yaml` を持たないワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_favorite（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: set_favorite（A-2, true）
+        IF->>WS: favorites.yaml を作り A-2 を追加する
+        IF-->>クライアント: favorites: [A-2]、changed: true
+        クライアント->>IF: set_favorite（A-2, false）
+        IF->>WS: favorites.yaml から A-2 を削除する
+        IF-->>クライアント: favorites: []、changed: true
+      ```
+    expected:
+      - '1 回目の結果が `favorites: [A-2]`・`changed: true` で、`favorites.yaml` に A-2 の行がある'
+      - '2 回目の結果が `favorites: []`・`changed: true` で、`favorites.yaml` の `items` が空'
+      - '`docs.yaml`・`config.yaml`・`history.yaml`・`changes.yaml` が呼ぶ前と同じ'
+    test: test_normal
+  - name: 正常系（登録済み・未登録）
+    summary: 登録済みの登録と未登録の解除は書き込まずに結果を返却する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 資料 A-1・A-2 を持ち、`favorites.yaml` に A-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_favorite（MCP のツール）
+
+        クライアント->>IF: set_favorite（A-1, true）
+        IF-->>クライアント: favorites: [A-1]、changed: false
+        クライアント->>IF: set_favorite（A-2, false）
+        IF-->>クライアント: favorites: [A-1]、changed: false
+      ```
+    expected:
+      - どちらもツールのエラーにならず、`changed` が偽
+      - '`favorites.yaml` の中身が呼ぶ前と同じ'
+    test: test_normal_when_unchanged
+  - name: 正常系（記録に無い ID の解除）
+    summary: 項目を削除した後も、残った行を解除できる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 資料 A-1 を持ち、`favorites.yaml` に A-1 と記録に無い A-9 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_favorite（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: set_favorite（A-9, false）
+        IF->>WS: favorites.yaml から A-9 を削除する
+        IF-->>クライアント: favorites: [A-1]、changed: true
+      ```
+    expected:
+      - ツールのエラーにならず、`favorites` が `[A-1]`
+    test: test_normal_when_unfavorite_missing
+  - name: 異常系（記録に無い項目・ItemNotFoundError）
+    summary: 記録に無い ID の登録を拒む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 資料 A-1 を持ち、`favorites.yaml` に A-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_favorite（MCP のツール）
+
+        クライアント->>IF: set_favorite（A-9, true）
+        IF-->>クライアント: ツールのエラー（ItemNotFoundError）
+      ```
+    expected:
+      - ツールのエラーで、本文に A-9 がある
+      - '`favorites.yaml` が呼ぶ前と同じ'
+    test: test_error_when_item_not_found
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: '`.mindstella/config.yaml` が無いフォルダを指すと、何も書き込まずに終わる'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: '`.mindstella/` を持たないフォルダ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_favorite（MCP のツール）
+
+        クライアント->>IF: set_favorite（空のフォルダ）
+        IF-->>クライアント: ツールのエラー（WorkspaceNotFoundError）
+      ```
+    expected:
+      - ツールのエラーで、フォルダに `.mindstella/config.yaml` が無い旨がある
+      - フォルダにファイルが増えていない
+    test: test_error_when_workspace_not_found
+id: IF-727-1
