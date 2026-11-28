@@ -28,11 +28,11 @@ docs:
     status: todo
   - page: docs/guide/コマンド.mark.md
     new: false
-    change: AI がお気に入りを登録・解除する手段（MCP のツールか記録の書き込みのキー）を追加する
+    change: AI がお気に入りを登録・解除する MCP のツールを追加する
     status: todo
   - page: docs/guide/ワークスペースの書式.mark.md
     new: false
-    change: お気に入りをワークスペースに残す場合、そのファイル・キーを追加する
+    change: 記録のフォルダのファイルの一覧に `favorites.yaml`（お気に入りの項目の ID と登録した日時）を追加する
     status: todo
   - page: plugins/mindstella/agent-flows/record.yaml
     new: false
