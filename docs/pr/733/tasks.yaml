@@ -94,6 +94,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-28T07:52:28.841170+00:00'
   - process: 実装
-    status: todo
+    status: done
+    note: サーバー（今回の差分の始まり・公開 URL・画面からのセッションの状態と再起動・再起動の途中の入力）と画面（今回の差分・変更の絞り込み・セッションの状態のバー）を実装し、単体テスト（バック 1815・フロント 722）と lint が全 pass
+    updated_by: planner
+    updated_at: '2026-11-28T10:09:45.429819+00:00'
   - process: 結合テスト作成
     status: todo
