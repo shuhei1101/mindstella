@@ -1,0 +1,39 @@
+# lint（単体テスト作成。テストコードだけを検査した）
+# 残した違反は全て、まだ無い実装（use-session-status・turnSub・unreadChangedIds・changedColumn・drawerGroups の変更）の型を解決できないことによる @typescript-eslint の no-unsafe-* と、その戻り値の型が決まらないことによる no-floating-promises
+
+$ ruff check {変更したテストファイル}
+All checks passed!
+
+$ npx eslint {変更したテストファイル}
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/frontend/src/shared/core/diff.test.ts
+  165:12  error  Unsafe call of a type that could not be resolved   @typescript-eslint/no-unsafe-call
+  184:11  error  Unsafe assignment of an error typed value          @typescript-eslint/no-unsafe-assignment
+  184:17  error  Unsafe call of a type that could not be resolved   @typescript-eslint/no-unsafe-call
+  186:13  error  Unsafe spread of an error typed value in an array  @typescript-eslint/no-unsafe-assignment
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/frontend/src/shared/core/list-rows.test.ts
+  41:11  error  Unsafe assignment of an error typed value                    @typescript-eslint/no-unsafe-assignment
+  41:20  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+  43:19  error  Unsafe member access .key on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  44:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+  44:19  error  Unsafe member access .get on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  45:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+  45:19  error  Unsafe member access .get on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  64:11  error  Unsafe assignment of an error typed value                    @typescript-eslint/no-unsafe-assignment
+  64:21  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+  70:42  error  Unsafe assignment of an error typed value                    @typescript-eslint/no-unsafe-assignment
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/frontend/src/shared/hooks/use-session-status.test.tsx
+  18:12  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  27:53  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`                                                                                 @typescript-eslint/no-unsafe-argument
+  34:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  34:15  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  34:15  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  43:66  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`                                                                                 @typescript-eslint/no-unsafe-argument
+  46:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  46:15  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  46:15  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+
+✖ 23 problems (23 errors, 0 warnings)
+
