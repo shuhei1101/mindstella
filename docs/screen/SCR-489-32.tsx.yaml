@@ -874,6 +874,22 @@ elements:
     source: 「コメントのタブの件数」と同じ
     visible_when: サーバーの配信で開いた詳細パネルで、件数が 1 以上のとき（0 件のときは出さない）
     status: planned
+  - name: お気に入りの星
+    kind: toggle
+    component: CMP-721-1#
+    args:
+      - name: title
+        value: 開いている項目のタイトル
+      - name: on
+        value: 記録の取得.favorites に開いている項目の ID があるか
+      - name: disabled
+        value: 配る書き出しのとき真
+    position: 見出し > 編集するの左
+    description: 開いている項目をお気に入りに登録・解除する（『プレビューを開く』の制約「お気に入り」）。カード・表の星と同じお気に入りを指し、どちらで変えても同じ状態になる。押しても詳細パネルは閉じず、履歴に積まない。書き込めないときは押す前の状態に戻し、トースト「お気に入りを変更できませんでした」を出す
+    io: 入力
+    visible_when: 編集の表示でないとき（削除した項目の差分の表示では出さない）
+    action_ref: IF-489-70#constraints[お気に入り]
+    status: planned
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 notes:
   取り下げのモック: 取り下げの札と取り下げた理由の見本は `docs/mock/pages/detail-panel/179/standard/index.html`

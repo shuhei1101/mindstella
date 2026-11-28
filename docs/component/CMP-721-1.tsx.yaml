@@ -1,5 +1,5 @@
 title: お気に入りの星
-lead: 項目をお気に入りに登録・解除する星のボタン。カード・ボードのカードの右上と、表の一番左の星の列に配置する。
+lead: 項目をお気に入りに登録・解除する星のボタン。カード・ボードのカードの右上と、表の一番左の星の列と、詳細パネル・詳細の全画面のヘッダーに配置する。
 implementation: frontend/src/shared/components/favorite-toggle.tsx#FavoriteToggle
 story: Shared/FavoriteToggle
 test_file: tests/integration/storybook_react/test_favorite_toggle_stories.py
@@ -17,11 +17,16 @@ args:
     required: false
     default: なし
     description: 使う側が配置する位置（カードの右上の `absolute` など）
+  - name: disabled
+    type: 真偽値
+    required: false
+    default: 偽
+    description: 真のとき、登録しているかを星で出したまま押せなくする（`disabled`）。配る書き出しで使う側が真にする
 events:
   - name: 登録・解除
     when: 星のボタンを押したとき（Enter・Space を含む）
     value: '`onToggle()`'
-    description: 使う側が端末の保存領域の `favorites` に加えるか削除する。押した操作はカード・行へ伝えず、詳細は開かない
+    description: 使う側が『画面からのお気に入りの登録・解除』で登録・解除する。押した操作はカード・行へ伝えず、詳細は開かない
 states:
   - name: Off
     description: 登録していない。線だけの星を薄い色で出し、`aria-pressed` は false
@@ -34,6 +39,13 @@ states:
     description: キーボードで移った。フォーカスの輪を出し、Enter で `onToggle` を呼ぶ
     notes:
       見せ方: '`play` で Tab で移って Enter を押す'
+  - name: Disabled
+    description: 配る書き出し。登録していれば塗った星を出し、`disabled` で押せず、押しても `onToggle` を呼ばない
+    args:
+      - name: on
+        value: 'true'
+      - name: disabled
+        value: 'true'
 accessibility:
   - '`button` 要素にし、`aria-pressed` で登録しているかを伝える'
   - 読み上げの名前は登録の有無によらず「{タイトル}をお気に入りに登録」にし、状態は `aria-pressed` で伝える。`title` は「お気に入りに登録」「お気に入りを解除」
