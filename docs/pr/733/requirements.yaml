@@ -78,5 +78,5 @@ scope_out:
     reason: 'ユーザーの回答（推奨案 A。https://github.com/shuhei1101/mindstella/pull/733#discussion_r4722778858）で、ガイドを作らず #566 を取り下げると決めた。話し合いの D-816 のとおり、mindstella のリポジトリの文書とエージェントフローを原本にする'
     plan: none
   - item: '#592 の警告を今の画面（plugins/mindstella/skills/mindmap/preview）にも出すか'
-    reason: '#592 の本文は今の画面と React の画面を対象に挙げるが、今の画面は #371 で削除する。React だけにするかを設計で決め、レビューで確定する'
-    plan: to_file
+    reason: '今の画面は #371 の作業 PR #644（7a2e75f7）で develop から削除済みで、警告を足す先が無い。警告は React の画面だけに持つ'
+    plan: none
