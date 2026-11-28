@@ -14,6 +14,10 @@ export const SESSION_QUERY_KEY = ["session"] as const;
 /** 記録が無い警告の値（インターフェース定義『画面の MindStella のセッションの状態』の `warnings`） */
 const LAUNCH_RECORD_MISSING = "launch_record_missing";
 
+/** 再起動の途中で断られた 409（`stage: restarting`）か。ほかの段階の 409 と失敗は理由を出す */
+const isRestartingConflict = (error: AppError): boolean =>
+  error.statusCode === 409 && typeof error.body === "object" && error.body !== null && (error.body as { stage?: unknown }).stage === "restarting";
+
 /** 応答から状態のバーの状態を組み立てる（部品設計『トップバー.tsx』の `sessionStatus` の対応） */
 export const toSessionStatus = (response: SessionStatusReply, retrying: boolean, warningClosed: boolean): SessionStatus => {
   if (response.status === "restarting") return { kind: "restarting", waiting: response.waiting };
@@ -46,7 +50,7 @@ export const useSessionStatus = (): { status: SessionStatus; restart: () => void
   if (warningClosed && data?.status === "restarting") setWarningClosed(false);
   const base: SessionStatus = data === null ? { kind: "running" } : toSessionStatus(data, restart.isPending, warningClosed);
   // 再起動の依頼が再起動の途中以外の理由で断られた: その理由を出し、「再起動」を押せるままにする
-  const refused = restart.error instanceof AppError && restart.error.statusCode !== 409 ? restart.error.message : null;
+  const refused = restart.error instanceof AppError && !isRestartingConflict(restart.error) ? restart.error.message : null;
   const status: SessionStatus = base.kind === "failed" && refused !== null ? { ...base, reason: refused } : base;
   return {
     status,
