@@ -11,9 +11,10 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-31.yaml
-    impact: run_only
-    detail: お気に入りを一番上にする・お気に入りだけを表示するの切り替えは変えないが、お気に入りの残り先を変えると壊しうるため確認する
-    depends_on: []
+    impact: changed
+    detail: 「お気に入りの並びと絞り込みを変える」の前提と既定に戻した後の期待値を、端末の保存領域のお気に入りからワークスペースのお気に入りに書き換える。切り替えは今のまま端末の上書き
+    depends_on:
+      - docs/scenario/SC-721-1.yaml
   - kind: single
     scenario: docs/scenario/SC-727-1.yaml
     impact: new
