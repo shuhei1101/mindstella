@@ -20,9 +20,9 @@ elements:
       - name: points
         value: 「最新」・「今回の差分」（常に出す）・「まだまとめていない変更」（記録の取得.changes.pending の added・changed・removed のどれかが空でないとき）・記録の取得.changes.sets の並び（新しい順）
       - name: points[].sel
-        value: 空文字列・pending・sets[].id
+        value: 空文字列・turn・pending・sets[].id
       - name: points[].name
-        value: 最新・まだまとめていない変更・sets[].summary
+        value: 最新・今回の差分・まだまとめていない変更・sets[].summary
       - name: points[].sub
         value: マーカーと差分を出さずに今の内容だけを読む・「{changes.turn_at の JST の MM/DD HH:mm} の送信より後の書き換え」（turn_at が null なら「送信の前のため、最初からの書き換え」、変わった項目の数が 0 なら「{日時} の送信より後の書き換えはありません」）・AI がまだ区切っていない書き換え・sets[].at（JST の MM/DD HH:mm）
       - name: points[].external
@@ -30,7 +30,7 @@ elements:
       - name: points[].unread
         value: サーバーの配信で、sets[].id が端末の保存領域の既読に無いまとまりで真（配る書き出しでは指定しない）
       - name: points[].count
-        value: その時点の added・changed・removed の数。合わせた範囲で追加して削除した項目は、削除した項目として 1 件に数える（「最新」の行は指定しない）
+        value: その時点の added・changed・removed の数（「今回の差分」は、`until_seq` が記録の取得.changes.turn_seq より大きいまとまりの全てと、まだまとめていない変更を合わせた範囲。turn_seq が 0 なら全てのまとまり）。合わせた範囲で追加して削除した項目は、削除した項目として 1 件に数える（「最新」の行は指定しない）
       - name: current
         value: プレビューを開く.diff（無ければ空文字列）
     description: 時点を新しい順に並べる。行を押すとモーダルを閉じ、どの画面もその時点の差分の表示で再描画し、まとまりの行ならそのまとまりを既読にする。「最新」は差分の表示をやめる。書き換えの通知で再読み込みして増えたまとまりは、開いたままのモーダルにも未読で加わる

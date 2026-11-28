@@ -167,7 +167,7 @@ args:
     type: オブジェクト
     required: false
     default: なし（出さない）
-    description: 'MindStella のセッションの状態（部品設計『MindStellaのセッションの状態のバー』の `status`）。`running` 以外なら、タブの帯の下、重なった ID の通知の上に状態のバーを出す。使う側が『画面の MindStella のセッションの状態』を開いたとき・まとめて送信の応答の後・`event: session` を受けたときに取得して組み立てる。配る書き出しでは渡さない'
+    description: 'MindStella のセッションの状態（部品設計『MindStellaのセッションの状態のバー』の `status`）。`running` 以外なら、タブの帯の下、重なった ID の通知の上に状態のバーを出す。使う側が『画面の MindStella のセッションの状態』を開いたとき・まとめて送信の応答の後・`event: session` を受けたときに取得して組み立てる。組み立ては、応答の `status` が `restarting` なら `restarting`（`waiting` は応答の `waiting`）、`running` 以外で `last_error` があれば `failed`（`reason` は `last_error`）、それ以外で `warnings` に `launch_record_missing` があれば `launch_record_missing`、どれでもなければ `running`（出さない）。`crashed`・`stopped` で `last_error` が無いときは、次のコメントの送信で再起動するため出さない。配る書き出しでは渡さない'
     component: CMP-733-1#
 events:
   - name: 画面を移る
