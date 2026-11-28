@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 from record_write_helpers import write_tool
-from workspace_fixtures import RECORD_DIR, McpServer
+from workspace_fixtures import RECORD_DIR, STATE_SESSION_PATH, McpServer, workspace_id_of
 
 from .fixture_types import MakeItem, MakeWorkspace, StartServer
 from .http_helpers import EventStream
@@ -124,3 +124,27 @@ def test_normal_when_duplicate_ids(
     events = stream.collect(CHANGED_WITHIN_SEC)
     # 検証
     assert ("duplicate_ids", '["D-1"]') in events
+
+
+def test_normal_when_session_changed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    mcp_server: McpServer,
+    serve_preview: Callable[[Path], str],
+    open_events: Callable[[str], EventStream],
+) -> None:
+    """session.json の書き換えで event: session を送る（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    stream = open_events(serve_preview(root))
+    stream.collect(WATCH_START_SEC)
+    assert mcp_server.state_home is not None
+    session_path = mcp_server.state_home.joinpath(
+        *STATE_SESSION_PATH, workspace_id_of(root), "session.json"
+    )
+    session_path.parent.mkdir(parents=True, exist_ok=True)
+    # 実行
+    session_path.write_text('{"status": "restarting"}', encoding="utf-8")
+    events = stream.collect(CHANGED_WITHIN_SEC)
+    # 検証
+    assert "session" in [name for name, _data in events], events

@@ -378,3 +378,23 @@ export const SendNowResponse = zod.object({
   "post": zod.string(),
   "entered": zod.boolean()
 })
+
+
+/**
+ * @summary 画面の状態のバーに出す MindStella のセッションの状態・再起動の失敗の理由・記録が無い警告
+ */
+export const GetSessionResponse = zod.object({
+  "status": zod.enum(['none', 'running', 'stopping', 'restarting', 'stopped', 'crashed']),
+  "last_error": zod.string().nullable(),
+  "waiting": zod.int(),
+  "warnings": zod.array(zod.string())
+})
+
+
+/**
+ * @summary 画面の状態のバーの「再起動」から MindStella のセッションの再起動を依頼する
+ */
+export const PostSessionRestartResponse = zod.object({
+  "status": zod.enum(['restarting']),
+  "warnings": zod.array(zod.string())
+})

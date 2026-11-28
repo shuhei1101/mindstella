@@ -220,3 +220,29 @@ def test_error_when_index_missing(
     # 検証
     assert result.status == HTTPStatus.INTERNAL_SERVER_ERROR
     assert result.headers["content-type"].startswith("application/problem+json")
+
+
+# ホームの設定に記載する画面の公開 URL の基底と、そのホスト名
+PUBLIC_URL = "https://preview.example.test"
+PUBLIC_HOST = "preview.example.test"
+
+
+def test_normal_when_public_url_host(
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer, tmp_path: Path
+) -> None:
+    """preview.public_url のホスト名を Host に持つ要求を受け付ける（正常系）。"""
+    # 準備
+    settings = tmp_path / "config" / "mindstella" / "settings.yaml"
+    settings.parent.mkdir(parents=True, exist_ok=True)
+    settings.write_text(f"preview:\n  public_url: {PUBLIC_URL}\n", encoding="utf-8")
+    server = start_server(extra_env={"XDG_CONFIG_HOME": str(tmp_path / "config"), ALLOWED_HOSTS_ENV: ""})
+    result = server.call("preview_url", workspace=str(make_workspace(make_item("D-1"))))
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    path = urlsplit(str(result.data["url"])).path
+    local = f"http://127.0.0.1:{server.port}"
+    # 実行
+    response = http_request(local, path, headers={"Host": PUBLIC_HOST})
+    # 検証
+    assert response.status == HTTPStatus.OK
+    assert 'id="root"' in response.text

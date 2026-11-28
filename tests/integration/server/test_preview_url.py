@@ -349,3 +349,33 @@ def test_normal_when_folder_moved(
         f"{parts.port} 話し合いA {parts.path}",
         f"{parts.port} 移した先 {parts.path}",
     ]
+
+
+# ホームの設定に記載する画面の公開 URL の基底
+PUBLIC_URL = "https://preview.example.test/"
+
+
+def _write_public_url(config_home: Path, public_url: str) -> None:
+    """ホームの設定（`XDG_CONFIG_HOME/mindstella/settings.yaml`）に preview.public_url を書く。"""
+    path = config_home / "mindstella" / "settings.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"preview:\n  public_url: {public_url}\n", encoding="utf-8")
+
+
+def test_normal_when_public_url(
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer, tmp_path: Path
+) -> None:
+    """preview.public_url の基底にワークスペースのパスを続けた URL を返す（正常系）。"""
+    # 準備
+    config_home = tmp_path / "config"
+    _write_public_url(config_home, PUBLIC_URL)
+    server = start_server(extra_env={"XDG_CONFIG_HOME": str(config_home)})
+    root = make_workspace(make_item("D-1"))
+    # 実行
+    result = server.call("preview_url", workspace=str(root))
+    # 検証
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    url = str(result.data["url"])
+    assert url.startswith("https://preview.example.test/w/"), url
+    assert WORKSPACE_PAGE_PATH.fullmatch(urlsplit(url).path)

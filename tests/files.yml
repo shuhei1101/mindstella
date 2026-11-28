@@ -482,6 +482,20 @@ files:
   - tool:pytest
   - topic:プレビュー
   - topic:結合テスト
+- path: integration/server/test_preview_session.py
+  name: 画面の MindStella のセッションの状態の結合テスト
+  description: 画面の MindStella のセッションの状態（GET /w/{workspace}/api/session）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:プレビュー
+  - topic:結合テスト
+- path: integration/server/test_preview_session_restart.py
+  name: 画面からの MindStella のセッションの再起動の結合テスト
+  description: 画面からの MindStella のセッションの再起動（POST /w/{workspace}/api/session/restart）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:プレビュー
+  - topic:結合テスト
 - path: integration/server/test_preview_url.py
   name: プレビューの URLの結合テスト
   description: preview_url（プレビューの URL）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -667,6 +681,14 @@ files:
   related:
   - to: CMP-540-2
     type: tests
+- path: integration/storybook_react/test_session_status_banner_stories.py
+  name: 部品設計『MindStellaのセッションの状態のバー.tsx』の状態の結合テスト
+  description: 部品設計『MindStellaのセッションの状態のバー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
 - path: integration/storybook_react/test_topbar_stories.py
   name: 部品設計『トップバー.tsx』の状態の結合テスト
   description: 部品設計『トップバー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。

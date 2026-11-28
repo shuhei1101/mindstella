@@ -60,7 +60,7 @@ const OutcomeText = ({ outcome }: { outcome: SendOutcome }) => {
     ) : (
       <>
         <Icon name="alert" />
-        <span>{`${String(outcome.count)} 件を送信しましたが、Claude Code には入力できませんでした（${time}）。送信した内容は保存されていて、次に話し合いを始めたときに取り込まれます。`}</span>
+        <span>{`${String(outcome.count)} 件を送信しましたが、Claude Code には入力できませんでした（${time}）。送信した内容は取り込み待ちとして残り、準備ができたら入力します。`}</span>
       </>
     );
   }

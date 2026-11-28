@@ -573,6 +573,11 @@ export const DuplicateIds: Story = {
   args: { duplicateIds: [{ id: "D-12", kind: "検討事項" }], onOpenDuplicate: fn(), onCloseDuplicate: fn() },
 };
 
+/** MindStella のセッションの再起動に失敗している。タブの帯の下に状態のバー（理由と「再起動」）を出し、本文を下げる */
+export const SessionFailed: Story = {
+  args: { sessionStatus: { kind: "failed", reason: "空いたアカウントがありません。", retrying: false }, onRestartSession: fn(), onCloseSessionWarning: fn() },
+};
+
 /** 幅ごとのビューポート（更新のボタンのストーリーで使用する） */
 const refreshViewports = {
   viewport: {

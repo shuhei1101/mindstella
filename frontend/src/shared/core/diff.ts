@@ -116,6 +116,15 @@ export const REMOVED_KIND_TAB: Record<RemovedItem["kind"], Kind> = {
   log: "logs",
 };
 
+/** 「今回の差分」の名前 */
+const TURN_NAME = "今回の差分";
+
+/** 画面設計『変更履歴.tsx』の「今回の差分」の行の説明。送信の前・送信の後に書き換えが無い・ある で分ける */
+export const turnSub = (turnAt: string | null, count: number): string => {
+  if (turnAt === null) return "送信の前のため、最初からの書き換え";
+  return count === 0 ? `${formatJst(turnAt)} の送信より後の書き換えはありません` : `${formatJst(turnAt)} の送信より後の書き換え`;
+};
+
 /** 「まだまとめていない変更」の名前と補足 */
 const PENDING_NAME = "まだまとめていない変更";
 const PENDING_SUB = "AI がまだ区切っていない書き換え";
@@ -161,6 +170,13 @@ export const resolveDiffPoint = (changes: Changes, sel: string | null): DiffPoin
   const sets = changes.sets;
   // 先頭のまとまりまでの変更履歴（それより後がまだまとめていない分）
   const latestSeq = sets[0]?.until_seq ?? 0;
+  if (sel === "turn") {
+    // 今回の差分: 送信より後のまとまりと、まだまとめていない変更を合わせる（変更が無くても選べる）
+    const turnSeq = changes.turn_seq ?? 0;
+    const groups = [...sets.filter((set) => set.until_seq > turnSeq), changes.pending];
+    const point = buildPoint({ sel, name: TURN_NAME, sub: "", groups, fromSeq: turnSeq, untilSeq: null });
+    return { ...point, sub: turnSub(changes.turn_at ?? null, point.added.size + point.changed.size + point.removed.size) };
+  }
   if (sel === "pending") {
     // まだまとめていない変更が無い
     const pending = changes.pending;
@@ -716,4 +732,11 @@ export const changedKinds = (point: DiffPoint | null): Set<Kind> => {
 export const unreadSetIds = (setIds: readonly string[], read: readonly string[]): string[] => {
   const known = new Set(read);
   return setIds.filter((id) => !known.has(id));
+};
+
+/** 未読のまとまりで追加・変更された項目の ID を返す（その範囲で削除した項目は除く）。一覧の「変更」の条件に使う */
+export const unreadChangedIds = (changes: Changes, unread: readonly string[]): Set<string> => {
+  const groups = changes.sets.filter((set) => unread.includes(set.id));
+  const point = buildPoint({ sel: "", name: "", sub: "", groups, fromSeq: 0, untilSeq: null });
+  return new Set([...point.added, ...point.changed]);
 };

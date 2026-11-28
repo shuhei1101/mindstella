@@ -17,6 +17,7 @@ import yaml
 
 import builder
 import errors
+import read_point
 import store
 from errors import SchemaMismatchError, WriteFailedError
 from export_helpers import (
@@ -197,9 +198,37 @@ def test_collect_preview_data_with_changes(
     # 実行
     data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
     # 検証
-    assert data["changes"] == changes
+    assert data["changes"] == {**changes, "turn_seq": 0, "turn_at": None}
     assert data["decisions"][0]["history"] == [entry]
 
+
+
+@pytest.mark.parametrize(
+    ("record", "expected"),
+    [
+        pytest.param(lambda root: None, (0, None), id="missing"),
+        pytest.param(
+            lambda root: read_point.save_turn_point(root, 3, "2026-11-28T05:50:00+00:00"),
+            (3, "2026-11-28T05:50:00+00:00"),
+            id="recorded",
+        ),
+    ],
+)
+def test_collect_preview_data_turn_point(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    record: Callable[[Path], None],
+    expected: tuple[int, str | None],
+) -> None:
+    """今回の差分の始まりを changes に入れる（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    record(root)
+    workspace = store.load_workspace(root)
+    # 実行
+    data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
+    # 検証
+    assert (data["changes"]["turn_seq"], data["changes"]["turn_at"]) == expected
 
 def test_escape_for_script() -> None:
     """置き換えた文字列は </script> を含まず、JSON として読むと元に戻る（正常系）。"""

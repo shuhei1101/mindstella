@@ -652,7 +652,7 @@ functions:
     usecase: コメントを選んで送信する
     scope: public
     summary: 渡した ID のコメントを全て確かめてから、案の選択は検討事項の `user_choice` へ、ほかはスレッドへ追加し、レビュー中から外す。1 件でも合わなければ何も書き換えない（鍵は呼ぶ側が取る）
-    side_effects: '案の選択があれば `decisions.yaml`・`history.yaml`・`changes.yaml` を、続けて `threads.yaml`、最後に `comments.yaml` を一時ファイルから置き換える'
+    side_effects: '案の選択があれば `decisions.yaml`・`history.yaml`・`changes.yaml` を（案の選択が無くまだまとめていない変更があれば `changes.yaml` だけを）、続けて `threads.yaml`、最後に `comments.yaml` を一時ファイルから置き換える。その後、常駐サーバーの状態のフォルダの `turn_point.json` を書く'
     args:
       - name: root
         type: Path
@@ -681,14 +681,16 @@ functions:
          - 返信の分は、返信先のスレッドが無ければ `スレッド {ID} がありません`、クローズなら `スレッド {ID} はクローズです` を控える
          - 案の選択の分は、向けた検討事項が無ければ `{target} がありません`、`_check_choice` に合わなければその理由を控える
          - 控えが 1 件でもあれば、全てを `stale` に持った `CommentConflictError` を送出する
-      4. 前の `decisions.yaml`・`history.yaml`・`changes.yaml` の中身を控え、案の選択があれば利用者の選択を記載する（`_write_user_choices`）
+      4. 前の `decisions.yaml`・`history.yaml`・`changes.yaml` の中身を控え、案の選択があれば利用者の選択を記載する（`_write_user_choices`。まだまとめていない変更も先にまとまりにする）
+         - 利用者の選択を記載しなかった場合、まだまとめていない変更を 1 つのまとまりにする（`_commit_pending_set`。インターフェース定義『コメントをまとめて送信する』の制約「今回の差分の始まり」）。書いたら以降の書き戻しは利用者の選択を記載したときと同じに扱う
       5. 前の `threads.yaml` の中身（無ければ無いこと）を控え、案の選択でない分をスレッドへ追加する（`UserPostInput` にして `append_user_posts`。`loc` は `location_to_dict`。案の選択だけのときは書かない）
          - `WriteFailedError` の場合、控えた `decisions.yaml`・`history.yaml`・`changes.yaml` を書き戻し、4. で利用者の選択を記載していたら、書き戻したファイルとその中身で書き換えの検知にもう一度伝えて（`accept_written`）から、同じ例外を送出する
       6. 送信したコメントを除いた `{seq, items}` を書く（`_write_yaml`）
          - `WriteFailedError` の場合、控えた `threads.yaml`・`decisions.yaml`・`history.yaml`・`changes.yaml` を書き戻し（無かったファイルは削除する）、4. で利用者の選択を記載していたら、書き戻した `decisions.yaml`・`history.yaml`・`changes.yaml` とその中身（無かったファイルは `None`）で書き換えの検知にもう一度伝えて（`accept_written`）から、同じ例外を送出する
       7. 送信した返信のスレッドの下書きがあれば削除して書く
          - `WriteFailedError` の場合、`[WARNING]` 下書きを削除できなかった（パス・理由）を出して送信したまま返す
-      8. 送信した日時と、溜めた順の `SentItem`（スレッドへの分は `thread`・`post`、案の選択は `decision`）を返す
+      8. 今回の差分の始まりを記録する（`_record_turn_point(root, at)`）
+      9. 送信した日時と、溜めた順の `SentItem`（スレッドへの分は `thread`・`post`、案の選択は `decision`）を返す
          - `[INFO]` コメントを送信した（件数・スレッドの ID・案の選択の件数）
     exceptions:
       - name: CommentInvalidError
@@ -783,7 +785,7 @@ functions:
     usecase: 音声でコメントする
     scope: public
     summary: 書き込み 1 件の向けた先と本文を確かめ、レビュー中に溜めずにスレッドへ追加する（インターフェース定義『書き込みをすぐ送信する』。鍵は呼ぶ側が取る）
-    side_effects: '`threads.yaml` を一時ファイルから置き換える。`comments.yaml`・`drafts.yaml` は読まず、書き換えない'
+    side_effects: 'まだまとめていない変更があれば `changes.yaml` を、続けて `threads.yaml` を一時ファイルから置き換え、常駐サーバーの状態のフォルダの `turn_point.json` を書く。`comments.yaml`・`drafts.yaml` は読まず、書き換えない'
     args:
       - name: root
         type: Path
@@ -808,8 +810,11 @@ functions:
       1. 本文と向けた先の構造を、溜めるときと同じく確かめる（`_validate_body`・`_parse_destination`。合わなければ `{キー}: {理由}` の `CommentInvalidError`）
       2. ワークスペースとスレッドを読み（`load_workspace`、`load_threads`）、まとめて送信するときと同じ理由で向けた先を確かめる（`_stale_reason` を、コメントでなく向けた先の組で受けるように分けたもの）
          - 理由がある場合、その理由をメッセージにした `CommentConflictError` を送出する（`stale` は空）
-      3. `comment` を `None` にした `UserPostInput` 1 件でスレッドへ追加する（`append_user_posts`。`loc` は `location_to_dict`）
-      4. 送信した日時と、追加した `SentPost` を返す
+      3. 前の `changes.yaml` の中身を控え、まだまとめていない変更を 1 つのまとまりにする（`_commit_pending_set`。インターフェース定義『書き込みをすぐ送信する』の制約「今回の差分の始まり」）
+      4. `comment` を `None` にした `UserPostInput` 1 件でスレッドへ追加する（`append_user_posts`。`loc` は `location_to_dict`）
+         - `WriteFailedError` の場合、3. でまとまりにしていたら控えた `changes.yaml` を書き戻し、書き換えの検知にもう一度伝えて（`accept_written`）から、同じ例外を送出する
+      5. 今回の差分の始まりを記録する（`_record_turn_point`）
+      6. 送信した日時と、追加した `SentPost` を返す
          - `[INFO]` 書き込みをすぐ送信した（スレッドの ID）
     exceptions:
       - name: CommentInvalidError
@@ -1009,3 +1014,75 @@ functions:
         condition: '`user_choice: {key: A}` を持つ D-1 に案 B（一言「x」）の選択'
         mock: なし
         expected: 'D-1 の `user_choice` が `{key: B, note: x, at}`。D-1 の変更履歴の最後の `before.user_choice.key` が `A`、`by` が `user`'
+  - name: _commit_pending_set
+    title: まだまとめていない変更をまとまりにする
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送信する
+    scope: internal
+    summary: '`changes.yaml` のまだまとめていない変更を 1 つのまとまりにして書く。まとめる変更が無ければ何も書かない。書いたかを返す'
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: 読んだワークスペース
+      - name: at
+        type: str
+        required: true
+        passing: keyword
+        description: まとまりの日時（送信を受け付けた日時）
+    returns:
+      type: bool
+      description: '`changes.yaml` を書いたら True'
+    process: |-
+      1. まとまりを読み（`load_changes`）、`pending` の `added`・`changed`・`removed` が全て空なら False を返す
+      2. `_write_user_choices` と同じ説明と `by`（`pending.by` が `external` なら `EXTERNAL_SUMMARY`、それ以外は `AI_PENDING_SUMMARY`）で 1 つのまとまりにする（`commit_pending`）
+      3. `changes` だけを持つ `BatchChange` で書き（`save_batch`）、書き換えの検知に伝えて（`accept_written`）True を返す
+    exceptions:
+      - name: WriteFailedError
+        condition: '`changes.yaml` を書けない'
+    unit_tests:
+      - name: test_commit_pending_set
+        case: 正常
+        summary: まだまとめていない変更を 1 つのまとまりにする
+        condition: 'まとまり V-1（`until_seq: 3`）と、D-1 の書き換え（`last_seq: 4`）を持つワークスペース'
+        mock: なし
+        expected: 'True。`sets` の先頭が `until_seq: 4`・説明 `AI_PENDING_SUMMARY` のまとまりで、`pending` が空'
+      - name: test_commit_pending_set_when_empty
+        case: 正常
+        summary: まとめる変更が無ければ書かない
+        condition: '`pending` が空のワークスペース'
+        mock: なし
+        expected: False。`changes.yaml` の更新日時が変わらない
+  - name: _record_turn_point
+    title: 今回の差分の始まりを記録する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送信する
+    scope: internal
+    summary: 今の `last_seq` と受け付けた日時を『前回参照した時点』の `save_turn_point` で書く。書けなくても送信を取り消さない
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: at
+        type: str
+        required: true
+        passing: positional
+        description: 受け付けた UTC の日時
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. まとまりを読み（`load_changes`）、その `last_seq` と `at` で書く（`save_turn_point`。状態のフォルダは `state.state_root()`）
+      2. `WriteFailedError`・`OSError` の場合、`[mindstella] 今回の差分の始まりを記録できません: {理由}` を標準エラーに 1 行出して戻る（制約「置き換える順」の巻き戻しの範囲に含めない）
+    unit_tests:
+      - name: test_record_turn_point_when_write_fails
+        case: 異常
+        summary: 書けなくても送信を取り消さない
+        condition: '`save_turn_point` が `WriteFailedError` を送出する'
+        mock: '`save_turn_point`'
+        expected: 例外を送出せず、標準エラーに `今回の差分の始まりを記録できません` の 1 行

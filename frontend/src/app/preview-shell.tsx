@@ -34,6 +34,7 @@ import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { usePreviewSearch, type VoiceTarget } from "@/shared/hooks/use-preview-search";
 import { useRecordLookup } from "@/shared/hooks/use-record-lookup";
 import { useRecords } from "@/shared/hooks/use-records";
+import { useSessionStatus } from "@/shared/hooks/use-session-status";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useConnectionStore } from "@/shared/stores/connection-store";
@@ -209,6 +210,8 @@ export const PreviewShell = () => {
     const kind = kindOfId(id);
     return { id, kind: kind === null ? "" : KIND_LABEL[kind] };
   });
+  // MindStella のセッションの状態のバー（配る書き出しでは取得しない）
+  const session = useSessionStatus();
   const visible = useVisibleKinds();
   const pendingCount = edits.length;
   const diffActive = point !== null;
@@ -304,6 +307,7 @@ export const PreviewShell = () => {
           refreshing={refreshing}
           {...(embedded ? {} : { onRefresh: reconnectEvents })}
           duplicateIds={duplicateIds}
+          {...(embedded ? {} : { sessionStatus: session.status, onRestartSession: session.restart, onCloseSessionWarning: session.closeWarning })}
           onOpenDuplicate={openItem}
           onCloseDuplicate={() => { useDuplicateIdsStore.getState().dismiss(); }}
           onNavigate={setTab}

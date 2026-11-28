@@ -221,6 +221,33 @@ scenarios:
       - エンドポイントに 1 件だけ要求が届き、止まった理由が利用上限になっている
       - 再起動のための SessionEnd で、通知が重ねて届いていない
     test: test_normal_when_rate_limited
+  - name: 正常シナリオ（公開 URL を指定している）
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイントで、受けた要求を記録して 200 を返却する）と Claude Code
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ。ホームの設定に画面の公開 URL の基底を記載している
+        notes: 基底は `https://mindstella.example.com`
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant A as 外部のアプリ
+        participant SRV as 常駐サーバー
+        participant DC as Discord
+
+        A->>SRV: MindStella のセッションの停止を依頼する
+        SRV->>SRV: 止まったことを記録する
+        SRV->>DC: 公開 URL を記載した停止の通知を送信する
+        DC-->>SRV: 受けた
+      ```
+
+      <!-- /map -->
+    expected:
+      - 通知の末尾の URL が、公開 URL の基底にワークスペースのプレビューのパス（`/w/{workspace}/`）を付けた URL で、`127.0.0.1` の URL が記載されていない
+      - 通知に止まった理由が記載されている
+    test: test_normal_when_public_url_configured
 refs:
   - SC-568-1#
   - SC-531-2#

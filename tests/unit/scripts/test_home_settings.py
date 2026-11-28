@@ -102,3 +102,53 @@ def test_load_home_settings_when_invalid(content: str, tmp_path: Path) -> None:
     # 実行・検証
     with pytest.raises(InvalidSettingsError, match=r"settings\.yaml"):
         home_settings.load_home_settings(path)
+
+
+@pytest.mark.parametrize(
+    ("content", "public_url", "public_host"),
+    [
+        pytest.param(
+            "preview:\n  public_url: https://Preview.example.test/\n",
+            "https://Preview.example.test",
+            "preview.example.test",
+            id="trailing_slash",
+        ),
+        pytest.param(
+            "preview:\n  public_url: http://preview.example.test:8443\n",
+            "http://preview.example.test:8443",
+            "preview.example.test",
+            id="with_port",
+        ),
+        pytest.param("account:\n  release_on_limit: true\n", None, None, id="missing"),
+    ],
+)
+def test_load_home_settings_public_url(
+    content: str, public_url: str | None, public_host: str | None, tmp_path: Path
+) -> None:
+    """公開 URL の基底を末尾の / を除いて読む（正常系）。"""
+    # 準備
+    path = tmp_path / "settings.yaml"
+    path.write_text(content, encoding="utf-8")
+    # 実行
+    result = home_settings.load_home_settings(path)
+    # 検証
+    assert (result.public_url, result.public_host()) == (public_url, public_host)
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param("preview:\n  public_url: https://x.test/w/\n", id="with_path"),
+        pytest.param("preview:\n  public_url: ftp://x.test\n", id="scheme"),
+        pytest.param("preview:\n  public_url: 1\n", id="number"),
+        pytest.param("preview: 1\n", id="not_mapping"),
+    ],
+)
+def test_load_home_settings_when_public_url_invalid(content: str, tmp_path: Path) -> None:
+    """パスを持つ・スキームが違う公開 URL は断る（異常系）。"""
+    # 準備
+    path = tmp_path / "settings.yaml"
+    path.write_text(content, encoding="utf-8")
+    # 実行・検証
+    with pytest.raises(InvalidSettingsError, match="preview"):
+        home_settings.load_home_settings(path)

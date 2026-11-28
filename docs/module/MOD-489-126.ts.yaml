@@ -90,7 +90,7 @@ functions:
     title: まとめて送信する
     kind: フック
     usecase: コメントを選んで送信する
-    summary: '`POST /api/comments/send` を呼び、成功で送信した ID の `discardReviewVoice` を呼び、レビュー中の書き込みとスレッドを再読み込みする。409 の `stale` を返す'
+    summary: '`POST /api/comments/send` を呼び、成功で送信した ID の `discardReviewVoice` を呼び、レビュー中の書き込みとスレッドと MindStella のセッションの状態（`SESSION_QUERY_KEY`）を再読み込みする。409 の `stale` を返す'
     returns:
       type: UseMutationResult
       description: mutation
@@ -100,7 +100,7 @@ functions:
         summary: 再読み込みする
         condition: '201'
         mock: MSW
-        expected: レビュー中のコメントとスレッドの query が再読み込みされる
+        expected: レビュー中のコメントとスレッドとセッションの状態の query が再読み込みされる
       - name: test_use_send_comments_when_stale
         case: 異常
         summary: 箇所が合わない

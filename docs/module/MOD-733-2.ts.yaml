@@ -1,0 +1,67 @@
+id: MOD-733-2
+title: プレビュー / use-session-status
+lead: インターフェース定義『画面の MindStella のセッションの状態』の query と『画面からの MindStella のセッションの再起動』の mutation をまとめ、状態のバーへ指定する状態を返却する。
+constants:
+  - name: SESSION_QUERY_KEY
+    title: セッションの状態の query のキー
+    container: frontend/src/shared/hooks/use-session-status.ts
+    usecase: MindStella のセッションを再起動する
+    summary: 『書き換えの通知』の `session` とまとめて送信の成功が再読み込みする query のキー
+    value: '["session"]'
+functions:
+  - name: toSessionStatus
+    title: バーの状態の組み立て
+    kind: 関数
+    container: frontend/src/shared/hooks/use-session-status.ts
+    usecase: MindStella のセッションを再起動する
+    summary: 応答から部品設計『MindStellaのセッションの状態のバー』の `status` を組み立てる（部品設計『トップバー.tsx』の `sessionStatus` の対応）
+    args:
+      - name: response
+        type: SessionStatusResponse
+        required: true
+        description: '`{status, last_error, waiting, warnings}`'
+      - name: retrying
+        type: boolean
+        required: true
+        description: 再起動の mutation の応答を待っているか
+      - name: warningClosed
+        type: boolean
+        required: true
+        description: 記録が無い警告を閉じたか
+    returns:
+      type: SessionStatus
+      description: '`status` が `restarting` なら `{restarting, waiting}`、`running`・`none` 以外で `last_error` があれば `{failed, reason: last_error, retrying}`、それ以外で `warnings` に `launch_record_missing` があり閉じていなければ `{launch_record_missing}`、どれでもなければ `{running}`'
+    unit_tests:
+      - name: test_to_session_status
+        case: 正常
+        summary: 応答をバーの状態にする
+        condition: '`parametrize`: `restarting`・`waiting` 2 / `crashed`・`last_error` あり・`retrying` 真 / `crashed`・`last_error` なし / `running`・`warnings` に `launch_record_missing` / 同じで `warningClosed` 真'
+        mock: なし
+        expected: '`{restarting, 2}` / `{failed, last_error, true}` / `{running}` / `{launch_record_missing}` / `{running}`'
+  - name: useSessionStatus
+    title: セッションの状態
+    kind: フック
+    container: frontend/src/shared/hooks/use-session-status.ts
+    usecase: MindStella のセッションを再起動する
+    summary: '`GET /api/session` の query（`SESSION_QUERY_KEY`。画面を開いたときに取得し、`event: session` とまとめて送信の成功で再読み込みする）と `POST /api/session/restart` の mutation をまとめ、`toSessionStatus` の `status` と `restart`・`closeWarning` を返却する。配る書き出しでは query を呼ばず `{running}` を返却する'
+    description: |-
+      - `restart` は mutation を呼び、応答まで `retrying` を真にする。202 の後は query を再読み込みし、409（`stage: restarting`）も再読み込みする。そのほかの失敗はバーの理由を `detail` にして「再起動」を押せるままにする
+      - `closeWarning` は記録が無い警告を閉じたことを、画面を開き直すまで持つ（状態が `restarting` になったら戻し、再起動の後の警告は再び出す）
+    returns:
+      type: '{ status: SessionStatus; restart: () => void; closeWarning: () => void }'
+      description: トップバーの `sessionStatus`・`onRestartSession`・`onCloseSessionWarning`
+    unit_tests:
+      - name: test_use_session_status
+        case: 正常
+        summary: 状態を取得し、再起動して取得し直す
+        condition: '`GET /api/session` が `crashed`・`last_error` ありを返し、`restart` を呼ぶと `POST /api/session/restart` が 202、その後の `GET` が `restarting` を返す'
+        mock: MSW
+        expected: '`status` が `failed`→（応答まで）`retrying` 真→`restarting`'
+      - name: test_use_session_status_when_warning_closed
+        case: 正常
+        summary: 閉じた警告を再起動まで出さない
+        condition: '`warnings` に `launch_record_missing` を返し、`closeWarning` を呼ぶ。その後 `restarting`、続けて同じ警告を返す'
+        mock: MSW
+        expected: '`status` が `launch_record_missing`→`running`→`restarting`→`launch_record_missing`'
+notes:
+  単体テスト: 同じフォルダの `use-session-status.test.tsx` に配置する（knowledge の規約『フォルダ構成』）

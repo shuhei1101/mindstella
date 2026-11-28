@@ -479,9 +479,33 @@ flows:
       - D-1・D-2 の状態が `未決定` のままで、`adopted` の案が無い
       - '`threads.yaml` が作られておらず、`comments.yaml` のレビュー中が 0 件'
     test: test_normal_when_choices_sent
+  - name: 正常系（今回の差分の始まりを記録する）
+    summary: まだまとめていない変更を先にまとまりにしてから、送信を受け付けた時点の連番を turn_point.json に記録する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送信する。`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: make_workspace
+        description: 'まとまり V-1（`until_seq: 3`）と、まだまとめていない変更（D-1 の書き換え。`last_seq: 4`）と、レビュー中のコメント C-1 を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/comments/send
+        participant WS as ワークスペース
+        participant ST as 状態のフォルダ
+
+        クライアント->>IF: POST {ids: [C-1]}
+        IF->>WS: スレッドに追加し、まだまとめていない変更を V-2 にまとめる
+        IF->>ST: turn_point.json に turn_seq: 4 と日時を書く
+        IF-->>クライアント: 201
+      ```
+    expected:
+      - '`changes.yaml` の `sets` の先頭が `until_seq: 4` の新規のまとまりで、`pending` が空'
+      - 状態のフォルダの `workspaces/{ID}/turn_point.json` の `turn_seq` が 4 で、`at` が送信した時刻
+    test: test_normal_when_turn_point_recorded
 lead: コメントの一覧でチェックしたレビュー中の書き込みを受け、新規スレッドの分はオープンのスレッドを立てて最初の書き込みにし、返信の分は向けたスレッドの末尾に追加して（`threads.yaml`）から、レビュー中（`comments.yaml`）から外す。1 件でも送信できないときは何も書き換えない。追加した後、tmux の中で立てた Claude Code なら、届いた件数を Claude Code のペインへ 1 回の入力として貼り、会話の記録に入ったかを確かめて応答に載せる。
 idempotent: false
-side_effects: '案の選択があれば `decisions.yaml` の向けた検討事項の `user_choice` を記載し、`history.yaml` と `changes.yaml` に変更履歴とまとまりを追加する。`threads.yaml` に新規スレッドと返信の書き込みを追加（無ければ作る）、`comments.yaml` から送信した書き込みを削除する。どれも一時ファイルから `os.replace` で置き換え、制約「置き換える順」の順に置き換える。ほかのファイルは書き換えない。書き終えた後、送信先のペインがあれば、tmux の `load-buffer`・`paste-buffer`・`send-keys` で Claude Code のペインへ文字列を入力する（入力は取り消さない）'
+side_effects: '案の選択があれば `decisions.yaml` の向けた検討事項の `user_choice` を記載し、`history.yaml` と `changes.yaml` に変更履歴とまとまりを追加する。案の選択が無くても、まだまとめていない変更があれば `changes.yaml` で 1 つのまとまりにする（制約「今回の差分の始まり」）。`threads.yaml` に新規スレッドと返信の書き込みを追加（無ければ作る）、`comments.yaml` から送信した書き込みを削除する。どれも一時ファイルから `os.replace` で置き換え、制約「置き換える順」の順に置き換える。`comments.yaml` を置き換えた後、常駐サーバーの状態のフォルダの `workspaces/{ID}/turn_point.json` を記録する。ほかのファイルは書き換えない。書き終えた後、送信先のペインがあれば、tmux の `load-buffer`・`paste-buffer`・`send-keys` で Claude Code のペインへ文字列を入力する（入力は取り消さない）'
 callers:
   - IF-489-70#
 request:
@@ -620,6 +644,11 @@ constraints:
     constraint: '`user_choice` を記載した検討事項ごとに、『変更の検知』の「変更履歴を追加するとき」「変更履歴の 1 回分」「保持する回数」「連番」と同じ方法で変更履歴を 1 回分追加する（`by` は `user`、`before` は記載する前の `user_choice`。前に無ければ `null`）。追加する前に `changes.yaml` のまだまとめていない変更（`pending`）があれば先に 1 つのまとまりにし（『保存待ちの編集をまとめて保存』の制約「書き換えのまとまり」と同じ説明と `by`）、案の選択の変更を説明「画面からの案の選択」・`by: user` で別の 1 つのまとまりにする。`user_choice` の `key`・`note` が送信するものと同じ検討事項は書き換えず、変更履歴も追加しない'
   - item: 置き換える順
     constraint: '`decisions.yaml`・`history.yaml`・`changes.yaml` → `threads.yaml` → `comments.yaml` の順に置き換える。途中の置き換えに失敗したら、この送信で置き換えたファイルを前の中身に戻してから 500 を返却し、送信した書き込みをレビュー中に残す。`comments.yaml` を置き換える前にプロセスが落ちたときは、制約「二重に送信しない」と、`user_choice` が同じなら書き換えない決まりで、送信し直しても重ならない'
+  - item: 今回の差分の始まり
+    constraint: '`changes.yaml` のまだまとめていない変更（`pending`）があれば、制約「置き換える順」の `changes.yaml` の段（`threads.yaml` より前）で、制約「利用者の選択の変更履歴」と同じ説明と `by` の 1 つのまとまりにする（案の選択が無い送信も）。`comments.yaml` を置き換えた後、その時点の `last_seq` と受け付けた日時（UTC）を常駐サーバーの状態のフォルダの `workspaces/{ID}/turn_point.json`（`turn_seq`・`at`。ER 図『常駐サーバーの状態』）へ一時ファイルから `os.replace` で記録し、記録の取得の保持した応答を捨てる。`turn_point.json` の記録に失敗しても送信を取り消さず（制約「置き換える順」の巻き戻しの範囲に含めない）、理由を標準エラーに 1 行記録する。案の選択だけの送信も書き込みとして扱う'
+  - item: 再起動の途中のとき
+    constraint: '宛先の MindStella のセッションが `restarting` のときは、制約「MindStella のセッションが無いとき」と同じく準備ができるのを待ってから新しいペインへ入力し、`entered` を返す。準備を待つ上限を過ぎたときは入力せず `entered: false` にし、書き込みは取り込み待ちとしてスレッドに残す（再起動を終えた MindStella のセッションが取り込み待ちのスレッドの一覧で参照する）'
+    decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
 refs:
   - ER-489-1#
   - SC-489-3#

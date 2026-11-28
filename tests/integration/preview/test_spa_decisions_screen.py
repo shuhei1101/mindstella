@@ -352,3 +352,18 @@ def test_favorites_only_chip_visible(page: Page, write_preview: WritePreview, ma
     open_spa(page, url, "?tab=decisions&view=board")
     # 実行・検証
     assert_favorites_only_chip(page, "D-1", "D-2")
+
+
+def test_drawer_changed_condition(page: Page, write_history_preview: WriteReviewPreview) -> None:
+    """「変更」の条件をオンにすると、未読のまとまりで追加・変更された項目だけを出し、チップ「変更: 未読の変更あり」を出す（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    open_spa(page, url, "?tab=decisions")
+    page.get_by_role("button", name="絞り込み").click()
+    dialog = page.get_by_role("dialog", name="絞り込み")
+    expect(dialog.locator("fieldset:has(input[type=checkbox])").first.locator("legend")).to_contain_text("変更")
+    # 実行
+    dialog.get_by_role("checkbox", name=re.compile("^未読の変更あり")).check()
+    # 検証
+    expect(page).to_have_url(re.compile("changed"))
+    expect(page.get_by_text("変更: 未読の変更あり", exact=True)).to_be_visible()

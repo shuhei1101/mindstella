@@ -165,7 +165,7 @@ describe("useSendComments", () => {
     // 実行
     await act(() => result.current.mutateAsync(["C-1"]));
     // 検証
-    expect(queryKeys(invalidate)).toEqual(expect.arrayContaining([["/api/comments"], ["/api/threads"]]));
+    expect(queryKeys(invalidate)).toEqual(expect.arrayContaining([["/api/comments"], ["/api/threads"], ["session"]]));
   });
 
   // 箇所が合わない（異常系）

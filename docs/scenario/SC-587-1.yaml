@@ -78,10 +78,10 @@ scenarios:
         U->>P: 資料のカードで A-1 を押す
         P->>SV: 本文が指すファイルを要求する
         SV-->>P: 404
-        P-->>U: 本文のほかの部分と、再生できない動画の要素を描いた詳細パネル
+        P-->>U: 本文のほかの部分と、動画の場所に読み込めないことの警告を描いた詳細パネル
       ```
     expected:
-      - サーバーの配信が `../files/missing.mp4` の要求に 404 を返却し、動画の要素は再生できない（ファイルが無いことは、画面ではなく単一ユースケース『ワークスペースの点検』が参照切れとして通知する）
+      - サーバーの配信が `../files/missing.mp4` の要求に 404 を返却し、動画の要素の場所に、ファイルを読み込めないことと本文のパス（`../files/missing.mp4`）を持つ警告が出る（単一ユースケース『ワークスペースの点検』も参照切れとして通知する）
       - A-1 の本文の段落は描かれる
     test: test_error_when_file_missing
   - name: 異常シナリオ（ファイルのフォルダの外を指す）
@@ -109,6 +109,41 @@ scenarios:
     expected:
       - どちらの要求も 404 が返り、本文にファイルの中身を含まない
     test: test_error_when_outside_files_folder
+  - name: 異常シナリオ（埋め込んだファイルの形式を再生できない）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを起動し、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: ファイル
+        description: 拡張子が mp4 で中身が動画でないファイルと、拡張子が png で中身が画像でないファイル
+        notes: '`files/broken.mp4`・`files/broken.png` に配置する'
+      - name: 記録
+        description: 本文を Markdown で持つ資料 A-1
+        notes: 本文に段落と `![壊れた動画](../files/broken.mp4)`・`![壊れた画像](../files/broken.png)` を持つ
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: 資料のカードで A-1 を押す
+        P->>SV: 本文が指すファイルを要求する
+        SV-->>P: ファイルの中身（200）
+        P-->>U: 動画と画像の場所に再生・表示できないことの警告を描いた詳細パネル
+      ```
+
+      <!-- /map -->
+    expected:
+      - 動画と画像のそれぞれの場所に、ファイルを再生・表示できないことと本文のパスを持つ警告が出る
+      - A-1 の本文の段落は描かれる
+      - 詳細の全画面でも同じ警告が出る
+    test: test_error_when_file_unplayable
 notes:
   パスの書き方: 資料（ワークスペースの直下の `docs/`）からの相対パス `../files/{名前}` で記載し、mdmark の書き出し・点検と画面で同じパスが通るようにする。ファイルのフォルダの下にフォルダを作ってよい
   E2E の範囲: React の画面で確認する

@@ -6,7 +6,7 @@ components:
     title: 変更履歴
     kind: 画面
     usecase: 前回からの差分を見る
-    summary: 画面設計『変更履歴.tsx』の要素と操作を描く。時点の並びは先頭の「最新」（差分を出さない）・「まだまとめていない変更」（あれば）・まとまりの新しい順で、まとまりの行の `unread` は『既読のまとまり』の `useUnreadSetIds` にあるかで決める。「すべて既読にする」で記録の全てのまとまりを `markRead` する。配る書き出しでは `unread` と「すべて既読にする」を指定しない
+    summary: 画面設計『変更履歴.tsx』の要素と操作を描く。時点の並びは先頭の「最新」（差分を出さない）・「今回の差分」（常に出す。`resolveDiffPoint(changes, "turn")` の数と説明）・「まだまとめていない変更」（あれば）・まとまりの新しい順で、まとまりの行の `unread` は『既読のまとまり』の `useUnreadSetIds` にあるかで決める。「すべて既読にする」で記録の全てのまとまりを `markRead` する。配る書き出しでは `unread` と「すべて既読にする」を指定しない
     refs:
       - SCR-489-16#
     unit_tests:
@@ -34,6 +34,12 @@ components:
         condition: V-1・V-2 が未読の記録で「すべて既読にする」を押す
         mock: MSW
         expected: 未読のマーカーを持つ行が無く「未読はありません」を出し、`useUnreadSetIds` が空
+      - name: test_history_screen_when_turn
+        case: 正常
+        summary: 最新の次に今回の差分を並べ、選ぶと diff が turn になる
+        condition: まとまり V-1・V-2 と `turn_seq` が V-1 の `until_seq`・`turn_at` を持つ記録。「今回の差分」の行を押す
+        mock: MSW
+        expected: 2 行目が「今回の差分」で説明が「{日時} の送信より後の書き換え」、数が V-2 の変わった項目の数。押すと `diff` が `turn` になる
     container: frontend/src/features/history/history/history-dialog.tsx
 notes:
   単体テスト: 同じフォルダの `history-dialog.test.tsx` に置く（knowledge の規約『フォルダ構成』）

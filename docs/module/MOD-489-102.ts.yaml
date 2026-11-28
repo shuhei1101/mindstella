@@ -147,6 +147,57 @@ functions:
         expected: 相対パスだけが `/w/mindstella-x-1/files/a.png` などになる
     callees:
       - MOD-642-1#functions[workspacePath]
+  - name: embedWarning
+    title: 埋め込みの警告
+    kind: 関数
+    container: frontend/src/shared/core/body-links.ts
+    usecase: 資料を読む
+    summary: 読み込めなかった理由（`missing`・`unsupported`）と本文のパスを持つ `role="alert"` の警告の要素（`.embed-warning`）を返す。文は部品設計『本文.tsx』の状態 EmbedMissing・EmbedUnsupported のとおり
+    args:
+      - name: reason
+        type: EmbedFailure
+        required: true
+        description: '`missing`（配信が 404）・`unsupported`（ファイルはあるが再生・表示できない）'
+      - name: path
+        type: string
+        required: true
+        description: 本文に記載されたパス（配信のパスに置き換える前）
+    returns:
+      type: HTMLElement
+      description: 警告の要素
+    unit_tests:
+      - name: test_embed_warning
+        case: 正常
+        summary: 理由ごとの文とパスを出す
+        condition: '`parametrize`: `missing` / `unsupported`、パス `files/a.mp4`'
+        mock: なし
+        expected: '`role` が `alert` で、文が「ファイルが見つかりません。本文のパス: files/a.mp4」 / 「このファイルはブラウザで再生・表示できない形式です。本文のパス: files/a.mp4」'
+  - name: watchEmbedFailures
+    title: 埋め込みの失敗の見張り
+    kind: 関数
+    container: frontend/src/shared/core/body-links.ts
+    usecase: 資料を読む
+    summary: 描いた本文の `img`・`video`・`audio`（`source` は親の要素）が読み込めなかったとき、その要素の後ろに `embedWarning` を 1 つだけ置く。`mountMarkdown` が描いた後に呼ぶ
+    args:
+      - name: root
+        type: HTMLElement
+        required: true
+        description: 描いた本文の要素
+    returns:
+      type: void
+      description: なし
+    process: |-
+      1. 本文の `img[src]`・`video[src]`・`audio[src]`・`source[src]` の `src` を、配信のパスに置き換える前に `data-embed-path` へ控える
+      2. `root` に捕捉の `error` を付け、`data-embed-path` を持つ要素の失敗だけを受ける
+      3. 理由を決める（`Range: bytes=0-0` の GET が 404 なら `missing`、それ以外の応答と問い合わせの失敗は `unsupported`。インターフェース定義『ファイルの配信』が HEAD を受けないため）
+      4. 要素のすぐ後ろに警告が無ければ、警告を置く（同じ要素へ 2 つ置かない）
+    unit_tests:
+      - name: test_watch_embed_failures
+        case: 異常
+        summary: 読み込めない動画と画像の後ろに理由ごとの警告を 1 つずつ置く
+        condition: '`video` と `img` を持つ本文。`fetch` が `video` は 404、`img` は 206 を返し、両方に `error` を 2 回ずつ送る'
+        mock: '`vi.stubGlobal` の `fetch`'
+        expected: '`video` の後ろに `missing`、`img` の後ろに `unsupported` の警告が 1 つずつ。本文のパスは置き換える前の値'
 notes:
   単体テスト: 同じフォルダの `body-links.test.ts` に置く（knowledge の規約『フォルダ構成』）
   原文の差分の指定: '`renderMarkdown` が取り出し元（`diffSource`）を渡して描くとき（「原文の差分」）は、`mount` の引数に `diffMode: "open"` に加えて `diffControls: false` を渡し、mdmark の「変更表示」のボタンとリビジョンを選ぶ欄を配置させない（『プレビューを開く』の制約「描画のライブラリ」）。`RenderOptions` の型に `diffControls?: false` を加える。単体テストは `renderMarkdown` に `test_render_markdown_when_diff_source`（取り出し元を渡すと `mount` の引数に `diffMode: open` と `diffControls: false` がある）を追加する'

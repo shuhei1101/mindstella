@@ -80,3 +80,22 @@ export const External: Story = {
     ),
   },
 };
+
+/** 今回の差分（最後にコメントを送信した時点より後の書き換えの全て）。「最新」の次に並べる */
+const TURN = { sel: "turn", name: "今回の差分", sub: "10/04 14:50 の送信より後の書き換え", count: 5 };
+
+/** 「最新」の次に「今回の差分」を並べる。変わった項目の数は、まとまりとまだまとめていない変更を 1 つの差分にした数 */
+export const TurnDiff: Story = { args: { points: [LATEST, TURN, ...POINTS.slice(1)] } };
+
+/** 「今回の差分」を選んだ後。チェックを付ける */
+export const TurnDiffSelected: Story = { args: { current: "turn", points: [LATEST, TURN, ...POINTS.slice(1)] } };
+
+/** まだコメントを送信していない。最初のまとまりからの書き換えの全てを今回の差分にする */
+export const TurnDiffNoWrites: Story = {
+  args: { points: [LATEST, { sel: "turn", name: "今回の差分", sub: "送信の前のため、最初からの書き換え", count: 14 }, ...POINTS.slice(1)] },
+};
+
+/** コメントを送信した直後で、その後の書き換えがまだ無い。変わった項目の数は 0 */
+export const TurnDiffNoChanges: Story = {
+  args: { points: [LATEST, { sel: "turn", name: "今回の差分", sub: "10/04 15:30 の送信より後の書き換えはありません", count: 0 }, ...POINTS.slice(2)] },
+};

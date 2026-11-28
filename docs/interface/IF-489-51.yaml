@@ -317,6 +317,30 @@ flows:
       - '`settings.presets` が設定と同じ並び'
       - '`preset_counts` が `{画面の設計: 2, 古い分類: 0}`（A-1 と D-1 を数え、種類をまたぐ）'
     test: test_normal_when_presets
+  - name: 正常系（今回の差分の始まり）
+    summary: turn_point.json の連番と日時を changes に入れ、無ければ 0 と null を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ。`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: make_workspace
+        description: 'まとまり V-1・V-2 を持つワークスペース。1 回目は `turn_point.json` が無く、2 回目は `turn_seq: 3`・`at: 2026-11-28T05:50:00+00:00` を書いておく'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /w/{workspace}/api/records
+        participant ST as 状態のフォルダ
+
+        クライアント->>IF: GET（1 回目）
+        IF-->>クライアント: changes.turn_seq: 0、turn_at: null
+        クライアント->>IF: GET（2 回目・turn_point.json あり）
+        IF->>ST: turn_point.json を参照する
+        IF-->>クライアント: changes.turn_seq: 3、turn_at
+      ```
+    expected:
+      - 1 回目の `changes.turn_seq` が 0、`changes.turn_at` が `null`
+      - 2 回目の `changes.turn_seq` が 3、`changes.turn_at` が `2026-11-28T05:50:00+00:00`
+    test: test_normal_when_turn_point
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの通知を受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
@@ -373,6 +397,12 @@ response:
   - name: preset_counts
     type: dict[str, int]
     description: '設定の `presets` の名前 → そのプリセットに該当する項目の件数。プリセットが無ければ `{}`。配る書き出しにも載る。一覧に並べて 0 件の印を出すのは #361'
+  - name: changes.turn_seq
+    type: int
+    description: 今回の差分の始まり。常駐サーバーの状態のフォルダの `turn_point.json` の `turn_seq`。無ければ 0（まだ書き込みが無く、最初のまとまりから全て）。画面は `until_seq` がこれより大きいまとまりと、まだまとめていない変更を今回の差分にする
+  - name: changes.turn_at
+    type: str | None
+    description: '`turn_point.json` の `at`（利用者の書き込みを受け付けた UTC の日時）。無ければ `null`。画面は変更履歴の「今回の差分」の説明の日時にする'
 response_notes: |-
   配る書き出し（`export`）は、同じ形式の JSON を `<script type="application/json" id="mindmap-data">` の中身に埋め込む。画面は埋め込みのデータがあればそれを読み、無ければこの API を読む。スレッド（`threads.yaml`）は返さない（『スレッドの読み取り』）。
 status_codes:

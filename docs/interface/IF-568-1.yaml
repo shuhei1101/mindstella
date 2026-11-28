@@ -27,6 +27,8 @@ constraints:
     constraint: 環境変数 `MINDSTELLA_DISCORD_WEBHOOK_FILE` が指すファイルの 1 行目（前後の空白を除く）を Webhook の URL とする。環境変数が無い・ファイルが無い・参照できない・1 行目が `http://` か `https://` で始まらないときは送信しない。ファイルは送信のたびに参照する（常駐サーバーを再起動せずに差し替えられる）
   - item: Webhook の URL の秘匿
     constraint: Webhook の URL を、標準エラー・応答・ワークスペース・状態のフォルダに記録しない。失敗の行に記録するのは、ステータスコードか失敗の種類（接続できない・上限を過ぎた・設定を参照できない）だけ
+  - item: 公開 URL
+    constraint: 本文の末尾の画面の URL は『プレビューの URL』の制約「公開 URL」と同じ
 flows:
   - name: 正常系
     summary: 手番を返す直前の commit が成功したので、1 件送信する

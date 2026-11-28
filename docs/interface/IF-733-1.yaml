@@ -1,0 +1,138 @@
+id: IF-733-1
+title: 画面の MindStella のセッションの状態
+entry:
+  kind: endpoint
+  value: GET `/w/{workspace}/api/session`
+lead: プレビューの画面が、トップバーの下の MindStella のセッションの状態のバーに出す状態（再起動の途中・再起動の失敗と理由・追加の MCP とプラグインの記録が無いこと）を、画面の配信の経路で返却する。
+idempotent: true
+side_effects: なし（落ちていても状態を書き換えない）
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: path
+    description: ワークスペースの ID
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+response:
+  - name: status
+    type: Literal['none', 'running', 'stopping', 'restarting', 'stopped', 'crashed']
+    description: ワークスペースの最後の MindStella のセッションの状態。『MindStella のセッションの一覧』と同じ判定。一度も作っていなければ `none`
+  - name: last_error
+    type: str | None
+    description: 最後の停止・再起動に失敗した段階と理由（『MindStella のセッションの一覧』の `last_error`）。無ければ `null`。画面は `status` が `running` 以外でこれがあれば再起動の失敗として出す
+  - name: waiting
+    type: int
+    description: 取り込み待ちのスレッドのうち、MindStella のセッションがまだ参照していない利用者の書き込みの数。画面は再起動の途中に「送信したコメント {n} 件は、準備ができてから入力します。」に出す
+  - name: warnings
+    type: list[str]
+    description: 状態のフォルダに追加の MCP・プラグインの記録（`launch.json`）が無く、MindStella のセッションがあるとき `launch_record_missing` を含む。無ければ空の並び
+status_codes:
+  - code: '200'
+    condition: 返却した
+  - code: '403'
+    condition: '`Host` が受ける値でない'
+  - code: '404'
+    condition: '`workspace` を配信していない'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 受ける Host
+    constraint: 『プレビューの配信』の制約「接続先の確認」と同じ（`MINDSTELLA_ALLOWED_HOSTS` と `preview.public_url` のホスト名を受ける）。外部のアプリ向けの『MindStella のセッションの一覧』は `127.0.0.1`・`localhost` だけを受けるため、画面はこの経路を使用する
+  - item: 落ちたかの判定
+    constraint: 『MindStella のセッションの一覧』の制約「落ちたかの判定」と同じ
+  - item: 取得し直す契機
+    constraint: '画面は開いたとき・まとめて送信の応答を受けたとき・『書き換えの通知』の `event: session` を受けたときに取得し直す'
+flows:
+  - name: 正常系
+    summary: 起動中の MindStella のセッションの状態を返却する
+    setup:
+      - name: Mock
+        description: 『MindStella のセッションの作成』の正常系と同じ
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: MindStella のセッションが起動していて、`launch.json` がある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant 画面
+        participant IF as GET /w/{workspace}/api/session
+
+        画面->>IF: GET
+        IF-->>画面: 200 status: running、warnings: []
+      ```
+    expected:
+      - '`status` が `running`、`last_error` が `null`、`waiting` が 0、`warnings` が空の並び'
+    test: test_normal
+  - name: 正常系（再起動に失敗した）
+    summary: 落ちた状態と失敗の理由を返却する
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: '`session.json` が `crashed` で、`last_error` に `account: 空いたアカウントがありません` を持ち、取り込み待ちのスレッドを 2 件持つ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant 画面
+        participant IF as GET /w/{workspace}/api/session
+
+        画面->>IF: GET
+        IF-->>画面: 200 status: crashed、last_error
+      ```
+    expected:
+      - '`status` が `crashed`、`last_error` が `account: 空いたアカウントがありません`、`waiting` が 2'
+    test: test_normal_when_restart_failed
+  - name: 正常系（追加の MCP とプラグインの記録が無い）
+    summary: launch.json が無ければ launch_record_missing を返却する
+    setup:
+      - name: Mock
+        description: 『MindStella のセッションの作成』の正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: MindStella のセッションが起動していて、状態のフォルダに `launch.json` が無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant 画面
+        participant IF as GET /w/{workspace}/api/session
+
+        画面->>IF: GET
+        IF-->>画面: 200 warnings: [launch_record_missing]
+      ```
+    expected:
+      - '`warnings` が `[launch_record_missing]`'
+    test: test_normal_when_launch_record_missing
+  - name: 異常系（送信元が違う・403）
+    summary: 受けないホストの要求を断る
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /w/{workspace}/api/session
+
+        クライアント->>IF: GET（Host: evil.example.test）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403
+    test: test_error_when_host_rejected
+refs:
+  - IF-531-3#
+  - IF-489-18#
+  - IF-489-44#
+  - ER-531-1#
+callers:
+  - SC-582-1#
+test_file: tests/integration/server/test_preview_session.py

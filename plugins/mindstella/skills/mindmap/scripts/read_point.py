@@ -1,4 +1,4 @@
-"""AI が前回参照した時点と、まだ知らせていない移し替えの報告を、常駐サーバーの状態のフォルダに読み書きする。"""
+"""AI が前回参照した時点・変更履歴の今回の差分の始まりと、まだ知らせていない移し替えの報告を、常駐サーバーの状態のフォルダに読み書きする。"""
 
 from __future__ import annotations
 
@@ -13,6 +13,9 @@ from store import remove_files, write_failed, write_temp
 
 # `workspaces/{ID}/` の下の前回参照した時点（`{"read_seq": 整数}`）
 READ_POINT_FILE = "read_point.json"
+
+# `workspaces/{ID}/` の下の今回の差分の始まり（`{"turn_seq": 整数, "at": UTC の日時}`）
+TURN_POINT_FILE = "turn_point.json"
 
 # `workspaces/{ID}/` の下の、まだ知らせていない移し替えの報告（`{not_carried, provisional}`）
 MIGRATION_REPORT_FILE = "migration.json"
@@ -41,6 +44,42 @@ def load_read_seq(root: Path, *, state_root: Path | None = None) -> int | None:
 def save_read_seq(root: Path, read_seq: int, *, state_root: Path | None = None) -> None:
     """`read_point.json` を一時ファイルから置き換えて書く（フォルダが無ければ作る）。"""
     _replace_json(_workspace_state_dir(root, state_root) / READ_POINT_FILE, {"read_seq": read_seq})
+
+
+def load_turn_point(root: Path, *, state_root: Path | None = None) -> tuple[int, str | None]:
+    """ワークスペースの `turn_point.json` の `turn_seq` と `at` を返す。ファイルが無ければ `(0, None)`。"""
+    path = _workspace_state_dir(root, state_root) / TURN_POINT_FILE
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        # まだ利用者の書き込みを受け付けていない: 最初のまとまりから全て
+        return 0, None
+    try:
+        data = json.loads(text)
+    except ValueError as error:
+        raise SchemaMismatchError(
+            [f"{TURN_POINT_FILE}: turn_seq: JSON として読めません"]
+        ) from error
+    turn_seq = data.get("turn_seq") if isinstance(data, dict) else None
+    at = data.get("at") if isinstance(data, dict) else None
+    # 0 以上の整数でない（真偽値も整数として扱わない）
+    if isinstance(turn_seq, bool) or not isinstance(turn_seq, int) or turn_seq < 0:
+        raise SchemaMismatchError([f"{TURN_POINT_FILE}: turn_seq: 0 以上の整数ではありません"])
+    # 日時が文字列でない
+    if not isinstance(at, str):
+        raise SchemaMismatchError([f"{TURN_POINT_FILE}: at: 文字列ではありません"])
+    return turn_seq, at
+
+
+def save_turn_point(
+    root: Path, turn_seq: int, at: str, *, state_root: Path | None = None
+) -> None:
+    """`turn_point.json` を一時ファイルから置き換えて書く（フォルダが無ければ作る）。"""
+    if turn_seq < 0:
+        raise ArgumentError("turn_seq", "0 以上の整数で渡してください")
+    _replace_json(
+        _workspace_state_dir(root, state_root) / TURN_POINT_FILE, {"turn_seq": turn_seq, "at": at}
+    )
 
 
 def advance_read_seq(root: Path, until_seq: int, *, state_root: Path | None = None) -> int:

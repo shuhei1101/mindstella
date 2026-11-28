@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping
+from urllib.parse import urlsplit
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,7 @@ SETTINGS_FILE = "settings.yaml"
 KNOWN_KEYS: dict[str, tuple[str, ...]] = {
     "claude_balancer": ("url",),
     "account": ("release_on_limit",),
+    "preview": ("public_url",),
 }
 
 # claude_balancer.url に受けるスキーム
@@ -39,6 +41,15 @@ class HomeSettings:
     balancer_url: str | None = None
     # account.release_on_limit。指定したアカウントを利用上限・しきい値で解除するか
     release_on_limit: bool = True
+    # preview.public_url の末尾の `/` を除いた値。キーが無ければ None（画面の URL はローカルのまま）
+    public_url: str | None = None
+
+    def public_host(self) -> str | None:
+        """公開 URL のホスト名（ポートを除き小文字）を返す。公開 URL が無ければ None。"""
+        if self.public_url is None:
+            return None
+        hostname = urlsplit(self.public_url).hostname
+        return None if hostname is None else hostname.lower()
 
     def query_url(self) -> str:
         """利用枠を問い合わせる claude-balancer の常駐の待ち受け先を返す。"""
@@ -70,9 +81,11 @@ def load_home_settings(path: Path) -> HomeSettings:
     _report_unknown(path, data)
     balancer = _section(path, data, "claude_balancer")
     account = _section(path, data, "account")
+    preview = _section(path, data, "preview")
     return HomeSettings(
         balancer_url=_balancer_url(path, balancer.get("url")),
         release_on_limit=_release_on_limit(path, account.get("release_on_limit", True)),
+        public_url=_public_url(path, preview.get("public_url")),
     )
 
 
@@ -95,6 +108,22 @@ def _balancer_url(path: Path, value: object) -> str | None:
             f"{path}: claude_balancer.url は http:// か https:// で始まる URL にしてください"
         )
     return value
+
+
+def _public_url(path: Path, value: object) -> str | None:
+    """preview.public_url を検証し、末尾の `/` を除いて返却する。"""
+    if value is None:
+        return None
+    message = f"{path}: preview.public_url は http:// か https:// で始まり、パスを持たない URL にしてください"
+    # 文字列でないか、スキームが違う
+    if not isinstance(value, str) or not value.startswith(URL_SCHEMES):
+        raise InvalidSettingsError(message)
+    base = value.rstrip("/")
+    parts = urlsplit(base)
+    # パス・クエリ・フラグメントを持つか、ホスト名が無い
+    if parts.path or parts.query or parts.fragment or not parts.hostname:
+        raise InvalidSettingsError(message)
+    return base
 
 
 def _release_on_limit(path: Path, value: object) -> bool:

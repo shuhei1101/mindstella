@@ -14,6 +14,7 @@ STATES = (
     "shared-filterchips--tag-expr",
     "shared-filterchips--favorites-only",
     "shared-filterchips--favorites-only-with-status",
+    "shared-filterchips--changed-only",
 )
 
 
@@ -76,3 +77,12 @@ def test_favorites_only_with_status(open_story: OpenStory) -> None:
     chips = page.get_by_role("button", name="の条件を解除")
     expect(chips.first).to_have_accessible_name("お気に入りのみ の条件を解除")
     expect(page.get_by_text("状態: 未着手", exact=True)).to_be_visible()
+
+
+def test_changed_only(open_story: OpenStory) -> None:
+    """「変更」の条件をオンにした。チップは「変更: 未読の変更あり」で、× で解除できる（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-filterchips--changed-only")
+    # 検証
+    expect(page.get_by_text("変更: 未読の変更あり", exact=True)).to_be_visible()
+    expect(page.get_by_role("button", name="変更: 未読の変更あり の条件を解除")).to_be_visible()

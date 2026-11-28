@@ -202,6 +202,55 @@ export const resolveFileSources = (root: HTMLElement): void => {
   }
 };
 
+/** 埋め込んだファイルを読み込めなかった理由（`missing` は配信が 404 を返した、`unsupported` はファイルはあるが再生・表示できない） */
+export type EmbedFailure = "missing" | "unsupported";
+
+/** 読み込めなかった理由ごとの警告の文 */
+const EMBED_WARNING_TEXT: Record<EmbedFailure, string> = {
+  missing: "ファイルが見つかりません。",
+  unsupported: "このファイルはブラウザで再生・表示できない形式です。",
+};
+
+/** 埋め込みの要素の後ろに置く、読み込めなかった理由と本文のパスを持つ警告の要素を返す */
+export const embedWarning = ({ reason, path }: { reason: EmbedFailure; path: string }): HTMLElement =>
+  h({
+    tag: "div",
+    attrs: { class: "embed-warning", role: "alert" },
+    children: [h({ tag: "span", children: [`${EMBED_WARNING_TEXT[reason]}本文のパス: `] }), h({ tag: "code", children: [path] })],
+  });
+
+/** 配信へファイルの先頭の 1 バイトを問い合わせ、404 なら `missing`、それ以外の応答と問い合わせの失敗は `unsupported` を返す */
+const failureOf = async (src: string): Promise<EmbedFailure> => {
+  try {
+    const response = await fetch(src, { headers: { Range: "bytes=0-0" } });
+    return response.status === 404 ? "missing" : "unsupported";
+  } catch {
+    return "unsupported";
+  }
+};
+
+/** `root` の中の `img`・`video`・`audio` が読み込めなかったとき、その要素の後ろに警告を置く（`source` の失敗は親の要素の後ろ）。本文のパスは配信のパスに置き換える前の値 */
+export const watchEmbedFailures = (root: HTMLElement): void => {
+  for (const element of root.querySelectorAll<HTMLElement>("img[src], video[src], audio[src], source[src]")) {
+    element.dataset["embedPath"] = element.getAttribute("src") ?? "";
+  }
+  root.addEventListener(
+    "error",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || target.dataset["embedPath"] === undefined) return;
+      const media = target.tagName === "SOURCE" ? target.parentElement : target;
+      if (media === null || media.nextElementSibling?.classList.contains("embed-warning") === true) return;
+      const path = target.dataset["embedPath"];
+      void failureOf(target.getAttribute("src") ?? "").then((reason) => {
+        if (media.nextElementSibling?.classList.contains("embed-warning") === true) return;
+        media.after(embedWarning({ reason, path }));
+      });
+    },
+    true,
+  );
+};
+
 /** `root` の中の、別のオリジンの `http:`・`https:` を指すリンクを新規タブで開く（`#` で始まるリンク・同じオリジン・解決できないリンクは変えない） */
 export const markExternalLinks = (root: HTMLElement): void => {
   for (const anchor of root.querySelectorAll<HTMLAnchorElement>("a[href]")) {
@@ -226,6 +275,7 @@ const mountMarkdown = ({ root, markdown, table = false, base, diffSource }: { ro
   const diff = diffSource === undefined ? (base === undefined ? {} : { baseMarkdown: base }) : { docId: diffSource.docId, diffMode: "open" as const, diffControls: false, diffSource: diffSourceOf(diffSource) };
   mdmarkOf().mount(root, { markdown, config: { features, labels: { paramCopy: MDMARK_PARAM_COPY_LABEL }, ...(map === undefined ? {} : { map }) }, ...diff });
   markExternalLinks(root);
+  watchEmbedFailures(root);
   resolveFileSources(root);
   trimBreakNewlines(root);
 };

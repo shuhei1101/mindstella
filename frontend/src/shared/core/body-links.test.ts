@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { linkBody, linkHeadings, markExternalLinks, renderMarkdown, resolveFileSources } from "@/shared/core/body-links";
+import { embedWarning, linkBody, linkHeadings, markExternalLinks, renderMarkdown, resolveFileSources, watchEmbedFailures } from "@/shared/core/body-links";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
 
 // mdmark の代わりに、決まった HTML を描く（mdmark と同じ属性のフェンスのコードブロック 2 つ（1 つはバーを持つ）・属性の無い字下げのコードブロック・mermaid のコードブロック・範囲の中の pre）
@@ -246,5 +246,42 @@ describe("resolveFileSources", () => {
       r: "/r.png",
       h: "../files/h.png",
     });
+  });
+});
+
+describe("embedWarning", () => {
+  // 理由ごとの文とパスを出す（正常系）
+  test.each([
+    { reason: "missing" as const, text: "ファイルが見つかりません。本文のパス: files/a.mp4" },
+    { reason: "unsupported" as const, text: "このファイルはブラウザで再生・表示できない形式です。本文のパス: files/a.mp4" },
+  ])("embed_warning: $reason", ({ reason, text }) => {
+    // 実行
+    const element = embedWarning({ reason, path: "files/a.mp4" });
+    // 検証
+    expect(element.getAttribute("role")).toBe("alert");
+    expect(element.textContent).toBe(text);
+  });
+});
+
+describe("watchEmbedFailures", () => {
+  // 読み込めない動画と画像の後ろに理由ごとの警告を 1 つずつ置く（異常系）
+  test("watch_embed_failures", async () => {
+    // 準備
+    const root = document.createElement("div");
+    root.innerHTML = '<p><video src="files/a.mp4"></video></p><p><img src="files/b.png" alt=""></p>';
+    vi.stubGlobal("fetch", vi.fn((src: string) => Promise.resolve(new Response(null, { status: src.endsWith("a.mp4") ? 404 : 206 }))));
+    watchEmbedFailures(root);
+    const video = root.querySelector("video");
+    const image = root.querySelector("img");
+    // 実行
+    video?.dispatchEvent(new Event("error"));
+    video?.dispatchEvent(new Event("error"));
+    image?.dispatchEvent(new Event("error"));
+    image?.dispatchEvent(new Event("error"));
+    await vi.waitFor(() => expect(root.querySelectorAll(".embed-warning")).toHaveLength(2));
+    // 検証
+    expect(video?.nextElementSibling?.textContent).toBe("ファイルが見つかりません。本文のパス: files/a.mp4");
+    expect(image?.nextElementSibling?.textContent).toBe("このファイルはブラウザで再生・表示できない形式です。本文のパス: files/b.png");
+    vi.unstubAllGlobals();
   });
 });

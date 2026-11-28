@@ -1,0 +1,8 @@
+# lint（レビューの指摘の修正）
+# 回した commit: fa173057（Python の変更は 62d0ec21 から無い）
+
+$ npx eslint {作業 PR で変更した .ts・.tsx（generated を除く）}
+exit=0
+
+$ npx tsc -p frontend --noEmit
+exit=0

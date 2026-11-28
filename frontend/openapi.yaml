@@ -496,8 +496,72 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /api/session:
+    get:
+      operationId: getSession
+      summary: 画面の状態のバーに出す MindStella のセッションの状態・再起動の失敗の理由・記録が無い警告
+      responses:
+        "200":
+          description: 状態（MindStella のセッションを作っていなければ status が none）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionStatusReply"
+        "403":
+          description: Host が受ける値でない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/session/restart:
+    post:
+      operationId: postSessionRestart
+      summary: 画面の状態のバーの「再起動」から MindStella のセッションの再起動を依頼する
+      responses:
+        "202":
+          description: 再起動を受け付けた
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionRestartReply"
+        "403":
+          description: Host か Origin が合わない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: MindStella のセッションを一度も作っていない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: クローズ済み・停止の途中・再起動の途中（stage）
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   schemas:
+    SessionStatusReply:
+      type: object
+      required: [status, last_error, waiting, warnings]
+      properties:
+        status: { type: string, enum: [none, running, stopping, restarting, stopped, crashed] }
+        last_error: { type: [string, "null"] }
+        waiting: { type: integer }
+        warnings:
+          type: array
+          items: { type: string }
+    SessionRestartReply:
+      type: object
+      required: [status, warnings]
+      properties:
+        status: { type: string, enum: [restarting] }
+        warnings:
+          type: array
+          items: { type: string }
     Loc:
       type: object
       required: [kind]

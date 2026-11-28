@@ -78,6 +78,18 @@ states:
         value: '{"status": ["未決定"], "tags": ["画面"]}'
       - name: presetSave
         value: '`hasOtherConditions` は真、`defaultOpen` は真'
+  - name: ChangedCondition
+    description: 先頭に「変更」の条件（値「未読の変更あり」。値の前に未読のマーカーと同じ色の丸）を並べる
+    args:
+      - name: groups[].mark
+        value: change（先頭の条件）
+  - name: ChangedOnly
+    description: 「変更」の条件をオンにした。見出しの右が「36 件中 2 件」、下端が「2 件を表示」
+    args:
+      - name: selected
+        value: changed に「未読の変更あり」
+  - name: ChangedNone
+    description: 未読の変更が 0 件。値の文字と件数を薄くし、選べるまま残す
 lead: 項目を並べる画面で、列ごとに文字を入れる欄と、条件ごとに値を件数つきのチェックボックスで並べて選ぶドロワー。タブの帯の下から左に重ねるパネルで、開いている間はトップバーとタブの帯とドロワー以外をグレーアウトする。開閉はトップバーの絞り込みのボタン（部品設計『トップバー』）が持つ。
 args:
   - name: groups
@@ -99,8 +111,8 @@ args:
   - name: groups[].mark
     type: 列挙
     default: none
-    choices: none・status・kind
-    description: 値の左に添えるマーカー。status は状態のマーカー（色と形状）、kind は項目の種類の色の点
+    choices: none・status・kind・change
+    description: 値の左に添えるマーカー。status は状態のマーカー（色と形状）、kind は項目の種類の色の点、change は変更履歴の未読のマーカーと同じ色の丸
   - name: selected
     type: オブジェクト
     default: なし（どの条件でも絞らない）

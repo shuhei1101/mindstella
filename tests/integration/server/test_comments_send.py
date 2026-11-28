@@ -6,6 +6,7 @@ import hashlib
 import json
 import threading
 import time
+from datetime import datetime
 from collections.abc import Callable
 from pathlib import Path
 
@@ -26,7 +27,9 @@ from .fixture_types import (
 )
 from .http_helpers import HttpResult, http_request, post_json
 from .thread_helpers import read_threads, threads_path
-from workspace_fixtures import RECORD_DIR, StartServer
+from workspace_fixtures import RECORD_DIR, STATE_SESSION_PATH, McpServer, StartServer, workspace_id_of
+
+from .history_helpers import DECISION_ITEM, add_item, commit, read_changes, update_item
 
 # まとめて送信のパス
 SEND_PATH = "/api/comments/send"
@@ -667,3 +670,38 @@ def test_normal_when_choices_sent(
         assert not any(option.get("adopted") for option in item["options"])
     assert not threads_path(root).exists()
     assert _read(root, "comments.yaml")["items"] == []
+
+
+def test_normal_when_turn_point_recorded(
+    make_workspace: MakeWorkspace,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    mcp_server: McpServer,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """まだまとめていない変更を先にまとまりにしてから、送信を受け付けた時点の連番を turn_point.json に記録する（正常系）。"""
+    # 準備（まとまり V-1 と、まだまとめていない D-1 の書き換えと、レビュー中のコメント C-1）
+    root = make_workspace()
+    add_item(call_tool, root, "decision", DECISION_ITEM)
+    commit(call_tool, root, "1 回目")
+    update_item(call_tool, root, "D-1", {"title": "書き換えた問い"})
+    last_seq = int(read_changes(root)["last_seq"])
+    write_comments(root, make_comment("C-1"))
+    url = serve_preview(root)
+    # 実行
+    sent_after = time.time()
+    result = post_json(url, SEND_PATH, {"ids": ["C-1"]})
+    # 検証
+    assert result.status == 201, result.text
+    changes = read_changes(root)
+    assert changes["sets"][0]["until_seq"] == last_seq
+    pending = changes["pending"]
+    assert pending["added"] == [] and pending["changed"] == [] and not pending.get("removed")
+    assert mcp_server.state_home is not None
+    point_path = mcp_server.state_home.joinpath(
+        *STATE_SESSION_PATH, workspace_id_of(root), "turn_point.json"
+    )
+    point = json.loads(point_path.read_text(encoding="utf-8"))
+    assert point["turn_seq"] == last_seq
+    assert datetime.fromisoformat(point["at"]).timestamp() >= int(sent_after) - 1

@@ -264,7 +264,7 @@ functions:
     process: |-
       1. 種類ごとの `items` をファイル名から `.yaml` を落としたキーで入れる（項目の `history` もそのまま入る）
       2. 項目の `body` が指す本文を読んで `bodies` に入れる（本文の読み込み。`read_body`。読めないものは入れない）。形式が `html` の本文は、行のマーカーを追加したもの（`mark_lines`）を `marked_bodies` にも入れる
-      3. まとまりを読んで `changes` に入れる（`load_changes`）
+      3. まとまりを読んで `changes` に入れる（`load_changes`）。今回の差分の始まり（『前回参照した時点』の `load_turn_point`）を `changes.turn_seq`・`changes.turn_at` に入れる（無ければ 0 と `null`）
       4. 画面に出す値を計算して `derived` に入れる（`derive_preview_values`）
       5. `settings_problem` を入れる（渡されなければ `null`。配る書き出しも同じキーを持つ）
       6. `mdmark_ref` を入れる
@@ -287,6 +287,12 @@ functions:
         condition: 'A-1（`body: A-1.mark.md`）・A-2（`body: A-2.html`、本文 `<p>a</p>`）'
         expected: '`bodies` が `A-1.mark.md`・`A-2.html` の原文を持ち、`marked_bodies` が `A-2.html` → `<p data-line="1" data-line-end="1">a</p>` だけを持つ'
         mock: なし
+      - name: test_collect_preview_data_turn_point
+        case: 正常
+        summary: 今回の差分の始まりを changes に入れる
+        condition: '`parametrize`: `turn_point.json` が無い / `turn_seq: 3`・`at: 2026-11-28T05:50:00+00:00`'
+        mock: なし（`XDG_STATE_HOME` は `tmp_path`）
+        expected: '`changes.turn_seq`・`changes.turn_at` が `0`・`None` / `3`・`2026-11-28T05:50:00+00:00`'
   - name: escape_for_script
     title: 埋め込みのエスケープ
     kind: 関数

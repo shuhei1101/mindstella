@@ -556,6 +556,102 @@ scenarios:
       - 取り込み待ちのスレッドが残っている
       - tmux のペインが残っていない
     test: test_error_when_specified_account_unavailable_with_release_off
+  - name: 正常シナリオ（再起動の途中に画面からコメントを送信する）
+    setup:
+      - name: Mock
+        description: Claude Code（再起動に時間がかかるように、SessionStart のフックを遅らせる）。プレビューは実際のブラウザで開く
+      - name: 常駐サーバー
+        description: 起動している。ワークスペースの MindStella のセッションが再起動の途中（`restarting`）
+      - name: 記録
+        description: 検討事項 D-1
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SRV as 常駐サーバー
+        participant CC as MindStella のセッション
+
+        U->>P: D-1 にコメントを記載してまとめて送信する
+        P-->>U: 送信中の表示
+        P->>SRV: まとめて送信する
+        SRV->>SRV: スレッドに追加し、再起動の準備ができるのを待つ
+        CC-->>SRV: 起動した
+        SRV->>CC: 届いた件数を入力する
+        SRV-->>P: 入力した（entered: true）
+        P-->>U: コメントが MindStella のセッションに届いたことの通知
+      ```
+
+      <!-- /map -->
+    expected:
+      - 送信の応答が再起動の準備ができるまで返却されず、その間、画面に送信中であることが出る
+      - 応答の `entered` が `true` のとき、画面にコメントが MindStella のセッションに届いたことの通知が出る
+      - 応答の `entered` が `false` のとき（準備を待つ上限を過ぎた 等）、画面にコメントが取り込み待ちとして残ったことの通知が出る
+      - 送信したコメントがスレッドに残る
+    test: test_normal_when_comment_sent_while_restarting
+  - name: 異常シナリオ（再起動に失敗して画面から起動し直す）
+    setup:
+      - name: Mock
+        description: claude-balancer（1 回目の貸与は空いたアカウントが無い理由で断り、2 回目は貸し出す）と Claude Code。プレビューは実際のブラウザで開く
+      - name: 常駐サーバー
+        description: 起動している。ワークスペースの MindStella のセッションは再起動に失敗し、状態に失敗した理由（`last_error`）を持つ
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SRV as 常駐サーバー
+
+        U->>P: プレビューを開く
+        P->>SRV: MindStella のセッションの状態を取得する
+        SRV-->>P: 再起動に失敗した状態と理由
+        P-->>U: 失敗した理由と起動し直すボタン
+        U->>P: 起動し直すボタンを押す
+        P->>SRV: 再起動を依頼する
+        SRV-->>P: 起動中に戻った
+        P-->>U: 失敗の表示が消えた画面
+      ```
+
+      <!-- /map -->
+    expected:
+      - プレビューに、再起動に失敗したことと理由（空いたアカウントが無い）と、起動し直すボタンが出る
+      - 起動し直すボタンを押すと再起動が依頼され、MindStella のセッションが同じ ID のまま起動中に戻り、失敗の表示が消える
+      - 押してから起動中に戻るまでの間、ボタンは押せず、再起動の途中であることが出る
+      - 公開 URL（`preview.public_url` のホスト）で開いた画面からも、起動し直すボタンで再起動を依頼できる（画面の配信の経路で受ける）
+    test: test_error_when_restart_failed_and_retried_from_preview
+  - name: 正常シナリオ（追加の MCP とプラグインの記録が無い警告を画面で確認する）
+    setup:
+      - name: Mock
+        description: Claude Code。プレビューは実際のブラウザで開く
+      - name: 常駐サーバー
+        description: 起動している。ワークスペースの状態のフォルダに追加の MCP とプラグインの記録（`launch.json`）が無い
+    flow: |-
+      <!-- map -->
+
+      ```mermaid
+      sequenceDiagram
+        participant A as 外部のアプリ
+        participant SRV as 常駐サーバー
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        A->>SRV: 再起動を依頼する
+        SRV-->>A: 再起動した（警告 launch_record_missing）
+        U->>P: プレビューを開く
+        P->>SRV: MindStella のセッションの状態を取得する
+        SRV-->>P: 起動中と、記録が無いことの警告
+        P-->>U: 追加の MCP とプラグインの記録が無いことの警告
+      ```
+
+      <!-- /map -->
+    expected:
+      - プレビューに、追加の MCP とプラグインの記録が無く、それらを付けずに起動したことの警告が出る
+      - MindStella のセッションは起動中のままで、コメントを送信できる
+    test: test_normal_when_launch_record_missing_shown
 refs:
   - SC-531-1#
   - SC-531-2#

@@ -72,6 +72,9 @@
 .md pre.md-raw { white-space: pre-wrap; overflow-wrap: anywhere; }
 .md code { font-family: var(--font-stack-mono); font-size: .92em; }
 .md-error { color: var(--st-review); font-size: var(--fs-small); }
+/* 埋め込んだファイルを読み込めなかったときに、その要素の後ろに置く警告 */
+.embed-warning { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-block: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid var(--st-review); border-radius: var(--radius-card); background: color-mix(in oklab, var(--st-review) 8%, var(--card)); color: var(--foreground); font-size: var(--fs-small); overflow-wrap: anywhere; }
+.embed-warning code { overflow-wrap: anywhere; }
 .md .md-fold:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
 /* 見出しごとの区切りの中のブロックの間: mdmark の本文と同じ間（見出しの上の間は mdmark のまま） */
 .mdmark .md-section-body > * + :where(:not(h1, h2, h3, h4, h5, h6)) { margin-block-start: var(--mdmark-space); }

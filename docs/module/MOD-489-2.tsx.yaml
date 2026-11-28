@@ -6,7 +6,7 @@ components:
     title: プレビューの外枠
     kind: コンポーネント
     usecase: プレビューを開く
-    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。トップバーに `useVoiceStore` の `session`・`notice` を `voice`・`voiceNotice` で渡し、「音声入力中の入力欄へ移る」「音声入力の入力欄を開く」で `session.destination`（`notice.key`）の画面を、その画面を今開くときと同じ search の書き換えで開く。記録を再読み込みしたら `discardVoice` を呼ぶ（行き先の有無は `voiceDestinationExists` で作る）。反映の保留（`useStale`）をトップバーの `stale` に、接続し直しの状態（`useConnectionStore` の `refreshing`）を `refreshing` に渡し、「更新する」で `reconnectEvents` を呼ぶ（配る書き出しでは `onRefresh` を渡さない）。保留が下りて描いた後に入力欄の位置を戻す（`restoreAnchor`）。記録を再読み込みしても、開いている入力欄を再作成せず、入力中の値とカーソルの位置を書き換えない。`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『プレビューを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。再読み込みした記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す。変更履歴で選んだ時点は `writeScreenState` の `diffSel` に書き、最初の描画の前に `dropLegacyScreenState` を 1 度呼ぶ。トップバーを包む要素の高さを `ResizeObserver` で測り、`document.documentElement` の CSS 変数 `--topbar-height`（px）に書く（外したときは変数を削除する）。左のパネル（コメントの一覧・保存待ちのパネル・表示の設定）・絞り込みのドロワー・それらのグレーアウトは、この変数を上端に使う。差分の表示の間はトップバーの各タブの `marked` を `changedKinds(point)` にその種類があるかで決め（概要・設定のタブは偽）、`historyUnread` に『既読のまとまり』の `useUnreadSetIds` の件数を指定する（配る書き出しでは 0）。記録を参照するたびに `prune` で記録に無いまとまりを既読から削除する。外枠の高さをビューポートの高さ（`h-dvh`）にして外枠では縦にスクロールさせず、本文の区画・一覧のスクロール領域・パネルとモーダルの中だけをスクロールさせる（インターフェース定義『プレビューを開く』の制約「画面の高さ」）
+    summary: search の `tab` の画面を描き、『セッションの状態』の `useSessionStatus` の `status`・`restart`・`closeWarning` をトップバーの `sessionStatus`・`onRestartSession`・`onCloseSessionWarning` に渡し（配る書き出しでは渡さない）、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。トップバーに `useVoiceStore` の `session`・`notice` を `voice`・`voiceNotice` で渡し、「音声入力中の入力欄へ移る」「音声入力の入力欄を開く」で `session.destination`（`notice.key`）の画面を、その画面を今開くときと同じ search の書き換えで開く。記録を再読み込みしたら `discardVoice` を呼ぶ（行き先の有無は `voiceDestinationExists` で作る）。反映の保留（`useStale`）をトップバーの `stale` に、接続し直しの状態（`useConnectionStore` の `refreshing`）を `refreshing` に渡し、「更新する」で `reconnectEvents` を呼ぶ（配る書き出しでは `onRefresh` を渡さない）。保留が下りて描いた後に入力欄の位置を戻す（`restoreAnchor`）。記録を再読み込みしても、開いている入力欄を再作成せず、入力中の値とカーソルの位置を書き換えない。`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『プレビューを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。再読み込みした記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す。変更履歴で選んだ時点は `writeScreenState` の `diffSel` に書き、最初の描画の前に `dropLegacyScreenState` を 1 度呼ぶ。トップバーを包む要素の高さを `ResizeObserver` で測り、`document.documentElement` の CSS 変数 `--topbar-height`（px）に書く（外したときは変数を削除する）。左のパネル（コメントの一覧・保存待ちのパネル・表示の設定）・絞り込みのドロワー・それらのグレーアウトは、この変数を上端に使う。差分の表示の間はトップバーの各タブの `marked` を `changedKinds(point)` にその種類があるかで決め（概要・設定のタブは偽）、`historyUnread` に『既読のまとまり』の `useUnreadSetIds` の件数を指定する（配る書き出しでは 0）。記録を参照するたびに `prune` で記録に無いまとまりを既読から削除する。外枠の高さをビューポートの高さ（`h-dvh`）にして外枠では縦にスクロールさせず、本文の区画・一覧のスクロール領域・パネルとモーダルの中だけをスクロールさせる（インターフェース定義『プレビューを開く』の制約「画面の高さ」）
     refs:
       - IF-489-70#
     unit_tests:
@@ -130,6 +130,12 @@ components:
         condition: 本文の長い資料を `?tab=docs&id=A-1` で開く
         mock: MSW
         expected: 外枠の要素が `h-dvh` と `overflow-hidden` を持ち、本文の区画が `overflow-y-auto` を持つ
+      - name: test_preview_shell_when_session_status
+        case: 正常
+        summary: 'セッションの状態をトップバーに出し、event: session で取得し直す'
+        condition: '`GET /api/session` が `{status: crashed, last_error: x, waiting: 0, warnings: []}` を返し、その後 `{status: running, ...}` を返す。書き換えの通知が `session` を送る'
+        mock: MSW と偽の EventSource
+        expected: 開いたときに「MindStella のセッションを再起動できませんでした」と理由を出し、`session` の後にバーが消える
     container: frontend/src/app/preview-shell.tsx
 notes:
   単体テスト: 同じフォルダの `preview-shell.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -14,6 +14,12 @@ constants:
     usecase: 起動と再開
     summary: '`workspaces/{ID}/` の下の、まだ知らせていない移し替えの報告（`{not_carried, provisional}`）'
     value: '"migration.json"'
+  - name: TURN_POINT_FILE
+    title: 今回の差分の始まりのファイル
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 変更履歴の時点を選ぶ
+    summary: '`workspaces/{ID}/` の下の今回の差分の始まり（`{"turn_seq": 整数, "at": UTC の日時}`。ER 図『常駐サーバーの状態』）'
+    value: '"turn_point.json"'
 functions:
   - name: load_read_seq
     title: 前回参照した時点を読む
@@ -249,6 +255,105 @@ functions:
       type: None
       description: なし
     process: 1. `MIGRATION_REPORT_FILE` を `unlink(missing_ok=True)` で削除する
+  - name: load_turn_point
+    title: 今回の差分の始まりを読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 変更履歴の時点を選ぶ
+    scope: public
+    summary: ワークスペースの `turn_point.json` の `turn_seq` と `at` を返す。ファイルが無ければ `(0, None)`
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: state_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 状態のフォルダ。`None` は `state.state_root()`
+    returns:
+      type: tuple[int, str | None]
+      description: 今回の差分の始まりの連番と、利用者の書き込みを受け付けた UTC の日時
+    process: |-
+      1. `_workspace_state_dir(root, state_root) / TURN_POINT_FILE` を読む
+      2. ファイルが無ければ `(0, None)` を返す
+      3. JSON として読めないか、`turn_seq` が 0 以上の整数でないか、`at` が文字列でない場合、`turn_point.json: {キー}: {理由}` の行を持った `SchemaMismatchError` を送出する
+      4. `(turn_seq, at)` を返す
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`turn_point.json` が壊れている'
+    unit_tests:
+      - name: test_load_turn_point
+        case: 正常
+        summary: 書いた始まりを読む
+        condition: '`save_turn_point(root, 4, "2026-11-28T05:50:00+00:00")` の後'
+        mock: なし（`state_root` は `tmp_path`）
+        expected: '`(4, "2026-11-28T05:50:00+00:00")`'
+      - name: test_load_turn_point_when_missing
+        case: 正常
+        summary: 無ければ 0 と None
+        condition: '`turn_point.json` が無い'
+        mock: なし
+        expected: '`(0, None)`'
+      - name: test_load_turn_point_when_broken
+        case: 異常
+        summary: 壊れたファイルは読まない
+        condition: '`parametrize`: JSON でない / `turn_seq` が `-1` / `at` が数値'
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` に `turn_point.json:`）'
+        exception: 壊れている
+  - name: save_turn_point
+    title: 今回の差分の始まりを書く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 変更履歴の時点を選ぶ
+    scope: public
+    summary: '`turn_point.json` を一時ファイルから置き換えて書く（フォルダが無ければ作る）'
+    description: 呼ぶ側（まとめて送信する・すぐ送信する）がワークスペースの書き換えの鍵を取る
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: turn_seq
+        type: int
+        required: true
+        passing: positional
+        description: 利用者の書き込みを受け付けた時点の `changes.yaml` の `last_seq`
+      - name: at
+        type: str
+        required: true
+        passing: positional
+        description: 受け付けた UTC の日時（ISO 8601）
+      - name: state_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 状態のフォルダ
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. `turn_seq` が 0 未満なら `ArgumentError` を送出する
+      2. `{"turn_seq": turn_seq, "at": at}` を `_replace_json` で書く（`save_read_seq` と同じく、書けなければ一時ファイルを削除して `WriteFailedError`）
+    exceptions:
+      - name: ArgumentError
+        condition: '`turn_seq` が 0 未満'
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えに失敗した（前の `turn_point.json` はそのまま）
+    unit_tests:
+      - name: test_save_turn_point_when_write_fails
+        case: 異常
+        summary: 書けなければ前の始まりを残す
+        condition: '`turn_seq` 3 を書いた後、`os.replace` が `OSError` で 7 を書く'
+        mock: '`os.replace`'
+        expected: '`WriteFailedError`。`load_turn_point` の `turn_seq` が 3 で、一時ファイルが残らない'
+        exception: 書けない
 refs:
   - IF-489-33#
   - IF-489-32#

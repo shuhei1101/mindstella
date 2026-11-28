@@ -1,0 +1,61 @@
+# 結合テスト（結合テスト作成）
+# 回した commit: 4774abc3。並列数 1（pytest-xdist が無く、空きメモリが約 6 GB）。一時フォルダは /tmp の下（Git の作業ツリーの中に置くと、実際の project-index を使うテストが配信元を develop から読む）
+
+## TL-3 結合テスト（バック）
+$ pytest tests/integration/server/test_comments_send.py tests/integration/server/test_comments_send_now.py tests/integration/server/test_create_workspace.py tests/integration/server/test_events.py tests/integration/server/test_preview_serve.py tests/integration/server/test_preview_session.py tests/integration/server/test_preview_session_restart.py tests/integration/server/test_preview_url.py tests/integration/server/test_records.py tests/integration/server/test_stop_notify.py tests/integration/server/test_update_settings.py tests/integration/server/test_work_done_notify.py 
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 116 items
+
+tests/integration/server/test_comments_send.py ...................       [ 16%]
+tests/integration/server/test_comments_send_now.py ......                [ 21%]
+tests/integration/server/test_create_workspace.py .............          [ 32%]
+tests/integration/server/test_events.py ......                           [ 37%]
+tests/integration/server/test_preview_serve.py .........                 [ 45%]
+tests/integration/server/test_preview_session.py ....                    [ 49%]
+tests/integration/server/test_preview_session_restart.py ...             [ 51%]
+tests/integration/server/test_preview_url.py .............               [ 62%]
+tests/integration/server/test_records.py ..............                  [ 75%]
+tests/integration/server/test_stop_notify.py ..........                  [ 83%]
+tests/integration/server/test_update_settings.py .............           [ 94%]
+tests/integration/server/test_work_done_notify.py ......                 [100%]
+
+======================= 116 passed in 364.19s (0:06:04) ========================
+exit=0
+
+## TL-4 結合テスト（フロント）
+$ pytest tests/integration/preview/test_spa_decisions_screen.py tests/integration/preview/test_spa_docs_screen.py tests/integration/preview/test_spa_history_screen.py tests/integration/preview/test_spa_open.py tests/integration/preview/test_spa_records_screen.py tests/integration/preview/test_spa_review_screen.py tests/integration/preview/test_spa_tasks_screen.py tests/integration/storybook_react/test_filter_chips_stories.py tests/integration/storybook_react/test_filter_drawer_stories.py tests/integration/storybook_react/test_history_dialog_stories.py tests/integration/storybook_react/test_markdown_body_stories.py tests/integration/storybook_react/test_session_status_banner_stories.py tests/integration/storybook_react/test_topbar_stories.py 
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 91%]
+tests/integration/storybook_react/test_history_dialog_stories.py .       [ 92%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 92%]
+tests/integration/storybook_react/test_topbar_stories.py ....            [ 92%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 92%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 93%]
+tests/integration/storybook_react/test_topbar_stories.py ....            [ 93%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 93%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 93%]
+tests/integration/storybook_react/test_topbar_stories.py ....            [ 94%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 94%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 94%]
+tests/integration/storybook_react/test_topbar_stories.py ....            [ 95%]
+tests/integration/storybook_react/test_filter_drawer_stories.py .        [ 95%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 95%]
+tests/integration/storybook_react/test_topbar_stories.py ....            [ 96%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 96%]
+tests/integration/storybook_react/test_topbar_stories.py ....            [ 97%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 97%]
+tests/integration/storybook_react/test_topbar_stories.py ....            [ 97%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 98%]
+tests/integration/storybook_react/test_topbar_stories.py ....            [ 98%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 98%]
+tests/integration/storybook_react/test_topbar_stories.py ..              [ 99%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 99%]
+tests/integration/storybook_react/test_topbar_stories.py ..              [ 99%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 99%]
+tests/integration/storybook_react/test_topbar_stories.py ..              [100%]
+
+======================= 666 passed in 899.54s (0:14:59) ========================
+exit=0

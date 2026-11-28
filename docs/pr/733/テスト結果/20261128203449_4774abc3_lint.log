@@ -1,0 +1,6 @@
+# lint（結合テスト作成）
+# 回した commit: 4774abc3（TypeScript は 0f115fc0 の lint から変更が無い）
+
+$ ruff check {作業 PR で変更した .py}
+All checks passed!
+exit=0

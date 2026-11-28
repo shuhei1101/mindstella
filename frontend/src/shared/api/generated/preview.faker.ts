@@ -28,6 +28,8 @@ import type {
   SeenReply,
   SendNowReply,
   SendReply,
+  SessionRestartReply,
+  SessionStatusReply,
   ThreadStatusReply,
   Threads,
   TranscriptionReply,
@@ -78,4 +80,8 @@ export const getGetTranscriptionResponseMock = (overrideResponse: Partial<Extrac
 export const getPostTranscriptionResponseMock = (overrideResponse: Partial<Extract<TranscriptionReply, object>> = {}): TranscriptionReply => ({text: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getSendNowResponseMock = (overrideResponse: Partial<Extract<SendNowReply, object>> = {}): SendNowReply => ({sent: faker.string.alpha({length: {min: 10, max: 20}}), thread: faker.string.alpha({length: {min: 10, max: 20}}), post: faker.string.alpha({length: {min: 10, max: 20}}), entered: faker.datatype.boolean(), ...overrideResponse})
+
+export const getGetSessionResponseMock = (overrideResponse: Partial<Extract<SessionStatusReply, object>> = {}): SessionStatusReply => ({status: faker.helpers.arrayElement(['none','running','stopping','restarting','stopped','crashed'] as const), last_error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), waiting: faker.number.int(), warnings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+
+export const getPostSessionRestartResponseMock = (overrideResponse: Partial<Extract<SessionRestartReply, object>> = {}): SessionRestartReply => ({status: faker.helpers.arrayElement(['restarting'] as const), warnings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 

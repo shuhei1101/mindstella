@@ -34,3 +34,6 @@ export const FavoritesOnly: Story = { args: { onClearFavoritesOnly: fn() } };
 
 /** 「お気に入りだけを表示する」と状態の条件を重ねた。「お気に入りのみ」を先頭に、状態のチップを後ろに並べる */
 export const FavoritesOnlyWithStatus: Story = { args: { filters: { status: ["未着手"] }, onClearFavoritesOnly: fn() } };
+
+/** 変更の条件をオンにした。チップは「変更: 未読の変更あり」で、× で解除する */
+export const ChangedOnly: Story = { args: { filters: { changed: ["未読の変更あり"] }, labels: { changed: "変更", status: "状態", tags: "タグ" } } };

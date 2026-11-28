@@ -12,5 +12,72 @@ functions:
       type: unknown
       description: 処理の結果
     container: frontend/src/shared/core/list-rows.ts
+  - name: changedColumn
+    title: 変更の条件の列
+    kind: 関数
+    container: frontend/src/shared/core/list-rows.ts
+    usecase: 項目を表で絞り込む
+    summary: 行の ID が `ids` にあれば `CHANGED_VALUE`、無ければ null を返す、キー `CHANGED_FILTER_KEY`・名前「変更」の列を返す（表には出さず、絞り込みとドロワーの条件だけに使う）
+    args:
+      - name: ids
+        type: ReadonlySet<string>
+        required: true
+        description: 未読の変更がある項目の ID（『差分の表示』の `unreadChangedIds`）
+    returns:
+      type: 'ListColumn<{ id: string }>'
+      description: 条件の列
+    unit_tests:
+      - name: test_changed_column
+        case: 正常
+        summary: 未読の変更がある行だけ値を持つ
+        condition: '`ids` が `{D-2}`、行 D-1・D-2'
+        mock: なし
+        expected: D-2 が `未読の変更あり`、D-1 が null
+  - name: drawerGroups
+    title: ドロワーの条件
+    kind: 関数
+    container: frontend/src/shared/core/list-rows.ts
+    usecase: 項目を表で絞り込む
+    summary: ドロワーの条件と値ごとの件数を組む（件数はその条件以外の条件で絞った行で数える）。条件は `changed`・`kind`・`type`・`status`・`tags` の順を先頭に並べ、マーカーは `changed` が `change`、`status` が `status`、`type` が `kind`。「変更」の条件は件数が 0 でも値を残す
+    args:
+      - name: rows
+        type: readonly R[]
+        required: true
+        description: 画面の行
+      - name: columns
+        type: readonly ListColumn<R>[]
+        required: true
+        description: 絞り込む列
+      - name: conditions
+        type: readonly ListColumn<R>[]
+        required: true
+        description: ドロワーに出す条件の列
+      - name: filters
+        type: Filters
+        required: true
+        description: 今の条件
+    returns:
+      type: ListGroup[]
+      description: ドロワーの条件
+    unit_tests:
+      - name: test_drawer_groups_when_changed
+        case: 正常
+        summary: 変更の条件を先頭に並べ、件数が 0 でも残す
+        condition: '`parametrize`: 条件が `status`・`changed` で未読の変更が 2 件 / 未読の変更が 0 件'
+        mock: なし
+        expected: '先頭が `changed`（`mark: change`、値 `未読の変更あり` が 2 件）/ 先頭が `changed` で値の件数が 0'
 notes:
   カード・ボードの並べ替え: '`sortRows` の `sort` に `id`・`-id`・`created`・`-created`・`updated`・`-updated` を受け、カード・ボードも同じ関数で並べる（#186）。`id` は連番の数の順で、`-id` は連番として扱う。既定の並びは画面が『カードの並べ替え』の `INITIAL_CARD_SORT` から決める。単体テストは同じフォルダの `list-rows.test.ts` に `test_sort_rows_when_updated_desc`（更新日時の新しい順）・`test_sort_rows_when_id`（連番の数の順で D-10 が D-2 の後）を置く'
+constants:
+  - name: CHANGED_FILTER_KEY
+    title: 変更の条件のキー
+    container: frontend/src/shared/core/list-rows.ts
+    usecase: 項目を表で絞り込む
+    summary: 絞り込みの「変更」の条件の `key`（search の `f` のキー）。ドロワーでは先頭に並べ、マーカーは `change`
+    value: '"changed"'
+  - name: CHANGED_VALUE
+    title: 変更の条件の値
+    container: frontend/src/shared/core/list-rows.ts
+    usecase: 項目を表で絞り込む
+    summary: 「変更」の条件のただ 1 つの値
+    value: '"未読の変更あり"'

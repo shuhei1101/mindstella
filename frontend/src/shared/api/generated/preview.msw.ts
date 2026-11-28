@@ -46,6 +46,8 @@ import type {
   SendNowInput,
   SendNowReply,
   SendReply,
+  SessionRestartReply,
+  SessionStatusReply,
   ThreadStatusInput,
   ThreadStatusReply,
   Threads,
@@ -97,6 +99,10 @@ export const getGetTranscriptionResponseMock = (overrideResponse: Partial<Extrac
 export const getPostTranscriptionResponseMock = (overrideResponse: Partial<Extract<TranscriptionReply, object>> = {}): TranscriptionReply => ({text: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getSendNowResponseMock = (overrideResponse: Partial<Extract<SendNowReply, object>> = {}): SendNowReply => ({sent: faker.string.alpha({length: {min: 10, max: 20}}), thread: faker.string.alpha({length: {min: 10, max: 20}}), post: faker.string.alpha({length: {min: 10, max: 20}}), entered: faker.datatype.boolean(), ...overrideResponse})
+
+export const getGetSessionResponseMock = (overrideResponse: Partial<Extract<SessionStatusReply, object>> = {}): SessionStatusReply => ({status: faker.helpers.arrayElement(['none','running','stopping','restarting','stopped','crashed'] as const), last_error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), waiting: faker.number.int(), warnings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+
+export const getPostSessionRestartResponseMock = (overrideResponse: Partial<Extract<SessionRestartReply, object>> = {}): SessionRestartReply => ({status: faker.helpers.arrayElement(['restarting'] as const), warnings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
 
 export const getGetRecordsMockHandler = (overrideResponse?: Records | ((info: Parameters<HttpResponseResolver>[0]) => Promise<Records> | Records), options?: RequestHandlerOptions) => {
@@ -324,6 +330,30 @@ export const getSendNowMockHandler = (overrideResponse?: SendNowReply | ((info: 
       })
   }, options)
 }
+
+export const getGetSessionMockHandler = (overrideResponse?: SessionStatusReply | ((info: Parameters<HttpResponseResolver>[0]) => Promise<SessionStatusReply> | SessionStatusReply), options?: RequestHandlerOptions) => {
+  return http.get('*/api/session', async (info: Parameters<HttpResponseResolver>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetSessionResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getPostSessionRestartMockHandler = (overrideResponse?: SessionRestartReply | ((info: Parameters<HttpResponseResolver>[0]) => Promise<SessionRestartReply> | SessionRestartReply), options?: RequestHandlerOptions) => {
+  return http.post('*/api/session/restart', async (info: Parameters<HttpResponseResolver>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getPostSessionRestartResponseMock(),
+      { status: 202
+      })
+  }, options)
+}
 export const getMindstellaPreviewMock = () => [
   getGetRecordsMockHandler(),
   getGetCommentsMockHandler(),
@@ -343,5 +373,7 @@ export const getMindstellaPreviewMock = () => [
   getPostPresetMockHandler(),
   getGetTranscriptionMockHandler(),
   getPostTranscriptionMockHandler(),
-  getSendNowMockHandler()
+  getSendNowMockHandler(),
+  getGetSessionMockHandler(),
+  getPostSessionRestartMockHandler()
 ]

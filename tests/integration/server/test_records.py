@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 
 import yaml
 
-from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR, write_yaml
+from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR, STATE_SESSION_PATH, McpServer, workspace_id_of, write_yaml
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace, StartMdmarkRefServer
 from .history_helpers import DECISION_ITEM, add_item, commit, read_history, read_items, update_item
@@ -415,3 +415,42 @@ def test_normal_when_presets(
     # 検証
     assert records["settings"]["presets"] == presets
     assert records["preset_counts"] == {"画面の設計": 2, "古い分類": 0}
+
+
+# 今回の差分の始まりとして書いておく連番と日時
+TURN_SEQ = 3
+TURN_AT = "2026-11-28T05:50:00+00:00"
+
+
+def _workspace_with_two_sets(make_workspace: MakeWorkspace, call_tool: CallTool, name: str) -> Path:
+    """まとまり V-1・V-2 を持つワークスペースを作る。"""
+    root = make_workspace(name=name)
+    add_item(call_tool, root, "decision", DECISION_ITEM)
+    commit(call_tool, root, "1 回目")
+    update_item(call_tool, root, "D-1", {"title": "書き換えた問い"})
+    commit(call_tool, root, "2 回目")
+    return root
+
+
+def test_normal_when_turn_point(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    mcp_server: McpServer,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """turn_point.json の連番と日時を changes に入れ、無ければ 0 と null を返す（正常系）。"""
+    # 準備（1 つ目は turn_point.json が無く、2 つ目は配信の前に書いておく）
+    without_point = _workspace_with_two_sets(make_workspace, call_tool, "始まりなし")
+    with_point = _workspace_with_two_sets(make_workspace, call_tool, "始まりあり")
+    assert mcp_server.state_home is not None
+    state_dir = mcp_server.state_home.joinpath(*STATE_SESSION_PATH, workspace_id_of(with_point))
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "turn_point.json").write_text(
+        json.dumps({"turn_seq": TURN_SEQ, "at": TURN_AT}), encoding="utf-8"
+    )
+    # 実行
+    first = http_request(serve_preview(without_point), "/api/records").json()["changes"]
+    second = http_request(serve_preview(with_point), "/api/records").json()["changes"]
+    # 検証
+    assert (first["turn_seq"], first["turn_at"]) == (0, None)
+    assert (second["turn_seq"], second["turn_at"]) == (TURN_SEQ, TURN_AT)

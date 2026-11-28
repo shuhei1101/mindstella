@@ -1,0 +1,12 @@
+# lint（マージ前の抜けの修正の後）
+# 回した commit: 96d2eded
+
+$ ruff check {作業 PR で変更した .py}
+All checks passed!
+exit=0
+
+$ npx eslint {作業 PR で変更した .ts・.tsx（generated を除く）}
+exit=0
+
+$ npx tsc -p frontend --noEmit
+exit=0

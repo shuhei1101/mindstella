@@ -153,6 +153,17 @@ def test_send(page: Page, review_preview: tuple[str, Path]) -> None:
 
 
 
+def test_send_result_when_not_entered(page: Page, review_preview: tuple[str, Path]) -> None:
+    """送信できたが Claude Code に入力できなかったときは、取り込み待ちとして残り準備ができたら入力する旨を出す（正常系）。"""
+    # 準備（MindStella のセッションが無いので Claude Code へ入力できない）
+    _open(page, review_preview)
+    # 実行
+    _panel(page).get_by_role("button", name="まとめて送信（3 件）").click()
+    # 検証
+    status = _panel(page).get_by_role("status").filter(has_text="3 件を送信しましたが、Claude Code には入力できませんでした")
+    expect(status).to_contain_text("送信した内容は取り込み待ちとして残り、準備ができたら入力します。")
+
+
 def test_normal_when_pressed_again_while_sending(page: Page, review_preview: tuple[str, Path]) -> None:
     """送信を待つ間にもう一度押しても要求は 1 回で、待つ間はボタンが押せず、1 秒を超えると回るマーカーを出す（正常系）。"""
     # 準備

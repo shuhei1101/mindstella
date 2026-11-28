@@ -23,6 +23,9 @@ STATES = (
     "shared-filterdrawer--tag-detail",
     "shared-filterdrawer--preset-save-no-tag",
     "shared-filterdrawer--preset-save-open",
+    "shared-filterdrawer--changed-condition",
+    "shared-filterdrawer--changed-only",
+    "shared-filterdrawer--changed-none",
 )
 
 # ドロワーの幅（px）。コメントの一覧と同じ
@@ -211,3 +214,34 @@ def test_preset_save_open(open_story: OpenStory) -> None:
     # 検証
     expect(dialog.get_by_label("プリセットの名前")).to_be_visible()
     expect(dialog.get_by_text("タグの条件だけを保存します。状態・種類・文字の条件は保存しません。")).to_be_visible()
+
+
+def test_changed_condition(open_story: OpenStory) -> None:
+    """先頭に「変更」の条件を並べ、値「未読の変更あり」の前に未読のマーカーと同じ色の丸を付ける（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-filterdrawer--changed-condition").get_by_role("dialog", name="絞り込み")
+    first = dialog.locator("fieldset").nth(0)
+    # 検証
+    expect(first.locator("legend")).to_contain_text("変更")
+    expect(dialog.get_by_role("checkbox", name="未読の変更あり")).to_be_visible()
+    expect(first.locator("span.bg-topbar-unread")).to_have_count(1)
+
+
+def test_changed_only(open_story: OpenStory) -> None:
+    """「変更」の条件をオンにした。見出しの右が「36 件中 2 件」、下端が「2 件を表示」（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-filterdrawer--changed-only").get_by_role("dialog", name="絞り込み")
+    # 検証
+    expect(dialog).to_contain_text("36 件中 2 件")
+    expect(dialog.get_by_role("checkbox", name="未読の変更あり")).to_be_checked()
+    expect(dialog.get_by_role("button", name="2 件を表示")).to_be_visible()
+
+
+def test_changed_none(open_story: OpenStory) -> None:
+    """未読の変更が 0 件。値の文字と件数を薄くし、選べるまま残す（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-filterdrawer--changed-none").get_by_role("dialog", name="絞り込み")
+    row = dialog.locator("li", has_text="未読の変更あり")
+    # 検証
+    expect(row.get_by_label("0 件")).to_have_text("0")
+    expect(dialog.get_by_role("checkbox", name="未読の変更あり")).to_be_enabled()

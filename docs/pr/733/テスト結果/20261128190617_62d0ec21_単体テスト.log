@@ -1,0 +1,21 @@
+# 単体テスト（実装）
+# 回した commit: 62d0ec21
+
+$ PATH="$HOME/.venvs/mindstella-dev/bin:$PATH" pytest tests/unit -q -p no:cacheprovider --basetemp=tmp/pytest-733
+........................................................................ [ 91%]
+........................................................................ [ 95%]
+........................................................................ [ 99%]
+................                                                         [100%]
+=============================== warnings summary ===============================
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1815 passed, 1 skipped, 5 warnings in 38.83s
+exit=0
+$ npx vitest run
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle
+ Test Files  123 passed (123)
+      Tests  722 passed (722)
+   Start at  18:59:01
+   Duration  107.75s (environment 43%, tests 31%, import 13%, setup 8%, transform 4%, worker 1%)
+Environment  jsdom was created 123 times · 85.34s total, 43% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments

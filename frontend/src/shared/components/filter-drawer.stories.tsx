@@ -207,3 +207,15 @@ export const PresetSaveOpen: Story = {
     presetSave: { hasOtherConditions: true, defaultOpen: true, defaultName: "廃止する画面", onSave: fn(() => Promise.resolve({ error: null })) },
   },
 };
+
+/** 変更があった項目の条件（未読のまとまりで追加・変更された項目）。先頭に置き、値の前に変更履歴の未読のマーカーと同じ色の丸を付ける */
+const changeGroup: FilterGroup = { key: "changed", label: "変更", mark: "change", values: [{ value: "未読の変更あり", count: 2 }] };
+
+/** 検討事項 36 件で、変更の条件を先頭に出す（未読の変更がある項目 2 件） */
+export const ChangedCondition: Story = { args: { groups: [changeGroup, ...decisionGroups], total: 36, shown: 36 } };
+
+/** 変更の条件をオンにした。見出しの右は「36 件中 2 件」、下端は「2 件を表示」 */
+export const ChangedOnly: Story = { args: { groups: [changeGroup, ...decisionGroups], selected: { changed: ["未読の変更あり"] }, total: 36, shown: 2 } };
+
+/** 未読の変更が無い。値の文字と件数を薄くし、選べるまま残す */
+export const ChangedNone: Story = { args: { groups: [{ ...changeGroup, values: [{ value: "未読の変更あり", count: 0 }] }, ...decisionGroups], total: 36, shown: 36 } };

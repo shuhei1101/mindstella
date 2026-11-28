@@ -1,0 +1,2514 @@
+# 単体テスト（Red）
+# 回した commit: 091a6e85（テストコードの末尾）
+
+## 実装の前から pass したテスト（振る舞いが作業ブランチに既にある）
+- frontend/src/shared/core/body-links.test.ts の embed_warning・watch_embed_failures: frontend/src/shared/core/body-links.ts の embedWarning・watchEmbedFailures（モック作成の f3931b46 で入れた）
+- frontend/src/shared/components/filter-drawer.test.tsx の filter_drawer_when_changed_mark: frontend/src/shared/components/filter-drawer.tsx の mark: change（モック作成の fe769929 で入れた）
+
+## 単体テスト（バック）
+$ PATH="$HOME/.venvs/mindstella-dev/bin:$PATH" pytest tests/unit -q -p no:cacheprovider --basetemp=tmp/pytest-733
+........................FFF............................................. [  3%]
+........................................................................ [  7%]
+............................................................FFFFFFF..... [ 11%]
+........................................................................ [ 15%]
+........................................................................ [ 19%]
+.................................................FFF.................... [ 23%]
+........................................................................ [ 27%]
+........................................................................ [ 31%]
+........FFFFFFF......................................................... [ 35%]
+........................................................................ [ 39%]
+........................................................................ [ 43%]
+........................................................................ [ 47%]
+.................................FFFFFF................................. [ 51%]
+.............s.......................................................... [ 55%]
+........................................................................ [ 59%]
+........................................................................ [ 63%]
+....FFFFFFF............................................................. [ 67%]
+........................................................................ [ 71%]
+..................................................FFFF.................. [ 75%]
+........................................................................ [ 79%]
+........................................................................ [ 83%]
+........................................................................ [ 87%]
+........................................................................ [ 91%]
+........................................................................ [ 95%]
+........................................................................ [ 99%]
+................                                                         [100%]
+=================================== FAILURES ===================================
+____________________ test_collect_preview_data_with_changes ____________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad57ee0f40>
+make_item = <function make_item.<locals>._make at 0x77ad57ee0a40>
+
+    def test_collect_preview_data_with_changes(
+        make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """まとまりと変更履歴を含める（正常系）。"""
+        # 準備
+        entry = {"seq": 1, "at": BUILT_AT, "before": {"status": "未決定"}}
+        changes = {
+            "last_seq": 1,
+            "sets": [
+                {
+                    "id": "V-1",
+                    "at": BUILT_AT,
+                    "summary": "決める",
+                    "until_seq": 1,
+                    "added": [],
+                    "changed": ["D-1"],
+                }
+            ],
+            "pending": {"added": [], "changed": []},
+        }
+        root = make_workspace(
+            make_item("D-1", status="決定済み", history=[entry]),
+            raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+        data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
+        # 検証
+>       assert data["changes"] == {**changes, "turn_seq": 0, "turn_at": None}
+E       AssertionError: assert {'last_seq': ...changed': []}} == {'last_seq': ..._seq': 0, ...}
+E         
+E         Omitting 3 identical items, use -vv to show
+E         Right contains 2 more items:
+E         {'turn_at': None, 'turn_seq': 0}
+E         Use -v to get more diff
+
+tests/unit/scripts/test_builder.py:201: AssertionError
+________________ test_collect_preview_data_turn_point[missing] _________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad57d79940>
+make_item = <function make_item.<locals>._make at 0x77ad57d79c60>
+record = <function <lambda> at 0x77ad588c4360>, expected = (0, None)
+
+    @pytest.mark.parametrize(
+        ("record", "expected"),
+        [
+            pytest.param(lambda root: None, (0, None), id="missing"),
+            pytest.param(
+                lambda root: read_point.save_turn_point(root, 3, "2026-11-28T05:50:00+00:00"),
+                (3, "2026-11-28T05:50:00+00:00"),
+                id="recorded",
+            ),
+        ],
+    )
+    def test_collect_preview_data_turn_point(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        record: Callable[[Path], None],
+        expected: tuple[int, str | None],
+    ) -> None:
+        """今回の差分の始まりを changes に入れる（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        record(root)
+        workspace = store.load_workspace(root)
+        # 実行
+        data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
+        # 検証
+>       assert (data["changes"]["turn_seq"], data["changes"]["turn_at"]) == expected
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'turn_seq'
+
+tests/unit/scripts/test_builder.py:231: KeyError
+________________ test_collect_preview_data_turn_point[recorded] ________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad57d79120>
+make_item = <function make_item.<locals>._make at 0x77ad57d79ee0>
+record = <function <lambda> at 0x77ad588c4400>
+expected = (3, '2026-11-28T05:50:00+00:00')
+
+    @pytest.mark.parametrize(
+        ("record", "expected"),
+        [
+            pytest.param(lambda root: None, (0, None), id="missing"),
+            pytest.param(
+                lambda root: read_point.save_turn_point(root, 3, "2026-11-28T05:50:00+00:00"),
+                (3, "2026-11-28T05:50:00+00:00"),
+                id="recorded",
+            ),
+        ],
+    )
+    def test_collect_preview_data_turn_point(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        record: Callable[[Path], None],
+        expected: tuple[int, str | None],
+    ) -> None:
+        """今回の差分の始まりを changes に入れる（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+>       record(root)
+
+tests/unit/scripts/test_builder.py:226: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_collect_preview_data_turn1/workspace')
+
+>               lambda root: read_point.save_turn_point(root, 3, "2026-11-28T05:50:00+00:00"),
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+                (3, "2026-11-28T05:50:00+00:00"),
+                id="recorded",
+            ),
+        ],
+    )
+E   AttributeError: module 'read_point' has no attribute 'save_turn_point'
+
+tests/unit/scripts/test_builder.py:211: AttributeError
+________________________ test_enter_or_restart[running] ________________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_enter_or_restart_running_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad57c32600>
+status = 'running', close_pending = False, restarted_ok = True
+waiter_ok = False, expected = (True, False), restarter_calls = 0
+
+    @pytest.mark.parametrize(
+        ("status", "close_pending", "restarted_ok", "waiter_ok", "expected", "restarter_calls"),
+        [
+            pytest.param("running", False, True, False, (True, False), 0, id="running"),
+            pytest.param("running-dead", False, True, False, (True, True), 1, id="running-dead"),
+            pytest.param("restarting", False, True, True, (True, False), 0, id="restarting-ready"),
+            pytest.param("restarting", False, True, False, (False, False), 0, id="restarting-timeout"),
+            pytest.param("crashed", False, True, False, (True, True), 1, id="crashed-restarted"),
+            pytest.param("crashed", False, False, False, (False, False), 1, id="crashed-failed"),
+            pytest.param("crashed", True, True, False, (False, False), 0, id="close-pending"),
+        ],
+    )
+    def test_enter_or_restart(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        status: str,
+        close_pending: bool,
+        restarted_ok: bool,
+        waiter_ok: bool,
+        expected: tuple[bool, bool],
+        restarter_calls: int,
+    ) -> None:
+        """落ちていれば起動し直してから入力し、再起動の途中なら準備を待ってから入力する（正常系）。"""
+        # 準備
+        dead = status == "running-dead"
+        written = SessionState(
+            session="S-0123456789ab",
+            status="running" if dead else status,
+            close_pending=close_pending,
+            pane=f"{MINDSTELLA_WORKSPACE}:0.0",
+            pid=CLAUDE_PID,
+            pid_started_at=STARTED_AT,
+            started_at="2026-11-15T00:00:00+00:00",
+        )
+        state.update_session(tmp_path, MINDSTELLA_WORKSPACE, lambda _current: written)
+        calls: list[Path] = []
+        # running のまま落ちている: 起動し直すまで貼れない
+        monkeypatch.setattr(
+            claude_input, "enter_to_claude", lambda *_args, **_kwargs: not dead or bool(calls)
+        )
+    
+        def _restarter(root: Path) -> bool:
+            """呼ばれたフォルダを控え、成功なら running にする。"""
+            calls.append(root)
+            if restarted_ok:
+                state.update_session(
+                    tmp_path,
+                    MINDSTELLA_WORKSPACE,
+                    lambda current: None if current is None else current.replace(status="running"),
+                )
+            return restarted_ok
+    
+>       targets = claude_input.InputTargets(
+            state_root=tmp_path,
+            workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
+            restarter=_restarter,
+            waiter=lambda _root: waiter_ok,
+        )
+E       TypeError: InputTargets.__init__() got an unexpected keyword argument 'waiter'
+
+tests/unit/scripts/test_claude_input.py:1102: TypeError
+_____________________ test_enter_or_restart[running-dead] ______________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_enter_or_restart_running_1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad57c31ca0>
+status = 'running-dead', close_pending = False, restarted_ok = True
+waiter_ok = False, expected = (True, True), restarter_calls = 1
+
+    @pytest.mark.parametrize(
+        ("status", "close_pending", "restarted_ok", "waiter_ok", "expected", "restarter_calls"),
+        [
+            pytest.param("running", False, True, False, (True, False), 0, id="running"),
+            pytest.param("running-dead", False, True, False, (True, True), 1, id="running-dead"),
+            pytest.param("restarting", False, True, True, (True, False), 0, id="restarting-ready"),
+            pytest.param("restarting", False, True, False, (False, False), 0, id="restarting-timeout"),
+            pytest.param("crashed", False, True, False, (True, True), 1, id="crashed-restarted"),
+            pytest.param("crashed", False, False, False, (False, False), 1, id="crashed-failed"),
+            pytest.param("crashed", True, True, False, (False, False), 0, id="close-pending"),
+        ],
+    )
+    def test_enter_or_restart(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        status: str,
+        close_pending: bool,
+        restarted_ok: bool,
+        waiter_ok: bool,
+        expected: tuple[bool, bool],
+        restarter_calls: int,
+    ) -> None:
+        """落ちていれば起動し直してから入力し、再起動の途中なら準備を待ってから入力する（正常系）。"""
+        # 準備
+        dead = status == "running-dead"
+        written = SessionState(
+            session="S-0123456789ab",
+            status="running" if dead else status,
+            close_pending=close_pending,
+            pane=f"{MINDSTELLA_WORKSPACE}:0.0",
+            pid=CLAUDE_PID,
+            pid_started_at=STARTED_AT,
+            started_at="2026-11-15T00:00:00+00:00",
+        )
+        state.update_session(tmp_path, MINDSTELLA_WORKSPACE, lambda _current: written)
+        calls: list[Path] = []
+        # running のまま落ちている: 起動し直すまで貼れない
+        monkeypatch.setattr(
+            claude_input, "enter_to_claude", lambda *_args, **_kwargs: not dead or bool(calls)
+        )
+    
+        def _restarter(root: Path) -> bool:
+            """呼ばれたフォルダを控え、成功なら running にする。"""
+            calls.append(root)
+            if restarted_ok:
+                state.update_session(
+                    tmp_path,
+                    MINDSTELLA_WORKSPACE,
+                    lambda current: None if current is None else current.replace(status="running"),
+                )
+            return restarted_ok
+    
+>       targets = claude_input.InputTargets(
+            state_root=tmp_path,
+            workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
+            restarter=_restarter,
+            waiter=lambda _root: waiter_ok,
+        )
+E       TypeError: InputTargets.__init__() got an unexpected keyword argument 'waiter'
+
+tests/unit/scripts/test_claude_input.py:1102: TypeError
+___________________ test_enter_or_restart[restarting-ready] ____________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_enter_or_restart_restarti0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad57c32300>
+status = 'restarting', close_pending = False, restarted_ok = True
+waiter_ok = True, expected = (True, False), restarter_calls = 0
+
+    @pytest.mark.parametrize(
+        ("status", "close_pending", "restarted_ok", "waiter_ok", "expected", "restarter_calls"),
+        [
+            pytest.param("running", False, True, False, (True, False), 0, id="running"),
+            pytest.param("running-dead", False, True, False, (True, True), 1, id="running-dead"),
+            pytest.param("restarting", False, True, True, (True, False), 0, id="restarting-ready"),
+            pytest.param("restarting", False, True, False, (False, False), 0, id="restarting-timeout"),
+            pytest.param("crashed", False, True, False, (True, True), 1, id="crashed-restarted"),
+            pytest.param("crashed", False, False, False, (False, False), 1, id="crashed-failed"),
+            pytest.param("crashed", True, True, False, (False, False), 0, id="close-pending"),
+        ],
+    )
+    def test_enter_or_restart(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        status: str,
+        close_pending: bool,
+        restarted_ok: bool,
+        waiter_ok: bool,
+        expected: tuple[bool, bool],
+        restarter_calls: int,
+    ) -> None:
+        """落ちていれば起動し直してから入力し、再起動の途中なら準備を待ってから入力する（正常系）。"""
+        # 準備
+        dead = status == "running-dead"
+        written = SessionState(
+            session="S-0123456789ab",
+            status="running" if dead else status,
+            close_pending=close_pending,
+            pane=f"{MINDSTELLA_WORKSPACE}:0.0",
+            pid=CLAUDE_PID,
+            pid_started_at=STARTED_AT,
+            started_at="2026-11-15T00:00:00+00:00",
+        )
+        state.update_session(tmp_path, MINDSTELLA_WORKSPACE, lambda _current: written)
+        calls: list[Path] = []
+        # running のまま落ちている: 起動し直すまで貼れない
+        monkeypatch.setattr(
+            claude_input, "enter_to_claude", lambda *_args, **_kwargs: not dead or bool(calls)
+        )
+    
+        def _restarter(root: Path) -> bool:
+            """呼ばれたフォルダを控え、成功なら running にする。"""
+            calls.append(root)
+            if restarted_ok:
+                state.update_session(
+                    tmp_path,
+                    MINDSTELLA_WORKSPACE,
+                    lambda current: None if current is None else current.replace(status="running"),
+                )
+            return restarted_ok
+    
+>       targets = claude_input.InputTargets(
+            state_root=tmp_path,
+            workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
+            restarter=_restarter,
+            waiter=lambda _root: waiter_ok,
+        )
+E       TypeError: InputTargets.__init__() got an unexpected keyword argument 'waiter'
+
+tests/unit/scripts/test_claude_input.py:1102: TypeError
+__________________ test_enter_or_restart[restarting-timeout] ___________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_enter_or_restart_restarti1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad57c32ae0>
+status = 'restarting', close_pending = False, restarted_ok = True
+waiter_ok = False, expected = (False, False), restarter_calls = 0
+
+    @pytest.mark.parametrize(
+        ("status", "close_pending", "restarted_ok", "waiter_ok", "expected", "restarter_calls"),
+        [
+            pytest.param("running", False, True, False, (True, False), 0, id="running"),
+            pytest.param("running-dead", False, True, False, (True, True), 1, id="running-dead"),
+            pytest.param("restarting", False, True, True, (True, False), 0, id="restarting-ready"),
+            pytest.param("restarting", False, True, False, (False, False), 0, id="restarting-timeout"),
+            pytest.param("crashed", False, True, False, (True, True), 1, id="crashed-restarted"),
+            pytest.param("crashed", False, False, False, (False, False), 1, id="crashed-failed"),
+            pytest.param("crashed", True, True, False, (False, False), 0, id="close-pending"),
+        ],
+    )
+    def test_enter_or_restart(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        status: str,
+        close_pending: bool,
+        restarted_ok: bool,
+        waiter_ok: bool,
+        expected: tuple[bool, bool],
+        restarter_calls: int,
+    ) -> None:
+        """落ちていれば起動し直してから入力し、再起動の途中なら準備を待ってから入力する（正常系）。"""
+        # 準備
+        dead = status == "running-dead"
+        written = SessionState(
+            session="S-0123456789ab",
+            status="running" if dead else status,
+            close_pending=close_pending,
+            pane=f"{MINDSTELLA_WORKSPACE}:0.0",
+            pid=CLAUDE_PID,
+            pid_started_at=STARTED_AT,
+            started_at="2026-11-15T00:00:00+00:00",
+        )
+        state.update_session(tmp_path, MINDSTELLA_WORKSPACE, lambda _current: written)
+        calls: list[Path] = []
+        # running のまま落ちている: 起動し直すまで貼れない
+        monkeypatch.setattr(
+            claude_input, "enter_to_claude", lambda *_args, **_kwargs: not dead or bool(calls)
+        )
+    
+        def _restarter(root: Path) -> bool:
+            """呼ばれたフォルダを控え、成功なら running にする。"""
+            calls.append(root)
+            if restarted_ok:
+                state.update_session(
+                    tmp_path,
+                    MINDSTELLA_WORKSPACE,
+                    lambda current: None if current is None else current.replace(status="running"),
+                )
+            return restarted_ok
+    
+>       targets = claude_input.InputTargets(
+            state_root=tmp_path,
+            workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
+            restarter=_restarter,
+            waiter=lambda _root: waiter_ok,
+        )
+E       TypeError: InputTargets.__init__() got an unexpected keyword argument 'waiter'
+
+tests/unit/scripts/test_claude_input.py:1102: TypeError
+___________________ test_enter_or_restart[crashed-restarted] ___________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_enter_or_restart_crashed_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad57c7c9b0>
+status = 'crashed', close_pending = False, restarted_ok = True
+waiter_ok = False, expected = (True, True), restarter_calls = 1
+
+    @pytest.mark.parametrize(
+        ("status", "close_pending", "restarted_ok", "waiter_ok", "expected", "restarter_calls"),
+        [
+            pytest.param("running", False, True, False, (True, False), 0, id="running"),
+            pytest.param("running-dead", False, True, False, (True, True), 1, id="running-dead"),
+            pytest.param("restarting", False, True, True, (True, False), 0, id="restarting-ready"),
+            pytest.param("restarting", False, True, False, (False, False), 0, id="restarting-timeout"),
+            pytest.param("crashed", False, True, False, (True, True), 1, id="crashed-restarted"),
+            pytest.param("crashed", False, False, False, (False, False), 1, id="crashed-failed"),
+            pytest.param("crashed", True, True, False, (False, False), 0, id="close-pending"),
+        ],
+    )
+    def test_enter_or_restart(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        status: str,
+        close_pending: bool,
+        restarted_ok: bool,
+        waiter_ok: bool,
+        expected: tuple[bool, bool],
+        restarter_calls: int,
+    ) -> None:
+        """落ちていれば起動し直してから入力し、再起動の途中なら準備を待ってから入力する（正常系）。"""
+        # 準備
+        dead = status == "running-dead"
+        written = SessionState(
+            session="S-0123456789ab",
+            status="running" if dead else status,
+            close_pending=close_pending,
+            pane=f"{MINDSTELLA_WORKSPACE}:0.0",
+            pid=CLAUDE_PID,
+            pid_started_at=STARTED_AT,
+            started_at="2026-11-15T00:00:00+00:00",
+        )
+        state.update_session(tmp_path, MINDSTELLA_WORKSPACE, lambda _current: written)
+        calls: list[Path] = []
+        # running のまま落ちている: 起動し直すまで貼れない
+        monkeypatch.setattr(
+            claude_input, "enter_to_claude", lambda *_args, **_kwargs: not dead or bool(calls)
+        )
+    
+        def _restarter(root: Path) -> bool:
+            """呼ばれたフォルダを控え、成功なら running にする。"""
+            calls.append(root)
+            if restarted_ok:
+                state.update_session(
+                    tmp_path,
+                    MINDSTELLA_WORKSPACE,
+                    lambda current: None if current is None else current.replace(status="running"),
+                )
+            return restarted_ok
+    
+>       targets = claude_input.InputTargets(
+            state_root=tmp_path,
+            workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
+            restarter=_restarter,
+            waiter=lambda _root: waiter_ok,
+        )
+E       TypeError: InputTargets.__init__() got an unexpected keyword argument 'waiter'
+
+tests/unit/scripts/test_claude_input.py:1102: TypeError
+____________________ test_enter_or_restart[crashed-failed] _____________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_enter_or_restart_crashed_1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad57c7c290>
+status = 'crashed', close_pending = False, restarted_ok = False
+waiter_ok = False, expected = (False, False), restarter_calls = 1
+
+    @pytest.mark.parametrize(
+        ("status", "close_pending", "restarted_ok", "waiter_ok", "expected", "restarter_calls"),
+        [
+            pytest.param("running", False, True, False, (True, False), 0, id="running"),
+            pytest.param("running-dead", False, True, False, (True, True), 1, id="running-dead"),
+            pytest.param("restarting", False, True, True, (True, False), 0, id="restarting-ready"),
+            pytest.param("restarting", False, True, False, (False, False), 0, id="restarting-timeout"),
+            pytest.param("crashed", False, True, False, (True, True), 1, id="crashed-restarted"),
+            pytest.param("crashed", False, False, False, (False, False), 1, id="crashed-failed"),
+            pytest.param("crashed", True, True, False, (False, False), 0, id="close-pending"),
+        ],
+    )
+    def test_enter_or_restart(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        status: str,
+        close_pending: bool,
+        restarted_ok: bool,
+        waiter_ok: bool,
+        expected: tuple[bool, bool],
+        restarter_calls: int,
+    ) -> None:
+        """落ちていれば起動し直してから入力し、再起動の途中なら準備を待ってから入力する（正常系）。"""
+        # 準備
+        dead = status == "running-dead"
+        written = SessionState(
+            session="S-0123456789ab",
+            status="running" if dead else status,
+            close_pending=close_pending,
+            pane=f"{MINDSTELLA_WORKSPACE}:0.0",
+            pid=CLAUDE_PID,
+            pid_started_at=STARTED_AT,
+            started_at="2026-11-15T00:00:00+00:00",
+        )
+        state.update_session(tmp_path, MINDSTELLA_WORKSPACE, lambda _current: written)
+        calls: list[Path] = []
+        # running のまま落ちている: 起動し直すまで貼れない
+        monkeypatch.setattr(
+            claude_input, "enter_to_claude", lambda *_args, **_kwargs: not dead or bool(calls)
+        )
+    
+        def _restarter(root: Path) -> bool:
+            """呼ばれたフォルダを控え、成功なら running にする。"""
+            calls.append(root)
+            if restarted_ok:
+                state.update_session(
+                    tmp_path,
+                    MINDSTELLA_WORKSPACE,
+                    lambda current: None if current is None else current.replace(status="running"),
+                )
+            return restarted_ok
+    
+>       targets = claude_input.InputTargets(
+            state_root=tmp_path,
+            workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
+            restarter=_restarter,
+            waiter=lambda _root: waiter_ok,
+        )
+E       TypeError: InputTargets.__init__() got an unexpected keyword argument 'waiter'
+
+tests/unit/scripts/test_claude_input.py:1102: TypeError
+_____________________ test_enter_or_restart[close-pending] _____________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_enter_or_restart_close_pe0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad57c7c620>
+status = 'crashed', close_pending = True, restarted_ok = True, waiter_ok = False
+expected = (False, False), restarter_calls = 0
+
+    @pytest.mark.parametrize(
+        ("status", "close_pending", "restarted_ok", "waiter_ok", "expected", "restarter_calls"),
+        [
+            pytest.param("running", False, True, False, (True, False), 0, id="running"),
+            pytest.param("running-dead", False, True, False, (True, True), 1, id="running-dead"),
+            pytest.param("restarting", False, True, True, (True, False), 0, id="restarting-ready"),
+            pytest.param("restarting", False, True, False, (False, False), 0, id="restarting-timeout"),
+            pytest.param("crashed", False, True, False, (True, True), 1, id="crashed-restarted"),
+            pytest.param("crashed", False, False, False, (False, False), 1, id="crashed-failed"),
+            pytest.param("crashed", True, True, False, (False, False), 0, id="close-pending"),
+        ],
+    )
+    def test_enter_or_restart(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        status: str,
+        close_pending: bool,
+        restarted_ok: bool,
+        waiter_ok: bool,
+        expected: tuple[bool, bool],
+        restarter_calls: int,
+    ) -> None:
+        """落ちていれば起動し直してから入力し、再起動の途中なら準備を待ってから入力する（正常系）。"""
+        # 準備
+        dead = status == "running-dead"
+        written = SessionState(
+            session="S-0123456789ab",
+            status="running" if dead else status,
+            close_pending=close_pending,
+            pane=f"{MINDSTELLA_WORKSPACE}:0.0",
+            pid=CLAUDE_PID,
+            pid_started_at=STARTED_AT,
+            started_at="2026-11-15T00:00:00+00:00",
+        )
+        state.update_session(tmp_path, MINDSTELLA_WORKSPACE, lambda _current: written)
+        calls: list[Path] = []
+        # running のまま落ちている: 起動し直すまで貼れない
+        monkeypatch.setattr(
+            claude_input, "enter_to_claude", lambda *_args, **_kwargs: not dead or bool(calls)
+        )
+    
+        def _restarter(root: Path) -> bool:
+            """呼ばれたフォルダを控え、成功なら running にする。"""
+            calls.append(root)
+            if restarted_ok:
+                state.update_session(
+                    tmp_path,
+                    MINDSTELLA_WORKSPACE,
+                    lambda current: None if current is None else current.replace(status="running"),
+                )
+            return restarted_ok
+    
+>       targets = claude_input.InputTargets(
+            state_root=tmp_path,
+            workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
+            restarter=_restarter,
+            waiter=lambda _root: waiter_ok,
+        )
+E       TypeError: InputTargets.__init__() got an unexpected keyword argument 'waiter'
+
+tests/unit/scripts/test_claude_input.py:1102: TypeError
+___________________________ test_commit_pending_set ____________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad56a8d6c0>
+make_item = <function make_item.<locals>._make at 0x77ad56a8efc0>
+
+    def test_commit_pending_set(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """まだまとめていない変更を 1 つのまとまりにする（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        ai_update(root, "D-1", {"title": "書き換えた題"})
+        # 実行
+>       result = comments._commit_pending_set(store.load_workspace(root), at=FIXED_NOW)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'comments' has no attribute '_commit_pending_set'. Did you mean: 'commit_pending'?
+
+tests/unit/scripts/test_comments.py:1482: AttributeError
+______________________ test_commit_pending_set_when_empty ______________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad56a20040>
+make_item = <function make_item.<locals>._make at 0x77ad56a20180>
+
+    def test_commit_pending_set_when_empty(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """まとめる変更が無ければ書かない（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        path = root / RECORD_DIR / "changes.yaml"
+        before = path.stat().st_mtime_ns if path.exists() else None
+        # 実行
+>       result = comments._commit_pending_set(store.load_workspace(root), at=FIXED_NOW)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'comments' has no attribute '_commit_pending_set'. Did you mean: 'commit_pending'?
+
+tests/unit/scripts/test_comments.py:1500: AttributeError
+___________________ test_record_turn_point_when_write_fails ____________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad56a20fe0>
+make_item = <function make_item.<locals>._make at 0x77ad56a213a0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad56a87e60>
+capsys = <_pytest.capture.CaptureFixture object at 0x77ad56a84fb0>
+
+    def test_record_turn_point_when_write_fails(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """書けなくても送信を取り消さない（異常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+    
+        def _failing_save(*args: object, **kwargs: object) -> None:
+            """書き込みを失敗させる。"""
+            raise WriteFailedError("書けない")
+    
+>       monkeypatch.setattr(comments, "save_turn_point", _failing_save)
+E       AttributeError: <module 'comments' from '/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/plugins/mindstella/skills/mindmap/scripts/comments.py'> has no attribute 'save_turn_point'
+
+tests/unit/scripts/test_comments.py:1520: AttributeError
+______________ test_load_home_settings_public_url[trailing_slash] ______________
+
+content = 'preview:\n  public_url: https://Preview.example.test/\n'
+public_url = 'https://Preview.example.test'
+public_host = 'preview.example.test'
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_public0')
+
+    @pytest.mark.parametrize(
+        ("content", "public_url", "public_host"),
+        [
+            pytest.param(
+                "preview:\n  public_url: https://Preview.example.test/\n",
+                "https://Preview.example.test",
+                "preview.example.test",
+                id="trailing_slash",
+            ),
+            pytest.param(
+                "preview:\n  public_url: http://preview.example.test:8443\n",
+                "http://preview.example.test:8443",
+                "preview.example.test",
+                id="with_port",
+            ),
+            pytest.param("account:\n  release_on_limit: true\n", None, None, id="missing"),
+        ],
+    )
+    def test_load_home_settings_public_url(
+        content: str, public_url: str | None, public_host: str | None, tmp_path: Path
+    ) -> None:
+        """公開 URL の基底を末尾の / を除いて読む（正常系）。"""
+        # 準備
+        path = tmp_path / "settings.yaml"
+        path.write_text(content, encoding="utf-8")
+        # 実行
+        result = home_settings.load_home_settings(path)
+        # 検証
+>       assert (result.public_url, result.public_host()) == (public_url, public_host)
+                ^^^^^^^^^^^^^^^^^
+E       AttributeError: 'HomeSettings' object has no attribute 'public_url'
+
+tests/unit/scripts/test_home_settings.py:135: AttributeError
+----------------------------- Captured stderr call -----------------------------
+[mindstella] /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_public0/settings.yaml: 知らないキーを読み飛ばします: preview
+________________ test_load_home_settings_public_url[with_port] _________________
+
+content = 'preview:\n  public_url: http://preview.example.test:8443\n'
+public_url = 'http://preview.example.test:8443'
+public_host = 'preview.example.test'
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_public1')
+
+    @pytest.mark.parametrize(
+        ("content", "public_url", "public_host"),
+        [
+            pytest.param(
+                "preview:\n  public_url: https://Preview.example.test/\n",
+                "https://Preview.example.test",
+                "preview.example.test",
+                id="trailing_slash",
+            ),
+            pytest.param(
+                "preview:\n  public_url: http://preview.example.test:8443\n",
+                "http://preview.example.test:8443",
+                "preview.example.test",
+                id="with_port",
+            ),
+            pytest.param("account:\n  release_on_limit: true\n", None, None, id="missing"),
+        ],
+    )
+    def test_load_home_settings_public_url(
+        content: str, public_url: str | None, public_host: str | None, tmp_path: Path
+    ) -> None:
+        """公開 URL の基底を末尾の / を除いて読む（正常系）。"""
+        # 準備
+        path = tmp_path / "settings.yaml"
+        path.write_text(content, encoding="utf-8")
+        # 実行
+        result = home_settings.load_home_settings(path)
+        # 検証
+>       assert (result.public_url, result.public_host()) == (public_url, public_host)
+                ^^^^^^^^^^^^^^^^^
+E       AttributeError: 'HomeSettings' object has no attribute 'public_url'
+
+tests/unit/scripts/test_home_settings.py:135: AttributeError
+----------------------------- Captured stderr call -----------------------------
+[mindstella] /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_public1/settings.yaml: 知らないキーを読み飛ばします: preview
+_________________ test_load_home_settings_public_url[missing] __________________
+
+content = 'account:\n  release_on_limit: true\n', public_url = None
+public_host = None
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_public2')
+
+    @pytest.mark.parametrize(
+        ("content", "public_url", "public_host"),
+        [
+            pytest.param(
+                "preview:\n  public_url: https://Preview.example.test/\n",
+                "https://Preview.example.test",
+                "preview.example.test",
+                id="trailing_slash",
+            ),
+            pytest.param(
+                "preview:\n  public_url: http://preview.example.test:8443\n",
+                "http://preview.example.test:8443",
+                "preview.example.test",
+                id="with_port",
+            ),
+            pytest.param("account:\n  release_on_limit: true\n", None, None, id="missing"),
+        ],
+    )
+    def test_load_home_settings_public_url(
+        content: str, public_url: str | None, public_host: str | None, tmp_path: Path
+    ) -> None:
+        """公開 URL の基底を末尾の / を除いて読む（正常系）。"""
+        # 準備
+        path = tmp_path / "settings.yaml"
+        path.write_text(content, encoding="utf-8")
+        # 実行
+        result = home_settings.load_home_settings(path)
+        # 検証
+>       assert (result.public_url, result.public_host()) == (public_url, public_host)
+                ^^^^^^^^^^^^^^^^^
+E       AttributeError: 'HomeSettings' object has no attribute 'public_url'
+
+tests/unit/scripts/test_home_settings.py:135: AttributeError
+__________ test_load_home_settings_when_public_url_invalid[with_path] __________
+
+content = 'preview:\n  public_url: https://x.test/w/\n'
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_when_p0')
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            pytest.param("preview:\n  public_url: https://x.test/w/\n", id="with_path"),
+            pytest.param("preview:\n  public_url: ftp://x.test\n", id="scheme"),
+            pytest.param("preview:\n  public_url: 1\n", id="number"),
+            pytest.param("preview: 1\n", id="not_mapping"),
+        ],
+    )
+    def test_load_home_settings_when_public_url_invalid(content: str, tmp_path: Path) -> None:
+        """パスを持つ・スキームが違う公開 URL は断る（異常系）。"""
+        # 準備
+        path = tmp_path / "settings.yaml"
+        path.write_text(content, encoding="utf-8")
+        # 実行・検証
+>       with pytest.raises(InvalidSettingsError, match="preview"):
+E       Failed: DID NOT RAISE InvalidSettingsError
+
+tests/unit/scripts/test_home_settings.py:153: Failed
+----------------------------- Captured stderr call -----------------------------
+[mindstella] /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_when_p0/settings.yaml: 知らないキーを読み飛ばします: preview
+___________ test_load_home_settings_when_public_url_invalid[scheme] ____________
+
+content = 'preview:\n  public_url: ftp://x.test\n'
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_when_p1')
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            pytest.param("preview:\n  public_url: https://x.test/w/\n", id="with_path"),
+            pytest.param("preview:\n  public_url: ftp://x.test\n", id="scheme"),
+            pytest.param("preview:\n  public_url: 1\n", id="number"),
+            pytest.param("preview: 1\n", id="not_mapping"),
+        ],
+    )
+    def test_load_home_settings_when_public_url_invalid(content: str, tmp_path: Path) -> None:
+        """パスを持つ・スキームが違う公開 URL は断る（異常系）。"""
+        # 準備
+        path = tmp_path / "settings.yaml"
+        path.write_text(content, encoding="utf-8")
+        # 実行・検証
+>       with pytest.raises(InvalidSettingsError, match="preview"):
+E       Failed: DID NOT RAISE InvalidSettingsError
+
+tests/unit/scripts/test_home_settings.py:153: Failed
+----------------------------- Captured stderr call -----------------------------
+[mindstella] /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_when_p1/settings.yaml: 知らないキーを読み飛ばします: preview
+___________ test_load_home_settings_when_public_url_invalid[number] ____________
+
+content = 'preview:\n  public_url: 1\n'
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_when_p2')
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            pytest.param("preview:\n  public_url: https://x.test/w/\n", id="with_path"),
+            pytest.param("preview:\n  public_url: ftp://x.test\n", id="scheme"),
+            pytest.param("preview:\n  public_url: 1\n", id="number"),
+            pytest.param("preview: 1\n", id="not_mapping"),
+        ],
+    )
+    def test_load_home_settings_when_public_url_invalid(content: str, tmp_path: Path) -> None:
+        """パスを持つ・スキームが違う公開 URL は断る（異常系）。"""
+        # 準備
+        path = tmp_path / "settings.yaml"
+        path.write_text(content, encoding="utf-8")
+        # 実行・検証
+>       with pytest.raises(InvalidSettingsError, match="preview"):
+E       Failed: DID NOT RAISE InvalidSettingsError
+
+tests/unit/scripts/test_home_settings.py:153: Failed
+----------------------------- Captured stderr call -----------------------------
+[mindstella] /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_when_p2/settings.yaml: 知らないキーを読み飛ばします: preview
+_________ test_load_home_settings_when_public_url_invalid[not_mapping] _________
+
+content = 'preview: 1\n'
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_when_p3')
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            pytest.param("preview:\n  public_url: https://x.test/w/\n", id="with_path"),
+            pytest.param("preview:\n  public_url: ftp://x.test\n", id="scheme"),
+            pytest.param("preview:\n  public_url: 1\n", id="number"),
+            pytest.param("preview: 1\n", id="not_mapping"),
+        ],
+    )
+    def test_load_home_settings_when_public_url_invalid(content: str, tmp_path: Path) -> None:
+        """パスを持つ・スキームが違う公開 URL は断る（異常系）。"""
+        # 準備
+        path = tmp_path / "settings.yaml"
+        path.write_text(content, encoding="utf-8")
+        # 実行・検証
+>       with pytest.raises(InvalidSettingsError, match="preview"):
+E       Failed: DID NOT RAISE InvalidSettingsError
+
+tests/unit/scripts/test_home_settings.py:153: Failed
+----------------------------- Captured stderr call -----------------------------
+[mindstella] /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_home_settings_when_p3/settings.yaml: 知らないキーを読み飛ばします: preview
+_____________________________ test_load_turn_point _____________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad569244a0>
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_turn_point0')
+
+    def test_load_turn_point(make_workspace: MakeWorkspace, tmp_path: Path) -> None:
+        """書いた始まりを読む（正常系）。"""
+        # 準備
+        root = make_workspace()
+        state_root = tmp_path / "state"
+>       read_point.save_turn_point(root, 4, "2026-11-28T05:50:00+00:00", state_root=state_root)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'read_point' has no attribute 'save_turn_point'
+
+tests/unit/scripts/test_read_point.py:185: AttributeError
+______________________ test_load_turn_point_when_missing _______________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad56924180>
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_turn_point_when_miss0')
+
+    def test_load_turn_point_when_missing(make_workspace: MakeWorkspace, tmp_path: Path) -> None:
+        """無ければ 0 と None（正常系）。"""
+        # 準備
+        root = make_workspace()
+        # 実行
+>       result = read_point.load_turn_point(root, state_root=tmp_path / "state")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'read_point' has no attribute 'load_turn_point'
+
+tests/unit/scripts/test_read_point.py:197: AttributeError
+__________________ test_load_turn_point_when_broken[not_json] __________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad569251c0>
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_turn_point_when_brok0')
+text = '{'
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            pytest.param("{", id="not_json"),
+            pytest.param('{"turn_seq": -1, "at": "2026-11-28T05:50:00+00:00"}', id="negative"),
+            pytest.param('{"turn_seq": 3, "at": 1}', id="at_number"),
+        ],
+    )
+    def test_load_turn_point_when_broken(make_workspace: MakeWorkspace, tmp_path: Path, text: str) -> None:
+        """壊れたファイルは読まない（異常系）。"""
+        # 準備
+        root = make_workspace()
+        state_root = tmp_path / "state"
+        path = _turn_point_path(root, state_root)
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+        # 実行・検証
+        with pytest.raises(SchemaMismatchError, match="スキーマに合いません") as raised:
+>           read_point.load_turn_point(root, state_root=state_root)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'read_point' has no attribute 'load_turn_point'
+
+tests/unit/scripts/test_read_point.py:220: AttributeError
+__________________ test_load_turn_point_when_broken[negative] __________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad56925580>
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_turn_point_when_brok1')
+text = '{"turn_seq": -1, "at": "2026-11-28T05:50:00+00:00"}'
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            pytest.param("{", id="not_json"),
+            pytest.param('{"turn_seq": -1, "at": "2026-11-28T05:50:00+00:00"}', id="negative"),
+            pytest.param('{"turn_seq": 3, "at": 1}', id="at_number"),
+        ],
+    )
+    def test_load_turn_point_when_broken(make_workspace: MakeWorkspace, tmp_path: Path, text: str) -> None:
+        """壊れたファイルは読まない（異常系）。"""
+        # 準備
+        root = make_workspace()
+        state_root = tmp_path / "state"
+        path = _turn_point_path(root, state_root)
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+        # 実行・検証
+        with pytest.raises(SchemaMismatchError, match="スキーマに合いません") as raised:
+>           read_point.load_turn_point(root, state_root=state_root)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'read_point' has no attribute 'load_turn_point'
+
+tests/unit/scripts/test_read_point.py:220: AttributeError
+_________________ test_load_turn_point_when_broken[at_number] __________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad56925800>
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_load_turn_point_when_brok2')
+text = '{"turn_seq": 3, "at": 1}'
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            pytest.param("{", id="not_json"),
+            pytest.param('{"turn_seq": -1, "at": "2026-11-28T05:50:00+00:00"}', id="negative"),
+            pytest.param('{"turn_seq": 3, "at": 1}', id="at_number"),
+        ],
+    )
+    def test_load_turn_point_when_broken(make_workspace: MakeWorkspace, tmp_path: Path, text: str) -> None:
+        """壊れたファイルは読まない（異常系）。"""
+        # 準備
+        root = make_workspace()
+        state_root = tmp_path / "state"
+        path = _turn_point_path(root, state_root)
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+        # 実行・検証
+        with pytest.raises(SchemaMismatchError, match="スキーマに合いません") as raised:
+>           read_point.load_turn_point(root, state_root=state_root)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'read_point' has no attribute 'load_turn_point'
+
+tests/unit/scripts/test_read_point.py:220: AttributeError
+____________________ test_save_turn_point_when_write_fails _____________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x77ad56925a80>
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_save_turn_point_when_writ0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad56992e10>
+
+    def test_save_turn_point_when_write_fails(
+        make_workspace: MakeWorkspace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """書けなければ前の始まりを残す（異常系）。"""
+        # 準備
+        root = make_workspace()
+        state_root = tmp_path / "state"
+>       read_point.save_turn_point(root, 3, "2026-11-28T05:50:00+00:00", state_root=state_root)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'read_point' has no attribute 'save_turn_point'
+
+tests/unit/scripts/test_read_point.py:231: AttributeError
+__________________ test_load_external_access_with_public_host __________________
+
+    def test_load_external_access_with_public_host() -> None:
+        """公開 URL のホスト名を許可するホスト名に加える（正常系）。"""
+        # 実行
+>       with_env = serve.load_external_access(
+            {"MINDSTELLA_ALLOWED_HOSTS": "a.example"}, public_host="preview.example.test"
+        )
+E       TypeError: load_external_access() got an unexpected keyword argument 'public_host'
+
+tests/unit/scripts/test_serve.py:2449: TypeError
+___________________ test_stream_events_when_session_changed ____________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_stream_events_when_sessio0')
+
+    def test_stream_events_when_session_changed(tmp_path: Path) -> None:
+        """セッションの状態の印が変わったら session を書く（正常系）。"""
+        # 準備
+        written: list[bytes] = []
+        write = _recording_write(written, fail_on_call=2, error=BrokenPipeError)
+        session_marks = iter(["s1", "s1", "s2", "s2", "s3"])
+        # 実行
+>       serve.stream_events(
+            tmp_path,
+            write,
+            sleep=lambda seconds: None,
+            clock=_SteppingClock(0.25),
+            signature=lambda root: "a",
+            session_signature=lambda: next(session_marks),
+        )
+E       TypeError: stream_events() got an unexpected keyword argument 'session_signature'
+
+tests/unit/scripts/test_serve.py:2465: TypeError
+____________________________ test_session_response _____________________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_session_response0')
+
+    def test_session_response(tmp_path: Path) -> None:
+        """操作の応答をそのまま返す（正常系）。"""
+        # 準備
+>       access = serve.SessionAccess(
+                 ^^^^^^^^^^^^^^^^^^^
+            status=lambda workspace_id: CRASHED_STATUS, restart=lambda workspace_id: (202, {})
+        )
+E       AttributeError: module 'serve' has no attribute 'SessionAccess'
+
+tests/unit/scripts/test_serve.py:2501: AttributeError
+_____________________ test_session_response_when_no_access _____________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_session_response_when_no_0')
+
+    def test_session_response_when_no_access(tmp_path: Path) -> None:
+        """操作が無ければ none（正常系）。"""
+        # 準備
+>       context = _session_context(tmp_path, None)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_serve.py:2515: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_session_response_when_no_0')
+access = None
+
+    def _session_context(root: Path, access: serve.SessionAccess | None) -> serve.ServeContext:
+        """画面からのセッションの操作を持つ配信の文脈を作る。"""
+>       return serve.ServeContext(
+            root=root,
+            port=PORT,
+            write_lock=threading.Lock(),
+            settings=serve.SettingsHolder({}),
+            workspace_id="W-1",
+            sessions=access,
+        )
+E       TypeError: ServeContext.__init__() got an unexpected keyword argument 'sessions'
+
+tests/unit/scripts/test_serve.py:2479: TypeError
+________________________ test_session_restart_response _________________________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_session_restart_response0')
+
+    def test_session_restart_response(tmp_path: Path) -> None:
+        """再起動を受け付ける（正常系）。"""
+        # 準備
+>       access = serve.SessionAccess(
+                 ^^^^^^^^^^^^^^^^^^^
+            status=lambda workspace_id: {},
+            restart=lambda workspace_id: (
+                202,
+                {"session": "S-1", "status": "restarting", "warnings": []},
+            ),
+        )
+E       AttributeError: module 'serve' has no attribute 'SessionAccess'
+
+tests/unit/scripts/test_serve.py:2526: AttributeError
+______________ test_session_restart_response_when_refused[origin] ______________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_session_restart_response_0')
+origin = 'https://evil.example.test'
+restart = <function <lambda> at 0x77ad58124040>, expected_status = 403
+expected_stage = None, expected_calls = 0
+
+    @pytest.mark.parametrize(
+        ("origin", "restart", "expected_status", "expected_stage", "expected_calls"),
+        [
+            pytest.param(
+                "https://evil.example.test", lambda workspace_id: (202, {}), 403, None, 0, id="origin"
+            ),
+            pytest.param(None, _refusing_restart, 409, "restarting", 1, id="restarting"),
+        ],
+    )
+    def test_session_restart_response_when_refused(
+        tmp_path: Path,
+        origin: str | None,
+        restart: Callable[[str], tuple[int, dict[str, Any]]],
+        expected_status: int,
+        expected_stage: str | None,
+        expected_calls: int,
+    ) -> None:
+        """送り元が違う・再起動の途中は断る（異常系）。"""
+        # 準備
+        calls: list[str] = []
+    
+        def _restart(workspace_id: str) -> tuple[int, dict[str, Any]]:
+            """呼ばれた ID を記録して、渡した操作を呼ぶ。"""
+            calls.append(workspace_id)
+            return restart(workspace_id)
+    
+>       access = serve.SessionAccess(status=lambda workspace_id: {}, restart=_restart)
+                 ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'serve' has no attribute 'SessionAccess'
+
+tests/unit/scripts/test_serve.py:2567: AttributeError
+____________ test_session_restart_response_when_refused[restarting] ____________
+
+tmp_path = PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/tmp/pytest-733/test_session_restart_response_1')
+origin = None, restart = <function _refusing_restart at 0x77ad5811bd80>
+expected_status = 409, expected_stage = 'restarting', expected_calls = 1
+
+    @pytest.mark.parametrize(
+        ("origin", "restart", "expected_status", "expected_stage", "expected_calls"),
+        [
+            pytest.param(
+                "https://evil.example.test", lambda workspace_id: (202, {}), 403, None, 0, id="origin"
+            ),
+            pytest.param(None, _refusing_restart, 409, "restarting", 1, id="restarting"),
+        ],
+    )
+    def test_session_restart_response_when_refused(
+        tmp_path: Path,
+        origin: str | None,
+        restart: Callable[[str], tuple[int, dict[str, Any]]],
+        expected_status: int,
+        expected_stage: str | None,
+        expected_calls: int,
+    ) -> None:
+        """送り元が違う・再起動の途中は断る（異常系）。"""
+        # 準備
+        calls: list[str] = []
+    
+        def _restart(workspace_id: str) -> tuple[int, dict[str, Any]]:
+            """呼ばれた ID を記録して、渡した操作を呼ぶ。"""
+            calls.append(workspace_id)
+            return restart(workspace_id)
+    
+>       access = serve.SessionAccess(status=lambda workspace_id: {}, restart=_restart)
+                 ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'serve' has no attribute 'SessionAccess'
+
+tests/unit/scripts/test_serve.py:2567: AttributeError
+__________________ test_screen_session_status[never_created] ___________________
+
+arrange = <function _no_session at 0x77ad5806f560>, awaiting = 0
+expected = {'status': 'none', 'last_error': None, 'waiting': 0, 'warnings': []}
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-previ...ev0/家計簿/.mindstella/dev-docs.yaml'], 'outsideRead': True}, home=HomeSettings(balancer_url=None, release_on_limit=True))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad550efef0>
+
+    @pytest.mark.parametrize(
+        ("arrange", "awaiting", "expected"),
+        [
+            pytest.param(
+                _no_session,
+                0,
+                {"status": "none", "last_error": None, "waiting": 0, "warnings": []},
+                id="never_created",
+            ),
+            pytest.param(
+                _running_session,
+                0,
+                {"status": "running", "last_error": None, "waiting": 0, "warnings": []},
+                id="running",
+            ),
+            pytest.param(
+                _crashed_session,
+                2,
+                {
+                    "status": "crashed",
+                    "last_error": "account: 空いたアカウントがありません",
+                    "waiting": 2,
+                    "warnings": [],
+                },
+                id="crashed",
+            ),
+            pytest.param(
+                _running_without_launch,
+                0,
+                {"status": "running", "last_error": None, "waiting": 0, "warnings": ["launch_record_missing"]},
+                id="launch_record_missing",
+            ),
+        ],
+    )
+    def test_screen_session_status(
+        arrange: Callable[[SimpleNamespace], None],
+        awaiting: int,
+        expected: dict[str, Any],
+        ctx: SimpleNamespace,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """状態・失敗の理由・待ちの数・記録が無い警告を組み立てる（正常系）。"""
+        # 準備
+        arrange(ctx)
+        monkeypatch.setattr(threads, "status_counts", lambda _root: (0, awaiting, None))
+        before = state.read_session(ctx.state_root, WORKSPACE_ID)
+        # 実行
+>       body = sessions.screen_session_status(WORKSPACE_ID, ctx)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'sessions' has no attribute 'screen_session_status'
+
+tests/unit/scripts/test_sessions.py:1920: AttributeError
+_____________________ test_screen_session_status[running] ______________________
+
+arrange = <function _running_session at 0x77ad5806f600>, awaiting = 0
+expected = {'status': 'running', 'last_error': None, 'waiting': 0, 'warnings': []}
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-previ...un0/家計簿/.mindstella/dev-docs.yaml'], 'outsideRead': True}, home=HomeSettings(balancer_url=None, release_on_limit=True))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad554b62d0>
+
+    @pytest.mark.parametrize(
+        ("arrange", "awaiting", "expected"),
+        [
+            pytest.param(
+                _no_session,
+                0,
+                {"status": "none", "last_error": None, "waiting": 0, "warnings": []},
+                id="never_created",
+            ),
+            pytest.param(
+                _running_session,
+                0,
+                {"status": "running", "last_error": None, "waiting": 0, "warnings": []},
+                id="running",
+            ),
+            pytest.param(
+                _crashed_session,
+                2,
+                {
+                    "status": "crashed",
+                    "last_error": "account: 空いたアカウントがありません",
+                    "waiting": 2,
+                    "warnings": [],
+                },
+                id="crashed",
+            ),
+            pytest.param(
+                _running_without_launch,
+                0,
+                {"status": "running", "last_error": None, "waiting": 0, "warnings": ["launch_record_missing"]},
+                id="launch_record_missing",
+            ),
+        ],
+    )
+    def test_screen_session_status(
+        arrange: Callable[[SimpleNamespace], None],
+        awaiting: int,
+        expected: dict[str, Any],
+        ctx: SimpleNamespace,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """状態・失敗の理由・待ちの数・記録が無い警告を組み立てる（正常系）。"""
+        # 準備
+        arrange(ctx)
+        monkeypatch.setattr(threads, "status_counts", lambda _root: (0, awaiting, None))
+        before = state.read_session(ctx.state_root, WORKSPACE_ID)
+        # 実行
+>       body = sessions.screen_session_status(WORKSPACE_ID, ctx)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'sessions' has no attribute 'screen_session_status'
+
+tests/unit/scripts/test_sessions.py:1920: AttributeError
+_____________________ test_screen_session_status[crashed] ______________________
+
+arrange = <function _crashed_session at 0x77ad5806f6a0>, awaiting = 2
+expected = {'status': 'crashed', 'last_error': 'account: 空いたアカウントがありません', 'waiting': 2, 'warnings': []}
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-previ...ra0/家計簿/.mindstella/dev-docs.yaml'], 'outsideRead': True}, home=HomeSettings(balancer_url=None, release_on_limit=True))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad554b7aa0>
+
+    @pytest.mark.parametrize(
+        ("arrange", "awaiting", "expected"),
+        [
+            pytest.param(
+                _no_session,
+                0,
+                {"status": "none", "last_error": None, "waiting": 0, "warnings": []},
+                id="never_created",
+            ),
+            pytest.param(
+                _running_session,
+                0,
+                {"status": "running", "last_error": None, "waiting": 0, "warnings": []},
+                id="running",
+            ),
+            pytest.param(
+                _crashed_session,
+                2,
+                {
+                    "status": "crashed",
+                    "last_error": "account: 空いたアカウントがありません",
+                    "waiting": 2,
+                    "warnings": [],
+                },
+                id="crashed",
+            ),
+            pytest.param(
+                _running_without_launch,
+                0,
+                {"status": "running", "last_error": None, "waiting": 0, "warnings": ["launch_record_missing"]},
+                id="launch_record_missing",
+            ),
+        ],
+    )
+    def test_screen_session_status(
+        arrange: Callable[[SimpleNamespace], None],
+        awaiting: int,
+        expected: dict[str, Any],
+        ctx: SimpleNamespace,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """状態・失敗の理由・待ちの数・記録が無い警告を組み立てる（正常系）。"""
+        # 準備
+        arrange(ctx)
+        monkeypatch.setattr(threads, "status_counts", lambda _root: (0, awaiting, None))
+        before = state.read_session(ctx.state_root, WORKSPACE_ID)
+        # 実行
+>       body = sessions.screen_session_status(WORKSPACE_ID, ctx)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'sessions' has no attribute 'screen_session_status'
+
+tests/unit/scripts/test_sessions.py:1920: AttributeError
+______________ test_screen_session_status[launch_record_missing] _______________
+
+arrange = <function _running_without_launch at 0x77ad5806f740>, awaiting = 0
+expected = {'status': 'running', 'last_error': None, 'waiting': 0, 'warnings': ['launch_record_missing']}
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-previ...au0/家計簿/.mindstella/dev-docs.yaml'], 'outsideRead': True}, home=HomeSettings(balancer_url=None, release_on_limit=True))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad554b5340>
+
+    @pytest.mark.parametrize(
+        ("arrange", "awaiting", "expected"),
+        [
+            pytest.param(
+                _no_session,
+                0,
+                {"status": "none", "last_error": None, "waiting": 0, "warnings": []},
+                id="never_created",
+            ),
+            pytest.param(
+                _running_session,
+                0,
+                {"status": "running", "last_error": None, "waiting": 0, "warnings": []},
+                id="running",
+            ),
+            pytest.param(
+                _crashed_session,
+                2,
+                {
+                    "status": "crashed",
+                    "last_error": "account: 空いたアカウントがありません",
+                    "waiting": 2,
+                    "warnings": [],
+                },
+                id="crashed",
+            ),
+            pytest.param(
+                _running_without_launch,
+                0,
+                {"status": "running", "last_error": None, "waiting": 0, "warnings": ["launch_record_missing"]},
+                id="launch_record_missing",
+            ),
+        ],
+    )
+    def test_screen_session_status(
+        arrange: Callable[[SimpleNamespace], None],
+        awaiting: int,
+        expected: dict[str, Any],
+        ctx: SimpleNamespace,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """状態・失敗の理由・待ちの数・記録が無い警告を組み立てる（正常系）。"""
+        # 準備
+        arrange(ctx)
+        monkeypatch.setattr(threads, "status_counts", lambda _root: (0, awaiting, None))
+        before = state.read_session(ctx.state_root, WORKSPACE_ID)
+        # 実行
+>       body = sessions.screen_session_status(WORKSPACE_ID, ctx)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'sessions' has no attribute 'screen_session_status'
+
+tests/unit/scripts/test_sessions.py:1920: AttributeError
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/.venvs/mindstella-dev/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_builder.py::test_collect_preview_data_with_changes
+FAILED tests/unit/scripts/test_builder.py::test_collect_preview_data_turn_point[missing]
+FAILED tests/unit/scripts/test_builder.py::test_collect_preview_data_turn_point[recorded]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[running]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[running-dead]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[restarting-ready]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[restarting-timeout]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[crashed-restarted]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[crashed-failed]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[close-pending]
+FAILED tests/unit/scripts/test_comments.py::test_commit_pending_set - Attribu...
+FAILED tests/unit/scripts/test_comments.py::test_commit_pending_set_when_empty
+FAILED tests/unit/scripts/test_comments.py::test_record_turn_point_when_write_fails
+FAILED tests/unit/scripts/test_home_settings.py::test_load_home_settings_public_url[trailing_slash]
+FAILED tests/unit/scripts/test_home_settings.py::test_load_home_settings_public_url[with_port]
+FAILED tests/unit/scripts/test_home_settings.py::test_load_home_settings_public_url[missing]
+FAILED tests/unit/scripts/test_home_settings.py::test_load_home_settings_when_public_url_invalid[with_path]
+FAILED tests/unit/scripts/test_home_settings.py::test_load_home_settings_when_public_url_invalid[scheme]
+FAILED tests/unit/scripts/test_home_settings.py::test_load_home_settings_when_public_url_invalid[number]
+FAILED tests/unit/scripts/test_home_settings.py::test_load_home_settings_when_public_url_invalid[not_mapping]
+FAILED tests/unit/scripts/test_read_point.py::test_load_turn_point - Attribut...
+FAILED tests/unit/scripts/test_read_point.py::test_load_turn_point_when_missing
+FAILED tests/unit/scripts/test_read_point.py::test_load_turn_point_when_broken[not_json]
+FAILED tests/unit/scripts/test_read_point.py::test_load_turn_point_when_broken[negative]
+FAILED tests/unit/scripts/test_read_point.py::test_load_turn_point_when_broken[at_number]
+FAILED tests/unit/scripts/test_read_point.py::test_save_turn_point_when_write_fails
+FAILED tests/unit/scripts/test_serve.py::test_load_external_access_with_public_host
+FAILED tests/unit/scripts/test_serve.py::test_stream_events_when_session_changed
+FAILED tests/unit/scripts/test_serve.py::test_session_response - AttributeErr...
+FAILED tests/unit/scripts/test_serve.py::test_session_response_when_no_access
+FAILED tests/unit/scripts/test_serve.py::test_session_restart_response - Attr...
+FAILED tests/unit/scripts/test_serve.py::test_session_restart_response_when_refused[origin]
+FAILED tests/unit/scripts/test_serve.py::test_session_restart_response_when_refused[restarting]
+FAILED tests/unit/scripts/test_sessions.py::test_screen_session_status[never_created]
+FAILED tests/unit/scripts/test_sessions.py::test_screen_session_status[running]
+FAILED tests/unit/scripts/test_sessions.py::test_screen_session_status[crashed]
+FAILED tests/unit/scripts/test_sessions.py::test_screen_session_status[launch_record_missing]
+37 failed, 1778 passed, 1 skipped, 5 warnings in 34.91s
+exit=1
+
+## 単体テスト（フロント）
+$ npx vitest run
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle
+
+ ❯ frontend/src/shared/core/list-rows.test.ts (5 tests | 3 failed) 31ms
+   ❯ changedColumn (1)
+     × changed_column 11ms
+   ❯ drawerGroups (2)
+     × drawer_groups_when_changed: two_unread 0ms
+     × drawer_groups_when_changed: no_unread 0ms
+ ❯ frontend/src/shared/core/diff.test.ts (19 tests | 7 failed) 37ms
+   ❯ resolveDiffPoint の今回の差分 (3)
+     × resolve_diff_point_when_turn: after_turn 3ms
+     × resolve_diff_point_when_turn: before_any_send 1ms
+     × resolve_diff_point_when_turn: no_changes_after_send 0ms
+   ❯ turnSub (3)
+     × turn_sub: 10/04 14:50 の送信より後の書き換え 2ms
+     × turn_sub: 10/04 14:50 の送信より後の書き換えはありません 0ms
+     × turn_sub: 送信の前のため、最初からの書き換え 1ms
+   ❯ unreadChangedIds (1)
+     × unread_changed_ids 0ms
+ ❯ frontend/src/shared/components/topbar.test.tsx (13 tests | 1 failed) 796ms
+   ❯ Topbar (13)
+     × topbar_when_session_failed 18ms
+ ❯ frontend/src/shared/hooks/use-session-status.test.tsx (0 test)
+ ❯ frontend/src/shared/components/list-screen.test.tsx (4 tests | 1 failed) 951ms
+   ❯ ListScreen changed (1)
+     × list_screen_when_changed_only 100ms
+ ❯ frontend/src/shared/hooks/use-comments.test.tsx (13 tests | 1 failed) 1241ms
+   ❯ useSendComments (2)
+     × use_send_comments 83ms
+ ❯ frontend/src/features/history/history/history-dialog.test.tsx (5 tests | 1 failed) 1994ms
+   ❯ HistoryScreen (5)
+     × history_screen_when_turn 371ms
+ ❯ frontend/src/app/preview-shell.test.tsx (27 tests | 1 failed) 6254ms
+   ❯ PreviewShell (27)
+     × preview_shell_when_session_status 1018ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/hooks/use-session-status.test.tsx [ frontend/src/shared/hooks/use-session-status.test.tsx ]
+Error: Failed to resolve import "@/shared/hooks/use-session-status" from "frontend/src/shared/hooks/use-session-status.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle/frontend/src/shared/hooks/use-session-status.test.tsx:5:50
+  2  |  import { http, HttpResponse } from "msw";
+  3  |  import { describe, expect, test } from "vitest";
+  4  |  import { toSessionStatus, useSessionStatus } from "@/shared/hooks/use-session-status";
+     |                                                     ^
+  5  |  import { server } from "@/testing/msw/server";
+  6  |  import { renderPreviewHook } from "@/testing/render";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 15 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_session_status
+TestingLibraryElementError: Unable to find an element with the text: MindStella のセッションを再起動できませんでした. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body
+  style=""
+>
+  <div>
+    <div
+      class="flex h-dvh flex-col overflow-hidden"
+    >
+      <div>
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg max-md:gap-px max-md:px-1.5 max-xs:px-1 md:max-lg:gap-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5 max-md:hidden"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <span
+              class="group/tip relative inline-flex flex-none"
+            >
+              <button
+                aria-busy="false"
+                aria-label="最新の記録を読み込む"
+                class="relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg disabled:cursor-default max-md:w-7 max-md:flex-none max-xs:w-6"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="M21 12a9 9 0 1 1-3-6.7L21 8"
+                  />
+                  <path
+                    d="M21 3v5h-5"
+                  />
+                </svg>
+              </button>
+              <span
+                aria-hidden="true"
+                class="absolute top-full z-40 hidden pt-1.5 group-hover/tip:block group-has-focus-visible/tip:block in-data-tipsoff:hidden! left-0"
+              >
+                <span
+                  class="block w-max max-w-64 rounded-control bg-foreground px-2 py-1 text-small font-normal text-background"
+                >
+                  最新の記録を読み込む
+                </span>
+              </span>
+            </span>
+            <span
+              class="group/tip relative inline-flex flex-none"
+            >
+              <button
+                aria-keyshortcuts="Control+K Meta+K"
+                aria-label="すべての項目を検索"
+                class="relative flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent pr-1.5 pl-2 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:justify-center max-lg:p-0 max-md:w-7 max-md:flex-none max-xs:w-6"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <circle
+                    cx="11"
+                    cy="11"
+                    r="7"
+                  />
+                  <path
+                    d="m20 20-3.5-3.5"
+                  />
+                </svg>
+                <kbd
+                  class="rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+                >
+                  Ctrl+K
+                </kbd>
+              </button>
+              <span
+                aria-hidden="true"
+                class="absolute top-full z-40 hidden pt-1.5 group-hover/tip:block group-has-focus-visible/tip:block in-data-tipsoff:hidden! left-0"
+              >
+                <span
+                  class="block w-max max-w-64 rounded-control bg-foreground px-2 py-1 text-small fon...
+
+Ignored nodes: comments, script, style
+<body
+  style=""
+>
+  <div>
+    <div
+      class="flex h-dvh flex-col overflow-hidden"
+    >
+      <div>
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg max-md:gap-px max-md:px-1.5 max-xs:px-1 md:max-lg:gap-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5 max-md:hidden"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <span
+              class="group/tip relative inline-flex flex-none"
+            >
+              <button
+                aria-busy="false"
+                aria-label="最新の記録を読み込む"
+                class="relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg disabled:cursor-default max-md:w-7 max-md:flex-none max-xs:w-6"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="M21 12a9 9 0 1 1-3-6.7L21 8"
+                  />
+                  <path
+                    d="M21 3v5h-5"
+                  />
+                </svg>
+              </button>
+              <span
+                aria-hidden="true"
+                class="absolute top-full z-40 hidden pt-1.5 group-hover/tip:block group-has-focus-visible/tip:block in-data-tipsoff:hidden! left-0"
+              >
+                <span
+                  class="block w-max max-w-64 rounded-control bg-foreground px-2 py-1 text-small font-normal text-background"
+                >
+                  最新の記録を読み込む
+                </span>
+              </span>
+            </span>
+            <span
+              class="group/tip relative inline-flex flex-none"
+            >
+              <button
+                aria-keyshortcuts="Control+K Meta+K"
+                aria-label="すべての項目を検索"
+                class="relative flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent pr-1.5 pl-2 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:justify-center max-lg:p-0 max-md:w-7 max-md:flex-none max-xs:w-6"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <circle
+                    cx="11"
+                    cy="11"
+                    r="7"
+                  />
+                  <path
+                    d="m20 20-3.5-3.5"
+                  />
+                </svg>
+                <kbd
+                  class="rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+                >
+                  Ctrl+K
+                </kbd>
+              </button>
+              <span
+                aria-hidden="true"
+                class="absolute top-full z-40 hidden pt-1.5 group-hover/tip:block group-has-focus-visible/tip:block in-data-tipsoff:hidden! left-0"
+              >
+                <span
+                  class="block w-max max-w-64 rounded-control bg-foreground px-2 py-1 text-small fon...
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/app/preview-shell.test.tsx:439:25
+    437|     const view = renderRoute("/?tab=overview");
+    438|     const close = connectEvents(view.queryClient);
+    439|     expect(await screen.findByText("MindStella のセッションを再起動できませんでした")).t…
+       |                         ^
+    440|     expect(screen.getByText("空いたアカウントがありません。")).toBeInTheDocument();
+    441|     server.use(http.get("*/api/session", () => HttpResponse.json({ sta…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  frontend/src/shared/components/list-screen.test.tsx > ListScreen changed > list_screen_when_changed_only
+AssertionError: expected <button type="button" …(3)></button> to be null
+
+- Expected:
+null
+
++ Received:
+<button
+  aria-describedby="card-ids-T-1"
+  class="min-w-0 cursor-pointer text-left text-small font-medium wrap-anywhere outline-none after:absolute after:inset-0 after:rounded-card"
+  data-id="T-1"
+  type="button"
+>
+  作業 1
+</button>
+
+ ❯ frontend/src/shared/components/list-screen.test.tsx:82:40
+     80|     // 検証
+     81|     expect(await screen.findByText("作業 2")).toBeInTheDocument();
+     82|     expect(screen.queryByText("作業 1")).toBeNull();
+       |                                        ^
+     83|     expect(screen.getByText(/変更: 未読の変更あり/)).toBeInTheDocument();
+     84|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  frontend/src/shared/components/topbar.test.tsx > Topbar > topbar_when_session_failed
+TestingLibraryElementError: Unable to find an element with the text: MindStella のセッションを再起動できませんでした. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div>
+      <header
+        class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+      >
+        <span
+          class="flex min-w-0 flex-none items-center gap-2.5"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-5.5 flex-none text-mark"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2.2"
+            viewBox="0 0 32 32"
+          >
+            <circle
+              cx="8"
+              cy="16"
+              r="4"
+            />
+            <path
+              d="M12 16h5M17 16V7h5M17 16v9h5"
+            />
+            <circle
+              cx="25"
+              cy="7"
+              r="2.6"
+            />
+            <circle
+              cx="25"
+              cy="25"
+              r="2.6"
+            />
+          </svg>
+          <span
+            class="font-bold tracking-tight max-xs:hidden"
+          >
+            mindstella
+          </span>
+        </span>
+        <span
+          class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+          title="話し合い"
+        >
+          話し合い
+        </span>
+        <span
+          class="flex-1"
+        />
+        <span
+          class="group/tip relative inline-flex flex-none"
+        >
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="relative flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent pr-1.5 pl-2 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <kbd
+              class="rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <span
+            aria-hidden="true"
+            class="absolute top-full z-40 hidden pt-1.5 group-hover/tip:block group-has-focus-visible/tip:block in-data-tipsoff:hidden! left-0"
+          >
+            <span
+              class="block w-max max-w-64 rounded-control bg-foreground px-2 py-1 text-small font-normal text-background"
+            >
+              すべての項目を検索
+            </span>
+          </span>
+        </span>
+        <span
+          class="group/tip relative inline-flex min-w-6 flex-initial"
+        >
+          <button
+            aria-label="ダークに切り替え"
+            class="relative inline-grid size-8 min-w-6 cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xs:w-7 max-xs:flex-none"
+            data-theme="dark"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"
+              />
+            </svg>
+          </button>
+          <span
+            aria-hidden="true"
+            class="absolute top-full z-40 hidden pt-1.5 group-hover/tip:block group-has-focus-visible/tip:block in-data-tipsoff:hidden! right-0"
+          >
+            <span
+              class="block w-max max-w-64 rounded-control bg-foreground px-2 py-1 text-small font-normal text-background"
+            >
+              ダークに切り替え
+            </span>
+          </span>
+        </span>
+      </header>
+      <nav
+        aria-label="項目の種類"
+        class="relative z-25 no-scrollbar flex gap-1 overflow-x-auto border-b border-border bg-card px-5"
+      >
+        <a
+          aria-current="page"
+          class="relative flex h-11 items-center gap-2 border-b-2 px-2.5 whitespace-nowrap no-underline hover:text-foreground border-mark font-semibold text-foreground"
+          data-tab="overview"
+          href="./"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 flex-none fill-none stroke-current"
+            height="16"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="16"
+          >
+            <path
+              d="M3 11 12 4l9 7"
+            />
+            <path
+              d="M5 10v10h14V10"
+            />
+          </svg>
+          概要
+        </a>
+        <a
+          class="relative flex h-11 items-center gap-2 border-b-2 border-transparent px-2.5 whitespace-nowrap text-muted-foreground no-underline hover:text-foreground"
+          data-tab="decisions"
+          href="?tab=decisions"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 flex-none fill-none stroke-current"
+            height="16"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="16"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="8"
+            />
+            <path
+              d="m9 12 2 2 4-4"
+            />
+          </svg>
+          検討事項
+          <span
+            class="mono text-tab-count font-normal text-subtle-foreground"
+          >
+            2
+          </span>
+        </a>
+      </nav>
+      <div
+        class="flex items-start gap-2.5 border-b border-border bg-card py-2.5 pr-1 pl-5 text-small text-foreground max-sm:pl-2.5"
+        role="alert"
+      >
+        <svg
+          aria-hidden="true"
+          class="size-4 fill-none stroke-current mt-0.5 flex-none text-st-review"
+          height="16"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.75"
+          viewBox="0 0 24 24"
+          width="16"
+        >
+          <path
+            d="M12 3 2 20h20Z"
+          />
+          <path
+            d="M12 10v4M12 17h.01"
+          />
+        </svg>
+        <div
+          class="min-w-0 flex-1 wrap-anywhere"
+        >
+          <strong
+            class="mb-0.5 block"
+          >
+            同じ ID の項目が 2 件あります
+          </strong>
+          ほかのセッションの書き込みで、
+          検討事項
+           
+          <a
+            class="font-mono whitespace-nowrap text-mark underline"
+            href="#id=D-12"
+          >
+            D-12
+          </a>
+           
+          が重なりました。片方の ID を変更してください。
+        </div>
+        <button
+          aria-label="通知を閉じる"
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8 flex-none"
+          tabindex="0"
+          title="通知を閉じる"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 flex-none fill-none stroke-current"
+            height="16"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="16"
+          >
+            <path
+              d="M18 6 6 18M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/shared/components/topbar.test.tsx:206:24
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  frontend/src/shared/core/diff.test.ts > resolveDiffPoint の今回の差分 > resolve_diff_point_when_turn: after_turn
+ FAIL  frontend/src/shared/core/diff.test.ts > resolveDiffPoint の今回の差分 > resolve_diff_point_when_turn: before_any_send
+ FAIL  frontend/src/shared/core/diff.test.ts > resolveDiffPoint の今回の差分 > resolve_diff_point_when_turn: no_changes_after_send
+AssertionError: expected null not to be null
+ ❯ frontend/src/shared/core/diff.test.ts:147:23
+    145|     const point = resolveDiffPoint(input, "turn");
+    146|     // 検証
+    147|     expect(point).not.toBeNull();
+       |                       ^
+    148|     expect(point?.sel).toBe("turn");
+    149|     expect(point?.name).toBe("今回の差分");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  frontend/src/shared/core/diff.test.ts > turnSub > turn_sub: 10/04 14:50 の送信より後の書き換え
+ FAIL  frontend/src/shared/core/diff.test.ts > turnSub > turn_sub: 10/04 14:50 の送信より後の書き換えはありません
+ FAIL  frontend/src/shared/core/diff.test.ts > turnSub > turn_sub: 送信の前のため、最初からの書き換え
+TypeError: turnSub is not a function
+ ❯ frontend/src/shared/core/diff.test.ts:165:12
+    163|     { turnAt: null, count: 5, expected: "送信の前のため、最初からの書き換え" },
+    164|   ])("turn_sub: $expected", ({ turnAt, count, expected }) => {
+    165|     expect(turnSub(turnAt, count)).toBe(expected);
+       |            ^
+    166|   });
+    167| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  frontend/src/shared/core/diff.test.ts > unreadChangedIds > unread_changed_ids
+TypeError: unreadChangedIds is not a function
+ ❯ frontend/src/shared/core/diff.test.ts:184:17
+    182|     };
+    183|     // 実行
+    184|     const ids = unreadChangedIds(input, ["V-2"]);
+       |                 ^
+    185|     // 検証
+    186|     expect([...ids]).toEqual(["D-2"]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  frontend/src/shared/core/list-rows.test.ts > changedColumn > changed_column
+TypeError: changedColumn is not a function
+ ❯ frontend/src/shared/core/list-rows.test.ts:41:20
+     39|   test("changed_column", () => {
+     40|     // 準備
+     41|     const column = changedColumn(new Set(["D-2"]));
+       |                    ^
+     42|     // 実行・検証
+     43|     expect(column.key).toBe("changed");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+ FAIL  frontend/src/shared/core/list-rows.test.ts > drawerGroups > drawer_groups_when_changed: two_unread
+ FAIL  frontend/src/shared/core/list-rows.test.ts > drawerGroups > drawer_groups_when_changed: no_unread
+TypeError: changedColumn is not a function
+ ❯ frontend/src/shared/core/list-rows.test.ts:64:21
+     62|   ])("drawer_groups_when_changed: $name", ({ ids, count }) => {
+     63|     // 準備
+     64|     const changed = changedColumn(new Set(ids));
+       |                     ^
+     65|     // 実行
+     66|     const groups = drawerGroups({ rows, columns: [statusColumn, change…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/16]⎯
+
+ FAIL  frontend/src/shared/hooks/use-comments.test.tsx > useSendComments > use_send_comments
+AssertionError: expected [ [ '/api/comments' ], …(1) ] to deeply equal ArrayContaining{…}
+
+- Expected
++ Received
+
+- ArrayContaining [
++ [
+    [
+      "/api/comments",
+    ],
+    [
+      "/api/threads",
+-   ],
+-   [
+-     "session",
+    ],
+  ]
+
+ ❯ frontend/src/shared/hooks/use-comments.test.tsx:168:35
+    166|     await act(() => result.current.mutateAsync(["C-1"]));
+    167|     // 検証
+    168|     expect(queryKeys(invalidate)).toEqual(expect.arrayContaining([["/a…
+       |                                   ^
+    169|   });
+    170|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/16]⎯
+
+ FAIL  frontend/src/features/history/history/history-dialog.test.tsx > HistoryScreen > history_screen_when_turn
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/今回の差分/`
+
+Here are the accessible roles:
+
+  dialog:
+
+  Name "変更履歴":
+  <div
+    aria-labelledby="base-ui-_r_e_"
+    class="fixed top-1/2 left-1/2 z-50 max-h-full w-full max-w-lg -translate-1/2 overflow-auto rounded-card border border-border bg-popover p-4 text-popover-foreground shadow-lg"
+    data-base-ui-focusable=""
+    data-open=""
+    id="_r_c_"
+    role="dialog"
+    style="--nested-dialogs: 0;"
+    tabindex="-1"
+  />
+
+  --------------------------------------------------
+  heading:
+
+  Name "変更履歴":
+  <h2
+    class="text-h2 font-medium"
+    id="base-ui-_r_e_"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "変更履歴を閉じる":
+  <button
+    aria-label="変更履歴を閉じる"
+    class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+    tabindex="0"
+    type="button"
+  />
+
+  Name "すべて既読にする":
+  <button
+    class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"
+    tabindex="0"
+    type="button"
+  />
+
+  Name "最新マーカーと差分を出さずに今の内容だけを読む":
+  <button
+    class="flex w-full cursor-pointer items-center gap-2 rounded-control p-2 text-left hover:bg-accent"
+    data-sel=""
+    type="button"
+  />
+
+  Name "未読2 回目11/02 09:001 件":
+  <button
+    class="flex w-full cursor-pointer items-center gap-2 rounded-control p-2 text-left hover:bg-accent"
+    data-sel="V-2"
+    type="button"
+  />
+
+  Name "1 回目11/01 09:001 件":
+  <button
+    aria-current="true"
+    class="flex w-full cursor-pointer items-center gap-2 rounded-control p-2 text-left hover:bg-accent"
+    data-sel="V-1"
+    type="button"
+  />
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  <ul
+    class="max-h-96 overflow-auto p-1"
+  />
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  Name "":
+  <li />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body
+  style="position: relative; height: calc(100dvh - 768px); width: calc(100vw - 1024px); box-sizing: border-box; overflow-y: hidden; overflow-x: hidden; scroll-behavior: unset;"
+>
+  <div
+    aria-hidden="true"
+    data-base-ui-inert=""
+  >
+    <div
+      class="flex h-dvh flex-col overflow-hidden"
+    >
+      <div>
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg max-xl:gap-2 max-md:gap-px max-md:px-1.5 max-xs:px-1 md:max-lg:gap-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5 max-xs:hidden max-md:hidden"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xl:hidden max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0 max-xl:hidden"
+            />
+            <span
+              class="group/tip relative inline-flex flex-none"
+            >
+              <button
+                aria-busy="false"
+                aria-label="最新の記録を読み込む"
+                class="relative inline-grid size-8 flex-none cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg disabled:cursor-default max-md:w-7 max-md:flex-none max-xs:w-6"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="M21 12a9 9 0 1 1-3-6.7L21 8"
+                  />
+                  <path
+                    d="M21 3v5h-5"
+                  />
+                </svg>
+              </button>
+              <span
+                aria-hidden="true"
+                class="absolute top-full z-40 hidden pt-1.5 group-hover/tip:block group-has-focus-visible/tip:block in-data-tipsoff:hidden! left-0"
+              >
+                <span
+                  class="block w-max max-w-64 rounded-control bg-foreground px-2 py-1 text-small font-normal text-background"
+                >
+                  最新の記録を読み込む
+                </span>
+              </span>
+            </span>
+            <span
+              class="group/tip relative inline-flex flex-none"
+            >
+              <button
+                aria-keyshortcuts="Control+K Meta+K"
+                aria-label="すべての項目を検索"
+                class="relative flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent pr-1.5 pl-2 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:justify-center max-lg:p-0 max-md:w-7 max-md:flex-none max-xs:w-6"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <circle
+                    cx="11"
+                    cy="11"
+                    r="7"
+                  />
+                  <path
+                    d="m20 20-3.5-3.5"
+                  />
+                </svg>
+                <kbd
+                  class="rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+                >
+                  Ctrl+K
+                </kbd>
+              </button>
+              <span
+                aria-hidden="true"
+                [...
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/features/history/history/history-dialog.test.tsx:88:25
+     86|     await userEvent.click(await screen.findByRole("button", { name: /^…
+     87|     const latest = await screen.findByRole("button", { name: /最新/ });
+     88|     const turn = screen.getByRole("button", { name: /今回の差分/ });
+       |                         ^
+     89|     const second = screen.getByRole("button", { name: /2 回目/ });
+     90|     // 実行
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/16]⎯
+
+
+ Test Files  8 failed | 115 passed (123)
+      Tests  15 failed | 700 passed (715)
+   Start at  16:51:20
+   Duration  36.79s (environment 44%, tests 29%, import 14%, setup 9%, transform 4%)
+
+Environment  jsdom was created 123 times · 101.74s total, 44% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit=1

@@ -2,6 +2,7 @@
 import { type MouseEvent, type ReactNode, useEffect, useState } from "react";
 
 import { DuplicateIdNotice } from "@/shared/components/duplicate-id-notice";
+import { SessionStatusBanner, type SessionStatus } from "@/shared/components/session-status-banner";
 import { Icon, type IconName } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { formatElapsed } from "@/shared/core/voice";
@@ -85,6 +86,12 @@ export type TopbarProps = {
   duplicateIds?: { id: string; kind: string }[];
   onOpenDuplicate?: (id: string) => void;
   onCloseDuplicate?: () => void;
+  /** MindStella のセッションの状態。running 以外なら、タブの帯の下・重なった ID の通知の上に状態のバーを出す */
+  sessionStatus?: SessionStatus;
+  /** 状態のバーの「再起動」を押したとき */
+  onRestartSession?: () => void;
+  /** 記録が無い警告の閉じるボタンを押したとき */
+  onCloseSessionWarning?: () => void;
 };
 
 /** 件数の表示を揺らさない上限 */
@@ -579,6 +586,12 @@ const fitOf = (props: TopbarProps): Fit => {
   };
 };
 
+/** 状態を受け取ったときだけ、MindStella のセッションの状態のバーを出す */
+const SessionStatusSlot = ({ sessionStatus, onRestartSession, onCloseSessionWarning }: TopbarProps) => {
+  if (sessionStatus === undefined) return null;
+  return <SessionStatusBanner status={sessionStatus} {...(onRestartSession === undefined ? {} : { onRestart: onRestartSession })} {...(onCloseSessionWarning === undefined ? {} : { onClose: onCloseSessionWarning })} />;
+};
+
 export const Topbar = (props: TopbarProps) => {
   const {
     title,
@@ -653,6 +666,7 @@ export const Topbar = (props: TopbarProps) => {
       </header>
       {voiceNotice === null ? null : <VoiceNoticeBand notice={voiceNotice} onOpen={props.onOpenVoice} onDismiss={props.onDismissVoiceNotice} />}
       <TabBar tabs={tabs} current={current} onNavigate={props.onNavigate} />
+      <SessionStatusSlot {...props} />
       <DuplicateIdNotice ids={duplicateIds} onOpen={props.onOpenDuplicate} onClose={props.onCloseDuplicate} />
     </div>
   );

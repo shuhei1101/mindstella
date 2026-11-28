@@ -38,7 +38,7 @@ def test_select_and_clear(page: Page, write_history_preview: WriteReviewPreview)
 
 
 def test_points_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:
-    """時点の一覧を常に出し、最新・まだまとめていない変更・まとまりの新しい順に並べ、未読のまとまりにマーカーを付ける（正常系）。"""
+    """時点の一覧を常に出し、最新・今回の差分・まだまとめていない変更・まとまりの新しい順に並べ、未読のまとまりにマーカーを付ける（正常系）。"""
     # 準備
     url, _ = write_history_preview()
     open_spa(page, url, "?tab=decisions")
@@ -47,7 +47,7 @@ def test_points_visible(page: Page, write_history_preview: WriteReviewPreview) -
     dialog = page.get_by_role("dialog", name="変更履歴")
     rows = dialog.locator("button[data-sel]")
     # 検証
-    assert rows.evaluate_all("rows => rows.map((r) => r.dataset.sel)") == ["", "pending", "V-2", "V-1"]
+    assert rows.evaluate_all("rows => rows.map((r) => r.dataset.sel)") == ["", "turn", "pending", "V-2", "V-1"]
     expect(rows.first).to_contain_text("最新")
     expect(dialog.locator("button[data-sel='V-2']").get_by_text("未読", exact=True)).to_have_count(1)
     expect(dialog.locator("button[data-sel='V-1']").get_by_text("未読", exact=True)).to_have_count(1)
@@ -149,3 +149,19 @@ def test_points_when_external(page: Page, write_history_preview: WriteReviewPrev
     expect(row).to_contain_text("ほかのセッションの書き込み")
     expect(row).to_contain_text("外部の変更")
     assert dialog.get_by_text("外部の変更", exact=True).count() == 1
+
+
+def test_points_when_turn(page: Page, write_history_preview: WriteReviewPreview) -> None:
+    """コメントを送信する前は「今回の差分」を最初からの書き換えとして出し、選ぶと diff=turn の差分の表示にする（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    open_spa(page, url, "?tab=decisions")
+    page.locator(HISTORY_BUTTON).click()
+    turn = page.get_by_role("dialog", name="変更履歴").locator("button[data-sel='turn']")
+    expect(turn).to_contain_text("今回の差分")
+    expect(turn).to_contain_text("送信の前のため、最初からの書き換え")
+    # 実行
+    turn.click()
+    # 検証
+    expect(page.get_by_role("dialog", name="変更履歴")).to_have_count(0)
+    expect(page).to_have_url(re.compile("diff=turn"))
