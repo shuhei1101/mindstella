@@ -4,3 +4,27 @@ confirmations:
     decided_by: 👍
     approver: shuhei1101
     thread: https://github.com/shuhei1101/mindstella/pull/733#discussion_r4722778858
+  - topic: '#693 の変更履歴の行の名前と説明'
+    decision: 名前「今回の差分」、説明「{日時} の送信より後の書き換え」（送信の前は「送信の前のため、最初からの書き換え」、変化が無いときは「{日時} の送信より後の書き換えはありません」。推奨案 A）
+    decided_by: 👍
+    approver: shuhei1101
+    commit: f3931b46
+    thread: https://github.com/shuhei1101/mindstella/pull/733#discussion_r4725521509
+  - topic: '#158 の変更があった項目だけを表示する絞り込みの条件の名前'
+    decision: '見出し「変更」、値「未読の変更あり」（チップは「変更: 未読の変更あり」。推奨案 A）'
+    decided_by: 👍
+    approver: shuhei1101
+    commit: f3931b46
+    thread: https://github.com/shuhei1101/mindstella/pull/733#discussion_r4725521839
+  - topic: '#586 の MindStella のセッションの状態のバーの文言と、再起動の途中にまとめて送信したときの結果の文'
+    decision: 'モックの見出し・本文とボタン「再起動」→「再起動中」。entered: false の文を「{n} 件を送信しましたが、Claude Code には入力できませんでした（{時刻}）。送信した内容は取り込み待ちとして残り、準備ができたら入力します。」にする（推奨案 A）'
+    decided_by: 👍
+    approver: shuhei1101
+    commit: f3931b46
+    thread: https://github.com/shuhei1101/mindstella/pull/733#discussion_r4725522305
+  - topic: '#592 の埋め込んだファイルを読み込めないときの警告の文'
+    decision: '「ファイルが見つかりません。本文のパス: {パス}」「このファイルはブラウザで再生・表示できない形式です。本文のパス: {パス}」の 2 つの文（推奨案 A）'
+    decided_by: 👍
+    approver: shuhei1101
+    commit: f3931b46
+    thread: https://github.com/shuhei1101/mindstella/pull/733#discussion_r4725522568
