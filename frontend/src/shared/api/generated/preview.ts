@@ -44,6 +44,8 @@ import type {
   SendNowInput,
   SendNowReply,
   SendReply,
+  SessionRestartReply,
+  SessionStatusReply,
   StaleProblem,
   ThreadStatusInput,
   ThreadStatusReply,
@@ -2559,6 +2561,256 @@ export function useSendNow<TData = Awaited<ReturnType<typeof sendNow>>, TError =
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getSendNowQueryOptions(sendNowInput,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getSessionResponse200 = {
+  data: SessionStatusReply
+  status: 200
+}
+
+export type getSessionResponse403 = {
+  data: Problem
+  status: 403
+}
+
+export type getSessionResponseSuccess = (getSessionResponse200) & {
+  headers: Headers;
+};
+export type getSessionResponseError = (getSessionResponse403) & {
+  headers: Headers;
+};
+
+export type getSessionResponse = (getSessionResponseSuccess | getSessionResponseError)
+
+export const getGetSessionUrl = () => {
+
+
+
+
+  return `/api/session`
+}
+
+/**
+ * @summary 画面の状態のバーに出す MindStella のセッションの状態・再起動の失敗の理由・記録が無い警告
+ */
+export const getSession = async ( options?: Parameters<typeof apiClient>[1]): Promise<getSessionResponse> => {
+
+  return apiClient<getSessionResponse>(getGetSessionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSessionQueryKey = () => {
+    return [
+    `/api/session`
+    ] as const;
+    }
+
+
+export const getGetSessionQueryOptions = <TData = Awaited<ReturnType<typeof getSession>>, TError = Problem>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSession>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSessionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSession>>> = ({ signal }) => getSession({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSession>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSessionQueryResult = NonNullable<Awaited<ReturnType<typeof getSession>>>
+export type GetSessionQueryError = Problem
+
+
+export function useGetSession<TData = Awaited<ReturnType<typeof getSession>>, TError = Problem>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSession>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSession>>,
+          TError,
+          Awaited<ReturnType<typeof getSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSession<TData = Awaited<ReturnType<typeof getSession>>, TError = Problem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSession>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSession>>,
+          TError,
+          Awaited<ReturnType<typeof getSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSession<TData = Awaited<ReturnType<typeof getSession>>, TError = Problem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSession>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 画面の状態のバーに出す MindStella のセッションの状態・再起動の失敗の理由・記録が無い警告
+ */
+
+export function useGetSession<TData = Awaited<ReturnType<typeof getSession>>, TError = Problem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSession>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSessionQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type postSessionRestartResponse202 = {
+  data: SessionRestartReply
+  status: 202
+}
+
+export type postSessionRestartResponse403 = {
+  data: Problem
+  status: 403
+}
+
+export type postSessionRestartResponse404 = {
+  data: Problem
+  status: 404
+}
+
+export type postSessionRestartResponse409 = {
+  data: Problem
+  status: 409
+}
+
+export type postSessionRestartResponseSuccess = (postSessionRestartResponse202) & {
+  headers: Headers;
+};
+export type postSessionRestartResponseError = (postSessionRestartResponse403 | postSessionRestartResponse404 | postSessionRestartResponse409) & {
+  headers: Headers;
+};
+
+export type postSessionRestartResponse = (postSessionRestartResponseSuccess | postSessionRestartResponseError)
+
+export const getPostSessionRestartUrl = () => {
+
+
+
+
+  return `/api/session/restart`
+}
+
+/**
+ * @summary 画面の状態のバーの「再起動」から MindStella のセッションの再起動を依頼する
+ */
+export const postSessionRestart = async ( options?: Parameters<typeof apiClient>[1]): Promise<postSessionRestartResponse> => {
+
+  return apiClient<postSessionRestartResponse>(getPostSessionRestartUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostSessionRestartQueryKey = () => {
+    return [
+    'POST', `/api/session/restart`
+    ] as const;
+    }
+
+
+export const getPostSessionRestartQueryOptions = <TData = Awaited<ReturnType<typeof postSessionRestart>>, TError = Problem>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postSessionRestart>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPostSessionRestartQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof postSessionRestart>>> = ({ signal }) => postSessionRestart({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postSessionRestart>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PostSessionRestartQueryResult = NonNullable<Awaited<ReturnType<typeof postSessionRestart>>>
+export type PostSessionRestartQueryError = Problem
+
+
+export function usePostSessionRestart<TData = Awaited<ReturnType<typeof postSessionRestart>>, TError = Problem>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postSessionRestart>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postSessionRestart>>,
+          TError,
+          Awaited<ReturnType<typeof postSessionRestart>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostSessionRestart<TData = Awaited<ReturnType<typeof postSessionRestart>>, TError = Problem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postSessionRestart>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postSessionRestart>>,
+          TError,
+          Awaited<ReturnType<typeof postSessionRestart>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostSessionRestart<TData = Awaited<ReturnType<typeof postSessionRestart>>, TError = Problem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postSessionRestart>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 画面の状態のバーの「再起動」から MindStella のセッションの再起動を依頼する
+ */
+
+export function usePostSessionRestart<TData = Awaited<ReturnType<typeof postSessionRestart>>, TError = Problem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postSessionRestart>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPostSessionRestartQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

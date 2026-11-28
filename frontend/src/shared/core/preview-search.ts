@@ -92,6 +92,8 @@ export const stringifySearchString = (search: Record<string, unknown>): string =
 /** その時点の差分を出せるか */
 const diffExists = (diff: string, index: RecordIndex): boolean => {
   const { changes } = index.data;
+  // 今回の差分は書き換えが無くても選べる
+  if (diff === "turn") return true;
   if (diff === "pending") return changes.pending.added.length + changes.pending.changed.length + (changes.pending.removed ?? []).length > 0;
   return changes.sets.some((set) => set.id === diff);
 };

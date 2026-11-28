@@ -14,14 +14,15 @@ import { Table, type Row, type TableColumn } from "@/shared/components/table";
 import { Button } from "@/shared/components/ui/button";
 import { ViewSwitch, type View } from "@/shared/components/view-switch";
 import { isChoice, type ReviewItem } from "@/shared/core/comments";
-import { removedOf } from "@/shared/core/diff";
+import { removedOf, unreadChangedIds } from "@/shared/core/diff";
 import { favoritesFirst, favoritesOnly } from "@/shared/core/favorites";
 import { NEW_ID_PREFIX, type ScreenEdit } from "@/shared/core/edits";
 import { isEmbedded } from "@/shared/core/embedded";
 import { TAG_FILTER_KEY, TEXT_FILTER_PREFIX, withoutKey, type Filters, type TagMatch } from "@/shared/core/filters";
-import { drawerGroups, filterRows, nextSort, sortRows, type ListColumn } from "@/shared/core/list-rows";
+import { changedColumn, CHANGED_FILTER_KEY, drawerGroups, filterRows, nextSort, sortRows, type ListColumn } from "@/shared/core/list-rows";
 import { describeTagExpr, matchesTagExpr, presetChoicesOf, simpleTagsOf } from "@/shared/core/presets";
 import type { LookupRecordId } from "@/shared/core/record-ids";
+import { workspaceIdOf } from "@/shared/core/workspace-path";
 import { KIND_LABEL, tagNames, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 import { commentsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
@@ -37,6 +38,7 @@ import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useFilterCandidatesStore } from "@/shared/stores/filter-candidates-store";
 import { useListOrderStore } from "@/shared/stores/list-order-store";
 import { readPrefs, writePrefs } from "@/shared/stores/prefs-store";
+import { useUnreadSetIds } from "@/shared/stores/read-changes-store";
 
 /** 画面の枠が中身に渡す値 */
 export type ListContext = {
@@ -171,6 +173,8 @@ const listOrders = ({ kind, view, sort, filtered, sorted, favorites }: { kind: K
 export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, content }: ListScreenProps) => {
   const { search, openItem, closeItem, setSort, setView } = usePreviewSearch();
   const { index } = useRecords();
+  // 「変更」の条件に使う未読のまとまり（配る書き出しでは条件を出さない）
+  const unreadSets = useUnreadSetIds(workspaceIdOf(), index === null ? [] : index.data.changes.sets.map((set) => set.id));
   const record = useRecordLookup({ index, onOpenItem: openItem });
   const { point } = useDiffView();
   const { filters, tagMatch, setFilters, setTagMatch, clearAll, setTextFilter, commitTextFilter, addTag, tagExpr, setTagExpr } = useScreenFilters(kind);
@@ -220,7 +224,9 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   if (index === null) return null;
   const columns = columnsWithFavorite(index);
   const presets = index.data.settings.presets ?? [];
-  const list = asColumns(columns);
+  // 未読のまとまりで追加・変更された項目に絞る「変更」の列（表には出さず、絞り込みとドロワーの条件だけに使う）
+  const changed = isEmbedded() ? [] : [changedColumn<Row>(unreadChangedIds(index.data.changes, unreadSets))];
+  const list = [...asColumns(columns), ...changed];
   // 追加する項目は絞り込みに関わらず先頭に置く
   const rows = index.data[kind].filter((item) => !item.id.startsWith(NEW_ID_PREFIX)) as unknown as Row[];
   // 簡易で表せないタグの式は、簡易の条件の代わりに式で絞る
@@ -243,7 +249,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
     writePrefs({ columns: all });
     setSaved(next);
   };
-  const labels = Object.fromEntries(columns.map((column) => [column.key, column.label]));
+  const labels = { ...Object.fromEntries(columns.map((column) => [column.key, column.label])), [CHANGED_FILTER_KEY]: "変更" };
   const table = (
     <Table
       kind={kind}
@@ -276,7 +282,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
     />
   );
   const conditions = columns.filter((column) => column.filterable === true);
-  const groups = drawerGroups({ rows, columns: list, conditions: asColumns(conditions), filters, tagMatch });
+  const groups = drawerGroups({ rows, columns: list, conditions: [...changed, ...asColumns(conditions)], filters, tagMatch });
   const applyCandidate = (key: string, value: string): void => {
     addValue({ filters, key, value, setFilters, addTag });
   };

@@ -13,9 +13,22 @@ export type ListColumn<R> = {
 };
 
 /** ドロワーの条件 */
-export type ListGroup = { key: string; label: string; values: { value: string; count: number; hit?: number }[]; mark?: "status" | "kind" };
+export type ListGroup = { key: string; label: string; values: { value: string; count: number; hit?: number }[]; mark?: "status" | "kind" | "change" };
 
-const LEADING_CONDITION_KEYS = ["kind", "type", "status", "tags"];
+/** 絞り込みの「変更」の条件のキー（search の `f` のキー） */
+export const CHANGED_FILTER_KEY = "changed";
+
+/** 「変更」の条件のただ 1 つの値 */
+export const CHANGED_VALUE = "未読の変更あり";
+
+const LEADING_CONDITION_KEYS = [CHANGED_FILTER_KEY, "kind", "type", "status", "tags"];
+
+/** 未読の変更がある項目だけが値を持つ「変更」の列（表には出さず、絞り込みとドロワーの条件にだけ使う） */
+export const changedColumn = <R extends { id: string }>(ids: ReadonlySet<string>): ListColumn<R> => ({
+  key: CHANGED_FILTER_KEY,
+  label: "変更",
+  get: (row) => (ids.has(row.id) ? CHANGED_VALUE : null),
+});
 
 const valuesOf = <R,>(column: ListColumn<R>, row: R): string[] => {
   const value = column.get(row);
@@ -108,9 +121,11 @@ export const drawerGroups = <R,>({
       for (const row of filterRows({ rows, columns, filters: withoutKey(filters, column.key), tagMatch })) {
         for (const value of valuesOf(column, row)) counts.set(value, (counts.get(value) ?? 0) + 1);
       }
+      // 「変更」の条件は、未読の変更が 0 件でも値を残す
+      if (column.key === CHANGED_FILTER_KEY && counts.size === 0) counts.set(CHANGED_VALUE, 0);
       if (counts.size === 0) return [];
       const values = [...counts].map(([value, count]) => ({ value, count })).sort((a, b) => compareValues(column, a.value, b.value));
-      const mark = column.key === "status" ? ({ mark: "status" } as const) : column.key === "type" ? ({ mark: "kind" } as const) : {};
+      const mark = column.key === CHANGED_FILTER_KEY ? ({ mark: "change" } as const) : column.key === "status" ? ({ mark: "status" } as const) : column.key === "type" ? ({ mark: "kind" } as const) : {};
       return [{ key: column.key, label: column.label, values, ...mark }];
     });
 };

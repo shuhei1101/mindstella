@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { addComment, removeComment, saveDraft, sendComments, updateComment } from "@/shared/api/generated/preview";
 import type { CommentInput, DraftInput, RemovedComment, SendReply } from "@/shared/api/generated/model";
 import { commentsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
+import { SESSION_QUERY_KEY } from "@/shared/hooks/use-session-status";
 import { discardReviewVoice } from "@/shared/stores/voice-store";
 
 /** 入力が止まってから下書きを保存するまでのミリ秒 */
@@ -67,7 +68,8 @@ export const useSendComments = () => {
     mutationFn: async (ids) => (await sendComments({ ids })).data as SendReply,
     onSuccess: async (_reply, ids) => {
       discardReviewVoice(ids);
-      await Promise.all([queryClient.invalidateQueries({ queryKey: commentsQuery().queryKey }), queryClient.invalidateQueries({ queryKey: threadsQuery().queryKey })]);
+      // 送信の後は MindStella のセッションの状態も取得し直す（再起動の途中に送ったコメントの件数）
+      await Promise.all([queryClient.invalidateQueries({ queryKey: commentsQuery().queryKey }), queryClient.invalidateQueries({ queryKey: threadsQuery().queryKey }), queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY })]);
     },
   });
 };

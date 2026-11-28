@@ -122,6 +122,10 @@ export type ChangeSet = {
 /** `changes.yaml` の中身（まとまりと、まだまとめていない変更） */
 export type Changes = {
   last_seq: number;
+  /** 今回の差分の始まり（最後に利用者の書き込みを受け付けた時点の連番）。無ければ 0 として扱う */
+  turn_seq?: number;
+  /** 今回の差分の始まりの UTC の日時。まだ受け付けていなければ null */
+  turn_at?: string | null;
   /** 新しい順 */
   sets: ChangeSet[];
   pending: { added: string[]; changed: string[]; removed?: RemovedItem[] };

@@ -8,6 +8,7 @@ import { workspacePath } from "@/shared/core/workspace-path";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
 import { voiceDestinationExists } from "@/shared/core/voice";
 import { invalidatePreview } from "@/shared/hooks/preview-queries";
+import { SESSION_QUERY_KEY } from "@/shared/hooks/use-session-status";
 import { useConnectionStore } from "@/shared/stores/connection-store";
 import { useDuplicateIdsStore } from "@/shared/stores/duplicate-ids-store";
 import { releaseRefresh, requestRefresh, useRefreshHoldStore, watchTextFocus } from "@/shared/stores/refresh-hold-store";
@@ -69,6 +70,10 @@ export const connectEvents = (queryClient: QueryClient): (() => void) => {
       requestRefresh(refresh);
       // 音声入力の間は画面に反映せず、録音の行き先の有無だけを確かめる
       if (readVoiceState().session !== null) void checkVoiceDestination();
+    });
+    created.addEventListener("session", () => {
+      // MindStella のセッションの状態が変わった: 入力中も保留せずに状態のバーを取得し直す
+      void queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY });
     });
     created.addEventListener("duplicate_ids", (event) => {
       const ids = parseDuplicateIds((event as MessageEvent<unknown>).data);
