@@ -79,7 +79,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-28T05:09:57.448754+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
+    note: 今回の差分の始まりの読み書き（read_point.py）と送信での記録（comments.py）、公開 URL（home_settings.py・serve.py・server.py）、画面からのセッションの状態と再起動（sessions.py・serve.py）、再起動の途中の入力（claude_input.py）、画面の今回の差分・変更の絞り込み・状態のバー・埋め込みの警告を記載し、MOD-733-1・MOD-733-2 を作った
+    updated_by: planner
+    updated_at: '2026-11-28T05:39:59.403647+00:00'
   - process: ドキュメント修正
     status: todo
   - process: 単体テスト作成
