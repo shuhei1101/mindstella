@@ -1099,11 +1099,21 @@ def test_enter_or_restart(
             )
         return restarted_ok
 
+    def _waiter(_root: Path) -> bool:
+        """準備ができたら running にする（wait_until_running は running を見てから真を返す）。"""
+        if waiter_ok:
+            state.update_session(
+                tmp_path,
+                MINDSTELLA_WORKSPACE,
+                lambda current: None if current is None else current.replace(status="running"),
+            )
+        return waiter_ok
+
     targets = claude_input.InputTargets(
         state_root=tmp_path,
         workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
         restarter=_restarter,
-        waiter=lambda _root: waiter_ok,
+        waiter=_waiter,
     )
     # 実行
     result = targets.enter_or_restart(tmp_path, 1)
