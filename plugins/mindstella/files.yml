@@ -673,7 +673,7 @@ files:
     type: implements
 - path: skills/mindmap/scripts/history.py
   name: 変更履歴
-  description: 項目の変更履歴の 1 回分・本文の差分・書き換えのまとまり（`changes.yaml`）・前回開いた日時（`.mindstella-opened`）。項目の変更履歴・書き換えのまとまり・前回開いた日時の扱いを変更するときに読む。
+  description: 項目の変更履歴の 1 回分・本文の差分・書き換えのまとまり（`changes.yaml`）。項目の変更履歴・書き換えのまとまりの扱いを変更するときに読む。
   tags:
   - topic:履歴
   - topic:差分
@@ -755,7 +755,7 @@ files:
     type: implements
 - path: skills/mindmap/scripts/read_point.py
   name: 前回参照した時点
-  description: AI が前回参照した時点と、まだ知らせていない移し替えの報告を、常駐サーバーの状態のフォルダに読み書きする。前回参照した時点の扱いを変更するときに読む。
+  description: AI が前回参照した時点・変更履歴の「今回の差分」の始まり（`turn_point.json`）と、まだ知らせていない移し替えの報告を、常駐サーバーの状態のフォルダに読み書きする。前回参照した時点と今回の差分の始まりの扱いを変更するときに読む。
   tags:
   - topic:変更履歴
   - topic:状態

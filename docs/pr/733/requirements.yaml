@@ -46,23 +46,33 @@ docs:
   - page: plugins/mindstella/skills/mindmap/README.md
     new: false
     change: '#617: 通知と画面の URL を公開した URL にする指定を記載する（preview_url の戻り値・README の URL を合わせるかの決定に合わせる）'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-28T05:46:32.266310+00:00'
   - page: plugins/mindstella/files.yml
     new: false
     change: '#693: 前回開いた日時（.mindstella-opened）の記載を今回の差分の始まりの持ち方に合わせる'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-28T05:46:32.266310+00:00'
   - page: docs/guide/プレビューを見る.mark.md
     new: false
     change: '#693: 変更履歴の「今回の差分」。#158: 絞り込みのドロワーの変更があった項目の条件。#586: MindStella のセッションの状態の表示。#592: 埋め込みの警告'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-28T05:46:32.266310+00:00'
   - page: docs/guide/セットアップ手順-プレビューを外から見る.md
     new: false
     change: '#617: 画面の公開 URL の基底をホームの設定 `preview.public_url` に記載する手順と、通知・preview_url の URL がその基底になること、そのホスト名は `MINDSTELLA_ALLOWED_HOSTS` に重ねて記載しなくても受け付けること、公開 URL で開いた画面からも再起動できること'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-28T05:46:32.266310+00:00'
   - page: docs/guide/セットアップ手順-Discordに通知する.md
     new: false
     change: '#617: 通知の本文の {プレビューの URL} が、基底を指定したときは公開 URL になること'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-28T05:46:32.266310+00:00'
 scope_out:
   - item: '#566 の記録の種類ごとのガイドの作成'
     reason: 'ユーザーの回答（推奨案 A。https://github.com/shuhei1101/mindstella/pull/733#discussion_r4722778858）で、ガイドを作らず #566 を取り下げると決めた。話し合いの D-816 のとおり、mindstella のリポジトリの文書とエージェントフローを原本にする'

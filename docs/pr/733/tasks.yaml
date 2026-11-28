@@ -84,7 +84,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-28T05:39:59.403647+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
+    note: プレビューを見る（今回の差分・変更の条件・セッションの状態のバー・埋め込みの警告）、プレビューを外から見る（preview.public_url）、Discord に通知する（通知の URL）、README、plugins/mindstella/files.yml（history.py・read_point.py の概要文）を修正した
+    updated_by: planner
+    updated_at: '2026-11-28T05:46:35.499451+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
