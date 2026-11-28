@@ -24,8 +24,9 @@ import notify
 import read_point
 import resume
 import state
+import threads
 import workspaces
-from errors import ApiError, ArgumentError
+from errors import ApiError, ArgumentError, SchemaMismatchError
 from inject_session import process_started_at
 from kinds import SETTINGS_FILE, records_root
 from state import LaunchOptions, SessionState
@@ -426,6 +427,31 @@ def list_sessions(workspace_id: str, ctx: Any) -> dict[str, Any]:
         "last_error": current.last_error,
     }
     return {"sessions": [entry], "close_pending": current.close_pending}
+
+
+def screen_session_status(workspace_id: str, ctx: Any) -> dict[str, Any]:
+    """画面の状態のバーに出す MindStella のセッションの状態を組み立てる。何も書かず、停止の通知も呼ばない。"""
+    listed = list_sessions(workspace_id, ctx)
+    sessions = listed["sessions"]
+    # 一度も MindStella のセッションを作っていない
+    if not sessions:
+        return {"status": "none", "last_error": None, "waiting": 0, "warnings": []}
+    entry = sessions[0]
+    waiting = 0
+    row = workspaces.find_workspace_row(ctx.pi_port, workspace_id)
+    # 配信元の行がある: 取り込み待ちの利用者の書き込みを数える（読めなければ 0）
+    if row is not None:
+        try:
+            waiting = threads.status_counts(workspaces.workspace_folder(row))[1]
+        except SchemaMismatchError:
+            waiting = 0
+    warnings = [] if state.read_launch(ctx.state_root, workspace_id) is not None else [LAUNCH_RECORD_MISSING]
+    return {
+        "status": entry["status"],
+        "last_error": entry["last_error"],
+        "waiting": waiting,
+        "warnings": warnings,
+    }
 
 
 def stop_session(

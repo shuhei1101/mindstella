@@ -27,6 +27,7 @@ from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 from starlette.responses import StreamingResponse
 
+import state
 from builder import PREVIEW_DIR, read_records
 from change_detection import ChangeDetector, detector_of, workspace_id_of
 from claude_input import InputTargets, Session
@@ -43,6 +44,7 @@ from comments import (
 )
 from edits import add_edit, delete_edit, list_edits, save_edits
 from errors import (
+    ApiError,
     ConcurrentWriteError,
     ArgumentError,
     CommentConflictError,
@@ -164,6 +166,9 @@ EDITS_SAVE_PATH = "/api/edits/save"
 # 記録の取得と書き換えの通知のパス
 RECORDS_PATH = "/api/records"
 EVENTS_PATH = "/api/events"
+# 画面の MindStella のセッションの状態と、画面からの再起動
+SESSION_PATH = "/api/session"
+SESSION_RESTART_PATH = "/api/session/restart"
 
 # 配信が画面を返すパス（ワークスペースのパスの頭より後ろ）。画面の URL はこのパスで終わる
 PAGE_PATH = "/"
@@ -292,6 +297,16 @@ class SettingsHolder:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class SessionAccess:
+    """画面からの MindStella のセッションの操作。配信は『セッションの管理』を import せず、この 2 つだけを呼ぶ。"""
+
+    # ワークスペースの ID から、画面の MindStella のセッションの状態の応答を返す
+    status: Callable[[str], dict[str, Any]]
+    # ワークスペースの ID から、契機 api で再起動を依頼してステータスコードと応答を返す（ApiError を送る）
+    restart: Callable[[str], tuple[int, dict[str, Any]]]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ServeContext:
     """要求の受け口が使う、配っているワークスペースと待ち受けの値。"""
 
@@ -314,6 +329,10 @@ class ServeContext:
     workspace_id: str = ""
     # 組み立てた記録の応答
     records_cache: RecordsCache = field(default_factory=RecordsCache)
+    # 常駐サーバーの状態のフォルダ（session.json の書き換えで event: session を送る。None なら送らない）
+    state_root: Path | None = None
+    # 画面からの MindStella のセッションの操作（None なら状態は none、再起動は 404）
+    sessions: SessionAccess | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -353,6 +372,8 @@ class PreviewRegistry:
         transcriber: Transcriber | None = None,
         input_targets: InputTargets | None = None,
         state_root: Path | None = None,
+        public_url: str | None = None,
+        sessions: SessionAccess | None = None,
     ) -> None:
         """ツールと共有する書き換えの鍵と、常駐サーバーのポートと、外から見る設定（無ければ空）と文字起こしと入力の宛先の台帳と状態のフォルダを受け取り、空の台帳を作る。
 
@@ -369,6 +390,10 @@ class PreviewRegistry:
         self._input_targets = InputTargets() if input_targets is None else input_targets
         # 文字起こしのインターフェース（配信の文脈へ渡す）
         self._transcriber = transcriber
+        # 画面の公開 URL の基底（末尾の `/` は除いた値。None なら 127.0.0.1 の URL）
+        self._public_url = public_url
+        # 画面からの MindStella のセッションの操作（立てる配信の文脈へ渡す）
+        self._sessions = sessions
         # 台帳を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
         self._guard = threading.RLock()
 
@@ -409,6 +434,8 @@ class PreviewRegistry:
                 input_targets=self._input_targets,
                 transcriber=self._transcriber,
                 workspace_id=workspace_id,
+                state_root=self._state_root,
+                sessions=self._sessions,
             )
             self._servers[key] = context
             self._by_id[workspace_id] = key
@@ -517,7 +544,9 @@ class PreviewRegistry:
                 )
 
     def _url(self, workspace_id: str) -> str:
-        """ワークスペースの画面の URL を組み立てる。"""
+        """ワークスペースの画面の URL を組み立てる。公開 URL の基底があればそれを使う。"""
+        if self._public_url is not None:
+            return f"{self._public_url}{page_path(workspace_id)}"
         return f"http://{LISTEN_HOST}:{self._port}{page_path(workspace_id)}"
 
 
@@ -586,6 +615,8 @@ class PreviewEndpoint:
             return await self._send_file(context, path.removeprefix(FILES_PATH), request.headers.get("range"))
         if path == EVENTS_PATH:
             return self._stream(request, context)
+        if path == SESSION_PATH:
+            return await _call(lambda: session_response(context))
         simple = {
             RECORDS_PATH: lambda: records_response(
                 context,
@@ -608,6 +639,8 @@ class PreviewEndpoint:
         seen_thread_id = _seen_thread_id_of(path)
         if path == CONFIG_RELOAD_PATH:
             return await _call(lambda: reload_response(context, origin=origin))
+        if path == SESSION_RESTART_PATH:
+            return await _call(lambda: session_restart_response(context, origin=origin))
         if path == EDITS_SAVE_PATH:
             return await _call(lambda: edits_save_response(context, origin=origin))
         if path == EDITS_PATH:
@@ -726,6 +759,7 @@ class PreviewEndpoint:
                         f"{workspace_signature(root)}|settings:{context.settings.revision()}"
                     ),
                     on_changed=context.records_cache.discard,
+                    session_signature=_session_signature(context),
                 )
             except (BrokenPipeError, ConnectionResetError):
                 return
@@ -889,9 +923,14 @@ def check_origin(origin: str | None, port: int, *, allowed_hosts: frozenset[str]
     return parts.scheme in ORIGIN_SCHEMES and host_part(parts.netloc) in allowed_hosts
 
 
-def load_external_access(environ: Mapping[str, str]) -> ExternalAccess:
-    """環境変数から許可するホスト名とフックを読み、`ExternalAccess` を返す。"""
+def load_external_access(
+    environ: Mapping[str, str], *, public_host: str | None = None
+) -> ExternalAccess:
+    """環境変数から許可するホスト名とフックを読み、公開 URL のホスト名も加えた `ExternalAccess` を返す。"""
     allowed: set[str] = set()
+    # 公開 URL のホスト名は、MINDSTELLA_ALLOWED_HOSTS に重ねて記載しなくても受ける
+    if public_host is not None:
+        allowed.add(public_host.lower())
     for element in environ.get(ALLOWED_HOSTS_ENV, "").split(","):
         name = element.strip().lower()
         # 空の要素は捨てる
@@ -947,6 +986,68 @@ def problem_response(status: int, detail: str) -> Response:
         content_type=PROBLEM_TYPE,
         body=json.dumps(problem, ensure_ascii=False).encode("utf-8"),
     )
+
+
+def session_response(context: ServeContext) -> Response:
+    """画面の MindStella のセッションの状態を返す。操作が無ければ none を返す。"""
+    # 画面からのセッションの操作を持たない（MCP のツールだけで配っている）
+    if context.sessions is None:
+        body: dict[str, Any] = {"status": "none", "last_error": None, "waiting": 0, "warnings": []}
+    else:
+        try:
+            body = context.sessions.status(context.workspace_id)
+        except ApiError as error:
+            return problem_response(error.status, error.detail)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def session_restart_response(context: ServeContext, *, origin: str | None) -> Response:
+    """送り元を確かめ、画面からの MindStella のセッションの再起動を受け付ける（本文は読まない）。"""
+    # 別のサイトからの依頼
+    if not check_origin(origin, context.port, allowed_hosts=context.allowed_hosts):
+        return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
+    # 画面からのセッションの操作を持たない
+    if context.sessions is None:
+        return problem_response(HTTPStatus.NOT_FOUND, "MindStella のセッションがありません")
+    try:
+        status, body = context.sessions.restart(context.workspace_id)
+    except ApiError as error:
+        # 失敗した段階を拡張のメンバー stage に入れる
+        problem = json.loads(problem_response(error.status, error.detail).body)
+        problem["stage"] = error.stage
+        return Response(
+            status=error.status,
+            content_type=PROBLEM_TYPE,
+            body=json.dumps(problem, ensure_ascii=False).encode("utf-8"),
+        )
+    return Response(
+        status=status,
+        content_type=JSON_TYPE,
+        body=json.dumps(
+            {"status": body.get("status"), "warnings": body.get("warnings", [])}, ensure_ascii=False
+        ).encode("utf-8"),
+    )
+
+
+def _session_signature(context: ServeContext) -> Callable[[], str] | None:
+    """`session.json` の更新日時と大きさを返す関数を作る。状態のフォルダが無ければ None。"""
+    if context.state_root is None:
+        return None
+    path = state.workspace_dir(context.state_root, context.workspace_id) / state.SESSION_FILE
+
+    def _signature() -> str:
+        """session.json の印（無ければ `-`）。"""
+        try:
+            stat = path.stat()
+        except OSError:
+            return "-"
+        return f"{stat.st_mtime_ns}:{stat.st_size}"
+
+    return _signature
 
 
 def _with_search(location: str, request: Request) -> str:
@@ -1123,11 +1224,13 @@ def stream_events(
     signature: Callable[[Path], str] = workspace_signature,
     duplicates: Callable[[Path], tuple[str, ...]] | None = None,
     on_changed: Callable[[], None] | None = None,
+    session_signature: Callable[[], str] | None = None,
 ) -> None:
     """書き換えの印が変わったら（知らせる前に on_changed を呼び） `changed` を、重なった ID の集まりが変わったら `duplicate_ids` を、知らせが無いまま一定時間過ぎたら保つ行を書き続ける。"""
     last_signature = signature(root)
     last_written = clock()
     last_duplicates: tuple[str, ...] = ()
+    last_session = None if session_signature is None else session_signature()
     read_duplicates = duplicates or _detected_duplicates
     while True:
         sleep(POLL_INTERVAL_SEC)
@@ -1145,6 +1248,12 @@ def stream_events(
                     on_changed()
                 write(f"event: changed\ndata: {current}\n\n".encode())
                 last_signature = current
+                last_written = clock()
+            # MindStella のセッションの状態が変わった: 画面に取得し直させる
+            session_current = None if session_signature is None else session_signature()
+            if session_current != last_session:
+                write(b"event: session\ndata: {}\n\n")
+                last_session = session_current
                 last_written = clock()
             elif clock() - last_written >= KEEPALIVE_SEC:
                 # 変わらないまま長く経った: つながりを保つ

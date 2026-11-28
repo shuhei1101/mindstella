@@ -22,6 +22,7 @@ import store
 from errors import ArgumentError, DownloadFailedError
 from graph import list_ready
 from history import load_changes, load_item_history, merge_item_history
+from read_point import load_turn_point
 from html_body import mark_lines
 from kinds import KINDS, SETTINGS_FILE
 from mdmark_ref import MDMARK_REPO, resolve_ref
@@ -254,6 +255,10 @@ def collect_preview_data(
     data["marked_bodies"] = marked_bodies
     # 書き換えのまとまり（項目の `history` は項目に合わせて入っている）
     data["changes"] = load_changes(workspace.root)
+    # 今回の差分の始まり（無ければ 0 と None。画面は turn_seq より後のまとまりを今回の差分にする）
+    turn_seq, turn_at = load_turn_point(workspace.root)
+    data["changes"]["turn_seq"] = turn_seq
+    data["changes"]["turn_at"] = turn_at
     data["derived"] = derive_preview_values(workspace)
     # プリセットごとの該当する項目の件数（保存せずそのつど数える）
     data["preset_counts"] = preset_counts(workspace)

@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,7 @@ from history import (
 )
 from kinds import HISTORY_FILE as HISTORY_FILE_NAME, KINDS, records_root
 from locations import Location, check_location, location_to_dict, parse_location
+from read_point import save_turn_point
 from store import (
     CHANGES_FILE as CHANGES_FILE_NAME,
     SCHEMA_DIR,
@@ -455,6 +457,9 @@ def send_comments(
     }
     at = now()
     wrote_choices = bool(choices) and _write_user_choices(workspace, choices, at=at)
+    # 利用者の選択を書かなかった: まだまとめていない変更だけを今回の差分の始まりの前に 1 つのまとまりにする
+    if not wrote_choices:
+        wrote_choices = _commit_pending_set(workspace, at=at)
 
     threads_path = records / THREADS_FILE
     previous = threads_path.read_bytes() if threads_path.exists() else None
@@ -491,6 +496,8 @@ def send_comments(
     for comment in posts_to_send:
         if comment.thread is not None:
             _remove_draft(root, None, None, comment.thread)
+    # 送信を受け付けた時点を、今回の差分の始まりとして記録する（失敗しても送信は取り消さない）
+    _record_turn_point(root, at)
     by_comment = {entry.comment: entry for entry in sent_posts}
     items = [
         SentItem(comment=comment.id, thread=None, post=None, decision=comment.target)
@@ -523,19 +530,31 @@ def send_now(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> tuple[st
     reason = _destination_reason(workspace, threads, target, loc, thread)
     if reason is not None:
         raise CommentConflictError(reason)
-    sent, posts = append_user_posts(
-        root,
-        [
-            UserPostInput(
-                comment=None,
-                thread=thread,
-                target=target,
-                loc=None if loc is None else location_to_dict(loc),
-                body=body,
-            )
-        ],
-        now=now,
-    )
+    # まだまとめていない変更を、スレッドより先に 1 つのまとまりにする（書き戻せるよう前の中身を控える）
+    at = now()
+    changes_path = records_root(root) / CHANGES_FILE_NAME
+    changes_previous = changes_path.read_bytes() if changes_path.exists() else None
+    committed = _commit_pending_set(workspace, at=at)
+    try:
+        sent, posts = append_user_posts(
+            root,
+            [
+                UserPostInput(
+                    comment=None,
+                    thread=thread,
+                    target=target,
+                    loc=None if loc is None else location_to_dict(loc),
+                    body=body,
+                )
+            ],
+            now=lambda: at,
+        )
+    except WriteFailedError:
+        # スレッドを書けなかった: まとめた changes.yaml を前の中身に戻す
+        _restore_choice_files(root, {changes_path: changes_previous}, committed)
+        raise
+    # 送信を受け付けた時点を、今回の差分の始まりとして記録する（失敗しても送信は取り消さない）
+    _record_turn_point(root, sent)
     logger.info("書き込みをすぐ送った: %s", posts[0].thread)
     return sent, posts[0]
 
@@ -702,6 +721,34 @@ def _write_user_choices(workspace: Workspace, choices: list[ReviewComment], *, a
     )
     accept_written(workspace.root, written)
     return True
+
+
+def _commit_pending_set(workspace: Workspace, *, at: str) -> bool:
+    """`changes.yaml` のまだまとめていない変更を 1 つのまとまりにして書く。まとめる変更が無ければ書かない。書いたかを返す。"""
+    loaded = load_changes(workspace.root)
+    pending = loaded["pending"]
+    # まとめる変更が無い
+    if not pending["added"] and not pending["changed"] and not pending.get("removed"):
+        return False
+    pending_by = pending.get("by", "ai")
+    record, _ = commit_pending(
+        loaded,
+        EXTERNAL_SUMMARY if pending_by == "external" else AI_PENDING_SUMMARY,
+        at,
+        by=pending_by,
+    )
+    written = save_batch(workspace, BatchChange(items={}, changes=dict(record)))
+    accept_written(workspace.root, written)
+    return True
+
+
+def _record_turn_point(root: Path, at: str) -> None:
+    """今の `last_seq` と受け付けた日時を今回の差分の始まりとして書く。書けなくても送信を取り消さない。"""
+    try:
+        save_turn_point(root, load_changes(root)["last_seq"], at)
+    except (WriteFailedError, OSError) as error:
+        # 巻き戻しの範囲に含めない: 理由を記録するだけにする
+        print(f"[mindstella] 今回の差分の始まりを記録できません: {error}", file=sys.stderr)
 
 
 def _restore_choice_files(root: Path, previous: dict[Path, bytes | None], wrote: bool) -> None:

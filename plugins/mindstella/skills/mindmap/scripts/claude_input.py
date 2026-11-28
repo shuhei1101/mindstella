@@ -117,6 +117,7 @@ class InputTargets:
         state_root: Path | None = None,
         workspace_id: Callable[[Path], str] | None = None,
         restarter: Callable[[Path], bool] | None = None,
+        waiter: Callable[[Path], bool] | None = None,
     ) -> None:
         """空の台帳と、台帳の鍵・ペインごとの入力の鍵・貼り付けの鍵を作る。
 
@@ -127,6 +128,8 @@ class InputTargets:
         self._workspace_id = workspace_id
         # MindStella のセッションを契機 comment で起動し直し、準備ができたかを返す関数
         self._restarter = restarter
+        # 再起動の途中の MindStella のセッションが running になるまで待ち、running になったかを返す関数
+        self._waiter = waiter
         # ワークスペース → 宛先（最後のセッションが tmux の外なら None）
         self._targets: dict[Path, InputTarget | None] = {}
         self._guard = threading.Lock()
@@ -185,8 +188,13 @@ class InputTargets:
         # MindStella のセッションが無い: 起動し直さずに入力する
         if current is None:
             return self.enter(root, count, choices=choices), False
-        # 起動し直しの途中・クローズ待ち・起動し直せない: 入力せずスレッドに残す
-        if current.status == "restarting" or current.close_pending or self._restarter is None:
+        # 起動し直しの途中: 準備ができるのを待ってから入力する（待てなければスレッドに残す）
+        if current.status == "restarting":
+            if self._waiter is None or not self._waiter(root):
+                return False, False
+            return self.enter(root, count, choices=choices), False
+        # クローズ待ち・起動し直せない: 入力せずスレッドに残す
+        if current.close_pending or self._restarter is None:
             return False, False
         # 貼れる状態: 入力できればそのまま（落ちていて貼れなければ起動し直す）
         if current.status == DELIVERABLE_STATUS:

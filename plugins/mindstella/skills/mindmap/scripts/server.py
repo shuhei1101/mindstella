@@ -45,7 +45,14 @@ from errors import (
     NotMindStellaSessionError,
     SchemaMismatchError,
 )
-from serve import LISTEN_HOST, PREVIEW_PREFIX, PreviewEndpoint, PreviewRegistry, load_external_access
+from serve import (
+    LISTEN_HOST,
+    PREVIEW_PREFIX,
+    PreviewEndpoint,
+    PreviewRegistry,
+    SessionAccess,
+    load_external_access,
+)
 from store import LEGACY_HINT, require_workspace, workspace_lock
 from transcriber_registry import InvalidTranscriberError, load_transcriber
 from versions import PLUGIN_VERSION_FILE, read_plugin_version
@@ -232,14 +239,24 @@ def main(
     previews = PreviewRegistry(
         write_lock,
         port=port,
-        external=load_external_access(source),
+        external=load_external_access(source, public_host=home.public_host()),
         transcriber=transcriber,
         input_targets=InputTargets(
             state_root=state_root,
             workspace_id=workspaces.workspace_id_of,
             restarter=lambda root: _restart_for_comment(root, context),
+            # 再起動の途中に届いたコメントは、準備ができるのを待ってから入力する
+            waiter=lambda root: sessions.wait_until_running(workspaces.workspace_id_of(root), context),
         ),
         state_root=state_root,
+        public_url=home.public_url,
+        # 画面の状態のバーからの状態の取得と再起動（公開 URL で開いた画面からも呼ぶ）
+        sessions=SessionAccess(
+            status=lambda workspace_id: sessions.screen_session_status(workspace_id, context),
+            restart=lambda workspace_id: sessions.restart_session(
+                workspace_id, None, "api", False, context
+            ),
+        ),
     )
     started_at = datetime.now(UTC).isoformat(timespec="seconds")
     plugin_root = PLUGIN_VERSION_FILE.parent
