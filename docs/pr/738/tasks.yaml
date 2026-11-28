@@ -1,0 +1,76 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリへの機能追加のため対象外
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: お気に入りの設計書（SC-721-1・MOD-721-1〜3・CMP-721-1）と詳細パネルの設計書が既にあるため対象外
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではないため対象外
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: ワークスペースの YAML の読み書きと MCP のツールは既存の仕組みで、未検証の技術機構に依存しないため対象外
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: ユースケースの連鎖は変わらず、単一ユースケースの中の操作の追加のため対象外
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: '判定フローチャート『モック要否』: 画面の追加・画面遷移の変更が無く、置き場所（固定のヘッダー）とアイコン（一覧の星と同じ）を依頼が決めているため作らない。デザイン方針もある'
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: '判定フローチャート『モック要否』: 画面の追加・削除と画面遷移の変更が無いため作らない'
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: 単一ユースケース設計
+    status: todo
+  - process: モック作成
+    status: skipped
+    reason: '判定フローチャート『モック要否』: 置き場所とアイコンを依頼が決めていて、見た目を作る人が決める余地が無いため作らない'
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: データ設計
+    status: todo
+  - process: インターフェース定義設計
+    status: todo
+  - process: エージェント・MCP サーバー設計
+    status: skipped
+    reason: mindstella はエージェントの設計書（docs/agent）を持たず、MCP のツールはインターフェース定義設計で扱うため対象外
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: エージェントフロー・LLM 呼び出し設計
+    status: skipped
+    reason: LLM の呼び出しを追加しない。記録のエージェントフロー（plugins/mindstella/agent-flows/）の手順の追記はドキュメント修正で扱う
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: 精度評価設計
+    status: skipped
+    reason: '判定フローチャート『精度評価をするか』: LLM・意思決定モデルを使用するノードを追加しないため対象外'
+    updated_by: planner
+    updated_at: '2026-11-28T10:04:58.477060+00:00'
+  - process: 部品設計
+    status: todo
+  - process: 画面設計
+    status: todo
+  - process: モジュール構成設計
+    status: todo
+  - process: ドキュメント修正
+    status: todo
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
