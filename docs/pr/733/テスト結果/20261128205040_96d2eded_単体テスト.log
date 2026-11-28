@@ -1,0 +1,17 @@
+# 単体テスト（マージ前の抜けの修正の後）
+# 回した commit: 96d2eded（review-view.test.tsx を含む全件）
+
+$ npx vitest run
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-preview-turn-diff-and-next-sprint-bundle
+
+
+ Test Files  123 passed (123)
+      Tests  724 passed (724)
+   Start at  20:48:12
+   Duration  74.63s (environment 45%, tests 30%, import 13%, setup 9%, transform 3%, worker 1%)
+
+Environment  jsdom was created 123 times · 62.43s total, 45% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit=0

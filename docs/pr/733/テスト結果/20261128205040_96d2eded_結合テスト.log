@@ -1,0 +1,11 @@
+# 結合テスト（マージ前の抜けの修正の後）
+# 回した commit: 96d2eded
+
+$ pytest tests/integration/preview/test_spa_review_screen.py
+collected 36 items
+
+tests/integration/preview/test_spa_review_screen.py .................... [ 55%]
+................                                                         [100%]
+
+============================= 36 passed in 48.71s ==============================
+exit=0
