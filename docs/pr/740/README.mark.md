@@ -1,0 +1,1 @@
+# 配信元の設定の exclude から "*.yml" を削除し、管理用の YAML の行の Markdown を配信する
