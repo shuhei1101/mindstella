@@ -36,6 +36,26 @@ describe("useSessionStatus", () => {
     await waitFor(() => expect(result.current?.status).toEqual({ kind: "restarting", waiting: 0 }));
   });
 
+  // 再起動の途中以外で断られた 409 は理由を出し、再起動の途中の 409 は出さない（異常系）
+  test.each([
+    { name: "closed", stage: "closed", expected: "クローズ済みです" },
+    { name: "restarting", stage: "restarting", expected: "x" },
+  ])("use_session_status_when_conflict: $name", async ({ stage, expected }) => {
+    // 準備
+    server.use(
+      http.get("*/api/session", () => HttpResponse.json({ status: "crashed", last_error: "x", waiting: 0, warnings: [] })),
+      http.post("*/api/session/restart", () =>
+        HttpResponse.json({ type: "about:blank", title: "Conflict", status: 409, detail: "クローズ済みです", stage }, { status: 409, headers: { "Content-Type": "application/problem+json" } }),
+      ),
+    );
+    const { result } = await renderPreviewHook("/", useSessionStatus);
+    await waitFor(() => expect(result.current?.status).toEqual({ kind: "failed", reason: "x", retrying: false }));
+    // 実行
+    act(() => result.current?.restart());
+    // 検証
+    await waitFor(() => expect(result.current?.status).toEqual({ kind: "failed", reason: expected, retrying: false }));
+  });
+
   // 閉じた警告を再起動まで出さない（正常系）
   test("use_session_status_when_warning_closed", async () => {
     // 準備
