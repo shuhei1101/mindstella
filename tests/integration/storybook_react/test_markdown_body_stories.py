@@ -501,3 +501,52 @@ def test_audio_embed_narrow(open_story: OpenStory) -> None:
     assert measured["clipped"] is False
     assert audio_right <= body_right + 0.5
     assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
+
+
+# 埋め込みの警告の要素
+EMBED_WARNING = ".md .embed-warning"
+
+
+def test_embed_missing(open_story: OpenStory) -> None:
+    """ファイルの置き場に無い動画。動画の後ろに「ファイルが見つかりません。」と本文のパスの警告を出し、ほかの段落は描く（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "embed-missing")
+    page.wait_for_selector(EMBED_WARNING, timeout=STORY_TIMEOUT_MS)
+    warning = page.locator(EMBED_WARNING)
+    # 検証
+    assert warning.count() == 1
+    assert warning.get_attribute("role") == "alert"
+    assert warning.text_content() == "ファイルが見つかりません。本文のパス: ../files/missing.mp4"
+    assert page.get_by_text("録画の後ろの段落。").is_visible()
+
+
+def test_embed_unsupported(open_story: OpenStory) -> None:
+    """ファイルはあるが再生・表示できない動画と画像。それぞれの後ろに、表示できない形式であることと本文のパスの警告を出す（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "embed-unsupported")
+    page.wait_for_function(f"() => document.querySelectorAll('{EMBED_WARNING}').length === 2", timeout=STORY_TIMEOUT_MS)
+    texts = page.locator(EMBED_WARNING).all_text_contents()
+    # 検証
+    assert texts == [
+        "このファイルはブラウザで再生・表示できない形式です。本文のパス: ../files/broken.mp4",
+        "このファイルはブラウザで再生・表示できない形式です。本文のパス: ../files/broken.png",
+    ]
+
+
+def test_embed_missing_long_path(open_story: OpenStory) -> None:
+    """幅 390px で長いパス。警告の中でパスを折り返し、本文の区画を横にスクロールさせない（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "embed-missing-long-path")
+    page.wait_for_selector(EMBED_WARNING, timeout=STORY_TIMEOUT_MS)
+    # 検証
+    assert page.locator(EMBED_WARNING).evaluate("e => e.scrollWidth <= e.clientWidth") is True
+    assert page.locator(".md").evaluate("e => e.scrollWidth <= e.clientWidth") is True
+
+
+def test_embed_missing_many(open_story: OpenStory) -> None:
+    """読み込めないファイルが 8 件。ファイルごとに警告を出す（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "embed-missing-many")
+    page.wait_for_function(f"() => document.querySelectorAll('{EMBED_WARNING}').length === 8", timeout=STORY_TIMEOUT_MS)
+    # 検証
+    assert page.locator(EMBED_WARNING).count() == 8

@@ -681,6 +681,14 @@ files:
   related:
   - to: CMP-540-2
     type: tests
+- path: integration/storybook_react/test_session_status_banner_stories.py
+  name: 部品設計『MindStellaのセッションの状態のバー.tsx』の状態の結合テスト
+  description: 部品設計『MindStellaのセッションの状態のバー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
 - path: integration/storybook_react/test_topbar_stories.py
   name: 部品設計『トップバー.tsx』の状態の結合テスト
   description: 部品設計『トップバー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。

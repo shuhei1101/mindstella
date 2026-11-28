@@ -18,6 +18,10 @@ STATES = (
     "shared-historydialog--long-text",
     "shared-historydialog--external",
     "shared-historydialog--narrow",
+    "shared-historydialog--turn-diff",
+    "shared-historydialog--turn-diff-selected",
+    "shared-historydialog--turn-diff-no-writes",
+    "shared-historydialog--turn-diff-no-changes",
 )
 
 # 幅 390px の画面の大きさ
@@ -154,3 +158,54 @@ def test_external(open_story: OpenStory) -> None:
     expect(row).to_contain_text("外部の変更")
     assert "ほかのセッションの書き込み 外部の変更" in " ".join(row.inner_text().split())
     assert dialog.get_by_text("外部の変更", exact=True).count() == 1
+
+
+def test_turn_diff(open_story: OpenStory) -> None:
+    """「最新」の次に「今回の差分」の行を説明と変わった項目の数つきで並べる（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-historydialog--turn-diff").get_by_role("dialog", name="変更履歴")
+    rows = dialog.locator("button[data-sel]")
+    turn = dialog.locator("button[data-sel='turn']")
+    # 検証
+    assert rows.evaluate_all("rows => rows.map((r) => r.dataset.sel)")[:2] == ["", "turn"]
+    expect(turn).to_contain_text("今回の差分")
+    expect(turn).to_contain_text("10/04 14:50 の送信より後の書き換え")
+    expect(turn).to_contain_text("5")
+
+
+def test_turn_diff_when_narrow(open_story: OpenStory) -> None:
+    """幅 390px でも「今回の差分」の説明を省かない（正常系）。"""
+    # 準備
+    page = open_story("shared-historydialog--turn-diff")
+    # 実行
+    page.set_viewport_size(NARROW_SIZE)
+    sub = page.locator("button[data-sel='turn']").get_by_text("10/04 14:50 の送信より後の書き換え", exact=True)
+    # 検証
+    assert sub.evaluate("e => e.scrollWidth <= e.clientWidth") is True
+
+
+def test_turn_diff_selected(open_story: OpenStory) -> None:
+    """「今回の差分」を選んだ後。その行にチェックを付ける（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-historydialog--turn-diff-selected").get_by_role("dialog", name="変更履歴")
+    # 検証
+    expect(dialog.locator("button[data-sel='turn']")).to_have_attribute("aria-current", "true")
+    expect(dialog.locator("button[data-sel='']")).not_to_have_attribute("aria-current", "true")
+
+
+def test_turn_diff_no_writes(open_story: OpenStory) -> None:
+    """まだコメントを送信していない。説明を「送信の前のため、最初からの書き換え」にする（正常系）。"""
+    # 準備・実行
+    turn = open_story("shared-historydialog--turn-diff-no-writes").locator("button[data-sel='turn']")
+    # 検証
+    expect(turn).to_contain_text("送信の前のため、最初からの書き換え")
+    expect(turn).to_contain_text("14")
+
+
+def test_turn_diff_no_changes(open_story: OpenStory) -> None:
+    """送信の後の書き換えが無い。説明を「{日時} の送信より後の書き換えはありません」、数を 0 にする（正常系）。"""
+    # 準備・実行
+    turn = open_story("shared-historydialog--turn-diff-no-changes").locator("button[data-sel='turn']")
+    # 検証
+    expect(turn).to_contain_text("10/04 15:30 の送信より後の書き換えはありません")
+    expect(turn).to_contain_text("0")

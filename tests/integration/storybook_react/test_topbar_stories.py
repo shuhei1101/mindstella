@@ -1490,3 +1490,19 @@ def test_refresh_narrow_when_width(open_story: OpenStory, story_id: str, width: 
     assert page.locator("header button[aria-label^=音声入力中]").is_visible()
     assert measured == {"pageFits": True, "barFits": True, "outside": []}
     assert spacing == ["1px", "4px" if width < 390 else "6px"]
+
+
+def test_session_failed(open_story: OpenStory) -> None:
+    """MindStella のセッションの再起動に失敗している。タブの帯の下に状態のバー（理由と「再起動」）を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-topbar--session-failed")
+    alert = page.get_by_role("alert")
+    tabs = page.locator("nav[aria-label=項目の種類]").bounding_box()
+    bar = alert.bounding_box()
+    # 検証
+    assert alert.inner_text().startswith("MindStella のセッションを再起動できませんでした")
+    assert "空いたアカウントがありません。" in alert.inner_text()
+    assert alert.get_by_role("button", name="再起動").is_enabled()
+    assert tabs is not None
+    assert bar is not None
+    assert bar["y"] >= tabs["y"] + tabs["height"]
