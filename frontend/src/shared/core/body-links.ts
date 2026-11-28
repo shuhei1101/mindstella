@@ -219,10 +219,14 @@ export const embedWarning = ({ reason, path }: { reason: EmbedFailure; path: str
     children: [h({ tag: "span", children: [`${EMBED_WARNING_TEXT[reason]}本文のパス: `] }), h({ tag: "code", children: [path] })],
   });
 
-/** 配信へファイルを問い合わせ、404 なら `missing`、それ以外は `unsupported` を返す */
+/** 配信へファイルの先頭の 1 バイトを問い合わせ、404 なら `missing`、それ以外の応答と問い合わせの失敗は `unsupported` を返す */
 const failureOf = async (src: string): Promise<EmbedFailure> => {
-  const response = await fetch(src, { method: "HEAD" });
-  return response.status === 404 ? "missing" : "unsupported";
+  try {
+    const response = await fetch(src, { headers: { Range: "bytes=0-0" } });
+    return response.status === 404 ? "missing" : "unsupported";
+  } catch {
+    return "unsupported";
+  }
 };
 
 /** `root` の中の `img`・`video`・`audio` が読み込めなかったとき、その要素の後ろに警告を置く（`source` の失敗は親の要素の後ろ）。本文のパスは配信のパスに置き換える前の値 */
