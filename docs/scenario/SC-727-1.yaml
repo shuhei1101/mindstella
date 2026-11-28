@@ -12,7 +12,7 @@ preconditions:
   - サーバーがワークスペースを配っている
   - MindStella のセッションが mindstella の MCP のツールを呼べる
 success_guarantee: AI が指した項目がワークスペースのお気に入りに登録され（解除の指示では削除され）、プレビューを開いている利用者の画面に、再読み込みせずに星が付く（外れる）。項目の YAML・本文と `config.yaml` は変わらず、変更履歴に載らない。
-minimal_guarantee: 記録に無い ID を指したときは、お気に入りを変えずにその ID と理由を AI へ返却する。ほかの項目のお気に入りは変わらない。
+minimal_guarantee: 記録に無い ID の登録を指したときは、お気に入りを変えずにその ID と理由を AI へ返却する。ほかの項目のお気に入りは変わらない。
 frequency: 利用者が指示したときと、手順で資料を作成したとき
 priority: 中
 scenarios:
