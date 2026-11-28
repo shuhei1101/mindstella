@@ -1,0 +1,50 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-44.yaml
+    impact: changed
+    detail: 本文・項目の値を選んでコメントするときの選択と目印を mdmark の部品にし、箇所を選んだ文字とその前後の文字で残す
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-47.yaml
+    impact: following
+    detail: 選んだ箇所へのコメントの箇所の形式の変更に追随する
+    depends_on:
+      - docs/scenario/SC-489-44.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: following
+    detail: 送信するレビュー中の書き込みの箇所の形式の変更に追随する
+    depends_on:
+      - docs/scenario/SC-489-44.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: following
+    detail: 取り込むスレッドの書き込みの箇所を、選んだ文字とその前後の文字で本文から探す
+    depends_on:
+      - docs/scenario/SC-489-44.yaml
+docs:
+  - page: docs/guide/ワークスペースの書式.mark.md
+    new: false
+    change: コメント・下書き・スレッドの箇所（`loc`）のキーを、選んだ文字とその前後の文字（`quote`・`prefix`・`suffix`）の形式にする
+    status: todo
+  - page: docs/guide/コマンド.mark.md
+    new: false
+    change: 箇所を受け取る・返却するツールの `loc` の記述を新規の形式にする
+    status: todo
+  - page: docs/guide/プレビューを見る.mark.md
+    new: false
+    change: 表・ボード・図の拡大・選んだ箇所へのコメントの操作（ピン止め・列の幅の変更・テーブル設定・表の上のアイコンのボタン）を置き換えた部品に合わせる
+    status: todo
+scope_out:
+  - item: 画面設計・部品設計の design-schemas v12.0.0 の新規の欄での記載し直し
+    reason: 要望に含まれない。置き換えた画面の設計書は今のスキーマで `component` を合わせる
+    plan: '#741'
+  - item: 一覧の行のコメントのマーカーの件数とコメントの件数の数え方の変更
+    reason: 要望に含まれない。置き換えた部品の上で後から対応する
+    plan: '#735'
+  - item: 返信を commit まで画面に出さないスレッドの表示
+    reason: 要望に含まれない。置き換えたコメントの部品の上で後から対応する
+    plan: '#698'
+  - item: Markdown の本文の表の列の幅の区切りで出る axe の検出
+    reason: 要望に含まれない。本文の表は mdmark の `mount` が描き、画面の表と別
+    plan: '#714'
