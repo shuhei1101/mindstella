@@ -44,7 +44,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-28T04:46:34.005427+00:00'
   - process: データ設計
-    status: todo
+    status: done
+    note: ER-531-1 に今回の差分の始まり（turn_point.json）、CFG-489-1 に画面の公開 URL の基底（preview.public_url）を追加した
+    updated_by: planner
+    updated_at: '2026-11-28T04:49:54.076343+00:00'
   - process: インターフェース定義設計
     status: todo
   - process: エージェント・MCP サーバー設計
