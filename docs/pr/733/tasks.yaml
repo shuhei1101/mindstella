@@ -69,9 +69,15 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-27T18:21:07.182141+00:00'
   - process: 部品設計
-    status: todo
+    status: done
+    note: CMP-489-26・46・6・20、CMP-649-2 に状態を追加し、CMP-733-1（セッションの状態のバー）を作った
+    updated_by: planner
+    updated_at: '2026-11-28T05:09:57.448754+00:00'
   - process: 画面設計
-    status: todo
+    status: done
+    note: SCR-489-16 に今回の差分の行、SCR-489-20・6・34・26 の絞り込みに変更の条件を追加した
+    updated_by: planner
+    updated_at: '2026-11-28T05:09:57.448754+00:00'
   - process: モジュール構成設計
     status: todo
   - process: ドキュメント修正
