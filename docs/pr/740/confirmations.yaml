@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 配信元の設定の変更（files_guide・files_root の exclude から "*.yml" を削除）でマージしてよいか
+    decision: 'この設定でマージし、マージの後に develop の画面と update_dev_docs_section の served: true を確認する（推奨案 A）'
+    decided_by: 👍
+    approver: shuhei1101
+    commit: 8f5d57c4
+    thread: https://github.com/shuhei1101/mindstella/pull/740#discussion_r4726949806
