@@ -14,8 +14,8 @@ import { cn } from "@/shared/lib/cn";
 /** 条件の値 */
 export type FilterValue = { value: string; count: number };
 
-/** 条件 1 つ */
-export type FilterGroup = { key: string; label: string; values: FilterValue[]; mark?: "status" | "kind" };
+/** 条件 1 つ（`mark` が `change` の値には、未読の変更のマーカーと同じ橙の丸を付ける） */
+export type FilterGroup = { key: string; label: string; values: FilterValue[]; mark?: "status" | "kind" | "change" };
 
 /** タグの組み合わせ方。`all` は選んだタグを全て持つ項目、`any` はどれかを持つ項目を残す */
 export type TagMatch = "all" | "any";
@@ -259,6 +259,7 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
                     <label className={cn("flex items-center gap-1 py-0.5 text-small", count === 0 && "text-subtle-foreground")}>
                       <Checkbox value={value} data-key={group.key} checked={chosen.includes(value)} onChange={() => { onToggleValue(group.key, value); }} />
                       {group.mark === "status" ? <StatusMark status={value} /> : null}
+                      {group.mark === "change" ? <span aria-hidden="true" className="inline-block size-2 flex-none rounded-full bg-topbar-unread" /> : null}
                       <span className="min-w-0 flex-1 wrap-break-word">{value}</span>
                       <span aria-label={`${String(count)} 件`} className={cn("flex-none font-mono text-xs", count === 0 ? "text-subtle-foreground" : "text-muted-foreground")}>{count}</span>
                     </label>

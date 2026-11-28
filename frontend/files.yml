@@ -1952,6 +1952,23 @@ files:
   related:
   - to: MOD-159-2
     type: implements
+- path: src/shared/components/session-status-banner.stories.tsx
+  name: React の MindStella のセッションの状態のバーのストーリー
+  description: 部品『MindStella のセッションの状態のバー』の状態ごとの Storybook のストーリー。再起動の途中・再起動の失敗・記録が無い警告の表示を追加・変更するときに参照する。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: frontend/src/shared/components/session-status-banner.tsx
+    type: see_also
+- path: src/shared/components/session-status-banner.tsx
+  name: React の MindStella のセッションの状態のバー
+  description: トップバーの下のバーに、MindStella のセッションの再起動の途中・再起動の失敗の理由と再起動のボタン・追加の MCP とプラグインの記録が無い警告を出す。表示や文面を変更するときに参照する。
+  tags:
+  - tool:react
+  - topic:部品
+  - topic:通知
 - path: src/shared/components/sibling-nav.tsx
   name: 一覧の並びの前後の項目へ移るボタン
   description: 詳細の見出しに置く、元の画面の今の並びで前後の項目へ移るボタンと並びの中の位置。前後の項目へ移る操作や見た目を変更するときに参照する。

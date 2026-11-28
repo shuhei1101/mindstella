@@ -326,3 +326,29 @@ export const WideTableInNarrowPane: Story = {
     </div>
   ),
 };
+
+/** ファイルの置き場に無い動画を埋め込んだ本文。動画の場所に「ファイルが見つかりません。」と本文のパスの警告を出し、ほかの段落は描く */
+export const EmbedMissing: Story = {
+  args: { source: ["打ち合わせの録画を確かめる。", "", "![打ち合わせの録画](../files/missing.mp4)", "", "録画の後ろの段落。", ""].join("\n") },
+};
+
+/** ファイルはあるが再生・表示できない動画と画像。それぞれの場所に、再生・表示できない形式であることと本文のパスの警告を出す */
+export const EmbedUnsupported: Story = {
+  args: { source: ["形式を確かめる。", "", "![壊れた動画](../files/broken.mp4)", "", "![壊れた画像](../files/broken.png)", "", "後ろの段落。", ""].join("\n") },
+};
+
+/** 長いパスの無いファイル。本文のパスを警告の中で折り返し、本文の区画を横にスクロールさせない（幅 390px） */
+export const EmbedMissingLongPath: Story = {
+  args: { source: ["![長い名前の録画](../files/meetings/2026-11-28-weekly-review-of-the-preview-screen-and-the-server-with-a-very-long-file-name-0123456789abcdef.mp4)", ""].join("\n") },
+  parameters: {
+    viewport: {
+      options: { narrow390: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow390", isRotated: false } },
+};
+
+/** 読み込めないファイルが多い。ファイルごとに警告を出す */
+export const EmbedMissingMany: Story = {
+  args: { source: Array.from({ length: 8 }, (_, index) => `![録画 ${String(index + 1)}](../files/missing-${String(index + 1)}.mp4)\n`).join("\n") },
+};
