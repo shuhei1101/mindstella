@@ -242,6 +242,10 @@ items:
     summary: "変更の検知が知らせた重なった ID と、利用者が閉じた集まり。"
   - page: MOD-722-1.ts.yaml
     summary: "変更履歴の既読のまとまりの ID をワークスペースごとに端末の保存領域に持ち、未読のまとまりを決める"
+  - page: MOD-733-2.ts.yaml
+    summary: "画面の MindStella のセッションの状態の query と再起動の mutation をまとめ、状態のバーへ指定する状態を返却する"
+  - page: MOD-733-1.tsx.yaml
+    summary: "部品設計『MindStellaのセッションの状態のバー』の props・イベント・状態を持つ"
   - page: MOD-489-254.ts.yaml
     summary: "画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『プレビューを開く』の制約「音声の入力」）"
   - page: MOD-557-1.ts.yaml

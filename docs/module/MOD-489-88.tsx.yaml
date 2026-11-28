@@ -7,7 +7,7 @@ components:
     kind: コンポーネント
     container: frontend/src/shared/components/topbar.tsx
     usecase: 共通
-    summary: 部品設計『トップバー.tsx』の props・イベント・状態を持つ
+    summary: 部品設計『トップバー.tsx』の props・イベント・状態を持つ。`sessionStatus` が `running` 以外なら、タブの帯の下・重なった ID の通知の上に『MindStellaのセッションの状態のバー』（`SessionStatusBanner`）を描き、`onRestart` に `onRestartSession`、`onClose` に `onCloseSessionWarning` を渡す
     refs:
       - CMP-489-20#
     unit_tests:
@@ -71,5 +71,11 @@ components:
         condition: '`tabs` の検討事項だけ `marked: true`'
         mock: なし
         expected: 検討事項のタブだけが点を持ち、「新規・変更・削除した項目があります」を読み上げに持つ
+      - name: test_topbar_when_session_failed
+        case: 正常
+        summary: 再起動の失敗をタブの帯の下に出し、再起動を伝える
+        condition: '`sessionStatus` が `{kind: failed, reason: x, retrying: false}`、`duplicateIds` が 1 件。「再起動」を押す'
+        mock: '`onRestartSession`'
+        expected: 状態のバーがタブの帯の後ろ・重なった ID の通知の前にあり、`onRestartSession` が 1 回呼ばれる。`running` ではバーが無い
 notes:
   単体テスト: 同じフォルダの `topbar.test.tsx` に置く（knowledge の規約『フォルダ構成』）

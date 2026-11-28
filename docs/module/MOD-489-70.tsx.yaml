@@ -6,7 +6,7 @@ components:
     title: 絞り込みのドロワー
     kind: コンポーネント
     usecase: 項目を表で絞り込む
-    summary: '部品設計『絞り込み.tsx』の props・イベント・状態を持つ。ドロワーは `position: fixed` で、上端を CSS 変数 `--topbar-height`（無ければ 0。Storybook では変数が無く画面の上端）、下端を画面の下端にする。開いている間は、コメントの一覧と同じグレーアウトをトップバーとタブの帯の下から描き、ドロワーの外の画面の要素を `inert` にする。`presetSave` を渡されたときは、プリセットのまとまりの下（プリセットが 0 件のときも）に部品『プリセットの保存』を描き、`hasTagCondition` は `tagExpr` が null でないか `selected.tags` が 1 つ以上あるかで決める'
+    summary: '部品設計『絞り込み.tsx』の props・イベント・状態を持つ。`groups[].mark` が `change` の条件は、値の左に変更履歴の未読のマーカーと同じ色（`bg-topbar-unread`）の丸を描く。ドロワーは `position: fixed` で、上端を CSS 変数 `--topbar-height`（無ければ 0。Storybook では変数が無く画面の上端）、下端を画面の下端にする。開いている間は、コメントの一覧と同じグレーアウトをトップバーとタブの帯の下から描き、ドロワーの外の画面の要素を `inert` にする。`presetSave` を渡されたときは、プリセットのまとまりの下（プリセットが 0 件のときも）に部品『プリセットの保存』を描き、`hasTagCondition` は `tagExpr` が null でないか `selected.tags` が 1 つ以上あるかで決める'
     refs:
       - CMP-489-46#
     unit_tests:
@@ -40,6 +40,12 @@ components:
         condition: '`presetSave` を渡し、`parametrize`: `selected` に `tags` が無く `tagExpr` が null / `selected.tags` が「画面」 / `tagExpr` が「画面」を含む式'
         mock: なし
         expected: 「プリセットとして保存」が `aria-disabled="true"` / `aria-disabled` を持たない / `aria-disabled` を持たない
+      - name: test_filter_drawer_when_changed_mark
+        case: 正常
+        summary: 変更の条件の値に未読の丸を付ける
+        condition: '`groups` の先頭が `{key: changed, mark: change}` で値 `未読の変更あり` が 0 件'
+        mock: なし
+        expected: 値の左に `bg-topbar-unread` の丸があり、件数 0 でも押せる
     container: frontend/src/shared/components/filter-drawer.tsx
 notes:
   単体テスト: 同じフォルダの `filter-drawer.test.tsx` に置く（knowledge の規約『フォルダ構成』）

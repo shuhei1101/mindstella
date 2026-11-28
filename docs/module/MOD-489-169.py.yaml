@@ -77,6 +77,14 @@ data_models:
         type: RecordsCache
         default: RecordsCache()
         description: 組み立てた記録の応答（`field(default_factory=RecordsCache)`）
+      - name: state_root
+        type: Path | None
+        default: None
+        description: '常駐サーバーの状態のフォルダ（`session.json` の書き換えを見て `event: session` を送る）。`None` なら `event: session` を送らない'
+      - name: sessions
+        type: SessionAccess | None
+        default: None
+        description: '画面からの MindStella のセッションの状態と再起動の操作。`None` なら `GET /api/session` は `status: none`、`POST /api/session/restart` は 404'
   - name: Response
     title: 応答
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -116,6 +124,19 @@ data_models:
         type: tuple[str, ...]
         default: ()
         description: 終了時のフックのコマンドと引数（空なら呼ばない）
+  - name: SessionAccess
+    title: 画面からのセッションの操作
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: MindStella のセッションを再起動する
+    role: DTO
+    summary: 『エントリーポイント』が『セッションの管理』の関数で作って配信の台帳へ渡す、ワークスペースの ID を受ける 2 つの関数。`@dataclass(frozen=True, slots=True, kw_only=True)`。配信は『セッションの管理』を import せず、この 2 つだけを呼ぶ
+    properties:
+      - name: status
+        type: Callable[[str], dict[str, Any]]
+        description: インターフェース定義『画面の MindStella のセッションの状態』の応答（`sessions.screen_session_status`）
+      - name: restart
+        type: Callable[[str], tuple[int, dict[str, Any]]]
+        description: 契機 `api`・`force` 偽で再起動を依頼し、ステータスコードと `{status, warnings}` を返す関数（`sessions.restart_session`。`ApiError` を送出する）
 classes:
   - name: PreviewRegistry
     title: 配信の台帳
@@ -161,6 +182,14 @@ classes:
         type: dict[str, Path]
         access: 内部 (_)
         description: ワークスペースの ID → 配っているワークスペース（`_guard` の中で `_servers` と一緒に書き換える）
+      - name: _public_url
+        type: str | None
+        access: 内部 (_)
+        description: 画面の公開 URL の基底（ホームの設定の `preview.public_url`。末尾の `/` は除いた値）。キーワード引数 `public_url` で受ける（既定は `None`）
+      - name: _sessions
+        type: SessionAccess | None
+        access: 内部 (_)
+        description: 画面からのセッションの操作（キーワード引数 `sessions` で受け、立てる配信の文脈へ渡す。配信の文脈の `state_root` には `_state_root` を渡す）
     methods:
       - name: remember_session
         title: 宛先を書き換える
@@ -273,7 +302,7 @@ classes:
             description: ワークスペースの絶対パス
         returns:
           type: str | None
-          description: '`http://127.0.0.1:{_port}{page_path}`。台帳に無ければ `None`'
+          description: '`_public_url` があれば `{_public_url}{page_path}`、無ければ `http://127.0.0.1:{_port}{page_path}`（インターフェース定義『プレビューの URL』の制約「公開 URL」。`start`・`listing` の URL も同じ）。台帳に無ければ `None`'
         process: |-
           1. `_guard` を取り、`_servers` を `root.resolve()` で引いた文脈の ID で URL を組み立てて返す（`page_path`）
              - 無い場合、`None` を返す
@@ -479,6 +508,8 @@ classes:
              - `GET` のパスが `OLD_PAGE_PATHS` のどれかか `/spa/` で始まる場合、`302`・`Location: {PREVIEW_PREFIX}/{workspace}{PAGE_PATH}` で再送信する。要求に search があれば `?{search}` を付ける（パスは受けたままのパーセントエンコードで組み立てる）
              - `GET /files/...` の場合、`_send_file` へ渡す
              - `GET /api/events` の場合、`_stream` へ渡す
+             - `GET {SESSION_PATH}` の場合、`session_response` へ渡す
+             - `POST {SESSION_RESTART_PATH}` の場合、本文を読まずに `session_restart_response` へ渡す（`Origin` を渡す）
              - `POST /api/transcriptions` の場合、`_transcribe` へ渡す
              - `POST /api/comments/send` の場合、`send_comments` が返した送信した日時と `SentItem` の並びを `{sent, items}`（`items` は `SentItem` の `asdict`）にし、鍵を外した後に `thread` を持つ件数と `decision` を持つ件数を Claude Code への入力（『ClaudeCodeへの入力』の `enter_or_restart(root, count, choices)`）に渡す
              - `PATCH /api/comments/{id}` の応答は書き換えたコメントの `{id, body, loc, choice}`、`DELETE /api/comments/{id}` は `delete_response` の応答にする（`choice` は `{key}` か `None`）
@@ -594,7 +625,7 @@ classes:
           type: starlette.responses.StreamingResponse
           description: 書き換えの通知
         process: |-
-          1. 別のスレッドで `stream_events` を動かし、書き出す片を `asyncio.Queue` へ渡す（`loop.call_soon_threadsafe`。書き換えのマーカーは `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの）
+          1. 別のスレッドで `stream_events` を動かし、書き出す片を `asyncio.Queue` へ渡す（`loop.call_soon_threadsafe`。書き換えのマーカーは `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの。`context.state_root` があれば、`session_signature` に状態のフォルダの `workspaces/{ID}/session.json` の更新日時（ナノ秒）と大きさ（無ければ `-`）を返す関数を渡す）
           2. 応答のイテレーターはキューの片を順に返す
           3. 画面が閉じた（`await request.is_disconnected()` が真、またはイテレーターが閉じられた）ら、切断の印を立てて終える。スレッドの書き出しは印を見て `BrokenPipeError` を送出し、`stream_events` を終える
         unit_tests:
@@ -807,6 +838,18 @@ constants:
     usecase: プレビューを開く
     summary: 常駐サーバーの待ち受けで、画面と画面が呼ぶ経路の前に置くパス。後ろに `/{ワークスペースの ID をパーセントエンコードしたもの}` を続ける
     value: '"/w"'
+  - name: SESSION_PATH
+    title: セッションの状態のパス
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: MindStella のセッションを再起動する
+    summary: インターフェース定義『画面の MindStella のセッションの状態』のパス
+    value: '"/api/session"'
+  - name: SESSION_RESTART_PATH
+    title: セッションの再起動のパス
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: MindStella のセッションを再起動する
+    summary: インターフェース定義『画面からの MindStella のセッションの再起動』のパス
+    value: '"/api/session/restart"'
 functions:
   - name: check_host
     title: 接続先の確かめ
@@ -1071,6 +1114,12 @@ functions:
         default: workspace_signature
         passing: injected
         description: 書き換えのマーカーを作る関数
+      - name: session_signature
+        type: Callable[[], str] | None
+        required: false
+        default: None
+        passing: keyword
+        description: 'MindStella のセッションの状態の印を作る関数（`_stream` は `session.json` の更新日時と大きさ）。`None` なら `event: session` を送らない'
     returns:
       type: None
       description: '`write` が `BrokenPipeError`・`ConnectionResetError` を送出したら戻る'
@@ -1080,6 +1129,7 @@ functions:
          - `POLL_INTERVAL_SEC` 待ち、マーカーを再作成する
          - マーカーが前と違う場合、`event: changed` と `data: {印}` の知らせを書き、控えと時刻を更める
          - 変更の検知の重なった ID の集まりが前に書いたものと違う場合（『変更の検知』の `ChangeDetector.duplicate_ids`）、`event: duplicate_ids` と `data: {ID の JSON の配列}` を書く
+         - `session_signature` があり、その印が前と違う場合、`event: session` と `data: {}` を書き、最後に書いた時刻を更める（インターフェース定義『書き換えの通知』の制約「セッションの状態の通知」）
          - そうでなく、最後に書いてから `KEEPALIVE_SEC` 以上経った場合、`: keepalive` を書く
       3. `write` が `BrokenPipeError`・`ConnectionResetError` を送出したら戻る（画面が閉じた）
     unit_tests:
@@ -1095,6 +1145,12 @@ functions:
         condition: '`signature` は常に `a`。`clock` は 1 回ごとに 5 秒進む。2 回目の `write` が `ConnectionResetError` を送出する'
         mock: '`signature`・`sleep`・`clock`・`write`'
         expected: '1 回目に書いたものが `: keepalive\n\n` で、戻る'
+      - name: test_stream_events_when_session_changed
+        case: 正常
+        summary: セッションの状態の印が変わったら session を書く
+        condition: '`signature` は常に `a`、`session_signature` が `s1` → `s1` → `s2` を返し、2 回目の `write` が `BrokenPipeError` を送出する'
+        mock: '`signature`・`session_signature`・`sleep`・`clock`・`write`'
+        expected: '書いたものが `event: session\ndata: {}\n\n` の 1 つだけで、`changed` を書かない'
   - name: comments_response
     title: レビュー中の応答
     kind: 関数
@@ -1366,6 +1422,12 @@ functions:
         required: true
         passing: positional
         description: 読む環境変数（`os.environ`）
+      - name: public_host
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: ホームの設定の `preview.public_url` のホスト名（`HomeSettings.public_host()`）
     returns:
       type: ExternalAccess
       description: 外から見る設定（どれも無ければ空の既定値）
@@ -1377,7 +1439,8 @@ functions:
       2. `START_HOOK_ENV`・`STOP_HOOK_ENV` を `shlex.split` で分ける
          - 分けられない（`ValueError`）場合、その値は空にする
            - `[WARNING]` フックのコマンドを分けられない（環境変数の名前、理由）
-      3. 3 つの値で `ExternalAccess` を返す
+      3. `public_host` があれば、許可するホスト名に加える（インターフェース定義『プレビューの配信』の制約「公開 URL のホスト」）
+      4. 3 つの値で `ExternalAccess` を返す
     unit_tests:
       - name: test_load_external_access
         case: 正常
@@ -1397,6 +1460,12 @@ functions:
         condition: '`{START_HOOK_ENV: "pub \"add"}`（閉じない引用符）'
         mock: なし
         expected: '`start_hook` が `()` で、例外を送出しない'
+      - name: test_load_external_access_with_public_host
+        case: 正常
+        summary: 公開 URL のホスト名を許可するホスト名に加える
+        condition: '`{ALLOWED_HOSTS_ENV: "a.example"}` と `public_host="preview.example.test"` / 空の辞書と `public_host="preview.example.test"`'
+        mock: なし
+        expected: '`allowed_hosts` が `{"a.example", "preview.example.test"}` / `{"preview.example.test"}`'
   - name: threads_response
     title: スレッドの応答
     kind: 関数
@@ -1886,5 +1955,71 @@ functions:
         condition: '`parametrize`: `mindstella-notes-3f2a9c` / `mindstella-家計簿-3f2a9c`'
         mock: なし
         expected: '`/w/mindstella-notes-3f2a9c/` / `/w/mindstella-%E5%AE%B6%E8%A8%88%E7%B0%BF-3f2a9c/`'
+  - name: session_response
+    title: 画面のセッションの状態
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: MindStella のセッションを再起動する
+    scope: public
+    summary: インターフェース定義『画面の MindStella のセッションの状態』の応答を返す
+    args:
+      - name: context
+        type: ServeContext
+        required: true
+        passing: positional
+        description: 配信の文脈
+    returns:
+      type: Response
+      description: 200 の `{status, last_error, waiting, warnings}`
+    process: |-
+      1. `context.sessions` が `None` なら `{status: none, last_error: null, waiting: 0, warnings: []}` を 200 で返す
+      2. `context.sessions.status(context.workspace_id)` を 200 の JSON で返す（`Cache-Control: no-store`）
+         - `ApiError` の場合、そのステータスコードとメッセージの `problem_response` を返す
+    unit_tests:
+      - name: test_session_response
+        case: 正常
+        summary: 操作の応答をそのまま返し、操作が無ければ none
+        condition: '`parametrize`: `status` が `{status: crashed, last_error: x, waiting: 2, warnings: []}` を返す操作 / 操作が `None`'
+        mock: '`SessionAccess.status`'
+        expected: '200。本文が操作の応答 / `{status: none, last_error: null, waiting: 0, warnings: []}`'
+  - name: session_restart_response
+    title: 画面からのセッションの再起動
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: MindStella のセッションを再起動する
+    scope: public
+    summary: 送り元を確かめ、インターフェース定義『画面からの MindStella のセッションの再起動』を受け付ける（本文は読まない）
+    args:
+      - name: context
+        type: ServeContext
+        required: true
+        passing: positional
+        description: 配信の文脈
+      - name: origin
+        type: str | None
+        required: true
+        passing: keyword
+        description: 要求の `Origin`
+    returns:
+      type: Response
+      description: 202 の `{status, warnings}`、または 403・404・409 の `problem+json`
+    process: |-
+      1. `check_origin` が偽なら 403 を返す（`detail` は「送り元が合いません」）
+      2. `context.sessions` が `None` なら 404 を返す（`detail` は「MindStella のセッションがありません」）
+      3. `context.sessions.restart(context.workspace_id)` を呼び、返ったステータスコードと `{status, warnings}` で返す
+         - `ApiError` の場合、そのステータスコードとメッセージで、拡張のメンバー `stage` を持つ `problem_response` を返す
+    unit_tests:
+      - name: test_session_restart_response
+        case: 正常
+        summary: 再起動を受け付ける
+        condition: '`restart` が `(202, {session: S-1, status: restarting, warnings: []})` を返す操作、`Origin` なし'
+        mock: '`SessionAccess.restart`'
+        expected: '202、本文が `{status: restarting, warnings: []}`'
+      - name: test_session_restart_response_when_refused
+        case: 異常
+        summary: 送り元が違う・再起動の途中は断る
+        condition: '`parametrize`: `Origin: https://evil.example.test` / `restart` が `ApiError(409, "restarting", ...)` を送出する'
+        mock: '`SessionAccess.restart`'
+        expected: 403（`restart` を呼ばない） / 409、本文の `stage` が `restarting`
 notes:
   プリセットの保存: 定数 `PRESETS_PATH = "/api/presets"` を足し、`_post` で `PRESETS_PATH` の要求を `_write(request, context, create_preset_from_preview, HTTPStatus.CREATED)` へ振り分ける（『画面からのプリセットの作成』。`write_response` が `Content-Type`・`Origin`・JSON のオブジェクト・書き換えの鍵を確かめる）。`error_response` は `PresetNameTakenError` を 409 にする（`detail` はエラーのメッセージ。重なった名前を含む）。`config.yaml` を書くと書き換えのマーカーが変わり、書き換えの通知と記録の取得の保持した応答の破棄は既存の経路のまま動く。結合テストはインターフェース定義『画面からのプリセットの作成』の `tests/integration/server/test_preset_create_endpoint.py` が確かめる

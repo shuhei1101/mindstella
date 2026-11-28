@@ -6,7 +6,7 @@ functions:
     title: 時点の解決
     kind: 関数
     usecase: 前回からの差分を見る
-    summary: '`pending`・まとまりの ID からマーカーを付ける項目と削除した項目を決める。まとまりの ID でない値（`since` など）は差分を出さない'
+    summary: '`pending`・`turn`（今回の差分。`changes.turn_seq` より後のまとまりとまだまとめていない変更を合わせ、変更が無くても null にしない。`sub` は `turnSub`）・まとまりの ID からマーカーを付ける項目と削除した項目を決める。まとまりの ID でない値（`since` など）は差分を出さない'
     args:
       - name: changes
         type: Changes
@@ -44,6 +44,12 @@ functions:
         condition: V-1 を持つ変更履歴と `since`
         mock: なし
         expected: 'null'
+      - name: test_resolve_diff_point_when_turn
+        case: 正常
+        summary: 今回の差分は送信より後のまとまりとまだまとめていない変更を合わせる
+        condition: '`parametrize`: まとまり V-3（`until_seq: 5`、D-3 を追加）・V-2（`until_seq: 3`、D-2 を変更）・V-1（`until_seq: 1`）、まだまとめていない変更 D-4 で `turn_seq: 3` / 同じ記録で `turn_seq: 0` / `turn_seq: 5` でまだまとめていない変更が空'
+        mock: なし
+        expected: '`sel` が `turn`・`name` が「今回の差分」・`fromSeq` が 3・`untilSeq` が null で、追加が D-3・D-4、変更が空 / `fromSeq` が 0 で D-2 も変更に含む / null でなく、追加・変更・削除が空'
     container: frontend/src/shared/core/diff.ts
   - name: buildVersions
     title: 前のバージョンの組み立て
@@ -215,5 +221,55 @@ functions:
         mock: なし
         expected: '`[V-3, V-1]`'
     container: frontend/src/shared/core/diff.ts
+  - name: turnSub
+    title: 今回の差分の説明
+    kind: 関数
+    container: frontend/src/shared/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 画面設計『変更履歴.tsx』の「今回の差分」の行の説明を返す。`resolveDiffPoint` が `turn` の時点の `sub` に使う
+    args:
+      - name: turnAt
+        type: string | null
+        required: true
+        description: 記録の取得の `changes.turn_at`
+      - name: count
+        type: number
+        required: true
+        description: 変わった項目の数
+    returns:
+      type: string
+      description: '`turnAt` が null なら「送信の前のため、最初からの書き換え」、`count` が 0 なら「{JST の MM/DD HH:mm} の送信より後の書き換えはありません」、それ以外は「{JST の MM/DD HH:mm} の送信より後の書き換え」'
+    unit_tests:
+      - name: test_turn_sub
+        case: 正常
+        summary: 送信の有無と数で説明が変わる
+        condition: '`parametrize`: `(2026-10-04T05:50:00+00:00, 3)` / `(2026-10-04T05:50:00+00:00, 0)` / `(null, 5)`'
+        mock: なし
+        expected: '`10/04 14:50 の送信より後の書き換え` / `10/04 14:50 の送信より後の書き換えはありません` / `送信の前のため、最初からの書き換え`'
+  - name: unreadChangedIds
+    title: 未読の変更がある項目
+    kind: 関数
+    container: frontend/src/shared/core/diff.ts
+    usecase: 項目を表で絞り込む
+    summary: 未読のまとまりで追加・変更された項目の ID を返す（その範囲で削除した項目は除く）。一覧の「変更」の条件に使う
+    args:
+      - name: changes
+        type: Changes
+        required: true
+        description: 記録の変更履歴
+      - name: unread
+        type: readonly string[]
+        required: true
+        description: 未読のまとまりの ID（『既読のまとまり』の `useUnreadSetIds`）
+    returns:
+      type: Set<string>
+      description: 項目の ID
+    unit_tests:
+      - name: test_unread_changed_ids
+        case: 正常
+        summary: 未読のまとまりの追加と変更だけ
+        condition: V-2（D-2 を追加・D-5 を削除）・V-1（D-1 を変更）で、未読が `[V-2]`
+        mock: なし
+        expected: '`{D-2}`'
 notes:
   単体テスト: 同じフォルダの `diff.test.ts` に置く（knowledge の規約『フォルダ構成』）

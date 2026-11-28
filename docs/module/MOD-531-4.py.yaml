@@ -955,6 +955,43 @@ functions:
         condition: 間隔を 0.01 秒に上書きし、`watch_crashes_once` を数える偽にする。少し待って `stop` を立てる
         mock: '`watch_crashes_once`'
         expected: 2 回以上呼ばれ、スレッドが終わっている
+  - name: screen_session_status
+    title: 画面の MindStella のセッションの状態
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: MindStella のセッションを再起動する
+    scope: public
+    summary: インターフェース定義『画面の MindStella のセッションの状態』の応答を組み立てる。何も書かず、『停止の通知』も呼ばない
+    args:
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ・配信元のポート・tmux・プロセス
+    returns:
+      type: dict
+      description: '`{status, last_error, waiting, warnings}`'
+    process: |-
+      1. `list_sessions(workspace_id, ctx)` と同じ判定で最後の MindStella のセッションの `status`・`last_error` を取る（無ければ `status` は `none`、`last_error` は `None`）
+      2. `waiting` を、配信元の行のフォルダ（`workspaces.find_workspace_row`・`workspace_folder`）の取り込み待ちの利用者の書き込みの数（『スレッド』の `status_counts` の 2 つ目）にする
+         - 行が無いか、スレッドが読めない（`SchemaMismatchError`）場合、0 にする
+      3. MindStella のセッションがあり、状態のフォルダに追加の MCP・プラグインの記録が無ければ（`state.read_launch` が `None`）、`warnings` を `[LAUNCH_RECORD_MISSING]` にする（それ以外は空）
+      4. `{status, last_error, waiting, warnings}` を返す
+    exceptions:
+      - name: ApiError
+        condition: 知らないワークスペース（`_require_known`。404）
+    unit_tests:
+      - name: test_screen_session_status
+        case: 正常
+        summary: 状態・失敗の理由・待ちの数・記録が無い警告を組み立てる
+        condition: '`parametrize`: `session.json` 無し / `running` で生きていて `launch.json` あり / `crashed` で `last_error` あり・取り込み待ち 2 件 / `running` で `launch.json` 無し'
+        mock: '`TmuxRunner`・`ProcessInspector`・`workspaces.find_workspace_row`'
+        expected: '`{none, None, 0, []}` / `{running, None, 0, []}` / `{crashed, last_error, 2, []}` / `{running, None, 0, [launch_record_missing]}`。どれも `session.json` が呼ぶ前と同じ'
 classes:
   - name: TmuxRunner
     title: tmux のコマンドを呼ぶもの

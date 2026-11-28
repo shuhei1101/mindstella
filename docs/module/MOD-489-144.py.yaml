@@ -109,6 +109,9 @@ classes:
       - name: _restarter
         type: Callable[[Path], bool] | None
         description: ワークスペースのフォルダを受け、MindStella のセッションが落ちていれば（`running` なら `is_alive` で確認する）契機 `comment` で再起動して準備ができたかを返す関数（『エントリーポイント』が `sessions.request_restart` と `sessions.wait_until_running` で作って渡す）。`None` なら再起動しない
+      - name: _waiter
+        type: Callable[[Path], bool] | None
+        description: ワークスペースのフォルダを受け、MindStella のセッションが `restarting` でなくなるまで待って `running` になったかを返す関数（『エントリーポイント』が `sessions.wait_until_running` で作って渡す）。`None` なら待たずに入力しない
     methods:
       - name: remember
         title: 宛先を書き換える
@@ -217,17 +220,18 @@ classes:
           description: '`(entered, restarted)`（応答の `entered`・`restarted`）'
         process: |-
           1. 状態のフォルダに MindStella のセッションが無ければ、`(enter(root, count, choices=choices), False)` を返す
-          2. `restarting`・クローズ待ち・`_restarter` が `None` なら `(False, False)` を返す（コメントはスレッドに残る）
-          3. `running` で `enter(root, count, choices=choices)` が真なら `(True, False)` を返す
-          4. `_restarter(root)` が偽なら `(False, False)` を返す
-          5. `(enter(root, count, choices=choices), True)` を返す
+          2. `restarting` なら、`_waiter(root)` が真のとき `(enter(root, count, choices=choices), False)` を返し、`_waiter` が `None` か偽のとき `(False, False)` を返す（インターフェース定義『コメントをまとめて送信する』の制約「再起動の途中のとき」。入力しないときコメントはスレッドに残る）
+          3. クローズ待ち・`_restarter` が `None` なら `(False, False)` を返す（コメントはスレッドに残る）
+          4. `running` で `enter(root, count, choices=choices)` が真なら `(True, False)` を返す
+          5. `_restarter(root)` が偽なら `(False, False)` を返す
+          6. `(enter(root, count, choices=choices), True)` を返す
         unit_tests:
           - name: test_enter_or_restart
             case: 正常
             summary: 落ちていれば再起動してから入力する
-            condition: '`parametrize`: `running` で生きている / `running` で落ちている（再起動するまで貼れない） / `restarting` / `crashed` で `_restarter` が真 / `crashed` で `_restarter` が偽 / クローズ待ち'
-            mock: '`enter_to_claude`（真を返す）・`_restarter`'
-            expected: '`(True, False)` / `(True, True)` / `(False, False)` / `(True, True)` / `(False, False)` / `(False, False)`。`running` で生きているとき・`restarting`・クローズ待ちでは `_restarter` を呼ばない'
+            condition: '`parametrize`: `running` で生きている / `running` で落ちている（再起動するまで貼れない） / `restarting` で `_waiter` が真 / `restarting` で `_waiter` が偽 / `crashed` で `_restarter` が真 / `crashed` で `_restarter` が偽 / クローズ待ち'
+            mock: '`enter_to_claude`（真を返す）・`_restarter`・`_waiter`'
+            expected: '`(True, False)` / `(True, True)` / `(True, False)` / `(False, False)` / `(True, True)` / `(False, False)` / `(False, False)`。`running` で生きているとき・`restarting`・クローズ待ちでは `_restarter` を呼ばない'
 constants:
   - name: INPUT_TEMPLATE
     title: 入力する文字列の雛形

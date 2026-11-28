@@ -23,21 +23,7 @@ functions:
     returns:
       type: () => void
       description: 接続を閉じる関数
-    process: '1. EventSource を `workspacePath() + EVENTS_URL` で作り、3〜6 の受け取りを付ける（作り直すときも同じ内部の関数で作る）。作り直す関数をモジュールの内部に持ち、`reconnectEvents` から呼べるようにする
-
-      2. 文字の入力欄のフォーカスを見張る（`watchTextFocus`）。反映の保留（`useRefreshHoldStore.subscribe`）と音声入力（`subscribeVoice`）が変わるたびに、保留の解除（`releaseRefresh`）に 4 つの query の再読み込み（`invalidatePreview`）を渡す
-
-      3. `open` で接続の状態を online にし、4 つの query の再読み込みを反映の依頼（`requestRefresh`）に渡す（切れている間の書き換えを拾う）
-
-      4. `changed` で 4 つの query の再読み込みを反映の依頼（`requestRefresh`）に渡す。音声入力があれば、続けて録音の行き先の確かめ（`checkVoiceDestination`）を呼ぶ
-
-      5. `duplicate_ids` で `data` の ID の配列を重なった ID のストアに入れる（閉じた後も、集まりが変われば再表示する）
-
-      6. `error` で接続の状態を offline にする（前の記録の query は残す）。3・6 では接続し直しの状態を偽にする（`setRefreshing(false)`）
-
-      6a. `document` の `visibilitychange` で画面が表示され、EventSource が閉じていれば（`readyState` が `CLOSED`）、`reconnectEvents` と同じく作り直す
-
-      7. 閉じる関数は、EventSource を閉じ、フォーカスの見張りと購読と `visibilitychange` の受け取りをやめ、作り直す関数を削除する'
+    process: "1. EventSource を `workspacePath() + EVENTS_URL` で作り、3〜6 の受け取りを付ける（作り直すときも同じ内部の関数で作る）。作り直す関数をモジュールの内部に持ち、`reconnectEvents` から呼べるようにする\n\n2. 文字の入力欄のフォーカスを見張る（`watchTextFocus`）。反映の保留（`useRefreshHoldStore.subscribe`）と音声入力（`subscribeVoice`）が変わるたびに、保留の解除（`releaseRefresh`）に 4 つの query の再読み込み（`invalidatePreview`）を渡す\n\n3. `open` で接続の状態を online にし、4 つの query の再読み込みを反映の依頼（`requestRefresh`）に渡す（切れている間の書き換えを拾う）\n\n4. `changed` で 4 つの query の再読み込みを反映の依頼（`requestRefresh`）に渡す。音声入力があれば、続けて録音の行き先の確かめ（`checkVoiceDestination`）を呼ぶ\n\n5. `duplicate_ids` で `data` の ID の配列を重なった ID のストアに入れる（閉じた後も、集まりが変われば再表示する）\n\n5a. `session` で MindStella のセッションの状態の query（『セッションの状態』の `SESSION_QUERY_KEY`）を再読み込みする（入力中も保留しない。インターフェース定義『書き換えの通知』の制約「セッションの状態の通知」）\n\n6. `error` で接続の状態を offline にする（前の記録の query は残す）。3・6 では接続し直しの状態を偽にする（`setRefreshing(false)`）\n\n6a. `document` の `visibilitychange` で画面が表示され、EventSource が閉じていれば（`readyState` が `CLOSED`）、`reconnectEvents` と同じく作り直す\n\n7. 閉じる関数は、EventSource を閉じ、フォーカスの見張りと購読と `visibilitychange` の受け取りをやめ、作り直す関数を削除する"
     unit_tests:
       - name: test_connect_events_when_changed
         case: 正常

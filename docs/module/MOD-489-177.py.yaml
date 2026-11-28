@@ -125,7 +125,7 @@ functions:
            - `[ERROR]` MINDSTELLA_PORT の値が誤り（値。1〜65535 の整数を渡す案内）
          - `PortInUseError` を捕まえた場合、1 を返す
            - `[ERROR]` ポートが使われている（ポート。`MINDSTELLA_PORT` で別のポートを渡す案内）
-      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）と、ホームの設定（`home_settings.load_home_settings(home_settings.home_settings_path(environ))`。`InvalidSettingsError` を捕まえた場合、取ったソケットを閉じて `[ERROR]` ホームの設定の誤り（ファイルのパスとキー。設定『サーバー』の許す値の案内）を書き 1 を返す）と、文字起こしのインターフェース（`load_transcriber(environ)`。モジュール構成『文字起こしの引き当て』）と、待ち受けのポート（`port=port`）を渡した配信の台帳（`PreviewRegistry`）を作る
+      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）と、ホームの設定（`home_settings.load_home_settings(home_settings.home_settings_path(environ))`。`InvalidSettingsError` を捕まえた場合、取ったソケットを閉じて `[ERROR]` ホームの設定の誤り（ファイルのパスとキー。設定『サーバー』の許す値の案内）を書き 1 を返す）と、文字起こしのインターフェース（`load_transcriber(environ)`。モジュール構成『文字起こしの引き当て』）と、待ち受けのポート（`port=port`）を渡した配信の台帳（`PreviewRegistry`）を作る。外から見る設定は `load_external_access(environ, public_host=home.public_host())`、台帳には `public_url=home.public_url` と、画面からのセッションの操作 `sessions=SessionAccess(status=lambda ID: sessions.screen_session_status(ID, context), restart=lambda ID: sessions.restart_session(ID, None, "api", False, context))` を渡し、`InputTargets` には `_waiter`（`sessions.wait_until_running(workspace_id_of(root), context)`）も渡す
          - `InvalidTranscriberError` を捕まえた場合、取ったソケットを閉じて 1 を返す
            - `[ERROR]` 文字起こしの環境変数の値が誤り（環境変数の名前と値。設定『サーバー』の許す値の案内）
       4. 起動した日時（UTC）・プラグインのフォルダ（`PLUGIN_VERSION_FILE.parent`）・プラグインのバージョン（`str(read_plugin_version())`）を控え、それらと台帳から状態を作る関数（`build_status`）を作る

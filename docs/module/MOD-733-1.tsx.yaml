@@ -1,0 +1,27 @@
+id: MOD-733-1
+title: プレビュー / session-status-banner
+lead: 部品設計『MindStellaのセッションの状態のバー』の props・イベント・状態を持つ。
+components:
+  - name: SessionStatusBanner
+    title: MindStellaのセッションの状態のバー
+    kind: コンポーネント
+    container: frontend/src/shared/components/session-status-banner.tsx
+    usecase: MindStella のセッションを再起動する
+    summary: 部品設計『MindStellaのセッションの状態のバー』の props・イベント・状態を持つ。`status.kind` で出し分け、`running` は何も描かない。再起動の途中は `role="status"`、失敗と警告は `role="alert"`
+    refs:
+      - CMP-733-1#
+    unit_tests:
+      - name: test_session_status_banner
+        case: 正常
+        summary: 状態ごとの役割と文言を出す
+        condition: '`parametrize`: `restarting`（`waiting` 2） / `failed`（`retrying` 偽） / `failed`（`retrying` 真） / `launch_record_missing` / `running`'
+        mock: なし
+        expected: '`status` で「送信したコメント 2 件は、準備ができてから入力します。」 / `alert` で理由と押せる「再起動」 / 押せない「再起動中」 / `alert` と「警告を閉じる」 / 何も描かない'
+      - name: test_session_status_banner_when_clicked
+        case: 正常
+        summary: 再起動と閉じるを伝える
+        condition: '`failed` で「再起動」を押す / `launch_record_missing` で「警告を閉じる」を押す'
+        mock: '`onRestart`・`onClose`'
+        expected: '`onRestart` / `onClose` が 1 回ずつ呼ばれる'
+notes:
+  単体テスト: 同じフォルダの `session-status-banner.test.tsx` に配置する（knowledge の規約『フォルダ構成』）

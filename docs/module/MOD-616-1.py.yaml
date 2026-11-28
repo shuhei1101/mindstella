@@ -22,6 +22,10 @@ data_models:
         type: bool
         default: 'True'
         description: '`account.release_on_limit`'
+      - name: public_url
+        type: str | None
+        default: None
+        description: '`preview.public_url` の末尾の `/` を除いた値（`https://{名前}.{domain}`）。キーが無ければ `None`（画面の URL はローカルの URL のまま）'
     methods:
       - name: query_url
         title: 問い合わせ先
@@ -32,6 +36,11 @@ data_models:
         returns:
           type: str
           description: claude-balancer の常駐の待ち受け先
+      - name: public_host
+        title: 公開 URL のホスト名
+        kind: メソッド
+        scope: public
+        summary: '`public_url` のホスト名（ポートを除き小文字）を返す。`public_url` が無ければ `None`。『配信』が許可するホスト名に加える'
 functions:
   - name: home_settings_path
     title: ホームの設定のファイルの場所
@@ -62,7 +71,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/home_settings.py
     usecase: MindStella のセッションを再起動する
     scope: public
-    summary: 設定『サーバー』のファイル一覧の扱いで読む。キーは入れ子のマッピングとして読み（`claude_balancer:` の下の `url:`、`account:` の下の `release_on_limit:`）、ドットを含む 1 つのキーは知らないキーとして扱う。ファイルが無ければ既定値の `HomeSettings` を返し、知らないキーは標準エラーへ 1 行ずつ記録して読み飛ばす
+    summary: 設定『サーバー』のファイル一覧の扱いで読む。キーは入れ子のマッピングとして読み（`claude_balancer:` の下の `url:`、`account:` の下の `release_on_limit:`、`preview:` の下の `public_url:`）、ドットを含む 1 つのキーは知らないキーとして扱う。ファイルが無ければ既定値の `HomeSettings` を返し、知らないキーは標準エラーへ 1 行ずつ記録して読み飛ばす
     args:
       - name: path
         type: Path
@@ -74,7 +83,7 @@ functions:
       description: 読んだ設定
     exceptions:
       - name: InvalidSettingsError
-        condition: YAML として読めない・最上位・`claude_balancer`・`account` がマッピングでない・`claude_balancer.url` が `http://` か `https://` で始まる文字列でない・`account.release_on_limit` が真偽値でない
+        condition: YAML として読めない・最上位・`claude_balancer`・`account` がマッピングでない・`claude_balancer.url` が `http://` か `https://` で始まる文字列でない・`account.release_on_limit` が真偽値でない・`preview` がマッピングでない・`preview.public_url` が `http://` か `https://` で始まりパスを持たない（末尾の `/` だけは受ける）文字列でない
     unit_tests:
       - name: test_load_home_settings
         case: 正常
@@ -94,6 +103,18 @@ functions:
         condition: '`parametrize`: YAML の構文の誤り / 最上位が並び / `{claude_balancer: 1}` / `{account: [true]}` / `{claude_balancer: {url: ftp://x}}` / `{account: {release_on_limit: "no"}}`'
         mock: なし
         expected: 全て `InvalidSettingsError`
+      - name: test_load_home_settings_public_url
+        case: 正常
+        summary: 公開 URL の基底を末尾の / を除いて読む
+        condition: '`parametrize`: `{preview: {public_url: https://Preview.example.test/}}` / `{preview: {public_url: http://preview.example.test:8443}}` / キーが無い'
+        mock: なし（`tmp_path`）
+        expected: '`public_url` が `https://Preview.example.test`・`public_host()` が `preview.example.test` / `http://preview.example.test:8443`・`preview.example.test` / どちらも `None`'
+      - name: test_load_home_settings_when_public_url_invalid
+        case: 異常
+        summary: パスを持つ・スキームが違う公開 URL は断る
+        condition: '`parametrize`: `{preview: {public_url: https://x.test/w/}}` / `{preview: {public_url: ftp://x.test}}` / `{preview: {public_url: 1}}` / `{preview: 1}`'
+        mock: なし
+        expected: 全て `InvalidSettingsError`（メッセージに `preview.public_url` か `preview`）
 classes:
   - name: InvalidSettingsError
     title: ホームの設定が読めない
