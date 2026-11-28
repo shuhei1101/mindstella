@@ -14,7 +14,7 @@ import { cn } from "@/shared/lib/cn";
 /** 条件の値 */
 export type FilterValue = { value: string; count: number };
 
-/** 条件 1 つ（`mark` が `change` の値には、未読の変更のマーカーと同じ橙の丸を付ける） */
+/** 条件 1 つ（`mark` が `change` の値には、変更履歴の未読のマーカーと同じ色の丸を付ける） */
 export type FilterGroup = { key: string; label: string; values: FilterValue[]; mark?: "status" | "kind" | "change" };
 
 /** タグの組み合わせ方。`all` は選んだタグを全て持つ項目、`any` はどれかを持つ項目を残す */
