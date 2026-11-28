@@ -100,6 +100,12 @@ er:
           name: target
           key: FK
           comment: '参照: 検討事項.id'
+    - name: お気に入り
+      columns:
+        - type: string
+          name: id
+          key: FK
+          comment: '参照: 検討事項.id'
   relations:
     - from: 検討事項
       to: 検討事項
@@ -213,6 +219,13 @@ er:
       from_cardinality: 0..n
       to_cardinality: 0..1
       label: target が settings
+    - from: お気に入り
+      to: 検討事項
+      from_column: id
+      to_column: id
+      from_cardinality: 0..1
+      to_cardinality: 0..1
+      label: id（どの種類の項目も指す）
 tables:
   - name: config.yaml
     title: 設定
@@ -1109,3 +1122,28 @@ tables:
         title: 中身
         type: bytes
         description: ファイルそのもの。MindStella のセッションか利用者が配置する。下にフォルダを作ってよい
+  - name: favorites.yaml
+    title: お気に入り
+    datastore: YAML
+    summary: 利用者と AI が登録した、ワークスペースで共有するお気に入りの項目
+    primary_key: id
+    scale: ~100
+    growth: 星を押すたびと AI が登録するたびに 1 件追加する
+    deletion: 解除したときに物理削除する。項目を削除しても行は残し、画面は記録に無い ID を出さない
+    access: 全件
+    description: '`items:` の配列を持ち、1 要素 = 1 件のお気に入り。並びは登録した順。初めて登録したときにサーバーが作り、無ければ 0 件として扱う。書き込むのはサーバーのお気に入りの登録・解除（画面の API と MCP のツール）だけで、`.mindstella.lock` の排他ロックを取って書き込む。project-index の配信の対象にしない。変更の検知の監視するファイルに含めず、変更履歴と書き換えのまとまりに記録しない。共通のキー（`common.schema.json`）は持たない'
+    columns:
+      - name: id
+        title: 項目の ID
+        type: string
+        not_null: true
+        primary_key: true
+        description: お気に入りにした項目の ID。どの種類の項目も指す。登録するときは記録にある ID だけを受け付け、同じ ID は 1 件だけ持つ
+        example: A-3
+      - name: added
+        title: 登録した日時
+        type: string
+        not_null: true
+        auto: 作成日時
+        description: UTC のタイムゾーン付き ISO 8601
+        example: '2026-11-28T03:00:00+00:00'
