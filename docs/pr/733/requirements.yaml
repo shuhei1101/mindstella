@@ -57,7 +57,7 @@ docs:
     status: todo
   - page: docs/guide/セットアップ手順-プレビューを外から見る.md
     new: false
-    change: '#617: 画面の公開 URL の基底をホームの設定に記載する手順と、通知・preview_url の URL がその基底になること'
+    change: '#617: 画面の公開 URL の基底をホームの設定 `preview.public_url` に記載する手順と、通知・preview_url の URL がその基底になること、そのホスト名は `MINDSTELLA_ALLOWED_HOSTS` に重ねて記載しなくても受け付けること、公開 URL で開いた画面からも再起動できること'
     status: todo
   - page: docs/guide/セットアップ手順-Discordに通知する.md
     new: false
