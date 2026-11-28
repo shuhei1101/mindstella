@@ -1,0 +1,6 @@
+confirmations:
+  - topic: '#566 の記録の種類ごとのガイドをこの作業 PR で作るか'
+    decision: ガイドを作らず、#566 を取り下げる（mindstella のリポジトリの文書とエージェントフローを原本にする。推奨案 A）
+    decided_by: 👍
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/733#discussion_r4722778858
