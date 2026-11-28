@@ -377,7 +377,7 @@ def test_normal_when_unread(make_workspace: MakeWorkspace, call_tool: CallTool, 
     # 検証
     expect(history_button).to_have_attribute("aria-label", "変更履歴（未読 2 件）")
     history_button.click()
-    assert dialog.locator("button[data-sel]").evaluate_all("rows => rows.map((r) => r.dataset.sel)") == ["", "V-2", "V-1"]
+    assert dialog.locator("button[data-sel]").evaluate_all("rows => rows.map((r) => r.dataset.sel)") == ["", "turn", "V-2", "V-1"]
     expect(dialog.locator("button[data-sel]").first).to_contain_text("最新")
     expect(dialog.get_by_text("未読", exact=True)).to_have_count(2)
     expect(dialog.get_by_text("前回開いてから")).to_have_count(0)

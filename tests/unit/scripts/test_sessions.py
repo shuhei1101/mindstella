@@ -1854,6 +1854,11 @@ def _no_session(ctx: SimpleNamespace) -> None:
     """MindStella のセッションを作らない。"""
 
 
+def _unregistered_workspace(ctx: SimpleNamespace) -> None:
+    """ワークスペースの ID を ID の一覧から消す（配信だけを立てたワークスペース）。"""
+    (ctx.state_root / state.IDS_FILE).write_text("ids: []\n", encoding="utf-8")
+
+
 def _running_session(ctx: SimpleNamespace) -> None:
     """生きている MindStella のセッションを書く。"""
     _write_session(ctx)
@@ -1878,6 +1883,12 @@ def _running_without_launch(ctx: SimpleNamespace) -> None:
             0,
             {"status": "none", "last_error": None, "waiting": 0, "warnings": []},
             id="never_created",
+        ),
+        pytest.param(
+            _unregistered_workspace,
+            0,
+            {"status": "none", "last_error": None, "waiting": 0, "warnings": []},
+            id="unregistered",
         ),
         pytest.param(
             _running_session,
