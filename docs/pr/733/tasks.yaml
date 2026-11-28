@@ -99,4 +99,7 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-28T10:09:45.429819+00:00'
   - process: 結合テスト作成
-    status: todo
+    status: done
+    note: 追加した flows 12 本・部品の状態・画面の今回の差分と変更の条件の結合テストを作り、実行範囲の表の結合テストが全 pass（TL-3 116 件・TL-4 666 件）。配信だけを立てたワークスペースのセッションの状態の 404 を修正した
+    updated_by: planner
+    updated_at: '2026-11-28T11:35:11.684112+00:00'
