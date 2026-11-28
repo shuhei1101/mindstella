@@ -67,6 +67,11 @@ states:
     args:
       - name: filters
         value: '{"status": ["未着手"]}'
+  - name: ChangedOnly
+    description: '「変更」の条件をオンにした。チップは「変更: 未読の変更あり」で、× で解除する'
+    args:
+      - name: filters
+        value: changed に「未読の変更あり」
 accessibility:
   - 'チップの × に `{列}: {値} の条件を解除` の読み上げ名を付ける（タグの組み合わせ方が any のときは列の名前をチップと同じ「タグ（どれかを含む）」にする）'
   - 「お気に入りのみ」のチップの × に `お気に入りのみ の条件を解除` の読み上げ名を付ける

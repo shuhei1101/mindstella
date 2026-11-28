@@ -1,0 +1,74 @@
+id: CMP-733-1
+title: MindStellaのセッションの状態のバー
+implementation: frontend/src/shared/components/session-status-banner.tsx#SessionStatusBanner
+story: Shared/SessionStatusBanner
+status: planned
+lead: トップバーの下に、MindStella のセッションの再起動の途中・再起動の失敗と理由・追加の MCP とプラグインの記録が無い警告を出すバー。自動では閉じない。
+test_file: tests/integration/storybook_react/test_session_status_banner_stories.py
+args:
+  - name: status
+    type: オブジェクト
+    required: true
+    description: 出す状態。`kind` で出し分ける（`running`：出さない、`restarting`：再起動の途中、`failed`：再起動の失敗、`launch_record_missing`：記録が無い警告）。使う側が『画面の MindStella のセッションの状態』の応答から組み立てる
+  - name: status.kind
+    type: 列挙
+    required: true
+    choices: running・restarting・failed・launch_record_missing
+    description: 状態の種類
+  - name: status.waiting
+    type: 整数
+    required: false
+    enabled_when: '`kind` が `restarting` のとき'
+    choices: 0 以上
+    description: 準備ができてから入力する送信したコメントの数。0 なら件数を出さない
+  - name: status.reason
+    type: 文字列
+    required: false
+    enabled_when: '`kind` が `failed` のとき'
+    description: 再起動に失敗した理由（`last_error`）。折り返して全文を出す
+  - name: status.retrying
+    type: 真偽値
+    required: false
+    enabled_when: '`kind` が `failed` のとき'
+    default: 'false'
+    description: 「再起動」を押してから起動中に戻るまでの間か。真の間はボタンを押せなくし「再起動中」と回るマーカーを出す
+events:
+  - name: 再起動
+    when: 「再起動」を押したとき
+    value: '`onRestart()`'
+    description: 使う側が『画面からの MindStella のセッションの再起動』を呼び、応答まで `retrying` を真にする
+  - name: 閉じる
+    when: 記録が無い警告の閉じるボタンを押したとき
+    value: '`onClose()`'
+    description: 使う側が警告を隠す。その MindStella のセッションの間は再表示しない
+states:
+  - name: Restarting
+    description: 再起動の途中。回るマーカーと「MindStella のセッションを再起動しています」
+  - name: RestartingWithWaiting
+    description: 再起動の途中にコメントを 2 件送信した。「送信したコメント 2 件は、準備ができてから入力します。」
+  - name: Failed
+    description: 再起動に失敗した。見出し「MindStella のセッションを再起動できませんでした」、理由、右に「再起動」
+  - name: Retrying
+    description: 「再起動」を押した後。ボタンを押せなくし、回るマーカーと「再起動中」
+  - name: LaunchRecordMissing
+    description: 追加の MCP とプラグインの記録が無い警告。閉じるボタンで閉じる
+  - name: Running
+    description: 起動中。何も出さない
+    screenshot: false
+  - name: LongText
+    description: 長い理由。パスや標準エラーの切れ目の無い文字を折り返し、「再起動」のボタンを押し出さない
+  - name: Empty
+    description: 理由が空。見出しと「再起動」のボタンだけを出す
+  - name: Narrow
+    description: 幅 390px。本文を折り返し、「再起動」のボタンを右に残す
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
+accessibility:
+  - 再起動の途中は `role="status"`、失敗と警告は `role="alert"` を付け、出たときに読み上げる
+  - マーカー（警告のアイコン・回るマーカー）に加えて見出しと本文の文言で伝え、色だけに頼らない
+  - 閉じるボタンの読み上げ名を「警告を閉じる」にする
+refs:
+  - CMP-489-20#
+  - CMP-540-2#
+  - IF-733-1#
+  - IF-733-2#

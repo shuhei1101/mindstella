@@ -18,13 +18,13 @@ elements:
     component: CMP-489-26#
     args:
       - name: points
-        value: 「最新」・「まだまとめていない変更」（記録の取得.changes.pending の added・changed・removed のどれかが空でないとき）・記録の取得.changes.sets の並び（新しい順）
+        value: 「最新」・「今回の差分」（常に出す）・「まだまとめていない変更」（記録の取得.changes.pending の added・changed・removed のどれかが空でないとき）・記録の取得.changes.sets の並び（新しい順）
       - name: points[].sel
         value: 空文字列・pending・sets[].id
       - name: points[].name
         value: 最新・まだまとめていない変更・sets[].summary
       - name: points[].sub
-        value: マーカーと差分を出さずに今の内容だけを読む・AI がまだ区切っていない書き換え・sets[].at（JST の MM/DD HH:mm）
+        value: マーカーと差分を出さずに今の内容だけを読む・「{changes.turn_at の JST の MM/DD HH:mm} の送信より後の書き換え」（turn_at が null なら「送信の前のため、最初からの書き換え」、変わった項目の数が 0 なら「{日時} の送信より後の書き換えはありません」）・AI がまだ区切っていない書き換え・sets[].at（JST の MM/DD HH:mm）
       - name: points[].external
         value: sets[].by が external のまとまりで真（名前の横に「外部の変更」の札。名前は sets[].summary の「ほかのセッションの書き込み」）
       - name: points[].unread

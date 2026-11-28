@@ -40,6 +40,17 @@ states:
     description: 幅 390px。モーダルを画面幅に合わせ、一覧を縦にスクロールする。「すべて既読にする」の押す領域は縦横 24px 以上
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
+  - name: TurnDiff
+    description: 「最新」の次に「今回の差分」の行（説明「{日時} の送信より後の書き換え」、変わった項目の数）を並べる。説明は幅 390px でも省かれない
+  - name: TurnDiffSelected
+    description: 「今回の差分」を選んだ後。その行にチェックを付ける
+    args:
+      - name: current
+        value: turn
+  - name: TurnDiffNoWrites
+    description: まだコメントを送信していない。説明「送信の前のため、最初からの書き換え」と、最初のまとまりからの変わった項目の数
+  - name: TurnDiffNoChanges
+    description: 送信の直後で、その後の書き換えが無い。説明「{日時} の送信より後の書き換えはありません」、変わった項目の数 0
 lead: トップバーの「変更履歴」で開くモーダル。差分の表示で比べる時点を、日時・説明・変わった項目の数つきで新しい順に並べ、1 つ選ばせる。
 args:
   - name: points
