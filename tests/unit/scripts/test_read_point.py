@@ -170,3 +170,76 @@ def test_save_migration_report_appends(make_workspace: MakeWorkspace, tmp_path: 
         ],
         "provisional": [{"file": ".mindstella/config.yaml", "key": "summary", "value": "workspace"}],
     }
+
+
+def _turn_point_path(root: Path, state_root: Path) -> Path:
+    """ワークスペースの turn_point.json の場所を返す。"""
+    return state.workspace_dir(state_root, workspaces.workspace_id_of(root)) / "turn_point.json"
+
+
+def test_load_turn_point(make_workspace: MakeWorkspace, tmp_path: Path) -> None:
+    """書いた始まりを読む（正常系）。"""
+    # 準備
+    root = make_workspace()
+    state_root = tmp_path / "state"
+    read_point.save_turn_point(root, 4, "2026-11-28T05:50:00+00:00", state_root=state_root)
+    # 実行
+    result = read_point.load_turn_point(root, state_root=state_root)
+    # 検証
+    assert result == (4, "2026-11-28T05:50:00+00:00")
+
+
+def test_load_turn_point_when_missing(make_workspace: MakeWorkspace, tmp_path: Path) -> None:
+    """無ければ 0 と None（正常系）。"""
+    # 準備
+    root = make_workspace()
+    # 実行
+    result = read_point.load_turn_point(root, state_root=tmp_path / "state")
+    # 検証
+    assert result == (0, None)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("{", id="not_json"),
+        pytest.param('{"turn_seq": -1, "at": "2026-11-28T05:50:00+00:00"}', id="negative"),
+        pytest.param('{"turn_seq": 3, "at": 1}', id="at_number"),
+    ],
+)
+def test_load_turn_point_when_broken(make_workspace: MakeWorkspace, tmp_path: Path, text: str) -> None:
+    """壊れたファイルは読まない（異常系）。"""
+    # 準備
+    root = make_workspace()
+    state_root = tmp_path / "state"
+    path = _turn_point_path(root, state_root)
+    path.parent.mkdir(parents=True)
+    path.write_text(text, encoding="utf-8")
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError, match="スキーマに合いません") as raised:
+        read_point.load_turn_point(root, state_root=state_root)
+    assert any(line.startswith("turn_point.json:") for line in raised.value.lines)
+
+
+def test_save_turn_point_when_write_fails(
+    make_workspace: MakeWorkspace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """書けなければ前の始まりを残す（異常系）。"""
+    # 準備
+    root = make_workspace()
+    state_root = tmp_path / "state"
+    read_point.save_turn_point(root, 3, "2026-11-28T05:50:00+00:00", state_root=state_root)
+
+    def _failing_replace(*args: object, **kwargs: object) -> None:
+        """置き換えを OSError で失敗させる。"""
+        raise OSError("置き換えられない")
+
+    monkeypatch.setattr(os, "replace", _failing_replace)
+    # 実行・検証
+    with pytest.raises(WriteFailedError):
+        read_point.save_turn_point(root, 7, "2026-11-28T06:00:00+00:00", state_root=state_root)
+    monkeypatch.undo()
+    assert read_point.load_turn_point(root, state_root=state_root) == (3, "2026-11-28T05:50:00+00:00")
+    assert sorted(path.name for path in _turn_point_path(root, state_root).parent.iterdir()) == [
+        "turn_point.json"
+    ]

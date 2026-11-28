@@ -198,4 +198,20 @@ describe("Topbar", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("同じ ID の項目が 2 件あります");
     expect(screen.getByRole("link", { name: "D-12" })).toBeInTheDocument();
   });
+  // 再起動の失敗をタブの帯の下に出し、再起動を伝える（正常系）
+  test("topbar_when_session_failed", async () => {
+    // 準備
+    const onRestartSession = vi.fn();
+    const { rerender } = render(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" duplicateIds={[{ id: "D-12", kind: "検討事項" }]} sessionStatus={{ kind: "failed", reason: "空いたアカウントがありません。", retrying: false }} onRestartSession={onRestartSession} />);
+    const bar = screen.getByText("MindStella のセッションを再起動できませんでした");
+    const notice = screen.getByText(/同じ ID の項目が 2 件あります/);
+    // 実行
+    await userEvent.click(screen.getByRole("button", { name: "再起動" }));
+    // 検証
+    expect(screen.getByRole("navigation", { name: "項目の種類" }).compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(bar.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(onRestartSession).toHaveBeenCalledTimes(1);
+    rerender(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" sessionStatus={{ kind: "running" }} onRestartSession={onRestartSession} />);
+    expect(screen.queryByText("MindStella のセッションを再起動できませんでした")).toBeNull();
+  });
 });

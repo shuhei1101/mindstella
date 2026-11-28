@@ -1471,3 +1471,54 @@ def test_write_user_choices(
     assert _read_decision(root, "D-1")["user_choice"] == {"key": "B", "note": "x", "at": FIXED_NOW}
     last = _history_rows(root)["D-1"]["history"][-1]
     assert (last["before"]["user_choice"]["key"], last["by"]) == ("A", "user")
+
+
+def test_commit_pending_set(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """まだまとめていない変更を 1 つのまとまりにする（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    ai_update(root, "D-1", {"title": "書き換えた題"})
+    # 実行
+    result = comments._commit_pending_set(store.load_workspace(root), at=FIXED_NOW)
+    # 検証
+    changes = yaml.safe_load((root / RECORD_DIR / "changes.yaml").read_text(encoding="utf-8"))
+    assert result is True
+    assert (changes["sets"][0]["until_seq"], changes["sets"][0]["summary"]) == (
+        changes["last_seq"],
+        comments.AI_PENDING_SUMMARY,
+    )
+    assert (changes["pending"]["added"], changes["pending"]["changed"]) == ([], [])
+
+
+def test_commit_pending_set_when_empty(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """まとめる変更が無ければ書かない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    path = root / RECORD_DIR / "changes.yaml"
+    before = path.stat().st_mtime_ns if path.exists() else None
+    # 実行
+    result = comments._commit_pending_set(store.load_workspace(root), at=FIXED_NOW)
+    # 検証
+    assert result is False
+    assert (path.stat().st_mtime_ns if path.exists() else None) == before
+
+
+def test_record_turn_point_when_write_fails(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """書けなくても送信を取り消さない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+
+    def _failing_save(*args: object, **kwargs: object) -> None:
+        """書き込みを失敗させる。"""
+        raise WriteFailedError("書けない")
+
+    monkeypatch.setattr(comments, "save_turn_point", _failing_save)
+    # 実行
+    comments._record_turn_point(root, FIXED_NOW)
+    # 検証
+    assert "今回の差分の始まりを記録できません" in capsys.readouterr().err

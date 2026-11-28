@@ -2441,3 +2441,141 @@ def test_transcribe_when_too_large(
     # 検証
     assert response.status_code == 413
     assert fake.transcribe_calls == []
+
+
+def test_load_external_access_with_public_host() -> None:
+    """公開 URL のホスト名を許可するホスト名に加える（正常系）。"""
+    # 実行
+    with_env = serve.load_external_access(
+        {"MINDSTELLA_ALLOWED_HOSTS": "a.example"}, public_host="preview.example.test"
+    )
+    without_env = serve.load_external_access({}, public_host="preview.example.test")
+    # 検証
+    assert with_env.allowed_hosts == frozenset({"a.example", "preview.example.test"})
+    assert without_env.allowed_hosts == frozenset({"preview.example.test"})
+
+
+def test_stream_events_when_session_changed(tmp_path: Path) -> None:
+    """セッションの状態の印が変わったら session を書く（正常系）。"""
+    # 準備
+    written: list[bytes] = []
+    write = _recording_write(written, fail_on_call=2, error=BrokenPipeError)
+    session_marks = iter(["s1", "s1", "s2", "s2", "s3"])
+    # 実行
+    serve.stream_events(
+        tmp_path,
+        write,
+        sleep=lambda seconds: None,
+        clock=_SteppingClock(0.25),
+        signature=lambda root: "a",
+        session_signature=lambda: next(session_marks),
+    )
+    # 検証
+    assert written == [b"event: session\ndata: {}\n\n"]
+
+
+def _session_context(root: Path, access: serve.SessionAccess | None) -> serve.ServeContext:
+    """画面からのセッションの操作を持つ配信の文脈を作る。"""
+    return serve.ServeContext(
+        root=root,
+        port=PORT,
+        write_lock=threading.Lock(),
+        settings=serve.SettingsHolder({}),
+        workspace_id="W-1",
+        sessions=access,
+    )
+
+
+def _refusing_restart(workspace_id: str) -> tuple[int, dict[str, Any]]:
+    """再起動の途中として断る。"""
+    raise errors.ApiError(409, "restarting", "MindStella のセッションは restarting の途中です")
+
+
+@pytest.mark.parametrize(
+    ("access", "expected"),
+    [
+        pytest.param(
+            serve.SessionAccess(
+                status=lambda workspace_id: {
+                    "status": "crashed",
+                    "last_error": "x",
+                    "waiting": 2,
+                    "warnings": [],
+                },
+                restart=lambda workspace_id: (202, {}),
+            ),
+            {"status": "crashed", "last_error": "x", "waiting": 2, "warnings": []},
+            id="access",
+        ),
+        pytest.param(
+            None,
+            {"status": "none", "last_error": None, "waiting": 0, "warnings": []},
+            id="no_access",
+        ),
+    ],
+)
+def test_session_response(
+    tmp_path: Path, access: serve.SessionAccess | None, expected: dict[str, Any]
+) -> None:
+    """操作の応答をそのまま返し、操作が無ければ none（正常系）。"""
+    # 準備
+    context = _session_context(tmp_path, access)
+    # 実行
+    response = serve.session_response(context)
+    # 検証
+    assert response.status == 200
+    assert json.loads(response.body) == expected
+
+
+def test_session_restart_response(tmp_path: Path) -> None:
+    """再起動を受け付ける（正常系）。"""
+    # 準備
+    access = serve.SessionAccess(
+        status=lambda workspace_id: {},
+        restart=lambda workspace_id: (
+            202,
+            {"session": "S-1", "status": "restarting", "warnings": []},
+        ),
+    )
+    context = _session_context(tmp_path, access)
+    # 実行
+    response = serve.session_restart_response(context, origin=None)
+    # 検証
+    assert response.status == 202
+    assert json.loads(response.body) == {"status": "restarting", "warnings": []}
+
+
+@pytest.mark.parametrize(
+    ("origin", "restart", "expected_status", "expected_stage", "expected_calls"),
+    [
+        pytest.param(
+            "https://evil.example.test", lambda workspace_id: (202, {}), 403, None, 0, id="origin"
+        ),
+        pytest.param(None, _refusing_restart, 409, "restarting", 1, id="restarting"),
+    ],
+)
+def test_session_restart_response_when_refused(
+    tmp_path: Path,
+    origin: str | None,
+    restart: Callable[[str], tuple[int, dict[str, Any]]],
+    expected_status: int,
+    expected_stage: str | None,
+    expected_calls: int,
+) -> None:
+    """送り元が違う・再起動の途中は断る（異常系）。"""
+    # 準備
+    calls: list[str] = []
+
+    def _restart(workspace_id: str) -> tuple[int, dict[str, Any]]:
+        """呼ばれた ID を記録して、渡した操作を呼ぶ。"""
+        calls.append(workspace_id)
+        return restart(workspace_id)
+
+    access = serve.SessionAccess(status=lambda workspace_id: {}, restart=_restart)
+    context = _session_context(tmp_path, access)
+    # 実行
+    response = serve.session_restart_response(context, origin=origin)
+    # 検証
+    assert response.status == expected_status
+    assert json.loads(response.body).get("stage") == expected_stage
+    assert len(calls) == expected_calls

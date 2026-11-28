@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { AppError } from "@/shared/core/app-error";
 import { useAddComment, useRemoveComment, useSaveDraft, useSendComments, useUpdateComment } from "@/shared/hooks/use-comments";
+import { SESSION_QUERY_KEY } from "@/shared/hooks/use-session-status";
 import { readVoiceState, resetVoiceStore, startVoice } from "@/shared/stores/voice-store";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
@@ -165,7 +166,7 @@ describe("useSendComments", () => {
     // 実行
     await act(() => result.current.mutateAsync(["C-1"]));
     // 検証
-    expect(queryKeys(invalidate)).toEqual(expect.arrayContaining([["/api/comments"], ["/api/threads"]]));
+    expect(queryKeys(invalidate)).toEqual(expect.arrayContaining([["/api/comments"], ["/api/threads"], [...SESSION_QUERY_KEY]]));
   });
 
   // 箇所が合わない（異常系）

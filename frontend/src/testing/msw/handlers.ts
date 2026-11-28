@@ -16,7 +16,7 @@ export const RECORDS = {
   logs: [],
   bodies: {},
   marked_bodies: {},
-  changes: { last_seq: 0, sets: [], pending: { added: [], changed: [] } },
+  changes: { last_seq: 0, turn_seq: 0, turn_at: null, sets: [], pending: { added: [], changed: [] } },
   derived: { ready: ["D-1"] },
   built_at: "2026-11-04T02:21:00+00:00",
   settings_problem: null,
@@ -37,5 +37,7 @@ export const handlers = [
   http.put("*/api/drafts", () => new HttpResponse(null, { status: 204 })),
   http.patch("*/api/threads/:id", async ({ params, request }) => HttpResponse.json({ id: params["id"], status: ((await request.json()) as { status: string }).status, changed: true })),
   http.post("*/api/threads/:id/seen", ({ params }) => HttpResponse.json({ id: params["id"], seen: [] })),
+  http.get("*/api/session", () => HttpResponse.json({ status: "running", last_error: null, waiting: 0, warnings: [] })),
+  http.post("*/api/session/restart", () => HttpResponse.json({ status: "restarting", warnings: [] }, { status: 202 })),
   http.put("*/api/config/display", async ({ request }) => HttpResponse.json({ display: await request.json() })),
 ];

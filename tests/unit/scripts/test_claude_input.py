@@ -1048,14 +1048,15 @@ def test_mindstella_session_target(
 
 
 @pytest.mark.parametrize(
-    ("status", "close_pending", "restarted_ok", "expected", "restarter_calls"),
+    ("status", "close_pending", "restarted_ok", "waiter_ok", "expected", "restarter_calls"),
     [
-        pytest.param("running", False, True, (True, False), 0, id="running"),
-        pytest.param("running-dead", False, True, (True, True), 1, id="running-dead"),
-        pytest.param("restarting", False, True, (False, False), 0, id="restarting"),
-        pytest.param("crashed", False, True, (True, True), 1, id="crashed-restarted"),
-        pytest.param("crashed", False, False, (False, False), 1, id="crashed-failed"),
-        pytest.param("crashed", True, True, (False, False), 0, id="close-pending"),
+        pytest.param("running", False, True, False, (True, False), 0, id="running"),
+        pytest.param("running-dead", False, True, False, (True, True), 1, id="running-dead"),
+        pytest.param("restarting", False, True, True, (True, False), 0, id="restarting-ready"),
+        pytest.param("restarting", False, True, False, (False, False), 0, id="restarting-timeout"),
+        pytest.param("crashed", False, True, False, (True, True), 1, id="crashed-restarted"),
+        pytest.param("crashed", False, False, False, (False, False), 1, id="crashed-failed"),
+        pytest.param("crashed", True, True, False, (False, False), 0, id="close-pending"),
     ],
 )
 def test_enter_or_restart(
@@ -1064,10 +1065,11 @@ def test_enter_or_restart(
     status: str,
     close_pending: bool,
     restarted_ok: bool,
+    waiter_ok: bool,
     expected: tuple[bool, bool],
     restarter_calls: int,
 ) -> None:
-    """落ちていれば起動し直してから入力する（正常系）。"""
+    """落ちていれば起動し直してから入力し、再起動の途中なら準備を待ってから入力する（正常系）。"""
     # 準備
     dead = status == "running-dead"
     written = SessionState(
@@ -1101,6 +1103,7 @@ def test_enter_or_restart(
         state_root=tmp_path,
         workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
         restarter=_restarter,
+        waiter=lambda _root: waiter_ok,
     )
     # 実行
     result = targets.enter_or_restart(tmp_path, 1)

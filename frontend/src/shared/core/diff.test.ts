@@ -1,7 +1,7 @@
 import * as jsdiff from "diff";
 import { describe, expect, test } from "vitest";
 
-import { buildVersions, changedKinds, diffLineParts, htmlChangedLines, removedOf, resolveDiffPoint, unreadSetIds, type DiffPoint } from "@/shared/core/diff";
+import { buildVersions, changedKinds, diffLineParts, htmlChangedLines, removedOf, resolveDiffPoint, turnSub, unreadChangedIds, unreadSetIds, type DiffPoint } from "@/shared/core/diff";
 import type { Changes, Item } from "@/shared/core/records";
 
 const changes: Changes = {
@@ -118,5 +118,71 @@ describe("unreadSetIds", () => {
   // 既読に無いものだけ（正常系）
   test("unread_set_ids", () => {
     expect(unreadSetIds(["V-3", "V-2", "V-1"], ["V-2", "V-9"])).toEqual(["V-3", "V-1"]);
+  });
+});
+
+/** 送信より後のまとまり V-3 と、前のまとまり V-2・V-1、まだまとめていない変更 D-4 を持つ変更履歴 */
+const turnChanges = (turnSeq: number, pendingAdded: string[]): Changes => ({
+  last_seq: 6,
+  turn_seq: turnSeq,
+  turn_at: turnSeq === 0 ? null : "2026-11-28T05:50:00+00:00",
+  sets: [
+    { id: "V-3", at: "2026-11-28T06:00:00+00:00", summary: "3 回目", until_seq: 5, added: ["D-3"], changed: [] },
+    { id: "V-2", at: "2026-11-28T05:00:00+00:00", summary: "2 回目", until_seq: 3, added: [], changed: ["D-2"] },
+    { id: "V-1", at: "2026-11-28T04:00:00+00:00", summary: "1 回目", until_seq: 1, added: [], changed: [] },
+  ],
+  pending: { added: pendingAdded, changed: [] },
+});
+
+describe("resolveDiffPoint の今回の差分", () => {
+  // 今回の差分は送信より後のまとまりとまだまとめていない変更を合わせる（正常系）
+  test.each([
+    { name: "after_turn", changes: turnChanges(3, ["D-4"]), fromSeq: 3, added: ["D-3", "D-4"], changed: [] },
+    { name: "before_any_send", changes: turnChanges(0, ["D-4"]), fromSeq: 0, added: ["D-3", "D-4"], changed: ["D-2"] },
+    { name: "no_changes_after_send", changes: turnChanges(5, []), fromSeq: 5, added: [], changed: [] },
+  ])("resolve_diff_point_when_turn: $name", ({ changes: input, fromSeq, added, changed }) => {
+    // 実行
+    const point = resolveDiffPoint(input, "turn");
+    // 検証
+    expect(point).not.toBeNull();
+    expect(point?.sel).toBe("turn");
+    expect(point?.name).toBe("今回の差分");
+    expect(point?.fromSeq).toBe(fromSeq);
+    expect(point?.untilSeq).toBeNull();
+    expect([...(point?.added ?? [])].sort()).toEqual(added);
+    expect([...(point?.changed ?? [])].sort()).toEqual(changed);
+    expect(point?.removed.size).toBe(0);
+  });
+});
+
+describe("turnSub", () => {
+  // 送信の有無と数で説明が変わる（正常系）
+  test.each([
+    { turnAt: "2026-10-04T05:50:00+00:00", count: 3, expected: "10/04 14:50 の送信より後の書き換え" },
+    { turnAt: "2026-10-04T05:50:00+00:00", count: 0, expected: "10/04 14:50 の送信より後の書き換えはありません" },
+    { turnAt: null, count: 5, expected: "送信の前のため、最初からの書き換え" },
+  ])("turn_sub: $expected", ({ turnAt, count, expected }) => {
+    expect(turnSub(turnAt, count)).toBe(expected);
+  });
+});
+
+describe("unreadChangedIds", () => {
+  // 未読のまとまりの追加と変更だけ（正常系）
+  test("unread_changed_ids", () => {
+    // 準備
+    const input: Changes = {
+      last_seq: 3,
+      turn_seq: 0,
+      turn_at: null,
+      sets: [
+        { id: "V-2", at: "2026-11-02T00:00:00+00:00", summary: "2 回目", until_seq: 3, added: ["D-2"], changed: [], removed: [{ id: "D-5", kind: "decision", title: "削除した" }] },
+        { id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "1 回目", until_seq: 1, added: [], changed: ["D-1"] },
+      ],
+      pending: { added: [], changed: [] },
+    };
+    // 実行
+    const ids = unreadChangedIds(input, ["V-2"]);
+    // 検証
+    expect([...ids]).toEqual(["D-2"]);
   });
 });

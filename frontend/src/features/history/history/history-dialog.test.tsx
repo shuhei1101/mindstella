@@ -78,4 +78,22 @@ describe("HistoryScreen", () => {
     expect(screen.getByRole("button", { name: /2 回目/ })).not.toHaveTextContent("未読");
     expect(screen.getByRole("button", { name: /1 回目/ })).not.toHaveTextContent("未読");
   });
+  // 最新の次に今回の差分を並べ、選ぶと diff が turn になる（正常系）
+  test("history_screen_when_turn", async () => {
+    // 準備
+    stubRecords({ changes: { ...TWO_SETS, turn_seq: 1, turn_at: "2026-10-04T05:50:00+00:00" } });
+    renderRoute("/?tab=decisions");
+    await userEvent.click(await screen.findByRole("button", { name: /^変更履歴/ }));
+    const latest = await screen.findByRole("button", { name: /最新/ });
+    const turn = screen.getByRole("button", { name: /今回の差分/ });
+    const second = screen.getByRole("button", { name: /2 回目/ });
+    // 実行
+    await userEvent.click(turn);
+    // 検証
+    expect(latest.compareDocumentPosition(turn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(turn.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(turn).toHaveTextContent("10/04 14:50 の送信より後の書き換え");
+    expect(turn).toHaveTextContent("1");
+    await waitFor(() => expect(window.location.search).toContain("diff=turn"));
+  });
 });

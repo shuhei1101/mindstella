@@ -430,4 +430,19 @@ describe("PreviewShell", () => {
     expect(shell).toHaveClass("overflow-hidden");
     expect(screen.getByRole("region", { name: "詳細の本文" })).toHaveClass("overflow-y-auto");
   });
+  // セッションの状態をトップバーに出し、event: session で取得し直す（正常系）
+  test("preview_shell_when_session_status", async () => {
+    // 準備
+    server.use(http.get("*/api/session", () => HttpResponse.json({ status: "crashed", last_error: "空いたアカウントがありません。", waiting: 0, warnings: [] })));
+    const view = renderRoute("/?tab=overview");
+    const close = connectEvents(view.queryClient);
+    expect(await screen.findByText("MindStella のセッションを再起動できませんでした")).toBeInTheDocument();
+    expect(screen.getByText("空いたアカウントがありません。")).toBeInTheDocument();
+    server.use(http.get("*/api/session", () => HttpResponse.json({ status: "running", last_error: null, waiting: 0, warnings: [] })));
+    // 実行
+    act(() => FakeEventSource.last?.emit("session"));
+    // 検証
+    await waitFor(() => expect(screen.queryByText("MindStella のセッションを再起動できませんでした")).toBeNull());
+    close();
+  });
 });

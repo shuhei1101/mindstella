@@ -1666,6 +1666,16 @@ files:
   related:
   - to: MOD-489-170
     type: tests
+- path: src/shared/hooks/use-session-status.test.tsx
+  name: React の MindStella のセッションの状態のフックの単体テスト
+  description: 画面の MindStella のセッションの状態の取得・再起動・警告を閉じる振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/hooks/use-session-status.ts
+    type: tests
 - path: src/shared/hooks/use-screen-filters.ts
   name: 画面の絞り込みの条件を URL と端末の保存領域で持つ
   description: 画面の絞り込みの条件を URL と端末の保存領域で持つ。
@@ -1952,6 +1962,16 @@ files:
   related:
   - to: MOD-159-2
     type: implements
+- path: src/shared/components/session-status-banner.test.tsx
+  name: React の MindStella のセッションの状態のバーの単体テスト
+  description: 部品『MindStella のセッションの状態のバー』の状態ごとの役割と文言・ボタンの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/components/session-status-banner.tsx
+    type: tests
 - path: src/shared/components/session-status-banner.stories.tsx
   name: React の MindStella のセッションの状態のバーのストーリー
   description: 部品『MindStella のセッションの状態のバー』の状態ごとの Storybook のストーリー。再起動の途中・再起動の失敗・記録が無い警告の表示を追加・変更するときに参照する。

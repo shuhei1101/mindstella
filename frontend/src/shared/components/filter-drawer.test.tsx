@@ -105,4 +105,15 @@ describe("FilterDrawer", () => {
     if (disabled) expect(button).toHaveAttribute("aria-disabled", "true");
     else expect(button).not.toHaveAttribute("aria-disabled", "true");
   });
+  // 変更の条件の値に未読の丸を付ける（正常系）
+  test("filter_drawer_when_changed_mark", async () => {
+    // 準備
+    const onToggleValue = vi.fn();
+    const { container } = render(<FilterDrawer groups={[{ key: "changed", label: "変更", mark: "change", values: [{ value: "未読の変更あり", count: 0 }] }]} selected={{}} total={2} shown={2} onToggleValue={onToggleValue} onClearGroup={vi.fn()} onClearAll={vi.fn()} onClose={vi.fn()} onTextChange={vi.fn()} />);
+    // 実行
+    await userEvent.click(screen.getByRole("checkbox", { name: /未読の変更あり/ }));
+    // 検証
+    expect(container.querySelector(".bg-topbar-unread")).not.toBeNull();
+    expect(onToggleValue).toHaveBeenCalledTimes(1);
+  });
 });

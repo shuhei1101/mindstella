@@ -20,6 +20,7 @@ import read_point
 import resume
 import sessions
 import state
+import threads
 from errors import ApiError
 from home_settings import HomeSettings
 from state import LaunchOptions, SessionState
@@ -1847,3 +1848,76 @@ def test_request_restart_when_usage_threshold(
     # 検証
     assert result is True
     assert called == ["usage_threshold"]
+
+
+def _no_session(ctx: SimpleNamespace) -> None:
+    """MindStella のセッションを作らない。"""
+
+
+def _running_session(ctx: SimpleNamespace) -> None:
+    """生きている MindStella のセッションを書く。"""
+    _write_session(ctx)
+
+
+def _crashed_session(ctx: SimpleNamespace) -> None:
+    """再起動に失敗して落ちた MindStella のセッションを書く。"""
+    _write_session(ctx, status="crashed", pane=None, last_error="account: 空いたアカウントがありません")
+
+
+def _running_without_launch(ctx: SimpleNamespace) -> None:
+    """生きている MindStella のセッションを書き、launch.json を削除する。"""
+    _write_session(ctx)
+    (state.workspace_dir(ctx.state_root, WORKSPACE_ID) / state.LAUNCH_FILE).unlink()
+
+
+@pytest.mark.parametrize(
+    ("arrange", "awaiting", "expected"),
+    [
+        pytest.param(
+            _no_session,
+            0,
+            {"status": "none", "last_error": None, "waiting": 0, "warnings": []},
+            id="never_created",
+        ),
+        pytest.param(
+            _running_session,
+            0,
+            {"status": "running", "last_error": None, "waiting": 0, "warnings": []},
+            id="running",
+        ),
+        pytest.param(
+            _crashed_session,
+            2,
+            {
+                "status": "crashed",
+                "last_error": "account: 空いたアカウントがありません",
+                "waiting": 2,
+                "warnings": [],
+            },
+            id="crashed",
+        ),
+        pytest.param(
+            _running_without_launch,
+            0,
+            {"status": "running", "last_error": None, "waiting": 0, "warnings": ["launch_record_missing"]},
+            id="launch_record_missing",
+        ),
+    ],
+)
+def test_screen_session_status(
+    arrange: Callable[[SimpleNamespace], None],
+    awaiting: int,
+    expected: dict[str, Any],
+    ctx: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """状態・失敗の理由・待ちの数・記録が無い警告を組み立てる（正常系）。"""
+    # 準備
+    arrange(ctx)
+    monkeypatch.setattr(threads, "status_counts", lambda _root: (0, awaiting, None))
+    before = state.read_session(ctx.state_root, WORKSPACE_ID)
+    # 実行
+    body = sessions.screen_session_status(WORKSPACE_ID, ctx)
+    # 検証
+    assert body == expected
+    assert state.read_session(ctx.state_root, WORKSPACE_ID) == before
