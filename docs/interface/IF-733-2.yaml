@@ -1,0 +1,123 @@
+id: IF-733-2
+title: 画面からの MindStella のセッションの再起動
+entry:
+  kind: endpoint
+  value: POST `/w/{workspace}/api/session/restart`
+lead: プレビューの画面の状態のバーの「再起動」を押したときに、画面の配信の経路で『MindStella のセッションの再起動』を依頼する。公開 URL で開いた画面からも押せる。
+idempotent: false
+side_effects: 『MindStella のセッションの再起動』を契機 `api` で呼ぶ（状態のフォルダの `session.json` を書き換える）
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: path
+    description: ワークスペースの ID
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+  - name: Origin
+    type: str
+    required: false
+    location: header
+    description: 要求元のオリジン
+    default: なし（確かめない）
+response:
+  - name: status
+    type: Literal['restarting']
+    description: '受け付けた時点の状態。完了と失敗は『画面の MindStella のセッションの状態』と `event: session` で確かめる'
+  - name: warnings
+    type: list[str]
+    description: 『MindStella のセッションの再起動』の `warnings` と同じ
+status_codes:
+  - code: '202'
+    condition: 再起動を受け付けた
+  - code: '403'
+    condition: '`Host` が受ける値でないか、`Origin` が同じオリジンでない'
+  - code: '404'
+    condition: '`workspace` を配信していないか、MindStella のセッションを一度も作っていない'
+  - code: '409'
+    condition: ワークスペースがクローズ済みか、既に停止の途中・再起動の途中
+    notes: '`stage` は `closed`・`stopping`・`restarting` のどれか'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+  - item: 受ける Host
+    constraint: 『画面の MindStella のセッションの状態』と同じ
+  - item: 送信元の確認
+    constraint: 『プレビューの配信』の制約「送信元の確認」と同じ（`Origin` があれば要求の `Host` と同じオリジンでなければ 403）
+  - item: 再起動の依頼
+    constraint: ワークスペースの最後の MindStella のセッションに、『MindStella のセッションの再起動』を契機 `api` で、`force` を偽にして呼ぶ。状態・失敗の扱いはそのインターフェース定義に従う
+flows:
+  - name: 正常系
+    summary: 失敗して落ちた MindStella のセッションの再起動を受け付ける
+    setup:
+      - name: Mock
+        description: 『MindStella のセッションの再起動』の正常系（落ちた後にコメントが届く）と同じ
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: '`session.json` が `crashed` で `last_error` を持つ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant 画面
+        participant IF as POST /w/{workspace}/api/session/restart
+        participant MGR as セッションの管理
+
+        画面->>IF: POST
+        IF->>MGR: 再起動を依頼する（契機 api）
+        IF-->>画面: 202 status: restarting
+        MGR->>MGR: 再起動する
+      ```
+    expected:
+      - ステータスが 202、`status` が `restarting`
+      - その後の『画面の MindStella のセッションの状態』が `running` を返却し、`last_error` が `null`
+    test: test_normal
+  - name: 異常系（再起動の途中・409）
+    summary: 再起動の途中なら二重に依頼しない
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: '`session.json` が `restarting`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant 画面
+        participant IF as POST /w/{workspace}/api/session/restart
+
+        画面->>IF: POST
+        IF-->>画面: 409 stage: restarting
+      ```
+    expected:
+      - ステータスが 409、`stage` が `restarting`
+    test: test_error_when_restarting
+  - name: 異常系（送信元が違う・403）
+    summary: 別のオリジンからの依頼を断る
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /w/{workspace}/api/session/restart
+
+        クライアント->>IF: POST（Origin: https://evil.example.test）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403 で、再起動を依頼していない
+    test: test_error_when_origin_rejected
+refs:
+  - IF-582-1#
+  - IF-733-1#
+  - IF-489-18#
+callers:
+  - SC-582-1#
+test_file: tests/integration/server/test_preview_session_restart.py

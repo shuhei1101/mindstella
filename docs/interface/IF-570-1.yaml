@@ -33,6 +33,8 @@ constraints:
     constraint: 『作業の完了の通知』と同じ（環境変数 `MINDSTELLA_DISCORD_WEBHOOK_FILE` が指すファイルの 1 行目を送信のたびに参照し、使用できなければ送信しない。URL を標準エラー・応答・ワークスペース・状態のフォルダに記録しない）
   - item: 止まった理由の追加
     constraint: 利用上限・無操作の上限など、後から作る停止は、止まった理由とその文言を追加して、この通知を呼ぶ
+  - item: 公開 URL
+    constraint: 本文の末尾の画面の URL は『プレビューの URL』の制約「公開 URL」と同じ
 flows:
   - name: 正常系
     summary: 停止の依頼で止め終えたときに、停止の依頼を理由に 1 件送信する

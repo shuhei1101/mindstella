@@ -182,6 +182,10 @@ constraints:
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: 今回の差分の始まり
+    constraint: 『コメントをまとめて送信する』の制約「今回の差分の始まり」と同じく `turn_point.json` を書く
+  - item: 再起動の途中のとき
+    constraint: 『コメントをまとめて送信する』の制約「再起動の途中のとき」と同じ
 refs:
   - IF-489-6#
   - ER-489-1#

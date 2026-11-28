@@ -180,6 +180,23 @@ flows:
     expected:
       - ステータスが 500 で、`Content-Type` が `application/problem+json`
     test: test_error_when_index_missing
+  - name: 正常系（公開 URL のホストで開く）
+    summary: preview.public_url のホスト名を Host に持つ要求を受け付ける
+    setup:
+      - name: Mock
+        description: 'なし（ホームの設定に `preview.public_url: https://preview.example.test` を記載し、`MINDSTELLA_ALLOWED_HOSTS` を空にして MCP サーバーを立て、`preview_url` を呼び、返った URL のパスへ `Host: preview.example.test` で HTTP のクライアントでつなぐ）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /w/{workspace}/
+
+        クライアント->>IF: GET（Host: preview.example.test）
+        IF-->>クライアント: 200
+      ```
+    expected:
+      - ステータスが 200 で、画面の HTML が返る
+    test: test_normal_when_public_url_host
 lead: '常駐サーバーが、配っているワークスペース（制約「配るワークスペース」）のプレビューの画面（React の画面のビルドの出力の `index.html`）を `/w/{workspace}/` で、出力の静的なファイルを `/w/{workspace}/assets/` の下で返す。`/w/{workspace}`・`/w/{workspace}/mindstella.html`・`/w/{workspace}/spa`（`/w/{workspace}/spa/{path}` を含む）は search を残して `/w/{workspace}/` へ再送信する。記録は画面が『記録の取得』で読む。'
 idempotent: true
 side_effects: なし（読むだけ）
@@ -244,6 +261,8 @@ constraints:
     constraint: 常駐サーバーの状態のワークスペースの ID の一覧（ER 図『常駐サーバーの状態』）にあるワークスペース（クローズしたものを含む）を、常駐サーバーが起動したときから配る。『ワークスペースの作成』で一覧に加わったワークスペースは作成の時点から配り、『ワークスペースの削除』で一覧から外れたら配るのをやめる。一覧に無いフォルダは、`preview_url` を呼んだときからそのプロセスが終わるまで配る。配り始める前に `config.yaml` をスキーマと突き合わせ（『プレビューの URL』の制約「起動時の検査」と同じ）、合わないワークスペースは配らずに標準エラーへ 1 行記録する（`preview_url` で検査に通った時点から配る）。配り始めたときに起動時のフックを 1 回呼び（『プレビューの URL』の制約「起動時のフック」）、直下の README を画面の URL で書き直す（同じく制約「README の更新」）
   - item: 出力フォルダの外部にあるファイル
     constraint: '`assets/` の下のパスを解決した後に出力のフォルダの配下にあることを確かめ、外を指すときは 404 を返す'
+  - item: 公開 URL のホスト
+    constraint: 設定『サーバー』の `preview.public_url` があれば、そのホスト名も制約「接続先の確認」の許可するホスト名に加える（`MINDSTELLA_ALLOWED_HOSTS` に重ねて記載しなくても、通知の URL を開ける）
 refs:
   - IF-489-17#
   - IF-489-70#

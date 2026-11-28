@@ -294,6 +294,23 @@ flows:
       - '`url` の `/api/records` を GET すると、改名した先の記録が返る'
       - 終了時のフックの追記するファイルに前のフォルダの名前の行が 1 行、起動時のフックの追記するファイルに改名した先の名前の行がある
     test: test_normal_when_folder_moved
+  - name: 正常系（公開 URL を指定している）
+    summary: preview.public_url の基底にワークスペースのパスを続けた URL を返す
+    setup:
+      - name: Mock
+        description: 'なし（ホームの設定に `preview.public_url: https://preview.example.test/` を記載して MCP サーバーを立てる）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as preview_url
+
+        クライアント->>IF: 呼ぶ
+        IF-->>クライアント: https://preview.example.test/w/{workspace}/
+      ```
+    expected:
+      - 返った URL が `https://preview.example.test/w/{workspace}/`
+    test: test_normal_when_public_url
 lead: ワークスペースのプレビューを配る URL を返す。まだ配っていないワークスペース（常駐サーバーの ID の一覧に無いフォルダか、設定が検査に通らず配っていなかったワークスペース）は、常駐サーバーのポートで配り始める（配信を立てる）。
 idempotent: true
 side_effects: まだ配っていないワークスペース（『プレビューの配信』の制約「配るワークスペース」）について、このプロセスの中に配信（『プレビューの配信』『記録の取得』『書き換えの通知』・『設定の既定の書き換え』・『設定の再読み込み』と、レビュー中のコメント・下書き・まとめて送信の受け付け）を立てる。配信を立てたときは、直下の `README.md` を『README の書き出し』と同じ判定・書き方で書き直す。`.mindstella/` には書かない
@@ -367,6 +384,8 @@ constraints:
     constraint: 画面と画面が呼ぶ全ての経路は `/w/{workspace}/` を先頭に持つ（『プレビューの配信』の制約「ワークスペースの区別」）。`{workspace}` はワークスペースの ID（`config.yaml` の `id`。無ければ『ワークスペースの作成』と同じ振り方でフォルダから振る）をパーセントエンコードしたもの
   - item: フローのワークスペース
     constraint: このインターフェース定義のフローの `make_workspace` は、ことわりが無い限り『ワークスペースの作成』を通さずに `.mindstella/config.yaml` を置いたフォルダ（常駐サーバーの ID の一覧に無く、`preview_url` が配り始める）。「作成を済ませた」とことわるワークスペースも同じで、「作成を済ませたワークスペース A」のように ID の一覧にあることを前提にするフローだけ、『ワークスペースの作成』で作る（異常系「ワークスペースの ID が重なる」の A）
+  - item: 公開 URL
+    constraint: 設定『サーバー』の `preview.public_url` があれば、返す URL を `{preview.public_url}/w/{workspace}/` にする（末尾の `/` は 1 つにまとめる）。無ければ今のローカルの URL
 refs:
   - IF-489-18#
 test_file: tests/integration/server/test_preview_url.py
