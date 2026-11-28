@@ -95,8 +95,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-28T12:05:25.858342+00:00'
   - process: 実装
-    status: todo
+    status: done
     note: 'dev-docs.yaml の files_guide・files_root の行の exclude から "*.yml" を削除し、docs/guide/・docs/_root/ の Markdown が served: true になることを確認する'
+    updated_by: planner
+    updated_at: '2026-11-28T12:10:45.883580+00:00'
   - process: 結合テスト作成
     status: skipped
     reason: コードを変えない
