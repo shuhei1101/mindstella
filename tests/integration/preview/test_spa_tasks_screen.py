@@ -499,3 +499,16 @@ def test_favorites_only_chip_visible(page: Page, write_preview: WritePreview, ma
     open_spa(page, url, "?tab=tasks&view=board")
     # 実行・検証
     assert_favorites_only_chip(page, "T-1", "T-2")
+
+
+def test_drawer_changed_condition(page: Page, write_history_preview: WriteReviewPreview) -> None:
+    """絞り込みのドロワーの値の条件の先頭に「変更」の条件（値「未読の変更あり」）を並べる（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    open_spa(page, url, "?tab=tasks")
+    # 実行
+    page.get_by_role("button", name="絞り込み").click()
+    dialog = page.get_by_role("dialog", name="絞り込み")
+    # 検証
+    expect(dialog.locator("fieldset:has(input[type=checkbox])").first.locator("legend")).to_contain_text("変更")
+    expect(dialog.get_by_role("checkbox", name=re.compile("^未読の変更あり"))).to_be_enabled()
