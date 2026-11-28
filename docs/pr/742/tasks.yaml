@@ -1,0 +1,74 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-28T13:18:19.884047+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 対象の設計書が既にあるため対象外
+    updated_by: planner
+    updated_at: '2026-11-28T13:18:19.884047+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めの依頼ではないため対象外
+    updated_by: planner
+    updated_at: '2026-11-28T13:18:19.884047+00:00'
+  - process: PoC 検証
+    status: todo
+    note: mdmark の部品のカスタム要素（`<mdmark-table>`・`<mdmark-view>`・`<mdmark-map>`・`<mdmark-comments>`）を React の画面に配置し、今の画面の機能（列の固定・並べ替え・絞り込み・行の選択・キーボード操作・狭い幅での出し分け・独自の列の描き方・カードのマーカー・タグの押下・選んだ箇所へのコメント）が失われないかを確認する。失われる機能があれば `議論中` を付けて利用者に通知する
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 部品の置き換えと箇所の形式の変更で、複合ユースケースの流れは変わらない
+    updated_by: planner
+    updated_at: '2026-11-28T13:18:19.884047+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: デザイン方針があり、見た目の方向を変えない（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-28T13:18:19.884047+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の追加・削除と画面遷移の変更が無い（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-28T13:18:19.884047+00:00'
+  - process: 単一ユースケース設計
+    status: todo
+  - process: モック作成
+    status: skipped
+    reason: 見た目は mdmark の部品が決め、表の上のボタンの形状は依頼に記載がある（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-28T13:18:19.884047+00:00'
+  - process: データ設計
+    status: todo
+  - process: インターフェース定義設計
+    status: todo
+  - process: エージェント・MCP サーバー設計
+    status: skipped
+    reason: エージェント・MCP サーバーを追加・変更しない
+    updated_by: planner
+    updated_at: '2026-11-28T13:18:19.884047+00:00'
+  - process: エージェントフロー・LLM 呼び出し設計
+    status: skipped
+    reason: エージェントフローの工程は変えず、`loc` を参照する記述だけを『ドキュメント修正』で修正する
+    updated_by: planner
+    updated_at: '2026-11-28T13:18:19.884047+00:00'
+  - process: 精度評価設計
+    status: skipped
+    reason: LLM・意思決定モデルを使用するノードを変えない（判定フローチャート『精度評価をするか』）
+    updated_by: planner
+    updated_at: '2026-11-28T13:18:19.884047+00:00'
+  - process: 部品設計
+    status: todo
+  - process: 画面設計
+    status: todo
+  - process: モジュール構成設計
+    status: todo
+  - process: ドキュメント修正
+    status: todo
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
