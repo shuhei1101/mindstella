@@ -1,0 +1,9 @@
+use_cases: []
+docs: []
+scope_out:
+  - item: 配信元の設定の documents[] の検索の対象とメタデータの範囲の見直し
+    reason: 要望に含まれない（exclude の "*.yml" の 1 要素だけを削除する）
+    plan: '#555'
+  - item: 配信元の設定 dev-docs.yaml の project-index.yaml への改名と setup の突き合わせ
+    reason: 要望に含まれない（この作業 PR の後に入れる）
+    plan: '#736'
