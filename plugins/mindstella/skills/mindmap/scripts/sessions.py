@@ -431,6 +431,9 @@ def list_sessions(workspace_id: str, ctx: Any) -> dict[str, Any]:
 
 def screen_session_status(workspace_id: str, ctx: Any) -> dict[str, Any]:
     """画面の状態のバーに出す MindStella のセッションの状態を組み立てる。何も書かず、停止の通知も呼ばない。"""
+    # 配信だけを立てた（MindStella の API で作っていない）ワークスペース: MindStella のセッションを作っていないのと同じ
+    if workspace_id not in state.read_ids(ctx.state_root):
+        return {"status": "none", "last_error": None, "waiting": 0, "warnings": []}
     listed = list_sessions(workspace_id, ctx)
     sessions = listed["sessions"]
     # 一度も MindStella のセッションを作っていない
