@@ -170,11 +170,15 @@ const listOrders = ({ kind, view, sort, filtered, sorted, favorites }: { kind: K
   return { initialCardSort, cardSort, cardRowSort, cards, orders };
 };
 
+/** 未読のまとまりで追加・変更された項目に絞る「変更」の列（表には出さず、絞り込みとドロワーの条件だけに使う。配る書き出しでは出さない） */
+const changedColumns = (index: RecordIndex, unreadSets: readonly string[]): ListColumn<Row>[] =>
+  isEmbedded() ? [] : [changedColumn<Row>(unreadChangedIds(index.data.changes, unreadSets))];
+
 export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, content }: ListScreenProps) => {
   const { search, openItem, closeItem, setSort, setView } = usePreviewSearch();
   const { index } = useRecords();
   // 「変更」の条件に使う未読のまとまり（配る書き出しでは条件を出さない）
-  const unreadSets = useUnreadSetIds(workspaceIdOf(), index === null ? [] : index.data.changes.sets.map((set) => set.id));
+  const unreadSets = useUnreadSetIds(workspaceIdOf(), index?.data.changes.sets.map((set) => set.id) ?? []);
   const record = useRecordLookup({ index, onOpenItem: openItem });
   const { point } = useDiffView();
   const { filters, tagMatch, setFilters, setTagMatch, clearAll, setTextFilter, commitTextFilter, addTag, tagExpr, setTagExpr } = useScreenFilters(kind);
@@ -224,8 +228,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   if (index === null) return null;
   const columns = columnsWithFavorite(index);
   const presets = index.data.settings.presets ?? [];
-  // 未読のまとまりで追加・変更された項目に絞る「変更」の列（表には出さず、絞り込みとドロワーの条件だけに使う）
-  const changed = isEmbedded() ? [] : [changedColumn<Row>(unreadChangedIds(index.data.changes, unreadSets))];
+  const changed = changedColumns(index, unreadSets);
   const list = [...asColumns(columns), ...changed];
   // 追加する項目は絞り込みに関わらず先頭に置く
   const rows = index.data[kind].filter((item) => !item.id.startsWith(NEW_ID_PREFIX)) as unknown as Row[];
